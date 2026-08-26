@@ -1,0 +1,40 @@
+# application-local.yml.example — ローカル開発環境設定テンプレート
+# このファイルをコピーして application-local.yml を作成し、環境に合わせて設定すること。
+# application-local.yml は .gitignore で管理されている（コミット禁止）。
+#
+# コピー方法:
+#   cp backend/src/main/resources/application-local.yml.example \
+#      backend/src/main/resources/application-local.yml
+
+spring:
+  datasource:
+    # serverTimezone=UTC（Issue #2486）: docker-compose.yml の MySQL が
+    # --default-time-zone=+00:00 で起動するため、それと必ず一致させること。
+    # 既に application-local.yml を作成済みの場合は手元のファイルも UTC へ書き換えること
+    # （食い違うと java.sql.Timestamp の変換がローカルだけ静かにずれる）。
+    url: jdbc:mysql://localhost:3306/mannschaft?serverTimezone=UTC
+    username: mannschaft
+    password: mannschaft
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+mannschaft:
+  # ローカル開発用メール送信設定: 実SESを叩かずログのみ出力する
+  email:
+    simulate: true
+
+  # ─────────────────────────────────────────────────────────
+  # ローカルアバター/メディア画像保存 — MinIO（S3互換）設定
+  # 前提: docker compose --profile storage up -d で MinIO を起動すること
+  # バケット mannschaft-storage は minio-init が自動作成する
+  # ─────────────────────────────────────────────────────────
+  storage:
+    endpoint: ${MANNSCHAFT_R2_ENDPOINT:http://localhost:9000}
+    access-key: ${MANNSCHAFT_R2_ACCESS_KEY:minioadmin}
+    secret-key: ${MANNSCHAFT_R2_SECRET_KEY:minioadmin}
+    bucket: ${MANNSCHAFT_R2_BUCKET:mannschaft-storage}
+    presigned-upload-ttl: 600
+    presigned-download-ttl: 3600

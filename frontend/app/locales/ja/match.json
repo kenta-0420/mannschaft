@@ -1,0 +1,674 @@
+{
+  "match": {
+    "list": {
+      "title": "試合記録",
+      "subtitle": "練習・親善・大会の試合を記録する",
+      "record_button": "＋試合を記録",
+      "filter": {
+        "kind": "種別",
+        "status": "ステータス",
+        "all": "すべて"
+      },
+      "result": {
+        "win": "勝",
+        "draw": "分",
+        "loss": "敗",
+        "win_label": "W",
+        "draw_label": "D",
+        "loss_label": "L"
+      },
+      "in_progress_badge": "進行中",
+      "score_vs": "{home} - {away}",
+      "vs": "vs {opponent}",
+      "no_opponent": "相手未設定",
+      "no_score": "—",
+      "delete_confirm": "この試合記録を削除しますか？",
+      "delete_success": "試合記録を削除しました",
+      "empty": "まだ試合記録がありません",
+      "empty_cta": "最初の試合を記録する",
+      "load_more": "もっと見る",
+      "page_info": "{total} 件中 {from}-{to} 件",
+      "error": {
+        "load_failed": "試合一覧の取得に失敗しました",
+        "status_failed": "ステータスの変更に失敗しました",
+        "score_failed": "スコアの確定に失敗しました",
+        "recording_mode_failed": "記録モードの変更に失敗しました",
+        "delete_failed": "試合記録の削除に失敗しました"
+      }
+    },
+    "create": {
+      "title": "試合を記録",
+      "subtitle": "種別と相手だけで始められます。会場や時間は後で設定できます",
+      "kind_label": "種別",
+      "kind_hint": "タップして選択",
+      "opponent_label": "相手チーム名",
+      "opponent_placeholder": "相手チーム名を入力",
+      "opponent_required": "相手名を入力してください",
+      "kind_required": "種別を選択してください",
+      "optional_section": "任意項目（後で設定可）",
+      "optional_hint": "ここは空でも記録を開始できます。試合後に補完できます",
+      "venue_label": "会場",
+      "venue_placeholder": "会場名（任意）",
+      "kickoff_label": "キックオフ日時",
+      "duration_label": "試合時間（分）",
+      "home_away_label": "ホーム/アウェイ",
+      "home_away": {
+        "HOME": "ホーム",
+        "AWAY": "アウェイ",
+        "NEUTRAL": "中立"
+      },
+      "submit": "記録を開始",
+      "submit_short": "作成",
+      "cancel": "キャンセル",
+      "success": "試合を作成しました",
+      "update_success": "試合情報を更新しました",
+      "error": {
+        "create_failed": "試合の作成に失敗しました",
+        "update_failed": "試合情報の更新に失敗しました"
+      }
+    },
+    "live": {
+      "title": "ライブ記録",
+      "loading": "読み込み中…",
+      "scoreboard": {
+        "home": "自",
+        "away": "相手",
+        "vs": "vs {opponent}",
+        "penalty": "PK {home}-{away}"
+      },
+      "penalty": {
+        "title": "PK戦スコア",
+        "home_label": "自チームのPK成功数",
+        "away_label": "相手チームのPK成功数",
+        "hint": "成功した本数を入力してください。試合終了時に確定し、大会の順位に反映されます。"
+      },
+      "timer": {
+        "state": {
+          "WAITING": "開始前",
+          "FIRST_HALF": "前半",
+          "HALF_TIME": "ハーフタイム",
+          "SECOND_HALF": "後半",
+          "EXTRA_FIRST": "延長前半",
+          "EXTRA_SECOND": "延長後半",
+          "PENALTY_SHOOTOUT": "PK戦",
+          "COMPLETED": "試合終了",
+          "QUARTER_1": "第1Q",
+          "BREAK_1": "インターバル",
+          "QUARTER_2": "第2Q",
+          "HALF_TIME_BREAK": "ハーフタイム",
+          "QUARTER_3": "第3Q",
+          "BREAK_3": "インターバル",
+          "QUARTER_4": "第4Q",
+          "OVERTIME": "オーバータイム"
+        },
+        "start_first_half": "前半開始",
+        "to_half_time": "ハーフタイムへ",
+        "start_second_half": "後半開始",
+        "to_extra": "延長へ",
+        "to_penalty": "PK戦へ",
+        "complete": "試合終了",
+        "advance": "次のピリオドへ",
+        "minute_label": "分",
+        "stoppage_label": "アディショナル(+)",
+        "minute_override_hint": "タイマーとずれる場合は手動で訂正できます",
+        "pause": "一時停止",
+        "resume": "再開",
+        "running": "計測中",
+        "stopped": "停止中",
+        "start_quarter_1": "第1Q開始",
+        "end_quarter_1": "第1Q終了",
+        "start_quarter_2": "第2Q開始",
+        "end_quarter_2": "第2Q終了",
+        "start_quarter_3": "第3Q開始",
+        "end_quarter_3": "第3Q終了",
+        "start_quarter_4": "第4Q開始",
+        "to_overtime": "オーバータイムへ",
+        "to_overtime_again": "もう一度OTへ"
+      },
+      "preset": {
+        "goal": "得点",
+        "assist": "アシスト",
+        "card": "警告/退場",
+        "substitution": "交代",
+        "other": "その他",
+        "field_goal_2": "2P",
+        "field_goal_3": "3P",
+        "free_throw": "フリースロー",
+        "rebound": "リバウンド",
+        "foul": "ファウル"
+      },
+      "flow": {
+        "select_player": "選手を選択",
+        "select_scorer": "得点者を選択",
+        "select_assist": "アシスト者を選択",
+        "select_out": "OUT する選手",
+        "select_in": "IN する選手",
+        "add_assist": "＋アシストを紐付け",
+        "to_goal": "→ 得点へつなぐ",
+        "skip": "スキップ",
+        "confirm": "確定",
+        "cancel": "キャンセル",
+        "back": "戻る",
+        "note_label": "理由・メモ",
+        "note_placeholder": "例: コーナーキックから",
+        "goal_type_label": "得点種別",
+        "goal_type": {
+          "GOAL": "通常",
+          "PENALTY_GOAL": "PK",
+          "OWN_GOAL": "オウンゴール"
+        },
+        "card_color_label": "カードの種類",
+        "card_yellow": "警告（黄）",
+        "card_red": "退場（赤）",
+        "card_second_yellow": "2枚目の警告",
+        "team_side_label": "記録対象",
+        "other_label_placeholder": "イベント名（例: ファウル）",
+        "foul_type_label": "ファウルの種類"
+      },
+      "team_side": {
+        "HOME": "自チーム",
+        "AWAY": "相手チーム"
+      },
+      "card_reason": {
+        "title": "理由コード（任意）",
+        "skip_hint": "後で補完できます。公式戦では記録を推奨します",
+        "none": "未選択"
+      },
+      "grid": {
+        "starters": "先発",
+        "bench": "控え",
+        "setup_button": "スタメン設定",
+        "all_starters": "全員先発",
+        "clear_starters": "先発をクリア",
+        "copy_previous": "前回の先発をコピー",
+        "add_manual": "手入力で追加",
+        "manual_name_placeholder": "選手名",
+        "manual_number_placeholder": "背番号",
+        "empty": "選手が見つかりません。手入力で追加してください",
+        "position": {
+          "GK": "GK",
+          "DF": "DF",
+          "MF": "MF",
+          "FW": "FW",
+          "other": "その他"
+        }
+      },
+      "timeline": {
+        "title": "タイムライン",
+        "empty": "まだイベントがありません。下のボタンから記録を始めましょう",
+        "minute_suffix": "'",
+        "self": "自",
+        "opponent": "相手",
+        "linked_assist": "アシスト",
+        "linked_goal": "得点",
+        "tap_to_edit": "タップで編集",
+        "delete": "削除",
+        "delete_confirm": "このイベントを削除しますか？"
+      },
+      "undo": {
+        "button": "元に戻す",
+        "done": "操作を取り消しました",
+        "substitution": "交代を取り消しました",
+        "goal_assist": "得点・アシストを取り消しました"
+      },
+      "conflict": {
+        "title": "他の記録者が更新しました",
+        "detail": "最新の記録を取得して再試行します"
+      },
+      "opponent_notice": {
+        "title": "{team}チームが入力しました",
+        "detail": "この記録の訂正は{team}チームの記録者へ依頼してください"
+      },
+      "offline": {
+        "queued": "オフラインのため保存しました。通信復帰時に送信します",
+        "flushed": "保留していた{count}件のイベントを送信しました",
+        "pending": "未送信 {count} 件"
+      },
+      "completed_notice": "この試合は終了しています。記録の訂正は権限に従います",
+      "error": {
+        "load_events_failed": "イベントの取得に失敗しました",
+        "load_appearances_failed": "出場記録の取得に失敗しました",
+        "load_match_failed": "試合情報の取得に失敗しました",
+        "add_event_failed": "イベントの記録に失敗しました",
+        "update_event_failed": "イベントの更新に失敗しました",
+        "delete_event_failed": "イベントの削除に失敗しました",
+        "undo_failed": "操作の取り消しに失敗しました",
+        "period_boundary_failed": {
+          "title": "ピリオド境界の記録に失敗しました",
+          "detail": "前後半の切替（記録）がサーバーに保存されませんでした。スコアや出場時間の集計がずれる可能性があります。タイマーを操作し直して再記録してください。"
+        },
+        "complete_failed": "試合終了の保存に失敗しました",
+        "score_load_failed": "既存の採点を取得できませんでした。ページを再読み込みしてください",
+        "load_players_failed": "選手名簿の取得に失敗しました",
+        "substitution_rollback_failed": "交代の取り消しに失敗しました。選手交代の記録を確認してください"
+      },
+      "read_only_notice": "閲覧専用です。記録できるのは管理者・副管理者・記録係のみです",
+      "spectator": {
+        "title": "ライブ観戦",
+        "read_only_badge": "観戦のみ・記録権限なし",
+        "offline_banner": "オフラインです。最新でない可能性があります。通信が回復すると自動で最新化します。",
+        "connection": {
+          "live": "ライブ接続中",
+          "connecting": "接続中…",
+          "reconnecting": "再接続中…",
+          "offline": "オフライン",
+          "denied": "観戦できません"
+        },
+        "status": {
+          "SCHEDULED": "開始前",
+          "IN_PROGRESS": "試合中",
+          "COMPLETED": "試合終了",
+          "POSTPONED": "延期",
+          "CANCELLED": "中止"
+        },
+        "denied": {
+          "title": "この試合は観戦できません",
+          "detail": "公開範囲外のため、ライブ配信を表示できません。"
+        }
+      }
+    },
+    "analytics": {
+      "my_title": "試合分析",
+      "my_subtitle": "自分のキャリア統計を可視化します",
+      "member_title": "メンバーの試合分析",
+      "member_subtitle": "このメンバーのチーム別統計です",
+      "team_context": "対象チーム",
+      "unknown_kind": "その他",
+      "forbidden": "この統計を閲覧する権限がありません",
+      "metric": {
+        "total_matches": "出場試合",
+        "total_minutes": "総出場時間(分)",
+        "goals": "得点",
+        "assists": "アシスト",
+        "goals_per90": "90分あたり得点",
+        "starter_rate": "先発率"
+      },
+      "axis": {
+        "goals": "得点",
+        "assists": "アシスト",
+        "matches": "試合数",
+        "minutes": "平均出場",
+        "starter_rate": "先発率"
+      },
+      "series": {
+        "goals": "得点",
+        "minutes": "出場時間(分)",
+        "match_share": "出場割合",
+        "goals_by_kind": "種別別得点"
+      },
+      "chart": {
+        "radar_title": "スタッツ分布",
+        "line_title": "月別推移（得点・出場時間）",
+        "doughnut_title": "種別別の出場割合",
+        "bar_title": "種別別の得点分布"
+      },
+      "best": {
+        "title": "自己ベスト",
+        "top_goals": "1か月の最多得点",
+        "longest_minutes": "1か月の最長出場(分)"
+      },
+      "empty": {
+        "no_data": "表示できるデータがありません",
+        "no_trend": "推移データがありません",
+        "no_goals": "得点の記録がありません",
+        "no_matches": "まだ試合記録がありません",
+        "member_no_matches": "このメンバーの試合記録がありません",
+        "no_team": "所属チームがありません",
+        "record_cta": "試合を記録する"
+      },
+      "error": {
+        "load_failed": "統計の取得に失敗しました"
+      },
+      "team_title": "チーム試合分析",
+      "team_subtitle": "チームの勝敗・得失点・選手別ランキング・直近フォームを可視化します",
+      "team": {
+        "metric": {
+          "total_matches": "試合数",
+          "win_draw_loss": "勝/分/敗",
+          "goals_for": "得点",
+          "goals_against": "失点",
+          "goal_difference": "得失点差"
+        },
+        "series": {
+          "points": "勝点（累積）",
+          "player_goals": "得点数",
+          "matches_by_kind": "試合数"
+        },
+        "chart": {
+          "result_title": "勝敗サマリ",
+          "player_goals_title": "選手別得点ランキング",
+          "recent_form_title": "直近フォーム（勝点推移）",
+          "matches_by_kind_title": "種別別試合数"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "試合サマリ",
+          "wdl_label": "勝/分/敗",
+          "goals_label": "得/失点",
+          "recent_form": "直近フォーム",
+          "in_progress_label": "進行中",
+          "resume_recording": "記録を再開する",
+          "no_matches": "試合記録がありません",
+          "view_analytics": "詳細分析を見る"
+        }
+      }
+    },
+    "kind": {
+      "PRACTICE": "練習試合",
+      "FRIENDLY": "親善試合",
+      "TOURNAMENT": "大会",
+      "LEAGUE": "リーグ"
+    },
+    "status": {
+      "SCHEDULED": "予定",
+      "IN_PROGRESS": "進行中",
+      "COMPLETED": "終了",
+      "POSTPONED": "延期",
+      "CANCELLED": "中止",
+      "PLANNED": "予定",
+      "CLOSED": "確定済み"
+    },
+    "event_type": {
+      "STARTER": "先発",
+      "SUB_IN": "交代IN",
+      "SUB_OUT": "交代OUT",
+      "GOAL": "得点",
+      "ASSIST": "アシスト",
+      "OWN_GOAL": "オウンゴール",
+      "PENALTY_GOAL": "PK（成功）",
+      "PENALTY_MISS": "PK（失敗）",
+      "PENALTY_SHOOTOUT": "PK戦",
+      "YELLOW_CARD": "警告",
+      "RED_CARD": "退場",
+      "SECOND_YELLOW": "2枚目の警告",
+      "SAVE": "セーブ",
+      "INJURY": "負傷",
+      "PERIOD_START": "ピリオド開始",
+      "PERIOD_END": "ピリオド終了",
+      "OTHER": "その他",
+      "FIELD_GOAL_2": "2P",
+      "FIELD_GOAL_3": "3P",
+      "FREE_THROW": "フリースロー",
+      "SHOT_MISS": "シュート失敗",
+      "REBOUND": "リバウンド",
+      "STEAL": "スティール",
+      "BLOCK": "ブロック",
+      "TURNOVER": "ターンオーバー",
+      "PERSONAL_FOUL": "パーソナルファウル",
+      "TECHNICAL_FOUL": "テクニカルファウル",
+      "FOUL_OUT": "退場（ファウルアウト）",
+      "SET_START": "セット開始",
+      "SET_END": "セット終了",
+      "POINT": "得点",
+      "SERVE_ACE": "サービスエース",
+      "BLOCK_POINT": "ブロック得点",
+      "ATTACK_POINT": "アタック決定",
+      "SERVE_ERROR": "サーブミス"
+    },
+    "card_type": {
+      "YELLOW": "警告",
+      "RED": "退場",
+      "SECOND_YELLOW": "2枚目の警告"
+    },
+    "card_reason": {
+      "C1": "反スポーツ的行為",
+      "C2": "ラフプレー",
+      "C3": "異議",
+      "C4": "繰り返しの違反",
+      "C5": "遅延行為",
+      "C6": "距離不足",
+      "C7": "無許可入",
+      "C8": "無許可去",
+      "S1": "著しく不正なプレー",
+      "S2": "乱暴な行為",
+      "S3": "つば吐き",
+      "S4": "得点機会阻止（手）",
+      "S5": "得点機会阻止（その他）",
+      "S6": "侮辱",
+      "CS": "警告2回",
+      "PF": "パーソナルファウル",
+      "SF": "シューティングファウル",
+      "OF": "オフェンスファウル",
+      "TF": "テクニカルファウル",
+      "UF": "アンスポーツマンライクファウル",
+      "DF": "ディスクォリファイングファウル"
+    },
+    "position": {
+      "GK": "ゴールキーパー",
+      "DF": "ディフェンダー",
+      "MF": "ミッドフィルダー",
+      "FW": "フォワード",
+      "FIXO": "フィクソ",
+      "ALA": "アラ",
+      "PIVO": "ピヴォ",
+      "PG": "ポイントガード",
+      "SG": "シューティングガード",
+      "SF": "スモールフォワード",
+      "PF": "パワーフォワード",
+      "C": "センター",
+      "OH": "アウトサイドヒッター",
+      "OP": "オポジット",
+      "MB": "ミドルブロッカー",
+      "S": "セッター",
+      "L": "リベロ"
+    },
+    "org_context": {
+      "resolve_failed": "チーム・組織の情報を解決できませんでした。所属を確認してください"
+    },
+    "entry": {
+      "record_from_schedule": "この試合を記録",
+      "record_from_schedule_hint": "この予定の試合記録を開始します",
+      "resolving": "試合記録を準備中…",
+      "no_org_for_record": "試合記録はチームが組織に所属している場合のみ利用できます"
+    },
+    "fixtures": {
+      "title": "対戦表",
+      "back": "大会トップに戻る",
+      "round": "第{n}節",
+      "record": "記録",
+      "venue_tbd": "会場未定",
+      "date_tbd": "日付未定",
+      "tbd_participant": "未定",
+      "no_score": "対戦予定",
+      "empty": "対戦カードがまだありません",
+      "load_failed": "対戦表の取得に失敗しました",
+      "record_not_participant": "このカードに自チームが参加していないため記録できません",
+      "status": {
+        "SCHEDULED": "予定",
+        "IN_PROGRESS": "進行中",
+        "COMPLETED": "終了",
+        "POSTPONED": "延期",
+        "CANCELLED": "中止"
+      }
+    },
+    "foul_type": {
+      "PERSONAL_FOUL": "パーソナルファウル",
+      "TECHNICAL_FOUL": "テクニカルファウル"
+    },
+    "set": {
+      "set_label": "第{n}セット",
+      "sets_label": "セットスコア",
+      "sets_to_win": "先{n}セット先取",
+      "target_points": "目標{n}点",
+      "deuce": "デュース",
+      "deuce_hint": "デュース中：2点差がつくまで継続",
+      "confirm_set": "セット確定",
+      "confirm_hint": "{n}点先取かつ2点差で確定できます",
+      "match_completed": "試合終了",
+      "start_first_set": "第1セット開始",
+      "in_progress": "進行中",
+      "past_sets": "確定済みセット",
+      "home_points_label": "自チーム得点",
+      "away_points_label": "相手得点",
+      "increment_home": "自チーム+1",
+      "increment_away": "相手+1",
+      "decrement_home": "自チーム-1",
+      "decrement_away": "相手-1"
+    },
+    "win_method": {
+      "RESIGNATION": "投了",
+      "CHECKMATE": "詰み",
+      "TIMEOUT": "時間切れ",
+      "FOUL_WIN": "反則勝ち",
+      "REPETITION": "千日手",
+      "IMPASSE": "持将棋",
+      "DEFAULT_WIN": "不戦勝",
+      "POINTS_WIN": "目数差勝ち"
+    },
+    "turn": {
+      "waiting_notice": "対局を開始してください",
+      "start_game": "対局開始",
+      "select_winner": "勝者を選択",
+      "required": "（必須）",
+      "optional": "（任意）",
+      "win": "の勝ち",
+      "result": {
+        "draw": "引分け"
+      },
+      "draw_type_shogi": "千日手/持将棋",
+      "draw_type_go": "持碁",
+      "side": {
+        "home_shogi": "先手",
+        "away_shogi": "後手",
+        "home_go": "黒",
+        "away_go": "白"
+      },
+      "win_method_label": "勝ち方",
+      "win_method_placeholder": "勝ち方を選択（任意）",
+      "margin_label": "目数差",
+      "margin_unit": "目",
+      "total_moves_label": "総手数",
+      "total_moves": "{n}手",
+      "margin": "{n}目差",
+      "moves_unit": "手",
+      "comment_label": "コメント・メモ",
+      "comment_placeholder": "例：終盤の見事な詰みでした",
+      "complete": "結果を確定",
+      "complete_hint": "勝者（または引分け）を選択してください",
+      "photo": {
+        "label": "局面写真",
+        "add": "写真を追加",
+        "remove": "写真を削除",
+        "hint": "画像（PNG/JPEG/WebP/GIF・10MBまで・SVG不可）",
+        "upload_success": "局面写真をアップロードしました"
+      },
+      "error": {
+        "record_result_failed": "対局結果の保存に失敗しました",
+        "create_board_failed": "ボードの作成に失敗しました",
+        "load_boards_failed": "ボード一覧の取得に失敗しました",
+        "load_attachments_failed": "局面写真の取得に失敗しました",
+        "delete_attachment_failed": "局面写真の削除に失敗しました",
+        "upload_photo_failed": "局面写真のアップロードに失敗しました",
+        "attachment_type_invalid": "画像ファイル（SVG不可）を選択してください",
+        "attachment_too_large": "ファイルサイズが大きすぎます（10MBまで）"
+      }
+    },
+    "board": {
+      "title": "団体戦ボード進捗",
+      "progress_label": "ボード確定",
+      "all_confirmed": "全ボード確定 — 団体戦結果を確定できます",
+      "label": "第{n}ボード",
+      "winner": "{name} の勝ち",
+      "recorder": "記録: {name}",
+      "record_button": "記録する",
+      "player_tbd": "未定",
+      "empty": "ボードがまだありません",
+      "status": {
+        "confirmed": "確定",
+        "in_progress": "記録中",
+        "pending": "未入力"
+      },
+      "create_pending_notice": "このボードはまだ作成されていません"
+    },
+    "scored": {
+      "sport": {
+        "figure_skating": "フィギュアスケート",
+        "gymnastics": "体操"
+      },
+      "waiting_notice": "採点を記録してください",
+      "start": "採点を記録",
+      "total_label_figure": "合計点（Total Segment Score）",
+      "total_label_gymnastics": "合計点（個人総合）",
+      "own_score": "自チームの合計点",
+      "opponent_score": "相手の合計点",
+      "score_placeholder": "例：198.45",
+      "required": "（必須）",
+      "complete": "採点を確定",
+      "complete_hint": "両者の合計点を入力してください",
+      "result": {
+        "draw": "引分け"
+      },
+      "error": {
+        "record_failed": "採点結果の保存に失敗しました"
+      },
+      "components": {
+        "intro": "審判別・種目別の採点内訳を入力すると、合計点は自動で算出されます。",
+        "mode_label": "採点内訳入力",
+        "switch_to_components": "採点内訳を入力",
+        "switch_to_direct": "合計点の直接入力へ",
+        "canonical_notice": "採点内訳が入力されているため、合計点はこの内訳から自動算出されます。",
+        "clear_to_direct": "内訳をクリアして直接入力へ戻す",
+        "side_label": "対象",
+        "component_type_label": "項目",
+        "apparatus_label": "種目／セグメント",
+        "apparatus_placeholder": "（任意）種目を選択",
+        "judge_label": "審判",
+        "judge_placeholder": "例：J1",
+        "points_label": "点数",
+        "points_placeholder": "例：88.43",
+        "optional": "（任意）",
+        "add_line": "内訳を追加",
+        "remove_line": "この内訳を削除",
+        "total_preview": "合計点プレビュー（確定はサーバーで算出）",
+        "complete": "採点内訳を確定",
+        "complete_hint": "内訳を1件以上入力し、各点数を入力してください",
+        "component_type": {
+          "TES": "技術点（TES）",
+          "PCS": "演技構成点（PCS）",
+          "DEDUCTION": "減点",
+          "D_SCORE": "難度点（Dスコア）",
+          "E_SCORE": "実施点（Eスコア）"
+        },
+        "apparatus": {
+          "SP": "ショートプログラム",
+          "FS": "フリースケーティング",
+          "FLOOR": "床",
+          "POMMEL_HORSE": "あん馬",
+          "RINGS": "つり輪",
+          "VAULT": "跳馬",
+          "PARALLEL_BARS": "平行棒",
+          "HORIZONTAL_BAR": "鉄棒",
+          "UNEVEN_BARS": "段違い平行棒",
+          "BALANCE_BEAM": "平均台"
+        },
+        "error": {
+          "load_failed": "採点内訳の読み込みに失敗しました",
+          "save_failed": "採点内訳の保存に失敗しました"
+        }
+      },
+      "ranking": {
+        "switch_to_ranking": "多人数順位制で入力",
+        "intro": "出場者を追加して各自の合計点を入力すると、順位はサーバーが合計点の高い順に自動算出します。",
+        "mode_label": "多人数順位制",
+        "switch_to_direct": "合計点の直接入力へ",
+        "canonical_notice": "出場者エントリが入力されているため、多人数順位制が記録の正本です。",
+        "clear_to_direct": "エントリをクリアして直接入力へ戻す",
+        "standings": "順位（サーバー算出）",
+        "competitor_label": "出場者名",
+        "competitor_placeholder": "例：山田 花子",
+        "total_label": "合計点",
+        "add_entry": "出場者を追加",
+        "remove_entry": "この出場者を削除",
+        "complete": "順位を確定",
+        "complete_hint": "出場者を2人以上追加し、各自の名前と合計点を入力してください",
+        "user_fallback": "選手#{id}",
+        "team_fallback": "チーム#{id}",
+        "error": {
+          "load_failed": "出場者エントリの読み込みに失敗しました",
+          "save_failed": "出場者エントリの保存に失敗しました"
+        }
+      }
+    }
+  }
+}

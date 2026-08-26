@@ -1,0 +1,117 @@
+package com.mannschaft.app.payment.service;
+
+import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.PendingAggregate;
+import com.mannschaft.app.payment.PaymentRequestStatus;
+import com.mannschaft.app.payment.connect.ScopeKind;
+import com.mannschaft.app.payment.entity.PaymentRequestEntity;
+import com.mannschaft.app.payment.repository.PaymentRequestRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * F10.1.1 / P1: 支払いドメインの管理者向け承認待ち集約 Query Service（read-only・組織スコープ専用）。
+ *
+ * <p>payment ドメインには「承認・却下」の双方向ワークフローが存在しないため、本ドメインは
+ * 「承認待ち」ではなく <b>組織が発行し、まだ支払い完了していない請求</b>
+ * （{@code status ∈ {SENT, VIEWED, OVERDUE}}）= 「組織が回収状況を追うべき対象」として集約する
+ * （設計書 03 §3.4）。UI では「未収の請求」等に i18n する。</p>
+ *
+ * <p>全クエリの WHERE に {@code issuer_scope_kind = ORG AND issuer_scope_id = ?} を含めるため、
+ * テナント越境（IDOR）は構造的に発生しない。承認ロジック・トランザクション・監査ログには触れない。</p>
+ *
+ * <p>設計書: docs/features/F10.1.1_team_org_admin_console/03_admin_action_required_api.md §3.4 / §4.4</p>
+ */
+@Service
+@RequiredArgsConstructor
+public class PaymentAdminQueryService {
+
+    /** 未収（まだ支払い完了していない）と見なす請求ステータス（§3.4）。 */
+    private static final Set<PaymentRequestStatus> UNSETTLED_STATUSES =
+            Set.of(PaymentRequestStatus.SENT, PaymentRequestStatus.VIEWED, PaymentRequestStatus.OVERDUE);
+
+    private final PaymentRequestRepository paymentRequestRepository;
+    private final NameResolverService nameResolverService;
+
+    /**
+     * 指定組織が発行した未収請求（SENT/VIEWED/OVERDUE）の件数とプレビューを返す。
+     *
+     * @param orgId       組織 ID（issuer_scope_id・WHERE 必須・IDOR 防止）
+     * @param orgSlug     組織 slug（プレビュー要素の個別遷移先ルート組み立てに使用）
+     * @param previewSize プレビュー件数（0 なら件数のみ）
+     * @return 件数とプレビューの集計結果
+     */
+    @Transactional(readOnly = true)
+    public PendingAggregate unsettledForOrg(Long orgId, String orgSlug, int previewSize) {
+        // 未収 3 ステータスを 1 COUNT（StatusIn 版）で集計する（設計書 03 §4.5「件数は 1 COUNT」）。
+        long count = paymentRequestRepository
+                .countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                        ScopeKind.ORG, orgId, UNSETTLED_STATUSES);
+
+        if (previewSize <= 0) {
+            return new PendingAggregate(count, List.of());
+        }
+
+        List<PaymentRequestEntity> preview = paymentRequestRepository
+                .findByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                        ScopeKind.ORG, orgId, UNSETTLED_STATUSES, PageRequest.of(0, previewSize))
+                .getContent();
+
+        Map<Long, String> names = nameResolverService.resolveUserDisplayNames(
+                preview.stream().map(PaymentRequestEntity::getCreatedBy).toList());
+
+        List<PendingAggregate.Item> items = preview.stream()
+                .map(p -> new PendingAggregate.Item(
+                        String.valueOf(p.getId()),
+                        p.getTitle(),
+                        names.getOrDefault(p.getCreatedBy(), "不明なユーザー"),
+                        p.getCreatedAt(),
+                        // その 1 件の個別遷移先（list_route の status 付き一覧とは別物・§3.1）
+                        "/organizations/" + orgSlug + "/admin/payments/" + p.getId()))
+                .toList();
+
+        return new PendingAggregate(count, items);
+    }
+
+    /**
+     * F10.1.1 / P3b: 組織パネル管理者レンズ ⑤ {@code ADMIN_ORG_PAYMENTS} のサマリを返す。
+     *
+     * <p>未収件数（SENT/VIEWED/OVERDUE 合計）と期限超過件数（OVERDUE 単体）を<b>別カウント</b>で返す。
+     * P1 横断「承認待ち」集約（{@link #unsettledForOrg}）が未収 3 ステータスを 1 件にまとめて
+     * {@code total_pending} に積むのに対し、本サマリは「未収／期限超過」の 2 区分を表示する
+     * （設計書 02 §2.3 ③）。dashboard DTO への組み立ては呼び出し側（dashboard ファサード）で行い、
+     * 本サービスはドメインローカルな {@link OrgPaymentSummary} を返す（payment → dashboard の逆依存回避）。</p>
+     *
+     * <p>全カウントの WHERE に {@code issuer_scope_kind = ORG AND issuer_scope_id = ?} を含めるため、
+     * テナント越境（IDOR）は構造的に発生しない。</p>
+     *
+     * @param orgId 組織 ID（issuer_scope_id・WHERE 必須・IDOR 防止）
+     * @return 未収件数・期限超過件数の 2 区分サマリ
+     */
+    @Transactional(readOnly = true)
+    public OrgPaymentSummary summaryForOrg(Long orgId) {
+        long unsettled = paymentRequestRepository
+                .countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                        ScopeKind.ORG, orgId, UNSETTLED_STATUSES);
+        long overdue = paymentRequestRepository
+                .countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(
+                        ScopeKind.ORG, orgId, PaymentRequestStatus.OVERDUE);
+        return new OrgPaymentSummary(unsettled, overdue);
+    }
+
+    /**
+     * 組織の支払サマリ（未収件数・期限超過件数）のドメインローカル値オブジェクト。
+     * dashboard DTO（{@code AdminPaymentSummaryResponse}）への変換は dashboard ファサードが担う。
+     *
+     * @param unsettledCount 未収件数（SENT/VIEWED/OVERDUE 合計）
+     * @param overdueCount   期限超過件数（OVERDUE 単体・未収の内数）
+     */
+    public record OrgPaymentSummary(long unsettledCount, long overdueCount) {
+    }
+}

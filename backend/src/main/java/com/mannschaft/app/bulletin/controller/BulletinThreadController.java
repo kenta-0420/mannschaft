@@ -5,6 +5,7 @@ import com.mannschaft.app.bulletin.dto.ArchiveThreadRequest;
 import com.mannschaft.app.bulletin.dto.CreateThreadRequest;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
+import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
@@ -37,6 +38,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class BulletinThreadController {
 
     private final BulletinThreadService threadService;
+    private final BulletinScopeIdResolver scopeIdResolver;
 
 
     /**
@@ -47,17 +49,18 @@ public class BulletinThreadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<ThreadResponse>> listThreads(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         Page<ThreadResponse> result;
         if (categoryId != null) {
-            result = threadService.listThreadsByCategory(type, scopeId, categoryId, currentUserId, PageRequest.of(page, size));
+            result = threadService.listThreadsByCategory(type, resolvedScopeId, categoryId, currentUserId, PageRequest.of(page, size));
         } else {
-            result = threadService.listThreads(type, scopeId, currentUserId, PageRequest.of(page, size));
+            result = threadService.listThreads(type, resolvedScopeId, currentUserId, PageRequest.of(page, size));
         }
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -72,10 +75,11 @@ public class BulletinThreadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ThreadResponse>> getThread(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        ThreadResponse response = threadService.getThread(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        ThreadResponse response = threadService.getThread(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -87,12 +91,13 @@ public class BulletinThreadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "検索成功")
     public ResponseEntity<PagedResponse<ThreadResponse>> searchThreads(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @RequestParam String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        Page<ThreadResponse> result = threadService.searchThreads(type, scopeId, SecurityUtils.getCurrentUserId(), keyword, PageRequest.of(page, size));
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        Page<ThreadResponse> result = threadService.searchThreads(type, resolvedScopeId, SecurityUtils.getCurrentUserId(), keyword, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -106,10 +111,11 @@ public class BulletinThreadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ThreadResponse>> createThread(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @Valid @RequestBody CreateThreadRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        ThreadResponse response = threadService.createThread(type, scopeId, SecurityUtils.getCurrentUserId(), request);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        ThreadResponse response = threadService.createThread(type, resolvedScopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -121,11 +127,12 @@ public class BulletinThreadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ThreadResponse>> updateThread(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId,
             @Valid @RequestBody UpdateThreadRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        ThreadResponse response = threadService.updateThread(type, scopeId, threadId, SecurityUtils.getCurrentUserId(), request);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        ThreadResponse response = threadService.updateThread(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -137,10 +144,11 @@ public class BulletinThreadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteThread(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        threadService.deleteThread(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        threadService.deleteThread(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -152,10 +160,11 @@ public class BulletinThreadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "切替成功")
     public ResponseEntity<ApiResponse<ThreadResponse>> togglePin(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        ThreadResponse response = threadService.togglePin(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        ThreadResponse response = threadService.togglePin(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -167,10 +176,11 @@ public class BulletinThreadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "切替成功")
     public ResponseEntity<ApiResponse<ThreadResponse>> toggleLock(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        ThreadResponse response = threadService.toggleLock(type, scopeId, threadId, SecurityUtils.getCurrentUserId());
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        ThreadResponse response = threadService.toggleLock(type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -185,10 +195,11 @@ public class BulletinThreadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ状態変更成功")
     public ResponseEntity<ApiResponse<ThreadResponse>> archive(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long threadId,
             @RequestBody(required = false) ArchiveThreadRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
         // 後方互換: body が無い or isArchived 未指定なら true（従来のアーカイブ挙動）
         boolean isArchived = request == null || request.getIsArchived() == null
                 ? true
@@ -196,7 +207,7 @@ public class BulletinThreadController {
         // 保管庫フォルダ振り分け（任意。null = 保管庫直下。is_archived=false 時はサービス層で無視）
         java.util.UUID archiveFolderId = request == null ? null : request.getArchiveFolderId();
         ThreadResponse response = threadService.archive(
-                type, scopeId, threadId, SecurityUtils.getCurrentUserId(), isArchived, archiveFolderId);
+                type, resolvedScopeId, threadId, SecurityUtils.getCurrentUserId(), isArchived, archiveFolderId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

@@ -28,6 +28,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * F03.15 Phase 5 家族からの個人時間割閲覧サービスのユニットテスト。
@@ -62,14 +64,14 @@ class FamilyPersonalTimetableServiceTest {
         familyTeam = TeamEntity.builder()
                 .name("我が家")
                 .template("family")
-                .visibility(TeamEntity.Visibility.PRIVATE)
+                .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE)
                 .supporterEnabled(false)
                 .build();
 
         nonFamilyTeam = TeamEntity.builder()
                 .name("塾")
                 .template("school")
-                .visibility(TeamEntity.Visibility.PRIVATE)
+                .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE)
                 .supporterEnabled(false)
                 .build();
 
@@ -123,13 +125,68 @@ class FamilyPersonalTimetableServiceTest {
                     .isEqualTo(PersonalTimetableErrorCode.PERSONAL_TIMETABLE_NOT_FOUND);
         }
 
+        /**
+         * CMP-050 AC-19: 家族チームに在籍していない userId は状態にかかわらず 404。
+         *
+         * <p>被参照者の判定を「状態を問わない」版へ載せ替えても、在籍判定そのものは
+         * 緩めていないことを締める。</p>
+         */
         @Test
-        @DisplayName("targetUser が同じチーム MEMBER でない → 404")
+        @DisplayName("targetUser が同じチーム MEMBER でない → 404（CMP-050 AC-19）")
         void targetUser非メンバー() {
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(familyTeam));
             given(userRoleRepository.existsByUserIdAndTeamId(CURRENT_USER_ID, TEAM_ID))
                     .willReturn(true);
-            given(userRoleRepository.existsByUserIdAndTeamId(TARGET_USER_ID, TEAM_ID))
+            given(userRoleRepository.existsAnyStatusByUserIdAndTeamId(TARGET_USER_ID, TEAM_ID))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> service.listForFamily(TEAM_ID, TARGET_USER_ID, CURRENT_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(PersonalTimetableErrorCode.PERSONAL_TIMETABLE_NOT_FOUND);
+        }
+
+        /**
+         * CMP-050 AC-17: 保護者（ACTIVE・家族チーム在籍）が FROZEN の子の家族週次ビューを
+         * 取得する経路が正常応答すること（例外の証明）。
+         *
+         * <p>子アカウントは PENDING_PARENTAL_CONSENT / FROZEN を取り得るが、その間も
+         * 保護者の家族時間割閲覧は維持する仕様である。したがって被参照者の在籍判定は
+         * ACTIVE を問わない版でなければならない。ACTIVE 必須版へ戻す退行を検出するため、
+         * {@code existsByUserIdAndTeamId(TARGET_USER_ID, ...)} が一度も呼ばれないことを
+         * 明示的に締める（呼ばれた瞬間、凍結中の子の時間割が保護者から見えなくなる）。</p>
+         */
+        @Test
+        @DisplayName("CMP-050 AC-17: 子が非ACTIVEでも保護者の家族閲覧は通る（被参照者はACTIVEを問わない）")
+        void cmp050_ac17_子が非ACTIVEでも保護者の家族閲覧は通る() {
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(familyTeam));
+            given(userRoleRepository.existsByUserIdAndTeamId(CURRENT_USER_ID, TEAM_ID))
+                    .willReturn(true);
+            // 凍結中の子でも在籍とみなす（状態を問わない判定）
+            given(userRoleRepository.existsAnyStatusByUserIdAndTeamId(TARGET_USER_ID, TEAM_ID))
+                    .willReturn(true);
+            given(shareTargetRepository.findPersonalTimetableIdsByTeamId(TEAM_ID))
+                    .willReturn(List.of());
+
+            assertThat(service.listForFamily(TEAM_ID, TARGET_USER_ID, CURRENT_USER_ID))
+                    .as("共有設定が無いだけであり 404 にはならないこと")
+                    .isEmpty();
+
+            verify(userRoleRepository, never()).existsByUserIdAndTeamId(TARGET_USER_ID, TEAM_ID);
+        }
+
+        /**
+         * CMP-050 AC-18: 保護者自身が非 ACTIVE なら 404。
+         *
+         * <p>閲覧者（＝認可の対象者）の判定は ACTIVE 必須のままであることの証明。
+         * 例外化は被参照者側にのみ適用し、権限を与える方向の判定には広げない。</p>
+         */
+        @Test
+        @DisplayName("CMP-050 AC-18: 保護者自身が非ACTIVEなら404（閲覧者はACTIVE必須のまま）")
+        void cmp050_ac18_保護者自身が非ACTIVEなら404() {
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(familyTeam));
+            // 凍結された保護者は ACTIVE 必須の在籍判定で false になる
+            given(userRoleRepository.existsByUserIdAndTeamId(CURRENT_USER_ID, TEAM_ID))
                     .willReturn(false);
 
             assertThatThrownBy(() -> service.listForFamily(TEAM_ID, TARGET_USER_ID, CURRENT_USER_ID))
@@ -260,11 +317,15 @@ class FamilyPersonalTimetableServiceTest {
         }
     }
 
+    /**
+     * CMP-050: 閲覧者（currentUser）は ACTIVE 必須の在籍判定、
+     * 被参照者（targetUser = 家族の子）は状態を問わない在籍判定を用いる。
+     */
     private void stubAccessOk() {
         given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(familyTeam));
         given(userRoleRepository.existsByUserIdAndTeamId(CURRENT_USER_ID, TEAM_ID))
                 .willReturn(true);
-        given(userRoleRepository.existsByUserIdAndTeamId(TARGET_USER_ID, TEAM_ID))
+        given(userRoleRepository.existsAnyStatusByUserIdAndTeamId(TARGET_USER_ID, TEAM_ID))
                 .willReturn(true);
     }
 

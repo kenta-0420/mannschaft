@@ -1,324 +1,35 @@
 {
-  "ad_label": "Anzeige",
-  "status": {
-    "draft": "Entwurf",
-    "review": "In Prüfung",
-    "approved": "Genehmigt",
-    "scheduled": "Geplant",
-    "delivering": "Wird ausgeliefert",
-    "paused": "Pausiert",
-    "completed": "Abgeschlossen",
-    "blocked": "Blockiert",
-    "cancelled": "Abgebrochen"
-  },
-  "moderation_status": {
-    "pending": "Ausstehend",
-    "auto_passed": "Automatisch freigegeben",
-    "auto_flagged": "Prüfung erforderlich",
-    "approved": "Genehmigt",
-    "blocked": "Blockiert"
-  },
-  "moderation_action": {
-    "approved": "Genehmigt",
-    "blocked": "Blockiert",
-    "unblocked": "Blockierung aufgehoben",
-    "auto_flagged": "Automatisch markiert",
-    "auto_passed": "Automatisch freigegeben"
-  },
-  "segment_type": {
-    "age_range": "Altersgruppe",
-    "gender": "Geschlecht",
-    "region_prefecture": "Präfektur",
-    "region_city": "Stadt",
-    "interest_tag": "Interessen-Tag",
-    "org_type": "Organisationstyp",
-    "locale": "Sprache",
-    "device": "Gerät"
-  },
-  "inclusion_mode": {
-    "include": "Einschließen",
-    "exclude": "Ausschließen"
-  },
-  "report_reason": {
-    "offensive": "Anstößige Inhalte",
-    "misleading": "Irreführende Informationen",
-    "spam": "Spam",
-    "irrelevant": "Für mich nicht relevant",
-    "other": "Sonstiges"
-  },
-  "channel": {
-    "announcement": "Ankündigung",
-    "email": "E-Mail",
-    "push": "Push",
-    "banner": "Banner"
-  },
-  "reach_range": {
-    "under_100": "Zu wenige passende Nutzer",
-    "range_100_500": "Etwa 100–500 Nutzer",
-    "range_500_1k": "Etwa 500–1.000 Nutzer",
-    "range_1k_5k": "Etwa 1.000–5.000 Nutzer",
-    "range_5k_10k": "Etwa 5.000–10.000 Nutzer",
-    "range_10k_50k": "Etwa 10.000–50.000 Nutzer",
-    "range_50k_100k": "Etwa 50.000–100.000 Nutzer",
-    "over_100k": "Etwa 100.000+ Nutzer"
-  },
-  "actions": {
-    "submit": "Zur Prüfung einreichen",
-    "launch": "Starten",
-    "pause": "Pausieren",
-    "resume": "Fortsetzen",
-    "cancel": "Abbrechen",
-    "approve": "Genehmigen",
-    "block": "Blockieren",
-    "save_draft": "Entwurf speichern",
-    "preview": "Vorschau",
-    "delete": "Löschen",
-    "edit": "Bearbeiten",
-    "create": "Neu",
-    "add_channel": "Kanal hinzufügen",
-    "remove_channel": "Kanal entfernen",
-    "add_segment": "Segment hinzufügen",
-    "remove_segment": "Segment entfernen",
-    "report": "Melden",
-    "unsubscribe": "Abbestellen",
-    "block_advertiser": "Diesen Werbetreibenden blockieren",
-    "stop_ads": "Anzeigen stoppen",
-    "unblock_advertiser": "Blockierung aufheben",
-    "export_csv": "Als CSV exportieren",
-    "view_detail": "Details anzeigen",
-    "back_to_queue": "Zurück zur Prüfungswarteschlange",
-    "reload": "Neu laden"
-  },
-  "pages": {
-    "advertiser_campaign_list": {
-      "title": "Messaging-Kampagnen",
-      "description": "Verwalten Sie zielgerichtete Messaging-Kampagnen für bestimmte Zielgruppen.",
-      "empty": "Noch keine Kampagnen vorhanden.",
-      "filter_status": "Nach Status filtern",
-      "column_name": "Kampagnenname",
-      "column_status": "Status",
-      "column_budget": "Budget (JPY)",
-      "column_consumed": "Verbraucht (JPY)",
-      "column_period": "Laufzeit",
-      "column_updated": "Aktualisiert"
+  "advertising": {
+    "ad_label": "Anzeige",
+    "account_settings": {
+      "title": "Kontoeinstellungen",
+      "company_name": "Firmen- / Organisationsname",
+      "contact_email": "Kontakt-E-Mail",
+      "edit": "Bearbeiten",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "saved": "Kontoeinstellungen gespeichert.",
+      "save_failed": "Speichern fehlgeschlagen."
     },
-    "advertiser_campaign_create": {
-      "title": "Kampagne erstellen",
-      "description": "Legen Sie Kanäle und Zielgruppen-Kriterien fest. Entwürfe können beliebig oft bearbeitet werden.",
-      "field_name": "Kampagnenname",
-      "field_budget": "Gesamtbudget (JPY)",
-      "field_starts_at": "Startzeitpunkt",
-      "field_ends_at": "Endzeitpunkt",
-      "field_timezone": "Zeitzone",
-      "field_frequency_cap": "Maximale Auslieferungen pro Woche (Standard 3)",
-      "step_basic": "Grundlagen",
-      "step_channels": "Kanäle",
-      "step_audience": "Zielgruppe",
-      "step_review": "Prüfen & einreichen",
-      "submitted": "Kampagne zur Prüfung eingereicht.",
-      "saved": "Entwurf gespeichert."
+    "spotlight": {
+      "hide_advertiser": "Diesen Werbetreibenden ausblenden",
+      "hide_advertiser_done": "Anzeigen dieses Werbetreibenden sind jetzt ausgeblendet",
+      "report": "Melden",
+      "upgrade_cta": "Ohne Werbung nutzen →",
+      "affiliate_default": {
+        "amazon": {
+          "title": "Teamausstattung bei Amazon",
+          "description": "Besorge alles, was dein Team braucht, zu guten Preisen.",
+          "cta": "Jetzt ansehen"
+        },
+        "rakuten": {
+          "title": "Teamausstattung bei Rakuten",
+          "description": "Decke dich mit dem Nötigsten ein und sammle dabei Punkte.",
+          "cta": "Bei Rakuten ansehen"
+        }
+      }
     },
-    "advertiser_campaign_detail": {
-      "title": "Kampagnendetails",
-      "section_summary": "Übersicht",
-      "section_channels": "Kanäle",
-      "section_audience": "Zielgruppe",
-      "section_moderation": "Prüfstatus",
-      "section_report": "Performance",
-      "blocked_reason": "Sperrgrund",
-      "preview_reach": "Geschätzte Reichweite",
-      "no_channels": "Keine Kanäle konfiguriert.",
-      "no_segments": "Keine Zielgruppensegmente konfiguriert."
-    },
-    "system_admin_moderation": {
-      "title": "Anzeigenprüfung",
-      "description": "Prüfen Sie ausstehende Kampagnen und genehmigen oder blockieren Sie sie.",
-      "empty": "Keine Kampagnen in der Prüfungswarteschlange.",
-      "approve_dialog_title": "Diese Kampagne genehmigen?",
-      "approve_dialog_message": "Nach der Genehmigung kann der Werbetreibende die Auslieferung starten.",
-      "block_dialog_title": "Diese Kampagne blockieren?",
-      "block_dialog_message": "Bitte geben Sie den Sperrgrund an (wird dem Werbetreibenden mitgeteilt).",
-      "block_reason_label": "Sperrgrund",
-      "block_reason_placeholder": "z. B. Unangemessene Formulierung",
-      "user_reports_section": "Nutzerbeschwerden",
-      "queue_title": "Prüfungswarteschlange",
-      "queue_description": "Aktuell zu prüfende Kampagnen.",
-      "filter_submitted_period": "Nach Einreichungszeit filtern",
-      "filter_auto_flag": "Nach Auto-Flag filtern",
-      "filter_auto_flag_all": "Alle",
-      "filter_auto_flag_only": "Nur Auto-Flag",
-      "filter_auto_flag_passed": "Nur automatisch freigegeben",
-      "card_advertiser": "Werbetreibenden-Konto-ID",
-      "card_submitted_at": "Eingereicht am"
-    },
-    "settings_ad_preferences": {
-      "title": "Anzeigen-Einstellungen",
-      "description": "Wählen Sie die Kanäle, über die Sie Anzeigen erhalten möchten, und blockieren Sie einzelne Werbetreibende.",
-      "channel_section": "Aktivierte Kanäle",
-      "channel_section_description": "Über deaktivierte Kanäle erhalten Sie keine Anzeigen mehr.",
-      "blocked_section": "Blockierte Werbetreibende",
-      "blocked_section_description": "Blockierte Werbetreibende können Ihnen keine Anzeigen mehr ausspielen (max. 100).",
-      "blocked_empty": "Derzeit sind keine Werbetreibenden blockiert.",
-      "blocked_limit_exceeded": "Sperrlimit erreicht (100). Bitte entfernen Sie zuerst einige Einträge.",
-      "add_block_label": "Per Werbetreibenden-ID hinzufügen",
-      "add_block_placeholder": "z. B. 12",
-      "add_block_button": "Zur Sperrliste hinzufügen",
-      "rotate_tokens": "Abmelde-Links ungültig machen",
-      "rotate_tokens_help": "Macht alle bereits versendeten Abmelde-Links unbrauchbar.",
-      "rotate_tokens_section": "Sicherheit",
-      "rotate_tokens_confirm": "Sollen wirklich alle Abmelde-Links ungültig gemacht werden? Dieser Vorgang kann nicht rückgängig gemacht werden.",
-      "rotate_tokens_success": "E-Mail-Links wurden ungültig gemacht.",
-      "consent_required": "Für den Empfang von Anzeigen ist eine Erstzustimmung erforderlich.",
-      "consented_at": "Datum der Erstzustimmung",
-      "not_consented": "Nicht zugestimmt",
-      "save_button": "Speichern",
-      "saved": "Einstellungen gespeichert.",
-      "save_rate_limited": "Limit für Einstellungsänderungen erreicht (10 pro Stunde). Bitte später erneut versuchen.",
-      "channel_announcement": "Anzeigen im Ankündigungs-Feed",
-      "channel_email": "E-Mail-Anzeigen",
-      "channel_push": "Push-Anzeigen",
-      "channel_banner": "Banner-Anzeigen auf der Website"
-    },
-    "me_ad_deliveries": {
-      "title": "Erhaltene Anzeigen",
-      "description": "Verlauf der Ihnen ausgelieferten Anzeigen.",
-      "empty": "Sie haben noch keine Anzeigen erhalten.",
-      "delivered_at": "Ausgeliefert am",
-      "opened": "Geöffnet",
-      "clicked": "Geklickt",
-      "filter_all": "Alle",
-      "filter_announcement": "Ankündigung",
-      "filter_email": "E-Mail",
-      "filter_push": "Push",
-      "filter_banner": "Banner",
-      "column_campaign": "Kampagne",
-      "column_advertiser": "Werbetreibender",
-      "column_channel": "Kanal",
-      "column_engagement": "Aktion",
-      "column_actions": "Aktionen",
-      "engagement_read": "Gelesen",
-      "engagement_clicked": "Geklickt",
-      "engagement_none": "Ungelesen",
-      "load_more": "Mehr laden",
-      "delete_all_section": "Datenlöschung (DSGVO Recht auf Löschung)",
-      "delete_all_description": "Alle erhaltenen Anzeigenverläufe löschen. Abrechnungs- und Statistikdaten der Werbetreibenden bleiben erhalten, die Verknüpfung mit Ihnen wird jedoch entfernt.",
-      "delete_all_button": "Alle Verläufe löschen",
-      "delete_all_confirm": "Wirklich alle Anzeigenverläufe löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.",
-      "delete_all_success": "Anzeigenverlauf wurde vollständig gelöscht."
-    },
-    "system_admin_dashboard": {
-      "title": "Anzeigenprüfung – Dashboard",
-      "description": "Überblick über ausstehende Prüfungen, Beschwerden und kürzliche Sperren.",
-      "kpi_review_pending": "Zur Prüfung",
-      "kpi_auto_flagged": "Auto-Flag",
-      "kpi_user_reports": "Beschwerden",
-      "kpi_recent_blocks": "Sperren (letzte 7 Tage)",
-      "auto_suspend_warning": "{count} Kampagnen mit Beschwerden-Häufung",
-      "shortcut_review_queue": "Prüfungswarteschlange öffnen",
-      "shortcut_user_reports": "Beschwerdenliste öffnen",
-      "load_failed": "Daten zur Anzeigenprüfung konnten nicht geladen werden",
-      "quick_link_label": "Anzeigenprüfung"
-    },
-    "system_admin_user_reports": {
-      "title": "Anzeigen-Nutzerbeschwerden",
-      "description": "Prüfen Sie Nutzerbeschwerden und stoppen Sie bei Bedarf die betroffenen Kampagnen.",
-      "empty": "Keine offenen Beschwerden vorhanden.",
-      "filter_reason": "Nach Grund filtern",
-      "filter_status": "Nach Status filtern",
-      "column_reported_at": "Gemeldet am",
-      "column_campaign": "Kampagne",
-      "column_reporter": "Melder",
-      "column_reason": "Grund",
-      "column_status": "Status",
-      "auto_suspend_candidate": "Beschwerden-Häufung",
-      "auto_suspend_candidate_tooltip": "Mehrere Beschwerden in kurzer Zeit – Kandidat für automatische Aussetzung.",
-      "go_campaign": "Zur Kampagne"
-    },
-    "advertiser_campaign_report": {
-      "title": "Kampagnen-Performance-Bericht",
-      "description": "Aggregierte Auslieferungsdaten und tägliche Trends. Mit Zeitraumfilter eingrenzbar.",
-      "field_from": "Von",
-      "field_to": "Bis",
-      "kpi_delivered": "Ausgeliefert",
-      "kpi_opened": "Geöffnet",
-      "kpi_clicked": "Geklickt",
-      "kpi_consumed": "Verbrauchtes Budget (JPY)",
-      "chart_title": "Tagesverlauf",
-      "chart_delivered": "Ausgeliefert",
-      "chart_open_rate": "Öffnungsrate",
-      "chart_click_rate": "Klickrate",
-      "channel_breakdown_title": "Auswertung nach Kanal",
-      "channel_breakdown_delivered": "Ausgeliefert",
-      "channel_breakdown_opened": "Geöffnet",
-      "channel_breakdown_clicked": "Geklickt",
-      "no_data": "Keine Daten für den gewählten Zeitraum.",
-      "export_started": "CSV-Export gestartet."
-    },
-    "unsubscribe_spa": {
-      "title": "Werbe-E-Mails abbestellen",
-      "description": "Wählen Sie die Kanäle aus, die Sie stoppen möchten. Nicht angekreuzte Kanäle werden weiterhin zugestellt.",
-      "submit_button": "Ausgewählte Kanäle stoppen",
-      "note": "Diese Seite erscheint, wenn Sie den Abmeldelink aus einer Werbemail aufrufen. Sie können diese Einstellungen später jederzeit in Ihren Anzeigeneinstellungen nach dem Login ändern.",
-      "success_message": "Die ausgewählten Werbekanäle wurden deaktiviert.",
-      "done_title": "Abgemeldet",
-      "done_description": "Sie erhalten keine Werbung mehr auf den ausgewählten Kanälen.",
-      "done_disabled_label": "Deaktivierte Kanäle:",
-      "done_remaining_label": "Weiterhin aktive Kanäle:",
-      "done_login_hint": "Sie können diese Einstellungen jederzeit nach dem Login in Ihren Anzeigeneinstellungen ändern.",
-      "error_title": "Abmeldung nicht möglich",
-      "error_invalid_or_expired": "Dieser Link ist abgelaufen oder nicht mehr gültig. Bitte melden Sie sich an und verwenden Sie den Bildschirm „Anzeigeneinstellungen“.",
-      "error_rate_limited": "Zu viele Anfragen in kurzer Zeit. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
-      "error_unknown": "Es ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es später erneut.",
-      "error_login_hint": "Nach dem Login können Sie sich kanalweise in den Anzeigeneinstellungen abmelden."
-    },
-    "system_admin_moderation_detail": {
-      "title": "Kampagnenprüfung – Details",
-      "section_channels": "Inhalte pro Kanal",
-      "section_audience": "Zielgruppensegmente",
-      "section_ng_words": "Erkannte verbotene Begriffe",
-      "section_logs": "Prüfprotokoll",
-      "no_ng_words": "Keine verbotenen Begriffe erkannt.",
-      "preview_locale": "Vorschau-Sprache",
-      "approve_confirm": "Diese Kampagne genehmigen?",
-      "block_confirm": "Diese Kampagne blockieren?",
-      "approved_toast": "Kampagne genehmigt.",
-      "blocked_toast": "Kampagne blockiert."
-    }
-  },
-  "report_dialog": {
-    "title": "Diese Anzeige melden",
-    "description": "Die Meldung wird von SYSTEM_ADMIN geprüft.",
-    "reason_label": "Grund",
-    "detail_label": "Details (optional)",
-    "detail_placeholder": "Bitte beschreiben Sie das Problem genauer",
-    "submit": "Meldung senden",
-    "cancel": "Abbrechen",
-    "submitted": "Vielen Dank, Ihre Meldung wurde übermittelt.",
-    "rate_limited": "Tageslimit für Meldungen erreicht (20 pro Tag). Bitte morgen erneut versuchen."
-  },
-  "consent_dialog": {
-    "title": "Anzeigen-Empfang zustimmen?",
-    "description": "Mannschaft liefert begrenzte Werbenachrichten von Werbetreibenden aus. Ihre Einstellungen können Sie jederzeit ändern.",
-    "accept": "Zustimmen und fortfahren",
-    "decline": "Jetzt nicht",
-    "stop_all": "Alle Anzeigen stoppen",
-    "stopped_message": "Alle Anzeigen wurden gestoppt. Sie können dies jederzeit in den Einstellungen ändern."
-  },
-  "error_codes": {
-    "AD_CAMPAIGN_NOT_FOUND": "Kampagne nicht gefunden.",
-    "AD_CAMPAIGN_NOT_EDITABLE": "Diese Kampagne kann im aktuellen Status nicht bearbeitet werden.",
-    "AD_CAMPAIGN_INVALID_TRANSITION": "Dieser Statuswechsel ist nicht erlaubt.",
-    "AD_CAMPAIGN_BUDGET_INSUFFICIENT": "Verbleibendes Budget reicht nicht aus.",
-    "AD_CAMPAIGN_CREDIT_LIMIT_EXCEEDED": "Kreditlimit überschritten.",
-    "AD_CAMPAIGN_MODERATION_BLOCKED": "Diese Kampagne wurde bei der Prüfung blockiert.",
-    "AD_CAMPAIGN_NO_CHANNEL": "Bitte konfigurieren Sie mindestens einen Kanal.",
-    "AD_PREFERENCES_BLOCKED_LIMIT": "Sie können höchstens 100 Werbetreibende blockieren.",
-    "AD_REPORT_DUPLICATE": "Sie haben diese Kampagne bereits gemeldet.",
-    "AD_RATE_LIMIT_EXCEEDED": "Zu viele Anfragen. Bitte später erneut versuchen."
-  },
-  "advertiser_crud": {
-    "list_tab": {
-      "all": "Alle",
+    "status": {
       "draft": "Entwurf",
       "review": "In Prüfung",
       "approved": "Genehmigt",
@@ -329,163 +40,795 @@
       "blocked": "Blockiert",
       "cancelled": "Abgebrochen"
     },
-    "list_action": {
-      "create_button": "Neu"
+    "moderation_status": {
+      "pending": "Ausstehend",
+      "auto_passed": "Automatisch freigegeben",
+      "auto_flagged": "Prüfung erforderlich",
+      "approved": "Genehmigt",
+      "blocked": "Blockiert"
     },
-    "list_table": {
-      "name": "Name",
-      "status": "Status",
-      "period": "Laufzeit",
-      "total_budget": "Gesamtbudget",
-      "consumed_budget": "Verbraucht",
-      "actions": "Aktionen"
+    "moderation_action": {
+      "approved": "Genehmigt",
+      "blocked": "Blockiert",
+      "unblocked": "Blockierung aufgehoben",
+      "auto_flagged": "Automatisch markiert",
+      "auto_passed": "Automatisch freigegeben"
     },
-    "create_step": {
-      "basic": "Grunddaten",
-      "channels": "Auslieferungs-Kanäle",
-      "audience": "Zielgruppe",
-      "preview": "Vorschau / Bestätigung"
+    "segment_type": {
+      "age_range": "Altersgruppe",
+      "gender": "Geschlecht",
+      "region_prefecture": "Präfektur",
+      "region_city": "Stadt",
+      "interest_tag": "Interessen-Tag",
+      "org_type": "Organisationstyp",
+      "locale": "Sprache",
+      "device": "Gerät"
     },
-    "create_nav": {
-      "next": "Weiter",
-      "back": "Zurück",
-      "submit": "Als Entwurf anlegen"
+    "inclusion_mode": {
+      "include": "Einschließen",
+      "exclude": "Ausschließen"
     },
-    "detail_tab": {
-      "overview": "Übersicht",
-      "channels": "Kanäle",
-      "audience": "Zielgruppe",
-      "moderation": "Prüfhistorie"
+    "report_reason": {
+      "offensive": "Anstößige Inhalte",
+      "misleading": "Irreführende Informationen",
+      "spam": "Spam",
+      "irrelevant": "Für mich nicht relevant",
+      "other": "Sonstiges"
     },
-    "detail_empty": {
-      "moderation_logs": "Keine Prüfhistorie vorhanden."
+    "channel": {
+      "announcement": "Ankündigung",
+      "email": "E-Mail",
+      "push": "Push",
+      "banner": "Banner"
     },
-    "form": {
-      "name": "Kampagnenname",
-      "name_placeholder": "z. B. Frühjahrskampagne",
-      "total_budget": "Gesamtbudget (JPY)",
-      "starts_at": "Startzeit",
-      "ends_at": "Endzeit",
-      "scheduled_timezone": "Zeitzone",
-      "frequency_cap_override": "Frequency-Cap-Überschreibung (pro Woche)",
-      "frequency_cap_help": "Standardwert ist 3 pro Woche, falls leer gelassen."
+    "reach_range": {
+      "under_100": "Zu wenige passende Nutzer",
+      "range_100_500": "Etwa 100–500 Nutzer",
+      "range_500_1k": "Etwa 500–1.000 Nutzer",
+      "range_1k_5k": "Etwa 1.000–5.000 Nutzer",
+      "range_5k_10k": "Etwa 5.000–10.000 Nutzer",
+      "range_10k_50k": "Etwa 10.000–50.000 Nutzer",
+      "range_50k_100k": "Etwa 50.000–100.000 Nutzer",
+      "over_100k": "Etwa 100.000+ Nutzer"
     },
-    "channel_form": {
-      "subject": "Betreff",
-      "body_markdown": "Inhalt (Markdown)",
-      "image_url": "Bild-URL",
-      "cta_label": "CTA-Label",
-      "cta_url": "CTA-URL",
-      "banner_creative_id": "Banner-Creative-ID",
-      "select_channel": "Kanaltyp auswählen",
-      "select_locale": "Sprache auswählen"
+    "actions": {
+      "submit": "Zur Prüfung einreichen",
+      "launch": "Starten",
+      "pause": "Pausieren",
+      "resume": "Fortsetzen",
+      "cancel": "Abbrechen",
+      "approve": "Genehmigen",
+      "block": "Blockieren",
+      "save_draft": "Entwurf speichern",
+      "preview": "Vorschau",
+      "delete": "Löschen",
+      "edit": "Bearbeiten",
+      "create": "Neu",
+      "add_channel": "Kanal hinzufügen",
+      "remove_channel": "Kanal entfernen",
+      "add_segment": "Segment hinzufügen",
+      "remove_segment": "Segment entfernen",
+      "report": "Melden",
+      "unsubscribe": "Abbestellen",
+      "block_advertiser": "Diesen Werbetreibenden blockieren",
+      "stop_ads": "Anzeigen stoppen",
+      "unblock_advertiser": "Blockierung aufheben",
+      "export_csv": "Als CSV exportieren",
+      "view_detail": "Details anzeigen",
+      "back_to_queue": "Zurück zur Prüfungswarteschlange",
+      "reload": "Neu laden"
     },
-    "segment_form": {
-      "select_type": "Segmenttyp auswählen",
-      "inclusion_mode": "Einschluss-Modus",
-      "age_min": "Mindestalter",
-      "age_max": "Höchstalter",
-      "genders": "Geschlechter",
-      "prefecture_codes": "Präfektur-Codes (kommagetrennt)",
-      "city_codes": "Stadt-Codes (kommagetrennt)",
-      "interest_tags": "Interessen-Tags (kommagetrennt)",
-      "org_types": "Organisationstypen (kommagetrennt)",
-      "locales": "Sprachen",
-      "devices": "Geräte",
-      "remove": "Entfernen"
+    "pages": {
+      "advertiser_campaign_list": {
+        "title": "Messaging-Kampagnen",
+        "description": "Verwalten Sie zielgerichtete Messaging-Kampagnen für bestimmte Zielgruppen.",
+        "empty": "Noch keine Kampagnen vorhanden.",
+        "filter_status": "Nach Status filtern",
+        "column_name": "Kampagnenname",
+        "column_status": "Status",
+        "column_budget": "Budget (JPY)",
+        "column_consumed": "Verbraucht (JPY)",
+        "column_period": "Laufzeit",
+        "column_updated": "Aktualisiert"
+      },
+      "advertiser_campaign_create": {
+        "title": "Kampagne erstellen",
+        "description": "Legen Sie Kanäle und Zielgruppen-Kriterien fest. Entwürfe können beliebig oft bearbeitet werden.",
+        "field_name": "Kampagnenname",
+        "field_budget": "Gesamtbudget (JPY)",
+        "field_starts_at": "Startzeitpunkt",
+        "field_ends_at": "Endzeitpunkt",
+        "field_timezone": "Zeitzone",
+        "field_frequency_cap": "Maximale Auslieferungen pro Woche (Standard 3)",
+        "step_basic": "Grundlagen",
+        "step_channels": "Kanäle",
+        "step_audience": "Zielgruppe",
+        "step_review": "Prüfen & einreichen",
+        "submitted": "Kampagne zur Prüfung eingereicht.",
+        "saved": "Entwurf gespeichert.",
+        "draft_saved": "Als Entwurf gespeichert."
+      },
+      "advertiser_campaign_detail": {
+        "title": "Kampagnendetails",
+        "section_summary": "Übersicht",
+        "section_channels": "Kanäle",
+        "section_audience": "Zielgruppe",
+        "section_moderation": "Prüfstatus",
+        "section_report": "Performance",
+        "blocked_reason": "Sperrgrund",
+        "preview_reach": "Geschätzte Reichweite",
+        "no_channels": "Keine Kanäle konfiguriert.",
+        "no_segments": "Keine Zielgruppensegmente konfiguriert."
+      },
+      "system_admin_moderation": {
+        "title": "Anzeigenprüfung",
+        "description": "Prüfen Sie ausstehende Kampagnen und genehmigen oder blockieren Sie sie.",
+        "empty": "Keine Kampagnen in der Prüfungswarteschlange.",
+        "approve_dialog_title": "Diese Kampagne genehmigen?",
+        "approve_dialog_message": "Nach der Genehmigung kann der Werbetreibende die Auslieferung starten.",
+        "block_dialog_title": "Diese Kampagne blockieren?",
+        "block_dialog_message": "Bitte geben Sie den Sperrgrund an (wird dem Werbetreibenden mitgeteilt).",
+        "block_reason_label": "Sperrgrund",
+        "block_reason_placeholder": "z. B. Unangemessene Formulierung",
+        "user_reports_section": "Nutzerbeschwerden",
+        "queue_title": "Prüfungswarteschlange",
+        "queue_description": "Aktuell zu prüfende Kampagnen.",
+        "filter_submitted_period": "Nach Einreichungszeit filtern",
+        "filter_auto_flag": "Nach Auto-Flag filtern",
+        "filter_auto_flag_all": "Alle",
+        "filter_auto_flag_only": "Nur Auto-Flag",
+        "filter_auto_flag_passed": "Nur automatisch freigegeben",
+        "card_advertiser": "Werbetreibenden-Konto-ID",
+        "card_submitted_at": "Eingereicht am"
+      },
+      "settings_ad_preferences": {
+        "title": "Anzeigen-Einstellungen",
+        "description": "Wählen Sie die Kanäle, über die Sie Anzeigen erhalten möchten, und blockieren Sie einzelne Werbetreibende.",
+        "channel_section": "Aktivierte Kanäle",
+        "channel_section_description": "Über deaktivierte Kanäle erhalten Sie keine Anzeigen mehr.",
+        "blocked_section": "Blockierte Werbetreibende",
+        "blocked_section_description": "Blockierte Werbetreibende können Ihnen keine Anzeigen mehr ausspielen (max. 100).",
+        "blocked_empty": "Derzeit sind keine Werbetreibenden blockiert.",
+        "blocked_limit_exceeded": "Sperrlimit erreicht (100). Bitte entfernen Sie zuerst einige Einträge.",
+        "add_block_label": "Per Werbetreibenden-ID hinzufügen",
+        "add_block_placeholder": "z. B. 12",
+        "add_block_button": "Zur Sperrliste hinzufügen",
+        "rotate_tokens": "Abmelde-Links ungültig machen",
+        "rotate_tokens_help": "Macht alle bereits versendeten Abmelde-Links unbrauchbar.",
+        "rotate_tokens_section": "Sicherheit",
+        "rotate_tokens_confirm": "Sollen wirklich alle Abmelde-Links ungültig gemacht werden? Dieser Vorgang kann nicht rückgängig gemacht werden.",
+        "rotate_tokens_success": "E-Mail-Links wurden ungültig gemacht.",
+        "consent_required": "Für den Empfang von Anzeigen ist eine Erstzustimmung erforderlich.",
+        "consented_at": "Datum der Erstzustimmung",
+        "not_consented": "Nicht zugestimmt",
+        "save_button": "Speichern",
+        "saved": "Einstellungen gespeichert.",
+        "save_rate_limited": "Limit für Einstellungsänderungen erreicht (10 pro Stunde). Bitte später erneut versuchen.",
+        "channel_announcement": "Anzeigen im Ankündigungs-Feed",
+        "channel_email": "E-Mail-Anzeigen",
+        "channel_push": "Push-Anzeigen",
+        "channel_banner": "Banner-Anzeigen auf der Website"
+      },
+      "me_ad_deliveries": {
+        "title": "Erhaltene Anzeigen",
+        "description": "Verlauf der Ihnen ausgelieferten Anzeigen.",
+        "empty": "Sie haben noch keine Anzeigen erhalten.",
+        "delivered_at": "Ausgeliefert am",
+        "opened": "Geöffnet",
+        "clicked": "Geklickt",
+        "filter_all": "Alle",
+        "filter_announcement": "Ankündigung",
+        "filter_email": "E-Mail",
+        "filter_push": "Push",
+        "filter_banner": "Banner",
+        "column_campaign": "Kampagne",
+        "column_advertiser": "Werbetreibender",
+        "column_channel": "Kanal",
+        "column_engagement": "Aktion",
+        "column_actions": "Aktionen",
+        "engagement_read": "Gelesen",
+        "engagement_clicked": "Geklickt",
+        "engagement_none": "Ungelesen",
+        "load_more": "Mehr laden",
+        "delete_all_section": "Datenlöschung (DSGVO Recht auf Löschung)",
+        "delete_all_description": "Alle erhaltenen Anzeigenverläufe löschen. Abrechnungs- und Statistikdaten der Werbetreibenden bleiben erhalten, die Verknüpfung mit Ihnen wird jedoch entfernt.",
+        "delete_all_button": "Alle Verläufe löschen",
+        "delete_all_confirm": "Wirklich alle Anzeigenverläufe löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.",
+        "delete_all_success": "Anzeigenverlauf wurde vollständig gelöscht."
+      },
+      "system_admin_dashboard": {
+        "title": "Anzeigenprüfung – Dashboard",
+        "description": "Überblick über ausstehende Prüfungen, Beschwerden und kürzliche Sperren.",
+        "kpi_review_pending": "Zur Prüfung",
+        "kpi_auto_flagged": "Auto-Flag",
+        "kpi_user_reports": "Beschwerden",
+        "kpi_recent_blocks": "Sperren (letzte 7 Tage)",
+        "auto_suspend_warning": "{count} Kampagnen mit Beschwerden-Häufung",
+        "shortcut_review_queue": "Prüfungswarteschlange öffnen",
+        "shortcut_user_reports": "Beschwerdenliste öffnen",
+        "load_failed": "Daten zur Anzeigenprüfung konnten nicht geladen werden",
+        "quick_link_label": "Anzeigenprüfung"
+      },
+      "system_admin_user_reports": {
+        "title": "Anzeigen-Nutzerbeschwerden",
+        "description": "Prüfen Sie Nutzerbeschwerden und stoppen Sie bei Bedarf die betroffenen Kampagnen.",
+        "empty": "Keine offenen Beschwerden vorhanden.",
+        "filter_reason": "Nach Grund filtern",
+        "filter_status": "Nach Status filtern",
+        "column_reported_at": "Gemeldet am",
+        "column_campaign": "Kampagne",
+        "column_reporter": "Melder",
+        "column_reason": "Grund",
+        "column_status": "Status",
+        "auto_suspend_candidate": "Beschwerden-Häufung",
+        "auto_suspend_candidate_tooltip": "Mehrere Beschwerden in kurzer Zeit – Kandidat für automatische Aussetzung.",
+        "go_campaign": "Zur Kampagne",
+        "type_messaging": "Nachricht",
+        "type_operational": "Betrieb",
+        "status_update_failed": "Statusaktualisierung fehlgeschlagen",
+        "mark_reviewing": "Als in Prüfung markieren",
+        "mark_resolved": "Als gelöst markieren",
+        "mark_dismissed": "Ablehnen"
+      },
+      "advertiser_campaign_report": {
+        "title": "Kampagnen-Performance-Bericht",
+        "description": "Aggregierte Auslieferungsdaten und tägliche Trends. Mit Zeitraumfilter eingrenzbar.",
+        "field_from": "Von",
+        "field_to": "Bis",
+        "kpi_delivered": "Ausgeliefert",
+        "kpi_opened": "Geöffnet",
+        "kpi_clicked": "Geklickt",
+        "kpi_consumed": "Verbrauchtes Budget (JPY)",
+        "chart_title": "Tagesverlauf",
+        "chart_delivered": "Ausgeliefert",
+        "chart_open_rate": "Öffnungsrate",
+        "chart_click_rate": "Klickrate",
+        "channel_breakdown_title": "Auswertung nach Kanal",
+        "channel_breakdown_delivered": "Ausgeliefert",
+        "channel_breakdown_opened": "Geöffnet",
+        "channel_breakdown_clicked": "Geklickt",
+        "no_data": "Keine Daten für den gewählten Zeitraum.",
+        "export_started": "CSV-Export gestartet."
+      },
+      "unsubscribe_spa": {
+        "title": "Werbe-E-Mails abbestellen",
+        "description": "Wählen Sie die Kanäle aus, die Sie stoppen möchten. Nicht angekreuzte Kanäle werden weiterhin zugestellt.",
+        "submit_button": "Ausgewählte Kanäle stoppen",
+        "note": "Diese Seite erscheint, wenn Sie den Abmeldelink aus einer Werbemail aufrufen. Sie können diese Einstellungen später jederzeit in Ihren Anzeigeneinstellungen nach dem Login ändern.",
+        "success_message": "Die ausgewählten Werbekanäle wurden deaktiviert.",
+        "done_title": "Abgemeldet",
+        "done_description": "Sie erhalten keine Werbung mehr auf den ausgewählten Kanälen.",
+        "done_disabled_label": "Deaktivierte Kanäle:",
+        "done_remaining_label": "Weiterhin aktive Kanäle:",
+        "done_login_hint": "Sie können diese Einstellungen jederzeit nach dem Login in Ihren Anzeigeneinstellungen ändern.",
+        "error_title": "Abmeldung nicht möglich",
+        "error_invalid_or_expired": "Dieser Link ist abgelaufen oder nicht mehr gültig. Bitte melden Sie sich an und verwenden Sie den Bildschirm „Anzeigeneinstellungen“.",
+        "error_rate_limited": "Zu viele Anfragen in kurzer Zeit. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+        "error_unknown": "Es ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es später erneut.",
+        "error_login_hint": "Nach dem Login können Sie sich kanalweise in den Anzeigeneinstellungen abmelden."
+      },
+      "system_admin_moderation_detail": {
+        "title": "Kampagnenprüfung – Details",
+        "section_channels": "Inhalte pro Kanal",
+        "section_audience": "Zielgruppensegmente",
+        "section_ng_words": "Erkannte verbotene Begriffe",
+        "section_logs": "Prüfprotokoll",
+        "no_ng_words": "Keine verbotenen Begriffe erkannt.",
+        "preview_locale": "Vorschau-Sprache",
+        "approve_confirm": "Diese Kampagne genehmigen?",
+        "block_confirm": "Diese Kampagne blockieren?",
+        "approved_toast": "Kampagne genehmigt.",
+        "blocked_toast": "Kampagne blockiert."
+      }
     },
-    "preview": {
-      "title": "Geschätzte Reichweite",
-      "estimated_range": "Geschätzte Reichweite (Spanne)",
-      "channel_breakdown": "Aufschlüsselung nach Kanal",
-      "fetch": "Vorschau abrufen",
-      "loading": "Wird geschätzt ...",
-      "under_100_warning": "Die geschätzte Reichweite liegt unter 100. Die Zielgruppe ist möglicherweise zu eng.",
-      "no_data": "Noch keine Vorschau. Bitte zuerst „Vorschau abrufen“ ausführen."
+    "report_dialog": {
+      "title": "Diese Anzeige melden",
+      "description": "Die Meldung wird von SYSTEM_ADMIN geprüft.",
+      "reason_label": "Grund",
+      "detail_label": "Details (optional)",
+      "detail_placeholder": "Bitte beschreiben Sie das Problem genauer",
+      "submit": "Meldung senden",
+      "cancel": "Abbrechen",
+      "submitted": "Vielen Dank, Ihre Meldung wurde übermittelt.",
+      "rate_limited": "Tageslimit für Meldungen erreicht (20 pro Tag). Bitte morgen erneut versuchen."
     },
-    "errors": {
-      "load_failed": "Daten konnten nicht geladen werden.",
-      "save_failed": "Speichern fehlgeschlagen.",
-      "transition_failed": "Statuswechsel fehlgeschlagen.",
-      "preview_failed": "Vorschau konnte nicht geladen werden."
+    "consent_dialog": {
+      "title": "Anzeigen-Empfang zustimmen?",
+      "description": "Mannschaft liefert begrenzte Werbenachrichten von Werbetreibenden aus. Ihre Einstellungen können Sie jederzeit ändern.",
+      "accept": "Zustimmen und fortfahren",
+      "decline": "Jetzt nicht",
+      "stop_all": "Alle Anzeigen stoppen",
+      "stopped_message": "Alle Anzeigen wurden gestoppt. Sie können dies jederzeit in den Einstellungen ändern."
     },
-    "confirm": {
-      "submit": "Diese Kampagne zur Prüfung einreichen?",
-      "cancel": "Abbrechen kann nicht rückgängig gemacht werden. Fortfahren?",
-      "launch": "Auslieferung starten?",
-      "pause": "Auslieferung pausieren?",
-      "resume": "Auslieferung fortsetzen?",
-      "delete": "Diesen Entwurf löschen?"
+    "error_codes": {
+      "AD_CAMPAIGN_NOT_FOUND": "Kampagne nicht gefunden.",
+      "AD_CAMPAIGN_NOT_EDITABLE": "Diese Kampagne kann im aktuellen Status nicht bearbeitet werden.",
+      "AD_CAMPAIGN_INVALID_TRANSITION": "Dieser Statuswechsel ist nicht erlaubt.",
+      "AD_CAMPAIGN_BUDGET_INSUFFICIENT": "Verbleibendes Budget reicht nicht aus.",
+      "AD_CAMPAIGN_CREDIT_LIMIT_EXCEEDED": "Kreditlimit überschritten.",
+      "AD_CAMPAIGN_MODERATION_BLOCKED": "Diese Kampagne wurde bei der Prüfung blockiert.",
+      "AD_CAMPAIGN_NO_CHANNEL": "Bitte konfigurieren Sie mindestens einen Kanal.",
+      "AD_PREFERENCES_BLOCKED_LIMIT": "Sie können höchstens 100 Werbetreibende blockieren.",
+      "AD_REPORT_DUPLICATE": "Sie haben diese Kampagne bereits gemeldet.",
+      "AD_RATE_LIMIT_EXCEEDED": "Zu viele Anfragen. Bitte später erneut versuchen."
     },
-    "validation": {
-      "name_required": "Kampagnenname ist erforderlich.",
-      "name_max": "Kampagnenname darf höchstens 120 Zeichen lang sein.",
-      "total_budget_min": "Gesamtbudget muss mindestens 1.000 betragen.",
-      "total_budget_max": "Gesamtbudget darf höchstens 100.000.000 betragen.",
-      "starts_at_required": "Startzeit ist erforderlich.",
-      "ends_at_required": "Endzeit ist erforderlich.",
-      "starts_before_ends": "Startzeit muss vor der Endzeit liegen.",
-      "frequency_cap_range": "Frequency-Cap muss zwischen 1 und 30 liegen.",
-      "at_least_one_channel": "Bitte mindestens einen Kanal konfigurieren.",
-      "at_least_one_segment": "Bitte mindestens ein Zielgruppensegment konfigurieren."
+    "advertiser_crud": {
+      "list_tab": {
+        "all": "Alle",
+        "draft": "Entwurf",
+        "review": "In Prüfung",
+        "approved": "Genehmigt",
+        "scheduled": "Geplant",
+        "delivering": "Wird ausgeliefert",
+        "paused": "Pausiert",
+        "completed": "Abgeschlossen",
+        "blocked": "Blockiert",
+        "cancelled": "Abgebrochen"
+      },
+      "list_action": {
+        "create_button": "Neu"
+      },
+      "list_table": {
+        "name": "Name",
+        "status": "Status",
+        "period": "Laufzeit",
+        "total_budget": "Gesamtbudget",
+        "consumed_budget": "Verbraucht",
+        "actions": "Aktionen"
+      },
+      "create_step": {
+        "basic": "Grunddaten",
+        "channels": "Auslieferungs-Kanäle",
+        "audience": "Zielgruppe",
+        "preview": "Vorschau / Bestätigung"
+      },
+      "create_nav": {
+        "next": "Weiter",
+        "back": "Zurück",
+        "submit": "Als Entwurf anlegen"
+      },
+      "detail_tab": {
+        "overview": "Übersicht",
+        "channels": "Kanäle",
+        "audience": "Zielgruppe",
+        "moderation": "Prüfhistorie"
+      },
+      "detail_empty": {
+        "moderation_logs": "Keine Prüfhistorie vorhanden."
+      },
+      "form": {
+        "name": "Kampagnenname",
+        "name_placeholder": "z. B. Frühjahrskampagne",
+        "total_budget": "Gesamtbudget (JPY)",
+        "starts_at": "Startzeit",
+        "ends_at": "Endzeit",
+        "scheduled_timezone": "Zeitzone",
+        "frequency_cap_override": "Frequency-Cap-Überschreibung (pro Woche)",
+        "frequency_cap_help": "Standardwert ist 3 pro Woche, falls leer gelassen."
+      },
+      "channel_form": {
+        "subject": "Betreff",
+        "body_markdown": "Inhalt (Markdown)",
+        "image_url": "Bild-URL",
+        "cta_label": "CTA-Label",
+        "cta_url": "CTA-URL",
+        "banner_creative_id": "Banner-Creative-ID",
+        "select_channel": "Kanaltyp auswählen",
+        "select_locale": "Sprache auswählen"
+      },
+      "segment_form": {
+        "select_type": "Segmenttyp auswählen",
+        "inclusion_mode": "Einschluss-Modus",
+        "age_min": "Mindestalter",
+        "age_max": "Höchstalter",
+        "genders": "Geschlechter",
+        "prefecture_codes": "Präfektur-Codes (kommagetrennt)",
+        "city_codes": "Stadt-Codes (kommagetrennt)",
+        "interest_tags": "Interessen-Tags (kommagetrennt)",
+        "org_types": "Organisationstypen (kommagetrennt)",
+        "locales": "Sprachen",
+        "devices": "Geräte",
+        "remove": "Entfernen"
+      },
+      "preview": {
+        "title": "Geschätzte Reichweite",
+        "estimated_range": "Geschätzte Reichweite (Spanne)",
+        "channel_breakdown": "Aufschlüsselung nach Kanal",
+        "fetch": "Vorschau abrufen",
+        "loading": "Wird geschätzt ...",
+        "under_100_warning": "Die geschätzte Reichweite liegt unter 100. Die Zielgruppe ist möglicherweise zu eng.",
+        "no_data": "Noch keine Vorschau. Bitte zuerst „Vorschau abrufen“ ausführen."
+      },
+      "errors": {
+        "load_failed": "Daten konnten nicht geladen werden.",
+        "save_failed": "Speichern fehlgeschlagen.",
+        "transition_failed": "Statuswechsel fehlgeschlagen.",
+        "preview_failed": "Vorschau konnte nicht geladen werden."
+      },
+      "confirm": {
+        "submit": "Diese Kampagne zur Prüfung einreichen?",
+        "cancel": "Abbrechen kann nicht rückgängig gemacht werden. Fortfahren?",
+        "launch": "Auslieferung starten?",
+        "pause": "Auslieferung pausieren?",
+        "resume": "Auslieferung fortsetzen?",
+        "delete": "Diesen Entwurf löschen?"
+      },
+      "validation": {
+        "name_required": "Kampagnenname ist erforderlich.",
+        "name_max": "Kampagnenname darf höchstens 120 Zeichen lang sein.",
+        "total_budget_min": "Gesamtbudget muss mindestens 1.000 betragen.",
+        "total_budget_max": "Gesamtbudget darf höchstens 100.000.000 betragen.",
+        "starts_at_required": "Startzeit ist erforderlich.",
+        "ends_at_required": "Endzeit ist erforderlich.",
+        "starts_before_ends": "Startzeit muss vor der Endzeit liegen.",
+        "frequency_cap_range": "Frequency-Cap muss zwischen 1 und 30 liegen.",
+        "at_least_one_channel": "Bitte mindestens einen Kanal konfigurieren.",
+        "at_least_one_segment": "Bitte mindestens ein Zielgruppensegment konfigurieren."
+      },
+      "nav": {
+        "messaging_campaigns": "Messaging-Kampagnen"
+      }
     },
-    "nav": {
-      "messaging_campaigns": "Messaging-Kampagnen"
-    }
-  },
-  "creative": {
-    "title": "Werbemittel-Liste",
-    "description": "Verwalten Sie die mit Ihrer Kampagne verknüpften Werbemittel.",
-    "empty": "Noch keine Werbemittel vorhanden.",
-    "create_button": "Neu erstellen",
-    "status": {
-      "DRAFT": "Entwurf",
-      "ACTIVE": "Aktiv",
-      "PAUSED": "Pausiert",
-      "ENDED": "Beendet"
+    "creative": {
+      "title": "Werbemittel-Liste",
+      "description": "Verwalten Sie die mit Ihrer Kampagne verknüpften Werbemittel.",
+      "empty": "Noch keine Werbemittel vorhanden.",
+      "create_button": "Neu erstellen",
+      "status": {
+        "DRAFT": "Entwurf",
+        "ACTIVE": "Aktiv",
+        "PAUSED": "Pausiert",
+        "ENDED": "Beendet"
+      },
+      "column_title": "Titel",
+      "column_status": "Status",
+      "column_destination": "Ziel-URL",
+      "column_created_at": "Erstellt am",
+      "column_actions": "Aktionen",
+      "form": {
+        "title_label": "Titel",
+        "title_placeholder": "z.B. Frühjahrsangebot-Anzeige",
+        "image_url_label": "Bild-URL (optional)",
+        "image_url_placeholder": "https://example.com/image.png",
+        "destination_url_label": "Ziel-URL",
+        "destination_url_placeholder": "https://example.com/landing"
+      },
+      "dialog_create_title": "Werbemittel erstellen",
+      "dialog_edit_title": "Werbemittel bearbeiten",
+      "delete_confirm": "Dieses Werbemittel wird auf ENDED gesetzt. Fortfahren?",
+      "created_toast": "Werbemittel erstellt.",
+      "updated_toast": "Werbemittel aktualisiert.",
+      "deleted_toast": "Werbemittel gelöscht.",
+      "error_load": "Laden der Werbemittel fehlgeschlagen.",
+      "error_save": "Speichern fehlgeschlagen.",
+      "error_delete": "Löschen fehlgeschlagen.",
+      "back_to_advertiser": "Zurück zum Werbe-Dashboard"
     },
-    "column_title": "Titel",
-    "column_status": "Status",
-    "column_destination": "Ziel-URL",
-    "column_created_at": "Erstellt am",
-    "column_actions": "Aktionen",
-    "form": {
-      "title_label": "Titel",
-      "title_placeholder": "z.B. Frühjahrsangebot-Anzeige",
-      "image_url_label": "Bild-URL (optional)",
-      "image_url_placeholder": "https://example.com/image.png",
-      "destination_url_label": "Ziel-URL",
-      "destination_url_placeholder": "https://example.com/landing"
+    "teams_page": {
+      "title": "Team-Werbetreibende verwalten",
+      "description": "Erstellen und schalten Sie nachrichtenbasierte Werbekampagnen auf Teamebene.",
+      "nav": {
+        "messaging_campaigns_description": "Erstellen Sie nachrichtenbasierte Werbekampagnen für Teammitglieder."
+      },
+      "dashboard": {
+        "not_registered_title": "広告主ダッシュボード",
+        "not_registered_description": "広告を出稿するには、まず広告主として登録してください。",
+        "register_button": "広告主登録",
+        "rate_simulator_button": "料金シミュレーター",
+        "pending_notice": "アカウントは審査中です。承認後に広告の配信を開始できます。",
+        "suspended_notice": "アカウントが停止されています。管理者にお問い合わせください。",
+        "kpi_campaigns": "キャンペーン",
+        "kpi_impressions": "インプレッション",
+        "kpi_clicks_ctr": "クリック / CTR",
+        "kpi_cost": "広告費（税抜）",
+        "budget_used_label": "予算消化 {pct}%",
+        "campaigns_section_title": "キャンペーン",
+        "column_campaign_name": "キャンペーン名",
+        "column_status": "ステータス",
+        "column_impressions": "imp",
+        "column_clicks": "click",
+        "column_ctr": "CTR",
+        "column_cost": "費用",
+        "nav_invoices": "請求書",
+        "nav_rate_simulator": "料金シミュレーター",
+        "nav_report_schedules": "定期レポート",
+        "nav_credit_limit_requests": "与信枠申請"
+      },
+      "invoices": {
+        "title": "請求書",
+        "status_all": "すべて",
+        "status_draft": "下書き",
+        "status_issued": "発行済み",
+        "status_paid": "支払済み",
+        "status_overdue": "期限超過",
+        "status_filter_placeholder": "ステータス",
+        "column_invoice_number": "請求書番号",
+        "column_invoice_month": "対象月",
+        "column_total_with_tax": "税込合計",
+        "column_status": "ステータス",
+        "column_due_date": "支払期限",
+        "detail_title": "請求書詳細",
+        "detail_invoice_number": "請求書番号:",
+        "detail_invoice_month": "対象月:",
+        "detail_status": "ステータス:",
+        "detail_due_date": "支払期限:",
+        "detail_column_campaign": "キャンペーン",
+        "detail_column_pricing_model": "課金",
+        "detail_column_impressions": "imp",
+        "detail_column_clicks": "click",
+        "detail_column_subtotal": "小計",
+        "subtotal_label": "小計:",
+        "tax_label": "消費税（{rate}%）:",
+        "total_label": "合計:"
+      },
+      "credit_limit_requests": {
+        "title": "与信枠 増額申請",
+        "create_button": "新規申請",
+        "column_requested_limit": "希望額",
+        "column_current_limit": "申請時の限度額",
+        "column_reason": "理由",
+        "column_status": "ステータス",
+        "column_review_note": "審査メモ",
+        "column_created_at": "申請日",
+        "dialog_title": "与信枠 増額申請",
+        "form_requested_limit_label": "希望額（円）",
+        "form_reason_label": "申請理由",
+        "form_reason_placeholder": "増額が必要な理由を記入してください",
+        "submit_button": "申請",
+        "created_toast": "増額申請を送信しました",
+        "create_failed_toast": "申請に失敗しました"
+      },
+      "report_schedules": {
+        "title": "定期レポート",
+        "create_button": "新規作成",
+        "empty": "定期レポートはまだ設定されていません。",
+        "frequency_weekly": "週次（毎週月曜）",
+        "frequency_monthly": "月次（毎月1日）",
+        "last_sent_label": "最終配信: {date}",
+        "dialog_title": "レポートスケジュール作成",
+        "form_frequency_label": "配信頻度",
+        "form_recipients_label": "配信先メール（カンマ区切り）",
+        "form_recipients_placeholder": "ads{'@'}example.com, manager{'@'}example.com",
+        "submit_button": "作成",
+        "created_toast": "レポートスケジュールを作成しました",
+        "create_failed_toast": "作成に失敗しました",
+        "deleted_toast": "削除しました",
+        "delete_failed_toast": "削除に失敗しました"
+      },
+      "rate_simulator": {
+        "title": "料金シミュレーター",
+        "pricing_model_label": "課金モデル",
+        "pricing_model_cpm": "CPM（インプレッション課金）",
+        "pricing_model_cpc": "CPC（クリック課金）",
+        "days_label": "掲載日数",
+        "impressions_label": "インプレッション数",
+        "clicks_label": "クリック数",
+        "prefecture_label": "都道府県（任意）",
+        "prefecture_placeholder": "例: 東京都",
+        "template_label": "テンプレート（任意）",
+        "template_placeholder": "例: SPORTS",
+        "run_button": "シミュレーション実行",
+        "result_title": "見積もり結果",
+        "unit_price_label": "単価",
+        "total_cost_label": "税抜合計",
+        "total_with_tax_label": "税込合計",
+        "tax_amount_label": "消費税",
+        "daily_cost_label": "日次費用",
+        "min_daily_budget_label": "最低日予算",
+        "comparison_title": "他の料金との比較",
+        "comparison_column_label": "条件",
+        "comparison_column_unit_price": "単価",
+        "comparison_column_total_cost": "合計費用"
+      },
+      "campaign_detail": {
+        "default_title": "キャンペーン詳細",
+        "csv_button": "CSV",
+        "date_from_placeholder": "開始日",
+        "date_to_placeholder": "終了日",
+        "load_failed": "キャンペーンデータを取得できませんでした。",
+        "back_to_dashboard": "ダッシュボードに戻る"
+      },
+      "register": {
+        "title": "Werbetreibender registrieren",
+        "submit": "Antrag einreichen",
+        "company_name_label": "Firmenname / Werbetreibender",
+        "company_name_placeholder": "Beispiel GmbH",
+        "contact_email_label": "Kontakt-E-Mail-Adresse",
+        "billing_method_label": "Zahlungsmethode",
+        "billing_stripe": "Kreditkarte (Stripe)",
+        "billing_invoice": "Auf Rechnung",
+        "success_message": "Ihr Antrag wurde eingereicht. Nach der Prüfung können Sie den Dienst nutzen.",
+        "error_message": "Registrierung fehlgeschlagen"
+      }
     },
-    "dialog_create_title": "Werbemittel erstellen",
-    "dialog_edit_title": "Werbemittel bearbeiten",
-    "delete_confirm": "Dieses Werbemittel wird auf ENDED gesetzt. Fortfahren?",
-    "created_toast": "Werbemittel erstellt.",
-    "updated_toast": "Werbemittel aktualisiert.",
-    "deleted_toast": "Werbemittel gelöscht.",
-    "error_load": "Laden der Werbemittel fehlgeschlagen.",
-    "error_save": "Speichern fehlgeschlagen.",
-    "error_delete": "Löschen fehlgeschlagen.",
-    "back_to_advertiser": "Zurück zum Werbe-Dashboard"
-  },
-  "teams_page": {
-    "title": "Team-Werbetreibende verwalten",
-    "description": "Erstellen und schalten Sie nachrichtenbasierte Werbekampagnen auf Teamebene.",
-    "nav": {
-      "messaging_campaigns_description": "Erstellen Sie nachrichtenbasierte Werbekampagnen für Teammitglieder."
+    "settings_ad_preferences_guide": {
+      "page_title": "広告の受信設定 — 使い方ガイド",
+      "description": "広告の受信設定ページの機能と使い方をご案内します。",
+      "channels": {
+        "title": "チャネル別の受信トグル",
+        "body": "お知らせフィード・メール・プッシュ通知・サイト内バナーの4チャネルごとに広告の受信をオン／オフできます。初回同意日時もこのセクションで確認できます。",
+        "steps": {
+          "step1": "受信したいチャネルのスイッチをオンにする",
+          "step2": "受信したくないチャネルのスイッチをオフにする",
+          "step3": "ページ右下の「保存」ボタンをクリックして設定を確定する"
+        }
+      },
+      "blocklist": {
+        "title": "ブロック済み広告主リスト",
+        "body": "特定の広告主からの広告を一切受け取りたくない場合は、広告主IDを入力してブロックできます（最大100件）。ブロック済みリストの各行の×ボタンでいつでも解除できます。",
+        "steps": {
+          "step1": "ブロックしたい広告主のIDを入力欄に入力する（例: 12）",
+          "step2": "「ブロックに追加」ボタンをクリックする",
+          "step3": "ページ右下の「保存」ボタンをクリックして設定を確定する",
+          "step4": "解除するには、一覧の×ボタンをクリックして再度「保存」する"
+        }
+      },
+      "rotate_tokens": {
+        "title": "配信停止リンクの無効化（セキュリティ）",
+        "body": "過去に受け取ったメール内の配信停止リンクを一括で無効化できます。不正利用が心配なときやメールアドレスを変更したときに使用してください。この操作は元に戻せません。",
+        "steps": {
+          "step1": "「配信停止リンクを無効化する」ボタンをクリックする",
+          "step2": "確認ダイアログが表示されるので内容を確認して承認する",
+          "step3": "成功メッセージが表示されれば完了（新しいリンクは次回配信から有効）"
+        }
+      },
+      "save": {
+        "title": "設定の保存",
+        "body": "チャネルのオン／オフやブロックリストへの変更は、「保存」ボタンを押すまで確定されません。なお設定変更には1時間あたり10件のレート制限があります。",
+        "steps": {
+          "step1": "チャネルやブロックリストの設定を変更する",
+          "step2": "ページ右下の「保存」ボタンをクリックする",
+          "step3": "「設定を保存しました」のメッセージが表示されれば完了"
+        }
+      }
     },
-    "future_features_notice": "Rechnungsverwaltung, Kreditlimitanträge und regelmäßige Berichte werden in einer zukünftigen Phase unterstützt.",
-    "register": {
-      "title": "Werbetreibender registrieren",
-      "submit": "Antrag einreichen",
-      "company_name_label": "Firmenname / Werbetreibender",
-      "company_name_placeholder": "Beispiel GmbH",
-      "contact_email_label": "Kontakt-E-Mail-Adresse",
-      "billing_method_label": "Zahlungsmethode",
-      "billing_stripe": "Kreditkarte (Stripe)",
-      "billing_invoice": "Auf Rechnung",
-      "success_message": "Ihr Antrag wurde eingereicht. Nach der Prüfung können Sie den Dienst nutzen.",
-      "error_message": "Registrierung fehlgeschlagen"
+    "operational_campaigns": {
+      "title": "Banner-Werbekampagnen",
+      "entry_tile": {
+        "title": "Banner-Werbekampagnen",
+        "description": "Erstelle und verwalte operative Kampagnen, die Bildbanner in Werbeplätzen ausliefern."
+      },
+      "list": {
+        "description": "Erstelle Bildbanner-Auslieferungskampagnen und verwalte Prüfung, Auslieferung und Pausieren. Das Tagesbudget ist eine Richtobergrenze.",
+        "create_button": "Erstellen",
+        "empty": "Noch keine operativen Kampagnen. Erstelle deine erste Kampagne.",
+        "no_end_date": "Unbegrenzt",
+        "report_suspended_badge": "Durch Meldung gesperrt",
+        "reject_reason_label": "Ablehnungsgrund",
+        "link_creatives": "Creatives",
+        "link_report": "Bericht",
+        "tab": {
+          "all": "Alle",
+          "draft": "Entwurf",
+          "pending_review": "In Prüfung",
+          "active": "Aktiv",
+          "paused": "Pausiert",
+          "ended": "Beendet"
+        },
+        "col": {
+          "name": "Kampagnenname",
+          "status": "Status",
+          "pricing_model": "Preismodell",
+          "daily_budget": "Tagesbudget",
+          "period": "Zeitraum",
+          "unit_price": "Stückpreis",
+          "actions": "Aktionen"
+        }
+      },
+      "status": {
+        "draft": "Entwurf",
+        "pending_review": "In Prüfung",
+        "active": "Aktiv",
+        "paused": "Pausiert",
+        "ended": "Beendet"
+      },
+      "actions": {
+        "submit": "Zur Prüfung einreichen",
+        "pause": "Pausieren",
+        "resume": "Fortsetzen",
+        "end": "Beenden",
+        "edit": "Bearbeiten"
+      },
+      "confirm": {
+        "submit": "Diese Kampagne zur Prüfung einreichen?",
+        "pause": "Die Auslieferung dieser Kampagne pausieren?",
+        "resume": "Die Auslieferung dieser Kampagne fortsetzen?",
+        "end": "Diese Kampagne beenden? Nach dem Beenden kann sie nicht fortgesetzt werden (unumkehrbar)."
+      },
+      "toast": {
+        "submit": "Zur Prüfung eingereicht",
+        "pause": "Auslieferung pausiert",
+        "resume": "Auslieferung fortgesetzt",
+        "end": "Kampagne beendet",
+        "created": "Kampagne erstellt",
+        "updated": "Kampagne aktualisiert"
+      },
+      "form": {
+        "create_title": "Banner-Werbekampagne erstellen",
+        "edit_title": "Banner-Werbekampagne bearbeiten",
+        "name": "Kampagnenname",
+        "pricing_model": "Preismodell",
+        "rate_card": "Preiskarte",
+        "rate_card_placeholder": "Preiskarte auswählen",
+        "no_rate_cards": "Für das ausgewählte Preismodell sind keine Preiskarten verfügbar.",
+        "daily_budget": "Tagesbudget",
+        "min_daily_budget": "Mindest-Tagesbudget",
+        "start_date": "Startdatum",
+        "end_date": "Enddatum",
+        "end_date_hint": "Leer lassen für unbegrenzte Laufzeit.",
+        "unit_cpm": "CPM",
+        "unit_cpc": "CPC",
+        "locked_when_paused": "Kann im pausierten Zustand nicht geändert werden.",
+        "daily_budget_notice": "Das Tagesbudget ist eine Richtobergrenze fürs Pacing. Es ist keine strikte Garantie; die Abrechnung erfolgt anhand der tatsächlich gemessenen Auslieferung.",
+        "save": "Speichern",
+        "cancel": "Abbrechen"
+      },
+      "errors": {
+        "load_failed": "Kampagne konnte nicht geladen werden",
+        "save_failed": "Speichern fehlgeschlagen",
+        "transition_failed": "Vorgang fehlgeschlagen",
+        "rate_cards_load_failed": "Preiskarten konnten nicht geladen werden",
+        "name_required": "Bitte einen Kampagnennamen eingeben",
+        "name_max": "Der Kampagnenname darf höchstens 200 Zeichen lang sein",
+        "rate_card_required": "Bitte eine Preiskarte auswählen",
+        "daily_budget_required": "Bitte ein Tagesbudget eingeben",
+        "daily_budget_min": "Das Tagesbudget muss mindestens dem Minimum ({min}) entsprechen",
+        "start_date_required": "Bitte ein Startdatum eingeben",
+        "start_in_past": "Das Startdatum muss heute oder später sein",
+        "end_before_start": "Das Enddatum muss am oder nach dem Startdatum liegen"
+      },
+      "guide": {
+        "title": "So verwendest du Banner-Werbekampagnen",
+        "what": {
+          "title": "Was sind Banner-Werbekampagnen?",
+          "body": "Operative Anzeigen, die Bildbanner in Plätzen wie Dashboards und Feeds ausliefern. Wähle ein Preismodell (CPM/CPC) und eine Preiskarte, lege ein Tagesbudget fest und liefere nach der Prüfung aus."
+        },
+        "flow": {
+          "title": "Veröffentlichungsablauf",
+          "step1": "Erstelle eine Kampagne (Entwurf) mit Preiskarte und Tagesbudget",
+          "step2": "Reiche Creatives (Bildbanner) ein",
+          "step3": "Zur Prüfung einreichen (Kampagne und Creatives müssen beide genehmigt sein, um förderfähig zu sein)",
+          "step4": "Auslieferung startet. Bei Bedarf pausieren, fortsetzen oder beenden"
+        },
+        "pricing": {
+          "title": "Preise und Tagesbudget",
+          "body": "Die Preiskarte bestimmt den Stückpreis (CPM = pro 1000 Impressionen, CPC = pro Klick). Der Stückpreis wird bei der Erstellung eingefroren, sodass spätere Preisänderungen nicht gelten. Das Tagesbudget ist eine Richtobergrenze fürs Pacing."
+        },
+        "status": {
+          "title": "Status und Vorgänge",
+          "body": "Die Übergänge sind Entwurf -> In Prüfung -> Aktiv -> Pausiert. Im pausierten Zustand können abrechnungsrelevante Felder (Preismodell, Preiskarte, Startdatum) nicht geändert werden. Beendete Kampagnen können nicht fortgesetzt werden."
+        }
+      },
+      "review": {
+        "title": "Prüfung operativer Kampagnen",
+        "description": "Prüfe ausstehende Banner-Werbekampagnen und genehmige oder lehne sie ab.",
+        "card_title": "Prüfung operativer Kampagnen",
+        "card_description": "Sieh dir Banner-Werbekampagnen an, die auf Prüfung warten.",
+        "pending_count": "Ausstehend",
+        "open_queue": "Prüfungswarteschlange öffnen",
+        "open_detail": "Detail ansehen",
+        "back_to_dashboard": "Zurück zum Prüfungs-Dashboard",
+        "empty": "Keine Kampagnen warten auf Prüfung.",
+        "load_failed": "Prüfungswarteschlange konnte nicht geladen werden",
+        "detail_load_failed": "Prüfungsdetail konnte nicht geladen werden",
+        "detail_title": "Kampagnen-Prüfungsdetail",
+        "advertiser": "Werbetreibender",
+        "scope": "Bereich",
+        "scope_organization": "Organisation",
+        "scope_team": "Team",
+        "unit_price": "Stückpreis",
+        "creatives": "Creatives",
+        "no_creatives": "Es wurden keine Creatives eingereicht.",
+        "approve": "Genehmigen",
+        "approve_confirm": "Diese Kampagne genehmigen und für die Auslieferung freigeben?",
+        "approved_toast": "Kampagne genehmigt",
+        "reject": "Ablehnen",
+        "reject_submit": "Ablehnen",
+        "reject_reason_label": "Ablehnungsgrund",
+        "reject_reason_placeholder": "Gib den Ablehnungsgrund ein (1-500 Zeichen)",
+        "rejected_toast": "Kampagne abgelehnt",
+        "action_failed": "Vorgang fehlgeschlagen"
+      }
     }
   }
 }

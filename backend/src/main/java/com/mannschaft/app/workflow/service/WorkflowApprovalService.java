@@ -1,10 +1,12 @@
 package com.mannschaft.app.workflow.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.workflow.ApprovalType;
 import com.mannschaft.app.workflow.ApproverDecision;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
 import com.mannschaft.app.workflow.WorkflowMapper;
+import com.mannschaft.app.workflow.WorkflowScopes;
 import com.mannschaft.app.workflow.WorkflowStatus;
 import com.mannschaft.app.workflow.dto.ApprovalDecisionRequest;
 import com.mannschaft.app.workflow.dto.RequestStepResponse;
@@ -41,9 +43,15 @@ public class WorkflowApprovalService {
     private final WorkflowTemplateStepRepository templateStepRepository;
     private final WorkflowTemplateService templateService;
     private final WorkflowMapper workflowMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * 承認判断を行う。
+     *
+     * <p>認可（Wave 2 トランシェ2C）: URL にスコープを含まないため、まず entity 由来の
+     * scopeType/scopeId で操作者がスコープのメンバー/ADMIN であることを検証し、
+     * 非所属者には 404（REQUEST_NOT_FOUND）で存在秘匿する（申請ID列挙・なりすまし承認の根治）。
+     * その上で、現在ステップの指定承認者でなければ 403（NOT_APPROVER）。</p>
      *
      * @param requestId 申請ID
      * @param userId    承認者ユーザーID
@@ -54,6 +62,13 @@ public class WorkflowApprovalService {
     public WorkflowRequestResponse decide(Long requestId, Long userId, ApprovalDecisionRequest request) {
         WorkflowRequestEntity requestEntity = requestRepository.findById(requestId)
                 .orElseThrow(() -> new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND));
+
+        String canonicalScope = WorkflowScopes.canonical(requestEntity.getScopeType());
+        if (!accessControlService.isMember(userId, requestEntity.getScopeId(), canonicalScope)
+                && !accessControlService.isAdminOrAbove(userId, requestEntity.getScopeId(), canonicalScope)) {
+            // 非所属者にはステータス等の内部状態も観測させない（存在秘匿 → 404）
+            throw new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND);
+        }
 
         if (requestEntity.getStatus() != WorkflowStatus.IN_PROGRESS) {
             throw new BusinessException(WorkflowErrorCode.INVALID_STATUS_TRANSITION);

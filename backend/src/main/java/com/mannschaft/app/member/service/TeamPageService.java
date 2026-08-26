@@ -1,5 +1,6 @@
 package com.mannschaft.app.member.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.member.MemberErrorCode;
 import com.mannschaft.app.member.MemberMapper;
@@ -44,13 +45,22 @@ public class TeamPageService {
     private final TeamPageSectionRepository sectionRepository;
     private final MemberProfileRepository profileRepository;
     private final MemberMapper memberMapper;
+    private final AccessControlService accessControlService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final String SCOPE_TEAM = "TEAM";
+    private static final String SCOPE_ORGANIZATION = "ORGANIZATION";
 
     /**
-     * ページ一覧をページング取得する。
+     * ページ一覧をページング取得する。teamId/organizationId は呼び出し元が明示的に指定するスコープの
+     * ため、非所属者は 403（COMMON_002）で拒否する（Wave3-B2 member 認可根治）。
      */
-    public Page<TeamPageResponse> listPages(Long teamId, Long organizationId, Pageable pageable) {
+    public Page<TeamPageResponse> listPages(Long actorUserId, Long teamId, Long organizationId, Pageable pageable) {
+        if (teamId != null) {
+            accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+        } else {
+            accessControlService.checkMembership(actorUserId, organizationId, SCOPE_ORGANIZATION);
+        }
         Page<TeamPageEntity> page;
         if (teamId != null) {
             page = pageRepository.findByTeamIdOrderBySortOrder(teamId, pageable);
@@ -62,9 +72,13 @@ public class TeamPageService {
 
     /**
      * ページ詳細をセクション・メンバー付きで取得する。
+     *
+     * <p>URL に teamId/organizationId を含まない bare id エンドポイントのため、entity 由来スコープで
+     * 認可判定し、非所属者には 404（PAGE_NOT_FOUND）で存在秘匿する（Wave3-B2 member BOLA対策）。</p>
      */
-    public TeamPageResponse getPage(Long pageId) {
+    public TeamPageResponse getPage(Long actorUserId, Long pageId) {
         TeamPageEntity entity = findPageOrThrow(pageId);
+        checkPageMembershipOrNotFound(actorUserId, entity);
         List<TeamPageSectionEntity> sections = sectionRepository.findByTeamPageIdOrderBySortOrder(pageId);
         List<MemberProfileEntity> members = profileRepository.findByTeamPageIdAndIsVisibleTrueOrderBySortOrder(pageId);
 
@@ -82,6 +96,13 @@ public class TeamPageService {
         PageType pageType = PageType.valueOf(request.getPageType());
         Long teamId = request.getTeamId();
         Long organizationId = request.getOrganizationId();
+
+        // Wave3-B2 member 認可根治: 作成先スコープは呼び出し元が明示的に指定するため checkAdminOrAbove（403）
+        if (teamId != null) {
+            accessControlService.checkAdminOrAbove(userId, teamId, SCOPE_TEAM);
+        } else {
+            accessControlService.checkAdminOrAbove(userId, organizationId, SCOPE_ORGANIZATION);
+        }
 
         // メインページの重複チェック
         if (pageType == PageType.MAIN) {
@@ -136,8 +157,9 @@ public class TeamPageService {
      * ページを更新する。
      */
     @Transactional
-    public TeamPageResponse updatePage(Long pageId, UpdateTeamPageRequest request) {
+    public TeamPageResponse updatePage(Long actorUserId, Long pageId, UpdateTeamPageRequest request) {
         TeamPageEntity entity = findPageOrThrow(pageId);
+        checkPageAdminOrNotFound(actorUserId, entity);
 
         PageVisibility visibility = request.getVisibility() != null
                 ? PageVisibility.valueOf(request.getVisibility()) : entity.getVisibility();
@@ -158,8 +180,9 @@ public class TeamPageService {
      * ページを論理削除する。
      */
     @Transactional
-    public void deletePage(Long pageId) {
+    public void deletePage(Long actorUserId, Long pageId) {
         TeamPageEntity entity = findPageOrThrow(pageId);
+        checkPageAdminOrNotFound(actorUserId, entity);
         entity.softDelete();
         pageRepository.save(entity);
         log.info("ページ削除: id={}", pageId);
@@ -169,8 +192,9 @@ public class TeamPageService {
      * 公開ステータスを変更する。
      */
     @Transactional
-    public TeamPageResponse changeStatus(Long pageId, PublishRequest request) {
+    public TeamPageResponse changeStatus(Long actorUserId, Long pageId, PublishRequest request) {
         TeamPageEntity entity = findPageOrThrow(pageId);
+        checkPageAdminOrNotFound(actorUserId, entity);
         PageStatus status = PageStatus.valueOf(request.getStatus());
         entity.changeStatus(status);
         TeamPageEntity saved = pageRepository.save(entity);
@@ -182,8 +206,9 @@ public class TeamPageService {
      * プレビュートークンを発行する。
      */
     @Transactional
-    public PreviewTokenResponse issuePreviewToken(Long pageId) {
+    public PreviewTokenResponse issuePreviewToken(Long actorUserId, Long pageId) {
         TeamPageEntity entity = findPageOrThrow(pageId);
+        checkPageAdminOrNotFound(actorUserId, entity);
 
         byte[] tokenBytes = new byte[48];
         SECURE_RANDOM.nextBytes(tokenBytes);
@@ -203,8 +228,9 @@ public class TeamPageService {
      * プレビュートークンを無効化する。
      */
     @Transactional
-    public void revokePreviewToken(Long pageId) {
+    public void revokePreviewToken(Long actorUserId, Long pageId) {
         TeamPageEntity entity = findPageOrThrow(pageId);
+        checkPageAdminOrNotFound(actorUserId, entity);
         entity.clearPreviewToken();
         pageRepository.save(entity);
         log.info("プレビュートークン無効化: pageId={}", pageId);
@@ -216,5 +242,42 @@ public class TeamPageService {
     TeamPageEntity findPageOrThrow(Long pageId) {
         return pageRepository.findById(pageId)
                 .orElseThrow(() -> new BusinessException(MemberErrorCode.PAGE_NOT_FOUND));
+    }
+
+    /**
+     * ページ entity 由来スコープでメンバー（または ADMIN 以上）であることを検証する（閲覧系）。
+     *
+     * <p>URL に teamId/organizationId を含まない bare id エンドポイント向け。checkMembership の
+     * ような 403（COMMON_002）ではなく、非所属者には 404（PAGE_NOT_FOUND）で存在秘匿する
+     * （Wave3-B2 member BOLA対策。workflow ドメイン {@code WorkflowApprovalService#decide} 踏襲）。
+     * {@link TeamPageSectionService}/{@link MemberProfileService} からも再利用する（同一パッケージ）。</p>
+     */
+    void checkPageMembershipOrNotFound(Long actorUserId, TeamPageEntity page) {
+        Long scopeId = resolveScopeId(page);
+        String scopeType = resolveScopeType(page);
+        if (!accessControlService.isMember(actorUserId, scopeId, scopeType)
+                && !accessControlService.isAdminOrAbove(actorUserId, scopeId, scopeType)) {
+            throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+        }
+    }
+
+    /**
+     * ページ entity 由来スコープで ADMIN/DEPUTY_ADMIN 以上であることを検証する（変更系）。
+     * 非所属者には 404（PAGE_NOT_FOUND）で存在秘匿する（Wave3-B2 member BOLA対策）。
+     */
+    void checkPageAdminOrNotFound(Long actorUserId, TeamPageEntity page) {
+        Long scopeId = resolveScopeId(page);
+        String scopeType = resolveScopeType(page);
+        if (!accessControlService.isAdminOrAbove(actorUserId, scopeId, scopeType)) {
+            throw new BusinessException(MemberErrorCode.PAGE_NOT_FOUND);
+        }
+    }
+
+    private Long resolveScopeId(TeamPageEntity page) {
+        return page.getTeamId() != null ? page.getTeamId() : page.getOrganizationId();
+    }
+
+    private String resolveScopeType(TeamPageEntity page) {
+        return page.getTeamId() != null ? SCOPE_TEAM : SCOPE_ORGANIZATION;
     }
 }

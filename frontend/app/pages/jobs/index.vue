@@ -20,6 +20,8 @@ const api = useJobPostingApi()
 const { error } = useNotification()
 const teamStore = useTeamStore()
 
+const showGuide = ref(false)
+
 const PAGE_SIZE = 20
 
 const selectedTeamId = ref<number | null>(null)
@@ -89,14 +91,10 @@ onMounted(async () => {
 
 <template>
   <div class="container mx-auto max-w-4xl p-4">
-    <div class="mb-4">
-      <h1 class="text-2xl font-bold">
-        {{ t('jobmatching.workerSearch.title') }}
-      </h1>
-      <p class="mt-1 text-sm text-surface-500">
-        {{ t('jobmatching.workerSearch.description') }}
-      </p>
-    </div>
+    <PageHeader :title="t('jobmatching.workerSearch.title')" help @help="showGuide = true" />
+    <p class="mb-4 text-sm text-surface-500">
+      {{ t('jobmatching.workerSearch.description') }}
+    </p>
 
     <!-- チーム選択 -->
     <div class="mb-4">
@@ -171,5 +169,8 @@ onMounted(async () => {
         @page="onPageChange"
       />
     </div>
+
+    <!-- 使い方モーダル -->
+    <JobsGuideModal v-model:visible="showGuide" />
   </div>
 </template>

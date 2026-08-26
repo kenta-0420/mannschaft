@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import type { ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
+import type { RecurrenceEndType, RecurrenceType, ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
+import type { ScheduleTargetMode } from '~/types/schedule'
 
 interface ScopeOption {
   label: string
@@ -60,10 +61,14 @@ const notification = useNotification()
 const { handleApiError, getFieldErrors } = useErrorHandler()
 const { userTimezone, buildOffsetDateTimeStr } = useDatetime()
 const { t } = useI18n()
+const { googleSyncEnabled, fetchPersonalSyncStatus } = useGoogleCalendarApi()
 
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 const isEdit = computed(() => !!props.scheduleId)
+const targetMode = ref<ScheduleTargetMode>('ALL_MEMBERS')
+const targetUserIds = ref<number[]>([])
+const targetValidationError = ref<string | null>(null)
 
 // 15分刻みの時刻オプション生成（00:00〜23:45）
 const timeOptions = Array.from({ length: 96 }, (_, i) => {
@@ -81,6 +86,7 @@ function loadTimeHistory(): TimeHistoryEntry[] {
   try {
     return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') as TimeHistoryEntry[]
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- localStorage の破損履歴に対する防御パース。空配列復帰が正しい（機能劣化なし）
     return []
   }
 }
@@ -117,6 +123,7 @@ const form = ref<ScheduleEventFormState>({
   recurrenceCount: 10,
   allowProxyAttendance: false,
   isProxyAutoAccept: false,
+  teamBreakdownEnabled: false,
   reminders: [],
   scheduledSurvey: {
     enabled: false,
@@ -171,6 +178,14 @@ watch(
   },
 )
 
+// ダイアログが開くたびに Google 連携ステータスを取得する
+watch(
+  () => props.visible,
+  (v) => {
+    if (v) fetchPersonalSyncStatus()
+  },
+)
+
 watch(
   () => [props.visible, props.scheduleId],
   async ([visible, scheduleId]) => {
@@ -215,6 +230,24 @@ watch(
               absoluteAt: null,
             }))
           }
+          // 個人予定: status.recurrenceRule から繰り返し設定をフォームに復元する
+          const status = (data.status as Record<string, unknown>) ?? {}
+          const recurrenceRule = status.recurrenceRule as Record<string, unknown> | null
+          if (recurrenceRule && typeof recurrenceRule === 'object') {
+            form.value.recurrence = true
+            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
+            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
+            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
+            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
+            if (recurrenceRule.endDate) {
+              form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
+            }
+            if (recurrenceRule.count != null) {
+              form.value.recurrenceCount = recurrenceRule.count as number
+            }
+          } else {
+            form.value.recurrence = false
+          }
         }
         else {
           form.value.title = (data.title as string) ?? ''
@@ -224,6 +257,10 @@ watch(
           form.value.attendanceRequired = (data.attendanceRequired as boolean) ?? false
           form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
           form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
+          form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
+          targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
+          targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
+            .map(target => target.userId)
           if (data.startAt) {
             const start = new Date(data.startAt as string)
             form.value.startDate = start
@@ -367,6 +404,10 @@ async function submit() {
     fieldErrors.value = { title: t('schedule.error_title_required') }
     return
   }
+  if (!effectiveScope.value.isPersonal && targetValidationError.value) {
+    notification.error(targetValidationError.value)
+    return
+  }
   const scheduledError = validateScheduledInputs()
   if (scheduledError) {
     notification.error(scheduledError)
@@ -397,6 +438,12 @@ async function submit() {
     body.attendanceRequired = form.value.attendanceRequired
     body.allow_proxy_attendance = form.value.allowProxyAttendance
     body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
+    body.targetMode = targetMode.value
+    body.targetUserIds = targetMode.value === 'SELECTED_MEMBERS' ? targetUserIds.value : []
+    // F03.1 (B) チーム別内訳トグルは組織スコープ + 出欠ありのときのみ送る
+    if (effectiveScope.value.scopeType === 'organization' && form.value.attendanceRequired) {
+      body.teamBreakdownEnabled = form.value.teamBreakdownEnabled
+    }
   }
 
   if (form.value.recurrence) {
@@ -414,6 +461,9 @@ async function submit() {
         ? form.value.recurrenceCount
         : undefined,
     }
+  } else if (isEdit.value && effectiveScope.value.isPersonal) {
+    // 個人予定の編集で繰り返しを OFF にした場合は null を明示送信してクリアする
+    body.recurrenceRule = null
   }
 
   // === 機能55: リマインダー ===
@@ -529,6 +579,7 @@ function resetForm() {
     recurrenceCount: 10,
     allowProxyAttendance: false,
     isProxyAutoAccept: false,
+    teamBreakdownEnabled: false,
     reminders: [],
     scheduledSurvey: {
       enabled: false,
@@ -546,12 +597,14 @@ function resetForm() {
       minResponseRole: '',
     },
   }
+  targetMode.value = 'ALL_MEMBERS'
+  targetUserIds.value = []
+  targetValidationError.value = null
   fieldErrors.value = {}
 }
 
 function close() {
   emit('update:visible', false)
-  resetForm()
 }
 </script>
 
@@ -570,6 +623,7 @@ function close() {
     :style="{ width: '500px' }"
     modal
     @update:visible="close"
+    @hide="resetForm"
   >
     <div class="flex flex-col gap-4">
       <!-- スコープ選択（複数スコープがある場合のみ表示） -->
@@ -585,6 +639,35 @@ function close() {
         :time-history="timeHistory"
         :time-options="timeOptions"
       />
+      <ScheduleTargetPicker
+        v-if="!effectiveScope.isPersonal"
+        v-model:target-mode="targetMode"
+        v-model:target-user-ids="targetUserIds"
+        :scope-type="effectiveScope.scopeType"
+        :scope-id="effectiveScope.scopeId"
+        @invalid="targetValidationError = $event"
+      />
+      <!-- F03.1 (B) チーム別内訳トグル（組織スコープ + 出欠ありのときのみ） -->
+      <div
+        v-if="effectiveScope.scopeType === 'organization' && form.attendanceRequired"
+        class="flex flex-col gap-1 rounded-lg bg-surface-50 p-3 dark:bg-surface-800"
+      >
+        <div class="flex items-center gap-3">
+          <Checkbox
+            v-model="form.teamBreakdownEnabled"
+            :binary="true"
+            input-id="scheduleTeamBreakdown"
+            data-testid="schedule-team-breakdown-toggle"
+          />
+          <label for="scheduleTeamBreakdown" class="text-sm text-gray-700 dark:text-gray-300">
+            {{ $t('schedule.attendanceTeamBreakdown.toggleLabel') }}
+          </label>
+        </div>
+        <p class="ml-6 text-xs text-gray-500 dark:text-gray-400">
+          {{ $t('schedule.attendanceTeamBreakdown.toggleHint') }}
+        </p>
+      </div>
+
       <!-- 代理出席設定（チームまたは組織スコープのみ） -->
       <div v-if="!effectiveScope.isPersonal" class="flex flex-col gap-2">
         <div class="flex items-center gap-3">
@@ -633,6 +716,15 @@ function close() {
         v-if="effectiveScope.isPersonal"
         v-model:color="form.color"
       />
+
+      <!-- Google カレンダー連携中の注意書き -->
+      <div
+        v-if="googleSyncEnabled"
+        class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200"
+      >
+        <i class="pi pi-info-circle mr-1" aria-hidden="true" />
+        {{ $t('schedule.google_sync_notice') }}
+      </div>
     </div>
     <template #footer>
       <Button label="キャンセル" text @click="close" />

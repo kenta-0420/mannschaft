@@ -1,29 +1,31 @@
 package com.mannschaft.app.tournament.service;
 
-import com.mannschaft.app.tournament.MatchResult;
-import com.mannschaft.app.tournament.MatchStatus;
+import com.mannschaft.app.tournament.FixtureResult;
+import com.mannschaft.app.tournament.FixtureStatus;
 import com.mannschaft.app.tournament.PromotionZone;
 import com.mannschaft.app.tournament.StandingsRecalculationEvent;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchSetEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureSetEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entity.TournamentStandingEntity;
 import com.mannschaft.app.tournament.entity.TournamentTiebreakerEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchSetRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureSetRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.tournament.repository.TournamentStandingRepository;
 import com.mannschaft.app.tournament.repository.TournamentTiebreakerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -34,6 +36,16 @@ import java.util.Map;
 /**
  * 順位表の自動計算サービス。試合結果入力時に非同期で再計算する。
  * 冪等方式: 毎回全COMPLETED試合からゼロ計算してUPSERTする。
+ *
+ * <p><b>スコア源泉は fixture スナップショット列（05 §H.2.1 / H.2.3）</b>: 本サービスは
+ * {@link TournamentFixtureEntity} のスコア列（{@code homeScore} / {@code awayScore} /
+ * {@code result} / {@code status} 等）を読んで勝点・順位を計算する。これらの列は
+ * <b>matches ドメインを正本とする派生スナップショット</b>であり（実体化ビュー・05 §H.2.3）、
+ * クロスドメイン JOIN（CLAUDE.md 原則 1 違反・{@code CrossDomainEntityImportArchTest} が禁ずる）を
+ * 避けるため fixture 自ドメイン内で順位計算が完結するよう設計されている。matches へは直接 JOIN しない。
+ * スナップショットの書込（同期）は入口①の
+ * {@link com.mannschaft.app.tournament.listener.MatchScoreFixtureListener} および
+ * {@link FixtureService#updateScore}/{@code batchUpdateScores} が担う。</p>
  */
 @Slf4j
 @Service
@@ -43,17 +55,32 @@ public class StandingsCalculationService {
     private final TournamentRepository tournamentRepository;
     private final TournamentDivisionRepository divisionRepository;
     private final TournamentParticipantRepository participantRepository;
-    private final TournamentMatchRepository matchRepository;
-    private final TournamentMatchSetRepository matchSetRepository;
+    private final TournamentFixtureRepository matchRepository;
+    private final TournamentFixtureSetRepository matchSetRepository;
     private final TournamentStandingRepository standingRepository;
     private final TournamentTiebreakerRepository tiebreakerRepository;
 
     /**
      * 順位表再計算イベントを受信する。
+     *
+     * <p><b>レース条件根治（05 §H.0 訂正）</b>: 以前は {@code @Async @EventListener} だったため、
+     * 発火元TX（{@link FixtureService#updateScore} の {@code @Transactional}、および入口①
+     * {@code MatchScoreFixtureListener} の {@code REQUIRES_NEW}）の<b>コミット前</b>に別スレッドで
+     * 即時実行され、未コミットのスコア（{@code played=0} 等）を読んで順位表が自動反映されなかった。
+     * これを {@link TransactionalEventListener}(AFTER_COMMIT) に切り替え、発火元TXの
+     * <b>コミット後</b>に確定データを読んで再計算する（手動再計算なしで自動反映が確定する）。</p>
+     *
+     * <p><b>{@code @Async} は併存可</b>: {@code @TransactionalEventListener}(AFTER_COMMIT) が
+     * コミット後にリスナー呼び出しを発生させ、その呼び出しを {@code @Async} が別スレッドへ逃がす。
+     * したがって「コミット後」かつ「非同期（呼び出し元をブロックしない）」が両立する。</p>
+     *
+     * <p><b>TX境界</b>: AFTER_COMMIT 後はアクティブTXが無いため {@code REQUIRES_NEW} で新規TXを開始する。
+     * Spring は {@code @TransactionalEventListener} に {@code @Transactional(REQUIRED)} を付けることを
+     * 禁じている（起動時バリデーション失敗・ApplicationContext全滅）ため {@code REQUIRES_NEW} が正道。</p>
      */
     @Async
-    @EventListener
-    @Transactional
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onStandingsRecalculation(StandingsRecalculationEvent event) {
         recalculate(event.getDivisionId(), event.getTournamentId());
     }
@@ -73,8 +100,10 @@ public class StandingsCalculationService {
 
         List<TournamentParticipantEntity> participants =
                 participantRepository.findByDivisionIdOrderBySeedAsc(divisionId);
-        List<TournamentMatchEntity> completedMatches =
-                matchRepository.findByDivisionIdAndStatus(divisionId, MatchStatus.COMPLETED);
+        // COMPLETED 抽出・以降のスコア集計は fixture スナップショット列（matches 正本の派生・05 §H.2.3）由来。
+        // matches へクロスドメイン JOIN せず fixture 自ドメイン内で順位計算が完結する（CLAUDE.md 原則 1）。
+        List<TournamentFixtureEntity> completedMatches =
+                matchRepository.findByDivisionIdAndStatus(divisionId, FixtureStatus.COMPLETED);
         List<TournamentTiebreakerEntity> tiebreakers =
                 tiebreakerRepository.findByTournamentIdOrderByPriorityAsc(tournamentId);
 
@@ -84,7 +113,7 @@ public class StandingsCalculationService {
             statsMap.put(p.getId(), new TeamStats(p.getId()));
         }
 
-        for (TournamentMatchEntity match : completedMatches) {
+        for (TournamentFixtureEntity match : completedMatches) {
             processMatch(match, statsMap, tournament);
         }
 
@@ -121,7 +150,7 @@ public class StandingsCalculationService {
         log.info("順位表再計算完了: divisionId={}", divisionId);
     }
 
-    private void processMatch(TournamentMatchEntity match, Map<Long, TeamStats> statsMap,
+    private void processMatch(TournamentFixtureEntity match, Map<Long, TeamStats> statsMap,
                                TournamentEntity tournament) {
         Long homeId = match.getHomeParticipantId();
         Long awayId = match.getAwayParticipantId();
@@ -134,6 +163,7 @@ public class StandingsCalculationService {
         homeStats.played++;
         awayStats.played++;
 
+        // 得失点・勝敗は fixture スナップショット列（matches 正本の派生・05 §H.2.3）を読む。
         int homeScore = match.getHomeScore() != null ? match.getHomeScore() : 0;
         int awayScore = match.getAwayScore() != null ? match.getAwayScore() : 0;
         homeStats.scoreFor += homeScore;
@@ -142,9 +172,9 @@ public class StandingsCalculationService {
         awayStats.scoreAgainst += homeScore;
 
         // セット別集計
-        List<TournamentMatchSetEntity> sets = matchSetRepository.findByMatchIdOrderBySetNumberAsc(match.getId());
+        List<TournamentFixtureSetEntity> sets = matchSetRepository.findByMatchIdOrderBySetNumberAsc(match.getId());
         int homeSetsWon = 0, awaySetsWon = 0;
-        for (TournamentMatchSetEntity set : sets) {
+        for (TournamentFixtureSetEntity set : sets) {
             if (set.getHomeScore() > set.getAwayScore()) homeSetsWon++;
             else if (set.getAwayScore() > set.getHomeScore()) awaySetsWon++;
         }
@@ -154,10 +184,10 @@ public class StandingsCalculationService {
         awayStats.setsLost += homeSetsWon;
 
         // 勝敗と勝点
-        MatchResult result = match.getResult();
-        boolean isHomeWin = result == MatchResult.HOME_WIN || result == MatchResult.FORFEIT_HOME_WIN;
-        boolean isAwayWin = result == MatchResult.AWAY_WIN || result == MatchResult.FORFEIT_AWAY_WIN;
-        boolean isDraw = result == MatchResult.DRAW;
+        FixtureResult result = match.getResult();
+        boolean isHomeWin = result == FixtureResult.HOME_WIN || result == FixtureResult.FORFEIT_HOME_WIN;
+        boolean isAwayWin = result == FixtureResult.AWAY_WIN || result == FixtureResult.FORFEIT_AWAY_WIN;
+        boolean isDraw = result == FixtureResult.DRAW;
 
         if (isHomeWin) {
             homeStats.wins++;
@@ -181,7 +211,7 @@ public class StandingsCalculationService {
     }
 
     private Comparator<TeamStats> buildComparator(List<TournamentTiebreakerEntity> tiebreakers,
-                                                   List<TournamentMatchEntity> matches,
+                                                   List<TournamentFixtureEntity> matches,
                                                    Map<Long, TeamStats> statsMap) {
         Comparator<TeamStats> comparator = (a, b) -> 0;
 
@@ -227,22 +257,22 @@ public class StandingsCalculationService {
         return PromotionZone.SAFE;
     }
 
-    private String calculateForm(Long participantId, List<TournamentMatchEntity> matches) {
-        List<TournamentMatchEntity> teamMatches = matches.stream()
+    private String calculateForm(Long participantId, List<TournamentFixtureEntity> matches) {
+        List<TournamentFixtureEntity> teamMatches = matches.stream()
                 .filter(m -> participantId.equals(m.getHomeParticipantId()) ||
                              participantId.equals(m.getAwayParticipantId()))
-                .sorted(Comparator.comparing(TournamentMatchEntity::getCreatedAt).reversed())
+                .sorted(Comparator.comparing(TournamentFixtureEntity::getCreatedAt).reversed())
                 .limit(5)
                 .toList();
 
         StringBuilder form = new StringBuilder();
-        for (TournamentMatchEntity m : teamMatches) {
+        for (TournamentFixtureEntity m : teamMatches) {
             boolean isHome = participantId.equals(m.getHomeParticipantId());
-            MatchResult r = m.getResult();
-            if (r == MatchResult.DRAW) {
+            FixtureResult r = m.getResult();
+            if (r == FixtureResult.DRAW) {
                 form.append('D');
-            } else if ((isHome && (r == MatchResult.HOME_WIN || r == MatchResult.FORFEIT_HOME_WIN)) ||
-                       (!isHome && (r == MatchResult.AWAY_WIN || r == MatchResult.FORFEIT_AWAY_WIN))) {
+            } else if ((isHome && (r == FixtureResult.HOME_WIN || r == FixtureResult.FORFEIT_HOME_WIN)) ||
+                       (!isHome && (r == FixtureResult.AWAY_WIN || r == FixtureResult.FORFEIT_AWAY_WIN))) {
                 form.append('W');
             } else {
                 form.append('L');

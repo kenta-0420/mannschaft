@@ -10,6 +10,8 @@ import com.mannschaft.app.dashboard.dto.UpdateWidgetSettingsRequest;
 import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
 import com.mannschaft.app.dashboard.entity.DashboardWidgetSettingEntity;
 import com.mannschaft.app.dashboard.repository.DashboardWidgetSettingRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.service.ModuleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,9 @@ public class DashboardWidgetService {
     private final DashboardMapper dashboardMapper;
     private final AccessControlService accessControlService;
     private final ModuleService moduleService;
+    /** slug → 数値ID 解決に使用（クロスドメインだが Service メソッド経由のため許容。Entity 直接参照はしない）。 */
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
 
     /** ウィジェット名のマッピング（将来的にはi18n対応） */
     private static final Map<String, String> WIDGET_NAMES = Map.ofEntries(
@@ -51,6 +56,21 @@ public class DashboardWidgetService {
             Map.entry("PERSONAL_PROJECT_PROGRESS", "プロジェクト進捗"),
             Map.entry("CHAT_HUB", "チャットハブ"),
             Map.entry("BILLING_PERSONAL", "課金サマリー（個人）"),
+            Map.entry("TIMETABLE_TODAY", "今日の時間割"),
+            Map.entry("TIMETABLE_NOTES", "今日のメモ"),
+            Map.entry("MY_CORKBOARD", "マイコルクボード"),
+            // 対象3-A: 個人ダッシュボード DashboardPersonalPanel.vue の並び替え対象ウィジェット対応キー
+            Map.entry("PERSONAL_EVENT_DISMISSAL_REMINDER", "イベント解散通知リマインダー"),
+            Map.entry("PERSONAL_WEATHER", "天気"),
+            Map.entry("PERSONAL_TODO_COUNTDOWN", "TODOカウントダウン"),
+            Map.entry("PERSONAL_REFLECTION_TODAY", "今日のふりかえり"),
+            Map.entry("PERSONAL_TEAM_ANNOUNCEMENTS", "チームのお知らせ"),
+            Map.entry("PERSONAL_ORG_ANNOUNCEMENTS", "組織のお知らせ"),
+            Map.entry("PERSONAL_BLOG", "ブログ"),
+            Map.entry("PERSONAL_MY_TEAMS", "参加チーム"),
+            Map.entry("PERSONAL_MY_ORGANIZATIONS", "参加組織"),
+            Map.entry("PERSONAL_FAVORITES", "お気に入り"),
+            Map.entry("RETURN_STAY_PLAN", "帰省・滞在予定"),
             Map.entry("TEAM_NOTICES", "チームお知らせ"),
             Map.entry("TEAM_UPCOMING_EVENTS", "直近イベント"),
             Map.entry("TEAM_TODO", "チームTODO"),
@@ -61,15 +81,38 @@ public class DashboardWidgetService {
             Map.entry("TEAM_MEMBER_ATTENDANCE", "メンバー出欠状況"),
             Map.entry("TEAM_TOURNAMENT_RECORD", "大会成績"),
             Map.entry("TEAM_DIVISION_STANDINGS", "順位表"),
+            Map.entry("TEAM_MATCH_SUMMARY", "試合サマリ"),
             Map.entry("TEAM_BILLING", "課金サマリー"),
             Map.entry("TEAM_PAGE_VIEWS", "アクセス解析"),
+            // 対象2: FE チームウィジェット対応の追加キー
+            Map.entry("TEAM_MEMBERS", "メンバー"),
+            Map.entry("TEAM_GALLERY", "ギャラリー"),
+            Map.entry("TEAM_CIRCULATION", "回覧板"),
+            Map.entry("TEAM_SURVEYS", "アンケート"),
+            Map.entry("TEAM_SURVEY_RESULTS", "アンケート結果"),
+            Map.entry("TEAM_BLOG", "ブログ"),
+            Map.entry("TEAM_SCHEDULE_CALENDAR", "カレンダー"),
+            Map.entry("TEAM_MEMBER_INFO", "メンバー情報"),
             Map.entry("ORG_TEAM_LIST", "傘下チーム一覧"),
             Map.entry("ORG_NOTICES", "組織お知らせ"),
             Map.entry("ORG_TODO", "組織TODO"),
             Map.entry("ORG_PROJECT_PROGRESS", "プロジェクト進捗"),
             Map.entry("ORG_STATS", "組織統計サマリー"),
             Map.entry("ORG_TOURNAMENT_SUMMARY", "主催大会サマリ"),
-            Map.entry("ORG_BILLING", "課金サマリー")
+            Map.entry("ORG_BILLING", "課金サマリー"),
+            // 対象2: FE 組織ウィジェット対応の追加キー
+            Map.entry("ORG_UPCOMING_EVENTS", "今後の予定"),
+            Map.entry("ORG_LATEST_POSTS", "タイムライン"),
+            Map.entry("ORG_BLOG", "ブログ"),
+            Map.entry("ORG_UNREAD_THREADS", "未読スレッド数"),
+            Map.entry("ORG_SCHEDULE_CALENDAR", "カレンダー"),
+            Map.entry("ORG_MEMBERS", "メンバー"),
+            Map.entry("ORG_ACTIVITY", "活動記録"),
+            Map.entry("ORG_GALLERY", "ギャラリー"),
+            Map.entry("ORG_CIRCULATION", "回覧板"),
+            Map.entry("ORG_SURVEYS", "アンケート"),
+            Map.entry("ORG_SURVEY_RESULTS", "アンケート結果"),
+            Map.entry("ORG_MEMBER_ATTENDANCE", "出席確認状況")
     );
 
     /**
@@ -130,6 +173,8 @@ public class DashboardWidgetService {
     public List<WidgetSettingResponse> updateWidgetSettings(Long userId, UpdateWidgetSettingsRequest request) {
         ScopeType scopeType = parseScopeType(request.getScopeType());
         Long scopeId = resolveScopeId(scopeType, request.getScopeId());
+        // scopeId 以降は解決済みの数値 ID（slug ではない）。
+        // accessControlService.isAdminOrAbove / repository 検索には数値 ID を渡す。
 
         for (UpdateWidgetSettingsRequest.WidgetSettingItem item : request.getWidgets()) {
             validateWidgetKey(item.getWidgetKey(), scopeType);
@@ -145,9 +190,13 @@ public class DashboardWidgetService {
                 continue;
             }
 
-            // ロール制限ウィジェットはADMIN/DEPUTY_ADMIN以外は無視
+            // ロール制限ウィジェットはADMIN/DEPUTY_ADMIN以外は無視。
+            // 個人スコープにはメンバーシップ上の管理者ロール概念が無く、
+            // PERSONAL を membership.ScopeType.valueOf に渡すと例外になるため短絡で skip。
+            // （個人スコープには role-restricted ウィジェットは定義されていないため影響なし）
             if (wk.isRoleRestricted()
-                    && !accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name())) {
+                    && (scopeType == ScopeType.PERSONAL
+                            || !accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name()))) {
                 continue;
             }
 
@@ -172,18 +221,22 @@ public class DashboardWidgetService {
             );
         }
 
-        boolean isAdmin = accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name());
+        // 個人スコープには管理者ロール概念が無いため短絡で false。
+        // PERSONAL を membership.ScopeType に渡すと IllegalArgumentException になる。
+        boolean isAdmin = scopeType != ScopeType.PERSONAL
+                && accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name());
         return getWidgetSettings(userId, scopeType, scopeId, isAdmin);
     }
 
     /**
      * 指定スコープのウィジェット設定を全削除しデフォルトにリセットする。
+     *
+     * @param scopeId 解決済みの数値スコープID（呼び出し側で {@link #resolveScopeId(ScopeType, String)} を通すこと）
      */
     @Transactional
     public void resetWidgetSettings(Long userId, ScopeType scopeType, Long scopeId) {
-        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
-        widgetSettingRepository.deleteByUserIdAndScopeTypeAndScopeId(userId, scopeType, resolvedScopeId);
-        log.info("ウィジェット設定リセット userId={}, scopeType={}, scopeId={}", userId, scopeType, resolvedScopeId);
+        widgetSettingRepository.deleteByUserIdAndScopeTypeAndScopeId(userId, scopeType, scopeId);
+        log.info("ウィジェット設定リセット userId={}, scopeType={}, scopeId={}", userId, scopeType, scopeId);
     }
 
     /**
@@ -200,15 +253,32 @@ public class DashboardWidgetService {
 
     /**
      * スコープIDを解決する。PERSONALの場合は0を返す。
+     *
+     * <p>TEAM/ORGANIZATION では slug 文字列（例: {@code org-000001} / {@code team-000017}）と
+     * 数値文字列の両方を受け付ける（slug-or-numeric）。数値であればそのまま {@code Long} へ、
+     * slug であれば {@link TeamService#resolveTeamId(String)} /
+     * {@link OrganizationService#resolveOrgId(String)} 経由で数値IDへ解決する。
+     * 数値ID呼び出しの後方互換を保ちつつ、FE が送る slug を受理して 400 を根治する。</p>
+     *
+     * @param scopeId slug もしくは数値文字列。PERSONAL の場合は無視する（null 可）。
+     * @return 解決済みの数値スコープID（PERSONAL は 0）
      */
-    public Long resolveScopeId(ScopeType scopeType, Long scopeId) {
+    public Long resolveScopeId(ScopeType scopeType, String scopeId) {
         if (scopeType == ScopeType.PERSONAL) {
             return 0L;
         }
         if (scopeId == null) {
             throw new BusinessException(DashboardErrorCode.DASHBOARD_014);
         }
-        return scopeId;
+        try {
+            // 数値文字列はそのまま数値IDとして解釈する（既存の数値ID呼び出しの退行防止）。
+            return Long.parseLong(scopeId);
+        } catch (NumberFormatException e) {
+            // 数値でない場合は slug として各ドメイン Service で解決する（解決不能時は Service が例外を投げる＝404相当）。
+            return scopeType == ScopeType.TEAM
+                    ? teamService.resolveTeamId(scopeId)
+                    : organizationService.resolveOrgId(scopeId);
+        }
     }
 
     /**

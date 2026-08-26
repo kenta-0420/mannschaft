@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.membership.dto.CardStatusResponse;
 import com.mannschaft.app.membership.dto.CheckinHistoryResponse;
 import com.mannschaft.app.membership.dto.MemberCardDetailResponse;
@@ -23,12 +24,16 @@ import com.mannschaft.app.membership.repository.MemberCardCheckinRepository;
 import com.mannschaft.app.membership.repository.MemberCardRepository;
 import com.mannschaft.app.membership.service.MemberCardService;
 import com.mannschaft.app.membership.service.QrTokenService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -90,6 +95,24 @@ class MemberCardServiceTest {
     private static final String DISPLAY_NAME = "山田太郎";
     private static final String QR_SECRET = "qr-secret-abc";
     private static final String QR_TOKEN = CARD_CODE + ".1234567890.1234568190.signature";
+
+    private MockedStatic<SecurityUtils> securityUtilsMock;
+
+    /**
+     * 認可根治戦役 Wave3-B9: suspend/reactivate/getScopeCheckins が内部で
+     * {@code SecurityUtils.getCurrentUserId()} を呼ぶようになったため、全テストで static mock する。
+     * 既定は ADMIN_USER_ID（スコープの管理者）を返す。
+     */
+    @BeforeEach
+    void setUpSecurityUtils() {
+        securityUtilsMock = Mockito.mockStatic(SecurityUtils.class);
+        securityUtilsMock.when(SecurityUtils::getCurrentUserId).thenReturn(ADMIN_USER_ID);
+    }
+
+    @AfterEach
+    void tearDownSecurityUtils() {
+        securityUtilsMock.close();
+    }
 
     private MemberCardEntity createActiveCard() {
         return MemberCardEntity.builder()
@@ -759,7 +782,9 @@ class MemberCardServiceTest {
         @Test
         @DisplayName("正常系: スコープの会員証一覧が返却される（検索なし）")
         void 取得_正常_一覧返却() {
-            // Given
+            // Given: 操作者がスコープ ADMIN（checkAdminOrAbove が通る）
+            doNothing().when(accessControlService)
+                    .checkAdminOrAbove(ADMIN_USER_ID, SCOPE_ID, ScopeType.TEAM.name());
             MemberCardEntity card = createActiveCard();
             given(memberCardRepository.findByScopeAndStatus(ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE))
                     .willReturn(List.of(card));
@@ -768,7 +793,7 @@ class MemberCardServiceTest {
 
             // When
             Map<String, Object> result = memberCardService.getScopeMemberCards(
-                    ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE, null);
+                    ADMIN_USER_ID, ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE, null);
 
             // Then
             @SuppressWarnings("unchecked")
@@ -780,7 +805,9 @@ class MemberCardServiceTest {
         @Test
         @DisplayName("正常系: 検索クエリ付きで一覧返却")
         void 取得_検索あり_フィルタ済み一覧返却() {
-            // Given
+            // Given: 操作者がスコープ ADMIN
+            doNothing().when(accessControlService)
+                    .checkAdminOrAbove(ADMIN_USER_ID, SCOPE_ID, ScopeType.TEAM.name());
             MemberCardEntity card = createActiveCard();
             given(memberCardRepository.findByScopeAndStatusWithSearch(
                     ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE, "山田"))
@@ -790,12 +817,54 @@ class MemberCardServiceTest {
 
             // When
             Map<String, Object> result = memberCardService.getScopeMemberCards(
-                    ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE, "山田");
+                    ADMIN_USER_ID, ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE, "山田");
 
             // Then
             @SuppressWarnings("unchecked")
             List<MemberCardListResponse> data = (List<MemberCardListResponse>) result.get("data");
             assertThat(data).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("異常系: 非管理者は COMMON_002（403）— 会員氏名/カード番号を列挙できない")
+        void 取得_非管理者_403() {
+            // Given: checkAdminOrAbove が COMMON_002 を投げる（非メンバー/非管理者）
+            org.mockito.BDDMockito.willThrow(
+                    new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkAdminOrAbove(USER_ID, SCOPE_ID, ScopeType.TEAM.name());
+
+            // When / Then: 認可チェックで弾かれ、リポジトリ照会には到達しない
+            assertThatThrownBy(() -> memberCardService.getScopeMemberCards(
+                    USER_ID, ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE, "山田"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            verify(memberCardRepository, org.mockito.Mockito.never())
+                    .findByScopeAndStatus(any(), any(), any());
+            verify(memberCardRepository, org.mockito.Mockito.never())
+                    .findByScopeAndStatusWithSearch(any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("異常系: 他スコープ指定でも認可チェックが当該 scopeId で行われ横断列挙を拒否")
+        void 取得_他スコープ指定_認可で拒否() {
+            // Given: 操作者は SCOPE_ID の管理者だが、別スコープ(999)の会員を要求
+            Long otherScopeId = 999L;
+            org.mockito.BDDMockito.willThrow(
+                    new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkAdminOrAbove(ADMIN_USER_ID, otherScopeId, ScopeType.ORGANIZATION.name());
+
+            // When / Then: 要求された scopeId(999) で認可チェックが行われ 403
+            assertThatThrownBy(() -> memberCardService.getScopeMemberCards(
+                    ADMIN_USER_ID, ScopeType.ORGANIZATION, otherScopeId, CardStatus.ACTIVE, null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            // 認可が要求 scopeId で行われたことを確認（横断列挙防止）
+            verify(accessControlService)
+                    .checkAdminOrAbove(ADMIN_USER_ID, otherScopeId, ScopeType.ORGANIZATION.name());
         }
     }
 
@@ -813,6 +882,7 @@ class MemberCardServiceTest {
             // Given
             MemberCardEntity card = createActiveCard();
             given(memberCardRepository.findByIdAndDeletedAtIsNull(CARD_ID)).willReturn(Optional.of(card));
+            given(accessControlService.isMember(ADMIN_USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
             given(memberCardRepository.save(any(MemberCardEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -822,6 +892,7 @@ class MemberCardServiceTest {
             // Then
             assertThat(response.getData().getStatus()).isEqualTo("SUSPENDED");
             verify(memberCardRepository).save(any(MemberCardEntity.class));
+            verify(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, SCOPE_ID, "TEAM");
         }
 
         @Test
@@ -830,6 +901,7 @@ class MemberCardServiceTest {
             // Given
             MemberCardEntity card = createSuspendedCard();
             given(memberCardRepository.findByIdAndDeletedAtIsNull(CARD_ID)).willReturn(Optional.of(card));
+            given(accessControlService.isMember(ADMIN_USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When / Then
             assertThatThrownBy(() -> memberCardService.suspend(CARD_ID))
@@ -844,12 +916,30 @@ class MemberCardServiceTest {
             // Given
             MemberCardEntity card = createRevokedCard();
             given(memberCardRepository.findByIdAndDeletedAtIsNull(CARD_ID)).willReturn(Optional.of(card));
+            given(accessControlService.isMember(ADMIN_USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When / Then
             assertThatThrownBy(() -> memberCardService.suspend(CARD_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("MEMBERSHIP_009"));
+        }
+
+        @Test
+        @DisplayName("異常系: entity由来scopeの非メンバーはMEMBERSHIP_001（404・BOLA存在秘匿）")
+        void 停止_非メンバー_MEMBERSHIP001例外() {
+            // Given: card は実在するがカードスコープの isMember が false（非メンバー・越境）
+            MemberCardEntity card = createActiveCard();
+            given(memberCardRepository.findByIdAndDeletedAtIsNull(CARD_ID)).willReturn(Optional.of(card));
+            given(accessControlService.isMember(ADMIN_USER_ID, SCOPE_ID, "TEAM")).willReturn(false);
+
+            // When / Then
+            assertThatThrownBy(() -> memberCardService.suspend(CARD_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("MEMBERSHIP_001"));
+            verify(accessControlService, org.mockito.Mockito.never())
+                    .checkAdminOrAbove(any(), any(), any());
         }
     }
 
@@ -867,6 +957,7 @@ class MemberCardServiceTest {
             // Given
             MemberCardEntity card = createSuspendedCard();
             given(memberCardRepository.findByIdAndDeletedAtIsNull(CARD_ID)).willReturn(Optional.of(card));
+            given(accessControlService.isMember(ADMIN_USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
             given(memberCardRepository.save(any(MemberCardEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -876,6 +967,7 @@ class MemberCardServiceTest {
             // Then
             assertThat(response.getData().getStatus()).isEqualTo("ACTIVE");
             verify(memberCardRepository).save(any(MemberCardEntity.class));
+            verify(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, SCOPE_ID, "TEAM");
         }
 
         @Test
@@ -884,6 +976,7 @@ class MemberCardServiceTest {
             // Given
             MemberCardEntity card = createRevokedCard();
             given(memberCardRepository.findByIdAndDeletedAtIsNull(CARD_ID)).willReturn(Optional.of(card));
+            given(accessControlService.isMember(ADMIN_USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When / Then
             assertThatThrownBy(() -> memberCardService.reactivate(CARD_ID))
@@ -898,12 +991,30 @@ class MemberCardServiceTest {
             // Given
             MemberCardEntity card = createActiveCard();
             given(memberCardRepository.findByIdAndDeletedAtIsNull(CARD_ID)).willReturn(Optional.of(card));
+            given(accessControlService.isMember(ADMIN_USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When / Then
             assertThatThrownBy(() -> memberCardService.reactivate(CARD_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("MEMBERSHIP_018"));
+        }
+
+        @Test
+        @DisplayName("異常系: entity由来scopeの非メンバーはMEMBERSHIP_001（404・BOLA存在秘匿）")
+        void 解除_非メンバー_MEMBERSHIP001例外() {
+            // Given
+            MemberCardEntity card = createSuspendedCard();
+            given(memberCardRepository.findByIdAndDeletedAtIsNull(CARD_ID)).willReturn(Optional.of(card));
+            given(accessControlService.isMember(ADMIN_USER_ID, SCOPE_ID, "TEAM")).willReturn(false);
+
+            // When / Then
+            assertThatThrownBy(() -> memberCardService.reactivate(CARD_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("MEMBERSHIP_001"));
+            verify(accessControlService, org.mockito.Mockito.never())
+                    .checkAdminOrAbove(any(), any(), any());
         }
     }
 
@@ -1013,6 +1124,26 @@ class MemberCardServiceTest {
             assertThat(response.getData()).hasSize(1);
             assertThat(response.getData().get(0).getCheckinType()).isEqualTo("SELF");
             assertThat(response.getData().get(0).getCardNumber()).isEqualTo(CARD_NUMBER);
+            verify(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, SCOPE_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("異常系: 非管理者はCOMMON_002（403）— スコープ全体のチェックイン履歴を認可なく取得できない")
+        void 取得_非管理者_403() {
+            // Given: checkAdminOrAbove が COMMON_002 を投げる
+            org.mockito.BDDMockito.willThrow(
+                    new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkAdminOrAbove(ADMIN_USER_ID, SCOPE_ID, "TEAM");
+
+            // When / Then
+            assertThatThrownBy(() -> memberCardService.getScopeCheckins(
+                    ScopeType.TEAM, SCOPE_ID, LocalDateTime.now().minusDays(1), LocalDateTime.now()))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            verify(checkinRepository, org.mockito.Mockito.never())
+                    .findByScopeAndPeriod(any(), any(), any(), any());
         }
     }
 }

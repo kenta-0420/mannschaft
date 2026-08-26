@@ -129,7 +129,7 @@ class AccountPurgeServiceTest {
         given(oAuthAccountRepository.findByUserId(userId)).willReturn(List.of());
         given(twoFactorAuthRepository.findByUserId(userId)).willReturn(Optional.empty());
         given(webAuthnCredentialRepository.findByUserId(userId)).willReturn(List.of());
-        given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any())).willReturn(List.of());
+        given(dataExportRepository.findByUserIdAndS3KeyIsNotNull(any())).willReturn(List.of());
     }
 
     @Nested
@@ -202,7 +202,7 @@ class AccountPurgeServiceTest {
         }
 
         @Test
-        @DisplayName("Phase D-8: AccountPurgedEvent 発火前に 6 ドメイン分の PENDING レコードが INSERT される")
+        @DisplayName("Phase D-8/残債1: AccountPurgedEvent 発火前に 8 ドメイン分の PENDING レコードが INSERT される")
         void PhaseD8_PENDING_レコードがINSERTされる() {
             UserEntity user = buildUser(USER_ID);
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
@@ -211,11 +211,12 @@ class AccountPurgeServiceTest {
 
             service.purgeExpiredAccounts();
 
-            // 6 ドメイン（role/team/payment/chart/proxy/errorreport）分の save が呼ばれること
-            verify(completionStatusRepository, atLeast(6)).save(any(AccountPurgeCompletionStatusEntity.class));
+            // 8 ドメイン（role/team/payment/chart/proxy/errorreport/resume/billing）分の save が呼ばれること
+            verify(completionStatusRepository, atLeast(8)).save(any(AccountPurgeCompletionStatusEntity.class));
 
-            // 各ドメイン名の PENDING レコードが INSERT されること
-            for (String domain : List.of("role", "team", "payment", "chart", "proxy", "errorreport")) {
+            // 各ドメイン名の PENDING レコードが INSERT されること（残債1: billing を追加登録）
+            for (String domain : List.of(
+                    "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing")) {
                 verify(completionStatusRepository).save(argThat(entity ->
                         entity.getUserId().equals(USER_ID)
                                 && entity.getDomainName().equals(domain)
@@ -268,7 +269,7 @@ class AccountPurgeServiceTest {
                     .status("COMPLETED")
                     .s3Key("exports/100/data.zip")
                     .build();
-            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any()))
+            given(dataExportRepository.findByUserIdAndS3KeyIsNotNull(any()))
                     .willReturn(List.of(dataExport));
 
             service.purgeExpiredAccounts();
@@ -295,7 +296,7 @@ class AccountPurgeServiceTest {
                     .status("COMPLETED")
                     .s3Key("exports/100/data.zip")
                     .build();
-            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any()))
+            given(dataExportRepository.findByUserIdAndS3KeyIsNotNull(any()))
                     .willReturn(List.of(dataExport));
             org.mockito.Mockito.doThrow(new RuntimeException("S3 connection refused"))
                     .when(storageService).delete("exports/100/data.zip");
@@ -403,7 +404,7 @@ class AccountPurgeServiceTest {
                     .status("COMPLETED")
                     .s3Key("exports/100/data.zip")
                     .build();
-            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any()))
+            given(dataExportRepository.findByUserIdAndS3KeyIsNotNull(any()))
                     .willReturn(List.of(dataExport));
 
             // 501文字のエラーメッセージ

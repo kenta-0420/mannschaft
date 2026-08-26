@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.SurveyErrorCode;
@@ -18,6 +19,7 @@ import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +54,8 @@ public class SurveyRemindService {
     private final UserRoleRepository userRoleRepository;
     private final AccessControlService accessControlService;
     private final NotificationHelper notificationHelper;
+    private final OrganizationMembershipService organizationMembershipService;
+    private final MessageSource messageSource;
 
     /**
      * 未回答者へ督促通知を送信する（F05.4 督促 API）。
@@ -110,22 +114,35 @@ public class SurveyRemindService {
         // 未回答者抽出（distribution_mode に応じて母集団を切り替え。回答済みを除外）
         List<Long> unansweredUserIds = findUnansweredUserIds(survey);
 
-        // 通知送信（NotificationHelper.notifyAll が個別の失敗を握りつつ継続する）
+        // 通知送信（配信＝受信権 統一・関所(1)通知）:
+        // unansweredUserIds は配信母集団（resolveUniverseUserIds が includeSupporters トグル準拠で展開した
+        // 集合）から回答済みを除いたもので、全員が配信母集団として事前認可済み。よって notifyAllPreAuthorized
+        // を使い canView 絞り込み（SURVEY の ResultsVisibility 軸を含む）を通さない。これにより督促通知が
+        // 公開通知と同様に誤 deny で届かなくなる (B) レグを回避する。NotificationHelper が個別失敗を握り継続する。
         NotificationScopeType notifScope = "TEAM".equals(survey.getScopeType())
                 ? NotificationScopeType.TEAM
                 : NotificationScopeType.ORGANIZATION;
         if (!unansweredUserIds.isEmpty()) {
-            notificationHelper.notifyAll(
+            // Issue #2715 CMP-055 ロットC-5: 受信者 locale に応じて件名・本文を組み立てる
+            // （notifyAllPreAuthorizedLocalized は notifyAllPreAuthorized 同様 canView 絞り込みを通さない）。
+            notificationHelper.notifyAllPreAuthorizedLocalized(
                     unansweredUserIds,
                     SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name(),
-                    "アンケート未回答のお知らせ",
-                    "「" + survey.getTitle() + "」が未回答です。回答にご協力ください。",
                     "SURVEY",
                     surveyId,
                     notifScope,
                     survey.getScopeId(),
                     "/surveys/" + surveyId,
-                    currentUserId);
+                    currentUserId,
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
+                            messageSource.getMessage(
+                                    "notification.survey.remind.title", null,
+                                    "アンケート未回答のお知らせ", locale),
+                            messageSource.getMessage(
+                                    "notification.survey.remind.body",
+                                    new Object[]{survey.getTitle()},
+                                    "「" + survey.getTitle() + "」が未回答です。回答にご協力ください。",
+                                    locale)));
         }
 
         // カウンタ更新
@@ -181,6 +198,12 @@ public class SurveyRemindService {
      */
     private List<Long> resolveUniverseUserIds(SurveyEntity survey) {
         if (survey.getDistributionMode() == DistributionMode.ALL) {
+            // 組織×ALL は配下参加チームを展開する（OrganizationMembershipService 経由・越境是正）。
+            // チームスコープ（および COMMITTEE 等）は配下展開なし・従来挙動を維持する。
+            if ("ORGANIZATION".equals(survey.getScopeType())) {
+                return organizationMembershipService.resolveOrgDistributionUserIds(
+                        survey.getScopeId(), Boolean.TRUE.equals(survey.getIncludeSupporters()));
+            }
             return userRoleRepository.findUserIdsByScope(survey.getScopeType(), survey.getScopeId());
         }
         // TARGETED: survey_targets が母集団

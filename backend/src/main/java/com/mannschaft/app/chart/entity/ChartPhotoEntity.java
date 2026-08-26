@@ -5,7 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,8 +17,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "chart_photos")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ChartPhotoEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -27,7 +26,7 @@ public class ChartPhotoEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String photoType;
 
-    @Column(nullable = false, length = 500)
+    @Column(name = "s3_key", nullable = false, length = 500)
     private String s3Key;
 
     @Column(nullable = false, length = 300)

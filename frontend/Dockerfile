@@ -27,6 +27,19 @@ COPY . .
 # set a placeholder here so the build succeeds in CI without a live backend.
 ARG NUXT_PUBLIC_API_BASE=http://localhost:8080
 ENV NUXT_PUBLIC_API_BASE=${NUXT_PUBLIC_API_BASE}
+# NUXT_INTERNAL_API_BASE: Nitro サーバー（SSR）側がバックエンドを叩く際の絶対 URL。
+# ブラウザ用 NUXT_PUBLIC_API_BASE は本番で '' (同一オリジン相対) にできるが、
+# サーバーサイドは相対パスでは届かないため別途設定する。
+# 本番コンテナ起動時に -e NUXT_INTERNAL_API_BASE=http://backend:8080 等で上書きすること。
+ARG NUXT_INTERNAL_API_BASE=http://localhost:8080
+ENV NUXT_INTERNAL_API_BASE=${NUXT_INTERNAL_API_BASE}
+
+# CMP-260821-2130: nuxt build はデフォルトのヒープ上限では OOM で完走しない
+# （実測: サーバー側ソースマップ無効化と組み合わせても 4096MB では死亡、8192MB で完走・
+#   完走時ピーク使用量 9,482MB / swap 0）。builder ステージ限定で置く
+# （ホスト側 workflow の環境変数は RUN へ自動継承されず、runtime ステージ（別 FROM）へも
+#   引き継がれないため実行時メモリには影響しない）。
+ENV NODE_OPTIONS=--max-old-space-size=8192
 
 RUN npm run build
 

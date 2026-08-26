@@ -314,12 +314,21 @@ const trackStyle = computed(() => {
   return { transform: base, transition }
 })
 
-onMounted(() => {
+onMounted(async () => {
   if (import.meta.client) {
     motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     reducedMotion.value = motionQuery.matches
     motionQuery.addEventListener('change', onMotionChange)
     window.addEventListener('keydown', onKeydown)
+  }
+  // ナビゲーション時もスコープ一覧を再同期する（プラグインはページ遷移で再実行されないため）。
+  // BIGINT→UUID マイグレーションも兼ねる。
+  const authStore = useAuthStore()
+  if (authStore.isAuthenticated) {
+    await Promise.all([
+      store.loadTabs('TEAM', store.teamTabPage),
+      store.loadTabs('ORGANIZATION', store.orgTabPage),
+    ])
   }
 })
 
@@ -386,6 +395,8 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- カルーセル本体（3 パネル同時マウント） -->
+    <DashboardStorageSummary />
+
     <div
       class="relative w-full overflow-hidden"
       @touchstart.passive="onTouchStart"

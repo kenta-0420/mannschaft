@@ -6,6 +6,8 @@ import com.mannschaft.app.dashboard.WidgetKey;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.Map;
 import java.util.Set;
@@ -100,6 +102,13 @@ class WidgetDefaultMinRoleMapTest {
             assertThat(WidgetDefaultMinRoleMap.getDefault(WidgetKey.TEAM_DIVISION_STANDINGS))
                     .isEqualTo(MinRole.SUPPORTER);
         }
+
+        @Test
+        @DisplayName("TEAM_MATCH_SUMMARY → MEMBER（F08.10）")
+        void teamMatchSummary_MEMBER() {
+            assertThat(WidgetDefaultMinRoleMap.getDefault(WidgetKey.TEAM_MATCH_SUMMARY))
+                    .isEqualTo(MinRole.MEMBER);
+        }
     }
 
     // ========================================
@@ -180,6 +189,36 @@ class WidgetDefaultMinRoleMapTest {
         }
 
         @Test
+        @DisplayName("ADMIN_TEAM_MEMBERS は管理対象外（isConfigurable=false）")
+        void adminTeamMembers_対象外() {
+            assertThat(WidgetDefaultMinRoleMap.isConfigurable(WidgetKey.ADMIN_TEAM_MEMBERS)).isFalse();
+        }
+
+        @Test
+        @DisplayName("ADMIN_TEAM_RESERVATIONS は管理対象外（isConfigurable=false）")
+        void adminTeamReservations_対象外() {
+            assertThat(WidgetDefaultMinRoleMap.isConfigurable(WidgetKey.ADMIN_TEAM_RESERVATIONS)).isFalse();
+        }
+
+        @Test
+        @DisplayName("ADMIN_ORG_MEMBERS は管理対象外（isConfigurable=false）")
+        void adminOrgMembers_対象外() {
+            assertThat(WidgetDefaultMinRoleMap.isConfigurable(WidgetKey.ADMIN_ORG_MEMBERS)).isFalse();
+        }
+
+        @Test
+        @DisplayName("ADMIN_TEAM_BUDGET は管理対象外（isConfigurable=false・P3b Wave3）")
+        void adminTeamBudget_対象外() {
+            assertThat(WidgetDefaultMinRoleMap.isConfigurable(WidgetKey.ADMIN_TEAM_BUDGET)).isFalse();
+        }
+
+        @Test
+        @DisplayName("ADMIN_ORG_BUDGET は管理対象外（isConfigurable=false・P3b Wave3）")
+        void adminOrgBudget_対象外() {
+            assertThat(WidgetDefaultMinRoleMap.isConfigurable(WidgetKey.ADMIN_ORG_BUDGET)).isFalse();
+        }
+
+        @Test
         @DisplayName("ADMIN 限定ウィジェットへの getDefault は IllegalArgumentException")
         void getDefault_ADMIN限定_例外() {
             assertThatThrownBy(() -> WidgetDefaultMinRoleMap.getDefault(WidgetKey.TEAM_BILLING))
@@ -253,7 +292,7 @@ class WidgetDefaultMinRoleMapTest {
             assertThat(result.keySet())
                     .allSatisfy(key -> assertThat(key.getScopeType()).isEqualTo(ScopeType.TEAM));
 
-            // 想定 10 キーを網羅（F08.7.1 で 2 件追加）
+            // 想定 19 キーを網羅（F08.7.1 で 2 件 + F08.10 で 1 件 + 対象2 で 8 件追加）
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     WidgetKey.TEAM_NOTICES,
                     WidgetKey.TEAM_UPCOMING_EVENTS,
@@ -264,11 +303,23 @@ class WidgetDefaultMinRoleMapTest {
                     WidgetKey.TEAM_UNREAD_THREADS,
                     WidgetKey.TEAM_MEMBER_ATTENDANCE,
                     WidgetKey.TEAM_TOURNAMENT_RECORD,
-                    WidgetKey.TEAM_DIVISION_STANDINGS);
+                    WidgetKey.TEAM_DIVISION_STANDINGS,
+                    WidgetKey.TEAM_MATCH_SUMMARY,
+                    // 対象2 追加分
+                    WidgetKey.TEAM_MEMBERS,
+                    WidgetKey.TEAM_GALLERY,
+                    WidgetKey.TEAM_CIRCULATION,
+                    WidgetKey.TEAM_SURVEYS,
+                    WidgetKey.TEAM_SURVEY_RESULTS,
+                    WidgetKey.TEAM_BLOG,
+                    WidgetKey.TEAM_SCHEDULE_CALENDAR,
+                    WidgetKey.TEAM_MEMBER_INFO);
 
             // ADMIN 限定は含まれない
             assertThat(result).doesNotContainKey(WidgetKey.TEAM_BILLING);
             assertThat(result).doesNotContainKey(WidgetKey.TEAM_PAGE_VIEWS);
+            assertThat(result).doesNotContainKey(WidgetKey.ADMIN_TEAM_MEMBERS);
+            assertThat(result).doesNotContainKey(WidgetKey.ADMIN_TEAM_RESERVATIONS);
 
             // 値が設計書通り
             assertThat(result.get(WidgetKey.TEAM_NOTICES)).isEqualTo(MinRole.PUBLIC);
@@ -286,17 +337,31 @@ class WidgetDefaultMinRoleMapTest {
                     .allSatisfy(key ->
                             assertThat(key.getScopeType()).isEqualTo(ScopeType.ORGANIZATION));
 
-            // 想定 6 キーを網羅（F08.7.1 で 1 件追加）
+            // 想定 18 キーを網羅（F08.7.1 で 1 件 + 対象2 で 12 件追加）
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     WidgetKey.ORG_TEAM_LIST,
                     WidgetKey.ORG_NOTICES,
                     WidgetKey.ORG_TODO,
                     WidgetKey.ORG_PROJECT_PROGRESS,
                     WidgetKey.ORG_STATS,
-                    WidgetKey.ORG_TOURNAMENT_SUMMARY);
+                    WidgetKey.ORG_TOURNAMENT_SUMMARY,
+                    // 対象2 追加分
+                    WidgetKey.ORG_UPCOMING_EVENTS,
+                    WidgetKey.ORG_LATEST_POSTS,
+                    WidgetKey.ORG_BLOG,
+                    WidgetKey.ORG_UNREAD_THREADS,
+                    WidgetKey.ORG_SCHEDULE_CALENDAR,
+                    WidgetKey.ORG_MEMBERS,
+                    WidgetKey.ORG_ACTIVITY,
+                    WidgetKey.ORG_GALLERY,
+                    WidgetKey.ORG_CIRCULATION,
+                    WidgetKey.ORG_SURVEYS,
+                    WidgetKey.ORG_SURVEY_RESULTS,
+                    WidgetKey.ORG_MEMBER_ATTENDANCE);
 
             // ADMIN 限定は含まれない
             assertThat(result).doesNotContainKey(WidgetKey.ORG_BILLING);
+            assertThat(result).doesNotContainKey(WidgetKey.ADMIN_ORG_MEMBERS);
         }
 
         @Test
@@ -326,21 +391,27 @@ class WidgetDefaultMinRoleMapTest {
     class AllKeys {
 
         @Test
-        @DisplayName("全管理対象キーを返す（16 件）")
-        void getAllConfigurableKeys_16件() {
+        @DisplayName("全管理対象キーを返す（37 件）")
+        void getAllConfigurableKeys_37件() {
             Set<WidgetKey> all = WidgetDefaultMinRoleMap.getAllConfigurableKeys();
-            // TEAM 10 件 + ORG 6 件 = 16 件（F08.7.1 で 3 件追加）
-            assertThat(all).hasSize(16);
+            // TEAM 19 件 + ORG 18 件 = 37 件
+            // （F08.7.1 で 3 件 + F08.10 で 1 件 + 対象2 で TEAM 8 件・ORG 12 件追加）
+            assertThat(all).hasSize(37);
         }
 
         @Test
-        @DisplayName("ADMIN 限定ウィジェット（TEAM_BILLING / TEAM_PAGE_VIEWS / ORG_BILLING）を含まない")
+        @DisplayName("ADMIN 限定ウィジェット（TEAM_BILLING / TEAM_PAGE_VIEWS / ORG_BILLING / ADMIN_* 3件）を含まない")
         void getAllConfigurableKeys_ADMIN限定除外() {
             Set<WidgetKey> all = WidgetDefaultMinRoleMap.getAllConfigurableKeys();
             assertThat(all)
                     .doesNotContain(WidgetKey.TEAM_BILLING)
                     .doesNotContain(WidgetKey.TEAM_PAGE_VIEWS)
-                    .doesNotContain(WidgetKey.ORG_BILLING);
+                    .doesNotContain(WidgetKey.ORG_BILLING)
+                    .doesNotContain(WidgetKey.ADMIN_TEAM_MEMBERS)
+                    .doesNotContain(WidgetKey.ADMIN_TEAM_RESERVATIONS)
+                    .doesNotContain(WidgetKey.ADMIN_ORG_MEMBERS)
+                    .doesNotContain(WidgetKey.ADMIN_TEAM_BUDGET)
+                    .doesNotContain(WidgetKey.ADMIN_ORG_BUDGET);
         }
 
         @Test
@@ -348,6 +419,61 @@ class WidgetDefaultMinRoleMapTest {
         void getAll_全件一致() {
             Map<WidgetKey, MinRole> all = WidgetDefaultMinRoleMap.getAll();
             assertThat(all.keySet()).isEqualTo(WidgetDefaultMinRoleMap.getAllConfigurableKeys());
+        }
+    }
+
+    // ========================================
+    // ロール制限ウィジェット（isRoleRestricted）の回帰検知
+    // ========================================
+
+    @Nested
+    @DisplayName("isRoleRestricted と isConfigurable の整合性（回帰防止）")
+    class RoleRestrictedConsistency {
+
+        /**
+         * WidgetKey.isRoleRestricted()=true のウィジェットは、
+         * WidgetDefaultMinRoleMap の管理対象外（isConfigurable=false）でなければならない。
+         *
+         * <p>設計書 §2.4 手順4: ロール固定ウィジェットは min_role 変更不可。
+         * 将来 ROLE_RESTRICTED セットに新規キーを追加した際に自動的にここで検知される。</p>
+         */
+        @ParameterizedTest(name = "{0} は isRoleRestricted=true のため isConfigurable=false")
+        @EnumSource(value = WidgetKey.class, names = {
+                "TEAM_BILLING",
+                "TEAM_PAGE_VIEWS",
+                "ORG_BILLING",
+                "ADMIN_TEAM_MEMBERS",
+                "ADMIN_TEAM_RESERVATIONS",
+                "ADMIN_ORG_MEMBERS",
+                "ADMIN_TEAM_BUDGET",
+                "ADMIN_ORG_BUDGET"
+        })
+        @DisplayName("ロール制限ウィジェットは isConfigurable=false")
+        void roleRestrictedWidgets_isConfigurableFalse(WidgetKey key) {
+            // 前提確認: テスト対象が実際に isRoleRestricted=true であること
+            assertThat(key.isRoleRestricted())
+                    .as("%s は ROLE_RESTRICTED セットに含まれているはず", key)
+                    .isTrue();
+            // 本命: isConfigurable は false であること
+            assertThat(WidgetDefaultMinRoleMap.isConfigurable(key))
+                    .as("%s は isRoleRestricted=true のため isConfigurable=false でなければならない", key)
+                    .isFalse();
+        }
+
+        /**
+         * isRoleRestricted=true の全キーが DEFAULTS マップに含まれないことを一括検証する。
+         * @EnumSource の名前リストへの追記忘れを防ぐセーフネット。
+         */
+        @Test
+        @DisplayName("isRoleRestricted=true の全ウィジェットが isConfigurable=false（網羅）")
+        void allRoleRestrictedWidgets_isConfigurableFalse() {
+            for (WidgetKey key : WidgetKey.values()) {
+                if (key.isRoleRestricted()) {
+                    assertThat(WidgetDefaultMinRoleMap.isConfigurable(key))
+                            .as("%s は isRoleRestricted=true のため isConfigurable=false でなければならない", key)
+                            .isFalse();
+                }
+            }
         }
     }
 }

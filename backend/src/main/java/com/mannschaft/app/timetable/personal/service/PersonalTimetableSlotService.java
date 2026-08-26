@@ -136,7 +136,7 @@ public class PersonalTimetableSlotService {
         }
 
         List<PersonalTimetableSlotEntity> entities = data.stream()
-                .map(d -> PersonalTimetableSlotEntity.builder()
+                .<PersonalTimetableSlotEntity>map(d -> PersonalTimetableSlotEntity.builder()
                         .personalTimetableId(personalTimetableId)
                         .dayOfWeek(d.dayOfWeek())
                         .periodNumber(d.periodNumber())

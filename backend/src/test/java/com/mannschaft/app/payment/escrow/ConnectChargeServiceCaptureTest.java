@@ -57,7 +57,8 @@ class ConnectChargeServiceCaptureTest {
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
                 feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
-                refundRepository, new com.mannschaft.app.payment.connect.PayeeScopeResolver(), feePolicyResolver);
+                refundRepository, new com.mannschaft.app.payment.connect.PayeeScopeResolver(), feePolicyResolver,
+                org.mockito.Mockito.mock(com.mannschaft.app.payment.recovery.FeeRecoveryBalanceRepository.class));
     }
 
     private EscrowTransactionEntity escrow(EscrowStatus status) {
@@ -128,6 +129,24 @@ class ConnectChargeServiceCaptureTest {
         verify(stripePaymentProvider, never()).captureManualPaymentIntent(anyString(), anyString());
         verify(escrowTransactionRepository, never()).save(any());
         verify(ledgerEntryRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("第一陣根治: PENDING_CONFIRMATION（札主未 confirm）から capture→AUTHORIZATION_NOT_CONFIRMED(409)・Stripe never")
+    void pendingConfirmation_rejected() {
+        ConnectChargeService svc = service();
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID))
+                .willReturn(Optional.of(escrow(EscrowStatus.PENDING_CONFIRMATION)));
+
+        assertThatThrownBy(() -> svc.capture(ESCROW_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ConnectPaymentErrorCode.AUTHORIZATION_NOT_CONFIRMED);
+
+        // Stripe capture は呼ばない（真の与信が立つ前の capture を Stripe へ到達させない）。
+        verify(stripePaymentProvider, never()).captureManualPaymentIntent(anyString(), anyString());
+        verify(ledgerEntryRepository, never()).saveAll(any());
+        verify(escrowTransactionRepository, never()).save(any());
     }
 
     @Test

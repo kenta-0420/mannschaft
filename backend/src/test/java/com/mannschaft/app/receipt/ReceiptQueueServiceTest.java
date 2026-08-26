@@ -1,5 +1,6 @@
 package com.mannschaft.app.receipt;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.receipt.entity.ReceiptQueueEntity;
 import com.mannschaft.app.receipt.repository.ReceiptQueueRepository;
@@ -28,6 +29,7 @@ class ReceiptQueueServiceTest {
     @Mock private ReceiptQueueRepository queueRepository;
     @Mock private ReceiptMapper receiptMapper;
     @Mock private ReceiptService receiptService;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ReceiptQueueService service;
@@ -78,7 +80,7 @@ class ReceiptQueueServiceTest {
             given(queueRepository.findByIdAndScopeTypeAndScopeId(1L, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(item));
 
-            assertThatThrownBy(() -> service.skipQueueItem(SCOPE_TYPE, SCOPE_ID, 1L))
+            assertThatThrownBy(() -> service.skipQueueItem(SCOPE_TYPE, SCOPE_ID, 1L, 100L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReceiptErrorCode.QUEUE_NOT_PENDING);

@@ -132,14 +132,15 @@ public class TeamExtendedProfileService {
                 ? req.getProfileVisibility()
                 : team.getProfileVisibility();
 
-        TeamEntity updated = team.toBuilder()
-                .homepageUrl(normalizedUrl)
-                .establishedDate(hasDate ? req.getEstablishedDate() : team.getEstablishedDate())
-                .establishedDatePrecision(hasPrecision ? req.getEstablishedDatePrecision() : team.getEstablishedDatePrecision())
-                .philosophy(philosophy)
-                .profileVisibility(profileVisibility)
-                .build();
-        teamRepository.save(updated);
+        // 直接ミューテートで UPDATE を発行する（PR #1643 と同型）。
+        // toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため使わない。
+        team.applyProfileUpdate(
+                normalizedUrl,
+                hasDate ? req.getEstablishedDate() : team.getEstablishedDate(),
+                hasPrecision ? req.getEstablishedDatePrecision() : team.getEstablishedDatePrecision(),
+                philosophy,
+                profileVisibility);
+        teamRepository.save(team);
 
         auditLogService.record(
                 "TEAM_PROFILE_UPDATE",
@@ -148,7 +149,7 @@ public class TeamExtendedProfileService {
 
         log.info("チームプロフィール更新完了: teamId={}, userId={}", teamId, userId);
 
-        return ApiResponse.of(toProfileResponse(updated));
+        return ApiResponse.of(toProfileResponse(team));
     }
 
     // ========================================

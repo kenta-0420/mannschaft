@@ -1,5 +1,6 @@
 package com.mannschaft.app.publicview.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.dto.PublicPostDetail;
 import com.mannschaft.app.publicview.dto.PublicPostSummary;
 import com.mannschaft.app.publicview.service.PublicPostQueryService;
@@ -26,7 +27,28 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>{@link PublicTeamPostController} の組織版。Phase 2 では {@link ViewerContextBuilder} を使って
  * ログイン済みユーザーの閲覧立場を判定し、段階開示ルール（§4.6.1 マトリクス）に従った投稿者識別を返す。
  * blog_posts のみ対応（§4.2 軍議追補）。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 2 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/organizations/&#42;/posts"
+ * / "/api/v1/public/organizations/&#42;/posts/*").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F19.1 公開組織投稿。<b>visibility=PUBLIC かつ公開状態の投稿のみ</b>を返す。組織が対外公開を意図して掲載したコンテンツに限られる。
+ * レート制限あり。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/api/v1/public/organizations/*/posts",
+        "/api/v1/public/organizations/*/posts/*"
+})
 @RestController
 @RequestMapping("/api/v1/public/organizations/{orgId}/posts")
 @Tag(name = "公開組織投稿 API (F19.1)")

@@ -9,8 +9,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,8 +26,7 @@ import java.time.LocalDateTime;
 @Table(name = "personal_timetable_settings")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class PersonalTimetableSettingsEntity {
 
     @Id
@@ -54,8 +53,10 @@ public class PersonalTimetableSettingsEntity {
     @Builder.Default
     private String visibleDefaultFields = "[\"preparation\",\"review\",\"items_to_bring\",\"free_memo\"]";
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

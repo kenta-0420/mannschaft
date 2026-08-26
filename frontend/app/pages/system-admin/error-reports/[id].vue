@@ -243,7 +243,7 @@ watch(report, (val) => {
     </header>
 
     <div v-if="loading" class="py-12 text-center text-sm text-surface-500">
-      <i class="pi pi-spin pi-spinner mr-2" aria-hidden="true" />読み込み中...
+      <i class="pi pi-spin pi-spinner mr-2" aria-hidden="true" />{{ $t('button.loading') }}
     </div>
 
     <template v-else-if="report">

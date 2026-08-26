@@ -10,10 +10,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -26,8 +26,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TeamPageEntity extends BaseEntity {
 
     private Long teamId;
@@ -49,7 +48,9 @@ public class TeamPageEntity extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(length = 500)
+    // NOTE: S3Key のような数字→大文字境界は Hibernate 物理命名で _s3_key にならず
+    // cover_images3key になる。DDL の cover_image_s3_key と一致させるため name を明示。
+    @Column(name = "cover_image_s3_key", length = 500)
     private String coverImageS3Key;
 
     @Enumerated(EnumType.STRING)

@@ -2,6 +2,7 @@ package com.mannschaft.app.jobmatching.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.jobmatching.controller.dto.CheckInResponse;
 import com.mannschaft.app.jobmatching.controller.dto.RecordCheckInRequest;
 import com.mannschaft.app.jobmatching.service.JobCheckInService;
@@ -60,6 +61,13 @@ public class JobCheckInController {
      * @param req チェックイン／アウト記録リクエスト
      * @return 記録結果（生成 ID・遷移後ステータス・業務時間など）
      */
+    /*
+     * 認可の所在: JobCheckInService#recordCheckIn（jobmatching/service/JobCheckInService.java:109）が
+     * 対象契約を実体としてロードし、JobPolicy#canRecordCheckIn で契約の worker_user_id と
+     * 認証主体の一致（およびステータス整合）を検証する。不一致は JOB_QR_TOKEN_WRONG_WORKER（403）。
+     * 記録される workerUserId はリクエストボディではなく SecurityUtils.getCurrentUserId() 由来である。
+     */
+    @AuthorizedInService
     @PostMapping
     @Operation(summary = "QR チェックイン／アウト記録",
             description = "Worker がスキャンした QR トークンまたは短コードで契約のチェックイン／アウトを記録する")

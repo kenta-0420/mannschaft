@@ -38,10 +38,11 @@ test.describe('TEAM-039〜074: チーム各ページ表示確認', () => {
     await expect(page.getByRole('heading', { name: '活動記録' })).toBeVisible({ timeout: 10_000 })
   })
 
-  test('TEAM-041: アクセス解析ページが表示される', async ({ page }) => {
+  test('TEAM-041: アクセス解析ページが「準備中」表示で表示される', async ({ page }) => {
+    // BE API 未実装のため現在は準備中表示。本実装時にテストを更新すること
     await page.goto(`/teams/${TEAM_ID}/analytics`)
     await waitForHydration(page)
-    await expect(page.getByRole('heading', { name: 'アクセス解析' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: '分析' })).toBeVisible({
       timeout: 10_000,
     })
   })

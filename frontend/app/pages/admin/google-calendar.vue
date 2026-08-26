@@ -6,12 +6,13 @@ const scopeType = computed(() => scopeStore.current.type as 'team' | 'organizati
 const scopeId = computed(() => scopeStore.current.id ?? '')
 const { success, error: showError } = useNotification()
 const { getConnectionStatus, connect, disconnect, toggleTeamSync, toggleOrgSync } = useGoogleCalendarApi()
-const { formatDateTime } = useDatetime()
-
 interface ConnectionStatus {
-  isConnected: boolean
-  email: string | null
-  lastSyncedAt: string | null
+  connected: boolean
+  googleAccountEmail: string | null
+  googleCalendarId: string | null
+  active: boolean
+  personalSyncEnabled: boolean
+  lastSyncError: { type: string; message: string; occurredAt: string } | null
 }
 
 const status = ref<ConnectionStatus | null>(null)
@@ -60,9 +61,9 @@ async function toggleSync(enabled: boolean) {
   syncing.value = true
   try {
     if (scopeType.value === 'team') {
-      await toggleTeamSync(scopeId.value, { enabled })
+      await toggleTeamSync(scopeId.value, { isEnabled: enabled })
     } else {
-      await toggleOrgSync(scopeId.value, { enabled })
+      await toggleOrgSync(scopeId.value, { isEnabled: enabled })
     }
     syncEnabled.value = enabled
     success(enabled ? '同期を有効にしました' : '同期を無効にしました')
@@ -85,13 +86,13 @@ onMounted(load)
     <div v-else class="flex flex-col gap-4">
       <!-- 接続状態 -->
       <SectionCard title="接続状態">
-        <div v-if="status?.isConnected" class="flex items-center justify-between">
+        <div v-if="status?.connected" class="flex items-center justify-between">
           <div>
             <div class="flex items-center gap-2">
               <i class="pi pi-check-circle text-green-500" />
               <span class="font-medium">接続済み</span>
             </div>
-            <p class="mt-1 text-sm text-surface-500">{{ status.email }}</p>
+            <p class="mt-1 text-sm text-surface-500">{{ status.googleAccountEmail }}</p>
           </div>
           <Button
             label="接続解除"
@@ -115,7 +116,7 @@ onMounted(load)
       </SectionCard>
 
       <!-- 同期設定 -->
-      <SectionCard v-if="status?.isConnected" title="同期設定">
+      <SectionCard v-if="status?.connected" title="同期設定">
         <div class="flex items-center justify-between">
           <div>
             <div class="font-medium">スケジュール同期</div>
@@ -127,8 +128,8 @@ onMounted(load)
             @update:model-value="toggleSync"
           />
         </div>
-        <div v-if="status?.lastSyncedAt" class="mt-4 text-xs text-surface-400">
-          最終同期: {{ formatDateTime(status.lastSyncedAt) }}
+        <div v-if="status?.lastSyncError" class="mt-4 text-xs text-red-500">
+          同期エラー: {{ status.lastSyncError.message }}
         </div>
       </SectionCard>
     </div>

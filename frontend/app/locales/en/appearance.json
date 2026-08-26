@@ -1,6 +1,7 @@
 {
   "appearance": {
     "bgColorLabel": "Background Color",
+    "darkBgColorLabel": "Dark Background Color",
     "color": {
       "cream": "Cream",
       "white": "White",
@@ -12,6 +13,16 @@
       "sand": "Sand",
       "sage": "Sage",
       "slate": "Slate"
+    },
+    "darkColor": {
+      "charcoal": "Charcoal",
+      "black": "Black",
+      "graphite": "Graphite",
+      "slate": "Slate",
+      "navy": "Navy",
+      "forest": "Forest",
+      "coffee": "Coffee",
+      "wine": "Wine"
     }
   }
 }

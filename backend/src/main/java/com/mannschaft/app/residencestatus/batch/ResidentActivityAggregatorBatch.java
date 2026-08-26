@@ -4,6 +4,7 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.residencestatus.service.ResidentActivityAggregatorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -36,6 +37,8 @@ public class ResidentActivityAggregatorBatch {
      */
     @BatchEndpoint(name = "residencestatus-activity-aggregator-daily", description = "全居住者アクティビティスナップショットを毎日 03:00 に生成する（v1 stub）")
     @Scheduled(cron = "0 0 3 * * *")
+    // 起動間隔は日次 03:00。全居住者ぶんのスナップショット生成であり利用者数に比例して伸びる。余裕を取り 2 時間を上限とする。
+    @SchedulerLock(name = "residenceActivityAggregatorDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT2H")
     public void aggregateDaily() {
         log.info("[ResidentActivityAggregatorBatch] 日次集計 開始");
         // TODO: 組織・居住者を走査して upsertDailySnapshot を呼ぶ

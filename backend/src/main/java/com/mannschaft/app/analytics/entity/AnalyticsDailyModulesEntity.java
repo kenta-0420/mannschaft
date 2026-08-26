@@ -5,8 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -20,8 +20,7 @@ import java.time.LocalDate;
 @Table(name = "analytics_daily_modules")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class AnalyticsDailyModulesEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -31,12 +30,15 @@ public class AnalyticsDailyModulesEntity extends BaseEntity {
     private Long moduleId;
 
     @Builder.Default
+    @Column(nullable = false)
     private int activeTeams = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int newActivations = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int deactivations = 0;
 
     @Column(nullable = false)

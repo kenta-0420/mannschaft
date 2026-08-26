@@ -21,10 +21,10 @@ public enum ScheduleEventCategoryErrorCode implements ErrorCode {
     CATEGORY_LIMIT_EXCEEDED("EVTCAT_003", "カテゴリ数の上限（30件）に達しています", Severity.WARN),
 
     /** カテゴリスコープ不整合 */
-    CATEGORY_SCOPE_MISMATCH("EVTCAT_010", "スケジュールのスコープとカテゴリのスコープが一致しません", Severity.ERROR),
+    CATEGORY_SCOPE_MISMATCH("EVTCAT_010", "スケジュールのスコープとカテゴリのスコープが一致しません", Severity.WARN),
 
     /** 年間コピー同一年度 */
-    ANNUAL_COPY_SAME_YEAR("EVTCAT_020", "コピー元とコピー先の年度が同じです", Severity.ERROR),
+    ANNUAL_COPY_SAME_YEAR("EVTCAT_020", "コピー元とコピー先の年度が同じです", Severity.WARN),
 
     /** 年間コピーソース不在 */
     ANNUAL_COPY_SOURCE_NOT_FOUND("EVTCAT_021", "コピー元のスケジュールが見つかりません", Severity.WARN),
@@ -36,7 +36,7 @@ public enum ScheduleEventCategoryErrorCode implements ErrorCode {
     ANNUAL_COPY_LIMIT_EXCEEDED("EVTCAT_023", "一度にコピーできるスケジュール数の上限に達しています", Severity.WARN),
 
     /** 年度と日付の不整合 */
-    ACADEMIC_YEAR_DATE_MISMATCH("EVTCAT_030", "開始日時が指定された年度の範囲外です", Severity.ERROR);
+    ACADEMIC_YEAR_DATE_MISMATCH("EVTCAT_030", "開始日時が指定された年度の範囲外です", Severity.WARN);
 
     private final String code;
     private final String message;

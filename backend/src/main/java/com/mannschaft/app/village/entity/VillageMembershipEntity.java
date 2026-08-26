@@ -12,8 +12,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -34,8 +33,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PUBLIC)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class VillageMembershipEntity extends UuidV7Entity {
 
@@ -67,6 +65,13 @@ public class VillageMembershipEntity extends UuidV7Entity {
 
     @Column(name = "banned_reason", length = 500)
     private String bannedReason;
+
+    /**
+     * この村への所属を所属村一覧（GET /users/&#123;id&#125;/villages）に公開してよいか（F17.2 機能⑥）。
+     * 既定は FALSE（非公開）。本人がトグルで能動的に ON にしたときだけ公開する（設計書 §9.2）。
+     */
+    @Column(name = "profile_public", nullable = false)
+    private boolean profilePublic;
 
     @Column(name = "invited_by_membership_id", columnDefinition = "BINARY(16)")
     private UUID invitedByMembershipId;

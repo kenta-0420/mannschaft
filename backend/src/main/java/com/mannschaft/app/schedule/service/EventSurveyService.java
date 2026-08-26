@@ -103,7 +103,7 @@ public class EventSurveyService {
 
         EventSurveyResponseEntity response = responseRepository
                 .findByEventSurveyIdAndUserId(surveyId, userId)
-                .map(existing -> existing.toBuilder()
+                .map(existing -> (EventSurveyResponseEntity) existing.toBuilder()
                         .answerText(req.getAnswerText())
                         .answerOptions(answerOptionsJson)
                         .build())

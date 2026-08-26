@@ -30,7 +30,19 @@ public enum GoogleCalendarErrorCode implements ErrorCode {
     ICAL_TOKEN_INVALID("GCAL_006", "iCalトークンが無効です", Severity.WARN),
 
     /** 同期設定が見つからない */
-    SYNC_SETTING_NOT_FOUND("GCAL_007", "同期設定が見つかりません", Severity.WARN);
+    SYNC_SETTING_NOT_FOUND("GCAL_007", "同期設定が見つかりません", Severity.WARN),
+
+    /** Webhook チャンネルが DB に存在しない（失効または不正な channelId）*/
+    GOOGLE_WEBHOOK_CHANNEL_NOT_FOUND("GCAL_008", "Webhook チャンネルが見つかりません", Severity.WARN),
+
+    /** Webhook の channel_token が DB の値と不一致（CSRF防止）*/
+    GOOGLE_WEBHOOK_TOKEN_INVALID("GCAL_009", "Webhook チャンネルトークンが無効です", Severity.WARN),
+
+    /**
+     * 同期対象スコープ（チーム/組織）が存在しない、または呼び出しユーザーが非メンバー。
+     * IDOR 対策として 403 ではなく 404（存在秘匿）へ写像する（堅牢化フェーズ AC-1）。
+     */
+    CALENDAR_SYNC_SCOPE_NOT_FOUND("GCAL_010", "同期対象が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

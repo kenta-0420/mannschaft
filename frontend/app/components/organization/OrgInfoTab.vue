@@ -61,7 +61,7 @@ const ancestorList = computed<AncestorOrganization[]>(() => props.ancestors ?? [
             </span>
             <NuxtLink
               v-else
-              :to="`/organizations/${ancestor.id}`"
+              :to="ancestor.slug ? `/organizations/${ancestor.slug}` : undefined"
               class="hover:text-primary hover:underline"
             >
               {{ ancestor.nickname1 || ancestor.name }}

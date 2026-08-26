@@ -9,8 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,7 +29,7 @@ import java.util.UUID;
  * このため本リポジトリは {@code AbstractTenantAwareRepository}（deleted_at 前提）を継承できず、
  * テナント絞り込みは {@code organization_id} ベースの derived finder で個別実装する。</p>
  *
- * <p>このフェーズでは Entity/Repo 骨格のみ（Service は次陣）。</p>
+ * <p>状態遷移・照会は {@code ConnectChargeService} が担う。</p>
  *
  * <p>設計書: docs/features/F22.1_market/payment/01_data_model.md §3.2</p>
  */
@@ -39,8 +38,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class EscrowTransactionEntity extends UuidV7Entity {
 
@@ -80,6 +78,17 @@ public class EscrowTransactionEntity extends UuidV7Entity {
 
     @Column(name = "stripe_payment_intent_id", length = 32)
     private String stripePaymentIntentId;
+
+    /**
+     * 業務冪等キー（{@code Idempotency-Key} ヘッダ起源・即時 charge の二重起票防止・R2-2）。
+     *
+     * <p>会費（即時 charge）の二重起票防止は本キーで行う。{@code (source_kind, source_id)} は P5 継続課金
+     * （source_id=payment_item_id）と P7 協会請求（source_id=team_id）で名前空間が衝突しうるため、
+     * 呼び出し側が渡す一意な idempotencyKey（Stripe へも橋渡し）を業務冪等キーの正とする。
+     * 既存の謝礼（RECRUITMENT・与信）経路は本キーを使わず {@code null} のままで後方互換を保つ。</p>
+     */
+    @Column(name = "stripe_idempotency_key", length = 255)
+    private String stripeIdempotencyKey;
 
     /** 額面（受取側が設定した謝礼/会費の元値・円整数）。amount = faceAmount + round(faceAmount × 0.025)。 */
     @Column(name = "face_amount", nullable = false)

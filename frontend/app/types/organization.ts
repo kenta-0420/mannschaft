@@ -36,8 +36,18 @@ export interface OrgTimestampsDto {
 }
 
 export interface OrganizationResponse {
-  /** UUID（public_id）。URLに使用する string 型。BE PR #1331 対応 */
+  /**
+   * URL 識別子（カスタムスラッグ）。実体は slug と同値の string 型。BE slug 移行対応。
+   * 数値ではない（旧コメントは誤り。数値 ID が必要な場合は numericId を使う）。
+   */
   id: string
+  /** カスタムスラッグ。URLに使用する string 型。BE slug 移行対応 */
+  slug: string
+  /**
+   * 組織の内部 BIGINT ID（F09.19.10）。URL には使わない（URL 識別子は上記 id/slug が正準）。
+   * Spotlight 掲載面など BE が Long スコープ ID を要求する内部連携専用に使用する。
+   */
+  numericId?: number
   basicInfo?: OrgBasicInfoDto
   hierarchy?: OrgHierarchyDto
   location?: OrgLocationDto
@@ -48,6 +58,8 @@ export interface OrganizationResponse {
 
 export interface OrganizationSummaryResponse {
   id: number
+  /** 組織スラッグ（URLルーティング用）。{@code /organizations/{slug}} に使用する。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -61,6 +73,8 @@ export interface OrganizationSummaryResponse {
 // === リクエスト ===
 export interface CreateOrganizationRequest {
   name: string
+  /** カスタムスラッグ（英小文字・数字・ハイフン、3〜30文字）。省略時は名前から自動生成される */
+  slug?: string
   nameKana?: string
   nickname1?: string
   nickname2?: string
@@ -87,6 +101,8 @@ export interface UpdateOrganizationRequest {
 
 export interface OrgTeam {
   id: number
+  /** チームスラッグ（URLルーティング用）。{@code /teams/{slug}} に使用する。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -192,6 +208,8 @@ export interface ReorderRequest {
  */
 export interface AncestorOrganization {
   id: number
+  /** 祖先組織スラッグ（URL に使用。hidden=false のとき返る） */
+  slug?: string | null
   name?: string | null
   nickname1?: string | null
   description?: string | null
@@ -207,6 +225,8 @@ export interface AncestorsResponse {
 
 export interface ChildOrganization {
   id: number
+  /** 子組織スラッグ（URL に使用） */
+  slug?: string | null
   name: string
   nickname1?: string | null
   iconUrl?: string | null

@@ -37,6 +37,8 @@ const emit = defineEmits<{
   openRoleDialog: [m: MembershipResponse]
   openBanDialog: [m: MembershipResponse]
   openMemberReport: [m: MembershipResponse]
+  /** F17.2 Wave3 ⑥ 村人ミニプロフィール Dialog を開く（名前クリックで発火）。 */
+  openMemberProfile: [m: MembershipResponse]
 }>()
 
 const { t } = useI18n()
@@ -119,7 +121,17 @@ function isSelfMembership(m: MembershipResponse): boolean {
         <template #body="slotProps">
           <div class="flex items-center gap-2">
             <i :class="subjectTypeIcon((slotProps.data as MembershipResponse).subjectType)" />
-            <span class="font-medium">
+            <!-- 村人（USER 主体）の名前タップでミニプロフィール Dialog を開く（§9.5）。
+                 TEAM/ORGANIZATION は個人プロフィールの概念が無いため対象外。 -->
+            <button
+              v-if="(slotProps.data as MembershipResponse).subjectType === 'USER'"
+              type="button"
+              class="font-medium hover:underline focus:underline"
+              @click="emit('openMemberProfile', slotProps.data as MembershipResponse)"
+            >
+              {{ displayName(slotProps.data as MembershipResponse) }}
+            </button>
+            <span v-else class="font-medium">
               {{ displayName(slotProps.data as MembershipResponse) }}
             </span>
             <Badge

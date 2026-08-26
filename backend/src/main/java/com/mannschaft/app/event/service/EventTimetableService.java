@@ -78,25 +78,20 @@ public class EventTimetableService {
     /**
      * タイムテーブル項目を更新する。
      *
+     * <p>親子BOLA根治: {@code itemId} が {@code eventId} に属さない場合は 404 で秘匿する。</p>
+     *
+     * @param eventId イベントID（URL パス由来。親子突合に使用）
      * @param itemId  項目ID
      * @param request 更新リクエスト
      * @return 更新されたタイムテーブル項目レスポンス
      */
     @Transactional
-    public TimetableItemResponse updateTimetableItem(Long itemId, UpdateTimetableItemRequest request) {
-        EventTimetableItemEntity entity = findItemOrThrow(itemId);
+    public TimetableItemResponse updateTimetableItem(Long eventId, Long itemId, UpdateTimetableItemRequest request) {
+        EventTimetableItemEntity entity = findItemOrThrow(eventId, itemId);
 
-        EventTimetableItemEntity updated = entity.toBuilder()
-                .title(request.getTitle() != null ? request.getTitle() : entity.getTitle())
-                .description(request.getDescription() != null ? request.getDescription() : entity.getDescription())
-                .speaker(request.getSpeaker() != null ? request.getSpeaker() : entity.getSpeaker())
-                .startAt(request.getStartAt() != null ? request.getStartAt() : entity.getStartAt())
-                .endAt(request.getEndAt() != null ? request.getEndAt() : entity.getEndAt())
-                .location(request.getLocation() != null ? request.getLocation() : entity.getLocation())
-                .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder())
-                .build();
-
-        EventTimetableItemEntity saved = timetableRepository.save(updated);
+        // managed entity を直接ミューテートして save → UPDATE が保証される（id=null INSERT 化バグ根治）
+        entity.applyUpdate(request);
+        EventTimetableItemEntity saved = timetableRepository.save(entity);
         log.info("タイムテーブル項目更新: itemId={}", itemId);
         return eventMapper.toTimetableItemResponse(saved);
     }
@@ -104,11 +99,14 @@ public class EventTimetableService {
     /**
      * タイムテーブル項目を削除する。
      *
-     * @param itemId 項目ID
+     * <p>親子BOLA根治: {@code itemId} が {@code eventId} に属さない場合は 404 で秘匿する。</p>
+     *
+     * @param eventId イベントID（URL パス由来。親子突合に使用）
+     * @param itemId  項目ID
      */
     @Transactional
-    public void deleteTimetableItem(Long itemId) {
-        EventTimetableItemEntity entity = findItemOrThrow(itemId);
+    public void deleteTimetableItem(Long eventId, Long itemId) {
+        EventTimetableItemEntity entity = findItemOrThrow(eventId, itemId);
         timetableRepository.delete(entity);
         log.info("タイムテーブル項目削除: itemId={}", itemId);
     }
@@ -132,10 +130,9 @@ public class EventTimetableService {
         for (int i = 0; i < orderedIds.size(); i++) {
             EventTimetableItemEntity item = itemMap.get(orderedIds.get(i));
             if (item != null) {
-                EventTimetableItemEntity reordered = item.toBuilder()
-                        .sortOrder(i)
-                        .build();
-                timetableRepository.save(reordered);
+                // managed entity を直接ミューテートして save → UPDATE が保証される（id=null INSERT 化バグ根治）
+                item.applySortOrder(i);
+                timetableRepository.save(item);
             }
         }
 
@@ -146,10 +143,11 @@ public class EventTimetableService {
     }
 
     /**
-     * タイムテーブル項目を取得する。存在しない場合は例外をスローする。
+     * 項目IDとイベントIDでタイムテーブル項目を取得する。存在しない・イベント帰属不一致の場合は
+     * 存在を漏らさないため同一の TIMETABLE_ITEM_NOT_FOUND（404）で例外をスローする（親子BOLA根治）。
      */
-    private EventTimetableItemEntity findItemOrThrow(Long itemId) {
-        return timetableRepository.findById(itemId)
+    private EventTimetableItemEntity findItemOrThrow(Long eventId, Long itemId) {
+        return timetableRepository.findByIdAndEventId(itemId, eventId)
                 .orElseThrow(() -> new BusinessException(EventErrorCode.TIMETABLE_ITEM_NOT_FOUND));
     }
 }

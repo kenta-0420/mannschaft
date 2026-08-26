@@ -5,8 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -21,8 +21,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class SystemFormPresetEntity extends BaseEntity {
 
     @Column(nullable = false, length = 100)
@@ -63,6 +62,39 @@ public class SystemFormPresetEntity extends BaseEntity {
      */
     public void activate() {
         this.isActive = true;
+    }
+
+    /**
+     * 更新リクエストの非 null フィールドを反映する。
+     *
+     * <p>managed entity を直接ミューテートすることで主キー（BaseEntity の id）を保持し、
+     * save 時に確実に UPDATE となるようにする（toBuilder().build() は id を引き継がず INSERT 化するため使用しない）。
+     */
+    public void applyUpdate(
+            String name,
+            String description,
+            String category,
+            String fieldsJson,
+            String icon,
+            String color) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        if (category != null) {
+            this.category = category;
+        }
+        if (fieldsJson != null) {
+            this.fieldsJson = fieldsJson;
+        }
+        if (icon != null) {
+            this.icon = icon;
+        }
+        if (color != null) {
+            this.color = color;
+        }
     }
 
     /**

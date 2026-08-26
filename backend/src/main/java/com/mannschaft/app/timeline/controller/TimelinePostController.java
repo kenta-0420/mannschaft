@@ -4,8 +4,10 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.timeline.dto.CreatePostRequest;
 import com.mannschaft.app.timeline.dto.PostDetailResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
+import com.mannschaft.app.timeline.dto.TimelineFeedResponse;
 import com.mannschaft.app.timeline.dto.UpdatePostRequest;
 import com.mannschaft.app.timeline.service.TimelinePostService;
+import com.mannschaft.app.timeline.service.TimelineScopeIdResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -35,17 +37,25 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TimelinePostController {
 
     private final TimelinePostService postService;
+    /** slug/Long 文字列 → 内部 Long ID の共有リゾルバ（フィード取得経路と共通）。 */
+    private final TimelineScopeIdResolver scopeIdResolver;
 
 
     /**
      * 投稿を作成する。
+     *
+     * <p>FE はチーム/組織タイムラインで {@code scopeId} に slug 文字列（例 {@code "team-000092"}）を
+     * 送るため、サービスへ渡す前に {@link TimelineScopeIdResolver} で内部 Long ID に解決する。
+     * これにより GET feed（既に slug 解決済み）と対称になり、書き込み経路の 400 を根治する。</p>
      */
     @PostMapping
     @Operation(summary = "投稿作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<PostResponse>> createPost(
             @Valid @RequestBody CreatePostRequest request) {
-        PostResponse response = postService.createPost(request, SecurityUtils.getCurrentUserId());
+        Long resolvedScopeId = scopeIdResolver.resolve(request.getScopeTypeOrDefault(), request.getScopeId());
+        PostResponse response = postService.createPost(
+                request, resolvedScopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -86,15 +96,24 @@ public class TimelinePostController {
 
     /**
      * 投稿のリプライ一覧を取得する。
+     *
+     * <p>FE の {@code getReplies} は {@code TimelineFeedResponse}
+     * （{@code {data:{pinned:[],posts:[...]},meta:{nextCursor,...}}}）を期待し
+     * {@code res.data.posts} / {@code res.meta.nextCursor} を読む。フィード（{@code /feed}・
+     * {@code /my}）と同一形式で返すことで、旧 {@code {data:[配列]}} 形状による
+     * 「返信が表示されない（常に undefined）」を根治する。クエリは FE が送る
+     * {@code cursor} / {@code limit} に一致させる。リプライも {@code enrichPosts} を通して
+     * 著者名/アバター・投稿元名/slug・代理主体を付与する。</p>
      */
     @GetMapping("/{id}/replies")
     @Operation(summary = "リプライ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<PostResponse>>> getReplies(
+    public ResponseEntity<TimelineFeedResponse> getReplies(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "20") int size) {
-        List<PostResponse> replies = postService.getReplies(id, size);
-        return ResponseEntity.ok(ApiResponse.of(replies));
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int limit) {
+        List<PostResponse> replies = postService.getReplies(id, cursor, limit, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(TimelineFeedResponse.ofReplies(replies, limit));
     }
 
     /**

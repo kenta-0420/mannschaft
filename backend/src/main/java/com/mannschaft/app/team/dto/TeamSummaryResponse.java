@@ -3,8 +3,6 @@ package com.mannschaft.app.team.dto;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-import java.util.UUID;
-
 /**
  * チームサマリーレスポンス（一覧用）。
  */
@@ -12,7 +10,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TeamSummaryResponse {
 
-    private final UUID id;
+    /** URL 識別子（カスタムスラッグ）。 */
+    private final String id;
+    /** チームスラッグ（URL ルーティング用）。{@code /teams/{slug}} に使用する。 */
+    private final String slug;
     private final String name;
     private final String template;
     private final String visibility;

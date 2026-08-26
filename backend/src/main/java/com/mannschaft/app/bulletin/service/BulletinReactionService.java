@@ -17,6 +17,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.tournament.ContactSpaceKind;
 import com.mannschaft.app.tournament.ContactSpaceScopeType;
 import com.mannschaft.app.tournament.service.TournamentContactAccessService;
+import com.mannschaft.app.village.service.VillageBulletinAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,8 @@ public class BulletinReactionService {
     private final BulletinAccessGuard accessGuard;
     /** F08.7.1 連絡機能: 大会/ディビジョンスコープの閲覧認可を委譲する（クロスドメイン・原則1）。 */
     private final TournamentContactAccessService tournamentContactAccessService;
+    /** F17.1 村掲示板: 村スコープの閲覧認可を委譲する（BulletinAccessGuard は村を判定できない）。 */
+    private final VillageBulletinAccessService villageBulletinAccessService;
 
     /**
      * リアクションを追加する。所属メンバーのみ + プリセット絵文字のみ。
@@ -159,6 +162,13 @@ public class BulletinReactionService {
         if (isTournamentScope(thread.getScopeType())) {
             tournamentContactAccessService.checkView(
                     toContactScope(thread.getScopeType()), thread.getScopeId(), ContactSpaceKind.BULLETIN, userId);
+            return;
+        }
+        // 村スコープは村ドメインの可視性認可へ委譲する（BulletinAccessGuard は村を判定できない）。
+        // リアクションは「閲覧できる者が押せる」のが自然なため、閲覧認可（checkVillageBulletinViewAccess）
+        // を採る。近隣の BulletinAttachmentService#checkViewAuthorization と同一の型。
+        if (thread.getScopeType() == ScopeType.VILLAGE) {
+            villageBulletinAccessService.checkVillageBulletinViewAccess(thread.getScopeVillageId(), userId);
             return;
         }
         accessGuard.checkMembership(userId, thread.getScopeType(), thread.getScopeId());

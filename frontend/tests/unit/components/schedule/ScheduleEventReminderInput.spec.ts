@@ -32,6 +32,7 @@ function baseForm(reminders: ScheduleEventFormState['reminders'] = []): Schedule
     recurrenceCount: 10,
     allowProxyAttendance: false,
     isProxyAutoAccept: false,
+    teamBreakdownEnabled: false,
     reminders,
     scheduledSurvey: {
       enabled: false,
@@ -91,5 +92,33 @@ describe('ScheduleEventReminderInput.vue', () => {
     const addBtn = wrapper.findAll('button').find(b => b.html().includes('pi-plus'))
     expect(addBtn).toBeFalsy()
     expect(wrapper.text()).toContain('5 / 5')
+  })
+
+  // REM-004/005: プリセット選択方式の根治（既存値がプリセット集合外でも空表示にならない）
+  // 旧UI（値+単位の自由入力）で作られた 120分(=2時間) などの値は、固定9プリセット
+  // [5,10,15,30,60,180,1440,2880,10080] に一致しないため、編集時に Select が「未選択」表示に
+  // なる不具合があった。optionsFor が現在値を選択肢へ補うことで必ず一致させる。
+  // ※ このテスト環境のデフォルトロケールは en のため、英語ラベルで検証する
+  //   （根治前は空表示＝ラベル文字列が一切出ない。ラベルが出れば根治の証明）。
+  it('REM-004: プリセット外の既存値（2時間=120分）でも「2 hr before」が選択表示され空にならない', async () => {
+    const form = baseForm([{
+      key: 'rem-legacy',
+      kind: 'RELATIVE',
+      relativeValue: 2,
+      relativeUnit: 'HOURS',
+      absoluteAt: null,
+    }])
+    const wrapper = await mountSuspended(ScheduleEventReminderInput, {
+      props: { form },
+    })
+    expect(wrapper.text()).toContain('2 hr before')
+  })
+
+  it('REM-005: プリセット値（30分）は「30 min before」が選択表示される', async () => {
+    const form = baseForm([makeReminder(0)])
+    const wrapper = await mountSuspended(ScheduleEventReminderInput, {
+      props: { form },
+    })
+    expect(wrapper.text()).toContain('30 min before')
   })
 })

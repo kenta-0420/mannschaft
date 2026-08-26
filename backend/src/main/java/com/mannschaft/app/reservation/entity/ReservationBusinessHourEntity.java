@@ -5,8 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -19,8 +19,7 @@ import java.time.LocalTime;
 @Table(name = "reservation_business_hours")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ReservationBusinessHourEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -37,6 +36,10 @@ public class ReservationBusinessHourEntity extends BaseEntity {
 
     private LocalTime closeTime;
 
+    @Column(name = "ends_next_day", nullable = false)
+    @Builder.Default
+    private Boolean endsNextDay = false;
+
     /**
      * 営業時間を更新する。
      *
@@ -48,5 +51,10 @@ public class ReservationBusinessHourEntity extends BaseEntity {
         this.isOpen = isOpen;
         this.openTime = openTime;
         this.closeTime = closeTime;
+    }
+
+    public void updateHours(Boolean isOpen, LocalTime openTime, LocalTime closeTime, Boolean endsNextDay) {
+        updateHours(isOpen, openTime, closeTime);
+        this.endsNextDay = endsNextDay == null ? false : endsNextDay;
     }
 }

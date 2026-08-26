@@ -7,9 +7,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -38,11 +39,22 @@ import java.time.LocalDateTime;
  * </p>
  */
 @Entity
-@Table(name = "announcement_read_status")
+@Table(
+        name = "announcement_read_status",
+        // 本番 DDL（Flyway V13.020）の UNIQUE KEY uq_ars_feed_user を Entity 側にも宣言する。
+        //
+        // なぜ必要か（#2530 ⑤）: 本番は Flyway が制約を作るので ddl-auto: none でも問題ないが、
+        // test プロファイルは ddl-auto: create で **Entity 定義からスキーマを生成**する。
+        // ここに宣言が無いとテスト DB にだけ一意制約が存在せず、
+        // 既読 INSERT の ON DUPLICATE KEY UPDATE（重複キーの無害化）が発火しないため、
+        // 「本番では冪等だがテストでは重複行が増える」という乖離が生まれる。
+        // 実際にこの宣言漏れは #2530 の冪等性 IT が重複行 2 件を検出して発覚した。
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_ars_feed_user",
+                columnNames = {"announcement_feed_id", "user_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class AnnouncementReadStatusEntity {
 
     @Id

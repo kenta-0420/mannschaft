@@ -169,8 +169,8 @@ class JobQrTokenServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: Requester 以外からの発行は JOB_PERMISSION_DENIED")
-        void 発行者が別人で403() {
+        @DisplayName("異常系: Requester 以外からの発行は JOB_PERMISSION_DENIED（404 に写像され契約不在と区別できない）")
+        void 発行者が別人でJOB_PERMISSION_DENIED() {
             given(contractRepository.findById(CONTRACT_ID)).willReturn(Optional.of(contract()));
 
             assertThatThrownBy(() -> service.issue(CONTRACT_ID, JobCheckInType.IN, null, OTHER_USER_ID))

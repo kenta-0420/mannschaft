@@ -35,6 +35,20 @@
 - 既存の `user_id` は**受益者（beneficiary）**として意味を固定（ペイウォール・所属判定キー）。
 - `existsValidPaidPayment(beneficiaryUserId, paymentItemId)` は不変（`user_id` で引く）。**払い手では引かない**。
 - 追加インデックス：`idx_mp_payer (payer_user_id, status)`、`idx_mp_escrow (escrow_transaction_id)`、`idx_mp_subscription (membership_subscription_id)`。
+
+#### `payment_method`（手動入金管理の実用化・V124.001）
+
+会費の手動入金を実用化するため、`payment_method` ENUM に **`CASH`（現金）・`BANK_TRANSFER`（銀行振込）** を追加する（V124.001）。`MANUAL` は「その他／不明」として温存（既存データ互換のため削除しない）。
+
+| 値 | 意味 | 返金 / 再同期 |
+|---|---|---|
+| `STRIPE` | オンライン自動決済 | **可**（返金 `refundPayment`・再同期 `reconcile` の対象） |
+| `CASH` | 現金手渡し（手動記録） | 不可（取り消しで運用） |
+| `BANK_TRANSFER` | 銀行振込（手動記録） | 不可（取り消しで運用） |
+| `MANUAL` | その他／不明（手動記録の既定値） | 不可（取り消しで運用） |
+
+- 手動記録（`POST payments` / `payments/bulk`）は `CreateManualPaymentRequest.paymentMethod` で手段を選べる。**任意・未指定時は `MANUAL` にフォールバック**。**`STRIPE` 指定は 400 で禁止**（オンライン決済の手動詐称防止・`@AssertTrue`）。手段の訂正は「取り消し＋再記録」で運用（PATCH では手段不変）。
+- 返金可否・再同期可否は「`paymentMethod == STRIPE` か」で判定する（`!= STRIPE` は `MANUAL_PAYMENT_NOT_REFUNDABLE` / `STRIPE_PAYMENT_ONLY`）。`MemberPaymentEntity.paymentMethod` 列長は `length=16`（`BANK_TRANSFER`=13文字対応）。
 - **クロスドメイン FK は追加しない**（既存 `user_id` の FK は legacy。`payer_user_id` は論理参照のみ）。
 
 ### 1.2 `payment_items`（継続/期別・税からくり）
@@ -328,12 +342,14 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
 | 版（予定） | 内容 |
 |---|---|
 | `V74.001__alter_member_payments_add_payer.sql` | `payer_user_id`/`payment_proxy_grant_id`/`payer_relationship`/`escrow_transaction_id`/`membership_subscription_id` 追加・INDEX |
-| `V74.002__alter_payment_items_add_term_tax.sql` | `type` ENUM に `TERM` 追加／`is_recurring`/`billing_interval`/`term_starts_on`/`term_ends_on`/`tax_category`/`tax_rate`/`price_includes_tax` 追加 |
+| `V74.20260605130020__alter_payment_items_add_recurring.sql`（**P5 第一波・実装済 2026-06-05**） | **継続課金列のみ**：`is_recurring`/`billing_interval` 追加（タイムスタンプ式採番）。`type` ENUM の `TERM`／`term_*`／`tax_*` は別スコープゆえ後続波で追加（本波には含めない） |
+| `V74.002__alter_payment_items_add_term_tax.sql`（TERM/税は後続波・未着手） | `type` ENUM に `TERM` 追加／`term_starts_on`/`term_ends_on`/`tax_category`/`tax_rate`/`price_includes_tax` 追加（採番はマージ直前にタイムスタンプ式で確定） |
 | `V74.003__alter_connect_accounts_add_tax.sql` | `tax_registration_number`/`tax_status` 追加（F22.1 テーブルへの追記・要 F22.1 側調整） |
-| `V74.004__create_membership_subscriptions.sql`（継続課金は P5・未着手） | 継続課金テーブル（UUIDv7・`fee_policy_key`・`skip_until` 含む） |
+| `V74.20260605130010__create_membership_subscriptions.sql`（**P5 第一波・実装済 2026-06-05**） | 継続課金テーブル（UUIDv7・`fee_policy_key`・`skip_until`・`face_amount`/`currency` price-lock 含む）。タイムスタンプ式採番（origin/main 最大 `V74.20260605120020` の後にソート） |
 | `V74.20260605120010__create_payment_requests.sql`（**P7 第一波・実装済 2026-06-05**） | 協会請求テーブル（UUIDv7）。タイムスタンプ式採番（origin/main 最大 `V74.20260605000020` の後にソート） |
 | `V74.006__create_payment_proxy_grants.sql`（P1・実装済） | 第三者代理払い許可テーブル（UUIDv7） |
 | `V74.20260605120020__create_team_payment_advances.sql`（**P7 第一波・実装済 2026-06-05**） | 立替/精算記録テーブル（UUIDv7・案3・§2.5）。`payment_request_id` に UNIQUE（1請求＝1立替の冪等） |
+| `V124.001__alter_member_payments_extend_payment_method.sql`（**手動入金管理の実用化・実装済**） | `member_payments.payment_method` ENUM に `CASH`/`BANK_TRANSFER` 追加（`STRIPE`/`MANUAL` は不変）。採番は origin/main 最大の次（確認時 V123 → V124） |
 
 > **採番方式の改定（2026-06-05）:** 当初 `V74.004/005` 等の連番を予定したが、並行 PR との衝突を避けるため
 > origin/main で既に採用済みのタイムスタンプ式（`V74.YYYYMMDDhhmmss`）に統一した。P7 第一波の 2 本は
@@ -358,6 +374,27 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
   - バッチ（日次）は**取りこぼしの掃き取り**（二重防御）であって主経路ではない。順序は user 失効より先に下流（grant/subscription）を倒し、不整合を残さない。
 - `payment_proxy_grants` は受益者退会で `REVOKED`（上記1トランザクションに含む）。
 - `connect_accounts.tax_registration_number` は公開情報ゆえ暗号化不要。会員 PII（氏名等）は領収書生成時に既存の暗号化済み `users` から都度復号（保存しない）。
+
+---
+
+## 6.5 受益者制限設定 `payment_beneficiary_settings`（会員のみ／応援者可）
+
+会費の**受益者を会員(MEMBER)のみに限定するか**をチーム/組織ごとに保持する（1スコープ1行・`V130.001`）。
+
+| 列 | 型 | 説明 |
+|---|---|---|
+| `id` | `BINARY(16)` | UUIDv7 主キー（原則6）|
+| `team_id` | `BIGINT NULL` | チームスコープ（org とは排他・FK なし・UNIQUE）|
+| `organization_id` | `BIGINT NULL` | 組織スコープ（team とは排他・FK なし・UNIQUE）|
+| `beneficiary_member_only` | `BOOLEAN NOT NULL DEFAULT TRUE` | **既定 ON＝会員のみ（純 SUPPORTER 除外）**。OFF で応援者も受益者可 |
+| `created_at`/`updated_at` | `DATETIME(6)` | |
+
+- `CHECK (team_id XOR organization_id)` でスコープ排他を保証。
+- **設定行が無いスコープは既定 `true`（会員のみ）として扱う**（後方互換・`PaymentBeneficiarySettingService.isMemberOnly` が行無し時 true）。
+- 受益者判定（`MemberPaymentService.isBeneficiaryMember`・AC-6）はこの設定で分岐する（03_security §2 / 受益者合成ロジック）:
+  - `memberOnly=false`: 従来 `AccessControlService.isMemberOrDescendant(..., false)`（TEAM は SUPPORTER 許容・ORG は配下 SUPPORTER 除外）。
+  - `memberOnly=true`（既定）: TEAM=`hasRoleOrAbove(.., "MEMBER")`（priority で SUPPORTER 除外）／ORG=`hasRoleOrAbove(.., "MEMBER") || isInOrgDistributionAudience(.., false)`（組織直接/配下チームの MEMBER を許容・純 SUPPORTER 除外）。
+- 設定 API（ADMIN 必須）: `GET|PUT /api/v1/teams/{id}/payment-beneficiary-setting`・`GET|PUT /api/v1/organizations/{id}/payment-beneficiary-setting`。
 
 ---
 

@@ -1,0 +1,213 @@
+{
+  "payment": {
+    "paywall": {
+      "locked": "Dieser Inhalt erfordert eine Mitgliedschaftszahlung",
+      "unlock": "Bezahlen und anzeigen",
+      "requiredItem": "Erforderliche Zahlung: {name}",
+      "hiddenContent": "Dieser Inhalt ist nicht verfügbar",
+      "loading": "Zugriff wird überprüft..."
+    },
+    "membership": {
+      "subscribe": {
+        "cardLabel": "Zahlungskarte",
+        "submit": "Mit dieser Karte abonnieren",
+        "processing": "Wird verarbeitet…",
+        "loadFailed": "Das Zahlungsformular konnte nicht geladen werden. Bitte versuche es später erneut",
+        "keyMissing": "Die Zahlungseinrichtung ist unvollständig. Bitte wende dich an einen Administrator",
+        "genericError": "Bei der Zahlungsabwicklung ist ein Fehler aufgetreten. Bitte versuche es später erneut",
+        "noPaymentMethod": "Deine Zahlungsmethode konnte nicht bestätigt werden. Bitte überprüfe deine Kartendaten und versuche es erneut",
+        "pageTitle": "Wiederkehrende Zahlung abonnieren",
+        "stepBeneficiary": "Mitglied wählen",
+        "stepCard": "Kartendaten",
+        "stepConfirm": "Prüfen & bestätigen",
+        "stepDone": "Fertig",
+        "beneficiaryHelp": "Wähle, für wen dieser Beitrag abonniert wird.",
+        "beneficiarySelf": "Ich selbst",
+        "unnamedChild": "(Kind ohne Namen)",
+        "beneficiaryRequired": "Bitte wähle ein Mitglied aus, für das abonniert wird",
+        "next": "Weiter",
+        "invalidItem": "Beitragsposten nicht gefunden. Bitte beginne erneut über den Einstieg",
+        "finalizing": "Dein Abonnement wird abgeschlossen…",
+        "authFailed": "Die Kartenauthentifizierung wurde nicht abgeschlossen. Bitte gib deine Kartendaten erneut ein",
+        "errorNotRecurring": "Dieser Beitrag unterstützt keine wiederkehrenden Zahlungen",
+        "errorPmNotSaved": "Es ist keine Zahlungsmethode gespeichert. Bitte gib deine Kartendaten erneut ein",
+        "errorAlreadyExists": "Für dieses Mitglied besteht bereits eine aktive wiederkehrende Zahlung",
+        "beneficiaryUnverified": "Der Begünstigte konnte nicht verifiziert werden; die Verarbeitung wurde gestoppt. Deine Zahlungsmethode wurde gespeichert. Bitte wähle den Begünstigten erneut aus und versuche es erneut",
+        "doneTitle": "Abonnement abgeschlossen",
+        "doneMessage": "Deine wiederkehrende Zahlung wurde gestartet. Künftige Zahlungen werden automatisch abgebucht.",
+        "toSubscriptions": "Wiederkehrende Zahlungen verwalten"
+      },
+      "subscription": {
+        "title": "Wiederkehrende Zahlungen",
+        "empty": "Du hast keine aktiven wiederkehrenden Zahlungen",
+        "unnamedItem": "(Unbenannter Beitrag)",
+        "monthly": "Monatlich",
+        "yearly": "Jährlich",
+        "beneficiary": "Mitglied",
+        "nextBilling": "Nächstes Abrechnungsdatum",
+        "validUntil": "Gültig bis",
+        "skip": "Diesen Monat überspringen",
+        "skipConfirm": "Die Zahlung für diesen Monat wird pausiert. Dein nächstes Abrechnungsdatum ist der {date}. In dieser Zeit wird dein Zugriffszeitraum nicht verlängert.",
+        "skipped": "Diesen Monat pausiert (nächste: {date})",
+        "skipSuccess": "Zahlung für diesen Monat übersprungen",
+        "resume": "Fortsetzen",
+        "resumeConfirm": "Das Überspringen aufheben und deine wiederkehrende Zahlung fortsetzen?",
+        "resumeSuccess": "Wiederkehrende Zahlung fortgesetzt",
+        "cancel": "Kündigen",
+        "cancelAtPeriodEnd": "Zum Periodenende kündigen",
+        "cancelConfirm": "Du kannst es bis zum {date} nutzen. Zum Ende der Periode kündigen? (Keine anteilige Rückerstattung)",
+        "cancelScheduled": "Nutzbar bis zum {date} (Kündigung zum Periodenende geplant)",
+        "cancelSuccess": "Kündigung zum Periodenende geplant",
+        "pastDue": "Zahlung erforderlich",
+        "pastDueGuide": "Deine Kartenzahlung ist fehlgeschlagen. Bitte aktualisiere deine Zahlungsmethode.",
+        "confirmAction": "Bestätigen",
+        "loadError": "Wiederkehrende Zahlungen konnten nicht geladen werden",
+        "actionError": "Der Vorgang ist fehlgeschlagen. Bitte versuche es später erneut",
+        "status": {
+          "PENDING": "Ausstehend",
+          "ACTIVE": "Aktiv",
+          "PAST_DUE": "Zahlung fällig",
+          "CANCELLED": "Gekündigt",
+          "EXPIRED": "Abgelaufen"
+        }
+      }
+    },
+    "term": {
+      "periodLabel": "Gültigkeitszeitraum",
+      "from": "Von",
+      "until": "Bis",
+      "typeLabel": {
+        "ANNUAL_FEE": "Jährlich",
+        "MONTHLY_FEE": "Monatlich",
+        "ITEM": "Artikel",
+        "DONATION": "Spende",
+        "TERM": "Zeitraumgebühr"
+      }
+    },
+    "admin": {
+      "pageTitle": "Zahlungsverwaltung",
+      "permissionDenied": "このページは管理者のみアクセスできます",
+      "itemsTitle": "Zahlungsposten",
+      "selectItem": "Bitte einen Zahlungsposten auswählen",
+      "remindUnpaid": "Offene Zahlungen erinnern",
+      "loadItemsError": "Zahlungsposten konnten nicht geladen werden",
+      "loadPaymentsError": "Zahlungsstatus konnte nicht geladen werden",
+      "remindSuccess": "Erinnerung gesendet",
+      "remindError": "Senden fehlgeschlagen",
+      "exportError": "CSV-Download fehlgeschlagen",
+      "status": {
+        "PAID": "Bezahlt",
+        "UNPAID": "Unbezahlt",
+        "EXPIRED": "Abgelaufen",
+        "PENDING": "Ausstehend",
+        "REFUNDED": "Erstattet",
+        "CANCELLED": "Storniert"
+      },
+      "method": {
+        "CASH": "Bargeld",
+        "BANK_TRANSFER": "Banküberweisung",
+        "MANUAL": "Manuelle Erfassung"
+      },
+      "record": {
+        "recordButton": "Zahlung erfassen",
+        "title": "Zahlung erfassen",
+        "member": "Mitglied",
+        "memberPlaceholder": "Mitglied auswählen",
+        "amount": "Gezahlter Betrag",
+        "paidAt": "Zahlungsdatum",
+        "method": "Zahlungsart",
+        "note": "Notiz",
+        "notePlaceholder": "Optional (max. 500 Zeichen)",
+        "submit": "Erfassen",
+        "cancel": "Abbrechen",
+        "success": "Zahlung erfasst",
+        "error": "Zahlung konnte nicht erfasst werden"
+      },
+      "bulk": {
+        "bulkButton": "Sammelerfassung",
+        "title": "Sammelerfassung",
+        "description": "Wähle unbezahlte Mitglieder, um Zahlungen gesammelt zu erfassen.",
+        "noUnpaid": "Keine unbezahlten Mitglieder",
+        "submit": "{count} erfassen",
+        "error": "Sammelerfassung fehlgeschlagen",
+        "resultSummary": "Erstellt {created}, übersprungen {skipped}"
+      },
+      "cancel": {
+        "button": "Stornieren",
+        "success": "Zahlung storniert",
+        "error": "Stornierung fehlgeschlagen"
+      },
+      "beneficiarySetting": {
+        "label": "Nur Mitglieder",
+        "description": "Wenn aktiviert, werden Unterstützer (Supporter) als Begünstigte ausgeschlossen. Verwende diese Option, wenn der Beitrag nur für ordentliche Mitglieder gelten soll.",
+        "saveSuccess": "Einstellung für Begünstigtenbeschränkung gespeichert",
+        "saveError": "Einstellung konnte nicht gespeichert werden"
+      }
+    },
+    "receipt": {
+      "title": "Quittungen",
+      "download": "Herunterladen",
+      "issuedBy": "Aussteller",
+      "amount": "Betrag",
+      "issuedDate": "Ausstellungsdatum",
+      "pending": "In Vorbereitung",
+      "noReceipts": "Keine Quittungen",
+      "loadError": "Zahlungsdatensätze konnten nicht geladen werden",
+      "loadReceiptError": "Quittung konnte nicht geladen werden"
+    },
+    "summary": {
+      "expired": "Abgelaufen",
+      "payer": "Zahler",
+      "beneficiary": "Begünstigter"
+    },
+    "exportCsv": "CSV herunterladen",
+    "feeStatements": {
+      "title": "Gebührenabrechnung",
+      "period": "Abrechnungsmonat",
+      "totalFeeAmount": "Gesamtgebühr",
+      "issuerName": "Aussteller",
+      "noData": "Keine Daten für den ausgewählten Monat",
+      "loadError": "Gebührenabrechnung konnte nicht geladen werden"
+    },
+    "guardianBulkPayment": {
+      "title": "Vormund-Sammelzahlung",
+      "subtitle": "Bezahle ausstehende Beiträge für von dir verwaltete Kinder auf einmal",
+      "noItems": "Keine ausstehenden Beiträge",
+      "beneficiary": "Begünstigter",
+      "scope": "Zugehörigkeit",
+      "itemName": "Beitragsname",
+      "amount": "Betrag",
+      "dueDate": "Fälligkeitsdatum",
+      "alreadyPaid": "Bereits bezahlt",
+      "paidBy": "Von {name} bezahlt",
+      "kind": {
+        "ONE_TIME": "Einmalzahlung",
+        "RECURRING": "Wiederkehrende Zahlung",
+        "TERM": "Periodenzahlung"
+      },
+      "via": {
+        "SELF": "Selbst",
+        "GUARDIAN": "Vormund",
+        "GUARDIAN_PROXY": "Vormund-Stellvertreter",
+        "PROXY_GRANT": "Vollmacht"
+      },
+      "selectAll": "Alle auswählen",
+      "deselectAll": "Alle abwählen",
+      "paySelected": "{count} Posten bezahlen",
+      "totalAmount": "Gesamt: ¥{amount}",
+      "processing": "Wird verarbeitet...",
+      "result": {
+        "title": "Zahlungsergebnis",
+        "checkedOut": "Zahlung abgeschlossen",
+        "skipped": "Übersprungen",
+        "skipReasons": {
+          "ALREADY_PAID": "Bereits bezahlt",
+          "NOT_AUTHORIZED": "Keine Zahlungsberechtigung",
+          "CONNECT_NOT_READY": "Empfangskonto nicht eingerichtet",
+          "ITEM_NOT_FOUND": "Beitragsposten nicht gefunden",
+          "ERROR": "Fehler"
+        }
+      }
+    }
+  }
+}

@@ -1,15 +1,18 @@
 package com.mannschaft.app.tournament.service;
 
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.tournament.TournamentMapper;
 import com.mannschaft.app.tournament.dto.MatrixResponse;
 import com.mannschaft.app.tournament.dto.StandingResponse;
 import com.mannschaft.app.tournament.dto.TeamTournamentHistoryResponse;
 import com.mannschaft.app.tournament.dto.TeamTournamentStatsResponse;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entity.TournamentStandingEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.tournament.repository.TournamentStandingRepository;
@@ -38,8 +41,9 @@ public class StandingsQueryService {
     private final TournamentParticipantRepository participantRepository;
     private final TournamentDivisionRepository divisionRepository;
     private final TournamentRepository tournamentRepository;
-    private final TournamentMatchRepository matchRepository;
+    private final TournamentFixtureRepository matchRepository;
     private final TournamentMapper mapper;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
      * 順位表を取得する。
@@ -61,7 +65,7 @@ public class StandingsQueryService {
     public MatrixResponse getMatrix(Long divisionId) {
         List<TournamentParticipantEntity> participants =
                 participantRepository.findByDivisionIdOrderBySeedAsc(divisionId);
-        List<TournamentMatchEntity> matches = matchRepository.findByDivisionId(divisionId);
+        List<TournamentFixtureEntity> matches = matchRepository.findByDivisionId(divisionId);
 
         List<MatrixResponse.ParticipantSummary> summaries = participants.stream()
                 .map(p -> new MatrixResponse.ParticipantSummary(
@@ -70,7 +74,7 @@ public class StandingsQueryService {
                 .toList();
 
         Map<String, MatrixResponse.MatrixCell> cells = new HashMap<>();
-        for (TournamentMatchEntity match : matches) {
+        for (TournamentFixtureEntity match : matches) {
             if (match.getHomeParticipantId() != null && match.getAwayParticipantId() != null) {
                 String key = match.getHomeParticipantId() + "_" + match.getAwayParticipantId();
                 cells.put(key, new MatrixResponse.MatrixCell(
@@ -85,11 +89,19 @@ public class StandingsQueryService {
     /**
      * チームの大会参加履歴を取得する。
      * <p>
+     * F08.7 順位UI Wave0 検分フォロー（B-2b）: チーム横断集計のため大会単位の tId を持たない EP だが、
+     * 閲覧者が {@link ContentVisibilityChecker#canView} できない大会の成績は per-tournament でフィルタして
+     * 除外する（非公開大会の順位・成績がチーム履歴経由で漏れるのを防ぐ）。可視性判定は同一 tournament で
+     * 繰り返さないよう {@code visibilityCache} でメモ化する。
+     * <p>
      * TODO: N+1改善候補（将来はJOINクエリへの移行を検討）
      */
     public TeamTournamentHistoryResponse getTeamHistory(Long teamId) {
         List<TournamentParticipantEntity> participants =
                 participantRepository.findAllByTeamId(teamId);
+
+        final Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        final Map<Long, Boolean> visibilityCache = new HashMap<>();
 
         List<TeamTournamentHistoryResponse.TournamentHistoryEntry> entries = new ArrayList<>();
         for (TournamentParticipantEntity p : participants) {
@@ -101,6 +113,11 @@ public class StandingsQueryService {
             var tournamentOpt = tournamentRepository.findById(division.getTournamentId());
             if (tournamentOpt.isEmpty()) continue;
             var tournament = tournamentOpt.get();
+
+            // 閲覧者が見られない大会の成績は除外（漏洩防止）
+            if (!canViewTournament(tournament.getId(), viewerUserId, visibilityCache)) {
+                continue;
+            }
 
             // 順位表から成績取得（なければゼロ）
             var standingOpt = standingRepository.findByDivisionIdAndParticipantId(
@@ -133,11 +150,19 @@ public class StandingsQueryService {
     /**
      * チームの通算成績を取得する。
      * <p>
+     * F08.7 順位UI Wave0 検分フォロー（B-2b）: チーム横断集計のため大会単位の tId を持たない EP だが、
+     * 閲覧者が {@link ContentVisibilityChecker#canView} できない大会の成績は per-tournament でフィルタして
+     * 通算集計から除外する（非公開大会の成績がチーム通算成績経由で漏れるのを防ぐ）。可視性判定は
+     * 同一 tournament で繰り返さないよう {@code visibilityCache} でメモ化する。
+     * <p>
      * TODO: N+1改善候補（将来はJOINクエリへの移行を検討）
      */
     public TeamTournamentStatsResponse getTeamStats(Long teamId) {
         List<TournamentParticipantEntity> participants =
                 participantRepository.findAllByTeamId(teamId);
+
+        final Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        final Map<Long, Boolean> visibilityCache = new HashMap<>();
 
         int totalMatches = 0;
         int wins = 0, draws = 0, losses = 0;
@@ -148,16 +173,22 @@ public class StandingsQueryService {
         Set<Long> tournamentIds = new HashSet<>();
 
         for (TournamentParticipantEntity p : participants) {
+            // divisionId → tournament を逆引き（重複排除 ＋ 可視性判定の双方に使う）
+            var divisionOpt = divisionRepository.findById(p.getDivisionId());
+            if (divisionOpt.isEmpty()) continue;
+            Long tournamentId = divisionOpt.get().getTournamentId();
+
+            // 閲覧者が見られない大会の成績は通算集計に含めない（漏洩防止）
+            if (!canViewTournament(tournamentId, viewerUserId, visibilityCache)) {
+                continue;
+            }
+
             var standingOpt = standingRepository.findByDivisionIdAndParticipantId(
                     p.getDivisionId(), p.getId());
             if (standingOpt.isEmpty()) continue;
 
             var s = standingOpt.get();
-            // divisionId → tournament を逆引きして重複排除
-            var divisionOpt = divisionRepository.findById(p.getDivisionId());
-            if (divisionOpt.isPresent()) {
-                tournamentIds.add(divisionOpt.get().getTournamentId());
-            }
+            tournamentIds.add(tournamentId);
             totalMatches += s.getPlayed();
             wins         += s.getWins();
             draws        += s.getDraws();
@@ -173,5 +204,25 @@ public class StandingsQueryService {
         return new TeamTournamentStatsResponse(
                 teamId, totalTournaments, totalMatches,
                 wins, draws, losses, goalsFor, goalsAgainst, bestRank);
+    }
+
+    /**
+     * チーム横断集計（履歴/通算成績）用の per-tournament 可視性判定。
+     * 同一 tournament の判定結果を {@code cache} にメモ化して F00 Resolver の重複呼び出しを避ける。
+     *
+     * @param tournamentId 判定対象の大会 ID
+     * @param viewerUserId 閲覧者ユーザー ID（未認証なら null）
+     * @param cache        tournamentId → 可視性 のメモ
+     * @return 閲覧者が当該大会を閲覧できれば true
+     */
+    private boolean canViewTournament(Long tournamentId, Long viewerUserId, Map<Long, Boolean> cache) {
+        Boolean cached = cache.get(tournamentId);
+        if (cached != null) {
+            return cached;
+        }
+        boolean visible = contentVisibilityChecker.canView(
+                ReferenceType.TOURNAMENT, tournamentId, viewerUserId);
+        cache.put(tournamentId, visible);
+        return visible;
     }
 }

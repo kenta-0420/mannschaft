@@ -6,6 +6,7 @@ definePageMeta({
 
 const orgStore = useOrganizationStore()
 const foldersStore = useScopeFoldersStore()
+const { handleApiError } = useErrorHandler()
 const route = useRoute()
 const router = useRouter()
 
@@ -30,8 +31,8 @@ watch(viewMode, (mode) => {
   }
 })
 
-function onOrgCreated(entity: { id: number; publicId: string; name: string }) {
-  navigateTo(`/organizations/${entity.publicId}`)
+function onOrgCreated(entity: { id: string; name: string; slug: string }) {
+  navigateTo(`/organizations/${entity.slug}`)
 }
 
 /** F15.3: URL クエリ `?folder=` がソース・オブ・トゥルース。 */
@@ -60,7 +61,8 @@ function setCurrentFolderId(value: CurrentFolder) {
 }
 
 onMounted(async () => {
-  await orgStore.fetchMyOrganizations().catch(() => {})
+  // 重要データ（所属組織一覧）の取得失敗はユーザーに通知する。
+  await orgStore.fetchMyOrganizations().catch((e) => handleApiError(e, '組織一覧取得'))
   try {
     await foldersStore.fetchAll('ORGANIZATION')
   }
@@ -116,7 +118,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
 
     <!-- F15.3: フォルダタブ -->
     <div class="mb-4">
-      <ScopeFolderScopeFolderTabs
+      <ScopeFolderTabs
         scope-type="ORGANIZATION"
         :current-folder-id="currentFolderId"
         @update:current-folder-id="setCurrentFolderId"
@@ -170,7 +172,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
           v-for="org in filteredOrgs"
           :key="org.id"
           class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/organizations/${org.publicId}`)"
+          @click="org.slug ? navigateTo(`/organizations/${org.slug}`) : undefined"
         >
           <div class="mb-3 flex items-center gap-3">
             <Avatar
@@ -199,7 +201,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
           v-for="org in filteredOrgs"
           :key="org.id"
           class="flex cursor-pointer items-center gap-4 rounded-lg border border-surface-200 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm"
-          @click="navigateTo(`/organizations/${org.publicId}`)"
+          @click="org.slug ? navigateTo(`/organizations/${org.slug}`) : undefined"
         >
           <Avatar
             :image="org.iconUrl ?? undefined"

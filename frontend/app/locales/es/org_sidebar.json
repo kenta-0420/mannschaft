@@ -57,6 +57,8 @@
     "notificationCredits": "Créditos de notificación",
     "todoStatusLabels": "Etiquetas de tareas",
     "faqSettings": "Configuración de FAQ",
-    "leagueTransfers": "Ascensos y descensos"
+    "billing": "Facturación y gestión de planes",
+    "leagueTransfers": "Ascensos y descensos",
+    "adminConsole": "Consola de administración"
   }
 }

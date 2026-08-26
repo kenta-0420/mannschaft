@@ -1,10 +1,10 @@
 package com.mannschaft.app.social.announcement;
 
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,23 +37,11 @@ public interface AnnouncementFeedRepository extends JpaRepository<AnnouncementFe
             AnnouncementScopeType scopeType,
             Long scopeId);
 
-    /**
-     * スコープ内の有効なお知らせフィードを取得する（元コンテンツ削除済みを除外）。
-     *
-     * <p>
-     * 管理画面やバッチ処理で全件リスト表示する際に使用する。
-     * ウィジェットのカーソルページング取得には {@link AnnouncementFeedQueryRepository#findByScope} を使うこと。
-     * </p>
-     *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープ ID
-     * @param sort      ソート順（ピン留め優先 → 新着順が推奨）
-     * @return 有効なお知らせフィードリスト
-     */
-    List<AnnouncementFeedEntity> findByScopeTypeAndScopeIdAndSourceDeletedAtIsNull(
-            AnnouncementScopeType scopeType,
-            Long scopeId,
-            Sort sort);
+    // NOTE (#2494): findByScopeTypeAndScopeIdAndSourceDeletedAtIsNull（スコープ内 feed の
+    // limit 無し全件取得）は削除した。唯一の利用者だった一括既読が、可視性・未読を DB 側で絞る
+    // AnnouncementFeedQueryRepository#findUnreadIdsByScope（件数上限つき）へ移行したためである。
+    // 「スコープの feed を無制限に全件メモリへ載せる」経路は再導入しないこと
+    //（IN 句のプレースホルダ上限・max_allowed_packet に触れ、実行時間がスコープの歴史に比例する）。
 
     /**
      * スコープ内のピン留め済みお知らせ件数を取得する（ピン留め上限チェック用）。
@@ -70,6 +58,20 @@ public interface AnnouncementFeedRepository extends JpaRepository<AnnouncementFe
     long countByScopeTypeAndScopeIdAndIsPinnedTrueAndSourceDeletedAtIsNull(
             AnnouncementScopeType scopeType,
             Long scopeId);
+
+    /**
+     * F00 可視性判定用の射影を ID 集合で一括取得する（F08.9 P4b ペイウォール連結）。
+     *
+     * <p>取得した Entity から
+     * {@link com.mannschaft.app.social.announcement.visibility.AnnouncementFeedVisibilityResolver}
+     * がメモリ上で {@link AnnouncementFeedVisibilityProjection} に変換する。
+     * {@code source_deleted_at IS NOT NULL} のレコードも含む
+     * （可視性判定後に削除済み表示除外は一覧クエリ側の別軸で制御）。</p>
+     *
+     * @param ids 取得対象 ID 集合（空でない、{@code null} ではない）
+     * @return 実存する {@link AnnouncementFeedEntity} の List
+     */
+    List<AnnouncementFeedEntity> findByIdIn(Collection<Long> ids);
 
     /**
      * 元コンテンツの種別と ID に紐づくお知らせフィードを全件取得する。

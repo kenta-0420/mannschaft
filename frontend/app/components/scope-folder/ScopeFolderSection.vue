@@ -3,6 +3,8 @@ import type { ScopeFolder } from '~/types/scopeFolder'
 
 interface ScopeItem {
   id: number
+  /** チーム/組織 UUID（ルートナビゲーションに使用） */
+  slug?: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -223,8 +225,6 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <ConfirmDialog />
-
     <!-- フォルダ一覧 -->
     <div v-if="loading" class="flex justify-center py-8">
       <i class="pi pi-spin pi-spinner text-2xl text-surface-400" />
@@ -299,7 +299,7 @@ onUnmounted(() => {
                 shape="circle"
                 size="normal"
               />
-              <div class="min-w-0 flex-1" @click="navigateTo(scopeType === 'TEAM' ? `/teams/${item.id}` : `/organizations/${item.id}`)">
+              <div class="min-w-0 flex-1" @click="item.slug ? navigateTo(scopeType === 'TEAM' ? `/teams/${item.slug}` : `/organizations/${item.slug}`) : undefined">
                 <span class="block truncate font-semibold">{{ item.nickname1 || item.name }}</span>
                 <span class="text-xs text-surface-400">
                   <i class="pi pi-users mr-1" />{{ item.memberCount }}
@@ -383,7 +383,7 @@ onUnmounted(() => {
                 shape="circle"
                 size="normal"
               />
-              <div class="min-w-0 flex-1" @click="navigateTo(scopeType === 'TEAM' ? `/teams/${item.id}` : `/organizations/${item.id}`)">
+              <div class="min-w-0 flex-1" @click="item.slug ? navigateTo(scopeType === 'TEAM' ? `/teams/${item.slug}` : `/organizations/${item.slug}`) : undefined">
                 <span class="block truncate font-semibold">{{ item.nickname1 || item.name }}</span>
                 <span class="text-xs text-surface-400">
                   <i class="pi pi-users mr-1" />{{ item.memberCount }}

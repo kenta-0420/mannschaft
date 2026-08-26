@@ -64,6 +64,18 @@ public enum ReferenceType {
     /** 写真アルバム (Phase D / 既存 enum: {@code gallery.AlbumVisibility}). */
     PHOTO_ALBUM,
 
+    /**
+     * お知らせウィジェットフィード（F02.6 / F08.9 P4b ペイウォール連結）。
+     *
+     * <p>フィード単体の可視性は {@code announcement_feeds.visibility} のロールベース値
+     * ({@code PUBLIC}/{@code SUPPORTERS_AND_ABOVE}/{@code MEMBERS_AND_ABOVE})、
+     * または F08.9 P4b ペイウォール連結用の {@code CUSTOM} で表現される。
+     * {@link com.mannschaft.app.social.announcement.visibility.AnnouncementFeedVisibilityResolver}
+     * が {@link com.mannschaft.app.payment.service.PaymentGateService#checkAccess}
+     * を経由してペイウォール判定を行う（設計書 F08.9 02 §6）。</p>
+     */
+    ANNOUNCEMENT_FEED,
+
     /** ファイル添付 (Phase D / 添付元コンテンツの可視性に従属). */
     FILE_ATTACHMENT,
 
@@ -151,7 +163,96 @@ public enum ReferenceType {
      *
      * <p>使用カラム: {@code corkboard_cards.reference_id_uuid} (UUIDv7)
      */
-    RESIDENT_ACTIVITY_SNAPSHOT;
+    RESIDENT_ACTIVITY_SNAPSHOT,
+
+    // ---------------------------------------------------------------------
+    // F08.10 試合記録・分析 (matches は UUIDv7 主キー)
+    // ---------------------------------------------------------------------
+
+    /**
+     * 試合 (F08.10 / {@code MatchVisibilityResolver} が実装).
+     *
+     * <p>{@code matches} テーブル（UUIDv7 / BINARY(16) 主キー）の可視性判定に用いる。
+     * 閲覧可視性は独自述語を書かず {@code MatchVisibilityResolver} 経由で F00 正準に委譲する
+     * （03_permissions_and_recording_modes.md §C.3.2）。{@link #idKind()} は {@link IdKind#UUID_V7}。</p>
+     *
+     * <p><b>コルクボード引用は対象外</b>: match はコルクボード（引用・ピン留め）の対象に含めない方針のため、
+     * 引用先 ID を保持する {@code corkboard_cards.reference_id_uuid} カラムを使う用途は当面無い
+     * （引用要件が顕在化したら追加する）。本値は {@code ContentVisibilityChecker.canViewUuid} の
+     * 単発・バッチ判定経路でのみ参照される。</p>
+     */
+    MATCH,
+
+    // ---------------------------------------------------------------------
+    // F06.5 アクティブリコール学習機能 (reflection_entries は UUIDv7 主キー)
+    // ---------------------------------------------------------------------
+
+    /**
+     * 振り返りエントリ (F06.5 / {@code ReflectionEntryVisibilityResolver} が実装).
+     *
+     * <p>{@code reflection_entries} テーブル（UUIDv7 / BINARY(16) 主キー）の可視性判定に用いる。
+     * MVP は PRIVATE 固定ゆえ「閲覧者＝所有者本人」判定。FAMILY_SHARED（保護者の学習確認）は
+     * 別軍議で追加予定（設計書 §6.1 / §9.1）。{@link #idKind()} は {@link IdKind#UUID_V7}。</p>
+     *
+     * <p>カレンダー印（target_date / 想起予定）を F00 UUID 経路フィルタ経由で合流する保険に用いる
+     * （設計書 §6.2・AC-14）。{@code ContentVisibilityChecker.canViewUuid} の経路で参照される。</p>
+     */
+    REFLECTION_ENTRY,
+
+    // ---------------------------------------------------------------------
+    // F03.17 キープ（日付未定の予定） (schedule_keeps は UUIDv7 主キー)
+    // ---------------------------------------------------------------------
+
+    /**
+     * キープ（日付未定の予定）(F03.17 / {@code ScheduleKeepVisibilityResolver} が実装).
+     *
+     * <p>{@code schedule_keeps} テーブル（UUIDv7 主キー・BINARY(16)）の可視性判定に用いる。
+     * 閲覧可視性は独自述語を書かず {@code ScheduleKeepVisibilityResolver} 経由で F00 正準に委譲する。
+     * 同 Resolver は可視性列を持たず、チーム／組織スコープでは常に
+     * {@code StandardVisibility.MEMBERS_AND_ABOVE} を返す
+     * （チーム内の相談段階の情報のため応援者・ゲストは不可視。F03.17 §4.6.2）。
+     * 個人スコープのキープは {@code StandardVisibility.PRIVATE} 相当（所有者本人のみ）。
+     * {@link #idKind()} は {@link IdKind#UUID_V7}。</p>
+     *
+     * <p><b>コルクボード（引用・埋め込み）の対象外</b>: キープはチーム内の相談段階の情報であり、
+     * 他所へ引用・埋め込みされる想定が無い。よって {@code corkboard_cards.reference_id_uuid} を
+     * 使う用途は持たず、{@code ContentVisibilityChecker.canViewUuid} の単発・バッチ判定経路でのみ
+     * 参照される（対象外を明示しないと、将来 corkboard 側が全 referenceType を舐める実装を
+     * したときに巻き込まれる）。</p>
+     */
+    SCHEDULE_KEEP,
+
+    // ---------------------------------------------------------------------
+    // F03.16 予定コメントスレッド (schedule_comments は UUIDv7 主キー)
+    // ---------------------------------------------------------------------
+
+    /**
+     * 予定コメント (F03.16 / {@code ScheduleCommentVisibilityResolver} が実装).
+     *
+     * <p>{@code schedule_comments} テーブル（UUIDv7 / BINARY(16) 主キー）の可視性判定に用いる。
+     * コメント自身は可視性軸を一切持たず、判定は<b>親予定へ完全委譲</b>する
+     * （{@code contentVisibilityChecker.canView(SCHEDULE, scheduleId, viewerUserId)} 単体。
+     * F03.16 §4.5.0 マスター御裁可）。{@link #idKind()} は {@link IdKind#UUID_V7}。</p>
+     *
+     * <p><b>既存の {@link #COMMENT} を流用しない理由</b>（将来「なぜ2つあるのか」で誤って
+     * 統合されるのを防ぐためここに残す・F03.16 §4.5.1）: {@link #COMMENT} は
+     * {@code CirculationCommentVisibilityResolver} が {@code referenceType()} で<b>既に専有</b>
+     * している。{@link ContentVisibilityChecker} は {@code referenceType()} をキーに
+     * Resolver のディスパッチ表を構築するため、同じ値を 2 つの Resolver が返すと
+     * <b>解決が一意に定まらない</b>（起動順に依存して回覧板コメントか予定コメントかの
+     * 片方が握り潰される）。さらに両者は主キー型すら異なる（{@link #COMMENT} は BIGINT、
+     * 本値は UUIDv7）ため、統合すると ID 経路も壊れる。
+     * この一意性は {@code ScheduleCommentResolverUniquenessTest}（AC-37）が固定している。</p>
+     *
+     * <p><b>コルクボード引用は対象外</b>: コメントはコルクボードに貼る対象に含めない方針のため、
+     * {@code corkboard/service/ReferenceTypeResolver} の {@code SUPPORTED_TYPES} /
+     * {@code NAVIGATE_TEMPLATES} へは<b>意図的に追加しない</b>（F03.16 §4.5.1 チェックリスト #3）。
+     * 未対応 type は {@code is_accessible = false} にフォールバックする実装なので安全に無視される。
+     * よって {@code corkboard_cards.reference_id_uuid} を使う用途は持たず、本値は
+     * {@code ContentVisibilityChecker.canViewUuid} / {@code filterAccessibleUuid} の
+     * 判定経路でのみ参照される。</p>
+     */
+    SCHEDULE_COMMENT;
 
     /**
      * 本 reference_type が参照する主キー型を返す。
@@ -171,7 +272,16 @@ public enum ReferenceType {
         return switch (this) {
             case SUCCESSION_PRE_REGISTRATION,
                  SUCCESSION_COVENANTS,
-                 RESIDENT_ACTIVITY_SNAPSHOT -> IdKind.UUID_V7;
+                 RESIDENT_ACTIVITY_SNAPSHOT,
+                 MATCH,
+                 REFLECTION_ENTRY,
+                 SCHEDULE_KEEP,
+                 // F03.16: schedule_comments は UUIDv7 主キー（設計書 §1.6 の裁定変更）。
+                 // ⚠️ ここへ書き忘れると default -> BIGINT に落ち、
+                 // ContentVisibilityChecker.canViewUuid / filterAccessibleUuid が
+                 // 「BIGINT 主キーの referenceType に UUID 経路が呼ばれた」と判定して
+                 // WARN ログ 1 行だけ残して fail-closed する（＝全コメントが静かに不可視になる）。
+                 SCHEDULE_COMMENT -> IdKind.UUID_V7;
             default -> IdKind.BIGINT;
         };
     }

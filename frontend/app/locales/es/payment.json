@@ -1,0 +1,213 @@
+{
+  "payment": {
+    "paywall": {
+      "locked": "Este contenido requiere el pago de una cuota de membresía",
+      "unlock": "Pagar para ver",
+      "requiredItem": "Pago requerido: {name}",
+      "hiddenContent": "Este contenido no está disponible",
+      "loading": "Verificando acceso..."
+    },
+    "membership": {
+      "subscribe": {
+        "cardLabel": "Tarjeta de pago",
+        "submit": "Suscribirse con esta tarjeta",
+        "processing": "Procesando…",
+        "loadFailed": "No se pudo cargar el formulario de pago. Inténtalo de nuevo más tarde",
+        "keyMissing": "La configuración de pago está incompleta. Contacta con un administrador",
+        "genericError": "Se produjo un error al procesar el pago. Inténtalo de nuevo más tarde",
+        "noPaymentMethod": "No se pudo confirmar tu método de pago. Revisa los datos de la tarjeta e inténtalo de nuevo",
+        "pageTitle": "Suscribirse al pago recurrente",
+        "stepBeneficiary": "Elegir miembro",
+        "stepCard": "Datos de la tarjeta",
+        "stepConfirm": "Revisar y confirmar",
+        "stepDone": "Hecho",
+        "beneficiaryHelp": "Elige para quién es esta suscripción de cuota.",
+        "beneficiarySelf": "Yo mismo",
+        "unnamedChild": "(Hijo/a sin nombre)",
+        "beneficiaryRequired": "Selecciona el miembro para el que te suscribes",
+        "next": "Siguiente",
+        "invalidItem": "No se encontró el concepto de cuota. Vuelve a empezar desde el inicio",
+        "finalizing": "Completando tu suscripción…",
+        "authFailed": "No se completó la autenticación de la tarjeta. Vuelve a introducir los datos de la tarjeta",
+        "errorNotRecurring": "Esta cuota no admite pagos recurrentes",
+        "errorPmNotSaved": "No hay ningún método de pago guardado. Vuelve a introducir los datos de la tarjeta",
+        "errorAlreadyExists": "Ya existe un pago recurrente activo para este miembro",
+        "beneficiaryUnverified": "No se pudo verificar al beneficiario; el procesamiento se ha detenido. Tu método de pago ha sido guardado. Por favor, vuelve a seleccionar el beneficiario e inténtalo de nuevo",
+        "doneTitle": "Suscripción completada",
+        "doneMessage": "Tu pago recurrente ha comenzado. Los próximos pagos se cobrarán automáticamente.",
+        "toSubscriptions": "Gestionar pagos recurrentes"
+      },
+      "subscription": {
+        "title": "Pagos recurrentes",
+        "empty": "No tienes pagos recurrentes activos",
+        "unnamedItem": "(Cuota sin nombre)",
+        "monthly": "Mensual",
+        "yearly": "Anual",
+        "beneficiary": "Miembro",
+        "nextBilling": "Próxima fecha de cobro",
+        "validUntil": "Válido hasta",
+        "skip": "Omitir este mes",
+        "skipConfirm": "El pago de este mes se pausará. Tu próxima fecha de cobro es {date}. Durante este tiempo, tu período de acceso no se ampliará.",
+        "skipped": "En pausa este mes (próximo: {date})",
+        "skipSuccess": "Se omitió el pago de este mes",
+        "resume": "Reanudar",
+        "resumeConfirm": "¿Cancelar la omisión y reanudar tu pago recurrente?",
+        "resumeSuccess": "Pago recurrente reanudado",
+        "cancel": "Cancelar",
+        "cancelAtPeriodEnd": "Cancelar al final del período",
+        "cancelConfirm": "Puedes usarlo hasta el {date}. ¿Cancelar al final del período? (Sin reembolso prorrateado)",
+        "cancelScheduled": "Disponible hasta el {date} (cancelación programada al final del período)",
+        "cancelSuccess": "Programado para cancelar al final del período",
+        "pastDue": "Se requiere pago",
+        "pastDueGuide": "El pago con tu tarjeta falló. Actualiza tu método de pago.",
+        "confirmAction": "Confirmar",
+        "loadError": "Error al cargar los pagos recurrentes",
+        "actionError": "La operación falló. Inténtalo de nuevo más tarde",
+        "status": {
+          "PENDING": "Pendiente",
+          "ACTIVE": "Activo",
+          "PAST_DUE": "Pago pendiente",
+          "CANCELLED": "Cancelado",
+          "EXPIRED": "Caducado"
+        }
+      }
+    },
+    "term": {
+      "periodLabel": "Período válido",
+      "from": "Desde",
+      "until": "Hasta",
+      "typeLabel": {
+        "ANNUAL_FEE": "Anual",
+        "MONTHLY_FEE": "Mensual",
+        "ITEM": "Artículo",
+        "DONATION": "Donación",
+        "TERM": "Por período"
+      }
+    },
+    "admin": {
+      "pageTitle": "Gestión de pagos",
+      "permissionDenied": "このページは管理者のみアクセスできます",
+      "itemsTitle": "Conceptos de pago",
+      "selectItem": "Selecciona un concepto de pago",
+      "remindUnpaid": "Recordar impagados",
+      "loadItemsError": "Error al cargar los conceptos de pago",
+      "loadPaymentsError": "Error al cargar el estado de pago",
+      "remindSuccess": "Recordatorio enviado",
+      "remindError": "Error al enviar el recordatorio",
+      "exportError": "Error al descargar el CSV",
+      "status": {
+        "PAID": "Pagado",
+        "UNPAID": "Impagado",
+        "EXPIRED": "Vencido",
+        "PENDING": "Pendiente",
+        "REFUNDED": "Reembolsado",
+        "CANCELLED": "Cancelado"
+      },
+      "method": {
+        "CASH": "Efectivo",
+        "BANK_TRANSFER": "Transferencia bancaria",
+        "MANUAL": "Registro manual"
+      },
+      "record": {
+        "recordButton": "Registrar pago",
+        "title": "Registrar pago",
+        "member": "Miembro",
+        "memberPlaceholder": "Selecciona un miembro",
+        "amount": "Importe pagado",
+        "paidAt": "Fecha de pago",
+        "method": "Método de pago",
+        "note": "Nota",
+        "notePlaceholder": "Opcional (máx. 500 caracteres)",
+        "submit": "Registrar",
+        "cancel": "Cancelar",
+        "success": "Pago registrado",
+        "error": "No se pudo registrar el pago"
+      },
+      "bulk": {
+        "bulkButton": "Registro masivo",
+        "title": "Registro masivo",
+        "description": "Selecciona los miembros sin pagar para registrar pagos en masa.",
+        "noUnpaid": "No hay miembros sin pagar",
+        "submit": "Registrar {count}",
+        "error": "Error en el registro masivo",
+        "resultSummary": "Creados {created}, omitidos {skipped}"
+      },
+      "cancel": {
+        "button": "Anular",
+        "success": "Pago anulado",
+        "error": "No se pudo anular"
+      },
+      "beneficiarySetting": {
+        "label": "Solo miembros",
+        "description": "Cuando está activado, los seguidores (supporters) quedan excluidos como beneficiarios. Úsalo si deseas restringir la cuota solo a miembros regulares.",
+        "saveSuccess": "Configuración de restricción de beneficiarios guardada",
+        "saveError": "Error al guardar la configuración"
+      }
+    },
+    "receipt": {
+      "title": "Recibos",
+      "download": "Descargar",
+      "issuedBy": "Emisor",
+      "amount": "Monto",
+      "issuedDate": "Fecha de emisión",
+      "pending": "En preparación",
+      "noReceipts": "Sin recibos",
+      "loadError": "Error al cargar los registros de pago",
+      "loadReceiptError": "Error al cargar el recibo"
+    },
+    "summary": {
+      "expired": "Vencido",
+      "payer": "Pagador",
+      "beneficiary": "Beneficiario"
+    },
+    "exportCsv": "Descargar CSV",
+    "feeStatements": {
+      "title": "Extracto de comisiones",
+      "period": "Mes de facturación",
+      "totalFeeAmount": "Comisión total",
+      "issuerName": "Emisor",
+      "noData": "No hay datos para el mes seleccionado",
+      "loadError": "No se pudo cargar el extracto de comisiones"
+    },
+    "guardianBulkPayment": {
+      "title": "Pago masivo del tutor",
+      "subtitle": "Paga todas las cuotas pendientes de los niños que gestionas de una vez",
+      "noItems": "No hay cuotas pendientes",
+      "beneficiary": "Beneficiario",
+      "scope": "Afiliación",
+      "itemName": "Nombre de la cuota",
+      "amount": "Importe",
+      "dueDate": "Fecha límite",
+      "alreadyPaid": "Ya pagado",
+      "paidBy": "Pagado por {name}",
+      "kind": {
+        "ONE_TIME": "Pago único",
+        "RECURRING": "Pago recurrente",
+        "TERM": "Pago por período"
+      },
+      "via": {
+        "SELF": "Propio",
+        "GUARDIAN": "Tutor",
+        "GUARDIAN_PROXY": "Tutor delegado",
+        "PROXY_GRANT": "Delegación"
+      },
+      "selectAll": "Seleccionar todo",
+      "deselectAll": "Deseleccionar todo",
+      "paySelected": "Pagar {count} elemento(s)",
+      "totalAmount": "Total: ¥{amount}",
+      "processing": "Procesando...",
+      "result": {
+        "title": "Resultado del pago",
+        "checkedOut": "Pago completado",
+        "skipped": "Omitido",
+        "skipReasons": {
+          "ALREADY_PAID": "Ya pagado",
+          "NOT_AUTHORIZED": "Sin autorización de pago",
+          "CONNECT_NOT_READY": "Cuenta receptora no configurada",
+          "ITEM_NOT_FOUND": "Concepto de cuota no encontrado",
+          "ERROR": "Error"
+        }
+      }
+    }
+  }
+}

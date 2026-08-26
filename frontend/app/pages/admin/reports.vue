@@ -37,13 +37,13 @@ const { formatDateTime } = useDatetime()
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-4 flex items-center justify-between">
-      <PageHeader title="レポート管理" />
+      <PageHeader :title="$t('admin_report.title')" />
       <Select
         v-model="statusFilter"
         :options="statusOptions"
         option-label="label"
         option-value="value"
-        placeholder="ステータス"
+        :placeholder="$t('admin_report.table.status_placeholder')"
         class="w-48"
       />
     </div>
@@ -63,58 +63,58 @@ const { formatDateTime } = useDatetime()
       @page="onPage"
     >
       <template #empty>
-        <div class="py-8 text-center text-surface-500">レポートがありません</div>
+        <div class="py-8 text-center text-surface-500">{{ $t('admin_report.empty') }}</div>
       </template>
       <Column header="ID" style="width: 60px">
         <template #body="{ data }">
           <span class="text-xs text-surface-500">#{{ data.id }}</span>
         </template>
       </Column>
-      <Column header="ステータス" style="width: 120px">
+      <Column :header="$t('admin_report.table.status')" style="width: 120px">
         <template #body="{ data }">
           <Tag :value="data.status" :severity="statusSeverity(data.status)" />
         </template>
       </Column>
-      <Column field="targetType" header="対象種別" style="width: 100px" />
-      <Column field="reason" header="理由" />
-      <Column header="報告日" style="width: 140px">
+      <Column field="targetType" :header="$t('admin_report.table.target_type')" style="width: 100px" />
+      <Column field="reason" :header="$t('admin_report.table.reason')" />
+      <Column :header="$t('admin_report.table.reported_at')" style="width: 140px">
         <template #body="{ data }">
           <span class="text-sm">{{ formatDateTime(data.createdAt) }}</span>
         </template>
       </Column>
-      <Column header="操作" style="width: 300px">
+      <Column :header="$t('admin_report.table.actions')" style="width: 300px">
         <template #body="{ data }">
           <div class="flex flex-wrap gap-1">
             <Button
               v-if="data.status === 'PENDING'"
-              label="レビュー"
+              :label="$t('admin_report.actions.review')"
               size="small"
               @click="review(data.id)"
             />
             <Button
               v-if="data.status === 'REVIEWING'"
-              label="解決"
+              :label="$t('admin_report.actions.resolve')"
               size="small"
               severity="success"
               @click="openResolve(data)"
             />
             <Button
               v-if="data.status === 'REVIEWING'"
-              label="却下"
+              :label="$t('admin_report.actions.dismiss')"
               size="small"
               severity="secondary"
               @click="dismiss(data.id)"
             />
             <Button
               v-if="data.status === 'REVIEWING'"
-              label="エスカレ"
+              :label="$t('admin_report.actions.escalate')"
               size="small"
               severity="warn"
               @click="openEscalate(data)"
             />
             <Button
               v-if="data.status === 'RESOLVED' || data.status === 'DISMISSED'"
-              label="再開"
+              :label="$t('admin_report.actions.reopen')"
               size="small"
               severity="info"
               @click="reopen(data.id)"

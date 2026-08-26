@@ -8,10 +8,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * ページ内セクションエンティティ。テキスト・画像・メンバー一覧・見出しを管理する。
@@ -20,8 +20,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "team_page_sections")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TeamPageSectionEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -37,7 +36,9 @@ public class TeamPageSectionEntity extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @Column(length = 500)
+    // NOTE: S3Key のような数字→大文字境界は Hibernate 物理命名で _s3_key にならず
+    // images3key になる。DDL の image_s3_key と一致させるため name を明示。
+    @Column(name = "image_s3_key", length = 500)
     private String imageS3Key;
 
     @Column(length = 200)

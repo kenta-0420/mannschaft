@@ -1,8 +1,10 @@
 package com.mannschaft.app.membership.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.membership.MembershipErrorCode;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.membership.dto.CheckinLocationResponse;
@@ -39,15 +41,22 @@ public class CheckinLocationService {
     private final MemberCardCheckinRepository checkinRepository;
     private final QrTokenService qrTokenService;
     private final NameResolverService nameResolverService;
+    private final AccessControlService accessControlService;
 
     /**
      * 拠点一覧を取得する。
+     *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は {@link AccessControlService} を注入すらしておらず
+     * 認可ゼロだった。スコープが呼び出し元から明示的に宣言される EP のため、その scope で
+     * checkMembership する（閲覧のみのため checkAdminOrAbove ではなく checkMembership）。</p>
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @return 拠点一覧
      */
     public ApiResponse<List<CheckinLocationResponse>> getLocations(ScopeType scopeType, Long scopeId) {
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), scopeId, scopeType.name());
+
         List<CheckinLocationEntity> locations = locationRepository
                 .findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByCreatedAtAsc(scopeType, scopeId);
 
@@ -70,6 +79,10 @@ public class CheckinLocationService {
     /**
      * 拠点を作成する。
      *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロ（任意の認証ユーザーが任意スコープの拠点＝
+     * 自動チェックイン用QR発行元を作成できた）。拠点の作成は QR 秘密の発行を伴う機微操作の
+     * ため checkAdminOrAbove する。</p>
+     *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param request   作成リクエスト
@@ -80,6 +93,7 @@ public class CheckinLocationService {
     public ApiResponse<CheckinLocationResponse> createLocation(
             ScopeType scopeType, Long scopeId,
             CreateCheckinLocationRequest request, Long userId) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
 
         // 拠点数上限チェック
         long currentCount = locationRepository.countByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId);
@@ -116,6 +130,9 @@ public class CheckinLocationService {
     /**
      * 拠点を更新する。
      *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロだった。checkAdminOrAbove する
+     * （拠点の有効/無効切替・自動完了設定は管理操作）。</p>
+     *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
      * @param locationId 拠点ID
@@ -126,6 +143,7 @@ public class CheckinLocationService {
     public ApiResponse<CheckinLocationResponse> updateLocation(
             ScopeType scopeType, Long scopeId, Long locationId,
             UpdateCheckinLocationRequest request) {
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType.name());
 
         CheckinLocationEntity location = findLocationOrThrow(scopeType, scopeId, locationId);
 
@@ -149,6 +167,8 @@ public class CheckinLocationService {
     /**
      * 拠点を論理削除する。
      *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロだった。checkAdminOrAbove する。</p>
+     *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
      * @param locationId 拠点ID
@@ -157,6 +177,7 @@ public class CheckinLocationService {
     @Transactional
     public ApiResponse<DeleteLocationResponse> deleteLocation(
             ScopeType scopeType, Long scopeId, Long locationId) {
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType.name());
 
         CheckinLocationEntity location = findLocationOrThrow(scopeType, scopeId, locationId);
 
@@ -171,6 +192,10 @@ public class CheckinLocationService {
     /**
      * 拠点QRコードの印刷用データを取得する。
      *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロ（任意の認証ユーザーが任意スコープの
+     * 拠点QR＝自動チェックイン用の秘密トークンを取得できた）。QR発行は機微操作のため
+     * checkAdminOrAbove する。</p>
+     *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
      * @param locationId 拠点ID
@@ -178,6 +203,7 @@ public class CheckinLocationService {
      */
     public ApiResponse<LocationQrResponse> getLocationQr(
             ScopeType scopeType, Long scopeId, Long locationId) {
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType.name());
 
         CheckinLocationEntity location = findLocationOrThrow(scopeType, scopeId, locationId);
 

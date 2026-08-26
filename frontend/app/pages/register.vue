@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
+import { resolveCountry } from '~/utils/resolveCountry'
 
 definePageMeta({
   layout: 'auth',
@@ -11,13 +12,48 @@ definePageMeta({
 
 const { t } = useI18n()
 const api = useApi()
+const { getGoogleAuthUrl } = useAuthApi()
 const route = useRoute()
 const notification = useNotification()
 const { userTimezone } = useDatetime()
 const loading = ref(false)
+const googleLoading = ref(false)
+const termsModalVisible = ref(false)
+const privacyModalVisible = ref(false)
+
+// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
+// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
+const hydrated = useHydrated()
+// ハイドレーション待ちの間もボタンをローディング表示にする（無反応に見える問題の解消）。
+// :disabled="!hydrated" は Enter キーによる implicit submission 抑止のため別途維持する
+// （PrimeVue の loading は内部的に disabled 相当になるが、明示指定で確実に塞ぐ）。
+const submitting = computed(() => loading.value || !hydrated.value)
+
+async function registerWithGoogle() {
+  googleLoading.value = true
+  try {
+    const res = await getGoogleAuthUrl()
+    window.location.href = res.data.authUrl
+  } catch {
+    notification.error(t('auth.oauth.callback_error'))
+    googleLoading.value = false
+  }
+}
 
 // クエリパラメータから招待トークンを取得（ベータ制限対応）
 const inviteToken = computed(() => route.query.invite as string | undefined)
+
+// 郵便番号バリデーション（レジストリ駆動）
+// 登録画面では locale='ja' 固定のため実効国 = JP
+const { ensureLoaded, isSupported, validateFormat } = usePostalCodeValidation()
+
+// ページマウント時にポリシーを先読みしておく（フォームサブミット時の遅延を最小化）
+onMounted(() => {
+  // eslint-disable-next-line no-restricted-syntax -- ポリシー先読みは best-effort。BE が authoritative（保存時に 400 で再検証）なので取得失敗を握りつぶすのが正しい
+  ensureLoaded().catch(() => {
+    // 取得失敗はサイレント（BE が authoritative なので保存時に 400 が返る）
+  })
+})
 
 const schema = toTypedSchema(
   z.object({
@@ -44,8 +80,34 @@ const schema = toTypedSchema(
       .max(50, '表示名は50文字以内で入力してください'),
     postalCode: z
       .string()
-      .min(1, '郵便番号は必須です')
-      .regex(/^\d{3}-?\d{4}$/, '郵便番号の形式が正しくありません（例: 123-4567）'),
+      .superRefine(async (val, ctx) => {
+        // レジストリ駆動郵便番号検証（ハードコード regex を廃止）
+        // 登録画面は locale='ja' 固定 → 実効国 JP
+        const effectiveCountry = resolveCountry(null, 'ja')
+        if (!effectiveCountry) return // 解決不能は検証スキップ
+
+        // ポリシーをロード（既にキャッシュ済みの場合は即返る）
+        await ensureLoaded()
+
+        if (!isSupported(effectiveCountry)) return // 未対応国は検証スキップ
+
+        // 必須チェック
+        if (!val || val.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '郵便番号は必須です',
+          })
+          return
+        }
+
+        // フォーマットチェック（BE の pattern を使用）
+        if (!validateFormat(effectiveCountry, val)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '郵便番号の形式が正しくありません（例: 123-4567）',
+          })
+        }
+      }),
     birthDate: z
       .string()
       .min(1, 'parental_consent.error_auth_050')
@@ -60,19 +122,29 @@ const schema = toTypedSchema(
         limit.setFullYear(limit.getFullYear() - 100)
         return d >= limit
       }, 'parental_consent.error_auth_053'),
+    privacyPolicyAccepted: z.literal(true, {
+      errorMap: () => ({ message: 'auth.register.privacy_consent_required' }),
+    }),
+    termsAccepted: z.literal(true, {
+      errorMap: () => ({ message: 'auth.register.terms_consent_required' }),
+    }),
   }),
 )
 
 const { defineField, handleSubmit, errors } = useForm({
   validationSchema: schema,
+  // ハイドレーション前に入力された値（パスワードマネージャの自動入力を含む）を取り込む。
+  // 空文字のままだとハイドレーション時に上書きされて消える。必ずセットアップ時に読むこと。
   initialValues: {
-    email: '',
-    password: '',
-    lastName: '',
-    firstName: '',
-    displayName: '',
-    postalCode: '',
-    birthDate: '',
+    email: readPrefilledInputValue('email'),
+    password: readPrefilledInputValue('password'),
+    lastName: readPrefilledInputValue('lastName'),
+    firstName: readPrefilledInputValue('firstName'),
+    displayName: readPrefilledInputValue('displayName'),
+    postalCode: readPrefilledInputValue('postalCode'),
+    birthDate: readPrefilledInputValue('birthDate'),
+    privacyPolicyAccepted: false as unknown as true,
+    termsAccepted: false as unknown as true,
   },
 })
 
@@ -83,6 +155,8 @@ const [firstName, firstNameProps] = defineField('firstName')
 const [displayName, displayNameProps] = defineField('displayName')
 const [postalCode, postalCodeProps] = defineField('postalCode')
 const [birthDate, birthDateProps] = defineField('birthDate')
+const [privacyPolicyAccepted, privacyPolicyAcceptedProps] = defineField('privacyPolicyAccepted')
+const [termsAccepted, termsAcceptedProps] = defineField('termsAccepted')
 
 const submitted = ref(false)
 
@@ -102,6 +176,8 @@ const onSubmit = handleSubmit(async (values) => {
         birth_date: values.birthDate,
         locale: 'ja',
         timezone: 'Asia/Tokyo',
+        privacyPolicyAccepted: true,
+        privacyPolicyVersion: '1.1.0',
         ...(inviteToken.value ? { inviteToken: inviteToken.value } : {}),
       },
     })
@@ -132,6 +208,33 @@ const onSubmit = handleSubmit(async (values) => {
     @submit.prevent="submitted = true; onSubmit()"
   >
     <div class="flex flex-col gap-4">
+      <!-- 戻るリンク -->
+      <NuxtLink
+        to="/"
+        class="inline-flex items-center gap-2 text-sm text-surface-500 transition-colors hover:text-primary"
+      >
+        {{ $t('landing.features_detail.back_to_top') }}
+      </NuxtLink>
+
+      <!-- Google 登録ボタン -->
+      <Button
+        type="button"
+        :label="$t('auth.oauth.google_register')"
+        icon="pi pi-google"
+        severity="secondary"
+        outlined
+        class="w-full"
+        :loading="googleLoading"
+        @click="registerWithGoogle"
+      />
+
+      <!-- セパレーター -->
+      <div class="flex items-center gap-3">
+        <div class="flex-1 border-t border-surface-200 dark:border-surface-600" />
+        <span class="text-sm text-surface-400">{{ $t('auth.oauth.or') }}</span>
+        <div class="flex-1 border-t border-surface-200 dark:border-surface-600" />
+      </div>
+
       <div class="flex flex-col gap-2">
         <label for="email">メールアドレス <span class="text-red-500">※</span></label>
         <InputText
@@ -182,13 +285,14 @@ const onSubmit = handleSubmit(async (values) => {
 
       <div class="flex flex-col gap-2">
         <label for="birthDate">{{ $t('parental_consent.birth_date_label') }} <span class="text-red-500">※</span></label>
-        <input
+        <InputText
           id="birthDate"
-          v-bind="birthDateProps"
           v-model="birthDate"
+          v-bind="birthDateProps"
           type="date"
           :max="dayjs().tz(userTimezone).format('YYYY-MM-DD')"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+          class="w-full"
+          :invalid="submitted && !!errors.birthDate"
         />
         <small v-if="submitted && errors.birthDate" class="text-red-500">{{ $t(errors.birthDate) }}</small>
       </div>
@@ -238,11 +342,66 @@ const onSubmit = handleSubmit(async (values) => {
         }}</small>
       </div>
 
+      <div class="flex flex-col gap-1">
+        <div class="flex items-start gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+          <Checkbox
+            id="termsAccepted"
+            v-model="termsAccepted"
+            v-bind="termsAcceptedProps"
+            :binary="true"
+            :invalid="submitted && !!errors.termsAccepted"
+          />
+          <label for="termsAccepted" class="cursor-pointer select-none text-sm leading-relaxed">
+            <button
+              type="button"
+              class="font-medium text-primary hover:underline"
+              @click.stop.prevent="termsModalVisible = true"
+            >{{ $t('landing.legal.terms.title') }}</button>{{ $t('auth.register.privacy_consent_suffix') }}
+          </label>
+        </div>
+        <small v-if="submitted && errors.termsAccepted" class="text-red-500">
+          {{ $t(errors.termsAccepted) }}
+        </small>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <div class="flex items-start gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+          <Checkbox
+            id="privacyPolicyAccepted"
+            v-model="privacyPolicyAccepted"
+            v-bind="privacyPolicyAcceptedProps"
+            :binary="true"
+            :invalid="submitted && !!errors.privacyPolicyAccepted"
+          />
+          <label for="privacyPolicyAccepted" class="cursor-pointer select-none text-sm leading-relaxed">
+            <button
+              type="button"
+              class="font-medium text-primary hover:underline"
+              @click.stop.prevent="privacyModalVisible = true"
+            >{{ $t('landing.legal.privacy.title') }}</button>{{ $t('auth.register.privacy_consent_suffix') }}
+          </label>
+        </div>
+        <small v-if="submitted && errors.privacyPolicyAccepted" class="text-red-500">
+          {{ $t(errors.privacyPolicyAccepted) }}
+        </small>
+      </div>
+
+      <div class="text-center">
+        <NuxtLink
+          to="/commerce-disclosure"
+          target="_blank"
+          class="text-xs text-surface-400 hover:text-primary hover:underline"
+        >
+          {{ $t('landing.layout.footer_commerce') }}
+        </NuxtLink>
+      </div>
+
       <Button
         type="submit"
         label="アカウント作成"
         icon="pi pi-user-plus"
-        :loading="loading"
+        :loading="submitting"
+        :disabled="!hydrated"
         class="mt-2"
       />
 
@@ -252,5 +411,8 @@ const onSubmit = handleSubmit(async (values) => {
         </NuxtLink>
       </div>
     </div>
+
+    <TermsModal v-model:visible="termsModalVisible" />
+    <PrivacyModal v-model:visible="privacyModalVisible" />
   </form>
 </template>

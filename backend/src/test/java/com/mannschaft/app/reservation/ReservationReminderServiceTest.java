@@ -6,16 +6,18 @@ import com.mannschaft.app.reservation.dto.ReminderResponse;
 import com.mannschaft.app.reservation.entity.ReservationReminderEntity;
 import com.mannschaft.app.reservation.repository.ReservationReminderRepository;
 import com.mannschaft.app.reservation.service.ReservationReminderService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Method;
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -40,8 +43,27 @@ class ReservationReminderServiceTest {
     @Mock
     private ReservationMapper reservationMapper;
 
-    @InjectMocks
     private ReservationReminderService service;
+
+    /**
+     * 送信判定の基準時刻を固定する Clock（直書き禁止・テストで境界を固定）。
+     *
+     * <p>Issue #2526 是正済み判定: {@code findDueReminders} は {@code remind_at}（業務ローカル時刻）
+     * と比較するため {@code LocalDateTime.now(clock.withZone(ZoneId.systemDefault()))} を使う。
+     * そのため、この Clock が表す瞬間は「JVM 既定ゾーンで解釈すると {@link #NOW} になる」ものでなければ
+     * ならない。かつて {@code NOW.toInstant(ZoneOffset.UTC)}（＝Clock 自身のゾーンで直接 instant 化）
+     * だったのは、UTC 基準比較というバグ実装をそのまま固定していたテストだった（実行環境の JVM 既定
+     * ゾーンが UTC でない場合に破綻する）。{@link ZoneId#systemDefault()} 経由で instant 化することで、
+     * 実行環境の既定ゾーンに関わらず {@link #NOW} が正しく「現在時刻」として渡るようにする。
+     */
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 4, 1, 12, 0);
+    private final Clock fixedClock =
+            Clock.fixed(NOW.atZone(java.time.ZoneId.systemDefault()).toInstant(), ZoneOffset.UTC);
+
+    @BeforeEach
+    void setUp() {
+        service = new ReservationReminderService(reminderRepository, reservationMapper, fixedClock);
+    }
 
     // ========================================
     // テスト用定数・ヘルパー
@@ -233,69 +255,92 @@ class ReservationReminderServiceTest {
     }
 
     // ========================================
-    // processPendingReminders
+    // findDueReminders
     // ========================================
 
     @Nested
-    @DisplayName("processPendingReminders")
-    class ProcessPendingReminders {
+    @DisplayName("findDueReminders")
+    class FindDueReminders {
 
         @Test
-        @DisplayName("正常系: PENDINGリマインダーがSENTにマークされる")
-        void 送信処理_正常() {
+        @DisplayName("正常系: PENDING かつ remind_at 到来済みリマインダーを取得する（送信・マークはしない）")
+        void 取得_正常() {
             // Given
             ReservationReminderEntity entity = createReminderEntity();
             given(reminderRepository.findByStatusAndRemindAtBefore(
-                    eq(ReminderStatus.PENDING), any(LocalDateTime.class)))
+                    eq(ReminderStatus.PENDING), eq(NOW)))
                     .willReturn(List.of(entity));
 
             // When
-            List<ReservationReminderEntity> result = service.processPendingReminders();
+            List<ReservationReminderEntity> result = service.findDueReminders();
 
-            // Then
+            // Then: 取得のみ。SENT へのマーク・save は行わない（送信は別バッチが担う）
             assertThat(result).hasSize(1);
-            assertThat(entity.getStatus()).isEqualTo(ReminderStatus.SENT);
-            assertThat(entity.getSentAt()).isNotNull();
-            verify(reminderRepository).save(entity);
+            assertThat(entity.getStatus()).isEqualTo(ReminderStatus.PENDING);
+            assertThat(entity.getSentAt()).isNull();
+            verify(reminderRepository, never()).save(any(ReservationReminderEntity.class));
         }
 
         @Test
-        @DisplayName("正常系: PENDINGリマインダーが0件の場合空リストが返却される")
-        void 送信処理_対象なし() {
+        @DisplayName("正常系: 注入 Clock の now を基準時刻として渡す（直書き禁止）")
+        void 取得_Clock基準() {
             // Given
             given(reminderRepository.findByStatusAndRemindAtBefore(
-                    eq(ReminderStatus.PENDING), any(LocalDateTime.class)))
+                    eq(ReminderStatus.PENDING), eq(NOW)))
                     .willReturn(List.of());
 
             // When
-            List<ReservationReminderEntity> result = service.processPendingReminders();
+            service.findDueReminders();
+
+            // Then: 固定 Clock の NOW がそのまま渡る
+            verify(reminderRepository).findByStatusAndRemindAtBefore(ReminderStatus.PENDING, NOW);
+        }
+
+        @Test
+        @DisplayName("正常系: 対象 0 件なら空リスト")
+        void 取得_対象なし() {
+            // Given
+            given(reminderRepository.findByStatusAndRemindAtBefore(
+                    eq(ReminderStatus.PENDING), eq(NOW)))
+                    .willReturn(List.of());
+
+            // When
+            List<ReservationReminderEntity> result = service.findDueReminders();
 
             // Then
             assertThat(result).isEmpty();
         }
 
         @Test
-        @DisplayName("正常系: 複数件のリマインダーが一括処理される")
-        void 送信処理_複数件() {
-            // Given
-            ReservationReminderEntity entity1 = createReminderEntity();
-            ReservationReminderEntity entity2 = ReservationReminderEntity.builder()
-                    .reservationId(2L)
-                    .remindAt(LocalDateTime.of(2026, 4, 1, 10, 0))
-                    .build();
-            given(reminderRepository.findByStatusAndRemindAtBefore(
-                    eq(ReminderStatus.PENDING), any(LocalDateTime.class)))
-                    .willReturn(List.of(entity1, entity2));
+        @DisplayName(
+                "Issue #2526 番人: 送信対象の基準時刻は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
+        void 基準時刻はClockのゾーンに左右されない() {
+            // remind_at は業務ローカル時刻（ReservationReminderEventListener が slotStartAt から生成）。
+            // 「業務基準（JVM 既定ゾーン。実行環境に依存し得るため決め打ちしない）で見て
+            // 2026-04-01 12:00」を、実際の JVM 既定ゾーンで instant 化した「同一瞬間」を、
+            // ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
+            java.time.Instant sameInstant = NOW.atZone(java.time.ZoneId.systemDefault()).toInstant();
+            given(reminderRepository.findByStatusAndRemindAtBefore(eq(ReminderStatus.PENDING), any()))
+                    .willReturn(List.of());
 
-            // When
-            List<ReservationReminderEntity> result = service.processPendingReminders();
+            service = new ReservationReminderService(
+                    reminderRepository, reservationMapper, Clock.fixed(sameInstant, ZoneOffset.UTC));
+            service.findDueReminders();
 
-            // Then
-            assertThat(result).hasSize(2);
-            assertThat(entity1.getStatus()).isEqualTo(ReminderStatus.SENT);
-            assertThat(entity2.getStatus()).isEqualTo(ReminderStatus.SENT);
-            verify(reminderRepository).save(entity1);
-            verify(reminderRepository).save(entity2);
+            service = new ReservationReminderService(
+                    reminderRepository, reservationMapper,
+                    Clock.fixed(sameInstant, java.time.ZoneId.of("Asia/Tokyo")));
+            service.findDueReminders();
+
+            // 両呼び出しとも、Clock のゾーンに関わらず同一の基準時刻でクエリされているはず
+            // （期待値を決め打ちせず、2 回の呼び出しに渡された引数どうしが一致することだけを主張する）。
+            org.mockito.ArgumentCaptor<LocalDateTime> nowCaptor =
+                    org.mockito.ArgumentCaptor.forClass(LocalDateTime.class);
+            verify(reminderRepository, org.mockito.Mockito.times(2))
+                    .findByStatusAndRemindAtBefore(eq(ReminderStatus.PENDING), nowCaptor.capture());
+            assertThat(nowCaptor.getAllValues().get(0))
+                    .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
+                    .isEqualTo(nowCaptor.getAllValues().get(1));
         }
     }
 }

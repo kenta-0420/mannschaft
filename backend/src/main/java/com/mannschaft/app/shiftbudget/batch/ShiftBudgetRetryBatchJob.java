@@ -49,7 +49,7 @@ public class ShiftBudgetRetryBatchJob {
     @BatchEndpoint(name = "shiftbudget-failed-event-retry", description = "失敗したシフト予算イベントを 15 分毎に最大 3 回までリトライする")
     @Scheduled(cron = "0 */15 * * * ?", zone = "Asia/Tokyo")
     @SchedulerLock(name = "ShiftBudgetRetryBatchJob",
-            lockAtMostFor = "10m", lockAtLeastFor = "1m")
+            lockAtMostFor = "30m", lockAtLeastFor = "1m")
     public void run() {
         LocalDateTime threshold = LocalDateTime.now().minus(RETRY_INTERVAL);
         log.info("F08.7 リトライバッチ起動: threshold={}", threshold);

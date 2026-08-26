@@ -10,13 +10,17 @@ import com.mannschaft.app.schedule.dto.UpdatePersonalScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.PersonalScheduleReminderRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity;
 import com.mannschaft.app.schedule.service.PersonalScheduleService;
+import com.mannschaft.app.schedule.service.ScheduleAccessGuard;
+import com.mannschaft.app.schedule.service.ScheduleRecurrenceService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -26,11 +30,17 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
+import org.mockito.ArgumentCaptor;
+
+import java.util.ArrayList;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -55,6 +65,20 @@ class PersonalScheduleServiceTest {
 
     @Mock
     private NameResolverService nameResolverService;
+
+    @Mock
+    private ScheduleRecurrenceService recurrenceService;
+
+    // F03.19 W1-c: 個人予定一覧の色解決でレイヤー設定を読む（既定 mock は空 Map を返す＝設定なし）。
+    @Mock
+    private com.mannschaft.app.schedule.service.CalendarLayerService calendarLayerService;
+
+    /**
+     * 認可ガードは状態を持たない純粋な判定のため、モックではなく実体を注入して
+     * 本物の所有者判定を通す（@Spy により @InjectMocks の注入対象になる）。
+     */
+    @Spy
+    private ScheduleAccessGuard scheduleAccessGuard = new ScheduleAccessGuard();
 
     @InjectMocks
     private PersonalScheduleService personalScheduleService;
@@ -203,6 +227,107 @@ class PersonalScheduleServiceTest {
             // then
             verify(reminderRepository).deleteByScheduleId(any());
             verify(reminderRepository).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("繰り返し+相対リマインダー_各子スケジュールへ複製される")
+        void 繰り返し_相対リマインダー_各子スケジュールへ複製される() {
+            // given
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // 子スケジュール 2 件（DAILY count=2 に相当）
+            ScheduleEntity child1 = ScheduleEntity.builder()
+                    .userId(USER_ID)
+                    .title("個人予定")
+                    .startAt(START.plusDays(1))
+                    .endAt(END.plusDays(1))
+                    .allDay(false)
+                    .eventType(EventType.OTHER)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.ADMIN_ONLY)
+                    .minResponseRole(MinResponseRole.ADMIN_ONLY)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(false)
+                    .attendanceStatus(AttendanceGenerationStatus.READY)
+                    .commentOption(CommentOption.HIDDEN)
+                    .isException(false)
+                    .createdBy(USER_ID)
+                    .build();
+            ScheduleEntity child2 = ScheduleEntity.builder()
+                    .userId(USER_ID)
+                    .title("個人予定")
+                    .startAt(START.plusDays(2))
+                    .endAt(END.plusDays(2))
+                    .allDay(false)
+                    .eventType(EventType.OTHER)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.ADMIN_ONLY)
+                    .minResponseRole(MinResponseRole.ADMIN_ONLY)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(false)
+                    .attendanceStatus(AttendanceGenerationStatus.READY)
+                    .commentOption(CommentOption.HIDDEN)
+                    .isException(false)
+                    .createdBy(USER_ID)
+                    .build();
+
+            given(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(org.mockito.ArgumentMatchers.nullable(Long.class)))
+                    .willReturn(List.of(child1, child2));
+
+            // 繰り返しルール付きリクエスト（DAILY, count=2, 相対リマインダー [15]）
+            com.mannschaft.app.schedule.dto.RecurrenceRuleDto rule =
+                    new com.mannschaft.app.schedule.dto.RecurrenceRuleDto(
+                            "DAILY", 1, null, "COUNT", null, 2);
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null,
+                    List.of(15), null, rule);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then: 子2件 × リマインダー1件 = saveAll に 2 エンティティが渡される
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<PersonalScheduleReminderEntity>> captor =
+                    ArgumentCaptor.forClass((Class) List.class);
+            // saveAll は 親リマインダー保存 + 子複製保存 の 2 回呼ばれる
+            verify(reminderRepository, org.mockito.Mockito.times(2)).saveAll(captor.capture());
+            List<PersonalScheduleReminderEntity> childReminders = captor.getAllValues().get(1);
+            assertThat(childReminders).hasSize(2);
+            assertThat(childReminders).allSatisfy(r -> {
+                assertThat(r.getReminderKind()).isEqualTo(ReminderKind.RELATIVE);
+                assertThat(r.getRemindBeforeMinutes()).isEqualTo(15);
+            });
+        }
+
+        @Test
+        @DisplayName("繰り返し+絶対リマインダーのみ_子へは複製されない")
+        void 繰り返し_絶対リマインダーのみ_子へは複製されない() {
+            // given
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            com.mannschaft.app.schedule.dto.RecurrenceRuleDto rule =
+                    new com.mannschaft.app.schedule.dto.RecurrenceRuleDto(
+                            "DAILY", 1, null, "COUNT", null, 2);
+
+            // 相対リマインダーは null、絶対リマインダーのみ指定
+            OffsetDateTime absReminder = OffsetDateTime.of(2026, 4, 1, 9, 0, 0, 0, ZoneOffset.ofHours(9));
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null,
+                    null, List.of(absReminder), rule);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then: findByParentScheduleIdOrderByStartAtAsc は呼ばれない（子への複製をスキップ）
+            verify(scheduleRepository, never()).findByParentScheduleIdOrderByStartAtAsc(org.mockito.ArgumentMatchers.nullable(Long.class));
         }
     }
 

@@ -6,11 +6,24 @@ definePageMeta({
 const route = useRoute()
 const api = useApi()
 const authStore = useAuthStore()
+// 先回りリフレッシュ武装用に runtimeConfig を setup コンテキストで capture する（armProactiveRefresh 参照）。
+const runtimeConfig = useRuntimeConfig()
 const notification = useNotification()
 const { applyUserLocale } = useLocale()
 
-const totpCode = ref('')
+// ハイドレーション前に入力された値（パスワードマネージャによる TOTP 自動入力を含む）を取り込む。
+// InputOtp は桁ごとに id を持たない input を並べて描画するため、セレクタで連結して読む。
+// ref('') のままだとハイドレーション時に空で上書きされて消える。必ずセットアップ時に読むこと。
+const totpCode = ref(readPrefilledInputGroupValue('.p-inputotp-input'))
 const loading = ref(false)
+
+// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
+// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
+const hydrated = useHydrated()
+// ハイドレーション待ちの間もボタンをローディング表示にする（無反応に見える問題の解消）。
+// :disabled="!hydrated" は Enter キーによる implicit submission 抑止のため別途維持する
+// （PrimeVue の loading は内部的に disabled 相当になるが、明示指定で確実に塞ぐ）。
+const submitting = computed(() => loading.value || !hydrated.value)
 
 const mfaSessionToken = computed(() => route.query.session as string | undefined)
 
@@ -39,7 +52,9 @@ async function handleVerify() {
       },
     })
     authStore.setTokens(data.data.accessToken, data.data.refreshToken)
-    authStore.setUser(data.data.user)
+    // 2FA 検証成功直後に先回りリフレッシュタイマーを武装する。
+    armProactiveRefresh(runtimeConfig, authStore)
+    await authStore.setUser(data.data.user)
 
     // フルプロフィール（timezone・locale 等）を取得して store を更新
     try {
@@ -55,7 +70,7 @@ async function handleVerify() {
           timezone: string | null
         }
       }>('/api/v1/users/me')
-      authStore.setUser({
+      await authStore.setUser({
         id: profile.data.id,
         email: profile.data.email,
         fullName: profile.data.lastName + ' ' + profile.data.firstName,
@@ -70,6 +85,10 @@ async function handleVerify() {
     catch {
       // プロフィール取得失敗時は 2FA 認証レスポンスの基本情報で続行
     }
+
+    // ログイン成立直後にアカウント設定（外観・ナビ）をサーバーから同期する。
+    // 新ブラウザ（シークレット等）で localStorage が空でも BEの保存済み設定が反映される。
+    authStore.syncAccountSettings()
 
     navigateTo('/')
   }
@@ -105,8 +124,8 @@ async function handleVerify() {
         type="submit"
         label="認証する"
         icon="pi pi-shield"
-        :loading="loading"
-        :disabled="totpCode.length !== 6"
+        :loading="submitting"
+        :disabled="!hydrated || totpCode.length !== 6"
         class="w-full"
       />
 

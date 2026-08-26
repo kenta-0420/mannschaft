@@ -78,6 +78,14 @@ class RecruitmentListingServicePhase2DTest {
     @Mock
     private RecruitmentListingRegionRepository listingRegionRepository;
 
+    // Issue #2715 ロットA: 通知本文の i18n 化で RecruitmentListingService に追加した依存。
+    // このテストクラスでは confirmApplication / publish を呼ばないため未使用だが、
+    // @InjectMocks が null を注入するのを防ぐため（将来ここでその経路を検証する際の NPE 罠回避）宣言しておく。
+    @Mock
+    private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock
+    private org.springframework.context.MessageSource messageSource;
+
     @InjectMocks
     private RecruitmentListingService service;
 
@@ -275,7 +283,8 @@ class RecruitmentListingServicePhase2DTest {
                 false, null,
                 RecruitmentVisibility.SCOPE_ONLY,
                 null, null, null, null,
-                prefectureCode, cityCode, null, null, regions);
+                prefectureCode, cityCode, null, null, regions,
+                null, null); // F22.1 謝礼決済: payeeKind, payeeUserId
     }
 
     /** status=OPEN・id=LISTING_ID の実エンティティを構築する（update 経路の findByIdForUpdate stub 用）。 */
@@ -316,7 +325,8 @@ class RecruitmentListingServicePhase2DTest {
         return new UpdateRecruitmentListingRequest(
                 null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null,
-                prefectureCode, cityCode, regions);
+                prefectureCode, cityCode, regions,
+                null, null); // F22.1 謝礼決済: payeeKind, payeeUserId
     }
 
     /** BaseEntity.id は private 採番のため、テストでは reflection で設定する（DB 採番の代替）。 */

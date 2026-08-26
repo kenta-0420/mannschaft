@@ -6,6 +6,7 @@ import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.dashboard.MinRole;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.ViewerRole;
@@ -79,6 +80,7 @@ class DashboardServiceVisibilityFilterTest {
     @Mock private ScopeWidgetSummaryService scopeWidgetSummaryService;
     @Mock private ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private DashboardService dashboardService;

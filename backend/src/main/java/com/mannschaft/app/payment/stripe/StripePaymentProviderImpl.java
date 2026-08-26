@@ -1,6 +1,9 @@
 package com.mannschaft.app.payment.stripe;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.ScopeKind;
@@ -8,15 +11,20 @@ import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Account;
 import com.stripe.model.AccountLink;
+import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
+import com.stripe.model.Invoice;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Price;
 import com.stripe.model.Product;
+import com.stripe.model.PaymentMethod;
 import com.stripe.model.Refund;
+import com.stripe.model.SetupIntent;
 import com.stripe.model.StripeObject;
+import com.stripe.model.Subscription;
 import com.stripe.model.Transfer;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.RequestOptions;
@@ -24,14 +32,21 @@ import com.stripe.net.Webhook;
 import com.stripe.param.AccountCreateParams;
 import com.stripe.param.AccountLinkCreateParams;
 import com.stripe.param.CustomerCreateParams;
+import com.stripe.param.CustomerUpdateParams;
 import com.stripe.param.PaymentIntentCancelParams;
 import com.stripe.param.PaymentIntentCaptureParams;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.PaymentIntentRetrieveParams;
+import com.stripe.param.PaymentMethodAttachParams;
 import com.stripe.param.PriceCreateParams;
 import com.stripe.param.PriceUpdateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.ProductUpdateParams;
 import com.stripe.param.RefundCreateParams;
+import com.stripe.param.SetupIntentCreateParams;
+import com.stripe.param.InvoiceUpdateParams;
+import com.stripe.param.SubscriptionCreateParams;
+import com.stripe.param.SubscriptionUpdateParams;
 import com.stripe.param.TransferReversalCollectionCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +56,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +73,17 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     /** F22.1 Connect Webhook 用の別署名シークレット（platform 用と分離・設計書 03 §2）。 */
     @Value("${mannschaft.stripe.connect-webhook-secret:}")
     private String connectWebhookSecret;
+
+    /**
+     * Webhook raw JSON フォールバック解決（basil 黙殺の根治）用の最小パーサ。
+     *
+     * <p>Stripe 口座の既定 API バージョンが SDK 固定（{@code 2025-02-24.acacia}）と異なる basil 系
+     * （{@code 2025-03-31} 以降）の場合、{@link EventDataObjectDeserializer#getObject()} が
+     * バージョン不一致で {@code Optional.empty()} を返し、{@code data.object} の型解決が成立しない。
+     * その際は raw JSON から {@code id}/{@code object} のみ抽出する用途に限定して使う（業務オブジェクトの
+     * 全フィールドは retrieve で再取得するため、ここでの schema 不一致は問題にならない）。</p>
+     */
+    private final ObjectMapper webhookObjectMapper = new ObjectMapper();
 
     @Override
     public String createProduct(String name, Long paymentItemId) {
@@ -96,6 +121,38 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         } catch (StripeException e) {
             log.error("Stripe Price 作成失敗: productId={}, amount={}, currency={}",
                     stripeProductId, amount, currency, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public String createRecurringPrice(String stripeProductId, BigDecimal amount, String currency,
+                                       com.mannschaft.app.payment.BillingInterval billingInterval) {
+        try {
+            long unitAmount = isZeroDecimalCurrency(currency)
+                    ? amount.longValue()
+                    : amount.multiply(BigDecimal.valueOf(100)).longValue();
+
+            PriceCreateParams.Recurring.Interval interval =
+                    billingInterval == com.mannschaft.app.payment.BillingInterval.YEARLY
+                            ? PriceCreateParams.Recurring.Interval.YEAR
+                            : PriceCreateParams.Recurring.Interval.MONTH;
+
+            PriceCreateParams params = PriceCreateParams.builder()
+                    .setProduct(stripeProductId)
+                    .setUnitAmount(unitAmount)
+                    .setCurrency(currency.toLowerCase())
+                    .setRecurring(PriceCreateParams.Recurring.builder()
+                            .setInterval(interval)
+                            .build())
+                    .build();
+            Price price = Price.create(params);
+            log.info("Stripe 継続課金 Price 作成: id={}, productId={}, amount={}, currency={}, interval={}",
+                    price.getId(), stripeProductId, amount, currency, billingInterval);
+            return price.getId();
+        } catch (StripeException e) {
+            log.error("Stripe 継続課金 Price 作成失敗: productId={}, amount={}, currency={}, interval={}",
+                    stripeProductId, amount, currency, billingInterval, e);
             throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
         }
     }
@@ -182,7 +239,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(session.getExpiresAt()),
-                    ZoneId.systemDefault());
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
 
             log.info("Stripe Checkout Session 作成: sessionId={}, memberPaymentId={}",
                     session.getId(), memberPaymentId);
@@ -216,7 +273,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(session.getExpiresAt()),
-                    ZoneId.systemDefault());
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
 
             log.info("通知クレジット Checkout Session 作成: sessionId={}, notificationCreditPurchaseId={}",
                     session.getId(), notificationCreditPurchaseId);
@@ -226,6 +283,129 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                     stripePriceId, notificationCreditPurchaseId, e);
             throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
         }
+    }
+
+    @Override
+    public CheckoutSessionInfo createBillingSubscriptionCheckoutSession(
+            String stripeCustomerId, long priceJpy, String productName, String billingContractId,
+            String successUrl, String cancelUrl) {
+        try {
+            // F20.1 実決済: 自社受取×月額サブスク（Mode.SUBSCRIPTION）。Connect 項目
+            // （transfer_data/on_behalf_of/application_fee）は一切含めない（D-2）。Price はインライン price_data
+            // （月次 recurring・JPY はゼロ decimal 通貨で乗算不要）で遅延生成する。
+            SessionCreateParams params = SessionCreateParams.builder()
+                    .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+                    .setCustomer(stripeCustomerId)
+                    .setSuccessUrl(successUrl)
+                    .setCancelUrl(cancelUrl)
+                    .addLineItem(SessionCreateParams.LineItem.builder()
+                            .setQuantity(1L)
+                            .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                    .setCurrency("jpy")
+                                    .setUnitAmount(priceJpy)
+                                    .setRecurring(SessionCreateParams.LineItem.PriceData.Recurring.builder()
+                                            .setInterval(SessionCreateParams.LineItem.PriceData.Recurring.Interval.MONTH)
+                                            .build())
+                                    .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                            .setName(productName)
+                                            .build())
+                                    .build())
+                            .build())
+                    .putMetadata("billingContractId", billingContractId)
+                    .build();
+            Session session = Session.create(params);
+
+            LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                    Instant.ofEpochSecond(session.getExpiresAt()),
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
+
+            log.info("F20.1 サブスク Checkout Session 作成: sessionId={}, billingContractId={}, priceJpy={}",
+                    session.getId(), billingContractId, priceJpy);
+            return new CheckoutSessionInfo(session.getId(), session.getUrl(), expiresAt);
+        } catch (StripeException e) {
+            log.error("F20.1 サブスク Checkout Session 作成失敗: customerId={}, billingContractId={}, priceJpy={}",
+                    stripeCustomerId, billingContractId, priceJpy, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public void cancelBillingSubscriptionImmediately(String subscriptionId, String idempotencyKey) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            // 【残債1 冪等対応】既に canceled 済み（前回 purge retry 等で成功済み）なら再送しない。
+            // GDPR purge の管理者手動 retry（GdprPurgeRetryService）は「DB は解約済みだが Stripe 解約が
+            // 未確認」な契約を毎回再スキャンして cancelImmediately を呼び直す設計のため、Stripe 側で
+            // 既に解約済みの subscription に対して重ねて cancel を呼ぶケースが起こり得る。Stripe の
+            // subscription.cancel は「既に canceled」に対して呼ぶと StripeException（invalid_request_error）
+            // になるため、事前に状態を見て安全にスキップする（二重解約にはならないが、無駄なエラーログ・
+            // retry 失敗誤検知を防ぐ）。
+            if ("canceled".equals(subscription.getStatus())) {
+                log.info("F20.1 サブスク即時解約（purge 連動）: 既に解約済みのためスキップ id={}", subscriptionId);
+                return;
+            }
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            // 退会 purge 連動（AC-45）: 期末解約ではなくその場で cancel（課金継続の即時停止）。
+            Subscription canceled = subscription.cancel(
+                    com.stripe.param.SubscriptionCancelParams.builder().build(), options);
+            log.info("F20.1 サブスク即時解約（purge 連動）: id={}, status={}", canceled.getId(), canceled.getStatus());
+        } catch (StripeException e) {
+            log.error("F20.1 サブスク即時解約失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public BillingSubscriptionWebhookEventInfo constructBillingSubscriptionEvent(String payload, String sigHeader) {
+        Event event;
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
+        } catch (SignatureVerificationException e) {
+            log.error("F20.1 サブスク Webhook 署名検証失敗", e);
+            throw new BusinessException(PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+        }
+
+        String eventType = event.getType();
+        boolean livemode = Boolean.TRUE.equals(event.getLivemode());
+        EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+        StripeObject stripeObject = resolveStripeObject(deserializer);
+
+        String sessionId = null;
+        String billingContractId = null;
+        String subscriptionId = null;
+        String customerId = null;
+        Long currentPeriodEndEpochSec = null;
+
+        if (stripeObject instanceof Session session) {
+            sessionId = session.getId();
+            subscriptionId = session.getSubscription();
+            customerId = session.getCustomer();
+            if (session.getMetadata() != null) {
+                billingContractId = session.getMetadata().get("billingContractId");
+            }
+            // checkout.session.completed: 現サイクル終了を焼き付けるため subscription を retrieve する。
+            if (subscriptionId != null) {
+                try {
+                    Subscription sub = Subscription.retrieve(subscriptionId);
+                    currentPeriodEndEpochSec = sub.getCurrentPeriodEnd();
+                } catch (StripeException e) {
+                    log.warn("F20.1 サブスク retrieve 失敗（current_period_end 省略）: subscriptionId={}", subscriptionId);
+                }
+            }
+        } else if (stripeObject instanceof Invoice invoice) {
+            subscriptionId = invoice.getSubscription();
+            currentPeriodEndEpochSec = invoice.getPeriodEnd();
+        } else if (stripeObject instanceof Subscription subscription) {
+            subscriptionId = subscription.getId();
+            currentPeriodEndEpochSec = subscription.getCurrentPeriodEnd();
+        }
+
+        log.info("F20.1 サブスク Webhook 受信: id={}, type={}, sessionId={}, billingContractId={}, subscriptionId={}",
+                event.getId(), eventType, sessionId, billingContractId, subscriptionId);
+        return new BillingSubscriptionWebhookEventInfo(event.getId(), eventType, livemode,
+                sessionId, billingContractId, subscriptionId, customerId, currentPeriodEndEpochSec);
     }
 
     @Override
@@ -282,7 +462,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         log.info("Stripe Webhook イベント受信: type={}", eventType);
 
         EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
-        StripeObject stripeObject = deserializer.getObject().orElse(null);
+        StripeObject stripeObject = resolveStripeObject(deserializer);
 
         String sessionId = null;
         String paymentIntentId = null;
@@ -383,7 +563,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                     .build();
             AccountLink link = AccountLink.create(params);
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
-                    Instant.ofEpochSecond(link.getExpiresAt()), ZoneId.systemDefault());
+                    Instant.ofEpochSecond(link.getExpiresAt()), UserZoneLocalDateTimeParser.SERVER_ZONE);
             log.info("Stripe AccountLink 作成: account={}", stripeAccountId);
             return new AccountLinkInfo(link.getUrl(), expiresAt);
         } catch (StripeException e) {
@@ -418,7 +598,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         log.info("Stripe Connect Webhook イベント受信: id={}, type={}", event.getId(), eventType);
 
         EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
-        StripeObject stripeObject = deserializer.getObject().orElse(null);
+        StripeObject stripeObject = resolveStripeObject(deserializer);
 
         String stripeAccountId = null;
         boolean chargesEnabled = false;
@@ -483,6 +663,88 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     }
 
     @Override
+    public PaymentIntentInfo createAndConfirmDestinationPaymentIntent(long chargeAmountMinor, String currency,
+                                                                      String payerCustomerId, long applicationFeeMinor,
+                                                                      String destinationAccountId,
+                                                                      CaptureMethod captureMethod,
+                                                                      String paymentMethodId, String idempotencyKey) {
+        try {
+            PaymentIntentCreateParams.CaptureMethod stripeCaptureMethod =
+                    captureMethod == CaptureMethod.AUTOMATIC
+                            ? PaymentIntentCreateParams.CaptureMethod.AUTOMATIC
+                            : PaymentIntentCreateParams.CaptureMethod.MANUAL;
+
+            // 既存 createDestinationPaymentIntent と同一の destination/on_behalf_of/application_fee/capture_method に、
+            // off-session 即時確定（payment_method + confirm + off_session）を加える（R2-1・設計書 02 §4.1）。
+            PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+                    .setAmount(chargeAmountMinor)
+                    .setCurrency(currency.toLowerCase())
+                    .setCustomer(payerCustomerId)
+                    .setCaptureMethod(stripeCaptureMethod)
+                    .setApplicationFeeAmount(applicationFeeMinor)
+                    .setOnBehalfOf(destinationAccountId)
+                    .setTransferData(PaymentIntentCreateParams.TransferData.builder()
+                            .setDestination(destinationAccountId)
+                            .build())
+                    .setPaymentMethod(paymentMethodId)
+                    .setConfirm(true)
+                    .setOffSession(true)
+                    .build();
+
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            PaymentIntent intent = PaymentIntent.create(params, options);
+            log.info("Stripe off-session 即時確定 PaymentIntent 作成: id={}, status={}, captureMethod={}, destination={}, "
+                            + "amount={}, appFee={}",
+                    intent.getId(), intent.getStatus(), captureMethod, destinationAccountId, chargeAmountMinor,
+                    applicationFeeMinor);
+
+            // confirm=true でも 3DS 要求（requires_action）等で succeeded にならない場合は、off-session では完結不能。
+            // 孤児 PI を残さず cancel し、専用例外で症状を露出する（症状を隠さない・R2-1）。
+            String status = intent.getStatus();
+            if (!"succeeded".equals(status) && !"requires_capture".equals(status) && !"processing".equals(status)) {
+                log.warn("off-session 確定が succeeded に至らず（status={}）。PI を cancel して専用例外で拒否: piId={}",
+                        status, intent.getId());
+                safeCancelPaymentIntent(intent.getId(), "offsession-cancel-" + idempotencyKey);
+                throw new OffSessionConfirmationException(
+                        status, "off-session confirm did not succeed: status=" + status, null);
+            }
+            return new PaymentIntentInfo(intent.getId(), intent.getClientSecret(), intent.getStatus());
+        } catch (com.stripe.exception.CardException e) {
+            // authentication_required / card_declined 等。Stripe が PI を生成済みなら cancel して孤児を残さない。
+            String piId = (e.getStripeError() != null && e.getStripeError().getPaymentIntent() != null)
+                    ? e.getStripeError().getPaymentIntent().getId() : null;
+            if (piId != null) {
+                safeCancelPaymentIntent(piId, "offsession-cancel-" + idempotencyKey);
+            }
+            log.warn("off-session 確定がカード認証要求/拒否で失敗: code={}, declineCode={}, piId={}",
+                    e.getCode(), e.getDeclineCode(), piId, e);
+            throw new OffSessionConfirmationException(e.getCode(), e.getMessage(), e);
+        } catch (StripeException e) {
+            log.error("Stripe off-session 確定 PaymentIntent 作成失敗: destination={}, amount={}",
+                    destinationAccountId, chargeAmountMinor, e);
+            throw new BusinessException(ConnectPaymentErrorCode.AUTHORIZATION_FAILED, e);
+        }
+    }
+
+    /**
+     * 確定に至らなかった PaymentIntent を cancel する（孤児を残さない・R2-1）。
+     * cancel 自体の失敗は本来の確定失敗を覆い隠さないため警告ログに留め、握り潰さず元の失敗を呼び出し側へ返す。
+     */
+    private void safeCancelPaymentIntent(String paymentIntentId, String idempotencyKey) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            RequestOptions options = RequestOptions.builder().setIdempotencyKey(idempotencyKey).build();
+            intent.cancel(PaymentIntentCancelParams.builder().build(), options);
+            log.info("off-session 確定失敗の PI を cancel（孤児防止）: piId={}", paymentIntentId);
+        } catch (StripeException ce) {
+            log.warn("off-session 確定失敗の PI cancel に失敗（要運用確認・本来の失敗は別途返却）: piId={}",
+                    paymentIntentId, ce);
+        }
+    }
+
+    @Override
     public PaymentIntentInfo captureManualPaymentIntent(String paymentIntentId, String idempotencyKey) {
         try {
             PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
@@ -496,6 +758,50 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         } catch (StripeException e) {
             log.error("Stripe PaymentIntent capture 失敗: id={}", paymentIntentId, e);
             throw new BusinessException(ConnectPaymentErrorCode.CAPTURE_FAILED, e);
+        }
+    }
+
+    @Override
+    public PaymentIntentInfo captureManualPaymentIntent(
+            String paymentIntentId, long amountToCaptureMinor,
+            Long applicationFeeAmountMinor, String idempotencyKey) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+
+            // amount_to_capture は与信額以下でなければならない（overcapture は使わない・設計書 F03.11.1 §4.1-3）。
+            // final_capture は既定の true のままとし、残額は Stripe に自動解放させる（§4.1-1・取消 API を別途呼ばない）。
+            PaymentIntentCaptureParams.Builder params = PaymentIntentCaptureParams.builder()
+                    .setAmountToCapture(amountToCaptureMinor);
+            if (applicationFeeAmountMinor != null) {
+                // 運営手数料はキャプチャ額に対して上書きする（A_eff = min(A, F)・§3.5.3）。
+                // Stripe 側もキャプチャ額を上限に丸めるため二重に安全である。
+                params.setApplicationFeeAmount(applicationFeeAmountMinor);
+            }
+
+            PaymentIntent captured = intent.capture(params.build(), options);
+            log.info("Stripe PaymentIntent 部分 capture 確定: id={}, status={}, amount={}, applicationFee={}",
+                    captured.getId(), captured.getStatus(), amountToCaptureMinor, applicationFeeAmountMinor);
+            return new PaymentIntentInfo(captured.getId(), captured.getClientSecret(), captured.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe PaymentIntent 部分 capture 失敗: id={}, amount={}", paymentIntentId, amountToCaptureMinor, e);
+            throw new BusinessException(ConnectPaymentErrorCode.CAPTURE_FAILED, e);
+        }
+    }
+
+    @Override
+    public PaymentIntentInfo retrievePaymentIntentClientSecret(String paymentIntentId) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            // clientSecret はログに出さない（PCI・03 §10）。status のみ記録する。
+            log.info("Stripe PaymentIntent retrieve（札主の決済確認用・clientSecret 非ログ）: id={}, status={}",
+                    intent.getId(), intent.getStatus());
+            return new PaymentIntentInfo(intent.getId(), intent.getClientSecret(), intent.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe PaymentIntent retrieve 失敗: id={}", paymentIntentId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
         }
     }
 
@@ -541,6 +847,44 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             return transferId;
         } catch (StripeException e) {
             log.error("Transfer 解決失敗: piId={}", paymentIntentId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    @Override
+    public long retrieveChargeProcessingFee(String paymentIntentId) {
+        try {
+            // latest_charge.balance_transaction を一度の retrieve で展開し、追加往復を避ける（§6.3）。
+            PaymentIntentRetrieveParams params = PaymentIntentRetrieveParams.builder()
+                    .addExpand("latest_charge.balance_transaction")
+                    .build();
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId, params, null);
+
+            Charge charge = intent.getLatestChargeObject();
+            if (charge == null) {
+                // latest_charge 未解決（capture 前/異常）。0 と誤認させず pending 番兵で上申する。
+                log.warn("実手数料未取得（latest_charge なし・pending 扱い）: piId={}", paymentIntentId);
+                return PROCESSING_FEE_PENDING;
+            }
+            BalanceTransaction bt = charge.getBalanceTransactionObject();
+            if (bt == null || bt.getFee() == null) {
+                // balance_transaction 未展開/未確定。後続バッチで補完できるよう pending 番兵を返す。
+                log.warn("実手数料未取得（balance_transaction 未確定・pending 扱い）: piId={}, chargeId={}",
+                        paymentIntentId, charge.getId());
+                return PROCESSING_FEE_PENDING;
+            }
+            // status='pending' の間は fee が暫定/未確定でありうるため、available 確定まで pending 番兵を返す。
+            if (!"available".equals(bt.getStatus())) {
+                log.warn("実手数料未確定（balance_transaction.status={}・pending 扱い）: piId={}, fee={}",
+                        bt.getStatus(), paymentIntentId, bt.getFee());
+                return PROCESSING_FEE_PENDING;
+            }
+            long fee = bt.getFee();
+            log.info("Stripe 実手数料取得: piId={}, chargeId={}, btId={}, fee={}（minor）",
+                    paymentIntentId, charge.getId(), bt.getId(), fee);
+            return fee;
+        } catch (StripeException e) {
+            log.error("Stripe 実手数料取得失敗: piId={}", paymentIntentId, e);
             throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
         }
     }
@@ -598,6 +942,240 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         }
     }
 
+    // ========================================
+    // F08.9 P5 継続課金（SetupIntent 基盤＋Subscription 実装）
+    // ========================================
+
+    @Override
+    public SetupIntentInfo createSetupIntent(String customerId) {
+        try {
+            // usage=off_session: 将来の自動課金（次サイクル以降）に再利用する PM として登録する（02 §4.1）。
+            SetupIntentCreateParams params = SetupIntentCreateParams.builder()
+                    .setCustomer(customerId)
+                    .setUsage(SetupIntentCreateParams.Usage.OFF_SESSION)
+                    .build();
+            SetupIntent intent = SetupIntent.create(params);
+            log.info("Stripe SetupIntent 作成: id={}, customer={}, status={}",
+                    intent.getId(), customerId, intent.getStatus());
+            return new SetupIntentInfo(intent.getId(), intent.getClientSecret(), intent.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe SetupIntent 作成失敗: customer={}", customerId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public void attachPaymentMethodAndSetDefault(String customerId, String paymentMethodId) {
+        try {
+            // (1) confirm 済み PM を Customer に attach（既に attach 済みでも冪等・Stripe が no-op 化）。
+            PaymentMethod paymentMethod = PaymentMethod.retrieve(paymentMethodId);
+            paymentMethod.attach(PaymentMethodAttachParams.builder().setCustomer(customerId).build());
+
+            // (2) Customer の invoice_settings.default_payment_method に設定（次サイクル invoice の off_session 既定）。
+            Customer customer = Customer.retrieve(customerId);
+            customer.update(CustomerUpdateParams.builder()
+                    .setInvoiceSettings(CustomerUpdateParams.InvoiceSettings.builder()
+                            .setDefaultPaymentMethod(paymentMethodId)
+                            .build())
+                    .build());
+            log.info("Stripe PaymentMethod attach＋default 設定: customer={}, pm={}", customerId, paymentMethodId);
+        } catch (StripeException e) {
+            log.error("Stripe PaymentMethod attach/default 設定失敗: customer={}, pm={}", customerId, paymentMethodId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public SubscriptionInfo createSubscription(String customerId, java.util.List<String> priceIds,
+                                               String defaultPaymentMethodId,
+                                               String destinationAccountId, BigDecimal applicationFeePercent,
+                                               long billingCycleAnchorEpochSec, String idempotencyKey) {
+        if (priceIds == null || priceIds.isEmpty()) {
+            // 呼び出し側の契約違反（症状を隠さず即座に拒否する）。
+            throw new IllegalArgumentException("priceIds must contain at least one price (会費 Price)");
+        }
+        try {
+            // 案b: 初回会費は外側で単発 destination charge 済み。Subscription は billing_cycle_anchor=次サイクル開始で
+            // 起動し proration_behavior=NONE で「初回 invoice を発生させない」（PoC 実証 2026-06-05・02 §4.1）。
+            // billing_cycle_anchor は「将来時刻」かつ proration_behavior=NONE のとき初回課金を当該時刻まで遅延でき、
+            // trial_end 方式よりも「次サイクルから通常課金（subscription_cycle invoice）」を確実に表現できる。
+            //
+            // 案C（手数料折半の根治）: 明細は「会費 Price（額面）」＋「支払側手数料 Price（payerFee）」の 2 本。
+            // SubscriptionCreateParams.Builder#addItem は複数回呼べるため、素直に明細を積む
+            //（stripe-java 28.2.0 で確認・putExtraParam による回避は不要）。
+            SubscriptionCreateParams.Builder builder = SubscriptionCreateParams.builder()
+                    .setCustomer(customerId);
+            for (String priceId : priceIds) {
+                builder.addItem(SubscriptionCreateParams.Item.builder()
+                        .setPrice(priceId)
+                        .setQuantity(1L)
+                        .build());
+            }
+            SubscriptionCreateParams params = builder
+                    .setDefaultPaymentMethod(defaultPaymentMethodId)
+                    .setOffSession(true)
+                    .setOnBehalfOf(destinationAccountId)
+                    .setTransferData(SubscriptionCreateParams.TransferData.builder()
+                            .setDestination(destinationAccountId)
+                            .build())
+                    .setApplicationFeePercent(applicationFeePercent)
+                    .setBillingCycleAnchor(billingCycleAnchorEpochSec)
+                    .setProrationBehavior(SubscriptionCreateParams.ProrationBehavior.NONE)
+                    .setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.ALLOW_INCOMPLETE)
+                    .build();
+
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            Subscription subscription = Subscription.create(params, options);
+            log.info("Stripe Subscription 作成（案b・次サイクル開始・案C 2明細）: id={}, status={}, anchor={}, "
+                            + "destination={}, feePct={}, prices={}",
+                    subscription.getId(), subscription.getStatus(), billingCycleAnchorEpochSec,
+                    destinationAccountId, applicationFeePercent, priceIds);
+            return new SubscriptionInfo(subscription.getId(), subscription.getStatus(),
+                    subscription.getCurrentPeriodEnd());
+        } catch (StripeException e) {
+            log.error("Stripe Subscription 作成失敗: customer={}, prices={}, destination={}",
+                    customerId, priceIds, destinationAccountId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public void pauseSubscriptionCollection(String subscriptionId, long resumesAtEpochSec, String idempotencyKey) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            // pause_collection={behavior:'void', resumes_at:<unix_sec>}
+            // void: スキップ月の invoice を void 化（paid が発火せず valid_until が延びない・設計書 02 §4.3）。
+            Subscription updated = subscription.update(
+                    SubscriptionUpdateParams.builder()
+                            .setPauseCollection(SubscriptionUpdateParams.PauseCollection.builder()
+                                    .setBehavior(SubscriptionUpdateParams.PauseCollection.Behavior.VOID)
+                                    .setResumesAt(resumesAtEpochSec)
+                                    .build())
+                            .build(),
+                    options);
+            log.info("Stripe Subscription pause_collection 設定（スキップ）: id={}, status={}, resumesAt={}",
+                    updated.getId(), updated.getStatus(), resumesAtEpochSec);
+        } catch (StripeException e) {
+            log.error("Stripe Subscription pause_collection 設定失敗: id={}, resumesAt={}", subscriptionId, resumesAtEpochSec, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public void resumeSubscriptionCollection(String subscriptionId, String idempotencyKey) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            // pause_collection を解除するには Stripe API 上 "pause_collection" を空文字列で送信する。
+            // stripe-java 28.2.0 の SubscriptionUpdateParams.Builder には setPauseCollection(null) が存在しないため、
+            // putExtraParam で直接 "" を渡す方式を採用する（Stripe API docs: "Pass empty string to remove" パターン）。
+            Subscription updated = subscription.update(
+                    SubscriptionUpdateParams.builder()
+                            .putExtraParam("pause_collection", "")
+                            .build(),
+                    options);
+            log.info("Stripe Subscription pause_collection 解除（再開）: id={}, status={}", updated.getId(), updated.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe Subscription pause_collection 解除失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public SubscriptionInfo cancelSubscriptionAtPeriodEnd(String subscriptionId, String idempotencyKey) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            Subscription updated = subscription.update(
+                    SubscriptionUpdateParams.builder().setCancelAtPeriodEnd(true).build(), options);
+            log.info("Stripe Subscription 期末解約予約: id={}, status={}, periodEnd={}",
+                    updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+            return new SubscriptionInfo(updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+        } catch (StripeException e) {
+            log.error("Stripe Subscription 期末解約予約失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public InvoiceWebhookEventInfo constructInvoiceEvent(String payload, String sigHeader) {
+        Event event;
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
+        } catch (SignatureVerificationException e) {
+            log.error("Stripe 継続課金 Webhook 署名検証失敗", e);
+            throw new BusinessException(PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+        }
+
+        String eventType = event.getType();
+        boolean livemode = Boolean.TRUE.equals(event.getLivemode());
+
+        EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+        StripeObject stripeObject = resolveStripeObject(deserializer);
+
+        String subscriptionId = null;
+        String invoiceId = null;
+        String invoiceStatus = null;
+        String billingReason = null;
+        Long amountPaidMinor = null;
+        String paymentIntentId = null;
+        String chargeId = null;
+        Long periodStartEpochSec = null;
+        Long periodEndEpochSec = null;
+
+        if (stripeObject instanceof Invoice invoice) {
+            // invoice.*（created/paid/payment_failed）: subscription 逆引き・draft 窓判定・記帳突合に必要な値を抽出。
+            subscriptionId = invoice.getSubscription();
+            invoiceId = invoice.getId();
+            invoiceStatus = invoice.getStatus();
+            billingReason = invoice.getBillingReason();
+            amountPaidMinor = invoice.getAmountPaid();
+            paymentIntentId = invoice.getPaymentIntent();
+            chargeId = invoice.getCharge();
+            periodStartEpochSec = invoice.getPeriodStart();
+            periodEndEpochSec = invoice.getPeriodEnd();
+        } else if (stripeObject instanceof Subscription subscription) {
+            // customer.subscription.deleted: 対象 subscription のみ（他フィールドは null）。
+            subscriptionId = subscription.getId();
+        }
+
+        log.info("Stripe 継続課金 Webhook 受信: id={}, type={}, subscriptionId={}, invoiceId={}, status={}, billingReason={}",
+                event.getId(), eventType, subscriptionId, invoiceId, invoiceStatus, billingReason);
+        return new InvoiceWebhookEventInfo(event.getId(), eventType, livemode, subscriptionId, invoiceId,
+                invoiceStatus, billingReason, amountPaidMinor, paymentIntentId, chargeId,
+                periodStartEpochSec, periodEndEpochSec);
+    }
+
+    @Override
+    public void updateInvoiceApplicationFee(String invoiceId, long applicationFeeMinor, String idempotencyKey) {
+        try {
+            Invoice invoice = Invoice.retrieve(invoiceId);
+            // draft 窓で application_fee_amount を固定円へ上書き（subscription の application_fee_percent 自動計算を
+            // 完全上書き・PoC 実証 2026-06-05・README §4.2 / §4.4）。stripe-java 28.2.0（API 2025-02-24.acacia）固定条件。
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            invoice.update(InvoiceUpdateParams.builder()
+                    .setApplicationFeeAmount(applicationFeeMinor)
+                    .build(), options);
+            log.info("Stripe invoice application_fee_amount 上書き: invoiceId={}, appFee={}", invoiceId, applicationFeeMinor);
+        } catch (StripeException e) {
+            // 上書き失敗は症状を隠さず例外で上申する（呼び出し側が Stripe 再送に委ねる・02 §4.2）。
+            log.error("Stripe invoice application_fee_amount 上書き失敗: invoiceId={}, appFee={}",
+                    invoiceId, applicationFeeMinor, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
     @Override
     public EscrowWebhookEventInfo constructEscrowEvent(String payload, String sigHeader) {
         Event event;
@@ -612,7 +1190,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         boolean livemode = Boolean.TRUE.equals(event.getLivemode());
 
         EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
-        StripeObject stripeObject = deserializer.getObject().orElse(null);
+        StripeObject stripeObject = resolveStripeObject(deserializer);
 
         String paymentIntentId = null;
         String paymentIntentStatus = null;
@@ -638,6 +1216,93 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                 event.getId(), eventType, paymentIntentStatus, refundId);
         return new EscrowWebhookEventInfo(event.getId(), eventType, livemode, paymentIntentId, paymentIntentStatus,
                 refundId, refundedAmountMinor, chargeAmountMinor);
+    }
+
+    // ========================================
+    // Webhook data.object 解決（basil 黙殺の根治・raw-JSON フォールバック）
+    // ========================================
+
+    /**
+     * Webhook の {@code data.object} を {@link StripeObject} として解決する（4 経路共通）。
+     *
+     * <p>本プロジェクトは stripe-java 28.2.0（API {@code 2025-02-24.acacia} 固定）。Stripe 口座の既定 API
+     * バージョンが basil 系（{@code 2025-03-31} 以降）だと {@link EventDataObjectDeserializer#getObject()} が
+     * バージョン不一致で {@code Optional.empty()} を返し、{@code payment_intent.*}/{@code charge.refunded}/
+     * {@code invoice.*}/{@code account.updated} 等が <b>黙殺</b>される（HTTP 200 受信のみで escrow が昇格しない・
+     * 実機検出 2026-06）。</p>
+     *
+     * <p><b>後方互換:</b> {@code getObject()} が非空なら従来どおりそのオブジェクトを返す（完全不変）。<b>空のときのみ</b>
+     * raw JSON から {@code id}/{@code object} を最小抽出し、対応する型の {@code retrieve} で実体を Stripe から
+     * 再取得して返す（最新 API バージョンの schema で確実にデシリアライズされる）。retrieve の失敗は
+     * <b>症状を隠さず例外で上申</b>し、Stripe 再送に委ねる既存方針に倣う。</p>
+     *
+     * @param deserializer Webhook イベントの {@code data.object} デシリアライザ
+     * @return 解決された {@link StripeObject}（型不明・retrieve 不能時は {@code null}）
+     */
+    StripeObject resolveStripeObject(EventDataObjectDeserializer deserializer) {
+        java.util.Optional<StripeObject> fromGetObject = deserializer.getObject();
+        if (fromGetObject.isPresent()) {
+            // API バージョン一致（acacia）: 従来パス。完全不変。
+            return fromGetObject.get();
+        }
+        // バージョン不一致（basil 等）: raw JSON から id/object を抽出し retrieve で再取得する。
+        return resolveFromRawJson(deserializer.getRawJson());
+    }
+
+    /**
+     * Webhook の {@code data.object} の raw JSON から {@code id}/{@code object}（型判別子）を抽出し、
+     * 対応する Stripe API の {@code retrieve} で実体を再取得する（basil 黙殺フォールバックの中核・テスト容易化のため分離）。
+     *
+     * <p>抽出するのは {@code id}（取得キー）と {@code object}（{@code payment_intent}/{@code charge}/
+     * {@code refund}/{@code checkout.session}/{@code invoice}/{@code subscription}/{@code account} 等の型判別子）のみ。
+     * 業務フィールドは retrieve 結果（最新 schema）から読むため、raw JSON の schema 差異の影響を受けない。</p>
+     *
+     * @param rawJson {@code data.object} の生 JSON 文字列
+     * @return retrieve で再取得した {@link StripeObject}。{@code object} 判別不能 / {@code id} 欠落時は {@code null}
+     */
+    StripeObject resolveFromRawJson(String rawJson) {
+        if (rawJson == null || rawJson.isBlank()) {
+            log.warn("Stripe Webhook data.object の raw JSON が空のためフォールバック解決を中断");
+            return null;
+        }
+        String objectType;
+        String id;
+        try {
+            JsonNode node = webhookObjectMapper.readTree(rawJson);
+            objectType = node.path("object").asText(null);
+            id = node.path("id").asText(null);
+        } catch (Exception e) {
+            // 握り潰さず上申（Stripe 再送に委ねる）。
+            log.error("Stripe Webhook data.object の raw JSON パース失敗（basil フォールバック）", e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+        if (objectType == null || id == null || id.isBlank()) {
+            log.warn("Stripe Webhook data.object に object/id が無くフォールバック解決不能: object={}, idPresent={}",
+                    objectType, id != null);
+            return null;
+        }
+        log.info("Stripe Webhook data.object を raw JSON フォールバックで解決: object={}, id={}", objectType, id);
+        try {
+            return switch (objectType) {
+                case "payment_intent" -> PaymentIntent.retrieve(id);
+                case "charge" -> Charge.retrieve(id);
+                case "refund" -> Refund.retrieve(id);
+                case "checkout.session" -> Session.retrieve(id);
+                case "invoice" -> Invoice.retrieve(id);
+                case "subscription" -> Subscription.retrieve(id);
+                case "account" -> Account.retrieve(id);
+                default -> {
+                    // 未対応 object は従来同様 null（各経路の if 連鎖が黙ってスキップ）。
+                    log.warn("Stripe Webhook data.object のフォールバック retrieve 対象外 object: object={}, id={}",
+                            objectType, id);
+                    yield null;
+                }
+            };
+        } catch (StripeException e) {
+            // retrieve 失敗は症状を隠さず上申（呼び出し側が Stripe 再送に委ねる）。
+            log.error("Stripe Webhook data.object のフォールバック retrieve 失敗: object={}, id={}", objectType, id, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
+        }
     }
 
     /**

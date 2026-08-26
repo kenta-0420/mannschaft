@@ -58,14 +58,9 @@ class TournamentVisibilityResolverIntegrationTest extends AbstractMySqlIntegrati
     @BeforeEach
     void setUp() {
         // 1. ロールを直接投入
-        em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('SYSTEM_ADMIN', 'システム管理者', 1, 1, NOW(), NOW())")
-                .executeUpdate();
-        em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
-                .executeUpdate();
+        // 冪等化: insertRoleIfAbsent 参照（存在確認してから INSERT。INSERT IGNORE は使用禁止）
+        insertRoleIfAbsent("SYSTEM_ADMIN", "システム管理者", 1, true);
+        insertRoleIfAbsent("MEMBER", "メンバー", 4, false);
         em.flush();
 
         memberRoleId = ((Number) em.createNativeQuery(
@@ -116,8 +111,8 @@ class TournamentVisibilityResolverIntegrationTest extends AbstractMySqlIntegrati
     private Long insertOrganization(String name) {
         em.createNativeQuery(
                 "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
-                        + "supporter_enabled, version, created_at, updated_at) "
-                        + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW())")
+                        + "supporter_enabled, version, slug, created_at, updated_at) "
+                        + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
@@ -148,13 +143,13 @@ class TournamentVisibilityResolverIntegrationTest extends AbstractMySqlIntegrati
     private Long insertTournament(String name, Long createdBy, String status, String visibility) {
         em.createNativeQuery(
                 "INSERT INTO tournaments ("
-                        + "organization_id, name, format, "
+                        + "organization_id, name, format, sport, "
                         + "win_points, draw_points, loss_points, "
                         + "has_draw, has_sets, has_extra_time, has_penalties, "
                         + "score_unit_label, league_round_type, knockout_legs, "
                         + "visibility, status, version, created_by, "
                         + "created_at, updated_at) "
-                        + "VALUES (:orgId, :name, 'LEAGUE', "
+                        + "VALUES (:orgId, :name, 'LEAGUE', 'SOCCER', "
                         + "3, 1, 0, "
                         + "1, 0, 0, 0, "
                         + "'点', 'SINGLE', 1, "
@@ -189,9 +184,9 @@ class TournamentVisibilityResolverIntegrationTest extends AbstractMySqlIntegrati
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY × OPEN は所属組織メンバーのみ閲覧可")
-    void members_only_open_visible_to_member_only() {
-        Long tnId = insertTournament("tn-members-open", memberUserId, "OPEN", "MEMBERS_ONLY");
+    @DisplayName("SCOPE_AFFILIATED × OPEN は所属組織メンバーのみ閲覧可（旧 MEMBERS_ONLY 相当）")
+    void scope_affiliated_open_visible_to_member_only() {
+        Long tnId = insertTournament("tn-members-open", memberUserId, "OPEN", "SCOPE_AFFILIATED");
         em.flush();
         em.clear();
 
@@ -245,10 +240,10 @@ class TournamentVisibilityResolverIntegrationTest extends AbstractMySqlIntegrati
     }
 
     @Test
-    @DisplayName("filterAccessible は MEMBERS_ONLY と PUBLIC を所属メンバー視点で正しくフィルタ")
+    @DisplayName("filterAccessible は SCOPE_AFFILIATED と PUBLIC を所属メンバー視点で正しくフィルタ")
     void filterAccessible_mixed_visibility_for_member() {
         Long t1 = insertTournament("tn-flt-1", memberUserId, "OPEN", "PUBLIC");
-        Long t2 = insertTournament("tn-flt-2", memberUserId, "IN_PROGRESS", "MEMBERS_ONLY");
+        Long t2 = insertTournament("tn-flt-2", memberUserId, "IN_PROGRESS", "SCOPE_AFFILIATED");
         Long t3 = insertTournament("tn-flt-3", memberUserId, "DRAFT", "PUBLIC");
         em.flush();
         em.clear();
@@ -265,4 +260,27 @@ class TournamentVisibilityResolverIntegrationTest extends AbstractMySqlIntegrati
                 ReferenceType.TOURNAMENT, List.of(t1, t2, t3), sysAdminUserId);
         assertThat(sysAdmin).containsExactlyInAnyOrder(t1, t2, t3);
     }
+
+    private void insertRoleIfAbsent(String name, String displayName, int priority, boolean isSystem) {
+        // 冪等化: roles はグローバル参照テーブルのため、既存なら再利用し二重INSERTしない
+        // （同一 name の重複INSERTは roles の UNIQUE 制約違反になる。INSERT IGNORE は
+        // 重複キー以外にもデータ切り詰め・NOT NULL違反等の異常を警告に格下げして黙って
+        // 通してしまうため使用禁止。CI shard 再編成で同居テストが変わり得るため
+        // 事前に SELECT で存在確認する）。
+        Number existingRoleCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM roles WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult();
+        if (existingRoleCount.longValue() > 0) {
+            return;
+        }
+        em.createNativeQuery(
+                        "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                                + "VALUES (:name, :dn, :priority, :sys, NOW(), NOW())")
+                .setParameter("name", name)
+                .setParameter("dn", displayName)
+                .setParameter("priority", priority)
+                .setParameter("sys", isSystem ? 1 : 0)
+                .executeUpdate();
+    }
+
 }

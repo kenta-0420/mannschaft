@@ -54,7 +54,6 @@ onMounted(loadCards)
 
 <template>
   <div class="mx-auto max-w-4xl">
-    <BackButton to="/settings" />
     <PageHeader title="QR会員証" />
 
     <PageLoading v-if="loading" />

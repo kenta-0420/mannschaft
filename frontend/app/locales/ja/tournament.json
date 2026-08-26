@@ -1,4 +1,18 @@
 {
+  "sport": {
+    "label": "競技",
+    "help": "この大会の競技を選びます。直接スコア入力時の試合がこの競技で作成されます。",
+    "options": {
+      "SOCCER": "サッカー",
+      "FUTSAL": "フットサル",
+      "BASKETBALL": "バスケットボール",
+      "VOLLEYBALL": "バレーボール",
+      "SHOGI": "将棋",
+      "GO": "囲碁",
+      "FIGURE_SKATING": "フィギュアスケート",
+      "GYMNASTICS": "体操"
+    }
+  },
   "entry": {
     "title": "エントリー管理",
     "memberCount": "{count}名",
@@ -140,7 +154,9 @@
     "no_chat": "チャットスペースがありません",
     "visibility_saved": "公開設定を変更しました",
     "visibility_failed": "公開設定の変更に失敗しました",
-    "load_failed": "連絡スペースの取得に失敗しました"
+    "load_failed": "連絡スペースの取得に失敗しました",
+    "divisions_load_failed": "ディビジョン一覧の取得に失敗しました",
+    "permissions_load_failed": "権限情報の取得に失敗しました。操作が制限される場合があります"
   },
   "submission": {
     "title": "書類提出受付",
@@ -245,5 +261,165 @@
     "empty_team_record": "参加した大会がまだありません",
     "empty_org_summary": "主催している大会がまだありません",
     "empty_division_standings": "現在参加中の大会がありません"
+  },
+  "tournamentFee": {
+    "pageTitle": "大会参加費",
+    "myFees": "自分の参加費一覧",
+    "noFees": "現在対象の大会参加費はありません",
+    "payNow": "今すぐ支払う",
+    "paid": "支払済み",
+    "paidAt": "支払日時",
+    "dueDate": "支払期限",
+    "faceAmount": "参加費",
+    "totalCharge": "合計請求額",
+    "checkoutSuccess": "決済チェックアウトを完了しました",
+    "checkoutError": "決済チェックアウトに失敗しました"
+  },
+  "standings": {
+    "title": "順位表",
+    "back": "大会詳細に戻る",
+    "rank": "順位",
+    "team": "チーム",
+    "played": "試合数",
+    "winDrawLoss": "勝/分/敗",
+    "goalDiff": "得失点差",
+    "setsWonLost": "勝S/敗S",
+    "points": "勝点",
+    "form": "直近フォーム",
+    "recalculate": "再計算",
+    "recalculated": "順位表を再計算しました",
+    "recalculateFailed": "順位表の再計算に失敗しました",
+    "downloadPdf": "PDF出力",
+    "pdfFailed": "PDFの出力に失敗しました",
+    "empty": "順位データがありません",
+    "noDivisions": "部門が登録されていません",
+    "loadFailed": "順位表の取得に失敗しました",
+    "forbidden": "この大会を閲覧する権限がありません"
+  },
+  "rankings": {
+    "title": "ランキング",
+    "back": "大会詳細に戻る",
+    "rank": "順位",
+    "player": "選手",
+    "anonymousPlayer": "匿名の選手",
+    "matchesPlayed": "出場",
+    "value": "記録",
+    "downloadPdf": "PDF出力",
+    "pdfFailed": "PDFの出力に失敗しました",
+    "empty": "ランキングデータがありません",
+    "noCategories": "ランキング項目がありません",
+    "loadFailed": "ランキングの取得に失敗しました",
+    "forbidden": "この大会を閲覧する権限がありません"
+  },
+  "matrix": {
+    "title": "対戦マトリクス",
+    "back": "大会詳細に戻る",
+    "homeAway": "ホーム＼アウェイ",
+    "notPlayed": "未対戦",
+    "downloadPdf": "PDF出力",
+    "pdfFailed": "PDFの出力に失敗しました",
+    "empty": "マトリクスデータがありません",
+    "noDivisions": "部門が登録されていません",
+    "loadFailed": "マトリクスの取得に失敗しました",
+    "forbidden": "この大会を閲覧する権限がありません",
+    "setsNote": "セット制大会のため、各セルのスコアは全セット得点の合計を示します。勝敗は勝セット数で判定されます。"
+  },
+  "visibility": {
+    "title": "可視性設定",
+    "description": "この大会の順位・成績を誰に公開するかを設定します。",
+    "save": "保存",
+    "saved": "可視性を変更しました",
+    "saveFailed": "可視性の変更に失敗しました",
+    "levels": {
+      "PUBLIC": {
+        "label": "一般公開",
+        "description": "ログインしていない人を含め、誰でも閲覧できます。"
+      },
+      "SUPPORTERS_AND_ABOVE": {
+        "label": "応援者以上",
+        "description": "応援者・メンバー・管理者が閲覧できます。"
+      },
+      "MEMBERS_AND_ABOVE": {
+        "label": "メンバー以上",
+        "description": "メンバーと管理者のみ閲覧できます（応援者は閲覧不可）。"
+      },
+      "ADMINS_AND_ABOVE": {
+        "label": "管理者のみ",
+        "description": "組織の管理者・副管理者のみ閲覧できます。"
+      },
+      "SCOPE_AFFILIATED": {
+        "label": "所属者のみ",
+        "description": "組織に直接所属する人（応援者を含む）のみ閲覧できます。"
+      },
+      "PARTICIPANTS_ONLY": {
+        "label": "参加者のみ",
+        "description": "この大会に参加しているチームの関係者のみ閲覧できます。"
+      }
+    }
+  },
+  "scoreEntry": {
+    "title": "スコア入力",
+    "navLink": "スコア入力（管理者）",
+    "back": "大会詳細に戻る",
+    "matchday": "節",
+    "home": "ホーム",
+    "away": "アウェイ",
+    "homeScore": "ホーム得点",
+    "awayScore": "アウェイ得点",
+    "homeExtraScore": "ホーム延長",
+    "awayExtraScore": "アウェイ延長",
+    "homePenaltyScore": "ホームPK",
+    "awayPenaltyScore": "アウェイPK",
+    "extraPenaltyHint": "延長戦は本戦得点に合算して勝敗を判定します。PKは本戦・延長を含めて同点の場合にのみ意味を持ちます。実施しなかった項目は空欄のままにしてください。",
+    "setHeader": "第{n}セット",
+    "setHomeAria": "第{n}セット ホーム得点",
+    "setAwayAria": "第{n}セット アウェイ得点",
+    "setsHint": "{n}セット先取で勝利です。実施したセットのみ得点を入力し、未実施のセットは空欄のままにしてください。勝敗は勝セット数で判定されます。",
+    "save": "一括保存",
+    "saved": "スコアを保存しました",
+    "saveFailed": "スコアの保存に失敗しました",
+    "conflict": "他の編集と競合しました。最新の状態を再取得しました。もう一度入力してください。",
+    "invalidInput": "入力値が不正です（得点は0以上の整数で、ホーム・アウェイ両方を入力してください）",
+    "nothingToSave": "保存対象のスコアがありません",
+    "standingsHint": "スコアを保存しました。順位は自動で再計算されます。",
+    "forbidden": "この大会のスコアを編集する権限がありません",
+    "loadFailed": "データの取得に失敗しました",
+    "noDivisions": "部門が登録されていません",
+    "noMatchdays": "節が登録されていません",
+    "noMatches": "対戦カードがありません",
+    "csv": {
+      "title": "CSVで一括取込",
+      "formatHint": "matchId,homeScore,awayScore の順で記述したCSVをアップロードしてください（1行目はヘッダー）。得点未確定の試合は空欄のままにします。",
+      "import": "取込",
+      "imported": "CSVを取り込みました",
+      "importFailed": "CSVの取込に失敗しました",
+      "invalidFormat": "CSVの形式が不正です。得点は整数で記述してください。",
+      "downloadTemplate": "テンプレートをダウンロード"
+    }
+  },
+  "scorekeeper": {
+    "title": "スコアキーパー指名",
+    "description": "指名したユーザーは、この大会のスコア入力（単発・一括・CSV取込）が可能になります。指名できるのは主催組織の管理者のみです。",
+    "userIdLabel": "ユーザーID",
+    "userIdPlaceholder": "例: 12345",
+    "searchLabel": "会員を氏名で検索して指名",
+    "searchPlaceholder": "氏名・カード番号で検索",
+    "searching": "検索中…",
+    "noCandidates": "該当する会員が見つかりません",
+    "selectMember": "この会員を指名",
+    "add": "指名する",
+    "remove": "解除",
+    "empty": "まだスコアキーパーは指名されていません",
+    "addSuccess": "スコアキーパーを指名しました",
+    "removeSuccess": "スコアキーパーの指名を解除しました",
+    "alreadyAssigned": "このユーザーは既に指名済みです",
+    "error": {
+      "loadFailed": "スコアキーパー一覧の取得に失敗しました",
+      "addFailed": "スコアキーパーの指名に失敗しました（{status}）",
+      "removeFailed": "スコアキーパーの指名解除に失敗しました",
+      "forbidden": "スコアキーパーを管理する権限がありません（主催組織の管理者のみ）",
+      "invalidUserId": "ユーザーIDは正の整数で入力してください",
+      "searchFailed": "会員検索に失敗しました"
+    }
   }
 }

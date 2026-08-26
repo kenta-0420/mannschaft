@@ -12,6 +12,7 @@ import com.mannschaft.app.school.repository.ClassHomeroomRepository;
 import com.mannschaft.app.school.repository.StudentAttendanceSummaryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +52,8 @@ public class AttendanceRequirementBatchService {
      */
     @BatchEndpoint(name = "attendance-daily-evaluation", description = "出席要件規程の日次評価を毎日 06:00 に実行する")
     @Scheduled(cron = "0 0 6 * * *")
+    // 起動間隔は日次 06:00。全規程 × 全対象生徒の出席要件評価であり生徒数に比例して伸びる。余裕を取り 2 時間を上限とする。
+    @SchedulerLock(name = "attendanceDailyEvaluation", lockAtLeastFor = "PT1M", lockAtMostFor = "PT2H")
     @Transactional
     public void runDailyEvaluation() {
         LocalDate today = LocalDate.now();
@@ -80,8 +83,9 @@ public class AttendanceRequirementBatchService {
                         .map(AttendanceRequirementEvaluationEntity::getStatus)
                         .orElse(null);
 
-                    // 評価実行
-                    EvaluationResponse result = evaluationService.evaluate(studentId, rule.getId());
+                    // 評価実行（バッチはユーザー主体を持たず、対象スコープは activeRules で確定済みのため
+                    // 認可ガードを通さない内部経路を使う）
+                    EvaluationResponse result = evaluationService.evaluateInternal(studentId, rule.getId());
                     evaluated++;
 
                     // ステータス変化があれば通知
@@ -105,6 +109,8 @@ public class AttendanceRequirementBatchService {
      */
     @BatchEndpoint(name = "attendance-weekly-digest", description = "出席要件のリスク生徒週次ダイジェストを毎週月曜 07:00 に教員へ送信する")
     @Scheduled(cron = "0 0 7 * * MON")
+    // 起動間隔は週次（月曜 07:00）。リスク生徒の抽出と教員への通知送出のみ。週次で次回まで 7 日あるため余裕を取り 1 時間を上限とする。
+    @SchedulerLock(name = "attendanceWeeklyDigest", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional(readOnly = true)
     public void sendWeeklyDigest() {
         LocalDate today = LocalDate.now();

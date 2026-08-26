@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.dto.CreatePaymentItemRequest;
 import com.mannschaft.app.payment.dto.PaymentItemResponse;
@@ -20,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,6 +43,7 @@ class PaymentItemServiceTest {
     @Mock private ContentPaymentGateRepository contentPaymentGateRepository;
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private PaymentMapper paymentMapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private PaymentItemService service;
@@ -58,7 +61,7 @@ class PaymentItemServiceTest {
         void 正常作成() {
             CreatePaymentItemRequest request = new CreatePaymentItemRequest(
                     "年会費", "2026年度", "ANNUAL_FEE", new BigDecimal("5000"), "JPY",
-                    true, (short) 0, (short) 0, null);
+                    true, (short) 0, (short) 0, null, null, null);
 
             PaymentItemEntity saved = PaymentItemEntity.builder()
                     .teamId(TEAM_ID).name("年会費").type(PaymentItemType.ANNUAL_FEE)
@@ -133,6 +136,131 @@ class PaymentItemServiceTest {
             verify(teamAccessRequirementRepository).deleteByPaymentItemId(any());
             verify(organizationAccessRequirementRepository).deleteByPaymentItemId(any());
             verify(contentPaymentGateRepository).deleteByPaymentItemId(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("Issue #2657: getPaymentItemById")
+    class GetPaymentItemById {
+
+        @Test
+        @DisplayName("正常系: チーム所属項目はチームメンバーであれば取得できる")
+        void 正常系_チーム項目() {
+            PaymentItemEntity entity = PaymentItemEntity.builder()
+                    .teamId(TEAM_ID).name("年会費").type(PaymentItemType.TERM)
+                    .amount(new BigDecimal("5000")).currency("JPY")
+                    .termStartsOn(LocalDate.of(2026, 4, 1)).termEndsOn(LocalDate.of(2026, 9, 30))
+                    .build();
+            given(paymentItemRepository.findById(ITEM_ID)).willReturn(Optional.of(entity));
+            PaymentItemResponse response = PaymentItemResponse.builder()
+                    .id(ITEM_ID)
+                    .meta(new PaymentItemResponse.PaymentItemMetaDto("年会費", null, "TERM", (short) 0, (short) 0))
+                    .term(new PaymentItemResponse.TermPeriodDto(LocalDate.of(2026, 4, 1), LocalDate.of(2026, 9, 30)))
+                    .build();
+            given(paymentMapper.toPaymentItemResponse(entity)).willReturn(response);
+
+            PaymentItemResponse result = service.getPaymentItemById(ITEM_ID, USER_ID);
+
+            verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+            assertThat(result.getMeta().type()).isEqualTo("TERM");
+            assertThat(result.getTerm().termEndsOn()).isEqualTo(LocalDate.of(2026, 9, 30));
+        }
+
+        @Test
+        @DisplayName("正常系: 組織所属項目は組織メンバーであれば取得できる")
+        void 正常系_組織項目() {
+            Long organizationId = 5L;
+            PaymentItemEntity entity = PaymentItemEntity.builder()
+                    .organizationId(organizationId).name("会費").type(PaymentItemType.ANNUAL_FEE)
+                    .amount(new BigDecimal("5000")).currency("JPY").build();
+            given(paymentItemRepository.findById(ITEM_ID)).willReturn(Optional.of(entity));
+            PaymentItemResponse response = PaymentItemResponse.builder().id(ITEM_ID).build();
+            given(paymentMapper.toPaymentItemResponse(entity)).willReturn(response);
+
+            service.getPaymentItemById(ITEM_ID, USER_ID);
+
+            verify(accessControlService).checkMembership(USER_ID, organizationId, "ORGANIZATION");
+        }
+
+        @Test
+        @DisplayName("異常系: 項目が存在しない場合は PAYMENT_ITEM_NOT_FOUND")
+        void 異常系_項目不存在() {
+            given(paymentItemRepository.findById(ITEM_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.getPaymentItemById(ITEM_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PaymentErrorCode.PAYMENT_ITEM_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("異常系: 非メンバーは AccessControlService が拒否する")
+        void 異常系_非メンバー() {
+            PaymentItemEntity entity = PaymentItemEntity.builder()
+                    .teamId(TEAM_ID).name("年会費").type(PaymentItemType.ANNUAL_FEE)
+                    .amount(new BigDecimal("5000")).currency("JPY").build();
+            given(paymentItemRepository.findById(ITEM_ID)).willReturn(Optional.of(entity));
+            org.mockito.Mockito.doThrow(new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> service.getPaymentItemById(ITEM_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+        }
+    }
+
+    @Nested
+    @DisplayName("F08.9 P6: TERM 型バリデーション")
+    class TermTypeValidation {
+
+        private static final LocalDate TERM_ENDS_ON = LocalDate.of(2026, 12, 31);
+
+        @Test
+        @DisplayName("異常系: TERM 型で termEndsOn なしは TERM_END_DATE_REQUIRED エラー")
+        void createPaymentItem_termType_withoutTermEndsOn_throws() {
+            CreatePaymentItemRequest request = new CreatePaymentItemRequest(
+                    "2026年度 春季期", "期別会費", "TERM", new BigDecimal("5000"), "JPY",
+                    true, (short) 0, (short) 0, null,
+                    LocalDate.of(2026, 4, 1), null); // termEndsOn = null
+
+            assertThatThrownBy(() -> service.createTeamPaymentItem(TEAM_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PaymentErrorCode.TERM_END_DATE_REQUIRED);
+        }
+
+        @Test
+        @DisplayName("正常系: TERM 型で termEndsOn ありは正常作成（Stripe 自動作成はスキップ）")
+        void createPaymentItem_termType_withDates_succeeds() {
+            CreatePaymentItemRequest request = new CreatePaymentItemRequest(
+                    "2026年度 春季期", "期別会費", "TERM", new BigDecimal("5000"), "JPY",
+                    true, (short) 0, (short) 0, null,
+                    LocalDate.of(2026, 4, 1), TERM_ENDS_ON);
+
+            PaymentItemEntity saved = PaymentItemEntity.builder()
+                    .teamId(TEAM_ID).name("2026年度 春季期").type(PaymentItemType.TERM)
+                    .amount(new BigDecimal("5000")).currency("JPY").isActive(true)
+                    .termStartsOn(LocalDate.of(2026, 4, 1)).termEndsOn(TERM_ENDS_ON).build();
+            given(paymentItemRepository.save(any())).willReturn(saved);
+
+            PaymentItemResponse response = PaymentItemResponse.builder()
+                    .id(ITEM_ID)
+                    .meta(new PaymentItemResponse.PaymentItemMetaDto("2026年度 春季期", "期別会費", "TERM", (short) 0, (short) 0))
+                    .money(new PaymentItemResponse.PaymentMoneyDto(new BigDecimal("5000"), "JPY"))
+                    .stripe(new PaymentItemResponse.StripeIntegrationDto(null, null))
+                    .audit(new PaymentItemResponse.PaymentItemAuditDto(true, null, null))
+                    .term(new PaymentItemResponse.TermPeriodDto(LocalDate.of(2026, 4, 1), TERM_ENDS_ON))
+                    .build();
+            given(paymentMapper.toPaymentItemResponse(any())).willReturn(response);
+
+            PaymentItemResponse result = service.createTeamPaymentItem(TEAM_ID, USER_ID, request);
+
+            assertThat(result.getMeta().type()).isEqualTo("TERM");
+            assertThat(result.getTerm().termEndsOn()).isEqualTo(TERM_ENDS_ON);
+            // Stripe Price 自動作成はスキップされる（verifyNoInteractions は stripePaymentProvider に対して）
+            // TERM 型で手動 stripePriceId 指定もないため、stripePaymentProvider は呼ばれない
+            org.mockito.Mockito.verifyNoInteractions(stripePaymentProvider);
         }
     }
 }

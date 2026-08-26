@@ -57,6 +57,8 @@
     "notificationCredits": "Benachrichtigungsguthaben",
     "todoStatusLabels": "Aufgabenbezeichnungen",
     "faqSettings": "FAQ-Einstellungen",
-    "leagueTransfers": "Liga-Transfers"
+    "billing": "Abrechnung & Planverwaltung",
+    "leagueTransfers": "Liga-Transfers",
+    "adminConsole": "Administrationskonsole"
   }
 }

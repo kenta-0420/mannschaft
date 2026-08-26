@@ -1,8 +1,8 @@
 # 06. ビジネスロジック攻撃・不正利用防止
 
-> **ステータス**: 🟡 設計確定（実装未着手）
+> **ステータス**: 🟡 設計確定（§4.3 レートリミットは実装完了 — Valkey 化 全 18 フィルタ＋共通基盤 #1470/1471/1472/1474・2026-06-12）
 > **実装フェーズ**: Security Hardening Phase 3（ビジネスロジック強化）
-> **最終更新**: 2026-06-02
+> **最終更新**: 2026-06-12
 > **関連ドキュメント**: [README](README.md), [01 認可基盤](01_authorization_baseline.md), [03 ロール・権限モデル](03_role_authority_model.md), F03.5 シフト, F08系 ポイント/トーナメント, F09.17 広告, F22.1 市（マーケット）
 
 ---
@@ -150,7 +150,10 @@ if (!current.canTransitionTo(requested)) {
 ### 4.3 実装方針
 
 ```
-Valkey (Redis 互換) を使用したスライディングウィンドウ方式:
+Valkey (Redis 互換) を使用した固定ウィンドウ方式:
+（旧記述は「スライディングウィンドウ」としていたが、擬似コード・実装とも
+windowStart 切り捨てキーによる固定ウィンドウであり、文言を実態に合わせて訂正。
+ウィンドウ境界での最大2倍バーストは固定ウィンドウの既知特性として許容する）
 
 1. INCR  mannschaft:rate:{userId}:{windowStart}
 2. EXPIRE mannschaft:rate:{userId}:{windowStart}  60
@@ -165,6 +168,66 @@ Retry-After: 18  （429/423 の場合のみ）
 
 - 将来的には Gateway 層（Spring Cloud Gateway 等）への集約を検討
 - 現在の `RateLimitFilter` 実装の閾値を本テーブルに揃えるリファクタリングを推奨
+
+> 新しく `permitAll` エンドポイントを追加する際にレート制限が必要かどうかの判断基準・
+> 実装後の確認手順・落とし穴は
+> [公開 API 追加チェックリスト](public_api_addition_checklist.md) を参照すること。
+
+#### 4.3.1 実装状況（Valkey 化 全陣完了 — 2026-06-12 / PR #1470・#1471・#1472）
+
+共通基盤を `com.mannschaft.app.common.ratelimit` パッケージに実装した。
+
+| クラス | 責務 |
+|---|---|
+| `ValkeyRateLimiter` | 中核。`tryConsume(zone, key, limit, window)` で固定ウィンドウカウント。キーは `mannschaft:rate:{zone}:{key}:{windowStart}`。**Lua スクリプト（DefaultRedisScript）で INCR + 初回 EXPIRE を原子化**（TTL = ウィンドウ長 + 5 秒マージン） |
+| `AbstractRateLimitFilter` | フィルタ基底。キー解決（認証時 `u:{userId}` / 未認証時 `ip:{ip}`、§4.4 の X-Forwarded-For 優先）、§4.3 標準ヘッダー付与（成功時も付与）、429 応答（JSON ボディ + `Retry-After`）を提供。各フィルタはエンドポイント判定と `(zone, limit, window)` 宣言のみ持つ |
+| `RateLimitRule` / `RateLimitResult` | 規則・判定結果の record |
+
+**fail-open 方針（可用性優先）**: Valkey 障害（`DataAccessException` 系）・Redis Bean 不在時は
+リクエストを通す（`allowed=true`）。レートリミット基盤の障害でサービス全体を止めないための
+設計判断であり、発生は `log.warn` + Micrometer カウンタ **`mannschaft.ratelimit.failopen`**
+（tag: `zone` / `reason`）で必ず可視化する（静かな無効化にしない）。
+auth 系の既存 Valkey fail-open（`AuthService` / `AuthTokenService`）と同方針。
+
+依存解決は `ObjectProvider` の遅延解決で統一（`StringRedisTemplate` / `ValkeyRateLimiter` とも）。
+`@WebMvcTest` 等の最小テストコンテキストで Redis Bean が無くてもフィルタ生成・コンテキストロードを阻害しない。
+
+**移行状況: 全 18 フィルタ移行完了（Bucket4j + Caffeine のプロセス内カウントは全廃）**:
+
+| 陣 | フィルタ |
+|---|---|
+| 第一陣 (#1470) | `ActionMemoRateLimitFilter` / `PublicApiRateLimitFilter` |
+| 第二陣A (#1471) | `SyncRateLimitFilter` / `AuditLogRateLimitFilter` / `FavoriteRateLimitFilter` / `PointCardRateLimitFilter` / `QuickMemoRateLimitFilter` / `AuthWebAuthnReauthRateLimitFilter` / `VisibilityTemplateRateLimitFilter` / `MemberInfoRateLimitFilter` |
+| 第二陣B (#1472) | `DashboardScopeTabRateLimitFilter` / `ErrorReportRateLimitFilter` / `BroadcastRateLimitFilter` / `AdPublicEndpointRateLimitFilter` / `RepairPlanCsvImportRateLimitFilter` / `RepairPlanSimulateRateLimitFilter` / `ScheduleDelegationRateLimitFilter` / `EventDelegationRateLimitFilter` |
+
+以降に新設したフィルタ（いずれも `AbstractRateLimitFilter` 継承・Valkey カウント・§4.3 標準応答）:
+
+| 追加 | フィルタ | 対象 EP と閾値 | 根拠 |
+|---|---|---|---|
+| #2494 | `AnnouncementReadRateLimitFilter` | 単件既読 `POST /api/v1/(teams\|organizations)/{id}/announcements/{id}/read` — **60 req/分・ユーザー**<br>一括既読 `POST .../announcements/read-all` — **5 req/分・ユーザー** | 単件は §4.2「認証済み WRITE 系」の標準値（設計書 F02.6 §6.4 の想定 100 req/分は標準の上限目安を超えるため 60 に丸めた）。一括は設計書 F02.6 §6.4 の想定値そのまま — 1 リクエストで最大 10,000 行の `INSERT` を伴う重い操作なので標準（送信系 10 req/分）より厳しい側を採る。zone を分けているのは単件の連打が一括の枠を食い潰さないため |
+
+注: Bucket4j 依存自体は `ResumeExportService` / 天気 API クライアント等のフィルタ外用途で
+正当に使用が残るため build.gradle からは除去しない。
+
+**移行に伴う意図的な挙動変更（互換性注記）**:
+
+- **429 応答の統一**: 各フィルタ独自の JSON / 固定 `Retry-After` → §4.3 標準形
+  （`{"error":"Too many requests"}` + 動的 `Retry-After` + `X-RateLimit-*` 3 ヘッダー）。
+  `RepairPlanSimulateRateLimitFilter` の旧 `errorCode: REPAIR_PLAN_009` ボディも標準形に
+  統一した（FE 参照ゼロを確認済み）。
+- **`SyncRateLimitFilter` のキーを per-IP → per-user に統一**: 同期 API は認証必須であり、
+  NAT/プロキシ配下の複数ユーザーが同一 IP で巻き添え制限される問題を解消。
+- **`RepairPlanSimulateRateLimitFilter` の二重制限は短絡評価**: user 制限（20/分）超過時は
+  scope 制限（100/分）を消費しない。1 ユーザーの連打で同一スコープの他ユーザーが
+  巻き添え 429 になることを防ぐ（旧 Bucket4j 実装と同じ意味論）。
+- **IP 解決は §4.4 の X-Forwarded-For 先頭値優先に統一**: XFF 先頭値はクライアント詐称可能
+  という全社横断の既知トレードオフがある（§4.4 注記）。本番の Cloudflare 経由構成では
+  エッジが XFF を実クライアント IP で付与するため緩和されるが、信頼ホップ数を考慮した
+  右端値方式への根治は別課題として残す。
+
+テスト: `ValkeyRateLimiterTest`（純 Mockito: キー/TTL 計算・fail-open）+
+`ValkeyRateLimiterIntegrationTest`（Testcontainers 実 Redis: 実カウント・ウィンドウ境界・TTL）。
+移行済みフィルタの UT は `ValkeyRateLimiter` モックで「N 回目まで allowed / N+1 回目 429」を検証する形に変更（実カウント検証は IT の責務）。
 
 ### 4.4 IP アドレスの取得
 
@@ -266,34 +329,96 @@ void 不正な状態遷移は422を返す(CirculationStatus from, CirculationSta
 
 ---
 
-## 7. JWT Refresh Token ローテーションの競合制御
+## 7. JWT Refresh Token ローテーションの競合制御（2026-07-02 実装済みに更新）
 
 ### 7.1 問題
 
-複数デバイスが同時に refresh エンドポイントを呼ぶと、
-同一の旧トークンで複数の新トークンが発行され得る。
+複数デバイス／タブが同一 Refresh Token でほぼ同時に refresh を叩くと、片方が旧トークンを
+revoke した直後にもう片方が使用済みの旧トークンを再提示し得る（並行更新）。従来ロジックは
+これを一律リプレイ攻撃と誤判定し `AuthSessionService.logoutAllDevices()` で全セッションを
+永久無効化していた。この結果ユーザーが 401 から回復不能に陥る「自爆バグ」が実機で確認された
+（F01.1）。並行更新の正規化とリプレイ攻撃検出は本質的に区別が必要であり、下記 §7.2 の旧方針
+（Valkey 分散ロック）ではこれを解決できないため不採用とし、DB 行ロック + grace window 方式へ
+設計変更した（§7.3〜§7.6 が現行実装）。
 
-### 7.2 設計方針
+### 7.2 不採用: Valkey `SET NX` 分散ロック方式
 
-- Valkey の `SET NX`（SET if Not Exists）で分散ロックを実装
-- ロックキー: `mannschaft:refresh_lock:{userId}:{oldTokenHash}`
-- TTL: 5秒（並行リクエストの検出に充分な時間）
+検討段階では以下を設計していたが、**実装には至らず不採用**とした。
 
-### 7.3 フロー
+- ロックキー `mannschaft:refresh_lock:{userId}:{oldTokenHash}` を Valkey `SET NX` で獲得、TTL 5 秒、獲得失敗時は 409 Conflict
+- 不採用理由:
+  - **(a) fail-open と両立しない** — 本サービスの Valkey 依存箇所は全て可用性優先の fail-open 方針（[02 §4.1](02_cookie_and_session.md#41-valkey-障害時の動作方針fail-open-vs-fail-closed)）。Valkey 障害時にロックが機能しなければ、並行更新の自爆バグはロック未整備時と同じ頻度で再発する。ロック方式は「Valkey が生きている前提」でしか根治にならない
+  - **(b) ロックで負けた側を救えない** — ロック獲得に失敗したリクエストに単に 409 を返すだけでは、そのクライアントは古い（既に revoke された）Refresh Token のまま再試行することになり、次の試行で結局リプレイ判定に落ちて全デバイス無効化を招く。ロックは「同時実行を防ぐ」だけで「負けた側の Refresh Token をどう正規に救済するか」という本質的な問題を解いていない
 
-1. refresh リクエスト受信
-2. Valkey で lock 獲得試行（`SET NX`）
-   - 失敗（ロック中）→ 409 Conflict を返す
-3. 旧トークンを DB で検証・失効
-4. 新トークン生成・DB 保存
-5. ロック解放
-6. 新トークンを返す
+### 7.3 採用方式: DB 行ロック（PESSIMISTIC_WRITE）+ grace window
 
-### 7.4 リプレイ攻撃への対応
+- **DB 行ロックで直列化**: `RefreshTokenRepository#findByTokenHashForUpdate`（`@Lock(LockModeType.PESSIMISTIC_WRITE)`）で取得することで、同一トークンへの並行 refresh リクエストをトランザクション内で直列化する。Valkey のような外部ミドルウェアに依存せず、DB トランザクションの ACID 特性だけで正しさを保証する（fail-open の対象外）
+- **後継ポインタ（`replaced_by_token_hash`）**: `refresh_tokens` テーブルに列を追加（Flyway `V134.001__add_replaced_by_to_refresh_tokens.sql`）。正規ローテーション成功時、旧トークンは `RefreshTokenEntity#markRotated(後継hash)` で `revoked_at` と同時に後継トークンのハッシュを記録する
+- **grace window（既定 60 秒）**: `mannschaft.jwt.refresh-rotation-grace-seconds`（環境変数 `MANNSCHAFT_JWT_REFRESH_ROTATION_GRACE`、`application.yml`）でプロパティ化。旧トークンが `revoked_at` からこの秒数以内に再提示された場合のみ「並行更新の負け側」として扱う
 
-旧トークンが再度 refresh エンドポイントに送られた場合（=旧トークンの再利用）、
-`AuthTokenRotationService.setUserInvalidationTimestamp()` で全デバイスを無効化する。
-これはトークン盗難の強いシグナルであるため。
+### 7.4 判定フロー（`AuthTokenRotationService#rotate` 相当）
+
+行ロック付きで取得したトークンが失効済み（`revoked_at != null`）の場合、以下の 3 パターンに分岐する:
+
+| ケース | 条件 | 挙動 | エラーコード |
+|---|---|---|---|
+| 並行更新の正規化 | 後継ポインタ有り × grace window 内 | `logoutAllDevices` は呼ばない。負け側にも新しい Access Token + Refresh Token を発行して返す（2 タブとも独立した有効トークンへ収束させる。後継の生トークンは復元不能なため新規発行が最も安全） | なし（200 で新トークンを返す） |
+| 真リプレイ攻撃 | 後継ポインタ有り × grace window 超過 | `TokenReuseDetectedEvent` 発行 + `AuthSessionService.logoutAllDevices()` で全デバイス無効化（**別トランザクションで確実にコミット。§7.7 参照**） | `AUTH_026`（401） |
+| 失効済み（後継無し） | 後継ポインタ無し（明示ログアウト等） | grace window の対象外。全無効化はしない | `AUTH_007`（401） |
+
+有効期限切れのトークン再提示も、退会申請不存在の意味を持つ `AUTH_032` の誤用をやめ、
+「無効/失効済み」の意味論に沿う `AUTH_007` へ是正した。
+
+### 7.5 HTTP ステータスマッピング
+
+`GlobalExceptionHandler` の `ERROR_CODE_STATUS_MAP` に以下を追加し、セッション失効系のレスポンスを
+401（クライアントが再ログイン導線へ遷移できる）に統一した（`AuthErrorCode` の `Severity.WARN` 既定は 400 のため明示上書きが必要）。
+
+| エラーコード | HTTP ステータス | 意味 |
+|---|---|---|
+| `AUTH_007` | 401 | リフレッシュトークンが無効／リボーク済み（Cookie 欠落・DB 不在・明示ログアウト済み・期限切れ）|
+| `AUTH_026` | 401 | リプレイ検出・全セッション無効化 |
+| `AUTH_039` | 401 | 全デバイスセッション無効化後のアクセス |
+
+`AUTH_007` は §7.4 の表で当初から 401 と規定していたが、`ERROR_CODE_STATUS_MAP` への登録が漏れており
+実際には Severity.WARN 既定の 400 が返っていた（実機のログイン画面で `POST /api/v1/auth/refresh` が 400 を
+返すことを確認）。監視・アラートで認証失敗として集計できず、フロントエンドも「400 も認証失敗とみなす」
+特例分岐で補償していたため、登録を追加して設計どおり 401 に是正した。
+フロントエンドの 400 受理は旧 BE・旧モバイルクライアント互換のため当面残す。
+
+### 7.7 真リプレイ検出時の全デバイス無効化は別トランザクションで確実にコミットする（REQUIRES_NEW）
+
+`AuthTokenRotationService#refreshAccessToken` は `@Transactional`（`REQUIRED`）で動作し、真リプレイ検出時は
+`AuthSessionService.logoutAllDevices()` で全トークンを revoke した**直後に** `BusinessException(AUTH_026)`
+（`RuntimeException`）を送出してこのトランザクションをロールバックさせる（新トークンは発行しない）。
+
+ここで `logoutAllDevices` が呼び出し元と**同一トランザクション**（`REQUIRED`）で動いていると、この throw による
+ロールバックで全トークンの revoke（JPA のダーティ状態でありコミット時にフラッシュされる）が**巻き戻り**、
+盗難トークン検出時の全デバイス無効化が実際には永続化されない。結果として「`AUTH_026`/401 は返るが、その後も
+生存トークンで refresh が 200 通ってしまう」（＝過小無効化・防御の無力化）という状態に陥る（実機 E2E で確認）。
+
+**根治**: `AuthSessionService.logoutAllDevices()`（両オーバーロード）を `@Transactional(propagation = REQUIRES_NEW)`
+とし、セッションの一斉無効化を**独立したトランザクションで即コミット**する。これにより呼び出し元トランザクションの
+ロールバックでは巻き戻らない。セッション kill はセキュリティ上「呼び出し元トランザクションの結末に関わらず必ず永続化
+されねばならない」操作であり、REQUIRES_NEW は同メソッドの全呼び出し元（真リプレイ検出・パスワードリセット完了・
+セッション画面からの一斉ログアウト）で意味論的に正しい。呼び出し元がロールバックしてもセッション kill は残る
+（fail-closed で安全側）。逆に無効化処理自体が失敗すれば例外が呼び出し元へ伝播し、呼び出し元も含めてロールバックされる。
+
+> 悲観ロックとの共存: 真リプレイ経路の呼び出し元トランザクションは再提示トークン（既に `revoked_at != null`）の行に
+> `PESSIMISTIC_WRITE` ロックを保持するが、REQUIRES_NEW の新トランザクションが無効化対象として読むのは「生存中
+> （`revoked_at IS NULL`）」のトークンのみで、再提示トークン行は対象外・かつ非ロック読み取り（MVCC）のためロック競合は生じない。
+
+### 7.8 テスト戦略
+
+`AuthTokenRotationServiceTest` は悲観ロック版ファインダ（`findByTokenHashForUpdate`）をスタブし、
+grace window 内正規化・grace window 超過リプレイ・後継無し失効の 3 分岐と、有効期限切れ時の
+エラーコード是正（`AUTH_032`→`AUTH_007`）を STRICT モードで検証する。
+
+§7.7 のトランザクション巻き戻しは**純 Mockito UT では検知できない**（`logoutAllDevices` を mock で `verify` する
+だけでトランザクション境界＝ロールバックを踏まないため、REQUIRES_NEW を外しても緑のまま = false-green）。そのため
+実 MySQL（Testcontainers）＋実トランザクション境界を踏む結合テスト `AuthTokenReplayLogoutPersistenceIT` を追加し、
+`AUTH_026` 送出**後**に実 DB を（JPA 一次キャッシュを介さず JDBC で）読んで、当該ユーザーの全 `refresh_token` の
+`revoked_at` が確定的に NOT NULL であること（生存トークン 0 件）をアサートする。
 
 ---
 
@@ -303,3 +428,7 @@ void 不正な状態遷移は422を返す(CirculationStatus from, CirculationSta
 |---|---|
 | 2026-06-02 | 新規作成（Security Hardening Phase 3 ビジネスロジック攻撃防止）。Mannschaft 固有の攻撃面マップ・共通対策パターン・レートリミット統一戦略（[02 §5](02_cookie_and_session.md) と数値統一）・ドメイン別実装ガイド・テスト戦略を定義 |
 | 2026-06-02 | §7 JWT Refresh Token 競合制御を追加（Valkey SET NX 分散ロック・リプレイ攻撃対応） |
+| 2026-06-12 | §4.3.1 追加: レートリミット共通基盤の Valkey 化 第一陣完了。`com.mannschaft.app.common.ratelimit`（`ValkeyRateLimiter` + `AbstractRateLimitFilter`）新設、Lua で INCR+EXPIRE 原子化、fail-open（`mannschaft.ratelimit.failopen` メトリクス）。18 フィルタ中 `ActionMemoRateLimitFilter` / `PublicApiRateLimitFilter` の 2 つを移行（残 16 は第二陣） |
+| 2026-06-12 | §4.3.1 更新: 第二陣A (#1471)・第二陣B (#1472) マージで**全 18 フィルタの Valkey 移行完了**（Bucket4j+Caffeine プロセス内カウント全廃・ECS 複数タスクで実効上限が正確に）。§4.3 の「スライディングウィンドウ」文言を実態（固定ウィンドウ）に訂正。意図的挙動変更（429 標準形統一 / Sync per-user 化 / RepairPlanSimulate 短絡評価 / XFF 統一）を互換性注記として明文化 |
+| 2026-07-02 | §7 JWT Refresh Token 競合制御を実装に同期。並行更新を一律リプレイ誤判定して全デバイス無効化する自爆バグ（F01.1）を根治。旧設計（Valkey `SET NX` 分散ロック・409 Conflict）は fail-open と両立しない／負け側を救済できないため不採用と明記し、DB `PESSIMISTIC_WRITE` 行ロック + grace window（`replaced_by_token_hash` 後継ポインタ・既定 60 秒）方式に更新。`AUTH_026`/`AUTH_039` の 401 マッピングを追記 |
+| 2026-07-02 | §7.7 追加: 真リプレイ検出時の全デバイス無効化が呼び出し元トランザクションのロールバックで巻き戻り永続化されない過小無効化バグ（実機 E2E で発見）を根治。`AuthSessionService.logoutAllDevices()` を `@Transactional(REQUIRES_NEW)` 化し独立トランザクションで即コミット。純 Mockito UT では検知不能なため実 tx 境界を踏む結合テスト `AuthTokenReplayLogoutPersistenceIT` を追加（§7.8） |

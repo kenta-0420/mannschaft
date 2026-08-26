@@ -13,6 +13,7 @@
  *         POST /api/v1/recruitment-listings/{id}/applications
  */
 import type { MarketListingRegion, MarketListingResponse } from '~/types/market'
+import type { ScopeKind } from '~/types/marketPayment'
 
 definePageMeta({
   layout: 'default',
@@ -23,6 +24,7 @@ const route = useRoute()
 const marketApi = useMarketApi()
 const recruitmentApi = useRecruitmentApi()
 const authStore = useAuthStore()
+const teamStore = useTeamStore()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
 
@@ -39,6 +41,8 @@ const listingId = computed(() => {
 const listing = ref<MarketListingResponse | null>(null)
 const pageLoading = ref(true)
 const applying = ref(false)
+/** TEAM 型募集のときに選択されたチームID。 */
+const selectedTeamId = ref<number | null>(null)
 
 async function load() {
   pageLoading.value = true
@@ -63,23 +67,33 @@ async function load() {
 
 await load()
 
+// TEAM 型の募集であれば所属チーム一覧を先読み。
+if (authStore.isAuthenticated && listing.value?.participationType === 'TEAM') {
+  await teamStore.fetchMyTeams()
+}
+
 // ロケール切替時に地域名表示を現在ロケールへ追従させる。
 watch(locale, async () => {
   await load()
 })
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
-const canApply = computed(() =>
-  isAuthenticated.value
-  && listing.value?.status === 'OPEN',
-)
+const isTeamListing = computed(() => listing.value?.participationType === 'TEAM')
+const canApply = computed(() => {
+  if (!isAuthenticated.value || listing.value?.status !== 'OPEN') return false
+  // TEAM 型はチームを選択するまで応募不可。
+  if (isTeamListing.value) return selectedTeamId.value !== null
+  return true
+})
 
 async function applyToListing() {
   if (!listing.value) return
   applying.value = true
   try {
+    const isTeam = listing.value.participationType === 'TEAM'
     await recruitmentApi.applyToListing(listing.value.id, {
-      participantType: 'TEAM',
+      participantType: isTeam ? 'TEAM' : 'USER',
+      teamId: isTeam ? selectedTeamId.value : undefined,
     })
     notification.success(t('recruitment.participantStatus.applied'))
     // 応募後に件数を更新するために再取得
@@ -93,9 +107,7 @@ async function applyToListing() {
   }
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString()
-}
+const { formatDateTime: formatDate } = useDatetime()
 
 function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'danger' {
   switch (status) {
@@ -123,6 +135,25 @@ function regionLabel(region: MarketListingRegion): string {
     ? `${region.prefectureName} ${region.cityName}`
     : region.prefectureName
 }
+
+/**
+ * F22.1 謝礼受取（Connect onboarding）導線の対象 scope。
+ * 公開札 owner（TEAM/ORGANIZATION）を Connect の ScopeKind（TEAM/ORG）へ写像する。
+ * 謝礼あり札（paymentEnabled）かつログイン済みのときのみ表示し、実際の認可（受取側 scope ADMIN）は
+ * BE 側で担保する（権限不足は BE が 403/404 を返す）。
+ */
+const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
+  const l = listing.value
+  if (!l || !l.paymentEnabled || !isAuthenticated.value) {
+    return null
+  }
+  const kind: ScopeKind = l.owner.scopeType === 'ORGANIZATION' ? 'ORG' : 'TEAM'
+  const id = Number(l.owner.scopeId)
+  if (!Number.isFinite(id)) {
+    return null
+  }
+  return { kind, id }
+})
 </script>
 
 <template>
@@ -131,17 +162,9 @@ function regionLabel(region: MarketListingRegion): string {
     <PageLoading v-if="pageLoading" />
 
     <template v-else-if="listing">
-      <!-- 戻るボタン -->
-      <div class="mb-4">
-        <Button
-          icon="pi pi-arrow-left"
-          :label="$t('market.title')"
-          text
-          @click="navigateTo('/market')"
-        />
-      </div>
+      <PageHeader :title="listing.title" size="sm" back-to="/market" />
 
-      <div class="rounded-xl border border-surface-300 bg-surface-0 p-6 shadow-sm dark:border-surface-600 dark:bg-surface-900" data-testid="market-detail-card">
+      <SectionCard data-testid="market-detail-card">
         <!-- 主催（PII抑制: 公称名+アイコンのみ） -->
         <div class="mb-4 flex items-center gap-3" data-testid="market-detail-organizer">
           <Avatar
@@ -168,11 +191,6 @@ function regionLabel(region: MarketListingRegion): string {
             class="ml-auto"
           />
         </div>
-
-        <!-- タイトル -->
-        <h1 class="mb-4 text-2xl font-bold text-surface-900 dark:text-surface-50" data-testid="market-detail-title">
-          {{ listing.title }}
-        </h1>
 
         <!-- カテゴリ -->
         <div class="mb-3 flex items-center gap-2">
@@ -230,7 +248,7 @@ function regionLabel(region: MarketListingRegion): string {
         </div>
 
         <!-- 応募ボタン -->
-        <div class="flex justify-center" data-testid="market-detail-apply-area">
+        <div class="flex flex-col items-center gap-3" data-testid="market-detail-apply-area">
           <!-- 未ログイン: ログイン誘導 -->
           <Button
             v-if="!isAuthenticated"
@@ -240,26 +258,48 @@ function regionLabel(region: MarketListingRegion): string {
             data-testid="market-login-to-apply-btn"
             @click="navigateTo('/login')"
           />
-          <!-- ログイン済み・OPEN: 応募ボタン -->
-          <Button
-            v-else-if="canApply"
-            :label="$t('market.action.apply')"
-            icon="pi pi-check"
-            size="large"
-            :loading="applying"
-            data-testid="market-apply-btn"
-            @click="applyToListing"
-          />
+          <template v-else-if="listing.status === 'OPEN'">
+            <!-- TEAM 型: チーム選択ドロップダウン -->
+            <Select
+              v-if="isTeamListing"
+              v-model="selectedTeamId"
+              :options="teamStore.myTeams"
+              option-label="name"
+              option-value="id"
+              :placeholder="$t('market.action.selectTeam')"
+              class="w-full max-w-xs"
+              data-testid="market-team-select"
+            />
+            <!-- 応募ボタン -->
+            <Button
+              :label="$t('market.action.apply')"
+              icon="pi pi-check"
+              size="large"
+              :loading="applying"
+              :disabled="!canApply"
+              data-testid="market-apply-btn"
+              @click="applyToListing"
+            />
+          </template>
           <!-- ログイン済み・OPEN以外 -->
           <Button
-            v-else-if="isAuthenticated"
+            v-else
             :label="$t(`market.status.${listing.status}`)"
             :severity="statusSeverity(listing.status)"
             size="large"
             disabled
           />
         </div>
-      </div>
+      </SectionCard>
+
+      <!-- 謝礼あり札の受取口座（Stripe Connect）登録導線（受取側・F22.1） -->
+      <MarketConnectOnboarding
+        v-if="payeeScope"
+        class="mt-4"
+        data-testid="market-connect-onboarding"
+        :scope-kind="payeeScope.kind"
+        :scope-id="payeeScope.id"
+      />
     </template>
   </div>
 </template>

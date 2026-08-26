@@ -1,8 +1,23 @@
 package com.mannschaft.app.common;
 
+import com.mannschaft.app.billing.EntitlementNotEntitledDetails;
+import com.mannschaft.app.billing.FeatureNotEntitledException;
+import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
+import com.mannschaft.app.bulletin.BulletinErrorCode;
+import com.mannschaft.app.committee.error.CommitteeErrorCode;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
+import com.mannschaft.app.gdpr.GdprErrorCode;
+import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
+import com.mannschaft.app.matching.MatchingErrorCode;
+import com.mannschaft.app.payment.PaymentErrorCode;
+import com.mannschaft.app.recruitment.RecruitmentErrorCode;
+import com.mannschaft.app.social.SocialErrorCode;
+import com.mannschaft.app.succession.SuccessionErrorCode;
+import com.mannschaft.app.village.VillageErrorCode;
+import com.mannschaft.app.skill.SkillErrorCode;
+import com.mannschaft.app.webhook.WebhookErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -11,11 +26,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.MessageSource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -26,11 +45,19 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -109,6 +136,182 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
+        @DisplayName("正常系: CIRCULATION_001エラーコード（回覧文書不在）で404 NotFoundが返る")
+        void handleBusinessException_CIRCULATION001_404NotFound() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.circulation.CirculationErrorCode.DOCUMENT_NOT_FOUND);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("CIRCULATION_001");
+        }
+
+        @Test
+        @DisplayName("正常系: CIRCULATION_010エラーコード（コメント編集権限なし）で403 Forbiddenが返る")
+        void handleBusinessException_CIRCULATION010_403Forbidden() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.circulation.CirculationErrorCode.COMMENT_NOT_OWNED);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("CIRCULATION_010");
+        }
+
+        @Test
+        @DisplayName("正常系: CIRCULATION_005エラーコード（文書ステータス不正）で409 Conflictが返る")
+        void handleBusinessException_CIRCULATION005_409Conflict() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.circulation.CirculationErrorCode.INVALID_DOCUMENT_STATUS);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("CIRCULATION_005");
+        }
+
+        @Test
+        @DisplayName("正常系: RESIDENCE_STATUS_004エラーコード（他居住者IDへの越境回答を存在秘匿）で404 NotFoundが返る")
+        void handleBusinessException_RESIDENCE_STATUS_004_404NotFound() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.residencestatus.ResidenceStatusErrorCode.ANNUAL_REVIEW_RESPONSE_NOT_FOUND);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESIDENCE_STATUS_004");
+        }
+
+        @Test
+        @DisplayName("正常系: QM_001エラーコード（他ユーザーのメモIDへの越境を存在秘匿）で404 NotFoundが返る")
+        void handleBusinessException_QM001_404NotFound() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.quickmemo.QuickMemoErrorCode.MEMO_NOT_FOUND);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("QM_001");
+        }
+
+        @Test
+        @DisplayName("正常系: PARKING_020エラーコード（越境区画IDの存在秘匿）で404 NotFoundが返る")
+        void handleBusinessException_PARKING020_404NotFound() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.parking.ParkingErrorCode.SCOPE_MISMATCH);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("PARKING_020");
+        }
+
+        @Test
+        @DisplayName("正常系: ACTIVITY_001エラーコード（DRAFT非公開の秘匿にも使用）で404 NotFoundが返る")
+        void handleBusinessException_ACTIVITY001_404NotFound() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.activity.ActivityErrorCode.ACTIVITY_NOT_FOUND);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("ACTIVITY_001");
+        }
+
+        @Test
+        @DisplayName("正常系: DASHBOARD_007エラーコード（フォルダ所有者不一致）で403 Forbiddenが返る")
+        void handleBusinessException_DASHBOARD007_403Forbidden() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.dashboard.DashboardErrorCode.DASHBOARD_007);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("DASHBOARD_007");
+        }
+
+        @Test
+        @DisplayName("正常系: PROXY_VOTE_052エラーコード（既に投票済み）で409 Conflictが返る")
+        void handleBusinessException_PROXYVOTE052_409Conflict() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.proxyvote.ProxyVoteErrorCode.ALREADY_VOTED);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("PROXY_VOTE_052");
+        }
+
+        @Test
+        @DisplayName("正常系: AD_026エラーコード（キャンペーンとクリエイティブの不一致の存在秘匿）で404 NotFoundが返る")
+        void handleBusinessException_AD026_404NotFound() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_026);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("AD_026");
+        }
+
+        @Test
+        @DisplayName("正常系: PAYMENT_004エラーコード（二重支払い）で409 Conflictが返る")
+        void handleBusinessException_PAYMENT004_409Conflict() {
+            // Given
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.payment.PaymentErrorCode.ALREADY_PAID);
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("PAYMENT_004");
+        }
+
+        @Test
         @DisplayName("正常系: COMMON_999エラーコード（ERROR severity）で500が返る")
         void handleBusinessException_COMMON999_500InternalError() {
             // Given
@@ -139,6 +342,65 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(response.getBody().getError().getFieldErrors()).hasSize(1);
             assertThat(response.getBody().getError().getFieldErrors().get(0).getField()).isEqualTo("email");
+        }
+    }
+
+    // ========================================
+    // handleFeatureNotEntitled（F20.1 402 details 追補）
+    // ========================================
+
+    @Nested
+    @DisplayName("handleFeatureNotEntitled")
+    class HandleFeatureNotEntitled {
+
+        private EntitlementNotEntitledDetails details(Integer addonPriceJpy) {
+            return EntitlementNotEntitledDetails.builder()
+                    .featureKey("ads.hide")
+                    .addonAvailable(true)
+                    .addonPriceJpy(addonPriceJpy)
+                    .plansContaining(List.of("FULL"))
+                    .scopeKind("TEAM")
+                    .scopeId(123L)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("正常系: 402 Payment Required・envelope（error.code=ENTITLEMENT_003）＋details 直列化")
+        void handleFeatureNotEntitled_402WithDetails() {
+            // Given
+            FeatureNotEntitledException ex = new FeatureNotEntitledException(details(500));
+
+            // When
+            ResponseEntity<FeatureNotEntitledErrorResponse> response =
+                    globalExceptionHandler.handleFeatureNotEntitled(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYMENT_REQUIRED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("ENTITLEMENT_003");
+            assertThat(response.getBody().getError().getFieldErrors()).isEmpty();
+            assertThat(response.getBody().getError().getDetails()).isNotNull();
+            assertThat(response.getBody().getError().getDetails().getFeatureKey()).isEqualTo("ads.hide");
+            assertThat(response.getBody().getError().getDetails().isAddonAvailable()).isTrue();
+            assertThat(response.getBody().getError().getDetails().getAddonPriceJpy()).isEqualTo(500);
+            assertThat(response.getBody().getError().getDetails().getPlansContaining()).containsExactly("FULL");
+            assertThat(response.getBody().getError().getDetails().getScopeKind()).isEqualTo("TEAM");
+            assertThat(response.getBody().getError().getDetails().getScopeId()).isEqualTo(123L);
+        }
+
+        @Test
+        @DisplayName("正常系: addonPriceJpy=null 時は details.addonPriceJpy が null のまま一貫して返る")
+        void handleFeatureNotEntitled_addonPriceJpyNull() {
+            // Given
+            FeatureNotEntitledException ex = new FeatureNotEntitledException(details(null));
+
+            // When
+            ResponseEntity<FeatureNotEntitledErrorResponse> response =
+                    globalExceptionHandler.handleFeatureNotEntitled(ex);
+
+            // Then
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getDetails().getAddonPriceJpy()).isNull();
         }
     }
 
@@ -291,6 +553,224 @@ class GlobalExceptionHandlerTest {
     }
 
     // ========================================
+    // handleResponseStatusException
+    //
+    // 共通基盤バグの再発防止:
+    // ResponseStatusException 用ハンドラが無いと catch-all の handleUnexpectedException に落ち、
+    // 本来のステータスを失って 500 COMMON_999 に化ける（実測: 画像枚数上限 422 → 500）。
+    // ここでステータスが保たれることを機械的に固定する。
+    // ========================================
+
+    @Nested
+    @DisplayName("handleResponseStatusException")
+    class HandleResponseStatusException {
+
+        @ParameterizedTest(name = "{0} を投げたら {0} が返り、code={1}")
+        @DisplayName("正常系: 送出したステータスがそのまま保たれる（500 に化けない）")
+        @CsvSource({
+                "BAD_REQUEST,            COMMON_001",
+                "UNAUTHORIZED,           COMMON_000",
+                "FORBIDDEN,              COMMON_002",
+                "NOT_FOUND,              COMMON_005",
+                "METHOD_NOT_ALLOWED,     COMMON_004",
+                "CONFLICT,               COMMON_003",
+                "UNPROCESSABLE_ENTITY,   COMMON_001",
+                "PAYLOAD_TOO_LARGE,      COMMON_001",
+                "TOO_MANY_REQUESTS,      COMMON_001",
+                "GONE,                   COMMON_001"
+        })
+        void handleResponseStatusException_ステータスが保たれる(HttpStatus status, String expectedCode) {
+            // Given
+            ResponseStatusException ex = new ResponseStatusException(status, "理由メッセージ");
+
+            // When
+            ResponseEntity<ErrorResponse> response =
+                    globalExceptionHandler.handleResponseStatusException(ex);
+
+            // Then: 500 COMMON_999 に化けていないこと
+            assertThat(response.getStatusCode()).isEqualTo(status);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo(expectedCode);
+            assertThat(response.getBody().getError().getMessage()).isEqualTo("理由メッセージ");
+            assertThat(response.getBody().getError().getFieldErrors()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("正常系: 画像枚数上限の 422 が 500 に化けず 422 のまま返る（実測不具合の回帰テスト）")
+        void handleResponseStatusException_画像枚数上限422() {
+            // Given: BlogMediaService が投げるのと同型の例外
+            ResponseStatusException ex = new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY, "画像の枚数が上限に達しています");
+
+            // When
+            ResponseEntity<ErrorResponse> response =
+                    globalExceptionHandler.handleResponseStatusException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isNotEqualTo("COMMON_999");
+            assertThat(response.getBody().getError().getMessage())
+                    .isEqualTo("画像の枚数が上限に達しています");
+        }
+
+        @Test
+        @DisplayName("正常系: reason が無い場合は ErrorCode の多言語メッセージにフォールバックする")
+        void handleResponseStatusException_reason無し_多言語メッセージ() {
+            // Given
+            when(messageSource.getMessage(eq("error.common.005"), any(), any()))
+                    .thenReturn("リソースが見つかりません");
+            ResponseStatusException ex = new ResponseStatusException(HttpStatus.NOT_FOUND);
+
+            // When
+            ResponseEntity<ErrorResponse> response =
+                    globalExceptionHandler.handleResponseStatusException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_005");
+            assertThat(response.getBody().getError().getMessage()).isEqualTo("リソースが見つかりません");
+        }
+
+        @Test
+        @DisplayName("正常系: 5xx は reason を伏せて COMMON_999 の定型文を返す（内部情報の露出防止）")
+        void handleResponseStatusException_5xx_reasonを伏せる() {
+            // Given
+            ResponseStatusException ex = new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "内部の詳細な失敗理由");
+
+            // When
+            ResponseEntity<ErrorResponse> response =
+                    globalExceptionHandler.handleResponseStatusException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_999");
+            assertThat(response.getBody().getError().getMessage())
+                    .isEqualTo(CommonErrorCode.COMMON_999.getMessage())
+                    .doesNotContain("内部の詳細な失敗理由");
+        }
+
+        @Test
+        @DisplayName("正常系: 例外が保持するレスポンスヘッダを引き継ぐ（Retry-After 等）")
+        void handleResponseStatusException_ヘッダ引継ぎ() {
+            // Given
+            // ResponseStatusException のヘッダは getHeaders() のオーバーライドで表現される
+            ResponseStatusException ex =
+                    new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "レート制限") {
+                        @Override
+                        public HttpHeaders getHeaders() {
+                            HttpHeaders headers = new HttpHeaders();
+                            headers.add("Retry-After", "120");
+                            return headers;
+                        }
+                    };
+
+            // When
+            ResponseEntity<ErrorResponse> response =
+                    globalExceptionHandler.handleResponseStatusException(ex);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+            assertThat(response.getHeaders().getFirst("Retry-After")).isEqualTo("120");
+        }
+
+        /**
+         * ハンドラの「選択」を検証する。ハンドラメソッドを直接呼ぶテストでは
+         * 「{@code @ExceptionHandler(Exception.class)} の総受けに落ちていないこと」を証明できないため、
+         * 実際の {@code ExceptionHandlerExceptionResolver} を通す MockMvc で確認する。
+         * 本バグの本質は「解決順序で catch-all に吸われる」ことなので、この経路の固定が要となる。
+         */
+        @Test
+        @DisplayName("正常系: MVC 経由でも catch-all(Exception) に吸われず 422 のまま返る")
+        void handleResponseStatusException_MVC経由で総受けに吸われない() throws Exception {
+            // Given: 422 を投げるだけの controller と、本物の GlobalExceptionHandler を載せた MockMvc
+            @org.springframework.web.bind.annotation.RestController
+            class ThrowingController {
+                @org.springframework.web.bind.annotation.GetMapping("/test-rse")
+                public String throwRse() {
+                    throw new ResponseStatusException(
+                            HttpStatus.UNPROCESSABLE_ENTITY, "画像の枚数が上限に達しています");
+                }
+            }
+
+            MockMvc mockMvc = MockMvcBuilders
+                    .standaloneSetup(new ThrowingController())
+                    .setControllerAdvice(new GlobalExceptionHandler(messageSource))
+                    .build();
+
+            // When / Then
+            mockMvc.perform(get("/test-rse"))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_001"))
+                    .andExpect(jsonPath("$.error.message").value("画像の枚数が上限に達しています"));
+        }
+
+        /**
+         * IDOR/BOLA 対策の「存在秘匿 404」が MVC 経路でも 404 のまま返ることを固定する。
+         * ProfileMediaService 等は権限が無いリソースを 403 ではなく 404 で秘匿する設計だが、
+         * catch-all に吸われて 500 になると設計が意図した秘匿の形にならない。
+         * 本 PR が最重要と位置づける経路のため、MVC 経路で機械的に固定する。
+         */
+        @Test
+        @DisplayName("正常系: MVC 経由で存在秘匿の 404 が 500 に化けず 404 のまま返る")
+        void handleResponseStatusException_MVC経由で存在秘匿404が保たれる() throws Exception {
+            // Given: 存在秘匿の 404 を投げる controller（reason 未設定＝情報を与えない形）
+            @org.springframework.web.bind.annotation.RestController
+            class ConcealingController {
+                @org.springframework.web.bind.annotation.GetMapping("/test-conceal")
+                public String conceal() {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+                }
+            }
+
+            when(messageSource.getMessage(eq("error.common.005"), any(), any()))
+                    .thenReturn("リソースが見つかりません");
+
+            MockMvc mockMvc = MockMvcBuilders
+                    .standaloneSetup(new ConcealingController())
+                    .setControllerAdvice(new GlobalExceptionHandler(messageSource))
+                    .build();
+
+            // When / Then: 403 でも 500 でもなく 404 で秘匿されること
+            mockMvc.perform(get("/test-conceal"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_005"))
+                    .andExpect(jsonPath("$.error.message").value("リソースが見つかりません"));
+        }
+
+        @Test
+        @DisplayName("正常系: 4xx は error_reports に記録しない / 5xx は severity=MEDIUM で記録する")
+        void handleResponseStatusException_記録方針() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            ErrorReportNotifier notifier = mock(ErrorReportNotifier.class);
+            @SuppressWarnings("unchecked")
+            ObjectProvider<ErrorReportService> serviceProvider = mock(ObjectProvider.class);
+            @SuppressWarnings("unchecked")
+            ObjectProvider<ErrorReportNotifier> notifierProvider = mock(ObjectProvider.class);
+            org.mockito.Mockito.lenient().when(serviceProvider.getIfAvailable()).thenReturn(service);
+            org.mockito.Mockito.lenient().when(notifierProvider.getIfAvailable()).thenReturn(notifier);
+            GlobalExceptionHandler handler =
+                    new GlobalExceptionHandler(messageSource, serviceProvider, notifierProvider);
+            HttpServletRequest req = mock(HttpServletRequest.class);
+
+            // 4xx: 記録しない
+            handler.handleResponseStatusException(
+                    new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "上限超過"), req);
+            verify(service, never()).recordBackendException(any(), any(), any());
+
+            // 5xx: severity=MEDIUM で記録する
+            ResponseStatusException serverError =
+                    new ResponseStatusException(HttpStatus.BAD_GATEWAY, "upstream 失敗");
+            handler.handleResponseStatusException(serverError, req);
+            verify(service).recordBackendException(
+                    eq(serverError), eq(req), eq(ErrorReportSeverity.MEDIUM));
+        }
+    }
+
+    // ========================================
     // handleUnexpectedException
     // ========================================
 
@@ -311,6 +791,30 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_999");
+        }
+    }
+
+    // ========================================
+    // handleNoResourceFound
+    // ========================================
+
+    @Nested
+    @DisplayName("HandleNoResourceFound")
+    class HandleNoResourceFound {
+
+        @Test
+        @DisplayName("未マップパスへのリクエストが 404 NOT_FOUND + COMMON_005 で返る")
+        void noResourceFound_returns404WithCommon005() {
+            // Given
+            NoResourceFoundException ex = new NoResourceFoundException(HttpMethod.GET, "/api/v1/zzz-not-exists");
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleNoResourceFound(ex, null);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_005");
         }
     }
 
@@ -384,6 +888,716 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getError().getCode()).isEqualTo("RECRUITMENT_204");
+        }
+
+        @Test
+        @DisplayName("F05.5: FOLDER_NOT_FOUND（FILE_SHARING_001）は個別マッピングで 404 NotFound になる（存在隠蔽・WARN 既定 400 の上書き回帰固定）")
+        void resolveHttpStatus_FILE_SHARING_001_404() {
+            // フォルダ詳細 API は他人/他チームのフォルダ ID を渡されても存在を漏らさず 404 を返す。
+            // FOLDER_NOT_FOUND は Severity.WARN 既定（400）のため、個別マッピングで 404 に上書きする。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.filesharing.FileSharingErrorCode.FOLDER_NOT_FOUND);
+
+            assertThat(result).isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("F05.5: FOLDER_NOT_FOUND の BusinessException は 404 NotFound で返る")
+        void handleBusinessException_FILE_SHARING_001_404() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.filesharing.FileSharingErrorCode.FOLDER_NOT_FOUND);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("FILE_SHARING_001");
+        }
+
+        @Test
+        @DisplayName("認可根治 Wave3-B12event: EVENT_NOT_FOUND（EVENT_001）は個別マッピングで 404 NotFound になる"
+                + "（スコープ帰属不一致・IDOR 秘匿・WARN 既定 400 の上書き回帰固定）")
+        void resolveHttpStatus_EVENT_001_404() {
+            // EventScopeAccessGuard 等の Javadoc は「404 で秘匿する」と明記していたが、
+            // 個別マッピング未登録のため Severity.WARN 既定の 400 のままだった実装漏れを根治した。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.EVENT_NOT_FOUND);
+
+            assertThat(result).isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("認可根治 Wave3-B12event: 参加登録/チケット/招待トークン/チケット種別/タイムテーブル項目の "
+                + "NOT_FOUND 系（親子BOLA秘匿）は個別マッピングで 404 NotFound になる")
+        void resolveHttpStatus_eventSubResourceNotFound_404() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.REGISTRATION_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.TICKET_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.INVITE_TOKEN_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.TICKET_TYPE_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.event.EventErrorCode.TIMETABLE_ITEM_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("F03.19 CMP-112: CALENDAR_LAYER_LIMIT_EXCEEDED（SCHEDULE_104）は件数上限なので既定の 400 BadRequest"
+                + "（.claudecode.md §3.2.1「上限超過は 409 ではない」の回帰固定）")
+        void resolveHttpStatus_SCHEDULE_104_400() {
+            // 当初 ERROR_CODE_STATUS_MAP に 409 で登録していたが、規約 §3.2.1 の表は
+            // 「件数/サイズの上限超過」を 400（既定のまま・上書き不要）と定めている。
+            // 上書き登録ごと削除し、Severity.WARN 既定の 400 に戻した。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.schedule.ScheduleErrorCode.CALENDAR_LAYER_LIMIT_EXCEEDED);
+
+            assertThat(result).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("F03.4 バグ#5: INVALID_TIME_RANGE（start>=end）は WARN severity で 400 BadRequest になる（500 漏れ防止の回帰固定）")
+        void resolveHttpStatus_INVALID_TIME_RANGE_400() {
+            // 実機 E2E で start>=end が 500 を返していた（旧 Severity.ERROR）。
+            // 入力不正なので 400 が正。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.reservation.ReservationErrorCode.INVALID_TIME_RANGE);
+
+            assertThat(result).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("F03.4 バグ#5: INVALID_TIME_RANGE の BusinessException は 400 BadRequest で返る")
+        void handleBusinessException_INVALID_TIME_RANGE_400() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.INVALID_TIME_RANGE);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_007");
+        }
+
+        @Test
+        @DisplayName("F09.19.1 AC-1.5/1.4: AD_027（状態遷移違反・編集不可）は個別マッピングで 409 Conflict になる")
+        void resolveHttpStatus_AD_027_409() {
+            // 状態遷移違反・編集不可状態・編集不可フィールドの変更（F09.19 §15）。
+            // Severity.WARN 既定（400）のため ERROR_CODE_STATUS_MAP で 409 に上書きが必要。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_027);
+
+            assertThat(result).isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("F09.19: AD_029（visit/click IP レート制限）は個別マッピングで 429 TooManyRequests になる")
+        void resolveHttpStatus_AD_029_429() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_029);
+
+            assertThat(result).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        @Test
+        @DisplayName("F09.19: AD_033（通報自動停止中の resume 拒否）は個別マッピングで 403 Forbidden になる")
+        void resolveHttpStatus_AD_033_403() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_033);
+
+            assertThat(result).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("F09.19.1 AC-1.12: AD_034（参照中の料金カード削除拒否）は個別マッピングで 409 Conflict になる")
+        void resolveHttpStatus_AD_034_409() {
+            // FK violation 500 回帰防御（F09.19 §5.2 V144.002）。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_034);
+
+            assertThat(result).isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("ErrorCode写像是正 最終ロット: NOTIFICATION_006/007（既読/未読の二重操作）は"
+                + "個別マッピングで 409 Conflict になる（従来は Severity.INFO で 200 が返っていた）")
+        void resolveHttpStatus_NOTIFICATION_006_007_409() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.notification.NotificationErrorCode.ALREADY_READ))
+                    .isEqualTo(HttpStatus.CONFLICT);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.notification.NotificationErrorCode.ALREADY_UNREAD))
+                    .isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("ErrorCode写像是正 最終ロット: AUTH_016（2FA設定不在での状態遷移違反）は"
+                + "個別マッピングで 409 Conflict になる（従来は Severity.ERROR で 500 が返っていた）")
+        void resolveHttpStatus_AUTH_016_409() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.auth.AuthErrorCode.AUTH_016);
+
+            assertThat(result).isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("ErrorCode写像是正 最終ロット: CONFIRMABLE_NOTIFICATION_SEND_FAILED は"
+                + "Severity 是正（ERROR→WARN）により 400 BadRequest になる（従来は 500 が返っていた）")
+        void resolveHttpStatus_CONFIRMABLE_NOTIFICATION_SEND_FAILED_400() {
+            var errorCode = com.mannschaft.app.notification.confirmable.error
+                    .ConfirmableNotificationErrorCode.SEND_FAILED;
+
+            assertThat(errorCode.getSeverity()).isEqualTo(ErrorCode.Severity.WARN);
+            assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("ErrorCode写像是正 最終ロット: CORKBOARD_004/005（ボード/カード数上限超過）は"
+                + "個別マッピングで 409 Conflict になる（兄弟 CORKBOARD_013 と同じ流儀に揃える）")
+        void resolveHttpStatus_CORKBOARD_004_005_409() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.corkboard.CorkboardErrorCode.BOARD_LIMIT_EXCEEDED))
+                    .isEqualTo(HttpStatus.CONFLICT);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.corkboard.CorkboardErrorCode.CARD_LIMIT_EXCEEDED))
+                    .isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("ErrorCode写像是正 最終ロット: RECEIPT_004（キューアイテム不在）は"
+                + "個別マッピングで 404 NotFound になる")
+        void resolveHttpStatus_RECEIPT_004_404() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.receipt.ReceiptErrorCode.QUEUE_ITEM_NOT_FOUND);
+
+            assertThat(result).isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("ErrorCode写像是正 最終ロット: STORAGE_003（外部ストレージ削除失敗）は"
+                + "Severity 是正（WARN→ERROR）により 500 InternalServerError になる"
+                + "（兄弟 STORAGE_001/002/004 と同じ外部障害の流儀に揃える）")
+        void resolveHttpStatus_STORAGE_003_500() {
+            var errorCode = com.mannschaft.app.common.storage.StorageErrorCode.DELETE_FAILED;
+
+            assertThat(errorCode.getSeverity()).isEqualTo(ErrorCode.Severity.ERROR);
+            assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                    .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        @Test
+        @DisplayName("F03.4 バグ#5: 臨時休業の日付・時刻範囲不正も入力不正なので 400 BadRequest になる")
+        void resolveHttpStatus_INVALID_CLOSURE_RANGES_400() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.reservation.ReservationErrorCode.INVALID_CLOSURE_DATE_RANGE))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.reservation.ReservationErrorCode.INVALID_CLOSURE_TIME_RANGE))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("F03.4 バグ#6: SLOT_HAS_ACTIVE_RESERVATIONS は個別マッピングで 409 Conflict になる（オーファン化防止）")
+        void resolveHttpStatus_SLOT_HAS_ACTIVE_RESERVATIONS_409() {
+            // 予約入り枠の削除を拒否する 409。Severity.WARN 既定（400）を個別マッピングで 409 に上書き。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.reservation.ReservationErrorCode.SLOT_HAS_ACTIVE_RESERVATIONS);
+
+            assertThat(result).isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("F03.4 バグ#6: SLOT_HAS_ACTIVE_RESERVATIONS の BusinessException は 409 Conflict で返る")
+        void handleBusinessException_SLOT_HAS_ACTIVE_RESERVATIONS_409() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.SLOT_HAS_ACTIVE_RESERVATIONS);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_020");
+        }
+
+        @Test
+        @DisplayName("F03.4 予約認可ゲート: RESERVATION_PERMISSION_DENIED は個別マッピングで 403 Forbidden になる")
+        void resolveHttpStatus_RESERVATION_PERMISSION_DENIED_403() {
+            // 非所属者が一般公開OFFのチームに予約 → 403。Severity.WARN 既定（400）を個別マッピングで 403 に上書き。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.reservation.ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+
+            assertThat(result).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("F03.4 予約認可ゲート: RESERVATION_PERMISSION_DENIED の BusinessException は 403 Forbidden（code=RESERVATION_021）で返る")
+        void handleBusinessException_RESERVATION_PERMISSION_DENIED_403() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getBody()).isNotNull();
+            // #1601 の RESERVATION_020(409) と別物であることを保証
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_021");
+        }
+
+        @Test
+        @DisplayName("F03.4 段階拡張⑧ 予約重複: DUPLICATE_RESERVATION の BusinessException は 409 Conflict（code=RESERVATION_013）で返る")
+        void handleBusinessException_DUPLICATE_RESERVATION_409() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.DUPLICATE_RESERVATION);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_013");
+        }
+
+        @Test
+        @DisplayName("F03.4 機能D 上限超過: NOTIFY_RECIPIENT_LIMIT_EXCEEDED は 400 Bad Request（code=RESERVATION_028・個別 map なし WARN 既定）")
+        void handleBusinessException_NOTIFY_RECIPIENT_LIMIT_EXCEEDED_400() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.NOTIFY_RECIPIENT_LIMIT_EXCEEDED);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_028");
+        }
+
+        @Test
+        @DisplayName("F03.4 機能D 有料必須: NOTIFY_RECIPIENT_PAID_PLAN_REQUIRED は 402 Payment Required（code=RESERVATION_029）")
+        void handleBusinessException_NOTIFY_RECIPIENT_PAID_PLAN_REQUIRED_402() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.NOTIFY_RECIPIENT_PAID_PLAN_REQUIRED);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYMENT_REQUIRED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_029");
+        }
+
+        @Test
+        @DisplayName("F03.4 機能D 重複: NOTIFY_RECIPIENT_DUPLICATE は 409 Conflict（code=RESERVATION_030）")
+        void handleBusinessException_NOTIFY_RECIPIENT_DUPLICATE_409() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.NOTIFY_RECIPIENT_DUPLICATE);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_030");
+        }
+
+        @Test
+        @DisplayName("F03.4.2 テンプレ不在: TEMPLATE_NOT_FOUND は 404 Not Found（code=RESERVATION_036・IDOR 秘匿）")
+        void handleBusinessException_TEMPLATE_NOT_FOUND_404() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.TEMPLATE_NOT_FOUND);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_036");
+        }
+
+        @Test
+        @DisplayName("F03.4.2 テンプレ上限: TEMPLATE_LIMIT_EXCEEDED は 400 Bad Request（code=RESERVATION_037・個別 map なし WARN 既定）")
+        void handleBusinessException_TEMPLATE_LIMIT_EXCEEDED_400() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.TEMPLATE_LIMIT_EXCEEDED);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_037");
+        }
+
+        @Test
+        @DisplayName("F03.4.2 §5.6 ライン不一致: SLOT_LINE_MISMATCH は 400 Bad Request（code=RESERVATION_038）")
+        void handleBusinessException_SLOT_LINE_MISMATCH_400() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.SLOT_LINE_MISMATCH);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_038");
+        }
+
+        @Test
+        @DisplayName("F03.4.2 §6 生成レート制限: TEMPLATE_GENERATE_RATE_LIMITED は 429 Too Many Requests（code=RESERVATION_044）")
+        void handleBusinessException_TEMPLATE_GENERATE_RATE_LIMITED_429() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.TEMPLATE_GENERATE_RATE_LIMITED);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_044");
+        }
+
+        @Test
+        @DisplayName("F03.4.2 §5.5 ライン削除ガード: LINE_HAS_ACTIVE_RESERVATIONS は 409 Conflict（code=RESERVATION_045）")
+        void handleBusinessException_LINE_HAS_ACTIVE_RESERVATIONS_409() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.LINE_HAS_ACTIVE_RESERVATIONS);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_045");
+        }
+
+        @Test
+        @DisplayName("F03.4 機能D 不在: NOTIFY_RECIPIENT_NOT_FOUND は 404 Not Found（code=RESERVATION_031）")
+        void handleBusinessException_NOTIFY_RECIPIENT_NOT_FOUND_404() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.NOTIFY_RECIPIENT_NOT_FOUND);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_031");
+        }
+
+        // ========================================
+        // AC-7: セッション失効系（AUTH_039 等）は 401 Unauthorized
+        // リフレッシュトークン並行更新の自爆バグ根治で、全セッション無効化後のアクセスは
+        // 401 で返さないとクライアントが再ログインに遷移できない。
+        // AUTH_039 / AUTH_026 は Severity.WARN 既定（400）のため個別マッピングで 401 に上書きする。
+        // ========================================
+
+        @Test
+        @DisplayName("AC-7: AUTH_039（全デバイス無効化後アクセス）は resolveHttpStatus で 401 Unauthorized になる")
+        void ac7_resolveHttpStatus_AUTH039_401() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.auth.AuthErrorCode.AUTH_039);
+
+            assertThat(result).isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+
+        @Test
+        @DisplayName("AC-7: AUTH_039 の BusinessException は 401 Unauthorized で返る")
+        void ac7_handleBusinessException_AUTH039_401() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.auth.AuthErrorCode.AUTH_039);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("AUTH_039");
+        }
+
+        @Test
+        @DisplayName("AC-7: AUTH_026（リプレイ検出・全セッション無効化）も 401 Unauthorized で返る")
+        void ac7_handleBusinessException_AUTH026_401() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.auth.AuthErrorCode.AUTH_026);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("AUTH_026");
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // エラーコード HTTP ステータス契約の全数分類 — 500 漏れの回帰固定（関連 #2468）
+    //
+    // ERROR_CODE_STATUS_MAP 未登録 かつ Severity.ERROR のコードは既定で 500 を返す。
+    // 全 *ErrorCode.java を機械的に走査して Severity.ERROR を全数抽出し、
+    // throw 箇所のコードを読んで「サーバ障害 / クライアント起因 / 判断保留」に分類した。
+    // クライアント起因と分類したものは Severity を WARN に正した（既定 400）。
+    // 既定 400 で表現できない契約を持つ RECRUITMENT_301 のみ 402 を明示登録した。
+    //
+    // 本 Nested はその是正結果を機械的に固定する。ここが赤くなったら
+    // 「クライアントの入力誤りで 500 を返す」状態に退行したということ。
+    // ════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("エラーコード HTTP ステータス契約: クライアント起因のコードが 500 を返さない")
+    class ClientErrorMustNotBe500 {
+
+        /** 400 Bad Request に是正したコード（Severity.ERROR → WARN・既定マッピング）。 */
+        private final List<ErrorCode> badRequestCases = List.of(
+                com.mannschaft.app.bulletin.BulletinErrorCode.PARENT_REPLY_MISMATCH,
+                com.mannschaft.app.circulation.CirculationErrorCode.EMPTY_RECIPIENTS,
+                com.mannschaft.app.event.EventErrorCode.MAX_TICKET_TYPES,
+                com.mannschaft.app.event.EventErrorCode.MAX_TIMETABLE_ITEMS,
+                com.mannschaft.app.filesharing.FileSharingErrorCode.FILE_SIZE_EXCEEDED,
+                com.mannschaft.app.payment.PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID,
+                com.mannschaft.app.receipt.ReceiptErrorCode.LINE_ITEMS_AMOUNT_MISMATCH,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.INVALID_CAPACITY,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.CATEGORY_NOT_SPECIFIED,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.PRICE_REQUIRED,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.IMAGE_URL_NOT_WHITELISTED,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.CAPACITY_BELOW_CONFIRMED,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.INVALID_CANCELLATION_POLICY,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.TIER_LIMIT_EXCEEDED,
+                com.mannschaft.app.recruitment.RecruitmentErrorCode.TIER_RANGE_OVERLAP,
+                com.mannschaft.app.reservation.ReservationErrorCode.MAX_REMINDERS_EXCEEDED,
+                com.mannschaft.app.search.SearchErrorCode.MAX_SAVED_QUERIES_EXCEEDED,
+                com.mannschaft.app.safetycheck.SafetyCheckErrorCode.INVALID_RESPONSE_STATUS,
+                com.mannschaft.app.safetycheck.SafetyCheckErrorCode.INVALID_SCOPE_TYPE,
+                com.mannschaft.app.safetycheck.SafetyCheckErrorCode.BULK_RESPOND_LIMIT_EXCEEDED,
+                // ScheduleEventCategoryErrorCode.CATEGORY_SCOPE_MISMATCH（EVTCAT_010）はここに
+                // 含めない（400を要求しない）。Codexによる独立検分で指摘・殿が実コードで裏取りして
+                // 確定した理由: throw元 ScheduleEventCategoryService#validateCategoryScope
+                // （ScheduleEventCategoryService.java:296-301）は「実在するが他チーム/他組織の
+                // categoryId」に対して投げられる。兄弟の CATEGORY_NOT_FOUND（EVTCAT_001、
+                // getById＝ScheduleEventCategoryService.java:139-143）は不在のcategoryIdに対し
+                // 404を返すため、CATEGORY_SCOPE_MISMATCHを400のままにすると「404=不在／400=実在す
+                // るがスコープ外」という応答差から実在IDを連番探索で列挙できる存在オラクルになる。
+                // docs/security/README.md の越境404方針（越境はNOT_FOUNDに畳み不在と区別不能にする）
+                // に従い、GlobalExceptionHandler側でEVTCAT_001と同一の404へ畳んでいる。
+                com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode.ANNUAL_COPY_SAME_YEAR,
+                com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode.ACADEMIC_YEAR_DATE_MISMATCH,
+                com.mannschaft.app.shift.ShiftErrorCode.INVALID_DATE_RANGE,
+                com.mannschaft.app.shift.ShiftErrorCode.SWAP_SELF_REQUEST,
+                com.mannschaft.app.shift.ShiftErrorCode.SLOT_ASSIGNMENT_EXCEEDED,
+                com.mannschaft.app.survey.SurveyErrorCode.INVALID_TIME_RANGE,
+                com.mannschaft.app.timeline.TimelineErrorCode.MAX_ATTACHMENTS_EXCEEDED,
+                com.mannschaft.app.timeline.TimelineErrorCode.EMPTY_POST_CONTENT,
+                com.mannschaft.app.timeline.TimelineErrorCode.ATTACHMENT_NOT_FOUND_IN_STORAGE,
+                com.mannschaft.app.workflow.WorkflowErrorCode.INVALID_FIELD_VALUE);
+
+        @Test
+        @DisplayName("入力不備・状態遷移違反として分類したコードは Severity.WARN かつ resolveHttpStatus で 400 になる")
+        void 入力不備系は400() {
+            for (ErrorCode errorCode : badRequestCases) {
+                assertThat(errorCode.getSeverity())
+                        .as("%s はクライアント起因のため Severity.WARN でなければならない", errorCode.getCode())
+                        .isEqualTo(ErrorCode.Severity.WARN);
+                assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                        .as("%s が 500 に戻っている（クライアントの入力誤りをサーバ障害として返している）",
+                                errorCode.getCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        @Test
+        @DisplayName("入力不備系の BusinessException は 400 で返り、envelope の code も一致する")
+        void 入力不備系のBusinessExceptionは400() {
+            for (ErrorCode errorCode : badRequestCases) {
+                ResponseEntity<ErrorResponse> response =
+                        globalExceptionHandler.handleBusinessException(new BusinessException(errorCode));
+
+                assertThat(response.getStatusCode())
+                        .as("%s の BusinessException が 400 で返らない", errorCode.getCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().getError().getCode()).isEqualTo(errorCode.getCode());
+            }
+        }
+
+        @Test
+        @DisplayName("系統の割れ防止: 同一概念『リマインダー件数上限』の RESERVATION_015 と SCHEDULE_008 が"
+                + "同じステータスで返る（片方だけ 409 に倒して割った退行の固定）")
+        void リマインダー件数上限は両ドメインで同一ステータス() {
+            ErrorCode reservation =
+                    com.mannschaft.app.reservation.ReservationErrorCode.MAX_REMINDERS_EXCEEDED;
+            ErrorCode schedule =
+                    com.mannschaft.app.schedule.ScheduleErrorCode.MAX_REMINDERS_EXCEEDED;
+
+            assertThat(globalExceptionHandler.resolveHttpStatus(reservation))
+                    .as("enum 定数名まで同一の『保存済みリマインダー件数上限』が"
+                            + "ドメインごとに別ステータスになってはならない")
+                    .isEqualTo(globalExceptionHandler.resolveHttpStatus(schedule));
+            assertThat(globalExceptionHandler.resolveHttpStatus(reservation))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("F03.11 §5.2: RECRUITMENT_301（未払いキャンセル料による申込ブロック）は設計書どおり 402 Payment Required")
+        void 未払いキャンセル料は402() {
+            ErrorCode code = com.mannschaft.app.recruitment.RecruitmentErrorCode.CANCELLATION_PAYMENT_FAILED;
+
+            assertThat(code.getSeverity())
+                    .as("申込者の未払い残という利用者側の事情であり Severity.ERROR ではない")
+                    .isEqualTo(ErrorCode.Severity.WARN);
+            assertThat(globalExceptionHandler.resolveHttpStatus(code))
+                    .as("設計書 F03.11 §5.2 は 402 + RECRUITMENT_301 を契約として明示している")
+                    .isEqualTo(HttpStatus.PAYMENT_REQUIRED);
+
+            ResponseEntity<ErrorResponse> response =
+                    globalExceptionHandler.handleBusinessException(new BusinessException(code));
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYMENT_REQUIRED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RECRUITMENT_301");
+        }
+
+        @Test
+        @DisplayName("系統の割れ防止: 同一概念『Webhook 署名検証失敗』の PAYMENT_019 と PAYMENT_C040 が"
+                + "同じ Severity・同じステータスに揃っている")
+        void webhook署名検証失敗は両系統とも400() {
+            // 注: platform 側の /api/v1/webhooks/stripe は StripeWebhookController が
+            // catch (Exception) で 200 を返すため、PAYMENT_019 は実際には
+            // GlobalExceptionHandler に到達しない（HTTP 挙動は本 PR の前後で不変）。
+            // ここで固定しているのは「同一概念の Severity 分類が系統で割れていない」ことである。
+            HttpStatus platform = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.payment.PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+            HttpStatus connect = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.payment.connect.ConnectPaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+
+            assertThat(platform).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(connect).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(platform)
+                    .as("同一概念（Webhook 署名検証失敗）の分類が系統で割れてはならない")
+                    .isEqualTo(connect);
+        }
+
+        @Test
+        @DisplayName("系統の割れ防止: 同一概念『ファイルサイズ上限超過』が全ドメインで 400 に揃っている")
+        void ファイルサイズ上限超過は全ドメイン400() {
+            List<ErrorCode> siblings = List.of(
+                    com.mannschaft.app.chart.ChartErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.equipment.EquipmentErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.filesharing.FileSharingErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.gallery.GalleryErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.proxyvote.ProxyVoteErrorCode.FILE_SIZE_EXCEEDED,
+                    com.mannschaft.app.service.ServiceRecordErrorCode.FILE_SIZE_EXCEEDED);
+
+            for (ErrorCode errorCode : siblings) {
+                assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                        .as("enum 定数名まで同一の『ファイルサイズ上限超過』が %s だけ別ステータスになっている",
+                                errorCode.getCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        @Test
+        @DisplayName("村ドメインの『重複』は全て 409 に揃っている"
+                + "（VILLAGE_005 と VILLAGE_035 が同じスラッグ重複で別ステータスだった割れの固定）")
+        void 村の重複は409に統一されている() {
+            List<ErrorCode> duplicates = List.of(
+                    com.mannschaft.app.village.VillageErrorCode.VILLAGE_NAME_TAKEN,       // VILLAGE_003
+                    com.mannschaft.app.village.VillageErrorCode.VILLAGE_SLUG_TAKEN,       // VILLAGE_005
+                    com.mannschaft.app.village.VillageErrorCode.NICKNAME_TAKEN,           // VILLAGE_008
+                    com.mannschaft.app.village.VillageErrorCode.CREATION_REQUEST_SLUG_TAKEN); // VILLAGE_035
+
+            for (ErrorCode errorCode : duplicates) {
+                assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                        .as("村ドメインの『重複』概念は 409 に統一する。%s だけ別ステータスになっている",
+                                errorCode.getCode())
+                        .isEqualTo(HttpStatus.CONFLICT);
+            }
+        }
+
+        @Test
+        @DisplayName("VILLAGE_004（スラッグ形式不正）は重複ではなく入力形式の検証なので 400 のまま")
+        void 村のスラッグ形式不正は400のまま() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.village.VillageErrorCode.VILLAGE_SLUG_INVALID))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("GDPR エクスポート: 不在は 404 / 未完了は 409 / 期限切れは 410（GDPR_003 の3意味分割）")
+        void GDPRエクスポートの3経路が別ステータスで返る() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(GdprErrorCode.GDPR_003))
+                    .as("レコード不在は 404")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(GdprErrorCode.GDPR_009))
+                    .as("未完了は「無い」ではなく状態競合なので 409")
+                    .isEqualTo(HttpStatus.CONFLICT);
+            assertThat(globalExceptionHandler.resolveHttpStatus(GdprErrorCode.GDPR_010))
+                    .as("期限切れは「かつて存在したが失効した」ので 410 GONE")
+                    .isEqualTo(HttpStatus.GONE);
+        }
+
+        @Test
+        @DisplayName("スキル: カテゴリ不在は 404 / 名称重複は 409 / 非アクティブは 409（SKILL_001 の3意味分割）")
+        void スキルカテゴリの3経路が別ステータスで返る() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_001))
+                    .as("カテゴリ不在は 404")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_009))
+                    .as("名称重複は既存リソースとの状態競合なので 409")
+                    .isEqualTo(HttpStatus.CONFLICT);
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_010))
+                    .as("非アクティブカテゴリは実在するが操作を受け付けない状態競合なので 409")
+                    .isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("意図的な集約でも集約先ステータスは文脈依存: SKILL_003は404・SIGNAGE_002は400")
+        void 意図的に畳んだコードの集約先ステータスは対比対象の有無で決まる() {
+            // SKILL_003（越境アクセス・権限拒否の集約）は、対比される「不在」側が
+            // SKILL_001/SKILL_002で404を返す。集約先を400のままにすると、不在（404）と
+            // 越境（400）でステータスが割れ、応答の違いだけで対象IDが他スコープに実在するかを
+            // 判別できる存在オラクルになる。そのため集約先も404に揃えた
+            // （PARKING_020を起点とする「越境は存在秘匿で404」の流儀に統一）。
+            // 「複数の理由を1コードに畳めば秘匿できる」は誤りで、畳んだ先のステータスが
+            // 不在側と一致して初めて秘匿が成立する。
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_003))
+                    .as("越境アクセス・権限拒否の集約。不在側（SKILL_001/002）と同じ404に揃えて秘匿する")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+
+            // SIGNAGE_002は『不在／無効化済み／期限切れ』を集約しているが、この3者はそもそも
+            // 対比される「不在は404・その他は別ステータス」という設計になっておらず、
+            // 3者とも同一コード・同一ステータス（400）で応答することそのものが契約
+            // （SignageAccessTokenService#validateTokenのjavadoc、SignageScopeContractITが
+            // 3状況とも400を固定）。skillのような404/400の分裂が存在しないため、
+            // 今回の是正の対象外であり400のまま変更しない。
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.signage.SignageErrorCode.SIGNAGE_002))
+                    .as("不在／無効化済み／期限切れを同一コード・同一ステータス(400)に畳む契約。変更対象外")
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("Webhook: 認証失敗は 401 / 管理系CRUDの不在は 404"
+                + "（WEBHOOK_005・007 が両方の意味を兼ねていた割れの是正）")
+        void Webhookの認証失敗と管理系不在が別ステータスで返る() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(WebhookErrorCode.WEBHOOK_005))
+                    .as("Incoming Webhook 受信時のトークン認証失敗は 401")
+                    .isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(globalExceptionHandler.resolveHttpStatus(WebhookErrorCode.WEBHOOK_007))
+                    .as("APIキー認証失敗（形式不正・照合不一致を畳んだもの）は 401")
+                    .isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(globalExceptionHandler.resolveHttpStatus(WebhookErrorCode.WEBHOOK_013))
+                    .as("管理系CRUDでの Incoming トークン不在は 404")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(WebhookErrorCode.WEBHOOK_014))
+                    .as("管理系CRUDでのAPIキー不在は 404")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("真のサーバ障害は 500 のまま（是正の巻き添えで 4xx 化していないこと）")
+        void サーバ障害系は500のまま() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(CommonErrorCode.COMMON_999))
+                    .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.common.storage.StorageErrorCode.UPLOAD_FAILED))
+                    .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.payment.PaymentErrorCode.STRIPE_API_ERROR))
+                    .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_003))
+                    .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -526,6 +1740,24 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
+        @DisplayName("handleNoResourceFound: 404 NOT_FOUND が返り recordBackendException は呼ばれない")
+        void noResourceFound_isNotRecorded() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
+
+            NoResourceFoundException ex = new NoResourceFoundException(HttpMethod.GET, "/api/v1/zzz-not-exists");
+            HttpServletRequest req = mock(HttpServletRequest.class);
+
+            ResponseEntity<ErrorResponse> resp = handler.handleNoResourceFound(ex, req);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(resp.getBody()).isNotNull();
+            assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_005");
+            // エラー集約へ通報しない（ノイズ根絶）
+            verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
+        }
+
+        @Test
         @DisplayName("F10.6 後続-①: ConstraintViolationException は recordBackendException が呼ばれない")
         void constraintViolation_isNotRecorded() {
             ErrorReportService service = mock(ErrorReportService.class);
@@ -570,4 +1802,154 @@ class GlobalExceptionHandlerTest {
             verify(service, never()).recordBackendException(any(), anyString(), anyString(), anyString(), anyString(), any());
         }
     }
+
+    // ========================================
+    // 存在オラクル（不在 / 越境のステータス一致）
+    // ========================================
+
+    @Nested
+    @DisplayName("存在オラクル封じ — 不在と越境が同一ステータス（404）で応答する")
+    class ExistenceOracleParity {
+
+        /**
+         * 「不在」と「越境（他人のリソース）」でステータスが割れると、
+         * 攻撃者は応答の差だけで ID の実在を判別できる（存在オラクル）。
+         * PARKING_020 起点の「越境は存在秘匿で 404」の流儀に揃っていることを検証する。
+         *
+         * <p>一致だけを見ると「両方 500」「両方 200」でも通ってしまうため、
+         * 404 そのものを固定する絶対値アサーションを必ず併存させる。</p>
+         */
+        private void assertOracleClosed(ErrorCode absent, ErrorCode crossTenant) {
+            HttpStatus absentStatus = globalExceptionHandler.resolveHttpStatus(absent);
+            HttpStatus crossStatus = globalExceptionHandler.resolveHttpStatus(crossTenant);
+
+            assertThat(absentStatus)
+                    .as("不在側（%s）は 404 で存在秘匿すること", absent.getCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(crossStatus)
+                    .as("越境側（%s）は 404 で存在秘匿すること", crossTenant.getCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(crossStatus)
+                    .as("不在（%s）と越境（%s）でステータスが割れると ID の実在が判別できる",
+                            absent.getCode(), crossTenant.getCode())
+                    .isEqualTo(absentStatus);
+        }
+
+        @Test
+        @DisplayName("支払い領収書: PAYMENT_029（不在）と PAYMENT_030（越境）がともに 404")
+        void 支払い領収書の存在オラクルが閉じている() {
+            assertOracleClosed(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND,
+                    PaymentErrorCode.PAYMENT_ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("承継誓約: SUCCESSION_003（不在）と SUCCESSION_008（越境）がともに 404")
+        void 承継誓約の存在オラクルが閉じている() {
+            assertOracleClosed(SuccessionErrorCode.COVENANT_NOT_FOUND,
+                    SuccessionErrorCode.COVENANT_FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("求人QRトークン: JOB_CONTRACT_NOT_FOUND（不在）と JOB_PERMISSION_DENIED（越境）がともに 404")
+        void 求人契約の存在オラクルが閉じている() {
+            assertOracleClosed(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND,
+                    JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+        }
+
+        @Test
+        @DisplayName("チーム友だち可視性: SOCIAL_106（不在）と SOCIAL_107（越境）がともに 404")
+        void チーム友だち可視性の存在オラクルが閉じている() {
+            assertOracleClosed(SocialErrorCode.FRIEND_RELATION_NOT_FOUND,
+                    SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY);
+        }
+
+        @Test
+        @DisplayName("マッチング募集: MATCHING_001（不在）と MATCHING_010（越境）がともに 404")
+        void マッチング募集の存在オラクルが閉じている() {
+            // MatchProposalService の listProposals/acceptProposal/rejectProposal/cancelProposal/
+            // agreeCancellation は、募集が不在なら REQUEST_NOT_FOUND、越境なら INSUFFICIENT_PERMISSION を
+            // 投げる。ステータスが割れると募集IDの実在が応答差から判別できる。
+            assertOracleClosed(MatchingErrorCode.REQUEST_NOT_FOUND,
+                    MatchingErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        @Test
+        @DisplayName("マッチング応募: MATCHING_002（不在）と MATCHING_010（越境）がともに 404")
+        void マッチング応募の存在オラクルが閉じている() {
+            // withdrawProposal は応募が不在なら PROPOSAL_NOT_FOUND、越境なら INSUFFICIENT_PERMISSION。
+            assertOracleClosed(MatchingErrorCode.PROPOSAL_NOT_FOUND,
+                    MatchingErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        @Test
+        @DisplayName("掲示板保管庫フォルダ: BULLETIN_016（不在）と BULLETIN_020（越境）がともに 404")
+        void 保管庫フォルダの存在オラクルが閉じている() {
+            // BulletinArchiveFolderService#validateFolderInScope / createFolder の親フォルダ検証は、
+            // フォルダが不在なら ARCHIVE_FOLDER_NOT_FOUND、他スコープなら ARCHIVE_FOLDER_SCOPE_MISMATCH。
+            // ステータスが割れると他テナントのフォルダ UUID の実在が応答差から判別できる。
+            assertOracleClosed(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND,
+                    BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH);
+        }
+
+        @Test
+        @DisplayName("委員会議事録: COMMITTEE_NOT_FOUND（不在）と COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE（越境）がともに 404")
+        void 委員会議事録の存在オラクルが閉じている() {
+            // CommitteeMinutesService#confirmMinutes は活動記録が不在なら NOT_FOUND、
+            // 他委員会・非委員会スコープの記録なら MINUTES_NOT_COMMITTEE_SCOPE を投げる。
+            assertOracleClosed(CommitteeErrorCode.NOT_FOUND,
+                    CommitteeErrorCode.MINUTES_NOT_COMMITTEE_SCOPE);
+        }
+
+        @Test
+        @DisplayName("募集テンプレート: RECRUITMENT_313（不在）と RECRUITMENT_314（越境）がともに 404")
+        void 募集テンプレートの存在オラクルが閉じている() {
+            // RecruitmentListingService#createFromTemplate はテンプレートが不在なら TEMPLATE_NOT_FOUND、
+            // 他スコープのテンプレートなら TEMPLATE_SCOPE_MISMATCH。
+            assertOracleClosed(RecruitmentErrorCode.TEMPLATE_NOT_FOUND,
+                    RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH);
+        }
+
+        @Test
+        @DisplayName("非公開村: VILLAGE_001（不在）と VILLAGE_002（非公開）がともに 404")
+        void 非公開村の存在オラクルが閉じている() {
+            // UNLISTED 村は検索結果から意図的に除外され「存在を隠す」設計であるにもかかわらず、
+            // VillageService#get が非村人に対して 403 を返すと、不在の 404 との差で存在が漏れる。
+            // （PUBLIC 村の VILLAGE_024 は存在自体が公開情報のため 403 のままで正しい）
+            assertOracleClosed(VillageErrorCode.VILLAGE_NOT_FOUND,
+                    VillageErrorCode.VILLAGE_UNLISTED);
+        }
+    }
+
+    // ========================================
+    // 汎用の権限拒否（IDを引かないため404化しない・403のまま）
+    // ========================================
+
+    @Nested
+    @DisplayName("汎用の権限拒否 — ID越境ではないため404化せず403のまま")
+    class GenericPermissionDeniedStaysForbidden {
+
+        /**
+         * ID を一切引かない汎用の権限拒否は、秘匿すべきリソース ID が存在しないため
+         * 存在オラクル対策（404化）の対象外であり、403のまま据え置く。
+         * ExistenceOracleParity（ID越境は404）と対になる、意図的な非対称の固定。
+         */
+        @Test
+        @DisplayName("求人作成: JOB_CREATE_PERMISSION_DENIED は 403（求人IDが存在しないため404化しない）")
+        void 求人作成の権限拒否は403のまま() {
+            HttpStatus status = globalExceptionHandler.resolveHttpStatus(
+                    JobmatchingErrorCode.JOB_CREATE_PERMISSION_DENIED);
+
+            assertThat(status).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("承継誓約一覧: COVENANT_LIST_FORBIDDEN は 403（個別誓約IDが存在しないため404化しない）")
+        void 承継誓約一覧の権限拒否は403のまま() {
+            HttpStatus status = globalExceptionHandler.resolveHttpStatus(
+                    SuccessionErrorCode.COVENANT_LIST_FORBIDDEN);
+
+            assertThat(status).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+    }
 }
+

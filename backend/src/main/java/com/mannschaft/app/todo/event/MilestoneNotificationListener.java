@@ -1,10 +1,13 @@
 package com.mannschaft.app.todo.event;
 
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.todo.entity.ProjectEntity;
 import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
 import com.mannschaft.app.todo.entity.TodoAssigneeEntity;
@@ -16,12 +19,15 @@ import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -50,6 +56,10 @@ public class MilestoneNotificationListener {
     private final ProjectRepository projectRepository;
     private final TodoRepository todoRepository;
     private final TodoAssigneeRepository todoAssigneeRepository;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
 
     /**
      * マイルストーンアンロック時にプッシュ通知・WebSocket 配信を実行する。
@@ -93,18 +103,36 @@ public class MilestoneNotificationListener {
 
         String notificationType = event.isForced() ? "MILESTONE_FORCE_UNLOCKED" : "MILESTONE_UNLOCKED";
         NotificationPriority priority = event.isForced() ? NotificationPriority.HIGH : NotificationPriority.NORMAL;
-        String title = event.isForced()
+        String titleKey = event.isForced()
+                ? "notification.todo.milestoneForceUnlocked.title"
+                : "notification.todo.milestoneUnlocked.title";
+        String titleDefault = event.isForced()
                 ? "マイルストーンが強制アンロックされました"
                 : "マイルストーンがアンロックされました";
-        String body = String.format("「%s」が操作可能になりました。タスクを進めましょう。",
-                milestone.getTitle());
 
         NotificationScopeType scopeType = resolveScopeType(project.getScopeType());
         String actionUrl = buildActionUrl(project, milestone.getId());
 
+        // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+        // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+        Map<Long, String> locales;
+        try {
+            locales = userLocaleCache.getLocales(recipientUserIds.stream().toList());
+        } catch (Exception e) {
+            log.warn("locale 一括解決に失敗（既定 locale で継続）: error={}", e.getMessage());
+            locales = Map.of();
+        }
+
         int dispatched = 0;
         for (Long userId : recipientUserIds) {
             try {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(userId, "ja"));
+                String title = messageSource.getMessage(titleKey, null, titleDefault, locale);
+                String body = messageSource.getMessage(
+                        "notification.todo.milestoneUnlocked.body",
+                        new Object[]{milestone.getTitle()},
+                        "「" + milestone.getTitle() + "」が操作可能になりました。タスクを進めましょう。",
+                        locale);
                 NotificationEntity entity = notificationService.createNotification(
                         userId,
                         notificationType,
@@ -168,13 +196,34 @@ public class MilestoneNotificationListener {
 
     /**
      * 通知タップ時の遷移先 URL を組み立てる。
+     *
+     * <p>TEAM / ORGANIZATION は slug ベースの URL を生成する。
+     * slug が取得できない場合（チーム/組織が論理削除済み等）は /projects/{id} にフォールバックする。</p>
+     *
+     * @param project     プロジェクトエンティティ
+     * @param milestoneId マイルストーン ID
+     * @return 遷移先 URL 文字列
      */
     private String buildActionUrl(ProjectEntity project, Long milestoneId) {
         return switch (project.getScopeType()) {
-            case TEAM -> String.format("/teams/%d/projects/%d?milestone=%d",
-                    project.getScopeId(), project.getId(), milestoneId);
-            case ORGANIZATION -> String.format("/organizations/%d/projects/%d?milestone=%d",
-                    project.getScopeId(), project.getId(), milestoneId);
+            case TEAM -> {
+                // TeamService 経由で slug 解決（team Entity の直接参照を排除 / ドメイン境界遵守）
+                String slug = teamService.getSlugById(project.getScopeId());
+                yield slug != null
+                        ? String.format("/teams/%s/projects/%d?milestone=%d",
+                                slug, project.getId(), milestoneId)
+                        : String.format("/projects/%d?milestone=%d",
+                                project.getId(), milestoneId);
+            }
+            case ORGANIZATION -> {
+                // OrganizationService 経由で slug 解決（org Entity の直接参照を排除 / ドメイン境界遵守）
+                String slug = organizationService.getSlugById(project.getScopeId());
+                yield slug != null
+                        ? String.format("/organizations/%s/projects/%d?milestone=%d",
+                                slug, project.getId(), milestoneId)
+                        : String.format("/projects/%d?milestone=%d",
+                                project.getId(), milestoneId);
+            }
             case PERSONAL -> String.format("/projects/%d?milestone=%d",
                     project.getId(), milestoneId);
         };

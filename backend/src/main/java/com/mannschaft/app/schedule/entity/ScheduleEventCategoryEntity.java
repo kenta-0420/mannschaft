@@ -5,8 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -17,8 +17,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "schedule_event_categories")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ScheduleEventCategoryEntity extends BaseEntity {
 
     private Long teamId;
@@ -39,8 +38,9 @@ public class ScheduleEventCategoryEntity extends BaseEntity {
     @Builder.Default
     private Boolean isDayOffCategory = false;
 
-    @Column(columnDefinition = "TINYINT UNSIGNED")
-    private Integer sortOrder;
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
+    @Builder.Default
+    private Integer sortOrder = 0;
 
     /**
      * チームスコープかどうかを判定する。

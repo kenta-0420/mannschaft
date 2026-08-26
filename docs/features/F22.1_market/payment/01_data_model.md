@@ -101,11 +101,17 @@ INDEX idx_ca_payouts (payouts_enabled)
 
 **status 値（状態遷移）**
 
-> **モード別の初期 status**: エスクローモード（RECRUITMENT・`capture_mode=MANUAL`）は `AUTHORIZED`（onboarding 未完なら `HELD`）から開始。即時モード（MEMBERSHIP・`capture_mode=AUTOMATIC`）は INSERT 時点で **`CAPTURED`**（与信フェーズなし・即 transfer）。
+> **モード別の初期 status**: エスクローモード（RECRUITMENT・`capture_mode=MANUAL`）は **`PENDING_CONFIRMATION`**（PI 作成済・札主未 confirm。onboarding 未完なら `HELD`）から開始。即時モード（MEMBERSHIP・`capture_mode=AUTOMATIC`）は INSERT 時点で **`CAPTURED`**（与信フェーズなし・即 transfer）。
+>
+> **第一陣 status 意味論の根治（2026-06-10・V80.001）**: manual-capture PaymentIntent は札主が Stripe.js で confirm するまで真の与信（`amount_capturable`）が立たない。PI 作成直後に `AUTHORIZED` にすると capture が未確認 PI で失敗するため、PI 作成済・札主未 confirm の中間状態 `PENDING_CONFIRMATION` を新設した。`AUTHORIZED`（capture 可能）への昇格は `payment_intent.amount_capturable_updated` webhook 受信時のみ行う。
+>
+> **第三陣-b「7日超 fallback（完了時即時払い）」（2026-06-10・V81.001・マスター裁可）**: カード与信は Stripe 仕様で約7日で失効する。成立〜役務完了（札の `start_at`）が7日を超える謝礼は、成立時に与信を立てると役務完了前に失効するため、成立時には与信せず `DEFERRED`（PI 未作成・`capture_mode=AUTOMATIC`）で起票する。最終認証（役務完了）時に即時払い（会費 F08.9 と同型の destination charge・即 capture）へフォールバックし、`DEFERRED → AUTHORIZED`（PI 作成済・`hold_expires_at=NULL`・succeeded webhook 待ち）→ 札主の confirm で `payment_intent.succeeded` → `CAPTURED`。札主への `clientSecret` 返却は第二陣の決済確認 EP を再利用する。`AUTHORIZED`＋`hold_expires_at=NULL` に置くことで第三陣の自動取消バッチ（PENDING_CONFIRMATION の `created_at` 猶予・HELD/AUTHORIZED の `hold_expires_at` 失効）に掛からず誤取消されない。成立〜役務日が7日以内、または役務日不明（`start_at` 未設定・助っ人等）は安全側で従来どおり与信（`MANUAL`）を立て、与信の失効ハンドリングは第三陣バッチに委ねる。
 
 | 値 | 意味 |
 |---|---|
-| `AUTHORIZED` | 与信済（資金未移動・エスクロー保持中）。エスクローモードのみ |
+| `PENDING_CONFIRMATION` | 与信前段: manual-capture PI 作成済だが札主未 confirm（真の与信未確定）。エスクローモードのみ |
+| `DEFERRED` | 完了時即時払い予定（成立〜役務日が7日超で成立時に与信せず・PI 未作成。最終認証時に即時払いへフォールバック）。エスクローモードのみ |
+| `AUTHORIZED` | 与信済（資金未移動・エスクロー保持中・真の与信確定＝capture 可能）。エスクローモードのみ。第三陣-b では完了時即時払いの AUTOMATIC PI 作成済・succeeded 待ちもこの状態 |
 | `HELD` | 払出保留（受領者 onboarding 未完了で capture 待ち。§02 §5） |
 | `CAPTURED` | capture 済（払出確定・受領者へ transfer 完了） |
 | `PARTIALLY_REFUNDED` | 部分返金済 |
@@ -114,9 +120,13 @@ INDEX idx_ca_payouts (payouts_enabled)
 | `DISPUTED` | 係争中（最終認証未了で hold 失効回避のため先 capture が必要になりうる。F13.1 §8.9 戦略） |
 
 ```
-                ┌─ HELD ──(onboarding完了)──┐
-AUTHORIZED ─────┤                            ├──▶ CAPTURED ──▶ PARTIALLY_REFUNDED / REFUNDED
-                └─(payouts_enabled)──────────┘
+PENDING_CONFIRMATION ──(札主confirm: amount_capturable_updated)──▶ AUTHORIZED
+PENDING_CONFIRMATION ──(confirm前 cancel/payment_failed)──▶ CANCELLED
+DEFERRED ──(最終認証=完了時即時払い: AUTOMATIC PI作成)──▶ AUTHORIZED ──(札主confirm: succeeded)──▶ CAPTURED   ※第三陣-b 7日超fallback
+DEFERRED ──(最終認証前の札下げ/取消)──▶ CANCELLED
+                ┌─ HELD ──(onboarding完了→confirm)──┐
+AUTHORIZED ─────┤                                    ├──▶ CAPTURED ──▶ PARTIALLY_REFUNDED / REFUNDED
+                └─(payouts_enabled・札主confirm)──────┘
 AUTHORIZED ──(札下げ/期限切れ/hold失効)──▶ CANCELLED
 AUTHORIZED ──(最終認証未了でhold接近)──▶ DISPUTED ──(先capture)──▶ CAPTURED ──(仲裁結果)──▶ REFUNDED/確定
 ```
@@ -128,7 +138,8 @@ CONSTRAINT chk_et_capture_mode CHECK (capture_mode IN ('MANUAL','AUTOMATIC'))
 CONSTRAINT chk_et_payee_kind  CHECK (payee_kind IN ('USER','TEAM','ORG'))
 CONSTRAINT chk_et_payer_kind  CHECK (payer_scope_kind IN ('USER','TEAM','ORG'))
 CONSTRAINT chk_et_status CHECK (status IN
-  ('AUTHORIZED','HELD','CAPTURED','PARTIALLY_REFUNDED','REFUNDED','CANCELLED','DISPUTED'))
+  ('PENDING_CONFIRMATION','DEFERRED','AUTHORIZED','HELD','CAPTURED','PARTIALLY_REFUNDED','REFUNDED','CANCELLED','DISPUTED'))
+  -- V80.001 で PENDING_CONFIRMATION、V81.001 で DEFERRED を許容集合へ追加（既存行非破壊・DROP→ADD で原子的張替）。
 CONSTRAINT chk_et_fee CHECK (application_fee_amount <= amount)
 UNIQUE KEY uk_et_pi (stripe_payment_intent_id)
 INDEX idx_et_source (source_kind, source_id)
@@ -148,13 +159,14 @@ INDEX idx_et_status_hold (status, hold_expires_at)   -- 自動 capture バッチ
 |---|---|---|---|---|
 | `id` | BINARY(16) | NO | (UUIDv7) | PK |
 | `escrow_transaction_id` | BINARY(16) | NO | — | `escrow_transactions.id`（payment ドメイン内 FK・CASCADE 可） |
-| `entry_type` | VARCHAR(24) | NO | — | `AUTHORIZE` / `CAPTURE` / `TRANSFER_OUT` / `FEE` / `REFUND` / `CANCEL`（記帳種別） |
+| `entry_type` | VARCHAR(24) | NO | — | `AUTHORIZE` / `CAPTURE` / `TRANSFER_OUT` / `FEE` / `REFUND` / `CANCEL` / `RECOVERY`（記帳種別・`RECOVERY` は V84.002 で追加・相殺回収 02 §6.3.1） |
 | `account` | VARCHAR(16) | NO | — | 勘定 `ESCROW` / `PAYEE` / `PLATFORM_FEE` / `PAYER`（複式の相手勘定） |
 | `direction` | CHAR(1) | NO | — | `D`（借方 Debit）/ `C`（貸方 Credit） |
 | `amount` | INT UNSIGNED | NO | — | 金額（円整数・最小単位） |
 | `currency` | CHAR(3) | NO | `'JPY'` | |
 | `running_balance` | BIGINT | NO | — | 当該取引の累積残高（署名付き・整合検算用） |
-| `stripe_object_id` | VARCHAR(48) | YES | NULL | 対応する Stripe オブジェクト（`tr_xxx`/`re_xxx`/`txn_xxx` 等・突合キー） |
+| `stripe_object_id` | VARCHAR(48) | YES | NULL | 対応する Stripe オブジェクト（`tr_xxx`/`re_xxx`/`txn_xxx`/`pi_xxx` 等・突合キー） |
+| `recovery_kind` | VARCHAR(16) | YES | NULL | `RECOVERY` 仕訳の経路識別 `C1_ACCRUAL`/`C2_COMPLETION`/`A_EXECUTION`/`A_RECAPITALIZE`（V84.003・非 RECOVERY 行は NULL・02 §6.3.1） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | 追記時刻（不変） |
 
 **制約・インデックス**
@@ -162,12 +174,43 @@ INDEX idx_et_status_hold (status, hold_expires_at)   -- 自動 capture バッチ
 CONSTRAINT fk_le_escrow FOREIGN KEY (escrow_transaction_id)
   REFERENCES escrow_transactions(id) ON DELETE CASCADE   -- 同一ドメイン内のみ CASCADE 許可（CLAUDE.md 原則2）
 CONSTRAINT chk_le_direction CHECK (direction IN ('D','C'))
-CONSTRAINT chk_le_entry_type CHECK (entry_type IN
-  ('AUTHORIZE','CAPTURE','TRANSFER_OUT','FEE','REFUND','CANCEL'))
+CONSTRAINT chk_le_entry_type CHECK (entry_type IN     -- V84.002 で RECOVERY を追加
+  ('AUTHORIZE','CAPTURE','TRANSFER_OUT','FEE','REFUND','CANCEL','RECOVERY'))
+CONSTRAINT chk_le_recovery_kind CHECK (               -- V84.003（🟠-A 厳格化）: 非 RECOVERY は NULL・RECOVERY は 4 値必須（NULL 不可）
+  (entry_type = 'RECOVERY'
+     AND recovery_kind IS NOT NULL                     -- 三値論理: IS NOT NULL を明示しないと NULL が UNKNOWN で素通りする
+     AND recovery_kind IN ('C1_ACCRUAL','C2_COMPLETION','A_EXECUTION','A_RECAPITALIZE'))
+  OR (entry_type <> 'RECOVERY' AND recovery_kind IS NULL))
 INDEX idx_le_escrow (escrow_transaction_id, created_at)
 INDEX idx_le_stripe_obj (stripe_object_id)
 ```
 > 追記専用（UPDATE/DELETE しない）。1 取引の借方合計＝貸方合計が常に成立することを整合バッチで検算する（Stripe balance_transaction との突合・02 §6 リコンシリエーション）。
+>
+> **`RECOVERY` 4 経路と `recovery_kind`（02 §6.3.1）**: ModeB 返金で一時負担した実 Stripe 手数料を後続決済で相殺回収する仕組み。勘定の向き（D/C）だけでは C1/C2 発生計上（`D PLATFORM_FEE / C PAYEE`）と A 回収実行（`D PAYEE / C PLATFORM_FEE`）/A 再計上（`D PLATFORM_FEE / C PAYEE`）を峻別できないため、`recovery_kind` で確実に分離する。「当該 escrow に上乗せ適用した回収の純額」は A 経路（`A_EXECUTION` − `A_RECAPITALIZE`）のみで導出し、C1/C2 を除外する（自己返金時の回収金消失を防ぐ・02 §6.3.1 の合成規則）。
+
+---
+
+### 3.3.1 `fee_recovery_balances`（未回収 Stripe 手数料の残高表・V84.001）
+
+ModeB 返金で Mannschaft が一時負担した実 Stripe 手数料の **未回収残高**を payee（受取側 Connect 口座）×通貨単位で持ち、後続決済の `application_fee_amount` に上乗せして相殺回収する（02 §6.3.1）。
+
+| カラム名 | 型 | NULL | デフォルト | 説明 |
+|---|---|---|---|---|
+| `id` | BINARY(16) | NO | (UUIDv7) | PK（原則6） |
+| `connect_account_id` | BINARY(16) | NO | — | `connect_accounts.id`（**論理参照・FK なし**・原則1。残高表を口座ライフサイクルに CASCADE で巻き込まない） |
+| `organization_id` | BIGINT UNSIGNED | YES | NULL | テナント絞り込み（シャードキー候補・`AbstractTenantAwareRepository`・原則7） |
+| `outstanding_amount` | BIGINT | NO | 0 | 未回収残高（minor・符号反転に備え署名付き） |
+| `currency` | CHAR(3) | NO | `'jpy'` | minor 母数（小文字で持つ・突合の安定化） |
+| `created_at` | DATETIME(6) | NO | CURRENT_TIMESTAMP(6) | |
+| `updated_at` | DATETIME(6) | NO | CURRENT_TIMESTAMP(6) ON UPDATE | |
+| `deleted_at` | DATETIME(6) | YES | NULL | 論理削除（連結口座切離し時の残高リセット） |
+
+**制約・インデックス**
+```sql
+UNIQUE KEY uk_frb_account_currency (connect_account_id, currency)   -- payee×通貨で物理 1 行（upsert）
+INDEX idx_frb_org (organization_id)
+```
+> C1（ModeB 返金時の発生計上）/C2（pending 補完）で `outstanding_amount += 実手数料`、A（次回入金相殺）で `outstanding_amount −= 回収額`、A 再計上（回収済み charge の自己 ModeB 返金/取消）で `outstanding_amount += 回収額` を加減算する。`AbstractTenantAwareRepository` の基底メソッドが `deleted_at` を要求するため列を持つ（原則7）。
 
 ---
 

@@ -1,5 +1,6 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.family.EventType;
 import com.mannschaft.app.family.dto.PresenceIconRequest;
@@ -19,15 +20,21 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class PresenceIconService {
 
+    private static final String SCOPE_TYPE_TEAM = "TEAM";
     private final TeamPresenceIconRepository teamPresenceIconRepository;
+    private final AccessControlService accessControlService;
 
-    public ApiResponse<List<PresenceIconResponse>> getIcons(Long teamId) {
+    public ApiResponse<List<PresenceIconResponse>> getIcons(Long teamId, Long actorUserId) {
+        // 認可根治 Wave2-2C: 閲覧=checkMembership。非メンバーは403
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TYPE_TEAM);
         List<TeamPresenceIconEntity> icons = teamPresenceIconRepository.findByTeamId(teamId);
         return ApiResponse.of(icons.stream().map(i -> new PresenceIconResponse(i.getEventType().name(), i.getIcon())).toList());
     }
 
     @Transactional
     public ApiResponse<List<PresenceIconResponse>> updateIcons(Long teamId, Long userId, PresenceIconRequest request) {
+        // 認可根治 Wave2-2C: アイコン設定はADMIN用EPのためcheckAdminOrAbove
+        accessControlService.checkAdminOrAbove(userId, teamId, SCOPE_TYPE_TEAM);
         for (PresenceIconRequest.IconEntry entry : request.getIcons()) {
             EventType eventType = EventType.valueOf(entry.getEventType().toUpperCase());
             teamPresenceIconRepository.findByTeamIdAndEventType(teamId, eventType)
@@ -36,6 +43,6 @@ public class PresenceIconService {
                             () -> teamPresenceIconRepository.save(TeamPresenceIconEntity.builder()
                                     .teamId(teamId).eventType(eventType).icon(entry.getIcon()).updatedBy(userId).build()));
         }
-        return getIcons(teamId);
+        return getIcons(teamId, userId);
     }
 }

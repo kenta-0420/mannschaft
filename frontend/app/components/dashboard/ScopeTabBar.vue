@@ -24,7 +24,17 @@ const showOrderDialog = ref(false)
 
 // 現在のタグページデータ（キャッシュ）。
 const page = computed(() => store.tabPages[props.scopeType] ?? null)
-const items = computed(() => page.value?.items ?? [])
+const items = computed(() => {
+  const rawItems = page.value?.items ?? []
+  const orders = store.tabOrders[props.scopeType]
+  if (!orders || orders.length === 0) return rawItems
+  const orderMap = new Map(orders.map(o => [o.scopeId, o.sortOrder]))
+  return [...rawItems].sort((a, b) => {
+    const aOrder = orderMap.get(a.scopeId) ?? Infinity
+    const bOrder = orderMap.get(b.scopeId) ?? Infinity
+    return aOrder - bOrder
+  })
+})
 const hasPrev = computed(() => page.value?.hasPrev ?? false)
 const hasNext = computed(() => page.value?.hasNext ?? false)
 const currentPage = computed(() =>
@@ -118,24 +128,25 @@ async function onFolderChange(folderId: number | null) {
             :key="item.scopeId"
             type="button"
             role="button"
-            :aria-pressed="item.scopeId === selectedScopeId"
+            :data-testid="`scope-tab-chip-${scopeType}-${item.slug ?? item.scopeId}`"
+            :aria-pressed="(item.slug ?? item.scopeId) === selectedScopeId"
             class="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors"
             :class="
-              item.scopeId === selectedScopeId
+              (item.slug ?? item.scopeId) === selectedScopeId
                 ? 'border-primary bg-primary text-primary-contrast'
                 : 'border-surface-300 bg-surface-0 hover:bg-surface-100 dark:border-surface-600 dark:bg-surface-800'
             "
-            @click="selectScope(item.scopeId)"
+            @click="selectScope(item.slug ?? item.scopeId)"
           >
             <Avatar
               :image="item.avatarUrl ?? undefined"
-              :label="item.avatarUrl ? undefined : item.name.charAt(0)"
-              :aria-label="item.name"
+              :label="item.avatarUrl ? undefined : (item.name?.charAt(0) ?? '?')"
+              :aria-label="item.name ?? ''"
               shape="circle"
               size="normal"
               class="!h-6 !w-6 !text-xs"
             />
-            <span class="max-w-28 truncate">{{ item.name }}</span>
+            <span class="max-w-28 truncate">{{ item.name ?? '' }}</span>
             <Badge
               v-if="item.unreadCount > 0"
               :value="item.unreadCount"
@@ -154,6 +165,7 @@ async function onFolderChange(folderId: number | null) {
           rounded
           size="small"
           :disabled="!hasPrev"
+          :data-testid="`scope-tab-prevpage-${scopeType}`"
           :aria-label="$t('scopeDashboard.tagBar.prevPage')"
           @click="goPrevPage"
         />
@@ -164,10 +176,26 @@ async function onFolderChange(folderId: number | null) {
           rounded
           size="small"
           :disabled="!hasNext"
+          :data-testid="`scope-tab-nextpage-${scopeType}`"
           :aria-label="$t('scopeDashboard.tagBar.nextPage')"
           @click="goNextPage"
         />
       </div>
+
+      <!-- 選択中スコープページへ -->
+      <NuxtLink
+        v-if="selectedScopeId"
+        :to="scopeType === 'TEAM' ? `/teams/${selectedScopeId}` : `/organizations/${selectedScopeId}`"
+        :data-testid="`scope-tab-go-to-page-${scopeType}`"
+      >
+        <Button
+          icon="pi pi-external-link"
+          :label="$t('scopeDashboard.tagBar.goToScopePage')"
+          text
+          size="small"
+          :aria-label="$t('scopeDashboard.tagBar.goToScopePage')"
+        />
+      </NuxtLink>
 
       <!-- 表示順設定 -->
       <Button

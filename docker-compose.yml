@@ -15,10 +15,36 @@ services:
       # F10.5 Phase 10-α: スロークエリログをホスト側 `./logs/mysql-slow/` に永続化し、
       # 外部 APM や手元解析で吸い上げ可能にする（設計書 §3.3 / §5.1.3）
       - ./logs/mysql-slow:/var/log/mysql-slow
+    # --default-time-zone=+00:00 — DB 格納時刻の基準タイムゾーンを UTC に統一（Issue #2486）。
+    #   backend の spring.jpa.properties.hibernate.jdbc.time_zone: UTC ／
+    #   application-local.yml の serverTimezone=UTC と必ず一致させること。
+    #
+    #   ⚠️ 既存のローカル開発 DB（mysql-data ボリューム）には JST 壁時計で格納された行が残っている。
+    #      この変更以降に書かれる行は UTC 壁時計になるため、古い行と新しい行で基準が混在する。
+    #      生 SQL で時刻を直接読むと 9 時間ずれて見える行が混ざるが、開発環境のみの話であり許容する。
+    #      気になる場合は `docker compose down -v` でボリュームを破棄して作り直すこと
+    #      （本番環境は未構築＝既存データが無いため、この混在は本番には存在しない）。
+    #
+    # --collation-server=utf8mb4_0900_ai_ci — 本番 RDS の collation_server
+    #   （infra/terraform/modules/data/main.tf）と一致させる（Issue #2589）。
+    #
+    #   ⚠️ 以前はここが utf8mb4_unicode_ci で本番と食い違っていた。照合順序を宣言していない表は
+    #      サーバ既定を継承するため、ローカルと本番で同じ表の照合順序が変わり、
+    #      「ローカルでは通るのに本番だけ Illegal mix of collations で落ちる JOIN」が生まれていた。
+    #      V175 の migration がスキーマ全体を utf8mb4_0900_ai_ci へ統一し、
+    #      ALTER DATABASE でデータベース既定も固定したので実害は除去済みだが、
+    #      サーバ既定自体を本番へ揃えて「ローカルで再現しない本番障害」の温床を断つ。
+    #
+    #   ⚠️ 既存のローカル DB ボリュームには変更前の照合順序の表が残っているが、
+    #      V175 が起動時に information_schema を見て差分のある表だけ変換するため、
+    #      作り直さなくても収束する。
+    #
+    # ⚠️ 下の `command: >` は折り畳みスカラー。内部に # 行を書くとコメントではなく
+    #    起動引数の一部として MySQL に渡り、起動が失敗する。注釈は必ずこの位置に書くこと。
     command: >
       --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-      --default-time-zone=+09:00
+      --collation-server=utf8mb4_0900_ai_ci
+      --default-time-zone=+00:00
       --slow_query_log=ON
       --slow_query_log_file=/var/log/mysql-slow/mannschaft-slow.log
       --long_query_time=1.0
@@ -44,6 +70,8 @@ services:
       - "8080:8080"
     environment:
       SLOW_QUERY_LOG_PATH: /app/logs/mysql-slow/mannschaft-slow.log
+      # フロントエンド / iCal URL 組み立てに使用するベース URL（app.base-url の正準環境変数）
+      APP_BASE_URL: http://localhost:3000
     volumes:
       - ./logs/mysql-slow:/app/logs/mysql-slow:ro
 
@@ -51,10 +79,66 @@ services:
     image: valkey/valkey:8-alpine
     container_name: mannschaft-valkey
     restart: unless-stopped
+    # AOF（追記専用ファイル）永続化を有効化する。
+    # アカウントロック / レート制限 / JTI ブラックリスト等の認証防御状態を
+    # コンテナ再起動・再作成をまたいで保持し、無用な消失を防ぐ（保存先は valkey-data:/data）。
+    command: ["valkey-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
     volumes:
       - valkey-data:/data
+
+  # ──────────────────────────────────────────────────────────────────
+  # MinIO — ローカル開発用 S3 互換オブジェクトストレージ（R2 代替）
+  # アバター・バナー画像等の presigned URL フロー（profile-media EP）をローカルで動かす際に使用。
+  # 起動: docker compose --profile storage up -d
+  # API:     http://localhost:9000
+  # Console: http://localhost:9001  (ユーザー: minioadmin / パスワード: minioadmin)
+  # バケット mannschaft-storage は起動時に minio-init が自動作成する。
+  # BE 設定: application-local.yml に mannschaft.storage.endpoint=http://localhost:9000 を追加（下記参照）
+  # ──────────────────────────────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: mannschaft-minio
+    profiles:
+      - storage
+    restart: unless-stopped
+    ports:
+      - "9000:9000"   # API（presigned URL 発行・S3 互換）
+      - "9001:9001"   # Console UI
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      # ブラウザ（localhost:3000）からの presigned PUT を許可する CORS 設定
+      # MinIO v2023.x 以降は MINIO_API_CORS_ALLOW_ORIGIN で指定する
+      MINIO_API_CORS_ALLOW_ORIGIN: "http://localhost:3000,http://localhost:3001"
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # MinIO 初期化（バケット作成・公開設定）
+  # minio の healthcheck が green になってから 1 度だけ実行される
+  minio-init:
+    image: minio/mc:latest
+    container_name: mannschaft-minio-init
+    profiles:
+      - storage
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 minioadmin minioadmin;
+        mc mb --ignore-existing local/mannschaft-storage;
+        echo 'バケット mannschaft-storage 作成完了';
+      "
+    restart: "no"
 
   # OpenTelemetry トレース可視化（ローカル開発用）
   # F10.5 Phase 10-β: 分散トレーシング可視化
@@ -77,3 +161,4 @@ services:
 volumes:
   mysql-data:
   valkey-data:
+  minio-data:

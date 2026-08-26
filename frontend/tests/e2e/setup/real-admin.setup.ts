@@ -1,5 +1,5 @@
 import { test as setup } from '@playwright/test'
-import { loginAs } from '../fixtures/auth'
+import { loginViaApi } from '../fixtures/auth'
 
 /**
  * 実機テスト用: 管理者ログイン setup
@@ -15,6 +15,6 @@ setup('実機: 管理者ログイン', async ({ page }) => {
   const email = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
   const password = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
 
-  await loginAs(page, { email, password })
+  await loginViaApi(page, { email, password })
   await page.context().storageState({ path: 'tests/e2e/.auth/real-admin.json' })
 })

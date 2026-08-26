@@ -1,39 +1,55 @@
 package com.mannschaft.app.team.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.mannschaft.app.common.validation.ValidTimezone;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * チーム更新リクエスト。
+ *
+ * <p>Jackson でのデシリアライズ互換のため {@code @NoArgsConstructor + @Setter}（CreateTeamRequest と同方針）を採用する。
+ * 以前は {@code @RequiredArgsConstructor}（final フィールド + Creator なし）だったため
+ * {@code InvalidDefinitionException: no Creators} で PATCH /teams/{slug} が 500 になっていた。</p>
  */
 @Getter
-@RequiredArgsConstructor
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UpdateTeamRequest {
 
-    private final String name;
-    private final String nameKana;
-    private final String nickname1;
-    private final String nickname2;
-    private final String template;
-    private final String prefecture;
-    private final String city;
+    @ValidTimezone
+    @Schema(description = "チームのIANAタイムゾーン")
+    private String timezone;
+
+    private String name;
+    private String nameKana;
+    private String nickname1;
+    private String nickname2;
+    private String template;
+    private String prefecture;
+    private String city;
 
     /**
      * F22.1 市 Phase 2 足場C: 都道府県コード（JIS X 0401・2 桁）。null 許容（指定時のみ更新）。
      */
     @Pattern(regexp = "\\d{2}", message = "prefectureCode は 2 桁の数字である必要があります")
-    private final String prefectureCode;
+    private String prefectureCode;
 
     /**
      * F22.1 市 Phase 2 足場C: 市区町村コード（JIS X 0402・5 桁）。null 許容（指定時のみ更新）。
      */
     @Pattern(regexp = "\\d{5}", message = "cityCode は 5 桁の数字である必要があります")
-    private final String cityCode;
+    private String cityCode;
 
-    private final String visibility;
-    private final Boolean supporterEnabled;
+    private String visibility;
+    private Boolean supporterEnabled;
 
     /**
      * F15.4 Phase 5-β: Google Maps 埋め込み URL。
@@ -44,10 +60,10 @@ public class UpdateTeamRequest {
             regexp = "^https://www\\.google\\.com/maps/embed\\?.*$",
             message = "Google Maps 埋め込み URL（https://www.google.com/maps/embed?...）の形式である必要があります"
     )
-    private final String mapEmbedUrl;
+    private String mapEmbedUrl;
 
     @NotNull
-    private final Long version;
+    private Long version;
 
     /**
      * 後方互換用コンストラクタ（地域コードなし・既存 11 引数シグネチャ）。
@@ -55,7 +71,7 @@ public class UpdateTeamRequest {
     public UpdateTeamRequest(String name, String nameKana, String nickname1, String nickname2,
                              String template, String prefecture, String city, String visibility,
                              Boolean supporterEnabled, String mapEmbedUrl, Long version) {
-        this(name, nameKana, nickname1, nickname2, template, prefecture, city,
+        this(null, name, nameKana, nickname1, nickname2, template, prefecture, city,
                 null, null, visibility, supporterEnabled, mapEmbedUrl, version);
     }
 }

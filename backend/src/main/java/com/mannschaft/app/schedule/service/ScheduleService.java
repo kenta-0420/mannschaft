@@ -1,8 +1,16 @@
 package com.mannschaft.app.schedule.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.dashboard.ActivityEvent;
+import com.mannschaft.app.dashboard.ActivityType;
+import com.mannschaft.app.dashboard.ScopeType;
+import com.mannschaft.app.dashboard.TargetType;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.AttendanceGenerationStatus;
@@ -12,11 +20,13 @@ import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode;
 import com.mannschaft.app.schedule.ScheduleStatus;
+import com.mannschaft.app.schedule.ScheduleTargetMode;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
+import com.mannschaft.app.schedule.dto.ScheduleTargetResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.event.ScheduleCancelledEvent;
@@ -34,7 +44,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  * スケジュールサービス。スケジュールのCRUD・横断調整を担当するファサード。
@@ -59,8 +74,11 @@ public class ScheduleService {
     private static final String SCOPE_TYPE_PERSONAL = "PERSONAL";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
     private static final String UPDATE_SCOPE_ALL = "ALL";
-    /** スケジュール日時の保存タイムゾーン（JVM TZ と一致）。 */
-    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
+    /**
+     * スケジュール日時の保存タイムゾーン（JVM TZ と一致）。
+     * サーバー保持形式の正準定義は {@link UserZoneLocalDateTimeParser#SERVER_ZONE} を参照。
+     */
+    private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final ScheduleRepository scheduleRepository;
     private final EventSurveyService eventSurveyService;
@@ -72,6 +90,16 @@ public class ScheduleService {
     private final ScheduleRecurrenceService recurrenceService;
     private final ScheduleScheduledTaskService scheduledTaskService;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+    private final ScheduleTargetService scheduleTargetService;
+    /**
+     * 認可根治 Wave3-B6: schedule 書込（update/delete/cancel/create）・出欠閲覧の per-scope 認可に使用する。
+     */
+    private final AccessControlService accessControlService;
+    /**
+     * F03.18: activity_feed 発行用の {@code detail} JSON をシリアライズするために使う。
+     * シリアライズ失敗時は予定本体の処理を巻き込まない（{@link #publishScheduleActivity}）。
+     */
+    private final ObjectMapper objectMapper;
 
     /**
      * スケジュールを単体取得する。存在しない場合は例外をスローする。
@@ -81,6 +109,23 @@ public class ScheduleService {
      */
     public ScheduleEntity getSchedule(Long id) {
         return findScheduleOrThrow(id);
+    }
+
+    /**
+     * 指定スケジュールが指定チームに属するかどうかを返す（越境窓口）。
+     *
+     * <p>認可根治戦役 Wave 2 トランシェ2B: performance ドメイン
+     * （{@code PerformanceRecordService.createScheduleBulkRecords}）が、スケジュール連携の
+     * 一括記録入力で受け取った {@code scheduleId} が path の {@code teamId} 配下かどうかを検証するための
+     * 窓口。schedule ドメインの {@link ScheduleEntity} を他ドメインへ直接公開せず、
+     * boolean のみを返すことでドメイン境界（CLAUDE.md）を保つ。</p>
+     *
+     * @param scheduleId スケジュールID
+     * @param teamId     チームID
+     * @return 当該チームに属するスケジュールが存在すれば true
+     */
+    public boolean existsByIdAndTeamId(Long scheduleId, Long teamId) {
+        return scheduleRepository.findByIdAndTeamId(scheduleId, teamId).isPresent();
     }
 
     /**
@@ -109,6 +154,16 @@ public class ScheduleService {
      * @throws BusinessException 閲覧権限が無い、または存在しない場合
      */
     public ScheduleEntity getScheduleWithAccessCheck(Long id, Long userId) {
+        // 関所(2)閲覧: F00 可視性判定に一本化する。
+        //
+        // CMP-017b で「配信母集団に属するなら可視性判定を迂回して見せる」OR 迂回路を撤去した。
+        // 迂回路は「出欠を求めた相手には予定を見せねばならない」という正しい不変条件を守るために
+        // 置かれていたが、min_view_role が閲覧判定でどこからも読まれない状態と組み合わさって
+        // 「閾値を満たさない応援者に予定を見せる」抜け道になっていた。
+        //
+        // 書込時の不変条件（includeSupporters=TRUE ⇒ minViewRole ∈ {ANYONE, SUPPORTER_PLUS}・
+        // resolveMinViewRole / assertSupporterAxesConsistent）を先に入れたことで、
+        // 配信母集団に入る応援者は必ず閲覧閾値も満たすようになり、OR は論理的に冗長になった。
         contentVisibilityChecker.assertCanView(ReferenceType.SCHEDULE, id, userId);
         return findScheduleOrThrow(id);
     }
@@ -160,6 +215,7 @@ public class ScheduleService {
     @Transactional
     public ScheduleResponse createSchedule(CreateScheduleRequest req, Long scopeId,
                                            String scopeType, Long userId) {
+        checkCreateScopeAccess(scopeId, scopeType, userId);
         LocalDateTime startAtJst = toJst(req.getStartAt());
         LocalDateTime endAtJst = toJst(req.getEndAt());
         LocalDateTime deadlineJst = toJst(req.getAttendanceDeadline());
@@ -168,6 +224,8 @@ public class ScheduleService {
         ScheduleEntity schedule = buildScheduleEntity(req, scopeId, scopeType, userId,
                 startAtJst, endAtJst, deadlineJst);
         schedule = scheduleRepository.save(schedule);
+        scheduleTargetService.replaceForCreate(
+                schedule, scopeType, scopeId, req.getTargetMode(), req.getTargetUserIds());
 
         // 繰り返しルールがある場合は子スケジュールを展開
         if (req.getRecurrenceRule() != null) {
@@ -194,6 +252,10 @@ public class ScheduleService {
                 schedule.getId(), resolvedScopeType, scopeId, userId,
                 Boolean.TRUE.equals(req.getAttendanceRequired())));
 
+        // F03.18: 予定作成をアクティビティフィードへ発行する（AC-01・AC-07）
+        publishScheduleActivity(ActivityType.SCHEDULE_CREATED, schedule, schedule.getId(), userId,
+                schedule.getTitle(), List.of(), 1);
+
         log.info("スケジュール作成: id={}, title={}, scope={}:{}", schedule.getId(), schedule.getTitle(), scopeType, scopeId);
         return toScheduleResponse(schedule);
     }
@@ -211,6 +273,7 @@ public class ScheduleService {
     public ScheduleResponse updateSchedule(Long id, UpdateScheduleRequest req,
                                            String updateScope, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(id);
+        checkScopeAdminAccess(schedule, userId);
         validateScheduleNotCancelled(schedule);
 
         if (req.getStartAt() != null || req.getEndAt() != null) {
@@ -219,13 +282,22 @@ public class ScheduleService {
             validateDateRange(startAt, endAt);
         }
 
+        // F03.18 B-1: applyUpdateToSchedule 呼び出し直前に更新前スナップショットを退避する
+        // （呼び出し後では差分が取れない）。
+        Long originalId = schedule.getId();
+        Long originalParentScheduleId = schedule.getParentScheduleId();
+        ScheduleSnapshot before = ScheduleSnapshot.from(schedule);
+
         if (schedule.isRecurring() || schedule.getParentScheduleId() != null) {
             recurrenceService.updateRecurringSchedule(schedule, req, updateScope, this::applyUpdateToSchedule);
         } else {
-            applyUpdateToSchedule(schedule, req);
+            // F03.18: 戻り値で schedule 参照を差し替える（applyUpdateToSchedule は新インスタンスを
+            // 構築するため、差し替えないと呼び出し元からは更新前の値のまま見えてしまう）。
+            schedule = applyUpdateToSchedule(schedule, req);
         }
 
         schedule = scheduleRepository.save(schedule);
+        updateTargetsForRecurrenceScope(schedule, req, updateScope);
 
         // 機能55 BE対応: リマインダー更新（null = 変更なし、空リスト = 全削除、非空 = 差し替え）
         if (req.getReminders() != null) {
@@ -259,8 +331,157 @@ public class ScheduleService {
         // イベント発行（トランザクションコミット後に発行）
         eventPublisher.publishEvent(new ScheduleUpdatedEvent(schedule.getId(), userId));
 
+        // F03.18: 予定変更をアクティビティフィードへ発行する（AC-02・AC-03・AC-05・AC-06・AC-08）
+        publishScheduleUpdateActivity(before, schedule, updateScope, originalId, originalParentScheduleId, userId);
+
         log.info("スケジュール更新: id={}, updateScope={}", id, updateScope);
         return toScheduleResponse(schedule);
+    }
+
+    /**
+     * F03.18: {@code updateSchedule} の変更差分をアクティビティフィードへ発行する。
+     *
+     * <p>{@code updateScope = ALL} の場合は「1操作=1行」（§5.3）とし、対象は親スケジュール
+     * （{@code originalParentScheduleId} があればそれ、無ければ {@code originalId} 自身）とする。
+     * 差分ゼロ（no-op 更新）の場合は発行しない（AC-05）。{@code description} の値そのものは
+     * 決して JSON に載せない（AC-06。{@link #buildFieldDiff} 参照）。</p>
+     */
+    private void publishScheduleUpdateActivity(ScheduleSnapshot before, ScheduleEntity schedule,
+                                                String updateScope, Long originalId,
+                                                Long originalParentScheduleId, Long userId) {
+        ScheduleEntity target = schedule;
+        Long targetId = originalId;
+        long affectedCount = 1;
+
+        if (UPDATE_SCOPE_ALL.equals(updateScope)) {
+            Long parentId = originalParentScheduleId != null ? originalParentScheduleId : originalId;
+            targetId = parentId;
+            affectedCount = scheduleRepository.countByParentScheduleId(parentId);
+            target = scheduleRepository.findById(parentId).orElse(schedule);
+        }
+
+        ScheduleSnapshot after = ScheduleSnapshot.from(target);
+        boolean rescheduled = !Objects.equals(before.startAt(), after.startAt())
+                || !Objects.equals(before.endAt(), after.endAt())
+                || !Objects.equals(before.allDay(), after.allDay());
+
+        List<Map<String, Object>> fields = buildFieldDiff(before, after);
+        if (fields.isEmpty()) {
+            // AC-05: 差分ゼロの no-op 更新はフィード行を増やさない
+            return;
+        }
+
+        ActivityType type = rescheduled ? ActivityType.SCHEDULE_RESCHEDULED : ActivityType.SCHEDULE_UPDATED;
+        publishScheduleActivity(type, target, targetId, userId, after.title(), fields, affectedCount);
+    }
+
+    /**
+     * F03.18 §2.1: 更新前後のスナップショットからフィード用の {@code fields} 差分を作る。
+     *
+     * <p>漏洩面の是正（設計書§3.2）: {@code description} は値そのものを載せず、
+     * 変更の有無（{@code changed: true}）のみを記録する。</p>
+     */
+    private List<Map<String, Object>> buildFieldDiff(ScheduleSnapshot before, ScheduleSnapshot after) {
+        List<Map<String, Object>> fields = new ArrayList<>();
+        addFieldDiff(fields, "title", before.title(), after.title());
+        addFieldDiff(fields, "location", before.location(), after.location());
+        addFieldDiff(fields, "status", before.status() != null ? before.status().name() : null,
+                after.status() != null ? after.status().name() : null);
+        addFieldDiff(fields, "startAt", before.startAt() != null ? before.startAt().toString() : null,
+                after.startAt() != null ? after.startAt().toString() : null);
+        addFieldDiff(fields, "endAt", before.endAt() != null ? before.endAt().toString() : null,
+                after.endAt() != null ? after.endAt().toString() : null);
+        // B-2: Entity側フィールド名は allDay だが JSON 側は isAllDay に名寄せする
+        addFieldDiff(fields, "isAllDay", before.allDay(), after.allDay());
+
+        if (!Objects.equals(before.description(), after.description())) {
+            Map<String, Object> descField = new LinkedHashMap<>();
+            descField.put("field", "description");
+            descField.put("changed", true);
+            fields.add(descField);
+        }
+        return fields;
+    }
+
+    /**
+     * 単一フィールドの前後値を比較し、差分があれば {@code fields} リストへ追加する。
+     */
+    private void addFieldDiff(List<Map<String, Object>> fields, String fieldName, Object before, Object after) {
+        if (Objects.equals(before, after)) {
+            return;
+        }
+        Map<String, Object> field = new LinkedHashMap<>();
+        field.put("field", fieldName);
+        field.put("before", before != null ? before.toString() : null);
+        field.put("after", after != null ? after.toString() : null);
+        fields.add(field);
+    }
+
+    /**
+     * F03.18: 予定 CRUD 操作の前後スナップショット（フィード差分算出用）。
+     *
+     * <p>{@code description} は値の比較（変更有無の判定）にのみ用い、JSON へは決して積まない
+     * （AC-06。値そのものは {@link #buildFieldDiff} が絶対に読み書きしない）。</p>
+     */
+    private record ScheduleSnapshot(String title, String description, OffsetDateTime startAt, OffsetDateTime endAt,
+                                     Boolean allDay, String location, ScheduleStatus status) {
+        /**
+         * Entity の壁時計 {@code LocalDateTime}（{@code STORAGE_ZONE} 基準）を、起きた瞬間を表す
+         * {@link OffsetDateTime} へ復元して保持する（{@code ScheduleService#toJst} の逆変換であり
+         * 情報の欠落は無い）。差分 JSON に載る文字列もオフセット付きとなり、
+         * 「どのゾーンの 10:00 か」が受け手側で一意に決まる。
+         */
+        static ScheduleSnapshot from(ScheduleEntity entity) {
+            return new ScheduleSnapshot(entity.getTitle(), entity.getDescription(),
+                    toStorageOffset(entity.getStartAt()), toStorageOffset(entity.getEndAt()),
+                    entity.getAllDay(), entity.getLocation(), entity.getStatus());
+        }
+
+        private static OffsetDateTime toStorageOffset(LocalDateTime wallClock) {
+            return wallClock != null ? wallClock.atZone(STORAGE_ZONE).toOffsetDateTime() : null;
+        }
+    }
+
+    /**
+     * F03.18: アクティビティフィードへ {@link ActivityEvent} を発行する。
+     *
+     * <p>PERSONAL スコープは対象外（AC-07。§2.2）。{@code detail} の JSON シリアライズに失敗しても
+     * 予定本体の CRUD は絶対に失敗させない（AC-10）。ここで例外を握りつぶさず WARN ログへ理由を残した
+     * うえで、フィード発行だけをスキップして本体トランザクションから切り離す（CLAUDE.md 障害対応の原則）。</p>
+     *
+     * @param type          活動種別
+     * @param scopeSource   スコープ（team/organization）解決元のエンティティ
+     * @param targetId      {@code target_id}（フィード上の対象予定ID）
+     * @param userId        操作者ID
+     * @param title         予定の現在タイトル（{@code detail.title}）
+     * @param fields        変更フィールド差分（{@code detail.fields}）
+     * @param affectedCount 影響件数（{@code detail.affectedCount}）
+     */
+    private void publishScheduleActivity(ActivityType type, ScheduleEntity scopeSource, Long targetId, Long userId,
+                                          String title, List<Map<String, Object>> fields, long affectedCount) {
+        String scopeTypeStr = resolveScopeType(scopeSource);
+        if (SCOPE_TYPE_PERSONAL.equals(scopeTypeStr)) {
+            // AC-07: PERSONAL スコープはフィード対象外（§2.2）
+            return;
+        }
+        Long scopeId = scopeSource.isTeamScope() ? scopeSource.getTeamId() : scopeSource.getOrganizationId();
+
+        try {
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("scheduleId", targetId);
+            detail.put("title", title);
+            detail.put("fields", fields);
+            detail.put("affectedCount", affectedCount);
+            String json = objectMapper.writeValueAsString(detail);
+
+            eventPublisher.publishEvent(new ActivityEvent(
+                    type, ScopeType.valueOf(scopeTypeStr), scopeId, userId, TargetType.SCHEDULE, targetId, json));
+        } catch (Exception e) {
+            // AC-10: detail の JSON 化に失敗しても予定本体の作成・更新・削除は成功させる。
+            // 症状は握りつぶさずWARNで残し、フィード発行のみを本体処理から切り離す。
+            log.warn("アクティビティフィード発行に失敗しました（予定本体の処理には影響しません）: "
+                    + "activityType={}, targetId={}", type, targetId, e);
+        }
     }
 
     /**
@@ -268,26 +489,46 @@ public class ScheduleService {
      *
      * @param id          スケジュールID
      * @param updateScope 更新スコープ（THIS_ONLY / THIS_AND_FOLLOWING / ALL）
+     * @param userId      操作ユーザーID（認可チェック用）
      */
     @Transactional
-    public void deleteSchedule(Long id, String updateScope) {
+    public void deleteSchedule(Long id, String updateScope, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(id);
+        checkScopeAdminAccess(schedule, userId);
+
+        // F03.18 B-5: 削除操作も「1操作=1行」。SCHEDULE_CANCELLED 発行のための
+        // 削除直前タイトル・対象ID・影響件数をここで確定させる（ソフトデリート後は
+        // @SQLRestriction("deleted_at IS NULL") により取得できなくなるため）。
+        Long feedTargetId;
+        String feedTitle;
+        long affectedCount = 1;
 
         if (UPDATE_SCOPE_ALL.equals(updateScope) && schedule.getParentScheduleId() != null) {
             // 親と全子を削除
             Long parentId = schedule.getParentScheduleId();
             ScheduleEntity parent = findScheduleOrThrow(parentId);
+            feedTargetId = parentId;
+            feedTitle = parent.getTitle();
+            affectedCount = scheduleRepository.countByParentScheduleId(parentId);
             parent.softDelete();
             scheduleRepository.save(parent);
             recurrenceService.deleteChildSchedules(parentId);
         } else if (UPDATE_SCOPE_THIS_AND_FOLLOWING.equals(updateScope) && schedule.getParentScheduleId() != null) {
             // この日以降の子を削除
+            feedTargetId = schedule.getId();
+            feedTitle = schedule.getTitle();
             recurrenceService.deleteFollowingSchedules(schedule);
         } else {
             // 単体削除
+            feedTargetId = schedule.getId();
+            feedTitle = schedule.getTitle();
             schedule.softDelete();
             scheduleRepository.save(schedule);
         }
+
+        // F03.18: 予定削除をアクティビティフィードへ発行する（AC-04・AC-07・AC-08）
+        publishScheduleActivity(ActivityType.SCHEDULE_CANCELLED, schedule, feedTargetId, userId,
+                feedTitle, List.of(), affectedCount);
 
         log.info("スケジュール削除: id={}, updateScope={}", id, updateScope);
     }
@@ -301,7 +542,12 @@ public class ScheduleService {
     @Transactional
     public void cancelSchedule(Long id, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(id);
+        checkScopeAdminAccess(schedule, userId);
         validateScheduleNotCancelled(schedule);
+
+        // F03.18 A-2: cancelSchedule 由来も deleteSchedule 由来も同じ SCHEDULE_CANCELLED を
+        // 発行する（可視性フィルタ扱いは ActivityType の値のみで一意に決まる。§4.2 A-1・§5.1）。
+        String feedTitle = schedule.getTitle();
 
         schedule.cancel();
         scheduleRepository.save(schedule);
@@ -312,11 +558,22 @@ public class ScheduleService {
         // イベント発行（トランザクションコミット後に発行）
         eventPublisher.publishEvent(new ScheduleCancelledEvent(schedule.getId(), userId));
 
+        // F03.18: 予定キャンセルをアクティビティフィードへ発行する（AC-04・AC-07）
+        publishScheduleActivity(ActivityType.SCHEDULE_CANCELLED, schedule, schedule.getId(), userId,
+                feedTitle, List.of(), 1);
+
         log.info("スケジュールキャンセル: id={}", id);
     }
 
     /**
      * スケジュールを複製する。
+     *
+     * <p><b>認可（認可根治 Wave3-B6・BOLA是正）</b>: 本メソッドは
+     * {@link ScheduleCrossRefService#acceptInvitation}（クロス招待の受諾＝正当な越境複製）からも
+     * 呼ばれる共有メソッドのため、ここに per-scope 認可を埋め込むと招待受諾の正当系を壊す
+     * （{@code feedback_authz_gate_on_public_entry_not_shared_method}）。認可は public な複製 API の
+     * 入口（{@code OrgScheduleController} / {@code TeamScheduleController} の duplicate EP）で
+     * {@link #checkScopeAdminAccess(Long, Long)} を呼んで行う。</p>
      *
      * @param id     複製元スケジュールID
      * @param userId 作成者ID
@@ -327,6 +584,7 @@ public class ScheduleService {
         ScheduleEntity source = findScheduleOrThrow(id);
 
         ScheduleEntity duplicate = source.toBuilder()
+                .id(null)
                 .status(ScheduleStatus.SCHEDULED)
                 .createdBy(userId)
                 .googleCalendarEventId(null)
@@ -334,9 +592,68 @@ public class ScheduleService {
 
         // BaseEntity の id, createdAt, updatedAt は @PrePersist で再設定される
         duplicate = scheduleRepository.save(duplicate);
+        scheduleTargetService.copyTargets(source.getId(), duplicate.getId());
+
+        // F03.18 §5.1: 複製は新規作成扱いのため SCHEDULE_CREATED を発行する（AC-01・AC-07）
+        publishScheduleActivity(ActivityType.SCHEDULE_CREATED, duplicate, duplicate.getId(), userId,
+                duplicate.getTitle(), List.of(), 1);
 
         log.info("スケジュール複製: sourceId={}, newId={}", id, duplicate.getId());
         return toScheduleResponse(duplicate);
+    }
+
+    /** クロススコープ招待の受諾用。元スコープの明示対象者は複製しない。 */
+    @Transactional
+    public ScheduleEntity duplicateScheduleIntoScope(Long id, String targetScopeType,
+                                                      Long targetScopeId, Long userId) {
+        ScheduleEntity source = findScheduleOrThrow(id);
+        boolean team = SCOPE_TYPE_TEAM.equals(targetScopeType);
+        boolean organization = SCOPE_TYPE_ORGANIZATION.equals(targetScopeType);
+        if (!team && !organization) {
+            throw new IllegalArgumentException("招待先スコープが不正です");
+        }
+        ScheduleEntity duplicate = source.toBuilder()
+                .id(null)
+                .teamId(team ? targetScopeId : null)
+                .organizationId(organization ? targetScopeId : null)
+                .userId(null)
+                .parentScheduleId(null)
+                .recurrenceRule(null)
+                .googleCalendarEventId(null)
+                .status(ScheduleStatus.SCHEDULED)
+                .targetMode(ScheduleTargetMode.ALL_MEMBERS)
+                .createdBy(userId)
+                .build();
+        return scheduleRepository.save(duplicate);
+    }
+
+    /** 対象者名簿は同一スコープのアクティブメンバーにだけ返す。 */
+    public com.mannschaft.app.schedule.dto.ScheduleTargetResponse targetResponseForViewer(
+            ScheduleEntity schedule, Long viewerUserId) {
+        return scheduleTargetService.responsesForSchedules(List.of(schedule),
+                scheduleTargetService.isActiveScopeMember(schedule, viewerUserId)).get(schedule.getId());
+    }
+
+    private void updateTargetsForRecurrenceScope(ScheduleEntity schedule, UpdateScheduleRequest req,
+                                                  String updateScope) {
+        if (req.getTargetMode() == null && req.getTargetUserIds() == null) return;
+        List<ScheduleEntity> affected = new ArrayList<>();
+        if (UPDATE_SCOPE_ALL.equals(updateScope)
+                && (schedule.isRecurring() || schedule.getParentScheduleId() != null)) {
+            Long parentId = schedule.getParentScheduleId() == null ? schedule.getId() : schedule.getParentScheduleId();
+            affected.add(findScheduleOrThrow(parentId));
+            affected.addAll(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(parentId));
+        } else if (UPDATE_SCOPE_THIS_AND_FOLLOWING.equals(updateScope)
+                && schedule.getParentScheduleId() != null) {
+            affected.add(schedule);
+            affected.addAll(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(schedule.getParentScheduleId())
+                    .stream().filter(child -> child.getStartAt().isAfter(schedule.getStartAt())).toList());
+        } else {
+            affected.add(schedule);
+        }
+        affected.forEach(affectedSchedule -> scheduleTargetService.replaceForUpdate(
+                affectedSchedule, resolveScopeType(affectedSchedule), resolveScopeId(affectedSchedule),
+                req.getTargetMode(), req.getTargetUserIds()));
     }
 
     /**
@@ -359,6 +676,84 @@ public class ScheduleService {
     ScheduleEntity findScheduleOrThrow(Long id) {
         return scheduleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
+    }
+
+    /**
+     * スケジュールに対する管理操作（update/delete/cancel/duplicate）の per-scope 認可を
+     * entity 由来 scope で強制する（認可根治 Wave3-B6）。
+     *
+     * <p>TEAM/ORGANIZATION スコープは {@link AccessControlService#checkAdminOrAbove} で
+     * 当該チーム/組織の ADMIN/DEPUTY_ADMIN のみ許可する。PERSONAL スコープ（{@code userId} 設定）は
+     * ロール概念が無いため所有者本人一致で判定する
+     * （{@code project_scopetype_cross_domain_personal_mismatch}: PERSONAL を membership 系 API に
+     * 渡すと 500 になるため分岐が必須）。SYSTEM_ADMIN は短絡的に許可する。</p>
+     *
+     * <p>id 版は {@link ScheduleCrossRefService} 等、他クラスから public な操作入口で
+     * BOLA 是正のために呼び出す用途で公開する（duplicateSchedule 自体には認可を埋め込まない方針の受け皿）。</p>
+     *
+     * @param id     スケジュールID
+     * @param userId 操作ユーザーID
+     * @throws BusinessException スケジュールが存在しない場合 / 権限がない場合（COMMON_002）
+     */
+    public void checkScopeAdminAccess(Long id, Long userId) {
+        ScheduleEntity schedule = findScheduleOrThrow(id);
+        checkScopeAdminAccess(schedule, userId);
+    }
+
+    /**
+     * {@link #checkScopeAdminAccess(Long, Long)} の entity 版（既に fetch 済みの場合に使う）。
+     */
+    void checkScopeAdminAccess(ScheduleEntity schedule, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (schedule.isTeamScope()) {
+            accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), SCOPE_TYPE_TEAM);
+        } else if (schedule.isOrganizationScope()) {
+            accessControlService.checkAdminOrAbove(userId, schedule.getOrganizationId(), SCOPE_TYPE_ORGANIZATION);
+        } else if (!Objects.equals(schedule.getUserId(), userId)) {
+            // PERSONAL スコープ: 所有者本人以外は拒否（他ドメインの書込EP経由のID混同=BOLAを防ぐ）
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * スケジュールの出欠等の閲覧操作に対する per-scope 認可を entity 由来 scope で強制する
+     * （認可根治 Wave3-B6・checkMembership 水準）。{@link ScheduleAttendanceService} の
+     * getAttendances / exportAttendancesCsv から呼ばれる。
+     *
+     * @param id     スケジュールID
+     * @param userId 閲覧ユーザーID
+     * @throws BusinessException スケジュールが存在しない場合 / 権限がない場合（COMMON_002）
+     */
+    public void checkScopeViewAccess(Long id, Long userId) {
+        ScheduleEntity schedule = findScheduleOrThrow(id);
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (schedule.isTeamScope()) {
+            accessControlService.checkMembership(userId, schedule.getTeamId(), SCOPE_TYPE_TEAM);
+        } else if (schedule.isOrganizationScope()) {
+            accessControlService.checkMembership(userId, schedule.getOrganizationId(), SCOPE_TYPE_ORGANIZATION);
+        } else if (!Objects.equals(schedule.getUserId(), userId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * スケジュール作成時（entity 未生成の path 由来 scope）の per-scope 認可を強制する
+     * （認可根治 Wave3-B6）。TEAM/ORGANIZATION のみ ADMIN 必須。PERSONAL は
+     * {@code PersonalScheduleController} 経由の自己作成が正規ルートのため無条件許可、
+     * 不正な scopeType は後続の {@link #buildScheduleEntity} の switch で
+     * {@link ScheduleErrorCode#INVALID_SCOPE} として弾かれる。
+     */
+    private void checkCreateScopeAccess(Long scopeId, String scopeType, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (SCOPE_TYPE_TEAM.equals(scopeType) || SCOPE_TYPE_ORGANIZATION.equals(scopeType)) {
+            accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
+        }
     }
 
     // --- プライベートメソッド ---
@@ -387,6 +782,49 @@ public class ScheduleService {
      * <p>startAtJst / endAtJst / deadlineJst は呼び出し元で
      * {@link #toJst(OffsetDateTime)} により JST LocalDateTime に変換済みのもの。</p>
      */
+    /**
+     * 作成時の {@code min_view_role} を解決する（CMP-017b T-2 / AC-22・AC-23）。
+     *
+     * <p>{@code include_supporters}（配信軸）と {@code min_view_role}（閲覧軸）は独立設定だが、
+     * 「応援者に出欠を配るが応援者は予定を見られない」組み合わせは自己矛盾である。よって
+     * 書込時に {@code includeSupporters = TRUE ⇒ minViewRole ∈ {ANYONE, SUPPORTER_PLUS}} を強制し、
+     * 未指定時は配信軸に整合する既定へ導出する。</p>
+     *
+     * <p>この不変条件が成立することで初めて「配信母集団に入る応援者は必ず閲覧閾値も満たす」が
+     * 保証され、閲覧側の OR 迂回路（配信母集団に居れば閾値を無視して見せる）が論理的に冗長になる。</p>
+     *
+     * @param requestedMinViewRole リクエストの {@code minViewRole}（{@code null} 可＝未指定）
+     * @param includeSupporters    リクエストの {@code includeSupporters}（{@code null} 可＝既定 false）
+     * @return 保存すべき閾値
+     * @throws BusinessException 矛盾する組み合わせが明示指定された場合（400）
+     */
+    private MinViewRole resolveMinViewRole(String requestedMinViewRole, Boolean includeSupporters) {
+        boolean supportersIncluded = Boolean.TRUE.equals(includeSupporters);
+        if (requestedMinViewRole == null) {
+            // 未指定: 配信軸に整合する既定を導出する（応援者に配るなら SUPPORTER_PLUS）。
+            return supportersIncluded ? MinViewRole.SUPPORTER_PLUS : MinViewRole.MEMBER_PLUS;
+        }
+        MinViewRole requested = MinViewRole.valueOf(requestedMinViewRole);
+        assertSupporterAxesConsistent(requested, includeSupporters);
+        return requested;
+    }
+
+    /**
+     * 二軸（配信 × 閲覧）の不変条件を検証する（CMP-017b T-2）。
+     *
+     * @param minViewRole       閲覧閾値
+     * @param includeSupporters 応援者を配信母集団に含めるか（{@code null} 可）
+     * @throws BusinessException 応援者に配信しながら応援者が閲覧できない組み合わせの場合（400）
+     */
+    private void assertSupporterAxesConsistent(MinViewRole minViewRole, Boolean includeSupporters) {
+        if (!Boolean.TRUE.equals(includeSupporters) || minViewRole == null) {
+            return;
+        }
+        if (minViewRole == MinViewRole.MEMBER_PLUS || minViewRole == MinViewRole.ADMIN_ONLY) {
+            throw new BusinessException(ScheduleErrorCode.INCONSISTENT_SUPPORTER_AXES);
+        }
+    }
+
     private ScheduleEntity buildScheduleEntity(CreateScheduleRequest req, Long scopeId,
                                                String scopeType, Long userId,
                                                LocalDateTime startAtJst, LocalDateTime endAtJst,
@@ -416,13 +854,16 @@ public class ScheduleService {
                 .eventType(EventType.valueOf(req.getEventType()))
                 .visibility(req.getVisibility() != null
                         ? ScheduleVisibility.valueOf(req.getVisibility()) : ScheduleVisibility.MEMBERS_ONLY)
-                .minViewRole(req.getMinViewRole() != null
-                        ? MinViewRole.valueOf(req.getMinViewRole()) : MinViewRole.MEMBER_PLUS)
+                .minViewRole(resolveMinViewRole(req.getMinViewRole(), req.getIncludeSupporters()))
                 .minResponseRole(req.getMinResponseRole() != null
                         ? MinResponseRole.valueOf(req.getMinResponseRole()) : MinResponseRole.MEMBER_PLUS)
                 .status(ScheduleStatus.SCHEDULED)
                 .attendanceStatus(AttendanceGenerationStatus.READY)
                 .attendanceRequired(req.getAttendanceRequired())
+                .includeSupporters(req.getIncludeSupporters() != null
+                        ? req.getIncludeSupporters() : false)
+                .teamBreakdownEnabled(req.getTeamBreakdownEnabled() != null
+                        ? req.getTeamBreakdownEnabled() : false)
                 .attendanceDeadline(deadlineJst)
                 .commentOption(req.getCommentOption() != null
                         ? CommentOption.valueOf(req.getCommentOption()) : CommentOption.OPTIONAL)
@@ -447,8 +888,14 @@ public class ScheduleService {
      *
      * <p>startAt / endAt / attendanceDeadline は OffsetDateTime で受け取り、
      * JST LocalDateTime に変換して Entity に設定する。</p>
+     *
+     * <p>F03.18: 構築した更新後エンティティを呼び出し元へ返す。{@code schedule.toBuilder()} が
+     * 新しいインスタンスを作るため、呼び出し元が引数の {@code schedule} 参照をそのまま見ても
+     * 更新後の値には反映されない（JPA の merge に頼らない限り）。呼び出し元
+     * （{@link #updateSchedule}）はこの戻り値で自らの変数を差し替えることで、
+     * モックを使う単体テストでも実DBと同じ挙動でフィード差分を算出できる。</p>
      */
-    private void applyUpdateToSchedule(ScheduleEntity schedule, UpdateScheduleRequest req) {
+    private ScheduleEntity applyUpdateToSchedule(ScheduleEntity schedule, UpdateScheduleRequest req) {
         ScheduleEntity.ScheduleEntityBuilder builder = schedule.toBuilder();
 
         if (req.getTitle() != null) builder.title(req.getTitle());
@@ -459,7 +906,13 @@ public class ScheduleService {
         if (req.getAllDay() != null) builder.allDay(req.getAllDay());
         if (req.getEventType() != null) builder.eventType(EventType.valueOf(req.getEventType()));
         if (req.getVisibility() != null) builder.visibility(ScheduleVisibility.valueOf(req.getVisibility()));
-        if (req.getMinViewRole() != null) builder.minViewRole(MinViewRole.valueOf(req.getMinViewRole()));
+        if (req.getMinViewRole() != null) {
+            MinViewRole requested = MinViewRole.valueOf(req.getMinViewRole());
+            // 二軸の不変条件（CMP-017b T-2）: UpdateScheduleRequest は includeSupporters を持たないため、
+            // 更新経路で不変条件を破りうるのは «既存 include_supporters=TRUE の行の閾値を引き上げる» 側のみ。
+            assertSupporterAxesConsistent(requested, schedule.getIncludeSupporters());
+            builder.minViewRole(requested);
+        }
         if (req.getMinResponseRole() != null) builder.minResponseRole(MinResponseRole.valueOf(req.getMinResponseRole()));
         if (req.getAttendanceRequired() != null) builder.attendanceRequired(req.getAttendanceRequired());
         if (req.getAttendanceDeadline() != null) builder.attendanceDeadline(toJst(req.getAttendanceDeadline()));
@@ -482,6 +935,7 @@ public class ScheduleService {
 
         ScheduleEntity updated = builder.build();
         scheduleRepository.save(updated);
+        return updated;
     }
 
     /**
@@ -583,11 +1037,24 @@ public class ScheduleService {
         return SCOPE_TYPE_PERSONAL;
     }
 
+    private Long resolveScopeId(ScheduleEntity schedule) {
+        if (schedule.isTeamScope()) return schedule.getTeamId();
+        if (schedule.isOrganizationScope()) return schedule.getOrganizationId();
+        return schedule.getUserId();
+    }
+
     /**
      * エンティティをスケジュール一覧用レスポンスDTOに変換する。
      */
     private ScheduleResponse toScheduleResponse(ScheduleEntity entity) {
         EventCategoryResponse categoryResponse = resolveEventCategoryResponse(entity.getEventCategoryId());
+        var targets = scheduleTargetService.responsesForSchedules(List.of(entity), true)
+                .getOrDefault(entity.getId(), new ScheduleTargetResponse(
+                        entity.getTargetMode() == null
+                                ? ScheduleTargetMode.ALL_MEMBERS.name()
+                                : entity.getTargetMode().name(),
+                        0,
+                        List.of()));
         return ScheduleResponse.builder()
                 .id(entity.getId())
                 .content(new ScheduleResponse.ScheduleContentDto(
@@ -605,6 +1072,9 @@ public class ScheduleService {
                         entity.getSourceScheduleId()))
                 .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), null))
                 .myAttendanceStatus(null)
+                .targetMode(targets.targetMode())
+                .targetCount(targets.targetCount())
+                .targets(targets.targets())
                 .build();
     }
 

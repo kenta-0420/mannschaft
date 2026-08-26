@@ -1,12 +1,14 @@
 import Aura from '@primeuix/themes/aura'
+import { buildGateRouteRules } from './app/constants/featureGates'
 
 // ──────────────────────────────────────────────────────────────────────────
 // セキュリティヘッダー / CSP（nuxt-security）
 // 設計書: docs/security/03_security_headers_and_csp.md §2.1 / §3 / §7
 // ──────────────────────────────────────────────────────────────────────────
 
-// API ベース URL。connect-src に追加する必要がある（同一オリジンでない場合）。
+// ブラウザ用 API ベース URL。connect-src に追加する必要がある（同一オリジンでない場合）。
 // E2E プロキシ（NUXT_API_PROXY=true）時は API が Nuxt 同一オリジン経由になるため 'self' で足りる。
+// 本番（Cloudflare 経由 FE/BE 同一オリジン構成）では NUXT_PUBLIC_API_BASE='' (空文字) で運用する。
 const apiBase = process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080'
 
 // CSP 違反レポートの送信先（report-uri）。
@@ -25,15 +27,38 @@ const cspReportUri = process.env.NUXT_PUBLIC_CSP_REPORT_URI ?? '/api/v1/security
 // - apiBase（バックエンド API オリジン。プロキシ時も無害なので含める）
 // - Google Fonts（preconnect / CSS 取得）
 // - ws:/wss:（STOMP WebSocket / dev HMR。apiBase 由来の ws もカバー）
+// upgrade-insecure-requests が http:// → https:// に昇格させるため両方を許可する
+// apiBase が空文字（本番同一オリジン構成: NUXT_PUBLIC_API_BASE=''）のとき connectSrc に混入しないようガードする
+const apiBaseSrc = apiBase
+  ? apiBase.startsWith('http://')
+    ? [apiBase, apiBase.replace('http://', 'https://')]
+    : [apiBase]
+  : []
+
+// プロフィールメディアの presigned PUT はブラウザからストレージ（本番:R2 / ローカル:MinIO）へ
+// 直接 fetch するため connect-src に許可が必要。無いと CSP で Failed to fetch になりアップロード不能。
+// ローカル既定: MinIO http://localhost:9000 / 本番: NUXT_PUBLIC_MEDIA_UPLOAD_ORIGIN に R2 origin を注入。
+// 例: NUXT_PUBLIC_MEDIA_UPLOAD_ORIGIN=https://pub-xxxxx.r2.dev（R2 の公開エンドポイント origin）
+const mediaUploadOrigin = process.env.NUXT_PUBLIC_MEDIA_UPLOAD_ORIGIN ?? 'http://localhost:9000'
+const mediaUploadSrc = mediaUploadOrigin
+  ? mediaUploadOrigin.startsWith('http://')
+    ? [mediaUploadOrigin, mediaUploadOrigin.replace('http://', 'https://')]
+    : [mediaUploadOrigin]
+  : []
+
 const connectSrc = [
   "'self'",
-  apiBase,
+  ...apiBaseSrc,
+  ...mediaUploadSrc,
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
   // STOMP WebSocket（@stomp/stompjs）と dev サーバ HMR。
   // 本番 API が wss、dev が ws のため双方を許可する。
   'ws:',
   'wss:',
+  // F08.9 P5 Stripe.js: SetupIntent confirm / Elements が Stripe API へ XHR/fetch する。
+  // 設計書: docs/features/F08.9_membership_billing_paywall/04_ui_i18n.md §2.2 / docs/security/03_security_headers_and_csp.md
+  'https://api.stripe.com',
 ]
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
@@ -65,11 +90,20 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
 
   imports: {
-    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show'],
+    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match', 'composables/returnStayPlan'],
   },
 
   devServer: {
-    host: '0.0.0.0',
+    // 【根治】'0.0.0.0' は IPv4 のみの bind のため [::]:3000（IPv6 側）が空き、
+    // そこを dev サーバー由来の WebSocket が掴んでしまう。Windows の名前解決は
+    // localhost → ::1 を優先するため、この状態で http://localhost:3000 を開くと
+    // アプリではなく WS サーバーに当たり、恒久的に 426 Upgrade Required が返っていた
+    // （2026-07-28 に実機で確認）。
+    // '::' はデュアルスタック bind となり、Node/Nuxt が IPv4/IPv6 の両方で 3000 を
+    // 直接持つため、localhost / 127.0.0.1 / [::1] のいずれでも 200 になる
+    // （2026-08-04 実測で確認。HMR ポート分離だけでは [::]:3000 に別の WS サーバーが
+    // 残り根治しなかったため、この host 変更が正しい根治策）。
+    host: '::',
   },
 
   modules: [
@@ -119,7 +153,11 @@ export default defineNuxtConfig({
         'default-src': ["'self'"],
         // script-src: nonce は nuxt-security が自動付与。
         // 'strict-dynamic' により nonce 付きスクリプトがロードする子スクリプトを許可。
-        'script-src': ["'self'", "'nonce-{{nonce}}'", "'strict-dynamic'"],
+        // F08.9 P5: Stripe.js 本体（https://js.stripe.com/v3）の読み込みを許可。
+        //   loadStripe は nonce 付き親スクリプトから動的に <script src> を挿入するため
+        //   'strict-dynamic' 下でも src 許可リストが効くよう明示する（過剰緩和なし）。
+        // 設計書: docs/features/F08.9_membership_billing_paywall/04_ui_i18n.md §2.2
+        'script-src': ["'self'", "'nonce-{{nonce}}'", "'strict-dynamic'", 'https://js.stripe.com'],
         // style-src: PrimeVue(Aura)/Tailwind の動的インラインスタイルのため
         // 'unsafe-inline' を当面維持する。
         // 【実地検証の結論（2026-05-26 / feature/security-fe-csp-refine）】
@@ -140,17 +178,24 @@ export default defineNuxtConfig({
         'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
         // img-src: アバター/アップロード画像/OGP。R2/CDN は環境依存のため https: を許容。
         // @nuxt/image の最適化経路（/_ipx/）は 'self' でカバーされる。
-        'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+        // presigned アップロード後の画像表示元（本番:R2 https / ローカル:MinIO http://localhost:9000）も
+        // 許可する。connect-src だけだと直 PUT は通るが <img> 表示が img-src で CSP ブロックされる
+        // （本番 R2 は https: で既にカバーされるが、ローカル MinIO は http なので mediaUploadSrc が必要）。
+        'img-src': ["'self'", 'data:', 'blob:', 'https:', ...mediaUploadSrc],
         'connect-src': connectSrc,
         // frame-src: PublicMapEmbed.vue の Google Maps 埋め込み。
-        'frame-src': ['https://www.google.com'],
+        // F08.9 P5: Stripe.js の PaymentElement iframe（js.stripe.com）と
+        //   3DS 認証チャレンジ iframe（hooks.stripe.com）を許可。
+        // 設計書: docs/features/F08.9_membership_billing_paywall/04_ui_i18n.md §2.2
+        'frame-src': ['https://www.google.com', 'https://js.stripe.com', 'https://hooks.stripe.com'],
         // worker-src: @vite-pwa/nuxt の service worker。
         'worker-src': ["'self'", 'blob:'],
         'manifest-src': ["'self'"],
         'frame-ancestors': ["'none'"],
         'base-uri': ["'self'"],
         'form-action': ["'self'"],
-        'upgrade-insecure-requests': true,
+        // 本番（HTTPS）では有効。dev（HTTP）では BE が HTTP のため false にする。
+        'upgrade-insecure-requests': process.env.NODE_ENV === 'production',
         // report-uri: CSP 違反レポートの送信先。将来の収集基盤（F12.5 エラー追跡）へ向ける。
         // report-uri は非推奨化されつつあるが広範なブラウザ互換のため採用する。
         // report-to（後継）は CSP ディレクティブ単体では機能せず、別途
@@ -239,15 +284,86 @@ export default defineNuxtConfig({
       navigateFallback: '/',
       globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
       runtimeCaching: [
+        // ─────────────────────────────────────────────────────────────────
+        // API キャッシュポリシー（セキュリティ上重要）
+        //
+        // 認証付き API レスポンスを Service Worker キャッシュに残すと、
+        // ログアウト後・ユーザー切替後に別ユーザーが旧ユーザーのデータを
+        // 閲覧できる情報漏洩リスクが生じる。
+        // そのため /api/v1/** のキャッシュは「認証不要な公開 API のみ」に
+        // 限定し、それ以外は必ず NetworkOnly（キャッシュ禁止）とする。
+        //
+        // workbox は先勝ちマッチのため、以下の順序が重要:
+        //   1. /api/v1/public/** → NetworkFirst（公開コンテンツ・鮮度優先）
+        //   2. /api/v1/recruitment-categories → SWR（静的マスタ・鮮度不要）
+        //   3. その他 /api/v1/** → NetworkOnly（セーフガード）
+        // ─────────────────────────────────────────────────────────────────
+
+        // 公開コンテンツ API（認証不要）は NetworkFirst — 「鮮度」を最優先する。
+        //
+        // 【なぜ SWR をやめたか】
+        // 旧設定は StaleWhileRevalidate + maxAgeSeconds 86400（24時間）だった。
+        // SWR は「キャッシュを即返し、裏で更新する」戦略のため、投稿者が記録を
+        // 非公開に戻す / 削除しても、一度でも閲覧した端末では最大 24 時間
+        // 古い本文が表示され続けた。「間違って公開したので急いで消した」場合に
+        // 投稿者の意思がまったく届かない、という質の悪い不具合になっていた。
+        //
+        // 【NetworkFirst のコストはゼロ】
+        // SWR は workbox-strategies/StaleWhileRevalidate の実装上、キャッシュ
+        // ヒットの有無にかかわらず毎回 fetchAndCachePut() を発火する。つまり
+        // ネットワーク往復の回数は SWR と NetworkFirst で同一であり、
+        // PublicApiRateLimitFilter（未認証 60 req/min/IP）の消費量は変わらない。
+        // 変わるのは「レスポンスを画面に渡すのがネットワーク応答後になる」点だけ。
+        //
+        // 【オフライン体験は維持する】
+        // networkTimeoutSeconds: 3 で、圏外・低速回線では 3 秒でキャッシュに
+        // フォールバックする。非公開化後に BE が 404 を返す場合、NetworkFirst は
+        // その 404 をそのまま画面へ返す（キャッシュ参照はネットワーク「失敗」時のみ）。
+        //
+        // 【maxAgeSeconds を 24時間 → 1時間 に短縮した理由】
+        // NetworkFirst ではこの値は「オフライン時のフォールバック可能期間」だけを
+        // 意味する。公開ページのオフライン利用は電車のトンネル・エレベーター等の
+        // 一時的な断線が実態なので 1 時間で十分であり、かつ「消したものが見える」
+        // 最悪ケースを 24時間 → 1時間 に圧縮できる。
+        //
+        // 【cacheName は 'api-cache' のまま維持】
+        // 既に端末に配布済みの古い api-cache を孤児化させないため。名前を変えると
+        // 旧キャッシュは誰も参照・失効させない残骸になる。同名を維持することで
+        // 旧エントリは NetworkFirst の成功レスポンスで上書きされ、
+        // ExpirationPlugin の新しい 1 時間ルールで掃除される。
         {
-          urlPattern: /^https?:\/\/.*\/api\/v1\/.*$/,
-          handler: 'StaleWhileRevalidate' as const,
+          urlPattern: /\/api\/v1\/public\//,
+          handler: 'NetworkFirst' as const,
           method: 'GET',
           options: {
             cacheName: 'api-cache',
-            expiration: { maxEntries: 200, maxAgeSeconds: 86400 },
+            networkTimeoutSeconds: 3,
+            expiration: { maxEntries: 200, maxAgeSeconds: 3600 },
             cacheableResponse: { statuses: [0, 200] },
           },
+        },
+        // 静的マスタ（募集カテゴリ一覧）は StaleWhileRevalidate 24時間を維持。
+        // 運用バッチでしか変わらない参照データで鮮度要件が無く、絞り込み UI の
+        // 即時描画が効く。公開コンテンツと maxAgeSeconds が異なるため、
+        // ExpirationPlugin の設定衝突を避けて別 cacheName に分離する。
+        {
+          urlPattern: /\/api\/v1\/recruitment-categories(?=[?#]|$)/,
+          handler: 'StaleWhileRevalidate' as const,
+          method: 'GET',
+          options: {
+            cacheName: 'api-static-cache',
+            expiration: { maxEntries: 20, maxAgeSeconds: 86400 },
+            cacheableResponse: { statuses: [0, 200] },
+          },
+        },
+        // 認証付き API は NetworkOnly（キャッシュ禁止）。
+        // 上の公開 API 用エントリがマッチしなかった /api/v1/** 全体に適用。
+        // 将来誰かが「全 API をキャッシュしたい」という設定を追加しても、
+        // workbox の先勝ちマッチによりこのエントリが防波堤として機能する。
+        {
+          urlPattern: /\/api\/v1\//,
+          handler: 'NetworkOnly' as const,
+          method: 'GET',
         },
         {
           urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
@@ -281,21 +397,49 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // F10.6 Phase 10-γ-③-b: SSRエラー転送用内部トークン（サーバーサイドのみ）
     internalLogToken: process.env.NUXT_INTERNAL_LOG_TOKEN || 'dev-internal-token',
+    // Nitro サーバー（SSR）側からバックエンドを叩く際の内部 API ベース URL（サーバーサイドのみ）。
+    // ブラウザ用 NUXT_PUBLIC_API_BASE は本番で '' (空文字・相対パス) にできるが、
+    // Nitro サーバーは相対パスでは BE に到達できないため、絶対 URL を別途保持する。
+    // 設計書: docs/security/03_security_headers_and_csp.md §2.1（apiBase 二層構成）
+    internalApiBase: process.env.NUXT_INTERNAL_API_BASE ?? 'http://localhost:8080',
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080',
+      // フロントエンドのベース URL（canonical / hreflang / JSON-LD 等の SEO 用）。
+      // NUXT_PUBLIC_API_BASE=''（同一オリジン構成）では apiBase から FE の origin を
+      // 逆算できないため、専用の環境変数で明示する。
+      // 設計書: docs/security/03_security_headers_and_csp.md §4.1 / useSeoPublicPage.ts
+      baseUrl: process.env.NUXT_PUBLIC_BASE_URL ?? '',
       // F18 SELF_ISSUED_BALANCE 機能フラグ（2026-05-17 マスター御裁可で凍結）。
       // 資金決済法（前払式支払手段＝自家型）対応のため法務整備が整うまで一時凍結。
       // 設計書: docs/features/F18_point_card_wallet.md §1.4 / §16 / §17
       // 既定 false（凍結中）。再開時は NUXT_PUBLIC_F18_BALANCE_ENABLED=true で復活可能。
       f18BalanceEnabled: process.env.NUXT_PUBLIC_F18_BALANCE_ENABLED === 'true',
+      // F08.9 P5 継続課金（Stripe.js）公開可能キー。
+      // クライアントで `loadStripe(publishableKey)` に渡す。公開鍵は秘匿情報ではない（pk_*）が、
+      // 環境（test/live）で切り替えるため値はコミットせず環境変数から注入する。
+      // 未設定（空文字）の場合は useStripeSetup が明示エラーを投げる（症状を隠さない）。
+      // 設計書: docs/features/F08.9_membership_billing_paywall/04_ui_i18n.md §2.2
+      stripePublishableKey: process.env.NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '',
     },
   },
 
   // E2E テスト時（NUXT_API_PROXY=true 環境変数）は API を Nuxt サーバー経由でプロキシする。
   // これにより CORS プリフライト問題を回避し、Playwright のルートインターセプトが確実に機能する。
-  routeRules: process.env.NUXT_API_PROXY === 'true' ? {
-    '/api/v1/**': { proxy: 'http://localhost:8080/api/v1/**' },
-  } : {},
+  routeRules: {
+    // 未公開機能（Gate 基盤工事②）のガード対象パスは SSR 対象外にする。
+    // SSR 実行時は公開フラグを取得できない（localStorage のトークンに依存）ため、
+    // フラグ未確定のまま未公開ページの HTML がサーバーから出力されるのを防ぐ
+    // （route ガード middleware feature-gate.global.ts の ssr-defer と対になっている）。
+    // 対応表は app/constants/featureGates.ts が単一の正（YAML パーサ依存・コード生成は無し）。
+    ...buildGateRouteRules(),
+    // 認証フォームは SEO を必要としない。SSR で操作不能なフォームを先に配信すると、
+    // クライアントのハイドレーションが遅延・失敗した際にログイン不能になるため、
+    // 最初からクライアントで操作可能な状態として描画する。
+    '/login': { ssr: false },
+    ...(process.env.NUXT_API_PROXY === 'true'
+      ? { '/api/v1/**': { proxy: `${apiBase}/api/v1/**` } }
+      : {}),
+  },
 
   // ──────────────────────────────────────────────────────────────────────
   // dev 限定: CSP 違反レポート (report-uri) を BE(:8080) へフォワードする。
@@ -312,7 +456,11 @@ export default defineNuxtConfig({
         ? {}
         : {
             '/api/v1/security/csp-reports': {
-              target: `${apiBase}/api/v1/security/csp-reports`,
+              // devProxy は dev 専用（本番には適用されない）。
+              // apiBase が空文字（本番同一オリジン構成）の場合もフォールバックとして
+              // localhost:8080 を使う（dev で NUXT_PUBLIC_API_BASE='' のケースは想定しないが、
+              // 空文字が target に混入して無効な URL になる事故を防ぐ）。
+              target: `${apiBase || 'http://localhost:8080'}/api/v1/security/csp-reports`,
               changeOrigin: true,
             },
           },
@@ -334,16 +482,19 @@ export default defineNuxtConfig({
           'ja/pwa.json',
           'ja/recruitment.ts',
           'ja/quick_memo.json',
+          'ja/reflection.json',
           'ja/timeline_digest.json',
           'ja/translation.json',
           'ja/equipment.json',
           'ja/friends.json',
+          'ja/contact.json',
           'ja/announcement.json',
           'ja/profile_media.json',
           'ja/appearance.json',
           'ja/event.json',
           'ja/committee.json',
           'ja/jobmatching.json',
+          'ja/matching.json',
           'ja/shift.json',
           'ja/care.json',
           'ja/surveys.json',
@@ -359,6 +510,7 @@ export default defineNuxtConfig({
           'ja/disclosure.json',
           'ja/error_report.json',
           'ja/org_sidebar.json',
+          'ja/team_sidebar.json',
           'ja/repair_plan.json',
           'ja/succession.json',
           'ja/wallet.json',
@@ -375,6 +527,19 @@ export default defineNuxtConfig({
           'ja/market.json',
           'ja/inbox.json',
           'ja/schedule.json',
+          'ja/return_stay_plan.json',
+          'ja/payment.json',
+          'ja/match.json',
+          'ja/tournament.json',
+          'ja/file_sharing.json',
+          'ja/admin_report.json',
+          'ja/system_admin_incident_banner.json',
+          'ja/admin_console.json',
+          'ja/feedback.json',
+          'ja/circulation.json',
+          'ja/parental-consent.json',
+          'ja/billing.json',
+          'ja/global_nav.json',
         ],
       },
       {
@@ -391,16 +556,19 @@ export default defineNuxtConfig({
           'en/pwa.json',
           'en/recruitment.ts',
           'en/quick_memo.json',
+          'en/reflection.json',
           'en/timeline_digest.json',
           'en/translation.json',
           'en/equipment.json',
           'en/friends.json',
+          'en/contact.json',
           'en/announcement.json',
           'en/profile_media.json',
           'en/appearance.json',
           'en/event.json',
           'en/committee.json',
           'en/jobmatching.json',
+          'en/matching.json',
           'en/shift.json',
           'en/care.json',
           'en/surveys.json',
@@ -416,6 +584,7 @@ export default defineNuxtConfig({
           'en/disclosure.json',
           'en/error_report.json',
           'en/org_sidebar.json',
+          'en/team_sidebar.json',
           'en/repair_plan.json',
           'en/succession.json',
           'en/wallet.json',
@@ -432,6 +601,19 @@ export default defineNuxtConfig({
           'en/market.json',
           'en/inbox.json',
           'en/schedule.json',
+          'en/return_stay_plan.json',
+          'en/payment.json',
+          'en/match.json',
+          'en/tournament.json',
+          'en/file_sharing.json',
+          'en/admin_report.json',
+          'en/system_admin_incident_banner.json',
+          'en/admin_console.json',
+          'en/feedback.json',
+          'en/circulation.json',
+          'en/parental-consent.json',
+          'en/billing.json',
+          'en/global_nav.json',
         ],
       },
       {
@@ -448,16 +630,19 @@ export default defineNuxtConfig({
           'zh/pwa.json',
           'zh/recruitment.ts',
           'zh/quick_memo.json',
+          'zh/reflection.json',
           'zh/timeline_digest.json',
           'zh/translation.json',
           'zh/equipment.json',
           'zh/friends.json',
+          'zh/contact.json',
           'zh/announcement.json',
           'zh/profile_media.json',
           'zh/appearance.json',
           'zh/event.json',
           'zh/committee.json',
           'zh/jobmatching.json',
+          'zh/matching.json',
           'zh/shift.json',
           'zh/care.json',
           'zh/surveys.json',
@@ -473,6 +658,7 @@ export default defineNuxtConfig({
           'zh/disclosure.json',
           'zh/error_report.json',
           'zh/org_sidebar.json',
+          'zh/team_sidebar.json',
           'zh/repair_plan.json',
           'zh/succession.json',
           'zh/wallet.json',
@@ -489,6 +675,19 @@ export default defineNuxtConfig({
           'zh/market.json',
           'zh/inbox.json',
           'zh/schedule.json',
+          'zh/return_stay_plan.json',
+          'zh/payment.json',
+          'zh/match.json',
+          'zh/tournament.json',
+          'zh/file_sharing.json',
+          'zh/admin_report.json',
+          'zh/system_admin_incident_banner.json',
+          'zh/admin_console.json',
+          'zh/feedback.json',
+          'zh/circulation.json',
+          'zh/parental-consent.json',
+          'zh/billing.json',
+          'zh/global_nav.json',
         ],
       },
       {
@@ -505,16 +704,19 @@ export default defineNuxtConfig({
           'ko/pwa.json',
           'ko/recruitment.ts',
           'ko/quick_memo.json',
+          'ko/reflection.json',
           'ko/timeline_digest.json',
           'ko/translation.json',
           'ko/equipment.json',
           'ko/friends.json',
+          'ko/contact.json',
           'ko/announcement.json',
           'ko/profile_media.json',
           'ko/appearance.json',
           'ko/event.json',
           'ko/committee.json',
           'ko/jobmatching.json',
+          'ko/matching.json',
           'ko/shift.json',
           'ko/care.json',
           'ko/surveys.json',
@@ -530,6 +732,7 @@ export default defineNuxtConfig({
           'ko/disclosure.json',
           'ko/error_report.json',
           'ko/org_sidebar.json',
+          'ko/team_sidebar.json',
           'ko/repair_plan.json',
           'ko/succession.json',
           'ko/wallet.json',
@@ -546,6 +749,19 @@ export default defineNuxtConfig({
           'ko/market.json',
           'ko/inbox.json',
           'ko/schedule.json',
+          'ko/return_stay_plan.json',
+          'ko/payment.json',
+          'ko/match.json',
+          'ko/tournament.json',
+          'ko/file_sharing.json',
+          'ko/admin_report.json',
+          'ko/system_admin_incident_banner.json',
+          'ko/admin_console.json',
+          'ko/feedback.json',
+          'ko/circulation.json',
+          'ko/parental-consent.json',
+          'ko/billing.json',
+          'ko/global_nav.json',
         ],
       },
       {
@@ -562,16 +778,19 @@ export default defineNuxtConfig({
           'es/pwa.json',
           'es/recruitment.ts',
           'es/quick_memo.json',
+          'es/reflection.json',
           'es/timeline_digest.json',
           'es/translation.json',
           'es/equipment.json',
           'es/friends.json',
+          'es/contact.json',
           'es/announcement.json',
           'es/profile_media.json',
           'es/appearance.json',
           'es/event.json',
           'es/committee.json',
           'es/jobmatching.json',
+          'es/matching.json',
           'es/shift.json',
           'es/care.json',
           'es/surveys.json',
@@ -587,6 +806,7 @@ export default defineNuxtConfig({
           'es/disclosure.json',
           'es/error_report.json',
           'es/org_sidebar.json',
+          'es/team_sidebar.json',
           'es/repair_plan.json',
           'es/succession.json',
           'es/wallet.json',
@@ -603,6 +823,19 @@ export default defineNuxtConfig({
           'es/market.json',
           'es/inbox.json',
           'es/schedule.json',
+          'es/return_stay_plan.json',
+          'es/payment.json',
+          'es/match.json',
+          'es/tournament.json',
+          'es/file_sharing.json',
+          'es/admin_report.json',
+          'es/system_admin_incident_banner.json',
+          'es/admin_console.json',
+          'es/feedback.json',
+          'es/circulation.json',
+          'es/parental-consent.json',
+          'es/billing.json',
+          'es/global_nav.json',
         ],
       },
       {
@@ -619,16 +852,19 @@ export default defineNuxtConfig({
           'de/pwa.json',
           'de/recruitment.ts',
           'de/quick_memo.json',
+          'de/reflection.json',
           'de/timeline_digest.json',
           'de/translation.json',
           'de/equipment.json',
           'de/friends.json',
+          'de/contact.json',
           'de/announcement.json',
           'de/profile_media.json',
           'de/appearance.json',
           'de/event.json',
           'de/committee.json',
           'de/jobmatching.json',
+          'de/matching.json',
           'de/shift.json',
           'de/care.json',
           'de/surveys.json',
@@ -644,6 +880,7 @@ export default defineNuxtConfig({
           'de/disclosure.json',
           'de/error_report.json',
           'de/org_sidebar.json',
+          'de/team_sidebar.json',
           'de/repair_plan.json',
           'de/succession.json',
           'de/wallet.json',
@@ -660,6 +897,19 @@ export default defineNuxtConfig({
           'de/market.json',
           'de/inbox.json',
           'de/schedule.json',
+          'de/return_stay_plan.json',
+          'de/payment.json',
+          'de/match.json',
+          'de/tournament.json',
+          'de/file_sharing.json',
+          'de/admin_report.json',
+          'de/system_admin_incident_banner.json',
+          'de/admin_console.json',
+          'de/feedback.json',
+          'de/circulation.json',
+          'de/parental-consent.json',
+          'de/billing.json',
+          'de/global_nav.json',
         ],
       },
     ],
@@ -672,7 +922,10 @@ export default defineNuxtConfig({
     },
     langDir: 'locales/',
     detectBrowserLanguage: {
-      useCookie: false,
+      // useCookie:true → SSR が Cookie からロケールを確定し、ハイドレーション mismatch を根治する。
+      // リロード後もロケールが cookie 経由で復元されるためナビバーが日本語に戻るバグ（#2）を根治。
+      useCookie: true,
+      cookieKey: 'i18n_locale',
       redirectOn: 'root',
     },
   },
@@ -704,10 +957,20 @@ export default defineNuxtConfig({
     transpile: ['frappe-gantt'],
   },
 
-  // GitHub Actions (CI=true) では SSR バンドルロード自体が 4GB OOM を引き起こすため
-  // SPA モード（ssr: false）で Nitro SSR バンドルをスキップする。
-  // nuxt generate が index.html + クライアント資産のみ生成し Lighthouse CI で計測可能。
-  ...(process.env.CI === 'true' ? { ssr: false } : {}),
+  // Lighthouse CI（nuxt generate）では SSR バンドルロード自体が 4GB OOM を引き起こすため
+  // SPA モード（ssr: false）で Nitro SSR バンドルをスキップし、index.html + クライアント資産
+  // のみ生成して計測可能にする。専用フラグ NUXT_GENERATE_SPA=true（lighthouse-ci.yml が付与）
+  // のときだけ適用する。
+  //
+  // 【重要】かつては `process.env.CI === 'true'` で分岐していたが、これは Smoke E2E
+  // （playwright が CI=true 下で `npm run dev` を起動）も巻き込んでいた。nuxt 3.21.6+ では
+  // vite-node IPC が socket ベースに変更され、`ssr: false` の dev サーバーは
+  // `vite:serverCreated` の SSR サーバーフックが発火しないため NUXT_VITE_NODE_OPTIONS.socketPath
+  // が設定されず、SSR レンダリングが「Vite Node IPC socket path not configured」で 500 を返す。
+  // その結果 playwright webServer が応答待ちのまま 240s timeout していた
+  // （nuxt#35033 系のリグレッション。3.21.7+ では先に rollupOptions.input でクラッシュ）。
+  // Smoke E2E は SSR を有効にすれば正常起動するため、SPA 化は Lighthouse 限定に戻す。
+  ...(process.env.NUXT_GENERATE_SPA === 'true' ? { ssr: false } : {}),
 
   vite: {
     server: {
@@ -716,7 +979,30 @@ export default defineNuxtConfig({
     optimizeDeps: {
       // date-holidays は pure ESM パッケージのため、Vite が事前バンドルしないと
       // dev server の SSR コンテキストでモジュール評価が失敗する
-      include: ['date-holidays', 'dexie'],
+      // chart.js / dompurify / vuedraggable は遅延ロードされる詳細ページで初めて参照される。
+      // 未指定だと初回 SPA 遷移中に Vite が依存を発見してページ全体を reload し、
+      // URL 確定前の一覧へ戻るため、dev server 起動時に事前最適化しておく。
+      include: ['date-holidays', 'dexie', 'chart.js', 'dompurify', 'vuedraggable'],
     },
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 本番ビルド（nuxt build）のメモリ枯渇対策（CMP-260821-2130）
+  // ──────────────────────────────────────────────────────────────────────────
+  // 実測（6回のビルド）で本番ビルドが OOM で完走しないことを確認済み。
+  // 主因はサーバー側ソースマップ: Nuxt 3 の既定は本番で { server: true, client: false } だが、
+  // Nuxt 3.21.11 はこれを Vite の SSR ビルドへ渡すだけでなく、SSR のマップを Nitro へ
+  // 再投入するプラグインまで動かすため、同じコストを2回払っていた
+  // （実測: 無効化前は 4096MB/8192MB いずれの上限でも死亡、無効化後は 8192MB で完走・9,482MB / swap 0）。
+  // 本番の起動コマンドは `node .output/server/index.mjs` で `--enable-source-maps` が付いておらず、
+  // Node はこのフラグ無しではソースマップを使わないため、生成されていたサーバー側ソースマップは
+  // 本番で一度も使われていなかった（エラー監視基盤も未導入で、クライアント側ソースマップの使い先も無い）。
+  //
+  // 【重要】必ず $production 限定にすること。素で `sourcemap: {...}` を書くと、設定ローダー c12 が
+  // 環境別上書きとして扱う対象から外れて `npm run dev` にも常時適用されてしまい、開発時のデバッグで
+  // ソースマップが失われる（nuxt.options.sourcemap.{server,client} は多数のビルドプラグインが
+  // 開発・本番を区別せず参照するため、影響範囲が広い）。
+  $production: {
+    sourcemap: { server: false, client: false },
   },
 })

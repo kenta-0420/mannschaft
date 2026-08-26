@@ -75,27 +75,20 @@ public class EventTicketTypeService {
     /**
      * チケット種別を更新する。
      *
+     * <p>親子BOLA根治: {@code ticketTypeId} が {@code eventId} に属さない場合は 404 で秘匿する。</p>
+     *
+     * @param eventId      イベントID（URL パス由来。親子突合に使用）
      * @param ticketTypeId チケット種別ID
      * @param request      更新リクエスト
      * @return 更新されたチケット種別レスポンス
      */
     @Transactional
-    public TicketTypeResponse updateTicketType(Long ticketTypeId, UpdateTicketTypeRequest request) {
-        EventTicketTypeEntity entity = findTicketTypeOrThrow(ticketTypeId);
+    public TicketTypeResponse updateTicketType(Long eventId, Long ticketTypeId, UpdateTicketTypeRequest request) {
+        EventTicketTypeEntity entity = findTicketTypeOrThrow(eventId, ticketTypeId);
 
-        EventTicketTypeEntity updated = entity.toBuilder()
-                .name(request.getName() != null ? request.getName() : entity.getName())
-                .description(request.getDescription() != null ? request.getDescription() : entity.getDescription())
-                .price(request.getPrice() != null ? request.getPrice() : entity.getPrice())
-                .currency(request.getCurrency() != null ? request.getCurrency() : entity.getCurrency())
-                .maxQuantity(request.getMaxQuantity() != null ? request.getMaxQuantity() : entity.getMaxQuantity())
-                .minRegistrationRole(request.getMinRegistrationRole() != null
-                        ? request.getMinRegistrationRole() : entity.getMinRegistrationRole())
-                .isActive(request.getIsActive() != null ? request.getIsActive() : entity.getIsActive())
-                .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder())
-                .build();
-
-        EventTicketTypeEntity saved = ticketTypeRepository.save(updated);
+        // managed entity を直接ミューテートして save → UPDATE が保証される（id=null INSERT 化バグ根治）
+        entity.applyUpdate(request);
+        EventTicketTypeEntity saved = ticketTypeRepository.save(entity);
         log.info("チケット種別更新: ticketTypeId={}", ticketTypeId);
         return eventMapper.toTicketTypeResponse(saved);
     }
@@ -103,19 +96,23 @@ public class EventTicketTypeService {
     /**
      * チケット種別詳細を取得する。
      *
+     * <p>親子BOLA根治: {@code ticketTypeId} が {@code eventId} に属さない場合は 404 で秘匿する。</p>
+     *
+     * @param eventId      イベントID（URL パス由来。親子突合に使用）
      * @param ticketTypeId チケット種別ID
      * @return チケット種別レスポンス
      */
-    public TicketTypeResponse getTicketType(Long ticketTypeId) {
-        EventTicketTypeEntity entity = findTicketTypeOrThrow(ticketTypeId);
+    public TicketTypeResponse getTicketType(Long eventId, Long ticketTypeId) {
+        EventTicketTypeEntity entity = findTicketTypeOrThrow(eventId, ticketTypeId);
         return eventMapper.toTicketTypeResponse(entity);
     }
 
     /**
-     * チケット種別を取得する。存在しない場合は例外をスローする。
+     * チケット種別IDとイベントIDでチケット種別を取得する。存在しない・イベント帰属不一致の場合は
+     * 存在を漏らさないため同一の TICKET_TYPE_NOT_FOUND（404）で例外をスローする（親子BOLA根治）。
      */
-    private EventTicketTypeEntity findTicketTypeOrThrow(Long ticketTypeId) {
-        return ticketTypeRepository.findById(ticketTypeId)
+    private EventTicketTypeEntity findTicketTypeOrThrow(Long eventId, Long ticketTypeId) {
+        return ticketTypeRepository.findByIdAndEventId(ticketTypeId, eventId)
                 .orElseThrow(() -> new BusinessException(EventErrorCode.TICKET_TYPE_NOT_FOUND));
     }
 }

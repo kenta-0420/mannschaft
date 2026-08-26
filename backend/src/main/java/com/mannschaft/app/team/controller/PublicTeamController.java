@@ -1,9 +1,9 @@
 package com.mannschaft.app.team.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.team.dto.TeamPublicDetailResponse;
 import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
-import java.util.UUID;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,7 +30,25 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>不在 / 削除済 / archived / visibility != PUBLIC → 一律 404
  *       （IDOR / エニュメレーション対策）</li>
  * </ul>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 1 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/teams/*").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F15.4 Phase 5-α 店舗詳細の未ログイン公開 API。<b>visibility=PUBLIC のチームのみ</b>
+ * 抑制版 DTO を返し、不在／削除済／archived／PUBLIC 以外は一律 404 で状態を区別しない（IDOR・エニュメレーション対策）
+ * 。認証必須の {@code GET /api/v1/teams/*} とは分離されている。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic("/api/v1/public/teams/*")
 @RestController
 @RequestMapping("/api/v1/public/teams")
 @Tag(name = "店舗詳細 公開 API (F15.4)")
@@ -45,13 +63,13 @@ public class PublicTeamController {
      * @param id チーム ID
      * @return 抑制版チーム詳細レスポンス
      */
-    @GetMapping("/{publicId}")
+    @GetMapping("/{slug}")
     @Operation(
             summary = "店舗詳細（未ログイン公開）",
             description = "未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除のチームのみ 200。"
                     + " それ以外は 404（IDOR 対策で状態を区別しない）。")
-    public TeamPublicDetailResponse getPublicTeam(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public TeamPublicDetailResponse getPublicTeam(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         return teamService.getPublicTeam(id);
     }
 }

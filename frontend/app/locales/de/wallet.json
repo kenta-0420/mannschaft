@@ -20,14 +20,19 @@
       "no_provider": "(kein Match)",
       "last4_format": "●●●● {last4}",
       "no_cards": "Noch keine Karten registriert",
-      "no_cards_hint": "Verwenden Sie die '+'-Schaltfläche, um Karten hinzuzufügen",
+      "no_cards_hint": "Verwenden Sie die Schaltfläche «Karte hinzufügen» oben, um Karten hinzuzufügen",
       "no_matches": "Keine Karten, die '{query}' entsprechen"
     },
     "group": {
       "card_count": "{count} Karte(n)",
       "no_emoji": "📋",
       "no_groups": "Noch keine Gruppen",
-      "no_groups_hint": "Gruppieren Sie Karten, die Sie oft zusammen vorzeigen, für schnelles Wechseln an der Kasse"
+      "no_groups_hint": "Gruppieren Sie Karten, die Sie oft zusammen vorzeigen, für schnelles Wechseln an der Kasse",
+      "edit": "Bearbeiten",
+      "edit_group": "{name} bearbeiten",
+      "start_presentation_for": "Präsentationsmodus für {name} starten",
+      "show_barcode_tooltip": "Barcode anzeigen",
+      "edit_tooltip": "Gruppe bearbeiten"
     },
     "settings": {
       "title": "Wallet-Einstellungen",
@@ -95,9 +100,50 @@
       "cancel": "Abbrechen",
       "back": "Zurück",
       "next": "Weiter",
+      "manual_confirm": "Bestätigen",
+      "next_disabled_hint": "Geben Sie Kartenname und Barcode ein, um zu «Weiter» fortzufahren",
       "save_failed": "Kartenregistrierung fehlgeschlagen",
       "validation_required": "Bitte geben Sie den Kartennamen ein",
-      "validation_barcode_required": "Bitte geben Sie den Barcode-Wert ein oder wählen Sie 'Kein Barcode'"
+      "validation_barcode_required": "Bitte geben Sie den Barcode-Wert ein oder wählen Sie 'Kein Barcode'",
+      "format_labels": {
+        "CODE128": "CODE128 (allgemeine Mitgliedskarten – nehmen Sie dies, wenn Sie unsicher sind)",
+        "CODE39": "CODE39 (alphanumerische Mitgliedskarten)",
+        "EAN13": "EAN13 (13-stelliger Produktbarcode)",
+        "EAN8": "EAN8 (8-stelliger Produktbarcode)",
+        "JAN13": "JAN13 (japanischer 13-stelliger Produktbarcode)",
+        "QR": "QR (quadratisches Punktmuster)",
+        "PDF417": "PDF417 (Führerschein usw.)",
+        "ITF": "ITF (Logistik / einige Mitgliedskarten)"
+      },
+      "help": {
+        "title": "Anleitung zum Hinzufügen einer Karte",
+        "description": "Registrieren Sie den Barcode Ihrer Treuekarte oder Mitgliedskarte, um ihn an der Kasse vorzuzeigen.",
+        "easiest": {
+          "title": "Der einfachste Weg zum Hinzufügen",
+          "body": "Durch Auswahl eines Presets werden Kartenname und Format automatisch ausgefüllt. Das Scannen mit Kamera oder Bild erkennt das Format ebenfalls automatisch.",
+          "steps": {
+            "step1": "Wenn Ihr Geschäft in den Presets erscheint, tippen Sie darauf (Name und Format werden automatisch eingetragen)",
+            "step2": "Andernfalls geben Sie den Geschäftsnamen in das Feld 'Kartenname' ein",
+            "step3": "Scannen Sie den Barcode Ihrer Karte mit der Kamera oder einem Bild",
+            "step4": "Überprüfen Sie die Vorschau und tippen Sie auf 'Weiter' → 'Speichern'"
+          }
+        },
+        "format_guide": {
+          "title": "Barcode-Format unbekannt?",
+          "body": "Das Format muss nur bei manueller Eingabe gewählt werden. Kamera- und Bildscan erkennen es automatisch.",
+          "steps": {
+            "step1": "Bei Unsicherheit 'CODE128' wählen (funktioniert bei den meisten Mitgliedskarten)",
+            "step2": "Bei 13-stelliger Zahl 'EAN13' wählen",
+            "step3": "Bei 8-stelliger Zahl 'EAN8' wählen",
+            "step4": "Bei quadratischem Punktmuster 'QR' wählen"
+          }
+        },
+        "verify": {
+          "title": "Nach dem Speichern unbedingt prüfen",
+          "body": "Überprüfen Sie nach dem Speichern, ob der angezeigte Barcode an der Kasse gescannt werden kann. Falls nicht, löschen Sie die Karte und registrieren Sie sie mit einem anderen Format neu.",
+          "hint": "Das Barcode-Format kann nach dem Speichern nicht geändert werden. Zum Ändern löschen und neu registrieren."
+        }
+      }
     },
     "detail": {
       "edit": "Bearbeiten",
@@ -107,7 +153,6 @@
       "delete_confirm_title": "Karte löschen?",
       "delete_confirm": "Diese Karte wird dauerhaft gelöscht. Kann nicht rückgängig gemacht werden.",
       "delete_confirm_ok": "Löschen",
-      "record_used": "Als verwendet markieren",
       "favorite_on": "Zu Favoriten hinzufügen",
       "favorite_off": "Aus Favoriten entfernen",
       "section_meta": "Karteninformationen",
@@ -119,8 +164,7 @@
       "barcode_locked_hint": "Barcode-Wert und -Format können aus Sicherheitsgründen nicht bearbeitet werden. Löschen und neu registrieren zum Ändern.",
       "not_found": "Karte nicht gefunden",
       "back_to_list": "Zurück zur Liste",
-      "save_failed": "Aktualisierung fehlgeschlagen",
-      "used_recorded": "Als verwendet registriert"
+      "save_failed": "Aktualisierung fehlgeschlagen"
     },
     "group_form": {
       "title_new": "Neue Gruppe",
@@ -147,6 +191,7 @@
       "start_presentation": "Präsentationsmodus starten",
       "validation_name_required": "Bitte geben Sie den Gruppennamen ein",
       "validation_max_cards": "Eine Gruppe kann maximal 20 Karten enthalten",
+      "saved": "Gespeichert",
       "save_failed": "Speichern fehlgeschlagen",
       "not_found": "Gruppe nicht gefunden"
     },
@@ -163,7 +208,8 @@
       "error_no_camera": "Keine Kamera gefunden",
       "error_denied": "Kamerazugriff verweigert",
       "error_decode_failed": "Barcode konnte nicht gelesen werden",
-      "retry": "Erneut versuchen"
+      "retry": "Erneut versuchen",
+      "manual_recommend_scan": "Kamera- oder Bildscan füllt das Format automatisch aus. Manuelle Eingabe ist das letzte Mittel."
     },
     "barcode": {
       "no_barcode_label": "Kein Barcode",
@@ -183,6 +229,8 @@
       "hint_brightness": "Maximale Helligkeit für bessere Lesbarkeit einstellen",
       "close": "Schließen",
       "reload": "Neu laden",
+      "prev_card": "Vorherige Karte",
+      "next_card": "Nächste Karte",
       "biometric_required": "Authentifizierung erforderlich, um den Präsentationsmodus zu starten",
       "biometric_failed": "Authentifizierung fehlgeschlagen",
       "no_cards": "Diese Gruppe hat keine Karten",
@@ -428,6 +476,45 @@
       "error_delete": "Löschen fehlgeschlagen",
       "error_duplicate": "Dieses Synonym ist bereits registriert (Duplikat nach Normalisierung)",
       "error_provider_not_found": "Angegebener Anbieter nicht gefunden"
+    },
+    "wallet_guide": {
+      "title": "So verwenden Sie die Brieftasche",
+      "description": "Funktion zum Mitführen von Punktekarten auf dem Smartphone und Vorzeigen von Barcodes an der Kasse.",
+      "overview": {
+        "title": "Was ist die Brieftasche?",
+        "body": "Registrieren Sie die Barcodes Ihrer Punktekarten und Mitgliedskarten in der App und zeigen Sie sie auf Ihrem Smartphone-Bildschirm vor. Sie können bis zu 200 Karten registrieren.",
+        "hint": "Beim ersten Öffnen müssen Sie den Nutzungsbedingungen zustimmen."
+      },
+      "add_card": {
+        "title": "Eine Karte registrieren",
+        "body": "Sie können eine neue Karte über die Schaltfläche «Karte hinzufügen» oben auf der Registerkarte Karten hinzufügen. Sparen Sie Zeit, indem Sie beliebte Geschäfte aus den Voreinstellungen auswählen.",
+        "steps": {
+          "step1": "Tippen Sie auf die Schaltfläche «Karte hinzufügen» oben auf der Registerkarte Karten",
+          "step2": "Wählen Sie beliebte Geschäfte aus Voreinstellungen oder geben Sie einen Kartennamen direkt ein",
+          "step3": "Geben Sie den Barcode (Mitgliedsnummer) per Kamera, Bild oder manueller Eingabe ein",
+          "step4": "Überprüfen Sie die Vorschau und tippen Sie auf «Speichern»"
+        }
+      },
+      "groups": {
+        "title": "Mit Gruppen organisieren",
+        "body": "Fassen Sie mehrere Karten in einer Gruppe zusammen, um schnell zwischen Karten Ihrer Lieblingsgeschäfte zu wechseln.",
+        "steps": {
+          "step1": "Öffnen Sie die Registerkarte «Gruppen»",
+          "step2": "Tippen Sie auf «+ Neue Gruppe»",
+          "step3": "Geben Sie einen Gruppennamen und Emoji ein und markieren Sie die einzuschließenden Karten",
+          "step4": "Tippen Sie auf «Speichern», um die Gruppe fertigzustellen"
+        }
+      },
+      "present": {
+        "title": "Barcode an der Kasse vorzeigen",
+        "body": "Tippen Sie auf eine Karte aus der Liste, um den Barcode im Vollbildmodus anzuzeigen. Mit Gruppen können Sie per Wischen zwischen Karten wechseln.",
+        "steps": {
+          "step1": "Tippen Sie auf eine Karte aus der Kartenliste oder einer Gruppe",
+          "step2": "Der Barcode wird im Vollbildmodus angezeigt",
+          "step3": "Halten Sie den Smartphone-Bildschirm zum Scannen Richtung Personal",
+          "step4": "(Bei aktivierter biometrischer Authentifizierung) Zuerst mit Gesicht/Fingerabdruck entsperren"
+        }
+      }
     }
   }
 }

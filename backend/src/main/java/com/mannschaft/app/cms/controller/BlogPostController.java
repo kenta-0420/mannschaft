@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import org.springframework.lang.Nullable;
 
 /**
@@ -59,8 +60,8 @@ public class BlogPostController {
     @Operation(summary = "記事一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<BlogPostResponse>> listPosts(
-            @RequestParam(required = false) Long teamId,
-            @RequestParam(required = false) Long organizationId,
+            @RequestParam(required = false) String teamId,
+            @RequestParam(required = false) String organizationId,
             @RequestParam(required = false) String postType,
             @RequestParam(required = false) List<Long> tagIds,
             @RequestParam(required = false) String status,
@@ -138,7 +139,7 @@ public class BlogPostController {
     @Operation(summary = "記事削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePost(@PathVariable Long id) {
-        postService.deletePost(id);
+        postService.deletePost(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -151,7 +152,7 @@ public class BlogPostController {
     public ResponseEntity<ApiResponse<BlogPostResponse>> changeStatus(
             @PathVariable Long id,
             @Valid @RequestBody PublishRequest request) {
-        BlogPostResponse response = postService.changeStatus(id, request);
+        BlogPostResponse response = postService.changeStatus(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -176,7 +177,7 @@ public class BlogPostController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "処理成功")
     public ResponseEntity<ApiResponse<BulkActionResponse>> bulkAction(
             @Valid @RequestBody BulkActionRequest request) {
-        BulkActionResponse response = postService.bulkAction(request);
+        BulkActionResponse response = postService.bulkAction(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -231,6 +232,7 @@ public class BlogPostController {
     @PostMapping("/posts/{id}/revisions/{revisionId}/restore")
     @Operation(summary = "リビジョン復元")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "復元成功")
+    @AuthorizedInService // BlogPostRevisionService#restoreRevision の checkWriteAccess が投稿者本人/スコープADMIN以上を検証する
     public ResponseEntity<ApiResponse<BlogPostResponse>> restoreRevision(
             @PathVariable Long id,
             @PathVariable Long revisionId) {
@@ -244,8 +246,9 @@ public class BlogPostController {
     @PostMapping("/posts/{id}/preview-token")
     @Operation(summary = "プレビュートークン発行")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "発行成功")
+    @AuthorizedInService // BlogPostShareService#issuePreviewToken の checkWriteAccess が投稿者本人/スコープADMIN以上を検証する
     public ResponseEntity<ApiResponse<BlogPostResponse>> issuePreviewToken(@PathVariable Long id) {
-        BlogPostResponse response = postService.issuePreviewToken(id);
+        BlogPostResponse response = postService.issuePreviewToken(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -255,8 +258,9 @@ public class BlogPostController {
     @DeleteMapping("/posts/{id}/preview-token")
     @Operation(summary = "プレビュートークン無効化")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "無効化成功")
+    @AuthorizedInService // BlogPostShareService#revokePreviewToken の checkWriteAccess が投稿者本人/スコープADMIN以上を検証する
     public ResponseEntity<Void> revokePreviewToken(@PathVariable Long id) {
-        postService.revokePreviewToken(id);
+        postService.revokePreviewToken(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -268,6 +272,7 @@ public class BlogPostController {
     @PatchMapping("/posts/{id}/public-visible")
     @Operation(summary = "投稿公開設定変更", description = "投稿者本人が public_visible フラグを切り替える（F19.1 Phase 7）。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "更新成功")
+    @AuthorizedInService // BlogPostService#patchPublicVisible が post.getAuthorId() との一致を検証する（本メソッド上部の javadoc 参照）
     public ResponseEntity<Void> patchPublicVisible(
             @PathVariable Long id,
             @Valid @RequestBody UpdatePublicVisibleRequest req) {

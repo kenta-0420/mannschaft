@@ -19,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -260,7 +261,19 @@ class NotificationCreditServiceTest {
 
             // then: 無料枠がリセットされ、今月分として100通使用される
             // balance.save() が2回呼ばれる（1回目: 月次リセット、2回目: 消費後の最終状態保存）
-            verify(balanceRepository, times(2)).save(any(OrganizationNotificationBalanceEntity.class));
+            ArgumentCaptor<OrganizationNotificationBalanceEntity> captor =
+                    ArgumentCaptor.forClass(OrganizationNotificationBalanceEntity.class);
+            verify(balanceRepository, times(2)).save(captor.capture());
+
+            // 回帰: リセット分岐で toBuilder().build() の別インスタンスを save していない。
+            // 取得した managed entity を直接ミューテートして save に渡している（=同一行 UPDATE）。
+            // 別インスタンスなら id=null の新規行 INSERT になり organization_id 一意制約違反で 500。
+            assertThat(captor.getAllValues()).allMatch(saved -> saved == balance);
+
+            // リセット後に今月分として 100 通が消費されている（先月分 5000 はクリア済み）
+            assertThat(balance.getFreeQuotaMonth()).isEqualTo(firstOfMonth);
+            assertThat(balance.getFreeUsedThisMonth()).isEqualTo(100L);
+            assertThat(balance.getAlertSentThisMonth()).isFalse();
         }
     }
 
@@ -324,6 +337,47 @@ class NotificationCreditServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(NotificationCreditErrorCode.PURCHASE_NOT_FOUND));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // Issue #2715 CMP-055 ロットC-1: sendFreeQuotaAlertAsync の i18n
+    // ─────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("sendFreeQuotaAlertAsync（Issue #2715 ロットC-1）")
+    class SendFreeQuotaAlertAsyncTests {
+
+        @Test
+        @DisplayName("受信者 locale が en なら件名・本文が英語になりプレースホルダが残らない")
+        void en_localizesTitleAndBody() {
+            var realMessageSource = new org.springframework.context.support.ResourceBundleMessageSource();
+            realMessageSource.setBasename("messages");
+            realMessageSource.setDefaultEncoding("UTF-8");
+            org.springframework.test.util.ReflectionTestUtils.setField(service, "messageSource", realMessageSource);
+            // @Lazy/@Autowired フィールドは @InjectMocks のコンストラクタ注入対象に含まれないため明示的に注入する。
+            org.springframework.test.util.ReflectionTestUtils.setField(service, "notificationHelper", notificationHelper);
+
+            given(userRoleRepository.findAdminUserIdsByOrganizationId(1L)).willReturn(java.util.List.of(5L));
+
+            org.springframework.test.util.ReflectionTestUtils.invokeMethod(service, "sendFreeQuotaAlertAsync", 1L);
+
+            org.mockito.ArgumentCaptor<NotificationHelper.LocalizedMessageBuilder> builderCaptor =
+                    org.mockito.ArgumentCaptor.forClass(NotificationHelper.LocalizedMessageBuilder.class);
+            verify(notificationHelper).notifyAllLocalized(
+                    org.mockito.ArgumentMatchers.eq(java.util.List.of(5L)),
+                    org.mockito.ArgumentMatchers.eq("NOTIFICATION_CREDIT_ALERT"),
+                    org.mockito.ArgumentMatchers.eq("NOTIFICATION_CREDIT"),
+                    org.mockito.ArgumentMatchers.eq(1L),
+                    org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.eq(1L),
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.isNull(),
+                    builderCaptor.capture());
+
+            NotificationHelper.LocalizedMessage message = builderCaptor.getValue().build(5L, java.util.Locale.ENGLISH);
+            assertThat(message.title()).isEqualTo("Your free notification quota is running low");
+            assertThat(message.body()).doesNotContain("{0}").contains("90%");
         }
     }
 }

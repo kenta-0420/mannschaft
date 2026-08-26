@@ -67,6 +67,17 @@ const filteredSlots = computed((): MyConfirmedSlotResponse[] => {
   return confirmedSlots.value.filter((s) => s.teamId === selectedTeamId.value)
 })
 
+// ---- モバイル即時表示用: 今後の確定シフト（本日以降・日時昇順） ----
+// 月次カレンダーの時刻スニペットは狭幅で hidden になり即時性が無いため、
+// 390px では本セクションで時刻を直接可視化する（sm:hidden で PC は従来どおり）。
+const upcomingSlots = computed((): MyConfirmedSlotResponse[] => {
+  const today = todayKey()
+  return [...filteredSlots.value]
+    .filter((s) => s.slotDate >= today)
+    .sort((a, b) => `${a.slotDate}T${a.startTime}`.localeCompare(`${b.slotDate}T${b.startTime}`))
+    .slice(0, 10)
+})
+
 // ---- 日付ごとのスロットマップ ----
 const slotsByDate = computed(() => {
   const map = new Map<string, MyConfirmedSlotResponse[]>()
@@ -196,11 +207,45 @@ function onSwapSubmitted() {
 
 // ---- 週次の曜日ヘッダー ----
 const DOW_KEYS = ['月', '火', '水', '木', '金', '土', '日'] as const
+
+// ---- 使い方モーダル ----
+const showGuide = ref(false)
 </script>
 
 <template>
   <div class="mx-auto max-w-5xl">
-    <PageHeader :title="t('shift.page.myShift')" />
+    <PageHeader :title="t('shift.page.myShift')" back-to="/my" help @help="showGuide = true" />
+
+    <!-- モバイル即時表示: 今後の確定シフト（狭幅は月次カレンダーの時刻が hidden のため即時性が無い） -->
+    <section v-if="!loading && upcomingSlots.length > 0" class="mb-4 sm:hidden">
+      <h2 class="mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">
+        {{ t('shift.myShift.upcomingTitle') }}
+      </h2>
+      <ul class="flex flex-col gap-2">
+        <li
+          v-for="slot in upcomingSlots"
+          :key="slot.slotId"
+          class="flex items-center gap-3 rounded-lg border border-surface-200 bg-surface-0 px-3 py-2 dark:border-surface-700 dark:bg-surface-900"
+        >
+          <div class="flex w-12 shrink-0 flex-col items-center">
+            <span class="text-xs font-semibold text-surface-600 dark:text-surface-300">
+              {{ dayjs.tz(slot.slotDate, userTimezone).format('M/D') }}
+            </span>
+            <span class="text-[10px] text-surface-400">
+              {{ dayjs.tz(slot.slotDate, userTimezone).format('(ddd)') }}
+            </span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-bold text-primary">
+              {{ formatTime(slot.startTime) }} 〜 {{ formatTime(slot.endTime) }}
+            </p>
+            <p class="truncate text-xs text-surface-500 dark:text-surface-400">
+              {{ slot.teamName }}<template v-if="slot.positionName"> · {{ slot.positionName }}</template>
+            </p>
+          </div>
+        </li>
+      </ul>
+    </section>
 
     <!-- ビュー切り替え・ナビゲーション -->
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -372,10 +417,10 @@ const DOW_KEYS = ['月', '火', '水', '木', '金', '土', '日'] as const
           v-else
           class="w-full sm:flex-1 flex flex-col gap-3"
         >
-          <div
+          <SectionCard
             v-for="day in weekDates"
             :key="dateKey(day)"
-            class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 overflow-hidden"
+            class="overflow-hidden"
           >
             <!-- 日付ヘッダー -->
             <button
@@ -453,14 +498,14 @@ const DOW_KEYS = ['月', '火', '水', '木', '金', '土', '日'] as const
                 </div>
               </div>
             </Transition>
-          </div>
+          </SectionCard>
         </div>
 
         <!-- ===== 詳細パネル（月次ビュー + 日付選択時） ===== -->
         <Transition name="slide-panel">
-          <div
+          <SectionCard
             v-if="viewMode === 'monthly' && selectedDate"
-            class="w-full sm:w-80 shrink-0 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900"
+            class="w-full sm:w-80 shrink-0"
           >
             <div class="flex items-center justify-between border-b border-surface-200 dark:border-surface-700 px-4 py-3">
               <h3 class="text-sm font-semibold text-surface-800 dark:text-surface-200">
@@ -524,7 +569,7 @@ const DOW_KEYS = ['月', '火', '水', '木', '金', '土', '日'] as const
                 </div>
               </div>
             </div>
-          </div>
+          </SectionCard>
         </Transition>
       </div>
     </template>
@@ -538,6 +583,9 @@ const DOW_KEYS = ['月', '火', '水', '木', '金', '土', '日'] as const
       :team-id="swapTeamId"
       @submitted="onSwapSubmitted"
     />
+
+    <!-- 使い方説明モーダル -->
+    <MyShiftGuideModal v-model:visible="showGuide" />
   </div>
 </template>
 

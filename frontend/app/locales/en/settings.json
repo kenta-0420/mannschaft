@@ -10,7 +10,8 @@
     "step_completed": "Export complete — Download expires: {expiry}",
     "step_failed": "Export failed",
     "step_processing": "Exporting...",
-    "step_preparing": "Preparing..."
+    "step_preparing": "Preparing...",
+    "description": "You can export your personal data as a ZIP file."
   },
   "deletion_preview": {
     "dialog_title": "Confirm Account Deletion",
@@ -41,7 +42,14 @@
     "myShift": "My Shift",
     "myPage": "My Page",
     "qa": "Q&A",
-    "blog": "Blog"
+    "blog": "Blog",
+    "reservations": "Reservations",
+    "wallet": "Point Cards",
+    "inbox": "Inbox",
+    "market": "Market",
+    "jobs": "Jobs",
+    "matching": "Matching",
+    "myFiles": "My Files"
   },
   "settings": {
     "navigation": {
@@ -50,7 +58,392 @@
       "required": "Required",
       "resetToDefault": "Reset to Default",
       "saveSuccess": "Settings saved",
-      "saveError": "Failed to save settings"
+      "saveError": "Failed to save settings",
+      "reorderHint": "Drag the handle to reorder the navigation items",
+      "dragHandleLabel": "Drag handle",
+      "pinnedBottom": "Pinned to bottom"
+    },
+    "account": {
+      "page_title": "Account Settings",
+      "notification_settings": "Notification Settings"
+    },
+    "profile": {
+      "section_title": "Profile Information",
+      "avatar_alt": "Avatar",
+      "change_image": "Change Image",
+      "image_hint": "JPG, PNG under 5MB",
+      "display_name": "Display Name",
+      "phone_number": "Phone Number",
+      "phone_placeholder": "090-0000-0000",
+      "postal_code": "Postal Code",
+      "postal_placeholder": "000-0000",
+      "postal_unsupported_region": "Postal code validation is not supported in your region. Format check will be skipped.",
+      "searchable_label": "Show in User Search",
+      "searchable_description": "When enabled, other users can find you through search",
+      "toast": {
+        "save_success": "Profile updated",
+        "save_error": "Failed to update profile",
+        "avatar_size_error": "File size must be 5MB or less",
+        "avatar_success": "Avatar updated",
+        "avatar_error": "Failed to upload avatar",
+        "weather_postal_not_found": "Postal code saved, but your weather location could not be resolved. Please check that your postal code is correct",
+        "weather_country_not_supported": "Postal code saved, but weather information for your country or region is not yet available"
+      }
+    },
+    "email": {
+      "section_title": "Change Email Address",
+      "current_email": "Current Email Address",
+      "new_email": "New Email Address",
+      "new_email_placeholder": "new{'@'}example.com",
+      "current_password": "Current Password",
+      "send_confirmation": "Send Confirmation Email",
+      "sent_title": "Confirmation Email Sent",
+      "sent_description": "A confirmation email has been sent to {email}. Click the link to complete the change.",
+      "toast": {
+        "send_success": "Confirmation email sent",
+        "send_error": "Failed to request email address change"
+      }
+    },
+    "password": {
+      "section_title_change": "Change Password",
+      "section_title_set": "Set Password",
+      "no_password_description": "No password is currently set. Setting a password allows you to log in with email and password.",
+      "current_password": "Current Password",
+      "new_password": "New Password",
+      "confirm_password": "Confirm New Password",
+      "policy_hint": "At least 8 characters, including 3 or more of: uppercase, lowercase, digits, and symbols.",
+      "load_error": "Failed to load profile information",
+      "length_error": "Password must be at least 8 characters",
+      "policy_violation": "Include 3 or more of: uppercase, lowercase, digits, and symbols",
+      "mismatch_error": "Passwords do not match",
+      "change_button": "Change Password",
+      "set_button": "Set Password",
+      "change_success": "Password changed successfully",
+      "change_error": "Failed to change password. Please check your current password",
+      "toast": {
+        "change_success": "Password changed successfully",
+        "setup_success": "Password set successfully",
+        "change_error": "Failed to change password. Please check your current password",
+        "setup_error": "Failed to set password"
+      },
+      "redirecting": "Password changed. Redirecting to the login page…"
+    },
+    "locale": {
+      "section_title": "Language & Timezone",
+      "display_language": "Display Language",
+      "timezone": "Timezone",
+      "toast": {
+        "save_success": "Language & timezone updated",
+        "save_error": "Failed to update language & timezone"
+      }
+    },
+    "appearance": {
+      "section_title": "Appearance",
+      "hide_chat_preview_label": "Hide Chat Preview",
+      "hide_chat_preview_description": "Do not show chat content in notification banners",
+      "save_button": "Save Appearance",
+      "save_success": "Appearance settings saved"
+    },
+    "security": {
+      "two_fa_section_title": "Two-Factor Authentication (2FA)",
+      "two_fa_description": "Use an authenticator app (such as Google Authenticator) to strengthen your account security.",
+      "setup_2fa_button": "Set Up 2FA",
+      "regenerate_backup_codes_button": "Regenerate Backup Codes",
+      "scan_qr_description": "Scan the QR code with your authenticator app.",
+      "totp_qr_alt": "TOTP QR Code",
+      "secret_key": "Secret Key",
+      "sessions_section_title": "Active Sessions",
+      "logout_all_button": "Log Out All",
+      "no_sessions": "No session information available",
+      "unknown_device": "Unknown Device",
+      "current_session_tag": "Current",
+      "webauthn_section_title": "Security Keys (WebAuthn)",
+      "webauthn_description": "Register FIDO2/WebAuthn compatible security keys or biometric authentication.",
+      "no_credentials": "No security keys registered",
+      "default_credential_name": "Security Key",
+      "last_used": "Last used: {date}",
+      "registered": "Registered: {date}",
+      "backup_codes_dialog_title": "Backup Codes",
+      "backup_codes_description": "Store the following backup codes in a safe place. Each code can only be used once.",
+      "rename_dialog_title": "Rename Device",
+      "device_name_label": "Device Name",
+      "webauthn": {
+        "register_button": "Register a passkey",
+        "register_dialog_title": "Register a passkey",
+        "device_name_label": "Device name (optional)",
+        "device_name_placeholder": "e.g. Touch ID on iPhone",
+        "register_confirm": "Register",
+        "register_cancel": "Cancel",
+        "register_success": "Passkey registered successfully",
+        "register_error": "Failed to register passkey"
+      },
+      "session": {
+        "device_label": "{browser} on {os}",
+        "unknown_device": "Unknown device"
+      },
+      "toast": {
+        "setup_2fa_error": "Failed to start 2FA setup",
+        "regenerate_success": "Backup codes regenerated",
+        "regenerate_error": "Failed to regenerate backup codes",
+        "revoke_success": "Session revoked",
+        "revoke_error": "Failed to revoke session",
+        "revoke_all_success": "Logged out from all devices",
+        "revoke_all_error": "Failed to log out from all devices",
+        "delete_key_success": "Security key deleted",
+        "delete_key_error": "Failed to delete security key",
+        "rename_success": "Device name updated",
+        "rename_error": "Failed to update device name"
+      }
+    },
+    "linked_accounts": {
+      "page_title": "Linked Accounts",
+      "oauth_section_title": "OAuth Connections",
+      "no_oauth": "No connected accounts",
+      "connected_at": "Connected: {date}",
+      "unlink_button": "Disconnect",
+      "google_link_button": "Link with Google",
+      "google_link_loading": "Linking...",
+      "line_section_title": "LINE Connection",
+      "line_icon_alt": "LINE Icon",
+      "line_default_user": "LINE User",
+      "line_linked_at": "Connected: {date}",
+      "line_unlink_button": "Disconnect LINE",
+      "line_not_linked": "No LINE account connected",
+      "line_link_instruction": "Connect LINE from the LINE app",
+      "toast": {
+        "load_error": "Failed to load linked accounts",
+        "unlink_success": "{provider} disconnected",
+        "unlink_error": "Failed to disconnect",
+        "line_unlink_success": "LINE disconnected",
+        "line_unlink_error": "Failed to disconnect LINE",
+        "link_success": "Linked with {provider}",
+        "link_error": "Failed to get link URL",
+        "already_linked": "This account is already linked to {provider}",
+        "taken_by_other": "This Google account is already used by another user",
+        "oauth_denied": "Google authentication was cancelled",
+        "link_with_calendar_success": "Google account and Calendar linked"
+      },
+      "calendar_sync_toggle": "Also set up Google Calendar sync",
+      "guide": {
+        "title": "About Account Linking",
+        "google_title": "Sign in with Google",
+        "google_desc": "You can sign in easily without a password using your Google account.",
+        "apple_title": "Sign in with Apple (coming soon)",
+        "apple_desc": "A convenient sign-in method for iPhone users. Coming soon.",
+        "line_title": "LINE Notifications",
+        "line_desc": "Add the bot to your LINE group to receive schedule and attendance notifications on LINE. Link from the LINE app."
+      }
+    },
+    "member_card": {
+      "section_title": "QR Member Card",
+      "tab_list": "Card List",
+      "tab_history": "Check-in History",
+      "toast": {
+        "suspend_success": "Member card suspended",
+        "suspend_error": "Failed to suspend",
+        "reactivate_success": "Member card reactivated",
+        "reactivate_error": "Failed to reactivate"
+      }
+    },
+    "social_profile": {
+      "section_title": "Social Profiles",
+      "create_button": "Create New",
+      "count_description": "You can create up to 3 profiles ({count}/3)",
+      "no_profiles": "No profiles yet",
+      "dialog_title_create": "Create Profile",
+      "dialog_title_edit": "Edit Profile",
+      "handle_label": "Handle *",
+      "handle_placeholder": "my_handle",
+      "handle_hint": "Alphanumeric and underscores only (changes allowed once per 30 days)",
+      "display_name_label": "Display Name *",
+      "bio_label": "Bio",
+      "bio_count": "{count}/300",
+      "update_button": "Update",
+      "create_submit_button": "Create",
+      "toast": {
+        "update_success": "Profile updated",
+        "create_success": "Profile created",
+        "save_error": "Failed to save",
+        "delete_success": "Profile deleted",
+        "delete_error": "Failed to delete"
+      }
+    },
+    "seal_guide": {
+      "title": "How to Use Electronic Seals",
+      "description": "Use electronic seals to stamp and manage documents.",
+      "preview": {
+        "title": "Seal Preview",
+        "body": "View the 3 types of electronic seals (last name, full name, first name) automatically generated from your registered name.",
+        "steps": {
+          "step1": "Open the \"Seal Preview\" tab",
+          "step2": "Check the 3 seals (last name, full name, first name) displayed in the grid"
+        }
+      },
+      "regenerate": {
+        "title": "Regenerate Seal",
+        "body": "Recreate your current seal with a new design. Use this when your name changes or you want to update the design.",
+        "note": "You can run this up to 3 times per hour. If you reach the limit, please wait before trying again.",
+        "steps": {
+          "step1": "Open the \"Seal Preview\" tab",
+          "step2": "Click the \"Regenerate Seal\" button",
+          "step3": "After completion, the new seal will appear in the grid"
+        }
+      },
+      "defaults": {
+        "title": "Default Settings",
+        "body": "Set which variant (last name, full name, first name) is automatically used when stamping documents. Saves you from selecting each time.",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
+        "steps": {
+          "step1": "Open the \"Default Settings\" tab",
+          "step2": "Select your preferred variant (last name, full name, first name) from the dropdown",
+          "step3": "Click \"Save\" to save the settings"
+        }
+      },
+      "history": {
+        "title": "Stamp History",
+        "body": "View a list of your past stamps. The date, variant used, target, and status (valid / cancelled) are displayed.",
+        "steps": {
+          "step1": "Open the \"Stamp History\" tab",
+          "step2": "Scroll through the list to review",
+          "step3": "Load older history with the \"Load more\" button"
+        }
+      }
+    },
+    "seal": {
+      "section_title": "Electronic Seal",
+      "tab_preview": "Seal Preview",
+      "tab_defaults": "Default Settings",
+      "tab_history": "Stamp History",
+      "regenerate_button": "Regenerate Seal",
+      "regenerate_hint": "Seals are auto-generated from your registered name (up to 3 times per hour)",
+      "toast": {
+        "regenerate_success": "Seal regenerated",
+        "regenerate_error": "Failed to regenerate (up to 3 times per hour)",
+        "save_defaults_success": "Default settings saved",
+        "save_defaults_error": "Failed to save settings"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
+      }
+    },
+    "login_history": {
+      "section_title": "Login History",
+      "no_history": "No login history",
+      "load_more": "Load More",
+      "event_login_success": "Login Success",
+      "event_login_failure": "Login Failure",
+      "event_logout": "Logout",
+      "event_token_refresh": "Token Refresh",
+      "event_password_change": "Password Change",
+      "event_mfa_verify": "2FA Verification"
+    },
+    "gcal": {
+      "section_title": "Google Calendar Integration",
+      "connection_status_title": "Connection Status",
+      "connected_label": "Connected",
+      "last_synced": "Last synced: {date}",
+      "last_sync_error": "Sync error: {message}",
+      "manual_sync_button": "Manual Sync",
+      "disconnect_button": "Disconnect",
+      "disconnect_confirm": "Disconnect Google Calendar integration?",
+      "sync_settings_title": "Sync Settings",
+      "personal_calendar_label": "Personal Calendar",
+      "personal_calendar_description": "Sync personal events to Google Calendar",
+      "team_calendars_label": "Team Calendars",
+      "org_calendars_label": "Organization Calendars",
+      "no_team_calendars": "You are not a member of any team",
+      "no_org_calendars": "You are not a member of any organization",
+      "not_connected_description": "Connect your Google account to sync calendars",
+      "connect_button": "Connect Google Account",
+      "detail_link_button": "Go to detailed settings",
+      "toast": {
+        "connect_error": "Failed to connect",
+        "oauth_connected": "Connected to Google Calendar",
+        "oauth_connect_failed": "Failed to connect to Google Calendar",
+        "disconnect_success": "Disconnected",
+        "disconnect_error": "Failed to disconnect",
+        "sync_success": "Sync completed",
+        "sync_error": "Failed to sync",
+        "load_error": "Failed to load",
+        "toggle_on_success": "Turned on sync for {name}",
+        "toggle_off_success": "Turned off sync for {name}",
+        "backfill_info": "{count} events queued for sync"
+      }
+    },
+    "delete_account": {
+      "section_title": "Delete Account",
+      "description": "Deleting your account will permanently remove all your data. This action cannot be undone.",
+      "delete_button": "Delete Account",
+      "confirm_message": "Deleting your account will permanently remove all your data. Do you really want to continue?",
+      "confirm_dialog_title": "Confirm Account Deletion",
+      "confirm_reject_label": "Cancel",
+      "confirm_accept_label": "Proceed to Deletion",
+      "password_confirm_label": "Please enter your current password to confirm",
+      "password_placeholder": "Current Password",
+      "retention_note": "※ Some data may be retained for {days} days due to legal requirements before being deleted.",
+      "delete_success": "Your account has been deleted. Thank you for using our service.",
+      "delete_error": "Failed to delete the account"
+    },
+    "notification": {
+      "load_error": "Failed to load settings",
+      "save_success": "Notification settings saved",
+      "save_error": "Failed to save",
+      "save_button": "Save settings",
+      "global_section_title": "Automatic delivery",
+      "priority_auto_delivery_label": "Auto-deliver by priority",
+      "priority_auto_delivery_desc": "Automatically also sends high-priority notifications as push notifications.",
+      "scope_section_title": "Notifications by team / organization",
+      "scope_section_desc": "Set notification reception for each team or organization you belong to.",
+      "scope_type_team": "Team",
+      "scope_type_organization": "Organization",
+      "scope_receiving": "Receiving",
+      "scope_muted": "Muted",
+      "scope_empty": "You do not belong to any team or organization",
+      "type_section_title": "Notification types",
+      "type_section_desc": "Configure reception per type. Use \"Expand\" to control in-app and push separately.",
+      "expand": "Expand",
+      "collapse": "Collapse",
+      "channel_in_app": "In-app",
+      "channel_push": "Push",
+      "locked_tag": "Urgent",
+      "locked_desc": "This notification cannot be disabled"
+    },
+    "storage": {
+      "page_title": "Storage",
+      "group_personal": "Personal",
+      "group_team": "Teams",
+      "group_org": "Organizations",
+      "scope_personal": "Personal Storage",
+      "file_count": "{count} files",
+      "limit": "Limit",
+      "unlimited": "Unlimited",
+      "error_fetch": "Failed to load storage usage",
+      "empty": "No storage information to display"
+    },
+    "fileBrowser": {
+      "upload_button": "Upload File",
+      "upload_need_folder": "Please open a folder before uploading",
+      "upload_success": "\"{name}\" uploaded successfully",
+      "upload_error": "Failed to upload \"{name}\"",
+      "uploading": "Uploading..."
     }
   }
 }

@@ -34,17 +34,16 @@ import java.util.List;
  * Bean が常時登録されることにより {@link com.mannschaft.app.common.visibility.ContentVisibilityChecker}
  * が {@link ReferenceType#TEAM} 型を正規ルートで処理するようになる。</p>
  *
- * <p><strong>機能側 visibility との StandardVisibility マッピング</strong>（§5.2）:</p>
+ * <p><strong>機能側 visibility との StandardVisibility マッピング</strong>（§5.2・ロールベース設計）:</p>
  * <ul>
  *   <li>{@link TeamEntity.Visibility#PUBLIC} → {@link StandardVisibility#PUBLIC}
  *       （未認証ユーザーも含め誰でも閲覧可）</li>
- *   <li>{@link TeamEntity.Visibility#ORGANIZATION_ONLY} → {@link StandardVisibility#ORGANIZATION_WIDE}
- *       （スコープの親 ORG 所属メンバーまで公開。
- *       {@link com.mannschaft.app.common.visibility.UserScopeRoleSnapshot#isMemberOfParentOrg} で評価。
- *       親 ORG 非アクティブ時の連鎖ガードは §11.6 参照。）</li>
- *   <li>{@link TeamEntity.Visibility#PRIVATE} → {@link StandardVisibility#PRIVATE}
- *       （作成者本人のみ。チームに作成者概念（{@code created_by}）がないため
- *       authorUserId=null として実質的に fail-closed となる。）</li>
+ *   <li>{@link TeamEntity.Visibility#GUESTS_AND_ABOVE} → {@link StandardVisibility#SCOPE_AFFILIATED}
+ *       （GUEST 以上の所属メンバーすべてが閲覧可。直接所属ユーザー＋サポーター含む）</li>
+ *   <li>{@link TeamEntity.Visibility#SUPPORTERS_AND_ABOVE} → {@link StandardVisibility#SUPPORTERS_AND_ABOVE}
+ *       （サポーター以上のロールを持つメンバーが閲覧可）</li>
+ *   <li>{@link TeamEntity.Visibility#MEMBERS_AND_ABOVE} → {@link StandardVisibility#MEMBERS_AND_ABOVE}
+ *       （正規メンバー以上のロールを持つメンバーのみ閲覧可。サポーター・ゲストは除外）</li>
  * </ul>
  *
  * <p><strong>status × visibility 合成</strong>（§7.5）:</p>

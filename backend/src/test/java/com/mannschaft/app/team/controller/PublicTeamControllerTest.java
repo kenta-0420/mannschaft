@@ -20,7 +20,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -77,8 +76,8 @@ class PublicTeamControllerTest {
             "memberRoster", "userRoster"
     };
 
-    /** URL に使う public UUID（列挙攻撃対策で URL 用 UUID を採用）*/
-    private static final UUID TEAM_PUBLIC_ID = UUID.fromString("00000000-0000-0000-0000-000000000100");
+    /** URL に使うスラッグ（列挙攻撃対策で URL 用スラッグを採用）*/
+    private static final String TEAM_SLUG = "test-team-100";
     /** 内部 BIGINT ID（Service 呼び出しに使用）*/
     private static final Long TEAM_ID = 100L;
 
@@ -107,7 +106,7 @@ class PublicTeamControllerTest {
     void setUp() {
         SecurityContextHolder.clearContext();
         // Controller が resolveTeamId を先に呼ぶため、全テストで共通 mock を設定
-        given(teamService.resolveTeamId(eq(TEAM_PUBLIC_ID))).willReturn(TEAM_ID);
+        given(teamService.resolveTeamId(eq(TEAM_SLUG))).willReturn(TEAM_ID);
     }
 
     // ════════════════════════════════════════════════════════════
@@ -120,9 +119,9 @@ class PublicTeamControllerTest {
         TeamPublicDetailResponse dto = sampleResponse();
         given(teamService.getPublicTeam(eq(TEAM_ID))).willReturn(dto);
 
-        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_PUBLIC_ID))
+        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_SLUG))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(TEAM_PUBLIC_ID.toString()))
+                .andExpect(jsonPath("$.id").value(TEAM_SLUG))
                 .andExpect(jsonPath("$.name").value("公開店舗 A"))
                 .andExpect(jsonPath("$.nameKana").value("こうかいてんぽえー"))
                 .andExpect(jsonPath("$.prefecture").value("東京都"))
@@ -147,7 +146,7 @@ class PublicTeamControllerTest {
         willThrow(new BusinessException(TeamErrorCode.TEAM_001))
                 .given(teamService).getPublicTeam(eq(TEAM_ID));
 
-        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_PUBLIC_ID))
+        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_SLUG))
                 .andExpect(status().isNotFound());
     }
 
@@ -157,7 +156,7 @@ class PublicTeamControllerTest {
         willThrow(new BusinessException(TeamErrorCode.TEAM_001))
                 .given(teamService).getPublicTeam(eq(TEAM_ID));
 
-        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_PUBLIC_ID))
+        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_SLUG))
                 .andExpect(status().isNotFound());
     }
 
@@ -167,27 +166,27 @@ class PublicTeamControllerTest {
         willThrow(new BusinessException(TeamErrorCode.TEAM_001))
                 .given(teamService).getPublicTeam(eq(TEAM_ID));
 
-        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_PUBLIC_ID))
+        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_SLUG))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    @DisplayName("GET /public/teams/{publicId} 404: visibility=ORGANIZATION_ONLY")
-    void getPublicTeam_organizationOnly_returns404() throws Exception {
+    @DisplayName("GET /public/teams/{publicId} 404: visibility=GUESTS_AND_ABOVE（非公開チームは404）")
+    void getPublicTeam_guestsAndAbove_returns404() throws Exception {
         willThrow(new BusinessException(TeamErrorCode.TEAM_001))
                 .given(teamService).getPublicTeam(eq(TEAM_ID));
 
-        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_PUBLIC_ID))
+        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_SLUG))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    @DisplayName("GET /public/teams/{publicId} 404: visibility=PRIVATE")
-    void getPublicTeam_private_returns404() throws Exception {
+    @DisplayName("GET /public/teams/{publicId} 404: visibility=MEMBERS_AND_ABOVE（非公開チームは404）")
+    void getPublicTeam_membersAndAbove_returns404() throws Exception {
         willThrow(new BusinessException(TeamErrorCode.TEAM_001))
                 .given(teamService).getPublicTeam(eq(TEAM_ID));
 
-        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_PUBLIC_ID))
+        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_SLUG))
                 .andExpect(status().isNotFound());
     }
 
@@ -201,7 +200,7 @@ class PublicTeamControllerTest {
         SecurityContextHolder.clearContext();
         given(teamService.getPublicTeam(eq(TEAM_ID))).willReturn(sampleResponse());
 
-        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_PUBLIC_ID))
+        mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_SLUG))
                 .andExpect(status().isOk());
     }
 
@@ -214,7 +213,7 @@ class PublicTeamControllerTest {
     void publicTeamResponse_doesNotLeakSensitiveFields() throws Exception {
         given(teamService.getPublicTeam(eq(TEAM_ID))).willReturn(sampleResponse());
 
-        MvcResult result = mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_PUBLIC_ID))
+        MvcResult result = mockMvc.perform(get("/api/v1/public/teams/{publicId}", TEAM_SLUG))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -233,7 +232,7 @@ class PublicTeamControllerTest {
 
     private TeamPublicDetailResponse sampleResponse() {
         return new TeamPublicDetailResponse(
-                TEAM_PUBLIC_ID,
+                TEAM_SLUG,
                 "公開店舗 A",
                 "こうかいてんぽえー",
                 "ニックネーム1",

@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -64,6 +65,14 @@ class MemberPaymentConnectCheckoutServiceTest {
     @Mock private PaymentAuthorizationService paymentAuthorizationService;
     @Mock private ConnectChargeService connectChargeService;
     @Mock private ConnectAccountRepository connectAccountRepository;
+    @Mock private AccessControlService accessControlService;
+    @Mock private com.mannschaft.app.payment.service.PaymentBeneficiarySettingService paymentBeneficiarySettingService;
+    @Mock private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+    // Issue #2715 ロットA: 通知本文の i18n 化で MemberPaymentService に追加した依存。
+    // このテストクラスは sendRemind を呼ばないため未使用だが、@InjectMocks が null を注入するのを防ぐため
+    // （将来ここで sendRemind 経路を検証する際の NPE 罠回避）宣言しておく。
+    @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock private org.springframework.context.MessageSource messageSource;
 
     @InjectMocks
     private MemberPaymentService service;
@@ -285,11 +294,13 @@ class MemberPaymentConnectCheckoutServiceTest {
             given(memberPaymentRepository.existsValidPaidPayment(BENEFICIARY, ITEM_ID)).willReturn(false);
             given(paymentAuthorizationService.authorizePayment(eq(OTHER_PAYER), eq(BENEFICIARY), eq(ITEM_ID), anyBoolean()))
                     .willReturn(PayerRelationship.ADMIN_MANUAL);
+            // AC-6: 受益者のスコープ所属検証（成功系ゆえ所属メンバーとして true を返す）
+            given(accessControlService.isMemberOrDescendant(any(), any(), any(), anyBoolean())).willReturn(true);
             given(memberPaymentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(paymentMapper.toMemberPaymentResponse(any())).willReturn(null);
 
             var request = new com.mannschaft.app.payment.dto.CreateManualPaymentRequest(
-                    BENEFICIARY, new BigDecimal("5000"), java.time.LocalDateTime.now(), null, null, null);
+                    BENEFICIARY, new BigDecimal("5000"), java.time.LocalDateTime.now(), null, null, null, null);
 
             service.createManualPayment(ITEM_ID, OTHER_PAYER, request);
 

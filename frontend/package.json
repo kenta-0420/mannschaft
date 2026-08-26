@@ -12,6 +12,7 @@
     "typecheck": "nuxt typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:prune": "eslint . --prune-suppressions",
     "test": "vitest run && playwright test",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
@@ -38,6 +39,7 @@
     "@primevue/nuxt-module": "^4.5.4",
     "@primevue/themes": "^4.5.4",
     "@stomp/stompjs": "^7.3.0",
+    "@stripe/stripe-js": "^9.7.0",
     "@types/dompurify": "^3.0.5",
     "@vee-validate/zod": "^4.15.1",
     "@vite-pwa/nuxt": "^1.1.1",
@@ -48,12 +50,12 @@
     "date-holidays": "^3.27.0",
     "dayjs": "^1.11.20",
     "dexie": "^4.4.2",
-    "dompurify": "^3.3.3",
+    "dompurify": "^3.4.13",
     "frappe-gantt": "^1.2.2",
     "jsbarcode": "^3.12.3",
     "marked": "^17.0.5",
     "nosleep.js": "^0.12.0",
-    "nuxt": "3.21.2",
+    "nuxt": "3.21.11",
     "ofetch": "^1.5.1",
     "pinia": "^3.0.4",
     "primeicons": "^7.0.0",
@@ -86,13 +88,25 @@
     "otplib": "^13.4.0",
     "prettier": "^3.8.1",
     "vite": "^7.3.5",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.0",
+    "vue-tsc": "3.3.7"
   },
   "overrides": {
+    "brace-expansion": "^5.0.9",
     "cac": "^6.7.14",
     "commander": "^13.1.0",
+    "esbuild": "^0.28.1",
+    "nanoid": "^3.3.18",
     "h3": "^1.15.11",
     "crossws": "^0.4.5",
-    "simple-git": "^3.36.0"
+    "postcss": "^8.5.23",
+    "simple-git": "^3.36.0",
+    "sharp": "^0.35.3",
+    "@redocly/openapi-core": {
+      "js-yaml": "^4.3.1"
+    },
+    "fast-uri": "^3.1.5",
+    "tar": "^7.5.21",
+    "js-yaml": "^4.3.1"
   }
 }

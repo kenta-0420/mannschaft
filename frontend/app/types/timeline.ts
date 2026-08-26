@@ -4,6 +4,51 @@ export type TimelineAttachmentType = 'IMAGE' | 'VIDEO_FILE' | 'VIDEO_LINK' | 'LI
 export type VideoProcessingStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED'
 export type PostedAsType = 'USER' | 'TEAM' | 'ORGANIZATION' | 'SOCIAL_PROFILE'
 
+/**
+ * 村行事の自動投稿種別（F17.2 Wave2 ①フィード還流・§3.2）。
+ * 非 null なら村の行事案内名義のシステム投稿。通常投稿は null/undefined。
+ */
+export type SystemPostType = 'EVENT_CREATED' | 'EVENT_UPCOMING' | 'MEETUP_CONFIRMED' | 'FESTIVAL_STARTED'
+
+/**
+ * 組織タイムラインの配下配信範囲（CMP-058 / BE PR #2846・#2849）。
+ *
+ * - `DIRECT`      … その組織のメンバーだけに配信（既定）
+ * - `CHILDREN`    … 直下の子組織まで配信
+ * - `DESCENDANTS` … 配下すべての組織へ配信
+ *
+ * `scopeType === 'ORGANIZATION'` のときだけ配信範囲に寄与する。
+ * `CHILDREN` / `DESCENDANTS` の指定は組織の ADMIN / DEPUTY_ADMIN のみ許され、
+ * それ以外が指定すると BE が `COMMON_002`（403）で拒否する。
+ * 返信は親投稿から継承するためクライアントは指定しない。
+ */
+export type TimelineDeliveryScope = 'DIRECT' | 'CHILDREN' | 'DESCENDANTS'
+
+/** 配信範囲の既定値（何も選ばなければこの値で送られる）。 */
+export const DEFAULT_DELIVERY_SCOPE: TimelineDeliveryScope = 'DIRECT'
+
+/** 選択肢の並び順（UI の表示順の正本）。 */
+export const DELIVERY_SCOPE_OPTIONS: readonly TimelineDeliveryScope[] = [
+  'DIRECT',
+  'CHILDREN',
+  'DESCENDANTS',
+] as const
+
+/** ミュート対象の種別（BE `MuteRequest.mutedType`）。 */
+export type TimelineMutedType = 'TEAM' | 'ORGANIZATION'
+
+/** ミュート登録の上限件数（BE 超過時は `TIMELINE_017`）。 */
+export const MAX_TIMELINE_MUTES = 200
+
+/** ミュート1件（BE `MuteResponse`）。 */
+export interface TimelineMute {
+  id: number
+  userId: number
+  mutedType: TimelineMutedType
+  mutedId: number
+  createdAt: string
+}
+
 export const CONTENT_TRUNCATE_LENGTH = 500
 
 export interface TimelineUser {
@@ -22,30 +67,60 @@ export interface PostedAs {
   avatarUrl?: string
 }
 
-export interface TimelineAttachment {
-  id: number
-  attachmentType: TimelineAttachmentType
+/** 添付ファイル本体（file_key はR2生キー。表示URLは image/video 側の署名URLを使う）。 */
+export interface TimelineAttachmentFile {
   fileKey?: string
+  originalFilename?: string
   fileSize?: number
   mimeType?: string
-  url?: string
-  thumbnailUrl?: string
+}
+
+/**
+ * 画像添付。url/thumbnailUrl はBEが MediaUrlResolver で解決した署名付き表示URL（issue #2424）。
+ * DBには生キーしか無いためBEが署名して返す（FEはR2を署名できない）。画像は別サムネイルを
+ * 持たないため thumbnailUrl は url と同一値。
+ */
+export interface TimelineAttachmentImage {
   imageWidth?: number
   imageHeight?: number
+  url?: string
+  thumbnailUrl?: string
+}
+
+/** 動画添付（videoUrl/videoThumbnailUrl は署名URLまたは外部URL）。 */
+export interface TimelineAttachmentVideo {
   videoUrl?: string
   videoThumbnailUrl?: string
-  videoThumbnailKey?: string
   videoTitle?: string
+  videoThumbnailKey?: string
   videoDurationSeconds?: number
   videoCodec?: string
   videoWidth?: number
   videoHeight?: number
   videoProcessingStatus?: VideoProcessingStatus
+}
+
+/** リンクプレビュー添付（OGP）。 */
+export interface TimelineAttachmentLink {
   linkUrl?: string
   ogTitle?: string
   ogDescription?: string
   ogImageUrl?: string
   ogSiteName?: string
+}
+
+/**
+ * タイムライン投稿の添付。BE の {@code TimelineAttachmentResponse}（ネスト形 file/image/video/link）と
+ * 1:1 対応する。生成型 {@code components['schemas']['TimelineAttachmentResponse']} と同形。
+ */
+export interface TimelineAttachment {
+  id: number
+  attachmentType: TimelineAttachmentType
+  sortOrder?: number
+  file?: TimelineAttachmentFile
+  image?: TimelineAttachmentImage
+  video?: TimelineAttachmentVideo
+  link?: TimelineAttachmentLink
 }
 
 export interface TimelinePollOption {
@@ -76,6 +151,10 @@ export interface RepostOf {
 export interface PostScopeDto {
   scopeType: TimelineScopeType
   scopeId: string
+  /** 投稿元スコープ名（個人集約タイムラインで BE から enrich。TEAM/ORGANIZATION のみ・それ以外は null） */
+  name?: string | null
+  /** 投稿元スコープ slug（遷移先 /teams/{slug} or /organizations/{slug} の生成に使う。null 可） */
+  slug?: string | null
 }
 
 export interface PostAuthorDto {
@@ -114,6 +193,12 @@ export interface TimelinePostResponse {
   content: PostContentDto
   stats: PostStatsDto
   audit: PostAuditDto
+  /**
+   * 村行事のシステム自動投稿種別（F17.2 Wave2 §3.9(b)）。BE: `PostResponse.systemPostType`。
+   * 非 null/undefined のときは `user`/`postedAs` とも null（投稿者不在）なので、
+   * 表示名・アバターは i18n の固定表示（`village.systemPost.authorName`）にフォールバックする。
+   */
+  systemPostType?: SystemPostType | null
   // --- フィード固有の enrichment フィールド（バックエンドから付加されるが PostResponse 外） ---
   user: TimelineUser | null
   postedAs: PostedAs | null
@@ -148,6 +233,8 @@ export interface TimelinePostDetailResponse {
 export interface CreateTimelinePostRequest {
   scopeType: TimelineScopeType
   scopeId?: number
+  /** 配下配信範囲。省略時は BE 側で `DIRECT` 扱い（`scopeType === 'ORGANIZATION'` のみ有効）。 */
+  deliveryScope?: TimelineDeliveryScope
   postedAsType?: PostedAsType
   postedAsId?: number
   socialProfileId?: number

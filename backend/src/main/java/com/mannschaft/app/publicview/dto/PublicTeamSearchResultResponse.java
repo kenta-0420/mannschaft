@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
  * </ul>
  *
  * @param id           チーム ID
+ * @param slug         チームのスラッグ（URL 識別子）
  * @param name         チーム名
  * @param iconUrl      アイコン URL（null 可）
  * @param memberCount  アクティブメンバー数（{@code teams.member_count} 集約カラムから取得）
@@ -24,6 +25,7 @@ import java.time.LocalDateTime;
  */
 public record PublicTeamSearchResultResponse(
         Long id,
+        String slug,
         String name,
         String iconUrl,
         int memberCount,

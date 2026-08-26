@@ -1,11 +1,12 @@
 package com.mannschaft.app.event.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.event.dto.UpdateTicketTypeRequest;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,8 +20,7 @@ import java.math.BigDecimal;
 @Table(name = "event_ticket_types")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class EventTicketTypeEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -57,6 +57,40 @@ public class EventTicketTypeEntity extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Integer sortOrder = 0;
+
+    /**
+     * チケット種別の更新内容を managed entity へ直接適用する。
+     * toBuilder().build() による id=null INSERT 化バグを回避するため、フィールドを直接ミューテートする。
+     * null フィールドは「変更なし」とみなし、既存値を維持する。
+     *
+     * @param request 更新リクエスト
+     */
+    public void applyUpdate(UpdateTicketTypeRequest request) {
+        if (request.getName() != null) {
+            this.name = request.getName();
+        }
+        if (request.getDescription() != null) {
+            this.description = request.getDescription();
+        }
+        if (request.getPrice() != null) {
+            this.price = request.getPrice();
+        }
+        if (request.getCurrency() != null) {
+            this.currency = request.getCurrency();
+        }
+        if (request.getMaxQuantity() != null) {
+            this.maxQuantity = request.getMaxQuantity();
+        }
+        if (request.getMinRegistrationRole() != null) {
+            this.minRegistrationRole = request.getMinRegistrationRole();
+        }
+        if (request.getIsActive() != null) {
+            this.isActive = request.getIsActive();
+        }
+        if (request.getSortOrder() != null) {
+            this.sortOrder = request.getSortOrder();
+        }
+    }
 
     /**
      * 発行数をインクリメントする。

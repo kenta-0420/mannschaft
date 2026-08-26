@@ -1,5 +1,6 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.family.EventType;
 import com.mannschaft.app.family.dto.PresenceIconRequest;
@@ -33,6 +34,9 @@ class PresenceIconServiceTest {
 
     @Mock
     private TeamPresenceIconRepository teamPresenceIconRepository;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private PresenceIconService presenceIconService;
@@ -72,7 +76,7 @@ class PresenceIconServiceTest {
             given(teamPresenceIconRepository.findByTeamId(TEAM_ID)).willReturn(icons);
 
             // When
-            ApiResponse<List<PresenceIconResponse>> response = presenceIconService.getIcons(TEAM_ID);
+            ApiResponse<List<PresenceIconResponse>> response = presenceIconService.getIcons(TEAM_ID, USER_ID);
 
             // Then
             assertThat(response.getData()).hasSize(2);
@@ -89,7 +93,7 @@ class PresenceIconServiceTest {
             given(teamPresenceIconRepository.findByTeamId(TEAM_ID)).willReturn(List.of());
 
             // When
-            ApiResponse<List<PresenceIconResponse>> response = presenceIconService.getIcons(TEAM_ID);
+            ApiResponse<List<PresenceIconResponse>> response = presenceIconService.getIcons(TEAM_ID, USER_ID);
 
             // Then
             assertThat(response.getData()).isEmpty();

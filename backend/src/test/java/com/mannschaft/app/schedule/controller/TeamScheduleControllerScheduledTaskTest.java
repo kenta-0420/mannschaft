@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.GlobalExceptionHandler;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.config.OrgScopeIdConverter;
+import com.mannschaft.app.config.TeamScopeIdConverter;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
@@ -23,6 +25,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.support.StaticMessageSource;
+import org.springframework.format.support.DefaultFormattingConversionService;
+import org.springframework.format.support.FormattingConversionService;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -59,10 +63,13 @@ class TeamScheduleControllerScheduledTaskTest {
     private ScheduleScheduledTaskService scheduledTaskService;
     @Mock
     private NameResolverService nameResolverService;
+    @Mock
+    private com.mannschaft.app.team.service.TeamService teamService;
 
     private MockMvc mockMvc;
 
     private static final Long USER_ID = 100L;
+    private static final String TEAM_SLUG = "test-team-0a";
     private static final Long TEAM_ID = 10L;
     private static final Long SCHEDULE_ID = 200L;
     private static final UUID TASK_ID = UUID.fromString("019607a0-0000-7000-8000-000000000099");
@@ -76,11 +83,22 @@ class TeamScheduleControllerScheduledTaskTest {
                 reminderService, scheduledTaskService, nameResolverService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
+                .setConversionService(scopeConversionService())
                 .setControllerAdvice(new GlobalExceptionHandler(new StaticMessageSource()))
                 .build();
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(String.valueOf(USER_ID), null,
                         List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+    }
+
+    /** 型付きパス変数（{@code TeamScopeId}）の変換器を登録した変換サービス（課題 #12・案A）。 */
+    private FormattingConversionService scopeConversionService() {
+        FormattingConversionService cs = new DefaultFormattingConversionService();
+        cs.addConverter(new OrgScopeIdConverter(org.mockito.Mockito.mock(
+                com.mannschaft.app.organization.service.OrganizationService.class)));
+        cs.addConverter(new TeamScopeIdConverter(teamService));
+        return cs;
     }
 
     @AfterEach
@@ -108,7 +126,7 @@ class TeamScheduleControllerScheduledTaskTest {
                     eq(TASK_ID), eq(CalendarSyncScopeType.TEAM), eq(TEAM_ID));
 
             mockMvc.perform(delete("/api/v1/teams/{teamId}/schedules/{scheduleId}/scheduled-tasks/{taskId}",
-                            TEAM_ID, SCHEDULE_ID, TASK_ID))
+                            TEAM_SLUG, SCHEDULE_ID, TASK_ID))
                     .andExpect(status().isNoContent());
         }
 
@@ -121,7 +139,7 @@ class TeamScheduleControllerScheduledTaskTest {
                     .when(scheduledTaskService).cancelTask(any(UUID.class), any(), anyLong());
 
             mockMvc.perform(delete("/api/v1/teams/{teamId}/schedules/{scheduleId}/scheduled-tasks/{taskId}",
-                            TEAM_ID, SCHEDULE_ID, TASK_ID))
+                            TEAM_SLUG, SCHEDULE_ID, TASK_ID))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.error.code").value("SCHEDULE_092"));
         }
@@ -135,7 +153,7 @@ class TeamScheduleControllerScheduledTaskTest {
                     .when(scheduledTaskService).cancelTask(any(UUID.class), any(), anyLong());
 
             mockMvc.perform(delete("/api/v1/teams/{teamId}/schedules/{scheduleId}/scheduled-tasks/{taskId}",
-                            TEAM_ID, SCHEDULE_ID, TASK_ID))
+                            TEAM_SLUG, SCHEDULE_ID, TASK_ID))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("SCHEDULE_091"));
         }

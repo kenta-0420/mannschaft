@@ -1,5 +1,18 @@
 {
   "schedule": {
+    "attendance": {
+      "yes": "Asistir",
+      "no": "Ausente",
+      "maybe": "Quizás",
+      "respondSuccess": "Respuesta de asistencia guardada",
+      "respondError": "Error al guardar la asistencia"
+    },
+    "list": {
+      "allDay": "Todo el día",
+      "empty": "No hay eventos para este período",
+      "prevMonth": "Mes anterior",
+      "nextMonth": "Mes siguiente"
+    },
     "common_delete": "Eliminar",
     "description_label": "Descripción",
     "error_title_required": "El título es obligatorio",
@@ -11,19 +24,18 @@
     "reminder": {
       "label": "Recordatorios",
       "add": "Agregar recordatorio",
-      "before": "antes",
       "max_reached": "Puedes configurar hasta 5 recordatorios",
       "kind_label": "Tipo",
-      "kind_relative": "Relativo",
-      "kind_absolute": "Absoluto",
-      "unit_label": "Unidad",
-      "unit_minutes": "minutos",
-      "unit_hours": "horas",
-      "unit_days": "días",
+      "kind_relative": "Antes del evento",
+      "kind_absolute": "Fecha/hora específica",
       "relative_value_label": "Valor",
       "absolute_at_label": "Notificar el",
       "error_absolute_required": "Introduce la fecha y hora del recordatorio absoluto",
-      "error_past": "No se puede indicar una fecha y hora pasada"
+      "error_past": "No se puede indicar una fecha y hora pasada",
+      "preset_minutes_before": "{n} min antes",
+      "preset_hours_before": "{n} h antes",
+      "preset_days_before": "{n} día antes",
+      "preset_weeks_before": "{n} semana antes"
     },
     "scheduled_survey": {
       "label": "Programar una encuesta",
@@ -67,6 +79,241 @@
       "cancel": "Cancelar",
       "cancel_success": "La tarea programada se ha cancelado",
       "cancel_failed": "No se pudo cancelar la tarea programada"
+    },
+    "attendanceTeamBreakdown": {
+      "toggleLabel": "Agrupar por equipo",
+      "toggleHint": "Agrupa la asistencia por equipo subordinado (solo distribucion de la organizacion).",
+      "title": "Asistencia por equipo",
+      "team": "Equipo",
+      "attending": "Asiste",
+      "partial": "Parcial",
+      "absent": "Ausente",
+      "undecided": "Sin responder",
+      "total": "Total",
+      "totalNote": "El total cuenta personas unicas; el conteo por equipo puede solaparse (los miembros en varios equipos se cuentan en cada uno).",
+      "directMembers": "Miembros directos de la organizacion",
+      "reload": "Recargar",
+      "retry": "Reintentar",
+      "exportCsv": "Exportar CSV",
+      "exportFailed": "No se pudo exportar el CSV.",
+      "fetchFailed": "No se pudo cargar el desglose de asistencia por equipo.",
+      "forbidden": "No tienes permiso para ver este desglose.",
+      "empty": "No hay datos de desglose de asistencia por equipo."
+    },
+    "recurrence": {
+      "label": "Repetir",
+      "interval": {
+        "DAILY": "Diario",
+        "WEEKLY": "Semanal",
+        "MONTHLY": "Mensual",
+        "YEARLY": "Anual"
+      },
+      "days": {
+        "SUNDAY": "Do",
+        "MONDAY": "Lu",
+        "TUESDAY": "Ma",
+        "WEDNESDAY": "Mi",
+        "THURSDAY": "Ju",
+        "FRIDAY": "Vi",
+        "SATURDAY": "Sa"
+      },
+      "end_label": "Fin",
+      "end_never": "Nunca",
+      "end_date": "En fecha",
+      "end_count": "Después de",
+      "end_count_suffix": "veces"
+    },
+    "event_add": "Agregar evento",
+    "calendar_guide": {
+      "page_title": "Mi Calendario",
+      "description": "Mi Calendario te permite ver tus eventos personales junto con los eventos de tus equipos y organizaciones, todo en una sola pantalla.",
+      "what": {
+        "title": "¿Qué es Mi Calendario?",
+        "body": "Muestra todos los eventos de tus equipos, organizaciones y agenda personal en un solo calendario. Puedes alternar entre la vista de calendario y la vista Gantt (lista de TODOs)."
+      },
+      "add": {
+        "title": "Agregar un evento",
+        "body": "Haz clic en el botón 'Agregar evento' o en una fecha del calendario para crear un evento. Puedes agregar eventos personales así como eventos de equipo u organización.",
+        "step1": "Haz clic en 'Agregar evento' en la parte superior derecha, o en una celda de fecha",
+        "step2": "Ingresa un título, fecha/hora y lugar",
+        "step3": "Selecciona personal, equipo u organización en 'Alcance'",
+        "step4": "Haz clic en 'Guardar' para finalizar"
+      },
+      "filter": {
+        "title": "Filtrar la vista",
+        "body": "Usa los botones en la parte inferior del calendario para alternar la visualización de cada alcance (personal, equipo, organización). Si hay 6 o más, usa el menú desplegable para seleccionar.",
+        "personal": "Punto verde: eventos personales",
+        "team_org": "Punto índigo: eventos de equipo/organización"
+      },
+      "gantt": {
+        "title": "Vista Gantt (lista de TODOs)",
+        "body": "Presiona la pestaña 'Gantt' para mostrar los TODOs con fecha límite como un diagrama de Gantt. Se sincroniza con el selector de alcance en la parte superior derecha."
+      },
+      "detail": {
+        "title": "Detalles del evento y asistencia",
+        "body": "Haz clic en un evento en el calendario para abrir el panel de detalles a la derecha.",
+        "item_edit": "Usa el icono de lápiz para editar, o el icono de papelera para eliminar",
+        "item_attendance": "Para eventos con seguimiento de asistencia, selecciona 'Asistir', 'No asistir' o 'Tal vez'",
+        "item_match": "Usa el botón 'Registrar este partido' desde un evento de equipo para iniciar un registro de partido"
+      },
+      "google_sync": {
+        "title": "Integración con Google Calendar",
+        "body": "Conecta tu cuenta de Google para sincronizar tus eventos personales con Google Calendar en ambas direcciones. Los eventos que añadas o edites en Mannschaft aparecen en Google Calendar, y los cambios hechos en Google Calendar se importan de vuelta.",
+        "step1": "Abre 'Ajustes' → 'Integración con Google Calendar'",
+        "step2": "Pulsa 'Conectar cuenta de Google' y autoriza la conexión",
+        "step3": "Activa 'Calendario personal' para habilitar la sincronización",
+        "step4": "Ejecuta 'Sincronización manual' cuando quieras que los cambios se reflejen al instante"
+      }
+    },
+    "google_sync_notice": "Conectado a Google Calendar. Los cambios realizados en Google serán reemplazados por los datos de Mannschaft la próxima vez que guardes aquí.",
+    "comment": {
+      "title": "Comentarios",
+      "placeholder": "Comenta sobre este evento…",
+      "submit": "Publicar",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "reply": "Responder",
+      "replyTo": "Responder a {name}",
+      "showReplies": "Ver {count} respuestas más",
+      "empty": "Aún no hay comentarios",
+      "loadMore": "Cargar más",
+      "edit": "Editar",
+      "edited": "(editado)",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar este comentario?",
+      "deleted": "Este comentario fue eliminado",
+      "deletedAuthor": "Usuario eliminado",
+      "closed": "Los comentarios de este evento están cerrados",
+      "cancelled": "No puedes comentar en un evento cancelado",
+      "updateSuccess": "Comentario actualizado",
+      "deleteSuccess": "Comentario eliminado",
+      "postSuccess": "Comentario publicado",
+      "settings": {
+        "enable": "Permitir comentarios",
+        "disable": "Cerrar comentarios",
+        "updateSuccess": "Configuración de comentarios actualizada"
+      },
+      "mention": {
+        "hint": "Puedes mencionar a un miembro",
+        "empty": "No hay miembros coincidentes"
+      },
+      "count": "{count} comentarios",
+      "error": {
+        "bodyRequired": "Introduce un comentario",
+        "bodyTooLong": "El comentario no puede superar los 2000 caracteres",
+        "maxDepth": "No puedes responder a esta respuesta",
+        "closed": "Los comentarios están cerrados",
+        "forbidden": "No tienes permiso para esta acción",
+        "tooManyMentions": "Puedes mencionar hasta 20 personas",
+        "rateLimited": "Demasiadas publicaciones. Inténtalo más tarde",
+        "generic": "La operación falló",
+        "notFound": "No se encontró el comentario"
+      }
+    },
+    "targetAudience": { "label": "Destinatarios del evento", "allMembers": "Todos", "selectMembers": "Seleccionar miembros", "memberPlaceholder": "Selecciona miembros destinatarios", "more": "y {count} más", "selectedCount": "{count} seleccionados", "invalidSelection": "Selecciona entre 1 y 500 miembros" },
+    "memberColor": { "column": "Color del evento", "auto": "Automático", "reset": "Restablecer color automático", "updated": "Se actualizó el color del evento del miembro", "resetDone": "Se restableció el color automático del miembro", "updateFailed": "No se pudo actualizar el color del miembro", "colorLabel": "Color del evento de {name}" },
+    "todo_load_error": {
+      "summary": "No se pudieron cargar las tareas (TODO)",
+      "detail": "No se pudieron mostrar las tareas en el calendario. Los eventos siguen visibles. Vuelve a cargar mas tarde."
+    }
+  },
+  "scheduleKeep": {
+    "title": "キープ",
+    "subtitle": "日付が決まっていない予定を置いておく場所",
+    "empty": "まだ何もありません。思いついたことを書いてみましょう",
+    "form": {
+      "titleLabel": "やりたいこと",
+      "titlePlaceholder": "例: 夏合宿",
+      "memoLabel": "メモ（任意）",
+      "candidateDatesLabel": "候補日（任意）",
+      "submit": "キープする"
+    },
+    "action": {
+      "convert": "予定にする",
+      "convertFromCandidate": "この日に決める",
+      "pickDate": "日付を選ぶ",
+      "specifyTime": "時刻を指定する",
+      "archive": "見送る",
+      "restore": "もどす",
+      "revert": "予定を取り消す",
+      "reorder": "並び替え"
+    },
+    "status": {
+      "kept": "キープ中",
+      "scheduled": "予定になりました",
+      "archived": "見送り"
+    },
+    "filter": {
+      "kept": "キープ中",
+      "scheduled": "予定済み",
+      "archived": "見送り",
+      "all": "すべて"
+    },
+    "badge": {
+      "candidateCount": "候補日 {count} 件"
+    },
+    "origin": {
+      "label": "このキープから作られました",
+      "cancelled": "予定は中止になりました",
+      "deleted": "元の予定は削除されました"
+    },
+    "lockedHint": {
+      "scheduled": "予定になったので、内容の変更は予定側で行ってください",
+      "archived": "見送り中は編集できません。「もどす」と編集できます"
+    },
+    "notification": {
+      "converted": "「{title}」の日程が決まりました",
+      "created": "「{title}」がキープされました"
+    },
+    "confirm": {
+      "archive": "見送りにしますか？あとで戻せます"
+    },
+    "limit": {
+      "hint": "見送りにすると枠が空きます"
+    },
+    "help": {
+      "title": "キープの使い方",
+      "body": "日付が決まっていない予定をひとまず置いておける場所です。タイトルだけで作成でき、あとから候補日やメモを足せます。候補日が決まったらタップひとつでカレンダーの予定に変換できます。",
+      "create": {
+        "title": "キープする",
+        "body": "タイトルだけ入力すれば作成できます。候補日やメモは後からでも構いません。",
+        "steps": {
+          "step1": "やりたいことをタイトルに入力",
+          "step2": "必要なら候補日・メモを追加",
+          "step3": "「キープする」を押す"
+        }
+      },
+      "convert": {
+        "title": "予定に変換する",
+        "body": "候補日があれば1タップ、無くても日付を選ぶだけの2タップ以内で予定になります。",
+        "steps": {
+          "step1": "候補日バッジ、または「予定にする」を押す",
+          "step2": "候補日が無ければ日付を選ぶ",
+          "step3": "カレンダーに予定として反映される"
+        }
+      },
+      "organize": {
+        "title": "整理する",
+        "body": "見送ったキープは一覧から消えますが、いつでも「もどす」で復帰できます。並び替えもできます。",
+        "steps": {
+          "step1": "不要になったら「見送る」",
+          "step2": "「見送り」フィルタから「もどす」で復帰",
+          "step3": "ドラッグで並び替え"
+        }
+      }
+    },
+    "error": {
+      "notFound": "キープが見つかりません",
+      "titleRequired": "タイトルを入力してください",
+      "tooManyCandidateDates": "候補日は最大10件です",
+      "invalidCandidateDate": "候補日の形式が正しくありません",
+      "forbidden": "このキープを操作する権限がありません",
+      "notConvertible": "このキープは予定に変換できません",
+      "notEditable": "この状態では編集できません",
+      "revertBlockedByAttendance": "出欠の回答があるため変換を取り消せません",
+      "invalidStateTransition": "この操作はできません",
+      "limitExceeded": "キープの上限に達しました",
+      "invalidReorder": "並び替えの指定が正しくありません"
     }
   }
 }

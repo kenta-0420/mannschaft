@@ -1,9 +1,11 @@
 package com.mannschaft.app.facility.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.facility.dto.FacilitySettingsResponse;
 import com.mannschaft.app.facility.dto.FacilityStatsResponse;
 import com.mannschaft.app.facility.dto.UpdateSettingsRequest;
+import com.mannschaft.app.facility.service.FacilityAccessGuard;
 import com.mannschaft.app.facility.service.FacilitySettingsService;
 import com.mannschaft.app.facility.service.FacilityStatsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,12 +33,14 @@ public class OrgFacilitySettingsController {
 
     private final FacilitySettingsService settingsService;
     private final FacilityStatsService statsService;
+    private final FacilityAccessGuard accessGuard;
 
     @GetMapping("/settings")
     @Operation(summary = "施設予約設定取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<FacilitySettingsResponse>> getSettings(
             @PathVariable Long organizationId) {
+        accessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         FacilitySettingsResponse response = settingsService.getSettings(SCOPE_TYPE, organizationId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -47,6 +51,7 @@ public class OrgFacilitySettingsController {
     public ResponseEntity<ApiResponse<FacilitySettingsResponse>> updateSettings(
             @PathVariable Long organizationId,
             @Valid @RequestBody UpdateSettingsRequest request) {
+        accessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         FacilitySettingsResponse response = settingsService.updateSettings(SCOPE_TYPE, organizationId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -56,6 +61,7 @@ public class OrgFacilitySettingsController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<FacilityStatsResponse>> getStats(
             @PathVariable Long organizationId) {
+        accessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         FacilityStatsResponse response = statsService.getStats(SCOPE_TYPE, organizationId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

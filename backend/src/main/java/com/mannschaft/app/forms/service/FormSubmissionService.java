@@ -1,11 +1,13 @@
 package com.mannschaft.app.forms.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.forms.FormErrorCode;
 import com.mannschaft.app.forms.FormFieldType;
 import com.mannschaft.app.forms.FormMapper;
+import com.mannschaft.app.forms.FormScopes;
 import com.mannschaft.app.forms.FormStatus;
 import com.mannschaft.app.forms.dto.CreateFormSubmissionRequest;
 import com.mannschaft.app.forms.dto.FormSubmissionResponse;
@@ -45,6 +47,7 @@ public class FormSubmissionService {
     private final FormTemplateService templateService;
     private final FormMapper formMapper;
     private final StorageService storageService;
+    private final AccessControlService accessControlService;
 
     /** Pre-signed upload URL の有効期間（10 分）。設計書 §4 添付アップロード API 準拠。 */
     private static final Duration UPLOAD_URL_TTL = Duration.ofMinutes(10);
@@ -73,13 +76,23 @@ public class FormSubmissionService {
     /**
      * テンプレートに紐付く提出一覧をページング取得する。
      *
+     * <p>認可根治戦役 Wave3-B4: {@code templateId} が URL の {@code scopeType}/{@code scopeId} に
+     * 属するかを {@link FormTemplateService#getTemplate} 経由で検証してから
+     * {@code checkAdminOrAbove} する（BOLA: 他スコープの templateId を指定した越境を 404 で秘匿）。</p>
+     *
+     * @param scopeType  スコープ種別
+     * @param scopeId    スコープID
+     * @param userId     操作ユーザーID
      * @param templateId テンプレートID
      * @param status     ステータスフィルタ（null の場合は全件）
      * @param pageable   ページング情報
      * @return 提出レスポンスのページ
      */
     public Page<FormSubmissionResponse> listSubmissionsByTemplate(
-            Long templateId, String status, Pageable pageable) {
+            String scopeType, Long scopeId, Long userId, Long templateId, String status, Pageable pageable) {
+        // findTemplateOrThrow相当: スコープ不一致は TEMPLATE_NOT_FOUND(404)で存在秘匿
+        templateService.getTemplateEntityInScope(scopeType, scopeId, templateId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
         Page<FormSubmissionEntity> page;
         if (status != null) {
             com.mannschaft.app.forms.SubmissionStatus submissionStatus =
@@ -106,6 +119,7 @@ public class FormSubmissionService {
      */
     public Page<FormSubmissionResponse> listMySubmissions(
             Long userId, String scopeType, Long scopeId, Pageable pageable) {
+        accessControlService.checkMembership(userId, scopeId, FormScopes.canonical(scopeType));
         Page<FormSubmissionEntity> page = submissionRepository
                 .findBySubmittedByAndScopeTypeAndScopeIdOrderByCreatedAtDesc(
                         userId, scopeType, scopeId, pageable);
@@ -118,11 +132,19 @@ public class FormSubmissionService {
     /**
      * 提出詳細を取得する。
      *
+     * <p>認可根治戦役 Wave3-B4: entity 由来の scope が URL の
+     * {@code scopeType}/{@code scopeId} と一致するかを検証（不一致は 404 で存在秘匿）したうえで
+     * {@code checkMembership} する。</p>
+     *
+     * @param scopeType    スコープ種別
+     * @param scopeId      スコープID
+     * @param userId       操作ユーザーID
      * @param submissionId 提出ID
      * @return 提出レスポンス
      */
-    public FormSubmissionResponse getSubmission(Long submissionId) {
-        FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+    public FormSubmissionResponse getSubmission(String scopeType, Long scopeId, Long userId, Long submissionId) {
+        FormSubmissionEntity entity = findSubmissionInScopeOrThrow(scopeType, scopeId, null, submissionId);
+        accessControlService.checkMembership(userId, scopeId, FormScopes.canonical(scopeType));
         List<FormSubmissionValueEntity> values = valueRepository.findBySubmissionId(submissionId);
         return formMapper.toSubmissionResponseWithValues(entity, values);
     }
@@ -139,6 +161,7 @@ public class FormSubmissionService {
     @Transactional
     public FormSubmissionResponse createSubmission(
             String scopeType, Long scopeId, Long userId, CreateFormSubmissionRequest request) {
+        accessControlService.checkMembership(userId, scopeId, FormScopes.canonical(scopeType));
         FormTemplateEntity template = templateService.getTemplateEntity(request.getTemplateId());
 
         if (template.getStatus() != FormStatus.PUBLISHED) {
@@ -353,12 +376,22 @@ public class FormSubmissionService {
     /**
      * 提出を承認する。
      *
+     * <p>認可根治戦役 Wave3-B4: BOLA ガード — 提出 entity 由来の {@code templateId}/{@code scopeType}/
+     * {@code scopeId} が URL パスと一致するかを検証してから {@code checkAdminOrAbove} する。
+     * 不一致は {@link FormErrorCode#SUBMISSION_NOT_FOUND}（404）で存在秘匿する。</p>
+     *
+     * @param scopeType    スコープ種別
+     * @param scopeId      スコープID
+     * @param userId       操作ユーザーID
+     * @param templateId   テンプレートID（URL パス由来。提出の templateId と一致すること）
      * @param submissionId 提出ID
      * @return 更新された提出レスポンス
      */
     @Transactional
-    public FormSubmissionResponse approveSubmission(Long submissionId) {
-        FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+    public FormSubmissionResponse approveSubmission(
+            String scopeType, Long scopeId, Long userId, Long templateId, Long submissionId) {
+        FormSubmissionEntity entity = findSubmissionInScopeOrThrow(scopeType, scopeId, templateId, submissionId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
 
         if (!entity.isSubmitted()) {
             throw new BusinessException(FormErrorCode.INVALID_SUBMISSION_STATUS);
@@ -375,12 +408,20 @@ public class FormSubmissionService {
     /**
      * 提出を却下する。
      *
+     * <p>認可根治戦役 Wave3-B4: BOLA ガード + checkAdminOrAbove（{@link #approveSubmission} 参照）。</p>
+     *
+     * @param scopeType    スコープ種別
+     * @param scopeId      スコープID
+     * @param userId       操作ユーザーID
+     * @param templateId   テンプレートID
      * @param submissionId 提出ID
      * @return 更新された提出レスポンス
      */
     @Transactional
-    public FormSubmissionResponse rejectSubmission(Long submissionId) {
-        FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+    public FormSubmissionResponse rejectSubmission(
+            String scopeType, Long scopeId, Long userId, Long templateId, Long submissionId) {
+        FormSubmissionEntity entity = findSubmissionInScopeOrThrow(scopeType, scopeId, templateId, submissionId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
 
         if (!entity.isSubmitted()) {
             throw new BusinessException(FormErrorCode.INVALID_SUBMISSION_STATUS);
@@ -397,12 +438,20 @@ public class FormSubmissionService {
     /**
      * 提出を差し戻す。
      *
+     * <p>認可根治戦役 Wave3-B4: BOLA ガード + checkAdminOrAbove（{@link #approveSubmission} 参照）。</p>
+     *
+     * @param scopeType    スコープ種別
+     * @param scopeId      スコープID
+     * @param userId       操作ユーザーID
+     * @param templateId   テンプレートID
      * @param submissionId 提出ID
      * @return 更新された提出レスポンス
      */
     @Transactional
-    public FormSubmissionResponse returnSubmission(Long submissionId) {
-        FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+    public FormSubmissionResponse returnSubmission(
+            String scopeType, Long scopeId, Long userId, Long templateId, Long submissionId) {
+        FormSubmissionEntity entity = findSubmissionInScopeOrThrow(scopeType, scopeId, templateId, submissionId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
 
         if (!entity.isSubmitted()) {
             throw new BusinessException(FormErrorCode.INVALID_SUBMISSION_STATUS);
@@ -437,6 +486,23 @@ public class FormSubmissionService {
     private FormSubmissionEntity findSubmissionOrThrow(Long submissionId) {
         return submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
+    }
+
+    /**
+     * 提出を取得し、URL の {@code scopeType}/{@code scopeId} と一致するかを検証する（BOLA ガード）。
+     * {@code templateId} が指定された場合は提出の {@code templateId} との一致も検証する。
+     * 不一致・不在はいずれも {@link FormErrorCode#SUBMISSION_NOT_FOUND}（404）として存在秘匿する
+     * （認可根治戦役 Wave3-B4）。
+     */
+    private FormSubmissionEntity findSubmissionInScopeOrThrow(
+            String scopeType, Long scopeId, Long templateId, Long submissionId) {
+        FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+        boolean scopeMatches = entity.getScopeType().equalsIgnoreCase(scopeType) && entity.getScopeId().equals(scopeId);
+        boolean templateMatches = templateId == null || templateId.equals(entity.getTemplateId());
+        if (!scopeMatches || !templateMatches) {
+            throw new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND);
+        }
+        return entity;
     }
 
     /**
@@ -537,7 +603,7 @@ public class FormSubmissionService {
     private List<FormSubmissionValueEntity> saveValues(
             Long submissionId, List<SubmissionValueRequest> values) {
         List<FormSubmissionValueEntity> entities = values.stream()
-                .map(v -> FormSubmissionValueEntity.builder()
+                .map(v -> (FormSubmissionValueEntity) FormSubmissionValueEntity.builder()
                         .submissionId(submissionId)
                         .fieldKey(v.getFieldKey())
                         .fieldType(FormFieldType.valueOf(v.getFieldType()))

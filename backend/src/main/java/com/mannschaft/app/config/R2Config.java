@@ -11,6 +11,7 @@ import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
 
@@ -65,6 +66,14 @@ public class R2Config {
     /**
      * R2 用 S3Presigner Bean。
      * Pre-signed URL 生成に使用する。
+     *
+     * <p>path-style（forcePathStyle）を有効にする理由:
+     * presigner がデフォルトの仮想ホスト形式で動作すると、署名 URL のホストが
+     * {@code <bucket>.<endpoint>}（例: {@code mannschaft-storage.localhost:9000}）になり、
+     * ブラウザが名前解決できないためアップロードが不能になる。
+     * S3Client 側が既に {@code forcePathStyle(true)} であるため、presigner も揃えて
+     * {@code http://<endpoint>/<bucket>/<key>} 形式の URL を生成する。
+     * 本番 Cloudflare R2 は path-style に対応しているため互換性に問題はない。</p>
      */
     @Bean
     public S3Presigner s3Presigner(
@@ -74,7 +83,10 @@ public class R2Config {
         S3Presigner.Builder builder = S3Presigner.builder()
                 .region(Region.of("auto"));
         if (!endpoint.isBlank()) {
-            builder.endpointOverride(URI.create(endpoint));
+            builder.endpointOverride(URI.create(endpoint))
+                    .serviceConfiguration(S3Configuration.builder()
+                            .pathStyleAccessEnabled(true)
+                            .build());
         }
         if (!accessKeyId.isBlank() && !secretAccessKey.isBlank()) {
             builder.credentialsProvider(

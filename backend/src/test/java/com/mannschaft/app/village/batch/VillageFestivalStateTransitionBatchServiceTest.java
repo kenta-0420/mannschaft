@@ -48,6 +48,12 @@ class VillageFestivalStateTransitionBatchServiceTest {
     private VillageFestivalRepository festivalRepository;
     @Mock
     private AuditLogService auditLogService;
+    /** F17.2 Wave2 ①: 祭 ACTIVE 化時の FESTIVAL_STARTED 還流（no-op モック）。 */
+    @Mock
+    private com.mannschaft.app.village.service.VillageEventFeedRefluxService refluxService;
+    /** F17.2 Wave2 ③: 祭 ENDED 時の村史編纂（no-op モック）。 */
+    @Mock
+    private com.mannschaft.app.village.service.VillageEventArchiveService eventArchiveService;
 
     @InjectMocks
     private VillageFestivalStateTransitionBatchService batch;

@@ -6,6 +6,7 @@ import com.mannschaft.app.bulletin.dto.DeleteCategoryResponse;
 import com.mannschaft.app.bulletin.dto.GlobalCreateCategoryRequest;
 import com.mannschaft.app.bulletin.dto.UpdateCategoryRequest;
 import com.mannschaft.app.bulletin.service.BulletinCategoryService;
+import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
@@ -58,6 +59,7 @@ import java.util.UUID;
 public class GlobalBulletinCategoryController {
 
     private final BulletinCategoryService categoryService;
+    private final BulletinScopeIdResolver scopeIdResolver;
 
     /**
      * カテゴリ一覧を取得する（グローバル方式）。
@@ -72,7 +74,7 @@ public class GlobalBulletinCategoryController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<CategoryResponse>>> listCategories(
             @RequestParam("scope_type") String scopeType,
-            @RequestParam("scope_id") Long scopeId,
+            @RequestParam("scope_id") String scopeId,
             @RequestParam(value = "scope_village_id", required = false) UUID scopeVillageId) {
         ScopeType type = parseScopeType(scopeType);
         Long currentUserId = SecurityUtils.getCurrentUserId();
@@ -84,7 +86,8 @@ public class GlobalBulletinCategoryController {
             }
             categories = categoryService.listVillageCategories(scopeVillageId, currentUserId);
         } else {
-            categories = categoryService.listCategories(type, scopeId, currentUserId);
+            Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+            categories = categoryService.listCategories(type, resolvedScopeId, currentUserId);
         }
         return ResponseEntity.ok(ApiResponse.of(categories));
     }

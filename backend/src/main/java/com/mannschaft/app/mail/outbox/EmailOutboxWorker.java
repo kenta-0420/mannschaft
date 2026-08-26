@@ -1,5 +1,8 @@
 package com.mannschaft.app.mail.outbox;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.batch.BatchEndpointExempt;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +40,17 @@ public class EmailOutboxWorker {
      * <p>{@code @Scheduled(fixedDelay)} と {@code @SchedulerLock} を併用。
      * {@code lockAtMostFor=PT2M} は 1 バッチが極端に長引いた場合の保険
      * (1 件あたり最大 30 秒 × 50 件 = 25 分まではかからないが、安全側に短く設定)。</p>
+     *
+     * <p><b>バッチ実行履歴基盤（{@code @BatchEndpoint}）へ登録しない理由</b>:
+     * 10 秒間隔＝日次 8,640 回の起動であり、1 回ごとに実行履歴を書くと
+     * 履歴テーブルが「送信対象 0 件」の記録で埋まり、日次・月次バッチの記録が埋没する。
+     * 本ワーカーの可観測性は {@link MeterRegistry} のメトリクス（送信件数・失敗件数）で
+     * 担保しているため、実行履歴は不要である。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "Transactional Outbox の唯一の送信主体であり、止めると未送信メールが積み上がって再開時に一斉送信される")
+    @BatchEndpointExempt("10 秒間隔（日次 8,640 回）の高頻度ワーカーであり、"
+        + "実行履歴を書くと日次・月次バッチの記録が埋没する。可観測性は MeterRegistry のメトリクスで担保")
     @Scheduled(fixedDelay = 10_000)
     @SchedulerLock(
             name = "emailOutboxWorker",

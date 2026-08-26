@@ -1,5 +1,6 @@
 package com.mannschaft.app.directmail;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.directmail.dto.CreateDirectMailTemplateRequest;
 import com.mannschaft.app.directmail.dto.DirectMailTemplateResponse;
@@ -26,6 +27,8 @@ import static org.mockito.Mockito.verify;
 @DisplayName("DirectMailTemplateService 単体テスト")
 class DirectMailTemplateServiceTest {
 
+    /** 認可根治戦役 Wave2 トランシェ2C: 認可検証はスコープ契約IT側で実施。UTでは素通し（void mockは何もしない） */
+    @Mock private AccessControlService accessControlService;
     @Mock private DirectMailTemplateRepository templateRepository;
     @Mock private DirectMailMapper directMailMapper;
     @InjectMocks private DirectMailTemplateService service;
@@ -69,7 +72,7 @@ class DirectMailTemplateServiceTest {
                     .willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.deleteTemplate(SCOPE_TYPE, SCOPE_ID, 1L))
+            assertThatThrownBy(() -> service.deleteTemplate(SCOPE_TYPE, SCOPE_ID, 100L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("DM_002"));

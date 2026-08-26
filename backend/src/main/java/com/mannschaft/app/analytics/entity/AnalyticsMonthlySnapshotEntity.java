@@ -5,8 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -21,8 +21,7 @@ import java.time.LocalDateTime;
 @Table(name = "analytics_monthly_snapshots")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class AnalyticsMonthlySnapshotEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -47,18 +46,23 @@ public class AnalyticsMonthlySnapshotEntity extends BaseEntity {
     private BigDecimal paybackMonths;
 
     @Builder.Default
+    @Column(nullable = false)
     private int totalUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int activeUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int payingUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int newUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int churnedUsers = 0;
 
     @Column(nullable = false)
@@ -78,6 +82,7 @@ public class AnalyticsMonthlySnapshotEntity extends BaseEntity {
     private BigDecimal adRevenue = BigDecimal.ZERO;
 
     @Builder.Default
+    @Column(nullable = false)
     private boolean reportSent = false;
 
     private LocalDateTime reportSentAt;

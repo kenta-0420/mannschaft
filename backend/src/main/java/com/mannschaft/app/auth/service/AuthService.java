@@ -74,6 +74,7 @@ public class AuthService {
     private final StringRedisTemplate redisTemplate;
     private final NewDeviceDetectionService newDeviceDetectionService;
     private final RoleClaimResolver roleClaimResolver;
+    private final StatusClaimResolver statusClaimResolver;
 
     // サブサービス（委譲先）
     private final AuthRegistrationService authRegistrationService;
@@ -90,7 +91,7 @@ public class AuthService {
     private static final Duration ACCOUNT_LOCK_DURATION = Duration.ofMinutes(30);
     private static final String ACCOUNT_LOCK_KEY_PREFIX = "mannschaft:auth:account_lock:";
     private static final String LOGIN_FAIL_COUNT_KEY_PREFIX = "mannschaft:auth:login_fail_count:";
-    private static final String MFA_SESSION_KEY_PREFIX = "mannschaft:auth:mfa_session:";
+    private static final String MFA_SESSION_KEY_PREFIX = "mannschaft:auth:mfa_session_token:";
 
     // トークン有効期限
     private static final Duration MFA_SESSION_EXPIRY = Duration.ofMinutes(5);
@@ -125,8 +126,8 @@ public class AuthService {
      * 詳細は {@link AuthRegistrationService#resendVerificationEmail} を参照。
      */
     @Transactional
-    public ApiResponse<MessageResponse> resendVerificationEmail(String email) {
-        return authRegistrationService.resendVerificationEmail(email);
+    public ApiResponse<MessageResponse> resendVerificationEmail(String email, String ipAddress) {
+        return authRegistrationService.resendVerificationEmail(email, ipAddress);
     }
 
     // ========================================
@@ -170,14 +171,14 @@ public class AuthService {
                 } else {
                     eventPublisher.publish(new LoginFailedEvent(
                             req.getEmail(), ipAddress, userAgent, "PENDING_DELETION_WRONG_PW"));
-                    throw new BusinessException(AuthErrorCode.AUTH_009);
+                    throw new BusinessException(AuthErrorCode.AUTH_001);
                 }
             } else {
                 // タイミング攻撃対策: ダミーのbcrypt検証を実行して処理時間を合わせる
                 passwordEncoder.matches(req.getPassword(), "$2a$12$000000000000000000000uGHJKLMNOPQRSTUVWXYZ012345678901");
                 eventPublisher.publish(new LoginFailedEvent(
                         req.getEmail(), ipAddress, userAgent, "USER_NOT_FOUND"));
-                throw new BusinessException(AuthErrorCode.AUTH_009);
+                throw new BusinessException(AuthErrorCode.AUTH_001);
             }
         }
 
@@ -213,7 +214,7 @@ public class AuthService {
         if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
             // ログイン失敗回数をインクリメント
             handleLoginFailure(user.getId(), req.getEmail(), ipAddress, userAgent);
-            throw new BusinessException(AuthErrorCode.AUTH_009);
+            throw new BusinessException(AuthErrorCode.AUTH_001);
         }
 
         // パスワード検証成功 → 失敗カウンタをリセット（Valkey障害時はサイレント）
@@ -237,9 +238,9 @@ public class AuthService {
         // 7. 二要素認証チェック
         Optional<TwoFactorAuthEntity> mfaOpt = twoFactorAuthRepository.findByUserId(user.getId());
         if (mfaOpt.isPresent() && Boolean.TRUE.equals(mfaOpt.get().getIsEnabled())) {
-            // 2FA有効: MFAセッショントークンを生成してValkeyに保存
+            // 2FA有効: MFAセッショントークンを生成してValkeyに保存（ハッシュ化して保存）
             String mfaSessionToken = UUID.randomUUID().toString();
-            String mfaKey = MFA_SESSION_KEY_PREFIX + mfaSessionToken;
+            String mfaKey = MFA_SESSION_KEY_PREFIX + authTokenService.hashToken(mfaSessionToken);
             redisTemplate.opsForValue().set(mfaKey, String.valueOf(user.getId()),
                     MFA_SESSION_EXPIRY.getSeconds(), TimeUnit.SECONDS);
 
@@ -311,8 +312,8 @@ public class AuthService {
      * ユーザーのログイン履歴をカーソルベースで取得する。
      * 詳細は {@link AuthSessionService#getLoginHistory} を参照。
      */
-    public CursorPagedResponse<LoginHistoryResponse> getLoginHistory(Long userId, String cursor, int limit) {
-        return authSessionService.getLoginHistory(userId, cursor, limit);
+    public CursorPagedResponse<LoginHistoryResponse> getLoginHistory(Long userId, String cursor, int limit, LocalDateTime from, LocalDateTime to) {
+        return authSessionService.getLoginHistory(userId, cursor, limit, from, to);
     }
 
     // ========================================
@@ -414,7 +415,8 @@ public class AuthService {
         // Access Token発行
         // 認可基盤完全根治 Phase 1（§3.2）: 固定 MEMBER ではなく user_roles から SYSTEM_ADMIN を
         // 判定した roles を載せる（RoleClaimResolver に一元化。5発行経路で同一ロジック）。
-        String accessToken = authTokenService.issueAccessToken(user.getId(), roleClaimResolver.resolveRoles(user.getId()));
+        String accessToken = authTokenService.issueAccessToken(user.getId(), roleClaimResolver.resolveRoles(user.getId()),
+                statusClaimResolver.isPendingParentalConsent(user.getId()));
 
         // Refresh Token発行（DB保存）
         String rawRefreshToken = authTokenService.generateRefreshToken();

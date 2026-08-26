@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link TeamVisibilityMapper} 単体テスト。
  *
  * <p>F00 Phase D-3 — {@link TeamEntity.Visibility} → {@link StandardVisibility}
- * の変換規則を検証する。</p>
+ * の変換規則を検証する（ロールベース設計）。</p>
  */
 @DisplayName("TeamVisibilityMapper — 単体テスト")
 class TeamVisibilityMapperTest {
@@ -24,17 +24,23 @@ class TeamVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("ORGANIZATION_ONLY は StandardVisibility.ORGANIZATION_WIDE に変換される")
-    void organization_only_maps_to_organization_wide() {
-        assertThat(TeamVisibilityMapper.toStandard(TeamEntity.Visibility.ORGANIZATION_ONLY))
-                .isEqualTo(StandardVisibility.ORGANIZATION_WIDE);
+    @DisplayName("GUESTS_AND_ABOVE は StandardVisibility.SCOPE_AFFILIATED に変換される（GUEST以上の全所属メンバー閲覧可）")
+    void guests_and_above_maps_to_scope_affiliated() {
+        assertThat(TeamVisibilityMapper.toStandard(TeamEntity.Visibility.GUESTS_AND_ABOVE))
+                .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
     }
 
     @Test
-    @DisplayName("PRIVATE は StandardVisibility.SCOPE_AFFILIATED に変換される（招待制・非公開チームはメンバー閲覧可 / 挙動不変・名称正準化 W3）")
-    void private_maps_to_members_only() {
-        // 挙動不変: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
-        assertThat(TeamVisibilityMapper.toStandard(TeamEntity.Visibility.PRIVATE))
-                .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
+    @DisplayName("SUPPORTERS_AND_ABOVE は StandardVisibility.SUPPORTERS_AND_ABOVE に変換される")
+    void supporters_and_above_maps_to_supporters_and_above() {
+        assertThat(TeamVisibilityMapper.toStandard(TeamEntity.Visibility.SUPPORTERS_AND_ABOVE))
+                .isEqualTo(StandardVisibility.SUPPORTERS_AND_ABOVE);
+    }
+
+    @Test
+    @DisplayName("MEMBERS_AND_ABOVE は StandardVisibility.MEMBERS_AND_ABOVE に変換される（サポーター・ゲスト除外）")
+    void members_and_above_maps_to_members_and_above() {
+        assertThat(TeamVisibilityMapper.toStandard(TeamEntity.Visibility.MEMBERS_AND_ABOVE))
+                .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
     }
 }

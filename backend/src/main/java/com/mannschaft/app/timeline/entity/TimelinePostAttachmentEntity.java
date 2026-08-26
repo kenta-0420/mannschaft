@@ -12,10 +12,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -26,8 +26,7 @@ import java.time.LocalDateTime;
 @Table(name = "timeline_post_attachments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TimelinePostAttachmentEntity {
 
     @Id
@@ -102,6 +101,7 @@ public class TimelinePostAttachmentEntity {
     @Column(length = 20)
     private VideoProcessingStatus videoProcessingStatus;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

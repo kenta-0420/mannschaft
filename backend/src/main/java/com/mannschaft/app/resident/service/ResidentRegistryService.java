@@ -1,5 +1,6 @@
 package com.mannschaft.app.resident.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.resident.ResidentErrorCode;
@@ -34,11 +35,17 @@ public class ResidentRegistryService {
     private final DwellingUnitRepository dwellingUnitRepository;
     private final ResidentMapper residentMapper;
     private final EncryptionService encryptionService;
+    private final AccessControlService accessControlService;
 
     /**
      * 居室の居住者一覧を取得する。
+     * 認可: 居室が実在するスコープ（entity由来）のメンバーのみ閲覧可能。
      */
-    public List<ResidentResponse> listByUnit(Long unitId) {
+    public List<ResidentResponse> listByUnit(Long actorUserId, Long unitId) {
+        DwellingUnitEntity unit = dwellingUnitRepository.findById(unitId)
+                .orElseThrow(() -> new BusinessException(ResidentErrorCode.DWELLING_UNIT_NOT_FOUND));
+        accessControlService.checkMembership(actorUserId, unit.resolveScopeId(), unit.getScopeType());
+
         List<ResidentRegistryEntity> entities =
                 residentRepository.findByDwellingUnitIdOrderByIsPrimaryDescMoveInDateAsc(unitId);
         return residentMapper.toResidentResponseList(entities);
@@ -46,11 +53,13 @@ public class ResidentRegistryService {
 
     /**
      * 居住者を登録する。
+     * 認可: 登録先居室が実在するスコープ（entity由来）の ADMIN/DEPUTY_ADMIN のみ登録可能。
      */
     @Transactional
-    public ResidentResponse create(Long unitId, CreateResidentRequest request) {
+    public ResidentResponse create(Long actorUserId, Long unitId, CreateResidentRequest request) {
         DwellingUnitEntity unit = dwellingUnitRepository.findById(unitId)
                 .orElseThrow(() -> new BusinessException(ResidentErrorCode.DWELLING_UNIT_NOT_FOUND));
+        accessControlService.checkAdminOrAbove(actorUserId, unit.resolveScopeId(), unit.getScopeType());
 
         ResidentRegistryEntity entity = ResidentRegistryEntity.builder()
                 .dwellingUnitId(unitId)
@@ -81,10 +90,12 @@ public class ResidentRegistryService {
 
     /**
      * 居住者情報を更新する。
+     * 認可: 居住者が実在するスコープ（entity由来）の ADMIN/DEPUTY_ADMIN のみ更新可能。
      */
     @Transactional
-    public ResidentResponse update(Long id, UpdateResidentRequest request) {
+    public ResidentResponse update(Long actorUserId, Long id, UpdateResidentRequest request) {
         ResidentRegistryEntity entity = findOrThrow(id);
+        checkAdminForResident(actorUserId, entity);
         entity.update(
                 request.getResidentType(), request.getLastName(), request.getFirstName(),
                 request.getLastNameKana(), request.getFirstNameKana(),
@@ -102,10 +113,12 @@ public class ResidentRegistryService {
 
     /**
      * 居住者を論理削除する。
+     * 認可: 居住者が実在するスコープ（entity由来）の ADMIN/DEPUTY_ADMIN のみ削除可能。
      */
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long actorUserId, Long id) {
         ResidentRegistryEntity entity = findOrThrow(id);
+        checkAdminForResident(actorUserId, entity);
         entity.softDelete();
         residentRepository.save(entity);
 
@@ -121,10 +134,13 @@ public class ResidentRegistryService {
 
     /**
      * 居住者を確認済みにする。
+     * 認可: 居住者が実在するスコープ（entity由来）の ADMIN/DEPUTY_ADMIN のみ確認可能。
+     * verifierId は操作者本人であり、そのまま認可チェックのactorとして使う。
      */
     @Transactional
     public ResidentResponse verify(Long id, Long verifierId) {
         ResidentRegistryEntity entity = findOrThrow(id);
+        checkAdminForResident(verifierId, entity);
         if (entity.getIsVerified()) {
             throw new BusinessException(ResidentErrorCode.ALREADY_VERIFIED);
         }
@@ -136,10 +152,12 @@ public class ResidentRegistryService {
 
     /**
      * 退去処理を行う。
+     * 認可: 居住者が実在するスコープ（entity由来）の ADMIN/DEPUTY_ADMIN のみ実行可能。
      */
     @Transactional
-    public ResidentResponse moveOut(Long id, LocalDate moveOutDate) {
+    public ResidentResponse moveOut(Long actorUserId, Long id, LocalDate moveOutDate) {
         ResidentRegistryEntity entity = findOrThrow(id);
+        checkAdminForResident(actorUserId, entity);
         if (entity.getMoveOutDate() != null) {
             throw new BusinessException(ResidentErrorCode.ALREADY_MOVED_OUT);
         }
@@ -178,6 +196,39 @@ public class ResidentRegistryService {
     }
 
     /**
+     * 指定ユーザーが指定組織の現役居住者（active、moveOutDate 無し）であるかを判定する。
+     *
+     * <p>他ドメイン（例: residencestatus）からの越境呼び出しの受け口。モジュラーモノリスの
+     * 「ドメイン間はID参照＋Service経由のみ」原則に従い、{@link ResidentRegistryEntity} を
+     * 境界の外へ返さず boolean のみを返す（呼び出し側は resident ドメインの Repository/Entity へ
+     * 直接依存しない）。</p>
+     *
+     * @param userId         判定対象ユーザー ID
+     * @param organizationId 組織 ID
+     * @return 当該組織の現役居住者であれば true
+     */
+    public boolean isActiveResidentOfOrganization(Long userId, Long organizationId) {
+        return residentRepository.findActiveByUserIdAndOrganizationId(userId, organizationId).isPresent();
+    }
+
+    /**
+     * 指定の居住者台帳 ID の所有者（userId）が、指定ユーザーと一致するかを判定する。
+     *
+     * <p>他ドメインからのBOLA対策（未検証の residentRegistryId が永続記録へ到達する事故を防ぐ）
+     * の受け口。台帳が存在しない場合は false を返す（存在秘匿は呼び出し側の責務）。</p>
+     *
+     * @param residentRegistryId 居住者台帳 ID（呼び出し元のリクエストボディ等、信頼できない入力）
+     * @param userId             所有者として期待するユーザー ID（認証主体）
+     * @return 台帳が実在し、かつその所有者が userId と一致すれば true
+     */
+    public boolean isResidentRegistryOwnedBy(Long residentRegistryId, Long userId) {
+        return residentRepository.findById(residentRegistryId)
+                .map(ResidentRegistryEntity::getUserId)
+                .map(userId::equals)
+                .orElse(false);
+    }
+
+    /**
      * D+120 エスカレーション到達時の自動起票: death_status を ALIVE → SUSPECTED に変更する。
      *
      * <p>既に SUSPECTED / CONFIRMED の場合は何もしない（冪等）。
@@ -209,5 +260,15 @@ public class ResidentRegistryService {
     private ResidentRegistryEntity findOrThrow(Long id) {
         return residentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ResidentErrorCode.RESIDENT_NOT_FOUND));
+    }
+
+    /**
+     * 居住者が所属する居室を fetch し、その居室が実在するスコープ（entity由来）の
+     * ADMIN/DEPUTY_ADMIN であることを検証する（BOLA 防止: path/request の scopeId は使わない）。
+     */
+    private void checkAdminForResident(Long actorUserId, ResidentRegistryEntity entity) {
+        DwellingUnitEntity unit = dwellingUnitRepository.findById(entity.getDwellingUnitId())
+                .orElseThrow(() -> new BusinessException(ResidentErrorCode.DWELLING_UNIT_NOT_FOUND));
+        accessControlService.checkAdminOrAbove(actorUserId, unit.resolveScopeId(), unit.getScopeType());
     }
 }

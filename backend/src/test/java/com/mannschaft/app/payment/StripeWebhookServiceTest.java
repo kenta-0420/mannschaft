@@ -35,6 +35,8 @@ class StripeWebhookServiceTest {
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService notificationCreditCheckoutService;
     @Mock private com.mannschaft.app.payment.escrow.EscrowWebhookService escrowWebhookService;
+    @Mock private com.mannschaft.app.payment.service.MembershipSubscriptionWebhookService membershipSubscriptionWebhookService;
+    @Mock private com.mannschaft.app.billing.BillingSubscriptionWebhookService billingSubscriptionWebhookService;
 
     @InjectMocks
     private StripeWebhookService service;
@@ -91,6 +93,90 @@ class StripeWebhookServiceTest {
             verify(memberPaymentRepository, never()).findById(any());
             verify(memberPaymentRepository, never()).findByStripePaymentIntentId(any());
             verify(memberPaymentRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("F08.9 P5 委譲: invoice.* event は MembershipSubscriptionWebhookService へ委譲し既存 checkout/refund 処理に行かない")
+        void 継続課金invoiceイベントはサブスクwebhookへ委譲() {
+            StripePaymentProvider.WebhookEventInfo event = new StripePaymentProvider.WebhookEventInfo(
+                    "invoice.created", null, null, null, "sub_x",
+                    null, null, null, null, null, null);
+            given(stripePaymentProvider.constructEvent(any(), any())).willReturn(event);
+            // F20.1: billing 逆引きミス（無関係 subscription）→ false → membership へフォールバック（AC-38）。
+            given(billingSubscriptionWebhookService.handleSubscriptionEventIfBilling("payload", "sig"))
+                    .willReturn(false);
+
+            service.handleWebhook("payload", "sig");
+
+            verify(membershipSubscriptionWebhookService).handleWebhook("payload", "sig");
+            verify(escrowWebhookService, never()).handleWebhook(any(), any());
+            verify(memberPaymentRepository, never()).findById(any());
+            verify(memberPaymentRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("AC-38: invoice.* の subscriptionId が billing（psp_subscription_ref）にヒットすれば billing が処理し membership へ流さない")
+        void billing所有invoiceイベントはbillingが処理しmembershipに流さない() {
+            StripePaymentProvider.WebhookEventInfo event = new StripePaymentProvider.WebhookEventInfo(
+                    "invoice.paid", null, null, null, "sub_billing",
+                    null, null, null, null, null, null);
+            given(stripePaymentProvider.constructEvent(any(), any())).willReturn(event);
+            given(billingSubscriptionWebhookService.handleSubscriptionEventIfBilling("payload", "sig"))
+                    .willReturn(true);
+
+            service.handleWebhook("payload", "sig");
+
+            // billing が処理 → membership は関与しない（相互 no-op・AC-38）。
+            verify(membershipSubscriptionWebhookService, never()).handleWebhook(any(), any());
+            verify(memberPaymentRepository, never()).findById(any());
+        }
+
+        @Test
+        @DisplayName("AC-33/38: checkout.session.completed に billingContractId があれば billing が処理し既存会員費処理に行かない")
+        void billing契約のcheckout完了はbillingが処理() {
+            StripePaymentProvider.WebhookEventInfo event = new StripePaymentProvider.WebhookEventInfo(
+                    "checkout.session.completed", "cs_1", null, null, "sub_billing",
+                    null, null, null, null, null, null);
+            given(stripePaymentProvider.constructEvent(any(), any())).willReturn(event);
+            given(billingSubscriptionWebhookService.handleCheckoutCompletedIfBilling("payload", "sig"))
+                    .willReturn(true);
+
+            service.handleWebhook("payload", "sig");
+
+            // billing が処理 → 既存の会員費/通知クレジット処理には一切流れない。
+            verify(memberPaymentRepository, never()).findById(any());
+            verify(notificationCreditCheckoutService, never()).handlePurchaseCompleted(any());
+        }
+
+        @Test
+        @DisplayName("AC-39: 署名検証失敗は billing 委譲にも到達しない（既存の WEBHOOK_SIGNATURE_INVALID 400 が billing イベントでも有効）")
+        void 署名検証失敗はbilling委譲に到達しない() {
+            given(stripePaymentProvider.constructEvent(any(), any()))
+                    .willThrow(new RuntimeException("Invalid signature"));
+
+            assertThatThrownBy(() -> service.handleWebhook("payload", "bad-sig"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+
+            // 未処理: billing/membership いずれの委譲も呼ばれない（AC-39）。
+            verify(billingSubscriptionWebhookService, never()).handleCheckoutCompletedIfBilling(any(), any());
+            verify(billingSubscriptionWebhookService, never()).handleSubscriptionEventIfBilling(any(), any());
+            verify(membershipSubscriptionWebhookService, never()).handleWebhook(any(), any());
+        }
+
+        @Test
+        @DisplayName("F08.9 P5 委譲: customer.subscription.deleted も MembershipSubscriptionWebhookService へ委譲")
+        void 解約イベントはサブスクwebhookへ委譲() {
+            StripePaymentProvider.WebhookEventInfo event = new StripePaymentProvider.WebhookEventInfo(
+                    "customer.subscription.deleted", null, null, null, "sub_x",
+                    null, null, null, null, null, null);
+            given(stripePaymentProvider.constructEvent(any(), any())).willReturn(event);
+
+            service.handleWebhook("payload", "sig");
+
+            verify(membershipSubscriptionWebhookService).handleWebhook("payload", "sig");
+            verify(escrowWebhookService, never()).handleWebhook(any(), any());
         }
 
         @Test

@@ -106,6 +106,8 @@ class DisclosureCirculationControllerIntegrationTest extends AbstractDisclosureI
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
         MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, ORG_ID, RoleKind.MEMBER);
+        // 認可根治戦役 Wave3-B4: 出力実行/回覧開始は checkAdminOrAbove の対象になったため ADMIN を付与
+        MembershipTestHelper.insertUserRole(em, userId, "ADMIN", null, ORG_ID);
         insertOrganization(ORG_ID, "回覧テスト組合");
 
         templateId = saveSystemTemplate(
@@ -303,8 +305,8 @@ class DisclosureCirculationControllerIntegrationTest extends AbstractDisclosureI
     private void insertOrganization(Long id, String name) {
         em.createNativeQuery(
                 "INSERT INTO organizations (id, name, org_type, visibility, hierarchy_visibility, "
-                        + "supporter_enabled, version, created_at, updated_at) "
-                        + "VALUES (:id, :name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW())")
+                        + "supporter_enabled, version, slug, created_at, updated_at) "
+                        + "VALUES (:id, :name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("id", id)
                 .setParameter("name", name)
                 .executeUpdate();

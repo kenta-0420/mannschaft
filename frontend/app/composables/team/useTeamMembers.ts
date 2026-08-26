@@ -26,49 +26,49 @@ export function useTeamMembers() {
   const api = useApi()
 
   // === メンバー管理 ===
-  async function getMembers(teamId: string, params?: { page?: number; size?: number }) {
+  async function getMembers(teamSlug: string, params?: { page?: number; size?: number }) {
     const query = new URLSearchParams()
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 20))
-    return api<PagedData<MemberResponse>>(`/api/v1/teams/${teamId}/members?${query}`)
+    return api<PagedData<MemberResponse>>(`/api/v1/teams/${teamSlug}/members?${query}`)
   }
 
-  async function changeRole(teamId: string, userId: number, roleId: number) {
-    return api(`/api/v1/teams/${teamId}/members/${userId}/role`, {
+  async function changeRole(teamSlug: string, userId: number, roleId: number) {
+    return api(`/api/v1/teams/${teamSlug}/members/${userId}/role`, {
       method: 'PATCH',
       body: { roleId },
     })
   }
 
-  async function removeMember(teamId: string, userId: number) {
-    return api(`/api/v1/teams/${teamId}/members/${userId}`, { method: 'DELETE' })
+  async function removeMember(teamSlug: string, userId: number) {
+    return api(`/api/v1/teams/${teamSlug}/members/${userId}`, { method: 'DELETE' })
   }
 
-  async function leaveTeam(teamId: string) {
-    return api(`/api/v1/teams/${teamId}/me`, { method: 'DELETE' })
+  async function leaveTeam(teamSlug: string) {
+    return api(`/api/v1/teams/${teamSlug}/me`, { method: 'DELETE' })
   }
 
   // === 招待トークン ===
   async function createInviteToken(
-    teamId: string,
+    teamSlug: string,
     body: { roleId: number; expiresIn: string | null; maxUses: number | null },
   ) {
-    return api<{ data: InviteTokenResponse }>(`/api/v1/teams/${teamId}/invite-tokens`, {
+    return api<{ data: InviteTokenResponse }>(`/api/v1/teams/${teamSlug}/invite-tokens`, {
       method: 'POST',
       body,
     })
   }
 
-  async function getInviteTokens(teamId: string) {
-    return api<{ data: InviteTokenResponse[] }>(`/api/v1/teams/${teamId}/invite-tokens`)
+  async function getInviteTokens(teamSlug: string) {
+    return api<{ data: InviteTokenResponse[] }>(`/api/v1/teams/${teamSlug}/invite-tokens`)
   }
 
-  async function deleteInviteToken(teamId: string, tokenId: number) {
-    return api(`/api/v1/teams/${teamId}/invite-tokens/${tokenId}`, { method: 'DELETE' })
+  async function deleteInviteToken(teamSlug: string, tokenId: number) {
+    return api(`/api/v1/teams/${teamSlug}/invite-tokens/${tokenId}`, { method: 'DELETE' })
   }
 
   // === 権限グループ管理 ===
-  async function getPermissionGroups(teamId: string) {
+  async function getPermissionGroups(teamSlug: string) {
     return api<{
       data: Array<{
         id: number
@@ -77,30 +77,30 @@ export function useTeamMembers() {
         permissions: string[]
         createdAt: string
       }>
-    }>(`/api/v1/teams/${teamId}/permission-groups`)
+    }>(`/api/v1/teams/${teamSlug}/permission-groups`)
   }
 
   async function createPermissionGroup(
-    teamId: string,
+    teamSlug: string,
     body: { name: string; description?: string; permissions: string[] },
   ) {
-    return api(`/api/v1/teams/${teamId}/permission-groups`, { method: 'POST', body })
+    return api(`/api/v1/teams/${teamSlug}/permission-groups`, { method: 'POST', body })
   }
 
   async function updatePermissionGroup(
-    teamId: string,
+    teamSlug: string,
     groupId: number,
     body: { name?: string; description?: string; permissions?: string[] },
   ) {
-    return api(`/api/v1/teams/${teamId}/permission-groups/${groupId}`, { method: 'PATCH', body })
+    return api(`/api/v1/teams/${teamSlug}/permission-groups/${groupId}`, { method: 'PATCH', body })
   }
 
-  async function deletePermissionGroup(teamId: string, groupId: number) {
-    return api(`/api/v1/teams/${teamId}/permission-groups/${groupId}`, { method: 'DELETE' })
+  async function deletePermissionGroup(teamSlug: string, groupId: number) {
+    return api(`/api/v1/teams/${teamSlug}/permission-groups/${groupId}`, { method: 'DELETE' })
   }
 
-  async function assignPermissionGroups(teamId: string, userId: number, groupIds: number[]) {
-    return api(`/api/v1/teams/${teamId}/members/${userId}/permission-groups`, {
+  async function assignPermissionGroups(teamSlug: string, userId: number, groupIds: number[]) {
+    return api(`/api/v1/teams/${teamSlug}/members/${userId}/permission-groups`, {
       method: 'PUT',
       body: { groupIds },
     })

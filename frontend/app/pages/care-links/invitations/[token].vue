@@ -71,7 +71,7 @@ onMounted(() => loadInvitation())
       <!-- ロード中 -->
       <div v-if="loading" class="flex flex-col items-center gap-4 p-8">
         <LoadingBounce />
-        <p class="text-surface-500">{{ $t('common.button.loading') }}</p>
+        <p class="text-surface-500">{{ $t('button.loading') }}</p>
       </div>
 
       <!-- エラー -->
@@ -84,7 +84,7 @@ onMounted(() => loadInvitation())
           {{ $t('care.message.invalidToken') }}
         </h2>
         <Button
-          :label="$t('common.button.back')"
+          :label="$t('button.back')"
           severity="secondary"
           class="mt-4"
           @click="router.push('/')"
@@ -108,7 +108,7 @@ onMounted(() => loadInvitation())
           }}
         </h2>
         <Button
-          :label="$t('common.button.close')"
+          :label="$t('button.close')"
           severity="secondary"
           class="mt-4"
           @click="router.push('/')"

@@ -6,6 +6,7 @@ import com.mannschaft.app.bulletin.dto.CreateCategoryRequest;
 import com.mannschaft.app.bulletin.dto.DeleteCategoryResponse;
 import com.mannschaft.app.bulletin.dto.UpdateCategoryRequest;
 import com.mannschaft.app.bulletin.service.BulletinCategoryService;
+import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,6 +36,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class BulletinCategoryController {
 
     private final BulletinCategoryService categoryService;
+    private final BulletinScopeIdResolver scopeIdResolver;
 
 
     /**
@@ -45,9 +47,10 @@ public class BulletinCategoryController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<CategoryResponse>>> listCategories(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId) {
+            @PathVariable String scopeId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        List<CategoryResponse> categories = categoryService.listCategories(type, scopeId, SecurityUtils.getCurrentUserId());
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        List<CategoryResponse> categories = categoryService.listCategories(type, resolvedScopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(categories));
     }
 
@@ -59,10 +62,11 @@ public class BulletinCategoryController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<CategoryResponse>> getCategory(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long categoryId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        CategoryResponse response = categoryService.getCategory(type, scopeId, categoryId, SecurityUtils.getCurrentUserId());
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        CategoryResponse response = categoryService.getCategory(type, resolvedScopeId, categoryId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -74,10 +78,11 @@ public class BulletinCategoryController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<CategoryResponse>> createCategory(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @Valid @RequestBody CreateCategoryRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        CategoryResponse response = categoryService.createCategory(type, scopeId, SecurityUtils.getCurrentUserId(), request);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        CategoryResponse response = categoryService.createCategory(type, resolvedScopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -89,11 +94,12 @@ public class BulletinCategoryController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<CategoryResponse>> updateCategory(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long categoryId,
             @Valid @RequestBody UpdateCategoryRequest request) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        CategoryResponse response = categoryService.updateCategory(type, scopeId, categoryId, SecurityUtils.getCurrentUserId(), request);
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        CategoryResponse response = categoryService.updateCategory(type, resolvedScopeId, categoryId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -108,10 +114,11 @@ public class BulletinCategoryController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "削除成功")
     public ResponseEntity<ApiResponse<DeleteCategoryResponse>> deleteCategory(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long categoryId) {
         ScopeType type = ScopeType.fromPathSegment(scopeType);
-        DeleteCategoryResponse response = categoryService.deleteCategory(type, scopeId, categoryId, SecurityUtils.getCurrentUserId());
+        Long resolvedScopeId = scopeIdResolver.resolve(type, scopeId);
+        DeleteCategoryResponse response = categoryService.deleteCategory(type, resolvedScopeId, categoryId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

@@ -32,8 +32,15 @@ public enum ConfirmableNotificationErrorCode implements ErrorCode {
     /** スコープが一致しない */
     SCOPE_MISMATCH("CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH", "スコープが一致しません", Severity.WARN),
 
-    /** 確認通知の送信に失敗した */
-    SEND_FAILED("CONFIRMABLE_NOTIFICATION_SEND_FAILED", "確認通知の送信に失敗しました", Severity.ERROR);
+    /**
+     * 確認通知の送信に失敗した。
+     *
+     * <p>throw元（ConfirmableNotificationService）は「受信者リストが空」「受信者数が上限を超過」
+     * という2箇所のみで、いずれも外部送信の失敗ではなく純粋なクライアント入力検証である。
+     * 命名から「外部サービス障害」と誤認して Severity.ERROR（既定500）としていたが、
+     * 全数調査で誤分類と判明したため WARN（既定400）に是正する。</p>
+     */
+    SEND_FAILED("CONFIRMABLE_NOTIFICATION_SEND_FAILED", "確認通知の送信に失敗しました", Severity.WARN);
 
     private final String code;
     private final String message;

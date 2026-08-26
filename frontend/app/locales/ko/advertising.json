@@ -1,324 +1,35 @@
 {
-  "ad_label": "광고",
-  "status": {
-    "draft": "초안",
-    "review": "심사 중",
-    "approved": "승인됨",
-    "scheduled": "예약됨",
-    "delivering": "송출 중",
-    "paused": "일시중지",
-    "completed": "종료",
-    "blocked": "차단됨",
-    "cancelled": "취소됨"
-  },
-  "moderation_status": {
-    "pending": "심사 대기",
-    "auto_passed": "자동 통과",
-    "auto_flagged": "확인 필요",
-    "approved": "승인됨",
-    "blocked": "차단됨"
-  },
-  "moderation_action": {
-    "approved": "승인",
-    "blocked": "차단",
-    "unblocked": "차단 해제",
-    "auto_flagged": "자동 플래그",
-    "auto_passed": "자동 통과"
-  },
-  "segment_type": {
-    "age_range": "연령대",
-    "gender": "성별",
-    "region_prefecture": "광역지자체",
-    "region_city": "기초지자체",
-    "interest_tag": "관심 태그",
-    "org_type": "조직 유형",
-    "locale": "언어",
-    "device": "기기"
-  },
-  "inclusion_mode": {
-    "include": "포함",
-    "exclude": "제외"
-  },
-  "report_reason": {
-    "offensive": "불쾌한 내용",
-    "misleading": "오해를 일으키는 내용",
-    "spam": "스팸",
-    "irrelevant": "나와 관련이 없음",
-    "other": "기타"
-  },
-  "channel": {
-    "announcement": "공지",
-    "email": "이메일",
-    "push": "푸시 알림",
-    "banner": "배너"
-  },
-  "reach_range": {
-    "under_100": "조건에 일치하는 사용자가 너무 적습니다",
-    "range_100_500": "약 100〜500명",
-    "range_500_1k": "약 500〜1,000명",
-    "range_1k_5k": "약 1,000〜5,000명",
-    "range_5k_10k": "약 5,000〜10,000명",
-    "range_10k_50k": "약 10,000〜50,000명",
-    "range_50k_100k": "약 50,000〜100,000명",
-    "over_100k": "약 100,000명 이상"
-  },
-  "actions": {
-    "submit": "심사 제출",
-    "launch": "송출 시작",
-    "pause": "일시중지",
-    "resume": "재개",
-    "cancel": "취소",
-    "approve": "승인",
-    "block": "차단",
-    "save_draft": "초안 저장",
-    "preview": "미리보기",
-    "delete": "삭제",
-    "edit": "편집",
-    "create": "새로 만들기",
-    "add_channel": "채널 추가",
-    "remove_channel": "채널 제거",
-    "add_segment": "세그먼트 추가",
-    "remove_segment": "세그먼트 제거",
-    "report": "신고",
-    "unsubscribe": "수신 거부",
-    "block_advertiser": "이 광고주 차단",
-    "stop_ads": "광고 수신 중지",
-    "unblock_advertiser": "차단 해제",
-    "export_csv": "CSV 내보내기",
-    "view_detail": "상세 보기",
-    "back_to_queue": "심사 대기열로 돌아가기",
-    "reload": "새로고침"
-  },
-  "pages": {
-    "advertiser_campaign_list": {
-      "title": "메시지형 캠페인 목록",
-      "description": "특정 대상에게 송출하는 메시지 캠페인을 관리합니다.",
-      "empty": "아직 캠페인이 없습니다.",
-      "filter_status": "상태로 필터링",
-      "column_name": "캠페인 이름",
-      "column_status": "상태",
-      "column_budget": "예산(엔)",
-      "column_consumed": "소비액(엔)",
-      "column_period": "송출 기간",
-      "column_updated": "업데이트"
+  "advertising": {
+    "ad_label": "광고",
+    "account_settings": {
+      "title": "계정 설정",
+      "company_name": "회사 / 단체명",
+      "contact_email": "연락처 이메일",
+      "edit": "편집",
+      "save": "저장",
+      "cancel": "취소",
+      "saved": "계정 설정을 저장했습니다.",
+      "save_failed": "저장에 실패했습니다."
     },
-    "advertiser_campaign_create": {
-      "title": "캠페인 만들기",
-      "description": "송출 채널과 타겟 조건을 설정합니다. 초안은 자유롭게 편집할 수 있습니다.",
-      "field_name": "캠페인 이름",
-      "field_budget": "총예산(엔)",
-      "field_starts_at": "송출 시작 일시",
-      "field_ends_at": "송출 종료 일시",
-      "field_timezone": "시간대",
-      "field_frequency_cap": "주당 최대 송출 횟수(미지정 시 3건)",
-      "step_basic": "기본 정보",
-      "step_channels": "채널 설정",
-      "step_audience": "타겟 설정",
-      "step_review": "확인 및 제출",
-      "submitted": "캠페인을 심사에 제출했습니다.",
-      "saved": "초안을 저장했습니다."
+    "spotlight": {
+      "hide_advertiser": "이 광고주 숨기기",
+      "hide_advertiser_done": "이 광고주의 광고를 숨겼습니다",
+      "report": "신고",
+      "upgrade_cta": "광고 없이 사용하기 →",
+      "affiliate_default": {
+        "amazon": {
+          "title": "아마존에서 팀 용품 준비",
+          "description": "활동에 필요한 아이템을 합리적인 가격에 한번에 준비하세요.",
+          "cta": "지금 확인"
+        },
+        "rakuten": {
+          "title": "라쿠텐에서 팀 용품 준비",
+          "description": "포인트를 적립하며 필요한 물품을 알뜰하게 준비하세요.",
+          "cta": "라쿠텐에서 보기"
+        }
+      }
     },
-    "advertiser_campaign_detail": {
-      "title": "캠페인 상세",
-      "section_summary": "개요",
-      "section_channels": "채널",
-      "section_audience": "타겟",
-      "section_moderation": "심사 상태",
-      "section_report": "성과 리포트",
-      "blocked_reason": "차단 사유",
-      "preview_reach": "예상 도달",
-      "no_channels": "채널이 설정되지 않았습니다.",
-      "no_segments": "타겟 조건이 설정되지 않았습니다."
-    },
-    "system_admin_moderation": {
-      "title": "광고 캠페인 심사",
-      "description": "심사 대기 중인 캠페인을 확인하고 승인 또는 차단합니다.",
-      "empty": "심사 대기 중인 캠페인이 없습니다.",
-      "approve_dialog_title": "이 캠페인을 승인하시겠습니까?",
-      "approve_dialog_message": "승인하면 광고주가 송출을 시작할 수 있습니다.",
-      "block_dialog_title": "이 캠페인을 차단하시겠습니까?",
-      "block_dialog_message": "차단 사유를 입력하세요(광고주에게 통지됩니다).",
-      "block_reason_label": "차단 사유",
-      "block_reason_placeholder": "예: 표현이 부적절합니다",
-      "user_reports_section": "사용자 신고",
-      "queue_title": "심사 대기열",
-      "queue_description": "현재 심사가 필요한 캠페인 목록입니다.",
-      "filter_submitted_period": "제출 시각으로 필터링",
-      "filter_auto_flag": "자동 플래그로 필터링",
-      "filter_auto_flag_all": "전체",
-      "filter_auto_flag_only": "자동 플래그만",
-      "filter_auto_flag_passed": "자동 통과만",
-      "card_advertiser": "광고주 계정 ID",
-      "card_submitted_at": "제출 일시"
-    },
-    "settings_ad_preferences": {
-      "title": "광고 수신 설정",
-      "description": "수신할 광고 채널과 차단할 광고주를 설정합니다.",
-      "channel_section": "수신하는 채널",
-      "channel_section_description": "중지한 채널에서는 광고를 받지 않습니다.",
-      "blocked_section": "차단한 광고주",
-      "blocked_section_description": "차단한 광고주의 광고는 일절 전달되지 않습니다(최대 100건).",
-      "blocked_empty": "현재 차단 중인 광고주가 없습니다.",
-      "blocked_limit_exceeded": "차단 상한(100건)에 도달했습니다. 일부를 해제한 뒤 추가해 주세요.",
-      "add_block_label": "광고주 ID로 추가",
-      "add_block_placeholder": "예: 12",
-      "add_block_button": "차단 목록에 추가",
-      "rotate_tokens": "수신 거부 링크 무효화",
-      "rotate_tokens_help": "과거 이메일의 수신 거부 링크를 모두 무효화합니다.",
-      "rotate_tokens_section": "보안",
-      "rotate_tokens_confirm": "모든 수신 거부 링크를 무효화하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
-      "rotate_tokens_success": "이메일 링크를 무효화했습니다.",
-      "consent_required": "광고 수신에는 최초 동의가 필요합니다.",
-      "consented_at": "최초 동의 일시",
-      "not_consented": "미동의",
-      "save_button": "저장",
-      "saved": "설정을 저장했습니다.",
-      "save_rate_limited": "설정 변경 상한(시간당 10건)에 도달했습니다. 잠시 후 다시 시도해 주세요.",
-      "channel_announcement": "공지 피드 내 광고",
-      "channel_email": "이메일 광고",
-      "channel_push": "푸시 알림 광고",
-      "channel_banner": "사이트 내 배너 광고"
-    },
-    "me_ad_deliveries": {
-      "title": "받은 광고",
-      "description": "당신에게 송출된 광고 이력을 확인할 수 있습니다.",
-      "empty": "아직 받은 광고가 없습니다.",
-      "delivered_at": "송출 일시",
-      "opened": "열람함",
-      "clicked": "클릭함",
-      "filter_all": "전체",
-      "filter_announcement": "공지",
-      "filter_email": "이메일",
-      "filter_push": "푸시",
-      "filter_banner": "배너",
-      "column_campaign": "캠페인",
-      "column_advertiser": "광고주",
-      "column_channel": "채널",
-      "column_engagement": "동작",
-      "column_actions": "조작",
-      "engagement_read": "열람",
-      "engagement_clicked": "클릭",
-      "engagement_none": "미열람",
-      "load_more": "더 불러오기",
-      "delete_all_section": "데이터 삭제(GDPR 삭제권)",
-      "delete_all_description": "받은 광고 이력을 모두 삭제합니다. 광고주의 과금 실적과 통계는 유지되지만 본인과의 연결은 제거됩니다.",
-      "delete_all_button": "모든 이력 삭제",
-      "delete_all_confirm": "정말로 모든 광고 이력을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
-      "delete_all_success": "광고 이력을 모두 삭제했습니다."
-    },
-    "system_admin_dashboard": {
-      "title": "광고 심사 대시보드",
-      "description": "심사 대기, 신고 상황, 최근 차단 현황을 한눈에 확인합니다.",
-      "kpi_review_pending": "심사 대기",
-      "kpi_auto_flagged": "자동 플래그",
-      "kpi_user_reports": "신고",
-      "kpi_recent_blocks": "최근 7일 차단",
-      "auto_suspend_warning": "{count}건의 신고 집중 캠페인이 있습니다",
-      "shortcut_review_queue": "심사 대기열 열기",
-      "shortcut_user_reports": "신고 목록 열기",
-      "load_failed": "광고 심사 정보를 불러오지 못했습니다",
-      "quick_link_label": "광고 심사"
-    },
-    "system_admin_user_reports": {
-      "title": "광고 사용자 신고 목록",
-      "description": "사용자 신고를 확인하고 필요에 따라 해당 캠페인을 중지합니다.",
-      "empty": "대응 대기 중인 신고가 없습니다.",
-      "filter_reason": "신고 사유로 필터링",
-      "filter_status": "상태로 필터링",
-      "column_reported_at": "신고 일시",
-      "column_campaign": "캠페인",
-      "column_reporter": "신고자",
-      "column_reason": "사유",
-      "column_status": "상태",
-      "auto_suspend_candidate": "신고 집중",
-      "auto_suspend_candidate_tooltip": "단기간에 여러 건의 신고가 모여 자동 중지 후보입니다.",
-      "go_campaign": "캠페인 상세로"
-    },
-    "advertiser_campaign_report": {
-      "title": "캠페인 성과 리포트",
-      "description": "송출 실적의 집계와 일별 추이를 확인합니다. 기간을 지정해 필터링할 수 있습니다.",
-      "field_from": "시작일",
-      "field_to": "종료일",
-      "kpi_delivered": "송출 수",
-      "kpi_opened": "열람 수",
-      "kpi_clicked": "클릭 수",
-      "kpi_consumed": "소비 예산(엔)",
-      "chart_title": "일별 추이",
-      "chart_delivered": "송출 수",
-      "chart_open_rate": "열람률",
-      "chart_click_rate": "클릭률",
-      "channel_breakdown_title": "채널별 실적",
-      "channel_breakdown_delivered": "송출",
-      "channel_breakdown_opened": "열람",
-      "channel_breakdown_clicked": "클릭",
-      "no_data": "선택한 기간에 데이터가 없습니다.",
-      "export_started": "CSV 내보내기를 시작했습니다."
-    },
-    "unsubscribe_spa": {
-      "title": "광고 메일 수신 중지",
-      "description": "중지하고 싶은 채널을 선택하세요. 체크하지 않은 채널은 계속 수신됩니다.",
-      "submit_button": "선택한 채널 중지",
-      "note": "광고 메일 끝의 수신 중지 링크로 접속하면 표시됩니다. 로그인 후 「광고 수신 설정」 화면에서 언제든지 변경할 수 있습니다.",
-      "success_message": "선택한 채널의 광고 수신을 중지했습니다.",
-      "done_title": "광고 수신을 중지했습니다",
-      "done_description": "선택한 채널에서 광고를 더 이상 받지 않습니다.",
-      "done_disabled_label": "중지한 채널:",
-      "done_remaining_label": "계속 수신하는 채널:",
-      "done_login_hint": "로그인 후 「광고 수신 설정」 화면에서 언제든 변경할 수 있습니다.",
-      "error_title": "중지할 수 없습니다",
-      "error_invalid_or_expired": "링크의 유효 기간이 지났거나 무효화되었습니다. 로그인 후 「광고 수신 설정」 화면에서 진행해 주세요.",
-      "error_rate_limited": "짧은 시간에 많은 요청이 접수되었습니다. 잠시 후 다시 시도해 주세요.",
-      "error_unknown": "예기치 못한 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
-      "error_login_hint": "로그인 후 「광고 수신 설정」 화면에서 채널별로 중지할 수 있습니다."
-    },
-    "system_admin_moderation_detail": {
-      "title": "캠페인 심사 상세",
-      "section_channels": "채널별 본문",
-      "section_audience": "타겟 세그먼트",
-      "section_ng_words": "검출된 금지어",
-      "section_logs": "심사 로그",
-      "no_ng_words": "검출된 금지어가 없습니다.",
-      "preview_locale": "미리보기 언어",
-      "approve_confirm": "이 캠페인을 승인하시겠습니까?",
-      "block_confirm": "이 캠페인을 차단하시겠습니까?",
-      "approved_toast": "캠페인을 승인했습니다.",
-      "blocked_toast": "캠페인을 차단했습니다."
-    }
-  },
-  "report_dialog": {
-    "title": "이 광고 신고하기",
-    "description": "신고 내용은 SYSTEM_ADMIN 이 확인합니다.",
-    "reason_label": "신고 사유",
-    "detail_label": "상세(선택)",
-    "detail_placeholder": "신경 쓰이는 점을 구체적으로 적어 주세요",
-    "submit": "신고 보내기",
-    "cancel": "취소",
-    "submitted": "신고를 접수했습니다.",
-    "rate_limited": "신고 전송 상한(1일 20건)에 도달했습니다. 내일 다시 시도해 주세요."
-  },
-  "consent_dialog": {
-    "title": "광고 수신에 동의하시겠습니까?",
-    "description": "Mannschaft 는 광고주의 제한적인 메시지 송출을 제공합니다. 수신 설정은 언제든지 변경할 수 있습니다.",
-    "accept": "동의하고 계속",
-    "decline": "지금은 받지 않음",
-    "stop_all": "모든 광고 중지",
-    "stopped_message": "모든 광고 수신을 중지했습니다. 설정 화면에서 언제든지 변경할 수 있습니다."
-  },
-  "error_codes": {
-    "AD_CAMPAIGN_NOT_FOUND": "캠페인을 찾을 수 없습니다.",
-    "AD_CAMPAIGN_NOT_EDITABLE": "현재 상태에서는 이 캠페인을 편집할 수 없습니다.",
-    "AD_CAMPAIGN_INVALID_TRANSITION": "이 상태 전이는 허용되지 않습니다.",
-    "AD_CAMPAIGN_BUDGET_INSUFFICIENT": "예산 잔액이 부족합니다.",
-    "AD_CAMPAIGN_CREDIT_LIMIT_EXCEEDED": "신용 한도를 초과했습니다.",
-    "AD_CAMPAIGN_MODERATION_BLOCKED": "이 캠페인은 심사에서 차단되었습니다.",
-    "AD_CAMPAIGN_NO_CHANNEL": "최소한 하나의 채널을 설정해 주세요.",
-    "AD_PREFERENCES_BLOCKED_LIMIT": "최대 100명의 광고주를 차단할 수 있습니다.",
-    "AD_REPORT_DUPLICATE": "이 캠페인은 이미 신고되었습니다.",
-    "AD_RATE_LIMIT_EXCEEDED": "요청 수가 상한에 도달했습니다. 잠시 후 다시 시도해 주세요."
-  },
-  "advertiser_crud": {
-    "list_tab": {
-      "all": "전체",
+    "status": {
       "draft": "초안",
       "review": "심사 중",
       "approved": "승인됨",
@@ -329,163 +40,795 @@
       "blocked": "차단됨",
       "cancelled": "취소됨"
     },
-    "list_action": {
-      "create_button": "새로 만들기"
+    "moderation_status": {
+      "pending": "심사 대기",
+      "auto_passed": "자동 통과",
+      "auto_flagged": "확인 필요",
+      "approved": "승인됨",
+      "blocked": "차단됨"
     },
-    "list_table": {
-      "name": "캠페인 이름",
-      "status": "상태",
-      "period": "송출 기간",
-      "total_budget": "총예산",
-      "consumed_budget": "소비액",
-      "actions": "조작"
+    "moderation_action": {
+      "approved": "승인",
+      "blocked": "차단",
+      "unblocked": "차단 해제",
+      "auto_flagged": "자동 플래그",
+      "auto_passed": "자동 통과"
     },
-    "create_step": {
-      "basic": "기본 정보",
-      "channels": "송출 채널",
-      "audience": "오디언스",
-      "preview": "미리보기 / 확정"
+    "segment_type": {
+      "age_range": "연령대",
+      "gender": "성별",
+      "region_prefecture": "광역지자체",
+      "region_city": "기초지자체",
+      "interest_tag": "관심 태그",
+      "org_type": "조직 유형",
+      "locale": "언어",
+      "device": "기기"
     },
-    "create_nav": {
-      "next": "다음",
-      "back": "이전",
-      "submit": "초안으로 만들기"
+    "inclusion_mode": {
+      "include": "포함",
+      "exclude": "제외"
     },
-    "detail_tab": {
-      "overview": "개요",
-      "channels": "채널",
-      "audience": "오디언스",
-      "moderation": "심사 이력"
+    "report_reason": {
+      "offensive": "불쾌한 내용",
+      "misleading": "오해를 일으키는 내용",
+      "spam": "스팸",
+      "irrelevant": "나와 관련이 없음",
+      "other": "기타"
     },
-    "detail_empty": {
-      "moderation_logs": "심사 이력이 없습니다."
+    "channel": {
+      "announcement": "공지",
+      "email": "이메일",
+      "push": "푸시 알림",
+      "banner": "배너"
     },
-    "form": {
-      "name": "캠페인 이름",
-      "name_placeholder": "예: 봄 캠페인",
-      "total_budget": "총예산(엔)",
-      "starts_at": "송출 시작 시각",
-      "ends_at": "송출 종료 시각",
-      "scheduled_timezone": "시간대",
-      "frequency_cap_override": "프리퀀시 캡 덮어쓰기(주당)",
-      "frequency_cap_help": "지정하지 않으면 기본값(주 3건)을 사용합니다."
+    "reach_range": {
+      "under_100": "조건에 일치하는 사용자가 너무 적습니다",
+      "range_100_500": "약 100〜500명",
+      "range_500_1k": "약 500〜1,000명",
+      "range_1k_5k": "약 1,000〜5,000명",
+      "range_5k_10k": "약 5,000〜10,000명",
+      "range_10k_50k": "약 10,000〜50,000명",
+      "range_50k_100k": "약 50,000〜100,000명",
+      "over_100k": "약 100,000명 이상"
     },
-    "channel_form": {
-      "subject": "제목",
-      "body_markdown": "본문(Markdown)",
-      "image_url": "이미지 URL",
-      "cta_label": "CTA 라벨",
-      "cta_url": "CTA 링크 URL",
-      "banner_creative_id": "배너 크리에이티브 ID",
-      "select_channel": "채널 종류 선택",
-      "select_locale": "언어 선택"
+    "actions": {
+      "submit": "심사 제출",
+      "launch": "송출 시작",
+      "pause": "일시중지",
+      "resume": "재개",
+      "cancel": "취소",
+      "approve": "승인",
+      "block": "차단",
+      "save_draft": "초안 저장",
+      "preview": "미리보기",
+      "delete": "삭제",
+      "edit": "편집",
+      "create": "새로 만들기",
+      "add_channel": "채널 추가",
+      "remove_channel": "채널 제거",
+      "add_segment": "세그먼트 추가",
+      "remove_segment": "세그먼트 제거",
+      "report": "신고",
+      "unsubscribe": "수신 거부",
+      "block_advertiser": "이 광고주 차단",
+      "stop_ads": "광고 수신 중지",
+      "unblock_advertiser": "차단 해제",
+      "export_csv": "CSV 내보내기",
+      "view_detail": "상세 보기",
+      "back_to_queue": "심사 대기열로 돌아가기",
+      "reload": "새로고침"
     },
-    "segment_form": {
-      "select_type": "세그먼트 종류 선택",
-      "inclusion_mode": "포함 모드",
-      "age_min": "최소 연령",
-      "age_max": "최대 연령",
-      "genders": "성별",
-      "prefecture_codes": "광역지자체 코드(쉼표 구분)",
-      "city_codes": "기초지자체 코드(쉼표 구분)",
-      "interest_tags": "관심 태그(쉼표 구분)",
-      "org_types": "조직 유형(쉼표 구분)",
-      "locales": "언어",
-      "devices": "기기",
-      "remove": "삭제"
+    "pages": {
+      "advertiser_campaign_list": {
+        "title": "메시지형 캠페인 목록",
+        "description": "특정 대상에게 송출하는 메시지 캠페인을 관리합니다.",
+        "empty": "아직 캠페인이 없습니다.",
+        "filter_status": "상태로 필터링",
+        "column_name": "캠페인 이름",
+        "column_status": "상태",
+        "column_budget": "예산(엔)",
+        "column_consumed": "소비액(엔)",
+        "column_period": "송출 기간",
+        "column_updated": "업데이트"
+      },
+      "advertiser_campaign_create": {
+        "title": "캠페인 만들기",
+        "description": "송출 채널과 타겟 조건을 설정합니다. 초안은 자유롭게 편집할 수 있습니다.",
+        "field_name": "캠페인 이름",
+        "field_budget": "총예산(엔)",
+        "field_starts_at": "송출 시작 일시",
+        "field_ends_at": "송출 종료 일시",
+        "field_timezone": "시간대",
+        "field_frequency_cap": "주당 최대 송출 횟수(미지정 시 3건)",
+        "step_basic": "기본 정보",
+        "step_channels": "채널 설정",
+        "step_audience": "타겟 설정",
+        "step_review": "확인 및 제출",
+        "submitted": "캠페인을 심사에 제출했습니다.",
+        "saved": "초안을 저장했습니다.",
+        "draft_saved": "초안으로 저장되었습니다."
+      },
+      "advertiser_campaign_detail": {
+        "title": "캠페인 상세",
+        "section_summary": "개요",
+        "section_channels": "채널",
+        "section_audience": "타겟",
+        "section_moderation": "심사 상태",
+        "section_report": "성과 리포트",
+        "blocked_reason": "차단 사유",
+        "preview_reach": "예상 도달",
+        "no_channels": "채널이 설정되지 않았습니다.",
+        "no_segments": "타겟 조건이 설정되지 않았습니다."
+      },
+      "system_admin_moderation": {
+        "title": "광고 캠페인 심사",
+        "description": "심사 대기 중인 캠페인을 확인하고 승인 또는 차단합니다.",
+        "empty": "심사 대기 중인 캠페인이 없습니다.",
+        "approve_dialog_title": "이 캠페인을 승인하시겠습니까?",
+        "approve_dialog_message": "승인하면 광고주가 송출을 시작할 수 있습니다.",
+        "block_dialog_title": "이 캠페인을 차단하시겠습니까?",
+        "block_dialog_message": "차단 사유를 입력하세요(광고주에게 통지됩니다).",
+        "block_reason_label": "차단 사유",
+        "block_reason_placeholder": "예: 표현이 부적절합니다",
+        "user_reports_section": "사용자 신고",
+        "queue_title": "심사 대기열",
+        "queue_description": "현재 심사가 필요한 캠페인 목록입니다.",
+        "filter_submitted_period": "제출 시각으로 필터링",
+        "filter_auto_flag": "자동 플래그로 필터링",
+        "filter_auto_flag_all": "전체",
+        "filter_auto_flag_only": "자동 플래그만",
+        "filter_auto_flag_passed": "자동 통과만",
+        "card_advertiser": "광고주 계정 ID",
+        "card_submitted_at": "제출 일시"
+      },
+      "settings_ad_preferences": {
+        "title": "광고 수신 설정",
+        "description": "수신할 광고 채널과 차단할 광고주를 설정합니다.",
+        "channel_section": "수신하는 채널",
+        "channel_section_description": "중지한 채널에서는 광고를 받지 않습니다.",
+        "blocked_section": "차단한 광고주",
+        "blocked_section_description": "차단한 광고주의 광고는 일절 전달되지 않습니다(최대 100건).",
+        "blocked_empty": "현재 차단 중인 광고주가 없습니다.",
+        "blocked_limit_exceeded": "차단 상한(100건)에 도달했습니다. 일부를 해제한 뒤 추가해 주세요.",
+        "add_block_label": "광고주 ID로 추가",
+        "add_block_placeholder": "예: 12",
+        "add_block_button": "차단 목록에 추가",
+        "rotate_tokens": "수신 거부 링크 무효화",
+        "rotate_tokens_help": "과거 이메일의 수신 거부 링크를 모두 무효화합니다.",
+        "rotate_tokens_section": "보안",
+        "rotate_tokens_confirm": "모든 수신 거부 링크를 무효화하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+        "rotate_tokens_success": "이메일 링크를 무효화했습니다.",
+        "consent_required": "광고 수신에는 최초 동의가 필요합니다.",
+        "consented_at": "최초 동의 일시",
+        "not_consented": "미동의",
+        "save_button": "저장",
+        "saved": "설정을 저장했습니다.",
+        "save_rate_limited": "설정 변경 상한(시간당 10건)에 도달했습니다. 잠시 후 다시 시도해 주세요.",
+        "channel_announcement": "공지 피드 내 광고",
+        "channel_email": "이메일 광고",
+        "channel_push": "푸시 알림 광고",
+        "channel_banner": "사이트 내 배너 광고"
+      },
+      "me_ad_deliveries": {
+        "title": "받은 광고",
+        "description": "당신에게 송출된 광고 이력을 확인할 수 있습니다.",
+        "empty": "아직 받은 광고가 없습니다.",
+        "delivered_at": "송출 일시",
+        "opened": "열람함",
+        "clicked": "클릭함",
+        "filter_all": "전체",
+        "filter_announcement": "공지",
+        "filter_email": "이메일",
+        "filter_push": "푸시",
+        "filter_banner": "배너",
+        "column_campaign": "캠페인",
+        "column_advertiser": "광고주",
+        "column_channel": "채널",
+        "column_engagement": "동작",
+        "column_actions": "조작",
+        "engagement_read": "열람",
+        "engagement_clicked": "클릭",
+        "engagement_none": "미열람",
+        "load_more": "더 불러오기",
+        "delete_all_section": "데이터 삭제(GDPR 삭제권)",
+        "delete_all_description": "받은 광고 이력을 모두 삭제합니다. 광고주의 과금 실적과 통계는 유지되지만 본인과의 연결은 제거됩니다.",
+        "delete_all_button": "모든 이력 삭제",
+        "delete_all_confirm": "정말로 모든 광고 이력을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+        "delete_all_success": "광고 이력을 모두 삭제했습니다."
+      },
+      "system_admin_dashboard": {
+        "title": "광고 심사 대시보드",
+        "description": "심사 대기, 신고 상황, 최근 차단 현황을 한눈에 확인합니다.",
+        "kpi_review_pending": "심사 대기",
+        "kpi_auto_flagged": "자동 플래그",
+        "kpi_user_reports": "신고",
+        "kpi_recent_blocks": "최근 7일 차단",
+        "auto_suspend_warning": "{count}건의 신고 집중 캠페인이 있습니다",
+        "shortcut_review_queue": "심사 대기열 열기",
+        "shortcut_user_reports": "신고 목록 열기",
+        "load_failed": "광고 심사 정보를 불러오지 못했습니다",
+        "quick_link_label": "광고 심사"
+      },
+      "system_admin_user_reports": {
+        "title": "광고 사용자 신고 목록",
+        "description": "사용자 신고를 확인하고 필요에 따라 해당 캠페인을 중지합니다.",
+        "empty": "대응 대기 중인 신고가 없습니다.",
+        "filter_reason": "신고 사유로 필터링",
+        "filter_status": "상태로 필터링",
+        "column_reported_at": "신고 일시",
+        "column_campaign": "캠페인",
+        "column_reporter": "신고자",
+        "column_reason": "사유",
+        "column_status": "상태",
+        "auto_suspend_candidate": "신고 집중",
+        "auto_suspend_candidate_tooltip": "단기간에 여러 건의 신고가 모여 자동 중지 후보입니다.",
+        "go_campaign": "캠페인 상세로",
+        "type_messaging": "메시지형",
+        "type_operational": "운영형",
+        "status_update_failed": "상태 업데이트에 실패했습니다",
+        "mark_reviewing": "검토 중으로 변경",
+        "mark_resolved": "해결됨으로 변경",
+        "mark_dismissed": "기각"
+      },
+      "advertiser_campaign_report": {
+        "title": "캠페인 성과 리포트",
+        "description": "송출 실적의 집계와 일별 추이를 확인합니다. 기간을 지정해 필터링할 수 있습니다.",
+        "field_from": "시작일",
+        "field_to": "종료일",
+        "kpi_delivered": "송출 수",
+        "kpi_opened": "열람 수",
+        "kpi_clicked": "클릭 수",
+        "kpi_consumed": "소비 예산(엔)",
+        "chart_title": "일별 추이",
+        "chart_delivered": "송출 수",
+        "chart_open_rate": "열람률",
+        "chart_click_rate": "클릭률",
+        "channel_breakdown_title": "채널별 실적",
+        "channel_breakdown_delivered": "송출",
+        "channel_breakdown_opened": "열람",
+        "channel_breakdown_clicked": "클릭",
+        "no_data": "선택한 기간에 데이터가 없습니다.",
+        "export_started": "CSV 내보내기를 시작했습니다."
+      },
+      "unsubscribe_spa": {
+        "title": "광고 메일 수신 중지",
+        "description": "중지하고 싶은 채널을 선택하세요. 체크하지 않은 채널은 계속 수신됩니다.",
+        "submit_button": "선택한 채널 중지",
+        "note": "광고 메일 끝의 수신 중지 링크로 접속하면 표시됩니다. 로그인 후 「광고 수신 설정」 화면에서 언제든지 변경할 수 있습니다.",
+        "success_message": "선택한 채널의 광고 수신을 중지했습니다.",
+        "done_title": "광고 수신을 중지했습니다",
+        "done_description": "선택한 채널에서 광고를 더 이상 받지 않습니다.",
+        "done_disabled_label": "중지한 채널:",
+        "done_remaining_label": "계속 수신하는 채널:",
+        "done_login_hint": "로그인 후 「광고 수신 설정」 화면에서 언제든 변경할 수 있습니다.",
+        "error_title": "중지할 수 없습니다",
+        "error_invalid_or_expired": "링크의 유효 기간이 지났거나 무효화되었습니다. 로그인 후 「광고 수신 설정」 화면에서 진행해 주세요.",
+        "error_rate_limited": "짧은 시간에 많은 요청이 접수되었습니다. 잠시 후 다시 시도해 주세요.",
+        "error_unknown": "예기치 못한 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        "error_login_hint": "로그인 후 「광고 수신 설정」 화면에서 채널별로 중지할 수 있습니다."
+      },
+      "system_admin_moderation_detail": {
+        "title": "캠페인 심사 상세",
+        "section_channels": "채널별 본문",
+        "section_audience": "타겟 세그먼트",
+        "section_ng_words": "검출된 금지어",
+        "section_logs": "심사 로그",
+        "no_ng_words": "검출된 금지어가 없습니다.",
+        "preview_locale": "미리보기 언어",
+        "approve_confirm": "이 캠페인을 승인하시겠습니까?",
+        "block_confirm": "이 캠페인을 차단하시겠습니까?",
+        "approved_toast": "캠페인을 승인했습니다.",
+        "blocked_toast": "캠페인을 차단했습니다."
+      }
     },
-    "preview": {
-      "title": "예상 도달",
-      "estimated_range": "예상 도달 수(범위)",
-      "channel_breakdown": "채널별 예상",
-      "fetch": "예상 도달 가져오기",
-      "loading": "추정 중...",
-      "under_100_warning": "예상 도달 수가 100 미만입니다. 대상이 너무 좁을 수 있습니다.",
-      "no_data": "미리보기 데이터가 없습니다. 먼저 「예상 도달 가져오기」를 실행해 주세요."
+    "report_dialog": {
+      "title": "이 광고 신고하기",
+      "description": "신고 내용은 SYSTEM_ADMIN 이 확인합니다.",
+      "reason_label": "신고 사유",
+      "detail_label": "상세(선택)",
+      "detail_placeholder": "신경 쓰이는 점을 구체적으로 적어 주세요",
+      "submit": "신고 보내기",
+      "cancel": "취소",
+      "submitted": "신고를 접수했습니다.",
+      "rate_limited": "신고 전송 상한(1일 20건)에 도달했습니다. 내일 다시 시도해 주세요."
     },
-    "errors": {
-      "load_failed": "데이터를 불러오지 못했습니다.",
-      "save_failed": "저장에 실패했습니다.",
-      "transition_failed": "상태 전이에 실패했습니다.",
-      "preview_failed": "미리보기를 불러오지 못했습니다."
+    "consent_dialog": {
+      "title": "광고 수신에 동의하시겠습니까?",
+      "description": "Mannschaft 는 광고주의 제한적인 메시지 송출을 제공합니다. 수신 설정은 언제든지 변경할 수 있습니다.",
+      "accept": "동의하고 계속",
+      "decline": "지금은 받지 않음",
+      "stop_all": "모든 광고 중지",
+      "stopped_message": "모든 광고 수신을 중지했습니다. 설정 화면에서 언제든지 변경할 수 있습니다."
     },
-    "confirm": {
-      "submit": "이 캠페인을 심사에 제출하시겠습니까?",
-      "cancel": "취소하면 되돌릴 수 없습니다. 계속하시겠습니까?",
-      "launch": "송출을 시작합니다. 계속하시겠습니까?",
-      "pause": "송출을 일시중지합니다. 계속하시겠습니까?",
-      "resume": "송출을 재개합니다. 계속하시겠습니까?",
-      "delete": "이 초안을 삭제합니다. 계속하시겠습니까?"
+    "error_codes": {
+      "AD_CAMPAIGN_NOT_FOUND": "캠페인을 찾을 수 없습니다.",
+      "AD_CAMPAIGN_NOT_EDITABLE": "현재 상태에서는 이 캠페인을 편집할 수 없습니다.",
+      "AD_CAMPAIGN_INVALID_TRANSITION": "이 상태 전이는 허용되지 않습니다.",
+      "AD_CAMPAIGN_BUDGET_INSUFFICIENT": "예산 잔액이 부족합니다.",
+      "AD_CAMPAIGN_CREDIT_LIMIT_EXCEEDED": "신용 한도를 초과했습니다.",
+      "AD_CAMPAIGN_MODERATION_BLOCKED": "이 캠페인은 심사에서 차단되었습니다.",
+      "AD_CAMPAIGN_NO_CHANNEL": "최소한 하나의 채널을 설정해 주세요.",
+      "AD_PREFERENCES_BLOCKED_LIMIT": "최대 100명의 광고주를 차단할 수 있습니다.",
+      "AD_REPORT_DUPLICATE": "이 캠페인은 이미 신고되었습니다.",
+      "AD_RATE_LIMIT_EXCEEDED": "요청 수가 상한에 도달했습니다. 잠시 후 다시 시도해 주세요."
     },
-    "validation": {
-      "name_required": "캠페인 이름은 필수입니다.",
-      "name_max": "캠페인 이름은 120자 이내로 입력해 주세요.",
-      "total_budget_min": "총예산은 1,000엔 이상이어야 합니다.",
-      "total_budget_max": "총예산은 100,000,000엔 이하여야 합니다.",
-      "starts_at_required": "송출 시작 시각은 필수입니다.",
-      "ends_at_required": "송출 종료 시각은 필수입니다.",
-      "starts_before_ends": "송출 시작 시각은 종료 시각보다 앞이어야 합니다.",
-      "frequency_cap_range": "프리퀀시 캡은 1〜30 범위로 지정해 주세요.",
-      "at_least_one_channel": "최소한 하나의 채널을 설정해 주세요.",
-      "at_least_one_segment": "최소한 하나의 오디언스 세그먼트를 설정해 주세요."
+    "advertiser_crud": {
+      "list_tab": {
+        "all": "전체",
+        "draft": "초안",
+        "review": "심사 중",
+        "approved": "승인됨",
+        "scheduled": "예약됨",
+        "delivering": "송출 중",
+        "paused": "일시중지",
+        "completed": "종료",
+        "blocked": "차단됨",
+        "cancelled": "취소됨"
+      },
+      "list_action": {
+        "create_button": "새로 만들기"
+      },
+      "list_table": {
+        "name": "캠페인 이름",
+        "status": "상태",
+        "period": "송출 기간",
+        "total_budget": "총예산",
+        "consumed_budget": "소비액",
+        "actions": "조작"
+      },
+      "create_step": {
+        "basic": "기본 정보",
+        "channels": "송출 채널",
+        "audience": "오디언스",
+        "preview": "미리보기 / 확정"
+      },
+      "create_nav": {
+        "next": "다음",
+        "back": "이전",
+        "submit": "초안으로 만들기"
+      },
+      "detail_tab": {
+        "overview": "개요",
+        "channels": "채널",
+        "audience": "오디언스",
+        "moderation": "심사 이력"
+      },
+      "detail_empty": {
+        "moderation_logs": "심사 이력이 없습니다."
+      },
+      "form": {
+        "name": "캠페인 이름",
+        "name_placeholder": "예: 봄 캠페인",
+        "total_budget": "총예산(엔)",
+        "starts_at": "송출 시작 시각",
+        "ends_at": "송출 종료 시각",
+        "scheduled_timezone": "시간대",
+        "frequency_cap_override": "프리퀀시 캡 덮어쓰기(주당)",
+        "frequency_cap_help": "지정하지 않으면 기본값(주 3건)을 사용합니다."
+      },
+      "channel_form": {
+        "subject": "제목",
+        "body_markdown": "본문(Markdown)",
+        "image_url": "이미지 URL",
+        "cta_label": "CTA 라벨",
+        "cta_url": "CTA 링크 URL",
+        "banner_creative_id": "배너 크리에이티브 ID",
+        "select_channel": "채널 종류 선택",
+        "select_locale": "언어 선택"
+      },
+      "segment_form": {
+        "select_type": "세그먼트 종류 선택",
+        "inclusion_mode": "포함 모드",
+        "age_min": "최소 연령",
+        "age_max": "최대 연령",
+        "genders": "성별",
+        "prefecture_codes": "광역지자체 코드(쉼표 구분)",
+        "city_codes": "기초지자체 코드(쉼표 구분)",
+        "interest_tags": "관심 태그(쉼표 구분)",
+        "org_types": "조직 유형(쉼표 구분)",
+        "locales": "언어",
+        "devices": "기기",
+        "remove": "삭제"
+      },
+      "preview": {
+        "title": "예상 도달",
+        "estimated_range": "예상 도달 수(범위)",
+        "channel_breakdown": "채널별 예상",
+        "fetch": "예상 도달 가져오기",
+        "loading": "추정 중...",
+        "under_100_warning": "예상 도달 수가 100 미만입니다. 대상이 너무 좁을 수 있습니다.",
+        "no_data": "미리보기 데이터가 없습니다. 먼저 「예상 도달 가져오기」를 실행해 주세요."
+      },
+      "errors": {
+        "load_failed": "데이터를 불러오지 못했습니다.",
+        "save_failed": "저장에 실패했습니다.",
+        "transition_failed": "상태 전이에 실패했습니다.",
+        "preview_failed": "미리보기를 불러오지 못했습니다."
+      },
+      "confirm": {
+        "submit": "이 캠페인을 심사에 제출하시겠습니까?",
+        "cancel": "취소하면 되돌릴 수 없습니다. 계속하시겠습니까?",
+        "launch": "송출을 시작합니다. 계속하시겠습니까?",
+        "pause": "송출을 일시중지합니다. 계속하시겠습니까?",
+        "resume": "송출을 재개합니다. 계속하시겠습니까?",
+        "delete": "이 초안을 삭제합니다. 계속하시겠습니까?"
+      },
+      "validation": {
+        "name_required": "캠페인 이름은 필수입니다.",
+        "name_max": "캠페인 이름은 120자 이내로 입력해 주세요.",
+        "total_budget_min": "총예산은 1,000엔 이상이어야 합니다.",
+        "total_budget_max": "총예산은 100,000,000엔 이하여야 합니다.",
+        "starts_at_required": "송출 시작 시각은 필수입니다.",
+        "ends_at_required": "송출 종료 시각은 필수입니다.",
+        "starts_before_ends": "송출 시작 시각은 종료 시각보다 앞이어야 합니다.",
+        "frequency_cap_range": "프리퀀시 캡은 1〜30 범위로 지정해 주세요.",
+        "at_least_one_channel": "최소한 하나의 채널을 설정해 주세요.",
+        "at_least_one_segment": "최소한 하나의 오디언스 세그먼트를 설정해 주세요."
+      },
+      "nav": {
+        "messaging_campaigns": "메시지형 캠페인"
+      }
     },
-    "nav": {
-      "messaging_campaigns": "메시지형 캠페인"
-    }
-  },
-  "creative": {
-    "title": "광고 소재 목록",
-    "description": "캠페인에 연결된 광고 소재를 관리합니다.",
-    "empty": "소재가 없습니다.",
-    "create_button": "새로 만들기",
-    "status": {
-      "DRAFT": "초안",
-      "ACTIVE": "활성",
-      "PAUSED": "일시 중지",
-      "ENDED": "종료"
+    "creative": {
+      "title": "광고 소재 목록",
+      "description": "캠페인에 연결된 광고 소재를 관리합니다.",
+      "empty": "소재가 없습니다.",
+      "create_button": "새로 만들기",
+      "status": {
+        "DRAFT": "초안",
+        "ACTIVE": "활성",
+        "PAUSED": "일시 중지",
+        "ENDED": "종료"
+      },
+      "column_title": "제목",
+      "column_status": "상태",
+      "column_destination": "목적지 URL",
+      "column_created_at": "생성일",
+      "column_actions": "작업",
+      "form": {
+        "title_label": "제목",
+        "title_placeholder": "예: 봄 세일 광고",
+        "image_url_label": "이미지 URL (선택)",
+        "image_url_placeholder": "https://example.com/image.png",
+        "destination_url_label": "목적지 URL",
+        "destination_url_placeholder": "https://example.com/landing"
+      },
+      "dialog_create_title": "소재 만들기",
+      "dialog_edit_title": "소재 편집",
+      "delete_confirm": "이 소재는 ENDED 상태로 변경됩니다. 계속하시겠습니까?",
+      "created_toast": "소재가 생성되었습니다.",
+      "updated_toast": "소재가 업데이트되었습니다.",
+      "deleted_toast": "소재가 삭제되었습니다.",
+      "error_load": "소재 로드에 실패했습니다.",
+      "error_save": "저장에 실패했습니다.",
+      "error_delete": "삭제에 실패했습니다.",
+      "back_to_advertiser": "광고주 대시보드로 돌아가기"
     },
-    "column_title": "제목",
-    "column_status": "상태",
-    "column_destination": "목적지 URL",
-    "column_created_at": "생성일",
-    "column_actions": "작업",
-    "form": {
-      "title_label": "제목",
-      "title_placeholder": "예: 봄 세일 광고",
-      "image_url_label": "이미지 URL (선택)",
-      "image_url_placeholder": "https://example.com/image.png",
-      "destination_url_label": "목적지 URL",
-      "destination_url_placeholder": "https://example.com/landing"
+    "teams_page": {
+      "title": "팀 광고주 관리",
+      "description": "팀 단위로 메시지형 광고 캠페인을 생성·게재합니다.",
+      "nav": {
+        "messaging_campaigns_description": "팀 멤버를 대상으로 한 메시지형 광고 캠페인을 생성합니다."
+      },
+      "dashboard": {
+        "not_registered_title": "広告主ダッシュボード",
+        "not_registered_description": "広告を出稿するには、まず広告主として登録してください。",
+        "register_button": "広告主登録",
+        "rate_simulator_button": "料金シミュレーター",
+        "pending_notice": "アカウントは審査中です。承認後に広告の配信を開始できます。",
+        "suspended_notice": "アカウントが停止されています。管理者にお問い合わせください。",
+        "kpi_campaigns": "キャンペーン",
+        "kpi_impressions": "インプレッション",
+        "kpi_clicks_ctr": "クリック / CTR",
+        "kpi_cost": "広告費（税抜）",
+        "budget_used_label": "予算消化 {pct}%",
+        "campaigns_section_title": "キャンペーン",
+        "column_campaign_name": "キャンペーン名",
+        "column_status": "ステータス",
+        "column_impressions": "imp",
+        "column_clicks": "click",
+        "column_ctr": "CTR",
+        "column_cost": "費用",
+        "nav_invoices": "請求書",
+        "nav_rate_simulator": "料金シミュレーター",
+        "nav_report_schedules": "定期レポート",
+        "nav_credit_limit_requests": "与信枠申請"
+      },
+      "invoices": {
+        "title": "請求書",
+        "status_all": "すべて",
+        "status_draft": "下書き",
+        "status_issued": "発行済み",
+        "status_paid": "支払済み",
+        "status_overdue": "期限超過",
+        "status_filter_placeholder": "ステータス",
+        "column_invoice_number": "請求書番号",
+        "column_invoice_month": "対象月",
+        "column_total_with_tax": "税込合計",
+        "column_status": "ステータス",
+        "column_due_date": "支払期限",
+        "detail_title": "請求書詳細",
+        "detail_invoice_number": "請求書番号:",
+        "detail_invoice_month": "対象月:",
+        "detail_status": "ステータス:",
+        "detail_due_date": "支払期限:",
+        "detail_column_campaign": "キャンペーン",
+        "detail_column_pricing_model": "課金",
+        "detail_column_impressions": "imp",
+        "detail_column_clicks": "click",
+        "detail_column_subtotal": "小計",
+        "subtotal_label": "小計:",
+        "tax_label": "消費税（{rate}%）:",
+        "total_label": "合計:"
+      },
+      "credit_limit_requests": {
+        "title": "与信枠 増額申請",
+        "create_button": "新規申請",
+        "column_requested_limit": "希望額",
+        "column_current_limit": "申請時の限度額",
+        "column_reason": "理由",
+        "column_status": "ステータス",
+        "column_review_note": "審査メモ",
+        "column_created_at": "申請日",
+        "dialog_title": "与信枠 増額申請",
+        "form_requested_limit_label": "希望額（円）",
+        "form_reason_label": "申請理由",
+        "form_reason_placeholder": "増額が必要な理由を記入してください",
+        "submit_button": "申請",
+        "created_toast": "増額申請を送信しました",
+        "create_failed_toast": "申請に失敗しました"
+      },
+      "report_schedules": {
+        "title": "定期レポート",
+        "create_button": "新規作成",
+        "empty": "定期レポートはまだ設定されていません。",
+        "frequency_weekly": "週次（毎週月曜）",
+        "frequency_monthly": "月次（毎月1日）",
+        "last_sent_label": "最終配信: {date}",
+        "dialog_title": "レポートスケジュール作成",
+        "form_frequency_label": "配信頻度",
+        "form_recipients_label": "配信先メール（カンマ区切り）",
+        "form_recipients_placeholder": "ads{'@'}example.com, manager{'@'}example.com",
+        "submit_button": "作成",
+        "created_toast": "レポートスケジュールを作成しました",
+        "create_failed_toast": "作成に失敗しました",
+        "deleted_toast": "削除しました",
+        "delete_failed_toast": "削除に失敗しました"
+      },
+      "rate_simulator": {
+        "title": "料金シミュレーター",
+        "pricing_model_label": "課金モデル",
+        "pricing_model_cpm": "CPM（インプレッション課金）",
+        "pricing_model_cpc": "CPC（クリック課金）",
+        "days_label": "掲載日数",
+        "impressions_label": "インプレッション数",
+        "clicks_label": "クリック数",
+        "prefecture_label": "都道府県（任意）",
+        "prefecture_placeholder": "例: 東京都",
+        "template_label": "テンプレート（任意）",
+        "template_placeholder": "例: SPORTS",
+        "run_button": "シミュレーション実行",
+        "result_title": "見積もり結果",
+        "unit_price_label": "単価",
+        "total_cost_label": "税抜合計",
+        "total_with_tax_label": "税込合計",
+        "tax_amount_label": "消費税",
+        "daily_cost_label": "日次費用",
+        "min_daily_budget_label": "最低日予算",
+        "comparison_title": "他の料金との比較",
+        "comparison_column_label": "条件",
+        "comparison_column_unit_price": "単価",
+        "comparison_column_total_cost": "合計費用"
+      },
+      "campaign_detail": {
+        "default_title": "キャンペーン詳細",
+        "csv_button": "CSV",
+        "date_from_placeholder": "開始日",
+        "date_to_placeholder": "終了日",
+        "load_failed": "キャンペーンデータを取得できませんでした。",
+        "back_to_dashboard": "ダッシュボードに戻る"
+      },
+      "register": {
+        "title": "광고주 등록",
+        "submit": "등록 신청",
+        "company_name_label": "회사명 / 광고주명",
+        "company_name_placeholder": "예시 주식회사",
+        "contact_email_label": "연락처 이메일 주소",
+        "billing_method_label": "결제 방법",
+        "billing_stripe": "신용카드（Stripe）",
+        "billing_invoice": "청구서 납부",
+        "success_message": "광고주 등록을 신청했습니다. 심사 후 이용하실 수 있습니다.",
+        "error_message": "등록에 실패했습니다"
+      }
     },
-    "dialog_create_title": "소재 만들기",
-    "dialog_edit_title": "소재 편집",
-    "delete_confirm": "이 소재는 ENDED 상태로 변경됩니다. 계속하시겠습니까?",
-    "created_toast": "소재가 생성되었습니다.",
-    "updated_toast": "소재가 업데이트되었습니다.",
-    "deleted_toast": "소재가 삭제되었습니다.",
-    "error_load": "소재 로드에 실패했습니다.",
-    "error_save": "저장에 실패했습니다.",
-    "error_delete": "삭제에 실패했습니다.",
-    "back_to_advertiser": "광고주 대시보드로 돌아가기"
-  },
-  "teams_page": {
-    "title": "팀 광고주 관리",
-    "description": "팀 단위로 메시지형 광고 캠페인을 생성·게재합니다.",
-    "nav": {
-      "messaging_campaigns_description": "팀 멤버를 대상으로 한 메시지형 광고 캠페인을 생성합니다."
+    "settings_ad_preferences_guide": {
+      "page_title": "広告の受信設定 — 使い方ガイド",
+      "description": "広告の受信設定ページの機能と使い方をご案内します。",
+      "channels": {
+        "title": "チャネル別の受信トグル",
+        "body": "お知らせフィード・メール・プッシュ通知・サイト内バナーの4チャネルごとに広告の受信をオン／オフできます。初回同意日時もこのセクションで確認できます。",
+        "steps": {
+          "step1": "受信したいチャネルのスイッチをオンにする",
+          "step2": "受信したくないチャネルのスイッチをオフにする",
+          "step3": "ページ右下の「保存」ボタンをクリックして設定を確定する"
+        }
+      },
+      "blocklist": {
+        "title": "ブロック済み広告主リスト",
+        "body": "特定の広告主からの広告を一切受け取りたくない場合は、広告主IDを入力してブロックできます（最大100件）。ブロック済みリストの各行の×ボタンでいつでも解除できます。",
+        "steps": {
+          "step1": "ブロックしたい広告主のIDを入力欄に入力する（例: 12）",
+          "step2": "「ブロックに追加」ボタンをクリックする",
+          "step3": "ページ右下の「保存」ボタンをクリックして設定を確定する",
+          "step4": "解除するには、一覧の×ボタンをクリックして再度「保存」する"
+        }
+      },
+      "rotate_tokens": {
+        "title": "配信停止リンクの無効化（セキュリティ）",
+        "body": "過去に受け取ったメール内の配信停止リンクを一括で無効化できます。不正利用が心配なときやメールアドレスを変更したときに使用してください。この操作は元に戻せません。",
+        "steps": {
+          "step1": "「配信停止リンクを無効化する」ボタンをクリックする",
+          "step2": "確認ダイアログが表示されるので内容を確認して承認する",
+          "step3": "成功メッセージが表示されれば完了（新しいリンクは次回配信から有効）"
+        }
+      },
+      "save": {
+        "title": "設定の保存",
+        "body": "チャネルのオン／オフやブロックリストへの変更は、「保存」ボタンを押すまで確定されません。なお設定変更には1時間あたり10件のレート制限があります。",
+        "steps": {
+          "step1": "チャネルやブロックリストの設定を変更する",
+          "step2": "ページ右下の「保存」ボタンをクリックする",
+          "step3": "「設定を保存しました」のメッセージが表示されれば完了"
+        }
+      }
     },
-    "future_features_notice": "청구서 관리·신용 한도 신청·정기 보고서는 향후 단계에서 지원할 예정입니다.",
-    "register": {
-      "title": "광고주 등록",
-      "submit": "등록 신청",
-      "company_name_label": "회사명 / 광고주명",
-      "company_name_placeholder": "예시 주식회사",
-      "contact_email_label": "연락처 이메일 주소",
-      "billing_method_label": "결제 방법",
-      "billing_stripe": "신용카드（Stripe）",
-      "billing_invoice": "청구서 납부",
-      "success_message": "광고주 등록을 신청했습니다. 심사 후 이용하실 수 있습니다.",
-      "error_message": "등록에 실패했습니다"
+    "operational_campaigns": {
+      "title": "배너 광고 캠페인",
+      "entry_tile": {
+        "title": "배너 광고 캠페인",
+        "description": "이미지 배너를 게재면에 배포하는 운영형 캠페인을 생성하고 관리합니다."
+      },
+      "list": {
+        "description": "이미지 배너 배포 캠페인을 생성하고 심사, 배포, 일시 정지를 관리합니다. 일일 예산은 참고 상한입니다.",
+        "create_button": "새로 만들기",
+        "empty": "운영형 캠페인이 아직 없습니다. 첫 캠페인을 만들어 보세요.",
+        "no_end_date": "무기한",
+        "report_suspended_badge": "신고로 중지됨",
+        "reject_reason_label": "반려 사유",
+        "link_creatives": "크리에이티브",
+        "link_report": "리포트",
+        "tab": {
+          "all": "전체",
+          "draft": "임시저장",
+          "pending_review": "심사 중",
+          "active": "배포 중",
+          "paused": "일시 정지",
+          "ended": "종료"
+        },
+        "col": {
+          "name": "캠페인명",
+          "status": "상태",
+          "pricing_model": "과금 방식",
+          "daily_budget": "일일 예산",
+          "period": "게재 기간",
+          "unit_price": "단가",
+          "actions": "작업"
+        }
+      },
+      "status": {
+        "draft": "임시저장",
+        "pending_review": "심사 중",
+        "active": "배포 중",
+        "paused": "일시 정지",
+        "ended": "종료"
+      },
+      "actions": {
+        "submit": "심사 제출",
+        "pause": "일시 정지",
+        "resume": "재개",
+        "end": "종료",
+        "edit": "편집"
+      },
+      "confirm": {
+        "submit": "이 캠페인을 심사에 제출하시겠습니까?",
+        "pause": "이 캠페인의 배포를 일시 정지하시겠습니까?",
+        "resume": "이 캠페인의 배포를 재개하시겠습니까?",
+        "end": "이 캠페인을 종료하시겠습니까? 종료하면 재개할 수 없습니다(불가역)."
+      },
+      "toast": {
+        "submit": "심사에 제출했습니다",
+        "pause": "배포를 일시 정지했습니다",
+        "resume": "배포를 재개했습니다",
+        "end": "캠페인을 종료했습니다",
+        "created": "캠페인을 생성했습니다",
+        "updated": "캠페인을 수정했습니다"
+      },
+      "form": {
+        "create_title": "배너 광고 캠페인 생성",
+        "edit_title": "배너 광고 캠페인 편집",
+        "name": "캠페인명",
+        "pricing_model": "과금 방식",
+        "rate_card": "요금 카드",
+        "rate_card_placeholder": "요금 카드 선택",
+        "no_rate_cards": "선택한 과금 방식에 사용 가능한 요금 카드가 없습니다.",
+        "daily_budget": "일일 예산",
+        "min_daily_budget": "최소 일일 예산",
+        "start_date": "게재 시작일",
+        "end_date": "게재 종료일",
+        "end_date_hint": "비워 두면 무기한 게재됩니다.",
+        "unit_cpm": "CPM",
+        "unit_cpc": "CPC",
+        "locked_when_paused": "일시 정지 중에는 변경할 수 없습니다.",
+        "daily_budget_notice": "일일 예산은 소진 페이싱의 참고 상한이며 엄격한 보장이 아닙니다. 실측값을 기준으로 과금됩니다.",
+        "save": "저장",
+        "cancel": "취소"
+      },
+      "errors": {
+        "load_failed": "캠페인을 불러오지 못했습니다",
+        "save_failed": "저장하지 못했습니다",
+        "transition_failed": "작업에 실패했습니다",
+        "rate_cards_load_failed": "요금 카드를 불러오지 못했습니다",
+        "name_required": "캠페인명을 입력하세요",
+        "name_max": "캠페인명은 200자 이내로 입력하세요",
+        "rate_card_required": "요금 카드를 선택하세요",
+        "daily_budget_required": "일일 예산을 입력하세요",
+        "daily_budget_min": "일일 예산은 최소값({min}) 이상이어야 합니다",
+        "start_date_required": "게재 시작일을 입력하세요",
+        "start_in_past": "게재 시작일은 오늘 이후여야 합니다",
+        "end_before_start": "게재 종료일은 시작일 이후여야 합니다"
+      },
+      "guide": {
+        "title": "배너 광고 캠페인 사용법",
+        "what": {
+          "title": "배너 광고 캠페인이란",
+          "body": "대시보드나 피드 같은 게재면에 이미지 배너를 배포하는 운영형 광고입니다. 과금 방식(CPM/CPC)과 요금 카드를 선택하고 일일 예산을 설정한 뒤 심사를 거쳐 배포합니다."
+        },
+        "flow": {
+          "title": "게재 흐름",
+          "step1": "요금 카드와 일일 예산을 지정해 캠페인 생성(임시저장)",
+          "step2": "크리에이티브(이미지 배너) 입고",
+          "step3": "심사 제출(캠페인과 크리에이티브 모두 승인되어야 배포 대상)",
+          "step4": "배포 시작. 필요에 따라 일시 정지·재개·종료"
+        },
+        "pricing": {
+          "title": "요금과 일일 예산",
+          "body": "요금 카드로 단가(CPM=노출 1000회당, CPC=클릭 1회당)가 정해집니다. 생성 시 단가가 고정되어 이후 요금 개정의 영향을 받지 않습니다. 일일 예산은 페이싱 참고 상한입니다."
+        },
+        "status": {
+          "title": "상태와 작업",
+          "body": "임시저장→심사 중→배포 중→일시 정지 순으로 전이합니다. 일시 정지 중에는 과금 단가 관련 항목(과금 방식·요금 카드·시작일)을 변경할 수 없습니다. 종료하면 재개할 수 없습니다."
+        }
+      },
+      "review": {
+        "title": "운영형 캠페인 심사",
+        "description": "심사 대기 중인 배너 광고 캠페인을 확인하고 승인 또는 반려합니다.",
+        "card_title": "운영형 캠페인 심사",
+        "card_description": "심사 대기 중인 배너 광고 캠페인을 확인합니다.",
+        "pending_count": "심사 대기",
+        "open_queue": "심사 큐 열기",
+        "open_detail": "상세 보기",
+        "back_to_dashboard": "심사 대시보드로 돌아가기",
+        "empty": "심사 대기 중인 캠페인이 없습니다.",
+        "load_failed": "심사 큐를 불러오지 못했습니다",
+        "detail_load_failed": "심사 상세를 불러오지 못했습니다",
+        "detail_title": "캠페인 심사 상세",
+        "advertiser": "광고주",
+        "scope": "범위",
+        "scope_organization": "조직",
+        "scope_team": "팀",
+        "unit_price": "단가",
+        "creatives": "크리에이티브",
+        "no_creatives": "입고된 크리에이티브가 없습니다.",
+        "approve": "승인",
+        "approve_confirm": "이 캠페인을 승인하여 배포 가능하게 하시겠습니까?",
+        "approved_toast": "캠페인을 승인했습니다",
+        "reject": "반려",
+        "reject_submit": "반려",
+        "reject_reason_label": "반려 사유",
+        "reject_reason_placeholder": "반려 사유를 입력하세요(1~500자)",
+        "rejected_toast": "캠페인을 반려했습니다",
+        "action_failed": "작업에 실패했습니다"
+      }
     }
   }
 }

@@ -120,6 +120,8 @@ function onContextMenuSelect(key: string) {
       break
     case 'copy':
       if (props.message.body) {
+        // クリップボード書き込み失敗（権限拒否・非対応ブラウザ）は非クリティカルのため握りつぶす。
+        // eslint-disable-next-line no-restricted-syntax -- clipboard 書込は非対応/非セキュア文脈/ユーザー拒否が想定内。best-effort でありデータ影響なし
         navigator.clipboard.writeText(props.message.body).catch(() => {})
       }
       break
@@ -151,7 +153,7 @@ const indentStyle = computed(() => {
 
 <template>
   <div
-    class="group relative py-1.5 pr-4 transition-colors hover:bg-surface-50"
+    class="group relative py-1.5 pr-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800"
     data-testid="chat-message"
     :style="indentStyle"
     @mouseenter="showActions = true"
@@ -195,7 +197,7 @@ const indentStyle = computed(() => {
           </div>
 
           <!-- 転送元 -->
-          <div v-if="message.forwardedFrom" class="mb-1 rounded border-l-2 border-surface-300 bg-surface-50 px-2 py-1 text-xs text-surface-500">
+          <div v-if="message.forwardedFrom" class="mb-1 rounded border-l-2 border-surface-300 dark:border-surface-600 bg-surface-50 dark:bg-surface-800 px-2 py-1 text-xs text-surface-500 dark:text-surface-400">
             <span class="font-medium">{{ message.forwardedFrom.sender?.displayName }}</span>
             <span v-if="message.forwardedFrom.channelName"> in #{{ message.forwardedFrom.channelName }}</span>
             <p class="mt-0.5">{{ message.forwardedFrom.body }}</p>
@@ -212,7 +214,7 @@ const indentStyle = computed(() => {
               :href="att.url"
               target="_blank"
               rel="noopener"
-              class="inline-flex items-center gap-1 rounded border border-surface-300 px-2 py-1 text-xs text-primary hover:bg-surface-50"
+              class="inline-flex items-center gap-1 rounded border border-surface-300 dark:border-surface-600 px-2 py-1 text-xs text-primary hover:bg-surface-50 dark:hover:bg-surface-800"
             >
               <i class="pi pi-file" />
               {{ att.fileName }}
@@ -227,7 +229,7 @@ const indentStyle = computed(() => {
               class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
               :class="message.myReactions.includes(String(emoji))
                 ? 'border-primary bg-primary/10 text-primary'
-                : 'border-surface-200'"
+                : 'border-surface-200 dark:border-surface-700'"
               @click="toggleReaction(String(emoji))"
             >
               {{ emoji }} {{ count }}
@@ -249,10 +251,10 @@ const indentStyle = computed(() => {
       <!-- ホバーアクション（PC: 右端クイックアクション） -->
       <div
         v-if="showActions"
-        class="absolute -top-3 right-4 flex items-center gap-0.5 rounded-md border border-surface-300 bg-surface-0 shadow-sm"
+        class="absolute -top-3 right-4 flex items-center gap-0.5 rounded-md border border-surface-300 dark:border-surface-600 bg-surface-0 dark:bg-surface-900 shadow-sm"
       >
         <button
-          class="p-1.5 text-surface-400 hover:text-surface-600"
+          class="p-1.5 text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300"
           :title="$t('chat.contextMenu.react')"
           @click="showEmojiPicker = !showEmojiPicker"
         >
@@ -260,14 +262,14 @@ const indentStyle = computed(() => {
         </button>
         <button
           v-if="!message.parentId"
-          class="p-1.5 text-surface-400 hover:text-surface-600"
+          class="p-1.5 text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300"
           :title="$t('chat.contextMenu.replyInThread')"
           @click="emit('reply', message.id)"
         >
           <i class="pi pi-reply text-xs" />
         </button>
         <button
-          class="p-1.5 text-surface-400 hover:text-surface-600"
+          class="p-1.5 text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300"
           :title="$t('chat.contextMenu.bookmark')"
           @click="emit('bookmark', message.id)"
         >
@@ -275,7 +277,7 @@ const indentStyle = computed(() => {
         </button>
         <button
           v-if="canPin"
-          class="p-1.5 text-surface-400 hover:text-surface-600"
+          class="p-1.5 text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300"
           :title="$t('chat.contextMenu.pin')"
           @click="emit('pin', message.id)"
         >
@@ -291,7 +293,7 @@ const indentStyle = computed(() => {
         </button>
         <!-- ⋯ ボタン（コンテキストメニュー表示） -->
         <button
-          class="p-1.5 text-surface-400 hover:text-surface-600"
+          class="p-1.5 text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300"
           title="その他"
           @click.stop="openContextMenu($event.clientX, $event.clientY)"
         >
@@ -302,12 +304,12 @@ const indentStyle = computed(() => {
       <!-- 絵文字ピッカー -->
       <div
         v-if="showEmojiPicker"
-        class="absolute -top-10 right-4 z-20 flex gap-1 rounded-lg border border-surface-300 bg-surface-0 p-2 shadow-lg"
+        class="absolute -top-10 right-4 z-20 flex gap-1 rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-0 dark:bg-surface-900 p-2 shadow-lg"
       >
         <button
           v-for="emoji in CHAT_PRESET_EMOJIS"
           :key="emoji"
-          class="flex h-7 w-7 items-center justify-center rounded text-base hover:bg-surface-100"
+          class="flex h-7 w-7 items-center justify-center rounded text-base hover:bg-surface-100 dark:hover:bg-surface-800"
           @click="toggleReaction(emoji)"
         >
           {{ emoji }}

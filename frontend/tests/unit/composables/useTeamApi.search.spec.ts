@@ -45,6 +45,7 @@ const { useTeamApi } = await import('~/composables/useTeamApi')
 function makePublicSummary(over: Partial<TeamPublicSummary> = {}): TeamPublicSummary {
   return {
     id: 1,
+    slug: 'team-slug-1',
     name: '本店',
     nameKana: 'ホンテン',
     prefecture: '東京都',
@@ -60,7 +61,7 @@ function makePublicSummary(over: Partial<TeamPublicSummary> = {}): TeamPublicSum
 function makeSearchResult(over: Partial<TeamSearchResult> = {}): TeamSearchResult {
   return {
     ...makePublicSummary(),
-    visibility: 'ORGANIZATION_ONLY',
+    visibility: 'GUESTS_AND_ABOVE',
     bannerUrl: null,
     supporterEnabled: false,
     ...over,
@@ -217,7 +218,7 @@ describe('useTeamApi.searchOrganizationTeams', () => {
 
     // 詳細版と判定された場合は visibility / bannerUrl / supporterEnabled にアクセスできる
     if (isTeamSearchResult(detail)) {
-      expect(detail.visibility).toBe('ORGANIZATION_ONLY')
+      expect(detail.visibility).toBe('GUESTS_AND_ABOVE')
       expect(detail.supporterEnabled).toBe(false)
     }
   })

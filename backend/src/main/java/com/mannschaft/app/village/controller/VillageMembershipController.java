@@ -2,6 +2,7 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.village.dto.MembershipBanRequest;
 import com.mannschaft.app.village.dto.MembershipJoinRequest;
 import com.mannschaft.app.village.dto.MembershipListResponse;
@@ -43,6 +44,7 @@ import java.util.UUID;
 @Tag(name = "村メンバーシップ (F17.1)",
      description = "Phase 1: 村への参加・退出・ロール変更・BAN")
 @RequiredArgsConstructor
+@AuthorizedInService
 public class VillageMembershipController {
 
     private final VillageMembershipService membershipService;

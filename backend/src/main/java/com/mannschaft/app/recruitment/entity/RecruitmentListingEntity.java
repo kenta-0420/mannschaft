@@ -11,8 +11,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -29,8 +31,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class RecruitmentListingEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
@@ -319,7 +320,9 @@ public class RecruitmentListingEntity extends BaseEntity {
             String location,
             Long reservationLineId,
             String imageUrl,
-            Long cancellationPolicyId
+            Long cancellationPolicyId,
+            String payeeKind,
+            Long payeeUserId
     ) {
         if (this.status == RecruitmentListingStatus.COMPLETED
                 || this.status == RecruitmentListingStatus.CANCELLED
@@ -354,6 +357,22 @@ public class RecruitmentListingEntity extends BaseEntity {
             throw new IllegalStateException("決済を有効化する場合は料金が必要");
         }
 
+        // F22.1 市 謝礼決済: 受領主体の防御的検証（DB chk_rl_payee / chk_rl_payee_user 相当・Service 検証の二重化）。
+        // payeeKind=null は「変更なし」、空でない値は変更。effective 値で CHECK 不変条件を満たすことを確認する。
+        String effectivePayeeKind = payeeKind != null ? payeeKind : this.payeeKind;
+        Long effectivePayeeUserId = payeeUserId != null ? payeeUserId : this.payeeUserId;
+        if (Boolean.TRUE.equals(effectivePaymentEnabled)
+                && (effectivePayeeKind == null || effectivePayeeKind.isBlank())) {
+            throw new IllegalStateException("決済を有効化する場合は受領主体（payeeKind）が必要");
+        }
+        if ("USER".equals(effectivePayeeKind) && effectivePayeeUserId == null) {
+            throw new IllegalStateException("payeeKind=USER の場合は受領者ユーザー（payeeUserId）が必要");
+        }
+        if (effectivePayeeKind != null && !"USER".equals(effectivePayeeKind)) {
+            // 非 USER（TEAM/ORG）では payee_user_id は NULL でなければならない（chk_rl_payee_user）。
+            effectivePayeeUserId = null;
+        }
+
         if (title != null) this.title = title;
         if (description != null) this.description = description;
         if (subcategoryId != null) this.subcategoryId = subcategoryId;
@@ -370,5 +389,13 @@ public class RecruitmentListingEntity extends BaseEntity {
         if (reservationLineId != null) this.reservationLineId = reservationLineId;
         if (imageUrl != null) this.imageUrl = imageUrl;
         if (cancellationPolicyId != null) this.cancellationPolicyId = cancellationPolicyId;
+        // 受領主体は CHECK 整合を取った effective 値で確定する（非 USER は user_id を NULL に正規化済み）。
+        if (payeeKind != null) {
+            this.payeeKind = effectivePayeeKind;
+            this.payeeUserId = effectivePayeeUserId;
+        } else if (payeeUserId != null) {
+            // payeeKind 未指定だが payeeUserId のみ更新（既存 payeeKind=USER の受領者付け替え）。
+            this.payeeUserId = effectivePayeeUserId;
+        }
     }
 }

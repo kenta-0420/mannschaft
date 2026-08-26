@@ -13,7 +13,7 @@ const notification = useNotification()
 const followedTeamIds = ref<string[]>([])
 const followingTeamIds = ref<string[]>([])
 
-const myTeamPublicIds = computed(() => new Set(teamStore.myTeams.map((team) => team.publicId)))
+const myTeamSlugs = computed(() => new Set(teamStore.myTeams.map((team) => team.slug)))
 
 async function followTeam(teamId: string, event: Event) {
   event.stopPropagation()
@@ -29,8 +29,11 @@ async function followTeam(teamId: string, event: Event) {
   }
 }
 
-interface TeamSummary {
+/** チーム検索 API レスポンス内の1件分（URLルーティングに必要な slug を含む）。 */
+interface TeamSearchSummary {
   id: string
+  /** チームスラッグ（URLルーティング用）。{@code /teams/{slug}} に使用する。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -43,9 +46,10 @@ interface TeamSummary {
   template: string
   memberCount: number
   supporterEnabled: boolean
+  teamFriendCount: number
+  supporterCount: number
 }
-
-const teams = ref<TeamSummary[]>([])
+const teams = ref<TeamSearchSummary[]>([])
 const loading = ref(false)
 const totalRecords = ref(0)
 const currentPage = ref(0)
@@ -108,8 +112,8 @@ function onPageChange(event: { page: number }) {
   fetchTeams()
 }
 
-function onTeamCreated(entity: { id: number; publicId: string; name: string }) {
-  navigateTo(`/teams/${entity.publicId}`)
+function onTeamCreated(entity: { id: string; name: string; slug: string }) {
+  navigateTo(`/teams/${entity.slug}`)
 }
 
 function formatLocation(prefecture: string | null, city: string | null): string {
@@ -130,8 +134,7 @@ onMounted(() => {
 <template>
   <div class="mx-auto max-w-6xl p-6">
     <div class="mb-6 flex items-center gap-4">
-      <BackButton to="/teams" />
-      <PageHeader :title="$t('teamHub.searchPageTitle')" class="flex-1" />
+      <PageHeader :title="$t('teamHub.searchPageTitle')" class="flex-1" back-to="/teams" />
       <Button
         :label="$t('teamHub.createTeam')"
         icon="pi pi-plus"
@@ -162,7 +165,7 @@ onMounted(() => {
           v-for="team in teams"
           :key="team.id"
           class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/teams/${team.id}`)"
+          @click="team.slug ? navigateTo(`/teams/${team.slug}`) : undefined"
         >
           <div class="mb-3 flex items-center gap-3">
             <Avatar
@@ -187,11 +190,11 @@ onMounted(() => {
             <span><i class="pi pi-users mr-1" />{{ $t('teamHub.memberCount', { count: team.memberCount }) }}</span>
           </div>
           <div
-            v-if="team.supporterEnabled && !myTeamPublicIds.has(team.id)"
+            v-if="team.supporterEnabled && !myTeamSlugs.has(team.slug)"
             class="mt-3 border-t border-surface-100 pt-3"
           >
             <span
-              v-if="followedTeamIds.includes(team.id)"
+              v-if="followedTeamIds.includes(team.slug)"
               class="flex items-center gap-1 text-sm text-primary"
             >
               <i class="pi pi-heart-fill" />{{ $t('teamHub.supporterRegistered') }}
@@ -204,8 +207,8 @@ onMounted(() => {
               severity="secondary"
               outlined
               class="w-full"
-              :loading="followingTeamIds.includes(team.id)"
-              @click="followTeam(team.id, $event)"
+              :loading="followingTeamIds.includes(team.slug)"
+              @click="followTeam(team.slug, $event)"
             />
           </div>
         </div>

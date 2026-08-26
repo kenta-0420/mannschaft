@@ -16,13 +16,38 @@ const mentionCount = ref(0)
 
 const totalCount = computed(() => notifCount.value + chatCount.value + mentionCount.value)
 
+/**
+ * useApi() の onResponseError が投げる「認証フロー起源」のエラーかどうかを判定する。
+ *
+ * useApi.ts の 401 ハンドラは、refresh_token が無効な本物のセッション失効を検出すると
+ * 自律的に authStore.logout({ reason: 'session_expired' }) を実行し `/login` へ誘導した上で
+ * Error('token_refresh_failed') / Error('not_authenticated') を投げる。この 2 つは
+ * 「握りつぶすと症状を隠すことになる」認証エラーなので、ここでは飲み込まず再送出し
+ * useApi 側の処理（＝既に実行済みのログイン誘導）を阻害しない。
+ *
+ * 一方 Error('token_refresh_transient')（回線が遅いだけの一時的失敗。ログアウトはしていない）
+ * や、その他のネットワークエラー・5xx（useApi() がトースト集約・エラー報告済み）は
+ * 通知ベルの件数取得としては非クリティカルなので静かに無視する。
+ */
+function isAuthFlowFailure(error: unknown): boolean {
+  return (
+    error instanceof Error
+    && (error.message === 'token_refresh_failed' || error.message === 'not_authenticated')
+  )
+}
+
 async function fetchCounts() {
+  // バッジ件数取得（60 秒ポーリング）。3 種は独立しており、1 つが失敗しても
+  // 他の件数は表示すべきなので allSettled で個別に処理する。
+  // ただし認証エラー（isAuthFlowFailure）は握りつぶさない（症状を隠さない）。
   await Promise.allSettled([
     getUnreadCount()
       .then((r) => {
         notifCount.value = r.data.unreadCount
       })
-      .catch(() => {}),
+      .catch((error: unknown) => {
+        if (isAuthFlowFailure(error)) throw error
+      }),
     getChannels()
       .then((r) => {
         chatCount.value = (r.data as { unreadCount?: number }[]).reduce(
@@ -30,12 +55,16 @@ async function fetchCounts() {
           0,
         )
       })
-      .catch(() => {}),
+      .catch((error: unknown) => {
+        if (isAuthFlowFailure(error)) throw error
+      }),
     api<{ data: Mention[] }>('/api/v1/mentions')
       .then((r) => {
         mentionCount.value = r.data.filter((m: Mention) => !m.isRead).length
       })
-      .catch(() => {}),
+      .catch((error: unknown) => {
+        if (isAuthFlowFailure(error)) throw error
+      }),
   ])
 }
 
@@ -72,7 +101,7 @@ defineExpose({ refresh: fetchCounts })
       v-if="totalCount > 0"
       :value="totalCount > 99 ? '99+' : totalCount"
       severity="danger"
-      class="absolute -right-1 -top-1 pointer-events-none"
+      class="absolute -right-1 -top-1 pointer-events-none shadow-md ring-2 ring-white dark:ring-surface-900 !min-w-[1.1rem] !h-[1.1rem] !text-[0.6rem]"
     />
 
     <Popover ref="popover" @show="onPopoverShow">

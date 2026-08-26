@@ -7,18 +7,18 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * チームマスターエンティティ。チームの基本情報・公開設定を管理する。
@@ -29,17 +29,28 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TeamEntity extends BaseEntity {
 
+    @PrePersist
+    protected void normalizeTimezone() {
+        if (timezone != null) {
+            timezone = timezone.trim();
+        }
+    }
+
+    /** 予約等の業務ローカル時刻を解釈する IANA タイムゾーン。既存データは移行で Asia/Tokyo に補完する。 */
+    @Column(nullable = false, length = 64, columnDefinition = "VARCHAR(64) NOT NULL DEFAULT 'Asia/Tokyo'")
+    @Builder.Default
+    private String timezone = "Asia/Tokyo";
+
     /**
-     * URL 公開用 UUID（列挙攻撃対策）。
-     * <p>内部 BIGINT PK は FK 関係のために保持し、URL には本フィールドを使用する。
-     * {@code @UuidGenerator(style = TIME)} により UUIDv7（時刻順ソート可能）が自動生成される。</p>
+     * URL 公開用カスタムスラッグ（人間可読な識別子）。
+     * <p>3〜30文字の英数字ハイフン。チーム名から自動生成し、一意性は uq_teams_slug で担保する。
+     * 内部 BIGINT PK は FK 関係のために保持し、URL には本フィールドを使用する。</p>
      */
-    @Column(name = "public_id", columnDefinition = "BINARY(16)", nullable = true, updatable = false, unique = true)
-    @UuidGenerator(style = UuidGenerator.Style.TIME)
-    private UUID publicId;
+    @Column(name = "slug", length = 30, nullable = false, unique = true)
+    private String slug;
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -47,10 +58,10 @@ public class TeamEntity extends BaseEntity {
     @Column(length = 100)
     private String nameKana;
 
-    @Column(length = 50)
+    @Column(name = "nickname1", length = 50)
     private String nickname1;
 
-    @Column(length = 50)
+    @Column(name = "nickname2", length = 50)
     private String nickname2;
 
     @Column(length = 30)
@@ -174,12 +185,25 @@ public class TeamEntity extends BaseEntity {
     private boolean timelinePostsPublic = false;
 
     /**
-     * チーム公開範囲
+     * チーム公開範囲（ロールベース設計）。
+     *
+     * <p>旧設計（PRIVATE / ORGANIZATION_ONLY）は組織概念に依存していた。
+     * 新設計ではチーム内のロール（メンバー/サポーター/ゲスト/パブリック）で分ける。</p>
+     *
+     * <p>F00 StandardVisibility マッピング:
+     * <ul>
+     *   <li>{@link #PUBLIC} → {@link com.mannschaft.app.common.visibility.StandardVisibility#PUBLIC}</li>
+     *   <li>{@link #GUESTS_AND_ABOVE} → {@link com.mannschaft.app.common.visibility.StandardVisibility#SCOPE_AFFILIATED}</li>
+     *   <li>{@link #SUPPORTERS_AND_ABOVE} → {@link com.mannschaft.app.common.visibility.StandardVisibility#SUPPORTERS_AND_ABOVE}</li>
+     *   <li>{@link #MEMBERS_AND_ABOVE} → {@link com.mannschaft.app.common.visibility.StandardVisibility#MEMBERS_AND_ABOVE}</li>
+     * </ul>
+     * </p>
      */
     public enum Visibility {
         PUBLIC,
-        ORGANIZATION_ONLY,
-        PRIVATE
+        GUESTS_AND_ABOVE,
+        SUPPORTERS_AND_ABOVE,
+        MEMBERS_AND_ABOVE
     }
 
     /**
@@ -245,5 +269,137 @@ public class TeamEntity extends BaseEntity {
     public void updateRegionCodes(String prefectureCode, String cityCode) {
         this.prefectureCode = prefectureCode;
         this.cityCode = cityCode;
+    }
+
+    /**
+     * F01.2 §5.9.5 slug リネーム: slug を新しい値へ変更する。
+     *
+     * <p>クラスレベル {@code @Setter} を持たないため、ビジネスメソッド経由で更新する。
+     * 形式・予約語・一意性・履歴予約の検証は Service 層（{@code TeamService#renameSlug}）が行う前提で、
+     * 本メソッドは値の差し替えのみを担う。旧 slug の履歴記録も Service 層の責務。</p>
+     *
+     * @param newSlug 新しい slug（検証済み前提）
+     */
+    public void renameSlug(String newSlug) {
+        this.slug = newSlug;
+    }
+
+    /**
+     * チームの基本情報を部分更新する（{@code TeamService#updateTeam} 用）。
+     *
+     * <p>本メソッドは managed entity をその場でミューテートする更新メソッドである。
+     * {@code @Transactional} 内で managed な本エンティティに対して呼ぶことで JPA の
+     * dirty checking により UPDATE が発行される。</p>
+     *
+     * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
+     * {@link TeamEntity} は {@code @SuperBuilder(toBuilder = true)} を使用しており、
+     * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
+     * {@code toBuilder()} は {@code id} を引き継ぐが、managed entity の直接ミューテートが
+     * より安全かつ明示的なため、その場でフィールドを更新する（PR #1643 と同型）。</p>
+     *
+     * <p>各引数は「リクエスト値が非 null なら採用、null なら現値を維持」の部分更新セマンティクス。
+     * slug の一意性検証・visibility 文字列の enum 解決は呼び出し側（{@code TeamService}）の責務とし、
+     * 本メソッドは解決済みの値を受け取る。</p>
+     *
+     * @param name             新チーム名
+     * @param nameKana         新カナ
+     * @param nickname1        新ニックネーム1
+     * @param nickname2        新ニックネーム2
+     * @param template         新テンプレート
+     * @param prefecture       新都道府県（自由入力）
+     * @param city             新市区町村（自由入力）
+     * @param prefectureCode   新都道府県コード
+     * @param cityCode         新市区町村コード
+     * @param visibility       新公開範囲（解決済み enum・null なら現値維持）
+     * @param supporterEnabled 新サポーター有効フラグ
+     * @param mapEmbedUrl      新地図埋め込み URL
+     */
+    public void applyUpdate(String name, String nameKana, String nickname1, String nickname2,
+                            String template, String prefecture, String city,
+                            String prefectureCode, String cityCode, Visibility visibility,
+                            Boolean supporterEnabled, String mapEmbedUrl) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (nameKana != null) {
+            this.nameKana = nameKana;
+        }
+        if (nickname1 != null) {
+            this.nickname1 = nickname1;
+        }
+        if (nickname2 != null) {
+            this.nickname2 = nickname2;
+        }
+        if (template != null) {
+            this.template = template;
+        }
+        if (prefecture != null) {
+            this.prefecture = prefecture;
+        }
+        if (city != null) {
+            this.city = city;
+        }
+        if (prefectureCode != null) {
+            this.prefectureCode = prefectureCode;
+        }
+        if (cityCode != null) {
+            this.cityCode = cityCode;
+        }
+        if (visibility != null) {
+            this.visibility = visibility;
+        }
+        if (supporterEnabled != null) {
+            this.supporterEnabled = supporterEnabled;
+        }
+        if (mapEmbedUrl != null) {
+            this.mapEmbedUrl = mapEmbedUrl;
+        }
+    }
+
+    /** チームの業務タイムゾーンを更新する。入力の IANA 検証は API 層で行う。 */
+    public void updateTimezone(String timezone) {
+        if (timezone != null) {
+            this.timezone = timezone.trim();
+        }
+    }
+
+    /**
+     * チームの拡張プロフィールを更新する（{@code TeamExtendedProfileService#updateProfile} 用）。
+     *
+     * <p>{@link #applyUpdate} と同じく managed entity の直接ミューテートで UPDATE を発行する。
+     * builder 作り直しによる id 欠落 INSERT を避けるために設けた更新メソッドである。</p>
+     *
+     * <p>本メソッドは「指定された値で上書きする」セマンティクス（null も含めて上書き可）。
+     * 呼び出し側（{@code TeamExtendedProfileService}）が現値維持／null 化のロジックを解決済みの
+     * 値として渡す前提とする。</p>
+     *
+     * @param homepageUrl              新ホームページ URL（正規化済み・null 化可）
+     * @param establishedDate         新設立日（null 化可）
+     * @param establishedDatePrecision 新設立日精度（null 化可）
+     * @param philosophy              新理念（trim・null 化済み）
+     * @param profileVisibility       新プロフィール公開設定
+     */
+    public void applyProfileUpdate(String homepageUrl, LocalDate establishedDate,
+                                   com.mannschaft.app.organization.EstablishedDatePrecision establishedDatePrecision,
+                                   String philosophy,
+                                   com.mannschaft.app.organization.ProfileVisibility profileVisibility) {
+        this.homepageUrl = homepageUrl;
+        this.establishedDate = establishedDate;
+        this.establishedDatePrecision = establishedDatePrecision;
+        this.philosophy = philosophy;
+        this.profileVisibility = profileVisibility;
+    }
+
+    /**
+     * F19.1 Phase 2: サポーター向け氏名表示モードを更新する
+     * （{@code SupporterNameDisclosureService#patchTeamDisclosure} 用）。
+     *
+     * <p>managed entity の直接ミューテートで UPDATE を発行する。builder 作り直しによる
+     * id 欠落 INSERT を避けるために設けた更新メソッドである。</p>
+     *
+     * @param mode 新しい氏名表示モード
+     */
+    public void updateSupporterNameDisclosure(com.mannschaft.app.publicview.enums.NameDisclosureMode mode) {
+        this.supporterNameDisclosure = mode;
     }
 }

@@ -7,11 +7,15 @@ export interface MyTodo {
   scopeType: string
   /** @deprecated 旧フラットフィールド互換 — scope?.scopeId を優先使用 */
   scopeId: string | null
+  /** TEAM / ORGANIZATION の slug（URL遷移用）。PERSONAL は null。 */
+  scopeSlug: string | null
   scope?: {
     scopeType?: string
     scopeId?: string | null
     projectId?: number | null
     milestoneId?: number | null
+    /** TEAM / ORGANIZATION の slug（URL遷移用）。PERSONAL は null。 */
+    scopeSlug?: string | null
   }
   content?: {
     title?: string
@@ -78,6 +82,8 @@ export function useTodoList() {
   const teamStore = useTeamStore()
   const orgStore = useOrganizationStore()
   const notification = useNotification()
+  const { showUndoToast } = useUndoToast()
+  const { t } = useI18n()
   const { formatDate } = useDatetime()
 
   const todos = ref<MyTodo[]>([])
@@ -268,10 +274,12 @@ export function useTodoList() {
         orgStore.myOrganizations.length === 0 ? orgStore.fetchMyOrganizations() : Promise.resolve(),
       ])
       // Wave 1 DTO刷新: ネスト構造から旧フラットフィールドへ正規化マッピング（後方互換）
+      // slug 根治: scope.scopeSlug を scopeSlug フラットフィールドに引き継ぐ
       todos.value = (todosRes.data as unknown as MyTodo[]).map((item) => ({
         ...item,
         scopeType: item.scope?.scopeType ?? item.scopeType ?? '',
         scopeId: item.scope?.scopeId ?? item.scopeId ?? null,
+        scopeSlug: item.scope?.scopeSlug ?? item.scopeSlug ?? null,
         status: item.status ?? '',
         priority: item.priority ?? '',
         statusLabel: item.statusLabel ?? null,
@@ -337,19 +345,37 @@ export function useTodoList() {
     return !!todo.dueDate && (todo.daysRemaining ?? 0) < 0 && todo.status !== 'COMPLETED'
   }
 
+  // ADHD 配慮 AC-16: 確認ダイアログを廃止し、即時削除 + Undo Toast に置換する。
+  // 個人 TODO は論理削除なので、Undo で restore EP を叩けば一覧に復活する。
   async function deleteTodo(todo: MyTodo) {
+    if (todo.scopeType !== 'PERSONAL' && todo.scopeId) {
+      // チーム・組織TODOの削除はスコープ別APIを使用（現状は個人のみ対応）
+      notification.error('チーム・組織TODOの削除はTODO詳細画面から行ってください')
+      return
+    }
+    const snapshot = todos.value
     try {
-      if (todo.scopeType === 'PERSONAL' || !todo.scopeId) {
-        await todoApi.deletePersonalTodo(todo.id)
-      } else {
-        // チーム・組織TODOの削除はスコープ別APIを使用（現状は個人のみ対応）
-        notification.error('チーム・組織TODOの削除はTODO詳細画面から行ってください')
-        return
-      }
+      await todoApi.deletePersonalTodo(todo.id)
       // 楽観更新: ローカルから即時除去
       todos.value = todos.value.filter((t) => t.id !== todo.id)
+      showUndoToast({
+        summary: t('todo.list.deletedToast'),
+        undoLabel: t('button.undo'),
+        severity: 'info',
+        onUndo: async () => {
+          try {
+            await todoApi.restorePersonalTodo(todo.id)
+            notification.success(t('todo.list.restoredToast'))
+            await load({ silent: true })
+          } catch {
+            notification.error(t('todo.list.restoreFailed'))
+          }
+        },
+      })
     } catch {
-      notification.error('TODOの削除に失敗しました')
+      // 失敗時は楽観更新を巻き戻す（対処療法でなく状態整合を保つ）
+      todos.value = snapshot
+      notification.error(t('todo.list.deleteFailed'))
     }
   }
 

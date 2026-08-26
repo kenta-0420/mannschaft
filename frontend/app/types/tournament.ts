@@ -1,5 +1,32 @@
+import type { components } from '~/types/generated'
+
 export type TournamentFormat = 'LEAGUE' | 'KNOCKOUT' | 'GROUP_KNOCKOUT'
 export type TournamentStatus = 'DRAFT' | 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'ARCHIVED'
+
+/**
+ * 大会の競技種別（F08.10 多競技対応・🟡-1b）。
+ *
+ * 生成型 `CreateTournamentRequest.sport`（openapi-typescript 自動生成・BE `@Pattern` の 8 値）
+ * から `NonNullable` で導出する。手書き列挙はせず生成型を正本とし、BE が競技を増減した場合は
+ * openapi 再生成で自動追従する（`~/types/match` の `Sport` と同じ導出パターン）。
+ */
+export type TournamentSport = NonNullable<components['schemas']['CreateTournamentRequest']['sport']>
+
+/**
+ * 大会作成/編集フォームの競技選択肢（既定先頭 SOCCER）。
+ * ラベルは i18n（`tournament.sport.options.*`）で引く。生成型 `TournamentSport` の
+ * 全候補を網羅した配列で、要素が増減すると型エラーで検知できるよう `TournamentSport[]` で固定。
+ */
+export const TOURNAMENT_SPORTS: readonly TournamentSport[] = [
+  'SOCCER',
+  'FUTSAL',
+  'BASKETBALL',
+  'VOLLEYBALL',
+  'SHOGI',
+  'GO',
+  'FIGURE_SKATING',
+  'GYMNASTICS',
+] as const
 
 // ===== TournamentResponse ネスト化 DTO =====
 
@@ -129,8 +156,8 @@ export interface MatchParticipantsDto {
 export interface MatchScoreDto {
   homeScore?: number | null
   awayScore?: number | null
-  homeExtraScore?: number | null
-  awayExtraScore?: number | null
+  // 延長別スコア（homeExtraScore/awayExtraScore）は Phase 5b-3 で廃止。
+  // 延長得点は本戦スコア（homeScore/awayScore）へ合算済み（05 §H.1 移行表）。
   homePenaltyScore?: number | null
   awayPenaltyScore?: number | null
 }
@@ -195,14 +222,20 @@ export interface StandingScoreDto {
   setsLost?: number | null
 }
 
+export interface StandingStatusDto {
+  promotionZone?: string | null
+  lastCalculatedAt?: string | null
+}
+
 export interface TournamentStanding {
   id?: number
   meta?: StandingMetaDto
   team?: StandingTeamDto
   record?: StandingRecordDto
   score?: StandingScoreDto
-  form?: unknown[]
-  status?: string
+  /** 直近フォーム（例: "WWLDW"）。BE は文字列で返す。 */
+  form?: string | null
+  status?: StandingStatusDto
 }
 
 // ===== IndividualRanking ネスト化 DTO =====
@@ -212,6 +245,18 @@ export interface IndividualRankingContextDto {
   userId?: number
   participantId?: number
   matchesPlayed?: number
+  /**
+   * F08.7 順位UI 項目①（BE #1466）: F19.1 本人可視性経由で解決した表示名。
+   * MINOR 保護・退会済み・本名/サポーター開示規約に従う（無条件 displayName ではない）。
+   */
+  displayName?: string | null
+  /**
+   * 汎用ラベル（「投稿者」「退会済みユーザー」「匿名のユーザー#…」等・BE がサーバ側日本語固定値で返す）に
+   * フォールバックしたか。true のとき FE は i18n のローカライズ済み匿名ラベルを表示する。
+   */
+  anonymized?: boolean
+  /** 表示するアバター URL（開示許可時は実 URL、不可視時は汎用プレースホルダパス）。 */
+  avatarUrl?: string | null
 }
 
 export interface IndividualRankingStatDto {
@@ -219,7 +264,8 @@ export interface IndividualRankingStatDto {
   rankingLabel?: string | null
   totalValueInt?: number | null
   totalValueDecimal?: number | null
-  totalValueTime?: number | null
+  /** BE は LocalTime を JSON 文字列 "HH:mm:ss" で返す（数値ではない）。 */
+  totalValueTime?: string | null
 }
 
 export interface IndividualRanking {
@@ -228,6 +274,21 @@ export interface IndividualRanking {
   stat?: IndividualRankingStatDto
   rank?: number
   lastCalculatedAt?: string | null
+}
+
+// ===== 全ランキング一覧（RankingSummaryResponse 整合） =====
+// BE: RankingSummaryResponse { categories: RankingCategory[] }
+
+export interface RankingCategory {
+  statKey: string
+  name: string
+  rankingLabel: string
+  unit: string
+  leader: IndividualRanking | null
+}
+
+export interface RankingSummary {
+  categories: RankingCategory[]
 }
 
 export interface TournamentTemplate {
@@ -255,12 +316,26 @@ export interface TournamentPreset {
   statDefs: Array<{ key: string; label: string; aggregationType: string }>
 }
 
+// ===== 対戦マトリクス（BE MatrixResponse 整合） =====
+// BE: MatrixResponse { participants: ParticipantSummary[], cells: Map<String, MatrixCell> }
+// cells のキーは `${homeParticipantId}_${awayParticipantId}`（JSON では Record<string, ...> として届く）。
+
+export interface MatrixParticipantSummary {
+  participantId: number
+  teamId: number
+  teamName: string
+}
+
+export interface MatrixCell {
+  matchId: number | null
+  homeScore: number | null
+  awayScore: number | null
+  result: string
+}
+
 export interface TournamentMatrix {
-  divisionId: number
-  participants: Array<{ id: number; teamName: string }>
-  results: Array<
-    Array<{ homeScore: number | null; awayScore: number | null; matchId: number | null }>
-  >
+  participants: MatrixParticipantSummary[]
+  cells: Record<string, MatrixCell>
 }
 
 // ===== PromotionRecord ネスト化 DTO =====
@@ -488,8 +563,8 @@ export interface RosterStaffResponse {
   userId: number | null
 }
 
-/** 自チーム分の試合メンバー表（GET / PUT rosters/me のレスポンス） */
-export interface MatchRosterResponse {
+/** 自チーム分の試合メンバー表（GET / PUT rosters/me のレスポンス・BE FixtureRosterResponse 整合） */
+export interface FixtureRosterResponse {
   matchId: number
   participantId: number
   teamId: number
@@ -654,4 +729,78 @@ export interface SubmitForTeamRequest {
     dateValue?: string | null
     fileKey?: string | null
   }>
+}
+
+// ──────────────────────────────────────────────────
+// F08.7.1: 大会参加費 Connect 決済（自分の参加費一覧・チェックアウト）
+// GET  /api/v1/tournament-fees/my
+// POST /api/v1/tournament-fees/{feeId}/checkout
+// ──────────────────────────────────────────────────
+
+export interface MyTournamentFeeItem {
+  feeId: string
+  tournamentId: number
+  tournamentName: string
+  divisionId: number | null
+  divisionName: string | null
+  title: string
+  paymentItemId: number
+  faceAmount: number
+  payerSurcharge: number
+  totalCharge: number
+  dueDate: string | null
+  alreadyPaid: boolean
+  paidAt: string | null
+}
+
+export interface MyTournamentFeesResponse {
+  fees: MyTournamentFeeItem[]
+}
+
+export interface TournamentFeeCheckoutRequest {
+  idempotencyKey?: string
+}
+
+export interface TournamentFeeCheckoutResponse {
+  clientSecret: string | null
+  memberPaymentId: number
+  escrowTransactionId: string
+}
+
+// ──────────────────────────────────────────────────
+// F08.7 順位UI Wave B-3: 大会スコアキーパー指名管理
+// 主催組織 ADMIN が「当該大会のスコア入力を許可するユーザー」を指名・解除・一覧する。
+// BE: TournamentScorekeeperController（#1464）。
+//   GET    /api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers      → ScorekeeperResponse[]
+//   POST   /api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers      → 201（既存指名は冪等）
+//   DELETE /api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers/{skId} → 204
+// すべて主催組織 ADMIN / SYSTEM_ADMIN 限定。
+// NOTE: BE の ScorekeeperResponse は displayName を同梱する（F08.7 ③・NameResolverService 解決）。
+//       退会済み/不明ユーザーは BE 側で既定フォールバック名（「不明なユーザー」等）が入る。
+//       openapi.json に未掲載（BE 再生成漏れ）のため手動型として定義する。
+// ──────────────────────────────────────────────────
+
+/** スコアキーパー指名（BE ScorekeeperResponse 整合）。id は UUIDv7 を文字列で受ける。 */
+export interface ScorekeeperResponse {
+  /** 指名 ID（UUIDv7） */
+  id: string
+  /** 対象大会 ID */
+  tournamentId: number
+  /** スコアキーパーに指名されたユーザー ID */
+  userId: number
+  /**
+   * 指名されたユーザーの表示名（BE NameResolverService 解決）。
+   * 退会済み/不明ユーザーは BE 既定フォールバック名。後方互換のため optional。
+   */
+  displayName?: string
+  /** 指名した主催組織 ADMIN の user_id */
+  createdBy: number
+  /** 指名日時（ISO-8601） */
+  createdAt: string
+}
+
+/** スコアキーパー指名追加リクエスト（BE CreateScorekeeperRequest 整合）。 */
+export interface CreateScorekeeperRequest {
+  /** スコアキーパーに指名するユーザー ID */
+  userId: number
 }

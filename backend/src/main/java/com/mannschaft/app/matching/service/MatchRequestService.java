@@ -1,5 +1,6 @@
 package com.mannschaft.app.matching.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.matching.ActivityType;
 import com.mannschaft.app.matching.MatchCategory;
@@ -26,7 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 募集投稿サービス。募集のCRUD・検索・期限切れバッチを担当する。
@@ -44,19 +47,17 @@ public class MatchRequestService {
     private final MatchProposalRepository proposalRepository;
     private final MatchReviewRepository reviewRepository;
     private final NgTeamRepository ngTeamRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * 募集を検索する（パブリック検索）。
      */
-    public Page<MatchRequestResponse> searchRequests(Long currentTeamId,
+    public Page<MatchRequestResponse> searchRequests(Long currentUserId,
                                                      String prefectureCode, String cityCode,
                                                      String activityTypeStr, String categoryStr,
                                                      String levelStr, String visibilityStr,
                                                      Pageable pageable) {
-        List<Long> excludedTeamIds = ngTeamRepository.findBidirectionalBlockedTeamIds(currentTeamId);
-        if (excludedTeamIds.isEmpty()) {
-            excludedTeamIds = List.of(-1L); // JPA IN clause requires non-empty list
-        }
+        List<Long> excludedTeamIds = resolveExcludedTeamIds(currentUserId);
 
         ActivityType activityType = activityTypeStr != null ? ActivityType.valueOf(activityTypeStr) : null;
         MatchCategory category = categoryStr != null ? MatchCategory.valueOf(categoryStr) : null;
@@ -73,16 +74,28 @@ public class MatchRequestService {
     }
 
     /**
-     * キーワード検索する。
+     * キーワード検索する（FULLTEXT ＋ 全フィルタ条件の複合検索）。
+     *
+     * <p>keyword と prefecture/city/activityType/category/level/visibility を同時に AND で絞る。
+     * enum 文字列は {@code valueOf().name()} で検証・正規化してからネイティブクエリへ渡す
+     * （条件検索経路 {@link #searchRequests} と同じ入力検証を維持）。</p>
      */
-    public Page<MatchRequestResponse> searchByKeyword(Long currentTeamId, String keyword, Pageable pageable) {
-        List<Long> excludedTeamIds = ngTeamRepository.findBidirectionalBlockedTeamIds(currentTeamId);
-        if (excludedTeamIds.isEmpty()) {
-            excludedTeamIds = List.of(-1L);
-        }
+    public Page<MatchRequestResponse> searchByKeyword(Long currentUserId, String keyword,
+                                                      String prefectureCode, String cityCode,
+                                                      String activityTypeStr, String categoryStr,
+                                                      String levelStr, String visibilityStr,
+                                                      Pageable pageable) {
+        List<Long> excludedTeamIds = resolveExcludedTeamIds(currentUserId);
+
+        String activityType = activityTypeStr != null ? ActivityType.valueOf(activityTypeStr).name() : null;
+        String category = categoryStr != null ? MatchCategory.valueOf(categoryStr).name() : null;
+        String level = levelStr != null ? MatchLevel.valueOf(levelStr).name() : null;
+        String visibility = visibilityStr != null ? MatchVisibility.valueOf(visibilityStr).name() : null;
 
         Page<MatchRequestEntity> page = requestRepository.searchByKeyword(
-                MatchRequestStatus.OPEN.name(), excludedTeamIds, keyword, LocalDateTime.now(), pageable);
+                MatchRequestStatus.OPEN.name(), excludedTeamIds, keyword,
+                prefectureCode, cityCode, activityType, category, level, visibility,
+                LocalDateTime.now(), pageable);
 
         LocalDateTime since = LocalDateTime.now().minusYears(REVIEW_RETENTION_YEARS);
         return page.map(entity -> toResponse(entity, since));
@@ -91,17 +104,19 @@ public class MatchRequestService {
     /**
      * 募集詳細を取得する。
      */
-    public MatchRequestResponse getRequest(Long id, Long currentTeamId) {
+    public MatchRequestResponse getRequest(Long id, Long currentUserId) {
         MatchRequestEntity entity = findRequestOrThrow(id);
 
-        // NGチームチェック
-        List<Long> blockedIds = ngTeamRepository.findBidirectionalBlockedTeamIds(currentTeamId);
-        if (blockedIds.contains(entity.getTeamId())) {
+        // 閲覧ユーザーの所属チーム群を解決（userID を teamId として扱う誤りを撤廃）。
+        Set<Long> myTeamIds = accessControlService.findAffiliatedScopeIds(currentUserId, "TEAM");
+
+        // NGチームチェック: 所属チーム群のいずれかが双方向ブロックしている募集は 404 扱い。
+        if (resolveBlockedTeamIds(myTeamIds).contains(entity.getTeamId())) {
             throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
         }
 
-        // 他チームのOPEN以外は404
-        if (!entity.getTeamId().equals(currentTeamId) && entity.getStatus() != MatchRequestStatus.OPEN) {
+        // 自チーム（所属チーム群に含む）以外の OPEN 以外は 404。
+        if (!myTeamIds.contains(entity.getTeamId()) && entity.getStatus() != MatchRequestStatus.OPEN) {
             throw new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND);
         }
 
@@ -162,10 +177,11 @@ public class MatchRequestService {
      * 募集を更新する。
      */
     @Transactional
-    public MatchRequestResponse updateRequest(Long id, Long teamId, CreateMatchRequestRequest request) {
+    public MatchRequestResponse updateRequest(Long id, Long currentUserId, CreateMatchRequestRequest request) {
         MatchRequestEntity entity = findRequestOrThrow(id);
 
-        if (!entity.getTeamId().equals(teamId)) {
+        // 所有権チェック: 募集チームの管理者/副管理者のみ編集可（userID≠teamID の誤比較を撤廃）。
+        if (!accessControlService.isAdminOrAbove(currentUserId, entity.getTeamId(), "TEAM")) {
             throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
         }
         if (!entity.isEditable()) {
@@ -201,10 +217,11 @@ public class MatchRequestService {
      * 募集を論理削除する。
      */
     @Transactional
-    public void deleteRequest(Long id, Long teamId) {
+    public void deleteRequest(Long id, Long currentUserId) {
         MatchRequestEntity entity = findRequestOrThrow(id);
 
-        if (!entity.getTeamId().equals(teamId)) {
+        // 所有権チェック: 募集チームの管理者/副管理者のみ取り下げ可（userID≠teamID の誤比較を撤廃）。
+        if (!accessControlService.isAdminOrAbove(currentUserId, entity.getTeamId(), "TEAM")) {
             throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
         }
         if (entity.getStatus() == MatchRequestStatus.MATCHED) {
@@ -236,6 +253,35 @@ public class MatchRequestService {
                     ((Number) row[1]).longValue()));
         }
         return suggestions;
+    }
+
+    /**
+     * 閲覧ユーザーの所属チーム群を基準に、検索から除外すべき teamId 集合を解決する。
+     *
+     * <p>認可根治: 従来は認証プリンシパル（userID）を teamId として
+     * {@code findBidirectionalBlockedTeamIds} に渡していた（userID≠teamID の誤り）。
+     * 正しくは「閲覧ユーザーが所属するチーム群」のそれぞれが双方向ブロックしている teamId を
+     * union して除外集合とする。所属が無ければ除外なし（JPA の IN 句は非空を要求するため
+     * ダミー {@code -1L} を返す）。</p>
+     */
+    private List<Long> resolveExcludedTeamIds(Long currentUserId) {
+        Set<Long> excluded = resolveBlockedTeamIds(
+                accessControlService.findAffiliatedScopeIds(currentUserId, "TEAM"));
+        if (excluded.isEmpty()) {
+            return List.of(-1L); // JPA IN clause requires non-empty list
+        }
+        return new ArrayList<>(excluded);
+    }
+
+    /**
+     * 指定チーム群のそれぞれが双方向ブロックしている teamId を union して返す。
+     */
+    private Set<Long> resolveBlockedTeamIds(Set<Long> myTeamIds) {
+        Set<Long> blocked = new LinkedHashSet<>();
+        for (Long teamId : myTeamIds) {
+            blocked.addAll(ngTeamRepository.findBidirectionalBlockedTeamIds(teamId));
+        }
+        return blocked;
     }
 
     /**

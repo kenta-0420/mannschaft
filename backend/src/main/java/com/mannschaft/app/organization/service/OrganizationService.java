@@ -1,8 +1,16 @@
 package com.mannschaft.app.organization.service;
 
+import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.util.SlugGenerator;
+import com.mannschaft.app.common.util.SlugValidator;
+import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.entity.OrganizationSlugHistoryEntity;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.repository.OrganizationSlugHistoryRepository;
+import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
+import com.mannschaft.app.common.dto.SlugResolveResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
@@ -37,8 +45,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * 組織管理サービス（ファサード）。
@@ -55,6 +66,7 @@ import java.util.UUID;
 public class OrganizationService {
 
     private final OrganizationRepository organizationRepository;
+    private final OrganizationSlugHistoryRepository organizationSlugHistoryRepository;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final InviteTokenRepository inviteTokenRepository;
@@ -62,6 +74,7 @@ public class OrganizationService {
     private final OrganizationMembershipService organizationMembershipService;
     private final OrganizationHierarchyService organizationHierarchyService;
     private final MembershipService membershipService;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 組織を作成し、作成者をADMINロールで紐付ける。
@@ -74,8 +87,10 @@ public class OrganizationService {
             throw new BusinessException(OrgErrorCode.ORG_002);
         }
 
+        String slug = resolveSlugForCreate(req.getSlug(), req.getName());
         OrganizationEntity org = OrganizationEntity.builder()
                 .name(req.getName())
+                .slug(slug)
                 .orgType(OrganizationEntity.OrgType.valueOf(req.getOrgType()))
                 .prefecture(req.getPrefecture())
                 .city(req.getCity())
@@ -118,26 +133,280 @@ public class OrganizationService {
     }
 
     /**
-     * 組織を publicId（URL公開ID）で取得する。
+     * 組織を slug（URL識別子）で取得する。
      *
      * <p>Phase 4-E: Valkey にて 10 分キャッシュ。更新・削除時に自動無効化される。</p>
      */
-    @Cacheable(value = "org-detail", key = "#publicId")
-    public ApiResponse<OrganizationResponse> getOrganization(UUID publicId) {
-        OrganizationEntity org = findOrganizationByPublicIdOrThrow(publicId);
+    @Cacheable(value = "org-detail", key = "#slug")
+    public ApiResponse<OrganizationResponse> getOrganization(String slug) {
+        OrganizationEntity org = findOrganizationBySlugOrThrow(slug);
         Long orgId = org.getId();
         int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
         return ApiResponse.of(toResponse(org, memberCount));
     }
 
     /**
-     * publicId から内部 BIGINT ID を解決する（Controller から他の Service メソッドに渡す用）。
+     * slug から内部 BIGINT ID を解決する（Controller から他の Service メソッドに渡す用）。
      *
-     * @param publicId URL 公開用 UUID
+     * @param slug URL 識別子（カスタムスラッグ）
      * @return 内部 BIGINT ID
      */
-    public Long resolveOrgId(UUID publicId) {
-        return findOrganizationByPublicIdOrThrow(publicId).getId();
+    public Long resolveOrgId(String slug) {
+        return findOrganizationBySlugOrThrow(slug).getId();
+    }
+
+    /**
+     * F06.4 公開活動記録: 他ドメインが「この組織は匿名公開してよいか」を判定するための横断 SPI。
+     *
+     * <p>公開コンテンツ（活動記録など）を匿名公開する経路は、コンテンツ自身が PUBLIC でも
+     * <b>親スコープが非公開・凍結・停止なら 404 にしなければならない</b>
+     * （親を見ないと「非公開組織の中身が PUBLIC 設定のまま漏れる」）。
+     * 判定条件は {@link OrganizationRepository#findPublicOrganizationById(Long)} と同一の正準
+     * （{@code visibility=PUBLIC} かつ {@code archivedAt IS NULL}、
+     * {@code @SQLRestriction} により {@code deletedAt IS NULL}）。</p>
+     *
+     * <p>クロスドメイン Entity 参照を持ち込まないため（CLAUDE.md ドメイン境界の原則・番人 D-1）、
+     * {@link OrganizationEntity} ではなく<b>組織名のみ</b>を返す。呼び出し側はこれを
+     * {@code PublicScopeRef}（公開用スコープ参照 DTO）に詰め替えて使う。</p>
+     *
+     * @param orgId 対象組織 ID
+     * @return 公開してよい組織の表示名。非公開 / 凍結 / 削除済み / 不在なら空
+     */
+    public Optional<String> findPublicOrganizationNameById(Long orgId) {
+        if (orgId == null) {
+            return Optional.empty();
+        }
+        return organizationRepository.findPublicOrganizationById(orgId)
+                .map(OrganizationEntity::getName);
+    }
+
+    /**
+     * 組織がサポーター受け入れを有効化していることを表明する。
+     *
+     * <p>{@code supporter_enabled} は「この組織がサポーター登録を受け付けるか」を表す
+     * 運営者の意思表示であり、フロントエンドも本フラグでフォローボタンの表示を切り替えている
+     * （{@code OrgPageHeader.vue}）。サーバ側でも同じ契約を強制し、無効化中の組織への
+     * サポーター自己登録を {@code MEMBERSHIP_SUPPORTER_DISABLED}（403）で拒否する。</p>
+     *
+     * <p>チーム側の {@code TeamService#assertSupporterEnabled} と対の実装（双子構成）。</p>
+     *
+     * @param orgId 組織内部 ID
+     * @throws BusinessException 組織が存在しない（ORG_001）/ サポーター機能が無効
+     */
+    public void assertSupporterEnabled(Long orgId) {
+        OrganizationEntity org = organizationRepository.findById(orgId)
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
+        if (!Boolean.TRUE.equals(org.getSupporterEnabled())) {
+            throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_SUPPORTER_DISABLED);
+        }
+    }
+
+    /**
+     * 指定 ID の組織が実在する（論理削除されていない）ことを確認する。
+     *
+     * <p>Controller が「リクエストボディで渡された組織 ID」を認可判定に使う前段で、
+     * 対象の実在を 404（{@link OrgErrorCode#ORG_001}）で確定させるための入口。
+     * 認可そのものは行わない（呼び出し元が {@code AccessControlService} に委譲する）。</p>
+     *
+     * @param orgId 組織 ID
+     * @throws BusinessException 組織が存在しない / 論理削除済み（{@code ORG_001}）
+     */
+    public void assertOrganizationExists(Long orgId) {
+        findOrganizationOrThrow(orgId);
+    }
+
+    /**
+     * 組織名から一意スラッグを生成する。
+     *
+     * <p>ベーススラッグが既に使用中の場合は数値サフィックス (-1, -2, ...) を付与して一意化する。
+     * 100 回試行しても一意にならない場合はタイムスタンプベースのサフィックスを使用する。</p>
+     *
+     * @param name 組織名
+     * @return 一意なスラッグ
+     */
+    public String createUniqueSlug(String name) {
+        String base = SlugGenerator.generate(name);
+        if (!organizationRepository.existsBySlugAndDeletedAtIsNull(base)) {
+            return base;
+        }
+        for (int i = 1; i <= 100; i++) {
+            String candidate = SlugGenerator.withSuffix(base, i);
+            if (!organizationRepository.existsBySlugAndDeletedAtIsNull(candidate)) {
+                return candidate;
+            }
+        }
+        return SlugGenerator.withSuffix(base, (int) (System.currentTimeMillis() % 10000));
+    }
+
+    /**
+     * 作成時の slug を解決する（村方式に統一）。
+     *
+     * <p>ユーザーが slug を指定した場合は形式・予約語・一意性を検証して採用する。
+     * 未指定（null / 空文字）の場合は従来どおり {@link #createUniqueSlug(String)} で
+     * 組織名から自動生成（提案フォールバック）する。自動生成は降格扱いだが破壊的変更ではない。</p>
+     *
+     * @param requestedSlug ユーザー入力 slug（null / 空文字可）
+     * @param name          組織名（自動生成フォールバック用）
+     * @return 採用する一意な slug
+     * @throws BusinessException 形式不正（ORG_060）/ 予約語（ORG_061）/ 重複（ORG_062）
+     */
+    private String resolveSlugForCreate(String requestedSlug, String name) {
+        if (!SlugValidator.isProvided(requestedSlug)) {
+            return createUniqueSlug(name);
+        }
+        validateUserSlug(requestedSlug);
+        return requestedSlug;
+    }
+
+    /**
+     * ユーザー指定 slug の形式・予約語・一意性を検証する。村の {@code validateSlug} と同方式。
+     *
+     * @param slug ユーザー入力 slug（指定済み前提）
+     * @throws BusinessException 形式不正（ORG_060）/ 予約語（ORG_061）/ 重複（ORG_062）
+     */
+    private void validateUserSlug(String slug) {
+        if (!SlugValidator.isValidFormat(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_060);
+        }
+        if (SlugValidator.isReserved(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_061);
+        }
+        if (organizationRepository.existsBySlugAndDeletedAtIsNull(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_062);
+        }
+        // F01.2 §5.9.5: 他組織の過去 slug（履歴予約）は恒久 301 を壊さないため使用不可。
+        // 作成時は自組織という概念が無いので全履歴を対象に弾く。
+        if (organizationSlugHistoryRepository.existsByOldSlug(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_063);
+        }
+    }
+
+    /**
+     * slug の可用性をチェックする（作成前のリアルタイム検証 API 用）。
+     *
+     * <p>形式不正・予約語・重複のいずれかに該当すれば {@code available=false} と理由コードを返す。
+     * 例外は投げず、常に 200 で結果を返す。</p>
+     *
+     * @param slug チェック対象 slug
+     * @return 可用性結果（available と reason）
+     */
+    public SlugAvailabilityResponse checkSlugAvailability(String slug) {
+        if (!SlugValidator.isProvided(slug)) {
+            return new SlugAvailabilityResponse(false, "SLUG_REQUIRED");
+        }
+        if (!SlugValidator.isValidFormat(slug)) {
+            return new SlugAvailabilityResponse(false, "SLUG_INVALID_FORMAT");
+        }
+        if (SlugValidator.isReserved(slug)) {
+            return new SlugAvailabilityResponse(false, "SLUG_RESERVED");
+        }
+        if (organizationRepository.existsBySlugAndDeletedAtIsNull(slug)) {
+            return new SlugAvailabilityResponse(false, "SLUG_ALREADY_TAKEN");
+        }
+        // F01.2 §5.9.5: 他組織の過去 slug（履歴予約）は使用不可（恒久 301 保全）
+        if (organizationSlugHistoryRepository.existsByOldSlug(slug)) {
+            return new SlugAvailabilityResponse(false, "SLUG_RETIRED");
+        }
+        return new SlugAvailabilityResponse(true, null);
+    }
+
+    /**
+     * F01.2 §5.9.5: 組織の slug を変更する（リネーム専用・既存 update とは分離）。
+     *
+     * <p>処理の流れ:</p>
+     * <ol>
+     *   <li>新 slug が現 slug と同一なら no-op（履歴も書かず現 slug を返す）。</li>
+     *   <li>形式・予約語・一意性・他組織履歴予約を検証する（自組織の過去 slug への戻しは許可）。</li>
+     *   <li>旧 slug を {@code organization_slug_history} に INSERT → org.slug を新 slug に更新（同一トランザクション）。</li>
+     * </ol>
+     *
+     * <p>認可（ADMIN/DEPUTY 相当）は Controller で {@code AccessControlService.checkAdminOrAbove} が
+     * 担保する前提（F00 正準）。本メソッドは認可済み呼び出しを前提とする。</p>
+     *
+     * @param orgId   対象組織 ID
+     * @param newSlug 新しい slug
+     * @return 更新後の組織レスポンス（no-op 時も現状を返す）
+     * @throws BusinessException 形式不正（ORG_060）/ 予約語（ORG_061）/ 重複（ORG_062）/ 他組織履歴予約（ORG_063）
+     */
+    @Transactional
+    @CacheEvict(value = "org-detail", allEntries = true)
+    public ApiResponse<OrganizationResponse> renameSlug(Long orgId, String newSlug) {
+        OrganizationEntity org = findOrganizationOrThrow(orgId);
+        String oldSlug = org.getSlug();
+
+        // 同一 slug は no-op（200・履歴を増やさない）
+        if (oldSlug.equals(newSlug)) {
+            int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
+            return ApiResponse.of(toResponse(org, memberCount));
+        }
+
+        validateRenameSlug(newSlug, orgId);
+
+        // 旧 slug を履歴へ記録（恒久予約＋301 解決元）
+        organizationSlugHistoryRepository.save(OrganizationSlugHistoryEntity.builder()
+                .organizationId(orgId)
+                .oldSlug(oldSlug)
+                .build());
+
+        org.renameSlug(newSlug);
+        organizationRepository.save(org);
+
+        log.info("組織 slug リネーム完了: orgId={}, {} -> {}", orgId, oldSlug, newSlug);
+
+        int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
+        return ApiResponse.of(toResponse(org, memberCount));
+    }
+
+    /**
+     * リネーム時の新 slug を検証する。作成時の {@link #validateUserSlug(String)} と同方式だが、
+     * 履歴予約チェックは「自組織を除外」する（自組織の過去 slug への戻しを許可するため）。
+     *
+     * @param slug  新 slug
+     * @param orgId 自組織 ID（履歴予約判定から除外）
+     */
+    private void validateRenameSlug(String slug, Long orgId) {
+        if (!SlugValidator.isValidFormat(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_060);
+        }
+        if (SlugValidator.isReserved(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_061);
+        }
+        if (organizationRepository.existsBySlugAndDeletedAtIsNull(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_062);
+        }
+        // 他組織の履歴に予約済みなら不可。自組織の過去 slug への戻しは許可（orgId 除外）。
+        if (organizationSlugHistoryRepository.existsByOldSlugAndOrganizationIdNot(slug, orgId)) {
+            throw new BusinessException(OrgErrorCode.ORG_063);
+        }
+    }
+
+    /**
+     * F01.2 §5.9.5: slug を解決する（旧 slug → 現 slug の 301 判定用・公開 EP から呼ばれる）。
+     *
+     * <ul>
+     *   <li>現 slug で存在 → {@code CURRENT}</li>
+     *   <li>無ければ履歴の old_slug 一致を引き、その組織の現 slug へ {@code MOVED(canonicalSlug)}。
+     *       ただし対象組織が論理削除済み等で現存しない場合は {@code NOT_FOUND}。</li>
+     *   <li>どちらも無ければ {@code NOT_FOUND}</li>
+     * </ul>
+     *
+     * <p>スコープ漏洩対策: 名前等は返さず canonicalSlug のみ。private 組織の実データは
+     * {@code getOrganization} の認可が守るため、slug→slug の対応自体は非機密として扱う。</p>
+     *
+     * @param slug 解決対象 slug
+     * @return 解決結果
+     */
+    public SlugResolveResponse resolveSlug(String slug) {
+        if (slug == null || slug.isBlank()) {
+            return SlugResolveResponse.notFound();
+        }
+        if (organizationRepository.existsBySlugAndDeletedAtIsNull(slug)) {
+            return SlugResolveResponse.current();
+        }
+        return organizationSlugHistoryRepository.findByOldSlug(slug)
+                .flatMap(history -> organizationRepository.findById(history.getOrganizationId()))
+                .map(org -> SlugResolveResponse.moved(org.getSlug()))
+                .orElseGet(SlugResolveResponse::notFound);
     }
 
     /**
@@ -149,31 +418,39 @@ public class OrganizationService {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         checkNotArchived(org);
 
-        // 楽観ロック用バージョンチェックはJPAの@Versionで自動処理
-        OrganizationEntity updated = org.toBuilder()
-                .name(req.getName() != null ? req.getName() : org.getName())
-                .nameKana(req.getNameKana() != null ? req.getNameKana() : org.getNameKana())
-                .nickname1(req.getNickname1() != null ? req.getNickname1() : org.getNickname1())
-                .nickname2(req.getNickname2() != null ? req.getNickname2() : org.getNickname2())
-                .prefecture(req.getPrefecture() != null ? req.getPrefecture() : org.getPrefecture())
-                .city(req.getCity() != null ? req.getCity() : org.getCity())
-                .visibility(req.getVisibility() != null
-                        ? OrganizationEntity.Visibility.valueOf(req.getVisibility())
-                        : org.getVisibility())
-                .hierarchyVisibility(req.getHierarchyVisibility() != null
-                        ? OrganizationEntity.HierarchyVisibility.valueOf(req.getHierarchyVisibility())
-                        : org.getHierarchyVisibility())
-                .supporterEnabled(req.getSupporterEnabled() != null ? req.getSupporterEnabled() : org.getSupporterEnabled())
-                .build();
-        organizationRepository.save(updated);
+        // 直接ミューテートで UPDATE を発行する（PR #1643 と同型）。
+        // toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化し、
+        // slug 一意制約違反で 500 になるため使わない。enum 解決は本層の責務。
+        // 楽観ロック用バージョンチェックはJPAの@Versionで自動処理。
+        OrganizationEntity.Visibility visibility = req.getVisibility() != null
+                ? OrganizationEntity.Visibility.valueOf(req.getVisibility())
+                : null;
+        OrganizationEntity.HierarchyVisibility hierarchyVisibility = req.getHierarchyVisibility() != null
+                ? OrganizationEntity.HierarchyVisibility.valueOf(req.getHierarchyVisibility())
+                : null;
+        org.applyUpdate(
+                req.getName(),
+                req.getNameKana(),
+                req.getNickname1(),
+                req.getNickname2(),
+                req.getPrefecture(),
+                req.getCity(),
+                visibility,
+                hierarchyVisibility,
+                req.getSupporterEnabled());
+        organizationRepository.save(org);
 
         int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
         log.info("組織更新完了: orgId={}", orgId);
-        return ApiResponse.of(toResponse(updated, memberCount));
+        return ApiResponse.of(toResponse(org, memberCount));
     }
 
     /**
      * 組織を論理削除する。招待トークンも一括失効。
+     *
+     * <p>認可（当該組織の ADMIN/DEPUTY 相当）は Controller で
+     * {@code AccessControlService.checkAdminOrAbove} が担保する（F00 正準）。
+     * 本メソッドは認可済み呼び出しを前提とする。</p>
      */
     @Transactional
     // TODO: OrganizationドメインとRoleドメインをまたいでいる。将来はOrganizationDeletedEventで分離予定
@@ -194,6 +471,17 @@ public class OrganizationService {
 
     /**
      * 組織をアーカイブする。
+     *
+     * <p><b>認可は呼び出し元（public 入口）が担保する。本メソッドにガードを置いてはならない。</b>
+     * 本メソッドは 2 つの入口から呼ばれ、要求される権限が入口ごとに異なるためである:</p>
+     * <ul>
+     *   <li>{@code OrganizationController#archiveOrganization} — 当該組織の ADMIN/DEPUTY
+     *       （{@code checkAdminOrAbove}）</li>
+     *   <li>{@code SystemAdminDashboardController#freezeOrganization} — SYSTEM_ADMIN
+     *       （{@code /api/v1/system-admin/**} の SecurityConfig パスルール {@code hasRole("SYSTEM_ADMIN")}）</li>
+     * </ul>
+     * <p>ここに {@code checkAdminOrAbove} を置くと、対象組織のメンバーではない SYSTEM_ADMIN による
+     * 管理コンソールからの凍結が巻き添えで 403 になる。</p>
      */
     @Transactional
     @CacheEvict(value = "org-detail", allEntries = true)
@@ -208,6 +496,9 @@ public class OrganizationService {
 
     /**
      * 組織のアーカイブを解除する。
+     *
+     * <p><b>認可は呼び出し元（public 入口）が担保する。</b>理由は
+     * {@link #archiveOrganization(Long)} と同じ（組織 ADMIN 経路と SYSTEM_ADMIN 経路の 2 入口を持つ）。</p>
      */
     @Transactional
     public void unarchiveOrganization(Long orgId) {
@@ -218,6 +509,9 @@ public class OrganizationService {
 
     /**
      * 組織をキーワード検索する。
+     *
+     * <p>認可根治 Wave6: {@code OrganizationRepository#searchByKeyword} が
+     * <b>PUBLIC かつ未アーカイブ</b>に絞り込む。本メソッド側では追加の絞り込みを行わない。</p>
      */
     public PagedResponse<OrganizationSummaryResponse> searchOrganizations(String keyword, Pageable pageable) {
         Page<OrganizationEntity> page = organizationRepository.searchByKeyword(
@@ -227,7 +521,7 @@ public class OrganizationService {
                 .map(org -> {
                     int memberCount = (int) userRoleRepository.countByOrganizationId(org.getId());
                     return new OrganizationSummaryResponse(
-                            org.getPublicId(), org.getName(), org.getOrgType().name(),
+                            org.getSlug(), org.getSlug(), org.getName(), org.getOrgType().name(),
                             org.getVisibility().name(), memberCount);
                 })
                 .toList();
@@ -289,6 +583,17 @@ public class OrganizationService {
 
     /**
      * 論理削除済み組織を復元する（SYSTEM_ADMIN専用）。
+     *
+     * <p>認可は Controller で {@code AccessControlService.checkSystemAdmin} が担保する。
+     * 組織 ADMIN では不可（自組織を任意に復活させられてしまうため）。</p>
+     *
+     * <p><b>既知の制約（本メソッドは現状 本来の用途で到達不能）</b>:
+     * 唯一の呼び出し元 {@code OrganizationController#restoreOrganization} は
+     * {@code resolveOrgId(slug)} で slug を解決するが、その実体
+     * {@code findBySlugAndDeletedAtIsNull} は論理削除済み組織を除外する。
+     * したがって「削除済み組織を slug 指定で復元する」経路は成立せず、常に {@code ORG_001} になる。
+     * 復元機能を実際に使うには、削除済みを含めて解決する経路（ID 指定 EP 等）が別途必要。
+     * これは認可とは独立した既存の機能欠陥であり、修正は別タスクとする。</p>
      */
     @Transactional
     public void restoreOrganization(Long orgId) {
@@ -325,6 +630,58 @@ public class OrganizationService {
     }
 
     // ========================================
+    // ドメイン間 slug 解決（Todoドメイン等から利用）
+    // ========================================
+
+    /**
+     * 指定 ID 集合に対して id → slug のマッピングを一括取得する（N+1 回避）。
+     *
+     * <p>TodoResponseConverter 等の他ドメインが organization Entity を直接参照することを防ぐために
+     * プリミティブ（Map&lt;Long, String&gt;）のみを返す。Entity は漏らさない。</p>
+     *
+     * @param ids 取得対象の組織 ID 集合
+     * @return id → slug の Map（論理削除済みは除外）。ids が空の場合は空 Map を返す
+     */
+    public Map<Long, String> getSlugsByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return organizationRepository.findSlugMapByIdIn(ids);
+    }
+
+    /**
+     * 指定 ID 集合に対して id → name（組織名）のマッピングを一括取得する（N+1 回避）。
+     *
+     * <p>マイページ 組織プロジェクト集約で {@code ProjectService} が組織名を付与する際に使用する。
+     * プリミティブ（Map&lt;Long, String&gt;）のみを返し、Entity は漏らさない。
+     * {@link #getSlugsByIds(Collection)} と対をなす。</p>
+     *
+     * @param ids 取得対象の組織 ID 集合
+     * @return id → name の Map（論理削除済みは除外）。ids が空の場合は空 Map を返す
+     */
+    public Map<Long, String> getNamesByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return organizationRepository.findNameMapByIdIn(ids);
+    }
+
+    /**
+     * 単一組織 ID から slug を取得する。
+     *
+     * <p>論理削除済み・存在しない場合は {@code null} を返す（例外を投げない）。</p>
+     *
+     * @param id 組織 ID
+     * @return slug 文字列。存在しない場合は null
+     */
+    public String getSlugById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return organizationRepository.findById(id).map(o -> o.getSlug()).orElse(null);
+    }
+
+    // ========================================
     // ヘルパー（private）
     // ========================================
 
@@ -334,13 +691,13 @@ public class OrganizationService {
     }
 
     /**
-     * publicId で組織を取得する。存在しない場合は 404 例外を投げる（IDOR 対策）。
+     * slug で組織を取得する。存在しない場合は 404 例外を投げる（IDOR 対策）。
      *
-     * @param publicId URL 公開用 UUID
+     * @param slug URL 識別子（カスタムスラッグ）
      * @return 組織エンティティ
      */
-    private OrganizationEntity findOrganizationByPublicIdOrThrow(UUID publicId) {
-        return organizationRepository.findByPublicId(publicId)
+    private OrganizationEntity findOrganizationBySlugOrThrow(String slug) {
+        return organizationRepository.findBySlugAndDeletedAtIsNull(slug)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
     }
 
@@ -352,7 +709,9 @@ public class OrganizationService {
 
     private OrganizationResponse toResponse(OrganizationEntity org, int memberCount) {
         return OrganizationResponse.builder()
-                .id(org.getPublicId())
+                .id(org.getSlug())
+                .slug(org.getSlug())
+                .numericId(org.getId())
                 .basicInfo(new OrganizationResponse.OrgBasicInfoDto(
                         org.getName(), org.getNameKana(),
                         org.getNickname1(), org.getNickname2()))
@@ -367,7 +726,9 @@ public class OrganizationService {
                         org.getSupporterEnabled()))
                 .metadata(new OrganizationResponse.OrgMetadataDto(
                         org.getVersion(), memberCount,
-                        org.getIconUrl(), org.getBannerUrl()))
+                        // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL（絶対 URL）へ解決して返す。
+                        mediaUrlResolver.resolve(org.getIconUrl()),
+                        mediaUrlResolver.resolve(org.getBannerUrl())))
                 .timestamps(new OrganizationResponse.OrgTimestampsDto(
                         org.getArchivedAt(), org.getCreatedAt()))
                 .build();

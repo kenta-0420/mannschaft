@@ -9,7 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,8 +23,7 @@ import java.time.LocalTime;
 @Table(name = "daily_attendance_records")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class DailyAttendanceRecordEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -69,10 +68,83 @@ public class DailyAttendanceRecordEntity extends BaseEntity {
     @Column(nullable = false)
     private Long recordedBy;
 
+    @Column(nullable = false)
     private LocalDateTime recordedAt;
 
     @PrePersist
     protected void onRecordCreate() {
         this.recordedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 個別修正リクエストを managed entity に直接適用する（直接ミューテート）。
+     *
+     * <p>{@code toBuilder().build()} で作り直すと {@link com.mannschaft.app.common.BaseEntity}
+     * の {@code id} が引き継がれず id=null の新インスタンスとなり、INSERT 化して行が重複する。
+     * managed entity を直接書き換えることで JPA dirty checking が UPDATE を発行し id を保持する。
+     * null フィールドは既存値を維持する（部分更新）。</p>
+     *
+     * @param status        新ステータス（null = 変更なし）
+     * @param absenceReason 新欠席理由（null = 変更なし）
+     * @param arrivalTime   新登校時刻（null = 変更なし）
+     * @param leaveTime     新早退時刻（null = 変更なし）
+     * @param comment       新コメント（null = 変更なし）
+     * @param recordedBy    操作者ユーザーID
+     */
+    public void applyUpdate(
+            com.mannschaft.app.schedule.AttendanceStatus status,
+            AbsenceReason absenceReason,
+            LocalTime arrivalTime,
+            LocalTime leaveTime,
+            String comment,
+            Long recordedBy) {
+        if (status != null) this.status = status;
+        if (absenceReason != null) this.absenceReason = absenceReason;
+        if (arrivalTime != null) this.arrivalTime = arrivalTime;
+        if (leaveTime != null) this.leaveTime = leaveTime;
+        if (comment != null) this.comment = comment;
+        this.recordedBy = recordedBy;
+    }
+
+    /**
+     * 点呼 upsert 更新（既存レコードを直接ミューテートして UPDATE する）。
+     *
+     * <p>{@link #applyUpdate} と同じ理由で toBuilder を使わない。
+     * 点呼は null 許容フィールドも上書きする（全フィールド置換）。</p>
+     *
+     * @param status         出欠ステータス
+     * @param absenceReason  欠席理由
+     * @param arrivalTime    登校時刻
+     * @param leaveTime      早退時刻
+     * @param comment        コメント
+     * @param familyNoticeId 保護者連絡ID
+     * @param recordedBy     操作者ユーザーID
+     */
+    public void applyRollCallUpdate(
+            com.mannschaft.app.schedule.AttendanceStatus status,
+            AbsenceReason absenceReason,
+            LocalTime arrivalTime,
+            LocalTime leaveTime,
+            String comment,
+            Long familyNoticeId,
+            Long recordedBy) {
+        this.status = status;
+        this.absenceReason = absenceReason;
+        this.arrivalTime = arrivalTime;
+        this.leaveTime = leaveTime;
+        this.comment = comment;
+        this.familyNoticeId = familyNoticeId;
+        this.recordedBy = recordedBy;
+    }
+
+    /**
+     * 登校場所を更新する（直接ミューテート）。
+     *
+     * @param attendanceLocation 新しい登校場所
+     * @param locationChangedDuringDay 日中に場所変更があった場合 true
+     */
+    public void updateLocation(AttendanceLocation attendanceLocation, Boolean locationChangedDuringDay) {
+        this.attendanceLocation = attendanceLocation;
+        if (locationChangedDuringDay != null) this.locationChangedDuringDay = locationChangedDuringDay;
     }
 }

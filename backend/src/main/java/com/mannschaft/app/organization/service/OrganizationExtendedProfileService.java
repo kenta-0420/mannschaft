@@ -132,14 +132,15 @@ public class OrganizationExtendedProfileService {
                 ? req.getProfileVisibility()
                 : org.getProfileVisibility();
 
-        OrganizationEntity updated = org.toBuilder()
-                .homepageUrl(normalizedUrl)
-                .establishedDate(hasDate ? req.getEstablishedDate() : org.getEstablishedDate())
-                .establishedDatePrecision(hasPrecision ? req.getEstablishedDatePrecision() : org.getEstablishedDatePrecision())
-                .philosophy(philosophy)
-                .profileVisibility(profileVisibility)
-                .build();
-        organizationRepository.save(updated);
+        // 直接ミューテートで UPDATE を発行する（PR #1643 と同型）。
+        // toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため使わない。
+        org.applyProfileUpdate(
+                normalizedUrl,
+                hasDate ? req.getEstablishedDate() : org.getEstablishedDate(),
+                hasPrecision ? req.getEstablishedDatePrecision() : org.getEstablishedDatePrecision(),
+                philosophy,
+                profileVisibility);
+        organizationRepository.save(org);
 
         auditLogService.record(
                 "ORGANIZATION_PROFILE_UPDATE",
@@ -148,7 +149,7 @@ public class OrganizationExtendedProfileService {
 
         log.info("組織プロフィール更新完了: orgId={}, userId={}", orgId, userId);
 
-        return ApiResponse.of(toProfileResponse(updated));
+        return ApiResponse.of(toProfileResponse(org));
     }
 
     // ========================================

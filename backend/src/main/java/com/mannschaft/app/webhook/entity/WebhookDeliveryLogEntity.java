@@ -8,10 +8,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Webhook配信ログエンティティ。
@@ -21,8 +21,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "webhook_delivery_logs")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class WebhookDeliveryLogEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -49,4 +48,15 @@ public class WebhookDeliveryLogEntity extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String errorMessage;
+
+    /**
+     * 配信結果を反映する。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     * （toBuilder().build() は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyDeliveryResult(Integer responseStatus, DeliveryStatus deliveryStatus, String errorMessage) {
+        this.responseStatus = responseStatus;
+        this.deliveryStatus = deliveryStatus;
+        this.errorMessage = errorMessage;
+    }
 }

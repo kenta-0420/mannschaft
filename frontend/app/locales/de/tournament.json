@@ -1,4 +1,18 @@
 {
+  "sport": {
+    "label": "Sportart",
+    "help": "Wähle die Sportart für dieses Turnier. Bei direkter Ergebniseingabe erstellte Spiele verwenden diese Sportart.",
+    "options": {
+      "SOCCER": "Fußball",
+      "FUTSAL": "Futsal",
+      "BASKETBALL": "Basketball",
+      "VOLLEYBALL": "Volleyball",
+      "SHOGI": "Shogi",
+      "GO": "Go",
+      "FIGURE_SKATING": "Eiskunstlauf",
+      "GYMNASTICS": "Turnen"
+    }
+  },
   "entry": {
     "title": "Meldungsverwaltung",
     "memberCount": "{count} Mitglieder",
@@ -140,7 +154,9 @@
     "no_chat": "Kein Chatbereich vorhanden",
     "visibility_saved": "Sichtbarkeit aktualisiert",
     "visibility_failed": "Fehler beim Aktualisieren der Sichtbarkeit",
-    "load_failed": "Kontaktbereiche konnten nicht geladen werden"
+    "load_failed": "Kontaktbereiche konnten nicht geladen werden",
+    "divisions_load_failed": "Divisionen konnten nicht geladen werden",
+    "permissions_load_failed": "Berechtigungen konnten nicht geladen werden. Einige Aktionen sind möglicherweise nicht verfügbar."
   },
   "submission": {
     "title": "Dokumenteneinreichung",
@@ -245,5 +261,165 @@
     "empty_team_record": "Noch an keinem Turnier teilgenommen",
     "empty_org_summary": "Noch keine Turniere ausgerichtet",
     "empty_division_standings": "Derzeit an keinem Turnier beteiligt"
+  },
+  "tournamentFee": {
+    "pageTitle": "Turniergebühren",
+    "myFees": "Meine Gebühren",
+    "noFees": "Keine Turniergebühren vorhanden",
+    "payNow": "Jetzt bezahlen",
+    "paid": "Bezahlt",
+    "paidAt": "Bezahlt am",
+    "dueDate": "Fälligkeitsdatum",
+    "faceAmount": "Gebühr",
+    "totalCharge": "Gesamtbetrag",
+    "checkoutSuccess": "Zahlung abgeschlossen",
+    "checkoutError": "Zahlung fehlgeschlagen"
+  },
+  "standings": {
+    "title": "Tabelle",
+    "back": "Zuruck zum Turnier",
+    "rank": "Pl.",
+    "team": "Team",
+    "played": "Sp.",
+    "winDrawLoss": "S/U/N",
+    "goalDiff": "Diff.",
+    "setsWonLost": "Satze G/V",
+    "points": "Pkt.",
+    "form": "Aktuelle Form",
+    "recalculate": "Neu berechnen",
+    "recalculated": "Tabelle neu berechnet",
+    "recalculateFailed": "Tabelle konnte nicht neu berechnet werden",
+    "downloadPdf": "PDF exportieren",
+    "pdfFailed": "PDF-Export fehlgeschlagen",
+    "empty": "Keine Tabellendaten",
+    "noDivisions": "Keine Divisionen registriert",
+    "loadFailed": "Tabelle konnte nicht geladen werden",
+    "forbidden": "Du hast keine Berechtigung, dieses Turnier anzusehen"
+  },
+  "rankings": {
+    "title": "Ranglisten",
+    "back": "Zuruck zum Turnier",
+    "rank": "Pl.",
+    "player": "Spieler",
+    "anonymousPlayer": "Anonymer Spieler",
+    "matchesPlayed": "Einsatze",
+    "value": "Wert",
+    "downloadPdf": "PDF exportieren",
+    "pdfFailed": "PDF-Export fehlgeschlagen",
+    "empty": "Keine Ranglistendaten",
+    "noCategories": "Keine Ranglistenkategorien",
+    "loadFailed": "Ranglisten konnten nicht geladen werden",
+    "forbidden": "Du hast keine Berechtigung, dieses Turnier anzusehen"
+  },
+  "matrix": {
+    "title": "Spielmatrix",
+    "back": "Zuruck zum Turnier",
+    "homeAway": "Heim \\ Auswarts",
+    "notPlayed": "Nicht gespielt",
+    "downloadPdf": "PDF exportieren",
+    "pdfFailed": "PDF-Export fehlgeschlagen",
+    "empty": "Keine Matrixdaten",
+    "noDivisions": "Keine Divisionen registriert",
+    "loadFailed": "Matrix konnte nicht geladen werden",
+    "forbidden": "Du hast keine Berechtigung, dieses Turnier anzusehen",
+    "setsNote": "Dieses Turnier wird in Satzen gespielt, daher zeigt jede Zelle die Gesamtpunkte aller Satze. Der Sieger wird anhand der Anzahl gewonnener Satze ermittelt."
+  },
+  "visibility": {
+    "title": "Sichtbarkeit",
+    "description": "Lege fest, wer die Tabelle und Ergebnisse dieses Turniers sehen darf.",
+    "save": "Speichern",
+    "saved": "Sichtbarkeit aktualisiert",
+    "saveFailed": "Sichtbarkeit konnte nicht aktualisiert werden",
+    "levels": {
+      "PUBLIC": {
+        "label": "Offentlich",
+        "description": "Jeder kann es sehen, auch nicht angemeldete Besucher."
+      },
+      "SUPPORTERS_AND_ABOVE": {
+        "label": "Unterstutzer und hoher",
+        "description": "Unterstutzer, Mitglieder und Admins konnen es sehen."
+      },
+      "MEMBERS_AND_ABOVE": {
+        "label": "Mitglieder und hoher",
+        "description": "Nur Mitglieder und Admins konnen es sehen (Unterstutzer ausgeschlossen)."
+      },
+      "ADMINS_AND_ABOVE": {
+        "label": "Nur Admins",
+        "description": "Nur Organisations-Admins und stellvertretende Admins konnen es sehen."
+      },
+      "SCOPE_AFFILIATED": {
+        "label": "Nur Zugehorige",
+        "description": "Nur direkt der Organisation Zugehorige (inkl. Unterstutzer) konnen es sehen."
+      },
+      "PARTICIPANTS_ONLY": {
+        "label": "Nur Teilnehmer",
+        "description": "Nur Personen aus teilnehmenden Teams dieses Turniers konnen es sehen."
+      }
+    }
+  },
+  "scoreEntry": {
+    "title": "Ergebniserfassung",
+    "navLink": "Ergebniserfassung (Admin)",
+    "back": "Zuruck zum Turnier",
+    "matchday": "Spieltag",
+    "home": "Heim",
+    "away": "Auswarts",
+    "homeScore": "Heim-Tore",
+    "awayScore": "Auswarts-Tore",
+    "homeExtraScore": "Heim (n.V.)",
+    "awayExtraScore": "Auswarts (n.V.)",
+    "homePenaltyScore": "Heim (Elfm.)",
+    "awayPenaltyScore": "Auswarts (Elfm.)",
+    "extraPenaltyHint": "Die Verlangerung wird zum regularen Ergebnis addiert, um den Sieger zu ermitteln. Das Elfmeterschiessen zahlt nur, wenn es nach regularer Spielzeit und Verlangerung weiterhin unentschieden steht. Lass nicht ausgetragene Felder leer.",
+    "setHeader": "Satz {n}",
+    "setHomeAria": "Satz {n} Heimpunkte",
+    "setAwayAria": "Satz {n} Auswartspunkte",
+    "setsHint": "Wer zuerst {n} Satze gewinnt, gewinnt das Spiel. Gib nur die Ergebnisse der gespielten Satze ein und lass nicht gespielte Satze leer. Der Sieger wird anhand der Anzahl gewonnener Satze ermittelt.",
+    "save": "Alle speichern",
+    "saved": "Ergebnisse gespeichert",
+    "saveFailed": "Ergebnisse konnten nicht gespeichert werden",
+    "conflict": "Konflikt mit einer anderen Bearbeitung. Der aktuelle Stand wurde neu geladen. Bitte erneut eingeben.",
+    "invalidInput": "Ungultige Eingabe (Ergebnisse mussen nicht negative ganze Zahlen sein und sowohl Heim als auch Auswarts mussen ausgefullt werden).",
+    "nothingToSave": "Keine Ergebnisse zum Speichern",
+    "standingsHint": "Ergebnisse gespeichert. Die Tabelle wird automatisch neu berechnet.",
+    "forbidden": "Sie haben keine Berechtigung, Ergebnisse fur dieses Turnier zu bearbeiten",
+    "loadFailed": "Daten konnten nicht geladen werden",
+    "noDivisions": "Keine Divisionen registriert",
+    "noMatchdays": "Keine Spieltage registriert",
+    "noMatches": "Keine Begegnungen",
+    "csv": {
+      "title": "Massenimport per CSV",
+      "formatHint": "Laden Sie eine CSV in der Reihenfolge matchId,homeScore,awayScore hoch (erste Zeile ist die Kopfzeile). Lassen Sie noch nicht entschiedene Spiele leer.",
+      "import": "Importieren",
+      "imported": "CSV importiert",
+      "importFailed": "CSV-Import fehlgeschlagen",
+      "invalidFormat": "Ungultiges CSV-Format. Ergebnisse mussen ganze Zahlen sein.",
+      "downloadTemplate": "Vorlage herunterladen"
+    }
+  },
+  "scorekeeper": {
+    "title": "Anschreiber-Zuweisung",
+    "description": "Zugewiesene Benutzer können für dieses Turnier Ergebnisse erfassen (einzeln, im Stapel und per CSV-Import). Nur Administratoren der ausrichtenden Organisation können Anschreiber zuweisen.",
+    "userIdLabel": "Benutzer-ID",
+    "userIdPlaceholder": "z. B. 12345",
+    "searchLabel": "Mitglieder nach Namen suchen und zuweisen",
+    "searchPlaceholder": "Nach Name oder Kartennummer suchen",
+    "searching": "Suche läuft…",
+    "noCandidates": "Keine passenden Mitglieder gefunden",
+    "selectMember": "Dieses Mitglied zuweisen",
+    "add": "Zuweisen",
+    "remove": "Entfernen",
+    "empty": "Noch keine Anschreiber zugewiesen",
+    "addSuccess": "Anschreiber zugewiesen",
+    "removeSuccess": "Anschreiber-Zuweisung entfernt",
+    "alreadyAssigned": "Dieser Benutzer ist bereits zugewiesen",
+    "error": {
+      "loadFailed": "Die Anschreiberliste konnte nicht geladen werden",
+      "addFailed": "Anschreiber konnte nicht zugewiesen werden ({status})",
+      "removeFailed": "Anschreiber-Zuweisung konnte nicht entfernt werden",
+      "forbidden": "Sie haben keine Berechtigung, Anschreiber zu verwalten (nur Administratoren der ausrichtenden Organisation)",
+      "invalidUserId": "Die Benutzer-ID muss eine positive ganze Zahl sein",
+      "searchFailed": "Mitgliedersuche fehlgeschlagen"
+    }
   }
 }

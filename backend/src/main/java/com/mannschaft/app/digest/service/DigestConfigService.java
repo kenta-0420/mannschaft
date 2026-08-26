@@ -1,5 +1,6 @@
 package com.mannschaft.app.digest.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.digest.DigestErrorCode;
 import com.mannschaft.app.digest.DigestMapper;
@@ -16,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
 
@@ -32,14 +32,19 @@ public class DigestConfigService {
     private final TimelineDigestConfigRepository configRepository;
     private final DigestMapper digestMapper;
     private final DigestProperties digestProperties;
+    private final AccessControlService accessControlService;
 
     /**
      * スコープの自動生成設定を取得する。
      *
-     * @throws BusinessException 設定が存在しない場合（DIGEST_014）
+     * @throws BusinessException 設定が存在しない場合（DIGEST_014）、非メンバーの場合（COMMON_002）
      */
-    public DigestConfigResponse getConfig(String scopeType, Long scopeId) {
+    public DigestConfigResponse getConfig(String scopeType, Long scopeId, Long actorUserId) {
         DigestScopeType scope = DigestScopeType.valueOf(scopeType);
+
+        // 認可根治戦役 Wave2-2C: 閲覧系はスコープメンバーのみ（非メンバーは403。設定不在の404より先に判定）
+        accessControlService.checkMembership(actorUserId, scopeId, scope.name());
+
         TimelineDigestConfigEntity config = configRepository
                 .findByScopeTypeAndScopeId(scope, scopeId)
                 .orElseThrow(() -> new BusinessException(DigestErrorCode.DIGEST_014));
@@ -63,6 +68,9 @@ public class DigestConfigService {
         ScheduleType scheduleType = ScheduleType.valueOf(request.getScheduleType());
         DigestStyle digestStyle = DigestStyle.valueOf(request.getDigestStyle());
 
+        // 認可根治戦役 Wave2-2C: 変更系はリクエスト先スコープの ADMIN/DEPUTY_ADMIN のみ
+        accessControlService.checkAdminOrAbove(userId, request.getScopeId(), scopeType.name());
+
         // バリデーション
         validateTimezone(request.getTimezone());
         validateSchedule(scheduleType, request.getScheduleTime(), request.getScheduleDayOfWeek());
@@ -72,25 +80,27 @@ public class DigestConfigService {
 
         TimelineDigestConfigEntity config;
         if (existing.isPresent()) {
-            // 更新
-            config = existing.get().toBuilder()
-                    .scheduleType(scheduleType)
-                    .scheduleTime(request.getScheduleTime())
-                    .scheduleDayOfWeek(request.getScheduleDayOfWeek())
-                    .digestStyle(digestStyle)
-                    .autoPublish(request.getAutoPublish() != null ? request.getAutoPublish() : false)
-                    .stylePresets(request.getStylePresets())
-                    .includeReactions(request.getIncludeReactions() != null ? request.getIncludeReactions() : true)
-                    .includePolls(request.getIncludePolls() != null ? request.getIncludePolls() : true)
-                    .includeDiffFromPrevious(request.getIncludeDiffFromPrevious() != null ? request.getIncludeDiffFromPrevious() : false)
-                    .minPostsThreshold(request.getMinPostsThreshold() != null ? request.getMinPostsThreshold() : digestProperties.getDefaults().getMinPostsThreshold())
-                    .maxPostsPerDigest(request.getMaxPostsPerDigest() != null ? request.getMaxPostsPerDigest() : digestProperties.getDefaults().getMaxPostsPerDigest())
-                    .timezone(request.getTimezone())
-                    .contentMaxChars(request.getContentMaxChars() != null ? request.getContentMaxChars() : digestProperties.getDefaults().getContentMaxChars())
-                    .language(request.getLanguage() != null ? request.getLanguage() : "ja")
-                    .customPromptSuffix(request.getCustomPromptSuffix())
-                    .autoTagIds(request.getAutoTagIds() != null ? request.getAutoTagIds().toString() : null)
-                    .build();
+            // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+            // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+            config = existing.get();
+            config.applyUpdate(
+                    scheduleType,
+                    request.getScheduleTime(),
+                    request.getScheduleDayOfWeek(),
+                    digestStyle,
+                    request.getAutoPublish() != null ? request.getAutoPublish() : false,
+                    request.getStylePresets(),
+                    request.getIncludeReactions() != null ? request.getIncludeReactions() : true,
+                    request.getIncludePolls() != null ? request.getIncludePolls() : true,
+                    request.getIncludeDiffFromPrevious() != null ? request.getIncludeDiffFromPrevious() : false,
+                    request.getMinPostsThreshold() != null ? request.getMinPostsThreshold() : digestProperties.getDefaults().getMinPostsThreshold(),
+                    request.getMaxPostsPerDigest() != null ? request.getMaxPostsPerDigest() : digestProperties.getDefaults().getMaxPostsPerDigest(),
+                    request.getTimezone(),
+                    request.getContentMaxChars() != null ? request.getContentMaxChars() : digestProperties.getDefaults().getContentMaxChars(),
+                    request.getLanguage() != null ? request.getLanguage() : "ja",
+                    request.getCustomPromptSuffix(),
+                    request.getAutoTagIds() != null ? request.getAutoTagIds().toString() : null
+            );
         } else {
             // 新規作成
             config = TimelineDigestConfigEntity.builder()
@@ -131,17 +141,20 @@ public class DigestConfigService {
      * @throws BusinessException 設定が存在しない場合（DIGEST_014）
      */
     @Transactional
-    public void deleteConfig(String scopeType, Long scopeId) {
+    public void deleteConfig(String scopeType, Long scopeId, Long actorUserId) {
         DigestScopeType scope = DigestScopeType.valueOf(scopeType);
+
+        // 認可根治戦役 Wave2-2C: 変更系は対象スコープの ADMIN/DEPUTY_ADMIN のみ
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scope.name());
+
         TimelineDigestConfigEntity config = configRepository
                 .findByScopeTypeAndScopeId(scope, scopeId)
                 .orElseThrow(() -> new BusinessException(DigestErrorCode.DIGEST_014));
 
-        TimelineDigestConfigEntity deleted = config.toBuilder()
-                .deletedAt(LocalDateTime.now())
-                .isEnabled(false)
-                .build();
-        configRepository.save(deleted);
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        config.deactivateAndDelete();
+        configRepository.save(config);
         log.info("ダイジェスト設定を無効化しました: scope={}:{}", scopeType, scopeId);
     }
 

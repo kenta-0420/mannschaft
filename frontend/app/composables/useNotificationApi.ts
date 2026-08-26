@@ -3,7 +3,19 @@ import type {
   UnreadCountResponse,
   NotificationPreference,
   NotificationTypePreference,
+  NotificationTypePreferenceUpdateEntry,
+  NotificationSettings,
 } from '~/types/notification'
+
+/**
+ * BE PreferenceResponse は scope を {scopeType, scopeId} のネストで返す。
+ * FE はフラットな NotificationPreference で扱うため、取得時に正規化する。
+ */
+interface RawPreferenceResponse {
+  scope: { scopeType: string; scopeId: number | null }
+  scopeName: string | null
+  isEnabled: boolean
+}
 
 interface NotificationListParams {
   cursor?: number
@@ -69,14 +81,34 @@ export function useNotificationApi() {
   }
 
   // === Preferences (scope) ===
-  async function getPreferences() {
-    return api<{ data: NotificationPreference[] }>('/api/v1/notification-preferences')
+  async function getPreferences(): Promise<{ data: NotificationPreference[] }> {
+    const res = await api<{ data: RawPreferenceResponse[] }>('/api/v1/notification-preferences')
+    return {
+      data: res.data.map((p) => ({
+        scopeType: p.scope.scopeType as NotificationPreference['scopeType'],
+        scopeId: String(p.scope.scopeId ?? ''),
+        scopeName: p.scopeName ?? '',
+        isEnabled: p.isEnabled,
+      })),
+    }
   }
 
-  async function updatePreferences(body: Record<string, unknown>) {
+  /**
+   * スコープ別通知設定を更新する。
+   * BE: PUT /api/v1/notification-preferences（{scopeType, scopeId, isEnabled}）。
+   */
+  async function updatePreferences(body: {
+    scopeType: string
+    scopeId: string
+    isEnabled: boolean
+  }) {
     return api('/api/v1/notification-preferences', {
       method: 'PUT',
-      body,
+      body: {
+        scopeType: body.scopeType,
+        scopeId: Number(body.scopeId),
+        isEnabled: body.isEnabled,
+      },
     })
   }
 
@@ -100,12 +132,26 @@ export function useNotificationApi() {
     return api<{ data: NotificationTypePreference[] }>('/api/v1/notification-type-preferences')
   }
 
-  async function updateTypePreferences(
-    preferences: Array<{ notificationType: string; inAppEnabled: boolean; pushEnabled: boolean }>,
-  ) {
+  /**
+   * 通知種別設定を一括更新する（ハイブリッド契約）。
+   * channelOverride=false なら isEnabled、true なら inAppEnabled / pushEnabled を含める。
+   */
+  async function updateTypePreferences(preferences: NotificationTypePreferenceUpdateEntry[]) {
     return api('/api/v1/notification-type-preferences', {
       method: 'PUT',
       body: { preferences },
+    })
+  }
+
+  // === Global settings ===
+  async function getSettings() {
+    return api<{ data: NotificationSettings }>('/api/v1/notification-settings')
+  }
+
+  async function updateSettings(body: NotificationSettings) {
+    return api<{ data: NotificationSettings }>('/api/v1/notification-settings', {
+      method: 'PUT',
+      body,
     })
   }
 
@@ -139,6 +185,8 @@ export function useNotificationApi() {
     updateMatchingNotificationPreferences,
     getTypePreferences,
     updateTypePreferences,
+    getSettings,
+    updateSettings,
     registerPushSubscription,
     unregisterPushSubscription,
     getAdminNotificationStats,

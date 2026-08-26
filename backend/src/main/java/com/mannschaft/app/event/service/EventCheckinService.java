@@ -1,6 +1,7 @@
 package com.mannschaft.app.event.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.event.CheckinType;
 import com.mannschaft.app.event.EventErrorCode;
 import com.mannschaft.app.event.EventMapper;
@@ -38,6 +39,7 @@ public class EventCheckinService {
     private final EventTicketService ticketService;
     private final EventMapper eventMapper;
     private final CareEventNotificationService careEventNotificationService;
+    private final EventScopeAccessGuard eventScopeAccessGuard;
 
     /**
      * イベントのチェックイン一覧をページング取得する。
@@ -54,6 +56,11 @@ public class EventCheckinService {
     /**
      * スタッフスキャンによるチェックインを実行する。
      *
+     * <p>認可: URL に eventId を持たない QR スキャン API のため、QR トークンからチケットを解決した
+     * 直後に得られる {@code ticket.getEventId()} を信頼できる帰属源として、当該イベントスコープの
+     * ADMIN/DEPUTY_ADMIN（SYSTEM_ADMIN 含む）であることを検証する（スタッフ操作のなりすまし・
+     * 無関係な認証ユーザーによる不正チェックイン記録を防止）。</p>
+     *
      * @param staffUserId スタッフユーザーID
      * @param request     チェックインリクエスト
      * @return チェックインレスポンス
@@ -61,6 +68,7 @@ public class EventCheckinService {
     @Transactional
     public CheckinResponse staffCheckin(Long staffUserId, CheckinRequest request) {
         EventTicketEntity ticket = ticketService.findTicketByQrTokenOrThrow(request.getQrToken());
+        eventScopeAccessGuard.requireAdminByEventId(staffUserId, ticket.getEventId());
         validateTicketForCheckin(ticket);
 
         ticket.use();
@@ -89,12 +97,18 @@ public class EventCheckinService {
     /**
      * セルフチェックインを実行する。
      *
-     * @param request セルフチェックインリクエスト
+     * <p>認可: 本人（チケットの参加登録に紐付く {@code userId}）のみ実行可能。
+     * ゲスト参加（{@code userId=null}）や他ユーザーのチケットでの自己チェックインは 403 で拒否する
+     * （本人の QR トークンを他人に横流しされた場合の悪用抑止・チェックイン記録の帰属正確性維持）。</p>
+     *
+     * @param currentUserId 操作者（セルフチェックイン実行者）のユーザーID
+     * @param request       セルフチェックインリクエスト
      * @return チェックインレスポンス
      */
     @Transactional
-    public CheckinResponse selfCheckin(SelfCheckinRequest request) {
+    public CheckinResponse selfCheckin(Long currentUserId, SelfCheckinRequest request) {
         EventTicketEntity ticket = ticketService.findTicketByQrTokenOrThrow(request.getQrToken());
+        requireTicketOwner(ticket, currentUserId);
         validateTicketForCheckin(ticket);
 
         ticket.use();
@@ -126,6 +140,17 @@ public class EventCheckinService {
      */
     public long getCheckinCount(Long eventId) {
         return checkinRepository.countByEventId(eventId);
+    }
+
+    /**
+     * セルフチェックインの操作者がチケットの本人（参加登録の {@code userId}）であることを検証する。
+     * ゲスト参加（{@code userId=null}）・他ユーザーのチケットは 403 COMMON_002 で拒否する。
+     */
+    private void requireTicketOwner(EventTicketEntity ticket, Long currentUserId) {
+        Long ownerUserId = resolveTicketUserId(ticket).orElse(null);
+        if (currentUserId == null || ownerUserId == null || !ownerUserId.equals(currentUserId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 
     /**

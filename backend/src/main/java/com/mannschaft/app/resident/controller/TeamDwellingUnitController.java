@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チーム居室管理コントローラー。
@@ -41,7 +42,8 @@ public class TeamDwellingUnitController {
             @PathVariable Long teamId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<DwellingUnitResponse> result = dwellingUnitService.listByTeam(teamId, PageRequest.of(page, Math.min(size, 100)));
+        Page<DwellingUnitResponse> result = dwellingUnitService.listByTeam(
+                SecurityUtils.getCurrentUserId(), teamId, PageRequest.of(page, Math.min(size, 100)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -52,7 +54,7 @@ public class TeamDwellingUnitController {
     public ResponseEntity<ApiResponse<DwellingUnitResponse>> create(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateDwellingUnitRequest request) {
-        DwellingUnitResponse response = dwellingUnitService.createForTeam(teamId, request);
+        DwellingUnitResponse response = dwellingUnitService.createForTeam(SecurityUtils.getCurrentUserId(), teamId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -60,7 +62,7 @@ public class TeamDwellingUnitController {
     @Operation(summary = "居室詳細")
     public ResponseEntity<ApiResponse<DwellingUnitResponse>> get(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(dwellingUnitService.getByTeam(teamId, id)));
+        return ResponseEntity.ok(ApiResponse.of(dwellingUnitService.getByTeam(SecurityUtils.getCurrentUserId(), teamId, id)));
     }
 
     @PutMapping("/api/v1/teams/{teamId}/dwelling-units/{id}")
@@ -68,13 +70,14 @@ public class TeamDwellingUnitController {
     public ResponseEntity<ApiResponse<DwellingUnitResponse>> update(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody CreateDwellingUnitRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(dwellingUnitService.updateForTeam(teamId, id, request)));
+        return ResponseEntity.ok(ApiResponse.of(
+                dwellingUnitService.updateForTeam(SecurityUtils.getCurrentUserId(), teamId, id, request)));
     }
 
     @DeleteMapping("/api/v1/teams/{teamId}/dwelling-units/{id}")
     @Operation(summary = "居室削除")
     public ResponseEntity<Void> delete(@PathVariable Long teamId, @PathVariable Long id) {
-        dwellingUnitService.deleteForTeam(teamId, id);
+        dwellingUnitService.deleteForTeam(SecurityUtils.getCurrentUserId(), teamId, id);
         return ResponseEntity.noContent().build();
     }
 
@@ -83,7 +86,8 @@ public class TeamDwellingUnitController {
     public ResponseEntity<ApiResponse<List<DwellingUnitResponse>>> batchCreate(
             @PathVariable Long teamId,
             @Valid @RequestBody BatchCreateDwellingUnitRequest request) {
-        List<DwellingUnitResponse> responses = dwellingUnitService.batchCreateForTeam(teamId, request);
+        List<DwellingUnitResponse> responses =
+                dwellingUnitService.batchCreateForTeam(SecurityUtils.getCurrentUserId(), teamId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(responses));
     }
 }

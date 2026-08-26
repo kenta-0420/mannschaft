@@ -38,7 +38,7 @@ public enum DirectMailErrorCode implements ErrorCode {
     /** 許可されていないファイル形式 */
     INVALID_IMAGE_TYPE("DM_009", "許可されていない画像形式です", Severity.WARN),
 
-    /** 権限不足 */
+    /** 権限不足（明確な認可拒否 → 403 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     INSUFFICIENT_PERMISSION("DM_010", "この操作に必要な権限がありません", Severity.WARN),
 
     /** 予約日時が過去 */

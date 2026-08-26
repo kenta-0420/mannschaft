@@ -11,8 +11,11 @@ import lombok.Builder;
 @Builder
 public record ScopeTabItemResponse(
 
-        /** チーム ID または 組織 ID。 */
+        /** チーム ID または 組織 ID（内部 BIGINT）。 */
         @JsonProperty("scope_id") Long scopeId,
+
+        /** チームまたは組織のスラッグ（URL 識別子、ダッシュボード API の pathVariable に使用）。 */
+        @JsonProperty("public_id") String publicId,
 
         /** スコープ種別（TEAM / ORGANIZATION）。 */
         @JsonProperty("scope_type") String scopeType,

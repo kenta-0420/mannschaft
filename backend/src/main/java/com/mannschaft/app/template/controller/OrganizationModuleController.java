@@ -5,6 +5,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.template.dto.OrgModuleCatalogResponse;
 import com.mannschaft.app.template.dto.OrgModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
 import com.mannschaft.app.template.service.ModuleService;
@@ -27,26 +29,28 @@ import java.util.List;
  * GET: MEMBER以上、PATCH: ADMINのみ許可する。
  */
 @RestController
-@RequestMapping("/api/v1/organizations/{orgId}/modules")
+@RequestMapping("/api/v1/organizations/{slug}/modules")
 @Tag(name = "組織モジュール管理")
 @RequiredArgsConstructor
 public class OrganizationModuleController {
 
     private final ModuleService moduleService;
     private final AccessControlService accessControlService;
+    private final OrganizationService organizationService;
 
     /**
      * 組織の有効モジュール一覧を取得する。
      * MEMBER以上のユーザーが参照できる（SUPPORTER/GUEST/未加入は403）。
      *
-     * @param orgId 組織ID
+     * @param slug 組織スラッグ（URL識別子）
      * @return 組織モジュールレスポンスリスト
      */
     @GetMapping
     @Operation(summary = "組織モジュール一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<OrgModuleResponse>>> getOrganizationModules(
-            @PathVariable Long orgId) {
+            @PathVariable String slug) {
+        Long orgId = organizationService.resolveOrgId(slug);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // MEMBER以上であることを確認（SUPPORTER/GUESTは isMember=false のため 403）
         accessControlService.checkMembership(currentUserId, orgId, "ORGANIZATION");
@@ -54,21 +58,41 @@ public class OrganizationModuleController {
     }
 
     /**
+     * 組織機能設定タブ向けの「利用可能 OPTIONAL モジュールのカタログ＋有効状態」を取得する。
+     * MEMBER 以上のユーザーが参照できる（SUPPORTER/GUEST/未加入は 403）。
+     *
+     * @param slug 組織スラッグ（URL識別子）
+     * @return カタログ＋有効状態レスポンス
+     */
+    @GetMapping("/catalog")
+    @Operation(summary = "組織機能カタログ＋有効状態取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<OrgModuleCatalogResponse>> getOrganizationModuleCatalog(
+            @PathVariable String slug) {
+        Long orgId = organizationService.resolveOrgId(slug);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // MEMBER 以上であることを確認（SUPPORTER/GUEST/未加入は 403）
+        accessControlService.checkMembership(currentUserId, orgId, "ORGANIZATION");
+        return ResponseEntity.ok(ApiResponse.of(moduleService.getOrganizationModuleCatalog(orgId)));
+    }
+
+    /**
      * 組織のモジュール有効/無効を切り替える。
      * ADMINのみ実行可能（DEPUTY_ADMIN以下は403）。
      *
-     * @param orgId    組織ID
+     * @param slug     組織スラッグ（URL識別子）
      * @param moduleId モジュールID（パスパラメーター、リクエストボディと一致させること）
      * @param request  トグルリクエスト
-     * @return 204 No Content
+     * @return 200 OK
      */
     @PatchMapping("/{moduleId}/toggle")
     @Operation(summary = "組織モジュール有効/無効切替")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "切替成功")
     public ResponseEntity<Void> toggleOrganizationModule(
-            @PathVariable Long orgId,
+            @PathVariable String slug,
             @PathVariable Long moduleId,
             @Valid @RequestBody ToggleModuleRequest request) {
+        Long orgId = organizationService.resolveOrgId(slug);
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // ADMINのみ許可
         if (!accessControlService.isAdmin(currentUserId, orgId, "ORGANIZATION")) {

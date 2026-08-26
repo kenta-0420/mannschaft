@@ -16,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +31,23 @@ import com.mannschaft.app.common.SecurityUtils;
 /**
  * 大会・リーグ管理コントローラー。
  * 7 endpoints: GET list, POST create, GET detail, PATCH update, DELETE, PATCH status, POST continue
+ *
+ * <p>F08.7 順位UI Wave0 検分フォロー（B-1）: 書き込み系（create / update / delete / changeStatus /
+ * continue）に主催組織 ADMIN/DEPUTY_ADMIN の編集権限ガード
+ * （{@code @accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')}・SYSTEM_ADMIN は内部短絡で許可）を
+ * 付与した。従来は認可が一切無く、認証さえあれば他組織の大会を勝手に作成・更新・削除・ステータス変更・
+ * 継続作成できる IDOR/権限昇格の穴になっていた。</p>
+ *
+ * <p>認可根治戦役 Wave7: 読取（GET list / detail）を「対象外・参照可視性は
+ * {@code PublicTournamentController} / {@code StandingsController} で扱う」としていた従来の
+ * 先送り方針を撤回し、本 2 本にも可視性を敷いた。撤回の根拠は、FE が本 2 本を
+ * 組織の大会一覧画面および 7 つの大会詳細系画面（standings / rankings / matrix / fixtures /
+ * score-entry / files / index）から実際に呼んでおり、別 Controller に委ねる前提が
+ * 成立していないため（＝この 2 本が唯一の参照経路であり、素通しは任意組織の
+ * DRAFT / 非公開大会の露出に直結する）。判定は {@code TournamentService} 側で
+ * パス {@code orgId} と大会実体の {@code organizationId} を突合したうえで
+ * F00 共通可視性 Resolver に委譲し、主催組織 ADMIN/DEPUTY_ADMIN は自組織の DRAFT も閲覧できる
+ * （管理画面の機能退行を防ぐ）。不可視・他組織は 404 で存在秘匿する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{orgId}/tournaments")
@@ -47,13 +65,15 @@ public class TournamentController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<TournamentResponse> result = tournamentService.listTournaments(orgId, status, PageRequest.of(page, size));
+        Page<TournamentResponse> result = tournamentService.listTournaments(
+                orgId, status, PageRequest.of(page, size), SecurityUtils.getCurrentUserIdOrNull());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(),
                 new PagedResponse.PageMeta(result.getTotalElements(), page, size, result.getTotalPages())));
     }
 
     @PostMapping
     @Operation(summary = "大会作成")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<ApiResponse<TournamentResponse>> createTournament(
             @PathVariable Long orgId,
             @Valid @RequestBody CreateTournamentRequest request) {
@@ -66,11 +86,13 @@ public class TournamentController {
     public ResponseEntity<ApiResponse<TournamentResponse>> getTournament(
             @PathVariable Long orgId,
             @PathVariable Long tournamentId) {
-        return ResponseEntity.ok(ApiResponse.of(tournamentService.getTournament(tournamentId)));
+        return ResponseEntity.ok(ApiResponse.of(tournamentService.getTournament(
+                orgId, tournamentId, SecurityUtils.getCurrentUserIdOrNull())));
     }
 
     @PatchMapping("/{tournamentId}")
     @Operation(summary = "大会更新")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<ApiResponse<TournamentResponse>> updateTournament(
             @PathVariable Long orgId,
             @PathVariable Long tournamentId,
@@ -80,6 +102,7 @@ public class TournamentController {
 
     @DeleteMapping("/{tournamentId}")
     @Operation(summary = "大会論理削除")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<Void> deleteTournament(
             @PathVariable Long orgId,
             @PathVariable Long tournamentId) {
@@ -89,6 +112,7 @@ public class TournamentController {
 
     @PatchMapping("/{tournamentId}/status")
     @Operation(summary = "ステータス変更")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<ApiResponse<TournamentResponse>> changeStatus(
             @PathVariable Long orgId,
             @PathVariable Long tournamentId,
@@ -99,6 +123,7 @@ public class TournamentController {
 
     @PostMapping("/continue/{previousTournamentId}")
     @Operation(summary = "前シーズンから継続作成")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<ApiResponse<TournamentResponse>> continueTournament(
             @PathVariable Long orgId,
             @PathVariable Long previousTournamentId) {

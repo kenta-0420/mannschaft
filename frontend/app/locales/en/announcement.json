@@ -25,6 +25,8 @@
     "empty": "No new announcements.",
     "pin_limit_reached": "You can pin up to 5 announcements.",
     "already_registered": "This content is already registered as an announcement.",
+    "no_longer_available": "This announcement is no longer available, so it has been removed from the list.",
+    "mark_all_read_partial": "Marked {count} announcements as read. Some unread ones remain — press again to continue.",
     "broadcast_button_team": "Team Announcement",
     "broadcast_button_org": "Organization Announcement",
     "wizard_title": "Send Announcement",
@@ -55,6 +57,7 @@
     "submit_button": "Send Announcement",
     "unsaved_changes_warning": "Your input will be lost. Are you sure?",
     "broadcast_success": "Announcement sent",
+    "broadcast_error_generic": "Failed to send the announcement",
     "broadcast_success_cta": "Check the announcement widget",
     "form_title": "Title",
     "form_body": "Body",
@@ -68,7 +71,64 @@
     "template_name_label": "Template Name",
     "template_set_default": "Set as default",
     "template_create": "Save as template",
+    "template_name_placeholder": "Enter a template name",
     "template_save_success": "Template saved",
-    "template_delete_confirm": "Are you sure you want to delete this template?"
+    "template_save_failed": "Failed to save template",
+    "template_delete_confirm": "Are you sure you want to delete this template?",
+    "incident": {
+      "dismiss": "Dismiss"
+    },
+    "broadcast_guide": {
+      "toggle": "使い方",
+      "description": "告知ウィザードの使い方を、ステップ順にまとめました。上から順に進めれば告知を送れます。",
+      "audience": {
+        "title": "誰に届けるか（対象範囲）",
+        "body": "告知を見せる相手の範囲を決めます（最初のステップ）。",
+        "steps": {
+          "step1": "届け先をメンバーのみ／サポーター以上／全員（公開）から選ぶ",
+          "step2": "（組織告知のみ）対象チームを『すべて』または個別に選ぶ"
+        }
+      },
+      "template": {
+        "title": "テンプレートで時短",
+        "body": "よく使う宛先設定を呼び出し・保存できます。",
+        "steps": {
+          "step1": "『テンプレートから読み込む』で宛先を自動入力",
+          "step2": "（管理者のみ）『テンプレートとして保存』で現在の範囲を登録（1範囲あたり20件まで）"
+        }
+      },
+      "channel": {
+        "title": "届け方を選ぶ（チャネル）",
+        "body": "掲示板・タイムライン・ブログ・TODO・スケジュール・アンケートから配信先を1つ選びます。",
+        "steps": {
+          "step1": "6つのカードから1つ選ぶ",
+          "step2": "『次へ』。※テンプレに既定チャネルがあるとこの画面は省略されます"
+        }
+      },
+      "content": {
+        "title": "内容を書く",
+        "body": "選んだチャネルに合わせて入力欄が変わります。＊印は必須です。",
+        "steps": {
+          "step1": "タイトル・本文など必須欄を入力",
+          "step2": "例: スケジュールは開始日時、タイムラインは本文が必須"
+        }
+      },
+      "priority": {
+        "title": "優先度と表示期限",
+        "body": "目立たせ方と掲載の終了日時を設定できます。",
+        "steps": {
+          "step1": "（管理者以上）優先度を通常／重要／緊急から選ぶ。一般メンバーは『通常』固定",
+          "step2": "表示期限を任意で設定"
+        }
+      },
+      "submit": {
+        "title": "送信して確認",
+        "body": "入力が揃うと送信できます。送信後はお知らせに表示されます。",
+        "steps": {
+          "step1": "『告知を送る』を押す",
+          "step2": "送信完了を確認。※アンケートの設問・TODOの担当者は送信後に各画面で追加します"
+        }
+      }
+    }
   }
 }

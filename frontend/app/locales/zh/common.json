@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "连接已断开。正在尝试重新连接…"
+    },
+    "mobile": {
+      "backToList": "返回频道列表",
+      "noChannels": "还没有频道",
+      "createChannel": "创建频道"
     }
   },
   "button": {
@@ -76,12 +81,16 @@
     "submit": "提交",
     "close": "关闭",
     "back": "返回",
+    "help": "使用方法",
     "next": "下一步",
     "search": "搜索",
     "loading": "加载中...",
     "confirm": "确认",
     "logout": "退出登录",
-    "update": "更新"
+    "update": "更新",
+    "see_more": "查看更多",
+    "view_all": "查看全部",
+    "undo": "撤销"
   },
   "label": {
     "required": "必填",
@@ -217,18 +226,41 @@
   "error": {
     "server": "服务器发生错误",
     "server_retry": "请稍后再试。",
+    "rate_limited": "操作过于频繁",
+    "rate_limited_detail": "短时间内操作过于频繁。请稍等片刻后再试。",
+    "rate_limited_retry_after": "短时间内操作过于频繁。请约 {seconds} 秒后再试。",
     "network": "网络错误",
     "unauthorized": "请先登录",
+    "section_load_failed": "该项目获取失败，请重新加载。",
     "unknown": "发生错误",
     "COMMON_001": "输入内容有误",
     "COMMON_002": "您没有执行此操作的权限",
     "COMMON_003": "已被其他用户更新，请刷新页面",
     "COMMON_999": "发生系统错误",
     "AUTH_001": "邮箱或密码不正确",
-    "AUTH_002": "会话已过期，请重新登录",
-    "AUTH_003": "该邮箱已注册",
-    "AUTH_004": "账户已被禁用",
-    "AUTH_005": "验证码不正确"
+    "AUTH_002": "邮箱尚未验证",
+    "AUTH_003": "账户已被锁定，请在30分钟后重试",
+    "AUTH_004": "该邮箱已注册",
+    "AUTH_005": "验证邮件的链接无效或已过期",
+    "AUTH_008": "密码至少需8个字符，并包含大写字母、小写字母、数字、符号中的3种以上",
+    "AUTH_015": "密码重置链接无效或已过期，请重新申请重置密码。",
+    "AUTH_009": "新密码必须与当前密码不同",
+    "AUTH_010": "当前密码不正确",
+    "AUTH_011": "尚未设置密码",
+    "AUTH_044": "请求过于频繁，请稍后再试",
+    "SURVEY_023": "匿名问卷无法启用团队明细",
+    "SCHEDULE_KEEP_001": "キープが見つかりません",
+    "SCHEDULE_KEEP_002": "タイトルを入力してください",
+    "SCHEDULE_KEEP_003": "候補日は最大10件です",
+    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
+    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
+    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
+    "SCHEDULE_KEEP_007": "この状態では編集できません",
+    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
+    "SCHEDULE_KEEP_009": "この操作はできません",
+    "SCHEDULE_KEEP_010": "キープの上限に達しました",
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "已达到隐藏上限（200 个）。请先取消一些不需要的隐藏。"
   },
   "annual_plan": {
     "title": "年度行事计划",
@@ -442,7 +474,56 @@
     "videoUploadSuccess": "视频上传成功",
     "videoUploadError": "视频上传失败",
     "videoRemove": "删除视频",
-    "mitayo": "已看"
+    "mitayo": "已看",
+    "imageTooMany": "最多可附加4张图片",
+    "imageUploadError": "图片上传失败",
+    "postSuccess": "发布成功",
+    "postError": "发布失败",
+    "announcementRegisterError": "注册公告失败，请稍后手动注册。",
+    "postSource": "发布于",
+    "writeReply": "写回复",
+    "replySubmit": "回复",
+    "noReplies": "还没有回复",
+    "loadMoreReplies": "查看更多",
+    "composerPlaceholder": {
+      "TEAM": "发布到团队...",
+      "VILLAGE": "发布到村子...",
+      "ORGANIZATION": "发布到组织...",
+      "PUBLIC": "在想什么？"
+    },
+    "submitLabel": "发布",
+    "pollOptionsCount": "{count}个选项",
+    "deliveryScope": {
+      "label": "投放范围",
+      "options": {
+        "DIRECT": "仅本团体的成员",
+        "CHILDREN": "包含下一级子团体",
+        "DESCENDANTS": "下属的所有团体"
+      },
+      "hints": {
+        "DIRECT": "仅显示在本团体成员的时间线上。",
+        "CHILDREN": "同时显示给本团体正下方子团体的成员。",
+        "DESCENDANTS": "显示给本团体下属所有团体的成员。"
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "隐藏该团队的帖子",
+        "ORGANIZATION": "隐藏该团体的帖子"
+      },
+      "targetType": {
+        "TEAM": "团队",
+        "ORGANIZATION": "团体"
+      },
+      "muted": "已隐藏 {name} 的帖子",
+      "undo": "撤销",
+      "unmuted": "已恢复显示",
+      "chip": "已隐藏：{count} 个",
+      "dialogTitle": "已隐藏的对象",
+      "emptyList": "没有已隐藏的对象。",
+      "unmuteAction": "恢复显示",
+      "unknownTarget": "{type}（ID: {id}）"
+    }
   },
   "gallery": {
     "title": "相册",
@@ -494,7 +575,9 @@
       "selfReviewStart": "自我审阅开始时间",
       "selfReviewEnd": "自我审阅结束时间",
       "selfReviewHelp": "设定的时间段将作为发布前的审阅期",
-      "saveSettings": "保存设置"
+      "saveSettings": "保存设置",
+      "loadFailed": "无法加载文章",
+      "scheduledPublishUnavailable": "定时发布目前不可用。发布后文章将立即公开。"
     },
     "autoSave": {
       "label": "自动保存",
@@ -520,7 +603,14 @@
       "viewModeKanban": "看板视图",
       "deleteButton": "删除",
       "deleteAriaLabel": "删除此待办",
-      "deleteConfirm": "确认删除此待办事项？删除后无法恢复。"
+      "deleteConfirm": "确认删除此待办事项？删除后无法恢复。",
+      "sortLabel": "排序方式",
+      "sortRecent": "最新",
+      "sortPriority": "优先级",
+      "deletedToast": "已删除待办",
+      "restoredToast": "已恢复待办",
+      "deleteFailed": "删除失败",
+      "restoreFailed": "无法撤销"
     },
     "field": {
       "status": "状态",
@@ -631,6 +721,24 @@
         "saving": "保存中...",
         "saved": "已保存"
       }
+    },
+    "create": {
+      "dialog_title": "创建TODO",
+      "title_label": "标题",
+      "title_placeholder": "TODO标题",
+      "details_toggle": "设置详情（可选）",
+      "description_label": "描述（可选）",
+      "description_placeholder": "详情或补充说明",
+      "scope_label": "分享给",
+      "scope_personal": "个人",
+      "priority_label": "优先级",
+      "start_date_label": "开始日期（可选）",
+      "due_date_label": "截止日期（可选）",
+      "submit_button": "创建",
+      "cancel_button": "取消",
+      "draft_restored": "已恢复草稿",
+      "create_success": "TODO已创建",
+      "create_failed": "创建失败"
     }
   },
   "extended_profile": {
@@ -671,6 +779,62 @@
     "custom_field_updated": "自定义字段已更新",
     "custom_field_deleted": "自定义字段已删除"
   },
+  "notification": {
+    "todoHandedOff": {
+      "title": "收到待办",
+      "body": "{from} 将「{title}」传递给您（状态：{label}）"
+    },
+    "pageTitle": "通知",
+    "guide": {
+      "title": "通知の使い方",
+      "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
+      "read": {
+        "title": "通知を読む",
+        "body": "通知の行をタップすると既読になり、関連する画面へ移動します。まだ読んでいない通知には青いドットが付きます。",
+        "steps": {
+          "step1": "気になる通知の行をタップします",
+          "step2": "自動で既読になり、関連する画面へ移動します",
+          "step3": "未読の通知は左端の青いドットで見分けられます"
+        }
+      },
+      "filter": {
+        "title": "絞り込み",
+        "body": "上部の「すべて／未読」の切り替えで、未読の通知だけを表示できます。",
+        "steps": {
+          "step1": "画面上部の「すべて／未読」ボタンを押します",
+          "step2": "「未読」を選ぶと、まだ読んでいない通知だけが表示されます",
+          "step3": "「すべて」に戻すと全ての通知が表示されます"
+        }
+      },
+      "snooze": {
+        "title": "スヌーズ",
+        "body": "今すぐ対応できない通知は、時計アイコンから後回しにできます。指定した時刻に再び表示されます。",
+        "steps": {
+          "step1": "通知の右側にある時計アイコンを押します",
+          "step2": "「3時間後／今夜／明朝／来週」から再表示するタイミングを選びます",
+          "step3": "選んだ時刻になると、その通知が再び一覧に表示されます"
+        }
+      },
+      "confirm": {
+        "title": "確認通知",
+        "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
+        "steps": {
+          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step2": "「確認する」ボタンを押して確認済みにします",
+          "step3": "確認後は「確認済み」ラベルに変わります"
+        }
+      },
+      "urgent": {
+        "title": "緊急休業・一括既読",
+        "body": "緊急休業の通知は「確認する」を押して確認します。溜まった通知は右上の「すべて既読にする」でまとめて既読にできます。",
+        "steps": {
+          "step1": "緊急休業の通知は「確認する」ボタンで確認します",
+          "step2": "右上の「すべて既読にする」で通知をまとめて既読にできます",
+          "step3": "既読にするとベルのバッジも0になります"
+        }
+      }
+    }
+  },
   "project": {
     "milestones": "里程碑",
     "no_milestones": "暂无里程碑",
@@ -706,7 +870,109 @@
     "reorder_failed": "重新排序失败",
     "my_projects": "个人项目",
     "my_projects_description": "个人任务管理与目标",
-    "no_my_projects": "暂无个人项目"
+    "no_my_projects": "暂无个人项目",
+    "team_projects_section": "团队项目",
+    "no_team_projects": "您所在的团队暂无项目",
+    "org_projects_section": "组织项目",
+    "no_org_projects": "您所在的组织暂无项目",
+    "create_button": "创建项目",
+    "dialog": {
+      "create_title": "创建项目",
+      "edit_title": "编辑项目",
+      "title_label": "标题",
+      "title_placeholder": "项目名称",
+      "description_label": "描述",
+      "due_date_label": "截止日期",
+      "cancel": "取消",
+      "create": "创建",
+      "update": "更新"
+    },
+    "appearance": {
+      "emoji_label": "表情符号",
+      "color_label": "颜色",
+      "none": "无",
+      "custom_emoji": "自定义",
+      "custom_color": "自定义颜色",
+      "current": "当前值"
+    },
+    "guide": {
+      "button": "使用说明",
+      "page_title": "项目使用说明",
+      "description": "了解如何使用项目功能。",
+      "what": {
+        "title": "什么是项目？",
+        "body": "项目是统一管理任务（TODO）和里程碑的单元。您可以设置目标和截止日期，一目了然地跟踪进度。"
+      },
+      "create": {
+        "title": "如何创建项目",
+        "body": "点击“创建项目”按钮，填写以下信息。",
+        "item_title": "标题（必填）：项目名称",
+        "item_emoji": "表情符号：代表项目的图标（从预设中选择）",
+        "item_color": "颜色：卡片的识别颜色（从预设中选择）",
+        "item_due_date": "截止日期：目标完成日期（可选）"
+      },
+      "milestone": {
+        "title": "里程碑与关卡",
+        "body": "里程碑是项目中的阶段性目标。启用关卡功能后，在上一个里程碑完成之前，下一个里程碑将被锁定。",
+        "completion_mode_label": "关于完成模式",
+        "mode_auto": "自动完成",
+        "mode_auto_desc": "当里程碑中的所有TODO完成时，自动标记为已达成。",
+        "mode_manual": "手动",
+        "mode_manual_desc": "无论TODO完成状态如何，手动标记为已达成。"
+      },
+      "progress": {
+        "title": "如何查看进度",
+        "body": "项目卡片显示进度条、完成率和剩余天数。进度条根据已完成TODO/总TODO自动计算。"
+      },
+      "scope": {
+        "title": "个人项目与团队项目的区别",
+        "body": "项目有“个人”和“团队”两种范围。",
+        "personal_title": "个人项目",
+        "personal_desc": "只有您可以查看和管理。通过“我的页面”→“项目”访问。",
+        "team_title": "团队项目",
+        "team_desc": "与团队成员共享和共同管理。通过团队页面的“项目”标签访问。"
+      },
+      "back_to_projects": "返回项目列表"
+    },
+    "org_page": {
+      "title": "项目",
+      "empty": "暂无项目",
+      "back_label": "项目列表"
+    },
+    "error": {
+      "fetch_failed": "获取项目失败",
+      "create_failed": "创建项目失败",
+      "update_failed": "更新失败",
+      "delete_failed": "删除失败",
+      "status_change_failed": "更改状态失败",
+      "milestone_save_failed": "保存里程碑失败"
+    },
+    "status": {
+      "active": "进行中",
+      "completed": "已完成",
+      "archived": "已归档"
+    },
+    "action": {
+      "edit": "编辑",
+      "complete": "标记完成",
+      "reopen": "重新开始"
+    },
+    "stats": {
+      "progress": "进度",
+      "tasks": "任务",
+      "milestones": "里程碑",
+      "due_date": "截止日期",
+      "no_due_date": "未设置"
+    },
+    "task_unit": "个任务",
+    "days_remaining": "还有{n}天",
+    "days_overdue": "超期{n}天",
+    "related_tasks": "相关任务",
+    "no_related_tasks": "此项目没有相关任务",
+    "widget": {
+      "label": "项目",
+      "description": "项目进度与列表"
+    }
   },
   "inviteToken": {
     "printQrPdf": "打印二维码PDF",
@@ -1011,12 +1277,65 @@
       "event": "请输入活动详情 URL（例: /events/77）的数字 ID。",
       "document": "请输入文档详情 URL（例: /documents/55）的数字 ID。",
       "url": "如要使用 URL 卡片，请将上方「卡片类型」改为 URL。"
+    },
+    "guide": {
+      "title": "我的软木板使用方法",
+      "description": "将在各个软木板上固定的卡片集中到一处查看。",
+      "what": {
+        "title": "什么是我的软木板",
+        "body": "您在各板上📌固定的卡片会汇总在此，按最新顺序排列。"
+      },
+      "open": {
+        "title": "打开卡片",
+        "body": "点击卡片跳转到其引用处。",
+        "steps": {
+          "step1": "点击卡片可移动到原始帖子、文件、活动等。",
+          "step2": "URL 卡片会在新标签页中打开。",
+          "step3": "已失去查看权限的卡片无法打开（显示为“无查看权限”）。"
+        }
+      },
+      "editNote": {
+        "title": "编辑备注",
+        "body": "可以为卡片附上便签备注。",
+        "steps": {
+          "step1": "点击卡片右上角的铅笔按钮。",
+          "step2": "输入备注并保存。",
+          "step3": "保存的备注会作为便签显示在卡片上。"
+        }
+      },
+      "unpinDelete": {
+        "title": "取消固定 / 删除",
+        "body": "将不需要的卡片从列表中移除或删除。",
+        "steps": {
+          "step1": "用📌按钮取消固定，卡片会从此列表移除（原板上的卡片保留）。",
+          "step2": "用🗑按钮删除卡片。删除无法撤销。"
+        }
+      },
+      "filterAndPin": {
+        "title": "筛选 / 新建固定",
+        "body": "筛选显示的卡片，或固定新卡片。",
+        "steps": {
+          "step1": "在工具栏的板选择器中只显示特定板的卡片。",
+          "step2": "用“加载更多”显示后续卡片。",
+          "step3": "通过“新建固定”按钮前往软木板，📌固定卡片。"
+        }
+      }
     }
   },
   "schedule": {
     "filter": {
       "allTeamsOrgs": "团队・组织（全部）",
       "selectScope": "选择创建目标"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "个人",
+        "unknown": "其他日程",
+        "loadError": {
+          "summary": "图层列表加载失败",
+          "detail": "团队・组织的显示切换暂时无法使用。日程仍会显示。请稍后重新加载。"
+        }
+      }
     }
   },
   "handoff": {
@@ -1059,12 +1378,6 @@
       "title": "传递历史",
       "empty": "暂无历史",
       "deletedLabel": "（已删除）"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "收到待办",
-      "body": "{from} 将「{title}」传递给您（状态：{label}）"
     }
   },
   "common": {
@@ -1177,6 +1490,25 @@
       "skillsSummaryHint": "自由填写可发挥的经验、知识和技术（结构化技能请在下方技能区填写）",
       "excelPreviewUnavailable": "浏览器无法预览 Excel 文件",
       "downloadLabel": "下载 {format}（{type}）"
+    },
+    "menu": "菜单",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "要取消支持吗？",
+      "supporter_cancel_confirm_body": "将取消对{name}的支持。确定吗？",
+      "supporter_cancel_action": "取消支持",
+      "supporter_registered": "已注册为支持者",
+      "supporter_applied": "已发送支持者申请",
+      "supporter_canceled": "已取消支持",
+      "leave_action": "退出",
+      "load_error_title": "无法获取信息",
+      "load_error_body": "请稍后再试。如果没有权限，可能无法显示。",
+      "back_to_dashboard": "返回仪表板",
+      "retry": "重试",
+      "slow_loading": "加载时间较长，请稍候"
+    },
+    "unsavedChanges": {
+      "title": "未保存的更改",
+      "confirmLeave": "您有未保存的更改。离开此页面将丢失已输入的内容。要继续吗？"
     }
   },
   "teamHub": {
@@ -1294,11 +1626,21 @@
       "feedback": "反馈",
       "reports": "报告",
       "advertisers": "广告主管理",
+      "adRateCards": "广告费率卡",
+      "adCreditLimitRequests": "广告信用额度申请",
+      "affiliateSettings": "联盟营销设置",
       "auditLogs": "审计日志",
       "shiftBudget": "班次预算",
       "betaRestriction": "测试版限制",
       "errorReports": "错误报告",
-      "gdprPurge": "GDPR 清除状态"
+      "gdprPurge": "GDPR 清除状态",
+      "feedbackInbox": "意见箱（全体）",
+      "billing": "课金主数据管理",
+      "betaPerks": "ベータ特典管理"
+    },
+    "impersonation": {
+      "banner": "管理员伪装中: {label}",
+      "exit": "退出伪装"
     },
     "businessAlert": {
       "title": "业务提醒",
@@ -1359,7 +1701,78 @@
     "addRecord": "添加记录",
     "participantCount": "{count} 名参与者",
     "noRecords": "暂无活动记录",
-    "loadError": "获取活动记录失败"
+    "loadError": "获取活动记录失败",
+    "create": {
+      "dialogTitle": "添加活动记录",
+      "templateLabel": "模板",
+      "templatePlaceholder": "选择模板",
+      "noTemplatesTitle": "暂无模板",
+      "noTemplatesBody": "创建活动记录前，请先创建模板。",
+      "goToTemplates": "创建模板",
+      "titleLabel": "标题",
+      "titlePlaceholder": "活动标题",
+      "dateLabel": "活动日期",
+      "descriptionLabel": "说明（可选）",
+      "visibilityLabel": "公开范围",
+      "visibilityPublic": "公开",
+      "visibilityMembersOnly": "仅成员",
+      "requiredFieldError": "请填写必填项",
+      "saveSuccess": "已添加活动记录",
+      "saveError": "添加活动记录失败",
+      "submit": "添加",
+      "scopeResolveError": "无法确定目标",
+      "templatesLoadError": "获取模板失败",
+      "draftHint": "只需填写标题和活动日期即可保存草稿。模板和自定义字段可以之后添加。",
+      "saveDraft": "保存草稿",
+      "draftSaved": "草稿已保存",
+      "draftRestored": "已恢复上次输入",
+      "draftSuccess": "已保存为草稿"
+    },
+    "statusLabel": {
+      "DRAFT": "草稿",
+      "PUBLISHED": "已发布"
+    },
+    "list": {
+      "filterAll": "全部",
+      "filterDraft": "草稿",
+      "editDraft": "编辑并发布"
+    },
+    "publish": {
+      "success": "活动记录已发布",
+      "error": "发布失败"
+    },
+    "guide": {
+      "title": "活动记录使用指南",
+      "description": "记录团队或组织的活动（练习、比赛、活动等），便于回顾和分享。",
+      "list": {
+        "title": "查看记录",
+        "body": "活动以卡片形式按最新顺序列出，可快速查看标题、活动日期、地点和参与人数。设置为「公开」的记录会显示分享按钮，可通过链接对外分享。"
+      },
+      "add": {
+        "title": "添加记录",
+        "body": "点击右上角的「添加记录」按钮，创建新的活动记录。",
+        "steps": {
+          "step1": "点击右上角「添加记录」",
+          "step2": "选择使用的模板",
+          "step3": "输入标题和活动日期（均为必填）",
+          "step4": "选择公开范围（仅成员可见／公开）",
+          "step5": "如有模板自定义字段，请填写",
+          "step6": "点击「添加」，记录将出现在列表中"
+        }
+      },
+      "template": {
+        "title": "需要模板时",
+        "body": "创建记录需要模板。若尚未创建模板，系统会显示引导页面而非输入表单。团队用户请先前往「活动模板」页面创建至少一个模板，再添加记录。"
+      },
+      "visibility": {
+        "title": "公开范围（谁可以查看）",
+        "members_only_label": "仅成员",
+        "members_only_desc": "只有团队或组织的成员才能查看此记录。",
+        "public_label": "公开",
+        "public_desc": "知道链接的任何人都可以查看。列表中会显示分享按钮，方便对外分享。",
+        "note": "公开范围的默认值由模板设置决定。"
+      }
+    }
   },
   "dashboard": {
     "team_reservation_link": "预约管理"
@@ -1431,7 +1844,9 @@
       "KB_PAGE": "知识库",
       "BLOG_AUTHOR": "作者",
       "VILLAGE": "村"
-    }
+    },
+    "restoredToast": "已恢复收藏",
+    "restoreFailed": "无法撤销"
   },
   "succession": {
     "legalFilings": {
@@ -1470,6 +1885,13 @@
     "mapEmbedUrlHelp": "在 Google Maps 中「分享 > 嵌入地图 > 复制 HTML」，然后粘贴 src= 的 URL",
     "mapEmbedUrlInvalidFormat": "必须为 Google Maps 嵌入 URL（https://www.google.com/maps/embed?...）格式",
     "mapEmbedUrlSaved": "店铺地图 URL 已保存",
+    "timezone": {
+      "label": "预约时区",
+      "help": "用于解释预约开始和结束时间的 IANA 时区。",
+      "placeholder": "例如：Asia/Tokyo",
+      "invalid": "请输入有效的 IANA 时区",
+      "saved": "预约时区已保存"
+    },
     "regionCode": {
       "label": "所在地（都道府县・市区町村）",
       "help": "选择都道府县和市区町村后，将用作地区搜索和发布的默认值。",
@@ -1487,6 +1909,7 @@
     "bulletinOpen": "在公告板上讨论"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "存储", "personal": "个人", "team": "团队", "organization": "组织", "details": "查看详情", "error": "无法加载存储", "retry": "重试", "unconfigured": "未设置容量", "not_available": "无存储数据", "meterLabel": "{scope}存储使用率", "meterValue": "使用率 {percent}%", "warningTitle": "存储空间即将用尽", "warningMessage": "{scope}已使用{percent}%。请考虑升级付费方案。", "viewPlans": "查看方案", "checkStorage": "检查存储", "cancel": "取消" },
     "tabs": {
       "personal": "个人",
       "team": "团队",
@@ -1503,6 +1926,7 @@
       "prevPage": "上一页",
       "nextPage": "下一页",
       "reorder": "更改显示顺序",
+      "goToScopePage": "前往团队/组织页面",
       "empty": "您不属于任何团队/组织",
       "folderEmpty": "此文件夹中没有范围",
       "loadError": "获取标签列表失败"
@@ -1512,6 +1936,258 @@
       "save": "保存",
       "cancel": "取消",
       "saveError": "保存显示顺序失败"
+    }
+  },
+  "slug": {
+    "label": "URL（标识）",
+    "hint": "用于团队/组织的公开URL（例如：my-team）。留空时将根据名称自动生成。",
+    "placeholder": "my-team",
+    "available": "可使用",
+    "unavailable": "此标识已被使用",
+    "checking": "确认中...",
+    "format": "只能使用小写字母、数字和连字符（3〜30个字符）",
+    "reason": {
+      "SLUG_REQUIRED": "请输入标识",
+      "SLUG_INVALID_FORMAT": "格式不正确（小写字母、数字和连字符，3〜30个字符，首尾及连续连字符不可）",
+      "SLUG_RESERVED": "此标识为保留字，无法使用",
+      "SLUG_ALREADY_TAKEN": "此标识已被使用",
+      "SLUG_RETIRED": "此标识曾被使用过，无法重复使用（已为重定向保留）"
+    },
+    "rename": {
+      "title": "更改URL（标识）",
+      "help": "更改公开URL的标识。旧URL会自动重定向到新URL。",
+      "save": "更改",
+      "saved": "已更改URL（标识）",
+      "saveError": "更改URL（标识）失败",
+      "unchanged": "与当前标识相同（无更改）"
+    }
+  },
+  "team_visibility": {
+    "PUBLIC": "公开",
+    "GUESTS_AND_ABOVE": "访客及以上",
+    "SUPPORTERS_AND_ABOVE": "支持者及以上",
+    "MEMBERS_AND_ABOVE": "成员及以上"
+  },
+  "module_settings": {
+    "enabled_count": "有効な機能: {count} / {limit}",
+    "fetch_error": "機能一覧の取得に失敗しました",
+    "empty": "現在このスコープで利用できる追加機能はありません",
+    "toggle_success_on": "{name} を有効にしました",
+    "toggle_success_off": "{name} を無効にしました",
+    "badge": {
+      "level_unavailable": "このレベルでは利用できません",
+      "paid_plan": "有料プラン",
+      "limit_reached": "上限（{limit}）に達しています"
+    },
+    "error": {
+      "paid_required": "この機能は有料プランが必要です",
+      "limit_reached": "無料プランで有効化できる機能の上限（10個）に達しています",
+      "level_unavailable": "このレベルではこの機能を利用できません",
+      "generic": "機能の切替に失敗しました"
+    }
+  },
+  "module_settings_guide": {
+    "title": "機能設定の使い方",
+    "help_button": "使い方",
+    "description": "「機能設定」では、このチーム・組織で使える機能を一覧から探して、スイッチで ON / OFF できます。ここで ON にした機能だけが、メンバーの画面に表示され利用できるようになります。",
+    "what": {
+      "title": "機能設定とは",
+      "body": "チーム・組織で使える機能（モジュール）の一覧です。利用できる機能がすべてカードで並び、各機能を ON にするとメンバーが使えるようになり、OFF にすると画面から隠れて使えなくなります。必要な機能だけを選んで、画面をすっきり保てます。"
+    },
+    "toggle": {
+      "title": "機能を ON / OFF する",
+      "body": "使いたい機能を一覧から探して、カード右のスイッチを ON にするだけです。保存ボタンは不要で、押すとすぐに反映されます。",
+      "steps": {
+        "step1": "一覧から使いたい機能のカードを探す",
+        "step2": "カード右のスイッチを押して ON にする（もう一度押すと OFF）",
+        "step3": "「有効にしました」または「無効にしました」と通知が出れば完了（保存操作は不要）",
+        "step4": "切り替え中はそのスイッチが一時的に押せなくなります（二重操作を防ぐためです）"
+      }
+    },
+    "count": {
+      "title": "今いくつ使えるかを確認する",
+      "body": "画面の上部に「有効な機能: 2 / 10」のように、ON にしている数と有効化できる上限の数が表示されます。右の更新ボタン（回転する矢印）を押すと、最新の状態を取得し直せます。"
+    },
+    "restrictions": {
+      "title": "使えないスイッチがあるとき",
+      "body": "スイッチが押せない（グレーアウトしている）機能には、理由を示すバッジが付きます。",
+      "items": {
+        "paid": "「有料プラン」… 有料プランに加入すると使える機能です。",
+        "limit": "「上限（10）に達しています」… 無料プランで同時に ON にできる機能の数が上限に達しています。ほかの機能を OFF にすると新しく ON にできます。",
+        "level": "「このレベルでは利用できません」… このチーム・組織の種別では使えない機能です。"
+      }
+    },
+    "empty": {
+      "title": "機能が表示されないとき",
+      "body": "「現在このスコープで利用できる追加機能はありません」と出る場合は、いまのところこのチーム・組織で追加できる機能がありません。"
+    },
+    "permission": {
+      "title": "設定できる人",
+      "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "仪表板",
+      "info": "基本信息",
+      "members": "成员",
+      "invites": "邀请",
+      "supporters": "支持者管理",
+      "modules": "功能设置"
+    },
+    "action": {
+      "leave_confirm_title": "退出团队",
+      "leave_confirm_body": "确定要退出该团队吗？此操作无法撤销。",
+      "left": "已退出团队"
+    }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "仪表板",
+      "info": "基本信息",
+      "members": "成员",
+      "member_teams": "所属团队",
+      "invites": "邀请",
+      "permission_groups": "权限组",
+      "supporters": "支持者管理",
+      "modules": "功能设置"
+    },
+    "action": {
+      "leave_confirm_title": "退出组织",
+      "leave_confirm_body": "确定要退出该组织吗？此操作无法撤销。",
+      "left": "已退出组织"
+    }
+  },
+  "blog_guide": {
+    "title": "我的博客使用方法",
+    "description": "撰写文章并与团队和组织成员分享。先保存为草稿，准备好后再发布。",
+    "what": {
+      "title": "什么是博客？",
+      "body": "将您的想法和学习记录为文章，并与团队和组织成员分享的地方。文章可以以草稿、已发布、定时发布或已归档的状态进行管理。"
+    },
+    "create": {
+      "title": "撰写文章",
+      "body": "只需点击「＋ 新建文章」即可创建草稿文章。标题可以稍后更改。",
+      "steps": {
+        "step1": "点击右上角的「＋ 新建文章」",
+        "step2": "输入文章标题（可以稍后更改）",
+        "step3": "选择发布目标（个人、团队或组织）",
+        "step4": "点击「创建并编辑」进入编辑器"
+      }
+    },
+    "publish": {
+      "title": "发布文章",
+      "body": "点击「我的帖子」中每张卡片上的眼睛图标，可以切换公开/私密状态。",
+      "steps": {
+        "step1": "点击草稿文章卡片上的眼睛图标",
+        "step2": "切换为「已发布」，团队和组织成员可以查看",
+        "step3": "再次点击可恢复为私密（草稿）状态"
+      }
+    },
+    "manage": {
+      "title": "管理文章",
+      "body": "「我的帖子」以横向滚动方式显示最新5篇文章。使用每张卡片上的图标进行编辑或删除。",
+      "item_edit": "铅笔图标 → 编辑文章内容",
+      "item_delete": "垃圾桶图标 → 删除文章（无法撤消）",
+      "item_count": "在右上角确认文章数量",
+      "item_all": "所有文章均在「大家的帖子」部分列出"
+    },
+    "settings": {
+      "title": "博客设置",
+      "body": "您可以设置博客标题、说明和自我审核时间段。",
+      "steps": {
+        "step1": "点击右上角的「⚙ 博客设置」",
+        "step2": "输入博客标题和说明",
+        "step3": "设置自我审核时间段（发布前的审核期）",
+        "step4": "点击「保存设置」"
+      }
+    }
+  },
+  "analytics": {
+    "title": "访问分析",
+    "loadError": "获取访问分析数据失败",
+    "empty": "暂无访问数据",
+    "summary": {
+      "totalViews": "总 PV",
+      "uniqueVisitors": "独立访客",
+      "memberViews": "成员浏览",
+      "guestViews": "访客浏览"
+    },
+    "export": "导出数据",
+    "topContent": {
+      "title": "热门内容",
+      "empty": "暂无数据"
+    },
+    "chart": {
+      "views": "页面浏览量",
+      "daily": "按日",
+      "monthly": "按月",
+      "toggle": "切换显示",
+      "recentDays": "最近30天的访问统计",
+      "monthlyTrend": "月度访问趋势统计"
+    },
+    "period": {
+      "allTime": "全部时间"
+    },
+    "guide": {
+      "page_title": "如何使用访问分析",
+      "what": {
+        "title": "什么是访问分析？",
+        "body": "访问分析可以查看团队或组织页面的浏览情况。了解成员和访客的访问模式，有助于改善内容。"
+      },
+      "metrics": {
+        "title": "统计数据说明",
+        "total_views": "总 PV：页面被显示的总次数",
+        "unique_visitors": "独立访客：去重后的访客数",
+        "member_views": "成员浏览：成员的页面浏览次数",
+        "guest_views": "访客浏览：访客（非成员）的页面浏览次数"
+      },
+      "timing": {
+        "title": "数据更新时间",
+        "body": "访问数据通过每日批量处理进行统计。当天数据将于次日清晨反映。由于不是实时统计，最近几小时的访问将在次日后显示。"
+      },
+      "chart": {
+        "title": "图表说明",
+        "body": "图表可以在「按天」和「按月」之间切换显示。",
+        "daily_title": "日别图表",
+        "daily_desc": "显示过去30天的每日页面浏览量变化。",
+        "monthly_title": "月别图表",
+        "monthly_desc": "显示每月汇总值，有助于了解长期趋势。"
+      },
+      "top_content": {
+        "title": "热门内容",
+        "body": "按浏览量对内容进行排名显示。如果尚无访问数据，将显示「暂无数据」，一旦记录到浏览数据，排行榜就会自动显示。"
+      }
+    }
+  },
+  "comingSoon": {
+    "title": "即将推出",
+    "description": "此功能目前正在开发中。请稍后再来查看。"
+  },
+  "transferOwnership": {
+    "sectionTitle": "转让所有者",
+    "sectionDescription": "将管理员（所有者）权限移交给其他成员。转让后您将成为副管理员，无法再执行仅限管理员的操作。",
+    "openButton": "转让所有者",
+    "dialogTitle": "转让所有者",
+    "warning": "此操作无法撤销。转让后管理员权限将归新所有者所有，只有新所有者才能再转回。",
+    "targetLabel": "新所有者",
+    "targetPlaceholder": "选择成员",
+    "noCandidates": "没有可转让的成员。",
+    "confirmLabel": "请输入“{name}”以确认",
+    "confirmMismatch": "名称不一致。",
+    "cancel": "取消",
+    "submit": "转让",
+    "successTitle": "已转让所有者",
+    "successDetail": "管理员权限已移交给新所有者。"
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "该功能尚未开放",
+      "body": "此功能当前不可用，将返回仪表板。"
+    },
+    "error": {
+      "fetchFailedTitle": "无法确认功能开放状态",
+      "fetchFailedBody": "由于网络错误，无法确认该功能是否已开放。请稍后重试。"
     }
   }
 }

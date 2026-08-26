@@ -30,13 +30,26 @@ import { test, expect, type Page, type Route } from '@playwright/test'
 const TEAM_ID = 5001
 const ORG_ID = 6001
 
-/** GET /api/v1/dashboard/scope-tabs（snake_case で返す = useScopeTabApi が camelCase 化）*/
-function mockScopeTabPage(scopeType: 'TEAM' | 'ORGANIZATION') {
+/**
+ * slug 移行後（PR #1413〜）の実 BE が返す slug。
+ * チーム/組織の pathVariable は人間可読 slug（英字 + ハイフン）であり UUID ではない。
+ */
+const TEAM_SLUG = 'fc-u-18'
+const ORG_SLUG = 'tokyo-fa'
+
+/**
+ * GET /api/v1/dashboard/scope-tabs（snake_case で返す = useScopeTabApi が camelCase 化）。
+ *
+ * @param withSlug true のとき public_id に人間可読 slug を載せる（slug 移行後の実 BE 挙動）。
+ *   false のとき public_id を省略し scope_id（BIGINT）のみ（移行前 / 旧モック互換）。
+ */
+function mockScopeTabPage(scopeType: 'TEAM' | 'ORGANIZATION', withSlug = false) {
   const isTeam = scopeType === 'TEAM'
   return {
     items: [
       {
         scope_id: isTeam ? TEAM_ID : ORG_ID,
+        ...(withSlug ? { public_id: isTeam ? TEAM_SLUG : ORG_SLUG } : {}),
         scope_type: scopeType,
         name: isTeam ? 'E2E チームA' : 'E2E 組織A',
         avatar_url: null,
@@ -86,6 +99,14 @@ const MOCK_ACTION_REQUIRED = {
 interface MockOptions {
   /** 検索 API（scope-tabs）に渡された URL を観測するフック */
   onSearchTabs?: (url: URL) => void
+  /** scope-tabs の public_id に slug を載せる（slug 移行後の実 BE 挙動を再現）*/
+  withSlug?: boolean
+  /** 容量APIの呼出回数を検証するフック */
+  onStorageUsage?: () => void
+  /** 容量APIを失敗させる検証用フック */
+  storageUsageFailure?: boolean
+  /** 警告Dialog表示用の容量mock */
+  storageUsageWarning?: boolean
 }
 
 /**
@@ -108,6 +129,43 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
     })
   })
 
+  // 容量サマリーは配列レスポンスを前提とするため、catch-allより後に専用mockを登録する。
+  await page.route('**/api/v1/me/storage/usage', async (route: Route) => {
+    opts.onStorageUsage?.()
+    if (opts.storageUsageFailure) {
+      await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_STORAGE_FAILURE' } }) })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          scopeType: 'PERSONAL',
+          scopeId: 1,
+          scopeName: '個人',
+          slug: null,
+          usedBytes: 0,
+          fileCount: 0,
+          includedBytes: 1024,
+          maxBytes: 1024,
+          usagePercent: opts.storageUsageWarning ? 90 : 0,
+        },
+      ]),
+    })
+  })
+
+  // 有料プラン画面の route gate が参照する公開フラグ。
+  await page.route('**/api/v1/feature-flags', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [{ flagKey: 'FEATURE_BILLING_PAYMENT_ENABLED', enabled: true }],
+      }),
+    })
+  })
+
   // --- 認証リフレッシュ（401 連鎖でログアウトさせない）---
   await page.route('**/api/v1/auth/refresh', async (route: Route) => {
     await route.fulfill({
@@ -127,7 +185,7 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: mockScopeTabPage(scopeType) }),
+      body: JSON.stringify({ data: mockScopeTabPage(scopeType, opts.withSlug) }),
     })
   })
 
@@ -197,10 +255,18 @@ test('F22.1-1: /dashboard がカルーセルを描画し、初期は個人パネ
   page,
 }) => {
   await loginAsMember(page)
-  await mockDashboardApis(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  let storageUsageCalls = 0
+  await mockDashboardApis(page, { onStorageUsage: () => { storageUsageCalls += 1 } })
 
   await page.goto('/dashboard')
   await waitForCarousel(page)
+  await expect(page.getByTestId('dashboard-storage-summary')).toHaveCount(1)
+  await expect.poll(() => storageUsageCalls).toBe(1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+  const summaryBox = await page.getByTestId('dashboard-storage-summary').boundingBox()
+  expect(summaryBox).not.toBeNull()
+  expect(summaryBox!.x + summaryBox!.width).toBeLessThanOrEqual(390)
 
   // セグメントトグル（個人/チーム/組織）が存在する
   await expect(page.getByTestId('scope-segment-PERSONAL')).toBeVisible()
@@ -221,6 +287,42 @@ test('F22.1-1: /dashboard がカルーセルを描画し、初期は個人パネ
   await expect(page.locator('#scope-panel-PERSONAL')).toHaveCount(1)
   await expect(page.locator('#scope-panel-TEAM')).toHaveCount(1)
   await expect(page.locator('#scope-panel-ORGANIZATION')).toHaveCount(1)
+})
+
+test('F22.1-9: 容量API失敗時もカルーセルと切替タブを維持する', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page, { storageUsageFailure: true })
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+  await expect(page.getByTestId('storage-error')).toBeVisible()
+  await expect(page.getByTestId('scope-carousel')).toBeVisible()
+  await expect(page.getByTestId('scope-segment-PERSONAL')).toBeVisible()
+})
+
+test('F22.1-10: 容量カードの通常遷移と警告Dialogのプラン導線', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page)
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+  await page.getByTestId('storage-card-0').click()
+  await expect(page).toHaveURL(/\/settings\/storage/)
+
+  await page.goto('/dashboard')
+  await mockDashboardApis(page, { storageUsageWarning: true })
+  await page.reload()
+  await waitForCarousel(page)
+  const warningCard = page.getByTestId('storage-card-0')
+  await warningCard.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(warningCard).toBeFocused()
+
+  await warningCard.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('button', { name: 'プランを見る' }).click()
+  await expect(page).toHaveURL(/\/billing\/plans/)
 })
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -410,4 +512,77 @@ test('F22.1-6: アクティブパネルが localStorage に保存され、リロ
     'aria-selected',
     'true',
   )
+})
+
+// ──────────────────────────────────────────────────────────────────────────
+// シナリオ 7: slug 移行リグレッション — slug をパネル表示判定が受理し実コンテンツを描画
+// ──────────────────────────────────────────────────────────────────────────
+
+test('F22.1-7: scope-tabs が slug(public_id) を返すとき、チーム/組織パネルが永久スピナーにならず実コンテンツを描画する', async ({
+  page,
+}) => {
+  // slug 移行（PR #1413〜）後、scope-tabs の public_id は人間可読 slug（fc-u-18 等）になる。
+  // store は selectedTeamId に slug を入れるため、パネルの表示判定は slug を受理して
+  // ダッシュボードを load しなければならない。
+  //
+  // 回帰の本丸: 旧実装は UUID 正規表現で id を判定していたため、slug（fc-u-18）は
+  //   UUID にマッチせず else（loading=true 固定）に落ち、パネルが永久スピナーになっていた。
+  //   本テストは withSlug=true で slug を返し、ウィジェットグリッド（実コンテンツ）が
+  //   描画されることを検証する。旧実装ではここで permanent spinner となり失敗する。
+  await loginAsMember(page)
+  await mockDashboardApis(page, { withSlug: true })
+
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+
+  // チームパネルへ
+  await page.getByTestId('scope-segment-TEAM').click()
+  const teamPanel = page.locator('#scope-panel-TEAM')
+  // タグバーは描画される（slug ロード前から存在する静的要素）
+  await expect(teamPanel.getByTestId('scope-tab-bar-TEAM')).toBeVisible()
+  // 実コンテンツ（ウィジェットグリッド）が描画される = slug が load された証拠
+  await expect(teamPanel.getByTestId('swipe-widget-grid-TEAM')).toBeVisible({ timeout: 20000 })
+  // 永久スピナー（PageLoading）が残っていない
+  await expect(teamPanel.locator('.pi-spin')).toHaveCount(0)
+
+  // 組織パネルへ
+  await page.getByTestId('scope-segment-ORGANIZATION').click()
+  const orgPanel = page.locator('#scope-panel-ORGANIZATION')
+  await expect(orgPanel.getByTestId('scope-tab-bar-ORGANIZATION')).toBeVisible()
+  await expect(orgPanel.getByTestId('swipe-widget-grid-ORGANIZATION')).toBeVisible({
+    timeout: 20000,
+  })
+  await expect(orgPanel.locator('.pi-spin')).toHaveCount(0)
+})
+
+// ──────────────────────────────────────────────────────────────────────────
+// シナリオ 8: slug 移行リグレッション — UUID 宛の不正なダッシュボード取得が発生しない
+// ──────────────────────────────────────────────────────────────────────────
+
+test('F22.1-8: slug ロード時に UUID 宛のダッシュボード取得が発生しない', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page, { withSlug: true })
+
+  const uuidDashboardCalls: string[] = []
+  const uuidRe =
+    /\/api\/v1\/dashboard\/(team|organization)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+  page.on('request', (req) => {
+    if (uuidRe.test(req.url())) uuidDashboardCalls.push(req.url())
+  })
+
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+  await page.getByTestId('scope-segment-TEAM').click()
+  await expect(
+    page.locator('#scope-panel-TEAM').getByTestId('swipe-widget-grid-TEAM'),
+  ).toBeVisible({ timeout: 20000 })
+  await page.getByTestId('scope-segment-ORGANIZATION').click()
+  await expect(
+    page.locator('#scope-panel-ORGANIZATION').getByTestId('swipe-widget-grid-ORGANIZATION'),
+  ).toBeVisible({ timeout: 20000 })
+
+  expect(
+    uuidDashboardCalls,
+    `UUID 宛のダッシュボード取得が発生した（slug 移行後は slug 宛であるべき）: ${uuidDashboardCalls.join(', ')}`,
+  ).toHaveLength(0)
 })

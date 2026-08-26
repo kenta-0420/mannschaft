@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.TimetableChangeType;
 import com.mannschaft.app.timetable.TimetableErrorCode;
@@ -38,18 +39,37 @@ public class TimetableSlotService {
     private final TimetableChangeRepository changeRepository;
     private final TimetableRepository timetableRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
+
+    /** 認可根治Wave2: F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
+
+    /**
+     * 時間割IDから所属チームを解決する内部ヘルパー。
+     *
+     * <p>★BOLA厳禁★: このコントローラー群の path には teamId が無いため、
+     * 必ず timetableId から entity を fetch し、entity 由来の teamId で認可する。</p>
+     */
+    private TimetableEntity findTimetableOrThrow(Long timetableId) {
+        return timetableRepository.findById(timetableId)
+                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TIMETABLE_NOT_FOUND));
+    }
 
     /**
      * 時間割の全スロットを取得する。
      */
-    public List<TimetableSlotEntity> getSlots(Long timetableId) {
+    public List<TimetableSlotEntity> getSlots(Long timetableId, Long actorUserId) {
+        TimetableEntity timetable = findTimetableOrThrow(timetableId);
+        accessControlService.checkMembership(actorUserId, timetable.getTeamId(), SCOPE_TEAM);
         return slotRepository.findByTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(timetableId);
     }
 
     /**
      * 時間割の指定曜日のスロットを取得する。
      */
-    public List<TimetableSlotEntity> getSlotsByDay(Long timetableId, String dayOfWeek) {
+    public List<TimetableSlotEntity> getSlotsByDay(Long timetableId, String dayOfWeek, Long actorUserId) {
+        TimetableEntity timetable = findTimetableOrThrow(timetableId);
+        accessControlService.checkMembership(actorUserId, timetable.getTeamId(), SCOPE_TEAM);
         return slotRepository.findByTimetableIdAndDayOfWeek(timetableId, dayOfWeek);
     }
 
@@ -59,10 +79,11 @@ public class TimetableSlotService {
      */
     @Transactional
     public List<TimetableSlotEntity> replaceSlots(Long timetableId, List<SlotData> slots,
-                                                   String dayOfWeek) {
+                                                   String dayOfWeek, Long actorUserId) {
+        TimetableEntity timetable = findTimetableOrThrow(timetableId);
+        // 変更系は entity 由来 scope で checkAdminOrAbove。
+        accessControlService.checkAdminOrAbove(actorUserId, timetable.getTeamId(), SCOPE_TEAM);
         // DRAFT状態チェック（設計書要件: スロット編集はDRAFT状態の時間割のみ可能）
-        TimetableEntity timetable = timetableRepository.findById(timetableId)
-                .orElseThrow(() -> new BusinessException(TimetableErrorCode.TIMETABLE_NOT_FOUND));
         if (!timetable.isDraft()) {
             throw new BusinessException(TimetableErrorCode.TIMETABLE_NOT_DRAFT);
         }
@@ -88,7 +109,7 @@ public class TimetableSlotService {
         }
 
         List<TimetableSlotEntity> entities = slots.stream()
-                .map(s -> TimetableSlotEntity.builder()
+                .<TimetableSlotEntity>map(s -> TimetableSlotEntity.builder()
                         .timetableId(timetableId)
                         .dayOfWeek(s.dayOfWeek())
                         .periodNumber(s.periodNumber())
@@ -128,7 +149,9 @@ public class TimetableSlotService {
     /**
      * 今日のスロット（臨時変更反映済み）を取得する。
      */
-    public List<ResolvedSlot> getTodaySlots(Long timetableId, TimetableEntity timetable) {
+    public List<ResolvedSlot> getTodaySlots(Long timetableId, TimetableEntity timetable, Long actorUserId) {
+        // Controller で解決済みの timetable だが、Service 層でも entity 由来 scope で二重防御する。
+        accessControlService.checkMembership(actorUserId, timetable.getTeamId(), SCOPE_TEAM);
         LocalDate today = LocalDate.now();
         String todayDow = today.getDayOfWeek().name().substring(0, 3); // MONDAY → MON
 
@@ -148,11 +171,15 @@ public class TimetableSlotService {
     /**
      * 週次ビューを取得する。月曜から日曜までの7日分のスロットと臨時変更を含む。
      */
-    public WeeklyViewData getWeeklyView(Long timetableId, TimetableEntity timetable, LocalDate weekOf) {
+    public WeeklyViewData getWeeklyView(Long timetableId, TimetableEntity timetable, LocalDate weekOf,
+                                         Long actorUserId) {
+        // Controller で解決済みの timetable だが、Service 層でも entity 由来 scope で二重防御する。
+        accessControlService.checkMembership(actorUserId, timetable.getTeamId(), SCOPE_TEAM);
         LocalDate weekStart = weekOf.with(DayOfWeek.MONDAY);
         LocalDate weekEnd = weekStart.plusDays(6);
 
-        List<TimetableSlotEntity> allSlots = getSlots(timetableId);
+        List<TimetableSlotEntity> allSlots =
+                slotRepository.findByTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(timetableId);
         List<TimetableChangeEntity> weekChanges =
                 changeRepository.findByTimetableIdAndTargetDateBetweenOrderByTargetDateAscPeriodNumberAsc(
                         timetableId, weekStart, weekEnd);
@@ -206,7 +233,8 @@ public class TimetableSlotService {
     /**
      * チームの教科名候補を取得する。
      */
-    public List<String> getSubjectSuggestions(Long teamId) {
+    public List<String> getSubjectSuggestions(Long teamId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         return slotRepository.findDistinctSubjectNamesByTeamId(teamId);
     }
 

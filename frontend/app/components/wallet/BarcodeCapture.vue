@@ -6,6 +6,7 @@ import {
 } from '@zxing/browser'
 import type { Result } from '@zxing/library'
 import type { BarcodeFormat } from '~/types/pointCard'
+import { guessBarcodeFormat } from '~/utils/barcodeFormatGuess'
 
 /**
  * F18 ウォレット — バーコードキャプチャコンポーネント。
@@ -42,19 +43,57 @@ let controls: IScannerControls | null = null
 const manualValue = ref('')
 const manualFormat = ref<BarcodeFormat>('CODE128')
 
+/**
+ * ユーザーが形式セレクトを一度でも手動で操作したかを追跡するフラグ。
+ * このフラグが true になると、バーコード値の桁数による自動推測を停止する。
+ * ユーザーの明示的な選択を watch の自動上書きで上書きしないための意図的な設計。
+ */
+const userTouchedFormat = ref(false)
+
+/** 形式セレクトが手動操作されたことをマーク */
+function onFormatChange() {
+  userTouchedFormat.value = true
+}
+
+/**
+ * バーコード値からチェックディジット検証済みの形式を自動推測し、ユーザーが未操作の間だけセットする。
+ *
+ * <p>旧実装は桁数のみで EAN13/EAN8 を判定していたため、GS1 チェックディジットが
+ * 不正な値（例: 会員カードの任意13桁番号）を EAN13 と誤推測し、
+ * JsBarcode が例外を投げて「バーコードの描画に失敗しました」エラーを引き起こしていた。</p>
+ *
+ * <p>guessBarcodeFormat はチェックディジット検証を行い、不正値は CODE128 に
+ * 安全フォールバックするため、描画失敗を原理的になくす。</p>
+ */
+watch(manualValue, (newVal) => {
+  // ユーザーが一度でも Select を操作した場合は自動上書きしない
+  if (userTouchedFormat.value) return
+
+  manualFormat.value = guessBarcodeFormat(newVal.trim())
+})
+
 // 画像読込タブの状態
 const imageError = ref(false)
 
-const SUPPORTED_FORMATS: BarcodeFormat[] = [
-  'CODE128',
-  'CODE39',
-  'EAN13',
-  'EAN8',
-  'JAN13',
-  'QR',
-  'PDF417',
-  'ITF',
-]
+// SUPPORTED_FORMATS を補足ラベル付きオブジェクト配列として computed 化する。
+// i18n の t() を使うことで多言語対応し、value（enum 文字列）を保持したまま
+// optionLabel に日本語補足付きのラベルを表示できる。
+const supportedFormatOptions = computed<{ label: string, value: BarcodeFormat }[]>(() => {
+  const codes: BarcodeFormat[] = [
+    'CODE128',
+    'CODE39',
+    'EAN13',
+    'EAN8',
+    'JAN13',
+    'QR',
+    'PDF417',
+    'ITF',
+  ]
+  return codes.map((code) => ({
+    label: t(`wallet.add.format_labels.${code}`),
+    value: code,
+  }))
+})
 
 /** zxing の BarcodeFormat enum → 本プロジェクトの BarcodeFormat 文字列に変換 */
 function mapZxingFormat(fmt: ZxingBarcodeFormat): BarcodeFormat {
@@ -222,22 +261,17 @@ onBeforeUnmount(stopCamera)
       </div>
 
       <div class="barcode-capture__btn-row">
-        <button
+        <Button
           v-if="!cameraActive"
-          type="button"
-          class="barcode-capture__btn barcode-capture__btn--primary"
+          :label="t('wallet.scan.start_camera')"
           @click="startCamera"
-        >
-          {{ t('wallet.scan.start_camera') }}
-        </button>
-        <button
+        />
+        <Button
           v-else
-          type="button"
-          class="barcode-capture__btn"
+          :label="t('wallet.scan.stop_camera')"
+          severity="secondary"
           @click="stopCamera"
-        >
-          {{ t('wallet.scan.stop_camera') }}
-        </button>
+        />
       </div>
 
       <p v-if="cameraError === 'denied'" class="barcode-capture__error" role="alert">
@@ -274,52 +308,55 @@ onBeforeUnmount(stopCamera)
 
     <!-- 手入力タブ -->
     <section v-else class="barcode-capture__section">
+      <!-- カメラ・画像読み取りを推奨するヒント。手入力は最終手段であることを案内。 -->
+      <p class="barcode-capture__hint">
+        {{ t('wallet.scan.manual_recommend_scan') }}
+      </p>
       <div class="barcode-capture__field">
         <label class="barcode-capture__label" for="bc-manual-value">
           {{ t('wallet.add.manual_input') }}
         </label>
-        <input
+        <InputText
           id="bc-manual-value"
           v-model="manualValue"
-          type="text"
-          class="barcode-capture__input"
+          class="w-full"
           :placeholder="t('wallet.add.manual_input_placeholder')"
           autocomplete="off"
           inputmode="numeric"
-        >
+        />
       </div>
       <div class="barcode-capture__field">
         <label class="barcode-capture__label" for="bc-manual-format">
           {{ t('wallet.add.manual_format') }}
         </label>
-        <select
+        <!-- optionLabel/optionValue を指定して補足ラベル付き選択肢を表示。
+             v-model="manualFormat" は BarcodeFormat 文字列（value）を保持。 -->
+        <Select
           id="bc-manual-format"
           v-model="manualFormat"
-          class="barcode-capture__input"
-        >
-          <option v-for="fmt in SUPPORTED_FORMATS" :key="fmt" :value="fmt">
-            {{ fmt }}
-          </option>
-        </select>
+          :options="supportedFormatOptions"
+          option-label="label"
+          option-value="value"
+          class="w-full"
+          @change="onFormatChange"
+        />
       </div>
-      <button
-        type="button"
-        class="barcode-capture__btn barcode-capture__btn--primary"
+      <Button
+        :label="t('wallet.add.manual_confirm')"
         :disabled="!manualValue.trim()"
+        class="w-full"
         @click="submitManual"
-      >
-        {{ t('wallet.add.next') }}
-      </button>
+      />
     </section>
 
     <!-- バーコード持たないカード用ボタン（タブ共通フッタ） -->
-    <button
-      type="button"
+    <Button
+      :label="t('wallet.add.no_barcode')"
+      severity="secondary"
+      text
       class="barcode-capture__no-barcode"
       @click="emitNoBarcode"
-    >
-      {{ t('wallet.add.no_barcode') }}
-    </button>
+    />
   </div>
 </template>
 
@@ -427,13 +464,6 @@ onBeforeUnmount(stopCamera)
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--p-text-muted-color, #6b7280);
-}
-.barcode-capture__input {
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  border-radius: 0.5rem;
-  background: var(--p-surface-0, #fff);
-  font-size: 0.9375rem;
 }
 .barcode-capture__file-label {
   display: inline-block;

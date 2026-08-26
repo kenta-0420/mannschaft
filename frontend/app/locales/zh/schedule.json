@@ -1,5 +1,18 @@
 {
   "schedule": {
+    "attendance": {
+      "yes": "出席",
+      "no": "缺席",
+      "maybe": "未定",
+      "respondSuccess": "已回复出勤",
+      "respondError": "回复出勤失败"
+    },
+    "list": {
+      "allDay": "全天",
+      "empty": "此期间没有日程",
+      "prevMonth": "上个月",
+      "nextMonth": "下个月"
+    },
     "common_delete": "删除",
     "description_label": "说明",
     "error_title_required": "标题为必填项",
@@ -11,19 +24,18 @@
     "reminder": {
       "label": "提醒",
       "add": "添加提醒",
-      "before": "前",
       "max_reached": "最多可设置5个提醒",
       "kind_label": "类型",
-      "kind_relative": "相对",
-      "kind_absolute": "绝对",
-      "unit_label": "单位",
-      "unit_minutes": "分钟",
-      "unit_hours": "小时",
-      "unit_days": "天",
+      "kind_relative": "活动开始前",
+      "kind_absolute": "指定日期时间",
       "relative_value_label": "数值",
       "absolute_at_label": "通知时间",
       "error_absolute_required": "请输入绝对提醒的日期和时间",
-      "error_past": "不能指定过去的日期和时间"
+      "error_past": "不能指定过去的日期和时间",
+      "preset_minutes_before": "{n}分钟前",
+      "preset_hours_before": "{n}小时前",
+      "preset_days_before": "{n}天前",
+      "preset_weeks_before": "{n}周前"
     },
     "scheduled_survey": {
       "label": "预约创建问卷",
@@ -67,6 +79,257 @@
       "cancel": "取消",
       "cancel_success": "已取消预约任务",
       "cancel_failed": "取消预约任务失败"
+    },
+    "attendanceTeamBreakdown": {
+      "toggleLabel": "按团队汇总",
+      "toggleHint": "按下属团队分别汇总出勤情况（仅限组织分发）。",
+      "title": "团队出勤明细",
+      "team": "团队",
+      "attending": "出席",
+      "partial": "部分参加",
+      "absent": "缺席",
+      "undecided": "未回答",
+      "total": "总计",
+      "totalNote": "总计为实际人数，团队明细为累计人数（跨团队成员在每个团队中各计一次）。",
+      "directMembers": "组织直属成员",
+      "reload": "重新加载",
+      "retry": "重试",
+      "exportCsv": "导出CSV",
+      "exportFailed": "导出CSV失败。",
+      "fetchFailed": "加载团队出勤明细失败。",
+      "forbidden": "您没有查看此明细的权限。",
+      "empty": "没有可用的团队出勤明细数据。"
+    },
+    "recurrence": {
+      "label": "重复",
+      "interval": {
+        "DAILY": "每天",
+        "WEEKLY": "每周",
+        "MONTHLY": "每月",
+        "YEARLY": "每年"
+      },
+      "days": {
+        "SUNDAY": "日",
+        "MONDAY": "一",
+        "TUESDAY": "二",
+        "WEDNESDAY": "三",
+        "THURSDAY": "四",
+        "FRIDAY": "五",
+        "SATURDAY": "六"
+      },
+      "end_label": "结束",
+      "end_never": "永不",
+      "end_date": "日期",
+      "end_count": "次数",
+      "end_count_suffix": "次"
+    },
+    "event_add": "添加日程",
+    "calendar_guide": {
+      "page_title": "我的日历",
+      "description": "我的日历让您在一个画面中查看个人日程以及所属团队和组织的日程。",
+      "what": {
+        "title": "什么是我的日历？",
+        "body": "在一个日历中显示您所属的所有团队、组织的日程和个人日程。可以在日历视图和甘特视图（TODO列表）之间切换。"
+      },
+      "add": {
+        "title": "添加日程",
+        "body": "点击「添加日程」按钮或点击日历上的日期即可创建日程。可以添加个人日程以及团队或组织日程。",
+        "step1": "点击右上角的「添加日程」或点击日期格",
+        "step2": "输入标题、日期/时间和地点",
+        "step3": "在「范围」中选择个人、团队或组织",
+        "step4": "点击「保存」完成"
+      },
+      "filter": {
+        "title": "筛选显示",
+        "body": "使用日历下方的按钮，可以单独切换显示范围（个人、团队、组织）。6个以上时可通过下拉菜单选择。",
+        "personal": "绿点：个人日程",
+        "team_org": "靛点：团队/组织日程"
+      },
+      "gantt": {
+        "title": "甘特视图（TODO列表）",
+        "body": "点击「甘特」选项卡，可以以甘特图形式显示有截止日期的TODO。与右上角的范围切换联动，可以切换个人、团队、组织的TODO。"
+      },
+      "detail": {
+        "title": "日程详情与出勤回复",
+        "body": "点击日历上的日程，右侧会显示详情面板。",
+        "item_edit": "使用铅笔图标编辑，使用垃圾桶图标删除",
+        "item_attendance": "有出勤确认的日程可选择「出席」、「缺席」或「未定」进行回复",
+        "item_match": "从团队日程中点击「记录这场比赛」按钮可开始比赛记录"
+      },
+      "google_sync": {
+        "title": "Google 日历联动",
+        "body": "关联 Google 账号后，可将个人日程与 Google 日历双向同步。在 Mannschaft 中添加或编辑的日程会反映到 Google 日历，Google 日历中的更改也会被导入。",
+        "step1": "打开「设置」→「Google Calendar 联动」",
+        "step2": "点击「连接 Google 账号」并授权",
+        "step3": "打开「个人日历」开关以启用同步",
+        "step4": "需要立即反映时，执行「手动同步」"
+      }
+    },
+    "google_sync_notice": "已连接 Google 日历。在 Google 中所做的更改将在您下次在此处保存时被 Mannschaft 的数据替换。",
+    "comment": {
+      "title": "评论",
+      "placeholder": "对此日程发表评论…",
+      "submit": "发布",
+      "cancel": "取消",
+      "save": "保存",
+      "reply": "回复",
+      "replyTo": "回复 {name}",
+      "showReplies": "显示其他 {count} 条回复",
+      "empty": "还没有评论",
+      "loadMore": "加载更多",
+      "edit": "编辑",
+      "edited": "（已编辑）",
+      "delete": "删除",
+      "deleteConfirm": "要删除这条评论吗？",
+      "deleted": "此评论已被删除",
+      "deletedAuthor": "已注销的用户",
+      "closed": "此日程的评论已关闭",
+      "cancelled": "无法对已取消的日程发表评论",
+      "updateSuccess": "评论已更新",
+      "deleteSuccess": "评论已删除",
+      "postSuccess": "评论已发布",
+      "settings": {
+        "enable": "允许评论",
+        "disable": "关闭评论",
+        "updateSuccess": "评论设置已更新"
+      },
+      "mention": {
+        "hint": "可以提及成员",
+        "empty": "没有匹配的成员"
+      },
+      "count": "{count} 条评论",
+      "error": {
+        "bodyRequired": "请输入评论内容",
+        "bodyTooLong": "评论不能超过 2000 个字符",
+        "maxDepth": "无法对该回复继续回复",
+        "closed": "评论已关闭",
+        "forbidden": "您没有执行此操作的权限",
+        "tooManyMentions": "最多只能提及 20 人",
+        "rateLimited": "发布过于频繁，请稍后再试",
+        "generic": "操作失败",
+        "notFound": "未找到该评论"
+      }
+    },
+    "targetAudience": {
+      "label": "日程对象",
+      "allMembers": "全体成员",
+      "selectMembers": "选择成员",
+      "memberPlaceholder": "选择对象成员",
+      "more": "另有{count}人",
+      "selectedCount": "已选择{count}人",
+      "invalidSelection": "请选择1至500名对象成员"
+    },
+    "memberColor": {
+      "column": "日程颜色",
+      "auto": "自动",
+      "reset": "恢复自动颜色",
+      "updated": "已更新成员日程颜色",
+      "resetDone": "已恢复成员日程自动颜色",
+      "updateFailed": "无法更新成员日程颜色",
+      "colorLabel": "{name}的日程颜色"
+    },
+    "todo_load_error": {
+      "summary": "TODO 加载失败",
+      "detail": "无法在日历上显示 TODO。日程仍然显示。请稍后重新加载。"
+    }
+  },
+  "scheduleKeep": {
+    "title": "キープ",
+    "subtitle": "日付が決まっていない予定を置いておく場所",
+    "empty": "まだ何もありません。思いついたことを書いてみましょう",
+    "form": {
+      "titleLabel": "やりたいこと",
+      "titlePlaceholder": "例: 夏合宿",
+      "memoLabel": "メモ（任意）",
+      "candidateDatesLabel": "候補日（任意）",
+      "submit": "キープする"
+    },
+    "action": {
+      "convert": "予定にする",
+      "convertFromCandidate": "この日に決める",
+      "pickDate": "日付を選ぶ",
+      "specifyTime": "時刻を指定する",
+      "archive": "見送る",
+      "restore": "もどす",
+      "revert": "予定を取り消す",
+      "reorder": "並び替え"
+    },
+    "status": {
+      "kept": "キープ中",
+      "scheduled": "予定になりました",
+      "archived": "見送り"
+    },
+    "filter": {
+      "kept": "キープ中",
+      "scheduled": "予定済み",
+      "archived": "見送り",
+      "all": "すべて"
+    },
+    "badge": {
+      "candidateCount": "候補日 {count} 件"
+    },
+    "origin": {
+      "label": "このキープから作られました",
+      "cancelled": "予定は中止になりました",
+      "deleted": "元の予定は削除されました"
+    },
+    "lockedHint": {
+      "scheduled": "予定になったので、内容の変更は予定側で行ってください",
+      "archived": "見送り中は編集できません。「もどす」と編集できます"
+    },
+    "notification": {
+      "converted": "「{title}」の日程が決まりました",
+      "created": "「{title}」がキープされました"
+    },
+    "confirm": {
+      "archive": "見送りにしますか？あとで戻せます"
+    },
+    "limit": {
+      "hint": "見送りにすると枠が空きます"
+    },
+    "help": {
+      "title": "キープの使い方",
+      "body": "日付が決まっていない予定をひとまず置いておける場所です。タイトルだけで作成でき、あとから候補日やメモを足せます。候補日が決まったらタップひとつでカレンダーの予定に変換できます。",
+      "create": {
+        "title": "キープする",
+        "body": "タイトルだけ入力すれば作成できます。候補日やメモは後からでも構いません。",
+        "steps": {
+          "step1": "やりたいことをタイトルに入力",
+          "step2": "必要なら候補日・メモを追加",
+          "step3": "「キープする」を押す"
+        }
+      },
+      "convert": {
+        "title": "予定に変換する",
+        "body": "候補日があれば1タップ、無くても日付を選ぶだけの2タップ以内で予定になります。",
+        "steps": {
+          "step1": "候補日バッジ、または「予定にする」を押す",
+          "step2": "候補日が無ければ日付を選ぶ",
+          "step3": "カレンダーに予定として反映される"
+        }
+      },
+      "organize": {
+        "title": "整理する",
+        "body": "見送ったキープは一覧から消えますが、いつでも「もどす」で復帰できます。並び替えもできます。",
+        "steps": {
+          "step1": "不要になったら「見送る」",
+          "step2": "「見送り」フィルタから「もどす」で復帰",
+          "step3": "ドラッグで並び替え"
+        }
+      }
+    },
+    "error": {
+      "notFound": "キープが見つかりません",
+      "titleRequired": "タイトルを入力してください",
+      "tooManyCandidateDates": "候補日は最大10件です",
+      "invalidCandidateDate": "候補日の形式が正しくありません",
+      "forbidden": "このキープを操作する権限がありません",
+      "notConvertible": "このキープは予定に変換できません",
+      "notEditable": "この状態では編集できません",
+      "revertBlockedByAttendance": "出欠の回答があるため変換を取り消せません",
+      "invalidStateTransition": "この操作はできません",
+      "limitExceeded": "キープの上限に達しました",
+      "invalidReorder": "並び替えの指定が正しくありません"
     }
   }
 }

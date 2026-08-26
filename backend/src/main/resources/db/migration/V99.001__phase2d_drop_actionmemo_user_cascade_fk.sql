@@ -1,0 +1,82 @@
+-- Phase 2-D: クロスドメインFK撤廃 第二陣D — actionmemo ドメインの user 親 CASCADE を撤廃
+--
+-- 1000万ユーザー耐久DB再構築 クロスドメインFK撤廃キャンペーン Phase 2-D。
+-- CLAUDE.md §1「クロスドメインFKは作らない」/ §2「CASCADE DELETE は同一ドメイン内のみ」原則に従い撤廃。
+--
+-- ━━━ 対象一覧（3件・すべて user 親 ON DELETE CASCADE のクロスドメインFK・actionmemo ドメイン）━━━
+--  1. action_memos              / fk_action_memos_user              (user_id → users CASCADE)
+--  2. action_memo_tags          / fk_action_memo_tags_user          (user_id → users CASCADE)
+--  3. user_action_memo_settings / fk_user_action_memo_settings_user (user_id → users CASCADE・PK=user_id)
+--
+-- ※ action_memos の以下2件は user CASCADE ではない（SET NULL）ため対象外（触らない・残す）:
+--    ・fk_action_memos_related_todo  (related_todo_id  → todos          ON DELETE SET NULL)
+--    ・fk_action_memos_timeline_post (timeline_post_id → timeline_posts ON DELETE SET NULL)
+--    これらクロスドメイン SET NULL は別陣（第三陣の SET NULL 領域）で扱う。
+--
+-- ━━━ なぜ安全か（退会フローでリスナーが先行削除＝CASCADE 冗長化）━━━
+--
+-- 退会フローは2段階モデル（CLAUDE.md「PII 消去のタイミング §13.12」）:
+--   ・退会受付直後: UserAnonymizedEvent 発火（即時匿名化）。
+--   ・退会受付から最大30日後: AccountPurgeService.purgeUser → users 物理削除 → AccountPurgedEvent 発火。
+--
+-- 本 migration と同時に投入する ActionMemoAnonymizationEventListener が、退会のたびに当該行を
+-- 「users 本体削除より前に」先行削除する。よって ON DELETE CASCADE が発火しうる
+-- 「30日後の users 物理削除」の時点では既に子行は存在せず、CASCADE は完全に冗長になる。
+-- この「リスナー先行削除 → CASCADE 冗長化 → FK 撤廃」は第一陣 notification・第二陣 pointcard / search と同一の論法。
+-- 参照整合性はアプリ層（リスナー）で保証する（CLAUDE.md §1）。
+--
+-- ━━━ なぜ即時/30日で削除タイミングを分けるか（§13.12 二層削除）━━━
+--
+--  ・action_memos（行動メモ本体）= 退会時【即時削除】（UserAnonymizedEvent 購読）:
+--      content（メモ本文）・mood・memo_date は「ユーザーが何をしたか」を表す行動ログ＝個人の内容（PII）。
+--      再設定で復旧する性質でもないため、GDPR Art.17 に照らし退会受付直後に即時消去する。
+--  ・action_memo_tags（タグマスタ）= 30日後の物理削除時【削除】（AccountPurgedEvent 購読）:
+--      タグはユーザーが意図的に作成した分類「設定」であり、退会撤回時に復元価値がある。
+--      30日撤回ウィンドウを保持してから削除する。
+--  ・user_action_memo_settings（1:1 設定）= 30日後の物理削除時【削除】（AccountPurgedEvent 購読）:
+--      mood 入力 ON/OFF・デフォルト投稿先・リマインド設定の個人設定で、退会撤回時に復元価値がある。
+--      PK=user_id の 1:1 設定であり、30日ウィンドウ保持後に削除する。
+--
+-- ━━━ 同一ドメイン内 FK の削除順（即時削除の整合性）━━━
+--
+-- action_memos / action_memo_tags を親とする actionmemo ドメイン内の中間テーブル
+-- action_memo_tag_links は「両方 ON DELETE CASCADE」:
+--   ・fk_amtl_memo (memo_id → action_memos      CASCADE)
+--   ・fk_amtl_tag  (tag_id  → action_memo_tags  CASCADE)
+-- リスナーが即時に action_memos を deleteAllByUserIdIncludingDeleted した時点で、
+-- link 行は memo_id 経由の同一ドメイン内 CASCADE により自動削除される（子→親の手動順序削除は不要）。
+-- これら link 側 FK は本 migration の対象外（撤廃しない＝同一ドメイン内 CASCADE は CLAUDE.md §2 で許可）。
+--
+-- 即時(action_memos) と 30日(action_memo_tags) で削除タイミングが分かれる点の整合:
+--   30日後に action_memo_tags を消す時点では、即時削除で action_memos が消えた際に
+--   link は memo_id CASCADE で全消去済み＝空。よって tag_id 経由 CASCADE は冗長であり、
+--   即時/30日の分割によるダングリング中間行は発生しない。
+--
+-- ━━━ index 状況（FK 撤廃後もバッキングインデックスが独立 index として残るか確認）━━━
+--
+-- 3件とも user_id を先頭に含む既存 index / PK が存在するため、撤廃後も index は残る → CREATE INDEX 追加不要。
+--   action_memos.user_id              : INDEX idx_am_user_date (user_id, memo_date, deleted_at, created_at) 既存（先頭=user_id）
+--                                       ＋ idx_am_user_created / idx_am_user_mood も先頭=user_id
+--   action_memo_tags.user_id          : UNIQUE KEY uq_amt_user_name (user_id, name, deleted_at) 既存（先頭=user_id）
+--                                       ＋ INDEX idx_amt_user_sort (user_id, sort_order) 既存（先頭=user_id）
+--   user_action_memo_settings.user_id : PRIMARY KEY (user_id)（PK でカバー）
+
+-- ===== action_memos（actionmemo ドメイン）=====
+-- fk_action_memos_user: user_id → users (CASCADE) クロスドメイン
+-- → 撤廃。行動メモ本体は退会即時（UserAnonymizedEvent）でリスナーが先行削除済み＝CASCADE 冗長。
+--   行動ログ（content / mood）の即時消去は GDPR Art.17 上の要請。
+--   related_todo_id → todos / timeline_post_id → timeline_posts（いずれも SET NULL）は対象外（残す）。
+-- INDEX idx_am_user_date 他（先頭=user_id）既存 → index 追加不要
+ALTER TABLE action_memos DROP FOREIGN KEY fk_action_memos_user;
+
+-- ===== action_memo_tags（actionmemo ドメイン）=====
+-- fk_action_memo_tags_user: user_id → users (CASCADE) クロスドメイン
+-- → 撤廃。タグマスタは退会30日後（AccountPurgedEvent）でリスナーが先行削除済み＝CASCADE 冗長。
+-- UNIQUE KEY uq_amt_user_name / INDEX idx_amt_user_sort (先頭=user_id) 既存 → index 追加不要
+ALTER TABLE action_memo_tags DROP FOREIGN KEY fk_action_memo_tags_user;
+
+-- ===== user_action_memo_settings（actionmemo ドメイン）=====
+-- fk_user_action_memo_settings_user: user_id → users (CASCADE) クロスドメイン・user_id は PK 兼 FK
+-- → 撤廃。1:1 設定は退会30日後（AccountPurgedEvent）でリスナーが先行削除済み＝CASCADE 冗長。
+-- PRIMARY KEY (user_id) が backing index を兼ねる → index 追加不要
+ALTER TABLE user_action_memo_settings DROP FOREIGN KEY fk_user_action_memo_settings_user;

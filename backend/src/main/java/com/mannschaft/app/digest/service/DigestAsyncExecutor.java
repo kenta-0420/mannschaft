@@ -1,6 +1,7 @@
 package com.mannschaft.app.digest.service;
 
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.digest.DigestProperties;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -12,6 +13,7 @@ import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,6 +41,8 @@ public class DigestAsyncExecutor {
     private final DigestAiProvider aiProvider;
     private final NotificationHelper notificationHelper;
     private final NameResolverService nameResolverService;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
     private final DigestProperties digestProperties;
 
     /**
@@ -118,8 +123,14 @@ public class DigestAsyncExecutor {
             // ダイジェスト生成完了通知（作成者に送信）
             NotificationScopeType notifScope = "TEAM".equals(scopeType)
                     ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
+            Locale completedLocale = Locale.forLanguageTag(userLocaleCache.getLocale(digest.getTriggeredBy()));
             notificationHelper.notify(digest.getTriggeredBy(), "DIGEST_COMPLETED",
-                    "ダイジェスト生成完了", "AIダイジェストの生成が完了しました。",
+                    messageSource.getMessage(
+                            "notification.digest.completed.title", null,
+                            "ダイジェスト生成完了", completedLocale),
+                    messageSource.getMessage(
+                            "notification.digest.completed.body", null,
+                            "AIダイジェストの生成が完了しました。", completedLocale),
                     "DIGEST", digestId, notifScope, scopeId,
                     "/digests/" + digestId, null);
 
@@ -142,9 +153,16 @@ public class DigestAsyncExecutor {
             if (failedDigest != null && failedDigest.getTriggeredBy() != null) {
                 NotificationScopeType notifScope = "TEAM".equals(scopeType)
                         ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
+                Locale failedLocale = Locale.forLanguageTag(
+                        userLocaleCache.getLocale(failedDigest.getTriggeredBy()));
                 notificationHelper.notify(failedDigest.getTriggeredBy(), "DIGEST_FAILED",
                         NotificationPriority.HIGH,
-                        "ダイジェスト生成失敗", "AIダイジェストの生成に失敗しました。再試行してください。",
+                        messageSource.getMessage(
+                                "notification.digest.failed.title", null,
+                                "ダイジェスト生成失敗", failedLocale),
+                        messageSource.getMessage(
+                                "notification.digest.failed.body", null,
+                                "AIダイジェストの生成に失敗しました。再試行してください。", failedLocale),
                         "DIGEST", digestId, notifScope, scopeId,
                         "/digests/" + digestId, null);
             }

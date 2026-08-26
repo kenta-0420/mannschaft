@@ -1,6 +1,7 @@
 package com.mannschaft.app.corkboard.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.corkboard.dto.CorkboardDetailResponse;
 import com.mannschaft.app.corkboard.dto.CorkboardResponse;
 import com.mannschaft.app.corkboard.dto.CreateCorkboardRequest;
@@ -26,6 +27,11 @@ import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 個人コルクボードコントローラー。
+ *
+ * <p>認可: 一覧・作成は認証ユーザー自身のスコープ（{@code owner_id = 認証主体}）で閉じる。
+ * boardId を受け取る詳細・更新・削除は {@code CorkboardAccessGuard#requireOwnedBoard} で
+ * <b>所有者本人のみ</b>に限定し、他者所有・不存在はいずれも 404（{@code CORKBOARD_001}）で
+ * 存在を秘匿する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/users/me/corkboards")
@@ -39,6 +45,8 @@ public class MyCorkboardController {
     /**
      * 個人ボード一覧を取得する。
      */
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（CorkboardService#listPersonalBoards）")
     @GetMapping
     @Operation(summary = "個人コルクボード一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -50,6 +58,8 @@ public class MyCorkboardController {
     /**
      * 個人ボードを作成する。
      */
+    @SelfScopedEndpoint("作成先は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（CorkboardService#createPersonalBoard）")
     @PostMapping
     @Operation(summary = "個人コルクボード作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")

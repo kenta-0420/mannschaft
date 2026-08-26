@@ -63,6 +63,16 @@ function cancelEdit() {
   editingTitle.value = ''
 }
 
+function handleInputKeydown(e: KeyboardEvent, memo: QuickMemoResponse) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    commitEdit(memo)
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    cancelEdit()
+  }
+}
+
 async function commitEdit(memo: QuickMemoResponse) {
   const next = editingTitle.value.trim()
   if (!next || next === memo.title) {
@@ -128,15 +138,21 @@ onMounted(load)
     refreshable
     @refresh="load"
   >
-    <p v-if="memos.length === 0" class="text-sm text-gray-500">
-      {{ t('quick_memo.dashboard_widget.empty') }}
-    </p>
+    <div v-if="memos.length === 0" class="flex flex-col gap-2">
+      <p class="text-sm text-gray-500">
+        {{ t('quick_memo.dashboard_widget.empty') }}
+      </p>
+      <p class="text-xs text-surface-400 dark:text-surface-500">
+        <i class="pi pi-info-circle mr-1" aria-hidden="true" />
+        {{ t('quick_memo.dashboard_widget.empty_hint') }}
+      </p>
+    </div>
 
     <ul v-if="memos.length > 0" class="space-y-2">
       <li
         v-for="memo in memos"
         :key="memo.id"
-        class="rounded border border-gray-200 dark:border-surface-700 px-2 py-1.5 text-sm"
+        class="rounded border-2 border-surface-300 dark:border-surface-600 px-2 py-1.5 text-sm"
       >
         <!-- タイトル行（クリックで編集モード） -->
         <div class="flex items-center gap-1">
@@ -146,8 +162,7 @@ onMounted(load)
               v-model="editingTitle"
               class="flex-1 text-sm"
               maxlength="200"
-              @keydown.enter.prevent="commitEdit(memo)"
-              @keydown.escape.prevent="cancelEdit"
+              @keydown="handleInputKeydown($event, memo)"
               @blur="commitEdit(memo)"
             />
           </template>

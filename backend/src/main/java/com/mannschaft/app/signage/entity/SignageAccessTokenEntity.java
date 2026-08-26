@@ -5,10 +5,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -20,8 +20,7 @@ import java.time.LocalDateTime;
 @Table(name = "signage_access_tokens")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class SignageAccessTokenEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -42,6 +41,9 @@ public class SignageAccessTokenEntity extends BaseEntity {
     @Column(columnDefinition = "JSON")
     private String allowedIps;
 
+    /** トークン有効期限。NULL は無期限。 */
+    private LocalDateTime expiredAt;
+
     private LocalDateTime lastAccessedAt;
 
     @Column(length = 45)
@@ -55,6 +57,19 @@ public class SignageAccessTokenEntity extends BaseEntity {
      */
     public void deactivate() {
         this.isActive = false;
+    }
+
+    /**
+     * 指定時刻において有効期限が満了しているかを判定する。
+     *
+     * <p>{@code expiredAt} が NULL のトークンは無期限であり、常に {@code false} を返す。
+     * 期限に到達した瞬間（{@code now == expiredAt}）は満了として扱う。</p>
+     *
+     * @param now 判定基準時刻
+     * @return 有効期限が満了していれば true
+     */
+    public boolean isExpired(LocalDateTime now) {
+        return expiredAt != null && !now.isBefore(expiredAt);
     }
 
     /**

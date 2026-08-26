@@ -24,7 +24,7 @@ const statusSeverity: Record<string, string> = {
 async function load() {
   loading.value = true
   try {
-    const res = await getMyPosts({ size: 5 })
+    const res = await getMyPosts({ size: 20 })
     posts.value = res.data
   } catch (error) {
     captureQuiet(error, { context: 'WidgetMyBlog: ブログ記事取得' })
@@ -56,7 +56,7 @@ onMounted(load)
         <div
           v-for="post in posts"
           :key="post.id"
-          class="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/50"
+          class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-surface-300 px-2 py-2 transition-colors hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700/50"
           @click="navigateTo(`/blog/posts/${post.id}/edit`)"
         >
           <div class="min-w-0 flex-1">
@@ -70,6 +70,11 @@ onMounted(load)
             :severity="statusSeverity[post.meta?.status ?? ''] ?? 'secondary'"
             rounded
           />
+        </div>
+        <div class="flex justify-end pt-1">
+          <NuxtLink to="/blog" class="text-sm text-primary hover:underline">
+            {{ $t('button.view_all') }}
+          </NuxtLink>
         </div>
       </div>
       <DashboardEmptyState v-else icon="pi pi-book" message="まだ記事がありません" />

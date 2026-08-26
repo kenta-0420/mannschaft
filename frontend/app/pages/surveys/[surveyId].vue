@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import type { SurveyDetailResponse } from '~/types/survey'
 import type { BulletinThreadResponse } from '~/types/bulletin'
+import type { QuestionDraft } from '~/components/survey/SurveyQuestionEditor.vue'
 import SurveyRespondentsList from '~/components/survey/SurveyRespondentsList.vue'
+import {
+  isResultWithheldForAnonymityPrivacy,
+  MIN_RESPONSES_FOR_ANONYMOUS_REALTIME_RESULTS,
+} from '~/utils/surveyResultPrivacy'
+import {
+  resolveSurveyDisplayMode,
+  shouldShowRespondCta,
+  type SurveyDisplayMode,
+} from '~/utils/surveyDisplayMode'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -14,7 +24,8 @@ const scopeType = (rawScope === 'TEAM' || rawScope === 'ORGANIZATION'
 const scopeId = String(route.query.scopeId ?? '')
 
 const { t } = useI18n()
-const { getSurvey, publishSurvey, closeSurvey, deleteSurvey } = useSurveyApi()
+const { getSurvey, publishSurvey, closeSurvey, deleteSurvey, addQuestion } =
+  useSurveyApi()
 const { getSurveyThread } = useSurveyBulletinThread()
 const { error: showError, success: showSuccess } = useNotification()
 const { confirmAction } = useConfirmDialog()
@@ -32,12 +43,50 @@ if (!scopeType || !scopeId || !Number.isFinite(surveyId)) {
 // scopeId が確定してから RoleAccess をロード
 const roleScope = scopeType === 'TEAM' ? 'team' : 'organization'
 const scopeTypeStrict = scopeType as 'TEAM' | 'ORGANIZATION'
-const { isAdmin, loadPermissions } = useRoleAccess(roleScope, scopeId)
+const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess(roleScope, scopeId)
 
 const survey = ref<SurveyDetailResponse['data'] | null>(null)
 const loading = ref(true)
 const fetchError = ref(false)
 const actionLoading = ref(false)
+
+// === DRAFTモード用: インライン設問追加 ===
+// SurveyQuestionEditor は QuestionDraft[] を v-model で扱うため、
+// DRAFT詳細画面でも同一エディタを再利用する。
+// 「設問を保存して公開」ボタン押下時に addQuestion を順次呼び出してから publish する。
+const draftQuestions = ref<QuestionDraft[]>([])
+const draftQuestionsSubmitting = ref(false)
+
+/** DRAFTの設問を一括保存 → publish する */
+async function onSaveQuestionsAndPublish() {
+  if (!survey.value) return
+  draftQuestionsSubmitting.value = true
+  try {
+    // 設問を順次追加。FE ドメイン形のまま渡し、BE 形への翻訳（questionType の enum 値・
+    // sortOrder → displayOrder）は useSurveyApi 側に集約している。
+    for (const q of draftQuestions.value) {
+      await addQuestion(scopeType as 'TEAM' | 'ORGANIZATION', scopeId, surveyId, {
+        questionText: q.questionText.trim(),
+        questionType: q.questionType,
+        isRequired: q.isRequired,
+        sortOrder: q.sortOrder,
+        options:
+          q.questionType !== 'TEXT' && q.questionType !== 'DATE' && q.options?.length
+            ? q.options.map((o) => ({ optionText: o.optionText.trim(), sortOrder: o.sortOrder }))
+            : undefined,
+      })
+    }
+    // 公開
+    await publishSurvey(scopeType as 'TEAM' | 'ORGANIZATION', scopeId, surveyId)
+    showSuccess(t('surveys.detail.publishSuccess'))
+    draftQuestions.value = []
+    await fetchDetail()
+  } catch {
+    showError(t('surveys.detail.publishFailed'))
+  } finally {
+    draftQuestionsSubmitting.value = false
+  }
+}
 
 const currentUserId = computed<number | null>(() => authStore.currentUser?.id ?? null)
 
@@ -61,6 +110,17 @@ const isCreator = computed(() => {
 
 /** ADMIN+（ADMIN または SYSTEM_ADMIN）の判定 */
 const isAdminPlus = computed(() => isAdmin.value)
+
+/**
+ * F05.4 (B) チーム別内訳パネルの表示ガード。
+ *
+ * 出欠側（EventDetailPanel の AttendanceTeamBreakdownPanel ガード = isAdminOrDeputy）および
+ * BE 認可（checkAdminOrAbove = ADMIN/DEPUTY_ADMIN 許可）と判定を一致させる。
+ * isAdminPlus（DEPUTY 除外）のままだと DEPUTY 組織管理者がアンケ内訳パネルだけ
+ * 見られない過小露出（漏洩でなく UX 欠落）になるため DEPUTY を含める。
+ * MEMBER/SUPPORTER/GUEST は引き続き非表示（漏洩を新たに作らない）。
+ */
+const canViewTeamBreakdown = computed(() => isAdminOrDeputy.value)
 
 /** 回答者セクションの開閉状態（初期は閉じた状態） */
 const showRespondents = ref(false)
@@ -93,22 +153,99 @@ const canViewResults = computed(() => {
   }
 })
 
-/** 表示モード判定 */
-type DisplayMode = 'response' | 'results' | 'closed-no-permission' | 'draft'
-const displayMode = computed<DisplayMode>(() => {
+/**
+ * 匿名＋リアルタイム公開かつ少数回答のとき、集計結果を伏せるか。
+ *
+ * 設計書 docs/features/F05.4_survey_vote.md §6 セキュリティ考慮事項の
+ * 「匿名 + リアルタイム結果のプライバシー制限」に準拠（判定と閾値は
+ * utils/surveyResultPrivacy.ts に集約。閾値は将来調整可能）。
+ *
+ * 権限（canViewResults）とは別軸のガードである。権限があっても、少数回答の匿名アンケートでは
+ * 「自分が回答した直後の集計の動き」から他人の回答が推測できてしまうため伏せる。
+ */
+const resultsWithheldForPrivacy = computed(() =>
+  isResultWithheldForAnonymityPrivacy({
+    isAnonymous: survey.value?.policy?.isAnonymous ?? false,
+    resultsVisibility: survey.value?.policy?.resultsVisibility,
+    responseCount: survey.value?.stats?.responseCount ?? 0,
+  }),
+)
+
+/**
+ * 自分が回答済みか。
+ *
+ * SurveyResponseForm へ `already-responded` として渡している既存の判定をそのまま使う
+ * （新しい仕組みを作らない）。実 BE は hasResponded を返さないため、useSurveyApi が
+ * 「自分の回答」の有無から導出して詰めている。
+ */
+const hasResponded = computed(
+  () => (survey.value as SurveyDetailResponse['data'] | null)?.hasResponded ?? false,
+)
+
+/**
+ * サーバーが結果閲覧を拒否するか。
+ *
+ * `canViewResults` は `ALL_MEMBERS` を無条件に真とする FE の楽観判定だが、BE は `ALWAYS` の
+ * 閲覧範囲を配信母集団に限定している（設計書 L107-112）。`TARGETED` の名簿外や
+ * `includeSupporters=false` で除外された SUPPORTER には、結果パネルと回答導線が出るのに
+ * BE が拒否する「押せるのに必ず失敗する導線」が出てしまう。
+ *
+ * Issue #2779: 以前は結果取得を1回余分に叩き 403 かどうかで判定していた（403 プローブ）。
+ * 現在は詳細応答の `viewerCanViewResults` を見る。この値は BE が 403 を投げるのと
+ * **同じ判定点**から得ているため、プローブと結果が一致する。
+ *
+ * **フラグが欠けている応答は fail-closed（不可視）に倒す。** `true` のときだけ可視とし、
+ * `false` も `undefined` も `null` も拒否として扱う。
+ *
+ * かつては「明示的な `false` のときだけ拒否」という寛容な判定にしていたが、それが正しかったのは
+ * **403 プローブという裏付けがあった時代**である。プローブは実際に結果取得を叩いて 403 を見ていたので、
+ * フラグが無くても判断材料そのものは存在した。プローブを撤去した今、フラグが欠けた応答には
+ * **判断材料が一つも無い**。材料が無いまま許可へ倒せば、配信対象外の利用者にも結果パネルと
+ * 回答導線が出て「押せるのに必ず失敗する導線」が復活する。
+ *
+ * このリポジトリの可視性は fail-closed が原則であり、`viewerCanViewResults` は BE が必ず設定する
+ * 契約になった。よって欠けている応答は異常であり、異常時に許可へ倒すのは誤りである。
+ * ただし過度に神経質な表示（エラー扱い・再試行導線）にはせず、単に見せないだけに留める。
+ */
+const resultsForbidden = computed(
+  () => (survey.value as SurveyDetailResponse['data'] | null)?.viewerCanViewResults !== true,
+)
+
+/** 回答フォームへ移る。 */
+function goToResponseForm() {
+  responseRequested.value = true
+}
+
+/**
+ * 結果画面の回答導線が押されたか。
+ *
+ * ALL_MEMBERS は「未回答 MEMBER も結果画面に直接遷移できる」のが仕様のため、
+ * 結果画面を出したうえで、そこから回答フォームへ移れるようにする。
+ */
+const responseRequested = ref(false)
+
+/** 結果画面に回答導線を出すか（未回答、または複数回答可で回答済み）。 */
+const showRespondCta = computed(() =>
+  shouldShowRespondCta({
+    status: survey.value?.status,
+    hasResponded: hasResponded.value,
+    allowMultipleSubmissions: survey.value?.policy?.allowMultipleSubmissions ?? false,
+  }),
+)
+
+/** 表示モード判定（優先順位は utils/surveyDisplayMode.ts の純関数に集約） */
+const displayMode = computed<SurveyDisplayMode>(() => {
   const s = survey.value
   if (!s) return 'response'
-  // DRAFT は作成者・ADMIN+ 向けのプレビュー画面
-  if (s.status === 'DRAFT') return 'draft'
-  // 設計書 docs/features/F05.4_survey_vote.md L1377〜「結果閲覧権限の判定」に準拠:
-  // 結果閲覧権限 (canViewResults) を持つユーザーは、回答可否より優先して結果画面を表示する。
-  // ALL_MEMBERS（誰でも閲覧可）の場合、未回答 MEMBER も結果画面に直接遷移できる。
-  if (canViewResults.value) return 'results'
-  // 結果閲覧不可の場合のフォールバック分岐。
-  // PUBLISHED: 未回答も回答済みも 'response'（SurveyResponseForm 側で「回答済み」表示へ）。
-  if (s.status === 'PUBLISHED') return 'response'
-  // CLOSED かつ結果閲覧権限なし → 非公開メッセージ。
-  return 'closed-no-permission'
+  return resolveSurveyDisplayMode({
+    status: s.status,
+    canViewResults: canViewResults.value,
+    resultsWithheldForPrivacy: resultsWithheldForPrivacy.value,
+    hasResponded: hasResponded.value,
+    allowMultipleSubmissions: s.policy?.allowMultipleSubmissions ?? false,
+    responseRequested: responseRequested.value,
+    resultsForbidden: resultsForbidden.value,
+  })
 })
 
 function statusClass(status: string): string {
@@ -205,7 +342,8 @@ function onDelete() {
 }
 
 async function onSubmitted() {
-  // 回答送信成功 → 詳細を再取得して表示モードを更新
+  // 回答送信成功 → 結果画面へ戻し、詳細を再取得して表示モードを更新
+  responseRequested.value = false
   await fetchDetail()
 }
 
@@ -223,8 +361,6 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto max-w-3xl p-4" data-testid="survey-detail-page">
-    <BackButton :to="scopeListPath" />
-
     <!-- ローディング -->
     <PageLoading v-if="loading" />
 
@@ -240,7 +376,7 @@ onMounted(async () => {
 
     <template v-else>
       <!-- ヘッダー -->
-      <PageHeader :title="survey.content?.title ?? ''" size="sm">
+      <PageHeader :title="survey.content?.title ?? ''" size="sm" :back-to="scopeListPath">
         <span :class="statusClass(survey.status)" class="rounded px-2 py-0.5 text-xs font-medium" data-testid="survey-detail-status">
           {{ t(`surveys.statusLabel.${survey.status}`) }}
         </span>
@@ -305,30 +441,61 @@ onMounted(async () => {
       <!-- DRAFT -->
       <div
         v-if="displayMode === 'draft'"
-        class="rounded-lg border border-surface-200 bg-surface-50 p-6 dark:border-surface-700 dark:bg-surface-800"
+        class="flex flex-col gap-4"
         data-testid="survey-mode-draft"
       >
-        <p class="mb-4 text-sm text-surface-600 dark:text-surface-300">
-          <i class="pi pi-info-circle mr-1" />
-          {{ t('surveys.detail.draftHint') }}
-        </p>
-        <div v-if="isCreator || isAdminPlus" class="flex flex-wrap gap-2">
-          <Button
-            :label="t('surveys.detail.publishButton')"
-            icon="pi pi-send"
-            :loading="actionLoading"
-            data-testid="survey-publish-button"
-            @click="onPublish"
-          />
-          <Button
-            :label="t('surveys.detail.deleteButton')"
-            icon="pi pi-trash"
-            severity="danger"
-            outlined
-            :loading="actionLoading"
-            data-testid="survey-delete-button"
-            @click="onDelete"
-          />
+        <!-- ステータスバナー -->
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-700/40 dark:bg-amber-900/10">
+          <p class="mb-2 text-sm text-amber-700 dark:text-amber-200">
+            <i class="pi pi-info-circle mr-1" />
+            {{ t('surveys.detail.draftHint') }}
+          </p>
+          <p class="text-xs text-amber-600 dark:text-amber-300">
+            {{ t('surveys.detail.draftAddQuestionsHint') }}
+          </p>
+        </div>
+
+        <!-- 作成者・ADMIN+: 設問追加 & 公開 -->
+        <div v-if="isCreator || isAdminPlus">
+          <!-- インライン設問エディタ -->
+          <div class="mb-4 rounded-lg border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+            <p class="mb-3 text-sm font-medium text-surface-700 dark:text-surface-200">
+              {{ t('surveys.detail.draftQuestionsSection') }}
+            </p>
+            <SurveyQuestionEditor v-model="draftQuestions" />
+          </div>
+
+          <!-- 操作ボタン群 -->
+          <div class="flex flex-wrap gap-2">
+            <!-- 設問を追加して公開（設問が1つ以上あるときに強調） -->
+            <Button
+              v-if="draftQuestions.length > 0"
+              :label="t('surveys.detail.publishButton')"
+              icon="pi pi-send"
+              :loading="draftQuestionsSubmitting"
+              data-testid="survey-publish-with-questions-button"
+              @click="onSaveQuestionsAndPublish"
+            />
+            <!-- 設問なしでそのまま公開（設問ゼロでも可、グレー強調） -->
+            <Button
+              :label="t('surveys.detail.publishButton')"
+              icon="pi pi-send"
+              :severity="draftQuestions.length > 0 ? 'secondary' : 'primary'"
+              :outlined="draftQuestions.length > 0"
+              :loading="actionLoading || draftQuestionsSubmitting"
+              data-testid="survey-publish-button"
+              @click="onPublish"
+            />
+            <Button
+              :label="t('surveys.detail.deleteButton')"
+              icon="pi pi-trash"
+              severity="danger"
+              outlined
+              :loading="actionLoading || draftQuestionsSubmitting"
+              data-testid="survey-delete-button"
+              @click="onDelete"
+            />
+          </div>
         </div>
       </div>
 
@@ -336,7 +503,7 @@ onMounted(async () => {
       <SurveyResponseForm
         v-else-if="displayMode === 'response'"
         :survey="survey"
-        :already-responded="(survey as SurveyDetailResponse['data']).hasResponded ?? false"
+        :already-responded="hasResponded"
         :allow-multiple="survey.policy?.allowMultipleSubmissions ?? false"
         data-testid="survey-mode-response"
         @submitted="onSubmitted"
@@ -353,7 +520,73 @@ onMounted(async () => {
         v-else-if="displayMode === 'results'"
         data-testid="survey-mode-results"
       >
+        <!-- ALL_MEMBERS は未回答者も結果画面に直接来るため、ここから回答できる導線が要る。
+             これが無いと未回答者が結果画面に固定され、UI から回答を集めきれない。 -->
+        <div
+          v-if="showRespondCta"
+          class="mb-4 flex justify-end"
+        >
+          <Button
+            :label="
+              hasResponded
+                ? t('surveys.results.editResponseCta')
+                : t('surveys.results.respondCta')
+            "
+            icon="pi pi-pencil"
+            data-testid="survey-respond-cta"
+            @click="goToResponseForm"
+          />
+        </div>
         <SurveyResultsPanel :survey-id="survey.id" />
+      </div>
+
+      <!-- 匿名＋リアルタイム＋少数回答のプライバシーガード（設計書 §6）。
+           権限はあるが集計を伏せる状態。黙って空にせず理由を明示する。 -->
+      <div
+        v-else-if="displayMode === 'results-withheld-privacy'"
+        class="flex flex-col items-center gap-2 rounded-lg border border-surface-300 bg-surface-50 p-8 text-center dark:border-surface-600 dark:bg-surface-800/60"
+        data-testid="survey-mode-results-withheld-privacy"
+      >
+        <i class="pi pi-shield text-3xl text-surface-400" />
+        <p class="text-sm font-medium text-surface-700 dark:text-surface-100">
+          {{ t('surveys.results.withheldForPrivacy.title') }}
+        </p>
+        <p class="text-sm text-surface-500 dark:text-surface-300">
+          {{
+            t('surveys.results.withheldForPrivacy.description', {
+              threshold: MIN_RESPONSES_FOR_ANONYMOUS_REALTIME_RESULTS,
+              count: survey.stats?.responseCount ?? 0,
+            })
+          }}
+        </p>
+        <!-- 集計は伏せていても回答（および複数回答可なら修正）はできる -->
+        <Button
+          v-if="showRespondCta"
+          :label="
+            hasResponded ? t('surveys.results.editResponseCta') : t('surveys.results.respondCta')
+          "
+          icon="pi pi-pencil"
+          class="mt-2"
+          data-testid="survey-respond-cta"
+          @click="goToResponseForm"
+        />
+      </div>
+
+      <!-- 配信対象外（サーバーが結果閲覧を拒否）。
+           FE の楽観判定で結果パネルや回答導線を出すと「押せるのに必ず失敗する」ため、
+           黙って空にせず権限が無いことを明示する。 -->
+      <div
+        v-else-if="displayMode === 'results-forbidden'"
+        class="flex flex-col items-center gap-2 rounded-lg border border-surface-300 bg-surface-50 p-8 text-center dark:border-surface-600 dark:bg-surface-800/60"
+        data-testid="survey-mode-results-forbidden"
+      >
+        <i class="pi pi-lock text-3xl text-surface-400" />
+        <p class="text-sm font-medium text-surface-700 dark:text-surface-100">
+          {{ t('surveys.results.forbidden.title') }}
+        </p>
+        <p class="text-sm text-surface-500 dark:text-surface-300">
+          {{ t('surveys.results.forbidden.description') }}
+        </p>
       </div>
 
       <!-- 結果非公開（締切＆権限なし） -->
@@ -367,6 +600,22 @@ onMounted(async () => {
           {{ t('surveys.detail.closedNoPermission') }}
         </p>
       </div>
+
+      <!-- F05.4 (B) チーム別内訳（組織スコープ + ADMIN/DEPUTY_ADMIN）。
+           認可は BE 側 org-ADMIN+ 限定 EP。ここでは出し分けの一次フィルタとして
+           組織スコープ + canViewTeamBreakdown（出欠側・BE 認可と一致した DEPUTY 含む判定）を
+           要求する（403 時はパネル内で明示表示）。 -->
+      <section
+        v-if="canViewTeamBreakdown && scopeType === 'ORGANIZATION'"
+        class="mt-6"
+        data-testid="survey-team-breakdown-section"
+      >
+        <Card>
+          <template #content>
+            <SurveyTeamBreakdownPanel :survey-id="survey.id" />
+          </template>
+        </Card>
+      </section>
 
       <!-- 回答者セクション（作成者 or ADMIN+ のみ） -->
       <section

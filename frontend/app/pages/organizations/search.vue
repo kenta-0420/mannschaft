@@ -13,7 +13,7 @@ const notification = useNotification()
 const followedOrgIds = ref<string[]>([])
 const followingOrgIds = ref<string[]>([])
 
-const myOrgPublicIds = computed(() => new Set(orgStore.myOrganizations.map((org) => org.publicId)))
+const myOrgSlugs = computed(() => new Set(orgStore.myOrganizations.map((org) => org.slug)))
 
 async function followOrg(orgId: string, event: Event) {
   event.stopPropagation()
@@ -29,18 +29,21 @@ async function followOrg(orgId: string, event: Event) {
   }
 }
 
-interface OrgSummary {
+/** 組織検索 API レスポンス内の1件分（URLルーティングに必要な slug を含む）。 */
+interface OrgSearchItem {
   id: string
+  /** 組織スラッグ（URLルーティング用）。{@code /organizations/{slug}} に使用する。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null
   prefecture: string | null
   city: string | null
+  orgType: string
   memberCount: number
   supporterEnabled: boolean
 }
-
-const organizations = ref<OrgSummary[]>([])
+const organizations = ref<OrgSearchItem[]>([])
 const loading = ref(false)
 const totalRecords = ref(0)
 const currentPage = ref(0)
@@ -86,8 +89,8 @@ function onPageChange(event: { page: number }) {
   fetchOrganizations()
 }
 
-function onOrgCreated(entity: { id: number; publicId: string; name: string }) {
-  navigateTo(`/organizations/${entity.publicId}`)
+function onOrgCreated(entity: { id: string; name: string; slug: string }) {
+  navigateTo(`/organizations/${entity.slug}`)
 }
 
 function formatLocation(prefecture: string | null, city: string | null): string {
@@ -108,8 +111,7 @@ onMounted(() => {
 <template>
   <div class="mx-auto max-w-6xl p-6">
     <div class="mb-6 flex items-center gap-4">
-      <BackButton to="/organizations" />
-      <PageHeader :title="$t('orgHub.searchPageTitle')" class="flex-1" />
+      <PageHeader :title="$t('orgHub.searchPageTitle')" back-to="/organizations" class="flex-1" />
       <Button
         :label="$t('orgHub.createOrg')"
         icon="pi pi-plus"
@@ -140,7 +142,7 @@ onMounted(() => {
           v-for="org in organizations"
           :key="org.id"
           class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/organizations/${org.id}`)"
+          @click="org.slug ? navigateTo(`/organizations/${org.slug}`) : undefined"
         >
           <div class="mb-3 flex items-center gap-3">
             <Avatar
@@ -160,11 +162,11 @@ onMounted(() => {
             <span><i class="pi pi-users mr-1" />{{ $t('orgHub.memberCount', { count: org.memberCount }) }}</span>
           </div>
           <div
-            v-if="org.supporterEnabled && !myOrgPublicIds.has(org.id)"
+            v-if="org.supporterEnabled && !myOrgSlugs.has(org.slug)"
             class="mt-3 border-t border-surface-100 pt-3"
           >
             <span
-              v-if="followedOrgIds.includes(org.id)"
+              v-if="followedOrgIds.includes(org.slug)"
               class="flex items-center gap-1 text-sm text-primary"
             >
               <i class="pi pi-heart-fill" />{{ $t('orgHub.supporterRegistered') }}
@@ -177,8 +179,8 @@ onMounted(() => {
               severity="secondary"
               outlined
               class="w-full"
-              :loading="followingOrgIds.includes(org.id)"
-              @click="followOrg(org.id, $event)"
+              :loading="followingOrgIds.includes(org.slug)"
+              @click="followOrg(org.slug, $event)"
             />
           </div>
         </div>

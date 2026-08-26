@@ -17,28 +17,28 @@ public enum FileSharingErrorCode implements ErrorCode {
     /** ファイルが見つからない */
     FILE_NOT_FOUND("FILE_SHARING_002", "ファイルが見つかりません", Severity.WARN),
 
-    /** ファイルバージョンが見つからない */
+    /** ファイルバージョンが見つからない（IDOR 秘匿 → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     VERSION_NOT_FOUND("FILE_SHARING_003", "ファイルバージョンが見つかりません", Severity.WARN),
 
-    /** 権限が見つからない */
+    /** 権限が見つからない（IDOR 秘匿 → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     PERMISSION_NOT_FOUND("FILE_SHARING_004", "権限が見つかりません", Severity.WARN),
 
-    /** スターが見つからない */
+    /** スターが見つからない（IDOR 秘匿 → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     STAR_NOT_FOUND("FILE_SHARING_005", "スターが見つかりません", Severity.WARN),
 
-    /** コメントが見つからない */
+    /** コメントが見つからない（IDOR 秘匿 → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     COMMENT_NOT_FOUND("FILE_SHARING_006", "コメントが見つかりません", Severity.WARN),
 
     /** 共有リンクが見つからない */
     LINK_NOT_FOUND("FILE_SHARING_007", "共有リンクが見つかりません", Severity.WARN),
 
-    /** タグが見つからない */
+    /** タグが見つからない（IDOR 秘匿 → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     TAG_NOT_FOUND("FILE_SHARING_008", "タグが見つかりません", Severity.WARN),
 
-    /** スター重複 */
+    /** スター重複（状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     STAR_ALREADY_EXISTS("FILE_SHARING_009", "既にスター済みです", Severity.WARN),
 
-    /** タグ重複 */
+    /** タグ重複（状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     TAG_ALREADY_EXISTS("FILE_SHARING_010", "同名のタグが既に付与されています", Severity.WARN),
 
     /** 共有リンク期限切れ */
@@ -47,17 +47,58 @@ public enum FileSharingErrorCode implements ErrorCode {
     /** 共有リンクパスワード不正 */
     LINK_PASSWORD_INVALID("FILE_SHARING_012", "パスワードが正しくありません", Severity.WARN),
 
-    /** フォルダ名重複 */
+    /** フォルダ名重複（状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     FOLDER_NAME_DUPLICATE("FILE_SHARING_013", "同名のフォルダが既に存在します", Severity.WARN),
 
     /** ファイルサイズ超過 */
-    FILE_SIZE_EXCEEDED("FILE_SHARING_014", "ファイルサイズの上限を超えています", Severity.ERROR),
+    FILE_SIZE_EXCEEDED("FILE_SHARING_014", "ファイルサイズの上限を超えています", Severity.WARN),
 
     /** 権限不足 */
     INSUFFICIENT_PERMISSION("FILE_SHARING_015", "この操作を実行する権限がありません", Severity.WARN),
 
     /** ストレージクォータ超過 */
-    STORAGE_QUOTA_EXCEEDED("FILE_SHARING_016", "ストレージ使用量の上限に達しています", Severity.WARN);
+    STORAGE_QUOTA_EXCEEDED("FILE_SHARING_016", "ストレージ使用量の上限に達しています", Severity.WARN),
+
+    /**
+     * ダウンロード禁止（C: download_disabled）。
+     *
+     * <p>フォルダ／ファイルに DL 禁止フラグが立っている場合、DL URL 発行（presignDownload）を拒否する。
+     * <b>設計上の限界</b>: ブラウザで表示できる以上、完全なダウンロード防止は原理的に不可能。本フラグは
+     * DL ボタン抑止＋DL URL 発行拒否による<b>運用上の抑止</b>であり、完全防止ではない。</p>
+     *
+     * <p>HTTP は 403（{@link com.mannschaft.app.common.GlobalExceptionHandler} で FILE_SHARING_017 →
+     * FORBIDDEN を明示登録）。閲覧（メタ／一覧／詳細）は通し、DL URL 発行のみ拒否する。</p>
+     */
+    DOWNLOAD_DISABLED("FILE_SHARING_017", "このファイルはダウンロードが禁止されています", Severity.WARN),
+
+    /**
+     * PR-D: 公開リンクが手動失効している（is_active=false）。
+     *
+     * <p>発行者がリンクを無効化した場合、以降のアクセスを拒否する。HTTP は 410 Gone
+     * （{@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録）。意図的に無効化された
+     * リソースは「もう存在しない」セマンティクスの 410 が適切（期限切れ LINK_EXPIRED と同じ扱い）。</p>
+     */
+    LINK_INACTIVE("FILE_SHARING_018", "この共有リンクは無効化されています", Severity.WARN),
+
+    /**
+     * PR-D: 公開リンクにダウンロードが許可されていない（download_allowed=false）。
+     *
+     * <p>マスター確定仕様で公開リンクは既定「閲覧のみ」。DL URL 発行はリンク発行時に明示オプトインした
+     * リンクのみ許す。未許可リンクで download-url を叩くと 403 Forbidden
+     * （{@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録）。
+     * なお download_allowed=true でもファイル/フォルダの download_disabled（C）が true なら
+     * {@link #DOWNLOAD_DISABLED}（C 優先）で拒否される。</p>
+     */
+    LINK_DOWNLOAD_NOT_ALLOWED("FILE_SHARING_019", "この共有リンクではダウンロードできません", Severity.WARN),
+
+    /**
+     * PR-D: 公開リンク発行時の有効期限が不正（未指定・過去・30日超）。
+     *
+     * <p>マスター確定仕様で expires_at は必須・最大30日。無期限リンクは不可。未指定 / 過去 / 30日超で
+     * 発行しようとすると 400 Bad Request（Severity.WARN の既定マッピング）。</p>
+     */
+    LINK_EXPIRY_INVALID("FILE_SHARING_020",
+            "共有リンクの有効期限は必須で、最大30日先まで指定できます", Severity.WARN);
 
     private final String code;
     private final String message;

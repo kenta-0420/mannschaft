@@ -46,21 +46,21 @@ describe('useAdDeliveriesApi', () => {
   })
 
   it('ADV-API-003: createReport は POST /api/v1/me/ad-reports に body を渡す', async () => {
+    // F09.19.9: レスポンスは { id, status, createdAt }（BE 契約）
     mockFetch.mockResolvedValueOnce({
       data: {
         id: 'rep-1',
-        campaignId: 'cmp-1',
-        userId: 1,
-        reason: 'MISLEADING',
-        detail: '誇大',
+        status: 'NEW',
         createdAt: '2026-05-17T00:00:00Z',
       },
     })
     const api = useAdDeliveriesApi()
+    // F09.19.9: リクエストは XOR（campaignId / operationalCampaignId）+ channelType + reasonCode + comment
     const body = {
       campaignId: 'cmp-1',
-      reason: 'MISLEADING' as const,
-      detail: '誇大',
+      channelType: 'BANNER' as const,
+      reasonCode: 'MISLEADING' as const,
+      comment: '誇大',
     }
     await api.createReport(body)
 

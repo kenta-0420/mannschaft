@@ -229,13 +229,19 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             return Set.of();
         }
 
-        // 2) 必要スコープを集計（直接所属判定 / ORGANIZATION_WIDE 親解決）。
+        // 2) 必要スコープを集計（直接所属判定 / ORGANIZATION_WIDE 親解決 / 新段 下向き再帰）。
         Set<ScopeKey> directScopes = collectDirectScopes(rows);
         Set<ScopeKey> orgWideScopes = collectOrgWideScopes(rows);
+        Set<ScopeKey> descendantScopes = collectDescendantScopes(rows);
 
         // 3) snapshot 構築（最大 SQL 5、SystemAdmin なら SQL 1）。
-        UserScopeRoleSnapshot snapshot = membershipBatchQueryService
-                .snapshotForUser(viewerUserId, directScopes, orgWideScopes);
+        //    新段スコープが無ければ従来 3 引数版に委譲し SQL・挙動を完全に保存する。
+        UserScopeRoleSnapshot snapshot = buildSnapshot(
+                viewerUserId, directScopes, orgWideScopes, descendantScopes);
+
+        // 3.5) 追加軸がスナップショット外の情報を要する場合の一括取得（バッチ全体で 1 回）。
+        //      これをループ内で行うと件数比例の N+1 になり §9 の SQL 本数上限に反する。
+        Object additionalAxisContext = prepareAdditionalAxisContext(rows, viewerUserId);
 
         // 4) 各 row の判定（DB アクセスなし、純メモリ）。
         Set<Long> result = new HashSet<>();
@@ -256,7 +262,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
                 result.add(row.id());
                 continue;
             }
-            if (!visibleByVisibility(row, viewerUserId, snapshot)) {
+            if (!visibleByVisibility(row, viewerUserId, snapshot, additionalAxisContext)) {
                 continue;
             }
             result.add(row.id());
@@ -295,8 +301,9 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         // 2) snapshot 構築
         Set<ScopeKey> directScopes = collectDirectScopes(rows);
         Set<ScopeKey> orgWideScopes = collectOrgWideScopes(rows);
-        UserScopeRoleSnapshot snapshot = membershipBatchQueryService
-                .snapshotForUser(viewerUserId, directScopes, orgWideScopes);
+        Set<ScopeKey> descendantScopes = collectDescendantScopes(rows);
+        UserScopeRoleSnapshot snapshot = buildSnapshot(
+                viewerUserId, directScopes, orgWideScopes, descendantScopes);
 
         // 3) status ガード
         if (!visibleByStatus(row, viewerUserId, snapshot)) {
@@ -343,7 +350,10 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         }
 
         // 5) visibility ガード
-        boolean allowed = visibleByVisibility(row, viewerUserId, snapshot);
+        //    単票経路でも filterAccessible と同一の追加軸コンテキストを用いる（判定の一貫性）。
+        //    rows は 1 件なので一括取得のクエリ本数は従来（行ごと 1 本）と変わらない。
+        boolean allowed = visibleByVisibility(
+                row, viewerUserId, snapshot, prepareAdditionalAxisContext(rows, viewerUserId));
         DenyReason denyReason = allowed ? null : classifyDenyReason(level, row, viewerUserId, snapshot);
         VisibilityDecision decision = decisionWithLevel(allowed, contentId, denyReason, level, null);
         recordAudit(decision, viewerUserId);
@@ -388,6 +398,12 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
      * 即 true を返し、9 値の評価をスキップする。</p>
      */
     private boolean visibleByVisibility(P row, Long viewerUserId, UserScopeRoleSnapshot snapshot) {
+        return visibleByVisibility(row, viewerUserId, snapshot, null);
+    }
+
+    /** 追加軸コンテキスト付きの visibility 評価（バッチ経路から使う）。 */
+    private boolean visibleByVisibility(
+            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, Object additionalAxisContext) {
         // §15 D-13: SystemAdmin 高速パス（実存確認済の row に対して短絡）
         if (snapshot.isSystemAdmin()) {
             return true;
@@ -413,6 +429,17 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             return false;
         }
 
+        return visibleByLevel(row, viewerUserId, snapshot, level, additionalAxisContext)
+                && visibleByAdditionalAxis(row, viewerUserId, snapshot, level, additionalAxisContext);
+    }
+
+    /**
+     * 解決済み {@link StandardVisibility} 1 値による scope 軸の評価（本体）。
+     */
+    private boolean visibleByLevel(
+            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, StandardVisibility level,
+            Object additionalAxisContext) {
+        ScopeKey scope = scopeOf(row);
         return switch (level) {
             case PUBLIC -> true;
             // 新ラダー（§5.1.5）。SCOPE_AFFILIATED = 直接所属（旧 MEMBERS_ONLY 相当の正準値）。
@@ -422,10 +449,21 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             // MEMBERS_AND_ABOVE = MEMBER 以上の閾値（SUPPORTER/GUEST 不可視）。
             case MEMBERS_AND_ABOVE -> scope != null
                     && snapshot.hasRoleOrAbove(scope, "MEMBER");
+            // DEPUTY_ADMINS_AND_ABOVE = DEPUTY_ADMIN 以上の閾値（ADMIN + 副管理者）。
+            // ADMINS_AND_ABOVE へ丸めると DEPUTY_ADMIN を誤って弾くため、独立の閾値として評価する。
+            case DEPUTY_ADMINS_AND_ABOVE -> scope != null
+                    && snapshot.hasRoleOrAbove(scope, "DEPUTY_ADMIN");
             // ADMINS_AND_ABOVE = ADMIN 以上の閾値（旧 ADMINS_ONLY 相当の正準値）。
             case ADMINS_AND_ABOVE -> scope != null
                     && snapshot.hasRoleOrAbove(scope, "ADMIN");
             case ORGANIZATION_WIDE -> scope != null && snapshot.isMemberOfParentOrg(scope);
+            // フェーズ M2: ORGANIZATION_AND_DESCENDANTS（下向き再帰・所属軸・SUPPORTER 含む）。
+            // §11.6 鏡像: 当該 ORG 自身が非アクティブなら fail-closed。
+            // ORGANIZATION_WIDE（上向き 1 段）の鏡像であり、当該 ORG コンテンツを
+            // 全子孫組織 + 配下 ACTIVE チームの再帰メンバーへ開く。
+            case ORGANIZATION_AND_DESCENDANTS -> scope != null
+                    && !snapshot.isOrgInactive(scope)
+                    && snapshot.isDescendantMemberOf(scope);
             case PRIVATE -> viewerUserId != null
                     && Objects.equals(viewerUserId, row.authorUserId());
             case CUSTOM_TEMPLATE -> row.visibilityTemplateId() != null
@@ -439,7 +477,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
                 // decide 経路ではすでに記録済みのため二重記録を避けるための分岐は持たない
                 // （Counter は単調増加で許容、ホットパスではないため）。
                 visibilityMetrics.recordCustomDispatch(referenceType(), customSubType(row));
-                yield evaluateCustom(row, viewerUserId, snapshot);
+                yield evaluateCustom(row, viewerUserId, snapshot, additionalAxisContext);
             }
         };
     }
@@ -456,12 +494,14 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         return switch (level) {
             case PRIVATE -> DenyReason.NOT_OWNER;
             case CUSTOM_TEMPLATE -> DenyReason.TEMPLATE_RULE_NO_MATCH;
-            // SCOPE_AFFILIATED は所属軸（旧 MEMBERS_ONLY 相当）として同列に分類。
-            case ORGANIZATION_WIDE, SCOPE_AFFILIATED ->
+            // SCOPE_AFFILIATED / ORGANIZATION_AND_DESCENDANTS は所属軸（拡大軸）として同列に分類。
+            case ORGANIZATION_WIDE, SCOPE_AFFILIATED, ORGANIZATION_AND_DESCENDANTS ->
                     scope != null && snapshot.roleByScope().containsKey(scope)
                             ? DenyReason.INSUFFICIENT_ROLE : DenyReason.NOT_A_MEMBER;
-            // MEMBERS_AND_ABOVE / ADMINS_AND_ABOVE は閾値軸として同列に分類。
-            case SUPPORTERS_AND_ABOVE, MEMBERS_AND_ABOVE, ADMINS_AND_ABOVE ->
+            // MEMBERS_AND_ABOVE / DEPUTY_ADMINS_AND_ABOVE / ADMINS_AND_ABOVE は閾値軸として同列に分類。
+            // 新段も「スコープに居るが役職が足りない（INSUFFICIENT_ROLE）」と
+            // 「そもそも非所属（NOT_A_MEMBER）」の区別が他の閾値段と全く同じ意味を持つため同居させる。
+            case SUPPORTERS_AND_ABOVE, MEMBERS_AND_ABOVE, DEPUTY_ADMINS_AND_ABOVE, ADMINS_AND_ABOVE ->
                     scope != null && snapshot.roleByScope().containsKey(scope)
                             ? DenyReason.INSUFFICIENT_ROLE : DenyReason.NOT_A_MEMBER;
             case FOLLOWERS_ONLY, CUSTOM, PUBLIC -> DenyReason.UNSPECIFIED;
@@ -544,6 +584,11 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
     /**
      * Projection の visibility を {@link StandardVisibility} に解決する。
      * 値が null や型不一致の場合は null を返す（呼び出し側で fail-closed する）。
+     *
+     * <p>{@link #toStandard(Enum)} による enum 正規化のあと、scope 依存の補正が必要な機能のため
+     * {@link #adjustLevel(VisibilityProjection, StandardVisibility)} フックを通す。
+     * これにより SQL 集計（{@link #collectOrgWideScopes} / {@link #collectDescendantScopes}）と
+     * 判定（{@link #visibleByVisibility} / {@link #decide}）が常に同一の実効レベルを参照する。</p>
      */
     @SuppressWarnings("unchecked")
     private StandardVisibility resolveLevelSafely(P row) {
@@ -552,12 +597,121 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             return null;
         }
         try {
-            return toStandard((V) raw);
+            return adjustLevel(row, toStandard((V) raw));
         } catch (ClassCastException e) {
             log.warn("toStandard 用の enum キャスト失敗: referenceType={} id={} actualType={}",
                     referenceType(), row.id(), raw.getClass().getName(), e);
             return null;
         }
+    }
+
+    /**
+     * {@link #toStandard(Enum)} で正規化した {@link StandardVisibility} に、scope 依存の補正を施す
+     * 任意フック（既定: 補正なし＝恒等）。
+     *
+     * <p>機能側 visibility enum は scope を持たないため {@link #toStandard(Enum)} だけでは
+     * 「同じ enum 値でも scope によって意味が変わる」ケースを表現できない。フェーズ M2 の
+     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS}（下向き再帰）がその典型で、
+     * 「組織全体公開」という同じ意図でも、コンテンツが ORGANIZATION スコープのときだけ
+     * 下向き再帰段へ昇格させたい。survey / schedule Resolver はこのフックで
+     * 「ORG スコープ × 組織全体（{@link StandardVisibility#ORGANIZATION_WIDE}）→
+     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS}」へ昇格する。</p>
+     *
+     * <p>既定実装は受け取った level をそのまま返す。新段未対応の Resolver は本フックを
+     * オーバーライドしないため、挙動は完全に従来どおりである。</p>
+     *
+     * @param row   判定対象 Projection（scope 参照用）
+     * @param level {@link #toStandard(Enum)} で正規化したレベル（{@code null} 可）
+     * @return 補正後のレベル（{@code null} はそのまま伝播）
+     */
+    protected StandardVisibility adjustLevel(P row, StandardVisibility level) {
+        return level;
+    }
+
+    /**
+     * scope 軸（{@link StandardVisibility} 1 値）の評価に <strong>AND で合成される</strong>
+     * 機能独自の追加軸フック（既定: 追加軸なし＝常に {@code true}）。
+     *
+     * <p>{@link #adjustLevel(VisibilityProjection, StandardVisibility)} は「同じ enum 値でも
+     * scope で意味が変わる」ケースを 1 値へ畳み込むフックだが、
+     * <strong>評価対象スコープが異なる第二の軸</strong>は 1 値では表現できない。典型が F03.1 の
+     * {@code schedules.min_view_role} で、{@code visibility = 'ORGANIZATION'} のときだけ閾値を
+     * <strong>親組織</strong>への直接所属ロールで評価する必要がある
+     * （{@link UserScopeRoleSnapshot#hasParentOrgRoleOrAbove}）。ここで
+     * {@link StandardVisibility#ORGANIZATION_WIDE} を閾値段へ畳み込んでしまうと、
+     * {@link #collectOrgWideScopes} が親 ORG を解決対象から外し、判定と SQL 集計がずれる。</p>
+     *
+     * <p>本フックは {@link #filterAccessible(Collection, Long)} と {@link #decide(Long, Long)} の
+     * <strong>両経路が通る唯一の合流点</strong>（{@code visibleByVisibility}）で呼ばれるため、
+     * 個別 Service にゲートを散らさずに追加軸を効かせられる。SystemAdmin 高速パス・
+     * DRAFT/SCHEDULED の作者本人スキップ・§11.6 親 ORG 連鎖ガードはいずれも本フックより
+     * <strong>手前</strong>で確定するため、追加軸がそれらを覆すことはない。</p>
+     *
+     * <p>DB アクセスを行ってはならない（snapshot と row のみで純メモリ判定すること）。</p>
+     *
+     * @param row          判定対象 Projection
+     * @param viewerUserId 閲覧者 user_id（{@code null} 可、未認証）
+     * @param snapshot     メンバーシップスナップショット
+     * @param level        scope 軸で解決済みのレベル（{@code null} ではない）
+     * @return 追加軸を満たすなら {@code true}
+     */
+    protected boolean visibleByAdditionalAxis(
+            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, StandardVisibility level) {
+        return true;
+    }
+
+    /**
+     * 追加軸がスナップショット外の情報（名簿テーブル等）を要する場合に、
+     * <strong>バッチ 1 回につき 1 度だけ</strong>それを一括取得するためのフック。
+     *
+     * <p>設計書 §4.6 のパイプラインは「4) 各 row の判定（DB アクセスなし、純メモリ）」を要求しており、
+     * {@link #visibleByAdditionalAxis} の中で行ごとに SQL を発行すると、
+     * 件数に比例したクエリ（N+1）となり §9 のバッチ SQL 本数上限・性能目標に反する。
+     * そこで {@link #collectDirectScopes} → {@link #buildSnapshot} と同じ作法で、
+     * 判定ループに入る前に必要な集合を 1 本のクエリで引き、その結果を
+     * コンテキストオブジェクトとして {@link #visibleByAdditionalAxis(VisibilityProjection, Long,
+     * UserScopeRoleSnapshot, StandardVisibility, Object)} へ渡す。</p>
+     *
+     * <p>既定は {@code null}（追加取得なし）。スナップショットだけで判定できる追加軸
+     * （ロール閾値など）は本フックを実装する必要がない。</p>
+     *
+     * <p>戻り値は<strong>呼び出しごとのローカル値</strong>として扱われ、Resolver の
+     * インスタンスフィールドには保持されない（Resolver はシングルトンであり、
+     * フィールド保持は並行リクエスト間の汚染になる）。</p>
+     *
+     * @param rows         本バッチで判定対象となる Projection 群
+     * @param viewerUserId 閲覧者 user_id（{@code null} 可、未認証）
+     * @return 追加軸判定に渡すコンテキスト（不要なら {@code null}）
+     */
+    protected Object prepareAdditionalAxisContext(List<P> rows, Long viewerUserId) {
+        return null;
+    }
+
+    /**
+     * {@link #prepareAdditionalAxisContext} が返したコンテキスト付きの CUSTOM 評価。
+     *
+     * <p>既定実装はコンテキストを無視して 3 引数版
+     * {@link #evaluateCustom(VisibilityProjection, Long, UserScopeRoleSnapshot)} へ委譲するため、
+     * 行ごとの判定だけで足りる既存の実装は<strong>変更不要</strong>である。
+     * CUSTOM 判定がスナップショット外の情報（名簿・母集団など）を要する場合に、
+     * 行ごとの SQL（N+1）を避けるために本オーバーロードを実装する。</p>
+     */
+    protected boolean evaluateCustom(
+            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, Object additionalAxisContext) {
+        return evaluateCustom(row, viewerUserId, snapshot);
+    }
+
+    /**
+     * {@link #prepareAdditionalAxisContext} が返したコンテキスト付きの追加軸評価。
+     *
+     * <p>既定実装はコンテキストを無視して 4 引数版
+     * {@link #visibleByAdditionalAxis(VisibilityProjection, Long, UserScopeRoleSnapshot, StandardVisibility)}
+     * へ委譲するため、スナップショットだけで判定する既存の実装は<strong>変更不要</strong>である。</p>
+     */
+    protected boolean visibleByAdditionalAxis(
+            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, StandardVisibility level,
+            Object additionalAxisContext) {
+        return visibleByAdditionalAxis(row, viewerUserId, snapshot, level);
     }
 
     /** filterAccessible / decide の SQL 集計ヘルパ: 直接所属判定が必要なスコープ集合。 */
@@ -589,6 +743,81 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             }
         }
         return scopes;
+    }
+
+    /**
+     * filterAccessible / decide の SQL 集計ヘルパ: {@code ORGANIZATION_AND_DESCENDANTS} の
+     * 下向き再帰判定対象スコープ集合（フェーズ M2）。
+     *
+     * <p>{@link #collectOrgWideScopes} の鏡像。新段は ORGANIZATION スコープのコンテンツ専用のため、
+     * ORG スコープのみを収集する（TEAM スコープの新段 row は対象外で fail-closed 側に倒す）。
+     * 解決失敗 row はスキップ。</p>
+     */
+    private Set<ScopeKey> collectDescendantScopes(List<P> rows) {
+        Set<ScopeKey> scopes = new HashSet<>();
+        for (P row : rows) {
+            StandardVisibility level = resolveLevelSafely(row);
+            if (level != StandardVisibility.ORGANIZATION_AND_DESCENDANTS) {
+                continue;
+            }
+            ScopeKey scope = scopeOf(row);
+            if (scope != null && "ORGANIZATION".equals(scope.scopeType())) {
+                scopes.add(scope);
+            }
+        }
+        for (ScopeKey extra : additionalDescendantScopes(rows)) {
+            if (extra != null && "ORGANIZATION".equals(extra.scopeType())) {
+                scopes.add(extra);
+            }
+        }
+        return scopes;
+    }
+
+    /**
+     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS} 段<strong>以外</strong>の判定でも
+     * 下向き再帰の所属（{@link UserScopeRoleSnapshot#isDescendantMemberOf}）を使いたい Resolver が、
+     * その対象 ORG スコープを申告するフック（既定: 申告なし＝空集合）。
+     *
+     * <p>{@link #collectDescendantScopes} は「解決済みレベルが新段である行」しか集めない。
+     * しかし {@link StandardVisibility#CUSTOM} へ流れる機能固有の値が「配下ツリーに所属しているか」を
+     * 判定したい場合（survey の {@code AFTER_CLOSE} など）、レベルが新段ではないため
+     * snapshot に下向き再帰の情報が載らず、Resolver 側で ORG ごとに個別 SQL を撃つほかなくなる。
+     * それは行数比例ではないものの<strong>組織数に比例</strong>し、
+     * 「追加軸はバッチ 1 回で先読みする」という {@link #prepareAdditionalAxisContext} の契約に反する。</p>
+     *
+     * <p>本フックで ORG スコープを申告すると、それらは既存の新段スコープと<strong>合流して同一の
+     * バルククエリ 1 本</strong>（{@code MembershipBatchQueryService} が発行）で解決される。
+     * 組織が何件混ざっても SQL は増えない。</p>
+     *
+     * <p>申告しても<strong>判定レベルは変わらない</strong>（{@link #resolveLevelSafely} は不変）。
+     * 変わるのは snapshot に下向き再帰の所属情報が載るかどうかだけであり、
+     * 既存 Resolver は本フックを実装しないため挙動は完全に従来どおりである。
+     * ORGANIZATION 以外のスコープは無視される。</p>
+     *
+     * @param rows 本バッチで判定対象となる Projection 群
+     * @return 下向き再帰の所属解決を要する ORG スコープ集合（不要なら空集合）
+     */
+    protected Set<ScopeKey> additionalDescendantScopes(List<P> rows) {
+        return Set.of();
+    }
+
+    /**
+     * snapshot を構築する。新段スコープが空（＝従来 Resolver / 新段未使用）なら
+     * 従来の 3 引数 {@link MembershipBatchQueryService#snapshotForUser(Long, java.util.Set, java.util.Set)}
+     * に委譲し、SQL・挙動・既存テストのモック契約を完全に保存する。
+     * 新段スコープが非空のときのみ 4 引数版を呼び、下向き再帰 SQL を 1 回追加発行させる。
+     */
+    private UserScopeRoleSnapshot buildSnapshot(
+            Long viewerUserId,
+            Set<ScopeKey> directScopes,
+            Set<ScopeKey> orgWideScopes,
+            Set<ScopeKey> descendantScopes) {
+        if (descendantScopes == null || descendantScopes.isEmpty()) {
+            return membershipBatchQueryService
+                    .snapshotForUser(viewerUserId, directScopes, orgWideScopes);
+        }
+        return membershipBatchQueryService
+                .snapshotForUser(viewerUserId, directScopes, orgWideScopes, descendantScopes);
     }
 
     // 静的解析向けの未使用警告抑止（Stream API を使う代替実装の参考実装として保持）。

@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "Conexión perdida. Intentando reconectar…"
+    },
+    "mobile": {
+      "backToList": "Volver a la lista de canales",
+      "noChannels": "Aún no hay canales",
+      "createChannel": "Crear canal"
     }
   },
   "button": {
@@ -76,12 +81,16 @@
     "submit": "Enviar",
     "close": "Cerrar",
     "back": "Volver",
+    "help": "Cómo usar",
     "next": "Siguiente",
     "search": "Buscar",
     "loading": "Cargando...",
     "confirm": "Confirmar",
     "logout": "Cerrar sesion",
-    "update": "Actualizar"
+    "update": "Actualizar",
+    "see_more": "Ver más",
+    "view_all": "Ver todo",
+    "undo": "Deshacer"
   },
   "label": {
     "required": "Obligatorio",
@@ -217,18 +226,41 @@
   "error": {
     "server": "Se produjo un error del servidor",
     "server_retry": "Por favor, intentelo de nuevo mas tarde.",
+    "rate_limited": "Demasiadas solicitudes",
+    "rate_limited_detail": "Ha realizado demasiadas solicitudes en poco tiempo. Espere un momento e intentelo de nuevo.",
+    "rate_limited_retry_after": "Ha realizado demasiadas solicitudes en poco tiempo. Intentelo de nuevo en unos {seconds} segundos.",
     "network": "Se produjo un error de red",
     "unauthorized": "Por favor, inicie sesion",
+    "section_load_failed": "No se pudo cargar esta seccion. Recarga la pagina.",
     "unknown": "Se produjo un error",
     "COMMON_001": "Hay errores en los datos ingresados",
     "COMMON_002": "No tiene permiso para realizar esta accion",
     "COMMON_003": "Actualizado por otro usuario. Por favor, actualice la pagina",
     "COMMON_999": "Se produjo un error del sistema",
     "AUTH_001": "Correo electronico o contrasena incorrectos",
-    "AUTH_002": "La sesion ha expirado. Por favor, inicie sesion de nuevo",
-    "AUTH_003": "Este correo electronico ya esta registrado",
-    "AUTH_004": "La cuenta esta desactivada",
-    "AUTH_005": "Codigo de verificacion incorrecto"
+    "AUTH_002": "Su correo electrónico aún no ha sido verificado",
+    "AUTH_003": "Su cuenta está bloqueada. Inténtelo de nuevo en 30 minutos",
+    "AUTH_004": "Este correo electrónico ya está registrado",
+    "AUTH_005": "El enlace del correo de verificación no es válido o ha expirado",
+    "AUTH_008": "La contraseña debe tener al menos 8 caracteres e incluir 3 o más de: mayúsculas, minúsculas, números y símbolos",
+    "AUTH_015": "El enlace para restablecer la contraseña no es válido o ha expirado. Por favor, solicite un nuevo restablecimiento.",
+    "AUTH_009": "La nueva contraseña debe ser diferente de la contraseña actual",
+    "AUTH_010": "La contraseña actual no es correcta",
+    "AUTH_011": "Aún no se ha establecido ninguna contraseña",
+    "AUTH_044": "Demasiadas solicitudes. Por favor, espere un momento y vuelva a intentarlo",
+    "SURVEY_023": "No se puede activar el desglose por equipo en encuestas anonimas",
+    "SCHEDULE_KEEP_001": "キープが見つかりません",
+    "SCHEDULE_KEEP_002": "タイトルを入力してください",
+    "SCHEDULE_KEEP_003": "候補日は最大10件です",
+    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
+    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
+    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
+    "SCHEDULE_KEEP_007": "この状態では編集できません",
+    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
+    "SCHEDULE_KEEP_009": "この操作はできません",
+    "SCHEDULE_KEEP_010": "キープの上限に達しました",
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "Has alcanzado el límite de 200 elementos ocultos. Muestra de nuevo alguno que ya no necesites."
   },
   "annual_plan": {
     "title": "Plan anual de eventos",
@@ -442,7 +474,56 @@
     "videoUploadSuccess": "Video subido correctamente",
     "videoUploadError": "Error al subir el video",
     "videoRemove": "Eliminar video",
-    "mitayo": "Visto"
+    "mitayo": "Visto",
+    "imageTooMany": "Puedes adjuntar hasta 4 imágenes",
+    "imageUploadError": "Error al subir la imagen",
+    "postSuccess": "Publicado correctamente",
+    "postError": "Error al publicar",
+    "announcementRegisterError": "Error al registrar el anuncio. Por favor, regístralo manualmente más tarde.",
+    "postSource": "Publicado en",
+    "writeReply": "Escribir una respuesta",
+    "replySubmit": "Responder",
+    "noReplies": "Aún no hay respuestas",
+    "loadMoreReplies": "Ver más",
+    "composerPlaceholder": {
+      "TEAM": "Publicar en el equipo...",
+      "VILLAGE": "Publicar en el pueblo...",
+      "ORGANIZATION": "Publicar en la organización...",
+      "PUBLIC": "¿Qué está pasando?"
+    },
+    "submitLabel": "Publicar",
+    "pollOptionsCount": "{count} opciones",
+    "deliveryScope": {
+      "label": "Alcance de entrega",
+      "options": {
+        "DIRECT": "Solo los miembros de esta organización",
+        "CHILDREN": "Incluir las organizaciones hijas directas",
+        "DESCENDANTS": "Todas las organizaciones subordinadas"
+      },
+      "hints": {
+        "DIRECT": "Solo se muestra en las cronologías de los miembros de esta organización.",
+        "CHILDREN": "También se muestra a los miembros de las organizaciones justo por debajo de esta.",
+        "DESCENDANTS": "Se muestra a los miembros de todas las organizaciones subordinadas."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "Ocultar las publicaciones de este equipo",
+        "ORGANIZATION": "Ocultar las publicaciones de esta organización"
+      },
+      "targetType": {
+        "TEAM": "Equipo",
+        "ORGANIZATION": "Organización"
+      },
+      "muted": "Se han ocultado las publicaciones de {name}",
+      "undo": "Deshacer",
+      "unmuted": "Se vuelven a mostrar las publicaciones",
+      "chip": "Ocultos: {count}",
+      "dialogTitle": "Fuentes ocultas",
+      "emptyList": "No has ocultado a nadie.",
+      "unmuteAction": "Volver a mostrar",
+      "unknownTarget": "{type} (ID: {id})"
+    }
   },
   "gallery": {
     "title": "Galería",
@@ -494,7 +575,9 @@
       "selfReviewStart": "Hora de inicio de autorevisión",
       "selfReviewEnd": "Hora de fin de autorevisión",
       "selfReviewHelp": "El período configurado se trata como tiempo de revisión antes de publicar",
-      "saveSettings": "Guardar configuración"
+      "saveSettings": "Guardar configuración",
+      "loadFailed": "No se pudo cargar el artículo",
+      "scheduledPublishUnavailable": "La publicación programada no está disponible por ahora. Al publicar, la entrada se hace pública de inmediato."
     },
     "autoSave": {
       "label": "Guardado automático",
@@ -520,7 +603,14 @@
       "viewModeKanban": "Vista Kanban",
       "deleteButton": "Eliminar",
       "deleteAriaLabel": "Eliminar este TODO",
-      "deleteConfirm": "¿Eliminar este TODO? Esta acción no se puede deshacer."
+      "deleteConfirm": "¿Eliminar este TODO? Esta acción no se puede deshacer.",
+      "sortLabel": "Ordenar por",
+      "sortRecent": "Más reciente",
+      "sortPriority": "Prioridad",
+      "deletedToast": "TODO eliminado",
+      "restoredToast": "TODO restaurado",
+      "deleteFailed": "Error al eliminar",
+      "restoreFailed": "No se pudo deshacer"
     },
     "field": {
       "status": "Estado",
@@ -631,6 +721,24 @@
         "saving": "Guardando...",
         "saved": "Guardado"
       }
+    },
+    "create": {
+      "dialog_title": "Crear TODO",
+      "title_label": "Título",
+      "title_placeholder": "Título del TODO",
+      "details_toggle": "Configurar detalles (opcional)",
+      "description_label": "Descripción (opcional)",
+      "description_placeholder": "Detalles o notas",
+      "scope_label": "Compartir con",
+      "scope_personal": "Personal",
+      "priority_label": "Prioridad",
+      "start_date_label": "Fecha de inicio (opcional)",
+      "due_date_label": "Fecha límite (opcional)",
+      "submit_button": "Crear",
+      "cancel_button": "Cancelar",
+      "draft_restored": "Borrador restaurado",
+      "create_success": "TODO creado",
+      "create_failed": "Error al crear el TODO"
     }
   },
   "extended_profile": {
@@ -671,6 +779,62 @@
     "custom_field_updated": "Campo personalizado actualizado",
     "custom_field_deleted": "Campo personalizado eliminado"
   },
+  "notification": {
+    "todoHandedOff": {
+      "title": "Se te pasó una tarea",
+      "body": "{from} te pasó \"{title}\" (estado: {label})"
+    },
+    "pageTitle": "通知",
+    "guide": {
+      "title": "通知の使い方",
+      "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
+      "read": {
+        "title": "通知を読む",
+        "body": "通知の行をタップすると既読になり、関連する画面へ移動します。まだ読んでいない通知には青いドットが付きます。",
+        "steps": {
+          "step1": "気になる通知の行をタップします",
+          "step2": "自動で既読になり、関連する画面へ移動します",
+          "step3": "未読の通知は左端の青いドットで見分けられます"
+        }
+      },
+      "filter": {
+        "title": "絞り込み",
+        "body": "上部の「すべて／未読」の切り替えで、未読の通知だけを表示できます。",
+        "steps": {
+          "step1": "画面上部の「すべて／未読」ボタンを押します",
+          "step2": "「未読」を選ぶと、まだ読んでいない通知だけが表示されます",
+          "step3": "「すべて」に戻すと全ての通知が表示されます"
+        }
+      },
+      "snooze": {
+        "title": "スヌーズ",
+        "body": "今すぐ対応できない通知は、時計アイコンから後回しにできます。指定した時刻に再び表示されます。",
+        "steps": {
+          "step1": "通知の右側にある時計アイコンを押します",
+          "step2": "「3時間後／今夜／明朝／来週」から再表示するタイミングを選びます",
+          "step3": "選んだ時刻になると、その通知が再び一覧に表示されます"
+        }
+      },
+      "confirm": {
+        "title": "確認通知",
+        "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
+        "steps": {
+          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step2": "「確認する」ボタンを押して確認済みにします",
+          "step3": "確認後は「確認済み」ラベルに変わります"
+        }
+      },
+      "urgent": {
+        "title": "緊急休業・一括既読",
+        "body": "緊急休業の通知は「確認する」を押して確認します。溜まった通知は右上の「すべて既読にする」でまとめて既読にできます。",
+        "steps": {
+          "step1": "緊急休業の通知は「確認する」ボタンで確認します",
+          "step2": "右上の「すべて既読にする」で通知をまとめて既読にできます",
+          "step3": "既読にするとベルのバッジも0になります"
+        }
+      }
+    }
+  },
   "project": {
     "milestones": "Hitos",
     "no_milestones": "No hay hitos",
@@ -706,7 +870,109 @@
     "reorder_failed": "Error al reordenar",
     "my_projects": "Mis proyectos",
     "my_projects_description": "Gestión personal de tareas y objetivos",
-    "no_my_projects": "Aún no hay proyectos personales"
+    "no_my_projects": "Aún no hay proyectos personales",
+    "team_projects_section": "Proyectos del equipo",
+    "no_team_projects": "Aún no hay proyectos en tus equipos",
+    "org_projects_section": "Proyectos de la organización",
+    "no_org_projects": "Aún no hay proyectos en tus organizaciones",
+    "create_button": "Crear proyecto",
+    "dialog": {
+      "create_title": "Crear proyecto",
+      "edit_title": "Editar proyecto",
+      "title_label": "Título",
+      "title_placeholder": "Nombre del proyecto",
+      "description_label": "Descripción",
+      "due_date_label": "Fecha límite",
+      "cancel": "Cancelar",
+      "create": "Crear",
+      "update": "Actualizar"
+    },
+    "appearance": {
+      "emoji_label": "Emoji",
+      "color_label": "Color",
+      "none": "Ninguno",
+      "custom_emoji": "Personalizado",
+      "custom_color": "Color personalizado",
+      "current": "Actual"
+    },
+    "guide": {
+      "button": "Cómo usar",
+      "page_title": "Cómo usar Proyectos",
+      "description": "Aprenda a utilizar la función de proyectos.",
+      "what": {
+        "title": "¿Qué es un proyecto?",
+        "body": "Un proyecto es una unidad para gestionar tareas (TODOs) e hitos juntos. Puede establecer objetivos y plazos, y realizar un seguimiento del progreso de un vistazo."
+      },
+      "create": {
+        "title": "Cómo crear un proyecto",
+        "body": "Haga clic en 'Crear proyecto' y complete la siguiente información.",
+        "item_title": "Título (obligatorio): Nombre del proyecto",
+        "item_emoji": "Emoji: Icono que representa el proyecto (elegir de los presets)",
+        "item_color": "Color: Color de identificación de la tarjeta (elegir de los presets)",
+        "item_due_date": "Fecha límite: Fecha objetivo de finalización (opcional)"
+      },
+      "milestone": {
+        "title": "Hitos y puertas",
+        "body": "Los hitos son objetivos intermedios dentro de un proyecto. Cuando la función de puertas está activada, el siguiente hito se bloquea hasta que se completa el anterior.",
+        "completion_mode_label": "Sobre el modo de finalización",
+        "mode_auto": "Completar automáticamente",
+        "mode_auto_desc": "Se marca automáticamente como logrado cuando se completan todos los TODOs del hito.",
+        "mode_manual": "Manual",
+        "mode_manual_desc": "Marcar manualmente como logrado independientemente del estado de los TODOs."
+      },
+      "progress": {
+        "title": "Cómo leer el progreso",
+        "body": "Las tarjetas de proyecto muestran una barra de progreso, tasa de finalización y días restantes. La barra de progreso se calcula automáticamente a partir de TODOs completados / total."
+      },
+      "scope": {
+        "title": "Proyectos personales vs. de equipo",
+        "body": "Los proyectos tienen dos tipos de alcance: 'personal' y 'equipo'.",
+        "personal_title": "Proyecto personal",
+        "personal_desc": "Solo usted puede verlo y gestionarlo. Acceso desde 'Mi página' → 'Proyectos'.",
+        "team_title": "Proyecto de equipo",
+        "team_desc": "Comparta y co-gestione con los miembros del equipo. Acceso desde la pestaña 'Proyectos' en la página del equipo."
+      },
+      "back_to_projects": "Volver a la lista de proyectos"
+    },
+    "org_page": {
+      "title": "Proyectos",
+      "empty": "No hay proyectos",
+      "back_label": "Lista de proyectos"
+    },
+    "error": {
+      "fetch_failed": "Error al obtener proyectos",
+      "create_failed": "Error al crear el proyecto",
+      "update_failed": "Error al actualizar",
+      "delete_failed": "Error al eliminar",
+      "status_change_failed": "Error al cambiar el estado",
+      "milestone_save_failed": "Error al guardar el hito"
+    },
+    "status": {
+      "active": "Activo",
+      "completed": "Completado",
+      "archived": "Archivado"
+    },
+    "action": {
+      "edit": "Editar",
+      "complete": "Marcar como completado",
+      "reopen": "Reabrir"
+    },
+    "stats": {
+      "progress": "Progreso",
+      "tasks": "Tareas",
+      "milestones": "Hitos",
+      "due_date": "Fecha de vencimiento",
+      "no_due_date": "Sin definir"
+    },
+    "task_unit": "tareas",
+    "days_remaining": "{n} dias restantes",
+    "days_overdue": "{n} dias de retraso",
+    "related_tasks": "Tareas relacionadas",
+    "no_related_tasks": "No hay tareas relacionadas con este proyecto",
+    "widget": {
+      "label": "Proyectos",
+      "description": "Progreso y lista de proyectos"
+    }
   },
   "inviteToken": {
     "printQrPdf": "Imprimir QR PDF",
@@ -1011,12 +1277,65 @@
       "event": "Introduce el ID numérico de la URL de detalle del evento (ej. /events/77).",
       "document": "Introduce el ID numérico de la URL de detalle del documento (ej. /documents/55).",
       "url": "Para crear una tarjeta URL, cambia el «Tipo de tarjeta» de arriba a URL."
+    },
+    "guide": {
+      "title": "Cómo usar Mi tablón",
+      "description": "Ve en un solo lugar todas las tarjetas que has fijado en tus tablones.",
+      "what": {
+        "title": "Qué es Mi tablón",
+        "body": "Las tarjetas que has fijado 📌 en cada tablón se reúnen aquí, ordenadas de más reciente a más antigua."
+      },
+      "open": {
+        "title": "Abrir una tarjeta",
+        "body": "Toca una tarjeta para ir a su referencia.",
+        "steps": {
+          "step1": "Toca una tarjeta para ir a la publicación, archivo o evento original.",
+          "step2": "Las tarjetas de URL se abren en una pestaña nueva.",
+          "step3": "Las tarjetas a las que ya no tienes acceso no se pueden abrir (se muestran como “Sin acceso”)."
+        }
+      },
+      "editNote": {
+        "title": "Editar una nota",
+        "body": "Puedes añadir una nota adhesiva a una tarjeta.",
+        "steps": {
+          "step1": "Pulsa el botón del lápiz en la esquina superior derecha de la tarjeta.",
+          "step2": "Escribe tu nota y guárdala.",
+          "step3": "La nota guardada se muestra en la tarjeta como una nota adhesiva."
+        }
+      },
+      "unpinDelete": {
+        "title": "Desfijar / Eliminar",
+        "body": "Quita de la lista o elimina las tarjetas que ya no necesitas.",
+        "steps": {
+          "step1": "Usa el botón 📌 para desfijar; la tarjeta sale de esta lista (la tarjeta del tablón original permanece).",
+          "step2": "Usa el botón 🗑 para eliminar una tarjeta. La eliminación no se puede deshacer."
+        }
+      },
+      "filterAndPin": {
+        "title": "Filtrar / Fijar nueva",
+        "body": "Filtra las tarjetas mostradas o fija nuevas.",
+        "steps": {
+          "step1": "Usa el selector de tablones en la barra de herramientas para mostrar solo las tarjetas de un tablón.",
+          "step2": "Usa “Cargar más” para mostrar tarjetas adicionales.",
+          "step3": "Usa el botón “Fijar nueva” para ir a un tablón y fijar 📌 una tarjeta."
+        }
+      }
     }
   },
   "schedule": {
     "filter": {
       "allTeamsOrgs": "Equipos y organizaciones (todos)",
       "selectScope": "Seleccionar destino"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Personal",
+        "unknown": "Otros eventos",
+        "loadError": {
+          "summary": "Error al cargar las capas",
+          "detail": "Los filtros de equipo/organización no están disponibles temporalmente. Los eventos siguen mostrándose. Vuelve a intentarlo más tarde."
+        }
+      }
     }
   },
   "handoff": {
@@ -1059,12 +1378,6 @@
       "title": "Historial de transferencias",
       "empty": "Sin historial todavía",
       "deletedLabel": "(eliminado)"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "Se te pasó una tarea",
-      "body": "{from} te pasó \"{title}\" (estado: {label})"
     }
   },
   "common": {
@@ -1177,6 +1490,25 @@
       "skillsSummaryHint": "Describe libremente tu experiencia, conocimientos y habilidades (añade habilidades estructuradas en la sección de habilidades de abajo)",
       "excelPreviewUnavailable": "La vista previa de archivos Excel no está disponible en el navegador",
       "downloadLabel": "Descargar {format} ({type})"
+    },
+    "menu": "Menú",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "¿Dejar de apoyar?",
+      "supporter_cancel_confirm_body": "Dejarás de apoyar a {name}. ¿Estás seguro?",
+      "supporter_cancel_action": "Dejar",
+      "supporter_registered": "Registrado como seguidor",
+      "supporter_applied": "Solicitud de seguidor enviada",
+      "supporter_canceled": "Has dejado de apoyar",
+      "leave_action": "Salir",
+      "load_error_title": "No se pudo cargar la información",
+      "load_error_body": "Inténtalo de nuevo más tarde. Puede estar oculto si no tienes permiso.",
+      "back_to_dashboard": "Volver al panel",
+      "retry": "Reintentar",
+      "slow_loading": "La carga está tardando más de lo esperado"
+    },
+    "unsavedChanges": {
+      "title": "Cambios sin guardar",
+      "confirmLeave": "Tienes cambios sin guardar. Si sales de esta página, se perderá lo que has introducido. ¿Continuar?"
     }
   },
   "teamHub": {
@@ -1294,11 +1626,21 @@
       "feedback": "Comentarios",
       "reports": "Informes",
       "advertisers": "Gestión de anunciantes",
+      "adRateCards": "Tarifas de anuncios",
+      "adCreditLimitRequests": "Solicitudes de límite de crédito",
+      "affiliateSettings": "Configuración de afiliados",
       "auditLogs": "Registros de auditoría",
       "shiftBudget": "Presupuesto de turno",
       "betaRestriction": "Restricción beta",
       "errorReports": "Informes de errores",
-      "gdprPurge": "Estado de Purga GDPR"
+      "gdprPurge": "Estado de Purga GDPR",
+      "feedbackInbox": "Buzón de comentarios (Global)",
+      "billing": "Datos maestros de facturación",
+      "betaPerks": "ベータ特典管理"
+    },
+    "impersonation": {
+      "banner": "Suplantando a: {label}",
+      "exit": "Salir"
     },
     "businessAlert": {
       "title": "Alertas de negocio",
@@ -1359,7 +1701,78 @@
     "addRecord": "Agregar registro",
     "participantCount": "{count} participantes",
     "noRecords": "No hay registros de actividad",
-    "loadError": "Error al cargar los registros de actividad"
+    "loadError": "Error al cargar los registros de actividad",
+    "create": {
+      "dialogTitle": "Agregar registro de actividad",
+      "templateLabel": "Plantilla",
+      "templatePlaceholder": "Selecciona una plantilla",
+      "noTemplatesTitle": "Aún no hay plantillas",
+      "noTemplatesBody": "Para crear un registro de actividad, primero crea una plantilla.",
+      "goToTemplates": "Crear plantilla",
+      "titleLabel": "Título",
+      "titlePlaceholder": "Título de la actividad",
+      "dateLabel": "Fecha de la actividad",
+      "descriptionLabel": "Descripción (opcional)",
+      "visibilityLabel": "Visibilidad",
+      "visibilityPublic": "Público",
+      "visibilityMembersOnly": "Solo miembros",
+      "requiredFieldError": "Completa los campos obligatorios",
+      "saveSuccess": "Registro de actividad agregado",
+      "saveError": "Error al agregar el registro de actividad",
+      "submit": "Agregar",
+      "scopeResolveError": "No se pudo identificar el destino",
+      "templatesLoadError": "Error al cargar las plantillas",
+      "draftHint": "Puedes guardar un borrador solo con un título y la fecha de actividad. Las plantillas y campos personalizados se pueden añadir después.",
+      "saveDraft": "Guardar borrador",
+      "draftSaved": "Borrador guardado",
+      "draftRestored": "Entrada anterior restaurada",
+      "draftSuccess": "Guardado como borrador"
+    },
+    "statusLabel": {
+      "DRAFT": "Borrador",
+      "PUBLISHED": "Publicado"
+    },
+    "list": {
+      "filterAll": "Todos",
+      "filterDraft": "Borrador",
+      "editDraft": "Editar y publicar"
+    },
+    "publish": {
+      "success": "Registro de actividad publicado",
+      "error": "Error al publicar"
+    },
+    "guide": {
+      "title": "Cómo usar los registros de actividad",
+      "description": "Registra las actividades de tu equipo u organización (entrenamientos, partidos, eventos, etc.) para revisarlas y compartirlas.",
+      "list": {
+        "title": "Ver registros",
+        "body": "Las actividades se muestran como tarjetas en orden cronológico inverso. Puedes ver rápidamente el título, la fecha, el lugar y el número de participantes. Los registros marcados como «Público» muestran un botón para compartir el enlace externamente."
+      },
+      "add": {
+        "title": "Agregar un registro",
+        "body": "Pulsa «Agregar registro» en la parte superior derecha para crear un nuevo registro de actividad.",
+        "steps": {
+          "step1": "Pulsa «Agregar registro» en la parte superior derecha",
+          "step2": "Elige una plantilla",
+          "step3": "Introduce el título y la fecha de la actividad (ambos obligatorios)",
+          "step4": "Selecciona la visibilidad (Solo miembros / Público)",
+          "step5": "Rellena los campos personalizados de la plantilla si los hay",
+          "step6": "Pulsa «Agregar» para guardar el registro en la lista"
+        }
+      },
+      "template": {
+        "title": "Cuando se necesita una plantilla",
+        "body": "Es necesaria una plantilla para crear un registro. Si aún no existe ninguna, aparece una pantalla de orientación en lugar del formulario. En equipos, ve primero a la página «Plantillas de actividad» para crear una plantilla y luego añade tu registro."
+      },
+      "visibility": {
+        "title": "Visibilidad (quién puede ver el registro)",
+        "members_only_label": "Solo miembros",
+        "members_only_desc": "Solo los miembros del equipo u organización pueden ver este registro.",
+        "public_label": "Público",
+        "public_desc": "Cualquier persona con el enlace puede verlo. Aparece un botón de compartir en la lista para facilitar la difusión externa.",
+        "note": "La visibilidad predeterminada está determinada por la configuración de la plantilla."
+      }
+    }
   },
   "dashboard": {
     "team_reservation_link": "Gestión de reservas"
@@ -1431,7 +1844,9 @@
       "KB_PAGE": "KB",
       "BLOG_AUTHOR": "Autor",
       "VILLAGE": "Aldea"
-    }
+    },
+    "restoredToast": "Restaurado a favoritos",
+    "restoreFailed": "No se pudo deshacer"
   },
   "succession": {
     "legalFilings": {
@@ -1470,6 +1885,13 @@
     "mapEmbedUrlHelp": "En Google Maps, haz clic en \"Compartir > Insertar mapa > Copiar HTML\" y pega la URL de src= aquí",
     "mapEmbedUrlInvalidFormat": "Debe ser una URL de inserción de Google Maps (https://www.google.com/maps/embed?...)",
     "mapEmbedUrlSaved": "URL del mapa de la tienda guardada",
+    "timezone": {
+      "label": "Zona horaria de reservas",
+      "help": "Zona horaria IANA para interpretar las horas de inicio y fin.",
+      "placeholder": "p. ej., Asia/Tokyo",
+      "invalid": "Introduce una zona horaria IANA válida",
+      "saved": "Zona horaria guardada"
+    },
     "regionCode": {
       "label": "Ubicación (prefectura / municipio)",
       "help": "Al seleccionar una prefectura y un municipio se establecen los valores predeterminados para la búsqueda regional y las publicaciones.",
@@ -1487,6 +1909,7 @@
     "bulletinOpen": "Discutir en el tablón"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "Almacenamiento", "personal": "Personal", "team": "Equipo", "organization": "Organización", "details": "Ver detalles", "error": "No se pudo cargar el almacenamiento", "retry": "Reintentar", "unconfigured": "Cuota no configurada", "not_available": "Sin datos de almacenamiento", "meterLabel": "Uso de almacenamiento de {scope}", "meterValue": "Uso {percent}%", "warningTitle": "Límite de almacenamiento cercano", "warningMessage": "{scope} usa el {percent}%. Considera actualizar a un plan de pago.", "viewPlans": "Ver planes", "checkStorage": "Comprobar almacenamiento", "cancel": "Cancelar" },
     "tabs": {
       "personal": "Personal",
       "team": "Equipo",
@@ -1503,6 +1926,7 @@
       "prevPage": "Página anterior",
       "nextPage": "Página siguiente",
       "reorder": "Cambiar orden de visualización",
+      "goToScopePage": "Ir a la página del equipo/organización",
       "empty": "No perteneces a ningún equipo u organización",
       "folderEmpty": "No hay alcances en esta carpeta",
       "loadError": "Error al cargar la lista de etiquetas"
@@ -1512,6 +1936,258 @@
       "save": "Guardar",
       "cancel": "Cancelar",
       "saveError": "Error al guardar el orden de visualización"
+    }
+  },
+  "slug": {
+    "label": "URL (slug)",
+    "hint": "Se usa en la URL pública del equipo/organización (ej. mi-equipo). Si se deja en blanco, se genera a partir del nombre.",
+    "placeholder": "mi-equipo",
+    "available": "Disponible",
+    "unavailable": "Este identificador ya está en uso",
+    "checking": "Verificando...",
+    "format": "Solo letras minúsculas, números y guiones (3-30 caracteres)",
+    "reason": {
+      "SLUG_REQUIRED": "Introduce un identificador",
+      "SLUG_INVALID_FORMAT": "Formato no válido (letras minúsculas, números y guiones, 3-30 caracteres; sin guiones al inicio/final ni consecutivos)",
+      "SLUG_RESERVED": "Este identificador está reservado y no se puede usar",
+      "SLUG_ALREADY_TAKEN": "Este identificador ya está en uso",
+      "SLUG_RETIRED": "Este identificador se usó antes y no se puede reutilizar (reservado para redirecciones)"
+    },
+    "rename": {
+      "title": "Cambiar URL (slug)",
+      "help": "Cambia el identificador de tu URL pública. Las URL antiguas se redirigen automáticamente a la nueva.",
+      "save": "Cambiar",
+      "saved": "URL (slug) cambiada",
+      "saveError": "Error al cambiar la URL (slug)",
+      "unchanged": "Igual que el identificador actual (sin cambios)"
+    }
+  },
+  "team_visibility": {
+    "PUBLIC": "Público",
+    "GUESTS_AND_ABOVE": "Invitados y superiores",
+    "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
+    "MEMBERS_AND_ABOVE": "Miembros y superiores"
+  },
+  "module_settings": {
+    "enabled_count": "有効な機能: {count} / {limit}",
+    "fetch_error": "機能一覧の取得に失敗しました",
+    "empty": "現在このスコープで利用できる追加機能はありません",
+    "toggle_success_on": "{name} を有効にしました",
+    "toggle_success_off": "{name} を無効にしました",
+    "badge": {
+      "level_unavailable": "このレベルでは利用できません",
+      "paid_plan": "有料プラン",
+      "limit_reached": "上限（{limit}）に達しています"
+    },
+    "error": {
+      "paid_required": "この機能は有料プランが必要です",
+      "limit_reached": "無料プランで有効化できる機能の上限（10個）に達しています",
+      "level_unavailable": "このレベルではこの機能を利用できません",
+      "generic": "機能の切替に失敗しました"
+    }
+  },
+  "module_settings_guide": {
+    "title": "機能設定の使い方",
+    "help_button": "使い方",
+    "description": "「機能設定」では、このチーム・組織で使える機能を一覧から探して、スイッチで ON / OFF できます。ここで ON にした機能だけが、メンバーの画面に表示され利用できるようになります。",
+    "what": {
+      "title": "機能設定とは",
+      "body": "チーム・組織で使える機能（モジュール）の一覧です。利用できる機能がすべてカードで並び、各機能を ON にするとメンバーが使えるようになり、OFF にすると画面から隠れて使えなくなります。必要な機能だけを選んで、画面をすっきり保てます。"
+    },
+    "toggle": {
+      "title": "機能を ON / OFF する",
+      "body": "使いたい機能を一覧から探して、カード右のスイッチを ON にするだけです。保存ボタンは不要で、押すとすぐに反映されます。",
+      "steps": {
+        "step1": "一覧から使いたい機能のカードを探す",
+        "step2": "カード右のスイッチを押して ON にする（もう一度押すと OFF）",
+        "step3": "「有効にしました」または「無効にしました」と通知が出れば完了（保存操作は不要）",
+        "step4": "切り替え中はそのスイッチが一時的に押せなくなります（二重操作を防ぐためです）"
+      }
+    },
+    "count": {
+      "title": "今いくつ使えるかを確認する",
+      "body": "画面の上部に「有効な機能: 2 / 10」のように、ON にしている数と有効化できる上限の数が表示されます。右の更新ボタン（回転する矢印）を押すと、最新の状態を取得し直せます。"
+    },
+    "restrictions": {
+      "title": "使えないスイッチがあるとき",
+      "body": "スイッチが押せない（グレーアウトしている）機能には、理由を示すバッジが付きます。",
+      "items": {
+        "paid": "「有料プラン」… 有料プランに加入すると使える機能です。",
+        "limit": "「上限（10）に達しています」… 無料プランで同時に ON にできる機能の数が上限に達しています。ほかの機能を OFF にすると新しく ON にできます。",
+        "level": "「このレベルでは利用できません」… このチーム・組織の種別では使えない機能です。"
+      }
+    },
+    "empty": {
+      "title": "機能が表示されないとき",
+      "body": "「現在このスコープで利用できる追加機能はありません」と出る場合は、いまのところこのチーム・組織で追加できる機能がありません。"
+    },
+    "permission": {
+      "title": "設定できる人",
+      "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "Panel",
+      "info": "Información básica",
+      "members": "Miembros",
+      "invites": "Invitaciones",
+      "supporters": "Gestión de seguidores",
+      "modules": "Funciones"
+    },
+    "action": {
+      "leave_confirm_title": "Salir del equipo",
+      "leave_confirm_body": "¿Seguro que quieres salir de este equipo? No se puede deshacer.",
+      "left": "Has salido del equipo"
+    }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "Panel",
+      "info": "Información básica",
+      "members": "Miembros",
+      "member_teams": "Equipos",
+      "invites": "Invitaciones",
+      "permission_groups": "Grupos de permisos",
+      "supporters": "Gestión de seguidores",
+      "modules": "Funciones"
+    },
+    "action": {
+      "leave_confirm_title": "Salir de la organización",
+      "leave_confirm_body": "¿Seguro que quieres salir de esta organización? No se puede deshacer.",
+      "left": "Has salido de la organización"
+    }
+  },
+  "blog_guide": {
+    "title": "Cómo usar Mi Blog",
+    "description": "Escribe artículos y compártelos con los miembros de tu equipo y organización. Guarda como borrador primero, luego publica cuando estés listo.",
+    "what": {
+      "title": "¿Qué es un Blog?",
+      "body": "Un lugar para escribir tus pensamientos y aprendizajes como artículos y compartirlos con los miembros de tu equipo y organización. Los artículos pueden gestionarse en estados de borrador, publicado, programado o archivado."
+    },
+    "create": {
+      "title": "Escribir un Artículo",
+      "body": "Simplemente haz clic en '+ Nuevo Artículo' para crear un artículo en borrador. Puedes cambiar el título más tarde.",
+      "steps": {
+        "step1": "Haz clic en '+ Nuevo Artículo' en la parte superior derecha",
+        "step2": "Ingresa el título del artículo (puede cambiarse más tarde)",
+        "step3": "Selecciona el destino de publicación (personal, equipo u organización)",
+        "step4": "Haz clic en 'Crear y Editar' para ir al editor"
+      }
+    },
+    "publish": {
+      "title": "Publicar un Artículo",
+      "body": "Haz clic en el ícono de ojo en cada tarjeta de 'Mis Publicaciones' para alternar entre público y privado.",
+      "steps": {
+        "step1": "Haz clic en el ícono de ojo en una tarjeta de artículo en borrador",
+        "step2": "Cambia a 'Publicado' y se vuelve visible para los miembros del equipo y la organización",
+        "step3": "Haz clic de nuevo para volver a privado (borrador)"
+      }
+    },
+    "manage": {
+      "title": "Gestionar Artículos",
+      "body": "'Mis Publicaciones' muestra los últimos 5 artículos en un desplazamiento horizontal. Usa los íconos en cada tarjeta para editar o eliminar.",
+      "item_edit": "Ícono de lápiz → Editar contenido del artículo",
+      "item_delete": "Ícono de papelera → Eliminar artículo (no se puede deshacer)",
+      "item_count": "Verifica el conteo de artículos en la parte superior derecha",
+      "item_all": "Todos los artículos están listados en la sección 'Publicaciones de Todos'"
+    },
+    "settings": {
+      "title": "Configuración del Blog",
+      "body": "Puedes configurar el título de tu blog, la descripción y el período de autorrevisión.",
+      "steps": {
+        "step1": "Haz clic en '⚙ Configuración del Blog' en la parte superior derecha",
+        "step2": "Ingresa el título y la descripción de tu blog",
+        "step3": "Establece el período de autorrevisión (período de revisión antes de publicar)",
+        "step4": "Haz clic en 'Guardar Configuración'"
+      }
+    }
+  },
+  "analytics": {
+    "title": "Análisis de Acceso",
+    "loadError": "No se pudieron cargar los datos de análisis de acceso",
+    "empty": "Todavía no hay datos de acceso",
+    "summary": {
+      "totalViews": "PV Total",
+      "uniqueVisitors": "Visitantes Únicos",
+      "memberViews": "Vistas de Miembros",
+      "guestViews": "Vistas de Invitados"
+    },
+    "export": "Exportar Datos",
+    "topContent": {
+      "title": "Contenido Popular",
+      "empty": "No hay datos disponibles"
+    },
+    "chart": {
+      "views": "Páginas Vistas",
+      "daily": "Diario",
+      "monthly": "Mensual",
+      "toggle": "Cambiar Vista",
+      "recentDays": "Estadísticas de acceso de los últimos 30 días",
+      "monthlyTrend": "Estadísticas de tendencia de acceso mensual"
+    },
+    "period": {
+      "allTime": "Todo el Tiempo"
+    },
+    "guide": {
+      "page_title": "Cómo usar Analytics",
+      "what": {
+        "title": "¿Qué es Analytics?",
+        "body": "Analytics le permite ver cuántas veces se visualizan las páginas de su equipo u organización. Utilícelo para comprender los patrones de visita de miembros e invitados y mejorar su contenido."
+      },
+      "metrics": {
+        "title": "Datos medidos",
+        "total_views": "PV total: Número total de veces que se mostraron las páginas",
+        "unique_visitors": "Visitantes únicos: Número de visitantes sin duplicados",
+        "member_views": "Vistas de miembros: Vistas de página por miembros",
+        "guest_views": "Vistas de invitados: Vistas de página por invitados (no miembros)"
+      },
+      "timing": {
+        "title": "Tiempo de actualización de datos",
+        "body": "Los datos de acceso se agregan en un lote diario. Los datos del mismo día se reflejan a la mañana siguiente. Como no es en tiempo real, el acceso de las últimas horas aparecerá al día siguiente."
+      },
+      "chart": {
+        "title": "Cómo leer el gráfico",
+        "body": "Puede cambiar el gráfico entre vistas «Diaria» y «Mensual».",
+        "daily_title": "Gráfico diario",
+        "daily_desc": "Muestra las tendencias diarias de vistas de página en los últimos 30 días.",
+        "monthly_title": "Gráfico mensual",
+        "monthly_desc": "Muestra valores agregados mensuales. Útil para comprender tendencias a largo plazo."
+      },
+      "top_content": {
+        "title": "Contenido popular",
+        "body": "Muestra un ranking del contenido según el número de vistas. Si aún no hay datos de acceso, se mostrará \"No hay datos disponibles\", y el ranking aparecerá automáticamente en cuanto se registren visitas."
+      }
+    }
+  },
+  "comingSoon": {
+    "title": "Próximamente",
+    "description": "Esta función está actualmente en desarrollo. Por favor, vuelva más tarde."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Transferir la propiedad",
+    "sectionDescription": "Cede el rol de propietario (administrador) a otro miembro. Tras la transferencia pasas a ser subadministrador y ya no podrás realizar acciones exclusivas de administrador.",
+    "openButton": "Transferir la propiedad",
+    "dialogTitle": "Transferir la propiedad",
+    "warning": "Esta acción no se puede deshacer. Los permisos de administrador pasan al nuevo propietario y solo él podrá devolverlos.",
+    "targetLabel": "Nuevo propietario",
+    "targetPlaceholder": "Selecciona un miembro",
+    "noCandidates": "No hay ningún miembro al que puedas transferir la propiedad.",
+    "confirmLabel": "Escribe “{name}” para confirmar",
+    "confirmMismatch": "El nombre no coincide.",
+    "cancel": "Cancelar",
+    "submit": "Transferir",
+    "successTitle": "Propiedad transferida",
+    "successDetail": "Los permisos de administrador se han transferido al nuevo propietario."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Función no disponible",
+      "body": "Esta función aún no está disponible. Volviendo al panel."
+    },
+    "error": {
+      "fetchFailedTitle": "No se pudo comprobar la disponibilidad de la función",
+      "fetchFailedBody": "No se pudo comprobar si esta función está disponible debido a un error de red. Inténtalo de nuevo más tarde."
     }
   }
 }

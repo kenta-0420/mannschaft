@@ -7,6 +7,7 @@ definePageMeta({
 const teamStore = useTeamStore()
 const foldersStore = useScopeFoldersStore()
 const { templateLabel } = useScopeLabels()
+const { handleApiError } = useErrorHandler()
 const route = useRoute()
 const router = useRouter()
 
@@ -31,8 +32,8 @@ watch(viewMode, (mode) => {
   }
 })
 
-function onTeamCreated(entity: { id: number; publicId: string; name: string }) {
-  navigateTo(`/teams/${entity.publicId}`)
+function onTeamCreated(entity: { id: string; name: string; slug: string }) {
+  navigateTo(`/teams/${entity.slug}`)
 }
 
 /**
@@ -67,8 +68,9 @@ function setCurrentFolderId(value: CurrentFolder) {
 }
 
 onMounted(async () => {
-  // 直接アクセス時もチーム一覧が表示されるよう常にフェッチする
-  await teamStore.fetchMyTeams().catch(() => {})
+  // 直接アクセス時もチーム一覧が表示されるよう常にフェッチする。
+  // 重要データ（所属チーム一覧）の取得失敗はユーザーに通知する。
+  await teamStore.fetchMyTeams().catch((e) => handleApiError(e, 'チーム一覧取得'))
   try {
     await foldersStore.fetchAll('TEAM')
   }
@@ -126,7 +128,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
 
     <!-- F15.3: フォルダタブ -->
     <div class="mb-4">
-      <ScopeFolderScopeFolderTabs
+      <ScopeFolderTabs
         scope-type="TEAM"
         :current-folder-id="currentFolderId"
         @update:current-folder-id="setCurrentFolderId"
@@ -180,7 +182,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
           v-for="team in filteredTeams"
           :key="team.id"
           class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/teams/${team.publicId}`)"
+          @click="team.slug ? navigateTo(`/teams/${team.slug}`) : undefined"
         >
           <div class="mb-3 flex items-center gap-3">
             <Avatar
@@ -214,7 +216,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
           v-for="team in filteredTeams"
           :key="team.id"
           class="flex cursor-pointer items-center gap-4 rounded-lg border border-surface-200 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm"
-          @click="navigateTo(`/teams/${team.publicId}`)"
+          @click="team.slug ? navigateTo(`/teams/${team.slug}`) : undefined"
         >
           <Avatar
             :image="team.iconUrl ?? undefined"

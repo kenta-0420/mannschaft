@@ -83,9 +83,12 @@ interface CommentList {
   data: Array<{
     id: number
     todoId: number
-    userId: number
-    displayName: string
-    avatarUrl: string | null
+    /** BE の CommentResponse は user フィールドにネストして返す（ProjectResponse.UserInfo 準拠） */
+    user: {
+      id: number
+      displayName: string
+      avatarUrl?: string | null
+    }
     body: string
     createdAt: string
     updatedAt: string
@@ -121,6 +124,14 @@ export function useTodoApi() {
 
   async function deletePersonalTodo(todoId: number) {
     return api(`/api/v1/todos/${todoId}`, { method: 'DELETE' })
+  }
+
+  /**
+   * 論理削除済みの個人 TODO を復元する（Undo Toast の「元に戻す」から呼ぶ）。
+   * BE: {@code POST /api/v1/todos/{id}/restore}
+   */
+  async function restorePersonalTodo(todoId: number) {
+    return api(`/api/v1/todos/${todoId}/restore`, { method: 'POST' })
   }
 
   /**
@@ -194,6 +205,14 @@ export function useTodoApi() {
 
   async function deleteTodo(scopeType: 'team' | 'organization', scopeId: string, todoId: number) {
     return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}`, { method: 'DELETE' })
+  }
+
+  /**
+   * 論理削除済みのチーム / 組織 TODO を復元する（Undo Toast の「元に戻す」から呼ぶ）。
+   * BE: {@code POST /api/v1/{teams|organizations}/{scopeId}/todos/{id}/restore}
+   */
+  async function restoreTodo(scopeType: 'team' | 'organization', scopeId: string, todoId: number) {
+    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/restore`, { method: 'POST' })
   }
 
   // === Status ===
@@ -337,12 +356,14 @@ export function useTodoApi() {
     createPersonalTodo,
     updatePersonalTodo,
     deletePersonalTodo,
+    restorePersonalTodo,
     changeTodoStatusById,
     listTodos,
     getTodo,
     createTodo,
     updateTodo,
     deleteTodo,
+    restoreTodo,
     changeTodoStatus,
     bulkChangeTodoStatus,
     addAssignee,

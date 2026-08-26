@@ -40,7 +40,7 @@ public class ErrorReportAiAnalysisService {
     private static final int RECENT_COMMENT_LIMIT = 3;
 
     /** 1件あたり保守的な推定コスト（推定 prompt 4000 + completion 1500 → 約 6 円、安全側で 10 円）。 */
-    private static final int CONSERVATIVE_COST_ESTIMATE_JPY = 10;
+    static final int CONSERVATIVE_COST_ESTIMATE_JPY = 10;
 
     /** {@code suggested_files} カラムへ保存する際の最大件数。 */
     private static final int SUGGESTED_FILES_MAX = 10;
@@ -73,6 +73,21 @@ public class ErrorReportAiAnalysisService {
      * @param createdBy     操作者ユーザー ID（システム自動なら NULL）
      */
     public void analyzeAfterCommit(Long errorReportId, Long createdBy) {
+        // AC-10: 即時分析パスにも予算チェックを適用する。
+        // 予算超過時は Claude API を発火させず、警告ログのみ残してスキップする。
+        // last_ai_analysis_at は更新しないため、後追いの自動分析バッチが翌期に拾える設計を壊さない。
+        if (!props.getAi().isEnabled()) {
+            log.debug("AI 即時分析スキップ（機能無効）: errorReportId={}", errorReportId);
+            return;
+        }
+        if (!budgetService.canExpend(CONSERVATIVE_COST_ESTIMATE_JPY)) {
+            log.warn("AI 即時分析スキップ（月次予算超過・コストガード）: errorReportId={}, "
+                            + "monthlyExpenseJpy={}, budgetJpy={}。後追いバッチが翌期に再評価する。",
+                    errorReportId, budgetService.currentMonthlyExpense(),
+                    props.getAi().getMonthlyBudgetJpy());
+            return;
+        }
+
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override

@@ -55,4 +55,14 @@ public interface UserPointCardRepository
      */
     @Query("SELECT c FROM UserPointCardEntity c WHERE c.providerId IS NULL ORDER BY c.id ASC")
     Page<UserPointCardEntity> findRematchTargets(Pageable pageable);
+
+    /**
+     * 指定ユーザーの保有カードを全削除する（退会即時匿名化の安全弁）。
+     *
+     * <p>クロスドメインFK撤廃キャンペーン 第二陣C。{@code fk_upc_user}（user CASCADE）撤廃に伴い、
+     * {@code PointCardAnonymizationEventListener#onUserAnonymized} が退会即時にカード（暗号化PII）を
+     * 先行削除するために使用する。pointcard ドメイン内の子テーブル
+     * （group_items / balance_events / stamp_events）は card_id CASCADE で自動削除される。</p>
+     */
+    void deleteByUserId(Long userId);
 }

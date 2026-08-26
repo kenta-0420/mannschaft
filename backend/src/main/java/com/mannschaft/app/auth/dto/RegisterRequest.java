@@ -2,6 +2,8 @@ package com.mannschaft.app.auth.dto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.mannschaft.app.common.validation.ValidTimezone;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -29,11 +31,29 @@ public class RegisterRequest {
     @Size(max = 50)
     private final String firstName;
 
+    /**
+     * 表示名（displayName）。
+     *
+     * <p>UserEntity.displayName は {@code @Column(nullable = false)} のため必須。
+     * これを欠落・空文字で受け取ると DB の NOT NULL 制約違反で 500（COMMON_999）になるため、
+     * DTO 層で {@code @NotBlank} を課して 400（COMMON_001）として弾く。
+     * フロントエンド（register.vue）でも displayName は必須入力。</p>
+     */
+    @NotBlank
     @Size(max = 50)
     private final String nickname;
 
     private final String postalCode;
     private final String locale;
+
+    /**
+     * IANA タイムゾーン名（例: {@code Asia/Tokyo}）。null なら既定 {@code Asia/Tokyo} で登録する。
+     *
+     * <p>Issue #2487 項目 4: 更新系（{@link UpdateProfileRequest}）と同様、登録系にも形式検証が無く、
+     * 任意文字列がそのまま {@code users.timezone} に入る経路だった。入口を片方だけ塞いでも
+     * 不正値は登録経路から入り込むため、両方に同じ制約を課す。</p>
+     */
+    @ValidTimezone
     private final String timezone;
 
     /** ベータ招待トークン（nullable）。ベータ制限ON時に必須となる。 */
@@ -41,6 +61,24 @@ public class RegisterRequest {
 
     /** 生年月日（YYYY-MM-DD形式）。F01.9 年齢確認のため必須。 */
     private final String birthDate;
+
+    /**
+     * プライバシーポリシーへの同意フラグ（F_privacy_policy）。
+     *
+     * <p>登録時に {@code true} でなければならない。{@code false} の場合は
+     * {@code @AssertTrue} によって 400（AUTH_PP_001）として弾かれる。</p>
+     */
+    @AssertTrue(message = "AUTH_PP_001")
+    private final boolean privacyPolicyAccepted;
+
+    /**
+     * 同意したプライバシーポリシーのバージョン（F_privacy_policy）。
+     *
+     * <p>空文字・null の場合は 400（AUTH_PP_002）として弾かれる。</p>
+     */
+    @NotBlank(message = "AUTH_PP_002")
+    @Size(max = 20, message = "AUTH_PP_003")
+    private final String privacyPolicyVersion;
 
     @JsonCreator
     public RegisterRequest(
@@ -53,7 +91,9 @@ public class RegisterRequest {
             @JsonProperty("locale") String locale,
             @JsonProperty("timezone") String timezone,
             @JsonProperty("inviteToken") String inviteToken,
-            @JsonProperty("birth_date") String birthDate) {
+            @JsonProperty("birth_date") String birthDate,
+            @JsonProperty("privacyPolicyAccepted") boolean privacyPolicyAccepted,
+            @JsonProperty("privacyPolicyVersion") String privacyPolicyVersion) {
         this.email = email;
         this.password = password;
         this.lastName = lastName;
@@ -64,5 +104,7 @@ public class RegisterRequest {
         this.timezone = timezone;
         this.inviteToken = inviteToken;
         this.birthDate = birthDate;
+        this.privacyPolicyAccepted = privacyPolicyAccepted;
+        this.privacyPolicyVersion = privacyPolicyVersion;
     }
 }

@@ -71,6 +71,9 @@ public class ScheduleDelegationController {
             @PathVariable Long scheduleId,
             @Valid @RequestBody CreateScheduleDelegationRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 認可根治 Wave4: 代理の指定はスケジュール実体由来のスコープを閲覧できる利用者に限る。
+        // 判定は副作用・応答より前の入口で行う。
+        scheduleService.checkScopeViewAccess(scheduleId, currentUserId);
         ScheduleDelegationEntity delegation = delegationService.createDelegation(
                 scheduleId, currentUserId, request.getDelegateId(), request.getReason());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(toResponse(delegation)));
@@ -83,7 +86,11 @@ public class ScheduleDelegationController {
     @Operation(summary = "代理取り消し", description = "F03.10 §4.1: 委任者が自分の代理を取り消す")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取り消し成功")
     public ResponseEntity<Void> withdraw(@PathVariable Long scheduleId) {
-        delegationService.withdraw(scheduleId, SecurityUtils.getCurrentUserId());
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 取り消せるのは自分が委任者である代理のみ（リポジトリクエリが delegatorId で束縛される）。
+        // 加えて、スケジュール実体由来のスコープを閲覧できることを入口で確認する。
+        scheduleService.checkScopeViewAccess(scheduleId, currentUserId);
+        delegationService.withdraw(scheduleId, currentUserId);
         return ResponseEntity.noContent().build();
     }
 
@@ -125,6 +132,9 @@ public class ScheduleDelegationController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ScheduleDelegationMeResponse>> me(@PathVariable Long scheduleId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        // 返す委任行は delegatorId / delegateId が本人に束縛されるが、
+        // スケジュールの実在有無を観測させないため、閲覧認可を入口で行う。
+        scheduleService.checkScopeViewAccess(scheduleId, currentUserId);
         ScheduleDelegationResponse asDelegator = delegationService
                 .findAsDelegator(scheduleId, currentUserId)
                 .map(this::toResponse)

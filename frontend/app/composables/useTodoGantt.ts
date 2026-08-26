@@ -1,4 +1,4 @@
-import type { GanttResponse } from '~/types/todo'
+import type { GanttResponse, MyCalendarTodoResponse } from '~/types/todo'
 
 export function useTodoGantt() {
   const api = useApi()
@@ -18,6 +18,13 @@ export function useTodoGantt() {
     const fromDate = from.slice(0, 10)
     const toDate = to.slice(0, 10)
     return api<GanttResponse>(`/api/v1/todos/gantt?from=${fromDate}&to=${toDate}`)
+  }
+
+  /** 自分に割り当てられた全スコープのTODOをカレンダー用に取得する。 */
+  async function getMyCalendarTodos(from: string, to: string): Promise<MyCalendarTodoResponse> {
+    const fromDate = from.slice(0, 10)
+    const toDate = to.slice(0, 10)
+    return api<MyCalendarTodoResponse>(`/api/v1/todos/my/calendar?from=${fromDate}&to=${toDate}`)
   }
 
   /**
@@ -40,6 +47,7 @@ export function useTodoGantt() {
 
   return {
     getPersonalGanttTodos,
+    getMyCalendarTodos,
     getGanttTodos,
   }
 }

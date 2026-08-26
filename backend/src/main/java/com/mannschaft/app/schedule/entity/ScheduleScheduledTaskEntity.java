@@ -12,8 +12,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,8 +37,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class ScheduleScheduledTaskEntity extends UuidV7Entity {
 
@@ -87,8 +86,21 @@ public class ScheduleScheduledTaskEntity extends UuidV7Entity {
     @Builder.Default
     private Integer attemptCount = 0;
 
+    /**
+     * {@code last_error} の最大長。DDL（{@code V72.001__create_schedule_scheduled_tasks.sql}:
+     * {@code last_error VARCHAR(1000)}）と一致させること。
+     */
+    static final int LAST_ERROR_MAX = 1000;
+
+    /**
+     * 切り詰めが発生したことを示す印。
+     *
+     * <p>これが無いと、診断時に「元から短いメッセージ」なのか「途中で切れた」のか区別できない。</p>
+     */
+    static final String LAST_ERROR_TRUNCATION_MARKER = "...[truncated]";
+
     /** 最終失敗理由（任意）。 */
-    @Column(name = "last_error", length = 1000)
+    @Column(name = "last_error", length = LAST_ERROR_MAX)
     private String lastError;
 
     /** 作成者 users.id（クロスドメイン論理参照・FK なし、任意）。 */
@@ -138,7 +150,7 @@ public class ScheduleScheduledTaskEntity extends UuidV7Entity {
     public void markFailed(String error) {
         this.status = ScheduledTaskStatus.FAILED;
         this.attemptCount = (this.attemptCount == null ? 0 : this.attemptCount) + 1;
-        this.lastError = error;
+        this.lastError = truncateLastError(error);
     }
 
     /**
@@ -152,12 +164,36 @@ public class ScheduleScheduledTaskEntity extends UuidV7Entity {
      */
     public void recordFailedAttempt(String error, int maxAttempts) {
         this.attemptCount = (this.attemptCount == null ? 0 : this.attemptCount) + 1;
-        this.lastError = error;
+        this.lastError = truncateLastError(error);
         if (this.attemptCount >= maxAttempts) {
             this.status = ScheduledTaskStatus.FAILED;
         } else {
             this.status = ScheduledTaskStatus.PENDING;
         }
+    }
+
+    /**
+     * 失敗理由を {@code last_error} の桁に収まるよう切り詰める。
+     *
+     * <p><b>なぜ必要か</b>: 保存する文字列は例外メッセージ由来であり、長さは実行時に決まる。
+     * 桁を超えると {@code Data truncation: Data too long for column 'last_error'} で
+     * <b>更新そのものが失敗し、失敗の記録すら残らない</b>（＝リトライ回数も status も進まない）。
+     * カラム幅を広げる対処では、より長いメッセージで再発するため根治にならない。
+     * 実例: DTO を enum 型で受けるようにした際、Jackson の解析失敗メッセージが
+     * 許可値一覧を列挙する長文になり本欠陥が顕在化した（#2617）。</p>
+     *
+     * <p>切り詰めた場合は末尾に {@link #LAST_ERROR_TRUNCATION_MARKER} を付け、
+     * 全文か途中かを診断時に判別できるようにする。桁に収まる場合は一切加工しない。</p>
+     *
+     * @param error 失敗理由（{@code null} 可）
+     * @return カラム長以内に収めた文字列（{@code null} はそのまま）
+     */
+    static String truncateLastError(String error) {
+        if (error == null || error.length() <= LAST_ERROR_MAX) {
+            return error;
+        }
+        return error.substring(0, LAST_ERROR_MAX - LAST_ERROR_TRUNCATION_MARKER.length())
+                + LAST_ERROR_TRUNCATION_MARKER;
     }
 
     /**

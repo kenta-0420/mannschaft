@@ -1,0 +1,213 @@
+{
+  "payment": {
+    "paywall": {
+      "locked": "This content requires a membership payment",
+      "unlock": "Pay to view",
+      "requiredItem": "Required payment: {name}",
+      "hiddenContent": "This content is not available",
+      "loading": "Checking access..."
+    },
+    "membership": {
+      "subscribe": {
+        "cardLabel": "Payment card",
+        "submit": "Subscribe with this card",
+        "processing": "Processing…",
+        "loadFailed": "Failed to load the payment form. Please try again later",
+        "keyMissing": "Payment setup is incomplete. Please contact an administrator",
+        "genericError": "An error occurred while processing the payment. Please try again later",
+        "noPaymentMethod": "Could not confirm your payment method. Please check your card details and try again",
+        "pageTitle": "Subscribe to recurring payment",
+        "stepBeneficiary": "Choose member",
+        "stepCard": "Card details",
+        "stepConfirm": "Review & confirm",
+        "stepDone": "Done",
+        "beneficiaryHelp": "Choose whose fee this subscription is for.",
+        "beneficiarySelf": "Myself",
+        "unnamedChild": "(Unnamed child)",
+        "beneficiaryRequired": "Please select a member to subscribe for",
+        "next": "Next",
+        "invalidItem": "Fee item not found. Please start again from the entry point",
+        "finalizing": "Completing your subscription…",
+        "authFailed": "Card authentication was not completed. Please enter your card details again",
+        "errorNotRecurring": "This fee does not support recurring payments",
+        "errorPmNotSaved": "No payment method is saved. Please enter your card details again",
+        "errorAlreadyExists": "An active recurring payment already exists for this member",
+        "beneficiaryUnverified": "The intended member could not be verified; processing has been stopped. Your payment method has been saved. Please reselect the member and try again",
+        "doneTitle": "Subscription complete",
+        "doneMessage": "Your recurring payment has started. Future payments will be charged automatically.",
+        "toSubscriptions": "Manage recurring payments"
+      },
+      "subscription": {
+        "title": "Recurring payments",
+        "empty": "You have no active recurring payments",
+        "unnamedItem": "(Unnamed fee)",
+        "monthly": "Monthly",
+        "yearly": "Yearly",
+        "beneficiary": "Member",
+        "nextBilling": "Next billing date",
+        "validUntil": "Valid until",
+        "skip": "Skip this month",
+        "skipConfirm": "Payment for this month will be paused. Your next billing date is {date}. Your access period will not be extended during this time.",
+        "skipped": "Paused this month (next: {date})",
+        "skipSuccess": "Skipped this month's payment",
+        "resume": "Resume",
+        "resumeConfirm": "Cancel the skip and resume your recurring payment?",
+        "resumeSuccess": "Recurring payment resumed",
+        "cancel": "Cancel",
+        "cancelAtPeriodEnd": "Cancel at period end",
+        "cancelConfirm": "You can use this until {date}. Cancel at the end of the period? (No prorated refund)",
+        "cancelScheduled": "Available until {date} (cancellation scheduled at period end)",
+        "cancelSuccess": "Scheduled to cancel at the end of the period",
+        "pastDue": "Payment required",
+        "pastDueGuide": "Your card payment failed. Please update your payment method.",
+        "confirmAction": "Confirm",
+        "loadError": "Failed to load recurring payments",
+        "actionError": "Operation failed. Please try again later",
+        "status": {
+          "PENDING": "Pending",
+          "ACTIVE": "Active",
+          "PAST_DUE": "Payment due",
+          "CANCELLED": "Cancelled",
+          "EXPIRED": "Expired"
+        }
+      }
+    },
+    "term": {
+      "periodLabel": "Valid Period",
+      "from": "From",
+      "until": "Until",
+      "typeLabel": {
+        "ANNUAL_FEE": "Annual",
+        "MONTHLY_FEE": "Monthly",
+        "ITEM": "Item",
+        "DONATION": "Donation",
+        "TERM": "Term"
+      }
+    },
+    "admin": {
+      "pageTitle": "Payment management",
+      "permissionDenied": "このページは管理者のみアクセスできます",
+      "itemsTitle": "Payment items",
+      "selectItem": "Select a payment item",
+      "remindUnpaid": "Remind unpaid",
+      "loadItemsError": "Failed to load payment items",
+      "loadPaymentsError": "Failed to load payment status",
+      "remindSuccess": "Reminder sent",
+      "remindError": "Failed to send reminder",
+      "exportError": "Failed to download CSV",
+      "status": {
+        "PAID": "Paid",
+        "UNPAID": "Unpaid",
+        "EXPIRED": "Expired",
+        "PENDING": "Pending",
+        "REFUNDED": "Refunded",
+        "CANCELLED": "Cancelled"
+      },
+      "method": {
+        "CASH": "Cash",
+        "BANK_TRANSFER": "Bank transfer",
+        "MANUAL": "Manual record"
+      },
+      "record": {
+        "recordButton": "Record payment",
+        "title": "Record payment",
+        "member": "Member",
+        "memberPlaceholder": "Select a member",
+        "amount": "Amount paid",
+        "paidAt": "Payment date",
+        "method": "Payment method",
+        "note": "Note",
+        "notePlaceholder": "Optional (max 500 chars)",
+        "submit": "Record",
+        "cancel": "Cancel",
+        "success": "Payment recorded",
+        "error": "Failed to record payment"
+      },
+      "bulk": {
+        "bulkButton": "Bulk record",
+        "title": "Bulk record",
+        "description": "Select unpaid members to record payments in bulk.",
+        "noUnpaid": "No unpaid members",
+        "submit": "Record {count}",
+        "error": "Bulk record failed",
+        "resultSummary": "Created {created}, skipped {skipped}"
+      },
+      "cancel": {
+        "button": "Cancel",
+        "success": "Payment cancelled",
+        "error": "Failed to cancel"
+      },
+      "beneficiarySetting": {
+        "label": "Members only",
+        "description": "When enabled, supporters are excluded as beneficiaries. Use this to restrict fee eligibility to regular members only.",
+        "saveSuccess": "Beneficiary restriction setting saved",
+        "saveError": "Failed to save setting"
+      }
+    },
+    "receipt": {
+      "title": "Receipts",
+      "download": "Download",
+      "issuedBy": "Issuer",
+      "amount": "Amount",
+      "issuedDate": "Issue Date",
+      "pending": "Pending",
+      "noReceipts": "No receipts",
+      "loadError": "Failed to load payment records",
+      "loadReceiptError": "Failed to load receipt"
+    },
+    "summary": {
+      "expired": "Expired",
+      "payer": "Payer",
+      "beneficiary": "Beneficiary"
+    },
+    "exportCsv": "Download CSV",
+    "feeStatements": {
+      "title": "Fee Statement",
+      "period": "Billing Month",
+      "totalFeeAmount": "Total Fee",
+      "issuerName": "Issuer",
+      "noData": "No data for the selected month",
+      "loadError": "Failed to load fee statement"
+    },
+    "guardianBulkPayment": {
+      "title": "Guardian Bulk Payment",
+      "subtitle": "Pay outstanding fees for children you manage all at once",
+      "noItems": "No outstanding fees",
+      "beneficiary": "Beneficiary",
+      "scope": "Affiliation",
+      "itemName": "Fee name",
+      "amount": "Amount",
+      "dueDate": "Due date",
+      "alreadyPaid": "Already paid",
+      "paidBy": "Paid by {name}",
+      "kind": {
+        "ONE_TIME": "One-time",
+        "RECURRING": "Recurring",
+        "TERM": "Term"
+      },
+      "via": {
+        "SELF": "Self",
+        "GUARDIAN": "Guardian",
+        "GUARDIAN_PROXY": "Guardian proxy",
+        "PROXY_GRANT": "Proxy grant"
+      },
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all",
+      "paySelected": "Pay {count} item(s)",
+      "totalAmount": "Total: ¥{amount}",
+      "processing": "Processing...",
+      "result": {
+        "title": "Payment result",
+        "checkedOut": "Payment complete",
+        "skipped": "Skipped",
+        "skipReasons": {
+          "ALREADY_PAID": "Already paid",
+          "NOT_AUTHORIZED": "Not authorized",
+          "CONNECT_NOT_READY": "Receiving account not set up",
+          "ITEM_NOT_FOUND": "Fee item not found",
+          "ERROR": "Error"
+        }
+      }
+    }
+  }
+}

@@ -25,6 +25,12 @@ interface PersistedState {
   selectedTeamId: string | null
   selectedOrgId: string | null
   tabOrders: Record<ScopeTabType, TabOrderEntry[]>
+  /**
+   * F10.1.1 L1 管理者レンズの ON/OFF（スコープ単位）。
+   * key = `${ScopeTabType}:${slug}`（例 `TEAM:dev-team`）, value = 管理者レンズ ON。
+   * 設計書 02 §1.2。PII でも DB データでもないため localStorage 同梱のみ（DB 保存しない）。
+   */
+  adminLens: Record<string, boolean>
 }
 
 const STORAGE_KEY = 'scope-dashboard'
@@ -53,6 +59,11 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
     tabOrders: defaultTabOrders() as Record<ScopeTabType, TabOrderEntry[]>,
     /** タグページデータキャッシュ（scopeType → ScopeTabPage）*/
     tabPages: {} as Partial<Record<ScopeTabType, ScopeTabPage>>,
+    /**
+     * F10.1.1 L1 管理者レンズの ON/OFF（スコープ単位・設計書 02 §1.2）。
+     * key = `${ScopeTabType}:${slug}`, value = 管理者レンズ ON。既定は空（=メンバーレンズ）。
+     */
+    adminLens: {} as Record<string, boolean>,
     /** 初期ロード完了フラグ */
     loaded: false,
     /**
@@ -81,6 +92,7 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
           if (parsed.selectedTeamId !== undefined) this.selectedTeamId = parsed.selectedTeamId
           if (parsed.selectedOrgId !== undefined) this.selectedOrgId = parsed.selectedOrgId
           if (parsed.tabOrders) this.tabOrders = parsed.tabOrders
+          if (parsed.adminLens) this.adminLens = parsed.adminLens
         }
       } catch {
         // localStorage 読み取り失敗は無視（デフォルト値で継続）
@@ -101,6 +113,7 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         selectedTeamId: this.selectedTeamId,
         selectedOrgId: this.selectedOrgId,
         tabOrders: this.tabOrders,
+        adminLens: this.adminLens,
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave))
     },
@@ -122,27 +135,54 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         // 先頭スコープ（存在すれば）。undefined ガードで noUncheckedIndexedAccess に適合。
         const first = result.items[0]
 
-        // 先頭スコープを自動選択（未選択の場合のみ）
-        if (first) {
-          if (scopeType === 'TEAM' && this.selectedTeamId === null) {
-            this.selectedTeamId = first.scopeId
-          } else if (scopeType === 'ORGANIZATION' && this.selectedOrgId === null) {
-            this.selectedOrgId = first.scopeId
+        // 選択中スコープの BIGINT→slug マイグレーション + フォールバック処理。
+        // scopeId（BIGINT 文字列）と slug（スラッグ）の両方でマッチングを行い、
+        // UUID が取得できた場合は localStorage も含めてアップグレードする。
+        if (scopeType === 'TEAM') {
+          if (this.selectedTeamId === null) {
+            // 未選択 → 先頭を選択
+            if (first) {
+              this.selectedTeamId = first.slug ?? first.scopeId
+              this.persistToStorage()
+            }
+          } else {
+            // BIGINT または UUID どちらでもマッチするアイテムを探す
+            const matchingItem = result.items.find(
+              item => item.scopeId === this.selectedTeamId || item.slug === this.selectedTeamId,
+            )
+            if (matchingItem) {
+              const uuid = matchingItem.slug ?? matchingItem.scopeId
+              if (uuid !== this.selectedTeamId) {
+                // BIGINT → UUID アップグレード（localStorage にも保存）
+                this.selectedTeamId = uuid
+                this.persistToStorage()
+              }
+            } else if (first) {
+              // 一覧から消えた（退会・権限喪失）→ 先頭にフォールバック
+              this.selectedTeamId = first.slug ?? first.scopeId
+              this.persistToStorage()
+            }
           }
-        }
-
-        // 選択中スコープが一覧から消えた場合は先頭へフォールバック（退会・権限喪失対応）
-        if (scopeType === 'TEAM' && this.selectedTeamId !== null) {
-          const exists = result.items.some(item => item.scopeId === this.selectedTeamId)
-          if (!exists && first) {
-            this.selectedTeamId = first.scopeId
-            this.persistToStorage()
-          }
-        } else if (scopeType === 'ORGANIZATION' && this.selectedOrgId !== null) {
-          const exists = result.items.some(item => item.scopeId === this.selectedOrgId)
-          if (!exists && first) {
-            this.selectedOrgId = first.scopeId
-            this.persistToStorage()
+        } else if (scopeType === 'ORGANIZATION') {
+          if (this.selectedOrgId === null) {
+            if (first) {
+              this.selectedOrgId = first.slug ?? first.scopeId
+              this.persistToStorage()
+            }
+          } else {
+            const matchingItem = result.items.find(
+              item => item.scopeId === this.selectedOrgId || item.slug === this.selectedOrgId,
+            )
+            if (matchingItem) {
+              const uuid = matchingItem.slug ?? matchingItem.scopeId
+              if (uuid !== this.selectedOrgId) {
+                this.selectedOrgId = uuid
+                this.persistToStorage()
+              }
+            } else if (first) {
+              this.selectedOrgId = first.slug ?? first.scopeId
+              this.persistToStorage()
+            }
           }
         }
 
@@ -180,6 +220,40 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         console.error('[scopeDashboard] reorder failed', e)
         this.lastError = 'scopeDashboard.orderDialog.saveError'
       }
+    },
+
+    /**
+     * 管理者レンズの scopeKey を生成する（設計書 02 §1.2）。
+     * `${scopeType}:${slug}`（例 `TEAM:dev-team` / `ORGANIZATION:acme`）。
+     * slug はスコープ内一意かつ URL 識別子の正準のため、数値 ID を持ち出さない。
+     *
+     * @param scopeType - TEAM / ORGANIZATION
+     * @param slug - スコープの slug
+     */
+    adminLensKey(scopeType: ScopeTabType, slug: string): string {
+      return `${scopeType}:${slug}`
+    },
+
+    /**
+     * 管理者レンズの ON/OFF を設定して localStorage に保存する。
+     *
+     * @param scopeType - TEAM / ORGANIZATION
+     * @param slug - スコープの slug
+     * @param on - 管理者レンズ ON（true）/ メンバーレンズ（false）
+     */
+    setAdminLens(scopeType: ScopeTabType, slug: string, on: boolean) {
+      this.adminLens[this.adminLensKey(scopeType, slug)] = on
+      this.persistToStorage()
+    },
+
+    /**
+     * 管理者レンズが ON かどうかを返す（既定 false = メンバーレンズ）。
+     *
+     * @param scopeType - TEAM / ORGANIZATION
+     * @param slug - スコープの slug
+     */
+    isAdminLensOn(scopeType: ScopeTabType, slug: string): boolean {
+      return this.adminLens[this.adminLensKey(scopeType, slug)] ?? false
     },
 
     /**

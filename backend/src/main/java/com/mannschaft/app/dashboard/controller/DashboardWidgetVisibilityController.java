@@ -6,6 +6,8 @@ import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.dto.UpdateWidgetVisibilityRequest;
 import com.mannschaft.app.dashboard.dto.WidgetVisibilityResponse;
 import com.mannschaft.app.dashboard.service.DashboardWidgetVisibilityService;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
 
 /**
  * F02.2.1 ダッシュボードウィジェット ロール別可視性 コントローラー。
@@ -37,6 +40,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class DashboardWidgetVisibilityController {
 
     private final DashboardWidgetVisibilityService visibilityService;
+    private final OrganizationService organizationService;
+    private final TeamService teamService;
 
     // ========================================
     // チーム
@@ -45,11 +50,12 @@ public class DashboardWidgetVisibilityController {
     /**
      * チームのウィジェット可視性設定一覧を取得する。
      */
-    @GetMapping("/team/{teamId}/widget-visibility")
+    @GetMapping("/team/{teamPublicId}/widget-visibility")
     @Operation(summary = "チームウィジェット可視性設定一覧",
             description = "指定チームの全ウィジェットの最低必要ロール一覧を取得する。MEMBER 以上のみアクセス可。")
     public ResponseEntity<ApiResponse<WidgetVisibilityResponse>> getTeamWidgetVisibility(
-            @PathVariable Long teamId) {
+            @PathVariable String teamPublicId) {
+        Long teamId = teamService.resolveTeamId(teamPublicId);
         Long userId = SecurityUtils.getCurrentUserId();
         WidgetVisibilityResponse response = visibilityService.getSettings(userId, ScopeType.TEAM, teamId);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -58,13 +64,14 @@ public class DashboardWidgetVisibilityController {
     /**
      * チームのウィジェット可視性設定を一括更新する。
      */
-    @PutMapping("/team/{teamId}/widget-visibility")
+    @PutMapping("/team/{teamPublicId}/widget-visibility")
     @Operation(summary = "チームウィジェット可視性設定更新",
             description = "指定チームのウィジェット最低必要ロールを一括更新する。"
                     + "ADMIN は無条件、DEPUTY_ADMIN は DASHBOARD_WIDGET_VISIBILITY_MANAGE 権限保有時のみ可。")
     public ResponseEntity<ApiResponse<WidgetVisibilityResponse>> updateTeamWidgetVisibility(
-            @PathVariable Long teamId,
+            @PathVariable String teamPublicId,
             @Valid @RequestBody UpdateWidgetVisibilityRequest request) {
+        Long teamId = teamService.resolveTeamId(teamPublicId);
         Long userId = SecurityUtils.getCurrentUserId();
         WidgetVisibilityResponse response = visibilityService.updateSettings(userId, ScopeType.TEAM, teamId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -77,11 +84,12 @@ public class DashboardWidgetVisibilityController {
     /**
      * 組織のウィジェット可視性設定一覧を取得する。
      */
-    @GetMapping("/organization/{orgId}/widget-visibility")
+    @GetMapping("/organization/{orgPublicId}/widget-visibility")
     @Operation(summary = "組織ウィジェット可視性設定一覧",
             description = "指定組織の全ウィジェットの最低必要ロール一覧を取得する。MEMBER 以上のみアクセス可。")
     public ResponseEntity<ApiResponse<WidgetVisibilityResponse>> getOrgWidgetVisibility(
-            @PathVariable Long orgId) {
+            @PathVariable String orgPublicId) {
+        Long orgId = organizationService.resolveOrgId(orgPublicId);
         Long userId = SecurityUtils.getCurrentUserId();
         WidgetVisibilityResponse response = visibilityService.getSettings(userId, ScopeType.ORGANIZATION, orgId);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -90,13 +98,14 @@ public class DashboardWidgetVisibilityController {
     /**
      * 組織のウィジェット可視性設定を一括更新する。
      */
-    @PutMapping("/organization/{orgId}/widget-visibility")
+    @PutMapping("/organization/{orgPublicId}/widget-visibility")
     @Operation(summary = "組織ウィジェット可視性設定更新",
             description = "指定組織のウィジェット最低必要ロールを一括更新する。"
                     + "ADMIN は無条件、DEPUTY_ADMIN は DASHBOARD_WIDGET_VISIBILITY_MANAGE 権限保有時のみ可。")
     public ResponseEntity<ApiResponse<WidgetVisibilityResponse>> updateOrgWidgetVisibility(
-            @PathVariable Long orgId,
+            @PathVariable String orgPublicId,
             @Valid @RequestBody UpdateWidgetVisibilityRequest request) {
+        Long orgId = organizationService.resolveOrgId(orgPublicId);
         Long userId = SecurityUtils.getCurrentUserId();
         WidgetVisibilityResponse response = visibilityService.updateSettings(userId, ScopeType.ORGANIZATION, orgId, request);
         return ResponseEntity.ok(ApiResponse.of(response));

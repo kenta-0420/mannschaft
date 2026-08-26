@@ -1,6 +1,5 @@
 package com.mannschaft.app.social.announcement.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.social.announcement.AnnouncementChannel;
 import com.mannschaft.app.social.announcement.AnnouncementContentRequest;
 import jakarta.validation.Valid;
@@ -37,21 +36,18 @@ public class BroadcastRequestDto {
      */
     @NotNull
     @Size(max = 30)
-    @JsonProperty("target_role")
     private String targetRole;
 
     /**
      * 組織告知でのチーム絞り込み対象 ID リスト。
      * null = 全チーム対象。
      */
-    @JsonProperty("target_team_ids")
     private List<Long> targetTeamIds;
 
     /**
      * 範囲テンプレート ID（省略可）。
      * 指定した場合、スコープに紐づくテンプレートであることを検証する。
      */
-    @JsonProperty("template_id")
     private Long templateId;
 
     /**
@@ -64,7 +60,6 @@ public class BroadcastRequestDto {
     /**
      * 表示期限（null = 期限なし）。
      */
-    @JsonProperty("expires_at")
     private LocalDateTime expiresAt;
 
     /** 告知コンテンツ情報（必須）。 */

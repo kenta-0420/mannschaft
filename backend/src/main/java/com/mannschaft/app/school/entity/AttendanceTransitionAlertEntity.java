@@ -8,7 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,8 +21,7 @@ import java.time.LocalDateTime;
 @Table(name = "attendance_transition_alerts")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class AttendanceTransitionAlertEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -64,4 +63,22 @@ public class AttendanceTransitionAlertEntity extends BaseEntity {
 
     @Column(length = 500)
     private String resolutionNote;
+
+    /**
+     * アラートを解決済みにする（直接ミューテート）。
+     *
+     * <p>{@code toBuilder().build()} で作り直すと {@link com.mannschaft.app.common.BaseEntity}
+     * の {@code id} が継承フィールドのため引き継がれず id=null の新インスタンスになり、
+     * save が UPDATE でなく INSERT 化して行が重複する。managed entity を直接書き換えることで
+     * JPA dirty checking が UPDATE を発行し id を保持する。</p>
+     *
+     * @param resolvedBy     解決者ユーザーID
+     * @param resolvedAt     解決日時
+     * @param resolutionNote 解決理由
+     */
+    public void markResolved(Long resolvedBy, java.time.LocalDateTime resolvedAt, String resolutionNote) {
+        this.resolvedBy = resolvedBy;
+        this.resolvedAt = resolvedAt;
+        this.resolutionNote = resolutionNote;
+    }
 }

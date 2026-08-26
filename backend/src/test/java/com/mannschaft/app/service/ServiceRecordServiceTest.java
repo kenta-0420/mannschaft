@@ -1,5 +1,6 @@
 package com.mannschaft.app.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.StorageService;
@@ -48,6 +49,7 @@ class ServiceRecordServiceTest {
     @Mock private ObjectMapper objectMapper;
     @Mock private NameResolverService nameResolverService;
     @Mock private StorageService storageService;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ServiceRecordService service;
@@ -92,7 +94,7 @@ class ServiceRecordServiceTest {
             ServiceRecordEntity entity = createRecordEntity(ServiceRecordStatus.CONFIRMED);
             given(recordRepository.findByIdAndTeamId(RECORD_ID, TEAM_ID)).willReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.confirmRecord(TEAM_ID, RECORD_ID))
+            assertThatThrownBy(() -> service.confirmRecord(TEAM_ID, RECORD_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("SERVICE_RECORD_010"));
@@ -107,7 +109,7 @@ class ServiceRecordServiceTest {
         void 削除_正常_論理削除() {
             ServiceRecordEntity entity = createRecordEntity(ServiceRecordStatus.DRAFT);
             given(recordRepository.findByIdAndTeamId(RECORD_ID, TEAM_ID)).willReturn(Optional.of(entity));
-            service.deleteRecord(TEAM_ID, RECORD_ID);
+            service.deleteRecord(TEAM_ID, RECORD_ID, USER_ID);
             verify(recordRepository).save(entity);
         }
 
@@ -115,7 +117,7 @@ class ServiceRecordServiceTest {
         @DisplayName("異常系: 記録不在でSERVICE_RECORD_001例外")
         void 削除_不在_例外() {
             given(recordRepository.findByIdAndTeamId(RECORD_ID, TEAM_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.deleteRecord(TEAM_ID, RECORD_ID))
+            assertThatThrownBy(() -> service.deleteRecord(TEAM_ID, RECORD_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("SERVICE_RECORD_001"));
@@ -153,7 +155,7 @@ class ServiceRecordServiceTest {
             request.setContentType("text/plain");
             request.setFileSize(1000L);
 
-            assertThatThrownBy(() -> service.generateUploadUrl(TEAM_ID, RECORD_ID, request))
+            assertThatThrownBy(() -> service.generateUploadUrl(TEAM_ID, RECORD_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("SERVICE_RECORD_017"));
@@ -168,7 +170,7 @@ class ServiceRecordServiceTest {
             request.setContentType("image/jpeg");
             request.setFileSize(11 * 1024 * 1024L);
 
-            assertThatThrownBy(() -> service.generateUploadUrl(TEAM_ID, RECORD_ID, request))
+            assertThatThrownBy(() -> service.generateUploadUrl(TEAM_ID, RECORD_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("SERVICE_RECORD_016"));

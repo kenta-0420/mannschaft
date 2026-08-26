@@ -13,6 +13,7 @@ defineEmits<{
 }>()
 
 const { formatDateTime } = useDatetime()
+const { t } = useI18n()
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '-'
@@ -20,18 +21,15 @@ function formatDate(dateStr: string | null): string {
 }
 
 function eventLabel(eventType: string) {
-  return (
-    (
-      {
-        LOGIN_SUCCESS: 'ログイン成功',
-        LOGIN_FAILURE: 'ログイン失敗',
-        LOGOUT: 'ログアウト',
-        TOKEN_REFRESH: 'トークン更新',
-        PASSWORD_CHANGE: 'パスワード変更',
-        MFA_VERIFY: '2FA認証',
-      } as Record<string, string>
-    )[eventType] || eventType
-  )
+  const map: Record<string, string> = {
+    LOGIN_SUCCESS: t('settings.login_history.event_login_success'),
+    LOGIN_FAILURE: t('settings.login_history.event_login_failure'),
+    LOGOUT: t('settings.login_history.event_logout'),
+    TOKEN_REFRESH: t('settings.login_history.event_token_refresh'),
+    PASSWORD_CHANGE: t('settings.login_history.event_password_change'),
+    MFA_VERIFY: t('settings.login_history.event_mfa_verify'),
+  }
+  return map[eventType] || eventType
 }
 
 function eventSeverity(eventType: string) {
@@ -42,10 +40,10 @@ function eventSeverity(eventType: string) {
 </script>
 
 <template>
-  <SectionCard title="ログイン履歴">
+  <SectionCard :title="$t('settings.login_history.section_title')">
     <div v-if="loginHistory.length === 0" class="py-8 text-center text-surface-400">
       <i class="pi pi-history mb-2 text-4xl" />
-      <p>ログイン履歴がありません</p>
+      <p>{{ $t('settings.login_history.no_history') }}</p>
     </div>
     <div v-else class="space-y-3">
       <div
@@ -74,7 +72,8 @@ function eventSeverity(eventType: string) {
       </div>
       <div v-if="loginHistoryHasNext" class="flex justify-center pt-2">
         <Button
-          label="もっと読む"
+          translate="no"
+          :label="$t('settings.login_history.load_more')"
           text
           :loading="loadingMoreHistory"
           @click="$emit('loadMore', loginHistoryNextCursor ?? undefined)"

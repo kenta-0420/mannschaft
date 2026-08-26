@@ -18,6 +18,7 @@ import com.mannschaft.app.advertising.campaign.repository.AdAudienceSegmentRepos
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignChannelRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
 import com.mannschaft.app.advertising.service.AdvertiserAccountService;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,6 +60,7 @@ class AdMessagingCampaignTransitionServiceTest {
     @Mock private AdMessagingCampaignMapper mapper;
     @Mock private AdCampaignModerationService moderationService;
     @Mock private AdvertiserAccountService advertiserAccountService;
+    @Mock private AuditLogService auditLogService;
     @InjectMocks private AdMessagingCampaignTransitionService service;
 
     private static final Long ORG_ID = 1L;
@@ -440,5 +442,94 @@ class AdMessagingCampaignTransitionServiceTest {
         BlockCampaignRequest req = new BlockCampaignRequest("理由");
         service.block(campaignId, MODERATOR_USER_ID, req);
         verify(moderationService, times(1)).block(eq(campaignId), eq(MODERATOR_USER_ID), eq(req));
+    }
+
+    // ─────────────────────────────────────────────
+    // F09.19.7 §10.5 / AC-7.5: 監査ログ発火
+    // ─────────────────────────────────────────────
+
+    @Test
+    @DisplayName("AC-7.5: submit(AUTO_PASS) は CAMPAIGN_SUBMITTED を発火し AUTO_BLOCKED は発火しない")
+    void submit_監査ログ_SUBMITTEDのみ() {
+        AdMessagingCampaign draft = buildCampaign(AdCampaignStatus.DRAFT);
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
+                .willReturn(Optional.of(draft));
+        given(channelRepository.findByCampaignId(campaignId)).willReturn(List.of(buildChannel()));
+        given(segmentRepository.findByCampaignId(campaignId)).willReturn(List.of(buildSegment()));
+        willAnswer(inv -> {
+            draft.setModerationStatus(AdModerationStatus.AUTO_PASSED);
+            return null;
+        }).given(moderationService).autoFlagOnSubmit(campaignId);
+
+        service.submit(campaignId, ORG_ID, REQUESTER_USER_ID);
+
+        String expectedMeta = "{\"campaign_id\":\"" + campaignId + "\"}";
+        verify(auditLogService, times(1)).record(
+                eq("CAMPAIGN_SUBMITTED"), eq(REQUESTER_USER_ID), any(), any(), eq(ORG_ID),
+                any(), any(), any(), eq(expectedMeta));
+        verify(auditLogService, never()).record(
+                eq("CAMPAIGN_AUTO_BLOCKED"), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("AC-7.5: submit(AUTO_BLOCK) は SUBMITTED と AUTO_BLOCKED の両方を発火")
+    void submit_監査ログ_AUTO_BLOCKED併発() {
+        AdMessagingCampaign draft = buildCampaign(AdCampaignStatus.DRAFT);
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
+                .willReturn(Optional.of(draft));
+        given(channelRepository.findByCampaignId(campaignId)).willReturn(List.of(buildChannel()));
+        given(segmentRepository.findByCampaignId(campaignId)).willReturn(List.of(buildSegment()));
+        willAnswer(inv -> {
+            draft.setStatus(AdCampaignStatus.BLOCKED);
+            draft.setModerationStatus(AdModerationStatus.BLOCKED);
+            return null;
+        }).given(moderationService).autoFlagOnSubmit(campaignId);
+
+        service.submit(campaignId, ORG_ID, REQUESTER_USER_ID);
+
+        verify(auditLogService, times(1)).record(
+                eq("CAMPAIGN_SUBMITTED"), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(auditLogService, times(1)).record(
+                eq("CAMPAIGN_AUTO_BLOCKED"), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("AC-7.5: cancel/launch/pause/resume が各対応イベントを発火")
+    void 各遷移_監査ログ発火() {
+        // cancel
+        AdMessagingCampaign draft = buildCampaign(AdCampaignStatus.DRAFT);
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
+                .willReturn(Optional.of(draft));
+        service.cancel(campaignId, ORG_ID, REQUESTER_USER_ID);
+        verify(auditLogService, times(1)).record(
+                eq("CAMPAIGN_CANCELLED"), eq(REQUESTER_USER_ID), any(), any(), eq(ORG_ID),
+                any(), any(), any(), any());
+
+        // launch (即配信)
+        AdMessagingCampaign approved = buildCampaign(
+                AdCampaignStatus.APPROVED, AdModerationStatus.APPROVED, LocalDateTime.now().minusHours(1));
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
+                .willReturn(Optional.of(approved));
+        given(advertiserAccountService.canAcceptNewCampaign(ADVERTISER_ID, 50_000L)).willReturn(true);
+        service.launch(campaignId, ORG_ID, REQUESTER_USER_ID);
+        verify(auditLogService, times(1)).record(
+                eq("CAMPAIGN_LAUNCHED"), any(), any(), any(), any(), any(), any(), any(), any());
+
+        // pause
+        AdMessagingCampaign delivering = buildCampaign(AdCampaignStatus.DELIVERING);
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
+                .willReturn(Optional.of(delivering));
+        service.pause(campaignId, ORG_ID, REQUESTER_USER_ID);
+        verify(auditLogService, times(1)).record(
+                eq("CAMPAIGN_PAUSED"), any(), any(), any(), any(), any(), any(), any(), any());
+
+        // resume
+        AdMessagingCampaign paused = buildCampaign(AdCampaignStatus.PAUSED);
+        given(campaignRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(campaignId, ScopeType.ORGANIZATION, ORG_ID))
+                .willReturn(Optional.of(paused));
+        given(advertiserAccountService.canAcceptNewCampaign(ADVERTISER_ID, 50_000L)).willReturn(true);
+        service.resume(campaignId, ORG_ID, REQUESTER_USER_ID);
+        verify(auditLogService, times(1)).record(
+                eq("CAMPAIGN_RESUMED"), any(), any(), any(), any(), any(), any(), any(), any());
     }
 }

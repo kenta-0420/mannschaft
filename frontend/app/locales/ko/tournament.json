@@ -1,4 +1,18 @@
 {
+  "sport": {
+    "label": "종목",
+    "help": "이 대회의 종목을 선택합니다. 직접 점수 입력 시 생성되는 경기가 이 종목으로 만들어집니다.",
+    "options": {
+      "SOCCER": "축구",
+      "FUTSAL": "풋살",
+      "BASKETBALL": "농구",
+      "VOLLEYBALL": "배구",
+      "SHOGI": "쇼기",
+      "GO": "바둑",
+      "FIGURE_SKATING": "피겨 스케이팅",
+      "GYMNASTICS": "체조"
+    }
+  },
   "entry": {
     "title": "엔트리 관리",
     "memberCount": "{count}명",
@@ -140,7 +154,9 @@
     "no_chat": "채팅 공간이 없습니다",
     "visibility_saved": "공개 설정을 변경했습니다",
     "visibility_failed": "공개 설정 변경에 실패했습니다",
-    "load_failed": "연락 공간 불러오기에 실패했습니다"
+    "load_failed": "연락 공간 불러오기에 실패했습니다",
+    "divisions_load_failed": "디비전 목록 불러오기에 실패했습니다",
+    "permissions_load_failed": "권한 정보를 불러오지 못했습니다. 일부 작업이 제한될 수 있습니다"
   },
   "submission": {
     "title": "서류 제출 접수",
@@ -245,5 +261,165 @@
     "empty_team_record": "참가한 대회가 아직 없습니다",
     "empty_org_summary": "주최 중인 대회가 아직 없습니다",
     "empty_division_standings": "현재 참가 중인 대회가 없습니다"
+  },
+  "tournamentFee": {
+    "pageTitle": "대회 참가비",
+    "myFees": "내 참가비 목록",
+    "noFees": "현재 대회 참가비가 없습니다",
+    "payNow": "지금 결제",
+    "paid": "결제완료",
+    "paidAt": "결제일시",
+    "dueDate": "결제기한",
+    "faceAmount": "참가비",
+    "totalCharge": "총 청구액",
+    "checkoutSuccess": "체크아웃 완료",
+    "checkoutError": "체크아웃 실패"
+  },
+  "standings": {
+    "title": "순위표",
+    "back": "대회로 돌아가기",
+    "rank": "순위",
+    "team": "팀",
+    "played": "경기수",
+    "winDrawLoss": "승/무/패",
+    "goalDiff": "득실차",
+    "setsWonLost": "승세트/패세트",
+    "points": "승점",
+    "form": "최근 폼",
+    "recalculate": "재계산",
+    "recalculated": "순위표를 재계산했습니다",
+    "recalculateFailed": "순위표 재계산에 실패했습니다",
+    "downloadPdf": "PDF 출력",
+    "pdfFailed": "PDF 출력에 실패했습니다",
+    "empty": "순위 데이터가 없습니다",
+    "noDivisions": "등록된 부문이 없습니다",
+    "loadFailed": "순위표를 불러오지 못했습니다",
+    "forbidden": "이 대회를 볼 권한이 없습니다"
+  },
+  "rankings": {
+    "title": "랭킹",
+    "back": "대회로 돌아가기",
+    "rank": "순위",
+    "player": "선수",
+    "anonymousPlayer": "익명 선수",
+    "matchesPlayed": "출전",
+    "value": "기록",
+    "downloadPdf": "PDF 출력",
+    "pdfFailed": "PDF 출력에 실패했습니다",
+    "empty": "랭킹 데이터가 없습니다",
+    "noCategories": "랭킹 항목이 없습니다",
+    "loadFailed": "랭킹을 불러오지 못했습니다",
+    "forbidden": "이 대회를 볼 권한이 없습니다"
+  },
+  "matrix": {
+    "title": "대전 매트릭스",
+    "back": "대회로 돌아가기",
+    "homeAway": "홈＼원정",
+    "notPlayed": "미대전",
+    "downloadPdf": "PDF 출력",
+    "pdfFailed": "PDF 출력에 실패했습니다",
+    "empty": "매트릭스 데이터가 없습니다",
+    "noDivisions": "등록된 부문이 없습니다",
+    "loadFailed": "매트릭스를 불러오지 못했습니다",
+    "forbidden": "이 대회를 볼 권한이 없습니다",
+    "setsNote": "세트제 대회이므로 각 셀의 점수는 모든 세트 득점의 합계를 나타냅니다. 승부는 승리한 세트 수로 결정됩니다."
+  },
+  "visibility": {
+    "title": "공개 범위 설정",
+    "description": "이 대회의 순위·성적을 누구에게 공개할지 설정합니다.",
+    "save": "저장",
+    "saved": "공개 범위를 변경했습니다",
+    "saveFailed": "공개 범위 변경에 실패했습니다",
+    "levels": {
+      "PUBLIC": {
+        "label": "전체 공개",
+        "description": "로그인하지 않은 사람을 포함해 누구나 볼 수 있습니다."
+      },
+      "SUPPORTERS_AND_ABOVE": {
+        "label": "응원자 이상",
+        "description": "응원자·멤버·관리자가 볼 수 있습니다."
+      },
+      "MEMBERS_AND_ABOVE": {
+        "label": "멤버 이상",
+        "description": "멤버와 관리자만 볼 수 있습니다(응원자 제외)."
+      },
+      "ADMINS_AND_ABOVE": {
+        "label": "관리자 전용",
+        "description": "조직 관리자·부관리자만 볼 수 있습니다."
+      },
+      "SCOPE_AFFILIATED": {
+        "label": "소속자 전용",
+        "description": "조직에 직접 소속된 사람(응원자 포함)만 볼 수 있습니다."
+      },
+      "PARTICIPANTS_ONLY": {
+        "label": "참가자 전용",
+        "description": "이 대회에 참가하는 팀 관계자만 볼 수 있습니다."
+      }
+    }
+  },
+  "scoreEntry": {
+    "title": "점수 입력",
+    "navLink": "점수 입력 (관리자)",
+    "back": "대회 상세로 돌아가기",
+    "matchday": "라운드",
+    "home": "홈",
+    "away": "원정",
+    "homeScore": "홈 점수",
+    "awayScore": "원정 점수",
+    "homeExtraScore": "홈 연장",
+    "awayExtraScore": "원정 연장",
+    "homePenaltyScore": "홈 승부차기",
+    "awayPenaltyScore": "원정 승부차기",
+    "extraPenaltyHint": "연장전은 본 경기 점수에 합산하여 승부를 가립니다. 승부차기는 본 경기와 연장 후에도 동점일 때만 의미가 있습니다. 진행하지 않은 항목은 비워 두세요.",
+    "setHeader": "{n}세트",
+    "setHomeAria": "{n}세트 홈 득점",
+    "setAwayAria": "{n}세트 원정 득점",
+    "setsHint": "{n}세트 선취 시 승리합니다. 진행한 세트의 점수만 입력하고 진행하지 않은 세트는 비워 두세요. 승부는 승리한 세트 수로 결정됩니다.",
+    "save": "일괄 저장",
+    "saved": "점수를 저장했습니다",
+    "saveFailed": "점수 저장에 실패했습니다",
+    "conflict": "다른 편집과 충돌했습니다. 최신 상태를 다시 불러왔습니다. 다시 입력해 주세요.",
+    "invalidInput": "입력값이 올바르지 않습니다(점수는 0 이상의 정수여야 하며 홈·원정 모두 입력해야 합니다).",
+    "nothingToSave": "저장할 점수가 없습니다",
+    "standingsHint": "점수를 저장했습니다. 순위는 자동으로 재계산됩니다.",
+    "forbidden": "이 대회의 점수를 편집할 권한이 없습니다",
+    "loadFailed": "데이터를 불러오지 못했습니다",
+    "noDivisions": "등록된 부문이 없습니다",
+    "noMatchdays": "등록된 라운드가 없습니다",
+    "noMatches": "대진이 없습니다",
+    "csv": {
+      "title": "CSV로 일괄 가져오기",
+      "formatHint": "matchId,homeScore,awayScore 순서로 작성한 CSV를 업로드하세요(첫 행은 헤더). 점수가 확정되지 않은 경기는 비워 둡니다.",
+      "import": "가져오기",
+      "imported": "CSV를 가져왔습니다",
+      "importFailed": "CSV 가져오기에 실패했습니다",
+      "invalidFormat": "CSV 형식이 올바르지 않습니다. 점수는 정수로 입력하세요.",
+      "downloadTemplate": "템플릿 다운로드"
+    }
+  },
+  "scorekeeper": {
+    "title": "스코어키퍼 지정",
+    "description": "지정된 사용자는 이 대회의 점수 입력(단건·일괄·CSV 가져오기)이 가능합니다. 지정은 주최 조직의 관리자만 할 수 있습니다.",
+    "userIdLabel": "사용자 ID",
+    "userIdPlaceholder": "예: 12345",
+    "searchLabel": "이름으로 회원을 검색하여 지정",
+    "searchPlaceholder": "이름 또는 카드 번호로 검색",
+    "searching": "검색 중…",
+    "noCandidates": "일치하는 회원을 찾을 수 없습니다",
+    "selectMember": "이 회원 지정",
+    "add": "지정",
+    "remove": "해제",
+    "empty": "아직 지정된 스코어키퍼가 없습니다",
+    "addSuccess": "스코어키퍼를 지정했습니다",
+    "removeSuccess": "스코어키퍼 지정을 해제했습니다",
+    "alreadyAssigned": "이미 지정된 사용자입니다",
+    "error": {
+      "loadFailed": "스코어키퍼 목록을 불러오지 못했습니다",
+      "addFailed": "스코어키퍼 지정에 실패했습니다 ({status})",
+      "removeFailed": "스코어키퍼 지정 해제에 실패했습니다",
+      "forbidden": "스코어키퍼를 관리할 권한이 없습니다 (주최 조직 관리자 전용)",
+      "invalidUserId": "사용자 ID는 양의 정수로 입력하세요",
+      "searchFailed": "회원 검색에 실패했습니다"
+    }
   }
 }

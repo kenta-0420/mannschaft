@@ -1,5 +1,6 @@
 package com.mannschaft.app.line.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.line.LineErrorCode;
@@ -24,6 +25,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * LINE BOT設定サービス。
+ *
+ * <p>認可（認可根治戦役 Wave2 トランシェ2C）: BOT 設定は webhookSecret・チャネル資格情報を扱う
+ * 管理機能のため、閲覧・変更とも {@code checkAdminOrAbove} で保護する（先行 #2259 webhook ドメインの
+ * トークン管理と同方針）。BOT 設定はスコープと 1:1 で path に entity ID を持たないため、
+ * path scope での認可＝entity 由来 scope での認可となり、ID ベースの BOLA は構造上存在しない。
+ * 設定不在は LINE_001（GlobalExceptionHandler で 404 マッピング）。</p>
  */
 @Service
 @Transactional(readOnly = true)
@@ -35,11 +42,18 @@ public class LineBotConfigService {
     private final LineMapper lineMapper;
     private final EncryptionService encryptionService;
     private final LineMessagingApiClient lineMessagingApiClient;
+    private final AccessControlService accessControlService;
 
     /**
      * BOT設定を取得する。
+     *
+     * <p>webhookSecret を含むためADMIN/DEPUTY_ADMINのみ閲覧可（応答内のwebhookSecretは
+     * {@link LineMapper#maskSecret(String)} でprefixマスクされる）。</p>
+     *
+     * @param actorUserId 操作者ユーザーID（認可検証用）
      */
-    public LineBotConfigResponse getConfig(ScopeType scopeType, Long scopeId) {
+    public LineBotConfigResponse getConfig(ScopeType scopeType, Long scopeId, Long actorUserId) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
         LineBotConfigEntity entity = findByScope(scopeType, scopeId);
         return lineMapper.toLineBotConfigResponse(entity);
     }
@@ -50,6 +64,7 @@ public class LineBotConfigService {
     @Transactional
     public LineBotConfigResponse create(ScopeType scopeType, Long scopeId, Long userId,
                                          CreateLineBotConfigRequest request) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
         if (lineBotConfigRepository.existsByScopeTypeAndScopeId(scopeType, scopeId)) {
             throw new BusinessException(LineErrorCode.LINE_002);
         }
@@ -73,10 +88,13 @@ public class LineBotConfigService {
 
     /**
      * BOT設定を更新する。
+     *
+     * @param actorUserId 操作者ユーザーID（認可検証用）
      */
     @Transactional
-    public LineBotConfigResponse update(ScopeType scopeType, Long scopeId,
+    public LineBotConfigResponse update(ScopeType scopeType, Long scopeId, Long actorUserId,
                                          UpdateLineBotConfigRequest request) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
         LineBotConfigEntity entity = findByScope(scopeType, scopeId);
         entity.update(
                 request.getChannelId(),
@@ -92,18 +110,25 @@ public class LineBotConfigService {
 
     /**
      * BOT設定を論理削除する。
+     *
+     * @param actorUserId 操作者ユーザーID（認可検証用）
      */
     @Transactional
-    public void delete(ScopeType scopeType, Long scopeId) {
+    public void delete(ScopeType scopeType, Long scopeId, Long actorUserId) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
         LineBotConfigEntity entity = findByScope(scopeType, scopeId);
         entity.softDelete();
     }
 
     /**
      * テストメッセージを送信する（ログ記録のみ、実際のLINE API呼び出しは将来実装）。
+     *
+     * @param actorUserId 操作者ユーザーID（認可検証用）
      */
     @Transactional
-    public void sendTestMessage(ScopeType scopeType, Long scopeId, TestMessageRequest request) {
+    public void sendTestMessage(ScopeType scopeType, Long scopeId, Long actorUserId,
+                                TestMessageRequest request) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
         LineBotConfigEntity config = findByScope(scopeType, scopeId);
 
         LineMessageLogEntity log = LineMessageLogEntity.builder()
@@ -124,9 +149,14 @@ public class LineBotConfigService {
 
     /**
      * メッセージ履歴を取得する。
+     *
+     * <p>LINE 利用者 ID・メッセージ本文要約を含むためADMIN/DEPUTY_ADMINのみ閲覧可。</p>
+     *
+     * @param actorUserId 操作者ユーザーID（認可検証用）
      */
     public Page<LineMessageLogResponse> getMessageLogs(ScopeType scopeType, Long scopeId,
-                                                        Pageable pageable) {
+                                                        Long actorUserId, Pageable pageable) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
         LineBotConfigEntity config = findByScope(scopeType, scopeId);
         return lineMessageLogRepository
                 .findByLineBotConfigIdOrderByCreatedAtDesc(config.getId(), pageable)

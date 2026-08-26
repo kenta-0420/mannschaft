@@ -13,7 +13,10 @@ export type ScopeTabType = 'TEAM' | 'ORGANIZATION'
 
 /** タグ行の 1 スコープエントリ（API レスポンスは snake_case → camelCase に変換） */
 export interface ScopeTabItem {
+  /** 内部 BIGINT（表示順管理・PUT /scope-tabs/order の scopeId に使用） */
   scopeId: string
+  /** カスタムスラッグ（ダッシュボード API の pathVariable /team/{slug} 等に使用）。BE が返さない場合は null */
+  slug: string | null
   scopeType: ScopeTabType
   name: string
   avatarUrl: string | null
@@ -103,37 +106,91 @@ export interface WidgetSetting {
 }
 
 // -----------------------------------------------------------------------
-// ブログ・チャット・カレンダーのサマリ型（第二波で実体が入るまでオプショナル）
+// チーム/組織パネル用のウィジェット表示アイテム型
+//
+// BE は各ウィジェットを Map<String,Object> でシリアライズしており（生成型
+// types/generated では中身が空型になる）、キーは既存ダッシュボードレスポンスと
+// 同じ snake_case のまま返る（Jackson の命名変換は生 Map には効かない）。
+// FE はそのキーを正確にミラーした表示用型として本ファイルへ集約する。
+// 権威源: backend ScopeWidgetSummaryService / DashboardService の toXxxMap。
 // -----------------------------------------------------------------------
 
-/** ブログ直近記事エントリ */
-export interface LatestBlogPostEntry {
+/** ① 今後の予定エントリ（teamUpcomingEvents / orgUpcomingEvents の要素）。 */
+export interface ScopeUpcomingEventItem {
   id: number
   title: string
-  author: string
-  publishedAt: string
+  start_at: string
+  end_at: string | null
+  location: string | null
+  all_day: boolean
 }
 
-/** チャットチャンネルサマリエントリ */
-export interface ChatChannelSummaryEntry {
+/** ④ ブログ直近記事エントリ（teamLatestBlogPosts / orgLatestBlogPosts の要素）。 */
+export interface ScopeBlogPostItem {
+  id: number
+  title: string
+  author: string | null
+  published_at: string | null
+}
+
+/** ⑤ チャットチャンネルサマリエントリ（chatSummary.channels の要素）。 */
+export interface ScopeChatChannelItem {
   id: number
   name: string
-  unreadCount: number
-  lastMessagePreview: string | null
+  unread_count: number
+  last_message_preview: string | null
 }
 
-/** チャットサマリ */
-export interface ChatSummary {
-  totalUnread: number
-  channels: ChatChannelSummaryEntry[]
+/** ⑤ チャットサマリ（teamChatSummary / orgChatSummary）。 */
+export interface ScopeChatSummary {
+  total_unread: number
+  channels: ScopeChatChannelItem[]
 }
 
-/** カレンダーサマリ */
-export interface CalendarSummary {
-  eventsToday: number
-  eventsThisWeek: number
-  nextEvent: string | null
-  daysWithEvents: number[]
+/** ⑥ カレンダーサマリ（teamCalendarSummary / orgCalendarSummary）。 */
+export interface ScopeCalendarSummary {
+  events_today: number
+  events_this_week: number
+  next_event: string | null
+  days_with_events: number[]
+}
+
+/** ⑦ TODO アイテム（teamTodo.items / orgTodo.items の要素）。 */
+export interface ScopeTodoItem {
+  id: number
+  title: string
+  status: string
+  priority: string
+  due_date: string | null
+  parent_id: number | null
+  depth: number
+}
+
+/** ⑦ TODO サマリ（teamTodo / orgTodo）。 */
+export interface ScopeTodoSummary {
+  items: ScopeTodoItem[]
+  overdue_count: number
+  total_incomplete: number
+}
+
+/** ③ 掲示板スレッド一覧の 1 エントリ（unreadThreads.bulletin_threads の要素）。 */
+export interface ScopeBulletinThreadItem {
+  id: number
+  title: string
+  updated_at: string
+  is_read: boolean
+}
+
+/**
+ * ③ 未読スレッド集計（teamUnreadThreads / orgUnreadThreads）。
+ *
+ * 第二陣（dashboard-scope-panel-content）で直近スレッド一覧 bulletin_threads を追加。
+ * BE 未デプロイ環境では undefined になりうるため任意扱いとし、FE は空配列へ縮退する。
+ */
+export interface ScopeUnreadThreads {
+  bulletin_count: number
+  chat_count: number
+  bulletin_threads?: ScopeBulletinThreadItem[] | null
 }
 
 // -----------------------------------------------------------------------
@@ -150,12 +207,12 @@ export interface CalendarSummary {
 export interface TeamDashboardResponse {
   // --- 既存実装済みフィールド ---
   teamNotices: Record<string, unknown>[] | null
-  teamUpcomingEvents: Record<string, unknown>[] | null
-  teamTodo: Record<string, unknown> | null
+  teamUpcomingEvents: ScopeUpcomingEventItem[] | null
+  teamTodo: ScopeTodoSummary | null
   teamProjectProgress: Record<string, unknown>[] | null
   teamActivity: Record<string, unknown> | null
   teamLatestPosts: Record<string, unknown>[] | null
-  teamUnreadThreads: Record<string, unknown> | null
+  teamUnreadThreads: ScopeUnreadThreads | null
   teamMemberAttendance: Record<string, unknown> | null
   teamBilling: Record<string, unknown> | null
   teamPageViews: Record<string, unknown> | null
@@ -165,11 +222,11 @@ export interface TeamDashboardResponse {
   viewerRole: 'SYSTEM_ADMIN' | 'ADMIN' | 'DEPUTY_ADMIN' | 'MEMBER' | 'SUPPORTER' | 'PUBLIC' | null
   widgetVisibility: WidgetVisibilityRow[] | null
 
-  // --- 第二波（F22.1 Wave 2）で追加予定のオプショナルフィールド ---
+  // --- 第二波（F22.1 Wave 2）で実装済みのサマリフィールド ---
   // 02_api_design.md §3.3 サマリ追加フィールド参照
-  teamLatestBlogPosts?: LatestBlogPostEntry[]
-  teamChatSummary?: ChatSummary
-  teamCalendarSummary?: CalendarSummary
+  teamLatestBlogPosts?: ScopeBlogPostItem[] | null
+  teamChatSummary?: ScopeChatSummary | null
+  teamCalendarSummary?: ScopeCalendarSummary | null
   teamActionRequired?: ActionRequiredSummary
 }
 
@@ -183,7 +240,7 @@ export interface OrgDashboardResponse {
   // --- 既存実装済みフィールド ---
   orgTeamList: Record<string, unknown>[] | null
   orgNotices: Record<string, unknown>[] | null
-  orgTodo: Record<string, unknown> | null
+  orgTodo: ScopeTodoSummary | null
   orgProjectProgress: Record<string, unknown>[] | null
   orgStats: Record<string, unknown> | null
   orgBilling: Record<string, unknown> | null
@@ -193,13 +250,13 @@ export interface OrgDashboardResponse {
   viewerRole: 'SYSTEM_ADMIN' | 'ADMIN' | 'DEPUTY_ADMIN' | 'MEMBER' | 'SUPPORTER' | 'PUBLIC' | null
   widgetVisibility: WidgetVisibilityRow[] | null
 
-  // --- 第二波（F22.1 Wave 2）で追加予定のオプショナルフィールド ---
+  // --- 第二波（F22.1 Wave 2）で実装済みのサマリフィールド ---
   // 02_api_design.md §3.3 サマリ追加フィールド参照
-  orgUpcomingEvents?: Record<string, unknown>[]
-  orgLatestPosts?: Record<string, unknown>[]
-  orgUnreadThreads?: Record<string, unknown>
-  orgLatestBlogPosts?: LatestBlogPostEntry[]
-  orgChatSummary?: ChatSummary
-  orgCalendarSummary?: CalendarSummary
+  orgUpcomingEvents?: ScopeUpcomingEventItem[] | null
+  orgLatestPosts?: Record<string, unknown>[] | null
+  orgUnreadThreads?: ScopeUnreadThreads | null
+  orgLatestBlogPosts?: ScopeBlogPostItem[] | null
+  orgChatSummary?: ScopeChatSummary | null
+  orgCalendarSummary?: ScopeCalendarSummary | null
   orgActionRequired?: ActionRequiredSummary
 }

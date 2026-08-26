@@ -28,9 +28,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import com.mannschaft.app.team.service.TeamService;
 import java.time.LocalDateTime;
 import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -50,8 +50,14 @@ import static org.mockito.Mockito.mockStatic;
 class SurveyPhase11ControllerTest {
 
     private static final Long SURVEY_ID = 100L;
-    private static final Long SCOPE_ID = 1L;
-    private static final String SCOPE_TYPE = "TEAM";
+    /** FE から渡る UUID 文字列（publicId）。 */
+    private static final String SCOPE_ID = "00000000-0000-7000-8000-000000000001";
+    /** resolveTeamId() が返す内部 BIGINT。 */
+    private static final Long SCOPE_ID_LONG = 1L;
+    /** URL パスに使う scopeType（複数形）。Controller の resolveScopeType で正準値に変換される。 */
+    private static final String SCOPE_TYPE = "teams";
+    /** Controller が resolveScopeType で変換した正準値。Service mock の期待値に使う。 */
+    private static final String CANONICAL_SCOPE_TYPE = "TEAM";
     private static final Long USER_ID = 10L;
 
     @Nested
@@ -64,6 +70,9 @@ class SurveyPhase11ControllerTest {
         @Mock
         private SurveyResultService surveyResultService;
 
+        @Mock
+        private TeamService teamService;
+
         @InjectMocks
         private SurveyController controller;
 
@@ -72,8 +81,10 @@ class SurveyPhase11ControllerTest {
         void 正常系_200OKとCSVバイト列を返す() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(teamService.resolveTeamId(SCOPE_ID)).willReturn(SCOPE_ID_LONG);
                 byte[] csv = "回答日時,回答者\n2026-01-01,田中".getBytes();
-                given(surveyResultService.exportResultsCsv(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, USER_ID))
+                // Controller が resolveScopeType で "teams" → "TEAM" に正準化してから Service を呼ぶ
+                given(surveyResultService.exportResultsCsv(CANONICAL_SCOPE_TYPE, SCOPE_ID_LONG, SURVEY_ID, USER_ID))
                         .willReturn(csv);
 
                 ResponseEntity<byte[]> result = controller.exportResults(SCOPE_TYPE, SCOPE_ID, SURVEY_ID);
@@ -90,9 +101,11 @@ class SurveyPhase11ControllerTest {
         void 認可エラー_例外伝播() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(teamService.resolveTeamId(SCOPE_ID)).willReturn(SCOPE_ID_LONG);
+                // Controller が resolveScopeType で "teams" → "TEAM" に正準化してから Service を呼ぶ
                 willThrow(new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED))
                         .given(surveyResultService)
-                        .exportResultsCsv(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, USER_ID);
+                        .exportResultsCsv(CANONICAL_SCOPE_TYPE, SCOPE_ID_LONG, SURVEY_ID, USER_ID);
 
                 assertThatThrownBy(() -> controller.exportResults(SCOPE_TYPE, SCOPE_ID, SURVEY_ID))
                         .isInstanceOf(BusinessException.class);
@@ -110,6 +123,9 @@ class SurveyPhase11ControllerTest {
         @Mock
         private SurveyResultService surveyResultService;
 
+        @Mock
+        private TeamService teamService;
+
         @InjectMocks
         private SurveyController controller;
 
@@ -118,10 +134,12 @@ class SurveyPhase11ControllerTest {
         void 正常系_201Created() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                SurveyDetailResponse detail = new SurveyDetailResponse(null, List.of());
+                given(teamService.resolveTeamId(SCOPE_ID)).willReturn(SCOPE_ID_LONG);
+                SurveyDetailResponse detail = SurveyDetailResponse.of(null, List.of(), true);
+                // Controller が resolveScopeType で "teams" → "TEAM" に正準化してから Service を呼ぶ
                 given(surveyService.duplicateSurvey(
-                        org.mockito.ArgumentMatchers.eq(SCOPE_TYPE),
-                        org.mockito.ArgumentMatchers.eq(SCOPE_ID),
+                        org.mockito.ArgumentMatchers.eq(CANONICAL_SCOPE_TYPE),
+                        org.mockito.ArgumentMatchers.eq(SCOPE_ID_LONG),
                         org.mockito.ArgumentMatchers.eq(SURVEY_ID),
                         any(),
                         org.mockito.ArgumentMatchers.eq(USER_ID)))
@@ -147,6 +165,9 @@ class SurveyPhase11ControllerTest {
         @Mock
         private SurveyResultService surveyResultService;
 
+        @Mock
+        private TeamService teamService;
+
         @InjectMocks
         private SurveyController controller;
 
@@ -155,9 +176,11 @@ class SurveyPhase11ControllerTest {
         void 正常系_200OK() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(teamService.resolveTeamId(SCOPE_ID)).willReturn(SCOPE_ID_LONG);
                 LocalDateTime newDeadline = LocalDateTime.now().plusDays(30);
                 SurveyResponse response = org.mockito.Mockito.mock(SurveyResponse.class);
-                given(surveyService.extendDeadline(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, newDeadline, USER_ID))
+                // Controller が resolveScopeType で "teams" → "TEAM" に正準化してから Service を呼ぶ
+                given(surveyService.extendDeadline(CANONICAL_SCOPE_TYPE, SCOPE_ID_LONG, SURVEY_ID, newDeadline, USER_ID))
                         .willReturn(response);
 
                 ResponseEntity<ApiResponse<SurveyResponse>> result = controller.extendDeadline(
@@ -173,10 +196,12 @@ class SurveyPhase11ControllerTest {
         void 短縮試行_例外伝播() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(teamService.resolveTeamId(SCOPE_ID)).willReturn(SCOPE_ID_LONG);
                 LocalDateTime shorter = LocalDateTime.now().minusDays(1);
+                // Controller が resolveScopeType で "teams" → "TEAM" に正準化してから Service を呼ぶ
                 willThrow(new BusinessException(SurveyErrorCode.INVALID_NEW_DEADLINE))
                         .given(surveyService)
-                        .extendDeadline(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, shorter, USER_ID);
+                        .extendDeadline(CANONICAL_SCOPE_TYPE, SCOPE_ID_LONG, SURVEY_ID, shorter, USER_ID);
 
                 assertThatThrownBy(() -> controller.extendDeadline(
                         SCOPE_TYPE, SCOPE_ID, SURVEY_ID, new ExtendDeadlineRequest(shorter, null)))

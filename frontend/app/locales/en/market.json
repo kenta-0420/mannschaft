@@ -1,6 +1,6 @@
 {
   "market": {
-    "title": "Market",
+    "title": "市（いち）",
     "listing": {
       "label": "Listing",
       "count": "{count} listings",
@@ -14,6 +14,7 @@
       "apply": "Apply",
       "takeDown": "Take down",
       "loginToApply": "Log in to apply",
+      "selectTeam": "Select a team to apply with",
       "goToDashboard": "Go to dashboard",
       "postFromDashboard": "Post a listing from your team/organization dashboard"
     },
@@ -107,7 +108,11 @@
     "payment": {
       "breakdown": {
         "includesFeeNote": "* The total payment includes the payment processing fee.",
-        "refundFeeConditionalNote": "* In the event of a refund, the processing fee may not be refunded (refund terms depend on the listing owner's settings)."
+        "refundFeeConditionalNote": "* In the event of a refund, the processing fee may not be refunded (refund terms depend on the listing owner's settings).",
+        "title": "Payment breakdown",
+        "faceAmountLabel": "Reward (face value)",
+        "feeLabel": "Payment fee",
+        "totalLabel": "Total to pay"
       },
       "refund": {
         "title": "Refund",
@@ -122,7 +127,120 @@
         },
         "submit": "Issue refund",
         "confirmTitle": "Confirm refund",
-        "confirmPayee": "This is a recipient-borne refund. The payer will be refunded in full, and the processing fee will be borne by you. Proceed?"
+        "confirmPayee": "This is a recipient-borne refund. The payer will be refunded in full, and the processing fee will be borne by you. Proceed?",
+        "amountLabel": "Refund amount",
+        "amountFull": "Full refund",
+        "amountPartial": "Partial refund",
+        "amountRequired": "Please enter the refund amount.",
+        "amountTooLarge": "The refund amount exceeds the refundable amount.",
+        "reasonLabel": "Reason (optional)",
+        "failed": "Refund failed."
+      },
+      "connect": {
+        "title": "Payout account (receiving rewards)",
+        "loading": "Loading…",
+        "statusLabel": "Status",
+        "status": {
+          "ready": "Completed",
+          "onboarding": "Under review",
+          "restricted": "More info required",
+          "notRegistered": "Not registered"
+        },
+        "registrationRequired": "You need to register a payout account to receive rewards.",
+        "register": "Register payout account",
+        "continue": "Continue registration",
+        "redirecting": "Redirecting…",
+        "linkFailed": "Failed to obtain the payout account registration link."
+      },
+      "confirm": {
+        "title": "Confirm reward payment",
+        "intro": "Before confirming the applicant, please confirm the reward payment (card authorization).",
+        "expiryNotice": "This authorization is valid for about 7 days. Final approval of service completion is required within 7 days (after that, payment is taken again at completion).",
+        "deferredNotice": "Because more than 7 days pass between confirmation and service, no authorization is taken now. You will pay again at final approval of service completion.",
+        "alreadyAuthorized": "This payment has already been confirmed.",
+        "preparing": "Preparing payment details. Please wait a moment and try again.",
+        "retry": "Reload",
+        "submit": "Confirm payment",
+        "processing": "Processing…",
+        "succeeded": "Payment confirmation completed.",
+        "loadFailed": "Failed to retrieve payment details.",
+        "payeeNotReady": "The recipient has not registered a payout account yet, so payment is not possible.",
+        "proceed": "Proceed to confirm"
+      },
+      "received": {
+        "pageTitle": "Received payments & refunds",
+        "pageSubtitle": "Review payments you have received and issue refunds when needed.",
+        "scopeLabel": "Recipient",
+        "scope": {
+          "self": "Myself (individual)",
+          "team": "Team",
+          "org": "Organization"
+        },
+        "statusFilterLabel": "Filter by status",
+        "statusFilterAll": "All",
+        "loading": "Loading…",
+        "empty": "No payments received yet.",
+        "loadFailed": "Failed to load the received list.",
+        "noScope": "No recipients available. Become a team/organization admin to view its received list.",
+        "col": {
+          "source": "Source",
+          "status": "Status",
+          "faceAmount": "Face amount",
+          "chargeAmount": "Charged",
+          "fee": "Fee",
+          "refunded": "Refunded",
+          "createdAt": "Received on",
+          "actions": "Actions"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "Reward (market listing)",
+          "MEMBERSHIP": "Membership fee",
+          "JOBMATCHING": "Job matching",
+          "FLEAMARKET": "Flea market"
+        },
+        "refundButton": "Refund",
+        "refundUnavailable": "Not refundable",
+        "refundSucceeded": "Refund accepted.",
+        "status": {
+          "PENDING_CONFIRMATION": "Awaiting confirmation",
+          "DEFERRED": "Pay on completion",
+          "AUTHORIZED": "Authorized",
+          "HELD": "Payout held",
+          "CAPTURED": "Received",
+          "PARTIALLY_REFUNDED": "Partially refunded",
+          "REFUNDED": "Fully refunded",
+          "CANCELLED": "Cancelled",
+          "DISPUTED": "Disputed"
+        }
+      }
+    },
+    "market_guide": {
+      "page_title": "市の使い方",
+      "what": {
+        "title": "市とは？",
+        "body": "チームや組織が出す「一緒に活動しよう」という公募情報を誰でも閲覧できる公開掲示板です。ログイン不要で検索・閲覧でき、参加したい募集を見つけたら「札に応じる」で応募できます。"
+      },
+      "search": {
+        "title": "絞り込み検索",
+        "body": "都道府県・市区町村・ジャンル・キーワードで条件を絞り込めます。",
+        "steps": {
+          "step1": "都道府県を選ぶと、市区町村のドロップダウンが有効になります",
+          "step2": "ジャンルや自由入力キーワードを追加してさらに絞り込めます",
+          "step3": "絞り込み条件はURLに保存されるため、リンクで共有・ブックマークが可能です"
+        }
+      },
+      "apply": {
+        "title": "札に応じる（応募する）",
+        "body": "気になる募集をクリックして詳細を確認し、「札に応じる」ボタンで応募できます。応募にはログインが必要です。",
+        "steps": {
+          "step1": "一覧から気になる札をクリックして詳細ページを開く",
+          "step2": "開催日時・応募締切・定員・地域を確認する",
+          "step3": "「札に応じる」ボタンを押すと応募完了"
+        }
+      },
+      "team_apply": {
+        "title": "チーム名義での応募",
+        "body": "「チームで参加」と記載された募集は、自分の所属チームを選んで応募します。ドロップダウンでチームを選択してから「札に応じる」ボタンを押してください。"
       }
     }
   }

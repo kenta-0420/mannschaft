@@ -12,10 +12,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -28,8 +28,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class SurveyEntity extends BaseEntity {
 
     @Column(nullable = false, length = 20)
@@ -78,6 +77,28 @@ public class SurveyEntity extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Boolean autoPostToTimeline = false;
+
+    /**
+     * 配信母集団にサポーター（応援者）を含めるか。
+     * (B) 組織→参加チーム配信 案C フェーズA 隊A で追加。
+     * 既定 false（組織配信時はサポーター除外）。値を使った母集団絞り込みの配線は後続隊。
+     */
+    @Column(name = "include_supporters", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean includeSupporters = false;
+
+    /**
+     * アンケート集計をチーム別内訳（by_team）でも収集・表示するか。
+     * (B) 組織→参加チーム配信 案C フェーズB（アンケートのチーム別内訳）で追加。
+     * 既定 false（従来挙動＝by_team は省略・全体集計のみ）。TRUE のときのみ
+     * 組織アンケート結果が optionResultsByTeam を算出する。
+     *
+     * <p><b>御裁可B（匿名保護）</b>: 匿名アンケート（{@code isAnonymous = true}）との併用は禁止
+     * （作成時バリデーションで弾く）。回答者の所属チームを内訳に出すと匿名性が崩れるため。</p>
+     */
+    @Column(name = "team_breakdown_enabled", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean teamBreakdownEnabled = false;
 
     @Column(length = 50)
     private String seriesId;
@@ -169,13 +190,16 @@ public class SurveyEntity extends BaseEntity {
      * @param allowMultipleSubmissions  複数回答許可
      * @param resultsVisibility        結果公開設定
      * @param autoPostToTimeline       タイムライン自動投稿
+     * @param includeSupporters        配信母集団にサポーターを含めるか
      */
     public void updateSettings(Boolean isAnonymous, Boolean allowMultipleSubmissions,
-                               ResultsVisibility resultsVisibility, Boolean autoPostToTimeline) {
+                               ResultsVisibility resultsVisibility, Boolean autoPostToTimeline,
+                               Boolean includeSupporters) {
         this.isAnonymous = isAnonymous;
         this.allowMultipleSubmissions = allowMultipleSubmissions;
         this.resultsVisibility = resultsVisibility;
         this.autoPostToTimeline = autoPostToTimeline;
+        this.includeSupporters = includeSupporters;
     }
 
     /**

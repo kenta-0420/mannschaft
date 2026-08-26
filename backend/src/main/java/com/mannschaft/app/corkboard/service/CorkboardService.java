@@ -42,6 +42,7 @@ public class CorkboardService {
     private final ApplicationEventPublisher eventPublisher;
     private final AccessControlService accessControlService;
     private final CorkboardPermissionService corkboardPermissionService;
+    private final CorkboardAccessGuard corkboardAccessGuard;
 
     /**
      * 個人ボード一覧を取得する。
@@ -54,8 +55,19 @@ public class CorkboardService {
 
     /**
      * スコープ別ボード一覧を取得する（チーム/組織）。
+     *
+     * <p>認可根治 Wave3-B8: 是正前は scopeType/scopeId を知っていれば非所属ユーザーでも
+     * ボード名・背景設定等を列挙できる BOLA だった。当該スコープのメンバーのみ許可する。</p>
+     *
+     * @param scopeType スコープ種別 ({@code TEAM} / {@code ORGANIZATION})
+     * @param scopeId   スコープID
+     * @param userId    操作ユーザーID
      */
-    public List<CorkboardResponse> listScopedBoards(String scopeType, Long scopeId) {
+    public List<CorkboardResponse> listScopedBoards(String scopeType, Long scopeId, Long userId) {
+        if (!accessControlService.isMember(userId, scopeId, scopeType)) {
+            log.warn("コルクボード一覧閲覧権限なし: userId={}, scope={}, scopeId={}", userId, scopeType, scopeId);
+            throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+        }
         List<CorkboardEntity> boards = corkboardRepository
                 .findByScopeTypeAndScopeIdOrderByCreatedAtDesc(scopeType, scopeId);
         return corkboardMapper.toBoardResponseList(boards);
@@ -87,9 +99,21 @@ public class CorkboardService {
 
     /**
      * スコープ別ボードを作成する（チーム/組織）。
+     *
+     * <p>認可根治 Wave3-B8: ボード作成は当該スコープの ADMIN/DEPUTY_ADMIN のみ許可する。</p>
+     *
+     * @param scopeType スコープ種別 ({@code TEAM} / {@code ORGANIZATION})
+     * @param scopeId   スコープID
+     * @param userId    操作ユーザーID
+     * @param request   作成リクエスト
      */
     @Transactional
-    public CorkboardResponse createScopedBoard(String scopeType, Long scopeId, CreateCorkboardRequest request) {
+    public CorkboardResponse createScopedBoard(String scopeType, Long scopeId, Long userId,
+                                                CreateCorkboardRequest request) {
+        if (!accessControlService.isAdminOrAbove(userId, scopeId, scopeType)) {
+            log.warn("コルクボード作成権限なし: userId={}, scope={}, scopeId={}", userId, scopeType, scopeId);
+            throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+        }
         long count = corkboardRepository.countByScopeTypeAndScopeId(scopeType, scopeId);
         if (count >= MAX_BOARDS_PER_SCOPE) {
             throw new BusinessException(CorkboardErrorCode.BOARD_LIMIT_EXCEEDED);
@@ -111,28 +135,39 @@ public class CorkboardService {
 
     /**
      * 個人ボード詳細を取得する（カード・セクション含む）。
+     *
+     * <p>認可は {@link CorkboardAccessGuard#requireOwnedBoard}（所有者本人のみ・
+     * 他者所有／不存在は 404 秘匿）。</p>
      */
     public CorkboardDetailResponse getPersonalBoard(Long userId, Long boardId) {
-        CorkboardEntity board = corkboardRepository.findByIdAndOwnerId(boardId, userId)
-                .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
+        CorkboardEntity board = corkboardAccessGuard.requireOwnedBoard(userId, boardId);
         return buildDetailResponse(board, userId);
     }
 
     /**
      * スコープ別ボード詳細を取得する。
      *
-     * <p>F09.8 件A: viewerCanEdit 算出のため userId を受け取る。
-     * 既存の閲覧権限チェック（{@code findByIdAndScopeTypeAndScopeId}）はスコープ整合性のみ
-     * 担保しており、メンバーシップチェックは行わない（既存挙動を維持）。</p>
+     * <p>F09.8 件A: viewerCanEdit 算出のため userId を受け取る。</p>
+     *
+     * <p>認可根治 Wave3-B8 (BOLA 根治): 是正前は {@code findByIdAndScopeTypeAndScopeId} が
+     * board と path scope の整合性のみ担保し、呼出者が当該スコープのメンバーかは未検証だった
+     * （scopeId/boardId さえ知っていればカード・セクション全内容を非所属者が閲覧できた）。
+     * board 取得後、<b>entity 由来の scope</b>（{@code board.getScopeType()}/{@code getScopeId()}）で
+     * {@link com.mannschaft.app.common.AccessControlService#isMember} を検証する（path 鵜呑み禁止）。</p>
      *
      * @param scopeType スコープ種別 ({@code TEAM} / {@code ORGANIZATION})
      * @param scopeId   スコープID
      * @param boardId   ボードID
-     * @param userId    操作ユーザーID（viewerCanEdit 判定用）
+     * @param userId    操作ユーザーID（認可判定 兼 viewerCanEdit 判定用）
      */
     public CorkboardDetailResponse getScopedBoard(String scopeType, Long scopeId, Long boardId, Long userId) {
         CorkboardEntity board = corkboardRepository.findByIdAndScopeTypeAndScopeId(boardId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
+        if (!accessControlService.isMember(userId, board.getScopeId(), board.getScopeType())) {
+            log.warn("コルクボード詳細閲覧権限なし: boardId={}, userId={}, scope={}, scopeId={}",
+                    boardId, userId, board.getScopeType(), board.getScopeId());
+            throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+        }
         return buildDetailResponse(board, userId);
     }
 
@@ -201,11 +236,14 @@ public class CorkboardService {
 
     /**
      * 個人ボードを更新する。
+     *
+     * <p>認可は {@link CorkboardAccessGuard#requireOwnedBoard}（所有者本人のみ・
+     * 他者所有／不存在は 404 秘匿）。{@code editPolicy} は個人ボードでは変更させない
+     * （現値を据え置く）。</p>
      */
     @Transactional
     public CorkboardResponse updatePersonalBoard(Long userId, Long boardId, UpdateCorkboardRequest request) {
-        CorkboardEntity board = corkboardRepository.findByIdAndOwnerId(boardId, userId)
-                .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
+        CorkboardEntity board = corkboardAccessGuard.requireOwnedBoard(userId, boardId);
 
         board.update(
                 request.getName(),
@@ -221,12 +259,28 @@ public class CorkboardService {
 
     /**
      * スコープ別ボードを更新する。
+     *
+     * <p>認可根治 Wave3-B8 (BOLA 根治): board 取得後、<b>entity 由来の scope</b>で
+     * ADMIN/DEPUTY_ADMIN を要求する（path 鵜呑み禁止）。update は {@code editPolicy} 改変を伴い
+     * 権限昇格し得るため、{@link CorkboardPermissionService#checkEditPermission} の
+     * {@code ALL_MEMBERS} 水準では不足であり、必ず ADMIN 水準で判定する。</p>
+     *
+     * @param scopeType スコープ種別 ({@code TEAM} / {@code ORGANIZATION})
+     * @param scopeId   スコープID
+     * @param boardId   ボードID
+     * @param userId    操作ユーザーID
+     * @param request   更新リクエスト
      */
     @Transactional
-    public CorkboardResponse updateScopedBoard(String scopeType, Long scopeId, Long boardId,
+    public CorkboardResponse updateScopedBoard(String scopeType, Long scopeId, Long boardId, Long userId,
                                                 UpdateCorkboardRequest request) {
         CorkboardEntity board = corkboardRepository.findByIdAndScopeTypeAndScopeId(boardId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
+        if (!accessControlService.isAdminOrAbove(userId, board.getScopeId(), board.getScopeType())) {
+            log.warn("コルクボード更新権限なし: boardId={}, userId={}, scope={}, scopeId={}",
+                    boardId, userId, board.getScopeType(), board.getScopeId());
+            throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+        }
 
         board.update(
                 request.getName(),
@@ -242,11 +296,13 @@ public class CorkboardService {
 
     /**
      * 個人ボードを削除する（論理削除）。
+     *
+     * <p>認可は {@link CorkboardAccessGuard#requireOwnedBoard}（所有者本人のみ・
+     * 他者所有／不存在は 404 秘匿）。</p>
      */
     @Transactional
     public void deletePersonalBoard(Long userId, Long boardId) {
-        CorkboardEntity board = corkboardRepository.findByIdAndOwnerId(boardId, userId)
-                .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
+        CorkboardEntity board = corkboardAccessGuard.requireOwnedBoard(userId, boardId);
         board.softDelete();
         corkboardRepository.save(board);
         log.info("個人コルクボード削除: boardId={}", boardId);
@@ -256,11 +312,24 @@ public class CorkboardService {
      * スコープ別ボードを削除する（論理削除）。
      * 共有ボード（TEAM/ORGANIZATION）の場合、{@link CorkboardEvent.Type#BOARD_DELETED} を発行し、
      * 購読中のクライアントへ削除を通知する。
+     *
+     * <p>認可根治 Wave3-B8 (BOLA 根治): board 取得後、<b>entity 由来の scope</b>で
+     * ADMIN/DEPUTY_ADMIN を要求する（path 鵜呑み禁止）。</p>
+     *
+     * @param scopeType スコープ種別 ({@code TEAM} / {@code ORGANIZATION})
+     * @param scopeId   スコープID
+     * @param boardId   ボードID
+     * @param userId    操作ユーザーID
      */
     @Transactional
-    public void deleteScopedBoard(String scopeType, Long scopeId, Long boardId) {
+    public void deleteScopedBoard(String scopeType, Long scopeId, Long boardId, Long userId) {
         CorkboardEntity board = corkboardRepository.findByIdAndScopeTypeAndScopeId(boardId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
+        if (!accessControlService.isAdminOrAbove(userId, board.getScopeId(), board.getScopeType())) {
+            log.warn("コルクボード削除権限なし: boardId={}, userId={}, scope={}, scopeId={}",
+                    boardId, userId, board.getScopeType(), board.getScopeId());
+            throw new BusinessException(CorkboardErrorCode.INSUFFICIENT_PERMISSION);
+        }
         board.softDelete();
         corkboardRepository.save(board);
         log.info("コルクボード削除: boardId={}", boardId);

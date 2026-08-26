@@ -8,7 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,8 +24,7 @@ import java.time.LocalDateTime;
 @Table(name = "facility_booking_daily_stats")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class FacilityBookingDailyStatsEntity {
 
     @Id
@@ -88,6 +87,7 @@ public class FacilityBookingDailyStatsEntity {
     @Builder.Default
     private Integer stayNightsTotal = 0;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

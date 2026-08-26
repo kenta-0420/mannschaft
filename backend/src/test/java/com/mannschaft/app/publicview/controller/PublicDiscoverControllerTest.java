@@ -23,7 +23,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -221,6 +220,7 @@ class PublicDiscoverControllerTest {
     private PublicTeamSearchResultResponse sampleTeam(Long id, String name) {
         return new PublicTeamSearchResultResponse(
                 id,
+                "team-slug-" + id,
                 name,
                 "https://cdn.example.com/icons/" + id + ".png",
                 10,
@@ -233,6 +233,7 @@ class PublicDiscoverControllerTest {
     private PublicOrganizationSearchResultResponse sampleOrg(Long id, String name) {
         return new PublicOrganizationSearchResultResponse(
                 id,
+                "org-slug-" + id,
                 name,
                 "https://cdn.example.com/org-icons/" + id + ".png",
                 0,

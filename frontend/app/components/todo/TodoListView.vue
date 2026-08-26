@@ -42,12 +42,13 @@ const labelApi = useTodoStatusLabelApi()
 const router = useRouter()
 
 function todoLink(todo: MyTodo): string {
-  if (todo.scopeType === 'TEAM' && todo.scopeId) {
-    return `/teams/${todo.scopeId}/todos/${todo.id}`
+  if (todo.scopeType === 'TEAM' && todo.scopeSlug) {
+    return `/teams/${todo.scopeSlug}/todos/${todo.id}`
   }
-  if (todo.scopeType === 'ORGANIZATION' && todo.scopeId) {
-    return `/organizations/${todo.scopeId}/todos/${todo.id}`
+  if (todo.scopeType === 'ORGANIZATION' && todo.scopeSlug) {
+    return `/organizations/${todo.scopeSlug}/todos/${todo.id}`
   }
+  // PERSONAL または scopeSlug が未設定（slug 移行前の古いデータの保険）
   return `/todos/${todo.id}`
 }
 
@@ -130,17 +131,11 @@ function colorOfLabel(label: TodoStatusLabel | TodoStatusLabelInfo): string {
 
 // === TODO削除 ================================================================
 
-const confirm = useConfirm()
-
+// ADHD 配慮 AC-16: 確認ダイアログを廃止し、即時削除 + Undo Toast に置換する。
+// Undo Toast の発行と restore は useTodoList.deleteTodo が担当する。
 function confirmDelete(todo: MyTodo, ev: Event) {
   ev.stopPropagation()
-  confirm.require({
-    message: t('todo.list.deleteConfirm'),
-    header: t('todo.list.deleteButton'),
-    icon: 'pi pi-exclamation-triangle',
-    acceptClass: 'p-button-danger',
-    accept: () => emit('delete-todo', todo),
-  })
+  emit('delete-todo', todo)
 }
 
 // 未使用警告抑止
@@ -266,6 +261,7 @@ void props
             <!-- 削除ボタン -->
             <button
               type="button"
+              :data-testid="`todo-delete-${todo.id}`"
               class="ml-1 shrink-0 rounded p-1 text-surface-300 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/30 focus:opacity-100 focus:outline-none"
               :title="t('todo.list.deleteButton')"
               :aria-label="t('todo.list.deleteAriaLabel')"
@@ -309,8 +305,5 @@ void props
         </button>
       </div>
     </Popover>
-
-    <!-- 削除確認ダイアログ -->
-    <ConfirmDialog />
   </div>
 </template>

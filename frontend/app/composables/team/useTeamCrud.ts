@@ -1,5 +1,6 @@
 import type { FetchError } from 'ofetch'
 import type { PagedResponse } from '~/types/api'
+import type { SlugAvailabilityResponse, SlugResolveResponse } from '~/types/slug'
 import type { TeamPublicDetailResponse, TeamResponse } from '~/types/team'
 import {
   OrganizationNotFoundError,
@@ -10,6 +11,8 @@ import {
 
 interface TeamSummaryResponse {
   id: string
+  /** チームスラッグ（URLルーティング用）。{@code /teams/{slug}} に使用する。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -22,6 +25,8 @@ interface TeamSummaryResponse {
   template: string
   memberCount: number
   supporterEnabled: boolean
+  teamFriendCount: number
+  supporterCount: number
 }
 
 interface PagedData<T> {
@@ -39,21 +44,21 @@ export function useTeamCrud() {
   const api = useApi()
 
   // === CRUD ===
-  async function getTeam(teamId: string) {
-    return api<{ data: TeamResponse }>(`/api/v1/teams/${teamId}`)
+  async function getTeam(teamSlug: string) {
+    return api<{ data: TeamResponse }>(`/api/v1/teams/${teamSlug}`)
   }
 
   /**
    * F15.4 Phase 5-α: 未ログイン公開チーム詳細取得。
-   * `GET /api/v1/public/teams/{publicId}` を呼ぶ（permitAll、レート制限 60/min/IP）。
+   * `GET /api/v1/public/teams/{slug}` を呼ぶ（permitAll、レート制限 60/min/IP）。
    *
    * - 404: 不在 / 削除済み / archived / visibility != PUBLIC
    * - 429: レート制限超過（呼び出し元で扱う）
    *
    * バックエンドのレスポンスは `{ data: TeamPublicDetailResponse }` 形式。
    */
-  async function getPublicTeam(teamId: string) {
-    return api<{ data: TeamPublicDetailResponse }>(`/api/v1/public/teams/${teamId}`)
+  async function getPublicTeam(teamSlug: string) {
+    return api<{ data: TeamPublicDetailResponse }>(`/api/v1/public/teams/${teamSlug}`)
   }
 
   /**
@@ -145,38 +150,91 @@ export function useTeamCrud() {
     return api<{ data: TeamResponse }>('/api/v1/teams', { method: 'POST', body })
   }
 
-  async function updateTeam(teamId: string, body: Record<string, unknown>) {
-    return api<{ data: TeamResponse }>(`/api/v1/teams/${teamId}`, { method: 'PATCH', body })
+  /**
+   * チーム作成時の slug 可用性をチェックする（BE #1538）。
+   *
+   * `GET /api/v1/teams/slug-available?slug=xxx` を叩く。
+   * 形式不正・予約語・重複・未指定のいずれでも BE は常に 200 を返し、
+   * `available=false` のとき `reason` に理由コードが入る。
+   */
+  async function checkTeamSlugAvailable(slug: string): Promise<SlugAvailabilityResponse> {
+    const query = new URLSearchParams({ slug })
+    const res = await api<{ data: SlugAvailabilityResponse }>(`/api/v1/teams/slug-available?${query}`)
+    return res.data
   }
 
-  async function deleteTeam(teamId: string) {
-    return api(`/api/v1/teams/${teamId}`, { method: 'DELETE' })
+  /**
+   * チーム slug をリネームする（BE #1542）。
+   *
+   * `PUT /api/v1/teams/{currentSlug}/slug` を body `{ newSlug }` で叩く。
+   * 認可は BE 側で ADMIN/DEPUTY 相当に限定される。
+   *
+   * - 200: 成功（`data.slug` に新 slug。`newSlug==現slug` なら no-op 200）
+   * - 422: 形式不正 / 予約語
+   * - 409: 重複（SLUG_ALREADY_TAKEN）/ 履歴予約（SLUG_RETIRED）
+   *
+   * 旧 slug は 301 解決用に履歴予約されるため、成功後は新 slug の URL へ遷移すること。
+   */
+  async function renameTeamSlug(currentSlug: string, newSlug: string) {
+    return api<{ data: TeamResponse }>(`/api/v1/teams/${currentSlug}/slug`, {
+      method: 'PUT',
+      body: { newSlug },
+    })
+  }
+
+  /**
+   * チーム slug を解決する（旧 slug → 新 slug の 301 判定・BE #1542）。
+   *
+   * `GET /api/v1/public/teams/slug-resolve?slug=xxx` を叩く（permitAll・レート制限）。
+   * 名前など実データは返さず status / canonicalSlug のみ。
+   *
+   * - CURRENT: 現行 slug（リダイレクト不要）
+   * - MOVED: 旧 slug → canonicalSlug へ 301 すべき
+   * - NOT_FOUND: 該当なし
+   */
+  async function resolveTeamSlug(slug: string): Promise<SlugResolveResponse> {
+    const query = new URLSearchParams({ slug })
+    return api<SlugResolveResponse>(`/api/v1/public/teams/slug-resolve?${query}`)
+  }
+
+  async function updateTeam(teamSlug: string, body: Record<string, unknown>) {
+    return api<{ data: TeamResponse }>(`/api/v1/teams/${teamSlug}`, { method: 'PATCH', body })
+  }
+
+  async function deleteTeam(teamSlug: string) {
+    return api(`/api/v1/teams/${teamSlug}`, { method: 'DELETE' })
   }
 
   // === アーカイブ ===
-  async function archiveTeam(teamId: string) {
-    return api(`/api/v1/teams/${teamId}/archive`, { method: 'PATCH' })
+  async function archiveTeam(teamSlug: string) {
+    return api(`/api/v1/teams/${teamSlug}/archive`, { method: 'PATCH' })
   }
 
-  async function unarchiveTeam(teamId: string) {
-    return api(`/api/v1/teams/${teamId}/unarchive`, { method: 'PATCH' })
+  async function unarchiveTeam(teamSlug: string) {
+    return api(`/api/v1/teams/${teamSlug}/unarchive`, { method: 'PATCH' })
   }
 
-  async function restoreTeam(teamId: string) {
-    return api(`/api/v1/teams/${teamId}/restore`, { method: 'PATCH' })
+  async function restoreTeam(teamSlug: string) {
+    return api(`/api/v1/teams/${teamSlug}/restore`, { method: 'PATCH' })
   }
 
   // === 組織一覧 ===
-  async function getOrganizations(teamId: string) {
-    return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/teams/${teamId}/organizations`)
+  async function getOrganizations(teamSlug: string) {
+    return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/teams/${teamSlug}/organizations`)
   }
 
   // === オーナー移譲 ===
-  async function transferOwnership(teamId: string, newAdminUserId: number) {
-    return api(`/api/v1/teams/${teamId}/transfer-ownership`, {
-      method: 'POST',
-      body: { newAdminUserId },
-    })
+  /**
+   * オーナー（ADMIN）を別メンバーへ譲渡する。
+   *
+   * BE 契約は `POST /api/v1/teams/{slug}/transfer-ownership?targetUserId={id}` であり、
+   * 譲渡先はリクエストボディではなく**クエリパラメータ `targetUserId`** で渡す
+   * （`TeamController#transferOwnership` の `@RequestParam Long targetUserId` / `docs/openapi.json`）。
+   * 以前はボディ `{ newAdminUserId }` を送っており実契約と不一致だった（CMP-051 で是正）。
+   */
+  async function transferOwnership(teamSlug: string, targetUserId: number) {
+    const query = new URLSearchParams({ targetUserId: String(targetUserId) })
+    return api(`/api/v1/teams/${teamSlug}/transfer-ownership?${query}`, { method: 'POST' })
   }
 
   return {
@@ -185,6 +243,9 @@ export function useTeamCrud() {
     searchTeams,
     searchOrganizationTeams,
     createTeam,
+    checkTeamSlugAvailable,
+    renameTeamSlug,
+    resolveTeamSlug,
     updateTeam,
     deleteTeam,
     archiveTeam,

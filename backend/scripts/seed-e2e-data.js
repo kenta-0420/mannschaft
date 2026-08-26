@@ -2,6 +2,20 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+/** チーム/組織名から URL スラッグを生成する（BE SlugGenerator と同ロジック）。
+ * 日本語名など ASCII 英数字が 3 文字未満の場合は MD5 ハッシュのプレフィックスを使い
+ * 一意性を担保する（seed の重複実行でも同じ名前から同じスラッグを生成）。 */
+function generateSlug(name) {
+  const base = name.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 30);
+  if (base.length >= 3) return base;
+  // 非 ASCII 主体の名前: MD5 ハッシュで一意な 8 文字を生成（決定論的）
+  const hash = crypto.createHash('md5').update(name).digest('hex').substring(0, 8);
+  return 's-' + hash;
+}
+
 // ============================================================
 // F18 ポイントカードウォレット用 AES-256-GCM 暗号化ヘルパー
 // ------------------------------------------------------------
@@ -33,7 +47,8 @@ function encryptForTest(plain) {
 (async () => {
   const conn = await mysql.createConnection({
     host: '127.0.0.1', port: 3306,
-    user: 'mannschaft', password: 'mannschaft', database: 'mannschaft'
+    user: 'mannschaft', password: 'mannschaft', database: 'mannschaft',
+    charset: 'utf8mb4', // 二重エンコード再発防止のため接続文字コードを明示
   });
 
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -80,7 +95,47 @@ function encryptForTest(plain) {
   );
   const E2E_ADMIN = Number(e2eAdminRow.id);
 
-  console.log(`E2E users: E2E_USER id=${E2E_USER}, E2E_ADMIN id=${E2E_ADMIN}`);
+  // F03.4 予約E2E: SUPPORTER ロールのテストアカウント。
+  // 「SUPPORTER でも予約できるか」を実機検証するために fc-u-18 の SUPPORTER として用意する。
+  const e2eSupporterHash = hashStrength8('TestPass2026!');
+  await conn.execute(
+    `INSERT IGNORE INTO users
+      (email, password_hash, last_name, first_name, display_name,
+       is_searchable, encryption_key_version, locale, timezone,
+       status, reporting_restricted, created_at, updated_at)
+     VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)`,
+    ['e2e-supporter@test.mannschaft.local', e2eSupporterHash,
+     encryptForTest('E2Eサポーター'), encryptForTest('応援'), 'E2Eサポーター 応援',
+     'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
+  );
+  const [[e2eSupporterRow]] = await conn.execute(
+    'SELECT id FROM users WHERE email = ?',
+    ['e2e-supporter@test.mannschaft.local']
+  );
+  const E2E_SUPPORTER = Number(e2eSupporterRow.id);
+
+  // 認可根治戦役 Wave4: e2e-real-smoke の認可スモーク用「非メンバー」テストアカウント。
+  // どのチーム/組織にも user_roles/memberships を一切割り当てない（assignRole を意図的に呼ばない）。
+  // smoke-check.sh はこのユーザーでログインし、保護EPを叩いて 403/404 になることを確認する
+  // （200 が返ったら認可漏れとして smoke を fail させる）。
+  const e2eOutsiderHash = hashStrength8('TestPass2026!');
+  await conn.execute(
+    `INSERT IGNORE INTO users
+      (email, password_hash, last_name, first_name, display_name,
+       is_searchable, encryption_key_version, locale, timezone,
+       status, reporting_restricted, created_at, updated_at)
+     VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)`,
+    ['e2e-outsider@test.mannschaft.local', e2eOutsiderHash,
+     encryptForTest('E2E部外者'), encryptForTest('非会員'), 'E2E部外者（非会員）',
+     'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
+  );
+  const [[e2eOutsiderRow]] = await conn.execute(
+    'SELECT id FROM users WHERE email = ?',
+    ['e2e-outsider@test.mannschaft.local']
+  );
+  const E2E_OUTSIDER = Number(e2eOutsiderRow.id);
+
+  console.log(`E2E users: E2E_USER id=${E2E_USER}, E2E_ADMIN id=${E2E_ADMIN}, E2E_SUPPORTER id=${E2E_SUPPORTER}, E2E_OUTSIDER id=${E2E_OUTSIDER}（どのteam/orgにも非所属）`);
 
   // ============================================================
   // 1. ダミーユーザー 20人
@@ -119,12 +174,13 @@ function encryptForTest(plain) {
   const orgs = {};
 
   async function createOrg(name, orgType, parentId, pref, city) {
+    const slug = generateSlug(name);
     await conn.execute(
       `INSERT IGNORE INTO organizations
-        (name, org_type, parent_organization_id, prefecture, city,
+        (slug, name, org_type, parent_organization_id, prefecture, city,
          visibility, hierarchy_visibility, supporter_enabled, version, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,1,?,?)`,
-      [name, orgType, parentId, pref, city, 'PUBLIC', 'FULL', 1, now, now]
+       VALUES (?,?,?,?,?,?,?,?,?,1,?,?)`,
+      [slug, name, orgType, parentId, pref, city, 'PUBLIC', 'FULL', 1, now, now]
     );
     const [[r]] = await conn.execute('SELECT id FROM organizations WHERE name = ?', [name]);
     return Number(r.id);
@@ -154,11 +210,12 @@ function encryptForTest(plain) {
   const teams = {};
 
   async function createTeam(name, template, pref, city) {
+    const slug = generateSlug(name);
     await conn.execute(
       `INSERT IGNORE INTO teams
-        (name, template, prefecture, city, visibility, supporter_enabled, version, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,1,?,?)`,
-      [name, template, pref, city, 'PUBLIC', 1, now, now]
+        (slug, name, template, prefecture, city, visibility, supporter_enabled, version, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,1,?,?)`,
+      [slug, name, template, pref, city, 'PUBLIC', 1, now, now]
     );
     const [[r]] = await conn.execute('SELECT id FROM teams WHERE name = ?', [name]);
     return Number(r.id);
@@ -207,12 +264,18 @@ function encryptForTest(plain) {
   // 4. ロール配置
   // ============================================================
   async function assignRole(userId, roleId, teamId, orgId) {
-    await conn.execute(
-      `INSERT IGNORE INTO user_roles
-        (user_id, role_id, team_id, organization_id, granted_by, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?)`,
-      [userId, roleId, teamId || null, orgId || null, SYS, now, now]
-    );
+    // CMP-027: 所属ロール MEMBER(role_id=4) / SUPPORTER(role_id=5) は V60.010 で user_roles から
+    // 除去され memberships へ完全移行済み。本番で成立しえないため user_roles へは書かず、
+    // 下の memberships 同期のみに委ねる。権限ロール（SYSTEM_ADMIN/ADMIN/DEPUTY_ADMIN/GUEST）は
+    // 従来どおり user_roles が正統なので INSERT する。
+    if (!(roleId === 4 || roleId === 5)) {
+      await conn.execute(
+        `INSERT IGNORE INTO user_roles
+          (user_id, role_id, team_id, organization_id, granted_by, created_at, updated_at)
+         VALUES (?,?,?,?,?,?,?)`,
+        [userId, roleId, teamId || null, orgId || null, SYS, now, now]
+      );
+    }
 
     // F00.5 Phase 3: memberships 基盤への同期。
     // isMember() は user_roles ではなく memberships.left_at IS NULL を参照するため、
@@ -254,6 +317,9 @@ function encryptForTest(plain) {
   // E2E user: FC東京U-18 MEMBER
   await assignRole(E2E_USER, 4, teams.fcTokyoU18, null);
 
+  // E2E supporter: FC東京U-18 SUPPORTER（role_id=5。assignRole が memberships role_kind=SUPPORTER も同期投入）
+  await assignRole(E2E_SUPPORTER, 5, teams.fcTokyoU18, null);
+
   // FC東京U-18: 監督 + 選手4人
   await assignRole(userIds[0], 2, teams.fcTokyoU18, null);
   for (let i = 1; i <= 4; i++) await assignRole(userIds[i], 4, teams.fcTokyoU18, null);
@@ -294,7 +360,11 @@ function encryptForTest(plain) {
   // ============================================================
   // 5. スケジュール
   // ============================================================
-  async function createSchedule(teamId, orgId, title, eventType, startAt, endAt, location, createdBy) {
+  // CMP-017b: min_view_role（閲覧できる最低ロール）が閲覧認可に組み込まれたため、
+  // 全予定を MEMBER_PLUS 固定で投入すると応援者から共有予定が一切見えなくなる。
+  // minViewRole を呼び出し側で指定できるようにし、応援者可視性の両側
+  // （見えるべき予定／見えてはならない予定）を踏めるデータを投入する（AC-25）。
+  async function createSchedule(teamId, orgId, title, eventType, startAt, endAt, location, createdBy, minViewRole = 'MEMBER_PLUS') {
     await conn.execute(
       `INSERT IGNORE INTO schedules
         (team_id, organization_id, title, event_type, start_at, end_at, location,
@@ -302,7 +372,7 @@ function encryptForTest(plain) {
          attendance_status, comment_option, is_exception, created_by, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,0,?,?,?,?,?,?,?,0,?,?,?)`,
       [teamId, orgId, title, eventType, startAt, endAt, location,
-       'MEMBERS_ONLY', 'MEMBER_PLUS', 'MEMBER_PLUS', 'SCHEDULED', 1, 'READY', 'OPTIONAL', createdBy, now, now]
+       'MEMBERS_ONLY', minViewRole, 'MEMBER_PLUS', 'SCHEDULED', 1, 'READY', 'OPTIONAL', createdBy, now, now]
     );
   }
 
@@ -312,6 +382,8 @@ function encryptForTest(plain) {
   await createSchedule(teams.fcTokyoU18, null, '練習（紅白戦）', 'PRACTICE', '2026-04-08 15:00:00', '2026-04-08 18:00:00', '味の素スタジアム西練習場', userIds[0]);
   await createSchedule(teams.fcTokyoU18, null, 'プリンスリーグ関東 第4節 vs 浦和ユース', 'MATCH', '2026-04-12 13:00:00', '2026-04-12 15:00:00', '浦和駒場スタジアム', userIds[0]);
   await createSchedule(teams.fcTokyoU18, null, 'ミーティング（戦術確認）', 'MEETING', '2026-04-04 18:00:00', '2026-04-04 19:30:00', 'クラブハウス会議室', userIds[0]);
+  // AC-25: 応援者可視性の実機E2Eで「見える」側を踏むため、SUPPORTER_PLUS の予定を最低1件投入する
+  await createSchedule(teams.fcTokyoU18, null, '保護者・応援者向け見学会', 'EVENT', '2026-04-11 10:00:00', '2026-04-11 12:00:00', '味の素スタジアム西練習場', userIds[0], 'SUPPORTER_PLUS');
 
   // 横浜FCジュニアA
   await createSchedule(teams.yokohamaJr, null, '練習（ボール回し）', 'PRACTICE', '2026-04-05 14:00:00', '2026-04-05 16:00:00', 'ニッパツ三ツ沢球技場サブグラウンド', userIds[9]);
@@ -328,7 +400,7 @@ function encryptForTest(plain) {
   await createSchedule(teams.indieFC, null, '練習試合 vs 草サッカー倶楽部', 'MATCH', '2026-04-06 10:00:00', '2026-04-06 12:00:00', '船橋運動公園', userIds[18]);
   await createSchedule(teams.grassroots, null, '週末練習', 'PRACTICE', '2026-04-05 08:00:00', '2026-04-05 10:00:00', '大宮公園サッカー場', userIds[19]);
 
-  console.log('Schedules created: 12');
+  console.log('Schedules created: 13');
 
   // ============================================================
   // 6. チャットチャンネル + メッセージ
@@ -874,6 +946,7 @@ function encryptForTest(plain) {
   console.log('========================================');
   console.log(`E2E_USER id:    ${E2E_USER}  (e2e-user@test.mannschaft.local)`);
   console.log(`E2E_ADMIN id:   ${E2E_ADMIN}  (e2e-admin@test.mannschaft.local)`);
+  console.log(`E2E_OUTSIDER id: ${E2E_OUTSIDER}  (e2e-outsider@test.mannschaft.local / 非メンバー・認可スモーク専用)`);
   console.log(`Users:         20 dummy (id ${userIds[0]}-${userIds[19]})`);
   console.log(`Organizations: 10`);
   console.log(`  JFA (top) -> 関東FA -> 東京FA, 神奈川FA`);

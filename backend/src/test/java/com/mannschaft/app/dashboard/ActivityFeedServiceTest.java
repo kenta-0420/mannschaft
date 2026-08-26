@@ -41,6 +41,9 @@ class ActivityFeedServiceTest {
     @Mock
     private NameResolverService nameResolverService;
 
+    @Mock
+    private com.mannschaft.app.schedule.visibility.ScheduleVisibilityResolver scheduleVisibilityResolver;
+
     @InjectMocks
     private ActivityFeedService activityFeedService;
 
@@ -53,6 +56,8 @@ class ActivityFeedServiceTest {
     private static final Long SCOPE_ID_ORG = 20L;
     private static final Long ACTOR_ID = 99L;
     private static final Long CURSOR_ID = 50L;
+    /** 所属組織スコープ（型別ペアリングの ORGANIZATION 側）。 */
+    private static final List<Long> ORG_IDS = List.of(SCOPE_ID_ORG);
 
     private ActivityFeedEntity createActivityFeedEntity(Long actorId, ScopeType scopeType, Long scopeId) {
         return ActivityFeedEntity.builder()
@@ -73,6 +78,7 @@ class ActivityFeedServiceTest {
                 new ActivityFeedResponse.ActorSummary(ACTOR_ID, "テストユーザー", null),
                 "TEAM", SCOPE_ID_TEAM, scopeName,
                 "TIMELINE_POST", 100L, "テスト投稿を作成しました",
+                null,
                 LocalDateTime.now()
         );
     }
@@ -94,8 +100,7 @@ class ActivityFeedServiceTest {
             List<ActivityFeedEntity> entities = List.of(entity);
 
             given(activityFeedRepository.findByScopesAndExcludeActor(
-                    eq(List.of(ScopeType.TEAM, ScopeType.ORGANIZATION)),
-                    eq(scopeIds), eq(USER_ID), any(PageRequest.class)))
+                    eq(scopeIds), eq(ORG_IDS), eq(USER_ID), any(PageRequest.class)))
                     .willReturn(entities);
 
             given(nameResolverService.resolveUserDisplayNames(Set.of(ACTOR_ID)))
@@ -106,18 +111,19 @@ class ActivityFeedServiceTest {
                     .willReturn(Map.of());
 
             ActivityFeedResponse response = createActivityFeedResponse(1L, "テストチーム");
-            given(dashboardMapper.toActivityFeedResponse(eq(entity), any(ActivityFeedResponse.ActorSummary.class), eq("テストチーム")))
+            given(dashboardMapper.toActivityFeedResponse(eq(entity), any(ActivityFeedResponse.ActorSummary.class), eq("テストチーム"), any()))
                     .willReturn(response);
 
             // When
-            List<ActivityFeedResponse> result = activityFeedService.getActivityFeed(USER_ID, null, 10, scopeIds);
+            List<ActivityFeedResponse> result = activityFeedService
+                    .getActivityFeed(USER_ID, null, 10, scopeIds, ORG_IDS).getItems();
 
             // Then
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getType()).isEqualTo("POST_CREATED");
             assertThat(result.get(0).getScopeName()).isEqualTo("テストチーム");
             verify(activityFeedRepository).findByScopesAndExcludeActor(
-                    any(), eq(scopeIds), eq(USER_ID), any(PageRequest.class));
+                    eq(scopeIds), eq(ORG_IDS), eq(USER_ID), any(PageRequest.class));
         }
 
         @Test
@@ -129,8 +135,7 @@ class ActivityFeedServiceTest {
             List<ActivityFeedEntity> entities = List.of(entity);
 
             given(activityFeedRepository.findByScopeAndExcludeActorWithCursor(
-                    eq(List.of(ScopeType.TEAM, ScopeType.ORGANIZATION)),
-                    eq(scopeIds), eq(USER_ID), eq(CURSOR_ID), any(PageRequest.class)))
+                    eq(scopeIds), eq(ORG_IDS), eq(USER_ID), eq(CURSOR_ID), any(PageRequest.class)))
                     .willReturn(entities);
 
             given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of(ACTOR_ID, "テストユーザー"));
@@ -138,15 +143,16 @@ class ActivityFeedServiceTest {
             given(nameResolverService.resolveOrganizationNames(any())).willReturn(Map.of());
 
             ActivityFeedResponse response = createActivityFeedResponse(1L, "テストチーム");
-            given(dashboardMapper.toActivityFeedResponse(any(), any(), any())).willReturn(response);
+            given(dashboardMapper.toActivityFeedResponse(any(), any(), any(), any())).willReturn(response);
 
             // When
-            List<ActivityFeedResponse> result = activityFeedService.getActivityFeed(USER_ID, CURSOR_ID, 10, scopeIds);
+            List<ActivityFeedResponse> result = activityFeedService
+                    .getActivityFeed(USER_ID, CURSOR_ID, 10, scopeIds, ORG_IDS).getItems();
 
             // Then
             assertThat(result).hasSize(1);
             verify(activityFeedRepository).findByScopeAndExcludeActorWithCursor(
-                    any(), eq(scopeIds), eq(USER_ID), eq(CURSOR_ID), any(PageRequest.class));
+                    eq(scopeIds), eq(ORG_IDS), eq(USER_ID), eq(CURSOR_ID), any(PageRequest.class));
         }
 
         @Test
@@ -155,19 +161,18 @@ class ActivityFeedServiceTest {
             // Given
             List<Long> scopeIds = List.of(SCOPE_ID_TEAM);
             given(activityFeedRepository.findByScopesAndExcludeActor(
-                    any(), eq(scopeIds), eq(USER_ID), eq(PageRequest.of(0, 10))))
+                    eq(scopeIds), eq(ORG_IDS), eq(USER_ID), eq(PageRequest.of(0, 10))))
                     .willReturn(List.of());
-            given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of());
-            given(nameResolverService.resolveTeamNames(any())).willReturn(Map.of());
-            given(nameResolverService.resolveOrganizationNames(any())).willReturn(Map.of());
+            // 結果が空の場合、名前解決は呼ばれない（早期 return）。
 
             // When
-            List<ActivityFeedResponse> result = activityFeedService.getActivityFeed(USER_ID, null, null, scopeIds);
+            List<ActivityFeedResponse> result = activityFeedService
+                    .getActivityFeed(USER_ID, null, null, scopeIds, ORG_IDS).getItems();
 
             // Then
             assertThat(result).isEmpty();
             verify(activityFeedRepository).findByScopesAndExcludeActor(
-                    any(), eq(scopeIds), eq(USER_ID), eq(PageRequest.of(0, 10)));
+                    eq(scopeIds), eq(ORG_IDS), eq(USER_ID), eq(PageRequest.of(0, 10)));
         }
 
         @Test
@@ -176,19 +181,18 @@ class ActivityFeedServiceTest {
             // Given
             List<Long> scopeIds = List.of(SCOPE_ID_TEAM);
             given(activityFeedRepository.findByScopesAndExcludeActor(
-                    any(), eq(scopeIds), eq(USER_ID), eq(PageRequest.of(0, 50))))
+                    eq(scopeIds), eq(ORG_IDS), eq(USER_ID), eq(PageRequest.of(0, 50))))
                     .willReturn(List.of());
-            given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of());
-            given(nameResolverService.resolveTeamNames(any())).willReturn(Map.of());
-            given(nameResolverService.resolveOrganizationNames(any())).willReturn(Map.of());
+            // 結果が空の場合、名前解決は呼ばれない（早期 return）。
 
             // When
-            List<ActivityFeedResponse> result = activityFeedService.getActivityFeed(USER_ID, null, 100, scopeIds);
+            List<ActivityFeedResponse> result = activityFeedService
+                    .getActivityFeed(USER_ID, null, 100, scopeIds, ORG_IDS).getItems();
 
             // Then
             assertThat(result).isEmpty();
             verify(activityFeedRepository).findByScopesAndExcludeActor(
-                    any(), eq(scopeIds), eq(USER_ID), eq(PageRequest.of(0, 50)));
+                    eq(scopeIds), eq(ORG_IDS), eq(USER_ID), eq(PageRequest.of(0, 50)));
         }
 
         @Test
@@ -199,7 +203,7 @@ class ActivityFeedServiceTest {
             ActivityFeedEntity entity = createActivityFeedEntity(ACTOR_ID, ScopeType.TEAM, SCOPE_ID_TEAM);
             List<ActivityFeedEntity> entities = List.of(entity);
 
-            given(activityFeedRepository.findByScopesAndExcludeActor(any(), eq(scopeIds), eq(USER_ID), any(PageRequest.class)))
+            given(activityFeedRepository.findByScopesAndExcludeActor(eq(scopeIds), eq(ORG_IDS), eq(USER_ID), any(PageRequest.class)))
                     .willReturn(entities);
 
             // アクター名が解決できない（空マップ）
@@ -211,18 +215,19 @@ class ActivityFeedServiceTest {
             given(dashboardMapper.toActivityFeedResponse(
                     eq(entity),
                     argThat(actor -> "不明なユーザー".equals(actor.getDisplayName())),
-                    eq("テストチーム")))
+                    eq("テストチーム"), any()))
                     .willReturn(response);
 
             // When
-            List<ActivityFeedResponse> result = activityFeedService.getActivityFeed(USER_ID, null, 5, scopeIds);
+            List<ActivityFeedResponse> result = activityFeedService
+                    .getActivityFeed(USER_ID, null, 5, scopeIds, ORG_IDS).getItems();
 
             // Then
             assertThat(result).hasSize(1);
             verify(dashboardMapper).toActivityFeedResponse(
                     eq(entity),
                     argThat(actor -> "不明なユーザー".equals(actor.getDisplayName())),
-                    eq("テストチーム"));
+                    eq("テストチーム"), any());
         }
 
         @Test
@@ -234,18 +239,19 @@ class ActivityFeedServiceTest {
             ActivityFeedEntity orgEntity = createActivityFeedEntity(ACTOR_ID, ScopeType.ORGANIZATION, SCOPE_ID_ORG);
             List<ActivityFeedEntity> entities = List.of(teamEntity, orgEntity);
 
-            given(activityFeedRepository.findByScopesAndExcludeActor(any(), eq(scopeIds), eq(USER_ID), any(PageRequest.class)))
+            given(activityFeedRepository.findByScopesAndExcludeActor(eq(scopeIds), eq(ORG_IDS), eq(USER_ID), any(PageRequest.class)))
                     .willReturn(entities);
 
             given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of(ACTOR_ID, "テストユーザー"));
             given(nameResolverService.resolveTeamNames(Set.of(SCOPE_ID_TEAM))).willReturn(Map.of(SCOPE_ID_TEAM, "テストチーム"));
             given(nameResolverService.resolveOrganizationNames(Set.of(SCOPE_ID_ORG))).willReturn(Map.of(SCOPE_ID_ORG, "テスト組織"));
 
-            given(dashboardMapper.toActivityFeedResponse(any(), any(), anyString()))
+            given(dashboardMapper.toActivityFeedResponse(any(), any(), anyString(), any()))
                     .willAnswer(inv -> createActivityFeedResponse(1L, inv.getArgument(2)));
 
             // When
-            List<ActivityFeedResponse> result = activityFeedService.getActivityFeed(USER_ID, null, 10, scopeIds);
+            List<ActivityFeedResponse> result = activityFeedService
+                    .getActivityFeed(USER_ID, null, 10, scopeIds, ORG_IDS).getItems();
 
             // Then
             assertThat(result).hasSize(2);
@@ -258,14 +264,13 @@ class ActivityFeedServiceTest {
         void getActivityFeed_結果なし_空リスト() {
             // Given
             List<Long> scopeIds = List.of(SCOPE_ID_TEAM);
-            given(activityFeedRepository.findByScopesAndExcludeActor(any(), eq(scopeIds), eq(USER_ID), any(PageRequest.class)))
+            given(activityFeedRepository.findByScopesAndExcludeActor(eq(scopeIds), eq(ORG_IDS), eq(USER_ID), any(PageRequest.class)))
                     .willReturn(List.of());
-            given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of());
-            given(nameResolverService.resolveTeamNames(any())).willReturn(Map.of());
-            given(nameResolverService.resolveOrganizationNames(any())).willReturn(Map.of());
+            // 結果が空の場合、名前解決は呼ばれない（早期 return）。
 
             // When
-            List<ActivityFeedResponse> result = activityFeedService.getActivityFeed(USER_ID, null, 10, scopeIds);
+            List<ActivityFeedResponse> result = activityFeedService
+                    .getActivityFeed(USER_ID, null, 10, scopeIds, ORG_IDS).getItems();
 
             // Then
             assertThat(result).isEmpty();

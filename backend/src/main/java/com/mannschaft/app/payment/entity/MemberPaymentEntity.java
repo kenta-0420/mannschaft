@@ -11,8 +11,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -29,8 +31,7 @@ import java.util.UUID;
 @Table(name = "member_payments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class MemberPaymentEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -47,7 +48,7 @@ public class MemberPaymentEntity extends BaseEntity {
     private String currency = "JPY";
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 16)
     private PaymentMethod paymentMethod;
 
     @Enumerated(EnumType.STRING)

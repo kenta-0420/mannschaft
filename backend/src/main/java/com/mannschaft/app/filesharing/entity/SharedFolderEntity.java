@@ -2,6 +2,7 @@ package com.mannschaft.app.filesharing.entity;
 
 import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.filesharing.FileScopeType;
+import com.mannschaft.app.filesharing.FileVisibilityRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,10 +10,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -25,8 +26,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class SharedFolderEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
@@ -57,6 +57,22 @@ public class SharedFolderEntity extends BaseEntity {
     private String description;
 
     private Long createdBy;
+
+    /**
+     * B: 最低可視ロール。{@code NULL} なら所属者全員可視（SCOPE_AFFILIATED＝従来挙動）。
+     * TEAM / ORGANIZATION スコープでのみ意味を持つ（PERSONAL は所有者のみ・大会は主催組織 ORG ロールで判定）。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 24)
+    private FileVisibilityRole minVisibleRole;
+
+    /**
+     * C: ダウンロード禁止フラグ。{@code true} なら配下ファイルの DL URL 発行を拒否する（禁止は単調・ファイルで解除不可）。
+     * <b>限界</b>: ブラウザ表示できる以上、完全な DL 防止は原理的に不可。運用上の抑止に留まる。
+     */
+    @Column(nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    @Builder.Default
+    private Boolean downloadDisabled = false;
 
     @Version
     @Column(nullable = false)
@@ -90,6 +106,24 @@ public class SharedFolderEntity extends BaseEntity {
      */
     public void moveToParent(Long parentId) {
         this.parentId = parentId;
+    }
+
+    /**
+     * 最低可視ロールを変更する（B）。{@code null} で「所属者全員可視」へ戻す。
+     *
+     * @param minVisibleRole 新しい最低可視ロール（null 可）
+     */
+    public void changeMinVisibleRole(FileVisibilityRole minVisibleRole) {
+        this.minVisibleRole = minVisibleRole;
+    }
+
+    /**
+     * ダウンロード禁止フラグを変更する（C）。
+     *
+     * @param downloadDisabled 新しい DL 禁止フラグ
+     */
+    public void changeDownloadDisabled(boolean downloadDisabled) {
+        this.downloadDisabled = downloadDisabled;
     }
 
     /**

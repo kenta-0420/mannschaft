@@ -9,10 +9,10 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -23,8 +23,7 @@ import java.time.LocalDateTime;
 @Table(name = "survey_responses")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class SurveyResponseEntity {
 
     @Id
@@ -45,14 +44,17 @@ public class SurveyResponseEntity {
     @Column(columnDefinition = "TEXT")
     private String textResponse;
 
+    @Builder.Default
     @Column(name = "is_proxy_input", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
     private Boolean isProxyInput = false;
 
     @Column(name = "proxy_input_record_id")
     private Long proxyInputRecordId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

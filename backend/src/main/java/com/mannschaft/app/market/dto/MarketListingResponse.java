@@ -55,4 +55,7 @@ public class MarketListingResponse {
 
     /** Phase 1 では常に false（謝礼決済は Phase 2）。 */
     private final Boolean paymentEnabled;
+
+    /** 参加種別（INDIVIDUAL / TEAM）。FE が申込リクエストの participantType を正しく設定するために公開。 */
+    private final String participationType;
 }

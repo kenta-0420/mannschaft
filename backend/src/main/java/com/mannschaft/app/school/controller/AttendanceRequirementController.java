@@ -1,6 +1,7 @@
 package com.mannschaft.app.school.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.school.dto.CreateRequirementRuleRequest;
 import com.mannschaft.app.school.dto.RequirementRuleListResponse;
 import com.mannschaft.app.school.dto.RequirementRuleResponse;
@@ -46,7 +47,8 @@ public class AttendanceRequirementController {
     public ApiResponse<RequirementRuleListResponse> listOrgRules(
             @PathVariable Long orgId,
             @RequestParam short academicYear) {
-        return ApiResponse.of(requirementService.listOrganizationRules(orgId, academicYear));
+        return ApiResponse.of(requirementService.listOrganizationRules(
+                orgId, academicYear, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -65,7 +67,8 @@ public class AttendanceRequirementController {
     public ApiResponse<RequirementRuleResponse> createOrgRule(
             @PathVariable Long orgId,
             @RequestBody @Valid CreateRequirementRuleRequest req) {
-        return ApiResponse.of(requirementService.createOrganizationRule(orgId, req));
+        return ApiResponse.of(requirementService.createOrganizationRule(
+                orgId, req, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -83,7 +86,8 @@ public class AttendanceRequirementController {
     public ApiResponse<RequirementRuleListResponse> listTeamRules(
             @PathVariable Long teamId,
             @RequestParam short academicYear) {
-        return ApiResponse.of(requirementService.listTeamRules(teamId, academicYear));
+        return ApiResponse.of(requirementService.listTeamRules(
+                teamId, academicYear, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -102,7 +106,8 @@ public class AttendanceRequirementController {
     public ApiResponse<RequirementRuleResponse> createTeamRule(
             @PathVariable Long teamId,
             @RequestBody @Valid CreateRequirementRuleRequest req) {
-        return ApiResponse.of(requirementService.createTeamRule(teamId, req));
+        return ApiResponse.of(requirementService.createTeamRule(
+                teamId, req, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -120,7 +125,8 @@ public class AttendanceRequirementController {
     public ApiResponse<RequirementRuleResponse> updateRule(
             @PathVariable Long ruleId,
             @RequestBody @Valid UpdateRequirementRuleRequest req) {
-        return ApiResponse.of(requirementService.updateRule(ruleId, req));
+        return ApiResponse.of(requirementService.updateRule(
+                ruleId, req, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -135,6 +141,6 @@ public class AttendanceRequirementController {
             description = "指定IDの出席要件規程を削除する。"
     )
     public void deleteRule(@PathVariable Long ruleId) {
-        requirementService.deleteRule(ruleId);
+        requirementService.deleteRule(ruleId, SecurityUtils.getCurrentUserId());
     }
 }

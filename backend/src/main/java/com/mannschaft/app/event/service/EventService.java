@@ -24,6 +24,7 @@ import com.mannschaft.app.event.repository.EventRegistrationRepository;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
 import com.mannschaft.app.event.RegistrationStatus;
+import com.mannschaft.app.common.util.SlugGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -113,15 +114,14 @@ public class EventService {
     @Transactional
     public EventDetailResponse createEvent(EventScopeType scopeType, Long scopeId, Long userId,
                                            CreateEventRequest request) {
-        if (eventRepository.existsBySlug(request.getSlug())) {
-            throw new BusinessException(EventErrorCode.SLUG_ALREADY_EXISTS);
-        }
+        // slug が未指定（null / 空文字）の場合は subtitle から自動生成する（TeamService.createUniqueSlug と同パターン）
+        String slug = resolveSlugForCreate(request.getSlug(), request.getSubtitle());
 
         EventEntity entity = EventEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
                 .scheduleId(request.getScheduleId())
-                .slug(request.getSlug())
+                .slug(slug)
                 .subtitle(request.getSubtitle())
                 .summary(request.getSummary())
                 .coverImageKey(request.getCoverImageKey())
@@ -174,35 +174,38 @@ public class EventService {
             }
         }
 
-        EventEntity updated = entity.toBuilder()
-                .slug(request.getSlug() != null ? request.getSlug() : entity.getSlug())
-                .subtitle(request.getSubtitle() != null ? request.getSubtitle() : entity.getSubtitle())
-                .summary(request.getSummary() != null ? request.getSummary() : entity.getSummary())
-                .coverImageKey(request.getCoverImageKey() != null ? request.getCoverImageKey() : entity.getCoverImageKey())
-                .venueName(request.getVenueName() != null ? request.getVenueName() : entity.getVenueName())
-                .venueAddress(request.getVenueAddress() != null ? request.getVenueAddress() : entity.getVenueAddress())
-                .venueLatitude(request.getVenueLatitude() != null ? request.getVenueLatitude() : entity.getVenueLatitude())
-                .venueLongitude(request.getVenueLongitude() != null ? request.getVenueLongitude() : entity.getVenueLongitude())
-                .venueAccessInfo(request.getVenueAccessInfo() != null ? request.getVenueAccessInfo() : entity.getVenueAccessInfo())
-                .visibility(request.getVisibility() != null
-                        ? EventVisibility.valueOf(request.getVisibility())
-                        : entity.getVisibility())
-                .registrationStartsAt(request.getRegistrationStartsAt() != null
-                        ? request.getRegistrationStartsAt() : entity.getRegistrationStartsAt())
-                .registrationEndsAt(request.getRegistrationEndsAt() != null
-                        ? request.getRegistrationEndsAt() : entity.getRegistrationEndsAt())
-                .maxCapacity(request.getMaxCapacity() != null ? request.getMaxCapacity() : entity.getMaxCapacity())
-                .isApprovalRequired(request.getIsApprovalRequired() != null
-                        ? request.getIsApprovalRequired() : entity.getIsApprovalRequired())
-                .attendanceMode(request.getAttendanceMode() != null
-                        ? request.getAttendanceMode() : entity.getAttendanceMode())
-                .preSurveyId(request.getPreSurveyId() != null ? request.getPreSurveyId() : entity.getPreSurveyId())
-                .ogpTitle(request.getOgpTitle() != null ? request.getOgpTitle() : entity.getOgpTitle())
-                .ogpDescription(request.getOgpDescription() != null ? request.getOgpDescription() : entity.getOgpDescription())
-                .ogpImageKey(request.getOgpImageKey() != null ? request.getOgpImageKey() : entity.getOgpImageKey())
-                .build();
+        // visibility 文字列は enum へ解決してから渡す（null なら現値維持）。
+        // 新ラダー値名（MEMBERS_AND_ABOVE 等）は EventVisibility に追加済みのため valueOf で受理される。
+        EventVisibility newVisibility = request.getVisibility() != null
+                ? EventVisibility.valueOf(request.getVisibility())
+                : null;
 
-        EventEntity saved = eventRepository.save(updated);
+        // 根治: toBuilder().build() で作り直すと継承フィールド id が欠落し INSERT になる
+        //       （slug 一意制約違反で 500）。managed entity を直接ミューテートして
+        //       JPA dirty checking で UPDATE させる（EventEntity.applyUpdate の Javadoc 参照）。
+        entity.applyUpdate(
+                request.getSlug(),
+                request.getSubtitle(),
+                request.getSummary(),
+                request.getCoverImageKey(),
+                request.getVenueName(),
+                request.getVenueAddress(),
+                request.getVenueLatitude(),
+                request.getVenueLongitude(),
+                request.getVenueAccessInfo(),
+                newVisibility,
+                request.getRegistrationStartsAt(),
+                request.getRegistrationEndsAt(),
+                request.getMaxCapacity(),
+                request.getIsApprovalRequired(),
+                request.getAttendanceMode(),
+                request.getPreSurveyId(),
+                request.getOgpTitle(),
+                request.getOgpDescription(),
+                request.getOgpImageKey()
+        );
+
+        EventEntity saved = eventRepository.save(entity);
         log.info("イベント更新: eventId={}", eventId);
         return toDetailResponseWithRsvp(saved);
     }
@@ -384,6 +387,43 @@ public class EventService {
     public EventEntity findEventOrThrow(Long eventId) {
         return eventRepository.findById(eventId)
                 .orElseThrow(() -> new BusinessException(EventErrorCode.EVENT_NOT_FOUND));
+    }
+
+    /**
+     * 作成時の slug を解決する（{@link com.mannschaft.app.team.service.TeamService#createUniqueSlug} と同パターン）。
+     *
+     * <p>ユーザーが slug を指定した場合は一意性を検証して採用する。
+     * 未指定（null / 空文字）の場合は subtitle から {@link SlugGenerator#generate} で自動生成し、
+     * 重複時は数値サフィックス (-1, -2, ...) を付与して一意化する。
+     * subtitle も空の最終フォールバックは {@code "event"} を使う。</p>
+     *
+     * @param requestedSlug ユーザー入力 slug（null / 空文字可）
+     * @param subtitle      イベントサブタイトル（自動生成フォールバック用）
+     * @return 採用する一意な slug
+     * @throws BusinessException slug が既に使用中の場合（SLUG_ALREADY_EXISTS）
+     */
+    private String resolveSlugForCreate(String requestedSlug, String subtitle) {
+        if (requestedSlug != null && !requestedSlug.isBlank()) {
+            // ユーザー指定slugの一意性チェック
+            if (eventRepository.existsBySlug(requestedSlug)) {
+                throw new BusinessException(EventErrorCode.SLUG_ALREADY_EXISTS);
+            }
+            return requestedSlug;
+        }
+        // 未指定の場合はsubtitleから自動生成
+        String source = (subtitle != null && !subtitle.isBlank()) ? subtitle : "event";
+        String base = SlugGenerator.generate(source);
+        if (!eventRepository.existsBySlug(base)) {
+            return base;
+        }
+        for (int i = 1; i <= 100; i++) {
+            String candidate = SlugGenerator.withSuffix(base, i);
+            if (!eventRepository.existsBySlug(candidate)) {
+                return candidate;
+            }
+        }
+        // 100回試行してもユニークにならない場合はタイムスタンプサフィックス
+        return SlugGenerator.withSuffix(base, (int) (System.currentTimeMillis() % 10000));
     }
 
     /**

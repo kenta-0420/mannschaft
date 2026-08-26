@@ -57,6 +57,8 @@
     "notificationCredits": "通知クレジット",
     "todoStatusLabels": "TODOラベル",
     "faqSettings": "FAQ設定",
-    "leagueTransfers": "リーグ移籍"
+    "billing": "課金・プラン管理",
+    "leagueTransfers": "リーグ移籍",
+    "adminConsole": "管理コンソール"
   }
 }

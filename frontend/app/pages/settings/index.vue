@@ -66,6 +66,12 @@ const individualItems = [
     to: '/settings/navigation',
   },
   {
+    label: 'ダッシュボードウィジェット',
+    description: 'ダッシュボードのウィジェット表示・並び順の設定',
+    icon: 'pi pi-th-large',
+    to: '/settings/dashboard-widgets',
+  },
+  {
     label: 'QR会員証',
     description: '会員証の表示・チェックイン履歴',
     icon: 'pi pi-id-card',
@@ -118,6 +124,18 @@ const individualItems = [
     description: '広告のチャネル別オプトアウト・広告主ブロック',
     icon: 'pi pi-megaphone',
     to: '/settings/ad-preferences',
+  },
+  {
+    label: 'ストレージ',
+    description: '個人・チーム・組織の容量使用状況を確認',
+    icon: 'pi pi-database',
+    to: '/settings/storage',
+  },
+  {
+    label: '課金・プラン管理',
+    description: '契約中のプラン・アドオン・利用できる機能の確認',
+    icon: 'pi pi-credit-card',
+    to: '/settings/billing',
   },
 ]
 

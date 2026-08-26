@@ -183,7 +183,10 @@ public void withdrawUser(Long userId) {
 | 6 | village | `VillageUserCleanerEventListener` | `user_village_nicknames`, `user_village_pins`, `village_memberships` | DELETE × 2 + `leftAt`/`bannedReason="ANONYMIZED"` | 村ニックネーム・ピンが残存。`village_memberships` も active のまま |
 | 7 | weather | `WeatherLocationCleanupListener` | `user_weather_locations` | DELETE（`deleteByUserId`）| 地理情報残存（個人特定可能性ありと設計書明記） |
 | 8 | scopefolder | **未配線**（フックメソッド `MyScopeFolderService#deleteAllByUserId` のみ存在、リスナー無し）| `my_scope_folders`, `my_scope_folder_items` | （実行されない）| F15.3 設計書 §9.4 で「後続 PR でリスナー追加」と書かれたまま塩漬け（[`MyScopeFolderService.java:457`](../../backend/src/main/java/com/mannschaft/app/scopefolder/service/MyScopeFolderService.java)）|
+| 9 | schedule | `CalendarLayerLifecycleListener`（**本監査より後に新設・配線済**）| `user_calendar_layer_settings` | DELETE（`deleteByUserId`。即時＝弱匿名化の段）| （該当なし。F03.19 W1-e で最初から配線して追加したため休眠期を持たない）|
 
+> **追記（F03.19 W1-e）:** 上表 #9 `user_calendar_layer_settings` は本監査の後に新設された表であり、当初の「7 配線済 + 1 未配線 + 1 別構造」の数え上げには含まれない。本表は**退会時に削除される表の正本一覧**として今後も追記していく（F03.19 設計書 §10.4 の指示による）。
+>
 > **注:** 指示書では「9 ドメイン」だったが、本検分の結果 **配線済は 7 + scopefolder 未配線 + chart は未実装 = 実体 7 リスナー**。`chart` ドメインには `UserAnonymizedEvent` を購読する Listener は存在しない（`grep` 確定）。`chart_records.anonymizeCustomerUserId` は `AccountPurgeService` から直接呼ばれているのみ（親 §2.1 表 #11）。
 
 ### 3.1 chart / scopefolder の扱い

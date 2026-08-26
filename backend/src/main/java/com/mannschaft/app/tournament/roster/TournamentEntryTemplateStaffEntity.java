@@ -7,8 +7,10 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -19,7 +21,7 @@ import java.util.UUID;
  * エントリーテンプレのベンチ役員エンティティ（F08.7.1/05 §8.4）。
  *
  * <p>ベンチ役員を「メンバー表テンプレ」として保存し、apply-template 時に
- * {@link MatchRosterStaffEntity} へ複製する。構造は match_roster_staff と対応させる。</p>
+ * {@link FixtureRosterStaffEntity} へ複製する。構造は match_roster_staff と対応させる。</p>
  *
  * <p>原則準拠:</p>
  * <ul>
@@ -34,8 +36,7 @@ import java.util.UUID;
 @Table(name = "tournament_entry_template_staff")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TournamentEntryTemplateStaffEntity extends UuidV7Entity {
 
     /** テンプレートID（tournament_entry_templates.id・実体型 CHAR(36)／案A） */
@@ -58,8 +59,10 @@ public class TournamentEntryTemplateStaffEntity extends UuidV7Entity {
     @Builder.Default
     private Short sortOrder = 0;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

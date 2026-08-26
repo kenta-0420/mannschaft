@@ -10,9 +10,24 @@ spring:
     redis:
       host: ${SPRING_REDIS_HOST}
       port: ${SPRING_REDIS_PORT:6379}
+      # WebSocket 外部ブローカー化（Valkey Pub/Sub relay）§8.6: ElastiCache の転送時暗号化
+      # （transit_encryption_enabled = true・infra/terraform/modules/data/main.tf）に追随。
+      # 本番は terraform 側で SPRING_REDIS_SSL_ENABLED=true を注入する
+      # （infra/terraform/modules/app/main.tf）。ローカル/開発（application.yml）は
+      # 未設定のまま既定 false を維持し、TLS 無し Valkey（docker-compose）を使い続ける。
+      ssl:
+        enabled: ${SPRING_REDIS_SSL_ENABLED:false}
 
   jpa:
     show-sql: false
+
+  # F09.6 Phase 8a: 本番は SES 通知 SQS リスナーを有効化する。
+  # SES_NOTIFICATION_QUEUE_NAME（terraform 出力のキュー名）も併せて注入すること。
+  # IAM はタスクロール（mannschaft-prod-task）に ReceiveMessage/DeleteMessage/GetQueueAttributes を付与済み。
+  cloud:
+    aws:
+      sqs:
+        enabled: ${MANNSCHAFT_SQS_ENABLED:true}
 
 # F08.7 Phase 9-α / 9-δ: 本番環境はデフォルト無効（明示的に false 維持）。
 # 組織毎オプトインは三値論理 (budget_configs.shift_budget_enabled) で Phase 9-δ から有効化可能。
@@ -22,6 +37,13 @@ feature:
   shift-budget:
     enabled: ${FEATURE_SHIFT_BUDGET_ENABLED:false}
     monthly-close-cron-enabled: ${FEATURE_SHIFT_BUDGET_MONTHLY_CRON_ENABLED:false}
+
+app:
+  # 本番環境では APP_BASE_URL を必ず設定すること（デフォルト値なし = 未設定時は起動失敗）。
+  # 例: https://app.mannschaft.com
+  # ⚠️ 末尾スラッシュなしで設定すること。URL 連結側が "/" を先頭に付加するため二重スラッシュになる。
+  # 用途: sitemap.xml・各種メールリンク・webcal URL 等の URL 組み立て
+  base-url: ${APP_BASE_URL}
 
 mannschaft:
   jwt:

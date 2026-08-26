@@ -1,0 +1,302 @@
+{
+  "reflection": {
+    "title": "回顾",
+    "nav": {
+      "today": "今日回顾",
+      "themes": "主题列表",
+      "settings": "通知设置",
+      "dashboard": "仪表盘"
+    },
+    "widget": {
+      "pending_recall": "待回想",
+      "unwritten": "未填写",
+      "open_today": "打开今日回顾",
+      "empty": "今天没有主题"
+    },
+    "today": {
+      "heading": "今日回顾",
+      "date_label": "日期",
+      "empty": "今天没有课程或主题。创建一个主题开始回顾吧。",
+      "free_themes": "主题（课表之外）",
+      "timetable_slots": "今日课程",
+      "no_theme": "未设置主题",
+      "create_theme_for_slot": "为此课时创建主题",
+      "create_entry": "撰写回顾",
+      "edit_entry": "编辑回顾",
+      "open_recall": "回忆测试",
+      "masked_badge": "待回忆",
+      "has_entry": "已填写",
+      "period_label": "第{period}节",
+      "main_theme_label": "主题",
+      "created_at_label": "首次创建",
+      "last_reflected_label": "最近回顾",
+      "never_reflected": "尚未"
+    },
+    "theme": {
+      "list_heading": "主题列表",
+      "create": "创建主题",
+      "edit": "编辑主题",
+      "delete": "删除",
+      "delete_confirm": "删除此主题及其下所有回顾吗？",
+      "empty": "还没有主题。创建第一个主题吧。",
+      "title_label": "主题名称",
+      "title_placeholder": "例如：数学II ／ 项目X ／ 日记",
+      "description_label": "说明",
+      "description_placeholder": "可选备注",
+      "source_type_label": "类型",
+      "exam_date_label": "考试日期",
+      "exam_date_help": "设置后将在考试前14/7/3/1天发送提醒",
+      "exam_date_past_warning": "过去的日期不会生成提醒",
+      "exam_date_clear": "清除考试日期",
+      "recall_interval_label": "回忆间隔",
+      "recall_interval_fixed": "{days}天后进行回忆测试（固定）",
+      "open": "打开",
+      "view_entries": "查看回顾",
+      "subject_link_label": "关联科目",
+      "subject_link_none": "不关联",
+      "subject_link_placeholder": "从课程表科目中选择",
+      "subject_link_help": "所选科目的全部课时将在今日视图中显示此主题",
+      "subject_link_empty": "尚未注册课程表",
+      "academic_year_label": "学年度",
+      "term_label_label": "学期",
+      "academic_year_placeholder": "例：2026",
+      "term_label_placeholder": "例：第一学期、前期、Q1",
+      "suggest_from_timetable": "从课程表自动提案（已填写的值不会被覆盖）",
+      "parent_theme_label": "父主题（在单元上方设置科目）",
+      "parent_none": "无父主题（顶层）"
+    },
+    "archive": {
+      "label": "归档",
+      "action": {
+        "archive": "归档",
+        "restore": "恢复"
+      },
+      "confirm": {
+        "archive": "归档此主题？间隔复习提醒将停止。",
+        "restore": "恢复此主题？"
+      },
+      "bulk_archive_button": "批量归档此文件夹",
+      "folder": {
+        "title": "归档文件夹",
+        "theme_count": "{n}个主题",
+        "no_subject": "未设置科目",
+        "no_year": "未设置学年",
+        "no_term": "未设置学期"
+      },
+      "search": {
+        "placeholder": "按标题或说明搜索",
+        "empty": "未找到归档主题"
+      }
+    },
+    "source_type": {
+      "SUBJECT": "课程",
+      "PROJECT": "工作 / 项目",
+      "DIARY": "日记",
+      "FREE": "自由"
+    },
+    "template": {
+      "label": "模板",
+      "help": "可从预设中选择输入标题",
+      "heading_selector_label": "包含的标题",
+      "heading_optional_badge": "可选",
+      "NORMAL": "普通",
+      "DIARY": "日记",
+      "WORK": "工作回顾",
+      "CLASS": "课程回顾",
+      "normal_desc": "无标题，自由书写",
+      "diary_desc": "事件／感受／明日计划",
+      "work_desc": "成果／问题／收获／下一步",
+      "class_desc": "学到的内容／卡点／需记住的要点",
+      "preset": {
+        "diary": {
+          "event": "事件",
+          "feeling": "感受",
+          "tomorrow": "明日计划"
+        },
+        "work": {
+          "result": "成果",
+          "issue": "问题",
+          "learning": "收获",
+          "next": "下一步"
+        },
+        "class": {
+          "learned": "学到的内容",
+          "stumble": "卡点",
+          "keypoint": "需记住的要点"
+        },
+        "vocab": {
+          "cards": "今日の単語"
+        }
+      },
+      "VOCAB": "単語帳",
+      "vocab_desc": "語句と意味を暗記カードとして登録し、想起テストで交互に出題する"
+    },
+    "entry": {
+      "list_heading": "回顾列表",
+      "create": "创建回顾",
+      "edit": "编辑回顾",
+      "delete": "删除",
+      "delete_confirm": "删除此回顾吗？",
+      "empty": "还没有回顾。",
+      "target_date_label": "日期",
+      "main_theme_label": "主要主题",
+      "main_theme_placeholder": "例如：二次函数的最大最小值",
+      "section_heading_label": "标题",
+      "section_heading_placeholder": "例如：配方法",
+      "add_section": "添加标题",
+      "remove_section": "删除标题",
+      "sub_heading_label": "子标题",
+      "sub_heading_placeholder": "例如：转换为标准形式",
+      "add_subsection": "添加子标题",
+      "remove_subsection": "删除子标题",
+      "detail_label": "详情",
+      "detail_placeholder": "写下你学到的内容",
+      "supplement_label": "补充",
+      "supplement_placeholder": "补充／备注",
+      "free_note_label": "自由备注（不纳入回忆）",
+      "free_note_placeholder": "感想或问题备注",
+      "save": "保存",
+      "saved": "已保存",
+      "save_failed": "保存失败",
+      "conflict": "已在其他地方更新。请重新加载最新内容后再试。",
+      "masked_notice": "这是回忆测试对象，内容已隐藏。",
+      "exported_badge": "已导出至博客",
+      "exported_edited_badge": "导出后已编辑"
+    },
+    "recall": {
+      "heading": "回忆测试",
+      "intro": "不看内容，凭记忆回忆并写下你记得的内容。",
+      "hint_theme": "主题",
+      "hint_target_date": "日期",
+      "hint_due_dates": "回忆预定日期",
+      "input_label": "你回忆的内容",
+      "input_placeholder": "尽量写下你记得的内容",
+      "self_rating_label": "自我评价",
+      "rating": {
+        "REMEMBERED": "记得",
+        "PARTIAL": "部分记得",
+        "FORGOT": "忘记了"
+      },
+      "submit": "保存并揭示",
+      "submitting": "保存中…",
+      "saved": "已记录回忆",
+      "save_failed": "保存回忆失败",
+      "revealed_heading": "答案（原始内容）",
+      "your_recall": "你的回忆",
+      "history_heading": "回忆历史",
+      "history_empty": "还没有回忆历史。",
+      "not_masked": "此条目未被隐藏，可正常编辑。",
+      "back_to_entry": "返回回顾",
+      "card_answer_placeholder": "答えを入力...",
+      "outline_scaffold": {
+        "panel_heading": "脚手架提示",
+        "main_theme_label": "主题",
+        "level_note_partial": "仅显示各标题的前几个字符。请尝试回忆完整内容。",
+        "aria_panel": "OUTLINE 脚手架提示面板"
+      }
+    },
+    "export": {
+      "button": "导出至博客",
+      "dialog_title": "导出至博客",
+      "title_label": "文章标题",
+      "title_placeholder": "省略则使用主题名称和日期",
+      "submit": "导出",
+      "submitting": "导出中…",
+      "success": "已导出至博客（私密）",
+      "failed": "导出失败",
+      "already_exported": "此回顾已导出",
+      "view_post": "查看已导出文章"
+    },
+    "settings": {
+      "heading": "回忆通知设置",
+      "remind_hour_label": "通知时间",
+      "remind_hour_help": "发送回忆测试提醒的时间（你的时区）",
+      "save": "保存",
+      "saved": "设置已保存",
+      "save_failed": "设置保存失败",
+      "hour_format": "{hour}时"
+    },
+    "calendar": {
+      "entry_mark": "回顾",
+      "recall_mark": "回忆预定"
+    },
+    "common": {
+      "cancel": "取消",
+      "close": "关闭",
+      "loading": "加载中…",
+      "load_failed": "加载失败"
+    },
+    "guide": {
+      "page_title": "主动回忆学习使用指南",
+      "what": {
+        "title": "什么是主动回忆学习？",
+        "body": "主动回忆是一种通过「回想」所学内容来加深记忆的学习方法。先写下今天的回顾，之后在内容被隐藏的状态下尝试回忆，再进行答案对照。"
+      },
+      "theme": {
+        "title": "创建主题",
+        "body": "「主题」是回顾的基本单位。可以创建学科、资格考试、项目、日记等你想持续回顾的主题，既可以与课表的课时绑定，也可以作为独立的自由主题使用。"
+      },
+      "today": {
+        "title": "撰写今日回顾",
+        "body": "「今日回顾」视图会列出当天的课时和主题。打开各卡片，填写所学内容和心得，然后保存。"
+      },
+      "recall": {
+        "title": "回忆测试（主动提取）",
+        "body": "从第二天起，填写的内容会自动隐藏。先用自己的话尝试回忆，再核对答案。这种主动回想的努力能有效强化记忆。"
+      },
+      "reminder": {
+        "title": "提醒与日历",
+        "body": "到了复习时间，系统会发送通知提醒你。撰写了回顾的日期会在我的日历上标记，一目了然地了解你的坚持情况。"
+      }
+    },
+    "section": {
+      "type": {
+        "outline": "アウトライン",
+        "term_card": "暗記カード"
+      },
+      "type_label": "中見出しの型",
+      "expand": "展開する",
+      "collapse": "折りたたむ",
+      "summary_subsections": "小見出し{n}件",
+      "summary_cards": "カード{n}枚"
+    },
+    "card": {
+      "term_label": "語句",
+      "meaning_label": "意味",
+      "add": "カードを追加",
+      "remove": "カードを削除"
+    },
+    "vocab": {
+      "title": "単語帳（期間横断）",
+      "period_from": "開始日",
+      "period_to": "終了日",
+      "filter_theme": "テーマで絞り込み",
+      "filter_subject": "科目で絞り込み",
+      "mode": {
+        "view": "一覧",
+        "quiz": "自己クイズ"
+      },
+      "direction": {
+        "meaning_to_term": "意味→語句",
+        "term_to_meaning": "語句→意味",
+        "shuffle": "シャッフル"
+      },
+      "flip": "めくる",
+      "empty": "この期間に暗記カードはありません",
+      "total_cards": "{n}枚のカード",
+      "source_label": "出典",
+      "subjects_all": "全教科",
+      "subjects_filter": "教科フィルター",
+      "shuffle": "シャッフル",
+      "shuffle_note": "取得のたびに順番が変わります",
+      "card_limit_warning": "カードが多すぎます。教科または期間を絞ってください（最大500件）",
+      "inline": {
+        "title": "＋単語を追加",
+        "term_placeholder": "語句 (例: apple)",
+        "meaning_placeholder": "意味 (例: りんご)",
+        "add_button": "追加",
+        "added": "追加しました"
+      }
+    }
+  }
+}

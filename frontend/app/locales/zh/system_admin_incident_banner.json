@@ -1,0 +1,82 @@
+{
+  "incident_banner": {
+    "title": "故障公告横幅管理",
+    "quick_link_label": "故障公告横幅",
+    "create_btn": "创建横幅",
+    "edit_dialog_title": "编辑横幅",
+    "create_dialog_title": "创建横幅",
+    "save_btn": "保存",
+    "cancel_btn": "取消",
+    "delete_confirm": "确定要删除此横幅吗？此操作无法撤销。",
+    "delete_btn": "删除",
+    "publish_btn": "发布",
+    "unpublish_btn": "取消发布",
+    "load_failed": "数据加载失败",
+    "create_success": "横幅已创建",
+    "update_success": "横幅已更新",
+    "delete_success": "横幅已删除",
+    "publish_success": "横幅已发布",
+    "unpublish_success": "横幅已取消发布",
+    "save_failed": "保存失败",
+    "delete_failed": "删除失败",
+    "publish_failed": "发布失败",
+    "unpublish_failed": "取消发布失败",
+    "suggestions_load_failed": "候选加载失败",
+    "no_data": "尚未注册横幅",
+    "translation_pending": "翻译正在自动生成中（保存后请稍候）",
+    "form": {
+      "message_label": "消息（日语原文）",
+      "message_placeholder": "请输入故障内容（最多500个字符）",
+      "message_required": "消息为必填项",
+      "message_too_long": "消息不得超过500个字符",
+      "level_label": "级别",
+      "page_pattern_label": "目标页面模式",
+      "page_pattern_placeholder": "例如: /teams/*（留空则适用于所有页面）",
+      "starts_at_label": "开始日期/时间",
+      "starts_at_placeholder": "留空：立即生效",
+      "ends_at_label": "结束日期/时间",
+      "ends_at_placeholder": "留空：直到手动取消发布",
+      "publish_toggle_label": "创建后立即发布",
+      "preview_label": "预览"
+    },
+    "level": {
+      "INFO": "信息",
+      "WARNING": "警告",
+      "CRITICAL": "紧急"
+    },
+    "table": {
+      "level": "级别",
+      "message": "消息",
+      "page_pattern": "目标页面",
+      "status": "状态",
+      "period": "显示期间",
+      "updated_at": "更新时间",
+      "actions": "操作"
+    },
+    "status": {
+      "published": "已发布",
+      "draft": "草稿"
+    },
+    "period_from": "从",
+    "period_to": "至",
+    "period_immediate": "立即",
+    "period_manual": "直到手动停止",
+    "suggestions": {
+      "title": "检测候选（自动检测）",
+      "page_pattern": "页面模式",
+      "severity": "严重程度",
+      "occurrence_count": "发生次数",
+      "affected_users": "受影响用户数",
+      "since": "检测开始时间",
+      "create_banner_btn": "创建横幅",
+      "no_data": "目前没有检测到候选",
+      "severity_critical": "紧急",
+      "severity_high": "高"
+    },
+    "translations": {
+      "title": "翻译列表",
+      "language": "语言",
+      "message": "翻译内容"
+    }
+  }
+}

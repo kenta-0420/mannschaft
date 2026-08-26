@@ -4,7 +4,8 @@
     "statusLabel": {
       "DRAFT": "下書き",
       "PUBLISHED": "受付中",
-      "CLOSED": "締切"
+      "CLOSED": "締切",
+      "ARCHIVED": "アーカイブ"
     },
     "questionType": {
       "SINGLE_CHOICE": "単一選択",
@@ -17,7 +18,8 @@
       "label": "結果の公開範囲",
       "CREATOR_ONLY": "作成者のみ",
       "RESPONDENTS": "回答者のみ",
-      "ALL_MEMBERS": "全メンバー"
+      "ALL_MEMBERS": "全メンバー",
+      "AFTER_CLOSE": "締切後に全メンバー"
     },
     "unrespondedVisibility": {
       "label": "未回答者の可視範囲",
@@ -27,8 +29,10 @@
     },
     "list": {
       "filterAll": "すべて",
+      "filterDraft": "下書き",
       "filterPlaceholder": "ステータス",
       "createButton": "アンケート作成",
+      "editDraft": "設問を追加・編集",
       "answeredBadge": "回答済み",
       "anonymous": "匿名",
       "responseCountUnit": "回答",
@@ -48,7 +52,13 @@
       "questions": "設問",
       "cancel": "キャンセル",
       "save": "保存",
+      "saveDraft": "下書きで保存",
+      "saveAndPublish": "公開して作成",
+      "draftSaved": "下書き保存しました",
+      "draftRestored": "前回の入力を復元しました",
+      "draftHint": "設問は後で追加・編集できます。まずタイトルだけで下書き保存できます。",
       "successToast": "アンケートを作成しました",
+      "draftSuccessToast": "下書きとして保存しました。設問を追加して公開してください。",
       "failureToast": "アンケートの作成に失敗しました",
       "validation": {
         "titleRequired": "タイトルを入力してください",
@@ -57,7 +67,8 @@
         "questionsRequired": "設問を1つ以上追加してください",
         "questionTextRequired": "設問{index}の文章を入力してください",
         "optionsTooFew": "設問{index}の選択肢は2つ以上必要です",
-        "optionEmpty": "設問{index}の選択肢に空欄があります"
+        "optionEmpty": "設問{index}の選択肢に空欄があります",
+        "questionTypeUnsupported": "設問{index}: 日付設問は現在サポートされていません。種別を選び直してください。"
       },
       "questionEditor": {
         "empty": "設問がありません",
@@ -77,7 +88,10 @@
         "ratingScale": "評価スケール（1〜5）",
         "textHint": "回答者は自由記述で回答します",
         "dateHint": "回答者は日付を選択して回答します"
-      }
+      },
+      "teamBreakdownEnabled": "チーム別に集計する",
+      "teamBreakdownHint": "配下チームごとに回答結果を集計します（組織配信のみ）。",
+      "teamBreakdownAnonymousConflict": "匿名アンケートではチーム別集計は利用できません。"
     },
     "detail": {
       "scopeMissing": "アンケートのスコープ情報が不足しています",
@@ -88,6 +102,8 @@
       "responseCount": "回答",
       "anonymous": "匿名",
       "draftHint": "このアンケートは下書き状態です。公開するまで回答を受け付けません。",
+      "draftAddQuestionsHint": "設問を追加してから公開してください。設問がなくても公開できますが、回答者は回答できません。",
+      "draftQuestionsSection": "設問を追加",
       "publishButton": "公開する",
       "publishSuccess": "アンケートを公開しました",
       "publishFailed": "アンケートの公開に失敗しました",
@@ -151,6 +167,33 @@
       "unrespondedBadge": "未回答",
       "emptyResponded": "まだ回答者はいません",
       "emptyUnresponded": "未回答者はいません"
+    },
+    "teamBreakdown": {
+      "title": "チーム別内訳",
+      "reload": "再読み込み",
+      "retry": "再試行",
+      "fetchFailed": "チーム別内訳の取得に失敗しました。",
+      "forbidden": "この内訳を表示する権限がありません。",
+      "empty": "チーム別内訳の対象データがありません。",
+      "masked": "回答者が5名未満のため集計対象外です。",
+      "directMembers": "組織直接メンバー",
+      "totalRespondents": "全体回答者: {count}名",
+      "respondentCount": "回答者 {count}名",
+      "optionCount": "{count}件 ({percentage}%)",
+      "noOptionData": "データがありません。",
+      "noQuestionData": "集計対象の設問がありません。"
+    },
+    "results": {
+      "withheldForPrivacy": {
+        "title": "回答者が少ないため集計結果を伏せています",
+        "description": "匿名アンケートでは、回答直後の集計の変化から個人の回答が推測されるおそれがあります。回答者が{threshold}名以上になると集計結果を表示します。（現在 {count} 名）"
+      },
+      "respondCta": "このアンケートに回答する",
+      "editResponseCta": "回答を修正する",
+      "forbidden": {
+        "title": "このアンケートの結果を閲覧する権限がありません",
+        "description": "このアンケートは配信対象が限定されており、あなたは対象に含まれていません。心当たりがない場合は作成者にお問い合わせください。"
+      }
     }
   }
 }

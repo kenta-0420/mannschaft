@@ -1,5 +1,6 @@
 package com.mannschaft.app.team.dto;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
  * {@link UpdateTeamRequest} のバリデーションテスト（F15.4 Phase 5-β）。
@@ -90,5 +92,47 @@ class UpdateTeamRequestValidationTest {
                 invalidUrl, 1L);
         Set<ConstraintViolation<UpdateTeamRequest>> violations = validator.validate(req);
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("mapEmbedUrl"));
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // Jackson デシリアライズ（PATCH /teams/{slug} の 500 根治の回帰テスト）
+    // ════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("JSON から Jackson でデシリアライズできる（no Creators 500 の回帰防止）")
+    void deserialize_fromJson_OK() throws Exception {
+        // 以前は @RequiredArgsConstructor + final フィールド + Creator なしで
+        // InvalidDefinitionException: no Creators となり PATCH が 500 になっていた。
+        ObjectMapper mapper = new ObjectMapper();
+        String json = """
+                {
+                  "name": "更新後チーム名",
+                  "nickname1": "ニック",
+                  "visibility": "MEMBERS_AND_ABOVE",
+                  "prefectureCode": "13",
+                  "cityCode": "13104",
+                  "version": 3
+                }
+                """;
+
+        UpdateTeamRequest req = mapper.readValue(json, UpdateTeamRequest.class);
+
+        assertThat(req.getName()).isEqualTo("更新後チーム名");
+        assertThat(req.getNickname1()).isEqualTo("ニック");
+        assertThat(req.getVisibility()).isEqualTo("MEMBERS_AND_ABOVE");
+        assertThat(req.getPrefectureCode()).isEqualTo("13");
+        assertThat(req.getCityCode()).isEqualTo("13104");
+        assertThat(req.getVersion()).isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("未知フィールドを含む JSON でもデシリアライズできる（500 にならない）")
+    void deserialize_withUnknownProperty_OK() {
+        ObjectMapper mapper = new ObjectMapper();
+        String json = """
+                { "name": "X", "version": 1, "unknownField": "ignored" }
+                """;
+        assertThatCode(() -> mapper.readValue(json, UpdateTeamRequest.class))
+                .doesNotThrowAnyException();
     }
 }

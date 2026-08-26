@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import type { ClosurePreviewItem, ClosureHistoryItem, ClosureConfirmationItem } from '~/composables/useEmergencyClosureApi'
+import type { EmergencyClosureConnectionState } from '~/composables/useEmergencyClosureLive'
 
 const props = defineProps<{
   teamId: string
@@ -10,6 +11,9 @@ const { t } = useI18n()
 const closureApi = useEmergencyClosureApi()
 const notification = useNotification()
 const { userTimezone } = useDatetime()
+// 多重防御（defense-in-depth）: 親タブの v-if に加え、一括送信ボタンを本コンポーネントでも
+// ロールで制御する（緊急休業は副管理者=DEPUTY_ADMIN まで許可）。BE が本防御線。
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
 // --- 日付 ---
 const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
@@ -285,42 +289,100 @@ function statusSeverity(status: string): string {
   return map[status] ?? 'secondary'
 }
 
-// --- 確認状況パネル ---
+// --- 確認状況パネル（リアルタイム購読）---
+// 展開中の臨時休業 1 件について useEmergencyClosureLive で確認状況を購読し、患者の確認に応じて
+// 「1/3 → 2/3」を再読込なしで自動更新する。同時に展開できるのは 1 件のみ（expandedClosureId）。
+// 旧実装のキャッシュバグ（`if (confirmationsMap[closureId]) return` で再取得もWS追従も止まる）を是正し、
+// 展開のたびに当該 closure を購読し直す（再展開時も最新スナップショットを取得する）。
 const expandedClosureId = ref<number | null>(null)
-const confirmationsMap = ref<Record<number, ClosureConfirmationItem[]>>({})
 const confirmationsLoading = ref(false)
 
-async function toggleConfirmations(closureId: number) {
-  if (expandedClosureId.value === closureId) {
-    expandedClosureId.value = null
-    return
-  }
-  expandedClosureId.value = closureId
-  if (confirmationsMap.value[closureId]) return // キャッシュあり
+/** STOMP トピックに必要な数値 teamId（props.teamId は slug のため /me/teams で解決）。 */
+const numericTeamId = ref<number | null>(null)
+/** 確認状況リアルタイム購読 API への識別子（HTTP パスは slug/数値どちらでも可）。 */
+const apiTeamRef = computed(() => props.teamId)
 
+// 展開中の closure のライブ購読インスタンス（onUnmounted で確実に stop する）。
+type ClosureLive = ReturnType<typeof useEmergencyClosureLive>
+let activeLive: ClosureLive | null = null
+const liveItems = ref<ClosureConfirmationItem[]>([])
+const liveConfirmedCount = ref(0)
+const liveTotalCount = ref(0)
+const liveConnectionState = ref<EmergencyClosureConnectionState>('CONNECTING')
+
+let stopWatchers: (() => void)[] = []
+
+/** 展開中 closure の購読を停止し、ウォッチャ/状態をリセットする。 */
+function teardownLive() {
+  stopWatchers.forEach(unwatch => unwatch())
+  stopWatchers = []
+  if (activeLive) {
+    activeLive.stop()
+    activeLive = null
+  }
+  liveItems.value = []
+  liveConfirmedCount.value = 0
+  liveTotalCount.value = 0
+}
+
+function onOnline() {
+  void activeLive?.resync()
+}
+function onOffline() {
+  if (liveConnectionState.value !== 'DENIED') liveConnectionState.value = 'OFFLINE'
+}
+
+/** 指定 closure のリアルタイム購読を開始し、composable の状態を画面 ref へ橋渡しする。 */
+async function startLive(closureId: number) {
+  teardownLive()
+  // 数値 teamId を解決（履歴行が持つ数値 teamId を優先・無ければ /me/teams で解決）。
+  if (numericTeamId.value === null) {
+    const fromHistory = historyItems.value.find(h => h.id === closureId)?.teamId ?? null
+    numericTeamId.value = fromHistory ?? await closureApi.resolveTeamId(props.teamId)
+  }
+  const live = useEmergencyClosureLive({
+    teamId: numericTeamId,
+    apiTeamRef,
+    closureId,
+  })
+  activeLive = live
+  // composable の reactive 状態を画面 ref へ反映（onUnmounted で watch を停止）。
+  stopWatchers.push(watch(live.items, v => { liveItems.value = v }, { immediate: true }))
+  stopWatchers.push(watch(live.confirmedCount, v => { liveConfirmedCount.value = v }, { immediate: true }))
+  stopWatchers.push(watch(live.totalCount, v => { liveTotalCount.value = v }, { immediate: true }))
+  stopWatchers.push(watch(live.connectionState, v => { liveConnectionState.value = v }, { immediate: true }))
   confirmationsLoading.value = true
   try {
-    const res = await closureApi.getConfirmations(props.teamId, closureId)
-    confirmationsMap.value[closureId] = res.data
-  }
-  catch {
-    notification.error(t('emergency_closure.error.confirmations_failed'))
-    expandedClosureId.value = null
+    await live.start()
   }
   finally {
     confirmationsLoading.value = false
   }
 }
 
-function confirmedCount(closureId: number): number {
-  return (confirmationsMap.value[closureId] ?? []).filter(c => c.confirmed).length
+async function toggleConfirmations(closureId: number) {
+  if (expandedClosureId.value === closureId) {
+    // 折りたたみ: 購読を停止する。
+    expandedClosureId.value = null
+    teardownLive()
+    return
+  }
+  expandedClosureId.value = closureId
+  await startLive(closureId)
 }
 
-function totalCount(closureId: number): number {
-  return (confirmationsMap.value[closureId] ?? []).length
-}
+onMounted(() => {
+  void loadPermissions()
+  void loadHistory()
+  window.addEventListener('online', onOnline)
+  window.addEventListener('offline', onOffline)
+})
 
-onMounted(loadHistory)
+onUnmounted(() => {
+  window.removeEventListener('online', onOnline)
+  window.removeEventListener('offline', onOffline)
+  teardownLive()
+})
 </script>
 
 <template>
@@ -394,6 +456,7 @@ onMounted(loadHistory)
       </div>
 
       <Button
+        v-if="isAdminOrDeputy"
         :label="$t('emergency_closure.button.bulk_send')"
         icon="pi pi-send"
         severity="danger"
@@ -402,16 +465,17 @@ onMounted(loadHistory)
       />
     </section>
 
-    <!-- 送信履歴 -->
+    <!-- 送信履歴（確認状況パネルはリアルタイム購読） -->
     <EmergencyClosureHistory
       :loading="historyLoading"
       :items="historyItems"
       :expanded-closure-id="expandedClosureId"
-      :confirmations-map="confirmationsMap"
+      :confirmations="liveItems"
+      :confirmed-count="liveConfirmedCount"
+      :total-count="liveTotalCount"
       :confirmations-loading="confirmationsLoading"
+      :connection-state="liveConnectionState"
       :format-date="formatDate"
-      :confirmed-count="confirmedCount"
-      :total-count="totalCount"
       @reload="loadHistory"
       @toggle-confirmations="toggleConfirmations"
     />

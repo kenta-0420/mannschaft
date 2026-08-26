@@ -28,9 +28,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -107,7 +109,8 @@ class TodoServiceTest {
                         entity.getScopeType() != null ? entity.getScopeType().name() : null,
                         entity.getScopeId(),
                         entity.getProjectId(),
-                        entity.getMilestoneId()))
+                        entity.getMilestoneId(),
+                        null))
                 .content(new com.mannschaft.app.todo.dto.TodoResponse.TodoContentDto(
                         entity.getTitle(),
                         entity.getDescription(),
@@ -232,7 +235,7 @@ class TodoServiceTest {
 
             // When
             PagedResponse<TodoResponse> response = todoService.listTodos(
-                    SCOPE_TYPE, SCOPE_ID, TodoStatus.OPEN, 0, 20);
+                    SCOPE_TYPE, SCOPE_ID, TodoStatus.OPEN, 0, 20, "RECENT");
 
             // Then
             assertThat(response.getData()).hasSize(1);
@@ -251,7 +254,7 @@ class TodoServiceTest {
 
             // When
             PagedResponse<TodoResponse> response = todoService.listTodos(
-                    SCOPE_TYPE, SCOPE_ID, null, 0, 20);
+                    SCOPE_TYPE, SCOPE_ID, null, 0, 20, "RECENT");
 
             // Then
             assertThat(response.getData()).isEmpty();
@@ -636,6 +639,122 @@ class TodoServiceTest {
     }
 
     // ========================================
+    // restore（AC-5 / AC-6）
+    // ========================================
+
+    @Nested
+    @DisplayName("restoreTodo / restorePersonalTodo")
+    class RestoreTodo {
+
+        private TodoEntity createDeletedTodo() {
+            TodoEntity todo = createOpenTodo();
+            todo.softDelete();
+            return todo;
+        }
+
+        @Test
+        @DisplayName("AC-5 正常系: 論理削除済みTODOをrestoreするとdeletedAtがクリアされ保存される")
+        void restoreTodo_AC5_正常_deletedAtクリア() {
+            // Given: 論理削除済みTODO
+            TodoEntity todo = createDeletedTodo();
+            assertThat(todo.getDeletedAt()).isNotNull();
+            given(todoRepository.findByIdAndDeletedAtIsNotNull(TODO_ID)).willReturn(Optional.of(todo));
+
+            // When
+            todoService.restoreTodo(TODO_ID);
+
+            // Then: deletedAt がクリアされ一覧に再出現する
+            assertThat(todo.getDeletedAt()).isNull();
+            verify(todoRepository).save(todo);
+        }
+
+        @Test
+        @DisplayName("AC-5 正常系: プロジェクト付きTODO復元時に進捗再計算される")
+        void restoreTodo_AC5_プロジェクト付き_進捗再計算() {
+            // Given
+            TodoEntity todo = createTodoWithProject();
+            todo.softDelete();
+            given(todoRepository.findByIdAndDeletedAtIsNotNull(TODO_ID)).willReturn(Optional.of(todo));
+
+            // When
+            todoService.restoreTodo(TODO_ID);
+
+            // Then
+            verify(projectRepository).recalculateProgress(PROJECT_ID);
+        }
+
+        @Test
+        @DisplayName("AC-5 異常系: 削除済みTODO不在でTODO_010例外（未削除も掘り起こさない）")
+        void restoreTodo_不在_TODO010例外() {
+            // Given: findByIdAndDeletedAtIsNotNull が空（削除済みでない or 存在しない）
+            given(todoRepository.findByIdAndDeletedAtIsNotNull(TODO_ID)).willReturn(Optional.empty());
+
+            // When / Then
+            assertThatThrownBy(() -> todoService.restoreTodo(TODO_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_010"));
+        }
+
+        @Test
+        @DisplayName("AC-5 正常系: 個人TODO — 担当者本人はrestoreできる")
+        void restorePersonalTodo_AC5_担当者本人_復元成功() {
+            // Given: 本人が担当者
+            TodoEntity todo = createDeletedTodo();
+            given(assigneeRepository.existsByTodoIdAndUserId(TODO_ID, USER_ID)).willReturn(true);
+            given(todoRepository.findByIdAndDeletedAtIsNotNull(TODO_ID)).willReturn(Optional.of(todo));
+
+            // When
+            todoService.restorePersonalTodo(TODO_ID, USER_ID);
+
+            // Then
+            assertThat(todo.getDeletedAt()).isNull();
+            verify(todoRepository).save(todo);
+        }
+
+        @Test
+        @DisplayName("AC-6 異常系: 個人TODO — 担当者でない他人のrestoreはTODO_010（404相当）で復元されない")
+        void restorePersonalTodo_AC6_非担当者_TODO010例外() {
+            // Given: 他人（担当者でない）
+            given(assigneeRepository.existsByTodoIdAndUserId(TODO_ID, ASSIGNEE_USER_ID)).willReturn(false);
+
+            // When / Then: 削除EPと同じ認可境界。他スコープでのID存在を漏らさないためTODO_NOT_FOUND
+            assertThatThrownBy(() -> todoService.restorePersonalTodo(TODO_ID, ASSIGNEE_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_010"));
+            // 認可失敗時は復元処理に到達しない
+            verify(todoRepository, never()).save(any(TodoEntity.class));
+        }
+
+        @Test
+        @DisplayName("AC-6 異常系: assertDeletedTodoScope — path scope 不一致でTODO_010（404相当）")
+        void assertDeletedTodoScope_AC6_scope不一致_TODO010例外() {
+            // Given: 削除済みTODOは TEAM/SCOPE_ID に属する
+            TodoEntity todo = createDeletedTodo();
+            given(todoRepository.findByIdAndDeletedAtIsNotNull(TODO_ID)).willReturn(Optional.of(todo));
+
+            // When / Then: 別スコープ（ORGANIZATION/999）で検証するとTODO_NOT_FOUND
+            assertThatThrownBy(() ->
+                    todoService.assertDeletedTodoScope(TODO_ID, TodoScopeType.ORGANIZATION, 999L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_010"));
+        }
+
+        @Test
+        @DisplayName("AC-6 正常系: assertDeletedTodoScope — path scope 一致なら例外なし")
+        void assertDeletedTodoScope_AC6_scope一致_例外なし() {
+            // Given
+            TodoEntity todo = createDeletedTodo();
+            given(todoRepository.findByIdAndDeletedAtIsNotNull(TODO_ID)).willReturn(Optional.of(todo));
+
+            // When / Then: 同一スコープ（TEAM/SCOPE_ID）なら例外を投げない
+            todoService.assertDeletedTodoScope(TODO_ID, SCOPE_TYPE, SCOPE_ID);
+        }
+    }
+
+    // ========================================
     // getMyTodos
     // ========================================
 
@@ -918,6 +1037,101 @@ class TodoServiceTest {
 
             // then
             assertThat(result.getData()).hasSize(2);
+        }
+    }
+
+    // ========================================
+    // listTodos ソート種別
+    // ========================================
+
+    @Nested
+    @DisplayName("listTodos ソート種別")
+    class ListTodosSortType {
+
+        @Test
+        @DisplayName("AC-1: sort=RECENT(既定) で createdAt DESC 順になる")
+        void listTodos_sortRecent_createdAtDesc() {
+            // Given
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            Page<TodoEntity> page = new PageImpl<>(List.of());
+            given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    eq(SCOPE_TYPE), eq(SCOPE_ID), pageableCaptor.capture()))
+                    .willReturn(page);
+
+            // When
+            todoService.listTodos(SCOPE_TYPE, SCOPE_ID, null, 0, 20, "RECENT");
+
+            // Then
+            Sort sort = pageableCaptor.getValue().getSort();
+            Sort.Order order = sort.getOrderFor("createdAt");
+            assertThat(order).isNotNull();
+            assertThat(order.getDirection()).isEqualTo(Sort.Direction.DESC);
+        }
+
+        @Test
+        @DisplayName("AC-2: sort=PRIORITY で priority DESC → dueDate ASC → createdAt DESC になる")
+        void listTodos_sortPriority_priorityDescDueDateAscCreatedAtDesc() {
+            // Given
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            Page<TodoEntity> page = new PageImpl<>(List.of());
+            given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    eq(SCOPE_TYPE), eq(SCOPE_ID), pageableCaptor.capture()))
+                    .willReturn(page);
+
+            // When
+            todoService.listTodos(SCOPE_TYPE, SCOPE_ID, null, 0, 20, "PRIORITY");
+
+            // Then
+            Sort sort = pageableCaptor.getValue().getSort();
+            Sort.Order priorityOrder = sort.getOrderFor("priority");
+            Sort.Order dueDateOrder = sort.getOrderFor("dueDate");
+            Sort.Order createdAtOrder = sort.getOrderFor("createdAt");
+            assertThat(priorityOrder).isNotNull();
+            assertThat(priorityOrder.getDirection()).isEqualTo(Sort.Direction.DESC);
+            assertThat(dueDateOrder).isNotNull();
+            assertThat(dueDateOrder.getDirection()).isEqualTo(Sort.Direction.ASC);
+            assertThat(createdAtOrder).isNotNull();
+            assertThat(createdAtOrder.getDirection()).isEqualTo(Sort.Direction.DESC);
+        }
+
+        @Test
+        @DisplayName("AC-3: 不正値は RECENT にフォールバックする（createdAt DESC になる）")
+        void listTodos_invalidSortValue_fallbackToRecent() {
+            // Given
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            Page<TodoEntity> page = new PageImpl<>(List.of());
+            given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    eq(SCOPE_TYPE), eq(SCOPE_ID), pageableCaptor.capture()))
+                    .willReturn(page);
+
+            // When: 不正な値 → RECENT フォールバック
+            todoService.listTodos(SCOPE_TYPE, SCOPE_ID, null, 0, 20, "INVALID_VALUE");
+
+            // Then
+            Sort sort = pageableCaptor.getValue().getSort();
+            Sort.Order order = sort.getOrderFor("createdAt");
+            assertThat(order).isNotNull();
+            assertThat(order.getDirection()).isEqualTo(Sort.Direction.DESC);
+        }
+
+        @Test
+        @DisplayName("AC-3: null は RECENT にフォールバックする（createdAt DESC になる）")
+        void listTodos_nullSortValue_fallbackToRecent() {
+            // Given
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            Page<TodoEntity> page = new PageImpl<>(List.of());
+            given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    eq(SCOPE_TYPE), eq(SCOPE_ID), pageableCaptor.capture()))
+                    .willReturn(page);
+
+            // When: null → RECENT フォールバック
+            todoService.listTodos(SCOPE_TYPE, SCOPE_ID, null, 0, 20, null);
+
+            // Then
+            Sort sort = pageableCaptor.getValue().getSort();
+            Sort.Order order = sort.getOrderFor("createdAt");
+            assertThat(order).isNotNull();
+            assertThat(order.getDirection()).isEqualTo(Sort.Direction.DESC);
         }
     }
 

@@ -6,8 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,14 +31,20 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PUBLIC)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class VillageNewsletterSendLogEntity extends UuidV7Entity {
 
     /** FK → village_newsletters.id（同一ドメイン CASCADE）。 */
     @Column(name = "newsletter_id", nullable = false, columnDefinition = "BINARY(16)")
     private UUID newsletterId;
+
+    /**
+     * どの号を配信したか（F17.1 ②-1 で追加）。village_newsletter_issues.id。
+     * 号モデル導入前の既存ログは NULL（後方互換・FK は張らずアプリ整合）。
+     */
+    @Column(name = "issue_id", columnDefinition = "BINARY(16)")
+    private UUID issueId;
 
     @Column(name = "sent_at", nullable = false)
     private LocalDateTime sentAt;

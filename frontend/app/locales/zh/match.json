@@ -1,0 +1,674 @@
+{
+  "match": {
+    "list": {
+      "title": "比赛记录",
+      "subtitle": "记录练习赛、友谊赛和正式比赛",
+      "record_button": "＋记录比赛",
+      "filter": {
+        "kind": "类型",
+        "status": "状态",
+        "all": "全部"
+      },
+      "result": {
+        "win": "胜",
+        "draw": "平",
+        "loss": "负",
+        "win_label": "W",
+        "draw_label": "D",
+        "loss_label": "L"
+      },
+      "in_progress_badge": "进行中",
+      "score_vs": "{home} - {away}",
+      "vs": "对阵 {opponent}",
+      "no_opponent": "未设置对手",
+      "no_score": "—",
+      "delete_confirm": "确定删除此比赛记录吗？",
+      "delete_success": "已删除比赛记录",
+      "empty": "暂无比赛记录",
+      "empty_cta": "记录第一场比赛",
+      "load_more": "加载更多",
+      "page_info": "共 {total} 条中的 {from}-{to} 条",
+      "error": {
+        "load_failed": "获取比赛列表失败",
+        "status_failed": "更改状态失败",
+        "score_failed": "确定比分失败",
+        "recording_mode_failed": "更改记录模式失败",
+        "delete_failed": "删除比赛记录失败"
+      }
+    },
+    "create": {
+      "title": "记录比赛",
+      "subtitle": "只需选择类型和对手即可开始。场地和时间可稍后设置。",
+      "kind_label": "类型",
+      "kind_hint": "点击选择",
+      "opponent_label": "对手队名",
+      "opponent_placeholder": "请输入对手队名",
+      "opponent_required": "请输入对手名称",
+      "kind_required": "请选择类型",
+      "optional_section": "可选项（稍后设置）",
+      "optional_hint": "这些可以留空开始记录，赛后再补充。",
+      "venue_label": "场地",
+      "venue_placeholder": "场地名称（可选）",
+      "kickoff_label": "开球日期时间",
+      "duration_label": "比赛时长（分钟）",
+      "home_away_label": "主场/客场",
+      "home_away": {
+        "HOME": "主场",
+        "AWAY": "客场",
+        "NEUTRAL": "中立"
+      },
+      "submit": "开始记录",
+      "submit_short": "创建",
+      "cancel": "取消",
+      "success": "已创建比赛",
+      "update_success": "已更新比赛信息",
+      "error": {
+        "create_failed": "创建比赛失败",
+        "update_failed": "更新比赛信息失败"
+      }
+    },
+    "live": {
+      "title": "实时记录",
+      "loading": "加载中…",
+      "scoreboard": {
+        "home": "我方",
+        "away": "对方",
+        "vs": "对 {opponent}",
+        "penalty": "点球 {home}-{away}"
+      },
+      "penalty": {
+        "title": "点球大战比分",
+        "home_label": "我方点球命中数",
+        "away_label": "对方点球命中数",
+        "hint": "请输入命中的点球数。比赛结束时确定，并反映到赛事排名中。"
+      },
+      "timer": {
+        "state": {
+          "WAITING": "赛前",
+          "FIRST_HALF": "上半场",
+          "HALF_TIME": "中场休息",
+          "SECOND_HALF": "下半场",
+          "EXTRA_FIRST": "加时上半场",
+          "EXTRA_SECOND": "加时下半场",
+          "PENALTY_SHOOTOUT": "点球大战",
+          "COMPLETED": "比赛结束",
+          "QUARTER_1": "第1节",
+          "BREAK_1": "休息",
+          "QUARTER_2": "第2节",
+          "HALF_TIME_BREAK": "中场休息",
+          "QUARTER_3": "第3节",
+          "BREAK_3": "休息",
+          "QUARTER_4": "第4节",
+          "OVERTIME": "加时"
+        },
+        "start_first_half": "开始上半场",
+        "to_half_time": "进入中场",
+        "start_second_half": "开始下半场",
+        "to_extra": "进入加时",
+        "to_penalty": "进入点球",
+        "complete": "结束比赛",
+        "advance": "下一节",
+        "minute_label": "分钟",
+        "stoppage_label": "补时 (+)",
+        "minute_override_hint": "如与计时器有偏差可手动修正分钟。",
+        "pause": "暂停",
+        "resume": "继续",
+        "running": "计时中",
+        "stopped": "已停止",
+        "start_quarter_1": "第1节开始",
+        "end_quarter_1": "第1节结束",
+        "start_quarter_2": "第2节开始",
+        "end_quarter_2": "第2节结束",
+        "start_quarter_3": "第3节开始",
+        "end_quarter_3": "第3节结束",
+        "start_quarter_4": "第4节开始",
+        "to_overtime": "进入加时",
+        "to_overtime_again": "再次加时"
+      },
+      "preset": {
+        "goal": "进球",
+        "assist": "助攻",
+        "card": "纸牌",
+        "substitution": "换人",
+        "other": "其他",
+        "field_goal_2": "2分",
+        "field_goal_3": "3分",
+        "free_throw": "罚球",
+        "rebound": "篮板",
+        "foul": "犯规"
+      },
+      "flow": {
+        "select_player": "选择球员",
+        "select_scorer": "选择进球者",
+        "select_assist": "选择助攻者",
+        "select_out": "下场球员",
+        "select_in": "上场球员",
+        "add_assist": "+ 关联助攻",
+        "to_goal": "-> 关联进球",
+        "skip": "跳过",
+        "confirm": "确定",
+        "cancel": "取消",
+        "back": "返回",
+        "note_label": "原因 / 备注",
+        "note_placeholder": "例如：角球助攻",
+        "goal_type_label": "进球类型",
+        "goal_type": {
+          "GOAL": "运动战",
+          "PENALTY_GOAL": "点球",
+          "OWN_GOAL": "乌龙球"
+        },
+        "card_color_label": "纸牌类型",
+        "card_yellow": "黄牌",
+        "card_red": "红牌",
+        "card_second_yellow": "第二张黄牌",
+        "team_side_label": "记录对象",
+        "other_label_placeholder": "事件名称（例如：犯规）",
+        "foul_type_label": "犯规类型"
+      },
+      "team_side": {
+        "HOME": "本队",
+        "AWAY": "对方"
+      },
+      "card_reason": {
+        "title": "原因代码（可选）",
+        "skip_hint": "可稍后补填。正式比赛建议记录。",
+        "none": "未选择"
+      },
+      "grid": {
+        "starters": "首发",
+        "bench": "替补",
+        "setup_button": "设置首发",
+        "all_starters": "全部首发",
+        "clear_starters": "清除首发",
+        "copy_previous": "复制上次首发",
+        "add_manual": "手动添加",
+        "manual_name_placeholder": "球员姓名",
+        "manual_number_placeholder": "号码",
+        "empty": "未找到球员，请手动添加。",
+        "position": {
+          "GK": "门将",
+          "DF": "后卫",
+          "MF": "中场",
+          "FW": "前锋",
+          "other": "其他"
+        }
+      },
+      "timeline": {
+        "title": "时间线",
+        "empty": "暂无事件。请从下方按钮开始记录。",
+        "minute_suffix": "'",
+        "self": "我方",
+        "opponent": "对方",
+        "linked_assist": "助攻",
+        "linked_goal": "进球",
+        "tap_to_edit": "点击编辑",
+        "delete": "删除",
+        "delete_confirm": "删除该事件？"
+      },
+      "undo": {
+        "button": "撤销",
+        "done": "已撤销操作",
+        "substitution": "已撤销换人",
+        "goal_assist": "已撤销进球/助攻"
+      },
+      "conflict": {
+        "title": "其他记录者已更新",
+        "detail": "正在获取最新记录并重试"
+      },
+      "opponent_notice": {
+        "title": "由{team}队记录",
+        "detail": "请联系{team}队的记录者进行修正。"
+      },
+      "offline": {
+        "queued": "已离线保存，恢复网络后发送。",
+        "flushed": "已发送 {count} 条待发事件。",
+        "pending": "待发送 {count} 条"
+      },
+      "completed_notice": "本场比赛已结束。修正将依据您的权限。",
+      "error": {
+        "load_events_failed": "获取事件失败",
+        "load_appearances_failed": "获取出场记录失败",
+        "load_match_failed": "获取比赛信息失败",
+        "add_event_failed": "记录事件失败",
+        "update_event_failed": "更新事件失败",
+        "delete_event_failed": "删除事件失败",
+        "undo_failed": "撤销操作失败",
+        "period_boundary_failed": {
+          "title": "未能记录节次边界",
+          "detail": "节次切换未能保存到服务器。比分和出场时间统计可能出现偏差。请重新操作计时器以再次记录。"
+        },
+        "complete_failed": "保存比赛结束状态失败",
+        "score_load_failed": "无法获取现有评分。请重新加载页面",
+        "load_players_failed": "获取球员名单失败",
+        "substitution_rollback_failed": "撤销换人失败。请确认换人记录"
+      },
+      "read_only_notice": "仅供查看。仅管理员、副管理员和记录员可记录",
+      "spectator": {
+        "title": "实时观战",
+        "read_only_badge": "仅观战·无记录权限",
+        "offline_banner": "已离线。可能不是最新内容。连接恢复后将自动刷新。",
+        "connection": {
+          "live": "实时连接中",
+          "connecting": "连接中…",
+          "reconnecting": "重新连接中…",
+          "offline": "离线",
+          "denied": "无法观战"
+        },
+        "status": {
+          "SCHEDULED": "未开始",
+          "IN_PROGRESS": "进行中",
+          "COMPLETED": "已结束",
+          "POSTPONED": "延期",
+          "CANCELLED": "取消"
+        },
+        "denied": {
+          "title": "无法观战此比赛",
+          "detail": "由于超出可见范围，无法显示实时直播。"
+        }
+      }
+    },
+    "analytics": {
+      "my_title": "比赛分析",
+      "my_subtitle": "可视化你的生涯统计",
+      "member_title": "成员比赛分析",
+      "member_subtitle": "该成员的球队统计",
+      "team_context": "目标球队",
+      "unknown_kind": "其他",
+      "forbidden": "你没有权限查看这些统计",
+      "metric": {
+        "total_matches": "出场",
+        "total_minutes": "总出场时间(分)",
+        "goals": "进球",
+        "assists": "助攻",
+        "goals_per90": "每90分钟进球",
+        "starter_rate": "首发率"
+      },
+      "axis": {
+        "goals": "进球",
+        "assists": "助攻",
+        "matches": "场次",
+        "minutes": "场均出场",
+        "starter_rate": "首发率"
+      },
+      "series": {
+        "goals": "进球",
+        "minutes": "出场时间(分)",
+        "match_share": "出场占比",
+        "goals_by_kind": "按类型进球"
+      },
+      "chart": {
+        "radar_title": "数据分布",
+        "line_title": "月度趋势（进球/出场时间）",
+        "doughnut_title": "按类型的出场占比",
+        "bar_title": "按类型的进球分布"
+      },
+      "best": {
+        "title": "个人最佳",
+        "top_goals": "单月最多进球",
+        "longest_minutes": "单月最长出场(分)"
+      },
+      "empty": {
+        "no_data": "暂无可显示的数据",
+        "no_trend": "暂无趋势数据",
+        "no_goals": "暂无进球记录",
+        "no_matches": "暂无比赛记录",
+        "member_no_matches": "该成员暂无比赛记录",
+        "no_team": "未加入任何球队",
+        "record_cta": "记录比赛"
+      },
+      "error": {
+        "load_failed": "获取统计失败"
+      },
+      "team_title": "球队比赛分析",
+      "team_subtitle": "可视化球队胜负记录、进失球、球员排名和近期状态",
+      "team": {
+        "metric": {
+          "total_matches": "比赛数",
+          "win_draw_loss": "胜/平/负",
+          "goals_for": "进球",
+          "goals_against": "失球",
+          "goal_difference": "净胜球"
+        },
+        "series": {
+          "points": "积分（累计）",
+          "player_goals": "进球数",
+          "matches_by_kind": "比赛数"
+        },
+        "chart": {
+          "result_title": "胜负汇总",
+          "player_goals_title": "射手榜",
+          "recent_form_title": "近期状态（积分趋势）",
+          "matches_by_kind_title": "各类型比赛数"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "比赛概要",
+          "wdl_label": "胜/平/负",
+          "goals_label": "进/失球",
+          "recent_form": "近期状态",
+          "in_progress_label": "进行中",
+          "resume_recording": "继续记录",
+          "no_matches": "暂无比赛记录",
+          "view_analytics": "查看详细分析"
+        }
+      }
+    },
+    "kind": {
+      "PRACTICE": "练习赛",
+      "FRIENDLY": "友谊赛",
+      "TOURNAMENT": "锦标赛",
+      "LEAGUE": "联赛"
+    },
+    "status": {
+      "SCHEDULED": "已安排",
+      "IN_PROGRESS": "进行中",
+      "COMPLETED": "已结束",
+      "POSTPONED": "延期",
+      "CANCELLED": "取消",
+      "PLANNED": "已安排",
+      "CLOSED": "已确定"
+    },
+    "event_type": {
+      "STARTER": "首发",
+      "SUB_IN": "换人上场",
+      "SUB_OUT": "换人下场",
+      "GOAL": "进球",
+      "ASSIST": "助攻",
+      "OWN_GOAL": "乌龙球",
+      "PENALTY_GOAL": "点球（命中）",
+      "PENALTY_MISS": "点球（罚失）",
+      "PENALTY_SHOOTOUT": "点球大战",
+      "YELLOW_CARD": "警告",
+      "RED_CARD": "罚下",
+      "SECOND_YELLOW": "第二张黄牌",
+      "SAVE": "扑救",
+      "INJURY": "受伤",
+      "PERIOD_START": "时段开始",
+      "PERIOD_END": "时段结束",
+      "OTHER": "其他",
+      "FIELD_GOAL_2": "2分球",
+      "FIELD_GOAL_3": "3分球",
+      "FREE_THROW": "罚球",
+      "SHOT_MISS": "投篮不中",
+      "REBOUND": "篮板",
+      "STEAL": "抢断",
+      "BLOCK": "盖帽",
+      "TURNOVER": "失误",
+      "PERSONAL_FOUL": "个人犯规",
+      "TECHNICAL_FOUL": "技术犯规",
+      "FOUL_OUT": "犯满离场",
+      "SET_END": "局结束",
+      "SERVE_ERROR": "发球失误",
+      "SERVE_ACE": "发球直接得分",
+      "POINT": "得分",
+      "BLOCK_POINT": "拦网得分",
+      "ATTACK_POINT": "扣球得分",
+      "SET_START": "局开始"
+    },
+    "card_type": {
+      "YELLOW": "警告",
+      "RED": "罚下",
+      "SECOND_YELLOW": "第二张黄牌"
+    },
+    "card_reason": {
+      "C1": "非体育行为",
+      "C2": "粗野动作",
+      "C3": "异议",
+      "C4": "屡次犯规",
+      "C5": "拖延比赛",
+      "C6": "距离不足",
+      "C7": "未经许可入场",
+      "C8": "未经许可离场",
+      "S1": "严重犯规",
+      "S2": "暴力行为",
+      "S3": "吐口水",
+      "S4": "阻止进球（手球）",
+      "S5": "阻止进球（其他）",
+      "S6": "侮辱言行",
+      "CS": "两次警告",
+      "PF": "个人犯规",
+      "SF": "投篮犯规",
+      "OF": "进攻犯规",
+      "TF": "技术犯规",
+      "UF": "违体犯规",
+      "DF": "取消比赛资格犯规"
+    },
+    "position": {
+      "GK": "门将",
+      "DF": "后卫",
+      "MF": "中场",
+      "FW": "前锋",
+      "FIXO": "后卫(Fixo)",
+      "ALA": "边锋(Ala)",
+      "PIVO": "中锋(Pivo)",
+      "PG": "控球后卫",
+      "SG": "得分后卫",
+      "SF": "小前锋",
+      "PF": "大前锋",
+      "C": "中锋",
+      "S": "二传手",
+      "OP": "接应二传",
+      "MB": "中间拦网手",
+      "OH": "主攻手",
+      "L": "自由人"
+    },
+    "org_context": {
+      "resolve_failed": "无法解析球队/组织信息。请确认你的所属"
+    },
+    "entry": {
+      "record_from_schedule": "记录这场比赛",
+      "record_from_schedule_hint": "开始记录该日程的比赛",
+      "resolving": "正在准备比赛记录…",
+      "no_org_for_record": "比赛记录仅在团队属于某组织时才可用"
+    },
+    "fixtures": {
+      "title": "对阵表",
+      "back": "返回赛事首页",
+      "round": "第{n}轮",
+      "record": "记录",
+      "venue_tbd": "场地待定",
+      "date_tbd": "日期待定",
+      "tbd_participant": "待定",
+      "no_score": "待赛",
+      "empty": "暂无对阵",
+      "load_failed": "加载对阵表失败",
+      "record_not_participant": "本队未参加此对阵，无法记录",
+      "status": {
+        "SCHEDULED": "预定",
+        "IN_PROGRESS": "进行中",
+        "COMPLETED": "已结束",
+        "POSTPONED": "延期",
+        "CANCELLED": "取消"
+      }
+    },
+    "foul_type": {
+      "PERSONAL_FOUL": "个人犯规",
+      "TECHNICAL_FOUL": "技术犯规"
+    },
+    "set": {
+      "increment_home": "主队+1",
+      "increment_away": "客队+1",
+      "confirm_set": "确认此局",
+      "deuce_hint": "平分中：领先 2 分即获胜",
+      "in_progress": "进行中",
+      "past_sets": "已完成的局",
+      "set_label": "第{n}局",
+      "deuce": "平分",
+      "confirm_hint": "需要达到{n}分并领先 2 分才能确认",
+      "decrement_home": "主队-1",
+      "away_points_label": "客队得分",
+      "sets_to_win": "先胜{n}局",
+      "match_completed": "比赛结束",
+      "home_points_label": "主队得分",
+      "target_points": "目标{n}分",
+      "sets_label": "局分",
+      "decrement_away": "客队-1",
+      "start_first_set": "开始第 1 局"
+    },
+    "win_method": {
+      "RESIGNATION": "投了",
+      "CHECKMATE": "将死",
+      "TIMEOUT": "超时",
+      "FOUL_WIN": "犯规胜",
+      "REPETITION": "千日手",
+      "IMPASSE": "持将棋",
+      "DEFAULT_WIN": "不战而胜",
+      "POINTS_WIN": "目数差胜"
+    },
+    "turn": {
+      "waiting_notice": "请开始对局",
+      "start_game": "开始对局",
+      "select_winner": "选择胜者",
+      "required": "（必填）",
+      "optional": "（选填）",
+      "win": "胜",
+      "result": {
+        "draw": "平局"
+      },
+      "draw_type_shogi": "千日手/持将棋",
+      "draw_type_go": "持碁",
+      "side": {
+        "home_shogi": "先手",
+        "away_shogi": "后手",
+        "home_go": "黑",
+        "away_go": "白"
+      },
+      "win_method_label": "胜利方式",
+      "win_method_placeholder": "选择胜利方式（选填）",
+      "margin_label": "目数差",
+      "margin_unit": "目",
+      "total_moves_label": "总手数",
+      "total_moves": "{n}手",
+      "margin": "{n}目差",
+      "moves_unit": "手",
+      "comment_label": "评论/备注",
+      "comment_placeholder": "例：精彩的终盘对决",
+      "complete": "确定结果",
+      "complete_hint": "请先选择胜者或平局",
+      "photo": {
+        "label": "局面照片",
+        "add": "添加照片",
+        "remove": "删除照片",
+        "hint": "图片（PNG/JPEG/WebP/GIF，最大10MB，不支持SVG）",
+        "upload_success": "局面照片已上传"
+      },
+      "error": {
+        "record_result_failed": "保存对局结果失败",
+        "create_board_failed": "创建台次失败",
+        "load_boards_failed": "获取台次列表失败",
+        "load_attachments_failed": "获取局面照片失败",
+        "delete_attachment_failed": "删除局面照片失败",
+        "upload_photo_failed": "上传局面照片失败",
+        "attachment_type_invalid": "请选择图片文件（不支持SVG）",
+        "attachment_too_large": "文件过大（最大10MB）"
+      }
+    },
+    "board": {
+      "title": "团体赛棋盘进度",
+      "progress_label": "棋盘已确定",
+      "all_confirmed": "全部棋盘已确定 — 可以确定团体赛结果",
+      "label": "第{n}棋盘",
+      "winner": "{name}胜",
+      "recorder": "记录员：{name}",
+      "record_button": "记录",
+      "player_tbd": "待定",
+      "empty": "暂无棋盘",
+      "status": {
+        "confirmed": "已确定",
+        "in_progress": "记录中",
+        "pending": "未输入"
+      },
+      "create_pending_notice": "此台次尚未创建"
+    },
+    "scored": {
+      "sport": {
+        "figure_skating": "花样滑冰",
+        "gymnastics": "体操"
+      },
+      "waiting_notice": "请记录评分",
+      "start": "记录评分",
+      "total_label_figure": "总分（Total Segment Score）",
+      "total_label_gymnastics": "总分（个人全能）",
+      "own_score": "本队总分",
+      "opponent_score": "对方总分",
+      "score_placeholder": "例：198.45",
+      "required": "（必填）",
+      "complete": "确定评分",
+      "complete_hint": "请输入双方的总分",
+      "result": {
+        "draw": "平局"
+      },
+      "error": {
+        "record_failed": "评分结果保存失败"
+      },
+      "components": {
+        "intro": "输入各裁判／项目的评分明细后，总分将自动计算。",
+        "mode_label": "评分明细录入",
+        "switch_to_components": "录入评分明细",
+        "switch_to_direct": "切换为直接录入总分",
+        "canonical_notice": "已录入评分明细，总分将根据明细自动计算。",
+        "clear_to_direct": "清除明细并返回直接录入",
+        "side_label": "对象",
+        "component_type_label": "项目",
+        "apparatus_label": "项目／段落",
+        "apparatus_placeholder": "（可选）选择项目",
+        "judge_label": "裁判",
+        "judge_placeholder": "例：J1",
+        "points_label": "分数",
+        "points_placeholder": "例：88.43",
+        "optional": "（可选）",
+        "add_line": "添加明细",
+        "remove_line": "删除此明细",
+        "total_preview": "总分预览（最终总分由服务器计算）",
+        "complete": "确认评分明细",
+        "complete_hint": "请至少输入一条明细，并填写每项分数",
+        "component_type": {
+          "TES": "技术分（TES）",
+          "PCS": "节目内容分（PCS）",
+          "DEDUCTION": "扣分",
+          "D_SCORE": "难度分（D分）",
+          "E_SCORE": "完成分（E分）"
+        },
+        "apparatus": {
+          "SP": "短节目",
+          "FS": "自由滑",
+          "FLOOR": "自由体操",
+          "POMMEL_HORSE": "鞍马",
+          "RINGS": "吊环",
+          "VAULT": "跳马",
+          "PARALLEL_BARS": "双杠",
+          "HORIZONTAL_BAR": "单杠",
+          "UNEVEN_BARS": "高低杠",
+          "BALANCE_BEAM": "平衡木"
+        },
+        "error": {
+          "load_failed": "加载评分明细失败",
+          "save_failed": "保存评分明细失败"
+        }
+      },
+      "ranking": {
+        "switch_to_ranking": "以多人排名制输入",
+        "intro": "添加参赛者并输入各自的总分后，服务器会按总分从高到低自动计算名次。",
+        "mode_label": "多人排名制",
+        "switch_to_direct": "切换为直接输入总分",
+        "canonical_notice": "已存在参赛者条目，因此多人排名制为记录正本。",
+        "clear_to_direct": "清除条目并返回直接输入",
+        "standings": "名次（服务器计算）",
+        "competitor_label": "参赛者姓名",
+        "competitor_placeholder": "例如：山田花子",
+        "total_label": "总分",
+        "add_entry": "添加参赛者",
+        "remove_entry": "删除该参赛者",
+        "complete": "确定名次",
+        "complete_hint": "请添加至少两名参赛者，并输入各自的姓名和总分",
+        "user_fallback": "选手#{id}",
+        "team_fallback": "队伍#{id}",
+        "error": {
+          "load_failed": "加载参赛者条目失败",
+          "save_failed": "保存参赛者条目失败"
+        }
+      }
+    }
+  }
+}

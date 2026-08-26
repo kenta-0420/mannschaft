@@ -8,8 +8,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,8 +30,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class LedgerEntryEntity extends UuidV7Entity {
 
@@ -62,6 +60,14 @@ public class LedgerEntryEntity extends UuidV7Entity {
 
     @Column(name = "stripe_object_id", length = 48)
     private String stripeObjectId;
+
+    /**
+     * RECOVERY 仕訳の経路識別（§6.3・非 RECOVERY 行は null）。勘定の向きだけでは峻別できない
+     * C1/C2 発生計上と A 回収実行/再計上を確実に分離し、自己返金時の回収金消失を防ぐ。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recovery_kind", length = 16)
+    private RecoveryKind recoveryKind;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -1,6 +1,7 @@
 package com.mannschaft.app.matching.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.matching.dto.CreateReviewRequest;
 import com.mannschaft.app.matching.dto.ReviewCreateResponse;
 import com.mannschaft.app.matching.dto.TeamReviewSummaryResponse;
@@ -39,14 +40,22 @@ public class MatchReviewController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ReviewCreateResponse>> createReview(
             @Valid @RequestBody CreateReviewRequest request) {
-        Long currentTeamId = SecurityUtils.getCurrentUserId();
-        ReviewCreateResponse response = reviewService.createReview(currentTeamId, request);
+        // 認可根治: 認証プリンシパルは userID。レビュアーチームの特定と管理者/副管理者判定は
+        // proposal 経由で Service 内で行う（userID を teamId として扱う誤りを撤廃）。
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ReviewCreateResponse response = reviewService.createReview(currentUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     /**
      * チームのレビュー一覧。
+     *
+     * <p>チームの対戦評価（星評価・件数）はマッチング相手選定のため全認証ユーザーに公開される
+     * 設計であり、個人の非公開情報は含まない。{@code /api/v1/teams/*}{@code /matching/reviews} は
+     * permitAll 未登録のため SecurityConfig の {@code anyRequest().authenticated()}
+     * で認証必須が強制される。</p>
      */
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/api/v1/teams/{teamId}/matching/reviews")
     @Operation(summary = "チームのレビュー一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

@@ -11,8 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -27,8 +26,7 @@ import java.time.LocalDateTime;
 @Table(name = "recruitment_distribution_targets")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder
+@SuperBuilder
 public class RecruitmentDistributionTargetEntity {
 
     @Id
@@ -42,6 +40,7 @@ public class RecruitmentDistributionTargetEntity {
     @Column(nullable = false, length = 20)
     private RecruitmentDistributionTargetType targetType;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

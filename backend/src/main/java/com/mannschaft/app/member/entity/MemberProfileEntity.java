@@ -5,10 +5,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * メンバープロフィールエンティティ。メンバー紹介ページ内の各メンバー情報を管理する。
@@ -17,8 +17,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "member_profiles")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class MemberProfileEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -32,7 +31,9 @@ public class MemberProfileEntity extends BaseEntity {
     @Column(length = 20)
     private String memberNumber;
 
-    @Column(length = 500)
+    // NOTE: S3Key のような数字→大文字境界は Hibernate 物理命名で _s3_key にならず
+    // photos3key になる。DDL の photo_s3_key と一致させるため name を明示。
+    @Column(name = "photo_s3_key", length = 500)
     private String photoS3Key;
 
     @Column(length = 500)

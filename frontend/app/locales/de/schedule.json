@@ -1,5 +1,18 @@
 {
   "schedule": {
+    "attendance": {
+      "yes": "Teilnehmen",
+      "no": "Abwesend",
+      "maybe": "Vielleicht",
+      "respondSuccess": "Anwesenheit gespeichert",
+      "respondError": "Anwesenheit konnte nicht gespeichert werden"
+    },
+    "list": {
+      "allDay": "Ganztägig",
+      "empty": "Keine Termine für diesen Zeitraum",
+      "prevMonth": "Vorheriger Monat",
+      "nextMonth": "Nächster Monat"
+    },
     "common_delete": "Löschen",
     "description_label": "Beschreibung",
     "error_title_required": "Der Titel ist erforderlich",
@@ -11,19 +24,18 @@
     "reminder": {
       "label": "Erinnerungen",
       "add": "Erinnerung hinzufügen",
-      "before": "vorher",
       "max_reached": "Sie können bis zu 5 Erinnerungen festlegen",
       "kind_label": "Typ",
-      "kind_relative": "Relativ",
-      "kind_absolute": "Absolut",
-      "unit_label": "Einheit",
-      "unit_minutes": "Minuten",
-      "unit_hours": "Stunden",
-      "unit_days": "Tage",
+      "kind_relative": "Vor Beginn",
+      "kind_absolute": "Datum/Uhrzeit angeben",
       "relative_value_label": "Wert",
       "absolute_at_label": "Benachrichtigen am",
       "error_absolute_required": "Bitte geben Sie Datum und Uhrzeit für die absolute Erinnerung ein",
-      "error_past": "Ein Datum in der Vergangenheit kann nicht angegeben werden"
+      "error_past": "Ein Datum in der Vergangenheit kann nicht angegeben werden",
+      "preset_minutes_before": "{n} Min. vorher",
+      "preset_hours_before": "{n} Std. vorher",
+      "preset_days_before": "{n} Tag vorher",
+      "preset_weeks_before": "{n} Woche vorher"
     },
     "scheduled_survey": {
       "label": "Umfrage planen",
@@ -67,6 +79,241 @@
       "cancel": "Abbrechen",
       "cancel_success": "Die geplante Aufgabe wurde abgebrochen",
       "cancel_failed": "Die geplante Aufgabe konnte nicht abgebrochen werden"
+    },
+    "attendanceTeamBreakdown": {
+      "toggleLabel": "Nach Team auswerten",
+      "toggleHint": "Wertet die Anwesenheit je untergeordnetem Team aus (nur Organisationsverteilung).",
+      "title": "Anwesenheit nach Team",
+      "team": "Team",
+      "attending": "Anwesend",
+      "partial": "Teilweise",
+      "absent": "Abwesend",
+      "undecided": "Offen",
+      "total": "Gesamt",
+      "totalNote": "Gesamt zaehlt eindeutige Personen; die Team-Werte koennen sich ueberschneiden (Mitglieder in mehreren Teams werden je Team gezaehlt).",
+      "directMembers": "Direkte Organisationsmitglieder",
+      "reload": "Neu laden",
+      "retry": "Erneut versuchen",
+      "exportCsv": "CSV exportieren",
+      "exportFailed": "CSV-Export fehlgeschlagen.",
+      "fetchFailed": "Die Anwesenheitsaufschluesselung nach Team konnte nicht geladen werden.",
+      "forbidden": "Sie haben keine Berechtigung, diese Aufschluesselung anzuzeigen.",
+      "empty": "Keine Daten zur Anwesenheitsaufschluesselung nach Team verfuegbar."
+    },
+    "recurrence": {
+      "label": "Wiederholen",
+      "interval": {
+        "DAILY": "Täglich",
+        "WEEKLY": "Wöchentlich",
+        "MONTHLY": "Monatlich",
+        "YEARLY": "Jährlich"
+      },
+      "days": {
+        "SUNDAY": "So",
+        "MONDAY": "Mo",
+        "TUESDAY": "Di",
+        "WEDNESDAY": "Mi",
+        "THURSDAY": "Do",
+        "FRIDAY": "Fr",
+        "SATURDAY": "Sa"
+      },
+      "end_label": "Ende",
+      "end_never": "Nie",
+      "end_date": "Am Datum",
+      "end_count": "Nach",
+      "end_count_suffix": "Mal"
+    },
+    "event_add": "Termin hinzufügen",
+    "calendar_guide": {
+      "page_title": "Mein Kalender",
+      "description": "Mein Kalender ermöglicht es Ihnen, persönliche Termine und Termine Ihrer Teams und Organisationen in einer Ansicht zu sehen.",
+      "what": {
+        "title": "Was ist Mein Kalender?",
+        "body": "Zeigt alle Termine Ihrer Teams, Organisationen und persönlichen Agenda in einem einzigen Kalender an. Sie können zwischen der Kalenderansicht und der Gantt-Ansicht (TODO-Liste) wechseln."
+      },
+      "add": {
+        "title": "Termin hinzufügen",
+        "body": "Klicken Sie auf die Schaltfläche 'Termin hinzufügen' oder auf ein Datum im Kalender, um einen Termin zu erstellen. Sie können persönliche sowie Team- oder Organisationstermine hinzufügen.",
+        "step1": "Klicken Sie auf 'Termin hinzufügen' oben rechts oder auf eine Datumszelle",
+        "step2": "Titel, Datum/Uhrzeit und Ort eingeben",
+        "step3": "Unter 'Bereich' persönlich, Team oder Organisation auswählen",
+        "step4": "Auf 'Speichern' klicken, um abzuschließen"
+      },
+      "filter": {
+        "title": "Ansicht filtern",
+        "body": "Verwenden Sie die Schaltflächen unten im Kalender, um die Anzeige jedes Bereichs (persönlich, Team, Organisation) einzeln umzuschalten. Bei 6 oder mehr verwenden Sie das Dropdown-Menü.",
+        "personal": "Grüner Punkt: persönliche Termine",
+        "team_org": "Indigopunkt: Team-/Organisationstermine"
+      },
+      "gantt": {
+        "title": "Gantt-Ansicht (TODO-Liste)",
+        "body": "Drücken Sie die Registerkarte 'Gantt', um TODOs mit Fälligkeitsdatum als Gantt-Diagramm anzuzeigen. Synchronisiert mit dem Bereichsschalter oben rechts."
+      },
+      "detail": {
+        "title": "Termindetails & Anwesenheit",
+        "body": "Klicken Sie auf einen Termin im Kalender, um das Detailfeld auf der rechten Seite zu öffnen.",
+        "item_edit": "Verwenden Sie das Bleistiftsymbol zum Bearbeiten oder das Papierkorbsymbol zum Löschen",
+        "item_attendance": "Für Termine mit Anwesenheitsverfolgung wählen Sie 'Teilnehmen', 'Nicht teilnehmen' oder 'Vielleicht'",
+        "item_match": "Verwenden Sie die Schaltfläche 'Dieses Spiel aufzeichnen' bei einem Teamtermin, um eine Spielaufzeichnung zu starten"
+      },
+      "google_sync": {
+        "title": "Google Kalender-Integration",
+        "body": "Verbinden Sie Ihr Google-Konto, um Ihre persönlichen Termine in beide Richtungen mit Google Kalender zu synchronisieren. In Mannschaft hinzugefügte oder bearbeitete Termine erscheinen in Google Kalender, und Änderungen in Google Kalender werden zurück importiert.",
+        "step1": "Öffnen Sie 'Einstellungen' → 'Google Calendar-Integration'",
+        "step2": "Klicken Sie auf 'Google-Konto verbinden' und autorisieren Sie die Verbindung",
+        "step3": "Aktivieren Sie 'Persönlicher Kalender', um die Synchronisierung einzuschalten",
+        "step4": "Führen Sie 'Manuelle Synchronisierung' aus, wenn Änderungen sofort übernommen werden sollen"
+      }
+    },
+    "google_sync_notice": "Mit Google Kalender verbunden. Änderungen in Google werden beim nächsten Speichern hier durch die Mannschaft-Daten ersetzt.",
+    "comment": {
+      "title": "Kommentare",
+      "placeholder": "Zu diesem Termin kommentieren…",
+      "submit": "Senden",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "reply": "Antworten",
+      "replyTo": "Antwort an {name}",
+      "showReplies": "{count} weitere Antworten anzeigen",
+      "empty": "Noch keine Kommentare",
+      "loadMore": "Mehr laden",
+      "edit": "Bearbeiten",
+      "edited": "(bearbeitet)",
+      "delete": "Löschen",
+      "deleteConfirm": "Diesen Kommentar löschen?",
+      "deleted": "Dieser Kommentar wurde gelöscht",
+      "deletedAuthor": "Gelöschter Benutzer",
+      "closed": "Kommentare zu diesem Termin sind geschlossen",
+      "cancelled": "Zu abgesagten Terminen sind keine Kommentare möglich",
+      "updateSuccess": "Kommentar aktualisiert",
+      "deleteSuccess": "Kommentar gelöscht",
+      "postSuccess": "Kommentar veröffentlicht",
+      "settings": {
+        "enable": "Kommentare zulassen",
+        "disable": "Kommentare schließen",
+        "updateSuccess": "Kommentareinstellungen aktualisiert"
+      },
+      "mention": {
+        "hint": "Sie können ein Mitglied erwähnen",
+        "empty": "Keine passenden Mitglieder"
+      },
+      "count": "{count} Kommentare",
+      "error": {
+        "bodyRequired": "Bitte geben Sie einen Kommentar ein",
+        "bodyTooLong": "Kommentare dürfen höchstens 2000 Zeichen lang sein",
+        "maxDepth": "Auf diese Antwort kann nicht geantwortet werden",
+        "closed": "Kommentare sind geschlossen",
+        "forbidden": "Sie haben keine Berechtigung für diese Aktion",
+        "tooManyMentions": "Sie können höchstens 20 Personen erwähnen",
+        "rateLimited": "Zu viele Beiträge. Bitte später erneut versuchen",
+        "generic": "Der Vorgang ist fehlgeschlagen",
+        "notFound": "Kommentar nicht gefunden"
+      }
+    },
+    "targetAudience": { "label": "Termin-Zielgruppe", "allMembers": "Alle", "selectMembers": "Mitglieder auswählen", "memberPlaceholder": "Zielgruppenmitglieder auswählen", "more": "und {count} weitere", "selectedCount": "{count} ausgewählt", "invalidSelection": "Wähle zwischen 1 und 500 Mitgliedern aus" },
+    "memberColor": { "column": "Terminfarbe", "auto": "Automatisch", "reset": "Auf automatische Farbe zurücksetzen", "updated": "Terminfarbe des Mitglieds aktualisiert", "resetDone": "Automatische Terminfarbe wiederhergestellt", "updateFailed": "Terminfarbe des Mitglieds konnte nicht aktualisiert werden", "colorLabel": "Terminfarbe für {name}" },
+    "todo_load_error": {
+      "summary": "TODOs konnten nicht geladen werden",
+      "detail": "TODOs konnten im Kalender nicht angezeigt werden. Termine werden weiterhin angezeigt. Bitte spaeter neu laden."
+    }
+  },
+  "scheduleKeep": {
+    "title": "キープ",
+    "subtitle": "日付が決まっていない予定を置いておく場所",
+    "empty": "まだ何もありません。思いついたことを書いてみましょう",
+    "form": {
+      "titleLabel": "やりたいこと",
+      "titlePlaceholder": "例: 夏合宿",
+      "memoLabel": "メモ（任意）",
+      "candidateDatesLabel": "候補日（任意）",
+      "submit": "キープする"
+    },
+    "action": {
+      "convert": "予定にする",
+      "convertFromCandidate": "この日に決める",
+      "pickDate": "日付を選ぶ",
+      "specifyTime": "時刻を指定する",
+      "archive": "見送る",
+      "restore": "もどす",
+      "revert": "予定を取り消す",
+      "reorder": "並び替え"
+    },
+    "status": {
+      "kept": "キープ中",
+      "scheduled": "予定になりました",
+      "archived": "見送り"
+    },
+    "filter": {
+      "kept": "キープ中",
+      "scheduled": "予定済み",
+      "archived": "見送り",
+      "all": "すべて"
+    },
+    "badge": {
+      "candidateCount": "候補日 {count} 件"
+    },
+    "origin": {
+      "label": "このキープから作られました",
+      "cancelled": "予定は中止になりました",
+      "deleted": "元の予定は削除されました"
+    },
+    "lockedHint": {
+      "scheduled": "予定になったので、内容の変更は予定側で行ってください",
+      "archived": "見送り中は編集できません。「もどす」と編集できます"
+    },
+    "notification": {
+      "converted": "「{title}」の日程が決まりました",
+      "created": "「{title}」がキープされました"
+    },
+    "confirm": {
+      "archive": "見送りにしますか？あとで戻せます"
+    },
+    "limit": {
+      "hint": "見送りにすると枠が空きます"
+    },
+    "help": {
+      "title": "キープの使い方",
+      "body": "日付が決まっていない予定をひとまず置いておける場所です。タイトルだけで作成でき、あとから候補日やメモを足せます。候補日が決まったらタップひとつでカレンダーの予定に変換できます。",
+      "create": {
+        "title": "キープする",
+        "body": "タイトルだけ入力すれば作成できます。候補日やメモは後からでも構いません。",
+        "steps": {
+          "step1": "やりたいことをタイトルに入力",
+          "step2": "必要なら候補日・メモを追加",
+          "step3": "「キープする」を押す"
+        }
+      },
+      "convert": {
+        "title": "予定に変換する",
+        "body": "候補日があれば1タップ、無くても日付を選ぶだけの2タップ以内で予定になります。",
+        "steps": {
+          "step1": "候補日バッジ、または「予定にする」を押す",
+          "step2": "候補日が無ければ日付を選ぶ",
+          "step3": "カレンダーに予定として反映される"
+        }
+      },
+      "organize": {
+        "title": "整理する",
+        "body": "見送ったキープは一覧から消えますが、いつでも「もどす」で復帰できます。並び替えもできます。",
+        "steps": {
+          "step1": "不要になったら「見送る」",
+          "step2": "「見送り」フィルタから「もどす」で復帰",
+          "step3": "ドラッグで並び替え"
+        }
+      }
+    },
+    "error": {
+      "notFound": "キープが見つかりません",
+      "titleRequired": "タイトルを入力してください",
+      "tooManyCandidateDates": "候補日は最大10件です",
+      "invalidCandidateDate": "候補日の形式が正しくありません",
+      "forbidden": "このキープを操作する権限がありません",
+      "notConvertible": "このキープは予定に変換できません",
+      "notEditable": "この状態では編集できません",
+      "revertBlockedByAttendance": "出欠の回答があるため変換を取り消せません",
+      "invalidStateTransition": "この操作はできません",
+      "limitExceeded": "キープの上限に達しました",
+      "invalidReorder": "並び替えの指定が正しくありません"
     }
   }
 }

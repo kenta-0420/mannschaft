@@ -49,10 +49,18 @@ public class CampaignPerformanceService {
      * 当月分の全キャンペーンのad_daily_statsを集計して返す。
      */
     public AdvertiserOverviewResponse getOverview(Long organizationId) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
+        return getOverview(ScopeType.ORGANIZATION, organizationId);
+    }
+
+    /**
+     * 広告主ダッシュボード概要を取得する（scope 化。F09.19.5b: org/team 両対応）。
+     * 当月分の全キャンペーンのad_daily_statsを集計して返す。
+     */
+    public AdvertiserOverviewResponse getOverview(ScopeType scopeType, Long scopeId) {
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
 
-        List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserOrganizationId(organizationId);
+        List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserAccountId(account.getId());
 
         LocalDate now = LocalDate.now();
         LocalDate monthStart = now.withDayOfMonth(1);
@@ -129,7 +137,15 @@ public class CampaignPerformanceService {
      */
     public CampaignPerformanceResponse getPerformance(Long campaignId, Long organizationId,
                                                        LocalDate from, LocalDate to) {
-        AdCampaignEntity campaign = findCampaignWithAuth(campaignId, organizationId);
+        return getPerformance(campaignId, ScopeType.ORGANIZATION, organizationId, from, to);
+    }
+
+    /**
+     * キャンペーン別パフォーマンスを取得する（scope 化。F09.19.5: org/team 両対応）。
+     */
+    public CampaignPerformanceResponse getPerformance(Long campaignId, ScopeType scopeType, Long scopeId,
+                                                       LocalDate from, LocalDate to) {
+        AdCampaignEntity campaign = findCampaignWithAuth(campaignId, scopeType, scopeId);
         List<AdDailyStatsEntity> stats = adDailyStatsRepository.findByCampaignIdAndDateBetween(campaignId, from, to);
 
         long totalImpressions = stats.stream().mapToLong(AdDailyStatsEntity::getImpressions).sum();
@@ -184,7 +200,15 @@ public class CampaignPerformanceService {
      */
     public CreativeComparisonResponse getCreativeComparison(Long campaignId, Long organizationId,
                                                              LocalDate from, LocalDate to) {
-        findCampaignWithAuth(campaignId, organizationId);
+        return getCreativeComparison(campaignId, ScopeType.ORGANIZATION, organizationId, from, to);
+    }
+
+    /**
+     * クリエイティブ別比較を取得する（scope 化。F09.19.5b: org/team 両対応）。
+     */
+    public CreativeComparisonResponse getCreativeComparison(Long campaignId, ScopeType scopeType, Long scopeId,
+                                                             LocalDate from, LocalDate to) {
+        findCampaignWithAuth(campaignId, scopeType, scopeId);
         List<AdEntity> ads = adEntityRepository.findByCampaignId(campaignId);
 
         List<CreativeComparisonResponse.CreativeStats> creatives = ads.stream().map(ad -> {
@@ -223,7 +247,15 @@ public class CampaignPerformanceService {
      */
     public BreakdownResponse getBreakdown(Long campaignId, Long organizationId,
                                            LocalDate from, LocalDate to, String breakdownBy) {
-        findCampaignWithAuth(campaignId, organizationId);
+        return getBreakdown(campaignId, ScopeType.ORGANIZATION, organizationId, from, to, breakdownBy);
+    }
+
+    /**
+     * 地域×テンプレート別内訳を取得する（scope 化。F09.19.5b: org/team 両対応）。
+     */
+    public BreakdownResponse getBreakdown(Long campaignId, ScopeType scopeType, Long scopeId,
+                                           LocalDate from, LocalDate to, String breakdownBy) {
+        findCampaignWithAuth(campaignId, scopeType, scopeId);
         List<AdTargetingRuleEntity> rules = adTargetingRuleRepository.findByCampaignId(campaignId);
         List<AdDailyStatsEntity> stats = adDailyStatsRepository.findByCampaignIdAndDateBetween(campaignId, from, to);
 
@@ -248,9 +280,16 @@ public class CampaignPerformanceService {
     }
 
     private AdCampaignEntity findCampaignWithAuth(Long campaignId, Long organizationId) {
+        return findCampaignWithAuth(campaignId, ScopeType.ORGANIZATION, organizationId);
+    }
+
+    private AdCampaignEntity findCampaignWithAuth(Long campaignId, ScopeType scopeType, Long scopeId) {
+        AdvertiserAccountEntity account = advertiserAccountRepository
+                .findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
         AdCampaignEntity campaign = adCampaignRepository.findById(campaignId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
-        if (!campaign.getAdvertiserOrganizationId().equals(organizationId)) {
+        if (!campaign.getAdvertiserAccountId().equals(account.getId())) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return campaign;

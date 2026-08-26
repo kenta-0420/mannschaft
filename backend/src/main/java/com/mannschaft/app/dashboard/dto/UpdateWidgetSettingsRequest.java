@@ -19,7 +19,11 @@ public class UpdateWidgetSettingsRequest {
     @NotBlank
     private final String scopeType;
 
-    private final Long scopeId;
+    /**
+     * スコープID。slug 文字列（例: {@code org-000001} / {@code team-000017}）または数値文字列を受け付ける。
+     * PERSONAL の場合は未送信（null）。slug 移行に伴い Long から String へ変更（数値も後方互換で解決可能）。
+     */
+    private final String scopeId;
 
     @NotNull
     @Size(min = 1)

@@ -6,6 +6,8 @@ import com.mannschaft.app.event.dto.CheckinRequest;
 import com.mannschaft.app.event.dto.CheckinResponse;
 import com.mannschaft.app.event.dto.SelfCheckinRequest;
 import com.mannschaft.app.event.service.EventCheckinService;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,10 +35,13 @@ import com.mannschaft.app.common.SecurityUtils;
 public class EventCheckinController {
 
     private final EventCheckinService checkinService;
-
+    private final EventScopeAccessGuard eventScopeAccessGuard;
 
     /**
-     * スタッフスキャンによるチェックインを実行する。
+     * スタッフスキャンによるチェックインを実行する（ADMIN/DEPUTY_ADMIN専用）。
+     *
+     * <p>認可: URL に eventId を含まないため、{@code EventCheckinService} 側で QR トークンから
+     * 解決したチケットの {@code eventId} を用いて admin 判定する（{@code requireAdminByEventId}）。</p>
      */
     @PostMapping("/checkin")
     @Operation(summary = "スタッフチェックイン")
@@ -48,14 +53,22 @@ public class EventCheckinController {
     }
 
     /**
-     * セルフチェックインを実行する。
+     * セルフチェックインを実行する（本人専用）。
+     *
+     * <p>認可: {@code EventCheckinService} 側で QR トークンから解決したチケットの参加登録者本人
+     * であることを検証する。</p>
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code EventCheckinService#selfCheckin} が {@code requireTicketOwner} でチケット所有者と
+     * 操作者を比較する。認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping("/checkin/self")
     @Operation(summary = "セルフチェックイン")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "チェックイン成功")
     public ResponseEntity<ApiResponse<CheckinResponse>> selfCheckin(
             @Valid @RequestBody SelfCheckinRequest request) {
-        CheckinResponse response = checkinService.selfCheckin(request);
+        CheckinResponse response = checkinService.selfCheckin(SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -69,6 +82,7 @@ public class EventCheckinController {
             @PathVariable Long eventId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        eventScopeAccessGuard.requireMemberByEventId(SecurityUtils.getCurrentUserId(), eventId);
         Page<CheckinResponse> result = checkinService.listCheckins(eventId, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -83,6 +97,7 @@ public class EventCheckinController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<Long>> getCheckinCount(
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireMemberByEventId(SecurityUtils.getCurrentUserId(), eventId);
         long count = checkinService.getCheckinCount(eventId);
         return ResponseEntity.ok(ApiResponse.of(count));
     }

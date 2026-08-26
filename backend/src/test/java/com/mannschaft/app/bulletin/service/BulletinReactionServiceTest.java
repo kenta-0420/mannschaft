@@ -60,6 +60,10 @@ class BulletinReactionServiceTest {
     @Mock
     private BulletinAccessGuard accessGuard;
 
+    /** 村スコープの閲覧認可委譲先（村スレッドへのリアクション判定に使う）。 */
+    @Mock
+    private com.mannschaft.app.village.service.VillageBulletinAccessService villageBulletinAccessService;
+
     @InjectMocks
     private BulletinReactionService bulletinReactionService;
 

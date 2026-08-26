@@ -67,24 +67,27 @@ ResponseCookie.from("access_token", "")
 
 > **整合に関する注記（2026-05-26 更新・実装済み）**: refresh_token も access_token と同様、サーバーが `ResponseCookie` として明示発行・削除する一元管理に移行した（`AuthLoginController#buildRefreshTokenCookie` / `#clearRefreshTokenCookie`）。F01.1 §203 のデュアルモード設計に合わせ、**login/refresh 成功時は Set-Cookie とレスポンスボディの両方**で返し（Web は Cookie・モバイルは body を使用）、**logout で maxAge=0 のクリア Cookie** を返す。Cookie の maxAge は DB トークンの有効期限（`getRefreshTokenExpirationSeconds()`）と一致させる。属性は access_token と統一（HttpOnly / Secure=`mannschaft.cookie.secure` / SameSite=Strict / Path=/）。
 
-### 3.1 access_token の roles claim（現状と改善）
+### 3.1 access_token の roles claim（実装済み）
 
 access_token（JWT）の `roles` claim は **認可（authority）の起点**である。`JwtAuthenticationFilter` がこの claim を `ROLE_*` authority に変換し、SecurityFilterChain の `hasRole(...)` とメソッド層の `@PreAuthorize` がそれを評価する。
 
-| 項目 | 現状（病巣） | 改善（認可基盤完全根治） |
+> ※2026-05-30 時点の「現状（病巣）」と「改善（根治後）」の対比表として記録。その後 Phase 1〜3 の実装（#1266・2026-06-02 点火）で根治済み。
+
+| 項目 | 調査時（2026-05-29）の病巣 | 根治後（2026-06-02 実装済み） |
 |---|---|---|
 | 発行内容 | **全 5 経路（login/2FA/OAuth/WebAuthn/refresh）で `["MEMBER"]` 固定** | 基底 `MEMBER` ＋ SYSTEM_ADMIN ユーザーは `["MEMBER","SYSTEM_ADMIN"]`。発行時に `user_roles` から判定（`existsSystemAdminByUserId`） |
 | SYSTEM_ADMIN | 誰の JWT にも載らない → SecurityConfig の `hasRole("SYSTEM_ADMIN")` 4 系統が全員 403（機能不全） | **roles 配列に `"SYSTEM_ADMIN"` を追加**（boolean claim ではない）。フィルタの既存 `ROLE_+role` 変換にそのまま乗り、`hasRole` がコード変更なしで機能 |
 | per-scope ロール | — | team/org の ADMIN/DEPUTY_ADMIN は **JWT に載せず**リクエスト毎に DB 判定（マルチテナントでの肥大化回避） |
 | 失効 | — | SYSTEM_ADMIN 剥奪時は §4 の全デバイス無効化タイムスタンプを発火し即時失効。最悪でもリフレッシュ（最長 15 分）で再判定 |
 
-> 詳細・段階計画・`@PreAuthorize` カタログは [03 ロール・権限モデル](03_role_authority_model.md) を正典とする。本書は「access_token に何が載るか」の現状記録に留める。
+> 詳細・段階計画・`@PreAuthorize` カタログは [03 ロール・権限モデル](03_role_authority_model.md) を正典とする。
 
 ---
 
 ## 4. セッション無効化・ローテーション
 
-- **リフレッシュトークンローテーション**: `AuthTokenRotationService` がリフレッシュ毎にトークンを再発行し、旧トークンを失効。失効済みトークンの再利用を検出した場合は全デバイスを無効化（リプレイ攻撃対策）
+- **リフレッシュトークンローテーション**: `AuthTokenRotationService` がリフレッシュ毎にトークンを再発行し、旧トークンに後継ポインタ（`replaced_by_token_hash`）を記録して失効させる。取得は DB 行ロック（`PESSIMISTIC_WRITE`）で直列化（詳細: [06 §7](06_business_logic_and_abuse_prevention.md#7-jwt-refresh-token-ローテーションの競合制御2026-07-02-実装済みに更新)）
+- **並行更新の正規化と真リプレイの区別（2026-07-02 実装済み）**: 失効済みトークンの再提示は一律リプレイ扱いにしない。後継ポインタ有り × grace window（既定 60 秒、`mannschaft.jwt.refresh-rotation-grace-seconds`）以内なら「並行更新の負け側」として正規化し新トークンを発行（全デバイス無効化しない）。grace window 超過の後継有りトークン再提示のみを真リプレイとして `AuthSessionService.logoutAllDevices()` で全デバイス無効化する
 - **JTI ブラックリスト**: ログアウト時、access_token の JTI を Valkey に残存 TTL 分だけ登録して無効化
 - **全デバイス無効化**: ユーザー単位の無効化タイムスタンプを Valkey に保持
 - **セッション一覧・個別無効化・新規デバイス検知**: F12.4 を参照
@@ -104,6 +107,15 @@ access_token（JWT）の `roles` claim は **認可（authority）の起点**で
 - AWS ElastiCache 等の Managed Redis（SLA 99.9% 以上）
 
 シングルポイント Valkey での本番稼働は禁止する。詳細は [09 キー管理・ローテーション](09_key_management_and_rotation.md) の Valkey 冗長化要件も参照すること。
+
+#### 4.1.1 実装上の担保 — Valkey 障害が DB トランザクションを汚さないこと（2026-07-02 根治）
+
+Fail-Open は「Valkey が落ちても **DB 側の無効化（refresh_token の revoke）は必ず貫く**」ことが前提である。これを成立させるには、Valkey 操作の例外が呼び出し元の **DB トランザクションを rollback-only にマークしてはならない**。
+
+- `AuthTokenService`（`setUserInvalidationTimestamp` / `addJtiToBlacklist` / `clearUserInvalidationTimestamp` / レートリミット）は **DB を一切触らず Valkey と JWT のみ**を扱うため、**クラスに `@Transactional` を付与しない**（非トランザクショナルに保つ）。
+- 過去、誤ってクラスレベル `@Transactional(readOnly = true)` が付いており、これらの Valkey 専用メソッドが Spring プロキシ経由で呼び出し元（例: `AuthSessionService.logoutAllDevices`、`AuthTokenRotationService.refreshAccessToken` の真リプレイ検出経路）の DB トランザクションに参加していた。この状態で Valkey が例外を投げると、内側のトランザクション境界で現在のトランザクションが rollback-only にマークされ、呼び出し元が `try-catch` で例外を握って Fail-Open を意図しても、コミット時に `UnexpectedRollbackException` が発生し **DB revoke ごと巻き戻る**（＝ Fail-Open が実際には fail 側に倒れ、セッション無効化が永続化されない過小無効化）不具合があった。
+- 根治として `AuthTokenService` から `@Transactional` を撤去し、Valkey 例外が呼び出し元の `try-catch` へ素通しで届くようにした。これにより Valkey 障害時も DB 側の無効化は確定コミットされる。
+- **番人テスト**: `AuthLogoutValkeyFailOpenPersistenceIT`（実 MySQL Testcontainers ＋ Valkey 例外注入）が「Valkey 障害中でも全 refresh_token が `revoked_at NOT NULL` で永続化される」ことを守る。純 Mockito UT はトランザクション境界を踏まないため、この巻き戻りを検知できない（false-green）ことに注意。
 
 ---
 
@@ -134,7 +146,10 @@ access_token（JWT）の `roles` claim は **認可（authority）の起点**で
 
 | 日付 | 変更 |
 |---|---|
+| 2026-06-12 | §3.1 の「現状（病巣）/改善」対比表の列ヘッダーを「調査時（病巣）/根治後（実装済み）」に更新し、Phase 1〜3 根治済み（#1266・2026-06-02 点火）であることを注記 |
 | 2026-05-26 | 新規作成。`MANNSCHAFT_COOKIE_SECURE` 環境変数化と Cookie 属性統一を定義 |
 | 2026-05-26 | 認証コア強化: Argon2id 段階移行（`DelegatingPasswordEncoder`・ログイン時透過 upgrade）と refresh_token Cookie 発行一元化（デュアルモード）を実装。§3/§5/§6 を実装済みに更新 |
 | 2026-05-30 | §3.1 を新設。access_token の roles claim の現状（`["MEMBER"]` 固定）と SYSTEM_ADMIN を roles 配列に載せる改善を追記。詳細は [03](03_role_authority_model.md) を正典として参照 |
 | 2026-06-02 | §2 Cookie 属性テーブルの `Max-Age` を 900→890 秒（Clock Skew 対策）に修正。§2.3 Clock Skew 対策セクションを新設（JWT `exp` より 10 秒短く設定する根拠・設定値を明記）。§4.1 Valkey 障害時 Fail-Open 方針を新設（本番 Sentinel/Cluster 必須・シングルポイント禁止）。§5 レートリミットテーブルにパスワードリセット申請（3回/分）・メール認証コード送信（3回/分）の数値を追記 |
+| 2026-07-02 | §4.1.1 を新設。`AuthTokenService` のクラスレベル `@Transactional` により Valkey 専用メソッドが呼び出し元 DB トランザクションに参加し、Valkey 例外が rollback-only マーク → コミット時 `UnexpectedRollbackException` でセッション無効化の DB revoke ごと巻き戻る（Fail-Open が fail 側に倒れる）不具合を根治。`AuthTokenService` を非トランザクショナル化。番人 `AuthLogoutValkeyFailOpenPersistenceIT` を追加 |
+| 2026-07-02 | §4 を更新: リフレッシュトークンローテーションの競合制御を DB 行ロック（`PESSIMISTIC_WRITE`）+ grace window 方式に変更（F01.1 自爆バグ根治）。失効済みトークン再提示を一律リプレイ扱いにせず、後継ポインタ（`replaced_by_token_hash`）× grace window（既定 60 秒）で並行更新の正規化と真リプレイを区別するよう記述を更新。詳細は [06 §7](06_business_logic_and_abuse_prevention.md#7-jwt-refresh-token-ローテーションの競合制御2026-07-02-実装済みに更新) を正典として参照 |

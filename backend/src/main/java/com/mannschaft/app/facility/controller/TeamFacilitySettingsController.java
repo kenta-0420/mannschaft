@@ -1,9 +1,11 @@
 package com.mannschaft.app.facility.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.facility.dto.FacilitySettingsResponse;
 import com.mannschaft.app.facility.dto.FacilityStatsResponse;
 import com.mannschaft.app.facility.dto.UpdateSettingsRequest;
+import com.mannschaft.app.facility.service.FacilityAccessGuard;
 import com.mannschaft.app.facility.service.FacilitySettingsService;
 import com.mannschaft.app.facility.service.FacilityStatsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +33,7 @@ public class TeamFacilitySettingsController {
 
     private final FacilitySettingsService settingsService;
     private final FacilityStatsService statsService;
+    private final FacilityAccessGuard accessGuard;
 
     /**
      * 施設予約設定を取得する。
@@ -40,6 +43,7 @@ public class TeamFacilitySettingsController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<FacilitySettingsResponse>> getSettings(
             @PathVariable Long teamId) {
+        accessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         FacilitySettingsResponse response = settingsService.getSettings(SCOPE_TYPE, teamId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -53,6 +57,7 @@ public class TeamFacilitySettingsController {
     public ResponseEntity<ApiResponse<FacilitySettingsResponse>> updateSettings(
             @PathVariable Long teamId,
             @Valid @RequestBody UpdateSettingsRequest request) {
+        accessGuard.requireScopeAdmin(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         FacilitySettingsResponse response = settingsService.updateSettings(SCOPE_TYPE, teamId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -65,6 +70,7 @@ public class TeamFacilitySettingsController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<FacilityStatsResponse>> getStats(
             @PathVariable Long teamId) {
+        accessGuard.requireScopeAdmin(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         FacilityStatsResponse response = statsService.getStats(SCOPE_TYPE, teamId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

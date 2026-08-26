@@ -1,8 +1,10 @@
 package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.ConnectWebhookService;
+import com.mannschaft.app.payment.service.StripeWebhookRetryableException;
 import com.mannschaft.app.payment.service.StripeWebhookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,8 +26,22 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>POST {@code /api/v1/webhooks/stripe/connect} — F22.1 Connect Webhook（別署名シークレット）</li>
  * </ul>
  * 両エンドポイントとも {@code /api/v1/webhooks/stripe/*} の permitAll で被覆済み（SecurityConfig・03 §2.1）。
+ *
+ * <p><b>認可根拠（{@link AuthorizedInService} クラス付与・全 2 EP が該当）</b>: 両 EP とも
+ * {@code Stripe-Signature} ヘッダの HMAC 署名検証で正当性を担保する（認可根治戦役 Wave5 監査済）。</p>
+ * <ul>
+ *   <li>{@link #handleWebhook} → {@code StripeWebhookService.java:54}
+ *       {@code stripePaymentProvider.constructEvent(payload, sigHeader)}
+ *       → {@code StripePaymentProviderImpl.java:455}
+ *       {@code Webhook.constructEvent(payload, sigHeader, webhookSecret)}（platform シークレット）</li>
+ *   <li>{@link #handleConnectWebhook} → {@code ConnectWebhookService.java:47}
+ *       {@code stripePaymentProvider.constructConnectEvent(payload, sigHeader)}
+ *       → {@code StripePaymentProviderImpl.java:590}
+ *       {@code Webhook.constructEvent(payload, sigHeader, connectWebhookSecret)}（Connect 専用シークレット）</li>
+ * </ul>
  */
 @Slf4j
+@AuthorizedInService
 @RestController
 @RequestMapping("/api/v1/webhooks")
 @Tag(name = "Stripe Webhook", description = "F08.2 / F22.1 Stripe Webhook 受信")
@@ -56,9 +72,16 @@ public class StripeWebhookController {
         try {
             stripeWebhookService.handleWebhook(payload, sigHeader);
             return ResponseEntity.ok().build();
+        } catch (StripeWebhookRetryableException e) {
+            // F08.9 P5: 継続課金の invoice.created 固定手数料上書き失敗 等は「再送させたい失敗」。
+            // 握り潰さず再送出して 5xx を返し、Stripe の at-least-once 再送（draft 窓内・指数バックオフ）で
+            // リカバリさせる（設計書 02 §4.2・症状を隠さない）。F08.2 既存イベントの予期せぬ例外は下の catch で
+            // 従来どおり 200 で握る（再送ストーム回避）ため、他処理への影響はない。
+            log.error("Webhook 処理を再送に委ねます（retryable）。5xx を返します: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
             log.error("Webhook 処理中にエラー。200 を返して再送を防止します: {}", e.getMessage());
-            // Webhook ハンドラ内では 5xx を返さない設計
+            // Webhook ハンドラ内では 5xx を返さない設計（F08.2 既存イベント）
             return ResponseEntity.ok().build();
         }
     }

@@ -12,6 +12,7 @@ const teamStore = useTeamStore()
 const { getSchedule } = useShiftApi()
 const { listConstraints, getTeamDefault } = useMemberWorkConstraintApi()
 const { handleApiError } = useErrorHandler()
+const { warn } = useNotification()
 
 const scheduleId = computed(() => Number(route.params.id))
 
@@ -75,10 +76,24 @@ async function load() {
   }
 }
 
+// このページの一覧取得 API（listConstraints）は BE 側で ADMIN/DEPUTY_ADMIN 限定。
+// 一般メンバーの直リンク・ブックマーク到達を塞ぐため、権限確定時点で詳細ページへ戻す。
+watch(
+  [schedule, canManage],
+  () => {
+    if (schedule.value && !canManage.value) {
+      warn(t('shift.detail.accessDeniedRedirect'))
+      navigateTo(`/shift/${scheduleId.value}`)
+    }
+  },
+  { immediate: true },
+)
+
 onMounted(async () => {
   await teamStore.fetchMyTeams()
   try {
     schedule.value = await getSchedule(scheduleId.value)
+    if (!canManage.value) return
     await load()
   } catch (error) {
     handleApiError(error)

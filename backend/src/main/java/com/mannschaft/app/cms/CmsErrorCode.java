@@ -78,7 +78,23 @@ public enum CmsErrorCode implements ErrorCode {
     REACTION_NOT_FOUND("CMS_022", "みたよ！が見つかりません", Severity.WARN),
 
     /** ストレージクォータ超過 */
-    MEDIA_QUOTA_EXCEEDED("CMS_023", "ストレージ容量が不足しているためアップロードできません", Severity.WARN);
+    MEDIA_QUOTA_EXCEEDED("CMS_023", "ストレージ容量が不足しているためアップロードできません", Severity.WARN),
+
+    /** チームが見つからない（publicId解決時） */
+    TEAM_NOT_FOUND("CMS_024", "指定されたチームが見つかりません", Severity.WARN),
+
+    /** 組織が見つからない（publicId解決時） */
+    ORG_NOT_FOUND("CMS_025", "指定された組織が見つかりません", Severity.WARN),
+
+    /**
+     * 予約公開待ち記事の共有不可（issue #2616）。
+     *
+     * <p>予約時刻より前に他スコープへ露出させないための状態ガード。
+     * 素の下書き（{@code published_at} なし）の共有は従来どおり許可する。</p>
+     *
+     * <p>HTTP 409 CONFLICT（記事の状態と操作の競合。権限ではなく状態の問題なので 403 ではない）。</p>
+     */
+    SCHEDULED_POST_SHARE_NOT_ALLOWED("CMS_026", "予約公開待ちの記事は共有できません。公開時刻の到来を待つか予約を解除してください", Severity.WARN);
 
     private final String code;
     private final String message;

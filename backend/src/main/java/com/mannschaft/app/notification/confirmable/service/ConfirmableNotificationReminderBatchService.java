@@ -1,6 +1,7 @@
 package com.mannschaft.app.notification.confirmable.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
@@ -14,12 +15,14 @@ import com.mannschaft.app.notification.service.NotificationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -39,6 +42,9 @@ public class ConfirmableNotificationReminderBatchService {
     private final ConfirmableNotificationRecipientRepository recipientRepository;
     private final ConfirmableNotificationSettingsRepository settingsRepository;
     private final NotificationHelper notificationHelper;
+    /** Issue #2715 ロットB: 送信者アラート本文の locale 解決（D-5: auth の UserRepository を直接呼ばない）。 */
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
 
     /**
      * リマインドバッチを実行する。
@@ -192,12 +198,21 @@ public class ConfirmableNotificationReminderBatchService {
         if (confirmRate < alertThreshold) {
             try {
                 NotificationScopeType scopeType = toNotificationScopeType(notification);
+                Locale locale = Locale.forLanguageTag(
+                        userLocaleCache.getLocale(notification.getCreatedBy().getId()));
+                String title = messageSource.getMessage(
+                        "notification.confirmable.senderAlert.title", null, "確認通知のアラート", locale);
+                String body = messageSource.getMessage(
+                        "notification.confirmable.senderAlert.body",
+                        new Object[]{confirmRate, alertThreshold, notification.getTitle()},
+                        "確認率が " + confirmRate + "% です（閾値: " + alertThreshold + "%）: " + notification.getTitle(),
+                        locale);
                 notificationHelper.notify(
                         notification.getCreatedBy().getId(),
                         "CONFIRMABLE_NOTIFICATION_SENDER_ALERT",
                         NotificationPriority.HIGH,
-                        "確認通知のアラート",
-                        "確認率が " + confirmRate + "% です（閾値: " + alertThreshold + "%）: " + notification.getTitle(),
+                        title,
+                        body,
                         "CONFIRMABLE_NOTIFICATION",
                         notification.getId(),
                         scopeType,

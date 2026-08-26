@@ -3,6 +3,7 @@ package com.mannschaft.app.tournament.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.match.domain.Sport;
 import com.mannschaft.app.tournament.LeagueRoundType;
 import com.mannschaft.app.tournament.ParticipantStatus;
 import com.mannschaft.app.tournament.StatAggregationType;
@@ -36,6 +37,7 @@ import com.mannschaft.app.tournament.repository.TournamentTiebreakerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,6 +64,10 @@ public class TournamentService {
     private final TournamentParticipantRepository participantRepository;
     private final TournamentMapper mapper;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    /** 認可根治戦役 Wave7: 大会一覧/詳細で主催組織 ADMIN/DEPUTY_ADMIN を判定するため。 */
+    private final com.mannschaft.app.common.AccessControlService accessControlService;
+    /** CMP-028 Phase C: 大会一覧の可視レベル解決（SQL 述語化）のため。 */
+    private final com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
     /**
      * F08.7.1 連絡機能: 大会作成・シーズン継続時に連絡スペース（掲示板＋チャット）を自動払い出しする。
      * TODO: tournament ドメインから chat/bulletin ドメインを直接呼ぶ越境（原則5）。
@@ -81,16 +87,91 @@ public class TournamentService {
     private static final String DEFAULT_DIVISION_FOLDER = "規約";
 
     /**
-     * 大会一覧を取得する。
+     * 大会一覧を取得する（閲覧者の可視性を SQL の WHERE 句で絞り込む）。
+     *
+     * <p>認可根治戦役 Wave7 由来の <b>主催組織 ADMIN/DEPUTY_ADMIN 全件閲覧</b>方針は維持する
+     * （DRAFT 含む）。本メソッドの結果集合は {@code organization_id = orgId} で構成されるため、
+     * パス {@code orgId} を管理者判定の scope に用いても BOLA にはならない。</p>
+     *
+     * <h2>CMP-028 Phase C: SQL 述語化によるページング歯抜けの根治</h2>
+     * <p>旧実装は SQL で 1 ページ分を取得してから F00 {@link ContentVisibilityChecker} で
+     * メモリ上フィルタしており、非公開大会が混ざると {@code size} を要求してもちょうどの件数が
+     * 返らない歯抜けが起きていた（{@code ActivityResultService} と同種の欠陥）。
+     * {@link com.mannschaft.app.common.visibility.MembershipBatchQueryService#resolveVisibleLevels}
+     * が返す「行に依存せず判定できる可視 {@code StandardVisibility} ラダー集合」を
+     * {@link com.mannschaft.app.common.visibility.mapping.TournamentVisibilityMapper#toFunctional}
+     * で機能 enum へ逆写像し、SQL の {@code WHERE visibility IN (...)} へ渡す。判定器は F00 の
+     * ままであり、SQL はその出力の機械的な転写に過ぎない（二つ目の判定器を作らない）。</p>
+     *
+     * <p><b>{@code PARTICIPANTS_ONLY}（{@code StandardVisibility.CUSTOM}）の翻訳</b>:
+     * {@code resolveVisibleLevels} は行依存の CUSTOM 軸をラダー集合に含めないため、
+     * {@link TournamentParticipantRepository#countActiveMemberOfAnyParticipantTeam} と同一の
+     * 判定を {@code EXISTS} サブクエリとして OR で組み合わせる
+     * （{@link TournamentRepository#findVisibleByOrganizationId} 参照）。</p>
+     *
+     * <p><b>第二の門（保険）</b>: SQL が通した行を F00 {@link ContentVisibilityChecker} で
+     * 再確認する。通常は 1 件も落ちない。乖離した場合は fail-closed で除外し {@code log.warn} に
+     * 記録する（{@code ActivityResultService#listActivities} と同じ流儀）。</p>
+     *
+     * @param viewerUserId 閲覧者 user_id（未認証は {@code null}）
      */
-    public Page<TournamentResponse> listTournaments(Long orgId, String status, Pageable pageable) {
-        if (status != null) {
-            return tournamentRepository.findByOrganizationIdAndStatusOrderByCreatedAtDesc(
-                    orgId, TournamentStatus.valueOf(status), pageable)
-                    .map(mapper::toTournamentSummaryResponse);
+    public Page<TournamentResponse> listTournaments(Long orgId, String status, Pageable pageable,
+                                                    Long viewerUserId) {
+        boolean orgManager = viewerUserId != null
+                && (accessControlService.isSystemAdmin(viewerUserId)
+                    || accessControlService.isAdminOrAbove(viewerUserId, orgId, "ORGANIZATION"));
+        if (orgManager) {
+            Page<TournamentEntity> page = status != null
+                    ? tournamentRepository.findByOrganizationIdAndStatusOrderByCreatedAtDesc(
+                            orgId, TournamentStatus.valueOf(status), pageable)
+                    : tournamentRepository.findByOrganizationIdOrderByCreatedAtDesc(orgId, pageable);
+            return page.map(mapper::toTournamentSummaryResponse);
         }
-        return tournamentRepository.findByOrganizationIdOrderByCreatedAtDesc(orgId, pageable)
-                .map(mapper::toTournamentSummaryResponse);
+
+        com.mannschaft.app.common.visibility.ScopeKey scope =
+                new com.mannschaft.app.common.visibility.ScopeKey("ORGANIZATION", orgId);
+        com.mannschaft.app.common.visibility.UserScopeRoleSnapshot snapshot =
+                membershipBatchQueryService.snapshotForUser(viewerUserId, Set.of(scope), Set.of(scope));
+        Set<com.mannschaft.app.common.visibility.StandardVisibility> visibleLevels =
+                membershipBatchQueryService.resolveVisibleLevels(scope, snapshot);
+        Set<TournamentVisibility> visibleVisibilities =
+                com.mannschaft.app.common.visibility.mapping.TournamentVisibilityMapper
+                        .toFunctional(visibleLevels);
+        Set<String> visibilityNames = visibleVisibilities.stream()
+                .map(TournamentVisibility::name)
+                .collect(java.util.stream.Collectors.toSet());
+        // StandardVisibility.PUBLIC は resolveVisibleLevels が常に含めるため
+        // visibilityNames は非空（IN () の不正 SQL は起きない）。
+
+        Page<TournamentEntity> page = tournamentRepository.findVisibleByOrganizationId(
+                orgId, status, visibilityNames, viewerUserId, snapshot.isSystemAdmin(), pageable);
+
+        List<TournamentEntity> content = page.getContent();
+        if (content.isEmpty()) {
+            return page.map(mapper::toTournamentSummaryResponse);
+        }
+
+        // 第二の門（保険）: SQL 述語と F00 の判定が食い違った場合を検知する。
+        Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
+                ReferenceType.TOURNAMENT,
+                content.stream().map(TournamentEntity::getId).toList(),
+                viewerUserId);
+        if (accessibleIds.size() == content.size()) {
+            return page.map(mapper::toTournamentSummaryResponse);
+        }
+        List<Long> divergentIds = content.stream()
+                .map(TournamentEntity::getId)
+                .filter(id -> !accessibleIds.contains(id))
+                .toList();
+        log.warn("大会一覧: SQL 述語と F00 可視性判定が乖離しました（fail-closed で除外）。"
+                        + "orgId={}, viewerUserId={}, divergentIds={}",
+                orgId, viewerUserId, divergentIds);
+        List<TournamentResponse> filtered = content.stream()
+                .filter(t -> accessibleIds.contains(t.getId()))
+                .map(mapper::toTournamentSummaryResponse)
+                .toList();
+        return new PageImpl<>(filtered, pageable,
+                Math.max(0L, page.getTotalElements() - divergentIds.size()));
     }
 
     /**
@@ -112,10 +193,57 @@ public class TournamentService {
     }
 
     /**
-     * 大会詳細を取得する。
+     * 大会詳細を取得する（org 束縛＋閲覧者の可視性を検証する）。
+     *
+     * <p>認可根治戦役 Wave7: パス {@code orgId} と大会実体の {@code organizationId} を突合し
+     * （不一致は 404 で存在秘匿）、そのうえで {@code StandingsController} の
+     * {@code verifyTournamentVisible} と同じく F00 共通可視性 Resolver で判定する。
+     * 主催組織 ADMIN/DEPUTY_ADMIN は
+     * 自組織の DRAFT 大会も閲覧できる（管理画面の機能退行を防ぐ。判定 scope は
+     * <b>エンティティ由来</b>の {@code tournament.organizationId}）。</p>
+     *
+     * @param viewerUserId 閲覧者 user_id（未認証は {@code null}）
      */
-    public TournamentResponse getTournament(Long tournamentId) {
-        TournamentEntity tournament = findTournamentOrThrow(tournamentId);
+    public TournamentResponse getTournament(Long orgId, Long tournamentId, Long viewerUserId) {
+        TournamentEntity tournament = tournamentRepository.findById(tournamentId)
+                .filter(t -> orgId.equals(t.getOrganizationId()))
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+
+        boolean orgManager = viewerUserId != null
+                && (accessControlService.isSystemAdmin(viewerUserId)
+                    || accessControlService.isAdminOrAbove(
+                            viewerUserId, tournament.getOrganizationId(), "ORGANIZATION"));
+        if (!orgManager
+                && !contentVisibilityChecker.canView(
+                        ReferenceType.TOURNAMENT, tournamentId, viewerUserId)) {
+            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+
+        return buildTournamentResponse(tournament, tournamentId);
+    }
+
+    /**
+     * 大会詳細レスポンスを組み立てる（<b>認可判定を含まない</b>内部専用）。
+     *
+     * <p>認可根治戦役 Wave7 / {@code feedback_authz_gate_on_public_entry_not_shared_method}:
+     * 認可ゲートは公開入口である {@link #getTournament(Long, Long, Long)} にのみ置き、
+     * 既に {@code @PreAuthorize("@accessGuard.isScopeAdmin(...)")} で認可済みの書込経路
+     * （{@code createTournament} / {@code updateTournament} / {@code changeStatus} /
+     * {@code continueTournament}）は本メソッドを使う。共有メソッドにゲートを埋めると、
+     * 作成直後の DRAFT 大会（作成者以外の管理者には不可視）で自分の書込レスポンスが
+     * 404 になる巻き添えが発生するため分離している。</p>
+     *
+     * <p><b>{@code tournamentId} を引数で受ける理由</b>: 当初は {@code tournament.getId()} から
+     * 取り直していたが、呼び出し元は全員すでに {@code tournamentId} を持っており、
+     * エンティティから取り直すのは不要な間接化だった。分離前の {@code getTournament(Long)} は
+     * 引数の ID をそのまま子テーブル検索に使っていたため、取得元を変えたことは意図しない
+     * 挙動変更でもある（ID 未設定のエンティティを渡すと子テーブル検索に {@code null} が伝播する）。
+     * 呼び出し元の ID をそのまま使う分離前の流儀に戻し、取得元を一意にした。</p>
+     *
+     * @param tournament   レスポンスの本体となる大会エンティティ
+     * @param tournamentId 子テーブル（tiebreakers / statDefs）検索に使う大会 ID
+     */
+    private TournamentResponse buildTournamentResponse(TournamentEntity tournament, Long tournamentId) {
         List<TiebreakerResponse> tiebreakers = tiebreakerRepository
                 .findByTournamentIdOrderByPriorityAsc(tournamentId)
                 .stream().map(mapper::toTiebreakerResponse).toList();
@@ -142,6 +270,20 @@ public class TournamentService {
         if (!contentVisibilityChecker.canView(ReferenceType.TOURNAMENT, tournamentId, null)) {
             throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
         }
+    }
+
+    /**
+     * divId が tournamentId 配下であることを束縛検証する（認可根治戦役 Wave2 トランシェ2C）。
+     *
+     * <p>公開大会（PUBLIC）の tId を踏み台に、非公開大会（MEMBERS_AND_ABOVE 等）の divId を
+     * 閲覧できてしまう穴（台帳指摘）を閉塞する。{@link #verifyPublicAccess}（tId 単位の可視性）と
+     * 併用し、公開/埋め込み系の divId 引数を持つ EP から必ず呼ぶこと。</p>
+     *
+     * @throws BusinessException DIVISION_NOT_FOUND（404・IDOR 対策で存在秘匿）
+     */
+    public void verifyDivisionInTournament(Long tournamentId, Long divId) {
+        divisionRepository.findByIdAndTournamentId(divId, tournamentId)
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.DIVISION_NOT_FOUND));
     }
 
     /**
@@ -172,6 +314,8 @@ public class TournamentService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .format(format)
+                // F08.10 多競技対応（🟡-1a）: 未指定は SOCCER 既定。検証は resolveSport で Sport.valueOf 相当。
+                .sport(resolveSport(request.getSport()))
                 .season(request.getSeason())
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
@@ -236,7 +380,8 @@ public class TournamentService {
                 com.mannschaft.app.filesharing.FileScopeType.TOURNAMENT,
                 orgId, tournamentId, userId, DEFAULT_TOURNAMENT_FOLDER);
 
-        return getTournament(tournamentId);
+        // 認可済み書込経路のため、可視性ゲートを持たない内部組立に委ねる（DRAFT 自己閲覧の巻き添え回避）
+        return buildTournamentResponse(findTournamentOrThrow(tournamentId), tournamentId);
     }
 
     /**
@@ -249,6 +394,8 @@ public class TournamentService {
                 request.getName() != null ? request.getName() : tournament.getName(),
                 request.getDescription() != null ? request.getDescription() : tournament.getDescription(),
                 request.getFormat() != null ? TournamentFormat.valueOf(request.getFormat()) : tournament.getFormat(),
+                // F08.10 多競技対応（🟡-1a）: 未指定は既存値維持。指定時は resolveSport で検証。
+                request.getSport() != null ? resolveSport(request.getSport()) : tournament.getSport(),
                 request.getSeason() != null ? request.getSeason() : tournament.getSeason(),
                 request.getStartDate() != null ? request.getStartDate() : tournament.getStartDate(),
                 request.getEndDate() != null ? request.getEndDate() : tournament.getEndDate(),
@@ -257,11 +404,11 @@ public class TournamentService {
                 request.getLossPoints() != null ? request.getLossPoints() : tournament.getLossPoints(),
                 request.getHasDraw() != null ? request.getHasDraw() : tournament.getHasDraw(),
                 request.getHasSets() != null ? request.getHasSets() : tournament.getHasSets(),
-                request.getSetsToWin(),
+                request.getSetsToWin() != null ? request.getSetsToWin() : tournament.getSetsToWin(),
                 request.getHasExtraTime() != null ? request.getHasExtraTime() : tournament.getHasExtraTime(),
                 request.getHasPenalties() != null ? request.getHasPenalties() : tournament.getHasPenalties(),
                 request.getScoreUnitLabel() != null ? request.getScoreUnitLabel() : tournament.getScoreUnitLabel(),
-                request.getBonusPointRules(),
+                request.getBonusPointRules() != null ? request.getBonusPointRules() : tournament.getBonusPointRules(),
                 request.getLeagueRoundType() != null ? LeagueRoundType.valueOf(request.getLeagueRoundType()) : tournament.getLeagueRoundType(),
                 request.getKnockoutLegs() != null ? request.getKnockoutLegs() : tournament.getKnockoutLegs(),
                 request.getVisibility() != null ? TournamentVisibility.valueOf(request.getVisibility()) : tournament.getVisibility());
@@ -276,7 +423,8 @@ public class TournamentService {
             saveTournamentStatDefs(tournamentId, request.getStatDefs());
         }
 
-        return getTournament(tournamentId);
+        // 認可済み書込経路のため、可視性ゲートを持たない内部組立に委ねる（DRAFT 自己閲覧の巻き添え回避）
+        return buildTournamentResponse(findTournamentOrThrow(tournamentId), tournamentId);
     }
 
     /**
@@ -310,7 +458,8 @@ public class TournamentService {
         }
         tournament.changeStatus(newStatus);
         tournamentRepository.save(tournament);
-        return getTournament(tournamentId);
+        // 認可済み書込経路のため、可視性ゲートを持たない内部組立に委ねる（DRAFT 自己閲覧の巻き添え回避）
+        return buildTournamentResponse(findTournamentOrThrow(tournamentId), tournamentId);
     }
 
     /**
@@ -332,6 +481,8 @@ public class TournamentService {
                 .name(previous.getName())
                 .description(previous.getDescription())
                 .format(previous.getFormat())
+                // F08.10 多競技対応（🟡-1a）: シーズン継続では旧大会の競技を引き継ぐ。
+                .sport(previous.getSport())
                 .winPoints(previous.getWinPoints())
                 .drawPoints(previous.getDrawPoints())
                 .lossPoints(previous.getLossPoints())
@@ -403,12 +554,31 @@ public class TournamentService {
                     orgId, newDiv.getId(), userId, DEFAULT_DIVISION_FOLDER);
         }
 
-        return getTournament(newTournamentId);
+        // 認可済み書込経路のため、可視性ゲートを持たない内部組立に委ねる（DRAFT 自己閲覧の巻き添え回避）
+        return buildTournamentResponse(findTournamentOrThrow(newTournamentId), newTournamentId);
     }
 
     TournamentEntity findTournamentOrThrow(Long tournamentId) {
         return tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+    }
+
+    /**
+     * 競技種別文字列を検証し、保存用の正準名（{@code Sport} の列挙名）へ解決する（F08.10 多競技対応・🟡-1a）。
+     *
+     * <p>{@code null}（未指定）は後方互換のため {@code SOCCER} 既定とする。値が指定された場合は
+     * {@code Sport.valueOf} 相当で妥当性を検証し、不正値は {@link IllegalArgumentException} を投げる
+     * （DTO の {@code @Pattern} で 400 に変換済みだが、Service 単独呼び出し・将来の経路に対する多重防御）。</p>
+     *
+     * @param sport 競技種別の列挙名（null 可）
+     * @return 正準化された競技種別の列挙名（保存値・String）
+     */
+    private String resolveSport(String sport) {
+        if (sport == null) {
+            return Sport.SOCCER.name();
+        }
+        // 不正値はここで弾く（症状を握りつぶさない・enum へ変換できることを保証）。
+        return Sport.valueOf(sport).name();
     }
 
     private void copyTiebreakersFromTemplate(Long tournamentId, Long templateId) {

@@ -12,10 +12,10 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -29,8 +29,7 @@ import java.time.LocalDateTime;
 @Table(name = "security_incidents")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Builder
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@SuperBuilder(toBuilder = true)
 public class SecurityIncidentEntity extends UuidV7Entity {
 
     @Enumerated(EnumType.STRING)

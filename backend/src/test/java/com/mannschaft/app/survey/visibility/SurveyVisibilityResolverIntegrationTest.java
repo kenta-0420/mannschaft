@@ -131,8 +131,8 @@ class SurveyVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTe
     private Long insertOrganization(String name) {
         em.createNativeQuery(
                 "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
-                        + "supporter_enabled, version, created_at, updated_at) "
-                        + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW())")
+                        + "supporter_enabled, version, slug, created_at, updated_at) "
+                        + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
@@ -143,8 +143,8 @@ class SurveyVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTe
 
     private Long insertTeam(String name) {
         em.createNativeQuery(
-                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, created_at, updated_at) "
-                        + "VALUES (:name, 'PUBLIC', 1, 0, 0, NOW(), NOW())")
+                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, created_at, updated_at) "
+                        + "VALUES (:name, 'PUBLIC', 1, 0, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
@@ -294,8 +294,15 @@ class SurveyVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTe
     // CUSTOM: AFTER_CLOSE
     // =========================================================================
 
+    /**
+     * <p><b>期待値の是正（Issue #2774）</b>: 本テストは元々「締切後は<b>誰でも</b>可視」
+     * （非所属者・未認証も {@code true}）を固定していたが、これは所属確認が判定に入っていない
+     * という欠陥そのものを仕様として写し取ったものであった。締切を過ぎていることは可視の
+     * <b>必要条件であって十分条件ではない</b>という不変条件に合わせ、
+     * 「所属者は可視・非所属者は不可視」へ改めた（変更は当該 2 行の期待値のみ）。</p>
+     */
     @Test
-    @DisplayName("AFTER_CLOSE — expiresAt が過去なら誰でも閲覧可、未来なら一般ユーザー不可視")
+    @DisplayName("AFTER_CLOSE — expiresAt が過去なら所属者のみ閲覧可、未来なら一般ユーザー不可視")
     void after_close_visibility() {
         Long expiredId = insertSurvey("sv-after-close-expired", memberUserId, "CLOSED",
                 "AFTER_CLOSE", LocalDateTime.now().minusHours(1));
@@ -304,10 +311,10 @@ class SurveyVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTe
         em.flush();
         em.clear();
 
-        // 締切後: 誰でも可視
-        assertThat(checker.canView(ReferenceType.SURVEY, expiredId, null)).isTrue();
+        // 締切後: 当該スコープの所属者のみ可視（未認証・非所属は不可視）
+        assertThat(checker.canView(ReferenceType.SURVEY, expiredId, null)).isFalse();
         assertThat(checker.canView(ReferenceType.SURVEY, expiredId, memberUserId)).isTrue();
-        assertThat(checker.canView(ReferenceType.SURVEY, expiredId, nonMemberUserId)).isTrue();
+        assertThat(checker.canView(ReferenceType.SURVEY, expiredId, nonMemberUserId)).isFalse();
 
         // 未締切: 一般ユーザーは不可視、SystemAdmin のみ可視
         assertThat(checker.canView(ReferenceType.SURVEY, activeId, memberUserId)).isFalse();

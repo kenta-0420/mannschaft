@@ -1,0 +1,674 @@
+{
+  "match": {
+    "list": {
+      "title": "경기 기록",
+      "subtitle": "연습·친선·대회 경기를 기록합니다",
+      "record_button": "＋경기 기록",
+      "filter": {
+        "kind": "종류",
+        "status": "상태",
+        "all": "전체"
+      },
+      "result": {
+        "win": "승",
+        "draw": "무",
+        "loss": "패",
+        "win_label": "W",
+        "draw_label": "D",
+        "loss_label": "L"
+      },
+      "in_progress_badge": "진행 중",
+      "score_vs": "{home} - {away}",
+      "vs": "vs {opponent}",
+      "no_opponent": "상대 미설정",
+      "no_score": "—",
+      "delete_confirm": "이 경기 기록을 삭제하시겠습니까?",
+      "delete_success": "경기 기록을 삭제했습니다",
+      "empty": "아직 경기 기록이 없습니다",
+      "empty_cta": "첫 경기를 기록하기",
+      "load_more": "더 보기",
+      "page_info": "총 {total}건 중 {from}-{to}건",
+      "error": {
+        "load_failed": "경기 목록을 불러오지 못했습니다",
+        "status_failed": "상태 변경에 실패했습니다",
+        "score_failed": "점수 확정에 실패했습니다",
+        "recording_mode_failed": "기록 모드 변경에 실패했습니다",
+        "delete_failed": "경기 기록 삭제에 실패했습니다"
+      }
+    },
+    "create": {
+      "title": "경기 기록",
+      "subtitle": "종류와 상대만 선택하면 시작할 수 있습니다. 장소와 시간은 나중에 설정할 수 있습니다.",
+      "kind_label": "종류",
+      "kind_hint": "탭하여 선택",
+      "opponent_label": "상대 팀명",
+      "opponent_placeholder": "상대 팀명을 입력하세요",
+      "opponent_required": "상대 이름을 입력하세요",
+      "kind_required": "종류를 선택하세요",
+      "optional_section": "선택 항목 (나중에 설정 가능)",
+      "optional_hint": "비워둔 채로 기록을 시작하고 경기 후에 보완할 수 있습니다.",
+      "venue_label": "경기장",
+      "venue_placeholder": "경기장 이름 (선택)",
+      "kickoff_label": "킥오프 일시",
+      "duration_label": "경기 시간 (분)",
+      "home_away_label": "홈/원정",
+      "home_away": {
+        "HOME": "홈",
+        "AWAY": "원정",
+        "NEUTRAL": "중립"
+      },
+      "submit": "기록 시작",
+      "submit_short": "생성",
+      "cancel": "취소",
+      "success": "경기를 생성했습니다",
+      "update_success": "경기 정보를 업데이트했습니다",
+      "error": {
+        "create_failed": "경기 생성에 실패했습니다",
+        "update_failed": "경기 정보 업데이트에 실패했습니다"
+      }
+    },
+    "live": {
+      "title": "실시간 기록",
+      "loading": "불러오는 중…",
+      "scoreboard": {
+        "home": "우리",
+        "away": "상대",
+        "vs": "vs {opponent}",
+        "penalty": "승부차기 {home}-{away}"
+      },
+      "penalty": {
+        "title": "승부차기 스코어",
+        "home_label": "우리 팀 성공 횟수",
+        "away_label": "상대 팀 성공 횟수",
+        "hint": "성공한 횟수를 입력하세요. 경기 종료 시 확정되어 대회 순위에 반영됩니다."
+      },
+      "timer": {
+        "state": {
+          "WAITING": "경기 전",
+          "FIRST_HALF": "전반",
+          "HALF_TIME": "하프타임",
+          "SECOND_HALF": "후반",
+          "EXTRA_FIRST": "연장 전반",
+          "EXTRA_SECOND": "연장 후반",
+          "PENALTY_SHOOTOUT": "승부차기",
+          "COMPLETED": "경기 종료",
+          "QUARTER_1": "1쿼터",
+          "BREAK_1": "휴식",
+          "QUARTER_2": "2쿼터",
+          "HALF_TIME_BREAK": "하프타임",
+          "QUARTER_3": "3쿼터",
+          "BREAK_3": "휴식",
+          "QUARTER_4": "4쿼터",
+          "OVERTIME": "연장"
+        },
+        "start_first_half": "전반 시작",
+        "to_half_time": "하프타임으로",
+        "start_second_half": "후반 시작",
+        "to_extra": "연장으로",
+        "to_penalty": "승부차기로",
+        "complete": "경기 종료",
+        "advance": "다음 피리어드",
+        "minute_label": "분",
+        "stoppage_label": "추가시간 (+)",
+        "minute_override_hint": "타이머와 차이가 나면 분을 수동으로 수정할 수 있습니다.",
+        "pause": "일시정지",
+        "resume": "재개",
+        "running": "측정 중",
+        "stopped": "정지됨",
+        "start_quarter_1": "1쿼터 시작",
+        "end_quarter_1": "1쿼터 종료",
+        "start_quarter_2": "2쿼터 시작",
+        "end_quarter_2": "2쿼터 종료",
+        "start_quarter_3": "3쿼터 시작",
+        "end_quarter_3": "3쿼터 종료",
+        "start_quarter_4": "4쿼터 시작",
+        "to_overtime": "연장으로",
+        "to_overtime_again": "추가 연장"
+      },
+      "preset": {
+        "goal": "득점",
+        "assist": "어시스트",
+        "card": "카드",
+        "substitution": "교체",
+        "other": "기타",
+        "field_goal_2": "2점",
+        "field_goal_3": "3점",
+        "free_throw": "자유투",
+        "rebound": "리바운드",
+        "foul": "파울"
+      },
+      "flow": {
+        "select_player": "선수 선택",
+        "select_scorer": "득점자 선택",
+        "select_assist": "어시스트 선택",
+        "select_out": "교체 OUT 선수",
+        "select_in": "교체 IN 선수",
+        "add_assist": "+ 어시스트 연결",
+        "to_goal": "-> 득점으로 연결",
+        "skip": "건너뛰기",
+        "confirm": "확정",
+        "cancel": "취소",
+        "back": "뒤로",
+        "note_label": "사유 / 메모",
+        "note_placeholder": "예: 코너킥에서",
+        "goal_type_label": "득점 종류",
+        "goal_type": {
+          "GOAL": "일반",
+          "PENALTY_GOAL": "PK",
+          "OWN_GOAL": "자책골"
+        },
+        "card_color_label": "카드 종류",
+        "card_yellow": "경고",
+        "card_red": "퇴장",
+        "card_second_yellow": "두 번째 경고",
+        "team_side_label": "기록 대상",
+        "other_label_placeholder": "이벤트 이름 (예: 파울)",
+        "foul_type_label": "파울 종류"
+      },
+      "team_side": {
+        "HOME": "우리 팀",
+        "AWAY": "상대 팀"
+      },
+      "card_reason": {
+        "title": "사유 코드 (선택)",
+        "skip_hint": "나중에 보완할 수 있습니다. 공식전에서는 기록을 권장합니다.",
+        "none": "미선택"
+      },
+      "grid": {
+        "starters": "선발",
+        "bench": "교체 대기",
+        "setup_button": "선발 설정",
+        "all_starters": "전원 선발",
+        "clear_starters": "선발 해제",
+        "copy_previous": "지난 선발 복사",
+        "add_manual": "수동 추가",
+        "manual_name_placeholder": "선수 이름",
+        "manual_number_placeholder": "번호",
+        "empty": "선수를 찾을 수 없습니다. 수동으로 추가하세요.",
+        "position": {
+          "GK": "GK",
+          "DF": "DF",
+          "MF": "MF",
+          "FW": "FW",
+          "other": "기타"
+        }
+      },
+      "timeline": {
+        "title": "타임라인",
+        "empty": "아직 이벤트가 없습니다. 아래 버튼으로 기록을 시작하세요.",
+        "minute_suffix": "'",
+        "self": "우리",
+        "opponent": "상대",
+        "linked_assist": "어시스트",
+        "linked_goal": "득점",
+        "tap_to_edit": "탭하여 편집",
+        "delete": "삭제",
+        "delete_confirm": "이 이벤트를 삭제하시겠습니까?"
+      },
+      "undo": {
+        "button": "되돌리기",
+        "done": "작업을 취소했습니다",
+        "substitution": "교체를 취소했습니다",
+        "goal_assist": "득점/어시스트를 취소했습니다"
+      },
+      "conflict": {
+        "title": "다른 기록자가 업데이트했습니다",
+        "detail": "최신 기록을 가져와 재시도합니다"
+      },
+      "opponent_notice": {
+        "title": "{team} 팀이 입력했습니다",
+        "detail": "이 기록의 수정은 {team} 팀의 기록자에게 요청하세요."
+      },
+      "offline": {
+        "queued": "오프라인이라 저장했습니다. 연결 복구 시 전송합니다.",
+        "flushed": "대기 중인 {count}건의 이벤트를 전송했습니다.",
+        "pending": "미전송 {count}건"
+      },
+      "completed_notice": "이 경기는 종료되었습니다. 수정은 권한에 따릅니다.",
+      "error": {
+        "load_events_failed": "이벤트를 불러오지 못했습니다",
+        "load_appearances_failed": "출전 기록을 불러오지 못했습니다",
+        "load_match_failed": "경기 정보를 불러오지 못했습니다",
+        "add_event_failed": "이벤트 기록에 실패했습니다",
+        "update_event_failed": "이벤트 업데이트에 실패했습니다",
+        "delete_event_failed": "이벤트 삭제에 실패했습니다",
+        "undo_failed": "작업 취소에 실패했습니다",
+        "period_boundary_failed": {
+          "title": "피리어드 경계 기록에 실패했습니다",
+          "detail": "전·후반 전환이 서버에 저장되지 않았습니다. 점수와 출전 시간 집계가 어긋날 수 있습니다. 타이머를 다시 조작하여 재기록해 주세요."
+        },
+        "complete_failed": "경기 종료 저장에 실패했습니다",
+        "score_load_failed": "기존 채점을 불러오지 못했습니다. 페이지를 새로고침해 주세요",
+        "load_players_failed": "선수 명단을 불러오지 못했습니다",
+        "substitution_rollback_failed": "교체 취소에 실패했습니다. 교체 기록을 확인해 주세요"
+      },
+      "read_only_notice": "보기 전용입니다. 관리자·부관리자·기록원만 기록할 수 있습니다",
+      "spectator": {
+        "title": "라이브 관전",
+        "read_only_badge": "관전 전용·기록 권한 없음",
+        "offline_banner": "오프라인입니다. 최신이 아닐 수 있습니다. 연결이 복구되면 자동으로 최신화됩니다.",
+        "connection": {
+          "live": "실시간 연결 중",
+          "connecting": "연결 중…",
+          "reconnecting": "재연결 중…",
+          "offline": "오프라인",
+          "denied": "관전할 수 없습니다"
+        },
+        "status": {
+          "SCHEDULED": "시작 전",
+          "IN_PROGRESS": "경기 중",
+          "COMPLETED": "경기 종료",
+          "POSTPONED": "연기",
+          "CANCELLED": "취소"
+        },
+        "denied": {
+          "title": "이 경기는 관전할 수 없습니다",
+          "detail": "공개 범위 밖이므로 라이브 중계를 표시할 수 없습니다."
+        }
+      }
+    },
+    "analytics": {
+      "my_title": "경기 분석",
+      "my_subtitle": "나의 커리어 통계를 시각화합니다",
+      "member_title": "멤버 경기 분석",
+      "member_subtitle": "이 멤버의 팀별 통계입니다",
+      "team_context": "대상 팀",
+      "unknown_kind": "기타",
+      "forbidden": "이 통계를 볼 권한이 없습니다",
+      "metric": {
+        "total_matches": "출전 경기",
+        "total_minutes": "총 출전 시간(분)",
+        "goals": "득점",
+        "assists": "어시스트",
+        "goals_per90": "90분당 득점",
+        "starter_rate": "선발 비율"
+      },
+      "axis": {
+        "goals": "득점",
+        "assists": "어시스트",
+        "matches": "경기 수",
+        "minutes": "평균 출전",
+        "starter_rate": "선발 비율"
+      },
+      "series": {
+        "goals": "득점",
+        "minutes": "출전 시간(분)",
+        "match_share": "출전 비율",
+        "goals_by_kind": "종류별 득점"
+      },
+      "chart": {
+        "radar_title": "스탯 분포",
+        "line_title": "월별 추이(득점·출전 시간)",
+        "doughnut_title": "종류별 출전 비율",
+        "bar_title": "종류별 득점 분포"
+      },
+      "best": {
+        "title": "자기 최고 기록",
+        "top_goals": "한 달 최다 득점",
+        "longest_minutes": "한 달 최장 출전(분)"
+      },
+      "empty": {
+        "no_data": "표시할 데이터가 없습니다",
+        "no_trend": "추이 데이터가 없습니다",
+        "no_goals": "득점 기록이 없습니다",
+        "no_matches": "아직 경기 기록이 없습니다",
+        "member_no_matches": "이 멤버의 경기 기록이 없습니다",
+        "no_team": "소속 팀이 없습니다",
+        "record_cta": "경기 기록하기"
+      },
+      "error": {
+        "load_failed": "통계를 불러오지 못했습니다"
+      },
+      "team_title": "팀 경기 분석",
+      "team_subtitle": "팀의 승패 기록, 득실점, 선수 순위, 최근 폼을 시각화합니다",
+      "team": {
+        "metric": {
+          "total_matches": "경기 수",
+          "win_draw_loss": "승/무/패",
+          "goals_for": "득점",
+          "goals_against": "실점",
+          "goal_difference": "득실차"
+        },
+        "series": {
+          "points": "승점（누적）",
+          "player_goals": "득점 수",
+          "matches_by_kind": "경기 수"
+        },
+        "chart": {
+          "result_title": "승패 요약",
+          "player_goals_title": "선수별 득점 순위",
+          "recent_form_title": "최근 폼（승점 추이）",
+          "matches_by_kind_title": "유형별 경기 수"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "경기 요약",
+          "wdl_label": "승/무/패",
+          "goals_label": "득/실점",
+          "recent_form": "최근 폼",
+          "in_progress_label": "진행 중",
+          "resume_recording": "기록 재개",
+          "no_matches": "아직 경기 기록이 없습니다",
+          "view_analytics": "상세 분석 보기"
+        }
+      }
+    },
+    "kind": {
+      "PRACTICE": "연습 경기",
+      "FRIENDLY": "친선 경기",
+      "TOURNAMENT": "대회",
+      "LEAGUE": "리그"
+    },
+    "status": {
+      "SCHEDULED": "예정",
+      "IN_PROGRESS": "진행 중",
+      "COMPLETED": "종료",
+      "POSTPONED": "연기",
+      "CANCELLED": "취소",
+      "PLANNED": "예정",
+      "CLOSED": "확정됨"
+    },
+    "event_type": {
+      "STARTER": "선발",
+      "SUB_IN": "교체 투입",
+      "SUB_OUT": "교체 아웃",
+      "GOAL": "득점",
+      "ASSIST": "어시스트",
+      "OWN_GOAL": "자책골",
+      "PENALTY_GOAL": "PK (성공)",
+      "PENALTY_MISS": "PK (실패)",
+      "PENALTY_SHOOTOUT": "승부차기",
+      "YELLOW_CARD": "경고",
+      "RED_CARD": "퇴장",
+      "SECOND_YELLOW": "두 번째 경고",
+      "SAVE": "선방",
+      "INJURY": "부상",
+      "PERIOD_START": "피리어드 시작",
+      "PERIOD_END": "피리어드 종료",
+      "OTHER": "기타",
+      "FIELD_GOAL_2": "2점슛",
+      "FIELD_GOAL_3": "3점슛",
+      "FREE_THROW": "자유투",
+      "SHOT_MISS": "슛 실패",
+      "REBOUND": "리바운드",
+      "STEAL": "스틸",
+      "BLOCK": "블록",
+      "TURNOVER": "턴오버",
+      "PERSONAL_FOUL": "개인 파울",
+      "TECHNICAL_FOUL": "테크니컬 파울",
+      "FOUL_OUT": "파울 아웃",
+      "SET_END": "세트 종료",
+      "SERVE_ERROR": "서브 실패",
+      "SERVE_ACE": "서브 에이스",
+      "POINT": "득점",
+      "BLOCK_POINT": "블로킹 득점",
+      "ATTACK_POINT": "공격 득점",
+      "SET_START": "세트 시작"
+    },
+    "card_type": {
+      "YELLOW": "경고",
+      "RED": "퇴장",
+      "SECOND_YELLOW": "두 번째 경고"
+    },
+    "card_reason": {
+      "C1": "비신사적 행위",
+      "C2": "거친 플레이",
+      "C3": "항의",
+      "C4": "반복 반칙",
+      "C5": "지연 행위",
+      "C6": "거리 미확보",
+      "C7": "무단 입장",
+      "C8": "무단 이탈",
+      "S1": "심각한 반칙",
+      "S2": "난폭한 행위",
+      "S3": "침 뱉기",
+      "S4": "득점 기회 저지 (핸드볼)",
+      "S5": "득점 기회 저지 (기타)",
+      "S6": "모욕적 언행",
+      "CS": "경고 2회",
+      "PF": "개인 파울",
+      "SF": "슈팅 파울",
+      "OF": "오펜스 파울",
+      "TF": "테크니컬 파울",
+      "UF": "스포츠맨답지 않은 파울",
+      "DF": "실격 파울"
+    },
+    "position": {
+      "GK": "골키퍼",
+      "DF": "수비수",
+      "MF": "미드필더",
+      "FW": "공격수",
+      "FIXO": "픽소",
+      "ALA": "알라",
+      "PIVO": "피보",
+      "PG": "포인트 가드",
+      "SG": "슈팅 가드",
+      "SF": "스몰 포워드",
+      "PF": "파워 포워드",
+      "C": "센터",
+      "S": "세터",
+      "OP": "오포짓",
+      "MB": "미들 블로커",
+      "OH": "아웃사이드 히터",
+      "L": "리베로"
+    },
+    "org_context": {
+      "resolve_failed": "팀·조직 정보를 해결할 수 없습니다. 소속을 확인해 주세요"
+    },
+    "entry": {
+      "record_from_schedule": "이 경기 기록하기",
+      "record_from_schedule_hint": "이 일정의 경기 기록을 시작합니다",
+      "resolving": "경기 기록을 준비 중…",
+      "no_org_for_record": "경기 기록은 팀이 조직에 소속된 경우에만 이용할 수 있습니다"
+    },
+    "fixtures": {
+      "title": "대진표",
+      "back": "대회 홈으로 돌아가기",
+      "round": "{n}라운드",
+      "record": "기록",
+      "venue_tbd": "장소 미정",
+      "date_tbd": "날짜 미정",
+      "tbd_participant": "미정",
+      "no_score": "경기 예정",
+      "empty": "아직 대진이 없습니다",
+      "load_failed": "대진표를 불러오지 못했습니다",
+      "record_not_participant": "이 대진에 자기 팀이 참가하지 않아 기록할 수 없습니다",
+      "status": {
+        "SCHEDULED": "예정",
+        "IN_PROGRESS": "진행 중",
+        "COMPLETED": "종료",
+        "POSTPONED": "연기",
+        "CANCELLED": "취소"
+      }
+    },
+    "foul_type": {
+      "PERSONAL_FOUL": "개인 파울",
+      "TECHNICAL_FOUL": "테크니컬 파울"
+    },
+    "set": {
+      "increment_home": "홈+1",
+      "increment_away": "원정+1",
+      "confirm_set": "세트 확정",
+      "deuce_hint": "듀스: 2점 차이가 날 때까지 계속",
+      "in_progress": "진행 중",
+      "past_sets": "확정된 세트",
+      "set_label": "제{n}세트",
+      "deuce": "듀스",
+      "confirm_hint": "{n}점 선취 및 2점 차이로 확정 가능",
+      "decrement_home": "홈-1",
+      "away_points_label": "원정 팀 점수",
+      "sets_to_win": "{n}세트 선취",
+      "match_completed": "경기 종료",
+      "home_points_label": "홈 팀 점수",
+      "target_points": "목표 {n}점",
+      "sets_label": "세트 스코어",
+      "decrement_away": "원정-1",
+      "start_first_set": "제1세트 시작"
+    },
+    "win_method": {
+      "RESIGNATION": "투료",
+      "CHECKMATE": "외통수",
+      "TIMEOUT": "시간 초과",
+      "FOUL_WIN": "반칙승",
+      "REPETITION": "천일수",
+      "IMPASSE": "지쇼기",
+      "DEFAULT_WIN": "부전승",
+      "POINTS_WIN": "집수 차 승"
+    },
+    "turn": {
+      "waiting_notice": "대국을 시작해 주세요",
+      "start_game": "대국 시작",
+      "select_winner": "승자 선택",
+      "required": "（필수）",
+      "optional": "（선택）",
+      "win": "승",
+      "result": {
+        "draw": "무승부"
+      },
+      "draw_type_shogi": "천일수/지쇼기",
+      "draw_type_go": "지고（무승부）",
+      "side": {
+        "home_shogi": "선수",
+        "away_shogi": "후수",
+        "home_go": "흑",
+        "away_go": "백"
+      },
+      "win_method_label": "승리 방법",
+      "win_method_placeholder": "승리 방법 선택（선택）",
+      "margin_label": "집수 차",
+      "margin_unit": "집",
+      "total_moves_label": "총 수순",
+      "total_moves": "{n}수",
+      "margin": "{n}집 차",
+      "moves_unit": "수",
+      "comment_label": "코멘트/메모",
+      "comment_placeholder": "예：멋진 종반전이었습니다",
+      "complete": "결과 확정",
+      "complete_hint": "승자 또는 무승부를 먼저 선택해 주세요",
+      "photo": {
+        "label": "국면 사진",
+        "add": "사진 추가",
+        "remove": "사진 삭제",
+        "hint": "이미지(PNG/JPEG/WebP/GIF, 최대 10MB, SVG 불가)",
+        "upload_success": "국면 사진을 업로드했습니다"
+      },
+      "error": {
+        "record_result_failed": "대국 결과 저장에 실패했습니다",
+        "create_board_failed": "보드 생성에 실패했습니다",
+        "load_boards_failed": "보드 목록을 불러오지 못했습니다",
+        "load_attachments_failed": "국면 사진을 불러오지 못했습니다",
+        "delete_attachment_failed": "국면 사진 삭제에 실패했습니다",
+        "upload_photo_failed": "국면 사진 업로드에 실패했습니다",
+        "attachment_type_invalid": "이미지 파일을 선택하세요(SVG 불가)",
+        "attachment_too_large": "파일이 너무 큽니다(최대 10MB)"
+      }
+    },
+    "board": {
+      "title": "단체전 보드 진행 상황",
+      "progress_label": "보드 확정",
+      "all_confirmed": "전체 보드 확정 — 단체전 결과를 확정할 수 있습니다",
+      "label": "제{n}보드",
+      "winner": "{name} 승",
+      "recorder": "기록: {name}",
+      "record_button": "기록하기",
+      "player_tbd": "미정",
+      "empty": "보드가 아직 없습니다",
+      "status": {
+        "confirmed": "확정",
+        "in_progress": "기록 중",
+        "pending": "미입력"
+      },
+      "create_pending_notice": "이 보드는 아직 생성되지 않았습니다"
+    },
+    "scored": {
+      "sport": {
+        "figure_skating": "피겨 스케이팅",
+        "gymnastics": "체조"
+      },
+      "waiting_notice": "채점을 기록해 주세요",
+      "start": "채점 기록",
+      "total_label_figure": "합계 점수(Total Segment Score)",
+      "total_label_gymnastics": "합계 점수(개인 종합)",
+      "own_score": "우리 팀 합계 점수",
+      "opponent_score": "상대 합계 점수",
+      "score_placeholder": "예: 198.45",
+      "required": "(필수)",
+      "complete": "채점 확정",
+      "complete_hint": "양쪽의 합계 점수를 입력해 주세요",
+      "result": {
+        "draw": "무승부"
+      },
+      "error": {
+        "record_failed": "채점 결과 저장에 실패했습니다"
+      },
+      "components": {
+        "intro": "심판별·종목별 채점 내역을 입력하면 합계 점수가 자동으로 계산됩니다.",
+        "mode_label": "채점 내역 입력",
+        "switch_to_components": "채점 내역 입력",
+        "switch_to_direct": "합계 점수 직접 입력으로 전환",
+        "canonical_notice": "채점 내역이 입력되어 있어 합계 점수는 이 내역에서 자동으로 계산됩니다.",
+        "clear_to_direct": "내역을 지우고 직접 입력으로 돌아가기",
+        "side_label": "대상",
+        "component_type_label": "항목",
+        "apparatus_label": "종목 / 세그먼트",
+        "apparatus_placeholder": "(선택) 종목 선택",
+        "judge_label": "심판",
+        "judge_placeholder": "예: J1",
+        "points_label": "점수",
+        "points_placeholder": "예: 88.43",
+        "optional": "(선택)",
+        "add_line": "내역 추가",
+        "remove_line": "이 내역 삭제",
+        "total_preview": "합계 미리보기 (최종 합계는 서버에서 계산)",
+        "complete": "채점 내역 확정",
+        "complete_hint": "내역을 한 건 이상 입력하고 각 점수를 입력하세요",
+        "component_type": {
+          "TES": "기술 점수(TES)",
+          "PCS": "프로그램 구성 점수(PCS)",
+          "DEDUCTION": "감점",
+          "D_SCORE": "난도 점수(D 점수)",
+          "E_SCORE": "수행 점수(E 점수)"
+        },
+        "apparatus": {
+          "SP": "쇼트 프로그램",
+          "FS": "프리 스케이팅",
+          "FLOOR": "마루",
+          "POMMEL_HORSE": "안마",
+          "RINGS": "링",
+          "VAULT": "도마",
+          "PARALLEL_BARS": "평행봉",
+          "HORIZONTAL_BAR": "철봉",
+          "UNEVEN_BARS": "이단 평행봉",
+          "BALANCE_BEAM": "평균대"
+        },
+        "error": {
+          "load_failed": "채점 내역을 불러오지 못했습니다",
+          "save_failed": "채점 내역을 저장하지 못했습니다"
+        }
+      },
+      "ranking": {
+        "switch_to_ranking": "다인원 순위제로 입력",
+        "intro": "출전자를 추가하고 각자의 총점을 입력하면 서버가 총점이 높은 순으로 순위를 자동 산출합니다.",
+        "mode_label": "다인원 순위제",
+        "switch_to_direct": "총점 직접 입력으로 전환",
+        "canonical_notice": "출전자 항목이 입력되어 있어 다인원 순위제가 기록의 정본입니다.",
+        "clear_to_direct": "항목을 지우고 직접 입력으로 돌아가기",
+        "standings": "순위(서버 산출)",
+        "competitor_label": "출전자 이름",
+        "competitor_placeholder": "예: 야마다 하나코",
+        "total_label": "총점",
+        "add_entry": "출전자 추가",
+        "remove_entry": "이 출전자 삭제",
+        "complete": "순위 확정",
+        "complete_hint": "출전자를 2명 이상 추가하고 각자의 이름과 총점을 입력하세요",
+        "user_fallback": "선수#{id}",
+        "team_fallback": "팀#{id}",
+        "error": {
+          "load_failed": "출전자 항목을 불러오지 못했습니다",
+          "save_failed": "출전자 항목을 저장하지 못했습니다"
+        }
+      }
+    }
+  }
+}

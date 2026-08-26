@@ -31,7 +31,9 @@
       "shift_request": "シフト希望",
       "announcement_read": "お知らせ既読",
       "parking_application": "駐車場申請",
-      "circular": "回覧板"
+      "circular": "回覧板",
+      "supporter_view": "見守り閲覧",
+      "payment": "代理払い"
     },
     "desk": {
       "pinSubject": "住民をピン留め",
@@ -42,7 +44,8 @@
         "label": "入力元",
         "paper_form": "紙申込書",
         "phone_interview": "電話聴き取り",
-        "in_person": "窓口対面"
+        "in_person": "窓口対面",
+        "guardianship_switch": "後見切替"
       },
       "originalStorage": {
         "label": "原本保管場所",
@@ -72,6 +75,110 @@
       "byPerson": "本人入力",
       "byProxy": "代理入力",
       "total": "合計"
+    },
+    "guardianship": {
+      "switch": {
+        "title": "後見切替",
+        "startAs": "{name}として操作する",
+        "actingAs": "{name}として操作中",
+        "end": "切替を終了する",
+        "confirm": "後見切替を開始してよいですか？",
+        "empty": "切替可能な子がいません",
+        "blocked": "年齢制限で切替不可",
+        "success": "後見切替を開始しました",
+        "endSuccess": "後見切替を終了しました",
+        "cancelButton": "キャンセル",
+        "startButton": "開始する",
+        "otherChildren": "その他"
+      },
+      "independence": {
+        "title": "自立移行",
+        "sealDate": "切替封印日",
+        "stage": "現在の段階",
+        "passwordSet": "パスワード設定済み",
+        "passwordNotSet": "パスワード未設定",
+        "handover": "引き継ぎを開始する",
+        "handoverConfirm": "子のメールアドレスにパスワード設定リンクを送信します",
+        "handoverSuccess": "引き継ぎメールを送信しました",
+        "alreadyIndependent": "この子は既に自立段階です",
+        "childEmail": "子のメールアドレス（任意）",
+        "passwordStatus": "パスワード状況"
+      },
+      "stage": {
+        "elementary": "小学生",
+        "junior_high": "中学生",
+        "high_school": "高校生",
+        "adult": "成人"
+      },
+      "watch": {
+        "title": "見守り",
+        "linkLabel": "見守り",
+        "linkTooltip": "見守り画面を開く（閲覧専用）",
+        "readonlyNotice": "この画面は閲覧専用です。操作や回答はできません。",
+        "loadError": "見守りデータの取得に失敗しました",
+        "retryButton": "再試行",
+        "sections": {
+          "schedules": {
+            "title": "今後の予定",
+            "empty": "今後の予定はありません"
+          },
+          "attendance": {
+            "title": "出欠状況",
+            "attended": "出席",
+            "partial": "一部参加",
+            "absent": "欠席",
+            "total": "対象件数",
+            "rate": "出席率",
+            "empty": "出欠データがありません"
+          },
+          "memberships": {
+            "title": "所属チーム/組織",
+            "teams": "チーム",
+            "organizations": "組織",
+            "empty": "所属しているチーム・組織はありません"
+          },
+          "announcements": {
+            "title": "お知らせ",
+            "empty": "お知らせはありません"
+          }
+        },
+        "attendanceStatus": {
+          "ATTENDING": "出席",
+          "PARTIAL": "一部参加",
+          "ABSENT": "欠席",
+          "UNDECIDED": "未定"
+        },
+        "proxyActions": {
+          "title": "代理操作履歴",
+          "badge": "代理(保護者)",
+          "empty": "代理操作の記録はありません"
+        },
+        "forbidden": {
+          "ageLocked": {
+            "title": "この子は見守り対象外です",
+            "body": "12歳以上のお子さまは自立段階に入っているため、閲覧見守りの対象外です。"
+          },
+          "linkNotFound": {
+            "title": "見守りできません",
+            "body": "保護者としての連携が確認できませんでした。連携設定をご確認ください。"
+          }
+        },
+        "guide": {
+          "title": "見守り機能の使い方",
+          "readonly": {
+            "title": "閲覧専用です",
+            "body": "この画面では子の予定・出欠状況・所属・お知らせを見るだけで、操作や回答はできません。操作したい場合は「後見切替」をご利用ください。"
+          },
+          "ageLimit": {
+            "title": "12歳未満のお子さまのみ対象",
+            "body": "12歳以上のお子さまは自立段階に入るため、見守りの対象外になります（プライバシー保護のため）。"
+          },
+          "proxyBadge": {
+            "title": "「代理」マークの意味",
+            "body": "保護者が後見切替などで子の代わりに行った操作には「代理(保護者)」マークが付きます。代理操作履歴セクションで、いつ・どの機能で代理操作が行われたかを確認できます。"
+          }
+        }
+      }
     },
     "delegation": {
       "title": "代理出席",

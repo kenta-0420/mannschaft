@@ -53,6 +53,8 @@ export type TeamSearchSort = 'nameKana,asc' | 'name,asc' | 'createdAt,desc'
  */
 export interface TeamPublicSummary {
   id: number
+  /** チームスラッグ（URLルーティング用）。{@code /teams/{slug}} に使用する。 */
+  slug: string
   name: string
   nameKana: string
   prefecture: string | null
@@ -76,7 +78,7 @@ export interface TeamPublicSummary {
  * `TeamPublicSummary` を拡張し、可視性・バナー画像・サポーター機能の有無を含む。
  */
 export interface TeamSearchResult extends TeamPublicSummary {
-  visibility: 'PUBLIC' | 'ORGANIZATION_ONLY'
+  visibility: 'PUBLIC' | 'GUESTS_AND_ABOVE' | 'SUPPORTERS_AND_ABOVE' | 'MEMBERS_AND_ABOVE'
   bannerUrl: string | null
   supporterEnabled: boolean
 }

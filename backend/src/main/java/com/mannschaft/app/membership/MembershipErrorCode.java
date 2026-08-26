@@ -14,7 +14,7 @@ public enum MembershipErrorCode implements ErrorCode {
     /** 会員証が見つからない */
     MEMBERSHIP_001("MEMBERSHIP_001", "会員証が見つかりません", Severity.WARN),
 
-    /** 他人の会員証へのアクセス */
+    /** 他人の会員証へのアクセス（cardId 直指定・所有者不一致を MEMBERSHIP_001 と同一コードに畳む存在秘匿 → 404） */
     MEMBERSHIP_002("MEMBERSHIP_002", "この会員証へのアクセス権限がありません", Severity.WARN),
 
     /** 会員証がACTIVEでない（QR取得・再生成時） */
@@ -75,7 +75,13 @@ public enum MembershipErrorCode implements ErrorCode {
     MEMBERSHIP_021("MEMBERSHIP_021", "QRトークンのフォーマットが不正です", Severity.WARN),
 
     /** 統計の期間が90日超過 */
-    MEMBERSHIP_022("MEMBERSHIP_022", "集計期間は最大90日間です", Severity.WARN);
+    MEMBERSHIP_022("MEMBERSHIP_022", "集計期間は最大90日間です", Severity.WARN),
+
+    /** メンバーカレンダー色がアクセシブル固定パレット外。 */
+    MEMBERSHIP_023("MEMBERSHIP_023", "カレンダー色は指定されたパレットから選択してください", Severity.WARN),
+
+    /** 色設定対象が当該スコープの有効メンバーではない（存在秘匿）。 */
+    MEMBERSHIP_024("MEMBERSHIP_024", "対象メンバーが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

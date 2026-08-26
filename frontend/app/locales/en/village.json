@@ -2,6 +2,7 @@
   "village": {
     "title": "Village",
     "subtitle": "Community Square",
+    "archivedNotice": "This village is frozen. It is read-only.",
     "action": {
       "create": "Create a village",
       "edit": "Edit village",
@@ -75,13 +76,19 @@
       "timeline": "Timeline",
       "lobby": "Lobby",
       "members": "Members",
-      "settings": "Settings",
-      "reports": "Reports",
       "calendar": "Calendar",
       "festival": "Festival",
       "matchRecruit": "Match recruit",
       "meetup": "Meetup",
-      "chronicle": "Chronicle"
+      "chronicle": "Chronicle",
+      "charter": "Village Charter"
+    },
+    "systemPost": {
+      "authorName": "Village Event Notice",
+      "eventCreated": "An event was created",
+      "eventUpcoming": "An event is coming up",
+      "meetupConfirmed": "The meetup date was confirmed",
+      "festivalStarted": "The festival has started"
     },
     "lobby": {
       "title": "Lobby",
@@ -196,7 +203,28 @@
       "rejected": "Rejected",
       "withdrawn": "Withdrawn",
       "reviewComment": "Review comment",
-      "empty": "No join requests"
+      "empty": "No join requests",
+      "description": "This village requires approval. You become a villager once the headman or an elder approves your request. Adding a message improves your chances.",
+      "formTitle": "Request to join",
+      "messagePlaceholder": "Tell them what you want to do in this village and why you want to join (optional, up to 500 characters)",
+      "submittedTitle": "Your submitted request",
+      "submittedBody": "Please wait for the headman or an elder to review it. You can withdraw it from this screen at any time while it is pending.",
+      "withdrawSuccess": "Join request withdrawn",
+      "approveSuccess": "Join request approved",
+      "rejectSuccess": "Join request rejected",
+      "rejectCommentRequired": "A review comment is required when rejecting",
+      "reviewCommentPlaceholder": "Enter a comment for the applicant (up to 500 characters)",
+      "reviewDescription": "Review join requests for this village. Approving a request makes the applicant a villager.",
+      "column": {
+        "requester": "Applicant",
+        "message": "Message",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "confirm": {
+        "approve": "Approve this join request? The applicant will become a villager.",
+        "reject": "Reject this join request?"
+      }
     },
     "feed": {
       "title": "Village feed",
@@ -237,7 +265,17 @@
       "empty": "No members yet",
       "banned": "Banned",
       "you": "You",
-      "filterRole": "Filter by role"
+      "filterRole": "Filter by role",
+      "soloHeadmanHint": "Once other members join this village, you can appoint them as elders here."
+    },
+    "profile": {
+      "title": "Villager profile",
+      "villages": {
+        "title": "Villages",
+        "empty": "No villages to show",
+        "publicToggle": "Show this village in my village list",
+        "publicToggleHint": "When on, people who share a village with you can see this village in your village list."
+      }
     },
     "postingIdentity": {
       "title": "Post as",
@@ -272,7 +310,7 @@
       "VILLAGE_007": "You are not a member of this village",
       "VILLAGE_008": "That nickname is already in use",
       "VILLAGE_009": "Report limit reached (10 per hour)",
-      "VILLAGE_010": "Village creation request rate limit reached (3 per day, max 10 held)",
+      "VILLAGE_010": "Village creation rate limit reached. Please wait a while and try again.",
       "VILLAGE_011": "Nickname can only be changed 3 times per month",
       "VILLAGE_012": "You have reached the maximum number of villages you can join (100)",
       "VILLAGE_013": "You have reached the maximum number of pinned villages (30)",
@@ -303,9 +341,13 @@
       "VILLAGE_042": "Report not found",
       "VILLAGE_043": "This report has already been processed",
       "VILLAGE_044": "Pinned village not found",
+      "VILLAGE_052": "Representative delegation not found",
+      "VILLAGE_053": "This membership/user combination has already been delegated as representative",
+      "VILLAGE_054": "The target membership is not a team or organization",
+      "VILLAGE_055": "The delegated user is not a member of the target team/organization",
       "generic": "An error occurred in the village feature",
       "backToList": "Back to village list",
-      "headmanOnly": "Only the headman can modify this setting"
+      "moderatorOnly": "Only the headman and elders can modify this setting"
     },
     "placeholder": {
       "bulletinComingSoon": "The village bulletin board is planned for Phase 2",
@@ -329,7 +371,15 @@
     "monsho": {
       "title": "Village crest",
       "upload": "Upload village crest",
-      "remove": "Remove village crest"
+      "remove": "Remove village crest",
+      "label": "Village crest (emblem / logo)",
+      "change": "Change crest",
+      "uploading": "Uploading…",
+      "hint": "JPG / PNG / WebP, up to 5MB",
+      "errorMime": "Only JPG, PNG and WebP images are supported",
+      "errorSize": "File size must be 5MB or less",
+      "uploadSuccess": "Village crest uploaded",
+      "removeSuccess": "Village crest removed"
     },
     "calendar": {
       "title": "Village calendar",
@@ -353,7 +403,26 @@
       "deleteSuccess": "Event deleted",
       "empty": "No events registered",
       "noEventsInMonth": "No events this month",
-      "loadFailed": "Failed to load calendar"
+      "loadFailed": "Failed to load calendar",
+      "log": {
+        "title": "Last year's log",
+        "lastYear": "{year} log",
+        "addLog": "Add a log",
+        "year": "Year",
+        "note": "Note",
+        "notePlaceholder": "A short note about how it went",
+        "photoKey": "Photo (R2 key, optional)",
+        "photoKeyHint": "Photo upload is coming soon. You can enter an R2 key already registered",
+        "submit": "Save log",
+        "delete": "Delete",
+        "empty": "No logs yet",
+        "loadFailed": "Failed to load logs",
+        "addSuccess": "Log saved",
+        "addFailed": "Failed to add log",
+        "deleteConfirm": "Delete this log?",
+        "deleteSuccess": "Log deleted",
+        "deleteFailed": "Failed to delete log"
+      }
     },
     "festival": {
       "title": "Festival",
@@ -375,12 +444,38 @@
       "saveSuccess": "Festival saved",
       "cancelSuccess": "Festival cancelled",
       "loadFailed": "Failed to load festival list",
+      "invalidDateTime": "The start/end date-time is invalid. Please re-enter it.",
       "filterAll": "All",
       "status": {
         "SCHEDULED": "Scheduled",
         "ACTIVE": "Active",
         "ENDED": "Ended",
         "CANCELLED": "Cancelled"
+      },
+      "rsvp": {
+        "title": "RSVP",
+        "going": "Going",
+        "maybe": "Maybe",
+        "roleLabel": "Role",
+        "roleLabelPlaceholder": "Role (optional, e.g. stall staff)",
+        "submit": "Submit",
+        "cancel": "Cancel RSVP",
+        "empty": "No one has RSVP'd yet",
+        "loadFailed": "Failed to load the attendee list",
+        "saveSuccess": "RSVP saved",
+        "saveFailed": "Failed to save RSVP",
+        "cancelSuccess": "RSVP cancelled",
+        "cancelFailed": "Failed to cancel RSVP"
+      },
+      "live": {
+        "title": "Live updates",
+        "tagAsLive": "Write something to post as a live update",
+        "submit": "Post as live update",
+        "empty": "No live updates yet",
+        "viewPost": "View post",
+        "loadFailed": "Failed to load live updates",
+        "tagSuccess": "Posted as a live update",
+        "tagFailed": "Failed to post the live update"
       }
     },
     "matchRecruit": {
@@ -449,11 +544,22 @@
     },
     "representative": {
       "title": "Representative delegation",
+      "subtitle": "Delegate the right to post as a representative to an individual user, on behalf of a team/organization membership in this village.",
       "grant": "Delegate as representative",
       "revoke": "Revoke delegation",
       "empty": "No delegated representatives",
       "grantedBy": "Delegated by",
-      "note": "Note"
+      "grantedAt": "Delegated at",
+      "note": "Note",
+      "target": "Target (team/organization)",
+      "targetPlaceholder": "Select a team/organization to delegate to",
+      "noTargets": "No team/organization memberships available for delegation",
+      "unknownTarget": "Unknown target",
+      "representativeUser": "Representative user",
+      "loadFailed": "Failed to load representative delegations",
+      "confirmRevokeTitle": "Revoke this delegation?",
+      "confirmRevokeBody": "This will revoke the representative delegation for {name}. Are you sure?",
+      "revokeSuccess": "Delegation revoked"
     },
     "meetup": {
       "title": "Meetup",
@@ -462,38 +568,82 @@
       "editTitle": "Edit meetup",
       "meetupTitle": "Meetup name",
       "description": "Description",
-      "venue": "Venue",
+      "location": "Venue",
       "candidateDates": "Candidate dates",
       "addCandidateDate": "Add candidate date",
       "removeCandidateDate": "Remove candidate date",
       "candidateDate": "Candidate date",
-      "candidateTimeStart": "Start time",
-      "candidateTimeEnd": "End time",
+      "candidateTime": "Time",
+      "allDay": "All day",
+      "timeOptionalHint": "Time is optional (leave blank for all day)",
       "vote": "Vote",
-      "voteComment": "Comment (optional)",
-      "voteSubmit": "Submit vote",
       "confirm": "Confirm this date",
       "confirmedDate": "Confirmed date",
       "cancel": "Cancel meetup",
       "confirmCancel": "Cancel this meetup?",
       "empty": "No upcoming meetups",
-      "participantCount": "Expected attendees",
       "saveSuccess": "Meetup saved",
       "voteSuccess": "Vote submitted",
       "confirmSuccess": "Date confirmed",
       "cancelSuccess": "Meetup cancelled",
       "loadFailed": "Failed to load meetups",
       "voteType": {
-        "YES": "Attending",
-        "NO": "Not attending",
-        "MAYBE": "Undecided"
+        "AVAILABLE": "Available",
+        "MAYBE": "Maybe",
+        "UNAVAILABLE": "Unavailable"
       },
       "status": {
-        "DRAFT": "Draft",
-        "OPEN": "Voting open",
+        "PLANNING": "Voting open",
         "CONFIRMED": "Confirmed",
-        "CANCELLED": "Cancelled",
-        "CLOSED": "Closed"
+        "CANCELLED": "Cancelled"
+      },
+      "attendance": {
+        "title": "Attendance",
+        "going": "Going",
+        "maybe": "Maybe",
+        "absent": "Not going",
+        "notConfirmedHint": "You can register attendance once the date is confirmed",
+        "empty": "No responses yet",
+        "unknownMember": "Villager",
+        "saveSuccess": "Attendance saved",
+        "saveFailed": "Failed to save attendance"
+      },
+      "comment": {
+        "title": "Comments",
+        "placeholder": "Write a comment",
+        "submit": "Post",
+        "empty": "No comments yet",
+        "delete": "Delete",
+        "postFailed": "Failed to post comment",
+        "deleteConfirm": "Delete this comment?",
+        "deleteSuccess": "Comment deleted",
+        "deleteFailed": "Failed to delete comment"
+      },
+      "decisions": {
+        "title": "Decisions",
+        "placeholder": "Note down what was decided, things to bring, etc.",
+        "edit": "Edit",
+        "empty": "Nothing decided yet",
+        "saveSuccess": "Decisions saved",
+        "saveFailed": "Failed to save decisions"
+      },
+      "todo": {
+        "title": "To-dos",
+        "titlePlaceholder": "What needs doing? (e.g. buy snacks)",
+        "add": "Add",
+        "claim": "I'll do this",
+        "complete": "Mark complete",
+        "release": "Give up task",
+        "unassigned": "Unassigned",
+        "empty": "No to-dos yet",
+        "alreadyClaimed": "This to-do is already assigned to someone",
+        "addSuccess": "To-do added",
+        "addFailed": "Failed to add to-do",
+        "claimSuccess": "You took on this to-do",
+        "completeSuccess": "Marked complete",
+        "completeFailed": "Failed to update completion",
+        "releaseSuccess": "Task released",
+        "releaseFailed": "Failed to release task"
       }
     },
     "chronicle": {
@@ -508,9 +658,71 @@
       "loadFailed": "Failed to load chronicles",
       "viewDetail": "View detail"
     },
+    "archive": {
+      "title": "Chronicle",
+      "subtitle": "Records of the village's festivals, calendar events, and meetups",
+      "empty": "No chronicle entries yet",
+      "loadFailed": "Failed to load the chronicle",
+      "archivedAt": "Recorded",
+      "filterAll": "All",
+      "sourceType": {
+        "festival": "Festival",
+        "calendarEvent": "Calendar event",
+        "meetup": "Meetup"
+      }
+    },
+    "charter": {
+      "title": "Village Charter",
+      "subtitle": "The village's shared promises",
+      "empty": "This village charter has not been established yet",
+      "enactedAt": "Enacted on",
+      "lastRevisedAt": "Last revised on",
+      "article": {
+        "label": "Article {n}",
+        "add": "+ Add article",
+        "bodyPlaceholder": "Enter the article text",
+        "bodyRequired": "Please enter the article text",
+        "delete": "Delete article",
+        "deleteConfirm": "Delete this article?"
+      },
+      "supplement": {
+        "add": "+ Add supplement",
+        "label": "Supplement",
+        "placeholder": "Enter a supplement (optional)"
+      },
+      "reorder": {
+        "hint": "Use the up/down buttons to reorder articles",
+        "up": "Move up",
+        "down": "Move down"
+      },
+      "drafters": {
+        "title": "Drafters",
+        "add": "+ Add drafter",
+        "empty": "No drafters have been registered yet",
+        "delete": "Remove drafter",
+        "deleteConfirm": "Remove \"{name}\" from the drafters?",
+        "selectPlaceholder": "Select a villager",
+        "loadMembersFailed": "The village member list could not be loaded, so drafters cannot be added.",
+        "reloadMembers": "Reload"
+      },
+      "revision": {
+        "confirm": "Confirm revision",
+        "confirmHint": "This records the current moment as a revision (it does not change the visibility of any article).",
+        "confirmSuccess": "Revision confirmed",
+        "notePlaceholder": "Revision note (optional)",
+        "history": "Revision history",
+        "historyEmpty": "No revisions yet"
+      },
+      "error": {
+        "loadFailed": "Failed to load the village charter",
+        "mutationFailed": "The operation failed",
+        "versionConflict": "Another village head edited this at the same time. Please reload the latest version.",
+        "drafterDuplicate": "This villager is already a drafter"
+      }
+    },
     "serendipity": {
       "title": "Serendipity score",
-      "subtitle": "Compatibility with you",
+      "subtitle": "Accumulated encounters in this village",
       "rank": "Rank",
       "score": "Score",
       "myScore": "Your score",
@@ -518,6 +730,26 @@
       "lastComputedAt": "Last computed at",
       "empty": "Serendipity score not yet calculated",
       "loadFailed": "Failed to load serendipity score"
+    },
+    "affinity": {
+      "title": "Compatibility hint",
+      "subtitle": "See if this village might be a good fit before you join",
+      "categoryMatch": "Close to your interests and categories",
+      "hidden": "No compatibility hint right now",
+      "sharedVillagers": {
+        "hidden": "Not shown yet",
+        "few": "A few",
+        "many": "10 or more"
+      },
+      "reason": {
+        "categoryMatch": "This village is close to your interests",
+        "sharedVillagers": "There are villagers you already have a connection with",
+        "pioneer": "You can join now as a founding member"
+      },
+      "pioneer": {
+        "title": "You can become a founding member!",
+        "body": "This is still a small village. If you join now, you'll become one of the founding members who help build it together."
+      }
     },
     "pilgrimage": {
       "title": "Village pilgrimage",
@@ -534,23 +766,32 @@
     },
     "newsletter": {
       "title": "Newsletter",
-      "subtitle": "Village update notifications",
+      "subtitle": "Village updates",
       "settings": "Newsletter settings",
-      "frequency": "Frequency",
-      "lastSentAt": "Last sent at",
-      "nextScheduledAt": "Next scheduled",
-      "optOut": "Unsubscribe",
-      "optIn": "Resubscribe",
-      "optedOut": "You are currently unsubscribed",
+      "lastSentAt": "Last sent",
       "saveSuccess": "Newsletter settings saved",
-      "optOutSuccess": "Unsubscribed",
-      "optInSuccess": "Resubscribed",
+      "optOutSuccess": "Unsubscribed from the newsletter",
+      "optInSuccess": "Resubscribed to the newsletter",
       "loadFailed": "Failed to load newsletter settings",
-      "frequencyOption": {
-        "DAILY": "Daily",
-        "WEEKLY": "Weekly",
-        "MONTHLY": "Monthly",
-        "NEVER": "Never"
+      "manageOnlyHint": "Only the headman and elders can change the village delivery settings.",
+      "comingSoonNote": "Newsletter delivery is coming soon. You can save settings, but newsletters are not sent yet.",
+      "villageSection": {
+        "title": "Village delivery settings",
+        "subtitle": "Turn the weekly and monthly newsletters on or off independently."
+      },
+      "weekly": {
+        "label": "Weekly newsletter",
+        "timing": "Delivered every Friday"
+      },
+      "monthly": {
+        "label": "Monthly newsletter",
+        "timing": "Delivered at month end"
+      },
+      "personalSection": {
+        "title": "Your subscription",
+        "toggleLabel": "Receive this village's newsletter",
+        "receivingHint": "You are currently receiving this newsletter.",
+        "stoppedHint": "You have stopped receiving this newsletter."
       }
     },
     "slug": {
@@ -579,6 +820,356 @@
       "levelRoot": "Root",
       "level2": "Sub-category",
       "level3": "Detail"
+    },
+    "listGuide": {
+      "page_title": "村一覧の使い方",
+      "description": "ここは「村」をさがして参加するための一覧ページです。気になる村を見つけて中に入ったり、自分で新しい村を作ったりできます。",
+      "search": {
+        "title": "村をさがす",
+        "body": "キーワードや種別・カテゴリで、公開されている村をしぼり込めます。",
+        "steps": {
+          "step1": "上の検索ボックスにキーワード（村名・話題など）を入力します。",
+          "step2": "「種別」で公式・コミュニティをしぼり込めます。",
+          "step3": "「カテゴリ」に言葉を入れると、そのカテゴリの村だけ表示されます。"
+        }
+      },
+      "cards": {
+        "title": "村カードの見方",
+        "body": "各カードに村のアイコン・名前・公式バッジ・カテゴリ・人数・紹介文が表示されます。",
+        "steps": {
+          "step1": "「公式」バッジは運営公認の村の印です。",
+          "step2": "人数が多い村ほど活発に動いています。",
+          "step3": "紹介文でその村の雰囲気を確認できます。"
+        }
+      },
+      "enter": {
+        "title": "村に入る",
+        "body": "気になる村のカードを押すと、その村の中（掲示板・チャットなど）に入れます。",
+        "steps": {
+          "step1": "村のカードをクリックします。",
+          "step2": "村の中で「参加する」を押すと正式なメンバーになれます。",
+          "step3": "村の中の各タブの使い方は、村ヘッダーの「？使い方」で確認できます。"
+        }
+      },
+      "create": {
+        "title": "新しい村をつくる",
+        "body": "自分で新しい村を立ち上げられます（運営の承認制）。",
+        "steps": {
+          "step1": "右上の「村を作る」ボタンを押します。",
+          "step2": "申請フォームに村名・種別などを入力します。",
+          "step3": "運営に承認されると村が作成されます。"
+        }
+      }
+    },
+    "guide": {
+      "page_title": "村の使い方",
+      "description": "村は、同じ目的や興味を持つ仲間が集まる小さなコミュニティです。参加すると掲示板・チャット・投稿などの機能が使えます。下のカードで、村でできることと操作の手順を順番に確認できます。",
+      "join": {
+        "title": "村に参加する／お気に入り登録",
+        "body": "村に参加すると、掲示板・タイムライン・チャットなど村のすべての機能が使えるようになります。よく見る村はお気に入り（ピン留め）にしておくと探しやすくなります。",
+        "steps": {
+          "step1": "ヘッダー右上の「参加する」ボタンを押します。",
+          "step2": "だれでも入れる村はその場で参加完了。承認制の村は参加申請の画面が開くので、申請を送って承認を待ちます。",
+          "step3": "参加後は★（お気に入りに追加）でピン留め、「退村する」で抜けられます。"
+        }
+      },
+      "bulletin": {
+        "title": "掲示板でお知らせを読む",
+        "body": "村長や長老からの大切なお知らせが、話題（スレッド）ごとに並びます。村人になると読めるようになります。",
+        "steps": {
+          "step1": "「掲示板」タブを開きます。",
+          "step2": "気になるスレッドを押すと、本文と返信が表示されます。",
+          "step3": "村長・長老は「スレッド作成」から新しいお知らせを投稿できます。"
+        }
+      },
+      "timeline": {
+        "title": "タイムラインに投稿する",
+        "body": "村の仲間みんなに見える、ひとことフィードです。村人ならだれでも気軽に投稿できます。",
+        "steps": {
+          "step1": "「タイムライン」タブを開きます。",
+          "step2": "上の入力欄に本文を書いて「送信」を押すと投稿されます。",
+          "step3": "村長・長老は投稿のピン留めや削除ができます。"
+        }
+      },
+      "lobby": {
+        "title": "井戸端（ロビー）でリアルタイムに話す",
+        "body": "その日の村人とリアルタイムで雑談できるチャットです。過去7日分のやりとりも日付ごとにさかのぼれます。",
+        "steps": {
+          "step1": "「ロビー」タブを開きます。",
+          "step2": "左の日付一覧から日を選びます（過去の日は読むだけ）。",
+          "step3": "「今日」を選ぶと入力欄が出るので、メッセージを書いてEnterまたは送信ボタンで投稿します。"
+        }
+      },
+      "members": {
+        "title": "メンバーを見る・管理する",
+        "body": "村に参加している人の一覧です。村長は役割（長老／村人）の変更や、迷惑な人の追放（BAN）ができます。",
+        "steps": {
+          "step1": "「メンバー」タブを開きます。",
+          "step2": "一覧から相手のメニューを開きます。",
+          "step3": "村長は「役割変更」「追放（BAN）」、村人はだれでも「通報」ができます。"
+        }
+      },
+      "calendar": {
+        "title": "歳時記カレンダーで行事を知る",
+        "body": "村の記念日やイベントを月ごとのカレンダーで確認できます。毎年くり返す行事も登録できます。",
+        "steps": {
+          "step1": "「カレンダー」タブを開きます。",
+          "step2": "「前月」「翌月」ボタンで月を切り替えます。",
+          "step3": "行事カードを押すと詳細が出ます。村長・長老は「行事を追加」から登録・編集・削除ができます。"
+        }
+      },
+      "events": {
+        "title": "お祭り・練習試合の募集",
+        "body": "村のイベント（お祭り）や、対外試合・審判・会場などの募集をまとめて告知できます。状態でしぼり込めます。",
+        "steps": {
+          "step1": "「お祭り」または「練習試合・募集」タブを開きます。",
+          "step2": "上のフィルタで「募集中」などにしぼり込めます。",
+          "step3": "村人は「企画」「募集を作成」から新規作成、カードを押すと詳細表示や応募ができます。"
+        }
+      },
+      "meetup": {
+        "title": "寄合で集まる日を決める",
+        "body": "村の集まりの開催日を、みんなの投票で決める機能です。複数の候補日から投票し、開催者が確定します。",
+        "steps": {
+          "step1": "「寄合」タブを開きます。",
+          "step2": "村人は「寄合を開く」から候補日をいくつか出して作成します。",
+          "step3": "詳細画面で候補日ごとに賛成／保留／反対を投票し、開催者が日を選んで「確定」します。"
+        }
+      },
+      "chronicle": {
+        "title": "村史で歩みをふり返る",
+        "body": "村の月ごとの記録です。投稿数・新しく参加した人の数・よく使われた話題が自動でまとまります（読むだけのページです）。",
+        "steps": {
+          "step1": "「村史」タブを開きます。",
+          "step2": "年でしぼり込むと、その年の月別カードが並びます。",
+          "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      },
+      "charter": {
+        "title": "Record the village's promises in the charter",
+        "body": "The village head/elders can define the village's rules (articles) and publish them even to non-members (public villages show them to prospective members too).",
+        "steps": {
+          "step1": "Open the \"Village Charter\" tab.",
+          "step2": "The village head/elders can write articles with \"+ Add article\", and attach an optional supplement.",
+          "step3": "Reordering and deleting apply immediately. Use \"Confirm revision\" to record it in the revision history."
+        }
+      }
+    },
+    "joinRequestGuide": {
+      "page_title": "How to use join requests",
+      "description": "Learn how to request to join an approval-based village and how the headman and elders review requests.",
+      "apply": {
+        "title": "Request to join",
+        "body": "You cannot join an approval-based village directly. Send a request and wait for the headman or an elder to approve it. A message is optional but improves your chances.",
+        "steps": {
+          "step1": "Write what you want to do in the village and why you want to join (optional, up to 500 characters).",
+          "step2": "Press Submit to send the request to the headman and elders.",
+          "step3": "Right after sending, you can cancel the request with the Withdraw button."
+        }
+      },
+      "status": {
+        "title": "Check the review status",
+        "body": "A request starts as Pending review, then the headman or an elder marks it Approved or Rejected. Once approved you become a villager and all village features unlock.",
+        "steps": {
+          "step1": "Right after sending, the status shows as Pending review.",
+          "step2": "Once approved you become a villager and every village tab opens up.",
+          "step3": "If rejected, the review comment explains why. Read it and request again if appropriate."
+        }
+      },
+      "review": {
+        "title": "Review requests (headman and elders)",
+        "body": "The headman and elders see the list of join requests on this screen. Read each message and decide whether to approve or reject it.",
+        "steps": {
+          "step1": "Use the tabs to switch between Pending review, Approved, Rejected and Withdrawn.",
+          "step2": "Press Approve to make the applicant a villager. The review comment is optional.",
+          "step3": "When pressing Reject, a review comment is required so the applicant knows why."
+        }
+      }
+    },
+    "admin": {
+      "title": "Village management",
+      "subtitle": "Management menu for the headman and elders",
+      "cards": {
+        "recruitCategories": {
+          "title": "Recruit categories",
+          "desc": "Add, edit, and reorder recruitment categories."
+        },
+        "newsletter": {
+          "title": "Newsletter settings",
+          "desc": "Configure delivery frequency and opt-out."
+        },
+        "members": {
+          "title": "Members & roles",
+          "desc": "Manage villagers, change roles, and ban members."
+        },
+        "representatives": {
+          "title": "Representative delegation",
+          "desc": "Delegate and manage users who can post as a representative for a team/organization membership."
+        },
+        "joinRequests": {
+          "title": "Review join requests",
+          "desc": "Review and approve or reject join requests."
+        },
+        "reports": {
+          "title": "Reports",
+          "desc": "Review and handle reports (coming soon)."
+        },
+        "settings": {
+          "title": "Village basic settings",
+          "desc": "Edit the village's name, description, and other basic info."
+        }
+      },
+      "comingSoon": "Coming soon",
+      "accessDenied": "Only the headman and elders can access this screen."
+    },
+    "adminGuide": {
+      "page_title": "How to use village management",
+      "description": "A management menu for the headman and elders. Each card takes you to a screen you need for day-to-day operations.",
+      "open": {
+        "title": "Open village management",
+        "body": "Open it from the gear icon \"Village management\" button in the village header. This button is shown only to the headman and elders.",
+        "steps": {
+          "step1": "Press the \"Village management\" button in the top-right of the village header.",
+          "step2": "A list of cards appears. Press a card to go to that screen."
+        }
+      },
+      "cards": {
+        "title": "What you can do with each card",
+        "body": "You can access recruit categories, newsletter settings, members and roles, join request review, reports, and the village basic settings.",
+        "steps": {
+          "step1": "\"Recruit categories\" lets you add, edit, and reorder recruitment categories such as festivals or practice matches.",
+          "step2": "\"Members & roles\" and \"Review join requests\" let you manage villagers and review new applicants.",
+          "step3": "\"Village basic settings\" can only be opened by the headman. It edits the village's name, description, and more."
+        }
+      },
+      "permissions": {
+        "title": "Difference between the headman and elders",
+        "body": "Most cards can be used by both the headman and elders, but the village's basic settings (and currently newsletter settings) can only be opened by the headman.",
+        "steps": {
+          "step1": "Elders can use the recruit categories, members, join requests, and reports cards.",
+          "step2": "Only the headman can edit the village basic settings."
+        }
+      }
+    },
+    "recruitCategory": {
+      "title": "Recruit categories",
+      "subtitle": "Define recruitment categories freely to match how your village actually works.",
+      "add": "Add category",
+      "edit": "Edit category",
+      "name": "Category name",
+      "namePlaceholder": "e.g. Looking for participants",
+      "description": "Description (optional)",
+      "descriptionPlaceholder": "Explain what this category is used for",
+      "color": "Color (optional)",
+      "displayOrder": "Display order",
+      "preset": "Default",
+      "usage": "Recruits in use",
+      "usageCount": "{count}",
+      "empty": "No categories yet. Use \"Add category\" to create one.",
+      "reorder": "Reorder",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "reorderSaved": "Order saved",
+      "created": "Category added",
+      "updated": "Category updated",
+      "deleted": "Category deleted",
+      "confirmDelete": "Delete this category?",
+      "confirmDeleteBody": "This deletes \"{name}\". Categories used by a recruit cannot be deleted.",
+      "limitNote": "Up to {max} categories per village (currently {count}).",
+      "error": {
+        "VILLAGE_083": "Recruit category not found",
+        "VILLAGE_084": "A recruit category with the same name already exists",
+        "VILLAGE_085": "You can have at most {max} recruit categories",
+        "VILLAGE_086": "This category is used by a recruit and cannot be deleted",
+        "loadFailed": "Failed to load recruit categories"
+      },
+      "validation": {
+        "nameRequired": "Category name is required",
+        "nameMax": "Category name must be {max} characters or fewer",
+        "descriptionMax": "Description must be {max} characters or fewer"
+      },
+      "clearColor": "Clear colour"
+    },
+    "recruitCategoryGuide": {
+      "page_title": "How to use recruit categories",
+      "description": "Define the categories used to classify recruits, per village. The headman and elders can edit them.",
+      "manage": {
+        "title": "Add and edit categories",
+        "body": "Use \"Add category\" to create a new one. You can name it freely and add a description and colour.",
+        "steps": {
+          "step1": "Press the \"Add category\" button.",
+          "step2": "Enter a category name (required, up to 40 characters). Description and colour are optional.",
+          "step3": "Press Save to add it to the list. You can edit it any time from the pencil icon."
+        }
+      },
+      "preset": {
+        "title": "Default categories can be changed too",
+        "body": "The default categories created with your village (participants, helpers, other) are just data. If they do not fit your village, rename or delete them.",
+        "steps": {
+          "step1": "Even with the \"Default\" badge, there is no restriction on editing or deleting.",
+          "step2": "If a name does not suit your village, simply rewrite it."
+        }
+      },
+      "order": {
+        "title": "Ordering and deletion",
+        "body": "Reordering with the up/down arrows also changes the order shown when creating and filtering recruits. Categories in use cannot be deleted, to protect existing recruits.",
+        "steps": {
+          "step1": "Reordering with the up/down arrows saves immediately.",
+          "step2": "Categories with zero \"Recruits in use\" can be deleted with the trash icon.",
+          "step3": "To delete a category that is in use, first change the category of those recruits."
+        }
+      }
+    },
+    "newsletterGuide": {
+      "page_title": "How to use the newsletter",
+      "description": "The village newsletter bundles village updates into a single notification. Weekly and monthly can be toggled independently, and each member chooses whether to receive it.",
+      "toggles": {
+        "title": "Toggle weekly and monthly independently",
+        "body": "In the village delivery settings you can switch weekly and monthly separately. You can enable just one.",
+        "steps": {
+          "step1": "Use the Weekly newsletter toggle to turn weekly delivery on or off.",
+          "step2": "Use the Monthly newsletter toggle to turn monthly delivery on or off.",
+          "step3": "Changes are saved immediately when you flip a toggle (no save button)."
+        }
+      },
+      "timing": {
+        "title": "Delivery timing",
+        "body": "Weekly is delivered every Friday; monthly is delivered at the end of each month."
+      },
+      "permission": {
+        "title": "Who can change it",
+        "body": "Only the headman and elders can change the village delivery settings. Other members see the current settings as read-only."
+      },
+      "personal": {
+        "title": "Your subscription",
+        "body": "Each member chooses whether to receive the newsletter. Receiving is on by default.",
+        "steps": {
+          "step1": "Turn off the Your subscription toggle to stop receiving this village's newsletter.",
+          "step2": "Turn it back on to resume receiving."
+        }
+      },
+      "comingSoon": {
+        "body": "⚠️ Newsletter delivery is coming soon. You can save settings, but newsletters are not actually sent yet."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "How to use",
+      "what": {
+        "title": "What is the villager mini profile",
+        "body": "Tap a name in the member list to open this villager's simple profile. You can see their role and the villages they've chosen to show."
+      },
+      "villages": {
+        "title": "About the village list",
+        "body": "Only villages the villager has made visible are listed. It shows the village name, emblem, and category only, never a nickname. Tap a card to go to that village's top page."
+      },
+      "toggle": {
+        "title": "When you open your own profile",
+        "body": "Your own mini profile shows a \"Show this village in my village list\" toggle. Turning it on lets people who share a village with you see this village in your list. It can be set per village."
+      },
+      "privacy": {
+        "title": "About privacy",
+        "body": "The village list is only shown when you and the other person share at least one village. If there is nothing to show, it neutrally says \"No villages to show\" without revealing whether you share a village."
+      }
     }
   }
 }

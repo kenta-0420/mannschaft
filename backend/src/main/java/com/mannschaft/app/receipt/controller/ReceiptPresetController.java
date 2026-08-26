@@ -55,7 +55,7 @@ public class ReceiptPresetController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        List<PresetResponse> presets = presetService.listPresets(type, scopeId);
+        List<PresetResponse> presets = presetService.listPresets(type, scopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(presets));
     }
 
@@ -86,7 +86,8 @@ public class ReceiptPresetController {
             @PathVariable Long id,
             @Valid @RequestBody UpdatePresetRequest request) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        PresetResponse response = presetService.updatePreset(type, scopeId, id, request);
+        PresetResponse response = presetService.updatePreset(
+                type, scopeId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -101,7 +102,7 @@ public class ReceiptPresetController {
             @RequestParam Long scopeId,
             @PathVariable Long id) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        presetService.deletePreset(type, scopeId, id);
+        presetService.deletePreset(type, scopeId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }
