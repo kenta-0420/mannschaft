@@ -5,7 +5,8 @@ import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
 import com.mannschaft.app.advertising.event.OverdueInvoiceNotificationEvent;
 import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.dto.ScopeRoleUserContact;
+import com.mannschaft.app.role.service.RoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -40,7 +41,7 @@ public class OverdueInvoiceMarkRunner {
 
     private final AdInvoiceRepository adInvoiceRepository;
     private final AdvertiserAccountRepository advertiserAccountRepository;
-    private final UserRoleRepository userRoleRepository;
+    private final RoleService roleService;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -69,6 +70,11 @@ public class OverdueInvoiceMarkRunner {
     /**
      * 通知配送要求を組み立てる（受信者の解決は業務トランザクション内で 1 回だけ行う）。
      *
+     * <p>受信者の解決は {@code role} ドメインの {@link RoleService} 経由で行う。
+     * {@code UserRoleRepository} を advertising から直接注入すると越境 Repository 依存の番人
+     * （D-3 / D-5）に触れるため、Service 経由に一本化している（先例:
+     * {@code RoleService#getUserIdsByTeamIdAndRoleName}）。</p>
+     *
      * <p>広告主アカウントが解決できない場合は組織 ADMIN 宛の受信者を空とし、SYSTEM_ADMIN 宛だけを送る。
      * 業務状態（OVERDUE 遷移）自体は成立しているため、ここで例外にして巻き戻すことはしない。</p>
      */
@@ -79,10 +85,10 @@ public class OverdueInvoiceMarkRunner {
 
         List<OverdueInvoiceNotificationEvent.Recipient> organizationAdmins = organizationId == null
                 ? List.of()
-                : userRoleRepository.findUserIdAndEmailByScopeAndRole("ORGANIZATION", organizationId, "ADMIN")
+                : roleService.getUserContactsByScopeAndRole("ORGANIZATION", organizationId, "ADMIN")
                         .stream()
-                        .map(row -> new OverdueInvoiceNotificationEvent.Recipient(
-                                ((Number) row[0]).longValue(), (String) row[1]))
+                        .map(contact -> new OverdueInvoiceNotificationEvent.Recipient(
+                                contact.userId(), contact.email()))
                         .toList();
 
         if (organizationId == null) {
@@ -96,6 +102,6 @@ public class OverdueInvoiceMarkRunner {
                 invoice.getDueDate(),
                 organizationId,
                 organizationAdmins,
-                userRoleRepository.findSystemAdminUserIds());
+                roleService.getSystemAdminUserIds());
     }
 }

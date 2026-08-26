@@ -102,17 +102,10 @@ public class EmergencyClosureReminderBatchService {
                         EmergencyClosureReminderNotificationEvent.Phase.PATIENT,
                         confirmation.getId(),
                         closure.getId(),
-                        closure.getTeamId(),
-                        closure.getSubject(),
-                        closure.getReason(),
-                        closure.getMessageBody(),
-                        confirmation.getAppointmentAt(),
-                        patient.getId(),
                         patient.getLastName() + " " + patient.getFirstName(),
                         patient.getId(),
                         patient.getEmail(),
-                        patient.getLocale(),
-                        closure.getCreatedBy());
+                        patient.getLocale());
                 if (emergencyClosureReminderRunner.markReminderSent(event)) {
                     sent++;
                 } else {
@@ -177,17 +170,10 @@ public class EmergencyClosureReminderBatchService {
                         EmergencyClosureReminderNotificationEvent.Phase.OPERATOR,
                         confirmation.getId(),
                         closure.getId(),
-                        closure.getTeamId(),
-                        closure.getSubject(),
-                        closure.getReason(),
-                        closure.getMessageBody(),
-                        confirmation.getAppointmentAt(),
-                        patient.getId(),
                         patient.getLastName() + " " + patient.getFirstName(),
                         operator.getId(),
                         operator.getEmail(),
-                        operator.getLocale(),
-                        null);
+                        operator.getLocale());
                 if (emergencyClosureReminderRunner.markReminderSent(event)) {
                     sent++;
                 } else {

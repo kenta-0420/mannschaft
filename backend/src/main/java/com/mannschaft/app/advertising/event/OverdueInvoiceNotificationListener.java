@@ -54,8 +54,11 @@ public class OverdueInvoiceNotificationListener {
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
             gateKeys = {"FEATURE_PROMOTION_ENABLED"},
             reason = "広告・販促は棚卸し台帳で beta=停止・gate_key=FEATURE_PROMOTION_ENABLED を持つ隔離対象であり、"
-                    + "機能停止中に延滞通知だけが利用者へ飛ぶことを避ける。延滞判定は毎日 06:00 のバッチで"
-                    + "再走査されるため、ドロップしたイベントが再生されなくても機能再開後の実害は残らない")
+                    + "機能停止中に延滞通知だけが利用者へ飛ぶことを避ける。ドロップしたイベントは再生されず"
+                    + "通知は失われる（延滞判定バッチ自体はゲートされず ISSUED→OVERDUE を確定させ、"
+                    + "翌日以降の抽出は status=ISSUED のみを拾うため、遷移済みの請求書は二度と対象にならない）。"
+                    + "延滞状態は請求書一覧の UI で確認できること、および機能停止中は広告機能の利用者が"
+                    + "存在しないことから、通知の欠落を許容する")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOverdueInvoiceNotification(OverdueInvoiceNotificationEvent event) {

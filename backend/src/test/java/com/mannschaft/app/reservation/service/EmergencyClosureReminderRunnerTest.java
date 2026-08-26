@@ -51,9 +51,7 @@ class EmergencyClosureReminderRunnerTest {
     private EmergencyClosureReminderNotificationEvent event(
             EmergencyClosureReminderNotificationEvent.Phase phase) {
         return new EmergencyClosureReminderNotificationEvent(
-                phase, 1L, 10L, 500L, "件名", "理由", "本文",
-                LocalDateTime.now().plusHours(2), 100L, "山田 太郎",
-                100L, "p@example.com", "ja", 900L);
+                phase, 1L, 10L, "山田 太郎", 100L, "p@example.com", "ja");
     }
 
     @Test

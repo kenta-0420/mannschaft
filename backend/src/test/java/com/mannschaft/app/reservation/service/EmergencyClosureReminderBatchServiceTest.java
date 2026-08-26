@@ -112,7 +112,8 @@ class EmergencyClosureReminderBatchServiceTest {
         assertThat(event.phase()).isEqualTo(EmergencyClosureReminderNotificationEvent.Phase.PATIENT);
         assertThat(event.recipientUserId()).isEqualTo(100L);
         assertThat(event.recipientEmail()).isEqualTo("p@example.com");
-        assertThat(event.actorId()).isEqualTo(900L);
+        assertThat(event.confirmationId()).isEqualTo(1L);
+        assertThat(event.closureId()).isEqualTo(10L);
     }
 
     @Test
@@ -137,7 +138,7 @@ class EmergencyClosureReminderBatchServiceTest {
         assertThat(event.recipientUserId()).isEqualTo(900L);
         assertThat(event.recipientEmail()).isEqualTo("op@example.com");
         assertThat(event.patientName()).isEqualTo("山田 太郎");
-        assertThat(event.actorId()).isNull();
+        assertThat(event.confirmationId()).isEqualTo(1L);
     }
 
     @Test

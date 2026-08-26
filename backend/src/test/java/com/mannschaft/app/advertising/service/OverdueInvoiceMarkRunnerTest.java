@@ -6,7 +6,8 @@ import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.event.OverdueInvoiceNotificationEvent;
 import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.dto.ScopeRoleUserContact;
+import com.mannschaft.app.role.service.RoleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +43,7 @@ class OverdueInvoiceMarkRunnerTest {
 
     @Mock private AdInvoiceRepository adInvoiceRepository;
     @Mock private AdvertiserAccountRepository advertiserAccountRepository;
-    @Mock private UserRoleRepository userRoleRepository;
+    @Mock private RoleService roleService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
@@ -68,10 +69,9 @@ class OverdueInvoiceMarkRunnerTest {
         AdvertiserAccountEntity account = Mockito.mock(AdvertiserAccountEntity.class);
         given(account.getScopeId()).willReturn(900L);
         given(advertiserAccountRepository.findById(50L)).willReturn(Optional.of(account));
-        given(userRoleRepository.findUserIdAndEmailByScopeAndRole("ORGANIZATION", 900L, "ADMIN"))
-                // List.of(Object[]) は varargs 展開されて List<Object> に推論されるため型引数を明示する。
-                .willReturn(List.<Object[]>of(new Object[]{10L, "admin@example.com"}));
-        given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(99L));
+        given(roleService.getUserContactsByScopeAndRole("ORGANIZATION", 900L, "ADMIN"))
+                .willReturn(List.of(new ScopeRoleUserContact(10L, "admin@example.com")));
+        given(roleService.getSystemAdminUserIds()).willReturn(List.of(99L));
 
         assertThat(runner.markOne(1L)).isTrue();
 
@@ -116,7 +116,7 @@ class OverdueInvoiceMarkRunnerTest {
         AdInvoiceEntity inv = invoice(1L, InvoiceStatus.ISSUED);
         given(adInvoiceRepository.findById(1L)).willReturn(Optional.of(inv));
         given(advertiserAccountRepository.findById(50L)).willReturn(Optional.empty());
-        given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(99L));
+        given(roleService.getSystemAdminUserIds()).willReturn(List.of(99L));
 
         assertThat(runner.markOne(1L)).isTrue();
         assertThat(inv.getStatus()).isEqualTo(InvoiceStatus.OVERDUE);

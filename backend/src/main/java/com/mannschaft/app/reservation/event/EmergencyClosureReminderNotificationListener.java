@@ -9,6 +9,10 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import com.mannschaft.app.reservation.entity.EmergencyClosureConfirmationEntity;
+import com.mannschaft.app.reservation.entity.EmergencyClosureEntity;
+import com.mannschaft.app.reservation.repository.EmergencyClosureConfirmationRepository;
+import com.mannschaft.app.reservation.repository.EmergencyClosureRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -33,6 +37,13 @@ import java.util.Map;
  * 臨時休業行にも確認行にも削除・論理削除を行わない（リマインド送信済み時刻を書くだけ）。
  * よってコミット後発火でも source は生存しており「静かな deny」は発生しない。</p>
  *
+ * <h2>文面の材料を読み直す理由（検分是正）</h2>
+ * <p>予約日時・件名・理由・本文・チームID・実行者IDはイベントに載せず、{@code confirmationId} /
+ * {@code closureId} から読み直す。確定設計の「イベントには ID と種別だけ」への準拠であり、
+ * 業務本文と PII を非同期イベントに載せないための是正でもある。上記のとおり本バッチは確認行・
+ * 臨時休業行のいずれも削除しないため読み直しは必ず成功する（それでも読めなければ ERROR ログを
+ * 残して配送を中止する）。</p>
+ *
  * <h2>メール送信を通知と別の try に分ける理由</h2>
  * <p>outbox への enqueue が失敗しても、アプリ内通知は成功している。同じ try にまとめると
  * 成功した通知まで失敗として記録され、観測の解像度が落ちる。</p>
@@ -47,6 +58,8 @@ public class EmergencyClosureReminderNotificationListener {
     private final NotificationDeliveryRunner notificationDeliveryRunner;
     private final EmailOutboxService emailOutboxService;
     private final MessageSource messageSource;
+    private final EmergencyClosureConfirmationRepository confirmationRepository;
+    private final EmergencyClosureRepository closureRepository;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "予約は棚卸し台帳で beta=コア・gate_key=null の常時提供機能であり、"
@@ -60,14 +73,34 @@ public class EmergencyClosureReminderNotificationListener {
         }
         Locale locale = (event.recipientLocale() == null || event.recipientLocale().isBlank())
                 ? Locale.JAPANESE : Locale.forLanguageTag(event.recipientLocale());
-        String appointmentStr = event.appointmentAt() == null
-                ? "" : event.appointmentAt().format(APPOINTMENT_FORMAT);
+
+        // 文面の材料はイベントではなく元の行から読み直す（本バッチは行を削除しないため生存している）。
+        EmergencyClosureConfirmationEntity confirmation;
+        EmergencyClosureEntity closure;
+        try {
+            confirmation = confirmationRepository.findById(event.confirmationId()).orElse(null);
+            closure = closureRepository.findById(event.closureId()).orElse(null);
+        } catch (Exception e) {
+            log.error("臨時休業リマインドの元データ読み直しに失敗しました: phase={}, confirmationId={}, closureId={}",
+                    event.phase(), event.confirmationId(), event.closureId(), e);
+            return;
+        }
+        if (confirmation == null || closure == null) {
+            log.error("臨時休業リマインドの元データが見つかりません（配送を中止）: "
+                            + "phase={}, confirmationId={}, closureId={}, confirmationFound={}, closureFound={}",
+                    event.phase(), event.confirmationId(), event.closureId(),
+                    confirmation != null, closure != null);
+            return;
+        }
+
+        String appointmentStr = confirmation.getAppointmentAt() == null
+                ? "" : confirmation.getAppointmentAt().format(APPOINTMENT_FORMAT);
 
         String title;
         String body;
         try {
-            title = buildTitle(event, locale);
-            body = buildBody(event, locale, appointmentStr);
+            title = buildTitle(event, closure, locale);
+            body = buildBody(event, closure, locale, appointmentStr);
         } catch (Exception e) {
             log.error("臨時休業リマインド文面の組み立てに失敗しました: phase={}, confirmationId={}, closureId={}",
                     event.phase(), event.confirmationId(), event.closureId(), e);
@@ -75,7 +108,7 @@ public class EmergencyClosureReminderNotificationListener {
         }
 
         try {
-            NotificationDeliveryRequest request = buildRequest(event, title, body);
+            NotificationDeliveryRequest request = buildRequest(event, closure, title, body);
             NotificationEntity created = notificationDeliveryRunner.sendOne(request);
             if (created == null) {
                 // visibility deny（例外ではない）。NotificationService 側で既に WARN 済み。
@@ -86,7 +119,7 @@ public class EmergencyClosureReminderNotificationListener {
                         request.sourceType(), request.sourceId(), event.phase());
             } else {
                 log.info("臨時休業リマインド送信: phase={}, closureId={}, patientId={}, recipientUserId={}",
-                        event.phase(), event.closureId(), event.patientUserId(), event.recipientUserId());
+                        event.phase(), event.closureId(), confirmation.getUserId(), event.recipientUserId());
             }
         } catch (Exception e) {
             // 非同期イベント失敗の監査記録（規約上必須）。catch は TX 外なので rollback で消えない。
@@ -99,7 +132,8 @@ public class EmergencyClosureReminderNotificationListener {
             return;
         }
         try {
-            emailOutboxService.enqueue(buildEmailRequest(event, locale, title, body, appointmentStr));
+            emailOutboxService.enqueue(
+                    buildEmailRequest(event, confirmation, closure, locale, title, body, appointmentStr));
         } catch (Exception e) {
             log.error("臨時休業リマインドメールの outbox 登録に失敗しました: "
                             + "phase={}, recipientUserId={}, confirmationId={}",
@@ -107,12 +141,13 @@ public class EmergencyClosureReminderNotificationListener {
         }
     }
 
-    private String buildTitle(EmergencyClosureReminderNotificationEvent event, Locale locale) {
+    private String buildTitle(EmergencyClosureReminderNotificationEvent event,
+                              EmergencyClosureEntity closure, Locale locale) {
         if (event.phase() == EmergencyClosureReminderNotificationEvent.Phase.PATIENT) {
             return messageSource.getMessage(
                     "notification.reservation.emergencyClosure.patientReminder.title",
-                    new Object[]{event.subject()},
-                    "【再送】" + event.subject(),
+                    new Object[]{closure.getSubject()},
+                    "【再送】" + closure.getSubject(),
                     locale);
         }
         return messageSource.getMessage(
@@ -122,12 +157,13 @@ public class EmergencyClosureReminderNotificationListener {
                 locale);
     }
 
-    private String buildBody(EmergencyClosureReminderNotificationEvent event, Locale locale, String appointmentStr) {
+    private String buildBody(EmergencyClosureReminderNotificationEvent event,
+                             EmergencyClosureEntity closure, Locale locale, String appointmentStr) {
         if (event.phase() == EmergencyClosureReminderNotificationEvent.Phase.PATIENT) {
             return messageSource.getMessage(
                     "notification.reservation.emergencyClosure.patientReminder.body",
-                    new Object[]{event.reason(), appointmentStr},
-                    event.reason() + " — " + appointmentStr + "のご予約まで3時間前です。内容のご確認をお願いします。",
+                    new Object[]{closure.getReason(), appointmentStr},
+                    closure.getReason() + " — " + appointmentStr + "のご予約まで3時間前です。内容のご確認をお願いします。",
                     locale);
         }
         return messageSource.getMessage(
@@ -139,7 +175,8 @@ public class EmergencyClosureReminderNotificationListener {
 
     /** 通知配送要求を組み立てる（業務TX外・AFTER_COMMIT 後に実行される）。 */
     private NotificationDeliveryRequest buildRequest(
-            EmergencyClosureReminderNotificationEvent event, String title, String body) {
+            EmergencyClosureReminderNotificationEvent event, EmergencyClosureEntity closure,
+            String title, String body) {
         // 患者宛は EMERGENCY_CLOSURE タイプで送ることで、通知リストに「確認しました」ボタンが表示される。
         String notificationType = event.phase() == EmergencyClosureReminderNotificationEvent.Phase.PATIENT
                 ? "EMERGENCY_CLOSURE" : "CLOSURE_UNCONFIRMED_REMINDER";
@@ -150,28 +187,31 @@ public class EmergencyClosureReminderNotificationListener {
                 title,
                 body,
                 "EMERGENCY_CLOSURE",
-                event.closureId(),
+                closure.getId(),
                 NotificationScopeType.TEAM,
-                event.teamId(),
+                closure.getTeamId(),
                 null,
-                event.actorId());
+                // 患者宛の実行者は臨時休業の送信者。送信者宛アラートは自動送信のため実行者を持たない。
+                event.phase() == EmergencyClosureReminderNotificationEvent.Phase.PATIENT
+                        ? closure.getCreatedBy() : null);
     }
 
     /** メール本文（是正前の組み立てをそのまま移送）。 */
     private EmailOutboxRequest buildEmailRequest(
-            EmergencyClosureReminderNotificationEvent event, Locale locale,
+            EmergencyClosureReminderNotificationEvent event,
+            EmergencyClosureConfirmationEntity confirmation, EmergencyClosureEntity closure, Locale locale,
             String title, String body, String appointmentStr) {
         if (event.phase() == EmergencyClosureReminderNotificationEvent.Phase.PATIENT) {
             String htmlBody = String.format(
                     "<p><strong>%s</strong></p><p>%s</p><hr><p>%s</p>",
-                    title, body, event.messageBody());
+                    title, body, closure.getMessageBody());
             return new EmailOutboxRequest(
                     "RESERVATION_EMERGENCY_REMINDER",
                     locale.toLanguageTag(),
                     event.recipientEmail(),
                     Map.of("subject", title, "body", htmlBody),
                     "reservation",
-                    "emergency-reminder:" + event.closureId() + ":" + event.patientUserId(),
+                    "emergency-reminder:" + event.closureId() + ":" + confirmation.getUserId(),
                     null,
                     event.recipientUserId(),
                     null);
@@ -193,7 +233,7 @@ public class EmergencyClosureReminderNotificationListener {
                 event.recipientEmail(),
                 Map.of("subject", emailSubject, "body", htmlBody),
                 "reservation",
-                "emergency-unconfirmed:" + event.closureId() + ":" + event.patientUserId(),
+                "emergency-unconfirmed:" + event.closureId() + ":" + confirmation.getUserId(),
                 null,
                 event.recipientUserId(),
                 null);
