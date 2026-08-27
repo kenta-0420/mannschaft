@@ -252,12 +252,6 @@ public class MultipartUploadService {
     }
 
     /**
-     * Upload ID でセッションを取得する。存在しない場合は 404 を返す。
-     *
-     * @param uploadId R2 Multipart Upload ID
-     * @return セッションエンティティ
-     */
-    /**
      * セッション作成時に採番した R2 キーとリクエストの fileKey が一致することを検証する。
      *
      * @param session Multipart Upload セッション
@@ -272,6 +266,12 @@ public class MultipartUploadService {
         }
     }
 
+    /**
+     * Upload ID でセッションを取得する。存在しない場合は 404 を返す。
+     *
+     * @param uploadId R2 Multipart Upload ID
+     * @return セッションエンティティ
+     */
     private MultipartUploadSessionEntity findSessionOrThrow(String uploadId) {
         return sessionRepository.findByUploadId(uploadId)
                 .orElseThrow(() -> new ResponseStatusException(
