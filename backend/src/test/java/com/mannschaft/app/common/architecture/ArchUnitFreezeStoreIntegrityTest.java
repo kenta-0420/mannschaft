@@ -710,12 +710,13 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 更新手順は {@link #EXPECTED_LINES_AUTHZ_WAVE4} と同様（対象ファイル:
      * {@code f14374b1-655e-4df2-8e82-2d79c8df9174}）。
      *
-     * <p>1508 → 1462（2026-08-27）: origin/main とのマージ（CMP-042 / #2787 復活作業）で、
+     * <p>1505 → 1459（2026-08-28）: origin/main とのマージ（CMP-042 / #2787 復活作業）で、
      * このブランチの分岐後に main 側で解消された D-3 越境依存 46 行が chip-away
      * （FreezingArchRule の既定挙動・解消済み違反の自動削除）で反映された。フルビルド
-     * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値へ追随。</p>
+     * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値（JUnit XML の
+     * AssertionFailedError メッセージ「1505 → 1459 に減少（-46件）」）へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1505;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1459;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
