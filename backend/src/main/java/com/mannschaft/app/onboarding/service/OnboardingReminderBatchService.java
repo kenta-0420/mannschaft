@@ -1,6 +1,8 @@
 package com.mannschaft.app.onboarding.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.onboarding.OnboardingProgressStatus;
 import com.mannschaft.app.onboarding.entity.OnboardingProgressEntity;
 import com.mannschaft.app.onboarding.event.OnboardingReminderNotificationEvent;
@@ -59,6 +61,8 @@ public class OnboardingReminderBatchService {
     /**
      * 毎日9時（JST）に実行。期限前リマインダーと期限超過通知を送信する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。オンボーディングの期限リマインド送信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "onboarding-reminder-daily", description = "オンボーディング期限前リマインドと超過通知を毎日 09:00 に送信する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "onboardingReminderBatch", lockAtMostFor = "30m", lockAtLeastFor = "5m")

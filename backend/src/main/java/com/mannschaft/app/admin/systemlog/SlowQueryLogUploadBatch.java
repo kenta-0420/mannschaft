@@ -1,6 +1,8 @@
 package com.mannschaft.app.admin.systemlog;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -24,6 +26,8 @@ public class SlowQueryLogUploadBatch {
      * 前日分のスロークエリログを R2 にアップロードする。
      * cron 式: 秒 分 時 日 月 曜日（デフォルト: 毎日 1:00 AM）
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。スロークエリログの R2 アップロードであり、運用基盤に属し機能フラグを持たない。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "systemlog-slow-query-upload-daily", description = "前日分スロークエリログを R2 へ毎日 01:00 アップロードする")
     @Scheduled(cron = "${mannschaft.system-log.slow-query-cron:0 0 1 * * *}")
     // 起動間隔は日次 01:00。処理は前日分スロークエリログ 1 ファイルの R2 アップロードのみで、最悪ケース（ログが上限まで肥大 + R2 リトライ）

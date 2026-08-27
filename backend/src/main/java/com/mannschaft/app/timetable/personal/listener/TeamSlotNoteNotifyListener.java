@@ -1,5 +1,7 @@
 package com.mannschaft.app.timetable.personal.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -63,6 +65,8 @@ public class TeamSlotNoteNotifyListener {
         this.messageSource = messageSource;
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。チーム時間割コマのメモ更新の通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @EventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public void onSlotNoteUpdated(TimetableSlotNoteUpdatedEvent event) {

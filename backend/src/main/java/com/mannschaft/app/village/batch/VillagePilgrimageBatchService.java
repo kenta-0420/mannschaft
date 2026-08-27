@@ -1,6 +1,8 @@
 package com.mannschaft.app.village.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.village.entity.UserVillagePinEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
@@ -70,6 +72,8 @@ public class VillagePilgrimageBatchService {
      * <p>cron 表現 {@code "0 0 9 * * *"} は JST 09:00 ちょうどに発火。
      * 朝のログイン時に「今日の村」を提示できるタイミングを優先した。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。村の巡礼推薦の生成であり、再開後の実行で作り直される。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "village-pilgrimage-daily", description = "村の巡礼推薦を毎日 09:00 にユーザー別に生成する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(

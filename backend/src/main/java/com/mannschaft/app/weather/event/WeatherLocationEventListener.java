@@ -1,5 +1,7 @@
 package com.mannschaft.app.weather.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.weather.exception.WeatherLocationDeriveException;
 import com.mannschaft.app.weather.service.WeatherLocationDeriver;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,8 @@ public class WeatherLocationEventListener {
      *
      * @param event 郵便番号更新イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。郵便番号更新に伴う天気地点の再解決。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
