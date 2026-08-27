@@ -7,6 +7,8 @@ import com.mannschaft.app.cms.dto.BlogMediaUploadUrlResponse;
 import com.mannschaft.app.cms.entity.BlogMediaUploadEntity;
 import com.mannschaft.app.cms.repository.BlogMediaUploadRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
@@ -155,6 +157,8 @@ public class BlogMediaService {
      *
      * <p>1 件の呼び出し自体も try で囲む。想定外の例外で 1 件が失敗してもバッチ全体を止めない。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。孤立ブログメディアの物理削除であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "cms-blog-media-orphan-cleanup", description = "72 時間以上孤立した blog メディアを毎日 02:00 に R2 から物理削除する")
     @Scheduled(cron = "0 0 2 * * *")
     // 起動間隔は日次 02:00。処理量は「72 時間以内に孤立したメディア」に限られるが、1 件ごとに R2 削除 2 回（本体・サムネ）

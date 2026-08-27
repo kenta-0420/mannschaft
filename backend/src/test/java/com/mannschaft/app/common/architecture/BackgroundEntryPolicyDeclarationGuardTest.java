@@ -211,7 +211,55 @@ class BackgroundEntryPolicyDeclarationGuardTest {
             // 上流の計測ビーコンは全ページ共通で、解析機能のゲートでは閉じない。
             "com.mannschaft.app.analytics.event.PageViewRecordListener",
             // 上流のタイムライン投稿とログイン（認証）は CORE であり、ゲーミフィケーションでは閉じない。
-            "com.mannschaft.app.gamification.event.GamificationPointListener");
+            "com.mannschaft.app.gamification.event.GamificationPointListener",
+
+            // ── ④-B 第四陣で追加（残り 199 入口の全数走査で判明した分） ──────────────
+            //
+            // ■ 退会匿名化（UserAnonymizedEvent 購読）で、命名規約に当たらぬ 3 本。
+            //   第二陣は `**.*AnonymizationEventListener` だけを登録し、第三陣は
+            //   AccountPurgedEvent 側の同じ病（*PurgeEventListener / Lifecycle）を塞いだが、
+            //   UserAnonymizedEvent 側の取りこぼしはそのまま残っていた。
+            //   実測（2026-08-27）: UserAnonymizedEvent の購読クラスは 18。内訳は
+            //     *AnonymizationEventListener 14 / ReturnStayPlanLifecycleListener 1（登録済）/ 下記 3。
+            //   止めると退会者の PII が各ドメインに残り、イベントは再生されない。
+            "com.mannschaft.app.schedule.listener.CalendarLayerLifecycleListener",
+            "com.mannschaft.app.village.event.VillageUserCleanerEventListener",
+            "com.mannschaft.app.weather.event.WeatherLocationCleanupListener",
+
+            // ■ 監査記録そのものを書くリスナー。
+            //   アーカイブ（AuditLogArchiveBatchService）とパーティション保守は第一陣で登録済みだが、
+            //   監査ログを「書く」側は未登録だった。止めれば本表に何も入らないため、
+            //   アーカイブを守っても意味を成さない。イベントは再生されず証跡は恒久的に失われる。
+            "com.mannschaft.app.auth.event.AuditLogEventListener",
+            "com.mannschaft.app.team.event.TeamOrgAuditEventListener",
+
+            // ■ ストレージ実体削除の唯一経路。DB の行は既に消えており、
+            //   削除すべきキーはイベントの中にしか無い。落とすと二度と辿れない孤児が R2 に残る。
+            "com.mannschaft.app.common.storage.S3ObjectDeleteEventListener",
+
+            // ■ 金銭。決済完了の自動記帳。上流の payment は別ドメインであり一緒には閉じない
+            //   （ShiftBudgetConsumption*Listener と同型）。
+            "com.mannschaft.app.budget.event.BudgetPaymentListener",
+            // 期限切れクレジットを credit_balance から差し引く失効処理。止めると残高が合わなくなる。
+            "com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch",
+
+            // ■ クロスドメイン FK を撤去した代替のアプリ層整合。上流 circulation は別ドメインで閉じない。
+            //   落とすと削除済み回覧文書への参照が残り、DB 側に整合を戻す手段が無い。
+            "com.mannschaft.app.disclosure.service.DisclosureCirculationCleanupHandler",
+
+            // ■ 保持期間超過削除・法的地位の更新（DisclosureAutoDeleteBatchService /
+            //   ProxyConsentLifeEventJob と同型）。
+            "com.mannschaft.app.returnstayplan.service.ReturnStayPlanPurgeBatchService",
+            "com.mannschaft.app.auth.service.ParentalConsentReleaseBatchService",
+
+            // ■ 第一の型（追いつけない）。いずれも対象期間を today から導出する no-arg 入口しか無く、
+            //   対象期間を指定して再実行する運用経路が無い。停止期間分は恒久的な欠測になる。
+            // 前月固定（LocalDate.now().minusMonths(1)）。
+            "com.mannschaft.app.village.batch.VillageChronicleBatchService",
+            // 前日固定（LocalDate.now().minusDays(1)）。
+            "com.mannschaft.app.performance.service.PerformanceBatchService",
+            // 日次スナップショットで、30 日で rotation 削除されるため後から埋め直せない。
+            "com.mannschaft.app.residencestatus.batch.ResidentActivityAggregatorBatch");
 
     /** {@link #FORBIDDEN_TO_STOP} で禁じるモード。 */
     private static final Set<String> STOPPING_MODES = Set.of("SKIP_WHEN_DISABLED", "DROP_WHEN_DISABLED");

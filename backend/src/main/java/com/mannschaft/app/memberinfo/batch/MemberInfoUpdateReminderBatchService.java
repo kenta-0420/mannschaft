@@ -1,6 +1,8 @@
 package com.mannschaft.app.memberinfo.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.memberinfo.TeamMemberInfoFieldEntity;
 import com.mannschaft.app.memberinfo.TeamMemberInfoFieldRepository;
@@ -50,6 +52,8 @@ public class MemberInfoUpdateReminderBatchService {
     /**
      * 毎日9時（JST）に実行。期限切れまたは未回答フィールドを持つメンバーへリマインドを送信する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。メンバー情報の更新リマインド送信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "memberinfo-update-reminder-daily", description = "メンバー情報の期限切れ・未回答に対するリマインドを毎日 09:00 に送信する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "memberInfoUpdateReminderBatch", lockAtMostFor = "30m", lockAtLeastFor = "5m")

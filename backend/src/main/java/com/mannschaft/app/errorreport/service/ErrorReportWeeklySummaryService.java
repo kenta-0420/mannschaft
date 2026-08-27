@@ -2,6 +2,8 @@ package com.mannschaft.app.errorreport.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
@@ -40,6 +42,8 @@ public class ErrorReportWeeklySummaryService {
     /** F10.6 Phase 10-δ — Mannschaft 内通知（主系チャネル）。 */
     private final NotificationHelper notificationHelper;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。エラーレポートの週次サマリー配信であり、運用基盤に属し機能フラグを持たない。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "errorreport-weekly-summary", description = "エラーレポートの週次サマリーを毎週月曜 09:00 に SYSTEM_ADMIN へ配信する")
     @Scheduled(cron = "0 0 9 * * MON", zone = "Asia/Tokyo")
     @SchedulerLock(name = "errorReportWeeklySummary", lockAtMostFor = "PT10M", lockAtLeastFor = "PT1M")

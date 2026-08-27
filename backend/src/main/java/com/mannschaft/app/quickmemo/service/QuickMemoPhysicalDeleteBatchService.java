@@ -2,6 +2,8 @@ package com.mannschaft.app.quickmemo.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.quickmemo.entity.QuickMemoEntity;
 import com.mannschaft.app.quickmemo.entity.QuickMemoTagLinkEntity;
@@ -46,6 +48,8 @@ public class QuickMemoPhysicalDeleteBatchService {
     private final R2StorageService s3StorageService;
     private final AuditLogService auditLogService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。論理削除済みメモの物理削除であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "quickmemo-physical-delete-daily", description = "90 日以上前に論理削除されたポイっとメモを毎日 03:00 に物理削除する")
     @Scheduled(cron = "0 0 3 * * *")
     // 起動間隔は日次 03:00。1 回の上限は BATCH_LIMIT = 50000 件で、その全件に対し S3 オブジェクト削除が同期で走る。
