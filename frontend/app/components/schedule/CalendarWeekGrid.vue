@@ -13,7 +13,7 @@
  */
 import dayjs from 'dayjs'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
-import { dateToOrdinal, ordinalToDate, todayInTimezone } from '~/utils/calendarWeek'
+import { MINUTES_PER_DAY, dateToOrdinal, eventDayOccupancy, ordinalToDate, todayInTimezone } from '~/utils/calendarWeek'
 
 const { userTimezone } = useDatetime()
 const { t, locale } = useI18n()
@@ -48,7 +48,6 @@ const SLOT_H = HOUR_H / SNAP_MINUTES.length
 const MIN_EVENT_H = 20
 /** 日付ヘッダーの高さ(px)。終日帯の sticky オフセットに使うため固定値で持つ。 */
 const HEADER_H = 48
-const MINUTES_PER_DAY = 1440
 const EIGHT_AM_MIN = 8 * 60
 
 // 終日帯のバー（月ビュー CalendarGrid.vue のレーン割当をそのまま踏襲する）
@@ -87,21 +86,6 @@ const weekdayFormatter = computed(() =>
   new Intl.DateTimeFormat(locale.value, { weekday: 'short', timeZone: 'UTC' }))
 const weekRangeFormatter = computed(() =>
   new Intl.DateTimeFormat(locale.value, { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }))
-
-/**
- * ISO 文字列を「通日番号 * 1440 + 壁時計の分」へ変換する。
- *
- * 月ビューが `startAt.slice(0, 10)` / `slice(11, 16)` で日付・時刻を切り出しているのと同じ流儀
- * （BE から届く文字列の壁時計をそのまま採用する）。日付のみの文字列が来た場合は 0:00 とみなす
- * （握りつぶしではなく「時刻部が無い＝その日の始まり」という明示的な解釈）。
- */
-function absMinutes(iso: string): number {
-  const ord = dateToOrdinal(iso.slice(0, 10))
-  const h = Number(iso.slice(11, 13))
-  const mi = Number(iso.slice(14, 16))
-  const minutes = Number.isFinite(h) && Number.isFinite(mi) ? h * 60 + mi : 0
-  return ord * MINUTES_PER_DAY + minutes
-}
 
 interface WeekDay {
   dateStr: string
@@ -226,31 +210,26 @@ const classified = computed<Classified>(() => {
       continue
     }
 
-    const absStart = absMinutes(event.startAt)
-    const absEnd = Math.max(absMinutes(event.endAt), absStart)
-    const sOrd = Math.floor(absStart / MINUTES_PER_DAY)
-    const eOrd = Math.floor(absEnd / MINUTES_PER_DAY)
-
     // その予定が 24時間フルで占有する日（3日以上にまたがる予定の中間日）。§6.5.1b の例外。
     const fullDays: number[] = []
 
-    for (let ord = Math.max(sOrd, weekStartOrd); ord <= Math.min(eOrd, weekEndOrd); ord++) {
-      const dayStart = ord * MINUTES_PER_DAY
-      const dayEnd = dayStart + MINUTES_PER_DAY
-      const s = Math.max(absStart, dayStart)
-      const e = Math.min(absEnd, dayEnd)
-      if (e <= s) continue // 翌日 0:00 ちょうど終了などの「占有ゼロの日」は片を作らない
-      if (s <= dayStart && e >= dayEnd) {
+    for (let ord = weekStartOrd; ord <= weekEndOrd; ord++) {
+      // 「その日に存在するか」の判定は共通の eventDayOccupancy 一本に統一する（検分二巡目 [1]）。
+      // 翌日 0:00 ちょうど終了のような占有ゼロの日はここで null になり、片を作らない。
+      const occ = eventDayOccupancy(event, ord)
+      if (!occ) continue
+      if (occ.startMin === 0 && occ.endMin >= MINUTES_PER_DAY) {
         fullDays.push(ord)
         continue
       }
       segmentsByDay[ord - weekStartOrd]!.push({
         event,
         dayIndex: ord - weekStartOrd,
-        startMin: s - dayStart,
-        endMin: e - dayStart,
-        continuesBefore: absStart < dayStart,
-        continuesAfter: absEnd > dayEnd,
+        startMin: occ.startMin,
+        endMin: occ.endMin,
+        // 前後の日にも占有があるなら継続記号を出す（同じ占有基準で判定する）。
+        continuesBefore: eventDayOccupancy(event, ord - 1) !== null,
+        continuesAfter: eventDayOccupancy(event, ord + 1) !== null,
         col: 0,
         cols: 1,
       })
@@ -456,28 +435,13 @@ const weekLabel = computed(() => {
   return `${fmt.format(from)} – ${fmt.format(to)}`
 })
 
-// ---- [1] 日別ポップオーバー（§6.2・月ビュー CalendarGrid.vue と同じ流儀） ----
+// ---- 日別ポップオーバー（§6.2。月ビューと共有する ScheduleDayDetailPopover） ----
 // 終日帯のレーン超過で省かれた予定を、週ビュー内で必ず開けるようにする。
 // 「+N件」を出すだけで開けないのでは、予定が無言で消える欠陥を塞いだことにならない。
-const dayPopover = ref<{ show: (ev: Event) => void; hide: () => void } | null>(null)
-const popoverDateStr = ref('')
-
-/** ポップオーバー対象日に掛かる予定の全件（終日・時刻付き・レーンから省かれた分も含む）。 */
-const popoverEvents = computed<CalendarEventItem[]>(() => {
-  const d = popoverDateStr.value
-  if (!d) return []
-  return props.events.filter(e => e.startAt.slice(0, 10) <= d && e.endAt.slice(0, 10) >= d)
-})
+const dayPopover = ref<{ open: (dateStr: string, ev: Event) => void; close: () => void } | null>(null)
 
 function openDayOverflow(dateStr: string, ev: Event) {
-  popoverDateStr.value = dateStr
-  dayPopover.value?.show(ev)
-}
-
-/** ポップオーバー内の行クリック（ScheduleListRow の `open`）を種別で振り分ける。 */
-function onPopoverRowOpen(event: CalendarEventItem) {
-  dayPopover.value?.hide()
-  onEventClick(event)
+  dayPopover.value?.open(dateStr, ev)
 }
 
 function onEventClick(event: CalendarEventItem) {
@@ -658,23 +622,11 @@ function onEventClick(event: CalendarEventItem) {
       </div>
     </div>
 
-    <!-- 日別ポップオーバー（[1]・§6.2。終日帯の「+N件」から開く） -->
-    <Popover ref="dayPopover">
-      <div data-testid="day-detail-popover" class="flex flex-col" style="min-width: 260px; max-width: 320px">
-        <div class="px-2 pb-1 text-xs font-semibold text-surface-500">
-          {{ t('schedule.calendar.dayDetail.title', { date: popoverDateStr }) }}
-        </div>
-        <div class="max-h-80 overflow-y-auto">
-          <ScheduleListRow
-            v-for="event in popoverEvents"
-            :key="event.uniqueKey"
-            :event="event"
-            scope-type="team"
-            :scope-id="''"
-            @open="onPopoverRowOpen(event)"
-          />
-        </div>
-      </div>
-    </Popover>
+    <!-- 日別ポップオーバー（§6.2。終日帯の「+N件」から開く。月ビューと共有） -->
+    <ScheduleDayDetailPopover
+      ref="dayPopover"
+      :events="events"
+      @row-open="onEventClick"
+    />
   </div>
 </template>

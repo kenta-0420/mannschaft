@@ -377,6 +377,49 @@ describe('CalendarWeekGrid (F03.19 §6.5)', () => {
     expect(emitted![emitted!.length - 1]).toEqual([202, true])
   })
 
+  it('[1・二巡目] 零時ちょうどに終わる予定は翌日の一覧に混入しない', async () => {
+    const events = [
+      // 8/3 22:00 〜 8/4 00:00。8/4 には一瞬も存在しない。
+      ev({ id: 900, title: '境界予定', startAt: '2026-08-03T22:00:00+09:00', endAt: '2026-08-04T00:00:00+09:00' }),
+      // 8/3・8/4 それぞれで終日レーンを溢れさせ、両日の「+N件」を出す
+      ...Array.from({ length: 4 }, (_, i) =>
+        ev({ id: 911 + i, title: `3日終日${i}`, allDay: true, startAt: '2026-08-03T00:00:00+09:00', endAt: '2026-08-03T23:59:59+09:00' })),
+      ...Array.from({ length: 4 }, (_, i) =>
+        ev({ id: 921 + i, title: `4日終日${i}`, allDay: true, startAt: '2026-08-04T00:00:00+09:00', endAt: '2026-08-04T23:59:59+09:00' })),
+    ]
+    const wrapper = await mountWeek(events)
+
+    const rowIds = () => wrapper.findAll('[data-testid^="popover-row-"]')
+      .map(r => r.attributes('data-testid'))
+
+    // 8/3 の一覧には出る
+    await wrapper.get('[data-testid="day-overflow-2026-08-03"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(rowIds()).toContain('popover-row-900')
+
+    // 8/4 の一覧には出ない（時間グリッドの分類と同じ排他的な日区間で判定する）
+    await wrapper.get('[data-testid="day-overflow-2026-08-04"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(rowIds()).not.toContain('popover-row-900')
+    // 8/4 本来の予定は漏れなく出る
+    for (const id of [921, 922, 923, 924]) {
+      expect(rowIds()).toContain(`popover-row-${id}`)
+    }
+  })
+
+  it('[1・二巡目] 零時を1分でも過ぎれば翌日の一覧にも出る', async () => {
+    const events = [
+      ev({ id: 901, title: '跨ぎ予定', startAt: '2026-08-03T22:00:00+09:00', endAt: '2026-08-04T00:01:00+09:00' }),
+      ...Array.from({ length: 4 }, (_, i) =>
+        ev({ id: 921 + i, allDay: true, startAt: '2026-08-04T00:00:00+09:00', endAt: '2026-08-04T23:59:59+09:00' })),
+    ]
+    const wrapper = await mountWeek(events)
+    await wrapper.get('[data-testid="day-overflow-2026-08-04"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.findAll('[data-testid^="popover-row-"]').map(r => r.attributes('data-testid')))
+      .toContain('popover-row-901')
+  })
+
   it('[1] 溢れていない日の「+N件」は存在しない（幽霊要素を残さない）', async () => {
     const wrapper = await mountWeek([
       ev({ id: 220, allDay: true, startAt: '2026-08-04T00:00:00+09:00', endAt: '2026-08-04T23:59:59+09:00' }),
