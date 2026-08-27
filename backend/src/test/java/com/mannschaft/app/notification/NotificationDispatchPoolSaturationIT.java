@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
@@ -89,11 +90,11 @@ class NotificationDispatchPoolSaturationIT extends AbstractMySqlIntegrationTest 
         try {
             saturate(eventPool, EVENT_POOL_QUEUE_CAPACITY, release);
 
-            NotificationEntity created = notificationDeliveryRunner.sendOne(buildRequest(recipientId));
+            NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(buildRequest(recipientId));
 
-            assertThat(created)
+            assertThat(result)
                     .as("event-pool が使い切られていても配送は成立する（dispatch は別プール）")
-                    .isNotNull();
+                    .isEqualTo(NotificationDeliveryResult.DELIVERED);
         } finally {
             release.countDown();
         }
@@ -113,11 +114,11 @@ class NotificationDispatchPoolSaturationIT extends AbstractMySqlIntegrationTest 
         try {
             saturate(notificationDispatchPool, DISPATCH_POOL_QUEUE_CAPACITY, release);
 
-            NotificationEntity created = notificationDeliveryRunner.sendOne(buildRequest(recipientId));
+            NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(buildRequest(recipientId));
 
-            assertThat(created)
+            assertThat(result)
                     .as("飽和時も拒否例外にならず（CallerRuns）配送が成立する")
-                    .isNotNull();
+                    .isEqualTo(NotificationDeliveryResult.DELIVERED);
         } finally {
             release.countDown();
         }
