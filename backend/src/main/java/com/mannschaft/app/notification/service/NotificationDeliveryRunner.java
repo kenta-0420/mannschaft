@@ -29,9 +29,16 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <h2>戻り値: visibility deny と成功の区別</h2>
  * <p>{@code createNotification} は visibility deny 時に例外を投げず {@code null} を返す
- * （§11.1・NotificationService 内で既に WARN ログを残す）。本 Bean はその戻り値をそのまま返し、
- * 呼び出し元の配送リスナーが「deny（WARN 相当・null 復帰）」と「DB 例外（ERROR 相当・例外送出で
+ * （§11.1・NotificationService 内で既に WARN ログを残す）。本 Bean はその結果を
+ * {@link NotificationDeliveryResult} に変換して返し、呼び出し元の配送リスナーが
+ * 「deny（WARN 相当・{@code VISIBILITY_DENIED} 復帰）」と「DB 例外（ERROR 相当・例外送出で
  * このトランザクションはロールバック）」を区別できるようにする。</p>
+ *
+ * <h2>戻り値に Entity を使わない理由（Issue #2959）</h2>
+ * <p>以前は本メソッドが {@code NotificationEntity} を返していたが、呼び出し元は
+ * null 判定にしか使っておらず、Entity を返す必然性が無かった。他ドメインの配送リスナーが
+ * 通知ドメインの Entity を import せざるを得ない構造（D-1 違反）を生んでいたため、
+ * {@link NotificationDeliveryResult} enum に置き換える。</p>
  */
 @Slf4j
 @Component
@@ -45,12 +52,13 @@ public class NotificationDeliveryRunner {
      * 1 件の通知を独立トランザクションで送信する。
      *
      * @param request 通知配送要求
-     * @return 作成された通知エンティティ。visibility deny の場合は {@code null}
-     *         （呼び出し元は null を「非例外の deny」として扱うこと。例外は DB 障害等を意味し、
+     * @return {@link NotificationDeliveryResult#DELIVERED} は送信成功、
+     *         {@link NotificationDeliveryResult#VISIBILITY_DENIED} は visibility deny によるスキップ
+     *         （呼び出し元はこれを「非例外の deny」として扱うこと。例外は DB 障害等を意味し、
      *         このトランザクションはロールバックされて呼び出し元へ伝播する）
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public NotificationEntity sendOne(NotificationDeliveryRequest request) {
+    public NotificationDeliveryResult sendOne(NotificationDeliveryRequest request) {
         NotificationEntity created = notificationService.createNotification(
                 request.recipientUserId(),
                 request.notificationType(),
@@ -65,9 +73,9 @@ public class NotificationDeliveryRunner {
                 request.actorId());
         if (created == null) {
             // visibility deny。NotificationService 側で既に WARN 済みのため、ここでは二重ログしない。
-            return null;
+            return NotificationDeliveryResult.VISIBILITY_DENIED;
         }
         notificationDispatchService.dispatch(created);
-        return created;
+        return NotificationDeliveryResult.DELIVERED;
     }
 }

@@ -1,7 +1,7 @@
 package com.mannschaft.app.timetable.personal.listener;
 
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.timetable.personal.event.PersonalTimetableSyncNotificationEvent;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +36,8 @@ public class PersonalTimetableSyncNotificationListener {
 
     private void sendOne(NotificationDeliveryRequest request) {
         try {
-            NotificationEntity created = notificationDeliveryRunner.sendOne(request);
-            if (created == null) {
+            NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(request);
+            if (result == NotificationDeliveryResult.VISIBILITY_DENIED) {
                 log.warn("個人時間割リンク反映通知が visibility deny によりスキップされました: "
                                 + "recipientUserId={}, notificationType={}, sourceType={}, sourceId={}",
                         request.recipientUserId(), request.notificationType(),
