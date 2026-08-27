@@ -1,12 +1,18 @@
 package com.mannschaft.app.advertising.event;
 
+
+
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,12 +23,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
-
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -69,7 +69,7 @@ class OverdueInvoiceNotificationListenerTest {
     @Test
     @DisplayName("組織 ADMIN は ORGANIZATION スコープ、SYSTEM_ADMIN は SYSTEM スコープで送られる")
     void スコープが受信者種別ごとに分かれる() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(Mockito.mock(NotificationEntity.class));
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
 
         listener.onOverdueInvoiceNotification(event());
 
@@ -93,7 +93,7 @@ class OverdueInvoiceNotificationListenerTest {
     void 一人の例外で他が巻き添えにならない() {
         given(notificationDeliveryRunner.sendOne(any()))
                 .willThrow(new RuntimeException("模擬DB例外"))
-                .willReturn(Mockito.mock(NotificationEntity.class));
+                .willReturn(NotificationDeliveryResult.DELIVERED);
 
         assertThatCode(() -> listener.onOverdueInvoiceNotification(event())).doesNotThrowAnyException();
 
@@ -103,7 +103,7 @@ class OverdueInvoiceNotificationListenerTest {
     @Test
     @DisplayName("メール登録が失敗しても、その受信者の通知は成立し後続受信者へも送られる")
     void メール失敗が通知を巻き添えにしない() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(Mockito.mock(NotificationEntity.class));
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
         willThrow(new RuntimeException("模擬outbox障害"))
                 .given(emailOutboxService).enqueue(any(EmailOutboxRequest.class));
 
@@ -115,7 +115,7 @@ class OverdueInvoiceNotificationListenerTest {
     @Test
     @DisplayName("visibility deny（null 復帰）でも例外にせず、後続受信者へ送り続ける")
     void denyでもループを止めない() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(null);
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.VISIBILITY_DENIED);
 
         assertThatCode(() -> listener.onOverdueInvoiceNotification(event())).doesNotThrowAnyException();
 

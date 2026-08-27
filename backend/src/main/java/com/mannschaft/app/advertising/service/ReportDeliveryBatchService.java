@@ -1,5 +1,7 @@
 package com.mannschaft.app.advertising.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.ReportFrequency;
 import com.mannschaft.app.advertising.entity.AdReportScheduleEntity;
@@ -27,6 +29,9 @@ public class ReportDeliveryBatchService {
     /**
      * 週次レポート配信バッチ。毎週月曜 AM 9:00 (JST)。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "止まるのは広告主向け週次レポート配信のみで DB は書き換わらず、広告機能を閉じている間は配信先の広告主が存在しない")
     @BatchEndpoint(name = "advertising-report-delivery-weekly", description = "広告主向け週次レポートを毎週月曜 09:00 に配信する")
     @Scheduled(cron = "0 0 9 * * MON", zone = "Asia/Tokyo")
     @SchedulerLock(name = "reportDeliveryWeekly", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
@@ -40,6 +45,9 @@ public class ReportDeliveryBatchService {
     /**
      * 月次レポート配信バッチ。毎月1日 AM 9:00 (JST)。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "止まるのは広告主向け月次レポート配信のみで DB は書き換わらず、広告機能を閉じている間は配信先の広告主が存在しない")
     @BatchEndpoint(name = "advertising-report-delivery-monthly", description = "広告主向け月次レポートを毎月 1 日 09:00 に配信する")
     @Scheduled(cron = "0 0 9 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "reportDeliveryMonthly", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")

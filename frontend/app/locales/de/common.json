@@ -1342,6 +1342,15 @@
       "today": "Heute",
       "dayDetail": {
         "title": "Termine am {date}"
+      },
+      "view": {
+        "month": "Monat",
+        "week": "Woche",
+        "agenda": "Liste"
+      },
+      "week": {
+        "allDay": "Ganztägig",
+        "now": "Jetzt"
       }
     }
   },

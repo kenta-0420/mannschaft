@@ -1,5 +1,7 @@
 package com.mannschaft.app.shiftbudget.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.shiftbudget.service.MonthlyShiftBudgetCloseService;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +45,9 @@ public class MonthlyShiftBudgetCloseBatchJob {
      * 毎月 1 日 02:00 JST に実行する。
      * <p>Phase 10-β: {@code closeAll} を使用。組織毎の失敗は failed_events に記録されつつ続行する。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SHIFT_ENABLED",
+            reason = "殿の裁定: 既定では ConditionalOnProperty により Bean 自体が生成されず、締め処理は BatchEndpoint 経由の手動再実行経路を持つため月次の一回性は障害にならない")
     @BatchEndpoint(name = "shiftbudget-monthly-close", description = "前月分のシフト予算 allocation を毎月 1 日 02:00 に全組織横断で締める")
     @Scheduled(cron = "0 0 2 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "MonthlyShiftBudgetCloseBatchJob",
