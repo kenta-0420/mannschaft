@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +69,13 @@ public class MemberInfoUpdateReminderRunner {
                 .filter(f -> teamId.equals(f.getTeamId()))
                 .filter(f -> Boolean.TRUE.equals(f.getIsActive()))
                 .filter(f -> f.getRefreshIntervalMonths() != null)
+                // 通知本文に載る代表フィールド（先頭要素）を是正前と同じ「sortOrder 最小」に固定する。
+                // 是正前は findByTeamIdAndIsActiveTrueOrderBySortOrderAsc の並びをそのまま使っていたが、
+                // 読み直し（findAllById）の戻り順は保証されないため、ここで明示的に整列する。
+                .sorted(Comparator.comparing(TeamMemberInfoFieldEntity::getSortOrder,
+                                Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(TeamMemberInfoFieldEntity::getId,
+                                Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
         if (targetFields.isEmpty()) {
             return false;

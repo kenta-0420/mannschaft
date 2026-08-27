@@ -115,7 +115,30 @@ class MemberInfoUpdateReminderRunnerTest {
         verify(eventPublisher, never()).publishEvent(any(MemberInfoUpdateReminderNotificationEvent.class));
     }
 
+    @Test
+    @DisplayName("通知に載るフィールドは sortOrder 最小のものに固定される（読み直しの戻り順に依存しない）")
+    void markReminderSent_publishesFieldWithSmallestSortOrder() {
+        Long lowSortFieldId = 200L;
+        // findAllById の戻り順を「sortOrder 大 → 小」にして、並び順に依存していれば落ちるようにする。
+        given(fieldRepository.findAllById(List.of(FIELD_ID, lowSortFieldId)))
+                .willReturn(List.of(buildField(FIELD_ID, 6, 5), buildField(lowSortFieldId, 6, 1)));
+        given(responseRepository.findByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(List.of());
+
+        boolean published = runner.markReminderSent(
+                TEAM_ID, USER_ID, List.of(FIELD_ID, lowSortFieldId), NOW);
+
+        assertThat(published).isTrue();
+        ArgumentCaptor<MemberInfoUpdateReminderNotificationEvent> captor =
+                ArgumentCaptor.forClass(MemberInfoUpdateReminderNotificationEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().fieldId()).isEqualTo(lowSortFieldId);
+    }
+
     private TeamMemberInfoFieldEntity buildField(Long id, Integer intervalMonths) {
+        return buildField(id, intervalMonths, 0);
+    }
+
+    private TeamMemberInfoFieldEntity buildField(Long id, Integer intervalMonths, Integer sortOrder) {
         TeamMemberInfoFieldEntity entity = TeamMemberInfoFieldEntity.builder()
                 .teamId(TEAM_ID)
                 .fieldName("緊急連絡先")
@@ -123,7 +146,7 @@ class MemberInfoUpdateReminderRunnerTest {
                 .isRequired(false)
                 .isSensitive(false)
                 .refreshIntervalMonths(intervalMonths)
-                .sortOrder(0)
+                .sortOrder(sortOrder)
                 .build();
         setId(entity, id);
         return entity;
