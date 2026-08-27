@@ -169,12 +169,21 @@ describe('ScheduleMobileListView', () => {
     })
   })
 
-  /** 指定タイムゾーンで処理を実行する（Node は process.env.TZ の実行時変更を反映する）。 */
-  function withSystemTz<T>(tz: string, fn: () => T): T {
+  /**
+   * 指定タイムゾーンで非同期処理を実行する（Node は process.env.TZ の実行時変更を反映する）。
+   *
+   * [Codex 検分指摘・二巡目] `fn` は `async` コールバックであり `Promise` を返す。旧実装の
+   * `return fn()` は同期関数のシグネチャ（`() => T`）のまま Promise を返り値としてすり抜けさせ、
+   * `finally` が Promise の解決を待たずに即座に `process.env.TZ` を元へ戻していた。結果として
+   * マウント・描画・アサーションは指定した地域ではなく元の地域で実行されており、テストは
+   * 「常に緑になるが検出力が無い」状態だった。ヘルパー自体を async にし、`await fn()` の
+   * 完了を待ってから復元する。
+   */
+  async function withSystemTz<T>(tz: string, fn: () => Promise<T>): Promise<T> {
     const original = process.env.TZ
     process.env.TZ = tz
     try {
-      return fn()
+      return await fn()
     } finally {
       process.env.TZ = original
     }
@@ -211,11 +220,18 @@ describe('ScheduleMobileListView', () => {
     expect(wrapper.text()).toContain('2026年8月')
   })
 
-  it('SMLV-008: 端末TZが UTC+14（Pacific/Kiritimati）でも見出しの年月が1日もずれない', async () => {
+  it('SMLV-008: 端末TZが America/Los_Angeles（負の時差）でも見出しの年月が前月にずれない', async () => {
     // W3-a（CalendarWeekGrid.vue）が一度踏んだ罠と同根: Intl に timeZone を渡し忘れると、
-    // UTC 月初として組み立てた Date が端末ローカルで再解釈され、UTC+α の端末では
-    // 前月末や翌月扱いにずれる。year=2026/month=1（1月1日境界）で確認する。
-    await withSystemTz('Pacific/Kiritimati', async () => {
+    // UTC 月初として組み立てた Date が端末ローカルで再解釈される。
+    //
+    // [Codex 検分指摘・二巡目] Pacific/Kiritimati（UTC+14）を使うと、UTC 月初正午は
+    // 現地では「同じ日の遅い時刻」にしかならず月がそもそも変わらないため、timeZone: 'UTC' を
+    // 消しても失敗しない＝検出力の無い回帰テストになっていた（自己点検で確認済み）。
+    // ここでは「前月へずれる」負の時差（America/Los_Angeles・標準時 UTC-8）を使う。
+    // year=2026/month=1 の UTC 月初（2026-01-01T00:00:00Z）は LA では
+    // 2025-12-31T16:00:00（PST）になり、timeZone を外すと日付だけでなく月自体が
+    // 前月（2025年12月）へずれる境界になっている。
+    await withSystemTz('America/Los_Angeles', async () => {
       const wrapper = await mountView({
         year: 2026,
         month: 1,
