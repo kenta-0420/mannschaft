@@ -13,9 +13,10 @@
  */
 import dayjs from 'dayjs'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
+import { dateToOrdinal, ordinalToDate, todayInTimezone } from '~/utils/calendarWeek'
 
 const { userTimezone } = useDatetime()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { getHoliday } = useHolidays()
 
 const props = defineProps<{
@@ -59,22 +60,33 @@ const OVERFLOW_VISIBLE_LANES = MAX_LANES - 1
 const OVERFLOW_ROW_H = 44
 
 const DEFAULT_COLOR = '#6366f1'
-const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土']
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-/** 'YYYY-MM-DD' を UTC 基準の通日番号へ。日付そのものの加減算にのみ使う。 */
-function dayOrdinal(dateStr: string): number {
-  const y = Number(dateStr.slice(0, 4))
-  const m = Number(dateStr.slice(5, 7))
-  const d = Number(dateStr.slice(8, 10))
-  return Math.floor(Date.UTC(y, m - 1, d) / 86400000)
+/** 通日番号 → その日の正午 UTC の Date（Intl へ渡す用。日付だけが意味を持つ）。 */
+function ordinalToUtcNoon(ord: number): Date {
+  return new Date(ord * 86400000 + 12 * 3600000)
 }
 
-function ordinalToDateStr(ord: number): string {
-  const dt = new Date(ord * 86400000)
-  return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`
-}
+/**
+ * [4] 曜日名・週の見出しは**選択中のロケールから生成する**（i18n ルール／FE規約 §15）。
+ *
+ * 曜日名と年月の綴りはロケールデータであってプロダクトの文言ではないため、6言語ぶんの
+ * 訳文をロケールファイルに複製するのではなく `Intl.DateTimeFormat` に委ねる。
+ * ロケールが増えても追随漏れが起きない。
+ */
+/**
+ * `timeZone: 'UTC'` は必須（[3] と同根の自己点検で発見）。
+ *
+ * {@link ordinalToUtcNoon} が作るのは「その日の正午 UTC」という瞬間であり、Intl に timeZone を
+ * 渡さないと**端末ローカル**で解釈される。Pacific/Kiritimati(UTC+14) のような端末では
+ * 正午 UTC が翌日 02:00 になり、曜日名と見出しの日付が丸ごと1日ずれる。
+ * 通日番号は既にユーザー設定 TZ で確定した「暦の日付」なので、UTC で読み戻すのが正しい。
+ */
+const weekdayFormatter = computed(() =>
+  new Intl.DateTimeFormat(locale.value, { weekday: 'short', timeZone: 'UTC' }))
+const weekRangeFormatter = computed(() =>
+  new Intl.DateTimeFormat(locale.value, { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }))
 
 /**
  * ISO 文字列を「通日番号 * 1440 + 壁時計の分」へ変換する。
@@ -84,7 +96,7 @@ function ordinalToDateStr(ord: number): string {
  * （握りつぶしではなく「時刻部が無い＝その日の始まり」という明示的な解釈）。
  */
 function absMinutes(iso: string): number {
-  const ord = dayOrdinal(iso.slice(0, 10))
+  const ord = dateToOrdinal(iso.slice(0, 10))
   const h = Number(iso.slice(11, 13))
   const mi = Number(iso.slice(14, 16))
   const minutes = Number.isFinite(h) && Number.isFinite(mi) ? h * 60 + mi : 0
@@ -96,17 +108,21 @@ interface WeekDay {
   ord: number
   date: number
   month: number
+  /** 選択中のロケールの曜日名（[4]・直書きしない）。 */
+  weekdayLabel: string
 }
 
 const weekDays = computed<WeekDay[]>(() => {
-  const startOrd = dayOrdinal(props.weekStart)
+  const startOrd = dateToOrdinal(props.weekStart)
   return Array.from({ length: 7 }, (_, i) => {
-    const dateStr = ordinalToDateStr(startOrd + i)
+    const ord = startOrd + i
+    const dateStr = ordinalToDate(ord)
     return {
       dateStr,
-      ord: startOrd + i,
+      ord,
       date: Number(dateStr.slice(8, 10)),
       month: Number(dateStr.slice(5, 7)),
+      weekdayLabel: weekdayFormatter.value.format(ordinalToUtcNoon(ord)),
     }
   })
 })
@@ -204,8 +220,8 @@ const classified = computed<Classified>(() => {
       // allDay=true は単日・複数日を問わず終日帯へ（時間軸に置くと 0:00〜23:59 の巨大な箱になる）。
       allDayRaw.push({
         event,
-        sOrd: dayOrdinal(event.startAt.slice(0, 10)),
-        eOrd: dayOrdinal(event.endAt.slice(0, 10)),
+        sOrd: dateToOrdinal(event.startAt.slice(0, 10)),
+        eOrd: dateToOrdinal(event.endAt.slice(0, 10)),
       })
       continue
     }
@@ -298,7 +314,8 @@ const classified = computed<Classified>(() => {
  */
 function readNow(): { dateStr: string; minutes: number } {
   const now = dayjs().tz(userTimezone.value)
-  return { dateStr: now.format('YYYY-MM-DD'), minutes: now.hour() * 60 + now.minute() }
+  // 日付は共有ユーティリティ経由で取り、端末ローカルの日付を混ぜない（[3] と同根の事故防止）。
+  return { dateStr: todayInTimezone(userTimezone.value), minutes: now.hour() * 60 + now.minute() }
 }
 
 const nowState = ref(readNow())
@@ -414,21 +431,54 @@ function dateColorClass(dateStr: string, col: number): string {
   return ''
 }
 
-function fmtTime(iso: string): string {
-  return iso.slice(11, 16)
+/**
+ * [2] 分割片が表示する時刻は、**その片自身の開始位置**から出す。
+ *
+ * 元の `startAt` をそのまま出すと、22:00〜翌02:00 の予定の翌日側が 00:00 の位置にありながら
+ * 「22:00」と表示される（Codex 検分 [2]）。§6.5.1b が「1つの予定として扱う」と言うのは
+ * 詳細を開く経路（uniqueKey 共有）の話であり、表示時刻まで元のものにせよという意味ではない。
+ */
+function fmtSegmentTime(seg: TimedSegment): string {
+  return `${pad(Math.floor(seg.startMin / 60))}:${pad(seg.startMin % 60)}`
 }
 
-/** 週ラベル。月ビューの `${year}年${month}月` と同じ流儀。週が月をまたぐ場合は両方を出す。 */
+/**
+ * 週の見出し（[4]）。「年」「月」の綴りも区切りも**選択中のロケール**に委ねる。
+ * ja なら「2026年8月2日～8日」、en なら「August 2 – 8, 2026」のように出る。
+ * `formatRange` が無い実行環境では両端を個別に整形して繋ぐ（機能を落とさないための代替経路）。
+ */
 const weekLabel = computed(() => {
   const days = weekDays.value
-  const first = days[0]!
-  const last = days[6]!
-  const firstYear = Number(first.dateStr.slice(0, 4))
-  const lastYear = Number(last.dateStr.slice(0, 4))
-  if (firstYear === lastYear && first.month === last.month) return `${firstYear}年${first.month}月`
-  if (firstYear === lastYear) return `${firstYear}年${first.month}月 - ${last.month}月`
-  return `${firstYear}年${first.month}月 - ${lastYear}年${last.month}月`
+  const from = ordinalToUtcNoon(days[0]!.ord)
+  const to = ordinalToUtcNoon(days[6]!.ord)
+  const fmt = weekRangeFormatter.value
+  if (typeof fmt.formatRange === 'function') return fmt.formatRange(from, to)
+  return `${fmt.format(from)} – ${fmt.format(to)}`
 })
+
+// ---- [1] 日別ポップオーバー（§6.2・月ビュー CalendarGrid.vue と同じ流儀） ----
+// 終日帯のレーン超過で省かれた予定を、週ビュー内で必ず開けるようにする。
+// 「+N件」を出すだけで開けないのでは、予定が無言で消える欠陥を塞いだことにならない。
+const dayPopover = ref<{ show: (ev: Event) => void; hide: () => void } | null>(null)
+const popoverDateStr = ref('')
+
+/** ポップオーバー対象日に掛かる予定の全件（終日・時刻付き・レーンから省かれた分も含む）。 */
+const popoverEvents = computed<CalendarEventItem[]>(() => {
+  const d = popoverDateStr.value
+  if (!d) return []
+  return props.events.filter(e => e.startAt.slice(0, 10) <= d && e.endAt.slice(0, 10) >= d)
+})
+
+function openDayOverflow(dateStr: string, ev: Event) {
+  popoverDateStr.value = dateStr
+  dayPopover.value?.show(ev)
+}
+
+/** ポップオーバー内の行クリック（ScheduleListRow の `open`）を種別で振り分ける。 */
+function onPopoverRowOpen(event: CalendarEventItem) {
+  dayPopover.value?.hide()
+  onEventClick(event)
+}
 
 function onEventClick(event: CalendarEventItem) {
   if (event.isReflection && event.referenceUuid && event.referenceKind) {
@@ -472,7 +522,7 @@ function onEventClick(event: CalendarEventItem) {
             :class="{ 'bg-primary/10': isToday(day.dateStr) }"
             :data-testid="`week-day-header-${di}`"
           >
-            <span class="text-[10px] font-medium" :class="dateColorClass(day.dateStr, di)">{{ daysOfWeek[di] }}</span>
+            <span class="text-[10px] font-medium" :class="dateColorClass(day.dateStr, di)">{{ day.weekdayLabel }}</span>
             <span
               class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold"
               :class="[{ 'bg-primary text-white': isToday(day.dateStr) }, dateColorClass(day.dateStr, di)]"
@@ -523,6 +573,7 @@ function onEventClick(event: CalendarEventItem) {
                 :data-testid="`day-overflow-${cell.dateStr}`"
                 class="absolute flex items-center rounded bg-surface-100 px-1 text-left text-[10px] font-medium text-surface-500 dark:bg-surface-700 dark:text-surface-300"
                 :style="allDayOverflowStyle(cell.di)"
+                @click.stop="openDayOverflow(cell.dateStr, $event)"
               >
                 {{ t('schedule.calendar.more', { count: cell.count }) }}
               </button>
@@ -580,7 +631,7 @@ function onEventClick(event: CalendarEventItem) {
                 >▲</span>
                 <span class="min-w-0 flex-1 truncate">
                   <i v-if="seg.event.isTodo" class="pi pi-check-square mr-0.5 opacity-80" />
-                  <span class="mr-0.5 opacity-70">{{ fmtTime(seg.event.startAt) }}</span>{{ seg.event.title }}
+                  <span class="mr-0.5 opacity-70">{{ fmtSegmentTime(seg) }}</span>{{ seg.event.title }}
                 </span>
                 <span
                   v-if="seg.continuesAfter"
@@ -606,5 +657,24 @@ function onEventClick(event: CalendarEventItem) {
         </div>
       </div>
     </div>
+
+    <!-- 日別ポップオーバー（[1]・§6.2。終日帯の「+N件」から開く） -->
+    <Popover ref="dayPopover">
+      <div data-testid="day-detail-popover" class="flex flex-col" style="min-width: 260px; max-width: 320px">
+        <div class="px-2 pb-1 text-xs font-semibold text-surface-500">
+          {{ t('schedule.calendar.dayDetail.title', { date: popoverDateStr }) }}
+        </div>
+        <div class="max-h-80 overflow-y-auto">
+          <ScheduleListRow
+            v-for="event in popoverEvents"
+            :key="event.uniqueKey"
+            :event="event"
+            scope-type="team"
+            :scope-id="''"
+            @open="onPopoverRowOpen(event)"
+          />
+        </div>
+      </div>
+    </Popover>
   </div>
 </template>

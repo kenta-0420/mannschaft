@@ -2,10 +2,13 @@
 import type { GanttResponse, GanttTodo } from '~/types/todo'
 import { useMyCalendarData, PERSONAL_KEY, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
 import type { CalendarViewMode } from '~/composables/useMyCalendarData'
+import { dateToOrdinal, shiftDate, todayInTimezone, weekStartOf } from '~/utils/calendarWeek'
 
 definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
+// 週ビューの「今日」判定はユーザー設定タイムゾーンで行う（Codex 検分 [3]）。
+const { userTimezone } = useDatetime()
 const router = useRouter()
 const scheduleApi = useScheduleApi()
 const ganttApi = useTodoGantt()
@@ -471,29 +474,15 @@ const viewOptions: Array<{ mode: CalendarViewMode; labelKey: string }> = [
 // 月ビューへ落とす。W3-b が `agenda` の分岐を足した時点でこの読み替えは不要になる。
 const isWeekView = computed(() => view.value === 'week')
 
-const MS_PER_DAY = 86400000
-
-function toOrdinal(dateStr: string): number {
-  return Math.floor(Date.UTC(
-    Number(dateStr.slice(0, 4)), Number(dateStr.slice(5, 7)) - 1, Number(dateStr.slice(8, 10)),
-  ) / MS_PER_DAY)
-}
-
-function fromOrdinal(ord: number): string {
-  const d = new Date(ord * MS_PER_DAY)
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
-}
-
+/**
+ * 「今日」は**ユーザー設定タイムゾーン**で判定する（Codex 検分 [3]）。
+ *
+ * `goToToday()` はユーザー設定 TZ で月を決めるのに、週の算出だけ端末ローカルの日付を使うと、
+ * 両者の日付が土曜と日曜に分かれる時間帯に「今日」ボタンが隣の週を出す。
+ * 日付の取得経路を `todayInTimezone` 一本に統一して根から塞ぐ。
+ */
 function todayDateStr(): string {
-  const now = new Date()
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-}
-
-/** その日付を含む週（起点＝日曜・§6.5.3）の起点日を返す。 */
-function weekStartOf(dateStr: string): string {
-  const ord = toOrdinal(dateStr)
-  // 1970-01-01(ord=0) は木曜。日曜起点への戻し量は (ord + 4) % 7。
-  return fromOrdinal(ord - ((ord + 4) % 7))
+  return todayInTimezone(userTimezone.value)
 }
 
 const weekStart = ref(weekStartOf(todayDateStr()))
@@ -507,20 +496,20 @@ const weekStart = ref(weekStartOf(todayDateStr()))
  * 既に収まっている場合は何もしない＝無駄な再取得を起こさない。
  */
 function ensureRangeCoversWeek(): void {
-  const gridStart = toOrdinal(weekStartOf(`${currentYear.value}-${pad(currentMonth.value)}-01`))
-  const start = toOrdinal(weekStart.value)
+  const gridStart = dateToOrdinal(weekStartOf(`${currentYear.value}-${pad(currentMonth.value)}-01`))
+  const start = dateToOrdinal(weekStart.value)
   if (start >= gridStart && start + 6 <= gridStart + 41) return
-  const mid = fromOrdinal(start + 3)
+  const mid = shiftDate(weekStart.value, 3)
   navigateTo(Number(mid.slice(0, 4)), Number(mid.slice(5, 7)))
 }
 
 function onPrevWeek() {
-  weekStart.value = fromOrdinal(toOrdinal(weekStart.value) - 7)
+  weekStart.value = shiftDate(weekStart.value, -7)
   ensureRangeCoversWeek()
 }
 
 function onNextWeek() {
-  weekStart.value = fromOrdinal(toOrdinal(weekStart.value) + 7)
+  weekStart.value = shiftDate(weekStart.value, 7)
   ensureRangeCoversWeek()
 }
 

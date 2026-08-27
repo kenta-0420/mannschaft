@@ -1,3 +1,4 @@
+import { defineComponent, h } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import CalendarWeekGrid from '~/components/schedule/CalendarWeekGrid.vue'
@@ -28,10 +29,44 @@ function ev(over: Partial<CalendarEventItem> & { id: number; startAt: string; en
   } as CalendarEventItem
 }
 
+/**
+ * PrimeVue Popover の実オーバーレイ挙動（Teleport・トランジション）は検証対象外。
+ * show/hide を no-op にしてスロット本体を常時描画し、中身だけを見る（月ビューのテストと同じ流儀）。
+ */
+const PopoverStub = defineComponent({
+  setup(_props, { slots, expose }) {
+    expose({ show: () => {}, hide: () => {} })
+    return () => slots.default?.()
+  },
+})
+
+/** ScheduleListRow は出欠 composable 等に依存するため、行を出すだけの軽量スタブに置き換える。 */
+const ScheduleListRowStub = defineComponent({
+  props: {
+    event: { type: Object as () => CalendarEventItem, required: true },
+    scopeType: String,
+    scopeId: String,
+  },
+  emits: ['open'],
+  setup(props, { emit }) {
+    return () => h(
+      'button',
+      { 'type': 'button', 'data-testid': `popover-row-${props.event.uniqueKey}`, 'onClick': () => emit('open', props.event.id) },
+      props.event.title,
+    )
+  },
+})
+
 async function mountWeek(events: CalendarEventItem[], weekStart = WEEK_START) {
   return mountSuspended(CalendarWeekGrid, {
     props: { weekStart, events },
-    global: { stubs: { Button: true } },
+    global: {
+      stubs: {
+        Button: true,
+        Popover: PopoverStub,
+        ScheduleListRow: ScheduleListRowStub,
+      },
+    },
   })
 }
 
@@ -298,5 +333,118 @@ describe('CalendarWeekGrid (F03.19 §6.5)', () => {
     expect(overflow.exists()).toBe(true)
     // 実バー2本 + 残り2本が「+N件」へ
     expect(wrapper.findAll('[data-testid^="week-allday-event-"]').length).toBe(2)
+  })
+
+  it('[1] 終日帯の「+N件」を押すとその日の全予定が並び、省かれていた予定も開ける', async () => {
+    const events = [
+      ...Array.from({ length: 4 }, (_, i) =>
+        ev({
+          id: 200 + i,
+          title: `終日${200 + i}`,
+          allDay: true,
+          startAt: '2026-08-04T00:00:00+09:00',
+          endAt: '2026-08-04T23:59:59+09:00',
+        })),
+      // 同じ日の時刻付き予定も一覧に含まれる
+      ev({ id: 210, title: '会議', startAt: '2026-08-04T10:00:00+09:00', endAt: '2026-08-04T11:00:00+09:00' }),
+      // 別の日の予定は含まれない
+      ev({ id: 211, title: '別日', startAt: '2026-08-05T10:00:00+09:00', endAt: '2026-08-05T11:00:00+09:00' }),
+    ]
+    const wrapper = await mountWeek(events)
+
+    // 実バーとして出ているのは 200 / 201 のみ。202 / 203 はレーンから省かれている。
+    const visibleKeys = wrapper.findAll('[data-testid^="week-allday-event-"]')
+      .map(b => b.attributes('data-testid'))
+    expect(visibleKeys).toEqual(['week-allday-event-200', 'week-allday-event-201'])
+
+    await wrapper.get('[data-testid="day-overflow-2026-08-04"]').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    // get() は不在なら例外を投げるので、これ自体がポップオーバー存在の検証になる
+    const popover = wrapper.get('[data-testid="day-detail-popover"]')
+
+    // 省かれていた 202 / 203 が確実に含まれる（これが本修正の核心）
+    for (const id of [200, 201, 202, 203, 210]) {
+      expect(popover.find(`[data-testid="popover-row-${id}"]`).exists()).toBe(true)
+    }
+    // 別の日の予定は出ない
+    expect(popover.find('[data-testid="popover-row-211"]').exists()).toBe(false)
+
+    // 省かれていた予定の行をクリックすると、その予定の詳細を開く経路が発火する
+    await popover.get('[data-testid="popover-row-202"]').trigger('click')
+    const emitted = wrapper.emitted('eventClick')
+    expect(emitted).toBeTruthy()
+    expect(emitted![emitted!.length - 1]).toEqual([202, true])
+  })
+
+  it('[1] 溢れていない日の「+N件」は存在しない（幽霊要素を残さない）', async () => {
+    const wrapper = await mountWeek([
+      ev({ id: 220, allDay: true, startAt: '2026-08-04T00:00:00+09:00', endAt: '2026-08-04T23:59:59+09:00' }),
+    ])
+    expect(wrapper.findAll('[data-testid^="day-overflow-"]').length).toBe(0)
+  })
+
+  it('[2] 日またぎの翌日側の片は 00:00 を表示する（元の開始時刻を出さない）', async () => {
+    const events = [
+      ev({ id: 61, title: '夜間行事', startAt: '2026-08-06T22:00:00+09:00', endAt: '2026-08-07T02:00:00+09:00' }),
+    ]
+    const wrapper = await mountWeek(events)
+    const bars = timedBars(wrapper, '61')
+    expect(bars.length).toBe(2)
+
+    // 8/6 側は実際の開始時刻
+    expect(bars[0]!.text()).toContain('22:00')
+    // 8/7 側は 00:00 の位置にあるので 00:00 を表示する。22:00 と出てはならない。
+    expect(bars[1]!.text()).toContain('00:00')
+    expect(bars[1]!.text()).not.toContain('22:00')
+  })
+
+  it('[2] 分割されない予定の表示時刻は従来どおり実際の開始時刻', async () => {
+    const wrapper = await mountWeek([
+      ev({ id: 63, startAt: '2026-08-04T09:05:00+09:00', endAt: '2026-08-04T10:00:00+09:00' }),
+    ])
+    expect(timedBars(wrapper, '63')[0]!.text()).toContain('09:05')
+  })
+
+  it('[4] 曜日名・週の見出しは選択中のロケールから生成される（日本語直書きしない）', async () => {
+    // テスト環境の既定ロケールは en。日本語の曜日・「年」「月」が出てはならない。
+    const wrapper = await mountWeek([])
+
+    const headerText = wrapper.get('[data-testid="week-day-header-0"]').text()
+    expect(headerText).toContain('Sun')
+    expect(headerText).not.toMatch(/[日月火水木金土]/)
+
+    const label = wrapper.get('h2').text()
+    expect(label).not.toContain('年')
+    expect(label).not.toContain('月')
+    // 週の両端（8/2〜8/8）と年が読み取れる
+    expect(label).toContain('August')
+    expect(label).toContain('2026')
+  })
+
+  it('[3同根] 曜日名は端末ローカルTZに引きずられない（UTC+14 の端末でもずれない）', async () => {
+    // 週の列は通日番号（＝ユーザー設定TZで確定した暦の日付）なので、Intl も UTC で読み戻す必要がある。
+    // まず「timeZone を渡さなければ実際にずれる」ことを示す — これが避けている実害である。
+    const noonUtc = new Date(Date.UTC(2026, 7, 2, 12, 0, 0)) // 2026-08-02(日) 正午 UTC
+    expect(new Intl.DateTimeFormat('en', { weekday: 'short', timeZone: 'UTC' }).format(noonUtc)).toBe('Sun')
+    expect(new Intl.DateTimeFormat('en', { weekday: 'short', timeZone: 'Pacific/Kiritimati' }).format(noonUtc))
+      .toBe('Mon')
+
+    // コンポーネントは UTC 固定で整形するため、列と曜日名の対応は常に保たれる。
+    const wrapper = await mountWeek([], '2026-08-02')
+    expect(wrapper.get('[data-testid="week-day-header-0"]').text()).toContain('Sun')
+    expect(wrapper.get('[data-testid="week-day-header-6"]').text()).toContain('Sat')
+    // 見出しの両端も 8/2〜8/8 のまま（1日ずれない）
+    const label = wrapper.get('h2').text()
+    expect(label).toContain('August 2')
+    expect(label).toContain('8')
+  })
+
+  it('[4] 週が月をまたいでも見出しに両端が出る', async () => {
+    // 2026-07-26(日) 〜 2026-08-01(土)
+    const wrapper = await mountWeek([], '2026-07-26')
+    const label = wrapper.get('h2').text()
+    expect(label).toContain('July')
+    expect(label).toContain('August')
   })
 })
