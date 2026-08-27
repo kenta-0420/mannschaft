@@ -14,6 +14,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * 非同期処理設定。
@@ -31,6 +33,12 @@ import java.util.concurrent.Executor;
 @Configuration
 @EnableAsync
 public class AsyncConfig {
+
+    /**
+     * 既定 AbortPolicy（呼び出し元へ {@code RejectedExecutionException} を投げ返す）。
+     * 状態を持たないハンドラなので拒否のたびに new せず定数として使い回す。
+     */
+    private static final RejectedExecutionHandler ABORT_POLICY = new ThreadPoolExecutor.AbortPolicy();
 
     /**
      * イベント処理用スレッドプール。
@@ -55,7 +63,7 @@ public class AsyncConfig {
                     poolExecutor.getQueue().size(), poolExecutor.getCompletedTaskCount(),
                     runnable.getClass().getName());
             // 既定 AbortPolicy と同じ意味論（呼び出し元へ例外を返す）を維持する。
-            new java.util.concurrent.ThreadPoolExecutor.AbortPolicy().rejectedExecution(runnable, poolExecutor);
+            ABORT_POLICY.rejectedExecution(runnable, poolExecutor);
         });
         executor.initialize();
         return executor;
@@ -260,12 +268,32 @@ public class AsyncConfig {
      *
      * <h2>サイジング根拠</h2>
      * <p>corePoolSize=4 / maxPoolSize=8 / queueCapacity=500。
-     * 1 タスク = 受信者 1 名への WebSocket/Push 送信で、DB は設定/種別/購読の読み取りのみ。
+     * 1 タスク = 受信者 1 名への WebSocket/Push 送信で、DB アクセスは設定/種別/購読の読み取りのみ。
      * 最大 8 並列は CI の Hikari プール 5 本（{@code application-ci.yml:25}）に対して過剰に見えるが、
-     * 本プールのタスクは接続を長く保持しない短命な読み取りであり、かつ CallerRuns により
-     * これ以上の同時実行は投入側の背圧で自動的に抑えられる。無制限キューは OOM の入口になるため
-     * 採らず、既存プール（{@code purge-pool} / {@code page-view-pool} / {@code notification-fanout-pool}）の
-     * 前例に揃えて 500 で上限を切る。</p>
+     * CallerRuns によりこれ以上の同時実行は投入側の背圧で自動的に抑えられる。無制限キューは
+     * OOM の入口になるため採らず、既存プール（{@code purge-pool} / {@code page-view-pool} /
+     * {@code notification-fanout-pool}）の前例に揃えて 500 で上限を切る。</p>
+     *
+     * <h2>CallerRuns の代償（Issue #2953 検分指摘1）</h2>
+     * <p>本プールのタスクは<b>短命な読み取りではない</b>。{@code dispatch} は最後に
+     * {@link com.mannschaft.app.notification.service.WebPushService#sendPushNotification}
+     * を呼び、これは<b>同期 HTTP + 429/5xx 時のリトライ + バックオフ sleep</b> を伴う。
+     * したがって CallerRuns が発火すると、外向き HTTP が
+     * {@link com.mannschaft.app.notification.service.NotificationDeliveryRunner#sendOne} の
+     * {@code REQUIRES_NEW} トランザクションの<b>内側</b>で、呼び出し元（= {@code event-pool}
+     * ワーカー）スレッドにより同期実行される。帰結として</p>
+     * <ul>
+     *   <li>Hikari コネクションを push の HTTP 往復とバックオフのあいだ保持し続ける</li>
+     *   <li>{@code event-pool}（maxPoolSize=5・AbortPolicy）のワーカーが塞がれ、
+     *       飽和の圧力が本プールから {@code event-pool} 側へ移りうる</li>
+     *   <li>410/404 時の {@code pushSubscriptionRepository.deleteByEndpoint} が、
+     *       インライン実行時は通知トランザクションに参加する（非同期実行時と境界が変わる）</li>
+     * </ul>
+     * <p>危険なのは接続の<b>本数</b>ではなく<b>保持時間</b>である。そのため
+     * {@code WebPushService} 側に 1 リクエスト 10 秒・1 通知あたり総予算 30 秒の上限を課し、
+     * 保持時間を上に有界にしてある（予算超過時は例外を投げず諦める。例外を投げると
+     * {@code REQUIRES_NEW} ごと巻き戻り通知行が消えるため）。
+     * push の HTTP をトランザクション境界の外へ出す本筋の是正は別 issue（#2998）とする。</p>
      *
      * @return notification-dispatch-pool エグゼキュータ
      */
