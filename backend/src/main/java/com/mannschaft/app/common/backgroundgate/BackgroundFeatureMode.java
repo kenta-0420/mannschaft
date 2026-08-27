@@ -58,8 +58,32 @@ public enum BackgroundFeatureMode {
      *       <b>第二の型として下に詳述する。</b></li>
      * </ul>
      *
-     * <p>逆に、{@code aggregateForDate(LocalDate)} や {@code closeAll(YearMonth)} のように
-     * <b>対象期間を引数で受ける public な入口</b>があるなら、停止期間分は後から埋められるので本モードでよい。</p>
+     * <p>逆に、停止期間分を後から埋められるなら本モードでよい。ただし判定を誤りやすいので注意せよ。</p>
+     *
+     * <h3>「引数で受ける public メソッドがある」では足りない — <b>呼び手まで確かめよ</b></h3>
+     * <p>確かめるべきは「対象期間を引数で受ける public メソッドがあるか」<b>ではない</b>。
+     * <b>対象期間を指定して再実行できる「運用経路」があるか</b>である。具体的には次のいずれか:</p>
+     * <ul>
+     *   <li>管理 API のエンドポイント（例:
+     *       {@code POST /spotlight/daily-stats/run?targetDate=} が
+     *       {@code AdDailyStatsAggregationBatchService#aggregate(LocalDate)} を呼ぶ）</li>
+     *   <li>引数を受け取る形で公開されたバックフィル用サービス（例:
+     *       {@code AnalyticsBackfillService} が {@code aggregateForDate} /
+     *       {@code recalculateForMonth} を呼び、{@code AnalyticsAlertController} から起動できる）</li>
+     *   <li>他の本番コードからの呼び出し</li>
+     * </ul>
+     *
+     * <p><b>そのいずれも無ければ、その入口は無いに等しい。</b>
+     * {@code @BatchEndpoint} が引数なしの {@code execute()} を呼ぶだけなら、
+     * 手動実行できても<b>対象期間は選べない</b>ので再実行経路にはならない。</p>
+     *
+     * <p><b>踏んだ穴（④-B 第三陣・Codex 検分 P2）</b>:
+     * {@code PageViewDailyAggregationBatchService} を
+     * 「{@code aggregateForDate(LocalDate)} という public 入口があるから追いつける」として
+     * 本モードで据え置いた。しかし<b>そのメソッドの呼び手はゼロ</b>で、
+     * {@code AnalyticsBackfillService} が面倒を見るのは {@code DailyAggregation} と
+     * {@code MonthlyCohort} だけだった。<b>誰も呼ばぬメソッドは、運用にとっては存在せぬのと同じ</b>である。
+     * メソッドの存在を確かめただけで「実測した」と言ってはならない。</p>
      *
      * <h2>第二の型 — 「未処理フラグだけで絞り、時刻の下限を持たぬ」キュー</h2>
      * <p>④-B 第三陣の一巡目は「対象期間を today から導出していて追いつけない」型

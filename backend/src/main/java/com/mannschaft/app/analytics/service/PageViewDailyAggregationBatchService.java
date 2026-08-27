@@ -54,9 +54,8 @@ public class PageViewDailyAggregationBatchService {
     /**
      * 日次集計バッチ本体。前日（JST）を集計する。ShedLock 排他（最大 30 分）。
      */
-    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
-            gateKeys = "FEATURE_TRANSLATION_SEARCH_ENABLED",
-            reason = "集計元の生ログは保持期間 13 ヶ月のパーティションに残り、その期間内なら BatchEndpoint 経由で対象日を再集計できる。パーティション保守側は ALWAYS のまま止まらない")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "execute は常に前日のみを集計し、対象日を指定して再実行できる運用経路が存在しない（aggregateForDate は public だが呼び手がゼロで、AnalyticsBackfillService が面倒を見るのは DailyAggregation と MonthlyCohort だけ。BatchEndpoint も引数なしの execute を呼ぶ）。よって 2 日以上止めると、その期間の日次集計は二度と作れず恒久的に欠測する。集計は内部処理のみで外部送信を伴わず、閉栓中に空回りしても害が無い")
     @BatchEndpoint(
             name = "analytics-pageview-daily-aggregation",
             description = "前日分のページビュー生ログを scope 単位で集計し page_view_daily_stats に毎日 02:00 に書き込む")

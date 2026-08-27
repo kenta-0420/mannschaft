@@ -186,6 +186,10 @@ class BackgroundEntryPolicyDeclarationGuardTest {
             // ポイントリセット（現在月に一致する設定しか取らない）／ランキングスナップショット／
             // バッジ評価（MONTHLY_RANK）。いずれも期間を跨ぐと取り戻せない。
             "com.mannschaft.app.gamification.service.Gamification*BatchService",
+            // ページビュー日次集計。execute は常に前日固定で、対象日を指定して再実行できる
+            // 【運用経路が存在しない】（aggregateForDate は public だが呼び手ゼロ。
+            // AnalyticsBackfillService が面倒を見るのは DailyAggregation と MonthlyCohort だけ）。
+            "com.mannschaft.app.analytics.service.PageViewDailyAggregationBatchService",
             // 資格の失効ステータス更新。止めると期限切れ資格が ACTIVE のまま残る。
             // リマインダー送信（停止可）とは判定が正反対のため別クラスへ切り出してある。
             "com.mannschaft.app.skill.service.SkillExpiryStatusUpdateBatchService",
