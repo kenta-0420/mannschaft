@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.service;
 
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.PaymentItemType;
@@ -31,6 +33,7 @@ public class ContentPaymentGateService {
     private final ContentPaymentGateRepository contentPaymentGateRepository;
     private final PaymentItemService paymentItemService;
     private final ContentGateResolverRegistry contentGateResolverRegistry;
+    private final AuditLogService auditLogService;
 
     /**
      * チーム内のコンテンツゲート一覧を取得する。
@@ -161,6 +164,11 @@ public class ContentPaymentGateService {
 
         log.info("コンテンツゲート設定: contentType={}, contentId={}, gates={}",
                 request.getContentType(), request.getContentId(), gateItems.size());
+        String metadata = String.format(
+                "{\"contentType\":\"%s\",\"contentId\":%s,\"gateCount\":%d}",
+                request.getContentType(), request.getContentId(), gateItems.size());
+        auditLogService.record(AuditEventType.CONTENT_GATE_UPDATED.name(), userId, null,
+                teamId, organizationId, null, null, null, metadata);
         return new ContentGateSetResponse(request.getContentType(), request.getContentId(), gateItems);
     }
 

@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.dto.ContentPaymentGateRequest;
 import com.mannschaft.app.payment.entity.ContentPaymentGateEntity;
@@ -24,6 +25,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -35,6 +38,7 @@ class ContentGateIssue2941Test {
     @Mock private ContentPaymentGateRepository gateRepository;
     @Mock private PaymentItemService paymentItemService;
     @Mock private ContentGateResolverRegistry contentGateResolverRegistry;
+    @Mock private AuditLogService auditLogService;
     @InjectMocks private ContentPaymentGateService service;
 
     @Test
@@ -64,6 +68,8 @@ class ContentGateIssue2941Test {
 
         assertThat(result.getGates()).hasSize(1);
         verify(gateRepository).deleteByContentTypeAndContentId("POST", 101L);
+        verify(auditLogService).record(eq("CONTENT_GATE_UPDATED"), eq(100L), isNull(), eq(1L), isNull(),
+                isNull(), isNull(), isNull(), eq("{\"contentType\":\"POST\",\"contentId\":101,\"gateCount\":1}"));
     }
 
     @Test
@@ -84,9 +90,64 @@ class ContentGateIssue2941Test {
         assertThat(response.getAudit().createdBy()).isEqualTo(100L);
     }
 
+    @Test
+    @DisplayName("AC-4: 組織ゲート更新は組織スコープと操作者を監査記録する")
+    void 組織スコープと操作者を監査記録する() {
+        given(paymentItemService.findByIdOrThrow(30L)).willReturn(PaymentItemEntity.builder()
+                .id(30L).organizationId(2L).name("item").type(PaymentItemType.ANNUAL_FEE)
+                .amount(BigDecimal.ONE).build());
+        given(contentGateResolverRegistry.existsInScope("POST", 102L, null, 2L)).willReturn(true);
+        given(gateRepository.save(any())).willReturn(ContentPaymentGateEntity.builder().id(2L)
+                .paymentItemId(30L).contentType("POST").contentId(102L).createdBy(101L).build());
+
+        service.setOrganizationContentGates(2L, 101L, requestWithPaymentItem(102L, 30L));
+
+        verify(auditLogService).record(eq("CONTENT_GATE_UPDATED"), eq(101L), isNull(), isNull(), eq(2L),
+                isNull(), isNull(), isNull(), eq("{\"contentType\":\"POST\",\"contentId\":102,\"gateCount\":1}"));
+    }
+
+    @Test
+    @DisplayName("AC-4: 空のゲート一覧による解除も対象と操作者を監査記録する")
+    void ゲート解除も対象と操作者を監査記録する() {
+        given(contentGateResolverRegistry.existsInScope("POST", 103L, 1L, null)).willReturn(true);
+
+        service.setTeamContentGates(1L, 100L, new ContentPaymentGateRequest("POST", 103L, List.of()));
+
+        verify(auditLogService).record(eq("CONTENT_GATE_UPDATED"), eq(100L), isNull(), eq(1L), isNull(),
+                isNull(), isNull(), isNull(), eq("{\"contentType\":\"POST\",\"contentId\":103,\"gateCount\":0}"));
+    }
+
+    @Test
+    @DisplayName("AC-4: 入力検証失敗時は監査記録しない")
+    void 入力検証失敗時は監査記録しない() {
+        given(contentGateResolverRegistry.existsInScope("POST", 104L, 1L, null)).willReturn(true);
+        given(paymentItemService.findByIdOrThrow(20L))
+                .willThrow(new BusinessException(PaymentErrorCode.PAYMENT_ITEM_NOT_FOUND));
+
+        assertThatThrownBy(() -> service.setTeamContentGates(1L, 100L, request(104L)))
+                .isInstanceOf(BusinessException.class);
+        verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("AC-4: ゲート保存失敗時は監査記録しない")
+    void ゲート保存失敗時は監査記録しない() {
+        given(paymentItemService.findByIdOrThrow(20L)).willReturn(item(20L, 1L));
+        given(contentGateResolverRegistry.existsInScope("POST", 105L, 1L, null)).willReturn(true);
+        given(gateRepository.save(any())).willThrow(new RuntimeException("save failed"));
+
+        assertThatThrownBy(() -> service.setTeamContentGates(1L, 100L, request(105L)))
+                .isInstanceOf(RuntimeException.class);
+        verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
     private static ContentPaymentGateRequest request(Long contentId) {
+        return requestWithPaymentItem(contentId, 20L);
+    }
+
+    private static ContentPaymentGateRequest requestWithPaymentItem(Long contentId, Long paymentItemId) {
         return new ContentPaymentGateRequest("POST", contentId,
-                List.of(new ContentPaymentGateRequest.GateEntry(20L, false)));
+                List.of(new ContentPaymentGateRequest.GateEntry(paymentItemId, false)));
     }
 
     private static PaymentItemEntity item(Long id, Long teamId) {
