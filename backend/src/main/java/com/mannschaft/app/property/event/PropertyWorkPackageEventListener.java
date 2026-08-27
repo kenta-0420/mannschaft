@@ -1,5 +1,7 @@
 package com.mannschaft.app.property.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.incident.entity.IncidentEntity;
 import com.mannschaft.app.incident.event.IncidentStatusChangedEvent;
 import com.mannschaft.app.incident.repository.IncidentRepository;
@@ -76,6 +78,8 @@ public class PropertyWorkPackageEventListener {
      * <p>例外が発生した場合はログに記録するのみで、F07.6 側の処理を阻害しない
      * （{@code REQUIRES_NEW} + 内部 try-catch）。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "上流の Incident は別ゲート（FEATURE_MODERATION_INCIDENT_ENABLED）で独立に CONFIRMED へ進むため、本ゲートを閉じている間もイベントは飛んでくる。落とすとイベントは再生されず、F09.13 §5.2 が要求する incidentId 付き履歴パッケージと相互リンクが恒久的に欠落する")
     @EventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onIncidentStatusChanged(IncidentStatusChangedEvent event) {

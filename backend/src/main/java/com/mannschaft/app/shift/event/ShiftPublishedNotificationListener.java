@@ -1,5 +1,7 @@
 package com.mannschaft.app.shift.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.membership.fanout.TeamFanoutRecipientSource;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.fanout.FanoutMessageKind;
@@ -42,6 +44,9 @@ public class ShiftPublishedNotificationListener {
 
     private final NotificationFanoutJobService fanoutJobService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SHIFT_ENABLED",
+            reason = "失われるのはシフト公開通知の配信ジョブ登録のみで DB の正本は書き換わらず、シフト機能を閉じている間は通知を受け取る画面自体が閉じているため未配信でも齟齬が生じない")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onShiftPublished(ShiftPublishedEvent event) {

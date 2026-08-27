@@ -1,6 +1,8 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.reservation.repository.ReservationSlotTemplateRepository;
 import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import lombok.extern.slf4j.Slf4j;
@@ -61,6 +63,8 @@ public class ReservationSlotGenerationBatchService {
      */
     @BatchEndpoint(name = "reservation-slot-generation",
             description = "週間テンプレートから予約枠の horizon（28日先）差分を日次生成する")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予約枠の先送りホライズン生成であり、冪等かつ将来分が対象なので再開後に埋め直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "0 15 0 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "reservationSlotGeneration", lockAtLeastFor = "1m", lockAtMostFor = "30m")
     public void generateDailyHorizon() {

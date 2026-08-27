@@ -705,7 +705,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 更新手順は {@link #EXPECTED_LINES_AUTHZ_WAVE4} と同様（対象ファイル:
      * {@code f14374b1-655e-4df2-8e82-2d79c8df9174}）。
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1508;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1505;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。

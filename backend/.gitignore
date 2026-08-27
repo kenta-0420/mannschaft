@@ -8,6 +8,11 @@ hs_err_pid*
 
 # --- Gradle ---
 .gradle/
+# 検分（/検分）が GRADLE_USER_HOME に使う一時ディレクトリ。
+# wrapper の .lck / .part は Gradle が実行のたびに更新・削除するため、
+# 追跡下に置くと「正常なテスト実行だけで作業ツリーが dirty になる」。
+# 機械固有の一時物であり、コミットしてはならない（実際に一度混入させた）。
+.gradle-review/
 build/
 bin/
 !gradle/wrapper/gradle-wrapper.jar

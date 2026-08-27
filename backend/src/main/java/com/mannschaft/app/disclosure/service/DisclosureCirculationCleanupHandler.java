@@ -1,6 +1,8 @@
 package com.mannschaft.app.disclosure.service;
 
 import com.mannschaft.app.circulation.event.CirculationDocumentDeletedEvent;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.disclosure.entity.DisclosureExportEntity;
 import com.mannschaft.app.disclosure.repository.DisclosureExportRepository;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +55,8 @@ public class DisclosureCirculationCleanupHandler {
      *
      * @param event 回覧文書削除イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると削除済み回覧文書への参照が出力履歴に残る。クロスドメイン FK を撤去した代替であり、DB 側に整合を戻す手段が無い")
     @Async("event-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

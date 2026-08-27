@@ -1,5 +1,7 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.PricingModel;
@@ -118,6 +120,8 @@ public class AdMessagingBillingBridge {
      * <p>F09.7 の {@code MonthlyInvoiceBatchService} (1 日 05:00) より前に走らせ、
      * 同一 invoice 内に F09.17 由来明細も含める設計。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "殿の裁定: 手動再実行経路（BatchEndpoint）を持たぬため、止めた月の広告メッセージ課金は明細として請求へ載らず恒久的に未請求になる。取り損ねた売上は復旧不能である")
     @Scheduled(cron = "${mannschaft.ad.billing.cron:0 0 3 1 * *}", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "adMessagingBilling",
