@@ -1,10 +1,13 @@
 package com.mannschaft.app.quickmemo.event;
 
+
+
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import java.util.Locale;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,9 +18,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
-
-import java.util.Locale;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,7 +54,7 @@ class QuickMemoReminderNotificationListenerTest {
     @Test
     @DisplayName("PERSONAL スコープ・件数のみの本文で 1 件単位の配送 Runner が呼ばれる")
     void 集約通知が配送される() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(Mockito.mock(NotificationEntity.class));
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
 
         listener.onQuickMemoReminderNotification(new QuickMemoReminderNotificationEvent(100L, 3));
 
@@ -83,7 +83,7 @@ class QuickMemoReminderNotificationListenerTest {
     @Test
     @DisplayName("visibility deny（null 復帰）でも例外にしない")
     void denyでも例外にしない() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(null);
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.VISIBILITY_DENIED);
 
         assertThatCode(() -> listener.onQuickMemoReminderNotification(
                 new QuickMemoReminderNotificationEvent(100L, 1))).doesNotThrowAnyException();
@@ -93,7 +93,7 @@ class QuickMemoReminderNotificationListenerTest {
     @DisplayName("locale 解決に失敗しても既定 locale で配送する")
     void locale解決失敗でも配送する() {
         given(userLocaleCache.getLocale(anyLong())).willThrow(new RuntimeException("模擬キャッシュ障害"));
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(Mockito.mock(NotificationEntity.class));
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
 
         listener.onQuickMemoReminderNotification(new QuickMemoReminderNotificationEvent(100L, 1));
 
