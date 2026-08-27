@@ -91,10 +91,18 @@ export function normalizeRange(
   return { startMin, endMin }
 }
 
-/** 単クリックの範囲（その位置から既定60分・§6.6.2）。24:00 を越えたら 24:00 で止める。 */
+/**
+ * 単クリックの範囲（その位置から既定60分・§6.6.2）。24:00 を越えたら 24:00 で止める。
+ *
+ * **正規化は {@link normalizeRange} に委ねる。** 自前で `Math.min(MINUTES_PER_DAY, ...)` を
+ * 掛けると、23:53 のように開始が 24:00 へ丸まる位置で開始と終了が同値になり、
+ * **ゼロ分の予定**が確定してしまう（§6.6.3 の「最小選択長は15分」に反する）。
+ * normalizeRange は 24:00 のクランプと最小長の確保を両方持っているため、
+ * 「この位置から60分」を1本の範囲として通せば、末端でも自動的に
+ * 23:45–24:00 のような正の範囲へ収まる。判定を二重に持たないことが肝要。
+ */
 export function defaultRangeFrom(minutes: number, snap: number): { startMin: number; endMin: number } {
-  const startMin = snapToBoundary(minutes, snap)
-  return { startMin, endMin: Math.min(MINUTES_PER_DAY, startMin + DEFAULT_DURATION_MIN) }
+  return normalizeRange(minutes, minutes + DEFAULT_DURATION_MIN, snap)
 }
 
 export interface UseGridRangeSelectOptions {

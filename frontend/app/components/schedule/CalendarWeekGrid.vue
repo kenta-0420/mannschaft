@@ -384,10 +384,27 @@ function resolveGridPoint(clientX: number, clientY: number): GridPoint | null {
   }
 }
 
-/** 日内の分 → ユーザー TZ のオフセット付き ISO 8601（§6.6.5・R16）。24:00 は翌日 0:00 になる。 */
+/**
+ * 日内の分 → ユーザー TZ のオフセット付き ISO 8601（§6.6.5・R16）。24:00 は翌日 0:00 になる。
+ *
+ * **深夜 0:00 に分を足してはならない。** 夏時間の切替日は「その日の 0:00 のオフセット」と
+ * 「選んだ時刻のオフセット」が異なるため、加算方式では選んだ壁時計とずれた瞬間が出る
+ * （例: America/New_York の 2026-03-08 は 0:00 が -05:00、9:00 は -04:00。0:00 に 540分を
+ * 足すと 10:00 を指してしまい、選んだ 9:00 から1時間ずれる）。
+ *
+ * **暦日と壁時計の時分から直接構築する**ことで、その瞬間の正しいオフセットが適用される。
+ * これは `useDatetime.buildOffsetDateTimeStr()`（:104-116）と同じ流儀であり、
+ * §6.6.5 が「ピッカーの Date は瞬間ではなく壁時計」と警告している罠の同根である。
+ */
 function toUserTzIso(dayIndex: number, minutes: number): string {
-  const dateStr = weekDays.value[dayIndex]!.dateStr
-  return dayjs.tz(`${dateStr}T00:00:00`, userTimezone.value).add(minutes, 'minute').format()
+  const day = weekDays.value[dayIndex]!
+  // 24:00（= MINUTES_PER_DAY）は翌日の 0:00。暦日を繰り上げてから壁時計を組む
+  // （23:60 のような不正な時刻文字列を dayjs へ渡さないため）。
+  const dayCarry = Math.floor(minutes / MINUTES_PER_DAY)
+  const withinDay = minutes - dayCarry * MINUTES_PER_DAY
+  const dateStr = dayCarry === 0 ? day.dateStr : ordinalToDate(day.ord + dayCarry)
+  const timeStr = `${pad(Math.floor(withinDay / 60))}:${pad(withinDay % 60)}:00`
+  return dayjs.tz(`${dateStr}T${timeStr}`, userTimezone.value).format()
 }
 
 const gridSelect = useGridRangeSelect({

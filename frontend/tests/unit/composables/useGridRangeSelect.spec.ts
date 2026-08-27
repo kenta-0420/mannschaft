@@ -5,6 +5,7 @@ import type { GridPoint, GridRange, UseGridRangeSelect } from '~/composables/use
 import {
   CLICK_THRESHOLD_PX,
   LONG_PRESS_MS,
+  MIN_RANGE_MIN,
   TOUCH_CANCEL_PX,
   defaultRangeFrom,
   normalizeRange,
@@ -177,6 +178,38 @@ describe('useGridRangeSelect — 純粋関数（§6.6.3）', () => {
   it('単クリックはその位置から既定 60分。24:00 を越える位置なら 24:00 で止める（§6.6.2）', () => {
     expect(defaultRangeFrom(9 * 60, 15)).toEqual({ startMin: 540, endMin: 600 })
     expect(defaultRangeFrom(23 * 60 + 30, 15)).toEqual({ startMin: 1410, endMin: 1440 })
+  })
+
+  /**
+   * [P2] 最終スナップ境界へ丸まる位置の単クリックでゼロ分の予定が生まれてはならない。
+   *
+   * 23:53 は最近傍丸めで 24:00 になる。素朴に `Math.min(1440, start + 60)` で終端を切ると
+   * 開始 1440・終了 1440 の**ゼロ分の予定**が確定する（§6.6.3 の最小15分に反する）。
+   */
+  it('[P2] 24:00 直前の単クリックでもゼロ分にならず、15分以上の正の範囲になる', () => {
+    // 23:53 → 開始が 24:00 へ丸まる位置
+    const late = defaultRangeFrom(23 * 60 + 53, 15)
+    expect(late.endMin).toBeGreaterThan(late.startMin)
+    expect(late.endMin - late.startMin).toBeGreaterThanOrEqual(MIN_RANGE_MIN)
+    expect(late).toEqual({ startMin: 23 * 60 + 45, endMin: 1440 })
+
+    // 23:59 に近い位置でも同様（24:00 を越えず、正の範囲を保つ）
+    const later = defaultRangeFrom(23 * 60 + 59, 15)
+    expect(later.endMin).toBeGreaterThan(later.startMin)
+    expect(later.endMin - later.startMin).toBeGreaterThanOrEqual(MIN_RANGE_MIN)
+    expect(later.endMin).toBe(1440)
+
+    // ちょうど 24:00 を指した場合も同じ
+    const atEnd = defaultRangeFrom(1440, 15)
+    expect(atEnd).toEqual({ startMin: 1425, endMin: 1440 })
+  })
+
+  it('[P2] 通常の位置では従来どおり「その位置から60分」のまま（末端対応が通常経路を壊していない）', () => {
+    expect(defaultRangeFrom(9 * 60 + 7, 15)).toEqual({ startMin: 540, endMin: 600 })
+    expect(defaultRangeFrom(0, 15)).toEqual({ startMin: 0, endMin: 60 })
+    expect(defaultRangeFrom(13 * 60, 15)).toEqual({ startMin: 780, endMin: 840 })
+    // 22:30 は 60分ぶん取れる（23:30 で 24:00 に触れない）
+    expect(defaultRangeFrom(22 * 60 + 30, 15)).toEqual({ startMin: 1350, endMin: 1410 })
   })
 
   it('スナップ 30分（将来のズームアウト）でも最小長は 30分になり負の範囲を作らない', () => {
