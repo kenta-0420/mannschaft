@@ -1350,7 +1350,10 @@
       },
       "week": {
         "allDay": "全天",
-        "now": "现在"
+        "now": "现在",
+        "dragHint": "拖动以创建日程",
+        "dragHintTouch": "长按后拖动即可创建日程",
+        "selectedRange": "{start} – {end}"
       }
     }
   },

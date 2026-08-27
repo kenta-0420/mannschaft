@@ -14,6 +14,8 @@
 import dayjs from 'dayjs'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 import { MINUTES_PER_DAY, dateToOrdinal, eventDayOccupancy, ordinalToDate, todayInTimezone } from '~/utils/calendarWeek'
+import type { GridPoint } from '~/composables/useGridRangeSelect'
+import { snapMinutesForDensity, useGridRangeSelect } from '~/composables/useGridRangeSelect'
 
 const { userTimezone } = useDatetime()
 const { t, locale } = useI18n()
@@ -23,6 +25,12 @@ const props = defineProps<{
   /** 表示する週の起点（日曜）の日付。'YYYY-MM-DD'。 */
   weekStart: string
   events: CalendarEventItem[]
+  /**
+   * §6.6.6 現在の**作成スコープ**のレイヤー色。選択ハイライトはこの色で描き、
+   * 「これから何色の予定がここに入るか」を選択中に見せる。
+   * 表示フィルタ（`selectedScopes`）とは無関係（(d) との整合・P2）。
+   */
+  createScopeColor?: string
 }>()
 
 const emit = defineEmits<{
@@ -31,6 +39,12 @@ const emit = defineEmits<{
   prevWeek: []
   nextWeek: []
   today: []
+  /**
+   * §6.6.5 グリッド選択の確定。**ユーザー TZ のオフセットを明示した ISO 8601** を渡す
+   * （例 `2026-08-06T09:00:00+09:00`）。ナイーブ文字列は渡さない。
+   * コンポーネント自身はダイアログを知らない — 親が組み立てる（既存 `dateClick` と同じ責務分離）。
+   */
+  rangeSelect: [startAt: string, endAt: string]
 }>()
 
 // ---- レイアウト定数（§6.5.1） ----
@@ -346,6 +360,90 @@ function focusToday(): void {
 
 defineExpose({ focusToday })
 
+// ---- グリッド選択による予定作成（§6.6） ----
+/** 7日分の列を包む要素。クライアント座標 → (曜日, 分) の変換の基準にする。 */
+const columnsEl = ref<HTMLElement | null>(null)
+
+/**
+ * クライアント座標をグリッド上の点へ落とす。
+ *
+ * `columnsEl` はスクロールコンテナの**内側**にあるため、`getBoundingClientRect()` の
+ * `top` がスクロール量を自動的に織り込む。スクロール位置を自前で足し引きしてはならない
+ * （自動スクロール中に二重に効いて選択が飛ぶ）。
+ */
+function resolveGridPoint(clientX: number, clientY: number): GridPoint | null {
+  const el = columnsEl.value
+  if (!el) return null
+  const rect = el.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) return null
+  const colWidth = rect.width / weekDays.value.length
+  const rawCol = Math.floor((clientX - rect.left) / colWidth)
+  return {
+    dayIndex: Math.min(weekDays.value.length - 1, Math.max(0, rawCol)),
+    minutes: (clientY - rect.top) / MIN_H,
+  }
+}
+
+/** 日内の分 → ユーザー TZ のオフセット付き ISO 8601（§6.6.5・R16）。24:00 は翌日 0:00 になる。 */
+function toUserTzIso(dayIndex: number, minutes: number): string {
+  const dateStr = weekDays.value[dayIndex]!.dateStr
+  return dayjs.tz(`${dateStr}T00:00:00`, userTimezone.value).add(minutes, 'minute').format()
+}
+
+const gridSelect = useGridRangeSelect({
+  // このコンポーネント自体が週ビューなので常に有効。月ビュー／アジェンダビューは
+  // そもそもこの composable を使わない（§6.6.2 の「週ビュー限定」＝ AC-22b）。
+  enabled: () => true,
+  snapMinutes: () => snapMinutesForDensity(HOUR_H),
+  resolvePoint: resolveGridPoint,
+  scrollEl: () => scrollEl.value,
+  onCommit: range => emit('rangeSelect', toUserTzIso(range.dayIndex, range.startMin), toUserTzIso(range.dayIndex, range.endMin)),
+})
+
+/** 時刻ラベルの片側。`9:00` のように時は0埋めしない（§6.6.3 の表記例）。24:00 は 24:00 のまま出す。 */
+function fmtRangeBoundary(minutes: number): string {
+  return `${Math.floor(minutes / 60)}:${pad(minutes % 60)}`
+}
+
+const selectionLabel = computed(() => {
+  const sel = gridSelect.selection.value
+  if (!sel) return ''
+  return t('schedule.calendar.week.selectedRange', {
+    start: fmtRangeBoundary(sel.startMin),
+    end: fmtRangeBoundary(sel.endMin),
+  })
+})
+
+const selectionBoxStyle = computed<Record<string, string>>(() => {
+  const sel = gridSelect.selection.value
+  if (!sel) return {}
+  return {
+    top: `${(sel.startMin * MIN_H).toFixed(2)}px`,
+    height: `${((sel.endMin - sel.startMin) * MIN_H).toFixed(2)}px`,
+    // 色だけに依存させない（§6.6.3・色覚多様性配慮）。塗りに加えて破線枠を持たせる。
+    borderColor: props.createScopeColor ?? DEFAULT_COLOR,
+  }
+})
+
+/** 半透明の塗り（`opacity: 0.35`）。時刻ラベルまで薄くならないよう塗りだけを別レイヤーに分ける。 */
+const selectionFillStyle = computed<Record<string, string>>(() => ({
+  backgroundColor: props.createScopeColor ?? DEFAULT_COLOR,
+  opacity: '0.35',
+}))
+
+/**
+ * 操作ヒント（§8）。タッチ端末では「長押ししてなぞる」と伝えないと、
+ * §6.6.4 の長押しゲートは「反応しない機能」にしか見えない。
+ */
+const isCoarsePointer = ref(false)
+onMounted(() => {
+  isCoarsePointer.value = typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(pointer: coarse)').matches
+})
+const dragHintText = computed(() =>
+  t(isCoarsePointer.value ? 'schedule.calendar.week.dragHintTouch' : 'schedule.calendar.week.dragHint'))
+
 // ---- スロット（§6.5.4 の data-testid 規約） ----
 const slotRows = computed(() =>
   Array.from({ length: 24 }, (_, hour) => SNAP_MINUTES.map(minute => ({ hour, minute }))).flat())
@@ -465,13 +563,17 @@ function onEventClick(event: CalendarEventItem) {
         <h2 class="text-lg font-extrabold">{{ weekLabel }}</h2>
         <Button icon="pi pi-chevron-right" text rounded data-testid="week-next" @click="emit('nextWeek')" />
       </div>
-      <Button
-        :label="t('schedule.calendar.today')"
-        text
-        size="small"
-        data-testid="calendar-today-button"
-        @click="emit('today')"
-      />
+      <div class="flex items-center gap-2">
+        <!-- 操作ヒント（§8）。ポインタ種別で文言を出し分ける（モバイルは長押しが前提のため） -->
+        <span class="hidden text-[10px] text-surface-500 sm:inline" data-testid="week-drag-hint">{{ dragHintText }}</span>
+        <Button
+          :label="t('schedule.calendar.today')"
+          text
+          size="small"
+          data-testid="calendar-today-button"
+          @click="emit('today')"
+        />
+      </div>
     </div>
 
     <div ref="scrollEl" class="relative max-h-[70vh] overflow-auto" data-testid="week-scroll-container">
@@ -498,8 +600,10 @@ function onEventClick(event: CalendarEventItem) {
         </div>
 
         <!-- 終日帯（sticky・日付ヘッダー直下） -->
+        <!-- data-range-select-ignore: 終日帯は時刻を持たないため、ここから始まるジェスチャは拾わない（§6.6.2） -->
         <div
           data-testid="week-allday-lane"
+          data-range-select-ignore
           class="sticky z-20 flex border-b border-surface-300 bg-surface-0 dark:border-surface-600 dark:bg-surface-900"
           :style="{ top: `${HEADER_H}px` }"
         >
@@ -551,7 +655,8 @@ function onEventClick(event: CalendarEventItem) {
         <!-- 時間グリッド -->
         <div class="flex">
           <!-- 時刻ラベル列（sticky left-0） -->
-          <div class="sticky left-0 z-10 w-14 shrink-0 bg-surface-0 dark:bg-surface-900">
+          <!-- data-range-select-ignore: スクロール操作と衝突するため選択の起点にしない（§6.6.2） -->
+          <div data-range-select-ignore class="sticky left-0 z-10 w-14 shrink-0 bg-surface-0 dark:bg-surface-900">
             <div v-for="h in 24" :key="`hour-${h}`" class="relative" :style="{ height: `${HOUR_H}px` }">
               <span
                 class="absolute right-1 top-0 text-[10px] text-surface-500"
@@ -560,8 +665,19 @@ function onEventClick(event: CalendarEventItem) {
             </div>
           </div>
 
-          <!-- 7日分の列 -->
-          <div class="relative flex flex-1">
+          <!-- 7日分の列（§6.6 グリッド選択の受け口） -->
+          <!--
+            `touch-action` は**選択モード中だけ** none にする（§6.6.4-4）。
+            常時 none にするとタッチでの縦スクロールが完全に死ぬ。
+          -->
+          <div
+            ref="columnsEl"
+            data-testid="week-grid-columns"
+            class="relative flex flex-1"
+            :style="{ touchAction: gridSelect.isSelecting.value ? 'none' : 'auto' }"
+            @pointerdown="gridSelect.onPointerDown"
+            @touchstart="gridSelect.onTouchStart"
+          >
             <div
               v-for="(day, di) in weekDays"
               :key="`col-${day.dateStr}`"
@@ -587,6 +703,7 @@ function onEventClick(event: CalendarEventItem) {
                 :key="`seg-${seg.event.uniqueKey}-${seg.dayIndex}`"
                 :data-testid="`week-event-${seg.event.uniqueKey}`"
                 :data-day-index="seg.dayIndex"
+                data-range-select-ignore
                 class="absolute z-10 flex cursor-pointer select-none flex-col overflow-hidden rounded-r px-1 text-[10px] leading-tight"
                 :style="segStyle(seg)"
                 @click.stop="onEventClick(seg.event)"
@@ -605,6 +722,22 @@ function onEventClick(event: CalendarEventItem) {
                   class="shrink-0 text-center leading-none"
                   data-testid="week-event-continues-after"
                 >▼</span>
+              </div>
+
+              <!--
+                選択ハイライト（§6.6.3）。**選択を開始した列にだけ**描く。
+                横へ指が移っても列は変わらない（斜めに引いて複数日の予定が生まれるのは事故）。
+              -->
+              <div
+                v-if="gridSelect.selection.value && gridSelect.selection.value.dayIndex === di"
+                data-testid="week-selection-highlight"
+                class="pointer-events-none absolute inset-x-0 z-20 flex items-center justify-center overflow-hidden rounded border-2 border-dashed"
+                :style="selectionBoxStyle"
+              >
+                <span class="absolute inset-0" :style="selectionFillStyle" />
+                <span class="relative px-1 text-[10px] font-bold leading-tight text-surface-900 dark:text-surface-0">
+                  {{ selectionLabel }}
+                </span>
               </div>
 
               <!-- 現在時刻ライン（今日の列のみ・1分ごとに更新） -->
