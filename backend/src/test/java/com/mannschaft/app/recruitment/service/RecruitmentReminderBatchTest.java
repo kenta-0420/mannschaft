@@ -43,7 +43,7 @@ class RecruitmentReminderBatchTest {
     @Test
     @DisplayName("未送信リマインダーがない場合 → Runner を呼ばない")
     void reminderBatch_noPending_noRunnerCall() {
-        given(reminderRepository.findTop100BySentAtIsNullAndRemindAtLessThanEqual(any()))
+        given(reminderRepository.findSendableReminders(any(), any()))
                 .willReturn(List.of());
 
         batch.reminderBatch();
@@ -54,7 +54,7 @@ class RecruitmentReminderBatchTest {
     @Test
     @DisplayName("AC-1: 1件が失敗しても後続のリマインダーは処理される（catch はオーケストレータ側）")
     void reminderBatch_oneFails_continuesWithRest() throws Exception {
-        given(reminderRepository.findTop100BySentAtIsNullAndRemindAtLessThanEqual(any()))
+        given(reminderRepository.findSendableReminders(any(), any()))
                 .willReturn(List.of(buildReminder(1L, 10L, 100L),
                         buildReminder(2L, 10L, 101L),
                         buildReminder(3L, 10L, 102L)));
@@ -73,7 +73,7 @@ class RecruitmentReminderBatchTest {
     @Test
     @DisplayName("抽出した全件が Runner に 1 件ずつ渡される")
     void reminderBatch_delegatesEachReminderToRunner() throws Exception {
-        given(reminderRepository.findTop100BySentAtIsNullAndRemindAtLessThanEqual(any()))
+        given(reminderRepository.findSendableReminders(any(), any()))
                 .willReturn(List.of(buildReminder(7L, 10L, 100L)));
         given(recruitmentReminderRunner.processOne(7L)).willReturn(true);
 

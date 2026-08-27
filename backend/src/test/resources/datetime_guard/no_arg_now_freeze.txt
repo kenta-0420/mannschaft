@@ -273,7 +273,8 @@ NO_ARG_NOW|com.mannschaft.app.family.service.CareAbsentAlertBatchService|2
 NO_ARG_NOW|com.mannschaft.app.family.service.CareLinkService|3
 NO_ARG_NOW|com.mannschaft.app.family.service.CoinTossService|1
 NO_ARG_NOW|com.mannschaft.app.family.service.EventEndReminderBatchService|1
-NO_ARG_NOW|com.mannschaft.app.family.service.FamilyBatchService|3
+NO_ARG_NOW|com.mannschaft.app.family.service.FamilyBatchService|1
+NO_ARG_NOW|com.mannschaft.app.family.service.FamilyRetentionCleanupBatchService|2
 NO_ARG_NOW|com.mannschaft.app.family.service.PresenceService|4
 NO_ARG_NOW|com.mannschaft.app.faq.service.FaqAdminService|2
 NO_ARG_NOW|com.mannschaft.app.favorite.entity.UserFavoriteEntity|1
@@ -717,7 +718,8 @@ NO_ARG_NOW|com.mannschaft.app.signage.entity.SignageScreenEntity|1
 NO_ARG_NOW|com.mannschaft.app.signage.service.SignageAccessTokenService|1
 NO_ARG_NOW|com.mannschaft.app.skill.entity.MemberSkillEntity|2
 NO_ARG_NOW|com.mannschaft.app.skill.entity.SkillCategoryEntity|1
-NO_ARG_NOW|com.mannschaft.app.skill.service.SkillExpiryReminderBatchService|3
+NO_ARG_NOW|com.mannschaft.app.skill.service.SkillExpiryReminderBatchService|2
+NO_ARG_NOW|com.mannschaft.app.skill.service.SkillExpiryStatusUpdateBatchService|1
 NO_ARG_NOW|com.mannschaft.app.skill.service.SkillSearchService|1
 NO_ARG_NOW|com.mannschaft.app.social.announcement.AnnouncementFeedEntity|2
 NO_ARG_NOW|com.mannschaft.app.social.announcement.AnnouncementReadService|1

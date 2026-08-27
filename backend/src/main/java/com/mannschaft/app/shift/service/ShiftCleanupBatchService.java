@@ -1,5 +1,7 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.shift.entity.ShiftSwapRequestEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
@@ -59,6 +61,9 @@ public class ShiftCleanupBatchService {
      * 毎日 AM 3:00（JST）に実行。48h 経過した PENDING スワップ申請を
      * 1 件ずつ独立トランザクションで自動キャンセルする。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SHIFT_ENABLED",
+            reason = "止めても PENDING スワップ申請が残るだけで、シフト機能を閉じている間は申請自体が発生せず、再開後に 48h 経過条件で同じ行を拾い直せる")
     @BatchEndpoint(name = "shift-swap-expiry-cancel-daily", description = "48h 経過した PENDING スワップ申請を毎日 03:00 に自動キャンセルする")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "shift_swap_expiry_cancel", lockAtMostFor = "PT30M", lockAtLeastFor = "PT5M")
@@ -117,6 +122,9 @@ public class ShiftCleanupBatchService {
      * <p>ループも通知も持たない単一のバルク DELETE であり、まとめて 1 トランザクションでコミットするのが
      * 正しい形のため {@code @Transactional} を維持する（Issue #2834 の是正対象外）。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SHIFT_ENABLED",
+            reason = "止めても ARCHIVED 30 日超のシフト希望が残るだけで、法定保持義務のあるデータではなく再開後に同条件で削除し直せる")
     @BatchEndpoint(name = "shift-request-cleanup-daily", description = "ARCHIVED から 30 日経過のシフト希望を毎日 03:05 に物理削除する")
     @Scheduled(cron = "0 5 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "shift_request_cleanup", lockAtMostFor = "PT30M", lockAtLeastFor = "PT5M")

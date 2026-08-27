@@ -1,5 +1,7 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.campaign.entity.AdBannerDelivery;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
@@ -65,6 +67,9 @@ public class AdCampaignStateTransitionScheduler {
     /**
      * 5 分間隔 (Asia/Tokyo) で起動する状態遷移本体。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "止めてもキャンペーンが現在の状態に留まるだけで、再開後に同じ日時条件で遷移をまとめて追いつける")
     @Scheduled(cron = "${mannschaft.ad.state-transition.cron:0 */5 * * * *}", zone = "Asia/Tokyo")
     @SchedulerLock(name = "adCampaignStateTransition", lockAtMostFor = "PT15M", lockAtLeastFor = "1m")
     @BatchEndpoint(name = "ad-campaign-state-transition",
@@ -144,6 +149,9 @@ public class AdCampaignStateTransitionScheduler {
      * @return FreqCap 返却を試みた予約行数。ShedLock はプリミティブ戻り値のメソッドをロックできないため
      *         参照型 {@code Integer} を返す（issue #2724）。ロック未取得時は ShedLock が {@code null} を返す
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "予約行を残したまま日次で再スキャンしても over-decrement が起きない冪等設計であり、止めても再開後の再スキャンで FreqCap を返却し直せる")
     @Scheduled(cron = "0 15 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "adBannerReservationExpiry", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @BatchEndpoint(name = "ad-banner-reservation-expire-daily",

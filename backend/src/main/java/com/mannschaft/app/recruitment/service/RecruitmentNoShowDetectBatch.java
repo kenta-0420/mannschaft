@@ -1,5 +1,7 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.NoShowReason;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
@@ -44,6 +46,9 @@ public class RecruitmentNoShowDetectBatch {
     /**
      * 毎時30分に実行（confirmバッチと時間をずらす）。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_RECRUITMENT_ENABLED",
+            reason = "終了 24h 経過という時刻条件のみで検出するため、止めても再開後の初回実行で同じ参加者を仮マークし直せる")
     @BatchEndpoint(name = "recruitment-no-show-detect-hourly", description = "終了 24h 経過した CONFIRMED 参加者を毎時 30 分に NO_SHOW 仮マークする")
     @Scheduled(cron = "0 30 * * * *")
     @SchedulerLock(name = "recruitment-no-show-detect-batch", lockAtMostFor = "2h", lockAtLeastFor = "5m")
