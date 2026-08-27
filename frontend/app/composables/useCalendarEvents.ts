@@ -222,5 +222,8 @@ export function useCalendarEvents(
     onPrevMonth,
     onNextMonth,
     goToToday,
+    // F03.19 §6.5.3: 週ビューは表示中の週が月をまたぐことがあり、その週を包含する月へ
+    // 取得範囲を寄せるために任意の年月へ直接移動できる必要がある。
+    navigateTo,
   }
 }

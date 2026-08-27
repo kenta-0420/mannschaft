@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.listener;
 
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
 import lombok.RequiredArgsConstructor;
@@ -92,6 +94,8 @@ public class CalendarLayerLifecycleListener {
      *
      * @param event チーム削除イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "退会匿名化イベントを購読しカレンダー層の個人データを消す。止めると退会者の PII が残留し、イベントは再生されない")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTeamDeleted(TeamDeletedEvent event) {
         deleteScope(SCOPE_TEAM, event.getTeamId());
@@ -102,6 +106,8 @@ public class CalendarLayerLifecycleListener {
      *
      * @param event 組織削除イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "退会匿名化イベントを購読しカレンダー層の個人データを消す。止めると退会者の PII が残留し、イベントは再生されない")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOrganizationDeleted(OrganizationDeletedEvent event) {
         deleteScope(SCOPE_ORGANIZATION, event.getOrganizationId());
@@ -116,6 +122,8 @@ public class CalendarLayerLifecycleListener {
      *
      * @param event 退会即時匿名化イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "退会匿名化イベントを購読しカレンダー層の個人データを消す。止めると退会者の PII が残留し、イベントは再生されない")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserAnonymized(UserAnonymizedEvent event) {
         Long userId = event.getUserId();

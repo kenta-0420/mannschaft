@@ -1,5 +1,7 @@
 package com.mannschaft.app.reservation.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
@@ -63,6 +65,8 @@ public class ReservationReminderEventListener {
      *
      * @param event 予約確定イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予約確定に伴うリマインドの予約登録。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onReservationConfirmed(ReservationConfirmedEvent event) {

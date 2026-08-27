@@ -1,6 +1,8 @@
 package com.mannschaft.app.inbox.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.inbox.InboxNotificationTypes;
 import com.mannschaft.app.inbox.entity.InboxItemStateEntity;
@@ -81,6 +83,8 @@ public class InboxSnoozeRevivalBatchService {
     /**
      * 復帰期限到来済みのスヌーズ項目へ復帰 push を送る（5 分毎・JST）。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。スヌーズ復帰通知の再送。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "inbox-snooze-revival", description = "スヌーズ復帰期限到来の通知へ push 再通知を 5 分毎に 1 度だけ送る")
     @Scheduled(cron = "0 */5 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "inboxSnoozeRevivalBatch", lockAtMostFor = "PT15M", lockAtLeastFor = "PT10S")

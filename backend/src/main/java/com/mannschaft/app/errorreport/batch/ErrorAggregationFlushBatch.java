@@ -1,6 +1,8 @@
 package com.mannschaft.app.errorreport.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.batch.PodLocalScheduled;
 import com.mannschaft.app.errorreport.service.ErrorReportAggregator;
 import com.mannschaft.app.errorreport.service.ErrorReportAggregator.AggregatedEntry;
@@ -68,6 +70,8 @@ public class ErrorAggregationFlushBatch {
      */
     @PodLocalScheduled("Pod ローカルのメモリバッファをドレインする処理であり、"
         + "ロックを掛けると敗者 Pod の集約エラーが永久にドレインされず取りこぼすため")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。エラー集約バッファの排出であり、運用基盤に属し機能フラグを持たない。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "errorreport-aggregation-flush", description = "エラー集約バッファを 5 分毎にドレインして Slack にサマリ送信する")
     @Scheduled(fixedRateString = "${mannschaft.error-monitoring.aggregation.flush-interval-ms:300000}",
                initialDelayString = "${mannschaft.error-monitoring.aggregation.flush-interval-ms:300000}")

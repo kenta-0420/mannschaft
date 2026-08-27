@@ -6,6 +6,8 @@ import com.mannschaft.app.auth.entity.ParentalConsentLinkEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +46,8 @@ public class ParentalConsentCleanupBatchService {
      * 保護者同意期限切れリンクをクリーンアップするバッチ処理。
      * 毎日 03:30 JST に実行する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。期限切れ保護者同意リンクのクリーンアップであり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "parental-consent-cleanup-batch", description = "保護者同意期限切れクリーンアップバッチ")
     @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "parentalConsentCleanupBatch", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")

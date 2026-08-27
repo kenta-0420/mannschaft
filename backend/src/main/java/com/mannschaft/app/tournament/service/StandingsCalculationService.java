@@ -1,5 +1,7 @@
 package com.mannschaft.app.tournament.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.tournament.FixtureResult;
 import com.mannschaft.app.tournament.FixtureStatus;
 import com.mannschaft.app.tournament.PromotionZone;
@@ -78,6 +80,8 @@ public class StandingsCalculationService {
      * Spring は {@code @TransactionalEventListener} に {@code @Transactional(REQUIRED)} を付けることを
      * 禁じている（起動時バリデーション失敗・ApplicationContext全滅）ため {@code REQUIRES_NEW} が正道。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。勝敗表の再計算であり、再開後の再計算要求で現在値へ収束する。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)

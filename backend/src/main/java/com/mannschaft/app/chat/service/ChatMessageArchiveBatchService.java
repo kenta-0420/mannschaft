@@ -1,6 +1,8 @@
 package com.mannschaft.app.chat.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -40,6 +42,8 @@ public class ChatMessageArchiveBatchService {
 
     private final JdbcTemplate jdbcTemplate;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。チャットメッセージのアーカイブ移送であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "chat-message-archive-daily", description = "6 ヶ月以上前の chat_messages を毎日 03:30 にアーカイブテーブルへ移送する")
     @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "chatMessageArchiveBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")

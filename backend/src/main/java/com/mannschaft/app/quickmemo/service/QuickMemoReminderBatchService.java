@@ -2,6 +2,8 @@ package com.mannschaft.app.quickmemo.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.quickmemo.entity.QuickMemoEntity;
 import com.mannschaft.app.quickmemo.repository.QuickMemoRepository;
 import lombok.RequiredArgsConstructor;
@@ -66,6 +68,8 @@ public class QuickMemoReminderBatchService {
     private final QuickMemoReminderRunner quickMemoReminderRunner;
     private final AuditLogService auditLogService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。ポイっとメモのリマインド通知送信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "quickmemo-reminder-dispatch", description = "ポイっとメモのリマインド通知を 30 分毎にユーザー単位で集約送信する")
     @Scheduled(cron = "0 */30 * * * *")
     // 起動間隔は 30 分。処理はリマインド対象のユーザー単位集約送信で通常は数秒〜数十秒。間隔と同値にすると 1 回の超過で二重通知になるため、

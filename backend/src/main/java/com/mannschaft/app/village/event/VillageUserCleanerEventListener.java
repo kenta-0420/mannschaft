@@ -1,6 +1,8 @@
 package com.mannschaft.app.village.event;
 
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
 import com.mannschaft.app.village.entity.UserVillagePinEntity;
 import com.mannschaft.app.village.entity.VillageCharterDrafterEntity;
@@ -62,6 +64,8 @@ public class VillageUserCleanerEventListener {
     private final VillageMembershipRepository membershipRepository;
     private final VillageCharterDrafterRepository charterDrafterRepository;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "退会匿名化イベントを購読し村ドメインの個人データを消す。止めると退会者の PII が残留し、イベントは再生されない")
     @Async("event-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

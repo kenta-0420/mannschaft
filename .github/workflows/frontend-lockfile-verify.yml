@@ -1,0 +1,142 @@
+# =============================================================================
+# FE lockfile 検証（CMP-260822-1006）
+# =============================================================================
+# 経緯:
+# 開発機は Node 24 / npm 11、CI と本番 Docker は Node 22 / npm 10 で2メジャー
+# 離れていた。この状態で Windows の npm 11 が package-lock.json を再生成すると、
+# **Linux 用の optional 依存が静かに削られる**（実測 79 箇所）。しかも削られたことは
+# Windows 上では検知できない。実際にこれが原因で FE の本番ビルドが壊れた。
+#
+# バージョン固定（.nvmrc / engines / workflow / Dockerfile）で再発しにくくはしたが、
+# 固定はあくまで宣言であり、誤った環境で再生成された lockfile が PR に混入することは
+# 防げない。そこでこのワークフローが、lockfile が変わった PR に対して
+# **実際に Linux で `npm ci` が通るか**を機械的に確かめる。
+#
+# glibc（ubuntu）と musl（alpine）の両方を回す理由:
+# 本番コンテナは alpine（musl）で動く。glibc だけ通しても musl 用の
+# optional 依存が欠けていることは捕まらない。
+name: FE lockfile 検証
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "frontend/package-lock.json"
+      - "frontend/package.json"
+      - ".github/workflows/frontend-lockfile-verify.yml"
+
+concurrency:
+  group: fe-lockfile-verify-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # lockfile そのものの中身を、**base ブランチのものと突き合わせて**検査する。
+  #
+  # なぜ「0件チェック」では駄目か（実測に基づく）:
+  # 実際に事故を起こした破損版 lockfile を検体として測ったところ、
+  #   健全版: optional=244 linux=118 musl=42
+  #   破損版: optional=199 linux=94  musl=33
+  # と、**ゼロにはならなかった**。破損は「ネストされた依存ツリーの Linux バイナリ
+  # 一式が丸ごと落ちる」形で起き（@dxup/nuxt/node_modules/@oxc-parser/binding-linux-*
+  # など計45件）、トップレベルの分は残るためである。
+  # したがって絶対数を見る門番は本物の事故を素通りさせる。base との差分で判定する。
+  #
+  # 依存を意図的に減らした場合もここで止まるが、その場合はログに出る欠落一覧を見て
+  # 意図どおりであることを確認した上で、PR の説明にその旨を書いてから
+  # ALLOW_LOCKFILE_SHRINK ラベルを付けて再実行すればよい。
+  # ---------------------------------------------------------------------------
+  inspect-lockfile:
+    name: lockfile の内容検査（base 比較）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: base の lockfile を取り出す
+        run: |
+          set -euo pipefail
+          git show "origin/${{ github.base_ref }}:frontend/package-lock.json" > /tmp/base-lock.json
+          wc -c /tmp/base-lock.json
+
+      - name: プラットフォーム固有依存が base より減っていないか
+        env:
+          ALLOW_SHRINK: ${{ contains(github.event.pull_request.labels.*.name, 'ALLOW_LOCKFILE_SHRINK') }}
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("fs");
+            const load = (f) => JSON.parse(fs.readFileSync(f, "utf8")).packages || {};
+            const base = load("/tmp/base-lock.json");
+            const head = load("frontend/package-lock.json");
+
+            const isPlatform = (name, meta) =>
+              (meta && Array.isArray(meta.os) && meta.os.includes("linux")) || /musl/.test(name);
+
+            const pick = (pkgs) => new Set(
+              Object.entries(pkgs).filter(([n, m]) => m && typeof m === "object" && isPlatform(n, m)).map(([n]) => n)
+            );
+
+            const b = pick(base), h = pick(head);
+            const missing = [...b].filter((n) => !h.has(n));
+
+            console.log(`base=${b.size} head=${h.size} 欠落=${missing.length}`);
+
+            if (missing.length === 0) {
+              console.log("プラットフォーム固有依存の欠落なし");
+              process.exit(0);
+            }
+
+            console.log("--- base にあって head に無いパッケージ ---");
+            missing.slice(0, 40).forEach((n) => console.log("  " + n));
+            if (missing.length > 40) console.log(`  ... 他 ${missing.length - 40} 件`);
+
+            if (process.env.ALLOW_SHRINK === "true") {
+              console.log("::warning::プラットフォーム固有依存が減っているが ALLOW_LOCKFILE_SHRINK ラベルにより許可された");
+              process.exit(0);
+            }
+
+            console.log("::error::package-lock.json から Linux/musl 向けの依存が " + missing.length +
+              " 件失われている。Windows の npm で再生成していないか確認すること。" +
+              "再生成は必ず Linux で行う: docker run --rm -v \"$PWD\":/w -w /w node:22.23.2-alpine sh -c \"npm install --package-lock-only\"。" +
+              "意図的に依存を減らした場合は、欠落一覧が意図どおりであることを確認のうえ PR に ALLOW_LOCKFILE_SHRINK ラベルを付けて再実行すること。");
+            process.exit(1);
+          '
+
+  # ---------------------------------------------------------------------------
+  # 実際に Linux で `npm ci` が通ることを確かめる。
+  # glibc（ubuntu-latest）と musl（alpine コンテナ）の両方で回す。
+  # ---------------------------------------------------------------------------
+  npm-ci-glibc:
+    name: npm ci（Ubuntu / glibc）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.2"
+
+      - name: npm ci
+        working-directory: frontend
+        run: |
+          node -v
+          npm -v
+          npm ci
+
+  npm-ci-musl:
+    name: npm ci（Alpine / musl）
+    runs-on: ubuntu-latest
+    # 本番コンテナと同じ musl 環境で回す。イメージは Dockerfile と同じ版に固定する。
+    container: node:22.23.2-alpine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: npm ci
+        working-directory: frontend
+        run: |
+          node -v
+          npm -v
+          npm ci

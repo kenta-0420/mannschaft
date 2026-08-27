@@ -1342,6 +1342,16 @@
       "today": "今日",
       "dayDetail": {
         "title": "{date} の予定"
+      },
+      "empty": "この期間に予定はありません",
+      "view": {
+        "month": "月",
+        "week": "週",
+        "agenda": "リスト"
+      },
+      "week": {
+        "allDay": "終日",
+        "now": "現在"
       }
     }
   },

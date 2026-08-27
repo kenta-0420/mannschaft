@@ -2,6 +2,8 @@ package com.mannschaft.app.admin.batch;
 
 import com.mannschaft.app.admin.batch.event.BatchCompletedEvent;
 import com.mannschaft.app.admin.batch.event.BatchFailedEvent;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportAsyncExecutor;
@@ -46,6 +48,8 @@ public class BatchEventListener {
     private final MessageSource messageSource;
     private final UserLocaleCache userLocaleCache;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。バッチ完了・失敗の運用通知であり、閉栓対象の機能ではなく運用基盤に属する。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @EventListener
     public void onCompleted(BatchCompletedEvent event) {
@@ -82,6 +86,8 @@ public class BatchEventListener {
         }
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。バッチ完了・失敗の運用通知であり、閉栓対象の機能ではなく運用基盤に属する。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @EventListener
     public void onFailed(BatchFailedEvent event) {

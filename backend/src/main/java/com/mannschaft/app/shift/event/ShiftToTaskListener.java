@@ -1,5 +1,7 @@
 package com.mannschaft.app.shift.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.shift.service.ShiftToTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +21,9 @@ public class ShiftToTaskListener {
 
     private final ShiftToTaskService shiftToTaskService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SHIFT_ENABLED",
+            reason = "失われるのはシフトから派生するタスク生成のみ。対になる ShiftArchivedToTodoCancelListener も同じキーで落ちるため生成と取消が同時に止まり、タスク側が中途半端に残る乖離は起きない")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onShiftPublished(ShiftPublishedEvent event) {

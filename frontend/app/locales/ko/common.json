@@ -1342,6 +1342,16 @@
       "today": "오늘",
       "dayDetail": {
         "title": "{date}의 일정"
+      },
+      "empty": "이 기간에 일정이 없습니다",
+      "view": {
+        "month": "월",
+        "week": "주",
+        "agenda": "목록"
+      },
+      "week": {
+        "allDay": "종일",
+        "now": "현재"
       }
     }
   },

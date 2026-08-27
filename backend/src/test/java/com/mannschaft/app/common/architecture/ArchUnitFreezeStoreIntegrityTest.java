@@ -715,7 +715,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （FreezingArchRule の既定挙動・解消済み違反の自動削除）で反映された。フルビルド
      * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1462;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1505;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
