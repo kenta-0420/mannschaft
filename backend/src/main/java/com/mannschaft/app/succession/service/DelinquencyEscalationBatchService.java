@@ -1,5 +1,7 @@
 package com.mannschaft.app.succession.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.succession.entity.DelinquencyEscalationEntity;
 import com.mannschaft.app.succession.entity.DelinquencyEscalationStage;
@@ -58,6 +60,9 @@ public class DelinquencyEscalationBatchService {
      * <p>1 件の処理は昇格要否の判定を含めて全体を捕捉する。ステージ文字列の解釈は
      * 判定段階で行われるため、ここを保護しないと 1 行の異常データでバッチ全体が停止する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SUCCESSION_PROXY_ENABLED",
+            reason = "昇格判定は滞納の経過日数のみで決まるため、止めても再開後の初回実行で本来到達すべき段階まで一度に追いつける")
     @BatchEndpoint(name = "succession-delinquency-escalation-daily", description = "滞納エスカレーションを毎日 02:00 に経過日数で 5 段階自動昇格する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     // 起動間隔は日次 02:00。滞納契約の段階昇格と通知送出で、契約数に比例する。余裕を取り 1 時間を上限とする。
