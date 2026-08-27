@@ -1342,6 +1342,15 @@
       "today": "Today",
       "dayDetail": {
         "title": "Events on {date}"
+      },
+      "view": {
+        "month": "Month",
+        "week": "Week",
+        "agenda": "Agenda"
+      },
+      "week": {
+        "allDay": "All-day",
+        "now": "Now"
       }
     }
   },

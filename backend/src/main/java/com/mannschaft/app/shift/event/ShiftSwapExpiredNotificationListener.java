@@ -5,9 +5,12 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -15,10 +18,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 /**
  * シフト交代申請の期限切れ自動キャンセル通知の配送リスナー（Issue #2834 / CMP-056 第2群ロット1）。
@@ -79,8 +78,8 @@ public class ShiftSwapExpiredNotificationListener {
                 // 組み立ても受信者単位で内側 try に入れる（1人ぶんの組み立て失敗が他を巻き添えにしない）。
                 NotificationDeliveryRequest request = buildRequest(recipientUserId, event.swapId(),
                         Locale.forLanguageTag(locales.getOrDefault(recipientUserId, "ja")));
-                NotificationEntity created = notificationDeliveryRunner.sendOne(request);
-                if (created == null) {
+                NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(request);
+                if (result == NotificationDeliveryResult.VISIBILITY_DENIED) {
                     // visibility deny（例外ではない）。NotificationService 側で既に WARN 済み。
                     denied++;
                     log.warn("スワップ期限切れ通知が visibility deny によりスキップされました: "

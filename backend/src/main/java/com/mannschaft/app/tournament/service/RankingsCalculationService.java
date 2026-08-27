@@ -2,6 +2,8 @@ package com.mannschaft.app.tournament.service;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.family.CareCategory;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
@@ -96,6 +98,8 @@ public class RankingsCalculationService {
      * 再計算する。{@code @Async} 併存でコミット後の非同期実行を維持する。
      * AFTER_COMMIT 後はアクティブTXが無いため {@code REQUIRES_NEW}（{@code REQUIRED} は起動時禁止）。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。順位表の再計算であり、再開後の再計算要求で現在値へ収束する。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)

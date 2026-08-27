@@ -1,5 +1,7 @@
 package com.mannschaft.app.role.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
@@ -60,6 +62,8 @@ public class RolePurgeEventListener {
      * <p>1 件削除失敗しても他のスコープ削除は継続する（GDPR 30 日タイムリミットを優先）。
      * 失敗件は WARN ログとして残し、夜次補正バッチで再処理する運用とする。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "退会アカウントの消去イベントを購読しロール割当の個人データを消す。止めると GDPR 第17条の消去期限を破り、イベントは再生されない")
     @Async("purge-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
