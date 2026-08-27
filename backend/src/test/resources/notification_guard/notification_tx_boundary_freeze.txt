@@ -1,0 +1,126 @@
+# 通知のトランザクション境界違反 — 凍結リスト（Issue #2834 / CMP-056 → #2990）
+#
+# このリストは「確定した病巣リスト」であり、削っていく対象である。
+# 新しい違反をここへ追記して黙らせてはならない（追記は既存負債の記録に限る）。
+#
+# 番人: backend/src/test/java/com/mannschaft/app/common/architecture/
+#         NotificationTransactionBoundaryGuardTest.java
+# 規約: backend/.claudecode.md 原則5
+#
+# キーの書式（行番号は含めない。無関係な編集で削除＋追加に見えるのを防ぐため）:
+#   <完全修飾クラス名>#<メソッド名> -> <種別>
+#
+# 種別:
+#   ASYNC_SELF_INVOCATION  @Async メソッドの同一クラス内無修飾呼び出し（プロキシを経ず失効）
+#   PLAIN_EVENT_LISTENER   通知を発火するリスナーが素の @EventListener（業務コミット前に走る）
+#   DIRECT_RUNNER_CALL     sendOne を許可された入口以外から直接呼んでいる
+#   ASYNC_WITHOUT_EXECUTOR 通知発火クラスの @Async が executor 無指定（event-pool へ載る）
+#   TX_NOTIFY_IN_TRY       @Transactional 文脈で通知を発火し try で失敗を握っている
+#   TX_NOTIFY_BARE         @Transactional 文脈で通知を発火している（try 無しの単発）
+#
+# 契約: 付随通知は業務TX内ではイベント発行だけを行う。実通知は明示的な AFTER_COMMIT 境界の後、
+#       または項目TX完了を待つ非トランザクションのバッチオーケストレータからのみ実行する。
+#       @Async / REQUIRES_NEW / NOT_SUPPORTED 単独は AFTER_COMMIT の代用とみなさない。
+#
+# 増加は常に CI fail。減少は該当実装差分と同じPRでのみ許可（是正したら必ずこの行を削る）。
+# 最終目標は baseline ゼロ。
+#
+# --- ここから凍結エントリ（L0 の初回実測で投入） ---
+
+com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService#executeAt -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.admin.batch.BatchEventListener#onCompleted -> PLAIN_EVENT_LISTENER
+com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTENER
+com.mannschaft.app.analytics.service.AnalyticsAlertService#createRule -> TX_NOTIFY_BARE
+com.mannschaft.app.analytics.service.AnalyticsBackfillService#executeAsync -> ASYNC_WITHOUT_EXECUTOR
+com.mannschaft.app.analytics.service.AnalyticsBackfillService#startBackfill -> ASYNC_SELF_INVOCATION
+com.mannschaft.app.billing.beta.BetaGrantService#safeNotify -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> ASYNC_WITHOUT_EXECUTOR
+com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_BARE
+com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisService#analyzeAfterCommit -> ASYNC_SELF_INVOCATION
+com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisService#analyzeSync -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.errorreport.service.ErrorReportAsyncExecutor#doRecordBackendException -> TX_NOTIFY_BARE
+com.mannschaft.app.errorreport.service.ErrorReportService#createOrAggregate -> TX_NOTIFY_BARE
+com.mannschaft.app.errorreport.service.ErrorReportService#updateStatus -> TX_NOTIFY_BARE
+com.mannschaft.app.errorreport.service.ErrorReportTimelineService#assign -> TX_NOTIFY_BARE
+com.mannschaft.app.event.service.EventCheckinService#selfCheckin -> TX_NOTIFY_BARE
+com.mannschaft.app.event.service.EventCheckinService#staffCheckin -> TX_NOTIFY_BARE
+com.mannschaft.app.event.service.EventDelegationService#accept -> TX_NOTIFY_BARE
+com.mannschaft.app.event.service.EventDelegationService#cancelInternal -> TX_NOTIFY_BARE
+com.mannschaft.app.event.service.EventDelegationService#cancelOnMemberLeft -> TX_NOTIFY_BARE
+com.mannschaft.app.event.service.EventDelegationService#createDelegation -> TX_NOTIFY_BARE
+com.mannschaft.app.event.service.EventDelegationService#reject -> TX_NOTIFY_BARE
+com.mannschaft.app.event.service.EventRollCallService#submitRollCall -> TX_NOTIFY_BARE
+com.mannschaft.app.event.service.EventRsvpService#submitRsvp -> TX_NOTIFY_BARE
+com.mannschaft.app.family.service.AnniversaryService#createAnniversary -> TX_NOTIFY_BARE
+com.mannschaft.app.family.service.CareLinkService#toOverrideResponse -> TX_NOTIFY_BARE
+com.mannschaft.app.family.service.CareLinkService#toResponse -> TX_NOTIFY_BARE
+com.mannschaft.app.family.service.EventEndReminderBatchService#sendReminderNotification -> TX_NOTIFY_BARE
+com.mannschaft.app.jobmatching.service.JobApplicationService#apply -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.jobmatching.service.JobCheckInService#fireNotifications -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.jobmatching.service.JobContractService#acceptApplication -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.jobmatching.service.JobContractService#reportCompletion -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.memberinfo.service.MemberInfoResponseService#sendRemind -> TX_NOTIFY_BARE
+com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfirmService#resendReminder -> TX_NOTIFY_BARE
+com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processAlertIfNeeded -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processReminders -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#process30DayAlert -> ASYNC_SELF_INVOCATION
+com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#process7DayAlert -> ASYNC_SELF_INVOCATION
+com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#processExpiry -> ASYNC_SELF_INVOCATION
+com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendCreditExpiredAlertAsync -> ASYNC_WITHOUT_EXECUTOR
+com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendCreditExpiredAlertAsync -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendExpiryAlertAsync -> ASYNC_WITHOUT_EXECUTOR
+com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendExpiryAlertAsync -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.notification.credit.service.NotificationCreditAlertSender#sendNegativeBalanceAlert -> ASYNC_WITHOUT_EXECUTOR
+com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService#createCheckout -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.notification.credit.service.NotificationCreditService#consume -> ASYNC_SELF_INVOCATION
+com.mannschaft.app.notification.credit.service.NotificationCreditService#sendFreeQuotaAlertAsync -> ASYNC_WITHOUT_EXECUTOR
+com.mannschaft.app.notification.credit.service.NotificationCreditService#sendFreeQuotaAlertAsync -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.payment.escrow.EscrowLifecycleService#notifyCancelled -> TX_NOTIFY_BARE
+com.mannschaft.app.payment.escrow.EscrowLifecycleService#promoteHeldEscrow -> TX_NOTIFY_BARE
+com.mannschaft.app.payment.escrow.EscrowNotificationService#notifyPaymentRequired -> TX_NOTIFY_BARE
+com.mannschaft.app.payment.escrow.EscrowNotificationService#notifyUser -> TX_NOTIFY_BARE
+com.mannschaft.app.payment.service.MemberPaymentService#sendRemind -> TX_NOTIFY_BARE
+com.mannschaft.app.recruitment.service.MarketFriendTargetService#distributeFriendListing -> TX_NOTIFY_BARE
+com.mannschaft.app.recruitment.service.RecruitmentListingService#confirmApplication -> TX_NOTIFY_BARE
+com.mannschaft.app.recruitment.service.RecruitmentListingService#sendPublishedNotifications -> TX_NOTIFY_BARE
+com.mannschaft.app.reflection.service.ReflectionSpacedReminderService#processDueReminders -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.repairplan.batch.TeamMemberTermReminderBatch#executeAt -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.reservation.service.EmergencyClosureService#sendClosure -> TX_NOTIFY_BARE
+com.mannschaft.app.reservation.service.ReservationPendingExpireService#notifyApplicant -> TX_NOTIFY_BARE
+com.mannschaft.app.reservation.service.ReservationReminderDispatchBatchService#sendReminder -> TX_NOTIFY_BARE
+com.mannschaft.app.reservation.service.ReservationWaitlistService#notifySlotReopened -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.schedule.service.ScheduleAttendanceService#openAttendanceSolicitation -> TX_NOTIFY_BARE
+com.mannschaft.app.schedule.service.ScheduleCommentNotifier#sendMentioned -> DIRECT_RUNNER_CALL
+com.mannschaft.app.schedule.service.ScheduleCommentNotifier#sendReplied -> DIRECT_RUNNER_CALL
+com.mannschaft.app.schedule.service.ScheduleCommentService#registerNotificationAfterCommit -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.schedule.service.ScheduleDelegationService#accept -> TX_NOTIFY_BARE
+com.mannschaft.app.schedule.service.ScheduleDelegationService#cancelInternal -> TX_NOTIFY_BARE
+com.mannschaft.app.schedule.service.ScheduleDelegationService#cancelOnMemberLeft -> TX_NOTIFY_BARE
+com.mannschaft.app.schedule.service.ScheduleDelegationService#createDelegation -> TX_NOTIFY_BARE
+com.mannschaft.app.schedule.service.ScheduleDelegationService#onDelegatorAttendanceChanged -> TX_NOTIFY_BARE
+com.mannschaft.app.schedule.service.ScheduleDelegationService#reject -> TX_NOTIFY_BARE
+com.mannschaft.app.schedule.service.ScheduleKeepNotificationPublisher#publishConverted -> TX_NOTIFY_BARE
+com.mannschaft.app.schedule.service.ScheduleKeepService#notifyConverted -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.schedule.service.ScheduleReminderNotificationListener#onReminderNotification -> PLAIN_EVENT_LISTENER
+com.mannschaft.app.school.service.AttendanceRequirementBatchService#notifyStatusChange -> TX_NOTIFY_BARE
+com.mannschaft.app.school.service.DailyAttendanceService#submitDailyRollCall -> TX_NOTIFY_BARE
+com.mannschaft.app.school.service.FamilyAttendanceNoticeService#acknowledgeNotice -> TX_NOTIFY_BARE
+com.mannschaft.app.school.service.FamilyAttendanceNoticeService#submitNotice -> TX_NOTIFY_BARE
+com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#sendReminderToUnsubmittedMembers -> TX_NOTIFY_BARE
+com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#triggerManualReminder -> TX_NOTIFY_BARE
+com.mannschaft.app.shiftbudget.service.ShiftBudgetRetryExecutor#retryNotificationSend -> TX_NOTIFY_BARE
+com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService#sendNotifications -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.survey.service.SurveyRemindService#remind -> TX_NOTIFY_BARE
+com.mannschaft.app.survey.service.SurveyService#extendDeadline -> TX_NOTIFY_BARE
+com.mannschaft.app.ticket.service.TicketExpiryBatchService#expireTickets -> TX_NOTIFY_BARE
+com.mannschaft.app.ticket.service.TicketExpiryBatchService#sendExpiryNotifications -> TX_NOTIFY_BARE
+com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> PLAIN_EVENT_LISTENER
+com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.timetable.personal.service.PersonalTimetableSettingsService#update -> TX_NOTIFY_BARE
+com.mannschaft.app.timetable.service.TimetableChangeService#createChange -> TX_NOTIFY_BARE
+com.mannschaft.app.timetable.service.TimetableChangeService#updateChange -> TX_NOTIFY_BARE
+com.mannschaft.app.todo.batch.TodoDueReminderBatch#notifyAssignees -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.todo.event.MilestoneNotificationListener#onMilestoneUnlocked -> ASYNC_WITHOUT_EXECUTOR
+com.mannschaft.app.todo.event.MilestoneNotificationListener#onMilestoneUnlocked -> PLAIN_EVENT_LISTENER
