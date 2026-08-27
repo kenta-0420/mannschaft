@@ -7,9 +7,13 @@ import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -17,11 +21,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 /**
  * 広告請求書延滞通知の配送リスナー（Issue #2834 / CMP-056 第2群ロット1）。
@@ -95,8 +94,8 @@ public class OverdueInvoiceNotificationListener {
                 NotificationDeliveryRequest request = buildRequest(
                         recipient.userId(), event, NotificationScopeType.ORGANIZATION, event.organizationId(),
                         "/advertiser/invoices/" + event.invoiceId(), locale);
-                NotificationEntity created = notificationDeliveryRunner.sendOne(request);
-                if (created == null) {
+                NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(request);
+                if (result == NotificationDeliveryResult.VISIBILITY_DENIED) {
                     denied++;
                     log.warn("請求書延滞通知が visibility deny によりスキップされました: "
                                     + "recipientUserId={}, notificationType={}, sourceType={}, sourceId={}",
@@ -139,8 +138,8 @@ public class OverdueInvoiceNotificationListener {
                         adminUserId, event, NotificationScopeType.SYSTEM, null,
                         "/system-admin/invoices/" + event.invoiceId(),
                         Locale.forLanguageTag(locales.getOrDefault(adminUserId, "ja")));
-                NotificationEntity created = notificationDeliveryRunner.sendOne(request);
-                if (created == null) {
+                NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(request);
+                if (result == NotificationDeliveryResult.VISIBILITY_DENIED) {
                     denied++;
                     log.warn("請求書延滞通知が visibility deny によりスキップされました: "
                                     + "recipientUserId={}, notificationType={}, sourceType={}, sourceId={}",

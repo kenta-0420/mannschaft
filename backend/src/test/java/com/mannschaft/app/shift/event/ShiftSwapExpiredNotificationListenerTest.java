@@ -1,9 +1,14 @@
 package com.mannschaft.app.shift.event;
 
+
+
 import com.mannschaft.app.common.i18n.UserLocaleCache;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,11 +19,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
-
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,7 +59,7 @@ class ShiftSwapExpiredNotificationListenerTest {
     @Test
     @DisplayName("受信者ごとに 1 件単位の配送 Runner が呼ばれる")
     void 受信者ごとに配送される() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(Mockito.mock(NotificationEntity.class));
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
 
         listener.onShiftSwapExpiredNotification(new ShiftSwapExpiredNotificationEvent(7L, List.of(100L, 200L)));
 
@@ -78,7 +78,7 @@ class ShiftSwapExpiredNotificationListenerTest {
     void 一人の例外で他が巻き添えにならない() {
         given(notificationDeliveryRunner.sendOne(any()))
                 .willThrow(new RuntimeException("模擬DB例外"))
-                .willReturn(Mockito.mock(NotificationEntity.class));
+                .willReturn(NotificationDeliveryResult.DELIVERED);
 
         assertThatCode(() -> listener.onShiftSwapExpiredNotification(
                 new ShiftSwapExpiredNotificationEvent(7L, List.of(100L, 200L))))
@@ -90,7 +90,7 @@ class ShiftSwapExpiredNotificationListenerTest {
     @Test
     @DisplayName("visibility deny（null 復帰）でも例外にせず、後続受信者へ送り続ける")
     void denyでもループを止めない() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(null);
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.VISIBILITY_DENIED);
 
         assertThatCode(() -> listener.onShiftSwapExpiredNotification(
                 new ShiftSwapExpiredNotificationEvent(7L, List.of(100L, 200L))))
@@ -103,7 +103,7 @@ class ShiftSwapExpiredNotificationListenerTest {
     @DisplayName("locale の一括解決が失敗しても既定 locale で配送を続行する")
     void locale解決失敗でも配送する() {
         given(userLocaleCache.getLocales(anyList())).willThrow(new RuntimeException("模擬キャッシュ障害"));
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(Mockito.mock(NotificationEntity.class));
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
 
         listener.onShiftSwapExpiredNotification(new ShiftSwapExpiredNotificationEvent(7L, List.of(100L, 200L)));
 

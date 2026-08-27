@@ -14,6 +14,10 @@ import org.apache.http.HttpResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 /**
  * Web Push（VAPID）送信サービス。
  *
@@ -29,6 +33,25 @@ import org.springframework.util.StringUtils;
  *       上限超過はログ警告のみ（通知の欠落は許容する）</li>
  * </ul>
  *
+ * <h2>所要時間の上限（Issue #2953 検分指摘1）</h2>
+ * <p>本サービスは同期 HTTP + バックオフ sleep であり、
+ * {@code notification-dispatch-pool} が飽和して CallerRuns が発火すると
+ * {@code NotificationDeliveryRunner#sendOne} の {@code REQUIRES_NEW} トランザクションの
+ * <b>内側</b>で、呼び出し元（{@code event-pool} ワーカー）スレッドにより同期実行される。
+ * このとき Hikari コネクションと event-pool のワーカーを保持し続けるため、
+ * <b>危険なのは接続の本数ではなく保持時間</b>である。そこで二段の上限を課す:</p>
+ * <ul>
+ *   <li><b>1 リクエストあたり</b>: {@link #REQUEST_TIMEOUT_MS}（既定 10 秒）。
+ *       {@code PushService#send} は内部で {@code Future#get()} を無期限に待つため、
+ *       {@code sendAsync} + {@code get(timeout)} に置き換えて上限を保証する。</li>
+ *   <li><b>1 通知あたりの総所要</b>: {@link #TOTAL_BUDGET_MS}（既定 30 秒）。
+ *       バックオフ sleep に入る前に残予算を確認し、尽きていればリトライせず諦める
+ *       （例外は投げない。投げると CallerRuns 時に {@code REQUIRES_NEW} ごと
+ *       巻き戻り通知行が消えるため）。</li>
+ * </ul>
+ * <p>したがって最悪所要は「総予算 + 実行中の 1 リクエスト分」で上に有界となる。
+ * なお push の HTTP をトランザクション境界の外へ出す本筋の是正は別 issue（#2998）とする。</p>
+ *
  * <p>設計書: {@code docs/features/F04.3_pwa_push_notification.md}
  */
 @Slf4j
@@ -38,6 +61,18 @@ public class WebPushService {
 
     private static final int MAX_RETRY_COUNT = 3;
     private static long[] BACKOFF_DELAYS_MS = {1_000L, 4_000L, 16_000L};
+
+    /**
+     * 1 リクエスト（HTTP 往復）あたりのタイムアウト。
+     * non-final なのはテストから短縮するため（{@link #BACKOFF_DELAYS_MS} と同じ流儀）。
+     */
+    static long REQUEST_TIMEOUT_MS = 10_000L;
+
+    /**
+     * 1 通知の送信（リトライ・バックオフ sleep を含む）に許す総予算。
+     * 予算を使い切ったらリトライせず諦める（例外は投げない）。
+     */
+    static long TOTAL_BUDGET_MS = 30_000L;
 
     private final VapidConfig vapidConfig;
     private final PushSubscriptionRepository pushSubscriptionRepository;
@@ -84,6 +119,7 @@ public class WebPushService {
 
         String endpoint = subscription.getEndpoint();
         int retryCount = 0;
+        final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(TOTAL_BUDGET_MS);
 
         while (retryCount <= MAX_RETRY_COUNT) {
             try {
@@ -101,7 +137,9 @@ public class WebPushService {
                 } else if (statusCode == 429) {
                     if (retryCount < 1) {
                         log.warn("WebPushレート制限（429）: endpoint={}, 1回リトライします", abbreviateEndpoint(endpoint));
-                        sleepSilently(BACKOFF_DELAYS_MS[0]);
+                        if (!awaitBeforeRetry(BACKOFF_DELAYS_MS[0], deadlineNanos, endpoint)) {
+                            return;
+                        }
                         retryCount++;
                     } else {
                         log.warn("WebPushレート制限（429）: リトライ上限到達、スキップします。endpoint={}",
@@ -114,7 +152,9 @@ public class WebPushService {
                         long delay = BACKOFF_DELAYS_MS[Math.min(retryCount, BACKOFF_DELAYS_MS.length - 1)];
                         log.warn("WebPushサーバーエラー（{}）: {}ms後にリトライ({}/{})。endpoint={}",
                                 statusCode, delay, retryCount + 1, MAX_RETRY_COUNT, abbreviateEndpoint(endpoint));
-                        sleepSilently(delay);
+                        if (!awaitBeforeRetry(delay, deadlineNanos, endpoint)) {
+                            return;
+                        }
                         retryCount++;
                     } else {
                         log.warn("WebPushサーバーエラー（{}）: リトライ上限到達、スキップします。endpoint={}",
@@ -132,7 +172,9 @@ public class WebPushService {
                     long delay = BACKOFF_DELAYS_MS[Math.min(retryCount, BACKOFF_DELAYS_MS.length - 1)];
                     log.warn("WebPush送信例外: {}ms後にリトライ({}/{})。endpoint={}, error={}",
                             delay, retryCount + 1, MAX_RETRY_COUNT, abbreviateEndpoint(endpoint), e.getMessage());
-                    sleepSilently(delay);
+                    if (!awaitBeforeRetry(delay, deadlineNanos, endpoint)) {
+                        return;
+                    }
                     retryCount++;
                 } else {
                     log.warn("WebPush送信失敗（例外）: リトライ上限到達、スキップします。endpoint={}, error={}",
@@ -151,8 +193,33 @@ public class WebPushService {
         Keys keys = new Keys(subscription.getP256dhKey(), subscription.getAuthKey());
         Subscription webPushSubscription = new Subscription(subscription.getEndpoint(), keys);
         Notification notification = new Notification(webPushSubscription, jsonPayload);
-        HttpResponse response = pushService.send(notification);
-        return response.getStatusLine().getStatusCode();
+        // PushService#send は内部で Future#get() を無期限に待つため使わない。
+        // sendAsync + get(timeout) で 1 リクエストの所要時間を必ず有界にする。
+        Future<HttpResponse> future = pushService.sendAsync(notification);
+        try {
+            HttpResponse response = future.get(REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            return response.getStatusLine().getStatusCode();
+        } catch (TimeoutException te) {
+            future.cancel(true);
+            // 呼び出し元の catch(Exception) がバックオフ・リトライ経路として拾う。
+            throw te;
+        }
+    }
+
+    /**
+     * バックオフ sleep に入る前に総予算の残りを確認し、足りていれば sleep する。
+     *
+     * @return リトライを続けてよいなら true、予算を使い切ったので諦めるなら false
+     */
+    private boolean awaitBeforeRetry(long delayMs, long deadlineNanos, String endpoint) {
+        long remainingMs = TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime());
+        if (remainingMs <= 0 || remainingMs < delayMs) {
+            log.warn("WebPush送信の総所要時間の上限（{}ms）に到達したためリトライを打ち切ります。endpoint={}",
+                    TOTAL_BUDGET_MS, abbreviateEndpoint(endpoint));
+            return false;
+        }
+        sleepSilently(delayMs);
+        return true;
     }
 
     /**

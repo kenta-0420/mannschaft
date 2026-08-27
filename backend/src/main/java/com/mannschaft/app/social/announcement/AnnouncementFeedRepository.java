@@ -18,6 +18,9 @@ import java.util.Optional;
  */
 public interface AnnouncementFeedRepository extends JpaRepository<AnnouncementFeedEntity, Long> {
 
+    boolean existsByIdAndScopeTypeAndScopeId(
+            Long id, AnnouncementScopeType scopeType, Long scopeId);
+
     /**
      * ソース種別・ソース ID・スコープの組み合わせで一意のお知らせフィードを取得する。
      *
