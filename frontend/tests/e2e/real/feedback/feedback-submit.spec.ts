@@ -26,12 +26,12 @@ test.describe('目安箱フィードバック投稿', () => {
   })
 
   // FB-001: ナビバーに目安箱ボタンが表示される
-  test('FB-001: ナビバーに pi-comment アイコンのボタンが表示される', async ({ page }) => {
+  test('FB-001: ナビバーに data-testid="feedback-open-button" のボタンが表示される', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
 
-    // pi-comment アイコンを持つ Button が存在する（ナビバー内のデスクトップ用ボタン）
-    const feedbackBtn = page.locator('button').filter({ has: page.locator('.pi-comment') }).first()
+    // data-testid="feedback-open-button" を持つボタンが存在する（ナビバー内のデスクトップ用ボタン）
+    const feedbackBtn = page.getByTestId('feedback-open-button').first()
     await expect(feedbackBtn).toBeVisible({ timeout: 15_000 })
   })
 
@@ -40,7 +40,7 @@ test.describe('目安箱フィードバック投稿', () => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
 
-    const feedbackBtn = page.locator('button').filter({ has: page.locator('.pi-comment') }).first()
+    const feedbackBtn = page.getByTestId('feedback-open-button').first()
     await feedbackBtn.click()
 
     // PrimeVue Dialog が表示される
@@ -56,7 +56,7 @@ test.describe('目安箱フィードバック投稿', () => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
 
-    const feedbackBtn = page.locator('button').filter({ has: page.locator('.pi-comment') }).first()
+    const feedbackBtn = page.getByTestId('feedback-open-button').first()
     await feedbackBtn.click()
 
     const dialog = page.locator('[role="dialog"]')
@@ -73,7 +73,7 @@ test.describe('目安箱フィードバック投稿', () => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
 
-    const feedbackBtn = page.locator('button').filter({ has: page.locator('.pi-comment') }).first()
+    const feedbackBtn = page.getByTestId('feedback-open-button').first()
     await feedbackBtn.click()
 
     const dialog = page.locator('[role="dialog"]')
@@ -116,7 +116,7 @@ test.describe('目安箱フィードバック投稿', () => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
 
-    const feedbackBtn = page.locator('button').filter({ has: page.locator('.pi-comment') }).first()
+    const feedbackBtn = page.getByTestId('feedback-open-button').first()
     await feedbackBtn.click()
 
     const dialog = page.locator('[role="dialog"]')
