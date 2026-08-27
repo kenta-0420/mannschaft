@@ -1,8 +1,20 @@
+import { ref } from 'vue'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { setActivePinia, createPinia } from 'pinia'
 import ScheduleMobileListView from '~/components/schedule/ScheduleMobileListView.vue'
+import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 import { useAuthStore } from '~/stores/useAuthStore'
+
+interface MobileListViewTestProps {
+  year: number
+  month: number
+  events: CalendarEventItem[]
+  scopeType: 'team' | 'organization'
+  scopeId: string
+  emptyMessage: string
+  dimmed?: boolean
+}
 
 /**
  * F03.19 §6.8（Wave 3-c）: モバイル共通リストビュー ScheduleMobileListView のユニットテスト。
@@ -15,7 +27,10 @@ import { useAuthStore } from '~/stores/useAuthStore'
  *     （reflection 行など id が -1 で衝突しうる行を id 非依存で判別できるようにするため）
  */
 
-mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
+// [2] Codex 検分指摘: periodLabel は Intl.DateTimeFormat(locale.value, ...) で生成するため、
+// useI18n モックは t だけでなく locale（切り替え可能な ref）も返す必要がある。
+const mockLocale = ref('ja')
+mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key, locale: mockLocale }))
 mockNuxtImport('useScheduleApi', () => () => ({ respondAttendance: vi.fn() }))
 mockNuxtImport('useNotification', () => () => ({ success: vi.fn(), error: vi.fn(), warn: vi.fn() }))
 
@@ -40,9 +55,10 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   setActivePinia(createPinia())
+  mockLocale.value = 'ja'
 })
 
-async function mountView(props: Record<string, unknown>) {
+async function mountView(props: MobileListViewTestProps) {
   const wrapper = await mountSuspended(ScheduleMobileListView, { props })
   useAuthStore().user = {
     id: 1,
@@ -150,6 +166,67 @@ describe('ScheduleMobileListView', () => {
       isReflection: true,
       referenceUuid: 'abc',
       referenceKind: 'REFLECTION_ENTRY',
+    })
+  })
+
+  /** 指定タイムゾーンで処理を実行する（Node は process.env.TZ の実行時変更を反映する）。 */
+  function withSystemTz<T>(tz: string, fn: () => T): T {
+    const original = process.env.TZ
+    process.env.TZ = tz
+    try {
+      return fn()
+    } finally {
+      process.env.TZ = original
+    }
+  }
+
+  it('SMLV-006: 月ナビの見出しは選択中のロケールから生成され、直書きの日本語では固定されない', async () => {
+    mockLocale.value = 'en'
+    const wrapper = await mountView({
+      year: 2026,
+      month: 8,
+      events: [],
+      scopeType: 'team',
+      scopeId: 't1',
+      emptyMessage: 'empty',
+    })
+
+    // en ロケールでは Intl.DateTimeFormat('en', { year: 'numeric', month: 'long' }) の綴りになる。
+    // 旧実装（`${year}年${month}月` の直書き）なら、ロケールを en にしても常に日本語のまま出ていた。
+    expect(wrapper.text()).toContain('August 2026')
+    expect(wrapper.text()).not.toContain('2026年8月')
+  })
+
+  it('SMLV-007: ロケールを ja に切り替えると見出しが日本語の年月表記に追随する', async () => {
+    mockLocale.value = 'ja'
+    const wrapper = await mountView({
+      year: 2026,
+      month: 8,
+      events: [],
+      scopeType: 'team',
+      scopeId: 't1',
+      emptyMessage: 'empty',
+    })
+
+    expect(wrapper.text()).toContain('2026年8月')
+  })
+
+  it('SMLV-008: 端末TZが UTC+14（Pacific/Kiritimati）でも見出しの年月が1日もずれない', async () => {
+    // W3-a（CalendarWeekGrid.vue）が一度踏んだ罠と同根: Intl に timeZone を渡し忘れると、
+    // UTC 月初として組み立てた Date が端末ローカルで再解釈され、UTC+α の端末では
+    // 前月末や翌月扱いにずれる。year=2026/month=1（1月1日境界）で確認する。
+    await withSystemTz('Pacific/Kiritimati', async () => {
+      const wrapper = await mountView({
+        year: 2026,
+        month: 1,
+        events: [],
+        scopeType: 'team',
+        scopeId: 't1',
+        emptyMessage: 'empty',
+      })
+
+      expect(wrapper.text()).toContain('2026年1月')
+      expect(wrapper.text()).not.toContain('2025年12月')
     })
   })
 })

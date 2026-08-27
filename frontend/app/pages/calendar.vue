@@ -91,9 +91,12 @@ const {
 // 選択（ユーザーが明示的に選んだ view）を復元した場合はそれを尊重し、上書きしない。
 const MOBILE_MEDIA_QUERY = '(max-width: 767px)'
 
-/** モバイルのリストビュー用: 表示中の月のイベントを日付昇順に並べる。 */
+/** モバイルのリストビュー用: 表示中の月のイベントを実際の時系列（瞬間）昇順に並べる。
+ * ISO 文字列のまま localeCompare すると、時差の異なる予定（例: +09:00 と Z）が
+ * 文字列としての大小関係で並んでしまい、実際の前後関係と食い違う（Codex 検分指摘）。
+ * 必ず Date.parse で瞬間へ変換してから比較する。 */
 const sortedFilteredEvents = computed(() =>
-  [...filteredEvents.value].sort((a, b) => a.startAt.localeCompare(b.startAt)),
+  [...filteredEvents.value].sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt)),
 )
 
 // 「今日」ボタン（§6.3・AC-12d）: 月グリッド本体の DOM 操作（フォーカス）は CalendarGrid に委譲する。

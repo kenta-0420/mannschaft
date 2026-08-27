@@ -116,6 +116,29 @@ describe('pages/teams/[slug]/schedule.vue: AC-14b モバイルリスト回帰', 
     expect(scheduleApiMock.listSchedules).toHaveBeenCalled()
   })
 
+  it('Codex検分[1]回帰: 時差の異なる予定が混在しても、モバイル一覧は実際の時系列順に並ぶ', async () => {
+    // 実際の時系列: Aイベント（00:00Z）が先、Bイベント（01:00Z）が後。
+    // ISO 文字列のまま localeCompare すると、時刻部分の先頭桁（'0'の次が'9'か'1'か）だけで
+    // 大小が決まり、Bイベント（実際には遅い）が先に来てしまう（旧実装の欠陥）。
+    const entries = [
+      {
+        id: 1,
+        content: { title: 'Bイベント', eventType: 'SCHEDULE', status: 'PUBLISHED' },
+        time: { startAt: `${thisMonthDateStr}T01:00:00Z`, endAt: `${thisMonthDateStr}T02:00:00Z`, allDay: false },
+      },
+      {
+        id: 2,
+        content: { title: 'Aイベント', eventType: 'SCHEDULE', status: 'PUBLISHED' },
+        time: { startAt: `${thisMonthDateStr}T09:00:00+09:00`, endAt: `${thisMonthDateStr}T10:00:00+09:00`, allDay: false },
+      },
+    ]
+    scheduleApiMock.listSchedules.mockReset().mockResolvedValue({ data: entries })
+    const wrapper = await mountSchedulePage()
+
+    const titles = wrapper.findAll('[data-testid="schedule-list-row"]').map(el => el.text())
+    expect(titles).toEqual(['Aイベント', 'Bイベント'])
+  })
+
   it('AC-14b: 行タップで従来どおり詳細取得 API（getSchedule）が呼ばれる', async () => {
     scheduleApiMock.listSchedules.mockReset().mockResolvedValue({ data: [teamScheduleEntry()] })
     scheduleApiMock.getSchedule.mockReset().mockResolvedValue({

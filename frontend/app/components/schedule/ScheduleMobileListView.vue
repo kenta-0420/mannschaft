@@ -42,9 +42,30 @@ const emit = defineEmits<{
   responded: []
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
-const periodLabel = computed(() => `${props.year}年${props.month}月`)
+/**
+ * 月ナビの見出し（例: 「2026年8月」/ "August 2026"）は**選択中のロケールから生成する**
+ * （i18n ルール／FRONTEND_CODING_CONVENTION.md §515-517・Codex 検分指摘）。
+ *
+ * 年月の綴りはロケールデータであってプロダクトの文言ではないため、6言語ぶんの訳文を
+ * ロケールファイルに複製するのではなく `Intl.DateTimeFormat` に委ねる
+ * （W3-a・CalendarWeekGrid.vue の踏襲。ロケールが増えても追随漏れが起きない）。
+ *
+ * `timeZone: 'UTC'` は必須（W3-a が一度踏んだ罠と同根）。`props.year`/`props.month` は
+ * 「表示中の月」という**タイムゾーンを持たない暦上の値**（`useCalendarEvents.ts` の
+ * `now.getFullYear()`/`now.getMonth()` 由来）であり、瞬間ではない。これを Date に積む際、
+ * 端末ローカルの解釈に晒すと DST や UTC±α の端末で月がずれうる。UTC の月初正午として
+ * 組み立て、UTC のまま読み戻せば、どの端末でも書いた月と読む月が一致する
+ * （書き込み・読み出しの両方を同じ人工的な基準＝UTC に固定するだけで、実在のどの
+ * タイムゾーンを「正しい基準」とするかという問題自体を回避できる）。
+ */
+const periodFormatter = computed(() =>
+  new Intl.DateTimeFormat(locale.value, { year: 'numeric', month: 'long', timeZone: 'UTC' }),
+)
+const periodLabel = computed(() =>
+  periodFormatter.value.format(new Date(Date.UTC(props.year, props.month - 1, 1))),
+)
 </script>
 
 <template>
