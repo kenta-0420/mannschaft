@@ -1,5 +1,7 @@
 package com.mannschaft.app.proxy.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
@@ -70,6 +72,8 @@ public class ProxyPurgeEventListener {
      * <p>各操作は独立 try-catch で囲み、片方の失敗が他方の継続を妨げない。
      * 例外は伝播させず WARN ログのみ（GDPR 30 日タイムリミット優先）。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会確定者が本人として関与する代理入力記録と同意が消去されず、GDPR 第17条の消去期限を直接破る")
     @Async("purge-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)

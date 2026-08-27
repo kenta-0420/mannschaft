@@ -55,6 +55,16 @@ abstract class AbstractSpotlightIT extends AbstractMySqlIntegrationTest {
     protected void setUpCommon() {
         wireInMemoryRedis();
         lenient().when(featureFlagService.isEnabled("FEATURE_V9_ENABLED")).thenReturn(true);
+        // Gate 基盤工事④-B 第三陣: advertising のバッチ（AdCampaignStateTransitionScheduler 等）は
+        // @BackgroundFeaturePolicy(SKIP_WHEN_DISABLED, FEATURE_PROMOTION_ENABLED) で閉じられる。
+        // 本 IT 群は「バッチ本体が動いた結果」を検証する側なので、ゲートは開けておく。
+        //
+        // FeatureFlagService は本基底が @MockitoBean 化しているため、
+        // DB に feature_flags 行を入れても効かない（モックが応答する）。
+        // スタブしないと Mockito 既定の false が返り、バッチが本体を呼ばず
+        // 戻り値型の既定値（Integer なら null）が返って NPE で落ちる
+        // （実測: CI shard 1 の ac3_8_freqcap が expireStaleReservations() の null で落ちた）。
+        lenient().when(featureFlagService.isEnabled("FEATURE_PROMOTION_ENABLED")).thenReturn(true);
         SecurityContextHolder.clearContext();
     }
 
@@ -147,6 +157,15 @@ abstract class AbstractSpotlightIT extends AbstractMySqlIntegrationTest {
     }
 
     protected void insertRole(String name, String displayName, int priority, boolean isSystem) {
+        // 冪等化: roles はグローバル参照テーブルのため、既存なら再利用し二重INSERTしない
+        // （同一 name の重複INSERTは roles の UNIQUE 制約違反になる。CI shard 再編成で
+        // 同一 JVM 内の同居テストが変わり得るため、盲目的 INSERT は禁止）。
+        Number existingRoleCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM roles WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult();
+        if (existingRoleCount.longValue() > 0) {
+            return;
+        }
         em.createNativeQuery(
                         "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                                 + "VALUES (:name, :dn, :priority, :sys, NOW(), NOW())")

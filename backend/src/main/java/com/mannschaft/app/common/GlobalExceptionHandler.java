@@ -454,6 +454,15 @@ public class GlobalExceptionHandler {
             Map.entry("SCHEDULE_092", HttpStatus.CONFLICT),                 // SCHEDULED_TASK_NOT_CANCELLABLE（PENDING 以外）
             Map.entry("SCHEDULE_093", HttpStatus.BAD_REQUEST),              // INVALID_TARGET_SELECTION
             Map.entry("SCHEDULE_094", HttpStatus.NOT_FOUND),                // SCHEDULE_TARGET_MEMBER_NOT_FOUND（存在秘匿）
+            // F03.19 統合カレンダービュー カレンダーレイヤー設定（設計書 §7）
+            Map.entry("SCHEDULE_100", HttpStatus.NOT_FOUND),                // CALENDAR_LAYER_NOT_FOUND
+            Map.entry("SCHEDULE_101", HttpStatus.FORBIDDEN),                // CALENDAR_LAYER_NOT_MEMBER（非所属・存在秘匿で統一）
+            Map.entry("SCHEDULE_102", HttpStatus.UNPROCESSABLE_ENTITY),     // CALENDAR_LAYER_INVALID_COLOR
+            Map.entry("SCHEDULE_103", HttpStatus.UNPROCESSABLE_ENTITY),     // CALENDAR_LAYER_INVALID_SCOPE
+            // SCHEDULE_104 CALENDAR_LAYER_LIMIT_EXCEEDED（行数上限 §10.1）は
+            // 「件数の上限超過」であり .claudecode.md §3.2.1 の表どおり既定の 400 が本則。
+            // 当初 409 で上書き登録していたが、上書き自体が不要なので登録ごと削除した
+            // （回帰固定: GlobalExceptionHandlerTest#resolveHttpStatus_SCHEDULE_104_400）。
             // F03.4 スケジュール本体・クロスチーム招待・アンケート設問の不在 → 404。
             // ErrorCodeHttpStatusDeclarationGuardTest 是正（ロットA）: throw 元
             // （ScheduleService/ScheduleRecurrenceService/ScheduleAttendanceService/

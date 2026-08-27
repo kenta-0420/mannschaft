@@ -99,6 +99,7 @@ const personaIds = new Set(strategy.personas.map((persona) => persona.id));
 const journeyIds = new Set((b0Plan.journeys || []).map((journey) => journey.id));
 for (const insight of data.b0RunOverlay?.insights || []) {
   if (!insight.id || !insight.featureKey || !insight.title || !insight.detail) throw new Error('B0気づきの必須項目が不足しています');
+  if (insight.urgency && !['urgent', 'normal', 'when-free'].includes(insight.urgency)) throw new Error(`B0気づきの対応タイミングが不正です: ${insight.id}`);
   if (insight.personaId && !personaIds.has(insight.personaId)) throw new Error(`B0気づきのpersonaが未定義です: ${insight.personaId}`);
   if (!journeyIds.has(insight.journeyId)) throw new Error(`B0気づきのjourneyが未定義です: ${insight.journeyId}`);
 }
@@ -170,6 +171,9 @@ for (const requiredUiSource of [
   'localStorage.setItem(THEME_STORAGE_KEY',
   'id="insightSource"',
   'id="insightPersona"',
+  'id="insightFeatureDetail"',
+  'id="insightUrgency"',
+  'insightUrgencyDetails',
   'registrationSource',
   'syncAlicizationInsights',
   'data-insight-source="self"',

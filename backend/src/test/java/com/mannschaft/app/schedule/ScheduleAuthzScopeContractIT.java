@@ -786,6 +786,138 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // CMP-054: マイカレンダーのチーム予定 数値ID/slug 両対応（F03.19 Wave2-b2）
+    // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * CMP-054: {@code /api/v1/my/calendar} が返す {@code scopeId} は数値の内部 BIGINT ID だが、
+     * {@code TeamScheduleController} / {@code OrgScheduleController} は
+     * {@code teamService.resolveTeamId} / {@code organizationService.resolveOrgId}（slug 専用）を
+     * 直接呼んでいたため、数値 ID を渡すと必ず 404 になっていた（マイカレンダーからチーム予定を
+     * 開くと必ず 404 になる不具合）。{@link com.mannschaft.app.config.TeamScopeId} /
+     * {@link com.mannschaft.app.config.OrgScopeId} 型のパス変数へ統一し、数値・slug の両方を
+     * 受け付けるようにしたことを固定する。
+     */
+    @Nested
+    @DisplayName("CMP-054: チーム/組織スコープ 数値ID・slug 両対応")
+    class CalendarScopeIdCompat {
+
+        @Test
+        @DisplayName("AC-a: チーム予定詳細は数値IDで200")
+        void getSchedule_チームは数値IDで取得できる() throws Exception {
+            setAuthentication(memberId);
+            mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}",
+                            teamId, teamScheduleId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.id").value(teamScheduleId));
+        }
+
+        @Test
+        @DisplayName("AC-b: チーム予定詳細はslugでも200（回帰なし）")
+        void getSchedule_チームはslugでも取得できる() throws Exception {
+            setAuthentication(memberId);
+            mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}",
+                            teamSlug, teamScheduleId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.id").value(teamScheduleId));
+        }
+
+        @Test
+        @DisplayName("AC-c: 組織予定詳細は数値ID・slugの両方で200")
+        void getSchedule_組織は数値ID_slug両方で取得できる() throws Exception {
+            Long orgScheduleId = scheduleRepository.save(ScheduleEntity.builder()
+                    .organizationId(orgId)
+                    .title("W4C 組織総会")
+                    .startAt(LocalDateTime.of(2026, 4, 5, 10, 0))
+                    .endAt(LocalDateTime.of(2026, 4, 5, 12, 0))
+                    .eventType(EventType.OTHER)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(false)
+                    .allowProxyAttendance(false)
+                    .isProxyAutoAccept(false)
+                    .createdBy(adminId)
+                    .build()).getId();
+            em.flush();
+            em.clear();
+
+            setAuthentication(memberId);
+            mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}",
+                            orgId, orgScheduleId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.id").value(orgScheduleId));
+            mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}",
+                            orgSlug, orgScheduleId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.id").value(orgScheduleId));
+        }
+
+        @Test
+        @DisplayName("AC-d: 存在しない予定IDは数値チームID配下でも404（200で空を返さない）")
+        void getSchedule_存在しない予定は404() throws Exception {
+            long nonExistentScheduleId = 999_888_777L;
+            setAuthentication(memberId);
+            mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}",
+                            teamId, nonExistentScheduleId))
+                    .andExpect(status().isNotFound());
+            mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}",
+                            teamSlug, nonExistentScheduleId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("AC-e: 非所属者は数値ID・slugのどちらでも従来と同じ認可結果（403）で弾かれる")
+        void getSchedule_非所属者は数値ID_slug問わず拒否される() throws Exception {
+            setAuthentication(outsiderId);
+            mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}",
+                            teamId, teamScheduleId))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}",
+                            teamSlug, teamScheduleId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("AC-f: 一覧・作成・更新・削除も数値IDで通る")
+        void 一覧_作成_更新_削除も数値IDで通る() throws Exception {
+            setAuthentication(memberId);
+
+            mockMvc.perform(get("/api/v1/teams/{teamPublicId}/schedules", teamId)
+                            .param("from", "2026-04-01T00:00:00")
+                            .param("to", "2026-04-30T00:00:00"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1));
+
+            // スケジュール作成はチームADMIN以上のみ（ScheduleService#checkCreateScopeAccess）。
+            setAuthentication(adminId);
+            String createBody = objectMapper.writeValueAsString(Map.of(
+                    "title", "数値ID作成テスト",
+                    "startAt", "2026-05-10T10:00:00+09:00",
+                    "endAt", "2026-05-10T11:00:00+09:00",
+                    "allDay", false,
+                    "eventType", "OTHER",
+                    "attendanceRequired", false));
+            String createResponse = mockMvc.perform(post("/api/v1/teams/{teamPublicId}/schedules", teamId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(createBody))
+                    .andExpect(status().isCreated())
+                    .andReturn().getResponse().getContentAsString();
+            Long createdId = objectMapper.readTree(createResponse).get("data").get("id").asLong();
+
+            setAuthentication(adminId);
+            mockMvc.perform(patch("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}", teamId, createdId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("title", "数値ID更新済み"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.content.title").value("数値ID更新済み"));
+
+            mockMvc.perform(delete("/api/v1/teams/{teamPublicId}/schedules/{scheduleId}", teamId, createdId))
+                    .andExpect(status().isNoContent());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // フィクスチャ
     // ═════════════════════════════════════════════════════════════════════
 
