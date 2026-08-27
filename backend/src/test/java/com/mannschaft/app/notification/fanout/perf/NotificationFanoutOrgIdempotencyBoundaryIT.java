@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.fanout.perf;
 
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
@@ -62,11 +63,13 @@ class NotificationFanoutOrgIdempotencyBoundaryIT extends AbstractMySqlIntegratio
         UUID sourceEvent = UUID.randomUUID();
 
         jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seed.organizationId()),
-                type, sourceEvent, seed.organizationId(), "AC-9 冪等", "本文",
+                type, sourceEvent, seed.organizationId(),FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-9 冪等"},
                 NotificationPriority.NORMAL, "FANOUT_500K_IT", null, "/x", null);
         // 二回目（同一キー）は uk_fanout_idempotency 衝突で静かに skip される想定。
         jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seed.organizationId()),
-                type, sourceEvent, seed.organizationId(), "AC-9 冪等", "本文",
+                type, sourceEvent, seed.organizationId(),FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-9 冪等"},
                 NotificationPriority.NORMAL, "FANOUT_500K_IT", null, "/x", null);
 
         Long rows = jdbc.queryForObject(
@@ -103,7 +106,8 @@ class NotificationFanoutOrgIdempotencyBoundaryIT extends AbstractMySqlIntegratio
         String type = "FANOUT_500K_AC10";
         UUID sourceEvent = UUID.randomUUID();
         jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seed.organizationId()),
-                type, sourceEvent, seed.organizationId(), "AC-10 境界除外", "本文",
+                type, sourceEvent, seed.organizationId(),FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-10 境界除外"},
                 NotificationPriority.NORMAL, "FANOUT_500K_IT", null, "/x", null);
         NotificationFanoutJob job = jobRepository
                 .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuid(

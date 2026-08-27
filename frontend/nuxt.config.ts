@@ -1,4 +1,5 @@
 import Aura from '@primeuix/themes/aura'
+import { buildGateRouteRules } from './app/constants/featureGates'
 
 // ──────────────────────────────────────────────────────────────────────────
 // セキュリティヘッダー / CSP（nuxt-security）
@@ -89,7 +90,7 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
 
   imports: {
-    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match'],
+    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match', 'composables/returnStayPlan'],
   },
 
   devServer: {
@@ -424,9 +425,21 @@ export default defineNuxtConfig({
 
   // E2E テスト時（NUXT_API_PROXY=true 環境変数）は API を Nuxt サーバー経由でプロキシする。
   // これにより CORS プリフライト問題を回避し、Playwright のルートインターセプトが確実に機能する。
-  routeRules: process.env.NUXT_API_PROXY === 'true' ? {
-    '/api/v1/**': { proxy: `${apiBase}/api/v1/**` },
-  } : {},
+  routeRules: {
+    // 未公開機能（Gate 基盤工事②）のガード対象パスは SSR 対象外にする。
+    // SSR 実行時は公開フラグを取得できない（localStorage のトークンに依存）ため、
+    // フラグ未確定のまま未公開ページの HTML がサーバーから出力されるのを防ぐ
+    // （route ガード middleware feature-gate.global.ts の ssr-defer と対になっている）。
+    // 対応表は app/constants/featureGates.ts が単一の正（YAML パーサ依存・コード生成は無し）。
+    ...buildGateRouteRules(),
+    // 認証フォームは SEO を必要としない。SSR で操作不能なフォームを先に配信すると、
+    // クライアントのハイドレーションが遅延・失敗した際にログイン不能になるため、
+    // 最初からクライアントで操作可能な状態として描画する。
+    '/login': { ssr: false },
+    ...(process.env.NUXT_API_PROXY === 'true'
+      ? { '/api/v1/**': { proxy: `${apiBase}/api/v1/**` } }
+      : {}),
+  },
 
   // ──────────────────────────────────────────────────────────────────────
   // dev 限定: CSP 違反レポート (report-uri) を BE(:8080) へフォワードする。
@@ -514,6 +527,7 @@ export default defineNuxtConfig({
           'ja/market.json',
           'ja/inbox.json',
           'ja/schedule.json',
+          'ja/return_stay_plan.json',
           'ja/payment.json',
           'ja/match.json',
           'ja/tournament.json',
@@ -587,6 +601,7 @@ export default defineNuxtConfig({
           'en/market.json',
           'en/inbox.json',
           'en/schedule.json',
+          'en/return_stay_plan.json',
           'en/payment.json',
           'en/match.json',
           'en/tournament.json',
@@ -660,6 +675,7 @@ export default defineNuxtConfig({
           'zh/market.json',
           'zh/inbox.json',
           'zh/schedule.json',
+          'zh/return_stay_plan.json',
           'zh/payment.json',
           'zh/match.json',
           'zh/tournament.json',
@@ -733,6 +749,7 @@ export default defineNuxtConfig({
           'ko/market.json',
           'ko/inbox.json',
           'ko/schedule.json',
+          'ko/return_stay_plan.json',
           'ko/payment.json',
           'ko/match.json',
           'ko/tournament.json',
@@ -806,6 +823,7 @@ export default defineNuxtConfig({
           'es/market.json',
           'es/inbox.json',
           'es/schedule.json',
+          'es/return_stay_plan.json',
           'es/payment.json',
           'es/match.json',
           'es/tournament.json',
@@ -879,6 +897,7 @@ export default defineNuxtConfig({
           'de/market.json',
           'de/inbox.json',
           'de/schedule.json',
+          'de/return_stay_plan.json',
           'de/payment.json',
           'de/match.json',
           'de/tournament.json',
@@ -960,7 +979,30 @@ export default defineNuxtConfig({
     optimizeDeps: {
       // date-holidays は pure ESM パッケージのため、Vite が事前バンドルしないと
       // dev server の SSR コンテキストでモジュール評価が失敗する
-      include: ['date-holidays', 'dexie'],
+      // chart.js / dompurify / vuedraggable は遅延ロードされる詳細ページで初めて参照される。
+      // 未指定だと初回 SPA 遷移中に Vite が依存を発見してページ全体を reload し、
+      // URL 確定前の一覧へ戻るため、dev server 起動時に事前最適化しておく。
+      include: ['date-holidays', 'dexie', 'chart.js', 'dompurify', 'vuedraggable'],
     },
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 本番ビルド（nuxt build）のメモリ枯渇対策（CMP-260821-2130）
+  // ──────────────────────────────────────────────────────────────────────────
+  // 実測（6回のビルド）で本番ビルドが OOM で完走しないことを確認済み。
+  // 主因はサーバー側ソースマップ: Nuxt 3 の既定は本番で { server: true, client: false } だが、
+  // Nuxt 3.21.11 はこれを Vite の SSR ビルドへ渡すだけでなく、SSR のマップを Nitro へ
+  // 再投入するプラグインまで動かすため、同じコストを2回払っていた
+  // （実測: 無効化前は 4096MB/8192MB いずれの上限でも死亡、無効化後は 8192MB で完走・9,482MB / swap 0）。
+  // 本番の起動コマンドは `node .output/server/index.mjs` で `--enable-source-maps` が付いておらず、
+  // Node はこのフラグ無しではソースマップを使わないため、生成されていたサーバー側ソースマップは
+  // 本番で一度も使われていなかった（エラー監視基盤も未導入で、クライアント側ソースマップの使い先も無い）。
+  //
+  // 【重要】必ず $production 限定にすること。素で `sourcemap: {...}` を書くと、設定ローダー c12 が
+  // 環境別上書きとして扱う対象から外れて `npm run dev` にも常時適用されてしまい、開発時のデバッグで
+  // ソースマップが失われる（nuxt.options.sourcemap.{server,client} は多数のビルドプラグインが
+  // 開発・本番を区別せず参照するため、影響範囲が広い）。
+  $production: {
+    sourcemap: { server: false, client: false },
   },
 })

@@ -15,6 +15,8 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -71,6 +73,9 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
     @Autowired
     private MockMvc mockMvc;
 
+    @PersistenceContext
+    private EntityManager em;
+
     @Autowired
     private RoleRepository roleRepository;
 
@@ -102,6 +107,17 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
 
     @BeforeEach
     void setUp() {
+        // CMP-052: 本フィクスチャは user_roles / memberships だけを張り users 行を作っていなかった。
+        // 本番では在籍者は必ず users 行を持つ（ログインは PENDING_VERIFICATION / FROZEN を弾くため、
+        // スコープに在籍して操作対象になりうるのは ACTIVE なアカウントに限られる）ので、
+        // 「users 行が無い在籍者」は本番で成立しえない状態である。
+        // ロール変更経路の生存確認（isActiveUser）が入ったことでこの欠落が表面化したため、
+        // ガードを緩めるのではなくフィクスチャ側を本番で成立する状態へ是正する。
+        insertActiveUser(ADMIN_A, "rpe-admin-a");
+        insertActiveUser(MEMBER_A, "rpe-member-a");
+        insertActiveUser(VICTIM, "rpe-victim");
+        insertActiveUser(ADMIN_B, "rpe-admin-b");
+
         // roles はグローバル参照テーブル（本番は V2.014 で seed）。共有 Testcontainer を汚さないため、
         // 削除・再INSERT せず name で既存を引く（無ければ idempotent に作成）。本クラスは @Transactional なので
         // 全 seed はテスト毎にロールバックされ、同一 Testcontainer を共有する他テスト
@@ -159,6 +175,35 @@ class RolePrivilegeEscalationAuthzContractTest extends AbstractMySqlIntegrationT
                         .priority(priority)
                         .isSystem("SYSTEM_ADMIN".equals(name))
                         .build()).getId());
+    }
+
+    /**
+     * 固定 ID の ACTIVE ユーザーを users に投入する（CMP-052）。
+     *
+     * <p>{@code @WithMockUser(username = "2001")} 等でユーザー ID を固定しているため、
+     * IDENTITY 採番に任せられない。test profile は {@code ddl-auto=create} + Flyway 無効で
+     * schema が Entity 由来のため、NOT NULL 列を手動で全充填する必要がある
+     * （他 IT の {@code insertUser} と同じ列並び ＋ id 明示）。本クラスは {@code @Transactional} なので
+     * 共有 Testcontainer には残らない。</p>
+     */
+    private void insertActiveUser(Long id, String emailPrefix) {
+        em.createNativeQuery(
+                        "INSERT INTO users ("
+                                + "id, email, last_name, first_name, display_name, status, "
+                                + "is_searchable, handle_searchable, contact_approval_required, "
+                                + "online_visibility, dm_receive_from, encryption_key_version, "
+                                + "locale, timezone, reporting_restricted, follow_list_visibility, "
+                                + "care_notification_enabled, offline_only, "
+                                + "created_at, updated_at) "
+                                + "VALUES (:id, :email, '権限', '昇格', '権限昇格', 'ACTIVE', "
+                                + "1, 1, 1, "
+                                + "'NOBODY', 'ANYONE', 1, "
+                                + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
+                                + "1, 0, "
+                                + "NOW(), NOW())")
+                .setParameter("id", id)
+                .setParameter("email", emailPrefix + "-" + SLUG_SEQ.incrementAndGet() + "@example.com")
+                .executeUpdate();
     }
 
     private TeamEntity saveTeam(String name) {

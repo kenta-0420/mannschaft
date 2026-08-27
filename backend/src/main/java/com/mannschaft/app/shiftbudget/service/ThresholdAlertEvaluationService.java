@@ -18,6 +18,7 @@ import com.mannschaft.app.workflow.dto.WorkflowRequestResponse;
 import com.mannschaft.app.workflow.service.WorkflowRequestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -78,6 +80,8 @@ public class ThresholdAlertEvaluationService {
     private final ObjectMapper objectMapper;
     /** Phase 10-β で追加: 失敗イベントの永続化 */
     private final ShiftBudgetFailedEventService failedEventService;
+    /** Issue #2715 CMP-055 ロットC-4: 受信者 locale に応じた通知本文の組み立て。 */
+    private final MessageSource messageSource;
 
     /**
      * 指定 allocation について現在消化率を計算し、80/100/120% 閾値の発火判定を行う。
@@ -217,22 +221,38 @@ public class ThresholdAlertEvaluationService {
                     allocation.getId(), thresholdPercent);
             return;
         }
-        String title = "シフト予算 警告 (" + thresholdPercent + "%)";
-        String body = bodyForThreshold(thresholdPercent);
         String actionUrl = "/shift-budget/allocations/" + allocation.getId();
+        // failed_events 記録用（運用向けの固定ログ。受信者ごとの locale とは独立に ja で確定させる）。
+        String title = messageSource.getMessage(
+                "notification.shiftBudget.thresholdAlert.title",
+                new Object[]{thresholdPercent},
+                "シフト予算 警告 (" + thresholdPercent + "%)", Locale.JAPANESE);
+        String body = messageSource.getMessage(
+                bodyKeyForThreshold(thresholdPercent),
+                new Object[]{thresholdPercent},
+                bodyForThreshold(thresholdPercent), Locale.JAPANESE);
 
         try {
-            notificationHelper.notifyAll(
+            // Issue #2715 CMP-055 ロットC-4: 受信者 locale に応じて件名・本文を組み立てる
+            // （locale 一括解決は notifyAllLocalized 内部の UserLocaleCache が担う）。
+            notificationHelper.notifyAllLocalized(
                     recipientUserIds,
                     "SHIFT_BUDGET_THRESHOLD_ALERT",
-                    title, body,
                     "SHIFT_BUDGET_ALLOCATION",
                     allocation.getId(),
                     NotificationScopeType.ORGANIZATION,
                     allocation.getOrganizationId(),
                     actionUrl,
-                    null  // システム自動発火、actor なし
-            );
+                    null,  // システム自動発火、actor なし
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
+                            messageSource.getMessage(
+                                    "notification.shiftBudget.thresholdAlert.title",
+                                    new Object[]{thresholdPercent},
+                                    "シフト予算 警告 (" + thresholdPercent + "%)", locale),
+                            messageSource.getMessage(
+                                    bodyKeyForThreshold(thresholdPercent),
+                                    new Object[]{thresholdPercent},
+                                    bodyForThreshold(thresholdPercent), locale)));
         } catch (Exception e) {
             // notifyAll の外側で総崩れする例外（DB 接続喪失など）— Phase 10-β failed_events に記録
             log.error("F08.7: 通知一括送信失敗（握りつぶし）: allocId={}, threshold={}%, recipients={}",
@@ -282,6 +302,19 @@ public class ThresholdAlertEvaluationService {
     }
 
     /**
+     * Issue #2715 CMP-055 ロットC-4: 閾値ごとの本文 i18n キー。
+     * {@link #bodyForThreshold} と同じ分岐を、ロケールファイル参照用のキーへ写像する。
+     */
+    private String bodyKeyForThreshold(int thresholdPercent) {
+        return switch (thresholdPercent) {
+            case 80 -> "notification.shiftBudget.thresholdAlert.body80";
+            case 100 -> "notification.shiftBudget.thresholdAlert.body100";
+            case 120 -> "notification.shiftBudget.thresholdAlert.body120";
+            default -> "notification.shiftBudget.thresholdAlert.bodyOther";
+        };
+    }
+
+    /**
      * F05.6 ワークフロー起動（100% 到達時）— Phase 10-α 本格実装。
      *
      * <p>処理フロー:</p>
@@ -321,6 +354,10 @@ public class ThresholdAlertEvaluationService {
         }
 
         // F05.6 起動 — 例外は握りつぶす（main トランザクションを保護）
+        // Issue #2715 CMP-055 ロットC-4 スコープ確認: この title は notify()/createNotification() へは渡らず、
+        // WorkflowRequestService が保持する workflow_requests.title（承認者複数名が閲覧する管理レコードの
+        // タイトル）である。単一の「受信者 locale」が存在しないため本ロットの i18n パターン（受信者ごとの
+        // messageSource 解決）をそのまま適用できず、意図的に対象外とした。
         try {
             String title = String.format("シフト予算 超過承認 (allocation #%d, %d%%)",
                     allocation.getId(), alert.getThresholdPercent());

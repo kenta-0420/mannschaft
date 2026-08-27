@@ -6,6 +6,7 @@ import com.mannschaft.app.analytics.service.AnalyticsBackfillService;
 import com.mannschaft.app.analytics.service.DailyAggregationBatchService;
 import com.mannschaft.app.analytics.service.MonthlyCohortBatchService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -14,6 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.context.MessageSource;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -22,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("AnalyticsBackfillService 単体テスト")
 class AnalyticsBackfillServiceTest {
 
@@ -29,6 +34,8 @@ class AnalyticsBackfillServiceTest {
     @Mock private MonthlyCohortBatchService cohortBatch;
     @Mock private NotificationService notificationService;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MessageSource messageSource;
+    @Mock private UserLocaleCache userLocaleCache;
 
     // ========== startBackfill ==========
 
@@ -40,7 +47,7 @@ class AnalyticsBackfillServiceTest {
         @DisplayName("正常系: RUNNINGレスポンス")
         void testStartBackfill_正常開始() {
             // Arrange
-            AnalyticsBackfillService service = new AnalyticsBackfillService(dailyBatch, cohortBatch, notificationService, userRoleRepository);
+            AnalyticsBackfillService service = new AnalyticsBackfillService(dailyBatch, cohortBatch, notificationService, userRoleRepository, messageSource, userLocaleCache);
             BackfillRequest request = new BackfillRequest(
                     LocalDate.of(2026, 1, 1),
                     LocalDate.of(2026, 1, 31),
@@ -61,7 +68,7 @@ class AnalyticsBackfillServiceTest {
         @DisplayName("異常系: from > to で例外")
         void testStartBackfill_fromがtoより後で例外() {
             // Arrange
-            AnalyticsBackfillService service = new AnalyticsBackfillService(dailyBatch, cohortBatch, notificationService, userRoleRepository);
+            AnalyticsBackfillService service = new AnalyticsBackfillService(dailyBatch, cohortBatch, notificationService, userRoleRepository, messageSource, userLocaleCache);
             BackfillRequest request = new BackfillRequest(
                     LocalDate.of(2026, 3, 31),
                     LocalDate.of(2026, 3, 1),
@@ -78,7 +85,7 @@ class AnalyticsBackfillServiceTest {
         @DisplayName("異常系: 6ヶ月超過で例外")
         void testStartBackfill_6ヶ月超過で例外() {
             // Arrange - 184日（6ヶ月=183日を超過）
-            AnalyticsBackfillService service = new AnalyticsBackfillService(dailyBatch, cohortBatch, notificationService, userRoleRepository);
+            AnalyticsBackfillService service = new AnalyticsBackfillService(dailyBatch, cohortBatch, notificationService, userRoleRepository, messageSource, userLocaleCache);
             BackfillRequest request = new BackfillRequest(
                     LocalDate.of(2025, 9, 1),
                     LocalDate.of(2026, 3, 31),
@@ -95,7 +102,7 @@ class AnalyticsBackfillServiceTest {
         @DisplayName("異常系: 同時実行で例外（ANALYTICS_003）")
         void testStartBackfill_同時実行で例外() throws Exception {
             // Arrange - リフレクションで running フラグを true に設定
-            AnalyticsBackfillService service = new AnalyticsBackfillService(dailyBatch, cohortBatch, notificationService, userRoleRepository);
+            AnalyticsBackfillService service = new AnalyticsBackfillService(dailyBatch, cohortBatch, notificationService, userRoleRepository, messageSource, userLocaleCache);
             java.lang.reflect.Field runningField = AnalyticsBackfillService.class.getDeclaredField("running");
             runningField.setAccessible(true);
             java.util.concurrent.atomic.AtomicBoolean running =
@@ -118,7 +125,7 @@ class AnalyticsBackfillServiceTest {
         @DisplayName("正常系: 183日ちょうどで成功")
         void testStartBackfill_183日ちょうどで成功() {
             // Arrange - ちょうど183日
-            AnalyticsBackfillService service = new AnalyticsBackfillService(dailyBatch, cohortBatch, notificationService, userRoleRepository);
+            AnalyticsBackfillService service = new AnalyticsBackfillService(dailyBatch, cohortBatch, notificationService, userRoleRepository, messageSource, userLocaleCache);
             LocalDate from = LocalDate.of(2026, 1, 1);
             LocalDate to = from.plusDays(182); // 183日間
 

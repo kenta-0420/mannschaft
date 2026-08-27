@@ -1,5 +1,7 @@
 package com.mannschaft.app.gdpr.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.entity.UserEntity;
@@ -73,6 +75,8 @@ public class AccountPurgeService {
     private final AccountPurgeCompletionStatusRepository completionStatusRepository;
     private final GdprS3PurgeFailureRepository gdprS3PurgeFailureRepository;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会後の猶予期間を過ぎたアカウントの強匿名化が実行されず、GDPR 第17条の消去期限を直接破る")
     @BatchEndpoint(name = "gdpr-account-purge-daily", description = "退会後 30 日経過アカウントを毎日 04:00 に物理削除する")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "accountPurgeBatch", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")

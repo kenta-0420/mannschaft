@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.fanout.perf;
 
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
@@ -101,13 +102,15 @@ class NotificationFanoutOrgShardedMeasurementIT extends AbstractMySqlIntegration
         // 発行し、冪等キー衝突も本計測の集計（generated/distinct/shard_count）汚染も構造的に回避する。
         long warmupScope = seedResult.organizationId() + 987_654_321L; // 実在しない組織＝母集団0
         jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(warmupScope),
-                "FANOUT_SHARDED_500K_WARMUP", UUID.randomUUID(), warmupScope, "warmup", "warmup",
+                "FANOUT_SHARDED_500K_WARMUP", UUID.randomUUID(), warmupScope,FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"warmup"},
                 NotificationPriority.NORMAL, "FANOUT_SHARDED_500K_IT", null, "/x", null, true);
 
         // --- enqueue（自動シャード化。500,000人は shard_count=25 本のジョブ行に分割される想定） ---
         long tEnqueue0 = System.nanoTime();
         jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seedResult.organizationId()),
-                type, sourceEvent, seedResult.organizationId(), "CMP-001 50万シャード並列実測", "本文",
+                type, sourceEvent, seedResult.organizationId(),FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"CMP-001 50万シャード並列実測"},
                 NotificationPriority.NORMAL, "FANOUT_SHARDED_500K_IT", null, "/x", null, true);
         long enqueueMs = (System.nanoTime() - tEnqueue0) / 1_000_000;
 

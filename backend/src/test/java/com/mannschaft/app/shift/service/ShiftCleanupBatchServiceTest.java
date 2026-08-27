@@ -1,7 +1,5 @@
 package com.mannschaft.app.shift.service;
 
-import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.shift.SwapRequestStatus;
 import com.mannschaft.app.shift.entity.ShiftSwapRequestEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -10,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -20,12 +19,23 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 /**
  * {@link ShiftCleanupBatchService} のユニットテスト。F03.5 Phase 4-α。
+ *
+ * <p>Issue #2834 / CMP-056 第2群ロット1 でバッチが<b>非トランザクションのオーケストレータ</b>になったため、
+ * 本テストの関心は「対象抽出 → 項目ごとに {@link ShiftSwapExpiryRunner} を呼ぶ → 失敗しても次へ」に絞る。
+ * キャンセル自体と通知の中身は {@code ShiftSwapExpiryRunnerTest} /
+ * {@code ShiftSwapExpiredNotificationListenerTest} が担当する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 class ShiftCleanupBatchServiceTest {
@@ -33,10 +43,18 @@ class ShiftCleanupBatchServiceTest {
     @Mock private ShiftSwapRequestRepository swapRepository;
     @Mock private ShiftScheduleRepository scheduleRepository;
     @Mock private ShiftRequestRepository requestRepository;
-    @Mock private NotificationHelper notificationHelper;
+    @Mock private ShiftSwapExpiryRunner shiftSwapExpiryRunner;
 
     @InjectMocks
     private ShiftCleanupBatchService batchService;
+
+    private ShiftSwapRequestEntity swapWithId(Long id) {
+        ShiftSwapRequestEntity swap = ShiftSwapRequestEntity.builder()
+                .requesterId(100L)
+                .build();
+        ReflectionTestUtils.setField(swap, "id", id);
+        return swap;
+    }
 
     // =========================================================
     // runSwapExpiryCancel
@@ -47,104 +65,62 @@ class ShiftCleanupBatchServiceTest {
     class RunSwapExpiryCancel {
 
         @Test
-        @DisplayName("期限切れ PENDING スワップが CANCELLED に遷移し save される")
-        void 期限切れスワップをキャンセル() {
-            ShiftSwapRequestEntity swap = buildPendingSwap(1L, 10L, null);
+        @DisplayName("抽出した申請ごとに Runner が独立トランザクションで呼ばれる")
+        void 申請ごとにRunnerが呼ばれる() {
             given(swapRepository.findExpiredPendingBefore(any(), any(Pageable.class)))
-                    .willReturn(List.of(swap));
+                    .willReturn(List.of(swapWithId(1L), swapWithId(2L)));
+            given(shiftSwapExpiryRunner.cancelOne(anyLong())).willReturn(true);
 
             batchService.runSwapExpiryCancel();
 
-            assertThat(swap.getStatus()).isEqualTo(SwapRequestStatus.CANCELLED);
-            verify(swapRepository).save(swap);
+            verify(shiftSwapExpiryRunner).cancelOne(1L);
+            verify(shiftSwapExpiryRunner).cancelOne(2L);
         }
 
         @Test
-        @DisplayName("requester に通知が送信される")
-        void requesterに通知が届く() {
-            ShiftSwapRequestEntity swap = buildPendingSwap(1L, 10L, null);
+        @DisplayName("AC-1: 1件が例外でも後続の申請は処理される（バッチ全体を巻き戻さない）")
+        void 一件失敗しても後続は処理される() {
             given(swapRepository.findExpiredPendingBefore(any(), any(Pageable.class)))
-                    .willReturn(List.of(swap));
+                    .willReturn(List.of(swapWithId(1L), swapWithId(2L), swapWithId(3L)));
+            willThrow(new RuntimeException("模擬DB例外"))
+                    .given(shiftSwapExpiryRunner).cancelOne(2L);
+            given(shiftSwapExpiryRunner.cancelOne(eq(1L))).willReturn(true);
+            given(shiftSwapExpiryRunner.cancelOne(eq(3L))).willReturn(true);
 
-            batchService.runSwapExpiryCancel();
+            assertThatCode(() -> batchService.runSwapExpiryCancel()).doesNotThrowAnyException();
 
-            verify(notificationHelper).notify(
-                    eq(10L), eq("SHIFT_SWAP_EXPIRED"),
-                    anyString(), anyString(),
-                    eq("SHIFT_SWAP_REQUEST"), eq(1L),
-                    any(), eq(10L),
-                    anyString(), isNull());
+            verify(shiftSwapExpiryRunner).cancelOne(1L);
+            verify(shiftSwapExpiryRunner).cancelOne(3L);
         }
 
         @Test
-        @DisplayName("targetUserId != null の場合 requester と target の両方に通知が届く")
-        void targetあり両方に通知() {
-            ShiftSwapRequestEntity swap = buildPendingSwap(2L, 10L, 20L);
+        @DisplayName("楽観ロック競合時はスキップして他の処理を継続する")
+        void 楽観ロック競合時はスキップ() {
             given(swapRepository.findExpiredPendingBefore(any(), any(Pageable.class)))
-                    .willReturn(List.of(swap));
+                    .willReturn(List.of(swapWithId(1L), swapWithId(2L)));
+            willThrow(new ObjectOptimisticLockingFailureException(ShiftSwapRequestEntity.class, 1L))
+                    .given(shiftSwapExpiryRunner).cancelOne(1L);
+            given(shiftSwapExpiryRunner.cancelOne(eq(2L))).willReturn(true);
 
-            batchService.runSwapExpiryCancel();
+            assertThatCode(() -> batchService.runSwapExpiryCancel()).doesNotThrowAnyException();
 
-            verify(notificationHelper).notify(
-                    eq(10L), eq("SHIFT_SWAP_EXPIRED"),
-                    anyString(), anyString(),
-                    eq("SHIFT_SWAP_REQUEST"), eq(2L),
-                    any(), eq(10L), anyString(), isNull());
-            verify(notificationHelper).notify(
-                    eq(20L), eq("SHIFT_SWAP_EXPIRED"),
-                    anyString(), anyString(),
-                    eq("SHIFT_SWAP_REQUEST"), eq(2L),
-                    any(), eq(20L), anyString(), isNull());
+            verify(shiftSwapExpiryRunner).cancelOne(2L);
         }
 
         @Test
-        @DisplayName("targetUserId == null の場合 requester のみに通知が届く")
-        void targetなしrequesterのみに通知() {
-            ShiftSwapRequestEntity swap = buildPendingSwap(3L, 10L, null);
-            given(swapRepository.findExpiredPendingBefore(any(), any(Pageable.class)))
-                    .willReturn(List.of(swap));
-
-            batchService.runSwapExpiryCancel();
-
-            verify(notificationHelper).notify(
-                    eq(10L), eq("SHIFT_SWAP_EXPIRED"),
-                    anyString(), anyString(),
-                    eq("SHIFT_SWAP_REQUEST"), eq(3L),
-                    any(), eq(10L), anyString(), isNull());
-        }
-
-        @Test
-        @DisplayName("対象が 0 件の場合は何もしない")
+        @DisplayName("対象が 0 件の場合は Runner を呼ばない")
         void 対象なしは処理なし() {
             given(swapRepository.findExpiredPendingBefore(any(), any(Pageable.class)))
                     .willReturn(List.of());
 
             batchService.runSwapExpiryCancel();
 
-            verify(swapRepository, never()).save(any());
-            verify(notificationHelper, never()).notify(
-                    anyLong(), anyString(), anyString(), anyString(),
-                    anyString(), anyLong(), any(), anyLong(), anyString(), any());
-        }
-
-        @Test
-        @DisplayName("楽観ロック競合時はスキップして他の処理を継続する")
-        void 楽観ロック競合時はスキップ() {
-            ShiftSwapRequestEntity swap1 = buildPendingSwap(1L, 10L, null);
-            ShiftSwapRequestEntity swap2 = buildPendingSwap(2L, 20L, null);
-            given(swapRepository.findExpiredPendingBefore(any(), any(Pageable.class)))
-                    .willReturn(List.of(swap1, swap2));
-            given(swapRepository.save(swap1))
-                    .willThrow(new ObjectOptimisticLockingFailureException(ShiftSwapRequestEntity.class, 1L));
-
-            batchService.runSwapExpiryCancel();
-
-            verify(swapRepository).save(swap2);
+            verify(shiftSwapExpiryRunner, never()).cancelOne(any());
         }
     }
 
     // =========================================================
-    // runRequestCleanup
+    // runRequestCleanup（Issue #2834 の是正対象外。単一のバルク DELETE のまま）
     // =========================================================
 
     @Nested
@@ -155,12 +131,12 @@ class ShiftCleanupBatchServiceTest {
         @DisplayName("ARCHIVED 30 日超過スケジュールの希望が物理削除される")
         void アーカイブ済み希望が物理削除される() {
             given(scheduleRepository.findArchivedScheduleIdsOlderThan(any(), any(Pageable.class)))
-                    .willReturn(List.of(1L, 2L));
-            given(requestRepository.deleteByScheduleIds(anyList())).willReturn(50);
+                    .willReturn(List.of(10L));
+            given(requestRepository.deleteByScheduleIds(List.of(10L))).willReturn(3);
 
             batchService.runRequestCleanup();
 
-            verify(requestRepository).deleteByScheduleIds(List.of(1L, 2L));
+            verify(requestRepository, times(1)).deleteByScheduleIds(List.of(10L));
         }
 
         @Test
@@ -177,14 +153,13 @@ class ShiftCleanupBatchServiceTest {
         @Test
         @DisplayName("複数スケジュール ID がまとめて削除される")
         void 複数スケジュールIDを一括削除() {
-            List<Long> ids = List.of(10L, 20L, 30L);
             given(scheduleRepository.findArchivedScheduleIdsOlderThan(any(), any(Pageable.class)))
-                    .willReturn(ids);
-            given(requestRepository.deleteByScheduleIds(ids)).willReturn(150);
+                    .willReturn(List.of(10L, 11L, 12L));
+            given(requestRepository.deleteByScheduleIds(List.of(10L, 11L, 12L))).willReturn(9);
 
             batchService.runRequestCleanup();
 
-            verify(requestRepository).deleteByScheduleIds(ids);
+            verify(requestRepository).deleteByScheduleIds(List.of(10L, 11L, 12L));
         }
 
         @Test
@@ -195,22 +170,9 @@ class ShiftCleanupBatchServiceTest {
 
             batchService.runRequestCleanup();
 
-            verify(scheduleRepository).findArchivedScheduleIdsOlderThan(any(), any(Pageable.class));
+            ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+            verify(scheduleRepository).findArchivedScheduleIdsOlderThan(any(), captor.capture());
+            assertThat(captor.getValue().getPageSize()).isEqualTo(100);
         }
-    }
-
-    // =========================================================
-    // ヘルパー
-    // =========================================================
-
-    private ShiftSwapRequestEntity buildPendingSwap(Long id, Long requesterId, Long targetUserId) {
-        ShiftSwapRequestEntity entity = ShiftSwapRequestEntity.builder()
-                .slotId(100L)
-                .requesterId(requesterId)
-                .targetUserId(targetUserId)
-                .build();
-        ReflectionTestUtils.setField(entity, "id", id);
-        ReflectionTestUtils.setField(entity, "status", SwapRequestStatus.PENDING);
-        return entity;
     }
 }

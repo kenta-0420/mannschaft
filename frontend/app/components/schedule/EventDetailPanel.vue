@@ -17,6 +17,14 @@ const props = defineProps<{
     attendanceRequired: boolean
     myAttendance: string | null
     attendanceStats: { yes: number; no: number; maybe: number; pending: number; total: number } | null
+    targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+    targetCount?: number
+    targets?: Array<{
+      userId: number
+      displayName: string
+      avatarUrl: string | null
+      calendarColor: string | null
+    }>
   }
   scopeType: 'team' | 'organization'
   scopeId: string
@@ -24,6 +32,7 @@ const props = defineProps<{
   skipDelegations?: boolean
   scopeName?: string | null
   scopeIconUrl?: string | null
+  showAudience?: boolean
   /** 通知リンク（?commentId=）から遷移してきた場合のハイライト対象コメント ID（設計書 §6.4）。 */
   highlightCommentId?: string | null
 }>()
@@ -218,6 +227,18 @@ onMounted(async () => {
       <div v-if="event.createdBy" class="flex items-center gap-2">
         <i class="pi pi-user text-surface-400" />
         <span>作成: {{ event.createdBy.displayName }}</span>
+      </div>
+      <div v-if="showAudience !== false" class="flex items-start gap-2">
+        <i class="pi pi-users mt-0.5 text-surface-400" aria-hidden="true" />
+        <div class="min-w-0">
+          <div class="text-xs text-surface-500">{{ $t('schedule.targetAudience.label') }}</div>
+          <ScheduleTargetAudience
+            :target-mode="event.targetMode"
+            :target-count="event.targetCount"
+            :targets="event.targets"
+            class="mt-1 text-surface-700 dark:text-surface-200"
+          />
+        </div>
       </div>
     </div>
 

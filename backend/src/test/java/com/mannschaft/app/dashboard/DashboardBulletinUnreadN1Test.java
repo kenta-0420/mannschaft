@@ -254,7 +254,7 @@ class DashboardBulletinUnreadN1Test {
                 .willReturn(List.of());
         given(bulletinReadStatusRepository.findReadThreadIds(anyCollection(), anyLong()))
                 .willReturn(List.of());
-        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any()))
-                .willReturn(List.of());
+        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
     }
 }

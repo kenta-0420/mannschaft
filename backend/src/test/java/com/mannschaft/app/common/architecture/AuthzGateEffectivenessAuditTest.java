@@ -214,7 +214,7 @@ class AuthzGateEffectivenessAuditTest {
         "src/main/java/com/mannschaft/app/event/service/EventRollCallService.java:77:teamId",
         "src/main/java/com/mannschaft/app/event/service/EventRollCallService.java:150:teamId",
         // 門番は EventRsvpController の requireScopeMember(userId, TEAM, teamId, eventId)。
-        "src/main/java/com/mannschaft/app/event/service/EventRsvpService.java:303:teamId",
+        "src/main/java/com/mannschaft/app/event/service/EventRsvpService.java:294:teamId",
         // 門番は各 *ProfileMediaController の checkAdminOrAbove / 自己スコープ突合。
         "src/main/java/com/mannschaft/app/profile/service/ProfileMediaService.java:232:requestUserId",
         // 門番は listFriends の accessControlService.checkMembership(userId, teamId, SCOPE_TEAM)。

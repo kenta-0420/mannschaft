@@ -15,7 +15,7 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleEventCategoryRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -53,10 +53,13 @@ class ScheduleQueryServiceTest {
 
     @Mock private ScheduleRepository scheduleRepository;
     @Mock private NameResolverService nameResolverService;
-    @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MembershipService membershipService;
     @Mock private ScheduleEventCategoryRepository categoryRepository;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
     @Mock private ScheduleAttendanceRepository attendanceRepository;
+    @Mock private ScheduleTargetService scheduleTargetService;
+    // F03.19 W1-c: 色解決のためレイヤー設定を読む（既定 mock は空 Map を返す＝設定なし）。
+    @Mock private CalendarLayerService calendarLayerService;
 
     @InjectMocks
     private ScheduleQueryService scheduleQueryService;
@@ -105,9 +108,9 @@ class ScheduleQueryServiceTest {
 
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
                     .willReturn(List.of(personal));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
                     .willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID))
+            given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
                     .willReturn(List.of(ORG_ID));
             given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
                     .willReturn(List.of(teamVisible, teamHidden));
@@ -121,6 +124,8 @@ class ScheduleQueryServiceTest {
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(20L, 21L)), eq(USER_ID)))
                     .willReturn(Set.of(20L));
+            given(scheduleTargetService.assignedScheduleIds(any(), eq(USER_ID)))
+                    .willReturn(Set.of(10L, 11L, 20L, 21L));
 
             // When
             List<CalendarEntryResponse> entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
@@ -132,14 +137,64 @@ class ScheduleQueryServiceTest {
         }
 
         @Test
+        @DisplayName("membership-only の通常メンバーもマイカレンダー対象になる")
+        void includes_membership_only_team_and_organization() {
+            ScheduleEntity team = schedule(30L, TEAM_ID, null, null);
+            ScheduleEntity org = schedule(40L, null, ORG_ID, null);
+            given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of(TEAM_ID));
+            given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of(ORG_ID));
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of(team));
+            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, FROM, TO))
+                    .willReturn(List.of(org));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(30L)), eq(USER_ID))).willReturn(Set.of(30L));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(40L)), eq(USER_ID))).willReturn(Set.of(40L));
+            given(scheduleTargetService.assignedScheduleIds(any(), eq(USER_ID)))
+                    .willReturn(Set.of(30L, 40L));
+
+            var entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
+
+            assertThat(entries).extracting(CalendarEntryResponse::getId)
+                    .containsExactlyInAnyOrder(30L, 40L);
+        }
+
+        @Test
+        @DisplayName("共有予定は詳細APIで使える公開slugを返す")
+        void includes_scope_slug_for_detail_route() {
+            ScheduleEntity team = schedule(31L, TEAM_ID, null, null);
+            given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of(TEAM_ID));
+            given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of());
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of(team));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(31L)), eq(USER_ID))).willReturn(Set.of(31L));
+            given(scheduleTargetService.assignedScheduleIds(any(), eq(USER_ID))).willReturn(Set.of(31L));
+            given(nameResolverService.resolveScopeSlug("TEAM", TEAM_ID)).willReturn("fc-u-18");
+
+            var entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
+
+            assertThat(entries).singleElement()
+                    .extracting(entry -> entry.getScope().scopeSlug())
+                    .isEqualTo("fc-u-18");
+        }
+
+        @Test
         @DisplayName("認可漏れ回帰: 個人予定は filterAccessible を通さず常に含まれる")
         void getMyCalendar_個人予定はフィルタ対象外() {
             // Given: チーム/組織所属なし、個人予定のみ
             ScheduleEntity personal = schedule(1L, null, null, USER_ID);
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
                     .willReturn(List.of(personal));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of());
+            given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of());
 
             // When
             List<CalendarEntryResponse> entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
@@ -157,9 +212,6 @@ class ScheduleQueryServiceTest {
             ScheduleEntity personal = schedule(1L, null, null, USER_ID);
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
                     .willReturn(List.of(personal));
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
-
             // When
             List<CalendarEntryResponse> entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
 

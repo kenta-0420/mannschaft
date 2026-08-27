@@ -1,5 +1,7 @@
 package com.mannschaft.app.gdpr.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
@@ -58,6 +60,8 @@ public class GdprPurgeAuditBatchService {
      * <p>30 分以上 PENDING のまま経過しているレコードをユーザー別にグルーピングし、
      * {@code log.error} でアラートを出力する。正常完了時は {@code log.info} で完了を記録する。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると GDPR 消去の実行監査が行われず、消去漏れが検知されないまま法令上の消去期限を破っていることに気付けない")
     @BatchEndpoint(
             name = "gdpr-purge-audit-daily",
             description = "AccountPurgedEvent の全ドメイン処理完了を監査し、PENDING 残存をアラートする（毎日 05:00 JST）"

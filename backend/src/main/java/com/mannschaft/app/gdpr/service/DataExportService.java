@@ -1,5 +1,7 @@
 package com.mannschaft.app.gdpr.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.StorageService;
@@ -177,11 +179,13 @@ public class DataExportService {
         DataExportEntity entity = dataExportRepository.findTopByUserIdOrderByCreatedAtDesc(userId)
                 .orElseThrow(() -> new BusinessException(GdprErrorCode.GDPR_003));
 
+        // 「まだ出来ていない」は不在ではなく状態競合（409）。
         if (!"COMPLETED".equals(entity.getStatus()) || entity.getS3Key() == null) {
-            throw new BusinessException(GdprErrorCode.GDPR_003);
+            throw new BusinessException(GdprErrorCode.GDPR_009);
         }
+        // 「かつて存在したが期限で失効した」は 410 GONE（再取得しても復活しないことを伝える）。
         if (entity.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BusinessException(GdprErrorCode.GDPR_003);
+            throw new BusinessException(GdprErrorCode.GDPR_010);
         }
 
         return storageService.generateDownloadUrl(entity.getS3Key(), Duration.ofHours(1));
@@ -190,6 +194,8 @@ public class DataExportService {
     /**
      * スタックしたPROCESSINGをFAILEDにリカバリする。毎時実行。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとスタックしたエクスポートが PROCESSING のまま復旧されず、また期限切れ ZIP が S3 に残り続けて保持期限を超えた個人データが滞留する")
     @BatchEndpoint(name = "gdpr-export-stuck-recovery-hourly", description = "スタックした GDPR エクスポートジョブを毎時 FAILED に戻す")
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "exportRecoveryBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT1M")
@@ -206,6 +212,8 @@ public class DataExportService {
     /**
      * 期限切れZIPをS3から削除する。毎日AM5:00実行。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めるとスタックしたエクスポートが PROCESSING のまま復旧されず、また期限切れ ZIP が S3 に残り続けて保持期限を超えた個人データが滞留する")
     @BatchEndpoint(name = "gdpr-export-expired-cleanup-daily", description = "期限切れ GDPR エクスポート ZIP を毎日 05:00 に R2 から削除する")
     @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "exportCleanupBatch", lockAtMostFor = "PT10M", lockAtLeastFor = "PT1M")

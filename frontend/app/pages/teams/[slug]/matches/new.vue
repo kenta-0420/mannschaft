@@ -91,7 +91,7 @@ function selectKind(kind: MatchKind): void {
 async function submit(): Promise<void> {
   submitError.value = null
   if (!validate()) return
-  if (!await loadOrganizationId() || orgId.value === null || teamId.value === null || form.kind === null) {
+  if (!await loadOrganizationId() || teamId.value === null || form.kind === null) {
     submitError.value = t('match.org_context.resolve_failed')
     return
   }

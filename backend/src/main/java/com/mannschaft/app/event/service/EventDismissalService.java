@@ -6,19 +6,14 @@ import com.mannschaft.app.event.dto.DismissalReminderTargetResponse;
 import com.mannschaft.app.event.dto.DismissalRequest;
 import com.mannschaft.app.event.dto.DismissalStatusResponse;
 import com.mannschaft.app.event.entity.EventEntity;
+import com.mannschaft.app.event.event.EventDismissalNotificationEvent;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.event.repository.EventRepository.DismissalReminderTargetProjection;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
-import com.mannschaft.app.family.service.CareEventNotificationService;
-import com.mannschaft.app.family.service.CareLinkService;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
-import com.mannschaft.app.notification.service.NotificationDispatchService;
-import com.mannschaft.app.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,10 +42,12 @@ public class EventDismissalService {
     private final EventRepository eventRepository;
     private final EventRsvpResponseRepository rsvpResponseRepository;
     private final EventCheckinRepository checkinRepository;
-    private final NotificationService notificationService;
-    private final NotificationDispatchService dispatchService;
-    private final CareEventNotificationService careEventNotificationService;
-    private final CareLinkService careLinkService;
+
+    /**
+     * Issue #2834 / CMP-056 第1群ロットB: 解散通知は業務コミット後に配送リスナーへ委譲する
+     * （{@code EventDismissalNotificationListener}）。本サービスは通知を直接組み立てない。
+     */
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     // =========================================================
     // 公開 API
@@ -63,10 +60,17 @@ public class EventDismissalService {
      * <ol>
      *   <li>既に解散通知済みの場合は {@link BusinessException}（ALREADY_DISMISSED）をスロー</li>
      *   <li>{@code EventEntity.recordDismissal(operatorUserId)} を呼び出して送信日時を記録</li>
-     *   <li>RSVP=ATTENDING の全参加者にプッシュ通知を送信</li>
-     *   <li>チェックインのみ（RSVP 未登録）の参加者にも通知（補完）</li>
-     *   <li>{@code req.notifyGuardians=true} の場合、ケア対象者の見守り者全員に追加通知</li>
+     *   <li>RSVP=ATTENDING の全参加者＋チェックインのみの参加者（補完）を重複排除して集約</li>
+     *   <li>{@link EventDismissalNotificationEvent} を publish する（通知の生成・配信は行わない）</li>
      * </ol>
+     *
+     * <p>Issue #2834 / CMP-056 第1群ロットB: 通知は本トランザクションの中では送らない。
+     * 業務コミット後（{@code AFTER_COMMIT}）に {@code EventDismissalNotificationListener} が
+     * 受信者ごとに独立トランザクション（{@code REQUIRES_NEW}）で送る。見守り者への通知
+     * （{@code CareEventNotificationService#notifyDismissal}）も同リスナーへ移した。
+     * 是正前は通知側の DB 例外が rollback-only を立て、<b>「解散通知済み」の記録ごと巻き戻していた</b>。</p>
+     *
+     * <p>戻り値は元から {@code void} であり、非同期化による外向き契約の変化はない。</p>
      *
      * @param eventId          対象イベントID
      * @param teamId           チームID（スコープ検証用）
@@ -99,20 +103,15 @@ public class EventDismissalService {
         Set<Long> targetUserIds = new HashSet<>(attendingUserIds);
         targetUserIds.addAll(checkedInUserIds);
 
-        String message = req.resolveMessage();
-        String eventLabel = resolveEventLabel(event);
-
-        // 参加者へのプッシュ通知（F03.12 Phase11: actionUrl にチームID を含める）
-        for (Long targetUserId : targetUserIds) {
-            sendParticipantDismissalNotification(targetUserId, eventId, teamId, eventLabel, message);
+        // Issue #2834 / CMP-056 第1群ロットB: 通知は業務コミット後（AFTER_COMMIT）に
+        // EventDismissalNotificationListener が受信者ごと独立トランザクションで送る。
+        if (!targetUserIds.isEmpty()) {
+            applicationEventPublisher.publishEvent(new EventDismissalNotificationEvent(
+                    eventId, teamId, operatorUserId, req.getMessage(), req.isNotifyGuardians(),
+                    List.copyOf(targetUserIds)));
         }
 
-        // 見守り者への追加通知
-        if (req.isNotifyGuardians()) {
-            notifyGuardiansForCareRecipients(targetUserIds, eventId);
-        }
-
-        log.info("解散通知送信完了: eventId={}, operatorUserId={}, 参加者数={}, notifyGuardians={}",
+        log.info("解散通知送信要求: eventId={}, operatorUserId={}, 参加者数={}, notifyGuardians={}",
                 eventId, operatorUserId, targetUserIds.size(), req.isNotifyGuardians());
     }
 
@@ -204,69 +203,4 @@ public class EventDismissalService {
                 .orElseThrow(() -> new BusinessException(EventErrorCode.EVENT_NOT_FOUND));
     }
 
-    /**
-     * 参加者個人へ解散通知プッシュを送信する。
-     *
-     * <p>F03.12 Phase11: 通知の {@code actionUrl} に teamId を含めることで、
-     * 通知センターからイベント詳細へ deep link できるようにする。</p>
-     *
-     * @param targetUserId 通知先ユーザーID
-     * @param eventId      イベントID
-     * @param teamId       チームID（actionUrl 構築用）
-     * @param eventLabel   イベント表示名
-     * @param message      解散メッセージ
-     */
-    private void sendParticipantDismissalNotification(Long targetUserId, Long eventId, Long teamId,
-                                                       String eventLabel, String message) {
-        String title = "「" + eventLabel + "」が解散しました";
-        String body = message;
-
-        NotificationEntity notification = notificationService.createNotification(
-                targetUserId,
-                "EVENT_DISMISSAL",
-                NotificationPriority.NORMAL,
-                title, body,
-                "EVENT", eventId,
-                NotificationScopeType.PERSONAL, targetUserId,
-                "/teams/" + teamId + "/events/" + eventId, null);
-
-        dispatchService.dispatch(notification);
-        log.debug("解散通知送信: eventId={}, teamId={}, targetUserId={}", eventId, teamId, targetUserId);
-    }
-
-    /**
-     * ケア対象者の見守り者全員へ解散通知を送信する。
-     *
-     * <p>参加者の中でケア対象者を特定し、各ケア対象者の見守り者に
-     * {@link CareEventNotificationService#notifyDismissal} を通じて通知する。</p>
-     *
-     * @param targetUserIds 参加者ユーザーIDセット（RSVP ATTENDING + チェックイン）
-     * @param eventId       イベントID
-     */
-    private void notifyGuardiansForCareRecipients(Set<Long> targetUserIds, Long eventId) {
-        for (Long userId : targetUserIds) {
-            try {
-                if (careLinkService.isUnderCare(userId)) {
-                    // CareEventNotificationService.notifyDismissal() に委譲
-                    careEventNotificationService.notifyDismissal(userId, eventId);
-                    log.debug("見守り者への解散通知送信: eventId={}, careRecipientUserId={}", eventId, userId);
-                }
-            } catch (Exception e) {
-                // 個別の見守り者通知失敗は全体の解散通知処理を停止させない
-                log.warn("見守り者への解散通知送信中にエラー: eventId={}, userId={}, error={}",
-                        eventId, userId, e.getMessage(), e);
-            }
-        }
-    }
-
-    /**
-     * イベントの表示ラベルを解決する。subtitle が設定されていれば使用し、なければ slug を使用する。
-     *
-     * @param event イベントエンティティ
-     * @return イベント表示ラベル（非 null）
-     */
-    private String resolveEventLabel(EventEntity event) {
-        String subtitle = event.getSubtitle();
-        return (subtitle != null && !subtitle.isBlank()) ? subtitle : event.getSlug();
-    }
 }

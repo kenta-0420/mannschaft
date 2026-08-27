@@ -1,5 +1,7 @@
 package com.mannschaft.app.schedule.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.schedule.entity.ScheduleKeepEntity;
 import com.mannschaft.app.schedule.repository.ScheduleKeepRepository;
@@ -51,6 +53,8 @@ public class ScheduleKeepAnonymizationEventListener {
      *
      * @param event 退会即時匿名化イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会済み利用者のスケジュールキープ情報に個人情報が残存し、退会済みなのに PII が残るという不整合になる")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onUserAnonymized(UserAnonymizedEvent event) {

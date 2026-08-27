@@ -145,9 +145,7 @@ public class JobApplicationController {
     /**
      * 応募詳細を取得する。当事者（応募者本人、または対象求人の採否権限者）のみ許可。
      *
-     * <p>BOLA対策: 従来は認証済みであれば誰でも他人の応募（自己PR含む）を id 直打ちで
-     * 閲覧できてしまう欠陥があったため、{@link JobApplicationService#findById(Long, Long)} で
-     * 当事者チェックを行うよう根治した。</p>
+     * <p>BOLA対策: {@link JobApplicationService#findById(Long, Long)} で当事者チェックを行う。</p>
      */
     @GetMapping("/api/v1/applications/{id}")
     @Operation(summary = "応募詳細取得")
@@ -194,7 +192,7 @@ public class JobApplicationController {
      * <p><b>認可の所在</b>: {@code JobApplicationService#withdraw}
      * （{@code jobmatching/service/JobApplicationService.java:130}）が、対象応募を実体として
      * ロードしたうえで {@code applicantUserId} と認証主体の一致を検証し、不一致は
-     * {@code JOB_PERMISSION_DENIED}（403）で拒否する。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
+     * {@code JOB_PERMISSION_DENIED}（404。越境の存在秘匿）で拒否する。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
      */
     @AuthorizedInService
     @PostMapping("/api/v1/applications/{id}/withdraw")

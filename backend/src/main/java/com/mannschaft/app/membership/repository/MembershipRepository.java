@@ -345,9 +345,11 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
      * @param scopeId   対象スコープ ID（対象チーム ID 等）
      * @param cursor    直前チャンク末尾の user_id（初回は最小値未満＝{@code 0L} 等を渡す）
      * @param pageable  チャンクサイズ（{@code PageRequest.of(0, chunk)}。ソートはクエリ側で固定）
-     * @return {@code user_id > cursor} の現役かつ ACTIVE・未削除ユーザーの user_id を昇順に最大 chunk 件
+     * @return {@code user_id > cursor} の現役かつ ACTIVE・未削除ユーザーの {@code [user_id, locale]} を昇順に最大 chunk 件
+     *         （Issue #2871: 受信者ごとに文面のロケールを変えるため locale も同時に取る。users は既に PK で
+     *         JOIN 済みであり、射影を 1 列広げるだけなので実行計画は変わらない）
      */
-    @Query(value = "SELECT CAST(m.user_id AS SIGNED) FROM memberships m "
+    @Query(value = "SELECT CAST(m.user_id AS SIGNED), u.locale FROM memberships m "
             + "JOIN users u ON u.id = m.user_id "
             + "WHERE m.scope_type = :#{#scopeType.name()} AND m.scope_id = :scopeId "
             + "AND m.left_at IS NULL "
@@ -355,7 +357,7 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             + "AND m.user_id > :cursor "
             + "ORDER BY m.user_id ASC",
             nativeQuery = true)
-    List<Long> findActiveUserIdsByScopeKeyset(
+    List<Object[]> findActiveUserIdsByScopeKeyset(
             @Param("scopeType") ScopeType scopeType,
             @Param("scopeId") Long scopeId,
             @Param("cursor") Long cursor,
@@ -373,7 +375,7 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
      * 純 SUPPORTER は {@code role_kind='SUPPORTER'} で除外され、GUEST は memberships 行を持たないため自然に外れる。
      * キープ本体は {@code ScheduleKeepVisibilityResolver}（{@code MEMBERS_AND_ABOVE}）で SUPPORTER に不可視であり、
      * 受信者ごとの可視性再チェックをしない一括配信でも<b>母集団段階で SUPPORTER を落とすことでタイトル漏洩を防ぐ</b>
-     * （§6.1・CMP-017b の SUPPORTER 素通り欠陥の根治）。</p>
+     * （§6.1・CMP-017b）。</p>
      *
      * <p>操作者・作成者の除外は母集団側で行う（{@code m.user_id <> :excludedA AND m.user_id <> :excludedB}）。
      * 作成者は別途「必達」の直送で受領するため母集団からは外し二重送信を避ける。除外不要枠には
@@ -387,9 +389,10 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
      * @param excludedB 母集団から除く user_id その2（キープ作成者。作成者匿名化時は番人値 {@code 0}）
      * @param cursor    直前チャンク末尾の user_id（初回は {@code 0L}）
      * @param pageable  チャンクサイズ（{@code PageRequest.of(0, chunk)}）
-     * @return {@code user_id > cursor} の MEMBER 以上・現役・ACTIVE・未削除・除外対象外の user_id を昇順に最大 chunk 件
+     * @return {@code user_id > cursor} の MEMBER 以上・現役・ACTIVE・未削除・除外対象外の {@code [user_id, locale]} を昇順に最大 chunk 件
+     *         （Issue #2871: locale を同時取得。users は既に PK JOIN 済みのため実行計画は不変）
      */
-    @Query(value = "SELECT CAST(m.user_id AS SIGNED) FROM memberships m "
+    @Query(value = "SELECT CAST(m.user_id AS SIGNED), u.locale FROM memberships m "
             + "JOIN users u ON u.id = m.user_id "
             + "WHERE m.scope_type = 'TEAM' AND m.scope_id = :teamId "
             + "AND m.role_kind = 'MEMBER' "
@@ -399,7 +402,7 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             + "AND m.user_id > :cursor "
             + "ORDER BY m.user_id ASC",
             nativeQuery = true)
-    List<Long> findMemberAndAboveTeamUserIdsByKeysetExcluding(
+    List<Object[]> findMemberAndAboveTeamUserIdsByKeysetExcluding(
             @Param("teamId") Long teamId,
             @Param("excludedA") Long excludedA,
             @Param("excludedB") Long excludedB,

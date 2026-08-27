@@ -142,7 +142,14 @@ public enum RecruitmentErrorCode implements ErrorCode {
     /** テンプレートが見つからない（他チームの ID を指した越境も同一コードで存在秘匿 → 404） */
     TEMPLATE_NOT_FOUND("RECRUITMENT_313", "テンプレートが見つかりません", Severity.WARN),
 
-    /** テンプレートのスコープが一致しない */
+    /**
+     * テンプレートのスコープが一致しない（他チーム・他組織のテンプレート ID を指した越境）。
+     *
+     * <p><b>越境の存在秘匿のため 404 固定</b>。不在（{@link #TEMPLATE_NOT_FOUND}）と同じ
+     * ステータスに揃えないと、templateId の列挙で他スコープのテンプレートの実在が判別できる
+     * （存在オラクル）。かつては本コードが ERROR_CODE_STATUS_MAP 未登録で既定 400 に
+     * 落ちており「入力不正だから 400」と説明されていたが、それは登録漏れであって設計判断ではない。</p>
+     */
     TEMPLATE_SCOPE_MISMATCH("RECRUITMENT_314", "テンプレートのスコープが一致しません", Severity.WARN);
 
     private final String code;

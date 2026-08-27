@@ -18,6 +18,7 @@ import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
+import com.mannschaft.app.role.dto.ScopeRoleUserContact;
 import com.mannschaft.app.role.dto.ScopeUserRoleResponse;
 import com.mannschaft.app.role.dto.UserRoleOnlyDiffRow;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
@@ -116,6 +117,15 @@ public class RoleService {
         roleRepository.findById(roleId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
+        // CMP-052 権限付与経路の防御対称化: 付与先のアカウントが生存している（未削除かつ ACTIVE）ことを確認する。
+        // transferOwnership（CMP-050）にのみ入っていた確認を assignRole にも広げる。凍結・退会済みユーザーへ
+        // ADMIN を与えるとスコープが恒久的に操作不能（唯一の管理者が操作できない状態）になりうるため。
+        // 他人のアカウント状態を漏らさないよう、本メソッド内の他の拒否と同じ ROLE_001 へ畳む。
+        // role→auth の Repository 直接依存（D-3/D-5）を避けるため判定は UserRoleRepository 側に置く。
+        if (!userRoleRepository.isActiveUser(targetUserId)) {
+            throw new BusinessException(RoleErrorCode.ROLE_001);
+        }
+
         // 既存ロール存在チェック → 上書き
         // 上書き時は changeRole と同様に flush して DELETE を先に確定させる
         // （uq_user_roles_user_scope ユニーク制約の衝突回避。詳細は changeRole 参照）。
@@ -210,6 +220,13 @@ public class RoleService {
         // 新ロール存在確認
         roleRepository.findById(req.getRoleId())
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
+
+        // CMP-052 権限付与経路の防御対称化: 変更対象のアカウントが生存している（未削除かつ ACTIVE）ことを確認する。
+        // 在籍・権限確認をすべて終えた後、副作用（delete / save / イベント発行）より前に置く。
+        // 理由・ErrorCode を ROLE_001 に畳む方針・配置場所は assignRole のコメント参照。
+        if (!userRoleRepository.isActiveUser(targetUserId)) {
+            throw new BusinessException(RoleErrorCode.ROLE_001);
+        }
 
         // 既存を削除して新規作成
         // 根治: delete 直後に flush して DELETE を先に DB へ確定させる。
@@ -383,6 +400,56 @@ public class RoleService {
     }
 
     /**
+     * 指定チームで指定ロールを持つユーザー ID 一覧を返す。
+     *
+     * <p>Issue #2834 / CMP-056 第1群ロットB で追加。{@code social} ドメインの通知配送リスナー
+     * （{@code TeamFriendNotificationListener}）が両チームの ADMIN を解決するために使う。
+     * {@link #getAdminUserIdsByOrganizationId} と同じ趣旨で、他ドメインが {@code role} ドメインの
+     * {@code UserRoleRepository} を直接注入することを避けるための Service 経路
+     * （D-5 ArchUnit 準拠）。プリミティブ（{@code List<Long>}）のみを返し Entity を漏らさない。</p>
+     *
+     * @param teamId   対象チーム ID
+     * @param roleName ロール名（例: {@code "ADMIN"}）
+     * @return 当該チームで当該ロールを持つユーザー ID 一覧
+     */
+    public List<Long> getUserIdsByTeamIdAndRoleName(Long teamId, String roleName) {
+        return userRoleRepository.findUserIdsByTeamIdAndRoleName(teamId, roleName);
+    }
+
+    /**
+     * 指定スコープで指定ロールを持つ生存ユーザーの連絡先（ユーザーID・メール）一覧を返す。
+     *
+     * <p>Issue #2834 / CMP-056 第2群ロット1 で追加。{@code advertising} ドメインの
+     * {@code OverdueInvoiceMarkRunner} が広告主組織の ADMIN 宛受信者を解決するために使う。
+     * {@link #getUserIdsByTeamIdAndRoleName} と同じ趣旨で、他ドメインが {@code role} ドメインの
+     * {@code UserRoleRepository} を直接注入することを避けるための Service 経路（D-3 / D-5 準拠）。
+     * native クエリの {@code Object[]} は本メソッド内で DTO へ変換し、呼び出し側へ漏らさない。</p>
+     *
+     * @param scopeType スコープ種別（{@code TEAM} or {@code ORGANIZATION}）
+     * @param scopeId   スコープID（チームID または 組織ID）
+     * @param roleName  ロール名（例: {@code "ADMIN"}）
+     * @return 当該スコープで当該ロールを持つ生存ユーザーの連絡先一覧
+     */
+    public List<ScopeRoleUserContact> getUserContactsByScopeAndRole(String scopeType, Long scopeId, String roleName) {
+        return userRoleRepository.findUserIdAndEmailByScopeAndRole(scopeType, scopeId, roleName)
+                .stream()
+                .map(row -> new ScopeRoleUserContact(((Number) row[0]).longValue(), (String) row[1]))
+                .toList();
+    }
+
+    /**
+     * プラットフォームの SYSTEM_ADMIN ユーザーID一覧を返す（プラットフォーム通知の受信者解決用）。
+     *
+     * <p>Issue #2834 / CMP-056 第2群ロット1 で追加。用途・理由は
+     * {@link #getUserContactsByScopeAndRole} と同じ（越境は Service 経由・D-3 / D-5 準拠）。</p>
+     *
+     * @return SYSTEM_ADMIN の生存ユーザーID一覧
+     */
+    public List<Long> getSystemAdminUserIds() {
+        return userRoleRepository.findSystemAdminUserIds();
+    }
+
+    /**
      * ユーザーの有効権限リストを解決する。
      * ロール由来 + 権限グループ由来の統合リスト。
      *
@@ -500,6 +567,16 @@ public class RoleService {
                 ? userRoleRepository.existsByUserIdAndTeamId(targetUserId, scopeId)
                 : userRoleRepository.existsByUserIdAndOrganizationId(targetUserId, scopeId);
         if (!targetIsMember) {
+            throw new BusinessException(RoleErrorCode.ROLE_001);
+        }
+
+        // CMP-050 二重防御: 譲渡先のアカウントが生存している（未削除かつ ACTIVE）ことを確認する。
+        // 在籍プリミティブ側にも ACTIVE 条件を課したが、唯一の ADMIN を凍結・退会済みユーザーへ
+        // 譲渡するとそのスコープが恒久的に操作不能になるため、権限を与える経路でも明示確認する。
+        // ErrorCode を分けると他人のアカウント状態が漏れるので本メソッド内の他の拒否と同じ
+        // ROLE_001 へ畳む。role→auth の Repository 直接依存を避けるため判定は
+        // UserRoleRepository 側（既に users を参照している）に置いている。
+        if (!userRoleRepository.isActiveUser(targetUserId)) {
             throw new BusinessException(RoleErrorCode.ROLE_001);
         }
 

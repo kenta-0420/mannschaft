@@ -1,6 +1,9 @@
 package com.mannschaft.app.membership.fanout;
 
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.notification.fanout.FanoutPageRequest;
+import com.mannschaft.app.notification.fanout.FanoutRecipient;
+import com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper;
 import com.mannschaft.app.notification.fanout.FanoutRecipientSource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -15,7 +18,7 @@ import java.util.List;
  * <b>操作者・作成者を除いた</b>集合。純 SUPPORTER（{@code role_kind='SUPPORTER'}）と
  * メンバーシップを持たない GUEST は母集団段階で除外し、可視性再チェックをしない一括配信
  * （{@link com.mannschaft.app.notification.service.NotificationBulkFanoutService}）でもタイトルを漏らさない
- * （§6.1・CMP-017b の SUPPORTER 素通り欠陥を母集団側で塞ぐ）。</p>
+ * （§6.1・CMP-017b）。</p>
  *
  * <h2>配置ドメイン（越境 Repository 依存の解消・D-5 番人）</h2>
  * <p>受信者解決は {@link MembershipRepository}（membership ドメイン）を引くため、本実装は membership ドメイン
@@ -46,15 +49,22 @@ public class ScheduleKeepTeamFanoutRecipientSource implements FanoutRecipientSou
     }
 
     @Override
-    public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit) {
+    public List<FanoutRecipient> nextPage(FanoutPageRequest request) {
+        if (!request.isSingleShard()) {
+            // SCHEDULE_KEEP_TEAM はシャード分割に非対応（enqueue が shard_count=1 でしか発行しない）。
+            throw new UnsupportedOperationException(
+                    SCOPE_TYPE + " はシャード分割に非対応（shard_count>1 で呼ばれた）");
+        }
         // scope_ref = "teamId:actorId:creatorId" を復元する（多型スコープ参照）。
-        String[] parts = scopeRef.split(":", -1);
+        String[] parts = request.scopeRef().split(":", -1);
         long teamId = Long.parseLong(parts[0]);
         long actorId = parts.length > 1 && !parts[1].isEmpty() ? Long.parseLong(parts[1]) : NO_EXCLUSION;
         long creatorId = parts.length > 2 && !parts[2].isEmpty() ? Long.parseLong(parts[2]) : NO_EXCLUSION;
         // MEMBER 以上（role_kind='MEMBER'）の現役・ACTIVE・未削除メンバーから操作者・作成者を除き、
-        // 被覆索引で index-only の keyset ページングにより 1 チャンクぶんの user_id を昇順に返す。
-        return membershipRepository.findMemberAndAboveTeamUserIdsByKeysetExcluding(
-                teamId, actorId, creatorId, cursorSubjectId, PageRequest.of(0, limit));
+        // 被覆索引で keyset ページングにより 1 チャンクぶんの [user_id, locale] を昇順に返す。
+        return FanoutRecipientRowMapper.toRecipients(
+                membershipRepository.findMemberAndAboveTeamUserIdsByKeysetExcluding(
+                        teamId, actorId, creatorId, request.cursorSubjectId(),
+                        PageRequest.of(0, request.limit())));
     }
 }

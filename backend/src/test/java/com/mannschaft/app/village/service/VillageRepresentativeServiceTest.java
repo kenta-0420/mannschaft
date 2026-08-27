@@ -19,6 +19,7 @@ import com.mannschaft.app.village.entity.enums.VillageVisibility;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
 import com.mannschaft.app.village.repository.VillageRepresentativeRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -75,8 +76,23 @@ class VillageRepresentativeServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    /** 村の存在秘匿ゲート。実物へ委譲させるため {@link VillageAccessGateTestSupport} で結線する。 */
+    @Mock
+    private VillageAccessGate accessGate;
+
     @InjectMocks
     private VillageRepresentativeService service;
+
+    /**
+     * 村サービスの村存在確認は {@link VillageAccessGate} へ移った。
+     * モックのゲートに実物のゲート（同じモックのリポジトリを注入）を委譲させることで、
+     * 本テストが積み上げてきた {@code villageRepository.findById} の stub をそのまま生かしつつ、
+     * 可視性判定は実物のロジックで走らせる。
+     */
+    @BeforeEach
+    void wireVillageAccessGate() {
+        VillageAccessGateTestSupport.delegateToRealGate(accessGate, villageRepository, membershipRepository);
+    }
 
     private static final UUID VILLAGE_ID = UUID.randomUUID();
     private static final Long HEADMAN_USER_ID = 100L;
@@ -156,6 +172,8 @@ class VillageRepresentativeServiceTest {
                 .willReturn(Optional.of(headmanMembership));
         given(membershipRepository.findById(teamMembership.getId())).willReturn(Optional.of(teamMembership));
         given(userRoleRepository.existsByUserIdAndTeamId(REPRESENTATIVE_USER_ID, TEAM_ID)).willReturn(true);
+        // CMP-050 AC-16【陽性対照】: 委任先が ACTIVE なら従来どおり成功する
+        given(userRoleRepository.isActiveUser(REPRESENTATIVE_USER_ID)).willReturn(true);
         given(representativeRepository.existsByMembershipIdAndRepresentativeUserIdAndRevokedAtIsNull(
                 teamMembership.getId(), REPRESENTATIVE_USER_ID)).willReturn(false);
         given(representativeRepository.save(any(VillageRepresentativeEntity.class))).willAnswer(inv -> {
@@ -203,6 +221,8 @@ class VillageRepresentativeServiceTest {
                 .willReturn(Optional.of(elderMembership));
         given(membershipRepository.findById(orgMembership.getId())).willReturn(Optional.of(orgMembership));
         given(userRoleRepository.existsByUserIdAndOrganizationId(REPRESENTATIVE_USER_ID, ORG_ID)).willReturn(true);
+        // CMP-050 AC-16【陽性対照】: ORGANIZATION 側も委任先が ACTIVE なら従来どおり成功する
+        given(userRoleRepository.isActiveUser(REPRESENTATIVE_USER_ID)).willReturn(true);
         given(representativeRepository.existsByMembershipIdAndRepresentativeUserIdAndRevokedAtIsNull(
                 orgMembership.getId(), REPRESENTATIVE_USER_ID)).willReturn(false);
         given(representativeRepository.save(any(VillageRepresentativeEntity.class))).willAnswer(inv -> {
@@ -321,6 +341,81 @@ class VillageRepresentativeServiceTest {
     }
 
     // ========================================================================
+    // 6-b. grant — 委任先が非 ACTIVE / 論理削除済み（CMP-050 AC-15）
+    // ========================================================================
+
+    /**
+     * CMP-050 AC-15: 委任先が FROZEN または論理削除済みのとき VILLAGE_055 で拒否し、
+     * {@code save} を呼ばないこと。
+     *
+     * <p>在籍行は残っているため在籍判定は true になるが、凍結・退会済みのユーザーへ
+     * 村代表を委任すると、その村のチーム/組織を代表する者が実質不在になる。
+     * ErrorCode は他人のアカウント状態を漏らさないよう、非メンバー時と同じ
+     * {@code REPRESENTATIVE_USER_NOT_IN_SUBJECT}（VILLAGE_055）へ畳む。</p>
+     *
+     * <p>生存判定は {@code userRoleRepository.isActiveUser} に委ねている。village から
+     * {@code UserEntity.UserStatus} を直接読むと ArchUnit D-1（cross-domain entity dependency）の
+     * 新規違反になるためであり、TEAM 枝の代表例としてここで締める。</p>
+     */
+    @Test
+    @DisplayName("06-b. grant 失敗 — 委任先が FROZEN → VILLAGE_055（CMP-050 AC-15）")
+    void cmp050_ac15_grant_frozenUser_rejected() {
+        VillageMembershipEntity headmanMembership = membership(VillageSubjectType.USER, HEADMAN_USER_ID, VillageRole.HEADMAN);
+        VillageMembershipEntity teamMembership = membership(VillageSubjectType.TEAM, TEAM_ID, VillageRole.VILLAGER);
+
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(HEADMAN_USER_ID)))
+                .willReturn(Optional.of(headmanMembership));
+        given(membershipRepository.findById(teamMembership.getId())).willReturn(Optional.of(teamMembership));
+        // 在籍はしている
+        given(userRoleRepository.existsByUserIdAndTeamId(REPRESENTATIVE_USER_ID, TEAM_ID)).willReturn(true);
+        given(userRoleRepository.isActiveUser(REPRESENTATIVE_USER_ID)).willReturn(false);
+
+        RepresentativeGrantRequest req = new RepresentativeGrantRequest(
+                teamMembership.getId(), REPRESENTATIVE_USER_ID, null);
+
+        assertThatThrownBy(() -> service.grantRepresentative(VILLAGE_ID, req, HEADMAN_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(VillageErrorCode.REPRESENTATIVE_USER_NOT_IN_SUBJECT);
+
+        verify(representativeRepository, never()).save(any());
+    }
+
+    /**
+     * CMP-050 AC-15: 委任先が論理削除済みでも VILLAGE_055 で拒否すること（ORGANIZATION 枝）。
+     *
+     * <p>{@code isActiveUser} は SQL 側で {@code deleted_at IS NULL} と
+     * {@code status = 'ACTIVE'} の双方を見るため、凍結と論理削除は同じ false に落ちる。
+     * サービスは両者を区別できず、また区別すべきでない（状態漏洩の防止）。</p>
+     */
+    @Test
+    @DisplayName("06-c. grant 失敗 — 委任先が論理削除済み → VILLAGE_055（CMP-050 AC-15・ORGANIZATION枝）")
+    void cmp050_ac15_grant_softDeletedUser_rejected() {
+        VillageMembershipEntity headmanMembership = membership(VillageSubjectType.USER, HEADMAN_USER_ID, VillageRole.HEADMAN);
+        VillageMembershipEntity orgMembership = membership(VillageSubjectType.ORGANIZATION, ORG_ID, VillageRole.VILLAGER);
+
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(HEADMAN_USER_ID)))
+                .willReturn(Optional.of(headmanMembership));
+        given(membershipRepository.findById(orgMembership.getId())).willReturn(Optional.of(orgMembership));
+        given(userRoleRepository.existsByUserIdAndOrganizationId(REPRESENTATIVE_USER_ID, ORG_ID)).willReturn(true);
+        given(userRoleRepository.isActiveUser(REPRESENTATIVE_USER_ID)).willReturn(false);
+
+        RepresentativeGrantRequest req = new RepresentativeGrantRequest(
+                orgMembership.getId(), REPRESENTATIVE_USER_ID, null);
+
+        assertThatThrownBy(() -> service.grantRepresentative(VILLAGE_ID, req, HEADMAN_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(VillageErrorCode.REPRESENTATIVE_USER_NOT_IN_SUBJECT);
+
+        verify(representativeRepository, never()).save(any());
+    }
+
+    // ========================================================================
     // 7. grant — 既に現役の委任が存在
     // ========================================================================
     @Test
@@ -335,6 +430,8 @@ class VillageRepresentativeServiceTest {
                 .willReturn(Optional.of(headmanMembership));
         given(membershipRepository.findById(teamMembership.getId())).willReturn(Optional.of(teamMembership));
         given(userRoleRepository.existsByUserIdAndTeamId(REPRESENTATIVE_USER_ID, TEAM_ID)).willReturn(true);
+        // CMP-050: 生存確認は在籍確認の直後に走るため、重複 grant の判定へ到達するには ACTIVE が必要
+        given(userRoleRepository.isActiveUser(REPRESENTATIVE_USER_ID)).willReturn(true);
         given(representativeRepository.existsByMembershipIdAndRepresentativeUserIdAndRevokedAtIsNull(
                 teamMembership.getId(), REPRESENTATIVE_USER_ID)).willReturn(true);
 

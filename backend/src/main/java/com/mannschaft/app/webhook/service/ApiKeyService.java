@@ -210,6 +210,8 @@ public class ApiKeyService {
      */
     @Transactional
     public ApiKeyVerifyResult verifyApiKey(String rawKey) {
+        // 形式不正も照合不一致も同じ WEBHOOK_007（401）に畳む。区別して返すと「形式は合っているが
+        // 値が違う」ことを応答から判別でき、総当たりの手掛かりを与えるため（意図的な集約）。
         if (rawKey == null || rawKey.length() < 8) {
             throw new BusinessException(WebhookErrorCode.WEBHOOK_007);
         }
@@ -250,11 +252,14 @@ public class ApiKeyService {
     // ========================================
 
     /**
-     * IDでAPIキーを取得する。見つからない場合は WEBHOOK_007 例外。
+     * IDでAPIキーを取得する。見つからない場合は WEBHOOK_014（404）例外。
+     *
+     * <p>管理系CRUDでのリソース参照であり、キー認証の失敗（WEBHOOK_007・401）とは
+     * 意味が異なるため別コードを使う。</p>
      */
     private ApiKeyEntity findApiKeyOrThrow(Long id) {
         return apiKeyRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(WebhookErrorCode.WEBHOOK_007));
+                .orElseThrow(() -> new BusinessException(WebhookErrorCode.WEBHOOK_014));
     }
 
     /**

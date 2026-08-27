@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.dto.CloseSlotRequest;
 import com.mannschaft.app.reservation.dto.CreateSlotRequest;
 import com.mannschaft.app.reservation.dto.ReservationSlotResponse;
@@ -67,6 +68,8 @@ class ReservationSlotServiceTest {
     /** 予約閲覧の view ゲート（会員 or 公開）。デフォルトのモック（void）は常に通過する。 */
     @Mock
     private com.mannschaft.app.reservation.service.ReservationViewAccessGuard viewAccessGuard;
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     /** 機能B: overlap 判定は純ロジックのため実インスタンスを注入（listAvailableSlots の除外挙動を実検証）。 */
     private final com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker unavailabilityChecker =
@@ -99,7 +102,7 @@ class ReservationSlotServiceTest {
                 blockedTimeRepository, recurringBlockedTimeRepository, unavailabilityChecker, lineRepository,
                 FIXED_CLOCK,
                 org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
-                viewAccessGuard);
+                viewAccessGuard, teamTimezoneResolver);
     }
 
     private ReservationSlotEntity createSlotEntity() {
@@ -218,6 +221,7 @@ class ReservationSlotServiceTest {
         private List<ReservationSlotEntity> captureVisibleSlots() {
             org.mockito.ArgumentCaptor<List<ReservationSlotEntity>> captor =
                     org.mockito.ArgumentCaptor.forClass(List.class);
+            given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("UTC"));
             given(reservationMapper.toSlotResponseList(captor.capture())).willReturn(List.of());
             service.listAvailableSlots(TEAM_ID, USER_ID, from, to);
             return captor.getValue();
@@ -232,8 +236,7 @@ class ReservationSlotServiceTest {
                     slot(null, LocalTime.of(12, 0), LocalTime.of(13, 0)));
             given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(slots);
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                    TEAM_ID, from, to)).willReturn(List.of(
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1))).willReturn(List.of(
                     block(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null, null, null)));
 
             assertThat(captureVisibleSlots()).isEmpty();
@@ -247,8 +250,7 @@ class ReservationSlotServiceTest {
             ReservationSlotEntity common = slot(null, LocalTime.of(10, 0), LocalTime.of(11, 0));
             given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(List.of(target, otherStaff, common));
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                    TEAM_ID, from, to)).willReturn(List.of(
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1))).willReturn(List.of(
                     block(com.mannschaft.app.reservation.ReservationBlockedResourceType.STAFF, 50L, null, null)));
 
             assertThat(captureVisibleSlots()).containsExactly(otherStaff, common);
@@ -261,12 +263,12 @@ class ReservationSlotServiceTest {
             ReservationSlotEntity adjacent = slot(50L, LocalTime.of(11, 0), LocalTime.of(12, 0));
             given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(List.of(blocked, adjacent));
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                    TEAM_ID, from, to)).willReturn(List.of(
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1))).willReturn(List.of(
                     block(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null,
                             LocalTime.of(10, 0), LocalTime.of(11, 0))));
 
             assertThat(captureVisibleSlots()).containsExactly(adjacent);
+            verify(teamTimezoneResolver).resolveZone(TEAM_ID);
         }
 
         @Test
@@ -277,8 +279,7 @@ class ReservationSlotServiceTest {
             given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(List.of(s1, s2));
             // ALTER 前データを模した TEAM/null 全日枠。
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                    TEAM_ID, from, to)).willReturn(List.of(
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1))).willReturn(List.of(
                     block(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null, null, null)));
 
             assertThat(captureVisibleSlots()).isEmpty();

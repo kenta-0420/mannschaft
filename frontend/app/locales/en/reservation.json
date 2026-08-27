@@ -174,7 +174,16 @@
       "team_page": "Reservations"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "How to use {label}",
+      "cards": {
+        "business_hours": { "title": "Business hours", "description": "Set booking hours" },
+        "lines": { "title": "Reservation targets", "description": "Manage {n} targets" },
+        "menus": { "title": "Menus", "description": "Manage {n} menus" },
+        "weekly_schedule": { "title": "Weekly schedule", "description": "{n} slot and recurring settings" },
+        "exception_day": { "title": "Exception days", "description": "Adjust specific dates" },
+        "advanced": { "title": "Advanced settings", "description": "Set visibility and notifications" }
+      }
     },
     "column": {
       "datetime": "Date & Time",
@@ -578,6 +587,8 @@
       "delete_confirm": "Delete this template? (Already-generated slots will remain)",
       "day_of_week": "Day of week",
       "time_range": "Time range",
+      "ends_next_day": "Ends next day",
+      "next_day_time": "Next day {time}",
       "line": "Reservation target",
       "line_common": "Common slot",
       "capacity": "Capacity",
@@ -647,6 +658,7 @@
     "business_hours": {
       "title": "Business hours",
       "day_open": "Open",
+      "ends_next_day": "Ends next day",
       "save_success": "Saved. {generated} slots were updated",
       "generating": "Updating slots…",
       "generation_failed": "Business hours were saved, but the automatic slot update failed. It will catch up automatically tomorrow morning",
@@ -679,6 +691,7 @@
       "state": {
         "available": "Open",
         "booked": "Full",
+        "reserved": "Booked by you",
         "closed": "Closed",
         "unavailable": "Unavailable"
       },
@@ -699,6 +712,9 @@
       "no_menu_single": "Book just 30 minutes without a menu",
       "preview_title": "Confirm this booking",
       "extend_30": "+30 min",
+      "open_all": "Show all",
+      "close_all": "Close all",
+      "open_day_hint": "Select a date to view reservation slots",
       "date_line_header": "Date / {resourceName}",
       "help_toggle": "How to use this",
       "help_body": "Tap an open (green) time slot, then choose a menu — the required number of slots is selected automatically. Use \"+30 min\" to add more. If you pick a shared slot, choose which {resourceName} to book it for.",
@@ -746,7 +762,6 @@
     "team_guide": {
       "title": "How reservations work",
       "help_button": "How to use",
-      "event_link": "See event recruiting",
       "book": {
         "matrix_title": "Reading the matrix",
         "matrix_steps": {

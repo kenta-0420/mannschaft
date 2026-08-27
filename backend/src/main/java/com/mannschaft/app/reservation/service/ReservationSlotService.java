@@ -17,6 +17,7 @@ import com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTime
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.event.ReservationSlotReopenedEvent;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -54,6 +56,7 @@ public class ReservationSlotService {
     private final ApplicationEventPublisher eventPublisher;
     /** 予約閲覧の view ゲート（会員 or 公開）。予約作成・グリッドと同一述語（§6 単一述語）。 */
     private final ReservationViewAccessGuard viewAccessGuard;
+    private final TeamTimezoneResolver teamTimezoneResolver;
 
     /**
      * スロット削除ガードで「予約が紐づいている」と見なす active ステータス。
@@ -103,13 +106,14 @@ public class ReservationSlotService {
         // 機能B（§5.B）＋F03.4.5 §4.2: 単発/定期いずれかの予約不可枠に該当する slot を空き枠一覧から除外する。
         // 判定は createReservation / グリッドと共有の単一 overlap ユーティリティを用いる（別実装厳禁）。
         List<ReservationBlockedTimeEntity> blocks =
-                blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(teamId, from, to);
+                blockedTimeRepository.findEffectiveBetween(teamId, from, to, from.minusDays(1));
         List<ReservationRecurringBlockedTimeEntity> recurringRules =
                 recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
+        ZoneId teamZone = teamTimezoneResolver.resolveZone(teamId);
         List<ReservationSlotEntity> visible = (blocks.isEmpty() && recurringRules.isEmpty())
                 ? slots
                 : slots.stream()
-                        .filter(slot -> !unavailabilityChecker.isBlockedByAny(slot, blocks, recurringRules))
+                        .filter(slot -> !unavailabilityChecker.isBlockedByAny(slot, blocks, recurringRules, teamZone))
                         .toList();
 
         return enrichLineNames(reservationMapper.toSlotResponseList(visible));

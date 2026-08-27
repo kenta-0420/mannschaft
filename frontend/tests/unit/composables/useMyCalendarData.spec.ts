@@ -44,7 +44,7 @@ vi.mock('~/composables/useScheduleApi', () => ({
   }),
 }))
 vi.mock('~/composables/useTodoGantt', () => ({
-  useTodoGantt: () => ({ getPersonalGanttTodos: mockGetPersonalGanttTodos }),
+  useTodoGantt: () => ({ getMyCalendarTodos: mockGetPersonalGanttTodos }),
 }))
 vi.mock('~/composables/useErrorHandler', () => ({
   useErrorHandler: () => ({
@@ -132,7 +132,7 @@ describe('useMyCalendarData', () => {
     // 共通エラーハンドラ（errorReport.captureQuiet + 通知）へ委譲されている
     expect(mockHandleApiError).toHaveBeenCalledTimes(1)
     expect(mockHandleApiError.mock.calls[0]?.[0]).toBe(boom)
-    expect(String(mockHandleApiError.mock.calls[0]?.[1])).toContain('getPersonalGanttTodos')
+    expect(String(mockHandleApiError.mock.calls[0]?.[1])).toContain('getMyCalendarTodos')
     // 利用側が扱える失敗状態
     expect(cal.todosFailed.value).toBe(true)
   })

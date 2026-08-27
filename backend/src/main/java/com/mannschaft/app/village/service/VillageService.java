@@ -51,7 +51,8 @@ import java.util.regex.Pattern;
  *
  * <h2>セキュリティ</h2>
  * <ul>
- *   <li>UNLISTED 村は村人 / SYSTEM_ADMIN のみ取得可（{@link VillageErrorCode#VILLAGE_UNLISTED}）</li>
+ *   <li>UNLISTED 村は村人 / SYSTEM_ADMIN のみ取得可。非村人には不在と同じ
+ *       {@link VillageErrorCode#VILLAGE_NOT_FOUND} を返す（存在秘匿）</li>
  *   <li>archived / deleted 状態の村は 404 を返す（IDOR 対策）</li>
  *   <li>レスポンスから個人特定情報（user_id 等）を排除</li>
  * </ul>
@@ -87,6 +88,7 @@ public class VillageService {
     private static final long MONSHO_UPLOAD_TTL_SECONDS = 600L;
 
     private final VillageRepository villageRepository;
+    private final VillageAccessGate accessGate;
     private final VillageSearchRepository villageSearchRepository;
     private final VillageMembershipRepository membershipRepository;
     private final UserVillagePinRepository pinRepository;
@@ -160,16 +162,25 @@ public class VillageService {
      *
      * <p>UNLISTED 村は村人または SYSTEM_ADMIN のみアクセス可。
      * 削除済み / 凍結済み村は 404 を返す（IDOR 対策）。</p>
+     *
+     * <p>UNLISTED 村への非村人アクセスは<b>不在と完全に同じ
+     * {@link VillageErrorCode#VILLAGE_NOT_FOUND}</b>で応答する。UNLISTED は検索結果から
+     * 意図的に除外され「存在を隠す」設計であり、403 を返すと不在の 404 との差で村 ID の実在が
+     * 漏れる（存在オラクル）。かつては専用コード {@code VILLAGE_002} を投げていたが、
+     * ステータスが 404 で揃っていても<b>応答本文の {@code error.code}</b> が不在時と違うため、
+     * 本文だけで実在を判別できてしまっていた。相性プロファイル・村憲章など兄弟 EP も同じく秘匿する。</p>
      */
     public VillageResponse get(UUID villageId, Long requesterUserId) {
-        VillageEntity entity = findActiveOrThrow(villageId);
+        VillageEntity entity = findActiveOrThrow(villageId, requesterUserId);
 
         boolean isMember = isMember(villageId, requesterUserId);
         boolean isAdmin = accessControlService.isSystemAdmin(requesterUserId);
 
-        // UNLISTED 村の閲覧制限
+        // UNLISTED 村の閲覧制限（不在と完全に同じ VILLAGE_NOT_FOUND で存在ごと秘匿）
         if (entity.getVisibility() == VillageVisibility.UNLISTED && !isMember && !isAdmin) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_UNLISTED);
+            // 不在側のコードそのものを投げる。専用コード（VILLAGE_002）だとステータスが 404 で揃っていても
+            // 応答本文の error.code が不在時と違い、本文だけで実在が判別できてしまう。
+            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
 
         return toResponse(entity, requesterUserId, true);
@@ -185,7 +196,7 @@ public class VillageService {
     @Transactional
     public VillageResponse update(UUID villageId, VillageUpdateRequest req,
                                   Long requesterUserId, @Nullable Long expectedVersion) {
-        VillageEntity entity = findActiveOrThrow(villageId);
+        VillageEntity entity = findActiveOrThrow(villageId, requesterUserId);
         requireHeadmanOrSystemAdmin(entity, requesterUserId);
 
         if (expectedVersion != null && !Objects.equals(entity.getVersion(), expectedVersion)) {
@@ -223,7 +234,7 @@ public class VillageService {
      */
     @Transactional
     public void softDelete(UUID villageId, Long requesterUserId) {
-        VillageEntity entity = findActiveOrThrow(villageId);
+        VillageEntity entity = findActiveOrThrow(villageId, requesterUserId);
         requireHeadmanOrSystemAdmin(entity, requesterUserId);
 
         entity.setDeletedAt(LocalDateTime.now());
@@ -246,13 +257,10 @@ public class VillageService {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }
 
-        VillageEntity entity = villageRepository.findById(villageId)
-                .filter(v -> v.getDeletedAt() == null)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-
-        if (entity.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
+        // 存在確認・可視性判定は VillageAccessGate に一元化する。
+        // ここは SYSTEM_ADMIN しか到達しない（直前で MODERATION_FORBIDDEN 済み）ため可視性ゲートは素通りし、
+        // 従来どおり「不在／削除済み=404・凍結済み=409」の応答がそのまま保たれる。
+        VillageEntity entity = accessGate.loadActiveVillage(villageId, requesterUserId);
 
         entity.setArchivedAt(LocalDateTime.now());
         villageRepository.save(entity);
@@ -276,7 +284,7 @@ public class VillageService {
      */
     @Transactional
     public VillageEntity updateMonsho(UUID villageId, String r2Key, Long requesterUserId) {
-        VillageEntity entity = findActiveOrThrow(villageId);
+        VillageEntity entity = findActiveOrThrow(villageId, requesterUserId);
         requireHeadmanOrSystemAdmin(entity, requesterUserId);
 
         entity.setMonshoR2Key(r2Key);
@@ -293,7 +301,7 @@ public class VillageService {
      */
     @Transactional
     public VillageEntity deleteMonsho(UUID villageId, Long requesterUserId) {
-        VillageEntity entity = findActiveOrThrow(villageId);
+        VillageEntity entity = findActiveOrThrow(villageId, requesterUserId);
         requireHeadmanOrSystemAdmin(entity, requesterUserId);
 
         if (entity.getMonshoR2Key() == null) {
@@ -331,7 +339,7 @@ public class VillageService {
     public MonshoUploadUrlResponse generateMonshoUploadUrl(
             UUID villageId, String contentType, long fileSize, Long requesterUserId) {
         // 1〜2. 認可を先に（IDOR 配慮: 不正入力でも村の存在有無を漏らさない）
-        VillageEntity entity = findActiveOrThrow(villageId);
+        VillageEntity entity = findActiveOrThrow(villageId, requesterUserId);
         requireHeadmanOrSystemAdmin(entity, requesterUserId);
 
         // 3. MIME 検証
@@ -432,9 +440,21 @@ public class VillageService {
     // 内部ヘルパー
     // ─────────────────────────────────────────────
 
-    private VillageEntity findActiveOrThrow(UUID villageId) {
-        return villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
+    /**
+     * 稼働中かつ実行者に可視な村を取得する。存在確認と可視性判定は
+     * {@link VillageAccessGate} に一元化する。
+     *
+     * <p>従来の実体 {@code findByIdAndDeletedAtIsNullAndArchivedAtIsNull} は不在・削除済み・凍結済みを
+     * まとめて {@code VILLAGE_NOT_FOUND} に畳んでいたため、同じく凍結も 404 に畳む
+     * {@link VillageAccessGate#loadReadableVillage} へ委譲して挙動を揃える。</p>
+     *
+     * <p>これにより、後段の {@link #requireHeadmanOrSystemAdmin}（403）へ進む前に
+     * 非公開(UNLISTED)村の非村人が 404 で弾かれ、「不在なら 404 ／実在すれば 403」の
+     * 応答差から村の存在が漏れる経路（存在オラクル）が塞がる。
+     * PUBLIC 村はゲートを素通りするため、非村人は従来どおり 403 のままである。</p>
+     */
+    private VillageEntity findActiveOrThrow(UUID villageId, Long requesterUserId) {
+        return accessGate.loadReadableVillage(villageId, requesterUserId);
     }
 
     /**

@@ -259,7 +259,8 @@
     "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
-    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません"
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "숨김 상한(200건)에 도달했습니다. 불필요한 숨김을 해제해 주세요."
   },
   "annual_plan": {
     "title": "연간 행사 계획",
@@ -491,7 +492,38 @@
       "PUBLIC": "지금 무슨 일이 있나요?"
     },
     "submitLabel": "게시",
-    "pollOptionsCount": "{count}개 선택지"
+    "pollOptionsCount": "{count}개 선택지",
+    "deliveryScope": {
+      "label": "전달 범위",
+      "options": {
+        "DIRECT": "이 단체의 멤버에게만",
+        "CHILDREN": "바로 아래 하위 단체까지",
+        "DESCENDANTS": "산하 모든 단체"
+      },
+      "hints": {
+        "DIRECT": "이 단체에 소속된 사람의 타임라인에만 표시됩니다.",
+        "CHILDREN": "이 단체와 바로 아래 하위 단체의 멤버에게도 표시됩니다.",
+        "DESCENDANTS": "이 단체 산하 모든 단체의 멤버에게 표시됩니다."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "이 팀의 게시물 숨기기",
+        "ORGANIZATION": "이 단체의 게시물 숨기기"
+      },
+      "targetType": {
+        "TEAM": "팀",
+        "ORGANIZATION": "단체"
+      },
+      "muted": "{name} 의 게시물을 숨겼습니다",
+      "undo": "실행 취소",
+      "unmuted": "다시 표시하도록 했습니다",
+      "chip": "숨김: {count}건",
+      "dialogTitle": "숨긴 대상",
+      "emptyList": "숨긴 대상이 없습니다.",
+      "unmuteAction": "다시 표시",
+      "unknownTarget": "{type}(ID: {id})"
+    }
   },
   "gallery": {
     "title": "갤러리",
@@ -1294,6 +1326,23 @@
     "filter": {
       "allTeamsOrgs": "팀・조직 (전체)",
       "selectScope": "생성 대상 선택"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "개인",
+        "unknown": "기타 일정",
+        "loadError": {
+          "summary": "레이어 목록을 불러오지 못했습니다",
+          "detail": "팀・조직 표시 전환을 일시적으로 사용할 수 없습니다. 일정은 계속 표시됩니다. 잠시 후 다시 시도해 주세요."
+        },
+        "hiddenNotice": "생성한 레이어가 숨겨져 있습니다",
+        "showIt": "표시하기"
+      },
+      "more": "외 {count}건",
+      "today": "오늘",
+      "dayDetail": {
+        "title": "{date}의 일정"
+      }
     }
   },
   "handoff": {
@@ -1463,6 +1512,10 @@
       "back_to_dashboard": "대시보드로 돌아가기",
       "retry": "다시 시도",
       "slow_loading": "로딩이 지연되고 있습니다"
+    },
+    "unsavedChanges": {
+      "title": "저장되지 않은 변경 사항",
+      "confirmLeave": "저장되지 않은 변경 사항이 있습니다. 이 페이지를 벗어나면 입력한 내용이 사라집니다. 계속하시겠습니까?"
     }
   },
   "teamHub": {
@@ -1839,6 +1892,13 @@
     "mapEmbedUrlHelp": "Google Maps에서 「공유 > 지도 삽입 > HTML 복사」하여 src= URL을 붙여넣기 해 주세요",
     "mapEmbedUrlInvalidFormat": "Google Maps 삽입 URL（https://www.google.com/maps/embed?...）형식이어야 합니다",
     "mapEmbedUrlSaved": "매장 지도 URL이 저장되었습니다",
+    "timezone": {
+      "label": "예약 시간대",
+      "help": "예약 시작 및 종료 시간을 해석하는 IANA 시간대입니다.",
+      "placeholder": "예: Asia/Tokyo",
+      "invalid": "유효한 IANA 시간대를 입력하세요",
+      "saved": "예약 시간대를 저장했습니다"
+    },
     "regionCode": {
       "label": "소재지(도도부현・시구정촌)",
       "help": "도도부현과 시구정촌을 선택하면 지역 검색과 모집 게시의 초기값으로 사용됩니다.",
@@ -1856,6 +1916,24 @@
     "bulletinOpen": "게시판에서 토론하기"
   },
   "scopeDashboard": {
+    "storageSummary": {
+      "title": "저장 공간",
+      "personal": "개인",
+      "team": "팀",
+      "organization": "조직",
+      "details": "상세 보기",
+      "error": "저장 공간을 불러올 수 없습니다",
+      "retry": "다시 시도",
+      "unconfigured": "할당량이 설정되지 않음",
+      "not_available": "저장 공간 데이터 없음",
+      "meterLabel": "{scope} 저장 공간 사용량",
+      "meterValue": "사용량 {percent}%",
+      "warningTitle": "저장 공간 한도 임박",
+      "warningMessage": "{scope} 사용량이 {percent}%입니다. 유료 요금제 업그레이드를 고려하세요.",
+      "viewPlans": "요금제 보기",
+      "checkStorage": "저장 공간 확인",
+      "cancel": "취소"
+    },
     "tabs": {
       "personal": "개인",
       "team": "팀",
@@ -2109,5 +2187,31 @@
   "comingSoon": {
     "title": "준비 중",
     "description": "이 기능은 현재 개발 중입니다. 잠시 후 다시 확인해 주세요."
+  },
+  "transferOwnership": {
+    "sectionTitle": "소유자 이전",
+    "sectionDescription": "관리자(소유자) 권한을 다른 멤버에게 넘깁니다. 이전 후에는 부관리자가 되며 관리자 전용 작업을 할 수 없습니다.",
+    "openButton": "소유자 이전",
+    "dialogTitle": "소유자 이전",
+    "warning": "이 작업은 취소할 수 없습니다. 관리자 권한이 새 소유자에게 이전되며, 되돌리려면 새 소유자의 조작이 필요합니다.",
+    "targetLabel": "새 소유자",
+    "targetPlaceholder": "멤버 선택",
+    "noCandidates": "이전할 수 있는 멤버가 없습니다.",
+    "confirmLabel": "확인을 위해 “{name}” 을(를) 입력하세요",
+    "confirmMismatch": "이름이 일치하지 않습니다.",
+    "cancel": "취소",
+    "submit": "이전",
+    "successTitle": "소유자를 이전했습니다",
+    "successDetail": "관리자 권한이 새 소유자에게 이전되었습니다."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "비공개 기능입니다",
+      "body": "이 기능은 현재 사용할 수 없습니다. 대시보드로 돌아갑니다."
+    },
+    "error": {
+      "fetchFailedTitle": "기능 공개 상태를 확인할 수 없습니다",
+      "fetchFailedBody": "네트워크 오류로 기능의 공개 상태를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요."
+    }
   }
 }

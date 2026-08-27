@@ -174,7 +174,16 @@
       "team_page": "Reservas"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "Cómo usar {label}",
+      "cards": {
+        "business_hours": { "title": "Horario comercial", "description": "Configura el horario de reservas" },
+        "lines": { "title": "Objetivos de reserva", "description": "Gestiona {n} objetivos" },
+        "menus": { "title": "Menús", "description": "Gestiona {n} menús" },
+        "weekly_schedule": { "title": "Horario semanal", "description": "{n} ajustes de franjas y recurrentes" },
+        "exception_day": { "title": "Días excepcionales", "description": "Ajusta fechas específicas" },
+        "advanced": { "title": "Configuración avanzada", "description": "Configura visibilidad y avisos" }
+      }
     },
     "column": {
       "datetime": "Fecha y hora",
@@ -583,6 +592,8 @@
       "capacity": "Aforo",
       "is_active": "Activo",
       "cell_count": "{n} franjas/día (30 min cada una)",
+      "ends_next_day": "Termina al día siguiente",
+      "next_day_time": "Día siguiente {time}",
       "price": "Precio (opcional)",
       "slot_title": "Título (opcional)",
       "generate": "Generar franjas ahora",
@@ -647,6 +658,7 @@
     "business_hours": {
       "title": "Horario comercial",
       "day_open": "Abierto",
+      "ends_next_day": "Termina al día siguiente",
       "save_success": "Guardado. Se actualizaron {generated} franjas",
       "generating": "Actualizando franjas…",
       "generation_failed": "El horario comercial se guardó, pero la actualización automática de franjas falló. Se completará automáticamente mañana por la mañana",
@@ -679,6 +691,7 @@
       "state": {
         "available": "Libre",
         "booked": "Lleno",
+        "reserved": "Reservado por ti",
         "closed": "Cerrado",
         "unavailable": "No disponible"
       },
@@ -699,6 +712,9 @@
       "no_menu_single": "Reservar solo 30 minutos sin menú",
       "preview_title": "Confirmar esta reserva",
       "extend_30": "+30 min",
+      "open_all": "Mostrar todo",
+      "close_all": "Cerrar todo",
+      "open_day_hint": "Selecciona una fecha para ver los horarios de reserva",
       "date_line_header": "Fecha / {resourceName}",
       "help_toggle": "Ver cómo usar esto",
       "help_body": "Toca una franja libre (verde) y elige un menú; se seleccionará automáticamente el número de franjas necesario. Usa \"+30 min\" para añadir más. Si eliges una franja compartida, elige a qué {resourceName} reservarla.",
@@ -746,7 +762,6 @@
     "team_guide": {
       "title": "Cómo funcionan las reservas",
       "help_button": "Cómo usar",
-      "event_link": "Ver convocatorias de eventos",
       "book": {
         "matrix_title": "Cómo leer la matriz",
         "matrix_steps": {

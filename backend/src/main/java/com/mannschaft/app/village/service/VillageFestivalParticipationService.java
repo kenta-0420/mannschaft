@@ -21,7 +21,6 @@ import com.mannschaft.app.village.repository.VillageFestivalLivePostRepository;
 import com.mannschaft.app.village.repository.VillageFestivalRepository;
 import com.mannschaft.app.village.repository.VillageFestivalRsvpRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -50,7 +49,6 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class VillageFestivalParticipationService {
 
-    private final VillageRepository villageRepository;
     private final VillageFestivalRepository festivalRepository;
     private final VillageFestivalRsvpRepository rsvpRepository;
     private final VillageFestivalLivePostRepository livePostRepository;
@@ -58,6 +56,7 @@ public class VillageFestivalParticipationService {
     private final UserVillageNicknameRepository nicknameRepository;
     private final TimelinePostService timelinePostService;
     private final AuditLogService auditLogService;
+    private final VillageAccessGate accessGate;
 
     // ====================================================================
     // 参加表明（RSVP）
@@ -67,7 +66,7 @@ public class VillageFestivalParticipationService {
     @Transactional
     public FestivalRsvpResponse upsertRsvp(UUID villageId, UUID festivalId,
                                            FestivalRsvpUpsertRequest request, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageFestivalEntity festival = loadFestival(villageId, festivalId);
         requireVillager(villageId, actorUserId);
         requireRsvpOpen(festival);
@@ -113,7 +112,7 @@ public class VillageFestivalParticipationService {
     /** 参加表明を取り消す（レコード削除＝無回答へ戻す・SCHEDULED/ACTIVE のみ・設計書 §5.6/§12.2）。 */
     @Transactional
     public void deleteRsvp(UUID villageId, UUID festivalId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageFestivalEntity festival = loadFestival(villageId, festivalId);
         requireVillager(villageId, actorUserId);
         requireRsvpOpen(festival);
@@ -128,7 +127,7 @@ public class VillageFestivalParticipationService {
     /** 参加者一覧（作成順・村ニックネーム表示・設計書 §13.5）。 */
     public List<FestivalRsvpResponse> listRsvps(UUID villageId, UUID festivalId,
                                                 Long actorUserId, Pageable pageable) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         loadFestival(villageId, festivalId);
         requireVillager(villageId, actorUserId);
 
@@ -149,7 +148,7 @@ public class VillageFestivalParticipationService {
     @Transactional
     public FestivalLivePostResponse tagLivePost(UUID villageId, UUID festivalId,
                                                 FestivalLivePostTagRequest request, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageFestivalEntity festival = loadFestival(villageId, festivalId);
         requireVillager(villageId, actorUserId);
 
@@ -190,7 +189,7 @@ public class VillageFestivalParticipationService {
     /** 実況一覧（新しい順・timeline 側 deleted_at 済みは除外・設計書 §5.5/§5.6/AC-17c）。 */
     public List<FestivalLivePostResponse> listLivePosts(UUID villageId, UUID festivalId,
                                                         Long actorUserId, Pageable pageable) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         loadFestival(villageId, festivalId);
         requireVillager(villageId, actorUserId);
 
@@ -208,16 +207,16 @@ public class VillageFestivalParticipationService {
     // ガード / ロード / 解決ヘルパー
     // ====================================================================
 
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
     /** 祭を村スコープで取得。他村・論理削除済みは 404（IDOR 秘匿・FESTIVAL_NOT_FOUND）。 */

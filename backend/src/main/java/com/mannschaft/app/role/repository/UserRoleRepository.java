@@ -84,9 +84,46 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * user_roles 一系統の在籍判定では素メンバー/応援者を「非所属」と誤判定する。
      * memberships 由来（{@code left_at IS NULL} の在籍）を OR して根治する。
      * role_kind は問わない（在籍軸。ADMIN/DEPUTY 等の権限判定は別メソッド）。</p>
+     *
+     * <p><b>CMP-050</b>: 列挙系と同一の生存条件（{@code deleted_at IS NULL} かつ
+     * {@code status = 'ACTIVE'}）を課す。在籍軸のプリミティブが ACTIVE を問わないままだと、
+     * 凍結・論理削除済みユーザーを唯一の ADMIN へ昇格させる経路
+     * （{@code RoleService#transferOwnership}）が残る。</p>
      */
     default boolean existsByUserIdAndTeamId(Long userId, Long teamId) {
         return countRoleOrMembershipByUserIdAndTeamId(userId, teamId) > 0;
+    }
+
+    @Query(value =
+            "SELECT COUNT(*) FROM ( " +
+            "  SELECT ur.id FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
+            "    WHERE ur.user_id = :userId AND ur.team_id = :teamId " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  UNION ALL " +
+            "  SELECT m.id FROM memberships m " +
+            "    JOIN users u ON u.id = m.user_id " +
+            "    WHERE m.user_id = :userId " +
+            "      AND m.scope_type = 'TEAM' AND m.scope_id = :teamId AND m.left_at IS NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            ") both_arms",
+            nativeQuery = true)
+    long countRoleOrMembershipByUserIdAndTeamId(@Param("userId") Long userId, @Param("teamId") Long teamId);
+
+    /**
+     * ユーザーがチームに在籍するか（<b>アカウント状態を問わない</b>・家族経路専用）。
+     *
+     * <p><b>なぜ ACTIVE を問わないのか</b>: 子アカウントは
+     * {@code PENDING_PARENTAL_CONSENT} / {@code FROZEN} を取り得るが、その間も
+     * 保護者の家族時間割閲覧は維持する仕様である。本メソッドは「認可の対象者」ではなく
+     * 「<b>被参照者</b>」を数えるものであり、<b>権限を与える方向の判定に使ってはならない</b>。
+     * 一般用途は必ず ACTIVE 必須版 {@link #existsByUserIdAndTeamId(Long, Long)} を使うこと。</p>
+     *
+     * <p>状態は問わないが離脱は問う（{@code left_at IS NULL} の在籍のみ）。
+     * ORGANIZATION 版は呼出元が無いため意図的に用意していない（抜け道を増やさない）。</p>
+     */
+    default boolean existsAnyStatusByUserIdAndTeamId(Long userId, Long teamId) {
+        return countRoleOrMembershipAnyStatusByUserIdAndTeamId(userId, teamId) > 0;
     }
 
     @Query(value =
@@ -97,11 +134,35 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "    AND m.scope_type = 'TEAM' AND m.scope_id = :teamId AND m.left_at IS NULL " +
             ") both_arms",
             nativeQuery = true)
-    long countRoleOrMembershipByUserIdAndTeamId(@Param("userId") Long userId, @Param("teamId") Long teamId);
+    long countRoleOrMembershipAnyStatusByUserIdAndTeamId(
+            @Param("userId") Long userId, @Param("teamId") Long teamId);
+
+    /**
+     * 指定ユーザーが生存している（未削除かつ ACTIVE）か。
+     *
+     * <p>CMP-050 二重防御。在籍プリミティブ側の ACTIVE 条件に加えて、権限を与える経路
+     * （{@code RoleService#transferOwnership}）でも譲渡先の生存を明示確認する。</p>
+     *
+     * <p><b>role ドメインに置く理由</b>: {@code RoleService} へ auth ドメインの
+     * {@code UserRepository} を新規注入すると、{@code CrossDomainRepositoryDependencyArchTest}(D-5)
+     * / {@code CrossDomainTransactionalArchTest}(D-3) の新規違反になる。本リポジトリは既に
+     * 列挙系クエリで {@code users} を参照しているため、ここへ置くのが最も安全である。</p>
+     */
+    default boolean isActiveUser(Long userId) {
+        return countActiveUserById(userId) > 0;
+    }
+
+    @Query(value = "SELECT COUNT(*) FROM users u "
+            + "WHERE u.id = :userId AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    long countActiveUserById(@Param("userId") Long userId);
 
     /**
      * ユーザーが組織に所属するか（CMP-027: user_roles 権限ロール ∪ memberships 素所属）。
      * {@link #existsByUserIdAndTeamId} の ORGANIZATION 版。
+     *
+     * <p><b>CMP-050</b>: 列挙系と同一の生存条件を課す（理由は
+     * {@link #existsByUserIdAndTeamId(Long, Long)} の javadoc 参照）。</p>
      */
     default boolean existsByUserIdAndOrganizationId(Long userId, Long organizationId) {
         return countRoleOrMembershipByUserIdAndOrganizationId(userId, organizationId) > 0;
@@ -109,10 +170,16 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     @Query(value =
             "SELECT COUNT(*) FROM ( " +
-            "  SELECT ur.id FROM user_roles ur WHERE ur.user_id = :userId AND ur.organization_id = :organizationId " +
+            "  SELECT ur.id FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
+            "    WHERE ur.user_id = :userId AND ur.organization_id = :organizationId " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "  UNION ALL " +
-            "  SELECT m.id FROM memberships m WHERE m.user_id = :userId " +
-            "    AND m.scope_type = 'ORGANIZATION' AND m.scope_id = :organizationId AND m.left_at IS NULL " +
+            "  SELECT m.id FROM memberships m " +
+            "    JOIN users u ON u.id = m.user_id " +
+            "    WHERE m.user_id = :userId " +
+            "      AND m.scope_type = 'ORGANIZATION' AND m.scope_id = :organizationId AND m.left_at IS NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             ") both_arms",
             nativeQuery = true)
     long countRoleOrMembershipByUserIdAndOrganizationId(
@@ -134,16 +201,23 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * CMP-027 の本改修で 2 系統の {@code UNION}（{@code UNION ALL} ではない）へ是正済みである。
      * 退会済（{@code left_at} 非 NULL）の membership 由来の組織は所属に含めない。</p>
      *
+     * <p><b>CMP-050</b>: 列挙系と同一の生存条件を課す（理由は
+     * {@link #existsByUserIdAndTeamId(Long, Long)} の javadoc 参照）。</p>
+     *
      * @param userId 対象ユーザー ID
      * @return 直接所属する組織 ID の一覧（0件の場合は空リスト）
      */
     @Query(value =
             "SELECT DISTINCT org_id FROM ( " +
             "  SELECT ur.organization_id AS org_id FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
             "    WHERE ur.user_id = :userId AND ur.organization_id IS NOT NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "  UNION " +
             "  SELECT m.scope_id AS org_id FROM memberships m " +
+            "    JOIN users u ON u.id = m.user_id " +
             "    WHERE m.user_id = :userId AND m.scope_type = 'ORGANIZATION' AND m.left_at IS NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             ") x",
             nativeQuery = true)
     List<Long> findOrganizationIdsByUserId(@Param("userId") Long userId);
@@ -156,16 +230,23 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * （{@code left_at IS NULL} の在籍のみ・role は問わない在籍軸）。呼出元が teamId のみを使う
      * 箇所はこのメソッドへ載せ替えること（entity の role/createdAt 等を読む箇所は対象外）。</p>
      *
+     * <p><b>CMP-050</b>: 列挙系と同一の生存条件を課す（理由は
+     * {@link #existsByUserIdAndTeamId(Long, Long)} の javadoc 参照）。</p>
+     *
      * @param userId 対象ユーザー ID
      * @return 直接所属するチーム ID の一覧（0件の場合は空リスト）
      */
     @Query(value =
             "SELECT DISTINCT team_id FROM ( " +
             "  SELECT ur.team_id AS team_id FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
             "    WHERE ur.user_id = :userId AND ur.team_id IS NOT NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "  UNION " +
             "  SELECT m.scope_id AS team_id FROM memberships m " +
+            "    JOIN users u ON u.id = m.user_id " +
             "    WHERE m.user_id = :userId AND m.scope_type = 'TEAM' AND m.left_at IS NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             ") x",
             nativeQuery = true)
     List<Long> findTeamIdsByUserId(@Param("userId") Long userId);
@@ -992,7 +1073,16 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * @param maxDepth          再帰展開の最大深さ（サイクル防止上限・通常 32）
      * @param cursor            直前チャンク末尾の user_id（初回は {@code 0L} 等の最小値未満を渡す）
      * @param pageable          チャンクサイズ（{@code PageRequest.of(0, chunk)}。ソートはクエリ側で固定）
-     * @return {@code user_id > cursor} の配信対象ユーザー ID を昇順に最大 chunk 件（重複なし）
+     * @return {@code user_id > cursor} の配信対象の {@code [user_id, locale]} を昇順に最大 chunk 件（重複なし）
+     *
+     * <h2>Issue #2871: locale の同時取得（母集団・実行計画とも不変）</h2>
+     * <p>両枝とも元から {@code JOIN users} 済みであり、追加したのは射影の 1 列（{@code u.locale} /
+     * {@code u2.locale}）だけである。{@code SELECT DISTINCT} に locale が加わっても、locale は
+     * users の<b>主キー等値結合</b>で決まる＝user_id に関数従属するため、重複排除の結果行数は変わらず、
+     * 枝内 {@code LIMIT :chunk} が数える行数も変わらない（枝ごとの打ち切り件数の意味を壊さない）。
+     * 20 万行での EXPLAIN ANALYZE 実測でも、両枝の {@code LIMIT}・covering index range scan・
+     * users の {@code eq_ref} 単行ルックアップはすべて維持され、新しい filesort / temporary は
+     * 発生しなかった（詳細は PR 本文）。</p>
      */
     @Query(value =
             "WITH RECURSIVE org_tree (id, depth) AS ( " +
@@ -1003,11 +1093,11 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid FROM ( " +
+            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid, cand.locale AS locale FROM ( " +
             // 各枝が「カーソル以降の自枝の先頭 chunk 件」だけを返す。母集団条件（生存ユーザー・
             // 純 SUPPORTER 除外）も枝内へ入れる。外側に残すと枝の LIMIT が「絞られる前の行」を
             // 数えてしまい、全滅したページで空が返って呼び出し側のループが早期終了する（配信漏れ）。
-            "  ( SELECT DISTINCT ur.user_id AS user_id FROM user_roles ur " +
+            "  ( SELECT DISTINCT ur.user_id AS user_id, u.locale AS locale FROM user_roles ur " +
             "      JOIN users u ON u.id = ur.user_id " +
             "      WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "        AND ur.user_id > :cursor " +
@@ -1032,7 +1122,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "        ) ) " +
             "      ORDER BY user_id ASC LIMIT :chunk ) " +
             "  UNION " +
-            "  ( SELECT DISTINCT ms0.user_id AS user_id FROM memberships ms0 " +
+            "  ( SELECT DISTINCT ms0.user_id AS user_id, u2.locale AS locale FROM memberships ms0 " +
             "      JOIN users u2 ON u2.id = ms0.user_id " +
             "      WHERE u2.deleted_at IS NULL AND u2.status = 'ACTIVE' " +
             "        AND ms0.left_at IS NULL AND ms0.user_id > :cursor " +
@@ -1059,7 +1149,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             ") cand " +
             "ORDER BY uid ASC",
             nativeQuery = true)
-    List<Long> findDistributionUserIdsForOrganizationRecursiveKeyset(
+    List<Object[]> findDistributionUserIdsForOrganizationRecursiveKeyset(
             @Param("organizationId") Long organizationId,
             @Param("includeSupporters") boolean includeSupporters,
             @Param("maxDepth") int maxDepth,
@@ -1110,10 +1200,10 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid FROM ( " +
+            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid, cand.locale AS locale FROM ( " +
             // 非シャード版と同型。カーソル・シャード述語・母集団条件をすべて枝内に置いた上で
             // 各枝が「自枝の先頭 chunk 件」だけを返す（外側に残すと枝の LIMIT が絞られる前の行を数える）。
-            "  ( SELECT DISTINCT ur.user_id AS user_id FROM user_roles ur " +
+            "  ( SELECT DISTINCT ur.user_id AS user_id, u.locale AS locale FROM user_roles ur " +
             "      JOIN users u ON u.id = ur.user_id " +
             "      WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "        AND ur.user_id > :cursor " +
@@ -1139,7 +1229,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "        ) ) " +
             "      ORDER BY user_id ASC LIMIT :chunk ) " +
             "  UNION " +
-            "  ( SELECT DISTINCT ms0.user_id AS user_id FROM memberships ms0 " +
+            "  ( SELECT DISTINCT ms0.user_id AS user_id, u2.locale AS locale FROM memberships ms0 " +
             "      JOIN users u2 ON u2.id = ms0.user_id " +
             "      WHERE u2.deleted_at IS NULL AND u2.status = 'ACTIVE' " +
             "        AND ms0.left_at IS NULL AND ms0.user_id > :cursor " +
@@ -1167,7 +1257,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             ") cand " +
             "ORDER BY uid ASC",
             nativeQuery = true)
-    List<Long> findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
+    List<Object[]> findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
             @Param("organizationId") Long organizationId,
             @Param("includeSupporters") boolean includeSupporters,
             @Param("maxDepth") int maxDepth,

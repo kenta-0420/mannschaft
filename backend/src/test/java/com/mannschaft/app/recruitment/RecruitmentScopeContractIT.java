@@ -62,7 +62,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       パス由来のスコープで {@code checkAdminOrAbove} → その後スコープ済みクエリ
  *       （{@code findByIdAndListingId} / {@code findByIdAndScopeTypeAndScopeId}）または明示的な
  *       スコープ突合（{@code TEMPLATE_SCOPE_MISMATCH}）で対象を絞る。越境 ID は
- *       {@code RECRUITMENT_*}（＝<b>400</b>）に畳み込まれる。</li>
+ *       {@code RECRUITMENT_*}（＝<b>404</b>・不在と同一ステータスで存在秘匿）に畳み込まれる。</li>
  *   <li><b>エンティティ由来型</b>（{@code lift} / {@code confirm}）:
  *       まず対象レコードを引き、<b>そのレコード自身の scope</b> に対して {@code checkAdminOrAbove} する。
  *       URL の {@code scopeType}/{@code scopeId}・{@code listingId} は認可に使われない（＝飾り）。
@@ -75,7 +75,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * の 2 件のみ登録され、{@code LISTING_NOT_FOUND}（{@code RECRUITMENT_001}）等は
  * {@code Severity.WARN} 既定の 400 にフォールバックしていた（#2468 として保留）。本是正で
  * {@code LISTING_NOT_FOUND} を含む不在系（IDOR 秘匿含む）を他ドメインと同じ 404 に統一した。
- * {@code TEMPLATE_SCOPE_MISMATCH}（{@code RECRUITMENT_314}）は入力不正の性質のため 400 のまま。
+ * {@code TEMPLATE_SCOPE_MISMATCH}（{@code RECRUITMENT_314}）は当初「入力不正の性質のため 400 のまま」と
+ * していたが、これは誤り（そもそも {@code ERROR_CODE_STATUS_MAP} 未登録で既定 400 に落ちていただけの
+ * 登録漏れだった）。不在 {@code RECRUITMENT_313} が 404 である以上、越境を 400 にすると templateId の
+ * 列挙で他スコープのテンプレートの実在が判別できるため、<b>404 として明示登録</b>し存在オラクルを閉じた。
  * {@code CommonErrorCode.COMMON_002} は 403 で明示登録されている。</p>
  *
  * <p><b>観察事項（本 PR では変更しない）</b>: エンティティ由来型の 2 EP は、
@@ -548,17 +551,19 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
     class CreateFromTemplate {
 
         /**
-         * AC-R7: 別チームの templateId を自チーム URL で使おうとすると 400
+         * AC-R7: 別チームの templateId を自チーム URL で使おうとすると 404
          * （{@code TEMPLATE_SCOPE_MISMATCH}）。本ドメインにおける帰属検証の<b>お手本</b>。
+         *
+         * <p>不在 {@code TEMPLATE_NOT_FOUND} と同一ステータスであることが存在秘匿の要件。</p>
          */
         @Test
-        @DisplayName("AC-R7: 正当ADMINが別チームのtemplateIdを使うと400（TEMPLATE_SCOPE_MISMATCH）")
-        void ac_r7_越境templateIdは400() throws Exception {
+        @DisplayName("AC-R7: 正当ADMINが別チームのtemplateIdを使うと404（TEMPLATE_SCOPE_MISMATCH）")
+        void ac_r7_越境templateIdは404() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/recruitment-listings/from-template", teamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(fromTemplateBody(templateBId))))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
                             .value(RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH.getCode()));
         }

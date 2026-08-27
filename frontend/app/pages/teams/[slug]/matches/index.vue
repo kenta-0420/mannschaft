@@ -50,7 +50,7 @@ const total = ref(0)
 const hasMore = computed(() => matches.value.length < total.value)
 
 async function load(reset = true): Promise<void> {
-  if (orgId.value === null || teamId.value === null) return
+  if (teamId.value === null) return
   if (reset) {
     page.value = 0
     matches.value = []

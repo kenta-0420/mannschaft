@@ -259,7 +259,8 @@
     "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
-    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません"
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "Has alcanzado el límite de 200 elementos ocultos. Muestra de nuevo alguno que ya no necesites."
   },
   "annual_plan": {
     "title": "Plan anual de eventos",
@@ -491,7 +492,38 @@
       "PUBLIC": "¿Qué está pasando?"
     },
     "submitLabel": "Publicar",
-    "pollOptionsCount": "{count} opciones"
+    "pollOptionsCount": "{count} opciones",
+    "deliveryScope": {
+      "label": "Alcance de entrega",
+      "options": {
+        "DIRECT": "Solo los miembros de esta organización",
+        "CHILDREN": "Incluir las organizaciones hijas directas",
+        "DESCENDANTS": "Todas las organizaciones subordinadas"
+      },
+      "hints": {
+        "DIRECT": "Solo se muestra en las cronologías de los miembros de esta organización.",
+        "CHILDREN": "También se muestra a los miembros de las organizaciones justo por debajo de esta.",
+        "DESCENDANTS": "Se muestra a los miembros de todas las organizaciones subordinadas."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "Ocultar las publicaciones de este equipo",
+        "ORGANIZATION": "Ocultar las publicaciones de esta organización"
+      },
+      "targetType": {
+        "TEAM": "Equipo",
+        "ORGANIZATION": "Organización"
+      },
+      "muted": "Se han ocultado las publicaciones de {name}",
+      "undo": "Deshacer",
+      "unmuted": "Se vuelven a mostrar las publicaciones",
+      "chip": "Ocultos: {count}",
+      "dialogTitle": "Fuentes ocultas",
+      "emptyList": "No has ocultado a nadie.",
+      "unmuteAction": "Volver a mostrar",
+      "unknownTarget": "{type} (ID: {id})"
+    }
   },
   "gallery": {
     "title": "Galería",
@@ -1294,6 +1326,23 @@
     "filter": {
       "allTeamsOrgs": "Equipos y organizaciones (todos)",
       "selectScope": "Seleccionar destino"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Personal",
+        "unknown": "Otros eventos",
+        "loadError": {
+          "summary": "Error al cargar las capas",
+          "detail": "Los filtros de equipo/organización no están disponibles temporalmente. Los eventos siguen mostrándose. Vuelve a intentarlo más tarde."
+        },
+        "hiddenNotice": "La capa en la que lo creaste está oculta",
+        "showIt": "Mostrar"
+      },
+      "more": "+{count} más",
+      "today": "Hoy",
+      "dayDetail": {
+        "title": "Eventos del {date}"
+      }
     }
   },
   "handoff": {
@@ -1463,6 +1512,10 @@
       "back_to_dashboard": "Volver al panel",
       "retry": "Reintentar",
       "slow_loading": "La carga está tardando más de lo esperado"
+    },
+    "unsavedChanges": {
+      "title": "Cambios sin guardar",
+      "confirmLeave": "Tienes cambios sin guardar. Si sales de esta página, se perderá lo que has introducido. ¿Continuar?"
     }
   },
   "teamHub": {
@@ -1839,6 +1892,13 @@
     "mapEmbedUrlHelp": "En Google Maps, haz clic en \"Compartir > Insertar mapa > Copiar HTML\" y pega la URL de src= aquí",
     "mapEmbedUrlInvalidFormat": "Debe ser una URL de inserción de Google Maps (https://www.google.com/maps/embed?...)",
     "mapEmbedUrlSaved": "URL del mapa de la tienda guardada",
+    "timezone": {
+      "label": "Zona horaria de reservas",
+      "help": "Zona horaria IANA para interpretar las horas de inicio y fin.",
+      "placeholder": "p. ej., Asia/Tokyo",
+      "invalid": "Introduce una zona horaria IANA válida",
+      "saved": "Zona horaria guardada"
+    },
     "regionCode": {
       "label": "Ubicación (prefectura / municipio)",
       "help": "Al seleccionar una prefectura y un municipio se establecen los valores predeterminados para la búsqueda regional y las publicaciones.",
@@ -1856,6 +1916,24 @@
     "bulletinOpen": "Discutir en el tablón"
   },
   "scopeDashboard": {
+    "storageSummary": {
+      "title": "Almacenamiento",
+      "personal": "Personal",
+      "team": "Equipo",
+      "organization": "Organización",
+      "details": "Ver detalles",
+      "error": "No se pudo cargar el almacenamiento",
+      "retry": "Reintentar",
+      "unconfigured": "Cuota no configurada",
+      "not_available": "Sin datos de almacenamiento",
+      "meterLabel": "Uso de almacenamiento de {scope}",
+      "meterValue": "Uso {percent}%",
+      "warningTitle": "Límite de almacenamiento cercano",
+      "warningMessage": "{scope} usa el {percent}%. Considera actualizar a un plan de pago.",
+      "viewPlans": "Ver planes",
+      "checkStorage": "Comprobar almacenamiento",
+      "cancel": "Cancelar"
+    },
     "tabs": {
       "personal": "Personal",
       "team": "Equipo",
@@ -2109,5 +2187,31 @@
   "comingSoon": {
     "title": "Próximamente",
     "description": "Esta función está actualmente en desarrollo. Por favor, vuelva más tarde."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Transferir la propiedad",
+    "sectionDescription": "Cede el rol de propietario (administrador) a otro miembro. Tras la transferencia pasas a ser subadministrador y ya no podrás realizar acciones exclusivas de administrador.",
+    "openButton": "Transferir la propiedad",
+    "dialogTitle": "Transferir la propiedad",
+    "warning": "Esta acción no se puede deshacer. Los permisos de administrador pasan al nuevo propietario y solo él podrá devolverlos.",
+    "targetLabel": "Nuevo propietario",
+    "targetPlaceholder": "Selecciona un miembro",
+    "noCandidates": "No hay ningún miembro al que puedas transferir la propiedad.",
+    "confirmLabel": "Escribe “{name}” para confirmar",
+    "confirmMismatch": "El nombre no coincide.",
+    "cancel": "Cancelar",
+    "submit": "Transferir",
+    "successTitle": "Propiedad transferida",
+    "successDetail": "Los permisos de administrador se han transferido al nuevo propietario."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Función no disponible",
+      "body": "Esta función aún no está disponible. Volviendo al panel."
+    },
+    "error": {
+      "fetchFailedTitle": "No se pudo comprobar la disponibilidad de la función",
+      "fetchFailedBody": "No se pudo comprobar si esta función está disponible debido a un error de red. Inténtalo de nuevo más tarde."
+    }
   }
 }

@@ -129,6 +129,104 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Job 0 — Flyway マイグレーション再生テスト（65クラス・実測で全テスト正味の
+  # 81.6%）の実行要否を判定する。
+  #
+  # 【なぜ「直前の push との差分」ではなく「最後に成功したデプロイの main SHA」
+  #   を基点にするのか（連続マージの穴）】
+  #   PR側 backend-ci.yml は「PRの base...head」で判定すれば十分だが、本
+  #   ワークフロー（main への push で毎回起動）で同じ発想の「1つ前の push
+  #   との差分」を基点にすると、以下の穴が生まれる:
+  #     コミットA（migration を追加）が push → A の deploy 実行中に
+  #     コミットB（通常コードのみ）が push → 実行中の A の run が
+  #     concurrency（cancel-in-progress）等で打ち切られる → 次に見る
+  #     「1つ前の push（=A）との差分」は B の変更（migration 無し）のみ →
+  #     A が追加した migration は一度も Flyway 再生テストにかけられないまま
+  #     デプロイされてしまう。
+  #   これを防ぐため、基点は「このワークフロー自身の、main ブランチ・
+  #   status=success の直近 run の head_sha」とする。ここを起点にすれば、
+  #   打ち切られた A の変更は「まだデプロイに成功していない差分」として
+  #   B のコミットの diff にも必ず含まれ続け、成功するまでフル実行対象から
+  #   漏れない。
+  #
+  # 【判定不能は必ずフル実行へ倒す（fail-open）】
+  #   直近の成功 run が無い（初回 / 過去ログ消失）・base が取得できない・
+  #   base が現在の SHA の祖先でない（history 書き換え等）・fetch や
+  #   git diff が失敗した — これらはすべて migrations_changed=true とし、
+  #   Flyway 再生テストを含むフル実行に倒す。「判定に失敗したので除外する」
+  #   は絶対に行わない（CLAUDE.md 障害対応の原則＝対処療法禁止）。
+  # ---------------------------------------------------------------------------
+  detect:
+    name: Detect migration changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read  # 直近の成功 run を gh api で読むために必要
+    outputs:
+      migrations_changed: ${{ steps.decide.outputs.migrations_changed }}
+    steps:
+      # base/head 双方の祖先関係検証・2点差分を取れるよう全履歴を取得する。
+      - name: Checkout source（全履歴）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 判定
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+
+          fail_open() {
+            echo "[INFO] $1 → migrations_changed=true（フル実行へ倒す）"
+            echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          # ---- 1. このワークフロー（backend-deploy.yml）の main ブランチ・
+          #         直近の成功 run の head_sha を取得する ----
+          BASE_SHA=$(gh api "repos/${REPO}/actions/workflows/backend-deploy.yml/runs?branch=main&status=success&per_page=1" --jq '.workflow_runs[0].head_sha' 2>&1)
+          API_STATUS=$?
+
+          if [ "${API_STATUS}" -ne 0 ]; then
+            fail_open "直近の成功 run 取得に失敗（gh api exit=${API_STATUS}: ${BASE_SHA}）"
+          fi
+          if [ -z "${BASE_SHA}" ] || [ "${BASE_SHA}" = "null" ]; then
+            fail_open "直近の成功 run が存在しない（初回デプロイ等）"
+          fi
+          echo "[INFO] base_sha=${BASE_SHA}（最後に成功した backend-deploy.yml run の head_sha）"
+
+          # ---- 2. base が現在の HEAD_SHA の祖先であることを確認する ----
+          #         Checkout ステップで fetch-depth: 0（全履歴）を取得済みのため、
+          #         個別に git fetch origin <sha> は行わない（GitHub は任意の
+          #         到達可能 SHA を want として fetch することを既定で許可して
+          #         おらず、"couldn't find remote ref" で失敗するため実際には使えない
+          #         ——実地確認済み）。
+          #         base_sha オブジェクトが存在しない場合・force-push や履歴書き換え
+          #         等で祖先関係が崩れている場合は、この merge-base 自体が非0で
+          #         終了し fail_open へ倒れる（2点比較が誤った差分を返す事態を防ぐ）。
+          if ! git merge-base --is-ancestor "${BASE_SHA}" "${HEAD_SHA}"; then
+            fail_open "base_sha（${BASE_SHA}）が HEAD_SHA（${HEAD_SHA}）の祖先ではない、または base_sha が存在しない"
+          fi
+
+          # ---- 3. 二点比較で差分を取り、migration-sensitive パターンと照合する ----
+          #         （正規表現の実体は .github/scripts/migration-sensitive-paths.regex
+          #          に一本化。backend-ci.yml と共有し、ドリフトを防ぐ）
+          RESULT=$(bash .github/scripts/detect-migration-changes.sh "${BASE_SHA}" "${HEAD_SHA}")
+          SCRIPT_STATUS=$?
+
+          if [ "${SCRIPT_STATUS}" -ne 0 ]; then
+            fail_open "差分判定スクリプトが失敗（exit=${SCRIPT_STATUS}）"
+          fi
+
+          echo "[INFO] migrations_changed=${RESULT}"
+          echo "migrations_changed=${RESULT}" >> "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------------
   # Job 1 — Run all tests (Testcontainers requires Docker)
   #
   # PR側 backend-ci.yml と同じ 6-shard 構成。concurrency group をデプロイと
@@ -137,8 +235,10 @@ jobs:
   # ---------------------------------------------------------------------------
   test:
     name: Test (shard ${{ matrix.shard }})
+    needs: detect
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # PR CI と同じテスト量を実行するため、後処理を含む実測 60m21s に余裕を持たせる。
+    timeout-minutes: 75
     concurrency:
       group: backend-main-test-${{ github.ref }}-shard-${{ matrix.shard }}
       cancel-in-progress: false
@@ -169,11 +269,18 @@ jobs:
       # このシャードに割り当てられたテストクラスのみ実行する（backend-ci.yml と同じ方式）。
       # Testcontainers pulls docker images on first run; the Docker daemon is
       # already running on ubuntu-latest so no additional setup is needed.
+      #
+      # -PexcludeMigrationTests: detect ジョブの判定結果をそのまま渡す。
+      # migration-sensitive な変更が無ければ Flyway 再生テスト（65クラス・
+      # 全テスト正味の81.6%）を除外し、壁時計を 45分 → 20〜33分（PR側と同等）
+      # まで短縮する。判定不能時は detect 側が既に true（フル実行）に倒して
+      # いるため、ここでは受け取った値をそのまま使うだけでよい。
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
         run: >-
           ./gradlew test --no-daemon --continue
           -Pshard.total=${{ env.SHARD_TOTAL }}
           -Pshard.index=${{ matrix.shard }}
+          -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }}
         env:
           # Testcontainers host resolution inside GitHub Actions
           TESTCONTAINERS_RYUK_DISABLED: "false"

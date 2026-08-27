@@ -433,7 +433,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>同一コミットに以下の実装是正・契約テストを含む:</p>
      * <ul>
      *   <li>{@code GlobalExceptionHandler}: {@code PAYMENT_029}（会費支払い記録の不在）を 404、
-     *       {@code PAYMENT_030}（払い手／受益者以外のアクセス拒否）を 403、
+     *       {@code PAYMENT_030}（払い手／受益者以外のアクセス拒否）を 403
+     *       （<b>この 403 は後日 404 へ是正済み</b>。不在の {@code PAYMENT_029} と割れていて
+     *       存在オラクルになっていたため。現行値は {@code GlobalExceptionHandler} を参照）、
      *       {@code RECEIPT_002}（領収書の不在・宛先不一致）を 404 に登録。3 コードとも未登録のため
      *       {@code Severity.WARN} 既定の 400 が返っており、Javadoc の宣言と実挙動が乖離していた。
      *       同ファイルへの変更は<b>この 3 エントリとコメントのみ</b>（並行整備中のため最小限）。</li>

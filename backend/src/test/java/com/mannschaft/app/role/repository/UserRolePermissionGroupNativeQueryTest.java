@@ -192,6 +192,15 @@ class UserRolePermissionGroupNativeQueryTest extends AbstractMySqlIntegrationTes
     // ---------------------------------------------------------------------
 
     private Long persistPermission(String name) {
+        // 冪等化: permissions はグローバル参照テーブルのため、既存なら再利用し二重INSERTしない
+        // （同一 name の重複INSERTは permissions の UNIQUE 制約違反になる。CI shard 再編成で
+        // 同一 JVM 内の同居テストが変わり得るため、盲目的 INSERT は禁止）。
+        List<?> found = em.createNativeQuery("SELECT id FROM permissions WHERE name = :name")
+                .setParameter("name", name)
+                .getResultList();
+        if (!found.isEmpty()) {
+            return ((Number) found.get(0)).longValue();
+        }
         PermissionEntity permission = PermissionEntity.builder()
                 .name(name)
                 .displayName(name)

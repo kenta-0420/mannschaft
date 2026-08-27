@@ -28,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
@@ -427,6 +428,78 @@ class TodoPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
                                     "title", "自分のTODO", "projectId", personalProjectId))))
                     .andExpect(status().isCreated());
         }
+
+        /**
+         * PersonalTodoController#getMyCalendarTodos の自己スコープ性と、ダッシュボード向けの
+         * 全スコープ横断・期限日ベース表示契約を固定する。
+         */
+        @Test
+        @DisplayName("マイカレンダー: PERSONAL/TEAM/ORGANIZATIONの自分担当・期限のみTODOを返し、完了・削除・他人担当を除外する")
+        void マイカレンダー_自分担当の全スコープTODOのみ返す() throws Exception {
+            LocalDate from = LocalDate.of(2030, 1, 1);
+            LocalDate to = LocalDate.of(2030, 1, 31);
+            Long personalCalendarTodoId = saveAssignedCalendarTodo(
+                    TodoScopeType.PERSONAL, ownerId, ownerId, "PERSAUTHZ 個人期限のみ", null,
+                    LocalDate.of(2030, 1, 10), TodoStatus.OPEN, null, false);
+            Long teamCalendarTodoId = saveAssignedCalendarTodo(
+                    TodoScopeType.TEAM, teamId, ownerId, "PERSAUTHZ チーム期間TODO",
+                    LocalDate.of(2029, 12, 30), LocalDate.of(2030, 1, 3), TodoStatus.IN_PROGRESS, 701L, false);
+            Long orgCalendarTodoId = saveAssignedCalendarTodo(
+                    TodoScopeType.ORGANIZATION, orgId, ownerId, "PERSAUTHZ 組織期限TODO", null,
+                    LocalDate.of(2030, 1, 31), TodoStatus.OPEN, null, false);
+            Long otherAssigneeTodoId = saveAssignedCalendarTodo(
+                    TodoScopeType.TEAM, teamId, attackerId, "PERSAUTHZ 他人担当", null,
+                    LocalDate.of(2030, 1, 15), TodoStatus.OPEN, null, false);
+            Long completedTodoId = saveAssignedCalendarTodo(
+                    TodoScopeType.PERSONAL, ownerId, ownerId, "PERSAUTHZ 完了", null,
+                    LocalDate.of(2030, 1, 16), TodoStatus.COMPLETED, null, false);
+            Long deletedTodoId = saveAssignedCalendarTodo(
+                    TodoScopeType.PERSONAL, ownerId, ownerId, "PERSAUTHZ 削除", null,
+                    LocalDate.of(2030, 1, 17), TodoStatus.OPEN, null, true);
+            Long jointlyAssignedTodoId = saveAssignedCalendarTodo(
+                    TodoScopeType.ORGANIZATION, orgId, ownerId, "PERSAUTHZ 共同担当", null,
+                    LocalDate.of(2030, 1, 18), TodoStatus.OPEN, null, false);
+            assigneeRepository.save(TodoAssigneeEntity.builder()
+                    .todoId(jointlyAssignedTodoId)
+                    .userId(attackerId)
+                    .assignedBy(ownerId)
+                    .build());
+            Long unassignedTodoId = saveAssignedCalendarTodo(
+                    TodoScopeType.TEAM, teamId, ownerId, "PERSAUTHZ 担当解除", null,
+                    LocalDate.of(2030, 1, 19), TodoStatus.OPEN, null, false);
+            assigneeRepository.delete(assigneeRepository.findByTodoIdAndUserId(unassignedTodoId, ownerId).orElseThrow());
+            em.flush();
+            em.clear();
+
+            setAuth(ownerId);
+            mockMvc.perform(get("/api/v1/todos/my/calendar")
+                            .param("from", from.toString())
+                            .param("to", to.toString())
+                            .param("userId", attackerId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id", hasItem(personalCalendarTodoId.intValue())))
+                    .andExpect(jsonPath("$.data[*].id", hasItem(teamCalendarTodoId.intValue())))
+                    .andExpect(jsonPath("$.data[*].id", hasItem(orgCalendarTodoId.intValue())))
+                    .andExpect(jsonPath("$.data[*].id", not(hasItem(otherAssigneeTodoId.intValue()))))
+                    .andExpect(jsonPath("$.data[*].id", not(hasItem(completedTodoId.intValue()))))
+                    .andExpect(jsonPath("$.data[*].id", not(hasItem(deletedTodoId.intValue()))))
+                    .andExpect(jsonPath("$.data[*].id", hasItem(jointlyAssignedTodoId.intValue())))
+                    .andExpect(jsonPath("$.data[?(@.id == " + jointlyAssignedTodoId + ")]", org.hamcrest.Matchers.hasSize(1)))
+                    .andExpect(jsonPath("$.data[*].id", not(hasItem(unassignedTodoId.intValue()))))
+                    .andExpect(jsonPath("$.data[?(@.id == " + personalCalendarTodoId + ")].startDate")
+                            .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.nullValue())))
+                    .andExpect(jsonPath("$.data[?(@.id == " + teamCalendarTodoId + ")].linkedScheduleId").value(org.hamcrest.Matchers.contains(701)));
+        }
+
+        @Test
+        @DisplayName("マイカレンダー: 未認証は401")
+        void マイカレンダー_未認証は401() throws Exception {
+            SecurityContextHolder.clearContext();
+            mockMvc.perform(get("/api/v1/todos/my/calendar")
+                            .param("from", "2030-01-01")
+                            .param("to", "2030-01-31"))
+                    .andExpect(status().isUnauthorized());
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -642,6 +715,33 @@ class TodoPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
                 .parentId(parentId)
                 .depth(parentId == null ? 0 : 1)
                 .build()).getId();
+    }
+
+    private Long saveAssignedCalendarTodo(TodoScopeType scopeType, Long scopeId, Long assigneeId,
+                                          String title, LocalDate startDate, LocalDate dueDate,
+                                          TodoStatus status, Long linkedScheduleId, boolean deleted) {
+        TodoEntity todo = todoRepository.save(TodoEntity.builder()
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .title(title)
+                .status(status)
+                .priority(TodoPriority.MEDIUM)
+                .sortOrder(0)
+                .createdBy(ownerId)
+                .startDate(startDate)
+                .dueDate(dueDate)
+                .linkedScheduleId(linkedScheduleId)
+                .build());
+        if (deleted) {
+            todo.softDelete();
+            todoRepository.save(todo);
+        }
+        assigneeRepository.save(TodoAssigneeEntity.builder()
+                .todoId(todo.getId())
+                .userId(assigneeId)
+                .assignedBy(ownerId)
+                .build());
+        return todo.getId();
     }
 
     private Long saveProject(TodoScopeType scopeType, Long scopeId, String title, Long createdBy) {

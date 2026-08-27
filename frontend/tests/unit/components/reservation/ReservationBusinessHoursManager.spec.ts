@@ -77,11 +77,11 @@ async function flush() {
   await new Promise(r => setTimeout(r, 0))
 }
 
-function businessHourEntry(dayOfWeek: string, isOpen: boolean, openTime?: string, closeTime?: string) {
+function businessHourEntry(dayOfWeek: string, isOpen: boolean, openTime?: string, closeTime?: string, endsNextDay = false) {
   return {
     id: 1,
     teamId: 10,
-    businessStatus: { dayOfWeek, isOpen, openTime, closeTime },
+    businessStatus: { dayOfWeek, isOpen, openTime, closeTime, endsNextDay },
   }
 }
 
@@ -136,6 +136,7 @@ describe('ReservationBusinessHoursManager.vue', () => {
       expect(entry.isOpen).toBe(false)
       expect(entry.openTime).toBeUndefined()
       expect(entry.closeTime).toBeUndefined()
+      expect(entry.endsNextDay).toBe(false)
     }
   })
 
@@ -162,6 +163,29 @@ describe('ReservationBusinessHoursManager.vue', () => {
     expect(mon.isOpen).toBe(true)
     expect(mon.openTime).toBe('09:00:00')
     expect(mon.closeTime).toBe('18:00:00')
+    expect(mon.endsNextDay).toBe(false)
+  })
+
+  it('AC-16: 終了翌日の営業時間は endsNextDay=true を保持して送信する', async () => {
+    mockGetBusinessHours.mockResolvedValue({
+      data: [businessHourEntry('MON', true, '22:00:00', '04:00:00', true)],
+    })
+    mockUpdateBusinessHours.mockResolvedValue({
+      data: { hours: [], generation: { generatedCount: 0, failed: false } },
+    })
+
+    const wrapper = await mountSuspended(ReservationBusinessHoursManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+    await wrapper.find('[data-testid="business-hours-save"]').trigger('click')
+    await flush()
+
+    const [, hours] = mockUpdateBusinessHours.mock.calls[0] as [string, Array<Record<string, unknown>>]
+    const mon = hours.find(h => h.dayOfWeek === 'MON')!
+    expect(mon.endsNextDay).toBe(true)
+    expect(mon.openTime).toBe('22:00:00')
+    expect(mon.closeTime).toBe('04:00:00')
   })
 
   it('AC-FE2: 保存成功で generation.generatedCount を含む成功トーストが出る', async () => {

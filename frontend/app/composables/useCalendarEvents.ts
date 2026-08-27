@@ -1,3 +1,5 @@
+import dayjs from 'dayjs'
+
 export interface CalendarEventItem {
   id: number
   /**
@@ -32,6 +34,14 @@ export interface CalendarEventItem {
   scopeType?: string
   scopeName?: string | null
   scopeIconUrl?: string | null
+  targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+  targetCount?: number
+  targets?: Array<{
+    userId: number
+    displayName: string
+    avatarUrl: string | null
+    calendarColor: string | null
+  }>
   /**
    * 出欠回答が必須のイベントか（モバイルのリストビューで行内 RSVP ボタンの出し分けに使う）。
    * BE ScheduleResponse.content.attendanceRequired 由来。未設定は false 扱い。
@@ -162,10 +172,10 @@ export function useCalendarEvents(
     }
   }
 
-  function navigate(delta: number): void {
-    const next = addMonths(currentYear.value, currentMonth.value, delta)
-    currentYear.value = next.year
-    currentMonth.value = next.month
+  /** 表示中の年月を任意の年月へ直接移動する（キャッシュ範囲外なら再取得）。 */
+  function navigateTo(year: number, month: number): void {
+    currentYear.value = year
+    currentMonth.value = month
 
     if (cacheHalfMonths === 0 || !isWithinCache(currentYear.value, currentMonth.value)) {
       calendarLoading.value = true
@@ -175,12 +185,30 @@ export function useCalendarEvents(
     }
   }
 
+  function navigate(delta: number): void {
+    const next = addMonths(currentYear.value, currentMonth.value, delta)
+    navigateTo(next.year, next.month)
+  }
+
   function onPrevMonth(): void {
     navigate(-1)
   }
 
   function onNextMonth(): void {
     navigate(1)
+  }
+
+  /**
+   * 「今日」ボタン（§6.3・AC-12d）: ユーザータイムゾーン基準の今日が属する月へ移動する。
+   * 既に当月表示中の場合は再取得せず何もしない（呼び出し側がフォーカス移動のみ行う）。
+   */
+  function goToToday(): void {
+    const { userTimezone } = useDatetime()
+    const now = dayjs().tz(userTimezone.value)
+    const year = now.year()
+    const month = now.month() + 1
+    if (year === currentYear.value && month === currentMonth.value) return
+    navigateTo(year, month)
   }
 
   return {
@@ -193,5 +221,6 @@ export function useCalendarEvents(
     refresh,
     onPrevMonth,
     onNextMonth,
+    goToToday,
   }
 }

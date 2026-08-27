@@ -224,11 +224,17 @@ export function useTeamCrud() {
   }
 
   // === オーナー移譲 ===
-  async function transferOwnership(teamSlug: string, newAdminUserId: number) {
-    return api(`/api/v1/teams/${teamSlug}/transfer-ownership`, {
-      method: 'POST',
-      body: { newAdminUserId },
-    })
+  /**
+   * オーナー（ADMIN）を別メンバーへ譲渡する。
+   *
+   * BE 契約は `POST /api/v1/teams/{slug}/transfer-ownership?targetUserId={id}` であり、
+   * 譲渡先はリクエストボディではなく**クエリパラメータ `targetUserId`** で渡す
+   * （`TeamController#transferOwnership` の `@RequestParam Long targetUserId` / `docs/openapi.json`）。
+   * 以前はボディ `{ newAdminUserId }` を送っており実契約と不一致だった（CMP-051 で是正）。
+   */
+  async function transferOwnership(teamSlug: string, targetUserId: number) {
+    const query = new URLSearchParams({ targetUserId: String(targetUserId) })
+    return api(`/api/v1/teams/${teamSlug}/transfer-ownership?${query}`, { method: 'POST' })
   }
 
   return {

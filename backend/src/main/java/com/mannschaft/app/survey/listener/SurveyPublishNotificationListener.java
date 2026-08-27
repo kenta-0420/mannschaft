@@ -2,6 +2,7 @@ package com.mannschaft.app.survey.listener;
 
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.fanout.OrgFanoutRecipientSource;
@@ -12,6 +13,7 @@ import com.mannschaft.app.survey.event.SurveyPublishedEvent;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -57,6 +59,7 @@ public class SurveyPublishNotificationListener {
     private final SurveyTargetRepository surveyTargetRepository;
     private final NotificationHelper notificationHelper;
     private final NotificationFanoutJobService fanoutJobService;
+    private final MessageSource messageSource;
 
     /**
      * アンケート公開イベントを受信して配信母集団へ公開通知を送信する。
@@ -72,14 +75,18 @@ public class SurveyPublishNotificationListener {
                 // 組織スコープ×ALL: 受信者を展開せず耐久 fan-out ジョブを 1 件 enqueue（O(1)）。
                 // 配下チーム展開・応援者トグル適用・ACTIVE/未削除の母集団条件はワーカー（OrgFanoutRecipientSource）が
                 // keyset クエリで処理する。
+                // Issue #2871 で解消: ジョブは描画済み文字列ではなく「文面種別＋利用者が書いた中身」を
+                // 運ぶようになった。enqueue が 6 配信ロケールぶんの文面を描画して子表に保存し、
+                // ワーカーが受信者の locale で選んで配る。翻訳するのは枠だけで、アンケート名は
+                // 利用者が書いた文字列としてそのまま差し込む（翻訳も改変もしない）。
                 fanoutJobService.enqueue(
                         OrgFanoutRecipientSource.SCOPE_TYPE,               // 戦略キー: ORGANIZATION
                         String.valueOf(event.getScopeId()),                // scope_ref: 組織 ID 文字列
                         SurveyNotificationType.SURVEY_CREATED.name(),
                         sourceEventUuid(event.getSurveyId(), event.occurredAt()), // 冪等キー: 公開イベント（surveyId×occurredAt）
                         event.getScopeId(),                                // organizationId: テナント（組織 ID）
-                        "新しいアンケートが公開されました",
-                        "「" + event.getTitle() + "」が公開されました。回答にご協力ください。",
+                        FanoutMessageKind.SURVEY_PUBLISHED,
+                        new String[]{event.getTitle()},    // 利用者が書いたアンケート名（翻訳しない）
                         NotificationPriority.NORMAL,
                         "SURVEY", event.getSurveyId(),
                         "/surveys/" + event.getSurveyId(),
@@ -99,19 +106,27 @@ public class SurveyPublishNotificationListener {
                     ? NotificationScopeType.TEAM
                     : NotificationScopeType.ORGANIZATION;
             // 配信＝受信権 統一（関所(1)通知 / E: ResultsVisibility 誤用是正）:
-            // recipients は resolveRecipients が配信母集団として確定済みのため、notifyAllPreAuthorized で
-            // canView 絞り込み（SURVEY の結果閲覧 ResultsVisibility 軸を含む）を通さない。
-            notificationHelper.notifyAllPreAuthorized(
+            // recipients は resolveRecipients が配信母集団として確定済みのため、canView 絞り込み
+            // （SURVEY の結果閲覧 ResultsVisibility 軸を含む）を通さない
+            // notifyAllPreAuthorizedLocalized（Issue #2715 CMP-055 ロットC-5で追加）を使う。
+            notificationHelper.notifyAllPreAuthorizedLocalized(
                     recipients,
                     SurveyNotificationType.SURVEY_CREATED.name(),
-                    "新しいアンケートが公開されました",
-                    "「" + event.getTitle() + "」が公開されました。回答にご協力ください。",
                     "SURVEY",
                     event.getSurveyId(),
                     notifScope,
                     event.getScopeId(),
                     "/surveys/" + event.getSurveyId(),
-                    event.getActorId());
+                    event.getActorId(),
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
+                            messageSource.getMessage(
+                                    "notification.survey.published.title", null,
+                                    "新しいアンケートが公開されました", locale),
+                            messageSource.getMessage(
+                                    "notification.survey.published.body",
+                                    new Object[]{event.getTitle()},
+                                    "「" + event.getTitle() + "」が公開されました。回答にご協力ください。",
+                                    locale)));
             log.info("アンケート公開通知送信: surveyId={}, recipientCount={}",
                     event.getSurveyId(), recipients.size());
         } catch (Exception e) {

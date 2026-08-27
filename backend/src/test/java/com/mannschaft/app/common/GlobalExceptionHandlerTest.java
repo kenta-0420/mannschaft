@@ -3,9 +3,21 @@ package com.mannschaft.app.common;
 import com.mannschaft.app.billing.EntitlementNotEntitledDetails;
 import com.mannschaft.app.billing.FeatureNotEntitledException;
 import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
+import com.mannschaft.app.bulletin.BulletinErrorCode;
+import com.mannschaft.app.committee.error.CommitteeErrorCode;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
+import com.mannschaft.app.gdpr.GdprErrorCode;
+import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
+import com.mannschaft.app.matching.MatchingErrorCode;
+import com.mannschaft.app.payment.PaymentErrorCode;
+import com.mannschaft.app.recruitment.RecruitmentErrorCode;
+import com.mannschaft.app.social.SocialErrorCode;
+import com.mannschaft.app.succession.SuccessionErrorCode;
+import com.mannschaft.app.village.VillageErrorCode;
+import com.mannschaft.app.skill.SkillErrorCode;
+import com.mannschaft.app.webhook.WebhookErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -936,6 +948,19 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
+        @DisplayName("F03.19 CMP-112: CALENDAR_LAYER_LIMIT_EXCEEDED（SCHEDULE_104）は件数上限なので既定の 400 BadRequest"
+                + "（.claudecode.md §3.2.1「上限超過は 409 ではない」の回帰固定）")
+        void resolveHttpStatus_SCHEDULE_104_400() {
+            // 当初 ERROR_CODE_STATUS_MAP に 409 で登録していたが、規約 §3.2.1 の表は
+            // 「件数/サイズの上限超過」を 400（既定のまま・上書き不要）と定めている。
+            // 上書き登録ごと削除し、Severity.WARN 既定の 400 に戻した。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.schedule.ScheduleErrorCode.CALENDAR_LAYER_LIMIT_EXCEEDED);
+
+            assertThat(result).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
         @DisplayName("F03.4 バグ#5: INVALID_TIME_RANGE（start>=end）は WARN severity で 400 BadRequest になる（500 漏れ防止の回帰固定）")
         void resolveHttpStatus_INVALID_TIME_RANGE_400() {
             // 実機 E2E で start>=end が 500 を返していた（旧 Severity.ERROR）。
@@ -1462,6 +1487,104 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
+        @DisplayName("村ドメインの『重複』は全て 409 に揃っている"
+                + "（VILLAGE_005 と VILLAGE_035 が同じスラッグ重複で別ステータスだった割れの固定）")
+        void 村の重複は409に統一されている() {
+            List<ErrorCode> duplicates = List.of(
+                    com.mannschaft.app.village.VillageErrorCode.VILLAGE_NAME_TAKEN,       // VILLAGE_003
+                    com.mannschaft.app.village.VillageErrorCode.VILLAGE_SLUG_TAKEN,       // VILLAGE_005
+                    com.mannschaft.app.village.VillageErrorCode.NICKNAME_TAKEN,           // VILLAGE_008
+                    com.mannschaft.app.village.VillageErrorCode.CREATION_REQUEST_SLUG_TAKEN); // VILLAGE_035
+
+            for (ErrorCode errorCode : duplicates) {
+                assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                        .as("村ドメインの『重複』概念は 409 に統一する。%s だけ別ステータスになっている",
+                                errorCode.getCode())
+                        .isEqualTo(HttpStatus.CONFLICT);
+            }
+        }
+
+        @Test
+        @DisplayName("VILLAGE_004（スラッグ形式不正）は重複ではなく入力形式の検証なので 400 のまま")
+        void 村のスラッグ形式不正は400のまま() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.village.VillageErrorCode.VILLAGE_SLUG_INVALID))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("GDPR エクスポート: 不在は 404 / 未完了は 409 / 期限切れは 410（GDPR_003 の3意味分割）")
+        void GDPRエクスポートの3経路が別ステータスで返る() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(GdprErrorCode.GDPR_003))
+                    .as("レコード不在は 404")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(GdprErrorCode.GDPR_009))
+                    .as("未完了は「無い」ではなく状態競合なので 409")
+                    .isEqualTo(HttpStatus.CONFLICT);
+            assertThat(globalExceptionHandler.resolveHttpStatus(GdprErrorCode.GDPR_010))
+                    .as("期限切れは「かつて存在したが失効した」ので 410 GONE")
+                    .isEqualTo(HttpStatus.GONE);
+        }
+
+        @Test
+        @DisplayName("スキル: カテゴリ不在は 404 / 名称重複は 409 / 非アクティブは 409（SKILL_001 の3意味分割）")
+        void スキルカテゴリの3経路が別ステータスで返る() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_001))
+                    .as("カテゴリ不在は 404")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_009))
+                    .as("名称重複は既存リソースとの状態競合なので 409")
+                    .isEqualTo(HttpStatus.CONFLICT);
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_010))
+                    .as("非アクティブカテゴリは実在するが操作を受け付けない状態競合なので 409")
+                    .isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("意図的な集約でも集約先ステータスは文脈依存: SKILL_003は404・SIGNAGE_002は400")
+        void 意図的に畳んだコードの集約先ステータスは対比対象の有無で決まる() {
+            // SKILL_003（越境アクセス・権限拒否の集約）は、対比される「不在」側が
+            // SKILL_001/SKILL_002で404を返す。集約先を400のままにすると、不在（404）と
+            // 越境（400）でステータスが割れ、応答の違いだけで対象IDが他スコープに実在するかを
+            // 判別できる存在オラクルになる。そのため集約先も404に揃えた
+            // （PARKING_020を起点とする「越境は存在秘匿で404」の流儀に統一）。
+            // 「複数の理由を1コードに畳めば秘匿できる」は誤りで、畳んだ先のステータスが
+            // 不在側と一致して初めて秘匿が成立する。
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_003))
+                    .as("越境アクセス・権限拒否の集約。不在側（SKILL_001/002）と同じ404に揃えて秘匿する")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+
+            // SIGNAGE_002は『不在／無効化済み／期限切れ』を集約しているが、この3者はそもそも
+            // 対比される「不在は404・その他は別ステータス」という設計になっておらず、
+            // 3者とも同一コード・同一ステータス（400）で応答することそのものが契約
+            // （SignageAccessTokenService#validateTokenのjavadoc、SignageScopeContractITが
+            // 3状況とも400を固定）。skillのような404/400の分裂が存在しないため、
+            // 今回の是正の対象外であり400のまま変更しない。
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.signage.SignageErrorCode.SIGNAGE_002))
+                    .as("不在／無効化済み／期限切れを同一コード・同一ステータス(400)に畳む契約。変更対象外")
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("Webhook: 認証失敗は 401 / 管理系CRUDの不在は 404"
+                + "（WEBHOOK_005・007 が両方の意味を兼ねていた割れの是正）")
+        void Webhookの認証失敗と管理系不在が別ステータスで返る() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(WebhookErrorCode.WEBHOOK_005))
+                    .as("Incoming Webhook 受信時のトークン認証失敗は 401")
+                    .isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(globalExceptionHandler.resolveHttpStatus(WebhookErrorCode.WEBHOOK_007))
+                    .as("APIキー認証失敗（形式不正・照合不一致を畳んだもの）は 401")
+                    .isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(globalExceptionHandler.resolveHttpStatus(WebhookErrorCode.WEBHOOK_013))
+                    .as("管理系CRUDでの Incoming トークン不在は 404")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(WebhookErrorCode.WEBHOOK_014))
+                    .as("管理系CRUDでのAPIキー不在は 404")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
         @DisplayName("真のサーバ障害は 500 のまま（是正の巻き添えで 4xx 化していないこと）")
         void サーバ障害系は500のまま() {
             assertThat(globalExceptionHandler.resolveHttpStatus(CommonErrorCode.COMMON_999))
@@ -1679,4 +1802,154 @@ class GlobalExceptionHandlerTest {
             verify(service, never()).recordBackendException(any(), anyString(), anyString(), anyString(), anyString(), any());
         }
     }
+
+    // ========================================
+    // 存在オラクル（不在 / 越境のステータス一致）
+    // ========================================
+
+    @Nested
+    @DisplayName("存在オラクル封じ — 不在と越境が同一ステータス（404）で応答する")
+    class ExistenceOracleParity {
+
+        /**
+         * 「不在」と「越境（他人のリソース）」でステータスが割れると、
+         * 攻撃者は応答の差だけで ID の実在を判別できる（存在オラクル）。
+         * PARKING_020 起点の「越境は存在秘匿で 404」の流儀に揃っていることを検証する。
+         *
+         * <p>一致だけを見ると「両方 500」「両方 200」でも通ってしまうため、
+         * 404 そのものを固定する絶対値アサーションを必ず併存させる。</p>
+         */
+        private void assertOracleClosed(ErrorCode absent, ErrorCode crossTenant) {
+            HttpStatus absentStatus = globalExceptionHandler.resolveHttpStatus(absent);
+            HttpStatus crossStatus = globalExceptionHandler.resolveHttpStatus(crossTenant);
+
+            assertThat(absentStatus)
+                    .as("不在側（%s）は 404 で存在秘匿すること", absent.getCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(crossStatus)
+                    .as("越境側（%s）は 404 で存在秘匿すること", crossTenant.getCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(crossStatus)
+                    .as("不在（%s）と越境（%s）でステータスが割れると ID の実在が判別できる",
+                            absent.getCode(), crossTenant.getCode())
+                    .isEqualTo(absentStatus);
+        }
+
+        @Test
+        @DisplayName("支払い領収書: PAYMENT_029（不在）と PAYMENT_030（越境）がともに 404")
+        void 支払い領収書の存在オラクルが閉じている() {
+            assertOracleClosed(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND,
+                    PaymentErrorCode.PAYMENT_ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("承継誓約: SUCCESSION_003（不在）と SUCCESSION_008（越境）がともに 404")
+        void 承継誓約の存在オラクルが閉じている() {
+            assertOracleClosed(SuccessionErrorCode.COVENANT_NOT_FOUND,
+                    SuccessionErrorCode.COVENANT_FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("求人QRトークン: JOB_CONTRACT_NOT_FOUND（不在）と JOB_PERMISSION_DENIED（越境）がともに 404")
+        void 求人契約の存在オラクルが閉じている() {
+            assertOracleClosed(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND,
+                    JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+        }
+
+        @Test
+        @DisplayName("チーム友だち可視性: SOCIAL_106（不在）と SOCIAL_107（越境）がともに 404")
+        void チーム友だち可視性の存在オラクルが閉じている() {
+            assertOracleClosed(SocialErrorCode.FRIEND_RELATION_NOT_FOUND,
+                    SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY);
+        }
+
+        @Test
+        @DisplayName("マッチング募集: MATCHING_001（不在）と MATCHING_010（越境）がともに 404")
+        void マッチング募集の存在オラクルが閉じている() {
+            // MatchProposalService の listProposals/acceptProposal/rejectProposal/cancelProposal/
+            // agreeCancellation は、募集が不在なら REQUEST_NOT_FOUND、越境なら INSUFFICIENT_PERMISSION を
+            // 投げる。ステータスが割れると募集IDの実在が応答差から判別できる。
+            assertOracleClosed(MatchingErrorCode.REQUEST_NOT_FOUND,
+                    MatchingErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        @Test
+        @DisplayName("マッチング応募: MATCHING_002（不在）と MATCHING_010（越境）がともに 404")
+        void マッチング応募の存在オラクルが閉じている() {
+            // withdrawProposal は応募が不在なら PROPOSAL_NOT_FOUND、越境なら INSUFFICIENT_PERMISSION。
+            assertOracleClosed(MatchingErrorCode.PROPOSAL_NOT_FOUND,
+                    MatchingErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        @Test
+        @DisplayName("掲示板保管庫フォルダ: BULLETIN_016（不在）と BULLETIN_020（越境）がともに 404")
+        void 保管庫フォルダの存在オラクルが閉じている() {
+            // BulletinArchiveFolderService#validateFolderInScope / createFolder の親フォルダ検証は、
+            // フォルダが不在なら ARCHIVE_FOLDER_NOT_FOUND、他スコープなら ARCHIVE_FOLDER_SCOPE_MISMATCH。
+            // ステータスが割れると他テナントのフォルダ UUID の実在が応答差から判別できる。
+            assertOracleClosed(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND,
+                    BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH);
+        }
+
+        @Test
+        @DisplayName("委員会議事録: COMMITTEE_NOT_FOUND（不在）と COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE（越境）がともに 404")
+        void 委員会議事録の存在オラクルが閉じている() {
+            // CommitteeMinutesService#confirmMinutes は活動記録が不在なら NOT_FOUND、
+            // 他委員会・非委員会スコープの記録なら MINUTES_NOT_COMMITTEE_SCOPE を投げる。
+            assertOracleClosed(CommitteeErrorCode.NOT_FOUND,
+                    CommitteeErrorCode.MINUTES_NOT_COMMITTEE_SCOPE);
+        }
+
+        @Test
+        @DisplayName("募集テンプレート: RECRUITMENT_313（不在）と RECRUITMENT_314（越境）がともに 404")
+        void 募集テンプレートの存在オラクルが閉じている() {
+            // RecruitmentListingService#createFromTemplate はテンプレートが不在なら TEMPLATE_NOT_FOUND、
+            // 他スコープのテンプレートなら TEMPLATE_SCOPE_MISMATCH。
+            assertOracleClosed(RecruitmentErrorCode.TEMPLATE_NOT_FOUND,
+                    RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH);
+        }
+
+        @Test
+        @DisplayName("非公開村: VILLAGE_001（不在）と VILLAGE_002（非公開）がともに 404")
+        void 非公開村の存在オラクルが閉じている() {
+            // UNLISTED 村は検索結果から意図的に除外され「存在を隠す」設計であるにもかかわらず、
+            // VillageService#get が非村人に対して 403 を返すと、不在の 404 との差で存在が漏れる。
+            // （PUBLIC 村の VILLAGE_024 は存在自体が公開情報のため 403 のままで正しい）
+            assertOracleClosed(VillageErrorCode.VILLAGE_NOT_FOUND,
+                    VillageErrorCode.VILLAGE_UNLISTED);
+        }
+    }
+
+    // ========================================
+    // 汎用の権限拒否（IDを引かないため404化しない・403のまま）
+    // ========================================
+
+    @Nested
+    @DisplayName("汎用の権限拒否 — ID越境ではないため404化せず403のまま")
+    class GenericPermissionDeniedStaysForbidden {
+
+        /**
+         * ID を一切引かない汎用の権限拒否は、秘匿すべきリソース ID が存在しないため
+         * 存在オラクル対策（404化）の対象外であり、403のまま据え置く。
+         * ExistenceOracleParity（ID越境は404）と対になる、意図的な非対称の固定。
+         */
+        @Test
+        @DisplayName("求人作成: JOB_CREATE_PERMISSION_DENIED は 403（求人IDが存在しないため404化しない）")
+        void 求人作成の権限拒否は403のまま() {
+            HttpStatus status = globalExceptionHandler.resolveHttpStatus(
+                    JobmatchingErrorCode.JOB_CREATE_PERMISSION_DENIED);
+
+            assertThat(status).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("承継誓約一覧: COVENANT_LIST_FORBIDDEN は 403（個別誓約IDが存在しないため404化しない）")
+        void 承継誓約一覧の権限拒否は403のまま() {
+            HttpStatus status = globalExceptionHandler.resolveHttpStatus(
+                    SuccessionErrorCode.COVENANT_LIST_FORBIDDEN);
+
+            assertThat(status).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+    }
 }
+
