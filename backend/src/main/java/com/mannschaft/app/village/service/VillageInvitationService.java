@@ -57,17 +57,20 @@ public class VillageInvitationService {
     /** 1 ユーザーが参加できる村数のハード上限（{@code VillageMembershipService} と同値）。 */
     private static final int PARTICIPATION_HARD_LIMIT = 100;
 
-    /**
-     * 秘密トークンの共通金庫。
-     *
-     * <p>状態を持たない共通部品であり、ここで直接生成する（final かつ初期化済みのため
-     * {@code @RequiredArgsConstructor} の生成子引数には現れず、既存の生成子シグネチャを変えない）。</p>
-     */
-    private final SecretTokenVault secretTokenVault = new SecretTokenVault();
-
     private final VillageInvitationRepository invitationRepository;
     private final VillageMembershipRepository membershipRepository;
     private final VillageAccessGate villageAccessGate;
+
+    /**
+     * 秘密トークンの共通金庫（生成・ハッシュ・定数時間照合）。
+     *
+     * <p>宣言は既存フィールドの<b>後ろ</b>に置く。{@code @RequiredArgsConstructor} は
+     * 宣言順に生成子引数を作るため、前に置くと既存の呼び出し元の引数順が黙って入れ替わる。</p>
+     */
+    private final SecretTokenVault secretTokenVault;
+
+    /** 期限判定の基準時刻。テストで固定できるよう注入する（内部で now() を呼ばない）。 */
+    private final java.time.Clock clock;
 
     // ======================================================================
     // 発行 / 一覧 / 失効（村長・長老のみ）
@@ -212,7 +215,7 @@ public class VillageInvitationService {
         VillageInvitationEntity invitation =
                 invitationRepository.findByTokenHashForUpdate(secretTokenVault.hash(token))
                         .orElseThrow(VillageInvitationService::foldToAbsent);
-        if (!invitation.isUsable()) {
+        if (!invitation.isUsable(clock.instant())) {
             throw foldToAbsent();
         }
         // 指名型招待は指名された者だけが使える。指名外には「不在」と同じ顔を返す。

@@ -21,7 +21,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import com.mannschaft.app.common.token.SecretTokenVault;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -103,6 +105,20 @@ class VillageInvitationServiceTest {
 
     @Mock
     private VillageAccessGate villageAccessGate;
+
+    /**
+     * 金庫は状態を持たない実物を注入する（モックにするとトークンが null になり
+     * AC-3・AC-18 が検証できない）。アサーションには一切手を入れていない。
+     */
+    @Spy
+    private SecretTokenVault secretTokenVault = new SecretTokenVault();
+
+    /**
+     * 期限判定の基準時刻を固定する。実時計だと「期限ちょうどの瞬間」を境界として
+     * 検証できず、実行速度によって結果が変わる（負荷時のみ落ちる flaky の原因だった）。
+     */
+    @Spy
+    private java.time.Clock clock = java.time.Clock.fixed(java.time.Instant.now(), java.time.ZoneOffset.UTC);
 
     @InjectMocks
     private VillageInvitationService service;

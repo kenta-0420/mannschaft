@@ -116,7 +116,10 @@ class VillageInvitationContractTest {
                 villageRepository, membershipRepository,
                 Mockito.mock(com.mannschaft.app.common.AccessControlService.class));
         VillageInvitationService real = new VillageInvitationService(
-                invitationRepository, membershipRepository, gate);
+                invitationRepository, membershipRepository, gate,
+                // 金庫は状態を持たない共通部品なので実物を渡す（モックだとトークンが null になる）。
+                new com.mannschaft.app.common.token.SecretTokenVault(),
+                java.time.Clock.systemUTC());
 
         // モックのサービスに実物を委譲させる（写経ではなく実ロジックを HTTP まで通す）。
         lenient().doAnswer(inv -> real.accept(inv.getArgument(0), inv.getArgument(1)))
