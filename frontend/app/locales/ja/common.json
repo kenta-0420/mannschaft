@@ -1351,7 +1351,10 @@
       },
       "week": {
         "allDay": "終日",
-        "now": "現在"
+        "now": "現在",
+        "dragHint": "ドラッグして予定を作成",
+        "dragHintTouch": "長押ししてなぞると予定を作成できます",
+        "selectedRange": "{start} – {end}"
       }
     }
   },
