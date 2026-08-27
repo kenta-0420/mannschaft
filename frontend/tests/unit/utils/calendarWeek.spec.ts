@@ -82,6 +82,55 @@ describe('utils/calendarWeek', () => {
       expect(eventDayOccupancy(boundary, dateToOrdinal('2026-08-04'))).toBeNull()
     })
 
+    /**
+     * [P2] 秒の切り捨てで消える欠陥の対比。
+     * 「ちょうど零時は出ない／零時を30秒でも越えたら出る」を隣り合わせで固定する。
+     */
+    it('[P2] 零時を30秒でも越えれば翌日に存在する（ちょうど零時との対比）', () => {
+      const exact = { ...boundary, endAt: '2026-08-04T00:00:00+09:00' }
+      const spillsSeconds = { ...boundary, endAt: '2026-08-04T00:00:30+09:00' }
+
+      // ちょうど零時: 翌日には存在しない
+      expect(eventOccupiesDate(exact, '2026-08-04')).toBe(false)
+      expect(eventDayOccupancy(exact, dateToOrdinal('2026-08-04'))).toBeNull()
+
+      // 30秒越え: 翌日にも存在する（分へ丸めると消えていた）
+      expect(eventOccupiesDate(spillsSeconds, '2026-08-04')).toBe(true)
+      expect(eventDayOccupancy(spillsSeconds, dateToOrdinal('2026-08-04')))
+        .toEqual({ startMin: 0, endMin: 0.5 })
+
+      // 前日側はどちらも 22:00〜24:00 のまま変わらない
+      for (const e of [exact, spillsSeconds]) {
+        expect(eventDayOccupancy(e, dateToOrdinal('2026-08-03')))
+          .toEqual({ startMin: 22 * 60, endMin: 24 * 60 })
+      }
+    })
+
+    it('[P2] ミリ秒だけ越えた場合も存在を示す', () => {
+      const spillsMillis = { ...boundary, endAt: '2026-08-04T00:00:00.001+09:00' }
+      expect(eventOccupiesDate(spillsMillis, '2026-08-04')).toBe(true)
+    })
+
+    it('[P2] 秒・ミリ秒を含む開始時刻も正しく読む', () => {
+      const withSeconds = {
+        startAt: '2026-08-04T09:30:45+09:00',
+        endAt: '2026-08-04T10:00:00+09:00',
+        allDay: false,
+      }
+      const occ = eventDayOccupancy(withSeconds, dateToOrdinal('2026-08-04'))
+      expect(occ?.startMin).toBeCloseTo(9 * 60 + 30.75, 6)
+      expect(occ?.endMin).toBe(600)
+
+      // 桁落ちしたミリ秒表記（.5 = 500ms）も右詰めではなく左詰めで読む
+      const halfSecond = {
+        startAt: '2026-08-04T09:00:00.5+09:00',
+        endAt: '2026-08-04T10:00:00+09:00',
+        allDay: false,
+      }
+      expect(eventDayOccupancy(halfSecond, dateToOrdinal('2026-08-04'))?.startMin)
+        .toBeCloseTo(540 + 0.5 / 60, 6)
+    })
+
     it('零時を1分でも過ぎれば翌日にも存在する', () => {
       const spills = { ...boundary, endAt: '2026-08-04T00:01:00+09:00' }
       expect(eventOccupiesDate(spills, '2026-08-04')).toBe(true)

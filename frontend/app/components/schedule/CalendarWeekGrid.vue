@@ -418,7 +418,10 @@ function dateColorClass(dateStr: string, col: number): string {
  * 詳細を開く経路（uniqueKey 共有）の話であり、表示時刻まで元のものにせよという意味ではない。
  */
 function fmtSegmentTime(seg: TimedSegment): string {
-  return `${pad(Math.floor(seg.startMin / 60))}:${pad(seg.startMin % 60)}`
+  // startMin は秒を小数として持ちうる（[P2]・判定はミリ秒、描画は分）。
+  // 分の表示では必ず切り捨てる（floor を落とすと "0:0.5" のような文字列になる）。
+  const totalMinutes = Math.floor(seg.startMin)
+  return `${pad(Math.floor(totalMinutes / 60))}:${pad(totalMinutes % 60)}`
 }
 
 /**

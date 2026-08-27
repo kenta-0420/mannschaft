@@ -407,6 +407,49 @@ describe('CalendarWeekGrid (F03.19 §6.5)', () => {
     }
   })
 
+  /**
+   * [P2] 秒の切り捨てで消える欠陥の対比。
+   * 直前の「ちょうど零時は翌日に出ない」テストと隣り合わせで、境界の区別が付いていることを示す。
+   */
+  it('[P2] 零時を30秒越える予定は、翌日の一覧にも時間グリッドにも出て継続記号が付く', async () => {
+    const events = [
+      // 8/3 22:00:00 〜 8/4 00:00:30。8/4 には 30秒だけ掛かっている。
+      ev({ id: 930, title: '30秒越え', startAt: '2026-08-03T22:00:00+09:00', endAt: '2026-08-04T00:00:30+09:00' }),
+      ...Array.from({ length: 4 }, (_, i) =>
+        ev({ id: 941 + i, allDay: true, startAt: '2026-08-04T00:00:00+09:00', endAt: '2026-08-04T23:59:59+09:00' })),
+    ]
+    const wrapper = await mountWeek(events)
+
+    // 時間グリッドに2片描かれる（8/3=dayIndex 1、8/4=dayIndex 2）
+    const bars = timedBars(wrapper, '930')
+    expect(bars.map(b => b.attributes('data-day-index'))).toEqual(['1', '2'])
+
+    // 継続記号が両側に付く
+    expect(bars[0]!.find('[data-testid="week-event-continues-after"]').text()).toBe('▼')
+    expect(bars[1]!.find('[data-testid="week-event-continues-before"]').text()).toBe('▲')
+
+    // 翌日側の片は 00:00 の位置にあり、潰れず最低高さで見える
+    expect(Number.parseFloat(styleProp(styleOf(bars[1]!), 'top'))).toBeCloseTo(0, 1)
+    expect(Number.parseFloat(styleProp(styleOf(bars[1]!), 'height'))).toBeGreaterThanOrEqual(20)
+    // 分の表示は切り捨てて 00:00（"0:0.5" のような文字列にならない）
+    expect(bars[1]!.text()).toContain('00:00')
+
+    // 翌日の一覧にも出る
+    await wrapper.get('[data-testid="day-overflow-2026-08-04"]').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.findAll('[data-testid^="popover-row-"]').map(r => r.attributes('data-testid')))
+      .toContain('popover-row-930')
+  })
+
+  it('[P2] ちょうど零時に終わる予定は翌日側の片も継続記号も出ない（30秒越えとの対比）', async () => {
+    const wrapper = await mountWeek([
+      ev({ id: 931, title: 'ちょうど零時', startAt: '2026-08-03T22:00:00+09:00', endAt: '2026-08-04T00:00:00+09:00' }),
+    ])
+    const bars = timedBars(wrapper, '931')
+    expect(bars.map(b => b.attributes('data-day-index'))).toEqual(['1'])
+    expect(bars[0]!.find('[data-testid="week-event-continues-after"]').exists()).toBe(false)
+  })
+
   it('[1・二巡目] 零時を1分でも過ぎれば翌日の一覧にも出る', async () => {
     const events = [
       ev({ id: 901, title: '跨ぎ予定', startAt: '2026-08-03T22:00:00+09:00', endAt: '2026-08-04T00:01:00+09:00' }),

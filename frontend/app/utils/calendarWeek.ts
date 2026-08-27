@@ -10,6 +10,7 @@
  */
 import dayjs from 'dayjs'
 
+/** 1日のミリ秒（= MINUTES_PER_DAY * MS_PER_MINUTE）。日付演算と占有判定の双方で使う。 */
 const MS_PER_DAY = 86400000
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -76,19 +77,38 @@ export interface DayOccupancy {
   endMin: number
 }
 
+/** 分 → ミリ秒。1日のミリ秒はファイル冒頭の MS_PER_DAY を共用する（MINUTES_PER_DAY * これと同値）。 */
+const MS_PER_MINUTE = 60_000
+
+/** ISO 文字列の時刻部（秒・ミリ秒は任意）。オフセット部は壁時計採用のため意図的に見ない。 */
+const TIME_PART = /T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?/
+
 /**
- * ISO 文字列を「通日番号 * 1440 + 壁時計の分」へ変換する。
+ * ISO 文字列を「通日番号 * 1日 + 壁時計のミリ秒」へ変換する。
  *
  * カレンダー各所と同じく、BE から届く文字列の壁時計をそのまま採用する
  * （`startAt.slice(0, 10)` / `slice(11, 16)` と同じ流儀）。
  * 時刻部が無い日付のみの文字列は 0:00 とみなす（明示的な解釈であり、握りつぶしではない）。
+ *
+ * **分へ丸めずミリ秒まで保持するのが要点**（Codex 検分三巡目 [P2]）。
+ * 以前は分で切り捨てていたため、`22:00:00` 〜 翌日 `00:00:30` の予定の終了が翌日 `00:00` と
+ * 同値になり、「翌日を占有していない」と誤判定されて一覧からも時間グリッドからも消えていた。
+ * API の日時は秒を含みうる。30秒しか掛かっていない日でも、掛かっている以上は存在を示す。
  */
-export function absMinutesOf(iso: string): number {
+export function absMillisOf(iso: string): number {
   const ord = dateToOrdinal(iso.slice(0, 10))
-  const h = Number(iso.slice(11, 13))
-  const mi = Number(iso.slice(14, 16))
-  const minutes = Number.isFinite(h) && Number.isFinite(mi) ? h * 60 + mi : 0
-  return ord * MINUTES_PER_DAY + minutes
+  const m = TIME_PART.exec(iso)
+  if (!m) return ord * MS_PER_DAY
+  const hours = Number(m[1])
+  const minutes = Number(m[2])
+  const seconds = m[3] === undefined ? 0 : Number(m[3])
+  // '.5' のような桁落ち表記も 500ms として正しく読む（右詰めではなく左詰めの小数部）。
+  const millis = m[4] === undefined ? 0 : Number(m[4].padEnd(3, '0'))
+  return ord * MS_PER_DAY
+    + hours * 3_600_000
+    + minutes * MS_PER_MINUTE
+    + seconds * 1_000
+    + millis
 }
 
 /**
@@ -111,24 +131,37 @@ export function eventDayOccupancy(event: OccupancyInput, ordinal: number): DayOc
     return { startMin: 0, endMin: MINUTES_PER_DAY }
   }
 
-  const absStart = absMinutesOf(event.startAt)
+  // 【占有の判定】は切り捨て前のミリ秒で行う（[P2]）。分へ丸めた値で比較すると、
+  // 日付境界を秒単位でまたぐ予定が「掛かっていない」ことにされて消える。
+  const absStart = absMillisOf(event.startAt)
   // 終了が開始より前の壊れたデータでも長さ負にはしない（消しもしない）。
-  const absEnd = Math.max(absMinutesOf(event.endAt), absStart)
-  const dayStart = ordinal * MINUTES_PER_DAY
-  const dayEnd = dayStart + MINUTES_PER_DAY
+  const absEnd = Math.max(absMillisOf(event.endAt), absStart)
+  const dayStart = ordinal * MS_PER_DAY
+  const dayEnd = dayStart + MS_PER_DAY
 
   const clipStart = Math.max(absStart, dayStart)
   const clipEnd = Math.min(absEnd, dayEnd)
-  if (clipEnd > clipStart) {
-    return { startMin: clipStart - dayStart, endMin: clipEnd - dayStart }
-  }
+  if (clipEnd > clipStart) return toOccupancy(clipStart - dayStart, clipEnd - dayStart)
 
   // 長さゼロの予定は「その瞬間が属する日」に置く。区間が空だからと消してはならない
   // （予定を無言で消す実装を作らないため）。
   if (absEnd === absStart && absStart >= dayStart && absStart < dayEnd) {
-    return { startMin: absStart - dayStart, endMin: absStart - dayStart }
+    const offset = absStart - dayStart
+    return toOccupancy(offset, offset)
   }
   return null
+}
+
+/**
+ * 【描画の位置決め】用に、その日の 0:00 起点のミリ秒を分へ落とす。
+ *
+ * 判定（ミリ秒・厳密）と描画（分・1時間=48px のレイアウト計算）を分ける境目がここ。
+ * 秒は分の小数として残す — 丸めると 30秒の予定が startMin === endMin に潰れ、
+ * 「占有していると判定したのに描けない」という新たな食い違いを生むため。
+ * 極端に短い予定が視認できなくなる問題は、描画側の最低高さ（MIN_EVENT_H）が既に引き受けている。
+ */
+function toOccupancy(startOffsetMs: number, endOffsetMs: number): DayOccupancy {
+  return { startMin: startOffsetMs / MS_PER_MINUTE, endMin: endOffsetMs / MS_PER_MINUTE }
 }
 
 /** その日に予定が存在するか（{@link eventDayOccupancy} と同一基準）。 */
