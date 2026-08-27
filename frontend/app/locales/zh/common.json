@@ -1342,7 +1342,8 @@
       "today": "今天",
       "dayDetail": {
         "title": "{date} 的日程"
-      }
+      },
+      "empty": "此期间没有日程"
     }
   },
   "handoff": {

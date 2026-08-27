@@ -36,9 +36,6 @@ const sortedEvents = computed(() =>
   [...events.value].sort((a, b) => a.startAt.localeCompare(b.startAt)),
 )
 
-// モバイルのリストビュー月ナビ用ラベル（例: 2026年7月）。
-const periodLabel = computed(() => `${currentYear.value}年${currentMonth.value}月`)
-
 function onDateClick(date: string) {
   selectedDate.value = date
   showCreateDialog.value = true
@@ -108,50 +105,19 @@ onMounted(async () => {
     <!-- カレンダーはタップしないと時刻/詳細が見えず即時性が無いため、狭幅では
          日付・時刻・タイトルを 1 行で即時可視化するリストを既定にする。 -->
     <div class="md:hidden">
-      <!-- 月ナビ -->
-      <div class="mb-3 flex items-center justify-center gap-3">
-        <Button
-          icon="pi pi-chevron-left"
-          text
-          rounded
-          severity="secondary"
-          :aria-label="$t('schedule.list.prevMonth')"
-          @click="onPrevMonth"
-        />
-        <span class="min-w-[110px] text-center text-sm font-semibold text-surface-700 dark:text-surface-300">
-          {{ periodLabel }}
-        </span>
-        <Button
-          icon="pi pi-chevron-right"
-          text
-          rounded
-          severity="secondary"
-          :aria-label="$t('schedule.list.nextMonth')"
-          @click="onNextMonth"
-        />
-      </div>
-
-      <SectionCard class="overflow-hidden p-0" :class="{ 'opacity-60': refreshing }">
-        <div data-testid="schedule-list-view">
-          <template v-if="sortedEvents.length > 0">
-            <ScheduleListRow
-              v-for="ev in sortedEvents"
-              :key="ev.uniqueKey"
-              :event="ev"
-              scope-type="team"
-              :scope-id="teamSlug"
-              @open="onEventClick"
-              @responded="refresh"
-            />
-          </template>
-          <DashboardEmptyState
-            v-else
-            icon="pi pi-calendar"
-            :message="$t('schedule.list.empty')"
-            class="py-10"
-          />
-        </div>
-      </SectionCard>
+      <ScheduleMobileListView
+        :year="currentYear"
+        :month="currentMonth"
+        :events="sortedEvents"
+        scope-type="team"
+        :scope-id="teamSlug"
+        :empty-message="$t('schedule.list.empty')"
+        :dimmed="refreshing"
+        @prev-month="onPrevMonth"
+        @next-month="onNextMonth"
+        @open="(ev) => onEventClick(ev.id)"
+        @responded="refresh"
+      />
 
       <!-- 行タップ時の詳細（モバイルはインライン表示） -->
       <SectionCard v-if="showDetailPanel && selectedEvent" class="mt-4">

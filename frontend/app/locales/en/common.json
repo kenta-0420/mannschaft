@@ -1342,7 +1342,8 @@
       "today": "Today",
       "dayDetail": {
         "title": "Events on {date}"
-      }
+      },
+      "empty": "No events in this period"
     }
   },
   "handoff": {

@@ -140,6 +140,10 @@ async function mountCalendarPage() {
         EventDetailPanel: true,
         CalendarGuideModal: true,
         TodoGanttView: true,
+        // F03.19 §6.8（Wave 3-c）: モバイル用リストは常に DOM 上に存在する（CSS の md:hidden で
+        // 出し分けるだけで jsdom 上は非表示にならない）。既存 AC-11 系テストのボタン探索
+        // （wrapper.findAll('button')）に無関係な要素が混ざらないようスタブ化する。
+        ScheduleMobileListView: true,
       },
     },
   })

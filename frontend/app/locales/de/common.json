@@ -1342,7 +1342,8 @@
       "today": "Heute",
       "dayDetail": {
         "title": "Termine am {date}"
-      }
+      },
+      "empty": "Keine Termine in diesem Zeitraum"
     }
   },
   "handoff": {

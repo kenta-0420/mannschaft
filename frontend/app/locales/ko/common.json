@@ -1342,7 +1342,8 @@
       "today": "오늘",
       "dayDetail": {
         "title": "{date}의 일정"
-      }
+      },
+      "empty": "이 기간에 일정이 없습니다"
     }
   },
   "handoff": {

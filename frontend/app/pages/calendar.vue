@@ -81,8 +81,20 @@ const {
   currentYear, currentMonth, loading, calendarLoading, loadEvents, refresh,
   onPrevMonth: calPrevMonth, onNextMonth: calNextMonth, goToToday,
   extendedEvents, todosFailed, layersFailed, availableScopes, allScopeOptions, selectedScopes,
-  filteredEvents, toggleScope, multiSelectScopes, initStorage,
+  filteredEvents, toggleScope, multiSelectScopes, initStorage, view,
 } = useMyCalendarData()
+
+// F03.19 §6.8（Wave 3-c）: モバイル（<768px）では常にリスト表示のため md 以上の `view`
+// 切り替え UI（週／アジェンダビュー本体）とは別軸だが、「モバイルでは既定ビューをアジェンダ
+// とする」という状態の既定値だけはここで切り替える（アジェンダビュー本体の描画自体は
+// W3-b の担当で本ファイルではまだ未着手・範囲外）。initStorage() が localStorage に永続化済みの
+// 選択（ユーザーが明示的に選んだ view）を復元した場合はそれを尊重し、上書きしない。
+const MOBILE_MEDIA_QUERY = '(max-width: 767px)'
+
+/** モバイルのリストビュー用: 表示中の月のイベントを日付昇順に並べる。 */
+const sortedFilteredEvents = computed(() =>
+  [...filteredEvents.value].sort((a, b) => a.startAt.localeCompare(b.startAt)),
+)
 
 // 「今日」ボタン（§6.3・AC-12d）: 月グリッド本体の DOM 操作（フォーカス）は CalendarGrid に委譲する。
 const calendarGridRef = ref<{ focusToday: () => void } | null>(null)
@@ -503,7 +515,24 @@ async function clearLinkedQuery() {
 }
 
 onMounted(async () => {
+  // F03.19 §6.8: 初回訪問（永続化済みの表示設定が無い）かつモバイル幅であれば、
+  // 既定ビューを 'agenda' にする。initStorage() 自体は useMyCalendarData.ts 側の
+  // 責務（触らない）なので、ここでは「保存済み設定が既にあったか」だけを事前に見て、
+  // 無かった場合のみ後から上書きする（ユーザーが既に選んだ view は絶対に上書きしない）。
+  const hadPersistedViewState = (() => {
+    try {
+      // useMyCalendarData.ts の LAYER_STATE_KEY と同じキー（同ファイルは書き換え対象外のため、
+      // ここでは存在確認のためだけにキー名を重複させる）。
+      return localStorage.getItem('mannschaft:calendar:layerState') != null
+    }
+    catch {
+      return false
+    }
+  })()
   await initStorage()
+  if (!hadPersistedViewState && typeof window !== 'undefined' && window.matchMedia(MOBILE_MEDIA_QUERY).matches) {
+    view.value = 'agenda'
+  }
   await loadEvents()
   // クエリパラメータ ?tab=gantt で直接ガントタブを開いた場合は初期読み込みを行う
   if (activeTab.value === 'gantt') {
@@ -581,7 +610,30 @@ onMounted(async () => {
 
     <!-- カレンダービュー -->
     <div v-show="activeTab === 'calendar'">
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <!-- ===== モバイル（<768px）: リストビュー（F03.19 §6.8・Wave 3-c） =====
+           狭幅では月グリッドが読めないため、共通コンポーネント ScheduleMobileListView を使う。
+           週／アジェンダビュー本体（CalendarWeekGrid・CalendarAgendaList）は別戦役（W3-a/W3-b）の
+           担当でまだ存在しないため、モバイルの表示はここでは常にこのリストで代替する。 -->
+      <div class="md:hidden">
+        <ScheduleMobileListView
+          :year="currentYear"
+          :month="currentMonth"
+          :events="sortedFilteredEvents"
+          scope-type="team"
+          scope-id=""
+          :empty-message="t('schedule.calendar.empty')"
+          :dimmed="calendarLoading"
+          @prev-month="onPrevMonth"
+          @next-month="onNextMonth"
+          @open="(ev) => (ev.isReflection && ev.referenceUuid && ev.referenceKind)
+            ? onReflectionClick(ev.referenceUuid, ev.referenceKind)
+            : onEventClick(ev.id, ev.isPersonal)"
+          @responded="refresh"
+        />
+      </div>
+
+      <!-- ===== デスクトップ（768px以上）: 従来のカレンダー主体UI（不変） ===== -->
+      <div class="hidden gap-6 md:grid grid-cols-1 lg:grid-cols-3">
         <!-- カレンダー（2列） -->
         <div class="lg:col-span-2">
           <div class="relative">
