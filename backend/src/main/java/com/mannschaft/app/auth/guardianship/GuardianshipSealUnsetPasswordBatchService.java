@@ -76,7 +76,7 @@ public class GuardianshipSealUnsetPasswordBatchService {
     @BatchEndpoint(name = "guardianship-seal-unset-password-batch",
             description = "自立移行 封印時の未設定パスワード自動送付（取り残し防止）バッチ")
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。封印日到来後もパスワード未設定の子への設定案内であり、送付が遅れても再開後に送り直される。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
+            reason = "封印日到来後もパスワード未設定の子へ設定案内を送る保護目的の処理であり、止めると子が自分のアカウントにログインできぬまま取り残される。遅延させてよいと後から判断させないため停止モードを選べない域として扱う")
     @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "guardianshipSealUnsetPasswordBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")
     public void execute() {

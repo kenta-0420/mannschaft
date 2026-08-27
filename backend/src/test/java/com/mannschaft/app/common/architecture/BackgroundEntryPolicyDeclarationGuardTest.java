@@ -108,6 +108,54 @@ class BackgroundEntryPolicyDeclarationGuardTest {
      *
      * <p>パターン記法: {@code **} は任意（ドットを跨ぐ）、{@code *} はドットを跨がない任意。
      * 全パターンが実在のクラスに当たることを AC-2 が機械検証する。</p>
+     *
+     * <h2>【申し送り】命名規約で禁止域を書くと、規約に従わぬ新参が必ずすり抜ける</h2>
+     * <p><b>同じ病が三度出た。</b>いずれも「命名で捕まえる」やり方の隙間から出てきている。</p>
+     * <ol>
+     *   <li><b>第二陣</b> — {@code **.*AnonymizationEventListener} を登録した。
+     *       これは {@code UserAnonymizedEvent} 購読者<b>のうち命名規約に従う 14 本</b>しか捕まえない。</li>
+     *   <li><b>第三陣</b> — 上記の網から漏れていた {@code AccountPurgedEvent} 側を塞いだ。
+     *       <b>命名が {@code *PurgeEventListener} と違うだけで役割は同じ</b>群が 9 本丸ごと素通りしており、
+     *       さらにどちらの規約にも当たらない {@code ReturnStayPlanLifecycleListener} を
+     *       FQCN で個別に釘打ちした。</li>
+     *   <li><b>第四陣</b> — 第三陣が {@code AccountPurgedEvent} 側だけを塞いだため、
+     *       <b>{@code UserAnonymizedEvent} 側の非規約名 3 本</b>
+     *       （{@code CalendarLayerLifecycleListener} / {@code VillageUserCleanerEventListener} /
+     *       {@code WeatherLocationCleanupListener}）がそのまま残っていた。
+     *       同時に、監査ログの<b>アーカイブとパーティション保守は第一陣で登録済みなのに、
+     *       監査記録を書く側</b>（{@code AuditLogEventListener} 35 入口 /
+     *       {@code TeamOrgAuditEventListener} 8 入口）<b>が未登録</b>であることも判明した。
+     *       守る対象が空なら、守り手を守っても意味を成さない。</li>
+     * </ol>
+     *
+     * <p><b>次に退会・匿名化・監査に関わるリスナーを足す者へ。
+     * 命名ではなく「購読しているイベント型」から確かめよ。</b>
+     * クラス名を眺めて登録漏れを探すのは三度失敗している。正しい手順はこうである。</p>
+     * <ol>
+     *   <li>個人データの消去・監査記録に関わる<b>イベント型を列挙する</b>
+     *       （現時点では {@code AccountPurgedEvent} / {@code UserAnonymizedEvent} /
+     *       {@code WithdrawalRequestedEvent} / {@code WithdrawalCancelledEvent} /
+     *       {@code TeamMemberAuditEvent} / {@code OrganizationMemberAuditEvent} /
+     *       {@code S3ObjectDeleteEvent} / {@code CirculationDocumentDeletedEvent}、
+     *       および {@code AuditLogEventListener} が購読する認証系イベント群）。</li>
+     *   <li>各イベント型の<b>購読者を全数照合する</b>（型で検索すれば命名に依存せず全部出る）。</li>
+     *   <li>照合結果を本リストと突き合わせ、漏れを FQCN で登録する。</li>
+     * </ol>
+     *
+     * <p>④-B 第四陣の全数照合（2026-08-27）の実測値を残す。次に照合する者は差分だけ見ればよい。</p>
+     * <ul>
+     *   <li>{@code UserAnonymizedEvent} 購読 <b>18</b>
+     *       = 規約名 14 ＋ {@code ReturnStayPlanLifecycleListener} 1 ＋ 上記の非規約名 3</li>
+     *   <li>{@code AccountPurgedEvent} 購読 <b>14</b> — 全件が既存パターンで捕捉済み（追加不要だった）</li>
+     *   <li>{@code WithdrawalRequestedEvent} / {@code WithdrawalCancelledEvent} 購読 4 —
+     *       全件が {@code **.*PurgeEventListener} / {@code com.mannschaft.app.gdpr.**} /
+     *       {@code AuditLogEventListener} のいずれかで捕捉済み</li>
+     *   <li>監査系イベントを購読する<b>第二の書き手は存在しない</b>
+     *       （{@code AuditLogEventListener} と {@code TeamOrgAuditEventListener} のみ。
+     *       {@code LoginSuccessEvent} だけ {@code GamificationPointListener} が併せて購読するが、
+     *       これは監査の書き手ではなく、第三陣で別理由により登録済み）</li>
+     *   <li>{@code DataExportRequestedEvent} は<b>購読者ゼロ</b>（型は在るが誰も消費していない）</li>
+     * </ul>
      */
     static final List<String> FORBIDDEN_TO_STOP = List.of(
             // GDPR 消去（AccountPurgeService ほか）。止めると法令上の消去期限を破る。
@@ -270,7 +318,15 @@ class BackgroundEntryPolicyDeclarationGuardTest {
             // 前日固定（LocalDate.now().minusDays(1)）。
             "com.mannschaft.app.performance.service.PerformanceBatchService",
             // 日次スナップショットで、30 日で rotation 削除されるため後から埋め直せない。
-            "com.mannschaft.app.residencestatus.batch.ResidentActivityAggregatorBatch");
+            "com.mannschaft.app.residencestatus.batch.ResidentActivityAggregatorBatch",
+
+            // ■ 殿の裁定（2026-08-27）— 判断の軸は「害の大小」ではなく
+            //   <b>「止めてよいと後から誰かに判断させてよいか」</b>である。
+            //   封印日到来後もパスワード未設定の子へ設定案内を送る保護目的の処理。
+            //   送付が遅れても文面の意味は失われぬため「害は小さい」が、
+            //   取り残された子が自分のアカウントにログインできぬという保護目的の処理を、
+            //   将来の誰かが「β機能っぽいから」と SKIP に倒せる状態にしておく理由が無い。
+            "com.mannschaft.app.auth.guardianship.GuardianshipSealUnsetPasswordBatchService");
 
     /** {@link #FORBIDDEN_TO_STOP} で禁じるモード。 */
     private static final Set<String> STOPPING_MODES = Set.of("SKIP_WHEN_DISABLED", "DROP_WHEN_DISABLED");
@@ -1034,7 +1090,10 @@ class BackgroundEntryPolicyDeclarationGuardTest {
                 Map.entry("com.mannschaft.app.performance.service.PerformanceBatchService",
                         "src/main/java/com/mannschaft/app/performance/service/PerformanceBatchService.java"),
                 Map.entry("com.mannschaft.app.residencestatus.batch.ResidentActivityAggregatorBatch",
-                        "src/main/java/com/mannschaft/app/residencestatus/batch/ResidentActivityAggregatorBatch.java"));
+                        "src/main/java/com/mannschaft/app/residencestatus/batch/ResidentActivityAggregatorBatch.java"),
+                Map.entry("com.mannschaft.app.auth.guardianship.GuardianshipSealUnsetPasswordBatchService",
+                        "src/main/java/com/mannschaft/app/auth/guardianship/"
+                                + "GuardianshipSealUnsetPasswordBatchService.java"));
 
         @Test
         @DisplayName("(AC-1) 第四陣で登録した禁止域は、バッチもリスナーも停止モードを拒否する")
@@ -1078,6 +1137,29 @@ class BackgroundEntryPolicyDeclarationGuardTest {
                         """);
                 assertThat(forbiddenStopViolations(es)).isEmpty();
             });
+        }
+
+        @Test
+        @DisplayName("(AC-1) 「害は小さいが止めてよいと後から判断させない」域も停止モードを拒否する（殿の裁定）")
+        void ac1_保護目的の域は害の大小によらず停止モードを拒む() {
+            String path = "src/main/java/com/mannschaft/app/auth/guardianship/"
+                    + "GuardianshipSealUnsetPasswordBatchService.java";
+
+            // 「未公開機能っぽいから閉栓してよい」という将来の判断を、番人が機械的に拒む。
+            List<Entry> es = entries(path, """
+                    @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Tokyo")
+                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+                            gateKeys = "FEATURE_SHIFT_ENABLED",
+                            reason = "この宣言は番人に拒否されねばならない（送付が遅れても害は小さい、では通さない）")
+                    public void execute() {}
+                    """);
+
+            assertThat(forbiddenStopViolations(es))
+                    .as("禁止域は「止めたときの害の大小」ではなく"
+                            + "「止めてよいと後から誰かに判断させてよいか」で決める。"
+                            + "取り残された子が自分のアカウントにログインできぬ処理を、"
+                            + "将来の誰かが SKIP に倒せる状態にしておく理由は無い")
+                    .hasSize(1);
         }
 
         @Test
