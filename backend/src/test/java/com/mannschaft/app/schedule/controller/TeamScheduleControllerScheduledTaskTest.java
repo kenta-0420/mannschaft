@@ -6,8 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.GlobalExceptionHandler;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.config.OrgScopeIdConverter;
+import com.mannschaft.app.config.TeamScopeIdConverter;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
-import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
@@ -24,6 +25,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.support.StaticMessageSource;
+import org.springframework.format.support.DefaultFormattingConversionService;
+import org.springframework.format.support.FormattingConversionService;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -61,7 +64,7 @@ class TeamScheduleControllerScheduledTaskTest {
     @Mock
     private NameResolverService nameResolverService;
     @Mock
-    private TeamService teamService;
+    private com.mannschaft.app.team.service.TeamService teamService;
 
     private MockMvc mockMvc;
 
@@ -77,15 +80,25 @@ class TeamScheduleControllerScheduledTaskTest {
         objectMapper.findAndRegisterModules();
         TeamScheduleController controller = new TeamScheduleController(
                 scheduleService, attendanceService, crossRefService,
-                reminderService, scheduledTaskService, nameResolverService, teamService);
+                reminderService, scheduledTaskService, nameResolverService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
+                .setConversionService(scopeConversionService())
                 .setControllerAdvice(new GlobalExceptionHandler(new StaticMessageSource()))
                 .build();
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(String.valueOf(USER_ID), null,
                         List.of(new SimpleGrantedAuthority("ROLE_USER"))));
         given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+    }
+
+    /** 型付きパス変数（{@code TeamScopeId}）の変換器を登録した変換サービス（課題 #12・案A）。 */
+    private FormattingConversionService scopeConversionService() {
+        FormattingConversionService cs = new DefaultFormattingConversionService();
+        cs.addConverter(new OrgScopeIdConverter(org.mockito.Mockito.mock(
+                com.mannschaft.app.organization.service.OrganizationService.class)));
+        cs.addConverter(new TeamScopeIdConverter(teamService));
+        return cs;
     }
 
     @AfterEach

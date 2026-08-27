@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import type { GanttResponse, GanttTodo } from '~/types/todo'
 import { useMyCalendarData, PERSONAL_KEY, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
+import type { CalendarViewMode } from '~/composables/useMyCalendarData'
+import { dateToOrdinal, shiftDate, todayInTimezone, weekStartOf } from '~/utils/calendarWeek'
 
 definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
+// 週ビューの「今日」判定はユーザー設定タイムゾーンで行う（Codex 検分 [3]）。
+const { userTimezone } = useDatetime()
 const router = useRouter()
 const scheduleApi = useScheduleApi()
 const ganttApi = useTodoGantt()
@@ -79,10 +83,26 @@ const pad = (n: number) => String(n).padStart(2, '0')
 
 const {
   currentYear, currentMonth, loading, calendarLoading, loadEvents, refresh,
-  onPrevMonth: calPrevMonth, onNextMonth: calNextMonth,
-  extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes,
-  filteredEvents, toggleScope, multiSelectScopes, initStorage,
+  onPrevMonth: calPrevMonth, onNextMonth: calNextMonth, goToToday, navigateTo,
+  extendedEvents, todosFailed, layersFailed, availableScopes, allScopeOptions, selectedScopes,
+  filteredEvents, toggleScope, multiSelectScopes, initStorage, view,
 } = useMyCalendarData()
+
+// 「今日」ボタン（§6.3・AC-12d）: 月グリッド本体の DOM 操作（フォーカス）は CalendarGrid に委譲する。
+const calendarGridRef = ref<{ focusToday: () => void } | null>(null)
+
+async function onToday() {
+  goToToday()
+  // 週ビューでは「今日」は今週へ戻すことを意味する（§6.5.3）。
+  if (isWeekView.value) weekStart.value = weekStartOf(todayDateStr())
+  if (activeTab.value === 'gantt') await loadGantt()
+  // 月移動時は年月 props が変わってから DOM が再描画されるまで待つ必要がある
+  // （既に当月表示中でも focusToday は必ず呼ぶ＝無反応にしない）。
+  await nextTick()
+  await nextTick()
+  if (isWeekView.value) calendarWeekGridRef.value?.focusToday()
+  else calendarGridRef.value?.focusToday()
+}
 
 // #49-B: 日別一覧
 const dayEvents = computed(() => {
@@ -156,14 +176,16 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const ext = extendedEvents.value.find(e => e.id === eventId && !e.isPersonal)
       if (!ext) return
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
-      const sid = ext.scopeId ?? ''
+      // P1修繕: 詳細API・画面URLは公開スコープID（slug）を要求する。ext.scopeId は
+      // レイヤーキー照合用の数値IDに変わったため、詳細取得には ext.scopeRouteId を使う。
+      const sid = ext.scopeRouteId ?? ''
       const res = await scheduleApi.getSchedule(st, sid, eventId)
       const d = res.data as EventDetail & { createdByDisplayName?: string; myAttendanceStatus?: string }
       selectedEvent.value = {
         ...d,
         scheduleId: ext.scheduleId ?? null,
         scopeType: ext.scopeType,
-        scopeId: ext.scopeId,
+        scopeId: ext.scopeRouteId,
         scopeName: (d as EventDetail).scopeName ?? ext.scopeName,
         scopeIconUrl: (d as EventDetail).scopeIconUrl ?? null,
         createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
@@ -196,7 +218,8 @@ async function onDeleteEvent() {
       const ext = extendedEvents.value.find(e => e.id === selectedEventId.value && !e.isPersonal)
       if (!ext) return
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
-      const sid = ext.scopeId ?? ''
+      // P1修繕: 削除APIも公開スコープID（slug）が必要（詳細取得と同じ経路）。
+      const sid = ext.scopeRouteId ?? ''
       await scheduleApi.deleteSchedule(st, sid, selectedEventId.value)
     }
     showEventPanel.value = false
@@ -239,16 +262,99 @@ const selectedCreateScope = computed(
   () => createScopeOptions.value.find(o => o.value === createScopeKey.value) ?? createScopeOptions.value[0]!,
 )
 
-// 上部セレクト変更でカレンダー表示を絞り込む（ガントタブ表示中は再読み込みも行う）
-watch(createScopeKey, (key) => {
-  withScopeLoading(() => {
-    if (key === 'personal') {
-      selectedScopes.value = [PERSONAL_KEY]
-    } else {
-      selectedScopes.value = [PERSONAL_KEY, key]
-    }
-  })
-  // スコープ変更時はキャッシュを破棄して再取得（ガントビューのみ）
+// AC-11b（§5.4）: 表示フィルタで非表示のレイヤーへ予定を作成すると、作った予定が何の説明も
+// 無く現れない（無言で消える＝P3違反）。作成完了時にだけ判定し、案内＋「表示する」ボタンを出す。
+// 勝手にフィルタを書き換えない（P2）のが AC-11 の結合切りと表裏一体の要件であり、
+// ここでも selectedScopes への代入はボタン押下時（onShowHiddenLayer）のみに限定する。
+//
+// [P2是正・検分三巡目] 判定対象は「実際に保存されたスコープ」（ScheduleEventForm の
+// `saved` イベントが返す値）であって、ページ上部の作成スコープ Select（selectedCreateScope）
+// ではない。ScheduleEventForm はフォーム内でもスコープを変更できるため、上部の選択と
+// 実際の保存先が食い違いうる（上部=個人のままフォーム内でチームへ変更する等）。
+// scopeKey だけ ref に保持し、実際に非表示かどうかは computed で毎回 selectedScopes と
+// 突き合わせる（[P3是正] ユーザーがレイヤーチップ等で後から自分で表示に戻したら、
+// selectedScopes に含まれた時点で自動的に案内が消える＝「非表示です」と言い続けない）。
+const hiddenLayerNoticeScopeKey = ref<string | null>(null)
+
+interface SavedScope {
+  isPersonal: boolean
+  scopeType: 'team' | 'organization'
+  scopeId: string
+}
+
+/**
+ * 実際に保存されたスコープに対応する selectedScopes 用キー（PERSONAL_KEY または
+ * `${SCOPE_TYPE}:数値scopeId`）。
+ *
+ * F03.19 W2-a との統合修繕: `scope.scopeId`（ScheduleEventForm の保存API呼び出しに使う値）は
+ * **slug**（公開スコープID）。一方 `selectedScopes`／`allScopeOptions` は数値スコープIDで
+ * キー付けされている（`useMyCalendarData.ts` の `availableScopes` コメント参照 — 作成スコープ選択
+ * 専用の slug 値を表示フィルタへ混入させてはならない）。両者を橋渡しするため、
+ * `availableScopes`（slug 側）のエントリが持つ `filterKey`（数値キー・useMyCalendarData.ts の
+ * `layers.value` 走査時に確定済み）をそのまま使う。
+ *
+ * [P2是正・Codex検分] 以前は scopeType + 表示名（label）が一致するエントリを
+ * `allScopeOptions` から逆引きしていたが、`TeamEntity` にチーム名の一意制約が無いため、
+ * 同名の別チーム／組織に複数所属していると `find` が常に先頭の別スコープを誤って返しうる
+ * （案内が出ない・「表示する」で別チームが表示される、という AC-11b 違反）。
+ * `filterKey` は layers.value の走査中に scopeId（数値）そのものから作られるため、
+ * 名前の一意性に依存しない。
+ */
+function savedScopeFilterKey(scope: SavedScope): string {
+  if (scope.isPersonal) return PERSONAL_KEY
+  const created = availableScopes.value.find(
+    sc => sc.scopeId === scope.scopeId && sc.scopeType.toLowerCase() === scope.scopeType,
+  )
+  return created?.filterKey ?? `${scope.scopeType.toUpperCase()}:${scope.scopeId}`
+}
+
+/** 案内に出すレイヤー表示名。allScopeOptions（表示フィルタと同じ一覧）から引く。 */
+function scopeLabelForKey(scopeKey: string): string {
+  return allScopeOptions.value.find(o => o.value === scopeKey)?.label ?? scopeKey
+}
+
+// 表示条件は「案内対象のスコープキーが設定されており、かつ現在も非表示」の両方（[P3是正]）。
+const hiddenLayerNotice = computed(() => {
+  const scopeKey = hiddenLayerNoticeScopeKey.value
+  if (!scopeKey || selectedScopes.value.includes(scopeKey)) return null
+  return { scopeKey, layerLabel: scopeLabelForKey(scopeKey) }
+})
+
+// [P2是正・検分四巡目] computed で非表示を導出するだけでは、対象キー（hiddenLayerNoticeScopeKey）
+// 自体が保持され続けるため、ユーザーが手で表示に戻した後に同じレイヤーを再び非表示にすると、
+// 何も保存していないのに古い案内が「ゾンビ」として復活してしまう。表示に戻った時点で
+// 対象キー自体を破棄し、次に非表示にしても案内は出さない（＝新しい保存操作でのみ再び現れる）。
+watch(selectedScopes, (val) => {
+  const scopeKey = hiddenLayerNoticeScopeKey.value
+  if (scopeKey && val.includes(scopeKey)) {
+    hiddenLayerNoticeScopeKey.value = null
+  }
+}, { deep: true })
+
+/** 作成ダイアログの保存完了（新規作成のみ・§5.4/AC-11b）。実際に保存されたスコープで判定する。 */
+async function onCreated(scope: SavedScope) {
+  const scopeKey = savedScopeFilterKey(scope)
+  await refresh()
+  hiddenLayerNoticeScopeKey.value = selectedScopes.value.includes(scopeKey) ? null : scopeKey
+}
+
+/** 「表示する」ボタン（AC-11b）: 押されたときだけそのレイヤーを表示状態にする。他は一切変更しない。 */
+function onShowHiddenLayer() {
+  const scopeKey = hiddenLayerNoticeScopeKey.value
+  if (!scopeKey) return
+  if (!selectedScopes.value.includes(scopeKey)) {
+    selectedScopes.value = [...selectedScopes.value, scopeKey]
+  }
+  hiddenLayerNoticeScopeKey.value = null
+}
+
+
+// 作成スコープ（作成フォームの初期スコープ）と表示フィルタ（selectedScopes）は分離する（§5.4/AC-11）。
+// 以前はここで selectedScopes を強制的に書き換えていたが、それだと表示中のレイヤーチップの選択状態が
+// 作成スコープの変更につられて勝手に変わってしまう（P2 違反）。作成スコープは createScopeKey /
+// selectedCreateScope（作成ダイアログへの引き渡し）にのみ影響させ、表示フィルタには一切触れない。
+watch(createScopeKey, () => {
+  // スコープ変更時はキャッシュを破棄して再取得（ガントビューのみ・データ取得対象の変更という正当な副作用）
   if (activeTab.value === 'gantt') {
     ganttCache.clear()
     ganttKey.value++
@@ -331,21 +437,16 @@ async function loadGantt() {
   prefetchAdjacentMonths(year, month)
 }
 
-async function withScopeLoading(fn: () => void) {
-  calendarLoading.value = true
-  await nextTick()
-  await new Promise<void>(resolve => setTimeout(resolve, 0))
-  fn()
-  await nextTick()
-  calendarLoading.value = false
-}
-
+// レイヤーチップでの表示絞り込みは filteredEvents（手元データのみ）で完結し、再取得を伴わない
+// （AC-12c: 全画面スピナーを一度も出さない・ネットワークリクエストも発生しない）。
+// 疑似的な calendarLoading 演出（旧 withScopeLoading）は撤去した。calendarLoading 自体は
+// 月移動（本物の通信）のためだけに使う。
 function onToggleScope(value: string) {
-  withScopeLoading(() => toggleScope(value))
+  toggleScope(value)
 }
 
 function onMultiSelectChange(vals: string[]) {
-  withScopeLoading(() => { selectedScopes.value = vals })
+  selectedScopes.value = vals
 }
 
 async function onTabChange(tab: CalendarTab) {
@@ -353,6 +454,80 @@ async function onTabChange(tab: CalendarTab) {
   if (tab === 'gantt') {
     await loadGantt()
   }
+}
+
+// ---- 月/週ビュー切替（F03.19 §6.5.3・AC-13） ----
+// `view` の状態そのもの・localStorage への永続化は useMyCalendarData が既に持っている。
+// ここではその値に応じて描画コンポーネントを切り替え、週ビューの表示週を管理するだけで、
+// **ビュー切替では一切データを取得しない**（filteredEvents を束ね直すだけ・AC-13）。
+const calendarWeekGridRef = ref<{ focusToday: () => void } | null>(null)
+
+/**
+ * 選択肢は配列で持つ。W3-b でアジェンダ（`agenda`）を1行足すだけで3値へ拡張できる形にしておく。
+ */
+const viewOptions: Array<{ mode: CalendarViewMode; labelKey: string }> = [
+  { mode: 'month', labelKey: 'schedule.calendar.view.month' },
+  { mode: 'week', labelKey: 'schedule.calendar.view.week' },
+]
+
+// `agenda`（W3-b で実装）が localStorage から復元された場合も、未実装のビューで白画面にせず
+// 月ビューへ落とす。W3-b が `agenda` の分岐を足した時点でこの読み替えは不要になる。
+const isWeekView = computed(() => view.value === 'week')
+
+/**
+ * 「今日」は**ユーザー設定タイムゾーン**で判定する（Codex 検分 [3]）。
+ *
+ * `goToToday()` はユーザー設定 TZ で月を決めるのに、週の算出だけ端末ローカルの日付を使うと、
+ * 両者の日付が土曜と日曜に分かれる時間帯に「今日」ボタンが隣の週を出す。
+ * 日付の取得経路を `todayInTimezone` 一本に統一して根から塞ぐ。
+ */
+function todayDateStr(): string {
+  return todayInTimezone(userTimezone.value)
+}
+
+const weekStart = ref(weekStartOf(todayDateStr()))
+
+/**
+ * 表示中の週が `useCalendarEvents` の取得範囲（表示月の6週グリッド）に収まっているか確認し、
+ * 外れていればその週を包含する月へ取得範囲を寄せる（§6.5.3）。
+ *
+ * 月の6週グリッドは「1日の直前の日曜」から42日分なので、その月に1日でも掛かる週は必ず
+ * グリッドに丸ごと収まる。よって週の中日（木曜）が属する月へ寄せれば週全体が確実に含まれる。
+ * 既に収まっている場合は何もしない＝無駄な再取得を起こさない。
+ */
+function ensureRangeCoversWeek(): void {
+  const gridStart = dateToOrdinal(weekStartOf(`${currentYear.value}-${pad(currentMonth.value)}-01`))
+  const start = dateToOrdinal(weekStart.value)
+  if (start >= gridStart && start + 6 <= gridStart + 41) return
+  const mid = shiftDate(weekStart.value, 3)
+  navigateTo(Number(mid.slice(0, 4)), Number(mid.slice(5, 7)))
+}
+
+function onPrevWeek() {
+  weekStart.value = shiftDate(weekStart.value, -7)
+  ensureRangeCoversWeek()
+}
+
+function onNextWeek() {
+  weekStart.value = shiftDate(weekStart.value, 7)
+  ensureRangeCoversWeek()
+}
+
+/**
+ * ビュー切替（AC-13）。切替では再取得しない — 表示中の月のグリッドに収まる週を選ぶため、
+ * `ensureRangeCoversWeek` は何もしない。
+ */
+function setView(mode: CalendarViewMode) {
+  if (view.value === mode) return
+  view.value = mode
+  if (mode !== 'week') return
+  const today = todayDateStr()
+  const inCurrentMonth = Number(today.slice(0, 4)) === currentYear.value
+    && Number(today.slice(5, 7)) === currentMonth.value
+  weekStart.value = weekStartOf(inCurrentMonth
+    ? today
+    : `${currentYear.value}-${pad(currentMonth.value)}-01`)
+  ensureRangeCoversWeek()
 }
 
 function onPrevMonth() {
@@ -409,7 +584,7 @@ async function clearLinkedQuery() {
 }
 
 onMounted(async () => {
-  initStorage()
+  await initStorage()
   await loadEvents()
   // クエリパラメータ ?tab=gantt で直接ガントタブを開いた場合は初期読み込みを行う
   if (activeTab.value === 'gantt') {
@@ -446,6 +621,21 @@ onMounted(async () => {
       <span class="ml-2">{{ t('schedule.todo_load_error.detail') }}</span>
     </Message>
 
+    <!-- F03.19 P2修繕: レイヤー一覧の取得失敗を明示（予定本体は独立取得のため継続表示） -->
+    <Message v-if="layersFailed" severity="warn" :closable="false" class="mb-4">
+      <span class="font-medium">{{ t('schedule.calendar.layer.loadError.summary') }}</span>
+      <span class="ml-2">{{ t('schedule.calendar.layer.loadError.detail') }}</span>
+    </Message>
+
+    <!-- AC-11b（§5.4）: 作成先のレイヤーが表示フィルタで非表示のときの案内。表示するだけで
+         フィルタは書き換えない。「表示する」を押したときだけ onShowHiddenLayer が変更する -->
+    <HiddenLayerNotice
+      v-if="hiddenLayerNotice"
+      :layer-label="hiddenLayerNotice.layerLabel"
+      class="mb-4"
+      @show="onShowHiddenLayer"
+    />
+
     <!-- タブ切替 -->
     <div class="mb-4 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700 w-fit">
       <button
@@ -477,15 +667,47 @@ onMounted(async () => {
         <div class="lg:col-span-2">
           <div class="relative">
             <DashboardWidgetCard :scrollable="false">
+              <!-- 月/週ビュー切替（§6.5.3・AC-13）。W3-b でアジェンダを viewOptions に足すだけで3値になる。 -->
+              <div class="mb-3 flex w-fit gap-1 rounded-lg border border-surface-300 bg-surface-100 p-0.5 dark:border-surface-600 dark:bg-surface-700">
+                <button
+                  v-for="opt in viewOptions"
+                  :key="opt.mode"
+                  type="button"
+                  :data-testid="`calendar-view-${opt.mode}`"
+                  :aria-pressed="view === opt.mode"
+                  class="rounded-md px-3 py-1 text-xs font-medium transition-colors"
+                  :class="view === opt.mode
+                    ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
+                    : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
+                  @click="setView(opt.mode)"
+                >
+                  {{ t(opt.labelKey) }}
+                </button>
+              </div>
+              <CalendarWeekGrid
+                v-if="isWeekView"
+                ref="calendarWeekGridRef"
+                :week-start="weekStart"
+                :events="filteredEvents"
+                @event-click="onEventClick"
+                @reflection-click="onReflectionClick"
+                @prev-week="onPrevWeek"
+                @next-week="onNextWeek"
+                @today="onToday"
+              />
               <CalendarGrid
+                v-else
+                ref="calendarGridRef"
                 :year="currentYear"
                 :month="currentMonth"
                 :events="filteredEvents"
+                show-today-button
                 @date-click="onDateClick"
                 @event-click="onEventClick"
                 @reflection-click="onReflectionClick"
                 @prev-month="onPrevMonth"
                 @next-month="onNextMonth"
+                @today="onToday"
               />
             </DashboardWidgetCard>
             <Transition name="fade">
@@ -647,7 +869,7 @@ onMounted(async () => {
       :initial-date="selectedDate"
       :is-personal="selectedCreateScope.isPersonal"
       :scope-options="createScopeOptions.length > 1 ? createScopeOptions : undefined"
-      @saved="refresh"
+      @saved="onCreated"
     />
 
     <!-- 編集ダイアログ -->

@@ -1,6 +1,8 @@
 package com.mannschaft.app.budget.event;
 
 import com.mannschaft.app.budget.service.BudgetTransactionService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -24,6 +26,8 @@ public class BudgetWorkflowListener {
     /**
      * ワークフロー承認イベントを処理する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予算ワークフローの承認・却下の反映。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWorkflowApproved(WorkflowApprovedEvent event) {
@@ -43,6 +47,8 @@ public class BudgetWorkflowListener {
     /**
      * ワークフロー却下イベントを処理する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予算ワークフローの承認・却下の反映。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWorkflowRejected(WorkflowRejectedEvent event) {

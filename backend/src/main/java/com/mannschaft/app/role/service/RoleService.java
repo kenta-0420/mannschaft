@@ -18,6 +18,7 @@ import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
+import com.mannschaft.app.role.dto.ScopeRoleUserContact;
 import com.mannschaft.app.role.dto.ScopeUserRoleResponse;
 import com.mannschaft.app.role.dto.UserRoleOnlyDiffRow;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
@@ -396,6 +397,56 @@ public class RoleService {
      */
     public List<Long> getAdminUserIdsByOrganizationId(Long organizationId) {
         return userRoleRepository.findAdminUserIdsByOrganizationId(organizationId);
+    }
+
+    /**
+     * 指定チームで指定ロールを持つユーザー ID 一覧を返す。
+     *
+     * <p>Issue #2834 / CMP-056 第1群ロットB で追加。{@code social} ドメインの通知配送リスナー
+     * （{@code TeamFriendNotificationListener}）が両チームの ADMIN を解決するために使う。
+     * {@link #getAdminUserIdsByOrganizationId} と同じ趣旨で、他ドメインが {@code role} ドメインの
+     * {@code UserRoleRepository} を直接注入することを避けるための Service 経路
+     * （D-5 ArchUnit 準拠）。プリミティブ（{@code List<Long>}）のみを返し Entity を漏らさない。</p>
+     *
+     * @param teamId   対象チーム ID
+     * @param roleName ロール名（例: {@code "ADMIN"}）
+     * @return 当該チームで当該ロールを持つユーザー ID 一覧
+     */
+    public List<Long> getUserIdsByTeamIdAndRoleName(Long teamId, String roleName) {
+        return userRoleRepository.findUserIdsByTeamIdAndRoleName(teamId, roleName);
+    }
+
+    /**
+     * 指定スコープで指定ロールを持つ生存ユーザーの連絡先（ユーザーID・メール）一覧を返す。
+     *
+     * <p>Issue #2834 / CMP-056 第2群ロット1 で追加。{@code advertising} ドメインの
+     * {@code OverdueInvoiceMarkRunner} が広告主組織の ADMIN 宛受信者を解決するために使う。
+     * {@link #getUserIdsByTeamIdAndRoleName} と同じ趣旨で、他ドメインが {@code role} ドメインの
+     * {@code UserRoleRepository} を直接注入することを避けるための Service 経路（D-3 / D-5 準拠）。
+     * native クエリの {@code Object[]} は本メソッド内で DTO へ変換し、呼び出し側へ漏らさない。</p>
+     *
+     * @param scopeType スコープ種別（{@code TEAM} or {@code ORGANIZATION}）
+     * @param scopeId   スコープID（チームID または 組織ID）
+     * @param roleName  ロール名（例: {@code "ADMIN"}）
+     * @return 当該スコープで当該ロールを持つ生存ユーザーの連絡先一覧
+     */
+    public List<ScopeRoleUserContact> getUserContactsByScopeAndRole(String scopeType, Long scopeId, String roleName) {
+        return userRoleRepository.findUserIdAndEmailByScopeAndRole(scopeType, scopeId, roleName)
+                .stream()
+                .map(row -> new ScopeRoleUserContact(((Number) row[0]).longValue(), (String) row[1]))
+                .toList();
+    }
+
+    /**
+     * プラットフォームの SYSTEM_ADMIN ユーザーID一覧を返す（プラットフォーム通知の受信者解決用）。
+     *
+     * <p>Issue #2834 / CMP-056 第2群ロット1 で追加。用途・理由は
+     * {@link #getUserContactsByScopeAndRole} と同じ（越境は Service 経由・D-3 / D-5 準拠）。</p>
+     *
+     * @return SYSTEM_ADMIN の生存ユーザーID一覧
+     */
+    public List<Long> getSystemAdminUserIds() {
+        return userRoleRepository.findSystemAdminUserIds();
     }
 
     /**

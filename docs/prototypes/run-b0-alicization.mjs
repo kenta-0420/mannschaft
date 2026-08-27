@@ -90,6 +90,8 @@ function collectAnnotatedInsights(suites, context, collected = []) {
             id: finding.id || `${context.journeyId}-${finding.personaId || 'COORD'}-${collected.length + 1}`,
             journeyId: context.journeyId,
             featureKey: finding.featureKey,
+            featureDetail: finding.featureDetail || '',
+            urgency: ['urgent', 'normal', 'when-free'].includes(finding.urgency) ? finding.urgency : 'normal',
             priority: finding.priority || 'should',
             title: finding.title,
             detail: finding.detail,
@@ -116,12 +118,14 @@ function selfTestFixtures() {
   assert.equal(normalizeSpecPath('frontend/tests/e2e/x.spec.ts'), 'tests/e2e/x.spec.ts');
   assert.throws(() => normalizeSpecPath('backend/tests/x.spec.ts'));
   const annotated = collectAnnotatedInsights(
-    [{ specs: [{ tests: [{ annotations: [{ type: 'inventory-insight', description: JSON.stringify({ featureKey: 'dashboard', title: '次の操作が不明', detail: '導線を発見できない', personaId: 'P06' }) }] }] }] }],
+    [{ specs: [{ tests: [{ annotations: [{ type: 'inventory-insight', description: JSON.stringify({ featureKey: 'dashboard', featureDetail: '支払い', urgency: 'urgent', title: '次の操作が不明', detail: '導線を発見できない', personaId: 'P06' }) }] }] }] }],
     { journeyId: 'B0-J1', observedAt: '2026-08-25T00:00:00.000Z', evidencePath: 'docs/prototypes/.b0-local/B0-J1.json' }
   );
   assert.equal(annotated.length, 1);
   assert.equal(annotated[0].personaId, 'P06');
   assert.equal(annotated[0].journeyId, 'B0-J1');
+  assert.equal(annotated[0].featureDetail, '支払い');
+  assert.equal(annotated[0].urgency, 'urgent');
   assert.throws(() => collectAnnotatedInsights(
     [{ specs: [{ tests: [{ annotations: [{ type: 'inventory-insight', description: JSON.stringify({ featureKey: 'dashboard', title: 'x', detail: 'y', personaId: 'P99' }) }] }] }] }],
     { journeyId: 'B0-J1', observedAt: '2026-08-25T00:00:00.000Z', evidencePath: '' }
@@ -165,6 +169,8 @@ async function run() {
         id: `${id}-TEST-FAILURE`,
         journeyId: id,
         featureKey: journey?.capabilities?.[0] || 'cross-cutting',
+        featureDetail: '',
+        urgency: 'urgent',
         priority: 'must',
         title: `${id} 自動テスト失敗`,
         detail: `unexpected=${summary.unexpected}、expected=${summary.expected}、skipped=${summary.skipped}。実行証拠を確認して原因を切り分ける。`,

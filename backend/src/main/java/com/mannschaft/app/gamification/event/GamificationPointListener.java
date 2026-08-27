@@ -1,5 +1,7 @@
 package com.mannschaft.app.gamification.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.event.LoginSuccessEvent;
 import com.mannschaft.app.gamification.ActionType;
 import com.mannschaft.app.gamification.service.GamificationPointService;
@@ -32,6 +34,8 @@ public class GamificationPointListener {
      *
      * @param event タイムライン投稿作成イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "上流のタイムライン投稿は CORE であり、ゲーミフィケーションのゲートでは閉じない。よって閉栓中もイベントは飛んでくる。落とすと投稿に対するポイント加算が恒久的に欠落し、再生もバックフィルも無い。付与は内部処理のみで外部送信を伴わない")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("event-pool")
     public void handleTimelinePostCreated(TimelinePostCreatedEvent event) {
@@ -55,6 +59,8 @@ public class GamificationPointListener {
      *
      * @param event ログイン成功イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "上流のログインは CORE の認証であり、ゲーミフィケーションのゲートでは閉じない。よって閉栓中もイベントは飛んでくる。落とすとログインに対するポイント加算が恒久的に欠落し、再生もバックフィルも無い。付与は内部処理のみで外部送信を伴わない")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("event-pool")
     public void handleDailyLogin(LoginSuccessEvent event) {

@@ -471,6 +471,27 @@
       </div>
       <div class="form-row">
         <div class="form-field">
+          <label for="insightFeatureDetail">機能詳細（任意入力）</label>
+          <input id="insightFeatureDetail" type="text" maxlength="80" list="insightFeatureDetailSuggestions" placeholder="例：支払い">
+          <datalist id="insightFeatureDetailSuggestions">
+            <option value="支払い"></option>
+            <option value="請求"></option>
+            <option value="会費"></option>
+            <option value="通知"></option>
+            <option value="権限"></option>
+          </datalist>
+        </div>
+        <div class="form-field">
+          <label for="insightUrgency">対応タイミング</label>
+          <select id="insightUrgency">
+            <option value="urgent">急ぎ</option>
+            <option value="normal" selected>通常</option>
+            <option value="when-free">空いた時</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
           <label for="insightSource">登録元</label>
           <select id="insightSource">
             <option value="self" selected>私</option>
@@ -577,7 +598,6 @@
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
     }
-
     function openInsightDatabase() {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open(INSIGHT_DB_NAME, 1);
@@ -633,6 +653,15 @@
       };
     }
 
+    function insightUrgencyDetails(insight) {
+      const urgency = ['urgent', 'normal', 'when-free'].includes(insight.urgency) ? insight.urgency : 'normal';
+      return {
+        urgency,
+        label: { urgent: '急ぎ', normal: '通常', 'when-free': '空いた時' }[urgency],
+        statusClass: { urgent: 'blocked', normal: 'working', 'when-free': 'unknown' }[urgency]
+      };
+    }
+
     function collectAlicizationInsights() {
       const overlay = baseInventory.b0RunOverlay;
       if (!overlay) return [];
@@ -654,7 +683,9 @@
           return {
             id: `ALI-${stableRunPart}-${stablePart}`,
             featureKey: finding.featureKey,
+            featureDetail: finding.featureDetail || '',
             priority: ['must', 'should', 'could'].includes(finding.priority) ? finding.priority : 'should',
+            urgency: ['urgent', 'normal', 'when-free'].includes(finding.urgency) ? finding.urgency : 'normal',
             title: finding.title,
             page: finding.page || '',
             detail: finding.detail,
@@ -1012,8 +1043,9 @@
       const stageAndQueryInsights = insights.filter((insight) => {
         const feature = getFeatureInfo(insight.featureKey);
         const source = insightSourceDetails(insight);
+        const urgency = insightUrgencyDetails(insight);
         const stageMatches = feature.stage === selectedStage;
-        const queryMatches = !query || `${insight.id} ${insight.title} ${insight.detail} ${insight.page} ${feature.title} ${insight.featureKey} ${source.sourceLabel} ${source.personaLabel} ${insight.journeyId || ''}`.toLowerCase().includes(query);
+        const queryMatches = !query || `${insight.id} ${insight.title} ${insight.detail} ${insight.featureDetail || ''} ${insight.page} ${feature.title} ${insight.featureKey} ${source.sourceLabel} ${source.personaLabel} ${urgency.label} ${insight.journeyId || ''}`.toLowerCase().includes(query);
         return stageMatches && queryMatches;
       });
       const sourceCounts = {
@@ -1063,6 +1095,7 @@
                 <div class="insight-card-grid">
                   ${groupInsights.map((insight) => {
                     const source = insightSourceDetails(insight);
+                    const urgency = insightUrgencyDetails(insight);
                     let screenshot = '<div class="insight-shot empty">スクショなし</div>';
                     if (insight.screenshot) {
                       const imageUrl = URL.createObjectURL(insight.screenshot);
@@ -1078,11 +1111,13 @@
                           <div class="tags">
                             <span class="status-pill ${statusClasses[insight.status]}">${statusLabels[insight.status]}</span>
                             <span class="priority ${insight.priority}">${priorityLabels[insight.priority]}</span>
+                            <span class="status-pill ${urgency.statusClass}">${escapeHtml(urgency.label)}</span>
                             <span class="tag">登録：${escapeHtml(source.sourceLabel)}</span>
                             ${source.personaLabel ? `<span class="tag">発見：${escapeHtml(source.personaLabel)}</span>` : ''}
                             ${insight.journeyId ? `<span class="tag">${escapeHtml(insight.journeyId)}</span>` : ''}
                           </div>
                           <h4>${escapeHtml(insight.title)}</h4>
+                          ${insight.featureDetail ? `<p>機能詳細：${escapeHtml(insight.featureDetail)}</p>` : ''}
                           <p>${escapeHtml(insight.detail)}</p>
                           ${insight.page ? `<p>画面：${escapeHtml(insight.page)}</p>` : ''}
                           ${insight.evidencePath ? `<p>実行証拠：${escapeHtml(insight.evidencePath)}</p>` : ''}
@@ -1170,6 +1205,8 @@
 ■ 操作中の気づき
 - 改善メモID: ${feature.insight.id}
 - 対応feature_key: ${feature.insight.featureKey}
+- 機能詳細: ${feature.insight.featureDetail || '未記録'}
+- 対応タイミング: ${insightUrgencyDetails(feature.insight).label}
 - 登録元: ${insightSourceDetails(feature.insight).sourceLabel}
 - 発見者: ${insightSourceDetails(feature.insight).personaLabel || '私'}
 - B0 journey: ${feature.insight.journeyId || '該当なし'}
@@ -1337,6 +1374,8 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
 
 - ID: ${insight.id}
 - feature_key: ${insight.featureKey}
+- 機能詳細: ${insight.featureDetail || '未記録'}
+- 対応タイミング: ${insightUrgencyDetails(insight).label}
 - 登録元: ${source.sourceLabel}
 - 発見者: ${source.personaLabel || '私'}
 - B0 journey: ${insight.journeyId || '該当なし'}
@@ -1552,6 +1591,8 @@ ${insight.detail}
       const insight = {
         id: createInsightId(createdAt),
         featureKey: document.querySelector('#insightFeature').value,
+        featureDetail: document.querySelector('#insightFeatureDetail').value.trim(),
+        urgency: document.querySelector('#insightUrgency').value,
         priority: document.querySelector('#insightPriority').value,
         title: document.querySelector('#insightTitle').value.trim(),
         page: document.querySelector('#insightPage').value.trim(),

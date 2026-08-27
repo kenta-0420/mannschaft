@@ -1,5 +1,7 @@
 package com.mannschaft.app.shift.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.shift.service.ShiftArchivedTodoCancelService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +21,9 @@ public class ShiftArchivedToTodoCancelListener {
 
     private final ShiftArchivedTodoCancelService cancelService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SHIFT_ENABLED",
+            reason = "対になる ShiftToTaskListener とアーカイブバッチも同じキーで止まるため、取り消すべきタスクがそもそも生成されずアーカイブイベント自体も発火しない")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onShiftArchived(ShiftArchivedEvent event) {

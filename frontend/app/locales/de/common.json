@@ -1326,6 +1326,32 @@
     "filter": {
       "allTeamsOrgs": "Teams & Organisationen (alle)",
       "selectScope": "Ziel auswählen"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Privat",
+        "unknown": "Weitere Termine",
+        "loadError": {
+          "summary": "Ebenen konnten nicht geladen werden",
+          "detail": "Die Team-/Organisationsfilter sind vorübergehend nicht verfügbar. Termine werden weiterhin angezeigt. Bitte später erneut laden."
+        },
+        "hiddenNotice": "Die Ebene, in der du ihn erstellt hast, ist ausgeblendet",
+        "showIt": "Anzeigen"
+      },
+      "more": "+{count} weitere",
+      "today": "Heute",
+      "dayDetail": {
+        "title": "Termine am {date}"
+      },
+      "view": {
+        "month": "Monat",
+        "week": "Woche",
+        "agenda": "Liste"
+      },
+      "week": {
+        "allDay": "Ganztägig",
+        "now": "Jetzt"
+      }
     }
   },
   "handoff": {
@@ -1899,7 +1925,24 @@
     "bulletinOpen": "Im Forum diskutieren"
   },
   "scopeDashboard": {
-    "storageSummary": { "title": "Speicher", "personal": "Persönlich", "team": "Team", "organization": "Organisation", "details": "Details anzeigen", "error": "Speicher konnte nicht geladen werden", "retry": "Erneut versuchen", "unconfigured": "Kontingent nicht konfiguriert", "not_available": "Keine Speicherdaten", "meterLabel": "Speichernutzung {scope}", "meterValue": "Nutzung {percent}%", "warningTitle": "Speicherlimit wird erreicht", "warningMessage": "{scope} verwendet {percent}%. Erwägen Sie ein kostenpflichtiges Upgrade.", "viewPlans": "Tarife anzeigen", "checkStorage": "Speicher prüfen", "cancel": "Abbrechen" },
+    "storageSummary": {
+      "title": "Speicher",
+      "personal": "Persönlich",
+      "team": "Team",
+      "organization": "Organisation",
+      "details": "Details anzeigen",
+      "error": "Speicher konnte nicht geladen werden",
+      "retry": "Erneut versuchen",
+      "unconfigured": "Kontingent nicht konfiguriert",
+      "not_available": "Keine Speicherdaten",
+      "meterLabel": "Speichernutzung {scope}",
+      "meterValue": "Nutzung {percent}%",
+      "warningTitle": "Speicherlimit wird erreicht",
+      "warningMessage": "{scope} verwendet {percent}%. Erwägen Sie ein kostenpflichtiges Upgrade.",
+      "viewPlans": "Tarife anzeigen",
+      "checkStorage": "Speicher prüfen",
+      "cancel": "Abbrechen"
+    },
     "tabs": {
       "personal": "Persönlich",
       "team": "Team",

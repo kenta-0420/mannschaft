@@ -3,6 +3,8 @@ package com.mannschaft.app.cms.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.cms.entity.BlogMediaR2DeleteRetryEntity;
 import com.mannschaft.app.cms.repository.BlogMediaR2DeleteRetryRepository;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -49,6 +51,8 @@ public class BlogMediaR2DeleteRetryBatchService {
     /**
      * 日次実行。ShedLock で重複実行を防止。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。孤立ブログメディアの R2 削除失敗の再試行であり、再開後に同じ対象を拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "cms-blog-media-r2-delete-retry-daily", description = "孤立ブログメディアの R2 削除失敗を毎日 03:00 に指数バックオフで再試行する")
     @Scheduled(cron = "0 0 3 * * *")
     // 起動間隔は日次 03:00。前日分の孤立メディアクリーンアップ（02:00 実行）で新たに登録された

@@ -72,6 +72,17 @@
 
 `/出陣`・`/検分 claude` は Dynamic Workflows で足軽の並列起動を表現できる（`/検分` の既定検分者は `codex` で、Codex による独立検分が走る。Workflow 検分を使うには `claude` を明示する）（オプトイン。機械的タスクは sonnet/haiku・低 effort、難所は opus・high に固定。コミット/マージは `gh`）。詳細: [`docs/development/daimyo_workflow_migration.md`](docs/development/daimyo_workflow_migration.md)。
 
+### 横展開型の戦役における担当重複の防止 **【必須】**
+
+型が確立して誰でも同じパターンを横展開できる戦役（同一ドメインの複数箇所への一括適用など）は、並行セッションによる**二重実装事故**が起きやすい。PR が出た時点では実装は既に完了しているため、PR を見て担当を調整するのでは手遅れ。
+
+- **着手前**: 正本 issue のコメントを読み、対象箇所の担当が既に宣言されていないか確認する
+- **着手時**: 対象クラス名を挙げて正本 issue にコメントで宣言する（PR を立ててからでは遅い）
+- **断念・中断時**: その旨をコメントして担当を解放する（黙って離脱しない）
+- **残件の判定**: 「変換後にコードがどこへ移るか」を踏まえて行う。移設元（既存の業務クラス）だけを grep すると、正規形で処理が Runner / Listener / Event クラス等の移設先へ移っている場合、完了済みを未着手と誤判定する。移設先の有無を確認するのが確実
+
+（実例: CMP-056 で2度発生。①第1群3ドメインを実装したが並行セッションが先に着地しており最新 main 取込みで差分ゼロ、②第2群4バッチは着手宣言前に他 PR が完了済みで断念。移設元クラスへの `publishEvent` grep で「未変換」と誤判定したことも一因。足軽2体ぶんの実装と CI 数周を空費した）
+
 ### 例外（メインディレクトリで直接やってよい作業）
 
 - ユーザーとの軽い対話・質問への回答
@@ -262,6 +273,22 @@ Mannschaft は将来のマイクロサービス分割を見据えた**モジュ�
 | `/引継` | セッション引き継ぎ書を生成（中断時の引き渡し） |
 | `/絵図` | 設計書の要否精査→作成/修正→2度精査 |
 
+
+### Stripe 公式スキル（`.agents/skills/` 配下）
+
+Stripe が公式に配布している Agent Skills をリポジトリに同梱している。**決済・Connect・サブスクリプション・税・Webhook 署名に関わる実装やレビューの際は、記憶や推測に頼らずこれらを引くこと。**
+
+| スキル | 用途 |
+|---|---|
+| `stripe-best-practices` | 統合方針の判断（API 選定・Connect 構成・課金・税・セキュリティ）。`payments` / `connect` / `billing` / `security` / `tax` / `treasury` の分野別参照資料を持つ |
+| `stripe-docs` | Stripe ドキュメント・API リファレンスの検索（`curl` や WebFetch より優先） |
+| `upgrade-stripe` | API バージョン・SDK の移行手順 |
+| `connect-recommend` | Connect の課金パターン・ダッシュボード構成の選定 |
+| `connect-required-verification-information` | Connect アカウントの本人確認（KYC）必要項目 |
+| `stripe-apps` | Stripe App（ダッシュボード拡張）の開発 |
+| `stripe-directory` / `stripe-projects` | 外部サービスの選定・払い出し |
+
+スキルの実体は `.agents/skills/` に入っているが、**クローン直後は `.claude/skills/` のリンクが無いため呼び出せない**（リンクは `core.symlinks=false` の都合でコミットしていない）。必要になったら `npx skills add https://docs.stripe.com` を再実行してリンクを張り直すこと。
 ### DeepSeek 用スキル（`deepseek:` 名前空間）
 
 DeepSeek プロバイダでセッションを起動している場合、`/deepseek:軍議` `/deepseek:出陣` 等の `deepseek:` プレフィックス付きスキルが使える。

@@ -2,6 +2,8 @@ package com.mannschaft.app.dashboard;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.dashboard.dto.ScheduleFeedDetail;
 import com.mannschaft.app.dashboard.entity.ActivityFeedEntity;
 import com.mannschaft.app.dashboard.repository.ActivityFeedRepository;
@@ -72,6 +74,8 @@ public class ActivityFeedEventListener {
     /**
      * アクティビティイベントを受信してフィードに書き込む。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。ダッシュボードのアクティビティフィード投入。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleActivityEvent(ActivityEvent event) {
