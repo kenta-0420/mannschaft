@@ -1343,6 +1343,7 @@
       "dayDetail": {
         "title": "{date} の予定"
       },
+      "empty": "この期間に予定はありません",
       "view": {
         "month": "月",
         "week": "週",

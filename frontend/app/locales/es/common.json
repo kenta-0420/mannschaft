@@ -1343,6 +1343,7 @@
       "dayDetail": {
         "title": "Eventos del {date}"
       },
+      "empty": "No hay eventos en este período",
       "view": {
         "month": "Mes",
         "week": "Semana",

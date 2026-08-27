@@ -1343,6 +1343,7 @@
       "dayDetail": {
         "title": "Termine am {date}"
       },
+      "empty": "Keine Termine in diesem Zeitraum",
       "view": {
         "month": "Monat",
         "week": "Woche",
