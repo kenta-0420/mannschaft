@@ -1,0 +1,302 @@
+import { describe, expect, it } from 'vitest'
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
+import CalendarWeekGrid from '~/components/schedule/CalendarWeekGrid.vue'
+import type { CalendarEventItem } from '~/composables/useCalendarEvents'
+
+/**
+ * F03.19 §6.5 バーチカル週ビューの受け入れテスト（AC-13 / AC-13d〜AC-13h）。
+ *
+ * 実データの形をそのまま再現する — BE から届くのはオフセット付き ISO 文字列であり、
+ * `allDay=true` は 00:00:00〜23:59:59、日をまたぐ時刻付き予定は開始日と終了日が異なる。
+ * 週は 2026-08-02(日) 〜 2026-08-08(土)。dayIndex は 0=日 … 4=木(8/6) 5=金(8/7) 6=土(8/8)。
+ */
+
+mockNuxtImport('useDatetime', () => () => ({ userTimezone: { value: 'Asia/Tokyo' } }))
+mockNuxtImport('useHolidays', () => () => ({ getHoliday: () => null }))
+
+const WEEK_START = '2026-08-02'
+
+function ev(over: Partial<CalendarEventItem> & { id: number; startAt: string; endAt: string }): CalendarEventItem {
+  return {
+    uniqueKey: String(over.id),
+    title: `予定${over.id}`,
+    allDay: false,
+    color: '#2563EB',
+    isPersonal: true,
+    scopeType: 'PERSONAL',
+    ...over,
+  } as CalendarEventItem
+}
+
+async function mountWeek(events: CalendarEventItem[], weekStart = WEEK_START) {
+  return mountSuspended(CalendarWeekGrid, {
+    props: { weekStart, events },
+    global: { stubs: { Button: true } },
+  })
+}
+
+/** 時間グリッド側の予定バー（終日帯のバーとは data-testid の接頭辞で区別する）。 */
+function timedBars(wrapper: Awaited<ReturnType<typeof mountWeek>>, uniqueKey: string) {
+  return wrapper.findAll(`[data-testid="week-event-${uniqueKey}"]`)
+}
+
+function styleOf(el: { attributes: (n: string) => string | undefined }): string {
+  return el.attributes('style') ?? ''
+}
+
+/** style 文字列から 1プロパティを取り出す（jsdom の inline style は正規化されるため文字列で見る）。 */
+function styleProp(style: string, prop: string): string {
+  const m = new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*([^;]+)`).exec(style)
+  return m?.[1]?.trim() ?? ''
+}
+
+describe('CalendarWeekGrid (F03.19 §6.5)', () => {
+  it('AC-13: 与えられた予定集合を 7 日分の列に束ね直して描画する（自身では取得しない）', async () => {
+    const events = [
+      ev({ id: 1, startAt: '2026-08-02T09:00:00+09:00', endAt: '2026-08-02T10:00:00+09:00' }),
+      ev({ id: 2, startAt: '2026-08-05T13:00:00+09:00', endAt: '2026-08-05T14:00:00+09:00' }),
+      ev({ id: 3, startAt: '2026-08-08T20:00:00+09:00', endAt: '2026-08-08T21:00:00+09:00' }),
+    ]
+    const wrapper = await mountWeek(events)
+
+    // 7列の日付ヘッダー
+    for (let di = 0; di < 7; di++) {
+      expect(wrapper.find(`[data-testid="week-day-header-${di}"]`).exists()).toBe(true)
+    }
+    // 1件も落とさず、それぞれ正しい曜日の列に入る
+    expect(timedBars(wrapper, '1')[0]?.attributes('data-day-index')).toBe('0')
+    expect(timedBars(wrapper, '2')[0]?.attributes('data-day-index')).toBe('3')
+    expect(timedBars(wrapper, '3')[0]?.attributes('data-day-index')).toBe('6')
+  })
+
+  it('§6.5.4: スロットに week-slot-{dayIndex}-{hour}-{minute} を付与する（E2E がピクセル計算を持たないため）', async () => {
+    const wrapper = await mountWeek([])
+    // 月曜 9:00（設計書の例）
+    expect(wrapper.find('[data-testid="week-slot-1-9-0"]').exists()).toBe(true)
+    // 境界: 日曜 0:00 / 土曜 23:45
+    expect(wrapper.find('[data-testid="week-slot-0-0-0"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="week-slot-6-23-45"]').exists()).toBe(true)
+    // スナップ境界は 0/15/30/45 のみ（ゼロ埋めしない）
+    expect(wrapper.find('[data-testid="week-slot-1-09-00"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="week-slot-1-9-10"]').exists()).toBe(false)
+    // 7日 × 24時間 × 4 = 672
+    expect(wrapper.findAll('[data-testid^="week-slot-"]').length).toBe(672)
+  })
+
+  it('AC-13d: allDay=true と複数日にまたがる予定は終日帯に置かれ、時間グリッドには出ない', async () => {
+    const events = [
+      // 終日1日（例: 燃えるゴミ）
+      ev({ id: 11, allDay: true, startAt: '2026-08-04T00:00:00+09:00', endAt: '2026-08-04T23:59:59+09:00' }),
+      // 終日で複数日にまたがる（例: 夏合宿）
+      ev({ id: 12, allDay: true, startAt: '2026-08-05T00:00:00+09:00', endAt: '2026-08-07T23:59:59+09:00' }),
+      // 比較用の時刻付き
+      ev({ id: 13, startAt: '2026-08-05T10:00:00+09:00', endAt: '2026-08-05T11:00:00+09:00' }),
+    ]
+    const wrapper = await mountWeek(events)
+
+    expect(wrapper.find('[data-testid="week-allday-event-11"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="week-allday-event-12"]').exists()).toBe(true)
+    // 時間グリッド内には現れない
+    expect(timedBars(wrapper, '11').length).toBe(0)
+    expect(timedBars(wrapper, '12').length).toBe(0)
+    // 時刻付きの方は時間グリッドにあり、終日帯には無い
+    expect(timedBars(wrapper, '13').length).toBe(1)
+    expect(wrapper.find('[data-testid="week-allday-event-13"]').exists()).toBe(false)
+
+    // 縦スクロールしても見え続ける = 終日帯は sticky で日付ヘッダー直下に固定されている
+    const lane = wrapper.get('[data-testid="week-allday-lane"]')
+    expect(lane.classes()).toContain('sticky')
+    expect(styleProp(styleOf(lane), 'top')).toBe('48px')
+  })
+
+  it('AC-13e: 同一時間帯に3件重なると3件すべてが約1/3幅で横並びに描画される（1件も欠落しない）', async () => {
+    const events = [
+      ev({ id: 21, startAt: '2026-08-04T10:00:00+09:00', endAt: '2026-08-04T11:00:00+09:00' }),
+      ev({ id: 22, startAt: '2026-08-04T10:30:00+09:00', endAt: '2026-08-04T11:30:00+09:00' }),
+      ev({ id: 23, startAt: '2026-08-04T10:45:00+09:00', endAt: '2026-08-04T12:00:00+09:00' }),
+    ]
+    const wrapper = await mountWeek(events)
+
+    for (const key of ['21', '22', '23']) {
+      const bars = timedBars(wrapper, key)
+      expect(bars.length).toBe(1)
+      expect(styleProp(styleOf(bars[0]!), 'width')).toContain('33.3333%')
+    }
+    // 左オフセットは 0 / 1 / 2 列目にきれいに割り振られる（同じ場所に重ね書きしない）
+    const lefts = ['21', '22', '23'].map(k => styleProp(styleOf(timedBars(wrapper, k)[0]!), 'left'))
+    expect(new Set(lefts).size).toBe(3)
+  })
+
+  it('§6.5.2: 重なりに上限を設けない（10本重なっても1本も消さない）', async () => {
+    const events = Array.from({ length: 10 }, (_, i) =>
+      ev({ id: 100 + i, startAt: '2026-08-04T10:00:00+09:00', endAt: '2026-08-04T12:00:00+09:00' }))
+    const wrapper = await mountWeek(events)
+
+    for (let i = 0; i < 10; i++) {
+      const bars = timedBars(wrapper, String(100 + i))
+      expect(bars.length).toBe(1)
+      expect(styleProp(styleOf(bars[0]!), 'width')).toContain('10.0000%')
+    }
+    // 月ビューのような「+N件」への切り捨ては時間グリッドには存在しない
+    expect(wrapper.findAll('[data-testid^="day-overflow-"]').length).toBe(0)
+  })
+
+  it('§6.5.2: 重ならない予定はクラスタが切れて全幅に戻る', async () => {
+    const events = [
+      ev({ id: 31, startAt: '2026-08-04T10:00:00+09:00', endAt: '2026-08-04T11:00:00+09:00' }),
+      // 11:00 ちょうど開始は「重なっていない」= 別クラスタ
+      ev({ id: 32, startAt: '2026-08-04T11:00:00+09:00', endAt: '2026-08-04T12:00:00+09:00' }),
+    ]
+    const wrapper = await mountWeek(events)
+    expect(styleProp(styleOf(timedBars(wrapper, '31')[0]!), 'width')).toContain('100.0000%')
+    expect(styleProp(styleOf(timedBars(wrapper, '32')[0]!), 'width')).toContain('100.0000%')
+  })
+
+  it('AC-13f: 15分の予定でも最低高さ20px以上で描画される（潰れて消えない）', async () => {
+    const events = [
+      ev({ id: 41, startAt: '2026-08-04T10:00:00+09:00', endAt: '2026-08-04T10:15:00+09:00' }),
+      // 比較: 1時間 = 48px
+      ev({ id: 42, startAt: '2026-08-05T10:00:00+09:00', endAt: '2026-08-05T11:00:00+09:00' }),
+    ]
+    const wrapper = await mountWeek(events)
+
+    const shortH = Number.parseFloat(styleProp(styleOf(timedBars(wrapper, '41')[0]!), 'height'))
+    expect(shortH).toBeGreaterThanOrEqual(20)
+    // 実時刻どおりなら 15 * 0.8 = 12px。下限が効いていることを明示する。
+    expect(shortH).toBeGreaterThan(12)
+    expect(Number.parseFloat(styleProp(styleOf(timedBars(wrapper, '42')[0]!), 'height'))).toBeCloseTo(48, 1)
+  })
+
+  it('AC-13f: 最低高さは描画にのみ効き、重なり判定は実時刻ベースのまま', async () => {
+    // 10:00-10:05（描画上は20px = 25分相当まで伸びる）と 10:10-10:20。
+    // 描画高さで重なりを測っていたらこの2件は重なり扱いになり 1/2 幅になってしまう。
+    const events = [
+      ev({ id: 51, startAt: '2026-08-04T10:00:00+09:00', endAt: '2026-08-04T10:05:00+09:00' }),
+      ev({ id: 52, startAt: '2026-08-04T10:10:00+09:00', endAt: '2026-08-04T10:20:00+09:00' }),
+    ]
+    const wrapper = await mountWeek(events)
+    expect(styleProp(styleOf(timedBars(wrapper, '51')[0]!), 'width')).toContain('100.0000%')
+    expect(styleProp(styleOf(timedBars(wrapper, '52')[0]!), 'width')).toContain('100.0000%')
+  })
+
+  it('AC-13g: 8/6 22:00〜8/7 02:00 は2片に分割され ▼ / ▲ が付き、どちらのクリックでも同じ予定を開く', async () => {
+    const events = [
+      ev({ id: 61, title: '夜間行事', startAt: '2026-08-06T22:00:00+09:00', endAt: '2026-08-07T02:00:00+09:00' }),
+    ]
+    const wrapper = await mountWeek(events)
+
+    const bars = timedBars(wrapper, '61')
+    expect(bars.length).toBe(2)
+    // 終日帯へは送らない
+    expect(wrapper.find('[data-testid="week-allday-event-61"]').exists()).toBe(false)
+
+    const [first, second] = bars
+    // 8/6(木)=dayIndex 4 に 22:00〜24:00
+    expect(first!.attributes('data-day-index')).toBe('4')
+    expect(Number.parseFloat(styleProp(styleOf(first!), 'top'))).toBeCloseTo(22 * 60 * 0.8, 1)
+    expect(Number.parseFloat(styleProp(styleOf(first!), 'height'))).toBeCloseTo(2 * 60 * 0.8, 1)
+    expect(first!.find('[data-testid="week-event-continues-after"]').text()).toBe('▼')
+    expect(first!.find('[data-testid="week-event-continues-before"]').exists()).toBe(false)
+
+    // 8/7(金)=dayIndex 5 に 00:00〜02:00
+    expect(second!.attributes('data-day-index')).toBe('5')
+    expect(Number.parseFloat(styleProp(styleOf(second!), 'top'))).toBeCloseTo(0, 1)
+    expect(Number.parseFloat(styleProp(styleOf(second!), 'height'))).toBeCloseTo(2 * 60 * 0.8, 1)
+    expect(second!.find('[data-testid="week-event-continues-before"]').text()).toBe('▲')
+    expect(second!.find('[data-testid="week-event-continues-after"]').exists()).toBe(false)
+
+    // 分割片は1つの予定 — どちらをクリックしても同じ詳細が開く
+    await first!.trigger('click')
+    await second!.trigger('click')
+    const emitted = wrapper.emitted('eventClick')
+    expect(emitted).toHaveLength(2)
+    expect(emitted![0]).toEqual([61, true])
+    expect(emitted![1]).toEqual([61, true])
+  })
+
+  it('AC-13g: 翌日 0:00 ちょうどに終わる予定は翌日に空の片を作らず、継続記号も出さない', async () => {
+    const events = [
+      ev({ id: 62, startAt: '2026-08-06T22:00:00+09:00', endAt: '2026-08-07T00:00:00+09:00' }),
+    ]
+    const wrapper = await mountWeek(events)
+    const bars = timedBars(wrapper, '62')
+    expect(bars.length).toBe(1)
+    expect(bars[0]!.attributes('data-day-index')).toBe('4')
+    expect(bars[0]!.find('[data-testid="week-event-continues-after"]').exists()).toBe(false)
+  })
+
+  it('AC-13h: 3日にまたがる時刻付き予定の中間日（24時間フル占有）は終日帯に置かれる', async () => {
+    const events = [
+      ev({ id: 71, title: '長時間行事', startAt: '2026-08-05T22:00:00+09:00', endAt: '2026-08-07T02:00:00+09:00' }),
+    ]
+    const wrapper = await mountWeek(events)
+
+    // 中間日 8/6 は終日帯へ
+    const allDayBar = wrapper.find('[data-testid="week-allday-event-71"]')
+    expect(allDayBar.exists()).toBe(true)
+
+    // 時間グリッドに残るのは 8/5(dayIndex 3) と 8/7(dayIndex 5) の2片のみ。
+    // 中間日 8/6(dayIndex 4) の列には1本も置かれない（時間グリッドを丸ごと覆わない）。
+    const bars = timedBars(wrapper, '71')
+    expect(bars.map(b => b.attributes('data-day-index'))).toEqual(['3', '5'])
+  })
+
+  it('§6.5.1: 現在時刻ラインは今日の列にだけ出る', async () => {
+    // 2026-08-02 の週に「今日」は含まれない（テスト実行日が同じ週でない限り）ので出ない
+    const past = await mountWeek([], '1999-01-03')
+    expect(past.find('[data-testid="week-now-line"]').exists()).toBe(false)
+
+    // 今日を含む週なら1本だけ出る
+    const now = new Date()
+    const ord = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000)
+    const startOrd = ord - ((ord + 4) % 7)
+    const d = new Date(startOrd * 86400000)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const thisWeek = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
+    const current = await mountWeek([], thisWeek)
+    expect(current.findAll('[data-testid="week-now-line"]').length).toBe(1)
+  })
+
+  it('§6.5.1: アンマウント時に現在時刻ラインのタイマーを止める', async () => {
+    const before = globalThis.setInterval
+    const ids: Array<ReturnType<typeof setInterval>> = []
+    const cleared: Array<ReturnType<typeof setInterval>> = []
+    const originalClear = globalThis.clearInterval
+    globalThis.setInterval = ((fn: () => void, ms: number) => {
+      const id = before(fn, ms)
+      ids.push(id)
+      return id
+    }) as typeof globalThis.setInterval
+    globalThis.clearInterval = ((id: ReturnType<typeof setInterval>) => {
+      cleared.push(id)
+      return originalClear(id)
+    }) as typeof globalThis.clearInterval
+
+    try {
+      const wrapper = await mountWeek([])
+      expect(ids.length).toBeGreaterThan(0)
+      wrapper.unmount()
+      expect(cleared).toEqual(expect.arrayContaining(ids))
+    }
+    finally {
+      globalThis.setInterval = before
+      globalThis.clearInterval = originalClear
+    }
+  })
+
+  it('§6.5.1: 終日帯のレーンが超過したら月ビューと同じ「+N件」を出す', async () => {
+    // 同じ日に掛かる終日予定を4本 = レーン4本（MAX_LANES=3 超過）
+    const events = Array.from({ length: 4 }, (_, i) =>
+      ev({
+        id: 200 + i,
+        allDay: true,
+        startAt: '2026-08-04T00:00:00+09:00',
+        endAt: '2026-08-04T23:59:59+09:00',
+      }))
+    const wrapper = await mountWeek(events)
+    const overflow = wrapper.find('[data-testid="day-overflow-2026-08-04"]')
+    expect(overflow.exists()).toBe(true)
+    // 実バー2本 + 残り2本が「+N件」へ
+    expect(wrapper.findAll('[data-testid^="week-allday-event-"]').length).toBe(2)
+  })
+})
