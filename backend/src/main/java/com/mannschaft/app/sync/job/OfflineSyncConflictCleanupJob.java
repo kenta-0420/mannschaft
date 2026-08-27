@@ -1,5 +1,7 @@
 package com.mannschaft.app.sync.job;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.sync.repository.OfflineSyncConflictRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,9 @@ public class OfflineSyncConflictCleanupJob {
      * 解決済みコンフリクトの清掃。
      * resolution IS NOT NULL かつ resolved_at が90日以上前のレコードを物理削除する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_WEBHOOK_SYNC_ENABLED",
+            reason = "止めても解決済みコンフリクト行が残って肥大するだけで、法定保持義務も無く再開後に同じ 90 日条件で削除し直せる")
     @BatchEndpoint(name = "sync-offline-conflict-cleanup-daily", description = "解決済みオフライン同期コンフリクト 90 日経過分を毎日 04:00 に物理削除する")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "offlineSyncConflictCleanup", lockAtMostFor = "PT10M", lockAtLeastFor = "PT1M")

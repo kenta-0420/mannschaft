@@ -25,6 +25,125 @@ public enum BackgroundFeatureMode {
     /**
      * フラグ無効時は本体を呼ばず<b>正常終了</b>する（{@code @Scheduled} 専用）。
      *
+     * <h2>宣言する前に、3 つの型を順に確かめよ</h2>
+     * <p>④-B 第三陣では、危険な型が<b>三度に分けて</b>見つかった。
+     * 一巡目の網では二度とも取りこぼしており、都度 Codex 検分に指摘されて増えている。
+     * 次に宣言する者は、最初からこの 3 つを順に当てればよい。</p>
+     * <ol>
+     *   <li><b>第一の型（本モード）</b> — 停止期間を跨ぐと<b>追いつけない</b>
+     *       （対象期間を today から導出する no-arg 入口しか無い等）。下に詳述。</li>
+     *   <li><b>第二の型（本モード）</b> — 未処理フラグだけで絞り<b>時刻の下限を持たぬキュー</b>で、
+     *       再開時に過去分を<b>吐き出す</b>。下に詳述。</li>
+     *   <li><b>第三の型（{@link #DROP_WHEN_DISABLED}）</b> — <b>上流が同じ gate_key で閉じない</b>。
+     *       DROP の javadoc に詳述。</li>
+     * </ol>
+     *
+     * <h2>選ぶ前に確かめること — 「停止期間を跨いで再開したとき追いつけるか」</h2>
+     * <p>本モードは<b>「止めても再開すれば取り戻せる」ことを暗黙の前提にしている</b>。
+     * この前提が実装と一致していない例が ④-B 第三陣で複数見つかった。
+     * <b>追いつけないなら {@link #ALWAYS} を選ぶこと。</b></p>
+     *
+     * <p>追いつけない典型:</p>
+     * <ul>
+     *   <li><b>対象期間を {@code today} から導出する no-arg 入口しか無い</b> —
+     *       {@code now.minusMonths(1)} 固定で、対象月を指定して再実行する経路が無い
+     *       （{@code @BatchEndpoint} の手動実行も同じ no-arg を呼ぶだけなら「手動経路がある」とは言えない）。
+     *       停止期間分は二度と生成できず恒久的な欠測になる。</li>
+     *   <li><b>「現在の期間に一致する設定」しか拾わない</b> —
+     *       設定された月を跨いで無効のままだと、その回の処理は永久に行われない。</li>
+     *   <li><b>再開時に過去分をまとめて送ってしまう通知系</b> —
+     *       未送信キューを下限なしで拾うと、停止明けに古い通知が一斉に飛ぶ。
+     *       これは追いつけないのではなく<b>追いつきすぎる</b>害であり、
+     *       多くはクエリ側に下限が無い潜在バグである（ゲートの有無に関わらず障害復帰でも起きる）。
+     *       <b>第二の型として下に詳述する。</b></li>
+     * </ul>
+     *
+     * <p>逆に、停止期間分を後から埋められるなら本モードでよい。ただし判定を誤りやすいので注意せよ。</p>
+     *
+     * <h3>「引数で受ける public メソッドがある」では足りない — <b>呼び手まで確かめよ</b></h3>
+     * <p>確かめるべきは「対象期間を引数で受ける public メソッドがあるか」<b>ではない</b>。
+     * <b>対象期間を指定して再実行できる「運用経路」があるか</b>である。具体的には次のいずれか:</p>
+     * <ul>
+     *   <li>管理 API のエンドポイント（例:
+     *       {@code POST /spotlight/daily-stats/run?targetDate=} が
+     *       {@code AdDailyStatsAggregationBatchService#aggregate(LocalDate)} を呼ぶ）</li>
+     *   <li>引数を受け取る形で公開されたバックフィル用サービス（例:
+     *       {@code AnalyticsBackfillService} が {@code aggregateForDate} /
+     *       {@code recalculateForMonth} を呼び、{@code AnalyticsAlertController} から起動できる）</li>
+     *   <li>他の本番コードからの呼び出し</li>
+     * </ul>
+     *
+     * <p><b>そのいずれも無ければ、その入口は無いに等しい。</b>
+     * {@code @BatchEndpoint} が引数なしの {@code execute()} を呼ぶだけなら、
+     * 手動実行できても<b>対象期間は選べない</b>ので再実行経路にはならない。</p>
+     *
+     * <p><b>踏んだ穴（④-B 第三陣・Codex 検分 P2）</b>:
+     * {@code PageViewDailyAggregationBatchService} を
+     * 「{@code aggregateForDate(LocalDate)} という public 入口があるから追いつける」として
+     * 本モードで据え置いた。しかし<b>そのメソッドの呼び手はゼロ</b>で、
+     * {@code AnalyticsBackfillService} が面倒を見るのは {@code DailyAggregation} と
+     * {@code MonthlyCohort} だけだった。<b>誰も呼ばぬメソッドは、運用にとっては存在せぬのと同じ</b>である。
+     * メソッドの存在を確かめただけで「実測した」と言ってはならない。</p>
+     *
+     * <h2>第二の型 — 「未処理フラグだけで絞り、時刻の下限を持たぬ」キュー</h2>
+     * <p>④-B 第三陣の一巡目は「対象期間を today から導出していて追いつけない」型
+     * （月次スナップショット等）だけを網にかけ、<b>この型を取りこぼした</b>。
+     * 一巡の網が粗かった事実として残す。</p>
+     *
+     * <p>形はこうである。{@code sentAt IS NULL AND remindAt <= now} のように
+     * <b>未処理フラグ＋上限だけ</b>で対象を絞り、<b>鮮度の下限を持たない</b>。
+     * 平常時は毎分走るので違いが出ないが、停止や障害を跨いで再開した瞬間に
+     * <b>溜まった過去分を一度に吐き出す</b>。実際に見つかった例:</p>
+     * <ul>
+     *   <li>{@code RecruitmentReminderBatch} — 既に開始・終了した募集にまで
+     *       「24時間後に開催されます」を最大 100 件/分で送っていた</li>
+     *   <li>{@code EventEndReminderBatchService} — 何ヶ月前に終わったイベントの主催者へ
+     *       段階リマインドが 3 回飛び、最後に管理者への緊急通知まで発火していた</li>
+     * </ul>
+     *
+     * <p><b>洗い方</b>: {@code sentAt IS NULL} / {@code IsNull} / {@code Pending} のような
+     * 「未処理フラグだけで絞る」クエリを機械的に列挙し、時刻の<b>下限</b>があるかを見る。
+     * 下限の取り方は、恣意的な猶予定数よりも<b>業務的に意味のある境界</b>が望ましい
+     * （例: 「開始時刻がまだ未来であること」。通知文面が「24時間後に開催」である以上、
+     * 開始済みへ送る意味は原理的に無い）。</p>
+     *
+     * <h2>自分で見つけた欠陥をゲートしてはならぬ</h2>
+     * <p><b>「停止期間を跨ぐと追いつけぬ／吐き出す」と自分で気づいた入口に、
+     * 本モードや {@link #DROP_WHEN_DISABLED} を付けてはならない。</b>
+     * 直すか {@link #ALWAYS} にするか、二つに一つである。</p>
+     *
+     * <p>④-B 第三陣は {@code RecruitmentReminderBatch} の下限欠落を<b>自ら見つけながら</b>、
+     * 「ゲートとは独立した別件」として先送りし、同じバッチに本モードを付けた。
+     * その瞬間、それは「いつか誰かが踏むかもしれぬ潜在バグ」から
+     * <b>「このゲートが作った一斉送信経路」</b>に変わっている。
+     * 長期停止という手段を与えたのはゲートだからである。
+     * 「既知だが別件」として先送りしてよいのは<b>ゲートを付けない場合に限る</b>。</p>
+     *
+     * <h2>迷ったら ALWAYS に倒す</h2>
+     * <p>誤って {@link #ALWAYS} にした損は「閉じた機能の上でバッチが無害に空回りする」だけである。
+     * 誤って本モードにした損は「法令や金が静かに壊れ、誰も気づかない」。
+     * この二つは釣り合わないため、釣り合わない賭けでは安いほうの損を選ぶ。</p>
+     *
+     * <h2>テストでゲートを開ける経路は 3 つある（全部確かめること）</h2>
+     * <p>本モードを宣言した入口は、テストでは<b>既定で閉じる</b>。
+     * 「バッチが動くこと」を検証するテストが落ちたら、次の 3 経路を順に疑うこと
+     * （④-B 第三陣は 3 つとも順番に踏み抜いた）。</p>
+     * <ol>
+     *   <li><b>DB 行</b> — {@code application-test.yml} は {@code flyway.enabled: false} +
+     *       {@code ddl-auto: create} のため {@code feature_flags} の seed が走らず表が空。
+     *       行が無いキーは {@code FeatureFlagService#isEnabled} がフェイルクローズで false を返す。</li>
+     *   <li><b>キャッシュ</b> — {@code isEnabled} は {@code @Cacheable("featureFlags")}。
+     *       {@code RedisConfig} が {@code CacheManager} を Bean 定義しているため
+     *       {@code spring.cache.type: none} でも<b>キャッシュは有効なまま</b>で、
+     *       先に走ったテストが載せた false を返し続ける。行の投入とキャッシュ退避は必ず対で行う
+     *       （{@code FeatureFlagTestSupport} が両方やる）。</li>
+     *   <li><b>モック</b> — {@code AbstractSpotlightIT} のように
+     *       {@code @MockitoBean} で {@code FeatureFlagService} ごと差し替えている基底があると、
+     *       DB もキャッシュも一切効かず Mockito 既定の false が返る。
+     *       <b>葉のクラスだけを見ず継承階層まで確かめること</b>
+     *       （第三陣はここを見落として 2 度同じ NPE を出した）。</li>
+     * </ol>
+     *
      * <p>例外を投げてはならない。バッチで例外を投げると
      * {@code BatchExecutionAspect} が {@code batch_job_logs} に FAILED を書き
      * {@code BatchFailedEvent} を飛ばすため、「意図した停止」が「障害」として運用に通知される。</p>
@@ -33,6 +152,29 @@ public enum BackgroundFeatureMode {
 
     /**
      * フラグ無効時はイベントを<b>捨てる</b>（Spring イベントリスナー専用）。
+     *
+     * <h2>第三の型 — 上流が同じ gate_key で閉じないなら、本モードは選べない</h2>
+     * <p><b>本モードが安全なのは、そのイベントを発火する上流が、同じ {@code gate_key} で
+     * 一緒に閉じるときだけである。</b> 上流が閉じなければ、イベントは閉栓中も飛んでき、
+     * そして黙って消える。再発火もバックフィルも無い。</p>
+     *
+     * <p><b>{@link #SKIP_WHEN_DISABLED} との非対称に注意せよ。</b>
+     * SKIP は「<b>自分が動かない</b>」だけで、失われるのは自分の仕事である。
+     * 本モードは「<b>他人が投げたものを捨てる</b>」。捨てられた側は投げた事実すら知らない。
+     * この非対称を見落とすと、<b>別ドメインの確定処理が片肺のまま進む</b>。</p>
+     *
+     * <p>実例（④-B 第三陣・Codex 検分 P1）: {@code PropertyWorkPackageEventListener} は
+     * {@code FEATURE_PROPERTY_REPAIRPLAN_ENABLED} で本モードを宣言していたが、
+     * 上流の Incident は<b>別ゲート</b>（{@code FEATURE_MODERATION_INCIDENT_ENABLED}）で
+     * 独立に {@code CONFIRMED} へ進む。よって閉栓中に飛んできたイベントを永久に失い、
+     * {@code docs/features/F09.13_property_history.md} §5.2 が要求する
+     * {@code incidentId} 付き履歴パッケージと相互リンクが欠落したままになる。</p>
+     *
+     * <p><b>確かめ方</b>: そのイベント型を {@code new XxxEvent(} で検索して発火元を特定し、
+     * <b>発火元のドメインがどの gate_key で閉じるか</b>を見る。
+     * CORE（認証・タイムライン等）や別ドメインなら閉じない＝本モードは選べない。
+     * ④-B 第三陣の全数照合では、10 件の宣言のうち 4 件がこの型に該当した
+     * （property / analytics の計測ビーコン / gamification の 2 件）。</p>
      *
      * <p><b>イベントは再生されず失われる</b>。この消失を許容できる根拠を {@code reason} に明示すること。</p>
      *

@@ -1,5 +1,7 @@
 package com.mannschaft.app.shiftbudget.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.shift.event.ShiftArchivedEvent;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
@@ -45,6 +47,8 @@ public class ShiftBudgetConsumptionCancelListener {
     /** Phase 10-β で追加: 失敗イベントの永続化（リトライバッチ + 管理 API の入口） */
     private final ShiftBudgetFailedEventService failedEventService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "殿の裁定: 記録と取消は対であり、片方だけ止まれば予算残高が壊れる。対になっているものを別々に扱ってはならず、いずれも常時実行とする")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onShiftArchived(ShiftArchivedEvent event) {

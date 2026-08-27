@@ -57,7 +57,7 @@ class RecruitmentReminderBatchTest {
     @Test
     @DisplayName("未送信リマインダーがない場合 → 通知送信しない")
     void reminderBatch_noPending_noNotification() {
-        given(reminderRepository.findTop100BySentAtIsNullAndRemindAtLessThanEqual(any()))
+        given(reminderRepository.findSendableReminders(any(), any()))
                 .willReturn(List.of());
 
         batch.reminderBatch();
@@ -72,7 +72,7 @@ class RecruitmentReminderBatchTest {
         RecruitmentListingEntity listing = buildListing(10L);
         RecruitmentParticipantEntity participant = buildParticipant(100L, 5L);
 
-        given(reminderRepository.findTop100BySentAtIsNullAndRemindAtLessThanEqual(any()))
+        given(reminderRepository.findSendableReminders(any(), any()))
                 .willReturn(List.of(reminder));
         given(listingRepository.findById(10L)).willReturn(Optional.of(listing));
         given(participantRepository.findById(100L)).willReturn(Optional.of(participant));
@@ -94,7 +94,7 @@ class RecruitmentReminderBatchTest {
         RecruitmentListingEntity listing = buildListing(10L);
         RecruitmentParticipantEntity participant = buildParticipant(100L, 5L);
 
-        given(reminderRepository.findTop100BySentAtIsNullAndRemindAtLessThanEqual(any()))
+        given(reminderRepository.findSendableReminders(any(), any()))
                 .willReturn(List.of(reminder));
         given(listingRepository.findById(10L)).willReturn(Optional.of(listing));
         given(participantRepository.findById(100L)).willReturn(Optional.of(participant));
@@ -120,7 +120,7 @@ class RecruitmentReminderBatchTest {
     void reminderBatch_listingDeleted_skipNotification() throws Exception {
         RecruitmentReminderEntity reminder = buildReminder(1L, 10L, 100L);
 
-        given(reminderRepository.findTop100BySentAtIsNullAndRemindAtLessThanEqual(any()))
+        given(reminderRepository.findSendableReminders(any(), any()))
                 .willReturn(List.of(reminder));
         given(listingRepository.findById(10L)).willReturn(Optional.empty());
         given(reminderRepository.save(any())).willReturn(null);

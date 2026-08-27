@@ -1,5 +1,7 @@
 package com.mannschaft.app.advertising.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.AdvertiserAccountStatus;
 import com.mannschaft.app.advertising.BillingMethod;
@@ -51,6 +53,9 @@ public class MonthlyInvoiceBatchService {
      * 対象月を指定するリラン（F09.19.3 {@code POST /spotlight/invoices/run}）は
      * {@link #generateMonthlyInvoices(YearMonth)} を直接呼ぶ。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "対象月を指定するリラン API が別途あり、止めた月の請求書は再開後に手動で生成し直せる。元の課金明細は削除されず残る")
     @BatchEndpoint(name = "advertising-invoice-monthly-generate", description = "前月分の広告主月次請求書を毎月 1 日 05:00 に生成する")
     @Scheduled(cron = "0 0 5 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "monthlyInvoiceGenerate", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")

@@ -1,5 +1,7 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
@@ -67,6 +69,9 @@ public class ShiftPreferenceReminderBatchService {
     /**
      * 10 分ごとに実行。48h前・24h前リマインドを未提出メンバーに送信する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SHIFT_ENABLED",
+            reason = "止まるのは提出リマインド通知のみで DB は一切書き換わらず、シフト機能を閉じている間は提出を促す意味自体が無い")
     // TODO: shiftドメインがroleドメイン（UserRoleRepository）とteamドメイン（TeamShiftSettingsRepository）をまたいでいる。将来はそれぞれのQueryService経由で分離予定。Phase1-E: 2026-05-09
     @BatchEndpoint(name = "shift-preference-reminder", description = "シフト希望提出 48h・24h 前のリマインドを 10 分毎に送信する")
     @Scheduled(cron = "0 */10 * * * *", zone = "Asia/Tokyo")
