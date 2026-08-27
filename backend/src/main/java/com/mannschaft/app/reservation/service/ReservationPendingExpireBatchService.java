@@ -1,6 +1,8 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.reservation.service.ReservationPendingExpireService.PendingExpireUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +60,8 @@ public class ReservationPendingExpireBatchService {
      */
     @BatchEndpoint(name = "reservation-pending-expire",
             description = "承認されないまま期限切れになった仮押さえ(PENDING)を5分毎に自動キャンセルして枠を復帰させる")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。仮予約の期限切れ処理であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(fixedDelay = 300_000)
     // lockAtMostFor は fixedDelay（5分）と同値にしない。同値だと 1 回の実行が 5 分を超えた瞬間に
     // ロックが失効し、次回起動と二重処理になる。ReservationEntity は @Version を持たないため、

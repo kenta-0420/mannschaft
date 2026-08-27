@@ -53,6 +53,34 @@ const orgStoreStub = { myOrganizations: [] as Array<{ id: number, slug: string, 
 mockNuxtImport('useTeamStore', () => () => teamStoreStub)
 mockNuxtImport('useOrganizationStore', () => () => orgStoreStub)
 
+/**
+ * F03.19 §6.5 週ビューのスタブ。ページ側の関心は「切り替わること」と「同じ予定集合が
+ * 再取得なしで渡ること」なので、受け取った props を DOM に出すだけにする。
+ */
+const CalendarWeekGridStub = defineComponent({
+  name: 'CalendarWeekGrid',
+  props: { weekStart: String, events: { type: Array, default: () => [] } },
+  emits: ['prevWeek', 'nextWeek', 'eventClick', 'reflectionClick', 'today'],
+  setup(props) {
+    return () => h('div', {
+      'data-testid': 'calendar-week-grid-stub',
+      'data-week-start': props.weekStart,
+      'data-event-count': String(props.events.length),
+    })
+  },
+})
+
+/**
+ * `DashboardWidgetCard: true`（既定スタブ）は default スロットを描画しないため、カード内部に
+ * 置かれたビュー切替ボタン・カレンダー本体を見るテストではこちらを渡す。
+ */
+const DashboardWidgetCardSlotStub = defineComponent({
+  name: 'DashboardWidgetCard',
+  setup(_props, { slots }) {
+    return () => h('div', { 'data-testid': 'widget-card' }, slots.default?.())
+  },
+})
+
 const CalendarGridStub = defineComponent({
   name: 'CalendarGrid',
   props: { year: Number, month: Number, events: Array },
@@ -122,11 +150,12 @@ function teamCalendarEntry() {
   }
 }
 
-async function mountCalendarPage() {
+async function mountCalendarPage(extraStubs: Record<string, unknown> = {}) {
   const wrapper = await mountSuspended(CalendarPage, {
     global: {
       stubs: {
         CalendarGrid: CalendarGridStub,
+        CalendarWeekGrid: CalendarWeekGridStub,
         Select: SelectStub,
         Button: true,
         DashboardWidgetCard: true,
@@ -144,6 +173,7 @@ async function mountCalendarPage() {
         // 出し分けるだけで jsdom 上は非表示にならない）。既存 AC-11 系テストのボタン探索
         // （wrapper.findAll('button')）に無関係な要素が混ざらないようスタブ化する。
         ScheduleMobileListView: true,
+        ...extraStubs,
       },
     },
   })
@@ -420,5 +450,94 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     expect(chipsAfter[0]!.classes()).toContain('border-primary')
     expect(chipsAfter[1]!.classes()).toContain('border-primary')
     expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
+  })
+})
+
+/**
+ * F03.19 §6.5 / AC-13: 月ビューと週ビューの切替。
+ *
+ * 「切替でネットワークリクエストが発生しない」ことが本 AC の核心なので、切替の前後で
+ * API モックの呼び出し回数が一切増えないことを検証する（レイヤー選択の保持も同時に見る）。
+ */
+describe('pages/calendar.vue: AC-13 月/週ビュー切替', () => {
+  /** 表示中の月（=今月）に必ず入る日付。取得範囲は今月の6週グリッドで決まるため。 */
+  function thisMonthEntry() {
+    const now = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+    return {
+      id: 5,
+      scheduleId: 5,
+      content: { title: 'チーム予定', eventType: 'SCHEDULE', status: 'PUBLISHED' },
+      time: { startAt: `${day}T10:00:00+09:00`, endAt: `${day}T11:00:00+09:00`, allDay: false },
+      scope: { scopeType: 'TEAM', scopeId: '1', scopeSlug: 't1', scopeName: 'チームA', scopeIconUrl: null },
+      myAttendanceStatus: 'UNDECIDED',
+    }
+  }
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    scheduleApiMock.listPersonalSchedules.mockReset().mockResolvedValue(emptyPersonal)
+    scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [thisMonthEntry()] })
+    scheduleApiMock.getMyCalendarLayers.mockReset().mockResolvedValue({ data: layersFixture })
+    ganttApiMock.getMyCalendarTodos.mockReset().mockResolvedValue(emptyTodos)
+    presetTeamStore()
+  })
+
+  it('AC-13: 週へ切り替えても同じ予定集合が渡り、レイヤー選択が保持され、再取得が起きない', async () => {
+    const wrapper = await mountCalendarPage({ DashboardWidgetCard: DashboardWidgetCardSlotStub })
+
+    const monthGrid = wrapper.getComponent(CalendarGridStub)
+    const eventsInMonth = monthGrid.props('events') as unknown[]
+    expect(eventsInMonth.length).toBe(1)
+
+    const callsBefore = {
+      personal: scheduleApiMock.listPersonalSchedules.mock.calls.length,
+      range: scheduleApiMock.getCalendarRange.mock.calls.length,
+      todos: ganttApiMock.getMyCalendarTodos.mock.calls.length,
+      layers: scheduleApiMock.getMyCalendarLayers.mock.calls.length,
+    }
+    expect(callsBefore.range).toBeGreaterThan(0)
+
+    await wrapper.get('[data-testid="calendar-view-week"]').trigger('click')
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    // 週ビューへ切り替わり、月ビューは消える
+    expect(wrapper.find('[data-testid="calendar-week-grid-stub"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="calendar-grid-stub"]').exists()).toBe(false)
+
+    // 同じ予定集合がそのまま渡る（束ね直すだけ）
+    const weekGrid = wrapper.getComponent(CalendarWeekGridStub)
+    expect(weekGrid.props('events')).toEqual(eventsInMonth)
+    // 週の起点は日曜
+    const weekStart = weekGrid.props('weekStart') as string
+    expect(new Date(`${weekStart}T00:00:00Z`).getUTCDay()).toBe(0)
+
+    // AC-13: ビュー切替でネットワークリクエストは1本も増えない
+    expect(scheduleApiMock.listPersonalSchedules.mock.calls.length).toBe(callsBefore.personal)
+    expect(scheduleApiMock.getCalendarRange.mock.calls.length).toBe(callsBefore.range)
+    expect(ganttApiMock.getMyCalendarTodos.mock.calls.length).toBe(callsBefore.todos)
+    expect(scheduleApiMock.getMyCalendarLayers.mock.calls.length).toBe(callsBefore.layers)
+
+    // レイヤー選択（チップの選択状態）も保持される
+    const teamChip = wrapper.findAll('button').find(b => b.text() === 'チームA')!
+    expect(teamChip.classes()).toContain('border-primary')
+
+    // 月へ戻しても再取得しない
+    await wrapper.get('[data-testid="calendar-view-month"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="calendar-grid-stub"]').exists()).toBe(true)
+    expect(scheduleApiMock.getCalendarRange.mock.calls.length).toBe(callsBefore.range)
+  })
+
+  it('AC-13c: localStorage に view=week が残っていれば週ビューで復帰する', async () => {
+    localStorage.setItem('mannschaft:calendar:layerState', JSON.stringify({
+      version: 2, selected: ['PERSONAL:0', 'TEAM:1'], view: 'week', knownFallbackKeys: [],
+    }))
+    const wrapper = await mountCalendarPage({ DashboardWidgetCard: DashboardWidgetCardSlotStub })
+    expect(wrapper.find('[data-testid="calendar-week-grid-stub"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="calendar-grid-stub"]').exists()).toBe(false)
   })
 })

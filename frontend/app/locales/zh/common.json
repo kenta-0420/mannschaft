@@ -1343,7 +1343,16 @@
       "dayDetail": {
         "title": "{date} 的日程"
       },
-      "empty": "此期间没有日程"
+      "empty": "此期间没有日程",
+      "view": {
+        "month": "月",
+        "week": "周",
+        "agenda": "列表"
+      },
+      "week": {
+        "allDay": "全天",
+        "now": "现在"
+      }
     }
   },
   "handoff": {

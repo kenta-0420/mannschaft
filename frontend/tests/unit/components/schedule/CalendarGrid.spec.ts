@@ -423,4 +423,66 @@ describe('CalendarGrid', () => {
       vi.useRealTimers()
     }
   })
+  /**
+   * 検分二巡目 [1] の回帰テスト（月ビュー側）。
+   *
+   * 日別ポップオーバーを週ビューと共有する ScheduleDayDetailPopover へ集約したことで、
+   * 「その日に存在するか」の判定が eventOccupiesDate 一本になった。境界の是正が
+   * **共通化後の一箇所で行われ、月ビューにも自動的に効いている**ことをここで実証する。
+   */
+  it('[1・二巡目] 零時ちょうどに終わる予定は翌日の日別ポップオーバーに混入しない', async () => {
+    const single = (id: number, dateStr: string): CalendarEventItem => ({
+      id,
+      uniqueKey: String(id),
+      title: `単日${id}`,
+      startAt: `${dateStr}T09:00:00+09:00`,
+      endAt: `${dateStr}T10:00:00+09:00`,
+      allDay: false,
+      color: '#2563EB',
+      isPersonal: true,
+    })
+
+    const events: CalendarEventItem[] = [
+      // 8/3 22:00 〜 8/4 00:00。8/4 には一瞬も存在しない。
+      {
+        id: 900,
+        uniqueKey: '900',
+        title: '境界予定',
+        startAt: '2026-08-03T22:00:00+09:00',
+        endAt: '2026-08-04T00:00:00+09:00',
+        allDay: false,
+        color: '#DC2626',
+        isPersonal: true,
+      },
+      // 各日に4件ずつ置き、両日で「他N件」を出す（単日は4件以上で溢れる）
+      ...[901, 902, 903, 904].map(id => single(id, '2026-08-03')),
+      ...[905, 906, 907, 908].map(id => single(id, '2026-08-04')),
+    ]
+
+    const wrapper = await mountSuspended(CalendarGrid, {
+      props: { year: 2026, month: 8, events },
+      global: {
+        stubs: {
+          Button: true,
+          ScheduleTargetAudience: AudienceStub,
+          Popover: PopoverStub,
+          ScheduleListRow: ScheduleListRowStub,
+        },
+      },
+    })
+
+    const rowIds = () => wrapper.findAll('[data-testid^="popover-row-"]')
+      .map(r => r.attributes('data-testid'))
+
+    await wrapper.get('[data-testid="day-overflow-2026-08-03"]').trigger('click')
+    expect(rowIds()).toContain('popover-row-900')
+
+    await wrapper.get('[data-testid="day-overflow-2026-08-04"]').trigger('click')
+    expect(rowIds()).not.toContain('popover-row-900')
+    // 8/4 本来の予定は漏れなく出る（混入を消した副作用で本物まで消していないこと）
+    for (const id of [905, 906, 907, 908]) {
+      expect(rowIds()).toContain(`popover-row-${id}`)
+    }
+  })
+
 })

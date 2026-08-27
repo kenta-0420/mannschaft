@@ -1343,7 +1343,16 @@
       "dayDetail": {
         "title": "Termine am {date}"
       },
-      "empty": "Keine Termine in diesem Zeitraum"
+      "empty": "Keine Termine in diesem Zeitraum",
+      "view": {
+        "month": "Monat",
+        "week": "Woche",
+        "agenda": "Liste"
+      },
+      "week": {
+        "allDay": "Ganztägig",
+        "now": "Jetzt"
+      }
     }
   },
   "handoff": {

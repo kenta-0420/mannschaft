@@ -1,16 +1,21 @@
 package com.mannschaft.app.reservation.event;
 
+
+
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.reservation.entity.EmergencyClosureConfirmationEntity;
 import com.mannschaft.app.reservation.entity.EmergencyClosureEntity;
 import com.mannschaft.app.reservation.repository.EmergencyClosureConfirmationRepository;
 import com.mannschaft.app.reservation.repository.EmergencyClosureRepository;
+import java.time.LocalDateTime;
+import java.util.Locale;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,11 +26,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
-
-import java.time.LocalDateTime;
-import java.util.Locale;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -92,7 +92,7 @@ class EmergencyClosureReminderNotificationListenerTest {
     @Test
     @DisplayName("患者宛は EMERGENCY_CLOSURE 種別・TEAM スコープ・URGENT で送られメールも登録される")
     void 患者宛の通知内容() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(Mockito.mock(NotificationEntity.class));
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
 
         listener.onEmergencyClosureReminderNotification(
                 event(EmergencyClosureReminderNotificationEvent.Phase.PATIENT, 100L, "p@example.com"));
@@ -114,7 +114,7 @@ class EmergencyClosureReminderNotificationListenerTest {
     @Test
     @DisplayName("送信者宛は CLOSURE_UNCONFIRMED_REMINDER 種別で送られる")
     void 送信者宛の通知種別() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(Mockito.mock(NotificationEntity.class));
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
 
         listener.onEmergencyClosureReminderNotification(
                 event(EmergencyClosureReminderNotificationEvent.Phase.OPERATOR, 900L, "op@example.com"));
@@ -142,7 +142,7 @@ class EmergencyClosureReminderNotificationListenerTest {
     @Test
     @DisplayName("visibility deny（null 復帰）でも例外にしない")
     void denyでも例外にしない() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(null);
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.VISIBILITY_DENIED);
 
         assertThatCode(() -> listener.onEmergencyClosureReminderNotification(
                 event(EmergencyClosureReminderNotificationEvent.Phase.PATIENT, 100L, "p@example.com")))
@@ -152,7 +152,7 @@ class EmergencyClosureReminderNotificationListenerTest {
     @Test
     @DisplayName("メール登録が失敗しても通知は成立し例外を伝播させない")
     void メール失敗を伝播させない() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(Mockito.mock(NotificationEntity.class));
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
         willThrow(new RuntimeException("模擬outbox障害"))
                 .given(emailOutboxService).enqueue(any(EmailOutboxRequest.class));
 
@@ -166,7 +166,7 @@ class EmergencyClosureReminderNotificationListenerTest {
     @Test
     @DisplayName("メールアドレスが無ければ outbox に登録しない")
     void メール無しなら登録しない() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(Mockito.mock(NotificationEntity.class));
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
 
         listener.onEmergencyClosureReminderNotification(
                 event(EmergencyClosureReminderNotificationEvent.Phase.PATIENT, 100L, null));
@@ -216,7 +216,7 @@ class EmergencyClosureReminderNotificationListenerTest {
     @Test
     @DisplayName("メールの冪等キーは読み直した患者ユーザーIDで組み立てる")
     void メール冪等キーは読み直した患者ID() {
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(Mockito.mock(NotificationEntity.class));
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.DELIVERED);
 
         listener.onEmergencyClosureReminderNotification(
                 event(EmergencyClosureReminderNotificationEvent.Phase.PATIENT, 100L, "p@example.com"));

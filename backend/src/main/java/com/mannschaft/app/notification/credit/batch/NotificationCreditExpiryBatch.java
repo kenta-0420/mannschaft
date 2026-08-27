@@ -3,6 +3,8 @@ package com.mannschaft.app.notification.credit.batch;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.credit.entity.NotificationCreditPurchaseEntity;
 import com.mannschaft.app.notification.credit.entity.NotificationCreditPurchaseStatus;
@@ -55,6 +57,8 @@ public class NotificationCreditExpiryBatch {
     /**
      * 有効期限バッチを実行する（毎日 AM 3:00 JST）。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると期限切れクレジットが credit_balance から差し引かれず、実際には使えない残高が組織に残り続ける")
     @BatchEndpoint(name = "notification-credit-expiry-daily", description = "通知クレジットの期限アラートと失効処理を毎日 03:00 に実行する")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(

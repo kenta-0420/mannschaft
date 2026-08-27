@@ -1343,7 +1343,16 @@
       "dayDetail": {
         "title": "Eventos del {date}"
       },
-      "empty": "No hay eventos en este período"
+      "empty": "No hay eventos en este período",
+      "view": {
+        "month": "Mes",
+        "week": "Semana",
+        "agenda": "Agenda"
+      },
+      "week": {
+        "allDay": "Todo el día",
+        "now": "Ahora"
+      }
     }
   },
   "handoff": {
