@@ -17,20 +17,48 @@
 # optional 依存が欠けていることは捕まらない。
 name: FE lockfile 検証
 
+# 全 PR で起動する。paths フィルタは使わない。
+# 理由: このワークフローを必須チェックに設定すると、paths でスキップされた PR では
+# チェックが Pending のまま残り、**lockfile と無関係な PR まで永久にマージできなくなる**
+# （GitHub の必須チェックは「スキップされた」と「まだ来ていない」を区別しない）。
+# したがって起動は常に行い、lockfile を触っていない PR は各ジョブが即座に成功して抜ける。
 on:
   pull_request:
     branches:
       - main
-    paths:
-      - "frontend/package-lock.json"
-      - "frontend/package.json"
-      - ".github/workflows/frontend-lockfile-verify.yml"
 
 concurrency:
   group: fe-lockfile-verify-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # lockfile が変更されたかを判定する。
+  # paths フィルタではなくここで判定する理由は上の on: のコメントを参照。
+  # 後続ジョブはこの結果が false なら中身を実行せず、成功して抜ける。
+  # ---------------------------------------------------------------------------
+  detect:
+    name: lockfile 変更の有無
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: check
+        run: |
+          set -euo pipefail
+          base="$(git merge-base "origin/${{ github.base_ref }}" HEAD)"
+          if git diff --name-only "$base" HEAD -- frontend/package-lock.json frontend/package.json | grep -q .; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "lockfile / package.json に変更あり → 検証する"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "lockfile に変更なし → 検証をスキップ（ジョブは成功で抜ける）"
+          fi
+
   # ---------------------------------------------------------------------------
   # lockfile そのものの中身を、**base ブランチのものと突き合わせて**検査する。
   #
@@ -49,23 +77,35 @@ jobs:
   # ---------------------------------------------------------------------------
   inspect-lockfile:
     name: lockfile の内容検査（base 比較）
+    needs: detect
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - if: needs.detect.outputs.changed == 'true'
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: base の lockfile を取り出す
+      - if: needs.detect.outputs.changed == 'true'
+        name: base の lockfile を取り出す
         run: |
           set -euo pipefail
           git show "origin/${{ github.base_ref }}:frontend/package-lock.json" > /tmp/base-lock.json
           wc -c /tmp/base-lock.json
 
-      - name: プラットフォーム固有依存が base より減っていないか
+      - if: needs.detect.outputs.changed == 'true'
+        name: プラットフォーム固有依存が base より減っていないか
         env:
-          ALLOW_SHRINK: ${{ contains(github.event.pull_request.labels.*.name, 'ALLOW_LOCKFILE_SHRINK') }}
+          # ラベルは **実行時に API から取り直す**。
+          # github.event.pull_request.labels を使ってはならない: 失敗後にラベルを付けて
+          # 「再実行」しても、再実行は元の pull_request イベントペイロードを再利用するため
+          # 後から付けたラベルが反映されず、解除手段が実質存在しなくなる。
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
+          ALLOW_SHRINK=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels"             --jq 'any(.[]; .name == "ALLOW_LOCKFILE_SHRINK")')
+          echo "ALLOW_LOCKFILE_SHRINK=${ALLOW_SHRINK}"
+          export ALLOW_SHRINK
           node -e '
             const fs = require("fs");
             const load = (f) => JSON.parse(fs.readFileSync(f, "utf8")).packages || {};
@@ -111,15 +151,19 @@ jobs:
   # ---------------------------------------------------------------------------
   npm-ci-glibc:
     name: npm ci（Ubuntu / glibc）
+    needs: detect
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - if: needs.detect.outputs.changed == 'true'
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - if: needs.detect.outputs.changed == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: "22.23.2"
 
-      - name: npm ci
+      - if: needs.detect.outputs.changed == 'true'
+        name: npm ci
         working-directory: frontend
         run: |
           node -v
@@ -128,13 +172,16 @@ jobs:
 
   npm-ci-musl:
     name: npm ci（Alpine / musl）
+    needs: detect
     runs-on: ubuntu-latest
     # 本番コンテナと同じ musl 環境で回す。イメージは Dockerfile と同じ版に固定する。
     container: node:22.23.2-alpine
     steps:
-      - uses: actions/checkout@v4
+      - if: needs.detect.outputs.changed == 'true'
+        uses: actions/checkout@v4
 
-      - name: npm ci
+      - if: needs.detect.outputs.changed == 'true'
+        name: npm ci
         working-directory: frontend
         run: |
           node -v
