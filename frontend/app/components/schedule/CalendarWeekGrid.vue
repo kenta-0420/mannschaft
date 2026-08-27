@@ -416,13 +416,13 @@ const selectionLabel = computed(() => {
 
 const selectionBoxStyle = computed<Record<string, string>>(() => {
   const sel = gridSelect.selection.value
-  if (!sel) return {}
-  return {
-    top: `${(sel.startMin * MIN_H).toFixed(2)}px`,
-    height: `${((sel.endMin - sel.startMin) * MIN_H).toFixed(2)}px`,
-    // 色だけに依存させない（§6.6.3・色覚多様性配慮）。塗りに加えて破線枠を持たせる。
-    borderColor: props.createScopeColor ?? DEFAULT_COLOR,
-  }
+  const style: Record<string, string> = {}
+  if (!sel) return style
+  style.top = `${(sel.startMin * MIN_H).toFixed(2)}px`
+  style.height = `${((sel.endMin - sel.startMin) * MIN_H).toFixed(2)}px`
+  // 色だけに依存させない（§6.6.3・色覚多様性配慮）。塗りに加えて破線枠を持たせる。
+  style.borderColor = props.createScopeColor ?? DEFAULT_COLOR
+  return style
 })
 
 /** 半透明の塗り（`opacity: 0.35`）。時刻ラベルまで薄くならないよう塗りだけを別レイヤーに分ける。 */
