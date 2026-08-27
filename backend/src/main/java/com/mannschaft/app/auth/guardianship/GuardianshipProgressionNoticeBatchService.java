@@ -4,6 +4,8 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.ParentalConsentService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.family.service.CareLinkService;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
@@ -92,6 +94,8 @@ public class GuardianshipProgressionNoticeBatchService {
      */
     @BatchEndpoint(name = "guardianship-progression-notice-batch",
             description = "自立移行 進学予告（封印3ヶ月前・保護者へ事前通知）バッチ")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。保護者同意の段階進行の事前通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "guardianshipProgressionNoticeBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")
     public void execute() {

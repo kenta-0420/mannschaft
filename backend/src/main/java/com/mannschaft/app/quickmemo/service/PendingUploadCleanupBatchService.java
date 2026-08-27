@@ -2,6 +2,8 @@ package com.mannschaft.app.quickmemo.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.quickmemo.entity.PendingUploadEntity;
 import com.mannschaft.app.quickmemo.repository.PendingUploadRepository;
@@ -28,6 +30,8 @@ public class PendingUploadCleanupBatchService {
     private final R2StorageService s3StorageService;
     private final AuditLogService auditLogService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。期限切れ Presigned 孤立オブジェクトの削除であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "quickmemo-pending-upload-cleanup", description = "期限切れの Presigned アップロード孤立オブジェクトを 5 分毎に削除する")
     @Scheduled(cron = "0 */5 * * * *")
     // 起動間隔は 5 分。処理は期限切れ Presigned 孤立オブジェクトの削除で、1 回の対象は直近 5 分ぶんに限られる。

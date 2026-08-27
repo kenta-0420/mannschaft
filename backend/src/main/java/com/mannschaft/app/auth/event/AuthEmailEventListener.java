@@ -1,5 +1,7 @@
 package com.mannschaft.app.auth.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,8 @@ public class AuthEmailEventListener {
 
     private final EmailOutboxService emailOutboxService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。登録・認証メールの送信であり、認証は CORE でありゲートされない。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserRegistered(UserRegisteredEvent event) {
@@ -53,6 +57,8 @@ public class AuthEmailEventListener {
         log.info("認証メール enqueue 完了: to={}, userId={}", event.getEmail(), event.getUserId());
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。登録・認証メールの送信であり、認証は CORE でありゲートされない。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleEmailVerificationResent(EmailVerificationResentEvent event) {
@@ -75,6 +81,8 @@ public class AuthEmailEventListener {
         log.info("認証メール再送 enqueue 完了: to={}, userId={}", event.getEmail(), event.getUserId());
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。登録・認証メールの送信であり、認証は CORE でありゲートされない。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePasswordResetRequested(PasswordResetRequestedEvent event) {

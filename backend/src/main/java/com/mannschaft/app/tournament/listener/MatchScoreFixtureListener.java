@@ -1,5 +1,7 @@
 package com.mannschaft.app.tournament.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.match.MatchCompletedEvent;
 import com.mannschaft.app.match.domain.TeamSide;
 import com.mannschaft.app.match.dto.MatchScoringTally;
@@ -111,6 +113,8 @@ public class MatchScoreFixtureListener {
      * <p>AFTER_COMMIT 発火により、match 側トランザクションがコミット済みのスコアに対してのみ同期する
      * （未コミットのスコアで順位を誤更新しない・05 §H.2 (a)）。冪等（全列上書き・置換）。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。試合完了に伴う対戦表の更新。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onMatchCompleted(MatchCompletedEvent event) {

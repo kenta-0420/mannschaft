@@ -1,6 +1,8 @@
 package com.mannschaft.app.reservation;
 
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.reservation.repository.EmergencyClosureConfirmationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +55,8 @@ public class EmergencyClosureBroadcastListener {
      * <p>AFTER_COMMIT 発火により、確認 TX がコミット済みの状態のみ配信する
      * （未コミットの確認をアドミンへ見せない・ロールバック時の幻確認を防ぐ）。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。臨時休業の確定を予約者へ配信する処理。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onEmergencyClosureConfirmed(EmergencyClosureConfirmedEvent event) {
         long totalCount = confirmationRepository.countByEmergencyClosureId(event.getClosureId());

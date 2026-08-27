@@ -14,6 +14,8 @@ import com.mannschaft.app.cms.PostType;
 import com.mannschaft.app.cms.Visibility;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -107,6 +109,8 @@ public class ActionMemoWeeklySummaryService {
      * <p>バッチ全体で例外が出ないよう、個別ユーザーの生成は try/catch で隔離される。
      * 1ユーザーの失敗は次のユーザーの処理に影響しない。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。行動メモの週次まとめ生成。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "actionmemo-weekly-summary", description = "行動メモ週次まとめブログを生成する（毎週日曜 21:00 JST）")
     @Scheduled(cron = "0 0 21 * * SUN", zone = "Asia/Tokyo")
     @SchedulerLock(name = "actionMemoWeeklySummary",

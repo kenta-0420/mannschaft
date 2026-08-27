@@ -14,14 +14,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static com.mannschaft.app.common.architecture.DateTimeAndZoneGuardTest.classCountMismatches;
 import static com.mannschaft.app.common.architecture.SelfScopedEndpointMarkerGuardTest.mask;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
@@ -29,7 +27,25 @@ import static org.junit.jupiter.api.Assertions.assertTimeout;
 /**
  * 番人: バックグラウンド入口（{@code @Scheduled} / {@code @TransactionalEventListener} /
  * {@code @EventListener} / {@code @SqsListener}）の<b>停止時挙動の宣言漏れ</b>と、
- * <b>止めてはならぬ域を止める宣言</b>を機械的に禁じる（Gate 基盤工事④-B 第一陣 / AC-1〜AC-7・AC-16）。
+ * <b>止めてはならぬ域を止める宣言</b>を機械的に禁じる（Gate 基盤工事④-B / AC-1〜AC-3・AC-7・AC-16）。
+ *
+ * <h2>凍結台帳を廃し、未宣言ゼロを直接強制する（④-B 第四陣・2026-08-27）</h2>
+ * <p>④-B は 340 入口のうち 199 が未宣言という状態から始まり、第一陣が
+ * <b>クラス単位の未宣言件数を凍結した台帳</b>
+ * （{@code src/test/resources/backgroundgate/undeclared_background_entry_freeze.txt}）を置いて、
+ * 第二〜四陣がそれを削っていく chip-away 方式を採った。第四陣で残り 199 件すべてに宣言が付き、
+ * 台帳は全行 0 になった。<b>そこで台帳ファイルを削除し、本番人を
+ * 「未宣言が 1 件でもあれば fail」へ切り替えた</b>（{@link #ac3_未宣言のバックグラウンド入口が無いこと()}）。</p>
+ *
+ * <p><b>台帳を「不在＝0 件」として読む設計は採らなかった。</b>
+ * ファイルが消えたのか、読み込みの根（cwd）を見失ったのかを区別できず、
+ * 「台帳が見つからないので 0 件、よって緑」という<b>最悪の偽 green</b> を招くためである。
+ * 本番人はもう台帳を<b>一切読まない</b>。判定は走査結果だけで閉じており、
+ * ファイル入出力の失敗が緑に化ける経路そのものを無くしてある。</p>
+ *
+ * <p>台帳が担っていた「同一クラス内で 1 件に宣言を付けつつ未宣言を 1 件足す相殺」の検出は、
+ * 許容件数が 0 に固定されたことで<b>概念ごと消滅した</b>（相殺しようにも 0 より下は無い）。
+ * 実証は {@code 判定ロジック自己検証.ac3_相殺は成立しない()}。</p>
  *
  * <h2>④-A の番人との境界</h2>
  * <p>{@link BackgroundFeaturePolicyAnnotationGuardTest}（④-A）は
@@ -37,11 +53,10 @@ import static org.junit.jupiter.api.Assertions.assertTimeout;
  * モードと付与先の食い違い・付与位置）だけを見る。
  * 本番人はその手前、<b>そもそも宣言があるか</b>と<b>その宣言を選んでよい場所か</b>を見る。</p>
  *
- * <h2>なぜ実付与より先に番人を点火するのか</h2>
- * <p>325 箇所への付与作業は繰り返せばいずれ終わる。終わらないのは
+ * <h2>なぜ実付与より先に番人を点火したのか</h2>
+ * <p>340 箇所への付与作業は繰り返せばいずれ終わる。終わらないのは
  * 「この先、誰かが新しいバッチを足したときに宣言を忘れる」ことである。
- * 番人と凍結台帳を先に置けば、④-B が終わった後も網に穴が開かない。
- * また台帳があることで、第二〜四陣の進捗が「残り何件」として機械的に可視化される。</p>
+ * 番人を先に置いたので、④-B が終わった後も網に穴が開かない。</p>
  *
  * <h2>最大の危険 — 法令上の期限を破るバッチが静かに止まる（AC-1）</h2>
  * <p>GDPR 消去バッチ・72 時間報告義務の事前アラート・保持期間超過削除・各ドメインの匿名化リスナーは、
@@ -64,28 +79,24 @@ import static org.junit.jupiter.api.Assertions.assertTimeout;
  * よって {@link #ac2_禁止域リストが実在するクラスを指していること()} が
  * 「各パターンが実コードの 1 クラス以上に当たること」を固定する（AC-2）。
  * さらに {@link 判定ロジック自己検証} が実ファイル走査と<b>同一コア</b>
- * （{@link #analyze} / {@link #mismatches}）に合成入力を通し、負例で違反が返ることを固定する。</p>
+ * （{@link #analyze} / {@link #forbiddenStopViolations} / {@link #undeclaredEntries}）に
+ * 合成入力を通し、負例で違反が返ることを固定する。
+ * とりわけ「台帳を消したら何も検査しなくなった」という結末は
+ * {@code 判定ロジック自己検証.ac3_未宣言のバッチ入口を1件足すと fail する} が直接塞ぐ。</p>
  *
  * <h2>方式（金型）</h2>
  * <ul>
  *   <li>走査: {@link BackgroundFeaturePolicyAnnotationGuardTest} の {@code Files.walk} 型・
  *       {@link SelfScopedEndpointMarkerGuardTest#mask} によるコメント/文字列マスク</li>
- *   <li>凍結台帳: {@link DateTimeAndZoneGuardTest} の
- *       {@code <種別>|<完全修飾クラス名>|<件数>}（<b>クラス単位件数</b>。メソッド名は含めない。
- *       PR #2725 の事故を踏まえた設計）。増減判定は同クラスの
- *       {@link DateTimeAndZoneGuardTest#classCountMismatches} を<b>そのまま再利用</b>する</li>
+ *   <li>判定: 走査結果のみ。外部ファイルは一切読まない（上記「凍結台帳を廃し〜」参照）</li>
  * </ul>
  *
  * <p><b>ArchUnit の {@code FreezingArchRule} は使わない。</b>
  * {@code ./gradlew test --tests "..."} の絞り込み実行で凍結ストアが壊れる既知の事故があり、
  * ④-A も明示的に不採用としている。本テストはファイルを<b>読み取るだけ</b>で一切の書き込みを行わない。</p>
  */
-@DisplayName("番人: バックグラウンド入口の停止時挙動が宣言されていること（Gate基盤工事④-B AC-1〜AC-7・AC-16）")
+@DisplayName("番人: バックグラウンド入口の停止時挙動が宣言されていること（Gate基盤工事④-B AC-1〜AC-3・AC-7・AC-16）")
 class BackgroundEntryPolicyDeclarationGuardTest {
-
-    /** 凍結台帳。行形式: {@code <種別>|<完全修飾クラス名>|<件数>}。 */
-    private static final Path FREEZE_FILE = Paths.get(
-            "src", "test", "resources", "backgroundgate", "undeclared_background_entry_freeze.txt");
 
     /** 宣言アノテーションの単純名。 */
     private static final String POLICY = "BackgroundFeaturePolicy";
@@ -97,6 +108,54 @@ class BackgroundEntryPolicyDeclarationGuardTest {
      *
      * <p>パターン記法: {@code **} は任意（ドットを跨ぐ）、{@code *} はドットを跨がない任意。
      * 全パターンが実在のクラスに当たることを AC-2 が機械検証する。</p>
+     *
+     * <h2>【申し送り】命名規約で禁止域を書くと、規約に従わぬ新参が必ずすり抜ける</h2>
+     * <p><b>同じ病が三度出た。</b>いずれも「命名で捕まえる」やり方の隙間から出てきている。</p>
+     * <ol>
+     *   <li><b>第二陣</b> — {@code **.*AnonymizationEventListener} を登録した。
+     *       これは {@code UserAnonymizedEvent} 購読者<b>のうち命名規約に従う 14 本</b>しか捕まえない。</li>
+     *   <li><b>第三陣</b> — 上記の網から漏れていた {@code AccountPurgedEvent} 側を塞いだ。
+     *       <b>命名が {@code *PurgeEventListener} と違うだけで役割は同じ</b>群が 9 本丸ごと素通りしており、
+     *       さらにどちらの規約にも当たらない {@code ReturnStayPlanLifecycleListener} を
+     *       FQCN で個別に釘打ちした。</li>
+     *   <li><b>第四陣</b> — 第三陣が {@code AccountPurgedEvent} 側だけを塞いだため、
+     *       <b>{@code UserAnonymizedEvent} 側の非規約名 3 本</b>
+     *       （{@code CalendarLayerLifecycleListener} / {@code VillageUserCleanerEventListener} /
+     *       {@code WeatherLocationCleanupListener}）がそのまま残っていた。
+     *       同時に、監査ログの<b>アーカイブとパーティション保守は第一陣で登録済みなのに、
+     *       監査記録を書く側</b>（{@code AuditLogEventListener} 35 入口 /
+     *       {@code TeamOrgAuditEventListener} 8 入口）<b>が未登録</b>であることも判明した。
+     *       守る対象が空なら、守り手を守っても意味を成さない。</li>
+     * </ol>
+     *
+     * <p><b>次に退会・匿名化・監査に関わるリスナーを足す者へ。
+     * 命名ではなく「購読しているイベント型」から確かめよ。</b>
+     * クラス名を眺めて登録漏れを探すのは三度失敗している。正しい手順はこうである。</p>
+     * <ol>
+     *   <li>個人データの消去・監査記録に関わる<b>イベント型を列挙する</b>
+     *       （現時点では {@code AccountPurgedEvent} / {@code UserAnonymizedEvent} /
+     *       {@code WithdrawalRequestedEvent} / {@code WithdrawalCancelledEvent} /
+     *       {@code TeamMemberAuditEvent} / {@code OrganizationMemberAuditEvent} /
+     *       {@code S3ObjectDeleteEvent} / {@code CirculationDocumentDeletedEvent}、
+     *       および {@code AuditLogEventListener} が購読する認証系イベント群）。</li>
+     *   <li>各イベント型の<b>購読者を全数照合する</b>（型で検索すれば命名に依存せず全部出る）。</li>
+     *   <li>照合結果を本リストと突き合わせ、漏れを FQCN で登録する。</li>
+     * </ol>
+     *
+     * <p>④-B 第四陣の全数照合（2026-08-27）の実測値を残す。次に照合する者は差分だけ見ればよい。</p>
+     * <ul>
+     *   <li>{@code UserAnonymizedEvent} 購読 <b>18</b>
+     *       = 規約名 14 ＋ {@code ReturnStayPlanLifecycleListener} 1 ＋ 上記の非規約名 3</li>
+     *   <li>{@code AccountPurgedEvent} 購読 <b>14</b> — 全件が既存パターンで捕捉済み（追加不要だった）</li>
+     *   <li>{@code WithdrawalRequestedEvent} / {@code WithdrawalCancelledEvent} 購読 4 —
+     *       全件が {@code **.*PurgeEventListener} / {@code com.mannschaft.app.gdpr.**} /
+     *       {@code AuditLogEventListener} のいずれかで捕捉済み</li>
+     *   <li>監査系イベントを購読する<b>第二の書き手は存在しない</b>
+     *       （{@code AuditLogEventListener} と {@code TeamOrgAuditEventListener} のみ。
+     *       {@code LoginSuccessEvent} だけ {@code GamificationPointListener} が併せて購読するが、
+     *       これは監査の書き手ではなく、第三陣で別理由により登録済み）</li>
+     *   <li>{@code DataExportRequestedEvent} は<b>購読者ゼロ</b>（型は在るが誰も消費していない）</li>
+     * </ul>
      */
     static final List<String> FORBIDDEN_TO_STOP = List.of(
             // GDPR 消去（AccountPurgeService ほか）。止めると法令上の消去期限を破る。
@@ -211,12 +270,68 @@ class BackgroundEntryPolicyDeclarationGuardTest {
             // 上流の計測ビーコンは全ページ共通で、解析機能のゲートでは閉じない。
             "com.mannschaft.app.analytics.event.PageViewRecordListener",
             // 上流のタイムライン投稿とログイン（認証）は CORE であり、ゲーミフィケーションでは閉じない。
-            "com.mannschaft.app.gamification.event.GamificationPointListener");
+            "com.mannschaft.app.gamification.event.GamificationPointListener",
+
+            // ── ④-B 第四陣で追加（残り 199 入口の全数走査で判明した分） ──────────────
+            //
+            // ■ 退会匿名化（UserAnonymizedEvent 購読）で、命名規約に当たらぬ 3 本。
+            //   第二陣は `**.*AnonymizationEventListener` だけを登録し、第三陣は
+            //   AccountPurgedEvent 側の同じ病（*PurgeEventListener / Lifecycle）を塞いだが、
+            //   UserAnonymizedEvent 側の取りこぼしはそのまま残っていた。
+            //   実測（2026-08-27）: UserAnonymizedEvent の購読クラスは 18。内訳は
+            //     *AnonymizationEventListener 14 / ReturnStayPlanLifecycleListener 1（登録済）/ 下記 3。
+            //   止めると退会者の PII が各ドメインに残り、イベントは再生されない。
+            "com.mannschaft.app.schedule.listener.CalendarLayerLifecycleListener",
+            "com.mannschaft.app.village.event.VillageUserCleanerEventListener",
+            "com.mannschaft.app.weather.event.WeatherLocationCleanupListener",
+
+            // ■ 監査記録そのものを書くリスナー。
+            //   アーカイブ（AuditLogArchiveBatchService）とパーティション保守は第一陣で登録済みだが、
+            //   監査ログを「書く」側は未登録だった。止めれば本表に何も入らないため、
+            //   アーカイブを守っても意味を成さない。イベントは再生されず証跡は恒久的に失われる。
+            "com.mannschaft.app.auth.event.AuditLogEventListener",
+            "com.mannschaft.app.team.event.TeamOrgAuditEventListener",
+
+            // ■ ストレージ実体削除の唯一経路。DB の行は既に消えており、
+            //   削除すべきキーはイベントの中にしか無い。落とすと二度と辿れない孤児が R2 に残る。
+            "com.mannschaft.app.common.storage.S3ObjectDeleteEventListener",
+
+            // ■ 金銭。決済完了の自動記帳。上流の payment は別ドメインであり一緒には閉じない
+            //   （ShiftBudgetConsumption*Listener と同型）。
+            "com.mannschaft.app.budget.event.BudgetPaymentListener",
+            // 期限切れクレジットを credit_balance から差し引く失効処理。止めると残高が合わなくなる。
+            "com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch",
+
+            // ■ クロスドメイン FK を撤去した代替のアプリ層整合。上流 circulation は別ドメインで閉じない。
+            //   落とすと削除済み回覧文書への参照が残り、DB 側に整合を戻す手段が無い。
+            "com.mannschaft.app.disclosure.service.DisclosureCirculationCleanupHandler",
+
+            // ■ 保持期間超過削除・法的地位の更新（DisclosureAutoDeleteBatchService /
+            //   ProxyConsentLifeEventJob と同型）。
+            "com.mannschaft.app.returnstayplan.service.ReturnStayPlanPurgeBatchService",
+            "com.mannschaft.app.auth.service.ParentalConsentReleaseBatchService",
+
+            // ■ 第一の型（追いつけない）。いずれも対象期間を today から導出する no-arg 入口しか無く、
+            //   対象期間を指定して再実行する運用経路が無い。停止期間分は恒久的な欠測になる。
+            // 前月固定（LocalDate.now().minusMonths(1)）。
+            "com.mannschaft.app.village.batch.VillageChronicleBatchService",
+            // 前日固定（LocalDate.now().minusDays(1)）。
+            "com.mannschaft.app.performance.service.PerformanceBatchService",
+            // 日次スナップショットで、30 日で rotation 削除されるため後から埋め直せない。
+            "com.mannschaft.app.residencestatus.batch.ResidentActivityAggregatorBatch",
+
+            // ■ 殿の裁定（2026-08-27）— 判断の軸は「害の大小」ではなく
+            //   <b>「止めてよいと後から誰かに判断させてよいか」</b>である。
+            //   封印日到来後もパスワード未設定の子へ設定案内を送る保護目的の処理。
+            //   送付が遅れても文面の意味は失われぬため「害は小さい」が、
+            //   取り残された子が自分のアカウントにログインできぬという保護目的の処理を、
+            //   将来の誰かが「β機能っぽいから」と SKIP に倒せる状態にしておく理由が無い。
+            "com.mannschaft.app.auth.guardianship.GuardianshipSealUnsetPasswordBatchService");
 
     /** {@link #FORBIDDEN_TO_STOP} で禁じるモード。 */
     private static final Set<String> STOPPING_MODES = Set.of("SKIP_WHEN_DISABLED", "DROP_WHEN_DISABLED");
 
-    /** バックグラウンド入口の種別（凍結台帳の第1列でもある）。 */
+    /** バックグラウンド入口の種別。 */
     enum EntryKind {
         SCHEDULED("Scheduled"),
         TRANSACTIONAL_EVENT_LISTENER("TransactionalEventListener"),
@@ -233,16 +348,6 @@ class BackgroundEntryPolicyDeclarationGuardTest {
         static EntryKind byAnnotation(String annotationSimpleName) {
             for (EntryKind k : values()) {
                 if (k.annotationSimpleName.equals(annotationSimpleName)) {
-                    return k;
-                }
-            }
-            return null;
-        }
-
-        /** 台帳の第1列（種別名）から引く（該当しなければ null）。 */
-        static EntryKind byLedgerName(String name) {
-            for (EntryKind k : values()) {
-                if (k.name().equals(name)) {
                     return k;
                 }
             }
@@ -344,33 +449,23 @@ class BackgroundEntryPolicyDeclarationGuardTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // AC-3〜AC-6: 未宣言入口のクラス単位凍結台帳
+    // AC-3: 未宣言のバックグラウンド入口が 1 件も無いこと（④-B 完了後の終点）
     // ═══════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("(AC-3〜AC-6) 未宣言のバックグラウンド入口が凍結台帳と件数一致していること（増加・減少・新規クラス・陳腐化を検知）")
-    void ac3to6_未宣言入口が凍結台帳と一致していること() throws IOException {
-        List<Entry> entries = scan().entries();
-        Map<String, Integer> actualUndeclared = undeclaredCountsByKey(entries);
-        Map<String, Integer> actualTotals = totalCountsByKey(entries);
-        Freeze frozen = readFreeze();
+    @DisplayName("(AC-3) 未宣言のバックグラウンド入口が 1 件も存在しないこと")
+    void ac3_未宣言のバックグラウンド入口が無いこと() throws IOException {
+        List<String> undeclared = undeclaredEntries(scan().entries());
 
-        List<String> mismatches = allMismatches(actualUndeclared, actualTotals, frozen);
-
-        assertThat(mismatches)
-                .as("バックグラウンド入口の件数が凍結台帳と一致しません。\n\n"
-                        + "【未宣言件数】\n"
-                        + "・増加／新規クラス → 新しく足した入口に @BackgroundFeaturePolicy を付けること。\n"
-                        + "  台帳へ追記して通すことは禁止（台帳は「残債」であり免罪符ではない）。\n"
-                        + "・減少 → 付与が進んだ証拠。台帳の該当行を実測値へ更新すること（chip-away）。\n"
-                        + "・陳腐化 → 実コードに1件も無い行。台帳から削除すること。\n\n"
-                        + "【総数】入口そのものを増減させたときだけ動く。宣言を付けただけなら総数は変わらない。\n"
-                        + "・増加 → 入口を新設した。その入口に宣言を付けたうえで台帳の総数を更新すること。\n"
-                        + "  （この列があるおかげで「1件に宣言を付けつつ未宣言を1件足す」相殺が検出できる）\n\n"
-                        + "台帳: " + FREEZE_FILE + "\n"
-                        + "不一致:\n" + String.join("\n", mismatches)
-                        + "\n\n--- 実測値そのままの台帳本文（是正済みならこれで置き換えてよい） ---\n"
-                        + renderFreeze(actualUndeclared, actualTotals))
+        assertThat(undeclared)
+                .as("停止時挙動が宣言されていないバックグラウンド入口があります。\n"
+                        + "バッチとイベントリスナーは画面・API を閉じても裏で動き続けるため、\n"
+                        + "止めたときにどうなるかを @BackgroundFeaturePolicy で宣言すること。\n\n"
+                        + "選び方は BackgroundFeatureMode の Javadoc（3 つの型）に従うこと。\n"
+                        + "対応する gate_key が無いなら選べるのは ALWAYS だけであり、\n"
+                        + "その事実（止めても壊れないが止める手段が無い）を reason に書くこと。\n"
+                        + "「重要な処理だから ALWAYS」のような中身の無い reason は書かないこと。\n\n"
+                        + "未宣言の入口:\n" + String.join("\n", undeclared))
                 .isEmpty();
     }
 
@@ -440,96 +535,23 @@ class BackgroundEntryPolicyDeclarationGuardTest {
         return REPEATABLE_CONTAINERS.get(containerSimpleName);
     }
 
-    /** 台帳のキー。{@code <種別>|<FQCN>}。 */
-    private static String keyOf(Entry e) {
-        return e.kind().name() + "|" + e.fqcn();
-    }
-
     /**
-     * 入口の総数（宣言済み＋未宣言）を {@code <種別>|<FQCN>} 単位で数える。
+     * 宣言の無いバックグラウンド入口を列挙する（AC-3 の判定本体）。
      *
-     * <p><b>なぜ総数まで凍結するのか</b>: 未宣言件数だけを凍結すると、
-     * 同一クラス内で「既存の1件に宣言を付ける」と「新しい未宣言の入口を1件足す」を
-     * 同時に行ったとき、未宣言件数が<b>相殺されて台帳と一致したまま</b>になり、
-     * 新しく足した入口が宣言なしで素通りする。第二〜四陣はまさに
-     * 「宣言を付けていく」作業なので、この経路は現実に踏まれる。</p>
-     *
-     * <p>メソッド名を台帳へ載せれば個別に追えるが、それは PR #2725 の事故
-     * （本件と無関係なメソッド名変更だけで CI が赤くなる）を再来させるため採らない。
-     * 代わりに総数を併せて凍結する。宣言を付けるだけなら
-     * 「未宣言 −1・総数 ±0」で chip-away として通り、入口を足せば
-     * 「総数 +1」となって<b>相殺されようがなく検出</b>できる。</p>
+     * <p><b>件数ではなく入口そのものを返す。</b>凍結台帳の時代は
+     * 「クラス単位の未宣言件数」を数えて台帳と突き合わせていたが、
+     * 許容件数が 0 に固定された今、数える意味は無い。
+     * 1 件でも返れば fail であり、返した行がそのまま是正すべき場所を指す。</p>
      */
-    static Map<String, Integer> totalCountsByKey(List<Entry> entries) {
-        Map<String, Integer> counts = new LinkedHashMap<>();
-        for (Entry e : entries) {
-            counts.merge(keyOf(e), 1, Integer::sum);
-        }
-        return counts;
-    }
-
-    /**
-     * 未宣言入口を {@code <種別>|<FQCN>} 単位で数える。
-     *
-     * <p>キー集合は {@link #totalCountsByKey} と<b>必ず一致</b>させる
-     * （入口が1件でもあるクラスは、全件宣言済みでも 0 件として載せる）。
-     * 揃えないと、全件宣言済みになったクラスが「陳腐化」と判定され、
-     * まだ意味のある総数の凍結行まで消せと迫られてしまう。</p>
-     */
-    static Map<String, Integer> undeclaredCountsByKey(List<Entry> entries) {
-        Map<String, Integer> counts = new LinkedHashMap<>();
-        for (Entry e : entries) {
-            counts.putIfAbsent(keyOf(e), 0);
-        }
+    static List<String> undeclaredEntries(List<Entry> entries) {
+        List<String> out = new ArrayList<>();
         for (Entry e : entries) {
             if (!e.declared()) {
-                counts.merge(keyOf(e), 1, Integer::sum);
+                out.add("  x " + e.where() + " — " + e.fqcn() + "（" + e.kind() + "）に "
+                        + "@BackgroundFeaturePolicy が無い");
             }
         }
-        return counts;
-    }
-
-    /**
-     * 実測と台帳の差分を列挙する（AC-3〜AC-6）。
-     *
-     * <p>判定そのものは実績のある {@link DateTimeAndZoneGuardTest#classCountMismatches} を再利用する
-     * （増加=fail / 減少=台帳更新を促して fail / 台帳未登録=fail / 陳腐化=fail、
-     * 一致のみ pass という 4 方向の性質がそこで既に固定されている）。</p>
-     */
-    static List<String> mismatches(Map<String, Integer> actual, Map<String, Integer> frozen) {
-        return classCountMismatches(actual, frozen);
-    }
-
-    /**
-     * 未宣言件数と総数の<b>両方</b>を台帳と突き合わせる（AC-3〜AC-6 の判定本体）。
-     *
-     * <p>総数の比較があることで、同一クラス内での「宣言を1件付ける＋未宣言を1件足す」という
-     * 相殺（未宣言件数だけ見ていると台帳と一致したまま素通りする）を検出できる。
-     * 実証は {@code 判定ロジック自己検証.同一クラス内の入れ替えを総数で検出する()}。</p>
-     */
-    static List<String> allMismatches(Map<String, Integer> actualUndeclared,
-                                      Map<String, Integer> actualTotals,
-                                      Freeze frozen) {
-        List<String> out = new ArrayList<>();
-        for (String m : mismatches(actualUndeclared, frozen.undeclared())) {
-            out.add("[未宣言] " + m);
-        }
-        for (String m : mismatches(actualTotals, frozen.totals())) {
-            out.add("[総数] " + m);
-        }
         return out;
-    }
-
-    /** 実測を台帳の行形式へ整形する（失敗メッセージに載せて手作業の写経を不要にする）。 */
-    static String renderFreeze(Map<String, Integer> undeclared, Map<String, Integer> totals) {
-        StringBuilder sb = new StringBuilder();
-        totals.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .forEach(e -> sb.append(e.getKey())
-                        .append('|').append(undeclared.getOrDefault(e.getKey(), 0))
-                        .append('|').append(e.getValue())
-                        .append('\n'));
-        return sb.toString();
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -870,54 +892,6 @@ class BackgroundEntryPolicyDeclarationGuardTest {
         throw new IllegalStateException("src/main/java が見つからない（cwd=" + Paths.get("").toAbsolutePath() + "）");
     }
 
-    /** 凍結台帳の内容（未宣言件数と総数の2次元）。 */
-    record Freeze(Map<String, Integer> undeclared, Map<String, Integer> totals) {
-    }
-
-    /**
-     * 凍結台帳を読む。行形式は {@code <種別>|<FQCN>|<未宣言件数>|<総数>}。
-     *
-     * <p>総数を併せて凍結する理由は {@link #totalCountsByKey} の Javadoc を参照。
-     * 3列だった旧形式は<b>受理しない</b>（黙って総数0として読むと、
-     * 総数による相殺検出が全クラスで無効化されたまま緑になるため）。</p>
-     */
-    private static Freeze readFreeze() throws IOException {
-        Path path = null;
-        for (Path candidate : new Path[]{FREEZE_FILE, Paths.get("backend").resolve(FREEZE_FILE)}) {
-            if (Files.isRegularFile(candidate)) {
-                path = candidate;
-                break;
-            }
-        }
-        if (path == null) {
-            throw new IllegalStateException(
-                    "凍結台帳が見つからない: " + FREEZE_FILE + "（cwd=" + Paths.get("").toAbsolutePath() + "）");
-        }
-        Map<String, Integer> undeclared = new LinkedHashMap<>();
-        Map<String, Integer> totals = new LinkedHashMap<>();
-        for (String line : Files.readAllLines(path, StandardCharsets.UTF_8)) {
-            String trimmed = line.strip();
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                continue;
-            }
-            String[] parts = trimmed.split("\\|", 4);
-            if (parts.length != 4 || EntryKind.byLedgerName(parts[0]) == null) {
-                throw new IllegalStateException("凍結台帳の行形式が不正: " + path + " の行 \"" + trimmed
-                        + "\"。期待形式: <種別>|<FQCN>|<未宣言件数>|<総数>");
-            }
-            String key = parts[0] + "|" + parts[1];
-            int u = Integer.parseInt(parts[2]);
-            int t = Integer.parseInt(parts[3]);
-            if (u > t) {
-                throw new IllegalStateException("凍結台帳の行が矛盾している（未宣言件数が総数を超える）: "
-                        + path + " の行 \"" + trimmed + "\"");
-            }
-            undeclared.merge(key, u, Integer::sum);
-            totals.merge(key, t, Integer::sum);
-        }
-        return new Freeze(undeclared, totals);
-    }
-
     // ═══════════════════════════════════════════════════════════════════
     // 判定ロジック自己検証（負例による陽性対照。実ファイル走査と同一コアを通す）
     // ═══════════════════════════════════════════════════════════════════
@@ -1076,6 +1050,131 @@ class BackgroundEntryPolicyDeclarationGuardTest {
                     .hasSize(1);
         }
 
+        // ───────────────────────────────────────────────────────────────
+        // ④-B 第四陣で追加した禁止域の負例（登録しただけで実証しないと空虚になる）
+        // ───────────────────────────────────────────────────────────────
+
+        /**
+         * 第四陣で新たに禁止域へ入れたクラスのパス（AC-2 が実在を保証している）。
+         *
+         * <p>1 件ずつ別テストに割らず表で回すのは、登録が今後さらに増えたときに
+         * 「登録したが負例を書き忘れた」が起きないようにするためである
+         * （下の {@code 第四陣の登録が全て負例で実証されていること} が
+         * この表と {@link #FORBIDDEN_TO_STOP} の突き合わせを機械的に行う）。</p>
+         */
+        private static final Map<String, String> WAVE4_FORBIDDEN = Map.ofEntries(
+                Map.entry("com.mannschaft.app.schedule.listener.CalendarLayerLifecycleListener",
+                        "src/main/java/com/mannschaft/app/schedule/listener/CalendarLayerLifecycleListener.java"),
+                Map.entry("com.mannschaft.app.village.event.VillageUserCleanerEventListener",
+                        "src/main/java/com/mannschaft/app/village/event/VillageUserCleanerEventListener.java"),
+                Map.entry("com.mannschaft.app.weather.event.WeatherLocationCleanupListener",
+                        "src/main/java/com/mannschaft/app/weather/event/WeatherLocationCleanupListener.java"),
+                Map.entry("com.mannschaft.app.auth.event.AuditLogEventListener",
+                        "src/main/java/com/mannschaft/app/auth/event/AuditLogEventListener.java"),
+                Map.entry("com.mannschaft.app.team.event.TeamOrgAuditEventListener",
+                        "src/main/java/com/mannschaft/app/team/event/TeamOrgAuditEventListener.java"),
+                Map.entry("com.mannschaft.app.common.storage.S3ObjectDeleteEventListener",
+                        "src/main/java/com/mannschaft/app/common/storage/S3ObjectDeleteEventListener.java"),
+                Map.entry("com.mannschaft.app.budget.event.BudgetPaymentListener",
+                        "src/main/java/com/mannschaft/app/budget/event/BudgetPaymentListener.java"),
+                Map.entry("com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch",
+                        "src/main/java/com/mannschaft/app/notification/credit/batch/NotificationCreditExpiryBatch.java"),
+                Map.entry("com.mannschaft.app.disclosure.service.DisclosureCirculationCleanupHandler",
+                        "src/main/java/com/mannschaft/app/disclosure/service/DisclosureCirculationCleanupHandler.java"),
+                Map.entry("com.mannschaft.app.returnstayplan.service.ReturnStayPlanPurgeBatchService",
+                        "src/main/java/com/mannschaft/app/returnstayplan/service/ReturnStayPlanPurgeBatchService.java"),
+                Map.entry("com.mannschaft.app.auth.service.ParentalConsentReleaseBatchService",
+                        "src/main/java/com/mannschaft/app/auth/service/ParentalConsentReleaseBatchService.java"),
+                Map.entry("com.mannschaft.app.village.batch.VillageChronicleBatchService",
+                        "src/main/java/com/mannschaft/app/village/batch/VillageChronicleBatchService.java"),
+                Map.entry("com.mannschaft.app.performance.service.PerformanceBatchService",
+                        "src/main/java/com/mannschaft/app/performance/service/PerformanceBatchService.java"),
+                Map.entry("com.mannschaft.app.residencestatus.batch.ResidentActivityAggregatorBatch",
+                        "src/main/java/com/mannschaft/app/residencestatus/batch/ResidentActivityAggregatorBatch.java"),
+                Map.entry("com.mannschaft.app.auth.guardianship.GuardianshipSealUnsetPasswordBatchService",
+                        "src/main/java/com/mannschaft/app/auth/guardianship/"
+                                + "GuardianshipSealUnsetPasswordBatchService.java"));
+
+        @Test
+        @DisplayName("(AC-1) 第四陣で登録した禁止域は、バッチもリスナーも停止モードを拒否する")
+        void ac1_第四陣の禁止域が停止モードを拒む() {
+            List<String> passed = new ArrayList<>();
+            WAVE4_FORBIDDEN.forEach((fqcn, path) -> {
+                List<Entry> skip = entries(path, """
+                        @Scheduled(cron = "0 0 3 * * *")
+                        @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+                                gateKeys = "FEATURE_SHIFT_ENABLED",
+                                reason = "この宣言は番人に拒否されねばならない")
+                        public void run() {}
+                        """);
+                List<Entry> drop = entries(path, """
+                        @TransactionalEventListener
+                        @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
+                                gateKeys = "FEATURE_SHIFT_ENABLED",
+                                reason = "この宣言は番人に拒否されねばならない")
+                        public void on(Object e) {}
+                        """);
+                if (forbiddenStopViolations(skip).isEmpty() || forbiddenStopViolations(drop).isEmpty()) {
+                    passed.add("  x " + fqcn + " — 禁止域に登録したのに停止モードが素通りした");
+                }
+            });
+
+            assertThat(passed)
+                    .as("登録したパターンが実際に効いていないなら、登録は「守っているつもり」でしかない。\n"
+                            + "素通りした登録:\n" + String.join("\n", passed))
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("(AC-1) 第四陣で登録した禁止域でも ALWAYS なら通る（偽陽性が無い）")
+        void ac1_第四陣の禁止域のALWAYSは通る() {
+            WAVE4_FORBIDDEN.values().forEach(path -> {
+                List<Entry> es = entries(path, """
+                        @TransactionalEventListener
+                        @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+                                reason = "止めると既存データの整合性が壊れるため必ず実行する")
+                        public void on(Object e) {}
+                        """);
+                assertThat(forbiddenStopViolations(es)).isEmpty();
+            });
+        }
+
+        @Test
+        @DisplayName("(AC-1) 「害は小さいが止めてよいと後から判断させない」域も停止モードを拒否する（殿の裁定）")
+        void ac1_保護目的の域は害の大小によらず停止モードを拒む() {
+            String path = "src/main/java/com/mannschaft/app/auth/guardianship/"
+                    + "GuardianshipSealUnsetPasswordBatchService.java";
+
+            // 「未公開機能っぽいから閉栓してよい」という将来の判断を、番人が機械的に拒む。
+            List<Entry> es = entries(path, """
+                    @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Tokyo")
+                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+                            gateKeys = "FEATURE_SHIFT_ENABLED",
+                            reason = "この宣言は番人に拒否されねばならない（送付が遅れても害は小さい、では通さない）")
+                    public void execute() {}
+                    """);
+
+            assertThat(forbiddenStopViolations(es))
+                    .as("禁止域は「止めたときの害の大小」ではなく"
+                            + "「止めてよいと後から誰かに判断させてよいか」で決める。"
+                            + "取り残された子が自分のアカウントにログインできぬ処理を、"
+                            + "将来の誰かが SKIP に倒せる状態にしておく理由は無い")
+                    .hasSize(1);
+        }
+
+        @Test
+        @DisplayName("第四陣で登録した禁止域が全て負例で実証されていること（登録だけして実証を忘れる穴を塞ぐ）")
+        void 第四陣の登録が全て負例で実証されていること() {
+            List<String> unproven = WAVE4_FORBIDDEN.keySet().stream()
+                    .filter(fqcn -> !FORBIDDEN_TO_STOP.contains(fqcn))
+                    .map(fqcn -> "  x " + fqcn + " — 負例表にあるが FORBIDDEN_TO_STOP に無い")
+                    .toList();
+
+            assertThat(unproven)
+                    .as("負例表と禁止域リストが食い違っています:\n" + String.join("\n", unproven))
+                    .isEmpty();
+        }
+
         @Test
         @DisplayName("(AC-1) 禁止域でないクラスの SKIP_WHEN_DISABLED は違反にならない（偽陽性が無い）")
         void ac1_禁止域外のスキップは通る() {
@@ -1166,48 +1265,71 @@ class BackgroundEntryPolicyDeclarationGuardTest {
                     """))).isEmpty();
         }
 
+        // ── AC-3: 未宣言ゼロの直接強制（台帳廃止後の終点） ──────────────────
+
         @Test
-        @DisplayName("(AC-3) 実測 > 台帳 なら fail（新規に足した入口の宣言忘れ）")
-        void ac3_増加を検出する() {
-            assertThat(mismatches(Map.of("SCHEDULED|a.B", 3), Map.of("SCHEDULED|a.B", 2)))
-                    .anySatisfy(m -> assertThat(m).contains("増加"));
+        @DisplayName("(AC-3) 未宣言のバッチ入口を 1 件足すと fail する")
+        void ac3_未宣言のバッチを検出する() {
+            List<Entry> es = entries(FREE_PATH, """
+                    @Scheduled(cron = "0 0 3 * * *")
+                    public void run() {}
+                    """);
+
+            assertThat(undeclaredEntries(es))
+                    .as("台帳を廃止しても検査そのものが消えていないこと。"
+                            + "ここが空になれば『台帳が消えたら何も検査しなくなった』という最悪の結末である")
+                    .hasSize(1)
+                    .allSatisfy(m -> assertThat(m).contains(FREE_FQCN).contains("SCHEDULED"));
         }
 
         @Test
-        @DisplayName("(AC-4) 実測 < 台帳 なら台帳更新を促して fail（chip-away）")
-        void ac4_減少を検出する() {
-            assertThat(mismatches(Map.of("SCHEDULED|a.B", 1), Map.of("SCHEDULED|a.B", 2)))
-                    .anySatisfy(m -> assertThat(m).contains("減少"));
+        @DisplayName("(AC-3) 未宣言のリスナー入口を 1 件足すと fail する")
+        void ac3_未宣言のリスナーを検出する() {
+            List<Entry> es = entries(FREE_PATH, """
+                    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+                    public void onEvent(Object e) {}
+                    """);
+
+            assertThat(undeclaredEntries(es)).hasSize(1);
         }
 
         @Test
-        @DisplayName("(AC-4) 台帳に無いクラスで実測があれば fail")
-        void ac4_台帳未登録クラスを検出する() {
-            assertThat(mismatches(Map.of("SCHEDULED|a.New", 1), Map.of()))
-                    .anySatisfy(m -> assertThat(m).contains("新規クラス"));
+        @DisplayName("(AC-3) 宣言済みの入口だけなら pass（偽陽性が無い）")
+        void ac3_全件宣言済みなら通る() {
+            List<Entry> es = entries(FREE_PATH, """
+                    @Scheduled(cron = "0 0 3 * * *")
+                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+                            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する")
+                    public void run() {}
+                    """);
+
+            assertThat(undeclaredEntries(es)).isEmpty();
         }
 
         @Test
-        @DisplayName("(AC-5) 実測 = 台帳 なら pass（偽陽性が無い）")
-        void ac5_一致なら通る() {
-            assertThat(mismatches(
-                    Map.of("SCHEDULED|a.B", 2, "EVENT_LISTENER|a.C", 1),
-                    Map.of("SCHEDULED|a.B", 2, "EVENT_LISTENER|a.C", 1)))
-                    .isEmpty();
+        @DisplayName("(AC-3) 既存1件に宣言を付けつつ未宣言を1件足す「相殺」も素通りしない（台帳時代は総数列で防いでいた穴）")
+        void ac3_相殺は成立しない() {
+            List<Entry> es = entries(FREE_PATH, """
+                    @Scheduled(cron = "0 0 3 * * *")
+                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+                            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する")
+                    public void declared() {}
+
+                    @Scheduled(cron = "0 0 4 * * *")
+                    public void undeclared() {}
+                    """);
+
+            assertThat(undeclaredEntries(es))
+                    .as("許容件数が 0 に固定された以上、件数の相殺という概念自体が成立しない")
+                    .hasSize(1);
         }
 
         @Test
-        @DisplayName("(AC-6) 実測 0 なのに台帳に行が残っていれば陳腐化として fail")
-        void ac6_陳腐化を検出する() {
-            assertThat(mismatches(Map.of(), Map.of("SCHEDULED|a.Gone", 2)))
-                    .anySatisfy(m -> assertThat(m).contains("陳腐化"));
-        }
-
-        @Test
-        @DisplayName("同一 FQCN でも種別が違えば別の台帳キーになる")
-        void 種別はキーの一部である() {
-            assertThat(mismatches(Map.of("SCHEDULED|a.B", 1), Map.of("EVENT_LISTENER|a.B", 1)))
-                    .hasSize(2);
+        @DisplayName("(AC-3) 判定は入口注釈だけを見る（宣言の無い普通のメソッドでは fail しない）")
+        void ac3_入口でないメソッドは対象外() {
+            assertThat(undeclaredEntries(entries(FREE_PATH, """
+                    public void plain() {}
+                    """))).isEmpty();
         }
 
         // ── @Repeatable コンテナの取り逃し（TEST_CONVENTION.md §9） ──────────
@@ -1309,70 +1431,6 @@ class BackgroundEntryPolicyDeclarationGuardTest {
             assertThat(unregistered)
                     .as("コンテナを登録しないと、その注釈を1メソッドに2つ書いたバッチが番人を素通りする")
                     .isEmpty();
-        }
-
-        // ── 同一クラス内の入れ替え（件数相殺）の検出 ────────────────────
-
-        @Test
-        @DisplayName("同一クラス内で「宣言を1件付ける＋未宣言を1件足す」入れ替えを総数で検出する")
-        void 同一クラス内の入れ替えを総数で検出する() {
-            // 台帳: 入口2件のうち1件が未宣言。
-            Freeze frozen = new Freeze(Map.of("SCHEDULED|a.C", 1), Map.of("SCHEDULED|a.C", 2));
-
-            // 実測: 既存の未宣言1件に宣言を付け、同時に新しい未宣言入口を1件足した。
-            // 未宣言は 1 のまま（相殺）だが、入口の総数は 2 → 3 に増えている。
-            Map<String, Integer> actualUndeclared = Map.of("SCHEDULED|a.C", 1);
-            Map<String, Integer> actualTotals = Map.of("SCHEDULED|a.C", 3);
-
-            // 未宣言件数だけを見ていると素通りする（この番人が塞いだ穴そのもの）。
-            assertThat(mismatches(actualUndeclared, frozen.undeclared()))
-                    .as("未宣言件数だけの比較では相殺して一致してしまう。これが塞ぐべき穴である")
-                    .isEmpty();
-
-            // 総数を併せて見ると検出できる。
-            assertThat(allMismatches(actualUndeclared, actualTotals, frozen))
-                    .anySatisfy(m -> assertThat(m).contains("[総数]").contains("増加"));
-        }
-
-        @Test
-        @DisplayName("宣言を付けただけ（入口を増やしていない）なら総数は動かず、chip-away の案内だけが出る")
-        void 宣言を付けただけなら総数は動かない() {
-            Freeze frozen = new Freeze(Map.of("SCHEDULED|a.C", 1), Map.of("SCHEDULED|a.C", 2));
-
-            Map<String, Integer> actualUndeclared = Map.of("SCHEDULED|a.C", 0);
-            Map<String, Integer> actualTotals = Map.of("SCHEDULED|a.C", 2);
-
-            List<String> ms = allMismatches(actualUndeclared, actualTotals, frozen);
-
-            assertThat(ms).anySatisfy(m -> assertThat(m).contains("[未宣言]").contains("減少"));
-            assertThat(ms).noneSatisfy(m -> assertThat(m).contains("[総数]"));
-        }
-
-        @Test
-        @DisplayName("宣言済み・未宣言が揃って台帳と一致していれば pass（偽陽性が無い）")
-        void 両次元が一致すれば通る() {
-            Freeze frozen = new Freeze(Map.of("SCHEDULED|a.C", 1), Map.of("SCHEDULED|a.C", 2));
-
-            assertThat(allMismatches(Map.of("SCHEDULED|a.C", 1), Map.of("SCHEDULED|a.C", 2), frozen))
-                    .isEmpty();
-        }
-
-        @Test
-        @DisplayName("全件宣言済みのクラスも未宣言0件として台帳キーに残る（陳腐化と誤判定しない）")
-        void 全件宣言済みでもキーは残る() {
-            List<Entry> es = entries(FREE_PATH, """
-                    @Scheduled(cron = "0 0 3 * * *")
-                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-                            reason = "止めると既存データの整合性が壊れるため必ず実行する")
-                    public void run() {}
-                    """);
-
-            Map<String, Integer> undeclared = undeclaredCountsByKey(es);
-            Map<String, Integer> totals = totalCountsByKey(es);
-
-            assertThat(undeclared).containsEntry("SCHEDULED|" + FREE_FQCN, 0);
-            assertThat(totals).containsEntry("SCHEDULED|" + FREE_FQCN, 1);
-            assertThat(undeclared.keySet()).isEqualTo(totals.keySet());
         }
 
         @Test
