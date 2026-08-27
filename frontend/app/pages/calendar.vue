@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import type { GanttResponse, GanttTodo } from '~/types/todo'
 import { useMyCalendarData, PERSONAL_KEY, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
+import type { CalendarViewMode } from '~/composables/useMyCalendarData'
+import { dateToOrdinal, shiftDate, todayInTimezone, weekStartOf } from '~/utils/calendarWeek'
 
 definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
+// 週ビューの「今日」判定はユーザー設定タイムゾーンで行う（Codex 検分 [3]）。
+const { userTimezone } = useDatetime()
 const router = useRouter()
 const scheduleApi = useScheduleApi()
 const ganttApi = useTodoGantt()
@@ -79,22 +83,40 @@ const pad = (n: number) => String(n).padStart(2, '0')
 
 const {
   currentYear, currentMonth, loading, calendarLoading, loadEvents, refresh,
-  onPrevMonth: calPrevMonth, onNextMonth: calNextMonth, goToToday,
+  onPrevMonth: calPrevMonth, onNextMonth: calNextMonth, goToToday, navigateTo,
   extendedEvents, todosFailed, layersFailed, availableScopes, allScopeOptions, selectedScopes,
-  filteredEvents, toggleScope, multiSelectScopes, initStorage,
+  filteredEvents, toggleScope, multiSelectScopes, initStorage, view,
 } = useMyCalendarData()
+
+// F03.19 §6.8（Wave 3-c）: モバイル（<768px）では常にリスト表示のため md 以上の `view`
+// 切り替え UI（週／アジェンダビュー本体）とは別軸だが、「モバイルでは既定ビューをアジェンダ
+// とする」という状態の既定値だけはここで切り替える（アジェンダビュー本体の描画自体は
+// W3-b の担当で本ファイルではまだ未着手・範囲外）。initStorage() が localStorage に永続化済みの
+// 選択（ユーザーが明示的に選んだ view）を復元した場合はそれを尊重し、上書きしない。
+const MOBILE_MEDIA_QUERY = '(max-width: 767px)'
+
+/** モバイルのリストビュー用: 表示中の月のイベントを実際の時系列（瞬間）昇順に並べる。
+ * ISO 文字列のまま localeCompare すると、時差の異なる予定（例: +09:00 と Z）が
+ * 文字列としての大小関係で並んでしまい、実際の前後関係と食い違う（Codex 検分指摘）。
+ * 必ず Date.parse で瞬間へ変換してから比較する。 */
+const sortedFilteredEvents = computed(() =>
+  [...filteredEvents.value].sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt)),
+)
 
 // 「今日」ボタン（§6.3・AC-12d）: 月グリッド本体の DOM 操作（フォーカス）は CalendarGrid に委譲する。
 const calendarGridRef = ref<{ focusToday: () => void } | null>(null)
 
 async function onToday() {
   goToToday()
+  // 週ビューでは「今日」は今週へ戻すことを意味する（§6.5.3）。
+  if (isWeekView.value) weekStart.value = weekStartOf(todayDateStr())
   if (activeTab.value === 'gantt') await loadGantt()
   // 月移動時は年月 props が変わってから DOM が再描画されるまで待つ必要がある
   // （既に当月表示中でも focusToday は必ず呼ぶ＝無反応にしない）。
   await nextTick()
   await nextTick()
-  calendarGridRef.value?.focusToday()
+  if (isWeekView.value) calendarWeekGridRef.value?.focusToday()
+  else calendarGridRef.value?.focusToday()
 }
 
 // #49-B: 日別一覧
@@ -449,6 +471,80 @@ async function onTabChange(tab: CalendarTab) {
   }
 }
 
+// ---- 月/週ビュー切替（F03.19 §6.5.3・AC-13） ----
+// `view` の状態そのもの・localStorage への永続化は useMyCalendarData が既に持っている。
+// ここではその値に応じて描画コンポーネントを切り替え、週ビューの表示週を管理するだけで、
+// **ビュー切替では一切データを取得しない**（filteredEvents を束ね直すだけ・AC-13）。
+const calendarWeekGridRef = ref<{ focusToday: () => void } | null>(null)
+
+/**
+ * 選択肢は配列で持つ。W3-b でアジェンダ（`agenda`）を1行足すだけで3値へ拡張できる形にしておく。
+ */
+const viewOptions: Array<{ mode: CalendarViewMode; labelKey: string }> = [
+  { mode: 'month', labelKey: 'schedule.calendar.view.month' },
+  { mode: 'week', labelKey: 'schedule.calendar.view.week' },
+]
+
+// `agenda`（W3-b で実装）が localStorage から復元された場合も、未実装のビューで白画面にせず
+// 月ビューへ落とす。W3-b が `agenda` の分岐を足した時点でこの読み替えは不要になる。
+const isWeekView = computed(() => view.value === 'week')
+
+/**
+ * 「今日」は**ユーザー設定タイムゾーン**で判定する（Codex 検分 [3]）。
+ *
+ * `goToToday()` はユーザー設定 TZ で月を決めるのに、週の算出だけ端末ローカルの日付を使うと、
+ * 両者の日付が土曜と日曜に分かれる時間帯に「今日」ボタンが隣の週を出す。
+ * 日付の取得経路を `todayInTimezone` 一本に統一して根から塞ぐ。
+ */
+function todayDateStr(): string {
+  return todayInTimezone(userTimezone.value)
+}
+
+const weekStart = ref(weekStartOf(todayDateStr()))
+
+/**
+ * 表示中の週が `useCalendarEvents` の取得範囲（表示月の6週グリッド）に収まっているか確認し、
+ * 外れていればその週を包含する月へ取得範囲を寄せる（§6.5.3）。
+ *
+ * 月の6週グリッドは「1日の直前の日曜」から42日分なので、その月に1日でも掛かる週は必ず
+ * グリッドに丸ごと収まる。よって週の中日（木曜）が属する月へ寄せれば週全体が確実に含まれる。
+ * 既に収まっている場合は何もしない＝無駄な再取得を起こさない。
+ */
+function ensureRangeCoversWeek(): void {
+  const gridStart = dateToOrdinal(weekStartOf(`${currentYear.value}-${pad(currentMonth.value)}-01`))
+  const start = dateToOrdinal(weekStart.value)
+  if (start >= gridStart && start + 6 <= gridStart + 41) return
+  const mid = shiftDate(weekStart.value, 3)
+  navigateTo(Number(mid.slice(0, 4)), Number(mid.slice(5, 7)))
+}
+
+function onPrevWeek() {
+  weekStart.value = shiftDate(weekStart.value, -7)
+  ensureRangeCoversWeek()
+}
+
+function onNextWeek() {
+  weekStart.value = shiftDate(weekStart.value, 7)
+  ensureRangeCoversWeek()
+}
+
+/**
+ * ビュー切替（AC-13）。切替では再取得しない — 表示中の月のグリッドに収まる週を選ぶため、
+ * `ensureRangeCoversWeek` は何もしない。
+ */
+function setView(mode: CalendarViewMode) {
+  if (view.value === mode) return
+  view.value = mode
+  if (mode !== 'week') return
+  const today = todayDateStr()
+  const inCurrentMonth = Number(today.slice(0, 4)) === currentYear.value
+    && Number(today.slice(5, 7)) === currentMonth.value
+  weekStart.value = weekStartOf(inCurrentMonth
+    ? today
+    : `${currentYear.value}-${pad(currentMonth.value)}-01`)
+  ensureRangeCoversWeek()
+}
+
 function onPrevMonth() {
   calPrevMonth()
   if (activeTab.value === 'gantt') loadGantt()
@@ -503,7 +599,24 @@ async function clearLinkedQuery() {
 }
 
 onMounted(async () => {
+  // F03.19 §6.8: 初回訪問（永続化済みの表示設定が無い）かつモバイル幅であれば、
+  // 既定ビューを 'agenda' にする。initStorage() 自体は useMyCalendarData.ts 側の
+  // 責務（触らない）なので、ここでは「保存済み設定が既にあったか」だけを事前に見て、
+  // 無かった場合のみ後から上書きする（ユーザーが既に選んだ view は絶対に上書きしない）。
+  const hadPersistedViewState = (() => {
+    try {
+      // useMyCalendarData.ts の LAYER_STATE_KEY と同じキー（同ファイルは書き換え対象外のため、
+      // ここでは存在確認のためだけにキー名を重複させる）。
+      return localStorage.getItem('mannschaft:calendar:layerState') != null
+    }
+    catch {
+      return false
+    }
+  })()
   await initStorage()
+  if (!hadPersistedViewState && typeof window !== 'undefined' && window.matchMedia(MOBILE_MEDIA_QUERY).matches) {
+    view.value = 'agenda'
+  }
   await loadEvents()
   // クエリパラメータ ?tab=gantt で直接ガントタブを開いた場合は初期読み込みを行う
   if (activeTab.value === 'gantt') {
@@ -581,12 +694,64 @@ onMounted(async () => {
 
     <!-- カレンダービュー -->
     <div v-show="activeTab === 'calendar'">
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <!-- ===== モバイル（<768px）: リストビュー（F03.19 §6.8・Wave 3-c） =====
+           狭幅では月グリッドが読めないため、共通コンポーネント ScheduleMobileListView を使う。
+           週／アジェンダビュー本体（CalendarWeekGrid・CalendarAgendaList）は別戦役（W3-a/W3-b）の
+           担当でまだ存在しないため、モバイルの表示はここでは常にこのリストで代替する。 -->
+      <div class="md:hidden">
+        <ScheduleMobileListView
+          :year="currentYear"
+          :month="currentMonth"
+          :events="sortedFilteredEvents"
+          scope-type="team"
+          scope-id=""
+          :empty-message="t('schedule.calendar.empty')"
+          :dimmed="calendarLoading"
+          @prev-month="onPrevMonth"
+          @next-month="onNextMonth"
+          @open="(ev) => (ev.isReflection && ev.referenceUuid && ev.referenceKind)
+            ? onReflectionClick(ev.referenceUuid, ev.referenceKind)
+            : onEventClick(ev.id, ev.isPersonal)"
+          @responded="refresh"
+        />
+      </div>
+
+      <!-- ===== デスクトップ（768px以上）: 従来のカレンダー主体UI（不変） ===== -->
+      <div class="hidden gap-6 md:grid grid-cols-1 lg:grid-cols-3">
         <!-- カレンダー（2列） -->
         <div class="lg:col-span-2">
           <div class="relative">
             <DashboardWidgetCard :scrollable="false">
+              <!-- 月/週ビュー切替（§6.5.3・AC-13）。W3-b でアジェンダを viewOptions に足すだけで3値になる。 -->
+              <div class="mb-3 flex w-fit gap-1 rounded-lg border border-surface-300 bg-surface-100 p-0.5 dark:border-surface-600 dark:bg-surface-700">
+                <button
+                  v-for="opt in viewOptions"
+                  :key="opt.mode"
+                  type="button"
+                  :data-testid="`calendar-view-${opt.mode}`"
+                  :aria-pressed="view === opt.mode"
+                  class="rounded-md px-3 py-1 text-xs font-medium transition-colors"
+                  :class="view === opt.mode
+                    ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
+                    : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
+                  @click="setView(opt.mode)"
+                >
+                  {{ t(opt.labelKey) }}
+                </button>
+              </div>
+              <CalendarWeekGrid
+                v-if="isWeekView"
+                ref="calendarWeekGridRef"
+                :week-start="weekStart"
+                :events="filteredEvents"
+                @event-click="onEventClick"
+                @reflection-click="onReflectionClick"
+                @prev-week="onPrevWeek"
+                @next-week="onNextWeek"
+                @today="onToday"
+              />
               <CalendarGrid
+                v-else
                 ref="calendarGridRef"
                 :year="currentYear"
                 :month="currentMonth"

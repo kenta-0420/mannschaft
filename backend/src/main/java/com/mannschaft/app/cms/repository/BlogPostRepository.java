@@ -19,6 +19,10 @@ import java.util.Optional;
  */
 public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> {
 
+    boolean existsByIdAndTeamId(Long id, Long teamId);
+
+    boolean existsByIdAndOrganizationId(Long id, Long organizationId);
+
     String SEARCH_BY_TEAM = "SELECT * FROM blog_posts WHERE team_id = :teamId AND MATCH(title, body) AGAINST(:keyword IN BOOLEAN MODE) AND deleted_at IS NULL";
     String SEARCH_BY_ORG = "SELECT * FROM blog_posts WHERE organization_id = :orgId AND MATCH(title, body) AGAINST(:keyword IN BOOLEAN MODE) AND deleted_at IS NULL";
 

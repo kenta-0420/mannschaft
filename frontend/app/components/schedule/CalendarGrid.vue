@@ -271,25 +271,18 @@ function laneOverflowStyle(di: number, visibleBarLaneCap: number): Record<string
 
 const monthLabel = computed(() => `${props.year}年${props.month}月`)
 
-// ---- 日別ポップオーバー（§6.2・AC-12/AC-12b・data-testid="day-detail-popover"） ----
-const dayPopover = ref<{ show: (ev: Event) => void; hide: () => void } | null>(null)
-const popoverDateStr = ref('')
-
-/** ポップオーバー対象日に掛かる予定の全件（単日・複数日バーの両方を含む）。 */
-const popoverEvents = computed<CalendarEventItem[]>(() => {
-  if (!popoverDateStr.value) return []
-  const d = popoverDateStr.value
-  return props.events.filter(e => dateOf(e.startAt) <= d && dateOf(e.endAt) >= d)
-})
+// ---- 日別ポップオーバー（§6.2・AC-12/AC-12b） ----
+// 実体は週ビューと共有する ScheduleDayDetailPopover（対象日の予定の抽出条件を含め一元化）。
+// 抽出条件を月と週で二重に持っていた間、片方だけが日付文字列の包含比較のままで、
+// 「8/3 22:00〜8/4 00:00 の予定が 8/4 の一覧にも出る」欠陥を抱えていた（検分二巡目 [1]）。
+const dayPopover = ref<{ open: (dateStr: string, ev: Event) => void; close: () => void } | null>(null)
 
 function openDayOverflow(dateStr: string, ev: Event) {
-  popoverDateStr.value = dateStr
-  dayPopover.value?.show(ev)
+  dayPopover.value?.open(dateStr, ev)
 }
 
-/** ポップオーバー内の行クリック（ScheduleListRow の `open` イベント）を種別で振り分ける。 */
+/** ポップオーバー内の行クリックを種別で振り分ける（reflection は id 非依存経路へ）。 */
 function onPopoverRowOpen(event: CalendarEventItem) {
-  dayPopover.value?.hide()
   if (event.isReflection && event.referenceUuid && event.referenceKind) {
     emit('reflectionClick', event.referenceUuid, event.referenceKind)
     return
@@ -486,24 +479,12 @@ defineExpose({ focusToday })
       </div>
     </div>
 
-    <!-- 日別ポップオーバー（§6.2・AC-12/AC-12b） -->
-    <Popover ref="dayPopover">
-      <div data-testid="day-detail-popover" class="flex flex-col" style="min-width: 260px; max-width: 320px">
-        <div class="px-2 pb-1 text-xs font-semibold text-surface-500">
-          {{ t('schedule.calendar.dayDetail.title', { date: popoverDateStr }) }}
-        </div>
-        <div class="max-h-80 overflow-y-auto">
-          <ScheduleListRow
-            v-for="event in popoverEvents"
-            :key="event.uniqueKey"
-            :event="event"
-            scope-type="team"
-            :scope-id="''"
-            @open="onPopoverRowOpen(event)"
-          />
-        </div>
-      </div>
-    </Popover>
+    <!-- 日別ポップオーバー（§6.2・AC-12/AC-12b。週ビューと共有） -->
+    <ScheduleDayDetailPopover
+      ref="dayPopover"
+      :events="events"
+      @row-open="onPopoverRowOpen"
+    />
   </div>
 </template>
 

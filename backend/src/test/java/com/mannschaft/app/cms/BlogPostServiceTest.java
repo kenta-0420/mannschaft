@@ -927,8 +927,8 @@ class BlogPostServiceTest {
         }
 
         @Test
-        @DisplayName("AC-11: checkAccess 例外＋ゲート無し（非課金記事）→ body は返る")
-        void AC11_例外時ゲート無し_body返却() {
+        @DisplayName("AC-11: checkAccess とゲート存在確認がともに失敗 → fail-closed（body=null）")
+        void AC11_例外時ゲート存在確認も失敗_failClosed() {
             BlogPostEntity entity = postWithId();
             stubGetById(entity);
             try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
@@ -936,11 +936,12 @@ class BlogPostServiceTest {
                 given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
                 given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
                         .willThrow(new RuntimeException("判定不能"));
-                given(paymentGateService.hasGate(ContentGateType.POST, POST_ID)).willReturn(false);
+                given(paymentGateService.hasGate(ContentGateType.POST, POST_ID))
+                        .willThrow(new RuntimeException("ゲート存在確認失敗"));
 
                 BlogPostResponse result = service.getById(POST_ID);
 
-                assertThat(result.getContent().body()).isEqualTo("有料本文フルテキスト");
+                assertThat(result.getContent().body()).isNull();
             }
         }
 

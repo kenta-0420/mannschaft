@@ -1,5 +1,6 @@
 package com.mannschaft.app.memberinfo.event;
 
+
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
@@ -7,9 +8,10 @@ import com.mannschaft.app.memberinfo.TeamMemberInfoFieldEntity;
 import com.mannschaft.app.memberinfo.TeamMemberInfoFieldRepository;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -17,8 +19,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.util.Locale;
 
 /**
  * F14.2 メンバー情報更新リマインドの通知配送リスナー（Issue #2834 / CMP-056 第2群ロット2）。
@@ -77,8 +77,8 @@ public class MemberInfoUpdateReminderNotificationListener {
         try {
             Locale locale = resolveLocale(event.recipientUserId());
             NotificationDeliveryRequest request = buildRequest(event, field.getFieldName(), locale);
-            NotificationEntity created = notificationDeliveryRunner.sendOne(request);
-            if (created == null) {
+            NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(request);
+            if (result == NotificationDeliveryResult.VISIBILITY_DENIED) {
                 // visibility deny（例外ではない）。NotificationService 側で既に WARN 済み。
                 // deny のみのときは WARN に留め、ERROR と混ぜない。
                 log.warn("メンバー情報更新リマインド通知が visibility deny によりスキップされました: "

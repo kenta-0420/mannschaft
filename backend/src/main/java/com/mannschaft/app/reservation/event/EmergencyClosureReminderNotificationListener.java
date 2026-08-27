@@ -6,13 +6,16 @@ import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.reservation.entity.EmergencyClosureConfirmationEntity;
 import com.mannschaft.app.reservation.entity.EmergencyClosureEntity;
 import com.mannschaft.app.reservation.repository.EmergencyClosureConfirmationRepository;
 import com.mannschaft.app.reservation.repository.EmergencyClosureRepository;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -20,10 +23,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
-import java.util.Map;
 
 /**
  * 臨時休業未確認リマインドの通知配送リスナー（Issue #2834 / CMP-056 第2群ロット1）。
@@ -109,8 +108,8 @@ public class EmergencyClosureReminderNotificationListener {
 
         try {
             NotificationDeliveryRequest request = buildRequest(event, closure, title, body);
-            NotificationEntity created = notificationDeliveryRunner.sendOne(request);
-            if (created == null) {
+            NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(request);
+            if (result == NotificationDeliveryResult.VISIBILITY_DENIED) {
                 // visibility deny（例外ではない）。NotificationService 側で既に WARN 済み。
                 // deny のみのときは WARN に留め、ERROR と混ぜない。
                 log.warn("臨時休業リマインド通知が visibility deny によりスキップされました: "

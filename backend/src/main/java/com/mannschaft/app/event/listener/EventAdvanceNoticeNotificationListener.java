@@ -11,9 +11,12 @@ import com.mannschaft.app.family.EventCareNotificationType;
 import com.mannschaft.app.family.service.CareLinkService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -21,10 +24,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 /**
  * F03.12 事前遅刻・欠席連絡の通知配送リスナー（Issue #2834 / CMP-056 型確立PR）。
@@ -173,8 +172,8 @@ public class EventAdvanceNoticeNotificationListener {
 
     private void sendOne(NotificationDeliveryRequest request) {
         try {
-            NotificationEntity created = notificationDeliveryRunner.sendOne(request);
-            if (created == null) {
+            NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(request);
+            if (result == NotificationDeliveryResult.VISIBILITY_DENIED) {
                 log.warn("事前連絡通知が visibility deny によりスキップされました: "
                                 + "recipientUserId={}, notificationType={}, sourceType={}, sourceId={}",
                         request.recipientUserId(), request.notificationType(),
