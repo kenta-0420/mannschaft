@@ -5,8 +5,8 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.onboarding.entity.OnboardingProgressEntity;
 import com.mannschaft.app.onboarding.repository.OnboardingProgressRepository;
@@ -126,8 +126,8 @@ public class OnboardingReminderNotificationListener {
                         event.kind(), recipient, notifScope, event.scopeId(),
                         deadlines.get(recipient.progressId()),
                         Locale.forLanguageTag(locales.getOrDefault(recipient.userId(), "ja")));
-                NotificationEntity created = notificationDeliveryRunner.sendOne(request);
-                if (created == null) {
+                NotificationDeliveryResult result = notificationDeliveryRunner.sendOne(request);
+                if (result == NotificationDeliveryResult.VISIBILITY_DENIED) {
                     // visibility deny（例外ではない）。NotificationService 側で既に WARN 済み。
                     denied++;
                     log.warn("オンボーディングリマインド通知が visibility deny によりスキップされました: "

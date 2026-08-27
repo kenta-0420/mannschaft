@@ -1,13 +1,17 @@
 package com.mannschaft.app.contact;
 
+
+
 import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.contact.event.ContactInviteUsedNotificationEvent;
 import com.mannschaft.app.contact.event.ContactInviteUsedNotificationListener;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import java.util.Locale;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,10 +20,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
-
-import java.util.Locale;
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -79,7 +79,7 @@ class ContactInviteUsedNotificationListenerTest {
     void 発行者宛に1件送られる() {
         given(userService.getFullName(ACTOR_ID)).willReturn(Optional.of("招待 太郎"));
         given(notificationDeliveryRunner.sendOne(any()))
-                .willReturn(NotificationEntity.builder().userId(ISSUER_ID).build());
+                .willReturn(NotificationDeliveryResult.DELIVERED);
 
         listener.onContactInviteUsedNotification(event());
 
@@ -103,7 +103,7 @@ class ContactInviteUsedNotificationListenerTest {
     void アクター未解決時は既定表示名になる() {
         given(userService.getFullName(ACTOR_ID)).willReturn(Optional.empty());
         given(notificationDeliveryRunner.sendOne(any()))
-                .willReturn(NotificationEntity.builder().userId(ISSUER_ID).build());
+                .willReturn(NotificationDeliveryResult.DELIVERED);
 
         listener.onContactInviteUsedNotification(event());
 
@@ -117,7 +117,7 @@ class ContactInviteUsedNotificationListenerTest {
     @DisplayName("AC-4: visibility deny（null 復帰）は例外扱いせず、リスナーは正常終了する")
     void denyは例外扱いされない() {
         given(userService.getFullName(ACTOR_ID)).willReturn(Optional.of("招待 太郎"));
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(null);
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.VISIBILITY_DENIED);
 
         assertThatCode(() -> listener.onContactInviteUsedNotification(event()))
                 .doesNotThrowAnyException();

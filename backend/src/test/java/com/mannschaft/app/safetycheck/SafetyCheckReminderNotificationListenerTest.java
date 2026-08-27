@@ -1,13 +1,16 @@
 package com.mannschaft.app.safetycheck;
 
+
+
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.safetycheck.event.SafetyCheckReminderNotificationEvent;
 import com.mannschaft.app.safetycheck.event.SafetyCheckReminderNotificationListener;
+import java.util.Locale;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,9 +19,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
-
-import java.util.Locale;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -74,7 +74,7 @@ class SafetyCheckReminderNotificationListenerTest {
     @DisplayName("リマインド通知が1件、Runner経由（1件=1独立トランザクション）で送られる")
     void リマインド通知が1件送られる() {
         given(notificationDeliveryRunner.sendOne(any()))
-                .willReturn(NotificationEntity.builder().userId(RECIPIENT_ID).build());
+                .willReturn(NotificationDeliveryResult.DELIVERED);
 
         listener.onSafetyCheckReminderNotification(event());
 
@@ -97,7 +97,7 @@ class SafetyCheckReminderNotificationListenerTest {
     @DisplayName("AC-4: visibility deny（sendOne が null 復帰）は例外扱いせず、リスナーは正常終了する")
     void denyは例外扱いされない() {
         // NotificationService は deny 時に例外を投げず null を返す（成功ではない）。
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(null);
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.VISIBILITY_DENIED);
 
         assertThatCode(() -> listener.onSafetyCheckReminderNotification(event()))
                 .doesNotThrowAnyException();
