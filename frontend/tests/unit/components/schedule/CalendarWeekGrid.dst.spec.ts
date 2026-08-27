@@ -56,9 +56,9 @@ afterEach(() => {
   while (mountedWrappers.length > 0) mountedWrappers.pop()?.unmount()
 })
 
-async function mountWeek() {
+async function mountWeek(weekStart: string = WEEK_START) {
   const wrapper = await mountSuspended(CalendarWeekGrid, {
-    props: { weekStart: WEEK_START, events: [] as CalendarEventItem[] },
+    props: { weekStart, events: [] as CalendarEventItem[] },
     attachTo: document.body,
     global: { stubs: { Button: true, Popover: PopoverStub, ScheduleListRow: ScheduleListRowStub } },
   })
@@ -141,6 +141,62 @@ describe('CalendarWeekGrid — 夏時間の切替日（§6.6.5 / R16）', () => 
     await wrapper.vm.$nextTick()
 
     expect(wrapper.emitted('rangeSelect')).toEqual([['2026-03-10T09:00:00-04:00', '2026-03-10T10:00:00-04:00']])
+  })
+
+  /**
+   * [検分2巡目 P2] 春の切替日には**その地域に存在しない時刻帯**がある。
+   * America/New_York の 2026-03-08 は 02:00〜03:00 が丸ごと飛び、その範囲の壁時計は
+   * 実在時刻へ正規化される（02:30 も 03:30 も 03:30 -04:00 へ潰れる）。
+   *
+   * 分の世界の最小長保証（normalizeRange）はこの潰れを検出できない。
+   * **変換後の瞬間で正の期間を保証する**ことで、原因を問わずゼロ分を渡さない。
+   */
+  it('[存在しない時刻] ギャップ 02:30–03:30 を選んでもゼロ分にならず 15分以上になる', async () => {
+    // 前提: 02:30 と 03:30 は同じ実在の瞬間へ潰れる（ギャップが実在することの確認）
+    const collapsedA = dayjs.tz('2026-03-08T02:30:00', USER_TZ)
+    const collapsedB = dayjs.tz('2026-03-08T03:30:00', USER_TZ)
+    expect(collapsedA.valueOf()).toBe(collapsedB.valueOf())
+
+    const [startAt, endAt] = await dragOn(await mountWeek(), 2 * 60 + 30, 3 * 60 + 30)
+
+    const durationMin = (dayjs(endAt).valueOf() - dayjs(startAt).valueOf()) / 60_000
+    expect(durationMin).toBeGreaterThanOrEqual(15)
+    expect(dayjs(endAt).isAfter(dayjs(startAt))).toBe(true)
+  })
+
+  it('[存在しない時刻] ギャップを跨がない通常の範囲は従来どおり（延長が誤発火しない）', async () => {
+    const [startAt, endAt] = await dragOn(await mountWeek(), 9 * 60, 10 * 60)
+    expect(startAt).toBe('2026-03-08T09:00:00-04:00')
+    expect(endAt).toBe('2026-03-08T10:00:00-04:00')
+    // ちょうど 60分のまま（15分へ縮んだり、延長で伸びたりしない）
+    expect((dayjs(endAt).valueOf() - dayjs(startAt).valueOf()) / 60_000).toBe(60)
+  })
+
+  /**
+   * [秋の重複] 2026-11-01 の America/New_York は 01:00〜02:00 が二度来る。
+   *
+   * 設計書には秋の重複についての記載が無いため**方針を決め打ちしない**。
+   * ここで守るべき不変条件は「ゼロ分・負の期間を渡さない」だけであり、それを検証する。
+   * 実測では dayjs.tz は重複時刻に対して**先に来る側（EDT）**を一貫して選ぶため、
+   * 範囲が重複帯を跨いでも期間は正のまま（壁時計 30分が実時間 90分として出る）。
+   * これは「実際に経過する時間」としては正しい値である。
+   */
+  it('[秋の重複] 重複帯を含む範囲でも期間が正のまま（ゼロ分・負にならない）', async () => {
+    const FALL_WEEK = '2026-11-01'
+
+    // 重複帯の内側（01:00–01:30）
+    const inside = await dragOn(await mountWeek(FALL_WEEK), 60, 90)
+    expect(dayjs(inside[1]).isAfter(dayjs(inside[0]))).toBe(true)
+    expect((dayjs(inside[1]).valueOf() - dayjs(inside[0]).valueOf()) / 60_000).toBeGreaterThanOrEqual(15)
+
+    // 重複帯を跨ぐ（01:30–02:00）。壁時計では 30分だが、実時間は 90分になる
+    const across = await dragOn(await mountWeek(FALL_WEEK), 90, 120)
+    expect(dayjs(across[1]).isAfter(dayjs(across[0]))).toBe(true)
+    expect((dayjs(across[1]).valueOf() - dayjs(across[0]).valueOf()) / 60_000).toBe(90)
+
+    // オフセットが EDT → EST へ切り替わっている（重複日であることの裏取り）
+    expect(across[0].slice(-6)).toBe('-04:00')
+    expect(across[1].slice(-6)).toBe('-05:00')
   })
 
   it('24:00 まで選ぶと翌日 0:00 として emit される（23:60 のような不正時刻を作らない）', async () => {

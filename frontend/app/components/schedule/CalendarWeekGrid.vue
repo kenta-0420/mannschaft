@@ -12,10 +12,11 @@
  *   3. 時間グリッド（0:00〜24:00・1時間=48px）— 時刻付き予定を重なり解決して横並びに置く
  */
 import dayjs from 'dayjs'
+import type { Dayjs } from 'dayjs'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 import { MINUTES_PER_DAY, dateToOrdinal, eventDayOccupancy, ordinalToDate, todayInTimezone } from '~/utils/calendarWeek'
 import type { GridPoint } from '~/composables/useGridRangeSelect'
-import { snapMinutesForDensity, useGridRangeSelect } from '~/composables/useGridRangeSelect'
+import { MIN_RANGE_MIN, snapMinutesForDensity, useGridRangeSelect } from '~/composables/useGridRangeSelect'
 
 const { userTimezone } = useDatetime()
 const { t, locale } = useI18n()
@@ -396,7 +397,7 @@ function resolveGridPoint(clientX: number, clientY: number): GridPoint | null {
  * これは `useDatetime.buildOffsetDateTimeStr()`（:104-116）と同じ流儀であり、
  * §6.6.5 が「ピッカーの Date は瞬間ではなく壁時計」と警告している罠の同根である。
  */
-function toUserTzIso(dayIndex: number, minutes: number): string {
+function toUserTzMoment(dayIndex: number, minutes: number): Dayjs {
   const day = weekDays.value[dayIndex]!
   // 24:00（= MINUTES_PER_DAY）は翌日の 0:00。暦日を繰り上げてから壁時計を組む
   // （23:60 のような不正な時刻文字列を dayjs へ渡さないため）。
@@ -404,7 +405,38 @@ function toUserTzIso(dayIndex: number, minutes: number): string {
   const withinDay = minutes - dayCarry * MINUTES_PER_DAY
   const dateStr = dayCarry === 0 ? day.dateStr : ordinalToDate(day.ord + dayCarry)
   const timeStr = `${pad(Math.floor(withinDay / 60))}:${pad(withinDay % 60)}:00`
-  return dayjs.tz(`${dateStr}T${timeStr}`, userTimezone.value).format()
+  return dayjs.tz(`${dateStr}T${timeStr}`, userTimezone.value)
+}
+
+/**
+ * 選択範囲を emit 用の ISO 8601 の対にする。**変換後の「瞬間」で最小長を保証する**。
+ *
+ * 壁時計から瞬間への写像は全単射ではない。夏時間の春の切替日には**その地域に存在しない
+ * 時刻帯**があり（America/New_York の 2026-03-08 は 02:00〜03:00 が丸ごと飛ぶ）、
+ * その範囲の壁時計は `dayjs.tz` によって実在時刻へ正規化される。02:30 と 03:30 は
+ * **どちらも 03:30 -04:00 へ潰れる**ため、分単位では 60分あった範囲がゼロ分になる。
+ *
+ * `normalizeRange()`（composable 側）は**分の世界**で最小長を保証しているが、
+ * この潰れは分から瞬間へ移すときに起きるので、そこでは検出できない。
+ * よって**変換した後の二つの瞬間を比べ**、最小長に満たなければ終了側を延ばす。
+ *
+ * **原因ではなく不変条件を守る形にしている。** ギャップの検出は地域ごとの切替規則に
+ * 依存し、秋の重複（同じ壁時計が二度来る）まで含めると場合分けが増える。
+ * 「変換後に正の期間を保証する」なら、原因が何であれ「ゼロ分を渡さない」を守れる。
+ *
+ * 終了側を延ばした結果が翌日へ食い込む場合も、`add()` は**瞬間**を進めるだけなので
+ * `format()` が正しい日付とオフセットで描く（§6.6.3 の 24:00 の扱いとも矛盾しない。
+ * 24:00 は既に翌日 0:00 の瞬間であり、通常はここで延長は起きない）。
+ */
+function toUserTzRangeIso(dayIndex: number, startMin: number, endMin: number): [string, string] {
+  // 分の世界での最小長（composable の normalizeRange と同一の基準を使う）。
+  const minLengthMin = Math.max(MIN_RANGE_MIN, snapMinutesForDensity(HOUR_H))
+  const start = toUserTzMoment(dayIndex, startMin)
+  let end = toUserTzMoment(dayIndex, endMin)
+  if (end.valueOf() - start.valueOf() < minLengthMin * 60_000) {
+    end = start.add(minLengthMin, 'minute')
+  }
+  return [start.format(), end.format()]
 }
 
 const gridSelect = useGridRangeSelect({
@@ -414,7 +446,10 @@ const gridSelect = useGridRangeSelect({
   snapMinutes: () => snapMinutesForDensity(HOUR_H),
   resolvePoint: resolveGridPoint,
   scrollEl: () => scrollEl.value,
-  onCommit: range => emit('rangeSelect', toUserTzIso(range.dayIndex, range.startMin), toUserTzIso(range.dayIndex, range.endMin)),
+  onCommit: (range) => {
+    const [startAt, endAt] = toUserTzRangeIso(range.dayIndex, range.startMin, range.endMin)
+    emit('rangeSelect', startAt, endAt)
+  },
 })
 
 /** 時刻ラベルの片側。`9:00` のように時は0埋めしない（§6.6.3 の表記例）。24:00 は 24:00 のまま出す。 */
