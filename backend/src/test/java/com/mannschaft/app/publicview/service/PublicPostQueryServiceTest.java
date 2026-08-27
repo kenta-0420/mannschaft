@@ -254,6 +254,21 @@ class PublicPostQueryServiceTest {
         }
 
         @Test
+        @DisplayName("AC-10b: checkAccessとゲート存在確認がともに失敗 → fail-closed（bodyHtml=null）")
+        void AC10b_二重障害_failClosed() {
+            stubDetail(post("要約"));
+            given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, null))
+                    .willThrow(new RuntimeException("判定不能"));
+            given(paymentGateService.hasGate(ContentGateType.POST, POST_ID))
+                    .willThrow(new RuntimeException("ゲート存在確認失敗"));
+
+            PublicPostDetail result = service.findPublicPostDetailByTeam(
+                    TEAM_ID, POST_ID, ViewerContext.anonymous());
+
+            assertThat(result.bodyHtml()).isNull();
+        }
+
+        @Test
         @DisplayName("AC-11: checkAccess 例外＋ゲート無し（非課金）→ bodyHtml は返る")
         void AC11_例外時ゲート無し_body返却() {
             stubDetail(post("要約"));
