@@ -2,6 +2,8 @@ package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.common.token.IssuedToken;
+import com.mannschaft.app.common.token.SecretTokenVault;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.VillageInvitationAcceptResponse;
 import com.mannschaft.app.village.dto.VillageInvitationCreateRequest;
@@ -19,15 +21,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Base64;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,16 +44,10 @@ import java.util.UUID;
  * <b>「その者が既に村と関係を持っている」ことが前提</b>であり、村の存在はその者にとって
  * 秘密ではない。よって従来どおりの応答を維持する（畳むと既存挙動の破壊になる）。</p>
  *
- * <h2>トークンの扱い（将来 SecretTokenVault へ差し替える）</h2>
- * <p>平文トークンは発行応答でのみ一度返し、DB には SHA-256 hex(64) のみを保存する。
- * ハッシュ方式は {@code auth/util/SecureTokenGenerator} および
- * {@code AuthTokenService#hashToken} と同一（SecureRandom 32 バイト → SHA-256 hex64）である。</p>
- * <p><b>なぜ共通部品を使わずここに私有実装を置いているか:</b> この方式を切り出した共通金庫
- * {@code common/token/SecretTokenVault} は別 PR（#2977）で審査中であり、本ブランチにまだ存在しない。
- * 同等物を本ブランチ内に「もう一つの共通部品」として作ると、着地後に共通部品が二重化して
- * どちらが正か分からなくなる。そこで<b>意図的に本サービスの private に閉じ込め</b>、
- * #2977 の着地後に {@code SecretTokenVault} 呼び出しへ置き換えられるようにしてある
- * （private であるため、他クラスが誤ってこちらへ依存することはない）。</p>
+ * <h2>トークンの扱い</h2>
+ * <p>生成・ハッシュ・照合はすべて共通金庫 {@link SecretTokenVault} に委ねる
+ * （SecureRandom 32 バイト → 平文は Base64URL・パディング無し、保存は SHA-256 hex64）。
+ * 平文トークンは発行応答でのみ一度返し、DB にはハッシュだけを保存する。</p>
  */
 @Service
 @Slf4j
@@ -67,10 +57,13 @@ public class VillageInvitationService {
     /** 1 ユーザーが参加できる村数のハード上限（{@code VillageMembershipService} と同値）。 */
     private static final int PARTICIPATION_HARD_LIMIT = 100;
 
-    /** トークンの乱数バイト長。{@code SecureTokenGenerator} と揃える（変更禁止）。 */
-    private static final int TOKEN_BYTE_LENGTH = 32;
-
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    /**
+     * 秘密トークンの共通金庫。
+     *
+     * <p>状態を持たない共通部品であり、ここで直接生成する（final かつ初期化済みのため
+     * {@code @RequiredArgsConstructor} の生成子引数には現れず、既存の生成子シグネチャを変えない）。</p>
+     */
+    private final SecretTokenVault secretTokenVault = new SecretTokenVault();
 
     private final VillageInvitationRepository invitationRepository;
     private final VillageMembershipRepository membershipRepository;
@@ -88,10 +81,10 @@ public class VillageInvitationService {
         villageAccessGate.loadActiveVillage(villageId, actorUserId);
         VillageMembershipEntity actor = requireHeadmanOrElder(villageId, actorUserId);
 
-        String rawToken = generateRawToken();
+        IssuedToken issued = secretTokenVault.issueBase64Url();
         VillageInvitationEntity invitation = new VillageInvitationEntity();
         invitation.setVillageId(villageId);
-        invitation.setTokenHash(hashToken(rawToken));
+        invitation.setTokenHash(issued.hash());
         invitation.setTargetUserId(request.targetUserId());
         invitation.setMaxUses(request.maxUses());
         invitation.setUsedCount(0);
@@ -104,7 +97,7 @@ public class VillageInvitationService {
 
         // 平文トークンを返すのはこの一度きり。DB からは二度と復元できない。
         return new VillageInvitationIssueResponse(
-                saved.getId(), rawToken, saved.getExpiresAt(),
+                saved.getId(), issued.plaintext(), saved.getExpiresAt(),
                 saved.getMaxUses(), saved.getTargetUserId());
     }
 
@@ -217,7 +210,7 @@ public class VillageInvitationService {
             throw foldToAbsent();
         }
         VillageInvitationEntity invitation =
-                invitationRepository.findByTokenHashForUpdate(hashToken(token))
+                invitationRepository.findByTokenHashForUpdate(secretTokenVault.hash(token))
                         .orElseThrow(VillageInvitationService::foldToAbsent);
         if (!invitation.isUsable()) {
             throw foldToAbsent();
@@ -253,31 +246,5 @@ public class VillageInvitationService {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }
         return membership;
-    }
-
-    /**
-     * 平文トークンを生成する（SecureRandom 32 バイト → Base64URL・パディング無し）。
-     *
-     * <p>共通金庫 {@code SecretTokenVault}（PR #2977）着地後はそちらへ差し替えること。</p>
-     */
-    private static String generateRawToken() {
-        byte[] bytes = new byte[TOKEN_BYTE_LENGTH];
-        SECURE_RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    /**
-     * トークンを SHA-256 hex(64) にする（{@code AuthTokenService#hashToken} と同一方式）。
-     *
-     * <p>共通金庫 {@code SecretTokenVault}（PR #2977）着地後はそちらへ差し替えること。</p>
-     */
-    private static String hashToken(String rawToken) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(rawToken.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            // SHA-256 は全 JVM でサポート必須のため到達不能
-            throw new IllegalStateException("SHA-256 algorithm not available", e);
-        }
     }
 }

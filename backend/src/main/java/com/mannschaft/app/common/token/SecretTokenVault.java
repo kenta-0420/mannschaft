@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.HexFormat;
 
 import org.springframework.stereotype.Component;
@@ -51,6 +52,26 @@ public class SecretTokenVault {
         byte[] bytes = new byte[TOKEN_BYTE_LENGTH];
         secureRandom.nextBytes(bytes);
         String plaintext = HexFormat.of().formatHex(bytes);
+        return new IssuedToken(plaintext, hash(plaintext));
+    }
+
+    /**
+     * 新しい秘密トークンを、平文表現 <b>Base64URL（パディング無し・43 文字）</b>で発行する。
+     *
+     * <p>乱数の強度・ハッシュ方式は {@link #issue()} と完全に同一で、平文の<b>文字表現だけ</b>が異なる。
+     * hex64 より短いため、URL やメール本文に載せる招待リンクなど「人の目に触れる合言葉」に向く。</p>
+     *
+     * <p><b>なぜ 2 通りの表現を金庫が持つのか:</b> 表現形式は利用側の都合（リンクの長さ・既存トークンとの
+     * 見た目の整合）で決まるものであり、乱数生成とハッシュ照合という金庫の本質は共通である。
+     * 利用側が独自に Base64 変換を書き始めると、そこから乱数長やハッシュ方式の私有実装が再び生えるため、
+     * 表現の選択肢は金庫側に置く。</p>
+     *
+     * @return 平文（Base64URL・43 文字）と保存用ハッシュ（hex64）の対
+     */
+    public IssuedToken issueBase64Url() {
+        byte[] bytes = new byte[TOKEN_BYTE_LENGTH];
+        secureRandom.nextBytes(bytes);
+        String plaintext = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         return new IssuedToken(plaintext, hash(plaintext));
     }
 
