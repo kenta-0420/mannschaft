@@ -70,6 +70,43 @@
       "backToList": "채널 목록으로 돌아가기",
       "noChannels": "아직 채널이 없습니다",
       "createChannel": "채널 만들기"
+    },
+    "invite": {
+      "button": "팀에 초대",
+      "sentSuccess": "초대를 보냈습니다",
+      "joinedSuccess": "참가했습니다",
+      "declinedSuccess": "초대를 거절했습니다",
+      "modal": {
+        "title": "초대할 팀/조직 선택",
+        "empty": "초대할 수 있는 팀·조직이 없습니다",
+        "submit": "초대 보내기"
+      },
+      "card": {
+        "pending": "{scope} 참가 초대가 도착했습니다",
+        "waiting": "상대방의 수락 대기 중",
+        "statusPending": "수락 대기",
+        "join": "참가하기",
+        "decline": "거절하기",
+        "joined": "참가함",
+        "declined": "거절함",
+        "expired": "기한 만료",
+        "revoked": "취소됨",
+        "expiresAt": "기한: {time}"
+      },
+      "preview": {
+        "sent": "{scope} 참가 초대를 보냈습니다"
+      },
+      "notification": {
+        "received": "{scope} 참가 초대가 도착했습니다"
+      },
+      "error": {
+        "notTarget": "이 초대는 당신에게 보낸 것이 아닙니다",
+        "privilegedRole": "관리자 역할은 이 방법으로 초대할 수 없습니다",
+        "loadFailed": "초대 가능한 팀/조직을 불러오지 못했습니다",
+        "sendFailed": "초대 전송에 실패했습니다",
+        "joinFailed": "참가에 실패했습니다",
+        "declineFailed": "거절에 실패했습니다"
+      }
     }
   },
   "button": {
@@ -129,7 +166,39 @@
     "DEPUTY_ADMIN": "부관리자",
     "MEMBER": "멤버",
     "SUPPORTER": "서포터",
-    "GUEST": "게스트"
+    "GUEST": "게스트",
+    "transfer": {
+      "offer": {
+        "button": "管理者を引き継ぐ",
+        "notification": "{scope} の管理者への就任を打診されています",
+        "pending": "管理者就任の打診が届いています",
+        "pendingByMe": "{name} さんへ管理者委譲を打診中です",
+        "accept": "引き受ける",
+        "decline": "辞退する",
+        "cancel": "取消",
+        "accepted": "管理者を引き継ぎました",
+        "declined": "打診を辞退しました",
+        "expired": "打診は期限切れです",
+        "cancelled": "打診は取り消されました",
+        "confirmTitle": "オーナー委譲の打診",
+        "confirmMessage": "{name} さんへ管理者権限の委譲を打診しますか？相手が引き受けを承諾すると、あなたはメンバーに降格されます（この時点ではまだ委譲されません）。",
+        "acceptConfirmTitle": "管理者就任の承諾",
+        "acceptConfirmMessage": "引き受けると、あなたが管理者(ADMIN)になり、現在の管理者はメンバーに降格されます。よろしいですか？",
+        "declineConfirmTitle": "打診の辞退",
+        "declineConfirmMessage": "この打診を辞退しますか？あなたのロールは変わりません。",
+        "cancelConfirmTitle": "打診の取消",
+        "cancelConfirmMessage": "この委譲の打診を取り消しますか？相手のロールは変わりません。",
+        "created": "委譲を打診しました",
+        "cancelSuccess": "打診を取り消しました"
+      },
+      "error": {
+        "notTarget": "この打診はあなた宛てではありません",
+        "need2fa": {
+          "message": "管理者になるには2段階認証の設定が必要です",
+          "cta": "2段階認証を設定する"
+        }
+      }
+    }
   },
   "timetable": {
     "title": "시간표 관리",
@@ -260,7 +329,13 @@
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
     "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
-    "TIMELINE_017": "숨김 상한(200건)에 도달했습니다. 불필요한 숨김을 해제해 주세요."
+    "TIMELINE_017": "숨김 상한(200건)에 도달했습니다. 불필요한 숨김을 해제해 주세요.",
+    "ROLE_009": "この打診はあなた宛てではありません",
+    "ROLE_010": "管理者になるには2段階認証の設定が必要です",
+    "ROLE_011": "既に有効な委譲オファーが存在します",
+    "ROLE_012": "委譲オファーは既に処理済みか無効です",
+    "ROLE_013": "対象が見つかりません",
+    "ROLE_014": "自分自身への委譲はできません"
   },
   "annual_plan": {
     "title": "연간 행사 계획",
@@ -2203,19 +2278,19 @@
   },
   "transferOwnership": {
     "sectionTitle": "소유자 이전",
-    "sectionDescription": "관리자(소유자) 권한을 다른 멤버에게 넘깁니다. 이전 후에는 부관리자가 되며 관리자 전용 작업을 할 수 없습니다.",
-    "openButton": "소유자 이전",
-    "dialogTitle": "소유자 이전",
-    "warning": "이 작업은 취소할 수 없습니다. 관리자 권한이 새 소유자에게 이전되며, 되돌리려면 새 소유자의 조작이 필요합니다.",
+    "sectionDescription": "다른 멤버에게 관리자 권한 이전을 제안합니다. 상대방이 수락할 때까지 권한은 변경되지 않습니다.",
+    "openButton": "소유자 이전 제안",
+    "dialogTitle": "소유자 이전 제안",
+    "warning": "상대방이 수락하면 관리자 권한이 이전되고 당신은 멤버가 됩니다. 제안 대기 중에는 권한이 변경되지 않습니다.",
     "targetLabel": "새 소유자",
     "targetPlaceholder": "멤버 선택",
     "noCandidates": "이전할 수 있는 멤버가 없습니다.",
     "confirmLabel": "확인을 위해 “{name}” 을(를) 입력하세요",
     "confirmMismatch": "이름이 일치하지 않습니다.",
     "cancel": "취소",
-    "submit": "이전",
-    "successTitle": "소유자를 이전했습니다",
-    "successDetail": "관리자 권한이 새 소유자에게 이전되었습니다."
+    "submit": "제안 보내기",
+    "successTitle": "제안을 보냈습니다",
+    "successDetail": "상대방이 수락할 때까지 관리자 권한은 변경되지 않습니다."
   },
   "featureGate": {
     "blocked": {
@@ -2225,6 +2300,23 @@
     "error": {
       "fetchFailedTitle": "기능 공개 상태를 확인할 수 없습니다",
       "fetchFailedBody": "네트워크 오류로 기능의 공개 상태를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요."
+    }
+  },
+  "member": {
+    "columns": {
+      "name": "멤버",
+      "role": "역할",
+      "joinedAt": "가입일",
+      "actions": "작업"
+    },
+    "empty": "아직 멤버가 없습니다",
+    "roleChanged": "역할을 변경했습니다",
+    "roleChangeFailed": "역할 변경에 실패했습니다",
+    "removed": "멤버를 제외했습니다",
+    "removeFailed": "멤버 제외에 실패했습니다",
+    "remove": {
+      "confirmTitle": "멤버 제외",
+      "confirmMessage": "{name} 님을 멤버에서 제외하시겠습니까?"
     }
   }
 }

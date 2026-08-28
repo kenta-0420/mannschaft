@@ -70,6 +70,43 @@
       "backToList": "Volver a la lista de canales",
       "noChannels": "Aún no hay canales",
       "createChannel": "Crear canal"
+    },
+    "invite": {
+      "button": "Invitar al equipo",
+      "sentSuccess": "Invitación enviada",
+      "joinedSuccess": "Te has unido",
+      "declinedSuccess": "Invitación rechazada",
+      "modal": {
+        "title": "Elige un equipo u organización para invitar",
+        "empty": "No hay equipos ni organizaciones disponibles para invitar",
+        "submit": "Enviar invitación"
+      },
+      "card": {
+        "pending": "Tienes una invitación a {scope}",
+        "waiting": "Esperando su respuesta",
+        "statusPending": "Pendiente",
+        "join": "Unirse",
+        "decline": "Rechazar",
+        "joined": "Unido",
+        "declined": "Rechazada",
+        "expired": "Caducada",
+        "revoked": "Cancelada",
+        "expiresAt": "Caduca: {time}"
+      },
+      "preview": {
+        "sent": "Invitación enviada a {scope}"
+      },
+      "notification": {
+        "received": "Has recibido una invitación a {scope}"
+      },
+      "error": {
+        "notTarget": "Esta invitación no es para ti",
+        "privilegedRole": "Los roles de administrador no se pueden invitar de esta forma",
+        "loadFailed": "No se pudieron cargar los equipos/organizaciones para invitar",
+        "sendFailed": "No se pudo enviar la invitación",
+        "joinFailed": "No se pudo unir",
+        "declineFailed": "No se pudo rechazar"
+      }
     }
   },
   "button": {
@@ -129,7 +166,39 @@
     "DEPUTY_ADMIN": "Subadministrador",
     "MEMBER": "Miembro",
     "SUPPORTER": "Colaborador",
-    "GUEST": "Invitado"
+    "GUEST": "Invitado",
+    "transfer": {
+      "offer": {
+        "button": "管理者を引き継ぐ",
+        "notification": "{scope} の管理者への就任を打診されています",
+        "pending": "管理者就任の打診が届いています",
+        "pendingByMe": "{name} さんへ管理者委譲を打診中です",
+        "accept": "引き受ける",
+        "decline": "辞退する",
+        "cancel": "取消",
+        "accepted": "管理者を引き継ぎました",
+        "declined": "打診を辞退しました",
+        "expired": "打診は期限切れです",
+        "cancelled": "打診は取り消されました",
+        "confirmTitle": "オーナー委譲の打診",
+        "confirmMessage": "{name} さんへ管理者権限の委譲を打診しますか？相手が引き受けを承諾すると、あなたはメンバーに降格されます（この時点ではまだ委譲されません）。",
+        "acceptConfirmTitle": "管理者就任の承諾",
+        "acceptConfirmMessage": "引き受けると、あなたが管理者(ADMIN)になり、現在の管理者はメンバーに降格されます。よろしいですか？",
+        "declineConfirmTitle": "打診の辞退",
+        "declineConfirmMessage": "この打診を辞退しますか？あなたのロールは変わりません。",
+        "cancelConfirmTitle": "打診の取消",
+        "cancelConfirmMessage": "この委譲の打診を取り消しますか？相手のロールは変わりません。",
+        "created": "委譲を打診しました",
+        "cancelSuccess": "打診を取り消しました"
+      },
+      "error": {
+        "notTarget": "この打診はあなた宛てではありません",
+        "need2fa": {
+          "message": "管理者になるには2段階認証の設定が必要です",
+          "cta": "2段階認証を設定する"
+        }
+      }
+    }
   },
   "timetable": {
     "title": "Gestión de Horarios",
@@ -260,7 +329,13 @@
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
     "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
-    "TIMELINE_017": "Has alcanzado el límite de 200 elementos ocultos. Muestra de nuevo alguno que ya no necesites."
+    "TIMELINE_017": "Has alcanzado el límite de 200 elementos ocultos. Muestra de nuevo alguno que ya no necesites.",
+    "ROLE_009": "この打診はあなた宛てではありません",
+    "ROLE_010": "管理者になるには2段階認証の設定が必要です",
+    "ROLE_011": "既に有効な委譲オファーが存在します",
+    "ROLE_012": "委譲オファーは既に処理済みか無効です",
+    "ROLE_013": "対象が見つかりません",
+    "ROLE_014": "自分自身への委譲はできません"
   },
   "annual_plan": {
     "title": "Plan anual de eventos",
@@ -2203,19 +2278,19 @@
   },
   "transferOwnership": {
     "sectionTitle": "Transferir la propiedad",
-    "sectionDescription": "Cede el rol de propietario (administrador) a otro miembro. Tras la transferencia pasas a ser subadministrador y ya no podrás realizar acciones exclusivas de administrador.",
-    "openButton": "Transferir la propiedad",
-    "dialogTitle": "Transferir la propiedad",
-    "warning": "Esta acción no se puede deshacer. Los permisos de administrador pasan al nuevo propietario y solo él podrá devolverlos.",
+    "sectionDescription": "Ofrece el rol de administrador a otro miembro. Nada cambia hasta que acepte.",
+    "openButton": "Ofrecer transferencia",
+    "dialogTitle": "Ofrecer transferencia de propiedad",
+    "warning": "Si la persona acepta, recibirá los permisos de administrador y tú pasarás a ser miembro. Nada cambia mientras la oferta esté pendiente.",
     "targetLabel": "Nuevo propietario",
     "targetPlaceholder": "Selecciona un miembro",
     "noCandidates": "No hay ningún miembro al que puedas transferir la propiedad.",
     "confirmLabel": "Escribe “{name}” para confirmar",
     "confirmMismatch": "El nombre no coincide.",
     "cancel": "Cancelar",
-    "submit": "Transferir",
-    "successTitle": "Propiedad transferida",
-    "successDetail": "Los permisos de administrador se han transferido al nuevo propietario."
+    "submit": "Enviar oferta",
+    "successTitle": "Oferta enviada",
+    "successDetail": "Tu rol de administrador no cambiará hasta que la persona acepte."
   },
   "featureGate": {
     "blocked": {
@@ -2225,6 +2300,23 @@
     "error": {
       "fetchFailedTitle": "No se pudo comprobar la disponibilidad de la función",
       "fetchFailedBody": "No se pudo comprobar si esta función está disponible debido a un error de red. Inténtalo de nuevo más tarde."
+    }
+  },
+  "member": {
+    "columns": {
+      "name": "Miembro",
+      "role": "Rol",
+      "joinedAt": "Fecha de ingreso",
+      "actions": "Acciones"
+    },
+    "empty": "Aún no hay miembros",
+    "roleChanged": "Rol cambiado",
+    "roleChangeFailed": "No se pudo cambiar el rol",
+    "removed": "Miembro eliminado",
+    "removeFailed": "No se pudo eliminar el miembro",
+    "remove": {
+      "confirmTitle": "Eliminar miembro",
+      "confirmMessage": "¿Eliminar a {name} de los miembros?"
     }
   }
 }

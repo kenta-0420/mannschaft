@@ -1,4 +1,5 @@
 import type { FetchError } from 'ofetch'
+import type { components } from '~/types/generated'
 import type { PagedResponse } from '~/types/api'
 import type { SlugAvailabilityResponse, SlugResolveResponse } from '~/types/slug'
 import type { TeamPublicDetailResponse, TeamResponse } from '~/types/team'
@@ -8,6 +9,12 @@ import {
   type TeamSearchItem,
   type TeamSearchQuery,
 } from '~/types/team-search'
+
+// === オーナー委譲（承諾型オファー・F01.2 2026-07-18〜）生成型 ===
+// 生成型を最優先で使う（memory feedback_fe_api_type_assertion_field_lie）。
+type TransferOwnershipOfferCreateRequest = components['schemas']['TransferOwnershipOfferCreateRequest']
+type TransferOwnershipOfferResponse = components['schemas']['TransferOwnershipOfferResponse']
+type TransferOwnershipAcceptResponse = components['schemas']['TransferOwnershipAcceptResponse']
 
 interface TeamSummaryResponse {
   id: string
@@ -223,18 +230,47 @@ export function useTeamCrud() {
     return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/teams/${teamSlug}/organizations`)
   }
 
-  // === オーナー移譲 ===
-  /**
-   * オーナー（ADMIN）を別メンバーへ譲渡する。
-   *
-   * BE 契約は `POST /api/v1/teams/{slug}/transfer-ownership?targetUserId={id}` であり、
-   * 譲渡先はリクエストボディではなく**クエリパラメータ `targetUserId`** で渡す
-   * （`TeamController#transferOwnership` の `@RequestParam Long targetUserId` / `docs/openapi.json`）。
-   * 以前はボディ `{ newAdminUserId }` を送っており実契約と不一致だった（CMP-051 で是正）。
-   */
-  async function transferOwnership(teamSlug: string, targetUserId: number) {
-    const query = new URLSearchParams({ targetUserId: String(targetUserId) })
-    return api(`/api/v1/teams/${teamSlug}/transfer-ownership?${query}`, { method: 'POST' })
+  // === オーナー移譲（承諾型オファー・F04.12） ===
+  // 旧 `transferOwnership`（即時型・body { newAdminUserId }）は廃止（設計書 03_business_logic.md M-4）。
+  // クエリパラメータ `targetUserId` を送らず現行は 400 になる既存バグだった（未使用のため実害なし）。
+  // 承諾型 2 ステップ API（打診 → 承諾/辞退/取消）へ全面移行し、body は camelCase `targetUserId` に統一する。
+
+  /** オーナー委譲を打診する（PENDING オファーを作成。この時点ではロールは変わらない）。 */
+  async function createOwnershipOffer(teamSlug: string, targetUserId: number) {
+    const body: TransferOwnershipOfferCreateRequest = { targetUserId }
+    return api<{ data: TransferOwnershipOfferResponse }>(
+      `/api/v1/teams/${teamSlug}/transfer-ownership-offers`,
+      { method: 'POST', body },
+    )
+  }
+
+  /** オファーを承諾する（＝委譲を実行。対象→ADMIN 昇格・発行者→MEMBER 降格）。指名相手本人のみ実行可。 */
+  async function acceptOwnershipOffer(teamSlug: string, offerId: string) {
+    return api<{ data: TransferOwnershipAcceptResponse }>(
+      `/api/v1/teams/${teamSlug}/transfer-ownership-offers/${offerId}/accept`,
+      { method: 'POST' },
+    )
+  }
+
+  /** オファーを辞退する（status=DECLINED。ロール不変）。指名相手本人のみ実行可。 */
+  async function declineOwnershipOffer(teamSlug: string, offerId: string) {
+    return api(`/api/v1/teams/${teamSlug}/transfer-ownership-offers/${offerId}/decline`, {
+      method: 'POST',
+    })
+  }
+
+  /** オファーを取消す（status=CANCELLED。ロール不変）。発行者または当該チーム ADMIN のみ実行可。 */
+  async function cancelOwnershipOffer(teamSlug: string, offerId: string) {
+    return api(`/api/v1/teams/${teamSlug}/transfer-ownership-offers/${offerId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  /** 管理者向けに、チーム内で有効な委譲打診（0 または 1 件）を取得する。 */
+  async function getPendingOwnershipOffers(teamSlug: string) {
+    return api<{ data: TransferOwnershipOfferResponse[] }>(
+      `/api/v1/teams/${teamSlug}/transfer-ownership-offers/pending`,
+    )
   }
 
   return {
@@ -252,6 +288,10 @@ export function useTeamCrud() {
     unarchiveTeam,
     restoreTeam,
     getOrganizations,
-    transferOwnership,
+    createOwnershipOffer,
+    getPendingOwnershipOffers,
+    acceptOwnershipOffer,
+    declineOwnershipOffer,
+    cancelOwnershipOffer,
   }
 }

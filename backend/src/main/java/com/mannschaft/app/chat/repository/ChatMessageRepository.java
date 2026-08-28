@@ -17,6 +17,10 @@ import java.util.Optional;
  */
 public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, Long> {
 
+    /** 指定チャンネルに当該トークンを参照する招待カードが存在するか。取消時の path 束縛に使う。 */
+    boolean existsByChannelIdAndInviteTokenIdAndMessageType(
+            Long channelId, Long inviteTokenId, String messageType);
+
     String SEARCH_BY_CHANNEL = "SELECT * FROM chat_messages WHERE channel_id = :channelId AND deleted_at IS NULL AND MATCH(body) AGAINST(:keyword IN BOOLEAN MODE) ORDER BY created_at DESC";
     String SEARCH_BY_CHANNELS = "SELECT * FROM chat_messages WHERE channel_id IN (:channelIds) AND deleted_at IS NULL AND MATCH(body) AGAINST(:keyword IN BOOLEAN MODE) ORDER BY created_at DESC";
 

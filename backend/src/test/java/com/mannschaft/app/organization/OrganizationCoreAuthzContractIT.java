@@ -45,8 +45,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       （カスケード通知の宛先選択という管理者機能。配下チームまで横断する名簿）</li>
  *   <li>GET /{slug}/teams — {@code ContentVisibilityChecker#assertCanView}
  *       （兄弟 EP getOrganization / getMembers と同じ可視性ラダー）</li>
- *   <li>POST /{slug}/transfer-ownership — {@code checkAdminOrAbove}（入口二重防御。
- *       最終判定「操作者が ADMIN」は RoleService が担うため本ガードは判定を緩めない）</li>
  * </ul>
  *
  * <p>ライフサイクル 4EP（delete/archive/unarchive/restore）は PR #2383 の担当範囲のため
@@ -278,53 +276,6 @@ class OrganizationCoreAuthzContractIT extends AbstractMySqlIntegrationTest {
         void PRIVATE組織でもメンバーなら200() throws Exception {
             setAuthentication(adminAId);
             mockMvc.perform(get("/api/v1/organizations/{slug}/teams", privateOrgSlug))
-                    .andExpect(status().isOk());
-        }
-    }
-
-    // ═════════════════════════════════════════════════════════════════════
-    // POST /{slug}/transfer-ownership（オーナー譲渡）
-    // ═════════════════════════════════════════════════════════════════════
-
-    @Nested
-    @DisplayName("オーナー譲渡(transferOwnership)")
-    class TransferOwnership {
-
-        @Test
-        @DisplayName("非メンバーのオーナー譲渡は403")
-        void 非メンバーのオーナー譲渡は403() throws Exception {
-            setAuthentication(outsiderId);
-            mockMvc.perform(post("/api/v1/organizations/{slug}/transfer-ownership", orgASlug)
-                            .param("targetUserId", String.valueOf(outsiderId)))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
-        }
-
-        @Test
-        @DisplayName("一般メンバー(非ADMIN)のオーナー譲渡は403（自己昇格の遮断）")
-        void 一般メンバーのオーナー譲渡は403() throws Exception {
-            setAuthentication(memberAId);
-            mockMvc.perform(post("/api/v1/organizations/{slug}/transfer-ownership", orgASlug)
-                            .param("targetUserId", String.valueOf(memberAId)))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
-        }
-
-        @Test
-        @DisplayName("他組織ADMINの越境譲渡は403")
-        void 他組織ADMINの越境譲渡は403() throws Exception {
-            setAuthentication(adminBId);
-            mockMvc.perform(post("/api/v1/organizations/{slug}/transfer-ownership", orgASlug)
-                            .param("targetUserId", String.valueOf(memberAId)))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @DisplayName("正当ADMINのオーナー譲渡は200（正常系）")
-        void 正当ADMINのオーナー譲渡は200() throws Exception {
-            setAuthentication(adminAId);
-            mockMvc.perform(post("/api/v1/organizations/{slug}/transfer-ownership", orgASlug)
-                            .param("targetUserId", String.valueOf(memberAId)))
                     .andExpect(status().isOk());
         }
     }

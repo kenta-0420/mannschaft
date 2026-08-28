@@ -524,27 +524,6 @@ class OrganizationControllerTest {
     }
 
     @Test
-    @DisplayName("transferOwnership: 200 OK（入口で checkAdminOrAbove を必ず呼ぶ）")
-    void transferOwnership_200() {
-        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
-        assertThat(controller.transferOwnership(ORG_SLUG, 500L).getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
-        verify(roleService).transferOwnership(ORG_ID, "ORGANIZATION", USER_ID, 500L);
-    }
-
-    @Test
-    @DisplayName("transferOwnership: ADMIN/DEPUTY でなければ 403 を送出し譲渡本体を呼ばない")
-    void transferOwnership_403_whenNotAdmin() {
-        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
-        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
-        assertThatThrownBy(() -> controller.transferOwnership(ORG_SLUG, 500L))
-                .isInstanceOf(BusinessException.class);
-        verify(roleService, org.mockito.Mockito.never())
-                .transferOwnership(ORG_ID, "ORGANIZATION", USER_ID, 500L);
-    }
-
-    @Test
     @DisplayName("leaveOrganization: 204 No Content")
     void leaveOrganization_204() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);

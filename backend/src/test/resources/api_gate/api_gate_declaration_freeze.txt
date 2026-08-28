@@ -123,6 +123,7 @@ HTTP|com.mannschaft.app.chart.controller.ChartSettingsController|10|10
 HTTP|com.mannschaft.app.chat.controller.ChatBoardMigrationController|1|1
 HTTP|com.mannschaft.app.chat.controller.ChatBookmarkController|3|3
 HTTP|com.mannschaft.app.chat.controller.ChatChannelController|19|19
+HTTP|com.mannschaft.app.chat.controller.ChatMembershipInviteController|0|2
 HTTP|com.mannschaft.app.chat.controller.ChatMessageController|8|8
 HTTP|com.mannschaft.app.chat.controller.ChatReactionController|2|2
 HTTP|com.mannschaft.app.chat.controller.ChatReadController|1|1
@@ -337,7 +338,7 @@ HTTP|com.mannschaft.app.onboarding.controller.OrgOnboardingProgressController|2|
 HTTP|com.mannschaft.app.onboarding.controller.OrgOnboardingTemplateController|2|2
 HTTP|com.mannschaft.app.onboarding.controller.TeamOnboardingProgressController|2|2
 HTTP|com.mannschaft.app.onboarding.controller.TeamOnboardingTemplateController|2|2
-HTTP|com.mannschaft.app.organization.controller.OrganizationController|41|41
+HTTP|com.mannschaft.app.organization.controller.OrganizationController|40|40
 HTTP|com.mannschaft.app.organization.controller.OrganizationExtendedProfileController|12|12
 HTTP|com.mannschaft.app.parking.controller.OrgParkingApplicationController|6|6
 HTTP|com.mannschaft.app.parking.controller.OrgParkingListingController|7|7
@@ -507,9 +508,11 @@ HTTP|com.mannschaft.app.resident.controller.UserResidentController|2|2
 HTTP|com.mannschaft.app.resume.controller.ResumeController|10|11
 HTTP|com.mannschaft.app.returnstayplan.controller.ReturnStayPlanController|5|5
 HTTP|com.mannschaft.app.returnstayplan.controller.ReturnStayPlanTeamController|2|2
-HTTP|com.mannschaft.app.role.controller.InviteController|3|3
+HTTP|com.mannschaft.app.role.controller.InviteController|3|4
 HTTP|com.mannschaft.app.role.controller.InviteQrPdfController|1|1
 HTTP|com.mannschaft.app.role.controller.MeController|2|2
+HTTP|com.mannschaft.app.role.controller.MeInvitableScopesController|0|1
+HTTP|com.mannschaft.app.role.controller.OwnershipTransferOfferController|0|11
 HTTP|com.mannschaft.app.safetycheck.controller.SafetyAdminController|8|8
 HTTP|com.mannschaft.app.safetycheck.controller.SafetyCheckController|11|11
 HTTP|com.mannschaft.app.safetycheck.controller.SafetyFollowupController|1|1
@@ -607,7 +610,7 @@ HTTP|com.mannschaft.app.survey.controller.SurveyThreadController|1|1
 HTTP|com.mannschaft.app.sync.controller.OfflineSyncController|5|5
 HTTP|com.mannschaft.app.team.controller.OrganizationTeamSearchController|1|1
 HTTP|com.mannschaft.app.team.controller.PublicTeamController|1|1
-HTTP|com.mannschaft.app.team.controller.TeamController|39|39
+HTTP|com.mannschaft.app.team.controller.TeamController|38|38
 HTTP|com.mannschaft.app.team.controller.TeamExtendedProfileController|12|12
 HTTP|com.mannschaft.app.team.controller.TeamShiftSettingsController|2|2
 HTTP|com.mannschaft.app.template.controller.ModuleController|2|2

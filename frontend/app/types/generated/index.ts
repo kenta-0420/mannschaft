@@ -12323,7 +12323,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{slug}/transfer-ownership": {
+    "/api/v1/teams/{slug}/transfer-ownership-offers": {
         parameters: {
             query?: never;
             header?: never;
@@ -12332,8 +12332,42 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定） */
-        post: operations["transferOwnership"];
+        /** チーム オーナー委譲を打診 */
+        post: operations["createTeamOffer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チーム委譲を辞退 */
+        post: operations["declineTeamOffer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チーム委譲を承諾（＝実行） */
+        post: operations["acceptTeamOffer"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15481,7 +15515,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{slug}/transfer-ownership": {
+    "/api/v1/organizations/{slug}/transfer-ownership-offers": {
         parameters: {
             query?: never;
             header?: never;
@@ -15490,8 +15524,42 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定） */
-        post: operations["transferOwnership_1"];
+        /** 組織 オーナー委譲を打診 */
+        post: operations["createOrgOffer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織委譲を辞退 */
+        post: operations["declineOrgOffer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織委譲を承諾（＝実行） */
+        post: operations["acceptOrgOffer"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20220,6 +20288,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/invite/{token}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 承諾型招待の辞退
+         * @description 宛先本人が招待を辞退する。revoked_at を立てカードを辞退済み表示にする（F04.12）
+         */
+        post: operations["declineInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/incidents": {
         parameters: {
             query?: never;
@@ -21748,6 +21836,26 @@ export interface paths {
         put?: never;
         /** メッセージ送信 */
         post: operations["sendMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/channels/{channelId}/membership-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 承諾型招待の発行
+         * @description DM 相手を指定チーム/組織へ招待。宛先付きトークン発行＋招待カード投稿
+         */
+        post: operations["issueMembershipInvite"];
         delete?: never;
         options?: never;
         head?: never;
@@ -34729,6 +34837,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{slug}/transfer-ownership-offers/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チームの有効なオーナー委譲打診を取得 */
+        get: operations["listPendingTeamOffers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{slug}/supporters": {
         parameters: {
             query?: never;
@@ -38289,6 +38414,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{slug}/transfer-ownership-offers/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織の有効なオーナー委譲打診を取得 */
+        get: operations["listPendingOrgOffers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{slug}/teams": {
         parameters: {
             query?: never;
@@ -41272,6 +41414,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/ownership-transfer-offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 自分宛の有効な（PENDING）オーナー委譲オファー一覧
+         * @description 指名相手（本人）宛の PENDING オファーのみ返す。第三者が他人宛を取得する経路は構造的に存在しない（本人限定・IDOR 防止）。通知の actionUrl から到達した受信側 UI がオファーの存在確認・一覧表示に用いる。
+         */
+        get: operations["listMyOffers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/organizations": {
         parameters: {
             query?: never;
@@ -41315,6 +41477,23 @@ export interface paths {
         };
         /** 自分の継続課金一覧（F08.9 P5 第四波） */
         get: operations["listMySubscriptions_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/invitable-scopes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 招待発行可能スコープ一覧 */
+        get: operations["getInvitableScopes"];
         put?: never;
         post?: never;
         delete?: never;
@@ -45248,6 +45427,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** チーム委譲オファーを取消 */
+        delete: operations["cancelTeamOffer"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{slug}/members/{userId}": {
         parameters: {
             query?: never;
@@ -45659,6 +45855,23 @@ export interface paths {
          * @description 保護者ユーザーが自分と子ユーザーのリンクを解除する
          */
         delete: operations["removeChildLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 組織委譲オファーを取消 */
+        delete: operations["cancelOrgOffer"];
         options?: never;
         head?: never;
         patch?: never;
@@ -46282,6 +46495,26 @@ export interface paths {
         post?: never;
         /** 添付ファイル削除（DRAFT のみ） */
         delete: operations["deleteAttachment_4"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/channels/{channelId}/membership-invite/{tokenId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 承諾型招待の取消
+         * @description 発行者または対象スコープ ADMIN が招待を取消す（revoked_at を立てる）
+         */
+        delete: operations["revokeMembershipInvite"];
         options?: never;
         head?: never;
         patch?: never;
@@ -59809,6 +60042,40 @@ export interface components {
             /** Format: int32 */
             width?: number;
         };
+        TransferOwnershipOfferCreateRequest: {
+            /** Format: int64 */
+            targetUserId: number;
+        };
+        ApiResponseTransferOwnershipOfferResponse: {
+            data?: components["schemas"]["TransferOwnershipOfferResponse"];
+        };
+        TransferOwnershipOfferResponse: {
+            /** Format: date-time */
+            expiresAt?: string;
+            issuedBy?: components["schemas"]["UserBrief"];
+            /** Format: uuid */
+            offerId?: string;
+            status?: string;
+            target?: components["schemas"]["UserBrief"];
+        };
+        UserBrief: {
+            displayName?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
+        ApiResponseTransferOwnershipAcceptResponse: {
+            data?: components["schemas"]["TransferOwnershipAcceptResponse"];
+        };
+        MemberBrief: {
+            displayName?: string;
+            role?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
+        TransferOwnershipAcceptResponse: {
+            newAdmin?: components["schemas"]["MemberBrief"];
+            previousAdmin?: components["schemas"]["MemberBrief"];
+        };
         BulkApproveRequest: {
             applicationIds?: number[];
         };
@@ -65273,6 +65540,76 @@ export interface components {
         AddReactionRequest: {
             emoji?: string;
         };
+        ApiResponseChatMessageResponse: {
+            data?: components["schemas"]["ChatMessageResponse"];
+        };
+        ChatInviteCardData: {
+            /** Format: date-time */
+            expiresAt?: string;
+            isTarget?: boolean;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeName?: string;
+            scopeType?: string;
+            status?: string;
+            token?: string;
+            /** Format: int64 */
+            tokenId?: number;
+        };
+        ChatMessageResponse: {
+            audit?: components["schemas"]["MessageAuditDto"];
+            /** Format: int64 */
+            channelId?: number;
+            content?: components["schemas"]["MessageContentDto"];
+            engagement?: components["schemas"]["MessageEngagementDto"];
+            /** Format: int64 */
+            id?: number;
+            inviteData?: components["schemas"]["ChatInviteCardData"];
+            messageType?: string;
+            sender?: components["schemas"]["SenderDto"];
+            /** Format: int64 */
+            senderId?: number;
+            thread?: components["schemas"]["MessageThreadDto"];
+        };
+        MessageAuditDto: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        MessageContentDto: {
+            body?: string;
+            /** Format: int64 */
+            forwardedFromId?: number;
+            isEdited?: boolean;
+            isSystem?: boolean;
+            /** Format: date-time */
+            scheduledAt?: string;
+        };
+        MessageEngagementDto: {
+            attachments?: components["schemas"]["AttachmentResponse"][];
+            isPinned?: boolean;
+            /** Format: int32 */
+            reactionCount?: number;
+            reactions?: components["schemas"]["ReactionResponse"][];
+            /** Format: int32 */
+            replyCount?: number;
+        };
+        MessageThreadDto: {
+            /** Format: int32 */
+            depth?: number;
+            /** Format: int64 */
+            parentId?: number;
+            /** Format: int64 */
+            rootId?: number;
+            suggestBoardMigration?: boolean;
+        };
+        SenderDto: {
+            avatarUrl?: string;
+            displayName?: string;
+            /** Format: int64 */
+            id?: number;
+        };
         ForwardMessageRequest: {
             additionalComment?: string;
             /** Format: int64 */
@@ -65393,6 +65730,34 @@ export interface components {
             postedAsSubjectType?: "USER" | "TEAM" | "ORGANIZATION";
             /** Format: date-time */
             scheduledAt?: string;
+        };
+        MembershipInviteRequest: {
+            /** Format: int32 */
+            expiresInDays?: number;
+            /** Format: int64 */
+            roleId?: number;
+            /** Format: int64 */
+            scopeId: number;
+            scopeType?: string;
+        };
+        ApiResponseMembershipInviteResponse: {
+            data?: components["schemas"]["MembershipInviteResponse"];
+        };
+        MembershipInviteResponse: {
+            /** Format: int64 */
+            cardMessageId?: number;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeName?: string;
+            scopeType?: string;
+            status?: string;
+            /** Format: int64 */
+            targetUserId?: number;
+            token?: string;
+            /** Format: int64 */
+            tokenId?: number;
         };
         AddMemberRequest: {
             userIds?: number[];
@@ -72687,6 +73052,9 @@ export interface components {
         ApiResponseListAdminModuleItem: {
             data?: components["schemas"]["AdminModuleItem"][];
         };
+        ApiResponseListTransferOwnershipOfferResponse: {
+            data?: components["schemas"]["TransferOwnershipOfferResponse"][];
+        };
         PagedResponseSupporterResponse: {
             data?: components["schemas"]["SupporterResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -77336,6 +77704,19 @@ export interface components {
             data?: components["schemas"]["OrgProjectSummaryResponse"][];
             meta?: components["schemas"]["PageMeta"];
         };
+        ApiResponseInvitableScopesResponse: {
+            data?: components["schemas"]["InvitableScopesResponse"];
+        };
+        InvitableScope: {
+            name?: string;
+            role?: string;
+            /** Format: int64 */
+            scopeId?: number;
+        };
+        InvitableScopesResponse: {
+            organizations?: components["schemas"]["InvitableScope"][];
+            teams?: components["schemas"]["InvitableScope"][];
+        };
         ApiResponseSwitchableChildrenResponse: {
             data?: components["schemas"]["SwitchableChildrenResponse"];
         };
@@ -78682,12 +79063,12 @@ export interface components {
             data?: components["schemas"]["ActiveThreadItemResponse"][];
             meta?: components["schemas"]["CursorMeta"];
         };
-        CursorPagedResponseMessageResponse: {
-            data?: components["schemas"]["MessageResponse"][];
+        CursorPagedResponseChatMessageResponse: {
+            data?: components["schemas"]["ChatMessageResponse"][];
             meta?: components["schemas"]["CursorMeta"];
         };
-        ApiResponseListMessageResponse: {
-            data?: components["schemas"]["MessageResponse"][];
+        ApiResponseListChatMessageResponse: {
+            data?: components["schemas"]["ChatMessageResponse"][];
         };
         ApiResponseListChatFolderResponse: {
             data?: components["schemas"]["ChatFolderResponse"][];
@@ -108507,32 +108888,73 @@ export interface operations {
             };
         };
     };
-    transferOwnership: {
+    createTeamOffer: {
         parameters: {
-            query: {
-                targetUserId: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 slug: string;
             };
             cookie?: never;
         };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferOwnershipOfferCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description 打診成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTransferOwnershipOfferResponse"];
+                };
+            };
+        };
+    };
+    declineTeamOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                offerId: string;
+            };
+            cookie?: never;
+        };
         requestBody?: never;
         responses: {
-            /** @description 譲渡成功 */
+            /** @description 辞退成功 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description 当該チームの ADMIN/DEPUTY でない */
-            403: {
+        };
+    };
+    acceptTeamOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                offerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 承諾成功 */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTransferOwnershipAcceptResponse"];
+                };
             };
         };
     };
@@ -114243,32 +114665,73 @@ export interface operations {
             };
         };
     };
-    transferOwnership_1: {
+    createOrgOffer: {
         parameters: {
-            query: {
-                targetUserId: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 slug: string;
             };
             cookie?: never;
         };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferOwnershipOfferCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description 打診成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTransferOwnershipOfferResponse"];
+                };
+            };
+        };
+    };
+    declineOrgOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                offerId: string;
+            };
+            cookie?: never;
+        };
         requestBody?: never;
         responses: {
-            /** @description 譲渡成功 */
+            /** @description 辞退成功 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description 当該組織の ADMIN/DEPUTY でない */
-            403: {
+        };
+    };
+    acceptOrgOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                offerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 承諾成功 */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTransferOwnershipAcceptResponse"];
+                };
             };
         };
     };
@@ -123468,6 +123931,26 @@ export interface operations {
             };
         };
     };
+    declineInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 辞退成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listIncidents: {
         parameters: {
             query: {
@@ -126082,7 +126565,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMessageResponse"];
+                    "*/*": components["schemas"]["ApiResponseChatMessageResponse"];
                 };
             };
         };
@@ -126108,7 +126591,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMessageResponse"];
+                    "*/*": components["schemas"]["ApiResponseChatMessageResponse"];
                 };
             };
         };
@@ -126257,7 +126740,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["CursorPagedResponseMessageResponse"];
+                    "*/*": components["schemas"]["CursorPagedResponseChatMessageResponse"];
                 };
             };
         };
@@ -126283,7 +126766,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMessageResponse"];
+                    "*/*": components["schemas"]["ApiResponseChatMessageResponse"];
+                };
+            };
+        };
+    };
+    issueMembershipInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channelId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MembershipInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description 発行成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMembershipInviteResponse"];
                 };
             };
         };
@@ -141190,7 +141699,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMessageResponse"];
+                    "*/*": components["schemas"]["ApiResponseChatMessageResponse"];
                 };
             };
         };
@@ -149001,6 +149510,28 @@ export interface operations {
             };
         };
     };
+    listPendingTeamOffers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListTransferOwnershipOfferResponse"];
+                };
+            };
+        };
+    };
     getSupporters: {
         parameters: {
             query: {
@@ -153789,6 +154320,28 @@ export interface operations {
             };
         };
     };
+    listPendingOrgOffers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListTransferOwnershipOfferResponse"];
+                };
+            };
+        };
+    };
     getTeams_1: {
         parameters: {
             query?: never;
@@ -157968,6 +158521,26 @@ export interface operations {
             };
         };
     };
+    listMyOffers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListTransferOwnershipOfferResponse"];
+                };
+            };
+        };
+    };
     getMyOrganizations: {
         parameters: {
             query?: {
@@ -158031,6 +158604,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListMembershipSubscriptionListItemResponse"];
+                };
+            };
+        };
+    };
+    getInvitableScopes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseInvitableScopesResponse"];
                 };
             };
         };
@@ -160853,7 +161446,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListMessageResponse"];
+                    "*/*": components["schemas"]["ApiResponseListChatMessageResponse"];
                 };
             };
         };
@@ -163332,6 +163925,27 @@ export interface operations {
             };
         };
     };
+    cancelTeamOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                offerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取消成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     removeMember_1: {
         parameters: {
             query?: never;
@@ -163821,6 +164435,27 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseMessageResponse"];
                 };
+            };
+        };
+    };
+    cancelOrgOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                offerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取消成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -164576,6 +165211,27 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description 削除成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revokeMembershipInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channelId: number;
+                tokenId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取消成功 */
             204: {
                 headers: {
                     [name: string]: unknown;

@@ -8,6 +8,8 @@ defineProps<{
   nextCursor: string | null
   canPin?: boolean
   canDelete?: boolean
+  /** 承諾/辞退 API 実行中の招待トークン（招待カードのローディング表示用・F04.12） */
+  pendingInviteToken?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -17,6 +19,8 @@ const emit = defineEmits<{
   delete: [messageId: number]
   bookmark: [messageId: number]
   reply: [messageId: number]
+  inviteJoin: [messageId: number, token: string]
+  inviteDecline: [messageId: number, token: string]
 }>()
 
 const scrollContainer = ref<HTMLElement | null>(null)
@@ -41,11 +45,14 @@ defineExpose({ scrollContainer })
       :message="msg"
       :can-pin="canPin"
       :can-delete="canDelete"
+      :pending-invite-token="pendingInviteToken"
       @reaction="(messageId: number, emoji: string) => emit('reaction', messageId, emoji)"
       @pin="(messageId: number) => emit('pin', messageId)"
       @delete="(messageId: number) => emit('delete', messageId)"
       @bookmark="(messageId: number) => emit('bookmark', messageId)"
       @reply="(messageId: number) => emit('reply', messageId)"
+      @invite-join="(messageId: number, token: string) => emit('inviteJoin', messageId, token)"
+      @invite-decline="(messageId: number, token: string) => emit('inviteDecline', messageId, token)"
     />
     <DashboardEmptyState
       v-if="messages.length === 0 && !loading"
