@@ -102,6 +102,15 @@ class ApiGateDeclarationGuardTest {
     }
 
     @Test
+    @org.junit.jupiter.api.DisplayName("合成対照: Windows/Linux のパス区切りを同じFQCNへ正規化する")
+    void sourcePathsUsePortableFqcnSeparators() {
+        assertThat(fqcnFromRelativePath("com\\mannschaft\\app\\SampleController.java"))
+                .isEqualTo("com.mannschaft.app.SampleController");
+        assertThat(fqcnFromRelativePath("com/mannschaft/app/SampleController.java"))
+                .isEqualTo("com.mannschaft.app.SampleController");
+    }
+
+    @Test
     @org.junit.jupiter.api.DisplayName("合成陰性対照: 不正な常時到達宣言を拒否する")
     void negativeControlsRejectInvalidAlwaysReachableDeclarations() {
         assertThat(violations("sample.Bad", """
@@ -305,7 +314,11 @@ class ApiGateDeclarationGuardTest {
     }
 
     private static String fqcn(Path sourceRoot, Path path) {
-        String name = sourceRoot.relativize(path).toString().replace('\\', '.');
+        return fqcnFromRelativePath(sourceRoot.relativize(path).toString());
+    }
+
+    private static String fqcnFromRelativePath(String relativePath) {
+        String name = relativePath.replace('\\', '.').replace('/', '.');
         return name.substring(0, name.length() - ".java".length());
     }
 
