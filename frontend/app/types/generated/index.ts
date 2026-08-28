@@ -47799,6 +47799,7 @@ export interface components {
             visibility?: string;
         };
         BlogPostResponse: {
+            accessState?: string;
             audit?: components["schemas"]["BlogPostAuditDto"];
             content?: components["schemas"]["BlogPostContentDto"];
             /** Format: int64 */
@@ -59643,6 +59644,7 @@ export interface components {
             sourceType?: string;
         };
         AnnouncementFeedItemDto: {
+            accessState?: string;
             /** Format: int64 */
             authorId?: number;
             createdAt?: string;

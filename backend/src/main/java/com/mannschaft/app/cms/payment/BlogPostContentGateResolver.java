@@ -3,6 +3,8 @@ package com.mannschaft.app.cms.payment;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.spi.ContentGateResolver;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +20,13 @@ public class BlogPostContentGateResolver implements ContentGateResolver {
     @Override
     public String contentType() {
         return ContentGateType.POST;
+    }
+
+    @Override
+    public Optional<ContentGateTarget> resolveForAccess(Long contentId) {
+        return blogPostRepository.findById(contentId)
+                .filter(post -> post.getDeletedAt() == null)
+                .map(post -> new ContentGateTarget(post.getId(), post.getTeamId(), post.getOrganizationId()));
     }
 
     @Override

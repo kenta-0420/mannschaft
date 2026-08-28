@@ -1,9 +1,11 @@
 package com.mannschaft.app.payment.entity;
 
 import com.mannschaft.app.payment.PayerRelationship;
+import com.mannschaft.app.payment.PaymentItemType;
 import com.mannschaft.app.payment.PaymentMethod;
 import com.mannschaft.app.payment.PaymentStatus;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
+import com.mannschaft.app.payment.repository.PaymentItemRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -43,6 +45,9 @@ class MemberPaymentPayerFieldsIntegrationTest extends AbstractMySqlIntegrationTe
     @Autowired
     private MemberPaymentRepository memberPaymentRepository;
 
+    @Autowired
+    private PaymentItemRepository paymentItemRepository;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -58,6 +63,16 @@ class MemberPaymentPayerFieldsIntegrationTest extends AbstractMySqlIntegrationTe
                 .validFrom(LocalDate.of(2026, 4, 1))
                 .validUntil(LocalDate.of(2027, 3, 31))
                 .build();
+    }
+
+    private PaymentItemEntity createPaymentItem() {
+        return paymentItemRepository.save(PaymentItemEntity.builder()
+                .name("payer-fields-test-" + System.nanoTime())
+                .type(PaymentItemType.MONTHLY_FEE)
+                .amount(new BigDecimal("5000.00"))
+                .currency("JPY")
+                .gracePeriodDays((short) 0)
+                .build());
     }
 
     // ===== T3: 追加フィールドの永続化・取得 =====
@@ -116,9 +131,10 @@ class MemberPaymentPayerFieldsIntegrationTest extends AbstractMySqlIntegrationTe
         @Test
         @DisplayName("すべての PayerRelationship 値を永続化できる")
         void persist_allPayerRelationshipValues() {
+            Long paymentItemId = createPaymentItem().getId();
             for (PayerRelationship rel : PayerRelationship.values()) {
                 long userId = 1000L + rel.ordinal();
-                MemberPaymentEntity entity = buildBase(userId, 99L).toBuilder()
+                MemberPaymentEntity entity = buildBase(userId, paymentItemId).toBuilder()
                         .payerUserId(userId)
                         .payerRelationship(rel)
                         .build();
@@ -129,7 +145,7 @@ class MemberPaymentPayerFieldsIntegrationTest extends AbstractMySqlIntegrationTe
 
             for (PayerRelationship rel : PayerRelationship.values()) {
                 long userId = 1000L + rel.ordinal();
-                boolean found = memberPaymentRepository.existsValidPaidPayment(userId, 99L);
+                boolean found = memberPaymentRepository.existsValidPaidPayment(userId, paymentItemId);
                 assertThat(found).isTrue();
             }
         }
@@ -169,7 +185,7 @@ class MemberPaymentPayerFieldsIntegrationTest extends AbstractMySqlIntegrationTe
         @DisplayName("受益者（userId/paymentItemId）で PAID を検出できる（払い手フィールド追加後も不変）")
         void existsValidPaidPayment_beneficiaryKey_works() {
             Long beneficiaryId = 700L;
-            Long paymentItemId = 10L;
+            Long paymentItemId = createPaymentItem().getId();
 
             MemberPaymentEntity entity = buildBase(beneficiaryId, paymentItemId).toBuilder()
                     .payerUserId(800L)
@@ -191,7 +207,7 @@ class MemberPaymentPayerFieldsIntegrationTest extends AbstractMySqlIntegrationTe
         @DisplayName("validUntil が過去の場合は false を返す（有効期限チェックが機能する）")
         void existsValidPaidPayment_expiredRecord_returnsFalse() {
             Long beneficiaryId = 710L;
-            Long paymentItemId = 11L;
+            Long paymentItemId = createPaymentItem().getId();
 
             MemberPaymentEntity entity = MemberPaymentEntity.builder()
                     .userId(beneficiaryId)
@@ -214,7 +230,7 @@ class MemberPaymentPayerFieldsIntegrationTest extends AbstractMySqlIntegrationTe
         @DisplayName("PENDING レコードは existsValidPaidPayment で検出しない")
         void existsValidPaidPayment_pendingRecord_returnsFalse() {
             Long beneficiaryId = 720L;
-            Long paymentItemId = 12L;
+            Long paymentItemId = createPaymentItem().getId();
 
             MemberPaymentEntity entity = MemberPaymentEntity.builder()
                     .userId(beneficiaryId)
