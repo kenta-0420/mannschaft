@@ -39,7 +39,8 @@ public class TeamRecruitmentSubcategoryController {
             @PathVariable Long teamId,
             @RequestParam(required = false) Long categoryId) {
         return ResponseEntity.ok(ApiResponse.of(
-                subcategoryService.listByScope(RecruitmentScopeType.TEAM, teamId, categoryId)));
+                subcategoryService.listByScope(
+                        RecruitmentScopeType.TEAM, teamId, categoryId, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping

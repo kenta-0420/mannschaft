@@ -1,7 +1,10 @@
 package com.mannschaft.app.pointcard.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
 import com.mannschaft.app.pointcard.entity.PointCardProviderEntity;
@@ -95,11 +98,15 @@ public class PointCardRematchBatchService {
      * 監査ログに 1 件のみ記録する。失敗率が 10% を超えた場合は
      * {@link ErrorReportService#recordBackendException} で Sentry HIGH 通知を投げる。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。ポイントカードの提携先再マッチングであり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "${pointcard.rematch-batch.cron:0 0 3 * * *}", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = JOB_NAME,
             lockAtMostFor = "PT15M",
             lockAtLeastFor = "PT1M")
+    @BatchEndpoint(name = "pointcard-rematch",
+            description = "プロバイダー未確定(provider_id NULL)のポイントカードをマスタ・シノニム辞書に照らして毎晩03:00に再マッチングする")
     public void execute() {
         long startedAt = System.currentTimeMillis();
         log.info("[PointCardRematchBatch] 再マッチバッチ開始: chunkSize={}", chunkSize);

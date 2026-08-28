@@ -32,9 +32,18 @@ import type {
   JoinRequestResponse,
   VillageCalendarEventCreateRequest,
   VillageCalendarEventListResponse,
+  VillageCalendarEventLogCreateRequest,
+  VillageCalendarEventLogResponse,
   VillageCalendarEventResponse,
   VillageCalendarEventUpdateRequest,
   VillageCreationRequestResponse,
+  VillageEventArchiveResponse,
+  VillageEventArchiveSourceType,
+  VillageFestivalLivePostResponse,
+  VillageFestivalLivePostTagRequest,
+  VillageFestivalRsvpResponse,
+  VillageFestivalRsvpStatus,
+  VillageFestivalRsvpUpsertRequest,
   VillageMatchApplicationCreateRequest,
   VillageMatchApplicationResponse,
   VillageMatchApplicationReviewRequest,
@@ -45,12 +54,19 @@ import type {
   VillageMatchRecruitResponse,
   VillageMatchRecruitStatus,
   VillageMatchRecruitUpdateRequest,
+  VillageMeetupAttendanceResponse,
+  VillageMeetupAttendanceStatus,
+  VillageMeetupAttendanceUpsertRequest,
   VillageMeetupCandidateDateAddRequest,
   VillageMeetupCandidateDateResponse,
+  VillageMeetupCommentCreateRequest,
+  VillageMeetupCommentResponse,
   VillageMeetupConfirmRequest,
   VillageMeetupCreateRequest,
   VillageMeetupResponse,
   VillageMeetupStatus,
+  VillageMeetupTodoCreateRequest,
+  VillageMeetupTodoResponse,
   VillageMeetupUpdateRequest,
   VillageMeetupVoteRequest,
   VillageMeetupVoteSummary,
@@ -130,7 +146,7 @@ export type MeetupCandidateDateAddRequestKeysMatch = AssertTrue<
   SameKeys<VillageMeetupCandidateDateAddRequest, Schemas['MeetupCandidateDateAddRequest']>
 >
 
-/** 候補日は素の日付配列（`List<LocalDate>`）。オブジェクト配列に戻したらここで落ちる。 */
+/** 候補日は object 配列 `{date, time?}`（#2357）。素の string 配列に戻したらここで落ちる。 */
 export type MeetupCreateCandidateDatesShapeMatch = AssertTrue<
   Assignable<VillageMeetupCreateRequest['candidateDates'], NonNullable<Schemas['MeetupCreateRequest']['candidateDates']>>
 >
@@ -147,6 +163,41 @@ export type MeetupVoteTypeEnumMatch = AssertTrue<
 >
 export type MeetupVoteTypeEnumExhaustive = AssertTrue<
   Assignable<Schemas['MeetupVoteRequest']['voteType'], VillageMeetupVoteType>
+>
+
+// -----------------------------------------------------------------------------
+// A-2. F17.2 Wave1 ②寄合後半戦 — 出欠 / コメント / 宿題TODO
+// -----------------------------------------------------------------------------
+
+export type MeetupAttendanceResponseKeysMatch = AssertTrue<
+  SameKeys<VillageMeetupAttendanceResponse, Schemas['MeetupAttendanceResponse']>
+>
+
+export type MeetupAttendanceUpsertRequestKeysMatch = AssertTrue<
+  SameKeys<VillageMeetupAttendanceUpsertRequest, Schemas['MeetupAttendanceUpsertRequest']>
+>
+
+export type MeetupAttendanceStatusEnumMatch = AssertTrue<
+  Assignable<VillageMeetupAttendanceStatus, NonNullable<Schemas['MeetupAttendanceResponse']['status']>>
+>
+export type MeetupAttendanceStatusEnumExhaustive = AssertTrue<
+  Assignable<NonNullable<Schemas['MeetupAttendanceResponse']['status']>, VillageMeetupAttendanceStatus>
+>
+
+export type MeetupCommentResponseKeysMatch = AssertTrue<
+  SameKeys<VillageMeetupCommentResponse, Schemas['MeetupCommentResponse']>
+>
+
+export type MeetupCommentCreateRequestKeysMatch = AssertTrue<
+  SameKeys<VillageMeetupCommentCreateRequest, Schemas['MeetupCommentCreateRequest']>
+>
+
+export type MeetupTodoResponseKeysMatch = AssertTrue<
+  SameKeys<VillageMeetupTodoResponse, Schemas['MeetupTodoResponse']>
+>
+
+export type MeetupTodoCreateRequestKeysMatch = AssertTrue<
+  SameKeys<VillageMeetupTodoCreateRequest, Schemas['MeetupTodoCreateRequest']>
 >
 
 // =============================================================================
@@ -167,6 +218,60 @@ export type CalendarEventCreateRequestKeysMatch = AssertTrue<
 
 export type CalendarEventUpdateRequestKeysMatch = AssertTrue<
   SameKeys<VillageCalendarEventUpdateRequest, Schemas['CalendarEventUpdateRequest']>
+>
+
+// -----------------------------------------------------------------------------
+// B-2. F17.2 Wave1 ④歳時記×村史の年輪（去年の様子）
+// -----------------------------------------------------------------------------
+
+export type CalendarEventLogResponseKeysMatch = AssertTrue<
+  SameKeys<VillageCalendarEventLogResponse, Schemas['CalendarEventLogResponse']>
+>
+
+export type CalendarEventLogCreateRequestKeysMatch = AssertTrue<
+  SameKeys<VillageCalendarEventLogCreateRequest, Schemas['CalendarEventLogCreateRequest']>
+>
+
+// =============================================================================
+// B-3. F17.2 Wave2 ③お祭りの参加レイヤー — RSVP / 実況
+// =============================================================================
+
+export type FestivalRsvpResponseKeysMatch = AssertTrue<
+  SameKeys<VillageFestivalRsvpResponse, Schemas['FestivalRsvpResponse']>
+>
+
+export type FestivalRsvpUpsertRequestKeysMatch = AssertTrue<
+  SameKeys<VillageFestivalRsvpUpsertRequest, Schemas['FestivalRsvpUpsertRequest']>
+>
+
+export type FestivalRsvpStatusEnumMatch = AssertTrue<
+  Assignable<VillageFestivalRsvpStatus, NonNullable<Schemas['FestivalRsvpResponse']['status']>>
+>
+export type FestivalRsvpStatusEnumExhaustive = AssertTrue<
+  Assignable<NonNullable<Schemas['FestivalRsvpResponse']['status']>, VillageFestivalRsvpStatus>
+>
+
+export type FestivalLivePostResponseKeysMatch = AssertTrue<
+  SameKeys<VillageFestivalLivePostResponse, Schemas['FestivalLivePostResponse']>
+>
+
+export type FestivalLivePostTagRequestKeysMatch = AssertTrue<
+  SameKeys<VillageFestivalLivePostTagRequest, Schemas['FestivalLivePostTagRequest']>
+>
+
+// -----------------------------------------------------------------------------
+// B-4. F17.2 Wave2 ⑦ 村史（行事アーカイブ）— BE 追補 #2448（2026-07-22 main 済み）
+// -----------------------------------------------------------------------------
+
+export type VillageEventArchiveResponseKeysMatch = AssertTrue<
+  SameKeys<VillageEventArchiveResponse, Schemas['VillageEventArchiveResponse']>
+>
+
+export type VillageEventArchiveSourceTypeEnumMatch = AssertTrue<
+  Assignable<VillageEventArchiveSourceType, NonNullable<Schemas['VillageEventArchiveResponse']['sourceType']>>
+>
+export type VillageEventArchiveSourceTypeEnumExhaustive = AssertTrue<
+  Assignable<NonNullable<Schemas['VillageEventArchiveResponse']['sourceType']>, VillageEventArchiveSourceType>
 >
 
 // =============================================================================

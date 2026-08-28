@@ -25,7 +25,9 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.ContentAccessState;
 import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -46,12 +48,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -101,7 +106,7 @@ class BlogPostServiceTest {
      */
     @BeforeEach
     void stubPaywallAccessibleByDefault() {
-        lenient().when(paymentGateService.checkAccess(any(), any(), any()))
+        lenient().when(paymentGateService.checkAccess(any(), any(), any(), any(ContentGateTarget.class)))
                 .thenReturn(new GateCheckResponse(true, false, List.of()));
     }
 
@@ -134,6 +139,43 @@ class BlogPostServiceTest {
                 .build();
     }
 
+    @Nested
+    @DisplayName("listByUser の可視件数・ページ補充")
+    class ListByUser {
+
+        @Test
+        void hiddenを除外して次の可視記事を補充しtotalを正確にする() {
+            BlogPostEntity hidden = createPostEntity(PostStatus.PUBLISHED);
+            BlogPostEntity locked = createPostEntity(PostStatus.PUBLISHED);
+            BlogPostEntity full = createPostEntity(PostStatus.PUBLISHED);
+            ReflectionTestUtils.setField(hidden, "id", 101L);
+            ReflectionTestUtils.setField(locked, "id", 102L);
+            ReflectionTestUtils.setField(full, "id", 103L);
+            List<BlogPostEntity> rows = List.of(hidden, locked, full);
+            given(postRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(rows));
+            given(contentVisibilityChecker.filterAccessible(eq(ReferenceType.BLOG_POST), eq(Set.of(101L, 102L, 103L)),
+                    eq(VIEWER_ID))).willReturn(Set.of(101L, 102L, 103L));
+            given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
+            given(paymentGateService.checkAccessBatch(eq(ContentGateType.POST), eq(List.of(101L, 102L, 103L)),
+                    eq(VIEWER_ID), any(Map.class))).willReturn(Map.of(
+                    101L, new GateCheckResponse(false, true, List.of()),
+                    102L, new GateCheckResponse(false, false, List.of()),
+                    103L, new GateCheckResponse(true, false, List.of())));
+
+            try (MockedStatic<SecurityUtils> security = Mockito.mockStatic(SecurityUtils.class)) {
+                security.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+                Page<BlogPostResponse> result = service.listByUser(USER_ID, PageRequest.of(0, 1));
+
+                assertThat(result.getContent()).hasSize(1);
+                assertThat(result.getContent().get(0).getAccessState())
+                        .isEqualTo(ContentAccessState.LOCKED.name());
+                assertThat(result.getTotalElements()).isEqualTo(2);
+                assertThat(result.getTotalPages()).isEqualTo(2);
+            }
+        }
+    }
+
     // ========================================
     // listByTeam
     // ========================================
@@ -143,20 +185,68 @@ class BlogPostServiceTest {
     class ListByTeam {
 
         @Test
+        @DisplayName("HIDDENを除外して後続を補充し、可視totalを返す")
+        void hiddenを除外して後続を補充し可視totalを返す() {
+            BlogPostEntity hidden = createPostEntity(PostStatus.PUBLISHED);
+            BlogPostEntity locked = createPostEntity(PostStatus.PUBLISHED);
+            BlogPostEntity full = createPostEntity(PostStatus.PUBLISHED);
+            ReflectionTestUtils.setField(hidden, "id", 201L);
+            ReflectionTestUtils.setField(locked, "id", 202L);
+            ReflectionTestUtils.setField(full, "id", 203L);
+            List<BlogPostEntity> rows = List.of(hidden, locked, full);
+            given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(
+                    eq(TEAM_ID), any(Pageable.class))).willReturn(new PageImpl<>(rows));
+            given(contentVisibilityChecker.filterAccessible(
+                    ReferenceType.BLOG_POST, Set.of(201L, 202L, 203L), VIEWER_ID))
+                    .willReturn(Set.of(201L, 202L, 203L));
+            given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
+            given(paymentGateService.checkAccessBatch(
+                    eq(ContentGateType.POST), eq(List.of(201L, 202L, 203L)), eq(VIEWER_ID), any(Map.class)))
+                    .willReturn(Map.of(
+                            201L, new GateCheckResponse(false, true, List.of()),
+                            202L, new GateCheckResponse(false, false, List.of()),
+                            203L, new GateCheckResponse(true, false, List.of())));
+
+            try (MockedStatic<SecurityUtils> security = Mockito.mockStatic(SecurityUtils.class)) {
+                security.when(SecurityUtils::getCurrentUserId).thenReturn(VIEWER_ID);
+                security.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+                Page<BlogPostResponse> result = service.listByTeam(TEAM_ID_STR, PageRequest.of(0, 1));
+
+                assertThat(result.getContent()).singleElement()
+                        .extracting(BlogPostResponse::getAccessState)
+                        .isEqualTo(ContentAccessState.LOCKED.name());
+                assertThat(result.getTotalElements()).isEqualTo(2);
+                assertThat(result.getTotalPages()).isEqualTo(2);
+                verify(accessControlService).isSystemAdmin(VIEWER_ID);
+            }
+        }
+
+        @Test
         @DisplayName("正常系: チーム別記事一覧が返却される（Long文字列）")
         void チーム別一覧_正常_一覧返却() {
             // Given
             Pageable pageable = PageRequest.of(0, 10);
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             Page<BlogPostEntity> page = new PageImpl<>(List.of(entity));
-            given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(TEAM_ID, pageable)).willReturn(page);
+            given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(eq(TEAM_ID), any(Pageable.class)))
+                    .willReturn(page);
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
+            ReflectionTestUtils.setField(entity, "id", POST_ID);
+            given(contentVisibilityChecker.filterAccessible(
+                    ReferenceType.BLOG_POST, Set.of(POST_ID), VIEWER_ID)).willReturn(Set.of(POST_ID));
+            given(paymentGateService.checkAccessBatch(eq(ContentGateType.POST), eq(List.of(POST_ID)), eq(VIEWER_ID), any(Map.class)))
+                    .willReturn(Map.of(POST_ID, new GateCheckResponse(true, false, List.of())));
 
             // When: Long文字列で渡す（後方互換）
-            Page<BlogPostResponse> result = service.listByTeam(TEAM_ID_STR, pageable);
+            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(VIEWER_ID);
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+                Page<BlogPostResponse> result = service.listByTeam(TEAM_ID_STR, pageable);
 
-            // Then
-            assertThat(result).hasSize(1);
+                // Then
+                assertThat(result).hasSize(1);
+                verify(accessControlService).checkMembership(VIEWER_ID, TEAM_ID, "TEAM");
+            }
         }
 
         @Test
@@ -168,18 +258,49 @@ class BlogPostServiceTest {
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             Page<BlogPostEntity> page = new PageImpl<>(List.of(entity));
 
+            ReflectionTestUtils.setField(entity, "id", POST_ID);
             TeamEntity mockTeam = TeamEntity.builder().build();
             org.springframework.test.util.ReflectionTestUtils.setField(mockTeam, "id", TEAM_ID);
             given(teamRepository.findBySlugAndDeletedAtIsNull(teamSlug)).willReturn(java.util.Optional.of(mockTeam));
-            given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(TEAM_ID, pageable)).willReturn(page);
+            given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(eq(TEAM_ID), any(Pageable.class)))
+                    .willReturn(page);
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
+            given(contentVisibilityChecker.filterAccessible(
+                    ReferenceType.BLOG_POST, Set.of(POST_ID), VIEWER_ID)).willReturn(Set.of(POST_ID));
+            given(paymentGateService.checkAccessBatch(eq(ContentGateType.POST), eq(List.of(POST_ID)), eq(VIEWER_ID), any(Map.class)))
+                    .willReturn(Map.of(POST_ID, new GateCheckResponse(true, false, List.of())));
 
             // When: スラッグ文字列で渡す
-            Page<BlogPostResponse> result = service.listByTeam(teamSlug, pageable);
+            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(VIEWER_ID);
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+                Page<BlogPostResponse> result = service.listByTeam(teamSlug, pageable);
 
-            // Then
-            assertThat(result).hasSize(1);
-            verify(teamRepository).findBySlugAndDeletedAtIsNull(teamSlug);
+                // Then
+                assertThat(result).hasSize(1);
+                verify(teamRepository).findBySlugAndDeletedAtIsNull(teamSlug);
+                verify(accessControlService).checkMembership(VIEWER_ID, TEAM_ID, "TEAM");
+            }
+        }
+
+        @Test
+        @DisplayName("認可: 非メンバーは COMMON_002 で拒否される（他チームの下書き列挙禁止）")
+        void チーム別一覧_非メンバー拒否() {
+            // Given
+            Pageable pageable = PageRequest.of(0, 10);
+            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(VIEWER_ID);
+                org.mockito.BDDMockito.willThrow(
+                                new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                        .given(accessControlService)
+                        .checkMembership(VIEWER_ID, TEAM_ID, "TEAM");
+
+                // When / Then
+                assertThatThrownBy(() -> service.listByTeam(TEAM_ID_STR, pageable))
+                        .isInstanceOf(BusinessException.class);
+                verify(postRepository, never())
+                        .findByTeamIdOrderByPinnedDescCreatedAtDesc(any(), any());
+            }
         }
     }
 
@@ -196,8 +317,11 @@ class BlogPostServiceTest {
         void チームスコープ_slug検索_記事返却() {
             // Given
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            ReflectionTestUtils.setField(entity, "id", POST_ID);
             given(postRepository.findByTeamIdAndSlug(TEAM_ID, "test-slug")).willReturn(Optional.of(entity));
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
+            given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
+                    .willReturn(new GateCheckResponse(true, false, List.of()));
 
             // When
             BlogPostResponse result = service.getBySlug(TEAM_ID, null, null, "test-slug");
@@ -763,12 +887,12 @@ class BlogPostServiceTest {
             try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
                 su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
                 given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
-                given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
+                given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                         .willReturn(new GateCheckResponse(true, false, List.of()));
 
                 BlogPostResponse result = service.getById(POST_ID);
 
-                assertThat(result.getContent().body()).isEqualTo("有料本文フルテキスト");
+                assertThat(result.getContent().body()).isEqualTo((String) "有料本文フルテキスト");
             }
         }
 
@@ -780,54 +904,51 @@ class BlogPostServiceTest {
             try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
                 su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
                 given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
-                given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
+                given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                         .willReturn(new GateCheckResponse(true, false,
                                 List.of(new GateCheckResponse.RequiredItem(1L, "月会費", null, true))));
 
                 BlogPostResponse result = service.getById(POST_ID);
 
-                assertThat(result.getContent().body()).isEqualTo("有料本文フルテキスト");
+                assertThat(result.getContent().body()).isEqualTo((String) "有料本文フルテキスト");
             }
         }
 
         @Test
-        @DisplayName("AC-3: ゲート有り・未課金・titleHidden=false → body=null / title・excerpt は残る")
+        @DisplayName("AC-3: ゲート有り・未課金・titleHidden=false → titleとLOCKED状態のみ")
         void AC3_未課金_bodyのみマスク() {
             BlogPostEntity entity = postWithId();
             stubGetById(entity);
             try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
                 su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
                 given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
-                given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
+                given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                         .willReturn(new GateCheckResponse(false, false,
                                 List.of(new GateCheckResponse.RequiredItem(1L, "月会費", null, false))));
 
                 BlogPostResponse result = service.getById(POST_ID);
 
-                assertThat(result.getContent().body()).isNull();
+                assertThat(result.getContent().body()).isEqualTo((String) null);
                 assertThat(result.getContent().title()).isEqualTo("タイトル");
-                assertThat(result.getContent().excerpt()).isEqualTo("要約プレビュー");
-                assertThat(result.getContent().coverImageUrl()).isEqualTo("cover.png");
+                assertThat(result.getContent().excerpt()).isNull();
+                assertThat(result.getContent().coverImageUrl()).isNull();
+                assertThat(result.getAccessState()).isEqualTo("LOCKED");
             }
         }
 
         @Test
-        @DisplayName("AC-5: titleHidden=true・未課金（認証cms）→ title=null かつ body=null（200）")
+        @DisplayName("AC-5: titleHidden=true・未課金（認証cms）→ HIDDENとして404")
         void AC5_titleHidden_タイトルも本文もマスク() {
             BlogPostEntity entity = postWithId();
             stubGetById(entity);
             try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
                 su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
                 given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
-                given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
+                given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                         .willReturn(new GateCheckResponse(false, true, List.of()));
 
-                BlogPostResponse result = service.getById(POST_ID);
-
-                assertThat(result.getContent().title()).isNull();
-                assertThat(result.getContent().body()).isNull();
-                // excerpt は残す（プレビュー素材）
-                assertThat(result.getContent().excerpt()).isEqualTo("要約プレビュー");
+                assertThatThrownBy(() -> service.getById(POST_ID))
+                        .isInstanceOf(BusinessException.class);
             }
         }
 
@@ -838,11 +959,16 @@ class BlogPostServiceTest {
             stubGetById(entity);
             try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
                 su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+                given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(USER_ID), any(ContentGateTarget.class)))
+                        .willReturn(new GateCheckResponse(false, false, List.of()));
 
                 BlogPostResponse result = service.getById(POST_ID);
 
-                assertThat(result.getContent().body()).isEqualTo("有料本文フルテキスト");
-                verify(paymentGateService, never()).checkAccess(any(), any(), any());
+                assertThat(result.getContent().body()).isNull();
+                assertThat(result.getContent().excerpt()).isNull();
+                assertThat(result.getContent().coverImageUrl()).isNull();
+                assertThat(result.getAccessState()).isEqualTo(ContentAccessState.LOCKED.name());
+                verify(paymentGateService).checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(USER_ID), any(ContentGateTarget.class));
             }
         }
 
@@ -857,8 +983,8 @@ class BlogPostServiceTest {
 
                 BlogPostResponse result = service.getById(POST_ID);
 
-                assertThat(result.getContent().body()).isEqualTo("有料本文フルテキスト");
-                verify(paymentGateService, never()).checkAccess(any(), any(), any());
+                assertThat(result.getContent().body()).isEqualTo((String) "有料本文フルテキスト");
+                verify(paymentGateService, never()).checkAccess(any(), any(), any(), any(ContentGateTarget.class));
             }
         }
 
@@ -870,13 +996,13 @@ class BlogPostServiceTest {
             try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
                 su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
                 given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
-                given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
+                given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                         .willReturn(new GateCheckResponse(false, false, List.of()));
 
                 service.getById(POST_ID);
 
                 // 著者(USER_ID)ではなく閲覧者(VIEWER_ID)で判定される＝他人の課金で解錠しない／check と一致
-                verify(paymentGateService).checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID);
+                verify(paymentGateService).checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class));
             }
         }
 
@@ -888,31 +1014,30 @@ class BlogPostServiceTest {
             try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
                 su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
                 given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
-                given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
+                given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                         .willThrow(new RuntimeException("判定不能"));
-                given(paymentGateService.hasGate(ContentGateType.POST, POST_ID)).willReturn(true);
 
-                BlogPostResponse result = service.getById(POST_ID);
-
-                assertThat(result.getContent().body()).isNull();
+                assertThatThrownBy(() -> service.getById(POST_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo(CmsErrorCode.POST_NOT_FOUND.getCode()));
             }
         }
 
         @Test
-        @DisplayName("AC-11: checkAccess 例外＋ゲート無し（非課金記事）→ body は返る")
-        void AC11_例外時ゲート無し_body返却() {
+        @DisplayName("AC-11: checkAccess とゲート存在確認がともに失敗 → fail-closed（body=null）")
+        void AC11_例外時ゲート存在確認も失敗_failClosed() {
             BlogPostEntity entity = postWithId();
             stubGetById(entity);
             try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
                 su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
                 given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
-                given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
+                given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                         .willThrow(new RuntimeException("判定不能"));
-                given(paymentGateService.hasGate(ContentGateType.POST, POST_ID)).willReturn(false);
-
-                BlogPostResponse result = service.getById(POST_ID);
-
-                assertThat(result.getContent().body()).isEqualTo("有料本文フルテキスト");
+                assertThatThrownBy(() -> service.getById(POST_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo(CmsErrorCode.POST_NOT_FOUND.getCode()));
             }
         }
 
@@ -924,13 +1049,13 @@ class BlogPostServiceTest {
             try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
                 su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
                 given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
-                given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
+                given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                         .willReturn(null);
-                given(paymentGateService.hasGate(ContentGateType.POST, POST_ID)).willReturn(true);
 
-                BlogPostResponse result = service.getById(POST_ID);
-
-                assertThat(result.getContent().body()).isNull();
+                assertThatThrownBy(() -> service.getById(POST_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo(CmsErrorCode.POST_NOT_FOUND.getCode()));
             }
         }
 
@@ -942,13 +1067,15 @@ class BlogPostServiceTest {
             try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
                 su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
                 given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
-                given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
+                given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                         .willReturn(null);
-                given(paymentGateService.hasGate(ContentGateType.POST, POST_ID)).willReturn(false);
 
-                BlogPostResponse result = service.getById(POST_ID);
+                assertThatThrownBy(() -> service.getById(POST_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo(CmsErrorCode.POST_NOT_FOUND.getCode()));
 
-                assertThat(result.getContent().body()).isEqualTo("有料本文フルテキスト");
+                // 本文はHIDDEN時に返却しない。
             }
         }
 
@@ -958,13 +1085,27 @@ class BlogPostServiceTest {
             Pageable pageable = PageRequest.of(0, 10);
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             Page<BlogPostEntity> page = new PageImpl<>(List.of(entity));
-            given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(TEAM_ID, pageable)).willReturn(page);
+            given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(eq(TEAM_ID), any(Pageable.class)))
+                    .willReturn(page);
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(responseWithBody());
+            ReflectionTestUtils.setField(entity, "id", POST_ID);
+            given(contentVisibilityChecker.filterAccessible(
+                    ReferenceType.BLOG_POST, Set.of(POST_ID), VIEWER_ID)).willReturn(Set.of(POST_ID));
+            given(paymentGateService.checkAccessBatch(eq(ContentGateType.POST), eq(List.of(POST_ID)), eq(VIEWER_ID), any(Map.class)))
+                    .willReturn(Map.of(POST_ID, new GateCheckResponse(false, false, List.of())));
 
-            Page<BlogPostResponse> result = service.listByTeam(TEAM_ID_STR, pageable);
+            Page<BlogPostResponse> result;
+            try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
+                su.when(SecurityUtils::getCurrentUserId).thenReturn(VIEWER_ID);
+                su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+                result = service.listByTeam(TEAM_ID_STR, pageable);
+            }
 
             assertThat(result.getContent()).hasSize(1);
             assertThat(result.getContent().get(0).getContent().body()).isNull();
+            assertThat(result.getContent().get(0).getContent().excerpt()).isNull();
+            assertThat(result.getContent().get(0).getContent().coverImageUrl()).isNull();
+            assertThat(result.getContent().get(0).getAccessState()).isEqualTo(ContentAccessState.LOCKED.name());
             // 一覧でも title / excerpt は残る
             assertThat(result.getContent().get(0).getContent().title()).isEqualTo("タイトル");
         }
@@ -978,13 +1119,13 @@ class BlogPostServiceTest {
             try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
                 su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
                 given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
-                given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
+                given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                         .willReturn(new GateCheckResponse(false, false, List.of()));
 
                 BlogPostResponse result = service.getBySlugWithPreviewToken(
                         TEAM_ID, null, null, "slug", "tok-123");
 
-                assertThat(result.getContent().body()).isNull();
+                assertThat(result.getContent().body()).isEqualTo((String) null);
             }
         }
 
@@ -1003,7 +1144,7 @@ class BlogPostServiceTest {
                         .isInstanceOf(BusinessException.class)
                         .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                                 .isEqualTo("VISIBILITY_004"));
-                verify(paymentGateService, never()).checkAccess(any(), any(), any());
+                verify(paymentGateService, never()).checkAccess(any(), any(), any(), any(ContentGateTarget.class));
             }
         }
     }

@@ -76,7 +76,7 @@ class TimelineFeedControllerTest {
             given(scopeIdResolver.resolve("TEAM", TEAM_SLUG)).willReturn(TEAM_INTERNAL_ID);
             given(postService.getFeed(eq("TEAM"), eq(TEAM_INTERNAL_ID), any(), anyInt(), eq(USER_ID)))
                     .willReturn(List.of());
-            given(postService.getPinnedPosts(eq("TEAM"), eq(TEAM_INTERNAL_ID), eq(USER_ID)))
+            given(postService.getPinnedPosts(eq("TEAM"), eq(TEAM_INTERNAL_ID), any(), eq(USER_ID)))
                     .willReturn(List.of());
 
             ResponseEntity<TimelineFeedResponse> response =
@@ -85,7 +85,7 @@ class TimelineFeedControllerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             verify(scopeIdResolver).resolve("TEAM", TEAM_SLUG);
             verify(postService).getFeed("TEAM", TEAM_INTERNAL_ID, null, 20, USER_ID);
-            verify(postService).getPinnedPosts("TEAM", TEAM_INTERNAL_ID, USER_ID);
+            verify(postService).getPinnedPosts("TEAM", TEAM_INTERNAL_ID, null, USER_ID);
         }
 
         @Test
@@ -96,7 +96,7 @@ class TimelineFeedControllerTest {
             given(scopeIdResolver.resolve("PUBLIC", "0")).willReturn(0L);
             given(postService.getFeed(eq("PUBLIC"), eq(0L), any(), anyInt(), eq(USER_ID)))
                     .willReturn(List.of(normalPost));
-            given(postService.getPinnedPosts(eq("PUBLIC"), eq(0L), eq(USER_ID)))
+            given(postService.getPinnedPosts(eq("PUBLIC"), eq(0L), any(), eq(USER_ID)))
                     .willReturn(List.of(pinnedPost));
 
             ResponseEntity<TimelineFeedResponse> response =
@@ -108,6 +108,30 @@ class TimelineFeedControllerTest {
             assertThat(body.getData().getPinned()).containsExactly(pinnedPost);
             assertThat(body.getData().getPosts()).containsExactly(normalPost);
             assertThat(body.getMeta().getLimit()).isEqualTo(20);
+        }
+    }
+
+    /**
+     * TimelineFeedController#getMyFeed の自己スコープ性を固定する契約テスト。
+     * {@code postService.getMyFeed} は {@code SecurityUtils.getCurrentUserId()} のみを
+     * 検索条件に束縛する（cursor/limit は非識別子パラメータ）ため、
+     * URL・クエリに他人の識別子を指定する余地が構造的に無い。
+     */
+    @Nested
+    @DisplayName("getMyFeed - 自己スコープ")
+    class GetMyFeedSelfScope {
+
+        @Test
+        @DisplayName("SecurityUtils.getCurrentUserId() のみを検索条件に渡す")
+        void getMyFeed_boundToCurrentUserOnly() {
+            PostResponse post = PostResponse.builder().id(1L).build();
+            given(postService.getMyFeed(eq(USER_ID), any(), anyInt())).willReturn(List.of(post));
+
+            ResponseEntity<TimelineFeedResponse> response = controller.getMyFeed(null, 20);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            // 他人の userId をクエリに渡す経路が存在しないことの裏取り: 呼び出しは常に USER_ID のみ。
+            verify(postService).getMyFeed(USER_ID, null, 20);
         }
     }
 }

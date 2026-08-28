@@ -22,7 +22,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * F01.9 保護者同意ゲート AC-17: {@link ParentalConsentService#approveParentalConsent(String, Long)} が
+ * F01.9 保護者同意ゲート AC-17: {@link ParentalConsentService#approveParentalConsent(String, Long, String)} が
  * 承認時に子ユーザーを ACTIVE へ遷移させる（{@code activate()} 呼び出し + save）ことを検証する。
  */
 @ExtendWith(MockitoExtension.class)
@@ -69,7 +69,7 @@ class ParentalConsentApproveActivationTest {
         when(child.getId()).thenReturn(childUserId);
         when(userRepository.findById(childUserId)).thenReturn(Optional.of(child));
 
-        service.approveParentalConsent(token, parentUserId);
+        service.approveParentalConsent(token, parentUserId, "127.0.0.1");
 
         verify(link).approve(parentUserId);
         verify(child).activate();

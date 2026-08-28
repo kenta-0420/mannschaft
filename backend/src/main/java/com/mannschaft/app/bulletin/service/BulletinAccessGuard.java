@@ -20,14 +20,32 @@ import org.springframework.stereotype.Component;
  * {@code TEAM / ORGANIZATION} のみである。設計書 §2 の対象レベルも組織・チームに限定される。</p>
  * <ul>
  *   <li>{@code TEAM / ORGANIZATION}: {@link AccessControlService} 経由で所属・ロール・権限を実効認可する。
- *       現状の重大欠陥（他チームのスレッド削除・ロック・カテゴリ削除が誰でも可能）を本ガードで塞ぐ。</li>
+ *       スレッド削除・ロック・カテゴリ削除といった管理操作の認可を本ガードで一貫して適用する。</li>
+ *   <li>{@code PERSONAL}: ユーザー個人スコープ（{@code scope_id = userId}）。ロール基盤の外だが
+ *       「本人であること」は本ガードで判定できるため、
+ *       {@link #checkPersonalOwner(Long, Long)} で本人性を実効検証する。</li>
  *   <li>{@code VILLAGE}: 村は独自のメンバーシップ基盤（{@code village_memberships}）を持ち、
- *       スレッド作成時に {@code PostingIdentityService.validatePostingIdentity} が村メンバーであることを検証する。
- *       本ガードのロール基盤では村メンバーを判定できないため、村スコープではロールゲートを適用しない
- *       （村側の検証に委ねる）。</li>
- *   <li>{@code PERSONAL}: ユーザー個人スコープ（{@code scope_id = userId}）。本人のみがアクセスする想定のため
- *       ロールゲートは適用しない。</li>
+ *       {@code PostingIdentityService.validatePostingIdentity} /
+ *       {@code VillageBulletinAccessService} が村メンバー・可視性を検証する。
+ *       本ガードのロール基盤では村メンバーを判定できないため、
+ *       <b>呼び出し側が村分岐で村ドメインの検証へ委譲すること</b>を前提とする。</li>
  * </ul>
+ *
+ * <h2>fail-closed 方針（重要）</h2>
+ * <p>{@link #checkMembership(Long, ScopeType, Long)} は<b>全スコープ種別を網羅し、
+ * 本ガードで判定できない種別は素通しせず拒否する</b>。委譲は「呼び出し側で分岐済み」を
+ * 前提にしてよいが、<b>分岐漏れは素通しではなく拒否として現れる</b>ようにする。</p>
+ *
+ * <p>あわせて、スコープ付きパス経路（{@code /api/v1/{scopeType}/{scopeId}/bulletin/...}）では
+ * {@code BulletinScopeIdResolver} が入口で受理スコープ種別を許可リスト制限しており、
+ * 判定手段を持たない種別はそもそも本ガードまで到達しない（二段構え）。</p>
+
+ * <p>他のロール判定メソッド（{@link #isAdmin} / {@link #isAdminOrAbove} / {@link #isSupporter} /
+ * {@link #requireManageContent} / {@link #requireCanCreateThread}）は従来どおり
+ * TEAM / ORGANIZATION のみを実効判定する。これらはいずれも
+ * {@link #checkMembership(Long, ScopeType, Long)} の後に呼ばれる設計であり、
+ * PERSONAL では本人であることが先に保証されているため「本人＝自スコープの管理者」として
+ * 素通りさせてよい（個人掲示板の所有者が自分の投稿を管理できる従来挙動を維持する）。</p>
  *
  * <p>認可違反は共通 403（{@link CommonErrorCode#COMMON_002}）を流用する（bulletin 専用認可エラーは作らない）。</p>
  */
@@ -50,14 +68,49 @@ public class BulletinAccessGuard {
     }
 
     /**
-     * 所属メンバーであることを検証する。非メンバーは 403（COMMON_002）。
+     * 当該スコープへのアクセス資格を検証する。資格が無ければ 403（COMMON_002）。
      *
-     * <p>TEAM / ORGANIZATION のみ実効的に検証する。VILLAGE / PERSONAL は当該スコープ側の
-     * 検証に委ねるため、ここでは素通りさせる（上記スコープ対応方針を参照）。</p>
+     * <p><b>全スコープ種別を網羅する（fail-closed）</b>。本メソッドは種別ごとに扱いを明示し、
+     * 想定外の種別は拒否する。</p>
+     *
+     * <ul>
+     *   <li>{@code TEAM / ORGANIZATION}: {@link AccessControlService} でメンバーシップを検証</li>
+     *   <li>{@code PERSONAL}: 本人スコープ（{@code scope_id = userId}）ゆえ本人であることを検証。
+     *       近隣の {@code BulletinAttachmentService} の PERSONAL 判定と同一の型</li>
+     *   <li>{@code VILLAGE}: 村メンバー判定は本ガードのロール基盤の外にあり、村ドメインの
+     *       {@code PostingIdentityService#validatePostingIdentity} /
+     *       {@code VillageBulletinAccessService} が担う。<b>呼び出し側で村分岐を済ませること</b>を
+     *       前提とし、本メソッドに村スコープが到達した場合は「村側の検証が漏れている」とみなして拒否する</li>
+     *   <li>上記以外（大会連絡スコープ等）: 本ガードは判定手段を持たないため拒否する。
+     *       各呼び出し側が {@code TournamentContactAccessService} 等へ分岐済みであること</li>
+     * </ul>
+     *
+     * @throws BusinessException アクセス資格なし、または本ガードで判定できないスコープ種別
+     *                           （{@link CommonErrorCode#COMMON_002}）
      */
     public void checkMembership(Long userId, ScopeType scopeType, Long scopeId) {
-        if (isRoleManagedScope(scopeType)) {
-            accessControlService.checkMembership(userId, scopeId, scopeType.name());
+        if (scopeType == null) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        switch (scopeType) {
+            case TEAM, ORGANIZATION -> accessControlService.checkMembership(userId, scopeId, scopeType.name());
+            case PERSONAL -> checkPersonalOwner(userId, scopeId);
+            // VILLAGE を含むそれ以外は本ガードでは判定できない。素通しせず拒否する（fail-closed）。
+            default -> throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * PERSONAL スコープの本人チェック（{@code scope_id == userId}）。本人以外は 403。
+     *
+     * <p>個人掲示板はスコープ ID がそのまま所有者の user_id である。近隣の
+     * {@code BulletinAttachmentService#checkPersonalOwner} と同一の判定に揃える。</p>
+     *
+     * @throws BusinessException 本人でない（{@link CommonErrorCode#COMMON_002}）
+     */
+    public void checkPersonalOwner(Long userId, Long scopeId) {
+        if (userId == null || !userId.equals(scopeId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
     }
 

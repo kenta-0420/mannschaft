@@ -12,11 +12,37 @@ const props = defineProps<{
   forceWide?: boolean
 }>()
 
+/**
+ * AC-16: モバイルドロワー（forceWide=true）内でのみ、ヘッダーから退避した
+ * アクション（チーム/組織切替・目安箱・受信箱・PWAインストール・ログアウト・Sync表示）を
+ * 描画する。開閉イベントはヘッダーと同じく親（AppShell）へ中継する。
+ */
+const emit = defineEmits<{
+  'open-feedback': []
+  'open-ios-install': []
+}>()
+
 const appShellStore = useAppShellStore()
 const { groups, allPaths } = useAppNavGroups()
 const route = useRoute()
+const authStore = useAuthStore()
+const inboxStore = useInboxStore()
+const { t } = useI18n()
 
 const rail = computed(() => !props.forceWide && appShellStore.isRail)
+
+// PWA インストール（AppHeader.vue のデスクトップ版と同一ロジック。モバイルドロワー内退避用）
+const { canInstall, isInstalled, isIOS, isDismissedThisSession, promptInstall } = usePWAInstall()
+const showPwaInstallBtn = computed(
+  () => !isInstalled.value && !isDismissedThisSession.value && (canInstall.value || isIOS.value),
+)
+async function handlePwaInstall() {
+  if (isIOS.value) {
+    emit('open-ios-install')
+  } else {
+    await promptInstall()
+  }
+}
 
 // Phase2 AC-14: スコープページ（チーム/組織）の自動レール収縮中のみレール最下部に表示する
 // 説明チップ（sidebar-prototype.html の .gnav-bottom / .auto-chip 相当）。
@@ -84,6 +110,67 @@ function isItemActive(path: string): boolean {
       >
         {{ $t('global_nav.autoCollapse.chip') }}
       </span>
+    </div>
+
+    <!-- AC-16: モバイルドロワー専用の退避アクション（forceWide=true のときのみ描画）。
+         AppHeader.vue はデスクトップ(md=768px)以上でのみこれらを表示するため、
+         モバイルではここが唯一の到達導線になる（ハンバーガー1タップ＋各リンク1タップ＝2タップ以内）。 -->
+    <div
+      v-if="forceWide"
+      data-testid="mobile-drawer-actions"
+      class="flex flex-col gap-1 border-t border-surface-200 px-2 py-2.5 dark:border-surface-700"
+    >
+      <div class="flex flex-wrap items-center gap-1 px-1 pb-1">
+        <ScopeNavDropdown scope-type="TEAM" :label="t('scopeFolder.nav.teams')" />
+        <ScopeNavDropdown scope-type="ORGANIZATION" :label="t('scopeFolder.nav.organizations')" />
+      </div>
+
+      <div class="px-2 pb-1">
+        <SyncProgressIndicator />
+      </div>
+
+      <button
+        type="button"
+        data-testid="feedback-open-button"
+        class="flex items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+        @click="emit('open-feedback')"
+      >
+        <i class="pi pi-box text-base text-surface-500 dark:text-surface-400" aria-hidden="true" />
+        {{ t('feedback.nav_button') }}
+      </button>
+
+      <!-- F04.11: 受信箱への導線（MSH-03: ドロワー経由で到達可能にする） -->
+      <NuxtLink
+        to="/inbox"
+        class="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+      >
+        <i class="pi pi-inbox text-base text-surface-500 dark:text-surface-400" aria-hidden="true" />
+        <span class="flex-1">{{ t('inbox.tab.inbox') }}</span>
+        <Badge
+          v-if="inboxStore.inboxCount > 0"
+          :value="inboxStore.inboxCount > 99 ? '99+' : inboxStore.inboxCount"
+          severity="danger"
+        />
+      </NuxtLink>
+
+      <button
+        v-if="showPwaInstallBtn"
+        type="button"
+        class="flex items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+        @click="handlePwaInstall"
+      >
+        <i class="pi pi-download text-base text-surface-500 dark:text-surface-400" aria-hidden="true" />
+        {{ t('pwa.install_button') }}
+      </button>
+
+      <button
+        type="button"
+        class="flex items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+        @click="authStore.serverLogout()"
+      >
+        <i class="pi pi-sign-out text-base text-surface-500 dark:text-surface-400" aria-hidden="true" />
+        {{ t('button.logout') }}
+      </button>
     </div>
   </nav>
 </template>

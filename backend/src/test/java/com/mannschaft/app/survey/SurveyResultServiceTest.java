@@ -85,6 +85,34 @@ class SurveyResultServiceTest {
     @InjectMocks
     private SurveyResultService surveyResultService;
 
+    /**
+     * 母集団解決（{@link com.mannschaft.app.survey.service.SurveyUniverseResolver}）は
+     * <b>本物</b>を注入する。ここをモックにすると「どの母集団を数えるか」という本質が
+     * テストから消えるため、実クラスへ既存のリポジトリモックを渡し、
+     * 従来どおり最下層のスタブ（{@code userRoleRepository} 等）で振る舞いを決める。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void 母集団リゾルバを実クラスで注入する() {
+        org.springframework.test.util.ReflectionTestUtils.setField(surveyResultService, "universeResolver",
+                new com.mannschaft.app.survey.service.SurveyUniverseResolver(
+                        organizationMembershipService, userRoleRepository, targetRepository));
+    }
+
+
+    /**
+     * 結果閲覧可否の判定点は<b>実物</b>を差し込む（Issue #2779）。
+     *
+     * <p>モックに置き換えると「403 を投げる経路」と「詳細応答の viewerCanViewResults」が
+     * 同じ判定を通っている保証が消えるため、モック化した可視性基盤を包んだ実物を使う。
+     * 既存の {@code contentVisibilityChecker} スタブはそのまま素通しで効く。</p>
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void injectRealResultAccessPolicy() {
+        org.springframework.test.util.ReflectionTestUtils.setField(
+                surveyResultService, "resultAccessGuard",
+                new com.mannschaft.app.survey.service.SurveyResultAccessGuard(contentVisibilityChecker));
+    }
+
     private static final Long SURVEY_ID = 100L;
     private static final Long USER_ID = 10L;
     private static final Long ADMIN_USER_ID = 1L;

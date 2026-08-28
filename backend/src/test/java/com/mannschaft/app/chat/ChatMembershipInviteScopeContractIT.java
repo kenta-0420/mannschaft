@@ -34,32 +34,26 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * F04.12 チャットからチーム/組織への承諾型招待 — 認可・権限昇格封鎖・永続の契約テスト（試練 / red 先行）。
+ * F04.12 チャットからチーム/組織への承諾型招待 — 認可・権限昇格封鎖・永続の契約テスト。
  *
  * <p>正本: 戦役台帳 {@code .claude/campaigns/2026-07-18-owner-transfer-chat-invite.md}。
  * 金型: {@code MemberScopeContractIT}。細粒度認可（発行者 ADMIN/DEPUTY・宛先照合・特権ロール封鎖）は
  * Service 層で行うため MockMvc の method security は認証済みなら通過し、IDOR/権限昇格は Service が返す
  * HTTP status / エラーコードで検証する。</p>
  *
- * <p><strong>骨格段階（red の理由）</strong>:
- * {@code MembershipInviteService#issueMembershipInvite} と {@code InviteService#declineInvite} は
- * {@code UnsupportedOperationException} を投げるスタブ（発行・辞退系は 500 で red）。
- * {@code InviteService#joinByInvite} は実装済だが <em>宛先照合と特権ロール封鎖が未実装</em>のため、
- * 「第三者 join が 403 になる」「宛先付きトークンで特権ロールが付与されない」テストは現状の
- * 素通り実装を突いて red になる（＝IDOR/権限昇格の脆弱性を検出する）。</p>
- *
  * <p>設計書: docs/features/F04.12_chat_membership_invite.md §4・§6。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("F04.12 チャット承諾型招待 認可・権限昇格封鎖契約テスト（試練 red）")
+@DisplayName("F04.12 チャット承諾型招待 認可・権限昇格封鎖契約テスト")
 class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
@@ -187,6 +181,52 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
                     .setParameter("cid", dmAdminTargetId)
                     .getSingleResult();
             assertThat(cardTokenRef.longValue()).isEqualTo(tokenId.longValue());
+        }
+    }
+
+    @Nested
+    @DisplayName("1b. 取消対象のチャンネル束縛")
+    class RevokeChannelBinding {
+
+        @Test
+        @DisplayName("別 DM の channelId から宛先付き招待を取消せない")
+        void 別DM経由では取消不可() throws Exception {
+            setAuth(adminAId);
+            mockMvc.perform(post("/api/v1/chat/channels/{cid}/membership-invite", dmAdminTargetId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    inviteBody("TEAM", teamAId, resolveRoleId("MEMBER"), 7))))
+                    .andExpect(status().isCreated());
+
+            InviteTokenEntity token = inviteTokenRepository
+                    .findByTargetUserIdAndTeamIdAndRevokedAtIsNull(targetId, teamAId).getFirst();
+
+            mockMvc.perform(delete("/api/v1/chat/channels/{cid}/membership-invite/{tokenId}",
+                            dmMemberTargetId, token.getId()))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("ROLE_002"));
+
+            em.flush();
+            em.clear();
+            assertThat(inviteTokenRepository.findById(token.getId()).orElseThrow().getRevokedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("チャット外の共有リンク型トークンを取消 API で失効できない")
+        void 共有リンク型トークンは取消不可() throws Exception {
+            String rawToken = seedNamedToken(
+                    teamAId, null, resolveRoleId("MEMBER"), LocalDateTime.now().plusDays(7));
+            InviteTokenEntity token = inviteTokenRepository.findByToken(rawToken).orElseThrow();
+
+            setAuth(adminAId);
+            mockMvc.perform(delete("/api/v1/chat/channels/{cid}/membership-invite/{tokenId}",
+                            dmAdminTargetId, token.getId()))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("ROLE_002"));
+
+            em.flush();
+            em.clear();
+            assertThat(inviteTokenRepository.findById(token.getId()).orElseThrow().getRevokedAt()).isNull();
         }
     }
 

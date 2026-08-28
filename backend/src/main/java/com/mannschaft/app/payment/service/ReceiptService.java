@@ -30,7 +30,10 @@ public class ReceiptService {
      * 会費領収書を取得する。
      *
      * <p>IDOR 防止: 払い手（payerUserId）または受益者本人（userId）のみアクセス可能。
-     * 第三者のアクセスは {@link PaymentErrorCode#PAYMENT_ACCESS_DENIED} で拒否する。</p>
+     * 第三者のアクセスは {@link PaymentErrorCode#PAYMENT_ACCESS_DENIED} で拒否する。
+     * <b>このコードは 404 を返す</b>（不在の {@link PaymentErrorCode#MEMBER_PAYMENT_NOT_FOUND} と同一ステータス）。
+     * 403 と 404 で割れていると、応答の差だけで「その支払い記録 ID は実在する」と判別できる
+     * 存在オラクルになるため、PARKING_020 起点の「越境は存在秘匿で404」の流儀に揃えている。</p>
      *
      * <p>領収書発行は支払い済み（PAID）のみ許可。
      * PENDING / CANCELLED / REFUNDED は {@link PaymentErrorCode#ALREADY_REFUNDED} ではなく
@@ -46,7 +49,8 @@ public class ReceiptService {
         MemberPaymentEntity payment = memberPaymentRepository.findById(memberPaymentId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND));
 
-        // IDOR 防止: 払い手または受益者本人のみ取得可（行 46-50 が根拠行）
+        // IDOR 防止: 払い手または受益者本人のみ取得可。
+        // 第三者は 403 ではなく不在と同じ 404 で返し、支払い記録 ID の実在を秘匿する。
         boolean isPayer = requestUserId.equals(payment.getPayerUserId());
         boolean isBeneficiary = requestUserId.equals(payment.getUserId());
         if (!isPayer && !isBeneficiary) {

@@ -1,8 +1,10 @@
 package com.mannschaft.app.scopefolder.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.membership.event.MembershipEndedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,8 @@ public class MembershipEventListener {
      *
      * @param event メンバーシップ終了イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。所属終了・チーム削除・組織削除に伴うフォルダ権限の後始末。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMembershipEnded(MembershipEndedEvent event) {
@@ -57,6 +61,8 @@ public class MembershipEventListener {
      *
      * @param event チーム削除イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。所属終了・チーム削除・組織削除に伴うフォルダ権限の後始末。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTeamDeleted(TeamDeletedEvent event) {
@@ -73,6 +79,8 @@ public class MembershipEventListener {
      *
      * @param event 組織削除イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。所属終了・チーム削除・組織削除に伴うフォルダ権限の後始末。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOrganizationDeleted(OrganizationDeletedEvent event) {
@@ -85,7 +93,7 @@ public class MembershipEventListener {
     }
 
     /**
-     * membership.domain.ScopeType を scopefolder.entity.ScopeType に変換する。
+     * membership.domain.ScopeType を scopefolder.entity.enums.ScopeType に変換する。
      */
     private ScopeType toFolderScopeType(com.mannschaft.app.membership.domain.ScopeType membershipScope) {
         return switch (membershipScope) {

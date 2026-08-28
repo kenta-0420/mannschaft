@@ -2,6 +2,7 @@ package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ApprovalMode;
@@ -45,9 +46,11 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -99,6 +102,9 @@ class ReservationGroupServiceTest {
     @Mock
     private ReservationBlockedTimeRepository blockedTimeRepository;
     @Mock
+    private com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository
+            recurringBlockedTimeRepository;
+    @Mock
     private ReservationReminderRepository reminderRepository;
     @Mock
     private ReservationViewAccessGuard viewAccessGuard;
@@ -110,6 +116,9 @@ class ReservationGroupServiceTest {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private AuditLogService auditLogService;
+
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     /** 機能B: overlap 判定は純ロジックのため実インスタンスを注入（RESERVATION_009 の実 throw を検証）。 */
     private final ReservationUnavailabilityChecker unavailabilityChecker = new ReservationUnavailabilityChecker();
@@ -155,16 +164,36 @@ class ReservationGroupServiceTest {
         given(accessControlService.isAdminOrAbove(eq(ADMIN_USER_ID), eq(TEAM_ID), eq("TEAM"))).willReturn(true);
     }
 
-    /** 固定 Clock を差し替えてサービスを再生成する（締切・過去枠判定の時刻別検証用）。 */
+    /**
+     * 固定 Clock を差し替えてサービスを再生成する（締切・過去枠判定の時刻別検証用）。
+     *
+     * <p>Issue #2526 是正済み判定: 過去枠・締切判定は
+     * {@code LocalDateTime.now(clock.withZone(ZoneId.systemDefault()))} で業務ローカル基準に揃えたため、
+     * この Clock が表す瞬間は「JVM 既定ゾーンで解釈すると {@code now} になる」ものでなければならない。
+     * かつての {@code now.toInstant(ZoneOffset.UTC)} は UTC 基準比較というバグ実装をそのまま固定していた
+     * （実行環境の JVM 既定ゾーンが UTC でない場合に破綻する）。{@link ZoneId#systemDefault()} 経由で
+     * instant 化することで、実行環境に関わらず引数 {@code now} が正しく「現在時刻」として渡るようにする。
+     */
     private void reinitServiceWithClockAt(LocalDateTime now) {
-        Clock fixed = Clock.fixed(now.toInstant(ZoneOffset.UTC), ZoneId.of("UTC"));
+        reinitServiceWithClock(Clock.fixed(now.atZone(ZoneId.systemDefault()).toInstant(), ZoneId.of("UTC")));
+    }
+
+    /**
+     * 任意の {@link Clock}（ゾーン込み）を明示注入してサービスを再生成する。
+     * Issue #2526 のゾーン一致性番人テスト（同一瞬間・異なる Clock ゾーン）で使う。
+     */
+    private void reinitServiceWithClock(Clock fixed) {
         TransactionTemplate txTemplate = new TransactionTemplate(mock(PlatformTransactionManager.class));
         service = new ReservationGroupService(
                 reservationRepository, slotRepository, slotService, lineRepository, menuRepository,
-                menuLineRepository, blockedTimeRepository, reminderRepository, viewAccessGuard,
+                menuLineRepository, blockedTimeRepository, recurringBlockedTimeRepository, reminderRepository,
+                viewAccessGuard,
                 reservationPolicyService, unavailabilityChecker, accessControlService, eventPublisher,
                 auditLogService,
                 org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationWaitlistService.class),
+                // F03.4.5 §6.4: レートリミットは本テストの対象外のため素通しの mock（判定は
+                // ReservationCreateRateLimiterTest / ReservationCreateRateLimitPathTest が担う）。
+                org.mockito.Mockito.mock(ReservationCreateRateLimiter.class),
                 txTemplate, fixed);
     }
 
@@ -266,6 +295,30 @@ class ReservationGroupServiceTest {
     @Nested
     @DisplayName("createGroup: 正常系（G-1）")
     class CreateGroupHappyPath {
+
+        @Test
+        @DisplayName("非JST境界: America/New_Yorkの未来枠でグループ予約を作成できる")
+        void 非JST境界の未来枠でグループ予約を作成できる() {
+            reinitServiceWithClock(Clock.fixed(Instant.parse("2026-08-10T02:30:00Z"), ZoneOffset.UTC));
+            ReflectionTestUtils.setField(service, "teamTimezoneResolver", teamTimezoneResolver);
+            given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("America/New_York"));
+            ReservationSlotEntity first = ReservationSlotEntity.builder().id(101L).teamId(TEAM_ID)
+                    .slotDate(LocalDate.of(2026, 8, 9)).startTime(LocalTime.of(23, 0))
+                    .endTime(LocalTime.of(23, 30)).build();
+            ReservationSlotEntity second = ReservationSlotEntity.builder().id(102L).teamId(TEAM_ID)
+                    .slotDate(LocalDate.of(2026, 8, 9)).startTime(LocalTime.of(23, 30))
+                    .endTime(LocalTime.of(23, 59)).build();
+            given(slotRepository.findAllById(anyIterable())).willReturn(List.of(first, second));
+            given(teamTimezoneResolver.toInstant(first.getSlotDate(), first.getStartTime(), ZoneId.of("America/New_York")))
+                    .willReturn(Instant.parse("2026-08-10T03:00:00Z"));
+            given(teamTimezoneResolver.toInstant(second.getSlotDate(), second.getStartTime(), ZoneId.of("America/New_York")))
+                    .willReturn(Instant.parse("2026-08-10T03:30:00Z"));
+
+            ReservationGroupResponse response =
+                    service.createGroup(TEAM_ID, USER_ID, request(null, List.of(101L, 102L)));
+
+            assertThat(response).isNotNull();
+        }
 
         @Test
         @DisplayName("G-1: AUTO 確定 — 2枠が同一 groupId で INSERT され代表行は先頭のみ・全行 CONFIRMED")
@@ -508,6 +561,28 @@ class ReservationGroupServiceTest {
 
             assertThat(e.getErrorCode()).isEqualTo(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
+
+        @Test
+        @DisplayName(
+                "Issue #2526 番人: 過去枠判定は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
+        void 過去枠判定はClockのゾーンに左右されない() {
+            // 先頭枠開始は SLOT_DATE(2026-04-01) 10:00（業務ローカル時刻）。
+            // 「業務基準（JVM 既定ゾーン。実行環境に依存し得るため決め打ちしない）で見て枠開始の 1 分前」
+            // ＝2026-04-01T09:59 を、実際の JVM 既定ゾーンで instant 化した「同一瞬間」を、
+            // ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
+            Instant sameInstant = LocalDateTime.of(2026, 4, 1, 9, 59)
+                    .atZone(ZoneId.systemDefault()).toInstant();
+
+            reinitServiceWithClock(Clock.fixed(sameInstant, ZoneOffset.UTC));
+            ReservationGroupResponse resultUtc = service.createGroup(TEAM_ID, USER_ID, request(null, List.of(101L, 102L)));
+            assertThat(resultUtc).as("UTC Clock: 未来枠のはずなので成功する").isNotNull();
+
+            reinitServiceWithClock(Clock.fixed(sameInstant, ZoneId.of("Asia/Tokyo")));
+            ReservationGroupResponse resultTokyo = service.createGroup(TEAM_ID, USER_ID, request(null, List.of(101L, 102L)));
+            assertThat(resultTokyo)
+                    .as("Clock のゾーン設定が判定結果に漏れ出してはならない（同一瞬間なら UTC と同じ『未来枠』判定になるはず）")
+                    .isNotNull();
+        }
     }
 
     @Nested
@@ -569,7 +644,7 @@ class ReservationGroupServiceTest {
         @Test
         @DisplayName("G-6: いずれかの枠が予約不可枠と overlap すると 400=009")
         void 予約不可枠overlapは009() {
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, SLOT_DATE))
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, SLOT_DATE, SLOT_DATE, SLOT_DATE.minusDays(1)))
                     .willReturn(List.of(ReservationBlockedTimeEntity.builder()
                             .teamId(TEAM_ID)
                             .blockedDate(SLOT_DATE)
@@ -583,6 +658,35 @@ class ReservationGroupServiceTest {
 
             assertThat(e.getErrorCode()).isEqualTo(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
             verify(slotRepository, never()).incrementBookedCountIfAvailable(anyLong());
+        }
+
+        @Test
+        @DisplayName("日跨ぎslot集合は前日開始のendsNextDay blockも回避できない")
+        void 日跨ぎslot集合は前日開始blockを検出する() {
+            ReflectionTestUtils.setField(service, "teamTimezoneResolver", teamTimezoneResolver);
+            ReservationSlotEntity nextDay = ReservationSlotEntity.builder().id(103L).teamId(TEAM_ID)
+                    .slotDate(SLOT_DATE.plusDays(1)).startTime(LocalTime.of(0, 0)).endTime(LocalTime.of(0, 30))
+                    .endDate(SLOT_DATE.plusDays(1)).build();
+            ReservationSlotEntity overnightStart = ReservationSlotEntity.builder().id(101L).teamId(TEAM_ID)
+                    .slotDate(SLOT_DATE).startTime(LocalTime.of(23, 30)).endTime(LocalTime.MIDNIGHT)
+                    .endDate(SLOT_DATE.plusDays(1)).build();
+            given(slotRepository.findAllById(anyIterable())).willReturn(List.of(overnightStart, nextDay));
+            given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("Asia/Tokyo"));
+            given(teamTimezoneResolver.toInstant(SLOT_DATE, LocalTime.of(23, 30), ZoneId.of("Asia/Tokyo")))
+                    .willReturn(Instant.parse("2026-04-01T14:30:00Z"));
+            given(teamTimezoneResolver.toInstant(SLOT_DATE.plusDays(1), LocalTime.MIDNIGHT, ZoneId.of("Asia/Tokyo")))
+                    .willReturn(Instant.parse("2026-04-01T15:00:00Z"));
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, SLOT_DATE, SLOT_DATE.plusDays(1), SLOT_DATE.minusDays(1)))
+                    .willReturn(List.of(ReservationBlockedTimeEntity.builder().teamId(TEAM_ID)
+                            .blockedDate(SLOT_DATE).startTime(LocalTime.of(23, 0)).endTime(LocalTime.of(0, 30))
+                            .endsNextDay(true).resourceType(ReservationBlockedResourceType.TEAM).build()));
+
+            BusinessException e = catchBusiness(() ->
+                    service.createGroup(TEAM_ID, USER_ID, request(null, List.of(101L, 103L))));
+
+            assertThat(e.getErrorCode()).isEqualTo(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
+            verify(blockedTimeRepository).findEffectiveBetween(TEAM_ID, SLOT_DATE, SLOT_DATE.plusDays(1), SLOT_DATE.minusDays(1));
+            verify(teamTimezoneResolver, times(1)).resolveZone(TEAM_ID);
         }
 
         @Test
@@ -753,6 +857,32 @@ class ReservationGroupServiceTest {
                     service.cancelGroup(TEAM_ID, GROUP_ID, USER_ID, null));
 
             assertThat(e.getErrorCode()).isEqualTo(ReservationErrorCode.CANCEL_DEADLINE_PASSED);
+        }
+
+        @Test
+        @DisplayName(
+                "Issue #2526 番人: 締切判定は Clock のゾーンに左右されず、同一瞬間なら結果が一致する")
+        void 締切判定はClockのゾーンに左右されない() {
+            // 先頭枠開始 2026-04-01 10:00 / 既定締切 24h → 締切は 2026-03-31 10:00（業務ローカル時刻）。
+            // 「業務基準（JVM 既定ゾーン。実行環境に依存し得るため決め打ちしない）で見て締切の 1 分前」
+            // ＝2026-03-31T09:59 を、実際の JVM 既定ゾーンで instant 化した「同一瞬間」を、
+            // ゾーン設定だけが異なる 2 つの Clock（UTC / Asia+09:00）で表現する。
+            Instant sameInstant = LocalDateTime.of(2026, 3, 31, 9, 59)
+                    .atZone(ZoneId.systemDefault()).toInstant();
+
+            reinitServiceWithClock(Clock.fixed(sameInstant, ZoneOffset.UTC));
+            stubGroupRows(ReservationStatus.CONFIRMED);
+            ReservationGroupCancelResponse responseUtc =
+                    service.cancelGroup(TEAM_ID, GROUP_ID, USER_ID, "予定が変わりました");
+            assertThat(responseUtc.status()).as("UTC Clock: 締切内のためキャンセル成功するはず").isEqualTo("CANCELLED");
+
+            reinitServiceWithClock(Clock.fixed(sameInstant, ZoneId.of("Asia/Tokyo")));
+            stubGroupRows(ReservationStatus.CONFIRMED);
+            ReservationGroupCancelResponse responseTokyo =
+                    service.cancelGroup(TEAM_ID, GROUP_ID, USER_ID, "予定が変わりました");
+            assertThat(responseTokyo.status())
+                    .as("Clock のゾーン設定が判定結果に漏れ出してはならない（同一瞬間なら UTC と同じ『締切内』判定になるはず）")
+                    .isEqualTo("CANCELLED");
         }
 
         @Test

@@ -14,6 +14,7 @@ import com.mannschaft.app.ticket.repository.TicketConsumptionRepository;
 import com.mannschaft.app.ticket.repository.TicketPaymentRepository;
 import com.mannschaft.app.ticket.repository.TicketProductRepository;
 import com.mannschaft.app.ticket.service.StripeTicketService;
+import com.mannschaft.app.ticket.service.TicketAccessGuard;
 import com.mannschaft.app.ticket.service.TicketBookService;
 import com.mannschaft.app.ticket.service.TicketQrService;
 import org.junit.jupiter.api.DisplayName;
@@ -49,6 +50,9 @@ class TicketBookServiceTest {
     @Mock private TicketQrService ticketQrService;
     @Mock private TicketMapper ticketMapper;
     @Mock private NameResolverService nameResolverService;
+    // 認可根治 Wave5: 顧客面の所有者照合ガード。@InjectMocks はコンストラクタ注入のため
+    // ここに @Mock を置かないと null が注入される。
+    @Mock private TicketAccessGuard ticketAccessGuard;
 
     @InjectMocks
     private TicketBookService service;

@@ -18,6 +18,10 @@ const confirm = useConfirm()
 const schedules = ref<ShiftScheduleResponse[]>([])
 const loading = ref(true)
 
+const visibleSchedules = computed(() =>
+  props.canManage ? schedules.value : schedules.value.filter(s => s.status === 'PUBLISHED')
+)
+
 const statusConfig: Record<string, { label: string; severity: string }> = {
   DRAFT: { label: '下書き', severity: 'secondary' },
   COLLECTING: { label: '希望収集中', severity: 'info' },
@@ -76,9 +80,9 @@ onMounted(load)
       />
     </div>
     <div v-if="loading"><Skeleton v-for="i in 3" :key="i" height="4rem" class="mb-2" /></div>
-    <div v-else-if="schedules.length > 0" class="space-y-2">
+    <div v-else-if="visibleSchedules.length > 0" class="space-y-2">
       <div
-        v-for="s in schedules"
+        v-for="s in visibleSchedules"
         :key="s.id"
         class="cursor-pointer rounded-lg border border-surface-300 p-4 transition-shadow hover:shadow-md dark:border-surface-600"
         @click="emit('select', s.id)"
@@ -118,6 +122,10 @@ onMounted(load)
         </div>
       </div>
     </div>
-    <DashboardEmptyState v-else icon="pi pi-table" message="シフト表はまだありません" />
+    <DashboardEmptyState
+      v-else
+      icon="pi pi-table"
+      :message="canManage ? 'シフト表はまだありません' : '公開済みのシフト表はありません'"
+    />
   </div>
 </template>

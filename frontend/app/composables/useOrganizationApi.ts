@@ -352,7 +352,7 @@ export function useOrganizationApi() {
     return api(`/api/v1/organizations/${orgSlug}/blocks/${blockId}`, { method: 'DELETE' })
   }
 
-  // === オーナー移譲（承諾型オファー・F01.2 2026-07-18〜） ===
+  // === オーナー移譲（承諾型オファー・F04.12） ===
   // 旧 `transferOwnership`（即時型・body { newAdminUserId }）は廃止（設計書 03_business_logic.md M-4）。
   // 承諾型 2 ステップ API（打診 → 承諾/辞退/取消）へ全面移行し、body は camelCase `targetUserId` に統一する。
 
@@ -385,6 +385,13 @@ export function useOrganizationApi() {
     return api(`/api/v1/organizations/${orgSlug}/transfer-ownership-offers/${offerId}`, {
       method: 'DELETE',
     })
+  }
+
+  /** 管理者向けに、組織内で有効な委譲打診（0 または 1 件）を取得する。 */
+  async function getPendingOwnershipOffers(orgSlug: string) {
+    return api<{ data: TransferOwnershipOfferResponse[] }>(
+      `/api/v1/organizations/${orgSlug}/transfer-ownership-offers/pending`,
+    )
   }
 
   // === アクセス要件 ===
@@ -457,6 +464,7 @@ export function useOrganizationApi() {
     createBlock,
     removeBlock,
     createOwnershipOffer,
+    getPendingOwnershipOffers,
     acceptOwnershipOffer,
     declineOwnershipOffer,
     cancelOwnershipOffer,

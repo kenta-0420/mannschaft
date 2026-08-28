@@ -5,6 +5,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.errorreport.ErrorReportMapper;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
@@ -57,7 +58,20 @@ import java.util.Map;
 
 /**
  * システム管理者向けエラーレポート管理コントローラー。
+ *
+ * <p><b>認可根拠（{@link AuthorizedByPathConfig} クラス付与・凍結ストア該当 5 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは、{@code SecurityConfig} のパス単位認可により
+ * SYSTEM_ADMIN ロール保持者のみへ宣言的に予約されている。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig の requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")
+ * </p>
+ *
+ * <p>Controller / Service 側に認可コードは存在しないが、フィルタチェーンで強制されるため
+ * 無認可ではない。認可根治戦役 Wave5 監査済。パス定義を変更・削除する際は本注釈の根拠が
+ * 失効するため、必ず併せて見直すこと。</p>
  */
+@AuthorizedByPathConfig("/api/v1/system-admin/**")
 @RestController
 @RequestMapping("/api/v1/system-admin/error-reports")
 @Tag(name = "システム管理 - エラーレポート", description = "F12.5 エラーレポート管理API（システム管理者向け）")

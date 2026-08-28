@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
@@ -16,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -247,8 +250,12 @@ public class ScheduleMediaQueryService {
      * schedule_id IS NULL かつ 72 時間以上経過したレコードを R2 から削除して物理削除する。
      * スケジュール削除時（ON DELETE SET NULL）によって schedule_id が NULL になったレコードも対象となる。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。孤立した予定メディアの物理削除であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "schedule-media-orphan-cleanup-daily", description = "72 時間以上孤立した schedule メディアを毎日 02:30 に R2 から物理削除する")
     @Scheduled(cron = "0 30 2 * * *")
+    // 起動間隔は日次 02:30。1 件ごとに R2 削除が走るため、最悪ケースを 1 件 1 秒 × 数千件と見積もり 1 時間を上限とする。
+    @SchedulerLock(name = "scheduleMediaOrphanCleanupDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional
     public void cleanupOrphanMedia() {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(72);

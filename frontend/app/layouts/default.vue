@@ -21,33 +21,57 @@ let inboxPollTimer: ReturnType<typeof setInterval> | null = null
 // /user/queue/notifications を購読する（BE の Principal 配線完了後に個別通知が実配信される）。
 const userNotificationSocket = useUserNotificationSocket()
 
-onMounted(() => {
-  isMounted.value = true
+// 受信箱バッジのポーリング。
+//
+// `/api/v1/inbox/summary` は認証必須のエンドポイントであり、匿名で叩くと 401 が返る。
+// useApi の共通ハンドラは 401 を受けると `/login` へ遷移させるため、ガード無しで呼ぶと
+// 「匿名ユーザーが公開ページを開いただけでログイン画面へ飛ばされる」不具合になる。
+// 必ず認証済みの間だけ回すこと（WebSocket 購読と同じ条件）。
+function startInboxPolling() {
+  // 二重起動防止（watch と onMounted の両方から呼ばれうる）
+  if (inboxPollTimer) return
   // fetchSummary はストア内部で _handleError 済み（バッジ件数取得）。
   // 60 秒ごとのポーリングで毎回トーストを出さないよう、ここでは再 throw のみ握りつぶす。
+  // eslint-disable-next-line no-restricted-syntax -- 受信箱バッジ取得。エラーはストア側で _handleError 済み。ここでの再throwのみ握りつぶすのが正しい
   inboxStore.fetchSummary().catch(() => {})
   inboxPollTimer = setInterval(() => {
+    // eslint-disable-next-line no-restricted-syntax -- 60秒ポーリング。ストア側で _handleError 済み・毎回トーストを出さないため握りつぶすのが正しい
     inboxStore.fetchSummary().catch(() => {})
   }, 60_000)
+}
+
+function stopInboxPolling() {
+  if (inboxPollTimer) {
+    clearInterval(inboxPollTimer)
+    inboxPollTimer = null
+  }
+}
+
+onMounted(() => {
+  isMounted.value = true
 
   if (authStore.isAuthenticated) {
+    startInboxPolling()
     userNotificationSocket.start()
   }
 })
 
 onUnmounted(() => {
-  if (inboxPollTimer) clearInterval(inboxPollTimer)
+  stopInboxPolling()
   userNotificationSocket.stop()
 })
 
-// ログイン/ログアウトでの認証状態遷移に追随して購読を開始/停止する
+// ログイン/ログアウトでの認証状態遷移に追随して購読・ポーリングを開始/停止する
 // （レイアウト自体は unmount せずに済むセッション途中の状態変化にも対応）。
+// これが無いと、ログイン後にレイアウトが再マウントされない限りバッジが永久に更新されない。
 watch(
   () => authStore.isAuthenticated,
   (authenticated) => {
     if (authenticated) {
+      startInboxPolling()
       userNotificationSocket.start()
     } else {
+      stopInboxPolling()
       userNotificationSocket.stop()
     }
   },

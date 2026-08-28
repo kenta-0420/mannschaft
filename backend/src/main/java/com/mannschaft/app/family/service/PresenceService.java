@@ -63,6 +63,16 @@ public class PresenceService {
         return ApiResponse.of(toResponse(presenceEventRepository.save(event)));
     }
 
+    /**
+     * 帰ったよ通知を全所属チームへ一括送信する。
+     *
+     * <p><b>認可</b>: 送信元は {@code SecurityUtils.getCurrentUserId()} で確定した認証主体のみで、
+     * リクエストから送信元ユーザーや対象チームを指定する余地がない（自己スコープ）。
+     * 送信先は将来的にも「認証主体の所属チーム」に限定する。</p>
+     *
+     * <p><b>実装状況</b>: 所属チームの解決とイベント記録は未実装で、現状は通知を行わず空の結果を
+     * 返す。チーム指定版（{@link #sendHome}）はメンバーシップ判定を通して実装済み。</p>
+     */
     @Transactional
     public ApiResponse<PresenceBulkResponse> sendHomeBulk(Long userId) {
         List<PresenceBulkResponse.NotifiedTeam> notified = new ArrayList<>();
@@ -70,6 +80,15 @@ public class PresenceService {
         return ApiResponse.of(new PresenceBulkResponse(notified, skipped));
     }
 
+    /**
+     * お出かけ連絡を全所属チームへ一括送信する。
+     *
+     * <p><b>認可</b>: {@link #sendHomeBulk} と同様に送信元は認証主体のみで、リクエストから
+     * 送信元ユーザーや対象チームを指定する余地がない（自己スコープ）。</p>
+     *
+     * <p><b>実装状況</b>: 帰宅予定時刻の検証のみ実施し、所属チームの解決とイベント記録は未実装で
+     * 現状は空の結果を返す。チーム指定版（{@link #sendGoingOut}）は実装済み。</p>
+     */
     @Transactional
     public ApiResponse<PresenceBulkResponse> sendGoingOutBulk(Long userId, PresenceGoingOutRequest request) {
         if (request.getExpectedReturnAt() != null && request.getExpectedReturnAt().isBefore(LocalDateTime.now())) {

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { setActivePinia, createPinia } from 'pinia'
+import { useAuthStore } from '~/stores/useAuthStore'
 import ExtendExpiryDialog from '~/components/disclosure/ExtendExpiryDialog.vue'
 import type { DisclosureExport } from '~/types/disclosure'
 
@@ -40,7 +41,7 @@ function findByTestId<T extends Element = HTMLElement>(testId: string): T | null
 
 function buildExport(overrides: Partial<DisclosureExport> = {}): DisclosureExport {
   return {
-    id: 1001,
+    exportId: 1001,
     scopeId: '7',
     draftId: 42,
     templateCodeSnapshot: 'mlit-standard',
@@ -139,7 +140,7 @@ describe('ExtendExpiryDialog.vue', () => {
     const wrapper = await mountSuspended(ExtendExpiryDialog, {
       props: {
         organizationId: '7',
-        export: buildExport({ id: 1001, expiresAt: '2026-08-01T00:00:00' }),
+        export: buildExport({ exportId: 1001, expiresAt: '2026-08-01T00:00:00' }),
         open: true,
       },
     })
@@ -162,8 +163,9 @@ describe('ExtendExpiryDialog.vue', () => {
     expect(mockExtendExpiry).toHaveBeenCalledTimes(1)
     const [exportIdArg, isoArg] = mockExtendExpiry.mock.calls[0] as [number, string]
     expect(exportIdArg).toBe(1001)
-    // ISO LocalDateTime 形式 YYYY-MM-DDTHH:mm:ss
-    expect(isoArg).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/)
+    // Issue #2508: BE の newExpiresAt(LocalDateTime) は受信時オフセットを無視するため、
+    // ユーザーTZ（未設定時は既定 Asia/Tokyo = +09:00）のオフセットを明示的に付与する。
+    expect(isoArg).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+09:00$/)
 
     const extendedEmits = wrapper.emitted('extended')
     expect(extendedEmits).toBeTruthy()
@@ -172,6 +174,45 @@ describe('ExtendExpiryDialog.vue', () => {
     const closeEmits = wrapper.emitted('update:open')
     expect(closeEmits?.[closeEmits.length - 1]).toEqual([false])
     expect(mockToastSuccess).toHaveBeenCalledTimes(1)
+  })
+
+  it('Issue #2508: 非JST（America/Los_Angeles）ユーザーでも newExpiresAt にそのTZのオフセットが付く', async () => {
+    const updated = buildExport({ expiresAt: '2027-08-01T00:00:00' })
+    mockExtendExpiry.mockResolvedValueOnce(updated)
+
+    const wrapper = await mountSuspended(ExtendExpiryDialog, {
+      props: {
+        organizationId: '7',
+        export: buildExport({ exportId: 1001, expiresAt: '2026-08-01T00:00:00' }),
+        open: true,
+      },
+    })
+    // 注意: @pinia/nuxt はマウント時に独自の Pinia インスタンスを生成して
+    // setActivePinia() し直すため、mountSuspended より前に useAuthStore().user を
+    // セットしても、マウント後に上書きされて反映されない。必ずマウント後にセットする。
+    useAuthStore().user = {
+      id: 1,
+      email: 'la-user@example.com',
+      fullName: 'LA User',
+      profileImageUrl: null,
+      timezone: 'America/Los_Angeles',
+    }
+    const vm = wrapper.vm as unknown as {
+      newExpiresAt: Date | null
+      handleSubmit: () => Promise<void>
+    }
+    const future = new Date()
+    future.setFullYear(future.getFullYear() + 1)
+    future.setHours(12, 0, 0, 0)
+    vm.newExpiresAt = future
+    await wrapper.vm.$nextTick()
+
+    await vm.handleSubmit()
+    await wrapper.vm.$nextTick()
+
+    const [, isoArg] = mockExtendExpiry.mock.calls[0] as [number, string]
+    // JST(+09:00) 固定ではなく、America/Los_Angeles のオフセット（PDT -07:00 / PST -08:00）が付くこと
+    expect(isoArg).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}-0[78]:00$/)
   })
 
   it('API 失敗時はエラートースト表示 & ダイアログは閉じない', async () => {

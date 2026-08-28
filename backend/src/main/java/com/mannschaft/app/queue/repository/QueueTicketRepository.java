@@ -88,6 +88,39 @@ public interface QueueTicketRepository extends JpaRepository<QueueTicketEntity, 
      */
     Optional<QueueTicketEntity> findByIdAndCounterId(Long id, Long counterId);
 
-    @Query("SELECT t FROM QueueTicketEntity t WHERE t.ticketNumber LIKE %:keyword% OR t.guestName LIKE %:keyword%")
-    List<QueueTicketEntity> searchByKeyword(@Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
+    /**
+     * 横断検索（グローバル検索）用のキーワード検索。閲覧者の可視スコープに限定する。
+     *
+     * <p>チケットはスコープ列を持たないため、カテゴリ（{@code QueueCategoryEntity}）のスコープに委ねる。
+     * 可視範囲は「自分が発券したチケット」「所属チーム／組織が運営するカテゴリのチケット」の和集合とする。
+     * {@code guestName}（来場者氏名）は個人情報であり、運営スコープ外には出さない。</p>
+     *
+     * <p>呼び出し側は {@code teamIds} / {@code orgIds} が空の場合、{@code IN ()} の発行を避けるため
+     * ダミー値（{@code -1L}）で埋めること。</p>
+     *
+     * @param keyword  検索キーワード
+     * @param teamIds  閲覧者が所属するチーム ID 集合（非空・空ならダミー値）
+     * @param orgIds   閲覧者が所属する組織 ID 集合（非空・空ならダミー値）
+     * @param userId   閲覧者ユーザー ID（発券者一致判定用）
+     * @param pageable 取得件数
+     * @return 可視スコープ内の検索結果
+     */
+    @Query("""
+            SELECT t FROM QueueTicketEntity t
+            WHERE (t.ticketNumber LIKE %:keyword% OR t.guestName LIKE %:keyword%)
+              AND (t.userId = :userId
+                OR t.categoryId IN (
+                    SELECT c.id FROM QueueCategoryEntity c
+                    WHERE c.deletedAt IS NULL
+                      AND ((c.scopeType = com.mannschaft.app.queue.QueueScopeType.TEAM
+                            AND c.scopeId IN :teamIds)
+                        OR (c.scopeType = com.mannschaft.app.queue.QueueScopeType.ORGANIZATION
+                            AND c.scopeId IN :orgIds))
+                ))
+            """)
+    List<QueueTicketEntity> searchByKeyword(@Param("keyword") String keyword,
+                                            @Param("teamIds") java.util.Collection<Long> teamIds,
+                                            @Param("orgIds") java.util.Collection<Long> orgIds,
+                                            @Param("userId") Long userId,
+                                            org.springframework.data.domain.Pageable pageable);
 }

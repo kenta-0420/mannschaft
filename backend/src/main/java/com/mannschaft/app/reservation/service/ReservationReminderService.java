@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.reservation.ReminderStatus;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.ReservationMapper;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -31,6 +33,7 @@ public class ReservationReminderService {
     private final ReservationReminderRepository reminderRepository;
     private final ReservationMapper reservationMapper;
     private final Clock clock;
+
 
     /**
      * 予約のリマインダー一覧を取得する。
@@ -137,7 +140,19 @@ public class ReservationReminderService {
      */
     @Transactional(readOnly = true)
     public List<ReservationReminderEntity> findDueReminders() {
-        return reminderRepository.findByStatusAndRemindAtBefore(
-                ReminderStatus.PENDING, LocalDateTime.now(clock));
+        // Issue #2526（表に無い同型バグとして監査で発見）: remind_at は
+        // ReservationReminderEventListener#onReservationConfirmed が業務ローカル時刻
+        // （slot_date/start_time 由来の slotStartAt）から生成するため、消費側も同じ基準
+        // （Clock の瞬間を JVM 既定ゾーンで解釈し直したもの）で比較する必要がある。
+        Instant nowInstant = clock.instant();
+        LocalDateTime cutoff = LocalDateTime.ofInstant(nowInstant, UserZoneLocalDateTimeParser.SERVER_ZONE);
+        // remind_at is a legacy LocalDateTime column. The cutoff is only a bounded DB candidate
+        // query; the final comparison is always Instant, so team TZ/DST cannot affect delivery.
+        List<ReservationReminderEntity> candidates = reminderRepository
+                .findByStatusAndRemindAtBefore(ReminderStatus.PENDING, cutoff);
+        return candidates.stream()
+                .filter(r -> !r.getRemindAt().atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                        .toInstant().isAfter(nowInstant))
+                .toList();
     }
 }

@@ -384,6 +384,101 @@ class SuccessionAuthzContractIT extends AbstractSuccessionIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // ロットDステータス契約: 状態競合系（ALREADY_RESOLVED/FROZEN/EVIDENCE_NOT_READY）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("ロットDステータス契約（SUCCESSION_017/018/022）")
+    class LotDStatusContract {
+
+        @Test
+        @DisplayName("resolve: 既に解決済みのエスカレーションを再解決 → 409（ESCALATION_ALREADY_RESOLVED）")
+        void resolve_解決済みの再解決は409() throws Exception {
+            setAuthentication(ADMIN_A);
+            Map<String, Object> body = Map.of("resolvedReason", "PAID");
+
+            // 1回目: 正常に解決
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/succession/delinquency-escalations/{id}/resolve",
+                            ORG_A, escalationA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isOk());
+
+            // 2回目: 既に解決済み → 409
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/succession/delinquency-escalations/{id}/resolve",
+                            ORG_A, escalationA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isConflict());
+        }
+
+        /**
+         * resolve() は凍結中でも解決を許容する意図的な仕様
+         * （{@code DelinquencyEscalationService#resolve} のコメント「解決済みチェック
+         * （凍結中でも解決は許容する）」参照。{@code fetchEntity} のみを呼び、凍結チェックを
+         * 行う {@code getValidEscalation} を経由しない）。
+         * ESCALATION_FROZEN が実際に投げられるのは freeze() の再実行（二重凍結）のみ
+         * （{@code getValidEscalation} 経由）。ロットDでは当初 resolve に対して誤った
+         * 前提のテストを書いていたため、実コードに合わせて対象操作を freeze の再実行に是正する。
+         */
+        @Test
+        @DisplayName("freeze: 既に凍結中のエスカレーションを再凍結しようとする → 409（ESCALATION_FROZEN）")
+        void freeze_凍結中の再凍結は409() throws Exception {
+            setAuthentication(ADMIN_A);
+            Map<String, Object> freezeBody = Map.of("reason", "弁護士介入のため");
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/succession/delinquency-escalations/{id}/freeze",
+                            ORG_A, escalationA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(freezeBody)))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/succession/delinquency-escalations/{id}/freeze",
+                            ORG_A, escalationA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(freezeBody)))
+                    .andExpect(status().isConflict());
+        }
+
+        /**
+         * 凍結中でも resolve() は成功することを固定する（上の freeze 再実行テストと対になる仕様確認）。
+         */
+        @Test
+        @DisplayName("resolve: 凍結中のエスカレーションでも解決は許容され200（意図的な製品仕様の固定）")
+        void resolve_凍結中でも200() throws Exception {
+            setAuthentication(ADMIN_A);
+            Map<String, Object> freezeBody = Map.of("reason", "弁護士介入のため");
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/succession/delinquency-escalations/{id}/freeze",
+                            ORG_A, escalationA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(freezeBody)))
+                    .andExpect(status().isOk());
+
+            Map<String, Object> resolveBody = Map.of("resolvedReason", "PAID");
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{orgId}/succession/delinquency-escalations/{id}/resolve",
+                            ORG_A, escalationA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody)))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("evidence-package/download-url: 証拠パッケージ未生成のダウンロードは409（EVIDENCE_NOT_READY）")
+        void evidenceDownloadUrl_未生成は409() throws Exception {
+            setAuthentication(ADMIN_A);
+            mockMvc.perform(get(
+                            "/api/v1/organizations/{orgId}/succession/legal-filings/{id}/evidence-package/download-url",
+                            ORG_A, legalFilingA))
+                    .andExpect(status().isConflict());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
@@ -393,6 +488,15 @@ class SuccessionAuthzContractIT extends AbstractSuccessionIntegrationTest {
     }
 
     private void insertRole(String name, String displayName, int priority, boolean isSystem) {
+        // 冪等化: roles はグローバル参照テーブルのため、既存なら再利用し二重INSERTしない
+        // （同一 name の重複INSERTは roles の UNIQUE 制約違反になる。CI shard 再編成で
+        // 同一 JVM 内の同居テストが変わり得るため、盲目的 INSERT は禁止）。
+        Number existingRoleCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM roles WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult();
+        if (existingRoleCount.longValue() > 0) {
+            return;
+        }
         em.createNativeQuery(
                         "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                                 + "VALUES (:name, :dn, :priority, :sys, NOW(), NOW())")

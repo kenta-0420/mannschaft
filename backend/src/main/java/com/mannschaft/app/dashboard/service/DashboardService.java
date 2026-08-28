@@ -8,6 +8,8 @@ import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.dashboard.MinRole;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.SwipeWidgetKey;
@@ -24,7 +26,6 @@ import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
 import com.mannschaft.app.dashboard.dto.WidgetVisibilityRowDto;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -35,6 +36,10 @@ import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementVisibility;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
@@ -84,6 +89,8 @@ public class DashboardService {
     private final PlatformAnnouncementRepository platformAnnouncementRepository;
     private final UserRoleRepository userRoleRepository;
     private final AnnouncementFeedQueryRepository announcementFeedQueryRepository;
+    private final ContentVisibilityChecker contentVisibilityChecker;
+    private final PaymentGateService paymentGateService;
 
     // F22.1 第二波: 厳選ウィジェットサマリ + 統合「要対応」集計 + SWIPE 可視性
     private final ScopeWidgetSummaryService scopeWidgetSummaryService;
@@ -134,14 +141,25 @@ public class DashboardService {
         List<ScheduleEntity> personalSchedules = scheduleRepository
                 .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, now, weekLater);
         // 所属チームのスケジュールも取得（N+1 解消: チーム ID を IN 句で一括取得）
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        List<Long> teamIds = teamRoles.stream().map(UserRoleEntity::getTeamId).toList();
+        // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
+        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
         List<ScheduleEntity> teamSchedules = teamIds.isEmpty()
                 ? List.of()
                 : scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, now, weekLater);
+        // F00 認可基盤連携（CMP-017b 第五隊）: チーム予定は所属チームIDだけで取得しており
+        // min_view_role 等の可視性判定を通していなかった（title/location が丸見え）。
+        // filterAccessible で可視なものだけに絞る。個人予定は本人所有のため常に可視。
+        Set<Long> visibleTeamScheduleIds = teamSchedules.isEmpty()
+                ? Set.of()
+                : contentVisibilityChecker.filterAccessible(
+                        ReferenceType.SCHEDULE,
+                        teamSchedules.stream().map(ScheduleEntity::getId).toList(),
+                        userId);
         List<Map<String, Object>> upcomingItems = new java.util.ArrayList<>();
         personalSchedules.stream().map(this::toScheduleMap).forEach(upcomingItems::add);
-        teamSchedules.stream().map(this::toScheduleMap).forEach(upcomingItems::add);
+        teamSchedules.stream()
+                .filter(s -> visibleTeamScheduleIds.contains(s.getId()))
+                .map(this::toScheduleMap).forEach(upcomingItems::add);
         upcomingItems.sort((a, b) -> ((LocalDateTime) a.get("start_at")).compareTo((LocalDateTime) b.get("start_at")));
         if (upcomingItems.size() > 10) {
             upcomingItems = upcomingItems.subList(0, 10);
@@ -179,6 +197,9 @@ public class DashboardService {
             // ため、各 future 内では遅延ロードに依存せず、エンティティを Map / プリミティブへ
             // 即時変換して返すことで Hibernate セッション越境を避ける。
             final List<Long> finalTeamIds = teamIds;
+            // F03.18: アクティビティフィードは所属組織スコープの行も対象とする。
+            // 従来はチームIDしか渡しておらず ORGANIZATION スコープの活動が原理的に0件だった。
+            final List<Long> finalOrgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
             // TimezoneContextHolder は inheritable=false の ThreadLocal のため、リクエストスレッドで
             // 取得した ZoneId を future へ明示的に引き渡す（async ワーカーでは UTC に化けるのを防ぐ。
             // チームダッシュボードの buildCalendarSummary と同じ作法）。
@@ -189,7 +210,7 @@ public class DashboardService {
             CompletableFuture<Map<String, Object>> unreadThreadsFuture =
                     CompletableFuture.supplyAsync(() -> loadUnreadThreads(userId, finalTeamIds));
             CompletableFuture<List<Map<String, Object>>> recentActivityFuture =
-                    CompletableFuture.supplyAsync(() -> loadRecentActivity(userId, finalTeamIds));
+                    CompletableFuture.supplyAsync(() -> loadRecentActivity(userId, finalTeamIds, finalOrgIds));
             CompletableFuture<Map<String, Object>> personalCalendarFuture =
                     CompletableFuture.supplyAsync(() -> loadPersonalCalendarCounts(userId, finalTeamIds, userZone));
 
@@ -257,9 +278,13 @@ public class DashboardService {
     /**
      * 第2段階: アクティビティフィードを Map リストで取得する（ActivityFeedService に委譲）。
      */
-    private List<Map<String, Object>> loadRecentActivity(Long userId, List<Long> teamIds) {
+    private List<Map<String, Object>> loadRecentActivity(Long userId, List<Long> teamIds, List<Long> orgIds) {
+        // F03.18: 可視性フィルタは ActivityFeedService 側に一元化されており、
+        // ダッシュボード初期表示のこの経路にも自動的に適用される
+        // （ウィジェット単体の GET /dashboard/activity と同一のフィルタを通る）。
         List<ActivityFeedResponse> recentActivity = activityFeedService
-                .getActivityFeed(userId, null, DASHBOARD_ITEM_LIMIT, teamIds);
+                .getActivityFeed(userId, null, DASHBOARD_ITEM_LIMIT, teamIds, orgIds)
+                .getItems();
         return recentActivity.stream()
                 .map(a -> {
                     Map<String, Object> map = new HashMap<>();
@@ -293,7 +318,17 @@ public class DashboardService {
         List<ScheduleEntity> schedules = new ArrayList<>(
                 scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, monthEnd));
         if (!teamIds.isEmpty()) {
-            schedules.addAll(scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, monthEnd));
+            List<ScheduleEntity> teamSchedules =
+                    scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, monthEnd);
+            // F00 認可基盤連携（CMP-017b 第五隊）: 件数集計であっても正規の可視性判定を通す
+            // （件数専用の軽い判定を新設するのは二重実装＝今回の事故の再生産のため禁止）。
+            Set<Long> visibleTeamScheduleIds = contentVisibilityChecker.filterAccessible(
+                    ReferenceType.SCHEDULE,
+                    teamSchedules.stream().map(ScheduleEntity::getId).toList(),
+                    userId);
+            teamSchedules.stream()
+                    .filter(s -> visibleTeamScheduleIds.contains(s.getId()))
+                    .forEach(schedules::add);
         }
 
         long eventsToday = 0;
@@ -367,7 +402,16 @@ public class DashboardService {
         // ここではチームのスケジュールを今後7日間取得
         List<ScheduleEntity> teamUpcoming = scheduleRepository
                 .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, now, now.plusDays(7));
+        // F00 認可基盤連携（CMP-017b 第五隊）: チーム所属だけで取得しており min_view_role
+        // 等の可視性判定を通していなかった（title/location が丸見え）。
+        Set<Long> visibleTeamUpcomingIds = teamUpcoming.isEmpty()
+                ? Set.of()
+                : contentVisibilityChecker.filterAccessible(
+                        ReferenceType.SCHEDULE,
+                        teamUpcoming.stream().map(ScheduleEntity::getId).toList(),
+                        userId);
         List<Map<String, Object>> teamUpcomingItems = teamUpcoming.stream()
+                .filter(s -> visibleTeamUpcomingIds.contains(s.getId()))
                 .limit(10)
                 .map(this::toScheduleMap)
                 .toList();
@@ -392,8 +436,17 @@ public class DashboardService {
         long postsThisWeek = teamPosts.stream()
                 .filter(p -> p.getCreatedAt() != null && p.getCreatedAt().isAfter(periodStart))
                 .count();
-        long eventsThisWeek = scheduleRepository
-                .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, periodStart, now).size();
+        List<ScheduleEntity> teamPeriodSchedules = scheduleRepository
+                .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, periodStart, now);
+        Set<Long> visibleTeamPeriodIds = teamPeriodSchedules.isEmpty()
+                ? Set.of()
+                : contentVisibilityChecker.filterAccessible(
+                        ReferenceType.SCHEDULE,
+                        teamPeriodSchedules.stream().map(ScheduleEntity::getId).toList(),
+                        userId);
+        long eventsThisWeek = teamPeriodSchedules.stream()
+                .filter(s -> visibleTeamPeriodIds.contains(s.getId()))
+                .count();
         long totalMembers = userRoleRepository.countByTeamId(teamId);
 
         // チーム最新投稿
@@ -443,14 +496,13 @@ public class DashboardService {
                 .findByScope(AnnouncementScopeType.TEAM, teamId, allowedVisibilities, null, 10);
 
         // F02.8: 親組織の告知フィードを取得（target_team_ids フィルタ付き）
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        // 多重 org ロール行に対する防御的な feedId 重複排除。
-        // 現状は user_roles の UNIQUE(user_id, scope_key) により 1 ユーザー 1 組織 1 行だが、
-        // 将来この制約が緩んで同一組織に複数ロール行を持つと flatMap で同一 feed が重複しうる。
-        // インボックス（AnnouncementInboxAdapter の feedById.putIfAbsent）と同等に feedId で先勝ち dedup する。
-        List<AnnouncementFeedEntity> orgAnnouncementFeeds = new ArrayList<>(orgRoles.stream()
-                .flatMap(role -> announcementFeedQueryRepository
-                        .findByOrgScopeForTeamDashboard(role.getOrganizationId(), allowedVisibilities, 20).stream())
+        // CMP-027: user_roles ∪ memberships の在籍組織 ID（素メンバー/応援者を取りこぼさない）
+        List<Long> feedOrgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        // 多重 org ロール行に対する防御的な feedId 重複排除（findOrganizationIdsByUserId は既に DISTINCT だが
+        // インボックス（AnnouncementInboxAdapter の feedById.putIfAbsent）と同等に feedId で先勝ち dedup する）。
+        List<AnnouncementFeedEntity> orgAnnouncementFeeds = new ArrayList<>(feedOrgIds.stream()
+                .flatMap(orgId -> announcementFeedQueryRepository
+                        .findByOrgScopeForTeamDashboard(orgId, allowedVisibilities, 20).stream())
                 .filter(feed -> isTargetedToTeam(feed, teamId))
                 .collect(java.util.stream.Collectors.toMap(
                         AnnouncementFeedEntity::getId,
@@ -461,11 +513,12 @@ public class DashboardService {
 
         // 結合して createdAt 降順で上位5件
         List<Map<String, Object>> teamNoticeItems = java.util.stream.Stream.concat(
-                        teamAnnouncementFeeds.stream(), orgAnnouncementFeeds.stream())
-                .sorted(java.util.Comparator.comparing(AnnouncementFeedEntity::getCreatedAt,
+                        filterAnnouncementGated(teamAnnouncementFeeds, userId, viewerRole).stream(),
+                        filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream())
+                .sorted(java.util.Comparator.comparing(item -> item.feed().getCreatedAt(),
                         java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
                 .limit(DASHBOARD_ITEM_LIMIT)
-                .map(this::toAnnouncementFeedMap)
+                .map(item -> toAnnouncementFeedMap(item.feed(), item.locked()))
                 .toList();
 
         // F02.2.1: 各ウィジェットを viewerRole.isAtLeast(min_role) で判定し、不可視は null にする
@@ -494,7 +547,7 @@ public class DashboardService {
         CompletableFuture<Map<String, Object>> chatFuture =
                 CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildChatSummary("TEAM", teamId, userId));
         CompletableFuture<Map<String, Object>> calendarFuture =
-                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildCalendarSummary("TEAM", teamId, userZone));
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildCalendarSummary("TEAM", teamId, userZone, userId));
         CompletableFuture<ActionRequiredSummaryResponse> actionFuture =
                 CompletableFuture.supplyAsync(() -> scopeActionRequiredFacade.getActionRequired(userId, "TEAM", teamId));
 
@@ -577,9 +630,9 @@ public class DashboardService {
         Set<String> orgAllowedVisibilities = resolveVisibilityParam(viewerRole);
         List<AnnouncementFeedEntity> orgAnnouncementFeeds = announcementFeedQueryRepository
                 .findByScope(AnnouncementScopeType.ORGANIZATION, orgId, orgAllowedVisibilities, null, 10);
-        List<Map<String, Object>> orgNoticeItems = orgAnnouncementFeeds.stream()
+        List<Map<String, Object>> orgNoticeItems = filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream()
                 .limit(DASHBOARD_ITEM_LIMIT)
-                .map(this::toAnnouncementFeedMap)
+                .map(item -> toAnnouncementFeedMap(item.feed(), item.locked()))
                 .toList();
 
         // platform_announcements
@@ -607,7 +660,7 @@ public class DashboardService {
         final java.time.ZoneId userZone = TimezoneContextHolder.get();
 
         CompletableFuture<List<Map<String, Object>>> upcomingFuture =
-                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildOrgUpcomingEvents(orgId));
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildOrgUpcomingEvents(orgId, userId));
         CompletableFuture<List<Map<String, Object>>> postsFuture =
                 CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildOrgLatestPosts(orgId));
         CompletableFuture<Map<String, Object>> unreadFuture =
@@ -617,7 +670,7 @@ public class DashboardService {
         CompletableFuture<Map<String, Object>> chatFuture =
                 CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildChatSummary("ORGANIZATION", orgId, userId));
         CompletableFuture<Map<String, Object>> calendarFuture =
-                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildCalendarSummary("ORGANIZATION", orgId, userZone));
+                CompletableFuture.supplyAsync(() -> scopeWidgetSummaryService.buildCalendarSummary("ORGANIZATION", orgId, userZone, userId));
         CompletableFuture<ActionRequiredSummaryResponse> actionFuture =
                 CompletableFuture.supplyAsync(() -> scopeActionRequiredFacade.getActionRequired(userId, "ORGANIZATION", orgId));
 
@@ -712,9 +765,10 @@ public class DashboardService {
      */
     private ScopeCoverageResponse buildScopeCoverage(Long userId) {
         // チーム所属 + 組織所属の合計をスコープ数とする
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        int totalScopes = teamRoles.size() + orgRoles.size();
+        // CMP-027: user_roles ∪ memberships の在籍スコープ数（素メンバー/応援者を取りこぼさない）
+        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
+        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        int totalScopes = teamIds.size() + orgIds.size();
         int displayedScopes = Math.min(totalScopes, MAX_DISPLAY_SCOPES);
         boolean hasHiddenScopes = totalScopes > MAX_DISPLAY_SCOPES;
 
@@ -907,16 +961,69 @@ public class DashboardService {
      * F02.8: AnnouncementFeedEntity をダッシュボード表示用 Map に変換する。
      */
     private Map<String, Object> toAnnouncementFeedMap(AnnouncementFeedEntity feed) {
+        return toAnnouncementFeedMap(feed, false);
+    }
+
+    private Map<String, Object> toAnnouncementFeedMap(AnnouncementFeedEntity feed, boolean locked) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", feed.getId());
-        map.put("source_type", feed.getSourceType() != null ? feed.getSourceType().name() : null);
         map.put("title_cache", feed.getTitleCache());
-        map.put("excerpt_cache", feed.getExcerptCache());
         map.put("priority", feed.getPriority());
         map.put("is_pinned", feed.getIsPinned());
         map.put("expires_at", feed.getExpiresAt());
         map.put("created_at", feed.getCreatedAt());
-        map.put("target_team_ids", feed.getTargetTeamIds());
+        map.put("access_state", locked ? "LOCKED" : "FULL");
+        if (!locked) {
+            map.put("source_type", feed.getSourceType() != null ? feed.getSourceType().name() : null);
+            map.put("excerpt_cache", feed.getExcerptCache());
+            map.put("target_team_ids", feed.getTargetTeamIds());
+        }
         return map;
     }
+
+    /** Dashboardの告知にも一覧と同じ課金軸を適用する（ゲート判定は1回のバッチ）。 */
+    private List<GatedAnnouncement> filterAnnouncementGated(
+            List<AnnouncementFeedEntity> feeds, Long userId, ViewerRole viewerRole) {
+        if (feeds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, ContentGateTarget> targets = feeds.stream()
+                .filter(feed -> DashboardService.targetOf(feed) != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        AnnouncementFeedEntity::getId,
+                        DashboardService::targetOf,
+                        (first, ignored) -> first));
+        Map<Long, GateCheckResponse> gates = paymentGateService == null ? Map.of() : paymentGateService.checkAccessBatch(
+                ContentGateType.ANNOUNCEMENT,
+                feeds.stream().map(AnnouncementFeedEntity::getId).toList(), userId, targets);
+        if (gates == null) {
+            return List.of();
+        }
+        if (viewerRole == ViewerRole.ADMIN || viewerRole == ViewerRole.SYSTEM_ADMIN) {
+            return feeds.stream().filter(feed -> {
+                GateCheckResponse gate = gates.get(feed.getId());
+                return gate != null && !gate.isTitleHidden();
+            }).map(feed -> new GatedAnnouncement(feed, false)).toList();
+        }
+        return feeds.stream().filter(feed -> {
+            GateCheckResponse gate = gates.get(feed.getId());
+            return gate != null && !gate.isTitleHidden();
+        }).map(feed -> new GatedAnnouncement(feed, isAnnouncementLocked(gates.get(feed.getId())))).toList();
+    }
+
+    private boolean isAnnouncementLocked(GateCheckResponse gate) {
+        return gate != null && !gate.isAccessible() && !gate.isTitleHidden();
+    }
+
+    private static ContentGateTarget targetOf(AnnouncementFeedEntity feed) {
+        if (feed == null || feed.getId() == null || feed.getScopeType() == null || feed.getScopeId() == null) {
+            return null;
+        }
+        return feed.getScopeType() == AnnouncementScopeType.TEAM
+                ? new ContentGateTarget(feed.getId(), feed.getScopeId(), null)
+                : feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
+                    ? new ContentGateTarget(feed.getId(), null, feed.getScopeId()) : null;
+    }
+
+    private record GatedAnnouncement(AnnouncementFeedEntity feed, boolean locked) {}
 }

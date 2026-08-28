@@ -6,11 +6,8 @@ import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
-import com.mannschaft.app.common.visibility.RolePriority;
 import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.schedule.GoogleCalendarErrorCode;
-import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.dto.CalendarSyncSettingsResponse;
 import com.mannschaft.app.schedule.dto.CalendarSyncSettingsResponse.SyncSettingItem;
 import com.mannschaft.app.schedule.dto.CalendarSyncToggleResponse;
@@ -27,6 +24,7 @@ import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.UserCalendarSyncSettingRepository;
 import com.mannschaft.app.schedule.repository.UserGoogleCalendarConnectionRepository;
 import com.mannschaft.app.schedule.repository.UserScheduleGoogleEventRepository;
+import com.mannschaft.app.schedule.visibility.MinViewRoleThreshold;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -61,7 +59,7 @@ public class GoogleCalendarService {
     private final GoogleApiClient googleApiClient;
     private final StringRedisTemplate redisTemplate;
     private final GoogleCalendarWebhookService webhookService;
-    private final MembershipService membershipService;
+    private final CalendarSyncAccessGuard calendarSyncAccessGuard;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final AccessControlService accessControlService;
 
@@ -317,7 +315,7 @@ public class GoogleCalendarService {
     @Transactional
     public CalendarSyncToggleResponse toggleTeamSync(Long teamId, boolean isEnabled, Long userId) {
         // AC-1: 非メンバーの同期トグルは存在秘匿（404 写像）で拒否する（IDOR 閉塞）。
-        validateActiveMembership(userId, ScopeType.TEAM, teamId);
+        calendarSyncAccessGuard.requireActiveScopeMember(userId, ScopeType.TEAM, teamId);
         validateConnectionActive(userId);
         syncSettingRepository.upsert(userId, SCOPE_TYPE_TEAM, teamId, isEnabled);
 
@@ -341,7 +339,7 @@ public class GoogleCalendarService {
     @Transactional
     public CalendarSyncToggleResponse toggleOrgSync(Long orgId, boolean isEnabled, Long userId) {
         // AC-1: 非メンバーの同期トグルは存在秘匿（404 写像）で拒否する（IDOR 閉塞）。
-        validateActiveMembership(userId, ScopeType.ORGANIZATION, orgId);
+        calendarSyncAccessGuard.requireActiveScopeMember(userId, ScopeType.ORGANIZATION, orgId);
         validateConnectionActive(userId);
         syncSettingRepository.upsert(userId, SCOPE_TYPE_ORGANIZATION, orgId, isEnabled);
 
@@ -558,7 +556,7 @@ public class GoogleCalendarService {
         }
         // 最小閲覧ロール軸（memberships 統合）
         String roleName = accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType);
-        return satisfiesMinViewRole(roleName, schedule.getMinViewRole());
+        return MinViewRoleThreshold.satisfies(roleName, schedule.getMinViewRole());
     }
 
     /**
@@ -585,16 +583,6 @@ public class GoogleCalendarService {
     }
 
     // --- プライベートメソッド ---
-
-    /**
-     * 呼び出しユーザーが当該スコープのアクティブメンバーであることを検証する（AC-1 IDOR 閉塞）。
-     * 非メンバーは存在秘匿のため {@link GoogleCalendarErrorCode#CALENDAR_SYNC_SCOPE_NOT_FOUND}（→404）を送出する。
-     */
-    private void validateActiveMembership(Long userId, ScopeType scopeType, Long scopeId) {
-        if (!membershipService.isActiveMember(userId, scopeType, scopeId)) {
-            throw new BusinessException(GoogleCalendarErrorCode.CALENDAR_SYNC_SCOPE_NOT_FOUND);
-        }
-    }
 
     /**
      * 当該ユーザー×スコープの同期済み Google イベントを削除し、マッピングを消す（AC-6/AC-7 共通）。
@@ -626,25 +614,6 @@ public class GoogleCalendarService {
     }
 
     /**
-     * 実効ロール名が {@code min_view_role} の閾値を満たすかを判定する（純メモリ・追加クエリなし）。
-     *
-     * <p>ロール優先度は {@link RolePriority}（roles テーブルの priority と一致）で比較する。
-     * 非メンバー（roleName=null）は最弱扱いとなり ANYONE 以外は満たさない。</p>
-     */
-    private boolean satisfiesMinViewRole(String roleName, MinViewRole minViewRole) {
-        if (minViewRole == null || minViewRole == MinViewRole.ANYONE) {
-            return true;
-        }
-        String required = switch (minViewRole) {
-            case ANYONE -> null;
-            case SUPPORTER_PLUS -> "SUPPORTER";
-            case MEMBER_PLUS -> "MEMBER";
-            case ADMIN_ONLY -> "ADMIN";
-        };
-        return required == null || RolePriority.isAtLeast(roleName, required);
-    }
-
-    /**
      * バックフィル対象スケジュールを可視性（F00 バッチ）＋最小閲覧ロールで絞り込む（AC-4/AC-5）。
      *
      * <p>N+1 回避: 可視性は {@link ContentVisibilityChecker#filterAccessible} で 1 バッチ判定し、
@@ -662,7 +631,7 @@ public class GoogleCalendarService {
         String roleName = accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType);
         return schedules.stream()
                 .filter(s -> visibleIds.contains(s.getId()))
-                .filter(s -> satisfiesMinViewRole(roleName, s.getMinViewRole()))
+                .filter(s -> MinViewRoleThreshold.satisfies(roleName, s.getMinViewRole()))
                 .toList();
     }
 

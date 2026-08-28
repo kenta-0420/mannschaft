@@ -6,6 +6,7 @@ import com.mannschaft.app.parking.ParkingScopeType;
 import com.mannschaft.app.parking.dto.ApplicationResponse;
 import com.mannschaft.app.parking.dto.CreateApplicationRequest;
 import com.mannschaft.app.parking.dto.RejectApplicationRequest;
+import com.mannschaft.app.parking.service.ParkingAccessGuard;
 import com.mannschaft.app.parking.service.ParkingApplicationService;
 import com.mannschaft.app.parking.service.ParkingSpaceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +34,7 @@ public class OrgParkingApplicationController {
 
     private final ParkingApplicationService applicationService;
     private final ParkingSpaceService spaceService;
+    private final ParkingAccessGuard parkingAccessGuard;
 
     private static final String SCOPE_TYPE = ParkingScopeType.ORGANIZATION.name();
 
@@ -43,6 +45,7 @@ public class OrgParkingApplicationController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
         Page<ApplicationResponse> result = applicationService.list(spaceIds, status,
                 PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "createdAt")));
@@ -56,6 +59,7 @@ public class OrgParkingApplicationController {
     public ResponseEntity<ApiResponse<ApplicationResponse>> create(
             @PathVariable Long organizationId,
             @Valid @RequestBody CreateApplicationRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
         ApplicationResponse result = applicationService.create(spaceIds, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
@@ -65,6 +69,7 @@ public class OrgParkingApplicationController {
     @Operation(summary = "組織申請承認")
     public ResponseEntity<ApiResponse<ApplicationResponse>> approve(
             @PathVariable Long organizationId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         ApplicationResponse result = applicationService.approve(SCOPE_TYPE, organizationId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -74,6 +79,7 @@ public class OrgParkingApplicationController {
     public ResponseEntity<ApiResponse<ApplicationResponse>> reject(
             @PathVariable Long organizationId, @PathVariable Long id,
             @Valid @RequestBody RejectApplicationRequest request) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         ApplicationResponse result = applicationService.reject(SCOPE_TYPE, organizationId, id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }
@@ -81,6 +87,7 @@ public class OrgParkingApplicationController {
     @DeleteMapping("/{id}")
     @Operation(summary = "組織申請取消")
     public ResponseEntity<Void> cancel(@PathVariable Long organizationId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         applicationService.cancel(SCOPE_TYPE, organizationId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
@@ -90,6 +97,7 @@ public class OrgParkingApplicationController {
     public ResponseEntity<ApiResponse<List<ApplicationResponse>>> lottery(
             @PathVariable Long organizationId,
             @RequestParam Long spaceId) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<ApplicationResponse> result = applicationService.executeLottery(SCOPE_TYPE, organizationId, spaceId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(result));
     }

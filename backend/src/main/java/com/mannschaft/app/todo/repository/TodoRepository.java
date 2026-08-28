@@ -85,6 +85,31 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
     List<TodoEntity> findMyTodos(@Param("userId") Long userId);
 
     /**
+     * マイカレンダー用: 本人担当・未完了・期限ありで指定期間と交差する TODO を全スコープから取得する。
+     *
+     * <p>{@code todo_assignees.user_id} の索引で担当者を絞り、TODO 本体は主キーで参照する。
+     * EXISTS を用いるため、共同担当の同一 TODO を重複して返さない。</p>
+     */
+    @Query("""
+            SELECT t FROM TodoEntity t
+            WHERE t.deletedAt IS NULL
+              AND t.dueDate IS NOT NULL
+              AND t.dueDate >= :fromDate
+              AND COALESCE(t.startDate, t.dueDate) <= :toDate
+              AND t.status IN (com.mannschaft.app.todo.TodoStatus.OPEN,
+                               com.mannschaft.app.todo.TodoStatus.IN_PROGRESS)
+              AND EXISTS (
+                  SELECT 1 FROM TodoAssigneeEntity ta
+                  WHERE ta.todoId = t.id AND ta.userId = :userId
+              )
+            ORDER BY COALESCE(t.startDate, t.dueDate) ASC, t.dueDate ASC, t.id ASC
+            """)
+    List<TodoEntity> findMyCalendarTodos(
+            @Param("userId") Long userId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate);
+
+    /**
      * F04.11 統合インボックス（TODO_DUE）境界付きウィンドウ取得。
      *
      * <p>本人担当・未完了（{@code OPEN}/{@code IN_PROGRESS}）・{@code due_date <= cutoff}（期限切れ含む近接）の

@@ -147,8 +147,18 @@ class ScheduleMapperTest {
         }
 
         @Test
-        @DisplayName("正常系: minResponseRole が null の場合も変換される")
-        void minResponseRoleがnullの場合() throws Exception {
+        @DisplayName("正常系: minResponseRole / commentOption を明示省略しても既定値(MEMBER_PLUS/OPTIONAL)に変換される")
+        void minResponseRoleとcommentOptionを省略した場合はDB既定値に変換される() throws Exception {
+            // 検分差し戻し是正（2026-08-15）: このテストは元々
+            // `.minResponseRole(...)` / `.commentOption(...)` を呼ばず null になることを
+            // 検証していたが、schedules.min_response_role / comment_option は
+            // V3.040__create_schedules_table.sql の CREATE TABLE 時点から一貫して
+            // NOT NULL DEFAULT（'MEMBER_PLUS' / 'OPTIONAL'）であり、DB経由で永続化される
+            // Schedule がこれらの列に NULL を持つ状態は実測上存在しない
+            // （移行期間・ALTERによる緩和も無し）。ScheduleEntity 側も
+            // @Builder.Default で同じ既定値を持つよう是正済み（wave4 検分是正）のため、
+            // 「フィールドを明示せずビルドした場合」は本番の「クライアントが省略した
+            // 新規作成」と同じ状態＝既定値が入る、を検証する意味のあるケースへ置き換える。
             ScheduleEntity entity = ScheduleEntity.builder()
                     .teamId(1L).title("テスト")
                     .startAt(LocalDateTime.of(2026, 5, 1, 9, 0))
@@ -160,6 +170,35 @@ class ScheduleMapperTest {
                     .attendanceRequired(false)
                     .build();
             setBaseId(entity, 11L);
+
+            ScheduleDetailResponse response = mapper.toDetailResponse(entity);
+
+            assertThat(response.getRoles().minViewRole()).isEqualTo("ANYONE");
+            assertThat(response.getRoles().minResponseRole()).isEqualTo("MEMBER_PLUS");
+            assertThat(response.getDetail().commentOption()).isEqualTo("OPTIONAL");
+        }
+
+        @Test
+        @DisplayName("正常系（防御的分岐）: minResponseRole/commentOptionが明示的にnullのEntityでもNPEにならない")
+        void minResponseRoleとcommentOptionが明示的にnullでも変換できる() throws Exception {
+            // 本番のDBバックドScheduleでは発生しない状態（DDLがNOT NULL DEFAULTのため）だが、
+            // ScheduleMapper自体はnullを許容する防御的実装（三項演算子でnullガード）を持つ。
+            // @Builder.Defaultは明示的に null をセットした場合は上書きされる（Lombokの仕様）ため、
+            // 意図的に .minResponseRole(null) / .commentOption(null) を呼び、防御コードの
+            // NPE回帰を検知する回帰テストとして残す（本番到達可能性を主張するものではない）。
+            ScheduleEntity entity = ScheduleEntity.builder()
+                    .teamId(1L).title("テスト")
+                    .startAt(LocalDateTime.of(2026, 5, 1, 9, 0))
+                    .allDay(false)
+                    .eventType(EventType.EVENT)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.ANYONE)
+                    .minResponseRole(null)
+                    .commentOption(null)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(false)
+                    .build();
+            setBaseId(entity, 12L);
 
             ScheduleDetailResponse response = mapper.toDetailResponse(entity);
 

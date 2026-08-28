@@ -10,7 +10,6 @@ import com.mannschaft.app.inbox.dto.InboxItemRef;
 import com.mannschaft.app.inbox.service.InboxDedupeKeyResolver;
 import com.mannschaft.app.inbox.service.InboxPriorityNormalizer;
 import com.mannschaft.app.inbox.service.InboxSourceAdapter;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
@@ -18,6 +17,10 @@ import com.mannschaft.app.social.announcement.AnnouncementFeedRepository;
 import com.mannschaft.app.social.announcement.AnnouncementReadStatusRepository;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementVisibility;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -55,6 +58,7 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
     private final AnnouncementReadStatusRepository announcementReadStatusRepository;
     private final InboxPriorityNormalizer priorityNormalizer;
     private final InboxDedupeKeyResolver dedupeKeyResolver;
+    private final PaymentGateService paymentGateService;
 
     @Override
     public InboxSourceType sourceType() {
@@ -92,6 +96,18 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
 
         // 3. 既読状態を user_id でまとめ取り（N+1 回避＝feed 件数に依らず 1 クエリ）。
         List<Long> feedIds = new ArrayList<>(feedById.keySet());
+        Map<Long, ContentGateTarget> targets = feedById.values().stream()
+                .filter(feed -> AnnouncementInboxAdapter.targetOf(feed) != null)
+                .collect(Collectors.toMap(
+                        AnnouncementFeedEntity::getId,
+                        AnnouncementInboxAdapter::targetOf));
+        Map<Long, GateCheckResponse> gateResults = paymentGateService == null ? Map.of()
+                : paymentGateService.checkAccessBatch(ContentGateType.ANNOUNCEMENT, feedIds, userId, targets);
+        feedById.entrySet().removeIf(e -> {
+            GateCheckResponse gate = gateResults == null ? null : gateResults.get(e.getKey());
+            return gate == null || gate.isTitleHidden();
+        });
+        feedIds = new ArrayList<>(feedById.keySet());
         Set<Long> readFeedIds = announcementReadStatusRepository
                 .findByUserIdAndAnnouncementFeedIdIn(userId, feedIds).stream()
                 .map(r -> r.getAnnouncementFeedId())
@@ -100,7 +116,9 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
         // 4. 統一 DTO へ正規化する。
         List<InboxItemDto> items = new ArrayList<>(feedById.size());
         for (AnnouncementFeedEntity feed : feedById.values()) {
-            items.add(toDto(feed, readFeedIds.contains(feed.getId())));
+            GateCheckResponse gate = gateResults == null ? null : gateResults.get(feed.getId());
+            items.add(toDto(feed, readFeedIds.contains(feed.getId()),
+                    gate != null && !gate.isAccessible() && !gate.isTitleHidden()));
         }
         return items;
     }
@@ -126,7 +144,15 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
             return false;
         }
         String viewerRoleName = scopeRole.get(key);
-        return AnnouncementVisibility.isVisibleTo(feed.getVisibility(), viewerRoleName);
+        if (!AnnouncementVisibility.isVisibleTo(feed.getVisibility(), viewerRoleName)) {
+            return false;
+        }
+        if ("ADMIN".equals(viewerRoleName) || "SYSTEM_ADMIN".equals(viewerRoleName)) {
+            return true;
+        }
+        GateCheckResponse gate = paymentGateService == null ? null : paymentGateService.checkAccess(
+                ContentGateType.ANNOUNCEMENT, feed.getId(), userId, targetOf(feed));
+        return gate != null && (gate.isAccessible() || !gate.isTitleHidden());
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -143,15 +169,21 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
      * <p>{@code RoleResolver.resolveViewerRole} の引数 scopeType は {@code "TEAM"}/{@code "ORGANIZATION"}
      * 文字列を取り、{@link AnnouncementScopeType} とは別物である点に注意。</p>
      */
+    private static ContentGateTarget targetOf(AnnouncementFeedEntity feed) {
+        if (feed == null || feed.getId() == null || feed.getScopeType() == null || feed.getScopeId() == null) {
+            return null;
+        }
+        return feed.getScopeType() == AnnouncementScopeType.TEAM
+                ? new ContentGateTarget(feed.getId(), feed.getScopeId(), null)
+                : feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
+                    ? new ContentGateTarget(feed.getId(), null, feed.getScopeId()) : null;
+    }
+
     private Map<ScopeKey, String> resolveAccessibleScopes(Long userId) {
         Map<ScopeKey, String> result = new LinkedHashMap<>();
 
-        // チームスコープ
-        for (UserRoleEntity role : userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId)) {
-            Long teamId = role.getTeamId();
-            if (teamId == null) {
-                continue;
-            }
+        // チームスコープ（CMP-027: user_roles ∪ memberships の在籍チーム）
+        for (Long teamId : userRoleRepository.findTeamIdsByUserId(userId)) {
             ScopeKey key = new ScopeKey(AnnouncementScopeType.TEAM, teamId);
             if (result.containsKey(key)) {
                 continue;
@@ -160,12 +192,8 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
             result.put(key, viewerRole == null ? null : viewerRole.name());
         }
 
-        // 組織スコープ
-        for (UserRoleEntity role : userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId)) {
-            Long orgId = role.getOrganizationId();
-            if (orgId == null) {
-                continue;
-            }
+        // 組織スコープ（CMP-027: user_roles ∪ memberships の在籍組織）
+        for (Long orgId : userRoleRepository.findOrganizationIdsByUserId(userId)) {
             ScopeKey key = new ScopeKey(AnnouncementScopeType.ORGANIZATION, orgId);
             if (result.containsKey(key)) {
                 continue;
@@ -176,7 +204,7 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
         return result;
     }
 
-    private InboxItemDto toDto(AnnouncementFeedEntity feed, boolean read) {
+    private InboxItemDto toDto(AnnouncementFeedEntity feed, boolean read, boolean locked) {
         InboxPriority priority = priorityNormalizer.normalize(
                 InboxSourceType.ANNOUNCEMENT, feed.getPriority());
 
@@ -188,9 +216,9 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
         // 名寄せ（Phase 3 ①）：feed は終端 sourceType + sourceId を保持するので正規化できる。
         // 正規化不能（ReferenceType 未マッピングの ADVERTISER_CAMPAIGN 等）は ANNOUNCEMENT_FEED:{feedId}
         // へフォールバックし畳まない（NOTIFICATION 側の "ANNOUNCEMENT:{id}" 自分自身キーとも衝突しない）。
-        String terminalType = feed.getSourceType() != null ? feed.getSourceType().name() : null;
+        String terminalType = locked || feed.getSourceType() == null ? null : feed.getSourceType().name();
         String selfKey = "ANNOUNCEMENT_FEED:" + feed.getId();
-        String canonicalRef = dedupeKeyResolver.canonicalRefOrSelf(
+        String canonicalRef = locked ? selfKey : dedupeKeyResolver.canonicalRefOrSelf(
                 terminalType, feed.getSourceId(), selfKey);
 
         return new InboxItemDto(
@@ -198,7 +226,7 @@ public class AnnouncementInboxAdapter implements InboxSourceAdapter {
                 InboxSourceType.ANNOUNCEMENT,
                 feed.getId(),
                 feed.getTitleCache(),
-                feed.getExcerptCache(),
+                locked ? null : feed.getExcerptCache(),
                 priority,
                 scope,
                 "/announcements/" + feed.getId(),

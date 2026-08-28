@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -104,5 +105,5 @@ public class MessageResponse {
             String scopeName,
             String status,
             boolean isTarget,
-            LocalDateTime expiresAt) {}
+            OffsetDateTime expiresAt) {}
 }

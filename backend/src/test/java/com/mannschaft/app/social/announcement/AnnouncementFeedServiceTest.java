@@ -11,6 +11,8 @@ import com.mannschaft.app.committee.repository.CommitteeDistributionLogRepositor
 import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.dashboard.ViewerRole;
+import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.survey.repository.SurveyRepository;
@@ -18,6 +20,10 @@ import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -28,6 +34,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -35,12 +42,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 
 /**
  * {@link AnnouncementCreationService} の単体テスト。
@@ -102,6 +112,10 @@ class AnnouncementFeedServiceTest {
     @Mock
     private AnnouncementReadStatusRepository readStatusRepository;
 
+    /** 既読の可視性ゲートが使う閲覧者ロール解決（一覧側と同一の正準経路）。 */
+    @Mock
+    private RoleResolver roleResolver;
+
     @InjectMocks
     private AnnouncementReadService announcementReadService;
 
@@ -109,6 +123,9 @@ class AnnouncementFeedServiceTest {
 
     @Mock
     private AnnouncementFeedQueryRepository feedQueryRepository;
+
+    @Mock
+    private PaymentGateService paymentGateService;
 
     @InjectMocks
     private AnnouncementFeedService announcementFeedService;
@@ -481,26 +498,35 @@ class AnnouncementFeedServiceTest {
     class MarkAsRead {
 
         @Test
-        @DisplayName("正常系: 未読 → 既読に変更（save が呼ばれる）")
+        @DisplayName("正常系: 未読 → 既読に変更（冪等 UPSERT が呼ばれる）")
         void markAsRead_正常_未読から既読() {
-            // Given: お知らせが存在し、未読状態
-            given(feedRepository.existsById(ANNOUNCEMENT_ID)).willReturn(true);
+            // Given: 当該スコープに帰属し、閲覧者（MEMBER）に可視なお知らせが存在し、未読状態
+            given(feedRepository.findById(ANNOUNCEMENT_ID))
+                    .willReturn(Optional.of(buildScopedFeed()));
+            givenViewerRole(ViewerRole.MEMBER);
             given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, AUTHOR_USER_ID))
                     .willReturn(Optional.empty()); // 未読
             given(proxyInputContext.isProxy()).willReturn(false);
 
             // When
-            announcementFeedService.markAsRead(ANNOUNCEMENT_ID, AUTHOR_USER_ID);
+            announcementFeedService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, AUTHOR_USER_ID);
 
-            // Then: 既読レコードが保存される
-            verify(readStatusRepository).save(any(AnnouncementReadStatusEntity.class));
+            // Then: 既読レコードが作られる。
+            // #2530 ⑤ で「存在確認 → 素の INSERT」をやめ、DB 側で冪等な UPSERT に寄せたため、
+            // 検証先も save ではなく insertReadStatusesIgnoringExisting になる。
+            verify(readStatusRepository)
+                    .insertReadStatusesIgnoringExisting(AUTHOR_USER_ID, List.of(ANNOUNCEMENT_ID));
+            verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
         }
 
         @Test
         @DisplayName("正常系: 既に既読の場合は save が呼ばれない（冪等）")
         void markAsRead_正常_既読済みは冪等() {
-            // Given: お知らせが存在し、既読済み
-            given(feedRepository.existsById(ANNOUNCEMENT_ID)).willReturn(true);
+            // Given: 当該スコープに帰属し、閲覧者（MEMBER）に可視なお知らせが存在し、既読済み
+            given(feedRepository.findById(ANNOUNCEMENT_ID))
+                    .willReturn(Optional.of(buildScopedFeed()));
+            givenViewerRole(ViewerRole.MEMBER);
             AnnouncementReadStatusEntity existingStatus = AnnouncementReadStatusEntity.builder()
                     .announcementFeedId(ANNOUNCEMENT_ID)
                     .userId(AUTHOR_USER_ID)
@@ -509,10 +535,101 @@ class AnnouncementFeedServiceTest {
                     .willReturn(Optional.of(existingStatus)); // 既読済み
 
             // When
-            announcementFeedService.markAsRead(ANNOUNCEMENT_ID, AUTHOR_USER_ID);
+            announcementFeedService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, AUTHOR_USER_ID);
 
             // Then: save は呼ばれない（冪等）
             verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
+            // #2530 ⑤: 既読作成は UPSERT 経路に移ったので、そちらも呼ばれないことを確かめる
+            verify(readStatusRepository, never()).insertReadStatusesIgnoringExisting(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("異常系: 別スコープのお知らせ ID は ANNOUNCE_001（越境の存在秘匿）")
+        void markAsRead_異常_越境スコープはANNOUNCE_001() {
+            // Given: お知らせは存在するが teamB（別スコープ）に帰属する
+            AnnouncementFeedEntity otherScopeFeed = AnnouncementFeedEntity.builder()
+                    .scopeType(AnnouncementScopeType.TEAM)
+                    .scopeId(TEAM_ID + 1)
+                    .sourceType(AnnouncementSourceType.BLOG_POST)
+                    .sourceId(BLOG_POST_ID)
+                    .titleCache("別チームのお知らせ")
+                    .build();
+            given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(otherScopeFeed));
+
+            // When / Then
+            assertThatThrownBy(() -> announcementFeedService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, AUTHOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ANNOUNCE_001"));
+            verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
+            // #2530 ⑤: 既読作成は UPSERT 経路に移ったので、そちらも呼ばれないことを確かめる
+            verify(readStatusRepository, never()).insertReadStatusesIgnoringExisting(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("異常系: 応援者に内輪限定（MEMBERS_AND_ABOVE）は ANNOUNCE_001（可視性ゲート）")
+        void markAsRead_異常_応援者に内輪限定はANNOUNCE_001() {
+            // Given: 当該スコープの内輪限定お知らせ。閲覧者は SUPPORTER なので一覧にも出ない。
+            given(feedRepository.findById(ANNOUNCEMENT_ID))
+                    .willReturn(Optional.of(buildScopedFeed()));
+            givenViewerRole(ViewerRole.SUPPORTER);
+
+            // When / Then: 越境と同一のエラーコードに畳み込まれる（存在秘匿）
+            assertThatThrownBy(() -> announcementFeedService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, AUTHOR_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ANNOUNCE_001"));
+            verify(readStatusRepository, never()).save(any(AnnouncementReadStatusEntity.class));
+            // #2530 ⑤: 既読作成は UPSERT 経路に移ったので、そちらも呼ばれないことを確かめる
+            verify(readStatusRepository, never()).insertReadStatusesIgnoringExisting(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("正常系: 非メンバー（PUBLIC ロール）でも PUBLIC のお知らせは既読にできる")
+        void markAsRead_正常_非メンバーでもPUBLICは既読可() {
+            // Given: PUBLIC 可視のお知らせ。閲覧者はロールなし（＝一覧では PUBLIC のみ見える）。
+            given(feedRepository.findById(ANNOUNCEMENT_ID))
+                    .willReturn(Optional.of(buildScopedFeed(AnnouncementVisibility.PUBLIC)));
+            givenViewerRole(ViewerRole.PUBLIC);
+            given(readStatusRepository.findByAnnouncementFeedIdAndUserId(ANNOUNCEMENT_ID, AUTHOR_USER_ID))
+                    .willReturn(Optional.empty());
+            given(proxyInputContext.isProxy()).willReturn(false);
+
+            // When
+            announcementFeedService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, AUTHOR_USER_ID);
+
+            // Then（#2530 ⑤: 既読作成は DB 側で冪等な UPSERT 経路）
+            verify(readStatusRepository)
+                    .insertReadStatusesIgnoringExisting(AUTHOR_USER_ID, List.of(ANNOUNCEMENT_ID));
+        }
+
+        private void givenViewerRole(ViewerRole viewerRole) {
+            given(roleResolver.resolveViewerRole(AUTHOR_USER_ID, "TEAM", TEAM_ID)).willReturn(viewerRole);
+            lenient().when(paymentGateService.checkAccess(
+                    eq(ContentGateType.ANNOUNCEMENT), eq(ANNOUNCEMENT_ID), eq(AUTHOR_USER_ID), any(ContentGateTarget.class)))
+                    .thenReturn(new GateCheckResponse(true, false, List.of()));
+        }
+
+        /** 当該スコープ（TEAM_ID）に帰属する内輪限定のお知らせフィードを組み立てる。 */
+        private AnnouncementFeedEntity buildScopedFeed() {
+            return buildScopedFeed(AnnouncementVisibility.MEMBERS_AND_ABOVE);
+        }
+
+        private AnnouncementFeedEntity buildScopedFeed(String visibility) {
+            AnnouncementFeedEntity feed = AnnouncementFeedEntity.builder()
+                    .scopeType(AnnouncementScopeType.TEAM)
+                    .scopeId(TEAM_ID)
+                    .sourceType(AnnouncementSourceType.BLOG_POST)
+                    .sourceId(BLOG_POST_ID)
+                    .titleCache("お知らせ")
+                    .visibility(visibility)
+                    .build();
+            org.springframework.test.util.ReflectionTestUtils.setField(feed, "id", ANNOUNCEMENT_ID);
+            return feed;
         }
     }
 
@@ -523,6 +640,66 @@ class AnnouncementFeedServiceTest {
     @Nested
     @DisplayName("getAnnouncementFeed（閲覧者ロール → 可視 visibility 集合）")
     class GetAnnouncementFeed {
+
+        private AnnouncementFeedEntity feed(long id) {
+            AnnouncementFeedEntity feed = mock(AnnouncementFeedEntity.class);
+            given(feed.getId()).willReturn(id);
+            given(feed.getScopeType()).willReturn(AnnouncementScopeType.TEAM);
+            given(feed.getScopeId()).willReturn(TEAM_ID);
+            return feed;
+        }
+
+        @Test
+        @DisplayName("HIDDENを除外して次chunkを補充し、ページ境界を維持する")
+        void hiddenRowsAreReplenishedFromNextChunk() {
+            AnnouncementFeedEntity hidden5 = feed(5L);
+            AnnouncementFeedEntity full4 = feed(4L);
+            AnnouncementFeedEntity hidden3 = feed(3L);
+            AnnouncementFeedEntity full2 = feed(2L);
+            AnnouncementFeedEntity full1 = feed(1L);
+            given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(),
+                    isNull(), eq(3))).willReturn(List.of(hidden5, full4, hidden3));
+            given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(),
+                    eq(3L), eq(3))).willReturn(List.of(full2, full1));
+            given(paymentGateService.checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(), eq(OTHER_USER_ID), any(Map.class)))
+                    .willReturn(java.util.Map.of(
+                            5L, new GateCheckResponse(false, true, List.of()),
+                            3L, new GateCheckResponse(false, true, List.of()),
+                            4L, new GateCheckResponse(false, false, List.of()),
+                            2L, new GateCheckResponse(false, false, List.of()),
+                            1L, new GateCheckResponse(true, false, List.of())));
+            AnnouncementFeedService.AnnouncementFeedResult result = announcementFeedService.getAnnouncementFeed(
+                    AnnouncementScopeType.TEAM, TEAM_ID, OTHER_USER_ID, "MEMBER", null, 2);
+
+            assertThat(result.data()).extracting(item -> item.feed().getId()).containsExactly(4L, 2L);
+            assertThat(result.data()).extracting(AnnouncementFeedService.AnnouncementFeedItem::accessState)
+                    .containsExactly("LOCKED", "LOCKED");
+            assertThat(result.hasNext()).isTrue();
+            assertThat(result.nextCursor()).isEqualTo(2L);
+            assertThat(result.unreadCount()).isEqualTo(2L);
+            verify(feedQueryRepository).findByScope(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(),
+                    eq(3L), eq(3));
+        }
+
+        @Test
+        @DisplayName("全件HIDDENなら空ページかつ次ページなし")
+        void allHiddenRowsAreExcluded() {
+            AnnouncementFeedEntity hidden2 = feed(2L);
+            AnnouncementFeedEntity hidden1 = feed(1L);
+            given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(),
+                    isNull(), eq(3))).willReturn(List.of(hidden2, hidden1));
+            given(paymentGateService.checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(), eq(OTHER_USER_ID), any(Map.class)))
+                    .willReturn(java.util.Map.of(
+                            2L, new GateCheckResponse(false, true, List.of()),
+                            1L, new GateCheckResponse(false, true, List.of())));
+            AnnouncementFeedService.AnnouncementFeedResult result = announcementFeedService.getAnnouncementFeed(
+                    AnnouncementScopeType.TEAM, TEAM_ID, OTHER_USER_ID, "MEMBER", null, 2);
+
+            assertThat(result.data()).isEmpty();
+            assertThat(result.hasNext()).isFalse();
+            assertThat(result.nextCursor()).isNull();
+            assertThat(result.unreadCount()).isZero();
+        }
 
         /**
          * 閲覧者ロール名から findByScope に渡される allowedVisibilities を捕捉する。

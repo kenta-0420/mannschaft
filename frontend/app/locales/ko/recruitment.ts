@@ -310,6 +310,42 @@ export default {
         "expired": "만료",
         "lifted": "해제됨"
       }
+    },
+    "cancellationFeeWaive": {
+      "pageTitle": "취소 수수료 면제",
+      "pageDescription": "수령해야 할 취소 수수료의 면제",
+      "unknownUser": "알 수 없는 사용자",
+      "loadMore": "더 보기",
+      "reasonTooLong": "면제 사유는 {max}자 이내로 입력해 주세요",
+      "columns": {
+        "listing": "모집",
+        "user": "대상 사용자",
+        "feeAmount": "취소 수수료",
+        "status": "상태",
+        "cancelledAt": "취소 일시"
+      },
+      "status": {
+        "pending": "미납",
+        "failed": "결제 실패",
+        "uncollectible": "회수 불가",
+        "paid": "지불 완료",
+        "waived": "면제됨",
+        "notRequired": "대상 아님"
+      },
+      "waiveButton": "면제하기",
+      "reasonLabel": "면제 사유",
+      "reasonPlaceholder": "면제 사유를 입력해 주세요（필수）",
+      "reasonRequired": "면제 사유는 필수입니다",
+      "confirmDialog": {
+        "title": "취소 수수료 면제",
+        "message": "취소 수수료 {amount}엔 청구를 취소합니다. 이 작업은 되돌릴 수 없습니다.\n이 사용자에게 다른 미납 취소 수수료가 남아 있는 경우, 모집 신청 제한은 해제되지 않습니다.",
+        "confirmButton": "면제하기",
+        "cancelButton": "돌아가기"
+      },
+      "emptyMessage": "면제 가능한 취소 수수료 기록이 없습니다",
+      "loadError": "목록을 가져오지 못했습니다",
+      "waiveSuccess": "취소 수수료를 면제했습니다",
+      "waiveError": "면제에 실패했습니다"
     }
   }
 }

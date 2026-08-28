@@ -80,7 +80,15 @@
       "festival": "Festival",
       "matchRecruit": "Spielrekrutierung",
       "meetup": "Treffen",
-      "chronicle": "Dorfchronik"
+      "chronicle": "Dorfchronik",
+      "charter": "Dorfsatzung"
+    },
+    "systemPost": {
+      "authorName": "Dorf-Veranstaltungshinweis",
+      "eventCreated": "Eine Veranstaltung wurde erstellt",
+      "eventUpcoming": "Eine Veranstaltung steht bevor",
+      "meetupConfirmed": "Der Treffentermin wurde bestätigt",
+      "festivalStarted": "Das Festival hat begonnen"
     },
     "lobby": {
       "title": "Foyer",
@@ -260,6 +268,15 @@
       "filterRole": "Nach Rolle filtern",
       "soloHeadmanHint": "Sobald weitere Mitglieder diesem Dorf beitreten, können Sie sie hier zu Ältesten ernennen."
     },
+    "profile": {
+      "title": "Dorfbewohner-Profil",
+      "villages": {
+        "title": "Zugehörige Dörfer",
+        "empty": "Keine Dörfer zum Anzeigen",
+        "publicToggle": "Dieses Dorf in meiner Dorfliste anzeigen",
+        "publicToggleHint": "Wenn aktiviert, können Personen, die mit Ihnen ein Dorf teilen, dieses Dorf in Ihrer Dorfliste sehen."
+      }
+    },
     "postingIdentity": {
       "title": "Beitrag als",
       "asUser": "Als Einzelperson beitragen",
@@ -293,7 +310,7 @@
       "VILLAGE_007": "Sie sind kein Mitglied dieses Dorfes",
       "VILLAGE_008": "Dieser Spitzname ist bereits vergeben",
       "VILLAGE_009": "Meldelimit erreicht (10 pro Stunde)",
-      "VILLAGE_010": "Limit für Dorferstellungsanträge erreicht (3 pro Tag, max. 10 ausstehend)",
+      "VILLAGE_010": "Limit für Dorferstellungen erreicht. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
       "VILLAGE_011": "Der Spitzname kann nur 3 Mal pro Monat geändert werden",
       "VILLAGE_012": "Sie haben die maximale Anzahl von Dörfern erreicht, denen Sie beitreten können (100)",
       "VILLAGE_013": "Sie haben die maximale Anzahl von Lieblingsdörfern erreicht (30)",
@@ -324,6 +341,10 @@
       "VILLAGE_042": "Meldung nicht gefunden",
       "VILLAGE_043": "Diese Meldung wurde bereits bearbeitet",
       "VILLAGE_044": "Angeheftetes Lieblingsdorf nicht gefunden",
+      "VILLAGE_052": "Vertreterdelegierung nicht gefunden",
+      "VILLAGE_053": "Diese Kombination aus Mitgliedschaft und Benutzer wurde bereits als Vertreter delegiert",
+      "VILLAGE_054": "Die Ziel-Mitgliedschaft ist kein Team/keine Organisation",
+      "VILLAGE_055": "Der delegierte Benutzer ist kein Mitglied des Ziel-Teams/der Ziel-Organisation",
       "generic": "In der Dorffunktion ist ein Fehler aufgetreten",
       "backToList": "Zurück zur Dorfliste",
       "moderatorOnly": "Nur der Dorfvorsteher und Älteste können diese Einstellung ändern"
@@ -350,7 +371,15 @@
     "monsho": {
       "title": "Dorfwappen",
       "upload": "Dorfwappen hochladen",
-      "remove": "Dorfwappen entfernen"
+      "remove": "Dorfwappen entfernen",
+      "label": "Dorfwappen (Emblem / Logo)",
+      "change": "Wappen ändern",
+      "uploading": "Wird hochgeladen…",
+      "hint": "JPG / PNG / WebP, bis zu 5MB",
+      "errorMime": "Nur JPG-, PNG- und WebP-Bilder werden unterstützt",
+      "errorSize": "Die Dateigröße darf höchstens 5MB betragen",
+      "uploadSuccess": "Dorfwappen hochgeladen",
+      "removeSuccess": "Dorfwappen entfernt"
     },
     "calendar": {
       "title": "Dorfkalender",
@@ -374,7 +403,26 @@
       "deleteSuccess": "Veranstaltung gelöscht",
       "empty": "Keine Veranstaltungen eingetragen",
       "noEventsInMonth": "Keine Veranstaltungen in diesem Monat",
-      "loadFailed": "Kalender konnte nicht geladen werden"
+      "loadFailed": "Kalender konnte nicht geladen werden",
+      "log": {
+        "title": "Rückblick auf letztes Jahr",
+        "lastYear": "Rückblick {year}",
+        "addLog": "Eintrag hinzufügen",
+        "year": "Jahr",
+        "note": "Notiz",
+        "notePlaceholder": "Ein kurzer Kommentar dazu, wie es war",
+        "photoKey": "Foto (R2-Schlüssel, optional)",
+        "photoKeyHint": "Der Bild-Upload folgt bald. Falls bereits ein R2-Schlüssel existiert, kann er hier eingetragen werden",
+        "submit": "Speichern",
+        "delete": "Löschen",
+        "empty": "Noch keine Einträge",
+        "loadFailed": "Einträge konnten nicht geladen werden",
+        "addSuccess": "Eintrag gespeichert",
+        "addFailed": "Eintrag konnte nicht hinzugefügt werden",
+        "deleteConfirm": "Diesen Eintrag löschen?",
+        "deleteSuccess": "Eintrag gelöscht",
+        "deleteFailed": "Eintrag konnte nicht gelöscht werden"
+      }
     },
     "festival": {
       "title": "Festival",
@@ -396,12 +444,38 @@
       "saveSuccess": "Festival gespeichert",
       "cancelSuccess": "Festival abgesagt",
       "loadFailed": "Festivalliste konnte nicht geladen werden",
+      "invalidDateTime": "Start-/Enddatum bzw. -uhrzeit ist ungültig. Bitte erneut eingeben.",
       "filterAll": "Alle",
       "status": {
         "SCHEDULED": "Geplant",
         "ACTIVE": "Laufend",
         "ENDED": "Beendet",
         "CANCELLED": "Abgesagt"
+      },
+      "rsvp": {
+        "title": "Teilnahmezusage",
+        "going": "Ich komme",
+        "maybe": "Vielleicht",
+        "roleLabel": "Rolle",
+        "roleLabelPlaceholder": "Rolle (optional, z. B. Standbetreuung)",
+        "submit": "Senden",
+        "cancel": "Zusage zurückziehen",
+        "empty": "Noch niemand hat zugesagt",
+        "loadFailed": "Teilnehmerliste konnte nicht geladen werden",
+        "saveSuccess": "Teilnahmezusage gespeichert",
+        "saveFailed": "Teilnahmezusage konnte nicht gespeichert werden",
+        "cancelSuccess": "Teilnahmezusage zurückgezogen",
+        "cancelFailed": "Zusage konnte nicht zurückgezogen werden"
+      },
+      "live": {
+        "title": "Live-Updates",
+        "tagAsLive": "Schreibe etwas als Live-Update",
+        "submit": "Als Live-Update posten",
+        "empty": "Noch keine Live-Updates",
+        "viewPost": "Beitrag ansehen",
+        "loadFailed": "Live-Updates konnten nicht geladen werden",
+        "tagSuccess": "Als Live-Update gepostet",
+        "tagFailed": "Live-Update konnte nicht gepostet werden"
       }
     },
     "matchRecruit": {
@@ -470,11 +544,22 @@
     },
     "representative": {
       "title": "Vertreterdelegierung",
+      "subtitle": "Delegieren Sie das Recht, als Vertreter zu posten, an einen einzelnen Benutzer im Namen einer Team-/Organisationsmitgliedschaft in diesem Dorf.",
       "grant": "Als Vertreter delegieren",
       "revoke": "Delegation widerrufen",
       "empty": "Keine delegierten Vertreter",
       "grantedBy": "Delegiert von",
-      "note": "Notiz"
+      "grantedAt": "Delegiert am",
+      "note": "Notiz",
+      "target": "Ziel (Team/Organisation)",
+      "targetPlaceholder": "Team/Organisation zum Delegieren auswählen",
+      "noTargets": "Keine Team-/Organisationsmitgliedschaften für die Delegation verfügbar",
+      "unknownTarget": "Unbekanntes Ziel",
+      "representativeUser": "Vertreterbenutzer",
+      "loadFailed": "Vertreterdelegierungen konnten nicht geladen werden",
+      "confirmRevokeTitle": "Diese Delegation widerrufen?",
+      "confirmRevokeBody": "Die Vertreterdelegierung für {name} wird widerrufen. Sind Sie sicher?",
+      "revokeSuccess": "Delegation widerrufen"
     },
     "meetup": {
       "title": "Treffen",
@@ -488,6 +573,9 @@
       "addCandidateDate": "Kandidatentermin hinzufügen",
       "removeCandidateDate": "Kandidatentermin entfernen",
       "candidateDate": "Kandidatentermin",
+      "candidateTime": "Uhrzeit",
+      "allDay": "Ganztägig",
+      "timeOptionalHint": "Die Uhrzeit ist optional (leer lassen für ganztägig)",
       "vote": "Abstimmen",
       "confirm": "Diesen Termin bestätigen",
       "confirmedDate": "Bestätigter Termin",
@@ -508,6 +596,54 @@
         "PLANNING": "Abstimmung offen",
         "CONFIRMED": "Bestätigt",
         "CANCELLED": "Abgesagt"
+      },
+      "attendance": {
+        "title": "Teilnahme",
+        "going": "Ich komme",
+        "maybe": "Vielleicht",
+        "absent": "Ich komme nicht",
+        "notConfirmedHint": "Du kannst deine Teilnahme eintragen, sobald der Termin bestätigt ist",
+        "empty": "Noch niemand hat geantwortet",
+        "unknownMember": "Dorfbewohner",
+        "saveSuccess": "Teilnahme gespeichert",
+        "saveFailed": "Teilnahme konnte nicht gespeichert werden"
+      },
+      "comment": {
+        "title": "Kommentare",
+        "placeholder": "Kommentar schreiben",
+        "submit": "Absenden",
+        "empty": "Noch keine Kommentare",
+        "delete": "Löschen",
+        "postFailed": "Kommentar konnte nicht gesendet werden",
+        "deleteConfirm": "Diesen Kommentar löschen?",
+        "deleteSuccess": "Kommentar gelöscht",
+        "deleteFailed": "Kommentar konnte nicht gelöscht werden"
+      },
+      "decisions": {
+        "title": "Beschlüsse",
+        "placeholder": "Notiere, was beschlossen wurde, was mitzubringen ist usw.",
+        "edit": "Bearbeiten",
+        "empty": "Noch nichts beschlossen",
+        "saveSuccess": "Beschlüsse gespeichert",
+        "saveFailed": "Beschlüsse konnten nicht gespeichert werden"
+      },
+      "todo": {
+        "title": "Aufgaben",
+        "titlePlaceholder": "Was ist zu tun? (z. B. Snacks kaufen)",
+        "add": "Hinzufügen",
+        "claim": "Ich übernehme das",
+        "complete": "Als erledigt markieren",
+        "release": "Aufgabe abgeben",
+        "unassigned": "Nicht zugewiesen",
+        "empty": "Noch keine Aufgaben",
+        "alreadyClaimed": "Diese Aufgabe ist bereits vergeben",
+        "addSuccess": "Aufgabe hinzugefügt",
+        "addFailed": "Aufgabe konnte nicht hinzugefügt werden",
+        "claimSuccess": "Du hast diese Aufgabe übernommen",
+        "completeSuccess": "Als erledigt markiert",
+        "completeFailed": "Status konnte nicht aktualisiert werden",
+        "releaseSuccess": "Aufgabe abgegeben",
+        "releaseFailed": "Aufgabe konnte nicht abgegeben werden"
       }
     },
     "chronicle": {
@@ -522,9 +658,71 @@
       "loadFailed": "Chroniken konnten nicht geladen werden",
       "viewDetail": "Details anzeigen"
     },
+    "archive": {
+      "title": "Chronik",
+      "subtitle": "Aufzeichnungen der Feste, Kalenderereignisse und Treffen des Dorfes",
+      "empty": "Noch keine Chronikeinträge",
+      "loadFailed": "Chronik konnte nicht geladen werden",
+      "archivedAt": "Aufgezeichnet am",
+      "filterAll": "Alle",
+      "sourceType": {
+        "festival": "Festival",
+        "calendarEvent": "Kalenderereignis",
+        "meetup": "Treffen"
+      }
+    },
+    "charter": {
+      "title": "Dorfsatzung",
+      "subtitle": "Die gemeinsamen Versprechen des Dorfes",
+      "empty": "Für dieses Dorf wurde noch keine Satzung erlassen",
+      "enactedAt": "Erlassen am",
+      "lastRevisedAt": "Zuletzt geändert am",
+      "article": {
+        "label": "Artikel {n}",
+        "add": "+ Artikel hinzufügen",
+        "bodyPlaceholder": "Artikeltext eingeben",
+        "bodyRequired": "Bitte gib den Artikeltext ein",
+        "delete": "Artikel löschen",
+        "deleteConfirm": "Diesen Artikel löschen?"
+      },
+      "supplement": {
+        "add": "+ Anhang hinzufügen",
+        "label": "Anhang",
+        "placeholder": "Anhang eingeben (optional)"
+      },
+      "reorder": {
+        "hint": "Mit den Auf-/Ab-Schaltflächen die Reihenfolge der Artikel ändern",
+        "up": "Nach oben",
+        "down": "Nach unten"
+      },
+      "drafters": {
+        "title": "Verfasser",
+        "add": "+ Verfasser hinzufügen",
+        "empty": "Es sind noch keine Verfasser eingetragen",
+        "delete": "Verfasser entfernen",
+        "deleteConfirm": "„{name}“ aus den Verfassern entfernen?",
+        "selectPlaceholder": "Dorfbewohner auswählen",
+        "loadMembersFailed": "Die Liste der Dorfbewohner konnte nicht geladen werden, daher können keine Verfasser hinzugefügt werden.",
+        "reloadMembers": "Neu laden"
+      },
+      "revision": {
+        "confirm": "Änderung bestätigen",
+        "confirmHint": "Dies vermerkt den aktuellen Zeitpunkt als Änderung (die Sichtbarkeit der Artikel ändert sich dadurch nicht).",
+        "confirmSuccess": "Änderung bestätigt",
+        "notePlaceholder": "Notiz zur Änderung (optional)",
+        "history": "Änderungshistorie",
+        "historyEmpty": "Noch keine Änderungen"
+      },
+      "error": {
+        "loadFailed": "Die Dorfsatzung konnte nicht geladen werden",
+        "mutationFailed": "Der Vorgang ist fehlgeschlagen",
+        "versionConflict": "Ein anderer Dorfvorsteher hat dies gleichzeitig bearbeitet. Bitte lade die neueste Version neu.",
+        "drafterDuplicate": "Dieser Dorfbewohner ist bereits Verfasser"
+      }
+    },
     "serendipity": {
       "title": "Affinitätspunkte",
-      "subtitle": "Kompatibilität mit Ihnen",
+      "subtitle": "Gesammelte Begegnungen in diesem Dorf",
       "rank": "Rang",
       "score": "Punkte",
       "myScore": "Ihre Punkte",
@@ -532,6 +730,26 @@
       "lastComputedAt": "Zuletzt berechnet",
       "empty": "Affinitätspunkte noch nicht berechnet",
       "loadFailed": "Affinitätspunkte konnten nicht geladen werden"
+    },
+    "affinity": {
+      "title": "Kompatibilitätshinweis",
+      "subtitle": "Sehen Sie vor dem Beitritt, ob dieses Dorf zu Ihnen passen könnte",
+      "categoryMatch": "Nahe an Ihren Interessen und Kategorien",
+      "hidden": "Derzeit kein Kompatibilitätshinweis",
+      "sharedVillagers": {
+        "hidden": "Kann noch nicht angezeigt werden",
+        "few": "Ein paar Personen",
+        "many": "10 oder mehr Personen"
+      },
+      "reason": {
+        "categoryMatch": "Dieses Dorf liegt nahe an Ihren Interessen",
+        "sharedVillagers": "Es gibt Dorfbewohner, mit denen Sie bereits verbunden sind",
+        "pioneer": "Sie können jetzt als Gründungsmitglied beitreten"
+      },
+      "pioneer": {
+        "title": "Sie können ein Gründungsmitglied werden!",
+        "body": "Dies ist noch ein kleines Dorf. Wenn Sie jetzt beitreten, werden Sie eines der Gründungsmitglieder, die es gemeinsam aufbauen."
+      }
     },
     "pilgrimage": {
       "title": "Dorfwallfahrt",
@@ -726,6 +944,15 @@
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
         }
+      },
+      "charter": {
+        "title": "Die Versprechen des Dorfes in der Satzung festhalten",
+        "body": "Der Dorfvorsteher/die Ältesten können die Regeln des Dorfes (Artikel) festlegen und sie auch für Nichtmitglieder veröffentlichen (öffentliche Dörfer zeigen sie auch künftigen Mitgliedern).",
+        "steps": {
+          "step1": "Öffne den Tab „Dorfsatzung“.",
+          "step2": "Der Dorfvorsteher/die Ältesten können mit „+ Artikel hinzufügen“ Artikel verfassen und optional einen Anhang beifügen.",
+          "step3": "Neuanordnung und Löschen wirken sofort. Mit „Änderung bestätigen“ wird dies in der Änderungshistorie vermerkt."
+        }
       }
     },
     "joinRequestGuide": {
@@ -774,6 +1001,10 @@
         "members": {
           "title": "Mitglieder & Rollen",
           "desc": "Dorfbewohner verwalten, Rollen ändern und sperren (BAN)."
+        },
+        "representatives": {
+          "title": "Vertreterdelegierung",
+          "desc": "Benutzer delegieren und verwalten, die als Vertreter einer Team-/Organisationsmitgliedschaft posten dürfen."
         },
         "joinRequests": {
           "title": "Beitrittsanträge prüfen",
@@ -919,6 +1150,25 @@
       },
       "comingSoon": {
         "body": "⚠️ Der Newsletter-Versand ist in Vorbereitung. Einstellungen lassen sich speichern, es werden aber noch keine Newsletter tatsächlich versendet."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "Anleitung",
+      "what": {
+        "title": "Was ist das Dorfbewohner-Mini-Profil",
+        "body": "Tippen Sie in der Mitgliederliste auf einen Namen, um das einfache Profil dieses Dorfbewohners zu öffnen. Sie sehen dessen Rolle und die Dörfer, die er sichtbar gemacht hat."
+      },
+      "villages": {
+        "title": "Die Dorfliste verstehen",
+        "body": "Es werden nur Dörfer angezeigt, die der Dorfbewohner sichtbar gemacht hat. Angezeigt werden nur Dorfname, Wappen und Kategorie, niemals ein Spitzname. Tippen Sie auf eine Karte, um zur Startseite dieses Dorfes zu gelangen."
+      },
+      "toggle": {
+        "title": "Wenn Sie Ihr eigenes Profil öffnen",
+        "body": "Ihr eigenes Mini-Profil zeigt den Schalter „Dieses Dorf in meiner Dorfliste anzeigen“. Wenn Sie ihn aktivieren, können Personen, die mit Ihnen ein Dorf teilen, dieses Dorf in Ihrer Dorfliste sehen. Die Einstellung gilt pro Dorf."
+      },
+      "privacy": {
+        "title": "Zum Datenschutz",
+        "body": "Die Dorfliste wird nur angezeigt, wenn Sie und die andere Person mindestens ein Dorf gemeinsam haben. Gibt es nichts anzuzeigen, erscheint neutral „Keine Dörfer zum Anzeigen“, ohne zu verraten, ob Sie ein Dorf teilen."
       }
     }
   }

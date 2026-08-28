@@ -2,6 +2,7 @@ package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.shift.ShiftAssignmentStatus;
 import com.mannschaft.app.shift.ShiftErrorCode;
@@ -39,6 +40,22 @@ import java.util.stream.Collectors;
 
 /**
  * シフトスケジュールサービス。シフトスケジュールのCRUD・ステータス遷移を担当する。
+ *
+ * <p><b>認可の粒度（認可根治 Wave6）:</b> 全 public メソッドが操作者 {@code userId} を受け取り、
+ * <b>スケジュール実体から解決した teamId</b> に対して per-scope 認可する
+ *（パス変数・クエリの scope 値を鵜呑みにしないことで BOLA を封鎖する）。</p>
+ *
+ * <ul>
+ *   <li><b>参照</b>（{@code listSchedules} / {@code listSchedulesByPeriod} / {@code getSchedule}）:
+ *       当該チームのメンバー、ただし SUPPORTER は不可（{@link #checkTeamReadAccess}）。
+ *       シフト表の閲覧は一般メンバーの日常操作であるため管理者に限定しない。</li>
+ *   <li><b>更新・状態遷移・複製・サマリ</b>: ADMIN/DEPUTY_ADMIN 以上（SYSTEM_ADMIN 短絡。
+ *       {@link #checkScheduleAdminAccess}）。</li>
+ * </ul>
+ *
+ * <p>認可失敗は参照・更新とも {@code COMMON_002}（403）とする。越境を 404 に寄せず 403 とするのは
+ * 同ドメインの既存契約テスト {@code ShiftScheduleScopeContractIT} が別 scope ADMIN に 403 を
+ * 期待しており、そちらへ揃えるため。</p>
  */
 @Slf4j
 @Service
@@ -63,9 +80,11 @@ public class ShiftScheduleService {
      * チームのシフトスケジュール一覧を取得する。
      *
      * @param teamId チームID
+     * @param userId 操作者ユーザーID（認可チェック用）
      * @return シフトスケジュール一覧
      */
-    public List<ShiftScheduleResponse> listSchedules(Long teamId) {
+    public List<ShiftScheduleResponse> listSchedules(Long teamId, Long userId) {
+        checkTeamReadAccess(teamId, userId);
         List<ShiftScheduleEntity> entities = scheduleRepository.findByTeamIdOrderByStartDateDesc(teamId);
         return shiftMapper.toScheduleResponseList(entities);
     }
@@ -76,9 +95,11 @@ public class ShiftScheduleService {
      * @param teamId チームID
      * @param from   期間開始
      * @param to     期間終了
+     * @param userId 操作者ユーザーID（認可チェック用）
      * @return シフトスケジュール一覧
      */
-    public List<ShiftScheduleResponse> listSchedulesByPeriod(Long teamId, LocalDate from, LocalDate to) {
+    public List<ShiftScheduleResponse> listSchedulesByPeriod(Long teamId, LocalDate from, LocalDate to, Long userId) {
+        checkTeamReadAccess(teamId, userId);
         List<ShiftScheduleEntity> entities = scheduleRepository
                 .findByTeamIdAndStartDateBetweenOrderByStartDateDesc(teamId, from, to);
         return shiftMapper.toScheduleResponseList(entities);
@@ -87,11 +108,16 @@ public class ShiftScheduleService {
     /**
      * シフトスケジュールを単体取得する。
      *
-     * @param id スケジュールID
+     * <p>scope はパス変数でなく <b>スケジュール実体の teamId</b> で解決してから認可する
+     * （呼び出し側から渡された scope 値を鵜呑みにしないことで BOLA を封鎖する）。</p>
+     *
+     * @param id     スケジュールID
+     * @param userId 操作者ユーザーID（認可チェック用）
      * @return シフトスケジュール
      */
-    public ShiftScheduleResponse getSchedule(Long id) {
+    public ShiftScheduleResponse getSchedule(Long id, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
+        checkTeamReadAccess(entity.getTeamId(), userId);
         return shiftMapper.toScheduleResponse(entity);
     }
 
@@ -206,7 +232,8 @@ public class ShiftScheduleService {
 
         // イベント発行は save() 後（AFTER_COMMIT リスナーがコミット済みデータを参照するため）
         if (targetStatus == ShiftScheduleStatus.PUBLISHED) {
-            eventPublisher.publish(new ShiftPublishedEvent(entity.getId(), entity.getTeamId(), userId));
+            eventPublisher.publish(new ShiftPublishedEvent(
+                    entity.getId(), entity.getTeamId(), userId, entity.getPublishedAt()));
         }
 
         log.info("シフトスケジュールステータス遷移: id={}, status={}", id, targetStatus);
@@ -251,9 +278,8 @@ public class ShiftScheduleService {
      * それぞれ集計し、未充足の箇所を一望できるマトリクスとして返す。</p>
      *
      * <p><b>認可の真の強制点（Track2 第二陣 / 2026-05-29）</b>: コントローラーの
-     * {@code @PreAuthorize("hasRole('ADMIN')")} は {@code @EnableMethodSecurity} 未有効のため
-     * 実機では効かず、かつ JWT には {@code MEMBER} しか乗らないため per-scope 認可にならない。
-     * 本メソッド内の {@link #checkScheduleAdminAccess} が実際の per-scope 認可
+     * {@code @PreAuthorize("hasRole('ADMIN')")} は、JWT には {@code MEMBER} しか乗らないため
+     * per-scope 認可にならない。本メソッド内の {@link #checkScheduleAdminAccess} が実際の per-scope 認可
      * （当該シフトが属するチームの ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN）を強制する。</p>
      *
      * @param id     スケジュール ID
@@ -380,7 +406,37 @@ public class ShiftScheduleService {
      * @throws BusinessException 権限がない場合（COMMON_002）
      */
     void checkScheduleAdminAccess(ShiftScheduleEntity schedule, Long userId) {
-        checkTeamAdminAccess(schedule.getTeamId(), userId);
+        // 認可根治 Wave6: 判定内容は checkTeamAdminAccess と同一だが、ArchUnit 認可番人の
+        // 委譲追跡が 2 ホップまで（MAX_DELEGATION_DEPTH=2）のため、AccessControlService を
+        // 本メソッドから直接呼んでフラット化してある（委譲すると番人から見えなくなる）。
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
+    }
+
+    /**
+     * シフトスケジュールの参照認可（当該チームのメンバー。ただし SUPPORTER は不可）。
+     *
+     * <p>SYSTEM_ADMIN は短絡的に許可する。粒度を「管理者」でなく「メンバー」としているのは、
+     * シフト表の閲覧が一般メンバーの日常的な利用であるため。SUPPORTER を除外するのは
+     * {@code ShiftSlotService#checkScheduleReadAccess} / {@code ShiftPdfService} と同一方針
+     *（PDF で SUPPORTER に伏せている情報を生 API から取れては意味がないため）。</p>
+     *
+     * @param teamId 対象チームID
+     * @param userId 操作者ユーザーID
+     * @throws BusinessException メンバーでない場合、または SUPPORTER の場合（COMMON_002 / 403）
+     */
+    private void checkTeamReadAccess(Long teamId, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (!accessControlService.isMember(userId, teamId, "TEAM")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        if (accessControlService.isSupporter(userId, teamId, "TEAM")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 
     /**

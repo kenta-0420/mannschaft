@@ -6,6 +6,7 @@ import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.dashboard.dto.PersonalDashboardResponse;
 import com.mannschaft.app.dashboard.service.ActivityFeedService;
 import com.mannschaft.app.dashboard.service.DashboardService;
@@ -98,6 +99,7 @@ class DashboardScheduleAggregationTest {
     @Mock private com.mannschaft.app.dashboard.service.ScopeWidgetSummaryService scopeWidgetSummaryService;
     @Mock private com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private com.mannschaft.app.dashboard.service.SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -110,6 +112,14 @@ class DashboardScheduleAggregationTest {
     void setUp() {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(USER_ID, null, List.of()));
+        // CMP-017b 第五隊: filterAccessible は既定で「渡された ID を全て可視」として通す
+        // （本テストの主眼は重複クエリ根治であり可視性判定そのものは対象外のため pass-through）。
+        org.mockito.Mockito.lenient()
+                .when(contentVisibilityChecker.filterAccessible(any(), anyCollection(), any()))
+                .thenAnswer(inv -> {
+                    java.util.Collection<Long> ids = inv.getArgument(1);
+                    return new java.util.HashSet<>(ids);
+                });
         stubCommonPersonalForAll();
     }
 
@@ -152,8 +162,8 @@ class DashboardScheduleAggregationTest {
                     .atStartOfDay();
             LocalDateTime monthEnd = todayStart.plusMonths(1);
 
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
             // 最大範囲（todayStart〜monthEnd）の取得をスタブ。
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
                     eq(USER_ID), eq(todayStart), eq(monthEnd))).willReturn(List.of());
@@ -197,8 +207,8 @@ class DashboardScheduleAggregationTest {
             LocalDateTime weekEnd = todayStart.plusDays(7);
             LocalDateTime monthEnd = todayStart.plusMonths(1);
 
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
 
             // 個人スケジュール（最大範囲 monthEnd で 1 回取得される想定）:
             //  - today 内: 1件
@@ -250,7 +260,7 @@ class DashboardScheduleAggregationTest {
                 .willReturn(List.of());
         given(scheduleRepository.findByTeamIdInAndStartAtBetween(anyCollection(), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
         given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any()))
@@ -263,7 +273,7 @@ class DashboardScheduleAggregationTest {
                 .willReturn(List.of());
         given(bulletinReadStatusRepository.findReadThreadIds(anyCollection(), anyLong()))
                 .willReturn(List.of());
-        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any()))
-                .willReturn(List.of());
+        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
     }
 }

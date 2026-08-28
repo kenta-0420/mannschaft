@@ -15,5 +15,9 @@ const showHelp = ref(false)
     <BillingHelpDialog v-model:visible="showHelp" variant="manage" />
 
     <BillingManagePanel scope-kind="USER" scope-id="" :can-manage="true" />
+
+    <div class="mt-6">
+      <BetaPerkSection scope-kind="USER" scope-id="" />
+    </div>
   </div>
 </template>

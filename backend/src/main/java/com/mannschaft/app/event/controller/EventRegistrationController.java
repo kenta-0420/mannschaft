@@ -7,6 +7,7 @@ import com.mannschaft.app.event.dto.GuestRegistrationRequest;
 import com.mannschaft.app.event.dto.RegistrationResponse;
 import com.mannschaft.app.event.service.EventRegistrationService;
 import com.mannschaft.app.event.service.EventScopeAccessGuard;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -92,7 +93,13 @@ public class EventRegistrationController {
      * <p>認可: 招待トークン自体が認可証（{@code EventRegistrationService} が
      * トークン有効性・eventId 帰属を検証する）であり、スコープメンバーシップは要求しない
      * （ゲストは定義上スコープ非メンバーのため）。</p>
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code EventRegistrationService#createGuestRegistration} が招待トークンの
+     * 有効性・{@code eventId} 帰属を検証する capability トークン方式。
+     * 認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PostMapping("/guest")
     @Operation(summary = "ゲスト参加登録")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "登録成功")

@@ -13,7 +13,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 /**
  * オーナー委譲（ADMIN 権限移譲）の承諾型オファーエンティティ（F01.2 / 2026-07-18 承諾型化）。
@@ -62,25 +63,25 @@ public class OwnershipTransferOfferEntity extends UuidV7Entity {
 
     /** 有効期限（発行から7日を既定）。超過は EXPIRED。 */
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private OffsetDateTime expiresAt;
 
     /** 承諾日時（ACCEPTED 時のみ）。 */
     @Column(name = "accepted_at")
-    private LocalDateTime acceptedAt;
+    private OffsetDateTime acceptedAt;
 
     /** 辞退/取消/期限確定の処理日時。 */
     @Column(name = "resolved_at")
-    private LocalDateTime resolvedAt;
+    private OffsetDateTime resolvedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         if (this.createdAt == null) {
             this.createdAt = now;
         }
@@ -92,6 +93,6 @@ public class OwnershipTransferOfferEntity extends UuidV7Entity {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 }

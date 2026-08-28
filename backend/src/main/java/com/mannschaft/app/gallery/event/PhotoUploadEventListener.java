@@ -1,5 +1,7 @@
 package com.mannschaft.app.gallery.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.ImageConverter;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.gallery.GalleryMediaType;
@@ -32,6 +34,8 @@ public class PhotoUploadEventListener {
     private final PhotoRepository photoRepository;
     private final R2StorageService r2StorageService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。写真アップロード後のサムネイル生成。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)

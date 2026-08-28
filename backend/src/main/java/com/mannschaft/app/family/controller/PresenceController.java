@@ -24,9 +24,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * プレゼンスコントローラー。帰ったよ通知・お出かけ連絡APIを提供する。
+ *
+ * <p><b>認可</b>: チーム指定の送信・状況参照・履歴・統計は
+ * {@code PresenceService} が {@code AccessControlService#checkMembership} で
+ * 当該チームのメンバーに限定する（在宅状況は行動パターンにあたるため非メンバーは 403）。
+ * {@code /users/me/presence/*} の一括送信は送信元が認証主体に固定され、リクエストから
+ * 他ユーザーや対象チームを指定する余地がない（自己スコープ）。契約は
+ * {@code CareLinkInvitationScopeContractIT} で固定する。</p>
  */
 @RestController
 @Tag(name = "プレゼンス", description = "F01.4 帰ったよ通知・お出かけ連絡")
@@ -52,6 +60,9 @@ public class PresenceController {
     /**
      * 帰ったよ通知を一括送信する（全所属チーム）。
      */
+    @SelfScopedEndpoint("送信元は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "対象チームはリクエストから指定できず認証主体の所属チームに限定される"
+            + "（PresenceService#sendHomeBulk）")
     @PostMapping("/api/v1/users/me/presence/home")
     @Operation(summary = "帰ったよ通知一括送信（全チーム）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "送信成功")
@@ -76,6 +87,9 @@ public class PresenceController {
     /**
      * お出かけ連絡を一括送信する（全所属チーム）。
      */
+    @SelfScopedEndpoint("送信元は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "対象チームはリクエストから指定できず認証主体の所属チームに限定される"
+            + "（PresenceService#sendGoingOutBulk）")
     @PostMapping("/api/v1/users/me/presence/going-out")
     @Operation(summary = "お出かけ連絡一括送信（全チーム）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "送信成功")

@@ -16,6 +16,10 @@ import java.util.Optional;
  */
 public interface ScheduleRepository extends AbstractTenantAwareRepository<ScheduleEntity, Long> {
 
+    boolean existsByIdAndTeamId(Long id, Long teamId);
+
+    boolean existsByIdAndOrganizationId(Long id, Long organizationId);
+
     /**
      * チームスコープのスケジュールを期間指定で取得する。
      */
@@ -124,8 +128,45 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
             nativeQuery = true)
     List<ScheduleEntity> findUnsyncedPersonalSchedules(@Param("userId") Long userId);
 
-    @Query("SELECT s FROM ScheduleEntity s WHERE s.title LIKE %:keyword% OR s.description LIKE %:keyword% OR s.location LIKE %:keyword%")
-    List<ScheduleEntity> searchByKeyword(@Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
+    /**
+     * 横断検索（グローバル検索）用のキーワード検索。閲覧者の可視スコープに限定する。
+     *
+     * <p>本メソッドが SQL 述語で絞り込むのは「所属チームのスケジュール」「所属組織のスケジュール」
+     * 「自分の個人スケジュール」の和集合という<strong>所属軸</strong>のみである。閲覧閾値軸
+     * （{@code min_view_role}）はスコープごとに閲覧者の実効ロールを見る必要があり SQL 1 行の
+     * predicate に落とせないため、ここでは評価しない。呼び出し側（{@code GlobalSearchService}）が
+     * 取得結果を {@code ContentVisibilityChecker#filterAccessible} に通し、閾値を満たさない
+     * スケジュール（例: SUPPORTER に対する {@code min_view_role=MEMBER_PLUS}）を除外して初めて
+     * 横断検索の可視性判定が完成する（CMP-017b 第五隊）。</p>
+     *
+     * <p>{@code CUSTOM_TEMPLATE}（F01.7 カスタム公開範囲テンプレート）は、テンプレート評価が
+     * SQL 述語に落とせずクエリ段階で判定できないため、本検索の対象から除外する（fail-closed）。
+     * 当該スケジュールは各ドメインの詳細取得 API（{@code ContentVisibilityChecker} 経由）で参照する。</p>
+     *
+     * <p>呼び出し側は {@code teamIds} / {@code orgIds} が空の場合、{@code IN ()} の発行を避けるため
+     * ダミー値（{@code -1L}）で埋めること。</p>
+     *
+     * @param keyword  検索キーワード
+     * @param teamIds  閲覧者が所属するチーム ID 集合（非空・空ならダミー値）
+     * @param orgIds   閲覧者が所属する組織 ID 集合（非空・空ならダミー値）
+     * @param userId   閲覧者ユーザー ID（個人スケジュール一致判定用）
+     * @param pageable 取得件数
+     * @return 可視スコープ内の検索結果
+     */
+    @Query("""
+            SELECT s FROM ScheduleEntity s
+            WHERE (s.title LIKE %:keyword% OR s.description LIKE %:keyword% OR s.location LIKE %:keyword%)
+              AND s.deletedAt IS NULL
+              AND s.visibility <> com.mannschaft.app.schedule.ScheduleVisibility.CUSTOM_TEMPLATE
+              AND (s.teamId IN :teamIds
+                OR s.organizationId IN :orgIds
+                OR s.userId = :userId)
+            """)
+    List<ScheduleEntity> searchByKeyword(@Param("keyword") String keyword,
+                                         @Param("teamIds") Collection<Long> teamIds,
+                                         @Param("orgIds") Collection<Long> orgIds,
+                                         @Param("userId") Long userId,
+                                         org.springframework.data.domain.Pageable pageable);
 
     /**
      * チームの最頻利用施設（venue_id）を取得する（広告セグメント用）。
@@ -165,7 +206,7 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
      */
     @Query("SELECT new com.mannschaft.app.schedule.visibility.ScheduleVisibilityProjection("
             + "s.id, s.teamId, s.organizationId, s.userId, s.createdBy, "
-            + "s.visibility, s.visibilityTemplateId, s.status) "
+            + "s.visibility, s.visibilityTemplateId, s.status, s.minViewRole) "
             + "FROM ScheduleEntity s WHERE s.id IN :ids")
     List<ScheduleVisibilityProjection> findVisibilityProjectionsByIdIn(@Param("ids") Collection<Long> ids);
 }

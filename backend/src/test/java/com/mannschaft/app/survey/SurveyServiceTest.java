@@ -32,6 +32,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -98,8 +99,42 @@ class SurveyServiceTest {
     @Mock
     private OrganizationMembershipService organizationMembershipService;
 
+    /** 結果閲覧可否の判定点（Issue #2779）。本テストは応答形のみを見るため既定の false で足りる。 */
+    @Mock
+    private com.mannschaft.app.survey.service.SurveyResultAccessGuard resultAccessGuard;
+
+    /** Issue #2715 CMP-055 lot C-5: newly added i18n dependencies. */
+    @Mock private MessageSource messageSource;
+
     @InjectMocks
     private SurveyService surveyService;
+
+    /**
+     * 母集団解決（{@link com.mannschaft.app.survey.service.SurveyUniverseResolver}）は
+     * <b>本物</b>を注入する。ここをモックにすると「どの母集団を数えるか」という本質が
+     * テストから消えるため、実クラスへ既存のリポジトリモックを渡し、
+     * 従来どおり最下層のスタブ（{@code userRoleRepository} 等）で振る舞いを決める。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void 母集団リゾルバを実クラスで注入する() {
+        org.springframework.test.util.ReflectionTestUtils.setField(surveyService, "universeResolver",
+                new com.mannschaft.app.survey.service.SurveyUniverseResolver(
+                        organizationMembershipService, userRoleRepository, targetRepository));
+    }
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
 
     private static final Long SURVEY_ID = 100L;
     private static final Long SCOPE_ID = 1L;
@@ -142,11 +177,14 @@ class SurveyServiceTest {
 
     private SurveyResponse createSurveyResponse() {
         return SurveyResponse.builder()
-                .id(SURVEY_ID).status("DRAFT")
+                .id(SURVEY_ID).status(SurveyStatus.DRAFT)
                 .scope(new SurveyResponse.SurveyScopeDto(SCOPE_TYPE, SCOPE_ID))
                 .content(new SurveyResponse.SurveyContentDto("テストアンケート", "説明"))
-                .policy(new SurveyResponse.SurveyPolicyDto(false, false, "AFTER_RESPONSE", "CREATOR_AND_ADMIN"))
-                .distribution(new SurveyResponse.SurveyDistributionDto("ALL", false, null, null, 0, false))
+                .policy(new SurveyResponse.SurveyPolicyDto(false, false,
+                        com.mannschaft.app.survey.ResultsVisibility.AFTER_RESPONSE,
+                        com.mannschaft.app.survey.UnrespondedVisibility.CREATOR_AND_ADMIN))
+                .distribution(new SurveyResponse.SurveyDistributionDto(
+                        com.mannschaft.app.survey.DistributionMode.ALL, false, null, null, 0, false))
                 .schedule(new SurveyResponse.SurveyScheduleDto(null, null, null, null))
                 .stats(new SurveyResponse.SurveyStatsDto(0, 0))
                 .audit(new SurveyResponse.SurveyAuditDto(null, USER_ID, null, null))
@@ -404,17 +442,16 @@ class SurveyServiceTest {
             verify(organizationMembershipService).resolveOrgDistributionUserIds(SCOPE_ID, false);
             // (B) レグ番人: 締切延長通知も publish/remind と同形に notifyAllPreAuthorized で送られ、
             // canView 絞り込みを通さない（配下/直属一般メンバーへ誤 deny で届かないことを担保）。
-            verify(notificationHelper).notifyAllPreAuthorized(
+            verify(notificationHelper).notifyAllPreAuthorizedLocalized(
                     org.mockito.ArgumentMatchers.eq(java.util.List.of(11L, 22L, 33L)),
-                    org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.eq(SURVEY_ID),
                     org.mockito.ArgumentMatchers.any(),
                     org.mockito.ArgumentMatchers.eq(SCOPE_ID),
                     org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.eq(USER_ID));
+                    org.mockito.ArgumentMatchers.eq(USER_ID),
+                    any());
             // 旧 canView ゲート付き notifyAll は使わないことも明示（取りこぼし非回帰）。
             verify(notificationHelper, org.mockito.Mockito.never()).notifyAll(
                     org.mockito.ArgumentMatchers.anyList(),
@@ -568,8 +605,8 @@ class SurveyServiceTest {
                     null,                  // description
                     anonymous,             // isAnonymous
                     false,                 // allowMultipleSubmissions
-                    "AFTER_CLOSE",         // resultsVisibility
-                    "ALL",                 // distributionMode
+                    com.mannschaft.app.survey.ResultsVisibility.AFTER_CLOSE, // resultsVisibility
+                    com.mannschaft.app.survey.DistributionMode.ALL,          // distributionMode
                     null,                  // unrespondedVisibility
                     false,                 // autoPostToTimeline
                     null,                  // seriesId
@@ -690,20 +727,29 @@ class SurveyServiceTest {
     }
 
     /**
-     * follow-up②: 作成経路の enum 文字列フィールド不正値 → 500 ではなく 400（BusinessException）。
+     * 作成経路の enum 項目の不正値は 500 ではなく 400 とする（follow-up② の意図を継承）。
      *
-     * <p>真因: {@code ResultsVisibility.valueOf(...)} 等が不正値で {@code IllegalArgumentException}
-     * を投げ、GlobalExceptionHandler の汎用ハンドラに落ちて 500 COMMON_999 になっていた。
-     * 本来クライアント入力エラーなので {@code SurveyErrorCode.INVALID_ENUM_VALUE}（Severity.WARN → 400）
-     * を投げるべき。握りつぶして既定値に倒す対処療法は禁止。</p>
+     * <p><b>#2617-1 による設計変更</b>: かつて DTO は enum 項目を {@code String} で受け、
+     * Service が {@code parseEnumOrThrow} で {@code SurveyErrorCode.INVALID_ENUM_VALUE}（400）へ
+     * 変換していた。現在は DTO 自体が enum 型のため、未知値は Jackson の束縛段階で弾かれ
+     * {@code HttpMessageNotReadableException} → 400 となり、Service には到達しえない
+     * （＝不正値が DB へ半端に書かれる経路が型で消えた）。
+     * よって本クラスでは「束縛段階で弾かれること」と「正当値は従来どおり作成へ到達すること」を検証する。
+     * HTTP ステータスとしての 400 は {@code SurveyDetailShapeContractIT} が担保する。</p>
      */
     @Nested
-    @DisplayName("createSurvey/addQuestion enum 文字列不正値は400(BusinessException)")
+    @DisplayName("createSurvey/addQuestion enum 不正値は束縛段階で拒否(→400)")
     class CreateSurveyEnumValidation {
 
-        private CreateSurveyRequest createRequest(String resultsVisibility, String distributionMode,
-                                                  String unrespondedVisibility,
-                                                  java.util.List<com.mannschaft.app.survey.dto.CreateQuestionRequest> questions) {
+        private final com.fasterxml.jackson.databind.ObjectMapper boundaryMapper =
+                new com.fasterxml.jackson.databind.ObjectMapper()
+                        .registerModule(new com.fasterxml.jackson.module.paramnames.ParameterNamesModule());
+
+        private CreateSurveyRequest createRequest(
+                com.mannschaft.app.survey.ResultsVisibility resultsVisibility,
+                com.mannschaft.app.survey.DistributionMode distributionMode,
+                com.mannschaft.app.survey.UnrespondedVisibility unrespondedVisibility,
+                java.util.List<com.mannschaft.app.survey.dto.CreateQuestionRequest> questions) {
             return new CreateSurveyRequest(
                     "タイトル", null, false, false,
                     resultsVisibility,    // resultsVisibility
@@ -715,71 +761,68 @@ class SurveyServiceTest {
         }
 
         @Test
-        @DisplayName("resultsVisibility不正(ADMIN_ONLY)_INVALID_ENUM_VALUEで400(save到達せず)")
-        void resultsVisibility不正_400() {
-            // 正は ADMINS_ONLY 等。ADMIN_ONLY は定義外。
-            CreateSurveyRequest req = createRequest("ADMIN_ONLY", "ALL", null, Collections.emptyList());
-            assertThatThrownBy(() -> surveyService.createSurvey("ORGANIZATION", 1L, 10L, req))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(SurveyErrorCode.INVALID_ENUM_VALUE));
+        @DisplayName("resultsVisibility不正(ADMIN_ONLY)は束縛段階で拒否(Serviceに到達しない)")
+        void resultsVisibility不正_束縛拒否() {
+            // 正は ADMINS_ONLY 等。ADMIN_ONLY は定義外（設計書の綴り違いに由来する典型的な誤値）。
+            assertThatThrownBy(() -> boundaryMapper.readValue("""
+                    {"title":"タイトル","isAnonymous":false,"allowMultipleSubmissions":false,
+                     "resultsVisibility":"ADMIN_ONLY","distributionMode":"ALL"}
+                    """, CreateSurveyRequest.class))
+                    .isInstanceOf(com.fasterxml.jackson.core.JacksonException.class)
+                    .hasMessageContaining("ADMIN_ONLY");
             verify(surveyRepository, org.mockito.Mockito.never())
                     .save(org.mockito.ArgumentMatchers.any());
         }
 
         @Test
-        @DisplayName("distributionMode不正_INVALID_ENUM_VALUEで400")
-        void distributionMode不正_400() {
-            CreateSurveyRequest req = createRequest("AFTER_CLOSE", "INVALID_MODE", null, Collections.emptyList());
-            assertThatThrownBy(() -> surveyService.createSurvey("ORGANIZATION", 1L, 10L, req))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(SurveyErrorCode.INVALID_ENUM_VALUE));
+        @DisplayName("distributionMode不正は束縛段階で拒否")
+        void distributionMode不正_束縛拒否() {
+            assertThatThrownBy(() -> boundaryMapper.readValue("""
+                    {"title":"タイトル","isAnonymous":false,"allowMultipleSubmissions":false,
+                     "resultsVisibility":"AFTER_CLOSE","distributionMode":"INVALID_MODE"}
+                    """, CreateSurveyRequest.class))
+                    .isInstanceOf(com.fasterxml.jackson.core.JacksonException.class)
+                    .hasMessageContaining("INVALID_MODE");
             verify(surveyRepository, org.mockito.Mockito.never())
                     .save(org.mockito.ArgumentMatchers.any());
         }
 
         @Test
-        @DisplayName("unrespondedVisibility不正_INVALID_ENUM_VALUEで400")
-        void unrespondedVisibility不正_400() {
-            CreateSurveyRequest req = createRequest("AFTER_CLOSE", "ALL", "BOGUS", Collections.emptyList());
-            assertThatThrownBy(() -> surveyService.createSurvey("ORGANIZATION", 1L, 10L, req))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(SurveyErrorCode.INVALID_ENUM_VALUE));
+        @DisplayName("unrespondedVisibility不正は束縛段階で拒否")
+        void unrespondedVisibility不正_束縛拒否() {
+            assertThatThrownBy(() -> boundaryMapper.readValue("""
+                    {"title":"タイトル","isAnonymous":false,"allowMultipleSubmissions":false,
+                     "resultsVisibility":"AFTER_CLOSE","distributionMode":"ALL",
+                     "unrespondedVisibility":"BOGUS"}
+                    """, CreateSurveyRequest.class))
+                    .isInstanceOf(com.fasterxml.jackson.core.JacksonException.class)
+                    .hasMessageContaining("BOGUS");
             verify(surveyRepository, org.mockito.Mockito.never())
                     .save(org.mockito.ArgumentMatchers.any());
         }
 
         @Test
-        @DisplayName("questionType不正(INVALID)_作成同梱設問_INVALID_ENUM_VALUEで400")
-        void questionType不正_作成同梱_400() {
-            com.mannschaft.app.survey.dto.CreateQuestionRequest badQuestion =
-                    new com.mannschaft.app.survey.dto.CreateQuestionRequest(
-                            "INVALID", "Q1", true, 0, null, null, null, null, null, null);
-            CreateSurveyRequest req = createRequest("AFTER_CLOSE", "ALL", null,
-                    java.util.List.of(badQuestion));
-            assertThatThrownBy(() -> surveyService.createSurvey("ORGANIZATION", 1L, 10L, req))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(SurveyErrorCode.INVALID_ENUM_VALUE));
+        @DisplayName("questionType不正(INVALID)_作成同梱設問も束縛段階で拒否")
+        void questionType不正_作成同梱_束縛拒否() {
+            assertThatThrownBy(() -> boundaryMapper.readValue("""
+                    {"title":"タイトル","isAnonymous":false,"allowMultipleSubmissions":false,
+                     "resultsVisibility":"AFTER_CLOSE","distributionMode":"ALL",
+                     "questions":[{"questionType":"INVALID","questionText":"Q1","isRequired":true}]}
+                    """, CreateSurveyRequest.class))
+                    .isInstanceOf(com.fasterxml.jackson.core.JacksonException.class)
+                    .hasMessageContaining("INVALID");
+            verify(surveyRepository, org.mockito.Mockito.never())
+                    .save(org.mockito.ArgumentMatchers.any());
         }
 
         @Test
-        @DisplayName("addQuestion_questionType不正_INVALID_ENUM_VALUEで400(save到達せず)")
-        void addQuestion_questionType不正_400() {
-            SurveyEntity draft = createDraftSurvey();
-            ReflectionTestUtils.setField(draft, "id", SURVEY_ID);
-            given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
-                    .willReturn(Optional.of(draft));
-            com.mannschaft.app.survey.dto.CreateQuestionRequest badQuestion =
-                    new com.mannschaft.app.survey.dto.CreateQuestionRequest(
-                            "INVALID", "Q1", true, 0, null, null, null, null, null, null);
-            assertThatThrownBy(() ->
-                    surveyService.addQuestion(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, badQuestion))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(SurveyErrorCode.INVALID_ENUM_VALUE));
+        @DisplayName("addQuestion_questionType不正も束縛段階で拒否(save到達せず)")
+        void addQuestion_questionType不正_束縛拒否() {
+            assertThatThrownBy(() -> boundaryMapper.readValue(
+                    "{\"questionType\":\"INVALID\",\"questionText\":\"Q1\",\"isRequired\":true}",
+                    com.mannschaft.app.survey.dto.CreateQuestionRequest.class))
+                    .isInstanceOf(com.fasterxml.jackson.core.JacksonException.class)
+                    .hasMessageContaining("INVALID");
             verify(questionRepository, org.mockito.Mockito.never())
                     .save(org.mockito.ArgumentMatchers.any());
         }
@@ -795,7 +838,10 @@ class SurveyServiceTest {
             given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(888L))
                     .willReturn(Collections.emptyList());
 
-            CreateSurveyRequest req = createRequest("AFTER_CLOSE", "ALL", "CREATOR_AND_ADMIN",
+            CreateSurveyRequest req = createRequest(
+                    com.mannschaft.app.survey.ResultsVisibility.AFTER_CLOSE,
+                    com.mannschaft.app.survey.DistributionMode.ALL,
+                    com.mannschaft.app.survey.UnrespondedVisibility.CREATOR_AND_ADMIN,
                     Collections.emptyList());
             assertThat(surveyService.createSurvey("ORGANIZATION", 1L, 10L, req)).isNotNull();
             verify(surveyRepository).save(org.mockito.ArgumentMatchers.any(SurveyEntity.class));

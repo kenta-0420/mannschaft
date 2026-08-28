@@ -204,6 +204,12 @@ class ScheduleAttendanceServiceTest {
             // given
             ScheduleEntity schedule = createScheduleWithAttendance();
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            // minResponseRole は DB DEFAULT / Entity @Builder.Default により常に MEMBER_PLUS
+            // （nullではない・DDL上NOT NULL DEFAULT 'MEMBER_PLUS'）。本テストは認可自体を
+            // 検証対象にしていないため、被験者がMEMBER以上を満たす前提で明示的にstubする
+            // （検分差し戻し是正: 認可で先に弾かれて意図した分岐に到達しない事故の再発防止）。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.UNDECIDED);
             given(attendanceRepository.findByScheduleIdAndUserId(SCHEDULE_ID, USER_ID))
@@ -257,6 +263,11 @@ class ScheduleAttendanceServiceTest {
                     .isException(false)
                     .build();
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            // minResponseRole は既定 MEMBER_PLUS（DDL NOT NULL DEFAULT と同値）。本テストの
+            // 検証対象は期限チェックであり認可ではないため、被験者がMEMBER以上を満たす前提で
+            // 明示的にstubし、認可で先に弾かれて意図した分岐に到達しない事故を防ぐ。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
 
@@ -287,6 +298,11 @@ class ScheduleAttendanceServiceTest {
                     .isException(false)
                     .build();
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            // minResponseRole は既定 MEMBER_PLUS（DDL NOT NULL DEFAULT と同値）。本テストの
+            // 検証対象はコメント必須チェックであり認可ではないため、被験者がMEMBER以上を
+            // 満たす前提で明示的にstubし、認可で先に弾かれて意図した分岐に到達しない事故を防ぐ。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             AttendanceRequest req = new AttendanceRequest("ABSENT", null, null);
 
@@ -323,6 +339,11 @@ class ScheduleAttendanceServiceTest {
 
             ScheduleEntity schedule = createScheduleWithAttendance();
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            // minResponseRole は既定 MEMBER_PLUS（DDL NOT NULL DEFAULT と同値）。本テストは
+            // 後見切替の代理入力記録スモークが検証対象であり認可ではないため、respondAttendance
+            // に渡る被験者（USER_ID）がMEMBER以上を満たす前提で明示的にstubする。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.UNDECIDED);
             given(attendanceRepository.findByScheduleIdAndUserId(SCHEDULE_ID, USER_ID))
@@ -697,12 +718,102 @@ class ScheduleAttendanceServiceTest {
                     .willReturn(List.of(row1, row2));
 
             // when
-            AttendanceSummaryResponse result = attendanceService.getAttendanceSummary(SCHEDULE_ID);
+            AttendanceSummaryResponse result = attendanceService.getAttendanceSummary(SCHEDULE_ID, USER_ID);
 
             // then
             assertThat(result.getAttending()).isEqualTo(3);
             assertThat(result.getAbsent()).isEqualTo(1);
             assertThat(result.getTotal()).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("出欠サマリー取得_scope外の利用者_COMMON_002")
+        void 出欠サマリー取得_scope外の利用者_COMMON_002() {
+            // given: checkScopeViewAccess が entity 由来 scope で弾く
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(scheduleService).checkScopeViewAccess(SCHEDULE_ID, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> attendanceService.getAttendanceSummary(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    // ========================================
+    // 出席率統計の認可（認可根治 Wave6）
+    // ========================================
+
+    @Nested
+    @DisplayName("出席率統計の認可（認可根治 Wave6）")
+    class AttendanceStatsAuthorization {
+
+        /** 期間フィクスチャ。文字列リテラルでなく LocalDateTime で bind する（TZ ズレ事故の回避）。 */
+        private static final LocalDateTime FROM = LocalDateTime.of(2026, 4, 1, 0, 0);
+        private static final LocalDateTime TO = LocalDateTime.of(2026, 4, 30, 23, 59);
+
+        @Test
+        @DisplayName("チーム統計_チーム管理者でない_COMMON_002")
+        void チーム統計_チーム管理者でない_COMMON_002() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> attendanceService.getTeamAttendanceStats(
+                    TEAM_ID, FROM, TO, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            // 認可前にリポジトリを引いていないこと（漏洩経路が残っていないこと）
+            org.mockito.Mockito.verifyNoInteractions(userRoleRepository);
+        }
+
+        @Test
+        @DisplayName("組織統計_組織管理者でない_COMMON_002")
+        void 組織統計_組織管理者でない_COMMON_002() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            org.mockito.BDDMockito.willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+
+            assertThatThrownBy(() -> attendanceService.getOrgAttendanceStats(
+                    ORG_ID, FROM, TO, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+
+            org.mockito.Mockito.verifyNoInteractions(userRoleRepository);
+        }
+
+        @Test
+        @DisplayName("チーム統計_正常_チーム管理者は取得できる")
+        void チーム統計_正常_チーム管理者は取得できる() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(userRoleRepository.findByTeamId(org.mockito.ArgumentMatchers.eq(TEAM_ID),
+                    org.mockito.ArgumentMatchers.any()))
+                    .willReturn(org.springframework.data.domain.Page.empty());
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of());
+
+            assertThat(attendanceService.getTeamAttendanceStats(TEAM_ID, FROM, TO, USER_ID)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("組織統計_正常_SYSTEM_ADMINは横断で取得できる")
+        void 組織統計_正常_SYSTEM_ADMINは横断で取得できる() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+            given(userRoleRepository.findByOrganizationId(org.mockito.ArgumentMatchers.eq(ORG_ID),
+                    org.mockito.ArgumentMatchers.any()))
+                    .willReturn(org.springframework.data.domain.Page.empty());
+            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, FROM, TO))
+                    .willReturn(List.of());
+
+            assertThat(attendanceService.getOrgAttendanceStats(ORG_ID, FROM, TO, USER_ID)).isEmpty();
+
+            // SYSTEM_ADMIN は per-scope 判定を通さない
+            org.mockito.Mockito.verify(accessControlService, org.mockito.Mockito.never())
+                    .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
         }
     }
 
@@ -856,8 +967,8 @@ class ScheduleAttendanceServiceTest {
         @DisplayName("個人出席統計_出欠なし_出席率0を返す")
         void 個人出席統計_出欠なし_出席率0を返す() {
             // given
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // when
             AttendanceStatsResponse result = attendanceService.getMyAttendanceStats(USER_ID, START, END);

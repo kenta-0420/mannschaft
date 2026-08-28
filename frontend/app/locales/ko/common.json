@@ -1,42 +1,5 @@
 {
   "chat": {
-    "invite": {
-      "button": "팀에 초대",
-      "sentSuccess": "초대를 보냈습니다",
-      "joinedSuccess": "참가했습니다",
-      "declinedSuccess": "초대를 거절했습니다",
-      "modal": {
-        "title": "초대할 팀/조직 선택",
-        "empty": "초대할 수 있는 팀·조직이 없습니다",
-        "submit": "초대 보내기"
-      },
-      "card": {
-        "pending": "{scope} 참가 초대가 도착했습니다",
-        "waiting": "상대방의 수락 대기 중",
-        "statusPending": "수락 대기",
-        "join": "참가하기",
-        "decline": "거절하기",
-        "joined": "참가함",
-        "declined": "거절함",
-        "expired": "기한 만료",
-        "revoked": "취소됨",
-        "expiresAt": "기한: {time}"
-      },
-      "preview": {
-        "sent": "{scope} 참가 초대를 보냈습니다"
-      },
-      "notification": {
-        "received": "{scope} 참가 초대가 도착했습니다"
-      },
-      "error": {
-        "notTarget": "이 초대는 당신에게 보낸 것이 아닙니다",
-        "privilegedRole": "관리자 역할은 이 방법으로 초대할 수 없습니다",
-        "loadFailed": "초대 가능한 팀/조직을 불러오지 못했습니다",
-        "sendFailed": "초대 전송에 실패했습니다",
-        "joinFailed": "참가에 실패했습니다",
-        "declineFailed": "거절에 실패했습니다"
-      }
-    },
     "contextMenu": {
       "replyInThread": "스레드에서 답장",
       "react": "반응",
@@ -102,6 +65,48 @@
     },
     "connection": {
       "failed": "연결이 끊어졌습니다. 재연결을 시도하고 있습니다…"
+    },
+    "mobile": {
+      "backToList": "채널 목록으로 돌아가기",
+      "noChannels": "아직 채널이 없습니다",
+      "createChannel": "채널 만들기"
+    },
+    "invite": {
+      "button": "팀에 초대",
+      "sentSuccess": "초대를 보냈습니다",
+      "joinedSuccess": "참가했습니다",
+      "declinedSuccess": "초대를 거절했습니다",
+      "modal": {
+        "title": "초대할 팀/조직 선택",
+        "empty": "초대할 수 있는 팀·조직이 없습니다",
+        "submit": "초대 보내기"
+      },
+      "card": {
+        "pending": "{scope} 참가 초대가 도착했습니다",
+        "waiting": "상대방의 수락 대기 중",
+        "statusPending": "수락 대기",
+        "join": "참가하기",
+        "decline": "거절하기",
+        "joined": "참가함",
+        "declined": "거절함",
+        "expired": "기한 만료",
+        "revoked": "취소됨",
+        "expiresAt": "기한: {time}"
+      },
+      "preview": {
+        "sent": "{scope} 참가 초대를 보냈습니다"
+      },
+      "notification": {
+        "received": "{scope} 참가 초대가 도착했습니다"
+      },
+      "error": {
+        "notTarget": "이 초대는 당신에게 보낸 것이 아닙니다",
+        "privilegedRole": "관리자 역할은 이 방법으로 초대할 수 없습니다",
+        "loadFailed": "초대 가능한 팀/조직을 불러오지 못했습니다",
+        "sendFailed": "초대 전송에 실패했습니다",
+        "joinFailed": "참가에 실패했습니다",
+        "declineFailed": "거절에 실패했습니다"
+      }
     }
   },
   "button": {
@@ -290,8 +295,12 @@
   "error": {
     "server": "서버 오류가 발생했습니다",
     "server_retry": "잠시 후 다시 시도해 주세요.",
+    "rate_limited": "요청이 너무 많습니다",
+    "rate_limited_detail": "짧은 시간에 요청이 너무 많았습니다. 잠시 기다린 후 다시 시도해 주세요.",
+    "rate_limited_retry_after": "짧은 시간에 요청이 너무 많았습니다. 약 {seconds}초 후에 다시 시도해 주세요.",
     "network": "네트워크 오류가 발생했습니다",
     "unauthorized": "로그인이 필요합니다",
+    "section_load_failed": "이 항목을 불러오지 못했습니다. 새로고침해 주세요.",
     "unknown": "오류가 발생했습니다",
     "COMMON_001": "입력 내용에 오류가 있습니다",
     "COMMON_002": "이 작업을 수행할 권한이 없습니다",
@@ -309,6 +318,18 @@
     "AUTH_011": "아직 비밀번호가 설정되지 않았습니다",
     "AUTH_044": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요",
     "SURVEY_023": "익명 설문에서는 팀별 내역을 활성화할 수 없습니다",
+    "SCHEDULE_KEEP_001": "キープが見つかりません",
+    "SCHEDULE_KEEP_002": "タイトルを入力してください",
+    "SCHEDULE_KEEP_003": "候補日は最大10件です",
+    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
+    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
+    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
+    "SCHEDULE_KEEP_007": "この状態では編集できません",
+    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
+    "SCHEDULE_KEEP_009": "この操作はできません",
+    "SCHEDULE_KEEP_010": "キープの上限に達しました",
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "숨김 상한(200건)에 도달했습니다. 불필요한 숨김을 해제해 주세요.",
     "ROLE_009": "この打診はあなた宛てではありません",
     "ROLE_010": "管理者になるには2段階認証の設定が必要です",
     "ROLE_011": "既に有効な委譲オファーが存在します",
@@ -546,7 +567,38 @@
       "PUBLIC": "지금 무슨 일이 있나요?"
     },
     "submitLabel": "게시",
-    "pollOptionsCount": "{count}개 선택지"
+    "pollOptionsCount": "{count}개 선택지",
+    "deliveryScope": {
+      "label": "전달 범위",
+      "options": {
+        "DIRECT": "이 단체의 멤버에게만",
+        "CHILDREN": "바로 아래 하위 단체까지",
+        "DESCENDANTS": "산하 모든 단체"
+      },
+      "hints": {
+        "DIRECT": "이 단체에 소속된 사람의 타임라인에만 표시됩니다.",
+        "CHILDREN": "이 단체와 바로 아래 하위 단체의 멤버에게도 표시됩니다.",
+        "DESCENDANTS": "이 단체 산하 모든 단체의 멤버에게 표시됩니다."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "이 팀의 게시물 숨기기",
+        "ORGANIZATION": "이 단체의 게시물 숨기기"
+      },
+      "targetType": {
+        "TEAM": "팀",
+        "ORGANIZATION": "단체"
+      },
+      "muted": "{name} 의 게시물을 숨겼습니다",
+      "undo": "실행 취소",
+      "unmuted": "다시 표시하도록 했습니다",
+      "chip": "숨김: {count}건",
+      "dialogTitle": "숨긴 대상",
+      "emptyList": "숨긴 대상이 없습니다.",
+      "unmuteAction": "다시 표시",
+      "unknownTarget": "{type}(ID: {id})"
+    }
   },
   "gallery": {
     "title": "갤러리",
@@ -599,7 +651,8 @@
       "selfReviewEnd": "셀프 리뷰 종료 시간",
       "selfReviewHelp": "설정한 시간대는 게시 전 검토 기간으로 처리됩니다",
       "saveSettings": "설정 저장",
-      "loadFailed": "게시글을 불러올 수 없습니다"
+      "loadFailed": "게시글을 불러올 수 없습니다",
+      "scheduledPublishUnavailable": "예약 발행은 현재 사용할 수 없습니다. 발행하면 게시물이 즉시 공개됩니다."
     },
     "autoSave": {
       "label": "자동 저장",
@@ -1348,6 +1401,36 @@
     "filter": {
       "allTeamsOrgs": "팀・조직 (전체)",
       "selectScope": "생성 대상 선택"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "개인",
+        "unknown": "기타 일정",
+        "loadError": {
+          "summary": "레이어 목록을 불러오지 못했습니다",
+          "detail": "팀・조직 표시 전환을 일시적으로 사용할 수 없습니다. 일정은 계속 표시됩니다. 잠시 후 다시 시도해 주세요."
+        },
+        "hiddenNotice": "생성한 레이어가 숨겨져 있습니다",
+        "showIt": "표시하기"
+      },
+      "more": "외 {count}건",
+      "today": "오늘",
+      "dayDetail": {
+        "title": "{date}의 일정"
+      },
+      "empty": "이 기간에 일정이 없습니다",
+      "view": {
+        "month": "월",
+        "week": "주",
+        "agenda": "목록"
+      },
+      "week": {
+        "allDay": "종일",
+        "now": "현재",
+        "dragHint": "드래그하여 일정 만들기",
+        "dragHintTouch": "길게 누른 후 드래그하여 일정을 만들 수 있습니다",
+        "selectedRange": "{start} – {end}"
+      }
     }
   },
   "handoff": {
@@ -1514,7 +1597,13 @@
       "leave_action": "나가기",
       "load_error_title": "정보를 가져올 수 없습니다",
       "load_error_body": "잠시 후 다시 시도해 주세요. 권한이 없으면 표시되지 않을 수 있습니다.",
-      "back_to_dashboard": "대시보드로 돌아가기"
+      "back_to_dashboard": "대시보드로 돌아가기",
+      "retry": "다시 시도",
+      "slow_loading": "로딩이 지연되고 있습니다"
+    },
+    "unsavedChanges": {
+      "title": "저장되지 않은 변경 사항",
+      "confirmLeave": "저장되지 않은 변경 사항이 있습니다. 이 페이지를 벗어나면 입력한 내용이 사라집니다. 계속하시겠습니까?"
     }
   },
   "teamHub": {
@@ -1641,7 +1730,8 @@
       "errorReports": "오류 보고서",
       "gdprPurge": "GDPR 삭제 현황",
       "feedbackInbox": "의견함 (전체)",
-      "billing": "결제 마스터 관리"
+      "billing": "결제 마스터 관리",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "관리자 위장 중: {label}",
@@ -1890,6 +1980,13 @@
     "mapEmbedUrlHelp": "Google Maps에서 「공유 > 지도 삽입 > HTML 복사」하여 src= URL을 붙여넣기 해 주세요",
     "mapEmbedUrlInvalidFormat": "Google Maps 삽입 URL（https://www.google.com/maps/embed?...）형식이어야 합니다",
     "mapEmbedUrlSaved": "매장 지도 URL이 저장되었습니다",
+    "timezone": {
+      "label": "예약 시간대",
+      "help": "예약 시작 및 종료 시간을 해석하는 IANA 시간대입니다.",
+      "placeholder": "예: Asia/Tokyo",
+      "invalid": "유효한 IANA 시간대를 입력하세요",
+      "saved": "예약 시간대를 저장했습니다"
+    },
     "regionCode": {
       "label": "소재지(도도부현・시구정촌)",
       "help": "도도부현과 시구정촌을 선택하면 지역 검색과 모집 게시의 초기값으로 사용됩니다.",
@@ -1907,6 +2004,24 @@
     "bulletinOpen": "게시판에서 토론하기"
   },
   "scopeDashboard": {
+    "storageSummary": {
+      "title": "저장 공간",
+      "personal": "개인",
+      "team": "팀",
+      "organization": "조직",
+      "details": "상세 보기",
+      "error": "저장 공간을 불러올 수 없습니다",
+      "retry": "다시 시도",
+      "unconfigured": "할당량이 설정되지 않음",
+      "not_available": "저장 공간 데이터 없음",
+      "meterLabel": "{scope} 저장 공간 사용량",
+      "meterValue": "사용량 {percent}%",
+      "warningTitle": "저장 공간 한도 임박",
+      "warningMessage": "{scope} 사용량이 {percent}%입니다. 유료 요금제 업그레이드를 고려하세요.",
+      "viewPlans": "요금제 보기",
+      "checkStorage": "저장 공간 확인",
+      "cancel": "취소"
+    },
     "tabs": {
       "personal": "개인",
       "team": "팀",
@@ -2160,6 +2275,32 @@
   "comingSoon": {
     "title": "준비 중",
     "description": "이 기능은 현재 개발 중입니다. 잠시 후 다시 확인해 주세요."
+  },
+  "transferOwnership": {
+    "sectionTitle": "소유자 이전",
+    "sectionDescription": "다른 멤버에게 관리자 권한 이전을 제안합니다. 상대방이 수락할 때까지 권한은 변경되지 않습니다.",
+    "openButton": "소유자 이전 제안",
+    "dialogTitle": "소유자 이전 제안",
+    "warning": "상대방이 수락하면 관리자 권한이 이전되고 당신은 멤버가 됩니다. 제안 대기 중에는 권한이 변경되지 않습니다.",
+    "targetLabel": "새 소유자",
+    "targetPlaceholder": "멤버 선택",
+    "noCandidates": "이전할 수 있는 멤버가 없습니다.",
+    "confirmLabel": "확인을 위해 “{name}” 을(를) 입력하세요",
+    "confirmMismatch": "이름이 일치하지 않습니다.",
+    "cancel": "취소",
+    "submit": "제안 보내기",
+    "successTitle": "제안을 보냈습니다",
+    "successDetail": "상대방이 수락할 때까지 관리자 권한은 변경되지 않습니다."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "비공개 기능입니다",
+      "body": "이 기능은 현재 사용할 수 없습니다. 대시보드로 돌아갑니다."
+    },
+    "error": {
+      "fetchFailedTitle": "기능 공개 상태를 확인할 수 없습니다",
+      "fetchFailedBody": "네트워크 오류로 기능의 공개 상태를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요."
+    }
   },
   "member": {
     "columns": {

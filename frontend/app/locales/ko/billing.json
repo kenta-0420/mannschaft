@@ -68,18 +68,18 @@
       "monetization_membership_fee": { "name": "会費徴収", "description": "メンバーからの会費徴収を開設できます" }
     },
     "paywall": {
-      "title": "この機能は有料プランで利用できます",
-      "description": "現在のプランではご利用いただけません。プラン一覧から詳細をご確認ください。",
-      "betaTitle": "ベータ期間中は無料でお試しいただけます",
-      "betaDescription": "この機能はベータ期間中につき無料で有効化できます。正式な料金はベータ終了後に決定します。",
-      "betaCta": "無料で有効にする",
-      "addonCta": "この機能だけ追加する",
-      "planCta": "プランをまとめて見る",
-      "notAvailable": "この機能は現在ご利用いただけません",
-      "activating": "有効化しています…",
-      "activateSuccess": "機能を有効にしました",
-      "activateError": "有効化に失敗しました。時間をおいて再度お試しください",
-      "close": "閉じる"
+      "title": "이 기능은 유료 요금제에서 이용할 수 있습니다",
+      "description": "현재 요금제에서는 이용할 수 없습니다. 요금제 목록에서 자세히 확인해 주세요.",
+      "betaTitle": "베타 기간 중에는 무료로 체험할 수 있습니다",
+      "betaDescription": "이 기능은 베타 기간 중 무료로 활성화할 수 있습니다. 정식 요금은 베타 종료 후 결정됩니다.",
+      "betaCta": "무료로 활성화하기",
+      "addonCta": "이 기능만 추가하기",
+      "planCta": "전체 요금제 보기",
+      "notAvailable": "이 기능은 현재 이용할 수 없습니다",
+      "activating": "활성화하는 중…",
+      "activateSuccess": "기능이 활성화되었습니다",
+      "activateError": "활성화에 실패했습니다. 잠시 후 다시 시도해 주세요",
+      "close": "닫기"
     },
     "manage": {
       "title": "課金・プラン管理",
@@ -127,6 +127,144 @@
           "title": "ベータ特典との違い",
           "body": "「ベータ特典」バッジが付いている機能は、運営から付与されたものです。ご自身で契約したプラン・アドオンとは別に、有効期限が設定されている場合があります。"
         }
+      }
+    },
+    "betaPerks": {
+      "sectionTitle": "ベータ特典",
+      "helpButton": "使い方ガイド",
+      "phaseBadge": "ベータ第{phase}期",
+      "grantedAt": "付与日: {date}",
+      "noExpiryIndividual": "サービス提供期間中無償",
+      "expiryTeamOrg": "{date} まで無償",
+      "renewalNote": "更新は運営からのお知らせをお待ちください（自動更新はされません）",
+      "featureListToggle": "対象機能を見る",
+      "memberSnapshot": "付与時メンバー数: {count}名",
+      "revoked": "取消済み",
+      "noGrant": "現在付与されているベータ特典はありません",
+      "eligibility": {
+        "title": "特典の達成状況",
+        "autoGrantNote": "条件を達成すると自動で付与されます（申請は不要です）",
+        "metric": {
+          "activeDays": "アクティブ日数",
+          "membershipTenureDays": "利用継続日数",
+          "activeMembers": "アクティブメンバー数"
+        },
+        "progress": "{actual} / {required}",
+        "achieved": "達成！次回の自動付与をお待ちください"
+      },
+      "badge": {
+        "name": "ベータテスター",
+        "description": "ベータ期間の活動により授与された称号です"
+      },
+      "help": {
+        "title": "ベータ特典の使い方ガイド",
+        "about": {
+          "title": "ベータ特典とは",
+          "body": "ベータ期間中の対象機能を無償でご利用いただける特典です。ご自身で契約するプラン・アドオンとは別に、運営側の判断で付与されます。"
+        },
+        "autoGrant": {
+          "title": "付与の条件（自動付与）",
+          "body": "アクティブ日数など活動実績の条件を満たすと自動で付与されます。申請フォームはありません。付与条件を満たしているかは、達成状況の進捗バーで確認できます。"
+        },
+        "period": {
+          "title": "期間と更新",
+          "body": "個人の特典はサービス提供期間中無償です。チーム・組織の特典には有効期限が設定されており、期限が近づくと運営からお知らせします。自動更新はされません。"
+        },
+        "transfer": {
+          "title": "譲渡禁止と取消",
+          "body": "特典はアカウント間で譲渡できません。利用規約に違反した場合、特典は取り消されることがあります。"
+        }
+      },
+      "admin": {
+        "title": "ベータ特典管理",
+        "tabGrants": "付与一覧",
+        "tabCandidates": "付与候補",
+        "tabCriteria": "条件マスタ",
+        "grantCta": "特典を付与",
+        "revokeCta": "取消",
+        "extendCta": "延長",
+        "resolveReviewCta": "審査解決",
+        "flagReviewCta": "審査フラグ",
+        "reviewFlagged": "審査待ち",
+        "revokeReasonLabel": "取消事由",
+        "revokeReason": {
+          "termsViolation": "規約違反",
+          "accountTransfer": "アカウント譲渡",
+          "other": "その他"
+        },
+        "skipCriteriaCheck": "条件チェックをスキップ（例外付与）",
+        "skipCriteriaWarning": "例外付与は監査記録に残ります。メモを必ず記入してください",
+        "extendMonthsLabel": "延長期間（月）",
+        "grantKindIndividual": "個人",
+        "grantKindTeamOrg": "チーム・組織",
+        "filterPhase": "フェーズ",
+        "filterGrantKind": "付与種別",
+        "filterReviewFlag": "審査フラグ",
+        "filterAll": "すべて",
+        "reviewFlagOnly": "審査待ちのみ",
+        "reviewFlagNone": "審査なし",
+        "colScope": "対象",
+        "colGrantKind": "付与種別",
+        "colPhase": "フェーズ",
+        "colGrantedBy": "付与者",
+        "colValidUntil": "有効期限",
+        "colReview": "審査",
+        "colStatus": "状態",
+        "colActions": "操作",
+        "systemGrantedBy": "SYSTEM",
+        "statusActive": "有効",
+        "statusRevoked": "取消済み",
+        "validUntilNone": "サービス提供期間中無償",
+        "grantsEmpty": "付与された特典はありません",
+        "revokeDialogTitle": "特典の取消",
+        "revokeNoteLabel": "メモ（任意）",
+        "revokeNotePlaceholder": "取消の理由・経緯",
+        "extendDialogTitle": "特典の延長",
+        "extendMonthsHelp": "1〜24 か月の範囲で入力してください",
+        "flagDialogTitle": "審査フラグの設定",
+        "flagNoteLabel": "メモ（任意）",
+        "flagNotePlaceholder": "フラグを立てる理由",
+        "resolveConfirm": "この特典の審査を解決済みにしますか？",
+        "grantDialogTitle": "特典を付与",
+        "grantKindLabel": "付与種別",
+        "betaPhaseLabel": "ベータフェーズ",
+        "scopeKindLabel": "スコープ種別",
+        "scopeIdLabel": "スコープ ID",
+        "noteLabel": "メモ（任意）",
+        "notePlaceholder": "付与の経緯・パイロット団体名 など",
+        "grantSubmit": "付与する",
+        "candidatesTeamOrgNote": "付与候補は現在 TEAM_ORG（チーム・組織）のみ対象です",
+        "candidatesEmpty": "付与候補はありません",
+        "candidateScope": "対象",
+        "candidateMetrics": "達成指標",
+        "criteriaPhaseLabel": "ベータフェーズ",
+        "criteriaGrantKindLabel": "付与種別",
+        "criteriaLoad": "条件を読み込む",
+        "criteriaNotFound": "この組み合わせの条件マスタはまだ定義されていません。下のフォームで新規登録できます。",
+        "evaluationWindowDays": "評価ウィンドウ（日）",
+        "minActiveDays": "アクティブ日数の下限",
+        "minActiveMembers": "アクティブメンバー数の下限（TEAM_ORG のみ）",
+        "minMembershipTenureDays": "所属経過日数の下限",
+        "enabledLabel": "有効",
+        "criteriaWindowRange": "1〜365 日の範囲で入力してください",
+        "criteriaSave": "条件を保存",
+        "grantSuccess": "特典を付与しました",
+        "revokeSuccess": "特典を取り消しました",
+        "extendSuccess": "特典を延長しました",
+        "flagSuccess": "審査フラグを設定しました",
+        "resolveSuccess": "審査を解決しました",
+        "criteriaSaveSuccess": "条件マスタを保存しました",
+        "criteriaMinOneMetric": "少なくとも1つの条件指標を設定してください"
+      },
+      "errors": {
+        "alreadyExists": "この対象には同じフェーズの特典が付与済みです",
+        "criteriaNotMet": "付与条件を満たしていません",
+        "alreadyRevoked": "この特典は取消済みです",
+        "extendNotApplicable": "個人特典は期間延長の対象外です",
+        "reviewNotFlagged": "この特典は審査待ちではありません",
+        "criteriaAllNull": "少なくとも1つの条件指標を設定してください",
+        "criteriaNotFound": "対象フェーズ×種別の条件マスタが未定義です",
+        "load": "ベータ特典情報の取得に失敗しました"
       }
     },
     "admin": {

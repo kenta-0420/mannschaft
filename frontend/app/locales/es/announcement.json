@@ -25,6 +25,8 @@
     "empty": "No hay anuncios nuevos.",
     "pin_limit_reached": "Puede fijar hasta 5 anuncios.",
     "already_registered": "Este contenido ya está registrado como anuncio.",
+    "no_longer_available": "Este anuncio ya no está disponible, por lo que se ha eliminado de la lista.",
+    "mark_all_read_partial": "Se marcaron {count} anuncios como leídos. Todavía quedan sin leer: pulsa de nuevo para continuar.",
     "broadcast_button_team": "Anuncio del equipo",
     "broadcast_button_org": "Anuncio de la organización",
     "wizard_title": "Enviar anuncio",

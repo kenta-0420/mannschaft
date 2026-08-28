@@ -80,7 +80,15 @@
       "festival": "축제",
       "matchRecruit": "연습 경기 모집",
       "meetup": "모임",
-      "chronicle": "마을 역사"
+      "chronicle": "마을 역사",
+      "charter": "마을 헌장"
+    },
+    "systemPost": {
+      "authorName": "마을 행사 안내",
+      "eventCreated": "행사가 생성되었습니다",
+      "eventUpcoming": "행사가 곧 시작됩니다",
+      "meetupConfirmed": "모임 일정이 확정되었습니다",
+      "festivalStarted": "축제가 시작되었습니다"
     },
     "lobby": {
       "title": "로비",
@@ -260,6 +268,15 @@
       "filterRole": "역할로 필터",
       "soloHeadmanHint": "다른 회원이 이 마을에 참여하면 여기에서 장로로 임명할 수 있습니다."
     },
+    "profile": {
+      "title": "마을 사람 프로필",
+      "villages": {
+        "title": "소속 마을 목록",
+        "empty": "표시할 수 있는 소속 마을이 없습니다",
+        "publicToggle": "이 마을을 내 소속 마을 목록에 표시",
+        "publicToggleHint": "켜면 당신과 같은 마을에 있는 사람이 당신의 소속 마을 목록에서 이 마을을 볼 수 있습니다."
+      }
+    },
     "postingIdentity": {
       "title": "게시 주체",
       "asUser": "개인으로 게시",
@@ -293,7 +310,7 @@
       "VILLAGE_007": "이 마을의 회원이 아닙니다",
       "VILLAGE_008": "이미 사용 중인 닉네임입니다",
       "VILLAGE_009": "신고 횟수 제한에 도달했습니다（1시간에 10건）",
-      "VILLAGE_010": "마을 생성 신청 횟수 제한에 도달했습니다（하루 3건·최대 10건 보유）",
+      "VILLAGE_010": "마을 생성 횟수 제한에 도달했습니다. 잠시 후 다시 시도해 주세요.",
       "VILLAGE_011": "닉네임은 월 3회까지만 변경할 수 있습니다",
       "VILLAGE_012": "참가 가능한 마을 수 상한（100개）을 초과했습니다",
       "VILLAGE_013": "즐겨찾기 마을 수 상한（30개）을 초과했습니다",
@@ -324,6 +341,10 @@
       "VILLAGE_042": "신고를 찾을 수 없습니다",
       "VILLAGE_043": "이 신고는 이미 처리되었습니다",
       "VILLAGE_044": "즐겨찾기 마을 핀을 찾을 수 없습니다",
+      "VILLAGE_052": "대표 위임을 찾을 수 없습니다",
+      "VILLAGE_053": "이 대상・사용자 조합은 이미 대표로 위임되어 있습니다",
+      "VILLAGE_054": "대상 멤버십이 팀/조직이 아닙니다",
+      "VILLAGE_055": "위임받을 사용자가 대상 팀/조직의 멤버가 아닙니다",
       "generic": "마을 기능에서 오류가 발생했습니다",
       "backToList": "마을 목록으로 돌아가기",
       "moderatorOnly": "이 설정은 촌장과 장로만 변경할 수 있습니다"
@@ -350,7 +371,15 @@
     "monsho": {
       "title": "마을 문장",
       "upload": "마을 문장 업로드",
-      "remove": "마을 문장 삭제"
+      "remove": "마을 문장 삭제",
+      "label": "마을 문장 (문양 / 로고)",
+      "change": "문장 변경",
+      "uploading": "업로드 중…",
+      "hint": "JPG / PNG / WebP · 최대 5MB",
+      "errorMime": "JPG, PNG, WebP 이미지만 지원합니다",
+      "errorSize": "파일 크기는 5MB 이하여야 합니다",
+      "uploadSuccess": "마을 문장을 업로드했습니다",
+      "removeSuccess": "마을 문장을 삭제했습니다"
     },
     "calendar": {
       "title": "마을 달력",
@@ -374,7 +403,26 @@
       "deleteSuccess": "행사가 삭제되었습니다",
       "empty": "등록된 행사가 없습니다",
       "noEventsInMonth": "이번 달 행사가 없습니다",
-      "loadFailed": "달력을 가져오는 데 실패했습니다"
+      "loadFailed": "달력을 가져오는 데 실패했습니다",
+      "log": {
+        "title": "작년의 모습",
+        "lastYear": "{year}년의 모습",
+        "addLog": "모습 기록하기",
+        "year": "연도",
+        "note": "한마디",
+        "notePlaceholder": "그때의 모습을 한마디로",
+        "photoKey": "사진(R2 키・선택 사항)",
+        "photoKeyHint": "이미지 업로드 기능은 추후 추가될 예정입니다. 이미 R2에 등록된 키가 있다면 입력할 수 있습니다",
+        "submit": "기록하기",
+        "delete": "삭제",
+        "empty": "아직 기록이 없습니다",
+        "loadFailed": "기록을 가져오는 데 실패했습니다",
+        "addSuccess": "기록했습니다",
+        "addFailed": "기록 추가에 실패했습니다",
+        "deleteConfirm": "이 기록을 삭제하시겠습니까?",
+        "deleteSuccess": "기록이 삭제되었습니다",
+        "deleteFailed": "기록 삭제에 실패했습니다"
+      }
     },
     "festival": {
       "title": "축제",
@@ -396,12 +444,38 @@
       "saveSuccess": "축제가 저장되었습니다",
       "cancelSuccess": "축제가 취소되었습니다",
       "loadFailed": "축제 목록을 가져오는 데 실패했습니다",
+      "invalidDateTime": "시작/종료 일시 형식이 올바르지 않습니다. 다시 입력해 주세요.",
       "filterAll": "전체",
       "status": {
         "SCHEDULED": "개최 예정",
         "ACTIVE": "진행 중",
         "ENDED": "종료",
         "CANCELLED": "취소"
+      },
+      "rsvp": {
+        "title": "참가 의사",
+        "going": "참가함",
+        "maybe": "아마 참가",
+        "roleLabel": "역할",
+        "roleLabelPlaceholder": "역할（선택, 예: 매대 담당）",
+        "submit": "보내기",
+        "cancel": "참가 의사 취소",
+        "empty": "아직 아무도 참가 의사를 밝히지 않았습니다",
+        "loadFailed": "참가자 목록을 가져오는 데 실패했습니다",
+        "saveSuccess": "참가 의사를 등록했습니다",
+        "saveFailed": "참가 의사 등록에 실패했습니다",
+        "cancelSuccess": "참가 의사를 취소했습니다",
+        "cancelFailed": "참가 의사 취소에 실패했습니다"
+      },
+      "live": {
+        "title": "실시간 소식",
+        "tagAsLive": "실시간 소식으로 게시할 내용을 작성하세요",
+        "submit": "실시간 소식으로 게시",
+        "empty": "아직 실시간 소식이 없습니다",
+        "viewPost": "게시물 보기",
+        "loadFailed": "실시간 소식 목록을 가져오는 데 실패했습니다",
+        "tagSuccess": "실시간 소식으로 게시했습니다",
+        "tagFailed": "실시간 소식 게시에 실패했습니다"
       }
     },
     "matchRecruit": {
@@ -470,11 +544,22 @@
     },
     "representative": {
       "title": "대표 위임",
+      "subtitle": "이 마을에 팀/조직으로 가입한 멤버십에 대해, 개인 사용자에게 대표로 게시할 권한을 위임합니다.",
       "grant": "대표로 위임",
       "revoke": "위임 취소",
       "empty": "위임된 대표가 없습니다",
       "grantedBy": "위임자",
-      "note": "메모"
+      "grantedAt": "위임 일시",
+      "note": "메모",
+      "target": "대상（팀/조직）",
+      "targetPlaceholder": "위임할 팀/조직을 선택",
+      "noTargets": "위임 가능한 팀/조직 멤버십이 없습니다",
+      "unknownTarget": "대상 불명",
+      "representativeUser": "대표 사용자",
+      "loadFailed": "대표 위임 목록을 가져오지 못했습니다",
+      "confirmRevokeTitle": "위임을 취소하시겠습니까?",
+      "confirmRevokeBody": "{name}에 대한 대표 위임을 취소합니다. 계속하시겠습니까?",
+      "revokeSuccess": "위임을 취소했습니다"
     },
     "meetup": {
       "title": "모임",
@@ -488,6 +573,9 @@
       "addCandidateDate": "후보 날짜 추가",
       "removeCandidateDate": "후보 날짜 삭제",
       "candidateDate": "후보 날짜",
+      "candidateTime": "시간",
+      "allDay": "종일",
+      "timeOptionalHint": "시간은 선택 사항입니다(비워 두면 종일)",
       "vote": "투표",
       "confirm": "이 날짜로 확정",
       "confirmedDate": "확정 날짜",
@@ -508,6 +596,54 @@
         "PLANNING": "투표 접수 중",
         "CONFIRMED": "개최 확정",
         "CANCELLED": "취소"
+      },
+      "attendance": {
+        "title": "참석 여부",
+        "going": "참석",
+        "maybe": "아마 참석",
+        "absent": "불참",
+        "notConfirmedHint": "개최일이 확정되면 참석 여부를 등록할 수 있습니다",
+        "empty": "아직 응답이 없습니다",
+        "unknownMember": "마을 사람",
+        "saveSuccess": "참석 여부가 등록되었습니다",
+        "saveFailed": "참석 여부 등록에 실패했습니다"
+      },
+      "comment": {
+        "title": "댓글",
+        "placeholder": "댓글을 작성하세요",
+        "submit": "등록",
+        "empty": "아직 댓글이 없습니다",
+        "delete": "삭제",
+        "postFailed": "댓글 등록에 실패했습니다",
+        "deleteConfirm": "이 댓글을 삭제하시겠습니까?",
+        "deleteSuccess": "댓글이 삭제되었습니다",
+        "deleteFailed": "댓글 삭제에 실패했습니다"
+      },
+      "decisions": {
+        "title": "결정된 사항",
+        "placeholder": "결정된 사항이나 준비물을 적어 두세요",
+        "edit": "편집",
+        "empty": "아직 결정된 사항이 없습니다",
+        "saveSuccess": "결정된 사항을 저장했습니다",
+        "saveFailed": "결정된 사항 저장에 실패했습니다"
+      },
+      "todo": {
+        "title": "할 일",
+        "titlePlaceholder": "무엇을 할까요? (예: 간식 사기)",
+        "add": "추가",
+        "claim": "내가 할게요",
+        "complete": "완료 처리",
+        "release": "맡은 일 내려놓기",
+        "unassigned": "미배정",
+        "empty": "아직 할 일이 없습니다",
+        "alreadyClaimed": "이 할 일은 이미 담당자가 정해졌습니다",
+        "addSuccess": "할 일을 추가했습니다",
+        "addFailed": "할 일 추가에 실패했습니다",
+        "claimSuccess": "이 할 일을 맡았습니다",
+        "completeSuccess": "완료 처리했습니다",
+        "completeFailed": "완료 상태 갱신에 실패했습니다",
+        "releaseSuccess": "맡은 일을 내려놓았습니다",
+        "releaseFailed": "맡은 일 내려놓기에 실패했습니다"
       }
     },
     "chronicle": {
@@ -522,9 +658,71 @@
       "loadFailed": "마을 역사를 가져오는 데 실패했습니다",
       "viewDetail": "상세 보기"
     },
+    "archive": {
+      "title": "마을 역사",
+      "subtitle": "축제・절기 행사・모임 등 마을 행사의 기록",
+      "empty": "아직 마을 역사 기록이 없습니다",
+      "loadFailed": "마을 역사를 가져오는 데 실패했습니다",
+      "archivedAt": "기록일",
+      "filterAll": "전체",
+      "sourceType": {
+        "festival": "축제",
+        "calendarEvent": "절기 행사",
+        "meetup": "모임"
+      }
+    },
+    "charter": {
+      "title": "마을 헌장",
+      "subtitle": "마을의 약속",
+      "empty": "아직 마을 헌장이 제정되지 않았습니다",
+      "enactedAt": "제정일",
+      "lastRevisedAt": "개정일",
+      "article": {
+        "label": "제{n}조",
+        "add": "＋조항 추가",
+        "bodyPlaceholder": "조문을 입력하세요",
+        "bodyRequired": "조문을 입력해 주세요",
+        "delete": "조항 삭제",
+        "deleteConfirm": "이 조항을 삭제하시겠습니까?"
+      },
+      "supplement": {
+        "add": "＋부칙 추가",
+        "label": "부칙",
+        "placeholder": "부칙을 입력하세요（선택）"
+      },
+      "reorder": {
+        "hint": "위/아래 버튼으로 조항 순서를 변경할 수 있습니다",
+        "up": "위로",
+        "down": "아래로"
+      },
+      "drafters": {
+        "title": "제정자",
+        "add": "＋제정자 추가",
+        "empty": "아직 등록된 제정자가 없습니다",
+        "delete": "제정자 삭제",
+        "deleteConfirm": "\"{name}\"님을 제정자에서 삭제하시겠습니까?",
+        "selectPlaceholder": "마을 주민 선택",
+        "loadMembersFailed": "마을 주민 목록을 불러오지 못해 제정자를 추가할 수 없습니다.",
+        "reloadMembers": "다시 불러오기"
+      },
+      "revision": {
+        "confirm": "개정 확정",
+        "confirmHint": "이 시점을 개정으로 기록합니다（조문의 공개 상태는 변경되지 않습니다）.",
+        "confirmSuccess": "개정을 확정했습니다",
+        "notePlaceholder": "개정 메모（선택）",
+        "history": "개정 이력",
+        "historyEmpty": "아직 개정 이력이 없습니다"
+      },
+      "error": {
+        "loadFailed": "마을 헌장을 가져오지 못했습니다",
+        "mutationFailed": "작업에 실패했습니다",
+        "versionConflict": "다른 촌장이 동시에 수정했습니다. 최신 내용을 다시 불러와 주세요",
+        "drafterDuplicate": "해당 주민은 이미 제정자입니다"
+      }
+    },
     "serendipity": {
       "title": "인연 점수",
-      "subtitle": "당신과의 궁합",
+      "subtitle": "이 마을에서 쌓인 만남",
       "rank": "순위",
       "score": "점수",
       "myScore": "나의 점수",
@@ -532,6 +730,26 @@
       "lastComputedAt": "최종 계산 일시",
       "empty": "아직 인연 점수가 계산되지 않았습니다",
       "loadFailed": "인연 점수를 가져오는 데 실패했습니다"
+    },
+    "affinity": {
+      "title": "궁합 힌트",
+      "subtitle": "참여 전에 이 마을이 나와 맞는지 살펴보세요",
+      "categoryMatch": "관심사·카테고리가 가까운 마을입니다",
+      "hidden": "지금은 궁합 힌트가 없습니다",
+      "sharedVillagers": {
+        "hidden": "아직 표시할 수 없습니다",
+        "few": "몇 명",
+        "many": "10명 이상"
+      },
+      "reason": {
+        "categoryMatch": "당신의 관심사와 가까운 마을입니다",
+        "sharedVillagers": "당신과 인연이 있는 마을 사람이 있습니다",
+        "pioneer": "지금 참여하면 개척 멤버가 될 수 있습니다"
+      },
+      "pioneer": {
+        "title": "마을의 개척자가 될 수 있어요!",
+        "body": "아직 인원이 적은 작은 마을입니다. 지금 참여하면 함께 마을을 만들어가는 개척 멤버가 됩니다."
+      }
     },
     "pilgrimage": {
       "title": "마을 순례",
@@ -726,6 +944,15 @@
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
         }
+      },
+      "charter": {
+        "title": "마을 헌장으로 마을의 약속을 남기기",
+        "body": "촌장・원로가 마을의 규칙（조문）을 정하고 비회원에게도 공개할 수 있습니다（공개 마을은 미가입자에게도 보입니다）.",
+        "steps": {
+          "step1": "\"마을 헌장\" 탭을 엽니다.",
+          "step2": "촌장・원로는 \"＋조항 추가\"로 조문을 작성하고, 필요하면 부칙도 첨부할 수 있습니다.",
+          "step3": "순서 변경・삭제는 즉시 반영되며, \"개정 확정\"으로 개정 이력에 기록할 수 있습니다."
+        }
       }
     },
     "joinRequestGuide": {
@@ -774,6 +1001,10 @@
         "members": {
           "title": "회원 및 직책",
           "desc": "마을 주민 관리, 직책 변경, 추방(BAN)을 합니다."
+        },
+        "representatives": {
+          "title": "대표 위임",
+          "desc": "팀/조직 멤버십을 대표하여 게시할 수 있는 사용자를 위임・관리합니다."
         },
         "joinRequests": {
           "title": "가입 신청 심사",
@@ -919,6 +1150,25 @@
       },
       "comingSoon": {
         "body": "⚠️ 발송 기능은 준비 중입니다. 설정은 저장할 수 있지만 실제 뉴스레터 발송은 아직 이루어지지 않습니다."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "사용법",
+      "what": {
+        "title": "마을 사람 미니 프로필이란",
+        "body": "회원 목록에서 이름을 탭하면 열리는 그 마을 사람의 간단한 프로필입니다. 역할과 상대가 공개로 설정한 소속 마을 목록을 볼 수 있습니다."
+      },
+      "villages": {
+        "title": "소속 마을 목록 보는 법",
+        "body": "상대가 공개로 설정한 마을만 표시됩니다. 마을 이름·마을 문장·카테고리만 표시되며 닉네임은 표시되지 않습니다. 카드를 탭하면 해당 마을의 첫 화면으로 이동합니다."
+      },
+      "toggle": {
+        "title": "자신의 프로필을 열었을 때",
+        "body": "자기 자신의 미니 프로필에는 「이 마을을 내 소속 마을 목록에 표시」 토글이 나타납니다. 켜면 당신과 같은 마을에 있는 사람이 당신의 소속 마을 목록에서 이 마을을 볼 수 있습니다. 마을마다 개별로 설정할 수 있습니다."
+      },
+      "privacy": {
+        "title": "개인정보 보호에 대해",
+        "body": "소속 마을 목록은 당신과 상대가 같은 마을에 함께 있는 경우에만 표시됩니다. 표시할 내용이 없으면 같은 마을인지 여부를 드러내지 않고 「표시할 수 있는 소속 마을이 없습니다」라고 중립적으로 표시됩니다."
       }
     }
   }

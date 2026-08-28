@@ -29,8 +29,10 @@ const { isLoaded, isSupported, validateFormat, ensureLoaded } = usePostalCodeVal
 // ポリシーを事前ロード（onMounted で取得しておく）。
 // _policies はリアクティブな ref なので、ロード完了時に下記 computed が自動再評価される。
 onMounted(() => {
-  ensureLoaded().catch(() => {
-    // 取得失敗はサイレント（クライアント検証は best-effort）
+  ensureLoaded().catch((e) => {
+    // クライアント検証は best-effort（BE が authoritative）。取得失敗しても致命ではないが、
+    // 沈黙させず原因追跡できるようログに残す。
+    console.warn('[SettingsProfileSection] ポリシーの事前ロードに失敗（クライアント検証はスキップ）', e)
   })
 })
 

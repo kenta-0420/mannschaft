@@ -31,6 +31,14 @@ const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> =
 const { currentYear, currentMonth, events, loading, loadEvents, refresh, onPrevMonth, onNextMonth } =
   useCalendarEvents(fetcher, { cacheHalfMonths: 2 })
 
+// モバイルのリストビュー用: 表示中の月のイベントを実際の時系列（瞬間）昇順に並べる。
+// ISO 文字列のまま localeCompare すると、時差の異なる予定（例: +09:00 と Z）が
+// 文字列としての大小関係で並んでしまい、実際の前後関係と食い違う（Codex 検分指摘）。
+// 必ず Date.parse で瞬間へ変換してから比較する。
+const sortedEvents = computed(() =>
+  [...events.value].sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt)),
+)
+
 function onDateClick(date: string) {
   selectedDate.value = date
   showCreateDialog.value = true
@@ -88,10 +96,48 @@ onMounted(async () => {
   <div v-else>
     <div class="mb-4 flex items-center justify-between">
       <PageHeader title="スケジュール" />
-      <Button label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
+      <div class="flex items-center gap-2">
+        <NuxtLink :to="`/teams/${teamSlug}/schedule-keeps`">
+          <Button :label="$t('scheduleKeep.title')" icon="pi pi-bookmark" outlined data-testid="schedule-keep-nav-link" />
+        </NuxtLink>
+        <Button label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
+      </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <!-- ===== モバイル（<768px）: リストビュー既定 ===== -->
+    <!-- カレンダーはタップしないと時刻/詳細が見えず即時性が無いため、狭幅では
+         日付・時刻・タイトルを 1 行で即時可視化するリストを既定にする。 -->
+    <div class="md:hidden">
+      <ScheduleMobileListView
+        :year="currentYear"
+        :month="currentMonth"
+        :events="sortedEvents"
+        scope-type="team"
+        :scope-id="teamSlug"
+        :empty-message="$t('schedule.list.empty')"
+        :dimmed="refreshing"
+        @prev-month="onPrevMonth"
+        @next-month="onNextMonth"
+        @open="(ev) => onEventClick(ev.id)"
+        @responded="refresh"
+      />
+
+      <!-- 行タップ時の詳細（モバイルはインライン表示） -->
+      <SectionCard v-if="showDetailPanel && selectedEvent" class="mt-4">
+        <EventDetailPanel
+          :event="selectedEvent!"
+          scope-type="team"
+          :scope-id="teamSlug"
+          :can-edit="isAdminOrDeputy"
+          @edit="onEditEvent"
+          @delete="onDeleteEvent"
+          @responded="refresh"
+        />
+      </SectionCard>
+    </div>
+
+    <!-- ===== デスクトップ（768px以上）: 従来のカレンダー主体UI（不変） ===== -->
+    <div class="hidden grid-cols-1 gap-6 md:grid lg:grid-cols-3">
       <!-- カレンダー -->
       <div class="lg:col-span-2">
         <SectionCard :class="{ 'opacity-60': refreshing }">

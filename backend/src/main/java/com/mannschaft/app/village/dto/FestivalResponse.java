@@ -13,6 +13,10 @@ import java.util.UUID;
  * <p>{@code createdByDisplayName} は呼出元（Service）で解決して詰める。
  * Phase 2 では USER の表示名解決は B4 ニックネーム連携で行うが、本 DTO は
  * 表示名の中身に関知せず文字列をそのまま返す。</p>
+ *
+ * <p>{@code bannerUrl} は生の R2 キーではなく、{@code MediaUrlResolver} で解決済みの
+ * 署名付き表示 URL（絶対 URL）を返す（#2355 r2PublicUrl 根絶）。DTO に Spring 依存を
+ * 持ち込まないため、URL 解決は呼出元（Service）が行い、解決済みの文字列をここへ渡すこと。</p>
  */
 @Builder
 public record FestivalResponse(
@@ -22,7 +26,7 @@ public record FestivalResponse(
         String description,
         LocalDateTime startsAt,
         LocalDateTime endsAt,
-        String bannerR2Key,
+        String bannerUrl,
         String themeColorHex,
         VillageFestivalStatus status,
         Long createdByUserId,
@@ -30,12 +34,13 @@ public record FestivalResponse(
         LocalDateTime createdAt) {
 
     /**
-     * エンティティと表示名から DTO を生成する。
+     * エンティティ・表示名・解決済みバナー URL から DTO を生成する。
      *
      * @param entity              お祭りエンティティ
      * @param createdByDisplayName 作成者の表示名（null 可）
+     * @param bannerUrl           {@code MediaUrlResolver} で解決済みのバナー表示 URL（未設定 / 解決失敗時は null）
      */
-    public static FestivalResponse of(VillageFestivalEntity entity, String createdByDisplayName) {
+    public static FestivalResponse of(VillageFestivalEntity entity, String createdByDisplayName, String bannerUrl) {
         return FestivalResponse.builder()
                 .id(entity.getId())
                 .villageId(entity.getVillageId())
@@ -43,7 +48,7 @@ public record FestivalResponse(
                 .description(entity.getDescription())
                 .startsAt(entity.getStartsAt())
                 .endsAt(entity.getEndsAt())
-                .bannerR2Key(entity.getBannerR2Key())
+                .bannerUrl(bannerUrl)
                 .themeColorHex(entity.getThemeColorHex())
                 .status(entity.getStatus())
                 .createdByUserId(entity.getCreatedByUserId())

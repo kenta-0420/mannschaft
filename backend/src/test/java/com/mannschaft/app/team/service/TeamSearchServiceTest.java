@@ -73,6 +73,15 @@ class TeamSearchServiceTest {
     @InjectMocks
     private TeamSearchService service;
 
+    /**
+     * issue #2544: 本番では {@code @Autowired @Lazy} で注入される自己プロキシ {@code self} を、
+     * 純 Mockito UT では自分自身で埋める（キャッシュプロキシは介在しないので挙動は従来どおり）。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void setUpSelfProxy() {
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "self", service);
+    }
+
     private static final Long ORG_ID = 100L;
     private static final Long MEMBER_USER_ID = 500L;
 
@@ -106,6 +115,8 @@ class TeamSearchServiceTest {
             Page<TeamEntity> result = new PageImpl<>(List.of(publicTeam));
             given(teamRepository.findAll(any(Specification.class), any(Pageable.class)))
                     .willReturn(result);
+            // issue #2544: キャッシュ対象は ID 列のみになったため、実体は findAllById で引き直す
+            given(teamRepository.findAllById(any())).willReturn(List.of(publicTeam));
 
             // When: currentUserId=null（未ログイン）
             Page<TeamEntity> actual = service.search(
@@ -203,6 +214,8 @@ class TeamSearchServiceTest {
                     .build();
             given(teamRepository.findAll(any(Specification.class), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(orgOnly)));
+            // issue #2544: キャッシュ対象は ID 列のみになったため、実体は findAllById で引き直す
+            given(teamRepository.findAllById(any())).willReturn(List.of(orgOnly));
 
             Page<TeamEntity> actual = service.search(
                     ORG_ID,

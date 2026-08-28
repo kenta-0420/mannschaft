@@ -66,7 +66,7 @@ public enum PaymentErrorCode implements ErrorCode {
     RATE_LIMIT_EXCEEDED("PAYMENT_018", "送信頻度の上限を超えました。しばらく待ってから再試行してください", Severity.WARN),
 
     /** Webhook 署名検証失敗 */
-    WEBHOOK_SIGNATURE_INVALID("PAYMENT_019", "Webhook 署名の検証に失敗しました", Severity.ERROR),
+    WEBHOOK_SIGNATURE_INVALID("PAYMENT_019", "Webhook 署名の検証に失敗しました", Severity.WARN),
 
     /** 手動支払いのみ対象 */
     STRIPE_PAYMENT_ONLY("PAYMENT_020", "この操作は Stripe 決済のみ対象です", Severity.WARN),
@@ -98,7 +98,21 @@ public enum PaymentErrorCode implements ErrorCode {
     /** 会費支払い記録が見つからない（F08.9 P8 領収書） */
     MEMBER_PAYMENT_NOT_FOUND("PAYMENT_029", "会費支払い記録が見つかりません", Severity.WARN),
 
-    /** 領収書へのアクセスが拒否された（払い手・受益者以外）（F08.9 P8 領収書） */
+    /**
+     * 領収書へのアクセスが拒否された（払い手・受益者以外）（404・F08.9 P8 領収書）。
+     *
+     * <p><b>これは「意味が割れている」のではなく意図的な集約である。分割してはならない。</b>
+     * 本コードは (1) 他人の支払い記録 ID への越境アクセス と (2) 払い手でも受益者でもない者による権限拒否 の両方に使われる。この2つを別コード・別ステータスに分けると、応答の差から
+     * 「そのIDのリソースは実在する」ことを外部から判定できる存在オラクルになる。</p>
+     *
+     * <p><b>ステータスは404固定。</b>不在（{@link #MEMBER_PAYMENT_NOT_FOUND}）と同一の404に畳むことで秘匿を達成する。
+     * このコードベースには PARKING_020 を起点とする「越境は存在秘匿で404」の流儀が確立しており
+     * （equipment/membership/todo/corkboard/pointcard/skill で実装済み）、それに揃えた。
+     * かつては 403 を返しており、不在（404）と越境（403）でステータスが割れて存在オラクルになっていた。
+     * 「403に戻すべきでは」と迷った場合は、この理由を思い出すこと。
+     * （{@code GlobalExceptionHandlerTest.ExistenceOracleParity} が
+     * 「不在と越境の応答が一致すること」を契約として固定している）。</p>
+     */
     PAYMENT_ACCESS_DENIED("PAYMENT_030", "この支払い記録へのアクセス権限がありません", Severity.WARN),
 
     /** STRIPE は手動記録では指定不可（オンライン決済の手動詐称防止・F08.9 手段拡張） */

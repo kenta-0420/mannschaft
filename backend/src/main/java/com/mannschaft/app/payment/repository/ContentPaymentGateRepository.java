@@ -17,6 +17,10 @@ public interface ContentPaymentGateRepository extends JpaRepository<ContentPayme
      */
     List<ContentPaymentGateEntity> findByContentTypeAndContentId(String contentType, Long contentId);
 
+    /** 指定種別・ID集合のゲートを一覧取得する（課金軸のバッチ判定用）。 */
+    List<ContentPaymentGateEntity> findByContentTypeAndContentIdIn(
+            String contentType, List<Long> contentIds);
+
     /**
      * コンテンツ種別と ID で全件削除する（一括設定の置換用）。
      */

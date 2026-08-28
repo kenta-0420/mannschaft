@@ -68,6 +68,10 @@ class ReservationLineServiceTest {
     @Mock
     private com.mannschaft.app.reservation.repository.ReservationMenuLineRepository menuLineRepository;
 
+    /** 予約閲覧の view ゲート（会員 or 公開）。デフォルトのモック（void）は常に通過する。 */
+    @Mock
+    private com.mannschaft.app.reservation.service.ReservationViewAccessGuard viewAccessGuard;
+
     private ReservationLineService service;
 
     // ========================================
@@ -75,6 +79,7 @@ class ReservationLineServiceTest {
     // ========================================
 
     private static final Long TEAM_ID = 1L;
+    private static final Long USER_ID = 5L;
     private static final Long LINE_ID = 10L;
     private static final Long STAFF_USER_ID = 50L;
 
@@ -87,7 +92,7 @@ class ReservationLineServiceTest {
         // @InjectMocks は final Clock を mock で埋めるため、固定 Clock を明示注入して生成する。
         service = new ReservationLineService(
                 lineRepository, reservationMapper, templateRepository, reservationRepository,
-                slotRepository, menuLineRepository, FIXED_CLOCK);
+                slotRepository, menuLineRepository, FIXED_CLOCK, viewAccessGuard);
     }
 
     private ReservationLineEntity createLineEntity() {
@@ -127,7 +132,7 @@ class ReservationLineServiceTest {
             given(reservationMapper.toLineResponseList(entities)).willReturn(responses);
 
             // When
-            List<ReservationLineResponse> result = service.listLines(TEAM_ID);
+            List<ReservationLineResponse> result = service.listLines(TEAM_ID, USER_ID);
 
             // Then
             assertThat(result).hasSize(1);

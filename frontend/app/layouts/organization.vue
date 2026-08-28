@@ -9,6 +9,18 @@ const orgId = computed(() => {
   return slug ? String(Array.isArray(slug) ? slug[0] : slug) : null
 })
 
+const scopeId = computed(() => orgId.value ?? '')
+const { roleName, loadPermissions } = useRoleAccess('organization', scopeId)
+const canShowSidebar = computed(() =>
+  roleName.value !== null
+  && roleName.value !== 'SUPPORTER'
+  && roleName.value !== 'GUEST',
+)
+
+onMounted(() => {
+  void loadPermissions()
+})
+
 // ルート変更時にDrawerを閉じる
 watch(() => route.path, () => {
   showSidebar.value = false
@@ -19,24 +31,16 @@ watch(() => route.path, () => {
 // 本レイアウトでの onMounted/onUnmounted 結線は行わない — 永続シェル
 // （pages/organizations/[slug].vue・ScopePageShell）とのレイアウト切替時に unmount の
 // setForceRail(false) が正しい状態を上書きする順序競合を生むため。
-// この <aside>＋OrganizationSidebar は無改修。sticky位置／高さ計算は Phase3 で
-// --app-header-h（既定 4rem）を参照するよう CSS 変数化した（見た目は無変更）。
+//
+// サイドバー撤去: デスクトップ固定 <aside> を廃止し、全画面サイズでハンバーガー→Drawer
+// 方式に統一（ScopePageShell と同一パターン）。SPA 遷移感の改善と画面スペース確保のため。
 </script>
 
 <template>
   <NuxtLayout name="default">
     <div class="flex" style="min-height: calc(100vh - var(--app-header-h))">
-      <!-- デスクトップサイドバー（lg以上で常時表示） -->
-      <aside
-        v-if="orgId"
-        class="hidden lg:flex flex-col w-[260px] shrink-0 border-r border-surface-200 bg-surface-0 sticky top-[var(--app-header-h)] overflow-y-auto"
-        style="height: calc(100vh - var(--app-header-h))"
-      >
-        <OrganizationSidebar :org-id="orgId" />
-      </aside>
-
-      <!-- モバイル用 Drawer -->
-      <Drawer v-model:visible="showSidebar" position="left" class="!w-72">
+      <!-- 全画面用 Drawer サイドバー（固定 <aside> 撤去・ScopePageShell と同一パターン） -->
+      <Drawer v-if="canShowSidebar" v-model:visible="showSidebar" position="left" class="!w-72">
         <template #header>
           <span class="font-semibold">メニュー</span>
         </template>
@@ -45,12 +49,14 @@ watch(() => route.path, () => {
 
       <!-- メインコンテンツ -->
       <main class="flex-1 min-w-0">
-        <!-- モバイル: サイドバー開閉ボタン -->
-        <div class="lg:hidden px-4 pt-3">
+        <!-- サイドバー開閉ボタン（全画面サイズで表示） -->
+        <div v-if="canShowSidebar" class="px-4 pt-3">
           <Button
             icon="pi pi-bars"
             text
             size="small"
+            :aria-label="$t('common.menu')"
+            data-testid="scope-sidebar-toggle"
             @click="showSidebar = true"
           />
         </div>

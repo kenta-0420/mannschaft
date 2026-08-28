@@ -80,7 +80,15 @@
       "festival": "お祭り",
       "matchRecruit": "練習試合・募集",
       "meetup": "寄合",
-      "chronicle": "村史"
+      "chronicle": "村史",
+      "charter": "村憲章"
+    },
+    "systemPost": {
+      "authorName": "村の行事案内",
+      "eventCreated": "行事が作成されました",
+      "eventUpcoming": "開催が近づいています",
+      "meetupConfirmed": "寄合が確定しました",
+      "festivalStarted": "お祭りが始まりました"
     },
     "lobby": {
       "title": "ロビー",
@@ -260,6 +268,15 @@
       "filterRole": "ロールで絞り込み",
       "soloHeadmanHint": "他のメンバーがこの村に参加すると、ここで長老に任命できます。"
     },
+    "profile": {
+      "title": "村人プロフィール",
+      "villages": {
+        "title": "所属村一覧",
+        "empty": "表示できる所属村はありません",
+        "publicToggle": "この村を私の所属一覧に載せる",
+        "publicToggleHint": "オンにすると、あなたと同じ村にいる人が、あなたの所属村一覧からこの村を見られるようになります。"
+      }
+    },
     "postingIdentity": {
       "title": "投稿主体",
       "asUser": "自分として投稿",
@@ -293,7 +310,7 @@
       "VILLAGE_007": "この村のメンバーではありません",
       "VILLAGE_008": "そのニックネームはすでに使われています",
       "VILLAGE_009": "通報の上限に達しました（1時間に10件）",
-      "VILLAGE_010": "村作成申請のレート上限に達しました（1日3件・保有10件まで）",
+      "VILLAGE_010": "村作成の回数制限に達しました。しばらく時間をおいてから再度お試しください",
       "VILLAGE_011": "ニックネーム変更は月3回までです",
       "VILLAGE_012": "参加可能な村数の上限（100）を超えました",
       "VILLAGE_013": "お気に入り村の上限（30件）を超えました",
@@ -324,6 +341,10 @@
       "VILLAGE_042": "通報が見つかりません",
       "VILLAGE_043": "この通報は既に処理済みです",
       "VILLAGE_044": "お気に入り村のピンが見つかりません",
+      "VILLAGE_052": "代表委任が見つかりません",
+      "VILLAGE_053": "この対象・ユーザーの組み合わせは既に代表委任済みです",
+      "VILLAGE_054": "対象メンバーシップがチーム/組織ではありません",
+      "VILLAGE_055": "委任先ユーザーは対象チーム/組織のメンバーではありません",
       "generic": "村機能でエラーが発生しました",
       "backToList": "村一覧へ戻る",
       "moderatorOnly": "この設定は村長・長老のみが変更できます"
@@ -350,7 +371,15 @@
     "monsho": {
       "title": "村紋",
       "upload": "村紋をアップロード",
-      "remove": "村紋を削除"
+      "remove": "村紋を削除",
+      "label": "村紋（家紋・ロゴ）",
+      "change": "村紋を変更",
+      "uploading": "アップロード中…",
+      "hint": "JPG / PNG / WebP・5MBまで",
+      "errorMime": "画像形式は JPG・PNG・WebP のみ対応しています",
+      "errorSize": "ファイルサイズは 5MB 以内にしてください",
+      "uploadSuccess": "村紋をアップロードしました",
+      "removeSuccess": "村紋を削除しました"
     },
     "calendar": {
       "title": "歳時記カレンダー",
@@ -374,7 +403,26 @@
       "deleteSuccess": "行事を削除しました",
       "empty": "登録された行事はありません",
       "noEventsInMonth": "今月の行事はありません",
-      "loadFailed": "歳時記の取得に失敗しました"
+      "loadFailed": "歳時記の取得に失敗しました",
+      "log": {
+        "title": "去年の様子",
+        "lastYear": "{year}年の様子",
+        "addLog": "様子を記録する",
+        "year": "年",
+        "note": "ひとこと",
+        "notePlaceholder": "そのときの様子をひとことで",
+        "photoKey": "写真（R2キー・任意）",
+        "photoKeyHint": "画像アップロード機能は今後追加予定です。R2に登録済みのキーがあれば入力できます",
+        "submit": "記録する",
+        "delete": "削除",
+        "empty": "まだ記録がありません",
+        "loadFailed": "年輪の取得に失敗しました",
+        "addSuccess": "記録しました",
+        "addFailed": "記録の追加に失敗しました",
+        "deleteConfirm": "この記録を削除します。よろしいですか?",
+        "deleteSuccess": "記録を削除しました",
+        "deleteFailed": "記録の削除に失敗しました"
+      }
     },
     "festival": {
       "title": "お祭り",
@@ -396,12 +444,38 @@
       "saveSuccess": "お祭りを保存しました",
       "cancelSuccess": "お祭りを中止しました",
       "loadFailed": "お祭り一覧の取得に失敗しました",
+      "invalidDateTime": "開始/終了日時の形式が不正です。入力し直してください。",
       "filterAll": "すべて",
       "status": {
         "SCHEDULED": "開催予定",
         "ACTIVE": "開催中",
         "ENDED": "終了",
         "CANCELLED": "中止"
+      },
+      "rsvp": {
+        "title": "参加表明",
+        "going": "行く",
+        "maybe": "たぶん行く",
+        "roleLabel": "役割",
+        "roleLabelPlaceholder": "役割（任意・例: 出店係）",
+        "submit": "送信",
+        "cancel": "取り消す",
+        "empty": "まだ誰も参加表明していません",
+        "loadFailed": "参加者一覧の取得に失敗しました",
+        "saveSuccess": "参加表明を登録しました",
+        "saveFailed": "参加表明の登録に失敗しました",
+        "cancelSuccess": "参加表明を取り消しました",
+        "cancelFailed": "参加表明の取り消しに失敗しました"
+      },
+      "live": {
+        "title": "実況",
+        "tagAsLive": "実況として投稿する内容を書く",
+        "submit": "実況として投稿",
+        "empty": "まだ実況投稿はありません",
+        "viewPost": "投稿を見る",
+        "loadFailed": "実況投稿一覧の取得に失敗しました",
+        "tagSuccess": "実況として投稿しました",
+        "tagFailed": "実況投稿に失敗しました"
       }
     },
     "matchRecruit": {
@@ -470,11 +544,22 @@
     },
     "representative": {
       "title": "代表委任",
+      "subtitle": "チーム/組織としての村加入（メンバーシップ）に対し、個人ユーザーへ代表として投稿する権限を委任します。",
       "grant": "代表に委任する",
       "revoke": "委任を取消",
       "empty": "委任された代表はいません",
       "grantedBy": "委任元",
-      "note": "メモ"
+      "grantedAt": "委任日時",
+      "note": "メモ",
+      "target": "対象（チーム/組織）",
+      "targetPlaceholder": "委任先のチーム/組織を選択",
+      "noTargets": "代表委任可能なチーム/組織の参加がありません",
+      "unknownTarget": "対象不明",
+      "representativeUser": "代表ユーザー",
+      "loadFailed": "代表委任の取得に失敗しました",
+      "confirmRevokeTitle": "委任を取消しますか?",
+      "confirmRevokeBody": "{name} への代表委任を取消します。よろしいですか?",
+      "revokeSuccess": "委任を取消しました"
     },
     "meetup": {
       "title": "寄合",
@@ -488,6 +573,9 @@
       "addCandidateDate": "候補日を追加",
       "removeCandidateDate": "候補日を削除",
       "candidateDate": "候補日",
+      "candidateTime": "時刻",
+      "allDay": "終日",
+      "timeOptionalHint": "時刻は任意です（未入力の場合は終日）",
       "vote": "投票",
       "confirm": "この日に決定",
       "confirmedDate": "確定日",
@@ -508,6 +596,54 @@
         "PLANNING": "投票受付中",
         "CONFIRMED": "開催確定",
         "CANCELLED": "中止"
+      },
+      "attendance": {
+        "title": "出欠",
+        "going": "行ける",
+        "maybe": "たぶん行ける",
+        "absent": "行けない",
+        "notConfirmedHint": "開催日が確定すると出欠を登録できます",
+        "empty": "まだ誰も回答していません",
+        "unknownMember": "村人",
+        "saveSuccess": "出欠を登録しました",
+        "saveFailed": "出欠の登録に失敗しました"
+      },
+      "comment": {
+        "title": "コメント",
+        "placeholder": "コメントを書く",
+        "submit": "投稿する",
+        "empty": "コメントはまだありません",
+        "delete": "削除",
+        "postFailed": "コメントの投稿に失敗しました",
+        "deleteConfirm": "このコメントを削除します。よろしいですか?",
+        "deleteSuccess": "コメントを削除しました",
+        "deleteFailed": "コメントの削除に失敗しました"
+      },
+      "decisions": {
+        "title": "決まったこと",
+        "placeholder": "決まったこと・持ち物などを書いておきましょう",
+        "edit": "編集",
+        "empty": "まだ何も決まっていません",
+        "saveSuccess": "決まったことを保存しました",
+        "saveFailed": "決まったことの保存に失敗しました"
+      },
+      "todo": {
+        "title": "宿題",
+        "titlePlaceholder": "何をやる？（例: お菓子を買う）",
+        "add": "追加",
+        "claim": "手を挙げる",
+        "complete": "完了にする",
+        "release": "手放す",
+        "unassigned": "未割当",
+        "empty": "宿題はまだありません",
+        "alreadyClaimed": "この宿題はすでに担当者が決まっています",
+        "addSuccess": "宿題を追加しました",
+        "addFailed": "宿題の追加に失敗しました",
+        "claimSuccess": "この宿題を引き受けました",
+        "completeSuccess": "完了にしました",
+        "completeFailed": "完了の更新に失敗しました",
+        "releaseSuccess": "手放しました",
+        "releaseFailed": "手放しに失敗しました"
       }
     },
     "chronicle": {
@@ -522,9 +658,71 @@
       "loadFailed": "村史の取得に失敗しました",
       "viewDetail": "詳細を見る"
     },
+    "archive": {
+      "title": "村史",
+      "subtitle": "祭・歳時記・寄合、村の行事の記録",
+      "empty": "村史はまだありません",
+      "loadFailed": "村史の取得に失敗しました",
+      "archivedAt": "記録日",
+      "filterAll": "すべて",
+      "sourceType": {
+        "festival": "お祭り",
+        "calendarEvent": "歳時記",
+        "meetup": "寄合"
+      }
+    },
+    "charter": {
+      "title": "村憲章",
+      "subtitle": "村の約束ごと",
+      "empty": "まだ村憲章は定められていません",
+      "enactedAt": "制定日",
+      "lastRevisedAt": "改定日",
+      "article": {
+        "label": "第{n}条",
+        "add": "＋条を追加",
+        "bodyPlaceholder": "条文を入力",
+        "bodyRequired": "条文を入力してください",
+        "delete": "条を削除",
+        "deleteConfirm": "この条を削除しますか？"
+      },
+      "supplement": {
+        "add": "＋付則を追加",
+        "label": "付則",
+        "placeholder": "付則を入力（任意）"
+      },
+      "reorder": {
+        "hint": "上下ボタンで条の並び順を変更できます",
+        "up": "上へ",
+        "down": "下へ"
+      },
+      "drafters": {
+        "title": "策定者",
+        "add": "＋策定者を追加",
+        "empty": "策定者はまだ登録されていません",
+        "delete": "策定者を削除",
+        "deleteConfirm": "「{name}」を策定者から削除しますか？",
+        "selectPlaceholder": "村人を選択",
+        "loadMembersFailed": "村人一覧を取得できなかったため、策定者を追加できません。",
+        "reloadMembers": "再取得"
+      },
+      "revision": {
+        "confirm": "改正を確定",
+        "confirmHint": "この時点を改定として記録します（条文の公開状態は変わりません）。",
+        "confirmSuccess": "改正を確定しました",
+        "notePlaceholder": "改定メモ（任意）",
+        "history": "改定履歴",
+        "historyEmpty": "改定履歴はまだありません"
+      },
+      "error": {
+        "loadFailed": "村憲章の取得に失敗しました",
+        "mutationFailed": "操作に失敗しました",
+        "versionConflict": "他の村長が同時に編集しました。最新を読み込み直してください",
+        "drafterDuplicate": "その村人はすでに策定者です"
+      }
+    },
     "serendipity": {
       "title": "ご縁スコア",
-      "subtitle": "あなたとの相性度",
+      "subtitle": "村での出会いの積み重ね",
       "rank": "順位",
       "score": "スコア",
       "myScore": "あなたのスコア",
@@ -532,6 +730,26 @@
       "lastComputedAt": "最終計算日時",
       "empty": "まだご縁スコアは計算されていません",
       "loadFailed": "ご縁スコアの取得に失敗しました"
+    },
+    "affinity": {
+      "title": "相性のヒント",
+      "subtitle": "参加前に、この村が自分に合いそうか見てみましょう",
+      "categoryMatch": "興味・カテゴリが近い村です",
+      "hidden": "相性のヒントは今はありません",
+      "sharedVillagers": {
+        "hidden": "まだ表示できません",
+        "few": "数人",
+        "many": "10人以上"
+      },
+      "reason": {
+        "categoryMatch": "あなたの関心と近い村です",
+        "sharedVillagers": "あなたと縁のある村人がいます",
+        "pioneer": "今なら草分けメンバーとして参加できます"
+      },
+      "pioneer": {
+        "title": "村の草分けになれます！",
+        "body": "この村はまだ人数が少ない小さな村です。今参加すると、村を一緒に作っていく草分けメンバーになれます。"
+      }
     },
     "pilgrimage": {
       "title": "村巡礼",
@@ -726,6 +944,15 @@
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
         }
+      },
+      "charter": {
+        "title": "村憲章で村の約束ごとを残す",
+        "body": "村長・長老が村のルール（条文）を定め、村人以外にも公開できる約束ごとです（公開村は未参加者にも見えます）。",
+        "steps": {
+          "step1": "「村憲章」タブを開きます。",
+          "step2": "村長・長老は「＋条を追加」で条文を書き、必要なら付則も添えられます。",
+          "step3": "並び替え・削除もその場で反映され、「改正を確定」で改定履歴に記録できます。"
+        }
       }
     },
     "joinRequestGuide": {
@@ -774,6 +1001,10 @@
         "members": {
           "title": "メンバー・役職",
           "desc": "村人の役職変更やBANなど、メンバーを管理します。"
+        },
+        "representatives": {
+          "title": "代表委任",
+          "desc": "チーム/組織の村加入に対し、代表として投稿できるユーザーを委任・管理します。"
         },
         "joinRequests": {
           "title": "参加申請の審査",
@@ -919,6 +1150,25 @@
       },
       "comingSoon": {
         "body": "⚠️ 配信機能は現在準備中です。設定の保存はできますが、実際のニュースレター配信はまだ行われません。"
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "使い方",
+      "what": {
+        "title": "村人ミニプロフィールとは",
+        "body": "村人一覧で名前をタップすると開く、その村人の簡易プロフィールです。ロールと、公開設定されている所属村の一覧を見られます。"
+      },
+      "villages": {
+        "title": "所属村一覧の見方",
+        "body": "対象の村人が公開設定している村だけが並びます。村名・村紋・カテゴリのみを表示し、ニックネームは表示されません。カードをタップするとその村のトップへ移動します。"
+      },
+      "toggle": {
+        "title": "自分のプロフィールを開いたとき",
+        "body": "自分自身のミニプロフィールには「この村を私の所属一覧に載せる」トグルが表示されます。オンにすると、あなたと同じ村にいる人からこの村への所属が見えるようになります。村ごとに個別に設定できます。"
+      },
+      "privacy": {
+        "title": "プライバシーについて",
+        "body": "所属村一覧は、あなたと相手が同じ村に共にいる場合のみ表示できます。見せられる村が無い場合は「表示できる所属村はありません」と中立的に表示され、同じ村にいるかどうか自体は分かりません。"
       }
     }
   }

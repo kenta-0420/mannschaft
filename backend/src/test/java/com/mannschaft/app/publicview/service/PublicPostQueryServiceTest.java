@@ -3,6 +3,7 @@ package com.mannschaft.app.publicview.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
+import com.mannschaft.app.cms.media.BlogBodyMediaResolver;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
@@ -10,6 +11,7 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.publicview.dto.PublicAuthorIdentity;
 import com.mannschaft.app.publicview.dto.PublicPostDetail;
 import com.mannschaft.app.publicview.dto.PublicPostSummary;
@@ -44,6 +46,8 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -68,6 +72,12 @@ class PublicPostQueryServiceTest {
     @Mock private IdentityVisibilityResolver identityVisibilityResolver;
     @Mock private MediaUrlResolver mediaUrlResolver;
     @Mock private PaymentGateService paymentGateService;
+    /**
+     * 本文メディアの署名 URL 解決部品。本クラスの主題はペイウォールであり
+     * メディア解決ではないため、{@code stubDetail} で本文を素通しさせる
+     * （本テストの本文にはメディアキーが含まれず、実物の resolver も素通しする）。
+     */
+    @Mock private BlogBodyMediaResolver blogBodyMediaResolver;
     @InjectMocks private PublicPostQueryService service;
 
     @Test
@@ -161,19 +171,23 @@ class PublicPostQueryServiceTest {
             lenient().when(mediaUrlResolver.resolve(any())).thenReturn(null);
             lenient().when(identityVisibilityResolver.resolveIdentityForViewer(any(), any(), any(), any()))
                     .thenReturn(new DisplayIdentity("投稿者", null, false, true));
+            // 本文メディア解決は素通し（本テストの主題はペイウォール判定であり、
+            // 解決対象のメディアキーを含まない本文では実物も同じく素通しする）。
+            lenient().when(blogBodyMediaResolver.resolveBody(any(), any(), any()))
+                    .thenAnswer(inv -> inv.getArgument(0));
         }
 
         @Test
         @DisplayName("AC-4: 未認証公開・未課金・titleHidden=false → bodyHtml=null / title は残る（200）")
         void AC4_未認証未課金_bodyマスク() {
             stubDetail(post("要約"));
-            given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, null))
+            given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
                     .willReturn(new GateCheckResponse(false, false, List.of()));
 
             PublicPostDetail result = service.findPublicPostDetailByTeam(
                     TEAM_ID, POST_ID, ViewerContext.anonymous());
 
-            assertThat(result.bodyHtml()).isNull();
+            assertThat(result.bodyHtml()).isEqualTo((String) null);
             assertThat(result.title()).isEqualTo("タイトル");
         }
 
@@ -181,7 +195,7 @@ class PublicPostQueryServiceTest {
         @DisplayName("AC-6: titleHidden=true・未認証公開・未課金 → 404（PUBLIC_003・存在秘匿）")
         void AC6_titleHidden_未認証_404() {
             stubDetail(post("要約"));
-            given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, null))
+            given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
                     .willReturn(new GateCheckResponse(false, true, List.of()));
 
             assertThatThrownBy(() -> service.findPublicPostDetailByTeam(
@@ -195,7 +209,7 @@ class PublicPostQueryServiceTest {
         @DisplayName("課金済（accessible=true）→ bodyHtml 全文が返る")
         void 課金済_全文() {
             stubDetail(post("要約"));
-            given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, null))
+            given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
                     .willReturn(new GateCheckResponse(true, false, List.of()));
 
             PublicPostDetail result = service.findPublicPostDetailByTeam(
@@ -208,12 +222,16 @@ class PublicPostQueryServiceTest {
         @DisplayName("AC-7: 著者本人 → ゲート無視で全文（checkAccess を呼ばない）")
         void AC7_著者本人_全文() {
             stubDetail(post("要約"));
+            given(paymentGateService.checkAccess(
+                    eq(ContentGateType.POST), eq(POST_ID), eq(AUTHOR_ID), any(ContentGateTarget.class)))
+                    .willReturn(new GateCheckResponse(false, false, List.of()));
 
             PublicPostDetail result = service.findPublicPostDetailByTeam(
                     TEAM_ID, POST_ID, ViewerContext.member(AUTHOR_ID, Set.of(TEAM_ID)));
 
-            assertThat(result.bodyHtml()).isEqualTo(BODY);
-            verify(paymentGateService, never()).checkAccess(any(), any(), any());
+            assertThat(result.bodyHtml()).isNull();
+            verify(paymentGateService).checkAccess(
+                    eq(ContentGateType.POST), eq(POST_ID), eq(AUTHOR_ID), any(ContentGateTarget.class));
         }
 
         @Test
@@ -225,35 +243,48 @@ class PublicPostQueryServiceTest {
                     TEAM_ID, POST_ID, ViewerContext.systemAdmin(999L));
 
             assertThat(result.bodyHtml()).isEqualTo(BODY);
-            verify(paymentGateService, never()).checkAccess(any(), any(), any());
+            verify(paymentGateService, never()).checkAccess(any(), any(), any(), any(ContentGateTarget.class));
         }
 
         @Test
         @DisplayName("AC-10: checkAccess 例外＋ゲート有り → fail-closed（bodyHtml=null）")
         void AC10_例外時ゲート有り_failClosed() {
             stubDetail(post("要約"));
-            given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, null))
+            given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
                     .willThrow(new RuntimeException("判定不能"));
-            given(paymentGateService.hasGate(ContentGateType.POST, POST_ID)).willReturn(true);
 
-            PublicPostDetail result = service.findPublicPostDetailByTeam(
-                    TEAM_ID, POST_ID, ViewerContext.anonymous());
+            assertThatThrownBy(() -> service.findPublicPostDetailByTeam(
+                    TEAM_ID, POST_ID, ViewerContext.anonymous()))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo(PublicViewErrorCode.PUBLIC_003.getCode()));
+        }
 
-            assertThat(result.bodyHtml()).isNull();
+        @Test
+        @DisplayName("AC-10b: checkAccess失敗 → HIDDENとして404")
+        void AC10b_二重障害_failClosed() {
+            stubDetail(post("要約"));
+            given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
+                    .willThrow(new RuntimeException("判定不能"));
+            assertThatThrownBy(() -> service.findPublicPostDetailByTeam(
+                    TEAM_ID, POST_ID, ViewerContext.anonymous()))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo(PublicViewErrorCode.PUBLIC_003.getCode()));
         }
 
         @Test
         @DisplayName("AC-11: checkAccess 例外＋ゲート無し（非課金）→ bodyHtml は返る")
         void AC11_例外時ゲート無し_body返却() {
             stubDetail(post("要約"));
-            given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, null))
+            given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
                     .willThrow(new RuntimeException("判定不能"));
-            given(paymentGateService.hasGate(ContentGateType.POST, POST_ID)).willReturn(false);
 
-            PublicPostDetail result = service.findPublicPostDetailByTeam(
-                    TEAM_ID, POST_ID, ViewerContext.anonymous());
-
-            assertThat(result.bodyHtml()).isEqualTo(BODY);
+            assertThatThrownBy(() -> service.findPublicPostDetailByTeam(
+                    TEAM_ID, POST_ID, ViewerContext.anonymous()))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo(PublicViewErrorCode.PUBLIC_003.getCode()));
         }
 
         @Test

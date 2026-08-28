@@ -1,10 +1,13 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.reservation.repository.ReservationSlotTemplateRepository;
-import lombok.RequiredArgsConstructor;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -34,17 +37,34 @@ import java.util.List;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ReservationSlotGenerationBatchService {
 
     private final ReservationSlotTemplateRepository templateRepository;
     private final ReservationSlotGenerationService generationService;
+    private final TeamTimezoneResolver teamTimezoneResolver;
+
+    /** 既存のスライステスト／手動組み立てとの互換用。実運用では Spring の3引数 ctor を使う。 */
+    @Autowired
+    public ReservationSlotGenerationBatchService(ReservationSlotTemplateRepository templateRepository,
+                                                  ReservationSlotGenerationService generationService,
+                                                  TeamTimezoneResolver teamTimezoneResolver) {
+        this.templateRepository = templateRepository;
+        this.generationService = generationService;
+        this.teamTimezoneResolver = teamTimezoneResolver;
+    }
+
+    public ReservationSlotGenerationBatchService(ReservationSlotTemplateRepository templateRepository,
+                                                  ReservationSlotGenerationService generationService) {
+        this(templateRepository, generationService, null);
+    }
 
     /**
      * active テンプレを持つ全チームについて horizon 差分を生成する。
      */
     @BatchEndpoint(name = "reservation-slot-generation",
             description = "週間テンプレートから予約枠の horizon（28日先）差分を日次生成する")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予約枠の先送りホライズン生成であり、冪等かつ将来分が対象なので再開後に埋め直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "0 15 0 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "reservationSlotGeneration", lockAtLeastFor = "1m", lockAtMostFor = "30m")
     public void generateDailyHorizon() {
@@ -52,10 +72,22 @@ public class ReservationSlotGenerationBatchService {
         if (teamIds.isEmpty()) {
             return;
         }
+        var teamZones = teamTimezoneResolver == null
+                ? java.util.Collections.<Long, java.time.ZoneId>emptyMap()
+                : teamTimezoneResolver.resolveZones(teamIds);
+        /*
+        // チーム TZ は一括解決し、チームごとの生成ループで N+1 lookup を発生させない。
+        var teamZones = teamTimezoneResolver == null
+                ? java.util.Collections.<Long, java.time.ZoneId>emptyMap()
+                : teamTimezoneResolver.resolveZones(teamIds); */
         int succeeded = 0;
         for (Long teamId : teamIds) {
             try {
-                generationService.generateDiffForTeam(teamId);
+                if (teamTimezoneResolver == null) {
+                    generationService.generateDiffForTeam(teamId);
+                } else {
+                    generationService.generateDiffForTeam(teamId, teamZones.get(teamId));
+                }
                 succeeded++;
             } catch (Exception e) {
                 // 1チームの失敗が他チームを巻き込まないようチーム単位で隔離する（握りつぶさず error 記録）。

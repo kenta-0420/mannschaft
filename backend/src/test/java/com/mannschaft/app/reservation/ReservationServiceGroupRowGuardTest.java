@@ -77,6 +77,9 @@ class ReservationServiceGroupRowGuardTest {
     @Mock
     private com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository blockedTimeRepository;
     @Mock
+    private com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository
+            recurringBlockedTimeRepository;
+    @Mock
     private com.mannschaft.app.reservation.service.ReservationGroupSummaryResolver groupSummaryResolver;
 
     private final com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker unavailabilityChecker =
@@ -100,9 +103,12 @@ class ReservationServiceGroupRowGuardTest {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
                 nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
-                reservationPolicyService, blockedTimeRepository, unavailabilityChecker,
+                reservationPolicyService, blockedTimeRepository, recurringBlockedTimeRepository,
+                unavailabilityChecker,
                 groupSummaryResolver,
                 org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationWaitlistService.class),
+                // F03.4.5 §6.4: レートリミットは本テストの対象外のため素通しの mock。
+                org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationCreateRateLimiter.class),
                 FIXED_CLOCK);
 
         given(slotRepository.findById(any())).willReturn(Optional.of(slotEntity()));
@@ -189,14 +195,14 @@ class ReservationServiceGroupRowGuardTest {
     @DisplayName("①cancelByUser: グループ行は 042")
     void cancelByUser_グループ行は042() {
         stubByUser(groupRow(true, ReservationStatus.CONFIRMED));
-        assert042(() -> service.cancelByUser(USER_ID, RESERVATION_ID, new CancelReservationRequest("x")));
+        assert042(() -> service.cancelByUser(USER_ID, RESERVATION_ID, new CancelReservationRequest("x", null)));
     }
 
     @Test
     @DisplayName("②cancelByAdmin: グループ行は 042")
     void cancelByAdmin_グループ行は042() {
         stubByTeam(groupRow(true, ReservationStatus.CONFIRMED));
-        assert042(() -> service.cancelByAdmin(TEAM_ID, RESERVATION_ID, new CancelReservationRequest("x")));
+        assert042(() -> service.cancelByAdmin(TEAM_ID, RESERVATION_ID, new CancelReservationRequest("x", null)));
     }
 
     @Test
@@ -273,7 +279,7 @@ class ReservationServiceGroupRowGuardTest {
         ReservationEntity single = singleRow(ReservationStatus.CONFIRMED);
         stubByUser(single);
 
-        service.cancelByUser(USER_ID, RESERVATION_ID, new CancelReservationRequest("予定変更"));
+        service.cancelByUser(USER_ID, RESERVATION_ID, new CancelReservationRequest("予定変更", null));
 
         assertThat(single.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
     }

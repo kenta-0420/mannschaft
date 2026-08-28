@@ -1,5 +1,8 @@
 package com.mannschaft.app.advertising.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.PricingModel;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity;
 import com.mannschaft.app.advertising.entity.AdRateCardEntity;
@@ -66,11 +69,16 @@ public class AdDailyStatsAggregationBatchService {
      * <p>毎月 1 日の 03:00（{@code AdMessagingBillingBridge}）/ 05:00（月次請求）より前に配置し、
      * それらが前日までの確定値を参照できる順序を保証する（正本 §7.3）。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "集計元の広告イベント生ログは残るため止めても復元可能で、広告機能を閉じている間は集計対象の新規発生自体が無い")
     @Scheduled(cron = "0 30 1 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "adDailyStatsAggregation",
             lockAtMostFor = "PT30M",
             lockAtLeastFor = "PT1M")
+    @BatchEndpoint(name = "ad-daily-stats-aggregation",
+            description = "前日分の運用型広告インプレッション・クリックをキャンペーン×広告単位で集計し、日次統計へ毎日01:30に反映する")
     public void runDailyAggregation() {
         LocalDate targetDate = LocalDate.now(ZONE).minusDays(1);
         aggregate(targetDate);

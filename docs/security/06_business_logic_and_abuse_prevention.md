@@ -169,6 +169,10 @@ Retry-After: 18  （429/423 の場合のみ）
 - 将来的には Gateway 層（Spring Cloud Gateway 等）への集約を検討
 - 現在の `RateLimitFilter` 実装の閾値を本テーブルに揃えるリファクタリングを推奨
 
+> 新しく `permitAll` エンドポイントを追加する際にレート制限が必要かどうかの判断基準・
+> 実装後の確認手順・落とし穴は
+> [公開 API 追加チェックリスト](public_api_addition_checklist.md) を参照すること。
+
 #### 4.3.1 実装状況（Valkey 化 全陣完了 — 2026-06-12 / PR #1470・#1471・#1472）
 
 共通基盤を `com.mannschaft.app.common.ratelimit` パッケージに実装した。
@@ -195,6 +199,12 @@ auth 系の既存 Valkey fail-open（`AuthService` / `AuthTokenService`）と同
 | 第一陣 (#1470) | `ActionMemoRateLimitFilter` / `PublicApiRateLimitFilter` |
 | 第二陣A (#1471) | `SyncRateLimitFilter` / `AuditLogRateLimitFilter` / `FavoriteRateLimitFilter` / `PointCardRateLimitFilter` / `QuickMemoRateLimitFilter` / `AuthWebAuthnReauthRateLimitFilter` / `VisibilityTemplateRateLimitFilter` / `MemberInfoRateLimitFilter` |
 | 第二陣B (#1472) | `DashboardScopeTabRateLimitFilter` / `ErrorReportRateLimitFilter` / `BroadcastRateLimitFilter` / `AdPublicEndpointRateLimitFilter` / `RepairPlanCsvImportRateLimitFilter` / `RepairPlanSimulateRateLimitFilter` / `ScheduleDelegationRateLimitFilter` / `EventDelegationRateLimitFilter` |
+
+以降に新設したフィルタ（いずれも `AbstractRateLimitFilter` 継承・Valkey カウント・§4.3 標準応答）:
+
+| 追加 | フィルタ | 対象 EP と閾値 | 根拠 |
+|---|---|---|---|
+| #2494 | `AnnouncementReadRateLimitFilter` | 単件既読 `POST /api/v1/(teams\|organizations)/{id}/announcements/{id}/read` — **60 req/分・ユーザー**<br>一括既読 `POST .../announcements/read-all` — **5 req/分・ユーザー** | 単件は §4.2「認証済み WRITE 系」の標準値（設計書 F02.6 §6.4 の想定 100 req/分は標準の上限目安を超えるため 60 に丸めた）。一括は設計書 F02.6 §6.4 の想定値そのまま — 1 リクエストで最大 10,000 行の `INSERT` を伴う重い操作なので標準（送信系 10 req/分）より厳しい側を採る。zone を分けているのは単件の連打が一括の枠を食い潰さないため |
 
 注: Bucket4j 依存自体は `ResumeExportService` / 天気 API クライアント等のフィルタ外用途で
 正当に使用が残るため build.gradle からは除去しない。
@@ -366,8 +376,15 @@ revoke した直後にもう片方が使用済みの旧トークンを再提示�
 
 | エラーコード | HTTP ステータス | 意味 |
 |---|---|---|
+| `AUTH_007` | 401 | リフレッシュトークンが無効／リボーク済み（Cookie 欠落・DB 不在・明示ログアウト済み・期限切れ）|
 | `AUTH_026` | 401 | リプレイ検出・全セッション無効化 |
 | `AUTH_039` | 401 | 全デバイスセッション無効化後のアクセス |
+
+`AUTH_007` は §7.4 の表で当初から 401 と規定していたが、`ERROR_CODE_STATUS_MAP` への登録が漏れており
+実際には Severity.WARN 既定の 400 が返っていた（実機のログイン画面で `POST /api/v1/auth/refresh` が 400 を
+返すことを確認）。監視・アラートで認証失敗として集計できず、フロントエンドも「400 も認証失敗とみなす」
+特例分岐で補償していたため、登録を追加して設計どおり 401 に是正した。
+フロントエンドの 400 受理は旧 BE・旧モバイルクライアント互換のため当面残す。
 
 ### 7.7 真リプレイ検出時の全デバイス無効化は別トランザクションで確実にコミットする（REQUIRES_NEW）
 

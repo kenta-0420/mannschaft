@@ -180,6 +180,7 @@ export function useChatWebSocket() {
           body: JSON.stringify({ channelId }),
         })
       })
+      // eslint-disable-next-line no-restricted-syntax -- タイピング通知は非クリティカルな補助機能。WS 不通時のサイレント失敗が正しい
       .catch(() => {}) // サイレント失敗（タイピング通知は非クリティカル）
   }
 
@@ -335,6 +336,7 @@ export function useChatWebSocket() {
           callback(frame.body)
         })
       })
+      // eslint-disable-next-line no-restricted-syntax -- 在席等の任意 STOMP 購読。WS 接続不可時のサイレント失敗が正しい（補助機能・非クリティカル）
       .catch(() => {}) // WebSocket 接続失敗時のサイレント失敗（在席等の補助機能・非クリティカル）
     return () => {
       subscription?.unsubscribe()
@@ -351,6 +353,7 @@ export function useChatWebSocket() {
         if (_stompClient === null || !_stompClient.connected) return
         _stompClient.publish({ destination, body })
       })
+      // eslint-disable-next-line no-restricted-syntax -- 在席等の任意 STOMP 送信。WS 接続不可時のサイレント失敗が正しい（本文は REST 経由・補助機能）
       .catch(() => {}) // WebSocket 接続失敗時のサイレント失敗（在席等の補助機能・非クリティカル）
   }
 

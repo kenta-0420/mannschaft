@@ -1,6 +1,8 @@
 package com.mannschaft.app.seal.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.seal.dto.AdminRegenerateResponse;
 import com.mannschaft.app.seal.dto.SealResponse;
 import com.mannschaft.app.seal.service.SealAdminService;
@@ -25,6 +27,7 @@ import java.util.List;
 public class SealAdminController {
 
     private final SealAdminService sealAdminService;
+    private final AccessControlService accessControlService;
 
     /**
      * 全印鑑一覧を取得する。
@@ -33,6 +36,9 @@ public class SealAdminController {
     @Operation(summary = "全印鑑一覧（管理者）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<SealResponse>>> listAllSeals() {
+        // 認可根治 Wave5: scope 引数を持たない全テナント横断 API のため SYSTEM_ADMIN 限定
+        // （SecurityConfig のパス単位 hasRole と二重防御）。
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         List<SealResponse> seals = sealAdminService.listAllSeals();
         return ResponseEntity.ok(ApiResponse.of(seals));
     }
@@ -44,6 +50,8 @@ public class SealAdminController {
     @Operation(summary = "一括再生成（管理者）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再生成成功")
     public ResponseEntity<ApiResponse<AdminRegenerateResponse>> regenerateAll() {
+        // 認可根治 Wave5: 全ユーザーの印鑑を書き換える破壊的一括操作のため SYSTEM_ADMIN 限定。
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         AdminRegenerateResponse response = sealAdminService.regenerateAll();
         return ResponseEntity.ok(ApiResponse.of(response));
     }

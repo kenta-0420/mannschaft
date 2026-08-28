@@ -10,7 +10,6 @@ import com.mannschaft.app.reservation.service.ReservationGridService;
 import com.mannschaft.app.reservation.service.ReservationSlotService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -55,7 +54,8 @@ public class TeamReservationSlotController {
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        List<ReservationSlotResponse> slots = slotService.listSlots(teamId, from, to);
+        List<ReservationSlotResponse> slots =
+                slotService.listSlots(teamId, SecurityUtils.getCurrentUserId(), from, to);
         return ResponseEntity.ok(ApiResponse.of(slots));
     }
 
@@ -69,14 +69,15 @@ public class TeamReservationSlotController {
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        List<ReservationSlotResponse> slots = slotService.listAvailableSlots(teamId, from, to);
+        List<ReservationSlotResponse> slots =
+                slotService.listAvailableSlots(teamId, SecurityUtils.getCurrentUserId(), from, to);
         return ResponseEntity.ok(ApiResponse.of(slots));
     }
 
     /**
      * 複数予約対象の空きグリッドを取得する（機能C・§4.C / F03.4.4 §4.1 拡張）。
      *
-     * <p>列＝予約対象（スタッフ・共通。{@code axis=LINE} 時はライン・共通）、各セル＝時間帯の状態。
+     * <p>列＝予約対象ライン（＋共通列。列軸はライン固定 — #2575 でスタッフ軸を撤去）、各セル＝時間帯の状態。
      * 単日（{@code date}）または日付レンジ（{@code from}/{@code to}・最大7日・{@code days[]} 応答）。
      * <b>{@code date} は F03.4.4 で {@code required=false} 化</b>し、「{@code date} XOR
      * ({@code from},{@code to})」の排他は Service 層で明示検証する（バインド段階の
@@ -87,7 +88,7 @@ public class TeamReservationSlotController {
      * 未認証は認証層で 401、非会員かつ非公開は 403（RESERVATION_021）。</p>
      */
     @GetMapping("/grid")
-    @Operation(summary = "空きグリッド（複数予約対象・ライン軸/日付レンジ/メニューフィルター対応）")
+    @Operation(summary = "空きグリッド（ライン軸・日付レンジ/メニューフィルター対応）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ReservationGridResponse>> getGrid(
             @PathVariable Long teamId,
@@ -97,13 +98,10 @@ public class TeamReservationSlotController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @Parameter(description = "日付レンジ終了日")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @Parameter(description = "列軸（既定 STAFF）", schema = @Schema(allowableValues = {"STAFF", "LINE"}))
-            @RequestParam(required = false) String axis,
-            @Parameter(description = "メニューフィルター（axis=LINE のときのみ有効）")
-            @RequestParam(required = false) UUID menuId,
-            @RequestParam(required = false) List<Long> staffUserIds) {
+            @Parameter(description = "メニューフィルター（提供可能ラインで列を絞る）")
+            @RequestParam(required = false) UUID menuId) {
         ReservationGridResponse response = gridService.getGrid(
-                teamId, SecurityUtils.getCurrentUserId(), date, from, to, axis, menuId, staffUserIds);
+                teamId, SecurityUtils.getCurrentUserId(), date, from, to, menuId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -116,7 +114,7 @@ public class TeamReservationSlotController {
     public ResponseEntity<ApiResponse<ReservationSlotResponse>> getSlot(
             @PathVariable Long teamId,
             @PathVariable Long slotId) {
-        ReservationSlotResponse response = slotService.getSlot(teamId, slotId);
+        ReservationSlotResponse response = slotService.getSlot(teamId, SecurityUtils.getCurrentUserId(), slotId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

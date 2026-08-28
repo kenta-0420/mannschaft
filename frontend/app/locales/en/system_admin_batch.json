@@ -33,6 +33,7 @@
         "failed": "Failed",
         "running": "Running",
         "skipped": "Skipped",
+        "resumed": "Resumed",
         "locked": "Locked",
         "accepted": "Accepted",
         "completed": "Completed",

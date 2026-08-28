@@ -2,6 +2,7 @@ package com.mannschaft.app.notification.confirmable.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
 import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
@@ -34,10 +35,21 @@ public class ConfirmableNotificationRecipientController {
      * ログインユーザーの保留中（未確認・除外なし）確認通知一覧を取得する。
      *
      * <p>認証済みユーザーであればロールを問わずアクセス可能。</p>
+     *
+     * <p><b>認可（{@link AuthorizedInService} 付与の根拠・認可根治戦役 Wave7 監査済）</b>:
+     * 本 EP はパス変数もリクエストボディも持たず、対象ユーザーはリクエストから受け取らない。
+     * サーバ側で確定した {@link SecurityUtils#getCurrentUserId()} を
+     * {@code ConfirmableNotificationQueryService#listPending(Long)} 経由で
+     * {@code ConfirmableNotificationRecipientRepository#findByUserIdAndIsConfirmedFalseAndExcludedAtIsNull}
+     * の検索条件に固定して渡すため、他人の受信者行は構造上取得できない自己スコープ EP である。
+     * 未ログインは {@code SecurityUtils.getCurrentUserId()} が 401 を投げる。
+     * データ依存でない構造的な自己スコープ認可のため白名簿クラス呼び出しを持たず、
+     * 本マーカーで監査済であることを明示する。</p>
      */
     @GetMapping("/pending")
     @Operation(summary = "保留中確認通知一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<List<ConfirmableNotificationRecipientResponse>>> listPending() {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         List<ConfirmableNotificationRecipientEntity> recipients =

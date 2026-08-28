@@ -25,6 +25,8 @@
     "empty": "暂无新公告。",
     "pin_limit_reached": "最多可置顶5条公告。",
     "already_registered": "该内容已注册为公告。",
+    "no_longer_available": "该公告已结束公开，已从列表中移除。",
+    "mark_all_read_partial": "已将 {count} 条公告标为已读。仍有未读公告，再次点击可继续处理。",
     "broadcast_button_team": "团队内通知",
     "broadcast_button_org": "组织内通知",
     "wizard_title": "发送通知",

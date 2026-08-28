@@ -29,6 +29,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 
 /**
  * チーム支払い記録コントローラー。チーム単位の支払い記録管理 API を提供する。
@@ -42,8 +44,8 @@ import com.mannschaft.app.common.SecurityUtils;
  * </p>
  *
  * <p><b>認可根治戦役 Wave3-B1b（2026-07-16）:</b> listPayments/updatePayment/cancelPayment/refundPayment
- * の 4EP に認可が一切敷設されておらず、未認証以外は誰でも到達できていた（双子コントローラー
- * {@link OrganizationPaymentController}（Wave3-B1 済）と同型の欠陥）。閲覧系（listPayments）は
+ * の 4EP に認可を敷設する（双子コントローラー {@link OrganizationPaymentController}（Wave3-B1 済）と同型）。
+ * 閲覧系（listPayments）は
  * {@link AccessControlService#checkMembership}（"TEAM" scope）、変更系（updatePayment/cancelPayment/
  * refundPayment・<b>refundPayment は Stripe 実返金の最重要案件</b>）は
  * {@link AccessControlService#checkAdminOrAbove} を要求する。加えて、path 上位スコープの ADMIN であっても
@@ -52,12 +54,18 @@ import com.mannschaft.app.common.SecurityUtils;
  * 属することを検証してから {@link MemberPaymentService} の {@code itemId} 直渡しメソッドを呼ぶ。
  * 不一致は {@code PAYMENT_ITEM_NOT_FOUND}（404・存在秘匿）。</p>
  *
- * <p>createManualPayment/createBulkPayments/sendRemind は本戦役の対象外
- * （createManualPayment/createBulkPayments は {@code MemberPaymentService} 内部の
- * {@code PaymentAuthorizationService#authorizePayment}/{@code #authorizeBulkPaymentByAdmin} が
- * {@code itemId} 由来のスコープで既に認可済み。sendRemind は既存の
- * {@code checkAdminOrAbove(id, "TEAM")} に加え、path {@code id} と {@code itemId} のスコープ不一致
- * （team A の ADMIN が team B の itemId を渡す越境）を防ぐため {@code findByIdAndTeamIdOrThrow} を追加した）。</p>
+ * <p>sendRemind は既存の {@code checkAdminOrAbove(id, "TEAM")} に加え、path {@code id} と {@code itemId} の
+ * スコープ不一致（team A の ADMIN が team B の itemId を渡す越境）を防ぐため
+ * {@code findByIdAndTeamIdOrThrow} を追加した。</p>
+ *
+ * <p><b>認可根治戦役 Wave6（B3・2026-07-21）:</b> 手動入金記録（createManualPayment /
+ * createBulkPayments）を双子の {@link OrganizationPaymentController} と同水準へ揃える。
+ * {@code MemberPaymentService} 内部の {@code PaymentAuthorizationService} による払い手権原評価
+ * （SELF / GUARDIAN / PROXY_GRANT / ADMIN_MANUAL）に加え、入口で
+ * {@link AccessControlService#checkAdminOrAbove}（"TEAM"）と {@code itemId} のチーム帰属検証
+ * （{@link PaymentItemService#findByIdAndTeamIdOrThrow}・不一致は 404・存在秘匿）を要求する。
+ * これにより「手動での入金記録はスコープ ADMIN の操作である」という不変条件を入口で保証する。
+ * 変更前の状態に関する詳細はマージ後に戦役台帳へ記録する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{id}/payment-items/{itemId}")
@@ -100,8 +108,11 @@ public class TeamPaymentController {
             @PathVariable Long id,
             @PathVariable Long itemId,
             @Valid @RequestBody CreateManualPaymentRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, id, "TEAM");
+        paymentItemService.findByIdAndTeamIdOrThrow(itemId, id);
         MemberPaymentResponse response = memberPaymentService.createManualPayment(
-                itemId, SecurityUtils.getCurrentUserId(), request);
+                itemId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -131,14 +142,19 @@ public class TeamPaymentController {
             @PathVariable Long id,
             @PathVariable Long itemId,
             @Valid @RequestBody BulkPaymentRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(userId, id, "TEAM");
+        paymentItemService.findByIdAndTeamIdOrThrow(itemId, id);
         BulkPaymentResponse response = memberPaymentService.createBulkPayments(
-                itemId, SecurityUtils.getCurrentUserId(), request);
+                itemId, userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
      * 支払い記録を取り消す。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "既存の誤決済記録をGate状態にかかわらず取消可能にするため")
     @DeleteMapping("/payments/{paymentId}")
     @Operation(summary = "支払い記録取り消し")
     public ResponseEntity<Void> cancelPayment(
@@ -161,8 +177,8 @@ public class TeamPaymentController {
             @PathVariable Long id,
             @PathVariable Long itemId) {
         accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, "TEAM");
-        // 認可根治戦役 Wave3-B1b: path {id}（TEAM）の ADMIN 判定は通っていたが、その itemId が
-        // team {id} 配下かを検証していなかった（team A の ADMIN が team B の itemId を渡す越境）。
+        // 認可根治戦役 Wave3-B1b: path {id}（TEAM）の ADMIN 判定に加え、その itemId が
+        // team {id} 配下であることを検証する（他チームの itemId を渡す越境を防ぐ）。
         // itemId → scope が path {id} と一致するかをここで検証する（不一致は 404・存在秘匿）。
         paymentItemService.findByIdAndTeamIdOrThrow(itemId, id);
         RemindResponse response = memberPaymentService.sendRemind(itemId);
@@ -172,6 +188,8 @@ public class TeamPaymentController {
     /**
      * 全額返金を実行する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "既存決済の実返金義務をGate状態にかかわらず履行するため")
     @PostMapping("/payments/{paymentId}/refund")
     @Operation(summary = "全額返金実行")
     public ResponseEntity<ApiResponse<MemberPaymentResponse>> refundPayment(

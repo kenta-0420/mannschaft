@@ -80,7 +80,15 @@
       "festival": "Festival",
       "matchRecruit": "Reclutamiento de partidos",
       "meetup": "Reunión",
-      "chronicle": "Crónica de la aldea"
+      "chronicle": "Crónica de la aldea",
+      "charter": "Carta de la aldea"
+    },
+    "systemPost": {
+      "authorName": "Aviso de eventos de la aldea",
+      "eventCreated": "Se creó un evento",
+      "eventUpcoming": "Un evento se acerca",
+      "meetupConfirmed": "Se confirmó la fecha de la reunión",
+      "festivalStarted": "El festival ha comenzado"
     },
     "lobby": {
       "title": "Vestíbulo",
@@ -260,6 +268,15 @@
       "filterRole": "Filtrar por rol",
       "soloHeadmanHint": "Cuando otros miembros se unan a esta aldea, podrás nombrarlos ancianos aquí."
     },
+    "profile": {
+      "title": "Perfil del aldeano",
+      "villages": {
+        "title": "Aldeas a las que pertenece",
+        "empty": "No hay aldeas para mostrar",
+        "publicToggle": "Mostrar esta aldea en mi lista de aldeas",
+        "publicToggleHint": "Al activarlo, las personas que comparten una aldea contigo podrán ver esta aldea en tu lista de aldeas."
+      }
+    },
     "postingIdentity": {
       "title": "Publicar como",
       "asUser": "Publicar como individuo",
@@ -293,7 +310,7 @@
       "VILLAGE_007": "No eres miembro de esta aldea",
       "VILLAGE_008": "Ese apodo ya está en uso",
       "VILLAGE_009": "Límite de denuncias alcanzado (10 por hora)",
-      "VILLAGE_010": "Límite de solicitudes de creación de aldea alcanzado (3 por día, máx. 10 pendientes)",
+      "VILLAGE_010": "Se alcanzó el límite de creación de aldeas. Espere un momento e inténtelo de nuevo.",
       "VILLAGE_011": "El apodo solo puede cambiarse 3 veces por mes",
       "VILLAGE_012": "Has alcanzado el número máximo de aldeas en las que puedes unirte (100)",
       "VILLAGE_013": "Has alcanzado el número máximo de aldeas favoritas (30)",
@@ -324,6 +341,10 @@
       "VILLAGE_042": "Denuncia no encontrada",
       "VILLAGE_043": "Esta denuncia ya ha sido procesada",
       "VILLAGE_044": "Aldea favorita fijada no encontrada",
+      "VILLAGE_052": "Delegación de representante no encontrada",
+      "VILLAGE_053": "Esta combinación de membresía/usuario ya ha sido delegada como representante",
+      "VILLAGE_054": "La membresía objetivo no es un equipo ni una organización",
+      "VILLAGE_055": "El usuario delegado no es miembro del equipo/organización objetivo",
       "generic": "Se produjo un error en la función de la aldea",
       "backToList": "Volver a la lista de aldeas",
       "moderatorOnly": "Solo el jefe del pueblo y los ancianos pueden modificar esta configuración"
@@ -350,7 +371,15 @@
     "monsho": {
       "title": "Escudo de la aldea",
       "upload": "Subir escudo de la aldea",
-      "remove": "Eliminar escudo de la aldea"
+      "remove": "Eliminar escudo de la aldea",
+      "label": "Escudo de la aldea (emblema / logo)",
+      "change": "Cambiar escudo",
+      "uploading": "Subiendo…",
+      "hint": "JPG / PNG / WebP, hasta 5MB",
+      "errorMime": "Solo se admiten imágenes JPG, PNG y WebP",
+      "errorSize": "El tamaño del archivo debe ser de 5MB o menos",
+      "uploadSuccess": "Escudo de la aldea subido",
+      "removeSuccess": "Escudo de la aldea eliminado"
     },
     "calendar": {
       "title": "Calendario de la aldea",
@@ -374,7 +403,26 @@
       "deleteSuccess": "Evento eliminado",
       "empty": "No hay eventos registrados",
       "noEventsInMonth": "No hay eventos este mes",
-      "loadFailed": "Error al cargar el calendario"
+      "loadFailed": "Error al cargar el calendario",
+      "log": {
+        "title": "Cómo fue el año pasado",
+        "lastYear": "Cómo fue en {year}",
+        "addLog": "Registrar el momento",
+        "year": "Año",
+        "note": "Nota breve",
+        "notePlaceholder": "Cuéntanos brevemente cómo fue",
+        "photoKey": "Foto (clave R2, opcional)",
+        "photoKeyHint": "La subida de imágenes llegará próximamente. Si ya tienes una clave registrada en R2, puedes indicarla",
+        "submit": "Guardar",
+        "delete": "Eliminar",
+        "empty": "Todavía no hay registros",
+        "loadFailed": "Error al cargar los registros",
+        "addSuccess": "Registro guardado",
+        "addFailed": "Error al agregar el registro",
+        "deleteConfirm": "¿Eliminar este registro?",
+        "deleteSuccess": "Registro eliminado",
+        "deleteFailed": "Error al eliminar el registro"
+      }
     },
     "festival": {
       "title": "Festival",
@@ -396,12 +444,38 @@
       "saveSuccess": "Festival guardado",
       "cancelSuccess": "Festival cancelado",
       "loadFailed": "Error al cargar la lista de festivales",
+      "invalidDateTime": "La fecha/hora de inicio o fin no es válida. Vuelva a introducirla.",
       "filterAll": "Todos",
       "status": {
         "SCHEDULED": "Programado",
         "ACTIVE": "En curso",
         "ENDED": "Finalizado",
         "CANCELLED": "Cancelado"
+      },
+      "rsvp": {
+        "title": "Confirmación de asistencia",
+        "going": "Voy a ir",
+        "maybe": "Tal vez vaya",
+        "roleLabel": "Rol",
+        "roleLabelPlaceholder": "Rol (opcional, p. ej. puesto de venta)",
+        "submit": "Enviar",
+        "cancel": "Retirar confirmación",
+        "empty": "Nadie ha confirmado asistencia todavía",
+        "loadFailed": "Error al cargar la lista de asistentes",
+        "saveSuccess": "Confirmación de asistencia guardada",
+        "saveFailed": "Error al guardar la confirmación de asistencia",
+        "cancelSuccess": "Confirmación de asistencia retirada",
+        "cancelFailed": "Error al retirar la confirmación de asistencia"
+      },
+      "live": {
+        "title": "Actualizaciones en vivo",
+        "tagAsLive": "Escribe algo para publicar como actualización en vivo",
+        "submit": "Publicar como actualización en vivo",
+        "empty": "Aún no hay actualizaciones en vivo",
+        "viewPost": "Ver publicación",
+        "loadFailed": "Error al cargar las actualizaciones en vivo",
+        "tagSuccess": "Publicado como actualización en vivo",
+        "tagFailed": "Error al publicar la actualización en vivo"
       }
     },
     "matchRecruit": {
@@ -470,11 +544,22 @@
     },
     "representative": {
       "title": "Delegación de representante",
+      "subtitle": "Delega el derecho a publicar como representante a un usuario individual, en nombre de una membresía de equipo/organización de esta aldea.",
       "grant": "Delegar como representante",
       "revoke": "Revocar delegación",
       "empty": "No hay representantes delegados",
       "grantedBy": "Delegado por",
-      "note": "Nota"
+      "grantedAt": "Delegado el",
+      "note": "Nota",
+      "target": "Objetivo (equipo/organización)",
+      "targetPlaceholder": "Selecciona un equipo/organización para delegar",
+      "noTargets": "No hay membresías de equipo/organización disponibles para delegar",
+      "unknownTarget": "Objetivo desconocido",
+      "representativeUser": "Usuario representante",
+      "loadFailed": "No se pudieron cargar las delegaciones de representante",
+      "confirmRevokeTitle": "¿Revocar esta delegación?",
+      "confirmRevokeBody": "Se revocará la delegación de representante de {name}. ¿Estás seguro?",
+      "revokeSuccess": "Delegación revocada"
     },
     "meetup": {
       "title": "Reunión",
@@ -488,6 +573,9 @@
       "addCandidateDate": "Agregar fecha candidata",
       "removeCandidateDate": "Eliminar fecha candidata",
       "candidateDate": "Fecha candidata",
+      "candidateTime": "Hora",
+      "allDay": "Todo el día",
+      "timeOptionalHint": "La hora es opcional (déjala vacía para todo el día)",
       "vote": "Votar",
       "confirm": "Confirmar esta fecha",
       "confirmedDate": "Fecha confirmada",
@@ -508,6 +596,54 @@
         "PLANNING": "Votación abierta",
         "CONFIRMED": "Confirmado",
         "CANCELLED": "Cancelado"
+      },
+      "attendance": {
+        "title": "Asistencia",
+        "going": "Voy",
+        "maybe": "Quizás voy",
+        "absent": "No voy",
+        "notConfirmedHint": "Podrás registrar tu asistencia cuando se confirme la fecha",
+        "empty": "Todavía nadie ha respondido",
+        "unknownMember": "Aldeano",
+        "saveSuccess": "Asistencia registrada",
+        "saveFailed": "Error al registrar la asistencia"
+      },
+      "comment": {
+        "title": "Comentarios",
+        "placeholder": "Escribe un comentario",
+        "submit": "Publicar",
+        "empty": "Todavía no hay comentarios",
+        "delete": "Eliminar",
+        "postFailed": "Error al publicar el comentario",
+        "deleteConfirm": "¿Eliminar este comentario?",
+        "deleteSuccess": "Comentario eliminado",
+        "deleteFailed": "Error al eliminar el comentario"
+      },
+      "decisions": {
+        "title": "Decisiones",
+        "placeholder": "Anota lo que se decidió, qué llevar, etc.",
+        "edit": "Editar",
+        "empty": "Todavía no se ha decidido nada",
+        "saveSuccess": "Decisiones guardadas",
+        "saveFailed": "Error al guardar las decisiones"
+      },
+      "todo": {
+        "title": "Tareas pendientes",
+        "titlePlaceholder": "¿Qué hay que hacer? (p. ej., comprar snacks)",
+        "add": "Agregar",
+        "claim": "Yo me encargo",
+        "complete": "Marcar como hecho",
+        "release": "Dejar la tarea",
+        "unassigned": "Sin asignar",
+        "empty": "Todavía no hay tareas pendientes",
+        "alreadyClaimed": "Esta tarea ya tiene una persona responsable",
+        "addSuccess": "Tarea agregada",
+        "addFailed": "Error al agregar la tarea",
+        "claimSuccess": "Te has hecho cargo de esta tarea",
+        "completeSuccess": "Marcada como hecha",
+        "completeFailed": "Error al actualizar el estado",
+        "releaseSuccess": "Tarea liberada",
+        "releaseFailed": "Error al dejar la tarea"
       }
     },
     "chronicle": {
@@ -522,9 +658,71 @@
       "loadFailed": "Error al cargar las crónicas",
       "viewDetail": "Ver detalle"
     },
+    "archive": {
+      "title": "Crónica",
+      "subtitle": "Registro de los festivales, eventos del calendario y reuniones de la aldea",
+      "empty": "Aún no hay entradas en la crónica",
+      "loadFailed": "Error al cargar la crónica",
+      "archivedAt": "Registrado el",
+      "filterAll": "Todos",
+      "sourceType": {
+        "festival": "Festival",
+        "calendarEvent": "Evento del calendario",
+        "meetup": "Reunión"
+      }
+    },
+    "charter": {
+      "title": "Carta de la aldea",
+      "subtitle": "Las promesas compartidas de la aldea",
+      "empty": "Todavía no se ha establecido la carta de esta aldea",
+      "enactedAt": "Fecha de promulgación",
+      "lastRevisedAt": "Última revisión",
+      "article": {
+        "label": "Artículo {n}",
+        "add": "+ Añadir artículo",
+        "bodyPlaceholder": "Escribe el texto del artículo",
+        "bodyRequired": "Escribe el texto del artículo",
+        "delete": "Eliminar artículo",
+        "deleteConfirm": "¿Eliminar este artículo?"
+      },
+      "supplement": {
+        "add": "+ Añadir anexo",
+        "label": "Anexo",
+        "placeholder": "Escribe un anexo (opcional)"
+      },
+      "reorder": {
+        "hint": "Usa los botones de subir/bajar para reordenar los artículos",
+        "up": "Subir",
+        "down": "Bajar"
+      },
+      "drafters": {
+        "title": "Redactores",
+        "add": "+ Añadir redactor",
+        "empty": "Todavía no hay redactores registrados",
+        "delete": "Quitar redactor",
+        "deleteConfirm": "¿Quitar a \"{name}\" de los redactores?",
+        "selectPlaceholder": "Selecciona un aldeano",
+        "loadMembersFailed": "No se pudo cargar la lista de habitantes, por lo que no se pueden añadir redactores.",
+        "reloadMembers": "Recargar"
+      },
+      "revision": {
+        "confirm": "Confirmar revisión",
+        "confirmHint": "Esto registra el momento actual como una revisión (no cambia la visibilidad de ningún artículo).",
+        "confirmSuccess": "Revisión confirmada",
+        "notePlaceholder": "Nota de la revisión (opcional)",
+        "history": "Historial de revisiones",
+        "historyEmpty": "Todavía no hay revisiones"
+      },
+      "error": {
+        "loadFailed": "No se pudo cargar la carta de la aldea",
+        "mutationFailed": "La operación falló",
+        "versionConflict": "Otro jefe de aldea editó esto al mismo tiempo. Vuelve a cargar la versión más reciente.",
+        "drafterDuplicate": "Este aldeano ya es redactor"
+      }
+    },
     "serendipity": {
       "title": "Puntuación de afinidad",
-      "subtitle": "Compatibilidad contigo",
+      "subtitle": "Encuentros acumulados en esta aldea",
       "rank": "Posición",
       "score": "Puntuación",
       "myScore": "Tu puntuación",
@@ -532,6 +730,26 @@
       "lastComputedAt": "Última actualización",
       "empty": "La puntuación de afinidad aún no se ha calculado",
       "loadFailed": "Error al cargar la puntuación de afinidad"
+    },
+    "affinity": {
+      "title": "Pista de compatibilidad",
+      "subtitle": "Mira si esta aldea puede encajar contigo antes de unirte",
+      "categoryMatch": "Cercana a tus intereses y categorías",
+      "hidden": "Ahora mismo no hay ninguna pista de compatibilidad",
+      "sharedVillagers": {
+        "hidden": "Aún no se puede mostrar",
+        "few": "Unas pocas personas",
+        "many": "10 o más personas"
+      },
+      "reason": {
+        "categoryMatch": "Esta aldea está cerca de tus intereses",
+        "sharedVillagers": "Hay aldeanos con los que ya tienes conexión",
+        "pioneer": "Puedes unirte ahora como miembro fundador"
+      },
+      "pioneer": {
+        "title": "¡Puedes convertirte en miembro fundador!",
+        "body": "Esta todavía es una aldea pequeña. Si te unes ahora, serás uno de los miembros fundadores que ayudan a construirla juntos."
+      }
     },
     "pilgrimage": {
       "title": "Peregrinación de la aldea",
@@ -726,6 +944,15 @@
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
         }
+      },
+      "charter": {
+        "title": "Deja constancia de las promesas de la aldea en la carta",
+        "body": "El jefe de la aldea o los ancianos pueden definir las reglas de la aldea (artículos) y publicarlas incluso a quienes no son miembros (las aldeas públicas las muestran también a los futuros miembros).",
+        "steps": {
+          "step1": "Abre la pestaña \"Carta de la aldea\".",
+          "step2": "El jefe de la aldea o los ancianos pueden escribir artículos con \"+ Añadir artículo\" y adjuntar un anexo opcional.",
+          "step3": "Reordenar y eliminar se aplican de inmediato. Usa \"Confirmar revisión\" para registrarlo en el historial."
+        }
       }
     },
     "joinRequestGuide": {
@@ -774,6 +1001,10 @@
         "members": {
           "title": "Miembros y roles",
           "desc": "Gestiona a los aldeanos, cambia roles y expulsa (BAN)."
+        },
+        "representatives": {
+          "title": "Delegación de representante",
+          "desc": "Delega y gestiona los usuarios que pueden publicar como representante de una membresía de equipo/organización."
         },
         "joinRequests": {
           "title": "Revisar solicitudes de ingreso",
@@ -919,6 +1150,25 @@
       },
       "comingSoon": {
         "body": "⚠️ El envío del boletín estará disponible pronto. Puedes guardar los ajustes, pero los boletines aún no se envían realmente."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "Cómo usarlo",
+      "what": {
+        "title": "Qué es el mini perfil del aldeano",
+        "body": "Toca un nombre en la lista de miembros para abrir el perfil sencillo de ese aldeano. Puedes ver su rol y las aldeas que ha elegido mostrar."
+      },
+      "villages": {
+        "title": "Cómo leer la lista de aldeas",
+        "body": "Solo aparecen las aldeas que el aldeano ha hecho visibles. Se muestra el nombre de la aldea, el emblema y la categoría, nunca un apodo. Toca una tarjeta para ir a la página principal de esa aldea."
+      },
+      "toggle": {
+        "title": "Cuando abres tu propio perfil",
+        "body": "Tu propio mini perfil muestra un interruptor «Mostrar esta aldea en mi lista de aldeas». Al activarlo, las personas que comparten una aldea contigo podrán ver esta aldea en tu lista. Se puede configurar por cada aldea."
+      },
+      "privacy": {
+        "title": "Sobre la privacidad",
+        "body": "La lista de aldeas solo se muestra cuando tú y la otra persona compartís al menos una aldea. Si no hay nada que mostrar, aparece de forma neutral «No hay aldeas para mostrar», sin revelar si compartís una aldea."
       }
     }
   }

@@ -80,7 +80,15 @@
       "festival": "节日",
       "matchRecruit": "练习赛招募",
       "meetup": "聚会",
-      "chronicle": "村史"
+      "chronicle": "村史",
+      "charter": "村宪章"
+    },
+    "systemPost": {
+      "authorName": "村庄活动通知",
+      "eventCreated": "已创建新活动",
+      "eventUpcoming": "活动即将开始",
+      "meetupConfirmed": "聚会日期已确定",
+      "festivalStarted": "节日已开始"
     },
     "lobby": {
       "title": "大厅",
@@ -260,6 +268,15 @@
       "filterRole": "按角色筛选",
       "soloHeadmanHint": "当其他成员加入本村后，您可以在此将其任命为长老。"
     },
+    "profile": {
+      "title": "村民资料",
+      "villages": {
+        "title": "所属村列表",
+        "empty": "没有可显示的所属村",
+        "publicToggle": "在我的所属村列表中显示此村",
+        "publicToggleHint": "开启后，与您同在一个村的人可以在您的所属村列表中看到此村。"
+      }
+    },
     "postingIdentity": {
       "title": "发帖身份",
       "asUser": "以个人身份发帖",
@@ -293,7 +310,7 @@
       "VILLAGE_007": "您不是此村庄的成员",
       "VILLAGE_008": "该昵称已被使用",
       "VILLAGE_009": "举报次数已达上限（每小时10次）",
-      "VILLAGE_010": "村庄创建申请频率已达上限（每天3次，最多持有10个）",
+      "VILLAGE_010": "村庄创建次数已达上限。请稍后再试。",
       "VILLAGE_011": "昵称每月最多可更改3次",
       "VILLAGE_012": "已达到可加入村庄的上限（100个）",
       "VILLAGE_013": "已达到收藏村庄的上限（30个）",
@@ -324,6 +341,10 @@
       "VILLAGE_042": "找不到举报",
       "VILLAGE_043": "此举报已被处理",
       "VILLAGE_044": "找不到收藏的村庄",
+      "VILLAGE_052": "找不到代表委任",
+      "VILLAGE_053": "该对象与用户的组合已经被委任为代表",
+      "VILLAGE_054": "目标成员身份不是团队/组织",
+      "VILLAGE_055": "被委任用户不是目标团队/组织的成员",
       "generic": "村庄功能发生错误",
       "backToList": "返回村庄列表",
       "moderatorOnly": "只有村长和长老可以修改此设置"
@@ -350,7 +371,15 @@
     "monsho": {
       "title": "村庄徽章",
       "upload": "上传村庄徽章",
-      "remove": "删除村庄徽章"
+      "remove": "删除村庄徽章",
+      "label": "村庄徽章（家纹 / 标志）",
+      "change": "更换徽章",
+      "uploading": "上传中…",
+      "hint": "JPG / PNG / WebP，最大 5MB",
+      "errorMime": "仅支持 JPG、PNG 和 WebP 图片",
+      "errorSize": "文件大小不得超过 5MB",
+      "uploadSuccess": "村庄徽章已上传",
+      "removeSuccess": "村庄徽章已删除"
     },
     "calendar": {
       "title": "村庄日历",
@@ -374,7 +403,26 @@
       "deleteSuccess": "活动已删除",
       "empty": "暂无已登记的活动",
       "noEventsInMonth": "本月暂无活动",
-      "loadFailed": "获取日历失败"
+      "loadFailed": "获取日历失败",
+      "log": {
+        "title": "往年的样子",
+        "lastYear": "{year}年的样子",
+        "addLog": "记录当时情况",
+        "year": "年份",
+        "note": "一句话",
+        "notePlaceholder": "用一句话记录当时的样子",
+        "photoKey": "照片（R2密钥・可选）",
+        "photoKeyHint": "图片上传功能即将推出。如已在R2登记密钥可直接输入",
+        "submit": "保存记录",
+        "delete": "删除",
+        "empty": "暂无记录",
+        "loadFailed": "获取记录失败",
+        "addSuccess": "已保存记录",
+        "addFailed": "添加记录失败",
+        "deleteConfirm": "删除此记录？",
+        "deleteSuccess": "记录已删除",
+        "deleteFailed": "删除记录失败"
+      }
     },
     "festival": {
       "title": "节日",
@@ -396,12 +444,38 @@
       "saveSuccess": "节日已保存",
       "cancelSuccess": "节日已取消",
       "loadFailed": "获取节日列表失败",
+      "invalidDateTime": "开始/结束日期时间格式不正确。请重新输入。",
       "filterAll": "全部",
       "status": {
         "SCHEDULED": "即将举行",
         "ACTIVE": "进行中",
         "ENDED": "已结束",
         "CANCELLED": "已取消"
+      },
+      "rsvp": {
+        "title": "参加表态",
+        "going": "参加",
+        "maybe": "可能参加",
+        "roleLabel": "角色",
+        "roleLabelPlaceholder": "角色（可选，例如摊位负责人）",
+        "submit": "提交",
+        "cancel": "取消参加表态",
+        "empty": "暂无人表态参加",
+        "loadFailed": "获取参加者列表失败",
+        "saveSuccess": "已登记参加表态",
+        "saveFailed": "登记参加表态失败",
+        "cancelSuccess": "已取消参加表态",
+        "cancelFailed": "取消参加表态失败"
+      },
+      "live": {
+        "title": "现场动态",
+        "tagAsLive": "写下要作为现场动态发布的内容",
+        "submit": "作为现场动态发布",
+        "empty": "暂无现场动态",
+        "viewPost": "查看帖子",
+        "loadFailed": "获取现场动态列表失败",
+        "tagSuccess": "已作为现场动态发布",
+        "tagFailed": "发布现场动态失败"
       }
     },
     "matchRecruit": {
@@ -470,11 +544,22 @@
     },
     "representative": {
       "title": "代表委任",
+      "subtitle": "针对该村庄内团队/组织的成员身份，将「以代表身份发帖」的权限委任给个人用户。",
       "grant": "委任为代表",
       "revoke": "撤销委任",
       "empty": "暂无委任的代表",
       "grantedBy": "委任人",
-      "note": "备注"
+      "grantedAt": "委任时间",
+      "note": "备注",
+      "target": "对象（团队/组织）",
+      "targetPlaceholder": "选择要委任的团队/组织",
+      "noTargets": "没有可供委任的团队/组织成员身份",
+      "unknownTarget": "对象不明",
+      "representativeUser": "代表用户",
+      "loadFailed": "获取代表委任失败",
+      "confirmRevokeTitle": "确定要撤销此委任吗?",
+      "confirmRevokeBody": "即将撤销对 {name} 的代表委任，确定吗?",
+      "revokeSuccess": "已撤销委任"
     },
     "meetup": {
       "title": "聚会",
@@ -488,6 +573,9 @@
       "addCandidateDate": "添加候选日期",
       "removeCandidateDate": "删除候选日期",
       "candidateDate": "候选日期",
+      "candidateTime": "时间",
+      "allDay": "全天",
+      "timeOptionalHint": "时间为选填（留空则为全天）",
       "vote": "投票",
       "confirm": "确定此日期",
       "confirmedDate": "确定日期",
@@ -508,6 +596,54 @@
         "PLANNING": "投票中",
         "CONFIRMED": "已确定",
         "CANCELLED": "已取消"
+      },
+      "attendance": {
+        "title": "出席情况",
+        "going": "可以参加",
+        "maybe": "也许参加",
+        "absent": "无法参加",
+        "notConfirmedHint": "日期确定后即可登记出席情况",
+        "empty": "暂无人回复",
+        "unknownMember": "村民",
+        "saveSuccess": "出席情况已登记",
+        "saveFailed": "登记出席情况失败"
+      },
+      "comment": {
+        "title": "评论",
+        "placeholder": "写下评论",
+        "submit": "发布",
+        "empty": "暂无评论",
+        "delete": "删除",
+        "postFailed": "发布评论失败",
+        "deleteConfirm": "删除此评论？",
+        "deleteSuccess": "评论已删除",
+        "deleteFailed": "删除评论失败"
+      },
+      "decisions": {
+        "title": "决定事项",
+        "placeholder": "记录已决定的事项、需要携带的物品等",
+        "edit": "编辑",
+        "empty": "尚未决定任何事项",
+        "saveSuccess": "决定事项已保存",
+        "saveFailed": "保存决定事项失败"
+      },
+      "todo": {
+        "title": "待办事项",
+        "titlePlaceholder": "要做什么？（例如：购买零食）",
+        "add": "添加",
+        "claim": "我来做",
+        "complete": "标记完成",
+        "release": "放弃任务",
+        "unassigned": "未分配",
+        "empty": "暂无待办事项",
+        "alreadyClaimed": "此待办事项已有人负责",
+        "addSuccess": "待办事项已添加",
+        "addFailed": "添加待办事项失败",
+        "claimSuccess": "已认领此任务",
+        "completeSuccess": "已标记完成",
+        "completeFailed": "更新完成状态失败",
+        "releaseSuccess": "已放弃任务",
+        "releaseFailed": "放弃任务失败"
       }
     },
     "chronicle": {
@@ -522,9 +658,71 @@
       "loadFailed": "获取村史失败",
       "viewDetail": "查看详情"
     },
+    "archive": {
+      "title": "村史",
+      "subtitle": "节日、时令活动、聚会等村庄活动的记录",
+      "empty": "暂无村史记录",
+      "loadFailed": "获取村史失败",
+      "archivedAt": "记录时间",
+      "filterAll": "全部",
+      "sourceType": {
+        "festival": "节日",
+        "calendarEvent": "时令活动",
+        "meetup": "聚会"
+      }
+    },
+    "charter": {
+      "title": "村宪章",
+      "subtitle": "村子的约定",
+      "empty": "村宪章尚未制定",
+      "enactedAt": "制定日",
+      "lastRevisedAt": "修订日",
+      "article": {
+        "label": "第{n}条",
+        "add": "＋添加条文",
+        "bodyPlaceholder": "输入条文内容",
+        "bodyRequired": "请输入条文内容",
+        "delete": "删除条文",
+        "deleteConfirm": "确定删除该条文吗？"
+      },
+      "supplement": {
+        "add": "＋添加附则",
+        "label": "附则",
+        "placeholder": "输入附则（可选）"
+      },
+      "reorder": {
+        "hint": "可使用上下按钮调整条文顺序",
+        "up": "上移",
+        "down": "下移"
+      },
+      "drafters": {
+        "title": "制定者",
+        "add": "＋添加制定者",
+        "empty": "尚未登记制定者",
+        "delete": "删除制定者",
+        "deleteConfirm": "确定将「{name}」从制定者中删除吗？",
+        "selectPlaceholder": "选择村民",
+        "loadMembersFailed": "未能获取村民列表，因此无法添加制定者。",
+        "reloadMembers": "重新获取"
+      },
+      "revision": {
+        "confirm": "确认修订",
+        "confirmHint": "此操作会将当前时刻记录为修订（不会改变条文的公开状态）。",
+        "confirmSuccess": "修订已确认",
+        "notePlaceholder": "修订备注（可选）",
+        "history": "修订历史",
+        "historyEmpty": "暂无修订记录"
+      },
+      "error": {
+        "loadFailed": "村宪章获取失败",
+        "mutationFailed": "操作失败",
+        "versionConflict": "另一位村长同时进行了编辑，请重新加载最新内容",
+        "drafterDuplicate": "该村民已是制定者"
+      }
+    },
     "serendipity": {
       "title": "缘分分数",
-      "subtitle": "与您的契合度",
+      "subtitle": "在本村积累的相遇",
       "rank": "排名",
       "score": "分数",
       "myScore": "您的分数",
@@ -532,6 +730,26 @@
       "lastComputedAt": "最后计算时间",
       "empty": "缘分分数尚未计算",
       "loadFailed": "获取缘分分数失败"
+    },
+    "affinity": {
+      "title": "契合度提示",
+      "subtitle": "加入前看看这个村是否适合您",
+      "categoryMatch": "与您的兴趣、分类相近的村",
+      "hidden": "目前没有契合度提示",
+      "sharedVillagers": {
+        "hidden": "暂时无法显示",
+        "few": "数人",
+        "many": "10人以上"
+      },
+      "reason": {
+        "categoryMatch": "这是与您兴趣相近的村",
+        "sharedVillagers": "有与您有缘分的村民",
+        "pioneer": "现在加入可以成为开拓成员"
+      },
+      "pioneer": {
+        "title": "您可以成为开拓成员！",
+        "body": "这是一个人数还较少的小村。现在加入，您将成为一起打造这个村的开拓成员。"
+      }
     },
     "pilgrimage": {
       "title": "村庄巡礼",
@@ -726,6 +944,15 @@
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
         }
+      },
+      "charter": {
+        "title": "用村宪章记录村子的约定",
+        "body": "村长・长老可以制定村子的规则（条文），并公开给非成员查看（公开村在未加入者也能看到）。",
+        "steps": {
+          "step1": "打开「村宪章」标签页。",
+          "step2": "村长・长老点击「＋添加条文」撰写条文，也可以附加附则。",
+          "step3": "排序・删除会立即生效，点击「确认修订」可记录到修订历史。"
+        }
       }
     },
     "joinRequestGuide": {
@@ -774,6 +1001,10 @@
         "members": {
           "title": "成员与职位",
           "desc": "管理村民、变更职位、执行封禁（BAN）。"
+        },
+        "representatives": {
+          "title": "代表委任",
+          "desc": "委任并管理可以代表团队/组织成员身份发帖的用户。"
         },
         "joinRequests": {
           "title": "审核入村申请",
@@ -919,6 +1150,25 @@
       },
       "comingSoon": {
         "body": "⚠️ 发送功能正在准备中。可以保存设置，但尚未实际发送通讯。"
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "使用说明",
+      "what": {
+        "title": "什么是村民简介",
+        "body": "在成员列表中点击姓名即可打开该村民的简易资料。可以查看其角色以及对方公开的所属村列表。"
+      },
+      "villages": {
+        "title": "所属村列表说明",
+        "body": "只会显示对方设为公开的村。仅显示村名、村徽、分类，不会显示昵称。点击卡片可前往该村的首页。"
+      },
+      "toggle": {
+        "title": "打开自己的简介时",
+        "body": "打开自己的简介时会显示「在我的所属村列表中显示此村」开关。开启后，与您同在一个村的人就能在您的所属村列表中看到此村。可按村分别设置。"
+      },
+      "privacy": {
+        "title": "关于隐私",
+        "body": "所属村列表只在您与对方同处至少一个村时才会显示。若没有可显示的内容，会中立地显示「没有可显示的所属村」，不会透露您们是否同村。"
       }
     }
   }

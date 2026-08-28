@@ -135,6 +135,58 @@ Service メソッド内でビジネスルールを検証し、違反時は `Busi
 - Controller で形式が正しいことを保証し、Service は形式チェック済みの値だけを扱う
 - **カスタムバリデーションアノテーション（`@UniqueEmail` 等）は作成しない**。DB アクセスを伴うチェックは Service の責務であり、アノテーション化すると追跡が困難になるため。
 - **グループバリデーション（`groups`）は使わない**。Create / Update で DTO を分離するため不要（`.claudecode.md` §19 参照）。
+
+### Request DTO にコンストラクタを 2 本目以降足すときは `@JsonCreator` 必須（番人 D-7）
+
+`@RequestBody` / `@RequestPart` で受ける DTO（およびその入れ子 DTO）に**コンストラクタを 2 本以上**
+持たせる場合、**完全コンストラクタに `@JsonCreator` を付け、各引数に `@JsonProperty("...")` を付ける**こと。
+
+```java
+// NG: 後方互換用の短いコンストラクタを足した瞬間、この DTO を受ける POST は「常時 500」になる
+@Getter
+public class CreateFooRequest {
+    private final String title;
+    private final String body;
+    public CreateFooRequest(String title) { this(title, null); }
+    public CreateFooRequest(String title, String body) { ... }
+}
+
+// OK: 金型は chat/dto/SendMessageRequest
+@JsonCreator
+public CreateFooRequest(@JsonProperty("title") String title,
+                        @JsonProperty("body") String body) { ... }
+```
+
+理由: Jackson はコンストラクタが複数あるとデシリアライズ用を一意に決められず、
+「引数無しコンストラクタ無し」だと no suitable creator でデシリアライザ構築に失敗する。
+Spring はこれを `HttpMessageConversionException`（400 にマップ済みの
+`HttpMessageNotReadableException` とは**別系統**）で投げるため、`GlobalExceptionHandler` に届かず
+**body の内容によらず 500** になる。Mock ベースの Service UT では原理的に検出できず、
+`SendMessageRequest`（PR #2033）/ `CreateThreadRequest`（PR #2503）で 2 度再発した。
+
+- コンストラクタが **1 本だけ**なら `@JsonCreator` は不要（`-parameters` ＋ `ParameterNamesModule` で暗黙 creator になる）
+- Lombok の `@Data + @NoArgsConstructor + @AllArgsConstructor` 様式も可（引数無しコンストラクタ＋setter で成立する）
+- `record` は Jackson が正準コンストラクタをネイティブ解決するため、コンストラクタが複数でも `@JsonCreator` は不要
+- `@JsonCreator` は **1 本だけ**付けること。2 本のコンストラクタに付けると Jackson が
+  properties-based creator を一意に決められず（conflicting property-based creators）、
+  **付けていないのと同じく常時 500** になる（delegating creator と 1 本ずつの共存のみ可）
+- `@JsonCreator(mode = Mode.DISABLED)` は creator の**明示的な打ち消し**であり、
+  「付いているのに creator が 1 本も無い」状態になる。救済にはならない
+- 機械検出: `JsonRequestBodyCreatorArchTest`（`common/architecture`。`.claudecode.md` §30）。
+  その構造条件が実際の壊れ方と一致していることは `JsonRequestBodyCreatorRuntimeProofTest` が
+  本番同等設定の実 `ObjectMapper` でデシリアライズを走らせて実測固定している
+
+#### `@ModelAttribute`（フォームバインド）DTO は `@JsonCreator` では救えない
+
+`@ModelAttribute` で受ける DTO（および Controller メソッドの**無注釈複合型引数**）は、
+`BeanUtils.getResolvableConstructor` が「Kotlin primary → **宣言コンストラクタがちょうど 1 本** →
+引数無しコンストラクタ」の順にしか解決しない。**Jackson の注釈は一切見ない**ため、
+`@JsonCreator` を付けても「2 本以上＋引数無し無し」なら `IllegalStateException` で同じく 500 になる。
+
+フォーム DTO は **引数無しコンストラクタ ＋ setter**（`@Getter @Setter` ＋暗黙 no-arg。
+main の実在例は `recruitment/dto/RecruitmentListingSearchRequest`）にするか、
+**コンストラクタを 1 本に保つ**こと。こちらも同じ番人 D-7 が検出する。
+
 * **Null安全**: 戻り値が空になる可能性がある場合は `Optional` を検討し、原則として `null` を直接返さないでください。
 * **トランザクション管理**:
     - Service クラスのクラスレベルに `@Transactional(readOnly = true)` を付与する（デフォルトを読み取り専用にする）。
@@ -160,6 +212,59 @@ dependencies {
 }
 ```
 * **N+1 問題の防止**: リレーションの取得には `@EntityGraph` またはJPQLの `JOIN FETCH` を明示的に使用し、Lazy Loading による N+1 問題を防止すること。
+
+### 派生クエリの引数型は Entity 属性の型と一致させる — `@Enumerated` 属性に `String` を渡さない（2026-07-30〜）
+
+#### 問題：`@Enumerated(EnumType.STRING)` の属性を `String` で受けると実行時に必ず 500 になる
+
+Spring Data JPA の派生クエリ（`findByXxx`）の**バインド型はエンティティ属性側で決まる**。
+DB のカラムが `VARCHAR` であっても、Entity 側が enum なら `String` を渡した時点で Hibernate のパラメータ束縛が失敗する。
+
+```java
+// Entity: enum 属性（列は VARCHAR だが JPA 上の型は enum）
+@Enumerated(EnumType.STRING)
+@Column(nullable = false, length = 20)
+private NotificationScopeType scopeType;
+
+// NG: String で受ける派生クエリ
+Page<NotificationEntity> findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+        String scopeType, Long scopeId, Pageable pageable);
+// 呼び出し側は自然と .name() を書いてしまう
+repo.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(NotificationScopeType.FRIEND_TEAM.name(), teamId, pageable);
+```
+
+実行時にこうなる（**コンパイルは通り、アプリ起動も成功する。実際にそのクエリが呼ばれた瞬間に初めて落ちる**）:
+
+```
+org.springframework.dao.InvalidDataAccessApiUsageException:
+  Argument [FRIEND_TEAM] of type [java.lang.String] did not match parameter type
+  [com.mannschaft.app.notification.NotificationScopeType (n/a)]
+```
+
+`GlobalExceptionHandler` に `DataAccessException` 系の個別ハンドラは無いため、汎用 `@ExceptionHandler(Exception.class)` に落ちて **HTTP 500** になる。
+
+```java
+// OK: Entity 属性と同じ enum 型で受ける
+Page<NotificationEntity> findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+        NotificationScopeType scopeType, Long scopeId, Pageable pageable);
+```
+
+#### なぜ従来のテストで検出できなかったか
+
+**リポジトリをモックした Service 単体テストでは原理的に検出できない。** モックは「`.name()` の文字列で呼ばれたこと」しか検証せず、Hibernate のパラメータ束縛が発生しないため、壊れたクエリが恒久的に偽グリーンになる。
+
+- 実際に 2026-07-30 に `NotificationRepository` で 4 本（うち本番稼働経路 3 本）が同時に発覚した
+- 該当経路は `@SpringBootTest` + Testcontainers で一度も実行されておらず、実機で初めて 500 として表面化した
+
+#### ルール
+
+1. 派生クエリの引数型は **Entity の属性型をそのまま書く**。`@Enumerated` 属性なら enum、`String` 属性なら `String`。
+2. 呼び出し側で `.name()` / `valueOf()` を書きたくなったら、**それは引数型が間違っているサイン**。変換ではなく宣言を直すこと。
+3. **ドメインをまたいで enum を渡す場合**（例: `scopefolder.ScopeType` → `notification.NotificationScopeType`）は、写像専用メソッドを 1 つ設けて明示的に写像する。**このとき `switch` を使ってはならない**（下記「⚠️ 罠」参照）。`==` による enum 参照比較で分岐し、未知値は `IllegalStateException` を投げること。黙って `null` や空リストを返して握りつぶすのは禁止。
+    * ⚠️ **罠: 別ドメインの enum に対する `switch` は ArchUnit D-1 を落とす。** javac は enum switch のために `$SwitchMap$...` を保持する**合成クラス（`OuterClass$1`）を自動生成**する。この合成クラスは外側クラスの依存をそのまま写して持つため、`CrossDomainEntityImportArchTest`（D-1）が**新しいクラス名の新規違反**として検出し CI が落ちる（外側クラス本体の依存が凍結ストア済みでも、合成クラスは別名なので凍結に当たらない）。D-1 は合成クラスを除外していない。
+    * `switch` を捨てるとコンパイル時の網羅性保証が失われるため、**必ずテストで肩代わりすること**。写像元 enum の `values()` を**全件ループ**して 1 つずつ写像が成功することを検査する番人テストを置く（定数を個別に書き並べる形にすると、新定数が増えても何も落ちない）。実例: `NotificationScopeTypeMappingTest`。
+4. **enum 属性を条件に含む派生クエリは、実 DB（Testcontainers）を通すテストを必ず 1 本置く**。モック単体テストだけで済ませてはならない。
+5. ネイティブクエリ（`nativeQuery = true`）は SQL 文字列として評価されるため `String` で正しい。JPQL / 派生クエリのみが本ルールの対象。
 
 ### Entity 更新パターン規約 — managed entity の直接ミューテートで行う（`toBuilder().build() → save` 禁止）（2026-06-19〜）
 
@@ -312,6 +417,8 @@ private String scannedDocumentS3Key;
 
 **再発防止テスト**: `ddl-auto=create` のみのテスト（通常の `AbstractMySqlIntegrationTest` 派生クラス）では検出不能。
 S3Key 系フィールドを持つ Entity には、専用の Flyway 実スキーマテストクラスを作成すること。
+
+**機械的な番人（2026-08-20 / Issue #2856 で追加）**: `backend/src/test/java/com/mannschaft/app/common/architecture/EntityDigitBoundaryColumnNameGuardTest.java` が全 `@Entity` を反射で走査し、フィールド名に「数字→大文字」の並びを含むのに `@Column(name=...)` が未指定なものを機械的に落とす（Docker 不要・第一防衛線）。実 Flyway スキーマに対する経験的な再現は`backend/src/test/java/com/mannschaft/app/common/schema/EntityDigitBoundaryColumnFlywaySchemaIT.java`が担う（Issue #2856 では `data_exports.s3_key` ほか 7 Entity の不一致をこの 2 本で赤→緑にした）。
 
 実装パターン（`@SpringBootTest` プロパティ上書き + ネイティブ SQL 列名直接確認）:
 

@@ -12,13 +12,16 @@ import com.mannschaft.app.dashboard.ViewerRole;
 import com.mannschaft.app.dashboard.WidgetKey;
 import com.mannschaft.app.dashboard.dto.TeamDashboardResponse;
 import com.mannschaft.app.notification.repository.NotificationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementSourceType;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,6 +86,7 @@ class DashboardServiceOrgAnnouncementDedupTest {
     @Mock private ScopeWidgetSummaryService scopeWidgetSummaryService;
     @Mock private ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
+    @Mock private PaymentGateService paymentGateService;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -155,17 +159,20 @@ class DashboardServiceOrgAnnouncementDedupTest {
         given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.ADMIN);
         given(widgetVisibilityResolver.resolve("TEAM", TEAM_ID)).willReturn(teamDefaultVisibilityMap());
         given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(paymentGateService.checkAccessBatch(
+                eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class)))
+                .willReturn(Map.of(FEED_ID, new GateCheckResponse(true, false, List.of())));
     }
 
     @Test
     @DisplayName("AC-1: 同一組織の org ロール行が 2 件でも、同一 feedId の組織告知は 1 件だけ表示される")
     void AC1_多重orgロール_同一feedIdは1件に重複排除() {
-        // 同一 organizationId の org ロール行を 2 件返す（将来の複数ロール許容を模擬）
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID))
-                .willReturn(List.of(
-                        UserRoleEntity.builder().organizationId(ORG_ID).build(),
-                        UserRoleEntity.builder().organizationId(ORG_ID).build()));
-        // 各 org ロールにつき同一 feedId(=FEED_ID) の告知が返る → flatMap で 2 回集約される
+        // 同一 organizationId を 2 件返す（flatMap で同一 feedId が 2 回集約される状況を模擬）。
+        // 本番の findOrganizationIdsByUserId は DISTINCT だが、ここでは feedId 重複排除ロジックの
+        // 検証のため意図的に重複 orgId を与える。
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID))
+                .willReturn(List.of(ORG_ID, ORG_ID));
+        // 各 org スコープにつき同一 feedId(=FEED_ID) の告知が返る → flatMap で 2 回集約される
         given(announcementFeedQueryRepository.findByOrgScopeForTeamDashboard(
                 eq(ORG_ID), any(), org.mockito.ArgumentMatchers.anyInt()))
                 .willReturn(List.of(orgFeed(FEED_ID)));
@@ -189,8 +196,8 @@ class DashboardServiceOrgAnnouncementDedupTest {
     @Test
     @DisplayName("AC-2: org ロール 1 件・feed 1 件なら従来通り 1 件表示される（非回帰）")
     void AC2_単一orgロール単一feed_1件表示() {
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID))
-                .willReturn(List.of(UserRoleEntity.builder().organizationId(ORG_ID).build()));
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID))
+                .willReturn(List.of(ORG_ID));
         given(announcementFeedQueryRepository.findByOrgScopeForTeamDashboard(
                 eq(ORG_ID), any(), org.mockito.ArgumentMatchers.anyInt()))
                 .willReturn(List.of(orgFeed(FEED_ID)));

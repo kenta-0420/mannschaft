@@ -2,6 +2,9 @@ package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.service.AuthOAuthService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,7 +22,24 @@ import java.util.Map;
 /**
  * OAuth認証コントローラー。
  * OAuthプロバイダ連携によるログイン・アカウント連携確認のエンドポイントを提供する。
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 3 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers("/api/v1/auth/oauth/**").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * OAuth ログインは<b>認証を確立するための入口</b>であり、認証前に未認証で到達できなければ機能しない。資格情報（認可コード・ID
+ * トークン）の検証は認証処理そのものが行う。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic("/api/v1/auth/oauth/**")
 @RestController
 @RequestMapping("/api/v1/auth/oauth")
 @Tag(name = "OAuth")
@@ -32,6 +52,8 @@ public class AuthOAuthController {
      * Google OAuth 認証 URL を取得する。
      * 認証不要エンドポイント。フロントエンドはこの URL に遷移してOAuth認証フローを開始する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "OAuthログイン開始経路をGate状態にかかわらず維持するため")
     @GetMapping("/google/auth-url")
     @Operation(summary = "Google OAuth 認証URL取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Google OAuth 認証URL")
@@ -43,6 +65,8 @@ public class AuthOAuthController {
     /**
      * OAuthプロバイダを使用してログインする。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "利用者の認証経路をGate状態にかかわらず維持するため")
     @PostMapping("/{provider}")
     @Operation(summary = "OAuthログイン")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ログイン成功またはアカウント競合")
@@ -60,6 +84,8 @@ public class AuthOAuthController {
     /**
      * OAuth連携を確認する。連携トークンを検証し、アカウントを連携してトークンを発行する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "開始済みOAuth連携確認をGate状態にかかわらず完了するため")
     @PostMapping("/link/confirm")
     @Operation(summary = "OAuth連携確認")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "連携完了")

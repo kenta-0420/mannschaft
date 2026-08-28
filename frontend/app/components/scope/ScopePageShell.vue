@@ -29,6 +29,8 @@ const props = withDefaults(
     sidebar?: Component | null
     /** サイドバーコンポーネントへ渡す props。 */
     sidebarProps?: Record<string, unknown>
+    /** 現在のロールにサイドバーを見せるか。 */
+    showSidebar?: boolean
     /** 管理者/メンバーレンズトグルを表示するか。 */
     showLens?: boolean
     /** レンズ状態（true=管理者ビュー / false=メンバービュー）。 */
@@ -37,6 +39,8 @@ const props = withDefaults(
   {
     sidebar: null,
     sidebarProps: () => ({}),
+    // 呼び出し元を増やしても従来の表示を変えない。権限で隠すページだけ false を渡す。
+    showSidebar: true,
     showLens: false,
     lens: false,
   },
@@ -79,7 +83,7 @@ const lensModel = computed<boolean>({
     <!-- ============================================================== -->
     <div class="border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
       <div class="flex items-center">
-        <div class="flex-1 overflow-x-auto">
+        <div class="flex-1 min-w-0 overflow-x-auto">
           <Tabs :value="activeTab">
             <TabList>
               <Tab
@@ -91,7 +95,7 @@ const lensModel = computed<boolean>({
               >
                 <NuxtLink
                   :to="tab.to"
-                  class="flex items-center gap-2 no-underline text-inherit"
+                  class="flex items-center gap-2 min-h-11 no-underline text-inherit"
                 >
                   <i :class="tab.icon" />
                   <span>{{ $t(tab.labelKey) }}</span>
@@ -101,14 +105,15 @@ const lensModel = computed<boolean>({
           </Tabs>
         </div>
 
-        <!-- サイドバー起動ハンバーガー（sidebar 非 null のときのみ） -->
-        <div v-if="sidebar" class="shrink-0 px-1">
+        <!-- サイドバー起動ハンバーガー（閲覧可能なロールにのみ表示） -->
+        <div v-if="sidebar && showSidebar" class="shrink-0 px-1">
           <Button
             icon="pi pi-bars"
             text
             rounded
             size="small"
             :aria-label="$t('common.menu')"
+            data-testid="scope-sidebar-toggle"
             @click="showSidebarDrawer = true"
           />
         </div>
@@ -127,7 +132,7 @@ const lensModel = computed<boolean>({
 
     <!-- サイドバー Drawer -->
     <Drawer
-      v-if="sidebar"
+      v-if="sidebar && showSidebar"
       v-model:visible="showSidebarDrawer"
       position="left"
       class="!w-72"

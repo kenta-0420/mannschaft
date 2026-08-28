@@ -1,16 +1,6 @@
 package com.mannschaft.app.recruitment.service;
 
-import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.recruitment.RecruitmentListingStatus;
-import com.mannschaft.app.recruitment.RecruitmentParticipantType;
-import com.mannschaft.app.recruitment.RecruitmentParticipationType;
-import com.mannschaft.app.recruitment.RecruitmentScopeType;
-import com.mannschaft.app.recruitment.RecruitmentVisibility;
-import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
-import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentReminderEntity;
-import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
-import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentReminderRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,81 +12,75 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link RecruitmentReminderBatch} の単体テスト。
+ * {@link RecruitmentReminderBatch}（オーケストレータ）の単体テスト。
+ *
+ * <p>Issue #2834 / CMP-056 第2群ロット2 の是正後は、本クラスは<b>トランザクションを持たない
+ * オーケストレータ</b>であり、1 件ぶんの確定と通知は {@link RecruitmentReminderRunner} が
+ * {@code REQUIRES_NEW} で担う。よってここでは「対象の列挙」「1 件の失敗で後続が止まらないこと」
+ * だけを検証し、確定と通知の中身は {@code RecruitmentReminderRunnerTest} が担当する。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("RecruitmentReminderBatch 単体テスト")
+@DisplayName("RecruitmentReminderBatch 単体テスト（Issue #2834 / CMP-056）")
 class RecruitmentReminderBatchTest {
 
     @Mock
     private RecruitmentReminderRepository reminderRepository;
     @Mock
-    private RecruitmentListingRepository listingRepository;
-    @Mock
-    private RecruitmentParticipantRepository participantRepository;
-    @Mock
-    private NotificationHelper notificationHelper;
+    private RecruitmentReminderRunner recruitmentReminderRunner;
 
     @InjectMocks
     private RecruitmentReminderBatch batch;
 
     @Test
-    @DisplayName("未送信リマインダーがない場合 → 通知送信しない")
-    void reminderBatch_noPending_noNotification() {
-        given(reminderRepository.findTop100BySentAtIsNullAndRemindAtLessThanEqual(any()))
+    @DisplayName("未送信リマインダーがない場合 → Runner を呼ばない")
+    void reminderBatch_noPending_noRunnerCall() {
+        given(reminderRepository.findSendableReminders(any(), any()))
                 .willReturn(List.of());
 
         batch.reminderBatch();
 
-        verify(notificationHelper, never()).notify(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(recruitmentReminderRunner, never()).processOne(any());
     }
 
     @Test
-    @DisplayName("未送信リマインダーがある場合 → 通知送信して sent_at 更新")
-    void reminderBatch_hasPending_sendsNotification() throws Exception {
-        RecruitmentReminderEntity reminder = buildReminder(1L, 10L, 100L);
-        RecruitmentListingEntity listing = buildListing(10L);
-        RecruitmentParticipantEntity participant = buildParticipant(100L, 5L);
+    @DisplayName("AC-1: 1件が失敗しても後続のリマインダーは処理される（catch はオーケストレータ側）")
+    void reminderBatch_oneFails_continuesWithRest() throws Exception {
+        given(reminderRepository.findSendableReminders(any(), any()))
+                .willReturn(List.of(buildReminder(1L, 10L, 100L),
+                        buildReminder(2L, 10L, 101L),
+                        buildReminder(3L, 10L, 102L)));
+        willThrow(new RuntimeException("模擬 DB 例外")).given(recruitmentReminderRunner).processOne(2L);
+        given(recruitmentReminderRunner.processOne(1L)).willReturn(true);
+        given(recruitmentReminderRunner.processOne(3L)).willReturn(true);
 
-        given(reminderRepository.findTop100BySentAtIsNullAndRemindAtLessThanEqual(any()))
-                .willReturn(List.of(reminder));
-        given(listingRepository.findById(10L)).willReturn(Optional.of(listing));
-        given(participantRepository.findById(100L)).willReturn(Optional.of(participant));
-        given(reminderRepository.save(any())).willReturn(null);
+        assertThatCode(() -> batch.reminderBatch()).doesNotThrowAnyException();
 
-        batch.reminderBatch();
-
-        verify(notificationHelper).notify(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
-        verify(reminderRepository).save(any());
+        // 失敗した 2L の後も 3L が処理される（是正前は全体が rollback-only になり全件巻き戻っていた）。
+        verify(recruitmentReminderRunner).processOne(1L);
+        verify(recruitmentReminderRunner).processOne(2L);
+        verify(recruitmentReminderRunner).processOne(3L);
     }
 
     @Test
-    @DisplayName("募集が削除済みの場合 → 通知スキップして sent_at 更新")
-    void reminderBatch_listingDeleted_skipNotification() throws Exception {
-        RecruitmentReminderEntity reminder = buildReminder(1L, 10L, 100L);
-
-        given(reminderRepository.findTop100BySentAtIsNullAndRemindAtLessThanEqual(any()))
-                .willReturn(List.of(reminder));
-        given(listingRepository.findById(10L)).willReturn(Optional.empty());
-        given(reminderRepository.save(any())).willReturn(null);
+    @DisplayName("抽出した全件が Runner に 1 件ずつ渡される")
+    void reminderBatch_delegatesEachReminderToRunner() throws Exception {
+        given(reminderRepository.findSendableReminders(any(), any()))
+                .willReturn(List.of(buildReminder(7L, 10L, 100L)));
+        given(recruitmentReminderRunner.processOne(7L)).willReturn(true);
 
         batch.reminderBatch();
 
-        verify(notificationHelper, never()).notify(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
-        verify(reminderRepository).save(any());
+        verify(recruitmentReminderRunner).processOne(7L);
     }
-
-    // ========================================
-    // ヘルパー
-    // ========================================
 
     private RecruitmentReminderEntity buildReminder(Long id, Long listingId, Long participantId) throws Exception {
         RecruitmentReminderEntity reminder = RecruitmentReminderEntity.builder()
@@ -106,38 +90,6 @@ class RecruitmentReminderBatchTest {
                 .build();
         setField(reminder, "id", id);
         return reminder;
-    }
-
-    private RecruitmentListingEntity buildListing(Long id) throws Exception {
-        RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
-                .scopeType(RecruitmentScopeType.TEAM)
-                .scopeId(1L)
-                .categoryId(1L)
-                .title("テスト募集")
-                .participationType(RecruitmentParticipationType.INDIVIDUAL)
-                .startAt(LocalDateTime.now().plusHours(20))
-                .endAt(LocalDateTime.now().plusHours(22))
-                .applicationDeadline(LocalDateTime.now().minusHours(4))
-                .autoCancelAt(LocalDateTime.now().minusHours(4))
-                .capacity(10)
-                .minCapacity(1)
-                .visibility(RecruitmentVisibility.SCOPE_ONLY)
-                .createdBy(2L)
-                .build();
-        setField(listing, "id", id);
-        setField(listing, "status", RecruitmentListingStatus.OPEN);
-        return listing;
-    }
-
-    private RecruitmentParticipantEntity buildParticipant(Long id, Long userId) throws Exception {
-        RecruitmentParticipantEntity participant = RecruitmentParticipantEntity.builder()
-                .listingId(10L)
-                .participantType(RecruitmentParticipantType.USER)
-                .userId(userId)
-                .appliedBy(userId)
-                .build();
-        setField(participant, "id", id);
-        return participant;
     }
 
     private void setField(Object entity, String name, Object value) throws Exception {

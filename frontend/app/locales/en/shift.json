@@ -80,6 +80,7 @@
     },
     "myShift": {
       "confirmedTitle": "Confirmed Shifts",
+      "upcomingTitle": "Upcoming Confirmed Shifts",
       "teamFilter": {
         "all": "All Teams",
         "label": "Filter by Team"
@@ -144,7 +145,8 @@
       "noDate": "No date",
       "colDate": "Date",
       "colSlots": "Slots",
-      "editDialogTitle": "Edit Shift"
+      "editDialogTitle": "Edit Shift",
+      "accessDeniedRedirect": "You do not have permission to view this page"
     },
     "slot": {
       "createTitle": "Create Slot",

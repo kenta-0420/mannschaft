@@ -47,8 +47,37 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
      */
     long countByScopeTypeAndScopeIdAndStatus(EventScopeType scopeType, Long scopeId, EventStatus status);
 
-    @Query("SELECT e FROM EventEntity e WHERE e.subtitle LIKE %:keyword% OR e.summary LIKE %:keyword% OR e.venueName LIKE %:keyword%")
-    List<EventEntity> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+    /**
+     * 横断検索（グローバル検索）用のキーワード検索。閲覧者の可視スコープに限定する。
+     *
+     * <p>可視範囲は「所属チームのイベント」「所属組織のイベント」「自分が作成したイベント」に加え、
+     * 一般公開イベント（{@code visibility = PUBLIC} かつ {@code publicVisible = true}）とする。
+     * 一般公開イベントは未ログインの公開ページでも参照できる設計であり、横断検索から外す理由がない。</p>
+     *
+     * <p>呼び出し側は {@code teamIds} / {@code orgIds} が空の場合、{@code IN ()} の発行を避けるため
+     * ダミー値（{@code -1L}）で埋めること。</p>
+     *
+     * @param keyword  検索キーワード
+     * @param teamIds  閲覧者が所属するチーム ID 集合（非空・空ならダミー値）
+     * @param orgIds   閲覧者が所属する組織 ID 集合（非空・空ならダミー値）
+     * @param userId   閲覧者ユーザー ID（作成者一致判定用）
+     * @param pageable 取得件数
+     * @return 可視スコープ内の検索結果
+     */
+    @Query("""
+            SELECT e FROM EventEntity e
+            WHERE (e.subtitle LIKE %:keyword% OR e.summary LIKE %:keyword% OR e.venueName LIKE %:keyword%)
+              AND e.deletedAt IS NULL
+              AND ((e.scopeType = com.mannschaft.app.event.EventScopeType.TEAM AND e.scopeId IN :teamIds)
+                OR (e.scopeType = com.mannschaft.app.event.EventScopeType.ORGANIZATION AND e.scopeId IN :orgIds)
+                OR e.createdBy = :userId
+                OR (e.visibility = com.mannschaft.app.event.entity.EventVisibility.PUBLIC AND e.publicVisible = true))
+            """)
+    List<EventEntity> searchByKeyword(@Param("keyword") String keyword,
+                                      @Param("teamIds") Collection<Long> teamIds,
+                                      @Param("orgIds") Collection<Long> orgIds,
+                                      @Param("userId") Long userId,
+                                      Pageable pageable);
 
     /**
      * 現在進行中（schedules.startAt が :cutoff 以前かつ schedules.endAt が :now 以降）の
@@ -81,10 +110,20 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
      *   <li>schedules.end_at が now より前（終了時刻を過ぎている）</li>
      *   <li>organizer_reminder_sent_count が maxReminderCount 未満（リマインド上限未到達）</li>
      *   <li>schedules.end_at が cutoff より前（endAt から minElapsedMinutes 分以上経過）</li>
+     *   <li><b>schedules.end_at が staleBefore 以降（＝古すぎるイベントは対象外）</b></li>
      * </ul>
+     *
+     * <p><b>下限（staleBefore）を持つ理由。</b> 初版は上限（{@code endAt < cutoff}）しか無く、
+     * 「未解散かつリマインド 3 回未満」の過去イベントを<b>何ヶ月前のものでも拾い続けた</b>。
+     * そのためバッチが長期間走らなかった後の再開時に、とうに終わったイベントの主催者へ
+     * 段階リマインドが 3 回飛び、最後には管理者への緊急通知まで発火する
+     * （Codex 検分の指摘。機能フラグとは無関係に、障害で一日止まっただけでも起きる）。
+     * 解散リマインドの段階は終了から 90 分以内で完結する設計であり、
+     * それを大きく過ぎたイベントを今さらエスカレーションする意味は無い。</p>
      *
      * @param now              現在日時
      * @param cutoff           カットオフ日時（endAt がこれより前であれば経過済み）
+     * @param staleBefore      鮮度の下限（endAt がこれより前のイベントは古すぎるため対象外）
      * @param maxReminderCount リマインド上限回数（この値以上は対象外）
      * @return 条件を満たすイベントエンティティリスト
      */
@@ -95,11 +134,13 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
             WHERE e.dismissalNotificationSentAt IS NULL
               AND s.endAt IS NOT NULL
               AND s.endAt < :cutoff
+              AND s.endAt >= :staleBefore
               AND e.organizerReminderSentCount < :maxReminderCount
             """)
     List<EventEntity> findDismissalReminderTargets(
             @Param("now") LocalDateTime now,
             @Param("cutoff") LocalDateTime cutoff,
+            @Param("staleBefore") LocalDateTime staleBefore,
             @Param("maxReminderCount") int maxReminderCount);
 
     /**

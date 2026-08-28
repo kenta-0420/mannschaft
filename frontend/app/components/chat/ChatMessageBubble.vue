@@ -132,6 +132,7 @@ function onContextMenuSelect(key: string) {
     case 'copy':
       if (props.message.body) {
         // クリップボード書き込み失敗（権限拒否・非対応ブラウザ）は非クリティカルのため握りつぶす。
+        // eslint-disable-next-line no-restricted-syntax -- clipboard 書込は非対応/非セキュア文脈/ユーザー拒否が想定内。best-effort でありデータ影響なし
         navigator.clipboard.writeText(props.message.body).catch(() => {})
       }
       break

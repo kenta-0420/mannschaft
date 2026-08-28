@@ -1,5 +1,8 @@
 package com.mannschaft.app.role.service;
 
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.role.dto.MembershipInviteIssuedToken;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +31,7 @@ import java.util.UUID;
 public class MembershipInviteTokenIssuer {
 
     private final InviteTokenRepository inviteTokenRepository;
+    private final AuditLogService auditLogService;
 
     /**
      * 宛先付き承諾型トークンを発行する（{@code target_user_id} 非 NULL・{@code max_uses = 1}）。
@@ -41,8 +45,8 @@ public class MembershipInviteTokenIssuer {
      * @return 発行済みトークン
      */
     @Transactional
-    public InviteTokenEntity issue(String scopeType, Long scopeId, Long roleId,
-                                   Long targetUserId, Long createdBy, LocalDateTime expiresAt) {
+    public MembershipInviteIssuedToken issue(String scopeType, Long scopeId, Long roleId,
+                                             Long targetUserId, Long createdBy, LocalDateTime expiresAt) {
         var builder = InviteTokenEntity.builder()
                 .token(UUID.randomUUID().toString())
                 .roleId(roleId)
@@ -59,7 +63,7 @@ public class MembershipInviteTokenIssuer {
         InviteTokenEntity token = inviteTokenRepository.save(builder.build());
         log.info("承諾型招待トークン発行: tokenId={}, scopeType={}, scopeId={}, targetUserId={}",
                 token.getId(), scopeType, scopeId, targetUserId);
-        return token;
+        return new MembershipInviteIssuedToken(token.getId(), token.getToken());
     }
 
     /**
@@ -72,6 +76,19 @@ public class MembershipInviteTokenIssuer {
         inviteTokenRepository.findById(tokenId).ifPresent(token -> {
             token.revoke();
             inviteTokenRepository.save(token);
+            boolean team = token.getTeamId() != null;
+            auditLogService.record(
+                    (team
+                            ? AuditEventType.TEAM_MEMBERSHIP_INVITE_COMPENSATED
+                            : AuditEventType.ORGANIZATION_MEMBERSHIP_INVITE_COMPENSATED).name(),
+                    token.getCreatedBy(),
+                    token.getTargetUserId(),
+                    token.getTeamId(),
+                    token.getOrganizationId(),
+                    null,
+                    null,
+                    null,
+                    "{\"token_id\":" + tokenId + ",\"reason\":\"COMPENSATED\"}");
             log.warn("承諾型招待トークンを補償失効（カード投稿失敗）: tokenId={}", tokenId);
         });
     }

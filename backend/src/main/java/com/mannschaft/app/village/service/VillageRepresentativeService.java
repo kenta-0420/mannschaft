@@ -15,7 +15,6 @@ import com.mannschaft.app.village.entity.VillageRepresentativeEntity;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import com.mannschaft.app.village.repository.VillageRepresentativeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,11 +62,11 @@ public class VillageRepresentativeService {
 
     private final VillageRepresentativeRepository representativeRepository;
     private final VillageMembershipRepository membershipRepository;
-    private final VillageRepository villageRepository;
     /** Read-only: チーム/組織メンバー検証（原則1 FK 不在）。 */
     private final UserRoleRepository userRoleRepository;
     /** Read-only: 表示名解決（原則1 FK 不在）。 */
     private final UserRepository userRepository;
+    private final VillageAccessGate accessGate;
 
     // ========================================================================
     // 代表委任の付与
@@ -80,6 +79,8 @@ public class VillageRepresentativeService {
      *   <li>実行者が当該村の HEADMAN または ELDER であること（VILLAGE_024）</li>
      *   <li>対象メンバーシップが TEAM または ORGANIZATION 種別であること（VILLAGE_054）</li>
      *   <li>委任先ユーザーが対象チーム/組織のメンバーであること（VILLAGE_055）</li>
+     *   <li>委任先ユーザーのアカウントが生存していること（未削除かつ ACTIVE。CMP-050。
+     *       状態を漏らさないため非メンバー時と同じ VILLAGE_055 へ畳む）</li>
      *   <li>同一メンバーシップ × 同一ユーザーで現役の委任が既に存在する場合は重複として拒否（VILLAGE_053）</li>
      * </ul>
      *
@@ -96,7 +97,7 @@ public class VillageRepresentativeService {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
 
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, grantedByUserId);
 
         // 実行者が HEADMAN/ELDER であること
         ensureModerator(villageId, grantedByUserId);
@@ -130,6 +131,17 @@ public class VillageRepresentativeService {
             default -> false; // unreachable
         };
         if (!isSubjectMember) {
+            throw new BusinessException(VillageErrorCode.REPRESENTATIVE_USER_NOT_IN_SUBJECT);
+        }
+
+        // CMP-050: 委任先のアカウントが生存している（未削除かつ ACTIVE）ことを確認する。
+        // 凍結・退会済みのユーザーへ代表権を委ねると、その村のチーム/組織を代表する者が実質不在になる。
+        // ErrorCode は他人のアカウント状態を漏らさないよう非メンバー時と同じ VILLAGE_055 へ畳む
+        // （凍結なのか退会なのか非メンバーなのかを呼び出し側から区別させない）。
+        // 判定に UserEntity.UserStatus を直接読まないのは、village → auth のエンティティ依存が
+        // ArchUnit D-1（no cross-domain entity dependency）の新規違反になるためである。
+        // 既に users を参照している role 側のプリミティブへ委ねる（deleted_at と status を SQL で見る）。
+        if (!userRoleRepository.isActiveUser(representativeUserId)) {
             throw new BusinessException(VillageErrorCode.REPRESENTATIVE_USER_NOT_IN_SUBJECT);
         }
 
@@ -182,7 +194,7 @@ public class VillageRepresentativeService {
             throw new BusinessException(CommonErrorCode.COMMON_000);
         }
 
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, revokedByUserId);
 
         ensureModerator(villageId, revokedByUserId);
 
@@ -220,16 +232,19 @@ public class VillageRepresentativeService {
     // ========================================================================
 
     /**
-     * 村に紐づく代表委任一覧を取得する。
+     * 村に紐づく代表委任一覧を取得する。村人（現役メンバー）のみ閲覧可。
      *
      * @param villageId       対象村
      * @param includeRevoked  {@code true} なら取消し済も含めて履歴全件を返す。
      *                        {@code false} なら現役のみ。
+     * @param actorUserId     閲覧しようとするログイン済ユーザー ID
      * @return DTO リスト（grantedAt 降順は呼出し元責務とせず、リポジトリの自然順をそのまま返す）
      */
     @Transactional(readOnly = true)
-    public List<RepresentativeResponse> listRepresentatives(UUID villageId, boolean includeRevoked) {
-        loadActiveVillage(villageId);
+    public List<RepresentativeResponse> listRepresentatives(UUID villageId, boolean includeRevoked,
+                                                             Long actorUserId) {
+        loadActiveVillage(villageId, actorUserId);
+        requireVillager(villageId, actorUserId);
 
         List<VillageRepresentativeEntity> entities = includeRevoked
                 ? representativeRepository.findAll().stream()
@@ -291,17 +306,16 @@ public class VillageRepresentativeService {
     // 共通ヘルパ
     // ========================================================================
 
-    /** 有効な村を取得する（削除/凍結済みは VILLAGE_001 で扱う）。 */
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
     /**
@@ -320,6 +334,20 @@ public class VillageRepresentativeService {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }
         return m;
+    }
+
+    /**
+     * 操作者が当該村の<strong>現役</strong>村人（役職不問）であることを検証する。
+     * 不足時は {@link VillageErrorCode#NOT_MEMBER}（IDOR 対策で 404 統一・他ドメインの
+     * {@code VillageRecruitCategoryService#requireVillager} と同じ粒度・エラーコード）。
+     */
+    private void requireVillager(UUID villageId, Long actorUserId) {
+        if (actorUserId == null) {
+            throw new BusinessException(CommonErrorCode.COMMON_000);
+        }
+        membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NOT_MEMBER));
     }
 
     /**

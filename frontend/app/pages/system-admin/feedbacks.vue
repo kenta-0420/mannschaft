@@ -15,6 +15,7 @@ definePageMeta({
 })
 
 const { t } = useI18n()
+const { formatDate } = useDatetime()
 const toast = useToast()
 
 // ─── API / Store ─────────────────────────────────────────────────────────────
@@ -246,7 +247,7 @@ function startImpersonation(feedback: FeedbackResponse) {
       <!-- 作成日 -->
       <Column field="createdAt" :header="t('label.created_at')" class="w-32">
         <template #body="{ data }">
-          <span class="text-xs text-surface-500">{{ new Date(data.createdAt).toLocaleDateString('ja-JP') }}</span>
+          <span class="text-xs text-surface-500">{{ formatDate(data.createdAt) }}</span>
         </template>
       </Column>
 

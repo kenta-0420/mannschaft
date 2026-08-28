@@ -2,6 +2,8 @@ package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.payment.dto.BulkCheckoutRequest;
 import com.mannschaft.app.payment.dto.BulkCheckoutResponse;
 import com.mannschaft.app.payment.dto.PayableDuesResponse;
@@ -40,6 +42,8 @@ public class PayableDuesController {
     /**
      * 払える未払い会費一覧（本人＋後見下の子）を取得する。
      */
+    @SelfScopedEndpoint("払い手は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（getPayableDues メソッド本体）")
     @GetMapping("/payable-dues")
     @Operation(summary = "払える未払い会費一覧（後見まとめ払い）")
     public ResponseEntity<ApiResponse<PayableDuesResponse>> getPayableDues() {
@@ -50,7 +54,19 @@ public class PayableDuesController {
 
     /**
      * 選択した複数会費をまとめて決済起票する（部分成功）。
+     *
+     * <p><b>認可の所在</b>: 払い手は {@link SecurityUtils#getCurrentUserId()} 固定。ボディの
+     * {@code beneficiaryUserId} に対する権原は、明細ごとに
+     * {@code MemberPaymentService.createConnectCheckout}
+     * （{@code payment/service/MemberPaymentService.java:392}）が
+     * {@code PaymentAuthorizationService.authorizePayment}
+     * （{@code payment/service/PaymentAuthorizationService.java:97}）で毎回実行時評価する
+     * （{@code PayableDuesService.processOneItem}・{@code payment/service/PayableDuesService.java:242} 経由）。
+     * 権原が成立しない明細は {@code skipReason="NOT_AUTHORIZED"} として結果に記録するだけで、
+     * <b>Connect への課金起票も member_payments の INSERT も一切行わない</b>
+     * （権原検証は起票・外部課金より前に位置する）。</p>
      */
+    @AuthorizedInService
     @PostMapping("/payable-dues/bulk-checkout")
     @Operation(summary = "後見まとめ払い 一括チェックアウト")
     public ResponseEntity<ApiResponse<BulkCheckoutResponse>> bulkCheckout(

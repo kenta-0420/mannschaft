@@ -8,8 +8,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.ContentAccessState;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 
 /**
  * お知らせウィジェットフィードサービス（F02.6）。
@@ -33,7 +42,9 @@ import java.util.Set;
  *   <li>お知らせ化: 著者本人または ADMIN/DEPUTY_ADMIN</li>
  *   <li>お知らせ解除: 著者本人または ADMIN/DEPUTY_ADMIN</li>
  *   <li>ピン留め: ADMIN/DEPUTY_ADMIN のみ</li>
- *   <li>既読マーク: メンバー以上（冪等）</li>
+ *   <li>既読マーク: <b>その閲覧者に一覧で見えているお知らせ</b>（＝可視性ベース。冪等）。
+ *       一覧は非メンバーにも PUBLIC を返すため、既読も同じ集合に揃える
+ *       （{@link AnnouncementReadService} のクラス Javadoc 参照）</li>
  * </ul>
  * </p>
  *
@@ -62,6 +73,7 @@ public class AnnouncementFeedService {
     private final AnnouncementReadService readService;
     private final AnnouncementCreationService creationService;
     private final AccessControlService accessControlService;
+    private final PaymentGateService paymentGateService;
 
     // ── 委員会関連リポジトリ（COMMITTEE スコープサポート用） ──
     private final CommitteeMemberRepository committeeMemberRepository;
@@ -162,6 +174,16 @@ public class AnnouncementFeedService {
     /**
      * 指定長を超える文字列を切り詰める。null セーフ。
      */
+    private static ContentGateTarget targetOf(AnnouncementFeedEntity feed) {
+        if (feed == null || feed.getId() == null || feed.getScopeType() == null || feed.getScopeId() == null) {
+            return null;
+        }
+        return feed.getScopeType() == AnnouncementScopeType.TEAM
+                ? new ContentGateTarget(feed.getId(), feed.getScopeId(), null)
+                : feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
+                    ? new ContentGateTarget(feed.getId(), null, feed.getScopeId()) : null;
+    }
+
     private static String truncate(String text, int maxLen) {
         if (text == null) {
             return null;
@@ -198,21 +220,41 @@ public class AnnouncementFeedService {
     /**
      * お知らせを既読にする（冪等）。
      *
+     * <p>スコープ（URL のパス変数由来）を下流へ通し、スコープ帰属検証と可視性検証を
+     * {@link AnnouncementReadService} に行わせる（規則は「見える＝既読にできる」）。</p>
+     *
      * @see AnnouncementReadService#markAsRead
      */
     @Transactional
-    public void markAsRead(Long announcementId, Long userId) {
-        readService.markAsRead(announcementId, userId);
+    public void markAsRead(AnnouncementScopeType scopeType, Long scopeId, Long announcementId, Long userId) {
+        readService.markAsRead(scopeType, scopeId, announcementId, userId);
     }
 
     /**
      * スコープ内の全お知らせを既読にする。
      *
+     * <p>下流は「可視かつ未読」を DB 側で絞り、{@link AnnouncementReadService#MARK_ALL_BATCH_SIZE}
+     * 件ずつのチャンクで処理する（#2494）。実行コストは<b>未読件数</b>にのみ比例し、
+     * カーソル（{@code lastSeenId}）により総インデックスプローブ数も線形である（#2530 ②）。</p>
+     *
+     * <p><b>応答契約（#2530 ① で決着）</b>: 下流の結果をそのまま返し、Controller は
+     * {@code markedCount}（実際に既読化した件数）と {@code hasMoreUnread}
+     * （防御上限で打ち切り、未読が残っているか）を応答する。キー名は
+     * <b>camelCase</b> を正とし（他 EP の応答および {@code @RequestBody} と揃える）、
+     * 設計書 F02.6 §4 の {@code marked_count} 表記を実装側に合わせて改めた。
+     * 応答型を {@code Map<String, Object>} から DTO に変えたので、以後キー名の食い違いは
+     * OpenAPI スキーマ（{@code docs/openapi.json}）と生成型に現れる。</p>
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープ ID
+     * @param userId    ユーザー ID
+     * @return 既読化件数と残余の有無
      * @see AnnouncementReadService#markAllAsRead
      */
     @Transactional
-    public void markAllAsRead(AnnouncementScopeType scopeType, Long scopeId, Long userId) {
-        readService.markAllAsRead(scopeType, scopeId, userId);
+    public AnnouncementReadService.MarkAllReadOutcome markAllAsRead(
+            AnnouncementScopeType scopeType, Long scopeId, Long userId) {
+        return readService.markAllAsRead(scopeType, scopeId, userId);
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -252,14 +294,52 @@ public class AnnouncementFeedService {
         Set<String> allowedVisibilities = AnnouncementVisibility.allowedFor(viewerRoleName);
 
         // limit + 1 件取得して hasNext を判定
-        List<AnnouncementFeedEntity> rows = feedQueryRepository.findByScope(
+        List<AnnouncementFeedEntity> dataRows = feedQueryRepository.findByScope(
                 scopeType, scopeId, allowedVisibilities, cursor, effectiveLimit + 1);
 
-        boolean hasNext = rows.size() > effectiveLimit;
-        List<AnnouncementFeedEntity> dataRows = hasNext ? rows.subList(0, effectiveLimit) : rows;
-
         // 既読状態をバッチ取得（N+1 防止）
-        List<Long> feedIds = dataRows.stream().map(AnnouncementFeedEntity::getId).toList();
+        Map<Long, GateCheckResponse> gates = new LinkedHashMap<>();
+        boolean adminBypass = "ADMIN".equalsIgnoreCase(viewerRoleName)
+                || "SYSTEM_ADMIN".equalsIgnoreCase(viewerRoleName);
+        List<AnnouncementFeedEntity> gatedRows = new ArrayList<>();
+        Set<Long> seenIds = new HashSet<>();
+        Long fetchCursor = cursor;
+        boolean sourceHasNext = true;
+        int fetchCount = 0;
+        while (fetchCount++ < 1000 && gatedRows.size() < effectiveLimit + 1) {
+            List<AnnouncementFeedEntity> rows = fetchCount == 1 ? dataRows : feedQueryRepository.findByScope(
+                    scopeType, scopeId, allowedVisibilities, fetchCursor, effectiveLimit + 1);
+            if (rows == null || rows.isEmpty()) {
+                sourceHasNext = false;
+                break;
+            }
+            sourceHasNext = rows.size() > effectiveLimit;
+            List<AnnouncementFeedEntity> uniqueRows = rows.stream()
+                    .filter(row -> row.getId() != null && seenIds.add(row.getId())).toList();
+            Map<Long, GateCheckResponse> fetchedGates = paymentGateService == null ? Map.of()
+                    : paymentGateService.checkAccessBatch(ContentGateType.ANNOUNCEMENT,
+                            uniqueRows.stream().map(AnnouncementFeedEntity::getId).toList(), requestUserId,
+                            uniqueRows.stream()
+                                    .filter(row -> AnnouncementFeedService.targetOf(row) != null)
+                                    .collect(java.util.stream.Collectors.toMap(
+                                            AnnouncementFeedEntity::getId,
+                                            AnnouncementFeedService::targetOf)));
+            if (fetchedGates != null) {
+                gates.putAll(fetchedGates);
+            }
+            uniqueRows.stream().filter(feed -> {
+                GateCheckResponse gate = gates.get(feed.getId());
+                return gate != null && (adminBypass || !gate.isTitleHidden());
+            }).forEach(gatedRows::add);
+            Long lastId = rows.get(rows.size() - 1).getId();
+            if (!sourceHasNext || lastId == null || lastId.equals(fetchCursor)) {
+                break;
+            }
+            fetchCursor = lastId;
+        }
+        boolean hasNext = gatedRows.size() > effectiveLimit || (sourceHasNext && fetchCount >= 1000);
+        gatedRows = gatedRows.stream().limit(effectiveLimit).toList();
+        List<Long> feedIds = gatedRows.stream().map(AnnouncementFeedEntity::getId).toList();
         Set<Long> readFeedIds = readService.fetchReadFeedIds(requestUserId, feedIds);
 
         // 未読数: スコープ内の全フィード件数 - 既読件数
@@ -267,13 +347,15 @@ public class AnnouncementFeedService {
         long readCount = readFeedIds.size();
         long unreadCount = totalCount - readCount;
 
-        List<AnnouncementFeedItem> items = dataRows.stream()
-                .map(feed -> new AnnouncementFeedItem(feed, readFeedIds.contains(feed.getId())))
+        List<AnnouncementFeedItem> items = gatedRows.stream()
+                .map(feed -> new AnnouncementFeedItem(feed, readFeedIds.contains(feed.getId()),
+                        adminBypass || !isLocked(gates.get(feed.getId()))
+                                ? ContentAccessState.FULL.name() : ContentAccessState.LOCKED.name()))
                 .toList();
 
         Long nextCursor = null;
-        if (hasNext && !dataRows.isEmpty()) {
-            nextCursor = dataRows.get(dataRows.size() - 1).getId();
+        if (hasNext && !gatedRows.isEmpty()) {
+            nextCursor = gatedRows.get(gatedRows.size() - 1).getId();
         }
 
         return new AnnouncementFeedResult(items, nextCursor, hasNext, unreadCount);
@@ -384,6 +466,14 @@ public class AnnouncementFeedService {
      */
     public record AnnouncementFeedItem(
             AnnouncementFeedEntity feed,
-            boolean isRead) {
+            boolean isRead,
+            String accessState) {
+        public AnnouncementFeedItem(AnnouncementFeedEntity feed, boolean isRead) {
+            this(feed, isRead, ContentAccessState.FULL.name());
+        }
+    }
+
+    private static boolean isLocked(GateCheckResponse gate) {
+        return gate != null && !gate.isAccessible() && !gate.isTitleHidden();
     }
 }

@@ -59,6 +59,7 @@ public class FormSubmissionValueEntity {
     @Builder.Default
     private Boolean isAutoFilled = false;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

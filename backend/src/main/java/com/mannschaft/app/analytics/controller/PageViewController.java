@@ -3,6 +3,7 @@ package com.mannschaft.app.analytics.controller;
 import com.mannschaft.app.analytics.dto.PageViewBeaconRequest;
 import com.mannschaft.app.analytics.service.PageViewRecordingService;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,7 +33,24 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>{@link PageViewRecordingService#record} でイベントを publish → 即 202 Accepted 返却</li>
  *   <li>DB 書き込みは非同期リスナー（{@code PageViewRecordListener}）が行う</li>
  * </ol>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 1 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(POST, "/api/v1/page-views").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F10.8 アクセス解析の計測ビーコン。<b>未認証ゲストの PV 計測</b>が目的のため認証を課せない（課すと未ログイン
+ * PV が 401 で欠落する）。書込専用で応答に個人データを含まず、IP レート制限が掛かる。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic("/api/v1/page-views")
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/page-views")

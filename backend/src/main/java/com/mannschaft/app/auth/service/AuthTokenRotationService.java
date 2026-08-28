@@ -87,7 +87,9 @@ public class AuthTokenRotationService {
         // 0. null / 空白トークンの即時拒否。
         //    refresh_token Cookie 欠落時は Controller から null が渡る。ここでガードしないと
         //    直後の hashToken(null) が NPE を投げ、GlobalExceptionHandler で COMMON_999（500）になる。
-        //    「無効なリフレッシュトークン」の意味論に沿う AUTH_007（Severity.WARN = 400）を返す。
+        //    「無効なリフレッシュトークン」の意味論に沿う AUTH_007 を返す。
+        //    AUTH_007 は GlobalExceptionHandler.ERROR_CODE_STATUS_MAP で 401 にマップされている
+        //    （Severity.WARN 既定の 400 を上書き。docs/security/06 §7.5）。
         if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
             throw new BusinessException(AuthErrorCode.AUTH_007);
         }

@@ -2,6 +2,7 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.village.dto.LobbyPresenceResponse;
 import com.mannschaft.app.village.service.VillageLobbyPresenceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +37,12 @@ public class VillageLobbyPresenceController {
 
     // ========== REST: 初回ページロード時の在席一覧取得 ==========
 
+    /**
+     * 認可は {@link VillageLobbyPresenceService#getPresence} 内で実施する。
+     * 呼び出しユーザーが当該村の在籍かつ BAN 済みでないメンバーであることを検証し、
+     * 満たさない場合は {@code NOT_MEMBER}（404）を返す。
+     */
+    @AuthorizedInService
     @GetMapping("/api/v1/villages/{villageId}/lobby/presence")
     @ResponseBody
     @Operation(summary = "村ロビーの現在の在席メンバー一覧を取得")

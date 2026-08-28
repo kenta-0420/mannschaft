@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TimelinePostResponse } from '~/types/timeline'
+import type { TimelinePostResponse, TimelineMutedType } from '~/types/timeline'
 import { CONTENT_TRUNCATE_LENGTH } from '~/types/timeline'
 
 const props = withDefaults(defineProps<{
@@ -12,8 +12,15 @@ const props = withDefaults(defineProps<{
    * 返信アイテム（1段）や投稿詳細ページのカードでは false を渡してネストを防ぐ。
    */
   repliesAccordion?: boolean
+  /**
+   * ケバブメニューに「この組織/チームの投稿を非表示にする」を出すか（CMP-058）。
+   * 個人集約フィード（`myFeed`）でのみ true にする。単一スコープの TL では、
+   * 今見ているスコープ自身を非表示にしても画面上の意味が無いため出さない。
+   */
+  canMute?: boolean
 }>(), {
   repliesAccordion: true,
+  canMute: false,
 })
 
 const emit = defineEmits<{
@@ -25,6 +32,8 @@ const emit = defineEmits<{
   clickPost: [postId: number]
   mitayoToggled: [postId: number, mitayo: boolean, mitayoCount: number]
   replyAdded: [postId: number]
+  /** ミュート実行要求（確認ダイアログは出さず即実行。復旧は「元に戻す」トーストで担保する）。 */
+  mute: [payload: { postId: number, mutedType: TimelineMutedType, mutedId: number, name: string }]
 }>()
 
 const { t } = useI18n()
@@ -51,24 +60,86 @@ const menu = ref()
 const expanded = ref(false)
 const mitayoLoading = ref(false)
 
+/**
+ * 村行事のシステム自動投稿か（F17.2 Wave2 §3.9(c)）。
+ * `user`/`postedAs` とも null なので、ここで分岐しないと「名無し・空アバター」の
+ * 空カードになる（設計書 §3.9 冒頭の警告）。
+ */
+const isSystemPost = computed(() => !!props.post.systemPostType)
+
+/** システム投稿種別ごとの PrimeIcons アイコン（固定アイコン・§3.9(c)）。 */
+function systemPostIcon(type: string | null | undefined): string {
+  switch (type) {
+    case 'EVENT_CREATED':
+      return 'pi pi-calendar-plus'
+    case 'EVENT_UPCOMING':
+      return 'pi pi-bell'
+    case 'MEETUP_CONFIRMED':
+      return 'pi pi-check-circle'
+    case 'FESTIVAL_STARTED':
+      return 'pi pi-star-fill'
+    default:
+      return 'pi pi-megaphone'
+  }
+}
+
+/** システム投稿種別ラベル（§14 `village.systemPost.*` テンプレキー）。表示名の下に添える種別バッジ用。 */
+function systemPostTypeI18nKey(type: string | null | undefined): string | null {
+  switch (type) {
+    case 'EVENT_CREATED':
+      return 'village.systemPost.eventCreated'
+    case 'EVENT_UPCOMING':
+      return 'village.systemPost.eventUpcoming'
+    case 'MEETUP_CONFIRMED':
+      return 'village.systemPost.meetupConfirmed'
+    case 'FESTIVAL_STARTED':
+      return 'village.systemPost.festivalStarted'
+    default:
+      return null
+  }
+}
+
 const displayName = computed(() => {
+  if (isSystemPost.value) return t('village.systemPost.authorName')
   if (props.post.postedAs) {
     return props.post.postedAs.displayName || props.post.postedAs.name || ''
   }
   return props.post.user?.displayName || ''
 })
 
+/** システム投稿は固定画像を持たないため常に null（テンプレート側で `systemPostIcon` を使う）。 */
 const avatarUrl = computed(() => {
+  if (isSystemPost.value) return null
   if (props.post.postedAs) {
     return props.post.postedAs.avatarUrl || props.post.postedAs.logoUrl || null
   }
   return props.post.user?.avatarUrl || null
 })
 
+const systemPostBadgeLabel = computed(() => {
+  if (!isSystemPost.value) return null
+  const key = systemPostTypeI18nKey(props.post.systemPostType)
+  return key ? t(key) : null
+})
+
 const displayContent = computed(() => {
   if (!props.post.content?.content) return ''
   if (expanded.value || !props.post.isTruncated) return props.post.content.content
   return props.post.content.content.substring(0, CONTENT_TRUNCATE_LENGTH)
+})
+
+/**
+ * ミュート対象（投稿元の チーム / 組織）。
+ * `scope.scopeId` は文字列なので数値化し、TEAM/ORGANIZATION 以外（PUBLIC/VILLAGE。
+ * VILLAGE は UUID のため数値化できない）は対象外として null にする。
+ */
+const muteTarget = computed<{ mutedType: TimelineMutedType, mutedId: number, name: string } | null>(() => {
+  const scope = props.post.scope
+  if (!scope) return null
+  if (scope.scopeType !== 'TEAM' && scope.scopeType !== 'ORGANIZATION') return null
+  const mutedId = Number(scope.scopeId)
+  if (!Number.isSafeInteger(mutedId) || mutedId <= 0) return null
+  return { mutedType: scope.scopeType, mutedId, name: scope.name ?? '' }
 })
 
 const menuItems = computed(() => {
@@ -85,6 +156,16 @@ const menuItems = computed(() => {
       label: '削除',
       icon: 'pi pi-trash',
       command: () => emit('delete', props.post.id),
+    })
+  }
+  // 「この組織/チームの投稿を非表示にする」（CMP-058）。確認ダイアログは出さず即実行し、
+  // 誤タップは「元に戻す」トースト（親側）で復旧できるようにする。
+  if (props.canMute && muteTarget.value) {
+    const target = muteTarget.value
+    items.push({
+      label: t(`timeline.mute.menuLabel.${target.mutedType}`),
+      icon: 'pi pi-eye-slash',
+      command: () => emit('mute', { postId: props.post.id, ...target }),
     })
   }
   return items
@@ -210,13 +291,19 @@ async function submitReply() {
 }
 
 function replyDisplayName(r: TimelinePostResponse): string {
+  if (r.systemPostType) return t('village.systemPost.authorName')
   if (r.postedAs) return r.postedAs.displayName || r.postedAs.name || ''
   return r.user?.displayName || ''
 }
 
 function replyAvatar(r: TimelinePostResponse): string | null {
+  if (r.systemPostType) return null
   if (r.postedAs) return r.postedAs.avatarUrl || r.postedAs.logoUrl || null
   return r.user?.avatarUrl || null
+}
+
+function replyIsSystemPost(r: TimelinePostResponse): boolean {
+  return !!r.systemPostType
 }
 </script>
 
@@ -261,15 +348,24 @@ function replyAvatar(r: TimelinePostResponse): string | null {
       <div class="flex items-center gap-3">
         <Avatar
           :image="avatarUrl || undefined"
-          :label="avatarUrl ? undefined : displayName.charAt(0)"
+          :icon="!avatarUrl && isSystemPost ? systemPostIcon(post.systemPostType) : undefined"
+          :label="!avatarUrl && !isSystemPost ? displayName.charAt(0) : undefined"
           shape="circle"
           size="normal"
+          data-testid="timeline-system-post-avatar"
         />
         <div>
           <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold">{{ displayName }}</span>
+            <span class="text-sm font-semibold" data-testid="timeline-post-author-name">{{ displayName }}</span>
             <span v-if="post.postedAs?.handle" class="text-xs text-surface-400 dark:text-surface-300">
               {{ post.postedAs.handle }}
+            </span>
+            <span
+              v-if="systemPostBadgeLabel"
+              class="inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-950 dark:text-primary-300"
+              data-testid="timeline-system-post-badge"
+            >
+              {{ systemPostBadgeLabel }}
             </span>
           </div>
           <div class="flex items-center gap-1 text-xs text-surface-400 dark:text-surface-300">
@@ -338,46 +434,46 @@ function replyAvatar(r: TimelinePostResponse): string | null {
       <template v-for="att in post.attachments!" :key="att.id">
         <img
           v-if="att.attachmentType === 'IMAGE'"
-          :src="att.thumbnailUrl || att.url"
+          :src="att.image?.thumbnailUrl || att.image?.url"
           class="w-full rounded-lg object-cover"
           :class="post.attachments.length === 1 ? 'max-h-96' : 'h-48'"
           loading="lazy"
           @click.stop
         >
         <div
-          v-else-if="att.attachmentType === 'VIDEO_FILE' && att.fileKey"
+          v-else-if="att.attachmentType === 'VIDEO_FILE' && att.file?.fileKey"
           @click.stop
         >
           <VideoPlayer
-            :file-key="att.fileKey"
-            :thumbnail-url="att.videoThumbnailUrl"
-            :processing-status="att.videoProcessingStatus"
-            :mime-type="att.mimeType"
+            :file-key="att.file.fileKey"
+            :thumbnail-url="att.video?.videoThumbnailUrl"
+            :processing-status="att.video?.videoProcessingStatus"
+            :mime-type="att.file?.mimeType"
           />
         </div>
         <a
           v-else-if="att.attachmentType === 'VIDEO_LINK'"
-          :href="att.videoUrl"
+          :href="att.video?.videoUrl"
           target="_blank"
           rel="noopener"
           class="flex items-center gap-2 rounded-lg border border-surface-300 p-3"
           @click.stop
         >
-          <img v-if="att.videoThumbnailUrl" :src="att.videoThumbnailUrl" class="h-16 w-24 rounded object-cover" >
-          <span class="text-sm text-primary">{{ att.videoTitle || '動画を見る' }}</span>
+          <img v-if="att.video?.videoThumbnailUrl" :src="att.video.videoThumbnailUrl" class="h-16 w-24 rounded object-cover" >
+          <span class="text-sm text-primary">{{ att.video?.videoTitle || '動画を見る' }}</span>
         </a>
         <a
-          v-else-if="att.attachmentType === 'LINK_PREVIEW' && att.linkUrl"
-          :href="att.linkUrl"
+          v-else-if="att.attachmentType === 'LINK_PREVIEW' && att.link?.linkUrl"
+          :href="att.link.linkUrl"
           target="_blank"
           rel="noopener"
           class="flex gap-3 rounded-lg border border-surface-300 p-3"
           @click.stop
         >
-          <img v-if="att.ogImageUrl" :src="att.ogImageUrl" class="h-16 w-16 rounded object-cover" >
+          <img v-if="att.link?.ogImageUrl" :src="att.link.ogImageUrl" class="h-16 w-16 rounded object-cover" >
           <div class="min-w-0">
-            <p class="truncate text-sm font-medium">{{ att.ogTitle }}</p>
-            <p class="truncate text-xs text-surface-400 dark:text-surface-300">{{ att.ogSiteName }}</p>
+            <p class="truncate text-sm font-medium">{{ att.link?.ogTitle }}</p>
+            <p class="truncate text-xs text-surface-400 dark:text-surface-300">{{ att.link?.ogSiteName }}</p>
           </div>
         </a>
       </template>
@@ -423,10 +519,10 @@ function replyAvatar(r: TimelinePostResponse): string | null {
       />
     </div>
 
-    <!-- アクションバー -->
-    <div class="flex items-center gap-4 border-t border-surface-100 pt-2" @click.stop>
+    <!-- アクションバー（各ボタンはヒット領域44x44。アイコン/文字の視覚サイズはtext-xsのまま維持） -->
+    <div class="flex items-center gap-2 border-t border-surface-100 pt-2" @click.stop>
       <button
-        class="flex items-center gap-1 text-xs text-surface-400 transition-colors hover:text-primary dark:text-surface-300"
+        class="flex min-h-11 min-w-11 items-center justify-center gap-1 text-xs text-surface-400 transition-colors hover:text-primary dark:text-surface-300"
         data-testid="team-timeline-reply-btn"
         @click="onReplyButton"
       >
@@ -434,7 +530,7 @@ function replyAvatar(r: TimelinePostResponse): string | null {
         <span v-if="post.stats?.replyCount">{{ post.stats.replyCount }}</span>
       </button>
       <button
-        class="flex items-center gap-1 text-xs transition-colors hover:text-green-500"
+        class="flex min-h-11 min-w-11 items-center justify-center gap-1 text-xs transition-colors hover:text-green-500"
         :class="(post.stats?.repostCount ?? 0) > 0 ? 'text-green-500' : 'text-surface-400 dark:text-surface-300'"
         @click="emit('repost', post.id)"
       >
@@ -442,7 +538,7 @@ function replyAvatar(r: TimelinePostResponse): string | null {
         <span v-if="post.stats?.repostCount">{{ post.stats.repostCount }}</span>
       </button>
       <button
-        class="flex items-center gap-1 text-xs transition-colors hover:text-amber-500"
+        class="flex min-h-11 min-w-11 items-center justify-center gap-1 text-xs transition-colors hover:text-amber-500"
         :class="post.isBookmarked ? 'text-amber-500' : 'text-surface-400 dark:text-surface-300'"
         @click="emit('bookmark', post.id)"
       >
@@ -497,7 +593,8 @@ function replyAvatar(r: TimelinePostResponse): string | null {
         <div v-for="reply in replies" :key="reply.id" class="flex gap-2">
           <Avatar
             :image="replyAvatar(reply) || undefined"
-            :label="replyAvatar(reply) ? undefined : replyDisplayName(reply).charAt(0)"
+            :icon="!replyAvatar(reply) && replyIsSystemPost(reply) ? systemPostIcon(reply.systemPostType) : undefined"
+            :label="!replyAvatar(reply) && !replyIsSystemPost(reply) ? replyDisplayName(reply).charAt(0) : undefined"
             shape="circle"
             size="normal"
           />

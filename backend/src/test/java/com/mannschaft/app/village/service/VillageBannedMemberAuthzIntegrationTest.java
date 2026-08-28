@@ -5,6 +5,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.controller.AbstractVillageIntegrationTest;
 import com.mannschaft.app.village.dto.FestivalCreateRequest;
+import com.mannschaft.app.village.dto.MeetupCandidateDateInput;
 import com.mannschaft.app.village.dto.MeetupCreateRequest;
 import com.mannschaft.app.village.dto.RepresentativeGrantRequest;
 import com.mannschaft.app.village.entity.VillageEntity;
@@ -173,7 +174,7 @@ class VillageBannedMemberAuthzIntegrationTest extends AbstractVillageIntegration
 
     private MeetupCreateRequest meetupRequest() {
         return new MeetupCreateRequest("寄合", "説明", "公民館",
-                List.of(LocalDate.now().plusDays(10)));
+                List.of(new MeetupCandidateDateInput(LocalDate.now().plusDays(10), null)));
     }
 
     private RepresentativeGrantRequest representativeGrantRequest() {

@@ -4,6 +4,8 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.UuidV7;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ReminderStatus;
@@ -17,6 +19,7 @@ import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationLineEntity;
 import com.mannschaft.app.reservation.entity.ReservationMenuEntity;
 import com.mannschaft.app.reservation.entity.ReservationMenuLineEntity;
+import com.mannschaft.app.reservation.entity.ReservationRecurringBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationReminderEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent;
@@ -26,6 +29,7 @@ import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepositor
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationMenuLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationMenuRepository;
+import com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationReminderRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
@@ -38,7 +42,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -83,6 +90,8 @@ public class ReservationGroupService {
     private final ReservationMenuRepository menuRepository;
     private final ReservationMenuLineRepository menuLineRepository;
     private final ReservationBlockedTimeRepository blockedTimeRepository;
+    /** F03.4.5 §4 W2-2: 定期予約不可枠（週次繰り返し）の active ルール参照。 */
+    private final ReservationRecurringBlockedTimeRepository recurringBlockedTimeRepository;
     private final ReservationReminderRepository reminderRepository;
     /** 予約閲覧の view ゲート（会員 or 公開）。単枠予約・グリッドと同一述語を共有する（§4）。 */
     private final ReservationViewAccessGuard viewAccessGuard;
@@ -94,6 +103,8 @@ public class ReservationGroupService {
     private final AuditLogService auditLogService;
     /** F03.4.5 §6.1: 予約成立時に同一 (slot, user) のキャンセル待ちを CONVERTED へ消し込む。 */
     private final ReservationWaitlistService waitlistService;
+    /** F03.4.5 §6.4: 予約作成のレートリミット（単枠作成と同一バケットを共有・§6.4）。 */
+    private final ReservationCreateRateLimiter createRateLimiter;
     /**
      * 作成トランザクションの明示境界（§5.2）。コミット時を含む
      * {@code PessimisticLockingFailureException}（InnoDB デッドロック等）を
@@ -102,6 +113,9 @@ public class ReservationGroupService {
      */
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     // ========================================
     // 作成（§5.2）
@@ -124,6 +138,15 @@ public class ReservationGroupService {
      */
     public ReservationGroupResponse createGroup(
             Long teamId, Long userId, CreateReservationGroupRequest request) {
+        // 1. 予約認可ゲート（単枠・グリッドと同一述語・§5.2 の 1）。
+        //    単枠 createReservation と<b>順序を対称化</b>するため tx の外で先に判定する
+        //    （殿の裁定・2026-07-29）。同一 zone を共有しているのに片方だけ「認可前に消費」だと、
+        //    403 のはずが 429 で返る状況が生まれ調査コストになる。assertCanView は読み取り専用
+        //    なので tx 外で呼んでよく、「tx を無駄に開かない」という当初の意図も維持される。
+        viewAccessGuard.assertCanView(teamId, userId);
+
+        // 2. F03.4.5 §6.4: 予約作成のレートリミット（単枠 createReservation と同一 zone・1 ユーザー 1 分 5 回）。
+        createRateLimiter.assertNotRateLimited(userId);
         try {
             return transactionTemplate.execute(status -> doCreateGroup(teamId, userId, request));
         } catch (PessimisticLockingFailureException e) {
@@ -135,8 +158,7 @@ public class ReservationGroupService {
 
     private ReservationGroupResponse doCreateGroup(
             Long teamId, Long userId, CreateReservationGroupRequest request) {
-        // 1. 予約認可ゲート（単枠・グリッドと同一述語・§5.2 の 1）
-        viewAccessGuard.assertCanView(teamId, userId);
+        // 認可ゲート（§5.2 の 1）は tx を開く前の createGroup 側へ移設済み（レートリミットとの順序対称化）。
 
         // 2-e. 枠数上限（1〜16。0 件は DTO @NotEmpty が 400 で防ぐ）
         List<Long> slotIds = request.getSlotIds();
@@ -157,18 +179,27 @@ public class ReservationGroupService {
             throw new BusinessException(ReservationErrorCode.SLOT_NOT_FOUND);
         }
 
-        // 2-b. 同一日
-        if (slots.stream().map(ReservationSlotEntity::getSlotDate).distinct().count() > 1) {
-            throw new BusinessException(ReservationErrorCode.SLOT_LINE_MISMATCH);
-        }
+        ZoneId teamZone = teamTimezoneResolver == null
+                ? UserZoneLocalDateTimeParser.SERVER_ZONE : teamTimezoneResolver.resolveZone(teamId);
+
+        // 2-b. 実際の開始Instant順（日跨ぎを含む）
+        // 日跨ぎは実際の開始Instant順で扱う（同一日制約は禁止）。
 
         // 開始時刻昇順に整列（以降「先頭枠」= slots.get(0)）
-        slots.sort(Comparator.comparing(ReservationSlotEntity::getStartTime));
+        slots.sort(Comparator.comparing(s -> teamTimezoneResolver == null
+                ? LocalDateTime.of(s.getSlotDate(), s.getStartTime())
+                    .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                : teamTimezoneResolver.toInstant(s.getSlotDate(), s.getStartTime(), teamZone)));
         ReservationSlotEntity firstSlot = slots.get(0);
 
         // 2-b. 先頭枠開始が未来（過去は 400=014・注入 Clock 基準）
-        LocalDateTime firstStartAt = LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime());
-        if (!firstStartAt.isAfter(LocalDateTime.now(clock))) {
+        // Issue #2526: slot_date/start_time は業務ローカル時刻のため、Clock（UTC固定）の瞬間を
+        // JVM 既定ゾーンで解釈し直してから比較する（ReservationPendingExpireService と同型）。
+        Instant firstStartInstant = teamTimezoneResolver == null
+                ? LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime())
+                    .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                : teamTimezoneResolver.toInstant(firstSlot.getSlotDate(), firstSlot.getStartTime(), teamZone);
+        if (!firstStartInstant.isAfter(clock.instant())) {
             throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
 
@@ -187,7 +218,11 @@ public class ReservationGroupService {
 
         // 2-d. 連続性: 全隣接で end == next.start（30分セルであることは要求しない・§5.2）
         for (int i = 0; i < slots.size() - 1; i++) {
-            if (!slots.get(i).getEndTime().equals(slots.get(i + 1).getStartTime())) {
+            ReservationSlotEntity previous = slots.get(i);
+            ReservationSlotEntity next = slots.get(i + 1);
+            LocalDate previousEndDate = previous.getEndDate() != null ? previous.getEndDate() : previous.getSlotDate();
+            if (!java.util.Objects.equals(previousEndDate, next.getSlotDate())
+                    || !previous.getEndTime().equals(next.getStartTime())) {
                 throw new BusinessException(ReservationErrorCode.SLOT_LINE_MISMATCH);
             }
         }
@@ -210,11 +245,17 @@ public class ReservationGroupService {
             }
         }
 
-        // 2-g. 予約不可枠（機能B 単一ユーティリティ・違反 009）
+        // 2-g. 予約不可枠（機能B+F03.4.5 §4.2 単一ユーティリティ・違反 009）
+        LocalDate blockFrom = slots.stream().map(ReservationSlotEntity::getSlotDate).min(LocalDate::compareTo).orElse(firstSlot.getSlotDate());
+        LocalDate blockTo = slots.stream()
+                .map(s -> s.getEndDate() != null ? s.getEndDate() : s.getSlotDate())
+                .max(LocalDate::compareTo).orElse(firstSlot.getSlotDate());
         List<ReservationBlockedTimeEntity> blocks = blockedTimeRepository
-                .findByTeamIdAndBlockedDateOrderByStartTimeAsc(teamId, firstSlot.getSlotDate());
+                .findEffectiveBetween(teamId, blockFrom, blockTo, blockFrom.minusDays(1));
+        List<ReservationRecurringBlockedTimeEntity> recurringRules =
+                recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
         for (ReservationSlotEntity slot : slots) {
-            if (unavailabilityChecker.isBlockedByAny(slot, blocks)) {
+            if (unavailabilityChecker.isBlockedByAny(slot, blocks, recurringRules, teamZone)) {
                 throw new BusinessException(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
             }
         }
@@ -279,7 +320,10 @@ public class ReservationGroupService {
         if (mode == ApprovalMode.AUTO) {
             // 確定イベントは代表行についてのみ 1 回（リマインドは来店の 24h/1h 前 1 セットだけ・§5.5）
             eventPublisher.publishEvent(new ReservationConfirmedEvent(
-                    teamId, primary.getId(), userId, firstStartAt, displayTitle));
+                    teamId, primary.getId(), userId,
+                    LocalDateTime.ofInstant(firstStartInstant, teamTimezoneResolver == null
+                            ? UserZoneLocalDateTimeParser.SERVER_ZONE
+                            : teamZone), displayTitle));
         }
 
         // 8. 作成イベントも代表行についてのみ 1 回（管理者通知・機能D メールが 1 回だけ飛ぶ・§5.5）
@@ -341,10 +385,15 @@ public class ReservationGroupService {
         if (isAdmin) {
             cancelledBy = CancelledBy.ADMIN;
         } else {
+            // Issue #2526（表に無い同型バグとして監査で発見）: deadline は firstStartAt
+            // （業務ローカル時刻）由来のため、単枠版 ReservationService#isCancelDeadlinePassed と
+            // 同じく Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する。
             int deadlineHours = reservationPolicyService.getOrDefault(teamId).getCancelDeadlineHours();
-            LocalDateTime firstStartAt = LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime());
-            LocalDateTime deadline = firstStartAt.minusHours(deadlineHours);
-            if (LocalDateTime.now(clock).isAfter(deadline)) {
+            Instant firstStartInstant = teamTimezoneResolver == null
+                    ? LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime())
+                        .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                    : teamTimezoneResolver.toInstant(teamId, firstSlot.getSlotDate(), firstSlot.getStartTime());
+            if (clock.instant().isAfter(firstStartInstant.minusSeconds(deadlineHours * 3600L))) {
                 throw new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_PASSED);
             }
             cancelledBy = CancelledBy.USER;

@@ -21,6 +21,7 @@ import com.mannschaft.app.schedule.repository.UserCalendarSyncSettingRepository;
 import com.mannschaft.app.schedule.repository.UserGoogleCalendarConnectionRepository;
 import com.mannschaft.app.schedule.repository.UserScheduleGoogleEventRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -307,6 +308,40 @@ class GoogleCalendarTeamOrgSyncRobustnessIntegrationTest extends AbstractMySqlIn
                     .isEmpty();
             assertThat(googleEventRepository.findByUserIdAndScheduleId(memberId, memberPlus.getId()))
                     .as("MEMBER_PLUS 予定は MEMBER へちょうど push されるべき（境界値の下限）")
+                    .isPresent();
+        }
+
+        /**
+         * CMP-017b: {@code min_view_role=ADMIN_ONLY} の境界は <b>DEPUTY_ADMIN</b> である。
+         *
+         * <p>設計書 {@code docs/features/F03.1_schedule_shared.md}「{@code ADMIN_ONLY}:
+         * DEPUTY_ADMIN・ADMIN のみ閲覧可」に従い、閾値写像を
+         * {@code com.mannschaft.app.schedule.visibility.MinViewRoleThreshold} へ一本化した際に
+         * push 判定の宛先も変わった（従来は {@code "ADMIN"} 閾値へ写像しており
+         * {@code RolePriority.isAtLeast("DEPUTY_ADMIN", "ADMIN")} が成立しないため
+         * 副管理者を誤って弾いていた）。その変化を明示的に固定する。</p>
+         *
+         * <p>同 {@code ADMIN_ONLY} 予定が一般 MEMBER へ push されないことは AC-4 が固定しており、
+         * 本テストは «緩めた» のではなく «境界を設計書の位置へ正した» ことの証跡である。</p>
+         */
+        @Test
+        @DisplayName("CMP-017b: ADMIN_ONLY 予定は DEPUTY_ADMIN へ push される（境界は ADMIN ではない）")
+        void adminOnlySchedule_pushedToDeputyAdmin() {
+            Long teamId = insertTeam("AC5-deputy-team");
+            ScheduleEntity adminOnly = insertTeamSchedule(teamId,
+                    ScheduleVisibility.MEMBERS_ONLY, MinViewRole.ADMIN_ONLY);
+
+            Long deputyId = insertUser("ac5-deputy@test");
+            insertActiveConnection(deputyId);
+            // memberships（所属）と user_roles（権限ロール）は別系統のため双方に行を張る。
+            insertMembership(deputyId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+            MembershipTestHelper.insertUserRole(em, deputyId, "DEPUTY_ADMIN", teamId, null);
+            em.flush();
+
+            googleCalendarService.toggleTeamSync(teamId, true, deputyId);
+
+            assertThat(googleEventRepository.findByUserIdAndScheduleId(deputyId, adminOnly.getId()))
+                    .as("ADMIN_ONLY 予定は DEPUTY_ADMIN へ push されるべき（設計書 F03.1 の境界）")
                     .isPresent();
         }
     }

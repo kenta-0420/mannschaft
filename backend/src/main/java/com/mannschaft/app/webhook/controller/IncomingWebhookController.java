@@ -2,6 +2,9 @@ package com.mannschaft.app.webhook.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.webhook.service.IncomingWebhookService;
 import com.mannschaft.app.webhook.service.IncomingWebhookService.CreateIncomingWebhookRequest;
 import com.mannschaft.app.webhook.service.IncomingWebhookService.IncomingWebhookTokenResponse;
@@ -83,10 +86,24 @@ public class IncomingWebhookController {
      * 外部サービス（Stripe、GitHub等）からのWebhookペイロードを受け付ける。
      * トークン検証はサービス層で実施する。
      *
+     * <p><b>認可根拠（{@link AuthorizedInService} メソッド付与）</b>: 本 EP は capability トークン
+     * （URL パスの {@code token}）で認可する。{@code IncomingWebhookService.java:163-165} の
+     * {@code tokenRepository.findByTokenAndIsActiveTrueAndDeletedAtIsNull(token)} が
+     * 「実在・アクティブ・未削除」を検証し、不成立なら {@code WEBHOOK_005} を throw して中断する。
+     * トークンに紐づく scope が処理対象を決めるため、他スコープへの越境は起こらない。
+     * 認可根治戦役 Wave5 監査済。</p>
+     *
+     * <p>本クラスの他 3 EP（{@link #createToken} / {@link #listTokens} / {@link #revokeToken}）は
+     * 認証必須で Service 層のロール認可を通るため、マーカーは<b>本メソッドのみ</b>に付与する
+     * （クラス付与にすると管理系 3 EP まで監査済扱いとなり誤った証跡になる）。</p>
+     *
      * @param token     URLパスに含まれるWebhookトークン
      * @param payload   受信ペイロード（JSONオブジェクト）
      * @param eventType イベント種別（任意。Stripe等ではXヘッダーではなくクエリで指定される場合がある）
      */
+    @AuthorizedInService
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "発行済みWebhook契約の外部イベントをGate状態にかかわらず受領するため")
     @PostMapping("/incoming/{token}")
     public ApiResponse<Void> processIncoming(
             @PathVariable String token,

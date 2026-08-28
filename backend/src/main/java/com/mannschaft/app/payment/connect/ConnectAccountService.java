@@ -40,7 +40,16 @@ import java.util.Optional;
 @Transactional
 public class ConnectAccountService {
 
-    /** TEAM scope ADMIN 判定に用いる権限名（札の謝礼設定と同等の管理権限）。 */
+    /**
+     * TEAM/ORG scope の管理者判定に用いる権限名（札の謝礼設定と同等の管理権限）。
+     *
+     * <p>本権限は {@code V183.20260813045816__add_manage_recruitments_permission.sql} で
+     * {@code permissions} へ登録し ADMIN へ {@code is_default=1} 付与する。カタログに行が無いと
+     * TEAM 経路（{@link com.mannschaft.app.common.AccessControlService#checkPermission}）の判定が
+     * 成立せず、チーム受取の onboarding が誰にも通らない。TEAM と ORG で呼び分ける理由・
+     * DEPUTY_ADMIN へ {@code role_permissions} 行を作ってはならない不変条件は
+     * {@link com.mannschaft.app.payment.escrow.ConnectChargeService} の同名定数の javadoc に集約している。</p>
+     */
     static final String PERMISSION_MANAGE_PAYMENT = "MANAGE_RECRUITMENTS";
 
     /** 国コード（JP 固定・01 §1）。 */

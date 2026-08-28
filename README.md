@@ -124,6 +124,12 @@
 - **マルチ所属**: 1つの個人アカウントで複数のチームや組織に同時に所属可能
 - **サポーター枠**: 招待不要で、外部から特定のチームを支援・フォローできる独立した枠組み
 
+### 予定対象者とマイカレンダー
+
+- チーム・組織予定は「全員」またはスコープ内の選択メンバー（1〜500名）を対象にできる。対象指定は公開範囲を拡張せず、閲覧権限を満たす所属者にだけ氏名と色を表示する。
+- メンバーのカレンダー色はチーム・組織ごとに自動決定され、管理者が上書き・リセットできる。色だけでなく氏名・アバターを常に併記する。
+- 個人ダッシュボードとマイカレンダーには、全員予定、自分が対象の予定、および個人・チーム・組織を横断した自分担当の未完了TODOを表示する。予定に連携済みのTODOは予定を正本として重複表示しない。
+
 ### ロール・パーミッション
 
 | ロール | スコープ | アクセス範囲 |
@@ -397,6 +403,8 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 #### 1. ダッシュボード（ログイン後のホーム画面）
 
 組織・チーム・個人それぞれにダッシュボードを持ち、全ウィジェットの表示/非表示をトグルスイッチで自由にカスタマイズ可能。
+
+ダッシュボードの切替タブ直下には、個人・選択中チーム・選択中組織のストレージ容量サマリーを表示する（使用量、使用率ゲージ、容量枠未設定・未所属・取得失敗の状態を含む）。容量カードはキーボード操作に対応し、通常は容量設定へ遷移、90%以上では有料プラン案内Dialogを表示する。
 
 **個人ダッシュボード:**
 - お知らせ欄（重要度付き通知）、直近イベント + 出欠状況、自分の投稿一覧、未読スレッド、最近のアクティビティ
@@ -881,7 +889,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 | Phase | 機能領域 | 詳細設計 |
 |-------|---------|---------|
 | 1 | 認証・権限・ユーザー基盤、プラットフォーム設定、チーム・組織・グループ階層、テンプレート・モジュール、プラン・サブスクリプション、チーム間相互フォロー・フレンドチーム | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
-| 2 | QR会員証、ダッシュボード、TODO・プロジェクト、アクセス解析、外観設定、オンボーディング | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
+| 2 | QR会員証、ダッシュボード、帰省・滞在予定、TODO・プロジェクト、アクセス解析、外観設定、オンボーディング | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.11](docs/features/F02.11_return_stay_plan.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
 | 3 | スケジュール・出欠、個人スケジュール、Googleカレンダー連携、予約管理、シフト管理、緊急安否確認、順番待ち、イベント管理 | [F03.1](docs/features/F03.1_schedule_shared.md), [F03.2](docs/features/F03.2_schedule_personal.md), [F03.3](docs/features/F03.3_google_calendar.md), [F03.4](docs/features/F03.4_reservation.md)（v2枝番: [F03.4.1 メニュー](docs/features/F03.4.1_reservation_menu.md), [F03.4.2 枠テンプレート](docs/features/F03.4.2_reservation_slot_template.md), [F03.4.3 予約グループ](docs/features/F03.4.3_reservation_group_booking.md), [F03.4.4 マトリックスUI](docs/features/F03.4.4_reservation_matrix_ui.md)）, [F03.5](docs/features/F03.5_shift.md), [F03.6](docs/features/F03.6_safety_check.md), [F03.7](docs/features/F03.7_queue.md), [F03.8](docs/features/F03.8_event_management.md) |
 | 4 | タイムライン、チャット、プッシュ通知、ソーシャルプロフィール・フォロー、通報・モデレーション、グローバル検索、ゲーミフィケーション | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md), [F04.7](docs/features/F04.7_gamification.md) |
 | 5 | 掲示板、回覧板、電子印鑑、アンケート・投票、ファイル共有、ワークフロー・承認、フォームビルダー | [F05.1](docs/features/F05.1_bulletin_board.md), [F05.2](docs/features/F05.2_circular.md), [F05.3](docs/features/F05.3_digital_seal.md), [F05.4](docs/features/F05.4_survey_vote.md), [F05.5](docs/features/F05.5_file_sharing.md), [F05.6](docs/features/F05.6_workflow_approval.md), [F05.7](docs/features/F05.7_form_builder.md) |
@@ -912,7 +920,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 | Phase | 機能領域 | 主要エンドポイント例 | 詳細設計 |
 |-------|---------|-------------------|---------|
 | 1 | 認証・権限、チーム・組織、テンプレート・モジュール、プラン・課金、フレンドチーム | `/auth/**`, `/teams/**`, `/organizations/**`, `/templates/**`, `/system-admin/**`, `/teams/{id}/friends/**`, `/teams/{id}/friend-folders/**`, `/teams/{id}/friend-feed/**` | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
-| 2 | QR会員証、ダッシュボード、TODO、オンボーディング | `/members/card/**`, `/dashboard/**`, `/todos/**`, `/onboarding/**` | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
+| 2 | QR会員証、ダッシュボード、帰省・滞在予定（本人管理・TEAM公開）、TODO、オンボーディング | `/members/card/**`, `/dashboard/**`, `/me/return-stay-plans/**`, `/teams/{teamId}/members/**/return-stay-plans`, `/todos/**`, `/onboarding/**` | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.11](docs/features/F02.11_return_stay_plan.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
 | 3 | スケジュール、予約、シフト、安否確認、順番待ち | `/schedules/**`, `/reservations/**`, `/shifts/**`, `/safety-checks/**`, `/queues/**` | [F03.1](docs/features/F03.1_schedule_shared.md), [F03.2](docs/features/F03.2_schedule_personal.md), [F03.3](docs/features/F03.3_google_calendar.md), [F03.4](docs/features/F03.4_reservation.md), [F03.5](docs/features/F03.5_shift.md), [F03.6](docs/features/F03.6_safety_check.md), [F03.7](docs/features/F03.7_queue.md) |
 | 4 | タイムライン、チャット、通知、ソーシャルプロフィール、検索 | `/timeline/**`, `/chat/**`, `/notifications/**`, `/social-profiles/**`, `/search/**` | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md) |
 | 5 | 掲示板、回覧板、電子印鑑、アンケート、ファイル共有 | `/bulletin/**`, `/circulation/**`, `/seal/**`, `/surveys/**`, `/files/**` | [F05.1](docs/features/F05.1_bulletin_board.md), [F05.2](docs/features/F05.2_circular.md), [F05.3](docs/features/F05.3_digital_seal.md), [F05.4](docs/features/F05.4_survey_vote.md), [F05.5](docs/features/F05.5_file_sharing.md) |
@@ -1017,7 +1025,9 @@ docker ps  # mannschaft-mysql と mannschaft-valkey が Running であれば OK
 cat > /mnt/c/Claude/mannschaft/backend/src/main/resources/application-local.yml << 'EOF'
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/mannschaft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Tokyo
+    # serverTimezone=UTC は docker-compose.yml の MySQL（--default-time-zone=+00:00）と必ず一致させること。
+    # DB 格納時刻の基準は UTC に統一されている（Issue #2486 / backend/.claudecode.md §20）。
+    url: jdbc:mysql://localhost:3306/mannschaft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: mannschaft
     password: mannschaft
   data:

@@ -3,15 +3,19 @@ package com.mannschaft.app.publicview.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
+import com.mannschaft.app.cms.media.BlogBodyMediaResolver;
+import com.mannschaft.app.cms.media.BlogMediaScope;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.family.CareCategory;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.publicview.dto.PublicAuthorIdentity;
 import com.mannschaft.app.publicview.dto.PublicPostDetail;
 import com.mannschaft.app.publicview.dto.PublicPostSummary;
@@ -35,7 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -75,6 +78,9 @@ public class PublicPostQueryService {
     // TODO: publicview ドメインが payment ドメインを参照（CLAUDE.md 原則5）。クロスドメイン FK は張らず
     //       PaymentGateService のメソッド呼び（ID 渡し）に限定する。将来はイベント駆動化を検討。
     private final PaymentGateService paymentGateService;
+
+    /** 記事本文（Markdown）に埋め込まれた r2Key を署名付き表示 URL へ解決する部品。 */
+    private final BlogBodyMediaResolver blogBodyMediaResolver;
 
     // ────────────────────────────────────────────────────────────
     // 一覧
@@ -230,7 +236,8 @@ public class PublicPostQueryService {
                                       ViewerContext viewerContext) {
         PublicAuthorIdentity identity = resolveIdentity(post, author, scope, settings, viewerContext);
         String title = post.getTitle();
-        String bodyHtml = applyPaywallToPublicDetail(post, viewerContext);
+        // 公開（未認証）経路も表示経路なので、マスクを免れた本文の r2Key を署名 URL へ解決する。
+        String bodyHtml = resolveBodyMedia(post, applyPaywallToPublicDetail(post, viewerContext));
         // titleHidden 相当（=null 返却）のケースは applyPaywallToPublicDetail が PUBLIC_003 で 404 済み。
         return new PublicPostDetail(
                 PublicPostSummary.SOURCE_TYPE_BLOG_POST,
@@ -241,6 +248,32 @@ public class PublicPostQueryService {
                 scopeRefDto,
                 toOffsetDateTime(post.getPublishedAt())
         );
+    }
+
+    /**
+     * 公開詳細の本文について、生の r2Key を署名付き表示 URL へ解決する。
+     *
+     * <p>{@code PublicPostDetail.bodyHtml} は名前に反して生 Markdown であり、フロントエンドは
+     * {@code sanitizeHtml} のみで描画する。ゆえに BE 側で解決しなければ画像は表示されない。</p>
+     *
+     * <p>ペイウォールでマスクされた本文（{@code null}）は解決しない
+     * （マスクを解決処理で復活させてはならない）。</p>
+     *
+     * @param post     対象記事（スコープ導出に使用）
+     * @param bodyHtml ペイウォール適用後の本文（マスク時は null）
+     * @return 署名 URL 解決後の本文。マスク時は null のまま
+     */
+    private String resolveBodyMedia(BlogPostEntity post, String bodyHtml) {
+        if (bodyHtml == null) {
+            return null;
+        }
+        BlogMediaScope scope = BlogMediaScope.of(
+                post.getTeamId(), post.getOrganizationId(), post.getUserId());
+        if (scope == null) {
+            log.warn("本文メディア: 記事のスコープを判定できないため解決を見送る: postId={}", post.getId());
+            return bodyHtml;
+        }
+        return blogBodyMediaResolver.resolveBody(bodyHtml, scope.scopeType(), scope.scopeId());
     }
 
     /**
@@ -263,9 +296,6 @@ public class PublicPostQueryService {
     private String applyPaywallToPublicDetail(BlogPostEntity post, ViewerContext viewerContext) {
         Long viewerUserId = viewerContext.userId();
         // 著者本人はゲート無視で全文
-        if (viewerUserId != null && viewerUserId.equals(post.getAuthorId())) {
-            return post.getBody();
-        }
         // SystemAdmin はゲート無視で全文
         if (viewerContext.status() == ViewerStatus.SYSTEM_ADMIN) {
             return post.getBody();
@@ -273,7 +303,8 @@ public class PublicPostQueryService {
 
         GateCheckResponse gate;
         try {
-            gate = paymentGateService.checkAccess(ContentGateType.POST, post.getId(), viewerUserId);
+            gate = paymentGateService.checkAccess(ContentGateType.POST, post.getId(), viewerUserId,
+                    targetOf(post));
         } catch (Exception e) {
             // 評価不能（例外）→ null 扱いで fail-closed 経路へ統一する。
             log.warn("ペイウォール判定失敗（公開詳細）: postId={} → fail-closed 判定へ", post.getId(), e);
@@ -282,7 +313,7 @@ public class PublicPostQueryService {
 
         // checkAccess が null／例外のいずれでも、ゲート行が有るなら本文をマスク、無いなら従来どおり返す。
         if (gate == null) {
-            return safelyHasGate(post.getId()) ? null : post.getBody();
+            throw new BusinessException(PublicViewErrorCode.PUBLIC_003);
         }
         if (gate.isAccessible()) {
             return post.getBody();
@@ -294,16 +325,10 @@ public class PublicPostQueryService {
         return null;
     }
 
-    /**
-     * ゲート存在確認（fail-closed 判定用）。存在確認自体が失敗した場合は過剰遮断を避け false（非課金扱い）を返す。
-     */
-    private boolean safelyHasGate(Long postId) {
-        try {
-            return paymentGateService.hasGate(ContentGateType.POST, postId);
-        } catch (Exception e) {
-            log.warn("ペイウォールゲート存在確認に失敗: postId={} → ゲート無し扱い", postId, e);
-            return false;
-        }
+    /** コンテンツ実体から課金判定用の実スコープを復元する。 */
+    private static ContentGateTarget targetOf(BlogPostEntity post) {
+        if (post == null || post.getId() == null) return null;
+        return new ContentGateTarget(post.getId(), post.getTeamId(), post.getOrganizationId());
     }
 
     /**
@@ -371,6 +396,6 @@ public class PublicPostQueryService {
         if (ldt == null) {
             return null;
         }
-        return ldt.atZone(ZoneId.systemDefault()).toOffsetDateTime();
+        return ldt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toOffsetDateTime();
     }
 }

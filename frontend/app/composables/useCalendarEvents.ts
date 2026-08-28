@@ -1,5 +1,14 @@
+import dayjs from 'dayjs'
+
 export interface CalendarEventItem {
   id: number
+  /**
+   * 親 {@code schedules} 行の ID（BE {@code CalendarEntryResponse.scheduleId}・設計書 §1.5 / AC-07(b)）。
+   *
+   * schedule 由来のエントリでは {@code id} と同値。reflection 等 UUID 主キードメイン由来（{@code id=-1}）や
+   * TODO（{@code id}負数）では常に {@code null}。イベント詳細のコメントセクション表示可否判定に使う。
+   */
+  scheduleId?: number | null
   /**
    * 一覧/ループの安定一意キー（v-for :key・ルックアップ用）。
    *
@@ -25,6 +34,24 @@ export interface CalendarEventItem {
   scopeType?: string
   scopeName?: string | null
   scopeIconUrl?: string | null
+  targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+  targetCount?: number
+  targets?: Array<{
+    userId: number
+    displayName: string
+    avatarUrl: string | null
+    calendarColor: string | null
+  }>
+  /**
+   * 出欠回答が必須のイベントか（モバイルのリストビューで行内 RSVP ボタンの出し分けに使う）。
+   * BE ScheduleResponse.content.attendanceRequired 由来。未設定は false 扱い。
+   */
+  attendanceRequired?: boolean
+  /**
+   * 閲覧者本人の出欠回答状態（'YES' / 'NO' / 'MAYBE' / null）。
+   * 一覧 API は null を返し、詳細 GET で実値が入る（BE 現仕様）。
+   */
+  myAttendance?: string | null
 }
 
 export interface UseCalendarEventsOptions {
@@ -37,6 +64,7 @@ export function useCalendarEvents(
   options: UseCalendarEventsOptions = {},
 ) {
   const { cacheHalfMonths = 2, onError } = options
+  const { buildDayStartStr, buildDayEndStr } = useDatetime()
 
   const now = new Date()
   const currentYear = ref(now.getFullYear())
@@ -49,21 +77,29 @@ export function useCalendarEvents(
 
   const pad = (n: number) => String(n).padStart(2, '0')
 
+  /**
+   * 対象月の「ユーザーTZでの月初 00:00:00 〜 月末 23:59:59」をオフセット付き文字列で返す。
+   *
+   * 以前はオフセット無しのナイーブ文字列を送っていたため、BE 側でサーバー既定TZの壁時計として
+   * 解釈され、ユーザーTZが JST 以外の場合に取得範囲がずれていた（Issue #2508）。
+   * BE が オフセット付き `LocalDateTime` を受理できるようになったため、明示的に付与する。
+   */
   function buildMonthRange(year: number, month: number): { from: string; to: string } {
     const lastDay = new Date(year, month, 0).getDate()
     return {
-      from: `${year}-${pad(month)}-01T00:00:00`,
-      to: `${year}-${pad(month)}-${pad(lastDay)}T23:59:59`,
+      from: buildDayStartStr(`${year}-${pad(month)}-01`),
+      to: buildDayEndStr(`${year}-${pad(month)}-${pad(lastDay)}`),
     }
   }
 
+  /** 月表示グリッド（6週=42セル）の範囲をユーザーTZ基準のオフセット付き文字列で返す。 */
   function buildGridRange(year: number, month: number): { from: string; to: string } {
     const first = new Date(year, month - 1, 1)
     const startOffset = first.getDay() // 0=日曜
     const gridStart = new Date(year, month - 1, 1 - startOffset)
     const gridEnd = new Date(year, month - 1, 1 - startOffset + 41) // 42セル=6週
     const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-    return { from: `${fmt(gridStart)}T00:00:00`, to: `${fmt(gridEnd)}T23:59:59` }
+    return { from: buildDayStartStr(fmt(gridStart)), to: buildDayEndStr(fmt(gridEnd)) }
   }
 
   function addMonths(year: number, month: number, delta: number): { year: number; month: number } {
@@ -81,7 +117,14 @@ export function useCalendarEvents(
 
   const events = computed<CalendarEventItem[]>(() => {
     const { from, to } = buildGridRange(currentYear.value, currentMonth.value)
-    return allEvents.value.filter((e) => e.startAt >= from && e.startAt <= to)
+    // from/to はオフセット付きになったため、文字列の辞書順比較では意味が壊れる（BE 応答と
+    // オフセットが異なりうる）。瞬間（epoch ミリ秒）に落として比較する。
+    const fromMs = Date.parse(from)
+    const toMs = Date.parse(to)
+    return allEvents.value.filter((e) => {
+      const at = Date.parse(e.startAt)
+      return at >= fromMs && at <= toMs
+    })
   })
 
   async function fetchAndCache(centerYear: number, centerMonth: number): Promise<void> {
@@ -129,10 +172,10 @@ export function useCalendarEvents(
     }
   }
 
-  function navigate(delta: number): void {
-    const next = addMonths(currentYear.value, currentMonth.value, delta)
-    currentYear.value = next.year
-    currentMonth.value = next.month
+  /** 表示中の年月を任意の年月へ直接移動する（キャッシュ範囲外なら再取得）。 */
+  function navigateTo(year: number, month: number): void {
+    currentYear.value = year
+    currentMonth.value = month
 
     if (cacheHalfMonths === 0 || !isWithinCache(currentYear.value, currentMonth.value)) {
       calendarLoading.value = true
@@ -142,12 +185,30 @@ export function useCalendarEvents(
     }
   }
 
+  function navigate(delta: number): void {
+    const next = addMonths(currentYear.value, currentMonth.value, delta)
+    navigateTo(next.year, next.month)
+  }
+
   function onPrevMonth(): void {
     navigate(-1)
   }
 
   function onNextMonth(): void {
     navigate(1)
+  }
+
+  /**
+   * 「今日」ボタン（§6.3・AC-12d）: ユーザータイムゾーン基準の今日が属する月へ移動する。
+   * 既に当月表示中の場合は再取得せず何もしない（呼び出し側がフォーカス移動のみ行う）。
+   */
+  function goToToday(): void {
+    const { userTimezone } = useDatetime()
+    const now = dayjs().tz(userTimezone.value)
+    const year = now.year()
+    const month = now.month() + 1
+    if (year === currentYear.value && month === currentMonth.value) return
+    navigateTo(year, month)
   }
 
   return {
@@ -160,5 +221,9 @@ export function useCalendarEvents(
     refresh,
     onPrevMonth,
     onNextMonth,
+    goToToday,
+    // F03.19 §6.5.3: 週ビューは表示中の週が月をまたぐことがあり、その週を包含する月へ
+    // 取得範囲を寄せるために任意の年月へ直接移動できる必要がある。
+    navigateTo,
   }
 }

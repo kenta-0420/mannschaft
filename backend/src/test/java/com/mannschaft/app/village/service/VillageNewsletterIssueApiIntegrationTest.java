@@ -9,6 +9,7 @@ import com.mannschaft.app.village.dto.PublicNewsletterIssuePageResponse;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.VillageNewsletterIssueEntity;
+import com.mannschaft.app.village.entity.VillageNewsletterTagEntity;
 import com.mannschaft.app.village.entity.enums.VillageBulletinVisibility;
 import com.mannschaft.app.village.entity.enums.VillageJoinPolicy;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency;
@@ -21,6 +22,7 @@ import com.mannschaft.app.village.entity.enums.VillageType;
 import com.mannschaft.app.village.entity.enums.VillageVisibility;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterIssueRepository;
+import com.mannschaft.app.village.repository.VillageNewsletterTagRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,6 +66,8 @@ class VillageNewsletterIssueApiIntegrationTest extends AbstractVillageIntegratio
     private VillageRepository villageRepository;
     @Autowired
     private VillageMembershipRepository membershipRepository;
+    @Autowired
+    private VillageNewsletterTagRepository tagRepository;
 
     private static final Long HEADMAN_USER_ID = 501L;
     private static final Long OUTSIDER_USER_ID = 999L;
@@ -92,6 +96,61 @@ class VillageNewsletterIssueApiIntegrationTest extends AbstractVillageIntegratio
         assertThat(page.content()).extracting("id").containsExactly(publicIssue.getId());
         assertThat(page.content()).extracting("title").containsExactly("公開号");
         assertThat(page.content()).extracting("title").doesNotContain("村内限定号", "未配信の公開予定号");
+    }
+
+    // ========================================================================
+    // ②-4 堅牢性 AC-4/5/7/8 — 公開一覧は「発行元村が生存」の号だけ（ゾンビ号を除外）
+    // ========================================================================
+
+    @Test
+    @DisplayName("AC-4/5/7/8: listPublicIssues は削除村・凍結村の公開号を除外し、生存村の号のみ返す（totalElements整合）")
+    void listPublicIssues_excludesIssuesFromDeadVillages() {
+        UUID aliveVillage = persistVillage().getId();
+        UUID deletedVillage = persistDeadVillage(LocalDateTime.now(), null).getId();
+        UUID archivedVillage = persistDeadVillage(null, LocalDateTime.now()).getId();
+
+        VillageNewsletterIssueEntity aliveIssue = persistIssue(aliveVillage,
+                VillageNewsletterVisibility.PUBLIC, VillageNewsletterIssueStatus.PUBLISHED, "生存村の公開号");
+        // ゾンビ号（村は消えているが号自体は PUBLIC×PUBLISHED）
+        persistIssue(deletedVillage,
+                VillageNewsletterVisibility.PUBLIC, VillageNewsletterIssueStatus.PUBLISHED, "削除村の公開号");
+        persistIssue(archivedVillage,
+                VillageNewsletterVisibility.PUBLIC, VillageNewsletterIssueStatus.PUBLISHED, "凍結村の公開号");
+
+        PublicNewsletterIssuePageResponse page = issueService.listPublicIssues(
+                OUTSIDER_USER_ID, PageRequest.of(0, 20));
+
+        // AC-4/5/7: 生存村の号だけ
+        assertThat(page.content()).extracting("id").containsExactly(aliveIssue.getId());
+        assertThat(page.content()).extracting("title")
+                .doesNotContain("削除村の公開号", "凍結村の公開号");
+        // AC-8: totalElements も生存条件で数える（ゾンビ 2 件は含めない）
+        assertThat(page.totalElements()).isEqualTo(1);
+    }
+
+    // ========================================================================
+    // ②-4 堅牢性 AC-6 — 死んだ村の公開号は直アクセスも 404 秘匿
+    // ========================================================================
+
+    @Test
+    @DisplayName("AC-6: 削除村の公開号を getPublicIssue で直アクセスすると 404 秘匿・生存村の号は取得可")
+    void getPublicIssue_hidesZombieIssueFromDeadVillage() {
+        UUID aliveVillage = persistVillage().getId();
+        UUID deletedVillage = persistDeadVillage(LocalDateTime.now(), null).getId();
+
+        VillageNewsletterIssueEntity aliveIssue = persistIssue(aliveVillage,
+                VillageNewsletterVisibility.PUBLIC, VillageNewsletterIssueStatus.PUBLISHED, "生存村の公開号");
+        VillageNewsletterIssueEntity zombie = persistIssue(deletedVillage,
+                VillageNewsletterVisibility.PUBLIC, VillageNewsletterIssueStatus.PUBLISHED, "削除村の公開号");
+
+        assertThatThrownBy(() -> issueService.getPublicIssue(zombie.getId(), OUTSIDER_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.NEWSLETTER_ISSUE_NOT_FOUND);
+
+        // AC-7: 生存村の号は従来どおり取得できる
+        assertThat(issueService.getPublicIssue(aliveIssue.getId(), OUTSIDER_USER_ID).id())
+                .isEqualTo(aliveIssue.getId());
     }
 
     // ========================================================================
@@ -152,6 +211,55 @@ class VillageNewsletterIssueApiIntegrationTest extends AbstractVillageIntegratio
     }
 
     // ========================================================================
+    // ②-4 堅牢性 AC-9(孤児リンク耐性) — 論理削除タグへのリンクは両解決経路で skip
+    // ========================================================================
+
+    @Test
+    @DisplayName("AC-9: タグを論理削除しリンクが孤児化しても、一括経路(list)・単票経路(getPublic)双方で当該タグだけが消え号↔タグ対応は保たれる")
+    void resolveTags_skipsOrphanLinksAfterTagSoftDelete() {
+        VillageEntity village = persistVillage();
+        UUID villageId = village.getId();
+        persistHeadman(villageId, HEADMAN_USER_ID);
+
+        VillageNewsletterIssueEntity issueA = persistIssue(villageId,
+                VillageNewsletterVisibility.PUBLIC, VillageNewsletterIssueStatus.PUBLISHED, "公開号A");
+        VillageNewsletterIssueEntity issueB = persistIssue(villageId,
+                VillageNewsletterVisibility.PUBLIC, VillageNewsletterIssueStatus.PUBLISHED, "公開号B");
+        NewsletterTagResponse keep = issueService.createTag(villageId, HEADMAN_USER_ID, "残るタグ", "#00AA00", 1);
+        NewsletterTagResponse gone = issueService.createTag(villageId, HEADMAN_USER_ID, "消すタグ", "#AA0000", 2);
+        // A は 2 タグ・B は 1 タグ
+        issueService.setIssueTags(villageId, issueA.getId(), HEADMAN_USER_ID,
+                List.of(keep.id(), gone.id()), issueA.getVersion());
+        issueService.setIssueTags(villageId, issueB.getId(), HEADMAN_USER_ID,
+                List.of(gone.id()), issueB.getVersion());
+
+        // 中間リンクを残したまま gone を論理削除（deleteTag は使用中ガードで弾くため、孤児リンク状態を直接作る）。
+        VillageNewsletterTagEntity orphanTag = tagRepository.findById(gone.id()).orElseThrow();
+        orphanTag.setDeletedAt(LocalDateTime.now());
+        tagRepository.saveAndFlush(orphanTag);
+
+        // 一括経路①: 公開一覧（listPublicIssues → resolveTagsForIssues の if(tag!=null) 孤児 skip）
+        PublicNewsletterIssuePageResponse pub = issueService.listPublicIssues(
+                HEADMAN_USER_ID, PageRequest.of(0, 20));
+        assertThat(pub.content().stream().filter(i -> i.id().equals(issueA.getId()))
+                .findFirst().orElseThrow().tags()).extracting("name").containsExactly("残るタグ");
+        assertThat(pub.content().stream().filter(i -> i.id().equals(issueB.getId()))
+                .findFirst().orElseThrow().tags()).isEmpty();
+
+        // 一括経路②: 村内一覧（listIssues → 同じ一括解決）
+        NewsletterIssuePageResponse vlist = issueService.listIssues(
+                villageId, HEADMAN_USER_ID, null, PageRequest.of(0, 20));
+        assertThat(vlist.content().stream().filter(i -> i.id().equals(issueA.getId()))
+                .findFirst().orElseThrow().tags()).extracting("name").containsExactly("残るタグ");
+        assertThat(vlist.content().stream().filter(i -> i.id().equals(issueB.getId()))
+                .findFirst().orElseThrow().tags()).isEmpty();
+
+        // 単票経路: getPublicIssue（resolveTags 単票の filter(deletedAt==null)）
+        assertThat(issueService.getPublicIssue(issueA.getId(), HEADMAN_USER_ID).tags())
+                .extracting("name").containsExactly("残るタグ");
+    }
+
+    // ========================================================================
     // フィクスチャ
     // ========================================================================
 
@@ -168,6 +276,24 @@ class VillageNewsletterIssueApiIntegrationTest extends AbstractVillageIntegratio
                 .category("業種")
                 .memberCountCache(0L)
                 .createdByUserId(HEADMAN_USER_ID)
+                .build());
+    }
+
+    /** 削除済み（deletedAt）または凍結済み（archivedAt）の村を永続化する（村生存ゲート検証用・AC-4/5/6）。 */
+    private VillageEntity persistDeadVillage(LocalDateTime deletedAt, LocalDateTime archivedAt) {
+        return villageRepository.saveAndFlush(VillageEntity.builder()
+                .slug("nl-dead-" + UUID.randomUUID().toString().substring(0, 8))
+                .name("消滅村" + System.nanoTime())
+                .description("削除／凍結済み村（ゾンビ号テスト用）")
+                .type(VillageType.COMMUNITY)
+                .joinPolicy(VillageJoinPolicy.FREE)
+                .visibility(VillageVisibility.PUBLIC)
+                .bulletinVisibility(VillageBulletinVisibility.PUBLIC)
+                .category("業種")
+                .memberCountCache(0L)
+                .createdByUserId(HEADMAN_USER_ID)
+                .deletedAt(deletedAt)
+                .archivedAt(archivedAt)
                 .build());
     }
 

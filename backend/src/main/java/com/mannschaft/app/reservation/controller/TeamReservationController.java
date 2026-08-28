@@ -10,6 +10,8 @@ import com.mannschaft.app.reservation.dto.ReminderResponse;
 import com.mannschaft.app.reservation.dto.RescheduleRequest;
 import com.mannschaft.app.reservation.dto.ReservationResponse;
 import com.mannschaft.app.reservation.dto.ReservationStatsResponse;
+import com.mannschaft.app.reservation.ReservationConfirmScope;
+import com.mannschaft.app.reservation.service.ReservationRecurringService;
 import com.mannschaft.app.reservation.service.ReservationReminderService;
 import com.mannschaft.app.reservation.service.ReservationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,6 +46,8 @@ public class TeamReservationController {
 
     private final ReservationService reservationService;
     private final ReservationReminderService reminderService;
+    /** F03.4.5 §6.2 W2-5: 定期予約（毎週繰り返し）のオーケストレーター（非トランザクション）。 */
+    private final ReservationRecurringService recurringService;
 
     /**
      * チームの予約一覧を取得する。
@@ -79,6 +83,16 @@ public class TeamReservationController {
 
     /**
      * 予約を作成する。
+     *
+     * <p>F03.4.5 §6.2 W2-5: {@code repeatWeeks} が 2 以上のときは定期予約
+     * （毎週繰り返し・最大 12 週）として {@link ReservationRecurringService} が処理する。
+     * 省略/1 のときは従来どおりの単発予約経路（挙動完全不変・AC-5-2）。</p>
+     *
+     * <p><b>分岐を Controller に置く理由</b>: 定期予約は「週ごと独立トランザクション」が要件
+     * （AC-5-5）であり、オーケストレーターは非トランザクションでなければならない。一方
+     * {@code ReservationService.createReservation} は {@code @Transactional} である。
+     * Service 層で分岐すると外側にトランザクションが張られ、1 週の失敗が全週を巻き込む
+     * （rollback-only マーク）。よって<b>トランザクションを開く前の層</b>で分岐する。</p>
      */
     @PostMapping
     @Operation(summary = "予約作成")
@@ -86,12 +100,19 @@ public class TeamReservationController {
     public ResponseEntity<ApiResponse<ReservationResponse>> createReservation(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateReservationRequest request) {
-        ReservationResponse response = reservationService.createReservation(teamId, SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        Integer repeatWeeks = request.getRepeatWeeks();
+        ReservationResponse response = (repeatWeeks != null && repeatWeeks > 1)
+                ? recurringService.createRecurring(teamId, userId, request)
+                : reservationService.createReservation(teamId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     /**
      * 予約を確定する。
+     *
+     * <p>F03.4.5 §6.2 W2-5: {@code scope=SERIES} を指定すると同一 series の PENDING を一括承認する
+     * （MANUAL 承認チームで 12 週分の PENDING が並ぶ問題への対処）。省略時は従来どおり単票承認。</p>
      */
     @PostMapping("/{reservationId}/confirm")
     @Operation(summary = "予約確定")
@@ -99,8 +120,9 @@ public class TeamReservationController {
     @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationResponse>> confirmReservation(
             @PathVariable Long teamId,
-            @PathVariable Long reservationId) {
-        ReservationResponse response = reservationService.confirmReservation(teamId, reservationId);
+            @PathVariable Long reservationId,
+            @RequestParam(required = false) ReservationConfirmScope scope) {
+        ReservationResponse response = reservationService.confirmReservation(teamId, reservationId, scope);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -200,6 +222,9 @@ public class TeamReservationController {
     public ResponseEntity<ApiResponse<List<ReminderResponse>>> listReminders(
             @PathVariable Long teamId,
             @PathVariable Long reservationId) {
+        // 越境 BOLA 防止: @PreAuthorize は #teamId の管理者性しか見ないため、
+        // reservationId が当該チームに属することを検証してから下流へ委譲する（属さなければ 404）。
+        reservationService.assertReservationInTeam(teamId, reservationId);
         List<ReminderResponse> reminders = reminderService.listReminders(reservationId);
         return ResponseEntity.ok(ApiResponse.of(reminders));
     }
@@ -215,6 +240,8 @@ public class TeamReservationController {
             @PathVariable Long teamId,
             @PathVariable Long reservationId,
             @Valid @RequestBody CreateReminderRequest request) {
+        // 越境 BOLA 防止: 別チーム管理者が他チーム予約にリマインダーを書き込むのを封じる（属さなければ 404）。
+        reservationService.assertReservationInTeam(teamId, reservationId);
         ReminderResponse response = reminderService.createReminder(reservationId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }

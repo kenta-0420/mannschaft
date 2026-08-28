@@ -123,10 +123,9 @@ class ReservationAuthorizationDeclarationTest {
                     Long.class, LocalDate.class, LocalDate.class);
             assertOpen(TeamReservationSlotController.class, "getSlot", Long.class, Long.class);
             // 機能C: 空きグリッドは会員/公開が使う view ゲート（Service 層）のため @PreAuthorize を付けない（C-7）。
-            // F03.4.4 で from/to/axis/menuId が増えたシグネチャへ機械的追従（アサーション＝開放維持は不変・H-10）。
+            // #2575 で axis/staffUserIds を撤去したシグネチャへ機械的追従（アサーション＝開放維持は不変・H-10）。
             assertOpen(TeamReservationSlotController.class, "getGrid",
-                    Long.class, LocalDate.class, LocalDate.class, LocalDate.class,
-                    String.class, java.util.UUID.class, java.util.List.class);
+                    Long.class, LocalDate.class, LocalDate.class, LocalDate.class, java.util.UUID.class);
         }
     }
 
@@ -161,8 +160,11 @@ class ReservationAuthorizationDeclarationTest {
         void 管理系はゲート済み() {
             assertGated(TeamReservationController.class, "listReservations",
                     Long.class, String.class, int.class, int.class);
+            // F03.4.5 §6.2 W2-5: scope（SERIES 一括承認）を additive 追加したためシグネチャが 3 引数になった。
+            // 一括承認は「その teamId の管理者」だけが行える必要があるため、ゲートは従来どおり必須。
             assertGated(TeamReservationController.class, "confirmReservation",
-                    Long.class, Long.class);
+                    Long.class, Long.class,
+                    com.mannschaft.app.reservation.ReservationConfirmScope.class);
             assertGated(TeamReservationController.class, "cancelReservation",
                     Long.class, Long.class, CancelReservationRequest.class);
             assertGated(TeamReservationController.class, "completeReservation",
@@ -213,7 +215,7 @@ class ReservationAuthorizationDeclarationTest {
             assertGated(ReservationBusinessHourController.class, "getBlockedTimeImpact",
                     Long.class, LocalDate.class,
                     com.mannschaft.app.reservation.ReservationBlockedResourceType.class,
-                    Long.class, LocalTime.class, LocalTime.class);
+                    Long.class, LocalTime.class, LocalTime.class, boolean.class);
         }
 
         @Test

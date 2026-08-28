@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.PaymentItemType;
@@ -37,6 +38,7 @@ public class PaymentItemService {
     private final ContentPaymentGateRepository contentPaymentGateRepository;
     private final StripePaymentProvider stripePaymentProvider;
     private final PaymentMapper paymentMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * チーム支払い項目一覧を取得する。
@@ -272,6 +274,31 @@ public class PaymentItemService {
     public PaymentItemEntity findByIdAndTeamIdOrThrow(Long itemId, Long teamId) {
         return paymentItemRepository.findByIdAndTeamId(itemId, teamId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_ITEM_NOT_FOUND));
+    }
+
+    /**
+     * Issue #2657: 支払い項目を ID のみで取得する（チーム/組織横断・加入ページの表示用）。
+     *
+     * <p>{@code GET /api/v1/payment-items/{itemId}} はチーム/組織どちらのスコープの項目かを
+     * path 上位で知らない状態から呼ばれるため、{@code itemId} で Entity を取得したうえで
+     * 項目が属するスコープ（{@code teamId} または {@code organizationId}）を特定し、
+     * {@link AccessControlService#checkMembership} で当該スコープのメンバーであることを検証する
+     * （越境者には {@link PaymentErrorCode#PAYMENT_ITEM_NOT_FOUND} 相当の 404 で存在秘匿はできないが、
+     * 少なくとも非メンバーは {@code checkMembership} が 403 で弾く）。</p>
+     *
+     * @param itemId 支払い項目 ID
+     * @param userId 閲覧者ユーザー ID（{@code SecurityUtils.getCurrentUserId()}）
+     * @return 支払い項目レスポンス（TERM 型は {@code term} フィールドに有効期間を含む）
+     */
+    public PaymentItemResponse getPaymentItemById(Long itemId, Long userId) {
+        PaymentItemEntity entity = paymentItemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_ITEM_NOT_FOUND));
+        if (entity.getTeamId() != null) {
+            accessControlService.checkMembership(userId, entity.getTeamId(), "TEAM");
+        } else {
+            accessControlService.checkMembership(userId, entity.getOrganizationId(), "ORGANIZATION");
+        }
+        return paymentMapper.toPaymentItemResponse(entity);
     }
 
     /**

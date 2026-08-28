@@ -6,6 +6,9 @@ import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.gdpr.dto.DataExportRequest;
 import com.mannschaft.app.gdpr.dto.DataExportResponse;
 import com.mannschaft.app.gdpr.dto.DeletionPreviewResponse;
@@ -51,7 +54,15 @@ public class GdprController {
      * データエクスポートをリクエストする。
      * パスワードユーザー: password再認証 + 非同期処理開始
      * OAuthユーザー: OTPをメール送信して202を返す
+     *
+     * <p><b>自己スコープ</b>: 対象ユーザーは {@code SecurityUtils.getCurrentUserId()} のみから
+     * 解決する。{@link DataExportRequest} はカテゴリと再認証情報だけを持ち、ユーザー識別子を
+     * 一切受け取らないため、他人のエクスポートを発注する経路が構造的に存在しない。</p>
      */
+    @SelfScopedEndpoint("エクスポート対象ユーザーが SecurityUtils.getCurrentUserId() に束縛される"
+            + "（DataExportRequest はカテゴリと再認証情報のみでユーザー識別子を持たない）")
+    @AlwaysReachable(category = AlwaysReachableCategory.PUBLIC_LIFELINE,
+            reason = "本人のデータ可搬権をGate状態にかかわらず保障するため")
     @PostMapping("/data-export")
     @Operation(summary = "データエクスポートリクエスト")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "エクスポートリクエスト受付")
@@ -70,7 +81,15 @@ public class GdprController {
     /**
      * GET /api/v1/account/data-export/status
      * エクスポートの現在ステータスを取得する。
+     *
+     * <p><b>自己スコープ</b>: {@code DataExportService#getExportStatus} の検索条件は
+     * {@code findTopByUserIdOrderByCreatedAtDesc(userId)} のみで、その {@code userId} は
+     * {@code SecurityUtils.getCurrentUserId()} 由来である。リクエストは引数を取らない。</p>
      */
+    @SelfScopedEndpoint("検索条件が findTopByUserIdOrderByCreatedAtDesc(認証主体の userId) のみ"
+            + "（DataExportService#getExportStatus・エンドポイントは引数を取らない）")
+    @AlwaysReachable(category = AlwaysReachableCategory.PUBLIC_LIFELINE,
+            reason = "本人がデータ出力処理の進捗を継続確認できるようにするため")
     @GetMapping("/data-export/status")
     @Operation(summary = "エクスポートステータス取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -83,7 +102,15 @@ public class GdprController {
     /**
      * GET /api/v1/account/data-export/download
      * 完了済みZIPのダウンロードURLを返す。
+     *
+     * <p><b>自己スコープ</b>: 署名 URL を発行する対象レコードは
+     * {@code findTopByUserIdOrderByCreatedAtDesc(認証主体の userId)} で引き当てる。
+     * リクエストは引数を取らず、他人のエクスポート ID を指す経路が存在しない。</p>
      */
+    @SelfScopedEndpoint("署名URLの対象レコードを findTopByUserIdOrderByCreatedAtDesc(認証主体の userId) で引き当てる"
+            + "（DataExportService#getDownloadUrl・エンドポイントは引数を取らない）")
+    @AlwaysReachable(category = AlwaysReachableCategory.PUBLIC_LIFELINE,
+            reason = "完了済みの本人データ出力をGate状態にかかわらず取得可能にするため")
     @GetMapping("/data-export/download")
     @Operation(summary = "エクスポートダウンロードURL取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "URL取得成功")
@@ -97,7 +124,15 @@ public class GdprController {
      * GET /api/v1/account/deletion-preview
      * 退会時に削除/匿名化されるデータの件数サマリーを返す。
      * 再認証不要（読み取り専用）。
+     *
+     * <p><b>自己スコープ</b>: 集計に用いる 3 つの件数はすべて認証主体の userId を唯一の
+     * 検索キーとする（{@code countByCustomerUserId} / {@code countBySenderId} /
+     * {@code findByUserId}）。エンドポイントは引数を取らない。</p>
      */
+    @SelfScopedEndpoint("件数集計の検索キーが認証主体の userId のみ"
+            + "（buildDeletionPreview の countByCustomerUserId / countBySenderId / findByUserId）")
+    @AlwaysReachable(category = AlwaysReachableCategory.PUBLIC_LIFELINE,
+            reason = "本人が退会前に削除影響を確認できる権利を保障するため")
     @GetMapping("/deletion-preview")
     @Operation(summary = "退会時削除データプレビュー")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "プレビュー取得成功")

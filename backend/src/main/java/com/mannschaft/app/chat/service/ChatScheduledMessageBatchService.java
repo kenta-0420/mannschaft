@@ -6,8 +6,11 @@ import com.mannschaft.app.chat.dto.MessageResponse;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,8 +45,14 @@ public class ChatScheduledMessageBatchService {
      */
     private final NameResolverService nameResolver;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予約送信チャットメッセージの配信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "chat-scheduled-message-dispatch", description = "予約送信チャットメッセージを 1 分毎に STOMP 配信する")
     @Scheduled(fixedDelay = 60_000)
+    // 起動間隔は 1 分（fixedDelay）。1 回の処理は「配信時刻を過ぎた予約メッセージ」の STOMP 配信のみで通常は 1 秒未満だが、
+    // 配信時刻が集中した場合を見込み間隔の 5 倍を上限とする（間隔と同値にすると 1 回の超過で即座に二重配信になるため）
+    // 。
+    @SchedulerLock(name = "chatScheduledMessageDispatch", lockAtLeastFor = "PT10S", lockAtMostFor = "PT5M")
     @Transactional
     public void processScheduledMessages() {
         LocalDateTime now = LocalDateTime.now();

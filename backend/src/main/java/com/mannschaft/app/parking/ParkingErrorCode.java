@@ -68,7 +68,7 @@ public enum ParkingErrorCode implements ErrorCode {
     /** 権限不足 */
     INSUFFICIENT_PERMISSION("PARKING_019", "この操作に必要な権限がありません", Severity.WARN),
 
-    /** スコープ不一致 */
+    /** スコープ不一致（呼び出し元スコープに属さない区画IDの指定を存在秘匿する） */
     SCOPE_MISMATCH("PARKING_020", "区画のスコープが一致しません", Severity.WARN),
 
     /** ナンバープレートが重複 */

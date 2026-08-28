@@ -246,6 +246,14 @@ class MatchingAuthorizationEnforcementTest {
                     org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
             return new DashboardScopeTabRateLimitFilter(rateLimiterProvider);
         }
+
+        @Bean
+        @SuppressWarnings("unchecked")
+        com.mannschaft.app.village.VillageAffinityRateLimitFilter villageAffinityRateLimitFilter() {
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.village.VillageAffinityRateLimitFilter(rateLimiterProvider);
+        }
     }
 
     @Autowired
@@ -709,5 +717,22 @@ class MatchingAuthorizationEnforcementTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_REVIEW_BODY))
                 .andExpect(status().isCreated());
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // 認可監査 Wave6 ロットC: 募集詳細の越境アクセスは MATCHING_001 に畳んだ存在秘匿 → 404。
+    // MatchRequestService.getRequest は NGチームブロック・非所属×非OPEN のいずれも
+    // REQUEST_NOT_FOUND を送出する（実装は変更しない。ERROR_CODE_STATUS_MAP の登録のみ）。
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "300", roles = "MEMBER")
+    @DisplayName("存在秘匿 red→green: 越境ユーザーが GET 募集詳細 → 404（MATCHING_001 存在秘匿マップ）")
+    void outsider_getRequest_notFound() throws Exception {
+        willThrow(new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND))
+                .given(matchRequestService).getRequest(eq(REQUEST_ID), eq(OUTSIDER_USER_ID));
+
+        mockMvc.perform(get("/api/v1/matching/requests/" + REQUEST_ID))
+                .andExpect(status().isNotFound());
     }
 }

@@ -1,5 +1,7 @@
 package com.mannschaft.app.role.service;
 
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
@@ -76,6 +78,7 @@ public class InviteService {
     private final MembershipService membershipService;
     private final BrandedQrImageWriter brandedQrImageWriter;
     private final AccessControlService accessControlService;
+    private final AuditLogService auditLogService;
 
     /**
      * 招待トークンを作成する。
@@ -157,12 +160,10 @@ public class InviteService {
     }
 
     /**
-     * 承諾型招待を辞退する（F04.12・骨格）。
+     * 承諾型招待を辞退する（F04.12）。
      *
      * <p>宛先本人のみ。{@code revoked_at = NOW()} を立て（カードは REVOKED 表示に導出）、
      * audit_logs に理由 {@code DECLINED} を記録する。宛先不一致は 403（{@link RoleErrorCode#ROLE_009}）。</p>
-     *
-     * <p><strong>骨格（スタブ）:</strong> 未実装。実装は /出陣 で行う。</p>
      *
      * @param tokenStr トークン文字列
      * @param userId   実行ユーザー ID（宛先本人）
@@ -184,7 +185,25 @@ public class InviteService {
         }
 
         token.revoke(); // revoked_at = NOW()（永続・REVOKED。理由 DECLINED は audit で保持する想定）
+        recordMembershipInviteAudit(token, userId, "DECLINED");
         log.info("承諾型招待を辞退（DECLINED）: tokenId={}, userId={}", token.getId(), userId);
+    }
+
+    private void recordMembershipInviteAudit(InviteTokenEntity token, Long actorUserId, String reason) {
+        boolean team = token.getTeamId() != null;
+        AuditEventType event = team
+                ? AuditEventType.TEAM_MEMBERSHIP_INVITE_DECLINED
+                : AuditEventType.ORGANIZATION_MEMBERSHIP_INVITE_DECLINED;
+        auditLogService.record(
+                event.name(),
+                actorUserId,
+                token.getTargetUserId(),
+                token.getTeamId(),
+                token.getOrganizationId(),
+                null,
+                null,
+                null,
+                "{\"token_id\":" + token.getId() + ",\"reason\":\"" + reason + "\"}");
     }
 
     /**
@@ -260,10 +279,11 @@ public class InviteService {
         // ブロックチェック
         checkNotBlocked(userId, scopeId, scopeType);
 
-        // 重複参加チェック
+        // 重複参加チェック（CMP-027: user_roles ∪ memberships の在籍で判定。
+        // ORG 側も exists 版へ揃え、memberships 専属の素メンバーの再参加を正しく検出する）
         boolean alreadyJoined = "TEAM".equals(scopeType)
                 ? userRoleRepository.existsByUserIdAndTeamId(userId, scopeId)
-                : userRoleRepository.findByUserIdAndOrganizationId(userId, scopeId).isPresent();
+                : userRoleRepository.existsByUserIdAndOrganizationId(userId, scopeId);
         if (alreadyJoined) {
             // 既メンバーの二重参加はリソース競合として 409（既存の共有リンク型 join・F04.12 承諾型 join 共通）。
             throw new BusinessException(TeamErrorCode.TEAM_003, org.springframework.http.HttpStatus.CONFLICT);
@@ -322,9 +342,9 @@ public class InviteService {
      * フォルダの scope_type が招待 scope と不一致なら {@code SCOPE_FOLDER_TYPE_MISMATCH} を投げる。</p>
      */
     private void assignToFolder(Long userId, String scopeType, Long scopeId, Long folderId) {
-        com.mannschaft.app.scopefolder.entity.ScopeType folderScope = "TEAM".equals(scopeType)
-                ? com.mannschaft.app.scopefolder.entity.ScopeType.TEAM
-                : com.mannschaft.app.scopefolder.entity.ScopeType.ORGANIZATION;
+        com.mannschaft.app.scopefolder.entity.enums.ScopeType folderScope = "TEAM".equals(scopeType)
+                ? com.mannschaft.app.scopefolder.entity.enums.ScopeType.TEAM
+                : com.mannschaft.app.scopefolder.entity.enums.ScopeType.ORGANIZATION;
 
         if (folderId != null) {
             // フォルダの存在と scope_type 整合チェック（IDOR 含む）

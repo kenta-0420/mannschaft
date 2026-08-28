@@ -1,4 +1,4 @@
-# 本番環境セットアップガイド
+﻿# 本番環境セットアップガイド
 
 本番環境を新規構築 / 引き継ぐ際に必要な **環境変数・シークレット・設定ファイル** の一覧と手順をまとめる。
 日々のリリース前確認は `PRODUCTION_DEPLOY_CHECKLIST.md` を参照。
@@ -32,12 +32,20 @@ java -jar -Dspring.profiles.active=prod backend.jar
 
 | 環境変数 | 用途 | 例 / 生成方法 |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | MySQL 接続 URL | `jdbc:mysql://prod-db.example.com:3306/mannschaft?useSSL=true&serverTimezone=Asia/Tokyo` |
+| `SPRING_DATASOURCE_URL` | MySQL 接続 URL | `jdbc:mysql://prod-db.example.com:3306/mannschaft?useSSL=true&serverTimezone=UTC` |
 | `SPRING_DATASOURCE_USERNAME` | MySQL ユーザー名 | `mannschaft_app` |
 | `SPRING_DATASOURCE_PASSWORD` | MySQL パスワード | `openssl rand -base64 32` |
 | `SPRING_REDIS_HOST` | Valkey/Redis ホスト | `prod-cache.example.com` |
 | `MANNSCHAFT_JWT_SECRET` | JWT 署名鍵（256bit 以上必須） | `openssl rand -base64 64` |
 | `JOB_QR_SIGNING_SECRET` | QR チェックイン署名鍵（F13.1） | `openssl rand -base64 64` |
+
+> ⚠️ **DB 接続 URL の `serverTimezone` は必ず `UTC`**（Issue #2486）。
+> 本アプリは DB 格納時刻の基準を UTC に統一しており（`spring.jpa.properties.hibernate.jdbc.time_zone: UTC`）、
+> 接続先 MySQL の `time_zone` パラメータも **`UTC`** に設定する必要がある
+> （RDS では `infra/terraform/modules/data/main.tf` のパラメータグループで `time_zone = "UTC"` を設定済み）。
+> ここがずれると、ネイティブクエリの `NOW()` / `CONVERT_TZ()` の結果だけが 9 時間ずれる静かな不具合になる。
+> 詳細と二層モデル（アプリ層 `LocalDateTime` は JST 壁時計 / DB 格納値は UTC 壁時計）は
+> `backend/.claudecode.md` §20 を参照。
 
 ### 任意（未設定でも起動するが、機能が無効化される）
 
@@ -59,7 +67,7 @@ MySQL の読み取り専用レプリカを用意した際に有効化する。**
 
 | 環境変数 | 用途 |
 |---|---|
-| `DB_REPLICA_URL` | レプリカの JDBC URL（例: `jdbc:mysql://replica.xxxx.rds.amazonaws.com:3306/mannschaft?useSSL=true&serverTimezone=Asia/Tokyo`） |
+| `DB_REPLICA_URL` | レプリカの JDBC URL（例: `jdbc:mysql://replica.xxxx.rds.amazonaws.com:3306/mannschaft?useSSL=true&serverTimezone=UTC`） |
 | `DB_REPLICA_USER` | レプリカ用 MySQL ユーザー名 |
 | `DB_REPLICA_PASSWORD` | レプリカ用 MySQL パスワード |
 
@@ -83,7 +91,7 @@ app:
 
 | 環境変数 | 用途 |
 |---|---|
-| `ARCHIVE_DB_URL` | アーカイブDB の JDBC URL（例: `jdbc:mysql://archive.xxxx.rds.amazonaws.com:3306/mannschaft_archive?useSSL=true&serverTimezone=Asia/Tokyo`） |
+| `ARCHIVE_DB_URL` | アーカイブDB の JDBC URL（例: `jdbc:mysql://archive.xxxx.rds.amazonaws.com:3306/mannschaft_archive?useSSL=true&serverTimezone=UTC`） |
 | `ARCHIVE_DB_USER` | アーカイブDB 用 MySQL ユーザー名 |
 | `ARCHIVE_DB_PASSWORD` | アーカイブDB 用 MySQL パスワード |
 
@@ -202,7 +210,7 @@ app:
 
 ```bash
 # ===== 必須 =====
-SPRING_DATASOURCE_URL=jdbc:mysql://your-db-host:3306/mannschaft?useSSL=true&serverTimezone=Asia/Tokyo
+SPRING_DATASOURCE_URL=jdbc:mysql://your-db-host:3306/mannschaft?useSSL=true&serverTimezone=UTC
 SPRING_DATASOURCE_USERNAME=mannschaft_app
 SPRING_DATASOURCE_PASSWORD=__REPLACE__
 SPRING_REDIS_HOST=your-redis-host
@@ -225,12 +233,12 @@ JOB_QR_SIGNING_SECRET=__REPLACE__
 # MANNSCHAFT_STRIPE_SECRET_KEY=
 
 # ===== リードレプリカ（RDS レプリカを用意したら有効化） =====
-# DB_REPLICA_URL=jdbc:mysql://replica.xxxx.rds.amazonaws.com:3306/mannschaft?useSSL=true&serverTimezone=Asia/Tokyo
+# DB_REPLICA_URL=jdbc:mysql://replica.xxxx.rds.amazonaws.com:3306/mannschaft?useSSL=true&serverTimezone=UTC
 # DB_REPLICA_USER=
 # DB_REPLICA_PASSWORD=
 
 # ===== アーカイブDB（監査ログ長期保存 RDS を用意したら有効化） =====
-# ARCHIVE_DB_URL=jdbc:mysql://archive.xxxx.rds.amazonaws.com:3306/mannschaft_archive?useSSL=true&serverTimezone=Asia/Tokyo
+# ARCHIVE_DB_URL=jdbc:mysql://archive.xxxx.rds.amazonaws.com:3306/mannschaft_archive?useSSL=true&serverTimezone=UTC
 # ARCHIVE_DB_USER=
 # ARCHIVE_DB_PASSWORD=
 ```

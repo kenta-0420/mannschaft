@@ -230,7 +230,7 @@ export function useTeamCrud() {
     return api<{ data: Array<Record<string, unknown>> }>(`/api/v1/teams/${teamSlug}/organizations`)
   }
 
-  // === オーナー移譲（承諾型オファー・F01.2 2026-07-18〜） ===
+  // === オーナー移譲（承諾型オファー・F04.12） ===
   // 旧 `transferOwnership`（即時型・body { newAdminUserId }）は廃止（設計書 03_business_logic.md M-4）。
   // クエリパラメータ `targetUserId` を送らず現行は 400 になる既存バグだった（未使用のため実害なし）。
   // 承諾型 2 ステップ API（打診 → 承諾/辞退/取消）へ全面移行し、body は camelCase `targetUserId` に統一する。
@@ -266,6 +266,13 @@ export function useTeamCrud() {
     })
   }
 
+  /** 管理者向けに、チーム内で有効な委譲打診（0 または 1 件）を取得する。 */
+  async function getPendingOwnershipOffers(teamSlug: string) {
+    return api<{ data: TransferOwnershipOfferResponse[] }>(
+      `/api/v1/teams/${teamSlug}/transfer-ownership-offers/pending`,
+    )
+  }
+
   return {
     getTeam,
     getPublicTeam,
@@ -282,6 +289,7 @@ export function useTeamCrud() {
     restoreTeam,
     getOrganizations,
     createOwnershipOffer,
+    getPendingOwnershipOffers,
     acceptOwnershipOffer,
     declineOwnershipOffer,
     cancelOwnershipOffer,

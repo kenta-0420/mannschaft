@@ -2,6 +2,8 @@ package com.mannschaft.app.role.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.role.dto.TransferOwnershipAcceptResponse;
 import com.mannschaft.app.role.dto.TransferOwnershipOfferCreateRequest;
@@ -33,7 +35,7 @@ import java.util.UUID;
  * team/org で同一仕様のため、既存 {@code TeamController}/{@code OrganizationController} の
  * slug 解決の定石（{@code resolveTeamId}/{@code resolveOrgId}）を踏襲し 1 コントローラーに集約する。</p>
  *
- * <p><strong>認可（骨格）:</strong> 各エンドポイントに認証必須の method-level シグナルを置く。
+ * <p><strong>認可:</strong> 各エンドポイントに認証必須の method-level シグナルを置く。
  * 打診＝ADMIN・承諾/辞退＝指名相手本人（宛先照合）・取消＝発行者/ADMIN の細粒度認可は
  * Service 層で実施する（設計書 03_business_logic。実装は /出陣）。</p>
  */
@@ -53,6 +55,8 @@ public class OwnershipTransferOfferController {
     // 受信インボックス（自分宛オファー）
     // ========================================
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "本人宛てオーナー委譲打診の確認は中核の所有権管理機能として常時提供する")
     @GetMapping("/api/v1/me/ownership-transfer-offers")
     @Operation(summary = "自分宛の有効な（PENDING）オーナー委譲オファー一覧",
             description = "指名相手（本人）宛の PENDING オファーのみ返す。第三者が他人宛を取得する経路は"
@@ -70,6 +74,8 @@ public class OwnershipTransferOfferController {
     // チーム
     // ========================================
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "チームのオーナー委譲打診は中核の所有権管理機能として常時提供する")
     @PostMapping("/api/v1/teams/{slug}/transfer-ownership-offers")
     @Operation(summary = "チーム オーナー委譲を打診")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "打診成功")
@@ -83,6 +89,20 @@ public class OwnershipTransferOfferController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "チームの保留中オーナー委譲打診の確認は中核の所有権管理機能として常時提供する")
+    @GetMapping("/api/v1/teams/{slug}/transfer-ownership-offers/pending")
+    @Operation(summary = "チームの有効なオーナー委譲打診を取得")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<TransferOwnershipOfferResponse>>> listPendingTeamOffers(
+            @PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
+        return ResponseEntity.ok(ApiResponse.of(offerService.listPendingOffersInScope(
+                id, SCOPE_TEAM, SecurityUtils.getCurrentUserId())));
+    }
+
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "チームのオーナー委譲承諾は中核の所有権管理機能として常時提供する")
     @PostMapping("/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/accept")
     @Operation(summary = "チーム委譲を承諾（＝実行）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "承諾成功")
@@ -96,6 +116,8 @@ public class OwnershipTransferOfferController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "チームのオーナー委譲辞退は中核の所有権管理機能として常時提供する")
     @PostMapping("/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/decline")
     @Operation(summary = "チーム委譲を辞退")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "辞退成功")
@@ -108,6 +130,8 @@ public class OwnershipTransferOfferController {
         return ResponseEntity.ok().build();
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "チームのオーナー委譲打診取消は中核の所有権管理機能として常時提供する")
     @DeleteMapping("/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}")
     @Operation(summary = "チーム委譲オファーを取消")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")
@@ -124,6 +148,8 @@ public class OwnershipTransferOfferController {
     // 組織
     // ========================================
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "組織のオーナー委譲打診は中核の所有権管理機能として常時提供する")
     @PostMapping("/api/v1/organizations/{slug}/transfer-ownership-offers")
     @Operation(summary = "組織 オーナー委譲を打診")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "打診成功")
@@ -137,6 +163,20 @@ public class OwnershipTransferOfferController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "組織の保留中オーナー委譲打診の確認は中核の所有権管理機能として常時提供する")
+    @GetMapping("/api/v1/organizations/{slug}/transfer-ownership-offers/pending")
+    @Operation(summary = "組織の有効なオーナー委譲打診を取得")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<TransferOwnershipOfferResponse>>> listPendingOrgOffers(
+            @PathVariable String slug) {
+        Long id = organizationService.resolveOrgId(slug);
+        return ResponseEntity.ok(ApiResponse.of(offerService.listPendingOffersInScope(
+                id, SCOPE_ORGANIZATION, SecurityUtils.getCurrentUserId())));
+    }
+
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "組織のオーナー委譲承諾は中核の所有権管理機能として常時提供する")
     @PostMapping("/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/accept")
     @Operation(summary = "組織委譲を承諾（＝実行）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "承諾成功")
@@ -150,6 +190,8 @@ public class OwnershipTransferOfferController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "組織のオーナー委譲辞退は中核の所有権管理機能として常時提供する")
     @PostMapping("/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/decline")
     @Operation(summary = "組織委譲を辞退")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "辞退成功")
@@ -162,6 +204,8 @@ public class OwnershipTransferOfferController {
         return ResponseEntity.ok().build();
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "組織のオーナー委譲打診取消は中核の所有権管理機能として常時提供する")
     @DeleteMapping("/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}")
     @Operation(summary = "組織委譲オファーを取消")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")

@@ -1,142 +1,112 @@
 package com.mannschaft.app.advertising.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
-import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
-import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
-import com.mannschaft.app.mail.outbox.EmailOutboxRequest;
-import com.mannschaft.app.mail.outbox.EmailOutboxService;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationService;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
+/**
+ * 広告請求書の OVERDUE 自動化バッチ（Issue #2834 / CMP-056 第2群ロット1で単位トランザクション化）。
+ *
+ * <h2>是正前の欠陥</h2>
+ * <p>是正前は本クラスの {@code markOverdueInvoices} に {@code @Transactional} が付いており、
+ * <b>バッチ全体を 1 トランザクションで包んだままループ内で 1 件ずつ catch</b> していた。
+ * 1 件の失敗は握りつぶされたように見えて、実際には rollback-only が残るため
+ * <b>コミット時に全件が巻き戻っていた</b>（CMP-035 で潰した形と同一）。</p>
+ *
+ * <h2>是正後の形</h2>
+ * <pre>
+ * 非トランザクションのオーケストレータ（このクラス）
+ *   for each 請求書:
+ *     try { overdueInvoiceMarkRunner.markOne(id) }   // REQUIRES_NEW の別 Bean
+ *     catch { 記録して次へ }                          // catch は必ず TX 外
+ * </pre>
+ * <p>通知は Runner の独立トランザクションが commit された後に
+ * {@code OverdueInvoiceNotificationListener}（{@code AFTER_COMMIT} + {@code @Async}）が配送する。
+ * よって「Runner がロールバックすれば通知は作られない」「通知が失敗しても OVERDUE 遷移は残る」の
+ * 両方が成り立つ。</p>
+ *
+ * <h2>分類の判定</h2>
+ * <p>本バッチは通知だけでなく<b>業務状態（{@code ad_invoices.status}）を更新する</b>。よって確定設計の
+ * 「バッチで業務状態も更新する」に該当し、非TXループ → 項目ごと REQUIRES_NEW → その中の
+ * {@code AFTER_COMMIT} で通知、を採る。</p>
+ *
+ * <h2>外向き契約</h2>
+ * <p>{@code markOverdueInvoices} は是正前後とも戻り値 {@code void}。{@code @BatchEndpoint} 経由の
+ * 管理コンソール実行も戻り値を持たないため、FE / OpenAPI への波及はない。</p>
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class OverdueInvoiceBatchService {
 
     private final AdInvoiceRepository adInvoiceRepository;
-    private final AdvertiserAccountRepository advertiserAccountRepository;
-    private final EmailOutboxService emailOutboxService;
-    private final NotificationService notificationService;
-    private final UserRoleRepository userRoleRepository;
+    private final OverdueInvoiceMarkRunner overdueInvoiceMarkRunner;
 
     /**
      * OVERDUE 自動化バッチ。毎日 AM 6:00 (JST) に実行。
-     * status = ISSUED かつ due_date < TODAY の請求書を OVERDUE に更新。
+     * status = ISSUED かつ due_date &lt; TODAY の請求書を 1 件ずつ独立トランザクションで OVERDUE に更新する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "支払期限切れ判定は due_date が本日より前という時刻条件のみで冪等に決まるため、止めても再開後の初回実行で同じ請求書をまとめて OVERDUE にできる")
     @BatchEndpoint(name = "advertising-invoice-overdue-mark-daily", description = "支払期限切れの広告請求書を OVERDUE に更新する（毎日 06:00）")
     @Scheduled(cron = "0 0 6 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "overdueInvoiceMark", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
-    @Transactional
     public void markOverdueInvoices() {
         LocalDate today = LocalDate.now();
-        List<AdInvoiceEntity> overdueInvoices =
-                adInvoiceRepository.findByStatusAndDueDateBefore(InvoiceStatus.ISSUED, today);
+        // 対象抽出はオーケストレータ側（TX 外）。Spring Data が読み取り用の短いトランザクションを開くだけで、
+        // 以降の更新はここには参加しない。
+        List<Long> targetIds = adInvoiceRepository
+                .findByStatusAndDueDateBefore(InvoiceStatus.ISSUED, today)
+                .stream()
+                .map(AdInvoiceEntity::getId)
+                .toList();
 
-        if (overdueInvoices.isEmpty()) {
+        if (targetIds.isEmpty()) {
             return;
         }
 
-        log.info("OVERDUE バッチ開始: 対象件数={}", overdueInvoices.size());
+        log.info("OVERDUE バッチ開始: 対象件数={}", targetIds.size());
 
-        int count = 0;
-        for (AdInvoiceEntity invoice : overdueInvoices) {
+        int updated = 0;
+        int skipped = 0;
+        int failed = 0;
+        Long firstFailedInvoiceId = null;
+        for (Long invoiceId : targetIds) {
             try {
-                invoice.markOverdue();
-                count++;
-                sendOverdueNotifications(invoice);
+                if (overdueInvoiceMarkRunner.markOne(invoiceId)) {
+                    updated++;
+                } else {
+                    // 抽出後に支払い等で状態が変わっていた（再実行時も同じ経路に入る）。
+                    skipped++;
+                }
             } catch (Exception e) {
-                log.error("OVERDUE 更新エラー: invoiceId={}", invoice.getId(), e);
+                // catch は必ずオーケストレータ側（TX 外）で行う。Runner の内側で catch すると
+                // rollback-only のトランザクションで記録が消える。
+                failed++;
+                if (firstFailedInvoiceId == null) {
+                    firstFailedInvoiceId = invoiceId;
+                }
+                log.error("OVERDUE 更新エラー: invoiceId={}", invoiceId, e);
             }
         }
 
-        log.info("OVERDUE バッチ完了: 更新件数={}", count);
-    }
-
-    /**
-     * 延滞通知を送信する。
-     * 広告主組織のADMINユーザーとSYSTEM_ADMINにプッシュ通知を送る。
-     */
-    private void sendOverdueNotifications(AdInvoiceEntity invoice) {
-        try {
-            String title = "請求書延滞通知";
-            String body = String.format("請求書 %s（期限: %s）が延滞状態になりました。",
-                    invoice.getInvoiceNumber(), invoice.getDueDate());
-
-            // 広告主スコープのADMINユーザーへ通知（scopeId = organization_id または team_id）
-            advertiserAccountRepository.findById(invoice.getAdvertiserAccountId())
-                    .ifPresent(account -> {
-                        Long orgId = account.getScopeId();
-                        List<Object[]> orgAdmins = userRoleRepository.findUserIdAndEmailByScopeAndRole(
-                                "ORGANIZATION", orgId, "ADMIN");
-                        for (Object[] row : orgAdmins) {
-                            Long userId = ((Number) row[0]).longValue();
-                            notificationService.createNotification(
-                                    userId, "INVOICE_OVERDUE", NotificationPriority.HIGH,
-                                    title, body,
-                                    "AD_INVOICE", invoice.getId(),
-                                    NotificationScopeType.ORGANIZATION, orgId,
-                                    "/advertiser/invoices/" + invoice.getId(), null
-                            );
-                            String email = (String) row[1];
-                            if (email != null && !email.isBlank()) {
-                                String htmlBody = buildOverdueEmailHtml(invoice);
-                                emailOutboxService.enqueue(new EmailOutboxRequest(
-                                        "ADVERTISING_INVOICE_OVERDUE",
-                                        "ja",
-                                        email,
-                                        Map.of("subject", title, "body", htmlBody),
-                                        "advertising",
-                                        "invoice-overdue:" + invoice.getId(),
-                                        null,
-                                        userId,
-                                        null
-                                ));
-                            }
-                        }
-                    });
-
-            // SYSTEM_ADMIN へのプッシュ通知
-            List<Long> systemAdmins = userRoleRepository.findSystemAdminUserIds();
-            for (Long adminUserId : systemAdmins) {
-                notificationService.createNotification(
-                        adminUserId, "INVOICE_OVERDUE", NotificationPriority.HIGH,
-                        title, body,
-                        "AD_INVOICE", invoice.getId(),
-                        NotificationScopeType.SYSTEM, null,
-                        "/system-admin/invoices/" + invoice.getId(), null
-                );
-            }
-        } catch (Exception e) {
-            // 通知送信失敗はバッチ処理全体を止めない
-            log.warn("延滞通知の送信に失敗しました: invoiceId={}", invoice.getId(), e);
+        String summary = "OVERDUE バッチ完了: 対象={}, 更新={}, スキップ={}, 失敗={}, firstFailedInvoiceId={}";
+        if (failed > 0) {
+            log.error(summary, targetIds.size(), updated, skipped, failed, firstFailedInvoiceId);
+        } else {
+            log.info(summary, targetIds.size(), updated, skipped, failed, firstFailedInvoiceId);
         }
-    }
-
-    private String buildOverdueEmailHtml(AdInvoiceEntity invoice) {
-        return String.format("""
-                <html><body>
-                <p>請求書 <strong>%s</strong>（支払期限: %s）が延滞状態になりました。</p>
-                <p>お早めにお支払い手続きをお願いいたします。</p>
-                <p><a href="/advertiser/invoices/%d">請求書を確認する</a></p>
-                </body></html>
-                """,
-                invoice.getInvoiceNumber(),
-                invoice.getDueDate(),
-                invoice.getId());
     }
 }

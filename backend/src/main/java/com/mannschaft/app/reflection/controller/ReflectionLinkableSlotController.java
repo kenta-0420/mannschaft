@@ -2,6 +2,7 @@ package com.mannschaft.app.reflection.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.reflection.dto.LinkableSlotResponse;
 import com.mannschaft.app.reflection.service.ReflectionLinkableSlotService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +37,8 @@ public class ReflectionLinkableSlotController {
      * <p>本人 ACTIVE 個人時間割 + 所属 TEAM 時間割の週全スロットを dedup 済みで返す。
      * subjectName が空・NULL のスロットは除外。時間割未登録の場合は空配列 200。</p>
      */
+    @SelfScopedEndpoint("対象は SecurityUtils.getCurrentUserId() で確定した認証主体固定"
+            + "（ReflectionLinkableSlotService#listLinkableSlots）")
     @GetMapping
     @Operation(summary = "科目紐づけ候補一覧（週全体スロットを科目単位で重複排除）")
     public ResponseEntity<ApiResponse<List<LinkableSlotResponse>>> listLinkableSlots() {

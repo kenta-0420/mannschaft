@@ -1,6 +1,6 @@
 package com.mannschaft.app.role.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 承諾型招待カードの描画契約データ（F04.12・設計書 §5 inviteData）。
@@ -31,5 +31,5 @@ public record InviteCardData(
         String scopeName,
         String status,
         boolean isTarget,
-        LocalDateTime expiresAt) {
+        OffsetDateTime expiresAt) {
 }

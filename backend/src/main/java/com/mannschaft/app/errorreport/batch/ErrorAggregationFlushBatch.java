@@ -1,6 +1,9 @@
 package com.mannschaft.app.errorreport.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.batch.PodLocalScheduled;
 import com.mannschaft.app.errorreport.service.ErrorReportAggregator;
 import com.mannschaft.app.errorreport.service.ErrorReportAggregator.AggregatedEntry;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
@@ -50,7 +53,25 @@ public class ErrorAggregationFlushBatch {
      *
      * <p>{@code fixedRateString} で指定した間隔は {@code application.yml} で上書き可能。
      * バッチ実行が遅延しても次回は予定通り走る（fixedRate）。</p>
+     *
+     * <p><b>分散排他（{@code @SchedulerLock}）を敢えて付けない理由</b>:
+     * ドレイン対象の {@link ErrorReportAggregator} のバッファは<b>その Pod のメモリ上</b>にあり、
+     * 他 Pod のバッファには手が届かない。ロックを掛けると、ロックを取得できなかった Pod の
+     * エラー集約は<b>永久にドレインされず溜まり続ける</b>（＝エラーの取りこぼしとメモリ膨張）。
+     * よって Pod ごとに走ることが設計そのものであり、{@link PodLocalScheduled} で明示している。</p>
+     *
+     * <p><b>Phase 1-c への申し送り（外部通知の冪等化）</b>:
+     * 上記の帰結として、Pod 数だけ Slack へサマリが飛ぶ（同一時間窓に N 通）。
+     * バッファは Pod ごとに独立しているため<b>内容は重複しない</b>が、
+     * 運用上は「1 通にまとめたい」需要がある。これは<b>ロックではなく通知側の集約・冪等化</b>で
+     * 解くべき課題であり（ロックで解くと上記のドレイン欠落を招く）、
+     * {@link ErrorReportNotifier#notifyAggregatedSummary} 側の是正として
+     * Phase 1-c に申し送る。本 Javadoc がその申し送りの正本である。</p>
      */
+    @PodLocalScheduled("Pod ローカルのメモリバッファをドレインする処理であり、"
+        + "ロックを掛けると敗者 Pod の集約エラーが永久にドレインされず取りこぼすため")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。エラー集約バッファの排出であり、運用基盤に属し機能フラグを持たない。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "errorreport-aggregation-flush", description = "エラー集約バッファを 5 分毎にドレインして Slack にサマリ送信する")
     @Scheduled(fixedRateString = "${mannschaft.error-monitoring.aggregation.flush-interval-ms:300000}",
                initialDelayString = "${mannschaft.error-monitoring.aggregation.flush-interval-ms:300000}")

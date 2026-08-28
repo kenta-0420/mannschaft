@@ -37,6 +37,7 @@ public class NgTeamEntity {
     @Column(length = 500)
     private String reason;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

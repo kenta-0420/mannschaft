@@ -21,6 +21,14 @@ const googleLoading = ref(false)
 const termsModalVisible = ref(false)
 const privacyModalVisible = ref(false)
 
+// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
+// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
+const hydrated = useHydrated()
+// ハイドレーション待ちの間もボタンをローディング表示にする（無反応に見える問題の解消）。
+// :disabled="!hydrated" は Enter キーによる implicit submission 抑止のため別途維持する
+// （PrimeVue の loading は内部的に disabled 相当になるが、明示指定で確実に塞ぐ）。
+const submitting = computed(() => loading.value || !hydrated.value)
+
 async function registerWithGoogle() {
   googleLoading.value = true
   try {
@@ -41,6 +49,7 @@ const { ensureLoaded, isSupported, validateFormat } = usePostalCodeValidation()
 
 // ページマウント時にポリシーを先読みしておく（フォームサブミット時の遅延を最小化）
 onMounted(() => {
+  // eslint-disable-next-line no-restricted-syntax -- ポリシー先読みは best-effort。BE が authoritative（保存時に 400 で再検証）なので取得失敗を握りつぶすのが正しい
   ensureLoaded().catch(() => {
     // 取得失敗はサイレント（BE が authoritative なので保存時に 400 が返る）
   })
@@ -124,14 +133,16 @@ const schema = toTypedSchema(
 
 const { defineField, handleSubmit, errors } = useForm({
   validationSchema: schema,
+  // ハイドレーション前に入力された値（パスワードマネージャの自動入力を含む）を取り込む。
+  // 空文字のままだとハイドレーション時に上書きされて消える。必ずセットアップ時に読むこと。
   initialValues: {
-    email: '',
-    password: '',
-    lastName: '',
-    firstName: '',
-    displayName: '',
-    postalCode: '',
-    birthDate: '',
+    email: readPrefilledInputValue('email'),
+    password: readPrefilledInputValue('password'),
+    lastName: readPrefilledInputValue('lastName'),
+    firstName: readPrefilledInputValue('firstName'),
+    displayName: readPrefilledInputValue('displayName'),
+    postalCode: readPrefilledInputValue('postalCode'),
+    birthDate: readPrefilledInputValue('birthDate'),
     privacyPolicyAccepted: false as unknown as true,
     termsAccepted: false as unknown as true,
   },
@@ -375,11 +386,22 @@ const onSubmit = handleSubmit(async (values) => {
         </small>
       </div>
 
+      <div class="text-center">
+        <NuxtLink
+          to="/commerce-disclosure"
+          target="_blank"
+          class="text-xs text-surface-400 hover:text-primary hover:underline"
+        >
+          {{ $t('landing.layout.footer_commerce') }}
+        </NuxtLink>
+      </div>
+
       <Button
         type="submit"
         label="アカウント作成"
         icon="pi pi-user-plus"
-        :loading="loading"
+        :loading="submitting"
+        :disabled="!hydrated"
         class="mt-2"
       />
 

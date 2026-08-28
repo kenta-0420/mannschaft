@@ -1,42 +1,5 @@
 {
   "chat": {
-    "invite": {
-      "button": "Invite to team",
-      "sentSuccess": "Invitation sent",
-      "joinedSuccess": "You joined",
-      "declinedSuccess": "Invitation declined",
-      "modal": {
-        "title": "Choose a team/organization to invite to",
-        "empty": "No teams or organizations available to invite to",
-        "submit": "Send invitation"
-      },
-      "card": {
-        "pending": "You have an invitation to {scope}",
-        "waiting": "Waiting for their response",
-        "statusPending": "Pending",
-        "join": "Join",
-        "decline": "Decline",
-        "joined": "Joined",
-        "declined": "Declined",
-        "expired": "Expired",
-        "revoked": "Cancelled",
-        "expiresAt": "Expires: {time}"
-      },
-      "preview": {
-        "sent": "Sent an invitation to {scope}"
-      },
-      "notification": {
-        "received": "You received an invitation to {scope}"
-      },
-      "error": {
-        "notTarget": "This invitation is not addressed to you",
-        "privilegedRole": "Administrator roles cannot be invited this way",
-        "loadFailed": "Failed to load invitable teams/organizations",
-        "sendFailed": "Failed to send the invitation",
-        "joinFailed": "Failed to join",
-        "declineFailed": "Failed to decline"
-      }
-    },
     "contextMenu": {
       "replyInThread": "Reply in Thread",
       "react": "React",
@@ -102,6 +65,48 @@
     },
     "connection": {
       "failed": "Connection lost. Attempting to reconnect…"
+    },
+    "mobile": {
+      "backToList": "Back to channel list",
+      "noChannels": "No channels yet",
+      "createChannel": "Create channel"
+    },
+    "invite": {
+      "button": "Invite to team",
+      "sentSuccess": "Invitation sent",
+      "joinedSuccess": "You joined",
+      "declinedSuccess": "Invitation declined",
+      "modal": {
+        "title": "Choose a team/organization to invite to",
+        "empty": "No teams or organizations available to invite to",
+        "submit": "Send invitation"
+      },
+      "card": {
+        "pending": "You have an invitation to {scope}",
+        "waiting": "Waiting for their response",
+        "statusPending": "Pending",
+        "join": "Join",
+        "decline": "Decline",
+        "joined": "Joined",
+        "declined": "Declined",
+        "expired": "Expired",
+        "revoked": "Cancelled",
+        "expiresAt": "Expires: {time}"
+      },
+      "preview": {
+        "sent": "Sent an invitation to {scope}"
+      },
+      "notification": {
+        "received": "You received an invitation to {scope}"
+      },
+      "error": {
+        "notTarget": "This invitation is not addressed to you",
+        "privilegedRole": "Administrator roles cannot be invited this way",
+        "loadFailed": "Failed to load invitable teams/organizations",
+        "sendFailed": "Failed to send the invitation",
+        "joinFailed": "Failed to join",
+        "declineFailed": "Failed to decline"
+      }
     }
   },
   "button": {
@@ -290,8 +295,12 @@
   "error": {
     "server": "A server error occurred",
     "server_retry": "Please try again later.",
+    "rate_limited": "Too many requests",
+    "rate_limited_detail": "You made too many requests in a short time. Please wait a moment and try again.",
+    "rate_limited_retry_after": "You made too many requests in a short time. Please try again in about {seconds} seconds.",
     "network": "A network error occurred",
     "unauthorized": "Please log in",
+    "section_load_failed": "Failed to load this section. Please reload.",
     "unknown": "An error occurred",
     "COMMON_001": "There are errors in the input",
     "COMMON_002": "You do not have permission to perform this action",
@@ -309,6 +318,18 @@
     "AUTH_011": "No password has been set yet",
     "AUTH_044": "Too many requests. Please wait a moment and try again",
     "SURVEY_023": "Team breakdown cannot be enabled for anonymous surveys",
+    "SCHEDULE_KEEP_001": "Keep not found",
+    "SCHEDULE_KEEP_002": "Please enter a title",
+    "SCHEDULE_KEEP_003": "Up to 10 candidate dates",
+    "SCHEDULE_KEEP_004": "Invalid date format",
+    "SCHEDULE_KEEP_005": "You don't have permission for this keep",
+    "SCHEDULE_KEEP_006": "This keep can't be converted",
+    "SCHEDULE_KEEP_007": "Can't edit in this state",
+    "SCHEDULE_KEEP_008": "Can't undo -- attendance replies exist",
+    "SCHEDULE_KEEP_009": "This transition isn't allowed",
+    "SCHEDULE_KEEP_010": "Keep limit reached",
+    "SCHEDULE_KEEP_012": "Invalid reorder request",
+    "TIMELINE_017": "You have reached the mute limit of 200. Please unhide something you no longer need.",
     "ROLE_009": "This offer is not addressed to you",
     "ROLE_010": "Two-factor authentication is required to become an administrator",
     "ROLE_011": "An active transfer offer already exists",
@@ -546,7 +567,38 @@
       "PUBLIC": "What's happening?"
     },
     "submitLabel": "Post",
-    "pollOptionsCount": "{count} options"
+    "pollOptionsCount": "{count} options",
+    "deliveryScope": {
+      "label": "Delivery range",
+      "options": {
+        "DIRECT": "Members of this organization only",
+        "CHILDREN": "Include direct child organizations",
+        "DESCENDANTS": "All organizations below this one"
+      },
+      "hints": {
+        "DIRECT": "Shown only on the timelines of members of this organization.",
+        "CHILDREN": "Also shown to members of the organizations directly below this one.",
+        "DESCENDANTS": "Shown to members of every organization below this one."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "Hide posts from this team",
+        "ORGANIZATION": "Hide posts from this organization"
+      },
+      "targetType": {
+        "TEAM": "Team",
+        "ORGANIZATION": "Organization"
+      },
+      "muted": "Posts from {name} are now hidden",
+      "undo": "Undo",
+      "unmuted": "Posts are shown again",
+      "chip": "Hidden: {count}",
+      "dialogTitle": "Hidden sources",
+      "emptyList": "You have not hidden anyone.",
+      "unmuteAction": "Show again",
+      "unknownTarget": "{type} (ID: {id})"
+    }
   },
   "gallery": {
     "title": "Gallery",
@@ -599,7 +651,8 @@
       "selfReviewEnd": "Self-review end time",
       "selfReviewHelp": "The configured time period is treated as a review window before publishing",
       "saveSettings": "Save Settings",
-      "loadFailed": "Failed to load the post"
+      "loadFailed": "Failed to load the post",
+      "scheduledPublishUnavailable": "Scheduled publishing is currently unavailable. Publishing makes the post live immediately."
     },
     "autoSave": {
       "label": "Auto-save",
@@ -1348,6 +1401,36 @@
     "filter": {
       "allTeamsOrgs": "Teams & Orgs (All)",
       "selectScope": "Select destination"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Personal",
+        "unknown": "Other events",
+        "loadError": {
+          "summary": "Failed to load layers",
+          "detail": "Team/organization filters are temporarily unavailable. Events are still shown. Please reload later."
+        },
+        "hiddenNotice": "The layer you created it in is hidden",
+        "showIt": "Show it"
+      },
+      "more": "+{count} more",
+      "today": "Today",
+      "dayDetail": {
+        "title": "Events on {date}"
+      },
+      "empty": "No events in this period",
+      "view": {
+        "month": "Month",
+        "week": "Week",
+        "agenda": "Agenda"
+      },
+      "week": {
+        "allDay": "All-day",
+        "now": "Now",
+        "dragHint": "Drag to create an event",
+        "dragHintTouch": "Press and hold, then drag to create an event",
+        "selectedRange": "{start} – {end}"
+      }
     }
   },
   "handoff": {
@@ -1514,7 +1597,13 @@
       "leave_action": "Leave",
       "load_error_title": "Could not load information",
       "load_error_body": "Please try again later. It may be hidden if you do not have permission.",
-      "back_to_dashboard": "Back to dashboard"
+      "back_to_dashboard": "Back to dashboard",
+      "retry": "Retry",
+      "slow_loading": "Loading is taking longer than expected"
+    },
+    "unsavedChanges": {
+      "title": "Unsaved changes",
+      "confirmLeave": "You have unsaved changes. If you leave this page, your input will be lost. Continue?"
     }
   },
   "teamHub": {
@@ -1641,7 +1730,8 @@
       "errorReports": "Error Reports",
       "gdprPurge": "GDPR Purge Status",
       "feedbackInbox": "Feedback Inbox (Global)",
-      "billing": "Billing master data"
+      "billing": "Billing master data",
+      "betaPerks": "Beta perk management"
     },
     "impersonation": {
       "banner": "Impersonating: {label}",
@@ -1890,6 +1980,13 @@
     "mapEmbedUrlHelp": "In Google Maps, click \"Share > Embed a map > Copy HTML\" and paste the src= URL here",
     "mapEmbedUrlInvalidFormat": "Must be a Google Maps embed URL (https://www.google.com/maps/embed?...)",
     "mapEmbedUrlSaved": "Store map URL saved",
+    "timezone": {
+      "label": "Reservation time zone",
+      "help": "IANA time zone used to interpret reservation start and end times.",
+      "placeholder": "e.g. Asia/Tokyo",
+      "invalid": "Enter a valid IANA time zone",
+      "saved": "Reservation time zone saved"
+    },
     "regionCode": {
       "label": "Location (prefecture / city)",
       "help": "Selecting a prefecture and city sets the defaults for regional search and listings.",
@@ -1907,6 +2004,24 @@
     "bulletinOpen": "Discuss on bulletin board"
   },
   "scopeDashboard": {
+    "storageSummary": {
+      "title": "Storage",
+      "personal": "Personal",
+      "team": "Team",
+      "organization": "Organization",
+      "details": "View details",
+      "error": "Could not load storage",
+      "retry": "Retry",
+      "unconfigured": "Quota not configured",
+      "not_available": "No storage data",
+      "meterLabel": "{scope} storage usage",
+      "meterValue": "Usage {percent}%",
+      "warningTitle": "Storage limit approaching",
+      "warningMessage": "{scope} is using {percent}%. Consider upgrading to a paid plan.",
+      "viewPlans": "View plans",
+      "checkStorage": "Check storage",
+      "cancel": "Cancel"
+    },
     "tabs": {
       "personal": "Personal",
       "team": "Team",
@@ -2160,6 +2275,32 @@
   "comingSoon": {
     "title": "Coming Soon",
     "description": "This feature is currently under development. Please check back later."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Transfer ownership",
+    "sectionDescription": "Offer the administrator role to another member. Nothing changes until they accept.",
+    "openButton": "Offer ownership transfer",
+    "dialogTitle": "Offer ownership transfer",
+    "warning": "If the recipient accepts, they become the administrator and you become a member. Nothing changes while the offer is pending.",
+    "targetLabel": "New owner",
+    "targetPlaceholder": "Select a member",
+    "noCandidates": "There is no member you can transfer ownership to.",
+    "confirmLabel": "Type “{name}” to confirm",
+    "confirmMismatch": "The name does not match.",
+    "cancel": "Cancel",
+    "submit": "Send offer",
+    "successTitle": "Offer sent",
+    "successDetail": "Your administrator role remains unchanged until the recipient accepts."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Feature not available",
+      "body": "This feature is not available yet. Returning to your dashboard."
+    },
+    "error": {
+      "fetchFailedTitle": "Could not check feature availability",
+      "fetchFailedBody": "We could not check whether this feature is available because of a network error. Please try again later."
+    }
   },
   "member": {
     "columns": {

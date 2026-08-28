@@ -63,8 +63,16 @@ public interface VillageMembershipRepository extends JpaRepository<VillageMember
     List<VillageMembershipEntity> findBySubjectTypeAndSubjectIdAndLeftAtIsNull(
             VillageSubjectType subjectType, Long subjectId);
 
-    /** 村の現役メンバー件数。 */
+    /** 村の現役メンバー件数（BAN 済みも含む・在籍ベース）。 */
     long countByVillageIdAndLeftAtIsNull(UUID villageId);
+
+    /**
+     * 村の<strong>現役</strong>メンバー件数（{@code leftAt IS NULL} かつ {@code bannedAt IS NULL}）。
+     *
+     * <p>F17.2 相性表示（§8.8 草分けアピール）の「総現役メンバー数」判定に使う。
+     * BAN 済みは活動できないため総数に含めない（{@link #countByVillageIdAndLeftAtIsNull} との違い）。</p>
+     */
+    long countByVillageIdAndLeftAtIsNullAndBannedAtIsNull(UUID villageId);
 
     /** 村の現役メンバー一覧（ページネーション、参加日昇順）。 */
     Page<VillageMembershipEntity> findByVillageIdAndLeftAtIsNullOrderByJoinedAtAsc(
@@ -93,6 +101,68 @@ public interface VillageMembershipRepository extends JpaRepository<VillageMember
               AND m.bannedAt IS NULL
             """)
     List<Long> findActiveUserSubjectIdsByVillageId(@Param("villageId") UUID villageId);
+
+    /**
+     * 村内 USER 現役メンバーの subject_id を<strong>キーセットページング</strong>で 1 チャンク取得する
+     * （通知 fan-out 抜本改修 P1・受信者ストリーム配信用）。
+     *
+     * <p>{@link #findActiveUserSubjectIdsByVillageId} が全件を 1 つの {@code List} に載せるのに対し、
+     * 本メソッドは {@code subject_id > :cursor} を昇順 + {@code LIMIT chunk}（{@link Pageable}）で刻むことで、
+     * 50 万人規模の村でも受信者集合をメモリ有界に走査できる。呼び出し側は「返却末尾の subject_id を
+     * 次カーソルにして、結果が chunk 未満になるまで繰り返す」ことで全現役 USER を漏れなく列挙する。</p>
+     *
+     * <p>被覆索引 {@code idx_vm_fanout_keyset (village_id, subject_type, left_at, banned_at, subject_id)}
+     * により index-only 走査となる（V170 migration）。現役判定（{@code left_at IS NULL} かつ
+     * {@code banned_at IS NULL}）は WHERE に閉じ込め、退村/BAN を漏れなく除外する。</p>
+     *
+     * @param villageId 対象村 UUID
+     * @param cursor    直前チャンク末尾の subject_id（初回は最小値未満＝{@code 0L} 等を渡す）
+     * @param pageable  チャンクサイズ（{@code PageRequest.of(0, chunk)}。ソートはクエリ側で固定）
+     * @return {@code subject_id > cursor} の現役 USER の {@code [subject_id, locale]} を昇順に最大 chunk 件
+     *
+     * <h2>Issue #2871: locale 同時取得のための users JOIN（母集団は不変）</h2>
+     * <p>受信者ごとに文面のロケールを変えるため {@code users.locale} も一緒に取る。JPQL では
+     * village↔user のクロスドメイン association を張れない（原則1・FK 禁止）ため native query へ移した。</p>
+     * <p><b>あえて {@code LEFT JOIN} にしている。</b> 本クエリの母集団条件は「村メンバーシップが現役」
+     * だけであり、ユーザー状態（{@code status} / {@code deleted_at}）は元々見ていない。ここで
+     * {@code INNER JOIN} にすると、users 側に行が無いケースで受信者が<b>静かに減る</b>＝母集団の
+     * 定義を変えてしまう。JOIN は locale を取るためだけのものであり、絞り込みではないことを
+     * {@code LEFT JOIN} で構造的に表す（users 行が無ければ locale は NULL となり、
+     * {@link com.mannschaft.app.notification.fanout.FanoutRecipient} が既定ロケールへ正規化する）。</p>
+     * <p>実行計画: {@code idx_vm_fanout_keyset} の covering index range scan はそのまま駆動表に残り、
+     * users は主キーの {@code eq_ref}（Single-row index lookup）1 段が加わるだけで、
+     * filesort / temporary は増えない（20 万行の実測値は PR 本文参照）。</p>
+     */
+    @Query(value = "SELECT CAST(m.subject_id AS SIGNED), u.locale FROM village_memberships m "
+            + "LEFT JOIN users u ON u.id = m.subject_id "
+            + "WHERE m.village_id = :villageId "
+            + "AND m.subject_type = 'USER' "
+            + "AND m.left_at IS NULL "
+            + "AND m.banned_at IS NULL "
+            + "AND m.subject_id > :cursor "
+            + "ORDER BY m.subject_id ASC",
+            nativeQuery = true)
+    List<Object[]> findActiveUserSubjectIdsByVillageIdKeyset(
+            @Param("villageId") UUID villageId,
+            @Param("cursor") Long cursor,
+            Pageable pageable);
+
+    /**
+     * 複数村の現役 USER メンバーの subject_id を重複なしで一括取得する（F17.2 相性表示の N+1 回避）。
+     *
+     * <p>相性の「重なり」算出で、閲覧者が現役所属する複数の他村の村人集合をまとめて引くために使う。
+     * 村ごとに {@link #findActiveUserSubjectIdsByVillageId} を発行する N+1 を 1 本の IN クエリに束ねる。
+     * 呼び出し側は空コレクションを渡さないこと（空 IN を避けるためガードする）。</p>
+     */
+    @Query("""
+            SELECT DISTINCT m.subjectId FROM VillageMembershipEntity m
+            WHERE m.villageId IN :villageIds
+              AND m.subjectType = com.mannschaft.app.village.entity.enums.VillageSubjectType.USER
+              AND m.leftAt IS NULL
+              AND m.bannedAt IS NULL
+            """)
+    List<Long> findActiveUserSubjectIdsByVillageIdIn(
+            @Param("villageIds") java.util.Collection<UUID> villageIds);
 
     // ====================================================================
     // F17.1 Phase 3-β — 村史月次集計

@@ -3,6 +3,8 @@ package com.mannschaft.app.notification.credit.batch;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.credit.entity.NotificationCreditPurchaseEntity;
 import com.mannschaft.app.notification.credit.entity.NotificationCreditPurchaseStatus;
@@ -14,6 +16,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -44,10 +47,18 @@ public class NotificationCreditExpiryBatch {
     private final NotificationHelper notificationHelper;
     private final UserRoleRepository userRoleRepository;
     private final AuditLogService auditLogService;
+    /**
+     * Issue #2715 CMP-055 ロットC-1: 通知本文の i18n。受信者 locale の解決自体は
+     * {@link NotificationHelper#notifyAllLocalized} 内部の {@link UserLocaleCache} が一括で担う
+     * （本クラスから直接 {@code UserLocaleCache} は呼ばない）。
+     */
+    private final MessageSource messageSource;
 
     /**
      * 有効期限バッチを実行する（毎日 AM 3:00 JST）。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると期限切れクレジットが credit_balance から差し引かれず、実際には使えない残高が組織に残り続ける")
     @BatchEndpoint(name = "notification-credit-expiry-daily", description = "通知クレジットの期限アラートと失効処理を毎日 03:00 に実行する")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
@@ -196,20 +207,26 @@ public class NotificationCreditExpiryBatch {
             if (adminUserIds.isEmpty()) {
                 return;
             }
-            String title = "通知クレジットの有効期限まで残り" + daysRemaining + "日です";
-            String body = "購入ID#" + purchaseId + "の通知クレジットが "
-                    + expiresAt.toLocalDate() + " に失効します。期限前にご利用ください。";
-            notificationHelper.notifyAll(
+            notificationHelper.notifyAllLocalized(
                     adminUserIds,
                     "NOTIFICATION_CREDIT_EXPIRY_ALERT",
-                    title,
-                    body,
                     "NOTIFICATION_CREDIT",
                     organizationId,
                     NotificationScopeType.ORGANIZATION,
                     organizationId,
                     "/organizations/" + organizationId + "/settings/notification-credits",
-                    null
+                    null,
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
+                            messageSource.getMessage(
+                                    "notification.credit.expiryAlert.title",
+                                    new Object[]{daysRemaining},
+                                    "通知クレジットの有効期限まで残り" + daysRemaining + "日です", locale),
+                            messageSource.getMessage(
+                                    "notification.credit.expiryAlert.body",
+                                    new Object[]{purchaseId, expiresAt.toLocalDate()},
+                                    "購入ID#" + purchaseId + "の通知クレジットが "
+                                            + expiresAt.toLocalDate() + " に失効します。期限前にご利用ください。",
+                                    locale))
             );
         } catch (Exception e) {
             log.error("有効期限アラート送信失敗: organizationId={}, purchaseId={}", organizationId, purchaseId, e);
@@ -229,17 +246,23 @@ public class NotificationCreditExpiryBatch {
             if (adminUserIds.isEmpty()) {
                 return;
             }
-            notificationHelper.notifyAll(
+            notificationHelper.notifyAllLocalized(
                     adminUserIds,
                     "NOTIFICATION_CREDIT_EXPIRED",
-                    "通知クレジットが失効しました",
-                    expiredCredits + "通のクレジットが有効期限切れにより失効しました。",
                     "NOTIFICATION_CREDIT",
                     organizationId,
                     NotificationScopeType.ORGANIZATION,
                     organizationId,
                     "/organizations/" + organizationId + "/settings/notification-credits",
-                    null
+                    null,
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
+                            messageSource.getMessage(
+                                    "notification.credit.expired.title", null,
+                                    "通知クレジットが失効しました", locale),
+                            messageSource.getMessage(
+                                    "notification.credit.expired.body",
+                                    new Object[]{expiredCredits},
+                                    expiredCredits + "通のクレジットが有効期限切れにより失効しました。", locale))
             );
         } catch (Exception e) {
             log.error("クレジット失効アラート送信失敗: organizationId={}", organizationId, e);

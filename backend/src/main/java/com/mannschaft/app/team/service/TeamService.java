@@ -17,6 +17,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.LeaveReason;
+import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
@@ -25,6 +26,7 @@ import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
+import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
@@ -83,6 +85,7 @@ public class TeamService {
     private final TeamShiftSettingsService teamShiftSettingsService;
     private final MeterRegistry meterRegistry;
     private final MemberQueryDispatcher memberQueryDispatcher;
+    private final ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
     private final MembershipService membershipService;
     private final MembershipRepository membershipRepository;
     /** 画像 URL 根治 Phase 1: 生 R2 キー → 署名付き表示 URL の解決を担う共通部品。 */
@@ -188,6 +191,30 @@ public class TeamService {
     }
 
     /**
+     * F06.4 公開活動記録: 他ドメインが「このチームは匿名公開してよいか」を判定するための横断 SPI。
+     *
+     * <p>公開コンテンツ（活動記録など）を匿名公開する経路は、コンテンツ自身が PUBLIC でも
+     * <b>親スコープが非公開・凍結・停止なら 404 にしなければならない</b>
+     * （親を見ないと「非公開チームの中身が PUBLIC 設定のまま漏れる」）。
+     * 判定条件は {@link TeamRepository#findPublicTeamById(Long)} と同一の正準
+     * （{@code visibility=PUBLIC} かつ {@code archivedAt IS NULL}、
+     * {@code @SQLRestriction} により {@code deletedAt IS NULL}）。</p>
+     *
+     * <p>クロスドメイン Entity 参照を持ち込まないため（CLAUDE.md ドメイン境界の原則・番人 D-1）、
+     * {@link TeamEntity} ではなく<b>チーム名のみ</b>を返す。呼び出し側はこれを
+     * {@code PublicScopeRef}（公開用スコープ参照 DTO）に詰め替えて使う。</p>
+     *
+     * @param teamId 対象チーム ID
+     * @return 公開してよいチームの表示名。非公開 / 凍結 / 削除済み / 不在なら空
+     */
+    public Optional<String> findPublicTeamNameById(Long teamId) {
+        if (teamId == null) {
+            return Optional.empty();
+        }
+        return teamRepository.findPublicTeamById(teamId).map(TeamEntity::getName);
+    }
+
+    /**
      * F22.1 市 Phase 2 足場C: チームの構造化地域コード（都道府県・市区町村）を取得する。
      *
      * <p>他ドメイン（recruitment）が札立て地域の既定補完に使う read-only な横断クエリ。
@@ -269,6 +296,25 @@ public class TeamService {
      */
     public Long resolveTeamId(String slug) {
         return findTeamBySlugOrThrow(slug).getId();
+    }
+
+    /**
+     * チームがサポーター受け入れを有効化していることを表明する。
+     *
+     * <p>{@code supporter_enabled} は「このチームがサポーター登録を受け付けるか」を表す
+     * 運営者の意思表示であり、フロントエンドも本フラグでフォローボタンの表示を切り替えている
+     * （{@code TeamPageHeader.vue}）。サーバ側でも同じ契約を強制し、無効化中のチームへの
+     * サポーター自己登録を {@code MEMBERSHIP_SUPPORTER_DISABLED}（403）で拒否する。</p>
+     *
+     * @param teamId チーム内部 ID
+     * @throws BusinessException チームが存在しない（TEAM_001）/ サポーター機能が無効
+     */
+    public void assertSupporterEnabled(Long teamId) {
+        TeamEntity team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+        if (!Boolean.TRUE.equals(team.getSupporterEnabled())) {
+            throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_SUPPORTER_DISABLED);
+        }
     }
 
     /**
@@ -481,7 +527,11 @@ public class TeamService {
     // TODO: teamドメインがroleドメイン(UserRoleRepository)・socialドメイン(TeamFriendRepository)・membershipドメイン(MembershipRepository)をまたいでいる。将来はTeamUpdatedEventで分離予定
     @Caching(evict = {
             @CacheEvict(value = "team-detail", allEntries = true),
-            @CacheEvict(value = "team-search", allEntries = true)
+            @CacheEvict(value = "team-search", allEntries = true),
+            // issue #2496: フレンド一覧キャッシュ（teamFriendList）は相手チーム名
+            // （TeamFriendView#friendTeamName）を内包するため、チーム名の変更で stale になる。
+            // teamFriendList が実際に発火するようになった今、ここでの失効が必須。
+            @CacheEvict(value = "teamFriendList", allEntries = true)
     })
     public ApiResponse<TeamResponse> updateTeam(Long teamId, UpdateTeamRequest req) {
         TeamEntity team = findTeamOrThrow(teamId);
@@ -508,6 +558,7 @@ public class TeamService {
                 req.getSupporterEnabled(),
                 // F15.4 Phase 5-β: Google Maps 埋め込み URL。指定時のみ更新（null は既存値を維持）
                 req.getMapEmbedUrl());
+        team.updateTimezone(req.getTimezone());
         teamRepository.save(team);
 
         int memberCount = (int) userRoleRepository.countByTeamId(teamId);
@@ -525,7 +576,9 @@ public class TeamService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "team-detail", allEntries = true),
-            @CacheEvict(value = "team-search", allEntries = true)
+            @CacheEvict(value = "team-search", allEntries = true),
+            // issue #2496: 削除されたチームがフレンド一覧のキャッシュに残り続けないよう失効させる。
+            @CacheEvict(value = "teamFriendList", allEntries = true)
     })
     public void deleteTeam(Long teamId, Long userId) {
         TeamEntity team = findTeamOrThrow(teamId);
@@ -570,6 +623,9 @@ public class TeamService {
 
     /**
      * チームをキーワード検索する。
+     *
+     * <p>認可根治 Wave6: {@code TeamRepository#searchByKeyword} が
+     * <b>PUBLIC かつ未アーカイブ</b>に絞り込む。本メソッド側では追加の絞り込みを行わない。</p>
      */
     public PagedResponse<TeamSummaryResponse> searchTeams(String keyword, Pageable pageable) {
         Page<TeamEntity> page = teamRepository.searchByKeyword(
@@ -607,6 +663,8 @@ public class TeamService {
 
         // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照に完全切替
         var memberDtos = memberQueryDispatcher.queryMembers(teamId, ScopeType.TEAM, null);
+        var colorsByUserId = scopeMemberCalendarSettingService.resolveColors(
+                ScopeType.TEAM, teamId, memberDtos.stream().map(dto -> dto.userId()).toList());
 
         var data = memberDtos.stream()
                 .map(dto -> new MemberResponse(
@@ -614,7 +672,8 @@ public class TeamService {
                         dto.displayName(),
                         dto.avatarUrl(),
                         dto.roleName(),
-                        dto.joinedAt()))
+                        dto.joinedAt(),
+                        colorsByUserId.get(dto.userId())))
                 .toList();
 
         // Dispatcher は全件リストを返すため、ページネーションはアプリ側でエミュレート
@@ -724,7 +783,13 @@ public class TeamService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "team-detail", allEntries = true),
-            @CacheEvict(value = "team-search", allEntries = true)
+            @CacheEvict(value = "team-search", allEntries = true),
+            // issue #2496: 論理削除の復元は @SQLRestriction("deleted_at IS NULL") の効き方が反転するため、
+            // teamFriendList も失効させる必要がある。
+            // deleteTeam で全消し → TTL(30分) の間に誰かが一覧を引くと toView の .orElse(null) により
+            // friendTeamName = null がキャッシュされる → restoreTeam しても失効しなければ
+            // 復元後もフレンド名が空欄のまま最大 30 分表示され続ける。
+            @CacheEvict(value = "teamFriendList", allEntries = true)
     })
     public void restoreTeam(Long teamId) {
         if (teamRepository.countByIdIncludingDeleted(teamId) == 0) {
@@ -833,6 +898,7 @@ public class TeamService {
                 .visibility(new TeamResponse.TeamVisibilityDto(
                         team.getVisibility() != null ? team.getVisibility().name() : null,
                         team.getSupporterEnabled()))
+                .timezone(team.getTimezone())
                 .metadata(new TeamResponse.TeamMetadataDto(
                         team.getVersion(), memberCount,
                         // 画像 URL 根治 Phase 1: icon/banner は生 R2 キーを署名付き表示 URL へ解決する。

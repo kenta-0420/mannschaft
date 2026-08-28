@@ -2,6 +2,8 @@ package com.mannschaft.app.role.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.role.dto.InvitableScopesResponse;
 import com.mannschaft.app.role.service.MembershipInviteService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +34,8 @@ public class MeInvitableScopesController {
     /**
      * 自分が招待発行できるスコープ一覧を取得する（管理スコープ 0 件でも 200 空配列）。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "招待可能スコープ一覧は中核の所属管理機能として常時提供する")
     @GetMapping
     @Operation(summary = "招待発行可能スコープ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

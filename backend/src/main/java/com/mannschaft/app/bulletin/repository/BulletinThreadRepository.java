@@ -30,10 +30,20 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
             ScopeType scopeType, Long scopeId, Pageable pageable);
 
     /**
-     * カテゴリ指定でスレッドをページング取得する。
+     * スコープ + カテゴリ指定でスレッドをページング取得する（ピン留め優先→更新日時降順）。
+     *
+     * <p><b>必ずスコープ条件を伴うこと。</b> 以前は {@code findByCategoryIdOrderByIsPinnedDescUpdatedAtDesc}
+     * という categoryId 単独の finder だったため、自スコープの URL に他スコープの categoryId を
+     * 差し込むだけで他テナントのスレッド本文が読めた（越境 BOLA・read）。呼び出し側の
+     * 帰属検証（{@code BulletinCategoryService#findCategoryOrThrow}）と併せて塞ぐ。</p>
+     *
+     * <p><b>分離できるスコープの範囲</b>: {@code scope_type + scope_id} による分離であるため、
+     * {@code TEAM} / {@code ORGANIZATION} / {@code PERSONAL} を相互に分離する。
+     * 村スコープは {@code scope_id} が一律 {@code 0} で村ごとの区別が付かないため本メソッドでは分離できない。
+     * 村は {@link #findByScopeVillageIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc} を使うこと。</p>
      */
-    Page<BulletinThreadEntity> findByCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
-            Long categoryId, Pageable pageable);
+    Page<BulletinThreadEntity> findByScopeTypeAndScopeIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+            ScopeType scopeType, Long scopeId, Long categoryId, Pageable pageable);
 
     /**
      * IDとスコープでスレッドを取得する。

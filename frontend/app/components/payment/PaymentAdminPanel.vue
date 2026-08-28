@@ -64,6 +64,8 @@ const payments = ref<MemberPaymentResponse[]>([])
 const loading = ref(false)
 /** F08.9 P8: サマリー（支払い項目ごとの PAID/UNPAID/EXPIRED 件数）。 */
 const summary = ref<PaymentSummaryResponse | null>(null)
+/** 集計（サマリー）取得に失敗したか。失敗を「集計ゼロ/未表示」と区別して表示する（課金・誤表示防止）。 */
+const summaryError = ref(false)
 /**
  * スコープメンバー一覧（team / organization 両スコープで取得する）。
  * 手動入金記録ダイアログのメンバー選択肢として使用する。
@@ -78,10 +80,17 @@ const selectedSummaryItem = computed(() =>
 )
 
 async function loadItems() {
+  summaryError.value = false
   try {
+    // 主データ（items）は失敗を外側 catch で showError する。集計（summary・課金）は補助だが、
+    // 失敗を「集計ゼロ」に見せないため per-section のエラー状態を立て、ログでも表面化する。
     const [itemsRes, summaryRes] = await Promise.all([
       getPaymentItems(props.scopeType, props.scopeId),
-      getPaymentSummary(props.scopeType, props.scopeId).catch(() => null),
+      getPaymentSummary(props.scopeType, props.scopeId).catch((e) => {
+        console.warn('[PaymentAdminPanel] 支払い集計の取得に失敗（集計を非表示にしエラー表示）', e)
+        summaryError.value = true
+        return null
+      }),
     ])
     items.value = itemsRes.data
     summary.value = summaryRes?.data ?? null
@@ -355,6 +364,10 @@ onMounted(() => {
               rounded
             />
           </div>
+          <!-- 集計取得失敗（課金・🟡）: 「集計ゼロ」に見せず取得失敗として表示する -->
+          <p v-else-if="summaryError && selectedItem" class="mt-2 text-xs text-red-600 dark:text-red-400" role="alert">
+            {{ t('error.section_load_failed') }}
+          </p>
         </div>
         <div class="flex items-center gap-2">
           <Button :label="t('payment.admin.record.recordButton')" icon="pi pi-plus" size="small" data-testid="payment-record-open" @click="openRecordDialog" />

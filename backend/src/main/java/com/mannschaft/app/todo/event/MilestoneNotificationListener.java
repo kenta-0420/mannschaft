@@ -1,5 +1,8 @@
 package com.mannschaft.app.todo.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -18,12 +21,15 @@ import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -54,6 +60,8 @@ public class MilestoneNotificationListener {
     private final TodoAssigneeRepository todoAssigneeRepository;
     private final TeamService teamService;
     private final OrganizationService organizationService;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
 
     /**
      * マイルストーンアンロック時にプッシュ通知・WebSocket 配信を実行する。
@@ -72,6 +80,8 @@ public class MilestoneNotificationListener {
      *
      * @param event マイルストーンアンロックイベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。マイルストーン解放の通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async
     @EventListener
     public void onMilestoneUnlocked(MilestoneUnlockedEvent event) {
@@ -97,18 +107,36 @@ public class MilestoneNotificationListener {
 
         String notificationType = event.isForced() ? "MILESTONE_FORCE_UNLOCKED" : "MILESTONE_UNLOCKED";
         NotificationPriority priority = event.isForced() ? NotificationPriority.HIGH : NotificationPriority.NORMAL;
-        String title = event.isForced()
+        String titleKey = event.isForced()
+                ? "notification.todo.milestoneForceUnlocked.title"
+                : "notification.todo.milestoneUnlocked.title";
+        String titleDefault = event.isForced()
                 ? "マイルストーンが強制アンロックされました"
                 : "マイルストーンがアンロックされました";
-        String body = String.format("「%s」が操作可能になりました。タスクを進めましょう。",
-                milestone.getTitle());
 
         NotificationScopeType scopeType = resolveScopeType(project.getScopeType());
         String actionUrl = buildActionUrl(project, milestone.getId());
 
+        // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+        // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+        Map<Long, String> locales;
+        try {
+            locales = userLocaleCache.getLocales(recipientUserIds.stream().toList());
+        } catch (Exception e) {
+            log.warn("locale 一括解決に失敗（既定 locale で継続）: error={}", e.getMessage());
+            locales = Map.of();
+        }
+
         int dispatched = 0;
         for (Long userId : recipientUserIds) {
             try {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(userId, "ja"));
+                String title = messageSource.getMessage(titleKey, null, titleDefault, locale);
+                String body = messageSource.getMessage(
+                        "notification.todo.milestoneUnlocked.body",
+                        new Object[]{milestone.getTitle()},
+                        "「" + milestone.getTitle() + "」が操作可能になりました。タスクを進めましょう。",
+                        locale);
                 NotificationEntity entity = notificationService.createNotification(
                         userId,
                         notificationType,

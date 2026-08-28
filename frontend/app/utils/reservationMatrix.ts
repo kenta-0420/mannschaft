@@ -12,10 +12,22 @@ export type MatrixCellState = 'AVAILABLE' | 'BOOKED' | 'CLOSED' | 'UNAVAILABLE'
 /** BE GridCellDto 相当の最小構造（生成型に依存させず純関数を独立させる）。 */
 export interface MatrixCellInput {
   slotId?: number
+  /** 枠の業務日（通常は行の日付）。 */
+  slotDate?: string
+  /** 日跨ぎ枠の終了業務日。 */
+  endDate?: string
   startTime?: string
   endTime?: string
   state?: MatrixCellState
   price?: number
+  /** 現在のユーザーが PENDING / CONFIRMED の予約を持つ枠か（PII を返さない本人フラグ）。 */
+  reservedByCurrentUser?: boolean
+  /**
+   * F03.4.5 §4.4: state=UNAVAILABLE かつ判定元が is_public=TRUE の定期予約不可ルールのときのみ
+   * BE が値を詰める（それ以外＝単発 blocked_times 由来・is_public=FALSE は null/undefined）。
+   * FE は「値があれば出す・無ければ従来表示」だけを守り、公開判定を再実装しない。
+   */
+  unavailableReason?: string | null
 }
 
 /** 固定30分ヘッダの1列。 */
@@ -55,6 +67,14 @@ export function formatMinutes(minutes: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
+/** endDate が翌日の実 slot は、壁時計の endTime を翌日分として扱う。 */
+function endMinutesForCell(cell: MatrixCellInput): number {
+  const end = toMinutes(cell.endTime)
+  if (end < 0) return end
+  if (cell.slotDate && cell.endDate && cell.endDate !== cell.slotDate) return end + 24 * 60
+  return end
+}
+
 /**
  * 表示対象の全セルから min(startTime)〜max(endTime) を取り、30分刻みの固定ヘッダ列を構築する（B4手順1）。
  * セルが1件もない場合は空配列。
@@ -64,7 +84,7 @@ export function buildTimeHeader(cells: MatrixCellInput[]): HeaderSlot[] {
   let maxEnd = Number.NEGATIVE_INFINITY
   for (const c of cells) {
     const s = toMinutes(c.startTime)
-    const e = toMinutes(c.endTime)
+    const e = endMinutesForCell(c)
     if (s < 0 || e < 0) continue
     if (s < minStart) minStart = s
     if (e > maxEnd) maxEnd = e
@@ -91,7 +111,7 @@ export function alignRowToHeader(cells: MatrixCellInput[], header: HeaderSlot[])
 
   for (const c of cells) {
     const s = toMinutes(c.startTime)
-    const e = toMinutes(c.endTime)
+    const e = endMinutesForCell(c)
     if (s < 0 || e < 0 || e <= s) continue
     const startIndex = indexByMinutes.get(s)
     if (startIndex === undefined) continue
@@ -168,6 +188,56 @@ export function canExtend(row: RowSlot[], selectedHeaderIndices: number[]): bool
 }
 
 /**
+ * ドラッグ複数選択で「連続確保の構成要素になれる」マスか判定する。
+ *
+ * `isConsecutiveAvailable` と同一条件（span===1 の AVAILABLE セル）。長尺枠（span>1）は
+ * グループ連続確保の構成要素にしない（B4手順4）という既存方針に揃えるため、AVAILABLE でも
+ * 対象外にする。`covered`（長尺枠に覆われた後続列）・`empty` も当然対象外。
+ */
+function isDraggableCell(slot: RowSlot | undefined): boolean {
+  return !!slot && slot.kind === 'cell' && slot.span === 1 && slot.cell.state === 'AVAILABLE'
+}
+
+/**
+ * ドラッグ複数選択の範囲を解決する（機能H・会員のドラッグ複数選択）。
+ *
+ * `anchorIndex`（pointerdown したマス）から `focusIndex`（現在ポインタが乗っているマス）へ
+ * **アンカー側から順に**走査し、連続確保の構成要素になれないマスに当たった時点で打ち切る。
+ * 「打ち切る」であって「弾く」ではないため、BOOKED/CLOSED/UNAVAILABLE や長尺枠を跨いだ
+ * ドラッグをしても、跨ぐ手前までの連続範囲が選ばれる（選択が突然全消えしない）。
+ *
+ * 重要（長尺枠の扱い）: 引数は**ヘッダ列インデックス**であり、長尺枠が跨ぐ列は `covered` として
+ * `row` に実在する。よって素朴な連番走査のままで跨ぎ枠を正しく境界として扱える（呼び出し側は
+ * DOM から必ず「そのマスのヘッダ列インデックス」を渡すこと。可視セルの通し番号ではない）。
+ *
+ * 左方向ドラッグにも対応する（戻り値は常に昇順）。選択数は GROUP_MAX_SIZE で頭打ちにする
+ * （BE の GROUP_SIZE_EXCEEDED=041 を UI 側で先回りして防ぐ）。
+ * アンカー自体が対象外なら空配列（＝選択不成立）。
+ *
+ * `isSelectable` は「セルの形（state/span）以外の理由で選べない」条件を呼び出し側から注入する
+ * ための任意述語。SlotMatrixPicker は過去セル判定（B6）を渡す。左方向ドラッグで当日の
+ * 現在時刻より前のマスへ戻ったとき、そこで打ち切るために要る。
+ */
+export function resolveDragSelection(
+  row: RowSlot[],
+  anchorIndex: number,
+  focusIndex: number,
+  isSelectable?: (index: number) => boolean,
+): number[] {
+  const eligible = (i: number) => isDraggableCell(row[i]) && (isSelectable?.(i) ?? true)
+  if (!eligible(anchorIndex)) return []
+  const indices = [anchorIndex]
+  const step = focusIndex >= anchorIndex ? 1 : -1
+  for (let i = anchorIndex + step; step > 0 ? i <= focusIndex : i >= focusIndex; i += step) {
+    if (i < 0 || i >= row.length) break
+    if (!eligible(i)) break
+    if (indices.length >= GROUP_MAX_SIZE) break
+    indices.push(i)
+  }
+  return indices.sort((a, b) => a - b)
+}
+
+/**
  * 過去セル判定（B6）。当日で現在時刻より前に開始する枠 or 過去日そのものを disabled にする。
  * `todayStr`/`nowMinutes` を明示引数にして Date.now() 直書きを避ける（Clock 注入の規約に準拠）。
  */
@@ -181,4 +251,23 @@ export function isPastCell(date: string, cellStartTime: string | undefined, toda
 export function mondayOffsetDays(dow: number): number {
   // 月曜=0, 火=1, ..., 日=6 になるようシフトする
   return (dow + 6) % 7
+}
+
+/**
+ * UNAVAILABLE セルの事由ラベル（F03.4.5 §4.4）。
+ *
+ * `unavailableReason` は「is_public=TRUE の定期予約不可ルール」由来のときのみ BE が値を詰める
+ * （単発 blocked_times 由来・非公開ルールは null/undefined）。FE は「値があれば出す・無ければ
+ * 従来表示のまま」だけを守り、公開可否を FE 側で再判定しない
+ * （`feedback_type_lie_undefined_fallback_silent_death` の型の嘘対策・純関数化してテスト可能にする）。
+ */
+export function cellUnavailableReason(cell: MatrixCellInput | undefined): string | null {
+  if (!cell || cell.state !== 'UNAVAILABLE') return null
+  return cell.unavailableReason ?? null
+}
+
+/** RowSlot（ヘッダ整列後のマス）から事由ラベルを取り出す（SlotMatrixPicker 用）。 */
+export function unavailableReasonOfSlot(slot: RowSlot | undefined): string | null {
+  if (!slot || slot.kind !== 'cell') return null
+  return cellUnavailableReason(slot.cell)
 }

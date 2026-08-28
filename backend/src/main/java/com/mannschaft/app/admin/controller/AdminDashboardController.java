@@ -6,8 +6,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
-import com.mannschaft.app.role.entity.UserRoleEntity;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.dto.ScopeUserRoleResponse;
 import com.mannschaft.app.role.service.RoleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,7 +31,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminDashboardController {
 
     private final AdminDashboardService dashboardService;
-    private final UserRoleRepository userRoleRepository;
     private final RoleService roleService;
     private final AccessControlService accessControlService;
 
@@ -45,6 +43,12 @@ public class AdminDashboardController {
     public ResponseEntity<ApiResponse<AdminDashboardResponse>> getDashboard(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
+        // 認可根治 Wave5: 同クラスの updateUserRole と同水準の scope 認可を敷く
+        // （別スコープ ADMIN が scopeType/scopeId を差し替えて越境集計するのを遮断）。
+        // 追込: 認可の前に scopeType を検証し、不正値による ScopeType.valueOf の
+        // IllegalArgumentException（未処理 500）を 400 へ正規化する。
+        AdminScopeTypeValidator.requireSupportedScopeType(scopeType);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
         AdminDashboardResponse response = dashboardService.getDashboard(scopeType, scopeId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -55,13 +59,16 @@ public class AdminDashboardController {
     @GetMapping("/users")
     @Operation(summary = "スコープ内ユーザー一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<Page<UserRoleEntity>>> getUsers(
+    public ResponseEntity<ApiResponse<Page<ScopeUserRoleResponse>>> getUsers(
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             Pageable pageable) {
-        Page<UserRoleEntity> page = "TEAM".equals(scopeType)
-                ? userRoleRepository.findByTeamId(scopeId, pageable)
-                : userRoleRepository.findByOrganizationId(scopeId, pageable);
+        // 認可根治 Wave5: 同上。スコープ内の全ロール割当が誰にでも見えていた状態を根治する。
+        // 追込: 認可の前に scopeType を検証（不正値の未処理 500 → 400）。
+        AdminScopeTypeValidator.requireSupportedScopeType(scopeType);
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType);
+        // Repository 直叩き＋Entity 生返却をやめ、role ドメインの Service 経由で DTO を取得する。
+        Page<ScopeUserRoleResponse> page = roleService.getScopeUsers(scopeId, scopeType, pageable);
         return ResponseEntity.ok(ApiResponse.of(page));
     }
 
@@ -79,6 +86,8 @@ public class AdminDashboardController {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // 束1 権限昇格根治（入口二重防御）: 対象スコープの ADMIN/DEPUTY_ADMIN のみロール変更可
         // （別スコープ ADMIN が scopeType/scopeId を差し替えて越境するのを遮断）。
+        // 追込: 認可の前に scopeType を検証（不正値の未処理 500 → 400）。
+        AdminScopeTypeValidator.requireSupportedScopeType(scopeType);
         accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
         roleService.changeRole(scopeId, scopeType, userId, new RoleChangeRequest(roleId), currentUserId);
         return ResponseEntity.ok().build();

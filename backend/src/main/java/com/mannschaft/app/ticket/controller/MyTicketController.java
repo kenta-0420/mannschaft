@@ -6,6 +6,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.pdf.PdfResponseHelper;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.ticket.PaymentMethod;
 import com.mannschaft.app.ticket.dto.QrCodeResponse;
 import com.mannschaft.app.ticket.dto.TicketBookDetailResponse;
@@ -38,6 +39,12 @@ import java.util.Map;
 
 /**
  * 顧客向けチケットコントローラー。自分のチケット一覧・詳細・QR・ウィジェットを提供する。
+ *
+ * <p>認可（認可根治 Wave5）: 一覧・ウィジェットは {@code SecurityUtils.getCurrentUserId()} による
+ * 自己スコープ問い合わせで自足する。一方、ID を指定して単票を引く詳細・領収書・QR は
+ * ID 総当りで他顧客の購入情報へ到達し得るため、Service 側で
+ * {@code TicketAccessGuard#requireBookOwner} による所有者一致を必須とし、
+ * 不一致・チーム不一致はいずれも 404（{@code TICKET_002}）で存在秘匿する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/my-tickets")
@@ -53,7 +60,14 @@ public class MyTicketController {
 
     /**
      * 自分のチケット一覧を取得する（MEMBER / SUPPORTER）。
+     *
+     * <p><b>認可の所在</b>: {@code TicketBookService.getMyTickets}
+     * （{@code ticket/service/TicketBookService.java:205}）が
+     * {@code bookRepository.findByUserIdAndTeamId...} で常に userId を検索条件に AND 結合するため、
+     * 所属していない teamId を渡しても自分のチケットが他チームへ混入することはなく、
+     * 該当チームに自分のチケットが無ければ空配列が返るのみで他人のチケットは返らない。</p>
      */
+    @AuthorizedInService
     @GetMapping
     @Operation(summary = "マイチケット一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -73,7 +87,8 @@ public class MyTicketController {
     public ResponseEntity<ApiResponse<TicketBookDetailResponse>> getMyTicketDetail(
             @PathVariable Long teamId,
             @PathVariable Long bookId) {
-        TicketBookDetailResponse response = bookService.getTicketBookDetail(teamId, bookId);
+        TicketBookDetailResponse response = bookService.getMyTicketBookDetail(
+                teamId, bookId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -86,7 +101,8 @@ public class MyTicketController {
     public ResponseEntity<?> getReceipt(
             @PathVariable Long teamId,
             @PathVariable Long bookId) {
-        TicketPaymentEntity payment = bookService.getReceiptPayment(teamId, bookId);
+        TicketPaymentEntity payment = bookService.getReceiptPayment(
+                teamId, bookId, SecurityUtils.getCurrentUserId());
 
         // Stripe 決済の場合: Stripe API から receipt_url を取得してリダイレクト
         if (payment.getPaymentMethod() == PaymentMethod.STRIPE
@@ -118,11 +134,14 @@ public class MyTicketController {
 
     /**
      * 現地決済の領収書PDFを生成する。
+     *
+     * <p>前提: 呼び出し元で所有者検証済み（{@code getReceiptPayment} がチーム束縛＋所有者一致を検証する）。
+     * チケットの再取得も決済レコード由来の teamId で束縛し、ID 単独での串刺し参照を避ける。</p>
      */
     private ResponseEntity<?> generateReceiptPdf(TicketPaymentEntity payment, Long bookId) {
         // TicketProduct・TicketBook から商品名・枚数を解決
         TicketProductEntity product = ticketProductRepository.findById(payment.getProductId()).orElse(null);
-        TicketBookEntity book = ticketBookRepository.findById(bookId).orElse(null);
+        TicketBookEntity book = ticketBookRepository.findByIdAndTeamId(bookId, payment.getTeamId()).orElse(null);
 
         String productName = product != null ? product.getName() : "回数券";
         int quantity = book != null ? book.getTotalTickets() : 1;
@@ -172,7 +191,12 @@ public class MyTicketController {
 
     /**
      * ダッシュボードウィジェット用の ACTIVE チケット残数サマリを取得する。
+     *
+     * <p><b>認可の所在</b>: {@code TicketBookService.getWidget}
+     * （{@code ticket/service/TicketBookService.java:597}）が常に userId を検索条件に AND 結合するため、
+     * 所属していない teamId を渡してもサマリは自分の保有分のみに限られる。</p>
      */
+    @AuthorizedInService
     @GetMapping("/widget")
     @Operation(summary = "チケットウィジェット")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

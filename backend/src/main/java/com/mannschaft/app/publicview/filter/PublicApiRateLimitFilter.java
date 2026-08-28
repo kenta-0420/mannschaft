@@ -44,6 +44,11 @@ import java.util.regex.Pattern;
  *   <li>{@code GET /api/v1/public/organizations/{id}/posts}（F19.1 Phase 1）</li>
  *   <li>{@code GET /api/v1/public/organizations/{id}/posts/{postId}}（F19.1 Phase 1）</li>
  *   <li>{@code GET /api/v1/public/organizations/{id}/events}（F19.1 Phase 4 で活性化）</li>
+ *   <li>{@code GET /api/v1/public/activities/{id}}（F06.4 公開活動記録・ID 直引き）</li>
+ *   <li>{@code GET /api/v1/public/teams/{id}/activities}（F06.4）</li>
+ *   <li>{@code GET /api/v1/public/teams/{id}/activities/{activityId}}（F06.4）</li>
+ *   <li>{@code GET /api/v1/public/organizations/{id}/activities}（F06.4）</li>
+ *   <li>{@code GET /api/v1/public/organizations/{id}/activities/{activityId}}（F06.4）</li>
  * </ul>
  *
  * <p>レート上限（パス分類ごとに独立した zone を持つ）:</p>
@@ -81,6 +86,22 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
     /** 公開ページ API の未認証上限（F15.4 Phase 5-α / F19.1 共通）。 */
     private static final int PUBLIC_ANONYMOUS_RATE_PER_MINUTE = 60;
 
+    // 公開網漏れ是正: 大会・低リスク・Webhook 系の上限
+    /** 大会一覧・詳細・フォルダ系の認証済み上限（PUBLIC_API と同値・別 zone）。 */
+    private static final int TOURNAMENT_LIST_AUTHENTICATED_RATE_PER_MINUTE = 200;
+    /** 大会一覧・詳細・フォルダ系の未認証上限（PUBLIC_API と同値・別 zone）。 */
+    private static final int TOURNAMENT_LIST_ANONYMOUS_RATE_PER_MINUTE = 60;
+    /** 大会の重い集計エンドポイント（順位表・マトリクス・ランキング・組み合わせ表）の認証済み上限。 */
+    private static final int TOURNAMENT_AGGREGATE_AUTHENTICATED_RATE_PER_MINUTE = 80;
+    /** 大会の重い集計エンドポイントの未認証上限（DB 負荷対策のため PUBLIC_API より厳しい）。 */
+    private static final int TOURNAMENT_AGGREGATE_ANONYMOUS_RATE_PER_MINUTE = 20;
+    /** 低リスク静的・準静的系（contact-invite / stats / postal-code / active-incidents）の認証済み上限。 */
+    private static final int MISC_LOW_AUTHENTICATED_RATE_PER_MINUTE = 120;
+    /** 低リスク静的・準静的系の未認証上限。 */
+    private static final int MISC_LOW_ANONYMOUS_RATE_PER_MINUTE = 30;
+    /** 署名検証済み Webhook 系の上限（検証コスト消費の連打を避けるが緩め）。 */
+    private static final int WEBHOOK_RATE_PER_MINUTE = 120;
+
     /** ウィンドウ長（旧 Bucket4j intervally refill と同じ 1 分）。 */
     private static final Duration WINDOW = Duration.ofMinutes(1);
 
@@ -107,8 +128,46 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
     // F21.1 §5.5: 公開FAQ（/faqs）をレート制限対象に追加（PUBLIC_API バケットを共有）。
     // F01.2 §5.9.5: slug 解決 `/api/v1/public/(teams|organizations)/slug-resolve` も
     //   この `([^/]+)` グループ（slug-resolve）にマッチするため PUBLIC_API バケットで自動的にレート制限される。
+    // F06.4: 公開活動記録（/activities・/activities/{id}）をレート制限対象に追加（PUBLIC_API バケットを共有）。
+    //   未認証で ID 総当りが可能な経路のため、他の公開系と同じ 60/min/IP で列挙攻撃を抑止する。
+    //   ※ 既存 capture グループ 1〜3 の番号を変えないよう、追加は<b>グループ 3 の選択肢の中</b>に入れる
+    //     （recordRateLimitAudit が group(1)/(2)/(3) を参照している）。
+    // 公開網漏れ是正: F19.1 Phase 7 タイムライン投稿（/timeline-posts）を group 3 の選択肢に追加。
+    //   SecurityConfig のコメントは「レート制限あり」を謳っていたが、本 Pattern に
+    //   timeline-posts の選択肢が無かったため実際にはマッチせず素通りしていた（コメントと実装の不一致）。
+    //   ※ 既存 capture グループ 1〜3 の番号は変えない（recordRateLimitAudit が参照している）。
     private static final Pattern PUBLIC_API_PATH =
-            Pattern.compile("^/api/v1/public/(teams|organizations)/([^/]+)(/posts(/[^/]+)?|/events|/faqs)?$");
+            Pattern.compile("^/api/v1/public/(teams|organizations)/([^/]+)"
+                    + "(/posts(/[^/]+)?|/events|/faqs|/activities(/[^/]+)?|/timeline-posts)?$");
+
+    /**
+     * 公開網漏れ是正: 公開ユーザープロフィール API（{@code GET /api/v1/public/users/{id}}・
+     * {@code GET /api/v1/public/users/{id}/posts}）。{@link #PUBLIC_API_PATH} は
+     * {@code (teams|organizations)} プレフィックス限定のため users 系はそもそもマッチしていなかった
+     * （SecurityConfig のコメントは「レート制限あり」を謳っていたが実体が無かった）。
+     * PUBLIC_API バケットを共有する。
+     */
+    private static final Pattern PUBLIC_USER_PATH =
+            Pattern.compile("^/api/v1/public/users/([^/]+)(/posts)?$");
+
+    /**
+     * 公開網漏れ是正: 公開投稿コメント一覧（{@code GET /api/v1/public/blog-posts/{id}/comments}）。
+     * {@link #PUBLIC_API_PATH} のプレフィックス外のため未マッチだった。PUBLIC_API バケットを共有する。
+     */
+    private static final Pattern PUBLIC_BLOG_COMMENTS_PATH =
+            Pattern.compile("^/api/v1/public/blog-posts/([^/]+)/comments$");
+
+    /**
+     * F06.4: スコープ非依存の公開活動記録 単票パス
+     * （{@code GET /api/v1/public/activities/{id}}）をマッチする。
+     *
+     * <p>SNS シェア用の ID 直引き経路。未認証で ID を総当りできるため PUBLIC_API バケット
+     * （60/min/IP・200/min/user）を共有してレート制限する。
+     * {@code /api/v1/public/activities}（末尾 ID なし）はエンドポイントが存在しないため
+     * {@code ([^/]+)} 必須としてマッチさせない。</p>
+     */
+    private static final Pattern PUBLIC_ACTIVITY_BY_ID_PATH =
+            Pattern.compile("^/api/v1/public/activities/([^/]+)$");
 
     /**
      * F19.1 Phase 4: 公開検索 API パスパターン。
@@ -145,12 +204,93 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
     private static final Pattern PUBLIC_TEAM_DETAIL_PATH =
             Pattern.compile("^/api/v1/public/teams/([^/]+)$");
 
+    // ──── 公開網漏れ是正（大会・フォルダ系） ───────────────────
+    /**
+     * 公開大会 一覧 / 詳細（{@code GET /api/v1/public/organizations/{id}/tournaments}・
+     * {@code .../tournaments/{id}}）とファイル置き場フォルダ一覧
+     * （{@code GET /api/v1/tournaments/{id}/folders}・{@code .../divisions/{id}/folders}）。
+     * IDOR 防止のため各階層を {@code [^/]+} で 1 階層ずつ捕捉する（{@code /**} 再帰は使わない）。
+     * PUBLIC_API と同じ上限（60/min/IP・200/min/user）だが、大会 ID 総当りの影響範囲を隔離するため
+     * 別 zone（TOURNAMENT_LIST）とする。
+     */
+    private static final Pattern TOURNAMENT_LIST_PATH =
+            Pattern.compile("^/api/v1/public/organizations/([^/]+)/tournaments(/[^/]+)?$");
+
+    private static final Pattern TOURNAMENT_FOLDERS_PATH =
+            Pattern.compile("^/api/v1/tournaments/([^/]+)/(divisions/([^/]+)/)?folders$");
+
+    /**
+     * 公開大会の重い集計エンドポイント（順位表 / マトリクス / ランキング / 組み合わせ表）。
+     * 未認証で連打されると DB 負荷が大きいため、PUBLIC_API より厳しい独立 zone
+     * （TOURNAMENT_AGGREGATE・20/min/IP・80/min/user）で守る。
+     */
+    private static final Pattern TOURNAMENT_AGGREGATE_PATH = Pattern.compile(
+            "^/api/v1/public/organizations/([^/]+)/tournaments/([^/]+)/"
+                    + "(divisions/([^/]+)/(standings|matrix)|rankings/([^/]+)|bracket)$");
+
+    /** 埋め込みウィジェット版の重い集計エンドポイント。TOURNAMENT_AGGREGATE zone を共有する。 */
+    private static final Pattern EMBED_AGGREGATE_PATH = Pattern.compile(
+            "^/api/v1/embed/organizations/([^/]+)/tournaments/([^/]+)/"
+                    + "(standings/([^/]+)|bracket|rankings/([^/]+))$");
+
+    // ──── 公開網漏れ是正（低リスク静的・準静的系） ─────────────
+    /** 連絡先招待プレビュー（トークン総当り対策）。 */
+    private static final Pattern CONTACT_INVITE_PATH =
+            Pattern.compile("^/api/v1/contact-invite/([^/]+)$");
+
+    /** ランディングページ公開統計（パラメータ無し・連打による DB 負荷対策）。 */
+    private static final Pattern PUBLIC_STATS_PATH =
+            Pattern.compile("^/api/v1/public/stats$");
+
+    /** 郵便番号検証ポリシー（静的返却）。 */
+    private static final Pattern POSTAL_CODE_POLICIES_PATH =
+            Pattern.compile("^/api/v1/postal-code/policies$");
+
+    /** アクティブ障害情報。 */
+    private static final Pattern ACTIVE_INCIDENTS_PATH =
+            Pattern.compile("^/api/v1/active-incidents$");
+
+    // ──── 公開網漏れ是正（署名検証済み POST Webhook 系） ────────
+    /**
+     * 署名 / トークン検証を Controller 側で行う POST 系公開エンドポイント。
+     * 検証コスト自体を消費させる連打を避けるため、緩め（120/min/IP）だが無制限にはしない zone
+     * （WEBHOOK）で守る。この4パターンのみ {@link #shouldNotFilter} で POST を許可する。
+     */
+    private static final Pattern CSP_REPORTS_PATH =
+            Pattern.compile("^/api/v1/security/csp-reports$");
+    private static final Pattern GOOGLE_CALENDAR_WEBHOOK_PATH =
+            Pattern.compile("^/api/v1/webhooks/google-calendar$");
+    private static final Pattern SSR_LOGS_PATH =
+            Pattern.compile("^/api/internal/ssr-logs$");
+    private static final Pattern STRIPE_WEBHOOK_PATH =
+            Pattern.compile("^/api/v1/webhooks/stripe(/[^/]+)?$");
+    private static final Pattern LINE_WEBHOOK_PATH =
+            Pattern.compile("^/api/v1/line/webhook/([^/]+)$");
+    /**
+     * Incoming Webhook 受信口（{@code POST /incoming/{token}}）。
+     *
+     * <p>ハンドラは {@code IncomingWebhookController#processIncoming} に実在する
+     * （{@code @AuthorizedInService} 付与・認可根治戦役 Wave5 監査済）。パスに含まれる
+     * トークンのみで認証するため、<b>トークン総当りの抑止が要る</b>のでレート制限対象に含める。</p>
+     */
+    private static final Pattern INCOMING_WEBHOOK_PATH =
+            Pattern.compile("^/incoming/([^/]+)$");
+
     /** レート制限の種別。zone 名前空間の隔離と監査ログ種別の分岐に用いる。 */
     private enum Target {
         /** 組織内チーム検索（F15.4 Phase 1）。 */
         ORG_TEAM_SEARCH(SEARCH_AUTHENTICATED_RATE_PER_MINUTE, SEARCH_ANONYMOUS_RATE_PER_MINUTE),
         /** 公開ページ API 全般（F15.4 Phase 5-α + F19.1 拡張）。 */
-        PUBLIC_API(PUBLIC_AUTHENTICATED_RATE_PER_MINUTE, PUBLIC_ANONYMOUS_RATE_PER_MINUTE);
+        PUBLIC_API(PUBLIC_AUTHENTICATED_RATE_PER_MINUTE, PUBLIC_ANONYMOUS_RATE_PER_MINUTE),
+        /** 公開大会 一覧・詳細・フォルダ系。 */
+        TOURNAMENT_LIST(TOURNAMENT_LIST_AUTHENTICATED_RATE_PER_MINUTE, TOURNAMENT_LIST_ANONYMOUS_RATE_PER_MINUTE),
+        /** 公開大会 重い集計系（順位表・マトリクス・ランキング・組み合わせ表・埋め込み版）。 */
+        TOURNAMENT_AGGREGATE(TOURNAMENT_AGGREGATE_AUTHENTICATED_RATE_PER_MINUTE,
+                TOURNAMENT_AGGREGATE_ANONYMOUS_RATE_PER_MINUTE),
+        /** 低リスク静的・準静的系（contact-invite / stats / postal-code / active-incidents）。 */
+        MISC_LOW(MISC_LOW_AUTHENTICATED_RATE_PER_MINUTE, MISC_LOW_ANONYMOUS_RATE_PER_MINUTE),
+        /** 署名検証済み POST Webhook 系。 */
+        WEBHOOK(WEBHOOK_RATE_PER_MINUTE, WEBHOOK_RATE_PER_MINUTE);
 
         final int authenticatedRate;
         final int anonymousRate;
@@ -194,11 +334,25 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
         if (PUBLIC_FILE_LINKS_PATH.matcher(path).matches()) {
             return !"POST".equalsIgnoreCase(request.getMethod());
         }
+        // 公開網漏れ是正: 署名検証済み Webhook 系も POST 経路のためレート制限対象に含める。
+        if (isWebhookPath(path)) {
+            return !"POST".equalsIgnoreCase(request.getMethod());
+        }
         // それ以外の公開 API は GET のみ対象。
         if (!"GET".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
         return resolveTarget(path) == null;
+    }
+
+    /** WEBHOOK zone に属する POST 系パスか判定する。 */
+    private static boolean isWebhookPath(String path) {
+        return CSP_REPORTS_PATH.matcher(path).matches()
+                || GOOGLE_CALENDAR_WEBHOOK_PATH.matcher(path).matches()
+                || SSR_LOGS_PATH.matcher(path).matches()
+                || STRIPE_WEBHOOK_PATH.matcher(path).matches()
+                || LINE_WEBHOOK_PATH.matcher(path).matches()
+                || INCOMING_WEBHOOK_PATH.matcher(path).matches();
     }
 
     @Override
@@ -218,9 +372,29 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
         }
         if (PUBLIC_API_PATH.matcher(path).matches()
                 || PUBLIC_SEARCH_PATH.matcher(path).matches()
+                || PUBLIC_ACTIVITY_BY_ID_PATH.matcher(path).matches()
                 || MARKET_API_PATH.matcher(path).matches()
-                || PUBLIC_FILE_LINKS_PATH.matcher(path).matches()) {
+                || PUBLIC_FILE_LINKS_PATH.matcher(path).matches()
+                || PUBLIC_USER_PATH.matcher(path).matches()
+                || PUBLIC_BLOG_COMMENTS_PATH.matcher(path).matches()) {
             return Target.PUBLIC_API;
+        }
+        if (TOURNAMENT_LIST_PATH.matcher(path).matches()
+                || TOURNAMENT_FOLDERS_PATH.matcher(path).matches()) {
+            return Target.TOURNAMENT_LIST;
+        }
+        if (TOURNAMENT_AGGREGATE_PATH.matcher(path).matches()
+                || EMBED_AGGREGATE_PATH.matcher(path).matches()) {
+            return Target.TOURNAMENT_AGGREGATE;
+        }
+        if (CONTACT_INVITE_PATH.matcher(path).matches()
+                || PUBLIC_STATS_PATH.matcher(path).matches()
+                || POSTAL_CODE_POLICIES_PATH.matcher(path).matches()
+                || ACTIVE_INCIDENTS_PATH.matcher(path).matches()) {
+            return Target.MISC_LOW;
+        }
+        if (isWebhookPath(path)) {
+            return Target.WEBHOOK;
         }
         return null;
     }
@@ -242,7 +416,8 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
         }
         Matcher orgMatcher = ORG_TEAM_SEARCH_PATH.matcher(request.getServletPath());
         Matcher publicMatcher = PUBLIC_API_PATH.matcher(request.getServletPath());
-        recordRateLimitAudit(request, target, userId, orgMatcher, publicMatcher);
+        Matcher activityMatcher = PUBLIC_ACTIVITY_BY_ID_PATH.matcher(request.getServletPath());
+        recordRateLimitAudit(request, target, userId, orgMatcher, publicMatcher, activityMatcher);
 
         // F19.1 Phase 5: レート超過カウンター記録
         recordRateLimitExceededMetric(request.getServletPath(), request.getRemoteAddr());
@@ -362,9 +537,18 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
      *   <li>organizationId / metadata: 検索 API は orgId / 詳細 API は teamId or orgId を metadata に格納
      *       （生 IP は保存せず SHA-256 ハッシュ化）</li>
      * </ul>
+     *
+     * <p><b>F06.4 ID 直引き経路の取りこぼし是正</b>: 本メソッドは当初
+     * {@link #PUBLIC_API_PATH} にしかマッチしなかったため、スコープ非依存の
+     * {@code GET /api/v1/public/activities/{id}} が最後の else に落ち、
+     * {@code {"ipHash":"..."}} だけが残って<b>どの ID を総当りされたのかが記録されなかった</b>。
+     * 活動記録 ID は {@code BIGINT AUTO_INCREMENT} の連番で最も列挙されやすい経路のため、
+     * {@link #PUBLIC_ACTIVITY_BY_ID_PATH} も他の公開 EP と同形式（{@code activityId} キー）で
+     * metadata に載せる。</p>
      */
     private void recordRateLimitAudit(HttpServletRequest request, Target target, Long userId,
-                                      Matcher orgMatcher, Matcher publicMatcher) {
+                                      Matcher orgMatcher, Matcher publicMatcher,
+                                      Matcher activityMatcher) {
         String ipHash = SessionHashUtil.hash(request.getRemoteAddr());
         String metadata;
         Long organizationId = null;
@@ -397,6 +581,12 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
                 String keyName = "teams".equals(scopeType) ? "teamId" : "organizationId";
                 metadata = buildMetadataJson(keyName, scopeIdStr, ipHash);
             }
+        } else if (target == Target.PUBLIC_API && activityMatcher.matches()) {
+            // F06.4: スコープ非依存の ID 直引き（GET /api/v1/public/activities/{id}）。
+            // 連番 ID の総当りを事後追跡できるよう、叩かれた activityId を必ず残す。
+            String activityIdStr = activityMatcher.group(1);
+            metadata = buildMetadataJson("activityId", activityIdStr, ipHash);
+            eventType = AuditEventType.PUBLIC_API_RATE_LIMIT_EXCEEDED;
         } else {
             metadata = buildMetadataJson(null, null, ipHash);
             eventType = AuditEventType.PUBLIC_API_RATE_LIMIT_EXCEEDED;

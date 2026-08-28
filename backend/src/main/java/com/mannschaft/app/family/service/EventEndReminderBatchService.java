@@ -1,6 +1,9 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.EventScopeType;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.repository.EventRepository;
@@ -13,6 +16,8 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +26,8 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * イベント終了後解散通知リマインドバッチサービス。F03.12 §16。
@@ -57,6 +64,20 @@ public class EventEndReminderBatchService {
     /** バッチ開始時の粗フィルタ基準（最小経過分 = 1回目の基準） */
     private static final int MINIMUM_ELAPSED_MINUTES = REMINDER_1_MINUTES;
 
+    /**
+     * 鮮度の下限（時間）。終了からこれより古いイベントはリマインド対象にしない。
+     *
+     * <p>段階リマインドは終了から {@value REMINDER_3_MINUTES} 分以内で完結する設計であり、
+     * それを大きく過ぎたイベントを今さらエスカレーションしても意味が無い。
+     * 一方、短時間の障害停止（数時間）からの復帰では取りこぼしたくないため、
+     * 段階の完結時間より十分長い 24 時間を下限とする。</p>
+     *
+     * <p>この下限が無いと、バッチが長く走らなかった後の再開時に、
+     * とうに終わった過去イベントの主催者へリマインドが 3 回飛び、
+     * 最後には管理者への緊急通知まで発火する。</p>
+     */
+    private static final int STALE_AFTER_HOURS = 24;
+
     /** チームスコープ識別子 */
     private static final String SCOPE_TYPE_TEAM = "TEAM";
 
@@ -67,6 +88,10 @@ public class EventEndReminderBatchService {
     private final NotificationService notificationService;
     private final NotificationDispatchService dispatchService;
     private final UserRoleRepository userRoleRepository;
+
+    /** Issue #2715 CMP-055 ロットC-2: 受信者 locale 別に通知本文を組み立てるための依存。 */
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
 
     // =========================================================
     // スケジュールバッチ（5分間隔）
@@ -81,23 +106,32 @@ public class EventEndReminderBatchService {
      *   <li>schedules.end_at が現在時刻より前（終了時刻を過ぎている）</li>
      *   <li>organizer_reminder_sent_count が {@value MAX_REMINDER_COUNT} 未満</li>
      *   <li>終了時刻から {@value MINIMUM_ELAPSED_MINUTES} 分以上経過</li>
+     *   <li><b>終了時刻が {@value STALE_AFTER_HOURS} 時間以内（古すぎるものは対象外）</b></li>
      * </ul>
      *
      * <p>冪等性: 同一イベントに対して1回のバッチ実行で複数回通知しない。
      * カウント値を確認してから段階を判定する。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_FAMILY_CARE_ENABLED",
+            reason = "止まるのは解散リマインドの送信のみでイベント本体の状態は書き換えない。再開時に過去分を一斉送信しないことはクエリ側の鮮度下限（終了から 24 時間以内のみ対象）で保証している")
     // TODO: familyドメインがeventドメイン（EventRepository）とroleドメイン（UserRoleRepository）をまたいでいる。将来はEventQueryServiceとUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @BatchEndpoint(name = "family-event-end-reminder", description = "未解散イベントの解散リマインドを 5 分毎にエスカレーション送信する")
     @Scheduled(fixedDelay = 300_000) // 5分間隔
+    // 起動間隔は 5 分（fixedDelay）。処理は未解散イベントへのエスカレーション通知で通常は数秒。間隔の 3 倍を上限とする。
+    @SchedulerLock(name = "familyEventEndReminder", lockAtLeastFor = "PT30S", lockAtMostFor = "PT15M")
     @Transactional
     public void runEndReminderCheck() {
         log.debug("解散通知リマインドバッチ開始");
 
         LocalDateTime now = LocalDateTime.now();
-        // 最低 MINIMUM_ELAPSED_MINUTES 分経過したイベントのみを対象とする粗フィルタ
+        // 最低 MINIMUM_ELAPSED_MINUTES 分経過したイベントのみを対象とする粗フィルタ（上限）
         LocalDateTime cutoff = now.minusMinutes(MINIMUM_ELAPSED_MINUTES);
+        // 古すぎるイベントを除外する下限。これが無いと停止明けに過去分を一斉送信する。
+        LocalDateTime staleBefore = now.minusHours(STALE_AFTER_HOURS);
 
-        List<EventEntity> targets = eventRepository.findDismissalReminderTargets(now, cutoff, MAX_REMINDER_COUNT);
+        List<EventEntity> targets =
+                eventRepository.findDismissalReminderTargets(now, cutoff, staleBefore, MAX_REMINDER_COUNT);
 
         if (targets.isEmpty()) {
             log.debug("解散通知リマインド: 対象イベントなし");
@@ -171,29 +205,50 @@ public class EventEndReminderBatchService {
         String eventLabel = resolveEventLabel(event);
         Long createdBy = event.getCreatedBy();
 
+        // Issue #2715 CMP-055 ロットC-2: 主催者向け通知は主催者 locale で組み立てる。
+        Locale organizerLocale = createdBy != null
+                ? Locale.forLanguageTag(userLocaleCache.getLocale(createdBy))
+                : Locale.forLanguageTag("ja");
+
         switch (currentCount) {
             case 0 -> {
                 // 1回目: priority=NORMAL。主催者のみ。
-                String body = "「" + eventLabel + "」の終了予定時刻を過ぎています。解散通知を送信してください。";
+                String title = messageSource.getMessage(
+                        "notification.event.dismissalReminder.stage1.title", null,
+                        "解散通知を忘れていませんか？", organizerLocale);
+                String body = messageSource.getMessage(
+                        "notification.event.dismissalReminder.stage1.body", new Object[]{eventLabel},
+                        "「" + eventLabel + "」の終了予定時刻を過ぎています。解散通知を送信してください。", organizerLocale);
                 sendReminderNotification(createdBy, event, eventId, eventLabel,
-                        "解散通知を忘れていませんか？", body, NotificationPriority.NORMAL);
+                        title, body, NotificationPriority.NORMAL);
                 log.info("解散通知リマインド1回目送信: eventId={}, createdBy={}", eventId, createdBy);
             }
             case 1 -> {
                 // 2回目: priority=HIGH。主催者のみ。保護者が心配しています。
-                String body = "「" + eventLabel + "」終了から時間が経過しています。保護者が心配しています。解散通知を送ってください。";
+                String title = messageSource.getMessage(
+                        "notification.event.dismissalReminder.stage2.title", null,
+                        "⚠️ 解散通知が未送信です（保護者が心配しています）", organizerLocale);
+                String body = messageSource.getMessage(
+                        "notification.event.dismissalReminder.stage2.body", new Object[]{eventLabel},
+                        "「" + eventLabel + "」終了から時間が経過しています。保護者が心配しています。解散通知を送ってください。",
+                        organizerLocale);
                 sendReminderNotification(createdBy, event, eventId, eventLabel,
-                        "⚠️ 解散通知が未送信です（保護者が心配しています）", body, NotificationPriority.HIGH);
+                        title, body, NotificationPriority.HIGH);
                 log.info("解散通知リマインド2回目送信: eventId={}, createdBy={}", eventId, createdBy);
             }
             case 2 -> {
                 // 3回目: priority=URGENT。主催者 + チームADMIN全員。
-                String body = "「" + eventLabel + "」終了から長時間経過しています。チームADMINにも通知しました。至急対応してください。";
-                String urgentTitle = "🚨 解散通知が未送信です（至急）";
+                String title = messageSource.getMessage(
+                        "notification.event.dismissalReminder.stage3.title", null,
+                        "🚨 解散通知が未送信です（至急）", organizerLocale);
+                String body = messageSource.getMessage(
+                        "notification.event.dismissalReminder.stage3.body", new Object[]{eventLabel},
+                        "「" + eventLabel + "」終了から長時間経過しています。チームADMINにも通知しました。至急対応してください。",
+                        organizerLocale);
                 sendReminderNotification(createdBy, event, eventId, eventLabel,
-                        urgentTitle, body, NotificationPriority.URGENT);
-                // チームADMIN全員にも送信
-                sendAdminReminders(event, eventId, eventLabel, urgentTitle, body);
+                        title, body, NotificationPriority.URGENT);
+                // チームADMIN全員にも送信（ADMIN ごとの locale で本文を組み立て直す）
+                sendAdminReminders(event, eventId, eventLabel);
                 log.info("解散通知リマインド3回目送信: eventId={}, createdBy={}", eventId, createdBy);
             }
             default -> log.warn("想定外のリマインドカウント: eventId={}, count={}", eventId, currentCount);
@@ -208,11 +263,8 @@ public class EventEndReminderBatchService {
      * @param event      イベントエンティティ（scopeId = チームID）
      * @param eventId    イベントID
      * @param eventLabel イベント表示名
-     * @param title      通知タイトル
-     * @param body       通知本文
      */
-    private void sendAdminReminders(EventEntity event, Long eventId, String eventLabel,
-                                     String title, String body) {
+    private void sendAdminReminders(EventEntity event, Long eventId, String eventLabel) {
         // チームスコープのイベントのみ ADMIN 全員に通知
         if (!SCOPE_TYPE_TEAM.equals(event.getScopeType().name())) {
             log.debug("チームスコープ以外のイベントはADMIN通知をスキップ: eventId={}, scopeType={}",
@@ -223,10 +275,22 @@ public class EventEndReminderBatchService {
         Long teamId = event.getScopeId();
         List<Long> adminUserIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(teamId, ROLE_ADMIN);
 
+        // Issue #2715 CMP-055 ロットC-2 / AC-3: ADMIN の locale をバルク解決する（N+1 防止）。
+        Map<Long, String> locales = userLocaleCache.getLocales(adminUserIds);
+
         // 主催者は既に送信済みのため除外
         Long createdBy = event.getCreatedBy();
         for (Long adminUserId : adminUserIds) {
             if (adminUserId.equals(createdBy)) continue;
+
+            Locale locale = Locale.forLanguageTag(locales.getOrDefault(adminUserId, "ja"));
+            String title = messageSource.getMessage(
+                    "notification.event.dismissalReminder.stage3.title", null,
+                    "🚨 解散通知が未送信です（至急）", locale);
+            String body = messageSource.getMessage(
+                    "notification.event.dismissalReminder.stage3.body", new Object[]{eventLabel},
+                    "「" + eventLabel + "」終了から長時間経過しています。チームADMINにも通知しました。至急対応してください。",
+                    locale);
             sendReminderNotification(adminUserId, event, eventId, eventLabel, title, body, NotificationPriority.URGENT);
             log.debug("ADMIN向け解散通知リマインド送信: eventId={}, adminUserId={}", eventId, adminUserId);
         }

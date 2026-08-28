@@ -1,6 +1,6 @@
 package com.mannschaft.app.role.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
@@ -19,7 +19,7 @@ public record TransferOwnershipOfferResponse(
         String status,
         UserBrief target,
         UserBrief issuedBy,
-        LocalDateTime expiresAt
+        OffsetDateTime expiresAt
 ) {
 
     /**

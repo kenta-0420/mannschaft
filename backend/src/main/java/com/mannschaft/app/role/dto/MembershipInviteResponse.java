@@ -1,6 +1,6 @@
 package com.mannschaft.app.role.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * チャットからチーム/組織への承諾型招待の発行レスポンス（F04.12・201 Created）。
@@ -25,7 +25,7 @@ public record MembershipInviteResponse(
         Long scopeId,
         String scopeName,
         String status,
-        LocalDateTime expiresAt,
+        OffsetDateTime expiresAt,
         Long cardMessageId
 ) {
 }

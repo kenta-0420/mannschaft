@@ -17,10 +17,14 @@ export const useErrorHandler = () => {
   const { t, te } = useI18n()
   const errorReport = useErrorReport()
 
+  // #2426: BE（CommonErrorCode）が理由入りの具体的な message を返している場合、
+  // 汎用 i18n キー（例: error.COMMON_001）で上書きして理由を握りつぶさない。
+  // BE message を最優先し、無ければ従来どおり i18n キー→汎用文言にフォールバックする。
   const resolveMessage = (code: string, fallback?: string): string => {
+    if (fallback) return fallback
     const key = `error.${code}`
     if (te(key)) return t(key)
-    return fallback ?? t('error.unknown')
+    return t('error.unknown')
   }
 
   const handleApiError = (error: unknown, context?: string): void => {

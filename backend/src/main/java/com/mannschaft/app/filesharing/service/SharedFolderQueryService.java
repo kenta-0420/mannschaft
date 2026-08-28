@@ -2,7 +2,6 @@ package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.filesharing.FileScopeType;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
@@ -21,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -32,10 +30,13 @@ import java.util.Set;
 /**
  * F05.5 フォルダ詳細／一覧／作成のクエリ・コマンドサービス（{@code /api/v1/files/folders}）。
  *
- * <p>本サービスは {@link SharedFolderService#getFolder} の<b>認可素通り問題</b>を回避するために新設した。
- * 既存 {@code getFolder} は {@link FolderScopeAccessGuard} を呼ぶのみで、大会以外（TEAM/ORG/PERSONAL）の
- * スコープでは認可が一切効かず、フォルダ ID を渡すだけで他チーム・他人のフォルダ内容が取得できる
- * 情報漏洩があった。本サービスは folderId / scope からスコープを解決し、スコープ別に自前で認可を当てる。</p>
+ * <p>本サービスは folderId / scope からスコープを解決し、スコープ別に自前で認可を当てる
+ * （大会以外の TEAM/ORG/PERSONAL スコープを {@link FolderScopeAccessGuard} に委ねない独立実装として新設した）。</p>
+ *
+ * <p><b>認可根治 Wave7 での更新:</b> {@link SharedFolderService} 側にも同一ポリシーの認可
+ * （{@code checkFolderViewAccess} / {@code checkFolderManageAccess}）を敷設したため、両者は
+ * <b>同一の認可マトリクス</b>を持つ。本サービスは引き続き汎用 EP（{@code /api/v1/files/folders}）の
+ * 窓口として、パンくず・カスケード削除・容量戻し・最低可視ロール（B）といった付加ロジックを担当する。</p>
  *
  * <p>認可マトリクス:</p>
  * <ul>
@@ -53,8 +54,8 @@ public class SharedFolderQueryService {
 
     private final SharedFolderRepository folderRepository;
     private final SharedFileRepository fileRepository;
-    private final FolderScopeAccessGuard folderScopeAccessGuard;
     private final AccessControlService accessControlService;
+    private final SharedFolderAccessGuard folderAccessGuard;
     private final NameResolverService nameResolverService;
     private final SharedFileQuotaService sharedFileQuotaService;
 
@@ -80,7 +81,9 @@ public class SharedFolderQueryService {
         authorizeView(folder, userId);
 
         List<SharedFolderEntity> subfolders = folderRepository.findByParentIdOrderByNameAsc(folderId);
-        List<SharedFileEntity> files = fileRepository.findByFolderIdOrderByNameAsc(folderId);
+        // B: ファイル個別の最低可視ロールは一覧経路（listFiles）と同一の絞り込みをクエリ段階で当てる。
+        // 詳細経路だけが絞り込みを欠くと、同じ利用者に対して一覧と詳細で可視範囲が食い違う。
+        List<SharedFileEntity> files = findVisibleFiles(folder, userId);
         List<FolderDetailResponse.BreadcrumbItem> breadcrumbs = buildBreadcrumbs(folder);
 
         // 表示名は N+1 を避けて一括解決する（フォルダ作成者・サブフォルダ作成者・ファイルアップロード者）。
@@ -112,6 +115,29 @@ public class SharedFolderQueryService {
                 subSummaries,
                 fileSummaries,
                 breadcrumbs);
+    }
+
+    /**
+     * フォルダ内のファイルのうち、呼出ユーザーが<b>最低可視ロール（B）を満たすもの</b>だけをクエリ段階で取得する。
+     *
+     * <p>絞り込み条件の解決は一覧経路（{@link SharedFileService#listFilesPaged}）と同一の
+     * {@link #resolveVisibleFileLevels(SharedFolderEntity, Long)} を用いる。判定結果を
+     * レスポンスの表示用フィールドに載せるだけでは、より厳しい最低可視ロールを持つファイルの
+     * メタ情報（名称・サイズ・作成者）が応答本文に含まれてしまうため、取得そのものを絞る。</p>
+     *
+     * @param folder 対象フォルダ（閲覧認可は呼び出し側で通過済み）
+     * @param userId 操作ユーザー ID
+     * @return 可視なファイル一覧（名称昇順）
+     */
+    private List<SharedFileEntity> findVisibleFiles(SharedFolderEntity folder, Long userId) {
+        Set<FileVisibilityRole> allowedLevels = folderAccessGuard.resolveVisibleFileLevels(folder, userId);
+        if (allowedLevels == null) {
+            return fileRepository.findByFolderIdOrderByNameAsc(folder.getId());
+        }
+        if (allowedLevels.isEmpty()) {
+            return fileRepository.findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(folder.getId());
+        }
+        return fileRepository.findVisibleByFolderIdAndLevels(folder.getId(), allowedLevels);
     }
 
     // ========================================
@@ -169,6 +195,8 @@ public class SharedFolderQueryService {
             CreateFolderRequest request, String scopeId, Long userId) {
         String scopeType = request.getScopeType();
         authorizeScopeView(scopeType, scopeId, userId);
+        // 認可根治 Wave7: parentId 指定時は親が同一スコープであることを検証する（接ぎ木封鎖）。
+        checkParentWithinScope(request.getParentId(), FileScopeType.valueOf(scopeType), scopeId, userId);
         validateFolderNameUnique(request.getParentId(), request.getName());
 
         FileScopeType type = FileScopeType.valueOf(scopeType);
@@ -204,10 +232,12 @@ public class SharedFolderQueryService {
      *
      * <p>従来 {@code SharedFolderController} に DELETE マッピングが無く、FE の
      * {@code DELETE /api/v1/files/folders/{id}} が非存在ルート → 500 になっていた根治。
-     * 既存 {@link SharedFolderService#deleteFolder} は (1) 認可が大会スコープの guard のみで
-     * PERSONAL/TEAM/ORG が素通り（漏洩）、(2) フォルダ単体しか soft-delete せず配下ファイル・
-     * サブフォルダが孤児化、(3) 容量戻しが無く {@code usedBytes} が減らない、という三重の欠陥が
-     * あったため流用しない。本メソッドは:</p>
+     * {@link SharedFolderService#deleteFolder} は (1) 認可がスコープ別に個別実装されていない、
+     * (2) フォルダ単体しか soft-delete せず配下ファイル・サブフォルダが孤児化する、
+     * (3) 容量戻しが無く {@code usedBytes} が減らない、という理由で流用しない。
+     *（(1) は認可根治 Wave7 で {@code SharedFolderService#checkFolderManageAccess} により
+     * 是正済み。(2)(3) は依然として本メソッドのみが満たすため、FE の汎用削除 EP は
+     * 引き続き本メソッドを使う。）本メソッドは:</p>
      * <ul>
      *   <li><b>認可</b>: {@link #authorizeDelete} で「閲覧より強い」削除権限を当てる
      *       （他人個人=404・TEAM/ORG は<b>管理者(ADMIN/DEPUTY_ADMIN)のみ</b>・一般メンバーは 403・
@@ -292,7 +322,7 @@ public class SharedFolderQueryService {
      */
     public void authorizeFolderViewById(Long folderId, Long userId) {
         SharedFolderEntity folder = findFolderOrThrow(folderId);
-        authorizeView(folder, userId);
+        folderAccessGuard.authorizeView(folder, userId);
     }
 
     /**
@@ -309,10 +339,7 @@ public class SharedFolderQueryService {
     public void authorizeFileViewById(Long fileId, Long userId) {
         SharedFileEntity file = findFileOrThrow(fileId);
         SharedFolderEntity folder = findFolderOrThrow(file.getFolderId());
-        // ①基本認可（membership / owner / 大会 guard）。B の最低可視ロールはここでは当てない。
-        authorizeBaseView(folder, userId);
-        // ②B: 最低可視ロール（ファイル値優先 → フォルダ継承）。
-        applyMinVisibleRole(folder, effectiveMinRole(file, folder), userId);
+        folderAccessGuard.authorizeFileView(folder, file, userId);
     }
 
     /**
@@ -331,18 +358,7 @@ public class SharedFolderQueryService {
     public void authorizeDownload(Long fileId, Long userId) {
         SharedFileEntity file = findFileOrThrow(fileId);
         SharedFolderEntity folder = findFolderOrThrow(file.getFolderId());
-        // ①閲覧認可（基本認可 + B: 最低可視ロール）。
-        authorizeBaseView(folder, userId);
-        applyMinVisibleRole(folder, effectiveMinRole(file, folder), userId);
-        // ②C: DL 禁止フラグ（SYSTEM_ADMIN は貫通）。
-        if (userId != null && accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        boolean effectiveDisabled =
-                Boolean.TRUE.equals(folder.getDownloadDisabled()) || Boolean.TRUE.equals(file.getDownloadDisabled());
-        if (effectiveDisabled) {
-            throw new BusinessException(FileSharingErrorCode.DOWNLOAD_DISABLED);
-        }
+        folderAccessGuard.authorizeDownload(folder, file, userId);
     }
 
     /**
@@ -351,7 +367,7 @@ public class SharedFolderQueryService {
      * <p>マスター確定仕様: 公開リンクは未認証・非会員にファイルを開く capability を配る強力な操作のため、
      * 発行・一覧・削除は<b>管理者（ADMIN / DEPUTY_ADMIN）限定</b>とする（一般 MEMBER は 403）。
      * これは削除認可 {@link #authorizeDelete} と同じ「閲覧より強い」権限で、fileId → folder を解決して当てる。
-     * 従来 {@link SharedFileLinkService} は大会フォルダ以外で認可が no-op（素通り）だった穴を本メソッドで是正する。</p>
+     * {@link SharedFileLinkService} からはこのメソッドを介して全スコープに一貫適用する。</p>
      *
      * <ul>
      *   <li>PERSONAL: 所有者本人のみ。他人は {@code FOLDER_NOT_FOUND}（404・存在隠蔽）。</li>
@@ -366,7 +382,7 @@ public class SharedFolderQueryService {
         SharedFileEntity file = findFileOrThrow(fileId);
         SharedFolderEntity folder = findFolderOrThrow(file.getFolderId());
         // 公開リンク管理は削除と同一の「閲覧より強い」権限（管理者 / 所有者限定）を要求する。
-        authorizeDelete(folder, userId);
+        folderAccessGuard.authorizeDelete(folder, userId);
     }
 
     /**
@@ -382,69 +398,14 @@ public class SharedFolderQueryService {
     public void checkDownloadDisabledForSharedLink(Long fileId) {
         SharedFileEntity file = findFileOrThrow(fileId);
         SharedFolderEntity folder = findFolderOrThrow(file.getFolderId());
-        boolean effectiveDisabled =
-                Boolean.TRUE.equals(folder.getDownloadDisabled()) || Boolean.TRUE.equals(file.getDownloadDisabled());
-        if (effectiveDisabled) {
-            throw new BusinessException(FileSharingErrorCode.DOWNLOAD_DISABLED);
-        }
+        folderAccessGuard.requireDownloadEnabled(folder, file);
     }
 
     /**
      * フォルダ実体のスコープに応じて閲覧認可を当てる（漏洩防止の核 ＋ B: フォルダ最低可視ロール）。
      */
     private void authorizeView(SharedFolderEntity folder, Long userId) {
-        authorizeBaseView(folder, userId);
-        // B: フォルダ自身の最低可視ロール（フォルダ詳細／一覧の経路）。
-        applyMinVisibleRole(folder, folder.getMinVisibleRole(), userId);
-    }
-
-    /**
-     * スコープ別の<b>基本認可</b>（membership / 個人所有 / 大会 guard）のみを当てる。
-     * B: 最低可視ロールは含まない（呼び出し側で {@link #applyMinVisibleRole} を別途当てる）。
-     */
-    private void authorizeBaseView(SharedFolderEntity folder, Long userId) {
-        switch (folder.getScopeType()) {
-            case PERSONAL -> {
-                if (folder.getUserId() == null || !folder.getUserId().equals(userId)) {
-                    // 他人の個人フォルダは存在を漏らさず 404。
-                    throw new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND);
-                }
-            }
-            case TEAM -> accessControlService.checkMembership(userId, folder.getTeamId(), "TEAM");
-            case ORGANIZATION ->
-                    accessControlService.checkMembership(userId, folder.getOrganizationId(), "ORGANIZATION");
-            case TOURNAMENT, TOURNAMENT_DIVISION ->
-                    folderScopeAccessGuard.checkFolderViewByFolderId(folder.getId(), userId);
-        }
-    }
-
-    /**
-     * B: 最低可視ロール判定を当てる。{@code role} が {@code null} なら判定スキップ（所属者全員可視）。
-     *
-     * <p>SYSTEM_ADMIN は貫通（全可視）。PERSONAL は所有者のみ（基本認可で担保済み）ゆえ min role は無視する。
-     * TEAM / ORGANIZATION は当該スコープで、大会系は主催組織（{@code organizationId}）の ORGANIZATION ロールで
-     * {@link AccessControlService#hasRoleOrAbove} を当て、満たさなければ 403（COMMON_002）。</p>
-     *
-     * @param folder 対象フォルダ（スコープ解決に使う）
-     * @param role   実効最低可視ロール（null なら判定スキップ）
-     * @param userId 操作ユーザー ID
-     */
-    private void applyMinVisibleRole(SharedFolderEntity folder, FileVisibilityRole role, Long userId) {
-        if (role == null) {
-            return; // 所属者全員可視（SCOPE_AFFILIATED＝従来挙動・非回帰）
-        }
-        if (userId != null && accessControlService.isSystemAdmin(userId)) {
-            return; // SYSTEM_ADMIN は B/C 貫通
-        }
-        RoleScope scope = resolveRoleScope(folder);
-        if (scope == null) {
-            return; // PERSONAL: 所有者のみ（基本認可で担保）→ min role は無視
-        }
-        boolean ok = accessControlService.hasRoleOrAbove(
-                userId, scope.scopeId(), scope.scopeType(), role.toRequiredRoleName());
-        if (!ok) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
+        folderAccessGuard.authorizeView(folder, userId);
     }
 
     /**
@@ -472,21 +433,7 @@ public class SharedFolderQueryService {
      * @return 満たすレベル集合（全許可なら {@code null}）
      */
     public Set<FileVisibilityRole> resolveVisibleFileLevels(SharedFolderEntity folder, Long userId) {
-        if (userId != null && accessControlService.isSystemAdmin(userId)) {
-            return null; // SYSTEM_ADMIN は全可視（フィルタ不要）
-        }
-        RoleScope scope = resolveRoleScope(folder);
-        if (scope == null) {
-            return null; // PERSONAL: 所有者のみ（authorizeView で担保）→ フィルタ不要
-        }
-        Set<FileVisibilityRole> allowed = EnumSet.noneOf(FileVisibilityRole.class);
-        for (FileVisibilityRole level : FileVisibilityRole.values()) {
-            if (accessControlService.hasRoleOrAbove(
-                    userId, scope.scopeId(), scope.scopeType(), level.toRequiredRoleName())) {
-                allowed.add(level);
-            }
-        }
-        return allowed;
+        return folderAccessGuard.resolveVisibleFileLevels(folder, userId);
     }
 
     /**
@@ -501,34 +448,7 @@ public class SharedFolderQueryService {
         return resolveVisibleFileLevels(findFolderOrThrow(folderId), userId);
     }
 
-    /**
-     * B/min role 判定用のスコープ解決（{@code applyMinVisibleRole} と {@code resolveVisibleFileLevels} で共用）。
-     *
-     * <p>TEAM→(teamId,"TEAM") / ORGANIZATION・大会系→(organizationId,"ORGANIZATION") /
-     * PERSONAL→{@code null}（所有者のみ・min role 無視）。大会系（TOURNAMENT / TOURNAMENT_DIVISION）は
-     * 主催組織の ORG ロールで判定する（既存 guard の委譲構造は壊さず min role を追加で当てる）。</p>
-     */
-    private RoleScope resolveRoleScope(SharedFolderEntity folder) {
-        return switch (folder.getScopeType()) {
-            case TEAM -> new RoleScope(folder.getTeamId(), "TEAM");
-            case ORGANIZATION, TOURNAMENT, TOURNAMENT_DIVISION ->
-                    new RoleScope(folder.getOrganizationId(), "ORGANIZATION");
-            case PERSONAL -> null;
-        };
-    }
-
-    /** min role 判定に使う (scopeId, scopeType) の組。PERSONAL では {@code null}。 */
-    private record RoleScope(Long scopeId, String scopeType) {
-    }
-
-    /**
-     * 実効最低可視ロールを解決する（ファイル値優先 → フォルダ継承）。
-     * ファイル値が {@code null} ならフォルダ値、フォルダも {@code null} なら {@code null}（判定スキップ）。
-     */
-    private FileVisibilityRole effectiveMinRole(SharedFileEntity file, SharedFolderEntity folder) {
-        return file.getMinVisibleRole() != null ? file.getMinVisibleRole() : folder.getMinVisibleRole();
-    }
-
+    /** ファイル実体を取得する。不在は {@code FILE_NOT_FOUND}（404）。 */
     private SharedFileEntity findFileOrThrow(Long fileId) {
         return fileRepository.findById(fileId)
                 .orElseThrow(() -> new BusinessException(FileSharingErrorCode.FILE_NOT_FOUND));
@@ -551,18 +471,32 @@ public class SharedFolderQueryService {
      * </ul>
      */
     private void authorizeDelete(SharedFolderEntity folder, Long userId) {
-        switch (folder.getScopeType()) {
-            case PERSONAL -> {
-                if (folder.getUserId() == null || !folder.getUserId().equals(userId)) {
-                    throw new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND);
-                }
-            }
-            case TEAM -> accessControlService.checkAdminOrAbove(userId, folder.getTeamId(), "TEAM");
-            case ORGANIZATION ->
-                    accessControlService.checkAdminOrAbove(userId, folder.getOrganizationId(), "ORGANIZATION");
-            case TOURNAMENT, TOURNAMENT_DIVISION ->
-                    folderScopeAccessGuard.checkFolderPostByFolderId(folder.getId(), userId);
+        folderAccessGuard.authorizeDelete(folder, userId);
+    }
+
+    /**
+     * 親フォルダが作成先スコープと同一であることを検証する（認可根治 Wave7・接ぎ木封鎖）。
+     *
+     * <p>{@code parentId} が null（ルート直下）なら何もしない。非 null のとき、親が存在しない／
+     * スコープ種別が違う／同種でもスコープ ID が違う場合はいずれも {@code FOLDER_NOT_FOUND}（404）とし、
+     * 他スコープの folderId の存在有無を漏らさない。PERSONAL は操作者本人の所有であることを要求する。</p>
+     *
+     * @param parentId  リクエスト由来の親フォルダ ID（null 可）
+     * @param type      作成先スコープ種別
+     * @param scopeId   作成先スコープ ID（teamId / organizationId の文字列。PERSONAL では未使用）
+     * @param userId    操作ユーザー ID（PERSONAL の所有者判定に使う）
+     */
+    private void checkParentWithinScope(Long parentId, FileScopeType type, String scopeId, Long userId) {
+        if (parentId == null) {
+            return;
         }
+        SharedFolderEntity parent = findFolderOrThrow(parentId);
+        Long expectedScopeId = switch (type) {
+            case TEAM, ORGANIZATION -> parseScopeId(scopeId);
+            case PERSONAL -> userId;
+            case TOURNAMENT, TOURNAMENT_DIVISION -> null;
+        };
+        folderAccessGuard.requireParentWithinScope(parent, type, expectedScopeId);
     }
 
     /**

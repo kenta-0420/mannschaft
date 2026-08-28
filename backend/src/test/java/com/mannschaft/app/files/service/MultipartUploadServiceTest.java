@@ -29,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -184,6 +185,23 @@ class MultipartUploadServiceTest {
             assertThat(result.getPartUrls()).hasSize(3);
             assertThat(result.getExpiresIn()).isEqualTo(600);
             assertThat(result.getPartUrls().get(0).partNumber()).isEqualTo(1);
+            then(r2StorageService).should().createPresignedPartUrls(
+                    eq(session.getR2Key()), eq(UPLOAD_ID), eq(req.getPartNumbers()), any());
+        }
+
+        @Test
+        @DisplayName("part URL fileKey 不一致_BAD_REQUEST_R2未呼出")
+        void partUrlFileKey不一致_BAD_REQUEST_R2未呼出() {
+            MultipartUploadSessionEntity session = buildInProgressSession();
+            PartUrlRequest req = new PartUrlRequest("timeline/other-file.mp4", List.of(1));
+            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+
+            assertThatThrownBy(() -> service.getPartUrls(UPLOAD_ID, USER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(BAD_REQUEST));
+            then(r2StorageService).should(never()).createPresignedPartUrls(
+                    anyString(), anyString(), anyList(), any());
         }
 
         @Test
@@ -229,7 +247,26 @@ class MultipartUploadServiceTest {
             assertThat(result.getFileKey()).isEqualTo("timeline/uuid.mp4");
             assertThat(result.getFileSize()).isEqualTo(200 * 1024 * 1024L);
             then(r2StorageService).should().completeMultipartUpload(
+                    eq(session.getR2Key()), eq(UPLOAD_ID), anyList());
+            then(r2StorageService).should().getObjectSize(eq(session.getR2Key()));
+        }
+
+        @Test
+        @DisplayName("complete fileKey 不一致_BAD_REQUEST_R2未呼出")
+        void completeFileKey不一致_BAD_REQUEST_R2未呼出() {
+            MultipartUploadSessionEntity session = buildInProgressSession();
+            CompleteMultipartRequest req = new CompleteMultipartRequest(
+                    "timeline/other-file.mp4",
+                    List.of(new CompleteMultipartRequest.PartEtag(1, "etag-001")));
+            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+
+            assertThatThrownBy(() -> service.completeUpload(UPLOAD_ID, USER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(BAD_REQUEST));
+            then(r2StorageService).should(never()).completeMultipartUpload(
                     anyString(), anyString(), anyList());
+            then(r2StorageService).should(never()).getObjectSize(anyString());
         }
 
         @Test

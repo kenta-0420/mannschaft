@@ -10,7 +10,6 @@ import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
-import com.mannschaft.app.survey.QuestionType;
 import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyErrorCode;
 import com.mannschaft.app.survey.SurveyMapper;
@@ -69,10 +68,13 @@ public class SurveyService {
     private final SurveyMapper surveyMapper;
     private final ObjectMapper objectMapper;
     private final AccessControlService accessControlService;
-    private final UserRoleRepository userRoleRepository;
     private final NotificationHelper notificationHelper;
+    private final org.springframework.context.MessageSource messageSource;
     private final ApplicationEventPublisher eventPublisher;
-    private final OrganizationMembershipService organizationMembershipService;
+    /** 母集団解決の唯一の窓口（公開時のスナップショットと結果閲覧時の分母を同一定義にする）。 */
+    private final SurveyUniverseResolver universeResolver;
+    /** 結果閲覧可否の唯一の判定点（結果取得 API の 403 と共用。Issue #2779）。 */
+    private final SurveyResultAccessGuard resultAccessGuard;
 
     /**
      * アンケート一覧をページング取得する。
@@ -164,10 +166,11 @@ public class SurveyService {
         // 軍議③ F00 漏洩根治: 本体詳細もスコープ所属者のみ。非所属は存在露見前に COMMON_002(403) で弾く
         // （findSurveyOrThrow の前に置くことで、他スコープの surveyId 有無を漏らさない）。
         // DRAFT はメンバーに従来どおり見せる（status ガードは足さない）。手本: CirculationService.getDocument。
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembershipOrDescendant(
-                SecurityUtils.getCurrentUserId(), scopeId, scopeType, true);
+                currentUserId, scopeId, scopeType, true);
         SurveyEntity entity = findSurveyOrThrow(scopeType, scopeId, surveyId);
-        return toDetailResponse(entity);
+        return toDetailResponse(entity, currentUserId);
     }
 
     /**
@@ -175,11 +178,19 @@ public class SurveyService {
      *
      * <p>作成/複製（作成者自身・SecurityContext 不在のバッチ materialize 含む）と、
      * ガード付き HTTP GET 経路（{@link #getSurveyDetail}）が共用する。認可は呼び出し側で行う。</p>
+     *
+     * <p>Issue #2779: {@code viewerCanViewResults} は結果取得 API が 403 を投げるのと
+     * 同じ判定点（{@link SurveyResultAccessGuard}）から得る。作成者本人は高速パスで
+     * 短絡されるため、作成/複製の経路では追加のクエリが発行されない。</p>
+     *
+     * @param entity 対象アンケート
+     * @param userId 閲覧者ユーザーID（{@code null} 可 = SecurityContext 不在）
      */
-    private SurveyDetailResponse toDetailResponse(SurveyEntity entity) {
+    private SurveyDetailResponse toDetailResponse(SurveyEntity entity, Long userId) {
         SurveyResponse surveyResponse = surveyMapper.toSurveyResponse(entity);
         List<QuestionResponse> questions = buildQuestionResponses(entity.getId());
-        return new SurveyDetailResponse(surveyResponse, questions);
+        boolean viewerCanViewResults = resultAccessGuard.canViewResults(entity, userId);
+        return SurveyDetailResponse.of(surveyResponse, questions, viewerCanViewResults);
     }
 
     /**
@@ -206,22 +217,14 @@ public class SurveyService {
 
         String remindJson = serializeRemindHours(request.getRemindBeforeHours());
 
-        // enum 文字列フィールドは save 前にまとめて検証する（不正値は 400・DB へ半端に書かない）。
-        // 同梱設問の questionType も含めて先に弾くことで、save 後に IllegalArgumentException で
-        // 500 に落ちる（=半端な survey が残る）退行を防ぐ。
-        ResultsVisibility resultsVisibility =
-                parseEnumOrThrow(ResultsVisibility.class, request.getResultsVisibility(), "resultsVisibility");
-        DistributionMode distributionMode =
-                parseEnumOrThrow(DistributionMode.class, request.getDistributionMode(), "distributionMode");
+        // enum 項目は DTO が enum 型で受けるため（#2617-1）、未知値は Jackson の束縛段階で
+        // 400 として弾かれ、ここに到達する時点で正当値であることが保証される。
+        // Service 側での再パースは不要（二重の正本を作らない）。
+        ResultsVisibility resultsVisibility = request.getResultsVisibility();
+        DistributionMode distributionMode = request.getDistributionMode();
         UnrespondedVisibility unrespondedVisibility = request.getUnrespondedVisibility() != null
-                ? parseEnumOrThrow(UnrespondedVisibility.class, request.getUnrespondedVisibility(),
-                        "unrespondedVisibility")
+                ? request.getUnrespondedVisibility()
                 : UnrespondedVisibility.CREATOR_AND_ADMIN;
-        if (request.getQuestions() != null) {
-            for (CreateQuestionRequest q : request.getQuestions()) {
-                parseEnumOrThrow(QuestionType.class, q.getQuestionType(), "questionType");
-            }
-        }
 
         SurveyEntity entity = SurveyEntity.builder()
                 .scopeType(scopeType)
@@ -270,7 +273,7 @@ public class SurveyService {
         eventPublisher.publishEvent(new SurveyCreatedEvent(saved.getId(), scopeType, scopeId, saved.getTitle()));
 
         // 作成直後の詳細は非ガードマッパで返す（作成者自身・SecurityContext 不在のバッチ経路でも安全）。
-        return toDetailResponse(saved);
+        return toDetailResponse(saved, userId);
     }
 
     /**
@@ -301,8 +304,7 @@ public class SurveyService {
                     request.getAllowMultipleSubmissions() != null
                             ? request.getAllowMultipleSubmissions() : entity.getAllowMultipleSubmissions(),
                     request.getResultsVisibility() != null
-                            ? parseEnumOrThrow(ResultsVisibility.class, request.getResultsVisibility(),
-                                    "resultsVisibility")
+                            ? request.getResultsVisibility()
                             : entity.getResultsVisibility(),
                     request.getAutoPostToTimeline() != null
                             ? request.getAutoPostToTimeline() : entity.getAutoPostToTimeline(),
@@ -311,9 +313,7 @@ public class SurveyService {
             );
         }
         if (request.getUnrespondedVisibility() != null) {
-            entity.updateUnrespondedVisibility(
-                    parseEnumOrThrow(UnrespondedVisibility.class, request.getUnrespondedVisibility(),
-                            "unrespondedVisibility"));
+            entity.updateUnrespondedVisibility(request.getUnrespondedVisibility());
         }
         if (request.getStartsAt() != null || request.getExpiresAt() != null) {
             validateTimeRange(
@@ -352,9 +352,15 @@ public class SurveyService {
             throw new BusinessException(SurveyErrorCode.NO_QUESTIONS);
         }
 
+        // 配信対象者数のスナップショット（F05.4 §1426-1428 / §117・Issue #2787）。
+        // 「公開時点の人数」で固定するのが仕様であり、後からメンバーが増減しても変えない。
+        // 母集団の定義は SurveyUniverseResolver に一元化してあり、結果閲覧時の分母・
+        // 未回答者一覧・督促の宛先とまったく同じ定義を用いる。
+        // 状態遷移と同一トランザクション内で書くため、公開が失敗すれば本値も保存されない。
+        entity.updateTargetCount(universeResolver.countUniverseUserIds(entity));
         entity.publish();
         SurveyEntity saved = surveyRepository.save(entity);
-        log.info("アンケート公開: surveyId={}", surveyId);
+        log.info("アンケート公開: surveyId={}, targetCount={}", surveyId, saved.getTargetCount());
 
         // 公開時通知（F05.4 §1528 SURVEY_CREATED）を AFTER_COMMIT・非同期で発火する（規模対応 Tier2）。
         // 受信者ループ（通知行作成）は SurveyPublishNotificationListener が event-pool で実行し、
@@ -429,7 +435,7 @@ public class SurveyService {
 
         SurveyQuestionEntity question = SurveyQuestionEntity.builder()
                 .surveyId(surveyId)
-                .questionType(parseEnumOrThrow(QuestionType.class, request.getQuestionType(), "questionType"))
+                .questionType(request.getQuestionType())
                 .questionText(request.getQuestionText())
                 .isRequired(request.getIsRequired())
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0)
@@ -586,17 +592,35 @@ public class SurveyService {
         // 通さない。これにより締切延長通知が直属一般メンバー・配下チームメンバーへ誤 deny で届かない
         // (B) レグを根治する。
         if (!recipients.isEmpty()) {
-            notificationHelper.notifyAllPreAuthorized(
+            // Issue #2715 CMP-055 ロットC-5: 受信者 locale に応じて件名・本文・日時表記を組み立てる
+            // （notifyAllPreAuthorizedLocalized は notifyAllPreAuthorized 同様 canView 絞り込みを通さない）。
+            // AC-7: newDeadline の表記もパターンを locale 鍵に持たせてロケール化する
+            // （時刻の値自体は変えない。テナントTZ対応は別戦役 CMP-023 の範囲）。
+            notificationHelper.notifyAllPreAuthorizedLocalized(
                     recipients,
                     SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name(),
-                    "アンケート締切が延長されました",
-                    "「" + saved.getTitle() + "」の回答締切が " + newDeadline + " に延長されました。",
                     "SURVEY",
                     surveyId,
                     notifScope,
                     scopeId,
                     "/surveys/" + surveyId,
-                    currentUserId);
+                    currentUserId,
+                    (userId, locale) -> {
+                        String deadlinePattern = messageSource.getMessage(
+                                "notification.survey.deadlineExtended.deadlinePattern", null,
+                                "yyyy年M月d日 HH:mm", locale);
+                        String formattedDeadline = newDeadline.format(
+                                java.time.format.DateTimeFormatter.ofPattern(deadlinePattern, locale));
+                        return new NotificationHelper.LocalizedMessage(
+                                messageSource.getMessage(
+                                        "notification.survey.deadlineExtended.title", null,
+                                        "アンケート締切が延長されました", locale),
+                                messageSource.getMessage(
+                                        "notification.survey.deadlineExtended.body",
+                                        new Object[]{saved.getTitle(), formattedDeadline},
+                                        "「" + saved.getTitle() + "」の回答締切が " + formattedDeadline + " に延長されました。",
+                                        locale));
+                    });
         }
 
         log.info("アンケート締切延長: surveyId={}, newDeadline={}, by={}", surveyId, newDeadline, currentUserId);
@@ -707,7 +731,7 @@ public class SurveyService {
 
         log.info("アンケート複製: source={}, new={}, by={}", surveyId, savedNew.getId(), currentUserId);
         // 複製直後の詳細も非ガードマッパで返す（getSurveyDetail のガードを経由しない）。
-        return toDetailResponse(savedNew);
+        return toDetailResponse(savedNew, currentUserId);
     }
 
     /**
@@ -764,11 +788,8 @@ public class SurveyService {
      * @return 配信対象ユーザー ID リスト
      */
     private List<Long> resolveAllModeRecipients(String scopeType, Long scopeId, SurveyEntity survey) {
-        if ("ORGANIZATION".equals(scopeType)) {
-            return organizationMembershipService.resolveOrgDistributionUserIds(
-                    scopeId, Boolean.TRUE.equals(survey.getIncludeSupporters()));
-        }
-        return userRoleRepository.findUserIdsByScope(scopeType, scopeId);
+        return universeResolver.resolveAllModeUserIds(
+                scopeType, scopeId, Boolean.TRUE.equals(survey.getIncludeSupporters()));
     }
 
     /**
@@ -792,7 +813,7 @@ public class SurveyService {
             CreateQuestionRequest qReq = questionRequests.get(i);
             SurveyQuestionEntity question = SurveyQuestionEntity.builder()
                     .surveyId(surveyId)
-                    .questionType(parseEnumOrThrow(QuestionType.class, qReq.getQuestionType(), "questionType"))
+                    .questionType(qReq.getQuestionType())
                     .questionText(qReq.getQuestionText())
                     .isRequired(qReq.getIsRequired())
                     .displayOrder(qReq.getDisplayOrder() != null ? qReq.getDisplayOrder() : i)

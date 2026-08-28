@@ -28,11 +28,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -104,8 +101,6 @@ class VillageCreationRequestServiceTest {
     @DisplayName("01. 申請作成成功 — 自動承認で APPROVED になり villageId が返る")
     void createRequest_success() {
         given(requestRepository.countByRequesterUserIdAndCreatedAtAfter(eq(REQUESTER_ID), any())).willReturn(0L);
-        given(requestRepository.findByRequesterUserIdOrderByCreatedAtDesc(REQUESTER_ID))
-                .willReturn(Collections.emptyList());
         given(villageRepository.existsBySlug("casual-baseball")).willReturn(false);
         // 1回目（初回保存）と2回目（自動承認後更新）の両方に対応
         given(requestRepository.save(any())).willAnswer(inv -> {
@@ -167,33 +162,11 @@ class VillageCreationRequestServiceTest {
     }
 
     // ---------------------------------------------------------------
-    // 3. 保有 PENDING 上限（11件目で 429）
+    // 3.（旧）保有 PENDING 上限テストは削除。
+    //   createRequest は同一トランザクション内で即時自動承認するため PENDING は蓄積せず、
+    //   保有上限チェックは構造的に発火し得ない死条件だった（本体から撤去済み）。
+    //   将来 2 段階承認フローに戻す場合は専用エラーコードと共に上限チェックを再導入すること。
     // ---------------------------------------------------------------
-    @Test
-    @DisplayName("03. 保有 PENDING 上限 — 既に10件 PENDING あれば VILLAGE_017")
-    void createRequest_pendingLimit() {
-        given(requestRepository.countByRequesterUserIdAndCreatedAtAfter(eq(REQUESTER_ID), any())).willReturn(0L);
-        List<VillageCreationRequestEntity> pendings = IntStream.range(0, 10)
-                .mapToObj(i -> {
-                    VillageCreationRequestEntity e = VillageCreationRequestEntity.builder()
-                            .requesterUserId(REQUESTER_ID)
-                            .proposedName("n" + i)
-                            .proposedSlug("s-" + i)
-                            .purpose("p")
-                            .status(VillageRequestStatus.PENDING)
-                            .build();
-                    return e;
-                })
-                .toList();
-        given(requestRepository.findByRequesterUserIdOrderByCreatedAtDesc(REQUESTER_ID)).willReturn(pendings);
-
-        assertThatThrownBy(() -> service.createRequest(REQUESTER_ID, validRequest()))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(VillageErrorCode.CREATION_REQUEST_THROTTLED);
-
-        verify(requestRepository, never()).save(any());
-    }
 
     // ---------------------------------------------------------------
     // 4. guideline 未同意（1時間より前） → VILLAGE_015
@@ -219,8 +192,6 @@ class VillageCreationRequestServiceTest {
     @DisplayName("05. slug 衝突 — VILLAGE_027")
     void createRequest_slugConflict() {
         given(requestRepository.countByRequesterUserIdAndCreatedAtAfter(eq(REQUESTER_ID), any())).willReturn(0L);
-        given(requestRepository.findByRequesterUserIdOrderByCreatedAtDesc(REQUESTER_ID))
-                .willReturn(Collections.emptyList());
         given(villageRepository.existsBySlug("casual-baseball")).willReturn(true);
 
         assertThatThrownBy(() -> service.createRequest(REQUESTER_ID, validRequest()))

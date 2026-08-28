@@ -27,6 +27,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -115,12 +116,18 @@ class AdvertiserAdminControllerPreAuthorizeTest {
     @Test
     @DisplayName("ac5_5: 全 11 メソッドが非 SYSTEM_ADMIN に 403 を返す（クラス @PreAuthorize 単体）")
     void ac5_5_全メソッドが非SYSTEM_ADMINに403() throws Exception {
+        // effectiveFrom は @FutureOrPresent 制約を持つ。ボディ検証（引数リゾルバ）は
+        // メソッドセキュリティのプロキシ呼び出しより前に走るため、ここが不正だと
+        // 認可判定に到達せず 400 になり、本テストの目的（403 の検証）が成立しない。
+        // 固定日付は経過すると必ず過去日になるので、実行時に当日を採る。
+        String effectiveFrom = LocalDate.now().toString();
+
         RequestBuilder[] requests = new RequestBuilder[]{
                 get("/api/v1/system-admin/ad-rate-cards"),
                 post("/api/v1/system-admin/ad-rate-cards")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"pricingModel\":\"CPM\",\"unitPrice\":500,"
-                                + "\"minDailyBudget\":1000,\"effectiveFrom\":\"2026-08-01\"}"),
+                                + "\"minDailyBudget\":1000,\"effectiveFrom\":\"" + effectiveFrom + "\"}"),
                 delete("/api/v1/system-admin/ad-rate-cards/1"),
                 get("/api/v1/system-admin/advertiser-accounts"),
                 patch("/api/v1/system-admin/advertiser-accounts/1/approve"),

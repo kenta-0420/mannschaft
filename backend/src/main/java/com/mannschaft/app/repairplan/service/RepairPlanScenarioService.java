@@ -252,10 +252,15 @@ public class RepairPlanScenarioService {
     }
 
     /**
-     * シナリオを 1 件取得する（IDOR 対策: org + scope で突合）。
+     * シナリオを 1 件取得する（IDOR 対策: org + scope で突合、認可根治戦役 Wave7: メンバーシップ必須）。
+     *
+     * <p>org + scope の突合に加え、兄弟の {@link #listScenarios} と同一の
+     * {@link AccessControlService#checkMembership} により、対象スコープの会員であることを
+     * 要求する。</p>
      */
-    public ScenarioDto getScenario(UUID scenarioId, Long organizationId) {
+    public ScenarioDto getScenario(UUID scenarioId, Long organizationId, Long userId) {
         RepairSimulationScenario scenario = findScenarioOrThrow(scenarioId, organizationId);
+        accessControlService.checkMembership(userId, scenario.getScopeId(), scenario.getScopeType());
         return toDtoFromJson(scenario);
     }
 

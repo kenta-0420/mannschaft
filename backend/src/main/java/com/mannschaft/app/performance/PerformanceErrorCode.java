@@ -38,7 +38,7 @@ public enum PerformanceErrorCode implements ErrorCode {
     /** 値範囲外 */
     VALUE_OUT_OF_RANGE("PERF_009", "値が許容範囲外です", Severity.WARN),
 
-    /** テンプレートが見つからない */
+    /** テンプレートが見つからない（IDOR 秘匿 → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     TEMPLATE_NOT_FOUND("PERF_010", "指定されたスポーツカテゴリのテンプレートが見つかりません", Severity.WARN),
 
     /** スケジュールが見つからない */

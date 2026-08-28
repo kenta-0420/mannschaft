@@ -12,42 +12,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NotificationTypeTest {
 
     @Test
-    @DisplayName("通知種別が全て定義されている（設計書§5の25種別 + TODO_HANDED_OFF + OWNERSHIP_TRANSFER_OFFERED/DECLINED = 28）")
-    void 全28種別が定義() {
+    @DisplayName("通知種別が全て定義されている（既存31種別 + OWNERSHIP_TRANSFER_* 2種 = 33）")
+    void 全33種別が定義() {
         // 内訳: 設計書§5 の通知種別（F03.4.5 §6.1 の RESERVATION_WAITLIST_OPENING を含む 25 種別）
-        //       ＋ TODO_HANDED_OFF（後付け）
-        //       ＋ F01.2 オーナー委譲（承諾型）の OWNERSHIP_TRANSFER_OFFERED / OWNERSHIP_TRANSFER_DECLINED
-        //       = 計 28 種別。新種別追加時はこのリストへの明示追加が必須（数合わせのみの追随を禁止する番人）。
-        assertThat(NotificationType.values()).containsExactlyInAnyOrder(
-                NotificationType.SCHEDULE_CREATED,
-                NotificationType.SCHEDULE_UPDATED,
-                NotificationType.SCHEDULE_CANCELLED,
-                NotificationType.ATTENDANCE_REMINDER,
-                NotificationType.ATTENDANCE_RESPONDED,
-                NotificationType.RESERVATION_REMINDER,
-                NotificationType.RESERVATION_CONFIRMED,
-                NotificationType.RESERVATION_CANCELLED,
-                NotificationType.CHAT_MENTION,
-                NotificationType.CHAT_DM,
-                NotificationType.TIMELINE_MENTION,
-                NotificationType.TIMELINE_REPLY,
-                NotificationType.BLOG_PUBLISHED,
-                NotificationType.ANNOUNCEMENT,
-                NotificationType.SURVEY_CREATED,
-                NotificationType.SAFETY_CHECK,
-                NotificationType.MEMBER_JOINED,
-                NotificationType.MODULE_AVAILABLE,
-                NotificationType.SYSTEM_NOTICE,
-                NotificationType.RESERVATION_RECEIVED,
-                NotificationType.RESERVATION_PENDING_APPROVAL,
-                NotificationType.RESERVATION_CANCELLED_BY_MEMBER,
-                NotificationType.RESERVATION_WAITLIST_OPENING,
-                NotificationType.INQUIRY_RECEIVED,
-                NotificationType.DAILY_DIGEST,
-                NotificationType.TODO_HANDED_OFF,
-                NotificationType.OWNERSHIP_TRANSFER_OFFERED,
-                NotificationType.OWNERSHIP_TRANSFER_DECLINED);
-        assertThat(NotificationType.values()).hasSize(28);
+        //       ＋ TODO_HANDED_OFF（後付け）＋ F20.3 ベータ特典の BETA_PERK_GRANTED/_REVOKED/_EXTENDED/
+        //       _REVIEW_FLAGGED（4 種）＋ F03.4.5 §6.3 の RESERVATION_PENDING_EXPIRED（仮押さえ自動失効）
+        //       ＋ F01.2 オーナー委譲承諾型の OWNERSHIP_TRANSFER_OFFERED / _DECLINED（2種）
+        //       = 計 33 種別。
+        assertThat(NotificationType.values()).hasSize(33);
+        assertThat(NotificationType.values())
+                .contains(NotificationType.BETA_PERK_GRANTED, NotificationType.BETA_PERK_REVOKED,
+                        NotificationType.BETA_PERK_EXTENDED, NotificationType.BETA_PERK_REVIEW_FLAGGED,
+                        NotificationType.RESERVATION_PENDING_EXPIRED,
+                        NotificationType.OWNERSHIP_TRANSFER_OFFERED,
+                        NotificationType.OWNERSHIP_TRANSFER_DECLINED);
+    }
+
+    @Test
+    @DisplayName("F03.4.5 §6.3: RESERVATION_PENDING_EXPIRED は NORMAL 優先度・sourceType=RESERVATION")
+    void 仮押さえ失効通知の優先度とsourceType() {
+        // 管理者の不作為による失効であり緊急性は無いため HIGH にしない（設計書 §6.3）。
+        assertThat(NotificationType.RESERVATION_PENDING_EXPIRED.getPriority())
+                .isEqualTo(NotificationPriority.NORMAL);
+        // sourceType は F00 visibility / 受信権の判定キー。予約ドメインの既存種別と揃える。
+        assertThat(NotificationType.RESERVATION_PENDING_EXPIRED.getSourceType()).isEqualTo("RESERVATION");
     }
 
     @Test

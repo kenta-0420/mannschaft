@@ -170,8 +170,17 @@ onMounted(async () => {
     <PageHeader :title="t('billing.plans.title')" help @help="showHelp = true" />
     <BillingHelpDialog v-model:visible="showHelp" variant="plans" />
 
-    <p class="mb-6 text-sm text-surface-500">
+    <p class="mb-2 text-sm text-surface-500">
       {{ t('billing.plans.subtitle') }}
+    </p>
+    <p class="mb-6">
+      <NuxtLink
+        to="/commerce-disclosure"
+        target="_blank"
+        class="text-xs text-surface-400 hover:text-primary hover:underline"
+      >
+        {{ t('landing.layout.footer_commerce') }}
+      </NuxtLink>
     </p>
 
     <PageLoading v-if="loading" />

@@ -2,6 +2,8 @@ package com.mannschaft.app.chat.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.role.dto.MembershipInviteRequest;
 import com.mannschaft.app.role.dto.MembershipInviteResponse;
 import com.mannschaft.app.role.service.MembershipInviteService;
@@ -43,6 +45,8 @@ public class ChatMembershipInviteController {
      * 実装は /出陣）。scopeId/scopeType はボディ由来のため public 入口の SpEL では参照せず
      * Service で {@code AccessControlService} により解決する（この機能領域の既存定石＝サービス層認可に踏襲）。</p>
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "チャットからの指名型メンバー招待は中核の所属管理機能として常時提供する")
     @PostMapping
     @Operation(summary = "承諾型招待の発行",
             description = "DM 相手を指定チーム/組織へ招待。宛先付きトークン発行＋招待カード投稿")
@@ -61,6 +65,8 @@ public class ChatMembershipInviteController {
      *
      * <p>認可: 認証必須。発行者 or 対象スコープ ADMIN の照合は Service 層で行う（実装は /出陣）。</p>
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "発行済み指名型メンバー招待の取消は中核の所属管理機能として常時提供する")
     @DeleteMapping("/{tokenId}")
     @Operation(summary = "承諾型招待の取消",
             description = "発行者または対象スコープ ADMIN が招待を取消す（revoked_at を立てる）")

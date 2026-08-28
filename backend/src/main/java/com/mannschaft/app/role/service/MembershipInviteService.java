@@ -1,13 +1,17 @@
 package com.mannschaft.app.role.service;
 
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.chat.service.ChatMembershipInviteCardService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.role.dto.InvitableScopesResponse;
 import com.mannschaft.app.role.dto.InviteCardData;
+import com.mannschaft.app.role.dto.MembershipInviteIssuedToken;
 import com.mannschaft.app.role.dto.MembershipInviteRequest;
 import com.mannschaft.app.role.dto.MembershipInviteResponse;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
@@ -24,6 +28,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -52,6 +58,16 @@ public class MembershipInviteService {
     private static final int DEFAULT_EXPIRES_IN_DAYS = 7;
     private static final String DEFAULT_ROLE_NAME = "MEMBER";
 
+    private static OffsetDateTime utcNow() {
+        return OffsetDateTime.now(ZoneOffset.UTC);
+    }
+
+    private static OffsetDateTime toApiTimestamp(LocalDateTime value) {
+        return value == null
+                ? null
+                : value.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toOffsetDateTime();
+    }
+
     private final InviteTokenRepository inviteTokenRepository;
     private final RoleRepository roleRepository;
     private final TeamService teamService;
@@ -59,6 +75,7 @@ public class MembershipInviteService {
     private final AccessControlService accessControlService;
     private final MembershipInviteTokenIssuer tokenIssuer;
     private final ChatMembershipInviteCardService cardService;
+    private final AuditLogService auditLogService;
 
     /**
      * DM 相手を指定スコープへ招待する（宛先付きトークン発行 ＋ 招待カード投稿）。
@@ -102,26 +119,28 @@ public class MembershipInviteService {
         }
 
         // 8. 【role ドメイン tx】宛先付きトークン発行（独立コミット）。
-        LocalDateTime expiresAt = LocalDateTime.now().plusDays(expiresInDays);
-        InviteTokenEntity token = tokenIssuer.issue(
+        LocalDateTime expiresAt = utcNow().plusDays(expiresInDays)
+                .atZoneSameInstant(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                .toLocalDateTime();
+        MembershipInviteIssuedToken token = tokenIssuer.issue(
                 scopeType, scopeId, roleId, targetUserId, actorUserId, expiresAt);
 
         // 9. 【chat ドメイン tx】DM に INVITE_CARD を投稿。失敗時はトークンを補償失効して再送出（Saga 補償）。
         Long cardMessageId;
         try {
             String preview = scopeName + " への招待を送りました";
-            cardMessageId = cardService.postInviteCard(channelId, actorUserId, token.getId(), preview);
+            cardMessageId = cardService.postInviteCard(channelId, actorUserId, token.id(), preview);
         } catch (RuntimeException e) {
-            tokenIssuer.revokeForCompensation(token.getId());
+            tokenIssuer.revokeForCompensation(token.id());
             throw e;
         }
 
         log.info("承諾型招待の発行完了: tokenId={}, channelId={}, scopeType={}, scopeId={}, targetUserId={}",
-                token.getId(), channelId, scopeType, scopeId, targetUserId);
+                token.id(), channelId, scopeType, scopeId, targetUserId);
 
         return new MembershipInviteResponse(
-                token.getId(), token.getToken(), targetUserId,
-                scopeType, scopeId, scopeName, "PENDING", expiresAt, cardMessageId);
+                token.id(), token.token(), targetUserId,
+                scopeType, scopeId, scopeName, "PENDING", toApiTimestamp(expiresAt), cardMessageId);
     }
 
     /**
@@ -139,6 +158,12 @@ public class MembershipInviteService {
         InviteTokenEntity token = inviteTokenRepository.findById(tokenId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
 
+        // URL の channelId と tokenId を実カードで束縛する。宛先なしの共有リンク型トークンや、
+        // 別 DM のカードを任意の channelId から失効できる BOLA を防ぐ。
+        if (token.getTargetUserId() == null || !cardService.hasInviteCard(channelId, tokenId)) {
+            throw new BusinessException(RoleErrorCode.ROLE_002);
+        }
+
         String scopeType = token.getTeamId() != null ? "TEAM" : "ORGANIZATION";
         Long scopeId = token.getTeamId() != null ? token.getTeamId() : token.getOrganizationId();
 
@@ -149,6 +174,19 @@ public class MembershipInviteService {
         }
 
         token.revoke();
+        boolean team = token.getTeamId() != null;
+        auditLogService.record(
+                (team
+                        ? AuditEventType.TEAM_MEMBERSHIP_INVITE_CANCELLED
+                        : AuditEventType.ORGANIZATION_MEMBERSHIP_INVITE_CANCELLED).name(),
+                actorUserId,
+                token.getTargetUserId(),
+                token.getTeamId(),
+                token.getOrganizationId(),
+                null,
+                null,
+                null,
+                "{\"token_id\":" + tokenId + ",\"reason\":\"CANCELLED\"}");
         log.info("承諾型招待を取消: tokenId={}, actorUserId={}", tokenId, actorUserId);
     }
 
@@ -199,7 +237,7 @@ public class MembershipInviteService {
         return new InviteCardData(
                 token.getId(), tokenForViewer,
                 scopeType, scopeId, scopeName,
-                status, isTarget, token.getExpiresAt());
+                status, isTarget, toApiTimestamp(token.getExpiresAt()));
     }
 
     /**
@@ -217,7 +255,10 @@ public class MembershipInviteService {
         }
         LocalDateTime expiresAt = token.getExpiresAt();
         // M-1: 既存 isValid() は expiresAt.isBefore(now) で判定するため、ちょうど（==）は有効（PENDING）。
-        if (expiresAt != null && expiresAt.isBefore(LocalDateTime.now())) {
+        LocalDateTime currentWallClock = utcNow()
+                .atZoneSameInstant(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                .toLocalDateTime();
+        if (expiresAt != null && expiresAt.isBefore(currentWallClock)) {
             return "EXPIRED";
         }
         return "PENDING";

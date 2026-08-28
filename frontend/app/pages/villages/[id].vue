@@ -22,8 +22,7 @@
  *  - `key: route => route.fullPath` は **絶対に付けない**。付けると子遷移で親が
  *    再マウントし、永続シェルの設計が崩壊する。
  */
-import type { MembershipResponse } from '~/types/village'
-import type { VillageWithMonsho } from '~/composables/useVillageContext'
+import type { MembershipResponse, VillageResponse } from '~/types/village'
 import { provideVillageContext } from '~/composables/useVillageContext'
 
 // =============================================================================
@@ -97,8 +96,8 @@ const isVillageLoading = computed<boolean>(
   () => villageStatus.value === 'pending' || villageStatus.value === 'idle',
 )
 
-/** VillageHeader 用の交差型 Ref（村紋 r2Key を optional で許容）。 */
-const village = computed<VillageWithMonsho | null>(() => villageData.value ?? null)
+/** VillageHeader へそのまま渡す村本体（村紋 monshoUrl は #2355 で本体に統合済み）。 */
+const village = computed<VillageResponse | null>(() => villageData.value ?? null)
 
 /** notFound 判定（404）。 */
 const notFound = computed<boolean>(() => {
@@ -184,6 +183,7 @@ type HeaderTab =
   | 'matchRecruit'
   | 'meetup'
   | 'chronicle'
+  | 'charter'
 
 /** ルート末尾セグメント（kebab）→ VillageHeader の activeTab キー。 */
 const SEGMENT_TO_TAB: Record<string, HeaderTab> = {
@@ -196,6 +196,9 @@ const SEGMENT_TO_TAB: Record<string, HeaderTab> = {
   'match-recruits': 'matchRecruit',
   meetups: 'meetup',
   chronicles: 'chronicle',
+  // F17.3: 村憲章タブ。欠落すると /villages/{id}/charter に居ても activeTab が
+  // `?? 'bulletin'` に落ち、掲示板タブが誤ってハイライトされる（設計書§9.1 🔴2）。
+  charter: 'charter',
 }
 
 const activeTab = computed<HeaderTab>(() => {
@@ -283,7 +286,7 @@ function onEdit() {
 const showGuide = ref(false)
 
 /** 編集 Dialog から更新成功時に村情報を差し替え、子へも反映。 */
-function onVillageUpdated(updated: VillageWithMonsho) {
+function onVillageUpdated(updated: VillageResponse) {
   villageData.value = updated
 }
 

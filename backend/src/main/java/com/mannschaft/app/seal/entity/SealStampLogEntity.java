@@ -63,6 +63,7 @@ public class SealStampLogEntity {
     @Builder.Default
     private LocalDateTime stampedAt = LocalDateTime.now();
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

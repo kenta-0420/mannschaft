@@ -3,7 +3,7 @@
 # =============================================================================
 # - GitHub Actions の MySQL サービスコンテナに接続する設定。
 # - JWT・暗号化キーはテスト専用の固定値を使用する（本番環境では使用しない）。
-# - Valkey/Redis は CI に存在しないため、既存の fail-open 機構でスキップされる。
+# - Valkey/Redis は CI に存在しないため、fail-open 機構（LoggingCacheErrorHandler 等）でスキップされる。
 # - このファイルは application.yml を上書きする形で適用される。
 #   起動コマンド: java -jar app.jar --spring.profiles.active=ci
 # =============================================================================
@@ -11,7 +11,12 @@
 spring:
   # --- データソース（GitHub Actions MySQL サービスコンテナ）---
   datasource:
-    url: jdbc:mysql://localhost:3306/mannschaft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Tokyo&characterEncoding=UTF-8
+    # serverTimezone=UTC（Issue #2486）:
+    #   この値は「接続先 MySQL サーバがどの TZ か」をドライバへ伝えるもの。GitHub Actions の
+    #   MySQL サービスコンテナは --default-time-zone 未指定＝SYSTEM＝UTC（ランナーが UTC）のため、
+    #   従来の Asia/Tokyo は実サーバの TZ と食い違っており java.sql.Timestamp の変換が静かにずれていた。
+    #   DB 格納基準の UTC 統一（application.yml の hibernate.jdbc.time_zone）と併せて UTC に是正する。
+    url: jdbc:mysql://localhost:3306/mannschaft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
     username: mannschaft
     password: mannschaft
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -33,9 +38,14 @@ spring:
     out-of-order: true
 
   # --- Valkey/Redis ---
-  # CI 環境には Valkey が存在しない。
-  # 既存の fail-open 機構（ValkeyFailSilentAspect 等）が接続失敗をスキップするため
-  # 接続先としてローカルホストを指定しておくだけでよい。
+  # CI 環境には Valkey が存在しない。接続先としてローカルホストを指定しておくだけでよい。
+  # 接続失敗時の fail-open は下記の 2 系統が担う（かつては存在しない
+  # 「ValkeyFailSilentAspect」を根拠として挙げていたが、そのクラスは実在しなかったため是正）:
+  #   1. キャッシュ（@Cacheable / @CacheEvict）
+  #      → CacheErrorHandlingConfig が登録する LoggingCacheErrorHandler が
+  #        get/put/evict/clear の例外を握り潰し、WARN + メトリクスで可視化する
+  #   2. キャッシュ以外の Valkey 利用（レートリミット・認証トークン等）
+  #      → ValkeyRateLimiter / AuthService 等が個別に DataAccessException を捕捉して fail-open する
   data:
     redis:
       host: localhost

@@ -1,5 +1,7 @@
 package com.mannschaft.app.shiftbudget.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventStatus;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetFailedEventEntity;
@@ -46,10 +48,13 @@ public class ShiftBudgetRetryBatchJob {
     /**
      * 15 分毎に実行する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SHIFT_ENABLED",
+            reason = "リトライ対象は failed_events として DB に永続化済みで消えず、外部資源の失効期限も持たないため、止めても再開後に同じ行を最大 3 回まで拾い直せる")
     @BatchEndpoint(name = "shiftbudget-failed-event-retry", description = "失敗したシフト予算イベントを 15 分毎に最大 3 回までリトライする")
     @Scheduled(cron = "0 */15 * * * ?", zone = "Asia/Tokyo")
     @SchedulerLock(name = "ShiftBudgetRetryBatchJob",
-            lockAtMostFor = "10m", lockAtLeastFor = "1m")
+            lockAtMostFor = "30m", lockAtLeastFor = "1m")
     public void run() {
         LocalDateTime threshold = LocalDateTime.now().minus(RETRY_INTERVAL);
         log.info("F08.7 リトライバッチ起動: threshold={}", threshold);

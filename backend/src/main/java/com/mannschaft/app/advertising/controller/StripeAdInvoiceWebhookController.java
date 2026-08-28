@@ -3,6 +3,9 @@ package com.mannschaft.app.advertising.controller;
 import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
 import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.model.Invoice;
@@ -23,6 +26,17 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Map;
 
+/**
+ * 広告請求書向け Stripe Webhook 受信コントローラー（F09 広告）。
+ *
+ * <p><b>認可根拠（{@link AuthorizedInService} クラス付与・全 1 EP が該当）</b>:
+ * {@link #handleInvoiceWebhook} は本ファイル 54 行目の
+ * {@code Webhook.constructEvent(payload, stripeSignature, webhookSecret)} で
+ * {@code Stripe-Signature} ヘッダの HMAC 署名を検証し、失敗時は 400 を返して処理を中断する
+ * （署名シークレットは {@code mannschaft.stripe.webhook-secret.ad-invoices}）。
+ * 未設定時は 500 で fail-closed（本ファイル 43-46 行目）。認可根治戦役 Wave5 監査済。</p>
+ */
+@AuthorizedInService
 @RestController
 @RequestMapping("/api/v1/webhooks/stripe")
 @RequiredArgsConstructor
@@ -34,6 +48,8 @@ public class StripeAdInvoiceWebhookController {
     @Value("${mannschaft.stripe.webhook-secret.ad-invoices:}")
     private String webhookSecret;
 
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "広告請求のStripe結果をGate状態にかかわらず反映するため")
     @PostMapping("/ad-invoices")
     @Transactional
     public ResponseEntity<Map<String, String>> handleInvoiceWebhook(

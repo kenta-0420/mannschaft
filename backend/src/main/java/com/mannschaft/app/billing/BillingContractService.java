@@ -55,6 +55,11 @@ public class BillingContractService {
     private final BillingPaymentGateway billingPaymentGateway;
     /** F20.1 実決済（AC-44）: changePlan の変更先プラン価格解決（有償なら 409 拒否）。 */
     private final BillingPriceResolver billingPriceResolver;
+    /**
+     * F20.3 設計判断①: entitlements 発行の共有サービス（PLAN/ADDON/BETA_GRANT 共通）。
+     * 元 private {@code issueEntitlements} の INSERT ロジックを本サービスへ抽出した（挙動不変）。
+     */
+    private final EntitlementIssuanceService entitlementIssuanceService;
 
     /**
      * 契約変更操作の結果（API 層 DTO 組み立て用・付与/取消 feature_key 集合を含む）。
@@ -160,8 +165,8 @@ public class BillingContractService {
             throw new BusinessException(EntitlementErrorCode.CONTRACT_ALREADY_ACTIVE, ex);
         }
 
-        issueEntitlements(scopeKind, scopeId, organizationId, grantedKeys,
-                toSourceKind(contractKind), saved.getId(), now);
+        entitlementIssuanceService.issue(scopeKind, scopeId, organizationId, grantedKeys,
+                toSourceKind(contractKind), saved.getId(), null);
 
         evictAfterCommit(scopeKind, scopeId, grantedKeys);
 
@@ -303,8 +308,8 @@ public class BillingContractService {
         pointer.setContractId(savedNew.getId());
         activeContractPointerRepository.save(pointer);
 
-        issueEntitlements(scopeKind, scopeId, oldContract.getOrganizationId(), newKeys,
-                EntitlementSourceKind.PLAN, savedNew.getId(), now);
+        entitlementIssuanceService.issue(scopeKind, scopeId, oldContract.getOrganizationId(), newKeys,
+                EntitlementSourceKind.PLAN, savedNew.getId(), null);
 
         // 旧∪新 の feature_key を evict（ダウングレードで外れた機能を即 false に）。
         Set<String> affected = new LinkedHashSet<>(oldKeys);
@@ -425,8 +430,9 @@ public class BillingContractService {
         billingContractRepository.save(contract);
 
         List<String> grantedKeys = resolveFeatureKeys(contract);
-        issueEntitlements(contract.getScopeKind(), contract.getScopeId(), contract.getOrganizationId(),
-                grantedKeys, toSourceKind(contract.getContractKind()), contract.getId(), now);
+        entitlementIssuanceService.issue(contract.getScopeKind(), contract.getScopeId(),
+                contract.getOrganizationId(), grantedKeys, toSourceKind(contract.getContractKind()),
+                contract.getId(), null);
         evictAfterCommit(contract.getScopeKind(), contract.getScopeId(), grantedKeys);
 
         return new ContractResult(contract.getId(), contract.getScopeKind(), contract.getScopeId(),
@@ -753,33 +759,6 @@ public class BillingContractService {
             entitlementRepository.saveAll(rows);
         }
         return revokedKeys;
-    }
-
-    private void issueEntitlements(
-            EntitlementScopeKind scopeKind, Long scopeId, Long organizationId,
-            List<String> featureKeys, EntitlementSourceKind sourceKind, UUID sourceRefId, LocalDateTime now) {
-        List<EntitlementEntity> rows = new ArrayList<>();
-        for (String featureKey : featureKeys) {
-            rows.add(EntitlementEntity.builder()
-                    .scopeKind(scopeKind)
-                    .scopeId(scopeId)
-                    .featureKey(featureKey)
-                    .sourceKind(sourceKind)
-                    .sourceRefId(sourceRefId)
-                    .validFrom(now)
-                    .validUntil(null)          // 無期限（ベータ中）。
-                    .organizationId(organizationId)
-                    .build());
-        }
-        if (!rows.isEmpty()) {
-            try {
-                entitlementRepository.saveAll(rows);
-                entitlementRepository.flush();
-            } catch (DataIntegrityViolationException ex) {
-                // uk_ent_grant 違反（同一発行元×同時刻の二重発行・AC-21）。
-                throw new BusinessException(EntitlementErrorCode.DUPLICATE_ENTITLEMENT, ex);
-            }
-        }
     }
 
     /** 人数バンドを解決する（TEAM/ORG の PLAN のみ。バンド未定義なら null）。 */

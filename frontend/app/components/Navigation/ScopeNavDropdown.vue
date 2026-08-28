@@ -183,8 +183,10 @@ function onPopoverShow() {
   const scopeFetch = props.scopeType === 'TEAM'
     ? teamStore.fetchMyTeams()
     : orgStore.fetchMyOrganizations()
-  Promise.all([ensureFoldersLoaded(), scopeFetch]).catch(() => {
-    // フェッチ失敗してもメニュー操作は阻害しない
+  Promise.all([ensureFoldersLoaded(), scopeFetch]).catch((e) => {
+    // フェッチ失敗してもメニュー操作は阻害しない（ジャンプリンクが出ないだけ）。
+    // 沈黙させると原因不明の「リンクが出ない」になるためログで表面化する。
+    console.warn('[ScopeNavDropdown] スコープ/フォルダ一覧の取得に失敗（ジャンプリンク非表示にフォールバック）', e)
   })
 }
 

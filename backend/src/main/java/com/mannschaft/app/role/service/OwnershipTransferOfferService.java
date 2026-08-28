@@ -1,24 +1,32 @@
 package com.mannschaft.app.role.service;
 
+import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.Auth2faService;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.organization.OrgErrorCode;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.role.dto.TransferOwnershipAcceptResponse;
 import com.mannschaft.app.role.dto.TransferOwnershipOfferCreateRequest;
 import com.mannschaft.app.role.dto.TransferOwnershipOfferResponse;
 import com.mannschaft.app.role.entity.OwnershipTransferOfferEntity;
 import com.mannschaft.app.role.repository.OwnershipTransferOfferRepository;
+import com.mannschaft.app.team.TeamErrorCode;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -68,11 +76,18 @@ public class OwnershipTransferOfferService {
     /** オファーの有効期限（発行から7日）。 */
     private static final int OFFER_TTL_DAYS = 7;
 
+    private static OffsetDateTime now() {
+        return OffsetDateTime.now(ZoneOffset.UTC);
+    }
+
     private final OwnershipTransferOfferRepository offerRepository;
     private final RoleService roleService;
     private final AccessControlService accessControlService;
     private final Auth2faService auth2faService;
     private final NotificationHelper notificationHelper;
+    private final AuditLogService auditLogService;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
 
     /**
      * オーナー委譲を打診する（PENDING オファーを作成。ロールは変わらない）。
@@ -94,6 +109,8 @@ public class OwnershipTransferOfferService {
         if (!accessControlService.isAdmin(actorUserId, scopeId, scopeType)) {
             throw new BusinessException(CommonErrorCode.COMMON_002); // 403
         }
+
+        validateScopeIsActive(scopeType, scopeId);
 
         // 自己委譲は不可（設計書 step4）。
         if (actorUserId.equals(targetUserId)) {
@@ -121,7 +138,7 @@ public class OwnershipTransferOfferService {
                 .issuedBy(actorUserId)
                 .targetUserId(targetUserId)
                 .status(STATUS_PENDING)
-                .expiresAt(LocalDateTime.now().plusDays(OFFER_TTL_DAYS))
+                .expiresAt(now().plusDays(OFFER_TTL_DAYS))
                 .build();
         // スコープ種別に応じて XOR カラムをセット（chk_oto_scope: team_id と organization_id の一方のみ）。
         if (SCOPE_TEAM.equals(scopeType)) {
@@ -133,6 +150,14 @@ public class OwnershipTransferOfferService {
 
         log.info("オーナー委譲 打診作成: scopeType={}, scopeId={}, offerId={}, issuedBy={}, target={}",
                 scopeType, scopeId, offer.getId(), actorUserId, targetUserId);
+        recordAudit(
+                scopeType,
+                scopeId,
+                AuditEventType.TEAM_OWNERSHIP_TRANSFER_OFFERED,
+                AuditEventType.ORGANIZATION_OWNERSHIP_TRANSFER_OFFERED,
+                actorUserId,
+                targetUserId,
+                offerMetadata(offer.getId(), actorUserId, targetUserId, false));
 
         // 到達通知（設計書 step9）: 対象ユーザーへ「管理者就任の打診が届いた」通知を発火し、
         // actionUrl で受信側の承諾/辞退カード（?offerId= ディープリンク）へ導線を張る。
@@ -179,12 +204,7 @@ public class OwnershipTransferOfferService {
         OwnershipTransferOfferEntity offer = loadScopedOffer(offerId, scopeId, scopeType);
 
         // 状態確認（設計書 step1）: PENDING かつ未期限のみ承諾可。
-        requirePending(offer);
-        if (offer.getExpiresAt().isBefore(LocalDateTime.now())) {
-            // 期限切れ。EXPIRED マークは同一 tx throw では巻き戻るため永続させず、
-            // 状態不整合として拒否する（EXPIRED への確定は期限切れ掃引バッチの責務）。
-            throw new BusinessException(RoleErrorCode.ROLE_012); // 409
-        }
+        requireActivePending(offer);
 
         // 宛先照合（設計書 step2・IDOR 防止）: 指名相手本人のみ。第三者は 403（ROLE_009）。
         // 2FA チェックより前に行い、第三者には 2FA の有無を問わず一律 403 を返す。
@@ -208,7 +228,7 @@ public class OwnershipTransferOfferService {
             throw e;
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = now();
         offer.setStatus(STATUS_ACCEPTED);
         offer.setAcceptedAt(now);
         offer.setResolvedAt(now);
@@ -216,6 +236,14 @@ public class OwnershipTransferOfferService {
 
         log.info("オーナー委譲 承諾（委譲実行）: scopeType={}, scopeId={}, offerId={}, from={}, to={}",
                 scopeType, scopeId, offerId, offer.getIssuedBy(), actorUserId);
+        recordAudit(
+                scopeType,
+                scopeId,
+                AuditEventType.TEAM_ADMIN_TRANSFERRED,
+                AuditEventType.ORGANIZATION_ADMIN_TRANSFERRED,
+                actorUserId,
+                offer.getIssuedBy(),
+                offerMetadata(offerId, offer.getIssuedBy(), actorUserId, false));
 
         return new TransferOwnershipAcceptResponse(
                 new TransferOwnershipAcceptResponse.MemberBrief(actorUserId, null, "ADMIN"),
@@ -234,15 +262,23 @@ public class OwnershipTransferOfferService {
     @Transactional
     public void declineOffer(Long scopeId, String scopeType, String scopeSlug, UUID offerId, Long actorUserId) {
         OwnershipTransferOfferEntity offer = loadScopedOffer(offerId, scopeId, scopeType);
-        requirePending(offer);
+        requireActivePending(offer);
         requireAddressee(offer, actorUserId); // 宛先照合（IDOR 防止）: 指名相手本人のみ辞退可。
 
         offer.setStatus(STATUS_DECLINED);
-        offer.setResolvedAt(LocalDateTime.now());
+        offer.setResolvedAt(now());
         offerRepository.save(offer);
 
         log.info("オーナー委譲 辞退: scopeType={}, scopeId={}, offerId={}, by={}",
                 scopeType, scopeId, offerId, actorUserId);
+        recordAudit(
+                scopeType,
+                scopeId,
+                AuditEventType.TEAM_OWNERSHIP_TRANSFER_DECLINED,
+                AuditEventType.ORGANIZATION_OWNERSHIP_TRANSFER_DECLINED,
+                actorUserId,
+                offer.getIssuedBy(),
+                offerMetadata(offerId, offer.getIssuedBy(), actorUserId, false));
 
         // 発行者へ辞退通知（設計書 step 辞退「発行者へ通知」）。actionUrl は当該スコープのメンバー一覧。
         notificationHelper.notify(
@@ -270,7 +306,24 @@ public class OwnershipTransferOfferService {
      * @return 本人宛の PENDING オファー一覧
      */
     public List<TransferOwnershipOfferResponse> listMyPendingOffers(Long actorUserId) {
-        return offerRepository.findByTargetUserIdAndStatus(actorUserId, STATUS_PENDING).stream()
+        return offerRepository.findByTargetUserIdAndStatusAndExpiresAtGreaterThanEqual(
+                        actorUserId, STATUS_PENDING, now()).stream()
+                .map(offer -> new TransferOwnershipOfferResponse(
+                        offer.getId(),
+                        offer.getStatus(),
+                        new TransferOwnershipOfferResponse.UserBrief(offer.getTargetUserId(), null),
+                        new TransferOwnershipOfferResponse.UserBrief(offer.getIssuedBy(), null),
+                        offer.getExpiresAt()))
+                .toList();
+    }
+
+    /** 発行側の管理画面へ、当該スコープで有効な PENDING オファーを返す。 */
+    public List<TransferOwnershipOfferResponse> listPendingOffersInScope(
+            Long scopeId, String scopeType, Long actorUserId) {
+        if (!accessControlService.isAdmin(actorUserId, scopeId, scopeType)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002); // 403
+        }
+        return findPendingOffersInScope(scopeId, scopeType).stream()
                 .map(offer -> new TransferOwnershipOfferResponse(
                         offer.getId(),
                         offer.getStatus(),
@@ -291,7 +344,7 @@ public class OwnershipTransferOfferService {
     @Transactional
     public void cancelOffer(Long scopeId, String scopeType, UUID offerId, Long actorUserId) {
         OwnershipTransferOfferEntity offer = loadScopedOffer(offerId, scopeId, scopeType);
-        requirePending(offer);
+        requireActivePending(offer);
 
         // 認可: 発行者本人、または当該スコープの ADMIN のみ取消可。
         boolean isIssuer = offer.getIssuedBy().equals(actorUserId);
@@ -300,11 +353,19 @@ public class OwnershipTransferOfferService {
         }
 
         offer.setStatus(STATUS_CANCELLED);
-        offer.setResolvedAt(LocalDateTime.now());
+        offer.setResolvedAt(now());
         offerRepository.save(offer);
 
         log.info("オーナー委譲 取消: scopeType={}, scopeId={}, offerId={}, by={}",
                 scopeType, scopeId, offerId, actorUserId);
+        recordAudit(
+                scopeType,
+                scopeId,
+                AuditEventType.TEAM_OWNERSHIP_TRANSFER_CANCELLED,
+                AuditEventType.ORGANIZATION_OWNERSHIP_TRANSFER_CANCELLED,
+                actorUserId,
+                offer.getTargetUserId(),
+                offerMetadata(offerId, offer.getIssuedBy(), offer.getTargetUserId(), false));
     }
 
     /**
@@ -329,6 +390,14 @@ public class OwnershipTransferOfferService {
         log.warn("オーナー委譲 強制実行（退会 purge 承継・forced=true）: "
                         + "scopeType={}, scopeId={}, from={}, to={}",
                 scopeType, scopeId, issuerUserId, targetUserId);
+        recordAudit(
+                scopeType,
+                scopeId,
+                AuditEventType.TEAM_ADMIN_TRANSFERRED,
+                AuditEventType.ORGANIZATION_ADMIN_TRANSFERRED,
+                issuerUserId,
+                targetUserId,
+                offerMetadata(null, issuerUserId, targetUserId, true));
     }
 
     // ========================================
@@ -345,9 +414,12 @@ public class OwnershipTransferOfferService {
 
     /** 同一スコープの PENDING オファー一覧。 */
     private List<OwnershipTransferOfferEntity> findPendingOffersInScope(Long scopeId, String scopeType) {
+        OffsetDateTime now = now();
         return SCOPE_TEAM.equals(scopeType)
-                ? offerRepository.findByTeamIdAndStatus(scopeId, STATUS_PENDING)
-                : offerRepository.findByOrganizationIdAndStatus(scopeId, STATUS_PENDING);
+                ? offerRepository.findByTeamIdAndStatusAndExpiresAtGreaterThanEqual(
+                        scopeId, STATUS_PENDING, now)
+                : offerRepository.findByOrganizationIdAndStatusAndExpiresAtGreaterThanEqual(
+                        scopeId, STATUS_PENDING, now);
     }
 
     /** オファーが PENDING であることを要求する（既処理/辞退/取消/期限確定済みは 409）。 */
@@ -357,11 +429,65 @@ public class OwnershipTransferOfferService {
         }
     }
 
+    /** PENDING かつ期限内であることを要求する。 */
+    private void requireActivePending(OwnershipTransferOfferEntity offer) {
+        requirePending(offer);
+        if (offer.getExpiresAt().isBefore(now())) {
+            throw new BusinessException(RoleErrorCode.ROLE_012); // 409
+        }
+    }
+
     /** 宛先照合（IDOR 防止）: 指名相手本人でなければ 403（ROLE_009）。 */
     private void requireAddressee(OwnershipTransferOfferEntity offer, Long actorUserId) {
         if (!offer.getTargetUserId().equals(actorUserId)) {
             throw new BusinessException(RoleErrorCode.ROLE_009); // 403
         }
+    }
+
+    private void validateScopeIsActive(String scopeType, Long scopeId) {
+        if (SCOPE_TEAM.equals(scopeType)) {
+            TeamService.TeamSummary team = teamService.findTeamSummary(scopeId)
+                    .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+            if (team.archived()) {
+                throw new BusinessException(TeamErrorCode.TEAM_002, HttpStatus.UNPROCESSABLE_ENTITY);
+            }
+            return;
+        }
+        OrganizationService.OrganizationSummary organization = organizationService
+                .findOrganizationSummary(scopeId)
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001, HttpStatus.NOT_FOUND));
+        if (organization.archived()) {
+            throw new BusinessException(OrgErrorCode.ORG_003, HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+    }
+
+    private void recordAudit(
+            String scopeType,
+            Long scopeId,
+            AuditEventType teamEvent,
+            AuditEventType organizationEvent,
+            Long actorUserId,
+            Long targetUserId,
+            String metadata) {
+        boolean team = SCOPE_TEAM.equals(scopeType);
+        auditLogService.record(
+                (team ? teamEvent : organizationEvent).name(),
+                actorUserId,
+                targetUserId,
+                team ? scopeId : null,
+                team ? null : scopeId,
+                null,
+                null,
+                null,
+                metadata);
+    }
+
+    private String offerMetadata(UUID offerId, Long fromUserId, Long toUserId, boolean forced) {
+        String offerPart = offerId == null ? "null" : "\"" + offerId + "\"";
+        return "{\"offer_id\":" + offerPart
+                + ",\"from_user_id\":" + fromUserId
+                + ",\"to_user_id\":" + toUserId
+                + ",\"forced\":" + forced + "}";
     }
 
     /** スコープ種別を通知スコープ種別へ写す（TEAM / ORGANIZATION）。 */

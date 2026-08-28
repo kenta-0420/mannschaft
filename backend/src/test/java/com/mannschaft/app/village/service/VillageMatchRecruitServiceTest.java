@@ -23,11 +23,11 @@ import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.entity.enums.VillageType;
 import com.mannschaft.app.village.entity.enums.VillageVisibility;
-import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitApplicationRepository;
 import com.mannschaft.app.village.repository.VillageMatchRecruitRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,7 +60,7 @@ import static org.mockito.Mockito.verify;
  *   <li>募集作成成功（村人による）</li>
  *   <li>募集作成 — 非村人なら VILLAGE_007</li>
  *   <li>募集作成 — 時刻順序不正なら VILLAGE_065</li>
- *   <li>募集作成 — BAN 中なら VILLAGE_031</li>
+ *   <li>募集作成 — BAN 中は非村人と同じ VILLAGE_007 に畳まれる</li>
  *   <li>更新 — 投稿者本人 OK</li>
  *   <li>更新 — 第三者なら COMMON_002</li>
  *   <li>更新 — OPEN 以外なら VILLAGE_064</li>
@@ -84,12 +84,42 @@ class VillageMatchRecruitServiceTest {
     @Mock private VillageMembershipRepository membershipRepository;
     @Mock private VillageMatchRecruitRepository recruitRepository;
     @Mock private VillageMatchRecruitApplicationRepository applicationRepository;
-    @Mock private UserVillageNicknameRepository nicknameRepository;
     @Mock private TeamRepository teamRepository;
     @Mock private OrganizationRepository organizationRepository;
+    /**
+     * F17.3 前工程リファクタで表示名解決が共有ヘルパ {@link VillageNicknameResolver} へ移設された。
+     * 従来の resolveUserDisplayName はニックネーム未登録時 {@code "USER:#id"} を返していたため、
+     * その出力を lenient スタブで完全再現し、既存アサーションのふるまいを不変に保つ（骨抜き禁止）。
+     */
+    @Mock private VillageNicknameResolver villageNicknameResolver;
+
+    /** 村の存在秘匿ゲート。実物へ委譲させるため {@link VillageAccessGateTestSupport} で結線する。 */
+    @Mock
+    private VillageAccessGate accessGate;
 
     @InjectMocks
     private VillageMatchRecruitService service;
+
+    /**
+     * 村サービスの村存在確認は {@link VillageAccessGate} へ移った。
+     * モックのゲートに実物のゲート（同じモックのリポジトリを注入）を委譲させることで、
+     * 本テストが積み上げてきた {@code villageRepository.findById} の stub をそのまま生かしつつ、
+     * 可視性判定は実物のロジックで走らせる。
+     */
+    @BeforeEach
+    void wireVillageAccessGate() {
+        VillageAccessGateTestSupport.delegateToRealGate(accessGate, villageRepository, membershipRepository);
+    }
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubNicknameResolver() {
+        org.mockito.Mockito.lenient()
+                .when(villageNicknameResolver.resolve(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> {
+                    Long uid = inv.getArgument(0);
+                    return uid == null ? null : "USER:#" + uid;
+                });
+    }
 
     private static final UUID VILLAGE_ID = UUID.randomUUID();
     private static final Long ACTOR = 100L;
@@ -178,7 +208,7 @@ class VillageMatchRecruitServiceTest {
     @DisplayName("01. 募集作成成功 — 村人による作成で OPEN 状態保存")
     void create_success() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.save(any())).willAnswer(inv -> {
@@ -206,7 +236,7 @@ class VillageMatchRecruitServiceTest {
     @DisplayName("02. 募集作成 — 非村人なら VILLAGE_007 (NOT_MEMBER)")
     void create_notMember() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.empty());
 
@@ -225,7 +255,7 @@ class VillageMatchRecruitServiceTest {
     @DisplayName("03. 募集作成 — 試合終了 < 開始 なら VILLAGE_065")
     void create_invalidTime() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
 
@@ -247,20 +277,19 @@ class VillageMatchRecruitServiceTest {
     // 4. 募集作成 — BAN 中
     // ------------------------------------------------------------------------
     @Test
-    @DisplayName("04. 募集作成 — BAN 中ユーザーなら VILLAGE_031")
+    @DisplayName("04. 募集作成 — BAN 中ユーザーは非村人と同じ VILLAGE_007 (NOT_MEMBER) に畳まれる")
     void create_banned() {
-        VillageMembershipEntity m = villagerMembership(ACTOR);
-        m.setBannedAt(LocalDateTime.now());
-
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        // findActiveByVillageIdAndSubject は BAN 済みを現役メンバーとして返さない
+        // （BAN・退村・非村人はいずれも Optional.empty() → NOT_MEMBER に畳んで状態を秘匿する）。
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
-                .willReturn(Optional.of(m));
+                .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.createRecruit(VILLAGE_ID, validCreate(), ACTOR))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(VillageErrorCode.MEMBER_BANNED);
+                .isEqualTo(VillageErrorCode.NOT_MEMBER);
     }
 
     // ------------------------------------------------------------------------
@@ -273,6 +302,9 @@ class VillageMatchRecruitServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         MatchRecruitUpdateRequest req = new MatchRecruitUpdateRequest(
@@ -316,6 +348,9 @@ class VillageMatchRecruitServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.of(villagerMembership(ACTOR)));
 
         MatchRecruitUpdateRequest req = new MatchRecruitUpdateRequest(
                 null, "x", null, null, null, null, null, null, null, null, null);
@@ -324,6 +359,32 @@ class VillageMatchRecruitServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(VillageErrorCode.MATCH_RECRUIT_NOT_OPEN);
+    }
+
+    // ------------------------------------------------------------------------
+    // 7b. 更新 — BAN 済み投稿者は本人でも締め出す（認可 Wave3・村ロットA・真の穴の修正）
+    // ------------------------------------------------------------------------
+    @Test
+    @DisplayName("07b. 更新 — BAN 済みの投稿者本人は更新できない（現役性チェック）")
+    void update_bannedAuthor() {
+        VillageMatchRecruitEntity entity = openRecruit(ACTOR);
+
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
+        given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
+        // BAN 済み（退村扱い）のため findActiveByVillageIdAndSubject は現役メンバーを返さない
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.empty());
+
+        MatchRecruitUpdateRequest req = new MatchRecruitUpdateRequest(
+                null, "BAN逃れの改ざん", null, null, null, null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> service.updateRecruit(VILLAGE_ID, entity.getId(), req, ACTOR))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.COMMON_002);
+
+        verify(recruitRepository, never()).save(any());
     }
 
     // ------------------------------------------------------------------------
@@ -399,7 +460,7 @@ class VillageMatchRecruitServiceTest {
         VillageMatchRecruitEntity entity = openRecruit(OTHER);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
@@ -432,7 +493,7 @@ class VillageMatchRecruitServiceTest {
         entity.setStatus(VillageMatchRecruitStatus.CLOSED);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
@@ -455,7 +516,7 @@ class VillageMatchRecruitServiceTest {
         VillageMatchRecruitEntity entity = openRecruit(OTHER);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
@@ -481,7 +542,7 @@ class VillageMatchRecruitServiceTest {
         VillageMatchRecruitEntity entity = openRecruit(ACTOR); // 投稿者 = ACTOR
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
                 .willReturn(Optional.of(villagerMembership(ACTOR)));
         given(recruitRepository.findById(entity.getId())).willReturn(Optional.of(entity));
@@ -590,5 +651,43 @@ class VillageMatchRecruitServiceTest {
         assertThat(res.status()).isEqualTo(VillageMatchApplicationStatus.ACCEPTED);
         assertThat(res.reviewedByUserId()).isEqualTo(ACTOR);
         assertThat(res.reviewComment()).isEqualTo("歓迎");
+    }
+
+    // ------------------------------------------------------------------------
+    // 19. 一覧 — 非村人は VILLAGE_007（認可 Wave3・村ロットA・真の穴の修正）
+    // ------------------------------------------------------------------------
+    @Test
+    @DisplayName("19. 一覧 — 非村人は VILLAGE_007（村人限定閲覧の欠落を修正）")
+    void list_notMember() {
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.listRecruits(
+                VILLAGE_ID, null, null, null, null, 0, 20, ACTOR))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(VillageErrorCode.NOT_MEMBER);
+
+        verify(recruitRepository, never()).findByVillageIdAndDeletedAtIsNull(any(), any());
+    }
+
+    // ------------------------------------------------------------------------
+    // 20. 一覧 — 村人なら閲覧成功
+    // ------------------------------------------------------------------------
+    @Test
+    @DisplayName("20. 一覧 — 村人なら一覧を取得できる")
+    void list_success() {
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(ACTOR)))
+                .willReturn(Optional.of(villagerMembership(ACTOR)));
+        given(recruitRepository.findByVillageIdAndDeletedAtIsNull(eq(VILLAGE_ID), any()))
+                .willReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        var res = service.listRecruits(VILLAGE_ID, null, null, null, null, 0, 20, ACTOR);
+
+        assertThat(res.items()).isEmpty();
     }
 }

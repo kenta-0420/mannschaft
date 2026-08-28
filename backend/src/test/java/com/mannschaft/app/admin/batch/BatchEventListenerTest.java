@@ -3,6 +3,7 @@ package com.mannschaft.app.admin.batch;
 import com.mannschaft.app.admin.batch.event.BatchCompletedEvent;
 import com.mannschaft.app.admin.batch.event.BatchFailedEvent;
 import com.mannschaft.app.admin.entity.BatchJobLogEntity;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportAsyncExecutor;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -12,9 +13,11 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.ResourceBundleMessageSource;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
@@ -45,7 +48,14 @@ class BatchEventListenerTest {
         notificationService = mock(NotificationService.class);
         userRoleRepository = mock(UserRoleRepository.class);
         errorReportAsyncExecutor = mock(ErrorReportAsyncExecutor.class);
-        listener = new BatchEventListener(notificationService, userRoleRepository, errorReportAsyncExecutor);
+        // MessageSource は実物を使う（モックが引数をそのまま返す形だと鍵の欠落もフォーマット崩れも検出できないため）。
+        ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasenames("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        UserLocaleCache userLocaleCache = mock(UserLocaleCache.class);
+        given(userLocaleCache.getLocales(any())).willReturn(Map.of());
+        listener = new BatchEventListener(
+                notificationService, userRoleRepository, errorReportAsyncExecutor, messageSource, userLocaleCache);
     }
 
     @Test

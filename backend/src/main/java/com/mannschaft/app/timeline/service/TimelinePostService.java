@@ -2,8 +2,10 @@ package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
@@ -12,6 +14,7 @@ import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.timeline.AttachmentType;
 import com.mannschaft.app.timeline.VideoProcessingStatus;
 import com.mannschaft.app.timeline.event.TimelinePostCreatedEvent;
+import com.mannschaft.app.timeline.PostDeliveryScope;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.PostedAsType;
@@ -32,6 +35,7 @@ import com.mannschaft.app.timeline.repository.TimelinePostEditRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostReactionRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.village.VillageErrorCode;
+import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
 import lombok.RequiredArgsConstructor;
@@ -42,9 +46,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -109,6 +117,42 @@ public class TimelinePostService {
     private final com.mannschaft.app.team.service.TeamService teamService;
     /** 投稿元スコープの slug 一括解決用（ORGANIZATION）。 */
     private final com.mannschaft.app.organization.service.OrganizationService organizationService;
+    /**
+     * 画像添付の R2 生キー（{@code file_key}）を署名付き表示 URL へ解決する共通部品（#2377 で全域導入）。
+     * FE は R2 を署名できないため、DB の生キーをそのまま返すと 404 になる。issue #2424 の根治で
+     * timeline も他ドメイン（village/blog 等）に倣って本部品を通す。存在検証は行わず署名 URL 生成のみ。
+     */
+    private final MediaUrlResolver mediaUrlResolver;
+    /**
+     * 投稿可視性判定の正準実装（認可根治 Wave7）。読取経路（{@link #getPostDetail} /
+     * {@link #getReplies}）・書き込み経路（リプライ/リポストの参照先検証）が共有する唯一の述語。
+     */
+    private final TimelinePostVisibilityAccessGuard postVisibilityGuard;
+    /** 投稿の更新・削除・ピン留め切替の管理操作ゲート（本人 or TEAM/ORGANIZATION スコープの ADMIN+）。 */
+    private final TimelinePostAccessGuard postAccessGuard;
+    /**
+     * 配下配信（delivery_scope）の到達範囲を求める唯一の正準実装。マイフィード・ユーザー投稿一覧・
+     * 検索・可視性ゲートの 4 経路が本部品を共有する（重複実装すると必ずズレるため）。
+     */
+    private final TimelineDeliveryScopeResolver deliveryScopeResolver;
+    /** マイフィードのミュート除外用（表示設定であり認可ではない。本サービスのフィード経路限定）。 */
+    private final com.mannschaft.app.timeline.repository.UserMuteRepository muteRepository;
+
+    /** {@code user_mutes.muted_type} のチーム種別。 */
+    private static final String MUTED_TYPE_TEAM = "TEAM";
+    /** {@code user_mutes.muted_type} の組織種別。 */
+    private static final String MUTED_TYPE_ORGANIZATION = "ORGANIZATION";
+
+    /**
+     * {@code NOT IN} 句へ安全に渡せるリストへ変換する。
+     *
+     * <p><b>{@code IN} 用のダミーと意味が反転する</b>点に注意。scope ID は常に正の値なので
+     * {@code NOT IN (-1)} は「全件通過（除外なし）」を意味する。{@code IN (-1)} の
+     * 「1 件もマッチしない」と取り違えると、フィードが全件消えるか全件通るかに倒れる。</p>
+     */
+    private static List<Long> safeNotInList(List<Long> ids) {
+        return (ids == null || ids.isEmpty()) ? List.of(-1L) : ids;
+    }
 
     /** 名前解決フォールバック（退会・削除・匿名化で Map に存在しない場合）。 */
     private static final String UNKNOWN_USER_NAME = "不明なユーザー";
@@ -131,8 +175,48 @@ public class TimelinePostService {
      */
     @Transactional
     public PostResponse createPost(CreatePostRequest req, Long resolvedScopeId, Long userId) {
-        checkScopeMembership(req.getScopeTypeOrDefault(), resolvedScopeId, userId);
-        return doCreatePost(req, resolvedScopeId, userId);
+        // VILLAGE への投稿権限は doCreatePost の validatePostingIdentity が
+        // 投稿主体（USER / TEAM / ORGANIZATION）単位で検証する。ここで呼び出し元 userId 単位の
+        // 村メンバー判定を重ねると、「投稿者本人は村メンバーではないが所属チームが村メンバー」
+        // という正当なチーム代理投稿を誤って弾くため、VILLAGE の認可は下流の主体検証へ委譲する
+        // （素通しではなく、より粒度の細かい検証に委ねる）。
+        //
+        // なお本判定を private ヘルパーに切り出すと、認可番人（AuthzControllerGuardArchTest）の
+        // 委譲追跡（MAX_DELEGATION_DEPTH = 2）で accessControlService の呼び出しが
+        // 3 ホップ目に沈み検出されなくなる。番人に見える位置を保つため、ここは
+        // checkScopeMembership を直接呼ぶ形にフラット化している。
+        if (parseScopeType(req.getScopeTypeOrDefault()) != PostScopeType.VILLAGE) {
+            checkScopeMembership(req.getScopeTypeOrDefault(), resolvedScopeId, userId);
+        }
+        // 配下配信（CHILDREN / DESCENDANTS）の送信権限ゲート。
+        //
+        // 配下配信は「投稿が届く人の集合」を組織階層ぶん広げる操作であり、組織名義投稿
+        // （posted_as_type=ORGANIZATION）が既に ADMIN/DEPUTY_ADMIN を要求しているのに対して
+        // 影響範囲がより広い。在籍しているだけの MEMBER / SUPPORTER が最上位組織から
+        // 配下全体へ周知を流せる状態は権限の逆転であるため、組織名義投稿と同じ作法
+        // （AccessControlService#checkAdminOrAbove ＝ 違反時 403 COMMON_002）に揃えて塞ぐ。
+        //
+        // 課すのは「新規投稿でクライアントが明示指定した」場合のみ（parentId == null）。
+        // 返信は親投稿から delivery_scope を継承する（doCreatePost）ため、ここで返信にも課すと
+        // 配下配信で届いた投稿へ一般メンバーが返信できなくなる。継承経路には課さないこと。
+        //
+        // ORGANIZATION 以外（TEAM/PUBLIC/PERSONAL/VILLAGE）では delivery_scope は配信・可視性の
+        // どの述語にも寄与しない（到達範囲を計算する TimelineDeliveryScopeResolver は組織階層のみを
+        // 展開する）。値が保存されても誰にも余分に届かないため権限を要求する理由が無く、
+        // 指定値をそのまま保存する既存契約も変えない。
+        //
+        // なお checkScopeMembership と同じ理由（認可番人 AuthzControllerGuardArchTest の
+        // 委譲追跡 MAX_DELEGATION_DEPTH = 2）で、accessControlService の呼び出しは
+        // private ヘルパーへ沈めず本メソッド直下に置く。
+        if (req.getParentId() == null
+                && req.getDeliveryScopeOrDefault() != PostDeliveryScope.DIRECT
+                && parseScopeType(req.getScopeTypeOrDefault()) == PostScopeType.ORGANIZATION) {
+            accessControlService.checkAdminOrAbove(userId, resolvedScopeId, "ORGANIZATION");
+        }
+        // 上記は「リクエストが申告したスコープ」に対する検証である。リプライは親投稿から
+        // スコープを継承するため申告値と実効値が食い違いうる。継承後の実効スコープに対する
+        // 再評価は doCreatePost（enforceScopeAuthorization = true）が担う。
+        return doCreatePost(req, resolvedScopeId, userId, true);
     }
 
     /**
@@ -167,16 +251,122 @@ public class TimelinePostService {
      */
     @Transactional
     public PostResponse createSystemPost(CreatePostRequest req, Long userId) {
-        return doCreatePost(req, parseInternalScopeId(req), userId);
+        return doCreatePost(req, parseInternalScopeId(req), userId, false);
+    }
+
+    /**
+     * 村行事の還流専用のシステム名義投稿を作成する（F17.2 Wave2 ①・設計書 §3.2/§3.3）。
+     *
+     * <p>行事が「立った／近づいた／確定した／始まった」ときに、村のタイムラインへ
+     * <b>システム名義（投稿者ユーザー不在）</b>の投稿を1行作る。設計書 §3.2 の契約に従い、
+     * {@code user_id = NULL}・{@code posted_as_type} は既定 {@code USER} のまま（無視される）・
+     * {@code status = PUBLISHED}・{@code scope_type = VILLAGE}・{@code scope_id = 0}・
+     * {@code scope_village_id = villageId} で保存する。システム投稿の判定は
+     * {@code system_post_type IS NOT NULL} の一本槍であり、{@code posted_as_type} は読まない。</p>
+     *
+     * <p><b>本メソッドは「村行事の還流専用」であり、汎用の「任意本文を任意村へ投げる API」ではない</b>。
+     * 種別を {@link VillageEventNotificationType} enum 引数で縛ることで用途を型で限定する。</p>
+     *
+     * <p><b>認可はこのメソッドを呼ぶ村ドメインの Service 側の責務</b>である（ドメイン越境は
+     * Service メソッド呼び出しのみ・原則1/5・設計書 §3.3）。本メソッドはメンバーシップ検証を
+     * 行わない（呼び出し元がシステム内部の信頼済みコードであることを前提とする）。
+     * 通知・自動投稿の発火配線（バッチ／afterCommit）は後続の村ドメイン側で結線する（設計書 §3.3.1）。</p>
+     *
+     * @param villageId       投稿先の村 UUID（{@code scope_village_id}）
+     * @param systemPostType  システム投稿の種別（村ドメイン enum・{@code system_post_type} へ {@code .name()} で格納）
+     * @param sourceEventUuid 対象行事の UUID（歳時記/祭/寄合の {@code id}）。冪等判定・タップ遷移に使う
+     * @param content         投稿本文（i18n 由来の要約等。呼び出し元で組み立てる）
+     * @return 作成された投稿（システム投稿なので {@code postedAs}/{@code user} は付与されない）
+     */
+    @Transactional
+    public PostResponse createSystemVillagePost(UUID villageId,
+                                                VillageEventNotificationType systemPostType,
+                                                UUID sourceEventUuid,
+                                                String content) {
+        if (villageId == null) {
+            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
+        }
+        if (systemPostType == null) {
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
+
+        TimelinePostEntity post = TimelinePostEntity.builder()
+                .scopeType(PostScopeType.VILLAGE)
+                .scopeId(0L)
+                .scopeVillageId(villageId)
+                .userId(null)                              // システム投稿は投稿者ユーザー不在（§3.2）
+                .postedAsType(PostedAsType.USER)           // 既定値のまま・判定には使わない（§3.2）
+                .systemPostType(systemPostType.name())     // system_post_type IS NOT NULL がシステム投稿の唯一の判定
+                .sourceEventUuid(sourceEventUuid)
+                .content(content)
+                .status(PostStatus.PUBLISHED)
+                .build();
+
+        post = postRepository.save(post);
+        log.info("村行事システム投稿作成: id={}, villageId={}, type={}, sourceEventUuid={}",
+                post.getId(), villageId, systemPostType, sourceEventUuid);
+
+        return timelineMapper.toPostResponse(post);
+    }
+
+    /**
+     * 村行事のシステム自動投稿が既に存在するかを判定する（F17.2 Wave2 ①・冪等判定・設計書 §3.7）。
+     *
+     * <p>{@code (scope_village_id, system_post_type, source_event_uuid)} の存在チェック。
+     * 村ドメインの還流サービスが EVENT_UPCOMING 等の二重投稿を防ぐために呼ぶ
+     * （ドメイン越境は Service メソッド経由・原則1/5）。</p>
+     */
+    public boolean systemVillagePostExists(UUID villageId, VillageEventNotificationType systemPostType,
+                                           UUID sourceEventUuid) {
+        if (villageId == null || systemPostType == null || sourceEventUuid == null) {
+            return false;
+        }
+        return postRepository.existsByScopeVillageIdAndSystemPostTypeAndSourceEventUuid(
+                villageId, systemPostType.name(), sourceEventUuid);
+    }
+
+    /**
+     * 指定 ID 群のうち生存している（timeline {@code deleted_at} でない）当該村の VILLAGE 投稿 ID を返す
+     * （F17.2 Wave2 ③・実況一覧/村史編纂の削除済み除外・AC-17c）。
+     */
+    public Set<Long> filterAliveVillagePostIds(java.util.Collection<Long> postIds, UUID villageId) {
+        if (postIds == null || postIds.isEmpty() || villageId == null) {
+            return java.util.Set.of();
+        }
+        return new HashSet<>(postRepository.findAliveVillagePostIds(postIds, villageId));
+    }
+
+    /**
+     * 指定投稿が「生存している当該村の VILLAGE 投稿」であるかを判定する（F17.2 Wave2 ③・実況タグ付けの検証）。
+     */
+    public boolean isAliveVillagePost(Long postId, UUID villageId) {
+        if (postId == null || villageId == null) {
+            return false;
+        }
+        return !postRepository.findAliveVillagePostIds(List.of(postId), villageId).isEmpty();
     }
 
     /**
      * スコープに応じたメンバーシップチェックを行う（ユーザー操作用）。
      *
+     * <p><b>認可根治 Wave6</b>: {@link PostScopeType} の <b>全 8 値を網羅的にディスパッチ</b>し、
+     * 未対応・未知の種別は {@code default} で fail-closed に倒す。呼び出し元が渡す
+     * {@code scopeTypeStr} / {@code resolvedScopeId} はいずれもリクエスト由来（クエリパラメータ・
+     * リクエストボディ）であり攻撃者が自由に指定できるため、「知っている種別だけ検証し
+     * 残りは黙って通す」構造を残してはならない。</p>
+     *
      * <ul>
-     *   <li>TEAM スコープ: {@link AccessControlService#checkMembership} でチームメンバー確認</li>
-     *   <li>ORGANIZATION スコープ: 同上で組織メンバー確認</li>
-     *   <li>その他スコープ: チェックなし</li>
+     *   <li>PUBLIC: 検証なし（公開スコープ。{@code scope_id} は意味を持たない）</li>
+     *   <li>TEAM / ORGANIZATION: {@link AccessControlService#checkMembership} でメンバー確認（非メンバーは 403）</li>
+     *   <li>PERSONAL: {@code scope_id} は投稿者本人の {@code users.id}
+     *       （唯一の生成経路である行動メモ終業投稿がそう積む）。呼び出し元本人と一致しなければ 403</li>
+     *   <li>VILLAGE: 村の識別子は {@code scope_id} ではなく {@code scope_village_id}（UUID）側にあり、
+     *       {@code scope_id} は常に 0 で全村衝突する。したがって本メソッド経由の VILLAGE 指定は
+     *       fail-closed とし、{@link #getFeed} / {@link #getPinnedPosts} の
+     *       {@code scopeVillageId} 経由（{@link #requireVillageMember}）を正路とする</li>
+     *   <li>FRIEND_TEAM / FRIEND_FORWARD / FRIEND_ARCHIVE: 汎用タイムライン経路は正路ではない。
+     *       正路は social ドメインの friend-feed API（{@code MANAGE_FRIEND_TEAMS} 権限が必要）であり、
+     *       汎用経路を開けると正路より緩い読み口を作ることになるため fail-closed とする</li>
      * </ul>
      *
      * @param scopeTypeStr    スコープ種別文字列
@@ -184,11 +374,46 @@ public class TimelinePostService {
      * @param userId          操作ユーザーID
      */
     private void checkScopeMembership(String scopeTypeStr, Long resolvedScopeId, Long userId) {
-        PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeTypeStr);
-        if (scopeTypeEnum == PostScopeType.TEAM && resolvedScopeId != null) {
-            accessControlService.checkMembership(userId, resolvedScopeId, "TEAM");
-        } else if (scopeTypeEnum == PostScopeType.ORGANIZATION && resolvedScopeId != null) {
-            accessControlService.checkMembership(userId, resolvedScopeId, "ORGANIZATION");
+        switch (parseScopeType(scopeTypeStr)) {
+            case PUBLIC -> {
+                // 公開スコープ。誰でも読み書きできるため追加の検証はしない。
+            }
+            case TEAM -> accessControlService.checkMembership(userId, resolvedScopeId, "TEAM");
+            case ORGANIZATION ->
+                    accessControlService.checkMembership(userId, resolvedScopeId, "ORGANIZATION");
+            case PERSONAL -> requireSelfScope(resolvedScopeId, userId);
+            case VILLAGE, FRIEND_TEAM, FRIEND_FORWARD, FRIEND_ARCHIVE ->
+                    throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * スコープ種別文字列を {@link PostScopeType} に変換する。
+     *
+     * <p>未知の文字列は {@link IllegalArgumentException}（＝ 500）ではなく
+     * {@link TimelineErrorCode#POST_NOT_FOUND} に倒す。スコープ種別は利用者が
+     * 自由に指定できるため、不正値で 500 を返すと入力起因の障害が
+     * サーバー障害として計上されてしまう。</p>
+     */
+    private PostScopeType parseScopeType(String scopeTypeStr) {
+        try {
+            return PostScopeType.valueOf(scopeTypeStr);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
+        }
+    }
+
+    /**
+     * PERSONAL スコープが呼び出し元本人のものであることを検証する（認可根治 Wave6）。
+     *
+     * <p>PERSONAL の {@code scope_id} は投稿者本人の {@code users.id} であるため、
+     * 「{@code scope_id} == 呼び出し元 userId」が自己スコープの成立条件になる。
+     * これによりフィード/ピン留めのリポジトリ引きも実質的に呼び出し元 ID との
+     * 複合キーとなり、他人の PERSONAL 投稿には到達できない。</p>
+     */
+    private void requireSelfScope(Long resolvedScopeId, Long userId) {
+        if (userId == null || !userId.equals(resolvedScopeId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
     }
 
@@ -221,11 +446,20 @@ public class TimelinePostService {
      * scopeType/scopeId/scopeVillageId を無視して親投稿のスコープを継承する。
      * これにより「TEAMスコープ投稿へのリプライがPUBLICで作成される」情報漏洩を防ぐ。</p>
      *
-     * @param req             作成リクエスト
-     * @param resolvedScopeId 解決済みの内部スコープ Long ID（非リプライ時の {@code effectiveScopeId}）
-     * @param userId          投稿者ユーザーID
+     * <p><b>認可根治 Wave6</b>: 継承によってリクエストの申告値と実際に保存されるスコープが
+     * 食い違うため、{@code enforceScopeAuthorization} が true の場合は
+     * <b>継承後の実効スコープ</b>に対して {@link #requireReplyableParent} で認可を再評価する。
+     * 非リプライ時は申告値＝実効値（{@code resolvedScopeId} をそのまま採用する）であり、
+     * {@link #createPost} が入口で行う {@link #checkScopeMembership} が実効スコープの検証に一致する。</p>
+     *
+     * @param req                        作成リクエスト
+     * @param resolvedScopeId            解決済みの内部スコープ Long ID（非リプライ時の {@code effectiveScopeId}）
+     * @param userId                     投稿者ユーザーID
+     * @param enforceScopeAuthorization  実効スコープの認可を評価するか（ユーザー操作は true・
+     *                                   {@link #createSystemPost} 経由のシステム自動投稿は false）
      */
-    private PostResponse doCreatePost(CreatePostRequest req, Long resolvedScopeId, Long userId) {
+    private PostResponse doCreatePost(CreatePostRequest req, Long resolvedScopeId, Long userId,
+                                      boolean enforceScopeAuthorization) {
         if (req.getContent() == null || req.getContent().isBlank()) {
             if (req.getRepostOfId() == null && req.getPoll() == null) {
                 throw new BusinessException(TimelineErrorCode.EMPTY_POST_CONTENT);
@@ -256,6 +490,23 @@ public class TimelinePostService {
         if (req.getParentId() != null) {
             parentPost = postRepository.findById(req.getParentId())
                     .orElseThrow(() -> new BusinessException(TimelineErrorCode.POST_NOT_FOUND));
+            if (enforceScopeAuthorization) {
+                // 認可根治 Wave6: 継承元となる親投稿そのものへの到達可否を先に判定する
+                // （読めないスコープの投稿にリプライを積めないようにする）。
+                requireReplyableParent(parentPost, userId);
+            }
+        }
+
+        // 認可根治 Wave6: リポスト元は「呼び出し元から見える投稿」に限る。
+        // リプライの継承と同じく、リクエストが渡した投稿 ID をそのまま参照して
+        // 書き込み（リポスト数の加算）を行う経路のため、参照先の可視性を先に検証する。
+        TimelinePostEntity repostOriginal = null;
+        if (req.getRepostOfId() != null) {
+            repostOriginal = postRepository.findById(req.getRepostOfId()).orElse(null);
+            if (enforceScopeAuthorization && repostOriginal != null
+                    && !postVisibilityGuard.isVisible(repostOriginal, userId)) {
+                throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
+            }
         }
 
         // F17.1 Phase 3: scope=VILLAGE 投稿の主体検証
@@ -263,23 +514,33 @@ public class TimelinePostService {
         PostScopeType scopeTypeEnum;
         Long effectiveScopeId;
         UUID scopeVillageId;
+        PostDeliveryScope effectiveDeliveryScope;
         if (parentPost != null) {
             // リプライ: 親投稿のスコープをそのまま継承する
             scopeTypeEnum = parentPost.getScopeType();
             effectiveScopeId = parentPost.getScopeId();
             scopeVillageId = parentPost.getScopeVillageId();
+            // 配下配信範囲も必ず親から継承する。ここでクライアント指定値（既定 DIRECT）を
+            // 入れると、配下配信で届いた投稿への返信が scope_id=上位組織 かつ
+            // delivery_scope=DIRECT の行になり、返信者自身からも 404 になる
+            // （フィードには出るのに直リンクでは 404、という本 PR が撲滅した非対称を
+            // 返信という形で再生産してしまう）。スコープ3点と同じく親が正である。
+            effectiveDeliveryScope = parentPost.getDeliveryScope() != null
+                    ? parentPost.getDeliveryScope()
+                    : PostDeliveryScope.DIRECT;
         } else {
-            scopeTypeEnum = PostScopeType.valueOf(req.getScopeTypeOrDefault());
+            scopeTypeEnum = parseScopeType(req.getScopeTypeOrDefault());
             effectiveScopeId = resolvedScopeId != null ? resolvedScopeId : 0L;
-            scopeVillageId = null;
+            scopeVillageId = scopeTypeEnum == PostScopeType.VILLAGE ? req.getScopeVillageId() : null;
+            effectiveDeliveryScope = req.getDeliveryScopeOrDefault();
         }
 
         PostedAsType postedAsTypeEnum = PostedAsType.valueOf(req.getPostedAsTypeOrDefault());
         Long postedAsId = req.getPostedAsId();
 
-        if (parentPost == null && scopeTypeEnum == PostScopeType.VILLAGE) {
-            // 通常投稿（非リプライ）のVILLAGEスコープ検証
-            scopeVillageId = req.getScopeVillageId();
+        if (scopeTypeEnum == PostScopeType.VILLAGE) {
+            // VILLAGE スコープの検証。リプライで親から村 ID を継承した場合も同じ検証を通す
+            // （投稿主体単位の検証はリプライにも等しく必要なため、経路で分岐させない）。
             if (scopeVillageId == null) {
                 throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
             }
@@ -300,6 +561,9 @@ public class TimelinePostService {
                 .scopeType(scopeTypeEnum)
                 .scopeId(effectiveScopeId)
                 .scopeVillageId(scopeVillageId)
+                // 配下配信範囲。リプライは親から継承、新規投稿は省略時 DIRECT（現行挙動）。
+                // ORGANIZATION 以外では保存されても配信範囲に寄与しない（チームに階層が無いため）。
+                .deliveryScope(effectiveDeliveryScope)
                 .userId(userId)
                 .postedAsType(postedAsTypeEnum)
                 .postedAsId(postedAsId)
@@ -320,11 +584,10 @@ public class TimelinePostService {
         }
 
         // リポストの場合、元投稿のリポスト数をインクリメント
-        if (req.getRepostOfId() != null) {
-            postRepository.findById(req.getRepostOfId()).ifPresent(original -> {
-                original.incrementRepostCount();
-                postRepository.save(original);
-            });
+        // （元投稿は上記の可視性検証で既に取得済みなのでそれを直接使う）
+        if (repostOriginal != null) {
+            repostOriginal.incrementRepostCount();
+            postRepository.save(repostOriginal);
         }
 
         // 添付ファイルの保存
@@ -356,6 +619,10 @@ public class TimelinePostService {
     /**
      * 投稿を更新する。編集履歴を記録する。
      *
+     * <p><b>認可根治 Wave7</b>: 投稿者本人、または TEAM/ORGANIZATION スコープの ADMIN/DEPUTY_ADMIN が
+     * 更新できる（{@link TimelinePostAccessGuard#checkCanManage}）。それ以外は
+     * {@link TimelineErrorCode#NOT_POST_OWNER}。</p>
+     *
      * @param postId 投稿ID
      * @param req    更新リクエスト
      * @param userId ユーザーID
@@ -364,7 +631,7 @@ public class TimelinePostService {
     @Transactional
     public PostResponse updatePost(Long postId, UpdatePostRequest req, Long userId) {
         TimelinePostEntity post = findPostOrThrow(postId);
-        validateOwner(post, userId);
+        postAccessGuard.checkCanManage(userId, post);
 
         if (req.getContent() == null || req.getContent().isBlank()) {
             throw new BusinessException(TimelineErrorCode.EMPTY_POST_CONTENT);
@@ -390,13 +657,16 @@ public class TimelinePostService {
      * <p><b>F13 Phase 4-γ</b>: 論理削除完了後に添付ファイル（IMAGE / VIDEO_FILE）の
      * 使用量を {@link StorageQuotaService#recordDeletion} で減算する。</p>
      *
+     * <p><b>認可根治 Wave7</b>: 投稿者本人、または TEAM/ORGANIZATION スコープの ADMIN/DEPUTY_ADMIN が
+     * 削除できる（{@link TimelinePostAccessGuard#checkCanManage}）。</p>
+     *
      * @param postId 投稿ID
      * @param userId ユーザーID
      */
     @Transactional
     public void deletePost(Long postId, Long userId) {
         TimelinePostEntity post = findPostOrThrow(postId);
-        validateOwner(post, userId);
+        postAccessGuard.checkCanManage(userId, post);
 
         // F13 Phase 4-γ: 削除前に添付ファイル情報を取得してクォータ減算に備える
         List<TimelinePostAttachmentEntity> attachments =
@@ -448,12 +718,19 @@ public class TimelinePostService {
         // 認可根治 Wave3-B7-timeline（BOLA 根治）: post を先に取得し、post 自身が持つ scope に対して
         // membership を検証する。不可視なら「存在しない」と同じ POST_NOT_FOUND を返し、
         // 越境アクセスの成否（対象 ID が実在するか）を漏らさない。
-        if (!isPostVisible(post, userId)) {
+        if (!postVisibilityGuard.isVisible(post, userId)) {
             throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
         }
 
-        List<AttachmentResponse> attachments = timelineMapper.toAttachmentResponseList(
-                attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(postId));
+        // issue #2424: 画像添付の image.url/thumbnailUrl を署名付き表示 URL に解決して返す。
+        // 添付エンティティを取得し、画像キーをまとめて 1 回 resolveAll（N+1 回避）してから割り当てる。
+        List<TimelinePostAttachmentEntity> attachmentEntities =
+                attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(postId);
+        Map<String, String> imageUrlByKey = resolveImageUrls(attachmentEntities);
+        List<AttachmentResponse> attachments = timelineMapper.toAttachmentResponseList(attachmentEntities)
+                .stream()
+                .map(a -> withResolvedImageUrl(a, imageUrlByKey))
+                .toList();
 
         boolean mitayo = reactionRepository.existsByTimelinePostIdAndUserId(postId, userId);
         int mitayoCount = (int) reactionRepository.countByTimelinePostId(postId);
@@ -504,7 +781,11 @@ public class TimelinePostService {
      * スコープ別フィードを取得する。
      *
      * <p>scopeType=VILLAGE の場合は scopeVillageId（UUID）で絞り込む。
-     * scopeVillageId が null の場合は空リストを返す。</p>
+     * scopeVillageId が null の場合、本メソッド自体は空リストを返すが、
+     * <b>EP 全体（{@code GET /timeline/feed}）としては 403 になる</b>。
+     * コントローラーが続けて呼ぶ {@link #getPinnedPosts(String, Long, UUID, Long)} が
+     * 「村 ID 無しの VILLAGE 指定」を fail-closed で拒否するため（認可根治 Wave6）。
+     * FE は VILLAGE スコープでは常に scopeVillageId を送るため正常系に影響はない。</p>
      *
      * <p><b>認可根治 Wave3-B7-timeline</b>: TEAM/ORGANIZATION は {@link #checkScopeMembership}
      * （非メンバーは COMMON_002・403）、VILLAGE は {@link #requireVillageMember}
@@ -522,7 +803,7 @@ public class TimelinePostService {
      */
     public List<PostResponse> getFeed(String scopeType, Long scopeId, UUID scopeVillageId, int size, Long userId) {
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
-        PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeType);
+        PostScopeType scopeTypeEnum = parseScopeType(scopeType);
         List<TimelinePostEntity> posts;
         if (scopeTypeEnum == PostScopeType.VILLAGE) {
             // 村スコープは scope_village_id（UUID）で絞り込む
@@ -552,30 +833,31 @@ public class TimelinePostService {
     }
 
     /**
-     * 投稿 1 件の可視性を判定する（認可根治 Wave3-B7-timeline・BOLA 対策）。
-     * {@link #getPostDetail} / {@link #getReplies} が「post を先に取得し post 自身の scope で判定する」
-     * ために使う（クエリパラメータ由来の scope ではなく、DB に永続化された実 scope を正とする）。
+     * リプライ先の親投稿に到達できることを検証する（認可根治 Wave6・書き込み経路）。
      *
-     * <ul>
-     *   <li>PUBLIC: 常に可視</li>
-     *   <li>TEAM/ORGANIZATION: 呼び出し元がそのスコープのメンバーであること</li>
-     *   <li>VILLAGE: 呼び出し元がその村の現役 USER メンバーであること</li>
-     *   <li>PERSONAL: 呼び出し元が投稿者本人であること</li>
-     *   <li>FRIEND_TEAM/FRIEND_FORWARD/FRIEND_ARCHIVE: 本 Wave の対象外（social ドメインの
-     *       {@code FriendFeedController} 経由が正規導線であり、本メソッド経由の閲覧は想定外だが
-     *       誤検知で正規導線を壊さないよう pass-through。B7 以降の follow-up 候補として残す）</li>
-     * </ul>
+     * <p>リプライは親投稿のスコープをそのまま継承して保存されるため、リクエストが申告した
+     * スコープではなく <b>継承元の親投稿が属する実効スコープ</b> に対して認可を評価する。
+     * 判定は読取経路（{@link #getPostDetail} / {@link #getReplies}）と同じ
+     * {@link TimelinePostVisibilityAccessGuard#isVisible} を用い、到達できない場合は読取経路と
+     * 同一の {@link TimelineErrorCode#POST_NOT_FOUND} に倒して対象 ID の実在を秘匿する。</p>
+     *
+     * <p>VILLAGE スコープだけは本メソッドで判定しない。村への投稿権限は下流の
+     * {@link PostingIdentityService#validatePostingIdentity} が
+     * <b>投稿主体（USER / TEAM / ORGANIZATION）単位</b>で検証しており、ここで呼び出し元
+     * {@code userId} 単位の村メンバー判定を重ねると、チーム／組織としての正当な代理投稿の
+     * 判定粒度を落とすことになる。素通しではなく、より粒度の細かい主体検証へ委譲する
+     * （{@link #doCreatePost} の VILLAGE ブロックがリプライ経路でも必ず走る）。</p>
+     *
+     * @param parentPost リプライ先の親投稿
+     * @param userId     呼び出し元ユーザー ID
      */
-    private boolean isPostVisible(TimelinePostEntity post, Long userId) {
-        return switch (post.getScopeType()) {
-            case PUBLIC -> true;
-            case TEAM -> accessControlService.isMember(userId, post.getScopeId(), "TEAM");
-            case ORGANIZATION -> accessControlService.isMember(userId, post.getScopeId(), "ORGANIZATION");
-            case VILLAGE -> post.getScopeVillageId() != null
-                    && postingIdentityService.isUserVillageMember(post.getScopeVillageId(), userId);
-            case PERSONAL -> userId != null && userId.equals(post.getUserId());
-            case FRIEND_TEAM, FRIEND_FORWARD, FRIEND_ARCHIVE -> true;
-        };
+    private void requireReplyableParent(TimelinePostEntity parentPost, Long userId) {
+        if (parentPost.getScopeType() == PostScopeType.VILLAGE) {
+            return;
+        }
+        if (!postVisibilityGuard.isVisible(parentPost, userId)) {
+            throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
+        }
     }
 
     /**
@@ -613,8 +895,21 @@ public class TimelinePostService {
         List<Long> safeTeamIds = teamIds.isEmpty() ? List.of(-1L) : teamIds;
         List<Long> safeOrgIds = orgIds.isEmpty() ? List.of(-1L) : orgIds;
 
+        // 配下配信: 上位組織が CHILDREN/DESCENDANTS で出した投稿の到達範囲（距離別）。
+        TimelineDeliveryScopeResolver.Reach reach = deliveryScopeResolver.resolve(teamIds, orgIds);
+
+        // ミュート除外は SQL 側で行う（アプリ側で捨てると limit 件が目減りしページが歯抜けになる）。
+        // NOT IN のダミーは IN と意味が反転する: NOT IN (-1) は「全件通過（ミュートなし）」を意味する。
+        List<Long> safeMutedTeamIds = safeNotInList(
+                muteRepository.findMutedIdsByUserIdAndMutedType(userId, MUTED_TYPE_TEAM));
+        List<Long> safeMutedOrgIds = safeNotInList(
+                muteRepository.findMutedIdsByUserIdAndMutedType(userId, MUTED_TYPE_ORGANIZATION));
+
         List<TimelinePostEntity> posts = postRepository.findMyFeed(
-                safeTeamIds, safeOrgIds, cursor, PageRequest.of(0, feedSize));
+                safeTeamIds, safeOrgIds,
+                reach.safeNearOrgIds(), reach.safeFarOrgIds(),
+                safeMutedTeamIds, safeMutedOrgIds,
+                cursor, PageRequest.of(0, feedSize));
         return enrichPosts(timelineMapper.toPostResponseList(posts));
     }
 
@@ -691,13 +986,97 @@ public class TimelinePostService {
         Map<Long, String> authorAvatars = nameResolverService.resolveUserAvatarUrls(authorUserIds);
 
         // 3. 各投稿へ enrich（toBuilder で不変 DTO を再構築）
-        return posts.stream()
+        // F17.2 Wave2 ①: システム投稿（systemPostType 非 null）は投稿主体・投稿者が存在しないため
+        // postedAs を組み立てず null で返す（設計書 §3.9(a)）。system_post_type 非 null 投稿では
+        // user_id も NULL なので enrichUser も自然に null を返す。
+        List<PostResponse> enriched = posts.stream()
                 .map(p -> p.toBuilder()
                         .scope(enrichScope(p.getScope(), teamNames, orgNames, teamSlugs, orgSlugs))
                         .user(enrichUser(p.getAuthor(), authorNames, authorAvatars))
-                        .postedAs(enrichPostedAs(p.getAuthor(), teamNames, orgNames, teamIcons, orgIcons))
+                        .postedAs(p.getSystemPostType() != null
+                                ? null
+                                : enrichPostedAs(p.getAuthor(), teamNames, orgNames, teamIcons, orgIcons))
                         .build())
                 .toList();
+        // issue #2424: 一覧（feed）にも添付配列を付与し、画像は署名付き URL で返す。
+        return attachFeedAttachments(enriched);
+    }
+
+    /**
+     * 投稿一覧に添付配列を付与する（issue #2424・feed で画像を表示するための根治）。
+     *
+     * <p><b>N+1 回避</b>: 全投稿 ID 分の添付を 1 クエリで一括取得し、画像キーの署名解決も
+     * 全添付をまとめて {@link MediaUrlResolver#resolveAll} で 1 回だけ行う。取得した添付は
+     * {@code timelinePostId} でグルーピングして各投稿へ割り当てる。添付が無い投稿には空配列を
+     * 設定する（{@code null} を避け FE の {@code attachments?.length} 分岐を安定させる）。</p>
+     *
+     * <p><b>認可</b>: 本メソッドは呼び出し元がスコープ検証済みで返す投稿群（{@link #getFeed} /
+     * {@link #getMyFeed} 等が membership を検証した結果）に対してのみ添付を積む。可視な投稿の
+     * 添付だけを署名するため、独自の可視性述語を新設せずに越境署名を防げる。</p>
+     */
+    private List<PostResponse> attachFeedAttachments(List<PostResponse> posts) {
+        if (posts == null || posts.isEmpty()) {
+            return posts;
+        }
+        List<Long> postIds = posts.stream()
+                .map(PostResponse::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (postIds.isEmpty()) {
+            return posts;
+        }
+        List<TimelinePostAttachmentEntity> all =
+                attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(postIds);
+        // 画像キーは投稿をまたいで一括で 1 回だけ署名解決する（N+1 回避）。
+        Map<String, String> imageUrlByKey = resolveImageUrls(all);
+        Map<Long, List<AttachmentResponse>> byPost = new LinkedHashMap<>();
+        for (TimelinePostAttachmentEntity e : all) {
+            AttachmentResponse r = withResolvedImageUrl(timelineMapper.toAttachmentResponse(e), imageUrlByKey);
+            byPost.computeIfAbsent(e.getTimelinePostId(), k -> new ArrayList<>()).add(r);
+        }
+        return posts.stream()
+                .map(p -> p.toBuilder()
+                        .attachments(byPost.getOrDefault(p.getId(), List.of()))
+                        .build())
+                .toList();
+    }
+
+    /**
+     * 添付エンティティ群の中から画像（{@link AttachmentType#IMAGE}）の生キーを集めて署名 URL に一括解決する。
+     * null/空白キーは除外する。1 回の {@link MediaUrlResolver#resolveAll} で presign を最小化する（N+1 回避）。
+     */
+    private Map<String, String> resolveImageUrls(Collection<TimelinePostAttachmentEntity> attachments) {
+        if (attachments == null || attachments.isEmpty()) {
+            return Map.of();
+        }
+        List<String> imageKeys = attachments.stream()
+                .filter(a -> a.getAttachmentType() == AttachmentType.IMAGE)
+                .map(TimelinePostAttachmentEntity::getFileKey)
+                .filter(k -> k != null && !k.isBlank())
+                .toList();
+        return mediaUrlResolver.resolveAll(imageKeys);
+    }
+
+    /**
+     * 画像添付レスポンスに署名付き表示 URL を割り当てる（画像以外・解決不能キーはそのまま返す）。
+     *
+     * <p>画像は別サムネイルを持たないため {@code thumbnailUrl} は {@code url} と同一値にする
+     * （FE は {@code thumbnailUrl || url} を読む）。imageWidth/imageHeight は Mapper 変換値を保持する。</p>
+     */
+    private AttachmentResponse withResolvedImageUrl(AttachmentResponse att, Map<String, String> imageUrlByKey) {
+        if (att == null || !AttachmentType.IMAGE.name().equals(att.getAttachmentType())) {
+            return att;
+        }
+        String key = att.getFile() != null ? att.getFile().fileKey() : null;
+        String url = key != null ? imageUrlByKey.get(key) : null;
+        if (url == null) {
+            return att;
+        }
+        Short width = att.getImage() != null ? att.getImage().imageWidth() : null;
+        Short height = att.getImage() != null ? att.getImage().imageHeight() : null;
+        return att.toBuilder()
+                .image(new AttachmentResponse.AttachmentImageDto(width, height, url, url))
+                .build();
     }
 
     /** 投稿元スコープに team/org 名・slug を付与する（TEAM/ORGANIZATION のみ。それ以外は素通し）。 */
@@ -774,10 +1153,14 @@ public class TimelinePostService {
         List<Long> safeTeamIds = teamIds.isEmpty() ? List.of(-1L) : teamIds;
         List<Long> safeOrgIds = orgIds.isEmpty() ? List.of(-1L) : orgIds;
         List<UUID> safeVillageIds = villageIds.isEmpty() ? List.of(NIL_VILLAGE_ID_SENTINEL) : villageIds;
+        // 配下配信の対称性: フィードに出る投稿はユーザー投稿一覧でも到達できなければならない。
+        TimelineDeliveryScopeResolver.Reach reach = deliveryScopeResolver.resolve(teamIds, orgIds);
         List<TimelinePostEntity> posts = postRepository.findByUserIdVisibleToCaller(
-                targetUserId, callerUserId, safeTeamIds, safeOrgIds, safeVillageIds,
+                targetUserId, callerUserId, safeTeamIds, safeOrgIds,
+                reach.safeNearOrgIds(), reach.safeFarOrgIds(), safeVillageIds,
                 PageRequest.of(0, feedSize));
-        return timelineMapper.toPostResponseList(posts);
+        // issue #2424: プロフィール投稿一覧にも添付配列（画像は署名 URL）を付与する。
+        return attachFeedAttachments(timelineMapper.toPostResponseList(posts));
     }
 
     /**
@@ -787,8 +1170,8 @@ public class TimelinePostService {
      * （一覧フィードと同一の表示情報）。ID 昇順で並べ、{@code cursor} 指定時はその ID より後を返す。</p>
      *
      * <p><b>認可根治 Wave3-B7-timeline（BOLA 根治）</b>: 親投稿を取得し、その scope に対して
-     * {@link #isPostVisible} で可視性を検証する。不可視なら {@link #getPostDetail} と同様に
-     * POST_NOT_FOUND を返す（越境アクセスの成否を漏らさない）。</p>
+     * {@link TimelinePostVisibilityAccessGuard#isVisible} で可視性を検証する。不可視なら
+     * {@link #getPostDetail} と同様に POST_NOT_FOUND を返す（越境アクセスの成否を漏らさない）。</p>
      *
      * @param postId 親投稿ID
      * @param cursor 起点カーソル（この投稿 ID より後を取得）。null なら先頭から
@@ -798,7 +1181,7 @@ public class TimelinePostService {
      */
     public List<PostResponse> getReplies(Long postId, Long cursor, int size, Long userId) {
         TimelinePostEntity parent = findPostOrThrow(postId);
-        if (!isPostVisible(parent, userId)) {
+        if (!postVisibilityGuard.isVisible(parent, userId)) {
             throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
         }
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
@@ -808,15 +1191,11 @@ public class TimelinePostService {
     }
 
     /**
-     * ピン留め投稿一覧を取得する。
+     * ピン留め投稿一覧を取得する（村スコープ非対応・{@code GET /timeline/pinned} 用）。
      *
-     * <p><b>認可根治 Wave3-B7-timeline</b>: TEAM/ORGANIZATION は {@link #checkScopeMembership}
-     * で呼び出し元のメンバーシップを検証する（非メンバーは COMMON_002・403）。</p>
-     *
-     * <p><b>既知の残課題（本 Wave 対象外）</b>: VILLAGE スコープは呼び出し元が
-     * {@code scopeVillageId} を渡す経路が無く（本 EP のシグネチャに UUID パラメータが存在しない）、
-     * {@code scope_id} は常に 0 のため全村で衝突する。本メソッドの認可検証だけでは
-     * VILLAGE のピン留め投稿混在は是正できない（別途 API 契約変更が必要・follow-up 起票推奨）。</p>
+     * <p>VILLAGE を指定した場合は {@link #checkScopeMembership} が fail-closed で拒否する。
+     * 村のピン留めを取得する場合は
+     * {@link #getPinnedPosts(String, Long, UUID, Long)} に村 ID を渡すこと。</p>
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -824,9 +1203,39 @@ public class TimelinePostService {
      * @return ピン留め投稿一覧
      */
     public List<PostResponse> getPinnedPosts(String scopeType, Long scopeId, Long userId) {
-        checkScopeMembership(scopeType, scopeId, userId);
-        PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeType);
-        List<TimelinePostEntity> posts = postRepository.findPinnedPosts(scopeTypeEnum, scopeId);
+        return getPinnedPosts(scopeType, scopeId, null, userId);
+    }
+
+    /**
+     * ピン留め投稿一覧を取得する（村スコープ対応）。
+     *
+     * <p><b>認可根治 Wave3-B7-timeline</b>: TEAM/ORGANIZATION は {@link #checkScopeMembership}
+     * で呼び出し元のメンバーシップを検証する（非メンバーは COMMON_002・403）。</p>
+     *
+     * <p><b>認可根治 Wave6</b>: VILLAGE スコープのピン留めを
+     * {@code scope_village_id} で引く経路を新設し、Wave3-B7 で残課題として記録されていた
+     * 「{@code scope_id} が常に 0 のため全村のピン留めが種別一致だけで混在する」問題を根治した。
+     * 村メンバーであることを {@link #requireVillageMember} で検証したうえで、
+     * リポジトリ側でも村 ID を複合キーとして絞る（多層防御）。
+     * 村 ID が渡されない VILLAGE 指定は fail-closed（{@link #checkScopeMembership}）。</p>
+     *
+     * @param scopeType      スコープ種別
+     * @param scopeId        スコープID（VILLAGE スコープでは未使用）
+     * @param scopeVillageId 村 ID（scopeType=VILLAGE 時に必須）
+     * @param userId         呼び出し元ユーザー ID（メンバーシップ検証用）
+     * @return ピン留め投稿一覧
+     */
+    public List<PostResponse> getPinnedPosts(String scopeType, Long scopeId,
+                                             UUID scopeVillageId, Long userId) {
+        PostScopeType scopeTypeEnum = parseScopeType(scopeType);
+        List<TimelinePostEntity> posts;
+        if (scopeTypeEnum == PostScopeType.VILLAGE && scopeVillageId != null) {
+            requireVillageMember(scopeVillageId, userId);
+            posts = postRepository.findPinnedByVillageId(scopeVillageId);
+        } else {
+            checkScopeMembership(scopeType, scopeId, userId);
+            posts = postRepository.findPinnedPosts(scopeTypeEnum, scopeId);
+        }
         // ピン留め一覧にも著者名/アバター・投稿元名/slug・代理主体を enrich する。
         return enrichPosts(timelineMapper.toPostResponseList(posts));
     }
@@ -851,13 +1260,22 @@ public class TimelinePostService {
         // 空リストは native SQL の IN () で構文エラーになるためダミー値で埋める（findMyFeed と同一規約）。
         List<Long> safeTeamIds = teamIds.isEmpty() ? List.of(-1L) : teamIds;
         List<Long> safeOrgIds = orgIds.isEmpty() ? List.of(-1L) : orgIds;
+        // 配下配信の対称性: 配信で届いた投稿は検索でもヒットする。
+        // 一方でミュートは検索に適用しない（マスター御裁可。検索は自分から探しに行く行為であり、
+        // ミュートは「流れてこないようにする」表示設定であるため）。
+        TimelineDeliveryScopeResolver.Reach reach = deliveryScopeResolver.resolve(teamIds, orgIds);
         List<TimelinePostEntity> posts = postRepository.searchByKeyword(
-                keyword, safeTeamIds, safeOrgIds, userId, searchLimit);
-        return timelineMapper.toPostResponseList(posts);
+                keyword, safeTeamIds, safeOrgIds,
+                reach.safeNearOrgIds(), reach.safeFarOrgIds(), userId, searchLimit);
+        // issue #2424: 検索結果一覧にも添付配列（画像は署名 URL）を付与する。
+        return attachFeedAttachments(timelineMapper.toPostResponseList(posts));
     }
 
     /**
      * 投稿のピン留め状態を切り替える。
+     *
+     * <p><b>認可根治 Wave7</b>: 投稿者本人、または TEAM/ORGANIZATION スコープの ADMIN/DEPUTY_ADMIN が
+     * 切り替えできる（{@link TimelinePostAccessGuard#checkCanManage}）。</p>
      *
      * @param postId 投稿ID
      * @param pinned ピン留めするかどうか
@@ -867,7 +1285,7 @@ public class TimelinePostService {
     @Transactional
     public PostResponse togglePin(Long postId, boolean pinned, Long userId) {
         TimelinePostEntity post = findPostOrThrow(postId);
-        validateOwner(post, userId);
+        postAccessGuard.checkCanManage(userId, post);
 
         post.setPinned(pinned);
         post = postRepository.save(post);
@@ -884,15 +1302,6 @@ public class TimelinePostService {
     private TimelinePostEntity findPostOrThrow(Long postId) {
         return postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(TimelineErrorCode.POST_NOT_FOUND));
-    }
-
-    /**
-     * 投稿の所有者チェックを行う。
-     */
-    private void validateOwner(TimelinePostEntity post, Long userId) {
-        if (!userId.equals(post.getUserId())) {
-            throw new BusinessException(TimelineErrorCode.NOT_POST_OWNER);
-        }
     }
 
     /**

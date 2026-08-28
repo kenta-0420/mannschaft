@@ -3,6 +3,7 @@ package com.mannschaft.app.tournament.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.tournament.dto.IndividualRankingResponse;
 import com.mannschaft.app.tournament.dto.MatrixResponse;
 import com.mannschaft.app.tournament.dto.FixtureResponse;
@@ -29,7 +30,33 @@ import java.util.List;
 /**
  * 公開API（SSR・未認証アクセス用）コントローラー。
  * 6 endpoints: list, detail, standings, rankings, bracket, matrix
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 1 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/organizations/&#42;/tournaments"
+ * 他 standings / matrix / rankings / bracket).permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F08.7 公開大会参照。<b>visibility=PUBLIC の大会のみ</b>を {@code verifyPublicAccess}
+ * が通し、非 PUBLIC は 404 で存在を秘匿する。「PUBLIC＝誰でも閲覧」という仕様上の約束を満たすために未ログイン到達が必須（permitAll
+ * を怠ると deny-by-default が 401 で弾き公約違反になる）。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/api/v1/public/organizations/*/tournaments",
+        "/api/v1/public/organizations/*/tournaments/*",
+        "/api/v1/public/organizations/*/tournaments/*/divisions/*/standings",
+        "/api/v1/public/organizations/*/tournaments/*/divisions/*/matrix",
+        "/api/v1/public/organizations/*/tournaments/*/rankings/*",
+        "/api/v1/public/organizations/*/tournaments/*/bracket"
+})
 @RestController
 @RequestMapping("/api/v1/public/organizations/{orgId}/tournaments")
 @Tag(name = "公開大会API", description = "F08.7 公開大会参照（認証不要）")

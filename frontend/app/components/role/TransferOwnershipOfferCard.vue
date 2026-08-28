@@ -2,14 +2,8 @@
 /**
  * オーナー委譲オファーの承諾/辞退カード（受信側・F01.2 承諾型化）。
  *
- * # 設置場所についての注記（未解決点）
- * BE には現時点でオファーの一覧/詳細取得 API が無く（打診時のレスポンスでしか offerId を知り得ない）、
- * 打診時の通知（F04.3/F04.9）も本 Service からは発火されていない（`OwnershipTransferOfferService` に
- * 通知呼び出しなし）。そのため本カードは「`?offerId=` クエリ付きで `/teams/{slug}/members` /
- * `/organizations/{slug}/members` を開くと表示される」設計とし、既存の通知一覧
- * （`components/notification/NotificationList.vue` の `onClickNotification` → `router.push(actionUrl)`）
- * が将来 `actionUrl` にこの形式のディープリンクを設定すれば、そのままクリックで到達できるようにしている。
- * BE 側で通知発火（`action_url` 設定）または一覧 API の追加が必要（後続課題）。
+ * 打診時の通知 actionUrl が `?offerId=` 付きのメンバー画面を指し、本カードへ到達する。
+ * 実際の承諾・辞退時には BE がスコープと宛先本人を再検証するため、クエリ値だけでは操作できない。
  */
 
 const props = defineProps<{

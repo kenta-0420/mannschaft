@@ -2,6 +2,8 @@ package com.mannschaft.app.pointcard.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.pointcard.dto.CreateGroupRequest;
 import com.mannschaft.app.pointcard.dto.GroupDetailResponse;
 import com.mannschaft.app.pointcard.dto.GroupListItemResponse;
@@ -52,6 +54,8 @@ public class PointCardGroupController {
     // 一覧
     // ─────────────────────────────────────────────
 
+    @SelfScopedEndpoint("一覧の対象は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（listMyGroups メソッド本体）")
     @GetMapping
     @Operation(summary = "グループ一覧取得",
             description = "自分のグループ一覧を display_order → created_at 昇順で返す。"
@@ -65,6 +69,18 @@ public class PointCardGroupController {
     // 作成
     // ─────────────────────────────────────────────
 
+    /**
+     * グループを新規作成する（カードの束ね）。
+     *
+     * <p><b>認可の所在</b>: グループ自体は認証主体に帰属して作成される（userId は
+     * {@code SecurityUtils.getCurrentUserId()} 固定）。リクエストの {@code cardIds} は
+     * {@code PointCardGroupService.assertCardsOwnedBy}
+     * （{@code pointcard/service/PointCardGroupService.java:348}）が全件について保有者一致を検証し、
+     * 1 件でも他者のカードが混じれば {@code CARD_NOT_FOUND}（404）で秘匿する。
+     * 検証は {@code createGroup} の保存（{@code PointCardGroupService.java:162}）より<b>前</b>に行われるため、
+     * 他者のカードを含む要求ではグループもアイテムも 1 件も保存されない。</p>
+     */
+    @AuthorizedInService
     @PostMapping
     @Operation(summary = "グループ作成",
             description = "規約同意 + 50 個上限チェック + 20 枚上限チェック + IDOR 検証後にグループを保存する。"
@@ -80,6 +96,16 @@ public class PointCardGroupController {
     // 詳細
     // ─────────────────────────────────────────────
 
+    /**
+     * グループ 1 件の詳細（含まれるカードの復号値付き）を返す。
+     *
+     * <p><b>認可の所在</b>: {@code PointCardGroupService.getGroupDetail}
+     * （{@code pointcard/service/PointCardGroupService.java:114}）が
+     * {@code groupRepository.findByIdAndUserId(groupId, userId)} で所有者本人のグループのみを引き当て、
+     * 不一致は {@code CARD_NOT_FOUND}（404）で秘匿する。さらに {@code loadGroupItems}
+     * （同 {@code :296}）がグループ所有者と一致しないカードを結果から除外する。</p>
+     */
+    @AuthorizedInService
     @GetMapping("/{id}")
     @Operation(summary = "グループ詳細取得",
             description = "グループに含まれるカード全件を復号値付きで返す。N+1 回避のため一括取得する。"
@@ -93,6 +119,16 @@ public class PointCardGroupController {
     // 更新
     // ─────────────────────────────────────────────
 
+    /**
+     * グループ 1 件を差分更新する（{@code cardIds} 指定時は所属カードを差し替える）。
+     *
+     * <p><b>認可の所在</b>: {@code PointCardGroupService.updateGroup}
+     * （{@code pointcard/service/PointCardGroupService.java:189}）が
+     * {@code findByIdAndUserId} で所有者本人のグループのみを引き当て、不一致は 404 で秘匿する。
+     * 差し替えるカードは {@code assertCardsOwnedBy}（同 {@code :208}）で全件の保有者一致を検証し、
+     * この検証は既存アイテムの削除・再挿入（同 {@code :211}）より<b>前</b>に行われる。</p>
+     */
+    @AuthorizedInService
     @PatchMapping("/{id}")
     @Operation(summary = "グループ部分更新（PATCH）",
             description = "name / emoji / displayOrder / cardIds を差分適用する。"
@@ -109,6 +145,15 @@ public class PointCardGroupController {
     // 削除
     // ─────────────────────────────────────────────
 
+    /**
+     * グループ 1 件を削除する（カード本体は残る）。
+     *
+     * <p><b>認可の所在</b>: {@code PointCardGroupService.deleteGroup}
+     * （{@code pointcard/service/PointCardGroupService.java:232}）が
+     * {@code findByIdAndUserId} で所有者本人のグループを引き当ててから削除する。
+     * 引き当て失敗は {@code CARD_NOT_FOUND}（404）で秘匿し、削除は 1 件も行わない。</p>
+     */
+    @AuthorizedInService
     @DeleteMapping("/{id}")
     @Operation(summary = "グループ削除",
             description = "グループとアイテム（中間テーブル）を削除する。カード本体は残る。"
@@ -123,6 +168,16 @@ public class PointCardGroupController {
     // 提示モード開始
     // ─────────────────────────────────────────────
 
+    /**
+     * 提示モードを開始し、グループ詳細と閲覧監査ログを 1 件記録する。
+     *
+     * <p><b>認可の所在</b>: {@code PointCardGroupService.startPresentation}
+     * （{@code pointcard/service/PointCardGroupService.java:251}）が
+     * {@code findByIdAndUserId} で所有者本人のグループを引き当ててから、
+     * 生体認証要求設定の検証・監査ログ記録へ進む。引き当て失敗は
+     * {@code CARD_NOT_FOUND}（404）で秘匿し、他者のグループでは監査ログも記録されない。</p>
+     */
+    @AuthorizedInService
     @PostMapping("/{id}/presentation-start")
     @Operation(summary = "提示モード開始",
             description = "グループ詳細を返すと同時に POINT_CARD_VIEWED 監査ログを 1 件記録する。"

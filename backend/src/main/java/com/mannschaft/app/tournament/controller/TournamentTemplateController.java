@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 
 
 /**
@@ -102,6 +103,9 @@ public class TournamentTemplateController {
         return ResponseEntity.noContent().build();
     }
 
+    // SecurityConfig の anyRequest().authenticated() で認証必須。全組織共通のシステム公開
+    // プリセット一覧を返すのみで、ユーザー固有情報は含まない。
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/api/v1/tournament-presets")
     @Operation(summary = "公開プリセット一覧")
     public ResponseEntity<PagedResponse<PresetResponse>> listPublicPresets(

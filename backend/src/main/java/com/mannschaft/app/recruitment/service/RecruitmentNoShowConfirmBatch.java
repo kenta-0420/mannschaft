@@ -1,5 +1,7 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.entity.RecruitmentNoShowRecordEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentNoShowRecordRepository;
@@ -31,9 +33,12 @@ public class RecruitmentNoShowConfirmBatch {
     /**
      * 毎時0分に実行。24h 経過した仮マーク NO_SHOW を確定する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_RECRUITMENT_ENABLED",
+            reason = "仮マークは DB に残り 24h 経過という時刻条件で再判定できるため、止めても確定が遅れるだけで既存行は失われない")
     @BatchEndpoint(name = "recruitment-no-show-confirm-hourly", description = "24h 経過した NO_SHOW 仮マークを毎時 0 分に確定する")
     @Scheduled(cron = "0 0 * * * *")
-    @SchedulerLock(name = "recruitment-no-show-confirm-batch", lockAtMostFor = "55m", lockAtLeastFor = "5m")
+    @SchedulerLock(name = "recruitment-no-show-confirm-batch", lockAtMostFor = "2h", lockAtLeastFor = "5m")
     @Transactional
     public void confirmNoShows() {
         LocalDateTime threshold = LocalDateTime.now().minusHours(24);

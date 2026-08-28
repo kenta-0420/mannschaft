@@ -7,6 +7,7 @@ import com.mannschaft.app.schedule.EventType;
 import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleStatus;
+import com.mannschaft.app.schedule.ScheduleTargetMode;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -38,6 +39,12 @@ public class ScheduleEntity extends BaseEntity {
     private Long organizationId;
 
     private Long userId;
+
+    /** 対象者未指定の既存予定は全員予定として扱う。 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_mode", nullable = false, length = 20)
+    @Builder.Default
+    private ScheduleTargetMode targetMode = ScheduleTargetMode.ALL_MEMBERS;
 
     @Column(nullable = false, length = 200)
     private String title;
@@ -76,8 +83,9 @@ public class ScheduleEntity extends BaseEntity {
     private MinViewRole minViewRole;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private MinResponseRole minResponseRole;
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private MinResponseRole minResponseRole = MinResponseRole.MEMBER_PLUS;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -109,14 +117,16 @@ public class ScheduleEntity extends BaseEntity {
     private Boolean teamBreakdownEnabled = false;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private AttendanceGenerationStatus attendanceStatus;
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private AttendanceGenerationStatus attendanceStatus = AttendanceGenerationStatus.READY;
 
     private LocalDateTime attendanceDeadline;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private CommentOption commentOption;
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private CommentOption commentOption = CommentOption.OPTIONAL;
 
     private Long eventCategoryId;
 
@@ -178,6 +188,16 @@ public class ScheduleEntity extends BaseEntity {
 
     private Long createdBy;
 
+    /**
+     * F03.16 予定コメントスレッドの開閉フラグ。
+     * FALSE = 新規投稿・返信・編集を拒否（既存コメントの閲覧は可）。既定 TRUE（開いている）。
+     * DDL 側の NOT NULL DEFAULT TRUE と対で追加（片方だけ足すと ddl-auto 検証で齟齬が出る）。
+     * @Builder.Default 必須（NULL 挿入バグ回避）。
+     */
+    @Column(name = "comments_enabled", nullable = false)
+    @Builder.Default
+    private Boolean commentsEnabled = true;
+
     private LocalDateTime deletedAt;
 
     /**
@@ -185,6 +205,13 @@ public class ScheduleEntity extends BaseEntity {
      */
     public void setExternalRef(String externalRef) {
         this.externalRef = externalRef;
+    }
+
+    /**
+     * F03.16 予定コメントスレッドの開閉フラグを更新する（{@code PATCH .../comments/settings}）。
+     */
+    public void setCommentsEnabled(Boolean commentsEnabled) {
+        this.commentsEnabled = commentsEnabled;
     }
 
     /**
@@ -198,6 +225,10 @@ public class ScheduleEntity extends BaseEntity {
         this.startAt = startAt;
         this.endAt = endAt;
         this.color = color;
+    }
+
+    public void updateTargetMode(ScheduleTargetMode targetMode) {
+        this.targetMode = targetMode;
     }
 
     /**
@@ -225,6 +256,25 @@ public class ScheduleEntity extends BaseEntity {
         if (allDay != null) this.allDay = allDay;
         if (eventType != null) this.eventType = eventType;
         if (color != null) this.color = color;
+    }
+
+    /**
+     * 予約出欠募集の materialize 時に、予約時点で指定された出欠設定を予定へ適用する
+     * （機能55 / Issue #2508 欠陥B）。
+     *
+     * <p>各引数は <b>null = 未指定</b> を意味し、その項目は既存値のまま保つ（PATCH セマンティクス）。
+     * toBuilder() は使わず直接フィールドを更新する（toBuilder 経由の更新破壊を避けるため）。</p>
+     *
+     * @param attendanceDeadline 出欠回答期限（JST。null なら据え置き）
+     * @param commentOption      コメント要否（null なら据え置き）
+     * @param minResponseRole    出欠回答の最低ロール（null なら据え置き）
+     */
+    public void applyAttendanceSolicitationSettings(LocalDateTime attendanceDeadline,
+                                                    CommentOption commentOption,
+                                                    MinResponseRole minResponseRole) {
+        if (attendanceDeadline != null) this.attendanceDeadline = attendanceDeadline;
+        if (commentOption != null) this.commentOption = commentOption;
+        if (minResponseRole != null) this.minResponseRole = minResponseRole;
     }
 
     /**

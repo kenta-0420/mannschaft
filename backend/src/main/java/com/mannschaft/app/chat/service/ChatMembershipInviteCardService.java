@@ -9,6 +9,7 @@ import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -114,10 +115,22 @@ public class ChatMembershipInviteCardService {
                 ? preview.substring(0, PREVIEW_LENGTH)
                 : preview;
         channelRepository.findById(channelId)
-                .ifPresent(c -> c.updateLastMessage(LocalDateTime.now(), trimmed));
+                .ifPresent(c -> c.updateLastMessage(
+                        LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE), trimmed));
 
         log.info("招待カード投稿完了: cardMessageId={}, channelId={}, inviteTokenId={}",
                 saved.getId(), channelId, tokenId);
         return saved.getId();
+    }
+
+    /**
+     * 指定トークンが、URL で指定されたチャンネルの招待カードから参照されているかを確認する。
+     *
+     * <p>取消 API の {@code channelId} と {@code tokenId} を束縛し、別 DM のカードや
+     * チャット外で発行された共有リンク型トークンの失効を防ぐ。</p>
+     */
+    public boolean hasInviteCard(Long channelId, Long tokenId) {
+        return messageRepository.existsByChannelIdAndInviteTokenIdAndMessageType(
+                channelId, tokenId, "INVITE_CARD");
     }
 }

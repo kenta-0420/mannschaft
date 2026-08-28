@@ -49,6 +49,7 @@ public class ReportActionEntity {
     @Column(length = 100)
     private String guidelineSection;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

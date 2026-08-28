@@ -1,6 +1,8 @@
 package com.mannschaft.app.config;
 
 import com.mannschaft.app.reflection.RecallDirection;
+import com.mannschaft.app.schedule.controller.OrgScheduleController;
+import com.mannschaft.app.schedule.controller.TeamScheduleController;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.media.IntegerSchema;
 import io.swagger.v3.oas.models.media.Schema;
@@ -43,6 +45,15 @@ public class OpenApiConfig {
      * そこでパラメータ処理の正当な拡張点である {@code ParameterCustomizer} で、対象型のパス変数の
      * スキーマを {@code integer/int64} に明示上書きし、従来（{@code Long} 時代）の表現を維持して
      * 生成物のドリフトを根治する。対象は本 2 型のパス変数のみ（3 コントローラ計 11 箇所）。</p>
+     *
+     * <p><b>チーム/組織スケジュール系2コントローラは対象外（CMP-054 P1是正）:</b>
+     * {@link TeamScheduleController} / {@link OrgScheduleController} の {@code teamPublicId} /
+     * {@code orgPublicId} は、実装が数値ID・slug の両方を受け付ける（{@code ScopeSlugResolution} の
+     * 数値高速パス＋slug 解決）。{@code integer/int64} と描画するのは実装より狭い契約を宣言する嘘に
+     * なるため、この2コントローラだけはこの Customizer を適用せず、springdoc の既定推論
+     * （登録済み {@code Converter<String, ...>} のソース型＝{@code string}）に委ねる。
+     * 既存4コントローラ（{@code EventDismissalController} 等）も同様に slug を受け付けており
+     * 同じ嘘を抱えているが、それらの契約修正は本変更の対象外（別課題）。</p>
      */
     @Bean
     public ParameterCustomizer scopeIdParameterCustomizer() {
@@ -51,9 +62,14 @@ public class OpenApiConfig {
                 return null;
             }
             Class<?> type = methodParameter.getParameterType();
-            if (type == OrgScopeId.class || type == TeamScopeId.class) {
-                parameterModel.setSchema(new IntegerSchema().format("int64"));
+            if (type != OrgScopeId.class && type != TeamScopeId.class) {
+                return parameterModel;
             }
+            Class<?> declaringClass = methodParameter.getDeclaringClass();
+            if (declaringClass == TeamScheduleController.class || declaringClass == OrgScheduleController.class) {
+                return parameterModel;
+            }
+            parameterModel.setSchema(new IntegerSchema().format("int64"));
             return parameterModel;
         };
     }

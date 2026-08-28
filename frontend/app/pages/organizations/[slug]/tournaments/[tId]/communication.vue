@@ -157,12 +157,31 @@ watch(activeTab, async (tab) => {
 
 onMounted(async () => {
   try {
-    await loadPermissions()
-    const [, divRes] = await Promise.all([
+    // 権限・連絡スペース・ディビジョン一覧は失敗を独立に扱う。
+    // Promise.all でまとめると「どれか1つでも失敗＝全部失敗」に粒度が粗くなり、
+    // 取得できているものまで捨てたり、無関係な失敗文言を出したりする（Issue #2770）。
+    // なお loadTournamentSpaces は自前で失敗を通知するため、ここでは結果を見ない。
+    const [permResult, , divResult] = await Promise.allSettled([
+      loadPermissions(),
       loadTournamentSpaces(),
-      getDivisions(orgSlug, tId).catch(() => ({ data: [] as TournamentDivision[] })),
+      // 取得失敗を空配列に偽装せず、失敗として表面化させる
+      getDivisions(orgSlug, tId),
     ])
-    divisions.value = divRes.data
+
+    // loadPermissions は失敗を throw ではなく戻り値（{ ok: false }）で返す契約のため、
+    // allSettled の rejected だけを見ていると取得失敗を取りこぼし、
+    // 通知が出ないまま管理操作だけが無言で無効化される。両方を失敗として扱う。
+    const permissionsFailed = permResult.status === 'rejected' || !permResult.value.ok
+    if (permissionsFailed) {
+      showError(t('tournament.communication.permissions_load_failed'))
+    }
+
+    if (divResult.status === 'fulfilled') {
+      divisions.value = divResult.value.data
+    }
+    else {
+      showError(t('tournament.communication.divisions_load_failed'))
+    }
   }
   finally {
     loading.value = false

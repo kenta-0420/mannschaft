@@ -25,6 +25,8 @@
     "empty": "새로운 공지사항이 없습니다.",
     "pin_limit_reached": "고정은 최대 5개까지 가능합니다.",
     "already_registered": "이 콘텐츠는 이미 공지로 등록되어 있습니다.",
+    "no_longer_available": "이 공지는 공개가 종료되어 목록에서 제거했습니다.",
+    "mark_all_read_partial": "{count}건을 읽은 것으로 처리했습니다. 아직 읽지 않은 공지가 남아 있습니다. 한 번 더 누르시면 계속 처리합니다.",
     "broadcast_button_team": "팀 내 공지",
     "broadcast_button_org": "조직 내 공지",
     "wizard_title": "공지 보내기",

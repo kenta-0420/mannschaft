@@ -42,6 +42,7 @@ public class CorkboardService {
     private final ApplicationEventPublisher eventPublisher;
     private final AccessControlService accessControlService;
     private final CorkboardPermissionService corkboardPermissionService;
+    private final CorkboardAccessGuard corkboardAccessGuard;
 
     /**
      * 個人ボード一覧を取得する。
@@ -134,10 +135,12 @@ public class CorkboardService {
 
     /**
      * 個人ボード詳細を取得する（カード・セクション含む）。
+     *
+     * <p>認可は {@link CorkboardAccessGuard#requireOwnedBoard}（所有者本人のみ・
+     * 他者所有／不存在は 404 秘匿）。</p>
      */
     public CorkboardDetailResponse getPersonalBoard(Long userId, Long boardId) {
-        CorkboardEntity board = corkboardRepository.findByIdAndOwnerId(boardId, userId)
-                .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
+        CorkboardEntity board = corkboardAccessGuard.requireOwnedBoard(userId, boardId);
         return buildDetailResponse(board, userId);
     }
 
@@ -233,11 +236,14 @@ public class CorkboardService {
 
     /**
      * 個人ボードを更新する。
+     *
+     * <p>認可は {@link CorkboardAccessGuard#requireOwnedBoard}（所有者本人のみ・
+     * 他者所有／不存在は 404 秘匿）。{@code editPolicy} は個人ボードでは変更させない
+     * （現値を据え置く）。</p>
      */
     @Transactional
     public CorkboardResponse updatePersonalBoard(Long userId, Long boardId, UpdateCorkboardRequest request) {
-        CorkboardEntity board = corkboardRepository.findByIdAndOwnerId(boardId, userId)
-                .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
+        CorkboardEntity board = corkboardAccessGuard.requireOwnedBoard(userId, boardId);
 
         board.update(
                 request.getName(),
@@ -290,11 +296,13 @@ public class CorkboardService {
 
     /**
      * 個人ボードを削除する（論理削除）。
+     *
+     * <p>認可は {@link CorkboardAccessGuard#requireOwnedBoard}（所有者本人のみ・
+     * 他者所有／不存在は 404 秘匿）。</p>
      */
     @Transactional
     public void deletePersonalBoard(Long userId, Long boardId) {
-        CorkboardEntity board = corkboardRepository.findByIdAndOwnerId(boardId, userId)
-                .orElseThrow(() -> new BusinessException(CorkboardErrorCode.BOARD_NOT_FOUND));
+        CorkboardEntity board = corkboardAccessGuard.requireOwnedBoard(userId, boardId);
         board.softDelete();
         corkboardRepository.save(board);
         log.info("個人コルクボード削除: boardId={}", boardId);

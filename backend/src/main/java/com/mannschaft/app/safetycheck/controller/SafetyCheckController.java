@@ -30,6 +30,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
+import com.mannschaft.app.common.security.AuthorizedInService;
 
 /**
  * 安否確認コントローラー。安否確認の発信・回答・結果取得APIを提供する。
@@ -70,7 +72,7 @@ public class SafetyCheckController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<SafetyCheckResponse> result = safetyCheckService.listSafetyChecks(
-                scopeType, scopeId, status, page, size);
+                scopeType, scopeId, status, page, size, SecurityUtils.getCurrentUserId());
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -84,7 +86,8 @@ public class SafetyCheckController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SafetyCheckResponse>> getSafetyCheck(
             @PathVariable Long safetyCheckId) {
-        SafetyCheckResponse response = safetyCheckService.getSafetyCheck(safetyCheckId);
+        SafetyCheckResponse response = safetyCheckService.getSafetyCheck(
+                safetyCheckId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -103,6 +106,9 @@ public class SafetyCheckController {
     /**
      * 安否確認に回答する。
      */
+    // SafetyResponseService#respond が safetyCheckId と SecurityUtils.getCurrentUserId() を突き合わせ、
+    // 呼び出し元が対象安否確認の宛先スコープに属することを検証してから回答を記録する。
+    @AuthorizedInService
     @PostMapping("/{safetyCheckId}/respond")
     @Operation(summary = "安否確認回答")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "回答成功")
@@ -165,7 +171,8 @@ public class SafetyCheckController {
             @RequestParam Long scopeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<SafetyCheckResponse> result = safetyCheckService.getHistory(scopeType, scopeId, page, size);
+        Page<SafetyCheckResponse> result = safetyCheckService.getHistory(
+                scopeType, scopeId, page, size, SecurityUtils.getCurrentUserId());
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -174,6 +181,9 @@ public class SafetyCheckController {
     /**
      * メッセージプリセット一覧を取得する（回答時の選択肢）。
      */
+    // SecurityConfig の anyRequest().authenticated() で認証必須。全組織共通のアクティブ
+    // プリセット一覧を返すのみで、ユーザー固有情報は含まない。
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/presets")
     @Operation(summary = "メッセージプリセット一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

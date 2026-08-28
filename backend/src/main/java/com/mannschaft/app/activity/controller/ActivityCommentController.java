@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 
 /**
  * 活動コメントコントローラー。コメントのCRUD APIを提供する。
@@ -62,7 +63,14 @@ public class ActivityCommentController {
 
     /**
      * コメントを編集する。
+     *
+     * <p><b>認可方式（{@link AuthorizedInService} メソッド付与）</b>:
+     * {@code ActivityCommentService#updateComment} が commentId から取得したコメントの
+     * 投稿者（{@code entity.getUserId()}）と操作者を比較し、不一致なら {@code NOT_AUTHOR} を投げる。</p>
+     *
+     * <p>認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedInService
     @PutMapping("/{commentId}")
     @Operation(summary = "コメント編集")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "編集成功")

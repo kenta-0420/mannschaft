@@ -24,7 +24,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * F01.2 オーナー委譲 承諾型オファー — 認可・状態遷移・永続の契約テスト（試練 / red 先行）。
+ * F01.2 オーナー委譲 承諾型オファー — 認可・状態遷移・永続の契約テスト。
  *
  * <p>正本: 戦役台帳 {@code .claude/campaigns/2026-07-18-owner-transfer-chat-invite.md}。
  * 金型: {@code MemberScopeContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)} +
@@ -46,19 +47,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * MockMvc の method security（{@code @PreAuthorize("isAuthenticated()")}）は認証済みなら通過し、
  * IDOR/権限/状態不整合は Service が返す HTTP status で検証する。</p>
  *
- * <p><strong>骨格段階（本テストが red である理由）</strong>: {@code OwnershipTransferOfferService}
- * の全メソッドは {@code UnsupportedOperationException} を投げるスタブ。したがって現時点では
- * 打診/承諾/辞退/取消の全 API が 500 になり、本テストの 201/200/204/403/409/422 期待はすべて失敗する。
- * {@code /出陣} で Service を実装し、宛先照合（403 ROLE_009）・2FA（422）・状態遷移・
- * {@code GlobalExceptionHandler} の status マッピングを揃えることで green 化する。</p>
- *
  * <p>設計書: docs/features/F01.2_org_team_member_role/03_business_logic.md
  * 「オーナー委譲 承諾フロー（2ステップ・承諾型）」。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("F01.2 オーナー委譲 承諾型オファー 認可・状態遷移契約テスト（試練 red）")
+@DisplayName("F01.2 オーナー委譲 承諾型オファー 認可・状態遷移契約テスト")
 class OwnershipTransferOfferScopeContractIT extends AbstractMySqlIntegrationTest {
 
     private static final String STATUS_PENDING = "PENDING";
@@ -191,6 +186,37 @@ class OwnershipTransferOfferScopeContractIT extends AbstractMySqlIntegrationTest
             assertThat(pending).hasSize(1);
             assertThat(pending.get(0).getTargetUserId()).isEqualTo(targetId);
         }
+
+        @Test
+        @DisplayName("期限切れの PENDING が残っていても新しい打診を作成できる")
+        void expiredPendingDoesNotBlockNewOffer() throws Exception {
+            seedPendingTeamOffer(adminAId, targetId, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1));
+            setAuth(adminAId);
+
+            mockMvc.perform(post("/api/v1/teams/{slug}/transfer-ownership-offers", teamASlug)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBody(targetId))))
+                    .andExpect(status().isCreated());
+
+            assertThat(offerRepository.findByTeamIdAndStatus(teamAId, STATUS_PENDING)).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("アーカイブ済みチームでは打診を作成できない")
+        void archivedTeamRejectsNewOffer() throws Exception {
+            em.createNativeQuery("UPDATE teams SET archived_at = NOW() WHERE id = :id")
+                    .setParameter("id", teamAId)
+                    .executeUpdate();
+            em.flush();
+            em.clear();
+            setAuth(adminAId);
+
+            mockMvc.perform(post("/api/v1/teams/{slug}/transfer-ownership-offers", teamASlug)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createBody(targetId))))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.error.code").value("TEAM_002"));
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -249,7 +275,7 @@ class OwnershipTransferOfferScopeContractIT extends AbstractMySqlIntegrationTest
         @Test
         @DisplayName("期限切れオファーの承諾は権限不変（EXPIRED・4xx）")
         void 期限切れ承諾は権限不変() throws Exception {
-            UUID offerId = seedPendingTeamOffer(adminAId, targetId, LocalDateTime.now().minusDays(1));
+            UUID offerId = seedPendingTeamOffer(adminAId, targetId, OffsetDateTime.now(ZoneOffset.UTC).minusDays(1));
             setAuth(targetId);
             mockMvc.perform(post("/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/accept",
                             teamASlug, offerId))
@@ -302,6 +328,30 @@ class OwnershipTransferOfferScopeContractIT extends AbstractMySqlIntegrationTest
             assertRoleName(targetId, teamAId, "MEMBER");
             assertThat(offerRepository.findById(offerId).orElseThrow().getStatus())
                     .isEqualTo(STATUS_CANCELLED);
+        }
+
+        @Test
+        @DisplayName("期限切れの打診は辞退できない")
+        void expiredOfferCannotBeDeclined() throws Exception {
+            UUID offerId = seedPendingTeamOffer(adminAId, targetId, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1));
+            setAuth(targetId);
+
+            mockMvc.perform(post("/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/decline",
+                            teamASlug, offerId))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("ROLE_012"));
+        }
+
+        @Test
+        @DisplayName("期限切れの打診は取消できない")
+        void expiredOfferCannotBeCancelled() throws Exception {
+            UUID offerId = seedPendingTeamOffer(adminAId, targetId, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1));
+            setAuth(adminAId);
+
+            mockMvc.perform(delete("/api/v1/teams/{slug}/transfer-ownership-offers/{offerId}",
+                            teamASlug, offerId))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("ROLE_012"));
         }
     }
 
@@ -361,6 +411,39 @@ class OwnershipTransferOfferScopeContractIT extends AbstractMySqlIntegrationTest
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.length()").value(0));
         }
+
+        @Test
+        @DisplayName("期限切れの打診は受信一覧に表示されない")
+        void expiredOfferIsExcludedFromInbox() throws Exception {
+            seedPendingTeamOffer(adminAId, targetId, OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1));
+            setAuth(targetId);
+
+            mockMvc.perform(get("/api/v1/me/ownership-transfer-offers"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(0));
+        }
+
+        @Test
+        @DisplayName("管理者はスコープの有効な打診を取得できる")
+        void adminCanListPendingScopeOffer() throws Exception {
+            UUID offerId = seedPendingTeamOffer(adminAId, targetId, futureExpiry());
+            setAuth(adminAId);
+
+            mockMvc.perform(get("/api/v1/teams/{slug}/transfer-ownership-offers/pending", teamASlug))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].offerId").value(offerId.toString()));
+        }
+
+        @Test
+        @DisplayName("一般メンバーはスコープの打診一覧を取得できない")
+        void memberCannotListPendingScopeOffer() throws Exception {
+            seedPendingTeamOffer(adminAId, targetId, futureExpiry());
+            setAuth(strangerId);
+
+            mockMvc.perform(get("/api/v1/teams/{slug}/transfer-ownership-offers/pending", teamASlug))
+                    .andExpect(status().isForbidden());
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -373,12 +456,12 @@ class OwnershipTransferOfferScopeContractIT extends AbstractMySqlIntegrationTest
         return body;
     }
 
-    private LocalDateTime futureExpiry() {
-        return LocalDateTime.now().plusDays(7);
+    private OffsetDateTime futureExpiry() {
+        return OffsetDateTime.now(ZoneOffset.UTC).plusDays(7);
     }
 
     /** PENDING の team オファーを直接 seed し、採番された offerId を返す。 */
-    private UUID seedPendingTeamOffer(Long issuedBy, Long target, LocalDateTime expiresAt) {
+    private UUID seedPendingTeamOffer(Long issuedBy, Long target, OffsetDateTime expiresAt) {
         OwnershipTransferOfferEntity offer = offerRepository.save(OwnershipTransferOfferEntity.builder()
                 .teamId(teamAId)
                 .issuedBy(issuedBy)

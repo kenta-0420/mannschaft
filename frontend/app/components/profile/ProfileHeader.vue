@@ -130,7 +130,7 @@ const initialsColorClass = computed(() => {
   <div class="profile-header">
     <!-- バナー領域（全幅） -->
     <div
-      class="relative w-full overflow-hidden h-40 sm:h-56"
+      class="relative w-full overflow-hidden h-16 sm:h-56"
       :class="{ 'cursor-pointer': editable }"
       @click="openBannerPicker"
     >
@@ -175,10 +175,10 @@ const initialsColorClass = computed(() => {
     </div>
 
     <!-- 情報層（アイコン + slot コンテンツ） -->
-    <div class="relative px-4 sm:px-6 pb-3 pt-2 bg-surface-0">
+    <div class="relative px-3 sm:px-6 pb-2 sm:pb-3 pt-1 sm:pt-2 bg-surface-0">
       <!-- アイコン（バナー下端に重なる位置） -->
       <div
-        class="absolute -top-10 sm:-top-12 left-4 sm:left-6 w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-surface-200"
+        class="absolute -top-7 sm:-top-12 left-3 sm:left-6 w-14 h-14 sm:w-24 sm:h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-surface-200"
         :class="{ 'cursor-pointer': editable }"
         @click="editable && (showIconCropModal = true)"
       >
@@ -192,7 +192,7 @@ const initialsColorClass = computed(() => {
         <!-- イニシャルフォールバック -->
         <div
           v-else
-          class="w-full h-full flex items-center justify-center text-white font-bold text-xl"
+          class="w-full h-full flex items-center justify-center text-white font-bold text-base sm:text-xl"
           :class="initialsColorClass"
         >
           {{ initials }}
@@ -208,7 +208,7 @@ const initialsColorClass = computed(() => {
       </div>
 
       <!-- アイコン右のコンテンツ（slot で外から挿入） -->
-      <div class="pl-24 sm:pl-28">
+      <div class="pl-20 sm:pl-28">
         <slot />
       </div>
     </div>

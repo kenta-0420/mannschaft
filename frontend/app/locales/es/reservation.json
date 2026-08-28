@@ -174,7 +174,16 @@
       "team_page": "Reservas"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "Cómo usar {label}",
+      "cards": {
+        "business_hours": { "title": "Horario comercial", "description": "Configura el horario de reservas" },
+        "lines": { "title": "Objetivos de reserva", "description": "Gestiona {n} objetivos" },
+        "menus": { "title": "Menús", "description": "Gestiona {n} menús" },
+        "weekly_schedule": { "title": "Horario semanal", "description": "{n} ajustes de franjas y recurrentes" },
+        "exception_day": { "title": "Días excepcionales", "description": "Ajusta fechas específicas" },
+        "advanced": { "title": "Configuración avanzada", "description": "Configura visibilidad y avisos" }
+      }
     },
     "column": {
       "datetime": "Fecha y hora",
@@ -262,7 +271,8 @@
       "template_delete_success": "Plantilla eliminada",
       "template_save_failed": "Error al guardar",
       "template_load_failed": "Error al cargar las plantillas",
-      "cancel_deadline_passed": "El plazo de cancelación ha pasado, por lo que no se pudo cancelar esta reserva. Si necesitas cambiarla, contacta con un administrador del equipo"
+      "cancel_deadline_passed": "El plazo de cancelación ha pasado, por lo que no se pudo cancelar esta reserva. Si necesitas cambiarla, contacta con un administrador del equipo",
+      "rate_limited": "Estás creando reservas demasiado rápido. Espera un momento y vuelve a intentarlo"
     },
     "empty": {
       "no_reservations": "No hay reservas",
@@ -273,12 +283,12 @@
       "book": {
         "admin_no_lines": "Aún no hay objetivos de reserva",
         "admin_no_lines_hint": "Crea objetivos de reserva y franjas en \"Gestionar objetivos de reserva\" para mostrar las franjas aquí",
-        "admin_no_slots": "No hay franjas libres este día",
-        "admin_no_slots_hint": "Puedes añadir franjas desde \"Gestionar objetivos de reserva\"",
+        "admin_no_slots": "No hay franjas libres esta semana",
+        "admin_no_slots_hint": "Crea franjas en \"Horario semanal\" y aparecerán aquí",
         "member_no_lines": "Las reservas se están preparando",
         "member_no_lines_hint": "Espera a que el administrador prepare las franjas de reserva",
-        "member_no_slots": "No hay franjas libres este día",
-        "member_no_slots_hint": "Prueba con otro día"
+        "member_no_slots": "No hay franjas libres esta semana",
+        "member_no_slots_hint": "Prueba con otra semana"
       }
     },
     "line_manage_title": "Gestión de {resourceName}",
@@ -332,6 +342,14 @@
           "placeholder": "ej: 24,1",
           "error_empty": "Ingrese al menos un valor",
           "error_invalid": "Ingrese enteros entre 0 y 8760 separados por comas"
+        },
+        "pending_expire": {
+          "label": "Caducidad automática de reservas provisionales (PENDING)",
+          "hint": "Cancela automáticamente una reserva provisional pendiente de aprobación tras el tiempo indicado (1-168 horas, hasta 7 días)",
+          "unit": " horas para cancelar automáticamente",
+          "no_expire_toggle": "No cancelar automáticamente",
+          "no_expire_warning": "Actualmente está desactivada la cancelación automática. En equipos con aprobación manual (MANUAL), las reservas provisionales no se cancelarán automáticamente. Los administradores deben gestionarlas individualmente",
+          "error_range": "Ingrese un valor entre 1 y 168"
         }
       }
     },
@@ -453,6 +471,43 @@
         "all_day": "Todo el día"
       }
     },
+    "recurring": {
+      "toggle_label": "Repetir esta reserva cada semana",
+      "weeks_option": "{n} semanas",
+      "weeks_more": "Más opciones (5-12 semanas)",
+      "weeks_label": "Número de semanas",
+      "horizon_hint": "Los horarios solo se crean automáticamente hasta 28 días antes, por lo que las semanas posteriores pueden requerir una reserva manual una vez creado el horario",
+      "close_button": "Cerrar",
+      "badge": "Recurrente",
+      "result": {
+        "summary": "Se reservaron {created} (se omitieron {skipped})",
+        "skipped_list_title": "Ocurrencias omitidas",
+        "all_skipped_notice": "No se pudo reservar ninguna de las semanas seleccionadas. Revise los motivos a continuación y reserve manualmente las semanas necesarias"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "El horario de esa semana aún no se ha creado",
+        "FULL": "El horario estaba completo",
+        "CLOSED": "Las reservas estaban cerradas para ese horario",
+        "BLOCKED": "Ese horario no estaba disponible para reservar",
+        "ALREADY_RESERVED": "Ya tenía una reserva para ese horario",
+        "UNAVAILABLE": "El horario no estaba disponible",
+        "NOT_CANCELLABLE": "Esa reserva no se pudo cancelar",
+        "CANCEL_DEADLINE_PASSED": "Se superó el plazo de cancelación",
+        "NOT_PENDING": "Esa reserva no estaba pendiente de aprobación"
+      },
+      "cancel_scope": {
+        "dialog_title": "Elegir el alcance de la cancelación",
+        "this_only": "Solo esta vez",
+        "this_and_following": "Esta vez y todas las siguientes",
+        "result_summary": "Se cancelaron {cancelled} ({skipped} no elegibles)",
+        "all_skipped_notice": "No se pudo cancelar ninguna de las ocurrencias. Revise los motivos a continuación"
+      },
+      "confirm_series": {
+        "button": "Aprobar todo (serie recurrente)",
+        "confirm_message": "¿Aprobar todas las reservas pendientes de esta serie recurrente?",
+        "success": "{confirmed} aprobadas ({skipped} omitidas)"
+      }
+    },
     "notify_recipients": {
       "section_label": "Correos de notificación de reservas",
       "help": "Registra las direcciones de correo que se notifican cada vez que se realiza una reserva. Puedes añadir direcciones que no sean de usuarios de la app, como la dirección principal del negocio. El plan gratuito permite hasta 3 direcciones; a partir de la 4ª se requiere un plan de pago (hasta 10).",
@@ -521,6 +576,9 @@
       "line_not_available": "Este menú no está disponible para el objetivo de reserva seleccionado",
       "duration_minutes_label": "{m} min"
     },
+    "weekly_schedule": {
+      "section_title": "Horario semanal"
+    },
     "template": {
       "title": "Plantillas semanales",
       "add": "Añadir plantilla",
@@ -534,6 +592,8 @@
       "capacity": "Aforo",
       "is_active": "Activo",
       "cell_count": "{n} franjas/día (30 min cada una)",
+      "ends_next_day": "Termina al día siguiente",
+      "next_day_time": "Día siguiente {time}",
       "price": "Precio (opcional)",
       "slot_title": "Título (opcional)",
       "generate": "Generar franjas ahora",
@@ -552,11 +612,53 @@
       "auto_generated": "Guardado. Se crearon {generated} franjas para los próximos {days} días",
       "auto_generated_partial": "No se pudieron crear franjas en {failed} de {total} días (los días guardados siguen activos)",
       "need_business_hours_hint": "Configura primero el horario comercial",
-      "generated_zero_hint": "No se creó ninguna franja (fuera del horario comercial o día de cierre). Revisa el horario comercial"
+      "generated_zero_hint": "No se creó ninguna franja (fuera del horario comercial o día de cierre). Revisa el horario comercial",
+      "grid": {
+        "title": "ドラッグで枠を作成",
+        "hint": "グリッドをなぞると、その範囲の枠をまとめて作成できます（左右にまたげば複数曜日を一度に）。スマートフォンやキーボードでは、始点のセルと終点のセルを順にタップ／Enterしてください。Escで取り消せます",
+        "legend_existing": "登録済み",
+        "legend_selected": "選択中",
+        "blocked": "選択した範囲に登録済みの枠が含まれています。空いている範囲を選んでください",
+        "confirm_title": "枠を作成",
+        "create": "作成"
+      }
+    },
+    "recurring_block": {
+      "title": "Indisponibilidad semanal",
+      "add": "Añadir indisponibilidad",
+      "edit": "Editar indisponibilidad",
+      "delete_confirm": "¿Eliminar esta regla de indisponibilidad recurrente?",
+      "reason": "Motivo",
+      "reason_no_pii": "No incluyas nombres personales ni datos de clientes en el motivo (se mostrará a todos los miembros)",
+      "reason_placeholder": "Ej.: Capacitación, Clase, Limpieza, Mantenimiento",
+      "is_public": "Mostrar motivo a los miembros",
+      "is_public_note": "Al activarlo, esta etiqueta se muestra en la vista de disponibilidad",
+      "line_all": "Todo el equipo",
+      "limit_reached": "Puedes registrar hasta 50 reglas de indisponibilidad recurrente",
+      "full_day_hint": "Para cerrar todo el día, configúralo como día de cierre regular en el horario comercial",
+      "impact_warning": "Hay {n} reservas superpuestas en los próximos 90 días",
+      "day_empty": "No hay reglas de indisponibilidad para este día",
+      "message": {
+        "load_failed": "Error al cargar las reglas de indisponibilidad recurrente",
+        "create_success": "Regla de indisponibilidad recurrente creada",
+        "update_success": "Regla de indisponibilidad recurrente actualizada",
+        "delete_success": "Regla de indisponibilidad recurrente eliminada"
+      },
+      "error": {
+        "toggle_conflict": "No se pudo pausar/reanudar: hay reservas superpuestas en este horario"
+      },
+      "force_cancel": {
+        "button": "Cancelar reservas en conflicto y registrar",
+        "confirm_title": "Confirmar registro forzado",
+        "confirm_message": "Se cancelarán {n} reserva(s) y se notificará a los miembros. ¿Continuar?",
+        "confirm_ok": "Cancelar y registrar",
+        "result_notice": "Se cancelaron {n} reserva(s) y se registró el bloqueo"
+      }
     },
     "business_hours": {
       "title": "Horario comercial",
       "day_open": "Abierto",
+      "ends_next_day": "Termina al día siguiente",
       "save_success": "Guardado. Se actualizaron {generated} franjas",
       "generating": "Actualizando franjas…",
       "generation_failed": "El horario comercial se guardó, pero la actualización automática de franjas falló. Se completará automáticamente mañana por la mañana",
@@ -580,36 +682,19 @@
       "advanced_label": "Gestionar franjas individuales manualmente (excepciones)"
     },
     "grid": {
-      "title": "Cuadrícula de disponibilidad",
-      "help": "Las filas son franjas horarias y las columnas son {resourceName}. Toca una celda verde \"Libre\" para reservar. Las celdas grises o rayadas no se pueden reservar. Usa la pestaña \"Semana\" para ver siete días a la vez.",
-      "display_toggle": {
-        "list": "Vista de lista",
-        "grid": "Vista de cuadrícula"
-      },
       "view": {
-        "single": "Día",
         "week": "Semana"
       },
-      "axis": {
-        "label": "Eje",
-        "time_rows": "Tiempo en filas",
-        "time_cols": "Tiempo en columnas"
-      },
       "column": {
-        "common": "Común",
-        "time": "Hora"
-      },
-      "staff_filter": {
-        "label": "Filtrar por {resourceName}",
-        "placeholder": "Todos los objetivos"
+        "common": "Común"
       },
       "state": {
         "available": "Libre",
         "booked": "Lleno",
+        "reserved": "Reservado por ti",
         "closed": "Cerrado",
         "unavailable": "No disponible"
       },
-      "empty": "No hay franjas para este día",
       "load_error": "Error al cargar la cuadrícula"
     },
     "matrix": {
@@ -627,9 +712,9 @@
       "no_menu_single": "Reservar solo 30 minutos sin menú",
       "preview_title": "Confirmar esta reserva",
       "extend_30": "+30 min",
-      "view_matrix": "Vista de matriz",
-      "view_list": "Vista de lista",
-      "view_staff_grid": "Vista de cuadrícula por personal",
+      "open_all": "Mostrar todo",
+      "close_all": "Cerrar todo",
+      "open_day_hint": "Selecciona una fecha para ver los horarios de reserva",
       "date_line_header": "Fecha / {resourceName}",
       "help_toggle": "Ver cómo usar esto",
       "help_body": "Toca una franja libre (verde) y elige un menú; se seleccionará automáticamente el número de franjas necesario. Usa \"+30 min\" para añadir más. Si eliges una franja compartida, elige a qué {resourceName} reservarla.",
@@ -652,10 +737,31 @@
       "deadline_passed": "Se pasó el plazo de cancelación, no se puede cancelar",
       "own_overlap": "Ya tienes otra reserva en la franja horaria seleccionada. Revisa el horario"
     },
+    "waitlist": {
+      "register_button": "Unirse a la lista de espera",
+      "cancel_button": "Salir de la lista de espera",
+      "registered_badge": "En espera",
+      "dialog_title": "Lista de espera",
+      "notice": "Te avisaremos cuando quede un lugar disponible. No se garantiza el orden; se asigna por orden de llegada",
+      "register_success": "Añadido a la lista de espera",
+      "cancel_success": "Eliminado de la lista de espera",
+      "admin_count": "{n} en lista de espera",
+      "already_registered": "Ya estás en la lista de espera de este horario",
+      "not_found": "No se encontró la entrada de la lista de espera (puede que ya se haya cancelado o convertido en reserva)",
+      "limit_exceeded": "Has alcanzado el límite de inscripciones en lista de espera",
+      "rate_limited": "Demasiado rápido. Espera aproximadamente un minuto y vuelve a intentarlo",
+      "slot_not_full": "Se liberó un lugar. Ya puedes reservarlo directamente",
+      "my_list_title": "Mi lista de espera",
+      "no_entries": "No estás en ninguna lista de espera",
+      "aria_hint_register": "Pulsa para unirte a la lista de espera",
+      "aria_hint_cancel": "Pulsa para salir de la lista de espera"
+    },
+    "pending_expire_notice": {
+      "form_note": "Si no se aprueba en un plazo de {n} horas, esta reserva se cancelará automáticamente"
+    },
     "team_guide": {
       "title": "Cómo funcionan las reservas",
       "help_button": "Cómo usar",
-      "event_link": "Ver convocatorias de eventos",
       "book": {
         "matrix_title": "Cómo leer la matriz",
         "matrix_steps": {

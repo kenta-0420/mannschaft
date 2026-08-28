@@ -13,10 +13,14 @@
  *   - 詳細 + 投票 Dialog: <VillageMeetupDetailDialog />
  */
 import type {
+  VillageMeetupAttendanceResponse,
+  VillageMeetupAttendanceStatus,
   VillageMeetupCandidateDateResponse,
+  VillageMeetupCommentResponse,
   VillageMeetupCreateRequest,
   VillageMeetupResponse,
   VillageMeetupStatus,
+  VillageMeetupTodoResponse,
   VillageMeetupVoteSummary,
   VillageMeetupVoteType,
 } from '~/types/village'
@@ -88,11 +92,13 @@ function setStatusFilter(value: StatusFilter) {
 /**
  * 候補日フォーム行。
  *
- * BE (`MeetupCreateRequest.candidateDates`) は `List<LocalDate>` ＝ 日付のみ。
- * 時刻（開始 / 終了）は BE に保持先が無いため、フォームからも撤去している。
+ * BE (`MeetupCreateRequest.candidateDates`) は object 配列 `{date, time?}`（#2357）。
+ * `candidateTime` は任意（空文字は終日として送信時に省略する）。
  */
 interface CandidateDateForm {
   candidateDate: string
+  /** 時刻 (HH:mm)。空は終日 */
+  candidateTime: string
 }
 
 interface MeetupFormState {
@@ -108,7 +114,7 @@ function emptyForm(): MeetupFormState {
     title: '',
     description: '',
     location: '',
-    candidateDates: [{ candidateDate: '' }],
+    candidateDates: [{ candidateDate: '', candidateTime: '' }],
   }
 }
 
@@ -142,7 +148,10 @@ function openCreateDialog() {
       description: saved.description ?? '',
       location: saved.location ?? '',
       candidateDates: saved.candidateDates?.length
-        ? saved.candidateDates.map(d => ({ candidateDate: d.candidateDate ?? '' }))
+        ? saved.candidateDates.map(d => ({
+            candidateDate: d.candidateDate ?? '',
+            candidateTime: d.candidateTime ?? '',
+          }))
         : emptyForm().candidateDates,
     }
   }
@@ -150,7 +159,7 @@ function openCreateDialog() {
 }
 
 function addCandidateDateRow() {
-  createForm.value.candidateDates.push({ candidateDate: '' })
+  createForm.value.candidateDates.push({ candidateDate: '', candidateTime: '' })
 }
 
 function removeCandidateDateRow(index: number) {
@@ -165,8 +174,12 @@ async function submitCreate() {
     title: createForm.value.title,
     description: createForm.value.description || null,
     location: createForm.value.location || null,
-    // BE は素の日付配列（List<LocalDate>）を受け取る
-    candidateDates: validDates.map(d => d.candidateDate),
+    // BE は object 配列 `{date, time?}` を受け取る（#2357）。空の時刻は省略（終日）。
+    candidateDates: validDates.map(d => (
+      d.candidateTime
+        ? { date: d.candidateDate, time: d.candidateTime }
+        : { date: d.candidateDate }
+    )),
   }
   try {
     await villageApi.createMeetup(villageId.value, body)
@@ -198,27 +211,220 @@ const isDetailOrganizer = computed(() => {
   return detailMeetup.value.organizerUserId === currentUserId.value
 })
 
-/** 寄合詳細と投票集計をまとめて読み込む。 */
-async function loadDetail(meetupId: string) {
+// =====================================================================
+// F17.2 Wave1 ②寄合後半戦（出欠 / コメント / 決まったこと / 宿題）
+// 設計書: docs/features/F17.2_village_events_activation.md §4
+// CONFIRMED/CANCELLED のみ読み込む（PLANNING には後半戦データが存在しない・§4.5）
+// =====================================================================
+
+const attendances = ref<VillageMeetupAttendanceResponse[]>([])
+const attendancesLoading = ref(false)
+const comments = ref<VillageMeetupCommentResponse[]>([])
+const commentsLoading = ref(false)
+const commentSubmitting = ref(false)
+const decisionsSaving = ref(false)
+const todos = ref<VillageMeetupTodoResponse[]>([])
+const todosLoading = ref(false)
+const todoCreating = ref(false)
+
+/**
+ * 自分の出欠状態。
+ *
+ * `attendances`（一覧 API・§13.5 でページング必須）は先頭 50 件のみ取得するため、
+ * 回答者が 50 件を超える寄合では自分の回答が一覧に含まれず取り逃す恐れがある。
+ * upsert（PUT）は自分の出欠を直接返すため、応答済みならその結果を正として使い、
+ * 一覧探索はページ内に自分の回答が含まれていた場合のフォールバックとする。
+ */
+const myAttendanceRecord = ref<VillageMeetupAttendanceResponse | null>(null)
+
+const myAttendanceStatus = computed<VillageMeetupAttendanceStatus | null>(() => {
+  if (myAttendanceRecord.value) return myAttendanceRecord.value.status
+  if (!currentUserId.value) return null
+  return attendances.value.find(a => a.userId === currentUserId.value)?.status ?? null
+})
+
+/** 寄合詳細と投票集計をまとめて読み込む。呼び出し元の状態分岐用に取得した寄合を返す。 */
+async function loadDetail(meetupId: string): Promise<VillageMeetupResponse> {
   const [meetup, summary] = await Promise.all([
     villageApi.getMeetup(villageId.value, meetupId),
     villageApi.getVoteSummary(villageId.value, meetupId),
   ])
   detailMeetup.value = meetup
   voteSummary.value = summary
+  return meetup
+}
+
+/** 後半戦データ（出欠/コメント/宿題）をまとめて読み込む。PLANNING では呼ばない。 */
+async function loadBackHalf(meetupId: string) {
+  attendancesLoading.value = true
+  commentsLoading.value = true
+  todosLoading.value = true
+  try {
+    const [attendanceList, commentList, todoList] = await Promise.all([
+      villageApi.listAttendances(villageId.value, meetupId, { size: 50 }),
+      villageApi.listComments(villageId.value, meetupId, { size: 50 }),
+      villageApi.listTodos(villageId.value, meetupId, { size: 50 }),
+    ])
+    attendances.value = attendanceList
+    comments.value = commentList
+    todos.value = todoList
+  }
+  catch (error) {
+    handleApiError(error, t('village.meetup.loadFailed'))
+  }
+  finally {
+    attendancesLoading.value = false
+    commentsLoading.value = false
+    todosLoading.value = false
+  }
 }
 
 async function openDetailDialog(m: VillageMeetupResponse) {
   // 一覧 API は候補日を省略する（candidateDates=null）ため、詳細は必ず再取得する。
   detailMeetup.value = null
   voteSummary.value = null
+  attendances.value = []
+  myAttendanceRecord.value = null
+  comments.value = []
+  todos.value = []
   showDetailDialog.value = true
   try {
-    await loadDetail(m.id)
+    const loaded = await loadDetail(m.id)
+    if (loaded.status !== 'PLANNING') {
+      await loadBackHalf(m.id)
+    }
   }
   catch (error) {
     detailMeetup.value = m
     handleApiError(error, t('village.meetup.loadFailed'))
+  }
+}
+
+// --- 出欠 ---
+async function respondAttendance(status: VillageMeetupAttendanceStatus) {
+  if (!detailMeetup.value) return
+  const meetupId = detailMeetup.value.id
+  try {
+    // upsert 応答は自分の出欠そのものなので、一覧の再探索に頼らずここで直接ハイライトを確定する
+    // （回答者が50件を超えるとページングで自分の回答が一覧に含まれない恐れがあるため）。
+    myAttendanceRecord.value = await villageApi.upsertAttendance(villageId.value, meetupId, { status })
+    attendances.value = await villageApi.listAttendances(villageId.value, meetupId, { size: 50 })
+    success(t('village.meetup.attendance.saveSuccess'))
+  }
+  catch (error) {
+    handleApiError(error, t('village.meetup.attendance.saveFailed'))
+  }
+}
+
+// --- コメント ---
+async function submitComment(body: string) {
+  if (!detailMeetup.value) return
+  const meetupId = detailMeetup.value.id
+  commentSubmitting.value = true
+  try {
+    await villageApi.createComment(villageId.value, meetupId, { body })
+    comments.value = await villageApi.listComments(villageId.value, meetupId, { size: 50 })
+  }
+  catch (error) {
+    handleApiError(error, t('village.meetup.comment.postFailed'))
+  }
+  finally {
+    commentSubmitting.value = false
+  }
+}
+
+function removeComment(commentId: string) {
+  if (!detailMeetup.value) return
+  const meetupId = detailMeetup.value.id
+  confirmAction({
+    message: t('village.meetup.comment.deleteConfirm'),
+    onAccept: async () => {
+      try {
+        await villageApi.deleteComment(villageId.value, meetupId, commentId)
+        comments.value = comments.value.filter(c => c.id !== commentId)
+        success(t('village.meetup.comment.deleteSuccess'))
+      }
+      catch (error) {
+        handleApiError(error, t('village.meetup.comment.deleteFailed'))
+      }
+    },
+  })
+}
+
+// --- 決まったこと ---
+async function saveDecisions(note: string) {
+  if (!detailMeetup.value) return
+  decisionsSaving.value = true
+  try {
+    detailMeetup.value = await villageApi.updateMeetup(villageId.value, detailMeetup.value.id, {
+      decisionsNote: note || null,
+    })
+    success(t('village.meetup.decisions.saveSuccess'))
+  }
+  catch (error) {
+    handleApiError(error, t('village.meetup.decisions.saveFailed'))
+  }
+  finally {
+    decisionsSaving.value = false
+  }
+}
+
+// --- 宿題TODO ---
+async function createTodoAction(title: string) {
+  if (!detailMeetup.value) return
+  const meetupId = detailMeetup.value.id
+  todoCreating.value = true
+  try {
+    await villageApi.createTodo(villageId.value, meetupId, { title })
+    todos.value = await villageApi.listTodos(villageId.value, meetupId, { size: 50 })
+    success(t('village.meetup.todo.addSuccess'))
+  }
+  catch (error) {
+    handleApiError(error, t('village.meetup.todo.addFailed'))
+  }
+  finally {
+    todoCreating.value = false
+  }
+}
+
+async function claimTodoAction(todoId: string) {
+  if (!detailMeetup.value) return
+  const meetupId = detailMeetup.value.id
+  try {
+    const updated = await villageApi.claimTodo(villageId.value, meetupId, todoId)
+    todos.value = todos.value.map(t2 => (t2.id === todoId ? updated : t2))
+    success(t('village.meetup.todo.claimSuccess'))
+  }
+  catch (error) {
+    // 409 は既に他の村人が手を挙げ済み（MEETUP_TODO_ALREADY_CLAIMED）。
+    // BE のエラーメッセージをそのまま表示できない場合のフォールバックとして案内文を使う。
+    handleApiError(error, t('village.meetup.todo.alreadyClaimed'))
+  }
+}
+
+async function completeTodoAction(todoId: string) {
+  if (!detailMeetup.value) return
+  const meetupId = detailMeetup.value.id
+  try {
+    const updated = await villageApi.completeTodo(villageId.value, meetupId, todoId)
+    todos.value = todos.value.map(t2 => (t2.id === todoId ? updated : t2))
+    success(t('village.meetup.todo.completeSuccess'))
+  }
+  catch (error) {
+    handleApiError(error, t('village.meetup.todo.completeFailed'))
+  }
+}
+
+async function releaseTodoAction(todoId: string) {
+  if (!detailMeetup.value) return
+  const meetupId = detailMeetup.value.id
+  try {
+    const updated = await villageApi.releaseTodo(villageId.value, meetupId, todoId)
+    todos.value = todos.value.map(t2 => (t2.id === todoId ? updated : t2))
+    success(t('village.meetup.todo.releaseSuccess'))
+  }
+  catch (error) {
+    handleApiError(error, t('village.meetup.todo.releaseFailed'))
   }
 }
 
@@ -307,9 +513,29 @@ onMounted(() => {
       :vote-summary="voteSummary"
       :is-villager="isVillager"
       :is-detail-organizer="isDetailOrganizer"
+      :is-admin="perms.isAdmin"
+      :current-user-id="currentUserId"
+      :attendances="attendances"
+      :my-attendance-status="myAttendanceStatus"
+      :attendances-loading="attendancesLoading"
+      :comments="comments"
+      :comments-loading="commentsLoading"
+      :comment-submitting="commentSubmitting"
+      :decisions-saving="decisionsSaving"
+      :todos="todos"
+      :todos-loading="todosLoading"
+      :todo-creating="todoCreating"
       @cast-vote="castVoteOn"
       @confirm-candidate="confirmCandidate"
       @cancel-meetup="cancelMeetup"
+      @respond-attendance="respondAttendance"
+      @submit-comment="submitComment"
+      @remove-comment="removeComment"
+      @save-decisions="saveDecisions"
+      @create-todo="createTodoAction"
+      @claim-todo="claimTodoAction"
+      @complete-todo="completeTodoAction"
+      @release-todo="releaseTodoAction"
     />
   </div>
 </template>

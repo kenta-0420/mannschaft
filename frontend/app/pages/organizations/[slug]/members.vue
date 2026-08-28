@@ -14,16 +14,12 @@ const route = useRoute()
 const router = useRouter()
 const orgSlug = computed(() => String(route.params.slug))
 
-const { isAdminOrDeputy, roleName, displayName, refresh } = useOrgShellContext()
-
-/** 現 ADMIN のみオーナー委譲を打診できる（F01.2 承諾型化）。 */
-const canTransferOwnership = computed(() => roleName.value === 'ADMIN')
+const { isAdmin, isAdminOrDeputy, displayName, refresh } = useOrgShellContext()
 
 /**
  * オーナー委譲オファーの承諾/辞退カードを表示するための offerId（`?offerId=` クエリ由来）。
- * 未解決点: BE にオファー一覧/詳細取得 API が無いため、現状は打診通知の action_url が
- * このディープリンク形式（`/organizations/{slug}/members?offerId=...`）を指すことを前提にしている
- * （TransferOwnershipOfferCard.vue のコメント参照）。
+ * 打診通知の actionUrl がこのディープリンク形式
+ * （`/organizations/{slug}/members?offerId=...`）を指す。
  */
 const offerIdFromQuery = computed<string | null>(() => {
   const v = route.query.offerId
@@ -37,6 +33,7 @@ async function onOfferResolved() {
   delete query.offerId
   await router.replace({ query })
 }
+
 </script>
 
 <template>
@@ -55,7 +52,15 @@ async function onOfferResolved() {
       :scope-id="orgSlug"
       :can-change-role="isAdminOrDeputy"
       :can-remove="isAdminOrDeputy"
-      :can-transfer-ownership="canTransferOwnership"
+    />
+    <!-- オーナー委譲の打診は ADMIN 本人のみ。権限変更は相手の承諾時に行う。 -->
+    <TransferOwnershipPanel
+      v-if="isAdmin"
+      class="mt-6"
+      scope-type="organization"
+      :scope-slug="orgSlug"
+      :scope-name="displayName"
+      @offered="refresh"
     />
   </div>
 </template>

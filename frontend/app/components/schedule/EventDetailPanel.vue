@@ -2,6 +2,8 @@
 const props = defineProps<{
   event: {
     id: number
+    /** 親 schedules 行の ID（BE CalendarEntryResponse.scheduleId・設計書 §1.5 / AC-07(b)）。null ならコメント欄非表示。 */
+    scheduleId?: number | null
     title: string
     description: string | null
     location: string | null
@@ -15,6 +17,14 @@ const props = defineProps<{
     attendanceRequired: boolean
     myAttendance: string | null
     attendanceStats: { yes: number; no: number; maybe: number; pending: number; total: number } | null
+    targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+    targetCount?: number
+    targets?: Array<{
+      userId: number
+      displayName: string
+      avatarUrl: string | null
+      calendarColor: string | null
+    }>
   }
   scopeType: 'team' | 'organization'
   scopeId: string
@@ -22,12 +32,17 @@ const props = defineProps<{
   skipDelegations?: boolean
   scopeName?: string | null
   scopeIconUrl?: string | null
+  showAudience?: boolean
+  /** 通知リンク（?commentId=）から遷移してきた場合のハイライト対象コメント ID（設計書 §6.4）。 */
+  highlightCommentId?: string | null
 }>()
 
 const emit = defineEmits<{
   edit: []
   delete: []
   responded: []
+  /** ハイライト処理（発見/未発見いずれも）が完了し、呼び出し元が commentId クエリを除去してよいタイミング。 */
+  'comment-highlighted': []
 }>()
 
 const { formatDate, formatDateTime: isoFormatDateTime } = useDatetime()
@@ -213,6 +228,18 @@ onMounted(async () => {
         <i class="pi pi-user text-surface-400" />
         <span>作成: {{ event.createdBy.displayName }}</span>
       </div>
+      <div v-if="showAudience !== false" class="flex items-start gap-2">
+        <i class="pi pi-users mt-0.5 text-surface-400" aria-hidden="true" />
+        <div class="min-w-0">
+          <div class="text-xs text-surface-500">{{ $t('schedule.targetAudience.label') }}</div>
+          <ScheduleTargetAudience
+            :target-mode="event.targetMode"
+            :target-count="event.targetCount"
+            :targets="event.targets"
+            class="mt-1 text-surface-700 dark:text-surface-200"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- F08.10 入口④: TEAM スコープ予定のみ「この試合を記録」ボタンを出す -->
@@ -296,6 +323,18 @@ onMounted(async () => {
     >
       <span class="font-medium text-yellow-800 dark:text-yellow-200">{{ $t('proxy.delegation.admin.tab') }}: </span>
       <span class="text-yellow-700 dark:text-yellow-300">{{ delegationCount }}{{ $t('proxy.delegation.admin.count_suffix') }}</span>
+    </div>
+
+    <!-- F03.16 予定コメントスレッド。
+         親 schedules 行が存在するときのみ表示する（events.schedule_id が NULL のイベントには
+         コメントスレッドが成立しない・設計書 §1.5・AC-07(b)）。 -->
+    <div v-if="event.scheduleId !== null && event.scheduleId !== undefined" class="border-t border-surface-200 pt-4 dark:border-surface-700">
+      <ScheduleCommentSection
+        :schedule-id="event.scheduleId"
+        :can-manage-settings="canEdit"
+        :highlight-comment-id="highlightCommentId"
+        @highlighted="emit('comment-highlighted')"
+      />
     </div>
   </div>
 </template>

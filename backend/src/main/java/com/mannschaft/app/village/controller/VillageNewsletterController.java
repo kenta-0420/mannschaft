@@ -2,6 +2,8 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.village.dto.NewsletterCommentUpdateRequest;
 import com.mannschaft.app.village.dto.NewsletterIssueDetailResponse;
 import com.mannschaft.app.village.dto.NewsletterIssuePageResponse;
@@ -61,8 +63,17 @@ public class VillageNewsletterController {
     private final VillageNewsletterService newsletterService;
     private final VillageNewsletterIssueService issueService;
 
+    /**
+     * 村のニュースレター設定を取得する。
+     *
+     * <p>認可は {@link VillageNewsletterService#getNewsletterSettings} 内で
+     * {@code VillageBulletinAccessService#checkVillageBulletinViewAccess} に委譲し、
+     * 号一覧・詳細（村史面）と同一の閲覧基準を適用する。
+     * 村が存在しない／削除済みの場合は 404 で存在を秘匿する。</p>
+     */
+    @AuthorizedInService
     @GetMapping
-    @Operation(summary = "村のニュースレター設定を取得する")
+    @Operation(summary = "村のニュースレター設定を取得する（掲示板と同一の閲覧認可）")
     public ApiResponse<NewsletterSettingsResponse> getSettings(
             @PathVariable("villageId") UUID villageId) {
         Long actorUserId = SecurityUtils.getCurrentUserId();
@@ -78,6 +89,9 @@ public class VillageNewsletterController {
         return ApiResponse.of(newsletterService.updateNewsletterSettings(villageId, request, actorUserId));
     }
 
+    @SelfScopedEndpoint("opt-out レコードの主体は常に SecurityUtils.getCurrentUserId() で、"
+            + "リクエストは他ユーザーの識別子を受け取らない"
+            + "（VillageNewsletterService#optOut が (villageId, 認証主体) の 1 行のみを作成する）")
     @PostMapping("/opt-out")
     @Operation(summary = "当該ユーザーをニュースレターから opt-out する")
     public ResponseEntity<Void> optOut(@PathVariable("villageId") UUID villageId) {
@@ -86,6 +100,9 @@ public class VillageNewsletterController {
         return ResponseEntity.noContent().build();
     }
 
+    @SelfScopedEndpoint("削除対象の opt-out レコードは (villageId, SecurityUtils.getCurrentUserId()) で"
+            + "一意に解決され、リクエストは他ユーザーの識別子を受け取らない"
+            + "（VillageNewsletterService#optIn の findByVillageIdAndUserId が認証主体に束縛される）")
     @DeleteMapping("/opt-out")
     @Operation(summary = "当該ユーザーの opt-out を解除する（= opt-in に戻す）")
     public ResponseEntity<Void> optIn(@PathVariable("villageId") UUID villageId) {
@@ -94,12 +111,21 @@ public class VillageNewsletterController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * 指定頻度のニュースレター配信履歴を取得する（村の運営者のみ）。
+     *
+     * <p>認可は {@link VillageNewsletterService#listSendLogs} 内で
+     * {@code VillageBulletinAccessService#requireHeadmanOrElder} に委譲し、
+     * 現役の HEADMAN / ELDER のみを通す（設計書 §1.14）。</p>
+     */
+    @AuthorizedInService
     @GetMapping("/send-logs")
-    @Operation(summary = "指定頻度のニュースレター配信履歴を取得する")
+    @Operation(summary = "指定頻度のニュースレター配信履歴を取得する（HEADMAN / ELDER のみ）")
     public ApiResponse<List<NewsletterSendLogResponse>> listSendLogs(
             @PathVariable("villageId") UUID villageId,
             @RequestParam("frequency") VillageNewsletterFrequency frequency) {
-        return ApiResponse.of(newsletterService.listSendLogs(villageId, frequency));
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(newsletterService.listSendLogs(villageId, frequency, actorUserId));
     }
 
     // ========================================================================
@@ -116,7 +142,8 @@ public class VillageNewsletterController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
         Long actorUserId = SecurityUtils.getCurrentUserId();
-        Pageable pageable = PageRequest.of(page, size);
+        // size を [1,100] に丸める（過大要求での大量取得・DoS 防止・②-4 堅牢性 AC-10。他ドメイン慣習に合わせる）。
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
         return ApiResponse.of(issueService.listIssues(villageId, actorUserId, tagId, pageable));
     }
 

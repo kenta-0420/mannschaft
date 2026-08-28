@@ -1,9 +1,11 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.PricingModel;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
-import com.mannschaft.app.advertising.campaign.enums.AdBounceType;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.event.MessagingCampaignBudgetConsumedEvent;
 import com.mannschaft.app.advertising.campaign.repository.AdAnnouncementDeliveryRepository;
@@ -118,11 +120,15 @@ public class AdMessagingBillingBridge {
      * <p>F09.7 の {@code MonthlyInvoiceBatchService} (1 日 05:00) より前に走らせ、
      * 同一 invoice 内に F09.17 由来明細も含める設計。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "殿の裁定: 手動再実行経路（BatchEndpoint）を持たぬため、止めた月の広告メッセージ課金は明細として請求へ載らず恒久的に未請求になる。取り損ねた売上は復旧不能である")
     @Scheduled(cron = "${mannschaft.ad.billing.cron:0 0 3 1 * *}", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "adMessagingBilling",
             lockAtMostFor = "PT30M",
             lockAtLeastFor = "PT5M")
+    @BatchEndpoint(name = "ad-messaging-billing-monthly",
+            description = "前月分のメッセージ型広告キャンペーン配信実績を集計し、請求明細行を毎月1日03:00に積み上げる")
     public void runMonthlyBilling() {
         YearMonth targetMonth = YearMonth.now().minusMonths(1);
         runMonthlyBilling(targetMonth);
@@ -273,10 +279,8 @@ public class AdMessagingBillingBridge {
      * ANNOUNCEMENT 課金件数: delivered_at IS NOT NULL の行数。
      */
     long countAnnouncements(UUID campaignId, String monthKey) {
-        return announcementDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey)
-                .stream()
-                .filter(d -> d.getDeliveredAt() != null)
-                .count();
+        return announcementDeliveryRepository
+                .countByCampaignIdAndMonthKeyAndDeliveredAtIsNotNull(campaignId, monthKey);
     }
 
     /**
@@ -284,22 +288,14 @@ public class AdMessagingBillingBridge {
      * HARD / COMPLAINT は課金対象外 (設計書 §11 解決事項 8)。
      */
     long countBillableEmails(UUID campaignId, String monthKey) {
-        return emailDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey)
-                .stream()
-                .filter(d -> d.getSentAt() != null)
-                .filter(d -> d.getBounceType() == null || d.getBounceType() == AdBounceType.SOFT)
-                .count();
+        return emailDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey);
     }
 
     /**
      * PUSH 課金件数: delivered_at IS NOT NULL AND failed_reason IS NULL。
      */
     long countBillablePushes(UUID campaignId, String monthKey) {
-        return pushDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey)
-                .stream()
-                .filter(d -> d.getDeliveredAt() != null)
-                .filter(d -> d.getFailedReason() == null || d.getFailedReason().isBlank())
-                .count();
+        return pushDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey);
     }
 
     /**

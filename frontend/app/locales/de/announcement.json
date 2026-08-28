@@ -25,6 +25,8 @@
     "empty": "Keine neuen Ankündigungen.",
     "pin_limit_reached": "Sie können maximal 5 Ankündigungen anheften.",
     "already_registered": "Dieser Inhalt ist bereits als Ankündigung registriert.",
+    "no_longer_available": "Diese Ankündigung ist nicht mehr verfügbar und wurde aus der Liste entfernt.",
+    "mark_all_read_partial": "{count} Ankündigungen als gelesen markiert. Es sind noch ungelesene übrig – erneut drücken, um fortzufahren.",
     "broadcast_button_team": "Team-Ankündigung",
     "broadcast_button_org": "Organisations-Ankündigung",
     "wizard_title": "Ankündigung senden",

@@ -1,9 +1,12 @@
 package com.mannschaft.app.residencestatus.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.residencestatus.service.ResidentActivityAggregatorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -34,8 +37,12 @@ public class ResidentActivityAggregatorBatch {
      * {@link ResidentActivityAggregatorService#upsertDailySnapshot} を呼び出す。
      * TODO: 将来は EventListener 化予定（クロスドメイン依存の解消）
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対象日を指定できない日次スナップショット生成であり、30日で rotation 削除される。止めた期間の居住者アクティビティは復元できない")
     @BatchEndpoint(name = "residencestatus-activity-aggregator-daily", description = "全居住者アクティビティスナップショットを毎日 03:00 に生成する（v1 stub）")
     @Scheduled(cron = "0 0 3 * * *")
+    // 起動間隔は日次 03:00。全居住者ぶんのスナップショット生成であり利用者数に比例して伸びる。余裕を取り 2 時間を上限とする。
+    @SchedulerLock(name = "residenceActivityAggregatorDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT2H")
     public void aggregateDaily() {
         log.info("[ResidentActivityAggregatorBatch] 日次集計 開始");
         // TODO: 組織・居住者を走査して upsertDailySnapshot を呼ぶ

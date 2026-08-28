@@ -143,7 +143,13 @@ public class TodoStatusService {
         }
 
         TodoStatus newStatus = TodoStatus.valueOf(request.getStatus());
-        List<TodoEntity> todos = todoRepository.findByIdInAndDeletedAtIsNull(request.getTodoIds());
+        // 認可根治（Wave5 todo硬化A・越境一括変更 BOLA 根治）:
+        // findByIdInAndDeletedAtIsNull は scope を無視した生取得のため、指定 scope に属する TODO のみに
+        // 絞り込む。scopeType/scopeId 不一致（他チーム/組織の id 混入）は対象から除外し、越境変更を封じる。
+        List<TodoEntity> todos = todoRepository.findByIdInAndDeletedAtIsNull(request.getTodoIds()).stream()
+                .filter(t -> t.getScopeType() == scopeType
+                        && java.util.Objects.equals(t.getScopeId(), scopeId))
+                .toList();
 
         // F02.7: ロック中 TODO をスキップする。
         // TODO(F02.7 Phase 15-3 残件): 現在は skippedLockedIds をログ出力のみで、APIレスポンスには含めていない。

@@ -3,6 +3,7 @@ package com.mannschaft.app.role.repository;
 import com.mannschaft.app.role.entity.OwnershipTransferOfferEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,14 +21,23 @@ import java.util.UUID;
 public interface OwnershipTransferOfferRepository
         extends JpaRepository<OwnershipTransferOfferEntity, UUID> {
 
-    /** 自分宛ての指定ステータスのオファー一覧。 */
-    List<OwnershipTransferOfferEntity> findByTargetUserIdAndStatus(Long targetUserId, String status);
+    /** 自分宛てで、期限内の指定ステータスのオファー一覧。 */
+    List<OwnershipTransferOfferEntity> findByTargetUserIdAndStatusAndExpiresAtGreaterThanEqual(
+            Long targetUserId, String status, OffsetDateTime now);
 
     /** チーム × ステータスでオファーを検索（重複 PENDING 検出等）。 */
     List<OwnershipTransferOfferEntity> findByTeamIdAndStatus(Long teamId, String status);
 
+    /** チーム × ステータス × 期限内でオファーを検索。 */
+    List<OwnershipTransferOfferEntity> findByTeamIdAndStatusAndExpiresAtGreaterThanEqual(
+            Long teamId, String status, OffsetDateTime now);
+
     /** 組織 × ステータスでオファーを検索（重複 PENDING 検出等）。 */
     List<OwnershipTransferOfferEntity> findByOrganizationIdAndStatus(Long organizationId, String status);
+
+    /** 組織 × ステータス × 期限内でオファーを検索。 */
+    List<OwnershipTransferOfferEntity> findByOrganizationIdAndStatusAndExpiresAtGreaterThanEqual(
+            Long organizationId, String status, OffsetDateTime now);
 
     /** チームスコープ内の当該オファー（BOLA 防止のスコープ整合チェック用）。 */
     Optional<OwnershipTransferOfferEntity> findByIdAndTeamId(UUID id, Long teamId);

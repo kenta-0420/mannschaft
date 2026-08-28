@@ -39,6 +39,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 /**
  * {@link BlogMediaService} の単体テスト。
@@ -62,6 +63,9 @@ class BlogMediaServiceTest {
 
     @Mock
     private StorageQuotaService storageQuotaService;
+
+    @Mock
+    private BlogMediaOrphanCleanupRunner orphanCleanupRunner;
 
     @InjectMocks
     private BlogMediaService blogMediaService;
@@ -254,8 +258,8 @@ class BlogMediaServiceTest {
     class CleanupOrphanMedia {
 
         @Test
-        @DisplayName("正常系_72時間超過の孤立メディアを削除")
-        void 正常系_72時間超過の孤立メディアを削除() {
+        @DisplayName("正常系_72時間超過の孤立メディアを1件ずつRunnerへ委譲する")
+        void 正常系_72時間超過の孤立メディアを1件ずつRunnerへ委譲する() {
             // given: 孤立した IMAGE と VIDEO が各1件
             BlogMediaUploadEntity orphanImage = BlogMediaUploadEntity.builder()
                     .uploaderId(UPLOADER_ID)
@@ -278,20 +282,72 @@ class BlogMediaServiceTest {
 
             given(blogMediaUploadRepository.findByBlogPostIdIsNullAndCreatedAtBefore(any(LocalDateTime.class)))
                     .willReturn(List.of(orphanImage, orphanVideo));
+            // Issue #2601: 1 件処理は REQUIRES_NEW の Runner Bean に委譲される（この実行が確保できたケース）
+            given(orphanCleanupRunner.cleanupOne(any(), any()))
+                    .willReturn(new BlogMediaOrphanCleanupRunner.OrphanCleanupResult(true, false));
 
             // when
             blogMediaService.cleanupOrphanMedia();
 
-            // then: R2 からオブジェクト削除（VIDEO はサムネイルも含む）
-            then(r2StorageService).should().delete("blog/TEAM/10/orphan-image.jpg");
-            then(r2StorageService).should().delete("blog/TEAM/10/orphan-video.mp4");
-            then(r2StorageService).should().delete("blog/TEAM/10/orphan-video-thumb.jpg");
-            // DB から一括削除
-            then(blogMediaUploadRepository).should().deleteAll(List.of(orphanImage, orphanVideo));
-            // F13 Phase 4-δ: 使用量減算が呼ばれること（スコープ解析可能な s3Key の場合）
-            then(storageQuotaService).should().recordDeletion(
-                    eq(StorageScopeType.TEAM), eq(10L), eq(1024L),
-                    eq(StorageFeatureType.CMS), anyString(), any(), any());
+            // then: 対象の各件が Runner に個別委譲される（一括処理ではない）
+            then(orphanCleanupRunner).should(times(2)).cleanupOne(any(), any());
+            then(orphanCleanupRunner).should().cleanupOne(eq(orphanImage), any());
+            then(orphanCleanupRunner).should().cleanupOne(eq(orphanVideo), any());
+        }
+
+        @Test
+        @DisplayName("競合_Runnerが確保できなかった件はデバッグログのみでスキップされる")
+        void 競合_Runnerが確保できなかった件はデバッグログのみでスキップされる() {
+            // given: 別実行が既に処理済みで、Runner が claimed=false を返す
+            BlogMediaUploadEntity orphanImage = BlogMediaUploadEntity.builder()
+                    .uploaderId(UPLOADER_ID)
+                    .mediaType("IMAGE")
+                    .s3Key("blog/TEAM/10/orphan-image.jpg")
+                    .fileSize(1024L)
+                    .contentType("image/jpeg")
+                    .processingStatus("READY")
+                    .build();
+            given(blogMediaUploadRepository.findByBlogPostIdIsNullAndCreatedAtBefore(any(LocalDateTime.class)))
+                    .willReturn(List.of(orphanImage));
+            given(orphanCleanupRunner.cleanupOne(any(), any()))
+                    .willReturn(new BlogMediaOrphanCleanupRunner.OrphanCleanupResult(false, false));
+
+            // when / then: 例外を投げずに完走する
+            blogMediaService.cleanupOrphanMedia();
+            then(orphanCleanupRunner).should().cleanupOne(eq(orphanImage), any());
+        }
+
+        @Test
+        @DisplayName("異常系_1件がRunnerで想定外例外を投げても他の件の処理とバッチ完走に影響しない")
+        void 異常系_1件がRunnerで想定外例外を投げても他の件の処理とバッチ完走に影響しない() {
+            // given: 1件目の Runner 呼び出しで想定外例外、2件目は正常
+            BlogMediaUploadEntity broken = BlogMediaUploadEntity.builder()
+                    .uploaderId(UPLOADER_ID)
+                    .mediaType("IMAGE")
+                    .s3Key("blog/TEAM/10/broken.jpg")
+                    .fileSize(1024L)
+                    .contentType("image/jpeg")
+                    .processingStatus("READY")
+                    .build();
+            BlogMediaUploadEntity ok = BlogMediaUploadEntity.builder()
+                    .uploaderId(UPLOADER_ID)
+                    .mediaType("IMAGE")
+                    .s3Key("blog/TEAM/10/ok.jpg")
+                    .fileSize(1024L)
+                    .contentType("image/jpeg")
+                    .processingStatus("READY")
+                    .build();
+            given(blogMediaUploadRepository.findByBlogPostIdIsNullAndCreatedAtBefore(any(LocalDateTime.class)))
+                    .willReturn(List.of(broken, ok));
+            given(orphanCleanupRunner.cleanupOne(eq(broken), any()))
+                    .willThrow(new RuntimeException("想定外エラー"));
+            given(orphanCleanupRunner.cleanupOne(eq(ok), any()))
+                    .willReturn(new BlogMediaOrphanCleanupRunner.OrphanCleanupResult(true, false));
+
+            // when / then: バッチ全体は例外を外に投げずに完走し、2件目は処理される
+            blogMediaService.cleanupOrphanMedia();
+            then(orphanCleanupRunner).should().cleanupOne(eq(broken), any());
+            then(orphanCleanupRunner).should().cleanupOne(eq(ok), any());
         }
     }
 

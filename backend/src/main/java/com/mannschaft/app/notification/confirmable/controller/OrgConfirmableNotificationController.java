@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationCreateRequest;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationDetailResponse;
@@ -232,10 +233,24 @@ public class OrgConfirmableNotificationController {
      * ログインユーザーが確認通知を確認済みにする（MEMBER以上）。
      *
      * <p>ACTIVE 状態の通知に対して自分自身の確認のみ可能。</p>
+     *
+     * <p><b>認可（{@link AuthorizedInService} 付与の根拠・認可根治戦役 Wave7 監査済）</b>:
+     * パス変数 {@code orgId} は自身ではスコープ判定に用いない（本 EP の実処理は
+     * notificationId のみで完結する）。認可の実体は
+     * {@code ConfirmableNotificationConfirmService#confirm(Long, Long)} が受信者一覧
+     * （{@code ConfirmableNotificationRecipientRepository#findByConfirmableNotificationId}）から
+     * {@code recipient.getUser().getId().equals(userId)} で<b>呼び出しユーザー自身の受信者行のみ</b>を
+     * 特定し、該当しない場合は {@code RECIPIENT_NOT_FOUND} を投げる構造にある。
+     * このため他人宛の確認通知を確認済みにすることは構造上できない自己スコープ EP であり、
+     * {@code orgId} の実スコープと notificationId の実スコープが仮に食い違っていても、確認できるのは
+     * 常に呼び出しユーザー自身の受信者行のみで権限昇格は発生しない。
+     * データ依存でない構造的な自己スコープ認可のため白名簿クラス呼び出しを持たず、
+     * 本マーカーで監査済であることを明示する。</p>
      */
     @PostMapping("/{notificationId}/confirm")
     @Operation(summary = "確認通知を確認済みにする（組織）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "確認成功")
+    @AuthorizedInService
     public ResponseEntity<Void> confirm(
             @PathVariable Long orgId,
             @PathVariable Long notificationId) {

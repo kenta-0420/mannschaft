@@ -88,7 +88,7 @@ class MatchProposalServiceTest {
     class ListProposals {
 
         @Test
-        @DisplayName("異常系: 募集チームに所属しないユーザーは応募一覧を閲覧不可（403相当）")
+        @DisplayName("異常系: 募集チームに所属しないユーザーは応募一覧を閲覧不可（越境は存在秘匿のため 404 相当）")
         void 非所属は閲覧不可() {
             // Given: 募集チーム=TEAM_ID。actor は所属者でも SYSTEM_ADMIN でもない（未スタブ＝false）。
             MatchRequestEntity request = MatchRequestEntity.builder()
@@ -286,7 +286,7 @@ class MatchProposalServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 募集チーム管理者でないユーザーは承諾不可（403相当）")
+        @DisplayName("異常系: 募集チーム管理者でないユーザーは承諾不可（越境は存在秘匿のため 404 相当）")
         void 権限なし() {
             // Given: actor は募集チーム(OTHER_TEAM_ID)の管理者ではない（未スタブ＝false）
             MatchProposalEntity proposal = MatchProposalEntity.builder()
@@ -341,7 +341,7 @@ class MatchProposalServiceTest {
     class WithdrawProposal {
 
         @Test
-        @DisplayName("異常系: 応募チーム管理者でないユーザーは取り下げ不可（403相当）")
+        @DisplayName("異常系: 応募チーム管理者でないユーザーは取り下げ不可（越境は存在秘匿のため 404 相当）")
         void 権限なし取り下げ() {
             // Given: proposal.proposingTeamId=OTHER_TEAM_ID の応募チーム管理者ではない（未スタブ＝false）
             MatchProposalEntity proposal = MatchProposalEntity.builder()
@@ -523,7 +523,7 @@ class MatchProposalServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 募集・応募いずれのチーム管理者でもないユーザーはキャンセル不可（403相当）")
+        @DisplayName("異常系: 募集・応募いずれのチーム管理者でもないユーザーはキャンセル不可（越境は存在秘匿のため 404 相当）")
         void 権限なしキャンセル不可() {
             // Given: 募集チーム=999, 応募チーム=OTHER_TEAM_ID のいずれの管理者でもない（未スタブ＝false）
             MatchProposalEntity proposal = MatchProposalEntity.builder()
@@ -549,7 +549,7 @@ class MatchProposalServiceTest {
     class RejectProposalAdditional {
 
         @Test
-        @DisplayName("異常系: 募集チーム管理者でないユーザーは拒否不可（403相当）")
+        @DisplayName("異常系: 募集チーム管理者でないユーザーは拒否不可（越境は存在秘匿のため 404 相当）")
         void 権限なし拒否不可() {
             // Given: 募集チーム=999 の管理者ではない（未スタブ＝false）
             MatchProposalEntity proposal = MatchProposalEntity.builder()

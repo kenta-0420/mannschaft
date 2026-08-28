@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -62,8 +63,28 @@ class CirculationServiceAdditionalTest {
     @Mock
     private UserRepository userRepository;
 
+    /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
+    @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock private MessageSource messageSource;
+
     @InjectMocks
     private CirculationService service;
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(userLocaleCache.getLocales(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.Map.of());
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
 
     private static final Long DOCUMENT_ID = 100L;
     private static final Long SCOPE_ID = 1L;
