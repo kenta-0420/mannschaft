@@ -2,6 +2,8 @@ package com.mannschaft.app.payment.escrow.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.payment.escrow.ConnectChargeService;
 import com.mannschaft.app.payment.escrow.dto.RefundRequest;
 import com.mannschaft.app.payment.escrow.dto.RefundResponse;
@@ -45,6 +47,8 @@ public class EscrowRefundController {
      * @param request 返金リクエスト（amount 任意=全額/一部・reason）
      * @return 返金結果（返金後の状態・額面ベースの返金額/残額）
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "既存エスクロー取引の返金義務をGate状態にかかわらず履行するため")
     @PostMapping("/{id}/refund")
     @Operation(summary = "返金 / 与信取消（受取側 ADMIN・feeBearer=PAYER|PAYEE の 2モード）")
     public ResponseEntity<ApiResponse<RefundResponse>> refund(

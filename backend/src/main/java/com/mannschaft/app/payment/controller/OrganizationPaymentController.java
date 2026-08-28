@@ -31,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 
 /**
  * 組織支払い記録コントローラー。組織単位の支払い記録管理 API を提供する。
@@ -120,6 +122,8 @@ public class OrganizationPaymentController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "既存の誤決済記録をGate状態にかかわらず取消可能にするため")
     @DeleteMapping("/payments/{paymentId}")
     @Operation(summary = "組織支払い記録取り消し")
     public ResponseEntity<Void> cancelPayment(
@@ -161,6 +165,8 @@ public class OrganizationPaymentController {
         return ResponseEntity.ok().headers(headers).body(csv);
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "既存決済の実返金義務をGate状態にかかわらず履行するため")
     @PostMapping("/payments/{paymentId}/refund")
     @Operation(summary = "組織支払い全額返金")
     public ResponseEntity<ApiResponse<MemberPaymentResponse>> refundPayment(

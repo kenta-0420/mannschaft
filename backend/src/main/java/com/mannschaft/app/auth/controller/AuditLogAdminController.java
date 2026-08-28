@@ -6,6 +6,8 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,6 +48,8 @@ public class AuditLogAdminController {
      * @param size           ページサイズ（デフォルト20・最大100）
      */
     @Operation(summary = "監査ログ一覧（SYSTEM_ADMIN）")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "管理監査証跡をGate状態にかかわらず確認可能にするため")
     @GetMapping("/api/v1/admin/audit-logs")
     public PagedResponse<AuditLogResponse> getAdminLogs(
             @RequestParam(required = false) Long userId,
@@ -93,6 +97,8 @@ public class AuditLogAdminController {
             "SecurityUtils.getCurrentUserId() のみで取得対象ユーザーを解決する"
                     + "（AuditLogAdminController#getMyLogs）")
     @Operation(summary = "自分の監査ログ一覧")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "本人の監査証跡をGate状態にかかわらず確認可能にするため")
     @GetMapping("/api/v1/users/me/audit-logs")
     public CursorPagedResponse<AuditLogResponse> getMyLogs(
             @RequestParam(required = false) String eventType,
