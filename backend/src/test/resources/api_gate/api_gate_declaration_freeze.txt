@@ -1,5 +1,5 @@
 # type|FQCN|undeclared|total
-+HTTP|com.mannschaft.app.actionmemo.admin.AdminActionMemoController|1|1
+HTTP|com.mannschaft.app.actionmemo.admin.AdminActionMemoController|1|1
 HTTP|com.mannschaft.app.actionmemo.controller.ActionMemoController|16|16
 HTTP|com.mannschaft.app.actionmemo.controller.ActionMemoDashboardController|1|1
 HTTP|com.mannschaft.app.actionmemo.controller.ActionMemoSettingsController|2|2
