@@ -109,7 +109,6 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", teamAId, null);
         MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, memberAId, "MEMBER", teamAId, null);
         // target / stranger は teamA に非所属。
 
         // orgA / archivedOrg
@@ -118,9 +117,8 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, adminOrgId, ScopeType.ORGANIZATION, archivedOrgId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminOrgId, "ADMIN", null, archivedOrgId);
         MembershipTestHelper.insertMembership(em, orgMemberId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, orgMemberId, "MEMBER", null, orgAId);
 
-        // ロール（ADMIN/MEMBER）は上の insertUserRole で seed 済（test profile は Flyway 無効のため）。
+        // ロールは上の各ヘルパーで seed 済（test profile は Flyway 無効のため）。
 
         dmAdminTargetId = createDm(adminAId, targetId);
         dmMemberTargetId = createDm(memberAId, targetId);
