@@ -100,12 +100,18 @@ public class VillageInvitationEntity extends UuidV7Entity {
      * <p>失効理由（失効済み/期限切れ/使用回数到達のどれに該当するか）は返さない。
      * 理由を呼び出し元が区別できる形にすると、招待の存在や状態を推測できてしまう
      * 「存在オラクル」になり得るため、可否を表す boolean 1個にのみ集約する。</p>
+     *
+     * <p>基準時刻は<b>引数で受け取る</b>。内部で {@code Instant.now()} を呼ぶと
+     * 「期限ちょうどの瞬間」を境界として検証できず、テストが実行速度に左右される
+     * （実際に負荷時のみ落ちる flaky を生んでいた）。</p>
+     *
+     * @param now 判定の基準時刻（呼び出し元が {@code Clock} から得る）
      */
-    public boolean isUsable() {
+    public boolean isUsable(Instant now) {
         if (this.revokedAt != null) {
             return false;
         }
-        if (this.expiresAt != null && this.expiresAt.isBefore(Instant.now())) {
+        if (this.expiresAt != null && this.expiresAt.isBefore(now)) {
             return false;
         }
         if (this.usedCount != null && this.maxUses != null && this.usedCount >= this.maxUses) {
