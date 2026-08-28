@@ -14,6 +14,7 @@ import com.mannschaft.app.social.service.FollowService;
 import com.mannschaft.app.role.service.BlockService;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.role.service.PermissionGroupService;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.role.dto.BlockRequest;
 import com.mannschaft.app.role.dto.BlockResponse;
@@ -452,6 +453,7 @@ public class TeamController {
     }
 
     @PatchMapping("/{slug}/permission-groups/{groupId}")
+    @AuthorizedInService
     @Operation(summary = "権限グループ更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<PermissionGroupResponse>> updatePermissionGroup(
@@ -462,6 +464,7 @@ public class TeamController {
     }
 
     @DeleteMapping("/{slug}/permission-groups/{groupId}")
+    @AuthorizedInService
     @Operation(summary = "権限グループ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePermissionGroup(
