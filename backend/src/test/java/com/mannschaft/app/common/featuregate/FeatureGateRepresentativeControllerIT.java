@@ -1,7 +1,6 @@
 package com.mannschaft.app.common.featuregate;
 
-import com.mannschaft.app.admin.entity.FeatureFlagEntity;
-import com.mannschaft.app.admin.repository.FeatureFlagRepository;
+import com.mannschaft.app.admin.service.FeatureFlagService;
 import com.mannschaft.app.advertising.PricingModel;
 import com.mannschaft.app.advertising.dto.RateSimulatorResponse;
 import com.mannschaft.app.advertising.service.RateSimulatorService;
@@ -34,7 +33,6 @@ import com.mannschaft.app.translation.service.TranslationConfigService;
 import com.mannschaft.app.translation.service.TranslationConfigService.TranslationConfigResponse;
 import com.mannschaft.app.webhook.service.WebhookEndpointService;
 import com.mannschaft.app.workflow.service.WorkflowTemplateService;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.TestInstance;
@@ -78,10 +76,8 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
     @Autowired
     private MockMvc mockMvc;
     @Autowired
-    private FeatureFlagRepository featureFlagRepository;
-    @Autowired
     private CacheManager cacheManager;
-
+    @MockitoSpyBean private FeatureFlagService featureFlagService;
     @MockitoSpyBean private ShiftScheduleService shiftScheduleService;
     @MockitoSpyBean private MatchProposalService matchProposalService;
     @MockitoSpyBean private BillingEntitlementQueryService billingEntitlementQueryService;
@@ -108,16 +104,10 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
 
     @BeforeEach
     void setUp() {
-        clearFlagCaches();
         doReturn(true).when(accessGuard)
                 .isScopeMember(any(Authentication.class), anyLong(), eq("TEAM"));
         doNothing().when(accessControlService).checkMembership(anyLong(), anyLong(), any());
         doNothing().when(repairPlanModuleGuard).requireEnabled(any(), anyLong());
-    }
-
-    @AfterEach
-    void tearDown() {
-        clearFlagCaches();
     }
 
     @ParameterizedTest(name = "OFF: {0}")
@@ -125,19 +115,14 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
     @WithMockUser(username = "1", roles = "SYSTEM_ADMIN")
     @DisplayName("OFF時は403 FEATURE_GATE_001でControllerサービスを呼ばない")
     void offRejectsBeforeControllerService(Representative representative) throws Exception {
-        setFlag(representative.flagKey, false);
+        stubFlag(representative.flagKey, false);
         clearInvocations(servicesFor(representative));
 
-        try {
-            mockMvc.perform(get(representative.path))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("FEATURE_GATE_001"));
+        mockMvc.perform(get(representative.path))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FEATURE_GATE_001"));
 
-            verifyNoInteractions(servicesFor(representative));
-        } finally {
-            // 後続の統合試験へ OFF を漏らさないよう、repository transaction で ON を確定する。
-            setFlag(representative.flagKey, true);
-        }
+        verifyNoInteractions(servicesFor(representative));
     }
 
     @ParameterizedTest(name = "ON: {0}")
@@ -145,7 +130,7 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
     @WithMockUser(username = "1", roles = "SYSTEM_ADMIN")
     @DisplayName("ON時は既存200契約を保ちControllerサービスへ到達する")
     void onPreservesExistingControllerContract(Representative representative) throws Exception {
-        setFlag(representative.flagKey, true);
+        stubFlag(representative.flagKey, true);
         stubSuccessfulResponse(representative);
         clearInvocations(servicesFor(representative));
 
@@ -157,21 +142,15 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
                 .anySatisfy(service -> assertThat(mockingDetails(service).getInvocations()).isNotEmpty());
     }
 
-    private void setFlag(String flagKey, boolean enabled) {
-        FeatureFlagEntity entity = featureFlagRepository.findByFlagKey(flagKey)
-                .orElseGet(() -> FeatureFlagEntity.builder()
-                        .flagKey(flagKey)
-                        .description("Gate代表Controller IT")
-                        .build());
-        entity.updateFlag(enabled, null);
-        featureFlagRepository.saveAndFlush(entity);
-        clearFlagCaches();
+    private void stubFlag(String flagKey, boolean enabled) {
+        clearFlagCache();
+        doReturn(enabled).when(featureFlagService).isEnabled(flagKey);
+        clearFlagCache();
     }
 
-    private void clearFlagCaches() {
-        if (cacheManager.getCache("featureFlags") != null) cacheManager.getCache("featureFlags").clear();
-        if (cacheManager.getCache("featureFlagsPublicList") != null) {
-            cacheManager.getCache("featureFlagsPublicList").clear();
+    private void clearFlagCache() {
+        if (cacheManager.getCache("featureFlags") != null) {
+            cacheManager.getCache("featureFlags").clear();
         }
     }
 
