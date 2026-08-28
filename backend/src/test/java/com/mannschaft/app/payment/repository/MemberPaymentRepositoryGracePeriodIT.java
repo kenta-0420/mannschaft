@@ -61,6 +61,7 @@ class MemberPaymentRepositoryGracePeriodIT extends AbstractMySqlIntegrationTest 
     @Test
     @DisplayName("null、grace0当日、grace3最終日は有効、翌日と無効status・削除itemは無効")
     void validUntilAndGraceBoundaries() {
+        // native SQL と同じ基準日に固定し、JVM と MySQL のタイムゾーン差で境界がずれるのを防ぐ。
         LocalDate today = jdbcTemplate.queryForObject("SELECT CURRENT_DATE", LocalDate.class);
         PaymentItemEntity forever = item((short) 0);
         PaymentItemEntity grace0 = item((short) 0);
