@@ -70,6 +70,43 @@
       "backToList": "Back to channel list",
       "noChannels": "No channels yet",
       "createChannel": "Create channel"
+    },
+    "invite": {
+      "button": "Invite to team",
+      "sentSuccess": "Invitation sent",
+      "joinedSuccess": "You joined",
+      "declinedSuccess": "Invitation declined",
+      "modal": {
+        "title": "Choose a team/organization to invite to",
+        "empty": "No teams or organizations available to invite to",
+        "submit": "Send invitation"
+      },
+      "card": {
+        "pending": "You have an invitation to {scope}",
+        "waiting": "Waiting for their response",
+        "statusPending": "Pending",
+        "join": "Join",
+        "decline": "Decline",
+        "joined": "Joined",
+        "declined": "Declined",
+        "expired": "Expired",
+        "revoked": "Cancelled",
+        "expiresAt": "Expires: {time}"
+      },
+      "preview": {
+        "sent": "Sent an invitation to {scope}"
+      },
+      "notification": {
+        "received": "You received an invitation to {scope}"
+      },
+      "error": {
+        "notTarget": "This invitation is not addressed to you",
+        "privilegedRole": "Administrator roles cannot be invited this way",
+        "loadFailed": "Failed to load invitable teams/organizations",
+        "sendFailed": "Failed to send the invitation",
+        "joinFailed": "Failed to join",
+        "declineFailed": "Failed to decline"
+      }
     }
   },
   "button": {
@@ -129,7 +166,39 @@
     "DEPUTY_ADMIN": "Deputy Administrator",
     "MEMBER": "Member",
     "SUPPORTER": "Supporter",
-    "GUEST": "Guest"
+    "GUEST": "Guest",
+    "transfer": {
+      "offer": {
+        "button": "Transfer ownership",
+        "notification": "You have been offered admin ownership of {scope}",
+        "pending": "An admin ownership offer has been sent to you",
+        "pendingByMe": "Ownership transfer to {name} is pending",
+        "accept": "Accept",
+        "decline": "Decline",
+        "cancel": "Cancel",
+        "accepted": "You are now the administrator",
+        "declined": "The offer was declined",
+        "expired": "This offer has expired",
+        "cancelled": "This offer has been cancelled",
+        "confirmTitle": "Offer ownership transfer",
+        "confirmMessage": "Offer to transfer ownership to {name}? If they accept, you will be demoted to Member (nothing changes until they accept).",
+        "acceptConfirmTitle": "Accept ownership transfer",
+        "acceptConfirmMessage": "If you accept, you will become the Administrator and the current administrator will be demoted to Member. Continue?",
+        "declineConfirmTitle": "Decline offer",
+        "declineConfirmMessage": "Decline this offer? Your role will not change.",
+        "cancelConfirmTitle": "Cancel offer",
+        "cancelConfirmMessage": "Cancel this ownership transfer offer? The recipient's role will not change.",
+        "created": "Offer sent",
+        "cancelSuccess": "Offer cancelled"
+      },
+      "error": {
+        "notTarget": "This offer is not addressed to you",
+        "need2fa": {
+          "message": "Two-factor authentication is required to become an administrator",
+          "cta": "Set up two-factor authentication"
+        }
+      }
+    }
   },
   "timetable": {
     "title": "Timetable Management",
@@ -260,7 +329,13 @@
     "SCHEDULE_KEEP_009": "This transition isn't allowed",
     "SCHEDULE_KEEP_010": "Keep limit reached",
     "SCHEDULE_KEEP_012": "Invalid reorder request",
-    "TIMELINE_017": "You have reached the mute limit of 200. Please unhide something you no longer need."
+    "TIMELINE_017": "You have reached the mute limit of 200. Please unhide something you no longer need.",
+    "ROLE_009": "This offer is not addressed to you",
+    "ROLE_010": "Two-factor authentication is required to become an administrator",
+    "ROLE_011": "An active transfer offer already exists",
+    "ROLE_012": "This transfer offer has already been resolved or is invalid",
+    "ROLE_013": "The target was not found",
+    "ROLE_014": "You cannot transfer ownership to yourself"
   },
   "annual_plan": {
     "title": "Annual Event Plan",
@@ -2203,19 +2278,19 @@
   },
   "transferOwnership": {
     "sectionTitle": "Transfer ownership",
-    "sectionDescription": "Hand over the owner (admin) role to another member. After the transfer you become a deputy admin and can no longer perform admin-only actions.",
-    "openButton": "Transfer ownership",
-    "dialogTitle": "Transfer ownership",
-    "warning": "This action cannot be undone. Admin rights move to the new owner, and only the new owner can hand them back.",
+    "sectionDescription": "Offer the administrator role to another member. Nothing changes until they accept.",
+    "openButton": "Offer ownership transfer",
+    "dialogTitle": "Offer ownership transfer",
+    "warning": "If the recipient accepts, they become the administrator and you become a member. Nothing changes while the offer is pending.",
     "targetLabel": "New owner",
     "targetPlaceholder": "Select a member",
     "noCandidates": "There is no member you can transfer ownership to.",
     "confirmLabel": "Type “{name}” to confirm",
     "confirmMismatch": "The name does not match.",
     "cancel": "Cancel",
-    "submit": "Transfer",
-    "successTitle": "Ownership transferred",
-    "successDetail": "Admin rights have moved to the new owner."
+    "submit": "Send offer",
+    "successTitle": "Offer sent",
+    "successDetail": "Your administrator role remains unchanged until the recipient accepts."
   },
   "featureGate": {
     "blocked": {
@@ -2225,6 +2300,23 @@
     "error": {
       "fetchFailedTitle": "Could not check feature availability",
       "fetchFailedBody": "We could not check whether this feature is available because of a network error. Please try again later."
+    }
+  },
+  "member": {
+    "columns": {
+      "name": "Member",
+      "role": "Role",
+      "joinedAt": "Joined",
+      "actions": "Actions"
+    },
+    "empty": "No members yet",
+    "roleChanged": "Role changed",
+    "roleChangeFailed": "Failed to change role",
+    "removed": "Member removed",
+    "removeFailed": "Failed to remove member",
+    "remove": {
+      "confirmTitle": "Remove member",
+      "confirmMessage": "Remove {name} from members?"
     }
   }
 }

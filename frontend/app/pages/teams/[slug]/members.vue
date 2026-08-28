@@ -18,42 +18,61 @@ definePageMeta({
 })
 
 const route = useRoute()
+const router = useRouter()
 const teamSlug = computed(() => String(route.params.slug))
 
 const { isAdmin, isAdminOrDeputy, displayName, refresh } = useTeamShellContext()
 
 /**
- * CMP-051: オーナー譲渡後は自分が ADMIN でなくなるため、シェルのチーム・権限を
- * 再解決して権限依存 UI（管理者専用タブ・操作ボタン）を即座に整合させる。
+ * オーナー委譲オファーの承諾/辞退カードを表示するための offerId（`?offerId=` クエリ由来）。
+ * 打診通知の actionUrl がこのディープリンク形式
+ * （`/teams/{slug}/members?offerId=...`）を指す。
  */
-async function onOwnershipTransferred(): Promise<void> {
-  await refresh()
-}
-
+const offerIdFromQuery = computed<string | null>(() => {
+  const v = route.query.offerId
+  return typeof v === 'string' && v.length > 0 ? v : null
+})
 /** ちょうど `/teams/{slug}/members`（ネスト子なし）か。 */
 const isMembersRoot = computed<boolean>(() => {
   const last = route.path.replace(/\/+$/, '').split('/').pop() ?? ''
   return last === 'members'
 })
+
+/** 承諾/辞退が確定したらクエリを除去し、ロール・権限を再取得して画面を最新化する。 */
+async function onOfferResolved() {
+  await refresh()
+  const query = { ...route.query }
+  delete query.offerId
+  await router.replace({ query })
+}
 </script>
 
 <template>
   <div>
     <div v-if="isMembersRoot" class="mt-4">
+      <TransferOwnershipOfferCard
+        v-if="offerIdFromQuery"
+        class="mb-4"
+        scope-type="team"
+        :slug="teamSlug"
+        :offer-id="offerIdFromQuery"
+        :scope-name="displayName"
+        @resolved="onOfferResolved"
+      />
       <MemberTable
         scope-type="team"
         :scope-id="teamSlug"
         :can-change-role="isAdminOrDeputy"
         :can-remove="isAdminOrDeputy"
       />
-      <!-- CMP-051: オーナー譲渡は ADMIN 本人のみ（BE も最終判定を ADMIN 限定にしている） -->
+      <!-- オーナー委譲の打診は ADMIN 本人のみ。権限変更は相手の承諾時に行う。 -->
       <TransferOwnershipPanel
         v-if="isAdmin"
         class="mt-6"
         scope-type="team"
         :scope-slug="teamSlug"
         :scope-name="displayName"
-        @transferred="onOwnershipTransferred"
+        @offered="refresh"
       />
     </div>
     <!-- ネスト子（/members/{userId}/match-analytics 等）へ委譲 -->

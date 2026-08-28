@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
 import com.mannschaft.app.shift.dto.ManualRemindResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
@@ -49,6 +50,7 @@ public class ShiftScheduleController {
     @GetMapping
     @Operation(summary = "シフトスケジュール一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @RequireFeature("FEATURE_SHIFT_ENABLED")
     public ResponseEntity<ApiResponse<List<ShiftScheduleResponse>>> listSchedules(
             @RequestParam Long teamId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,

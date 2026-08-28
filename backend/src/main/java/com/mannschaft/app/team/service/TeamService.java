@@ -243,6 +243,35 @@ public class TeamService {
     }
 
     /**
+     * チームの存在確認・アーカイブ状態・表示名を軽量サマリとして返す。
+     *
+     * <p>他ドメイン（role の承諾型招待 F04.12 等）が「スコープ存在確認・アーカイブ判定・
+     * スコープ名解決」に使う read-only な横断クエリ。クロスドメインで Entity を直接渡さない方針
+     * （CLAUDE.md 原則 1・原則 5）のため、{@link TeamSummary}（必要フィールドのみの軽量 DTO）
+     * として公開する。</p>
+     *
+     * <p>論理削除済み（{@code @SQLRestriction}）チームは取得対象外（空を返す＝存在しない扱い）。</p>
+     *
+     * @param teamId チーム ID
+     * @return チームサマリ。存在しない／論理削除済みの場合は空。
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<TeamSummary> findTeamSummary(Long teamId) {
+        return teamRepository.findById(teamId)
+                .map(team -> new TeamSummary(
+                        team.getName(), team.getArchivedAt() != null));
+    }
+
+    /**
+     * チームの軽量サマリ（他ドメイン公開用）。
+     *
+     * @param name     チーム表示名
+     * @param archived アーカイブ済みか（{@code archived_at} が非 NULL）
+     */
+    public record TeamSummary(String name, boolean archived) {
+    }
+
+    /**
      * チームを slug（URL識別子）で取得する。
      *
      * <p>Phase 4-E: Valkey にて 10 分キャッシュ。更新・削除時に自動無効化される。</p>

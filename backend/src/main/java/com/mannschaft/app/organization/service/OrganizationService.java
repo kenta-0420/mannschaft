@@ -156,6 +156,35 @@ public class OrganizationService {
     }
 
     /**
+     * 組織の存在確認・アーカイブ状態・表示名を軽量サマリとして返す。
+     *
+     * <p>他ドメイン（role の承諾型招待 F04.12 等）が「スコープ存在確認・アーカイブ判定・
+     * スコープ名解決」に使う read-only な横断クエリ。クロスドメインで Entity を直接渡さない方針
+     * （CLAUDE.md 原則 1・原則 5）のため、{@link OrganizationSummary}（必要フィールドのみの軽量 DTO）
+     * として公開する。</p>
+     *
+     * <p>論理削除済み組織は取得対象外（空を返す＝存在しない扱い）。</p>
+     *
+     * @param organizationId 組織 ID
+     * @return 組織サマリ。存在しない／論理削除済みの場合は空。
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<OrganizationSummary> findOrganizationSummary(Long organizationId) {
+        return organizationRepository.findById(organizationId)
+                .map(org -> new OrganizationSummary(
+                        org.getName(), org.getArchivedAt() != null));
+    }
+
+    /**
+     * 組織の軽量サマリ（他ドメイン公開用）。
+     *
+     * @param name     組織表示名
+     * @param archived アーカイブ済みか（{@code archived_at} が非 NULL）
+     */
+    public record OrganizationSummary(String name, boolean archived) {
+    }
+
+    /**
      * F06.4 公開活動記録: 他ドメインが「この組織は匿名公開してよいか」を判定するための横断 SPI。
      *
      * <p>公開コンテンツ（活動記録など）を匿名公開する経路は、コンテンツ自身が PUBLIC でも

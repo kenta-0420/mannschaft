@@ -556,23 +556,6 @@ public class OrganizationController {
         return ResponseEntity.ok(ApiResponse.of(new EffectivePermissionsResponse(roleName, permissions)));
     }
 
-    @PostMapping("/{slug}/transfer-ownership")
-    @Operation(summary = "オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定）")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "譲渡成功")
-    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
-            description = "当該組織の ADMIN/DEPUTY でない")
-    public ResponseEntity<Void> transferOwnership(
-            @PathVariable String slug, @RequestParam Long targetUserId) {
-        Long id = organizationService.resolveOrgId(slug);
-        Long currentUserId = SecurityUtils.getCurrentUserId();
-        // 入口二重防御（changeRole / removeMember と同じ流儀）。
-        // RoleService#transferOwnership は最終判定として「操作者が当該スコープの ADMIN」を要求するため、
-        // 本ガードは判定を緩めない（ADMIN/DEPUTY で入口を絞り、ADMIN 以外は Service 側で弾かれる）。
-        accessControlService.checkAdminOrAbove(currentUserId, id, SCOPE_TYPE);
-        roleService.transferOwnership(id, SCOPE_TYPE, currentUserId, targetUserId);
-        return ResponseEntity.ok().build();
-    }
-
     /**
      * 呼び出し者自身を当該組織から退会させる。
      *

@@ -70,6 +70,43 @@
       "backToList": "Zurück zur Kanalliste",
       "noChannels": "Noch keine Kanäle",
       "createChannel": "Kanal erstellen"
+    },
+    "invite": {
+      "button": "Zum Team einladen",
+      "sentSuccess": "Einladung gesendet",
+      "joinedSuccess": "Beigetreten",
+      "declinedSuccess": "Einladung abgelehnt",
+      "modal": {
+        "title": "Team/Organisation zum Einladen auswählen",
+        "empty": "Keine Teams oder Organisationen zum Einladen verfügbar",
+        "submit": "Einladung senden"
+      },
+      "card": {
+        "pending": "Du hast eine Einladung zu {scope}",
+        "waiting": "Warten auf Antwort",
+        "statusPending": "Ausstehend",
+        "join": "Beitreten",
+        "decline": "Ablehnen",
+        "joined": "Beigetreten",
+        "declined": "Abgelehnt",
+        "expired": "Abgelaufen",
+        "revoked": "Storniert",
+        "expiresAt": "Läuft ab: {time}"
+      },
+      "preview": {
+        "sent": "Einladung zu {scope} gesendet"
+      },
+      "notification": {
+        "received": "Du hast eine Einladung zu {scope} erhalten"
+      },
+      "error": {
+        "notTarget": "Diese Einladung ist nicht an dich gerichtet",
+        "privilegedRole": "Administratorrollen können auf diesem Weg nicht eingeladen werden",
+        "loadFailed": "Einladbare Teams/Organisationen konnten nicht geladen werden",
+        "sendFailed": "Einladung konnte nicht gesendet werden",
+        "joinFailed": "Beitritt fehlgeschlagen",
+        "declineFailed": "Ablehnen fehlgeschlagen"
+      }
     }
   },
   "button": {
@@ -129,7 +166,39 @@
     "DEPUTY_ADMIN": "Stellvertretender Administrator",
     "MEMBER": "Mitglied",
     "SUPPORTER": "Unterstuzer",
-    "GUEST": "Gast"
+    "GUEST": "Gast",
+    "transfer": {
+      "offer": {
+        "button": "管理者を引き継ぐ",
+        "notification": "{scope} の管理者への就任を打診されています",
+        "pending": "管理者就任の打診が届いています",
+        "pendingByMe": "{name} さんへ管理者委譲を打診中です",
+        "accept": "引き受ける",
+        "decline": "辞退する",
+        "cancel": "取消",
+        "accepted": "管理者を引き継ぎました",
+        "declined": "打診を辞退しました",
+        "expired": "打診は期限切れです",
+        "cancelled": "打診は取り消されました",
+        "confirmTitle": "オーナー委譲の打診",
+        "confirmMessage": "{name} さんへ管理者権限の委譲を打診しますか？相手が引き受けを承諾すると、あなたはメンバーに降格されます（この時点ではまだ委譲されません）。",
+        "acceptConfirmTitle": "管理者就任の承諾",
+        "acceptConfirmMessage": "引き受けると、あなたが管理者(ADMIN)になり、現在の管理者はメンバーに降格されます。よろしいですか？",
+        "declineConfirmTitle": "打診の辞退",
+        "declineConfirmMessage": "この打診を辞退しますか？あなたのロールは変わりません。",
+        "cancelConfirmTitle": "打診の取消",
+        "cancelConfirmMessage": "この委譲の打診を取り消しますか？相手のロールは変わりません。",
+        "created": "委譲を打診しました",
+        "cancelSuccess": "打診を取り消しました"
+      },
+      "error": {
+        "notTarget": "この打診はあなた宛てではありません",
+        "need2fa": {
+          "message": "管理者になるには2段階認証の設定が必要です",
+          "cta": "2段階認証を設定する"
+        }
+      }
+    }
   },
   "timetable": {
     "title": "Stundenplanverwaltung",
@@ -260,7 +329,13 @@
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
     "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
-    "TIMELINE_017": "Du hast das Limit von 200 Ausblendungen erreicht. Blende bitte etwas wieder ein."
+    "TIMELINE_017": "Du hast das Limit von 200 Ausblendungen erreicht. Blende bitte etwas wieder ein.",
+    "ROLE_009": "この打診はあなた宛てではありません",
+    "ROLE_010": "管理者になるには2段階認証の設定が必要です",
+    "ROLE_011": "既に有効な委譲オファーが存在します",
+    "ROLE_012": "委譲オファーは既に処理済みか無効です",
+    "ROLE_013": "対象が見つかりません",
+    "ROLE_014": "自分自身への委譲はできません"
   },
   "annual_plan": {
     "title": "Jahresveranstaltungsplan",
@@ -2203,19 +2278,19 @@
   },
   "transferOwnership": {
     "sectionTitle": "Eigentum übertragen",
-    "sectionDescription": "Übergib die Rolle des Eigentümers (Administrator) an ein anderes Mitglied. Nach der Übertragung bist du stellvertretende:r Administrator:in und kannst administratorexklusive Aktionen nicht mehr ausführen.",
-    "openButton": "Eigentum übertragen",
-    "dialogTitle": "Eigentum übertragen",
-    "warning": "Diese Aktion kann nicht rückgängig gemacht werden. Die Administratorrechte gehen an die neue Eigentümerin bzw. den neuen Eigentümer über; nur diese Person kann sie zurückgeben.",
+    "sectionDescription": "Biete einem anderen Mitglied die Administratorrolle an. Bis zur Annahme ändert sich nichts.",
+    "openButton": "Übertragung anbieten",
+    "dialogTitle": "Eigentumsübertragung anbieten",
+    "warning": "Nach der Annahme erhält die andere Person die Administratorrechte und du wirst Mitglied. Während das Angebot aussteht, ändert sich nichts.",
     "targetLabel": "Neue:r Eigentümer:in",
     "targetPlaceholder": "Mitglied auswählen",
     "noCandidates": "Es gibt kein Mitglied, an das du das Eigentum übertragen kannst.",
     "confirmLabel": "Gib zur Bestätigung „{name}“ ein",
     "confirmMismatch": "Der Name stimmt nicht überein.",
     "cancel": "Abbrechen",
-    "submit": "Übertragen",
-    "successTitle": "Eigentum übertragen",
-    "successDetail": "Die Administratorrechte wurden an die neue Eigentümerin bzw. den neuen Eigentümer übertragen."
+    "submit": "Angebot senden",
+    "successTitle": "Angebot gesendet",
+    "successDetail": "Deine Administratorrolle bleibt bis zur Annahme unverändert."
   },
   "featureGate": {
     "blocked": {
@@ -2225,6 +2300,23 @@
     "error": {
       "fetchFailedTitle": "Verfügbarkeit der Funktion konnte nicht geprüft werden",
       "fetchFailedBody": "Aufgrund eines Netzwerkfehlers konnte nicht geprüft werden, ob diese Funktion verfügbar ist. Bitte versuchen Sie es später erneut."
+    }
+  },
+  "member": {
+    "columns": {
+      "name": "Mitglied",
+      "role": "Rolle",
+      "joinedAt": "Beigetreten",
+      "actions": "Aktionen"
+    },
+    "empty": "Noch keine Mitglieder",
+    "roleChanged": "Rolle geändert",
+    "roleChangeFailed": "Rolle konnte nicht geändert werden",
+    "removed": "Mitglied entfernt",
+    "removeFailed": "Mitglied konnte nicht entfernt werden",
+    "remove": {
+      "confirmTitle": "Mitglied entfernen",
+      "confirmMessage": "{name} aus den Mitgliedern entfernen?"
     }
   }
 }
