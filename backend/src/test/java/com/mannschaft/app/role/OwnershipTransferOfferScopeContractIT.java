@@ -475,7 +475,7 @@ class OwnershipTransferOfferScopeContractIT extends AbstractMySqlIntegrationTest
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
     }
 
-    /** user_roles×roles を JOIN してスコープ内のロール名を検証する。 */
+    /** 権限ロールを優先し、なければ memberships の所属ロールを検証する。 */
     private void assertRoleName(Long userId, Long teamId, String expectedRole) {
         String actual;
         try {
@@ -486,7 +486,17 @@ class OwnershipTransferOfferScopeContractIT extends AbstractMySqlIntegrationTest
                     .setParameter("tid", teamId)
                     .getSingleResult();
         } catch (NoResultException e) {
-            actual = null;
+            try {
+                actual = (String) em.createNativeQuery(
+                                "SELECT role_kind FROM memberships "
+                                        + "WHERE user_id = :uid AND scope_type = 'TEAM' "
+                                        + "AND scope_id = :tid AND left_at IS NULL")
+                        .setParameter("uid", userId)
+                        .setParameter("tid", teamId)
+                        .getSingleResult();
+            } catch (NoResultException membershipMissing) {
+                actual = null;
+            }
         }
         assertThat(actual)
                 .as("user=%d の team=%d でのロール", userId, teamId)
