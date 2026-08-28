@@ -18,6 +18,10 @@ import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementSourceType;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,6 +86,7 @@ class DashboardServiceOrgAnnouncementDedupTest {
     @Mock private ScopeWidgetSummaryService scopeWidgetSummaryService;
     @Mock private ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
+    @Mock private PaymentGateService paymentGateService;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -154,6 +159,9 @@ class DashboardServiceOrgAnnouncementDedupTest {
         given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.ADMIN);
         given(widgetVisibilityResolver.resolve("TEAM", TEAM_ID)).willReturn(teamDefaultVisibilityMap());
         given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(paymentGateService.checkAccessBatch(
+                eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class)))
+                .willReturn(Map.of(FEED_ID, new GateCheckResponse(true, false, List.of())));
     }
 
     @Test

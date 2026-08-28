@@ -6,6 +6,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -37,5 +39,10 @@ public class ContentGateResolverRegistry {
     public boolean existsInScope(String contentType, Long contentId, Long teamId, Long organizationId) {
         ContentGateResolver resolver = resolvers.get(contentType);
         return resolver != null && resolver.existsInScope(contentId, teamId, organizationId);
+    }
+
+    public Optional<ContentGateTarget> resolveForAccess(String contentType, Long contentId) {
+        ContentGateResolver resolver = resolvers.get(contentType);
+        return resolver == null ? Optional.empty() : resolver.resolveForAccess(contentId);
     }
 }

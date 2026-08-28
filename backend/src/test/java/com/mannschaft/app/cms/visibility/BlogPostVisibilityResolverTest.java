@@ -15,6 +15,7 @@ import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityDecision;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -177,6 +178,8 @@ class BlogPostVisibilityResolverTest {
             // 匿名ユーザー → snapshot は empty
             when(membershipBatchQueryService.snapshotForUser(
                     any(), any(), any())).thenReturn(UserScopeRoleSnapshot.empty());
+            when(paymentGateService.checkAccessBatch(eq("POST"), any(), eq(null), any(Map.class)))
+                    .thenReturn(Map.of(POST_ID, new GateCheckResponse(true, false, List.of())));
 
             assertThat(resolver.canView(POST_ID, null)).isTrue();
         }
@@ -196,6 +199,8 @@ class BlogPostVisibilityResolverTest {
                     Set.of());
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(snapshot);
+            when(paymentGateService.checkAccessBatch(eq("POST"), any(), eq(VIEWER_ID), any(Map.class)))
+                    .thenReturn(Map.of(POST_ID, new GateCheckResponse(true, false, List.of())));
 
             assertThat(resolver.canView(POST_ID, VIEWER_ID)).isTrue();
         }
@@ -223,6 +228,10 @@ class BlogPostVisibilityResolverTest {
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
 
+            when(paymentGateService.checkAccessBatch(eq("POST"), any(), eq(AUTHOR_ID), any(Map.class)))
+                    .thenReturn(Map.of(POST_ID, new GateCheckResponse(true, false, List.of())));
+            when(paymentGateService.checkAccessBatch(eq("POST"), any(), eq(VIEWER_ID), any(Map.class)))
+                    .thenReturn(Map.of(POST_ID, new GateCheckResponse(true, false, List.of())));
             assertThat(resolver.canView(POST_ID, AUTHOR_ID)).isTrue();
             assertThat(resolver.canView(POST_ID, VIEWER_ID)).isFalse();
         }
@@ -355,6 +364,10 @@ class BlogPostVisibilityResolverTest {
                             Map.of(new ScopeKey("TEAM", TEAM_ID), "MEMBER"),
                             Map.of(), Set.of(), Set.of()));
 
+            when(paymentGateService.checkAccessBatch(eq("POST"), any(), eq(VIEWER_ID), any(Map.class)))
+                    .thenReturn(Map.of(1L, new GateCheckResponse(true, false, List.of()),
+                            2L, new GateCheckResponse(true, false, List.of()),
+                            3L, new GateCheckResponse(false, true, List.of())));
             Set<Long> result = resolver.filterAccessible(List.of(1L, 2L, 3L), VIEWER_ID);
             assertThat(result).containsExactlyInAnyOrder(1L, 2L);
         }
@@ -376,6 +389,60 @@ class BlogPostVisibilityResolverTest {
                     Visibility.CUSTOM, PostStatus.PUBLISHED);
         }
 
+        private BlogPostVisibilityProjection publicProjection() {
+            return BlogPostVisibilityProjection.of(
+                    GATE_POST_ID, TEAM_ID, null, AUTHOR_ID, null,
+                    Visibility.PUBLIC, PostStatus.PUBLISHED);
+        }
+
+        @Test
+        @DisplayName("PUBLICでも未払いゲートは独立軸としてLOCKED相当（一覧には残る）")
+        void publicVisibility_unpaidGate_remainsVisibleAsLocked() {
+            when(blogPostRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(publicProjection()));
+            when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+when(paymentGateService.checkAccessBatch(eq("POST"), any(), eq(VIEWER_ID), any(Map.class)))
+                    .thenReturn(Map.of(GATE_POST_ID, new GateCheckResponse(false, false, List.of())));
+
+            assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isTrue();
+        }
+
+        @Test
+        @DisplayName("MEMBERS_ONLYでも未充足titleHiddenゲートはHIDDEN相当で除外")
+        void membersVisibility_hiddenGate_isExcluded() {
+            BlogPostVisibilityProjection members = BlogPostVisibilityProjection.of(
+                    GATE_POST_ID, TEAM_ID, null, AUTHOR_ID, null,
+                    Visibility.MEMBERS_ONLY, PostStatus.PUBLISHED);
+            when(blogPostRepository.findVisibilityProjectionsByIdIn(any())).thenReturn(List.of(members));
+            when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+when(paymentGateService.checkAccessBatch(eq("POST"), any(), eq(VIEWER_ID), any(Map.class)))
+                    .thenReturn(Map.of(GATE_POST_ID, new GateCheckResponse(false, true, List.of())));
+
+            assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isFalse();
+        }
+
+        @Test
+        @DisplayName("対象scope ADMINは課金ゲートをバイパスするがDEPUTY_ADMINは不可")
+        void onlyExactAdminBypassesGate() {
+            when(blogPostRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(publicProjection()));
+            ScopeKey scope = new ScopeKey("TEAM", TEAM_ID);
+            when(paymentGateService.checkAccessBatch(eq("POST"), any(), eq(VIEWER_ID), any(Map.class)))
+                    .thenReturn(Map.of(GATE_POST_ID, new GateCheckResponse(false, true, List.of())));
+
+            when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
+                    .thenReturn(new UserScopeRoleSnapshot(false, Map.of(scope, "ADMIN"),
+                            Map.of(), Set.of(), Set.of()));
+            assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isTrue();
+
+            when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
+                    .thenReturn(new UserScopeRoleSnapshot(false, Map.of(scope, "DEPUTY_ADMIN"),
+                            Map.of(), Set.of(), Set.of()));
+            assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isFalse();
+        }
+
         @Test
         @DisplayName("ペイウォールあり + 支払い済み → 閲覧可")
         void paywall_paid_accessible() {
@@ -384,7 +451,7 @@ class BlogPostVisibilityResolverTest {
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
             // ゲートあり・支払い済み → accessible=true
-            when(paymentGateService.checkAccess(eq("POST"), eq(GATE_POST_ID), eq(VIEWER_ID)))
+when(paymentGateService.checkAccess(eq("POST"), eq(GATE_POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                     .thenReturn(new GateCheckResponse(true, false, List.of()));
 
             assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isTrue();
@@ -398,7 +465,7 @@ class BlogPostVisibilityResolverTest {
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
             // ゲートあり・未払い → accessible=false
-            when(paymentGateService.checkAccess(eq("POST"), eq(GATE_POST_ID), eq(VIEWER_ID)))
+when(paymentGateService.checkAccess(eq("POST"), eq(GATE_POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                     .thenReturn(new GateCheckResponse(false, false, List.of()));
 
             assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isFalse();
@@ -412,7 +479,7 @@ class BlogPostVisibilityResolverTest {
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
             // ゲートなし → accessible=true（PaymentGateService 設計: ゲートなし = 誰でも閲覧可）
-            when(paymentGateService.checkAccess(eq("POST"), eq(GATE_POST_ID), eq(VIEWER_ID)))
+when(paymentGateService.checkAccess(eq("POST"), eq(GATE_POST_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                     .thenReturn(new GateCheckResponse(true, false, List.of()));
 
             assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isTrue();
@@ -507,6 +574,8 @@ class BlogPostVisibilityResolverTest {
                             false,
                             Map.of(new ScopeKey("TEAM", TEAM_ID), "MEMBER"),
                             Map.of(), Set.of(), Set.of()));
+            when(paymentGateService.checkAccessBatch(eq("POST"), any(), eq(VIEWER_ID), any(Map.class)))
+                    .thenReturn(Map.of(POST_ID, new GateCheckResponse(true, false, List.of())));
 
             VisibilityDecision decision = resolver.decide(POST_ID, VIEWER_ID);
             assertThat(decision.allowed()).isTrue();

@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.spi;
 
+import java.util.Optional;
+
 /**
  * 課金ゲート対象コンテンツが指定スコープに実在するかを判定するStrategy。
  *
@@ -7,6 +9,11 @@ package com.mannschaft.app.payment.spi;
  * 他機能のテーブルを直接参照しないための境界である。</p>
  */
 public interface ContentGateResolver {
+
+    /** 課金判定用の実在実体とscopeを返す。未対応typeや不存在は空を返す。 */
+    default Optional<ContentGateTarget> resolveForAccess(Long contentId) {
+        return Optional.empty();
+    }
 
     /**
      * 担当するコンテンツ種別を返す。

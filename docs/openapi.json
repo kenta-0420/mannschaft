@@ -148979,6 +148979,9 @@
       "BlogPostResponse": {
         "type": "object",
         "properties": {
+          "accessState": {
+            "type": "string"
+          },
           "audit": {
             "$ref": "#/components/schemas/BlogPostAuditDto"
           },
@@ -180724,6 +180727,9 @@
       "AnnouncementFeedItemDto": {
         "type": "object",
         "properties": {
+          "accessState": {
+            "type": "string"
+          },
           "authorId": {
             "type": "integer",
             "format": "int64"

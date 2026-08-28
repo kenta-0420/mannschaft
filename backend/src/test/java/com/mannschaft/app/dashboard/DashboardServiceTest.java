@@ -19,6 +19,9 @@ import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.repository.NotificationRepository;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -117,6 +120,9 @@ class DashboardServiceTest {
 
     @Mock
     private com.mannschaft.app.dashboard.service.SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
+
+    @Mock
+    private PaymentGateService paymentGateService;
 
     @Mock
     private ContentVisibilityChecker contentVisibilityChecker;
@@ -942,6 +948,7 @@ class DashboardServiceTest {
             given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(10L);
 
             AnnouncementFeedEntity feed = AnnouncementFeedEntity.builder()
+                    .id(1L)
                     .scopeType(AnnouncementScopeType.ORGANIZATION)
                     .scopeId(ORG_ID)
                     .sourceType(AnnouncementSourceType.BULLETIN_THREAD)
@@ -951,6 +958,9 @@ class DashboardServiceTest {
             given(announcementFeedQueryRepository.findByScope(
                     eq(AnnouncementScopeType.ORGANIZATION), eq(ORG_ID), any(), isNull(), anyInt()))
                     .willReturn(List.of(feed));
+            given(paymentGateService.checkAccessBatch(
+                    eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class)))
+                    .willReturn(Map.of(1L, new GateCheckResponse(true, false, List.of())));
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
             // When
