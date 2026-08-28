@@ -697,6 +697,7 @@ HTTP|com.mannschaft.app.village.controller.VillageCreationRequestController|6|6
 HTTP|com.mannschaft.app.village.controller.VillageEventArchiveController|1|1
 HTTP|com.mannschaft.app.village.controller.VillageFeedController|1|1
 HTTP|com.mannschaft.app.village.controller.VillageFestivalController|10|10
+HTTP|com.mannschaft.app.village.controller.VillageInvitationController|4|4
 HTTP|com.mannschaft.app.village.controller.VillageJoinRequestController|6|6
 HTTP|com.mannschaft.app.village.controller.VillageLobbyController|3|3
 HTTP|com.mannschaft.app.village.controller.VillageLobbyPresenceController|1|1
