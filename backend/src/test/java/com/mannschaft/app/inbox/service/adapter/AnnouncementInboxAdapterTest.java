@@ -14,6 +14,10 @@ import com.mannschaft.app.social.announcement.AnnouncementFeedRepository;
 import com.mannschaft.app.social.announcement.AnnouncementReadStatusEntity;
 import com.mannschaft.app.social.announcement.AnnouncementReadStatusRepository;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -24,6 +28,7 @@ import org.mockito.quality.Strictness;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 /**
  * F04.11 {@link AnnouncementInboxAdapter} 単体テスト（Mockito）。
@@ -61,11 +67,12 @@ class AnnouncementInboxAdapterTest {
     private final AnnouncementReadStatusRepository readStatusRepository =
             mock(AnnouncementReadStatusRepository.class);
     private final InboxPriorityNormalizer normalizer = new InboxPriorityNormalizer();
+    private final PaymentGateService paymentGateService = mock(PaymentGateService.class);
 
     private final AnnouncementInboxAdapter adapter = new AnnouncementInboxAdapter(
             userRoleRepository, roleResolver, feedQueryRepository, feedRepository,
             readStatusRepository, normalizer,
-            new com.mannschaft.app.inbox.service.InboxDedupeKeyResolver());
+            new com.mannschaft.app.inbox.service.InboxDedupeKeyResolver(), paymentGateService);
 
 
     private AnnouncementFeedEntity feed(Long id, AnnouncementScopeType scopeType, Long scopeId,
@@ -92,6 +99,24 @@ class AnnouncementInboxAdapterTest {
         return r;
     }
 
+    private void givenFullGateBatch(Long... feedIds) {
+        Map<Long, GateCheckResponse> gates = java.util.Arrays.stream(feedIds)
+                .collect(java.util.stream.Collectors.toMap(
+                        id -> id, id -> new GateCheckResponse(true, false, List.of())));
+        given(paymentGateService.checkAccessBatch(
+                eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class)))
+                .willReturn(gates);
+    }
+
+    private void givenFullGate(Long... feedIds) {
+        for (Long feedId : feedIds) {
+            given(paymentGateService.checkAccess(
+                    eq(ContentGateType.ANNOUNCEMENT), eq(feedId), eq(USER_ID),
+                    any(ContentGateTarget.class)))
+                    .willReturn(new GateCheckResponse(true, false, List.of()));
+        }
+    }
+
     /** 所属なし・既読なしの既定スタブ。 */
     private void noScopes() {
         given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
@@ -109,6 +134,38 @@ class AnnouncementInboxAdapterTest {
     @Nested
     @DisplayName("fetch のマッピング")
     class Fetch {
+
+        @Test
+        @DisplayName("fetchはHIDDENを除外し、LOCKEDのexcerptとsource参照を隠す")
+        void gatesAreAppliedInBatch() {
+            AnnouncementFeedEntity hidden = feed(80L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
+                    "MEMBERS_AND_ABOVE", "hidden", "secret", LocalDateTime.now(), null, null);
+            AnnouncementFeedEntity locked = feed(81L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
+                    "MEMBERS_AND_ABOVE", "locked", "secret", LocalDateTime.now(), null, null);
+            AnnouncementFeedEntity full = feed(82L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
+                    "MEMBERS_AND_ABOVE", "full", "excerpt", LocalDateTime.now(), null, null);
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of(TEAM_ID));
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            given(feedQueryRepository.findByScope(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), any(), any(), anyInt()))
+                    .willReturn(List.of(hidden, locked, full));
+            given(paymentGateService.checkAccessBatch(
+                    eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class)))
+                    .willReturn(java.util.Map.of(
+                            80L, new GateCheckResponse(false, true, List.of()),
+                            81L, new GateCheckResponse(false, false, List.of()),
+                            82L, new GateCheckResponse(true, false, List.of())));
+            given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any())).willReturn(List.of());
+
+            List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
+
+            assertThat(items).extracting(InboxItemDto::sourceId).containsExactlyInAnyOrder(81L, 82L);
+            InboxItemDto lockedItem = items.stream().filter(item -> item.sourceId().equals(81L)).findFirst().orElseThrow();
+            assertThat(lockedItem.excerpt()).isNull();
+            assertThat(lockedItem.canonicalRef()).isEqualTo("ANNOUNCEMENT_FEED:81");
+            verify(paymentGateService).checkAccessBatch(
+                    eq(ContentGateType.ANNOUNCEMENT), any(), eq(USER_ID), any(Map.class));
+        }
 
         @Test
         @DisplayName("所属がなければ空を返す（findByScope を呼ばない）")
@@ -134,6 +191,7 @@ class AnnouncementInboxAdapterTest {
                     .willReturn(List.of(f));
             given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                     .willReturn(List.of());
+            givenFullGateBatch(30L);
 
             List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
@@ -169,6 +227,7 @@ class AnnouncementInboxAdapterTest {
                     .willReturn(List.of(u, i, n));
             given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                     .willReturn(List.of());
+            givenFullGateBatch(31L, 32L, 33L);
 
             List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
@@ -197,6 +256,7 @@ class AnnouncementInboxAdapterTest {
                     .willReturn(List.of(read, unread));
             given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                     .willReturn(List.of(rs));
+            givenFullGateBatch(40L, 41L);
 
             List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
@@ -228,6 +288,7 @@ class AnnouncementInboxAdapterTest {
                     .willReturn(List.of(orgFeed));
             given(readStatusRepository.findByUserIdAndAnnouncementFeedIdIn(eq(USER_ID), any()))
                     .willReturn(List.of());
+            givenFullGateBatch(50L, 51L);
 
             List<InboxItemDto> items = adapter.fetch(USER_ID, 50);
 
@@ -241,6 +302,29 @@ class AnnouncementInboxAdapterTest {
     class Visibility {
 
         @Test
+        @DisplayName("HIDDENはfalse、LOCKEDはtrue")
+        void paymentGateVisibility() {
+            AnnouncementFeedEntity hidden = feed(90L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
+                    "MEMBERS_AND_ABOVE", "h", "e", LocalDateTime.now(), null, null);
+            AnnouncementFeedEntity locked = feed(91L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
+                    "MEMBERS_AND_ABOVE", "l", "e", LocalDateTime.now(), null, null);
+            given(feedRepository.findById(90L)).willReturn(Optional.of(hidden));
+            given(feedRepository.findById(91L)).willReturn(Optional.of(locked));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of(TEAM_ID));
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            given(paymentGateService.checkAccess(
+                    eq(ContentGateType.ANNOUNCEMENT), eq(90L), eq(USER_ID), any(ContentGateTarget.class)))
+                    .willReturn(new GateCheckResponse(false, true, List.of()));
+            given(paymentGateService.checkAccess(
+                    eq(ContentGateType.ANNOUNCEMENT), eq(91L), eq(USER_ID), any(ContentGateTarget.class)))
+                    .willReturn(new GateCheckResponse(false, false, List.of()));
+
+            assertThat(adapter.isVisibleTo(USER_ID, 90L)).isFalse();
+            assertThat(adapter.isVisibleTo(USER_ID, 91L)).isTrue();
+        }
+
+        @Test
         @DisplayName("本人の所属スコープかつ role visibility に収まる feed は true")
         void ownScopeVisible() {
             AnnouncementFeedEntity f = feed(60L, AnnouncementScopeType.TEAM, TEAM_ID, "NORMAL",
@@ -250,6 +334,7 @@ class AnnouncementInboxAdapterTest {
                     .willReturn(List.of(TEAM_ID));
             given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            givenFullGate(60L);
 
             assertThat(adapter.isVisibleTo(USER_ID, 60L)).isTrue();
         }
@@ -297,6 +382,7 @@ class AnnouncementInboxAdapterTest {
                     .willReturn(List.of(TEAM_ID));
             given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.SUPPORTER);
+            givenFullGate(66L, 67L);
 
             assertThat(adapter.isVisibleTo(USER_ID, 66L)).isTrue();
             assertThat(adapter.isVisibleTo(USER_ID, 67L)).isTrue();
@@ -318,6 +404,7 @@ class AnnouncementInboxAdapterTest {
                     .willReturn(List.of(TEAM_ID));
             given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
             given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            givenFullGate(70L, 71L, 72L);
 
             assertThat(adapter.isVisibleTo(USER_ID, 70L)).isTrue();
             assertThat(adapter.isVisibleTo(USER_ID, 71L)).isTrue();

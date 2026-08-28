@@ -13,6 +13,7 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -138,7 +139,7 @@ class BlogPostServiceMediaResolutionTest {
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class)))
                     .willReturn(mappedResponse());
             // 未認証（viewerUserId=null）・ゲート通過で全文が返る状態にする
-            lenient().when(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), any()))
+            lenient().when(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), any(), any(ContentGateTarget.class)))
                     .thenReturn(new GateCheckResponse(true, false, List.of()));
             lenient().when(blogBodyMediaResolver.resolveBody(any(), any(), any()))
                     .thenReturn(RESOLVED_BODY);
@@ -180,7 +181,7 @@ class BlogPostServiceMediaResolutionTest {
                     .willReturn(Optional.of(teamPost()));
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class)))
                     .willReturn(mappedResponse());
-            given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), any()))
+            given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), any(), any(ContentGateTarget.class)))
                     .willReturn(new GateCheckResponse(false, false, List.of()));
 
             BlogPostResponse result = service.getBySlug(TEAM_ID, null, null, SLUG);

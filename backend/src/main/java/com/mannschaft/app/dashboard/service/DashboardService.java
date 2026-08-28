@@ -36,6 +36,10 @@ import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementVisibility;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
@@ -86,6 +90,7 @@ public class DashboardService {
     private final UserRoleRepository userRoleRepository;
     private final AnnouncementFeedQueryRepository announcementFeedQueryRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    private final PaymentGateService paymentGateService;
 
     // F22.1 第二波: 厳選ウィジェットサマリ + 統合「要対応」集計 + SWIPE 可視性
     private final ScopeWidgetSummaryService scopeWidgetSummaryService;
@@ -508,11 +513,12 @@ public class DashboardService {
 
         // 結合して createdAt 降順で上位5件
         List<Map<String, Object>> teamNoticeItems = java.util.stream.Stream.concat(
-                        teamAnnouncementFeeds.stream(), orgAnnouncementFeeds.stream())
-                .sorted(java.util.Comparator.comparing(AnnouncementFeedEntity::getCreatedAt,
+                        filterAnnouncementGated(teamAnnouncementFeeds, userId, viewerRole).stream(),
+                        filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream())
+                .sorted(java.util.Comparator.comparing(item -> item.feed().getCreatedAt(),
                         java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
                 .limit(DASHBOARD_ITEM_LIMIT)
-                .map(this::toAnnouncementFeedMap)
+                .map(item -> toAnnouncementFeedMap(item.feed(), item.locked()))
                 .toList();
 
         // F02.2.1: 各ウィジェットを viewerRole.isAtLeast(min_role) で判定し、不可視は null にする
@@ -624,9 +630,9 @@ public class DashboardService {
         Set<String> orgAllowedVisibilities = resolveVisibilityParam(viewerRole);
         List<AnnouncementFeedEntity> orgAnnouncementFeeds = announcementFeedQueryRepository
                 .findByScope(AnnouncementScopeType.ORGANIZATION, orgId, orgAllowedVisibilities, null, 10);
-        List<Map<String, Object>> orgNoticeItems = orgAnnouncementFeeds.stream()
+        List<Map<String, Object>> orgNoticeItems = filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream()
                 .limit(DASHBOARD_ITEM_LIMIT)
-                .map(this::toAnnouncementFeedMap)
+                .map(item -> toAnnouncementFeedMap(item.feed(), item.locked()))
                 .toList();
 
         // platform_announcements
@@ -955,16 +961,69 @@ public class DashboardService {
      * F02.8: AnnouncementFeedEntity をダッシュボード表示用 Map に変換する。
      */
     private Map<String, Object> toAnnouncementFeedMap(AnnouncementFeedEntity feed) {
+        return toAnnouncementFeedMap(feed, false);
+    }
+
+    private Map<String, Object> toAnnouncementFeedMap(AnnouncementFeedEntity feed, boolean locked) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", feed.getId());
-        map.put("source_type", feed.getSourceType() != null ? feed.getSourceType().name() : null);
         map.put("title_cache", feed.getTitleCache());
-        map.put("excerpt_cache", feed.getExcerptCache());
         map.put("priority", feed.getPriority());
         map.put("is_pinned", feed.getIsPinned());
         map.put("expires_at", feed.getExpiresAt());
         map.put("created_at", feed.getCreatedAt());
-        map.put("target_team_ids", feed.getTargetTeamIds());
+        map.put("access_state", locked ? "LOCKED" : "FULL");
+        if (!locked) {
+            map.put("source_type", feed.getSourceType() != null ? feed.getSourceType().name() : null);
+            map.put("excerpt_cache", feed.getExcerptCache());
+            map.put("target_team_ids", feed.getTargetTeamIds());
+        }
         return map;
     }
+
+    /** Dashboardの告知にも一覧と同じ課金軸を適用する（ゲート判定は1回のバッチ）。 */
+    private List<GatedAnnouncement> filterAnnouncementGated(
+            List<AnnouncementFeedEntity> feeds, Long userId, ViewerRole viewerRole) {
+        if (feeds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, ContentGateTarget> targets = feeds.stream()
+                .filter(feed -> DashboardService.targetOf(feed) != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        AnnouncementFeedEntity::getId,
+                        DashboardService::targetOf,
+                        (first, ignored) -> first));
+        Map<Long, GateCheckResponse> gates = paymentGateService == null ? Map.of() : paymentGateService.checkAccessBatch(
+                ContentGateType.ANNOUNCEMENT,
+                feeds.stream().map(AnnouncementFeedEntity::getId).toList(), userId, targets);
+        if (gates == null) {
+            return List.of();
+        }
+        if (viewerRole == ViewerRole.ADMIN || viewerRole == ViewerRole.SYSTEM_ADMIN) {
+            return feeds.stream().filter(feed -> {
+                GateCheckResponse gate = gates.get(feed.getId());
+                return gate != null && !gate.isTitleHidden();
+            }).map(feed -> new GatedAnnouncement(feed, false)).toList();
+        }
+        return feeds.stream().filter(feed -> {
+            GateCheckResponse gate = gates.get(feed.getId());
+            return gate != null && !gate.isTitleHidden();
+        }).map(feed -> new GatedAnnouncement(feed, isAnnouncementLocked(gates.get(feed.getId())))).toList();
+    }
+
+    private boolean isAnnouncementLocked(GateCheckResponse gate) {
+        return gate != null && !gate.isAccessible() && !gate.isTitleHidden();
+    }
+
+    private static ContentGateTarget targetOf(AnnouncementFeedEntity feed) {
+        if (feed == null || feed.getId() == null || feed.getScopeType() == null || feed.getScopeId() == null) {
+            return null;
+        }
+        return feed.getScopeType() == AnnouncementScopeType.TEAM
+                ? new ContentGateTarget(feed.getId(), feed.getScopeId(), null)
+                : feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
+                    ? new ContentGateTarget(feed.getId(), null, feed.getScopeId()) : null;
+    }
+
+    private record GatedAnnouncement(AnnouncementFeedEntity feed, boolean locked) {}
 }

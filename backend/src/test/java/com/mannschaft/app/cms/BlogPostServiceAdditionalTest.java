@@ -20,9 +20,14 @@ import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.VisibilityErrorCode;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,14 +42,17 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.lenient;
 
 /**
  * {@link BlogPostService}（ファサード）追加単体テスト。未テストのブランチをカバーする。
@@ -76,6 +84,8 @@ class BlogPostServiceAdditionalTest {
     private OrganizationRepository organizationRepository;
     @Mock
     private AccessControlService accessControlService;
+    @Mock
+    private PaymentGateService paymentGateService;
 
     @InjectMocks
     private BlogPostService service;
@@ -88,7 +98,8 @@ class BlogPostServiceAdditionalTest {
     private static final Long POST_ID = 10L;
 
     private BlogPostEntity createPostEntity(PostStatus status) {
-        return BlogPostEntity.builder()
+        BlogPostEntity entity = BlogPostEntity.builder()
+                .id(POST_ID)
                 .teamId(TEAM_ID)
                 .authorId(USER_ID)
                 .title("テスト記事")
@@ -100,6 +111,17 @@ class BlogPostServiceAdditionalTest {
                 .status(status)
                 .readingTimeMinutes((short) 1)
                 .build();
+        return entity;
+    }
+
+    @BeforeEach
+    void stubPaymentGateForNormalFixtures() {
+        lenient().when(paymentGateService.checkAccess(
+                any(), any(), any(), any(ContentGateTarget.class)))
+                .thenReturn(new GateCheckResponse(true, false, List.of()));
+        lenient().when(paymentGateService.checkAccessBatch(
+                any(), any(), any(), any(Map.class)))
+                .thenReturn(Map.of(POST_ID, new GateCheckResponse(true, false, List.of())));
     }
 
     private BlogPostResponse createPostResponse() {
@@ -122,14 +144,18 @@ class BlogPostServiceAdditionalTest {
             Pageable pageable = PageRequest.of(0, 10);
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             Page<BlogPostEntity> page = new PageImpl<>(List.of(entity));
-            given(postRepository.findByOrganizationIdOrderByPinnedDescCreatedAtDesc(ORG_ID, pageable)).willReturn(page);
+            given(postRepository.findByOrganizationIdOrderByPinnedDescCreatedAtDesc(
+                    eq(ORG_ID), any(Pageable.class))).willReturn(page);
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
+            given(contentVisibilityChecker.filterAccessible(
+                    ReferenceType.BLOG_POST, Set.of(POST_ID), USER_ID)).willReturn(Set.of(POST_ID));
 
             // Long文字列で渡す（後方互換）
             Page<BlogPostResponse> result;
             try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> su =
                     Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
                 su.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                su.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
                 result = service.listByOrganization(ORG_ID_STR, pageable);
             }
 
@@ -153,7 +179,7 @@ class BlogPostServiceAdditionalTest {
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
             org.springframework.test.util.ReflectionTestUtils.setField(entity, "id", POST_ID);
             Page<BlogPostEntity> page = new PageImpl<>(List.of(entity));
-            given(postRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, pageable)).willReturn(page);
+            given(postRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(Pageable.class))).willReturn(page);
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
             given(contentVisibilityChecker.filterAccessible(ReferenceType.BLOG_POST, Set.of(POST_ID), USER_ID))
                     .willReturn(Set.of(POST_ID));
@@ -175,7 +201,7 @@ class BlogPostServiceAdditionalTest {
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
             org.springframework.test.util.ReflectionTestUtils.setField(entity, "id", POST_ID);
             Page<BlogPostEntity> page = new PageImpl<>(List.of(entity));
-            given(postRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, pageable)).willReturn(page);
+            given(postRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(Pageable.class))).willReturn(page);
             given(contentVisibilityChecker.filterAccessible(ReferenceType.BLOG_POST, Set.of(POST_ID), 999L))
                     .willReturn(Set.of());
 

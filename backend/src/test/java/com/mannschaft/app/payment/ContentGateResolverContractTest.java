@@ -19,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.time.Clock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -105,7 +106,8 @@ class ContentGateResolverContractTest {
     @Test
     @DisplayName("ANNOUNCEMENT Resolver は scope type/id を Repository に委譲する")
     void announcementResolverDelegatesScopes() {
-        AnnouncementContentGateResolver resolver = new AnnouncementContentGateResolver(announcements);
+        AnnouncementContentGateResolver resolver = new AnnouncementContentGateResolver(
+                announcements, Clock.systemDefaultZone());
         given(announcements.existsByIdAndScopeTypeAndScopeId(1L, AnnouncementScopeType.TEAM, 2L))
                 .willReturn(true);
         given(announcements.existsByIdAndScopeTypeAndScopeId(1L, AnnouncementScopeType.ORGANIZATION, 3L))

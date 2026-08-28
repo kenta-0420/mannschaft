@@ -15,6 +15,7 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.publicview.dto.PublicAuthorIdentity;
 import com.mannschaft.app.publicview.dto.PublicPostDetail;
 import com.mannschaft.app.publicview.dto.PublicPostSummary;
@@ -295,9 +296,6 @@ public class PublicPostQueryService {
     private String applyPaywallToPublicDetail(BlogPostEntity post, ViewerContext viewerContext) {
         Long viewerUserId = viewerContext.userId();
         // 著者本人はゲート無視で全文
-        if (viewerUserId != null && viewerUserId.equals(post.getAuthorId())) {
-            return post.getBody();
-        }
         // SystemAdmin はゲート無視で全文
         if (viewerContext.status() == ViewerStatus.SYSTEM_ADMIN) {
             return post.getBody();
@@ -305,7 +303,8 @@ public class PublicPostQueryService {
 
         GateCheckResponse gate;
         try {
-            gate = paymentGateService.checkAccess(ContentGateType.POST, post.getId(), viewerUserId);
+            gate = paymentGateService.checkAccess(ContentGateType.POST, post.getId(), viewerUserId,
+                    targetOf(post));
         } catch (Exception e) {
             // 評価不能（例外）→ null 扱いで fail-closed 経路へ統一する。
             log.warn("ペイウォール判定失敗（公開詳細）: postId={} → fail-closed 判定へ", post.getId(), e);
@@ -314,7 +313,7 @@ public class PublicPostQueryService {
 
         // checkAccess が null／例外のいずれでも、ゲート行が有るなら本文をマスク、無いなら従来どおり返す。
         if (gate == null) {
-            return safelyHasGate(post.getId()) ? null : post.getBody();
+            throw new BusinessException(PublicViewErrorCode.PUBLIC_003);
         }
         if (gate.isAccessible()) {
             return post.getBody();
@@ -326,16 +325,10 @@ public class PublicPostQueryService {
         return null;
     }
 
-    /**
-     * ゲート存在確認（fail-closed 判定用）。存在確認自体が失敗した場合は本文漏洩を避けtrueを返す。
-     */
-    private boolean safelyHasGate(Long postId) {
-        try {
-            return paymentGateService.hasGate(ContentGateType.POST, postId);
-        } catch (Exception e) {
-            log.warn("ペイウォールゲート存在確認に失敗: postId={} → fail-closed", postId, e);
-            return true;
-        }
+    /** コンテンツ実体から課金判定用の実スコープを復元する。 */
+    private static ContentGateTarget targetOf(BlogPostEntity post) {
+        if (post == null || post.getId() == null) return null;
+        return new ContentGateTarget(post.getId(), post.getTeamId(), post.getOrganizationId());
     }
 
     /**

@@ -12,6 +12,7 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.publicview.dto.PublicPostDetail;
 import com.mannschaft.app.publicview.visibility.DisplayIdentity;
 import com.mannschaft.app.publicview.visibility.IdentityVisibilityResolver;
@@ -33,6 +34,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
@@ -117,7 +119,7 @@ class PublicPostQueryServiceMediaResolutionTest {
     @DisplayName("AC-B3-1: 未認証・課金不要の公開詳細で bodyHtml が署名URL解決済みで返る")
     void 未認証の公開詳細で本文が解決される() {
         stubTeamDetail(teamPost());
-        given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, null))
+        given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
                 .willReturn(new GateCheckResponse(true, false, List.of()));
 
         PublicPostDetail result = service.findPublicPostDetailByTeam(
@@ -132,7 +134,7 @@ class PublicPostQueryServiceMediaResolutionTest {
     @DisplayName("AC-B3-2: 解決には投稿自身のスコープ（TEAM/teamId）が渡される（越境防止）")
     void 投稿自身のスコープが渡される() {
         stubTeamDetail(teamPost());
-        given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, null))
+        given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
                 .willReturn(new GateCheckResponse(true, false, List.of()));
 
         service.findPublicPostDetailByTeam(TEAM_ID, POST_ID, ViewerContext.anonymous());
@@ -142,15 +144,18 @@ class PublicPostQueryServiceMediaResolutionTest {
     }
 
     @Test
-    @DisplayName("AC-B3-3: 著者本人（ゲート無視で全文）の経路でも本文が解決される")
-    void 著者本人の経路でも解決される() {
+    @DisplayName("AC-B3-3: 著者本人でも課金判定通過後の本文が解決される")
+    void 著者本人でも課金判定通過後に解決される() {
         stubTeamDetail(teamPost());
+        given(paymentGateService.checkAccess(
+                eq(ContentGateType.POST), eq(POST_ID), eq(AUTHOR_ID), any(ContentGateTarget.class)))
+                .willReturn(new GateCheckResponse(true, false, List.of()));
 
         PublicPostDetail result = service.findPublicPostDetailByTeam(
                 TEAM_ID, POST_ID, ViewerContext.member(AUTHOR_ID, Set.of(TEAM_ID)));
 
         assertThat(result.bodyHtml())
-                .as("ペイウォール早期 return の経路でも解決漏れがあってはならない")
+                .as("著者本人でも課金判定後の本文に解決漏れがあってはならない")
                 .isEqualTo(RESOLVED_BODY);
     }
 
@@ -158,7 +163,7 @@ class PublicPostQueryServiceMediaResolutionTest {
     @DisplayName("AC-B3-4: 本文がマスク（未課金 bodyHtml=null）の場合は解決を呼ばない")
     void マスク時は解決を呼ばない() {
         stubTeamDetail(teamPost());
-        given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, null))
+        given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
                 .willReturn(new GateCheckResponse(false, false, List.of()));
 
         PublicPostDetail result = service.findPublicPostDetailByTeam(
@@ -192,7 +197,7 @@ class PublicPostQueryServiceMediaResolutionTest {
                 .thenReturn(new DisplayIdentity("投稿者", null, false, true));
         lenient().when(blogBodyMediaResolver.resolveBody(any(), any(), any()))
                 .thenReturn(RESOLVED_BODY);
-        given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, null))
+        given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
                 .willReturn(new GateCheckResponse(true, false, List.of()));
 
         service.findPublicPostDetailByOrganization(ORG_ID, POST_ID, ViewerContext.anonymous());

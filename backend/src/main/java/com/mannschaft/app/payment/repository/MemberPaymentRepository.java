@@ -38,12 +38,24 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
     /**
      * ユーザーの有効な PAID レコードが存在するか確認する。
      */
-    @Query("SELECT COUNT(mp) > 0 FROM MemberPaymentEntity mp " +
-            "WHERE mp.userId = :userId AND mp.paymentItemId = :paymentItemId " +
+    @Query(value = "SELECT COUNT(*) > 0 FROM member_payments mp " +
+            "JOIN payment_items pi ON pi.id = mp.payment_item_id AND pi.deleted_at IS NULL " +
+            "WHERE mp.user_id = :userId AND mp.payment_item_id = :paymentItemId " +
             "AND mp.status = 'PAID' " +
-            "AND (mp.validUntil IS NULL OR mp.validUntil >= CURRENT_DATE)")
+            "AND (mp.valid_until IS NULL OR mp.valid_until >= DATE_SUB(CURRENT_DATE, INTERVAL COALESCE(pi.grace_period_days, 0) DAY))",
+            nativeQuery = true)
     boolean existsValidPaidPayment(@Param("userId") Long userId,
                                    @Param("paymentItemId") Long paymentItemId);
+
+    /** 課金ゲートの一覧判定用に、閲覧者が有効支払済みの項目IDを一括取得する。 */
+    @Query(value = "SELECT mp.payment_item_id FROM member_payments mp " +
+            "JOIN payment_items pi ON pi.id = mp.payment_item_id AND pi.deleted_at IS NULL " +
+            "WHERE mp.user_id = :userId AND mp.payment_item_id IN (:paymentItemIds) " +
+            "AND mp.status = 'PAID' " +
+            "AND (mp.valid_until IS NULL OR mp.valid_until >= DATE_SUB(CURRENT_DATE, INTERVAL COALESCE(pi.grace_period_days, 0) DAY))",
+            nativeQuery = true)
+    List<Long> findValidPaidPaymentItemIds(@Param("userId") Long userId,
+                                           @Param("paymentItemIds") List<Long> paymentItemIds);
 
     /**
      * 指定チームの代表（ADMIN/DEPUTY_ADMIN）のいずれかが、当該 payment_item に対して
@@ -58,7 +70,7 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
             "JOIN roles r ON r.id = ur.role_id " +
             "WHERE mp.payment_item_id = :paymentItemId " +
             "  AND mp.status = 'PAID' " +
-            "  AND (mp.valid_until IS NULL OR mp.valid_until >= CURRENT_DATE) " +
+            "  AND (mp.valid_until IS NULL OR mp.valid_until >= DATE_SUB(CURRENT_DATE, INTERVAL COALESCE((SELECT pi.grace_period_days FROM payment_items pi WHERE pi.id = mp.payment_item_id AND pi.deleted_at IS NULL), 0) DAY)) " +
             "  AND r.name IN ('ADMIN', 'DEPUTY_ADMIN')",
             nativeQuery = true)
     boolean existsValidPaidPaymentByTeamRepresentative(@Param("teamId") Long teamId,
@@ -71,11 +83,12 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
      * （paid_at）を表示するために用いる。有効期限（validUntil）が切れていない PAID を支払い日時の新しい順で 1 件返す。
      * 複数の有効 PAID が存在しうる不整合データでは最新の支払いを採る。</p>
      */
-    @Query("SELECT mp FROM MemberPaymentEntity mp " +
-            "WHERE mp.userId = :userId AND mp.paymentItemId = :paymentItemId " +
+    @Query(value = "SELECT mp.* FROM member_payments mp " +
+            "JOIN payment_items pi ON pi.id = mp.payment_item_id AND pi.deleted_at IS NULL " +
+            "WHERE mp.user_id = :userId AND mp.payment_item_id = :paymentItemId " +
             "AND mp.status = 'PAID' " +
-            "AND (mp.validUntil IS NULL OR mp.validUntil >= CURRENT_DATE) " +
-            "ORDER BY mp.paidAt DESC, mp.createdAt DESC")
+            "AND (mp.valid_until IS NULL OR mp.valid_until >= DATE_SUB(CURRENT_DATE, INTERVAL COALESCE(pi.grace_period_days, 0) DAY)) " +
+            "ORDER BY mp.paid_at DESC, mp.created_at DESC", nativeQuery = true)
     List<MemberPaymentEntity> findValidPaidPayments(@Param("userId") Long userId,
                                                     @Param("paymentItemId") Long paymentItemId);
 
