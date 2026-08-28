@@ -9,9 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -19,57 +19,76 @@ import java.util.stream.Stream;
 import static com.mannschaft.app.common.architecture.JavaSourceScanningUtils.maskCommentsAndLiterals;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** HTTP mapping 3,503 件と STOMP {@code @MessageMapping} 2 件を走査する API Gate 宣言番人。 */
+/**
+ * API の mapped method が feature gate または明示的な常時到達理由を宣言することを監査する番人。
+ * HTTP は 3,503 件、STOMP は Chat の 2 件と VillageLobbyPresenceController の 3 件、計 5 件を走査する。
+ */
 class ApiGateDeclarationGuardTest {
 
-    private static final Pattern CLASS_GATE = Pattern.compile("(?s)@(?:[\\w.]+\\.)?RequireFeature(?:\\s*\\([^)]*\\))?\\s*(?:public\\s+)?(?:final\\s+)?class\\s+");
-    private static final Pattern CLASS_ALWAYS = Pattern.compile("(?s)@(?:[\\w.]+\\.)?AlwaysReachable(?:\\s*\\([^)]*\\))?\\s*(?:public\\s+)?(?:final\\s+)?class\\s+");
+    private static final Pattern CLASS_GATE = Pattern.compile("(?s)@(?:[\\w.]+\\.)?RequireFeature\\s*\\([^)]*\\)\\s*(?:public\\s+)?(?:final\\s+)?class\\s+");
+    private static final Pattern CLASS_ALWAYS = Pattern.compile("(?s)@(?:[\\w.]+\\.)?AlwaysReachable\\s*\\([^)]*\\)\\s*(?:public\\s+)?(?:final\\s+)?class\\s+");
     private static final Pattern ANNOTATION = Pattern.compile("@([\\w.]+)(?:\\s*\\(([^)]*)\\))?");
-    private static final Pattern METHOD = Pattern.compile("(?:public|protected|private)\\s+[^{;=()]+\\([^;{}]*\\)\\s*(?:throws[^{}]+)?\\{");
+    private static final Pattern ANNOTATED_METHOD = Pattern.compile(
+            "(?s)((?:\\s*@(?:[\\w.]+)(?:\\s*\\([^)]*\\))?\\s*)+)(?:public|protected|private)\\s+[^{;=()]+\\([^;{}]*\\)\\s*(?:throws[^{}]+)?\\{");
     private static final Pattern REASON = Pattern.compile("\\breason\\s*=\\s*\\\"([^\\\"]*)\\\"");
     private static final Pattern CATEGORY = Pattern.compile("\\bcategory\\s*=\\s*(?:[\\w.]+\\.)?(CORE|PUBLIC_LIFELINE|GATE_CONTROL_PLANE|PLATFORM_INFRA)\\b");
-    // CMP-260827-0215 第一陣の棚卸し。type|FQCN|未宣言|総数のうち type 集計値を固定する。
-    // Controller への段階的な宣言付与は後続陣の担当であり、未宣言数だけを減らす変更は許容する。
-    private static final Map<Type, Counts> FROZEN = Map.of(Type.HTTP, new Counts(3503, 3503), Type.STOMP, new Counts(2, 2));
+    private static final Path FREEZE = Paths.get("src/test/resources/api_gate/api_gate_declaration_freeze.txt");
 
     @Test
-    void api入口はgate又は常時到達を宣言し凍結値から逸脱しない() throws IOException {
+    @org.junit.jupiter.api.DisplayName("API Gate 宣言台帳: type|FQCN|未宣言|総数の凍結と常時到達宣言を検証する")
+    void mappedApisMatchThePerClassFreeze() throws IOException {
         Scan scan = scan();
-        assertThat(scan.sourceCount()).as("走査 source が 0 件ではないこと").isPositive();
-        assertThat(scan.entries()).as("mapped method が 0 件ではないこと").isNotEmpty();
-        assertThat(scan.violations()).as("常時到達宣言の違反\n%s", scan.violations()).isEmpty();
-        assertThat(summary(scan.entries())).as("type|FQCN|未宣言|総数の凍結。新規漏れと同数相殺を許さない")
-                .containsExactlyInAnyOrderEntriesOf(FROZEN);
+        assertThat(scan.sourceCount()).isPositive();
+        assertThat(scan.entries()).isNotEmpty();
+        assertThat(scan.violations()).as("AlwaysReachable declaration violations: %s", scan.violations()).isEmpty();
+        assertThat(freeze(scan.entries())).as("type|FQCN|undeclared|total; a new leak and a same-count swap must fail")
+                .containsExactlyElementsOf(readFreeze());
     }
 
     @Test
-    void 合成陽性対照_宣言の各経路をcoverageとして認める() {
+    @org.junit.jupiter.api.DisplayName("合成陽性対照: class/method feature gate と常時到達を coverage として認める")
+    void positiveControlsAcceptClassAndMethodFeatureGatesAndAlwaysReachable() {
         assertThat(analyze("sample.ClassGate", """
                 @RequireFeature("FEATURE_A") public class ClassGate {
-                    @GetMapping public void get() {} @PostMapping public void post() {}
+                  @GetMapping public void get() {} @PostMapping public void post() {}
                 }""")).allMatch(Entry::declared);
         assertThat(analyze("sample.MethodGate", """
                 public class MethodGate {
-                    @RequireFeature("FEATURE_A") @GetMapping public void get() {}
-                    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "起動に必要")
-                    @MessageMapping("/send") public void send() {}
+                  @RequireFeature("FEATURE_A") @GetMapping public void get() {}
+                  @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "bootstrap")
+                  @MessageMapping("/send") public void send() {}
                 }""")).allMatch(Entry::declared);
     }
 
     @Test
-    void 合成陰性対照_常時到達の必須要素とclassGate上書きを拒む() {
-        assertThat(alwaysReachableViolations("sample.Bad", """
+    @org.junit.jupiter.api.DisplayName("合成対照: class-level RequestMapping を最初の非 mapping method へ誤帰属しない")
+    void classRequestMappingIsNotAssignedToTheFirstNonMappedMethod() {
+        assertThat(analyze("sample.NoFalsePositive", """
+                @RequestMapping("/base") public class NoFalsePositive {
+                  public void helper() {} @GetMapping("/real") public void endpoint() {}
+                }""")).extracting(Entry::type).containsExactly(Type.HTTP);
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("合成陰性対照: 不正な常時到達宣言を拒否する")
+    void negativeControlsRejectInvalidAlwaysReachableDeclarations() {
+        assertThat(violations("sample.Bad", """
                 @RequireFeature("FEATURE_A") public class Bad {
-                    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "")
-                    @GetMapping public void get() {}
+                  @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "") @GetMapping public void gated() {}
+                  @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "helper") public void helper() {}
                 }"""))
-                .anySatisfy(v -> assertThat(v).contains("reason は非空必須"))
-                .anySatisfy(v -> assertThat(v).contains("上書きは禁止"));
-        assertThat(alwaysReachableViolations("sample.BadCategory", """
+                .anySatisfy(v -> assertThat(v).contains("reason"))
+                .anySatisfy(v -> assertThat(v).contains("class gate"))
+                .anySatisfy(v -> assertThat(v).contains("mapped method"));
+        assertThat(violations("sample.BadCategory", """
                 public class BadCategory {
-                    @AlwaysReachable(reason = "到達を維持する") @GetMapping public void get() {}
-                }"""))
-                .anySatisfy(v -> assertThat(v).contains("category が不正"));
+                  @AlwaysReachable(reason = "missing category") @GetMapping public void get() {}
+                }""")).anySatisfy(v -> assertThat(v).contains("category"));
+        assertThat(violations("sample.Double", """
+                public class Double {
+                  @RequireFeature("FEATURE_A") @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "double")
+                  @GetMapping public void get() {}
+        }""")).anySatisfy(v -> assertThat(v).contains("cannot share a method"));
     }
 
     static Scan scan() throws IOException {
@@ -77,14 +96,15 @@ class ApiGateDeclarationGuardTest {
         List<String> violations = new ArrayList<>();
         int[] sourceCount = {0};
         try (Stream<Path> paths = Files.walk(sourceRoot())) {
-            paths.filter(Files::isRegularFile).filter(p -> p.toString().endsWith(".java")).forEach(path -> {
+            paths.filter(Files::isRegularFile).filter(path -> path.toString().endsWith(".java")).forEach(path -> {
                 try {
                     sourceCount[0]++;
                     String source = Files.readString(path, StandardCharsets.UTF_8);
-                    entries.addAll(analyze(fqcn(path), source));
-                    violations.addAll(alwaysReachableViolations(fqcn(path), source));
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
+                    String fqcn = fqcn(path);
+                    entries.addAll(analyze(fqcn, source));
+                    violations.addAll(violations(fqcn, source));
+                } catch (IOException exception) {
+                    throw new UncheckedIOException(exception);
                 }
             });
         }
@@ -95,62 +115,71 @@ class ApiGateDeclarationGuardTest {
         String masked = maskCommentsAndLiterals(source);
         boolean classGate = CLASS_GATE.matcher(masked).find();
         List<Entry> entries = new ArrayList<>();
-        Matcher methods = METHOD.matcher(masked);
-        int previous = 0;
+        Matcher methods = ANNOTATED_METHOD.matcher(masked);
         while (methods.find()) {
-            List<String> annotations = annotationNames(masked.substring(previous, methods.start()));
-            previous = methods.end();
-            Type type = typeOf(annotations);
-            if (type != null) {
-                boolean declared = classGate || annotations.contains("RequireFeature") || annotations.contains("AlwaysReachable");
-                entries.add(new Entry(type, fqcn, declared));
-            }
+            List<String> names = annotationNames(methods.group(1));
+            Type type = typeOf(names);
+            if (type != null) entries.add(new Entry(type, fqcn, classGate || names.contains("RequireFeature") || names.contains("AlwaysReachable")));
         }
         return entries;
     }
 
-    static List<String> alwaysReachableViolations(String fqcn, String source) {
+    static List<String> violations(String fqcn, String source) {
         String masked = maskCommentsAndLiterals(source);
         List<String> violations = new ArrayList<>();
-        if (CLASS_ALWAYS.matcher(masked).find()) violations.add(fqcn + " : @AlwaysReachable は method-level のみ");
+        if (CLASS_ALWAYS.matcher(masked).find()) violations.add(fqcn + ": AlwaysReachable is method-level only");
         boolean classGate = CLASS_GATE.matcher(masked).find();
-        Matcher annotations = ANNOTATION.matcher(masked);
-        while (annotations.find()) {
-            if (!simpleName(annotations.group(1)).equals("AlwaysReachable")) continue;
-            Matcher methods = METHOD.matcher(masked);
-            if (!methods.find(annotations.end()) || masked.substring(annotations.end(), methods.start()).contains("class")) {
-                violations.add(fqcn + " : @AlwaysReachable は method-level のみ");
+        Matcher always = ANNOTATION.matcher(masked);
+        while (always.find()) {
+            if (!simpleName(always.group(1)).equals("AlwaysReachable")) continue;
+            MethodAnnotations owner = ownerOf(always.start(), masked);
+            if (owner == null || typeOf(owner.names()) == null) {
+                violations.add(fqcn + ": AlwaysReachable requires a mapped method");
                 continue;
             }
-            String args = source.substring(annotations.start(2), annotations.end(2));
+            String args = source.substring(always.start(2), always.end(2));
             Matcher reason = REASON.matcher(args);
-            if (!reason.find() || reason.group(1).isBlank()) violations.add(fqcn + " : reason は非空必須");
-            if (!CATEGORY.matcher(args).find()) violations.add(fqcn + " : category が不正");
-            if (classGate) violations.add(fqcn + " : class-level @RequireFeature 下の @AlwaysReachable 上書きは禁止");
+            if (!reason.find() || reason.group(1).isBlank()) violations.add(fqcn + ": AlwaysReachable reason must be nonblank");
+            if (!CATEGORY.matcher(args).find()) violations.add(fqcn + ": AlwaysReachable category is invalid");
+            if (classGate) violations.add(fqcn + ": class gate cannot be overridden by AlwaysReachable");
+            if (owner.names().contains("RequireFeature")) violations.add(fqcn + ": RequireFeature and AlwaysReachable cannot share a method");
         }
         return violations;
     }
 
-    private static Map<Type, Counts> summary(List<Entry> entries) {
-        Map<Type, Counts> result = new EnumMap<>(Type.class);
-        for (Type type : Type.values()) {
-            int total = (int) entries.stream().filter(e -> e.type() == type).count();
-            int undeclared = (int) entries.stream().filter(e -> e.type() == type && !e.declared()).count();
-            result.put(type, new Counts(total, undeclared));
+    private static MethodAnnotations ownerOf(int annotationOffset, String masked) {
+        Matcher methods = ANNOTATED_METHOD.matcher(masked);
+        while (methods.find()) {
+            if (annotationOffset >= methods.start(1) && annotationOffset < methods.end(1)) return new MethodAnnotations(annotationNames(methods.group(1)));
         }
-        return result;
+        return null;
     }
 
-    private static List<String> annotationNames(String source) {
+    private static List<String> freeze(List<Entry> entries) {
+        Map<String, int[]> counts = new TreeMap<>();
+        for (Entry entry : entries) {
+            int[] count = counts.computeIfAbsent(entry.type() + "|" + entry.fqcn(), ignored -> new int[2]);
+            if (!entry.declared()) count[0]++;
+            count[1]++;
+        }
+        return counts.entrySet().stream().map(e -> e.getKey() + "|" + e.getValue()[0] + "|" + e.getValue()[1]).toList();
+    }
+
+    private static List<String> readFreeze() throws IOException {
+        Path path = Files.exists(FREEZE) ? FREEZE : Paths.get("backend").resolve(FREEZE);
+        return Files.readAllLines(path, StandardCharsets.UTF_8).stream().filter(line -> !line.isBlank() && !line.startsWith("#")).sorted().toList();
+    }
+
+    private static List<String> annotationNames(String annotations) {
         List<String> names = new ArrayList<>();
-        Matcher annotations = ANNOTATION.matcher(source);
-        while (annotations.find()) names.add(simpleName(annotations.group(1)));
+        Matcher matcher = ANNOTATION.matcher(annotations);
+        while (matcher.find()) names.add(simpleName(matcher.group(1)));
         return names;
     }
 
-    private static Type typeOf(List<String> annotations) {
-        if (annotations.contains("MessageMapping")) return Type.STOMP;
-        return annotations.stream().anyMatch(name -> switch (name) {
+    private static Type typeOf(List<String> names) {
+        if (names.contains("MessageMapping")) return Type.STOMP;
+        return names.stream().anyMatch(name -> switch (name) {
             case "RequestMapping", "GetMapping", "PostMapping", "PutMapping", "PatchMapping", "DeleteMapping" -> true;
             default -> false;
         }) ? Type.HTTP : null;
@@ -166,16 +195,16 @@ class ApiGateDeclarationGuardTest {
             Path path = Paths.get(candidate);
             if (Files.isDirectory(path)) return path;
         }
-        throw new IllegalStateException("src/main/java が見つからない");
+        throw new IllegalStateException("src/main/java was not found");
     }
 
     private static String fqcn(Path path) {
-        String result = sourceRoot().relativize(path).toString().replace('\\', '.');
-        return result.substring(0, result.length() - 5);
+        String name = sourceRoot().relativize(path).toString().replace('\\', '.');
+        return name.substring(0, name.length() - ".java".length());
     }
 
     enum Type { HTTP, STOMP }
-    record Counts(int total, int undeclared) { }
     record Entry(Type type, String fqcn, boolean declared) { }
+    record MethodAnnotations(List<String> names) { }
     record Scan(List<Entry> entries, List<String> violations, int sourceCount) { }
 }
