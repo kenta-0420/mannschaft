@@ -233,7 +233,7 @@ public class VillageAccessGate {
      * @param villageId 村 ID（null 可。null は不在として扱う）
      * @return 稼働中（未削除かつ未凍結）の村。不在・削除済み・凍結済みは {@link Optional#empty()}
      */
-    public Optional<VillageEntity> findVillageByCapability(UUID villageId) {
+    Optional<VillageEntity> findVillageByCapability(UUID villageId) {
         if (villageId == null) {
             return Optional.empty();
         }
