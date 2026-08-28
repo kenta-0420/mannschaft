@@ -9,8 +9,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,9 +42,17 @@ class ApiGateDeclarationGuardTest {
         Scan scan = scan();
         assertThat(scan.sourceCount()).isPositive();
         assertThat(scan.entries()).isNotEmpty();
+        assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
+                .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
+                .isEqualTo(3503);
+        assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.STOMP).count())
+                .as("STOMP @MessageMapping の走査総数。Chat 2件と VillageLobbyPresence 3件")
+                .isEqualTo(5);
         assertThat(scan.violations()).as("AlwaysReachable declaration violations: %s", scan.violations()).isEmpty();
-        assertThat(freeze(scan.entries())).as("type|FQCN|undeclared|total; a new leak and a same-count swap must fail")
-                .containsExactlyElementsOf(readFreeze());
+        String actual = String.join("\n", freeze(scan.entries()));
+        String expected = String.join("\n", readFreeze());
+        assertThat(actual).as("type|FQCN|undeclared|total の全台帳。新規漏れと同数相殺を許さない")
+                .isEqualTo(expected);
     }
 
     @Test
@@ -67,6 +77,20 @@ class ApiGateDeclarationGuardTest {
                 @RequestMapping("/base") public class NoFalsePositive {
                   public void helper() {} @GetMapping("/real") public void endpoint() {}
                 }""")).extracting(Entry::type).containsExactly(Type.HTTP);
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("合成対照: 可視性・複数行・他annotation・入れ子括弧を越えて mapping と method を結ぶ")
+    void mappingAnnotationAndMethodAreBoundPrecisely() {
+        assertThat(analyze("sample.Multiline", """
+                @RequestMapping("/base") class Multiline {
+                  @Deprecated
+                  @GetMapping(path = {"/a", "/b"})
+                  protected String endpoint(
+                      String value) { return value; }
+                  @PostMapping(value = "/nested", consumes = {"application/json"})
+                  private void nested() {}
+                }""")).extracting(Entry::type).containsExactly(Type.HTTP, Type.HTTP);
     }
 
     @Test
@@ -115,13 +139,57 @@ class ApiGateDeclarationGuardTest {
         String masked = maskCommentsAndLiterals(source);
         boolean classGate = CLASS_GATE.matcher(masked).find();
         List<Entry> entries = new ArrayList<>();
-        Matcher methods = ANNOTATED_METHOD.matcher(masked);
-        while (methods.find()) {
-            List<String> names = annotationNames(methods.group(1));
-            Type type = typeOf(names);
-            if (type != null) entries.add(new Entry(type, fqcn, classGate || names.contains("RequireFeature") || names.contains("AlwaysReachable")));
+        Set<Integer> countedMethods = new HashSet<>();
+        Matcher annotations = ANNOTATION.matcher(masked);
+        while (annotations.find()) {
+            Type type = typeOf(List.of(simpleName(annotations.group(1))));
+            if (type == null) continue;
+            MethodAnnotations method = methodAfter(annotations.end(), masked);
+            if (method == null || !countedMethods.add(method.openParen())) continue;
+            entries.add(new Entry(type, fqcn, classGate || method.names().contains("RequireFeature") || method.names().contains("AlwaysReachable")));
         }
         return entries;
+    }
+
+    private static MethodAnnotations methodAfter(int offset, String masked) {
+        int cursor = skipAnnotationArguments(offset, masked);
+        List<String> names = new ArrayList<>();
+        while (true) {
+            cursor = skipWhitespace(cursor, masked);
+            if (cursor >= masked.length() || masked.charAt(cursor) != '@') break;
+            Matcher annotation = ANNOTATION.matcher(masked);
+            if (!annotation.find(cursor) || annotation.start() != cursor) break;
+            names.add(simpleName(annotation.group(1)));
+            cursor = skipAnnotationArguments(annotation.end(), masked);
+        }
+        int wordStart = cursor;
+        for (int i = cursor; i < masked.length(); i++) {
+            char c = masked.charAt(i);
+            if (c == '(') return new MethodAnnotations(names, i);
+            if (c == '{' || c == ';' || c == '=' || c == '}') return null;
+            if (Character.isWhitespace(c)) {
+                String word = masked.substring(wordStart, i).trim();
+                if (word.equals("class") || word.equals("interface") || word.equals("record") || word.equals("enum")) return null;
+                wordStart = i + 1;
+            }
+        }
+        return null;
+    }
+
+    private static int skipAnnotationArguments(int cursor, String text) {
+        cursor = skipWhitespace(cursor, text);
+        if (cursor >= text.length() || text.charAt(cursor) != '(') return cursor;
+        int depth = 0;
+        for (int i = cursor; i < text.length(); i++) {
+            if (text.charAt(i) == '(') depth++;
+            if (text.charAt(i) == ')' && --depth == 0) return i + 1;
+        }
+        return text.length();
+    }
+
+    private static int skipWhitespace(int cursor, String text) {
+        while (cursor < text.length() && Character.isWhitespace(text.charAt(cursor))) cursor++;
+        return cursor;
     }
 
     static List<String> violations(String fqcn, String source) {
@@ -150,7 +218,9 @@ class ApiGateDeclarationGuardTest {
     private static MethodAnnotations ownerOf(int annotationOffset, String masked) {
         Matcher methods = ANNOTATED_METHOD.matcher(masked);
         while (methods.find()) {
-            if (annotationOffset >= methods.start(1) && annotationOffset < methods.end(1)) return new MethodAnnotations(annotationNames(methods.group(1)));
+            if (annotationOffset >= methods.start(1) && annotationOffset < methods.end(1)) {
+                return new MethodAnnotations(annotationNames(methods.group(1)), -1);
+            }
         }
         return null;
     }
@@ -205,6 +275,6 @@ class ApiGateDeclarationGuardTest {
 
     enum Type { HTTP, STOMP }
     record Entry(Type type, String fqcn, boolean declared) { }
-    record MethodAnnotations(List<String> names) { }
+    record MethodAnnotations(List<String> names, int openParen) { }
     record Scan(List<Entry> entries, List<String> violations, int sourceCount) { }
 }
