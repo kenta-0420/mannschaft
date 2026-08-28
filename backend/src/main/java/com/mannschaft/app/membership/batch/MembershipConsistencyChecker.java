@@ -1,6 +1,8 @@
 package com.mannschaft.app.membership.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.role.dto.UserRoleOnlyDiffRow;
 import com.mannschaft.app.role.service.RoleService;
@@ -53,6 +55,8 @@ public class MembershipConsistencyChecker {
     private final RoleService roleService;
     private final MeterRegistry meterRegistry;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。memberships と user_roles の整合性検査であり、検知のみで再開後に同じ差分を検出し直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "membership-consistency-check-daily", description = "memberships と user_roles の整合性を毎日 04:00 に検査する")
     @Scheduled(cron = "0 0 4 * * *")
     // 起動間隔は日次 04:00。差分件数は DB 側の NOT EXISTS 相関サブクエリで集計するため、

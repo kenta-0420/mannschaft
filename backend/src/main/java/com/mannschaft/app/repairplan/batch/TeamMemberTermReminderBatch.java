@@ -1,5 +1,7 @@
 package com.mannschaft.app.repairplan.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
@@ -47,6 +49,9 @@ public class TeamMemberTermReminderBatch {
     /**
      * スケジュール起動エントリポイント（毎朝 9:00 JST）。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROPERTY_REPAIRPLAN_ENABLED",
+            reason = "止まるのは任期満了 30 日前のリマインド通知のみで DB は一切書き換わらない")
     @BatchEndpoint(name = "repairplan-team-member-term-reminder-daily", description = "理事任期終了 30 日前のリマインドを毎日 09:00 に通知する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "TeamMemberTermReminderBatch", lockAtMostFor = "PT55M")

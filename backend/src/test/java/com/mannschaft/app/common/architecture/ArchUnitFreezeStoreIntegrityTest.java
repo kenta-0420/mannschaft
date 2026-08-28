@@ -697,15 +697,26 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code entity} 直下にあったため対象外になっていなかった。規約に実体を合わせた結果、
      * dashboard / notification（2箇所） / role の計4クラスから参照していた既存違反6行が解消。
      * 違反隠蔽ではなく、共有値オブジェクトの置き場所を規約どおりに是正した結果の縮小。</p>
+     *
+     * <p>2129 → 2068（2026-08-27）: origin/main とのマージ（CMP-042 / #2787 復活作業）で、
+     * このブランチの分岐後に main 側で解消された D-1 越境依存 61 行が chip-away
+     * （FreezingArchRule の既定挙動・解消済み違反の自動削除）で反映された。フルビルド
+     * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2129;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2068;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
      * 更新手順は {@link #EXPECTED_LINES_AUTHZ_WAVE4} と同様（対象ファイル:
      * {@code f14374b1-655e-4df2-8e82-2d79c8df9174}）。
+     *
+     * <p>1505 → 1459（2026-08-28）: origin/main とのマージ（CMP-042 / #2787 復活作業）で、
+     * このブランチの分岐後に main 側で解消された D-3 越境依存 46 行が chip-away
+     * （FreezingArchRule の既定挙動・解消済み違反の自動削除）で反映された。フルビルド
+     * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値（JUnit XML の
+     * AssertionFailedError メッセージ「1505 → 1459 に減少（-46件）」）へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1508;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1459;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -732,8 +743,23 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>2026-08-04 更新（2025→2022）: 通知 fan-out Wave-1 で
      * {@code ShiftPublishedNotificationListener}（shift ドメイン）の {@code UserRoleRepository}（role ドメイン）
      * 越境依存を耐久ジョブ enqueue への載せ替えで解消し、当該 3 行が正当に返済されたため実測値へ追随。</p>
+     *
+     * <p>2026-08-15 更新（2022→2013）: CMP-042 / Issue #2787（アンケートの対象人数スナップショット）で、
+     * survey ドメインの 4 クラス（{@code SurveyService} / {@code SurveyResultService} /
+     * {@code SurveyRemindService} / {@code SurveyPublishNotificationListener}）に重複していた
+     * {@code UserRoleRepository}（role ドメイン）越境依存を、母集団解決の唯一の窓口
+     * {@code SurveyUniverseResolver} 1 クラスへ集約した。13 行が消え 4 行が増えて差引 9 行の返済。
+     * 越境依存そのものは残るが、母集団の定義を 1 箇所に閉じたことで返済対象が 1 クラスに縮んだ。</p>
+     *
+     * <p>2026-08-27 更新（2013→1972）: origin/main とのマージ（CMP-042 / #2787 復活作業）で、
+     * このブランチの分岐後に main 側で解消された D-5 越境依存が chip-away（FreezingArchRule の
+     * 既定挙動・解消済み違反の自動削除）で反映された。フルビルド（{@code ./gradlew build}、
+     * {@code --tests} 絞り込みなし）で凍結ストアを実際に生成し直して実測した値。
+     * このマージ作業で {@code SurveyUniverseResolver}（survey ドメイン）の
+     * {@code UserRoleRepository}（role ドメイン）依存 4 行を新規の許容違反として凍結ストアへ
+     * 追記した（母集団解決の唯一の窓口という設計意図があり、意図的に凍結許容する）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2022;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1972;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

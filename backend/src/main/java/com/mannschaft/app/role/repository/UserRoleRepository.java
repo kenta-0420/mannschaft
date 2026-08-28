@@ -508,6 +508,42 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     List<Long> findUserIdsByScope(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
 
     /**
+     * {@link #findUserIdsByScope(String, Long)} の<b>COUNT 版</b>（件数だけが必要な経路用）。
+     *
+     * <p><b>母集団条件はリスト版と完全に同一</b>である。派生表 {@code x} の中身
+     * （{@code user_roles} ∪ {@code memberships} の和集合・{@code left_at IS NULL}・
+     * {@code scope_type IN ('TEAM','ORGANIZATION')} の明示限定・{@code users.deleted_at IS NULL}
+     * かつ {@code status = 'ACTIVE'}）を 1 文字も変えず、外側の射影を
+     * {@code SELECT DISTINCT uid} から {@code SELECT COUNT(DISTINCT uid)} へ替えただけである。
+     * 片方だけ条件が古くなると数が静かに食い違うため、
+     * <b>リスト版を変更するときは必ず本メソッドも同じだけ変更すること</b>
+     * （不一致は {@code SurveyPublishTargetCountSnapshotIT} の AC-13 が検出する）。</p>
+     *
+     * <p>アンケート公開時の {@code target_count} スナップショットのように「人数しか要らない」経路が
+     * 全ユーザー ID を Java ヒープへ展開しないためのもの。ID の一覧が実際に必要な経路
+     * （通知 fan-out 等）は従来どおりリスト版を使うこと。</p>
+     *
+     * <p>戻り値は {@code long}。native の {@code COUNT(...)} は BIGINT であり、
+     * {@code int} / {@code boolean} で受けると環境により型変換で落ちる。</p>
+     */
+    @Query(value =
+            "SELECT COUNT(DISTINCT uid) FROM ( " +
+            "  SELECT ur.user_id AS uid FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
+            "    WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "               WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  UNION " +
+            "  SELECT m.user_id AS uid FROM memberships m " +
+            "    JOIN users u ON u.id = m.user_id " +
+            "    WHERE m.scope_type = :scopeType AND m.scope_id = :scopeId AND m.left_at IS NULL " +
+            "      AND m.scope_type IN ('TEAM', 'ORGANIZATION') " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            ") x",
+            nativeQuery = true)
+    long countUserIdsByScope(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
+
+    /**
      * 指定チームの指定ロール名を持つユーザーIDリストを取得する (通知発火用)。
      */
     @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +

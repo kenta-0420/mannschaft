@@ -1,6 +1,8 @@
 package com.mannschaft.app.errorreport.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
@@ -55,6 +57,8 @@ public class ErrorReportSlaOverdueAlertBatch {
     @BatchEndpoint(
             name = "errorreport-sla-overdue-alert",
             description = "SLA期限超過レポートへの通知（30分毎）")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。エラーレポート SLA 超過のアラートであり、運用基盤に属し機能フラグを持たない。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "0 0/30 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(
             name = "errorReportSlaOverdueAlert",

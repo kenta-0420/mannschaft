@@ -109,7 +109,7 @@ export const FILTER_OVERFLOW = 5
 const LAYER_STATE_KEY = 'mannschaft:calendar:layerState'
 const LEGACY_CALENDAR_KEY = 'mannschaft:calendar:scopeFilter'
 const LEGACY_WIDGET_KEY = 'mannschaft:widget:calendar:scopeFilter'
-type CalendarViewMode = 'month' | 'week' | 'agenda'
+export type CalendarViewMode = 'month' | 'week' | 'agenda'
 
 interface LayerStateV2 {
   version: 2
@@ -439,7 +439,7 @@ export function useMyCalendarData() {
     return merged
   }
 
-  const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday } =
+  const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday, navigateTo } =
     useCalendarEvents(fetcher, { cacheHalfMonths: 0 })
 
   /**
@@ -718,7 +718,7 @@ export function useMyCalendarData() {
   }
 
   return {
-    currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday,
+    currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday, navigateTo,
     extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes, filteredEvents,
     toggleScope, multiSelectScopes, initStorage,
     layers, layersLoaded, layersFailed, layersDegraded, loadLayers, view,

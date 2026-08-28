@@ -1342,6 +1342,19 @@
       "today": "Hoy",
       "dayDetail": {
         "title": "Eventos del {date}"
+      },
+      "empty": "No hay eventos en este período",
+      "view": {
+        "month": "Mes",
+        "week": "Semana",
+        "agenda": "Agenda"
+      },
+      "week": {
+        "allDay": "Todo el día",
+        "now": "Ahora",
+        "dragHint": "Arrastra para crear un evento",
+        "dragHintTouch": "Mantén pulsado y arrastra para crear un evento",
+        "selectedRange": "{start} – {end}"
       }
     }
   },

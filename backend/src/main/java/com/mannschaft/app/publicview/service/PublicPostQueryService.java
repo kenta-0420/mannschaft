@@ -327,14 +327,14 @@ public class PublicPostQueryService {
     }
 
     /**
-     * ゲート存在確認（fail-closed 判定用）。存在確認自体が失敗した場合は過剰遮断を避け false（非課金扱い）を返す。
+     * ゲート存在確認（fail-closed 判定用）。存在確認自体が失敗した場合は本文漏洩を避けtrueを返す。
      */
     private boolean safelyHasGate(Long postId) {
         try {
             return paymentGateService.hasGate(ContentGateType.POST, postId);
         } catch (Exception e) {
-            log.warn("ペイウォールゲート存在確認に失敗: postId={} → ゲート無し扱い", postId, e);
-            return false;
+            log.warn("ペイウォールゲート存在確認に失敗: postId={} → fail-closed", postId, e);
+            return true;
         }
     }
 

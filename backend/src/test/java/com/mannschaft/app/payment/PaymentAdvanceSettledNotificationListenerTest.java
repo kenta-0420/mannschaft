@@ -1,17 +1,24 @@
 package com.mannschaft.app.payment;
 
+
+
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.payment.event.PaymentAdvanceSettledNotificationEvent;
 import com.mannschaft.app.payment.event.PaymentAdvanceSettledNotificationListener;
 import com.mannschaft.app.role.service.RoleService;
+import java.lang.reflect.Method;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,13 +32,6 @@ import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.lang.reflect.Method;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -92,7 +92,7 @@ class PaymentAdvanceSettledNotificationListenerTest {
         lenient().when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
                 .thenAnswer(inv -> inv.getArgument(2));
         lenient().when(notificationDeliveryRunner.sendOne(any()))
-                .thenReturn(NotificationEntity.builder().userId(ADMIN_A).build());
+                .thenReturn(NotificationDeliveryResult.DELIVERED);
     }
 
     private PaymentAdvanceSettledNotificationEvent event() {
@@ -173,7 +173,7 @@ class PaymentAdvanceSettledNotificationListenerTest {
     @DisplayName("AC-4: visibility deny（null 復帰）は例外扱いせず、後続受信者の配送も続く")
     void denyは例外扱いされず後続も続く() {
         given(notificationDeliveryRunner.sendOne(
-                argThat(r -> r != null && ADMIN_B.equals(r.recipientUserId())))).willReturn(null);
+                argThat(r -> r != null && ADMIN_B.equals(r.recipientUserId())))).willReturn(NotificationDeliveryResult.VISIBILITY_DENIED);
 
         assertThatCode(() -> listener.onPaymentAdvanceSettledNotification(event()))
                 .doesNotThrowAnyException();
@@ -255,7 +255,7 @@ class PaymentAdvanceSettledNotificationListenerTest {
     @DisplayName("AC-4: deny のみ（例外ゼロ）なら集計ログは WARN であり ERROR は出ない")
     void denyのみなら集計ログはWARN() {
         captureLogs();
-        given(notificationDeliveryRunner.sendOne(any())).willReturn(null);
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.VISIBILITY_DENIED);
 
         listener.onPaymentAdvanceSettledNotification(event());
 

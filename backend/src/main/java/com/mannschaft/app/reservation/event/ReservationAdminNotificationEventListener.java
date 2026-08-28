@@ -1,6 +1,8 @@
 package com.mannschaft.app.reservation.event;
 
 import com.mannschaft.app.admin.service.AdminBusinessAlertService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -41,6 +43,8 @@ public class ReservationAdminNotificationEventListener {
      *
      * @param event 予約作成イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予約の作成・キャンセルに伴う管理者通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationCreated(ReservationCreatedEvent event) {
@@ -95,6 +99,8 @@ public class ReservationAdminNotificationEventListener {
      *
      * @param event 予約キャンセルイベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予約の作成・キャンセルに伴う管理者通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onReservationCancelledByMember(ReservationCancelledByMemberEvent event) {

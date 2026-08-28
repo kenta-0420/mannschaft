@@ -107,7 +107,7 @@ class EventEndReminderBatchServiceTest {
             // Arrange: count=0（未送信）の終了済みイベント
             EventEntity event = buildEventWithReminderCount(0);
             given(eventRepository.findDismissalReminderTargets(
-                    any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
+                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
                     .willReturn(List.of(event));
             given(notificationService.createNotification(
                     anyLong(), any(), any(NotificationPriority.class),
@@ -137,7 +137,7 @@ class EventEndReminderBatchServiceTest {
             // Arrange: count=1（1回目送信済み）
             EventEntity event = buildEventWithReminderCount(1);
             given(eventRepository.findDismissalReminderTargets(
-                    any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
+                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
                     .willReturn(List.of(event));
             given(notificationService.createNotification(
                     anyLong(), any(), any(NotificationPriority.class),
@@ -165,7 +165,7 @@ class EventEndReminderBatchServiceTest {
             // Arrange: count=2（2回目送信済み）
             EventEntity event = buildEventWithReminderCount(2);
             given(eventRepository.findDismissalReminderTargets(
-                    any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
+                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
                     .willReturn(List.of(event));
             given(notificationService.createNotification(
                     anyLong(), any(), any(NotificationPriority.class),
@@ -209,7 +209,7 @@ class EventEndReminderBatchServiceTest {
             useRealMessageSource();
             EventEntity event = buildEventWithReminderCount(0);
             given(eventRepository.findDismissalReminderTargets(
-                    any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
+                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
                     .willReturn(List.of(event));
             given(userLocaleCache.getLocale(ORGANIZER_USER_ID)).willReturn("en");
             given(notificationService.createNotification(
@@ -236,7 +236,7 @@ class EventEndReminderBatchServiceTest {
             useRealMessageSource();
             EventEntity event = buildEventWithReminderCount(2);
             given(eventRepository.findDismissalReminderTargets(
-                    any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
+                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
                     .willReturn(List.of(event));
             given(notificationService.createNotification(
                     anyLong(), any(), any(NotificationPriority.class),
@@ -267,7 +267,7 @@ class EventEndReminderBatchServiceTest {
         void 解散済みイベントはスキップ() {
             // Arrange: dismissal_notification_sent_at が設定済み → リポジトリが空リストを返す
             given(eventRepository.findDismissalReminderTargets(
-                    any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
+                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
                     .willReturn(List.of());
 
             // Act
@@ -284,7 +284,7 @@ class EventEndReminderBatchServiceTest {
             // Arrange: count=3（上限到達済み）→ findDismissalReminderTargets が除外済み
             EventEntity event = buildEventWithReminderCount(3);
             given(eventRepository.findDismissalReminderTargets(
-                    any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
+                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
                     .willReturn(List.of(event));
 
             // Act
@@ -345,4 +345,53 @@ class EventEndReminderBatchServiceTest {
                 .scopeId(userId)
                 .build();
     }
+
+    // =========================================================
+    // 回帰: 閉栓や障害を跨いだ「古いイベント」を対象にしないこと
+    // =========================================================
+
+    @Nested
+    @DisplayName("鮮度の下限（Codex 検分 P2 の根治）")
+    class 鮮度の下限 {
+
+        /**
+         * 初版のクエリは上限（endAt < cutoff）しか持たず、
+         * 「未解散かつリマインド 3 回未満」の過去イベントを何ヶ月前のものでも拾っていた。
+         * そのため長期停止からの再開時に、とうに終わったイベントの主催者へ
+         * 段階リマインドが 3 回飛び、最後には管理者への緊急通知まで発火する。
+         *
+         * <p>本テストはバッチが【鮮度の下限（now - 24時間）をクエリへ渡していること】を固定する。
+         * 下限そのものの効き（古い行が返らないこと）は JPQL 側の条件で担保する。</p>
+         */
+        @Test
+        @DisplayName("クエリには now-24時間 の鮮度下限が渡り、古いイベントは初めから対象にならない")
+        void 古いイベントは対象外() {
+            given(eventRepository.findDismissalReminderTargets(
+                    any(LocalDateTime.class), any(LocalDateTime.class),
+                    any(LocalDateTime.class), anyInt()))
+                    .willReturn(List.of());
+
+            LocalDateTime before = LocalDateTime.now();
+            batchService.runEndReminderCheck();
+            LocalDateTime after = LocalDateTime.now();
+
+            ArgumentCaptor<LocalDateTime> nowCap = ArgumentCaptor.forClass(LocalDateTime.class);
+            ArgumentCaptor<LocalDateTime> cutoffCap = ArgumentCaptor.forClass(LocalDateTime.class);
+            ArgumentCaptor<LocalDateTime> staleCap = ArgumentCaptor.forClass(LocalDateTime.class);
+            verify(eventRepository).findDismissalReminderTargets(
+                    nowCap.capture(), cutoffCap.capture(), staleCap.capture(), anyInt());
+
+            // 鮮度下限は now から 24 時間前（実行時刻の揺らぎを許容して範囲で見る）
+            assertThat(staleCap.getValue())
+                    .as("終了から 24 時間より古いイベントを除外する下限が渡らねばならない")
+                    .isAfterOrEqualTo(before.minusHours(24))
+                    .isBeforeOrEqualTo(after.minusHours(24));
+
+            // 下限は上限より前（区間が成立している＝空区間で全件除外していない）
+            assertThat(staleCap.getValue())
+                    .as("鮮度下限は経過フィルタ（cutoff）より前でなければ、対象が常に空になる")
+                    .isBefore(cutoffCap.getValue());
+        }
+    }
+
 }

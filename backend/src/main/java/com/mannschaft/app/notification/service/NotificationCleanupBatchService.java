@@ -1,6 +1,8 @@
 package com.mannschaft.app.notification.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -68,6 +70,8 @@ public class NotificationCleanupBatchService {
 
     @BatchEndpoint(name = "notification-cleanup",
             description = "保持期間超過の通知（既読90日/未読365日）を毎日 04:00 に notifications_archive へ移送する")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。既読通知の保持期間超過削除であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "notificationCleanupBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")
     public void cleanupOldReadNotifications() {

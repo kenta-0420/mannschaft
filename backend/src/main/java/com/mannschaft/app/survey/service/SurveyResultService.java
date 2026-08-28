@@ -6,7 +6,6 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.QuestionType;
 import com.mannschaft.app.survey.SurveyErrorCode;
@@ -20,12 +19,10 @@ import com.mannschaft.app.survey.entity.SurveyEntity;
 import com.mannschaft.app.survey.entity.SurveyOptionEntity;
 import com.mannschaft.app.survey.entity.SurveyQuestionEntity;
 import com.mannschaft.app.survey.entity.SurveyResponseEntity;
-import com.mannschaft.app.survey.entity.SurveyTargetEntity;
 import com.mannschaft.app.survey.repository.SurveyOptionRepository;
 import com.mannschaft.app.survey.repository.SurveyQuestionRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
-import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,14 +57,15 @@ public class SurveyResultService {
     private final SurveyOptionRepository optionRepository;
     private final SurveyResponseRepository responseRepository;
     private final SurveyResultViewerRepository resultViewerRepository;
-    private final SurveyTargetRepository targetRepository;
     private final SurveyService surveyService;
     private final AccessControlService accessControlService;
     private final UserRepository userRepository;
-    private final UserRoleRepository userRoleRepository;
     /** 結果閲覧可否の唯一の判定点（詳細応答の viewerCanViewResults と共用）。 */
     private final SurveyResultAccessGuard resultAccessGuard;
     private final OrganizationMembershipService organizationMembershipService;
+
+    /** 母集団解決の唯一の窓口（公開時の target_count スナップショットと同一定義）。 */
+    private final SurveyUniverseResolver universeResolver;
     private final MediaUrlResolver mediaUrlResolver;
 
     /**
@@ -121,7 +119,7 @@ public class SurveyResultService {
      *
      * <p>母集団の決定（設計書 §1035-1036 に準拠）:
      * <ul>
-     *   <li>{@link DistributionMode#ALL} → スコープ内全メンバー（user_roles 経由）</li>
+     *   <li>{@link DistributionMode#ALL} → スコープ内全メンバー（組織は配下 ACTIVE チームまで再帰展開）</li>
      *   <li>{@link DistributionMode#TARGETED} → {@code survey_targets} 登録ユーザー</li>
      * </ul>
      *
@@ -556,60 +554,32 @@ public class SurveyResultService {
     /**
      * distribution_mode に応じて母集団ユーザーIDリストを取得する。
      *
-     * <p>F05.4 §1035-1036 準拠:
-     * <ul>
-     *   <li>{@link DistributionMode#ALL} → user_roles 経由でスコープ内全メンバー</li>
-     *   <li>{@link DistributionMode#TARGETED} → survey_targets 登録ユーザー</li>
-     * </ul>
+     * <p>母集団の定義は {@link SurveyUniverseResolver} に一元化されている
+     * （Issue #2787 / CMP-042）。公開時に {@code target_count} へスナップショットする分母と
+     * ここで数える母集団は<b>同一定義</b>でなければならない。ここに自前の分岐を書き戻すと、
+     * 「分母と未回答者リストが別々の母集団を見る」食い違いが再発する。</p>
+     *
+     * @param survey 対象アンケート
+     * @return 母集団ユーザーIDリスト
      */
     private List<Long> resolveUniverseUserIds(SurveyEntity survey) {
-        if (survey.getDistributionMode() == DistributionMode.ALL) {
-            // 組織×ALL は配下参加チームを展開する（OrganizationMembershipService 経由・越境是正）。
-            // これは「回答を期待する母集団（未回答者リスト/回答率の分母）」であり、
-            // 実際の配信母集団（SurveyPublishNotificationListener / extend / remind）と一致させる。
-            // チームスコープ（および COMMITTEE 等）は配下展開なし・従来挙動を維持する。
-            // フェーズM1: 可視性(view)判定経路 isUserInUniverse も再帰版へ追従済み（分母と回答可否を一致）。
-            if ("ORGANIZATION".equals(survey.getScopeType())) {
-                return organizationMembershipService.resolveOrgDistributionUserIds(
-                        survey.getScopeId(), Boolean.TRUE.equals(survey.getIncludeSupporters()));
-            }
-            return userRoleRepository.findUserIdsByScope(survey.getScopeType(), survey.getScopeId());
-        }
-        List<SurveyTargetEntity> targets = targetRepository.findBySurveyId(survey.getId());
-        return targets.stream()
-                .map(SurveyTargetEntity::getUserId)
-                .distinct()
-                .collect(Collectors.toList());
+        return universeResolver.resolveUniverseUserIds(survey);
     }
 
     /**
      * 指定ユーザーが当該アンケートの母集団に属するか判定する。
      *
      * <p>MEMBER 経路の認可（{@code unresponded_visibility = ALL_MEMBERS}）で
-     * 「自分が母集団内のメンバーかどうか」をチェックする際に使用する。</p>
+     * 「自分が母集団内のメンバーかどうか」をチェックする際に使用する。
+     * 判定の定義は {@link SurveyUniverseResolver#isUserInUniverse} に一元化されており、
+     * {@link #resolveUniverseUserIds(SurveyEntity)} が返す集合と整合する
+     * （分母・未回答者リスト・回答可否が同じ母集団を見る）。</p>
      *
-     * <p><b>フェーズM1（universe 再帰化）</b>: 組織×ALL のときは
-     * {@link #resolveUniverseUserIds(SurveyEntity)} が
-     * {@link OrganizationMembershipService#resolveOrgDistributionUserIds(Long, boolean)} 経由で
-     * 配下組織ツリーへ再帰展開されるのと整合させ、本判定も
-     * {@link OrganizationMembershipService#isUserInOrgDistributionUniverse(Long, Long)} で
-     * 配下ツリーの「直属 ∪ 配下チーム」を単発 EXISTS 判定する（分母と回答可否を一致させる）。
-     * 1 ユーザー判定なので配信母集団全件を取得せず EXISTS でコストを抑える。
-     * チームスコープ（および COMMITTEE 等）は配下展開なし・従来挙動を維持する。</p>
+     * @param survey 対象アンケート
+     * @param userId 判定対象ユーザー ID
+     * @return 母集団に属するなら true
      */
     private boolean isUserInUniverse(SurveyEntity survey, Long userId) {
-        if (userId == null) {
-            return false;
-        }
-        if (survey.getDistributionMode() == DistributionMode.ALL) {
-            // 組織×ALL は配下組織ツリーへ再帰展開（resolveUniverseUserIds と整合）。
-            if ("ORGANIZATION".equals(survey.getScopeType())) {
-                return organizationMembershipService.isUserInOrgDistributionUniverse(
-                        survey.getScopeId(), userId);
-            }
-            return userRoleRepository.findUserIdsByScope(survey.getScopeType(), survey.getScopeId())
-                    .contains(userId);
-        }
-        return targetRepository.existsBySurveyIdAndUserId(survey.getId(), userId);
+        return universeResolver.isUserInUniverse(survey, userId);
     }
 }

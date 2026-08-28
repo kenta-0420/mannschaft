@@ -7,6 +7,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.test') })
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:8081'
 
 export default defineConfig({
+  globalSetup: './tests/e2e/global.setup.ts',
   testDir: './tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
