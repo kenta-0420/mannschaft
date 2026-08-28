@@ -102,17 +102,13 @@ class OwnershipTransferOfferScopeContractIT extends AbstractMySqlIntegrationTest
         MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", teamAId, null);
         MembershipTestHelper.insertMembership(em, targetId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, targetId, "MEMBER", teamAId, null);
         MembershipTestHelper.insertMembership(em, noTwoFaId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, noTwoFaId, "MEMBER", teamAId, null);
         MembershipTestHelper.insertMembership(em, strangerId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, strangerId, "MEMBER", teamAId, null);
 
         // 組織側（org 打診 parity 用）
         MembershipTestHelper.insertMembership(em, adminAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", null, orgAId);
         MembershipTestHelper.insertMembership(em, targetId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, targetId, "MEMBER", null, orgAId);
 
         // 委譲承諾には承諾者の 2FA 設定が必須（設計書 §承諾フロー step3・§H-3）。
         // 打診（createOffer）時にも対象の 2FA を確認するため、正常系で使う target は 2FA 済にする。

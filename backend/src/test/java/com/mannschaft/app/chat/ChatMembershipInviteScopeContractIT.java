@@ -201,7 +201,7 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
 
             mockMvc.perform(delete("/api/v1/chat/channels/{cid}/membership-invite/{tokenId}",
                             dmMemberTargetId, token.getId()))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ROLE_002"));
 
             em.flush();
@@ -219,7 +219,7 @@ class ChatMembershipInviteScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(adminAId);
             mockMvc.perform(delete("/api/v1/chat/channels/{cid}/membership-invite/{tokenId}",
                             dmAdminTargetId, token.getId()))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ROLE_002"));
 
             em.flush();
