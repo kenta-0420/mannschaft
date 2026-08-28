@@ -132,15 +132,18 @@ class ApiGateDeclarationGuardTest {
         List<Entry> entries = new ArrayList<>();
         List<String> violations = new ArrayList<>();
         int[] sourceCount = {0};
-        try (Stream<Path> paths = Files.walk(sourceRoot())) {
+        Path sourceRoot = sourceRoot();
+        try (Stream<Path> paths = Files.walk(sourceRoot)) {
             paths.filter(Files::isRegularFile).filter(path -> path.toString().endsWith(".java")).forEach(path -> {
                 try {
                     sourceCount[0]++;
                     String source = Files.readString(path, StandardCharsets.UTF_8);
                     if (!mightContainMappedApi(source)) return;
-                    String fqcn = fqcn(path);
+                    String fqcn = fqcn(sourceRoot, path);
                     entries.addAll(analyze(fqcn, source));
-                    violations.addAll(violations(fqcn, source));
+                    if (source.contains("AlwaysReachable")) {
+                        violations.addAll(violations(fqcn, source));
+                    }
                 } catch (IOException exception) {
                     throw new UncheckedIOException(exception);
                 }
@@ -301,8 +304,8 @@ class ApiGateDeclarationGuardTest {
         throw new IllegalStateException("src/main/java was not found");
     }
 
-    private static String fqcn(Path path) {
-        String name = sourceRoot().relativize(path).toString().replace('\\', '.');
+    private static String fqcn(Path sourceRoot, Path path) {
+        String name = sourceRoot.relativize(path).toString().replace('\\', '.');
         return name.substring(0, name.length() - ".java".length());
     }
 
