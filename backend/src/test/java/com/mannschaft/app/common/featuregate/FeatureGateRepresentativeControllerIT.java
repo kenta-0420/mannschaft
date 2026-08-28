@@ -24,6 +24,7 @@ import com.mannschaft.app.moderation.service.WarningReReviewService;
 import com.mannschaft.app.moderation.service.YabaiUnflagService;
 import com.mannschaft.app.recruitment.service.RecruitmentListingService;
 import com.mannschaft.app.repairplan.dto.RepairPlanDashboardResponse;
+import com.mannschaft.app.repairplan.module.RepairPlanModuleGuard;
 import com.mannschaft.app.repairplan.service.RepairPlanDashboardService;
 import com.mannschaft.app.resume.service.ResumeService;
 import com.mannschaft.app.shift.service.ShiftScheduleService;
@@ -44,6 +45,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -90,6 +92,7 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
     @MockitoSpyBean private WorkflowTemplateService workflowTemplateService;
     @MockitoSpyBean private EquipmentItemService equipmentItemService;
     @MockitoSpyBean private RepairPlanDashboardService repairPlanDashboardService;
+    @MockitoSpyBean private RepairPlanModuleGuard repairPlanModuleGuard;
     @MockitoSpyBean private CareLinkService careLinkService;
     @MockitoSpyBean private ResumeService resumeService;
     @MockitoSpyBean private RecruitmentListingService recruitmentListingService;
@@ -111,6 +114,7 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
         doReturn(true).when(accessGuard)
                 .isScopeMember(any(Authentication.class), anyLong(), eq("TEAM"));
         doNothing().when(accessControlService).checkMembership(anyLong(), anyLong(), any());
+        doNothing().when(repairPlanModuleGuard).requireEnabled(any(), anyLong());
     }
 
     @AfterEach
@@ -126,11 +130,17 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
         setFlag(representative.flagKey, false);
         clearInvocations(servicesFor(representative));
 
-        mockMvc.perform(get(representative.path))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.code").value("FEATURE_GATE_001"));
+        try {
+            mockMvc.perform(get(representative.path))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("FEATURE_GATE_001"));
 
-        verifyNoInteractions(servicesFor(representative));
+            verifyNoInteractions(servicesFor(representative));
+        } finally {
+            // DB transaction は各ケース後に rollback されるが、共有 cache は transaction 外に残る。
+            // 後続の統合試験へ OFF を漏らさないよう、rollback より前に ON を再投入する。
+            setFlag(representative.flagKey, true);
+        }
     }
 
     @ParameterizedTest(name = "ON: {0}")
@@ -212,7 +222,7 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
             case SKILL_RESUME -> doReturn(List.of()).when(resumeService).listResumes(1L);
             case RECRUITMENT -> doReturn(Page.empty()).when(recruitmentListingService)
                     .searchPublicListings(any(), any(), any(), any(), any(), any(), any(), any());
-            case SUCCESSION_PROXY -> doReturn(Page.empty()).when(successionCovenantService)
+            case SUCCESSION_PROXY -> doReturn(Page.empty(PageRequest.of(0, 20))).when(successionCovenantService)
                     .listOrgCovenants(eq(1L), any(), eq(1L));
             case MODERATION_INCIDENT -> { }
             case WEBHOOK_SYNC -> doReturn(ApiResponse.of(List.of())).when(webhookEndpointService)
