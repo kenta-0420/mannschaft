@@ -30,8 +30,6 @@ class ApiGateDeclarationGuardTest {
     private static final Pattern CLASS_GATE = Pattern.compile("(?s)@(?:[\\w.]+\\.)?RequireFeature\\s*\\([^)]*\\)\\s*(?:public\\s+)?(?:final\\s+)?class\\s+");
     private static final Pattern CLASS_ALWAYS = Pattern.compile("(?s)@(?:[\\w.]+\\.)?AlwaysReachable\\s*\\([^)]*\\)\\s*(?:public\\s+)?(?:final\\s+)?class\\s+");
     private static final Pattern ANNOTATION = Pattern.compile("@([\\w.]+)(?:\\s*\\(([^)]*)\\))?");
-    private static final Pattern ANNOTATED_METHOD = Pattern.compile(
-            "(?s)((?:\\s*@(?:[\\w.]+)(?:\\s*\\([^)]*\\))?\\s*)+)(?:public|protected|private)\\s+[^{;=()]+\\([^;{}]*\\)\\s*(?:throws[^{}]+)?\\{");
     private static final Pattern REASON = Pattern.compile("\\breason\\s*=\\s*\\\"([^\\\"]*)\\\"");
     private static final Pattern CATEGORY = Pattern.compile("\\bcategory\\s*=\\s*(?:[\\w.]+\\.)?(CORE|PUBLIC_LIFELINE|GATE_CONTROL_PLANE|PLATFORM_INFRA)\\b");
     private static final Path FREEZE = Paths.get("src/test/resources/api_gate/api_gate_declaration_freeze.txt");
@@ -51,8 +49,10 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.violations()).as("AlwaysReachable declaration violations: %s", scan.violations()).isEmpty();
         String actual = String.join("\n", freeze(scan.entries()));
         String expected = String.join("\n", readFreeze());
-        assertThat(actual).as("type|FQCN|undeclared|total の全台帳。新規漏れと同数相殺を許さない")
-                .isEqualTo(expected);
+        if (!actual.equals(expected)) {
+            throw new AssertionError("type|FQCN|undeclared|total の全台帳が不一致\nACTUAL_FREEZE_BEGIN\n"
+                    + actual + "\nACTUAL_FREEZE_END");
+        }
     }
 
     @Test
@@ -139,14 +139,12 @@ class ApiGateDeclarationGuardTest {
         String masked = maskCommentsAndLiterals(source);
         boolean classGate = CLASS_GATE.matcher(masked).find();
         List<Entry> entries = new ArrayList<>();
-        Set<Integer> countedMethods = new HashSet<>();
-        Matcher annotations = ANNOTATION.matcher(masked);
-        while (annotations.find()) {
-            Type type = typeOf(List.of(simpleName(annotations.group(1))));
-            if (type == null) continue;
-            MethodAnnotations method = methodAfter(annotations.end(), masked);
-            if (method == null || !countedMethods.add(method.openParen())) continue;
-            entries.add(new Entry(type, fqcn, classGate || method.names().contains("RequireFeature") || method.names().contains("AlwaysReachable")));
+        for (MethodAnnotations method : methodAnnotations(masked).values()) {
+            Type type = typeOf(method.names());
+            if (type != null) {
+                entries.add(new Entry(type, fqcn,
+                        classGate || method.names().contains("RequireFeature") || method.names().contains("AlwaysReachable")));
+            }
         }
         return entries;
     }
@@ -165,7 +163,7 @@ class ApiGateDeclarationGuardTest {
         int wordStart = cursor;
         for (int i = cursor; i < masked.length(); i++) {
             char c = masked.charAt(i);
-            if (c == '(') return new MethodAnnotations(names, i);
+            if (c == '(') return new MethodAnnotations(names, i, Set.of());
             if (c == '{' || c == ';' || c == '=' || c == '}') return null;
             if (Character.isWhitespace(c)) {
                 String word = masked.substring(wordStart, i).trim();
@@ -197,10 +195,13 @@ class ApiGateDeclarationGuardTest {
         List<String> violations = new ArrayList<>();
         if (CLASS_ALWAYS.matcher(masked).find()) violations.add(fqcn + ": AlwaysReachable is method-level only");
         boolean classGate = CLASS_GATE.matcher(masked).find();
+        Map<Integer, MethodAnnotations> methods = methodAnnotations(masked);
         Matcher always = ANNOTATION.matcher(masked);
         while (always.find()) {
             if (!simpleName(always.group(1)).equals("AlwaysReachable")) continue;
-            MethodAnnotations owner = ownerOf(always.start(), masked);
+            MethodAnnotations owner = methods.values().stream()
+                    .filter(method -> method.annotationOffsets().contains(always.start()))
+                    .findFirst().orElse(null);
             if (owner == null || typeOf(owner.names()) == null) {
                 violations.add(fqcn + ": AlwaysReachable requires a mapped method");
                 continue;
@@ -215,14 +216,20 @@ class ApiGateDeclarationGuardTest {
         return violations;
     }
 
-    private static MethodAnnotations ownerOf(int annotationOffset, String masked) {
-        Matcher methods = ANNOTATED_METHOD.matcher(masked);
-        while (methods.find()) {
-            if (annotationOffset >= methods.start(1) && annotationOffset < methods.end(1)) {
-                return new MethodAnnotations(annotationNames(methods.group(1)), -1);
-            }
+    private static Map<Integer, MethodAnnotations> methodAnnotations(String masked) {
+        Map<Integer, List<String>> names = new TreeMap<>();
+        Map<Integer, Set<Integer>> offsets = new TreeMap<>();
+        Matcher annotations = ANNOTATION.matcher(masked);
+        while (annotations.find()) {
+            MethodAnnotations method = methodAfter(annotations.end(), masked);
+            if (method == null) continue;
+            names.computeIfAbsent(method.openParen(), ignored -> new ArrayList<>()).add(simpleName(annotations.group(1)));
+            offsets.computeIfAbsent(method.openParen(), ignored -> new HashSet<>()).add(annotations.start());
         }
-        return null;
+        Map<Integer, MethodAnnotations> result = new TreeMap<>();
+        names.forEach((openParen, methodNames) -> result.put(openParen,
+                new MethodAnnotations(methodNames, openParen, offsets.get(openParen))));
+        return result;
     }
 
     private static List<String> freeze(List<Entry> entries) {
@@ -275,6 +282,6 @@ class ApiGateDeclarationGuardTest {
 
     enum Type { HTTP, STOMP }
     record Entry(Type type, String fqcn, boolean declared) { }
-    record MethodAnnotations(List<String> names, int openParen) { }
+    record MethodAnnotations(List<String> names, int openParen, Set<Integer> annotationOffsets) { }
     record Scan(List<Entry> entries, List<String> violations, int sourceCount) { }
 }
