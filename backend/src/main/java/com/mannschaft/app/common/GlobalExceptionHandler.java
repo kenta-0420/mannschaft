@@ -86,6 +86,7 @@ public class GlobalExceptionHandler {
             Map.entry("RETURN_STAY_PLAN_005", HttpStatus.CONFLICT),
             Map.entry("RETURN_STAY_PLAN_006", HttpStatus.CONFLICT),
             Map.entry("RETURN_STAY_PLAN_007", HttpStatus.NOT_FOUND),
+            Map.entry("PAYMENT_015", HttpStatus.NOT_FOUND),
             // F00 共通可視性基盤（Severity.WARN デフォルト 400 を設計書 §7.4 の正しい status に上書き）
             Map.entry("VISIBILITY_001", HttpStatus.FORBIDDEN),   // 認可拒否（権限不足）→ 403
             Map.entry("VISIBILITY_004", HttpStatus.NOT_FOUND),  // コンテンツ不在 → 404
