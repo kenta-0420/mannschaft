@@ -27,8 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ApiGateDeclarationGuardTest {
 
-    private static final Pattern CLASS_GATE = Pattern.compile("(?s)@(?:[\\w.]+\\.)?RequireFeature\\s*\\([^)]*\\)\\s*(?:public\\s+)?(?:final\\s+)?class\\s+");
-    private static final Pattern CLASS_ALWAYS = Pattern.compile("(?s)@(?:[\\w.]+\\.)?AlwaysReachable\\s*\\([^)]*\\)\\s*(?:public\\s+)?(?:final\\s+)?class\\s+");
+    private static final Pattern CLASS_ANNOTATIONS = Pattern.compile("(?s)((?:\\s*@(?:[\\w.]+)(?:\\s*\\([^)]*\\))?\\s*)+)(?:public\\s+)?(?:final\\s+)?class\\s+");
     private static final Pattern ANNOTATION = Pattern.compile("@([\\w.]+)(?:\\s*\\(([^)]*)\\))?");
     private static final Pattern REASON = Pattern.compile("\\breason\\s*=\\s*\\\"([^\\\"]*)\\\"");
     private static final Pattern CATEGORY = Pattern.compile("\\bcategory\\s*=\\s*(?:[\\w.]+\\.)?(CORE|PUBLIC_LIFELINE|GATE_CONTROL_PLANE|PLATFORM_INFRA)\\b");
@@ -68,6 +67,15 @@ class ApiGateDeclarationGuardTest {
                   @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "bootstrap")
                   @MessageMapping("/send") public void send() {}
                 }""")).allMatch(Entry::declared);
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("合成対照: 他のController注釈に挟まれたclass-level宣言を認識する")
+    void classLevelDeclarationsSurviveOtherControllerAnnotations() {
+        assertThat(analyze("sample.ClassGate", """
+                @RequireFeature("FEATURE_A") @RestController @RequestMapping("/api")
+                public class ClassGate { @GetMapping public void get() {} }"""))
+                .allMatch(Entry::declared);
     }
 
     @Test
@@ -137,7 +145,7 @@ class ApiGateDeclarationGuardTest {
 
     static List<Entry> analyze(String fqcn, String source) {
         String masked = maskCommentsAndLiterals(source);
-        boolean classGate = CLASS_GATE.matcher(masked).find();
+        boolean classGate = hasClassAnnotation(masked, "RequireFeature");
         List<Entry> entries = new ArrayList<>();
         for (MethodAnnotations method : methodAnnotations(masked).values()) {
             Type type = typeOf(method.names());
@@ -193,8 +201,8 @@ class ApiGateDeclarationGuardTest {
     static List<String> violations(String fqcn, String source) {
         String masked = maskCommentsAndLiterals(source);
         List<String> violations = new ArrayList<>();
-        if (CLASS_ALWAYS.matcher(masked).find()) violations.add(fqcn + ": AlwaysReachable is method-level only");
-        boolean classGate = CLASS_GATE.matcher(masked).find();
+        if (hasClassAnnotation(masked, "AlwaysReachable")) violations.add(fqcn + ": AlwaysReachable is method-level only");
+        boolean classGate = hasClassAnnotation(masked, "RequireFeature");
         Map<Integer, MethodAnnotations> methods = methodAnnotations(masked);
         Matcher always = ANNOTATION.matcher(masked);
         while (always.find()) {
@@ -252,6 +260,11 @@ class ApiGateDeclarationGuardTest {
         Matcher matcher = ANNOTATION.matcher(annotations);
         while (matcher.find()) names.add(simpleName(matcher.group(1)));
         return names;
+    }
+
+    private static boolean hasClassAnnotation(String masked, String annotation) {
+        Matcher matcher = CLASS_ANNOTATIONS.matcher(masked);
+        return matcher.find() && annotationNames(matcher.group(1)).contains(annotation);
     }
 
     private static Type typeOf(List<String> names) {
