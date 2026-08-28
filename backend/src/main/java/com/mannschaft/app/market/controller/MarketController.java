@@ -2,6 +2,7 @@ package com.mannschaft.app.market.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.market.dto.MarketListingResponse;
 import com.mannschaft.app.market.dto.MarketRegionNodeResponse;
@@ -93,6 +94,7 @@ public class MarketController {
     @Operation(summary = "市の札一覧",
             description = "未ログインで実行可能。visibility=PUBLIC かつ status IN (OPEN,FULL) の札を返す。"
                     + "city 指定でその市区町村、prefecture のみで配下市区町村をロールアップ。")
+    @RequireFeature("FEATURE_MARKET_ENABLED")
     public ResponseEntity<PagedResponse<MarketListingResponse>> listListings(
             @RequestParam(required = false) String prefecture,
             @RequestParam(required = false) String city,

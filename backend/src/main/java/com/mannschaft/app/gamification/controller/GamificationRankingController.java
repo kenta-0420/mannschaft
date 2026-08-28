@@ -3,6 +3,7 @@ package com.mannschaft.app.gamification.controller;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.gamification.GamificationMapper;
 import com.mannschaft.app.gamification.PeriodType;
 import com.mannschaft.app.gamification.dto.RankingResponse;
@@ -39,6 +40,7 @@ public class GamificationRankingController {
      * @return ランキング一覧
      */
     @GetMapping
+    @RequireFeature("FEATURE_GAMIFICATION_ENABLED")
     public ApiResponse<List<RankingResponse>> getRanking(
             @PathVariable Long teamId,
             @RequestParam(defaultValue = "WEEKLY") PeriodType periodType,

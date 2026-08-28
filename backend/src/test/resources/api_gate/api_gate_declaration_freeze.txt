@@ -49,7 +49,7 @@ HTTP|com.mannschaft.app.advertising.controller.AdConversionController|2|2
 HTTP|com.mannschaft.app.advertising.controller.AdSegmentController|1|1
 HTTP|com.mannschaft.app.advertising.controller.AdvertiserAdCreativeController|4|4
 HTTP|com.mannschaft.app.advertising.controller.AdvertiserAdminController|11|11
-HTTP|com.mannschaft.app.advertising.controller.AdvertiserDashboardController|18|18
+HTTP|com.mannschaft.app.advertising.controller.AdvertiserDashboardController|17|18
 HTTP|com.mannschaft.app.advertising.controller.AffiliateConfigAdminController|5|5
 HTTP|com.mannschaft.app.advertising.controller.OrganizationOperationalAdCampaignController|8|8
 HTTP|com.mannschaft.app.advertising.controller.SpotlightController|3|3
@@ -85,7 +85,7 @@ HTTP|com.mannschaft.app.auth.controller.ParentalConsentController|9|9
 HTTP|com.mannschaft.app.auth.controller.UserController|10|12
 HTTP|com.mannschaft.app.auth.controller.UserOAuthLinkController|2|2
 HTTP|com.mannschaft.app.billing.api.BillingContractController|6|9
-HTTP|com.mannschaft.app.billing.api.BillingEntitlementSummaryController|3|3
+HTTP|com.mannschaft.app.billing.api.BillingEntitlementSummaryController|2|3
 HTTP|com.mannschaft.app.billing.api.BillingPlanController|2|2
 HTTP|com.mannschaft.app.billing.api.SystemAdminBillingController|14|14
 HTTP|com.mannschaft.app.billing.beta.api.BetaPerkController|3|3
@@ -186,7 +186,7 @@ HTTP|com.mannschaft.app.disclosure.controller.DisclosureFormDraftController|6|6
 HTTP|com.mannschaft.app.disclosure.controller.DisclosureFormTemplateController|2|2
 HTTP|com.mannschaft.app.disclosure.controller.DisclosureFormTemplateEditController|3|3
 HTTP|com.mannschaft.app.equipment.controller.EquipmentMyAssignmentsController|1|1
-HTTP|com.mannschaft.app.equipment.controller.OrganizationEquipmentController|16|16
+HTTP|com.mannschaft.app.equipment.controller.OrganizationEquipmentController|15|16
 HTTP|com.mannschaft.app.equipment.controller.TeamEquipmentController|16|16
 HTTP|com.mannschaft.app.errorreport.controller.ErrorReportController|2|2
 HTTP|com.mannschaft.app.errorreport.controller.SystemAdminErrorReportController|15|15
@@ -210,7 +210,7 @@ HTTP|com.mannschaft.app.facility.controller.TeamFacilityBookingController|13|13
 HTTP|com.mannschaft.app.facility.controller.TeamFacilityController|15|15
 HTTP|com.mannschaft.app.facility.controller.TeamFacilitySettingsController|3|3
 HTTP|com.mannschaft.app.family.controller.AnniversaryController|5|5
-HTTP|com.mannschaft.app.family.controller.CareLinkController|7|7
+HTTP|com.mannschaft.app.family.controller.CareLinkController|6|7
 HTTP|com.mannschaft.app.family.controller.CoinTossController|3|3
 HTTP|com.mannschaft.app.family.controller.DutyRotationController|5|5
 HTTP|com.mannschaft.app.family.controller.PresenceController|7|7
@@ -253,7 +253,7 @@ HTTP|com.mannschaft.app.gamification.controller.GamificationBadgeController|7|7
 HTTP|com.mannschaft.app.gamification.controller.GamificationConfigController|2|2
 HTTP|com.mannschaft.app.gamification.controller.GamificationPointController|4|4
 HTTP|com.mannschaft.app.gamification.controller.GamificationPointRuleController|4|4
-HTTP|com.mannschaft.app.gamification.controller.GamificationRankingController|1|1
+HTTP|com.mannschaft.app.gamification.controller.GamificationRankingController|0|1
 HTTP|com.mannschaft.app.gamification.controller.GamificationSettingController|2|2
 HTTP|com.mannschaft.app.gdpr.controller.GdprController|0|4
 HTTP|com.mannschaft.app.inbox.controller.InboxController|14|14
@@ -276,7 +276,7 @@ HTTP|com.mannschaft.app.line.controller.LineBotConfigController|12|12
 HTTP|com.mannschaft.app.line.controller.LineWebhookController|0|1
 HTTP|com.mannschaft.app.line.controller.SnsFeedConfigController|10|10
 HTTP|com.mannschaft.app.line.controller.UserLineController|3|3
-HTTP|com.mannschaft.app.market.controller.MarketController|5|5
+HTTP|com.mannschaft.app.market.controller.MarketController|4|5
 HTTP|com.mannschaft.app.match.controller.MatchRecordAttachmentController|5|5
 HTTP|com.mannschaft.app.match.controller.MatchRecordController|10|10
 HTTP|com.mannschaft.app.match.controller.MatchRecordEventController|5|5
@@ -288,7 +288,7 @@ HTTP|com.mannschaft.app.match.controller.MatchRecordTurnController|3|3
 HTTP|com.mannschaft.app.match.controller.MatchStatsController|5|5
 HTTP|com.mannschaft.app.matching.controller.MasterDataController|2|2
 HTTP|com.mannschaft.app.matching.controller.MatchNotificationController|2|2
-HTTP|com.mannschaft.app.matching.controller.MatchProposalController|9|9
+HTTP|com.mannschaft.app.matching.controller.MatchProposalController|8|9
 HTTP|com.mannschaft.app.matching.controller.MatchRequestController|7|7
 HTTP|com.mannschaft.app.matching.controller.MatchReviewController|2|2
 HTTP|com.mannschaft.app.matching.controller.MatchTemplateController|4|4
@@ -309,7 +309,7 @@ HTTP|com.mannschaft.app.moderation.controller.AppealController|2|2
 HTTP|com.mannschaft.app.moderation.controller.ContentReportController|1|1
 HTTP|com.mannschaft.app.moderation.controller.ModerationAdminController|3|3
 HTTP|com.mannschaft.app.moderation.controller.ModerationResolveController|11|11
-HTTP|com.mannschaft.app.moderation.controller.SystemAdminModerationController|16|16
+HTTP|com.mannschaft.app.moderation.controller.SystemAdminModerationController|15|16
 HTTP|com.mannschaft.app.moderation.controller.SystemAdminReportController|1|1
 HTTP|com.mannschaft.app.moderation.controller.UserViolationController|3|3
 HTTP|com.mannschaft.app.moderation.controller.YabaiController|2|2
@@ -454,7 +454,7 @@ HTTP|com.mannschaft.app.recruitment.controller.OrganizationRecruitmentListingCon
 HTTP|com.mannschaft.app.recruitment.controller.RecruitmentApplicationController|4|4
 HTTP|com.mannschaft.app.recruitment.controller.RecruitmentCancellationRecordController|2|2
 HTTP|com.mannschaft.app.recruitment.controller.RecruitmentCategoryController|1|1
-HTTP|com.mannschaft.app.recruitment.controller.RecruitmentListingController|10|10
+HTTP|com.mannschaft.app.recruitment.controller.RecruitmentListingController|9|10
 HTTP|com.mannschaft.app.recruitment.controller.RecruitmentNoShowController|5|5
 HTTP|com.mannschaft.app.recruitment.controller.RecruitmentPenaltyController|5|5
 HTTP|com.mannschaft.app.recruitment.controller.RecruitmentTemplateController|9|9
@@ -470,7 +470,7 @@ HTTP|com.mannschaft.app.reflection.controller.ReflectionThemeController|7|7
 HTTP|com.mannschaft.app.reflection.controller.ReflectionTodayController|1|1
 HTTP|com.mannschaft.app.reflection.controller.ReflectionVocabCardController|1|1
 HTTP|com.mannschaft.app.repairplan.controller.BoardHandoverPackController|4|4
-HTTP|com.mannschaft.app.repairplan.controller.RepairPlanDashboardController|1|1
+HTTP|com.mannschaft.app.repairplan.controller.RepairPlanDashboardController|0|1
 HTTP|com.mannschaft.app.repairplan.controller.RepairPlanItemController|5|5
 HTTP|com.mannschaft.app.repairplan.controller.RepairPlanItemCsvController|2|2
 HTTP|com.mannschaft.app.repairplan.controller.RepairPlanQuoteKanbanController|6|6
@@ -504,7 +504,7 @@ HTTP|com.mannschaft.app.resident.controller.TeamPropertyListingController|7|7
 HTTP|com.mannschaft.app.resident.controller.TeamResidentController|6|6
 HTTP|com.mannschaft.app.resident.controller.TeamResidentDocumentController|3|3
 HTTP|com.mannschaft.app.resident.controller.UserResidentController|2|2
-HTTP|com.mannschaft.app.resume.controller.ResumeController|11|11
+HTTP|com.mannschaft.app.resume.controller.ResumeController|10|11
 HTTP|com.mannschaft.app.returnstayplan.controller.ReturnStayPlanController|5|5
 HTTP|com.mannschaft.app.returnstayplan.controller.ReturnStayPlanTeamController|2|2
 HTTP|com.mannschaft.app.role.controller.InviteController|3|3
@@ -564,7 +564,7 @@ HTTP|com.mannschaft.app.shift.controller.ShiftMyController|1|1
 HTTP|com.mannschaft.app.shift.controller.ShiftPdfController|1|1
 HTTP|com.mannschaft.app.shift.controller.ShiftPositionController|4|4
 HTTP|com.mannschaft.app.shift.controller.ShiftRequestController|6|6
-HTTP|com.mannschaft.app.shift.controller.ShiftScheduleController|9|9
+HTTP|com.mannschaft.app.shift.controller.ShiftScheduleController|8|9
 HTTP|com.mannschaft.app.shift.controller.ShiftSlotController|6|6
 HTTP|com.mannschaft.app.shift.controller.ShiftSwapController|7|7
 HTTP|com.mannschaft.app.shiftbudget.controller.BudgetThresholdAlertController|2|2
@@ -596,7 +596,7 @@ HTTP|com.mannschaft.app.social.controller.TeamFriendsController|4|4
 HTTP|com.mannschaft.app.social.controller.UserFollowController|5|5
 HTTP|com.mannschaft.app.succession.controller.DelinquencyEscalationController|4|4
 HTTP|com.mannschaft.app.succession.controller.LegalFilingController|6|6
-HTTP|com.mannschaft.app.succession.controller.SuccessionCovenantController|5|5
+HTTP|com.mannschaft.app.succession.controller.SuccessionCovenantController|4|5
 HTTP|com.mannschaft.app.succession.controller.UnsealRequestController|6|6
 HTTP|com.mannschaft.app.survey.controller.SurveyController|12|12
 HTTP|com.mannschaft.app.survey.controller.SurveyQuestionController|2|2
@@ -683,7 +683,7 @@ HTTP|com.mannschaft.app.tournament.scorekeeper.TournamentScorekeeperController|3
 HTTP|com.mannschaft.app.tournament.submission.TournamentSubmissionRequirementController|6|6
 HTTP|com.mannschaft.app.translation.controller.ContentTranslationController|22|22
 HTTP|com.mannschaft.app.translation.controller.TranslationAssignmentController|8|8
-HTTP|com.mannschaft.app.translation.controller.TranslationConfigController|4|4
+HTTP|com.mannschaft.app.translation.controller.TranslationConfigController|3|4
 HTTP|com.mannschaft.app.user.controller.UserBlockController|3|3
 HTTP|com.mannschaft.app.venue.controller.VenueController|4|4
 HTTP|com.mannschaft.app.village.controller.PostingIdentityController|1|1
@@ -721,12 +721,12 @@ HTTP|com.mannschaft.app.weather.controller.WeatherController|2|2
 HTTP|com.mannschaft.app.webhook.controller.ApiKeyController|3|3
 HTTP|com.mannschaft.app.webhook.controller.IncomingWebhookController|3|4
 HTTP|com.mannschaft.app.webhook.controller.WebhookDeliveryController|2|2
-HTTP|com.mannschaft.app.webhook.controller.WebhookEndpointController|5|5
+HTTP|com.mannschaft.app.webhook.controller.WebhookEndpointController|4|5
 HTTP|com.mannschaft.app.workflow.controller.WorkflowApprovalController|1|1
 HTTP|com.mannschaft.app.workflow.controller.WorkflowCommentController|8|8
 HTTP|com.mannschaft.app.workflow.controller.WorkflowRequestController|7|7
 HTTP|com.mannschaft.app.workflow.controller.WorkflowRequestMyController|1|1
-HTTP|com.mannschaft.app.workflow.controller.WorkflowTemplateController|5|5
+HTTP|com.mannschaft.app.workflow.controller.WorkflowTemplateController|4|5
 HTTP|com.mannschaft.app.workflow.controller.WorkflowTemplateStatusController|2|2
 STOMP|com.mannschaft.app.chat.controller.ChatTypingController|1|1
 STOMP|com.mannschaft.app.chat.controller.ChatWebSocketController|1|1

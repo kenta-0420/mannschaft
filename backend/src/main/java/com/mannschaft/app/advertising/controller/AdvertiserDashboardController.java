@@ -18,6 +18,7 @@ import com.mannschaft.app.advertising.dto.RegisterAdvertiserRequest;
 import com.mannschaft.app.advertising.dto.ReportScheduleResponse;
 import com.mannschaft.app.advertising.dto.UpdateAdvertiserAccountRequest;
 import com.mannschaft.app.advertising.service.AdCreditLimitRequestService;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.advertising.service.AdInvoiceService;
 import com.mannschaft.app.advertising.service.AdRateCardService;
 import com.mannschaft.app.advertising.service.AdReportScheduleService;
@@ -129,6 +130,7 @@ public class AdvertiserDashboardController {
      */
     @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/rate-simulator")
+    @RequireFeature("FEATURE_PROMOTION_ENABLED")
     public ApiResponse<RateSimulatorResponse> rateSimulator(
             @RequestParam(required = false) String prefecture,
             @RequestParam(required = false) String template,

@@ -2,6 +2,7 @@ package com.mannschaft.app.equipment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.equipment.dto.AssignEquipmentRequest;
 import com.mannschaft.app.equipment.dto.AssignmentResponse;
 import com.mannschaft.app.equipment.dto.BulkAssignRequest;
@@ -64,6 +65,7 @@ public class OrganizationEquipmentController {
     @GetMapping
     @Operation(summary = "組織備品一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @RequireFeature("FEATURE_FACILITY_ENABLED")
     public ResponseEntity<PagedResponse<EquipmentItemResponse>> listEquipment(
             @PathVariable Long orgId,
             @RequestParam(required = false) String category,
