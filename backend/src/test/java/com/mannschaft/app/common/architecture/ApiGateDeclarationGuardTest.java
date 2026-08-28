@@ -116,6 +116,11 @@ class ApiGateDeclarationGuardTest {
                 public class BadCategory {
                   @AlwaysReachable(reason = "missing category") @GetMapping public void get() {}
                 }""")).anySatisfy(v -> assertThat(v).contains("category"));
+        assertThat(violations("sample.ClassAlways", """
+                @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "class declaration")
+                @RestController @RequestMapping("/api") public class ClassAlways {
+                  @GetMapping public void get() {}
+                }""")).anySatisfy(v -> assertThat(v).contains("method-level only"));
         assertThat(violations("sample.Double", """
                 public class Double {
                   @RequireFeature("FEATURE_A") @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "double")
