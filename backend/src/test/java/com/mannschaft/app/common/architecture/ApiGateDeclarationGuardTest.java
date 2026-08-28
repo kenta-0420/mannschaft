@@ -137,6 +137,7 @@ class ApiGateDeclarationGuardTest {
                 try {
                     sourceCount[0]++;
                     String source = Files.readString(path, StandardCharsets.UTF_8);
+                    if (!mightContainMappedApi(source)) return;
                     String fqcn = fqcn(path);
                     entries.addAll(analyze(fqcn, source));
                     violations.addAll(violations(fqcn, source));
@@ -146,6 +147,13 @@ class ApiGateDeclarationGuardTest {
             });
         }
         return new Scan(entries, violations, sourceCount[0]);
+    }
+
+    private static boolean mightContainMappedApi(String source) {
+        return source.contains("RequestMapping") || source.contains("GetMapping")
+                || source.contains("PostMapping") || source.contains("PutMapping")
+                || source.contains("PatchMapping") || source.contains("DeleteMapping")
+                || source.contains("MessageMapping") || source.contains("AlwaysReachable");
     }
 
     static List<Entry> analyze(String fqcn, String source) {
