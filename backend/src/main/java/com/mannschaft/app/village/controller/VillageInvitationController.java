@@ -2,6 +2,8 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.village.dto.VillageInvitationAcceptResponse;
 import com.mannschaft.app.village.dto.VillageInvitationCreateRequest;
@@ -41,6 +43,8 @@ public class VillageInvitationController {
 
     private final VillageInvitationService invitationService;
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "Village基盤の招待発行は既存17機能Gateの対象外であるため")
     @PostMapping("/api/v1/villages/{villageId}/invitations")
     @Operation(summary = "招待を発行する（村長・長老のみ）")
     public ResponseEntity<ApiResponse<VillageInvitationIssueResponse>> issue(
@@ -51,6 +55,8 @@ public class VillageInvitationController {
                 .body(ApiResponse.of(invitationService.issue(villageId, actorUserId, request)));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "Village基盤の招待管理は既存17機能Gateの対象外であるため")
     @GetMapping("/api/v1/villages/{villageId}/invitations")
     @Operation(summary = "自村の招待一覧（村長・長老のみ）")
     public ApiResponse<List<VillageInvitationSummary>> list(
@@ -59,6 +65,8 @@ public class VillageInvitationController {
         return ApiResponse.of(invitationService.list(villageId, actorUserId));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "発行済みVillage招待の取消経路を常に維持するため")
     @DeleteMapping("/api/v1/villages/{villageId}/invitations/{invitationId}")
     @Operation(summary = "招待を失効させる（冪等）")
     public ResponseEntity<Void> revoke(
@@ -69,6 +77,8 @@ public class VillageInvitationController {
         return ResponseEntity.noContent().build();
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "発行済みVillage招待の受諾経路を常に維持するため")
     @PostMapping("/api/v1/village-invitations/{token}/accept")
     @Operation(summary = "招待を受諾して村人になる（認証必須）")
     public ResponseEntity<ApiResponse<VillageInvitationAcceptResponse>> accept(

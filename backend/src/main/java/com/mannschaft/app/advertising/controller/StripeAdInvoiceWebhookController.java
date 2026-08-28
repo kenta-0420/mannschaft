@@ -4,6 +4,8 @@ import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
 import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.model.Invoice;
@@ -46,6 +48,8 @@ public class StripeAdInvoiceWebhookController {
     @Value("${mannschaft.stripe.webhook-secret.ad-invoices:}")
     private String webhookSecret;
 
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "広告請求のStripe結果をGate状態にかかわらず反映するため")
     @PostMapping("/ad-invoices")
     @Transactional
     public ResponseEntity<Map<String, String>> handleInvoiceWebhook(

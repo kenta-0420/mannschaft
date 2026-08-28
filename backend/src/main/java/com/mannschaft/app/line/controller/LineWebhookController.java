@@ -1,6 +1,8 @@
 package com.mannschaft.app.line.controller;
 
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.line.service.LineWebhookService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -38,6 +40,8 @@ public class LineWebhookController {
      * Service 層で検証する。LINE は 200 以外のレスポンスを無限にリトライするため、
      * 署名不一致・ヘッダ欠落・設定不在のいずれの場合も常に 200 を返却する。</p>
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "LINEからの外部通知をGate状態にかかわらず受領するため")
     @PostMapping("/{webhookSecret}")
     @ResponseStatus(HttpStatus.OK)
     public void receiveWebhook(
