@@ -1351,7 +1351,10 @@
       },
       "week": {
         "allDay": "All-day",
-        "now": "Now"
+        "now": "Now",
+        "dragHint": "Drag to create an event",
+        "dragHintTouch": "Press and hold, then drag to create an event",
+        "selectedRange": "{start} – {end}"
       }
     }
   },

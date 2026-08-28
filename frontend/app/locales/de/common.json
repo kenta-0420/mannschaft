@@ -1351,7 +1351,10 @@
       },
       "week": {
         "allDay": "Ganztägig",
-        "now": "Jetzt"
+        "now": "Jetzt",
+        "dragHint": "Ziehen, um einen Termin zu erstellen",
+        "dragHintTouch": "Gedrückt halten und ziehen, um einen Termin zu erstellen",
+        "selectedRange": "{start} – {end}"
       }
     }
   },
