@@ -48,6 +48,11 @@ function toggleItem(itemId: number, checked: boolean) {
     : selectedIds.value.filter((id) => id !== itemId)
 }
 
+function clearGateSelection() {
+  selectedIds.value = []
+  titleHidden.value = {}
+}
+
 async function load() {
   loading.value = true
   error.value = false
@@ -58,6 +63,9 @@ async function load() {
     ])
     gates.value = gateResponse.data
     items.value = itemResponse.data
+    const initialTarget = configured.value[0]
+    if (initialTarget) selectConfigured(initialTarget)
+    else clearGateSelection()
   } catch {
     error.value = true
   } finally {
@@ -78,7 +86,9 @@ async function save() {
       })),
     }
     await updateContentPaymentGates(props.scopeType, props.scopeId, body)
+    const savedTarget = { type: contentType.value, id: contentId.value }
     await load()
+    selectConfigured(savedTarget)
     showSuccess(t('payment.admin.contentGate.saveSuccess'))
   } catch {
     showError(t('payment.admin.contentGate.saveError'))
@@ -99,16 +109,16 @@ onMounted(load)
       <div class="grid gap-3 md:grid-cols-[10rem_1fr_auto]">
         <label class="text-sm">
           <span class="mb-1 block">{{ t('payment.admin.contentGate.contentType') }}</span>
-          <select v-model="contentType" class="w-full rounded border border-surface-300 px-2 py-2" data-testid="content-gate-type">
+          <select v-model="contentType" class="w-full rounded border border-surface-300 px-2 py-2" data-testid="content-gate-type" @change="clearGateSelection">
             <option value="POST">{{ t('payment.admin.contentGate.post') }}</option>
             <option value="ANNOUNCEMENT">{{ t('payment.admin.contentGate.announcement') }}</option>
           </select>
         </label>
         <label class="text-sm">
           <span class="mb-1 block">{{ t('payment.admin.contentGate.contentId') }}</span>
-          <input v-model.number="contentId" type="number" min="1" step="1" class="w-full rounded border border-surface-300 px-2 py-2" data-testid="content-gate-id">
+          <input v-model.number="contentId" type="number" min="1" step="1" class="w-full rounded border border-surface-300 px-2 py-2" data-testid="content-gate-id" @input="clearGateSelection">
         </label>
-        <Button :label="t('payment.admin.contentGate.save')" :loading="saving" :disabled="saving || contentId == null || contentId <= 0" data-testid="content-gate-save" @click="save" />
+        <Button :label="t('payment.admin.contentGate.save')" :loading="saving" :disabled="saving || contentId == null || !Number.isInteger(contentId) || contentId <= 0" data-testid="content-gate-save" @click="save" />
       </div>
 
       <div v-if="configured.length" class="mt-4 flex flex-wrap gap-2" data-testid="content-gate-configured">
@@ -118,14 +128,16 @@ onMounted(load)
       </div>
 
       <div class="mt-4 grid gap-2 md:grid-cols-2">
-        <label v-for="item in eligibleItems" :key="item.id" class="flex items-center gap-2 rounded border border-surface-200 p-2 text-sm">
-          <input type="checkbox" :checked="selectedIds.includes(item.id)" :data-testid="`content-gate-item-${item.id}`" @change="toggleItem(item.id, ($event.target as HTMLInputElement).checked)">
-          <span class="flex-1">{{ item.meta.name }}</span>
-          <span v-if="selectedIds.includes(item.id)" class="flex items-center gap-1 text-xs">
+        <div v-for="item in eligibleItems" :key="item.id" class="flex items-center gap-2 rounded border border-surface-200 p-2 text-sm">
+          <label class="flex min-w-0 flex-1 items-center gap-2">
+            <input type="checkbox" :checked="selectedIds.includes(item.id)" :data-testid="`content-gate-item-${item.id}`" @change="toggleItem(item.id, ($event.target as HTMLInputElement).checked)">
+            <span class="truncate">{{ item.meta.name }}</span>
+          </label>
+          <label v-if="selectedIds.includes(item.id)" class="flex items-center gap-1 text-xs">
             <input v-model="titleHidden[item.id]" type="checkbox" :data-testid="`content-gate-title-hidden-${item.id}`">
             {{ t('payment.admin.contentGate.titleHidden') }}
-          </span>
-        </label>
+          </label>
+        </div>
       </div>
       <p v-if="eligibleItems.length === 0" class="mt-3 text-sm text-surface-500">{{ t('payment.admin.contentGate.noItems') }}</p>
       <p class="mt-3 text-xs text-surface-500">{{ t('payment.admin.contentGate.clearHint') }}</p>

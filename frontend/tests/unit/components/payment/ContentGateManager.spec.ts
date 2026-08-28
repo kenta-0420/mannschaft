@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { flushPromises } from '@vue/test-utils'
 import ContentGateManager from '~/components/payment/ContentGateManager.vue'
 import type { PaymentItemResponse } from '~/types/payment'
 
@@ -43,6 +44,8 @@ describe('ContentGateManager.vue', () => {
     expect(wrapper.find('[data-testid="content-gate-item-7"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="content-gate-item-8"]').exists()).toBe(false)
     expect((wrapper.find('[data-testid="content-gate-id"]').element as HTMLInputElement).value).toBe('42')
+    expect((wrapper.find('[data-testid="content-gate-item-7"]').element as HTMLInputElement).checked).toBe(true)
+    expect((wrapper.find('[data-testid="content-gate-title-hidden-7"]').element as HTMLInputElement).checked).toBe(true)
   })
 
   it('ORGANIZATIONで複数項目とタイトル非表示を保存できる', async () => {
@@ -67,5 +70,31 @@ describe('ContentGateManager.vue', () => {
     expect(updateGates).toHaveBeenCalledWith('team', '10', { contentType: 'POST', contentId: 10, gates: [] })
     expect(failure).toHaveBeenCalled()
     expect(success).not.toHaveBeenCalled()
+  })
+
+  it('対象を手入力で変更すると別コンテンツの選択を引き継がない', async () => {
+    const wrapper = await mountSuspended(ContentGateManager, { props: { scopeType: 'team', scopeId: '10' } })
+    expect((wrapper.find('[data-testid="content-gate-item-7"]').element as HTMLInputElement).checked).toBe(true)
+
+    await wrapper.find('[data-testid="content-gate-id"]').setValue(43)
+
+    expect((wrapper.find('[data-testid="content-gate-item-7"]').element as HTMLInputElement).checked).toBe(false)
+  })
+
+  it('保存中の連打でも更新APIを一度だけ呼ぶ', async () => {
+    getGates.mockResolvedValue({ data: [], meta: { page: 0, size: 50, totalElements: 0, totalPages: 0 } })
+    let resolveUpdate: ((value: { data: object }) => void) | undefined
+    updateGates.mockReturnValueOnce(new Promise((resolve) => { resolveUpdate = resolve }))
+    const wrapper = await mountSuspended(ContentGateManager, { props: { scopeType: 'team', scopeId: '10' } })
+    await wrapper.find('[data-testid="content-gate-id"]').setValue(10)
+
+    await Promise.all([
+      wrapper.find('[data-testid="content-gate-save"]').trigger('click'),
+      wrapper.find('[data-testid="content-gate-save"]').trigger('click'),
+    ])
+
+    expect(updateGates).toHaveBeenCalledTimes(1)
+    resolveUpdate?.({ data: {} })
+    await flushPromises()
   })
 })

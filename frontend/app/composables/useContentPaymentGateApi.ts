@@ -1,6 +1,12 @@
 import type { ContentGateType, ContentPaymentGateResponse } from '~/types/payment'
+import type { components } from '~/types/generated/index'
 
-export interface ContentPaymentGateRequest {
+type GeneratedContentPaymentGateRequest = components['schemas']['ContentPaymentGateRequest']
+
+export type ContentPaymentGateRequest = Omit<
+  GeneratedContentPaymentGateRequest,
+  'contentType' | 'gates'
+> & {
   contentType: ContentGateType
   contentId: number
   gates: Array<{ paymentItemId: number; isTitleHidden: boolean }>
