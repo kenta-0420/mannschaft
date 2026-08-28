@@ -50,7 +50,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -71,7 +70,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** 既存17キーのうちGate対象16キーを、実Controller・実HTTP・実Aspectで検証する。 */
 @AutoConfigureMockMvc
-@Transactional
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @DisplayName("既存16 Gateキーの代表Controller HTTP統合試験")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
@@ -137,8 +135,7 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
 
             verifyNoInteractions(servicesFor(representative));
         } finally {
-            // DB transaction は各ケース後に rollback されるが、共有 cache は transaction 外に残る。
-            // 後続の統合試験へ OFF を漏らさないよう、rollback より前に ON を再投入する。
+            // 後続の統合試験へ OFF を漏らさないよう、repository transaction で ON を確定する。
             setFlag(representative.flagKey, true);
         }
     }
