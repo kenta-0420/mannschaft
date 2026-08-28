@@ -4,6 +4,7 @@ import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.api.dto.EntitlementSummaryResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class BillingEntitlementSummaryController {
     @GetMapping("/me/entitlements")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "自分の権利サマリ", description = "USER スコープ（scopeId=本人固定）の契約・有効機能を返す。")
+    @RequireFeature("FEATURE_BILLING_PAYMENT_ENABLED")
     public ResponseEntity<ApiResponse<EntitlementSummaryResponse>> me() {
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.of(

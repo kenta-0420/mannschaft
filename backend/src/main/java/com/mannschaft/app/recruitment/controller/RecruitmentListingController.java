@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CancellationFeeEstimateResponse;
@@ -66,6 +67,7 @@ public class RecruitmentListingController {
     @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/search")
     @Operation(summary = "募集枠 全体検索 (§Phase4)")
+    @RequireFeature("FEATURE_RECRUITMENT_ENABLED")
     public ResponseEntity<PagedResponse<RecruitmentListingSummaryResponse>> searchListings(
             @Valid @ModelAttribute RecruitmentListingSearchRequest req) {
         // XSS 対策: keyword・location をトリムし、空文字列は null に正規化
