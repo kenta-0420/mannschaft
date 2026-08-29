@@ -42,4 +42,6 @@ public class MultipartAbortCleanupEntity extends UuidV7Entity {
     private LocalDateTime claimedAt;
     @Column(name = "lease_until")
     private LocalDateTime leaseUntil;
+    @Column(name = "dead_lettered_at")
+    private LocalDateTime deadLetteredAt;
 }

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.annotation.Scheduled;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
+import jakarta.annotation.PostConstruct;
 
 import java.time.LocalDateTime;
 
@@ -26,7 +27,19 @@ public class MultipartUploadCleanupService {
     private final R2StorageService r2StorageService;
     @Value("${mannschaft.storage.multipart-cleanup-max-attempts:10}")
     private int maxAttempts;
+    @Value("${mannschaft.storage.multipart-cleanup-retention-days:30}")
+    private int retentionDays;
     private static final int LEASE_MINUTES = 10;
+
+    @PostConstruct
+    void validateConfiguration() {
+        if (maxAttempts < 1) {
+            throw new IllegalStateException("multipart-cleanup-max-attemptsは1以上で指定してください");
+        }
+        if (retentionDays < 1) {
+            throw new IllegalStateException("multipart-cleanup-retention-daysは1以上で指定してください");
+        }
+    }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markAbortPending(String uploadId, String r2Key, String feature, String scopeType,
@@ -40,11 +53,13 @@ public class MultipartUploadCleanupService {
     public int retryPendingAborts(LocalDateTime now) {
         int succeeded = 0;
         repository.releaseExpiredClaims(now);
+        repository.findByStatusAndDeadLetteredAtBefore("DEAD_LETTER", now.minusDays(retentionDays))
+                .forEach(repository::delete);
         for (MultipartAbortCleanupEntity session : repository
                 .findByStatusAndNextAttemptAtBefore(ABORT_PENDING, now)) {
             try {
                 if (session.getAttemptCount() >= maxAttempts) {
-                    repository.save(session.toBuilder().status("DEAD_LETTER").build());
+                    repository.save(session.toBuilder().status("DEAD_LETTER").deadLetteredAt(now).build());
                     log.error("Multipart補償abortをdead-letterへ隔離しました: uploadId={}", session.getUploadId());
                     continue;
                 }
