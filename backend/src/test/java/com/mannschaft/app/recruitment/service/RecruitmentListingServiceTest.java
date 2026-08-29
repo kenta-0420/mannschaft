@@ -12,6 +12,7 @@ import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
+import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
@@ -225,8 +226,8 @@ class RecruitmentListingServiceTest {
         }
 
         @Test
-        @DisplayName("PERSONAL札をPUBLICへ更新するとMARKET_008")
-        void update_personalToPublic_throwsMarket008() {
+        @DisplayName("汎用更新経路はPERSONAL札のPUBLIC更新を存在秘匿404で拒否する")
+        void update_personalToPublicThroughGenericRoute_throwsMarket404() {
             RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
                     .scopeType(RecruitmentScopeType.PERSONAL)
                     .scopeId(USER_ID)
@@ -239,7 +240,7 @@ class RecruitmentListingServiceTest {
                     LISTING_ID, USER_ID, personalUpdateWithVisibility(RecruitmentVisibility.PUBLIC)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
         }
 
         @Test
@@ -372,6 +373,83 @@ class RecruitmentListingServiceTest {
     class UpdateConstraints {
 
         @Test
+        @DisplayName("汎用更新経路はPERSONAL札を存在秘匿404で拒否する")
+        void genericUpdate_personalIsHidden() throws Exception {
+            RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.DRAFT);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.update(LISTING_ID, USER_ID,
+                    new UpdateRecruitmentListingRequest(null, null, null, null, null, null, null,
+                            null, null, null, null, null, null, null, null, null, null, null, null, null, null)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("専用更新経路は不在・他人・他スコープを同一MARKET_404に畳み込む")
+        void personalUpdate_missingOrOtherScopeIsHidden() {
+            given(listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                    eq(LISTING_ID), eq(RecruitmentScopeType.PERSONAL), eq(USER_ID)))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.updatePersonalDraft(LISTING_ID, USER_ID,
+                    personalUpdateWithVisibility(RecruitmentVisibility.SCOPE_ONLY)))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("専用更新経路はDRAFT以外をRECRUITMENT_100で拒否する")
+        void personalUpdate_nonDraftIsRejected() {
+            given(listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                    eq(LISTING_ID), eq(RecruitmentScopeType.PERSONAL), eq(USER_ID)))
+                    .willReturn(Optional.of(personalListing(RecruitmentListingStatus.OPEN)));
+
+            assertThatThrownBy(() -> service.updatePersonalDraft(LISTING_ID, USER_ID,
+                    personalUpdateWithVisibility(RecruitmentVisibility.SCOPE_ONLY)))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
+
+        @Test
+        @DisplayName("専用更新経路は本人のPERSONAL+DRAFTを更新する")
+        void personalUpdate_draftSucceeds() {
+            RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.DRAFT);
+            given(listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                    eq(LISTING_ID), eq(RecruitmentScopeType.PERSONAL), eq(USER_ID)))
+                    .willReturn(Optional.of(listing));
+            given(listingRepository.save(listing)).willReturn(listing);
+            RecruitmentListingResponse response = org.mockito.Mockito.mock(RecruitmentListingResponse.class);
+            given(mapper.toListingResponse(listing)).willReturn(response);
+            given(marketResponseEnricher.enrich(response, listing)).willReturn(response);
+
+            RecruitmentListingResponse actual = service.updatePersonalDraft(
+                    LISTING_ID, USER_ID, personalUpdateWithVisibility(RecruitmentVisibility.SCOPE_ONLY));
+
+            assertThat(actual).isSameAs(response);
+            verify(listingRepository).save(listing);
+        }
+
+        @Test
+        @DisplayName("専用更新経路は個人札の決済と公開範囲を拒否する")
+        void personalUpdate_paymentAndVisibilityAreRejected() {
+            RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.DRAFT);
+            given(listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                    eq(LISTING_ID), eq(RecruitmentScopeType.PERSONAL), eq(USER_ID)))
+                    .willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.updatePersonalDraft(LISTING_ID, USER_ID,
+                    updateWithPayment(true)))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.PERSONAL_PAYMENT_DISABLED);
+            assertThatThrownBy(() -> service.updatePersonalDraft(LISTING_ID, USER_ID,
+                    personalUpdateWithVisibility(RecruitmentVisibility.PUBLIC)))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+        }
+
+        @Test
         @DisplayName("capacity を confirmed_count 未満に変更 → CAPACITY_BELOW_CONFIRMED")
         void update_capacityBelowConfirmed_throws() throws Exception {
             RecruitmentListingEntity listing = buildListingWithConfirmed(5);
@@ -435,6 +513,89 @@ class RecruitmentListingServiceTest {
                 null, null, null, null,
                 null, null, null,
                 null, null);
+    }
+
+    @Nested
+    @DisplayName("PERSONAL取消・汎用経路遮断")
+    class PersonalCancelConstraints {
+
+        @Test
+        @DisplayName("汎用取消経路はPERSONAL札をMARKET_404で拒否する")
+        void genericCancel_personalIsHidden() {
+            given(listingRepository.findByIdForUpdate(LISTING_ID))
+                    .willReturn(Optional.of(personalListing(RecruitmentListingStatus.DRAFT)));
+
+            assertThatThrownBy(() -> service.cancelByAdmin(LISTING_ID, USER_ID,
+                    new CancelRecruitmentListingRequest("test")))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("専用取消経路はDRAFT以外をRECRUITMENT_100で拒否する")
+        void personalCancel_nonDraftIsRejected() {
+            given(listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                    eq(LISTING_ID), eq(RecruitmentScopeType.PERSONAL), eq(USER_ID)))
+                    .willReturn(Optional.of(personalListing(RecruitmentListingStatus.OPEN)));
+
+            assertThatThrownBy(() -> service.cancelPersonalDraft(LISTING_ID, USER_ID,
+                    new CancelRecruitmentListingRequest("test")))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
+
+        @Test
+        @DisplayName("専用取消経路はPERSONAL+DRAFTを本人固定で取消する")
+        void personalCancel_draftSucceeds() {
+            RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.DRAFT);
+            given(listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                    eq(LISTING_ID), eq(RecruitmentScopeType.PERSONAL), eq(USER_ID)))
+                    .willReturn(Optional.of(listing));
+            given(listingRepository.save(listing)).willReturn(listing);
+            RecruitmentListingResponse response = org.mockito.Mockito.mock(RecruitmentListingResponse.class);
+            given(mapper.toListingResponse(listing)).willReturn(response);
+
+            RecruitmentListingResponse actual = service.cancelPersonalDraft(LISTING_ID, USER_ID,
+                    new CancelRecruitmentListingRequest("test"));
+
+            assertThat(actual).isSameAs(response);
+            assertThat(listing.getStatus()).isEqualTo(RecruitmentListingStatus.CANCELLED);
+            verify(listingRepository).save(listing);
+        }
+    }
+
+    private UpdateRecruitmentListingRequest updateWithPayment(boolean enabled) {
+        return new UpdateRecruitmentListingRequest(
+                null, null, null, null, null, null, null,
+                null, null, enabled, enabled ? 1000 : null,
+                RecruitmentVisibility.SCOPE_ONLY,
+                null, null, null, null, null, null, null, null, null);
+    }
+
+    private RecruitmentListingEntity personalListing(RecruitmentListingStatus status) {
+        RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
+                .scopeType(RecruitmentScopeType.PERSONAL)
+                .scopeId(USER_ID)
+                .createdBy(USER_ID)
+                .categoryId(CATEGORY_ID)
+                .title("personal")
+                .participationType(RecruitmentParticipationType.INDIVIDUAL)
+                .startAt(BASE_TIME.plusDays(2))
+                .endAt(BASE_TIME.plusDays(2).plusHours(2))
+                .applicationDeadline(BASE_TIME.plusDays(1))
+                .autoCancelAt(BASE_TIME.plusDays(1))
+                .capacity(1)
+                .minCapacity(1)
+                .paymentEnabled(false)
+                .visibility(RecruitmentVisibility.SCOPE_ONLY)
+                .status(status)
+                .build();
+        try {
+            setField(listing, "id", LISTING_ID);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+        return listing;
     }
 
     private CreateRecruitmentListingRequest validRequest() {

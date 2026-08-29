@@ -3,9 +3,11 @@ package com.mannschaft.app.recruitment.service;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentMapper;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
+import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
+import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -43,5 +45,17 @@ public class PersonalMarketListingService {
                         RecruitmentListingStatus.valueOf(status),
                         pageable)
                 .map(mapper::toListingSummaryResponse);
+    }
+
+    @Transactional
+    public RecruitmentListingResponse update(Long currentUserId, Long listingId,
+            UpdateRecruitmentListingRequest request) {
+        return listingService.updatePersonalDraft(listingId, currentUserId, request);
+    }
+
+    @Transactional
+    public RecruitmentListingResponse cancel(Long currentUserId, Long listingId,
+            CancelRecruitmentListingRequest request) {
+        return listingService.cancelPersonalDraft(listingId, currentUserId, request);
     }
 }

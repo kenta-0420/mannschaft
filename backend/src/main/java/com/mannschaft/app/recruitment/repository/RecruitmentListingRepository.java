@@ -34,6 +34,14 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
     Optional<RecruitmentListingEntity> findByIdAndScopeTypeAndScopeId(
             Long id, RecruitmentScopeType scopeType, Long scopeId);
 
+    /** 個人札の編集・取消用。複合スコープ条件を含めて行ロックし、IDOR と競合を同時に防ぐ。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT l FROM RecruitmentListingEntity l WHERE l.id = :id AND l.scopeType = :scopeType AND l.scopeId = :scopeId")
+    Optional<RecruitmentListingEntity> findByIdAndScopeTypeAndScopeIdForUpdate(
+            @Param("id") Long id,
+            @Param("scopeType") RecruitmentScopeType scopeType,
+            @Param("scopeId") Long scopeId);
+
     /**
      * F03.11 Phase 4 全体検索クエリ (§9.x)。
      *

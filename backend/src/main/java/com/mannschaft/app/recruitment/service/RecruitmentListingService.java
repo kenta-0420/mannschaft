@@ -361,11 +361,33 @@ public class RecruitmentListingService {
 
     @Transactional
     public RecruitmentListingResponse update(Long listingId, Long userId, UpdateRecruitmentListingRequest request) {
+        return updateInternal(listingId, userId, request, false);
+    }
+
+    @Transactional
+    public RecruitmentListingResponse updatePersonalDraft(Long listingId, Long userId,
+            UpdateRecruitmentListingRequest request) {
+        return updateInternal(listingId, userId, request, true);
+    }
+
+    private RecruitmentListingResponse updateInternal(Long listingId, Long userId,
+            UpdateRecruitmentListingRequest request, boolean personalRoute) {
         // §5.7 編集時の制約 — PESSIMISTIC_WRITE で行ロック取得
-        RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
-                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        RecruitmentListingEntity entity = personalRoute
+                ? listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                        listingId, RecruitmentScopeType.PERSONAL, userId)
+                        .orElseThrow(() -> new BusinessException(
+                                com.mannschaft.app.market.MarketErrorCode.LISTING_NOT_FOUND))
+                : listingRepository.findByIdForUpdate(listingId)
+                        .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        if (!personalRoute && entity.getScopeType() == RecruitmentScopeType.PERSONAL) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.LISTING_NOT_FOUND);
+        }
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
         validatePersonalUpdate(entity, request);
+        if (personalRoute && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
+            throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
 
         // Service 層でも事前検証 (Entity 内に防御的二重検証あり)
         if (entity.getStatus() == RecruitmentListingStatus.COMPLETED) {
@@ -621,9 +643,31 @@ public class RecruitmentListingService {
 
     @Transactional
     public RecruitmentListingResponse cancelByAdmin(Long listingId, Long userId, CancelRecruitmentListingRequest request) {
-        RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
-                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        return cancelInternal(listingId, userId, request, false);
+    }
+
+    @Transactional
+    public RecruitmentListingResponse cancelPersonalDraft(Long listingId, Long userId,
+            CancelRecruitmentListingRequest request) {
+        return cancelInternal(listingId, userId, request, true);
+    }
+
+    private RecruitmentListingResponse cancelInternal(Long listingId, Long userId,
+            CancelRecruitmentListingRequest request, boolean personalRoute) {
+        RecruitmentListingEntity entity = personalRoute
+                ? listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                        listingId, RecruitmentScopeType.PERSONAL, userId)
+                        .orElseThrow(() -> new BusinessException(
+                                com.mannschaft.app.market.MarketErrorCode.LISTING_NOT_FOUND))
+                : listingRepository.findByIdForUpdate(listingId)
+                        .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        if (!personalRoute && entity.getScopeType() == RecruitmentScopeType.PERSONAL) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.LISTING_NOT_FOUND);
+        }
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
+        if (personalRoute && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
+            throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
 
         try {
             entity.cancelByAdmin(userId, request != null ? request.getReason() : null);

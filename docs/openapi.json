@@ -74653,6 +74653,47 @@
         }
       }
     },
+    "/api/v1/me/market/listings/{id}/cancel": {
+      "post": {
+        "tags": [
+          "personal-market-listing-controller"
+        ],
+        "summary": "個人札のDRAFT取消",
+        "operationId": "cancel_10",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelRecruitmentListingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecruitmentListingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/ical/token/regenerate": {
       "post": {
         "tags": [
@@ -83332,7 +83373,7 @@
         "tags": [
           "ad-messaging-campaign-transition-controller"
         ],
-        "operationId": "cancel_10",
+        "operationId": "cancel_11",
         "parameters": [
           {
             "name": "id",
@@ -93263,7 +93304,7 @@
           "チーム確認通知"
         ],
         "summary": "確認通知キャンセル",
-        "operationId": "cancel_11",
+        "operationId": "cancel_12",
         "parameters": [
           {
             "name": "teamId",
@@ -101423,7 +101464,7 @@
           "協会請求（協会視点）"
         ],
         "summary": "協会請求の取消（CANCELLED）",
-        "operationId": "cancel_12",
+        "operationId": "cancel_13",
         "parameters": [
           {
             "name": "orgId",
@@ -101931,7 +101972,7 @@
           "組織確認通知"
         ],
         "summary": "確認通知キャンセル（組織）",
-        "operationId": "cancel_13",
+        "operationId": "cancel_14",
         "parameters": [
           {
             "name": "orgId",
@@ -103004,6 +103045,48 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponsePersonalTimetableResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/market/listings/{id}": {
+      "patch": {
+        "tags": [
+          "personal-market-listing-controller"
+        ],
+        "summary": "個人札のDRAFT編集",
+        "operationId": "update_60",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecruitmentListingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecruitmentListingResponse"
                 }
               }
             }
@@ -104861,7 +104944,7 @@
           "F03.11 募集型予約 / キャンセルポリシー"
         ],
         "summary": "ポリシー編集 (is_template_policy\u003dtrue のみ)",
-        "operationId": "update_60",
+        "operationId": "update_61",
         "parameters": [
           {
             "name": "id",
@@ -105079,7 +105162,7 @@
         "tags": [
           "budget-fiscal-year-controller"
         ],
-        "operationId": "update_61",
+        "operationId": "update_62",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -105159,7 +105242,7 @@
         "tags": [
           "budget-category-controller"
         ],
-        "operationId": "update_62",
+        "operationId": "update_63",
         "parameters": [
           {
             "name": "categoryId",
@@ -106237,7 +106320,7 @@
         ],
         "summary": "同義語編集",
         "description": "synonymDisplay 指定時は再正規化と重複チェックを行う。",
-        "operationId": "update_63",
+        "operationId": "update_64",
         "parameters": [
           {
             "name": "id",
@@ -143286,7 +143369,7 @@
           "チーム区画申請"
         ],
         "summary": "チーム申請取消",
-        "operationId": "cancel_14",
+        "operationId": "cancel_15",
         "parameters": [
           {
             "name": "teamId",
@@ -144444,7 +144527,7 @@
           "組織区画申請"
         ],
         "summary": "組織申請取消",
-        "operationId": "cancel_15",
+        "operationId": "cancel_16",
         "parameters": [
           {
             "name": "organizationId",
@@ -144961,7 +145044,7 @@
           "継続課金"
         ],
         "summary": "継続課金 期末解約（F08.9 P5）",
-        "operationId": "cancel_16",
+        "operationId": "cancel_17",
         "parameters": [
           {
             "name": "id",

@@ -19880,6 +19880,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/market/listings/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人札のDRAFT取消 */
+        post: operations["cancel_10"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/ical/token/regenerate": {
         parameters: {
             query?: never;
@@ -23156,7 +23173,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** @deprecated */
-        post: operations["cancel_10"];
+        post: operations["cancel_11"];
         delete?: never;
         options?: never;
         head?: never;
@@ -26077,7 +26094,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 確認通知キャンセル */
-        patch: operations["cancel_11"];
+        patch: operations["cancel_12"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/circulations/{documentId}": {
@@ -28696,7 +28713,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 協会請求の取消（CANCELLED） */
-        patch: operations["cancel_12"];
+        patch: operations["cancel_13"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/matches/{matchId}/events/{eventId}": {
@@ -28819,7 +28836,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 確認通知キャンセル（組織） */
-        patch: operations["cancel_13"];
+        patch: operations["cancel_14"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/circulations/{documentId}": {
@@ -29090,6 +29107,23 @@ export interface paths {
         head?: never;
         /** 個人時間割メタ情報更新 */
         patch: operations["update_59"];
+        trace?: never;
+    };
+    "/api/v1/me/market/listings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 個人札のDRAFT編集 */
+        patch: operations["update_60"];
         trace?: never;
     };
     "/api/v1/me/favorites/reorder": {
@@ -29650,7 +29684,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** ポリシー編集 (is_template_policy=true のみ) */
-        patch: operations["update_60"];
+        patch: operations["update_61"];
         trace?: never;
     };
     "/api/v1/bulletin/threads/{threadId}/priority": {
@@ -29717,7 +29751,7 @@ export interface paths {
         delete: operations["delete_49"];
         options?: never;
         head?: never;
-        patch: operations["update_61"];
+        patch: operations["update_62"];
         trace?: never;
     };
     "/api/v1/budget/categories/{categoryId}": {
@@ -29733,7 +29767,7 @@ export interface paths {
         delete: operations["delete_50"];
         options?: never;
         head?: never;
-        patch: operations["update_62"];
+        patch: operations["update_63"];
         trace?: never;
     };
     "/api/v1/blog/posts/{id}/publish": {
@@ -30148,7 +30182,7 @@ export interface paths {
          * 同義語編集
          * @description synonymDisplay 指定時は再正規化と重複チェックを行う。
          */
-        patch: operations["update_63"];
+        patch: operations["update_64"];
         trace?: never;
     };
     "/api/v1/admin/permission-groups/{id}/unassign/{userId}": {
@@ -45352,7 +45386,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** チーム申請取消 */
-        delete: operations["cancel_14"];
+        delete: operations["cancel_15"];
         options?: never;
         head?: never;
         patch?: never;
@@ -45991,7 +46025,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 組織申請取消 */
-        delete: operations["cancel_15"];
+        delete: operations["cancel_16"];
         options?: never;
         head?: never;
         patch?: never;
@@ -46203,7 +46237,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 継続課金 期末解約（F08.9 P5） */
-        delete: operations["cancel_16"];
+        delete: operations["cancel_17"];
         options?: never;
         head?: never;
         patch?: never;
@@ -123246,6 +123280,32 @@ export interface operations {
             };
         };
     };
+    cancel_10: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CancelRecruitmentListingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecruitmentListingResponse"];
+                };
+            };
+        };
+    };
     regenerateToken: {
         parameters: {
             query?: never;
@@ -129022,7 +129082,7 @@ export interface operations {
             };
         };
     };
-    cancel_10: {
+    cancel_11: {
         parameters: {
             query: {
                 organizationId: number;
@@ -134791,7 +134851,7 @@ export interface operations {
             };
         };
     };
-    cancel_11: {
+    cancel_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -139856,7 +139916,7 @@ export interface operations {
             };
         };
     };
-    cancel_12: {
+    cancel_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -140127,7 +140187,7 @@ export interface operations {
             };
         };
     };
-    cancel_13: {
+    cancel_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -140826,6 +140886,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePersonalTimetableResponse"];
+                };
+            };
+        };
+    };
+    update_60: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRecruitmentListingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecruitmentListingResponse"];
                 };
             };
         };
@@ -142031,7 +142117,7 @@ export interface operations {
             };
         };
     };
-    update_60: {
+    update_61: {
         parameters: {
             query?: never;
             header?: never;
@@ -142177,7 +142263,7 @@ export interface operations {
             };
         };
     };
-    update_61: {
+    update_62: {
         parameters: {
             query?: never;
             header?: never;
@@ -142226,7 +142312,7 @@ export interface operations {
             };
         };
     };
-    update_62: {
+    update_63: {
         parameters: {
             query: {
                 scopeId: number;
@@ -142903,7 +142989,7 @@ export interface operations {
             };
         };
     };
-    update_63: {
+    update_64: {
         parameters: {
             query?: never;
             header?: never;
@@ -163865,7 +163951,7 @@ export interface operations {
             };
         };
     };
-    cancel_14: {
+    cancel_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -164629,7 +164715,7 @@ export interface operations {
             };
         };
     };
-    cancel_15: {
+    cancel_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -164894,7 +164980,7 @@ export interface operations {
             };
         };
     };
-    cancel_16: {
+    cancel_17: {
         parameters: {
             query?: never;
             header?: never;
