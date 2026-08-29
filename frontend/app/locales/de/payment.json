@@ -86,6 +86,7 @@
     },
     "admin": {
       "pageTitle": "Zahlungsverwaltung",
+      "contentGate": {"title":"Inhaltszugriff verwalten","loading":"Wird geladen…","loadError":"Inhaltszugriffe konnten nicht geladen werden","contentType":"Inhaltstyp","contentId":"Inhalts-ID","post":"Beitrag","announcement":"Ankündigung","save":"Speichern","saveSuccess":"Inhaltszugriff gespeichert","saveError":"Inhaltszugriff konnte nicht gespeichert werden","titleHidden":"Titel verbergen","noItems":"Keine geeigneten Zahlungspositionen","clearHint":"Alle Positionen entfernen und speichern, um den Zugriff zu löschen"},
       "permissionDenied": "このページは管理者のみアクセスできます",
       "itemsTitle": "Zahlungsposten",
       "selectItem": "Bitte einen Zahlungsposten auswählen",
