@@ -74,6 +74,7 @@ class PersonalMarketListingControllerTest {
     }
 
     @Test
+    @DisplayName("更新は認証済み本人に固定して委譲する")
     void update_boundToCurrentUserOnly() {
         controller.update(42L, Mockito.mock(UpdateRecruitmentListingRequest.class));
 
@@ -82,6 +83,7 @@ class PersonalMarketListingControllerTest {
     }
 
     @Test
+    @DisplayName("取消は認証済み本人に固定して委譲する")
     void cancel_boundToCurrentUserOnly() {
         controller.cancel(42L, Mockito.mock(CancelRecruitmentListingRequest.class));
 
