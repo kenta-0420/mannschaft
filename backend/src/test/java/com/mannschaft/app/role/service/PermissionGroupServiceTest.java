@@ -688,7 +688,6 @@ class PermissionGroupServiceTest {
         given(userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(GROUP_ID)))
                 .willReturn(List.of(USER_ID_2));
         given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of(group));
-        given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of());
         given(permissionRepository.findByIdIn(anyList())).willReturn(List.of());
         given(userPermissionGroupRepository.save(any(UserPermissionGroupEntity.class)))
                 .willAnswer(i -> i.getArgument(0));
@@ -713,7 +712,6 @@ class PermissionGroupServiceTest {
     @DisplayName("F09.14: rollback 相当では permission cache を失効しない")
     void rollbackDoesNotEvictPermissionCache() {
         Cache cache = mock(Cache.class);
-        given(cacheManager.getCache("role-permissions")).willReturn(cache);
         PermissionGroupEntity group = createGroupEntity(GROUP_ID, "normal");
         given(permissionGroupRepository.findByIdForUpdate(GROUP_ID)).willReturn(Optional.of(group));
         given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of());

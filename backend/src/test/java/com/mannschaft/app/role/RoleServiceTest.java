@@ -44,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -624,6 +625,8 @@ class RoleServiceTest {
             given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID)).willReturn(true);
             given(membershipService.findActiveRoleKind(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
                     .willReturn(Optional.of(RoleKind.MEMBER));
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(createAdminRole()));
 
             RolePermissionEntity rp = RolePermissionEntity.builder()
                     .id(1L).roleId(ADMIN_ROLE_ID).permissionId(1L).isDefault(true).build();
@@ -672,11 +675,6 @@ class RoleServiceTest {
             given(permissionGroupRepository.findByOrganizationId(SCOPE_ID)).willReturn(List.of(group));
             given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of(
                     UserPermissionGroupEntity.builder().userId(USER_ID).groupId(99L).build()));
-            given(permissionGroupPermissionRepository.findByGroupId(99L)).willReturn(List.of(
-                    PermissionGroupPermissionEntity.builder().groupId(99L).permissionId(7L).build()));
-            given(permissionRepository.findByIdIn(List.of(7L))).willReturn(List.of(
-                    PermissionEntity.builder().id(7L).name("DEPUTY_ONLY").build()));
-
             assertThat(roleService.resolveEffectivePermissions(USER_ID, SCOPE_ID, "ORGANIZATION"))
                     .doesNotContain("DEPUTY_ONLY");
         }
@@ -701,6 +699,8 @@ class RoleServiceTest {
             given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID)).willReturn(true);
             given(membershipService.findActiveRoleKind(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
                     .willReturn(Optional.of(RoleKind.MEMBER));
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(createAdminRole()));
 
             RolePermissionEntity rp = RolePermissionEntity.builder()
                     .id(1L).roleId(ADMIN_ROLE_ID).permissionId(1L).isDefault(true).build();
