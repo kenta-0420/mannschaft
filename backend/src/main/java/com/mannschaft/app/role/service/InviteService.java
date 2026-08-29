@@ -1,5 +1,7 @@
 package com.mannschaft.app.role.service;
 
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
@@ -61,6 +63,9 @@ public class InviteService {
     private static final int QR_MIN_SIZE = 64;
     private static final int QR_MAX_SIZE = 1024;
 
+    /** F04.12 特権ロール（承諾型招待では付与不可・join 側の保険ガード用）。 */
+    private static final java.util.Set<String> PRIVILEGED_INVITE_ROLES = java.util.Set.of("ADMIN", "DEPUTY_ADMIN");
+
     private final InviteTokenRepository inviteTokenRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
@@ -75,6 +80,7 @@ public class InviteService {
     private final BrandedQrImageWriter brandedQrImageWriter;
     private final AccessControlService accessControlService;
     private final UserRowLockService userRowLockService;
+    private final AuditLogService auditLogService;
 
     /**
      * 招待トークンを作成する。
@@ -156,6 +162,53 @@ public class InviteService {
     }
 
     /**
+     * 承諾型招待を辞退する（F04.12）。
+     *
+     * <p>宛先本人のみ。{@code revoked_at = NOW()} を立て（カードは REVOKED 表示に導出）、
+     * audit_logs に理由 {@code DECLINED} を記録する。宛先不一致は 403（{@link RoleErrorCode#ROLE_009}）。</p>
+     *
+     * @param tokenStr トークン文字列
+     * @param userId   実行ユーザー ID（宛先本人）
+     */
+    @Transactional
+    public void declineInvite(String tokenStr, Long userId) {
+        InviteTokenEntity token = inviteTokenRepository.findByTokenForUpdate(tokenStr)
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
+
+        Long targetUserId = token.getTargetUserId();
+        // 宛先本人のみ辞退可（宛先なし共有リンク型は辞退の概念を持たない）。宛先不一致は 403 ROLE_009（IDOR 防止）。
+        if (targetUserId == null || !targetUserId.equals(userId)) {
+            throw new BusinessException(RoleErrorCode.ROLE_009, org.springframework.http.HttpStatus.FORBIDDEN);
+        }
+
+        // 既に失効済み（辞退/取消/補償）なら冪等に扱う（二重 accept を防ぐ revoked_at は既に立っている）。
+        if (token.getRevokedAt() != null) {
+            return;
+        }
+
+        token.revoke(); // revoked_at = NOW()（永続・REVOKED。理由 DECLINED は audit で保持する想定）
+        recordMembershipInviteAudit(token, userId, "DECLINED");
+        log.info("承諾型招待を辞退（DECLINED）: tokenId={}, userId={}", token.getId(), userId);
+    }
+
+    private void recordMembershipInviteAudit(InviteTokenEntity token, Long actorUserId, String reason) {
+        boolean team = token.getTeamId() != null;
+        AuditEventType event = team
+                ? AuditEventType.TEAM_MEMBERSHIP_INVITE_DECLINED
+                : AuditEventType.ORGANIZATION_MEMBERSHIP_INVITE_DECLINED;
+        auditLogService.record(
+                event.name(),
+                actorUserId,
+                token.getTargetUserId(),
+                token.getTeamId(),
+                token.getOrganizationId(),
+                null,
+                null,
+                null,
+                "{\"token_id\":" + token.getId() + ",\"reason\":\"" + reason + "\"}");
+    }
+
+    /**
      * 招待トークンをプレビューする。未認証ユーザーにも表示可能。
      */
     public ApiResponse<InvitePreviewResponse> previewInvite(String tokenStr) {
@@ -213,6 +266,20 @@ public class InviteService {
             throw new BusinessException(RoleErrorCode.ROLE_002);
         }
 
+        // F04.12 宛先照合（IDOR 防止）: 宛先付きトークン（target_user_id 非 NULL）は指名相手のみ承諾可。
+        // 不一致は 403 ROLE_009。NULL（共有リンク型）は従来どおり照合スキップ（既存挙動維持）。
+        Long tokenTargetUserId = token.getTargetUserId();
+        if (tokenTargetUserId != null && !tokenTargetUserId.equals(userId)) {
+            throw new BusinessException(RoleErrorCode.ROLE_009, org.springframework.http.HttpStatus.FORBIDDEN);
+        }
+
+        // F04.12 特権ロール付与の保険ガード（C-1）: 発行入口で弾いているが、既存の join は token.roleId を
+        // 無検証で user_roles に INSERT するため、join 側にも特権ロール（ADMIN/DEPUTY_ADMIN）付与拒否の保険を置く。
+        RoleEntity grantRole = roleRepository.findById(token.getRoleId()).orElse(null);
+        if (grantRole != null && PRIVILEGED_INVITE_ROLES.contains(grantRole.getName())) {
+            throw new BusinessException(RoleErrorCode.ROLE_009, org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
         String scopeType = resolveScopeType(token);
         Long scopeId = resolveScopeId(token);
 
@@ -225,7 +292,8 @@ public class InviteService {
                 ? userRoleRepository.existsByUserIdAndTeamId(userId, scopeId)
                 : userRoleRepository.existsByUserIdAndOrganizationId(userId, scopeId);
         if (alreadyJoined) {
-            throw new BusinessException(TeamErrorCode.TEAM_003);
+            // 既メンバーの二重参加はリソース競合として 409（既存の共有リンク型 join・F04.12 承諾型 join 共通）。
+            throw new BusinessException(TeamErrorCode.TEAM_003, org.springframework.http.HttpStatus.CONFLICT);
         }
 
         // ロール割当

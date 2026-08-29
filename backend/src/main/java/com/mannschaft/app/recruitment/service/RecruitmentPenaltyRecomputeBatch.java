@@ -1,5 +1,7 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.entity.RecruitmentPenaltySettingEntity;
@@ -60,6 +62,9 @@ public class RecruitmentPenaltyRecomputeBatch {
     /**
      * 毎日 04:00 JST (= 19:00 UTC) に実行。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_RECRUITMENT_ENABLED",
+            reason = "有効性の再判定は元データから何度でもやり直せる冪等処理であり、止めても元のペナルティ行は一切壊れない")
     @BatchEndpoint(name = "recruitment-penalty-recompute-daily", description = "募集ペナルティの有効性を毎日 04:00 に再判定する")
     @Scheduled(cron = "0 0 19 * * *")
     @SchedulerLock(name = "recruitment-penalty-recompute-batch", lockAtMostFor = "50m", lockAtLeastFor = "5m")

@@ -1,6 +1,8 @@
 package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.ConnectWebhookService;
@@ -61,6 +63,8 @@ public class StripeWebhookController {
      * {@code MissingRequestHeaderException → 500(COMMON_999)} となるため {@code required = false} に設定し、
      * メソッド冒頭で明示的に検証する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "Stripe決済結果をGate状態にかかわらず反映して整合性を保つため")
     @PostMapping("/stripe")
     @Operation(summary = "Stripe Webhook 受信（platform）")
     public ResponseEntity<Void> handleWebhook(
@@ -97,6 +101,8 @@ public class StripeWebhookController {
      * {@code Stripe-Signature} ヘッダが存在しない場合は 400（{@code PAYMENT_C040}）を返す。
      * platform Webhook と同様、{@code required = false} で受け取りメソッド冒頭で明示検証する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "Stripe Connect決済結果をGate状態にかかわらず反映するため")
     @PostMapping("/stripe/connect")
     @Operation(summary = "Stripe Connect Webhook 受信")
     public ResponseEntity<Void> handleConnectWebhook(

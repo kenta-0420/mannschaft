@@ -30,6 +30,7 @@ import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantHistoryEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentReminderEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentTemplateEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentDistributionTargetRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
@@ -43,6 +44,7 @@ import com.mannschaft.app.social.FollowerType;
 import com.mannschaft.app.social.repository.FollowRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -85,6 +87,7 @@ public class RecruitmentListingService {
     private final RecruitmentReminderRepository reminderRepository;
     private final RecruitmentParticipantRepository participantRepository;
     private final RecruitmentParticipantHistoryRepository participantHistoryRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final UserRoleRepository userRoleRepository;
     private final FollowRepository followRepository;
     private final NotificationHelper notificationHelper;
@@ -506,6 +509,22 @@ public class RecruitmentListingService {
 
         // listing の confirmed_count をインクリメント
         listingRepository.incrementConfirmedAtomic(participant.getListingId());
+
+        // 旧来の管理者確定経路でも、応募者本人が決済確認を再開できるよう謝礼の与信を起票する。
+        if (Boolean.TRUE.equals(listing.getPaymentEnabled())
+                && listing.getPrice() != null
+                && participant.getUserId() != null) {
+            eventPublisher.publishEvent(new RecruitmentParticipantConfirmedEvent(
+                    listing.getId(),
+                    participant.getId(),
+                    participant.getUserId(),
+                    listing.getScopeType().name(),
+                    listing.getScopeId(),
+                    listing.getPayeeKind(),
+                    listing.getPayeeUserId(),
+                    listing.getPrice().longValue(),
+                    listing.getStartAt()));
+        }
 
         // リマインダー作成 (start_at - 24h UTC)
         LocalDateTime remindAt = listing.getStartAt().minusHours(24);

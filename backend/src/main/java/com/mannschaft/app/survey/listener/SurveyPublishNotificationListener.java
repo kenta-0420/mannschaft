@@ -1,12 +1,13 @@
 package com.mannschaft.app.survey.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.fanout.OrgFanoutRecipientSource;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.SurveyNotificationType;
 import com.mannschaft.app.survey.entity.SurveyTargetEntity;
@@ -55,7 +56,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SurveyPublishNotificationListener {
 
-    private final UserRoleRepository userRoleRepository;
+    /** 母集団解決の唯一の窓口（公開時の target_count スナップショットと同一定義）。 */
+    private final com.mannschaft.app.survey.service.SurveyUniverseResolver universeResolver;
     private final SurveyTargetRepository surveyTargetRepository;
     private final NotificationHelper notificationHelper;
     private final NotificationFanoutJobService fanoutJobService;
@@ -66,6 +68,8 @@ public class SurveyPublishNotificationListener {
      *
      * @param event アンケート公開イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。アンケート公開の通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onSurveyPublished(SurveyPublishedEvent event) {
@@ -143,8 +147,11 @@ public class SurveyPublishNotificationListener {
      */
     private List<Long> resolveRecipients(SurveyPublishedEvent event) {
         if (event.getDistributionMode() == DistributionMode.ALL) {
-            // チームスコープ×ALL（および COMMITTEE 等）: 配下展開なし・従来挙動を維持
-            return userRoleRepository.findUserIdsByScope(event.getScopeType(), event.getScopeId());
+            // 母集団の定義は SurveyUniverseResolver に一元化する（Issue #2787 / CMP-042）。
+            // 公開時に target_count へスナップショットする分母と配信先を同一定義に保つため、
+            // ここで自前に findUserIdsByScope を叩き直さない。
+            return universeResolver.resolveAllModeUserIds(
+                    event.getScopeType(), event.getScopeId(), event.isIncludeSupporters());
         }
         // TARGETED: survey_targets が母集団
         return surveyTargetRepository.findBySurveyId(event.getSurveyId()).stream()

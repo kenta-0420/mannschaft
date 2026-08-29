@@ -4,6 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mannschaft B棚卸しボード — UIプロトタイプ</title>
+  <script>
+    (() => {
+      try {
+        const savedTheme = localStorage.getItem('mannschaft-beta-inventory-theme');
+        if (savedTheme === 'dark' || savedTheme === 'light') document.documentElement.dataset.theme = savedTheme;
+      } catch {
+        // file:// やブラウザ設定でlocalStorageが使えなくても画面表示は継続する。
+      }
+    })();
+  </script>
   <style>
     :root {
       color-scheme: light;
@@ -58,18 +68,19 @@
       display: flex; align-items: center; justify-content: space-between; gap: 18px;
       margin-bottom: 18px;
     }
-    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .topbar > *, .brand > div, .hero > * { min-width: 0; }
+    .top-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
     .quick-note-button {
       min-height: 44px; border: 0; border-radius: 12px; padding: 0 16px;
       background: var(--accent); color: #17200f; font-weight: 900;
     }
     .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .crest {
-      width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px;
+      width: 46px; height: 46px; flex: 0 0 46px; display: grid; place-items: center; border-radius: 14px;
       background: var(--brand); color: var(--bg); font-size: 24px; box-shadow: var(--shadow);
     }
-    h1 { margin: 0; font-size: clamp(20px, 3vw, 30px); letter-spacing: -.03em; }
-    .subtitle { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+    h1 { margin: 0; font-size: clamp(20px, 3vw, 30px); letter-spacing: -.03em; overflow-wrap: anywhere; }
+    .subtitle { margin: 3px 0 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
     .icon-button {
       min-width: 44px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px;
       background: var(--panel); color: var(--text);
@@ -86,8 +97,8 @@
       color: color-mix(in srgb, var(--brand) 8%, transparent); line-height: 1;
     }
     .eyebrow { color: var(--brand); font-weight: 800; font-size: 12px; letter-spacing: .12em; }
-    .hero h2 { max-width: 710px; margin: 10px 0 8px; font-size: clamp(24px, 4vw, 42px); line-height: 1.12; letter-spacing: -.045em; }
-    .hero p { color: var(--muted); max-width: 740px; line-height: 1.8; margin: 0; }
+    .hero h2 { max-width: 710px; margin: 10px 0 8px; font-size: clamp(24px, 4vw, 42px); line-height: 1.12; letter-spacing: -.045em; overflow-wrap: anywhere; }
+    .hero p { color: var(--muted); max-width: 740px; line-height: 1.8; margin: 0; overflow-wrap: anywhere; }
     .hero-side { padding: 18px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .stat { padding: 14px; border-radius: 15px; background: var(--panel-soft); }
     .stat strong { display: block; font-size: 25px; font-variant-numeric: tabular-nums; }
@@ -105,6 +116,7 @@
     .view-button small { display: block; margin-top: 2px; color: inherit; opacity: .72; font-size: 10px; font-weight: 600; }
     .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .cmp-tag-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 12px 0 2px; }
+    .insight-source-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 0 0 12px; }
     .cmp-tag-filter-label { color: var(--muted); font-size: 12px; font-weight: 800; margin-right: 2px; }
     .cmp-tag-button { border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; background: var(--panel); color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer; }
     .cmp-tag-button:hover { border-color: var(--brand); }
@@ -212,6 +224,7 @@
     .insight-form { display: grid; gap: 14px; margin-top: 18px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .form-field { display: grid; gap: 6px; }
+    .form-field[hidden] { display: none; }
     .form-field label { color: var(--muted); font-size: 11px; font-weight: 800; }
     .form-field input, .form-field textarea {
       width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 12px;
@@ -311,7 +324,7 @@
       .source-strip { grid-template-columns: 1fr; }
       .source-arrow { transform: rotate(90deg); text-align: center; }
       .cmp-card { grid-template-columns: 1fr; }
-      .topbar { align-items: start; }
+      .topbar { align-items: start; gap: 10px; }
       .quick-note-button { width: 44px; padding: 0; font-size: 0; }
       .quick-note-button::before { content: "＋"; font-size: 20px; }
       .form-row, .shot-drop { grid-template-columns: 1fr; }
@@ -456,6 +469,42 @@
           </select>
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label for="insightFeatureDetail">機能詳細（任意入力）</label>
+          <input id="insightFeatureDetail" type="text" maxlength="80" list="insightFeatureDetailSuggestions" placeholder="例：支払い">
+          <datalist id="insightFeatureDetailSuggestions">
+            <option value="支払い"></option>
+            <option value="請求"></option>
+            <option value="会費"></option>
+            <option value="通知"></option>
+            <option value="権限"></option>
+          </datalist>
+        </div>
+        <div class="form-field">
+          <label for="insightUrgency">対応タイミング</label>
+          <select id="insightUrgency">
+            <option value="urgent">急ぎ</option>
+            <option value="normal" selected>通常</option>
+            <option value="when-free">空いた時</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label for="insightSource">登録元</label>
+          <select id="insightSource">
+            <option value="self" selected>私</option>
+            <option value="alicization">アリシゼーションテスト</option>
+          </select>
+        </div>
+        <div class="form-field" id="insightPersonaField" hidden>
+          <label for="insightPersona">発見したペルソナ</label>
+          <select id="insightPersona">
+            <option value="">統括／ペルソナ未特定</option>
+          </select>
+        </div>
+      </div>
       <div class="form-field">
         <label for="insightTitle">気づいたこと</label>
         <input id="insightTitle" type="text" maxlength="120" required placeholder="例：出欠回答後に次の操作が分からない">
@@ -480,7 +529,7 @@
           </div>
         </div>
       </div>
-      <div class="storage-note"><b>ローカル専用：</b>入力中のメモはこのブラウザのIndexedDB（画像はBlob）へ仮保存します。HTML・Git・AWSには送信しません。確定分はカードの「一式保存」から、機能別フォルダへMarkdown＋画像として書き出します。</div>
+      <div class="storage-note"><b>ローカル専用：</b>手入力とアリシゼーションの気づきは、このブラウザの同じIndexedDB（画像はBlob）へ保存します。HTML・Git・AWSには送信しません。確定分はカードの「一式保存」から、機能別フォルダへMarkdown＋画像として書き出します。</div>
       <div class="drawer-actions">
         <button class="primary-button" type="submit">気づきを保存</button>
         <button class="secondary-button" id="cancelInsight" type="button">キャンセル</button>
@@ -493,8 +542,8 @@
   <script>
     const baseInventory = window.BETA_INVENTORY_DATA;
     const decisions = baseInventory.decisions;
-    const features = baseInventory.features.map((feature) => {
-      const decision = decisions?.features?.[feature.key];
+    const features = (baseInventory.capabilities || baseInventory.features).map((feature) => {
+      const decision = decisions?.capabilities?.[feature.key] || decisions?.features?.[feature.key];
       if (!decision) return { ...feature, decisionStatus: 'unclassified' };
       return {
         ...feature,
@@ -521,6 +570,7 @@
     let selectedView = 'focus';
     let selectedStage = 'B0';
     let selectedAudience = 'all';
+    let selectedInsightSource = 'all';
     const selectedCampaignTags = new Set();
     let selectedFeature = null;
     let insights = [];
@@ -535,6 +585,10 @@
 
     const INSIGHT_DB_NAME = 'mannschaft-beta-inventory-board';
     const INSIGHT_STORE_NAME = 'insights';
+    const THEME_STORAGE_KEY = 'mannschaft-beta-inventory-theme';
+    const alicizationPersonas = new Map(
+      (baseInventory.b0Alicization?.autonomousTestStrategy?.personas || []).map((persona) => [persona.id, persona])
+    );
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -544,7 +598,6 @@
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
     }
-
     function openInsightDatabase() {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open(INSIGHT_DB_NAME, 1);
@@ -588,9 +641,83 @@
       });
     }
 
+    function insightSourceDetails(insight) {
+      const source = insight.registrationSource === 'alicization' ? 'alicization' : 'self';
+      const persona = insight.personaId ? alicizationPersonas.get(insight.personaId) : null;
+      return {
+        source,
+        sourceLabel: source === 'alicization' ? 'アリシゼーションテスト' : '私',
+        personaLabel: insight.personaId
+          ? `${insight.personaId} ${insight.personaArchetype || persona?.archetype || '名称未取得'}`
+          : source === 'alicization' ? '統括／ペルソナ未特定' : ''
+      };
+    }
+
+    function insightUrgencyDetails(insight) {
+      const urgency = ['urgent', 'normal', 'when-free'].includes(insight.urgency) ? insight.urgency : 'normal';
+      return {
+        urgency,
+        label: { urgent: '急ぎ', normal: '通常', 'when-free': '空いた時' }[urgency],
+        statusClass: { urgent: 'blocked', normal: 'working', 'when-free': 'unknown' }[urgency]
+      };
+    }
+
+    function collectAlicizationInsights() {
+      const overlay = baseInventory.b0RunOverlay;
+      if (!overlay) return [];
+      const runId = overlay.runId || overlay.startedAt || overlay.recordedAt || 'run-unknown';
+      const stableRunPart = String(runId).replace(/[^A-Za-z0-9_-]/g, '-');
+      const findings = [
+        ...(overlay.insights || overlay.findings || []),
+        ...(overlay.journeys || []).flatMap((journey) =>
+          (journey.insights || journey.findings || []).map((finding) => ({ ...finding, journeyId: finding.journeyId || journey.id }))
+        )
+      ];
+      return findings
+        .filter((finding) => finding.featureKey && finding.title && finding.detail)
+        .map((finding, index) => {
+          const observedAt = Date.parse(finding.observedAt || overlay.finishedAt || overlay.startedAt || overlay.recordedAt || '') || Date.now();
+          const stablePart = String(finding.id || `${finding.journeyId || 'B0'}-${finding.personaId || 'COORD'}-${index + 1}`)
+            .replace(/[^A-Za-z0-9_-]/g, '-');
+          const persona = finding.personaId ? alicizationPersonas.get(finding.personaId) : null;
+          return {
+            id: `ALI-${stableRunPart}-${stablePart}`,
+            featureKey: finding.featureKey,
+            featureDetail: finding.featureDetail || '',
+            priority: ['must', 'should', 'could'].includes(finding.priority) ? finding.priority : 'should',
+            urgency: ['urgent', 'normal', 'when-free'].includes(finding.urgency) ? finding.urgency : 'normal',
+            title: finding.title,
+            page: finding.page || '',
+            detail: finding.detail,
+            status: 'inbox',
+            registrationSource: 'alicization',
+            personaId: finding.personaId || '',
+            personaArchetype: finding.personaArchetype || persona?.archetype || '',
+            journeyId: finding.journeyId || '',
+            runId,
+            evidencePath: finding.evidencePath || '',
+            screenshotPath: finding.screenshotPath || '',
+            createdAt: observedAt,
+            updatedAt: observedAt,
+            screenshot: null,
+            screenshotName: ''
+          };
+        });
+    }
+
+    async function syncAlicizationInsights(storedInsights) {
+      const existingIds = new Set(storedInsights.map((insight) => insight.id));
+      const uniqueIncoming = [...new Map(collectAlicizationInsights().map((insight) => [insight.id, insight])).values()];
+      const incoming = uniqueIncoming.filter((insight) => !existingIds.has(insight.id));
+      for (const insight of incoming) await writeInsight(insight);
+      return incoming.length ? readInsights() : storedInsights;
+    }
+
     function getFeatureInfo(featureKey) {
       const feature = features.find((item) => item.key === featureKey);
       if (feature) return feature;
+      const parent = baseInventory.features.find((item) => item.key === featureKey);
+      if (parent) return parent;
       const campaign = campaigns.find((item) => item.featureKey === featureKey);
       return {
         key: featureKey,
@@ -615,6 +742,21 @@
         .join('');
     }
 
+    function populateInsightPersonas() {
+      document.querySelector('#insightPersona').innerHTML = [
+        '<option value="">統括／ペルソナ未特定</option>',
+        ...[...alicizationPersonas.values()].map((persona) =>
+          `<option value="${escapeHtml(persona.id)}">${escapeHtml(persona.id)} · ${escapeHtml(persona.archetype)}</option>`
+        )
+      ].join('');
+    }
+
+    function syncInsightSourceField() {
+      const isAlicization = document.querySelector('#insightSource').value === 'alicization';
+      document.querySelector('#insightPersonaField').hidden = !isAlicization;
+      if (!isAlicization) document.querySelector('#insightPersona').value = '';
+    }
+
     function getFilteredFeatures() {
       const query = document.querySelector('#search').value.trim().toLowerCase();
       return features.filter((feature) => {
@@ -634,10 +776,11 @@
         <button class="feature-card" type="button" data-key="${escapeHtml(feature.key)}" data-status="${escapeHtml(feature.status)}">
             <div class="card-top">
               <span class="feature-key">${escapeHtml(feature.key)}</span>
-              <span class="priority ${escapeHtml(feature.priority)}">${escapeHtml(feature.priority.toUpperCase())} · ${escapeHtml(feature.decisionStatus === 'confirmed' ? '確定' : '提案')}</span>
+              <span class="priority ${escapeHtml(feature.priority)}">${escapeHtml(feature.priority.toUpperCase())} · ${escapeHtml(feature.decisionStatus === 'confirmed' ? '分類承認済' : '分類未承認')}</span>
             </div>
             <h3>${escapeHtml(feature.title)}</h3>
             <p>${escapeHtml(feature.summary)}</p>
+            ${feature.isCapability ? `<small class="capability-origin">親: ${escapeHtml(feature.parentFeatureKey)} · Gate: ${escapeHtml(feature.gateGroup || '共有なし')} · ${escapeHtml(feature.statusSource)}</small>` : ''}
             <div class="tags">
               <span class="tag ${escapeHtml(feature.classification)}">${escapeHtml(classificationLabel(feature.classification))}</span>
               <span class="tag">β: ${escapeHtml(feature.phase)}</span>
@@ -678,9 +821,20 @@
           ${focus.map((feature, index) => `<div class="focus-card"><div class="focus-order">${index + 1}番目</div>${featureCard(feature)}</div>`).join('') || `<div class="empty">${selectedStage}に未完了のmust提案はありません。</div>`}
         </div>
         <section class="decision-panel">
-          <div><b>Phase 2の決定待ち</b><span>${features.filter((feature) => feature.decisionStatus === 'proposed').length}件が提案状態</span></div>
-          <p>対象者・B段階・優先度は仮説です。カードを開いて根拠を確認し、合意したものだけ decisions.json の decisionStatus を confirmed に変更してください。</p>
+          <div><b>Phase 2の分類承認待ち</b><span>${features.filter((feature) => feature.decisionStatus === 'proposed').length}件が分類未承認</span></div>
+          <p>対象者・B段階・優先度は提案です。分類判断は実装状態・アリシゼーション実測statusと別管理です。</p>
         </section>`;
+      const b0Plan = baseInventory.b0Alicization;
+      if (selectedStage === 'B0' && b0Plan) {
+        const statusLabels = { planned: '未実測・計画', runnable: '実行可能', running: '実行中', passed: '通過', failed: '失敗' };
+        const coverageLabels = { covered: 'カバー済み', partial: '既存部分あり', missing: '不足' };
+        const coverageCounts = b0Plan.journeys.reduce((counts, journey) => { const status = baseInventory.b0Coverage?.journeys?.[journey.id]?.coverageStatus || 'missing'; counts[status] = (counts[status] || 0) + 1; return counts; }, {});
+        const runOverlay = baseInventory.b0RunOverlay;
+        const runSummary = runOverlay ? ` / 最終実行: ${runOverlay.finishedAt || runOverlay.recordedAt || runOverlay.startedAt} / test-passed${(runOverlay.journeys || []).filter((item) => item.status === 'test-passed').length}・test-failed${(runOverlay.journeys || []).filter((item) => item.status === 'test-failed').length}・blocked${runOverlay.status === 'blocked' ? (runOverlay.selectedJourneys || []).length : (runOverlay.journeys || []).filter((item) => item.status === 'blocked').length}` : ' / 実行結果なし';
+        board.insertAdjacentHTML('beforeend', `<section class="decision-panel b0-alicization-panel"><div><b>B0 アリシゼーション自動探索</b><span>${b0Plan.journeys.length} journey / 実測status: ${statusLabels[b0Plan.status] || b0Plan.status} / E2Eカバレッジ: カバー済み${coverageCounts.covered || 0}・既存部分あり${coverageCounts.partial || 0}・不足${coverageCounts.missing || 0}${runSummary}</span></div><p>${escapeHtml(b0Plan.definition)}</p><p>${b0Plan.journeys.map((journey) => { const coverage = baseInventory.b0Coverage?.journeys?.[journey.id]?.coverageStatus || 'missing'; const run = runOverlay?.journeys?.find((item) => item.id === journey.id); return `<span class="status-pill ${journey.status === 'failed' ? 'blocked' : journey.status === 'passed' ? 'done' : 'working'}">${escapeHtml(journey.id)} ${escapeHtml(journey.title)}: 実測${escapeHtml(statusLabels[journey.status] || journey.status)} / E2E ${escapeHtml(coverageLabels[coverage] || coverage)}${run ? ` / 最終実行${escapeHtml(run.status)}・証拠${escapeHtml(run.evidencePath || '記録なし')}` : ''}</span>`; }).join(' ')}</p><small>実測status（未実測・計画／通過）、E2Eカバレッジ、最終実行結果は別管理。実UI・実DB／管理者1＋一般2／別BrowserContext・別ログイン。test-passedでも計画statusはplannedのまま。</small></section>`);
+        const strategy = b0Plan.autonomousTestStrategy;
+        if (strategy) board.insertAdjacentHTML('beforeend', `<section class="decision-panel"><div><b>B0 20人自律ペルソナ戦略</b><span>統括${strategy.coordinatorCount}＋永続persona ${strategy.personaCount}</span></div><p>${strategy.stages.map((stage) => `<span class="status-pill working">${escapeHtml(stage.id)}: ${stage.personas}人・${escapeHtml(stage.scope)}・${escapeHtml(stage.status)}</span>`).join(' ')}</p><small>${escapeHtml(strategy.approvalScope)}。開発DB限定／独立account・BrowserContext／0件・全skip・途中停止は非合格。</small></section>`);
+      }
       return focus;
     }
 
@@ -886,12 +1040,22 @@
     function renderInsights() {
       releaseInsightObjectUrls();
       const query = document.querySelector('#search').value.trim().toLowerCase();
-      const visibleInsights = insights.filter((insight) => {
+      const stageAndQueryInsights = insights.filter((insight) => {
         const feature = getFeatureInfo(insight.featureKey);
+        const source = insightSourceDetails(insight);
+        const urgency = insightUrgencyDetails(insight);
         const stageMatches = feature.stage === selectedStage;
-        const queryMatches = !query || `${insight.id} ${insight.title} ${insight.detail} ${insight.page} ${feature.title} ${insight.featureKey}`.toLowerCase().includes(query);
+        const queryMatches = !query || `${insight.id} ${insight.title} ${insight.detail} ${insight.featureDetail || ''} ${insight.page} ${feature.title} ${insight.featureKey} ${source.sourceLabel} ${source.personaLabel} ${urgency.label} ${insight.journeyId || ''}`.toLowerCase().includes(query);
         return stageMatches && queryMatches;
       });
+      const sourceCounts = {
+        all: stageAndQueryInsights.length,
+        self: stageAndQueryInsights.filter((insight) => insightSourceDetails(insight).source === 'self').length,
+        alicization: stageAndQueryInsights.filter((insight) => insightSourceDetails(insight).source === 'alicization').length
+      };
+      const visibleInsights = stageAndQueryInsights.filter((insight) =>
+        selectedInsightSource === 'all' || insightSourceDetails(insight).source === selectedInsightSource
+      );
       const groups = new Map();
       visibleInsights.forEach((insight) => {
         if (!groups.has(insight.featureKey)) groups.set(insight.featureKey, []);
@@ -906,12 +1070,18 @@
       board.className = '';
       board.innerHTML = `
         <div class="panel-heading">
-          <div><h2>気づき箱</h2><p>操作中の違和感を止めずに捕まえ、後から機能単位でまとめます。</p></div>
+          <div><h2>気づき箱</h2><p>私とアリシゼーションテストの発見を統合し、機能単位でまとめます。</p></div>
           <span class="wip-chip">未整理 ${openCount} · 課題化済 ${plannedCount}</span>
         </div>
         <div class="insight-intro">
           <div><b>記録は30秒で十分</b><p>対象機能・一言・状況・スクショだけ残し、優先順位やCMP化は後で行います。</p></div>
           <button class="primary-button" type="button" data-open-insight-form>＋ 気づきを追加</button>
+        </div>
+        <div class="insight-source-filter" aria-label="気づきの登録元で絞り込む">
+          <span class="cmp-tag-filter-label">登録元</span>
+          <button class="cmp-tag-button ${selectedInsightSource === 'all' ? 'active' : ''}" type="button" data-insight-source="all">すべて ${sourceCounts.all}</button>
+          <button class="cmp-tag-button ${selectedInsightSource === 'self' ? 'active' : ''}" type="button" data-insight-source="self">私 ${sourceCounts.self}</button>
+          <button class="cmp-tag-button ${selectedInsightSource === 'alicization' ? 'active' : ''}" type="button" data-insight-source="alicization">アリシゼーション ${sourceCounts.alicization}</button>
         </div>
         <div class="insight-groups">
           ${groups.size ? [...groups.entries()].map(([featureKey, groupInsights]) => {
@@ -924,11 +1094,15 @@
                 </div>
                 <div class="insight-card-grid">
                   ${groupInsights.map((insight) => {
+                    const source = insightSourceDetails(insight);
+                    const urgency = insightUrgencyDetails(insight);
                     let screenshot = '<div class="insight-shot empty">スクショなし</div>';
                     if (insight.screenshot) {
                       const imageUrl = URL.createObjectURL(insight.screenshot);
                       insightObjectUrls.push(imageUrl);
                       screenshot = `<img class="insight-shot" src="${imageUrl}" alt="${escapeHtml(insight.title)}のスクリーンショット">`;
+                    } else if (insight.screenshotPath) {
+                      screenshot = '<div class="insight-shot empty">自動テストのスクショ証拠あり</div>';
                     }
                     return `
                       <article class="insight-card">
@@ -937,10 +1111,17 @@
                           <div class="tags">
                             <span class="status-pill ${statusClasses[insight.status]}">${statusLabels[insight.status]}</span>
                             <span class="priority ${insight.priority}">${priorityLabels[insight.priority]}</span>
+                            <span class="status-pill ${urgency.statusClass}">${escapeHtml(urgency.label)}</span>
+                            <span class="tag">登録：${escapeHtml(source.sourceLabel)}</span>
+                            ${source.personaLabel ? `<span class="tag">発見：${escapeHtml(source.personaLabel)}</span>` : ''}
+                            ${insight.journeyId ? `<span class="tag">${escapeHtml(insight.journeyId)}</span>` : ''}
                           </div>
                           <h4>${escapeHtml(insight.title)}</h4>
+                          ${insight.featureDetail ? `<p>機能詳細：${escapeHtml(insight.featureDetail)}</p>` : ''}
                           <p>${escapeHtml(insight.detail)}</p>
                           ${insight.page ? `<p>画面：${escapeHtml(insight.page)}</p>` : ''}
+                          ${insight.evidencePath ? `<p>実行証拠：${escapeHtml(insight.evidencePath)}</p>` : ''}
+                          ${insight.screenshotPath ? `<p>スクショ証拠：${escapeHtml(insight.screenshotPath)}</p>` : ''}
                           <div class="insight-actions">
                             <button class="mini-button primary" type="button" data-insight-prompt="${escapeHtml(insight.id)}">AI指示文</button>
                             <button class="mini-button" type="button" data-insight-export="${escapeHtml(insight.id)}">一式保存</button>
@@ -951,7 +1132,7 @@
                   }).join('')}
                 </div>
               </section>`;
-          }).join('') : '<div class="empty">まだ気づきはありません。「＋ 気づきを追加」から最初の1件を残せます。</div>'}
+          }).join('') : `<div class="empty">${insights.length ? 'この条件に一致する気づきはありません。' : 'まだ気づきはありません。「＋ 気づきを追加」から最初の1件を残せます。'}</div>`}
         </div>`;
       return visibleInsights;
     }
@@ -1006,7 +1187,7 @@
       const taskType = document.querySelector('#taskSelect').value;
       const actions = {
         investigate: '実装・テスト・設計書を追って現状を棚卸しし、不明を証拠付きの状態へ更新してください。',
-        classify: 'Phase 2A分類提案を設計書と対象ユースケースに照らして確認してください。妥当ならdecisionStatusをconfirmedへ変更し、異なる場合はstage・audience・priority・reasonを根拠付きで修正してください。',
+        classify: 'Phase 2A分類提案を設計書と対象ユースケースに照らして確認してください。分類判断は実装状態・アリシゼーション実測statusとは別です。ユーザーの明示承認が得られた場合だけ、stage・audience・priorityを設定し、decisionStatusをconfirmed、confirmedByをuser、有効なISO形式confirmedAt、非空confirmationNoteを同時に記録してください。依頼文から推測して承認しないでください。',
         implement: '不足を実装し、変更範囲に比例したテストと実機検証まで完了してください。',
         review: '設計・実装・認可・テストを検分し、完了条件へのトレーサビリティを確認してください。'
       };
@@ -1024,14 +1205,28 @@
 ■ 操作中の気づき
 - 改善メモID: ${feature.insight.id}
 - 対応feature_key: ${feature.insight.featureKey}
+- 機能詳細: ${feature.insight.featureDetail || '未記録'}
+- 対応タイミング: ${insightUrgencyDetails(feature.insight).label}
+- 登録元: ${insightSourceDetails(feature.insight).sourceLabel}
+- 発見者: ${insightSourceDetails(feature.insight).personaLabel || '私'}
+- B0 journey: ${feature.insight.journeyId || '該当なし'}
+- runId: ${feature.insight.runId || '該当なし'}
 - 発見画面: ${feature.insight.page || '未記録'}
 - 状態: ${feature.insight.status}
 - 記録日時: ${new Date(feature.insight.createdAt).toLocaleString('ja-JP')}
-- スクリーンショット: ${feature.insight.screenshot ? `${feature.insight.screenshotName || '添付あり'}（「一式保存」で書き出し、この依頼と一緒に添付してください）` : 'なし'}
+- 実行証拠: ${feature.insight.evidencePath || 'なし'}
+- スクリーンショット: ${feature.insight.screenshot ? `${feature.insight.screenshotName || '添付あり'}（「一式保存」で書き出し、この依頼と一緒に添付してください）` : feature.insight.screenshotPath || 'なし'}
+` : '';
+      const b0Context = feature.stage === 'B0' && baseInventory.b0Alicization ? `
+■ B0アリシゼーション自動探索
+- 対象journey: ${(baseInventory.b0Alicization.journeys || []).filter((journey) => journey.capabilities.includes(feature.key)).map((journey) => { const coverage = baseInventory.b0Coverage?.journeys?.[journey.id] || {}; return `${journey.id} ${journey.title}\n  確認項目: ${(journey.checks || []).join(' / ')}\n  既存E2E: ${(coverage.specPaths || []).join(' / ') || '不足'}\n  カバレッジ状態: ${coverage.coverageStatus || 'missing'}${journey.knownConstraints?.length ? `\n  既知制約: ${journey.knownConstraints.join(' / ')}` : ''}${journey.prerequisites?.length ? `\n  前提条件: ${journey.prerequisites.join(' / ')}` : ''}`; }).join(' / ') || '該当journeyなし'}
+- 検証前提: 実UI・実DB、管理者1＋一般利用者2、利用者ごとに別BrowserContext・別ログイン
+- 状態: planned / runnable / running / passed / failed。未実測をpassedにしない
+- 自律ペルソナ戦略: ${baseInventory.b0Alicization.autonomousTestStrategy ? baseInventory.b0Alicization.autonomousTestStrategy.stages.map((stage) => `${stage.id}=${stage.personas}人:${stage.scope}`).join(' / ') : '未定義'}
 ` : '';
       const decisionContext = feature.decisionReason ? `
 ■ Phase 2A分類提案（正本ではなくプロダクト判断）
-- 判断状態: ${feature.decisionStatus === 'confirmed' ? '確定' : '提案'}
+- 分類判断: ${feature.decisionStatus === 'confirmed' ? '分類承認済' : '分類未承認'}（実装状態・アリシゼーション実測statusとは別）
 - 根拠: ${feature.decisionReason}
 - 参照: ${(feature.decisionRefs || []).join(' / ')}
 ` : '';
@@ -1050,6 +1245,7 @@
 ${campaignContext}
 ${insightContext}
 ${decisionContext}
+${b0Context}
 
 ■ 目的
 ${feature.why}
@@ -1137,6 +1333,7 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
     function openInsightForm(featureKey = '') {
       closeDrawer();
       document.querySelector('#insightForm').reset();
+      syncInsightSourceField();
       clearPendingScreenshot();
       const select = document.querySelector('#insightFeature');
       select.value = [...select.options].some((option) => option.value === featureKey) ? featureKey : 'cross-cutting';
@@ -1171,11 +1368,19 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
     }
 
     function insightMarkdown(insight) {
-      const screenshotName = insight.screenshot ? `screenshot.${screenshotExtension(insight)}` : 'なし';
+      const source = insightSourceDetails(insight);
+      const screenshotName = insight.screenshot ? `screenshot.${screenshotExtension(insight)}` : insight.screenshotPath || 'なし';
       return `# ${insight.title}
 
 - ID: ${insight.id}
 - feature_key: ${insight.featureKey}
+- 機能詳細: ${insight.featureDetail || '未記録'}
+- 対応タイミング: ${insightUrgencyDetails(insight).label}
+- 登録元: ${source.sourceLabel}
+- 発見者: ${source.personaLabel || '私'}
+- B0 journey: ${insight.journeyId || '該当なし'}
+- runId: ${insight.runId || '該当なし'}
+- 実行証拠: ${insight.evidencePath || 'なし'}
 - 優先度: ${insight.priority}
 - 状態: ${insight.status}
 - 発見画面: ${insight.page || '未記録'}
@@ -1301,9 +1506,15 @@ ${insight.detail}
         return;
       }
       const openInsightButton = event.target.closest('[data-open-insight-form]');
+      const insightSourceButton = event.target.closest('[data-insight-source]');
       const insightPromptButton = event.target.closest('[data-insight-prompt]');
       const insightExportButton = event.target.closest('[data-insight-export]');
       const insightStatusButton = event.target.closest('[data-insight-status]');
+      if (insightSourceButton) {
+        selectedInsightSource = insightSourceButton.dataset.insightSource;
+        renderBoard();
+        return;
+      }
       if (openInsightButton) {
         openInsightForm();
         return;
@@ -1351,6 +1562,7 @@ ${insight.detail}
     document.querySelector('#copyKey').addEventListener('click', () => copyText(selectedFeature?.key || '', 'IDをコピーしました'));
     document.querySelector('#chooseShot').addEventListener('click', () => document.querySelector('#shotInput').click());
     document.querySelector('#shotInput').addEventListener('change', (event) => setPendingScreenshot(event.target.files[0]));
+    document.querySelector('#insightSource').addEventListener('change', syncInsightSourceField);
     const shotDrop = document.querySelector('#shotDrop');
     ['dragenter', 'dragover'].forEach((type) => shotDrop.addEventListener(type, (event) => {
       event.preventDefault();
@@ -1373,14 +1585,26 @@ ${insight.detail}
     document.querySelector('#insightForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       const createdAt = Date.now();
+      const registrationSource = document.querySelector('#insightSource').value;
+      const personaId = registrationSource === 'alicization' ? document.querySelector('#insightPersona').value : '';
+      const persona = personaId ? alicizationPersonas.get(personaId) : null;
       const insight = {
         id: createInsightId(createdAt),
         featureKey: document.querySelector('#insightFeature').value,
+        featureDetail: document.querySelector('#insightFeatureDetail').value.trim(),
+        urgency: document.querySelector('#insightUrgency').value,
         priority: document.querySelector('#insightPriority').value,
         title: document.querySelector('#insightTitle').value.trim(),
         page: document.querySelector('#insightPage').value.trim(),
         detail: document.querySelector('#insightDetail').value.trim(),
         status: 'inbox',
+        registrationSource,
+        personaId,
+        personaArchetype: persona?.archetype || '',
+        journeyId: '',
+        runId: '',
+        evidencePath: '',
+        screenshotPath: '',
         createdAt,
         updatedAt: createdAt,
         screenshot: pendingScreenshot,
@@ -1391,6 +1615,7 @@ ${insight.detail}
         insights = await readInsights();
         closeInsightForm();
         selectedView = 'insights';
+        selectedInsightSource = registrationSource;
         selectedStage = getFeatureInfo(insight.featureKey).stage;
         document.querySelectorAll('[data-view]').forEach((button) => button.classList.toggle('active', button.dataset.view === 'insights'));
         document.querySelectorAll('[data-stage]').forEach((button) => button.classList.toggle('active', button.dataset.stage === selectedStage));
@@ -1403,14 +1628,22 @@ ${insight.detail}
     document.querySelector('#themeToggle').addEventListener('click', () => {
       const root = document.documentElement;
       root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, root.dataset.theme);
+      } catch {
+        showToast('テーマ設定を保存できませんでした');
+      }
     });
 
     const generatedAt = new Date(window.BETA_INVENTORY_DATA.generatedAt).toLocaleString('ja-JP');
     const proposedDecisions = Object.values(decisions?.features || {}).filter((decision) => (decision.decisionStatus || decisions.decisionStatusDefault) === 'proposed').length;
-    document.querySelector('#sourceNote').textContent = `正本同期: 機能 ${sourceCounts.features}件 / CMP ${sourceCounts.campaigns}件 / Phase 2A分類 ${sourceCounts.features - proposedDecisions}確定・${proposedDecisions}提案 / 生成 ${generatedAt}`;
+    document.querySelector('#sourceNote').textContent = `正本大分類 ${sourceCounts.features}件 / 表示能力 ${sourceCounts.capabilities}件 / 分割親 ${sourceCounts.splitParents}件 / CMP ${sourceCounts.campaigns}件 / Phase 2A分類 ${sourceCounts.features - proposedDecisions}分類承認済・${proposedDecisions}分類未承認 / 生成 ${generatedAt}`;
     populateInsightFeatures();
+    populateInsightPersonas();
+    syncInsightSourceField();
     renderBoard();
     readInsights()
+      .then(syncAlicizationInsights)
       .then((storedInsights) => {
         insights = storedInsights;
         if (selectedView === 'insights') renderBoard();

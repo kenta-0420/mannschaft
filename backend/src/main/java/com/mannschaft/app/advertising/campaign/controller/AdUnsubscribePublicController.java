@@ -8,6 +8,8 @@ import com.mannschaft.app.advertising.campaign.service.AdOpenPixelJwtService;
 import com.mannschaft.app.advertising.campaign.service.AdUnsubscribeJwtService;
 import com.mannschaft.app.advertising.campaign.service.UserAdPreferenceService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -88,6 +90,8 @@ public class AdUnsubscribePublicController {
      * 認可根治戦役 Wave5 監査済。</p>
      */
     @AuthorizedInService
+    @AlwaysReachable(category = AlwaysReachableCategory.PUBLIC_LIFELINE,
+            reason = "広告配信停止要求をGate状態にかかわらず受け付けるため")
     @GetMapping(value = "/unsubscribe", produces = "text/html;charset=UTF-8")
     @Operation(summary = "ワンクリック解除（認証不要）",
             description = "メール footer の解除リンクから呼ばれる。JWT 検証後、当該 channel の受信設定を OFF にする")
@@ -127,6 +131,8 @@ public class AdUnsubscribePublicController {
      * 認可根治戦役 Wave5 監査済。</p>
      */
     @AuthorizedInService
+    @AlwaysReachable(category = AlwaysReachableCategory.PUBLIC_LIFELINE,
+            reason = "広告配信停止要求をGate状態にかかわらず受け付けるため")
     @PostMapping(value = "/unsubscribe", consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "公開 unsubscribe SPA からのチャネル選択 OFF（認証不要）",

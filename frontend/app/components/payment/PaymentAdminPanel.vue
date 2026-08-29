@@ -291,6 +291,7 @@ onMounted(() => {
 
 <template>
   <div class="flex flex-col gap-4">
+    <ContentGateManager :scope-type="props.scopeType" :scope-id="props.scopeId" />
     <!-- AC-S8: 受益者制限設定トグル -->
     <div class="rounded-xl border border-surface-200 bg-surface-0 p-4">
       <div class="flex items-center justify-between gap-4">

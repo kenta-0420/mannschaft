@@ -55,6 +55,13 @@ public enum NotificationType {
     /** 日次ダイジェスト。opt-in 方式のため既定 OFF。 */
     DAILY_DIGEST(NotificationPriority.LOW, "SYSTEM", false),
     TODO_HANDED_OFF(NotificationPriority.NORMAL, "TODO"),
+    /**
+     * F01.2: オーナー委譲（承諾型）の打診が指名相手に届いたことの到達通知（HIGH）。
+     * 宛先が承諾/辞退画面（{@code /teams|organizations/{slug}/members?offerId=...}）へ到達するための導線。
+     */
+    OWNERSHIP_TRANSFER_OFFERED(NotificationPriority.HIGH, "USER"),
+    /** F01.2: オーナー委譲の打診が指名相手に辞退されたことの発行者向け通知（NORMAL・設計書 step 辞退）。 */
+    OWNERSHIP_TRANSFER_DECLINED(NotificationPriority.NORMAL, "USER"),
 
     /** F20.3 ベータ特典: 付与（本人・02 §3 / §6.5）。 */
     BETA_PERK_GRANTED(NotificationPriority.NORMAL, "BETA_PERK"),

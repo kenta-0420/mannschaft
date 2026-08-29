@@ -1,6 +1,8 @@
 package com.mannschaft.app.knowledgebase.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.knowledgebase.entity.KbImageUploadEntity;
 import com.mannschaft.app.knowledgebase.repository.KbImageUploadRepository;
@@ -34,6 +36,8 @@ public class KbImageCleanupBatchService {
      * 孤立画像クリーンアップを実行する。
      * kb_page_id IS NULL かつ created_at < NOW() - 72時間 の画像を削除する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。ナレッジベースの孤立画像削除であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "knowledgebase-orphan-image-cleanup-daily", description = "ナレッジベースの 72 時間孤立画像を毎日 02:00 に R2 から削除する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "kb_image_cleanup", lockAtMostFor = "PT15M")

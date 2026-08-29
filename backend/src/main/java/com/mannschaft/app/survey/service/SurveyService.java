@@ -68,11 +68,11 @@ public class SurveyService {
     private final SurveyMapper surveyMapper;
     private final ObjectMapper objectMapper;
     private final AccessControlService accessControlService;
-    private final UserRoleRepository userRoleRepository;
     private final NotificationHelper notificationHelper;
     private final org.springframework.context.MessageSource messageSource;
     private final ApplicationEventPublisher eventPublisher;
-    private final OrganizationMembershipService organizationMembershipService;
+    /** 母集団解決の唯一の窓口（公開時のスナップショットと結果閲覧時の分母を同一定義にする）。 */
+    private final SurveyUniverseResolver universeResolver;
     /** 結果閲覧可否の唯一の判定点（結果取得 API の 403 と共用。Issue #2779）。 */
     private final SurveyResultAccessGuard resultAccessGuard;
 
@@ -352,9 +352,15 @@ public class SurveyService {
             throw new BusinessException(SurveyErrorCode.NO_QUESTIONS);
         }
 
+        // 配信対象者数のスナップショット（F05.4 §1426-1428 / §117・Issue #2787）。
+        // 「公開時点の人数」で固定するのが仕様であり、後からメンバーが増減しても変えない。
+        // 母集団の定義は SurveyUniverseResolver に一元化してあり、結果閲覧時の分母・
+        // 未回答者一覧・督促の宛先とまったく同じ定義を用いる。
+        // 状態遷移と同一トランザクション内で書くため、公開が失敗すれば本値も保存されない。
+        entity.updateTargetCount(universeResolver.countUniverseUserIds(entity));
         entity.publish();
         SurveyEntity saved = surveyRepository.save(entity);
-        log.info("アンケート公開: surveyId={}", surveyId);
+        log.info("アンケート公開: surveyId={}, targetCount={}", surveyId, saved.getTargetCount());
 
         // 公開時通知（F05.4 §1528 SURVEY_CREATED）を AFTER_COMMIT・非同期で発火する（規模対応 Tier2）。
         // 受信者ループ（通知行作成）は SurveyPublishNotificationListener が event-pool で実行し、
@@ -782,11 +788,8 @@ public class SurveyService {
      * @return 配信対象ユーザー ID リスト
      */
     private List<Long> resolveAllModeRecipients(String scopeType, Long scopeId, SurveyEntity survey) {
-        if ("ORGANIZATION".equals(scopeType)) {
-            return organizationMembershipService.resolveOrgDistributionUserIds(
-                    scopeId, Boolean.TRUE.equals(survey.getIncludeSupporters()));
-        }
-        return userRoleRepository.findUserIdsByScope(scopeType, scopeId);
+        return universeResolver.resolveAllModeUserIds(
+                scopeType, scopeId, Boolean.TRUE.equals(survey.getIncludeSupporters()));
     }
 
     /**

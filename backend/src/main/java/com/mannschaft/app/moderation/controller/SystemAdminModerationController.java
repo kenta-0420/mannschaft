@@ -2,6 +2,7 @@ package com.mannschaft.app.moderation.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.moderation.dto.AppealResponse;
 import com.mannschaft.app.moderation.dto.CreateModerationTemplateRequest;
@@ -89,6 +90,7 @@ public class SystemAdminModerationController {
     @GetMapping("/moderation/dashboard")
     @Operation(summary = "モデレーションダッシュボード")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @RequireFeature("FEATURE_MODERATION_INCIDENT_ENABLED")
     public ResponseEntity<ApiResponse<ModerationDashboardResponse>> getDashboard() {
         long pendingReports = contentReportService.countPendingReports();
         long pendingAppeals = appealService.countPendingAppeals();

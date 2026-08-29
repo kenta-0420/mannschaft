@@ -1,14 +1,38 @@
 <script setup lang="ts">
+/**
+ * [A-2 調査結果・検分二巡目]（FRONTEND_CODING_CONVENTION.md §3b の44x44px規約とモバイル幅の関係）
+ *
+ * 375〜390px 幅（iPhone SE 相当）では、月グリッドは7列に分割されるため1日分のセル幅は
+ * 物理的に44px を下回る（カード余白・列境界線を差し引くと実測 約43px 以下）。これは列数に
+ * 由来する構造的制約であり、CalendarGrid.vue 側の実装で解消できるものではない。
+ *
+ * 設計書 §12 の Wave 分割表で `AC-14`（375px 幅で /calendar を開くとアジェンダ＝リスト表示が
+ * 既定になる）は W3-b（`CalendarAgendaList.vue` 新設 ＋ ビュー切替 UI）の担当であり、W2-b
+ * （本ファイル）の担当範囲外と確認した。現状 `pages/calendar.vue` にはビューポート幅に応じた
+ * 分岐が無く、W3 未着手のため375px幅でも今はこの月グリッドがそのまま表示され続ける。
+ *
+ * よって本ファイルでは「他N件」「+N件」ボタンの幅を**列幅いっぱい**（物理的な最大）まで
+ * 広げるところまでを W2-b の対応とし、44px 未達自体は解消しない。モバイル幅での本来の
+ * 答えは W3-b のアジェンダビューである（一次元リストで列制約自体が無くなる）。
+ */
 import dayjs from 'dayjs'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 
 const { userTimezone } = useDatetime()
+const { t } = useI18n()
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   year: number
   month: number
   events: CalendarEventItem[]
-}>()
+  // 「今日」ボタン（§6.3/AC-12d）の表示可否。CalendarGrid はチーム/組織スケジュール画面や
+  // ダッシュボードウィジェットでも再利用されており、それらの親は today イベントを購読していない。
+  // 既定 false とし、押しても無反応なボタンをそれらの画面に出さない。統合カレンダー（pages/calendar.vue）
+  // でのみ明示的に true を渡して有効化する契約とする。
+  showTodayButton?: boolean
+}>(), {
+  showTodayButton: false,
+})
 
 const emit = defineEmits<{
   dateClick: [date: string]
@@ -17,6 +41,8 @@ const emit = defineEmits<{
   reflectionClick: [referenceUuid: string, referenceKind: string]
   prevMonth: []
   nextMonth: []
+  // 「今日」ボタン（§6.3/AC-12d）。月移動は親（currentYear/currentMonth の所有者）に委ねる。
+  today: []
 }>()
 
 /**
@@ -40,7 +66,20 @@ const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土']
 const DATE_HEADER_H = 30  // p-1(4) + h-6(24) + mb-0.5(2) = 30px
 const BAR_H = 18
 const BAR_STRIDE = 21     // バー高さ + 3px ギャップ
-const MAX_LANES = 3       // 1週に表示するバーの最大行数
+// 単日イベントの既定表示件数（§6.2）。3件以下は全件表示、4件以上は先頭2件＋「他N件」。
+const SINGLE_VISIBLE = 2
+const SINGLE_VISIBLE_THRESHOLD = 3
+// 複数日バーのレーン数がこの本数以下なら全バー表示（§6.2 の表）。
+const MAX_LANES = 3
+// 超過（4本以上）時にのみ実バーとして表示するレーン数。溢れた残りをレーン2の位置に
+// 日ごとの「+N件」として出す。3本ちょうどのときは超過扱いにせず MAX_LANES 全てを表示する
+// （閾値と描画レーン数は別物。同一視すると3本ちょうどの週で3本目が消える表示退行になる）。
+const OVERFLOW_VISIBLE_LANES = MAX_LANES - 1
+// 「+N件」行自体の実高さ（タップ領域44px規約）。バー行(BAR_STRIDE=21px)とは別枠で確保し、
+// 疑似要素の負insetでヒット領域だけ広げる手法はやめた（レーン1のバーや下の単日予定と
+// 重なり、誤ってそちらではなく「+N件」が開いてしまう実害があったため。検分[A-1]）。
+// 実ボックス自体を44pxにして、その分スペーサーの高さも伸ばし他要素を押し下げる。
+const OVERFLOW_ROW_HEIGHT = 44
 
 interface DayInfo {
   date: number
@@ -64,6 +103,11 @@ interface WeekData {
   slots: MultiDaySlot[]
   singleByCol: CalendarEventItem[][]
   lanesUsed: number
+  // 実バーとして表示するレーン数の上限（この週のレーン数が MAX_LANES 以下ならレーン数そのもの＝
+  // 全バー表示、超過時のみ OVERFLOW_VISIBLE_LANES に切り詰める）。
+  visibleBarLaneCap: number
+  // 日ごとの複数日バー非表示件数（§6.2・AC-12b）。列 di に対応。0 なら「+N件」を出さない。
+  laneOverflowByCol: number[]
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -136,18 +180,43 @@ const weeks = computed<WeekData[]>(() =>
       })
     }
 
-    const lanesUsed = slots.length > 0
-      ? Math.min(MAX_LANES, Math.max(...slots.map(s => s.lane)) + 1)
-      : 0
+    // 週のレーン数が MAX_LANES(3) 以下なら全バー表示、超過（4本以上）時のみ
+    // OVERFLOW_VISIBLE_LANES(2) 本に切り詰めて残りを「+N件」に回す（§6.2 の表）。
+    const lanesUsedRaw = slots.length > 0 ? Math.max(...slots.map(s => s.lane)) + 1 : 0
+    const hasLaneOverflow = lanesUsedRaw > MAX_LANES
+    const visibleBarLaneCap = hasLaneOverflow ? OVERFLOW_VISIBLE_LANES : lanesUsedRaw
+    // 表示に確保する高さ（px）。超過時は実バー分（visibleBarLaneCap本）＋「+N件」行の
+    // 実高さ(OVERFLOW_ROW_HEIGHT)を追加で確保する。バー行と「+N件」行は高さが異なるため
+    // レーン数ではなく px で直接持つ（[A-1] 対応）。
+    const lanesUsed = hasLaneOverflow
+      ? visibleBarLaneCap * BAR_STRIDE + OVERFLOW_ROW_HEIGHT
+      : lanesUsedRaw * BAR_STRIDE
+
+    // 日ごとの非表示バー件数を数える（週で1つの数字にすると日によって嘘になるため必ず日単位）。
+    const laneOverflowByCol = days.map((_, di) =>
+      slots.filter(s => s.lane >= visibleBarLaneCap && s.startCol <= di && s.endCol >= di).length,
+    )
 
     // 1日イベント（複数日でないもの）を日列ごとに分類
     const singleByCol = days.map(day =>
       props.events.filter(e => !isMultiDay(e) && dateOf(e.startAt) === day.dateStr),
     )
 
-    return { days, slots, singleByCol, lanesUsed }
+    return { days, slots, singleByCol, lanesUsed, visibleBarLaneCap, laneOverflowByCol }
   }),
 )
+
+/** 単日イベントの表示分（§6.2）。3件以下は全件、4件以上は先頭2件のみ。 */
+function visibleSingleEvents(events: CalendarEventItem[] | undefined): CalendarEventItem[] {
+  const list = events ?? []
+  return list.length > SINGLE_VISIBLE_THRESHOLD ? list.slice(0, SINGLE_VISIBLE) : list
+}
+
+/** 単日イベントの「他N件」件数（0 なら非表示）。 */
+function singleOverflowCount(events: CalendarEventItem[] | undefined): number {
+  const list = events ?? []
+  return list.length > SINGLE_VISIBLE_THRESHOLD ? list.length - SINGLE_VISIBLE : 0
+}
 
 function isToday(d: string) {
   return d === dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
@@ -182,16 +251,82 @@ function barStyle(slot: MultiDaySlot): Record<string, string> {
   }
 }
 
+/**
+ * 複数日バーのレーン超過「+N件」チップの位置（該当日1列分・§6.2）。行はその週の実バー本数の直後。
+ * 実高さを OVERFLOW_ROW_HEIGHT（44px）にして、タップ領域をそのまま実ボックスとして確保する
+ * （疑似要素での不可視拡張はレーン1のバーや下の単日予定と重なり誤操作を招くため廃止・[A-1]）。
+ * 幅は列幅いっぱい（縦線の余白2px分のみ差し引き）まで広げているが、375〜390px 幅の
+ * モバイルでは列幅自体が44pxを下回るため、幅方向は44pxに届かない（[A-2]、詳細はコンポーネント
+ * コメント冒頭を参照）。
+ */
+function laneOverflowStyle(di: number, visibleBarLaneCap: number): Record<string, string> {
+  const colW = 100 / 7
+  return {
+    top: `${visibleBarLaneCap * BAR_STRIDE}px`,
+    left: `calc(${di * colW}% + 2px)`,
+    width: `calc(${colW}% - 4px)`,
+    height: `${OVERFLOW_ROW_HEIGHT}px`,
+  }
+}
+
 const monthLabel = computed(() => `${props.year}年${props.month}月`)
+
+// ---- 日別ポップオーバー（§6.2・AC-12/AC-12b） ----
+// 実体は週ビューと共有する ScheduleDayDetailPopover（対象日の予定の抽出条件を含め一元化）。
+// 抽出条件を月と週で二重に持っていた間、片方だけが日付文字列の包含比較のままで、
+// 「8/3 22:00〜8/4 00:00 の予定が 8/4 の一覧にも出る」欠陥を抱えていた（検分二巡目 [1]）。
+const dayPopover = ref<{ open: (dateStr: string, ev: Event) => void; close: () => void } | null>(null)
+
+function openDayOverflow(dateStr: string, ev: Event) {
+  dayPopover.value?.open(dateStr, ev)
+}
+
+/** ポップオーバー内の行クリックを種別で振り分ける（reflection は id 非依存経路へ）。 */
+function onPopoverRowOpen(event: CalendarEventItem) {
+  if (event.isReflection && event.referenceUuid && event.referenceKind) {
+    emit('reflectionClick', event.referenceUuid, event.referenceKind)
+    return
+  }
+  onEventClick(event)
+}
+
+// ---- 「今日」ボタン（§6.3・AC-12d） ----
+// 月グリッドの日付セル DOM 要素（フォーカスリング付与対象）。dateStr をキーに保持する。
+const dayCellEls = new Map<string, HTMLElement>()
+
+function setDayCellRef(el: Element | null, dateStr: string) {
+  if (el instanceof HTMLElement) dayCellEls.set(dateStr, el)
+  else dayCellEls.delete(dateStr)
+}
+
+/** 今日のセルへフォーカスを移す（既に当月表示中でも必ず呼ばれる。AC-12d）。 */
+function focusToday() {
+  const key = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
+  dayCellEls.get(key)?.focus()
+}
+
+defineExpose({ focusToday })
 </script>
 
 <template>
   <div>
     <!-- ヘッダー -->
     <div class="mb-4 flex items-center justify-between">
-      <Button icon="pi pi-chevron-left" text rounded @click="emit('prevMonth')" />
-      <h2 class="text-lg font-extrabold">{{ monthLabel }}</h2>
-      <Button icon="pi pi-chevron-right" text rounded @click="emit('nextMonth')" />
+      <div class="flex items-center gap-1">
+        <Button icon="pi pi-chevron-left" text rounded @click="emit('prevMonth')" />
+        <h2 class="text-lg font-extrabold">{{ monthLabel }}</h2>
+        <Button icon="pi pi-chevron-right" text rounded @click="emit('nextMonth')" />
+      </div>
+      <!-- 「今日」ボタン（§6.3・AC-12d）: 既に当月表示中でも押すたびフォーカスは今日のセルへ移る。
+           showTodayButton=true の呼び出し元（統合カレンダー）でのみ表示する。 -->
+      <Button
+        v-if="showTodayButton"
+        :label="t('schedule.calendar.today')"
+        text
+        size="small"
+        data-testid="calendar-today-button"
+        @click="emit('today')"
+      />
     </div>
 
     <!-- 曜日ヘッダー -->
@@ -213,7 +348,9 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
         <div
           v-for="(day, di) in week.days"
           :key="di"
-          class="cursor-pointer overflow-hidden border-b border-r border-surface-400 p-1 transition-colors hover:bg-primary/10 dark:border-surface-500 dark:hover:bg-primary/10"
+          :ref="(el) => setDayCellRef(el as Element | null, day.dateStr)"
+          tabindex="-1"
+          class="cursor-pointer overflow-hidden border-b border-r border-surface-400 p-1 transition-colors hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary dark:border-surface-500 dark:hover:bg-primary/10"
           :class="{
             'bg-surface-50/50 dark:bg-surface-800/30': !day.isCurrentMonth,
             'border-l': di === 0,
@@ -231,7 +368,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
             {{ day.date }}
           </div>
           <!-- 複数日バー用スペーサー（バー絶対レイヤーと高さを同期） -->
-          <div :style="{ height: `${week.lanesUsed * BAR_STRIDE}px` }" />
+          <div :style="{ height: `${week.lanesUsed}px` }" />
           <!-- 祝日名 -->
           <div
             v-if="getHoliday(day.dateStr)"
@@ -242,7 +379,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
           <!-- 1日イベント -->
           <div class="space-y-0.5">
             <div
-              v-for="event in week.singleByCol[di]?.slice(0, 3)"
+              v-for="event in visibleSingleEvents(week.singleByCol[di])"
               :key="event.uniqueKey"
               class="flex items-center rounded px-1 py-0.5 text-xs gap-0.5"
               :style="{ backgroundColor: (event.color ?? '#6366f1') + '20', color: event.color ?? '#6366f1' }"
@@ -269,6 +406,18 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
                 class="ml-auto shrink-0"
               />
             </div>
+            <!-- 単日イベント溢れ分（§6.2・AC-12）。タップ領域は44px以上を確保する
+                 （FRONTEND_CODING_CONVENTION.md §3b）。文字サイズ・見た目の詰め方は変えず、
+                 min-h/flex でパディング側だけ拡大する（既存の通知既読ボタン等と同じパターン）。 -->
+            <button
+              v-if="singleOverflowCount(week.singleByCol[di]) > 0"
+              type="button"
+              :data-testid="`day-overflow-${day.dateStr}`"
+              class="flex min-h-11 w-full items-center truncate rounded px-1 text-left text-[10px] font-medium text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700"
+              @click.stop="openDayOverflow(day.dateStr, $event)"
+            >
+              {{ t('schedule.calendar.more', { count: singleOverflowCount(week.singleByCol[di]) }) }}
+            </button>
           </div>
         </div>
       </div>
@@ -279,9 +428,9 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
         class="pointer-events-none absolute inset-x-0 z-10"
         :style="{ top: `${DATE_HEADER_H}px` }"
       >
-        <div class="relative" :style="{ height: `${week.lanesUsed * BAR_STRIDE}px` }">
+        <div class="relative" :style="{ height: `${week.lanesUsed}px` }">
           <div
-            v-for="slot in week.slots.filter(s => s.lane < MAX_LANES)"
+            v-for="slot in week.slots.filter(s => s.lane < week.visibleBarLaneCap)"
             :key="`${slot.event.uniqueKey}-w${wi}`"
             class="pointer-events-auto absolute flex cursor-pointer select-none items-center overflow-hidden text-xs font-medium"
             :style="barStyle(slot)"
@@ -309,8 +458,33 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
             />
             <i v-if="slot.continuesAfter" class="pi pi-angle-right shrink-0 text-[9px]" />
           </div>
+
+          <!-- 複数日バーのレーン超過「+N件」（§6.2・AC-12b・日ごとに数える）。
+               実ボックス自体を OVERFLOW_ROW_HEIGHT(44px) にしてタップ領域を確保する
+               （[A-1]: 疑似要素での不可視拡張はレーン1のバーや下の単日予定と重なり、
+               その予定ではなく「+N件」が開いてしまう実害があったため廃止）。 -->
+          <button
+            v-for="(count, di) in week.laneOverflowByCol"
+            v-show="count > 0"
+            :key="`overflow-w${wi}-${di}`"
+            type="button"
+            :data-testid="`day-overflow-${week.days[di]?.dateStr}`"
+            class="pointer-events-auto absolute flex items-center rounded bg-surface-100 px-1 text-left text-[10px] font-medium text-surface-500 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600"
+            :style="laneOverflowStyle(di, week.visibleBarLaneCap)"
+            @click.stop="openDayOverflow(week.days[di]!.dateStr, $event)"
+          >
+            {{ t('schedule.calendar.more', { count }) }}
+          </button>
         </div>
       </div>
     </div>
+
+    <!-- 日別ポップオーバー（§6.2・AC-12/AC-12b。週ビューと共有） -->
+    <ScheduleDayDetailPopover
+      ref="dayPopover"
+      :events="events"
+      @row-open="onPopoverRowOpen"
+    />
   </div>
 </template>
+

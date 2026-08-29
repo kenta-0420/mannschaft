@@ -174,7 +174,16 @@
       "team_page": "预约"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "{label}使用方法",
+      "cards": {
+        "business_hours": { "title": "营业时间", "description": "设置预约时间" },
+        "lines": { "title": "预约对象", "description": "管理{n}个预约对象" },
+        "menus": { "title": "菜单", "description": "管理{n}个菜单" },
+        "weekly_schedule": { "title": "每周日程", "description": "{n}个时段和定期设置" },
+        "exception_day": { "title": "例外日期", "description": "调整指定日期" },
+        "advanced": { "title": "详细设置", "description": "设置公开范围和通知" }
+      }
     },
     "column": {
       "datetime": "日期时间",
@@ -682,6 +691,7 @@
       "state": {
         "available": "空位",
         "booked": "已满",
+        "reserved": "已为您预约",
         "closed": "已截止",
         "unavailable": "不可预约"
       },
@@ -702,6 +712,9 @@
       "no_menu_single": "不选菜单，仅预约30分钟",
       "preview_title": "确认以下预约内容",
       "extend_30": "+30分钟",
+      "open_all": "全部显示",
+      "close_all": "全部收起",
+      "open_day_hint": "选择日期以查看可预约时段",
       "date_line_header": "日期・{resourceName}",
       "help_toggle": "查看使用说明",
       "help_body": "点击空闲（绿色）时段，选择菜单后会自动选中所需的时段数。可使用「+30分钟」继续延长。若选择的是共用时段，请选择要预约的{resourceName}。",

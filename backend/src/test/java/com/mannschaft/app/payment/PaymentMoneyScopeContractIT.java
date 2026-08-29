@@ -81,6 +81,8 @@ class PaymentMoneyScopeContractIT extends AbstractMySqlIntegrationTest {
     private static final String MEMBER_PAYMENT_NOT_FOUND = "PAYMENT_029";
     /** 払い手でも受益者でもない第三者の領収書アクセス（403）。 */
     private static final String PAYMENT_ACCESS_DENIED = "PAYMENT_030";
+    /** 課金ゲート対象コンテンツが存在しない（404・存在秘匿）。 */
+    private static final String CONTENT_NOT_FOUND = "PAYMENT_015";
 
     @Autowired
     private MockMvc mockMvc;
@@ -390,14 +392,14 @@ class PaymentMoneyScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("ペイウォール判定は受益者キーを認証主体に固定する（他会員を指定する余地がない）")
-        void ペイウォール判定は自己スコープに閉じる() throws Exception {
+        @DisplayName("ペイウォール判定は存在しないコンテンツを 404 で秘匿する")
+        void ペイウォール判定は存在しないコンテンツを秘匿する() throws Exception {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/content-gates/check")
                             .param("contentType", "POST")
                             .param("contentId", "999999999"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.accessible").value(true));
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value(CONTENT_NOT_FOUND));
         }
     }
 

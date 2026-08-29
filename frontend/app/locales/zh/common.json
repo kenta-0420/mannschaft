@@ -70,6 +70,43 @@
       "backToList": "返回频道列表",
       "noChannels": "还没有频道",
       "createChannel": "创建频道"
+    },
+    "invite": {
+      "button": "邀请加入团队",
+      "sentSuccess": "已发送邀请",
+      "joinedSuccess": "已加入",
+      "declinedSuccess": "已谢绝邀请",
+      "modal": {
+        "title": "选择要邀请加入的团队/组织",
+        "empty": "没有可邀请加入的团队或组织",
+        "submit": "发送邀请"
+      },
+      "card": {
+        "pending": "您收到加入 {scope} 的邀请",
+        "waiting": "等待对方回应",
+        "statusPending": "待接受",
+        "join": "加入",
+        "decline": "谢绝",
+        "joined": "已加入",
+        "declined": "已谢绝",
+        "expired": "已过期",
+        "revoked": "已取消",
+        "expiresAt": "有效期至：{time}"
+      },
+      "preview": {
+        "sent": "已发送加入 {scope} 的邀请"
+      },
+      "notification": {
+        "received": "您收到加入 {scope} 的邀请"
+      },
+      "error": {
+        "notTarget": "此邀请并非发给您",
+        "privilegedRole": "无法以此方式邀请管理员角色",
+        "loadFailed": "加载可邀请的团队/组织失败",
+        "sendFailed": "发送邀请失败",
+        "joinFailed": "加入失败",
+        "declineFailed": "谢绝失败"
+      }
     }
   },
   "button": {
@@ -129,7 +166,39 @@
     "DEPUTY_ADMIN": "副管理员",
     "MEMBER": "成员",
     "SUPPORTER": "支持者",
-    "GUEST": "访客"
+    "GUEST": "访客",
+    "transfer": {
+      "offer": {
+        "button": "管理者を引き継ぐ",
+        "notification": "{scope} の管理者への就任を打診されています",
+        "pending": "管理者就任の打診が届いています",
+        "pendingByMe": "{name} さんへ管理者委譲を打診中です",
+        "accept": "引き受ける",
+        "decline": "辞退する",
+        "cancel": "取消",
+        "accepted": "管理者を引き継ぎました",
+        "declined": "打診を辞退しました",
+        "expired": "打診は期限切れです",
+        "cancelled": "打診は取り消されました",
+        "confirmTitle": "オーナー委譲の打診",
+        "confirmMessage": "{name} さんへ管理者権限の委譲を打診しますか？相手が引き受けを承諾すると、あなたはメンバーに降格されます（この時点ではまだ委譲されません）。",
+        "acceptConfirmTitle": "管理者就任の承諾",
+        "acceptConfirmMessage": "引き受けると、あなたが管理者(ADMIN)になり、現在の管理者はメンバーに降格されます。よろしいですか？",
+        "declineConfirmTitle": "打診の辞退",
+        "declineConfirmMessage": "この打診を辞退しますか？あなたのロールは変わりません。",
+        "cancelConfirmTitle": "打診の取消",
+        "cancelConfirmMessage": "この委譲の打診を取り消しますか？相手のロールは変わりません。",
+        "created": "委譲を打診しました",
+        "cancelSuccess": "打診を取り消しました"
+      },
+      "error": {
+        "notTarget": "この打診はあなた宛てではありません",
+        "need2fa": {
+          "message": "管理者になるには2段階認証の設定が必要です",
+          "cta": "2段階認証を設定する"
+        }
+      }
+    }
   },
   "timetable": {
     "title": "课程表管理",
@@ -260,7 +329,13 @@
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
     "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
-    "TIMELINE_017": "已达到隐藏上限（200 个）。请先取消一些不需要的隐藏。"
+    "TIMELINE_017": "已达到隐藏上限（200 个）。请先取消一些不需要的隐藏。",
+    "ROLE_009": "この打診はあなた宛てではありません",
+    "ROLE_010": "管理者になるには2段階認証の設定が必要です",
+    "ROLE_011": "既に有効な委譲オファーが存在します",
+    "ROLE_012": "委譲オファーは既に処理済みか無効です",
+    "ROLE_013": "対象が見つかりません",
+    "ROLE_014": "自分自身への委譲はできません"
   },
   "annual_plan": {
     "title": "年度行事计划",
@@ -1326,6 +1401,36 @@
     "filter": {
       "allTeamsOrgs": "团队・组织（全部）",
       "selectScope": "选择创建目标"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "个人",
+        "unknown": "其他日程",
+        "loadError": {
+          "summary": "图层列表加载失败",
+          "detail": "团队・组织的显示切换暂时无法使用。日程仍会显示。请稍后重新加载。"
+        },
+        "hiddenNotice": "创建目标图层已隐藏",
+        "showIt": "显示"
+      },
+      "more": "还有{count}项",
+      "today": "今天",
+      "dayDetail": {
+        "title": "{date} 的日程"
+      },
+      "empty": "此期间没有日程",
+      "view": {
+        "month": "月",
+        "week": "周",
+        "agenda": "列表"
+      },
+      "week": {
+        "allDay": "全天",
+        "now": "现在",
+        "dragHint": "拖动以创建日程",
+        "dragHintTouch": "长按后拖动即可创建日程",
+        "selectedRange": "{start} – {end}"
+      }
     }
   },
   "handoff": {
@@ -1899,6 +2004,24 @@
     "bulletinOpen": "在公告板上讨论"
   },
   "scopeDashboard": {
+    "storageSummary": {
+      "title": "存储",
+      "personal": "个人",
+      "team": "团队",
+      "organization": "组织",
+      "details": "查看详情",
+      "error": "无法加载存储",
+      "retry": "重试",
+      "unconfigured": "未设置容量",
+      "not_available": "无存储数据",
+      "meterLabel": "{scope}存储使用率",
+      "meterValue": "使用率 {percent}%",
+      "warningTitle": "存储空间即将用尽",
+      "warningMessage": "{scope}已使用{percent}%。请考虑升级付费方案。",
+      "viewPlans": "查看方案",
+      "checkStorage": "检查存储",
+      "cancel": "取消"
+    },
     "tabs": {
       "personal": "个人",
       "team": "团队",
@@ -2155,19 +2278,19 @@
   },
   "transferOwnership": {
     "sectionTitle": "转让所有者",
-    "sectionDescription": "将管理员（所有者）权限移交给其他成员。转让后您将成为副管理员，无法再执行仅限管理员的操作。",
-    "openButton": "转让所有者",
-    "dialogTitle": "转让所有者",
-    "warning": "此操作无法撤销。转让后管理员权限将归新所有者所有，只有新所有者才能再转回。",
+    "sectionDescription": "向其他成员发出管理员权限转让邀请。对方接受前权限不会改变。",
+    "openButton": "发出所有者转让邀请",
+    "dialogTitle": "发出所有者转让邀请",
+    "warning": "对方接受后将成为管理员，而您将成为普通成员。邀请待处理期间权限不会改变。",
     "targetLabel": "新所有者",
     "targetPlaceholder": "选择成员",
     "noCandidates": "没有可转让的成员。",
     "confirmLabel": "请输入“{name}”以确认",
     "confirmMismatch": "名称不一致。",
     "cancel": "取消",
-    "submit": "转让",
-    "successTitle": "已转让所有者",
-    "successDetail": "管理员权限已移交给新所有者。"
+    "submit": "发送邀请",
+    "successTitle": "邀请已发送",
+    "successDetail": "对方接受前，您的管理员权限不会改变。"
   },
   "featureGate": {
     "blocked": {
@@ -2177,6 +2300,23 @@
     "error": {
       "fetchFailedTitle": "无法确认功能开放状态",
       "fetchFailedBody": "由于网络错误，无法确认该功能是否已开放。请稍后重试。"
+    }
+  },
+  "member": {
+    "columns": {
+      "name": "成员",
+      "role": "角色",
+      "joinedAt": "加入日期",
+      "actions": "操作"
+    },
+    "empty": "暂无成员",
+    "roleChanged": "已更改角色",
+    "roleChangeFailed": "更改角色失败",
+    "removed": "已移除成员",
+    "removeFailed": "移除成员失败",
+    "remove": {
+      "confirmTitle": "移除成员",
+      "confirmMessage": "确定将 {name} 从成员中移除吗？"
     }
   }
 }

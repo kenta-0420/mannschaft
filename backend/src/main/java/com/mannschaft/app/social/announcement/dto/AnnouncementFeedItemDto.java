@@ -69,6 +69,9 @@ public class AnnouncementFeedItemDto {
     @JsonProperty("isRead")
     private final boolean isRead;
 
+    /** 可視性×課金の合成状態（FULL / LOCKED）。 */
+    private final String accessState;
+
     /** レコード作成日時（ISO 8601） */
     private final String createdAt;
 
@@ -86,21 +89,23 @@ public class AnnouncementFeedItemDto {
      */
     public static AnnouncementFeedItemDto from(AnnouncementFeedService.AnnouncementFeedItem item) {
         var feed = item.feed();
+        boolean locked = "LOCKED".equals(item.accessState());
         return AnnouncementFeedItemDto.builder()
                 .id(feed.getId())
                 .scopeType(feed.getScopeType() != null ? feed.getScopeType().name() : null)
                 .scopeId(feed.getScopeId())
-                .sourceType(feed.getSourceType() != null ? feed.getSourceType().name() : null)
-                .sourceId(feed.getSourceId())
+                .sourceType(locked ? null : feed.getSourceType() != null ? feed.getSourceType().name() : null)
+                .sourceId(locked ? null : feed.getSourceId())
                 .authorId(feed.getAuthorId())
                 .titleCache(feed.getTitleCache())
-                .excerptCache(feed.getExcerptCache())
+                .excerptCache(locked ? null : feed.getExcerptCache())
                 .priority(feed.getPriority())
                 .isPinned(Boolean.TRUE.equals(feed.getIsPinned()))
                 .visibility(feed.getVisibility())
                 .startsAt(formatDateTime(feed.getStartsAt()))
                 .expiresAt(formatDateTime(feed.getExpiresAt()))
                 .isRead(item.isRead())
+                .accessState(item.accessState())
                 .createdAt(formatDateTime(feed.getCreatedAt()))
                 .updatedAt(formatDateTime(feed.getUpdatedAt()))
                 .build();

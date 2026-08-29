@@ -2,6 +2,8 @@ package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.payment.dto.MembershipSubscriptionListItemResponse;
@@ -105,6 +107,8 @@ public class MembershipSubscriptionController {
      * @return 200 OK + {@link MembershipSubscriptionResponse}（cancelAtPeriodEnd=true・currentPeriodEnd に期末日）
      */
     @AuthorizedInService
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "既存継続課金の解約をGate状態にかかわらず受け付けるため")
     @DeleteMapping("/api/v1/membership-subscriptions/{id}")
     @Operation(summary = "継続課金 期末解約（F08.9 P5）")
     public ResponseEntity<ApiResponse<MembershipSubscriptionResponse>> cancel(@PathVariable UUID id) {

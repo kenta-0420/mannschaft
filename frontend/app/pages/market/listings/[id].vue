@@ -14,6 +14,7 @@
  */
 import type { MarketListingRegion, MarketListingResponse } from '~/types/market'
 import type { ScopeKind } from '~/types/marketPayment'
+import type { RecruitmentParticipantResponse } from '~/types/recruitment'
 
 definePageMeta({
   layout: 'default',
@@ -41,6 +42,10 @@ const listingId = computed(() => {
 const listing = ref<MarketListingResponse | null>(null)
 const pageLoading = ref(true)
 const applying = ref(false)
+const participationLoading = ref(authStore.isAuthenticated)
+const participationLoadFailed = ref(false)
+const myParticipation = ref<RecruitmentParticipantResponse | null>(null)
+const autoOpenPayment = ref(false)
 /** TEAM 型募集のときに選択されたチームID。 */
 const selectedTeamId = ref<number | null>(null)
 
@@ -80,10 +85,42 @@ watch(locale, async () => {
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isTeamListing = computed(() => listing.value?.participationType === 'TEAM')
 const canApply = computed(() => {
-  if (!isAuthenticated.value || listing.value?.status !== 'OPEN') return false
+  if (
+    participationLoading.value
+    || participationLoadFailed.value
+    || !isAuthenticated.value
+    || listing.value?.status !== 'OPEN'
+  ) {
+    return false
+  }
+  if (myParticipation.value != null) return false
   // TEAM 型はチームを選択するまで応募不可。
   if (isTeamListing.value) return selectedTeamId.value !== null
   return true
+})
+
+async function loadMyParticipation() {
+  if (!authStore.isAuthenticated) {
+    myParticipation.value = null
+    return
+  }
+  participationLoading.value = true
+  participationLoadFailed.value = false
+  try {
+    const myList = await recruitmentApi.listMyActiveParticipations()
+    myParticipation.value = myList.data.find((p) => p.listingId === listingId.value) ?? null
+  }
+  catch (err) {
+    participationLoadFailed.value = true
+    handleApiError(err, t('market.detail.loadFailed'))
+  }
+  finally {
+    participationLoading.value = false
+  }
+}
+
+onMounted(() => {
+  void loadMyParticipation()
 })
 
 async function applyToListing() {
@@ -91,10 +128,12 @@ async function applyToListing() {
   applying.value = true
   try {
     const isTeam = listing.value.participationType === 'TEAM'
-    await recruitmentApi.applyToListing(listing.value.id, {
+    const result = await recruitmentApi.applyToListing(listing.value.id, {
       participantType: isTeam ? 'TEAM' : 'USER',
       teamId: isTeam ? selectedTeamId.value : undefined,
     })
+    myParticipation.value = result.data
+    autoOpenPayment.value = listing.value.paymentEnabled && result.data.status === 'CONFIRMED'
     notification.success(t('recruitment.participantStatus.applied'))
     // 応募後に件数を更新するために再取得
     await load()
@@ -272,6 +311,7 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
             />
             <!-- 応募ボタン -->
             <Button
+              v-if="myParticipation == null"
               :label="$t('market.action.apply')"
               icon="pi pi-check"
               size="large"
@@ -279,6 +319,11 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
               :disabled="!canApply"
               data-testid="market-apply-btn"
               @click="applyToListing"
+            />
+            <Tag
+              v-else
+              :value="$t(`recruitment.participantStatus.${myParticipation.status.toLowerCase()}`)"
+              severity="success"
             />
           </template>
           <!-- ログイン済み・OPEN以外 -->
@@ -291,6 +336,17 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
           />
         </div>
       </SectionCard>
+
+      <RecruitmentPaymentConfirmationButton
+        v-if="listing.paymentEnabled
+          && myParticipation?.participantType === 'USER'
+          && myParticipation.status === 'CONFIRMED'"
+        :listing-id="listing.id"
+        :participant-id="myParticipation.id"
+        :auto-open="autoOpenPayment"
+        class="mt-4"
+        @confirmed="autoOpenPayment = false"
+      />
 
       <!-- 謝礼あり札の受取口座（Stripe Connect）登録導線（受取側・F22.1） -->
       <MarketConnectOnboarding

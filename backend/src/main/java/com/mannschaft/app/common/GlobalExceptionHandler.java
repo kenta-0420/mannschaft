@@ -86,6 +86,7 @@ public class GlobalExceptionHandler {
             Map.entry("RETURN_STAY_PLAN_005", HttpStatus.CONFLICT),
             Map.entry("RETURN_STAY_PLAN_006", HttpStatus.CONFLICT),
             Map.entry("RETURN_STAY_PLAN_007", HttpStatus.NOT_FOUND),
+            Map.entry("PAYMENT_015", HttpStatus.NOT_FOUND),
             // F00 共通可視性基盤（Severity.WARN デフォルト 400 を設計書 §7.4 の正しい status に上書き）
             Map.entry("VISIBILITY_001", HttpStatus.FORBIDDEN),   // 認可拒否（権限不足）→ 403
             Map.entry("VISIBILITY_004", HttpStatus.NOT_FOUND),  // コンテンツ不在 → 404
@@ -160,8 +161,19 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_000.getCode(), HttpStatus.UNAUTHORIZED),
             Map.entry(CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN),
             Map.entry(CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT),
+            // F04.12 承諾型招待: 宛先照合 IDOR（他人宛て招待を第三者が承諾/辞退）は 403 が既定。
+            //（発行時の特権ロール指定は 422 でスロー箇所が httpStatusOverride を明示する。§6）
+            Map.entry("ROLE_009", HttpStatus.FORBIDDEN),
             // 未マップAPIパス・staticリソース不在は 404（Severity.WARN デフォルト 400 を上書き）
             Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
+            // F01.2 オーナー委譲 承諾型オファー（2026-07-18 承諾型化。Severity.WARN 既定 400 を上書き）
+            //（ROLE_009 宛先照合失敗=403 は上の F04.12 承諾型招待ブロックで既に定義済みのため重複登録しない。
+            //   Map.ofEntries は重複キーで IllegalArgumentException になるため統合時に一本化した）
+            Map.entry("ROLE_010", HttpStatus.UNPROCESSABLE_ENTITY), // 承諾者 2FA 未設定 → 422
+            Map.entry("ROLE_011", HttpStatus.CONFLICT),             // 重複 PENDING 打診 → 409
+            Map.entry("ROLE_012", HttpStatus.CONFLICT),             // オファー状態不整合/期限切れ/発行後状態変化 → 409
+            Map.entry("ROLE_013", HttpStatus.NOT_FOUND),            // オファー不在（BOLA）/対象非所属 → 404
+            Map.entry("ROLE_014", HttpStatus.UNPROCESSABLE_ENTITY), // 自己委譲など不正対象 → 422
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
             // 組織不在は 404（Severity.WARN 既定の 400 を上書き）。兄弟の TEAM_001 と流儀を揃える。
@@ -454,6 +466,15 @@ public class GlobalExceptionHandler {
             Map.entry("SCHEDULE_092", HttpStatus.CONFLICT),                 // SCHEDULED_TASK_NOT_CANCELLABLE（PENDING 以外）
             Map.entry("SCHEDULE_093", HttpStatus.BAD_REQUEST),              // INVALID_TARGET_SELECTION
             Map.entry("SCHEDULE_094", HttpStatus.NOT_FOUND),                // SCHEDULE_TARGET_MEMBER_NOT_FOUND（存在秘匿）
+            // F03.19 統合カレンダービュー カレンダーレイヤー設定（設計書 §7）
+            Map.entry("SCHEDULE_100", HttpStatus.NOT_FOUND),                // CALENDAR_LAYER_NOT_FOUND
+            Map.entry("SCHEDULE_101", HttpStatus.FORBIDDEN),                // CALENDAR_LAYER_NOT_MEMBER（非所属・存在秘匿で統一）
+            Map.entry("SCHEDULE_102", HttpStatus.UNPROCESSABLE_ENTITY),     // CALENDAR_LAYER_INVALID_COLOR
+            Map.entry("SCHEDULE_103", HttpStatus.UNPROCESSABLE_ENTITY),     // CALENDAR_LAYER_INVALID_SCOPE
+            // SCHEDULE_104 CALENDAR_LAYER_LIMIT_EXCEEDED（行数上限 §10.1）は
+            // 「件数の上限超過」であり .claudecode.md §3.2.1 の表どおり既定の 400 が本則。
+            // 当初 409 で上書き登録していたが、上書き自体が不要なので登録ごと削除した
+            // （回帰固定: GlobalExceptionHandlerTest#resolveHttpStatus_SCHEDULE_104_400）。
             // F03.4 スケジュール本体・クロスチーム招待・アンケート設問の不在 → 404。
             // ErrorCodeHttpStatusDeclarationGuardTest 是正（ロットA）: throw 元
             // （ScheduleService/ScheduleRecurrenceService/ScheduleAttendanceService/
@@ -2428,7 +2449,11 @@ public class GlobalExceptionHandler {
         String message = resolveMessage(errorCode);
         log.warn("BusinessException: code={}, message={}", errorCode.getCode(), message);
 
-        HttpStatus status = resolveHttpStatus(errorCode);
+        // スロー箇所固有のステータス上書きがあれば優先する（F04.12 ROLE_009 は
+        // 宛先照合 IDOR=403 / 発行時の特権ロール指定=422 と、同一コードで文脈により異なる）。
+        HttpStatus status = ex.getHttpStatusOverride() != null
+                ? ex.getHttpStatusOverride()
+                : resolveHttpStatus(errorCode);
 
         // F10.6: 5xx を返す BusinessException のみ記録対象（severity=MEDIUM）
         if (status.is5xxServerError()) {

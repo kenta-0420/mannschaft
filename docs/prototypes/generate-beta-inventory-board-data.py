@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 from datetime import datetime, timezone
@@ -25,6 +26,54 @@ GATE_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-gate.json"
 GITHUB_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-github.json"
 GITHUB_STATUS_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-github-status.json"
 
+# 複合親は、独立した受入条件と公開時期を持つ能力だけを表示単位へ展開する。
+# 親の実装・Gate証拠は子へコピーするが、子自身の実測とは扱わない。
+CAPABILITY_SPLITS = {
+    "team-create": [("create", "チーム作成"), ("view", "チーム閲覧")],
+    "team-invite": [("invite", "チーム招待"), ("join", "チーム参加")],
+    "team-admin": [("member-view", "チームメンバー閲覧"), ("member-manage", "チームメンバー管理"), ("permissions", "チーム権限管理")],
+    "team-modules": [("module-view", "チーム機能閲覧"), ("module-manage", "チーム機能管理")],
+    "organization-members": [("member-view", "組織メンバー閲覧"), ("member-manage", "組織メンバー管理・権限")],
+    "village-join": [("village-view", "村閲覧"), ("village-join", "村参加")],
+    "village-members": [("member-view", "村の構成員閲覧"), ("member-manage", "村の構成員管理")],
+    "village-events": [("schedule-create", "予定作成"), ("schedule-view-manage", "予定閲覧・管理"), ("attendance-request", "出欠募集"), ("attendance-response", "出欠回答"), ("attendance-summary", "出欠集計"), ("calendar-view", "統合カレンダー閲覧"), ("calendar-sharing-level", "予定の公開範囲"), ("calendar-visibility-boundary", "カレンダー可視性境界")],
+    "dashboard": [("personal-view", "個人ダッシュボード閲覧")],
+    "survey": [("create", "アンケート作成"), ("publish", "アンケート公開"), ("response", "アンケート回答"), ("results", "アンケート結果")],
+    "account-settings": [("settings", "設定"), ("withdrawal", "退会")],
+    "auth": [("login", "ログイン"), ("two-factor", "2FA")],
+    "organization-manage": [("organization-create", "組織作成"), ("organization-admin", "組織管理")],
+    "notification-inbox": [("notification-delivery", "通知配信"), ("inbox", "受信箱")],
+    "pointcard": [("wallet", "ウォレット"), ("points", "ポイント")],
+    "tournament": [("tournament-management", "大会運営"), ("match-record", "試合記録")],
+    "todo-memo": [("todo-create", "TODO作成"), ("todo-share", "TODO共有"), ("memo-quick-create", "ポイっとメモ作成"), ("memo-view", "ポイっとメモ閲覧・所有者境界")],
+    "timeline": [("post", "タイムライン投稿"), ("view", "タイムライン閲覧"), ("sharing", "タイムライン共有範囲")],
+    "corkboard": [("bulletin", "掲示板"), ("corkboard", "コルクボード")],
+    "shift": [("shift", "シフト"), ("shift-budget", "シフト予算")],
+    "billing-payment": [("billing", "請求"), ("payment", "決済"), ("membership-fee", "会費")],
+    "facility": [("equipment", "備品"), ("facility", "施設"), ("venue", "会場"), ("parking", "駐車場")],
+    "property-repairplan": [("property", "不動産"), ("repairplan", "修繕計画")],
+    "weather-health": [("weather", "気象"), ("health", "健康")],
+    "skill-resume": [("skill", "スキル"), ("resume", "履歴書")],
+    "succession-proxy": [("succession", "事業承継"), ("proxy-vote", "代理投票")],
+    "translation-search": [("translation", "翻訳"), ("search", "検索"), ("analytics", "分析")],
+    "promotion": [("advertising", "広告"), ("promotion", "販促"), ("signage", "サイネージ")],
+    "workflow-forms": [("workflow", "ワークフロー"), ("forms", "フォーム")],
+    "family-care": [("school", "学校"), ("family", "家族"), ("safety-watch", "見守り")],
+    "moderation-incident": [("moderation", "モデレーション"), ("incident", "インシデント")],
+    "webhook-sync": [("webhook", "Webhook"), ("external-sync", "外部同期"), ("line-link", "LINE連携")],
+    "gamification": [("gamification", "ゲーミフィケーション"), ("supporter", "サポーター")],
+}
+
+B0_PLAN_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-b0-alicization.json"
+B0_COVERAGE_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-b0-coverage.json"
+B0_LOCAL_DIR = ROOT / "docs" / "prototypes" / ".b0-local"
+B0_ALICIZATION_PLAN = json.loads(B0_PLAN_PATH.read_text(encoding="utf-8"))
+B0_COVERAGE = json.loads(B0_COVERAGE_PATH.read_text(encoding="utf-8"))
+B0_RUN_OVERLAY = None
+if os.environ.get("B0_INCLUDE_LOCAL_OVERLAY") == "true" and B0_LOCAL_DIR.exists():
+    run_files = sorted([*B0_LOCAL_DIR.glob("run-*.json"), *B0_LOCAL_DIR.glob("blocked-*.json")], key=lambda item: item.stat().st_mtime, reverse=True)
+    if run_files:
+        B0_RUN_OVERLAY = json.loads(run_files[0].read_text(encoding="utf-8"))
 
 def git_commit_for(path: Path) -> str:
     try:
@@ -55,9 +104,13 @@ def parse_scalar(value: str):
     if value.startswith("{") and value.endswith("}"):
         status = re.search(r"status:\s*([^,}]+)", value)
         evidence = re.search(r"evidence:\s*\[([^]]*)\]", value)
+        evidence_source = evidence.group(1).strip() if evidence else ""
+        evidence_items = re.findall(r'["\']([^"\']+)["\']', evidence_source)
+        if evidence_source and not evidence_items:
+            evidence_items = [item.strip() for item in evidence_source.split(",") if item.strip()]
         return {
             **({"status": status.group(1).strip().strip("'\"")} if status else {}),
-            "evidence": [] if not evidence or not evidence.group(1).strip() else [evidence.group(1).strip()],
+            "evidence": evidence_items,
         }
     return value.strip("'\"")
 
@@ -246,12 +299,31 @@ def feature_view(record: dict) -> dict:
     }
 
 
+def capability_views(record: dict) -> list[dict]:
+    """親レコードを能力カードへ展開する。分割対象外は親自身を1カードにする。"""
+    parent = feature_view(record)
+    splits = CAPABILITY_SPLITS.get(parent["key"], [(parent["key"], parent["title"])])
+    result = []
+    for suffix, title in splits:
+        child = {**parent}
+        child["key"] = f'{parent["key"]}-{suffix}' if len(splits) > 1 else parent["key"]
+        child["title"] = title
+        child["parentFeatureKey"] = parent["key"]
+        child["gateGroup"] = parent["release"].get("gate_key")
+        child["isCapability"] = len(splits) > 1
+        child["statusSource"] = f'{parent["key"]}由来・子能力未実測'
+        child["evidenceSource"] = "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+        result.append(child)
+    return result
+
+
 def build_data() -> dict:
     inventory_source = INVENTORY_PATH.read_text(encoding="utf-8")
     inventory = parse_inventory(inventory_source)
     records = inventory.get("records") or []
     task_list = TASK_LIST_PATH.read_text(encoding="utf-8")
     features = [feature_view(record) for record in records]
+    capabilities = [capability for record in records for capability in capability_views(record)]
     campaigns = parse_campaigns(task_list)
     github_snapshot = json.loads(GITHUB_PATH.read_text(encoding="utf-8")) if GITHUB_PATH.exists() else {"status": "unsynced", "items": {}, "references": {}}
     github_status = json.loads(GITHUB_STATUS_PATH.read_text(encoding="utf-8")) if GITHUB_STATUS_PATH.exists() else {"status": "unsynced", "error": None, "synchronizedAt": None}
@@ -272,6 +344,24 @@ def build_data() -> dict:
     actual = {"features": len(features), "campaigns": len(campaigns), "core": len(core), "noncore": sum(feature["classification"] == "noncore" for feature in features), "blockers": blockers_count, "coreStatus": core_status_counts}
     errors = []
     decision_features = decisions.get("features", {})
+    decision_capabilities = decisions.get("capabilityOverrides", {})
+    capability_keys = {capability["key"] for capability in capabilities}
+    if not set(decision_capabilities).issubset(capability_keys):
+        errors.append("capabilityOverridesに存在しない能力keyがあります")
+    # 分割対象外の能力も、親キーをそのまま能力キーとして明示的に保持する。
+    for capability in capabilities:
+        if capability["key"] not in decision_capabilities:
+            parent_decision = decision_features.get(capability["parentFeatureKey"])
+            if parent_decision:
+                decision_capabilities[capability["key"]] = {
+                    **parent_decision,
+                    "reason": (
+                        "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。"
+                        if capability["isCapability"]
+                        else parent_decision.get("reason", "")
+                    ),
+                    "decisionStatus": parent_decision.get("decisionStatus", "proposed"),
+                }
     allowed_stages = {"B0", "B1", "B2", "B3", "B4"}
     allowed_audiences = {"soccer", "alumni", "both"}
     allowed_priorities = {"must", "should", "could", "defer"}
@@ -279,6 +369,48 @@ def build_data() -> dict:
     allowed_gate_statuses = {"done", "working", "blocked", "unknown"}
     if set(decision_features) != {feature["key"] for feature in features}:
         errors.append("Phase 2分類が43機能と完全一致しません")
+    if set(decision_capabilities) != {capability["key"] for capability in capabilities}:
+        errors.append("能力単位のPhase 2分類が表示能力と一致しません")
+    capability_key_set = {capability["key"] for capability in capabilities}
+    coverage_journeys = B0_COVERAGE.get("journeys", {})
+    strategy = B0_ALICIZATION_PLAN.get("autonomousTestStrategy", {})
+    if strategy.get("coordinatorCount") != 1 or strategy.get("personaCount") != 20:
+        errors.append("B0自律テスト戦略の統括数・人数が不正です")
+    expected_stages = [("Phase3C", 3), ("Phase3D", 5), ("Phase3E", 10), ("Phase3F", 20), ("Phase3G", 20)]
+    if [(stage.get("id"), stage.get("personas")) for stage in strategy.get("stages", [])] != expected_stages:
+        errors.append("B0自律テスト戦略の人数段階が不正です")
+    personas = strategy.get("personas", [])
+    if len(personas) != 20 or len({persona.get("id") for persona in personas}) != 20:
+        errors.append("B0自律テスト戦略のpersonaが20人一意ではありません")
+    persona_fields = ["age", "itProficiency", "adhdTendency", "useCase", "role", "permission", "membership", "notificationResponse", "usagePattern", "relationships", "history", "account", "browserContext"]
+    if any(not persona.get("id") or any(persona.get(field) in (None, "") for field in persona_fields) for persona in personas):
+        errors.append("B0自律テスト戦略のpersona項目が不足しています")
+    safety = strategy.get("safety", {})
+    if safety.get("database") != "開発DB限定" or safety.get("externalSending") is not False or safety.get("cookies") != "personaごとに分離":
+        errors.append("B0自律テスト戦略の安全条件が不正です")
+    if set(coverage_journeys) != {item["id"] for item in B0_ALICIZATION_PLAN["journeys"]}:
+        errors.append("B0 coverage journey ID集合が計画と一致しません")
+    for journey in B0_ALICIZATION_PLAN["journeys"]:
+        coverage = coverage_journeys.get(journey["id"])
+        if not coverage or coverage.get("coverageStatus") not in {"covered", "partial", "missing"}:
+            errors.append(f"B0 journey coverageStatus不正: {journey['id']}")
+        paths = coverage.get("specPaths", []) if coverage else []
+        if not isinstance(paths, list) or len(paths) != len(set(paths)):
+            errors.append(f"B0 journey specPathsが配列または一意ではありません: {journey['id']}")
+        if coverage and coverage.get("coverageStatus") in {"covered", "partial"} and not paths:
+            errors.append(f"B0 journeyカバレッジにspecがありません: {journey['id']}")
+        for path in (coverage or {}).get("specPaths", []):
+            if not (ROOT / path).is_file():
+                errors.append(f"B0 journey specが存在しません: {journey['id']} / {path}")
+    for journey in B0_ALICIZATION_PLAN["journeys"]:
+        if not set(journey["capabilities"]).issubset(capability_key_set):
+            errors.append(f"B0アリシゼーションjourneyの能力key不一致: {journey['id']}")
+    if "village-events-attendance-response" not in capability_key_set or "village-events-attendance-summary" not in capability_key_set:
+        errors.append("出欠回答・出欠集計の分割能力がありません")
+    if "survey-response" not in capability_key_set or "survey-results" not in capability_key_set:
+        errors.append("アンケート回答・結果の分割能力がありません")
+    if any("reservation" in key and "attendance" in key for key in capability_key_set):
+        errors.append("予約と出欠を同一能力keyで表現しています")
     if any(
         decision.get("stage") not in allowed_stages
         or decision.get("audience") not in allowed_audiences
@@ -322,6 +454,8 @@ def build_data() -> dict:
             "inventory": "docs/inventory/feature-inventory.yaml",
             "taskList": "docs/task-list.md",
             "decisions": "docs/prototypes/beta-inventory-board-decisions.json",
+            "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
+            "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
             "gate": "docs/prototypes/beta-inventory-board-gate.json",
             "inventoryCommit": git_commit_for(INVENTORY_PATH),
             "taskListCommit": git_commit_for(TASK_LIST_PATH),
@@ -334,6 +468,8 @@ def build_data() -> dict:
         },
         "sourceCounts": {
             "features": len(features),
+            "capabilities": len(capabilities),
+            "splitParents": len(CAPABILITY_SPLITS),
             "campaigns": len(campaigns),
             "layer": layer_counts,
             "blockers": blockers_count,
@@ -345,13 +481,18 @@ def build_data() -> dict:
             "passed": True,
         },
         "warnings": [
+            f"正本は43大分類、表示・集計は{len(capabilities)}能力単位。分割親は{len(CAPABILITY_SPLITS)}件。",
             "B0〜B4・対象者・優先度は正本とは分離したPhase 2A提案であり、確定値ではない。",
             "Core／非Coreはlayerとrelease.betaから機械導出。foundationは正本にないため未設定。",
             "Gate前提工事はbeta-inventory-board-gate.jsonの根拠付きoverlayから表示。未確認項目は公開候補に含めない。",
             "GitHubはtask-list.mdの各CMP行に明記された#番号だけを同期し、未同期・エラー時は既存スナップショットを保持する。",
         ],
         "features": features,
-        "decisions": decisions,
+        "capabilities": capabilities,
+        "b0Alicization": B0_ALICIZATION_PLAN,
+        "b0Coverage": B0_COVERAGE,
+        "b0RunOverlay": B0_RUN_OVERLAY,
+        "decisions": {**decisions, "capabilities": decision_capabilities},
         "featureClassification": {},
         "featurePublication": {},
         "gateFoundation": gate_items,

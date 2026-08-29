@@ -395,6 +395,8 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- カルーセル本体（3 パネル同時マウント） -->
+    <DashboardStorageSummary />
+
     <div
       class="relative w-full overflow-hidden"
       @touchstart.passive="onTouchStart"

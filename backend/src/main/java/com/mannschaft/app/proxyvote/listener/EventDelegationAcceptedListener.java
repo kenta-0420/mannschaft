@@ -1,5 +1,7 @@
 package com.mannschaft.app.proxyvote.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.event.event.EventDelegationAcceptedEvent;
 import com.mannschaft.app.event.service.EventDelegationService;
 import com.mannschaft.app.proxyvote.service.ProxyDelegationService;
@@ -43,6 +45,8 @@ public class EventDelegationAcceptedListener {
      *
      * @param event イベント代理出席 ACCEPTED イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "殿の裁定: 上流のイベント代理出席は非ゲートのため閉栓中も ACCEPTED が確定しうる。落とすと代理出席は成立しているのに投票代理が存在しない乖離が残り、イベントは再生されない")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleEventDelegationAccepted(EventDelegationAcceptedEvent event) {

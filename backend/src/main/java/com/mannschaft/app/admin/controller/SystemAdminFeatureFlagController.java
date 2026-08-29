@@ -4,6 +4,8 @@ import com.mannschaft.app.admin.dto.FeatureFlagResponse;
 import com.mannschaft.app.admin.dto.UpdateFeatureFlagRequest;
 import com.mannschaft.app.admin.service.FeatureFlagService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -48,6 +50,8 @@ public class SystemAdminFeatureFlagController {
     /**
      * 全フィーチャーフラグ一覧を取得する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "停止中の機能を管理者が再開できる制御面を維持するため")
     @GetMapping
     @Operation(summary = "フィーチャーフラグ一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -59,6 +63,8 @@ public class SystemAdminFeatureFlagController {
     /**
      * フィーチャーフラグを更新する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "停止中の機能を管理者が再開できる制御面を維持するため")
     @PutMapping("/{flagKey}")
     @Operation(summary = "フィーチャーフラグ更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")

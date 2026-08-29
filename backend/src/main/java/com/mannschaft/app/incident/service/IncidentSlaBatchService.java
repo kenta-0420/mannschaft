@@ -1,5 +1,7 @@
 package com.mannschaft.app.incident.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.incident.IncidentStatus;
@@ -46,6 +48,8 @@ public class IncidentSlaBatchService {
      * 1. SLA超過インシデントの検出とis_sla_breachedフラグ更新、イベント発行
      * 2. 定期メンテナンスの次回実行日到来分のインシデント自動生成
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "殿の裁定: インシデントの SLA は期限に縛られており、止めると超過の検出と定期メンテナンスの自動起票が期限を過ぎたまま行われない")
     @BatchEndpoint(name = "incident-sla-check-hourly", description = "インシデント SLA 超過チェックと定期メンテナンス自動起票を毎時実行する")
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "incident_sla_check", lockAtMostFor = "PT2H")

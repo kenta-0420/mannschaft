@@ -6,6 +6,8 @@ import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.gdpr.dto.DataExportRequest;
 import com.mannschaft.app.gdpr.dto.DataExportResponse;
@@ -59,6 +61,8 @@ public class GdprController {
      */
     @SelfScopedEndpoint("エクスポート対象ユーザーが SecurityUtils.getCurrentUserId() に束縛される"
             + "（DataExportRequest はカテゴリと再認証情報のみでユーザー識別子を持たない）")
+    @AlwaysReachable(category = AlwaysReachableCategory.PUBLIC_LIFELINE,
+            reason = "本人のデータ可搬権をGate状態にかかわらず保障するため")
     @PostMapping("/data-export")
     @Operation(summary = "データエクスポートリクエスト")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "エクスポートリクエスト受付")
@@ -84,6 +88,8 @@ public class GdprController {
      */
     @SelfScopedEndpoint("検索条件が findTopByUserIdOrderByCreatedAtDesc(認証主体の userId) のみ"
             + "（DataExportService#getExportStatus・エンドポイントは引数を取らない）")
+    @AlwaysReachable(category = AlwaysReachableCategory.PUBLIC_LIFELINE,
+            reason = "本人がデータ出力処理の進捗を継続確認できるようにするため")
     @GetMapping("/data-export/status")
     @Operation(summary = "エクスポートステータス取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -103,6 +109,8 @@ public class GdprController {
      */
     @SelfScopedEndpoint("署名URLの対象レコードを findTopByUserIdOrderByCreatedAtDesc(認証主体の userId) で引き当てる"
             + "（DataExportService#getDownloadUrl・エンドポイントは引数を取らない）")
+    @AlwaysReachable(category = AlwaysReachableCategory.PUBLIC_LIFELINE,
+            reason = "完了済みの本人データ出力をGate状態にかかわらず取得可能にするため")
     @GetMapping("/data-export/download")
     @Operation(summary = "エクスポートダウンロードURL取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "URL取得成功")
@@ -123,6 +131,8 @@ public class GdprController {
      */
     @SelfScopedEndpoint("件数集計の検索キーが認証主体の userId のみ"
             + "（buildDeletionPreview の countByCustomerUserId / countBySenderId / findByUserId）")
+    @AlwaysReachable(category = AlwaysReachableCategory.PUBLIC_LIFELINE,
+            reason = "本人が退会前に削除影響を確認できる権利を保障するため")
     @GetMapping("/deletion-preview")
     @Operation(summary = "退会時削除データプレビュー")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "プレビュー取得成功")

@@ -82,3 +82,12 @@ config/scheduler/
 *_response.txt
 # 大名システムの引継ぎ書（実データ・内部事情を含み得る揮発物）
 .claude/handoffs/
+.b0-local/
+docs/prototypes/.b0-local/
+
+# npx skills add が生成するシンボリックリンク置き場。
+# 本リポジトリは core.symlinks=false のため、コミットするとクローン先で
+# リンク先パスを書いただけの壊れたテキストファイルになる。
+# スキルの実体は .agents/skills/ 配下にコミットしているので、リンクが要る場合は
+# `npx skills add https://docs.stripe.com` を再実行して張り直すこと。
+.claude/skills/

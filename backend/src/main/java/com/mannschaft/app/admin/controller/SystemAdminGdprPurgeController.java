@@ -1,6 +1,8 @@
 package com.mannschaft.app.admin.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.gdpr.dto.PurgeStatusRow;
 import com.mannschaft.app.gdpr.dto.PurgeStatusSummaryData;
@@ -87,6 +89,8 @@ public class SystemAdminGdprPurgeController {
      * @param size     1 ページあたり件数（既定: 20）
      * @return ページネーション済みの GDPR パージ状況リスト
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "GDPR消去処理の運用監視をGate状態にかかわらず継続するため")
     @GetMapping
     @Operation(summary = "GDPR パージ状況一覧取得", description = "status/domain/dateFrom/dateTo でフィルタ可能。全て省略で全件対象。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -112,6 +116,8 @@ public class SystemAdminGdprPurgeController {
      *
      * @return サマリーデータ
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "GDPR消去処理の運用監視をGate状態にかかわらず継続するため")
     @GetMapping("/summary")
     @Operation(summary = "GDPR パージ状況サマリー取得", description = "ドメイン別集計とアラート件数を返す。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -126,6 +132,8 @@ public class SystemAdminGdprPurgeController {
      * @param userId 対象ユーザー ID
      * @return 対象ユーザーの全 per-domain レコード（ドメイン名昇順）
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "GDPR消去処理の運用監視をGate状態にかかわらず継続するため")
     @GetMapping("/{userId}")
     @Operation(summary = "ユーザー別 GDPR パージ状況詳細取得", description = "userId に紐づく全ドメインの消去状況を返す。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -143,6 +151,8 @@ public class SystemAdminGdprPurgeController {
      *
      * @return StreamingResponseBody として CSV データを返す
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "GDPR消去処理の監査資料をGate状態にかかわらず取得するため")
     @GetMapping("/export.csv")
     @Operation(summary = "GDPR パージ状況 CSV エクスポート", description = "全件を CSV 形式でダウンロード。UTF-8 BOM 付き。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "CSV エクスポート成功")
@@ -177,6 +187,8 @@ public class SystemAdminGdprPurgeController {
      * @param domainName retry 対象ドメイン（role / team / payment / chart / proxy / errorreport）
      * @return retry 結果（succeeded=true の場合は SUCCESS に遷移、false の場合は PENDING 継続）
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "失敗したGDPR消去をGate状態にかかわらず復旧するため")
     @PostMapping("/{userId}/retry/{domainName}")
     @Operation(
             summary = "GDPR パージ手動 retry",

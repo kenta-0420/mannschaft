@@ -16,6 +16,7 @@ import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepositor
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationMenuLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationMenuRepository;
+import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -83,6 +84,8 @@ class ReservationGridServiceExtensionTest {
     @Mock
     private ReservationSlotRepository slotRepository;
     @Mock
+    private ReservationRepository reservationRepository;
+    @Mock
     private ReservationLineRepository lineRepository;
     @Mock
     private ReservationBlockedTimeRepository blockedTimeRepository;
@@ -106,7 +109,7 @@ class ReservationGridServiceExtensionTest {
     @BeforeEach
     void setUp() {
         service = new ReservationGridService(
-                slotRepository, lineRepository, blockedTimeRepository, recurringBlockedTimeRepository,
+                slotRepository, reservationRepository, lineRepository, blockedTimeRepository, recurringBlockedTimeRepository,
                 unavailabilityChecker, viewAccessGuard, menuRepository, menuLineRepository, teamTimezoneResolver);
         given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
         // 既定: slot/ブロック/定期ルール/ライン/menu_lines なし（各テストで上書き）。
@@ -505,7 +508,7 @@ class ReservationGridServiceExtensionTest {
         // GridCellDto: 既存 C-4 と同一の完全一致検査（フィールド増減の番人）。
         // unavailableReason は公開定期予約不可枠の事由ラベル（is_public 限定・業務ラベル・W2-2）で予約者 PII を含まない。
         assertThat(componentNames(ReservationGridResponse.GridCellDto.class))
-                .containsExactlyInAnyOrder("slotId", "slotDate", "endDate", "startTime", "endTime", "state", "price", "unavailableReason");
+                .containsExactlyInAnyOrder("slotId", "slotDate", "endDate", "startTime", "endTime", "state", "price", "unavailableReason", "reservedByCurrentUser");
         // GridColumnDto: 許容フィールドの完全一致（#2575 でスタッフ由来フィールドを撤去。ライン名は設備名で PII ではない）。
         assertThat(componentNames(ReservationGridResponse.GridColumnDto.class))
                 .containsExactlyInAnyOrder("lineId", "lineName", "cells");
@@ -521,6 +524,7 @@ class ReservationGridServiceExtensionTest {
                 .containsExactlyInAnyOrder("menuId", "menuName", "requiredCellCount", "cellMinutes");
         // セル DTO に user/reservation/note を含む名称が存在しないこと（C-4 の noneMatch 踏襲）。
         assertThat(componentNames(ReservationGridResponse.GridCellDto.class)).noneMatch(n -> {
+            if (n.equals("reservedByCurrentUser")) return false;
             String lower = n.toLowerCase();
             return lower.contains("user") || lower.contains("name")
                     || lower.contains("reservation") || lower.contains("note");

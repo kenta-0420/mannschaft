@@ -70,6 +70,43 @@
       "backToList": "チャンネル一覧に戻る",
       "noChannels": "まだチャンネルがありません",
       "createChannel": "チャンネルを作成"
+    },
+    "invite": {
+      "button": "チームに招待",
+      "sentSuccess": "招待を送りました",
+      "joinedSuccess": "参加しました",
+      "declinedSuccess": "招待を辞退しました",
+      "modal": {
+        "title": "招待するチーム/組織を選ぶ",
+        "empty": "招待できるチーム・組織がありません",
+        "submit": "招待を送る"
+      },
+      "card": {
+        "pending": "{scope} への招待が届いています",
+        "waiting": "相手の承諾待ち",
+        "statusPending": "承諾待ち",
+        "join": "参加する",
+        "decline": "辞退する",
+        "joined": "参加済み",
+        "declined": "辞退済み",
+        "expired": "期限切れ",
+        "revoked": "取消済み",
+        "expiresAt": "期限: {time}"
+      },
+      "preview": {
+        "sent": "{scope} への招待を送りました"
+      },
+      "notification": {
+        "received": "{scope} への招待が届きました"
+      },
+      "error": {
+        "notTarget": "この招待はあなた宛てではありません",
+        "privilegedRole": "管理者ロールはこの方法では招待できません",
+        "loadFailed": "招待できるチーム・組織の取得に失敗しました",
+        "sendFailed": "招待の送信に失敗しました",
+        "joinFailed": "参加に失敗しました",
+        "declineFailed": "辞退に失敗しました"
+      }
     }
   },
   "button": {
@@ -129,7 +166,39 @@
     "DEPUTY_ADMIN": "副管理者",
     "MEMBER": "メンバー",
     "SUPPORTER": "サポーター",
-    "GUEST": "ゲスト"
+    "GUEST": "ゲスト",
+    "transfer": {
+      "offer": {
+        "button": "管理者を引き継ぐ",
+        "notification": "{scope} の管理者への就任を打診されています",
+        "pending": "管理者就任の打診が届いています",
+        "pendingByMe": "{name} さんへ管理者委譲を打診中です",
+        "accept": "引き受ける",
+        "decline": "辞退する",
+        "cancel": "取消",
+        "accepted": "管理者を引き継ぎました",
+        "declined": "打診を辞退しました",
+        "expired": "打診は期限切れです",
+        "cancelled": "打診は取り消されました",
+        "confirmTitle": "オーナー委譲の打診",
+        "confirmMessage": "{name} さんへ管理者権限の委譲を打診しますか？相手が引き受けを承諾すると、あなたはメンバーに降格されます（この時点ではまだ委譲されません）。",
+        "acceptConfirmTitle": "管理者就任の承諾",
+        "acceptConfirmMessage": "引き受けると、あなたが管理者(ADMIN)になり、現在の管理者はメンバーに降格されます。よろしいですか？",
+        "declineConfirmTitle": "打診の辞退",
+        "declineConfirmMessage": "この打診を辞退しますか？あなたのロールは変わりません。",
+        "cancelConfirmTitle": "打診の取消",
+        "cancelConfirmMessage": "この委譲の打診を取り消しますか？相手のロールは変わりません。",
+        "created": "委譲を打診しました",
+        "cancelSuccess": "打診を取り消しました"
+      },
+      "error": {
+        "notTarget": "この打診はあなた宛てではありません",
+        "need2fa": {
+          "message": "管理者になるには2段階認証の設定が必要です",
+          "cta": "2段階認証を設定する"
+        }
+      }
+    }
   },
   "timetable": {
     "title": "時間割管理",
@@ -260,7 +329,13 @@
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
     "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
-    "TIMELINE_017": "ミュートの上限（200件）に達しています。「非表示にしている相手」から不要な設定を解除してください。"
+    "TIMELINE_017": "ミュートの上限（200件）に達しています。「非表示にしている相手」から不要な設定を解除してください。",
+    "ROLE_009": "この打診はあなた宛てではありません",
+    "ROLE_010": "管理者になるには2段階認証の設定が必要です",
+    "ROLE_011": "既に有効な委譲オファーが存在します",
+    "ROLE_012": "委譲オファーは既に処理済みか無効です",
+    "ROLE_013": "対象が見つかりません",
+    "ROLE_014": "自分自身への委譲はできません"
   },
   "annual_plan": {
     "title": "年間行事計画",
@@ -1326,6 +1401,36 @@
     "filter": {
       "allTeamsOrgs": "チーム・組織 (全て)",
       "selectScope": "作成先を選択"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "個人",
+        "unknown": "その他の予定",
+        "loadError": {
+          "summary": "レイヤー一覧の読み込みに失敗しました",
+          "detail": "チーム・組織の表示切り替えが一時的に使えません。予定は表示されています。時間をおいて再読み込みしてください。"
+        },
+        "hiddenNotice": "作成先のレイヤーが非表示です",
+        "showIt": "表示する"
+      },
+      "more": "他{count}件",
+      "today": "今日",
+      "dayDetail": {
+        "title": "{date} の予定"
+      },
+      "empty": "この期間に予定はありません",
+      "view": {
+        "month": "月",
+        "week": "週",
+        "agenda": "リスト"
+      },
+      "week": {
+        "allDay": "終日",
+        "now": "現在",
+        "dragHint": "ドラッグして予定を作成",
+        "dragHintTouch": "長押ししてなぞると予定を作成できます",
+        "selectedRange": "{start} – {end}"
+      }
     }
   },
   "handoff": {
@@ -1899,6 +2004,24 @@
     "bulletinOpen": "掲示板で議論する"
   },
   "scopeDashboard": {
+    "storageSummary": {
+      "title": "容量",
+      "personal": "個人",
+      "team": "チーム",
+      "organization": "組織",
+      "details": "詳細を見る",
+      "error": "容量を取得できませんでした",
+      "retry": "再試行",
+      "unconfigured": "容量枠未設定",
+      "not_available": "容量データなし",
+      "meterLabel": "{scope}の容量使用率",
+      "meterValue": "使用率 {percent}%",
+      "warningTitle": "容量上限に近づいています",
+      "warningMessage": "{scope}の使用率は{percent}%です。有料プランへの変更をご検討ください。",
+      "viewPlans": "プランを見る",
+      "checkStorage": "ストレージを確認",
+      "cancel": "キャンセル"
+    },
     "tabs": {
       "personal": "個人",
       "team": "チーム",
@@ -2155,19 +2278,19 @@
   },
   "transferOwnership": {
     "sectionTitle": "オーナー譲渡",
-    "sectionDescription": "管理者（オーナー）権限を他のメンバーへ引き継ぎます。譲渡後、あなたは副管理者になり、管理者専用の操作は行えなくなります。",
-    "openButton": "オーナーを譲渡",
-    "dialogTitle": "オーナーを譲渡する",
-    "warning": "この操作は取り消せません。譲渡すると管理者権限は新しいオーナーへ移り、元に戻すには新しいオーナーの操作が必要になります。",
+    "sectionDescription": "他のメンバーへ管理者権限の委譲を打診します。相手が承諾するまで権限は変わりません。",
+    "openButton": "オーナー委譲を打診",
+    "dialogTitle": "オーナー委譲を打診する",
+    "warning": "相手が承諾すると管理者権限が移り、あなたはメンバーになります。打診中は権限は変わりません。",
     "targetLabel": "譲渡先メンバー",
     "targetPlaceholder": "メンバーを選択",
     "noCandidates": "譲渡できるメンバーがいません。",
     "confirmLabel": "確認のため「{name}」と入力してください",
     "confirmMismatch": "名称が一致しません。",
     "cancel": "キャンセル",
-    "submit": "譲渡する",
-    "successTitle": "オーナーを譲渡しました",
-    "successDetail": "管理者権限が新しいオーナーへ移りました。"
+    "submit": "打診する",
+    "successTitle": "委譲を打診しました",
+    "successDetail": "相手が承諾するまで管理者権限は変わりません。"
   },
   "featureGate": {
     "blocked": {
@@ -2177,6 +2300,23 @@
     "error": {
       "fetchFailedTitle": "機能の公開状態を確認できませんでした",
       "fetchFailedBody": "通信エラーのため機能の公開状態を確認できませんでした。しばらくしてから再度お試しください。"
+    }
+  },
+  "member": {
+    "columns": {
+      "name": "メンバー",
+      "role": "ロール",
+      "joinedAt": "参加日",
+      "actions": "操作"
+    },
+    "empty": "メンバーはまだいません",
+    "roleChanged": "ロールを変更しました",
+    "roleChangeFailed": "ロール変更に失敗しました",
+    "removed": "メンバーを除外しました",
+    "removeFailed": "メンバー除外に失敗しました",
+    "remove": {
+      "confirmTitle": "メンバーの除外",
+      "confirmMessage": "{name} をメンバーから除外しますか？"
     }
   }
 }

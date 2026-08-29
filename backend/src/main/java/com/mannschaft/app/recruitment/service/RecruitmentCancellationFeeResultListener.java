@@ -1,5 +1,7 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.payment.escrow.event.RecruitmentCancellationFeeChargeFailedEvent;
 import com.mannschaft.app.payment.escrow.event.RecruitmentCancellationFeeChargedEvent;
 import com.mannschaft.app.recruitment.entity.RecruitmentCancellationRecordEntity;
@@ -33,6 +35,8 @@ public class RecruitmentCancellationFeeResultListener {
      *
      * @param event 徴収成功イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "Stripe 側で徴収が既に成立した後に発火するため、止めると外部で決済済みなのに自システムに記録が無いという復旧不能な金銭の乖離が残る")
     @EventListener
     @Transactional
     public void onCancellationFeeCharged(RecruitmentCancellationFeeChargedEvent event) {
@@ -52,6 +56,8 @@ public class RecruitmentCancellationFeeResultListener {
      *
      * @param event 徴収失敗イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると徴収失敗が FAILED として記録されずリトライバッチの対象にも載らないため、取りはぐれがどこにも残らず検知できなくなる")
     @EventListener
     @Transactional
     public void onCancellationFeeChargeFailed(RecruitmentCancellationFeeChargeFailedEvent event) {

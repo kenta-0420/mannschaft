@@ -3,6 +3,8 @@ package com.mannschaft.app.admin.controller;
 import com.mannschaft.app.admin.dto.PublicFeatureFlagResponse;
 import com.mannschaft.app.admin.service.FeatureFlagService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,8 @@ public class FeatureFlagController {
     /**
      * 公開フィーチャーフラグ一覧を取得する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "クライアントがGate状態を取得して停止機能を安全に隠せるようにするため")
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "公開フィーチャーフラグ一覧取得")

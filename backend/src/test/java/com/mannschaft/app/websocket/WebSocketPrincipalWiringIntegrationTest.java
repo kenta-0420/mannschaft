@@ -16,6 +16,8 @@ import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.messaging.simp.user.SimpSession;
+import org.springframework.messaging.simp.user.SimpSubscription;
 import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
@@ -168,11 +170,36 @@ class WebSocketPrincipalWiringIntegrationTest {
                 .isNotNull()
                 .satisfies(u -> assertThat(u.getName()).isEqualTo(String.valueOf(userId)));
 
+        // ── session.subscribe は非同期であり、SUBSCRIBE フレームがサーバのブローカーに登録される前に
+        //    convertAndSendToUser が走ると宛先解決 0 件でメッセージが握りつぶされる（CI 高負荷時に顕在化する flaky の実根治）。
+        //    SimpUserRegistry 経由でサーバ側に当該購読が実際に登録されたことを確認してから送信する。
+        //    「/user/queue/notifications」の購読は Spring の実装により destination が /user プレフィックス無しで
+        //    保持される場合があるため、実装差に強い endsWith 判定で照合する。
+        boolean subscribed = awaitUntil(() -> {
+            var simpUser = simpUserRegistry.getUser(String.valueOf(userId));
+            if (simpUser == null) {
+                return false;
+            }
+            for (SimpSession simpSession : simpUser.getSessions()) {
+                for (SimpSubscription subscription : simpSession.getSubscriptions()) {
+                    if (subscription.getDestination() != null
+                            && subscription.getDestination().endsWith("/queue/notifications")) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }, Duration.ofSeconds(10));
+        assertThat(subscribed)
+                .as("/user/queue/notifications 購読がサーバ側（SimpUserRegistry）に登録されること"
+                        + "（購読完了前の送信は宛先解決 0 件で握りつぶされるため、送信前に必ず確認する）")
+                .isTrue();
+
         // ── AC-5 (2): convertAndSendToUser が当該ユーザーに到達する（解決先 0 件 → 未達 → red）──
         messagingTemplate.convertAndSendToUser(
                 String.valueOf(userId), "/queue/notifications", Map.of("type", "TEST", "message", "hello"));
 
-        Object received = inbox.poll(3, TimeUnit.SECONDS);
+        Object received = inbox.poll(10, TimeUnit.SECONDS);
         assertThat(received)
                 .as("ユーザー宛通知が接続中のクライアントに届くこと（現行は Principal 未配線で解決先 0 件 → 未達 red）")
                 .isNotNull();

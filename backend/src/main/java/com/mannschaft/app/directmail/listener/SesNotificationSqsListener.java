@@ -1,5 +1,7 @@
 package com.mannschaft.app.directmail.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.directmail.dto.SesNotificationRequest;
@@ -51,6 +53,8 @@ public class SesNotificationSqsListener {
      *
      * @param rawMessage SQS メッセージ本文（SNS エンベロープ JSON 文字列）
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "唯一の SQS 入口であり、スキップやドロップは正常終了として ACK され、バウンス・苦情通知が復旧不能に消失する")
     @SqsListener("${mannschaft.ses.sqs.queue-name}")
     public void onMessage(String rawMessage) {
         SesNotificationRequest request;

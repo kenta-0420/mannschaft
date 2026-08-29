@@ -13,7 +13,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 村ドメインの<b>共通アクセスゲート</b>。村の存在確認と可視性判定を一元化する。
@@ -153,6 +161,157 @@ public class VillageAccessGate {
             return true;
         }
         return accessControlService.isSystemAdmin(actorUserId);
+    }
+
+    /**
+     * 凍結の有無を問わず、操作者に可視な稼働中（未削除）の村をロードする。
+     *
+     * <p>{@link #loadActiveVillage} / {@link #loadReadableVillage} との違いは
+     * <b>凍結済み（{@code archivedAt != null}）の村をそのまま返す</b>点だけである。
+     * 募集カテゴリ（設計書 §6.4）やニュースレター設定のように
+     * 「<b>凍結村でも閲覧・購読操作は許す</b>／書き込みだけを別途 {@code VILLAGE_ALREADY_ARCHIVED} で弾く」
+     * 設計の呼び出し元がある。そこへ機械的に {@code loadActiveVillage}（凍結=409）や
+     * {@code loadReadableVillage}（凍結=404）を当てると、
+     * <b>凍結村の一覧が読めなくなるという別の退行</b>を作ってしまう。
+     * 凍結の可否判定は呼び出し元の責務として残しつつ、
+     * <b>存在確認と可視性判定だけ</b>をゲートへ寄せるための入口である。</p>
+     *
+     * <p>不在・削除済み・非可視はすべて {@link VillageErrorCode#VILLAGE_NOT_FOUND} で、
+     * 判定順序も {@code loadActiveVillage} と同一（可視性が先）。</p>
+     *
+     * @param villageId   村 ID（null 可）
+     * @param actorUserId 操作者ユーザー ID（null 可。null は非メンバー扱い）
+     * @return 操作者に可視な村（凍結済みを含む）
+     */
+    public VillageEntity loadVillageAllowingArchived(UUID villageId, @Nullable Long actorUserId) {
+        return loadVisibleVillage(villageId, actorUserId);
+    }
+
+    /**
+     * 例外を投げずに、操作者に可視な稼働中（未削除）の村を探す。
+     *
+     * <p>ピン一覧のように<b>複数の村をまとめて hydrate し、見えないものは黙って落とす</b>
+     * 経路のための入口。例外を投げる入口しか無いと、そうした呼び出し元は
+     * 「ゲートを使うと例外制御になって書けない」という理由でリポジトリを直接引き始め、
+     * 可視性判定が再び抜け落ちる。</p>
+     *
+     * @param villageId   村 ID（null 可）
+     * @param actorUserId 操作者ユーザー ID（null 可。null は非メンバー扱い）
+     * @return 不在・削除済み・非可視なら {@link Optional#empty()}、それ以外は村（凍結済みを含む）
+     */
+    public Optional<VillageEntity> findVisibleVillage(UUID villageId, @Nullable Long actorUserId) {
+        if (villageId == null) {
+            return Optional.empty();
+        }
+        return villageRepository.findById(villageId)
+                .filter(v -> v.getDeletedAt() == null)
+                .filter(v -> isVisibleTo(v, actorUserId));
+    }
+
+    /**
+     * capability トークン（招待トークン等）による村の解決。
+     *
+     * <h3>なぜ可視性判定を迂回する口が要るのか</h3>
+     * <p>非公開(UNLISTED)村への招待は「まだ村人ではない者」が使う。可視性判定を通す
+     * {@link #findVisibleVillage} では非村人は必ず空になり、招待という導線自体が成立しない。
+     * 一方で村ドメインには「村サービスが {@link VillageRepository} を直接叩かない」という
+     * 集約契約（番人 {@code VillageExistenceCheckCentralizationGuardTest}）があり、
+     * 招待サービスが独自にリポジトリを引く逃げ道は塞がれている。よって
+     * <b>「トークンの提示をもって可視性の代わりとする」正規の口</b>をゲート側に一本だけ開ける。</p>
+     *
+     * <h3>呼び出し元の責務</h3>
+     * <p>本メソッドは<b>トークンの有効性を呼び出し元が検証済みであること</b>を前提とする。
+     * 検証前に呼ぶと、村 ID を知っているだけの者に村の実在を教えることになる。</p>
+     *
+     * <h3>なぜ例外を投げ分けないのか</h3>
+     * <p>不在・論理削除済み・凍結済みはいずれも {@link Optional#empty()} に畳んで返す。
+     * ここで「凍結済みです（409）」のような区別を返すと、呼び出し元が畳み忘れた瞬間に
+     * 「その村は実在する」という答えが漏れる。<b>畳むのは呼び出し元の責務</b>であり、
+     * ゲートは招待の語彙（招待が無効、など）を一切持たない。ゲートが招待を知ると
+     * 依存の向きが逆転し、他の capability（引継ぎリンク等）が増えるたびにゲートが太る。</p>
+     *
+     * @param villageId 村 ID（null 可。null は不在として扱う）
+     * @return 稼働中（未削除かつ未凍結）の村。不在・削除済み・凍結済みは {@link Optional#empty()}
+     */
+    Optional<VillageEntity> findVillageByCapability(UUID villageId) {
+        if (villageId == null) {
+            return Optional.empty();
+        }
+        return villageRepository.findById(villageId)
+                .filter(v -> v.getDeletedAt() == null)
+                .filter(v -> v.getArchivedAt() == null);
+    }
+
+    /**
+     * 複数の村について可視性をまとめて判定し、可視なものだけを<b>与えられた順序のまま</b>返す。
+     *
+     * <h3>なぜ一括版が要るのか</h3>
+     * <p>{@link #isVisibleTo} を村ごとにループで呼ぶと、非 PUBLIC 村1件につき所属判定が 1 クエリ、
+     * さらに非メンバーなら {@code isSystemAdmin} が 1 クエリ走る。
+     * <b>操作者は 1 人しか居ないのに、同じ問い合わせを村の数だけ繰り返す</b>ことになり、
+     * ピン一覧・フィードのように「自分に紐づく村を N 件まとめて描画する」経路では
+     * {@code backend/BACKEND_CODING_CONVENTION.md} の N+1 防止規約に反する。</p>
+     *
+     * <p>本メソッドは操作者を軸に問い合わせを畳む。<b>村の件数によらず追加クエリは最大 2 本</b>
+     * （現役所属の一括取得 1 本＋ SYSTEM_ADMIN 判定 1 本）で、
+     * PUBLIC 村しか含まれない通常のケースでは<b>追加クエリ 0 本</b>である。</p>
+     *
+     * <h3>判定は {@link #isVisibleTo} と同一であること</h3>
+     * <p>可視性の規則そのものは単一版と<b>完全に同じ</b>でなければならない
+     * （PUBLIC のみ許可リストで無条件可視／それ以外は現役 USER メンバーまたは SYSTEM_ADMIN のみ）。
+     * 一括版だけが緩いと、同じ村が経路によって見えたり見えなかったりする穴になる。
+     * 参照する現役所属の述語も単一版と揃えてある
+     * （{@code findActiveUserMemberships} は {@code leftAt IS NULL AND bannedAt IS NULL} で、
+     * 単一版の {@code findActiveByVillageIdAndSubject} と同一条件）。</p>
+     *
+     * @param villages    判定対象の村（{@code null} 要素は不可視として落とす）
+     * @param actorUserId 閲覧者ユーザー ID（{@code null} は非メンバー扱い＝PUBLIC のみ可視）
+     * @return 可視な村のみを入力順で並べたリスト
+     */
+    @Transactional(readOnly = true)
+    public List<VillageEntity> filterVisible(
+            Collection<VillageEntity> villages, @Nullable Long actorUserId) {
+        if (villages == null || villages.isEmpty()) {
+            return List.of();
+        }
+
+        // 重複 ID を畳みつつ入力順を保つ。
+        Map<UUID, VillageEntity> ordered = new LinkedHashMap<>();
+        for (VillageEntity v : villages) {
+            if (v != null && v.getId() != null) {
+                ordered.putIfAbsent(v.getId(), v);
+            }
+        }
+
+        // 許可リスト方式: PUBLIC は無条件可視（追加クエリを撃たない）。
+        boolean hasHidden = ordered.values().stream()
+                .anyMatch(v -> v.getVisibility() != VillageVisibility.PUBLIC);
+
+        // 非 PUBLIC が 1 件も無ければ問い合わせ不要。未ログインなら PUBLIC 以外は見えない。
+        Set<UUID> memberVillageIds = Set.of();
+        boolean systemAdmin = false;
+        if (hasHidden && actorUserId != null) {
+            memberVillageIds = new HashSet<>(membershipRepository
+                    .findActiveUserMemberships(actorUserId).stream()
+                    .map(m -> m.getVillageId())
+                    .collect(Collectors.toSet()));
+            // メンバーで解決しきれない村が残る場合にのみ SYSTEM_ADMIN を 1 度だけ問い合わせる。
+            Set<UUID> resolved = memberVillageIds;
+            boolean needsAdminCheck = ordered.values().stream()
+                    .anyMatch(v -> v.getVisibility() != VillageVisibility.PUBLIC
+                            && !resolved.contains(v.getId()));
+            if (needsAdminCheck) {
+                systemAdmin = accessControlService.isSystemAdmin(actorUserId);
+            }
+        }
+
+        Set<UUID> members = memberVillageIds;
+        boolean admin = systemAdmin;
+        return ordered.values().stream()
+                .filter(v -> v.getVisibility() == VillageVisibility.PUBLIC
+                        || members.contains(v.getId())
+                        || admin)
+                .toList();
     }
 
     /**

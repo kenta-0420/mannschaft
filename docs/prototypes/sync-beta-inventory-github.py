@@ -19,6 +19,7 @@ TASK_LIST = ROOT / "docs" / "task-list.md"
 SNAPSHOT = ROOT / "docs" / "prototypes" / "beta-inventory-board-github.json"
 STATUS = ROOT / "docs" / "prototypes" / "beta-inventory-board-github-status.json"
 GITHUB_REFERENCE_MINIMUM = 100  # 現台帳の実GitHub参照は#902以上。#6/#7等の内部手順番号を除外する。
+GITHUB_GRAPHQL_BATCH_SIZE = 25
 
 
 def cmp_refs(source: str) -> dict[str, list[int]]:
@@ -58,42 +59,25 @@ def run_gh(repo: str, numbers: list[int]) -> dict:
     return payload.get("data", {}).get("repository", {})
 
 
-def run_checks(repo: str, sha: str) -> dict:
-    if not sha:
-        return {"status": "unavailable", "reason": "PRのhead SHAを取得できませんでした", "checks": []}
-    result = subprocess.run(
-        ["gh", "api", f"repos/{repo}/commits/{sha}/check-runs", "--paginate"],
-        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
-    )
+def run_ci_graphql(repo: str, number: int) -> dict:
+    owner, name = repo.split("/", 1)
+    query = "query($owner:String!, $name:String!, $number:Int!){ repository(owner:$owner,name:$name){ issueOrPullRequest(number:$number) { ... on PullRequest { commits(last: 1) { nodes { commit { statusCheckRollup { state } } } } } } } }"
+    command = ["gh", "api", "graphql", "-f", f"query={query}", "-F", f"owner={owner}", "-F", f"name={name}", "-F", f"number={number}"]
+    result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
     if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or result.stdout.strip() or f"checks exit {result.returncode}")
+        raise RuntimeError(result.stderr.strip() or result.stdout.strip() or f"CI query exit {result.returncode}")
     payload = json.loads(result.stdout)
-    latest_by_name = {}
-    for item in payload.get("check_runs", []):
-        name = item.get("name") or f"check-{item.get('id')}"
-        sort_key = (item.get("completed_at") or item.get("started_at") or "", item.get("id") or 0)
-        if name not in latest_by_name or sort_key > latest_by_name[name][0]:
-            latest_by_name[name] = (
-                sort_key,
-                {
-                    "name": name,
-                    "status": item.get("status"),
-                    "conclusion": item.get("conclusion"),
-                    "url": item.get("html_url"),
-                    "completedAt": item.get("completed_at"),
-                },
-            )
-    checks = [value[1] for value in sorted(latest_by_name.values(), key=lambda value: value[1]["name"])]
-    conclusions = [item["conclusion"] for item in checks if item.get("conclusion")]
-    if not checks:
-        state = "empty"
-    elif any(value in ("failure", "cancelled", "timed_out", "action_required") for value in conclusions):
-        state = "failure"
-    elif any(value is None for value in [item.get("conclusion") for item in checks]):
-        state = "pending"
-    else:
-        state = "success"
-    return {"status": state, "checks": checks}
+    if payload.get("errors"):
+        raise RuntimeError("; ".join(error.get("message", "GitHub GraphQL error") for error in payload["errors"]))
+    return payload.get("data", {}).get("repository", {}).get("issueOrPullRequest") or {}
+
+
+def ci_from_rollup(item: dict) -> dict:
+    """GraphQLのstatusCheckRollupを既存ci.statusへ写像する。"""
+    nodes = (((item.get("commits") or {}).get("nodes") or []))
+    state = (((nodes[0].get("commit") or {}).get("statusCheckRollup") or {}).get("state") if nodes else None)
+    mapping = {"SUCCESS": "success", "FAILURE": "failure", "ERROR": "failure", "PENDING": "pending", "EXPECTED": "pending"}
+    return {"status": mapping.get(state, "empty" if state is None else "unavailable"), "checks": [], "source": "GraphQL statusCheckRollup"}
 
 
 def write_status(status: str, *, error: str | None = None, synchronized_at: str | None = None, count: int = 0) -> None:
@@ -112,7 +96,14 @@ def main() -> None:
         return
     synchronized_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     try:
-        objects = run_gh(args.repo, numbers)
+        objects = {}
+        for offset in range(0, len(numbers), GITHUB_GRAPHQL_BATCH_SIZE):
+            # alias数とGraphQL複雑度を抑えつつ、N+1 REST呼び出しは発生させない。
+            chunk = numbers[offset:offset + GITHUB_GRAPHQL_BATCH_SIZE]
+            try:
+                objects.update(run_gh(args.repo, chunk))
+            except (OSError, RuntimeError, json.JSONDecodeError) as error:
+                raise RuntimeError(f"GitHub参照 #{chunk[0]}-#{chunk[-1]} の取得失敗: {error}") from error
         records = {}
         for number in numbers:
             item = objects.get(f"n{number}")
@@ -121,7 +112,13 @@ def main() -> None:
                 continue
             record = {"number": number, "kind": "pull_request" if item.get("__typename") == "PullRequest" else "issue", "state": str(item.get("state", "")).lower(), "title": item.get("title", ""), "url": item.get("url", ""), "updatedAt": item.get("updatedAt"), "ci": None}
             if record["kind"] == "pull_request":
-                record["ci"] = run_checks(args.repo, item.get("headRefOid", ""))
+                if record["state"] == "open":
+                    try:
+                        record["ci"] = ci_from_rollup(run_ci_graphql(args.repo, number))
+                    except (OSError, RuntimeError, json.JSONDecodeError) as error:
+                        record["ci"] = {"status": "unavailable", "reason": f"CIロールアップ取得失敗: {error}", "checks": [], "source": "GraphQL statusCheckRollup"}
+                else:
+                    record["ci"] = {"status": "unavailable", "reason": "終了済みPRのCIは同期対象外", "checks": [], "source": "GraphQL statusCheckRollup"}
             records[str(number)] = record
         payload = {"schemaVersion": 1, "repository": args.repo, "synchronizedAt": synchronized_at, "status": "synced", "error": None, "references": references, "items": records}
         SNAPSHOT.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
