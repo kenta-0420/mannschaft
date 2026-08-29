@@ -23,6 +23,8 @@ const routes = computed(() => getScopeMarketRoutes(props.scopeType, props.scopeI
 
 async function loadListings() {
   loading.value = true
+  listings.value = []
+  selectedListingId.value = null
   try {
     const result =
       props.scopeType === 'team'
@@ -51,6 +53,14 @@ function selectForMatching(listingId: number) {
 onMounted(async () => {
   await Promise.all([loadPermissions(), loadListings()])
 })
+
+watch(
+  () => props.scopeId,
+  async (scopeId, previousScopeId) => {
+    if (scopeId === previousScopeId) return
+    await Promise.all([loadPermissions(), loadListings()])
+  },
+)
 </script>
 
 <template>
