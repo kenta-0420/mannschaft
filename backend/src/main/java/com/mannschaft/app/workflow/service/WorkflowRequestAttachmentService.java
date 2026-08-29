@@ -6,6 +6,7 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
 import com.mannschaft.app.workflow.WorkflowMapper;
 import com.mannschaft.app.workflow.WorkflowScopes;
@@ -65,6 +66,7 @@ public class WorkflowRequestAttachmentService {
     private final WorkflowMapper workflowMapper;
     private final R2StorageService r2StorageService;
     private final AccessControlService accessControlService;
+    private final StorageAclService storageAclService;
 
     /**
      * 申請の添付ファイル一覧を取得する（Wave 2 トランシェ2C で Controller の直リポジトリ参照を移管）。
@@ -114,6 +116,17 @@ public class WorkflowRequestAttachmentService {
         // 4. Pre-signed URL 発行
         PresignedUploadResult result = r2StorageService.generateUploadUrl(
                 fileKey, request.contentType(), PRESIGN_TTL);
+
+        // URLで返すキーは必ず、所有者・申請のスコープ・期限を伴うACL台帳へ登録する。
+        storageAclService.registerPending(
+                fileKey,
+                currentUserId,
+                WorkflowScopes.canonical(requestEntity.getScopeType()),
+                requestEntity.getScopeId(),
+                request.contentType(),
+                PRESIGN_TTL,
+                "WORKFLOW_REQUEST",
+                requestEntity.getId());
 
         log.info("ワークフロー添付 presign-upload 発行: requestId={}, userId={}, fileKey={}",
                 requestId, currentUserId, fileKey);

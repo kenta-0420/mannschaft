@@ -3,6 +3,7 @@ package com.mannschaft.app.workflow;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignRequest;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignResponse;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentRegisterRequest;
@@ -54,6 +55,9 @@ class WorkflowRequestAttachmentServiceTest {
 
     @Mock
     private R2StorageService r2StorageService;
+
+    @Mock
+    private StorageAclService storageAclService;
 
     @InjectMocks
     private WorkflowRequestAttachmentService attachmentService;

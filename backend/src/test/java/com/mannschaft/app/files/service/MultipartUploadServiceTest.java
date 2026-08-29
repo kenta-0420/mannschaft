@@ -1,6 +1,7 @@
 package com.mannschaft.app.files.service;
 
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.R2StorageService.PresignedPartUrl;
 import com.mannschaft.app.files.dto.CompleteMultipartRequest;
 import com.mannschaft.app.files.dto.CompleteMultipartResponse;
@@ -51,6 +52,9 @@ class MultipartUploadServiceTest {
 
     @Mock
     private MultipartUploadSessionRepository sessionRepository;
+
+    @Mock
+    private StorageAclService storageAclService;
 
     @InjectMocks
     private MultipartUploadService service;

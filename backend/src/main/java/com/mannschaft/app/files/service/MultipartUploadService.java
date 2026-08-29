@@ -3,6 +3,7 @@ package com.mannschaft.app.files.service;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.R2StorageService.PresignedPartUrl;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.files.dto.CompleteMultipartRequest;
 import com.mannschaft.app.files.dto.CompleteMultipartResponse;
 import com.mannschaft.app.files.dto.PartUrlRequest;
@@ -73,6 +74,7 @@ public class MultipartUploadService {
 
     private final R2StorageService r2StorageService;
     private final MultipartUploadSessionRepository sessionRepository;
+    private final StorageAclService storageAclService;
 
     /**
      * Multipart Upload を開始する。
@@ -136,6 +138,9 @@ public class MultipartUploadService {
                 .expiresAt(LocalDateTime.now().plus(SESSION_TTL))
                 .build();
         sessionRepository.save(session);
+        storageAclService.registerPending(
+                r2Key, uploaderId, "PERSONAL", uploaderId, req.getContentType(), SESSION_TTL,
+                "MULTIPART_UPLOAD", null);
 
         log.info("Multipart Upload 開始: uploaderId={}, r2Key={}, uploadId={}", uploaderId, r2Key, r2UploadId);
         return new StartMultipartUploadResponse(r2UploadId, r2Key, req.getPartCount(), req.getPartSize());
