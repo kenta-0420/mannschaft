@@ -9,7 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** multipart abort補償の専用台帳。元sessionとは独立したTxで保存する。 */
 @Entity
@@ -35,13 +35,13 @@ public class MultipartAbortCleanupEntity extends UuidV7Entity {
     @Column(nullable = false, length = 20)
     private String status;
     @Column(name = "next_attempt_at", nullable = false)
-    private LocalDateTime nextAttemptAt;
+    private Instant nextAttemptAt;
     @Column(name = "attempt_count", nullable = false)
     private Integer attemptCount;
     @Column(name = "claimed_at")
-    private LocalDateTime claimedAt;
+    private Instant claimedAt;
     @Column(name = "lease_until")
-    private LocalDateTime leaseUntil;
+    private Instant leaseUntil;
     @Column(name = "dead_lettered_at")
-    private LocalDateTime deadLetteredAt;
+    private Instant deadLetteredAt;
 }

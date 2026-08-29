@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
+import java.time.Clock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -22,7 +23,7 @@ class StorageAclServiceTest {
 
     @Test
     void presignキーをPENDING_CONTENT_BOUNDとして登録する() {
-        StorageAclService service = new StorageAclService(repository);
+        StorageAclService service = new StorageAclService(repository, Clock.systemUTC());
         given(repository.findByFileKey("workflow/key")).willReturn(java.util.Optional.empty());
         given(repository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
@@ -41,7 +42,7 @@ class StorageAclServiceTest {
 
     @Test
     void 重複キーは登録しない() {
-        StorageAclService service = new StorageAclService(repository);
+        StorageAclService service = new StorageAclService(repository, Clock.systemUTC());
         given(repository.findByFileKey("duplicate")).willReturn(java.util.Optional.of(
                 StorageAclEntity.builder().fileKey("duplicate").build()));
 
@@ -51,7 +52,7 @@ class StorageAclServiceTest {
 
     @Test
     void 期限が正でない場合は拒否する() {
-        StorageAclService service = new StorageAclService(repository);
+        StorageAclService service = new StorageAclService(repository, Clock.systemUTC());
 
         assertThatThrownBy(() -> service.registerPending("key", 7L, "TEAM", 3L, "image/png",
                 Duration.ZERO, null, null)).isInstanceOf(IllegalArgumentException.class);

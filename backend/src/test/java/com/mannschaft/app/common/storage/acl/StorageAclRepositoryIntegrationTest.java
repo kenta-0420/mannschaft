@@ -6,7 +6,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -29,7 +29,7 @@ class StorageAclRepositoryIntegrationTest extends AbstractMySqlIntegrationTest {
                 .referenceType("WORKFLOW_REQUEST")
                 .referenceId(9003L)
                 .status(StorageAclStatus.PENDING)
-                .expiresAt(LocalDateTime.now().plus(Duration.ofMinutes(15)))
+                .expiresAt(Instant.now().plus(Duration.ofMinutes(15)))
                 .build());
 
         assertThat(repository.findByFileKey(saved.getFileKey())).get()
