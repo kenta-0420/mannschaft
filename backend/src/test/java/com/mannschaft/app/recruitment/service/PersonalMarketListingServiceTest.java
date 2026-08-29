@@ -17,7 +17,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("PersonalMarketListingService contract")
+@DisplayName("個人市Serviceの本人固定契約")
 class PersonalMarketListingServiceTest {
 
     @Mock
@@ -33,7 +33,7 @@ class PersonalMarketListingServiceTest {
     private PersonalMarketListingService service;
 
     @Test
-    @DisplayName("create fixes scope and owner to the current user")
+    @DisplayName("作成時のスコープと札主を認証済み本人へ固定する")
     void create_bindsCurrentUserAsScopeAndOwner() {
         Long currentUserId = 123L;
 

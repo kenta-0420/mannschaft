@@ -22,7 +22,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("PersonalMarketListingController contract")
+@DisplayName("個人市Controllerの本人固定契約")
 class PersonalMarketListingControllerTest {
 
     private static final Long USER_ID = 701L;
@@ -47,7 +47,7 @@ class PersonalMarketListingControllerTest {
     }
 
     @Test
-    @DisplayName("PersonalMarketListingController#create binds the current user")
+    @DisplayName("作成は認証済み本人へ固定する")
     void create_boundToCurrentUserOnly() {
         controller.create(Mockito.mock(CreateRecruitmentListingRequest.class));
 
@@ -56,7 +56,7 @@ class PersonalMarketListingControllerTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    @DisplayName("PersonalMarketListingController#list binds the current user")
+    @DisplayName("履歴一覧は認証済み本人へ固定する")
     void list_boundToCurrentUserOnly() {
         Page<RecruitmentListingSummaryResponse> page = Mockito.mock(Page.class);
         given(page.getTotalElements()).willReturn(0L);

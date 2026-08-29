@@ -245,7 +245,7 @@ class RecruitmentListingServiceTest {
         @Test
         @DisplayName("PERSONAL作成はscopeId・createdBy・DRAFTを認証済み本人に固定する")
         void create_personalFixesOwnerAndDraft() {
-            stubCreateHappyPath();
+            stubCreateHappyPath(false);
 
             service.create(RecruitmentScopeType.PERSONAL, USER_ID, USER_ID,
                     personalRequest(false, RecruitmentVisibility.SCOPE_ONLY, null, null));
@@ -477,8 +477,14 @@ class RecruitmentListingServiceTest {
      * 地域なし（TEAM 既定補完も空）・friendTargets なしの最小経路。
      */
     private void stubCreateHappyPath() {
+        stubCreateHappyPath(true);
+    }
+
+    private void stubCreateHappyPath(boolean stubTeamRegion) {
         given(categoryRepository.existsById(CATEGORY_ID)).willReturn(true);
-        given(teamService.findRegionCodes(TEAM_ID)).willReturn(Optional.empty());
+        if (stubTeamRegion) {
+            given(teamService.findRegionCodes(TEAM_ID)).willReturn(Optional.empty());
+        }
         given(marketRegionValidator.validateAndNormalize(isNull(), isNull()))
                 .willReturn(new MarketRegionValidator.ResolvedRegion(null, null));
         given(listingRepository.save(any(RecruitmentListingEntity.class)))

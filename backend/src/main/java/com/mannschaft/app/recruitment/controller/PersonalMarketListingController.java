@@ -29,9 +29,9 @@ public class PersonalMarketListingController {
 
     private final PersonalMarketListingService personalMarketListingService;
 
-    @SelfScopedEndpoint("Current user id is fixed as scopeId and createdBy")
+    @SelfScopedEndpoint("認証済みユーザーIDをscopeIdとcreatedByへ固定する")
     @PostMapping
-    @Operation(summary = "Create a personal market draft listing")
+    @Operation(summary = "個人市の札を下書きで作成")
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> create(
             @Valid @RequestBody CreateRecruitmentListingRequest request) {
         RecruitmentListingResponse response =
@@ -39,9 +39,9 @@ public class PersonalMarketListingController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
-    @SelfScopedEndpoint("Current user id is fixed as the history query scope")
+    @SelfScopedEndpoint("認証済みユーザーIDを履歴の検索スコープへ固定する")
     @GetMapping
-    @Operation(summary = "List personal market listing history")
+    @Operation(summary = "個人市で立てた札の履歴を取得")
     public ResponseEntity<PagedResponse<RecruitmentListingSummaryResponse>> list(
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
