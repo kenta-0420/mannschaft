@@ -9,6 +9,19 @@
     "page": {
       "newListing": "Post a listing"
     },
+    "management": {
+      "title": "Manage market",
+      "description": "Manage listings and applications for this group.",
+      "postDescription": "Post a new listing as this team or organization.",
+      "history": "Listing history",
+      "historyDescription": "View listings posted by this group.",
+      "matching": "Matching status",
+      "matchingDescription": "Review applicants and manage confirmations for each listing.",
+      "openMatching": "Manage applicants",
+      "manageParticipants": "Manage applicants",
+      "noListings": "This group has not posted any listings yet.",
+      "permissionRequired": "Administrator permission is required to post listings or manage applicants."
+    },
     "action": {
       "post": "Post listing",
       "apply": "Apply",

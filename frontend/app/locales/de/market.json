@@ -9,6 +9,19 @@
     "page": {
       "newListing": "Aushang erstellen"
     },
+    "management": {
+      "title": "Markt verwalten",
+      "description": "Verwalten Sie die Aushänge und Bewerbungen dieser Gruppe.",
+      "postDescription": "Erstellen Sie einen neuen Aushang im Namen dieses Teams oder dieser Organisation.",
+      "history": "Aushangverlauf",
+      "historyDescription": "Zeigen Sie die von dieser Gruppe erstellten Aushänge an.",
+      "matching": "Matching-Status",
+      "matchingDescription": "Prüfen Sie Bewerbungen und verwalten Sie Bestätigungen je Aushang.",
+      "openMatching": "Bewerbungen verwalten",
+      "manageParticipants": "Bewerbungen verwalten",
+      "noListings": "Diese Gruppe hat noch keine Aushänge erstellt.",
+      "permissionRequired": "Zum Erstellen von Aushängen und Verwalten von Bewerbungen sind Administratorrechte erforderlich."
+    },
     "action": {
       "post": "Aushang erstellen",
       "apply": "Bewerben",
