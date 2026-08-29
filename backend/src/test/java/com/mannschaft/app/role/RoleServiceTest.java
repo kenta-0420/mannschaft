@@ -101,6 +101,16 @@ class RoleServiceTest {
     @DisplayName("assignRole")
     class AssignRole {
 
+        @BeforeEach
+        void stubActorAdmin() {
+            lenient().when(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .thenReturn(Optional.of(operatorAdminRole()));
+            lenient().when(userRoleRepository.findByUserIdAndTeamId(USER_ID, SCOPE_ID))
+                    .thenReturn(Optional.of(operatorAdminRole()));
+            lenient().when(roleRepository.findById(ADMIN_ROLE_ID))
+                    .thenReturn(Optional.of(createAdminRole()));
+        }
+
         @Test
         @DisplayName("正常割当_ロールが保存される")
         void 正常割当_ロールが保存される() {

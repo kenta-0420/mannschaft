@@ -7,6 +7,7 @@ import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.RolePermissionEntity;
 import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.RolePermissionRepository;
@@ -66,6 +67,9 @@ public class RoleService {
     private final UserPermissionGroupRepository userPermissionGroupRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final MembershipService membershipService;
+    private final RolePermissionCleanupService rolePermissionCleanupService;
+
+    private final UserRowLockService userRowLockService;
 
     /**
      * 自己プロキシ参照（issue #2544）。{@code @Cacheable} は Spring AOP プロキシ経由でのみ作用するため、
@@ -96,7 +100,9 @@ public class RoleService {
      * @throws BusinessException 操作者が ADMIN/DEPUTY_ADMIN でない場合（COMMON_002）
      */
     private void requireActorAdmin(Long scopeId, String scopeType, Long actorUserId) {
-        boolean isAdmin = findUserRole(actorUserId, scopeId, scopeType)
+        boolean isAdmin = userRoleRepository.isActiveUser(actorUserId)
+                && membershipService.isActiveMember(actorUserId, ScopeType.valueOf(scopeType), scopeId)
+                && findUserRole(actorUserId, scopeId, scopeType)
                 .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
                 .map(RoleEntity::getName)
                 .filter(ADMIN_ROLE_NAMES::contains)
@@ -112,8 +118,9 @@ public class RoleService {
     @Transactional
     @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void assignRole(Long scopeId, String scopeType, Long targetUserId, Long roleId, Long grantedBy) {
+        lockUsers(grantedBy, targetUserId);
         // ロール存在確認
-        roleRepository.findById(roleId)
+        RoleEntity assignedRole = roleRepository.findById(roleId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
         // CMP-052 権限付与経路の防御対称化: 付与先のアカウントが生存している（未削除かつ ACTIVE）ことを確認する。
@@ -124,6 +131,8 @@ public class RoleService {
         if (!userRoleRepository.isActiveUser(targetUserId)) {
             throw new BusinessException(RoleErrorCode.ROLE_001);
         }
+        // P2: ロール付与も変更・削除と同じく、当該scopeの管理者だけに限定する。
+        requireActorAdmin(scopeId, scopeType, grantedBy);
 
         // 既存ロール存在チェック → 上書き
         // 上書き時は changeRole と同様に flush して DELETE を先に確定させる
@@ -153,7 +162,14 @@ public class RoleService {
         // user_roles だけでは割当対象者が当該スコープから 403 で締め出される構造的欠陥を防ぐ。
         // join 自身が MembershipChangedEvent(ASSIGNED) を発火するため、
         // 従来この直後に手動発火していた同イベントは二重発火回避のため削除し join に一本化した。
+        boolean alreadyMember = membershipService.isActiveMember(
+                targetUserId, ScopeType.valueOf(scopeType), scopeId);
         joinMembershipForRoleGrant(targetUserId, scopeId, scopeType, grantedBy, "ROLE_ASSIGN");
+        if (alreadyMember) {
+            eventPublisher.publishEvent(new MembershipChangedEvent(
+                    targetUserId, scopeType, scopeId, MembershipChangedEvent.ChangeType.CHANGED));
+        }
+        rolePermissionCleanupService.removeMismatched(targetUserId, scopeId, scopeType, assignedRole.getName());
     }
 
     /**
@@ -201,6 +217,8 @@ public class RoleService {
     @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void changeRole(Long scopeId, String scopeType, Long targetUserId,
                            RoleChangeRequest req, Long changedBy) {
+        lockUsers(changedBy, targetUserId);
+        lockAdminRows(scopeId, scopeType);
         // 束1 権限昇格根治（Service 層二重防御）: 操作者が当該スコープの ADMIN/DEPUTY_ADMIN であることを要求。
         requireActorAdmin(scopeId, scopeType, changedBy);
 
@@ -217,7 +235,7 @@ public class RoleService {
         }
 
         // 新ロール存在確認
-        roleRepository.findById(req.getRoleId())
+        RoleEntity requestedRole = roleRepository.findById(req.getRoleId())
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
         // CMP-052 権限付与経路の防御対称化: 変更対象のアカウントが生存している（未削除かつ ACTIVE）ことを確認する。
@@ -244,6 +262,7 @@ public class RoleService {
             builder.organizationId(scopeId);
         }
         userRoleRepository.save(builder.build());
+        rolePermissionCleanupService.removeMismatched(targetUserId, scopeId, scopeType, requestedRole.getName());
 
         log.info("ロール変更完了: scopeType={}, scopeId={}, userId={}, newRoleId={}, changedBy={}",
                 scopeType, scopeId, targetUserId, req.getRoleId(), changedBy);
@@ -274,6 +293,8 @@ public class RoleService {
     @Transactional
     @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void removeMember(Long scopeId, String scopeType, Long targetUserId, Long operatorUserId) {
+        lockUsers(operatorUserId, targetUserId);
+        lockAdminRows(scopeId, scopeType);
         // 束1 権限昇格根治（Service 層二重防御）: 操作者が当該スコープの ADMIN/DEPUTY_ADMIN であることを要求。
         requireActorAdmin(scopeId, scopeType, operatorUserId);
 
@@ -285,6 +306,7 @@ public class RoleService {
 
         userRoleRepository.delete(current);
         userRoleRepository.flush();
+        rolePermissionCleanupService.removeMismatched(targetUserId, scopeId, scopeType, null);
         log.info("メンバー除名完了: scopeType={}, scopeId={}, userId={}", scopeType, scopeId, targetUserId);
 
         // F00.5 認可基盤: memberships の在籍も同時に終了させる（在籍が認可の真実の源）。
@@ -316,6 +338,7 @@ public class RoleService {
     @Transactional
     @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void removeMemberWithoutAdminCheck(Long scopeId, String scopeType, Long targetUserId) {
+        lockUsers(targetUserId);
         UserRoleEntity current = findUserRole(targetUserId, scopeId, scopeType)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
@@ -323,6 +346,7 @@ public class RoleService {
 
         userRoleRepository.delete(current);
         userRoleRepository.flush();
+        rolePermissionCleanupService.removeMismatched(targetUserId, scopeId, scopeType, null);
         log.warn("メンバー除名完了（ADMIN保護バイパス）: scopeType={}, scopeId={}, userId={}",
                 scopeType, scopeId, targetUserId);
 
@@ -338,6 +362,8 @@ public class RoleService {
     @Transactional
     @CacheEvict(value = "role-permissions", key = "#userId + ':' + #scopeType + ':' + #scopeId")
     public void leaveScope(Long userId, Long scopeId, String scopeType) {
+        lockUsers(userId);
+        lockAdminRows(scopeId, scopeType);
         UserRoleEntity current = findUserRole(userId, scopeId, scopeType)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
@@ -346,6 +372,7 @@ public class RoleService {
 
         userRoleRepository.delete(current);
         userRoleRepository.flush();
+        rolePermissionCleanupService.removeMismatched(userId, scopeId, scopeType, null);
         log.info("スコープ退会完了: scopeType={}, scopeId={}, userId={}", scopeType, scopeId, userId);
 
         // F00.5 認可基盤: memberships の在籍も同時に終了させる（在籍が認可の真実の源）。
@@ -416,11 +443,26 @@ public class RoleService {
      */
     @Cacheable(value = "role-permissions", key = "#userId + ':' + #scopeType + ':' + #scopeId")
     public List<String> resolveEffectivePermissions(Long userId, Long scopeId, String scopeType) {
+        // 認可のfail-closed境界: active userかつscope直所属でなければ、role/groupとも権限なし。
+        if (!userRoleRepository.isActiveUser(userId)
+                || !membershipService.isActiveMember(userId, ScopeType.valueOf(scopeType), scopeId)) {
+            return new ArrayList<>();
+        }
+        String userRoleName = findUserRole(userId, scopeId, scopeType)
+                .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
+                .map(RoleEntity::getName)
+                .orElse(null);
+        String membershipRoleName = membershipService
+                .findActiveRoleKind(userId, ScopeType.valueOf(scopeType), scopeId)
+                .map(RoleKind::name).orElse(null);
+        String effectiveRoleName = strongerRole(userRoleName, membershipRoleName);
         // 1. ロール由来の権限（N+1根治: permissionId をバッチ取得）
-        List<String> rolePermissions = findUserRole(userId, scopeId, scopeType)
-                .map(ur -> {
-                    List<Long> permissionIds = rolePermissionRepository.findByRoleId(ur.getRoleId())
-                            .stream().map(RolePermissionEntity::getPermissionId)
+        List<String> rolePermissions = effectiveRoleName == null ? new ArrayList<>()
+                : roleRepository.findByName(effectiveRoleName)
+                .map(role -> {
+                    List<Long> permissionIds = rolePermissionRepository.findByRoleId(role.getId())
+                            .stream().filter(rp -> Boolean.TRUE.equals(rp.getIsDefault()))
+                            .map(RolePermissionEntity::getPermissionId)
                             .collect(Collectors.toCollection(ArrayList::new));
                     return permissionIds.isEmpty() ? new ArrayList<PermissionEntity>()
                             : new ArrayList<>(permissionRepository.findByIdIn(permissionIds));
@@ -436,6 +478,7 @@ public class RoleService {
                 .collect(Collectors.toCollection(ArrayList::new));
 
         List<String> groupPermissions = new ArrayList<>();
+        boolean hasMatchingGroupAssignment = false;
         if (!groupIds.isEmpty()) {
             List<UserPermissionGroupEntity> userGroups = userPermissionGroupRepository
                     .findByUserId(userId)
@@ -443,6 +486,14 @@ public class RoleService {
                     .filter(ug -> groupIds.contains(ug.getGroupId()))
                     .collect(Collectors.toCollection(ArrayList::new));
             for (UserPermissionGroupEntity ug : userGroups) {
+                PermissionGroupEntity group = groups.stream()
+                        .filter(candidate -> candidate.getId().equals(ug.getGroupId()))
+                        .findFirst().orElse(null);
+                if (group == null || group.getTargetRole() == null
+                        || !group.getTargetRole().name().equals(effectiveRoleName)) {
+                    continue;
+                }
+                hasMatchingGroupAssignment = true;
                 List<Long> pgpPermIds = permissionGroupPermissionRepository.findByGroupId(ug.getGroupId())
                         .stream().map(PermissionGroupPermissionEntity::getPermissionId)
                         .collect(Collectors.toCollection(ArrayList::new));
@@ -459,9 +510,21 @@ public class RoleService {
                 // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
                 // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
                 // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
-        return Stream.concat(rolePermissions.stream(), groupPermissions.stream())
-                .distinct()
-                .collect(Collectors.toCollection(ArrayList::new));
+        // F01.2: ADMINはrole default、DEPUTYはgroupのみ、MEMBERはmatching group優先。
+        if ("DEPUTY_ADMIN".equals(effectiveRoleName)) {
+            return groupPermissions.stream().distinct().collect(Collectors.toCollection(ArrayList::new));
+        }
+        if ("ADMIN".equals(effectiveRoleName)) {
+            return rolePermissions.stream().distinct().collect(Collectors.toCollection(ArrayList::new));
+        }
+        if ("MEMBER".equals(effectiveRoleName) && hasMatchingGroupAssignment) {
+            return groupPermissions.stream().distinct().collect(Collectors.toCollection(ArrayList::new));
+        }
+        if (!"ADMIN".equals(effectiveRoleName) && !"MEMBER".equals(effectiveRoleName)) {
+            return new ArrayList<>();
+        }
+
+        return rolePermissions.stream().distinct().collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -495,6 +558,7 @@ public class RoleService {
     @Transactional
     @CacheEvict(value = "role-permissions", allEntries = true)
     public void transferOwnership(Long scopeId, String scopeType, Long currentUserId, Long targetUserId) {
+        lockUsers(currentUserId, targetUserId);
         if (currentUserId.equals(targetUserId)) {
             throw new BusinessException(RoleErrorCode.ROLE_001);
         }
@@ -565,6 +629,8 @@ public class RoleService {
             demotedBuilder.organizationId(scopeId);
         }
         userRoleRepository.save(demotedBuilder.build());
+        rolePermissionCleanupService.removeMismatched(currentUserId, scopeId, scopeType, "MEMBER");
+        rolePermissionCleanupService.removeMismatched(targetUserId, scopeId, scopeType, null);
 
         log.info("オーナー譲渡完了: scopeType={}, scopeId={}, from={}, to={}",
                 scopeType, scopeId, currentUserId, targetUserId);
@@ -596,6 +662,28 @@ public class RoleService {
             return userRoleRepository.findByUserIdAndTeamId(userId, scopeId);
         }
         return userRoleRepository.findByUserIdAndOrganizationId(userId, scopeId);
+    }
+
+    private String strongerRole(String first, String second) {
+        if (first == null) return second;
+        if (second == null) return first;
+        return rolePriority(first) >= rolePriority(second) ? first : second;
+    }
+
+    private int rolePriority(String role) {
+        return switch (role) {
+            case "SYSTEM_ADMIN" -> 100;
+            case "ADMIN" -> 90;
+            case "DEPUTY_ADMIN" -> 80;
+            case "MEMBER" -> 50;
+            case "GUEST" -> 10;
+            default -> 0;
+        };
+    }
+
+    /** F01.2: role変更・離脱後に不適格なpermission group割当を同一Txで除去する。 */
+    private void lockUsers(Long... userIds) {
+        userRowLockService.lockAll(userIds);
     }
 
     /**
@@ -679,6 +767,17 @@ public class RoleService {
                 throw new BusinessException(RoleErrorCode.ROLE_004);
             }
         }
+    }
+
+    /** ADMIN行をID順でロックし、同一scopeのlast-admin判定を同時mutationから保護する。 */
+    private void lockAdminRows(Long scopeId, String scopeType) {
+        roleRepository.findByName("ADMIN").ifPresent(admin -> {
+            if ("TEAM".equals(scopeType)) {
+                userRoleRepository.lockAdminsByTeamId(scopeId, admin.getId());
+            } else if ("ORGANIZATION".equals(scopeType)) {
+                userRoleRepository.lockAdminsByOrganizationId(scopeId, admin.getId());
+            }
+        });
     }
 
     /**

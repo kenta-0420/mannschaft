@@ -1,6 +1,7 @@
 package com.mannschaft.app.membership.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
@@ -22,6 +23,7 @@ import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.RolePermissionCleanupService;
 import com.mannschaft.app.team.event.TeamMemberAuditEvent;
 import com.mannschaft.app.organization.event.OrganizationMemberAuditEvent;
 import lombok.RequiredArgsConstructor;
@@ -59,6 +61,9 @@ public class MembershipService {
     private final RoleRepository roleRepository;
     private final ApplicationEventPublisher eventPublisher;
 
+    private final UserRowLockService userRowLockService;
+    private final RolePermissionCleanupService rolePermissionCleanupService;
+
     /**
      * 入会処理。
      *
@@ -72,6 +77,7 @@ public class MembershipService {
      */
     @Transactional
     public MembershipDto join(MembershipCreateRequest req) {
+        lockUser(req.getUserId());
         validateScope(req.getScopeType(), req.getScopeId());
 
         // 冪等性チェック（§13.7）
@@ -149,11 +155,17 @@ public class MembershipService {
         MembershipEntity entity = membershipRepository.findById(membershipId)
                 .orElseThrow(() -> new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_NOT_FOUND));
 
+        // user行lock後に同じmembershipを再読込し、leave判定・更新を同一snapshotで行う。
+        lockUser(entity.getUserId());
+        entity = membershipRepository.findById(membershipId)
+                .orElseThrow(() -> new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_NOT_FOUND));
+
         if (!entity.isActive()) {
             throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_ALREADY_LEFT);
         }
 
         // 最後の ADMIN 保護（user_roles 側で判定）— RoleService の checkLastAdmin 相当を委譲
+        lockAdminRows(entity.getScopeType(), entity.getScopeId());
         checkLastAdminProtectedByUserRoles(entity);
 
         // memberships を退会状態に更新
@@ -161,6 +173,8 @@ public class MembershipService {
         entity.setLeftAt(now);
         entity.setLeaveReason(req.getLeaveReason());
         membershipRepository.save(entity);
+        rolePermissionCleanupService.removeMismatched(
+                entity.getUserId(), entity.getScopeId(), entity.getScopeType().name(), null);
 
         // 紐付く現役役職を自動離任
         List<MemberPositionEntity> activePositions =
@@ -228,6 +242,7 @@ public class MembershipService {
     @Transactional
     public boolean leaveByUserAndScope(Long userId, ScopeType scopeType, Long scopeId,
                                        LeaveReason leaveReason, Long removedBy) {
+        lockUser(userId);
         Optional<MembershipEntity> active =
                 membershipRepository.findActiveByUserAndScope(userId, scopeType, scopeId);
         if (active.isEmpty()) {
@@ -238,6 +253,10 @@ public class MembershipService {
         req.setRemovedBy(removedBy);
         leave(active.get().getId(), req);
         return true;
+    }
+
+    private void lockUser(Long userId) {
+        userRowLockService.lock(userId);
     }
 
     /**
@@ -363,6 +382,17 @@ public class MembershipService {
         }
     }
 
+    /** 同一scopeのADMIN行を先にID順でロックし、last-admin判定と退会更新を直列化する。 */
+    private void lockAdminRows(ScopeType scopeType, Long scopeId) {
+        roleRepository.findByName("ADMIN").ifPresent(admin -> {
+            if (scopeType == ScopeType.TEAM) {
+                userRoleRepository.lockAdminsByTeamId(scopeId, admin.getId());
+            } else if (scopeType == ScopeType.ORGANIZATION) {
+                userRoleRepository.lockAdminsByOrganizationId(scopeId, admin.getId());
+            }
+        });
+    }
+
     /**
      * 指定ユーザーがアクティブ（退会していない）に所属するチームの ID 一覧を返す。
      *
@@ -437,6 +467,12 @@ public class MembershipService {
      */
     public boolean isActiveMember(Long userId, ScopeType scopeType, Long scopeId) {
         return membershipRepository.existsActiveByUserAndScope(userId, scopeType, scopeId);
+    }
+
+    /** authz統合用にactive direct membershipのrole_kindだけを返す。 */
+    public Optional<RoleKind> findActiveRoleKind(Long userId, ScopeType scopeType, Long scopeId) {
+        return membershipRepository.findActiveByUserAndScope(userId, scopeType, scopeId)
+                .map(MembershipEntity::getRoleKind);
     }
 
     /**
