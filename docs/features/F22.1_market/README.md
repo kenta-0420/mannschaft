@@ -179,7 +179,7 @@
 | チーム | `/teams/[slug]/market` | 当該チームが札主の札のみ |
 | 組織 | `/organizations/[slug]/market` | 当該組織が札主の札のみ |
 
-札の属性は混同しない。既存 `scope_type=PERSONAL/TEAM/ORGANIZATION`（札主区分）、`participation_type=INDIVIDUAL/TEAM`（応募形式）、`payee_kind=USER/TEAM/ORG`（謝礼受領者）は独立した軸である。
+札の属性は混同しない。`scope_type=PERSONAL/TEAM/ORGANIZATION`（札主区分。`PERSONAL` は本追加仕様の Phase 2 で追加）、既存 `participation_type=INDIVIDUAL/TEAM`（応募形式）、既存 `payee_kind=USER/TEAM/ORG`（謝礼受領者）は独立した軸である。
 
 ### 10.2 個人札の公開・初期制約
 
@@ -189,6 +189,8 @@
 - 個人札は Phase 2〜4 では `payment_enabled=true` をサーバー側で拒否する。Stripe Connect は Phase 5 の別実装であり、自己応募・自己支払いも同時に禁止する。
 
 ### 10.3 フェーズ
+
+以下は**主体別管理市の追加仕様に限った導入フェーズ**であり、§4 の既存 F22.1 ロードマップや payment サブ設計の同名 Phase を改番しない。実装・PR・進捗表では「主体別管理市 Phase N」と表記して区別する。
 
 | Phase | 範囲 | 完了条件 |
 |---|---|---|
