@@ -3,11 +3,13 @@ package com.mannschaft.app.recruitment.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentMapper;
 import com.mannschaft.app.recruitment.RecruitmentParticipationType;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
+import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
@@ -183,6 +185,96 @@ class RecruitmentListingServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("PERSONAL札主のサーバー側境界")
+    class PersonalScopeValidation {
+
+        @Test
+        @DisplayName("本人以外のscopeIdでは作成できない")
+        void create_personalWithAnotherScopeId_throws() {
+            assertThatThrownBy(() -> service.create(
+                    RecruitmentScopeType.PERSONAL, TEAM_ID, USER_ID,
+                    personalRequest(false, RecruitmentVisibility.SCOPE_ONLY, null, null)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            verifyNoInteractions(accessControlService);
+        }
+
+        @Test
+        @DisplayName("paymentEnabledまたはpayeeをPERSONALに指定するとMARKET_006")
+        void create_personalWithPaymentOrPayee_throwsMarket006() {
+            assertThatThrownBy(() -> service.create(
+                    RecruitmentScopeType.PERSONAL, USER_ID, USER_ID,
+                    personalRequest(false, RecruitmentVisibility.SCOPE_ONLY, "USER", PAYEE_USER_ID)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.PERSONAL_PAYMENT_DISABLED);
+            verifyNoInteractions(accessControlService);
+        }
+
+        @Test
+        @DisplayName("FRIEND_TEAMS_ONLYをPERSONALに指定するとMARKET_008")
+        void create_personalWithFriendOnly_throwsMarket008() {
+            assertThatThrownBy(() -> service.create(
+                    RecruitmentScopeType.PERSONAL, USER_ID, USER_ID,
+                    personalRequest(false, RecruitmentVisibility.FRIEND_TEAMS_ONLY, null, null)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+        }
+
+        @Test
+        @DisplayName("PERSONAL札をPUBLICへ更新するとMARKET_008")
+        void update_personalToPublic_throwsMarket008() {
+            RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
+                    .scopeType(RecruitmentScopeType.PERSONAL)
+                    .scopeId(USER_ID)
+                    .createdBy(USER_ID)
+                    .paymentEnabled(false)
+                    .build();
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.update(
+                    LISTING_ID, USER_ID, personalUpdateWithVisibility(RecruitmentVisibility.PUBLIC)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+        }
+
+        @Test
+        @DisplayName("PERSONAL作成はscopeId・createdBy・DRAFTを認証済み本人に固定する")
+        void create_personalFixesOwnerAndDraft() {
+            stubCreateHappyPath();
+
+            service.create(RecruitmentScopeType.PERSONAL, USER_ID, USER_ID,
+                    personalRequest(false, RecruitmentVisibility.SCOPE_ONLY, null, null));
+
+            RecruitmentListingEntity saved = captureSaved();
+            assertThat(saved.getScopeType()).isEqualTo(RecruitmentScopeType.PERSONAL);
+            assertThat(saved.getScopeId()).isEqualTo(USER_ID);
+            assertThat(saved.getCreatedBy()).isEqualTo(USER_ID);
+            assertThat(saved.getStatus()).isEqualTo(RecruitmentListingStatus.DRAFT);
+            verifyNoInteractions(accessControlService);
+        }
+
+        @Test
+        @DisplayName("PERSONAL札は公開できず通知・配信処理へ進まない")
+        void publish_personal_throwsMarket008BeforeDistribution() {
+            RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
+                    .scopeType(RecruitmentScopeType.PERSONAL)
+                    .scopeId(USER_ID)
+                    .createdBy(USER_ID)
+                    .build();
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.publish(LISTING_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+        }
+    }
+
     // ========================================
     // create - F22.1 市 謝礼決済: 受領主体（payee）検証（02_api_design §3）
     // ========================================
@@ -317,6 +409,33 @@ class RecruitmentListingServiceTest {
     // ========================================
     // ヘルパー
     // ========================================
+
+    private CreateRecruitmentListingRequest personalRequest(
+            boolean paymentEnabled, RecruitmentVisibility visibility, String payeeKind, Long payeeUserId) {
+        return new CreateRecruitmentListingRequest(
+                CATEGORY_ID, null, "personal title", "desc",
+                RecruitmentParticipationType.INDIVIDUAL,
+                BASE_TIME.plusDays(2),
+                BASE_TIME.plusDays(2).plusHours(2),
+                BASE_TIME.plusDays(1),
+                BASE_TIME.plusDays(1),
+                10, 1,
+                paymentEnabled, paymentEnabled ? 5000 : null,
+                visibility,
+                null, null, null, null,
+                null, null, null, null, null,
+                payeeKind, payeeUserId);
+    }
+
+    private UpdateRecruitmentListingRequest personalUpdateWithVisibility(RecruitmentVisibility visibility) {
+        return new UpdateRecruitmentListingRequest(
+                null, null, null, null, null, null, null,
+                null, null, null, null,
+                visibility,
+                null, null, null, null,
+                null, null, null,
+                null, null);
+    }
 
     private CreateRecruitmentListingRequest validRequest() {
         return new CreateRecruitmentListingRequest(

@@ -2,6 +2,7 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
@@ -159,6 +160,21 @@ class RecruitmentParticipantServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.DRAFT_NOT_APPLICABLE);
+        }
+
+        @Test
+        @DisplayName("PERSONAL札主本人の申込は状態や決済より先に拒否する")
+        void apply_personalOwner_throwsMarket007First() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            setField(listing, "scopeId", USER_ID);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.apply(LISTING_ID, USER_ID,
+                    new ApplyToRecruitmentRequest(RecruitmentParticipantType.USER, null, null)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.SELF_APPLICATION_FORBIDDEN);
         }
 
         @Test

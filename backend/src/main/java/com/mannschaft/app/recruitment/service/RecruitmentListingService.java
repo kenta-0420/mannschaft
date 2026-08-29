@@ -140,6 +140,12 @@ public class RecruitmentListingService {
         // ローカル要件として本ガードで先に通過判定する。
         if (entity.getStatus() == RecruitmentListingStatus.DRAFT) {
             boolean isCreator = entity.getCreatedBy().equals(userId);
+            if (entity.getScopeType() == RecruitmentScopeType.PERSONAL) {
+                if (!isCreator || !entity.getScopeId().equals(userId)) {
+                    throw new BusinessException(RecruitmentErrorCode.DRAFT_VIEW_DENIED);
+                }
+                return mapper.toListingResponse(entity);
+            }
             boolean isAdmin = accessControlService.isAdminOrAbove(
                     userId, entity.getScopeId(), entity.getScopeType().name());
             if (!isCreator && !isAdmin) {
@@ -170,7 +176,8 @@ public class RecruitmentListingService {
     public RecruitmentListingResponse create(
             RecruitmentScopeType scopeType, Long scopeId, Long userId,
             CreateRecruitmentListingRequest request) {
-        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
+        validatePersonalCreate(scopeType, request);
+        checkListingManagementAccess(scopeType, scopeId, userId, null);
 
         // §5.1 必須カテゴリ + 存在チェック
         if (request.getCategoryId() == null) {
@@ -239,6 +246,8 @@ public class RecruitmentListingService {
                 .payeeKind(effectivePayeeKind)
                 .payeeUserId(effectivePayeeUserId)
                 .visibility(request.getVisibility())
+                // PERSONAL は将来の呼出側変更でも Phase 2 の DRAFT 不変条件を失わない。
+                .status(RecruitmentListingStatus.DRAFT)
                 .location(request.getLocation())
                 .prefectureCode(representative.prefectureCode())
                 .cityCode(representative.cityCode())
@@ -355,7 +364,8 @@ public class RecruitmentListingService {
         // §5.7 編集時の制約 — PESSIMISTIC_WRITE で行ロック取得
         RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), entity.getScopeType().name());
+        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
+        validatePersonalUpdate(entity, request);
 
         // Service 層でも事前検証 (Entity 内に防御的二重検証あり)
         if (entity.getStatus() == RecruitmentListingStatus.COMPLETED) {
@@ -427,7 +437,10 @@ public class RecruitmentListingService {
     public RecruitmentListingResponse publish(Long listingId, Long userId) {
         RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), entity.getScopeType().name());
+        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
+        if (entity.getScopeType() == RecruitmentScopeType.PERSONAL) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+        }
 
         // F22.1 市: FRIEND_TEAMS_ONLY は distribution_targets を使わず、フレンド宛先で配信する（§3 / §7）。
         boolean isFriendOnly = entity.getVisibility() == RecruitmentVisibility.FRIEND_TEAMS_ONLY;
@@ -610,7 +623,7 @@ public class RecruitmentListingService {
     public RecruitmentListingResponse cancelByAdmin(Long listingId, Long userId, CancelRecruitmentListingRequest request) {
         RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), entity.getScopeType().name());
+        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
 
         try {
             entity.cancelByAdmin(userId, request != null ? request.getReason() : null);
@@ -642,7 +655,7 @@ public class RecruitmentListingService {
     public void archive(Long listingId, Long userId) {
         RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), entity.getScopeType().name());
+        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
 
         entity.softDelete();
         listingRepository.save(entity);
@@ -672,7 +685,10 @@ public class RecruitmentListingService {
             Long listingId, Long userId,
             List<RecruitmentDistributionTargetType> targetTypes) {
         RecruitmentListingEntity entity = findOrThrow(listingId);
-        accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), entity.getScopeType().name());
+        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
+        if (entity.getScopeType() == RecruitmentScopeType.PERSONAL) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+        }
 
         // 全削除→再INSERT
         distributionTargetRepository.deleteByListingId(listingId);
@@ -698,7 +714,7 @@ public class RecruitmentListingService {
     public List<com.mannschaft.app.recruitment.dto.RecruitmentDistributionTargetResponse> getDistributionTargets(
             Long listingId, Long userId) {
         RecruitmentListingEntity entity = findOrThrow(listingId);
-        accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), entity.getScopeType().name());
+        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
         return distributionTargetRepository.findByListingId(listingId).stream()
                 .map(t -> new com.mannschaft.app.recruitment.dto.RecruitmentDistributionTargetResponse(
                         t.getId(), t.getListingId(), t.getTargetType().name(), t.getCreatedAt()))
@@ -1008,6 +1024,49 @@ public class RecruitmentListingService {
      * @param payeeUserId    {@code payeeKind=USER} の受領者（null 可）
      * @return CHECK 整合を取った {@code payeeUserId}（非 USER または決済無効なら {@code null}）
      */
+    /**
+     * TEAM/ORGANIZATION の既存認可を温存しつつ、PERSONAL は本人だけに束縛する。
+     * scopeId だけでは不十分なため、既存札では createdBy との三者一致も確認する。
+     */
+    private void checkListingManagementAccess(
+            RecruitmentScopeType scopeType, Long scopeId, Long userId, Long createdBy) {
+        if (scopeType == RecruitmentScopeType.PERSONAL) {
+            if (!scopeId.equals(userId) || (createdBy != null && !createdBy.equals(userId))) {
+                throw new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+            }
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
+    }
+
+    private void validatePersonalCreate(RecruitmentScopeType scopeType, CreateRecruitmentListingRequest request) {
+        if (scopeType != RecruitmentScopeType.PERSONAL) {
+            return;
+        }
+        if (Boolean.TRUE.equals(request.getPaymentEnabled())
+                || request.getPayeeKind() != null || request.getPayeeUserId() != null) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.PERSONAL_PAYMENT_DISABLED);
+        }
+        if (request.getVisibility() != RecruitmentVisibility.SCOPE_ONLY) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+        }
+    }
+
+    private void validatePersonalUpdate(RecruitmentListingEntity entity, UpdateRecruitmentListingRequest request) {
+        if (entity.getScopeType() != RecruitmentScopeType.PERSONAL) {
+            return;
+        }
+        if (Boolean.TRUE.equals(request.getPaymentEnabled())
+                || request.getPayeeKind() != null || request.getPayeeUserId() != null
+                || Boolean.TRUE.equals(entity.getPaymentEnabled())
+                || entity.getPayeeKind() != null || entity.getPayeeUserId() != null) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.PERSONAL_PAYMENT_DISABLED);
+        }
+        if (request.getVisibility() != null && request.getVisibility() != RecruitmentVisibility.SCOPE_ONLY) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+        }
+    }
+
     private Long validateAndNormalizePayee(
             RecruitmentScopeType scopeType, Long scopeId,
             boolean paymentEnabled, String payeeKind, Long payeeUserId) {
