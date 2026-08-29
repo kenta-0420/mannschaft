@@ -34,6 +34,12 @@ public enum MarketErrorCode implements ErrorCode {
     FRIEND_DISTRIBUTION_TARGETS_CONFLICT(
             "MARKET_005", "フレンド限定の非公開札に配信対象（distribution_targets）は併用できません", Severity.WARN),
 
+    PERSONAL_PAYMENT_DISABLED("MARKET_006", "個人の札では現在、謝礼決済と受領者を指定できません", Severity.WARN),
+
+    SELF_APPLICATION_FORBIDDEN("MARKET_007", "自分が立てた個人の札には応募できません", Severity.WARN),
+
+    PERSONAL_VISIBILITY_NOT_ALLOWED("MARKET_008", "個人の札は現在、公開またはフレンド限定にできません", Severity.WARN),
+
     /** 公開市で対象の札が存在しない / 非公開のため存在秘匿（404）。 */
     LISTING_NOT_FOUND("MARKET_404", "対象の札が見つかりません", Severity.WARN);
 

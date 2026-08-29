@@ -94,6 +94,13 @@ public class RecruitmentParticipantService {
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
 
+        // Phase 2 では PERSONAL は DRAFT 固定だが、将来の公開化や不正状態でも自己取引へ進ませない。
+        // USER/TEAM いずれの申込形式でも、操作主体が札主本人なら拒否する。
+        if (listing.getScopeType() == com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                && listing.getScopeId().equals(userId)) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.SELF_APPLICATION_FORBIDDEN);
+        }
+
         // §5.2 step3 締切チェック
         if (LocalDateTime.now().isAfter(listing.getApplicationDeadline())) {
             throw new BusinessException(RecruitmentErrorCode.DEADLINE_EXCEEDED);

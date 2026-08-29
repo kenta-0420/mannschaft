@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import CalendarWeekGrid from '~/components/schedule/CalendarWeekGrid.vue'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
+import { todayInTimezone, weekStartOf } from '~/utils/calendarWeek'
 
 /**
  * F03.19 §6.5 バーチカル週ビューの受け入れテスト（AC-13 / AC-13d〜AC-13h）。
@@ -282,12 +283,7 @@ describe('CalendarWeekGrid (F03.19 §6.5)', () => {
     expect(past.find('[data-testid="week-now-line"]').exists()).toBe(false)
 
     // 今日を含む週なら1本だけ出る
-    const now = new Date()
-    const ord = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000)
-    const startOrd = ord - ((ord + 4) % 7)
-    const d = new Date(startOrd * 86400000)
-    const pad = (n: number) => String(n).padStart(2, '0')
-    const thisWeek = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
+    const thisWeek = weekStartOf(todayInTimezone('Asia/Tokyo'))
     const current = await mountWeek([], thisWeek)
     expect(current.findAll('[data-testid="week-now-line"]').length).toBe(1)
   })

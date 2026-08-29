@@ -252,6 +252,8 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
     @Query("""
             SELECT l FROM RecruitmentListingEntity l
             WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION)
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
@@ -290,6 +292,8 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             SELECT l FROM RecruitmentListingEntity l
             WHERE l.id = :id
               AND l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION)
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
@@ -313,6 +317,8 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             FROM RecruitmentListingRegionEntity rr
             JOIN RecruitmentListingEntity l ON l.id = rr.listingId
             WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION)
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
@@ -335,6 +341,8 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             FROM RecruitmentListingRegionEntity rr
             JOIN RecruitmentListingEntity l ON l.id = rr.listingId
             WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION)
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)

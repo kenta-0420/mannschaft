@@ -452,6 +452,7 @@ HTTP|com.mannschaft.app.receipt.controller.ReceiptQueueController|4|4
 HTTP|com.mannschaft.app.recruitment.controller.CancellationPolicyController|3|3
 HTTP|com.mannschaft.app.recruitment.controller.MyRecruitmentController|2|2
 HTTP|com.mannschaft.app.recruitment.controller.OrganizationRecruitmentListingController|2|2
+HTTP|com.mannschaft.app.recruitment.controller.PersonalMarketListingController|2|2
 HTTP|com.mannschaft.app.recruitment.controller.RecruitmentApplicationController|4|4
 HTTP|com.mannschaft.app.recruitment.controller.RecruitmentCancellationRecordController|2|2
 HTTP|com.mannschaft.app.recruitment.controller.RecruitmentCategoryController|1|1
