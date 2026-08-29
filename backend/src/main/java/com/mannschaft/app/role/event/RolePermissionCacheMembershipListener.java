@@ -1,5 +1,7 @@
 package com.mannschaft.app.role.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.interceptor.CacheErrorHandler;
@@ -20,6 +22,8 @@ public class RolePermissionCacheMembershipListener {
         this.cacheErrorHandler = cacheErrorHandler;
     }
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "所属変更後の権限キャッシュ失効を止めると、剥奪済み権限がTTLまで残り認可境界を破るため")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onMembershipChanged(MembershipChangedEvent event) {
         String key = event.userId() + ":" + event.scopeType() + ":" + event.scopeId();
