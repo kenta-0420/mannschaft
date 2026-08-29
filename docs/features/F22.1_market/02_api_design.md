@@ -256,6 +256,8 @@ visibility = 'PUBLIC' AND status IN ('OPEN','FULL') AND deleted_at IS NULL
 | `MARKET_003` | 403 | フレンド未成立のチームを宛先指定 |
 | `MARKET_004` | 403 | 他チーム所有のフレンドフォルダを宛先指定 |
 | `MARKET_005` | 400 | `visibility='FRIEND_TEAMS_ONLY'` なのに `distribution_targets` を併用指定 |
+| `MARKET_006` | 400 | Phase 2〜4 の個人札で `paymentEnabled=true` または受領者を指定 |
+| `MARKET_007` | 403 | 個人札の作成者本人が自分の札へ応募 |
 | `RECRUITMENT_204` | 400 | `PUBLIC` 札を配信対象0件で公開（publish）しようとした（`EMPTY_DISTRIBUTION_TARGETS`）。`GlobalExceptionHandler` で 400 にマッピング（ERROR severity 既定の 500 を上書き。`MARKET_002` と対称） |
 | `RECRUITMENT_207` | 400 | `visibility` と配信対象の不整合（`PUBLIC` なのに `PUBLIC_FEED` 不在 等）。同上 400 マッピング |
 | （委譲） | — | 札立て/応募/取下げ本体の検証は `RECRUITMENT_*`（206/106/300 等）を踏襲 |
@@ -291,7 +293,7 @@ visibility = 'PUBLIC' AND status IN ('OPEN','FULL') AND deleted_at IS NULL
 
 - 一覧は `status`、`prefectureCode`、`cityCode`、`categoryId`、`page`、`size` を受け、0件も `200` と空 page を返す。ページサイズ・定員・締切・金額の境界値を契約テストで固定する。
 - 個人作成リクエストに `ownerUserId` / `scopeId` は置かない。サービスが認証済み本人を所有者に設定する。
-- 個人札の作成・更新で `paymentEnabled=true` は `MARKET_PERSONAL_PAYMENT_DISABLED`（400）で拒否する。自己応募は `MARKET_SELF_APPLICATION_FORBIDDEN`（403）。
+- 個人札の作成・更新で `paymentEnabled=true` は `MARKET_006`（400）で拒否する。自己応募は `MARKET_007`（403）。実装時の enum 定数名は、それぞれ `PERSONAL_PAYMENT_DISABLED`、`SELF_APPLICATION_FORBIDDEN` とする。
 - 管理一覧・マッチング状況は札主本人または当該 TEAM/ORGANIZATION の既存管理権限だけに許可する。権限のない主体は 403、他主体の札 ID は存在秘匿が必要な経路では 404 とする。
 - マッチング状況は応募・確定・取消を返すが、参加者 PII は既存 F03.11 の管理者向け最小表示規則を超えて返さない。
 
