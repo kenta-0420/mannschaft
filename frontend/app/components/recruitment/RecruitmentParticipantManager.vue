@@ -2,7 +2,7 @@
 /**
  * F22.1 / F03.11: 札主の応募者管理（成立＝CONFIRM）パネル。
  *
- * 札主（募集主）が応募者一覧を見て成立（APPLIED / WAITLISTED → CONFIRMED）させる。
+ * 札主（募集主）が応募者一覧を見て成立（APPLIED → CONFIRMED）させる。
  * 謝礼の支払者は応募者本人であり、clientSecret も応募者本人にだけ返るため、
  * カード与信の確認導線は RecruitmentApplicationButton 側に置く。
  *
@@ -100,7 +100,7 @@ onMounted(load)
         </div>
         <div class="flex gap-2">
           <Button
-            v-if="p.status === 'APPLIED' || p.status === 'WAITLISTED'"
+            v-if="p.status === 'APPLIED'"
             :label="t('recruitment.action.confirmApplication')"
             icon="pi pi-check"
             size="small"
