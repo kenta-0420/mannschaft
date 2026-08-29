@@ -75,6 +75,7 @@ public class MultipartUploadService {
     private final R2StorageService r2StorageService;
     private final MultipartUploadSessionRepository sessionRepository;
     private final StorageAclService storageAclService;
+    private final MultipartUploadCleanupService cleanupService;
 
     /**
      * Multipart Upload を開始する。
@@ -149,6 +150,14 @@ public class MultipartUploadService {
                 registrationFailure.addSuppressed(abortFailure);
                 log.warn("Multipart Upload の補償abortに失敗しました: uploadId={}, fileKey={}",
                         r2UploadId, r2Key, abortFailure);
+                try {
+                    cleanupService.markAbortPending(r2UploadId, r2Key, resolveFeature(prefix), "PERSONAL",
+                            uploaderId, uploaderId, req.getContentType());
+                } catch (RuntimeException markerFailure) {
+                    registrationFailure.addSuppressed(markerFailure);
+                    log.error("Multipart補償abortの再試行台帳登録にも失敗しました: uploadId={}, fileKey={}",
+                            r2UploadId, r2Key, markerFailure);
+                }
             }
             throw registrationFailure;
         }
