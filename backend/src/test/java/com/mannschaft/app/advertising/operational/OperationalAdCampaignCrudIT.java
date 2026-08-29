@@ -11,7 +11,10 @@ import com.mannschaft.app.advertising.entity.AdCampaignEntity.CampaignStatus;
 import com.mannschaft.app.advertising.service.AdRateCardService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -108,6 +111,8 @@ class OperationalAdCampaignCrudIT extends AbstractMySqlIntegrationTest {
         insertUserRole(adminAId, adminRoleId, null, orgAId);
         insertUserRole(adminBId, adminRoleId, null, orgBId);
         insertUserRole(sysAdminId, sysAdminRoleId, null, null);
+        MembershipTestHelper.insertMembership(em, adminAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, adminBId, ScopeType.ORGANIZATION, orgBId, RoleKind.MEMBER);
 
         advertiserAccountAId = insertAdvertiserAccount(orgAId, "組織A広告主");
         // 組織 B は広告主アカウントあり（クロステナント検証用）。広告主未登録テストでは組織 C を別途作る
@@ -422,6 +427,7 @@ class OperationalAdCampaignCrudIT extends AbstractMySqlIntegrationTest {
             Long orgCId = insertOrganization("F09191 組織C(広告主なし)");
             Long adminCId = insertUser("op-admin-c@example.com");
             insertUserRole(adminCId, roleId("ADMIN"), null, orgCId);
+            MembershipTestHelper.insertMembership(em, adminCId, ScopeType.ORGANIZATION, orgCId, RoleKind.MEMBER);
             em.flush();
             setAuthentication(adminCId);
 

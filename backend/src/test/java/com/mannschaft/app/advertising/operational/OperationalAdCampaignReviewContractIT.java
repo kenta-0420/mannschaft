@@ -13,6 +13,8 @@ import com.mannschaft.app.advertising.dto.PublicRateCardResponse;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity.CampaignStatus;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -93,6 +95,7 @@ class OperationalAdCampaignReviewContractIT extends AbstractMySqlIntegrationTest
 
         insertUserRole(adminAId, roleId("ADMIN"), null, orgAId);
         insertUserRole(sysAdminId, roleId("SYSTEM_ADMIN"), null, null);
+        MembershipTestHelper.insertMembership(em, adminAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
 
         advertiserAccountAId = insertAdvertiserAccount(orgAId, "F09191b 組織A広告主");
 

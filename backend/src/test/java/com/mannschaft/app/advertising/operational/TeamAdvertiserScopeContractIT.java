@@ -1,7 +1,10 @@
 package com.mannschaft.app.advertising.operational;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -108,6 +111,9 @@ class TeamAdvertiserScopeContractIT extends AbstractMySqlIntegrationTest {
         insertUserRole(orgAdminId, adminRoleId, null, orgId);
         insertUserRole(adminAId, adminRoleId, teamAId, null);
         insertUserRole(adminBId, adminRoleId, teamBId, null);
+        MembershipTestHelper.insertMembership(em, orgAdminId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
 
         // scope 化済み広告主アカウント（ORG = overview 用・TEAM A = チーム対 API 用）
         insertAdvertiserAccount("ORGANIZATION", orgId, "組織広告主", "INVOICE");

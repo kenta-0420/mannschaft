@@ -1,6 +1,7 @@
 package com.mannschaft.app.membership.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
@@ -21,6 +22,7 @@ import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.RolePermissionCleanupService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,6 +45,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.inOrder;
 
 /**
  * {@link MembershipService} 単体テスト。
@@ -61,6 +64,8 @@ import static org.mockito.Mockito.verify;
 @DisplayName("MembershipService 単体テスト")
 class MembershipServiceTest {
 
+    @Mock private RolePermissionCleanupService rolePermissionCleanupService;
+
     @Mock
     private MembershipRepository membershipRepository;
 
@@ -78,6 +83,9 @@ class MembershipServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private UserRowLockService userRowLockService;
 
     @InjectMocks
     private MembershipService service;
@@ -257,6 +265,26 @@ class MembershipServiceTest {
 
             assertThat(mp.getEndedAt()).isNotNull();
             verify(memberPositionRepository, times(1)).save(mp);
+        }
+
+        @Test
+        @DisplayName("退会判定は user row lock 後に membership を再読込する")
+        void leaveReReadsMembershipAfterUserLock() {
+            MembershipEntity beforeLock = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
+            MembershipEntity afterLock = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
+            given(membershipRepository.findById(11L)).willReturn(Optional.of(beforeLock), Optional.of(afterLock));
+            given(memberPositionRepository.findCurrentByMembership(11L)).willReturn(List.of());
+            given(roleRepository.findByName("ADMIN")).willReturn(Optional.empty());
+
+            MembershipLeaveRequest req = new MembershipLeaveRequest();
+            req.setLeaveReason(LeaveReason.SELF);
+            service.leave(11L, req);
+
+            var order = inOrder(membershipRepository, userRowLockService);
+            order.verify(membershipRepository).findById(11L);
+            order.verify(userRowLockService).lock(99L);
+            order.verify(membershipRepository).findById(11L);
+            verify(membershipRepository).save(afterLock);
         }
     }
 

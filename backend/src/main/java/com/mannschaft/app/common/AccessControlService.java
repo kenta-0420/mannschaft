@@ -237,6 +237,12 @@ public class AccessControlService {
             return Optional.of(new EffectiveRole("SYSTEM_ADMIN", 1));
         }
 
+        // SYSTEM_ADMIN以外はactive userかつ対象scopeへの直接在籍を要求し、fail-closedにする。
+        if (!userRoleRepository.isActiveUser(userId)
+                || !isMember(userId, scopeId, scopeType)) {
+            return Optional.empty();
+        }
+
         EffectiveRole best = null;
 
         // 1) 権限ロール（user_roles 由来: ADMIN / DEPUTY_ADMIN / GUEST 等）

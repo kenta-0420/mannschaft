@@ -19,6 +19,7 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.qr.BrandedQrImageWriter;
 import org.springframework.beans.factory.annotation.Value;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
@@ -73,6 +74,7 @@ public class InviteService {
     private final MembershipService membershipService;
     private final BrandedQrImageWriter brandedQrImageWriter;
     private final AccessControlService accessControlService;
+    private final UserRowLockService userRowLockService;
 
     /**
      * 招待トークンを作成する。
@@ -194,6 +196,11 @@ public class InviteService {
     // TODO: RoleドメインとOrganizationドメイン・Teamドメイン・ScopeFolderドメインをまたいでいる。
     //       将来はInviteJoinedEventで分離予定
     public void joinByInvite(String tokenStr, Long userId, Long folderId) {
+        // user行を先にlockし、同一Tx内でtokenをFOR UPDATEするcanonical順序。
+        if (userRowLockService.lock(userId) != UserRowLockService.UserState.ACTIVE) {
+            // inactive/absent userの存在をtoken検証前にoracle化させない。
+            throw new BusinessException(RoleErrorCode.ROLE_002);
+        }
         // FOR UPDATEでロック取得（同時参加の排他制御）
         InviteTokenEntity token = inviteTokenRepository.findByTokenForUpdate(tokenStr)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));

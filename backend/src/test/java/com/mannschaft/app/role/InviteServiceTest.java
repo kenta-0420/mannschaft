@@ -15,6 +15,7 @@ import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.InviteService;
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
 import com.mannschaft.app.scopefolder.entity.AssignedVia;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
@@ -25,6 +26,7 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,7 +42,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -79,10 +84,19 @@ class InviteServiceTest {
     private MembershipService membershipService;
 
     @Mock
+    private UserRowLockService userRowLockService;
+
+    @Mock
     private AccessControlService accessControlService;
 
     @InjectMocks
     private InviteService inviteService;
+
+    @BeforeEach
+    void stubActiveUserRowLockForJoinTests() {
+        lenient().when(userRowLockService.lock(USER_ID))
+                .thenReturn(UserRowLockService.UserState.ACTIVE);
+    }
 
     // ========================================
     // テスト用定数・ヘルパー
@@ -323,6 +337,19 @@ class InviteServiceTest {
     @Nested
     @DisplayName("joinByInvite")
     class JoinByInvite {
+
+        @Test
+        @DisplayName("逡ｰ蟶ｸ邉ｻ: ACTIVE縺ｧ縺ｪ縺・Θ繝ｼ繧ｶ繝ｼ縺ｯ蜿ょ刈蜑阪↓ROLE_002")
+        void 蜿ょ刈_非ACTIVEユーザー_ROLE002() {
+            given(userRowLockService.lock(USER_ID))
+                    .willReturn(UserRowLockService.UserState.INELIGIBLE_EXISTING);
+
+            assertThatThrownBy(() -> inviteService.joinByInvite(TOKEN_STR, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ROLE_002"));
+            verify(inviteTokenRepository, never()).findByTokenForUpdate(anyString());
+        }
 
         @Test
         @DisplayName("正常系: チームに参加しロールが割り当てられる（F15.3: 未指定で未分類フォルダへ DEFAULT 配置）")
