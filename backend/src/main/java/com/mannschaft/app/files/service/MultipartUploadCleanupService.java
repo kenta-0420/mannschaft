@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.annotation.Scheduled;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDateTime;
 
@@ -22,6 +24,9 @@ public class MultipartUploadCleanupService {
 
     private final MultipartAbortCleanupRepository repository;
     private final R2StorageService r2StorageService;
+    @Value("${mannschaft.storage.multipart-cleanup-max-attempts:10}")
+    private int maxAttempts;
+    private static final int LEASE_MINUTES = 10;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markAbortPending(String uploadId, String r2Key, String feature, String scopeType,
@@ -34,10 +39,16 @@ public class MultipartUploadCleanupService {
     /** 期限到来した補償対象を一件ずつabortする。失敗行は状態を残して次回へ回す。 */
     public int retryPendingAborts(LocalDateTime now) {
         int succeeded = 0;
+        repository.releaseExpiredClaims(now);
         for (MultipartAbortCleanupEntity session : repository
                 .findByStatusAndNextAttemptAtBefore(ABORT_PENDING, now)) {
             try {
-                if (repository.claim(session.getId()) == 0) {
+                if (session.getAttemptCount() >= maxAttempts) {
+                    repository.save(session.toBuilder().status("DEAD_LETTER").build());
+                    log.error("Multipart補償abortをdead-letterへ隔離しました: uploadId={}", session.getUploadId());
+                    continue;
+                }
+                if (repository.claim(session.getId(), now, now.plusMinutes(LEASE_MINUTES)) == 0) {
                     continue;
                 }
                 r2StorageService.abortMultipartUpload(session.getR2Key(), session.getUploadId());
@@ -49,7 +60,7 @@ public class MultipartUploadCleanupService {
                     succeeded++;
                     continue;
                 }
-                repository.save(session.toBuilder().status(ABORT_PENDING)
+                repository.save(session.toBuilder().status(ABORT_PENDING).leaseUntil(null)
                         .nextAttemptAt(now.plusMinutes(5)).attemptCount(session.getAttemptCount() + 1).build());
                 log.warn("Multipart補償abortを再試行します: uploadId={}, fileKey={}",
                         session.getUploadId(), session.getR2Key(), e);
@@ -68,6 +79,7 @@ public class MultipartUploadCleanupService {
     }
 
     @Scheduled(fixedDelayString = "${mannschaft.storage.multipart-cleanup-interval-ms:300000}")
+    @SchedulerLock(name = "multipartAbortCleanup", lockAtMostFor = "PT9M", lockAtLeastFor = "PT10S")
     public void scheduledRetry() {
         retryPendingAborts(LocalDateTime.now());
     }

@@ -12,9 +12,15 @@ import java.util.UUID;
 
 public interface MultipartAbortCleanupRepository extends JpaRepository<MultipartAbortCleanupEntity, UUID> {
     List<MultipartAbortCleanupEntity> findByStatusAndNextAttemptAtBefore(String status, LocalDateTime now);
+    List<MultipartAbortCleanupEntity> findByStatusAndLeaseUntilBefore(String status, LocalDateTime now);
 
     @Modifying
     @Transactional
-    @Query("update MultipartAbortCleanupEntity c set c.status = 'CLAIMED' where c.id = :id and c.status = 'ABORT_PENDING'")
-    int claim(@Param("id") UUID id);
+    @Query("update MultipartAbortCleanupEntity c set c.status = 'CLAIMED', c.claimedAt = :now, c.leaseUntil = :leaseUntil where c.id = :id and c.status = 'ABORT_PENDING'")
+    int claim(@Param("id") UUID id, @Param("now") LocalDateTime now, @Param("leaseUntil") LocalDateTime leaseUntil);
+
+    @Modifying
+    @Transactional
+    @Query("update MultipartAbortCleanupEntity c set c.status = 'ABORT_PENDING', c.leaseUntil = null where c.status = 'CLAIMED' and c.leaseUntil < :now")
+    int releaseExpiredClaims(@Param("now") LocalDateTime now);
 }

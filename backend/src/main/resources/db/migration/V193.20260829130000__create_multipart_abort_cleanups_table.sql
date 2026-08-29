@@ -10,9 +10,12 @@ CREATE TABLE multipart_abort_cleanups (
     status VARCHAR(20) NOT NULL,
     next_attempt_at DATETIME NOT NULL,
     attempt_count INT NOT NULL DEFAULT 0,
+    claimed_at DATETIME NULL,
+    lease_until DATETIME NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uq_multipart_abort_cleanups_upload (upload_id),
-    KEY idx_multipart_abort_cleanups_due (status, next_attempt_at)
+    KEY idx_multipart_abort_cleanups_due (status, next_attempt_at),
+    KEY idx_multipart_abort_cleanups_lease (status, lease_until)
 );

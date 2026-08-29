@@ -38,4 +38,8 @@ public class MultipartAbortCleanupEntity extends UuidV7Entity {
     private LocalDateTime nextAttemptAt;
     @Column(name = "attempt_count", nullable = false)
     private Integer attemptCount;
+    @Column(name = "claimed_at")
+    private LocalDateTime claimedAt;
+    @Column(name = "lease_until")
+    private LocalDateTime leaseUntil;
 }
