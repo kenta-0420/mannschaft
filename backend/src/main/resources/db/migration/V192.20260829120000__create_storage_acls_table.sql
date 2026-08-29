@@ -2,13 +2,13 @@
 CREATE TABLE storage_acls (
     id BINARY(16) NOT NULL,
     file_key VARCHAR(500) NOT NULL,
-    owner_id BIGINT NOT NULL,
+    owner_id BIGINT UNSIGNED NOT NULL,
     scope_type VARCHAR(32) NOT NULL,
-    scope_id BIGINT NOT NULL,
+    scope_id BIGINT UNSIGNED NOT NULL,
     acl_mode VARCHAR(24) NOT NULL DEFAULT 'CONTENT_BOUND',
     content_type VARCHAR(100) NOT NULL,
     reference_type VARCHAR(64) NULL,
-    reference_id BIGINT NULL,
+    reference_id BIGINT UNSIGNED NULL,
     status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
     expires_at DATETIME NOT NULL,
     created_at DATETIME NOT NULL,
@@ -18,4 +18,4 @@ CREATE TABLE storage_acls (
     KEY idx_storage_acls_owner (owner_id),
     KEY idx_storage_acls_scope (scope_type, scope_id),
     KEY idx_storage_acls_expires (expires_at)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

@@ -1,6 +1,7 @@
 package com.mannschaft.app.files.service;
 
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.files.entity.MultipartAbortCleanupEntity;
 import com.mannschaft.app.files.repository.MultipartAbortCleanupRepository;
 import lombok.RequiredArgsConstructor;
@@ -95,6 +96,7 @@ public class MultipartUploadCleanupService {
 
     @Scheduled(fixedDelayString = "${mannschaft.storage.multipart-cleanup-interval-ms:300000}")
     @SchedulerLock(name = "multipartAbortCleanup", lockAtMostFor = "PT9M", lockAtLeastFor = "PT10S")
+    @BatchEndpoint(name = "multipart-abort-cleanup", description = "失敗したMultipart abortを再試行し不要な台帳を整理する")
     public void scheduledRetry() {
         retryPendingAborts(LocalDateTime.now());
     }
