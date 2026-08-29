@@ -198,6 +198,19 @@ confirmable_notifications.source_id → recruitment_listings.id   [source_type='
 
 ## 8. CLAUDE.md DB原則への適合
 
+---
+
+## 9. 追加仕様: 個人札主のデータ境界（Phase 2）
+
+既存 `scope_type/scope_id` を TEAM/ORGANIZATION のまま破壊的に置換しない。Phase 2 は Expand として札主区分を `owner_kind`（`PERSONAL`/`TEAM`/`ORGANIZATION`）で明示し、PERSONAL の所有者は `owner_user_id`（users への既存方針に従う論理参照）へ固定する。TEAM/ORGANIZATION は既存 `scope_type/scope_id` を正典として維持し、移行期間は整合チェックを置く。
+
+- `participation_type` と `payee_kind` は札主区分と別列・別 enum のまま維持する。
+- PERSONAL では `owner_user_id IS NOT NULL`、TEAM/ORGANIZATION では `owner_user_id IS NULL` を Service 層と DB 制約で二重検証する。
+- `payment_enabled=TRUE AND owner_kind='PERSONAL'` は Phase 5 まで DB/Service の双方で拒否する（既存 TEAM/ORGANIZATION 行には影響させない）。
+- 主体別履歴用索引は `(owner_kind, owner_user_id, status, created_at)` と既存 scope 索引を併用し、一覧に参加者を join して N+1 を起こさない。
+
+`FRIEND_TEAMS_ONLY` の可視性判定、Repository の `CASE`/projection、地域既定補完、Connect の TEAM/ORGANIZATION 分岐は `PERSONAL` 導入と同一 Phase で更新する。未知の `owner_kind` は SQL の ELSE で公開可能側へ落とさず、検索対象外・認可拒否とする。
+
 | 原則 | 適合状況 |
 |---|---|
 | 1. クロスドメインFK禁止 | ✅ 地域マスタ参照・フレンド/チーム参照は**FKなし**、Service検証 |

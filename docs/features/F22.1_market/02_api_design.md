@@ -276,4 +276,24 @@ visibility = 'PUBLIC' AND status IN ('OPEN','FULL') AND deleted_at IS NULL
     | { target_kind: 'FOLDER'; folder_id: number }
     | { target_kind: 'TEAM';   team_id: number }
   ```
+
+---
+
+## 10. 追加 API 契約: 主体別管理市（Phase 1〜3）
+
+公開 API (`/api/v1/public/market/**`) は横断閲覧専用として維持する。管理 API は認証必須で、リクエストの主体 ID を信用せずパスと認証主体からスコープを確定する。
+
+| 操作 | 個人 | チーム | 組織 |
+|---|---|---|---|
+| 管理一覧/履歴 | `GET /api/v1/me/market/listings` | `GET /api/v1/teams/{teamId}/market/listings` | `GET /api/v1/organizations/{organizationId}/market/listings` |
+| マッチング状況 | `GET /api/v1/me/market/listings/{id}/matches` | scope 配下の同等 API | scope 配下の同等 API |
+| 作成 | `POST /api/v1/me/market/listings` | 既存 recruitment 作成 API | 既存 recruitment 作成 API |
+
+- 一覧は `status`、`prefectureCode`、`cityCode`、`categoryId`、`page`、`size` を受け、0件も `200` と空 page を返す。ページサイズ・定員・締切・金額の境界値を契約テストで固定する。
+- 個人作成リクエストに `ownerUserId` / `scopeId` は置かない。サービスが認証済み本人を所有者に設定する。
+- 個人札の作成・更新で `paymentEnabled=true` は `MARKET_PERSONAL_PAYMENT_DISABLED`（400）で拒否する。自己応募は `MARKET_SELF_APPLICATION_FORBIDDEN`（403）。
+- 管理一覧・マッチング状況は札主本人または当該 TEAM/ORGANIZATION の既存管理権限だけに許可する。権限のない主体は 403、他主体の札 ID は存在秘匿が必要な経路では 404 とする。
+- マッチング状況は応募・確定・取消を返すが、参加者 PII は既存 F03.11 の管理者向け最小表示規則を超えて返さない。
+
+既存 TEAM/ORGANIZATION の一覧・作成 API は互換維持する。ORG の PUBLIC 札で既存の作成後 `PUBLIC_FEED` 設定が別 API 呼出しとなる場合、失敗時は DRAFT のまま再試行可能にし、公開済みなのに配信対象がない状態を作らない。PERSONAL の公開・非公開可視性、地域コード補完、Repository の区分 CASE、通知送信は同一変更単位でテストする。
 - Backend API 追加後は `npm run generate:types` で `types/generated/index.ts` を再生成し、market 手動型は生成型をラップして enum を i18n キー化する（既存 recruitment.ts / village.ts と同方針）。
