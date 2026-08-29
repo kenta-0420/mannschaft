@@ -9,6 +9,19 @@
     "page": {
       "newListing": "Publicar anuncio"
     },
+    "management": {
+      "title": "Gestionar mercado",
+      "description": "Gestiona los anuncios y solicitudes de este grupo.",
+      "postDescription": "Publica un nuevo anuncio como este equipo u organización.",
+      "history": "Historial de anuncios",
+      "historyDescription": "Consulta los anuncios publicados por este grupo.",
+      "matching": "Estado de emparejamiento",
+      "matchingDescription": "Revisa solicitantes y gestiona confirmaciones por anuncio.",
+      "openMatching": "Gestionar solicitantes",
+      "manageParticipants": "Gestionar solicitantes",
+      "noListings": "Este grupo todavía no ha publicado anuncios.",
+      "permissionRequired": "Se requieren permisos de administrador para publicar anuncios o gestionar solicitantes."
+    },
     "action": {
       "post": "Publicar",
       "apply": "Postularse",

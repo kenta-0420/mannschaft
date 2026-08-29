@@ -60,6 +60,33 @@ describe('useRecruitmentApi - Phase 2', () => {
     })
   })
 
+  describe('listOrganizationListings', () => {
+    it('現在の組織と指定したページ条件だけで募集履歴を取得する', async () => {
+      mockFetch.mockResolvedValue({
+        data: [],
+        meta: { page: 2, size: 20, total: 0, totalElements: 0, totalPages: 0 },
+      })
+
+      const api = useRecruitmentApi()
+      await api.listOrganizationListings('42', { status: 'OPEN', page: 2, size: 20 })
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/organizations/42/recruitment-listings?status=OPEN&page=2&size=20',
+      )
+    })
+
+    it('検索条件がなければ余分なクエリを付けない', async () => {
+      mockFetch.mockResolvedValue({
+        data: [],
+        meta: { page: 0, size: 20, total: 0, totalElements: 0, totalPages: 0 },
+      })
+
+      await useRecruitmentApi().listOrganizationListings('42')
+
+      expect(mockFetch).toHaveBeenCalledWith('/api/v1/organizations/42/recruitment-listings')
+    })
+  })
+
   describe('getMyListings', () => {
     it('参加予定一覧を取得できる', async () => {
       const myListings = [

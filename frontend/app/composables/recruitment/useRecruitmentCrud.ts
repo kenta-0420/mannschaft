@@ -71,10 +71,9 @@ export function useRecruitmentCrud() {
   }
 
   async function archiveTeamSubcategory(teamId: string, subcategoryId: number) {
-    return api(
-      `/api/v1/teams/${teamId}/recruitment-subcategories/${subcategoryId}/archive`,
-      { method: 'POST' },
-    )
+    return api(`/api/v1/teams/${teamId}/recruitment-subcategories/${subcategoryId}/archive`, {
+      method: 'POST',
+    })
   }
 
   // ===========================================
@@ -95,6 +94,20 @@ export function useRecruitmentCrud() {
     )
   }
 
+  async function listOrganizationListings(
+    orgId: string,
+    params?: { status?: string; page?: number; size?: number },
+  ) {
+    const q = new URLSearchParams()
+    if (params?.status) q.set('status', params.status)
+    if (params?.page != null) q.set('page', String(params.page))
+    if (params?.size != null) q.set('size', String(params.size))
+    const suffix = q.toString() ? `?${q.toString()}` : ''
+    return api<PagedResponse<RecruitmentListingSummaryResponse>>(
+      `/api/v1/organizations/${orgId}/recruitment-listings${suffix}`,
+    )
+  }
+
   async function createListing(teamId: string, body: CreateRecruitmentListingRequest) {
     return api<ApiResponse<RecruitmentListingResponse>>(
       `/api/v1/teams/${teamId}/recruitment-listings`,
@@ -110,9 +123,7 @@ export function useRecruitmentCrud() {
   }
 
   async function getListing(listingId: number) {
-    return api<ApiResponse<RecruitmentListingResponse>>(
-      `/api/v1/recruitment-listings/${listingId}`,
-    )
+    return api<ApiResponse<RecruitmentListingResponse>>(`/api/v1/recruitment-listings/${listingId}`)
   }
 
   async function updateListing(listingId: number, body: UpdateRecruitmentListingRequest) {
@@ -165,15 +176,10 @@ export function useRecruitmentCrud() {
   }
 
   async function getCancellationPolicy(policyId: number) {
-    return api<ApiResponse<CancellationPolicyResponse>>(
-      `/api/v1/cancellation-policies/${policyId}`,
-    )
+    return api<ApiResponse<CancellationPolicyResponse>>(`/api/v1/cancellation-policies/${policyId}`)
   }
 
-  async function updateCancellationPolicy(
-    policyId: number,
-    body: UpdateCancellationPolicyRequest,
-  ) {
+  async function updateCancellationPolicy(policyId: number, body: UpdateCancellationPolicyRequest) {
     return api<ApiResponse<CancellationPolicyResponse>>(
       `/api/v1/cancellation-policies/${policyId}`,
       { method: 'PATCH', body },
@@ -210,6 +216,7 @@ export function useRecruitmentCrud() {
     createTeamSubcategory,
     archiveTeamSubcategory,
     listTeamListings,
+    listOrganizationListings,
     createListing,
     createOrgListing,
     getListing,

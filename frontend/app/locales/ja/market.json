@@ -9,6 +9,19 @@
     "page": {
       "newListing": "札を立てる"
     },
+    "management": {
+      "title": "市の管理",
+      "description": "この主体が立てた札と応募状況を管理します。",
+      "postDescription": "このチーム・組織の名義で新しい札を立てます。",
+      "history": "立てた札（履歴）",
+      "historyDescription": "この主体が立てた札の一覧を確認します。",
+      "matching": "マッチング状況",
+      "matchingDescription": "札ごとの応募者を確認し、成立を管理します。",
+      "openMatching": "応募者を管理する",
+      "manageParticipants": "応募者を管理",
+      "noListings": "この主体が立てた札はまだありません。",
+      "permissionRequired": "札の作成・応募者管理には管理者権限が必要です。"
+    },
     "action": {
       "post": "札を立てる",
       "apply": "札に応じる",

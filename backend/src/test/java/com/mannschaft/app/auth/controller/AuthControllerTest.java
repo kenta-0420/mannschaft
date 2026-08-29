@@ -14,6 +14,7 @@ import com.mannschaft.app.auth.dto.WebAuthnRegisterBeginResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterCompleteRequest;
 import com.mannschaft.app.auth.guardianship.AuthenticationCriticalOperationGuard;
 import com.mannschaft.app.auth.service.Auth2faService;
+import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.service.AuthOAuthService;
 import com.mannschaft.app.auth.service.AuthWebAuthnService;
 import com.mannschaft.app.common.ApiResponse;
@@ -28,6 +29,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -75,6 +77,9 @@ class AuthControllerTest {
 
         @Mock
         private Auth2faService auth2faService;
+
+        @Mock
+        private AuthTokenService authTokenService;
 
         /** F08.9 P3b: Auth2faController の新依存（mock は assertNotActingAs() を素通しする）。 */
         @Mock
@@ -126,6 +131,7 @@ class AuthControllerTest {
             TokenResponse token = new TokenResponse("access-token", "refresh-token", 3600);
             given(auth2faService.validateTotp(anyString(), anyString()))
                     .willReturn(ApiResponse.of(token));
+            given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
 
             ValidateTotpLoginRequest req = new ValidateTotpLoginRequest("mfa-session-token", "123456");
 
@@ -135,6 +141,11 @@ class AuthControllerTest {
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData().getAccessToken()).isEqualTo("access-token");
+            assertThat(response.getHeaders().get(HttpHeaders.SET_COOKIE))
+                    .anySatisfy(cookie -> assertThat(cookie)
+                            .contains("access_token=access-token", "HttpOnly", "SameSite=Strict"))
+                    .anySatisfy(cookie -> assertThat(cookie)
+                            .contains("refresh_token=refresh-token", "HttpOnly", "SameSite=Strict"));
         }
 
         @Test
