@@ -104,11 +104,11 @@ class RecruitmentParticipantServicePhase3Test {
             setField(waitlisted, "waitlistPosition", 1);
 
             // findByIdForUpdate の連続呼び出しをシミュレート
-            // 1回目: キャンセル処理用, 2回目: waitlist decrementWaitlist 用, 3回目: promotion 用
+            // 1回目: キャンセル処理用, 2回目: promotion 用
+            // キャンセル対象は CONFIRMED なので waitlist decrement 用の再取得は発生しない。
             given(listingRepository.findByIdForUpdate(LISTING_ID))
                     .willReturn(Optional.of(listing))       // 1回目（最初のロック）
-                    .willReturn(Optional.of(listing))       // 2回目（waitlist decrementWaitlist は wasWaitlisted=false なので呼ばれない）
-                    .willReturn(Optional.of(reloadedForPromotion)); // 3回目（昇格チェック用）
+                    .willReturn(Optional.of(reloadedForPromotion)); // 2回目（昇格チェック用）
 
             given(participantRepository.findActiveByListingAndUser(LISTING_ID, USER_ID))
                     .willReturn(Optional.of(confirmed));
