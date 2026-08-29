@@ -6,10 +6,14 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.entity.PermissionEntity;
+import com.mannschaft.app.role.entity.PermissionGroupEntity;
+import com.mannschaft.app.role.entity.PermissionGroupPermissionEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.RolePermissionEntity;
+import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.role.repository.PermissionGroupPermissionRepository;
@@ -20,6 +24,7 @@ import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserPermissionGroupRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.RoleService;
+import com.mannschaft.app.role.service.RolePermissionCleanupService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -65,6 +70,8 @@ class RoleServiceTest {
     @Mock private UserPermissionGroupRepository userPermissionGroupRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private MembershipService membershipService;
+    @Mock private UserRowLockService userRowLockService;
+    @Mock private RolePermissionCleanupService rolePermissionCleanupService;
 
     @InjectMocks
     private RoleService roleService;
@@ -77,6 +84,12 @@ class RoleServiceTest {
     @org.junit.jupiter.api.BeforeEach
     void setUpSelfProxy() {
         org.springframework.test.util.ReflectionTestUtils.setField(roleService, "self", roleService);
+        // F09.14: mutation 操作者の有効ユーザー確認を全テストで満たす。
+        lenient().doReturn(true).when(userRoleRepository).isActiveUser(USER_ID);
+        lenient().when(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                .thenReturn(true);
+        lenient().when(membershipService.isActiveMember(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                .thenReturn(true);
     }
 
     // ========================================
@@ -99,6 +112,7 @@ class RoleServiceTest {
             roleService.assignRole(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, ADMIN_ROLE_ID, USER_ID);
 
             verify(userRoleRepository).save(any(UserRoleEntity.class));
+            verify(userRowLockService).lockAll(USER_ID, TARGET_USER_ID);
             // F00.5 認可基盤根治: memberships にも MEMBER として入会させる（join 経由）。
             // 二重発火回避のため assignRole 側の手動 MembershipChangedEvent 発火は削除し join に一本化済み。
             ArgumentCaptor<MembershipCreateRequest> captor =
@@ -239,6 +253,7 @@ class RoleServiceTest {
 
             verify(userRoleRepository).delete(current);
             verify(userRoleRepository).save(any(UserRoleEntity.class));
+            verify(userRowLockService).lockAll(USER_ID, TARGET_USER_ID);
         }
 
         @Test
@@ -366,6 +381,7 @@ class RoleServiceTest {
             roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, USER_ID);
 
             verify(userRoleRepository).delete(current);
+            verify(userRowLockService).lockAll(USER_ID, TARGET_USER_ID);
         }
 
         @Test
@@ -496,6 +512,7 @@ class RoleServiceTest {
 
             // userRole が DELETE されたことを検証
             verify(userRoleRepository).delete(current);
+            verify(userRowLockService).lockAll(TARGET_USER_ID);
             // MembershipChangedEvent(REMOVED) が発火されたことを検証
             verify(eventPublisher).publishEvent(any(MembershipChangedEvent.class));
         }
@@ -569,6 +586,7 @@ class RoleServiceTest {
             roleService.leaveScope(USER_ID, SCOPE_ID, "ORGANIZATION");
 
             verify(userRoleRepository).delete(current);
+            verify(userRowLockService).lockAll(USER_ID);
         }
 
         @Test
@@ -602,6 +620,10 @@ class RoleServiceTest {
                     .id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(ur));
+            given(userRoleRepository.isActiveUser(USER_ID)).willReturn(true);
+            given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID)).willReturn(true);
+            given(membershipService.findActiveRoleKind(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(Optional.of(RoleKind.MEMBER));
 
             RolePermissionEntity rp = RolePermissionEntity.builder()
                     .id(1L).roleId(ADMIN_ROLE_ID).permissionId(1L).isDefault(true).build();
@@ -630,6 +652,34 @@ class RoleServiceTest {
 
             assertThat(permissions).isEmpty();
         }
+
+        @Test
+        @DisplayName("MEMBER の実効ロールでは DEPUTY_ADMIN 向け permission group を解決しない")
+        void memberDoesNotResolveDeputyPermissionGroup() {
+            UserRoleEntity role = UserRoleEntity.builder()
+                    .id(1L).userId(USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
+            given(userRoleRepository.isActiveUser(USER_ID)).willReturn(true);
+            given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID)).willReturn(true);
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(role));
+            given(roleRepository.findById(MEMBER_ROLE_ID)).willReturn(Optional.of(createMemberRole()));
+            given(membershipService.findActiveRoleKind(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(Optional.of(RoleKind.MEMBER));
+
+            PermissionGroupEntity group = PermissionGroupEntity.builder()
+                    .id(99L).organizationId(SCOPE_ID).name("deputy-only")
+                    .targetRole(PermissionGroupEntity.TargetRole.DEPUTY_ADMIN).build();
+            given(permissionGroupRepository.findByOrganizationId(SCOPE_ID)).willReturn(List.of(group));
+            given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of(
+                    UserPermissionGroupEntity.builder().userId(USER_ID).groupId(99L).build()));
+            given(permissionGroupPermissionRepository.findByGroupId(99L)).willReturn(List.of(
+                    PermissionGroupPermissionEntity.builder().groupId(99L).permissionId(7L).build()));
+            given(permissionRepository.findByIdIn(List.of(7L))).willReturn(List.of(
+                    PermissionEntity.builder().id(7L).name("DEPUTY_ONLY").build()));
+
+            assertThat(roleService.resolveEffectivePermissions(USER_ID, SCOPE_ID, "ORGANIZATION"))
+                    .doesNotContain("DEPUTY_ONLY");
+        }
     }
 
     // ========================================
@@ -647,6 +697,10 @@ class RoleServiceTest {
                     .id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(ur));
+            given(userRoleRepository.isActiveUser(USER_ID)).willReturn(true);
+            given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID)).willReturn(true);
+            given(membershipService.findActiveRoleKind(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(Optional.of(RoleKind.MEMBER));
 
             RolePermissionEntity rp = RolePermissionEntity.builder()
                     .id(1L).roleId(ADMIN_ROLE_ID).permissionId(1L).isDefault(true).build();
@@ -698,6 +752,7 @@ class RoleServiceTest {
 
             verify(userRoleRepository).delete(targetUserRole);
             verify(userRoleRepository).delete(currentUserRole);
+            verify(userRowLockService).lockAll(USER_ID, TARGET_USER_ID);
             // F00.5 認可基盤根治（防御補填）: 譲渡当事者両名に冪等 join を補填する
             ArgumentCaptor<MembershipCreateRequest> captor =
                     ArgumentCaptor.forClass(MembershipCreateRequest.class);
