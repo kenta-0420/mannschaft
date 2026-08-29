@@ -31,6 +31,10 @@ concurrency:
   group: fe-lockfile-verify-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  issues: read
+
 jobs:
   # ---------------------------------------------------------------------------
   # lockfile が変更されたかを判定する。
@@ -78,8 +82,15 @@ jobs:
   inspect-lockfile:
     name: lockfile の内容検査（base 比較）
     needs: detect
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
+      - if: needs.detect.result != 'success'
+        name: lockfile 変更判定の失敗を伝播する
+        run: |
+          echo "lockfile 変更判定ジョブが成功していないため検証を失敗させる"
+          exit 1
+
       - if: needs.detect.outputs.changed == 'true'
         uses: actions/checkout@v4
         with:
@@ -152,8 +163,15 @@ jobs:
   npm-ci-glibc:
     name: npm ci（Ubuntu / glibc）
     needs: detect
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
+      - if: needs.detect.result != 'success'
+        name: lockfile 変更判定の失敗を伝播する
+        run: |
+          echo "lockfile 変更判定ジョブが成功していないため検証を失敗させる"
+          exit 1
+
       - if: needs.detect.outputs.changed == 'true'
         uses: actions/checkout@v4
 
@@ -173,10 +191,17 @@ jobs:
   npm-ci-musl:
     name: npm ci（Alpine / musl）
     needs: detect
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     # 本番コンテナと同じ musl 環境で回す。イメージは Dockerfile と同じ版に固定する。
     container: node:22.23.2-alpine
     steps:
+      - if: needs.detect.result != 'success'
+        name: lockfile 変更判定の失敗を伝播する
+        run: |
+          echo "lockfile 変更判定ジョブが成功していないため検証を失敗させる"
+          exit 1
+
       - if: needs.detect.outputs.changed == 'true'
         uses: actions/checkout@v4
 
