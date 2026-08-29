@@ -154,7 +154,7 @@
       },
       "confirm": {
         "title": "Belohnungszahlung bestätigen",
-        "intro": "Bitte bestätigen Sie vor der Bestätigung des Bewerbers die Belohnungszahlung (Kartenautorisierung).",
+        "intro": "Bitte bestätigen Sie die für Ihre Bewerbung erforderliche Belohnungszahlung (Kartenautorisierung).",
         "expiryNotice": "Diese Autorisierung ist etwa 7 Tage gültig. Innerhalb von 7 Tagen ist die endgültige Bestätigung des Leistungsabschlusses erforderlich (danach wird bei Abschluss erneut abgebucht).",
         "deferredNotice": "Da zwischen Bestätigung und Leistung mehr als 7 Tage liegen, wird jetzt keine Autorisierung vorgenommen. Sie zahlen erneut bei der endgültigen Bestätigung des Leistungsabschlusses.",
         "alreadyAuthorized": "Diese Zahlung wurde bereits bestätigt.",

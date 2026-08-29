@@ -86,6 +86,7 @@
     },
     "admin": {
       "pageTitle": "결제 관리",
+      "contentGate": {"title":"콘텐츠 게이트 관리","loading":"불러오는 중…","loadError":"콘텐츠 게이트를 불러오지 못했습니다","contentType":"콘텐츠 유형","contentId":"콘텐츠 ID","post":"게시글","announcement":"공지","save":"저장","saveSuccess":"콘텐츠 게이트를 저장했습니다","saveError":"콘텐츠 게이트 저장에 실패했습니다","titleHidden":"제목 숨기기","noItems":"사용 가능한 결제 항목이 없습니다","clearHint":"모든 항목을 제거하고 저장하면 게이트가 해제됩니다"},
       "permissionDenied": "このページは管理者のみアクセスできます",
       "itemsTitle": "결제 항목",
       "selectItem": "결제 항목을 선택해 주세요",

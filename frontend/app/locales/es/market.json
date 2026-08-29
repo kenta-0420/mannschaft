@@ -154,7 +154,7 @@
       },
       "confirm": {
         "title": "Confirmar pago de recompensa",
-        "intro": "Antes de confirmar al solicitante, confirma el pago de la recompensa (autorización de la tarjeta).",
+        "intro": "Confirma el pago de la recompensa (autorización de la tarjeta) necesario para tu solicitud.",
         "expiryNotice": "Esta autorización es válida durante unos 7 días. Se requiere la aprobación final de la finalización del servicio en un plazo de 7 días (después se vuelve a cobrar al finalizar).",
         "deferredNotice": "Como pasan más de 7 días entre la confirmación y el servicio, ahora no se realiza ninguna autorización. Pagarás de nuevo en la aprobación final de la finalización del servicio.",
         "alreadyAuthorized": "Este pago ya ha sido confirmado.",
