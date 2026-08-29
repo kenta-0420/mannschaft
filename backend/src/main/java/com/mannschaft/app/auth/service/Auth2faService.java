@@ -184,6 +184,7 @@ public class Auth2faService {
      * @param totpCode        TOTPコード
      * @return トークンレスポンス
      */
+    @Transactional
     public ApiResponse<TokenResponse> validateTotp(String mfaSessionToken, String totpCode) {
         // 1. Valkey: MFAセッショントークンからuserIdを取得
         String sessionHash = authTokenService.hashToken(mfaSessionToken);
@@ -502,11 +503,13 @@ public class Auth2faService {
                 statusClaimResolver.isPendingParentalConsent(userId));
         String refreshToken = authTokenService.generateRefreshToken();
         String refreshTokenHash = authTokenService.hashToken(refreshToken);
+        String refreshTokenJti = UUID.randomUUID().toString();
 
         // Refresh Token を保存
         RefreshTokenEntity refreshTokenEntity = RefreshTokenEntity.builder()
                 .userId(userId)
                 .tokenHash(refreshTokenHash)
+                .jti(refreshTokenJti)
                 .rememberMe(false)
                 .expiresAt(LocalDateTime.now().plusDays(7))
                 .build();
