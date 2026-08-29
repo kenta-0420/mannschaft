@@ -137,10 +137,21 @@ public class MultipartUploadService {
                 .status("IN_PROGRESS")
                 .expiresAt(LocalDateTime.now().plus(SESSION_TTL))
                 .build();
-        sessionRepository.save(session);
-        storageAclService.registerPending(
-                r2Key, uploaderId, "PERSONAL", uploaderId, req.getContentType(), SESSION_TTL,
-                "MULTIPART_UPLOAD", null);
+        try {
+            sessionRepository.save(session);
+            storageAclService.registerPending(
+                    r2Key, uploaderId, "PERSONAL", uploaderId, req.getContentType(), SESSION_TTL,
+                    "MULTIPART_UPLOAD", null);
+        } catch (RuntimeException registrationFailure) {
+            try {
+                r2StorageService.abortMultipartUpload(r2Key, r2UploadId);
+            } catch (RuntimeException abortFailure) {
+                registrationFailure.addSuppressed(abortFailure);
+                log.warn("Multipart Upload の補償abortに失敗しました: uploadId={}, fileKey={}",
+                        r2UploadId, r2Key, abortFailure);
+            }
+            throw registrationFailure;
+        }
 
         log.info("Multipart Upload 開始: uploaderId={}, r2Key={}, uploadId={}", uploaderId, r2Key, r2UploadId);
         return new StartMultipartUploadResponse(r2UploadId, r2Key, req.getPartCount(), req.getPartSize());

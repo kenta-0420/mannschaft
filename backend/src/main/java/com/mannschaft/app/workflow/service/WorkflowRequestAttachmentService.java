@@ -91,6 +91,7 @@ public class WorkflowRequestAttachmentService {
      * @param request     Pre-signed リクエスト
      * @return Pre-signed URL レスポンス
      */
+    @Transactional
     public WorkflowAttachmentPresignResponse presignUpload(
             Long requestId, Long currentUserId, WorkflowAttachmentPresignRequest request) {
         // 1. 申請存在確認＋可視性検証（非所属者は 404 秘匿・Wave 2 トランシェ2C）

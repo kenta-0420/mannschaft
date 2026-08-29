@@ -114,6 +114,23 @@ class MultipartUploadServiceTest {
         }
 
         @Test
+        @DisplayName("ACL登録失敗時はR2 multipartを補償abortする")
+        void acl登録失敗時はR2Multipartを補償abortする() {
+            StartMultipartUploadRequest req = new StartMultipartUploadRequest(
+                    null, "test-video.mp4", "video/mp4", 200 * 1024 * 1024L,
+                    10, 20 * 1024 * 1024L, "blog/");
+            given(r2StorageService.createMultipartUpload(anyString(), anyString())).willReturn(UPLOAD_ID);
+            given(sessionRepository.save(any(MultipartUploadSessionEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            RuntimeException failure = new RuntimeException("acl unavailable");
+            org.mockito.Mockito.doThrow(failure).when(storageAclService).registerPending(
+                    anyString(), any(), anyString(), any(), anyString(), any(), any(), any());
+
+            assertThatThrownBy(() -> service.startUpload(USER_ID, req)).isSameAs(failure);
+            then(r2StorageService).should().abortMultipartUpload(anyString(), eq(UPLOAD_ID));
+        }
+
+        @Test
         @DisplayName("異常系_contentType不正_BAD_REQUEST")
         void 異常系_contentType不正_BAD_REQUEST() {
             // given
