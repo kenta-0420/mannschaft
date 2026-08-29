@@ -154,7 +154,7 @@
       },
       "confirm": {
         "title": "Confirm reward payment",
-        "intro": "Before confirming the applicant, please confirm the reward payment (card authorization).",
+        "intro": "Please confirm the reward payment (card authorization) required for your application.",
         "expiryNotice": "This authorization is valid for about 7 days. Final approval of service completion is required within 7 days (after that, payment is taken again at completion).",
         "deferredNotice": "Because more than 7 days pass between confirmation and service, no authorization is taken now. You will pay again at final approval of service completion.",
         "alreadyAuthorized": "This payment has already been confirmed.",
