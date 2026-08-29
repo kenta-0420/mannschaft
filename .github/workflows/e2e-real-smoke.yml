@@ -86,7 +86,7 @@ jobs:
       # プロジェクト内の .gradle ディレクトリ（ビルドキャッシュ本体）を別途キャッシュする。
       # backend-ci.yml と同じ key を使うことでキャッシュを共有できる。
       - name: Gradle ビルドキャッシュ（プロジェクト内）
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: backend/.gradle/buildOutputCleanup
           key: gradle-build-cache-${{ runner.os }}-${{ hashFiles('backend/**/*.gradle*', 'backend/gradle/wrapper/gradle-wrapper.properties') }}
