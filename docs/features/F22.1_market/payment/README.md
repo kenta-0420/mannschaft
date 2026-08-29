@@ -401,4 +401,4 @@ F13.1（短期業務マッチング）の決済は **enum/コメントのみで�
 
 ## 12. 個人札主との接続条件（追加仕様）
 
-本設計の `payee_kind=USER` は「チーム/組織札の受領者が個人」である既存用途を変更しない。新しい `owner_kind=PERSONAL` の札は Phase 5 まで決済対象外であり、`payment_enabled=true` を保存・公開・決済作成の全入口で拒否する。Phase 5 は本人 Connect onboarding、受領者/返金責任、本人による応募・支払い・受領の自己取引拒否、口座制限時の取消と再試行を契約・統合テストで固定してから開始する。Connect の owner_kind 分岐は既存 TEAM/ORGANIZATION を維持し、未知の区分を fail-closed とする。
+本設計の `payee_kind=USER` は「チーム/組織札の受領者が個人」である既存用途を変更しない。新しい `scope_type=PERSONAL` の札は Phase 5 まで決済対象外であり、`payment_enabled=true` を保存・公開・決済作成の全入口で拒否する。Phase 5 は本人 Connect onboarding、受領者/返金責任、本人による応募・支払い・受領の自己取引拒否、口座制限時の取消と再試行を契約・統合テストで固定してから開始する。Connect の札主区分判定は既存 TEAM/ORGANIZATION を維持し、未知の `scope_type` を fail-closed とする。

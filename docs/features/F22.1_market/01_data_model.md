@@ -202,14 +202,14 @@ confirmable_notifications.source_id → recruitment_listings.id   [source_type='
 
 ## 9. 追加仕様: 個人札主のデータ境界（Phase 2）
 
-既存 `scope_type/scope_id` を TEAM/ORGANIZATION のまま破壊的に置換しない。Phase 2 は Expand として札主区分を `owner_kind`（`PERSONAL`/`TEAM`/`ORGANIZATION`）で明示し、PERSONAL の所有者は `owner_user_id`（users への既存方針に従う論理参照）へ固定する。TEAM/ORGANIZATION は既存 `scope_type/scope_id` を正典として維持し、移行期間は整合チェックを置く。
+既存 `scope_type/scope_id` を破壊的に置換せず、そのまま札主の正典として拡張する。Phase 2 は `RecruitmentScopeType` に `PERSONAL` を追加し、PERSONAL では `scope_id` を認証済み作成者本人の user ID へ固定する。TEAM/ORGANIZATION の既存行・意味・API契約は変更しない。`scope_type` は既に `VARCHAR(20)` のため、札主区分だけを理由とした新しい `owner_kind` / `owner_user_id` 列は追加しない。
 
 - `participation_type` と `payee_kind` は札主区分と別列・別 enum のまま維持する。
-- PERSONAL では `owner_user_id IS NOT NULL`、TEAM/ORGANIZATION では `owner_user_id IS NULL` を Service 層と DB 制約で二重検証する。
-- `payment_enabled=TRUE AND owner_kind='PERSONAL'` は Phase 5 まで DB/Service の双方で拒否する（既存 TEAM/ORGANIZATION 行には影響させない）。
-- 主体別履歴用索引は `(owner_kind, owner_user_id, status, created_at)` と既存 scope 索引を併用し、一覧に参加者を join して N+1 を起こさない。
+- PERSONAL では `created_by = scope_id = 認証済み user ID` を Service 層で検証し、クライアントに `scope_id` を指定させない。users へのクロスドメイン FK は張らない。
+- `payment_enabled=TRUE AND scope_type='PERSONAL'` は Phase 5 まで Service 層で拒否する（既存 TEAM/ORGANIZATION 行には影響させない）。
+- 主体別履歴用索引は既存 `(scope_type, scope_id, status, start_at)` の利用状況を計測し、不足する場合だけ `(scope_type, scope_id, status, created_at)` を追加する。一覧の参加者集計はバルク取得し N+1 を起こさない。
 
-`FRIEND_TEAMS_ONLY` の可視性判定、Repository の `CASE`/projection、地域既定補完、Connect の TEAM/ORGANIZATION 分岐は `PERSONAL` 導入と同一 Phase で更新する。未知の `owner_kind` は SQL の ELSE で公開可能側へ落とさず、検索対象外・認可拒否とする。
+`FRIEND_TEAMS_ONLY` のPERSONAL拒否、Repository の `CASE`/projection、地域既定補完、通知の TEAM/ORGANIZATION 二分岐、Connect の札主区分判定は `PERSONAL` 導入と同一 Phase で更新する。未知の `scope_type` は SQL の ELSE で公開可能側へ落とさず、検索対象外・認可拒否とする。
 
 | 原則 | 適合状況 |
 |---|---|
