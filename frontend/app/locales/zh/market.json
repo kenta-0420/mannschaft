@@ -9,6 +9,19 @@
     "page": {
       "newListing": "发布招募"
     },
+    "management": {
+      "title": "集市管理",
+      "description": "管理当前主体发布的招募和报名情况。",
+      "postDescription": "以当前球队或组织的名义发布新的招募。",
+      "history": "已发布的招募（历史）",
+      "historyDescription": "查看当前主体发布的招募列表。",
+      "matching": "匹配情况",
+      "matchingDescription": "查看各招募的报名者并管理确认。",
+      "openMatching": "管理报名者",
+      "manageParticipants": "管理报名者",
+      "noListings": "当前主体尚未发布招募。",
+      "permissionRequired": "发布招募和管理报名者需要管理员权限。"
+    },
     "action": {
       "post": "发布招募",
       "apply": "应募",

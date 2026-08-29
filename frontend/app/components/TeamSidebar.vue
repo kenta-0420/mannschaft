@@ -39,6 +39,14 @@ const categories: SidebarCategory[] = [
     ],
   },
   {
+    key: 'market',
+    labelKey: 'teamSidebar.category.market',
+    icon: 'pi pi-shop',
+    items: [
+      { labelKey: 'teamSidebar.item.market', icon: 'pi pi-shop', path: 'market', moduleSlug: null, requiredRole: 'MEMBER' },
+    ],
+  },
+  {
     key: 'member',
     labelKey: 'teamSidebar.category.member',
     icon: 'pi pi-users',

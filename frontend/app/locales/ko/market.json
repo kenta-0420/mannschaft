@@ -9,6 +9,19 @@
     "page": {
       "newListing": "모집 올리기"
     },
+    "management": {
+      "title": "장터 관리",
+      "description": "현재 주체가 올린 모집과 신청 현황을 관리합니다.",
+      "postDescription": "이 팀 또는 조직 명의로 새 모집을 올립니다.",
+      "history": "올린 모집 (이력)",
+      "historyDescription": "현재 주체가 올린 모집 목록을 확인합니다.",
+      "matching": "매칭 현황",
+      "matchingDescription": "모집별 신청자를 확인하고 확정을 관리합니다.",
+      "openMatching": "신청자 관리",
+      "manageParticipants": "신청자 관리",
+      "noListings": "현재 주체가 올린 모집이 아직 없습니다.",
+      "permissionRequired": "모집 작성 및 신청자 관리에는 관리자 권한이 필요합니다."
+    },
     "action": {
       "post": "모집 올리기",
       "apply": "응모하기",
