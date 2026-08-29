@@ -229,6 +229,7 @@ public class InviteService {
      * 招待トークンを使用してスコープに参加する（後方互換版）。
      * F15.3 で folderId 受領版が追加されたが、folderId=null と等価。
      */
+    @Transactional
     public void joinByInvite(String tokenStr, Long userId) {
         joinByInvite(tokenStr, userId, null);
     }

@@ -31,9 +31,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -337,6 +338,17 @@ class InviteServiceTest {
     @Nested
     @DisplayName("joinByInvite")
     class JoinByInvite {
+
+        @Test
+        @DisplayName("2引数overloadも書込みトランザクションを開始する")
+        void twoArgumentOverloadStartsWriteTransaction() throws NoSuchMethodException {
+            Transactional transactional = InviteService.class
+                    .getMethod("joinByInvite", String.class, Long.class)
+                    .getAnnotation(Transactional.class);
+
+            assertThat(transactional).isNotNull();
+            assertThat(transactional.readOnly()).isFalse();
+        }
 
         @Test
         @DisplayName("逡ｰ蟶ｸ邉ｻ: ACTIVE縺ｧ縺ｪ縺・Θ繝ｼ繧ｶ繝ｼ縺ｯ蜿ょ刈蜑阪↓ROLE_002")
