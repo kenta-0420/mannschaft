@@ -361,12 +361,33 @@ public class RecruitmentListingService {
 
     @Transactional
     public RecruitmentListingResponse update(Long listingId, Long userId, UpdateRecruitmentListingRequest request) {
+        return updateInternal(listingId, userId, request, false);
+    }
+
+    @Transactional
+    public RecruitmentListingResponse updatePersonalDraft(Long listingId, Long userId,
+            UpdateRecruitmentListingRequest request) {
+        return updateInternal(listingId, userId, request, true);
+    }
+
+    private RecruitmentListingResponse updateInternal(Long listingId, Long userId,
+            UpdateRecruitmentListingRequest request, boolean personalRoute) {
         // §5.7 編集時の制約 — PESSIMISTIC_WRITE で行ロック取得
-        RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
+        RecruitmentListingEntity entity = (personalRoute
+                ? listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                        listingId, RecruitmentScopeType.PERSONAL, userId)
+                : listingRepository.findByIdForUpdate(listingId))
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        if (!personalRoute && entity.getScopeType() == RecruitmentScopeType.PERSONAL) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.LISTING_NOT_FOUND);
+        }
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
         validatePersonalUpdate(entity, request);
-        if (entity.getScopeType() == RecruitmentScopeType.PERSONAL
+        if (personalRoute && (entity.getScopeType() != RecruitmentScopeType.PERSONAL
+                || entity.getStatus() != RecruitmentListingStatus.DRAFT)) {
+            throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
+        if (!personalRoute && entity.getScopeType() == RecruitmentScopeType.PERSONAL
                 && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
             throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
         }
@@ -625,10 +646,31 @@ public class RecruitmentListingService {
 
     @Transactional
     public RecruitmentListingResponse cancelByAdmin(Long listingId, Long userId, CancelRecruitmentListingRequest request) {
-        RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
+        return cancelInternal(listingId, userId, request, false);
+    }
+
+    @Transactional
+    public RecruitmentListingResponse cancelPersonalDraft(Long listingId, Long userId,
+            CancelRecruitmentListingRequest request) {
+        return cancelInternal(listingId, userId, request, true);
+    }
+
+    private RecruitmentListingResponse cancelInternal(Long listingId, Long userId,
+            CancelRecruitmentListingRequest request, boolean personalRoute) {
+        RecruitmentListingEntity entity = (personalRoute
+                ? listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                        listingId, RecruitmentScopeType.PERSONAL, userId)
+                : listingRepository.findByIdForUpdate(listingId))
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        if (!personalRoute && entity.getScopeType() == RecruitmentScopeType.PERSONAL) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.LISTING_NOT_FOUND);
+        }
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
-        if (entity.getScopeType() == RecruitmentScopeType.PERSONAL
+        if (personalRoute && (entity.getScopeType() != RecruitmentScopeType.PERSONAL
+                || entity.getStatus() != RecruitmentListingStatus.DRAFT)) {
+            throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
+        if (!personalRoute && entity.getScopeType() == RecruitmentScopeType.PERSONAL
                 && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
             throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
         }

@@ -2,7 +2,9 @@ package com.mannschaft.app.recruitment.controller;
 
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
+import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
+import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.service.PersonalMarketListingService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,5 +71,21 @@ class PersonalMarketListingControllerTest {
         controller.list(null, 0, 20);
 
         verify(personalMarketListingService).list(eq(USER_ID), eq(null), any());
+    }
+
+    @Test
+    void update_boundToCurrentUserOnly() {
+        controller.update(42L, Mockito.mock(UpdateRecruitmentListingRequest.class));
+
+        verify(personalMarketListingService).update(eq(USER_ID), eq(42L),
+                any(UpdateRecruitmentListingRequest.class));
+    }
+
+    @Test
+    void cancel_boundToCurrentUserOnly() {
+        controller.cancel(42L, Mockito.mock(CancelRecruitmentListingRequest.class));
+
+        verify(personalMarketListingService).cancel(eq(USER_ID), eq(42L),
+                any(CancelRecruitmentListingRequest.class));
     }
 }
