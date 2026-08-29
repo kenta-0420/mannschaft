@@ -88,6 +88,8 @@ export const GATE_ROUTE_MAP: Record<string, string[]> = {
   ],
   FEATURE_MARKET_ENABLED: [
     '/market',
+    '/organizations/*/market',
+    '/teams/*/market',
   ],
   FEATURE_WORKFLOW_FORMS_ENABLED: [
     '/organizations/*/forms',
