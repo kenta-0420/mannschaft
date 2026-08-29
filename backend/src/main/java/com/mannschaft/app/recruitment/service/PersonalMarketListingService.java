@@ -4,8 +4,12 @@ import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentMapper;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
+import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
+import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -43,5 +47,28 @@ public class PersonalMarketListingService {
                         RecruitmentListingStatus.valueOf(status),
                         pageable)
                 .map(mapper::toListingSummaryResponse);
+    }
+
+    @Transactional
+    public RecruitmentListingResponse update(Long currentUserId, Long listingId,
+            UpdateRecruitmentListingRequest request) {
+        lockDraftOrThrow(currentUserId, listingId);
+        return listingService.update(listingId, currentUserId, request);
+    }
+
+    @Transactional
+    public RecruitmentListingResponse cancel(Long currentUserId, Long listingId,
+            CancelRecruitmentListingRequest request) {
+        lockDraftOrThrow(currentUserId, listingId);
+        return listingService.cancelByAdmin(listingId, currentUserId, request);
+    }
+
+    private void lockDraftOrThrow(Long currentUserId, Long listingId) {
+        var listing = listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                listingId, RecruitmentScopeType.PERSONAL, currentUserId)
+                .orElseThrow(() -> new BusinessException(MarketErrorCode.LISTING_NOT_FOUND));
+        if (listing.getStatus() != RecruitmentListingStatus.DRAFT) {
+            throw new BusinessException(com.mannschaft.app.recruitment.RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
     }
 }

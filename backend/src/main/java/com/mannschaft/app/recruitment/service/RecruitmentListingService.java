@@ -366,6 +366,10 @@ public class RecruitmentListingService {
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
         validatePersonalUpdate(entity, request);
+        if (entity.getScopeType() == RecruitmentScopeType.PERSONAL
+                && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
+            throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
 
         // Service 層でも事前検証 (Entity 内に防御的二重検証あり)
         if (entity.getStatus() == RecruitmentListingStatus.COMPLETED) {
@@ -624,6 +628,10 @@ public class RecruitmentListingService {
         RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
+        if (entity.getScopeType() == RecruitmentScopeType.PERSONAL
+                && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
+            throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
 
         try {
             entity.cancelByAdmin(userId, request != null ? request.getReason() : null);
