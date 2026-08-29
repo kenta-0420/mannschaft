@@ -102,7 +102,6 @@ public class RoleService {
      */
     private void requireActorAdmin(Long scopeId, String scopeType, Long actorUserId) {
         boolean isAdmin = userRoleRepository.isActiveUser(actorUserId)
-                && membershipService.isActiveMember(actorUserId, ScopeType.valueOf(scopeType), scopeId)
                 && findUserRole(actorUserId, scopeId, scopeType)
                 .flatMap(ur -> roleRepository.findById(ur.getRoleId()))
                 .map(RoleEntity::getName)
@@ -219,7 +218,6 @@ public class RoleService {
     public void changeRole(Long scopeId, String scopeType, Long targetUserId,
                            RoleChangeRequest req, Long changedBy) {
         lockUsers(changedBy, targetUserId);
-        lockAdminRows(scopeId, scopeType);
         // 束1 権限昇格根治（Service 層二重防御）: 操作者が当該スコープの ADMIN/DEPUTY_ADMIN であることを要求。
         requireActorAdmin(scopeId, scopeType, changedBy);
 
@@ -227,13 +225,7 @@ public class RoleService {
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
         // 最後のADMIN保護
-        RoleEntity currentRole = roleRepository.findById(current.getRoleId()).orElse(null);
-        if (currentRole != null && "ADMIN".equals(currentRole.getName())) {
-            long adminCount = countByRoleInScope(scopeId, scopeType, current.getRoleId());
-            if (adminCount <= 1) {
-                throw new BusinessException(RoleErrorCode.ROLE_004);
-            }
-        }
+        checkLastAdmin(scopeId, scopeType, current);
 
         // 新ロール存在確認
         RoleEntity requestedRole = roleRepository.findById(req.getRoleId())
@@ -295,7 +287,6 @@ public class RoleService {
     @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void removeMember(Long scopeId, String scopeType, Long targetUserId, Long operatorUserId) {
         lockUsers(operatorUserId, targetUserId);
-        lockAdminRows(scopeId, scopeType);
         // 束1 権限昇格根治（Service 層二重防御）: 操作者が当該スコープの ADMIN/DEPUTY_ADMIN であることを要求。
         requireActorAdmin(scopeId, scopeType, operatorUserId);
 
@@ -364,7 +355,6 @@ public class RoleService {
     @CacheEvict(value = "role-permissions", key = "#userId + ':' + #scopeType + ':' + #scopeId")
     public void leaveScope(Long userId, Long scopeId, String scopeType) {
         lockUsers(userId);
-        lockAdminRows(scopeId, scopeType);
         UserRoleEntity current = findUserRole(userId, scopeId, scopeType)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
@@ -494,9 +484,9 @@ public class RoleService {
      */
     @Cacheable(value = "role-permissions", key = "#userId + ':' + #scopeType + ':' + #scopeId")
     public List<String> resolveEffectivePermissions(Long userId, Long scopeId, String scopeType) {
-        // 認可のfail-closed境界: active userかつscope直所属でなければ、role/groupとも権限なし。
-        if (!userRoleRepository.isActiveUser(userId)
-                || !membershipService.isActiveMember(userId, ScopeType.valueOf(scopeType), scopeId)) {
+        // 非アクティブ利用者は fail-closed。membership 未移行の既存 user_roles は引き続き有効な
+        // 認可情報源なので、ここで direct membership を一律必須にしない。
+        if (!userRoleRepository.isActiveUser(userId)) {
             return new ArrayList<>();
         }
         String userRoleName = findUserRole(userId, scopeId, scopeType)
@@ -813,6 +803,9 @@ public class RoleService {
     private void checkLastAdmin(Long scopeId, String scopeType, UserRoleEntity current) {
         RoleEntity currentRole = roleRepository.findById(current.getRoleId()).orElse(null);
         if (currentRole != null && "ADMIN".equals(currentRole.getName())) {
+            // 一般メンバーの変更・離脱まで全scope共通ロックで直列化しない。
+            // ADMINを実際に減らすtransactionだけが同じ定義行を取り、判定を直列化する。
+            lockAdminRows(scopeId, scopeType);
             long adminCount = countByRoleInScope(scopeId, scopeType, current.getRoleId());
             if (adminCount <= 1) {
                 throw new BusinessException(RoleErrorCode.ROLE_004);
@@ -820,9 +813,15 @@ public class RoleService {
         }
     }
 
-    /** ADMIN行をID順でロックし、同一scopeのlast-admin判定を同時mutationから保護する。 */
+    /**
+     * ADMIN 行を ID 順でロックし、最後の ADMIN 判定を同時 mutation から保護する。
+     *
+     * <p>ADMINを実際に減らす transaction に限り、対象スコープの ADMIN 行だけでなく、
+     * 必ず存在する ADMIN ロール定義も悲観ロックする。これにより DB の実行計画にかかわらず、
+     * 二つの transaction が同時に最後の ADMIN 判定を通過することを防ぐ。</p>
+     */
     private void lockAdminRows(Long scopeId, String scopeType) {
-        roleRepository.findByName("ADMIN").ifPresent(admin -> {
+        roleRepository.findByNameForUpdate("ADMIN").ifPresent(admin -> {
             if ("TEAM".equals(scopeType)) {
                 userRoleRepository.lockAdminsByTeamId(scopeId, admin.getId());
             } else if ("ORGANIZATION".equals(scopeType)) {

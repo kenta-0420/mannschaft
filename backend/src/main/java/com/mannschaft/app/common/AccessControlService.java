@@ -237,9 +237,9 @@ public class AccessControlService {
             return Optional.of(new EffectiveRole("SYSTEM_ADMIN", 1));
         }
 
-        // SYSTEM_ADMIN以外はactive userかつ対象scopeへの直接在籍を要求し、fail-closedにする。
-        if (!userRoleRepository.isActiveUser(userId)
-                || !isMember(userId, scopeId, scopeType)) {
+        // 非アクティブ利用者だけをここで遮断する。user_roles は移行期間にも既存の認可情報源であり、
+        // membership 行が未作成というだけで既存 ADMIN/DEPUTY_ADMIN を無権限化してはならない。
+        if (!userRoleRepository.isActiveUser(userId)) {
             return Optional.empty();
         }
 

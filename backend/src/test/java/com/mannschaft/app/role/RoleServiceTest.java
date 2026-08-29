@@ -307,6 +307,7 @@ class RoleServiceTest {
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(current));
             given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+            given(roleRepository.findByNameForUpdate("ADMIN")).willReturn(Optional.of(createAdminRole()));
             given(userRoleRepository.countByOrganizationIdAndRoleId(SCOPE_ID, ADMIN_ROLE_ID)).willReturn(1L);
 
             assertThatThrownBy(() -> roleService.changeRole(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID,
@@ -314,6 +315,8 @@ class RoleServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_004"));
+            verify(roleRepository).findByNameForUpdate("ADMIN");
+            verify(userRoleRepository).lockAdminsByOrganizationId(SCOPE_ID, ADMIN_ROLE_ID);
         }
 
         // ------------------------------------------------------------------
@@ -407,12 +410,15 @@ class RoleServiceTest {
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(current));
             given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+            given(roleRepository.findByNameForUpdate("ADMIN")).willReturn(Optional.of(createAdminRole()));
             given(userRoleRepository.countByOrganizationIdAndRoleId(SCOPE_ID, ADMIN_ROLE_ID)).willReturn(1L);
 
             assertThatThrownBy(() -> roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_004"));
+            verify(roleRepository).findByNameForUpdate("ADMIN");
+            verify(userRoleRepository).lockAdminsByOrganizationId(SCOPE_ID, ADMIN_ROLE_ID);
         }
 
         @Test
@@ -599,6 +605,28 @@ class RoleServiceTest {
 
             verify(userRoleRepository).delete(current);
             verify(userRowLockService).lockAll(USER_ID);
+            verify(roleRepository, never()).findByNameForUpdate("ADMIN");
+        }
+
+        @Test
+        @DisplayName("最後のADMIN退会_共通定義行とscope内ADMIN行をロックしてROLE_004例外")
+        void 最後のADMIN退会_共通定義行とscope内ADMIN行をロックしてROLE_004例外() {
+            UserRoleEntity current = UserRoleEntity.builder()
+                    .id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).teamId(SCOPE_ID).build();
+            given(userRoleRepository.findByUserIdAndTeamId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(current));
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+            given(roleRepository.findByNameForUpdate("ADMIN")).willReturn(Optional.of(createAdminRole()));
+            given(userRoleRepository.countByTeamIdAndRoleId(SCOPE_ID, ADMIN_ROLE_ID)).willReturn(1L);
+
+            assertThatThrownBy(() -> roleService.leaveScope(USER_ID, SCOPE_ID, "TEAM"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("ROLE_004"));
+
+            verify(roleRepository).findByNameForUpdate("ADMIN");
+            verify(userRoleRepository).lockAdminsByTeamId(SCOPE_ID, ADMIN_ROLE_ID);
+            verify(userRoleRepository, never()).delete(any(UserRoleEntity.class));
         }
 
         @Test
@@ -633,9 +661,6 @@ class RoleServiceTest {
             given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(ur));
             given(userRoleRepository.isActiveUser(USER_ID)).willReturn(true);
-            given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID)).willReturn(true);
-            given(membershipService.findActiveRoleKind(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
-                    .willReturn(Optional.of(RoleKind.MEMBER));
             given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
             given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(createAdminRole()));
 
@@ -670,13 +695,7 @@ class RoleServiceTest {
         @Test
         @DisplayName("MEMBER の実効ロールでは DEPUTY_ADMIN 向け permission group を解決しない")
         void memberDoesNotResolveDeputyPermissionGroup() {
-            UserRoleEntity role = UserRoleEntity.builder()
-                    .id(1L).userId(USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
             given(userRoleRepository.isActiveUser(USER_ID)).willReturn(true);
-            given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID)).willReturn(true);
-            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
-                    .willReturn(Optional.of(role));
-            given(roleRepository.findById(MEMBER_ROLE_ID)).willReturn(Optional.of(createMemberRole()));
             given(membershipService.findActiveRoleKind(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
                     .willReturn(Optional.of(RoleKind.MEMBER));
 
@@ -707,9 +726,6 @@ class RoleServiceTest {
             given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(ur));
             given(userRoleRepository.isActiveUser(USER_ID)).willReturn(true);
-            given(membershipService.isActiveMember(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID)).willReturn(true);
-            given(membershipService.findActiveRoleKind(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
-                    .willReturn(Optional.of(RoleKind.MEMBER));
             given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
             given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(createAdminRole()));
 
