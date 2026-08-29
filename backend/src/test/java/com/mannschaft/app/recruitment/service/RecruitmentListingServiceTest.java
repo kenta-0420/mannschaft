@@ -226,8 +226,8 @@ class RecruitmentListingServiceTest {
         }
 
         @Test
-        @DisplayName("PERSONAL札をPUBLICへ更新するとMARKET_008")
-        void update_personalToPublic_throwsMarket008() {
+        @DisplayName("汎用更新経路はPERSONAL札のPUBLIC更新を存在秘匿404で拒否する")
+        void update_personalToPublicThroughGenericRoute_throwsMarket404() {
             RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
                     .scopeType(RecruitmentScopeType.PERSONAL)
                     .scopeId(USER_ID)
@@ -410,6 +410,25 @@ class RecruitmentListingServiceTest {
                     personalUpdateWithVisibility(RecruitmentVisibility.SCOPE_ONLY)))
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
+
+        @Test
+        @DisplayName("専用更新経路は本人のPERSONAL+DRAFTを更新する")
+        void personalUpdate_draftSucceeds() {
+            RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.DRAFT);
+            given(listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                    eq(LISTING_ID), eq(RecruitmentScopeType.PERSONAL), eq(USER_ID)))
+                    .willReturn(Optional.of(listing));
+            given(listingRepository.save(listing)).willReturn(listing);
+            RecruitmentListingResponse response = org.mockito.Mockito.mock(RecruitmentListingResponse.class);
+            given(mapper.toListingResponse(listing)).willReturn(response);
+            given(marketResponseEnricher.enrich(response, listing)).willReturn(response);
+
+            RecruitmentListingResponse actual = service.updatePersonalDraft(
+                    LISTING_ID, USER_ID, personalUpdateWithVisibility(RecruitmentVisibility.SCOPE_ONLY));
+
+            assertThat(actual).isSameAs(response);
+            verify(listingRepository).save(listing);
         }
 
         @Test
