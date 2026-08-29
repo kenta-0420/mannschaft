@@ -688,9 +688,6 @@ class PermissionGroupServiceTest {
         given(userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(GROUP_ID)))
                 .willReturn(List.of(USER_ID_2));
         given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of(group));
-        given(permissionRepository.findByIdIn(anyList())).willReturn(List.of());
-        given(userPermissionGroupRepository.save(any(UserPermissionGroupEntity.class)))
-                .willAnswer(i -> i.getArgument(0));
 
         TransactionSynchronizationManager.initSynchronization();
         try {
@@ -807,7 +804,6 @@ class PermissionGroupServiceTest {
         given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of(group));
         given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of(
                 UserPermissionGroupEntity.builder().userId(USER_ID).groupId(GROUP_ID).build()));
-        given(accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM")).willReturn(false);
         permissionGroupService.assignUserPermissionGroups(
                 USER_ID, SCOPE_ID, "TEAM", new UserPermissionGroupAssignRequest(List.of()), CREATED_BY);
         verify(userPermissionGroupRepository).deleteByUserIdAndGroupIdIn(USER_ID, List.of(GROUP_ID));
