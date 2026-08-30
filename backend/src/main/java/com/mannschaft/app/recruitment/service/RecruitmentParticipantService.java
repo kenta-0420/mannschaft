@@ -93,6 +93,12 @@ public class RecruitmentParticipantService {
 
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        // 自己応募は個人札が将来公開された後も不変の禁止契約であり、汚染行の存在秘匿より優先する。
+        if (listing.getScopeType() == com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                && listing.getScopeId().equals(userId)) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.SELF_APPLICATION_FORBIDDEN);
+        }
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
 
         // §5.2 step3 締切チェック
         if (LocalDateTime.now().isAfter(listing.getApplicationDeadline())) {
@@ -235,6 +241,7 @@ public class RecruitmentParticipantService {
         // PESSIMISTIC_WRITE で listing をロック
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
 
         RecruitmentParticipantEntity participant = participantRepository
                 .findActiveByListingAndUser(listingId, userId)
@@ -333,6 +340,7 @@ public class RecruitmentParticipantService {
 
     public Page<RecruitmentParticipantResponse> listParticipants(Long listingId, Long userId, Pageable pageable) {
         RecruitmentListingEntity listing = listingService.findOrThrow(listingId);
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
         accessControlService.checkAdminOrAbove(userId, listing.getScopeId(), listing.getScopeType().name());
 
         return participantRepository.findByListingIdOrderByAppliedAtAsc(listingId, pageable)
@@ -342,6 +350,7 @@ public class RecruitmentParticipantService {
     @Transactional
     public RecruitmentParticipantResponse markAttended(Long listingId, Long participantId, Long userId) {
         RecruitmentListingEntity listing = listingService.findOrThrow(listingId);
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
         accessControlService.checkAdminOrAbove(userId, listing.getScopeId(), listing.getScopeType().name());
 
         RecruitmentParticipantEntity participant = participantRepository.findByIdAndListingId(participantId, listingId)

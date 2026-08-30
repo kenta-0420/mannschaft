@@ -155,12 +155,13 @@ public class MarketQueryService {
             if (e.getCategoryId() != null) {
                 categoryIds.add(e.getCategoryId());
             }
-            if (e.getScopeType() == RecruitmentScopeType.TEAM) {
-                if (e.getScopeId() != null) {
-                    teamIds.add(e.getScopeId());
+            if (e.getScopeId() != null) {
+                switch (e.getScopeType()) {
+                    case TEAM -> teamIds.add(e.getScopeId());
+                    case ORGANIZATION -> orgIds.add(e.getScopeId());
+                    // Phase 2 の個人札は公開市から除外する。未知の札主区分も公開側へ倒さない。
+                    case PERSONAL -> { }
                 }
-            } else if (e.getScopeId() != null) {
-                orgIds.add(e.getScopeId());
             }
             // 旧単一列（代表・後方互換）由来のコード。
             if (e.getPrefectureCode() != null) {
@@ -257,20 +258,19 @@ public class MarketQueryService {
 
     private MarketOwnerDto resolveOwnerFromMap(
             RecruitmentScopeType scopeType, Long scopeId, MarketResolverMaps maps) {
-        if (scopeType == RecruitmentScopeType.TEAM) {
-            TeamEntity t = maps.teams().get(scopeId);
-            return t == null
-                    ? new MarketOwnerDto("TEAM", scopeId, null, null)
-                    // iconUrl は DB の生 R2 キー。表示用署名付き URL へ解決して返す（生キーは 404）。
-                    : new MarketOwnerDto("TEAM", scopeId, t.getName(),
-                            mediaUrlResolver.resolve(t.getIconUrl()));
-        }
-        OrganizationEntity o = maps.organizations().get(scopeId);
-        return o == null
-                ? new MarketOwnerDto("ORGANIZATION", scopeId, null, null)
-                // iconUrl は DB の生 R2 キー。表示用署名付き URL へ解決して返す（生キーは 404）。
-                : new MarketOwnerDto("ORGANIZATION", scopeId, o.getName(),
-                        mediaUrlResolver.resolve(o.getIconUrl()));
+        return switch (scopeType) {
+            case TEAM -> {
+                TeamEntity t = maps.teams().get(scopeId);
+                yield t == null ? new MarketOwnerDto("TEAM", scopeId, null, null)
+                        : new MarketOwnerDto("TEAM", scopeId, t.getName(), mediaUrlResolver.resolve(t.getIconUrl()));
+            }
+            case ORGANIZATION -> {
+                OrganizationEntity o = maps.organizations().get(scopeId);
+                yield o == null ? new MarketOwnerDto("ORGANIZATION", scopeId, null, null)
+                        : new MarketOwnerDto("ORGANIZATION", scopeId, o.getName(), mediaUrlResolver.resolve(o.getIconUrl()));
+            }
+            case PERSONAL -> throw new BusinessException(MarketErrorCode.LISTING_NOT_FOUND);
+        };
     }
 
     private MarketRegionDto resolveRegionFromMap(

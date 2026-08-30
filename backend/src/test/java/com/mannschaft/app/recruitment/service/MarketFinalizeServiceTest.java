@@ -4,6 +4,8 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentParticipationType;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
@@ -209,6 +211,22 @@ class MarketFinalizeServiceTest {
 
         service.finalizeBySourceId(LISTING_ID);
 
+        verify(eventPublisher, never()).publishEvent(any(MarketListingFinalizedEvent.class));
+    }
+
+    @Test
+    @DisplayName("PERSONAL汚染行の最終認証はMARKET_404で存在秘匿し確定・払出イベントを発火しない")
+    void finalizeBySourceId_personal_doesNotFinalizeOrPublishEvent() throws Exception {
+        RecruitmentListingEntity listing = fullListing(true);
+        setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+        given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.finalizeBySourceId(LISTING_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+
+        verify(listingRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any(MarketListingFinalizedEvent.class));
     }
 

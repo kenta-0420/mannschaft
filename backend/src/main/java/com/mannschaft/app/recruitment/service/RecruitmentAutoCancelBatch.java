@@ -120,6 +120,7 @@ public class RecruitmentAutoCancelBatch {
         // PESSIMISTIC_WRITE で行ロックを取得して最新状態を確認
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new IllegalStateException("募集が見つかりません: id=" + listingId));
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
 
         // 再確認: OPEN/FULL かつ confirmedCount < minCapacity であること
         if (listing.getStatus() != RecruitmentListingStatus.OPEN

@@ -34,6 +34,14 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
     Optional<RecruitmentListingEntity> findByIdAndScopeTypeAndScopeId(
             Long id, RecruitmentScopeType scopeType, Long scopeId);
 
+    /** 個人札の編集・取消用。複合スコープ条件を含めて行ロックし、IDOR と競合を同時に防ぐ。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT l FROM RecruitmentListingEntity l WHERE l.id = :id AND l.scopeType = :scopeType AND l.scopeId = :scopeId")
+    Optional<RecruitmentListingEntity> findByIdAndScopeTypeAndScopeIdForUpdate(
+            @Param("id") Long id,
+            @Param("scopeType") RecruitmentScopeType scopeType,
+            @Param("scopeId") Long scopeId);
+
     /**
      * F03.11 Phase 4 全体検索クエリ (§9.x)。
      *
@@ -165,6 +173,10 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL
               )
+              AND l.scopeType IN (
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION
+              )
               AND l.confirmedCount < l.minCapacity
             ORDER BY l.autoCancelAt ASC
             """)
@@ -181,6 +193,10 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             SELECT l FROM RecruitmentListingEntity l
             WHERE l.scopeId IN :scopeIds
               AND l.status = 'OPEN'
+              AND l.scopeType IN (
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION
+              )
             ORDER BY l.createdAt DESC
             """)
     List<RecruitmentListingEntity> findOpenByScopeIds(
@@ -252,6 +268,8 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
     @Query("""
             SELECT l FROM RecruitmentListingEntity l
             WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION)
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
@@ -290,6 +308,8 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             SELECT l FROM RecruitmentListingEntity l
             WHERE l.id = :id
               AND l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION)
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
@@ -313,6 +333,8 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             FROM RecruitmentListingRegionEntity rr
             JOIN RecruitmentListingEntity l ON l.id = rr.listingId
             WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION)
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
@@ -335,6 +357,8 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             FROM RecruitmentListingRegionEntity rr
             JOIN RecruitmentListingEntity l ON l.id = rr.listingId
             WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION)
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)

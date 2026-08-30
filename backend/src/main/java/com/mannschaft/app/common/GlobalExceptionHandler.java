@@ -1073,6 +1073,9 @@ public class GlobalExceptionHandler {
             Map.entry("MARKET_003", HttpStatus.FORBIDDEN),           // フレンド未成立チームを宛先指定
             Map.entry("MARKET_004", HttpStatus.FORBIDDEN),           // 他チーム所有フォルダを宛先指定
             Map.entry("MARKET_005", HttpStatus.BAD_REQUEST),         // FRIEND_TEAMS_ONLY × distribution_targets 併用
+            Map.entry("MARKET_006", HttpStatus.BAD_REQUEST),         // 個人札の決済/受領者指定はPhase 5まで禁止
+            Map.entry("MARKET_007", HttpStatus.FORBIDDEN),           // 個人札主本人の自己応募
+            Map.entry("MARKET_008", HttpStatus.BAD_REQUEST),         // 個人札の公開/フレンド限定はPhase 4まで禁止
             Map.entry("MARKET_404", HttpStatus.NOT_FOUND),           // 非公開 / 不在の札（存在秘匿）
             // F03.11 / F22.1 募集枠 公開（publish）時の配信対象検証
             //   いずれも「入力不備」であり 400（MARKET_002 と対称）。未登録だと Severity.ERROR 既定の 500 になり、
