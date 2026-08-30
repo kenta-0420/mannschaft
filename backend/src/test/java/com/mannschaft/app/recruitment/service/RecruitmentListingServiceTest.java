@@ -17,6 +17,7 @@ import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingAudienceScopeRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -54,6 +55,9 @@ class RecruitmentListingServiceTest {
 
     @Mock
     private RecruitmentListingRepository listingRepository;
+
+    @Mock
+    private RecruitmentListingAudienceScopeRepository audienceScopeRepository;
 
     @Mock
     private com.mannschaft.app.recruitment.repository.RecruitmentDistributionTargetRepository distributionTargetRepository;
@@ -437,7 +441,7 @@ class RecruitmentListingServiceTest {
 
         @Test
         @DisplayName("専用更新経路は個人札の決済と公開範囲を拒否する")
-        void personalUpdate_paymentAndVisibilityAreRejected() {
+        void personalUpdate_paymentAndUnsupportedVisibilityAreRejected() {
             RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.DRAFT);
             given(listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
                     eq(LISTING_ID), eq(RecruitmentScopeType.PERSONAL), eq(USER_ID)))
@@ -448,7 +452,7 @@ class RecruitmentListingServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MarketErrorCode.PERSONAL_PAYMENT_DISABLED);
             assertThatThrownBy(() -> service.updatePersonalDraft(LISTING_ID, USER_ID,
-                    personalUpdateWithVisibility(RecruitmentVisibility.PUBLIC)))
+                    personalUpdateWithVisibility(RecruitmentVisibility.FRIEND_TEAMS_ONLY)))
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
         }
