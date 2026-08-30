@@ -13,12 +13,11 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
-import lombok.Builder;
-import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -170,7 +169,7 @@ public class RecruitmentListingEntity extends BaseEntity {
 
     /** システム管理者による可逆的なモデレーション非表示日時。 */
     @Column(name = "moderation_hidden_at")
-    private LocalDateTime moderationHiddenAt;
+    private Instant moderationHiddenAt;
 
     // ===========================================
     // ステータス遷移メソッド

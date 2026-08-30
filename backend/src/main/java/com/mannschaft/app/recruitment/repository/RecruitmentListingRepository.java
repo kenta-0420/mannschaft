@@ -60,7 +60,7 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
         String getTitle();
         String getVisibility();
         String getStatus();
-        java.time.LocalDateTime getModerationHiddenAt();
+        java.time.Instant getModerationHiddenAt();
     }
 
     Page<RecruitmentListingEntity> findByScopeTypeAndScopeIdOrderByStartAtDesc(

@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -65,7 +66,7 @@ public class SecurityConfig {
     private final EventDelegationRateLimitFilter eventDelegationRateLimitFilter;
     private final DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter;
     private final VillageAffinityRateLimitFilter villageAffinityRateLimitFilter;
-    private final MarketMutationRateLimitFilter marketMutationRateLimitFilter;
+    private final ObjectProvider<MarketMutationRateLimitFilter> marketMutationRateLimitFilterProvider;
 
     /**
      * F10.1: AdminImpersonationFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -230,10 +231,11 @@ public class SecurityConfig {
     }
 
     @Bean
+    @ConditionalOnBean(MarketMutationRateLimitFilter.class)
     public FilterRegistrationBean<MarketMutationRateLimitFilter>
-            marketMutationRateLimitFilterRegistration() {
+            marketMutationRateLimitFilterRegistration(MarketMutationRateLimitFilter filter) {
         FilterRegistrationBean<MarketMutationRateLimitFilter> registration =
-                new FilterRegistrationBean<>(marketMutationRateLimitFilter);
+                new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;
     }
@@ -569,6 +571,12 @@ public class SecurityConfig {
             http.addFilterAfter(gateFilter, JwtAuthenticationFilter.class);
         }
 
+        MarketMutationRateLimitFilter marketMutationRateLimitFilter =
+                marketMutationRateLimitFilterProvider.getIfAvailable();
+        if (marketMutationRateLimitFilter != null) {
+            http.addFilterAfter(marketMutationRateLimitFilter, JwtAuthenticationFilter.class);
+        }
+
         http
             .addFilterBefore(publicApiRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(adPublicEndpointRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
@@ -585,7 +593,6 @@ public class SecurityConfig {
             .addFilterAfter(dashboardScopeTabRateLimitFilter, JwtAuthenticationFilter.class)
             // F17.2 ⑤相性表示（§8.4・30req/分/userId+villageId）。差分攻撃を村単位で捕捉。JWT 認証後に動かす。
             .addFilterAfter(villageAffinityRateLimitFilter, JwtAuthenticationFilter.class)
-            .addFilterAfter(marketMutationRateLimitFilter, JwtAuthenticationFilter.class)
             // 村招待の受諾（§5.5・10req/分/ユーザー）。トークン総当たりを回数で絞る。JWT 認証後に動かす。
             .addFilterAfter(villageInvitationAcceptRateLimitFilter, JwtAuthenticationFilter.class);
         return http.build();

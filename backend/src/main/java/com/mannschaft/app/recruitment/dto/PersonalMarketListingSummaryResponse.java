@@ -1,6 +1,5 @@
 package com.mannschaft.app.recruitment.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -8,26 +7,33 @@ import java.util.List;
 
 /** 本人の個人札一覧専用レスポンス。公開市場の summary へ公開先 ID を漏らさない。 */
 @Getter
-@AllArgsConstructor
-public class PersonalMarketListingSummaryResponse {
+public class PersonalMarketListingSummaryResponse extends RecruitmentListingSummaryResponse {
 
-    private final Long id;
-    private final Long categoryId;
-    private final String categoryNameI18nKey;
-    private final String title;
-    private final String participationType;
-    private final LocalDateTime startAt;
-    private final LocalDateTime endAt;
-    private final LocalDateTime applicationDeadline;
-    private final Integer capacity;
-    private final Integer minCapacity;
-    private final Integer confirmedCount;
-    private final Integer waitlistCount;
-    private final String status;
-    private final String visibility;
-    private final String location;
-    private final String imageUrl;
-    private final Boolean paymentEnabled;
-    private final Integer price;
     private final List<PersonalMarketAudienceScopeResponse> audienceScopes;
+
+    public PersonalMarketListingSummaryResponse(
+            Long id,
+            Long categoryId,
+            String categoryNameI18nKey,
+            String title,
+            String participationType,
+            LocalDateTime startAt,
+            LocalDateTime endAt,
+            LocalDateTime applicationDeadline,
+            Integer capacity,
+            Integer minCapacity,
+            Integer confirmedCount,
+            Integer waitlistCount,
+            String status,
+            String visibility,
+            String location,
+            String imageUrl,
+            Boolean paymentEnabled,
+            Integer price,
+            List<PersonalMarketAudienceScopeResponse> audienceScopes) {
+        super(id, categoryId, categoryNameI18nKey, title, participationType, startAt, endAt,
+                applicationDeadline, capacity, minCapacity, confirmedCount, waitlistCount,
+                status, visibility, location, imageUrl, paymentEnabled, price);
+        this.audienceScopes = audienceScopes;
+    }
 }
