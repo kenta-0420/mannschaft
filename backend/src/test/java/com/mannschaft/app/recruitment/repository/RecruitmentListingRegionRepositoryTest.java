@@ -58,17 +58,22 @@ class RecruitmentListingRegionRepositoryTest extends AbstractMySqlIntegrationTes
 
     /** PUBLIC / OPEN の親札をエンティティ経由で永続化し ID を返す。 */
     private Long persistPublicListing(String title) {
+        return persistOpenListing(title, RecruitmentScopeType.TEAM, 1L, LocalDateTime.now().plusDays(5));
+    }
+
+    private Long persistOpenListing(
+            String title, RecruitmentScopeType scopeType, Long scopeId, LocalDateTime autoCancelAt) {
         LocalDateTime now = LocalDateTime.now();
         RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
-                .scopeType(RecruitmentScopeType.TEAM)
-                .scopeId(1L)
+                .scopeType(scopeType)
+                .scopeId(scopeId)
                 .categoryId(CATEGORY_ID)
                 .title(title)
                 .participationType(RecruitmentParticipationType.INDIVIDUAL)
                 .startAt(now.plusDays(7))
                 .endAt(now.plusDays(7).plusHours(2))
                 .applicationDeadline(now.plusDays(5))
-                .autoCancelAt(now.plusDays(5))
+                .autoCancelAt(autoCancelAt)
                 .capacity(10)
                 .minCapacity(1)
                 .visibility(RecruitmentVisibility.PUBLIC)
@@ -78,6 +83,43 @@ class RecruitmentListingRegionRepositoryTest extends AbstractMySqlIntegrationTes
         em.persist(listing);
         em.flush();
         return listing.getId();
+    }
+
+    @Test
+    @DisplayName("フォロー市feedは同じ数値scopeIdのPERSONAL札を混入させない")
+    void findOpenByScopeIds_excludesPersonalWithCollidingScopeId() {
+        Long collidingScopeId = 987654L;
+        Long teamId = persistOpenListing(
+                "feed-team", RecruitmentScopeType.TEAM, collidingScopeId, LocalDateTime.now().plusDays(5));
+        Long personalId = persistOpenListing(
+                "feed-personal", RecruitmentScopeType.PERSONAL, collidingScopeId, LocalDateTime.now().plusDays(5));
+        em.flush();
+        em.clear();
+
+        List<RecruitmentListingEntity> results = listingRepository.findOpenByScopeIds(
+                List.of(collidingScopeId), PageRequest.of(0, 20));
+
+        assertThat(results).extracting(RecruitmentListingEntity::getId)
+                .contains(teamId)
+                .doesNotContain(personalId);
+    }
+
+    @Test
+    @DisplayName("自動取消候補は期限超過したPERSONAL汚染行を抽出しない")
+    void findAutoCancelTargets_excludesPersonal() {
+        LocalDateTime now = LocalDateTime.now();
+        Long teamId = persistOpenListing(
+                "auto-cancel-team", RecruitmentScopeType.TEAM, 123456L, now.minusMinutes(1));
+        Long personalId = persistOpenListing(
+                "auto-cancel-personal", RecruitmentScopeType.PERSONAL, 654321L, now.minusMinutes(1));
+        em.flush();
+        em.clear();
+
+        List<RecruitmentListingEntity> results = listingRepository.findAutoCancelTargets(now);
+
+        assertThat(results).extracting(RecruitmentListingEntity::getId)
+                .contains(teamId)
+                .doesNotContain(personalId);
     }
 
     private void addRegion(Long listingId, String pref, String city) {

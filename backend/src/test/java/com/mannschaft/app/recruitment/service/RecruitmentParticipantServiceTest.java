@@ -40,6 +40,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * {@link RecruitmentParticipantService} の単体テスト。
@@ -163,7 +165,23 @@ class RecruitmentParticipantServiceTest {
         }
 
         @Test
-        @DisplayName("PERSONAL札主本人の申込は状態や決済より先に拒否する")
+        @DisplayName("PERSONAL札は札主以外を状態や決済より先にMARKET_404で存在秘匿し後段Repositoryを呼ばない")
+        void apply_personal_throwsMarket404BeforeDownstreamRepository() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.apply(LISTING_ID, USER_ID + 1,
+                    new ApplyToRecruitmentRequest(RecruitmentParticipantType.USER, null, null)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+
+            verify(cancellationRecordRepository, never()).existsByUserIdAndPaymentStatusIn(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("PERSONAL札主本人の応募はMARKET_007を優先し後段Repositoryを呼ばない")
         void apply_personalOwner_throwsMarket007First() throws Exception {
             RecruitmentListingEntity listing = buildOpenListing();
             setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
@@ -175,6 +193,8 @@ class RecruitmentParticipantServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MarketErrorCode.SELF_APPLICATION_FORBIDDEN);
+
+            verify(cancellationRecordRepository, never()).existsByUserIdAndPaymentStatusIn(anyLong(), any());
         }
 
         @Test
@@ -223,6 +243,55 @@ class RecruitmentParticipantServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.CANCELLATION_PAYMENT_FAILED);
+        }
+    }
+
+    @Nested
+    @DisplayName("PERSONAL運用経路のfail-closed")
+    class PersonalOperationalRouteGuard {
+
+        @Test
+        @DisplayName("応募取消はPERSONAL札をMARKET_404で存在秘匿し参加者検索を呼ばない")
+        void cancel_personal_doesNotQueryParticipant() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.cancelMyApplication(LISTING_ID, USER_ID,
+                    new CancelMyApplicationRequest(true, null)))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+
+            verify(participantRepository, never()).findActiveByListingAndUser(anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("参加者一覧はPERSONAL札をMARKET_404で存在秘匿し参加者Repositoryを呼ばない")
+        void listParticipants_personal_doesNotQueryParticipant() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(listingService.findOrThrow(LISTING_ID)).willReturn(listing);
+
+            assertThatThrownBy(() -> service.listParticipants(LISTING_ID, USER_ID,
+                    org.springframework.data.domain.PageRequest.of(0, 20)))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+
+            verify(participantRepository, never()).findByListingIdOrderByAppliedAtAsc(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("出席記録はPERSONAL札をMARKET_404で存在秘匿し参加者Repositoryを呼ばない")
+        void markAttended_personal_doesNotQueryParticipant() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(listingService.findOrThrow(LISTING_ID)).willReturn(listing);
+
+            assertThatThrownBy(() -> service.markAttended(LISTING_ID, 999L, USER_ID))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+
+            verify(participantRepository, never()).findByIdAndListingId(anyLong(), anyLong());
         }
     }
 

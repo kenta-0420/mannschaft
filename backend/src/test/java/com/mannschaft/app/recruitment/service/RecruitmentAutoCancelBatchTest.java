@@ -1,6 +1,8 @@
 package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.RecruitmentParticipantType;
@@ -33,6 +35,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -95,6 +98,23 @@ class RecruitmentAutoCancelBatchTest {
     @Nested
     @DisplayName("processSingleListing - 募集1件の自動キャンセル処理")
     class ProcessSingleListing {
+
+        @Test
+        @DisplayName("PERSONAL汚染行はMARKET_404で存在秘匿し参加者処理・保存・通知を行わない")
+        void processSingleListing_personal_doesNotCauseSideEffects() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing(10, 0, 5);
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> batch.processSingleListing(LISTING_ID, LocalDateTime.now()))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+
+            verify(participantRepository, never()).findByListingIdAndStatusIn(anyLong(), any(), any());
+            verify(listingRepository, never()).save(any());
+            verify(confirmableNotificationService, never()).send(any(), any(), any(), any(), any(), any(),
+                    any(), any(), any(), any(), any(), any());
+        }
 
         @Test
         @DisplayName("OPEN 状態の listing + CONFIRMED 参加者 → 自動キャンセル実行")

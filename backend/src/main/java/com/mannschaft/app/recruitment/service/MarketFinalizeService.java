@@ -55,6 +55,7 @@ public class MarketFinalizeService {
      */
     @Transactional
     public void sendFinalizeConfirmation(RecruitmentListingEntity listing) {
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
         if (listing.getStatus() != RecruitmentListingStatus.FULL) {
             return;
         }
@@ -117,6 +118,7 @@ public class MarketFinalizeService {
             log.warn("F22.1 市: 最終認証対象の札が不在（削除済み等）: listingId={}", listingId);
             return;
         }
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
         if (listing.getStatus() != RecruitmentListingStatus.FULL) {
             // 先勝ち COMPLETED / バッチによる AUTO_CANCELLED 等 → 冪等 no-op。
             log.info("F22.1 市: 最終認証 no-op（FULL 以外）: listingId={}, status={}",
