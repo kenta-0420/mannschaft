@@ -22,6 +22,11 @@ interface Props {
    */
   hideVisibility?: boolean
   /**
+   * true のとき決済入力を非表示にし、送信値を paymentEnabled=false に固定する。
+   * PERSONAL 札は主体別管理市 Phase 5 まで決済禁止のため使用する。
+   */
+  hidePayment?: boolean
+  /**
    * F22.1 市 謝礼決済: スコープ種別（TEAM / ORGANIZATION）。
    * payeeKind=USER 選択時に所属メンバー一覧を取得するために使用。
    * 未指定時はメンバー一覧取得を省略する。
@@ -38,6 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
   submitLabel: undefined,
   loading: false,
   hideVisibility: false,
+  hidePayment: false,
   scopeType: undefined,
   scopeId: undefined,
 })
@@ -51,7 +57,9 @@ const { t } = useI18n()
 const categoryId = ref<number | null>(props.initial.categoryId ?? null)
 const title = ref(props.initial.title ?? '')
 const description = ref(props.initial.description ?? '')
-const participationType = ref<RecruitmentParticipationType>(props.initial.participationType ?? 'INDIVIDUAL')
+const participationType = ref<RecruitmentParticipationType>(
+  props.initial.participationType ?? 'INDIVIDUAL',
+)
 const startAt = ref(props.initial.startAt ?? '')
 const endAt = ref(props.initial.endAt ?? '')
 const applicationDeadline = ref(props.initial.applicationDeadline ?? '')
@@ -97,6 +105,9 @@ const payeeKindOptions = computed(() => {
   if (props.scopeType === 'ORGANIZATION') {
     return all.filter((o) => o.value === 'USER' || o.value === 'ORG')
   }
+  if (props.scopeType === 'PERSONAL') {
+    return []
+  }
   return all
 })
 
@@ -120,17 +131,14 @@ async function loadMembers() {
       // size=100 で十分な件数を取得（受領者は 1 名選択のため）
       const result = await teamMembers.getMembers(props.scopeId, { size: 100 })
       scopeMembers.value = result.data
-    }
-    else if (props.scopeType === 'ORGANIZATION') {
+    } else if (props.scopeType === 'ORGANIZATION') {
       const orgApi = useOrganizationApi()
       const result = await orgApi.getMembers(props.scopeId, { size: 100 })
       scopeMembers.value = result.data
     }
-  }
-  catch {
+  } catch {
     // メンバー一覧取得失敗は警告のみ（手動入力にフォールバック不要・選択UIは空表示）
-  }
-  finally {
+  } finally {
     membersLoading.value = false
   }
 }
@@ -139,8 +147,7 @@ async function loadMembers() {
 watch(payeeKind, (newKind) => {
   if (newKind === 'USER') {
     loadMembers()
-  }
-  else {
+  } else {
     // USER 以外に切り替えたら受領者選択をリセット
     payeeUserId.value = null
     payeeUserError.value = null
@@ -185,13 +192,22 @@ function validatePayee(): boolean {
 }
 
 function onSubmit() {
-  if (!categoryId.value || !title.value || !startAt.value || !endAt.value
-      || !applicationDeadline.value || !autoCancelAt.value
-      || capacity.value == null || minCapacity.value == null) {
+  if (
+    !categoryId.value ||
+    !title.value ||
+    !startAt.value ||
+    !endAt.value ||
+    !applicationDeadline.value ||
+    !autoCancelAt.value ||
+    capacity.value == null ||
+    minCapacity.value == null
+  ) {
     return
   }
 
-  if (!validatePayee()) return
+  if (!props.hidePayment && !validatePayee()) return
+
+  const submittedPaymentEnabled = props.hidePayment ? false : paymentEnabled.value
 
   emit('submit', {
     categoryId: categoryId.value,
@@ -204,13 +220,13 @@ function onSubmit() {
     autoCancelAt: autoCancelAt.value,
     capacity: capacity.value,
     minCapacity: minCapacity.value,
-    paymentEnabled: paymentEnabled.value,
-    price: paymentEnabled.value ? price.value : null,
+    paymentEnabled: submittedPaymentEnabled,
+    price: submittedPaymentEnabled ? price.value : null,
     visibility: visibility.value,
     location: location.value || null,
     // F22.1 市 謝礼決済
-    payeeKind: paymentEnabled.value ? payeeKind.value : null,
-    payeeUserId: paymentEnabled.value && payeeKind.value === 'USER' ? payeeUserId.value : null,
+    payeeKind: submittedPaymentEnabled ? payeeKind.value : null,
+    payeeUserId: submittedPaymentEnabled && payeeKind.value === 'USER' ? payeeUserId.value : null,
   })
 }
 </script>
@@ -236,7 +252,9 @@ function onSubmit() {
           <span>{{ t(option.nameI18nKey) }}</span>
         </template>
         <template #value="{ value }">
-          <span v-if="value">{{ t(categories.find((c) => c.id === value)?.nameI18nKey ?? '') }}</span>
+          <span v-if="value">{{
+            t(categories.find((c) => c.id === value)?.nameI18nKey ?? '')
+          }}</span>
         </template>
       </Select>
     </div>
@@ -259,7 +277,7 @@ function onSubmit() {
       <Textarea id="description" v-model="description" rows="3" />
     </div>
 
-    <div class="grid grid-cols-2 gap-3">
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
       <div class="flex flex-col gap-2">
         <label for="startAt">{{ t('recruitment.field.startAt') }}</label>
         <InputText id="startAt" v-model="startAt" type="datetime-local" required />
@@ -270,7 +288,12 @@ function onSubmit() {
       </div>
       <div class="flex flex-col gap-2">
         <label for="applicationDeadline">{{ t('recruitment.field.applicationDeadline') }}</label>
-        <InputText id="applicationDeadline" v-model="applicationDeadline" type="datetime-local" required />
+        <InputText
+          id="applicationDeadline"
+          v-model="applicationDeadline"
+          type="datetime-local"
+          required
+        />
       </div>
       <div class="flex flex-col gap-2">
         <label for="autoCancelAt">{{ t('recruitment.field.autoCancelAt') }}</label>
@@ -291,12 +314,12 @@ function onSubmit() {
       <InputText id="location" v-model="location" />
     </div>
 
-    <div class="flex items-center gap-2">
+    <div v-if="!hidePayment" class="flex items-center gap-2">
       <Checkbox v-model="paymentEnabled" input-id="paymentEnabled" :binary="true" />
       <label for="paymentEnabled">{{ t('recruitment.field.paymentEnabled') }}</label>
     </div>
 
-    <template v-if="paymentEnabled">
+    <template v-if="!hidePayment && paymentEnabled">
       <div class="flex flex-col gap-2">
         <label for="price">{{ t('recruitment.field.price') }}</label>
         <InputNumber id="price" v-model="price" :min="0" required />

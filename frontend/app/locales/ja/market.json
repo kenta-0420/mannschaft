@@ -60,11 +60,36 @@
       "organizer": "主催"
     },
     "status": {
+      "DRAFT": "下書き",
       "OPEN": "募集中",
       "FULL": "満員（認証待ち）",
       "COMPLETED": "成立",
       "CANCELLED": "取り下げ済み",
       "AUTO_CANCELLED": "不成立（自動取消）"
+    },
+    "personal": {
+      "title": "自分の市",
+      "description": "自分名義の下書き札を管理します。",
+      "create": "下書きの札を立てる",
+      "list": "立てた札",
+      "allStatuses": "すべての状態",
+      "empty": "立てた札はまだありません。最初の下書きを作成しましょう。",
+      "matches": "マッチング状況",
+      "noMatches": "マッチングはまだありません。",
+      "previous": "前へ",
+      "next": "次へ",
+      "created": "下書きを作成しました。",
+      "loadFailed": "個人市の情報取得に失敗しました。",
+      "saveFailed": "下書きの保存に失敗しました。",
+      "cancel": "下書きを取り消す",
+      "cancelled": "下書きを取り消しました。",
+      "cancelReason": "個人市からの下書き取消",
+      "cancelConfirm": "この下書きを取り消しますか？",
+      "close": "閉じる",
+      "edit": "下書きを編集",
+      "save": "保存",
+      "updated": "下書きを更新しました。",
+      "draftOnly": "個人札は現在、本人だけが見られる下書きとして保存されます。公開・応募・決済はまだ利用できません。"
     },
     "visibility": {
       "public": "市に公開",

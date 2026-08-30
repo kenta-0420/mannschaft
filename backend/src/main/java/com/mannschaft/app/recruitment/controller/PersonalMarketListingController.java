@@ -6,6 +6,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
+import com.mannschaft.app.recruitment.dto.PersonalMarketMatchResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
@@ -48,10 +49,29 @@ public class PersonalMarketListingController {
     @Operation(summary = "個人市で立てた札の履歴を取得")
     public ResponseEntity<PagedResponse<RecruitmentListingSummaryResponse>> list(
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String prefectureCode,
+            @RequestParam(required = false) String cityCode,
+            @RequestParam(required = false) Long categoryId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<RecruitmentListingSummaryResponse> result = personalMarketListingService.list(
-                SecurityUtils.getCurrentUserId(), status, PageRequest.of(page, size));
+                SecurityUtils.getCurrentUserId(), status, prefectureCode, cityCode, categoryId,
+                PageRequest.of(page, size));
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
+        return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
+    }
+
+    /** PersonalMarketListingController#listMatches の自己スコープ契約は PersonalMarketListingControllerTest が固定する。 */
+    @SelfScopedEndpoint("認証済みユーザーIDをPERSONALのscopeIdとcreatedByへ複合固定する")
+    @GetMapping("/{id}/matches")
+    @Operation(summary = "個人市の札のマッチング状況を取得")
+    public ResponseEntity<PagedResponse<PersonalMarketMatchResponse>> listMatches(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<PersonalMarketMatchResponse> result = personalMarketListingService.listMatches(
+                SecurityUtils.getCurrentUserId(), id, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));

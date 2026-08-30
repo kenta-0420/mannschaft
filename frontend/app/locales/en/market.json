@@ -60,11 +60,36 @@
       "organizer": "Organizer"
     },
     "status": {
+      "DRAFT": "Draft",
       "OPEN": "Open",
       "FULL": "Full (pending confirmation)",
       "COMPLETED": "Completed",
       "CANCELLED": "Cancelled",
       "AUTO_CANCELLED": "Auto-cancelled"
+    },
+    "personal": {
+      "title": "My market",
+      "description": "Manage your draft listings.",
+      "create": "Create draft",
+      "list": "My listings",
+      "allStatuses": "All statuses",
+      "empty": "No listings yet.",
+      "matches": "Matches",
+      "noMatches": "No matches yet.",
+      "previous": "Previous",
+      "next": "Next",
+      "created": "Draft created.",
+      "loadFailed": "Failed to load your market.",
+      "saveFailed": "Failed to save draft.",
+      "cancel": "Cancel draft",
+      "cancelled": "Draft cancelled.",
+      "cancelReason": "Cancelled from personal market",
+      "cancelConfirm": "Cancel this draft?",
+      "close": "Close",
+      "edit": "Edit draft",
+      "save": "Save",
+      "updated": "Draft updated.",
+      "draftOnly": "Personal listings are currently saved as private drafts. Publishing, applications, and payments are not available yet."
     },
     "visibility": {
       "public": "Public",

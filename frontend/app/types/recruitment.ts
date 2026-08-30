@@ -3,14 +3,18 @@
  * Backend DTO と 1:1 で対応。手動管理 (frontend/app/types/ 規約)。
  */
 
-export type RecruitmentScopeType = 'TEAM' | 'ORGANIZATION'
+export type RecruitmentScopeType = 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
 
 /** F22.1 市 謝礼決済: 受領主体種別（BE ConnectPaymentErrorCode PAYEE_REQUIRED 参照） */
 export type RecruitmentPayeeKind = 'USER' | 'TEAM' | 'ORG'
 
 export type RecruitmentParticipationType = 'INDIVIDUAL' | 'TEAM'
 
-export type RecruitmentVisibility = 'PUBLIC' | 'SCOPE_ONLY' | 'SUPPORTERS_ONLY' | 'FRIEND_TEAMS_ONLY'
+export type RecruitmentVisibility =
+  | 'PUBLIC'
+  | 'SCOPE_ONLY'
+  | 'SUPPORTERS_ONLY'
+  | 'FRIEND_TEAMS_ONLY'
 
 export type RecruitmentListingStatus =
   | 'DRAFT'
@@ -167,7 +171,11 @@ export interface CancellationFeeEstimateResponse {
 
 // Phase 2 追加型
 
-export type RecruitmentDistributionTargetType = 'MEMBERS' | 'SUPPORTERS' | 'FOLLOWERS' | 'PUBLIC_FEED'
+export type RecruitmentDistributionTargetType =
+  | 'MEMBERS'
+  | 'SUPPORTERS'
+  | 'FOLLOWERS'
+  | 'PUBLIC_FEED'
 
 export interface RecruitmentDistributionTargetResponse {
   id: number

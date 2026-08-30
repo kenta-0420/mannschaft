@@ -74590,6 +74590,31 @@
             }
           },
           {
+            "name": "prefectureCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cityCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "required": false,
@@ -134770,6 +134795,58 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListMembershipSubscriptionListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/market/listings/{id}/matches": {
+      "get": {
+        "tags": [
+          "personal-market-listing-controller"
+        ],
+        "summary": "個人市の札のマッチング状況を取得",
+        "operationId": "listMatches_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponsePersonalMarketMatchResponse"
                 }
               }
             }
@@ -229648,6 +229725,59 @@
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "PagedResponsePersonalMarketMatchResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonalMarketMatchResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "PersonalMarketMatchResponse": {
+        "type": "object",
+        "properties": {
+          "appliedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "participantId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "participantType": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "TEAM"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "APPLIED",
+              "CONFIRMED",
+              "WAITLISTED",
+              "CANCELLED",
+              "NO_SHOW",
+              "ATTENDED"
+            ]
+          },
+          "statusChangedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "waitlistPosition": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
