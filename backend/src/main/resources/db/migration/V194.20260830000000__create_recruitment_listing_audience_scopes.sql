@@ -13,5 +13,5 @@ CREATE TABLE recruitment_listing_audience_scopes (
     CONSTRAINT uk_rlas_listing_scope UNIQUE (listing_id, scope_type, scope_id),
     INDEX idx_rlas_listing (listing_id),
     INDEX idx_rlas_scope (scope_type, scope_id, listing_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='F22.1 Phase 4 個人札の固定公開先スコープ';

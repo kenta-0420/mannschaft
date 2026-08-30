@@ -91,6 +91,11 @@ public class RecruitmentListingVisibilityResolver
         return ReferenceType.RECRUITMENT_LISTING;
     }
 
+    /** 現在の owner・viewer 所属を満たす選択公開札 ID を返す。 */
+    public List<Long> findAccessibleSelectedListingIds(Long viewerUserId) {
+        return audienceScopeRepository.findAccessibleListingIds(viewerUserId);
+    }
+
     @Override
     protected List<RecruitmentListingVisibilityProjection> loadProjections(Collection<Long> ids) {
         return recruitmentListingRepository.findVisibilityProjectionsByIdIn(ids);

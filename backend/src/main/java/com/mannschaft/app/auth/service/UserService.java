@@ -166,6 +166,18 @@ public class UserService {
         return result;
     }
 
+    /** 他ドメインのモデレーション処理から、Repository を跨がず利用者を凍結する。 */
+    @Transactional
+    public boolean freezeUserIfPresent(Long userId) {
+        return userRepository.findById(userId)
+                .map(user -> {
+                    user.freeze();
+                    userRepository.save(user);
+                    return true;
+                })
+                .orElse(false);
+    }
+
     /**
      * ユーザープロフィールを取得する。
      *

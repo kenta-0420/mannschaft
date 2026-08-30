@@ -23,10 +23,10 @@ import com.mannschaft.app.recruitment.entity.RecruitmentCategoryEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingRegionEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
-import com.mannschaft.app.recruitment.repository.RecruitmentListingAudienceScopeRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRegionRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.util.LikeEscapeUtil;
+import com.mannschaft.app.recruitment.visibility.RecruitmentListingVisibilityResolver;
 import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -61,7 +61,7 @@ import java.util.stream.Collectors;
 public class MarketQueryService {
 
     private final RecruitmentListingRepository listingRepository;
-    private final RecruitmentListingAudienceScopeRepository audienceScopeRepository;
+    private final RecruitmentListingVisibilityResolver listingVisibilityResolver;
     private final RecruitmentListingRegionRepository listingRegionRepository;
     private final RecruitmentCategoryRepository categoryRepository;
     private final PrefectureRepository prefectureRepository;
@@ -388,7 +388,8 @@ public class MarketQueryService {
     }
 
     private Set<Long> accessibleListingIdsOrSentinel(Long viewerUserId) {
-        Set<Long> listingIds = new LinkedHashSet<>(audienceScopeRepository.findAccessibleListingIds(viewerUserId));
+        Set<Long> listingIds = new LinkedHashSet<>(
+                listingVisibilityResolver.findAccessibleSelectedListingIds(viewerUserId));
         if (listingIds.isEmpty()) {
             listingIds.add(-1L);
         }

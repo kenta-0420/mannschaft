@@ -14,7 +14,7 @@ import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
-import com.mannschaft.app.recruitment.repository.RecruitmentListingAudienceScopeRepository;
+import com.mannschaft.app.recruitment.visibility.RecruitmentListingVisibilityResolver;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRegionRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.role.service.RoleService;
@@ -54,7 +54,7 @@ class MarketQueryServiceTest {
     @Mock
     private RecruitmentListingRepository listingRepository;
     @Mock
-    private RecruitmentListingAudienceScopeRepository audienceScopeRepository;
+    private RecruitmentListingVisibilityResolver listingVisibilityResolver;
     @Mock
     private RecruitmentListingRegionRepository listingRegionRepository;
     @Mock
@@ -140,7 +140,7 @@ class MarketQueryServiceTest {
     @DisplayName("PERSONAL owner: activeな共通所属がある成人には実名を返す")
     void getListing_personalOwnerSharedAffiliationReturnsRealName() {
         RecruitmentListingEntity listing = personalListing();
-        given(audienceScopeRepository.findAccessibleListingIds(9L)).willReturn(List.of(100L));
+        given(listingVisibilityResolver.findAccessibleSelectedListingIds(9L)).willReturn(List.of(100L));
         given(listingRepository.findAccessibleMarketListingById(100L, Set.of(100L)))
                 .willReturn(Optional.of(listing));
         given(userService.getActiveMarketOwnerIdentities(Set.of(7L))).willReturn(Map.of(
@@ -158,7 +158,7 @@ class MarketQueryServiceTest {
     @DisplayName("PERSONAL owner: 未成年は共通所属があっても実名を返さない")
     void getListing_personalMinorNeverReturnsRealName() {
         RecruitmentListingEntity listing = personalListing();
-        given(audienceScopeRepository.findAccessibleListingIds(9L)).willReturn(List.of(100L));
+        given(listingVisibilityResolver.findAccessibleSelectedListingIds(9L)).willReturn(List.of(100L));
         given(listingRepository.findAccessibleMarketListingById(100L, Set.of(100L)))
                 .willReturn(Optional.of(listing));
         given(userService.getActiveMarketOwnerIdentities(Set.of(7L))).willReturn(Map.of(
@@ -177,7 +177,7 @@ class MarketQueryServiceTest {
         RecruitmentListingEntity listing = personalListing();
         ReflectionTestUtils.setField(listing, "visibility", RecruitmentVisibility.SELECTED_SCOPES);
         PageRequest pageable = PageRequest.of(0, 20);
-        given(audienceScopeRepository.findAccessibleListingIds(9L)).willReturn(List.of(100L));
+        given(listingVisibilityResolver.findAccessibleSelectedListingIds(9L)).willReturn(List.of(100L));
         given(listingRepository.searchAccessibleMarketListings(
                 Set.of(100L), null, null, null, null, true, pageable))
                 .willReturn(new PageImpl<>(List.of(listing), pageable, 1));

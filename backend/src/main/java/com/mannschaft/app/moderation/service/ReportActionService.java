@@ -1,7 +1,6 @@
 package com.mannschaft.app.moderation.service;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.moderation.ModerationErrorCode;
 import com.mannschaft.app.moderation.ReportActionType;
@@ -37,7 +36,7 @@ public class ReportActionService {
     private final ContentReportRepository reportRepository;
     private final ReportActionRepository actionRepository;
     private final RecruitmentListingModerationService recruitmentListingModerationService;
-    private final UserRepository userRepository;
+    private final UserService userService;
 
     /**
      * 通報をレビュー中に変更する。
@@ -300,10 +299,9 @@ public class ReportActionService {
             recruitmentListingModerationService.hide(report.getTargetId());
         }
         if (actionType == ReportActionType.USER_FREEZE && report.getTargetUserId() != null) {
-            UserEntity owner = userRepository.findById(report.getTargetUserId())
-                    .orElseThrow(() -> new BusinessException(ModerationErrorCode.REPORT_TARGET_NOT_FOUND));
-            owner.freeze();
-            userRepository.save(owner);
+            if (!userService.freezeUserIfPresent(report.getTargetUserId())) {
+                throw new BusinessException(ModerationErrorCode.REPORT_TARGET_NOT_FOUND);
+            }
         }
     }
 }

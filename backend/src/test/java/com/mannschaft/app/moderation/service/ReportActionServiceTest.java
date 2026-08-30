@@ -1,7 +1,6 @@
 package com.mannschaft.app.moderation.service;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.moderation.ModerationErrorCode;
 import com.mannschaft.app.moderation.ReportActionType;
@@ -52,7 +51,7 @@ class ReportActionServiceTest {
     @Mock
     private RecruitmentListingModerationService recruitmentListingModerationService;
     @Mock
-    private UserRepository userRepository;
+    private UserService userService;
 
     @InjectMocks
     private ReportActionService reportActionService;
@@ -163,21 +162,16 @@ class ReportActionServiceTest {
                     .reason(ReportReason.SPAM)
                     .status(ReportStatus.PENDING)
                     .build();
-            UserEntity owner = UserEntity.builder()
-                    .email("owner@example.com")
-                    .status(UserEntity.UserStatus.ACTIVE)
-                    .build();
             ResolveReportRequest req = new ResolveReportRequest("USER_FREEZE", "凍結", null, null);
             given(reportRepository.findById(REPORT_ID)).willReturn(Optional.of(report));
             given(actionRepository.save(any(ReportActionEntity.class)))
                     .willReturn(createAction(ReportActionType.USER_FREEZE));
-            given(userRepository.findById(7L)).willReturn(Optional.of(owner));
+            given(userService.freezeUserIfPresent(7L)).willReturn(true);
 
             reportActionService.resolveReport(REPORT_ID, req, USER_ID);
 
             verify(recruitmentListingModerationService).hide(10L);
-            verify(userRepository).save(owner);
-            assertThat(owner.getStatus()).isEqualTo(UserEntity.UserStatus.FROZEN);
+            verify(userService).freezeUserIfPresent(7L);
         }
 
         @Test
