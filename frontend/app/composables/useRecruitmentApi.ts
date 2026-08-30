@@ -32,6 +32,7 @@ export function useRecruitmentApi() {
     createMyMarketListing: crud.createMyMarketListing,
     updateMyMarketListing: crud.updateMyMarketListing,
     cancelMyMarketListing: crud.cancelMyMarketListing,
+    publishMyMarketListing: crud.publishMyMarketListing,
     listMyMarketMatches: crud.listMyMarketMatches,
     createOrgListing: crud.createOrgListing,
     getListing: crud.getListing,

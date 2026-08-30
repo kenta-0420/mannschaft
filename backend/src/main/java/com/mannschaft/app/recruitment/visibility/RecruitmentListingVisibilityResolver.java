@@ -11,6 +11,9 @@ import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.mapping.RecruitmentListingStatusMapper;
 import com.mannschaft.app.common.visibility.mapping.RecruitmentVisibilityMapper;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
+import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest.RecruitmentAudienceScopeType;
+import com.mannschaft.app.recruitment.entity.RecruitmentListingAudienceScopeEntity;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingAudienceScopeRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.service.MarketFriendTargetResolver;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -62,6 +65,8 @@ public class RecruitmentListingVisibilityResolver
     /** F22.1 市: 閲覧者の所属チーム集合を解決する（宛先集合との突合に使用）。 */
     private final UserRoleRepository userRoleRepository;
 
+    private final RecruitmentListingAudienceScopeRepository audienceScopeRepository;
+
     public RecruitmentListingVisibilityResolver(
             MembershipBatchQueryService membershipBatchQueryService,
             VisibilityMetrics visibilityMetrics,
@@ -71,17 +76,24 @@ public class RecruitmentListingVisibilityResolver
             @Autowired(required = false) AuditLogService auditLogService,
             RecruitmentListingRepository recruitmentListingRepository,
             MarketFriendTargetResolver marketFriendTargetResolver,
-            UserRoleRepository userRoleRepository) {
+            UserRoleRepository userRoleRepository,
+            RecruitmentListingAudienceScopeRepository audienceScopeRepository) {
         super(membershipBatchQueryService, templateEvaluator, visibilityMetrics,
                 followBatchService, auditLogService);
         this.recruitmentListingRepository = recruitmentListingRepository;
         this.marketFriendTargetResolver = marketFriendTargetResolver;
         this.userRoleRepository = userRoleRepository;
+        this.audienceScopeRepository = audienceScopeRepository;
     }
 
     @Override
     public ReferenceType referenceType() {
         return ReferenceType.RECRUITMENT_LISTING;
+    }
+
+    /** 現在の owner・viewer 所属を満たす選択公開札 ID を返す。 */
+    public List<Long> findAccessibleSelectedListingIds(Long viewerUserId) {
+        return audienceScopeRepository.findAccessibleListingIds(viewerUserId);
     }
 
     @Override
@@ -124,6 +136,9 @@ public class RecruitmentListingVisibilityResolver
             Long viewerUserId,
             UserScopeRoleSnapshot snapshot) {
         // 防御: FRIEND_TEAMS_ONLY 以外がここに到達したら fail-closed（想定外）。
+        if (row.recruitmentVisibility() == RecruitmentVisibility.SELECTED_SCOPES) {
+            return evaluateSelectedPersonalScopes(row, viewerUserId);
+        }
         if (row.recruitmentVisibility() != RecruitmentVisibility.FRIEND_TEAMS_ONLY) {
             return false;
         }
@@ -153,6 +168,28 @@ public class RecruitmentListingVisibilityResolver
     }
 
     /** 閲覧者が所属する全チーム ID 集合を返す（team_id 非 NULL の user_roles）。 */
+    private boolean evaluateSelectedPersonalScopes(
+            RecruitmentListingVisibilityProjection row, Long viewerUserId) {
+        if (viewerUserId == null || row.scopeId() == null || row.authorUserId() == null
+                || !"PERSONAL".equals(row.scopeType()) || !row.authorUserId().equals(row.scopeId())) {
+            return false;
+        }
+        Set<Long> viewerTeamIds = viewerTeamIds(viewerUserId);
+        Set<Long> viewerOrganizationIds = new HashSet<>(
+                userRoleRepository.findOrganizationIdsByUserId(viewerUserId));
+        for (RecruitmentListingAudienceScopeEntity scope : audienceScopeRepository.findByListingId(row.id())) {
+            if (scope.getScopeType() == RecruitmentAudienceScopeType.TEAM
+                    && viewerTeamIds.contains(scope.getScopeId())) {
+                return true;
+            }
+            if (scope.getScopeType() == RecruitmentAudienceScopeType.ORGANIZATION
+                    && viewerOrganizationIds.contains(scope.getScopeId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private Set<Long> viewerTeamIds(Long viewerUserId) {
         Set<Long> teamIds = new HashSet<>();
         for (Long teamId : userRoleRepository.findTeamIdsByUserId(viewerUserId)) {

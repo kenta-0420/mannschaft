@@ -189,6 +189,10 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
     private static final Pattern MARKET_API_PATH =
             Pattern.compile("^/api/v1/public/market/(listings(/[^/]+)?|regions|summary|categories)$");
 
+    /** 市の検索一覧だけは、列挙耐性を高めるため検索用の 30/min/IP バケットを使う。 */
+    private static final Pattern MARKET_LIST_SEARCH_PATH =
+            Pattern.compile("^/api/v1/public/market/listings$");
+
     /**
      * F05.5 PR-D: 公開ファイルリンク（未認証可）POST 経路のパスパターン。
      * {@code POST /api/v1/public/file-links/{token}/(access|download-url)} をマッチする。
@@ -280,6 +284,8 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
     private enum Target {
         /** 組織内チーム検索（F15.4 Phase 1）。 */
         ORG_TEAM_SEARCH(SEARCH_AUTHENTICATED_RATE_PER_MINUTE, SEARCH_ANONYMOUS_RATE_PER_MINUTE),
+        /** 市の検索一覧。 */
+        MARKET_SEARCH(SEARCH_AUTHENTICATED_RATE_PER_MINUTE, SEARCH_ANONYMOUS_RATE_PER_MINUTE),
         /** 公開ページ API 全般（F15.4 Phase 5-α + F19.1 拡張）。 */
         PUBLIC_API(PUBLIC_AUTHENTICATED_RATE_PER_MINUTE, PUBLIC_ANONYMOUS_RATE_PER_MINUTE),
         /** 公開大会 一覧・詳細・フォルダ系。 */
@@ -369,6 +375,9 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
     private static Target resolveTarget(String path) {
         if (ORG_TEAM_SEARCH_PATH.matcher(path).matches()) {
             return Target.ORG_TEAM_SEARCH;
+        }
+        if (MARKET_LIST_SEARCH_PATH.matcher(path).matches()) {
+            return Target.MARKET_SEARCH;
         }
         if (PUBLIC_API_PATH.matcher(path).matches()
                 || PUBLIC_SEARCH_PATH.matcher(path).matches()

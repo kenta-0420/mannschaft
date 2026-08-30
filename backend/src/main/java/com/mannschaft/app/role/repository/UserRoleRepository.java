@@ -1970,6 +1970,61 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     }
 
     /**
+     * viewer と TEAM または ORGANIZATION の active 在籍を共有する owner ID を一括取得する。
+     *
+     * <p>両者とも {@code user_roles ∪ memberships(left_at IS NULL)} を正典とし、親組織や
+     * 兄弟チームは共有所属へ含めない。個人札一覧の閲覧者別氏名開示で N+1 を避けるための
+     * バッチ境界である。</p>
+     */
+    @Query(value = """
+            SELECT DISTINCT owners.user_id
+            FROM (
+              SELECT ur.user_id, 'TEAM' AS scope_type, ur.team_id AS scope_id
+              FROM user_roles ur
+              JOIN users u ON u.id = ur.user_id
+              WHERE ur.user_id IN (:ownerIds) AND ur.team_id IS NOT NULL
+                AND u.deleted_at IS NULL AND u.status = 'ACTIVE'
+              UNION
+              SELECT ur.user_id, 'ORGANIZATION', ur.organization_id
+              FROM user_roles ur
+              JOIN users u ON u.id = ur.user_id
+              WHERE ur.user_id IN (:ownerIds) AND ur.organization_id IS NOT NULL
+                AND u.deleted_at IS NULL AND u.status = 'ACTIVE'
+              UNION
+              SELECT m.user_id, m.scope_type, m.scope_id
+              FROM memberships m
+              JOIN users u ON u.id = m.user_id
+              WHERE m.user_id IN (:ownerIds)
+                AND m.scope_type IN ('TEAM', 'ORGANIZATION') AND m.left_at IS NULL
+                AND u.deleted_at IS NULL AND u.status = 'ACTIVE'
+            ) owners
+            JOIN (
+              SELECT ur.user_id, 'TEAM' AS scope_type, ur.team_id AS scope_id
+              FROM user_roles ur
+              JOIN users u ON u.id = ur.user_id
+              WHERE ur.user_id = :viewerId AND ur.team_id IS NOT NULL
+                AND u.deleted_at IS NULL AND u.status = 'ACTIVE'
+              UNION
+              SELECT ur.user_id, 'ORGANIZATION', ur.organization_id
+              FROM user_roles ur
+              JOIN users u ON u.id = ur.user_id
+              WHERE ur.user_id = :viewerId AND ur.organization_id IS NOT NULL
+                AND u.deleted_at IS NULL AND u.status = 'ACTIVE'
+              UNION
+              SELECT m.user_id, m.scope_type, m.scope_id
+              FROM memberships m
+              JOIN users u ON u.id = m.user_id
+              WHERE m.user_id = :viewerId
+                AND m.scope_type IN ('TEAM', 'ORGANIZATION') AND m.left_at IS NULL
+                AND u.deleted_at IS NULL AND u.status = 'ACTIVE'
+            ) viewer
+              ON viewer.scope_type = owners.scope_type AND viewer.scope_id = owners.scope_id
+            """, nativeQuery = true)
+    List<Long> findOwnerIdsSharingAffiliation(
+            @Param("viewerId") Long viewerId,
+            @Param("ownerIds") Collection<Long> ownerIds);
+
+    /**
      * スコープ内で指定日時以降にログインしたアクティブメンバー数を取得する。
      *
      * <p><b>候補集合は 2 系統の和集合（Issue #2786 丙層）</b>: 詳細は

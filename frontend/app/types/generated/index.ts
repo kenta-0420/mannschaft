@@ -19880,6 +19880,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/market/listings/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人札の公開 */
+        post: operations["publish_5"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/market/listings/{id}/cancel": {
         parameters: {
             query?: never;
@@ -38046,7 +38063,7 @@ export interface paths {
         };
         /**
          * 市の札一覧
-         * @description 未ログインで実行可能。visibility=PUBLIC かつ status IN (OPEN,FULL) の札を返す。city 指定でその市区町村、prefecture のみで配下市区町村をロールアップ。
+         * @description 未ログインではPUBLIC、認証時は認可済みSELECTED_SCOPESも含むOPEN/FULL札を返す。city 指定でその市区町村、prefecture のみで配下市区町村をロールアップ。
          */
         get: operations["listListings"];
         put?: never;
@@ -57754,7 +57771,7 @@ export interface components {
             /** Format: int64 */
             defaultReservationLineId?: number;
             /** @enum {string} */
-            defaultVisibility: "PUBLIC" | "SCOPE_ONLY" | "SUPPORTERS_ONLY" | "CUSTOM_TEMPLATE" | "FRIEND_TEAMS_ONLY";
+            defaultVisibility: "PUBLIC" | "SCOPE_ONLY" | "SUPPORTERS_ONLY" | "CUSTOM_TEMPLATE" | "SELECTED_SCOPES" | "FRIEND_TEAMS_ONLY";
             description?: string;
             /** @enum {string} */
             participationType: "INDIVIDUAL" | "TEAM";
@@ -57849,9 +57866,16 @@ export interface components {
             scopeId?: number;
             scopeType?: string;
         };
+        AudienceScopeRequest: {
+            /** Format: int64 */
+            scopeId: number;
+            /** @enum {string} */
+            scopeType: "TEAM" | "ORGANIZATION";
+        };
         CreateRecruitmentListingRequest: {
             /** Format: date-time */
             applicationDeadline: string;
+            audienceScopes?: components["schemas"]["AudienceScopeRequest"][];
             /** Format: date-time */
             autoCancelAt: string;
             /** Format: int64 */
@@ -57897,7 +57921,7 @@ export interface components {
             subcategoryId?: number;
             title: string;
             /** @enum {string} */
-            visibility: "PUBLIC" | "SCOPE_ONLY" | "SUPPORTERS_ONLY" | "CUSTOM_TEMPLATE" | "FRIEND_TEAMS_ONLY";
+            visibility: "PUBLIC" | "SCOPE_ONLY" | "SUPPORTERS_ONLY" | "CUSTOM_TEMPLATE" | "SELECTED_SCOPES" | "FRIEND_TEAMS_ONLY";
         };
         FriendTargetRequest: {
             consistent?: boolean;
@@ -68437,7 +68461,7 @@ export interface components {
             /** Format: int64 */
             defaultReservationLineId?: number;
             /** @enum {string} */
-            defaultVisibility?: "PUBLIC" | "SCOPE_ONLY" | "SUPPORTERS_ONLY" | "CUSTOM_TEMPLATE" | "FRIEND_TEAMS_ONLY";
+            defaultVisibility?: "PUBLIC" | "SCOPE_ONLY" | "SUPPORTERS_ONLY" | "CUSTOM_TEMPLATE" | "SELECTED_SCOPES" | "FRIEND_TEAMS_ONLY";
             description?: string;
             /** @enum {string} */
             participationType?: "INDIVIDUAL" | "TEAM";
@@ -68449,6 +68473,7 @@ export interface components {
         UpdateRecruitmentListingRequest: {
             /** Format: date-time */
             applicationDeadline?: string;
+            audienceScopes?: components["schemas"]["AudienceScopeRequest"][];
             /** Format: date-time */
             autoCancelAt?: string;
             /** Format: int64 */
@@ -68488,7 +68513,7 @@ export interface components {
             subcategoryId?: number;
             title?: string;
             /** @enum {string} */
-            visibility?: "PUBLIC" | "SCOPE_ONLY" | "SUPPORTERS_ONLY" | "CUSTOM_TEMPLATE" | "FRIEND_TEAMS_ONLY";
+            visibility?: "PUBLIC" | "SCOPE_ONLY" | "SUPPORTERS_ONLY" | "CUSTOM_TEMPLATE" | "SELECTED_SCOPES" | "FRIEND_TEAMS_ONLY";
         };
         FinalizeRequest: {
             force?: boolean;
@@ -77772,6 +77797,46 @@ export interface components {
         PagedResponseOrgProjectSummaryResponse: {
             data?: components["schemas"]["OrgProjectSummaryResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        PagedResponsePersonalMarketListingSummaryResponse: {
+            data?: components["schemas"]["PersonalMarketListingSummaryResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
+        PersonalMarketAudienceScopeResponse: {
+            /** Format: int64 */
+            scopeId?: number;
+            scopeType?: string;
+        };
+        PersonalMarketListingSummaryResponse: {
+            /** Format: date-time */
+            applicationDeadline?: string;
+            audienceScopes?: components["schemas"]["PersonalMarketAudienceScopeResponse"][];
+            /** Format: int32 */
+            capacity?: number;
+            /** Format: int64 */
+            categoryId?: number;
+            categoryNameI18nKey?: string;
+            /** Format: int32 */
+            confirmedCount?: number;
+            /** Format: date-time */
+            endAt?: string;
+            /** Format: int64 */
+            id?: number;
+            imageUrl?: string;
+            location?: string;
+            /** Format: int32 */
+            minCapacity?: number;
+            participationType?: string;
+            paymentEnabled?: boolean;
+            /** Format: int32 */
+            price?: number;
+            /** Format: date-time */
+            startAt?: string;
+            status?: string;
+            title?: string;
+            visibility?: string;
+            /** Format: int32 */
+            waitlistCount?: number;
         };
         PagedResponsePersonalMarketMatchResponse: {
             data?: components["schemas"]["PersonalMarketMatchResponse"][];
@@ -123289,7 +123354,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseRecruitmentListingSummaryResponse"];
+                    "*/*": components["schemas"]["PagedResponsePersonalMarketListingSummaryResponse"];
                 };
             };
         };
@@ -123306,6 +123371,28 @@ export interface operations {
                 "application/json": components["schemas"]["CreateRecruitmentListingRequest"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecruitmentListingResponse"];
+                };
+            };
+        };
+    };
+    publish_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {

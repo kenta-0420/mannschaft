@@ -8,6 +8,7 @@ import com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter;
 import com.mannschaft.app.event.EventDelegationRateLimitFilter;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter;
+import com.mannschaft.app.recruitment.filter.MarketMutationRateLimitFilter;
 import com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter;
 import com.mannschaft.app.village.VillageAffinityRateLimitFilter;
 import com.mannschaft.app.village.VillageInvitationAcceptRateLimitFilter;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -64,6 +66,7 @@ public class SecurityConfig {
     private final EventDelegationRateLimitFilter eventDelegationRateLimitFilter;
     private final DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter;
     private final VillageAffinityRateLimitFilter villageAffinityRateLimitFilter;
+    private final ObjectProvider<MarketMutationRateLimitFilter> marketMutationRateLimitFilterProvider;
 
     /**
      * F10.1: AdminImpersonationFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -222,6 +225,16 @@ public class SecurityConfig {
             villageInvitationAcceptRateLimitFilterRegistration(
                     VillageInvitationAcceptRateLimitFilter filter) {
         FilterRegistrationBean<VillageInvitationAcceptRateLimitFilter> registration =
+                new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    @ConditionalOnBean(MarketMutationRateLimitFilter.class)
+    public FilterRegistrationBean<MarketMutationRateLimitFilter>
+            marketMutationRateLimitFilterRegistration(MarketMutationRateLimitFilter filter) {
+        FilterRegistrationBean<MarketMutationRateLimitFilter> registration =
                 new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;
@@ -556,6 +569,12 @@ public class SecurityConfig {
         ParentalConsentGateFilter gateFilter = parentalConsentGateFilterProvider.getIfAvailable();
         if (gateFilter != null) {
             http.addFilterAfter(gateFilter, JwtAuthenticationFilter.class);
+        }
+
+        MarketMutationRateLimitFilter marketMutationRateLimitFilter =
+                marketMutationRateLimitFilterProvider.getIfAvailable();
+        if (marketMutationRateLimitFilter != null) {
+            http.addFilterAfter(marketMutationRateLimitFilter, JwtAuthenticationFilter.class);
         }
 
         http

@@ -11,6 +11,7 @@ import com.mannschaft.app.moderation.dto.CreateReportRequest;
 import com.mannschaft.app.moderation.dto.ReportResponse;
 import com.mannschaft.app.moderation.entity.ContentReportEntity;
 import com.mannschaft.app.moderation.repository.ContentReportRepository;
+import com.mannschaft.app.recruitment.service.RecruitmentListingModerationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,9 @@ class ContentReportServiceTest {
 
     @Mock
     private ModerationMapper moderationMapper;
+
+    @Mock
+    private RecruitmentListingModerationService recruitmentListingModerationService;
 
     @InjectMocks
     private ContentReportService contentReportService;
@@ -105,6 +109,31 @@ class ContentReportServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ModerationErrorCode.REPORT_ALREADY_EXISTS));
+        }
+
+        @Test
+        @DisplayName("募集札はクライアント指定の対象者・スコープを使わずサーバーで導出する")
+        void 募集札はサーバー側で通報対象を導出する() {
+            CreateReportRequest req = new CreateReportRequest("RECRUITMENT_LISTING", TARGET_ID, "SPAM",
+                    "説明", "TEAM", 999L, 999L, "改ざん済み");
+            ContentReportEntity saved = createReport();
+            given(reportRepository.existsByReportedByAndTargetTypeAndTargetId(
+                    USER_ID, ReportTargetType.RECRUITMENT_LISTING, TARGET_ID)).willReturn(false);
+            given(recruitmentListingModerationService.getReportTarget(TARGET_ID, USER_ID)).willReturn(
+                    new RecruitmentListingModerationService.ListingReportTarget(
+                            "PERSONAL", 200L, 200L, "サーバー側の札題名"));
+            given(reportRepository.save(any(ContentReportEntity.class))).willReturn(saved);
+            given(moderationMapper.toReportResponse(any(ContentReportEntity.class))).willReturn(null);
+
+            contentReportService.createReport(req, USER_ID);
+
+            org.mockito.ArgumentCaptor<ContentReportEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(ContentReportEntity.class);
+            verify(reportRepository).save(captor.capture());
+            assertThat(captor.getValue().getScopeType()).isEqualTo("PERSONAL");
+            assertThat(captor.getValue().getScopeId()).isEqualTo(200L);
+            assertThat(captor.getValue().getTargetUserId()).isEqualTo(200L);
+            assertThat(captor.getValue().getContentSnapshot()).isEqualTo("サーバー側の札題名");
         }
     }
 

@@ -68,6 +68,16 @@
       "AUTO_CANCELLED": "未成立（自动取消）"
     },
     "personal": {
+      "visibility": "公开范围",
+      "visibilityPublic": "全部公开",
+      "visibilitySelectedScopes": "仅限选定的球队和组织",
+      "visibilityDraft": "私密草稿",
+      "visibilityHelp": "选择可以查看此个人招募信息的范围。",
+      "audience": "球队和组织",
+      "audiencePlaceholder": "选择一个或多个群组",
+      "audienceRequired": "请至少选择一个球队或组织。",
+      "publish": "发布",
+      "published": "已发布招募信息。",
       "title": "我的集市",
       "description": "管理您的草稿招募。",
       "create": "创建草稿",
@@ -125,6 +135,10 @@
       "category": "类别",
       "notFound": "未找到该招募",
       "notPublic": "该招募未公开"
+    },
+    "report": {
+      "open": "举报此招募", "title": "举报招募", "reasonLabel": "理由", "description": "详细说明（可选）", "notice": "举报内容仅供管理人员查看。", "submit": "提交举报", "succeeded": "举报已提交。", "failed": "无法提交举报。",
+      "reason": { "SPAM": "垃圾信息", "HARASSMENT": "骚扰", "INAPPROPRIATE": "不当内容", "VIOLENCE": "暴力内容", "MISINFORMATION": "错误信息", "COPYRIGHT": "侵犯著作权", "OTHER": "其他" }
     },
     "notify": {
       "applicationReceived": "您的招募收到了申请（{owner} / {title}）",

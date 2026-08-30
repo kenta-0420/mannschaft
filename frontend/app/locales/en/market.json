@@ -68,6 +68,16 @@
       "AUTO_CANCELLED": "Auto-cancelled"
     },
     "personal": {
+      "visibility": "Visibility",
+      "visibilityPublic": "Public",
+      "visibilitySelectedScopes": "Selected teams and organizations",
+      "visibilityDraft": "Private draft",
+      "visibilityHelp": "Choose who can view this personal listing. Members of selected groups see your registered name; everyone else sees your nickname.",
+      "audience": "Teams and organizations",
+      "audiencePlaceholder": "Select one or more groups",
+      "audienceRequired": "Select at least one team or organization.",
+      "publish": "Publish",
+      "published": "Listing published.",
       "title": "My market",
       "description": "Manage your draft listings.",
       "create": "Create draft",
@@ -125,6 +135,10 @@
       "category": "Category",
       "notFound": "Listing not found",
       "notPublic": "This listing is not public"
+    },
+    "report": {
+      "open": "Report this listing", "title": "Report listing", "reasonLabel": "Reason", "description": "Details (optional)", "notice": "Only moderators can review your report. Please avoid false or repeated reports.", "submit": "Submit report", "succeeded": "Your report was submitted.", "failed": "Could not submit the report.",
+      "reason": { "SPAM": "Spam", "HARASSMENT": "Harassment", "INAPPROPRIATE": "Inappropriate content", "VIOLENCE": "Violent content", "MISINFORMATION": "Misinformation", "COPYRIGHT": "Copyright infringement", "OTHER": "Other" }
     },
     "notify": {
       "applicationReceived": "Someone applied to your listing ({owner} / {title})",

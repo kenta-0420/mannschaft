@@ -154,6 +154,13 @@ export function useRecruitmentCrud() {
     )
   }
 
+  async function publishMyMarketListing(listingId: number) {
+    return api<ApiResponse<RecruitmentListingResponse>>(
+      `/api/v1/me/market/listings/${listingId}/publish`,
+      { method: 'POST' },
+    )
+  }
+
   async function listMyMarketMatches(listingId: number, params?: { page?: number; size?: number }) {
     const q = new URLSearchParams()
     if (params?.page != null) q.set('page', String(params.page))
@@ -271,6 +278,7 @@ export function useRecruitmentCrud() {
     createMyMarketListing,
     updateMyMarketListing,
     cancelMyMarketListing,
+    publishMyMarketListing,
     listMyMarketMatches,
     createOrgListing,
     getListing,

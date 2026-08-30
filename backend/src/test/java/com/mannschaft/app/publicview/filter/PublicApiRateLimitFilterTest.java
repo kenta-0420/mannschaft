@@ -1138,6 +1138,22 @@ class PublicApiRateLimitFilterTest {
     // 是正テスト用ヘルパー
     // ────────────────────────────────────────────────────────────
 
+    @Test
+    @DisplayName("市の検索一覧は未認証で MARKET_SEARCH の 30 req/分バケットを使う")
+    void marketListingSearch_anonymous_usesSearchBucket() throws Exception {
+        SecurityContextHolder.clearContext();
+        String path = "/api/v1/public/market/listings";
+        MockHttpServletRequest request = buildRequest(path, "GET");
+        request.setRemoteAddr("198.51.100.250");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, mock(FilterChain.class));
+
+        assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        verify(rateLimiter).tryConsume(eq("public-api:MARKET_SEARCH"),
+                eq("ip:198.51.100.250"), eq(30), eq(Duration.ofMinutes(1)));
+    }
+
     /** PUBLIC_API zone（60/min/IP）で 1 回叩いて Valkey 消費が行われたことだけを確認する。 */
     private void assertPublicApiRateLimited(String path, String ip) throws Exception {
         assertRateLimited(path, ip, "public-api:PUBLIC_API", 60);

@@ -8,11 +8,15 @@ import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.PersonalMarketMatchResponse;
+import com.mannschaft.app.recruitment.dto.PersonalMarketAudienceScopeResponse;
+import com.mannschaft.app.recruitment.dto.PersonalMarketListingSummaryResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingAudienceScopeRepository;
+import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +39,7 @@ public class PersonalMarketListingService {
     private final RecruitmentListingRepository listingRepository;
     private final RecruitmentMapper mapper;
     private final RecruitmentParticipantRepository participantRepository;
+    private final RecruitmentListingAudienceScopeRepository audienceScopeRepository;
 
     @Transactional
     public RecruitmentListingResponse create(Long currentUserId, CreateRecruitmentListingRequest request) {
@@ -39,12 +47,35 @@ public class PersonalMarketListingService {
                 RecruitmentScopeType.PERSONAL, currentUserId, currentUserId, request);
     }
 
-    public Page<RecruitmentListingSummaryResponse> list(Long currentUserId, String status,
+    public Page<PersonalMarketListingSummaryResponse> list(Long currentUserId, String status,
             String prefectureCode, String cityCode, Long categoryId, Pageable pageable) {
         RecruitmentListingStatus parsedStatus = status == null ? null : RecruitmentListingStatus.valueOf(status);
-        return listingRepository.findPersonalMarketListings(
-                currentUserId, parsedStatus, prefectureCode, cityCode, categoryId, pageable)
-                .map(mapper::toListingSummaryResponse);
+        Page<RecruitmentListingEntity> listings = listingRepository.findPersonalMarketListings(
+                currentUserId, parsedStatus, prefectureCode, cityCode, categoryId, pageable);
+        List<Long> listingIds = listings.stream().map(RecruitmentListingEntity::getId).toList();
+        Map<Long, List<PersonalMarketAudienceScopeResponse>> audienceScopesByListingId =
+                (listingIds.isEmpty() ? List.<com.mannschaft.app.recruitment.entity.RecruitmentListingAudienceScopeEntity>of()
+                        : audienceScopeRepository.findByListingIdInOrderByListingIdAscIdAsc(listingIds))
+                        .stream()
+                        .collect(Collectors.groupingBy(
+                                scope -> scope.getListingId(),
+                                Collectors.mapping(scope -> new PersonalMarketAudienceScopeResponse(
+                                        scope.getScopeType().name(), scope.getScopeId()), Collectors.toList())));
+        return listings.map(listing -> toPersonalSummary(
+                mapper.toListingSummaryResponse(listing),
+                audienceScopesByListingId.getOrDefault(listing.getId(), List.of())));
+    }
+
+    private static PersonalMarketListingSummaryResponse toPersonalSummary(
+            RecruitmentListingSummaryResponse source,
+            List<PersonalMarketAudienceScopeResponse> audienceScopes) {
+        return new PersonalMarketListingSummaryResponse(
+                source.getId(), source.getCategoryId(), source.getCategoryNameI18nKey(), source.getTitle(),
+                source.getParticipationType(), source.getStartAt(), source.getEndAt(),
+                source.getApplicationDeadline(), source.getCapacity(), source.getMinCapacity(),
+                source.getConfirmedCount(), source.getWaitlistCount(), source.getStatus(), source.getVisibility(),
+                source.getLocation(), source.getImageUrl(), source.getPaymentEnabled(), source.getPrice(),
+                audienceScopes);
     }
 
     public Page<PersonalMarketMatchResponse> listMatches(Long currentUserId, Long listingId, Pageable pageable) {
@@ -66,6 +97,11 @@ public class PersonalMarketListingService {
     public RecruitmentListingResponse update(Long currentUserId, Long listingId,
             UpdateRecruitmentListingRequest request) {
         return listingService.updatePersonalDraft(listingId, currentUserId, request);
+    }
+
+    @Transactional
+    public RecruitmentListingResponse publish(Long currentUserId, Long listingId) {
+        return listingService.publishPersonal(listingId, currentUserId);
     }
 
     @Transactional

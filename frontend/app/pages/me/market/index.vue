@@ -6,13 +6,15 @@ import type {
   RecruitmentListingSummaryResponse,
   UpdateRecruitmentListingRequest,
 } from '~/types/recruitment'
-import type { PersonalMarketMatch } from '~/types/market'
+import type { MarketAudienceScope, PersonalMarketMatch } from '~/types/market'
 
 definePageMeta({ middleware: 'auth' })
 
 const PAGE_SIZE = 20
 const { t, locale } = useI18n()
 const api = useRecruitmentApi()
+const teamStore = useTeamStore()
+const organizationStore = useOrganizationStore()
 const confirm = useConfirm()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
@@ -41,6 +43,9 @@ const categoryId = ref<number | null>(null)
 const editingListing = ref<RecruitmentListingSummaryResponse | null>(null)
 const editForm = reactive<UpdateRecruitmentListingRequest>({})
 const savingEdit = ref(false)
+const publishingListingId = ref<number | null>(null)
+const visibility = ref<'PUBLIC' | 'SELECTED_SCOPES' | 'SCOPE_ONLY'>('SCOPE_ONLY')
+const selectedAudienceKeys = ref<string[]>([])
 const editDialogVisible = computed({
   get: () => editingListing.value !== null,
   set: (visible: boolean) => {
@@ -50,6 +55,27 @@ const editDialogVisible = computed({
 
 const totalPages = computed(() => Math.ceil(totalRecords.value / rows.value))
 const matchesTotalPages = computed(() => Math.ceil(matchesTotalRecords.value / PAGE_SIZE))
+const audienceOptions = computed(() => [
+  ...teamStore.myTeams.map((team) => ({
+    key: `TEAM:${team.id}`,
+    label: team.nickname1 || team.name,
+    scopeType: 'TEAM' as const,
+    scopeId: team.id,
+  })),
+  ...organizationStore.myOrganizations.map((organization) => ({
+    key: `ORGANIZATION:${organization.id}`,
+    label: organization.nickname1 || organization.name,
+    scopeType: 'ORGANIZATION' as const,
+    scopeId: organization.id,
+  })),
+])
+
+function audienceScopes(): MarketAudienceScope[] {
+  const selected = new Set(selectedAudienceKeys.value)
+  return audienceOptions.value
+    .filter((option) => selected.has(option.key))
+    .map(({ scopeType, scopeId }) => ({ scopeType, scopeId }))
+}
 
 async function loadListings() {
   loading.value = true
@@ -99,13 +125,18 @@ async function loadMatches(listingId: number, targetPage = 0) {
 }
 
 async function createListing(value: CreateRecruitmentListingRequest) {
+  if (visibility.value === 'SELECTED_SCOPES' && audienceScopes().length === 0) {
+    notification.warn(t('market.personal.audienceRequired'))
+    return
+  }
   creating.value = true
   try {
     await api.createMyMarketListing({
       ...value,
       paymentEnabled: false,
       price: null,
-      visibility: 'SCOPE_ONLY',
+      visibility: visibility.value,
+      audienceScopes: visibility.value === 'SELECTED_SCOPES' ? audienceScopes() : [],
       payeeKind: null,
       payeeUserId: null,
     })
@@ -129,14 +160,29 @@ function openEditor(listing: RecruitmentListingSummaryResponse) {
     capacity: listing.capacity,
     minCapacity: listing.minCapacity,
     location: listing.location,
+    visibility: listing.visibility,
+    audienceScopes: listing.audienceScopes ?? [],
   })
+  visibility.value = listing.visibility === 'PUBLIC' || listing.visibility === 'SELECTED_SCOPES'
+    ? listing.visibility
+    : 'SCOPE_ONLY'
+  selectedAudienceKeys.value = (listing.audienceScopes ?? [])
+    .map((scope) => `${scope.scopeType}:${scope.scopeId}`)
 }
 
 async function saveEdit() {
   if (!editingListing.value) return
+  if (visibility.value === 'SELECTED_SCOPES' && audienceScopes().length === 0) {
+    notification.warn(t('market.personal.audienceRequired'))
+    return
+  }
   savingEdit.value = true
   try {
-    await api.updateMyMarketListing(editingListing.value.id, { ...editForm })
+    await api.updateMyMarketListing(editingListing.value.id, {
+      ...editForm,
+      visibility: visibility.value,
+      audienceScopes: visibility.value === 'SELECTED_SCOPES' ? audienceScopes() : [],
+    })
     notification.success(t('market.personal.updated'))
     editingListing.value = null
     await loadListings()
@@ -144,6 +190,19 @@ async function saveEdit() {
     handleApiError(cause, t('market.personal.saveFailed'))
   } finally {
     savingEdit.value = false
+  }
+}
+
+async function publishListing(listingId: number) {
+  publishingListingId.value = listingId
+  try {
+    await api.publishMyMarketListing(listingId)
+    notification.success(t('market.personal.published'))
+    await loadListings()
+  } catch (cause) {
+    handleApiError(cause, t('market.personal.saveFailed'))
+  } finally {
+    publishingListingId.value = null
   }
 }
 
@@ -174,6 +233,10 @@ function formatDate(value: string): string {
 }
 
 onMounted(async () => {
+  await Promise.all([
+    teamStore.myTeams.length ? Promise.resolve() : teamStore.fetchMyTeams(),
+    organizationStore.myOrganizations.length ? Promise.resolve() : organizationStore.fetchMyOrganizations(),
+  ])
   await loadPrefectures()
   try {
     categories.value = (await api.listCategories()).data
@@ -202,12 +265,38 @@ onMounted(async () => {
     </p>
 
     <SectionCard v-if="showCreateForm" :title="t('market.personal.create')">
-      <p class="mb-4 text-sm text-surface-500">{{ t('market.personal.draftOnly') }}</p>
+      <p class="mb-4 text-sm text-surface-500">{{ t('market.personal.visibilityHelp') }}</p>
+      <div class="mb-4 flex flex-col gap-3">
+        <label for="personal-market-visibility" class="font-medium">{{ t('market.personal.visibility') }}</label>
+        <Select
+          id="personal-market-visibility"
+          v-model="visibility"
+          :options="[
+            { value: 'PUBLIC', label: t('market.personal.visibilityPublic') },
+            { value: 'SELECTED_SCOPES', label: t('market.personal.visibilitySelectedScopes') },
+            { value: 'SCOPE_ONLY', label: t('market.personal.visibilityDraft') },
+          ]"
+          option-label="label"
+          option-value="value"
+        />
+        <div v-if="visibility === 'SELECTED_SCOPES'" class="flex flex-col gap-2">
+          <label for="personal-market-audience">{{ t('market.personal.audience') }}</label>
+          <MultiSelect
+            id="personal-market-audience"
+            v-model="selectedAudienceKeys"
+            :options="audienceOptions"
+            option-label="label"
+            option-value="key"
+            :placeholder="t('market.personal.audiencePlaceholder')"
+            display="chip"
+          />
+        </div>
+      </div>
       <RecruitmentListingForm
         :categories="categories"
         :initial="{
           paymentEnabled: false,
-          visibility: 'SCOPE_ONLY',
+          visibility,
           participationType: 'INDIVIDUAL',
         }"
         :loading="creating"
@@ -223,7 +312,7 @@ onMounted(async () => {
       <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
         <Select
           v-model="status"
-          :options="['DRAFT', 'CANCELLED']"
+          :options="['DRAFT', 'OPEN', 'FULL', 'CANCELLED']"
           :placeholder="t('market.personal.allStatuses')"
           show-clear
           @change="reloadFromFirstPage"
@@ -295,6 +384,14 @@ onMounted(async () => {
               :label="t('market.personal.matches')"
               icon="pi pi-users"
               @click="loadMatches(listing.id)"
+            />
+            <Button
+              v-if="listing.status === 'DRAFT'"
+              class="min-h-11"
+              :label="t('market.personal.publish')"
+              icon="pi pi-send"
+              :loading="publishingListingId === listing.id"
+              @click="publishListing(listing.id)"
             />
             <Button
               v-if="listing.status === 'DRAFT'"
@@ -386,6 +483,29 @@ onMounted(async () => {
           <InputNumber v-model="editForm.minCapacity" :min="1" required />
         </div>
         <InputText v-model="editForm.location" :placeholder="t('recruitment.field.location')" />
+        <div class="flex flex-col gap-3">
+          <label for="personal-market-edit-visibility">{{ t('market.personal.visibility') }}</label>
+          <Select
+            id="personal-market-edit-visibility"
+            v-model="visibility"
+            :options="[
+              { value: 'PUBLIC', label: t('market.personal.visibilityPublic') },
+              { value: 'SELECTED_SCOPES', label: t('market.personal.visibilitySelectedScopes') },
+              { value: 'SCOPE_ONLY', label: t('market.personal.visibilityDraft') },
+            ]"
+            option-label="label"
+            option-value="value"
+          />
+          <MultiSelect
+            v-if="visibility === 'SELECTED_SCOPES'"
+            v-model="selectedAudienceKeys"
+            :options="audienceOptions"
+            option-label="label"
+            option-value="key"
+            :placeholder="t('market.personal.audiencePlaceholder')"
+            display="chip"
+          />
+        </div>
         <div class="flex justify-end gap-2">
           <Button
             type="button"

@@ -63,11 +63,11 @@ class MarketQueryServicePiiIntegrationTest extends AbstractMySqlIntegrationTest 
                         + "is_searchable, handle_searchable, contact_approval_required, "
                         + "online_visibility, dm_receive_from, encryption_key_version, "
                         + "locale, timezone, reporting_restricted, follow_list_visibility, "
-                        + "care_notification_enabled, offline_only, "
+                        + "care_notification_enabled, offline_only, public_profile_enabled, "
                         + "created_at, updated_at) "
-                        + "VALUES ('pii.creator@example.com', '山田', '太郎', '山田 太郎', 'ACTIVE', "
+                        + "VALUES ('pii.creator@example.com', '山田', '太郎', 'やまちゃん', 'ACTIVE', "
                         + "1, 1, 1, 'NOBODY', 'ANYONE', 1, 'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
-                        + "1, 0, NOW(), NOW())")
+                        + "1, 0, 1, NOW(), NOW())")
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
                 "SELECT id FROM users WHERE email = 'pii.creator@example.com'")
@@ -103,6 +103,29 @@ class MarketQueryServicePiiIntegrationTest extends AbstractMySqlIntegrationTest 
                 .visibility(RecruitmentVisibility.PUBLIC)
                 .status(RecruitmentListingStatus.OPEN)
                 .createdBy(createdBy)
+                .build();
+        em.persist(listing);
+        em.flush();
+        return listing.getId();
+    }
+
+    private Long persistPublicPersonalListing(Long ownerId) {
+        LocalDateTime now = LocalDateTime.now();
+        RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
+                .scopeType(RecruitmentScopeType.PERSONAL)
+                .scopeId(ownerId)
+                .categoryId(1L)
+                .title("個人札")
+                .participationType(RecruitmentParticipationType.INDIVIDUAL)
+                .startAt(now.plusDays(7))
+                .endAt(now.plusDays(7).plusHours(2))
+                .applicationDeadline(now.plusDays(5))
+                .autoCancelAt(now.plusDays(5))
+                .capacity(10)
+                .minCapacity(1)
+                .visibility(RecruitmentVisibility.PUBLIC)
+                .status(RecruitmentListingStatus.OPEN)
+                .createdBy(ownerId)
                 .build();
         em.persist(listing);
         em.flush();
@@ -148,5 +171,30 @@ class MarketQueryServicePiiIntegrationTest extends AbstractMySqlIntegrationTest 
                     .as("公開 DTO 詳細（実マッピング）に禁則ワード '%s' が含まれてはならない", forbidden)
                     .doesNotContain(forbidden);
         }
+    }
+
+    @Test
+    @DisplayName("外部閲覧者向け個人札はニックネームだけを返し、owner内部IDと実名を漏らさない")
+    void getPersonalListing_externalViewer_returnsOnlyPublicOwnerFields() throws Exception {
+        Long ownerId = insertPiiUser();
+        Long id = persistPublicPersonalListing(ownerId);
+        em.flush();
+        em.clear();
+
+        MarketListingResponse response = marketQueryService.getListing(id);
+        var ownerJson = objectMapper.valueToTree(response.getOwner());
+
+        assertThat(ownerJson.get("scopeType").asText()).isEqualTo("PERSONAL");
+        assertThat(ownerJson.get("displayName").asText()).isEqualTo("やまちゃん");
+        assertThat(ownerJson.size()).isEqualTo(3);
+        assertThat(ownerJson.has("scopeId")).isFalse();
+        assertThat(ownerJson.has("userId")).isFalse();
+        assertThat(ownerJson.has("iconUrl")).isTrue();
+
+        String json = objectMapper.writeValueAsString(response);
+        assertThat(json)
+                .doesNotContain("山田", "太郎", "pii.creator@example.com")
+                .doesNotContain("\"scopeId\"")
+                .doesNotContain("\"userId\"");
     }
 }
