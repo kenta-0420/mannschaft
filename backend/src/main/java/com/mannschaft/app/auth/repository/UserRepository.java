@@ -28,7 +28,6 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<UserEntity> findByIdForUpdate(@Param("id") Long id);
 
     /** 退会後の空集合cleanup用。対象行の存在だけを確認し、SQLRestrictionを迂回してlockする。 */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(value = "select * from users where id = :id for update", nativeQuery = true)
     Optional<UserEntity> findByIdForUpdateIncludingDeleted(@Param("id") Long id);
 

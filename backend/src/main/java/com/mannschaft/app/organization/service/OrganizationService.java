@@ -24,10 +24,10 @@ import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
 import com.mannschaft.app.organization.dto.UpdateOrganizationRequest;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
-import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.organization.event.OrganizationCreatedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
@@ -75,6 +75,7 @@ public class OrganizationService {
     private final OrganizationHierarchyService organizationHierarchyService;
     private final MembershipService membershipService;
     private final MediaUrlResolver mediaUrlResolver;
+    private final AdminRoleMutationLockService adminRoleMutationLockService;
 
     /**
      * 組織を作成し、作成者をADMINロールで紐付ける。
@@ -101,14 +102,14 @@ public class OrganizationService {
                 .parentOrganizationId(req.getParentOrganizationId())
                 .supporterEnabled(false)
                 .build();
+        Long adminRoleId = adminRoleMutationLockService.lockAdminRoleIdForCreation(userId)
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_005));
         organizationRepository.save(org);
 
         // 作成者をADMINロールで紐付ける
-        RoleEntity adminRole = roleRepository.findByName("ADMIN")
-                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_005));
         UserRoleEntity userRole = UserRoleEntity.builder()
                 .userId(userId)
-                .roleId(adminRole.getId())
+                .roleId(adminRoleId)
                 .organizationId(org.getId())
                 .build();
         userRoleRepository.save(userRole);

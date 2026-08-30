@@ -683,7 +683,7 @@ class UserRolePermissionGroupNativeQueryTest extends AbstractMySqlIntegrationTes
         flushClear();
 
         assertThat(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(orgId, permissionName))
-                .containsExactly(activeDeputy)
-                .doesNotContain(leftOnly, memberWithDeputyGroup, memberWithEmptyMatchingGroup);
+                .containsExactlyInAnyOrder(activeDeputy, memberWithDeputyGroup)
+                .doesNotContain(leftOnly, memberWithEmptyMatchingGroup);
     }
 }

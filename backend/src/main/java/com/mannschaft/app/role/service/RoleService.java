@@ -8,6 +8,7 @@ import com.mannschaft.app.role.entity.RolePermissionEntity;
 import com.mannschaft.app.role.entity.UserPermissionGroupEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.auth.service.UserRowLockService.UserState;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.RolePermissionRepository;
@@ -44,6 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -71,6 +73,7 @@ public class RoleService {
     private final RolePermissionCleanupService rolePermissionCleanupService;
 
     private final UserRowLockService userRowLockService;
+    private final AdminRoleMutationLockService adminRoleMutationLockService;
 
     /**
      * 自己プロキシ参照（issue #2544）。{@code @Cacheable} は Spring AOP プロキシ経由でのみ作用するため、
@@ -137,11 +140,23 @@ public class RoleService {
         // 既存ロール存在チェック → 上書き
         // 上書き時は changeRole と同様に flush して DELETE を先に確定させる
         // （uq_user_roles_user_scope ユニーク制約の衝突回避。詳細は changeRole 参照）。
-        findUserRole(targetUserId, scopeId, scopeType)
-                .ifPresent(existing -> {
-                    userRoleRepository.delete(existing);
-                    userRoleRepository.flush();
-                });
+        Optional<UserRoleEntity> existingRole = findUserRole(targetUserId, scopeId, scopeType);
+        if (existingRole.isPresent()) {
+            UserRoleEntity existing = existingRole.get();
+            boolean existingAdmin = isAdminRole(existing);
+            boolean assignedAdmin = "ADMIN".equals(assignedRole.getName());
+            if (existingAdmin || assignedAdmin) {
+                List<Long> lockedAdminUserIds =
+                        adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
+                if (existingAdmin && !assignedAdmin) {
+                    checkLastAdmin(existing, lockedAdminUserIds);
+                }
+            }
+            userRoleRepository.delete(existing);
+            userRoleRepository.flush();
+        } else if ("ADMIN".equals(assignedRole.getName())) {
+            adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
+        }
 
         var builder = UserRoleEntity.builder()
                 .userId(targetUserId)
@@ -224,12 +239,19 @@ public class RoleService {
         UserRoleEntity current = findUserRole(targetUserId, scopeId, scopeType)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
-        // 最後のADMIN保護
-        checkLastAdmin(scopeId, scopeType, current);
-
         // 新ロール存在確認
         RoleEntity requestedRole = roleRepository.findById(req.getRoleId())
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
+
+        boolean currentAdmin = isAdminRole(current);
+        boolean requestedAdmin = "ADMIN".equals(requestedRole.getName());
+        if (currentAdmin || requestedAdmin) {
+            List<Long> lockedAdminUserIds =
+                    adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
+            if (currentAdmin) {
+                checkLastAdmin(current, lockedAdminUserIds);
+            }
+        }
 
         // CMP-052 権限付与経路の防御対称化: 変更対象のアカウントが生存している（未削除かつ ACTIVE）ことを確認する。
         // 在籍・権限確認をすべて終えた後、副作用（delete / save / イベント発行）より前に置く。
@@ -331,7 +353,8 @@ public class RoleService {
     @CacheEvict(value = "role-permissions", key = "#targetUserId + ':' + #scopeType + ':' + #scopeId")
     public void removeMemberWithoutAdminCheck(Long scopeId, String scopeType, Long targetUserId) {
         lockUsers(targetUserId);
-        UserRoleEntity current = findUserRole(targetUserId, scopeId, scopeType)
+        adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
+        UserRoleEntity current = findUserRoleForUpdate(targetUserId, scopeId, scopeType)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
         // checkLastAdmin はあえて呼ばない（安全弁メソッドの本質）
@@ -599,43 +622,36 @@ public class RoleService {
     @Transactional
     @CacheEvict(value = "role-permissions", allEntries = true)
     public void transferOwnership(Long scopeId, String scopeType, Long currentUserId, Long targetUserId) {
-        lockUsers(currentUserId, targetUserId);
+        Map<Long, UserState> lockedUserStates = userRowLockService.lockAll(currentUserId, targetUserId);
         if (currentUserId.equals(targetUserId)) {
             throw new BusinessException(RoleErrorCode.ROLE_001);
         }
-
-        // 現ユーザーが ADMIN であることを確認
-        UserRoleEntity currentUserRole = findUserRole(currentUserId, scopeId, scopeType)
-                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
-        RoleEntity currentRole = roleRepository.findById(currentUserRole.getRoleId())
-                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
-        if (!"ADMIN".equals(currentRole.getName())) {
+        if (lockedUserStates.get(targetUserId) != UserState.ACTIVE) {
             throw new BusinessException(RoleErrorCode.ROLE_001);
         }
 
-        // 対象ユーザーがスコープに所属していることを確認
-        // CMP-027: V60.010 で MEMBER/SUPPORTER は user_roles から memberships へ移行したため、
-        // 在籍判定は user_roles 一系統では素メンバーを取りこぼす。memberships 統合の在籍判定
-        // （existsByUserIdAndTeamId/OrganizationId は user_roles ∪ memberships）で確認する。
-        boolean targetIsMember = "TEAM".equals(scopeType)
-                ? userRoleRepository.existsByUserIdAndTeamId(targetUserId, scopeId)
-                : userRoleRepository.existsByUserIdAndOrganizationId(targetUserId, scopeId);
+        List<Long> lockedAdminUserIds =
+                adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
+
+        // 現ユーザーが ADMIN であることを確認
+        UserRoleEntity currentUserRole = findUserRoleForUpdate(currentUserId, scopeId, scopeType)
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
+        if (!lockedAdminUserIds.contains(currentUserId)) {
+            throw new BusinessException(RoleErrorCode.ROLE_001);
+        }
+
+        // 外側transactionのRR snapshotに依存しないlocking current readで在籍を確認する。
+        Optional<UserRoleEntity> targetUserRole = findUserRoleForUpdate(targetUserId, scopeId, scopeType);
+        ScopeType membershipScope = "TEAM".equals(scopeType) ? ScopeType.TEAM : ScopeType.ORGANIZATION;
+        boolean targetIsMember = targetUserRole.isPresent()
+                || membershipService.isActiveMemberForUpdate(targetUserId, membershipScope, scopeId);
         if (!targetIsMember) {
             throw new BusinessException(RoleErrorCode.ROLE_001);
         }
 
-        // CMP-050 二重防御: 譲渡先のアカウントが生存している（未削除かつ ACTIVE）ことを確認する。
-        // 在籍プリミティブ側にも ACTIVE 条件を課したが、唯一の ADMIN を凍結・退会済みユーザーへ
-        // 譲渡するとそのスコープが恒久的に操作不能になるため、権限を与える経路でも明示確認する。
-        // ErrorCode を分けると他人のアカウント状態が漏れるので本メソッド内の他の拒否と同じ
-        // ROLE_001 へ畳む。role→auth の Repository 直接依存を避けるため判定は
-        // UserRoleRepository 側（既に users を参照している）に置いている。
-        if (!userRoleRepository.isActiveUser(targetUserId)) {
-            throw new BusinessException(RoleErrorCode.ROLE_001);
-        }
-
         // ADMIN ロールと MEMBER ロールを取得
-        RoleEntity adminRole = currentRole;
+        RoleEntity adminRole = roleRepository.findById(currentUserRole.getRoleId())
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
         RoleEntity memberRole = roleRepository.findByName("MEMBER")
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
@@ -643,7 +659,7 @@ public class RoleService {
         // delete→save が同一 scope_key を再挿入するため flush で DELETE を先に確定させる
         // （uq_user_roles_user_scope ユニーク制約の衝突回避。詳細は changeRole 参照）。
         // memberships 専属の素メンバー（user_roles 行なし）は削除対象が無いためスキップする。
-        findUserRole(targetUserId, scopeId, scopeType).ifPresent(existing -> {
+        targetUserRole.ifPresent(existing -> {
             userRoleRepository.delete(existing);
             userRoleRepository.flush();
         });
@@ -728,16 +744,6 @@ public class RoleService {
     }
 
     /**
-     * スコープ内のロール数をカウントする。
-     */
-    private long countByRoleInScope(Long scopeId, String scopeType, Long roleId) {
-        if ("TEAM".equals(scopeType)) {
-            return userRoleRepository.countByTeamIdAndRoleId(scopeId, roleId);
-        }
-        return userRoleRepository.countByOrganizationIdAndRoleId(scopeId, roleId);
-    }
-
-    /**
      * スコープに応じてパーミッショングループを検索する。
      */
     private List<PermissionGroupEntity> findPermissionGroups(Long scopeId, String scopeType) {
@@ -800,17 +806,34 @@ public class RoleService {
     /**
      * 最後のADMINを除名・変更できないよう保護する。
      */
-    private void checkLastAdmin(Long scopeId, String scopeType, UserRoleEntity current) {
-        RoleEntity currentRole = roleRepository.findById(current.getRoleId()).orElse(null);
-        if (currentRole != null && "ADMIN".equals(currentRole.getName())) {
+    private void checkLastAdmin(UserRoleEntity current, List<Long> lockedAdminUserIds) {
+        if (isAdminRole(current)) {
             // 一般メンバーの変更・離脱まで全scope共通ロックで直列化しない。
             // ADMINを実際に減らすtransactionだけが同じ定義行を取り、判定を直列化する。
-            lockAdminRows(scopeId, scopeType);
-            long adminCount = countByRoleInScope(scopeId, scopeType, current.getRoleId());
-            if (adminCount <= 1) {
+            if (lockedAdminUserIds.size() <= 1) {
                 throw new BusinessException(RoleErrorCode.ROLE_004);
             }
         }
+    }
+
+    private void checkLastAdmin(Long scopeId, String scopeType, UserRoleEntity current) {
+        if (isAdminRole(current)) {
+            checkLastAdmin(current,
+                    adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType));
+        }
+    }
+
+    private boolean isAdminRole(UserRoleEntity userRole) {
+        return roleRepository.findById(userRole.getRoleId())
+                .map(role -> "ADMIN".equals(role.getName()))
+                .orElse(false);
+    }
+
+    private Optional<UserRoleEntity> findUserRoleForUpdate(Long userId, Long scopeId, String scopeType) {
+        if ("TEAM".equals(scopeType)) {
+            return userRoleRepository.findByUserIdAndTeamIdForUpdate(userId, scopeId);
+        }
+        return userRoleRepository.findByUserIdAndOrganizationIdForUpdate(userId, scopeId);
     }
 
     /**
@@ -818,17 +841,10 @@ public class RoleService {
      *
      * <p>ADMINを実際に減らす transaction に限り、対象スコープの ADMIN 行だけでなく、
      * 必ず存在する ADMIN ロール定義も悲観ロックする。これにより DB の実行計画にかかわらず、
-     * 二つの transaction が同時に最後の ADMIN 判定を通過することを防ぐ。</p>
+     * 二つの transaction が同時に最後の ADMIN 判定を通過することを防ぐ。
+     * 判定には通常の COUNT を使わず、このロック読み取りが返した最新行数を使う。
+     * MySQL REPEATABLE READ の通常読み取りはロック待機前の snapshot を再利用し得るためである。</p>
      */
-    private void lockAdminRows(Long scopeId, String scopeType) {
-        roleRepository.findByNameForUpdate("ADMIN").ifPresent(admin -> {
-            if ("TEAM".equals(scopeType)) {
-                userRoleRepository.lockAdminsByTeamId(scopeId, admin.getId());
-            } else if ("ORGANIZATION".equals(scopeType)) {
-                userRoleRepository.lockAdminsByOrganizationId(scopeId, admin.getId());
-            }
-        });
-    }
 
     /**
      * F00.5 フェーズ 3 — {@code user_roles} のうち、対応する {@code memberships} のアクティブ行が

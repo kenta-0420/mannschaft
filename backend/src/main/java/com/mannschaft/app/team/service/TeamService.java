@@ -27,10 +27,10 @@ import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
-import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.common.util.SlugGenerator;
 import com.mannschaft.app.common.util.SlugValidator;
@@ -90,6 +90,7 @@ public class TeamService {
     private final MembershipRepository membershipRepository;
     /** 画像 URL 根治 Phase 1: 生 R2 キー → 署名付き表示 URL の解決を担う共通部品。 */
     private final MediaUrlResolver mediaUrlResolver;
+    private final AdminRoleMutationLockService adminRoleMutationLockService;
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。
@@ -112,14 +113,14 @@ public class TeamService {
                 .build();
         // F22.1 市 Phase 2 足場C: 構造化地域コードを反映（どちらも null 許容＝未指定はそのまま NULL）
         team.updateRegionCodes(req.getPrefectureCode(), req.getCityCode());
+        Long adminRoleId = adminRoleMutationLockService.lockAdminRoleIdForCreation(userId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_005));
         teamRepository.save(team);
 
         // 作成者をADMINロールで紐付ける
-        RoleEntity adminRole = roleRepository.findByName("ADMIN")
-                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_005));
         UserRoleEntity userRole = UserRoleEntity.builder()
                 .userId(userId)
-                .roleId(adminRole.getId())
+                .roleId(adminRoleId)
                 .teamId(team.getId())
                 .build();
         userRoleRepository.save(userRole);

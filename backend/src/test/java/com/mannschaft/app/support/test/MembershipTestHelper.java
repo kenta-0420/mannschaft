@@ -36,6 +36,43 @@ public final class MembershipTestHelper {
     }
 
     /**
+     * 認可契約テスト用に、固定 ID の ACTIVE ユーザーを作成する。
+     *
+     * <p>F09.14 以降、権限ロールだけが残った退会・停止ユーザーを認可しないため、
+     * 実効ロール解決は users の ACTIVE 行も要求する。固定 userId だけで所属・権限を
+     * 組み立てる契約テストは、このヘルパーで認証主体の実在も明示する。</p>
+     */
+    public static void insertActiveUser(EntityManager em, Long userId) {
+        Number activeCount = (Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM users WHERE id = :id AND deleted_at IS NULL AND status = 'ACTIVE'")
+                .setParameter("id", userId)
+                .getSingleResult();
+        if (activeCount.longValue() > 0) {
+            return;
+        }
+        Number existingCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM users WHERE id = :id")
+                .setParameter("id", userId)
+                .getSingleResult();
+        if (existingCount.longValue() > 0) {
+            throw new IllegalStateException("認可契約の固定ユーザーが ACTIVE ではありません: userId=" + userId);
+        }
+        em.createNativeQuery(
+                        "INSERT INTO users ("
+                                + "id, email, last_name, first_name, display_name, status, "
+                                + "is_searchable, handle_searchable, contact_approval_required, "
+                                + "online_visibility, dm_receive_from, encryption_key_version, "
+                                + "locale, timezone, reporting_restricted, follow_list_visibility, "
+                                + "care_notification_enabled, offline_only, created_at, updated_at) "
+                                + "VALUES (:id, :email, '契約', 'テスト', :displayName, 'ACTIVE', "
+                                + "1, 1, 1, 'NOBODY', 'ANYONE', 1, "
+                                + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', 1, 0, NOW(), NOW())")
+                .setParameter("id", userId)
+                .setParameter("email", "auth-contract-" + userId + "@example.com")
+                .setParameter("displayName", "認可契約" + userId)
+                .executeUpdate();
+    }
+
+    /**
      * memberships へアクティブメンバーシップを 1 行 INSERT する。
      *
      * <p>{@code joined_at = NOW()}, {@code left_at = NULL}（アクティブ）, {@code created_at/updated_at = NOW()}

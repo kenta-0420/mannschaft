@@ -3,8 +3,10 @@ package com.mannschaft.app.membership.repository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,6 +25,15 @@ import java.util.Optional;
  */
 public interface MembershipRepository extends JpaRepository<MembershipEntity, Long> {
 
+    /** 退会処理が user 行を先にロックするために、Entity を管理状態にせず userId だけを取得する。 */
+    @Query("SELECT m.userId FROM MembershipEntity m WHERE m.id = :membershipId")
+    Optional<Long> findUserIdById(@Param("membershipId") Long membershipId);
+
+    /** user 行ロック後に最新状態を current read し、同一 membership の二重退会を直列化する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM MembershipEntity m WHERE m.id = :membershipId")
+    Optional<MembershipEntity> findByIdForUpdate(@Param("membershipId") Long membershipId);
+
     /**
      * 指定ユーザーが指定スコープに対してアクティブなメンバーシップを 1 件取得する。
      */
@@ -30,6 +41,16 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             "WHERE m.userId = :userId AND m.scopeType = :scopeType AND m.scopeId = :scopeId " +
             "AND m.leftAt IS NULL")
     Optional<MembershipEntity> findActiveByUserAndScope(
+            @Param("userId") Long userId,
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId);
+
+    /** 外側transactionのRR snapshotに依存せず、現在の在籍行を悲観ロック読取する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM MembershipEntity m " +
+            "WHERE m.userId = :userId AND m.scopeType = :scopeType AND m.scopeId = :scopeId " +
+            "AND m.leftAt IS NULL")
+    Optional<MembershipEntity> findActiveByUserAndScopeForUpdate(
             @Param("userId") Long userId,
             @Param("scopeType") ScopeType scopeType,
             @Param("scopeId") Long scopeId);

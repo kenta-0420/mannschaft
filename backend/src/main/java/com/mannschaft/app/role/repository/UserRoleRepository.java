@@ -59,6 +59,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     Optional<UserRoleEntity> findByUserIdAndOrganizationId(Long userId, Long organizationId);
 
+    /** 外側transactionのRR snapshotに依存せず、対象TEAMロール行を最新状態で取得する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ur FROM UserRoleEntity ur WHERE ur.userId = :userId AND ur.teamId = :teamId")
+    Optional<UserRoleEntity> findByUserIdAndTeamIdForUpdate(
+            @Param("userId") Long userId, @Param("teamId") Long teamId);
+
+    /** 外側transactionのRR snapshotに依存せず、対象ORGANIZATIONロール行を最新状態で取得する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ur FROM UserRoleEntity ur WHERE ur.userId = :userId AND ur.organizationId = :organizationId")
+    Optional<UserRoleEntity> findByUserIdAndOrganizationIdForUpdate(
+            @Param("userId") Long userId, @Param("organizationId") Long organizationId);
+
     List<UserRoleEntity> findByTeamIdAndRoleId(Long teamId, Long roleId);
 
     long countByTeamIdAndRoleId(Long teamId, Long roleId);
@@ -67,6 +79,11 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT ur FROM UserRoleEntity ur WHERE ur.teamId = :teamId AND ur.roleId = :roleId ORDER BY ur.id")
     List<UserRoleEntity> lockAdminsByTeamId(@Param("teamId") Long teamId, @Param("roleId") Long roleId);
+
+    /** 他ドメインへEntityを漏らさず、ロック済みADMINのuserIdだけを返す。 */
+    default List<Long> lockAdminUserIdsByTeamId(Long teamId, Long roleId) {
+        return lockAdminsByTeamId(teamId, roleId).stream().map(UserRoleEntity::getUserId).toList();
+    }
 
     boolean existsByUserIdAndScopeKey(Long userId, String scopeKey);
 
@@ -81,6 +98,12 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     @Query("SELECT ur FROM UserRoleEntity ur WHERE ur.organizationId = :organizationId AND ur.roleId = :roleId ORDER BY ur.id")
     List<UserRoleEntity> lockAdminsByOrganizationId(@Param("organizationId") Long organizationId,
                                                      @Param("roleId") Long roleId);
+
+    /** 他ドメインへEntityを漏らさず、ロック済みADMINのuserIdだけを返す。 */
+    default List<Long> lockAdminUserIdsByOrganizationId(Long organizationId, Long roleId) {
+        return lockAdminsByOrganizationId(organizationId, roleId).stream()
+                .map(UserRoleEntity::getUserId).toList();
+    }
 
     Page<UserRoleEntity> findByOrganizationId(Long organizationId, Pageable pageable);
 

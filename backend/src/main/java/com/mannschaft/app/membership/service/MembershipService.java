@@ -19,12 +19,14 @@ import com.mannschaft.app.membership.event.MembershipEndedEvent;
 import com.mannschaft.app.membership.repository.MemberPositionRepository;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.repository.PositionRepository;
-import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.role.service.RolePermissionCleanupService;
 import com.mannschaft.app.team.event.TeamMemberAuditEvent;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import com.mannschaft.app.organization.event.OrganizationMemberAuditEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,6 +64,8 @@ public class MembershipService {
     private final ApplicationEventPublisher eventPublisher;
 
     private final UserRowLockService userRowLockService;
+    private final AdminRoleMutationLockService adminRoleMutationLockService;
+    private final EntityManager entityManager;
     private final RolePermissionCleanupService rolePermissionCleanupService;
 
     /**
@@ -152,21 +156,25 @@ public class MembershipService {
      */
     @Transactional
     public MembershipDto leave(Long membershipId, MembershipLeaveRequest req) {
-        MembershipEntity entity = membershipRepository.findById(membershipId)
+        Long userId = membershipRepository.findUserIdById(membershipId)
                 .orElseThrow(() -> new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_NOT_FOUND));
 
-        // user行lock後に同じmembershipを再読込し、leave判定・更新を同一snapshotで行う。
-        lockUser(entity.getUserId());
-        entity = membershipRepository.findById(membershipId)
+        // Entityを管理状態にする前にuser行をロックし、その後の悲観ロック読取で最新状態を取得する。
+        // 通常のfindByIdを先に呼ぶとMySQL RRのsnapshotとL1 cacheが残り、同時二重退会を見落とす。
+        lockUser(userId);
+        MembershipEntity entity = membershipRepository.findByIdForUpdate(membershipId)
                 .orElseThrow(() -> new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_NOT_FOUND));
+        // 外側transactionが同じEntityを既に管理していても、DBの最新行で必ず上書きする。
+        entityManager.refresh(entity, LockModeType.PESSIMISTIC_WRITE);
 
         if (!entity.isActive()) {
             throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_ALREADY_LEFT);
         }
 
         // 最後の ADMIN 保護（user_roles 側で判定）— RoleService の checkLastAdmin 相当を委譲
-        lockAdminRows(entity.getScopeType(), entity.getScopeId());
-        checkLastAdminProtectedByUserRoles(entity);
+        List<Long> lockedAdminUserIds = adminRoleMutationLockService.lockScopeAdminRows(
+                entity.getScopeId(), entity.getScopeType().name(), entity.getUserId());
+        checkLastAdminProtectedByUserRoles(entity, lockedAdminUserIds);
 
         // memberships を退会状態に更新
         LocalDateTime now = LocalDateTime.now();
@@ -356,42 +364,23 @@ public class MembershipService {
     /**
      * 最後の ADMIN 保護を user_roles 側で判定する。memberships の MEMBER/SUPPORTER 退会には影響しない（FR-11）。
      */
-    private void checkLastAdminProtectedByUserRoles(MembershipEntity entity) {
+    private void checkLastAdminProtectedByUserRoles(
+            MembershipEntity entity, List<Long> lockedAdminUserIds) {
         if (entity.getUserId() == null) {
             return;
         }
-        Optional<RoleEntity> adminRoleOpt = roleRepository.findByName("ADMIN");
-        if (adminRoleOpt.isEmpty()) {
-            return;
-        }
-        Long adminRoleId = adminRoleOpt.get().getId();
-
-        boolean isAdmin;
-        long adminCount;
-        if (entity.getScopeType() == ScopeType.TEAM) {
-            isAdmin = userRoleRepository.existsByUserIdAndTeamIdAndRoleId(
-                    entity.getUserId(), entity.getScopeId(), adminRoleId);
-            adminCount = userRoleRepository.countByTeamIdAndRoleId(entity.getScopeId(), adminRoleId);
-        } else {
-            isAdmin = userRoleRepository.existsByUserIdAndOrganizationIdAndRoleId(
-                    entity.getUserId(), entity.getScopeId(), adminRoleId);
-            adminCount = userRoleRepository.countByOrganizationIdAndRoleId(entity.getScopeId(), adminRoleId);
-        }
-        if (isAdmin && adminCount <= 1) {
+        boolean isAdmin = lockedAdminUserIds.contains(entity.getUserId());
+        if (isAdmin && lockedAdminUserIds.size() <= 1) {
             throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_LAST_ADMIN_BLOCKED);
         }
     }
 
-    /** 同一scopeのADMIN行を先にID順でロックし、last-admin判定と退会更新を直列化する。 */
-    private void lockAdminRows(ScopeType scopeType, Long scopeId) {
-        roleRepository.findByName("ADMIN").ifPresent(admin -> {
-            if (scopeType == ScopeType.TEAM) {
-                userRoleRepository.lockAdminsByTeamId(scopeId, admin.getId());
-            } else if (scopeType == ScopeType.ORGANIZATION) {
-                userRoleRepository.lockAdminsByOrganizationId(scopeId, admin.getId());
-            }
-        });
-    }
+    /**
+     * 同一scopeのADMIN行を先にID順でロックし、最新のロック読取集合をlast-admin判定へ渡す。
+     * 通常の find / exists / COUNT は MySQL REPEATABLE READ でロック待機前の snapshot を
+     * 再利用し得るため、安全判定には使わない。対象 user が ADMIN でなくても ADMIN 定義行と
+     * scope 内の ADMIN 行をロック読取し、同一の最新集合から退会可否を判定する。
+     */
 
     /**
      * 指定ユーザーがアクティブ（退会していない）に所属するチームの ID 一覧を返す。
@@ -467,6 +456,12 @@ public class MembershipService {
      */
     public boolean isActiveMember(Long userId, ScopeType scopeType, Long scopeId) {
         return membershipRepository.existsActiveByUserAndScope(userId, scopeType, scopeId);
+    }
+
+    /** user行ロック後の変更処理向けに、RR snapshotへ依存しない現在の在籍有無を返す。 */
+    @Transactional
+    public boolean isActiveMemberForUpdate(Long userId, ScopeType scopeType, Long scopeId) {
+        return membershipRepository.findActiveByUserAndScopeForUpdate(userId, scopeType, scopeId).isPresent();
     }
 
     /** authz統合用にactive direct membershipのrole_kindだけを返す。 */

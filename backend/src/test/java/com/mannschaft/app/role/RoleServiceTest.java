@@ -7,6 +7,7 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.auth.service.UserRowLockService.UserState;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.PermissionGroupEntity;
@@ -25,6 +26,7 @@ import com.mannschaft.app.role.repository.UserPermissionGroupRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.role.service.RolePermissionCleanupService;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,6 +40,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,6 +77,7 @@ class RoleServiceTest {
     @Mock private MembershipService membershipService;
     @Mock private UserRowLockService userRowLockService;
     @Mock private RolePermissionCleanupService rolePermissionCleanupService;
+    @Mock private AdminRoleMutationLockService adminRoleMutationLockService;
 
     @InjectMocks
     private RoleService roleService;
@@ -92,6 +96,26 @@ class RoleServiceTest {
                 .thenReturn(true);
         lenient().when(membershipService.isActiveMember(USER_ID, ScopeType.TEAM, SCOPE_ID))
                 .thenReturn(true);
+        lenient().when(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(
+                        org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(List.of(USER_ID, TARGET_USER_ID));
+        lenient().when(userRoleRepository.findByUserIdAndTeamIdForUpdate(
+                        org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong()))
+                .thenAnswer(inv -> userRoleRepository.findByUserIdAndTeamId(
+                        inv.getArgument(0), inv.getArgument(1)));
+        lenient().when(userRoleRepository.findByUserIdAndOrganizationIdForUpdate(
+                        org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong()))
+                .thenAnswer(inv -> userRoleRepository.findByUserIdAndOrganizationId(
+                        inv.getArgument(0), inv.getArgument(1)));
+        lenient().when(userRowLockService.lockAll(
+                        org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong()))
+                .thenAnswer(inv -> {
+                    Long first = inv.getArgument(0);
+                    Long second = inv.getArgument(1);
+                    return first.equals(second)
+                            ? Map.of(first, UserState.ACTIVE)
+                            : Map.of(first, UserState.ACTIVE, second, UserState.ACTIVE);
+                });
     }
 
     // ========================================
@@ -307,16 +331,18 @@ class RoleServiceTest {
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(current));
             given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
-            given(roleRepository.findByNameForUpdate("ADMIN")).willReturn(Optional.of(createAdminRole()));
-            given(userRoleRepository.countByOrganizationIdAndRoleId(SCOPE_ID, ADMIN_ROLE_ID)).willReturn(1L);
+            given(roleRepository.findById(MEMBER_ROLE_ID)).willReturn(Optional.of(createMemberRole()));
+            given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "ORGANIZATION"))
+                    .willReturn(List.of(TARGET_USER_ID));
 
             assertThatThrownBy(() -> roleService.changeRole(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID,
                     new RoleChangeRequest(MEMBER_ROLE_ID), USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_004"));
-            verify(roleRepository).findByNameForUpdate("ADMIN");
-            verify(userRoleRepository).lockAdminsByOrganizationId(SCOPE_ID, ADMIN_ROLE_ID);
+            verify(adminRoleMutationLockService)
+                    .lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "ORGANIZATION");
+            verify(userRoleRepository, never()).countByOrganizationIdAndRoleId(SCOPE_ID, ADMIN_ROLE_ID);
         }
 
         // ------------------------------------------------------------------
@@ -410,15 +436,16 @@ class RoleServiceTest {
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(current));
             given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
-            given(roleRepository.findByNameForUpdate("ADMIN")).willReturn(Optional.of(createAdminRole()));
-            given(userRoleRepository.countByOrganizationIdAndRoleId(SCOPE_ID, ADMIN_ROLE_ID)).willReturn(1L);
+            given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "ORGANIZATION"))
+                    .willReturn(List.of(TARGET_USER_ID));
 
             assertThatThrownBy(() -> roleService.removeMember(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_004"));
-            verify(roleRepository).findByNameForUpdate("ADMIN");
-            verify(userRoleRepository).lockAdminsByOrganizationId(SCOPE_ID, ADMIN_ROLE_ID);
+            verify(adminRoleMutationLockService)
+                    .lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "ORGANIZATION");
+            verify(userRoleRepository, never()).countByOrganizationIdAndRoleId(SCOPE_ID, ADMIN_ROLE_ID);
         }
 
         @Test
@@ -616,17 +643,36 @@ class RoleServiceTest {
             given(userRoleRepository.findByUserIdAndTeamId(USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(current));
             given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
-            given(roleRepository.findByNameForUpdate("ADMIN")).willReturn(Optional.of(createAdminRole()));
-            given(userRoleRepository.countByTeamIdAndRoleId(SCOPE_ID, ADMIN_ROLE_ID)).willReturn(1L);
+            given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM"))
+                    .willReturn(List.of(USER_ID));
 
             assertThatThrownBy(() -> roleService.leaveScope(USER_ID, SCOPE_ID, "TEAM"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_004"));
 
-            verify(roleRepository).findByNameForUpdate("ADMIN");
-            verify(userRoleRepository).lockAdminsByTeamId(SCOPE_ID, ADMIN_ROLE_ID);
+            verify(adminRoleMutationLockService).lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM");
+            verify(userRoleRepository, never()).countByTeamIdAndRoleId(SCOPE_ID, ADMIN_ROLE_ID);
             verify(userRoleRepository, never()).delete(any(UserRoleEntity.class));
+        }
+
+        @Test
+        @DisplayName("ADMINが2人ならロック読み取りの最新集合を根拠に退会できる")
+        void ADMINが2人ならロック読み取りの最新集合を根拠に退会できる() {
+            UserRoleEntity current = UserRoleEntity.builder()
+                    .id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).teamId(SCOPE_ID).build();
+            UserRoleEntity other = UserRoleEntity.builder()
+                    .id(2L).userId(TARGET_USER_ID).roleId(ADMIN_ROLE_ID).teamId(SCOPE_ID).build();
+            given(userRoleRepository.findByUserIdAndTeamId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(current));
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+            given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM"))
+                    .willReturn(List.of(USER_ID, TARGET_USER_ID));
+
+            roleService.leaveScope(USER_ID, SCOPE_ID, "TEAM");
+
+            verify(userRoleRepository).delete(current);
+            verify(userRoleRepository, never()).countByTeamIdAndRoleId(SCOPE_ID, ADMIN_ROLE_ID);
         }
 
         @Test
@@ -763,15 +809,8 @@ class RoleServiceTest {
 
             given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(currentUserRole));
-            // CMP-027: 譲渡先の在籍確認は existsByUserIdAndOrganizationId(user_roles ∪ memberships)経由。
-            // findByUserIdAndOrganizationId は既存 user_roles 行の削除(ifPresent)にのみ使われる。
-            given(userRoleRepository.existsByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
-                    .willReturn(true);
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(targetUserRole));
-            // CMP-050 AC-14【陽性対照】: 譲渡先のアカウント生存確認。isActiveUser は default メソッドだが
-            // Mockito は default 実装を呼ばないため、明示的に stub する必要がある。
-            given(userRoleRepository.isActiveUser(TARGET_USER_ID)).willReturn(true);
             given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
             given(roleRepository.findByName("MEMBER")).willReturn(Optional.of(createMemberRole()));
 
@@ -797,6 +836,29 @@ class RoleServiceTest {
         }
 
         @Test
+        @DisplayName("memberships専属メンバーにもlocking current readを根拠に譲渡できる")
+        void memberships専属メンバーへの譲渡() {
+            UserRoleEntity currentUserRole = UserRoleEntity.builder()
+                    .id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(SCOPE_ID).build();
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(currentUserRole));
+            given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
+                    .willReturn(Optional.empty());
+            given(membershipService.isActiveMemberForUpdate(
+                    TARGET_USER_ID, ScopeType.ORGANIZATION, SCOPE_ID)).willReturn(true);
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+            given(roleRepository.findByName("MEMBER")).willReturn(Optional.of(createMemberRole()));
+
+            roleService.transferOwnership(SCOPE_ID, "ORGANIZATION", USER_ID, TARGET_USER_ID);
+
+            verify(membershipService).isActiveMemberForUpdate(
+                    TARGET_USER_ID, ScopeType.ORGANIZATION, SCOPE_ID);
+            verify(userRoleRepository).delete(currentUserRole);
+            verify(userRoleRepository, never()).delete(org.mockito.ArgumentMatchers.argThat(
+                    role -> TARGET_USER_ID.equals(role.getUserId())));
+        }
+
+        @Test
         @DisplayName("自分自身への譲渡_ROLE_001例外")
         void 自分自身への譲渡_ROLE_001例外() {
             assertThatThrownBy(() -> roleService.transferOwnership(SCOPE_ID, "ORGANIZATION", USER_ID, USER_ID))
@@ -813,7 +875,8 @@ class RoleServiceTest {
 
             given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(currentUserRole));
-            given(roleRepository.findById(MEMBER_ROLE_ID)).willReturn(Optional.of(createMemberRole()));
+            given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "ORGANIZATION"))
+                    .willReturn(List.of());
 
             assertThatThrownBy(() -> roleService.transferOwnership(SCOPE_ID, "ORGANIZATION", USER_ID, TARGET_USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -829,22 +892,14 @@ class RoleServiceTest {
          * ADMIN へ昇格し、以後そのスコープは誰も操作できなくなる。ErrorCode を分けると
          * 他人のアカウント状態が漏れるため、本メソッドの他の拒否と同じ ROLE_001 へ畳む。</p>
          *
-         * <p>{@code isActiveUser} は default メソッドであり Mockito は default 実装を呼ばない。
-         * 実際の SQL 判定ではなく stub の戻り値で分岐を締める。</p>
+         * <p>users 行の current read が返す状態で分岐を締める。</p>
          */
         @Test
         @DisplayName("CMP-050 AC-13: 譲渡先が非ACTIVE_ROLE_001例外でsaveを呼ばない")
         void cmp050_AC13_譲渡先が非ACTIVE_ROLE_001例外() {
-            UserRoleEntity currentUserRole = UserRoleEntity.builder()
-                    .id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(SCOPE_ID).build();
-
-            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
-                    .willReturn(Optional.of(currentUserRole));
-            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
-            // 在籍はしている（凍結ユーザーの在籍行自体は残る運用）
-            given(userRoleRepository.existsByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
-                    .willReturn(true);
-            given(userRoleRepository.isActiveUser(TARGET_USER_ID)).willReturn(false);
+            given(userRowLockService.lockAll(USER_ID, TARGET_USER_ID)).willReturn(Map.of(
+                    USER_ID, UserState.ACTIVE,
+                    TARGET_USER_ID, UserState.INELIGIBLE_EXISTING));
 
             assertThatThrownBy(() -> roleService.transferOwnership(SCOPE_ID, "ORGANIZATION", USER_ID, TARGET_USER_ID))
                     .isInstanceOf(BusinessException.class)

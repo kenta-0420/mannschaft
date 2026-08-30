@@ -86,6 +86,14 @@ class UserRepositoryPessimisticLockIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    void findByIdForUpdateIncludingDeleted_executesNativeForUpdateWithoutJpaLockMode() {
+        transactionTemplate.executeWithoutResult(tx -> userId = insertUser(UserEntity.UserStatus.FROZEN));
+
+        transactionTemplate.executeWithoutResult(tx ->
+                assertThat(userRepository.findByIdForUpdateIncludingDeleted(userId)).isPresent());
+    }
+
+    @Test
     void assignUsesReadCommittedIsolation() throws NoSuchMethodException {
         Method method = PermissionGroupService.class.getMethod(
                 "assignUserPermissionGroups", Long.class, Long.class, String.class,
@@ -96,12 +104,16 @@ class UserRepositoryPessimisticLockIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long insertUser() {
+        return insertUser(UserEntity.UserStatus.ACTIVE);
+    }
+
+    private Long insertUser(UserEntity.UserStatus status) {
         UserEntity user = UserEntity.builder()
                 .email("role-lock-" + System.nanoTime() + "@example.com")
                 .lastName("LOCK")
                 .firstName("TEST")
                 .displayName("LOCK TEST")
-                .status(UserEntity.UserStatus.ACTIVE)
+                .status(status)
                 .locale("ja")
                 .timezone("Asia/Tokyo")
                 .isSearchable(true)
