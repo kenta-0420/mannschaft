@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -115,6 +116,14 @@ public class CreateRecruitmentListingRequest {
     @Valid
     private final List<RegionInput> regions;
 
+    /**
+     * PERSONAL + SELECTED_SCOPES の公開先。作成・更新時に本人の現在の所属だけを
+     * 検証し、公開先は listing 専用スナップショットへ固定保存する。
+     */
+    @Valid
+    @Setter
+    private List<AudienceScopeRequest> audienceScopes;
+
     // ===========================================
     // F22.1 市 謝礼決済: 受領主体（02_api_design §3 / 01_data_model §4.1）
     // ===========================================
@@ -151,5 +160,15 @@ public class CreateRecruitmentListingRequest {
             String prefectureCode,
             @Pattern(regexp = "\\d{5}", message = "city_code は 5 桁の数字で指定してください")
             String cityCode) {
+    }
+
+    public record AudienceScopeRequest(
+            @NotNull RecruitmentAudienceScopeType scopeType,
+            @NotNull @Positive Long scopeId) {
+    }
+
+    public enum RecruitmentAudienceScopeType {
+        TEAM,
+        ORGANIZATION
     }
 }

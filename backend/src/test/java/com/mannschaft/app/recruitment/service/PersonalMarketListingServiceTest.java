@@ -12,6 +12,7 @@ import com.mannschaft.app.recruitment.dto.PersonalMarketMatchResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingAudienceScopeRepository;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
@@ -52,6 +53,9 @@ class PersonalMarketListingServiceTest {
 
     @Mock
     private RecruitmentParticipantRepository participantRepository;
+
+    @Mock
+    private RecruitmentListingAudienceScopeRepository audienceScopeRepository;
 
     @InjectMocks
     private PersonalMarketListingService service;

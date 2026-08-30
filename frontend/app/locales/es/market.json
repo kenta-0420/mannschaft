@@ -68,6 +68,16 @@
       "AUTO_CANCELLED": "Cancelado automáticamente"
     },
     "personal": {
+      "visibility": "Visibilidad",
+      "visibilityPublic": "Público",
+      "visibilitySelectedScopes": "Solo equipos y organizaciones seleccionados",
+      "visibilityDraft": "Borrador privado",
+      "visibilityHelp": "Elige quién puede ver este anuncio personal.",
+      "audience": "Equipos y organizaciones",
+      "audiencePlaceholder": "Selecciona uno o más grupos",
+      "audienceRequired": "Selecciona al menos un equipo u organización.",
+      "publish": "Publicar",
+      "published": "Anuncio publicado.",
       "title": "Mi mercado",
       "description": "Gestiona tus anuncios en borrador.",
       "create": "Crear borrador",
@@ -125,6 +135,10 @@
       "category": "Categoría",
       "notFound": "Anuncio no encontrado",
       "notPublic": "Este anuncio no es público"
+    },
+    "report": {
+      "open": "Denunciar este anuncio", "title": "Denunciar anuncio", "reasonLabel": "Motivo", "description": "Detalles (opcional)", "notice": "Solo el equipo de moderación puede revisar la denuncia.", "submit": "Enviar denuncia", "succeeded": "La denuncia se ha enviado.", "failed": "No se pudo enviar la denuncia.",
+      "reason": { "SPAM": "Spam", "HARASSMENT": "Acoso", "INAPPROPRIATE": "Contenido inapropiado", "VIOLENCE": "Contenido violento", "MISINFORMATION": "Desinformación", "COPYRIGHT": "Infracción de derechos de autor", "OTHER": "Otro" }
     },
     "notify": {
       "applicationReceived": "Recibiste una postulación ({owner} / {title})",

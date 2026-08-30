@@ -1,5 +1,7 @@
 package com.mannschaft.app.moderation.service;
 
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.moderation.ModerationErrorCode;
 import com.mannschaft.app.moderation.ReportActionType;
@@ -15,6 +17,7 @@ import com.mannschaft.app.moderation.entity.ContentReportEntity;
 import com.mannschaft.app.moderation.entity.ReportActionEntity;
 import com.mannschaft.app.moderation.repository.ContentReportRepository;
 import com.mannschaft.app.moderation.repository.ReportActionRepository;
+import com.mannschaft.app.recruitment.service.RecruitmentListingModerationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -46,6 +49,10 @@ class ReportActionServiceTest {
 
     @Mock
     private ReportActionRepository actionRepository;
+    @Mock
+    private RecruitmentListingModerationService recruitmentListingModerationService;
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private ReportActionService reportActionService;
@@ -141,6 +148,36 @@ class ReportActionServiceTest {
             // then
             assertThat(result).isNotNull();
             assertThat(result.getActionType()).isEqualTo("WARNING");
+        }
+
+        @Test
+        @DisplayName("募集札のUSER_FREEZEは札を非表示にして所有者を実際に凍結する")
+        void 募集札の所有者を凍結する() throws Exception {
+            ContentReportEntity report = ContentReportEntity.builder()
+                    .targetType(ReportTargetType.RECRUITMENT_LISTING)
+                    .targetId(10L)
+                    .targetUserId(7L)
+                    .reportedBy(200L)
+                    .scopeType("PERSONAL")
+                    .scopeId(7L)
+                    .reason(ReportReason.SPAM)
+                    .status(ReportStatus.PENDING)
+                    .build();
+            UserEntity owner = UserEntity.builder()
+                    .email("owner@example.com")
+                    .status(UserEntity.UserStatus.ACTIVE)
+                    .build();
+            ResolveReportRequest req = new ResolveReportRequest("USER_FREEZE", "凍結", null, null);
+            given(reportRepository.findById(REPORT_ID)).willReturn(Optional.of(report));
+            given(actionRepository.save(any(ReportActionEntity.class)))
+                    .willReturn(createAction(ReportActionType.USER_FREEZE));
+            given(userRepository.findById(7L)).willReturn(Optional.of(owner));
+
+            reportActionService.resolveReport(REPORT_ID, req, USER_ID);
+
+            verify(recruitmentListingModerationService).hide(10L);
+            verify(userRepository).save(owner);
+            assertThat(owner.getStatus()).isEqualTo(UserEntity.UserStatus.FROZEN);
         }
 
         @Test

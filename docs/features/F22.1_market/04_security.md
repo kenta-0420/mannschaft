@@ -125,3 +125,15 @@
 個人公開 DTO は公開プロフィールの表示名・アイコン以外の個人識別子/連絡先を禁止し、禁則ワードテストと JSON 契約テストで固定する。PERSONAL 札への本人応募を拒否し、Phase 5 の決済導入時は本人を支払者・受領者にする経路も拒否する。未知の札主区分・visibility は fail-closed とし、公開も管理も許可しない。
 
 公開・配信・応募確定は札行と参加者行を同一トランザクションで扱い、中途状態を残さず冪等に再試行可能にする。特に組織札で既存作成後に `PUBLIC_FEED` を別呼出しする経路は、失敗時に未公開 DRAFT を残して再試行できること、または単一トランザクション化することを同一 Phase の契約テストで保証する。主体別一覧は join fetch/projection とページングを使い、参加者ごとの追加問合せを禁止する。
+
+## 7. 個人札 Phase 4 の追加防御
+
+- 公開範囲と氏名開示を分離する。札の閲覧許可を得ただけで実名開示を許可せず、実名は札主と閲覧者の active な共通 TEAM / ORGANIZATION 在籍を別途確認する。
+- 共通所属判定はリクエストの scope ID を信用せず、サーバー側で `user_roles ∪ memberships(left_at IS NULL)` を照合する。親組織・兄弟チーム・過去在籍は共有所属に含めない。
+- `SELECTED_SCOPES` の保存対象は作成者本人の現在所属先だけに限定する。対象外 ID は存在秘匿 404 とし、公開先 ID の列挙器にしない。
+- PERSONAL owner は閲覧者別 DTO とし、未認証/所属外には display_name、共有所属には実名を返す。F19.1 の MINOR 匿名化、退会・凍結を優先する。
+- 公開レスポンスの共有キャッシュは禁止する。キャッシュを導入する場合は viewer identity をキーへ含め、`Vary` と private/no-store 方針を同時に実装する。
+- PII 回帰テストは PERSONAL owner の正確な JSON キー集合と、所属外レスポンスに lastName / firstName / userId / scopeId / email / phone / address が存在しないことを固定する。
+- 通報は `RECRUITMENT_LISTING` をサーバー側で解決し、scope・対象ユーザー・content snapshot をクライアント入力から採用しない。自己通報と同一利用者の重複通報を拒否する。
+- 通報数だけでは自動凍結しない。SYSTEM_ADMIN の審査操作で札を非表示化し、必要な場合だけ札主を凍結する。凍結中の PERSONAL 札は公開検索・詳細・所属限定フィードから即時除外し、解除後も自動再公開しない。
+- レート制限は公開検索 30 req/min/IP、その他の公開市 GET 60 req/min/IP、個人札作成 30 req/hour/user、応募 10 req/min/user、通報 10 req/min/user とする。

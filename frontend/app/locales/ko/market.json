@@ -68,6 +68,16 @@
       "AUTO_CANCELLED": "불성립（자동 취소）"
     },
     "personal": {
+      "visibility": "공개 범위",
+      "visibilityPublic": "전체 공개",
+      "visibilitySelectedScopes": "선택한 팀 및 조직만",
+      "visibilityDraft": "비공개 초안",
+      "visibilityHelp": "이 개인 공고를 볼 수 있는 범위를 선택하세요.",
+      "audience": "팀 및 조직",
+      "audiencePlaceholder": "하나 이상의 그룹 선택",
+      "audienceRequired": "팀 또는 조직을 하나 이상 선택하세요.",
+      "publish": "공개",
+      "published": "공고를 공개했습니다.",
       "title": "내 장터",
       "description": "내 초안 모집을 관리합니다.",
       "create": "초안 만들기",
@@ -125,6 +135,10 @@
       "category": "장르",
       "notFound": "모집을 찾을 수 없습니다",
       "notPublic": "이 모집은 공개되지 않았습니다"
+    },
+    "report": {
+      "open": "이 모집 신고", "title": "모집 신고", "reasonLabel": "이유", "description": "상세 내용(선택)", "notice": "신고 내용은 운영진만 확인합니다.", "submit": "신고하기", "succeeded": "신고가 접수되었습니다.", "failed": "신고를 전송하지 못했습니다.",
+      "reason": { "SPAM": "스팸", "HARASSMENT": "괴롭힘", "INAPPROPRIATE": "부적절한 내용", "VIOLENCE": "폭력적인 내용", "MISINFORMATION": "허위 정보", "COPYRIGHT": "저작권 침해", "OTHER": "기타" }
     },
     "notify": {
       "applicationReceived": "모집에 응모가 왔습니다（{owner} / {title}）",

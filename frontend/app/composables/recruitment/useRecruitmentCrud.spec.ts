@@ -41,6 +41,7 @@ describe('useRecruitmentCrud 個人市', () => {
     await useRecruitmentCrud().createMyMarketListing(createBody as never)
     await useRecruitmentCrud().updateMyMarketListing(42, updateBody)
     await useRecruitmentCrud().cancelMyMarketListing(42, { reason: '中止' })
+    await useRecruitmentCrud().publishMyMarketListing(42)
 
     expect(mockApi).toHaveBeenNthCalledWith(1, '/api/v1/me/market/listings', {
       method: 'POST',
@@ -53,6 +54,9 @@ describe('useRecruitmentCrud 個人市', () => {
     expect(mockApi).toHaveBeenNthCalledWith(3, '/api/v1/me/market/listings/42/cancel', {
       method: 'POST',
       body: { reason: '中止' },
+    })
+    expect(mockApi).toHaveBeenNthCalledWith(4, '/api/v1/me/market/listings/42/publish', {
+      method: 'POST',
     })
   })
 

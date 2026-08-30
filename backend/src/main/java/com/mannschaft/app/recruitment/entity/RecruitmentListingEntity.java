@@ -28,7 +28,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "recruitment_listings")
-@SQLRestriction("deleted_at IS NULL")
+@SQLRestriction("deleted_at IS NULL AND moderation_hidden_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
@@ -167,6 +167,10 @@ public class RecruitmentListingEntity extends BaseEntity {
     private Integer nextWaitlistPosition = 1;
 
     private LocalDateTime deletedAt;
+
+    /** システム管理者による可逆的なモデレーション非表示日時。 */
+    @Column(name = "moderation_hidden_at")
+    private LocalDateTime moderationHiddenAt;
 
     // ===========================================
     // ステータス遷移メソッド

@@ -63,6 +63,19 @@ export function useMarketApi() {
     )
   }
 
+  /** 認証済み利用者が札を通報する。scope/owner/snapshot はサーバー側で導出する。 */
+  async function reportMarketListing(id: number, reason: string, description?: string) {
+    return api<ApiResponse<unknown>>('/api/v1/reports', {
+      method: 'POST',
+      body: {
+        targetType: 'RECRUITMENT_LISTING',
+        targetId: id,
+        reason,
+        description: description?.trim() || null,
+      },
+    })
+  }
+
   // ===========================================
   // 地域ファサード
   // ===========================================
@@ -115,6 +128,7 @@ export function useMarketApi() {
   return {
     listMarketListings,
     getMarketListing,
+    reportMarketListing,
     listMarketRegions,
     getMarketSummary,
     listMarketCategories,

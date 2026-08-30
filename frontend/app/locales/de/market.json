@@ -68,6 +68,16 @@
       "AUTO_CANCELLED": "Automatisch abgebrochen"
     },
     "personal": {
+      "visibility": "Sichtbarkeit",
+      "visibilityPublic": "Öffentlich",
+      "visibilitySelectedScopes": "Nur ausgewählte Teams und Organisationen",
+      "visibilityDraft": "Privater Entwurf",
+      "visibilityHelp": "Wählen Sie, wer dieses persönliche Angebot sehen kann.",
+      "audience": "Teams und Organisationen",
+      "audiencePlaceholder": "Mindestens eine Gruppe auswählen",
+      "audienceRequired": "Wählen Sie mindestens ein Team oder eine Organisation aus.",
+      "publish": "Veröffentlichen",
+      "published": "Angebot veröffentlicht.",
       "title": "Mein Markt",
       "description": "Verwalte deine Entwürfe.",
       "create": "Entwurf erstellen",
@@ -125,6 +135,10 @@
       "category": "Kategorie",
       "notFound": "Aushang nicht gefunden",
       "notPublic": "Dieser Aushang ist nicht öffentlich"
+    },
+    "report": {
+      "open": "Diesen Aushang melden", "title": "Aushang melden", "reasonLabel": "Grund", "description": "Details (optional)", "notice": "Nur das Moderationsteam kann die Meldung einsehen.", "submit": "Meldung senden", "succeeded": "Die Meldung wurde gesendet.", "failed": "Die Meldung konnte nicht gesendet werden.",
+      "reason": { "SPAM": "Spam", "HARASSMENT": "Belästigung", "INAPPROPRIATE": "Unangemessener Inhalt", "VIOLENCE": "Gewaltinhalt", "MISINFORMATION": "Falschinformation", "COPYRIGHT": "Urheberrechtsverletzung", "OTHER": "Sonstiges" }
     },
     "notify": {
       "applicationReceived": "Jemand hat sich für deinen Aushang beworben ({owner} / {title})",

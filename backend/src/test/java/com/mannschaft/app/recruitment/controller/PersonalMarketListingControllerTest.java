@@ -4,7 +4,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.PersonalMarketMatchResponse;
-import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
+import com.mannschaft.app.recruitment.dto.PersonalMarketListingSummaryResponse;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.service.PersonalMarketListingService;
 import org.junit.jupiter.api.AfterEach;
@@ -61,7 +61,7 @@ class PersonalMarketListingControllerTest {
     @SuppressWarnings("unchecked")
     @DisplayName("履歴一覧は認証済み本人へ固定する")
     void list_boundToCurrentUserOnly() {
-        Page<RecruitmentListingSummaryResponse> page = Mockito.mock(Page.class);
+        Page<PersonalMarketListingSummaryResponse> page = Mockito.mock(Page.class);
         given(page.getTotalElements()).willReturn(0L);
         given(page.getNumber()).willReturn(0);
         given(page.getSize()).willReturn(20);
@@ -100,6 +100,14 @@ class PersonalMarketListingControllerTest {
 
         verify(personalMarketListingService).update(eq(USER_ID), eq(42L),
                 any(UpdateRecruitmentListingRequest.class));
+    }
+
+    @Test
+    @DisplayName("公開は認証済み本人の個人札へ固定して委譲する")
+    void publish_boundToCurrentUserOnly() {
+        controller.publish(42L);
+
+        verify(personalMarketListingService).publish(USER_ID, 42L);
     }
 
     @Test

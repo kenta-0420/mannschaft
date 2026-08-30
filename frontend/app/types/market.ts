@@ -19,7 +19,13 @@
 // 可視性 / ステータス
 // ===========================================
 
-export type MarketVisibility = 'PUBLIC' | 'FRIEND_TEAMS_ONLY' | 'SCOPE_ONLY'
+export type MarketVisibility = 'PUBLIC' | 'FRIEND_TEAMS_ONLY' | 'SCOPE_ONLY' | 'SELECTED_SCOPES'
+
+/** 個人札の所属先限定公開に使う、本人が現在所属するスコープ。 */
+export interface MarketAudienceScope {
+  scopeType: 'TEAM' | 'ORGANIZATION'
+  scopeId: number
+}
 
 export type MarketListingStatus =
   | 'DRAFT'
@@ -93,8 +99,9 @@ export interface MarketSummary {
  * BE: MarketOwnerDto（scopeType / scopeId / displayName / iconUrl）
  */
 export interface MarketOwner {
-  scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: string
+  scopeType: 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
+  /** PERSONAL は公開DTOで主体IDを出さない。 */
+  scopeId: number | null
   displayName: string
   iconUrl: string | null
 }

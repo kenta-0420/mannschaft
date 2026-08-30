@@ -258,7 +258,7 @@ visibility = 'PUBLIC' AND status IN ('OPEN','FULL') AND deleted_at IS NULL
 | `MARKET_005` | 400 | `visibility='FRIEND_TEAMS_ONLY'` なのに `distribution_targets` を併用指定 |
 | `MARKET_006` | 400 | Phase 2〜4 の個人札で `paymentEnabled=true` または受領者を指定 |
 | `MARKET_007` | 403 | 個人札主本人が自分の札へ応募 |
-| `MARKET_008` | 400 | Phase 2 の個人札で `SCOPE_ONLY` 以外の公開範囲または publish を指定 |
+| `MARKET_008` | 400 | 個人札で許可されない公開範囲・公開先、または公開条件を指定 |
 | `RECRUITMENT_204` | 400 | `PUBLIC` 札を配信対象0件で公開（publish）しようとした（`EMPTY_DISTRIBUTION_TARGETS`）。`GlobalExceptionHandler` で 400 にマッピング（ERROR severity 既定の 500 を上書き。`MARKET_002` と対称） |
 | `RECRUITMENT_207` | 400 | `visibility` と配信対象の不整合（`PUBLIC` なのに `PUBLIC_FEED` 不在 等）。同上 400 マッピング |
 | （委譲） | — | 札立て/応募/取下げ本体の検証は `RECRUITMENT_*`（206/106/300 等）を踏襲 |
@@ -298,9 +298,27 @@ visibility = 'PUBLIC' AND status IN ('OPEN','FULL') AND deleted_at IS NULL
 - 個人作成リクエストに `ownerUserId` / `scopeId` は置かない。サービスが認証済み本人を所有者に設定する。
 - 個人札の編集・取消は `PERSONAL + scope_id=currentUserId + createdBy=currentUserId` の複合条件で悲観ロックし、DRAFT のみ許可する。他人・他スコープ・不在・削除済みは同一 `MARKET_404`（404）で存在を秘匿する。DRAFT以外は `RECRUITMENT_100`（409）で拒否する。
 - 個人DRAFTの取消は既存の `POST .../{id}/cancel` 契約を再利用する。DRAFTには応募者・決済が存在しないため、取消時に通知・返金・決済イベントは発生させない。
-- 個人札の作成・更新で `paymentEnabled=true` または受領者指定は `MARKET_006`（400）で拒否する。自己応募は `MARKET_007`（403）。Phase 2 は `SCOPE_ONLY` の DRAFT に固定し、公開・フレンド限定・publish は `MARKET_008`（400）で拒否する。実装時の enum 定数名は、それぞれ `PERSONAL_PAYMENT_DISABLED`、`SELF_APPLICATION_FORBIDDEN`、`PERSONAL_VISIBILITY_NOT_ALLOWED` とする。
+- 個人札の作成・更新で `paymentEnabled=true` または受領者指定は `MARKET_006`（400）で拒否する。自己応募は `MARKET_007`（403）。公開範囲・公開先・公開状態が Phase 4 の許可条件を外れる場合は `MARKET_008`（400）で拒否する。実装時の enum 定数名は、それぞれ `PERSONAL_PAYMENT_DISABLED`、`SELF_APPLICATION_FORBIDDEN`、`PERSONAL_VISIBILITY_NOT_ALLOWED` とする。
 - 管理一覧・マッチング状況は札主本人または当該 TEAM/ORGANIZATION の既存管理権限だけに許可する。権限のない主体は 403、他主体の札 ID は存在秘匿が必要な経路では 404 とする。
 - マッチング状況は応募・確定・取消を返すが、参加者 PII は既存 F03.11 の管理者向け最小表示規則を超えて返さない。
 
 既存 TEAM/ORGANIZATION の一覧・作成 API は互換維持する。ORG の PUBLIC 札で既存の作成後 `PUBLIC_FEED` 設定が別 API 呼出しとなる場合、失敗時は DRAFT のまま再試行可能にし、公開済みなのに配信対象がない状態を作らない。PERSONAL の公開・非公開可視性、地域コード補完、Repository の区分 CASE、通知送信は同一変更単位でテストする。
+
+## 11. 追加 API 契約: 個人札 Phase 4
+
+### 11.1 作成・編集・公開
+
+- 個人札作成・編集リクエストは `audienceScopes` を受ける。要素は `{ scopeType: TEAM | ORGANIZATION, scopeId }` とし、`ownerUserId` は受けない。
+- `visibility=SELECTED_SCOPES` は `audienceScopes` 1 件以上を必須とする。重複、TEAM / ORGANIZATION 以外、札主が現在所属しない scope、削除・凍結された scope は存在秘匿エラーで拒否する。
+- `visibility=PUBLIC` / `SCOPE_ONLY` は `audienceScopes` を空に固定する。PERSONAL の `FRIEND_TEAMS_ONLY` / `SUPPORTERS_ONLY` / `CUSTOM_TEMPLATE` は `MARKET_008` で拒否する。
+- `POST /api/v1/me/market/listings/{id}/publish` を個人専用公開 API とする。`PERSONAL + scope_id=currentUserId + created_by=currentUserId` で悲観ロックし、DRAFT かつ `PUBLIC` / `SELECTED_SCOPES` のみ OPEN へ遷移する。
+- 個人公開は `PUBLIC_FEED` への掲載であり個別通知を送らない。TEAM / ORGANIZATION 前提の既存 publish 通知分岐へ PERSONAL を流さない。
+
+### 11.2 閲覧 API と owner DTO
+
+- 未認証の `GET /api/v1/public/market/**` は `PUBLIC` の OPEN / FULL だけを返す。
+- 同じ `GET /api/v1/public/market/listings` / `{id}` でも、有効な認証主体があれば PUBLIC に加え、閲覧者が保存済み `audienceScopes` の現在の在籍者である `SELECTED_SCOPES` 札を返す。未認証時は PUBLIC のみへ分岐する。
+- 一覧・詳細は認証有無にかかわらず `Cache-Control: private, no-store` とし、閲覧者別 owner DTO や SELECTED_SCOPES の存在を共有キャッシュへ保存しない。
+- PERSONAL owner は閲覧者別に `displayName` を解決する。共通 TEAM / ORGANIZATION の active 在籍があれば実名、それ以外は `users.display_name` とする。ただし未成年・凍結・退会は実名禁止を優先する。
+- PERSONAL owner の JSON キー集合は `scopeType`, `displayName`, `iconUrl` のみとし、`scopeId` を含めない。TEAM / ORGANIZATION は既存互換として `scopeId` を維持する。
 - Backend API 追加後は `npm run generate:types` で `types/generated/index.ts` を再生成し、market 手動型は生成型をラップして enum を i18n キー化する（既存 recruitment.ts / village.ts と同方針）。

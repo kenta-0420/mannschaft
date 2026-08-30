@@ -9,6 +9,9 @@ import com.mannschaft.app.common.visibility.VisibilityMetrics;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingAudienceScopeRepository;
+import com.mannschaft.app.recruitment.entity.RecruitmentListingAudienceScopeEntity;
+import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest.RecruitmentAudienceScopeType;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,6 +71,9 @@ class RecruitmentListingVisibilityResolverTest {
     @Mock
     private com.mannschaft.app.role.repository.UserRoleRepository userRoleRepository;
 
+    @Mock
+    private RecruitmentListingAudienceScopeRepository audienceScopeRepository;
+
     private VisibilityMetrics visibilityMetrics;
     private RecruitmentListingVisibilityResolver resolver;
 
@@ -82,7 +88,8 @@ class RecruitmentListingVisibilityResolverTest {
                 auditLogService,
                 recruitmentListingRepository,
                 marketFriendTargetResolver,
-                userRoleRepository);
+                userRoleRepository,
+                audienceScopeRepository);
     }
 
     @Test
@@ -177,6 +184,26 @@ class RecruitmentListingVisibilityResolverTest {
                     .thenReturn(UserScopeRoleSnapshot.empty());
 
             assertThat(resolver.canView(1L, 5L)).isFalse();
+        }
+
+        @Test
+        @DisplayName("SELECTED_SCOPES は固定公開先に現在所属する閲覧者だけを許可する")
+        void selected_scopes_visible_only_to_selected_active_scope_member() {
+            RecruitmentListingVisibilityProjection p = projection(
+                    1L, "PERSONAL", 99L, 99L, null,
+                    RecruitmentListingStatus.OPEN, RecruitmentVisibility.SELECTED_SCOPES);
+            when(recruitmentListingRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(p));
+            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+            when(userRoleRepository.findTeamIdsByUserId(5L)).thenReturn(List.of(12L));
+            when(userRoleRepository.findOrganizationIdsByUserId(5L)).thenReturn(List.of());
+            when(audienceScopeRepository.findByListingId(1L)).thenReturn(List.of(
+                    RecruitmentListingAudienceScopeEntity.of(
+                            1L, RecruitmentAudienceScopeType.TEAM, 12L)));
+
+            assertThat(resolver.canView(1L, 5L)).isTrue();
+            assertThat(resolver.canView(1L, null)).isFalse();
         }
 
         @Test

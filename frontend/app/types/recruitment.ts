@@ -13,6 +13,7 @@ export type RecruitmentParticipationType = 'INDIVIDUAL' | 'TEAM'
 export type RecruitmentVisibility =
   | 'PUBLIC'
   | 'SCOPE_ONLY'
+  | 'SELECTED_SCOPES'
   | 'SUPPORTERS_ONLY'
   | 'FRIEND_TEAMS_ONLY'
 
@@ -87,6 +88,7 @@ export interface RecruitmentListingResponse {
   /** F22.1 市 謝礼決済: payeeKind=USER の受領者ユーザーID。それ以外は null。 */
   payeeUserId: number | null
   visibility: RecruitmentVisibility
+  audienceScopes?: import('~/types/market').MarketAudienceScope[]
   status: RecruitmentListingStatus
   location: string | null
   reservationLineId: number | null
@@ -115,6 +117,7 @@ export interface RecruitmentListingSummaryResponse {
   waitlistCount: number
   status: RecruitmentListingStatus
   visibility: RecruitmentVisibility
+  audienceScopes?: import('~/types/market').MarketAudienceScope[]
   location: string | null
   imageUrl: string | null
   paymentEnabled: boolean
@@ -263,6 +266,8 @@ export interface CreateRecruitmentListingRequest {
   regions?: import('~/types/market').RegionInput[]
   /** F22.1 市（Market）— フレンド宛先（visibility=FRIEND_TEAMS_ONLY のとき1件以上必須） */
   friendTargets?: import('~/types/market').FriendTargetInput[]
+  /** PERSONAL + SELECTED_SCOPES の公開先。本人が現在所属するスコープのみ指定可能。 */
+  audienceScopes?: import('~/types/market').MarketAudienceScope[]
   /**
    * F22.1 市 謝礼決済: 受領主体種別（USER/TEAM/ORG）。
    * paymentEnabled=true のとき必須（未指定は BE が PAYMENT_C011 を返す）。
@@ -295,6 +300,7 @@ export interface UpdateRecruitmentListingRequest {
   reservationLineId?: number | null
   imageUrl?: string | null
   cancellationPolicyId?: number | null
+  audienceScopes?: import('~/types/market').MarketAudienceScope[]
   /** F22.1 市 謝礼決済: 受領主体種別（編集時に変更可）。null は変更なし。 */
   payeeKind?: RecruitmentPayeeKind | null
   /** F22.1 市 謝礼決済: payeeKind=USER の受領者ユーザーID（編集時に変更可）。null は変更なし。 */

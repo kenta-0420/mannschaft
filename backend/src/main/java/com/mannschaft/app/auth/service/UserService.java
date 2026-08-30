@@ -48,7 +48,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -62,6 +65,21 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class UserService {
+
+    /**
+     * 個人札の owner 表示に必要な最小内部値。
+     *
+     * <p>他ドメインへ {@link UserEntity} や連絡先を渡さず、公開 DTO の組み立てに必要な値だけを
+     * Service 境界で返す。{@code userId} はバッチ結果の突合専用で、公開レスポンスへ出してはならない。</p>
+     */
+    public record MarketOwnerIdentity(
+            Long userId,
+            String displayName,
+            String fullName,
+            String avatarUrl,
+            boolean minor,
+            boolean publicProfileEnabled) {
+    }
 
     private final UserRepository userRepository;
     private final EmailChangeTokenRepository emailChangeTokenRepository;
@@ -116,6 +134,36 @@ public class UserService {
     public java.util.Optional<String> getFullName(Long userId) {
         return userRepository.findById(userId)
                 .map(u -> u.getLastName() + " " + u.getFirstName());
+    }
+
+    /**
+     * 個人札の owner 表示用情報を一括取得する（N+1 防止）。
+     *
+     * <p>ACTIVE 以外（凍結・退会・アーカイブ等）は返さず、呼び出し側を fail-closed にする。</p>
+     *
+     * @param userIds owner ユーザー ID 集合
+     * @return userId をキーとする最小内部表示情報
+     */
+    public Map<Long, MarketOwnerIdentity> getActiveMarketOwnerIdentities(Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, MarketOwnerIdentity> result = new LinkedHashMap<>();
+        for (UserEntity user : userRepository.findAllById(userIds)) {
+            if (user.getStatus() != UserEntity.UserStatus.ACTIVE || user.getDeletedAt() != null) {
+                continue;
+            }
+            String fullName = (user.getLastName() == null || user.getFirstName() == null)
+                    ? null : user.getLastName() + " " + user.getFirstName();
+            result.put(user.getId(), new MarketOwnerIdentity(
+                    user.getId(),
+                    user.getDisplayName(),
+                    fullName,
+                    mediaUrlResolver.resolve(user.getAvatarUrl()),
+                    com.mannschaft.app.family.CareCategory.MINOR == user.getCareCategory(),
+                    user.isPublicProfileEnabled()));
+        }
+        return result;
     }
 
     /**
