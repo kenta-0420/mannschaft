@@ -460,9 +460,7 @@ public class RecruitmentListingService {
         RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
-        if (entity.getScopeType() == RecruitmentScopeType.PERSONAL) {
-            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
-        }
+        RecruitmentOperationalScopeGuard.requireVisibilityConfigurable(entity);
 
         // F22.1 市: FRIEND_TEAMS_ONLY は distribution_targets を使わず、フレンド宛先で配信する（§3 / §7）。
         boolean isFriendOnly = entity.getVisibility() == RecruitmentVisibility.FRIEND_TEAMS_ONLY;
@@ -523,6 +521,7 @@ public class RecruitmentListingService {
 
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(participant.getListingId())
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
         accessControlService.checkAdminOrAbove(adminId, listing.getScopeId(), listing.getScopeType().name());
 
         if (participant.getStatus() != RecruitmentParticipantStatus.APPLIED) {
@@ -661,8 +660,8 @@ public class RecruitmentListingService {
                                 com.mannschaft.app.market.MarketErrorCode.LISTING_NOT_FOUND))
                 : listingRepository.findByIdForUpdate(listingId)
                         .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        if (!personalRoute && entity.getScopeType() == RecruitmentScopeType.PERSONAL) {
-            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.LISTING_NOT_FOUND);
+        if (!personalRoute) {
+            RecruitmentOperationalScopeGuard.requireTeamOrOrganization(entity);
         }
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
         if (personalRoute && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
@@ -699,6 +698,7 @@ public class RecruitmentListingService {
     public void archive(Long listingId, Long userId) {
         RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(entity);
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
 
         entity.softDelete();
@@ -730,9 +730,7 @@ public class RecruitmentListingService {
             List<RecruitmentDistributionTargetType> targetTypes) {
         RecruitmentListingEntity entity = findOrThrow(listingId);
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
-        if (entity.getScopeType() == RecruitmentScopeType.PERSONAL) {
-            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
-        }
+        RecruitmentOperationalScopeGuard.requireVisibilityConfigurable(entity);
 
         // 全削除→再INSERT
         distributionTargetRepository.deleteByListingId(listingId);
@@ -759,6 +757,7 @@ public class RecruitmentListingService {
             Long listingId, Long userId) {
         RecruitmentListingEntity entity = findOrThrow(listingId);
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
+        RecruitmentOperationalScopeGuard.requireVisibilityConfigurable(entity);
         return distributionTargetRepository.findByListingId(listingId).stream()
                 .map(t -> new com.mannschaft.app.recruitment.dto.RecruitmentDistributionTargetResponse(
                         t.getId(), t.getListingId(), t.getTargetType().name(), t.getCreatedAt()))

@@ -40,6 +40,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -53,6 +54,9 @@ class RecruitmentListingServiceTest {
 
     @Mock
     private RecruitmentListingRepository listingRepository;
+
+    @Mock
+    private com.mannschaft.app.recruitment.repository.RecruitmentDistributionTargetRepository distributionTargetRepository;
 
     @Mock
     private RecruitmentCategoryRepository categoryRepository;
@@ -520,7 +524,7 @@ class RecruitmentListingServiceTest {
     class PersonalCancelConstraints {
 
         @Test
-        @DisplayName("汎用取消経路はPERSONAL札をMARKET_404で拒否する")
+        @DisplayName("汎用取消経路はPERSONAL札をMARKET_404で存在秘匿する")
         void genericCancel_personalIsHidden() {
             given(listingRepository.findByIdForUpdate(LISTING_ID))
                     .willReturn(Optional.of(personalListing(RecruitmentListingStatus.DRAFT)));
@@ -561,6 +565,38 @@ class RecruitmentListingServiceTest {
             assertThat(actual).isSameAs(response);
             assertThat(listing.getStatus()).isEqualTo(RecruitmentListingStatus.CANCELLED);
             verify(listingRepository).save(listing);
+        }
+    }
+
+    @Nested
+    @DisplayName("PERSONAL運用・配信経路のfail-closed")
+    class PersonalOperationalScopeGuard {
+
+        @Test
+        @DisplayName("archive はPERSONAL札をMARKET_404で存在秘匿し削除・異議取下げを呼ばない")
+        void archive_personal_doesNotCauseSideEffects() throws Exception {
+            RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.DRAFT);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.archive(LISTING_ID, USER_ID))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+
+            verify(listingRepository, never()).save(any());
+            verifyNoInteractions(noShowService);
+        }
+
+        @Test
+        @DisplayName("配信対象取得はPERSONAL札をMARKET_008で拒否し配信Repositoryを呼ばない")
+        void getDistributionTargets_personal_doesNotQueryTargets() throws Exception {
+            RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.DRAFT);
+            given(listingRepository.findById(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.getDistributionTargets(LISTING_ID, USER_ID))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+
+            verify(distributionTargetRepository, never()).findByListingId(anyLong());
         }
     }
 

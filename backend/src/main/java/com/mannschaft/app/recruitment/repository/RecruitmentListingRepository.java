@@ -173,6 +173,10 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL
               )
+              AND l.scopeType IN (
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION
+              )
               AND l.confirmedCount < l.minCapacity
             ORDER BY l.autoCancelAt ASC
             """)
@@ -189,6 +193,10 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             SELECT l FROM RecruitmentListingEntity l
             WHERE l.scopeId IN :scopeIds
               AND l.status = 'OPEN'
+              AND l.scopeType IN (
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION
+              )
             ORDER BY l.createdAt DESC
             """)
     List<RecruitmentListingEntity> findOpenByScopeIds(
