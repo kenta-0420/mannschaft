@@ -60,11 +60,36 @@
       "organizer": "Organizador"
     },
     "status": {
+      "DRAFT": "Borrador",
       "OPEN": "Abierto",
       "FULL": "Completo (pendiente)",
       "COMPLETED": "Completado",
       "CANCELLED": "Retirado",
       "AUTO_CANCELLED": "Cancelado automáticamente"
+    },
+    "personal": {
+      "title": "Mi mercado",
+      "description": "Gestiona tus anuncios en borrador.",
+      "create": "Crear borrador",
+      "list": "Mis anuncios",
+      "allStatuses": "Todos los estados",
+      "empty": "Aún no hay anuncios.",
+      "matches": "Emparejamientos",
+      "noMatches": "Aún no hay emparejamientos.",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "created": "Borrador creado.",
+      "loadFailed": "No se pudo cargar tu mercado.",
+      "saveFailed": "No se pudo guardar el borrador.",
+      "cancel": "Cancelar borrador",
+      "cancelled": "Borrador cancelado.",
+      "cancelReason": "Cancelado desde el mercado personal",
+      "cancelConfirm": "¿Cancelar este borrador?",
+      "close": "Cerrar",
+      "edit": "Editar borrador",
+      "save": "Guardar",
+      "updated": "Borrador actualizado.",
+      "draftOnly": "Los anuncios personales se guardan como borradores privados. La publicación, las solicitudes y los pagos aún no están disponibles."
     },
     "visibility": {
       "public": "Público",

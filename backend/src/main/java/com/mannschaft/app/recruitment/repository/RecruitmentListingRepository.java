@@ -31,6 +31,32 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
     Page<RecruitmentListingEntity> findByScopeTypeAndScopeIdAndStatusOrderByStartAtDesc(
             RecruitmentScopeType scopeType, Long scopeId, RecruitmentListingStatus status, Pageable pageable);
 
+    Optional<RecruitmentListingEntity> findByIdAndScopeTypeAndScopeIdAndCreatedBy(
+            Long id, RecruitmentScopeType scopeType, Long scopeId, Long createdBy);
+
+    @Query("""
+            SELECT l FROM RecruitmentListingEntity l
+            WHERE l.scopeType = com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+              AND l.scopeId = :userId
+              AND l.createdBy = :userId
+              AND (:status IS NULL OR l.status = :status)
+              AND (:categoryId IS NULL OR l.categoryId = :categoryId)
+              AND (:cityCode IS NULL OR EXISTS (
+                  SELECT 1 FROM RecruitmentListingRegionEntity rr
+                  WHERE rr.listingId = l.id AND rr.cityCode = :cityCode))
+              AND (:cityCode IS NOT NULL OR :prefectureCode IS NULL OR EXISTS (
+                  SELECT 1 FROM RecruitmentListingRegionEntity rr
+                  WHERE rr.listingId = l.id AND rr.prefectureCode = :prefectureCode))
+            ORDER BY l.startAt DESC
+            """)
+    Page<RecruitmentListingEntity> findPersonalMarketListings(
+            @Param("userId") Long userId,
+            @Param("status") RecruitmentListingStatus status,
+            @Param("prefectureCode") String prefectureCode,
+            @Param("cityCode") String cityCode,
+            @Param("categoryId") Long categoryId,
+            Pageable pageable);
+
     Optional<RecruitmentListingEntity> findByIdAndScopeTypeAndScopeId(
             Long id, RecruitmentScopeType scopeType, Long scopeId);
 

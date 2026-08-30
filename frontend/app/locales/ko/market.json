@@ -60,11 +60,36 @@
       "organizer": "주최"
     },
     "status": {
+      "DRAFT": "초안",
       "OPEN": "모집 중",
       "FULL": "마감（확인 대기）",
       "COMPLETED": "성립",
       "CANCELLED": "취하",
       "AUTO_CANCELLED": "불성립（자동 취소）"
+    },
+    "personal": {
+      "title": "내 장터",
+      "description": "내 초안 모집을 관리합니다.",
+      "create": "초안 만들기",
+      "list": "내 모집",
+      "allStatuses": "모든 상태",
+      "empty": "아직 모집이 없습니다.",
+      "matches": "매칭 현황",
+      "noMatches": "아직 매칭이 없습니다.",
+      "previous": "이전",
+      "next": "다음",
+      "created": "초안을 만들었습니다.",
+      "loadFailed": "개인 장터를 불러오지 못했습니다.",
+      "saveFailed": "초안을 저장하지 못했습니다.",
+      "cancel": "초안 취소",
+      "cancelled": "초안을 취소했습니다.",
+      "cancelReason": "개인 장터에서 취소",
+      "cancelConfirm": "이 초안을 취소하시겠습니까?",
+      "close": "닫기",
+      "edit": "초안 편집",
+      "save": "저장",
+      "updated": "초안을 업데이트했습니다.",
+      "draftOnly": "개인 모집은 현재 비공개 초안으로 저장됩니다. 공개, 지원 및 결제는 아직 사용할 수 없습니다."
     },
     "visibility": {
       "public": "공개",

@@ -1,8 +1,9 @@
 package com.mannschaft.app.recruitment.controller;
 
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
+import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
+import com.mannschaft.app.recruitment.dto.PersonalMarketMatchResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.service.PersonalMarketListingService;
@@ -66,11 +67,30 @@ class PersonalMarketListingControllerTest {
         given(page.getSize()).willReturn(20);
         given(page.getTotalPages()).willReturn(0);
         given(page.getContent()).willReturn(java.util.List.of());
-        given(personalMarketListingService.list(eq(USER_ID), eq(null), any())).willReturn(page);
+        given(personalMarketListingService.list(eq(USER_ID), eq(null), eq(null), eq(null), eq(null), any()))
+                .willReturn(page);
 
-        controller.list(null, 0, 20);
+        controller.list(null, null, null, null, 0, 20);
 
-        verify(personalMarketListingService).list(eq(USER_ID), eq(null), any());
+        verify(personalMarketListingService).list(eq(USER_ID), eq(null), eq(null), eq(null), eq(null), any());
+    }
+
+    /** PersonalMarketListingController#listMatches は認証済み本人の複合所有条件だけへ委譲する。 */
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("PersonalMarketListingController#listMatches は認証済み本人へ固定する")
+    void listMatches_boundToCurrentUserOnly() {
+        Page<PersonalMarketMatchResponse> page = Mockito.mock(Page.class);
+        given(page.getTotalElements()).willReturn(0L);
+        given(page.getNumber()).willReturn(0);
+        given(page.getSize()).willReturn(20);
+        given(page.getTotalPages()).willReturn(0);
+        given(page.getContent()).willReturn(java.util.List.of());
+        given(personalMarketListingService.listMatches(eq(USER_ID), eq(42L), any())).willReturn(page);
+
+        controller.listMatches(42L, 0, 20);
+
+        verify(personalMarketListingService).listMatches(eq(USER_ID), eq(42L), any());
     }
 
     @Test

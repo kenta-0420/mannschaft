@@ -21,7 +21,32 @@
 
 export type MarketVisibility = 'PUBLIC' | 'FRIEND_TEAMS_ONLY' | 'SCOPE_ONLY'
 
-export type MarketListingStatus = 'OPEN' | 'FULL' | 'COMPLETED' | 'CANCELLED' | 'AUTO_CANCELLED'
+export type MarketListingStatus =
+  | 'DRAFT'
+  | 'OPEN'
+  | 'FULL'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'AUTO_CANCELLED'
+
+/** Phase 3 個人市の最小マッチング表示。応募者の識別子は含めない。 */
+export interface PersonalMarketMatch {
+  participantId: number
+  participantType: 'USER' | 'TEAM'
+  status: import('~/types/recruitment').RecruitmentParticipantStatus
+  waitlistPosition: number | null
+  appliedAt: string
+  statusChangedAt: string
+}
+
+export interface PersonalMarketListingsParams {
+  status?: import('~/types/recruitment').RecruitmentListingStatus
+  prefectureCode?: string
+  cityCode?: string
+  categoryId?: number
+  page?: number
+  size?: number
+}
 
 // ===========================================
 // 地域
@@ -199,10 +224,7 @@ export interface FriendTargetTeam {
  * フレンド宛先（3粒度の混在可・discriminated union で型安全に表現）
  * `any` 禁止・複雑型パズル禁止（CLAUDE.md）
  */
-export type FriendTargetInput =
-  | FriendTargetAllFriends
-  | FriendTargetFolder
-  | FriendTargetTeam
+export type FriendTargetInput = FriendTargetAllFriends | FriendTargetFolder | FriendTargetTeam
 
 // ===========================================
 // 札立てリクエスト拡張（既存 CreateRecruitmentListingRequest への追加項目）

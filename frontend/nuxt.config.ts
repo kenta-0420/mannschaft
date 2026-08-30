@@ -90,7 +90,13 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
 
   imports: {
-    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match', 'composables/returnStayPlan'],
+    dirs: [
+      'composables',
+      'composables/jobs',
+      'composables/wallet-group-show',
+      'composables/match',
+      'composables/returnStayPlan',
+    ],
   },
 
   devServer: {
@@ -187,7 +193,11 @@ export default defineNuxtConfig({
         // F08.9 P5: Stripe.js の PaymentElement iframe（js.stripe.com）と
         //   3DS 認証チャレンジ iframe（hooks.stripe.com）を許可。
         // 設計書: docs/features/F08.9_membership_billing_paywall/04_ui_i18n.md §2.2
-        'frame-src': ['https://www.google.com', 'https://js.stripe.com', 'https://hooks.stripe.com'],
+        'frame-src': [
+          'https://www.google.com',
+          'https://js.stripe.com',
+          'https://hooks.stripe.com',
+        ],
         // worker-src: @vite-pwa/nuxt の service worker。
         'worker-src': ["'self'", 'blob:'],
         'manifest-src': ["'self'"],

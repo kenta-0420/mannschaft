@@ -60,11 +60,36 @@
       "organizer": "Veranstalter"
     },
     "status": {
+      "DRAFT": "Entwurf",
       "OPEN": "Offen",
       "FULL": "Voll (Bestätigung ausstehend)",
       "COMPLETED": "Abgeschlossen",
       "CANCELLED": "Entfernt",
       "AUTO_CANCELLED": "Automatisch abgebrochen"
+    },
+    "personal": {
+      "title": "Mein Markt",
+      "description": "Verwalte deine Entwürfe.",
+      "create": "Entwurf erstellen",
+      "list": "Meine Aushänge",
+      "allStatuses": "Alle Status",
+      "empty": "Noch keine Aushänge.",
+      "matches": "Zuordnungen",
+      "noMatches": "Noch keine Zuordnungen.",
+      "previous": "Zurück",
+      "next": "Weiter",
+      "created": "Entwurf erstellt.",
+      "loadFailed": "Dein Markt konnte nicht geladen werden.",
+      "saveFailed": "Entwurf konnte nicht gespeichert werden.",
+      "cancel": "Entwurf abbrechen",
+      "cancelled": "Entwurf abgebrochen.",
+      "cancelReason": "Vom persönlichen Markt abgebrochen",
+      "cancelConfirm": "Diesen Entwurf abbrechen?",
+      "close": "Schließen",
+      "edit": "Entwurf bearbeiten",
+      "save": "Speichern",
+      "updated": "Entwurf aktualisiert.",
+      "draftOnly": "Persönliche Aushänge werden derzeit als private Entwürfe gespeichert. Veröffentlichung, Bewerbungen und Zahlungen sind noch nicht verfügbar."
     },
     "visibility": {
       "public": "Öffentlich",

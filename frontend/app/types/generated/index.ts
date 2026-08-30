@@ -41537,6 +41537,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/market/listings/{id}/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 個人市の札のマッチング状況を取得 */
+        get: operations["listMatches_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/invitable-scopes": {
         parameters: {
             query?: never;
@@ -77755,6 +77772,24 @@ export interface components {
         PagedResponseOrgProjectSummaryResponse: {
             data?: components["schemas"]["OrgProjectSummaryResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        PagedResponsePersonalMarketMatchResponse: {
+            data?: components["schemas"]["PersonalMarketMatchResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
+        PersonalMarketMatchResponse: {
+            /** Format: date-time */
+            appliedAt?: string;
+            /** Format: int64 */
+            participantId?: number;
+            /** @enum {string} */
+            participantType?: "USER" | "TEAM";
+            /** @enum {string} */
+            status?: "APPLIED" | "CONFIRMED" | "WAITLISTED" | "CANCELLED" | "NO_SHOW" | "ATTENDED";
+            /** Format: date-time */
+            statusChangedAt?: string;
+            /** Format: int32 */
+            waitlistPosition?: number;
         };
         ApiResponseInvitableScopesResponse: {
             data?: components["schemas"]["InvitableScopesResponse"];
@@ -123236,6 +123271,9 @@ export interface operations {
         parameters: {
             query?: {
                 status?: string;
+                prefectureCode?: string;
+                cityCode?: string;
+                categoryId?: number;
                 page?: number;
                 size?: number;
             };
@@ -158756,6 +158794,31 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListMembershipSubscriptionListItemResponse"];
+                };
+            };
+        };
+    };
+    listMatches_2: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponsePersonalMarketMatchResponse"];
                 };
             };
         };
