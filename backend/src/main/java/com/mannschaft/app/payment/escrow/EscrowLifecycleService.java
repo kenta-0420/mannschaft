@@ -121,6 +121,32 @@ public class EscrowLifecycleService {
     }
 
     /**
+     * 募集の取下げに連動して、capture 前のエスクローを取消す。
+     *
+     * <p>募集は COMPLETED になるまで capture されないため、取下げ可能な DRAFT/OPEN/FULL/CLOSED に
+     * 対応する escrow は DEFERRED/PENDING_CONFIRMATION/AUTHORIZED/HELD のいずれかである。
+     * 行ロック下で再判定し、既に別経路で終端状態へ遷移していれば no-op とする。</p>
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean cancelForRecruitmentCancellation(UUID escrowId) {
+        EscrowTransactionEntity escrow = lockOrNull(escrowId);
+        if (escrow == null) {
+            return false;
+        }
+        EscrowStatus status = escrow.getStatus();
+        if (status != EscrowStatus.DEFERRED
+                && status != EscrowStatus.PENDING_CONFIRMATION
+                && status != EscrowStatus.AUTHORIZED
+                && status != EscrowStatus.HELD) {
+            return false;
+        }
+        cancelWithStripe(escrow);
+        notifyCancelled(escrow, MSG_CANCELLED_AUTHORIZED_BODY);
+        log.info("募集取下げに連動して未captureの与信を取消: escrowId={}, previousStatus={}", escrowId, status);
+        return true;
+    }
+
+    /**
      * 受取口座の onboarding 完了（payouts_enabled=true）に伴い、{@link EscrowStatus#HELD} escrow を昇格する
      * （設計書 02 §5.2）。HELD（PI 未作成）に対し manual-capture の Destination PaymentIntent を作成し
      * {@link EscrowStatus#PENDING_CONFIRMATION}（札主の confirm 待ち）へ遷移させ、札主へ決済確認を依頼する。

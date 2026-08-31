@@ -30,7 +30,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -115,6 +119,9 @@ class RecruitmentListingServiceTest {
     @Mock
     private org.springframework.context.MessageSource messageSource;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private RecruitmentListingService service;
 
@@ -167,6 +174,42 @@ class RecruitmentListingServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.INVALID_CAPACITY);
+        }
+
+        @Test
+        @DisplayName("開催終了が開催開始以前 → INVALID_EVENT_TIME_RANGE")
+        void create_endAtNotAfterStartAt_throwsSpecificValidationError() {
+            given(categoryRepository.existsById(CATEGORY_ID)).willReturn(true);
+
+            assertThatThrownBy(() -> service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID,
+                    requestWithDates(BASE_TIME.plusDays(2), BASE_TIME.plusDays(2),
+                            BASE_TIME.plusDays(1), BASE_TIME.plusDays(1))))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.INVALID_EVENT_TIME_RANGE);
+        }
+
+        @Test
+        @DisplayName("応募締切が開催開始以後 → INVALID_APPLICATION_DEADLINE")
+        void create_deadlineNotBeforeStartAt_throwsSpecificValidationError() {
+            given(categoryRepository.existsById(CATEGORY_ID)).willReturn(true);
+
+            assertThatThrownBy(() -> service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID,
+                    requestWithDates(BASE_TIME.plusDays(2), BASE_TIME.plusDays(3),
+                            BASE_TIME.plusDays(2), BASE_TIME.plusDays(1))))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.INVALID_APPLICATION_DEADLINE);
+        }
+
+        @Test
+        @DisplayName("自動キャンセル判定が応募締切より後 → INVALID_AUTO_CANCEL_AT")
+        void create_autoCancelAfterDeadline_throwsSpecificValidationError() {
+            given(categoryRepository.existsById(CATEGORY_ID)).willReturn(true);
+
+            assertThatThrownBy(() -> service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID,
+                    requestWithDates(BASE_TIME.plusDays(3), BASE_TIME.plusDays(4),
+                            BASE_TIME.plusDays(2), BASE_TIME.plusDays(2).plusMinutes(1))))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.INVALID_AUTO_CANCEL_AT);
         }
 
         @Test
@@ -558,16 +601,24 @@ class RecruitmentListingServiceTest {
         }
 
         @Test
-        @DisplayName("専用取消経路はDRAFT以外をRECRUITMENT_100で拒否する")
-        void personalCancel_nonDraftIsRejected() {
+        @DisplayName("専用取消経路は公開済みPERSONAL札も本人が取り下げられる")
+        void personalCancel_openSucceeds() {
+            RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.OPEN);
             given(listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
                     eq(LISTING_ID), eq(RecruitmentScopeType.PERSONAL), eq(USER_ID)))
-                    .willReturn(Optional.of(personalListing(RecruitmentListingStatus.OPEN)));
+                    .willReturn(Optional.of(listing));
+            given(listingRepository.save(listing)).willReturn(listing);
+            given(participantRepository.findByListingIdAndStatusIn(
+                    eq(LISTING_ID), any(), any())).willReturn(Page.empty());
+            RecruitmentListingResponse response = org.mockito.Mockito.mock(RecruitmentListingResponse.class);
+            given(mapper.toListingResponse(listing)).willReturn(response);
 
-            assertThatThrownBy(() -> service.cancelPersonalDraft(LISTING_ID, USER_ID,
-                    new CancelRecruitmentListingRequest("test")))
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+            RecruitmentListingResponse actual = service.cancelPersonalListing(LISTING_ID, USER_ID,
+                    new CancelRecruitmentListingRequest("test"));
+
+            assertThat(actual).isSameAs(response);
+            assertThat(listing.getStatus()).isEqualTo(RecruitmentListingStatus.CANCELLED);
+            verify(listingRepository).save(listing);
         }
 
         @Test
@@ -578,15 +629,46 @@ class RecruitmentListingServiceTest {
                     eq(LISTING_ID), eq(RecruitmentScopeType.PERSONAL), eq(USER_ID)))
                     .willReturn(Optional.of(listing));
             given(listingRepository.save(listing)).willReturn(listing);
+            given(participantRepository.findByListingIdAndStatusIn(
+                    eq(LISTING_ID), any(), any())).willReturn(Page.empty());
             RecruitmentListingResponse response = org.mockito.Mockito.mock(RecruitmentListingResponse.class);
             given(mapper.toListingResponse(listing)).willReturn(response);
 
-            RecruitmentListingResponse actual = service.cancelPersonalDraft(LISTING_ID, USER_ID,
+            RecruitmentListingResponse actual = service.cancelPersonalListing(LISTING_ID, USER_ID,
                     new CancelRecruitmentListingRequest("test"));
 
             assertThat(actual).isSameAs(response);
             assertThat(listing.getStatus()).isEqualTo(RecruitmentListingStatus.CANCELLED);
             verify(listingRepository).save(listing);
+        }
+
+        @Test
+        @DisplayName("公開札の取消は確定参加者も取り消して履歴を残す")
+        void personalCancel_cancelsActiveParticipants() throws Exception {
+            RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.FULL);
+            var participant = com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity.builder()
+                    .listingId(LISTING_ID)
+                    .participantType(com.mannschaft.app.recruitment.RecruitmentParticipantType.USER)
+                    .userId(99L)
+                    .appliedBy(99L)
+                    .status(com.mannschaft.app.recruitment.RecruitmentParticipantStatus.CONFIRMED)
+                    .build();
+            setField(participant, "id", 301L);
+            given(listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                    eq(LISTING_ID), eq(RecruitmentScopeType.PERSONAL), eq(USER_ID)))
+                    .willReturn(Optional.of(listing));
+            given(listingRepository.save(listing)).willReturn(listing);
+            given(participantRepository.findByListingIdAndStatusIn(
+                    eq(LISTING_ID), any(), eq(PageRequest.of(0, 100))))
+                    .willReturn(new PageImpl<>(List.of(participant)), Page.empty());
+
+            service.cancelPersonalListing(LISTING_ID, USER_ID,
+                    new CancelRecruitmentListingRequest("test"));
+
+            assertThat(participant.getStatus())
+                    .isEqualTo(com.mannschaft.app.recruitment.RecruitmentParticipantStatus.CANCELLED);
+            verify(participantRepository).save(participant);
+            verify(participantHistoryRepository).save(any());
         }
     }
 
@@ -670,6 +752,21 @@ class RecruitmentListingServiceTest {
                 "東京", null, null, null,
                 null, null, null, null, null,
                 null, null); // F22.1 地域・フレンド宛先・配信対象・複数地域(regions)・payee
+    }
+
+    private CreateRecruitmentListingRequest requestWithDates(
+            LocalDateTime startAt, LocalDateTime endAt,
+            LocalDateTime applicationDeadline, LocalDateTime autoCancelAt) {
+        return new CreateRecruitmentListingRequest(
+                CATEGORY_ID, null, "test title", "desc",
+                RecruitmentParticipationType.INDIVIDUAL,
+                startAt, endAt, applicationDeadline, autoCancelAt,
+                10, 1,
+                false, null,
+                RecruitmentVisibility.SCOPE_ONLY,
+                "東京", null, null, null,
+                null, null, null, null, null,
+                null, null);
     }
 
     /**

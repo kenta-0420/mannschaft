@@ -173,8 +173,8 @@ class RecruitmentListingRegionRepositoryTest extends AbstractMySqlIntegrationTes
     }
 
     @Test
-    @DisplayName("自動取消候補は期限超過したPERSONAL汚染行を抽出しない")
-    void findAutoCancelTargets_excludesPersonal() {
+    @DisplayName("自動取消候補は期限超過したPERSONAL札も抽出する")
+    void findAutoCancelTargets_includesPersonal() {
         LocalDateTime now = LocalDateTime.now();
         Long teamId = persistOpenListing(
                 "auto-cancel-team", RecruitmentScopeType.TEAM, 123456L, now.minusMinutes(1));
@@ -186,8 +186,7 @@ class RecruitmentListingRegionRepositoryTest extends AbstractMySqlIntegrationTes
         List<RecruitmentListingEntity> results = listingRepository.findAutoCancelTargets(now);
 
         assertThat(results).extracting(RecruitmentListingEntity::getId)
-                .contains(teamId)
-                .doesNotContain(personalId);
+                .contains(teamId, personalId);
     }
 
     private void addRegion(Long listingId, String pref, String city) {

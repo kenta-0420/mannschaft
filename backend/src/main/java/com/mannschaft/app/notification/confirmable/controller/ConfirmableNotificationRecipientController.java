@@ -12,6 +12,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -57,5 +59,22 @@ public class ConfirmableNotificationRecipientController {
         List<ConfirmableNotificationRecipientResponse> responses =
                 mapper.toRecipientResponseList(recipients);
         return ResponseEntity.ok(ApiResponse.of(responses));
+    }
+
+    /**
+     * ログインユーザーが自分宛ての確認通知を確認済みにする。
+     *
+     * <p>スコープ別 URL を持たない個人・プラットフォーム通知でも利用できる自己スコープ EP。
+     * 認可は {@code ConfirmableNotificationConfirmService} が通知の受信者行を現在ユーザー ID で
+     * 照合するため、他人宛ての通知を確認することはできない。</p>
+     */
+    @PostMapping("/{notificationId}/confirm")
+    @Operation(summary = "自分宛ての確認通知を確認済みにする")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "確認成功")
+    @AuthorizedInService
+    public ResponseEntity<Void> confirm(@PathVariable Long notificationId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        notificationService.confirm(notificationId, currentUserId);
+        return ResponseEntity.noContent().build();
     }
 }

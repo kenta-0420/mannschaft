@@ -238,6 +238,7 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL
               )
               AND l.scopeType IN (
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL,
                   com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
                   com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION
               )

@@ -239,7 +239,6 @@ public class RecruitmentCancellationPolicyService {
     }
 
     public CancellationFeeEstimateResponse estimateFee(RecruitmentListingEntity listing, LocalDateTime atTimestamp) {
-        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
         LocalDateTime calcAt = atTimestamp != null ? atTimestamp : LocalDateTime.now();
         CalculatedFee fee = calculateFee(listing, calcAt);
         return new CancellationFeeEstimateResponse(

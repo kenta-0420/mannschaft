@@ -83,6 +83,7 @@
       "audience": "Teams and organizations",
       "audiencePlaceholder": "Select one or more groups",
       "audienceRequired": "Select at least one team or organization.",
+      "visibilityRequiredToPublish": "Choose Public or Selected teams/organizations before publishing.",
       "publish": "Publish",
       "published": "Listing published.",
       "title": "My market",
@@ -98,15 +99,15 @@
       "created": "Draft created.",
       "loadFailed": "Failed to load your market.",
       "saveFailed": "Failed to save draft.",
-      "cancel": "Cancel draft",
-      "cancelled": "Draft cancelled.",
-      "cancelReason": "Cancelled from personal market",
-      "cancelConfirm": "Cancel this draft?",
+      "cancel": "Withdraw listing",
+      "cancelled": "Listing withdrawn.",
+      "cancelReason": "Withdrawn from personal market",
+      "cancelConfirm": "Withdraw this listing? Applicants will be affected if it is already published.",
       "close": "Close",
       "edit": "Edit draft",
       "save": "Save",
       "updated": "Draft updated.",
-      "draftOnly": "Personal listings are currently saved as private drafts. Publishing, applications, and payments are not available yet."
+      "draftOnly": "Enter the required details and save a private draft first. You can review and publish it after saving. Payments are not yet available for personal listings."
     },
     "visibility": {
       "public": "Public",

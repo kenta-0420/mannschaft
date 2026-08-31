@@ -98,8 +98,6 @@ public class RecruitmentParticipantService {
                 && listing.getScopeId().equals(userId)) {
             throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.SELF_APPLICATION_FORBIDDEN);
         }
-        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
-
         // §5.2 step3 締切チェック
         if (LocalDateTime.now().isAfter(listing.getApplicationDeadline())) {
             throw new BusinessException(RecruitmentErrorCode.DEADLINE_EXCEEDED);
@@ -241,8 +239,6 @@ public class RecruitmentParticipantService {
         // PESSIMISTIC_WRITE で listing をロック
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
-
         RecruitmentParticipantEntity participant = participantRepository
                 .findActiveByListingAndUser(listingId, userId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));

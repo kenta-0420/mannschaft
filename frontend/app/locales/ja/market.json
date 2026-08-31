@@ -83,6 +83,7 @@
       "audience": "公開するチーム・組織",
       "audiencePlaceholder": "1つ以上選択してください",
       "audienceRequired": "公開するチームまたは組織を1つ以上選択してください。",
+      "visibilityRequiredToPublish": "公開範囲を「全体公開」または「所属先を選ぶ」に変更してから公開してください。",
       "publish": "公開する",
       "published": "個人札を公開しました。",
       "title": "自分の市",
@@ -98,15 +99,15 @@
       "created": "下書きを作成しました。",
       "loadFailed": "個人市の情報取得に失敗しました。",
       "saveFailed": "下書きの保存に失敗しました。",
-      "cancel": "下書きを取り消す",
-      "cancelled": "下書きを取り消しました。",
-      "cancelReason": "個人市からの下書き取消",
-      "cancelConfirm": "この下書きを取り消しますか？",
+      "cancel": "札を取り下げる",
+      "cancelled": "札を取り下げました。",
+      "cancelReason": "個人市からの札の取り下げ",
+      "cancelConfirm": "この札を取り下げますか？ 公開済みの場合は応募者にも影響します。",
       "close": "閉じる",
       "edit": "下書きを編集",
       "save": "保存",
       "updated": "下書きを更新しました。",
-      "draftOnly": "個人札は現在、本人だけが見られる下書きとして保存されます。公開・応募・決済はまだ利用できません。"
+      "draftOnly": "必要項目を入力して、まず非公開の下書きとして保存します。保存後に内容を確認して公開できます。個人札の決済はまだ利用できません。"
     },
     "visibility": {
       "public": "市に公開",

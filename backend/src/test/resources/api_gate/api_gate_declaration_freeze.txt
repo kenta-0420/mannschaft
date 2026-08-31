@@ -316,7 +316,7 @@ HTTP|com.mannschaft.app.moderation.controller.UserViolationController|3|3
 HTTP|com.mannschaft.app.moderation.controller.YabaiController|2|2
 HTTP|com.mannschaft.app.navsettings.controller.NavSettingsController|2|2
 HTTP|com.mannschaft.app.navsettings.controller.SystemAdminNavFeaturesController|4|4
-HTTP|com.mannschaft.app.notification.confirmable.controller.ConfirmableNotificationRecipientController|1|1
+HTTP|com.mannschaft.app.notification.confirmable.controller.ConfirmableNotificationRecipientController|2|2
 HTTP|com.mannschaft.app.notification.confirmable.controller.OrgConfirmableNotificationController|7|7
 HTTP|com.mannschaft.app.notification.confirmable.controller.OrgConfirmableNotificationSettingsController|2|2
 HTTP|com.mannschaft.app.notification.confirmable.controller.OrgConfirmableNotificationTemplateController|4|4
