@@ -1,5 +1,7 @@
 # F20.1 — 02 API設計
 
+> **2026-08-31 補足**: 実決済の API、月次日割り、upgrade/downgrade、月末解約の撤回、invoice/Portal は [05_billing_center.md §4・§6](05_billing_center.md#4-請求期間契約状態) を正本とする。従来の「有償 changePlan を拒否する」記述はこの範囲で置換される。
+
 > **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
 > **⚠️ Phase 2 保留（マスター 2026-07-08）**: §7 の org_type イベント（営利自動切替）は初期スコープ外（README §3.3・冒頭 Phase 2 保留ブロック）。権利判定・契約/アドオン・シスアド CRUD は初期スコープに残る。
 > 権利判定（`isEntitled`/`EntitlementGuard`）・プランカタログ・契約/アドオン・シスアド CRUD・org_type イベント（**§7・Phase 2 保留**）を定義する。認可の詳細は [03_security](03_security.md)、DDL は [01_data_model](01_data_model.md)。

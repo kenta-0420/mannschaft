@@ -1,5 +1,7 @@
 # F20.1 — 03 セキュリティ
 
+> **2026-08-31 補足**: invoice、Customer Portal、scope-owned Customer、Stripe webhook の認可・IDOR・保存期間は [05_billing_center.md §6・§7](05_billing_center.md#6-api) を正本として追加適用する。
+
 > **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
 > **⚠️ Phase 2 保留（マスター 2026-07-08）**: 営利自動切替（org_type 自動更新・確認通知・差し戻し API・監査 `ORG_TYPE_*`）は初期スコープ外（README §3.3・冒頭 Phase 2 保留ブロック）。本書の org_type 関連の認可・監査記述はすべて Phase 2。
 > 認可基盤は `@EnableMethodSecurity`＋`@accessGuard`（`docs/security/03_role_authority_model.md`）を再利用。横断方針は [docs/security/README.md](../../security/README.md) に従う。ベータ中（Phase 1）は決済なし＝PCI 論点なし（Phase 2 で F22.1/決済系の規約を適用）。

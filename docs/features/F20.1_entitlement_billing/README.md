@@ -1,7 +1,7 @@
 # F20.1 課金・エンタイトルメント基盤（プラン提示 × feature_key 単位の権利管理）
 
 > **ステータス**: 🟢 設計完了（マスター御裁可済／P1 main 済・**Phase 2b 実決済 実施中**／営利自動切替・オーナー変更は Phase 2 保留）
-> **最終更新**: 2026-07-10
+> **最終更新**: 2026-08-31
 > **関連**: [F20.3 ベータ特典](../F20.3_beta_perks/README.md)（`source_kind=BETA_GRANT` の発行元）／ [F22.1 統一決済プラットフォーム](../F22.1_market/payment/README.md)（Phase 2 実決済レール）／ [F08.9 会員決済](../F08.9_membership_billing_paywall/README.md)（**逆向きの課金**・混同禁止 §4.5）／ [F12.2 フィーチャーフラグ](../F12.2_feature_flag.md)（**意味論が別**・§4.4）／ [F09.19 広告配信](../F09.19_ad_slot_serving.md)（有料プラン広告非表示の結線先・同 §7.5）
 
 ---
@@ -40,8 +40,12 @@
 | [`02_api_design.md`](02_api_design.md) | API設計（プランカタログ・契約/アドオン・エンタイトルメント照会・`EntitlementGuard`/`isEntitled` 擬似コード・org_type イベント・シスアド CRUD・DTO 全フィールド・エラーコード・キャッシュ） |
 | [`03_security.md`](03_security.md) | セキュリティ（認可マトリクス・scopeId 所有権検証＝IDOR 対策・402/403 使い分け・FE のみペイウォール禁止・キャッシュと取消の整合・GDPR/退会） |
 | [`04_ui_i18n.md`](04_ui_i18n.md) | 画面設計（プラン一覧・ペイウォールモーダル・スコープ別課金管理）・i18n 6言語キー一覧（`billing.json` 新設） |
+| [`05_billing_center.md`](05_billing_center.md) | 誠実な料金・契約センター、scope-owned Stripe Customer、暦月日割り、請求/支払方法、取消/撤回、webhook、移行、受入条件 |
 
 ---
+
+> **Phase 2b 追補（2026-08-31）**: 本書で Phase 2 扱いとしていた Stripe 実決済の顧客所有、日割り、請求書/領収書、支払方法、解約・プラン変更は [05_billing_center.md](05_billing_center.md) で設計確定した。本書の「日割り/按分は対象外」「有償プラン変更を拒否」の旧記述は当該追補により置換される。
+
 
 ## 1. 概要
 

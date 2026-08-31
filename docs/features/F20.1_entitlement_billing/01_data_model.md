@@ -128,6 +128,8 @@ CREATE TABLE plan_price_bands (
 
 ## 3. 業務テーブル（UUIDv7）
 
+> **2026-08-31 補足**: scope-owned Stripe Customer、請求書投影、契約の billing cycle anchor/予約変更列は [05_billing_center.md §5](05_billing_center.md#5-データ設計flyway) を正本とする。本書の `psp_customer_ref` は契約時スナップショットとして温存し、TEAM/ORG の Customer を操作者個人へ解決する実装は廃止する。
+
 ### 3.1 `billing_contracts`（PLAN/ADDON 契約行）
 
 `entitlements(source_kind IN ('PLAN','ADDON'))` の発行元。**2026-07-10 実決済前倒し（D-1）**: 当初「ベータ中は決済を伴わない契約状態のみ」だったが、マスター御裁可により PSP 列を V151 で Expand 済み（下記 DDL は V150+V151 適用後の姿）。
