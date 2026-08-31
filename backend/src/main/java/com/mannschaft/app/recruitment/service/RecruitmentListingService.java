@@ -140,6 +140,13 @@ public class RecruitmentListingService {
 
     public RecruitmentListingResponse getListing(Long listingId, Long userId) {
         RecruitmentListingEntity entity = findOrThrow(listingId);
+        // PERSONAL の公開後レスポンスは閲覧者別の表示名・PII 抑制・no-store を担う
+        // /api/v1/public/market/** に一本化する。汎用詳細 DTO は scopeId / createdBy 等の
+        // 内部 ID を含むため、OPEN/FULL の PERSONAL をここから返してはならない。
+        if (entity.getScopeType() == RecruitmentScopeType.PERSONAL
+                && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
+            throw new BusinessException(MarketErrorCode.LISTING_NOT_FOUND);
+        }
         // DRAFT は作成者・スコープ ADMIN のみ閲覧可（機能側ローカル要件）。
         // F00 共通基盤の DRAFT 規約は「作成者 + SystemAdmin のみ」だが、
         // Recruitment 機能では従来から TEAM/ORG ADMIN にも DRAFT 閲覧を許可しており、

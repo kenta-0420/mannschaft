@@ -282,6 +282,24 @@ class RecruitmentListingServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
         }
+
+        @Test
+        @DisplayName("公開後のPERSONAL札は内部IDを含む汎用詳細DTOから返さない")
+        void getListing_publishedPersonal_throwsMarket404() {
+            RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
+                    .scopeType(RecruitmentScopeType.PERSONAL)
+                    .scopeId(USER_ID)
+                    .createdBy(USER_ID)
+                    .status(RecruitmentListingStatus.OPEN)
+                    .build();
+            given(listingRepository.findById(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.getListing(LISTING_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+            verifyNoInteractions(mapper);
+        }
     }
 
     // ========================================
