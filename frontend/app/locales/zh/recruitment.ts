@@ -22,7 +22,9 @@ export default {
       "open": "招募中",
       "full": "已满",
       "closed": "已截止",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+      "auto_cancelled": "已自动取消",
+      "completed": "招募成立"
     },
     "participantStatus": {
       "applied": "已申请",

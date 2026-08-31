@@ -9,6 +9,7 @@ import { waitForHydration } from '../helpers/wait'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 test.describe.configure({ mode: 'serial' })
+test.setTimeout(180_000)
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const ADMIN = {
@@ -97,6 +98,36 @@ async function assertParticipationInactiveFromUi(
   await expect(page.locator('body')).not.toContainText(`募集 #${listingId}`)
 }
 
+async function confirmListingFromUi(
+  page: Page,
+  listingId: number,
+  title: string,
+  credentials: Credentials,
+) {
+  await page.context().clearCookies()
+  await page.evaluate(() => localStorage.clear())
+  await authenticate(page, credentials)
+  await page.goto('/notifications')
+  await waitForHydration(page)
+  const notification = page.locator('[role="button"]').filter({ hasText: title }).first()
+  const confirmButton = notification.getByRole('button', { name: '確認する', exact: true })
+  await expect(confirmButton).toBeVisible({ timeout: 30_000 })
+  const [response] = await Promise.all([
+    page.waitForResponse(candidate =>
+      /\/api\/v1\/(?:me|teams\/[^/]+|organizations\/[^/]+)\/confirmable-notifications\/\d+\/confirm$/.test(candidate.url())
+      && candidate.request().method() === 'POST',
+    ),
+    confirmButton.click(),
+  ])
+  expect(response.status(), `UIからの募集成立確認が成功すること: ${await response.text()}`).toBe(204)
+
+  await expect(async () => {
+    await page.goto(`/recruitment-listings/${listingId}`)
+    await waitForHydration(page)
+    await expect(page.locator('main')).toContainText('募集成立')
+  }).toPass({ timeout: 30_000 })
+}
+
 function localDateTime(minutesFromNow: number) {
   const value = new Date(Date.now() + minutesFromNow * 60_000)
   const pad = (part: number) => String(part).padStart(2, '0')
@@ -151,6 +182,50 @@ async function createAndPublishOperationalListing(
   ])
   expect(publish.status()).toBe(200)
   return id
+}
+
+async function createAndPublishPersonalListing(page: Page, title: string) {
+  await page.goto('/me/market?create=true')
+  await waitForHydration(page)
+  const visibilitySelect = page.locator('#personal-market-visibility')
+  await expect(visibilitySelect).toBeVisible()
+  const form = page.locator('form').first()
+  await visibilitySelect.click()
+  await page.getByRole('option', { name: '全体公開', exact: true }).click()
+  await form.locator('#title').fill(title)
+  await form.locator('#category').click()
+  const category = page.getByRole('option').filter({ hasText: '練習試合相手募集' }).first()
+  await expect(category).toBeVisible()
+  await category.click()
+  await fillDateTime(page, 'startAt', localDateTime(24 * 60))
+  await fillDateTime(page, 'endAt', localDateTime(27 * 60))
+  await fillDateTime(page, 'applicationDeadline', localDateTime(60))
+  await fillDateTime(page, 'autoCancelAt', localDateTime(60))
+  await form.locator('#capacity input').fill('1')
+  await form.locator('#minCapacity input').fill('1')
+
+  const [createdResponse] = await Promise.all([
+    page.waitForResponse(response =>
+      response.url().endsWith('/api/v1/me/market/listings')
+      && response.request().method() === 'POST',
+    ),
+    form.locator('button[type="submit"]').click(),
+  ])
+  expect(createdResponse.status(), `個人札の画面作成が成功すること: ${await createdResponse.text()}`).toBe(201)
+  const created = (await createdResponse.json()) as { data: { id: number } }
+  cleanupPersonalListingId = created.data.id
+
+  const card = page.locator('article').filter({ hasText: title })
+  await expect(card).toBeVisible()
+  const [publishResponse] = await Promise.all([
+    page.waitForResponse(response =>
+      response.url().endsWith(`/api/v1/me/market/listings/${created.data.id}/publish`)
+      && response.request().method() === 'POST',
+    ),
+    card.getByRole('button', { name: '公開する', exact: true }).click(),
+  ])
+  expect(publishResponse.status(), `個人札の画面公開が成功すること: ${await publishResponse.text()}`).toBe(200)
+  return created.data.id
 }
 
 test.afterEach(async ({ page }) => {
@@ -241,8 +316,8 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   await expect(form.locator('#category')).toContainText('練習試合相手募集')
   await fillDateTime(page, 'startAt', localDateTime(24 * 60))
   await fillDateTime(page, 'endAt', localDateTime(27 * 60))
-  await fillDateTime(page, 'applicationDeadline', localDateTime(5))
-  await fillDateTime(page, 'autoCancelAt', localDateTime(5))
+  await fillDateTime(page, 'applicationDeadline', localDateTime(60))
+  await fillDateTime(page, 'autoCancelAt', localDateTime(60))
   await form.locator('#capacity input').fill('1')
   await form.locator('#minCapacity input').fill('1')
 
@@ -259,7 +334,8 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
 
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
 
-  const publishButton = page.getByRole('button', { name: '公開する', exact: true })
+  const createdCard = page.locator('article').filter({ hasText: title })
+  const publishButton = createdCard.getByRole('button', { name: '公開する', exact: true })
   const [publishResponse] = await Promise.all([
     page.waitForResponse(response =>
       response.url().endsWith(`/api/v1/me/market/listings/${created.data.id}/publish`)
@@ -313,6 +389,13 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   cleanupPersonalListingId = null
   await assertParticipationInactiveFromUi(page, created.data.id, USER)
 
+  await authenticate(page, ADMIN)
+  const completedTitle = `E2E-個人市-成立-UI-${Date.now()}`
+  const completedListingId = await createAndPublishPersonalListing(page, completedTitle)
+  await applyToListingFromUi(page, completedListingId, USER)
+  await confirmListingFromUi(page, completedListingId, completedTitle, ADMIN)
+  cleanupPersonalListingId = null
+
 })
 
 test('MARKET-OWNER-UI-002: チーム市から主体を保って札を画面作成・公開できる', async ({ page }) => {
@@ -332,6 +415,14 @@ test('MARKET-OWNER-UI-002: チーム市から主体を保って札を画面作�
   await authenticate(page, TEAM_ADMIN)
   await cancelOperationalListingFromUi(page, listingId, '/teams/fc-u-18/market')
   await assertParticipationInactiveFromUi(page, listingId, USER)
+
+  await authenticate(page, TEAM_ADMIN)
+  await page.goto('/teams/fc-u-18/recruitment-listings/new')
+  await waitForHydration(page)
+  const completedTitle = `E2E-チーム市-成立-UI-${Date.now()}`
+  const completedListingId = await createAndPublishOperationalListing(page, completedTitle, TEAM_ADMIN)
+  await applyToListingFromUi(page, completedListingId, USER)
+  await confirmListingFromUi(page, completedListingId, completedTitle, TEAM_ADMIN)
 })
 
 test('MARKET-OWNER-UI-003: 組織市から主体を保って札を画面作成・公開できる', async ({ page }) => {
@@ -368,6 +459,14 @@ test('MARKET-OWNER-UI-003: 組織市から主体を保って札を画面作成�
     `/organizations/${organization!.slug}/market`,
   )
   await assertParticipationInactiveFromUi(page, listingId, ADMIN)
+
+  await authenticate(page, USER)
+  await page.goto(`/organizations/${organization!.slug}/recruitment-listings/new`)
+  await waitForHydration(page)
+  const completedTitle = `E2E-組織市-成立-UI-${Date.now()}`
+  const completedListingId = await createAndPublishOperationalListing(page, completedTitle, USER)
+  await applyToListingFromUi(page, completedListingId, ADMIN)
+  await confirmListingFromUi(page, completedListingId, completedTitle, USER)
 })
 
 test('MARKET-OWNER-UI-004: 公開市でチーム・組織を画面から絞り込める（個人はUI-001で検証）', async ({ page }) => {

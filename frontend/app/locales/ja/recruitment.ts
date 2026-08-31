@@ -22,7 +22,9 @@ export default {
       "open": "募集中",
       "full": "満員",
       "closed": "締切後",
-      "cancelled": "キャンセル"
+      "cancelled": "キャンセル",
+      "auto_cancelled": "自動キャンセル",
+      "completed": "募集成立"
     },
     "participantStatus": {
       "applied": "申込済み",

@@ -22,7 +22,9 @@ export default {
       "open": "Abierto",
       "full": "Completo",
       "closed": "Cerrado",
-      "cancelled": "Cancelado"
+      "cancelled": "Cancelado",
+      "auto_cancelled": "Cancelado automáticamente",
+      "completed": "Completado"
     },
     "participantStatus": {
       "applied": "Solicitado",

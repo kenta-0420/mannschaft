@@ -75050,6 +75050,31 @@
         }
       }
     },
+    "/api/v1/me/confirmable-notifications/{notificationId}/confirm": {
+      "post": {
+        "tags": [
+          "確認通知（個人）"
+        ],
+        "summary": "自分宛ての確認通知を確認済みにする",
+        "operationId": "confirm_6",
+        "parameters": [
+          {
+            "name": "notificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "確認成功"
+          }
+        }
+      }
+    },
     "/api/v1/me/care-links/invite-watcher": {
       "post": {
         "tags": [

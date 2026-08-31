@@ -22,7 +22,9 @@ export default {
       "open": "Offen",
       "full": "Voll",
       "closed": "Geschlossen",
-      "cancelled": "Abgesagt"
+      "cancelled": "Abgesagt",
+      "auto_cancelled": "Automatisch abgesagt",
+      "completed": "Abgeschlossen"
     },
     "participantStatus": {
       "applied": "Beworben",

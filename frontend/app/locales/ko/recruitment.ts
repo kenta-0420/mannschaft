@@ -22,7 +22,9 @@ export default {
       "open": "모집 중",
       "full": "정원 마감",
       "closed": "마감 후",
-      "cancelled": "취소"
+      "cancelled": "취소",
+      "auto_cancelled": "자동 취소",
+      "completed": "모집 성립"
     },
     "participantStatus": {
       "applied": "신청 완료",
