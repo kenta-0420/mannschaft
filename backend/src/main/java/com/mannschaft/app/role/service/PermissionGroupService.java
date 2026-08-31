@@ -85,7 +85,8 @@ public class PermissionGroupService {
         if (billingProtected) {
             billingPermissionGroupGuard.recordSuccess(
                     BillingPermissionGroupGuard.Operation.CREATE,
-                    createdBy, null, scopeId, scopeType, group.getId());
+                    createdBy, null, scopeId, scopeType, group.getId(),
+                    List.of(), req.getPermissionIds());
         }
 
         log.info("権限グループ作成完了: groupId={}, scopeType={}, scopeId={}", group.getId(), scopeType, scopeId);
@@ -130,7 +131,8 @@ public class PermissionGroupService {
         if (billingProtected) {
             billingPermissionGroupGuard.recordSuccess(
                     BillingPermissionGroupGuard.Operation.UPDATE,
-                    actorUserId, null, scopeId, scopeType, groupId);
+                    actorUserId, null, scopeId, scopeType, groupId,
+                    oldPermissionIds, req.getPermissionIds());
         }
 
         log.info("権限グループ更新完了: groupId={}", groupId);
@@ -171,7 +173,8 @@ public class PermissionGroupService {
         if (billingProtected) {
             billingPermissionGroupGuard.recordSuccess(
                     BillingPermissionGroupGuard.Operation.DUPLICATE,
-                    createdBy, null, scopeId, scopeType, copy.getId());
+                    createdBy, null, scopeId, scopeType, copy.getId(),
+                    permissionIds, permissionIds);
         }
 
         log.info("権限グループ複製完了: originalId={}, newId={}", groupId, copy.getId());
@@ -202,7 +205,8 @@ public class PermissionGroupService {
         if (billingProtected) {
             billingPermissionGroupGuard.recordSuccess(
                     BillingPermissionGroupGuard.Operation.DELETE,
-                    actorUserId, null, scopeId, scopeType, groupId);
+                    actorUserId, null, scopeId, scopeType, groupId,
+                    permissionIds, List.of());
         }
         log.info("権限グループ削除完了: groupId={}", groupId);
     }
@@ -354,7 +358,7 @@ public class PermissionGroupService {
             throw new BusinessException(RoleErrorCode.ROLE_006);
         }
         boolean billingProtected = billingPermissionGroupGuard.authorizeAssignment(
-                assignedBy, userId, scopeId, scopeType, union(oldGroupIds, req.getGroupIds()));
+                assignedBy, userId, scopeId, scopeType, oldGroupIds, req.getGroupIds());
         requireMutationAuthority(assignedBy, scopeId, scopeType, union(oldPermissionIds, newPermissionIds));
         if (!scopeGroupIds.isEmpty()) {
             userPermissionGroupRepository.deleteByUserIdAndGroupIdIn(userId, scopeGroupIds);
@@ -381,7 +385,8 @@ public class PermissionGroupService {
         if (billingProtected) {
             billingPermissionGroupGuard.recordSuccess(
                     BillingPermissionGroupGuard.Operation.ASSIGN,
-                    assignedBy, userId, scopeId, scopeType, null);
+                    assignedBy, userId, scopeId, scopeType, null,
+                    oldPermissionIds, newPermissionIds);
         }
     }
 

@@ -111,6 +111,12 @@ public enum AuditEventType {
     /** F08.9 P8: 支払い明細 CSV をエクスポートした（チーム ADMIN 操作）。 */
     PAYMENT_CSV_EXPORTED(AuditEventCategory.PAYMENT),
     CONTENT_GATE_UPDATED(AuditEventCategory.PAYMENT),
+    BILLING_PERMISSION_GROUP_CREATE(AuditEventCategory.PAYMENT),
+    BILLING_PERMISSION_GROUP_UPDATE(AuditEventCategory.PAYMENT),
+    BILLING_PERMISSION_GROUP_DELETE(AuditEventCategory.PAYMENT),
+    BILLING_PERMISSION_GROUP_DUPLICATE(AuditEventCategory.PAYMENT),
+    BILLING_PERMISSION_GROUP_ASSIGN(AuditEventCategory.PAYMENT),
+    BILLING_PERMISSION_GROUP_DENIED(AuditEventCategory.PAYMENT),
 
     // ─── SCHEDULE (Phase 3+) ──────────────────────────────────
     SCHEDULE_CREATED(AuditEventCategory.SCHEDULE),

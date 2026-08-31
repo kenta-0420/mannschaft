@@ -10,6 +10,8 @@ import com.mannschaft.app.role.repository.PermissionGroupPermissionRepository;
 import com.mannschaft.app.role.repository.PermissionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Collection;
 import java.util.List;
@@ -60,7 +62,8 @@ public class BillingPermissionGroupGuard {
             return false;
         }
         if (!accessControlService.isAdmin(actorUserId, scopeId, scopeType)) {
-            audit(DENIED_EVENT, operation, actorUserId, null, scopeId, scopeType, groupId);
+            audit(DENIED_EVENT, operation, actorUserId, null, scopeId, scopeType, groupId,
+                    permissionNames(oldPermissionIds), permissionNames(newPermissionIds));
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return true;
@@ -77,13 +80,11 @@ public class BillingPermissionGroupGuard {
             Long recipientUserId,
             Long scopeId,
             String scopeType,
-            Collection<Long> affectedGroupIds) {
-        List<Long> permissionIds = safe(affectedGroupIds).stream()
-                .filter(Objects::nonNull)
-                .distinct()
-                .flatMap(groupId -> groupPermissionRepository.findByGroupId(groupId).stream())
-                .map(PermissionGroupPermissionEntity::getPermissionId)
-                .filter(Objects::nonNull)
+            Collection<Long> oldGroupIds,
+            Collection<Long> newGroupIds) {
+        List<Long> oldPermissionIds = permissionIdsOfGroups(oldGroupIds);
+        List<Long> newPermissionIds = permissionIdsOfGroups(newGroupIds);
+        List<Long> permissionIds = Stream.concat(oldPermissionIds.stream(), newPermissionIds.stream())
                 .distinct()
                 .toList();
         if (!containsBillingPermission(permissionIds)) {
@@ -95,10 +96,22 @@ public class BillingPermissionGroupGuard {
                         accessControlService.getRoleName(recipientUserId, scopeId, scopeType));
         if (!allowed) {
             audit(DENIED_EVENT, Operation.ASSIGN, actorUserId, recipientUserId,
-                    scopeId, scopeType, null);
+                    scopeId, scopeType, null,
+                    permissionNames(oldPermissionIds), permissionNames(newPermissionIds));
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return true;
+    }
+
+    private List<Long> permissionIdsOfGroups(Collection<Long> groupIds) {
+        return safe(groupIds).stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .flatMap(groupId -> groupPermissionRepository.findByGroupId(groupId).stream())
+                .map(PermissionGroupPermissionEntity::getPermissionId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
     public void recordSuccess(
@@ -107,9 +120,23 @@ public class BillingPermissionGroupGuard {
             Long targetUserId,
             Long scopeId,
             String scopeType,
-            Long groupId) {
-        audit("BILLING_PERMISSION_GROUP_" + operation.name(), operation,
-                actorUserId, targetUserId, scopeId, scopeType, groupId);
+            Long groupId,
+            Collection<Long> oldPermissionIds,
+            Collection<Long> newPermissionIds) {
+        Runnable successAudit = () -> audit(
+                "BILLING_PERMISSION_GROUP_" + operation.name(), operation,
+                actorUserId, targetUserId, scopeId, scopeType, groupId,
+                permissionNames(oldPermissionIds), permissionNames(newPermissionIds));
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    successAudit.run();
+                }
+            });
+        } else {
+            successAudit.run();
+        }
     }
 
     private boolean containsBillingPermission(List<Long> permissionIds) {
@@ -122,6 +149,19 @@ public class BillingPermissionGroupGuard {
                         || ORGANIZATION_PERMISSION.equals(name));
     }
 
+    private List<String> permissionNames(Collection<Long> permissionIds) {
+        if (safe(permissionIds).isEmpty()) {
+            return List.of();
+        }
+        return permissionRepository.findByIdIn(safe(permissionIds).stream()
+                        .filter(Objects::nonNull).distinct().toList()).stream()
+                .map(PermissionEntity::getName)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
     private void audit(
             String eventType,
             Operation operation,
@@ -129,13 +169,22 @@ public class BillingPermissionGroupGuard {
             Long targetUserId,
             Long scopeId,
             String scopeType,
-            Long groupId) {
+            Long groupId,
+            List<String> oldPermissions,
+            List<String> newPermissions) {
         Long teamId = "TEAM".equals(scopeType) ? scopeId : null;
         Long organizationId = "ORGANIZATION".equals(scopeType) ? scopeId : null;
-        String metadata = "{\"operation\":\"%s\",\"groupId\":%s}"
-                .formatted(operation.name(), groupId == null ? "null" : groupId.toString());
+        String metadata = "{\"operation\":\"%s\",\"groupId\":%s,\"oldPermissions\":%s,\"newPermissions\":%s}"
+                .formatted(operation.name(), groupId == null ? "null" : groupId.toString(),
+                        jsonArray(oldPermissions), jsonArray(newPermissions));
         auditLogService.record(eventType, actorUserId, targetUserId,
                 teamId, organizationId, null, null, null, metadata);
+    }
+
+    private String jsonArray(List<String> values) {
+        return values.stream()
+                .map(value -> "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
     }
 
     private static <T> Collection<T> safe(Collection<T> values) {

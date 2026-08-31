@@ -34,8 +34,9 @@ import java.util.UUID;
  *
  * <p><b>スコープ所有権</b>: 契約の解約/変更は {@code contractId} → 所属スコープを解決し、パスのスコープと
  * 一致検証する（不一致は {@code CONTRACT_NOT_FOUND} 404 秘匿・IDOR・03 §2）。作成時の scopeId 所有権
- * （ADMIN か）は public 入口の {@code @PreAuthorize} が一次防御（別部隊）。本サービスは受領した scope を信頼せず、
- * 子リソース系は必ず一致検証で二重防御する。</p>
+ * （ADMIN又は明示委譲DEPUTYか）は public 入口の {@code @PreAuthorize} を一次防御とし、本サービスの書込
+ * トランザクション内でも操作者行ロック後に再確認する。本サービスは受領した scope を信頼せず、子リソース系は
+ * 必ず一致検証で二重防御する。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -60,6 +61,8 @@ public class BillingContractService {
      * 元 private {@code issueEntitlements} の INSERT ロジックを本サービスへ抽出した（挙動不変）。
      */
     private final EntitlementIssuanceService entitlementIssuanceService;
+    /** 課金権限解除と契約変更予約を操作者行ロックで直列化する。 */
+    private final BillingOperationAuthorizer billingOperationAuthorizer;
 
     /**
      * 契約変更操作の結果（API 層 DTO 組み立て用・付与/取消 feature_key 集合を含む）。
@@ -106,6 +109,23 @@ public class BillingContractService {
             EntitlementScopeKind scopeKind, Long scopeId, Long organizationId,
             ContractKind contractKind, String planKey, String featureKey, Long operatorUserId) {
 
+        billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
+        return createContractInternal(scopeKind, scopeId, organizationId,
+                contractKind, planKey, featureKey, operatorUserId);
+    }
+
+    /** SYSTEM_ADMIN専用入口。Controller側のSYSTEM_ADMIN認可を経た手動付与だけが利用する。 */
+    @Transactional
+    public ContractResult createContractBySystemAdmin(
+            EntitlementScopeKind scopeKind, Long scopeId, Long organizationId,
+            ContractKind contractKind, String planKey, String featureKey, Long operatorUserId) {
+        return createContractInternal(scopeKind, scopeId, organizationId,
+                contractKind, planKey, featureKey, operatorUserId);
+    }
+
+    private ContractResult createContractInternal(
+            EntitlementScopeKind scopeKind, Long scopeId, Long organizationId,
+            ContractKind contractKind, String planKey, String featureKey, Long operatorUserId) {
         LocalDateTime now = LocalDateTime.now(clock);
         List<String> grantedKeys;
         String slotAddonKey;
@@ -188,6 +208,7 @@ public class BillingContractService {
     public ContractResult cancelContract(
             EntitlementScopeKind scopeKind, Long scopeId, UUID contractId, Long operatorUserId) {
 
+        billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
         LocalDateTime now = LocalDateTime.now(clock);
         BillingContractEntity contract = loadContractInScope(scopeKind, scopeId, contractId);
         if (contract.getStatus() != ContractStatus.ACTIVE) {
@@ -242,6 +263,7 @@ public class BillingContractService {
             EntitlementScopeKind scopeKind, Long scopeId, UUID contractId,
             String newPlanKey, Long operatorUserId) {
 
+        billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
         LocalDateTime now = LocalDateTime.now(clock);
         BillingContractEntity oldContract = loadContractInScope(scopeKind, scopeId, contractId);
         if (oldContract.getStatus() != ContractStatus.ACTIVE) {
@@ -340,6 +362,7 @@ public class BillingContractService {
             EntitlementScopeKind scopeKind, Long scopeId, Long organizationId,
             ContractKind contractKind, String planKey, String featureKey, int priceJpy, Long operatorUserId) {
 
+        billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
         LocalDateTime now = LocalDateTime.now(clock);
         String slotAddonKey;
         if (contractKind == ContractKind.PLAN) {

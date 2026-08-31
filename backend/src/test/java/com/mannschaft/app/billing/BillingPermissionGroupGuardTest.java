@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
@@ -21,11 +22,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyLong;
-import static org.mockito.Mockito.contains;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.ArgumentMatchers.argThat;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("課金権限グループの自己昇格防止")
@@ -68,7 +69,9 @@ class BillingPermissionGroupGuardTest {
                 .isInstanceOf(BusinessException.class);
 
         verify(auditLogService).record(eq("BILLING_PERMISSION_GROUP_DENIED"), eq(10L), eq(null),
-                eq(20L), eq(null), eq(null), eq(null), eq(null), contains("CREATE"));
+                eq(20L), eq(null), eq(null), eq(null), eq(null),
+                argThat(metadata -> metadata.contains("CREATE")
+                        && metadata.contains("MANAGE_TEAM_BILLING")));
     }
 
     @Test
@@ -91,7 +94,7 @@ class BillingPermissionGroupGuardTest {
         billingGroup(30L, 2L);
 
         assertThatThrownBy(() -> guard.authorizeAssignment(
-                10L, 10L, 20L, "TEAM", List.of(30L)))
+                10L, 10L, 20L, "TEAM", List.of(), List.of(30L)))
                 .isInstanceOf(BusinessException.class);
     }
 
@@ -104,7 +107,7 @@ class BillingPermissionGroupGuardTest {
         given(accessControlService.getRoleName(11L, 20L, "TEAM")).willReturn("ADMIN");
 
         assertThatThrownBy(() -> guard.authorizeAssignment(
-                10L, 11L, 20L, "TEAM", List.of(30L)))
+                10L, 11L, 20L, "TEAM", List.of(), List.of(30L)))
                 .isInstanceOf(BusinessException.class);
     }
 
@@ -117,8 +120,33 @@ class BillingPermissionGroupGuardTest {
         given(accessControlService.getRoleName(11L, 20L, "TEAM")).willReturn("DEPUTY_ADMIN");
 
         assertThat(guard.authorizeAssignment(
-                10L, 11L, 20L, "TEAM", List.of(30L))).isTrue();
+                10L, 11L, 20L, "TEAM", List.of(), List.of(30L))).isTrue();
         verify(auditLogService, never()).record(any(), anyLong(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("成功監査はcommit後だけ記録し変更前後の権限名を残す")
+    void successAudit_isDeferredUntilCommitAndContainsPermissionDiff() {
+        var guard = guard();
+        given(permissionRepository.findByIdIn(List.of(2L)))
+                .willReturn(List.of(permission(2L, "MANAGE_TEAM_BILLING", PermissionEntity.Scope.TEAM)));
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            guard.recordSuccess(BillingPermissionGroupGuard.Operation.UPDATE,
+                    10L, 11L, 20L, "TEAM", 30L, List.of(2L), List.of());
+            verifyNoInteractions(auditLogService);
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(synchronization -> synchronization.afterCommit());
+
+            verify(auditLogService).record(eq("BILLING_PERMISSION_GROUP_UPDATE"),
+                    eq(10L), eq(11L), eq(20L), eq(null), eq(null), eq(null), eq(null),
+                    argThat(metadata -> metadata.contains("MANAGE_TEAM_BILLING")
+                            && metadata.contains("oldPermissions")
+                            && metadata.contains("newPermissions")));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     private void billingGroup(Long groupId, Long permissionId) {

@@ -62,6 +62,7 @@ class BillingContractServicePaymentTest {
     @Mock private EntitlementCacheEvictor cacheEvictor;
     @Mock private BillingPaymentGateway billingPaymentGateway;
     @Mock private BillingPriceResolver billingPriceResolver;
+    @Mock private BillingOperationAuthorizer billingOperationAuthorizer;
 
     private BillingContractService service;
 
@@ -74,7 +75,7 @@ class BillingContractServicePaymentTest {
                 billingContractRepository, activeContractPointerRepository, entitlementRepository,
                 planRepository, planFeatureRepository, featureCatalogRepository, planPriceBandRepository,
                 scopeMemberCountService, cacheEvictor, FIXED_CLOCK, billingPaymentGateway,
-                billingPriceResolver, issuanceService);
+                billingPriceResolver, issuanceService, billingOperationAuthorizer);
     }
 
     // ============================================================

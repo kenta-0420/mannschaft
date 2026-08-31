@@ -718,7 +718,8 @@ class PermissionGroupServiceTest {
                         .groupId(GROUP_ID).permissionId(PERM_ID_1).build()));
         doThrow(new BusinessException(CommonErrorCode.COMMON_002))
                 .when(billingPermissionGroupGuard).authorizeAssignment(
-                        CREATED_BY, USER_ID, SCOPE_ID, "TEAM", List.of(GROUP_ID));
+                        CREATED_BY, USER_ID, SCOPE_ID, "TEAM",
+                        List.of(GROUP_ID), List.of());
 
         assertThatThrownBy(() -> permissionGroupService.assignUserPermissionGroups(
                 USER_ID, SCOPE_ID, "TEAM",

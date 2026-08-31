@@ -86,6 +86,30 @@ public class BillingAccessRepository {
                AND u.status = 'ACTIVE'
             """;
 
+    private static final String LOCK_TEAM_PERMISSION_GROUPS_SQL = """
+            SELECT pg.id
+              FROM user_permission_groups upg
+              JOIN permission_groups pg ON pg.id = upg.group_id
+             WHERE upg.user_id = ?
+               AND pg.team_id = ?
+               AND pg.organization_id IS NULL
+               AND pg.deleted_at IS NULL
+             ORDER BY pg.id
+             FOR UPDATE
+            """;
+
+    private static final String LOCK_ORG_PERMISSION_GROUPS_SQL = """
+            SELECT pg.id
+              FROM user_permission_groups upg
+              JOIN permission_groups pg ON pg.id = upg.group_id
+             WHERE upg.user_id = ?
+               AND pg.organization_id = ?
+               AND pg.team_id IS NULL
+               AND pg.deleted_at IS NULL
+             ORDER BY pg.id
+             FOR UPDATE
+            """;
+
     private final JdbcTemplate jdbcTemplate;
 
     public boolean existsAdmin(Long userId, EntitlementScopeKind scopeKind, Long scopeId) {
@@ -112,6 +136,25 @@ public class BillingAccessRepository {
             case ORG -> count(DEPUTY_ORG_PERMISSION_SQL, userId, scopeId, permissionName) > 0;
             case USER -> false;
         };
+    }
+
+    /** 契約変更txで、現在割当済みの同一scope permission group行を決定順にロックする。 */
+    public void lockAssignedPermissionGroups(
+            Long userId,
+            EntitlementScopeKind scopeKind,
+            Long scopeId) {
+        if (userId == null || scopeKind == null || scopeId == null) {
+            return;
+        }
+        switch (scopeKind) {
+            case TEAM -> jdbcTemplate.queryForList(
+                    LOCK_TEAM_PERMISSION_GROUPS_SQL, Long.class, userId, scopeId);
+            case ORG -> jdbcTemplate.queryForList(
+                    LOCK_ORG_PERMISSION_GROUPS_SQL, Long.class, userId, scopeId);
+            case USER -> {
+                // USER scopeにpermission group委譲はない。
+            }
+        }
     }
 
     private long count(String sql, Object... args) {
