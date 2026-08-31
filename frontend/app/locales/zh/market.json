@@ -83,6 +83,7 @@
       "audience": "球队和组织",
       "audiencePlaceholder": "选择一个或多个群组",
       "audienceRequired": "请至少选择一个球队或组织。",
+      "visibilityRequiredToPublish": "发布前请选择公开或指定球队/组织。",
       "publish": "发布",
       "published": "已发布招募信息。",
       "title": "我的集市",
@@ -98,15 +99,15 @@
       "created": "已创建草稿。",
       "loadFailed": "无法加载个人集市。",
       "saveFailed": "无法保存草稿。",
-      "cancel": "取消草稿",
-      "cancelled": "已取消草稿。",
-      "cancelReason": "从个人集市取消",
-      "cancelConfirm": "要取消此草稿吗？",
+      "cancel": "撤下招募",
+      "cancelled": "招募已撤下。",
+      "cancelReason": "从个人集市撤下",
+      "cancelConfirm": "要撤下此招募吗？若已发布，也会影响报名者。",
       "close": "关闭",
       "edit": "编辑草稿",
       "save": "保存",
       "updated": "草稿已更新。",
-      "draftOnly": "个人招募目前保存为私密草稿。公开、申请和付款尚不可用。"
+      "draftOnly": "请填写必填项并先保存为私密草稿。保存后可检查内容并发布。个人招募暂不支持付款。"
     },
     "visibility": {
       "public": "公开",

@@ -78,6 +78,8 @@ export default {
       "joinWaitlist": "대기열에 등록",
       "viewDetails": "자세히 보기",
       "confirmApplication": "확정",
+      "cancelListing": "모집 내리기",
+      "cancelledListing": "모집을 내렸습니다",
       "createPolicy": "정책 작성"
     },
     "confirmModal": {
@@ -219,6 +221,12 @@ export default {
       "individual": "개인",
       "team": "팀"
     },
+    "validation": {
+      "eventTimeRange": "종료 시간은 시작 시간보다 이후여야 합니다",
+      "applicationDeadline": "신청 마감은 시작 시간보다 이전이어야 합니다",
+      "autoCancelAt": "자동 취소 시각은 신청 마감 이전이어야 합니다",
+      "capacity": "최소 정원은 정원을 초과할 수 없습니다"
+    },
     "payee": {
       "required": "수령인 유형을 선택해주세요",
       "userRequired": "수령인 사용자를 선택해주세요",
@@ -248,6 +256,9 @@ export default {
       "RECRUITMENT_205": "이미지 URL이 화이트리스트에 없습니다",
       "RECRUITMENT_206": "정원을 확정 참가자 수보다 적게 변경할 수 없습니다",
       "RECRUITMENT_207": "공개 범위와 배포 대상이 일치하지 않습니다",
+      "RECRUITMENT_216": "종료 시간은 시작 시간보다 이후여야 합니다",
+      "RECRUITMENT_217": "신청 마감은 시작 시간보다 이전이어야 합니다",
+      "RECRUITMENT_218": "자동 취소 시각은 신청 마감보다 늦을 수 없습니다",
       "RECRUITMENT_301": "취소 수수료 결제에 실패했습니다",
       "RECRUITMENT_302": "취소 정책 설정이 잘못되었습니다",
       "RECRUITMENT_303": "취소 정책 단계가 4개를 초과합니다",

@@ -6,11 +6,11 @@ import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 
 /**
- * 主体別管理市 Phase 2 の運用経路を TEAM / ORGANIZATION に閉じる共通ガード。
+ * TEAM / ORGANIZATION 専用の既存管理経路を保護する共通ガード。
  *
- * <p>PERSONAL の札は現在 DRAFT 専用であり、個人専用の作成・編集・取消以外の既存募集運用
- * （応募、参加者管理、最終認証、決済関連）へ到達させない。未知の scope も
- * fail-closed で存在秘匿する。</p>
+ * <p>PERSONAL の公開・応募・取消・最終認証は個人対応済みの経路で扱う。一方、管理者向け
+ * 参加者管理・出席記録・汎用配信設定など、組織ロールを前提にする入口ではこのガードを使い、
+ * PERSONAL を存在秘匿する。</p>
  */
 public final class RecruitmentOperationalScopeGuard {
 

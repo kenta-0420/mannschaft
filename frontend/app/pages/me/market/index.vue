@@ -45,7 +45,7 @@ const editingListing = ref<RecruitmentListingSummaryResponse | null>(null)
 const editForm = reactive<UpdateRecruitmentListingRequest>({})
 const savingEdit = ref(false)
 const publishingListingId = ref<number | null>(null)
-const visibility = ref<'PUBLIC' | 'SELECTED_SCOPES' | 'SCOPE_ONLY'>('SCOPE_ONLY')
+const visibility = ref<'PUBLIC' | 'SELECTED_SCOPES' | 'SCOPE_ONLY'>('PUBLIC')
 const selectedAudienceKeys = ref<string[]>([])
 const editDialogVisible = computed({
   get: () => editingListing.value !== null,
@@ -194,10 +194,15 @@ async function saveEdit() {
   }
 }
 
-async function publishListing(listingId: number) {
-  publishingListingId.value = listingId
+async function publishListing(listing: RecruitmentListingSummaryResponse) {
+  if (listing.visibility === 'SCOPE_ONLY') {
+    notification.warn(t('market.personal.visibilityRequiredToPublish'))
+    openEditor(listing)
+    return
+  }
+  publishingListingId.value = listing.id
   try {
-    await api.publishMyMarketListing(listingId)
+    await api.publishMyMarketListing(listing.id)
     notification.success(t('market.personal.published'))
     await loadListings()
   } catch (cause) {
@@ -215,11 +220,11 @@ function confirmCancel(listingId: number) {
     rejectLabel: t('market.personal.close'),
     acceptLabel: t('market.personal.cancel'),
     acceptClass: 'p-button-danger',
-    accept: () => void cancelDraft(listingId),
+    accept: () => void cancelListing(listingId),
   })
 }
 
-async function cancelDraft(listingId: number) {
+async function cancelListing(listingId: number) {
   try {
     await api.cancelMyMarketListing(listingId, { reason: t('market.personal.cancelReason') })
     notification.success(t('market.personal.cancelled'))
@@ -266,6 +271,9 @@ onMounted(async () => {
     </p>
 
     <SectionCard v-if="showCreateForm" :title="t('market.personal.create')">
+      <Message severity="info" :closable="false" class="mb-4" data-testid="personal-market-draft-help">
+        {{ t('market.personal.draftOnly') }}
+      </Message>
       <p class="mb-4 text-sm text-surface-500">{{ t('market.personal.visibilityHelp') }}</p>
       <div class="mb-4 flex flex-col gap-3">
         <label for="personal-market-visibility" class="font-medium">{{ t('market.personal.visibility') }}</label>
@@ -392,7 +400,7 @@ onMounted(async () => {
               :label="t('market.personal.publish')"
               icon="pi pi-send"
               :loading="publishingListingId === listing.id"
-              @click="publishListing(listing.id)"
+              @click="publishListing(listing)"
             />
             <Button
               v-if="listing.status === 'DRAFT'"
@@ -404,7 +412,7 @@ onMounted(async () => {
               @click="openEditor(listing)"
             />
             <Button
-              v-if="listing.status === 'DRAFT'"
+              v-if="['DRAFT', 'OPEN', 'FULL', 'CLOSED'].includes(listing.status)"
               class="min-h-11"
               severity="danger"
               outlined

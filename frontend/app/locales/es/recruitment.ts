@@ -78,6 +78,8 @@ export default {
       "joinWaitlist": "Unirse a la lista de espera",
       "viewDetails": "Ver detalles",
       "confirmApplication": "Confirmar",
+      "cancelListing": "Retirar convocatoria",
+      "cancelledListing": "Convocatoria retirada",
       "createPolicy": "Crear política"
     },
     "confirmModal": {
@@ -219,6 +221,12 @@ export default {
       "individual": "Individual",
       "team": "Equipo"
     },
+    "validation": {
+      "eventTimeRange": "La hora de fin debe ser posterior a la de inicio",
+      "applicationDeadline": "La fecha límite debe ser anterior al inicio",
+      "autoCancelAt": "La cancelación automática debe ser anterior o igual a la fecha límite",
+      "capacity": "La capacidad mínima no puede superar la capacidad"
+    },
     "payee": {
       "required": "Por favor seleccione un tipo de destinatario",
       "userRequired": "Por favor seleccione un usuario destinatario",
@@ -248,6 +256,9 @@ export default {
       "RECRUITMENT_205": "URL de imagen no autorizada",
       "RECRUITMENT_206": "No se puede reducir la capacidad por debajo de los confirmados",
       "RECRUITMENT_207": "Visibilidad y objetivos de distribución incoherentes",
+      "RECRUITMENT_216": "La hora de finalización debe ser posterior a la hora de inicio",
+      "RECRUITMENT_217": "La fecha límite de solicitud debe ser anterior al inicio",
+      "RECRUITMENT_218": "La cancelación automática no puede ser posterior a la fecha límite de solicitud",
       "RECRUITMENT_301": "Pago de la tarifa de cancelación fallido",
       "RECRUITMENT_302": "Política de cancelación inválida",
       "RECRUITMENT_303": "La política de cancelación tiene más de 4 niveles",

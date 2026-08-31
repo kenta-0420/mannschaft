@@ -100,18 +100,19 @@ class RecruitmentAutoCancelBatchTest {
     class ProcessSingleListing {
 
         @Test
-        @DisplayName("PERSONAL汚染行はMARKET_404で存在秘匿し参加者処理・保存・通知を行わない")
-        void processSingleListing_personal_doesNotCauseSideEffects() throws Exception {
+        @DisplayName("PERSONAL札も期限超過時に自動キャンセルする")
+        void processSingleListing_personal_autoCancels() throws Exception {
             RecruitmentListingEntity listing = buildOpenListing(10, 0, 5);
             setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
             given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(participantRepository.findByListingIdAndStatusIn(anyLong(), any(), any()))
+                    .willReturn(Page.empty());
 
-            assertThatThrownBy(() -> batch.processSingleListing(LISTING_ID, LocalDateTime.now()))
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+            int result = batch.processSingleListing(LISTING_ID, LocalDateTime.now());
 
-            verify(participantRepository, never()).findByListingIdAndStatusIn(anyLong(), any(), any());
-            verify(listingRepository, never()).save(any());
+            assertThat(result).isZero();
+            assertThat(listing.getStatus()).isEqualTo(RecruitmentListingStatus.AUTO_CANCELLED);
+            verify(listingRepository).save(listing);
             verify(confirmableNotificationService, never()).send(any(), any(), any(), any(), any(), any(),
                     any(), any(), any(), any(), any(), any());
         }

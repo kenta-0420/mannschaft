@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -165,19 +166,25 @@ class RecruitmentParticipantServiceTest {
         }
 
         @Test
-        @DisplayName("PERSONAL札は札主以外を状態や決済より先にMARKET_404で存在秘匿し後段Repositoryを呼ばない")
-        void apply_personal_throwsMarket404BeforeDownstreamRepository() throws Exception {
+        @DisplayName("公開PERSONAL札へ札主以外のユーザーが応募できる")
+        void apply_personalByAnotherUser_succeeds() throws Exception {
             RecruitmentListingEntity listing = buildOpenListing();
             setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            setField(listing, "scopeId", USER_ID);
             given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(listingRepository.incrementConfirmedAtomic(LISTING_ID)).willReturn(1);
+            given(listingRepository.findById(LISTING_ID)).willReturn(Optional.of(listing));
+            given(participantRepository.save(any(RecruitmentParticipantEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
 
-            assertThatThrownBy(() -> service.apply(LISTING_ID, USER_ID + 1,
+            assertThatCode(() -> service.apply(LISTING_ID, USER_ID + 1,
                     new ApplyToRecruitmentRequest(RecruitmentParticipantType.USER, null, null)))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+                    .doesNotThrowAnyException();
 
-            verify(cancellationRecordRepository, never()).existsByUserIdAndPaymentStatusIn(anyLong(), any());
+            verify(visibilityChecker).assertCanView(
+                    com.mannschaft.app.common.visibility.ReferenceType.RECRUITMENT_LISTING,
+                    LISTING_ID, USER_ID + 1);
+            verify(participantRepository).save(any(RecruitmentParticipantEntity.class));
         }
 
         @Test
@@ -247,22 +254,29 @@ class RecruitmentParticipantServiceTest {
     }
 
     @Nested
-    @DisplayName("PERSONAL運用経路のfail-closed")
+    @DisplayName("PERSONAL運用経路")
     class PersonalOperationalRouteGuard {
 
         @Test
-        @DisplayName("応募取消はPERSONAL札をMARKET_404で存在秘匿し参加者検索を呼ばない")
-        void cancel_personal_doesNotQueryParticipant() throws Exception {
+        @DisplayName("応募者本人はPERSONAL札への応募を取り消せる")
+        void cancel_personal_succeeds() throws Exception {
             RecruitmentListingEntity listing = buildOpenListing();
             setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            RecruitmentParticipantEntity participant = buildConfirmedParticipant();
             given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(participantRepository.findActiveByListingAndUser(LISTING_ID, USER_ID))
+                    .willReturn(Optional.of(participant));
+            given(policyService.calculateFee(any(), any()))
+                    .willReturn(new RecruitmentCancellationPolicyService.CalculatedFee(
+                            null, null, null, null, 0, true, 48.0));
+            given(cancellationRecordRepository.save(any()))
+                    .willAnswer(invocation -> invocation.getArgument(0));
 
-            assertThatThrownBy(() -> service.cancelMyApplication(LISTING_ID, USER_ID,
-                    new CancelMyApplicationRequest(true, null)))
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+            assertThatCode(() -> service.cancelMyApplication(LISTING_ID, USER_ID,
+                    new CancelMyApplicationRequest(true, 0)))
+                    .doesNotThrowAnyException();
 
-            verify(participantRepository, never()).findActiveByListingAndUser(anyLong(), anyLong());
+            verify(participantRepository).save(participant);
         }
 
         @Test

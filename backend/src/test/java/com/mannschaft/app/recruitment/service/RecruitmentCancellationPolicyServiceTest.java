@@ -72,15 +72,15 @@ class RecruitmentCancellationPolicyServiceTest {
     class CalculateFeeBoundary {
 
         @Test
-        @DisplayName("試算はPERSONAL汚染行をMARKET_404で存在秘匿しポリシーRepositoryを呼ばない")
-        void estimateFee_personal_doesNotQueryPolicy() throws Exception {
+        @DisplayName("決済無効のPERSONAL札は無料として試算できる")
+        void estimateFee_personalPaymentDisabled_returnsFree() throws Exception {
             RecruitmentListingEntity listing = buildPaymentListing(POLICY_ID, 5000);
             setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            setField(listing, "paymentEnabled", false);
 
-            assertThatThrownBy(() -> service.estimateFee(listing, LocalDateTime.now()))
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+            var estimate = service.estimateFee(listing, LocalDateTime.now());
 
+            assertThat(estimate.getFeeAmount()).isZero();
             verifyNoInteractions(policyRepository, tierRepository);
         }
 

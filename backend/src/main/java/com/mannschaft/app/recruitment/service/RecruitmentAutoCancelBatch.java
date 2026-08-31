@@ -120,8 +120,6 @@ public class RecruitmentAutoCancelBatch {
         // PESSIMISTIC_WRITE で行ロックを取得して最新状態を確認
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new IllegalStateException("募集が見つかりません: id=" + listingId));
-        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
-
         // 再確認: OPEN/FULL かつ confirmedCount < minCapacity であること
         if (listing.getStatus() != RecruitmentListingStatus.OPEN
                 && listing.getStatus() != RecruitmentListingStatus.FULL) {
@@ -227,7 +225,9 @@ public class RecruitmentAutoCancelBatch {
         if (!affectedUserIds.isEmpty()) {
             try {
                 confirmableNotificationService.send(
-                        ScopeType.valueOf(listing.getScopeType().name()),
+                        listing.getScopeType() == com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                                ? ScopeType.PLATFORM
+                                : ScopeType.valueOf(listing.getScopeType().name()),
                         listing.getScopeId(),
                         "募集が自動キャンセルされました",
                         "最小定員を達成できなかったため自動キャンセルされました",

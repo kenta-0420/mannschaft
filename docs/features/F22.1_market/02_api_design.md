@@ -293,12 +293,12 @@ visibility = 'PUBLIC' AND status IN ('OPEN','FULL') AND deleted_at IS NULL
 | マッチング状況 | `GET /api/v1/me/market/listings/{id}/matches` | scope 配下の同等 API | scope 配下の同等 API |
 | 作成 | `POST /api/v1/me/market/listings` | 既存 recruitment 作成 API | 既存 recruitment 作成 API |
 | 編集（DRAFTのみ） | `PATCH /api/v1/me/market/listings/{id}` | 既存 recruitment 編集 API | 既存 recruitment 編集 API |
-| 取消（DRAFTのみ） | `POST /api/v1/me/market/listings/{id}/cancel` | 既存 recruitment 取消 API | 既存 recruitment 取消 API |
+| 取消（終了状態以外） | `POST /api/v1/me/market/listings/{id}/cancel` | 既存 recruitment 取消 API | 既存 recruitment 取消 API |
 
 - 一覧は `status`、`prefectureCode`、`cityCode`、`categoryId`、`page`、`size` を受け、0件も `200` と空 page を返す。ページサイズ・定員・締切・金額の境界値を契約テストで固定する。
 - 個人作成リクエストに `ownerUserId` / `scopeId` は置かない。サービスが認証済み本人を所有者に設定する。
-- 個人札の編集・取消は `PERSONAL + scope_id=currentUserId + createdBy=currentUserId` の複合条件で悲観ロックし、DRAFT のみ許可する。他人・他スコープ・不在・削除済みは同一 `MARKET_404`（404）で存在を秘匿する。DRAFT以外は `RECRUITMENT_100`（409）で拒否する。
-- 個人DRAFTの取消は既存の `POST .../{id}/cancel` 契約を再利用する。DRAFTには応募者・決済が存在しないため、取消時に通知・返金・決済イベントは発生させない。
+- 個人札の編集・取消は `PERSONAL + scope_id=currentUserId + createdBy=currentUserId` の複合条件で悲観ロックする。編集は DRAFT のみ、取消は DRAFT / OPEN / FULL / CLOSED を許可する。他人・他スコープ・不在・削除済みは同一 `MARKET_404`（404）で存在を秘匿し、終了状態からの再取消は `RECRUITMENT_102`（409）で拒否する。
+- 個人札の取消は既存の `POST .../{id}/cancel` 契約を再利用する。DRAFTには応募者・決済が存在しないため通知・返金・決済イベントは発生させない。公開後は既存の主催者取消と同じ参加者通知を適用し、Phase 5 で決済を解禁する際に返金契約を追加する。
 - 個人札の作成・更新で `paymentEnabled=true` または受領者指定は `MARKET_006`（400）で拒否する。自己応募は `MARKET_007`（403）。公開範囲・公開先・公開状態が Phase 4 の許可条件を外れる場合は `MARKET_008`（400）で拒否する。実装時の enum 定数名は、それぞれ `PERSONAL_PAYMENT_DISABLED`、`SELF_APPLICATION_FORBIDDEN`、`PERSONAL_VISIBILITY_NOT_ALLOWED` とする。
 - 管理一覧・マッチング状況は札主本人または当該 TEAM/ORGANIZATION の既存管理権限だけに許可する。権限のない主体は 403、他主体の札 ID は存在秘匿が必要な経路では 404 とする。
 - マッチング状況は応募・確定・取消を返すが、参加者 PII は既存 F03.11 の管理者向け最小表示規則を超えて返さない。

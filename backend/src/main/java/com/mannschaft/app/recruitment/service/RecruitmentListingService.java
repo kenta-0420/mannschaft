@@ -713,10 +713,6 @@ public class RecruitmentListingService {
             RecruitmentOperationalScopeGuard.requireTeamOrOrganization(entity);
         }
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
-        if (personalRoute && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
-            throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
-        }
-
         try {
             entity.cancelByAdmin(userId, request != null ? request.getReason() : null);
         } catch (IllegalStateException e) {
@@ -724,8 +720,72 @@ public class RecruitmentListingService {
         }
 
         RecruitmentListingEntity saved = listingRepository.save(entity);
+        Set<Long> affectedUserIds = cancelActiveParticipants(listingId, userId);
+        sendCancelledNotifications(saved, affectedUserIds);
         log.info("F03.11 募集枠キャンセル(主催者): id={}", listingId);
         return mapper.toListingResponse(saved);
+    }
+
+    private Set<Long> cancelActiveParticipants(Long listingId, Long actorUserId) {
+        Set<Long> affectedUserIds = new LinkedHashSet<>();
+        List<RecruitmentParticipantStatus> activeStatuses = List.of(
+                RecruitmentParticipantStatus.APPLIED,
+                RecruitmentParticipantStatus.CONFIRMED,
+                RecruitmentParticipantStatus.WAITLISTED);
+        while (true) {
+            Page<RecruitmentParticipantEntity> page = participantRepository.findByListingIdAndStatusIn(
+                    listingId, activeStatuses, PageRequest.of(0, 100));
+            if (page.isEmpty()) {
+                break;
+            }
+            for (RecruitmentParticipantEntity participant : page.getContent()) {
+                RecruitmentParticipantStatus oldStatus = participant.getStatus();
+                participant.cancelByAdmin(actorUserId);
+                participantRepository.save(participant);
+                participantHistoryRepository.save(RecruitmentParticipantHistoryEntity.builder()
+                        .participantId(participant.getId())
+                        .listingId(listingId)
+                        .oldStatus(oldStatus)
+                        .newStatus(RecruitmentParticipantStatus.CANCELLED)
+                        .changedBy(actorUserId)
+                        .changeReason(com.mannschaft.app.recruitment.ParticipantHistoryReason.ADMIN_ACTION)
+                        .build());
+                Long recipientUserId = participant.getUserId() != null
+                        ? participant.getUserId() : participant.getAppliedBy();
+                if (recipientUserId != null) {
+                    affectedUserIds.add(recipientUserId);
+                }
+            }
+        }
+        return affectedUserIds;
+    }
+
+    private void sendCancelledNotifications(
+            RecruitmentListingEntity listing, Set<Long> affectedUserIds) {
+        if (affectedUserIds.isEmpty()) {
+            return;
+        }
+        NotificationScopeType scopeType = switch (listing.getScopeType()) {
+            case PERSONAL -> NotificationScopeType.PERSONAL;
+            case TEAM -> NotificationScopeType.TEAM;
+            case ORGANIZATION -> NotificationScopeType.ORGANIZATION;
+        };
+        notificationHelper.notifyAllLocalized(
+                new ArrayList<>(affectedUserIds),
+                "RECRUITMENT_CANCELLED",
+                "RECRUITMENT_LISTING", listing.getId(),
+                scopeType, listing.getScopeId(),
+                "/market", listing.getCancelledBy(),
+                (recipientUserId, locale) -> new NotificationHelper.LocalizedMessage(
+                        messageSource.getMessage(
+                                "notification.recruitment.cancelled.title", null,
+                                "募集が取り下げられました", locale),
+                        messageSource.getMessage(
+                                "notification.recruitment.cancelled.body",
+                                new Object[]{listing.getTitle(),
+                                        listing.getCancelledReason() != null
+                                                ? listing.getCancelledReason() : "-"},
+                                listing.getTitle() + " は主催者により取り下げられました。", locale)));
     }
 
     /**
@@ -1079,13 +1139,13 @@ public class RecruitmentListingService {
             throw new BusinessException(RecruitmentErrorCode.INVALID_CAPACITY);
         }
         if (!startAt.isBefore(endAt)) {
-            throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+            throw new BusinessException(RecruitmentErrorCode.INVALID_EVENT_TIME_RANGE);
         }
         if (!applicationDeadline.isBefore(startAt)) {
-            throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+            throw new BusinessException(RecruitmentErrorCode.INVALID_APPLICATION_DEADLINE);
         }
         if (autoCancelAt.isAfter(applicationDeadline)) {
-            throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+            throw new BusinessException(RecruitmentErrorCode.INVALID_AUTO_CANCEL_AT);
         }
         if (Boolean.TRUE.equals(paymentEnabled) && price == null) {
             throw new BusinessException(RecruitmentErrorCode.PRICE_REQUIRED);

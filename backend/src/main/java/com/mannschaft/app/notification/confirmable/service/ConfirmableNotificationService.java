@@ -293,7 +293,10 @@ public class ConfirmableNotificationService {
         // F09.13: 確認通知は課金対象（組織スコープのみ）
         // チームスコープの場合は組織IDが不明なためスキップ（将来はteam→org解決を追加）
         if (ScopeType.ORGANIZATION == scopeType) {
-            notificationCreditService.consume(scopeId, recipientUserIds.size(), NotificationSourceType.CONFIRMABLE);
+            // PLATFORM は組織課金スコープを持たない個人宛・システム確認通知にも使う。
+            if (scopeType != ScopeType.PLATFORM) {
+                notificationCreditService.consume(scopeId, recipientUserIds.size(), NotificationSourceType.CONFIRMABLE);
+            }
         }
 
         // F04.3 通知基盤へのアプリ内通知（送信者には通知しない）

@@ -9,6 +9,7 @@ import type {
   RecruitmentVisibility,
 } from '~/types/recruitment'
 import type { MemberResponse } from '~/types/member'
+import { getRecruitmentListingValidationKey } from '~/utils/recruitmentListingValidation'
 
 interface Props {
   initial?: Partial<CreateRecruitmentListingRequest>
@@ -84,6 +85,7 @@ const membersLoading = ref(false)
 // クライアントサイドバリデーションエラー
 const payeeKindError = ref<string | null>(null)
 const payeeUserError = ref<string | null>(null)
+const scheduleError = ref<string | null>(null)
 
 const submitButtonLabel = computed(() => props.submitLabel ?? t('recruitment.action.create'))
 
@@ -192,6 +194,7 @@ function validatePayee(): boolean {
 }
 
 function onSubmit() {
+  scheduleError.value = null
   if (
     !categoryId.value ||
     !title.value ||
@@ -202,6 +205,19 @@ function onSubmit() {
     capacity.value == null ||
     minCapacity.value == null
   ) {
+    return
+  }
+
+  const validationKey = getRecruitmentListingValidationKey({
+    startAt: startAt.value,
+    endAt: endAt.value,
+    applicationDeadline: applicationDeadline.value,
+    autoCancelAt: autoCancelAt.value,
+    capacity: capacity.value,
+    minCapacity: minCapacity.value,
+  })
+  if (validationKey) {
+    scheduleError.value = t(validationKey)
     return
   }
 
@@ -233,6 +249,14 @@ function onSubmit() {
 
 <template>
   <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
+    <Message
+      v-if="scheduleError"
+      severity="error"
+      :closable="false"
+      data-testid="recruitment-form-validation-error"
+    >
+      {{ scheduleError }}
+    </Message>
     <div class="flex flex-col gap-2">
       <label for="title">{{ t('recruitment.field.title') }}</label>
       <InputText id="title" v-model="title" required />

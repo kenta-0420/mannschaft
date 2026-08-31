@@ -78,6 +78,8 @@ export default {
       "joinWaitlist": "加入候补",
       "viewDetails": "查看详情",
       "confirmApplication": "确认成立",
+      "cancelListing": "撤下招募",
+      "cancelledListing": "招募已撤下",
       "createPolicy": "创建政策"
     },
     "confirmModal": {
@@ -219,6 +221,12 @@ export default {
       "individual": "个人",
       "team": "团队"
     },
+    "validation": {
+      "eventTimeRange": "结束时间必须晚于开始时间",
+      "applicationDeadline": "报名截止时间必须早于开始时间",
+      "autoCancelAt": "自动取消时间必须不晚于报名截止时间",
+      "capacity": "最低人数不能超过人数上限"
+    },
     "payee": {
       "required": "请选择收款方类型",
       "userRequired": "请选择收款方用户",
@@ -248,6 +256,9 @@ export default {
       "RECRUITMENT_205": "图片URL不在白名单中",
       "RECRUITMENT_206": "无法将名额减少到低于已确认参加者数",
       "RECRUITMENT_207": "公开范围与配送对象不一致",
+      "RECRUITMENT_216": "结束时间必须晚于开始时间",
+      "RECRUITMENT_217": "报名截止时间必须早于开始时间",
+      "RECRUITMENT_218": "自动取消时间不得晚于报名截止时间",
       "RECRUITMENT_301": "取消费用支付失败",
       "RECRUITMENT_302": "取消政策设置不正确",
       "RECRUITMENT_303": "取消政策阶段超过4个",

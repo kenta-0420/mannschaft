@@ -15,6 +15,7 @@ const listingId = computed(() => Number(route.params.id))
 const listing = ref<RecruitmentListingResponse | null>(null)
 const loading = ref(false)
 const myParticipation = ref<RecruitmentParticipantResponse | null>(null)
+const cancelling = ref(false)
 
 /**
  * 自分が札主（募集主）か。USER scope の作成者本人を判定する。
@@ -62,6 +63,24 @@ async function onPublish() {
   }
   finally {
     loading.value = false
+  }
+}
+
+async function onCancel() {
+  if (!listing.value || !window.confirm(t('recruitment.confirmModal.cancel.message'))) return
+  cancelling.value = true
+  try {
+    const result = listing.value.scopeType === 'PERSONAL'
+      ? await api.cancelMyMarketListing(listingId.value, { reason: t('recruitment.action.cancelListing') })
+      : await api.cancelListing(listingId.value, { reason: t('recruitment.action.cancelListing') })
+    listing.value = result.data
+    success(t('recruitment.action.cancelledListing'))
+  }
+  catch (e) {
+    error(String(e))
+  }
+  finally {
+    cancelling.value = false
   }
 }
 
@@ -135,6 +154,16 @@ onMounted(() => load())
         :label="t('recruitment.action.publish')"
         icon="pi pi-send"
         @click="onPublish"
+      />
+      <Button
+        v-if="isOwner && !['CANCELLED', 'AUTO_CANCELLED', 'COMPLETED'].includes(listing.status)"
+        :label="t('recruitment.action.cancelListing')"
+        icon="pi pi-times"
+        severity="danger"
+        outlined
+        :loading="cancelling"
+        data-testid="recruitment-listing-cancel"
+        @click="onCancel"
       />
       <RecruitmentApplicationButton
         :listing="listing"

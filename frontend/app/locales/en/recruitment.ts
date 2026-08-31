@@ -78,6 +78,8 @@ export default {
       "joinWaitlist": "Join waitlist",
       "viewDetails": "View details",
       "confirmApplication": "Confirm",
+      "cancelListing": "Withdraw recruitment",
+      "cancelledListing": "Recruitment withdrawn",
       "createPolicy": "Create policy"
     },
     "confirmModal": {
@@ -219,6 +221,12 @@ export default {
       "individual": "Individual",
       "team": "Team"
     },
+    "validation": {
+      "eventTimeRange": "The end time must be after the start time",
+      "applicationDeadline": "The application deadline must be before the start time",
+      "autoCancelAt": "The auto-cancel time must be on or before the application deadline",
+      "capacity": "Minimum capacity must not exceed capacity"
+    },
     "payee": {
       "required": "Please select a payee type",
       "userRequired": "Please select a payee user",
@@ -248,6 +256,9 @@ export default {
       "RECRUITMENT_205": "Image URL is not whitelisted",
       "RECRUITMENT_206": "Cannot reduce capacity below confirmed count",
       "RECRUITMENT_207": "Visibility and distribution targets are inconsistent",
+      "RECRUITMENT_216": "The event end time must be after the start time",
+      "RECRUITMENT_217": "The application deadline must be before the event starts",
+      "RECRUITMENT_218": "The auto-cancel time must be no later than the application deadline",
       "RECRUITMENT_301": "Cancellation fee payment failed",
       "RECRUITMENT_302": "Invalid cancellation policy",
       "RECRUITMENT_303": "Cancellation policy has more than 4 tiers",

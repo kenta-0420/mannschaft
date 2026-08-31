@@ -46,6 +46,57 @@ async function fillDateTime(page: Page, id: string, value: string) {
   await page.locator(`input#${id}`).dispatchEvent('change')
 }
 
+async function applyToListingFromUi(page: Page, listingId: number, credentials: Credentials) {
+  await page.context().clearCookies()
+  await page.evaluate(() => localStorage.clear())
+  await authenticate(page, credentials)
+  await page.goto(`/market/listings/${listingId}`)
+  await waitForHydration(page)
+  const applyButton = page.getByRole('button', { name: '札に応じる', exact: true })
+  await expect(applyButton).toBeVisible()
+  const [response] = await Promise.all([
+    page.waitForResponse(candidate =>
+      candidate.url().endsWith(`/api/v1/recruitment-listings/${listingId}/applications`)
+      && candidate.request().method() === 'POST',
+    ),
+    applyButton.click(),
+  ])
+  expect(response.status(), `UIからの応募が成功すること: ${await response.text()}`).toBe(201)
+  const body = (await response.json()) as { data: { status: string } }
+  expect(body.data.status).toBe('CONFIRMED')
+}
+
+async function cancelOperationalListingFromUi(
+  page: Page,
+  listingId: number,
+  marketPath: string,
+) {
+  await page.goto(marketPath)
+  await waitForHydration(page)
+  page.once('dialog', dialog => dialog.accept())
+  const [response] = await Promise.all([
+    page.waitForResponse(candidate =>
+      candidate.url().endsWith(`/api/v1/recruitment-listings/${listingId}/cancel`)
+      && candidate.request().method() === 'POST',
+    ),
+    page.getByTestId(`market-listing-cancel-${listingId}`).click(),
+  ])
+  expect(response.status(), `UIからの札取消が成功すること: ${await response.text()}`).toBe(200)
+}
+
+async function assertParticipationInactiveFromUi(
+  page: Page,
+  listingId: number,
+  credentials: Credentials,
+) {
+  await page.context().clearCookies()
+  await page.evaluate(() => localStorage.clear())
+  await authenticate(page, credentials)
+  await page.goto('/me/recruitment-listings')
+  await waitForHydration(page)
+  await expect(page.locator('body')).not.toContainText(`募集 #${listingId}`)
+}
+
 function localDateTime(minutesFromNow: number) {
   const value = new Date(Date.now() + minutesFromNow * 60_000)
   const pad = (part: number) => String(part).padStart(2, '0')
@@ -68,8 +119,8 @@ async function createAndPublishOperationalListing(
   await fillDateTime(page, 'endAt', localDateTime(27 * 60))
   await fillDateTime(page, 'applicationDeadline', localDateTime(60))
   await fillDateTime(page, 'autoCancelAt', localDateTime(60))
-  await page.locator('#capacity input').fill('6')
-  await page.locator('#minCapacity input').fill('2')
+  await page.locator('#capacity input').fill('1')
+  await page.locator('#minCapacity input').fill('1')
 
   const createResponsePromise = page.waitForResponse(response =>
     /\/api\/v1\/(?:teams|organizations)\/[^/]+\/recruitment-listings$/.test(response.url())
@@ -108,8 +159,6 @@ test.afterEach(async ({ page }) => {
       `${API_BASE_URL}/api/v1/me/market/listings/${cleanupPersonalListingId}/cancel`,
       { data: { reason: 'e2e cleanup' } },
     )
-    // 公開済み個人札は現行APIではDRAFT取消対象外（409）。その場合も、テストで設定した
-    // autoCancelAt（実行5分後）によって短時間で公開市から除外される。
     expect([200, 409]).toContain(cleanup.status())
     cleanupPersonalListingId = null
   }
@@ -130,7 +179,7 @@ test.afterAll(async ({ browser }) => {
       `${API_BASE_URL}/api/v1/recruitment-listings/${id}/cancel`,
       { data: { reason: 'e2e cleanup' } },
     )
-    expect(cleanup.status()).toBe(200)
+    expect([200, 409]).toContain(cleanup.status())
     await page.close()
   }
 })
@@ -194,8 +243,8 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   await fillDateTime(page, 'endAt', localDateTime(27 * 60))
   await fillDateTime(page, 'applicationDeadline', localDateTime(5))
   await fillDateTime(page, 'autoCancelAt', localDateTime(5))
-  await form.locator('#capacity input').fill('6')
-  await form.locator('#minCapacity input').fill('2')
+  await form.locator('#capacity input').fill('1')
+  await form.locator('#minCapacity input').fill('1')
 
   const [createdResponse] = await Promise.all([
     page.waitForResponse(response =>
@@ -245,6 +294,25 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   expect(titleResponse.status()).toBe(200)
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
 
+  await applyToListingFromUi(page, created.data.id, USER)
+  await authenticate(page, ADMIN)
+  await page.goto('/me/market')
+  await waitForHydration(page)
+  const personalCard = page.locator('article').filter({ hasText: title })
+  await expect(personalCard).toContainText('満員')
+  await personalCard.getByRole('button', { name: '札を取り下げる', exact: true }).click()
+  const confirmButton = page.getByRole('button', { name: '札を取り下げる', exact: true }).last()
+  const [cancelResponse] = await Promise.all([
+    page.waitForResponse(response =>
+      response.url().endsWith(`/api/v1/me/market/listings/${created.data.id}/cancel`)
+      && response.request().method() === 'POST',
+    ),
+    confirmButton.click(),
+  ])
+  expect(cancelResponse.status()).toBe(200)
+  cleanupPersonalListingId = null
+  await assertParticipationInactiveFromUi(page, created.data.id, USER)
+
 })
 
 test('MARKET-OWNER-UI-002: チーム市から主体を保って札を画面作成・公開できる', async ({ page }) => {
@@ -258,8 +326,12 @@ test('MARKET-OWNER-UI-002: チーム市から主体を保って札を画面作�
 
   await expect(page).toHaveURL(/\/teams\/fc-u-18\/recruitment-listings\/new$/)
   const title = `E2E-チーム市-UI-${Date.now()}`
-  await createAndPublishOperationalListing(page, title, TEAM_ADMIN)
+  const listingId = await createAndPublishOperationalListing(page, title, TEAM_ADMIN)
   await expect(page.locator('main h1', { hasText: title })).toBeVisible()
+  await applyToListingFromUi(page, listingId, USER)
+  await authenticate(page, TEAM_ADMIN)
+  await cancelOperationalListingFromUi(page, listingId, '/teams/fc-u-18/market')
+  await assertParticipationInactiveFromUi(page, listingId, USER)
 })
 
 test('MARKET-OWNER-UI-003: 組織市から主体を保って札を画面作成・公開できる', async ({ page }) => {
@@ -286,8 +358,16 @@ test('MARKET-OWNER-UI-003: 組織市から主体を保って札を画面作成�
     new RegExp(`/organizations/${organization!.slug}/recruitment-listings/new$`),
   )
   const title = `E2E-組織市-UI-${Date.now()}`
-  await createAndPublishOperationalListing(page, title, USER)
+  const listingId = await createAndPublishOperationalListing(page, title, USER)
   await expect(page.locator('main h1', { hasText: title })).toBeVisible()
+  await applyToListingFromUi(page, listingId, ADMIN)
+  await authenticate(page, USER)
+  await cancelOperationalListingFromUi(
+    page,
+    listingId,
+    `/organizations/${organization!.slug}/market`,
+  )
+  await assertParticipationInactiveFromUi(page, listingId, ADMIN)
 })
 
 test('MARKET-OWNER-UI-004: 公開市でチーム・組織を画面から絞り込める（個人はUI-001で検証）', async ({ page }) => {
