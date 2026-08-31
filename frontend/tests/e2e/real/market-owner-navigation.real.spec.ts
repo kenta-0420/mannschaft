@@ -15,6 +15,7 @@ const ADMIN = {
   email: 'e2e-admin@test.mannschaft.local',
   password: 'TestPass2026!',
 }
+let cleanupPersonalListingId: number | null = null
 
 async function authenticate(page: Page) {
   await loginViaApi(page, ADMIN, { apiBaseUrl: API_BASE_URL })
@@ -24,6 +25,16 @@ async function fillDateTime(page: Page, id: string, value: string) {
   await page.locator(`input#${id}`).fill(value)
   await page.locator(`input#${id}`).dispatchEvent('change')
 }
+
+test.afterEach(async ({ page }) => {
+  if (cleanupPersonalListingId == null) return
+  const cleanup = await page.request.post(
+    `${API_BASE_URL}/api/v1/me/market/listings/${cleanupPersonalListingId}/cancel`,
+    { data: { reason: 'e2e cleanup' } },
+  )
+  expect(cleanup.status()).toBe(200)
+  cleanupPersonalListingId = null
+})
 
 test('MARKET-OWNER-UI-000: 未ログインでは個人札の作成画面へ入れない', async ({ page }) => {
   await page.goto('/market')
@@ -69,6 +80,7 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   ])
   expect(createdResponse.status()).toBe(201)
   const created = (await createdResponse.json()) as { data: { id: number } }
+  cleanupPersonalListingId = created.data.id
 
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
 
@@ -99,12 +111,6 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   expect(personalBody.data.every(listing => listing.owner.scopeType === 'PERSONAL')).toBe(true)
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
 
-  // 後始末だけ API を使う。作成操作と永続化確認は上の UI 経路で完了している。
-  const cleanup = await page.request.post(
-    `${API_BASE_URL}/api/v1/me/market/listings/${created.data.id}/cancel`,
-    { data: { reason: 'e2e cleanup' } },
-  )
-  expect(cleanup.status()).toBe(200)
 })
 
 test('MARKET-OWNER-UI-002: チーム市から主体を保って札作成画面へ進める', async ({ page }) => {
