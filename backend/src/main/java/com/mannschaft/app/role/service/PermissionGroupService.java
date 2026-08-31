@@ -1,5 +1,6 @@
 package com.mannschaft.app.role.service;
 
+import com.mannschaft.app.role.security.BillingPermissionGroupGuard;
 import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.PermissionGroupEntity;
 import com.mannschaft.app.role.entity.PermissionGroupPermissionEntity;
@@ -46,6 +47,7 @@ public class PermissionGroupService {
     private final CacheManager cacheManager;
     private final CacheErrorHandler cacheErrorHandler;
     private final UserRowLockService userRowLockService;
+    private final BillingPermissionGroupGuard billingPermissionGroupGuard;
 
     private static final List<String> F0914_SENSITIVE_PERMISSIONS =
             List.of("SEND_PAID_TIMELINE", "VIEW_TIMELINE_COST");
@@ -57,6 +59,9 @@ public class PermissionGroupService {
     public ApiResponse<PermissionGroupResponse> createPermissionGroup(Long scopeId, String scopeType,
                                                                        PermissionGroupRequest req, Long createdBy) {
         userRowLockService.lock(createdBy);
+        boolean billingProtected = billingPermissionGroupGuard.authorizeMutation(
+                BillingPermissionGroupGuard.Operation.CREATE,
+                createdBy, scopeId, scopeType, null, List.of(), req.getPermissionIds());
         // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみ権限グループを作成できる。
         requireMutationAuthority(createdBy, scopeId, scopeType, req.getPermissionIds());
 
@@ -77,6 +82,12 @@ public class PermissionGroupService {
 
         // パーミッション紐付け
         savePermissionGroupPermissions(group.getId(), req.getPermissionIds());
+        if (billingProtected) {
+            billingPermissionGroupGuard.recordSuccess(
+                    BillingPermissionGroupGuard.Operation.CREATE,
+                    createdBy, null, scopeId, scopeType, group.getId(),
+                    List.of(), req.getPermissionIds());
+        }
 
         log.info("権限グループ作成完了: groupId={}, scopeType={}, scopeId={}", group.getId(), scopeType, scopeId);
         return ApiResponse.of(toResponse(group));
@@ -95,6 +106,12 @@ public class PermissionGroupService {
         // 束1 BOLA 根治: グループが属するスコープの ADMIN/DEPUTY_ADMIN のみ更新できる（別スコープ ADMIN の越境改変を遮断）。
         List<Long> oldPermissionIds = permissionIdsForGroup(groupId);
         List<Long> affectedUsers = userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(groupId));
+        Long scopeId = scopeId(group);
+        String scopeType = scopeType(group);
+        boolean billingProtected = billingPermissionGroupGuard.authorizeMutation(
+                BillingPermissionGroupGuard.Operation.UPDATE,
+                actorUserId, scopeId, scopeType, groupId,
+                oldPermissionIds, req.getPermissionIds());
         requireMutationAuthority(actorUserId, group, union(oldPermissionIds, req.getPermissionIds()));
 
         // パーミッション存在確認
@@ -111,6 +128,12 @@ public class PermissionGroupService {
         permissionGroupPermissionRepository.deleteByGroupId(groupId);
         savePermissionGroupPermissions(groupId, req.getPermissionIds());
         evictAfterCommit(affectedUsers, group);
+        if (billingProtected) {
+            billingPermissionGroupGuard.recordSuccess(
+                    BillingPermissionGroupGuard.Operation.UPDATE,
+                    actorUserId, null, scopeId, scopeType, groupId,
+                    oldPermissionIds, req.getPermissionIds());
+        }
 
         log.info("権限グループ更新完了: groupId={}", groupId);
         return ApiResponse.of(toResponse(updated));
@@ -126,6 +149,11 @@ public class PermissionGroupService {
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_006));
 
         List<Long> permissionIds = permissionIdsForGroup(groupId);
+        Long scopeId = scopeId(original);
+        String scopeType = scopeType(original);
+        boolean billingProtected = billingPermissionGroupGuard.authorizeMutation(
+                BillingPermissionGroupGuard.Operation.DUPLICATE,
+                createdBy, scopeId, scopeType, groupId, permissionIds, List.of());
 
         // 束1 BOLA 根治: 複製元が属するスコープの ADMIN/DEPUTY_ADMIN のみ複製できる。
         requireMutationAuthority(createdBy, original, permissionIds);
@@ -142,6 +170,12 @@ public class PermissionGroupService {
 
         // パーミッション紐付けを複製
         savePermissionGroupPermissions(copy.getId(), permissionIds);
+        if (billingProtected) {
+            billingPermissionGroupGuard.recordSuccess(
+                    BillingPermissionGroupGuard.Operation.DUPLICATE,
+                    createdBy, null, scopeId, scopeType, copy.getId(),
+                    permissionIds, permissionIds);
+        }
 
         log.info("権限グループ複製完了: originalId={}, newId={}", groupId, copy.getId());
         return ApiResponse.of(toResponse(copy));
@@ -160,9 +194,20 @@ public class PermissionGroupService {
         List<Long> permissionIds = permissionGroupPermissionRepository.findByGroupId(groupId).stream()
                 .map(PermissionGroupPermissionEntity::getPermissionId).toList();
         List<Long> affectedUsers = userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(groupId));
+        Long scopeId = scopeId(group);
+        String scopeType = scopeType(group);
+        boolean billingProtected = billingPermissionGroupGuard.authorizeMutation(
+                BillingPermissionGroupGuard.Operation.DELETE,
+                actorUserId, scopeId, scopeType, groupId, permissionIds, List.of());
         requireMutationAuthority(actorUserId, group, permissionIds);
         permissionGroupRepository.delete(group);
         evictAfterCommit(affectedUsers, group);
+        if (billingProtected) {
+            billingPermissionGroupGuard.recordSuccess(
+                    BillingPermissionGroupGuard.Operation.DELETE,
+                    actorUserId, null, scopeId, scopeType, groupId,
+                    permissionIds, List.of());
+        }
         log.info("権限グループ削除完了: groupId={}", groupId);
     }
 
@@ -312,6 +357,8 @@ public class PermissionGroupService {
                 .noneMatch(group -> group.getId().equals(id)))) {
             throw new BusinessException(RoleErrorCode.ROLE_006);
         }
+        boolean billingProtected = billingPermissionGroupGuard.authorizeAssignment(
+                assignedBy, userId, scopeId, scopeType, oldGroupIds, req.getGroupIds());
         requireMutationAuthority(assignedBy, scopeId, scopeType, union(oldPermissionIds, newPermissionIds));
         if (!scopeGroupIds.isEmpty()) {
             userPermissionGroupRepository.deleteByUserIdAndGroupIdIn(userId, scopeGroupIds);
@@ -335,6 +382,12 @@ public class PermissionGroupService {
         log.info("ユーザー権限グループ割当完了: userId={}, scopeType={}, scopeId={}, groupCount={}",
                 userId, scopeType, scopeId, req.getGroupIds().size());
         evictAfterCommit(List.of(userId), scopeType, scopeId);
+        if (billingProtected) {
+            billingPermissionGroupGuard.recordSuccess(
+                    BillingPermissionGroupGuard.Operation.ASSIGN,
+                    assignedBy, userId, scopeId, scopeType, null,
+                    oldPermissionIds, newPermissionIds);
+        }
     }
 
     // ========================================
@@ -384,6 +437,14 @@ public class PermissionGroupService {
 
     private List<Long> union(List<Long> first, List<Long> second) {
         return java.util.stream.Stream.concat(first.stream(), second.stream()).distinct().toList();
+    }
+
+    private Long scopeId(PermissionGroupEntity group) {
+        return group.getTeamId() != null ? group.getTeamId() : group.getOrganizationId();
+    }
+
+    private String scopeType(PermissionGroupEntity group) {
+        return group.getTeamId() != null ? "TEAM" : "ORGANIZATION";
     }
 
     private void validateAssignmentTarget(Long userId, Long scopeId, String scopeType,

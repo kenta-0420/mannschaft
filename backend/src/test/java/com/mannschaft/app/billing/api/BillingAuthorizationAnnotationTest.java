@@ -31,8 +31,8 @@ class BillingAuthorizationAnnotationTest {
     // ---- 契約 API（AC-10: scope ADMIN 固定・本人固定） ----
 
     @Test
-    @DisplayName("AC-10: 契約作成/解約/変更の TEAM は isScopeAdmin('TEAM')")
-    void contract_team_isScopeAdmin() throws Exception {
+    @DisplayName("AC-10: 契約作成/解約/変更の TEAM は BillingAccessGuard.canManage('TEAM')")
+    void contract_team_usesBillingAccessGuard() throws Exception {
         for (String m : new String[]{"createForTeam", "cancelForTeam", "changeForTeam"}) {
             Method[] all = BillingContractController.class.getMethods();
             Method target = null;
@@ -45,13 +45,14 @@ class BillingAuthorizationAnnotationTest {
             assertThat(target).as("メソッド %s が存在すること", m).isNotNull();
             PreAuthorize pre = target.getAnnotation(PreAuthorize.class);
             assertThat(pre).as("%s に @PreAuthorize", m).isNotNull();
-            assertThat(pre.value()).contains("isScopeAdmin").contains("'TEAM'");
+            assertThat(pre.value()).contains("@billingAccessGuard.canManage")
+                    .contains("EntitlementScopeKind).TEAM").doesNotContain("isScopeAdmin");
         }
     }
 
     @Test
-    @DisplayName("AC-10: 契約作成/解約/変更の ORG は isScopeAdmin('ORGANIZATION')")
-    void contract_org_isScopeAdmin() {
+    @DisplayName("AC-10: 契約作成/解約/変更の ORG は BillingAccessGuard.canManage('ORGANIZATION')")
+    void contract_org_usesBillingAccessGuard() {
         for (String m : new String[]{"createForOrg", "cancelForOrg", "changeForOrg"}) {
             Method target = null;
             for (Method x : BillingContractController.class.getMethods()) {
@@ -63,7 +64,8 @@ class BillingAuthorizationAnnotationTest {
             assertThat(target).as("メソッド %s が存在すること", m).isNotNull();
             PreAuthorize pre = target.getAnnotation(PreAuthorize.class);
             assertThat(pre).as("%s に @PreAuthorize", m).isNotNull();
-            assertThat(pre.value()).contains("isScopeAdmin").contains("'ORGANIZATION'");
+            assertThat(pre.value()).contains("@billingAccessGuard.canManage")
+                    .contains("EntitlementScopeKind).ORG").doesNotContain("isScopeAdmin");
         }
     }
 

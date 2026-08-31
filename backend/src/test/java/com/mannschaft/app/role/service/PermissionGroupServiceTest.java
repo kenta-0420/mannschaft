@@ -1,5 +1,6 @@
 package com.mannschaft.app.role.service;
 
+import com.mannschaft.app.role.security.BillingPermissionGroupGuard;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -75,6 +76,9 @@ class PermissionGroupServiceTest {
 
     @Mock
     private UserRowLockService userRowLockService;
+
+    @Mock
+    private BillingPermissionGroupGuard billingPermissionGroupGuard;
 
     @InjectMocks
     private PermissionGroupService permissionGroupService;
@@ -648,6 +652,82 @@ class PermissionGroupServiceTest {
         verify(accessControlService, times(3)).checkScopeAdminOnly(USER_ID, SCOPE_ID, "TEAM");
         verify(userPermissionGroupRepository, never()).deleteByUserIdAndGroupIdIn(anyLong(), anyList());
         verify(userPermissionGroupRepository, never()).save(any(UserPermissionGroupEntity.class));
+    }
+
+    @Test
+    @DisplayName("課金権限: update は変更前と変更後の権限IDを専用ガードへ渡す")
+    void updatePermissionGroup_passesOldAndNewPermissionsToBillingGuard() {
+        PermissionGroupEntity group = createGroupEntity(GROUP_ID, "billing");
+        PermissionGroupRequest request = new PermissionGroupRequest(
+                "normal", "DEPUTY_ADMIN", List.of(PERM_ID_2));
+        given(permissionGroupRepository.findByIdForUpdate(GROUP_ID)).willReturn(Optional.of(group));
+        given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of(
+                PermissionGroupPermissionEntity.builder()
+                        .groupId(GROUP_ID).permissionId(PERM_ID_1).build()));
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(billingPermissionGroupGuard).authorizeMutation(
+                        BillingPermissionGroupGuard.Operation.UPDATE,
+                        CREATED_BY, SCOPE_ID, "TEAM", GROUP_ID,
+                        List.of(PERM_ID_1), List.of(PERM_ID_2));
+
+        assertThatThrownBy(() -> permissionGroupService.updatePermissionGroup(
+                GROUP_ID, request, CREATED_BY)).isInstanceOf(BusinessException.class);
+
+        verify(permissionGroupRepository, never()).save(any());
+        verify(permissionGroupPermissionRepository, never()).deleteByGroupId(anyLong());
+    }
+
+    @Test
+    @DisplayName("課金権限: delete と duplicate は変更前の権限IDを専用ガードへ渡す")
+    void deleteAndDuplicate_passOldPermissionsToBillingGuard() {
+        PermissionGroupEntity group = createGroupEntity(GROUP_ID, "billing");
+        given(permissionGroupRepository.findByIdForUpdate(GROUP_ID)).willReturn(Optional.of(group));
+        given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of(
+                PermissionGroupPermissionEntity.builder()
+                        .groupId(GROUP_ID).permissionId(PERM_ID_1).build()));
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(billingPermissionGroupGuard).authorizeMutation(
+                        BillingPermissionGroupGuard.Operation.DELETE,
+                        CREATED_BY, SCOPE_ID, "TEAM", GROUP_ID,
+                        List.of(PERM_ID_1), List.of());
+
+        assertThatThrownBy(() -> permissionGroupService.deletePermissionGroup(GROUP_ID, CREATED_BY))
+                .isInstanceOf(BusinessException.class);
+        verify(permissionGroupRepository, never()).delete(any());
+
+        reset(billingPermissionGroupGuard);
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(billingPermissionGroupGuard).authorizeMutation(
+                        BillingPermissionGroupGuard.Operation.DUPLICATE,
+                        CREATED_BY, SCOPE_ID, "TEAM", GROUP_ID,
+                        List.of(PERM_ID_1), List.of());
+        assertThatThrownBy(() -> permissionGroupService.duplicatePermissionGroup(GROUP_ID, CREATED_BY))
+                .isInstanceOf(BusinessException.class);
+        verify(permissionGroupRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("課金権限: 全解除でも現在割当のグループIDを専用ガードへ渡す")
+    void clearAssignment_passesCurrentGroupsToBillingGuard() {
+        PermissionGroupEntity group = createGroupEntity(GROUP_ID, "billing");
+        given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of(group));
+        given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of(
+                UserPermissionGroupEntity.builder().userId(USER_ID).groupId(GROUP_ID).build()));
+        given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of(
+                PermissionGroupPermissionEntity.builder()
+                        .groupId(GROUP_ID).permissionId(PERM_ID_1).build()));
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(billingPermissionGroupGuard).authorizeAssignment(
+                        CREATED_BY, USER_ID, SCOPE_ID, "TEAM",
+                        List.of(GROUP_ID), List.of());
+
+        assertThatThrownBy(() -> permissionGroupService.assignUserPermissionGroups(
+                USER_ID, SCOPE_ID, "TEAM",
+                new UserPermissionGroupAssignRequest(List.of()), CREATED_BY))
+                .isInstanceOf(BusinessException.class);
+
+        verify(userPermissionGroupRepository, never())
+                .deleteByUserIdAndGroupIdIn(anyLong(), anyList());
     }
 
     @Test
