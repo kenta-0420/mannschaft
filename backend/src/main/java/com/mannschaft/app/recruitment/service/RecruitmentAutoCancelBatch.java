@@ -19,11 +19,12 @@ import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepositor
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -66,6 +67,7 @@ public class RecruitmentAutoCancelBatch {
     private final RecruitmentParticipantHistoryRepository historyRepository;
     private final ConfirmableNotificationService confirmableNotificationService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ObjectProvider<RecruitmentAutoCancelBatch> selfProvider;
 
     /**
      * 5分間隔で自動キャンセル対象の募集を処理する。
@@ -89,7 +91,9 @@ public class RecruitmentAutoCancelBatch {
         int totalCancelled = 0;
         for (RecruitmentListingEntity candidate : candidates) {
             try {
-                int result = processSingleListing(candidate.getId(), now);
+                // 同一 Bean 内の直接呼び出しでは @Transactional が適用されないため、
+                // Spring プロキシを経由して行ロックとイベントの AFTER_COMMIT を有効にする。
+                int result = selfProvider.getObject().processSingleListing(candidate.getId(), now);
                 totalCancelled += result;
             } catch (Exception e) {
                 log.warn("F03.11 自動キャンセルバッチ 個別処理失敗: listingId={}, error={}",

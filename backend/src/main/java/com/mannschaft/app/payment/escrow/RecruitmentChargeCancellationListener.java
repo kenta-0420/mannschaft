@@ -16,10 +16,8 @@ public class RecruitmentChargeCancellationListener {
     private final EscrowTransactionRepository escrowTransactionRepository;
     private final EscrowLifecycleService escrowLifecycleService;
 
-    // 手動取消はトランザクションの commit 後に実行する。
-    // RecruitmentAutoCancelBatch#run から同一bean内で呼ばれる processSingleListing は AOP の
-    // @Transactional を経由しないため、自動取消時にもイベントを落とさないよう fallback を許可する。
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    // 手動・自動取消のトランザクションが commit した後に実行する。
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onRecruitmentCancelled(RecruitmentCancelledEvent event) {
         if (!event.paymentEnabled()) {
             return;
