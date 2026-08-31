@@ -19906,7 +19906,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 個人札のDRAFT取消 */
+        /** 個人札の取消 */
         post: operations["cancel_10"];
         delete?: never;
         options?: never;
@@ -20045,6 +20045,23 @@ export interface paths {
          * @description 指定エンティティをお気に入りに追加する。先頭（displayOrder=0）に挿入される。20件上限・重複チェック・エンティティ存在確認を行う。
          */
         post: operations["addFavorite_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/confirmable-notifications/{notificationId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 自分宛ての確認通知を確認済みにする */
+        post: operations["confirm_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -123682,6 +123699,26 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseFavoriteResponse"];
                 };
+            };
+        };
+    };
+    confirm_6: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notificationId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 確認成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

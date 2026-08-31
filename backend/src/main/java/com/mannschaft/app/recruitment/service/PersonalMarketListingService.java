@@ -107,6 +107,6 @@ public class PersonalMarketListingService {
     @Transactional
     public RecruitmentListingResponse cancel(Long currentUserId, Long listingId,
             CancelRecruitmentListingRequest request) {
-        return listingService.cancelPersonalDraft(listingId, currentUserId, request);
+        return listingService.cancelPersonalListing(listingId, currentUserId, request);
     }
 }

@@ -74715,7 +74715,7 @@
         "tags": [
           "personal-market-listing-controller"
         ],
-        "summary": "個人札のDRAFT取消",
+        "summary": "個人札の取消",
         "operationId": "cancel_10",
         "parameters": [
           {

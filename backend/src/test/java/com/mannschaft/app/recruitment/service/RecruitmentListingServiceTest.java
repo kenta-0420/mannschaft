@@ -613,7 +613,7 @@ class RecruitmentListingServiceTest {
             RecruitmentListingResponse response = org.mockito.Mockito.mock(RecruitmentListingResponse.class);
             given(mapper.toListingResponse(listing)).willReturn(response);
 
-            RecruitmentListingResponse actual = service.cancelPersonalDraft(LISTING_ID, USER_ID,
+            RecruitmentListingResponse actual = service.cancelPersonalListing(LISTING_ID, USER_ID,
                     new CancelRecruitmentListingRequest("test"));
 
             assertThat(actual).isSameAs(response);
@@ -634,7 +634,7 @@ class RecruitmentListingServiceTest {
             RecruitmentListingResponse response = org.mockito.Mockito.mock(RecruitmentListingResponse.class);
             given(mapper.toListingResponse(listing)).willReturn(response);
 
-            RecruitmentListingResponse actual = service.cancelPersonalDraft(LISTING_ID, USER_ID,
+            RecruitmentListingResponse actual = service.cancelPersonalListing(LISTING_ID, USER_ID,
                     new CancelRecruitmentListingRequest("test"));
 
             assertThat(actual).isSameAs(response);
@@ -662,7 +662,7 @@ class RecruitmentListingServiceTest {
                     eq(LISTING_ID), any(), eq(PageRequest.of(0, 100))))
                     .willReturn(new PageImpl<>(List.of(participant)), Page.empty());
 
-            service.cancelPersonalDraft(LISTING_ID, USER_ID,
+            service.cancelPersonalListing(LISTING_ID, USER_ID,
                     new CancelRecruitmentListingRequest("test"));
 
             assertThat(participant.getStatus())

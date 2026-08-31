@@ -696,7 +696,7 @@ public class RecruitmentListingService {
     }
 
     @Transactional
-    public RecruitmentListingResponse cancelPersonalDraft(Long listingId, Long userId,
+    public RecruitmentListingResponse cancelPersonalListing(Long listingId, Long userId,
             CancelRecruitmentListingRequest request) {
         return cancelInternal(listingId, userId, request, true);
     }

@@ -97,7 +97,7 @@ class PersonalMarketListingServiceTest {
 
         service.cancel(currentUserId, listingId, Mockito.mock(CancelRecruitmentListingRequest.class));
 
-        verify(listingService).cancelPersonalDraft(eq(listingId), eq(currentUserId),
+        verify(listingService).cancelPersonalListing(eq(listingId), eq(currentUserId),
                 any(CancelRecruitmentListingRequest.class));
     }
 
