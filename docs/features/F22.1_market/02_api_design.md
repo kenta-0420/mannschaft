@@ -52,6 +52,7 @@
 | `prefecture` | CHAR(2) | 任意 | 都道府県コード。未指定＝全国 |
 | `city` | CHAR(5) | 任意 | 市区町村コード。指定時は `prefecture` と整合必須 |
 | `category_id` | BIGINT | 任意 | ジャンル（`recruitment_categories`） |
+| `owner_type` | enum | 任意 | 札主区分（`PERSONAL` / `TEAM` / `ORGANIZATION`） |
 | `keyword` | string | 任意 | タイトル部分一致 |
 | `include_region_none` | bool | 任意 | "地域を問わない" 札も含めるか（既定 true） |
 | `page` / `size` | int | 任意 | ページネーション（既定 0 / 20） |

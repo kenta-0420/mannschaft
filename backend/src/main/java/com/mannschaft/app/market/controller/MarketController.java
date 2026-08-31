@@ -10,6 +10,7 @@ import com.mannschaft.app.market.dto.MarketRegionNodeResponse;
 import com.mannschaft.app.market.dto.MarketSummaryResponse;
 import com.mannschaft.app.market.service.MarketQueryService;
 import com.mannschaft.app.matching.service.RegionTranslationService;
+import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.RecruitmentCategoryResponse;
 import com.mannschaft.app.recruitment.service.RecruitmentCategoryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -101,6 +102,7 @@ public class MarketController {
             @RequestParam(required = false) String prefecture,
             @RequestParam(required = false) String city,
             @RequestParam(name = "category_id", required = false) Long categoryId,
+            @RequestParam(name = "owner_type", required = false) RecruitmentScopeType ownerType,
             @RequestParam(required = false) String keyword,
             @RequestParam(name = "include_region_none", defaultValue = "true") boolean includeRegionNone,
             @RequestParam(defaultValue = "0") int page,
@@ -109,7 +111,7 @@ public class MarketController {
             @RequestHeader(name = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
         String resolvedLang = resolveLang(lang, acceptLanguage);
         Page<MarketListingResponse> result = marketQueryService.searchListings(
-                prefecture, city, categoryId, keyword, includeRegionNone,
+                prefecture, city, categoryId, ownerType, keyword, includeRegionNone,
                 PageRequest.of(page, size), resolvedLang, SecurityUtils.getCurrentUserIdOrNull());
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());

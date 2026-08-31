@@ -7,6 +7,7 @@ const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const recruitmentApi = useRecruitmentApi()
+const { resolveOrganizationNumericId } = useOrganizationNumericId()
 const { error } = useNotification()
 
 const orgSlug = computed(() => String(route.params.slug))
@@ -16,7 +17,8 @@ const loading = ref(false)
 async function load() {
   loading.value = true
   try {
-    const result = await recruitmentApi.listOrganizationListings(orgSlug.value)
+    const orgNumericId = await resolveOrganizationNumericId(orgSlug.value)
+    const result = await recruitmentApi.listOrganizationListings(orgNumericId)
     listings.value = result.data
   } catch (e) {
     error(String(e))

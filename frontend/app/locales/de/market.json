@@ -40,12 +40,19 @@
       "prefecture": "Präfektur",
       "city": "Stadt",
       "category": "Kategorie",
+      "ownerType": "Anbieter",
       "keyword": "Nach Stichwort suchen",
       "allPrefectures": "Landesweit",
       "allCities": "Stadt auswählen",
       "allCategories": "Alle Kategorien",
+      "allOwnerTypes": "Alle Anbieter",
       "includeRegionNone": "Ohne Region einschließen",
       "mobileToggle": "Filtern"
+    },
+    "ownerType": {
+      "personal": "Person",
+      "team": "Team",
+      "organization": "Organisation"
     },
     "breadcrumb": {
       "national": "Landesweit",

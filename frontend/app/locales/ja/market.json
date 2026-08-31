@@ -40,12 +40,19 @@
       "prefecture": "都道府県",
       "city": "市区町村",
       "category": "ジャンル",
+      "ownerType": "札主",
       "keyword": "キーワード検索",
       "allPrefectures": "全国",
       "allCities": "市区町村を選択",
       "allCategories": "すべてのジャンル",
+      "allOwnerTypes": "すべての札主",
       "includeRegionNone": "地域指定なしも含む",
       "mobileToggle": "絞り込み"
+    },
+    "ownerType": {
+      "personal": "個人",
+      "team": "チーム",
+      "organization": "組織"
     },
     "breadcrumb": {
       "national": "全国",
