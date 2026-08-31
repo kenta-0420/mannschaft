@@ -128,7 +128,7 @@ CREATE TABLE plan_price_bands (
 
 ## 3. 業務テーブル（UUIDv7）
 
-> **2026-08-31 改訂**: `billing_customers`、`billing_price_versions`、`billing_contract_changes`、`billing_customer_migrations`、請求投影と既存表 ALTER は [05_billing_center.md §5](05_billing_center.md#5-完全-ddl-と-flyway) を正本とする。`psp_customer_ref` は scope-owned Customer の履歴参照であり、TEAM/ORG の Customer を操作者個人へ解決する実装は廃止する。
+> **2026-08-31 改訂**: `billing_customers`、`billing_price_versions`、`billing_quotes`、`billing_change_previews`、`billing_contract_changes`、`billing_contract_operations`、`billing_customer_migrations`、請求投影と既存表 ALTER は [05_billing_center.md §5](05_billing_center.md#5-完全-ddl-と-flyway) を正本とする。`psp_customer_ref` は scope-owned Customer の履歴参照であり、TEAM/ORG の Customer を操作者個人へ解決する実装は廃止する。
 
 ### 3.1 `billing_contracts`（PLAN/ADDON 契約行）
 
@@ -173,7 +173,7 @@ CREATE TABLE billing_contracts (
 ```
 
 - **契約の一意性は DB で保証する**（アプリ層 exists チェックだけでは TOCTOU レースで二重契約が作れるため）。§3.1.1 の「アクティブ契約ポインタ表」で物理担保する。`billing_contracts` 自体は**契約履歴（append-only）**として全行を残す（`status` を含む UNIQUE は CANCELLED→再契約の履歴を壊すので張らない）。
-- **PSP 列**: `psp_customer_ref` / `psp_subscription_ref` / `current_period_end` は履歴/逆引き用に温存する。V196 で `billing_customer_id` と不変 `price_version_id` を追加し、以後の所有者・販売価格の正本を正規化する（05 §5）。
+- **PSP 列**: `psp_customer_ref` / `psp_subscription_ref` / `current_period_end` は履歴/逆引き用に温存する。V196 で `billing_customer_id` と不変 `price_band_version_id` を追加する。親`billing_price_versions`はcatalog revision、Money/税/Stripe Priceを持つ子`billing_price_band_versions`を販売正本とし、以後の所有者・販売価格を正規化する（05 §5）。
 - Repository: `BillingContractRepository extends AbstractTenantAwareRepository<BillingContractEntity, UUID>`（`organization_id` NULL 許容＋`deleted_at` 保持で適用・escrow 前例・§0）。
 
 ### 3.1.1 `active_contract_pointers`（契約一意性の DB バックストップ・H-1）
@@ -313,7 +313,7 @@ activeMemberCount(scopeKind, scopeId):
 - **無償** `ACTIVE → CANCELLED` 時、当該契約由来の entitlements（`source_ref_id = contract.id` かつ `revoked_at IS NULL`）を**同一トランザクションで全件 revoke**（AC-20/AC-36）。
 - **有償解約（D-3）**: `cancel_at_period_end` を予約し、由来 entitlements の `valid_until` を `current_period_end` にセット（webhook 未達でも期末に自動失効する保険・半開区間・AC-35）。EXPIRED 確定は `customer.subscription.deleted` webhook。
 - **PENDING では entitlements を発行しない**（入金確定＝`invoice.paid` で初めて発行・AC-32/33・05 §4）。
-- **PAST_DUE は権利を触らない**（`current_period_end` まで利用可・AC-37）。
+- **renewal の PAST_DUE は権利を触らない**（既存`current_period_end`まで利用可）。`invoice.payment_failed`では期間を延長せず、retryの`invoice.paid`だけが次periodを延長する。upgrade change invoiceのSCA失敗は05のREQUIRES_ACTIONであり、この遷移を流用しない（AC-37/05 §4）。
 - プラン変更は `billing_contract_changes` のSagaで扱う。upgrade は `invoice.paid`、downgrade は翌月1日到達後の `customer.subscription.updated` で確定し、当月に旧権利を即時取消しない（05 §4/§5）。
 
 ---

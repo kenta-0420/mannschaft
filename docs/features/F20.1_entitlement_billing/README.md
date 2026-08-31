@@ -81,7 +81,7 @@ Mannschaft の SaaS 課金（**運営 → 団体/個人**）の基盤を定義�
 - [ ] F22.1 との将来連携（実決済、請求、領収書自体は 05 で設計確定）
 - [ ] ベータ特典の付与条件判定・beta_grants → [F20.3](../F20.3_beta_perks/README.md)
 - [ ] 会費徴収（チーム→メンバー） → F08.9（逆向きの課金・§4.5）
-- [ ] 年額・返金（暦月日割り/upgrade・downgrade按分は 05 で設計確定）
+- [ ] 返金方針（暦月日割り/upgrade・downgrade按分は 05 で設計確定。年額は将来対応で、現時点では販売しない）
 - [ ] 多通貨（JPY 固定・列は `_jpy` サフィックスで明示）
 
 ---
@@ -275,20 +275,21 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 | AC-28 | 正常（H-1） | 同一スコープへの ACTIVE PLAN 契約の**並行 2 リクエスト**は、`active_contract_pointers` の UNIQUE により 1 件のみ成功・他は `ENTITLEMENT_006` 409（TOCTOU 二重契約が作れない） |
 | AC-29 | 正常（M-5） | 退会申請（猶予中）では契約・entitlements は revoke されず権利維持。退会確定（purge）で失効。撤回時は権利維持のまま |
 | AC-30 | 境界（L2） | 契約作成の**完全同時再送**では冪等キー check-then-set の非原子により片方が `active_contract_pointers` UNIQUE で `ENTITLEMENT_006`(409) になる。二重契約・二重発行は生じない（FE は 409 を「契約済み」として再取得） |
-| AC-31 | 正常（実決済 D-4） | **価格 NULL**（マスタ未設定）の契約 POST → 決済なし無償契約（従来 P1 フロー・即 ACTIVE＋entitlements 発行・`checkoutUrl=null`）。既存フローの回帰なし |
-| AC-32 | 正常（実決済 D-4） | **価格設定済み**の契約 POST → `checkoutUrl` 返却・契約は `PENDING`＋`price_jpy_snapshot` 焼付・**entitlements 未発行**。PENDING スロット占有中の再契約は `ENTITLEMENT_016`(409) |
+| AC-31 | 互換 | 旧契約POSTは無償ADDONだけを継続する。有償PLAN/ADDONは状態変更なしの `ENTITLEMENT_026`(409 `FLOW_REQUIRED`) でquote→Checkoutへ誘導し、価格未設定の有償商品は販売しない |
+| AC-32 | 正常 | 現役の有償PLAN/ADDONは認可済み `quote → checkout-session` のみで開始する。Session前にPENDING/価格band/税/人数を再検証し、**entitlements は未発行**。PENDING競合は `ENTITLEMENT_016`(409) |
 | AC-33 | 正常（実決済・2026-08-31改訂） | `checkout.session.completed` は Customer/Subscription 参照の照合・焼付のみ。**`invoice.paid` 到達で初めて** `PENDING→ACTIVE`＋entitlements 発行。未達/失敗なら未発行のまま（05 §4） |
 | AC-34 | 冪等（実決済） | 同一 webhook イベントの再送は冪等（`WebhookIdempotencyService` の event_id ゲート＋status 済チェックの**二層**・二重発行ゼロ） |
 | AC-35 | 正常（実決済 D-3） | 有償解約＝`cancel_at_period_end`。契約は ACTIVE のまま `cancelled_at` セット・由来 entitlements の `valid_until`＝`current_period_end`（半開区間・期末ちょうど false）。`customer.subscription.deleted` で `EXPIRED`＋pointer DELETE＋残 revoke |
 | AC-36 | 正常（実決済 D-3） | 無償解約＝即時失効（既存フロー不変・PSP 呼び出しなし） |
-| AC-37 | 正常（実決済） | `invoice.payment_failed` → `PAST_DUE`（**権利は触らない**＝`current_period_end` まで利用可）。`invoice.paid` で期末延長＋`PAST_DUE→ACTIVE` 回復 |
-| AC-38 | 境界（実決済 D-2） | F08.9 会費の `invoice.*`（billing に無い subscriptionId）は membership 側へ・billing は関与しない。billing の subscriptionId（`psp_subscription_ref` 逆引きヒット）は membership が処理しない（**相互 no-op**） |
+| AC-37 | 正常（実決済） | renewalの`invoice.payment_failed` → `PAST_DUE`（**権利は触らない**＝既存`current_period_end`まで利用可、期間は延長しない）。renewal retryの`invoice.paid`だけで期末延長＋`PAST_DUE→ACTIVE`回復。upgradeのSCA失敗は05のREQUIRES_ACTION |
+| AC-38 | 境界（実決済 D-2） | `invoice.*` はbilling subscription ref miss時にStripe Subscription metadata（contractId/scope/customer）を厳密照合し、成功時だけbilling refをbindして処理する。照合不能なF08.9会費だけevent id未消費でmembershipへfallthrough/200、billing所有の一時失敗は5xx再送（05 §4） |
 | AC-39 | 異常（実決済） | webhook 署名なし/不正 → 400・未処理（既存 `StripeWebhookController` の検証が billing イベントでも有効） |
 | AC-40 | 境界（実決済 D-4） | 価格入力後の**新規契約のみ**決済必須へ切替。入力前に結ばれた無償契約（`price_jpy_snapshot=NULL`）は不変（解約も即時のまま・遡及なし） |
 | AC-44 | 正常（実決済） | 新 preview/change API は upgrade を `invoice.paid` で確定、downgrade を翌月1日のSubscription Schedule適用で確定する。旧 changePlan は互換409のみ |
 | AC-45 | 正常（実決済 検分差し戻し2番） | 退会 purge 確定（`AccountPurgedEvent`）で USER スコープの PENDING/ACTIVE/PAST_DUE 契約を CANCELLED＋pointer DELETE＋entitlements revoke＋evict し、有償契約は Stripe サブスクを**即時解約**（期末解約ではない・課金継続事故防止）。申請（猶予中）・撤回は明示 no-op（権利維持） |
 | AC-46 | 異常（実決済 検分差し戻し3番） | 期末解約予約済み（ACTIVE のまま `cancelled_at` セット済み）の有償契約への再解約 DELETE は `ENTITLEMENT_011`(409)（cancel_at_period_end 再送・valid_until 再上書きの防止） |
 | AC-47 | 正常（実決済） | `checkout.session.expired` で PENDING 契約は CANCELLED＋pointer 物理 DELETE（`uk_acp_slot` スロット解放＝同一スコープで再挑戦可能）。PENDING 以外への再送は no-op（冪等） |
+| AC-48 | E2E critic 追補 | 料金・契約センターの最終API/DDL/権限・3DS・Portal・return state・legacy・a11y/Stripe staging戦略は 05 §2〜§10 を正本とする。financial UI/APIは `BillingAccessGuard.manage=true`（ADMIN又はscope一致の対応permissionを持つDEPUTY）のみ、MEMBER/未許可DEPUTYは既存entitlements以外403/非表示 |
 
 ---
 

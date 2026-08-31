@@ -2,6 +2,16 @@
 
 > **2026-08-31 改訂**: 実決済 API、月次日割り、upgrade/downgrade、月末解約の撤回、invoice/Portal は [05_billing_center.md §3〜§7](05_billing_center.md#3-暦月stripe-の正準) を正本とする。本書の旧 Checkout/customer、`checkout.session.completed` での ACTIVE 化、有償 changePlan 拒否は削除して同書に置換する。
 
+> **旧 route 互換境界（現役仕様ではない）**: 次の`BillingContractController`実在routeは新規UI/APIが使わない互換層であり、全routeを専用`BillingAccessGuard.manage=true`（USER本人、TEAM/ORGのADMIN又はscope対応課金permissionを明示付与されたDEPUTY）で認可する。MEMBER/未許可DEPUTYは403である。`POST /api/v1/{me|teams/{id}|organizations/{id}}/billing/contracts`は**無償ADDONだけ**を継続し、scope/feature/price-bandをserver再検証して直ちに無償契約を作る。有償PLAN/ADDONは状態変更なしの`409 ENTITLEMENT_026 (FLOW_REQUIRED)`を返し、必ず`POST /api/v1/me/billing/quotes → POST /api/v1/me/billing/checkout-sessions`へ誘導する。旧`PUT .../contracts/{id}`は既存`ENTITLEMENT_017`の互換409、旧`DELETE .../contracts/{id}`は無償のみ既存即時取消を継続し、有償は新`POST /api/v1/me/billing/contracts/{id}/cancel`のcontract-operation Sagaへ内部委譲する（同じidempotency/lease/監査を必須、委譲不能なら410）。旧routeは新Flowを迂回してPrice/Stripe/権利を直接更新してはならない。
+
+| 旧 route | 条件 | 確定応答/委譲先 | E2E |
+|---|---|---|---|
+| POST me/team/org contracts | 無償ADDON | 201、既存無償entitlement作成 | USER/ADMIN/許可DEPUTY、重複409 |
+| POST me/team/org contracts | 有償PLAN/ADDON | 409 `ENTITLEMENT_026` (`FLOW_REQUIRED`)、quote APIへ | Price/Stripe/pointer不変 |
+| PUT me/team/org contracts/{id} | 全て | 409 `ENTITLEMENT_017`、changes preview/changeへ | downgradeも旧権利不変 |
+| DELETE me/team/org contracts/{id} | 無償 | 200、既存即時取消 | entitlement revoke |
+| DELETE me/team/org contracts/{id} | 有償 | 新cancel Sagaへ委譲、成功200/進行202、委譲不能410 | legacy/new同時・IDOR・期末 |
+
 > **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
 > **⚠️ Phase 2 保留（マスター 2026-07-08）**: §7 の org_type イベント（営利自動切替）は初期スコープ外（README §3.3・冒頭 Phase 2 保留ブロック）。権利判定・契約/アドオン・シスアド CRUD は初期スコープに残る。
 > 権利判定（`isEntitled`/`EntitlementGuard`）・プランカタログ・契約/アドオン・シスアド CRUD・org_type イベント（**§7・Phase 2 保留**）を定義する。認可の詳細は [03_security](03_security.md)、DDL は [01_data_model](01_data_model.md)。
@@ -146,7 +156,7 @@ GET /api/v1/me/entitlements                       # USER スコープ（scopeId=
 GET /api/v1/teams/{teamId}/entitlements           # TEAM スコープ
 GET /api/v1/organizations/{orgId}/entitlements    # ORG スコープ
 認可: me=認証ユーザー / teams=当該チームのメンバー以上 / organizations=当該組織のメンバー以上
-      （閲覧はメンバー可・契約変更は ADMIN のみ＝§3。03 §1 認可マトリクス）
+      （既存 entitlements 閲覧だけはメンバー可。financial billing UI/API の契約変更・金額・invoice・Portal は `BillingAccessGuard.manage=true`、すなわちADMIN又はscope一致の対応billing permissionを明示付与されたDEPUTYだけ。MEMBER/未許可DEPUTYは403＝05 §2）
 ```
 
 レスポンス `EntitlementSummaryResponse`:
@@ -184,7 +194,7 @@ GET /api/v1/billing/entitlements/check?scopeKind=TEAM&scopeId=123&featureKey=ads
 
 ---
 
-## 3. 契約 API（PLAN / ADDON）
+## 3. 旧契約 API の互換詳細（現役の新規導線ではない）
 
 ### 3.1 プラン契約
 
@@ -192,8 +202,8 @@ GET /api/v1/billing/entitlements/check?scopeKind=TEAM&scopeId=123&featureKey=ads
 POST /api/v1/me/billing/contracts                        # USER スコープ
 POST /api/v1/teams/{teamId}/billing/contracts            # TEAM スコープ
 POST /api/v1/organizations/{orgId}/billing/contracts     # ORG スコープ
-認可: me=本人 / teams=@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')
-      / organizations=@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')（03 §2）
+認可: me=本人 / teams=@billingAccessGuard.canManage(authentication, #teamId, 'TEAM')
+      / organizations=@billingAccessGuard.canManage(authentication, #orgId, 'ORGANIZATION')（`BillingAccessGuard.manage=true`。ADMIN又はscope対応課金permissionを明示付与されたDEPUTYのみ、03 §2）
 ```
 
 リクエスト `CreateContractRequest`:
@@ -206,96 +216,17 @@ POST /api/v1/organizations/{orgId}/billing/contracts     # ORG スコープ
 
 > ADDON 契約も同型（`active_contract_pointers` に `contract_kind='ADDON'`・`addon_feature_key=featureKey` で INSERT。`uk_acp_slot` が同一 scope×feature の二重 ADDON を物理拒否＝`ENTITLEMENT_006` 409）。REVENUE な feature の ADDON 契約は §7 イベントを発火（`sourceKind=ADDON`）**【Phase 2 保留・初期スコープでは発火しない】**（§7 冒頭）。
 
-処理（PLAN の場合・擬似コード。**2026-07-10 実決済 D-4: 冒頭に価格解決の分岐を追加**）:
+この旧 `BillingContractController` の新規有償契約擬似コードは廃止する。現役の有償PLAN/ADDONは、認可済み `POST /api/v1/me/billing/quotes` でサーバーがscope-owned Customer、人数、税、ACTIVE price band、暦月期間を再計算し、確認済みquoteを一回だけ `POST /api/v1/me/billing/checkout-sessions` へ渡す。Checkoutはscope-owned Customerとband Stripe Priceだけを使い、`invoice.paid` が唯一のACTIVE/権利確定点である。無償ADDONだけは本書冒頭の旧POST互換表に従う。旧POST/PUT/DELETEは新しい価格・Checkout・Stripe・権利更新を直接実行しない。
 
-```
-createContract(scopeKind, scopeId, request, operatorUserId, idempotencyKey):     # BillingContractApplicationService
-  if idempotencyKey seen (billing:idem): return 既存結果                         # M-1 二重送信の吸収
-  priceJpy = BillingPriceResolver.resolveMonthlyPriceJpy(...)                    # ★D-4 価格解決
-  #   PLAN・USER = plans.base_monthly_price_jpy / PLAN・TEAM|ORG = plan_price_bands のバンド価格優先（NULL は base）
-  #   / ADDON = feature_catalog.addon_price_jpy
-  if priceJpy == NULL or priceJpy <= 0:  → 無償フロー（従来 P1・下記 @Transactional）  # AC-31・遡及なし（AC-40）
-  #   0 円以下は無償扱い（0 円サブスクの Checkout は成立しない・マスタ誤設定の防御）
-  else:                 → 決済フロー（BillingCheckoutService.startPaidContract）  # AC-32
-
-【無償フロー（従来 P1・不変）】
-@Transactional
-createPlanContract(scopeKind, scopeId, planKey, operatorUserId):
-  assertScopeOwnership(...)                                   # @PreAuthorize 済みだが Service 層でも再検証（二重防御・03 §2）
-  memberCount = activeMemberCount(scopeKind, scopeId)          # 01 §3.4 の既存メソッド再利用（USER=1）
-  band = resolveBand(planKey, scopeKind, memberCount)          # TEAM/ORG のみ。バンド未定義なら NULL
-  contract = INSERT billing_contracts(PLAN, planKey, status=ACTIVE,
-             member_count_snapshot, band_no_snapshot, price_jpy_snapshot=NULL(無償), contracted_at=now)
-  try:
-      INSERT active_contract_pointers(scopeKind, scopeId, PLAN, addon_feature_key='', contract_id=contract.id)
-  catch DataIntegrityViolationException (uk_acp_slot):        # H-1 TOCTOU 二重契約を DB が物理拒否
-      throw ENTITLEMENT_006                                    # 409（アプリ層 exists チェックのレースを閉じる）
-  for featureKey in plan_features(planKey):
-      INSERT entitlements(scopeKind, scopeId, featureKey, source_kind=PLAN,
-                          source_ref_id=contract.id, valid_from=now, valid_until=NULL)
-  evictEntitlementCache(scopeKind, scopeId); evictCache("teamPlan", scopeId if TEAM)
-  # ★H-5: BETA_GRANT はここを通らない（発行は F20.3 の付与サービス）。REVENUE イベントは「契約＝商用行動」でのみ発火（§7）
-  # 【Phase 2 保留】↓の営利自動切替イベント発火は初期スコープ外（README §3.3・§7 冒頭）。初期は発火しない＝org_type 自己申告のまま
-  if plan_features(planKey) に category=REVENUE の機能が含まれる:      # 【Phase 2】
-      publishRevenueFeatureActivatedEvent(scopeKind, scopeId, revenueFeatureKeys, sourceKind=PLAN)   # §7【Phase 2】
-  return ContractResponse
-
-【決済フロー（2026-07-10 実決済 D-2/D-4・BillingCheckoutService）】
-startPaidContract(scopeKind, scopeId, ..., priceJpy, operatorUserId):
-  # tx1: PENDING 契約＋pointer を起票（entitlements は★未発行）。price_jpy_snapshot=priceJpy 焼付（遡及防止）
-  pending = BillingContractService.createPendingPaidContract(...)   # @Transactional
-  #   pointer UNIQUE 競合時: 既存スロットが PENDING なら ENTITLEMENT_016(409)・ACTIVE なら ENTITLEMENT_006(409)
-  # tx 外: Stripe Checkout 生成（Mode.SUBSCRIPTION・Connect 不使用・metadata.billingContractId=契約ID・
-  #        Price はbilling_price_versions.stripe_price_ref、Customer はscope-owned billing_customers）
-  try:  checkoutUrl = BillingPaymentGateway.createSubscriptionCheckout(...)
-  catch: abandonPendingContract(pending)（CANCELLED＋pointer DELETE の補償・孤児 PENDING を残さない）
-         → throw ENTITLEMENT_015(502)
-  return ContractResponse(status=PENDING, checkoutUrl)
-  # ACTIVE 化＋entitlements 発行は invoice.paid webhook（§3.4/05 §4）で行う（AC-33）
-```
-
-レスポンス `ContractResponse`:
-
-| フィールド | 型 | null | 例 |
-|---|---|---|---|
-| `contractId` | string(UUID) | 不可 | `"0198..."` |
-| `scopeKind` / `scopeId` | string / number | 不可 | `"TEAM"` / `123` |
-| `contractKind` | string | 不可 | `"PLAN"` |
-| `planKey` | string | **可**（ADDON 時 null） | `"FULL"` |
-| `featureKey` | string | **可**（PLAN 時 null） | `null` |
-| `status` | string | 不可 | `"ACTIVE"` |
-| `memberCountSnapshot` | number | **可**（USER 時 null） | `34` |
-| `bandNoSnapshot` | number | **可** | `2` |
-| `priceJpySnapshot` | number | **可**（null＝無償契約） | `null` |
-| `contractedAt` | string(ISO-8601) | 不可 | `"2026-07-08T12:00:00"` |
-| `grantedFeatureKeys` | string[] | 不可 | `["ads.hide", ...]`（**PENDING 時は空**＝未発行） |
-| `checkoutUrl` | string | **可**（**決済フローの作成応答のみ非 null**・2026-07-10 実決済） | `"https://checkout.stripe.com/c/cs_..."` |
-| `currentPeriodEnd` | string(ISO-8601) | **可**（決済フロー契約のみ・有償解約応答の「いつまで使えるか」） | `"2026-08-10T00:00:00"` |
+旧 `ContractResponse`（特に`checkoutUrl`を契約POSTが返す形）は廃止する。現役response型は05 §7の `Quote`、`CheckoutSession`、discriminated `Contract`、`InvoiceSummary`/`InvoiceDetail` を正本とする。
 
 ### 3.2 解約
 
-```
-DELETE /api/v1/me/billing/contracts/{contractId}
-DELETE /api/v1/teams/{teamId}/billing/contracts/{contractId}
-DELETE /api/v1/organizations/{orgId}/billing/contracts/{contractId}
-認可: §3.1 と同一（scope ADMIN）。さらに Service 層で contract.scope == パスの scope を検証
-      （不一致は ENTITLEMENT_007 404 秘匿・IDOR 03 §2）
-```
-
-- **無償契約（`price_jpy_snapshot=NULL`・D-3/AC-36）**: `status=CANCELLED`＋`cancelled_at=now`、**`active_contract_pointers` の該当行を DELETE**（一意スロットを解放・次回契約を可能に）、由来 entitlements を全件 `revoked_at=now, revoked_by=操作者` に（同一トランザクション・AC-20）。scope キャッシュ evict（M-8）。即時失効。
-- **有償契約（`price_jpy_snapshot` 非 NULL＋`psp_subscription_ref` あり・D-3/AC-35・2026-07-10 実決済）**: `gateway.cancelAtPeriodEnd`（Stripe `cancel_at_period_end=true`）→ 契約は **ACTIVE のまま** `cancelled_at`＋`current_period_end` セット → 由来 entitlements の **`valid_until`＝`current_period_end`**（revoke しない・webhook 未達でも期末に自動失効する保険・半開区間）。pointer は残置（EXPIRED 確定まで再契約不可）。EXPIRED 化＋pointer DELETE＋残 revoke は `customer.subscription.deleted` webhook（§3.4）。**応答の `currentPeriodEnd` が「いつまで使えるか」**。
-- 既に CANCELLED/EXPIRED → `ENTITLEMENT_011` 409。**期末解約予約済み**（有償・ACTIVE のまま `cancelled_at` セット済み）への再解約も `ENTITLEMENT_011` 409（AC-46・cancel_at_period_end 再送/valid_until 再上書きの防止）。
+現役の有償取消/撤回は `POST /api/v1/me/billing/contracts/{id}/cancel` と `DELETE /api/v1/me/billing/contracts/{id}/cancel` のcontract-operation Sagaだけで行う（05 §7）。終了日・影響を一度だけ確認して`cancel_at_period_end`を予約し、期末まで同じ契約だけ撤回できる。旧DELETEは本書冒頭の互換表どおり、無償ADDONのみ既存即時取消を継続し、有償は同一lease/idempotency/監査を使う新Sagaへ委譲するか410である。
 
 ### 3.3 プラン変更
 
-```
-PUT /api/v1/teams/{teamId}/billing/contracts/{contractId}
-Body: { "planKey": "FULL" }         # me / organizations も同型
-認可: §3.1 と同一
-```
-
-- **legacy `changePlan`**: 互換409を返すだけで、契約、`active_contract_pointers`、entitlements、キャッシュを一切変更しない（AC-44）。同一 planKey も新 API では `ENTITLEMENT_006` 409。
-- **新 preview/change API（AC-44）**: `billing_contract_changes` を経由し、upgrade は即時日割り後に `invoice.paid` で確定する。downgrade は Stripe Subscription Schedule で翌月1日へ予約し、その時刻までは旧 entitlements を維持する。Schedule 適用を照合した `customer.subscription.updated` でのみ、旧 entitlements revoke・新 entitlements 発行・`active_contract_pointers.contract_id` の付替え・キャッシュ evict を同一トランザクションで原子的に行う（05 §3/§4/§7）。
+旧 `PUT /api/v1/{me|teams/{id}|organizations/{id}}/billing/contracts/{id}` は全条件で`409 ENTITLEMENT_017`を返す互換APIであり、契約、pointer、Stripe、entitlements、cacheを変更しない。現役の変更は `POST /api/v1/me/billing/contracts/{id}/change-previews` と `POST /api/v1/me/billing/contracts/{id}/changes` である。upgradeは即時日割りの`invoice.paid`、downgradeは翌月1日のSchedule照合まで旧entitlementを保持してから、contract bandとentitlementsを原子的に切り替える（05 §3/§4/§7）。
 
 ### 3.4 決済 Webhook（2026-07-10 実決済・D-2）
 
@@ -306,11 +237,11 @@ Body: { "planKey": "FULL" }         # me / organizations も同型
 | `checkout.session.completed` | `session.metadata.billingContractId` と session.customer/subscription が scope-owned Customer に一致 | `psp_customer_ref`/`psp_subscription_ref`/`current_period_end` を焼付するのみ。**ACTIVE 化・entitlements 発行は禁止**（`invoice.paid` が唯一の確定点） |
 | `checkout.session.expired` | 同上 | `PENDING→CANCELLED`＋pointer 物理 DELETE（再挑戦可能に） |
 | `invoice.paid` | subscription/customer を contract/billing_customer に二重照合 | `PENDING→ACTIVE` と entitlements 発行、又は有償upgradeの確定、`PAST_DUE→ACTIVE` 回復（05 §4） |
-| `invoice.payment_failed` | 同上 | `ACTIVE→PAST_DUE`（**entitlements は触らない**＝期末まで利用可・AC-37） |
+| `invoice.payment_failed` | renewal invoiceだけを対象に同上 | `ACTIVE→PAST_DUE`（**entitlements は触らない**＝既存期末まで利用可、期間は延長しない）。upgrade changeのrequires_action/pending updateは05 §4のREQUIRES_ACTIONを維持 |
 | `customer.subscription.deleted` | 同上 | `→EXPIRED`・pointer 物理 DELETE・由来 entitlements revoke・evict（AC-35） |
 
 - **冪等の二層（AC-34）**: 全イベントを既存 `WebhookIdempotencyService`（`stripe_webhook_events` の event_id UNIQUE ゲート・FAILED は再処理可）に通し、さらに各状態遷移メソッドが status 済みチェックで no-op（二重発行ゼロ）。F09.13 の `checkout.session.completed` 経路（ゲート非経由）とは異なり billing は必ずゲートを通す。
-- **F08.9 との分離（D-2・AC-38）**: `invoice.*`/`customer.subscription.deleted` は先に billing の `psp_subscription_ref` 逆引きを試み、**ヒットすれば billing・なければ従来どおり membership へ**（相互 no-op）。billing 非所有なら冪等ゲートも消費しない（membership 側が自分の event_id ゲートを通せる）。
+- **F08.9 との分離（D-2・AC-38）**: `invoice.*`/`customer.subscription.deleted` は先に billing の `psp_subscription_ref` 逆引きを試みる。miss時はStripe Subscriptionを取得し、metadataのcontractId/scope/customerIdをscope-owned Customerと厳密照合できた場合だけbilling refをbindして処理する。照合不能なものだけ従来どおりmembershipへevent id未消費でfallthroughする（相互no-op）。billing所有の一時失敗は `StripeWebhookRetryableException` として5xx、署名不正は400。
 - **失敗の握り潰し禁止**: billing ハンドラ失敗は `markFailed`＋再送出（Stripe at-least-once 再送でリカバリ・F08.9 と同流儀）。
 
 ### 3.5 退会 purge 連動（AC-45・03 §8・検分差し戻し2番）
@@ -334,16 +265,34 @@ Body: { "planKey": "FULL" }         # me / organizations も同型
 GET/POST/PUT/DELETE /api/v1/system-admin/billing/plans            # plans CRUD（{planKey} 自然キー）
 GET/POST/PUT/DELETE /api/v1/system-admin/billing/features         # feature_catalog CRUD（{featureKey}）
 PUT                 /api/v1/system-admin/billing/plans/{planKey}/features    # plan_features 一括置換
-PUT                 /api/v1/system-admin/billing/plans/{planKey}/price-bands # plan_price_bands 一括置換
+POST                /api/v1/system-admin/billing/price-revisions  # DRAFT revision+bands作成
+GET                 /api/v1/system-admin/billing/price-revisions/{id}
+POST                /api/v1/system-admin/billing/price-revisions/{id}/provision
+POST                /api/v1/system-admin/billing/price-revisions/{id}/retry-provision
+POST                /api/v1/system-admin/billing/price-revisions/{id}/activate
+PUT                 /api/v1/system-admin/billing/plans/{planKey}/price-bands # 互換入力。revision Sagaへ委譲し直接更新しない
 POST                /api/v1/system-admin/billing/grants           # 手動付与（契約行を作って発行）
 GET                 /api/v1/system-admin/billing/contracts?scopeKind=&scopeId=&status=&page=  # 横断検索
 認可: @PreAuthorize("hasRole('SYSTEM_ADMIN')")（全 EP・03 §1）
 ```
 
 - `fee_policies` シスアド CRUD（F22.1 P2-f・`/api/v1/system-admin/fee-policies`）と同じ設計様式（自然キー PATH・`@PreAuthorize` SYSTEM_ADMIN・DTO は `@Builder`）。
+
+| price revision API | request | response | status |
+|---|---|---|---|
+| `POST /price-revisions` | `Idempotency-Key` + `PriceRevisionCreateRequest` | `PriceRevisionResponse(status='DRAFT')` | 201/400/409 |
+| `GET /price-revisions/{id}` | UUIDv7 | `PriceRevisionResponse`（band別Provision state/errorを含む） | 200/404 |
+| `POST /price-revisions/{id}/provision` | `Idempotency-Key` + `{lockVersion:int64}` | `PriceRevisionResponse(status='PROVISIONING')` | 202/404/409/502 |
+| `POST /price-revisions/{id}/retry-provision` | `Idempotency-Key` + `{lockVersion:int64}` | `PriceRevisionResponse(status='PROVISIONING')` | 202/404/409/502 |
+| `POST /price-revisions/{id}/activate` | `Idempotency-Key` + `{lockVersion:int64}` | futureは`SCHEDULED`、即時は`ACTIVE`の`PriceRevisionResponse` | 200/404/409 |
+| 旧 `PUT /plans/{planKey}/price-bands` | legacy `PriceBandsReplaceRequest` | 201 revision Saga委譲結果（直接更新なし） | 201/400/409/410 |
+
+すべてSYSTEM_ADMIN限定で、idempotency/`lockVersion`/row lockを必須とする。`catalogRevision`とサーバー採番`revisionNo`は不変で、CAS対象ではない。Provisionの外部Stripe呼出はDBの`PROVISIONING` reservation commit後にのみ行い、Stripe成功後DB失敗はPrice metadataのrevisionId/bandIdで照合して回収する。activateは全band READY以外を409とし、future revisionはSCHEDULED、開始時に旧ACTIVEをRETIRED、新版をACTIVEへ遷移する。旧版を物理更新・削除しない。
+
 - **バリデーション（マスタ整合の一次防御・01 §7）**:
   - `plan_features` 置換: 各 featureKey が `feature_catalog` に実在しなければ 400。
-  - `price-bands` 置換: バンドが `band_no` 昇順で `min_members = 前バンド max_members + 1`・最終バンドのみ `max_members NULL` を許可。違反は 400。
+  - `price-bands` 互換入力は `PriceRevisionCreateRequest`（`productKind:'PLAN'|'ADDON'`,`productKey`,`scopeKind`,`effectiveFrom`,`effectiveUntil?`,`bands[]`）に変換し、DRAFT `billing_price_versions`親revision（不変`catalogRevision`/server採番`revisionNo`、可変`lockVersion`）とDRAFT `billing_price_band_versions`子行を一transactionで作る。`PriceBandInput={bandNo:int32,minMembers:int32,maxMembers:int32?,inputAmount:int64,taxBehavior:'INCLUSIVE'|'EXCLUSIVE',taxCode:string}`。taxCodeは必須のTax master snapshotを取得し、JPY端数規則でtax/excluding/includingを導出する。バンドは`band_no`昇順、`min_members = 前band max_members + 1`、最終だけ`max_members=null`、同一product/scopeのeffective interval・人数範囲重複なしをrow lockで検証する。ただしDRAFT/READY future Bは現ACTIVE A open-endedと共存でき、activate transactionがA.effective_until=B.effective_fromを設定する。違反は400/409。clientはStripe Price ref・計算済税額を渡せない。
+  - Provision はrevisionごとに非同期で各DRAFT bandのStripe Priceをmetadata照合して作成し、`provisionStatus:'DRAFT'|'PROVISIONING'|'PROVISION_FAILED'|'READY'|'SCHEDULED'|'ACTIVE'|'RETIRED'`、`provisionError?:string`、band別`stripePriceRef?:string`を返す。部分成功はREADYでなくPROVISION_FAILEDのまま、retryは失敗bandだけをidempotency key付きで再実行する。全bandがStripe refと税属性一致した場合だけactivate APIがlockVersion CASし、future BをSCHEDULED、即時BをACTIVEにする。future開始時schedulerがAをRETIRED、BをACTIVEへ遷移し、次のCも同じ境界で予約できる。同時activateは一方409であり、既存契約は保存済bandのまま次周期の価格確定時だけ新ACTIVE revisionを選ぶ。
   - `feature_catalog` 更新: `category=REVENUE` かつ `free_for_nonprofit=true` は 400（README 原則「収益機能は区分問わず有料」）。
   - `plans`/`feature_catalog` の DELETE は**参照中（ACTIVE 契約・plan_features 登録あり）なら 409**（`enabled=false` への運用を促す）。
 - 手動付与 `POST grants` Body: `{ scopeKind, scopeId, contractKind, planKey?, featureKey?, note? }` — 処理は §3.1 と同一（`created_by`=シスアド）。ベータ検証・サポート対応用。
@@ -368,7 +317,7 @@ GET                 /api/v1/system-admin/billing/contracts?scopeKind=&scopeId=&s
 - `EntitlementSummaryResponse` / `ActiveContract` / `EntitledFeature`（§2.2）
 - `EntitlementCheckResponse`（§2.3）
 - `CreateContractRequest` / `ContractResponse`（§3.1）
-- シスアド系: `PlanUpsertRequest { displayNameKey, descriptionKey, baseMonthlyPriceJpy?, sortOrder, enabled }` / `FeatureUpsertRequest { category, addonAvailable, addonPriceJpy?, freeForNonprofit, displayNameKey, descriptionKey, sortOrder, enabled }` / `PlanFeaturesReplaceRequest { featureKeys: string[] }` / `PriceBandsReplaceRequest { bands: [{ scopeKind, bandNo, minMembers, maxMembers?, monthlyPriceJpy? }] }` / `ManualGrantRequest`（§4）
+- シスアド系: `PlanUpsertRequest { displayNameKey, descriptionKey, baseMonthlyPriceJpy?, sortOrder, enabled }` / `FeatureUpsertRequest { category, addonAvailable, addonPriceJpy?, freeForNonprofit, displayNameKey, descriptionKey, sortOrder, enabled }` / `PlanFeaturesReplaceRequest { featureKeys: string[] }` / `PriceRevisionCreateRequest { productKind,productKey,scopeKind,effectiveFrom,effectiveUntil?,bands:PriceBandInput[] }` / `PriceBandInput { bandNo,minMembers,maxMembers?,inputAmount:int64,taxBehavior:'INCLUSIVE'|'EXCLUSIVE',taxCode:string }` / `PriceRevisionResponse { id:UUIDv7,catalogRevision:string,revisionNo:int64,productKind,productKey,scopeKind,effectiveFrom,effectiveUntil?,status:'DRAFT'|'PROVISIONING'|'PROVISION_FAILED'|'READY'|'SCHEDULED'|'ACTIVE'|'RETIRED',provisionAttempts:int32,lastProvisionErrorCode?:string,bands:PriceBandVersionResponse[],lockVersion:int64 }` / `PriceBandVersionResponse { id:UUIDv7,bandNo,minMembers,maxMembers?,inputAmount:int64,taxBehavior,taxCode,amountExcludingTax:int64,taxAmount:int64,amountIncludingTax:int64,stripePriceRef?:string,status,provisionErrorCode?:string,lockVersion:int64 }` / `ManualGrantRequest`。旧`PriceBandsReplaceRequest`は互換入力だけで新revision Sagaへ委譲し、直接更新DTOではない（§4）。
 - Response DTO は `@Builder`・camelCase 1:1・**全 final マルチコンストラクタの Request DTO は `@JsonCreator` 必須**（memory `feedback_dto_all_final_multi_constructor_jackson_no_creators`）。
 
 ---
@@ -529,6 +478,7 @@ public class OrgTypeAutoUpgradeListener {
 | `CHECKOUT_SESSION_FAILED` | `ENTITLEMENT_015` | **502** | ERROR | Stripe Checkout 生成失敗（2026-07-10 実決済。PENDING 契約は補償済み＝孤児なし） |
 | `CONTRACT_PENDING_PAYMENT` | `ENTITLEMENT_016` | 409 | WARN | PENDING（入金前）スロット占有中の再契約（2026-07-10 実決済・AC-32） |
 | `CONTRACT_CHANGE_REQUIRES_PAYMENT` | `ENTITLEMENT_017` | 409 | WARN | 旧 `changePlan` API の互換応答。新しい変更 API は使用せず、05 §7 の preview/change API へ移行する |
+| `BILLING_FLOW_REQUIRED` | `ENTITLEMENT_026` | 409 | WARN | 旧有償POSTだけがquote→Checkoutを迂回しようとした互換応答。旧PUTは既存017であり、017を流用しない。05 §7の新エラー018〜025と既存017を横断確認した次番号 |
 
 `GlobalExceptionHandler` への追記（設計に含む）:
 
@@ -550,6 +500,7 @@ Map.entry("ENTITLEMENT_014", HttpStatus.BAD_REQUEST),
 Map.entry("ENTITLEMENT_015", HttpStatus.BAD_GATEWAY),    // 2026-07-10 実決済
 Map.entry("ENTITLEMENT_016", HttpStatus.CONFLICT),       // 2026-07-10 実決済
 Map.entry("ENTITLEMENT_017", HttpStatus.CONFLICT),       // AC-44 changePlan 決済ガード
+Map.entry("ENTITLEMENT_026", HttpStatus.CONFLICT),       // legacy paid route: FLOW_REQUIRED
 ```
 
 ---

@@ -15,13 +15,14 @@
 | プランカタログ閲覧（`GET /billing/plans`） | 認証ユーザー | `isAuthenticated()` |
 | 権利サマリ閲覧（`GET .../entitlements`） | USER=本人 / TEAM=当該チームのメンバー以上 / ORG=当該組織のメンバー以上 | me は本人固定（scopeId をパラメータで受けない）／`@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')` 等 |
 | 単一判定（`GET /billing/entitlements/check`） | 当該スコープのメンバー以上（USER は本人のみ） | Service 層で scopeKind 別に所有権検証（§2.2） |
-| 契約作成/解約/変更・invoice・Portal（TEAM/ORG） | TEAM=ADMIN又は`MANAGE_TEAM_BILLING`を明示付与されたDEPUTY、ORG=ADMIN又は`MANAGE_ORGANIZATION_BILLING`を明示付与されたDEPUTY | `@billingAccessGuard.canManage(authentication, #scopeKind, #scopeId)`。SYSTEM_ADMIN 短絡なし |
+| 契約作成/解約/変更・invoice・Portal（TEAM/ORG） | TEAM/ORG=ADMIN又は当該scope permission groupから対応キーを明示付与されたDEPUTY | `@billingAccessGuard.canManage(authentication, #scopeKind, #scopeId)`。専用repositoryの毎要求queryで判定し、SYSTEM_ADMIN/RoleService cache短絡なし |
 | 契約作成/解約/変更（USER） | 本人 | `/me/...` パス＝`SecurityUtils.getCurrentUserId()` 固定（scopeId を受けない） |
 | マスタ CRUD・手動付与 | SYSTEM_ADMIN | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` |
 | 運営の契約横断閲覧 | SYSTEM_ADMIN（read-only） | 理由必須の別 `/system-admin/billing/**`。文書URL/Portal/変更は不可、監査必須 |
 | org_type 自動更新 **【Phase 2 保留】** | システム（イベントリスナー）のみ | **営利自動切替に属し初期スコープ外**（マスター 2026-07-08・README §3.3）。Phase 2 で実装。API 経由の直接更新は organization ドメイン既存 API の認可に従う（billing からは**イベントのみ**・直接 UPDATE 禁止） |
 
-- 課金の消費者 API は `@accessGuard.isScopeAdmin(...)` を使わない。`BillingAccessGuard` が USER本人、TEAM ADMIN/`MANAGE_TEAM_BILLING`を明示付与されたDEPUTY、ORG ADMIN/`MANAGE_ORGANIZATION_BILLING`を明示付与されたDEPUTYだけを許可する。SYSTEM_ADMIN は別の理由必須・read-only API に隔離し、DEPUTY_ADMIN をロール名だけで許可しない。
+- 課金の消費者 API は `@accessGuard.isScopeAdmin(...)` を使わない。`BillingAccessGuard` が USER本人、TEAM/ORG ADMIN、又は同一scope permission groupの対応キーを持つDEPUTYだけを許可する。DEPUTYの`role_permissions`天井行・`RoleService.resolveEffectivePermissions`・cacheを使ってはならない。SYSTEM_ADMIN は別の理由必須・read-only API に隔離し、DEPUTY_ADMIN をロール名だけで許可しない。一般MEMBERはfinancial summaryに403、既存entitlements APIだけを利用する。
+- **課金permission groupの昇格防止**: `MANAGE_TEAM_BILLING`/`MANAGE_ORGANIZATION_BILLING`を旧値又は新値に含むgroupの作成・更新・削除・member割当は`BillingPermissionGroupGuard`を必須にし、同一scopeのADMINだけを許可する。DEPUTYは全操作403、recipientは同一scopeのDEPUTY_ADMINだけ、actor=recipientは403。通常`PermissionGroupService`の自己操作経路を再利用しない。成功/拒否ともscope/actor/recipient/permissionを監査する（05 BC-21）。
 - `isAdmin` 常時 true 等の負論理・独自可視性述語を禁止（memory `feedback_visibility_bypass_f00_audit`）。
 
 ---
@@ -37,7 +38,7 @@
 
 ```java
 // 解約 API（§02 3.2）の二重防御（擬似コード）
-@PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")   // 1段目: パスの teamId に対する権限
+@PreAuthorize("@billingAccessGuard.canManage(authentication, #teamId, 'TEAM')") // 1段目: 課金管理権限（ADMIN又はscope対応permissionを明示付与されたDEPUTY）
 public void cancelContract(Long teamId, UUID contractId) {
     BillingContractEntity c = billingContractRepository.findById(contractId)
         .orElseThrow(() -> new BusinessException(EntitlementErrorCode.CONTRACT_NOT_FOUND));
@@ -103,7 +104,13 @@ assertScopeReadable(caller, scopeKind, scopeId):
 
 ---
 
-## 7. 監査ログ
+## 7. Return state・決済callback
+
+- Stripeへ渡すreturn stateはサーバー署名済みHMAC payloadだけであり、URLのscope/金額/actorを信用しない。Checkout success/cancel、Portal return、3DSはBackend/Nitro所有の固定GET callbackでHMAC・purpose・期限を検査する。Stripe/issuer起点のtop-level GETではOrigin/Referer同一originを要求しない。
+- 未認証callbackはnonceを消費せず、署名済みstateをHttpOnly/Secure/SameSite=Lax短命cookieへ退避してloginへ303する。ログイン後も同じGET callback自身がcookieをserver-side消費し、actor一致、BillingAccessGuard、nonce CASの順で消費する。別POST consume APIとCSRF/Origin/Referer判定は設けない。HMAC+purpose+expiry+actor/Guard+一回限りnonce CASを防御正本とする。cookie/URL/stateをログ・監査へ保存しない。
+- callbackで返す最終Locationはserver生成済みscope/tabだけで、placeholderや任意queryを反射しない。期限切れ・actor不一致・再利用はUSER hubのgeneric errorへ安全遷移する。
+
+## 8. 監査ログ
 
 | イベント | 記録先 | 内容 |
 |---|---|---|
@@ -116,7 +123,7 @@ assertScopeReadable(caller, scopeKind, scopeId):
 
 ---
 
-## 8. GDPR・退会
+## 9. GDPR・退会
 
 - 退会は**イベント駆動**（M-4・01 §10・**AC-45 実装済み 2026-07-11**）: `WithdrawalRequestedEvent`（申請・猶予開始）／`AccountPurgedEvent`（確定）を `BillingPurgeEventListener` が購読。**申請時は revoke せず権利維持**（撤回で復活不可のため・M-5）、**確定（purge）時に** USER スコープの PENDING/ACTIVE/PAST_DUE 契約 CANCELLED＋pointer 削除＋entitlements revoke（`REQUIRES_NEW`）。撤回時は権利維持のまま。
 - **実決済連動（AC-45）**: purge 確定時、有償契約（`psp_subscription_ref` 非 NULL）は tx 外で Stripe サブスクを**即時解約**（期末解約ではない・退会後の課金継続事故防止）。Stripe 失敗は ERROR ログで手動照合に上申（権利失効は DB 側で完了済みのため復活しない）。詳細 02 §3.5。
@@ -125,7 +132,7 @@ assertScopeReadable(caller, scopeKind, scopeId):
 
 ---
 
-## 9. ステータス確定条件 → マスター御裁可済（2026-07-08）
+## 10. ステータス確定条件 → マスター御裁可済（2026-07-08）
 
 論点（README §8 と対応）はすべてマスター裁可済み:
 
