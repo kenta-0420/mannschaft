@@ -7,7 +7,6 @@ import com.mannschaft.app.billing.api.dto.ContractResponse;
 import com.mannschaft.app.billing.api.dto.EntitlementSummaryResponse;
 import com.mannschaft.app.billing.api.dto.PagedContractResponse;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
-import com.mannschaft.app.common.security.AccessGuard;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -67,11 +66,11 @@ class BillingApiRuntimeAuthorizationTest {
     @MockitoBean
     private SystemAdminBillingService systemAdminBillingService;
 
-    // ---- SpEL の @accessGuard 参照を実行時に解決させる（false/true をスタブして経路を通す） ----
-    //   Bean 名を "accessGuard" に固定しないと SpEL の {@code @accessGuard} が EL1058E で解決失敗し 500 になる
-    //   （@WebMvcTest スライスは @Component の実 AccessGuard を走査しないため、mock を同名で登録する）。
-    @MockitoBean(name = "accessGuard")
-    private AccessGuard accessGuard;
+    // ---- SpEL の @billingAccessGuard 参照を実行時に解決させる（false/true をスタブして経路を通す） ----
+    //   Bean 名を "billingAccessGuard" に固定しないと SpEL が EL1058E で解決失敗し 500 になる。
+    //   WebMvcTest スライスは本 Guard を走査しないため、mock を同名で登録する。
+    @MockitoBean(name = "billingAccessGuard")
+    private BillingAccessGuard billingAccessGuard;
 
     // ---- @WebMvcTest コンテキスト用: フィルタ・SpEL ガードの依存解決 mock ----
     @MockitoBean
@@ -104,10 +103,10 @@ class BillingApiRuntimeAuthorizationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("契約作成 TEAM: 非ADMIN（isScopeAdmin=false）は 403（SpEL 実評価）")
+    @DisplayName("契約作成 TEAM: BillingAccessGuard=false は 403（SpEL 実評価）")
     void createForTeam_nonAdmin_403() throws Exception {
         authenticate("100", "ROLE_ADMIN"); // 一般スコープロール（SYSTEM_ADMIN ではない）
-        given(accessGuard.isScopeAdmin(any(), eq(123L), eq("TEAM"))).willReturn(false);
+        given(billingAccessGuard.canManage(any(), eq(EntitlementScopeKind.TEAM), eq(123L))).willReturn(false);
 
         mockMvc.perform(post("/api/v1/teams/{teamId}/billing/contracts", 123L)
                         .header("Idempotency-Key", "idem-1")
@@ -116,10 +115,10 @@ class BillingApiRuntimeAuthorizationTest {
     }
 
     @Test
-    @DisplayName("契約作成 TEAM: ADMIN（isScopeAdmin=true）はメソッドに到達し 201")
+    @DisplayName("契約作成 TEAM: BillingAccessGuard=true はメソッドに到達し 201")
     void createForTeam_admin_reaches_201() throws Exception {
         authenticate("100", "ROLE_ADMIN");
-        given(accessGuard.isScopeAdmin(any(), eq(123L), eq("TEAM"))).willReturn(true);
+        given(billingAccessGuard.canManage(any(), eq(EntitlementScopeKind.TEAM), eq(123L))).willReturn(true);
         given(contractApplicationService.create(eq(EntitlementScopeKind.TEAM), eq(123L), eq(100L), any(), eq("idem-2")))
                 .willReturn(ContractResponse.builder()
                         .contractId(UUID.randomUUID().toString()).scopeKind("TEAM").scopeId(123L)
@@ -133,10 +132,39 @@ class BillingApiRuntimeAuthorizationTest {
     }
 
     @Test
-    @DisplayName("契約作成 ORG: 非ADMIN（isScopeAdmin=false, 'ORGANIZATION'）は 403（SpEL 引数まで実評価）")
+    @DisplayName("契約作成 TEAM: 明示付与された DEPUTY は BillingAccessGuard=true で 201")
+    void createForTeam_explicitlyGrantedDeputy_reaches_201() throws Exception {
+        authenticate("100", "ROLE_DEPUTY_ADMIN");
+        given(billingAccessGuard.canManage(any(), eq(EntitlementScopeKind.TEAM), eq(123L))).willReturn(true);
+        given(contractApplicationService.create(eq(EntitlementScopeKind.TEAM), eq(123L), eq(100L), any(), eq("idem-deputy")))
+                .willReturn(ContractResponse.builder()
+                        .contractId(UUID.randomUUID().toString()).scopeKind("TEAM").scopeId(123L)
+                        .contractKind("PLAN").planKey("FULL").status("ACTIVE")
+                        .contractedAt(LocalDateTime.now()).grantedFeatureKeys(List.of("ads.hide")).build());
+
+        mockMvc.perform(post("/api/v1/teams/{teamId}/billing/contracts", 123L)
+                        .header("Idempotency-Key", "idem-deputy")
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody()))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("契約作成 TEAM: SYSTEM_ADMIN でも BillingAccessGuard=false なら 403")
+    void createForTeam_systemAdminWithoutScopeAccess_403() throws Exception {
+        authenticate("1", "ROLE_SYSTEM_ADMIN");
+        given(billingAccessGuard.canManage(any(), eq(EntitlementScopeKind.TEAM), eq(123L))).willReturn(false);
+
+        mockMvc.perform(post("/api/v1/teams/{teamId}/billing/contracts", 123L)
+                        .header("Idempotency-Key", "idem-system-admin")
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("契約作成 ORG: BillingAccessGuard=false, 'ORGANIZATION' は 403（SpEL 引数まで実評価）")
     void createForOrg_nonAdmin_403() throws Exception {
         authenticate("100", "ROLE_ADMIN");
-        given(accessGuard.isScopeAdmin(any(), eq(55L), eq("ORGANIZATION"))).willReturn(false);
+        given(billingAccessGuard.canManage(any(), eq(EntitlementScopeKind.ORGANIZATION), eq(55L))).willReturn(false);
 
         mockMvc.perform(post("/api/v1/organizations/{orgId}/billing/contracts", 55L)
                         .header("Idempotency-Key", "idem-3")
