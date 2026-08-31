@@ -67,7 +67,7 @@ async function loginUi(page: Page, email: string): Promise<void> {
   await waitForHydration(page)
   await page.locator('#email').fill(email)
   await page.locator('input[type="password"]').fill(PASSWORD)
-  await page.getByRole('button', { name: 'ログイン' }).click()
+  await page.getByRole('button', { name: 'ログイン', exact: true }).click()
   await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 30_000 })
 }
 
@@ -132,7 +132,9 @@ async function assertBrowserOwnerName(
   const page = await context.newPage()
   try {
     if (email) await loginUi(page, email)
-    await page.goto(`/market/listings/${listingId}`)
+    const response = await page.goto(`/market/listings/${listingId}`)
+    expect(response?.status(), '公開札詳細ページのHTTP応答').toBe(200)
+    await waitForHydration(page)
     await expect(page.getByTestId('market-detail-organizer-name')).toHaveText(expectedName, {
       timeout: 20_000,
     })
