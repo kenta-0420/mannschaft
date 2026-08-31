@@ -17,6 +17,7 @@ import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
 import com.mannschaft.app.team.dto.TeamResponse;
@@ -48,6 +49,7 @@ class TeamSlugServiceTest {
     @Mock private TeamBlockRepository teamBlockRepository;
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private RoleRepository roleRepository;
+    @Mock private AdminRoleMutationLockService adminRoleMutationLockService;
     @Mock private UserRepository userRepository;
     @Mock private TeamFriendRepository teamFriendRepository;
     @Mock private TeamShiftSettingsService teamShiftSettingsService;
@@ -69,6 +71,8 @@ class TeamSlugServiceTest {
             // テスト用リフレクション。失敗時はそのまま
         }
         lenient().when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(adminRole));
+        lenient().when(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
+                .thenReturn(Optional.of(1L));
         lenient().when(userRoleRepository.save(any(UserRoleEntity.class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(teamFriendRepository.countFriendsByTeamId(any())).thenReturn(0L);
         lenient().when(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).thenReturn(0L);

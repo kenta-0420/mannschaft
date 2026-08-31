@@ -140,9 +140,11 @@ class PermissionGroupScopeIntegrationTest extends AbstractMySqlIntegrationTest {
                 .organizationId(organizationId)
                 .build();
         em.persist(ur);
+        addMembership(userId, organizationId, RoleKind.MEMBER);
     }
 
     private void addMembership(Long userId, Long organizationId, RoleKind roleKind) {
+        persistRoleIfNeeded(roleKind.name(), roleKind == RoleKind.MEMBER ? 4 : 5);
         MembershipEntity ms = MembershipEntity.builder()
                 .userId(userId)
                 .scopeType(ScopeType.ORGANIZATION)
@@ -175,9 +177,13 @@ class PermissionGroupScopeIntegrationTest extends AbstractMySqlIntegrationTest {
 
     /** 組織スコープの権限グループを作る（{@code team_id} は詰めない = CHECK 制約準拠）。 */
     private Long persistOrgPermissionGroup(Long organizationId) {
+        return persistOrgPermissionGroup(organizationId, PermissionGroupEntity.TargetRole.DEPUTY_ADMIN);
+    }
+
+    private Long persistOrgPermissionGroup(Long organizationId, PermissionGroupEntity.TargetRole targetRole) {
         PermissionGroupEntity group = PermissionGroupEntity.builder()
                 .organizationId(organizationId)
-                .targetRole(PermissionGroupEntity.TargetRole.DEPUTY_ADMIN)
+                .targetRole(targetRole)
                 .name("2797サービス権限束" + nextSeq())
                 .build();
         em.persist(group);
@@ -247,10 +253,10 @@ class PermissionGroupScopeIntegrationTest extends AbstractMySqlIntegrationTest {
         // 権限グループ経由で BUDGET_ADMIN を持つ非役職者。
         // ADMIN / DEPUTY_ADMIN にすると findAdminUserIdsByOrganizationId 側だけで拾えてしまい、
         // 権限グループ経路を一度も踏まないまま和集合が満たされる（偽の緑）ため、
-        // 意図的に GUEST ロールで在籍させ、権限グループ経路でしか到達できない状態にする。
+        // MEMBER の権限グループ経路でしか到達できない状態にする。
         Long budgetHolder = persistActiveUser();
-        grantOrgRole(budgetHolder, orgId, "GUEST", 6);
-        Long groupId = persistOrgPermissionGroup(orgId);
+        addMembership(budgetHolder, orgId, RoleKind.MEMBER);
+        Long groupId = persistOrgPermissionGroup(orgId, PermissionGroupEntity.TargetRole.MEMBER);
         addPermissionToGroup(groupId, budgetAdminPermissionId);
         assignGroupToUser(budgetHolder, groupId);
         flushClear();
@@ -484,13 +490,13 @@ class PermissionGroupScopeIntegrationTest extends AbstractMySqlIntegrationTest {
 
         // 宛先 10 名の組織（ADMIN 5 名 + 権限グループ経由の BUDGET_ADMIN 保有者 5 名）。
         // 後者は GUEST ロールにして、権限グループ経路でしか宛先に入らないようにする。
-        Long largeGroupId = persistOrgPermissionGroup(largeOrg);
+        Long largeGroupId = persistOrgPermissionGroup(largeOrg, PermissionGroupEntity.TargetRole.MEMBER);
         addPermissionToGroup(largeGroupId, budgetAdminPermissionId);
         for (int i = 0; i < 5; i++) {
             Long admin = persistActiveUser();
             grantOrgRole(admin, largeOrg, "ADMIN", 2);
             Long holder = persistActiveUser();
-            grantOrgRole(holder, largeOrg, "GUEST", 6);
+            addMembership(holder, largeOrg, RoleKind.MEMBER);
             assignGroupToUser(holder, largeGroupId);
         }
         flushClear();

@@ -1,8 +1,11 @@
 package com.mannschaft.app.succession.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.succession.entity.DelinquencyEscalationEntity;
 import com.mannschaft.app.succession.entity.LegalFilingEntity;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -104,6 +107,9 @@ class SuccessionAuthzContractIT extends AbstractSuccessionIntegrationTest {
         insertUserRole(ADMIN_A, adminRoleId, ORG_A);
         insertUserRole(MEMBER_A, memberRoleId, ORG_A);
         insertUserRole(ADMIN_B, adminRoleId, ORG_B);
+        MembershipTestHelper.insertMembership(em, ADMIN_A, ScopeType.ORGANIZATION, ORG_A, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, MEMBER_A, ScopeType.ORGANIZATION, ORG_A, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, ADMIN_B, ScopeType.ORGANIZATION, ORG_B, RoleKind.MEMBER);
         // OUTSIDER はどのスコープにも role を持たない
 
         // legal_filings / delinquency_escalations は cross-domain FK を持たないため

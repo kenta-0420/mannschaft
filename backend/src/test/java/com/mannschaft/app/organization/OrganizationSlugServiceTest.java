@@ -23,6 +23,7 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -47,6 +48,7 @@ class OrganizationSlugServiceTest {
     @Mock private OrganizationSlugHistoryRepository organizationSlugHistoryRepository;
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private RoleRepository roleRepository;
+    @Mock private AdminRoleMutationLockService adminRoleMutationLockService;
     @Mock private InviteTokenRepository inviteTokenRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private OrganizationMembershipService organizationMembershipService;
@@ -60,6 +62,8 @@ class OrganizationSlugServiceTest {
         RoleEntity adminRole = RoleEntity.builder()
                 .id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者").priority(2).isSystem(true).build();
         lenient().when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(adminRole));
+        lenient().when(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
+                .thenReturn(Optional.of(ADMIN_ROLE_ID));
         lenient().when(organizationRepository.save(any(OrganizationEntity.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
         lenient().when(userRoleRepository.save(any(UserRoleEntity.class))).thenAnswer(inv -> inv.getArgument(0));

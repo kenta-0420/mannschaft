@@ -3,6 +3,7 @@ package com.mannschaft.app.payment;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
@@ -167,6 +168,10 @@ class ManageRecruitmentsPermissionFlywayIT {
     @Test
     @DisplayName("チーム ADMIN は TEAM 受取の権限判定を通り、DEPUTY_ADMIN/MEMBER/非メンバーは 403 になる")
     void teamAdminPassesAndOthersAreRejected() {
+        MembershipTestHelper.insertActiveUser(em, ADMIN_USER_ID);
+        MembershipTestHelper.insertActiveUser(em, DEPUTY_USER_ID);
+        MembershipTestHelper.insertActiveUser(em, MEMBER_USER_ID);
+        MembershipTestHelper.insertActiveUser(em, OUTSIDER_USER_ID);
         // FK 先（users / teams）は本テストの関心外のため、セッション限定で FK チェックを外して
         // user_roles だけを最小構成で組む（SharedFileLinkFlywayColumnIT と同じ方針）。
         em.createNativeQuery("SET FOREIGN_KEY_CHECKS = 0").executeUpdate();

@@ -12,10 +12,10 @@ import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
-import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.UpdateTeamRequest;
@@ -60,6 +60,7 @@ class TeamServiceTest {
     @Mock private MediaUrlResolver mediaUrlResolver;
     @Mock private MemberQueryDispatcher memberQueryDispatcher;
     @Mock private ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
+    @Mock private AdminRoleMutationLockService adminRoleMutationLockService;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;
@@ -75,13 +76,7 @@ class TeamServiceTest {
         void 作成_正常_保存() {
             // Given
             CreateTeamRequest req = new CreateTeamRequest("テストチーム", "sports", "東京都", "渋谷区", null, null, null, null);
-            RoleEntity adminRole = RoleEntity.builder().name("ADMIN").build();
-            try {
-                var field = adminRole.getClass().getSuperclass().getDeclaredField("id");
-                field.setAccessible(true);
-                field.set(adminRole, 1L);
-            } catch (Exception ignored) {}
-            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(adminRole));
+            given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID)).willReturn(Optional.of(1L));
             given(userRoleRepository.save(any(UserRoleEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
             // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替

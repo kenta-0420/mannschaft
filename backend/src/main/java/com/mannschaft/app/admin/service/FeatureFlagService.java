@@ -29,6 +29,10 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class FeatureFlagService {
 
+    /** F09.14 第一陣。行が無い場合も FeatureFlagService は false を返すため fail-closed。 */
+    public static final String F09_14_TIMELINE_PAID_DELIVERY_ENABLED =
+            "F09_14_TIMELINE_PAID_DELIVERY_ENABLED";
+
     private final FeatureFlagRepository featureFlagRepository;
     private final AdminMapper adminMapper;
 

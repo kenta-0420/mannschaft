@@ -7,6 +7,7 @@ import com.mannschaft.app.role.dto.PermissionGroupRequest;
 import com.mannschaft.app.role.dto.PermissionGroupResponse;
 import com.mannschaft.app.role.dto.UserPermissionGroupAssignRequest;
 import com.mannschaft.app.role.service.PermissionGroupService;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -83,6 +84,7 @@ public class AdminPermissionGroupController {
      * 権限グループを更新する。
      */
     @PutMapping("/{id}")
+    @AuthorizedInService
     @Operation(summary = "権限グループ更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<PermissionGroupResponse>> updatePermissionGroup(
@@ -96,6 +98,7 @@ public class AdminPermissionGroupController {
      * 権限グループを削除する。
      */
     @DeleteMapping("/{id}")
+    @AuthorizedInService
     @Operation(summary = "権限グループ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePermissionGroup(@PathVariable Long id) {
@@ -107,6 +110,7 @@ public class AdminPermissionGroupController {
      * 権限グループを複製する。
      */
     @PostMapping("/{id}/duplicate")
+    @AuthorizedInService
     @Operation(summary = "権限グループ複製")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
     public ResponseEntity<ApiResponse<PermissionGroupResponse>> duplicatePermissionGroup(@PathVariable Long id) {
