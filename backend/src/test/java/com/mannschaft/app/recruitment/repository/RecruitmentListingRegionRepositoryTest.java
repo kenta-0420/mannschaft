@@ -304,7 +304,7 @@ class RecruitmentListingRegionRepositoryTest extends AbstractMySqlIntegrationTes
     }
 
     @Test
-    @DisplayName("公開市は ownerType でチームと組織の札を分離する")
+    @DisplayName("匿名・認証済みの公開市は ownerType でチームと組織の札を分離する")
     void ownerTypeFilter_separatesTeamAndOrganizationListings() {
         Long teamId = persistOpenListing(
                 "owner-team", RecruitmentScopeType.TEAM, 7001L, LocalDateTime.now().plusDays(5));
@@ -320,6 +320,10 @@ class RecruitmentListingRegionRepositoryTest extends AbstractMySqlIntegrationTes
         Page<RecruitmentListingEntity> organizations = listingRepository.searchMarketListings(
                 null, null, null, RecruitmentScopeType.ORGANIZATION, null, true,
                 PageRequest.of(0, 50));
+        Page<RecruitmentListingEntity> authenticatedTeams =
+                listingRepository.searchAccessibleMarketListings(
+                        List.of(-1L), null, null, null, RecruitmentScopeType.TEAM,
+                        null, true, PageRequest.of(0, 50));
 
         assertThat(teams.getContent()).extracting(RecruitmentListingEntity::getId)
                 .contains(teamId)
@@ -327,6 +331,9 @@ class RecruitmentListingRegionRepositoryTest extends AbstractMySqlIntegrationTes
         assertThat(organizations.getContent()).extracting(RecruitmentListingEntity::getId)
                 .contains(organizationId)
                 .doesNotContain(teamId);
+        assertThat(authenticatedTeams.getContent()).extracting(RecruitmentListingEntity::getId)
+                .contains(teamId)
+                .doesNotContain(organizationId);
     }
 
     @Test
