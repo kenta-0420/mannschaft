@@ -1,6 +1,6 @@
 # F20.1 — 03 セキュリティ
 
-> **2026-08-31 補足**: invoice、Customer Portal、scope-owned Customer、Stripe webhook の認可・IDOR・保存期間は [05_billing_center.md §6・§7](05_billing_center.md#6-api) を正本として追加適用する。
+> **2026-08-31 改訂**: invoice、Customer Portal、scope-owned Customer、Stripe webhook の認可・IDOR・保存期間は [05_billing_center.md §2・§4・§7](05_billing_center.md#2-画面導線認可) を正本として追加適用する。消費者 API に SYSTEM_ADMIN の短絡許可はない。
 
 > **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
 > **⚠️ Phase 2 保留（マスター 2026-07-08）**: 営利自動切替（org_type 自動更新・確認通知・差し戻し API・監査 `ORG_TYPE_*`）は初期スコープ外（README §3.3・冒頭 Phase 2 保留ブロック）。本書の org_type 関連の認可・監査記述はすべて Phase 2。
@@ -15,12 +15,13 @@
 | プランカタログ閲覧（`GET /billing/plans`） | 認証ユーザー | `isAuthenticated()` |
 | 権利サマリ閲覧（`GET .../entitlements`） | USER=本人 / TEAM=当該チームのメンバー以上 / ORG=当該組織のメンバー以上 | me は本人固定（scopeId をパラメータで受けない）／`@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')` 等 |
 | 単一判定（`GET /billing/entitlements/check`） | 当該スコープのメンバー以上（USER は本人のみ） | Service 層で scopeKind 別に所有権検証（§2.2） |
-| 契約作成/解約/変更（TEAM/ORG） | 当該スコープの ADMIN（DEPUTY_ADMIN 含む） | `@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')` / `@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')` |
+| 契約作成/解約/変更・invoice・Portal（TEAM/ORG） | `BillingAccessGuard` が許可する ADMIN、又は明示的 `billing.manage` を持つ DEPUTY_ADMIN | `@billingAccessGuard.canManage(authentication, #scopeKind, #scopeId)`。SYSTEM_ADMIN 短絡なし |
 | 契約作成/解約/変更（USER） | 本人 | `/me/...` パス＝`SecurityUtils.getCurrentUserId()` 固定（scopeId を受けない） |
-| マスタ CRUD・手動付与・契約横断検索 | SYSTEM_ADMIN | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` |
+| マスタ CRUD・手動付与 | SYSTEM_ADMIN | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` |
+| 運営の契約横断閲覧 | SYSTEM_ADMIN（read-only） | 理由必須の別 `/system-admin/billing/**`。文書URL/Portal/変更は不可、監査必須 |
 | org_type 自動更新 **【Phase 2 保留】** | システム（イベントリスナー）のみ | **営利自動切替に属し初期スコープ外**（マスター 2026-07-08・README §3.3）。Phase 2 で実装。API 経由の直接更新は organization ドメイン既存 API の認可に従う（billing からは**イベントのみ**・直接 UPDATE 禁止） |
 
-- `@accessGuard.isScopeAdmin(...)` は **SYSTEM_ADMIN または当該 scope の ADMIN/DEPUTY_ADMIN** を許可する実在パターン（scopeType は SpEL 文字列リテラル `'TEAM'` / `'ORGANIZATION'`）。厳格版 `isScopeStrictAdmin`（DEPUTY 除外）は本機能では使わない（契約操作は DEPUTY_ADMIN にも許可＝モジュール ON/OFF と同等の運用権限とみなす）。
+- 課金の消費者 API は `@accessGuard.isScopeAdmin(...)` を使わない。`BillingAccessGuard` が USER本人、TEAM/ORG ADMIN、明示的 `billing.manage` を持つ DEPUTY_ADMIN だけを許可する。SYSTEM_ADMIN は別の理由必須・read-only API に隔離し、DEPUTY_ADMIN をロール名だけで許可しない。
 - `isAdmin` 常時 true 等の負論理・独自可視性述語を禁止（memory `feedback_visibility_bypass_f00_audit`）。
 
 ---

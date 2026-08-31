@@ -1,6 +1,6 @@
 # F20.1 — 02 API設計
 
-> **2026-08-31 補足**: 実決済の API、月次日割り、upgrade/downgrade、月末解約の撤回、invoice/Portal は [05_billing_center.md §4・§6](05_billing_center.md#4-請求期間契約状態) を正本とする。従来の「有償 changePlan を拒否する」記述はこの範囲で置換される。
+> **2026-08-31 改訂**: 実決済 API、月次日割り、upgrade/downgrade、月末解約の撤回、invoice/Portal は [05_billing_center.md §3〜§7](05_billing_center.md#3-暦月stripe-の正準) を正本とする。本書の旧 Checkout/customer、`checkout.session.completed` での ACTIVE 化、有償 changePlan 拒否は削除して同書に置換する。
 
 > **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
 > **⚠️ Phase 2 保留（マスター 2026-07-08）**: §7 の org_type イベント（営利自動切替）は初期スコープ外（README §3.3・冒頭 Phase 2 保留ブロック）。権利判定・契約/アドオン・シスアド CRUD は初期スコープに残る。
@@ -246,7 +246,7 @@ startPaidContract(scopeKind, scopeId, ..., priceJpy, operatorUserId):
   pending = BillingContractService.createPendingPaidContract(...)   # @Transactional
   #   pointer UNIQUE 競合時: 既存スロットが PENDING なら ENTITLEMENT_016(409)・ACTIVE なら ENTITLEMENT_006(409)
   # tx 外: Stripe Checkout 生成（Mode.SUBSCRIPTION・Connect 不使用・metadata.billingContractId=契約ID・
-  #        Price はインライン price_data 月次 recurring・Customer は stripe_customers get-or-create）
+  #        Price はbilling_price_versions.stripe_price_ref、Customer はscope-owned billing_customers）
   try:  checkoutUrl = BillingPaymentGateway.createSubscriptionCheckout(...)
   catch: abandonPendingContract(pending)（CANCELLED＋pointer DELETE の補償・孤児 PENDING を残さない）
          → throw ENTITLEMENT_015(502)
@@ -304,9 +304,9 @@ Body: { "planKey": "FULL" }         # me / organizations も同型
 
 | イベント | billing 所有判定 | billing 側処理（`BillingSubscriptionWebhookService`） |
 |---|---|---|
-| `checkout.session.completed` | `session.metadata.billingContractId` あり | 契約 `PENDING→ACTIVE`・`psp_customer_ref`/`psp_subscription_ref`/`current_period_end` 焼付・**entitlements 発行**・evict。冪等（既に ACTIVE なら no-op・AC-33/34） |
+| `checkout.session.completed` | `session.metadata.billingContractId` と session.customer/subscription が scope-owned Customer に一致 | `psp_customer_ref`/`psp_subscription_ref`/`current_period_end` を焼付するのみ。**ACTIVE 化・entitlements 発行は禁止**（`invoice.paid` が唯一の確定点） |
 | `checkout.session.expired` | 同上 | `PENDING→CANCELLED`＋pointer 物理 DELETE（再挑戦可能に） |
-| `invoice.paid` | `psp_subscription_ref` 逆引きヒット | `current_period_end` 延長・`PAST_DUE→ACTIVE` 回復（AC-37） |
+| `invoice.paid` | subscription/customer を contract/billing_customer に二重照合 | `PENDING→ACTIVE` と entitlements 発行、又は有償upgradeの確定、`PAST_DUE→ACTIVE` 回復（05 §4） |
 | `invoice.payment_failed` | 同上 | `ACTIVE→PAST_DUE`（**entitlements は触らない**＝期末まで利用可・AC-37） |
 | `customer.subscription.deleted` | 同上 | `→EXPIRED`・pointer 物理 DELETE・由来 entitlements revoke・evict（AC-35） |
 
@@ -529,7 +529,7 @@ public class OrgTypeAutoUpgradeListener {
 | `INVALID_CONTRACT_KIND` | `ENTITLEMENT_014` | 400 | WARN | contractKind が PLAN/ADDON 以外（P1 実装で追補採番） |
 | `CHECKOUT_SESSION_FAILED` | `ENTITLEMENT_015` | **502** | ERROR | Stripe Checkout 生成失敗（2026-07-10 実決済。PENDING 契約は補償済み＝孤児なし） |
 | `CONTRACT_PENDING_PAYMENT` | `ENTITLEMENT_016` | 409 | WARN | PENDING（入金前）スロット占有中の再契約（2026-07-10 実決済・AC-32） |
-| `CONTRACT_CHANGE_REQUIRES_PAYMENT` | `ENTITLEMENT_017` | 409 | WARN | 有償が絡む changePlan の拒否（検分差し戻し・AC-44。解約→新規契約へ誘導） |
+| `CONTRACT_CHANGE_REQUIRES_PAYMENT` | `ENTITLEMENT_017` | 409 | WARN | 旧 `changePlan` API の互換応答。新しい変更 API は使用せず、05 §7 の preview/change API へ移行する |
 
 `GlobalExceptionHandler` への追記（設計に含む）:
 

@@ -128,7 +128,7 @@ CREATE TABLE plan_price_bands (
 
 ## 3. 業務テーブル（UUIDv7）
 
-> **2026-08-31 補足**: scope-owned Stripe Customer、請求書投影、契約の billing cycle anchor/予約変更列は [05_billing_center.md §5](05_billing_center.md#5-データ設計flyway) を正本とする。本書の `psp_customer_ref` は契約時スナップショットとして温存し、TEAM/ORG の Customer を操作者個人へ解決する実装は廃止する。
+> **2026-08-31 改訂**: `billing_customers`、`billing_price_versions`、`billing_contract_changes`、`billing_customer_migrations`、請求投影と既存表 ALTER は [05_billing_center.md §5](05_billing_center.md#5-完全-ddl-と-flyway) を正本とする。`psp_customer_ref` は scope-owned Customer の履歴参照であり、TEAM/ORG の Customer を操作者個人へ解決する実装は廃止する。
 
 ### 3.1 `billing_contracts`（PLAN/ADDON 契約行）
 
@@ -149,7 +149,7 @@ CREATE TABLE billing_contracts (
     price_jpy_snapshot INT UNSIGNED NULL COMMENT '契約時単価スナップショット（円）。ベータ中=NULL（無償）。遡及防止の焼き付け（F22.1 fee_policy_key と同型）',
     contracted_at DATETIME(6) NOT NULL COMMENT '契約開始日時',
     cancelled_at DATETIME(6) NULL COMMENT '解約日時（無償=CANCELLED と同時／有償=期末解約予約と同時・status は ACTIVE のまま）',
-    psp_customer_ref VARCHAR(64) NULL COMMENT 'Stripe Customer ID（cus_xxx・論理参照）。決済フローの契約のみ（V151）',
+    psp_customer_ref VARCHAR(255) NULL COMMENT 'Stripe Customer ID（scope-owned Customerの履歴参照。V196でbilling_customer_idへ正規化）',
     psp_subscription_ref VARCHAR(64) NULL COMMENT 'Stripe Subscription ID（sub_xxx・論理参照）。webhook 逆引きキー（V151）',
     current_period_end DATETIME(6) NULL COMMENT '現サイクル終了（valid_until 上限／期末解約の失効時刻・V151）',
     created_by BIGINT UNSIGNED NULL COMMENT '契約操作者（論理参照。シスアド手動付与時はシスアドの userId）',
@@ -173,7 +173,7 @@ CREATE TABLE billing_contracts (
 ```
 
 - **契約の一意性は DB で保証する**（アプリ層 exists チェックだけでは TOCTOU レースで二重契約が作れるため）。§3.1.1 の「アクティブ契約ポインタ表」で物理担保する。`billing_contracts` 自体は**契約履歴（append-only）**として全行を残す（`status` を含む UNIQUE は CANCELLED→再契約の履歴を壊すので張らない）。
-- **PSP 列（V151・2026-07-10 前倒し済み・D-1）**: `psp_customer_ref` / `psp_subscription_ref` / `current_period_end`。`uk_bc_psp_subscription` は webhook 逆引き用 UNIQUE（MySQL の UNIQUE は NULL を重複扱いしないため無償契約＝NULL が複数あっても衝突しない）。この逆引きヒットの有無で F08.9 会費の subscription と分離する（D-2・AC-38）。
+- **PSP 列**: `psp_customer_ref` / `psp_subscription_ref` / `current_period_end` は履歴/逆引き用に温存する。V196 で `billing_customer_id` と不変 `price_version_id` を追加し、以後の所有者・販売価格の正本を正規化する（05 §5）。
 - Repository: `BillingContractRepository extends AbstractTenantAwareRepository<BillingContractEntity, UUID>`（`organization_id` NULL 許容＋`deleted_at` 保持で適用・escrow 前例・§0）。
 
 ### 3.1.1 `active_contract_pointers`（契約一意性の DB バックストップ・H-1）

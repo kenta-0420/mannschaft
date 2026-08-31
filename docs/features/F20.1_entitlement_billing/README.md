@@ -277,7 +277,7 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 | AC-30 | 境界（L2） | 契約作成の**完全同時再送**では冪等キー check-then-set の非原子により片方が `active_contract_pointers` UNIQUE で `ENTITLEMENT_006`(409) になる。二重契約・二重発行は生じない（FE は 409 を「契約済み」として再取得） |
 | AC-31 | 正常（実決済 D-4） | **価格 NULL**（マスタ未設定）の契約 POST → 決済なし無償契約（従来 P1 フロー・即 ACTIVE＋entitlements 発行・`checkoutUrl=null`）。既存フローの回帰なし |
 | AC-32 | 正常（実決済 D-4） | **価格設定済み**の契約 POST → `checkoutUrl` 返却・契約は `PENDING`＋`price_jpy_snapshot` 焼付・**entitlements 未発行**。PENDING スロット占有中の再契約は `ENTITLEMENT_016`(409) |
-| AC-33 | 正常（実決済） | `checkout.session.completed`（`metadata.billingContractId`）到達で初めて `PENDING→ACTIVE`＋PSP 参照焼付＋entitlements 発行。未達なら未発行のまま |
+| AC-33 | 正常（実決済・2026-08-31改訂） | `checkout.session.completed` は Customer/Subscription 参照の照合・焼付のみ。**`invoice.paid` 到達で初めて** `PENDING→ACTIVE`＋entitlements 発行。未達/失敗なら未発行のまま（05 §4） |
 | AC-34 | 冪等（実決済） | 同一 webhook イベントの再送は冪等（`WebhookIdempotencyService` の event_id ゲート＋status 済チェックの**二層**・二重発行ゼロ） |
 | AC-35 | 正常（実決済 D-3） | 有償解約＝`cancel_at_period_end`。契約は ACTIVE のまま `cancelled_at` セット・由来 entitlements の `valid_until`＝`current_period_end`（半開区間・期末ちょうど false）。`customer.subscription.deleted` で `EXPIRED`＋pointer DELETE＋残 revoke |
 | AC-36 | 正常（実決済 D-3） | 無償解約＝即時失効（既存フロー不変・PSP 呼び出しなし） |

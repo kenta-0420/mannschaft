@@ -1,264 +1,236 @@
 # F20.1 — 05 料金・契約センター／実決済運用
 
 > **ステータス**: 🟡 精査中（2026-08-31）
-> **適用範囲**: Phase 2b の実決済を、利用者が自分で理解・管理・停止できる形に完成させる。本書は、既存 01〜04 のうち実決済、請求表示、解約、顧客所有に関する記述を補完し、矛盾時は本書を優先する。
+> **適用範囲**: Phase 2b の実決済、請求表示、支払方法、取消/撤回、Customer 所有を定義する。本書が 01〜04 の当該範囲を置換する。
 
----
+## 1. 利用者への約束と境界
 
-## 1. 決定事項と目的
+個人・チーム・組織（USER/TEAM/ORG）は各々が独立した課金所有者であり、操作した管理者個人の Stripe Customer、支払方法、請求履歴を共有しない。ログイン後の `/billing` は本人が管理できる全 scope を選択できる「料金・契約」ハブで、アクティブなチーム/組織の変更だけで別 scope の履歴を隠さない。所属又は管理権限を失ったときのみ一覧から除き、契約/履歴は保持して現管理者へ引き継ぐ。
 
-### 1.1 利用者に約束すること
+通常の販売は月次自動更新のみであり、年額と一か月パスは販売しない。価格・BASIC の内容・Stripe Price は運用マスタが正本で、税込表示可能な有効 `billing_price_versions` が無い商品は公開・購入できない。税込を主表示し、税抜・税額・税名/税率を併記する。`is_included_in_price` は入力価格が税込か税抜かを解釈する属性であり、画面の主表示を切替える機能ではない。
 
-1. **個人・チーム・組織は、それぞれ独立した契約者（課金所有者）**である。チーム/組織の管理者が操作しても、その人個人の Stripe Customer、支払方法、請求履歴を流用しない。
-2. ログイン後の **`/billing`（料金・契約）** で、本人が課金管理できる全スコープを一か所に一覧・切替して管理する。現在選んでいるチーム/組織を変えても、別スコープの履歴は消えない。
-3. 月別の請求・支払明細、契約内容、次回請求日、支払方法、請求先情報、請求書/領収書への導線を常時提供する。価格は **税込を主表示**し、税額・税抜額も同じ画面で示す。
-4. 通常の販売単位は **月次自動更新**である。年額は販売開始するまで選べず、1か月だけのパスは提供しない。
-5. **暦月課金**とする。初月は契約日（含む）から月末までの日割り、翌月以降は毎月1日から月末までの満額。アップグレードは即時・残期間の差額日割り、ダウングレードは翌月1日から反映する。
-6. 解約は一度の確認で受け付け、当月末で終了する。終了日・以後請求されないこと・失う機能を確認画面に明示し、当月末までは解約予定を撤回できる。引き止め、電話、隠れた導線、多段階確認は置かない。
+対象外は F08.9 会費、F22.1 市決済、残高/プリペイドである。Stripe Tax `automatic_tax` は有効な登録を運用で確認した場合だけ使い、未登録時は運用マスタの税率で計算する。
 
-### 1.2 非目標
+## 2. 画面・導線・認可
 
-- 価格、BASIC の内容、年額価格をコードや設計書に固定しない。販売可能なのは、運用マスタに有効な Stripe Price と税込表示に必要な価格情報がそろった商品だけである。
-- F08.9 の「チーム→メンバー」会費、F22.1 のマーケット決済、プリペイド/残高は対象外。
-- 自動税計算は、Stripe Tax の税務登録が有効化されるまで有効にしない。未登録時は運用マスタの税率スナップショットで明示計算し、税の請求責任を Stripe に委ねたように表示しない。
-
-## 2. As-Is と To-Be
-
-| 論点 | As-Is | To-Be |
+| 画面 | 経路 | 内容 |
 |---|---|---|
-| Stripe Customer | `PaymentMethodService.getOrCreateStripeCustomerId(operatorUserId)` を呼ぶため、TEAM/ORG 契約も操作管理者個人に属する | `billing_customers` の scope-owned Customer を使用。USER/TEAM/ORG ごとに 1 Customer |
-| 導線 | `/settings/billing`、`/teams/{slug}/settings/billing`、`/organizations/{slug}/settings/billing`、`/billing/plans` が分散 | 認証後は `/billing` に統合。既存 URL は削除せず、scope を選択した `/billing?scopeKind=...&scopeId=...` に遷移 |
-| 請求表示 | 契約・権利中心。請求月一覧、請求書、領収書、支払方法管理が不足 | スコープごとに月別明細、請求書/領収書、支払方法・請求先を提供 |
-| プラン変更 | 有償変更は `ENTITLEMENT_017` で拒否 | upgrade/downgrade の時点と金額を事前表示し、Stripe と同期して実行 |
-| 取消 | `cancel_at_period_end` はあるが、撤回・表示・文脈復帰が不足 | 月末終了、撤回 API/UI、終了日表示、成功/中止後も同じ scope に復帰 |
+| 公開料金 | `/pricing` | 月額、初月日割り、自動更新、税込、解約方法を表示。未販売は「準備中」で CTA 無効 |
+| 料金・契約 | `/billing?scopeKind={USER|TEAM|ORG}&scopeId={long}&tab={plan|invoices|payment|cancel}` | 現契約、次回請求、月別明細、支払方法、請求先、解約/撤回 |
+| 互換導線 | `/settings/billing`、`/teams/{slug}/settings/billing`、`/organizations/{slug}/settings/billing`、`/billing/plans` | 削除せず、解決済み scope/tab を伴う `/billing` へ遷移 |
 
-既存 `billing_contracts.psp_customer_ref` は履歴スナップショットとして残すが、以後の正規の Customer 所有者は `billing_customers` とする。`stripe_customers`（個人用 payment ドメイン）の読み書きを TEAM/ORG の課金で行ってはならない。
+Checkout success/cancel と Portal return は `/billing` の許可済み path に固定し、scope/tab はサーバー署名済み state から復元する。任意 return URL は受け取らない。請求先メール/宛名は Checkout 前に確認する。TEAM/ORG での操作者メールは候補にすぎず、保存先は scope-owned Customer である。
 
-## 3. 画面と導線
+消費者 API は **`BillingAccessGuard`** だけで認可する。SYSTEM_ADMIN の短絡許可はない。USER は本人、TEAM/ORG は `ADMIN`、又は明示的な `billing.manage` 権限を持つ `DEPUTY_ADMIN` に限定する。一般 MEMBER は権利サマリだけを read でき、金額・請求先・invoice・Portal・変更は read できない。運営は別の `/api/v1/system-admin/billing/**` read-only API で、理由（1〜500文字）を必須にし `BILLING_OPERATOR_VIEWED` を監査する。運営 API は Portal、Checkout、変更、文書 URL を発行しない。
 
-### 3.1 公開料金ページ `/pricing`
+`billing.manage` は Permission Catalog の新規 permission key とする。V196 Flyway で catalog へ登録し、TEAM/ORG の `ADMIN` ロールへだけ既定付与する。`DEPUTY_ADMIN`、MEMBER、SUPPORTER への既定付与はしない。DEPUTY_ADMIN には scope ごとの既存ロール権限管理 UI/API で管理者が明示付与/取消でき、`BillingAccessGuard` はこの実効 permission を毎要求で検証する。ロール変更・付与/取消は `BILLING_MANAGE_GRANTED/REVOKED` を監査し、付与後/取消後のアクセスを即時に反映する。
 
-- 未認証でも閲覧可能、SSR/SEO 対象。料金の比較、対象スコープ、月次自動更新、初月日割り、税表示、解約/撤回、支払方法、問い合わせ先を平易な言葉で掲載する。
-- 有効価格のないプラン（BASIC を含む）は「準備中」と表示し、金額・購入 CTA を出さない。ログイン後 CTA は `/billing` へ戻す。
-- 「いつでも解約できます」だけで済ませず、「解約受付後も当月末まで利用でき、翌月以降の請求はない」と表記する。
+解約は一画面一確認で `「{終了日} まで利用できます。{翌月1日} 以降は請求されません。」` と明示する。理由、電話、複数確認、引き止めを置かない。月末前だけ `解約予定を取り消す` を表示する。
 
-### 3.2 認証後ハブ `/billing`
+## 3. 暦月・Stripe の正準
 
-```
-料金・契約
- [個人: 山田 太郎] [チーム: ○○] [組織: △△]     ← 課金管理可能な scope のみ
- ─────────────────────────────────────────────
- 現在の契約 / 次回請求日 / 今月（税込） / 解約予定
- [プランと機能] [請求・支払い] [支払方法・請求先] [解約]
-```
+JST (`Asia/Tokyo`) の `[月初00:00, 翌月初00:00)` を課金期間とし、DB は既存規約どおり JST `DATETIME(6)`、Stripe へは UTC epoch seconds を送る。
 
-- `GET /me/billing/scopes` で列挙する。USER は常に本人、TEAM/ORG は ADMIN または DEPUTY_ADMIN のみ。SYSTEM_ADMIN は通常利用者としての横断表示を得ず、専用管理画面を用いる。
-- URL は `scopeKind` と `scopeId` を持つが、いずれもサーバーが返した選択肢以外は選べない。未指定時は個人、なければ先頭の管理可能スコープを選ぶ。
-- チーム/組織への所属又は課金管理権限を失った時だけ当該スコープを一覧から除く。契約・請求履歴は削除せず、現管理者が同じ scope を選択して引き継ぐ。
-- チーム/組織の一般メンバーは既存どおり権利サマリだけを読める。金額、支払方法、請求先、請求書/領収書、契約変更は ADMIN/DEPUTY_ADMIN 限定とする。
-- 既存の 3 課金管理 URL は互換リダイレクトとして残し、同じ画面に該当 scope を選択して開く。`/billing/plans` は `/billing?tab=plan` へ移す。Checkout の success/cancel URL も同じ scope と `tab` を保持する。
-- 初回 Checkout 前に請求先メールアドレスと宛名を確認・編集できる。USER は本人の確認済みメールを初期表示、TEAM/ORG は今回の管理者のメールを**候補**として初期表示するだけで、保存先は scope-owned `billing_customers` である。後任管理者は同じ請求先を引き継ぎ、個人の payment customer には保存しない。
+| 操作 | 請求・権利 | Stripe 処理 |
+|---|---|---|
+| 新規 | 契約時から当月末まで日割り。翌月以降満額 | Checkout subscription、翌月1日 anchor、`create_prorations`。`invoice.paid` まで ACTIVE/権利発行しない |
+| upgrade | 即時の差額日割り | preview 後、`always_invoice` + `pending_if_incomplete`。`invoice.paid` で確定、失敗なら旧プラン維持 |
+| downgrade | 翌月1日からのみ | **Stripe Subscription Schedule に一本化**。当月の価格/権利を即時変更しない |
+| 解約/撤回 | 当月末終了/当月末まで撤回可 | `cancel_at_period_end=true/false` |
 
-### 3.3 誠実な UI 文言と操作
+Checkout 作成時は `session.metadata` **と** `subscription_data.metadata` の両方に `billingContractId`、`scopeKind`、`scopeId`、`billingCustomerId` を書く。これにより `invoice.paid` が `checkout.session.completed` より先に到着しても subscription metadata から scope-owned contract を解決できる。metadata 値は UUID/enum/int64 のみで PII を入れない。
 
-- 購入前: 「本日から月末まで」「初回合計（税込）」「翌月1日以降の月額（税込）」「自動更新」「解約方法」を一画面に表示する。アップグレード時は今回の差額日割りと即時に増える機能、ダウングレード時は翌月からの価格/失う機能を表示する。
-- 解約確認: 主文は `「{終了日} まで利用できます。{翌月1日} 以降は請求されません。」`。確認ボタンは `「{終了日}で解約する」`、戻るボタンは同じ強さで `「続けて利用する」`。理由の入力、電話、チャット、複数画面は要求しない。
-- 解約予約中は警告バナーに終了日、残る機能、`「解約予定を取り消す」` を表示する。取り消しは追加確認なしで即時実行し、監査/トーストで結果を示す。
-- 請求失敗は失敗月、再試行状況、利用権への影響予定、支払方法の更新導線を表示する。恐怖を煽る文言や、支払方法更新と解約操作を混在させない。
+通常 Checkout の quote/session は、Stripe 最短有効期限 30 分を前提に、`now <= nextMonthStart - 30分 - 1秒` のときだけ作成可能とする。これを過ぎた時点（`now >= nextMonthStart - 30分`）から月初までを拒否し、`ENTITLEMENT_022`(409) と `availableAt`（翌月1日00:00 JST）、`reason=MONTH_BOUNDARY` を返す。UI は「月初に最新金額を再見積りしてください」と表示する。作成した quote と session は同じ **`expiresAt=nextMonthStart-1秒`** を持つ。expired quote/session は確定 API で `ENTITLEMENT_023`(409)。
 
-すべての表示文言は `billing.json` の 6 言語キーに追加する。日付・通貨は `locale.value` を用いた `Intl` で表示し、価格を UI に直書きしない。
+競合は contract version と idempotency により直列化する。upgrade `PENDING_PAYMENT` 中は解約/downgrade/別 change を409、解約予約中は撤回まで change を409、downgrade予約中の解約は schedule を取消してから解約予約を作る。subscription/customer を Update API で付替えない。
 
-## 4. 請求期間・契約状態
-
-### 4.1 暦月と日割りの正準
-
-| 操作 | 請求/権利 |
-|---|---|
-| 新規月額契約 | 契約日時からその月末 24:00 JST（翌月1日00:00 JST）まで日割り請求。権利は支払い成功時から同じ期間に有効 |
-| 翌月以降 | 毎月1日 00:00 JST に当月末までを月額請求 |
-| アップグレード | 即時反映。旧/新プラン差額を変更時から月末まで日割りし、プレビューと確定額を表示 |
-| ダウングレード | 当月の権利・料金は維持。翌月1日から新プラン/価格へ変更。返金・負額クレジットはしない |
-| 解約 | 当月末で終了。解約操作月の残額返金なし、翌月以降は請求なし |
-| 解約撤回 | 当月末まで即時に取消し、同じ契約を継続。期末後は新規契約 |
-
-月末境界は `Asia/Tokyo` を基準に計算し、Stripe には UTC epoch seconds で渡す。内部永続化は既存規約どおり `DATETIME(6)` の JST ローカル時刻を使用し、表示と比較の境界を統一する。年額を将来販売する場合も本章の「月額」前提をコピーしてはならず、別の販売・解約・税・按分仕様を軍議で決める。
-
-### 4.2 Stripe の責務
-
-- 新規契約は Stripe Checkout `mode=subscription`。scope-owned Customer を明示し、`subscription_data.billing_cycle_anchor` に直近の翌月1日 00:00 JST を UTC timestamp 化して指定する。初回 Checkout では既定の `proration_behavior=create_prorations` を用い、初回の部分月を Stripe Invoice として確定する。
-- 未来 anchor は Stripe の制約どおり、契約開始より未来かつ次の自然更新日より前でなければならない。月末日の作成、時計ずれ、Checkout の有効期限を計算時に検証し、満たせない場合は Checkout を作らず再試行可能な 502 を返す。
-- upgrade は Subscription update + `proration_behavior=always_invoice` とする。変更前に Stripe の upcoming invoice/proration preview を取得し、確定時は `payment_behavior=pending_if_incomplete` を使う。SCA 又は支払失敗の間は変更を `PENDING_PAYMENT` として保持し、**`invoice.paid` を受けるまで active plan/entitlements を切り替えない**。失敗・期限切れでは予約を破棄して旧プランを維持する。
-- downgrade は `proration_behavior=none` の即時 update を使わない（料金だけでなく機能まで即時に落ちるため）。Subscription Schedule 又はローカル予約 + 期末の Stripe update で翌月1日 00:00 JST にだけ反映し、即時の負額日割りを作らない。
-- 解約/撤回は Subscription の `cancel_at_period_end=true/false`。本アプリが正本であり、Customer Portal の cancel と price change は無効化する。
-- Customer Portal は短命 session を発行し、支払方法、請求先情報、Stripe の請求書閲覧だけに限定する。return URL は許可済みの `/billing` 固定パス（scope を署名済み state で復元）で、任意 URL を受け取らない。
-- Webhook が契約/請求状態の唯一の確定通知である。画面遷移や API の成功レスポンスだけで支払い済み・権利発行としない。
-
-### 4.3 状態遷移
+## 4. 状態・Webhook
 
 ```
-PENDING --checkout.session.completed/invoice.paid--> ACTIVE
-PENDING --session expired/cancelled--> CANCELLED
-ACTIVE --payment_failed--> PAST_DUE --invoice.paid--> ACTIVE
-ACTIVE --cancel scheduled--> ACTIVE(cancel_at_period_end=true)
-ACTIVE(cancel scheduled) --resume--> ACTIVE(cancel_at_period_end=false)
-ACTIVE(cancel scheduled) --period end/subscription.deleted--> CANCELLED
-ACTIVE --downgrade scheduled--> ACTIVE(next_plan_key set)
-ACTIVE --upgrade requested--> ACTIVE(change=PENDING_PAYMENT)
-ACTIVE(change=PENDING_PAYMENT) --invoice.paid--> ACTIVE(new contract/entitlements atomically switched)
-ACTIVE(change=PENDING_PAYMENT) --payment failed/expired--> ACTIVE(old plan retained)
+PENDING --invoice.paid--> ACTIVE
+PENDING --checkout.session.expired--> CANCELLED
+ACTIVE --upgrade requested--> ACTIVE + change:PENDING_PAYMENT
+change:PENDING_PAYMENT --invoice.paid--> APPLIED（新権利を原子的に発行）
+change:PENDING_PAYMENT --invoice.payment_failed/expired--> FAILED（旧権利維持）
+ACTIVE --downgrade scheduled--> ACTIVE + change:SCHEDULED
+change:SCHEDULED --customer.subscription.updated(target price + schedule phase + effectiveAt)--> APPLIED
+ACTIVE --cancel_at_period_end--> ACTIVE(cancel scheduled)
+ACTIVE(cancel scheduled) --resume--> ACTIVE
+ACTIVE(cancel scheduled) --customer.subscription.deleted--> EXPIRED
+PAST_DUE --invoice.paid--> ACTIVE
 ```
 
-`current_period_end` は必ず次の JST 月初、`cancelled_at` は「解約を予約した時刻」、終了状態の確定は webhook で記録する。権利の `valid_until` は期末まで保持し、解約予約だけで revoke しない。支払失敗の猶予・失効時刻は Stripe の status と運用ポリシーを UI にそのまま反映し、ローカルの推測で再請求しない。
+既存 endpoint **`POST /api/v1/webhooks/stripe`** と既存 `stripe_webhook_events` を再利用する。raw body を署名検証してから parse し、`event_id` UNIQUE を最初に確保する。payload は既存方針の暗号化/30日保持に従い、監査ログへ複写しない。
 
-同じ契約での予約競合は次の優先順で直列化する。(1) `PENDING_PAYMENT` の upgrade 中は解約・downgrade・別 change を 409 で拒否し、先に支払完了又は失敗を確定する。(2) 解約予約中は新たな upgrade/downgrade を 409 で拒否し、利用者が先に解約予定を撤回する。(3) downgrade 予約中に解約を選んだ場合は downgrade 予約を取り消して解約予約を作る。(4) 解約予約中の撤回後にのみ change を受け付ける。いずれも行ロックではなく契約の楽観ロック/version と idempotency key で一意に直列化し、Stripe 呼出し前後の状態を webhook で再照合する。
+| Stripe event | 所有判定・照合 | 副作用 |
+|---|---|---|
+| `checkout.session.completed` | session metadata の contractId/scope/customerId と session.customer/subscription を `billing_customers`/contract に照合 | Customer/Subscription ref を結ぶのみ。ACTIVE 化しない |
+| `checkout.session.expired` | PENDING contract + 同一 session | PENDING→CANCELLED、pointer 解放 |
+| `invoice.finalized/paid/payment_failed/voided` | invoice.subscription metadata（session completed 未達でも可）→contract、invoice.customer→scope Customer、Stripe 最新 invoice を再取得 | invoice/line 投影。**paid のみ** PENDING/upgrade を確定 |
+| `customer.subscription.updated` | subscription ref、customer ref、最新 Subscription を再取得 | anchor、cancel、schedule、period を単調に同期。downgrade は target Stripe Price・schedule phase・effectiveAt 到達が全て一致した場合だけ APPLIED |
+| `customer.subscription.pending_update_applied` | `stripe_invoice_ref` + `stripe_subscription_ref` + target snapshot が一致する PENDING_PAYMENT change | `invoice.paid` 済みであることを再確認して upgrade を APPLIED |
+| `customer.subscription.pending_update_expired` | 同じ3要素で PENDING_PAYMENT change を解決 | change を FAILED、旧プラン/権利を維持 |
+| `customer.subscription.deleted` | contract の最新 object と period end | 有償期末解約を EXPIRED、pointer削除、権利失効 |
+| `subscription_schedule.updated/released/canceled/completed` | change.schedule ref、customer/subscription/scope | schedule の補助同期、失敗/終了又は migration saga を遷移。無期限downgradeの APPLIED 判定には使わない |
 
-## 5. データ設計・Flyway
+`pending_update` は Stripe の独立 ID ではないため、`stripe_invoice_ref` + `stripe_subscription_ref` + `pending_update_expires_at` + `pending_update_target_snapshot` で変更多重度を特定する。event の `created` と取得した Stripe object の更新時刻/状態を比較し、古い event で現状態を戻さない。処理失敗は既存 event 表の `attempt_count/failed_at/processed_at` を更新して指数 backoff、上限後は照合キューへ送る。重複 event は副作用なしで 200、署名不正は 400、内部失敗は 5xx として Stripe 再送を受ける。
 
-既存テーブルを破壊せず Expand → Backfill → Switch → Contract の順で移行する。クロスドメイン FK は作らない。業務表の ID は UUIDv7 `BINARY(16)`、外部 Stripe ID は `VARCHAR(255)`、`organization_id` は既存の tenant 規約に従い NULL 許容の論理参照とする。
+## 5. 完全 DDL と Flyway
+
+全新規業務表は UUIDv7 `BINARY(16)`、`ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`。scope/organization はクロスドメイン論理参照、同一 billing domain の親子には FK を張る。`organization_id`、`version`、`deleted_at`、検索 index を明記する。実装 migration は **`V196.20260831000000__expand_billing_center.sql`** を仮番とし、マージ直前に Flyway 最大値と衝突しない番号へ再採番する。
 
 ```sql
 CREATE TABLE billing_customers (
-    id BINARY(16) NOT NULL COMMENT 'UUIDv7',
-    scope_kind VARCHAR(8) NOT NULL,
-    scope_id BIGINT UNSIGNED NOT NULL,
-    organization_id BIGINT UNSIGNED NULL,
-    psp_customer_ref VARCHAR(255) NOT NULL COMMENT 'Stripe cus_...',
-    billing_email VARCHAR(254) NULL,
-    billing_name VARCHAR(255) NULL,
-    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-    deleted_at DATETIME(6) NULL,
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_bcu_scope (scope_kind, scope_id),
-    UNIQUE KEY uk_bcu_psp_customer (psp_customer_ref),
-    KEY idx_bcu_org (organization_id),
-    CONSTRAINT chk_bcu_scope CHECK (scope_kind IN ('USER','TEAM','ORG')),
-    CONSTRAINT chk_bcu_status CHECK (status IN ('ACTIVE','LEGACY_MIGRATION_REQUIRED','CLOSED'))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='scope 所有の Stripe Customer';
+ id BINARY(16) NOT NULL COMMENT 'UUIDv7', scope_kind VARCHAR(8) NOT NULL, scope_id BIGINT UNSIGNED NOT NULL,
+ organization_id BIGINT UNSIGNED NULL, psp_customer_ref VARCHAR(255) NOT NULL, billing_email VARCHAR(254) NULL,
+ billing_name VARCHAR(255) NULL, status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE', version BIGINT NOT NULL DEFAULT 0,
+ created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), deleted_at DATETIME(6) NULL,
+ PRIMARY KEY (id), UNIQUE KEY uk_bcu_scope (scope_kind,scope_id), UNIQUE KEY uk_bcu_psp (psp_customer_ref), KEY idx_bcu_org (organization_id),
+ CONSTRAINT chk_bcu_scope CHECK (scope_kind IN ('USER','TEAM','ORG')),
+ CONSTRAINT chk_bcu_status CHECK (status IN ('ACTIVE','MIGRATION_REQUIRED','CLOSED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='scope所有Stripe Customer';
+
+CREATE TABLE billing_price_versions (
+ id BINARY(16) NOT NULL COMMENT 'UUIDv7', plan_key VARCHAR(64) NOT NULL, scope_kind VARCHAR(8) NOT NULL,
+ organization_id BIGINT UNSIGNED NULL, stripe_price_ref VARCHAR(255) NOT NULL, currency CHAR(3) NOT NULL DEFAULT 'JPY',
+ amount_excluding_tax BIGINT NOT NULL, tax_rate_basis_points INT NOT NULL, tax_name_snapshot VARCHAR(64) NOT NULL,
+ is_included_in_price BOOLEAN NOT NULL, amount_including_tax BIGINT NOT NULL, effective_from DATETIME(6) NOT NULL,
+ effective_until DATETIME(6) NULL, version BIGINT NOT NULL, created_by BIGINT UNSIGNED NOT NULL, created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), deleted_at DATETIME(6) NULL,
+ PRIMARY KEY(id), UNIQUE KEY uk_bpv_stripe_price(stripe_price_ref), UNIQUE KEY uk_bpv_version(plan_key,scope_kind,version), KEY idx_bpv_sale(plan_key,scope_kind,effective_from,effective_until), KEY idx_bpv_org(organization_id),
+ CONSTRAINT chk_bpv_scope CHECK(scope_kind IN ('USER','TEAM','ORG')), CONSTRAINT chk_bpv_currency CHECK(currency='JPY'),
+ CONSTRAINT chk_bpv_tax CHECK(tax_rate_basis_points BETWEEN 0 AND 10000), CONSTRAINT chk_bpv_amount CHECK(amount_including_tax>=0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='不変の販売価格/Stripe Price正本';
+
+CREATE TABLE billing_contract_changes (
+ id BINARY(16) NOT NULL COMMENT 'UUIDv7', contract_id BINARY(16) NOT NULL, billing_customer_id BINARY(16) NOT NULL,
+ organization_id BIGINT UNSIGNED NULL, kind VARCHAR(16) NOT NULL, status VARCHAR(24) NOT NULL, from_plan_key VARCHAR(64) NOT NULL, to_plan_key VARCHAR(64) NOT NULL,
+ from_price_version_id BINARY(16) NOT NULL, to_price_version_id BINARY(16) NOT NULL, from_amount_including_tax BIGINT NOT NULL, to_amount_including_tax BIGINT NOT NULL,
+ stripe_invoice_ref VARCHAR(255) NULL, stripe_subscription_ref VARCHAR(255) NULL, pending_update_expires_at DATETIME(6) NULL, pending_update_target_snapshot JSON NULL, stripe_schedule_ref VARCHAR(255) NULL,
+ effective_at DATETIME(6) NOT NULL, expires_at DATETIME(6) NULL, idempotency_key CHAR(36) NOT NULL, request_hash CHAR(64) NOT NULL, version BIGINT NOT NULL DEFAULT 0,
+ created_by BIGINT UNSIGNED NOT NULL, created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), deleted_at DATETIME(6) NULL,
+ PRIMARY KEY(id), UNIQUE KEY uk_bcc_idempotency(contract_id,idempotency_key), UNIQUE KEY uk_bcc_invoice(stripe_invoice_ref), UNIQUE KEY uk_bcc_schedule(stripe_schedule_ref),
+ KEY idx_bcc_contract_status(contract_id,status,effective_at), KEY idx_bcc_org(organization_id),
+ CONSTRAINT fk_bcc_contract FOREIGN KEY(contract_id) REFERENCES billing_contracts(id), CONSTRAINT fk_bcc_customer FOREIGN KEY(billing_customer_id) REFERENCES billing_customers(id),
+ CONSTRAINT fk_bcc_from_price FOREIGN KEY(from_price_version_id) REFERENCES billing_price_versions(id), CONSTRAINT fk_bcc_to_price FOREIGN KEY(to_price_version_id) REFERENCES billing_price_versions(id),
+ CONSTRAINT chk_bcc_kind CHECK(kind IN ('UPGRADE','DOWNGRADE')), CONSTRAINT chk_bcc_status CHECK(status IN ('PENDING_PAYMENT','SCHEDULED','APPLIED','FAILED','CANCELLED')),
+ CONSTRAINT chk_bcc_refs CHECK((kind='UPGRADE' AND stripe_schedule_ref IS NULL) OR (kind='DOWNGRADE' AND stripe_schedule_ref IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='プラン変更Saga';
+
+CREATE TABLE billing_customer_migrations (
+ id BINARY(16) NOT NULL COMMENT 'UUIDv7', contract_id BINARY(16) NOT NULL, billing_customer_id BINARY(16) NOT NULL,
+ organization_id BIGINT UNSIGNED NULL, legacy_psp_customer_ref VARCHAR(255) NOT NULL, legacy_psp_subscription_ref VARCHAR(255) NOT NULL,
+ stripe_setup_intent_ref VARCHAR(255) NULL, stripe_schedule_ref VARCHAR(255) NULL, effective_at DATETIME(6) NOT NULL, status VARCHAR(32) NOT NULL,
+ compensation_reason VARCHAR(500) NULL, idempotency_key CHAR(36) NOT NULL, version BIGINT NOT NULL DEFAULT 0, created_by BIGINT UNSIGNED NOT NULL,
+ created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), deleted_at DATETIME(6) NULL,
+ PRIMARY KEY(id), UNIQUE KEY uk_bcm_contract(contract_id), UNIQUE KEY uk_bcm_setup(stripe_setup_intent_ref), UNIQUE KEY uk_bcm_schedule(stripe_schedule_ref), UNIQUE KEY uk_bcm_idempotency(contract_id,idempotency_key), KEY idx_bcm_status(status,effective_at), KEY idx_bcm_org(organization_id),
+ CONSTRAINT fk_bcm_contract FOREIGN KEY(contract_id) REFERENCES billing_contracts(id), CONSTRAINT fk_bcm_customer FOREIGN KEY(billing_customer_id) REFERENCES billing_customers(id),
+ CONSTRAINT chk_bcm_status CHECK(status IN ('CREATED','PAYMENT_METHOD_COLLECTING','SCHEDULE_CREATED','OLD_CANCEL_SCHEDULED','COMPLETED','COMPENSATING','COMPENSATED','FAILED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='legacy Customer移行Saga';
 
 CREATE TABLE billing_invoices (
-    id BINARY(16) NOT NULL COMMENT 'UUIDv7',
-    billing_customer_id BINARY(16) NOT NULL,
-    contract_id BINARY(16) NULL,
-    scope_kind VARCHAR(8) NOT NULL,
-    scope_id BIGINT UNSIGNED NOT NULL,
-    psp_invoice_ref VARCHAR(255) NOT NULL,
-    psp_subscription_ref VARCHAR(255) NULL,
-    billing_reason VARCHAR(32) NOT NULL,
-    status VARCHAR(16) NOT NULL,
-    period_start DATETIME(6) NULL,
-    period_end DATETIME(6) NULL,
-    currency CHAR(3) NOT NULL DEFAULT 'JPY',
-    subtotal_amount BIGINT NOT NULL,
-    tax_amount BIGINT NOT NULL DEFAULT 0,
-    total_amount BIGINT NOT NULL,
-    paid_at DATETIME(6) NULL,
-    finalized_at DATETIME(6) NULL,
-    voided_at DATETIME(6) NULL,
-    hosted_invoice_url_snapshot VARCHAR(2048) NULL,
-    invoice_pdf_url_snapshot VARCHAR(2048) NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-    deleted_at DATETIME(6) NULL,
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_bi_psp_invoice (psp_invoice_ref),
-    KEY idx_bi_scope_period (scope_kind, scope_id, period_end),
-    KEY idx_bi_customer_period (billing_customer_id, period_end),
-    CONSTRAINT chk_bi_scope CHECK (scope_kind IN ('USER','TEAM','ORG')),
-    CONSTRAINT chk_bi_status CHECK (status IN ('DRAFT','OPEN','PAID','UNCOLLECTIBLE','VOID'))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Stripe invoice のローカル投影';
+ id BINARY(16) NOT NULL COMMENT 'UUIDv7', billing_customer_id BINARY(16) NOT NULL, contract_id BINARY(16) NULL, organization_id BIGINT UNSIGNED NULL,
+ scope_kind VARCHAR(8) NOT NULL, scope_id BIGINT UNSIGNED NOT NULL, psp_invoice_ref VARCHAR(255) NOT NULL, psp_subscription_ref VARCHAR(255) NULL,
+ billing_reason VARCHAR(32) NOT NULL, status VARCHAR(16) NOT NULL, period_start DATETIME(6) NULL, period_end DATETIME(6) NULL, currency CHAR(3) NOT NULL DEFAULT 'JPY',
+ subtotal_amount BIGINT NOT NULL, discount_amount BIGINT NOT NULL DEFAULT 0, tax_amount BIGINT NOT NULL DEFAULT 0, total_amount BIGINT NOT NULL,
+ issuer_name_snapshot VARCHAR(255) NOT NULL, billing_name_snapshot VARCHAR(255) NULL, billing_email_snapshot VARCHAR(254) NULL, billing_address_snapshot JSON NULL,
+ finalized_at DATETIME(6) NULL, paid_at DATETIME(6) NULL, voided_at DATETIME(6) NULL, version BIGINT NOT NULL DEFAULT 0, created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), deleted_at DATETIME(6) NULL,
+ PRIMARY KEY(id), UNIQUE KEY uk_bi_psp(psp_invoice_ref), KEY idx_bi_scope_period(scope_kind,scope_id,period_end), KEY idx_bi_customer_period(billing_customer_id,period_end), KEY idx_bi_org(organization_id),
+ CONSTRAINT fk_bi_customer FOREIGN KEY(billing_customer_id) REFERENCES billing_customers(id), CONSTRAINT fk_bi_contract FOREIGN KEY(contract_id) REFERENCES billing_contracts(id),
+ CONSTRAINT chk_bi_scope CHECK(scope_kind IN ('USER','TEAM','ORG')), CONSTRAINT chk_bi_status CHECK(status IN ('DRAFT','OPEN','PAID','UNCOLLECTIBLE','VOID'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Stripe invoice不変投影';
 
 CREATE TABLE billing_invoice_lines (
-    id BINARY(16) NOT NULL COMMENT 'UUIDv7',
-    invoice_id BINARY(16) NOT NULL,
-    psp_line_ref VARCHAR(255) NOT NULL,
-    description_snapshot VARCHAR(500) NOT NULL,
-    quantity DECIMAL(12,3) NOT NULL DEFAULT 1,
-    amount_excluding_tax BIGINT NOT NULL,
-    tax_amount BIGINT NOT NULL DEFAULT 0,
-    amount_including_tax BIGINT NOT NULL,
-    period_start DATETIME(6) NULL,
-    period_end DATETIME(6) NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_bil_invoice_line (invoice_id, psp_line_ref),
-    CONSTRAINT fk_bil_invoice FOREIGN KEY (invoice_id) REFERENCES billing_invoices(id),
-    CONSTRAINT chk_bil_quantity CHECK (quantity > 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='請求明細の不変スナップショット';
+ id BINARY(16) NOT NULL COMMENT 'UUIDv7', invoice_id BINARY(16) NOT NULL, organization_id BIGINT UNSIGNED NULL, psp_line_ref VARCHAR(255) NOT NULL, description_snapshot VARCHAR(500) NOT NULL,
+ quantity DECIMAL(12,3) NOT NULL DEFAULT 1, amount_excluding_tax BIGINT NOT NULL, discount_amount BIGINT NOT NULL DEFAULT 0, tax_name_snapshot VARCHAR(64) NULL, tax_rate_basis_points INT NULL,
+ tax_amount BIGINT NOT NULL DEFAULT 0, is_included_in_price BOOLEAN NOT NULL, amount_including_tax BIGINT NOT NULL, period_start DATETIME(6) NULL, period_end DATETIME(6) NULL, created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+ PRIMARY KEY(id), UNIQUE KEY uk_bil_line(invoice_id,psp_line_ref), KEY idx_bil_org(organization_id), CONSTRAINT fk_bil_invoice FOREIGN KEY(invoice_id) REFERENCES billing_invoices(id), CONSTRAINT chk_bil_quantity CHECK(quantity>0), CONSTRAINT chk_bil_tax CHECK(tax_rate_basis_points IS NULL OR tax_rate_basis_points BETWEEN 0 AND 10000)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='請求明細不変投影';
+
+ALTER TABLE billing_contracts ADD COLUMN billing_customer_id BINARY(16) NULL AFTER psp_customer_ref,
+ ADD COLUMN price_version_id BINARY(16) NULL AFTER price_jpy_snapshot, ADD COLUMN billing_cycle_anchor_at DATETIME(6) NULL,
+ ADD COLUMN cancel_scheduled_at DATETIME(6) NULL, ADD COLUMN version BIGINT NOT NULL DEFAULT 0,
+ ADD KEY idx_bc_customer(billing_customer_id), ADD KEY idx_bc_price_version(price_version_id),
+ ADD CONSTRAINT fk_bc_customer FOREIGN KEY(billing_customer_id) REFERENCES billing_customers(id),
+ ADD CONSTRAINT fk_bc_price_version FOREIGN KEY(price_version_id) REFERENCES billing_price_versions(id);
+
+ALTER TABLE stripe_webhook_events ADD COLUMN billing_contract_id BINARY(16) NULL, ADD COLUMN billing_customer_id BINARY(16) NULL,
+ ADD COLUMN stripe_object_ref VARCHAR(255) NULL, ADD COLUMN payload_sha256 CHAR(64) NULL,
+ ADD COLUMN failed_at DATETIME(6) NULL, ADD COLUMN attempt_count INT NOT NULL DEFAULT 0,
+ ADD KEY idx_swe_billing_contract(billing_contract_id), ADD KEY idx_swe_billing_customer(billing_customer_id), ADD KEY idx_swe_retry(failed_at,attempt_count),
+ ADD CONSTRAINT fk_swe_billing_contract FOREIGN KEY(billing_contract_id) REFERENCES billing_contracts(id),
+ ADD CONSTRAINT fk_swe_billing_customer FOREIGN KEY(billing_customer_id) REFERENCES billing_customers(id);
+
+CREATE TABLE billing_api_idempotencies (
+ id BINARY(16) NOT NULL COMMENT 'UUIDv7', actor_id BIGINT UNSIGNED NOT NULL, http_method VARCHAR(8) NOT NULL, request_path VARCHAR(255) NOT NULL,
+ idempotency_key CHAR(36) NOT NULL, request_hash CHAR(64) NOT NULL, response_status SMALLINT NOT NULL, response_json JSON NOT NULL,
+ expires_at DATETIME(6) NOT NULL, created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+ PRIMARY KEY(id), UNIQUE KEY uk_bai_actor_request(actor_id,http_method,request_path,idempotency_key), KEY idx_bai_expiry(expires_at),
+ CONSTRAINT chk_bai_status CHECK(response_status BETWEEN 200 AND 599)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消費者変更APIの冪等応答';
 ```
 
-- 金額は JPY 最小単位（円）の整数。クーポン等で負額明細が生じうるため金額列を `UNSIGNED` にしない。invoice/line は会計証跡であり物理削除・内容上書きをしない。URL は取得時点の補助情報にすぎないため、ダウンロード時には Stripe から最新リンクを再取得する。
-- `billing_contracts` に `billing_customer_id BINARY(16) NULL`、`billing_cycle_anchor_at DATETIME(6) NULL`、`scheduled_plan_key VARCHAR(64) NULL`、`scheduled_change_at DATETIME(6) NULL`、`cancel_scheduled_at DATETIME(6) NULL` を追加する。新規契約後は customer を必須にし、旧契約は NULL を許容して移行状態を表す。
-- `billing_webhook_events`（Stripe event id UNIQUE、event type、received/payload hash、processed_at、failed_at、attempt_count）を追加する。生 payload は暗号化保管が必要な最小期間（30日）に限定し、PII のある payload を監査ログへ複写しない。
-- Flyway は `Vxxx__expand_billing_scope_customers_and_invoices.sql`、backfill 用の再実行可能ジョブ、`Vxxx__switch_billing_contract_customer_ref.sql`、旧 read path 除去の順。migration は `utf8mb4`、CHECK、index、コメントを含める。E2E 全表 truncate リストも更新する。
+価格は `plans.base_monthly_price_jpy` / inline `price_data` を販売正本にしない。V196 は既存プラン/バンドの有効額を `billing_price_versions` と既存 Stripe Price に backfill、NULL/不整合は販売停止にする。Customer 作成は DB の `uk_bcu_scope` reservation→Stripe Customer create（idempotency key）→ref保存の Saga とし、Stripe 成功後のDB失敗は Customer metadata `orphaned=true` にして照合キューへ送る。
 
-## 6. API
+## 6. legacy Customer 移行 Saga
 
-全成功応答は `ApiResponse`、一覧は `PagedResponse` / cursor response、失敗は既存 `EntitlementErrorCode` を拡張する。変更系は必ず `Idempotency-Key`（UUID）を要求し、同じ key + actor + method + canonical request hash は同じ結果を返す。
+TEAM/ORG の operator-owned subscription は Customer を付替えず、通常 Checkout `create_prorations` も使わない。
 
-| API | 権限 | 用途 |
-|---|---|---|
-| `GET /api/v1/me/billing/scopes` | 本人 | 管理可能な scope 一覧 |
-| `GET /api/v1/me/billing/summary?scopeKind&scopeId` | USER本人 / TEAM・ORG管理者 | 契約、次回請求、解約予約、機能、税込金額 |
-| `GET /api/v1/me/billing/invoices?scopeKind&scopeId&cursor` | 同上 | 月別請求一覧 |
-| `GET /api/v1/me/billing/invoices/{invoiceId}` | 同上 | 明細。scope 条件付き取得で 404 秘匿 |
-| `POST /api/v1/me/billing/invoices/{invoiceId}/document-session` | 同上 | Stripe 最新請求書 URL への短期 redirect/session |
-| `POST /api/v1/me/billing/checkout-sessions` | 同上 | 新規契約 Checkout。初回日割り見積を返す |
-| `POST /api/v1/me/billing/contracts/{contractId}/change-preview` | 同上 | upgrade/downgrade の金額・反映時点を取得 |
-| `POST /api/v1/me/billing/contracts/{contractId}/changes` | 同上 | preview token に基づく変更実行 |
-| `POST /api/v1/me/billing/contracts/{contractId}/cancel` | 同上 | 月末解約を予約 |
-| `DELETE /api/v1/me/billing/contracts/{contractId}/cancel` | 同上 | 月末前の解約予定撤回 |
-| `POST /api/v1/me/billing/portal-sessions` | 同上 | 支払方法・請求先・請求書限定 Customer Portal |
-| `POST /api/v1/billing/webhooks/stripe` | Stripe 署名のみ | 非公開 webhook 受信 |
+1. `billing_customer_migrations=CREATED` を作り、新 scope Customer を確保する。
+2. 限定 Customer Portal 又は SetupIntent で新 Customer に支払方法を収集し、`PAYMENT_METHOD_COLLECTING`。旧個人 Customer のカード/請求先は読まない。
+3. 成功後、`start_date=current_period_end` の **Stripe Subscription Schedule** を作る。開始前の invoice はゼロ、`SCHEDULE_CREATED`。
+4. schedule 作成成功を永続化した後だけ旧 subscription を `cancel_at_period_end=true` にして `OLD_CANCEL_SCHEDULED`。
+5. schedule start と新 invoice.paid を確認して `COMPLETED`。新 scope Customer の contract を正規所有者として切替える。
+6. step 3〜5 の失敗は `COMPENSATING` とし、新 schedule を cancel/release、旧 cancel を `false` へ戻す。両方成功で `COMPENSATED`、戻せない場合だけ `FAILED`＋運営照合。旧 Customer/delete/detach はしない。
 
-`scopeKind/scopeId` は query の利便性のために用いるが、Service は必ず契約/請求書から scope を解決して二重照合する。USER は `scopeId == currentUserId` のみ、TEAM/ORG は `@accessGuard.isScopeAdmin` と Repository の `findByIdAndScopeKindAndScopeId` で防御する。他 scope の invoice/contract id は 404、無権限 scope の指定は 403 とする。Portal URL、Stripe ID、任意 redirect URL をクライアント入力に受けない。
+## 7. API 契約
 
-主要エラー: `BILLING_CUSTOMER_MIGRATION_REQUIRED`(409)、`BILLING_PRICE_NOT_SELLABLE`(409)、`BILLING_PREVIEW_EXPIRED`(409)、`BILLING_CANCEL_NOT_SCHEDULED`(409)、`BILLING_PERIOD_ALREADY_ENDED`(409)、`BILLING_INVOICE_NOT_FOUND`(404)、`BILLING_SCOPE_FORBIDDEN`(403)、`BILLING_STRIPE_UNAVAILABLE`(502)。クライアント起因は WARN/4xx、Stripe/API 不整合は ERROR/502 とし、`GlobalExceptionHandler` に明示マップする。
+公開価格は `GET /api/v1/public/billing/plans?scopeKind={USER|TEAM|ORG}`（認証不要、`scopeKind`必須、200）で返す。応答は `data:{scopeKind,plans:PublicPlan[]}`、`PublicPlan={planKey:string,displayName:string,description:string,startingMonthlyTotal:Money?,priceBands:PublicPriceBand[],quoteRequired:boolean,available:boolean,features:string[]}` とする。`PublicPriceBand={minMembers:int32,maxMembers:int32?,startingMonthlyTotal:Money?}`。USER は `startingMonthlyTotal` を表示できるが、人数が未確定のTEAM/ORG は確定額を表示せず、`quoteRequired=true` と「ログイン後に対象チーム/組織で確定見積り」を表示する。`available=false` のとき全価格はnull、Checkout/Stripe ref/個別 scope情報は返さない。全認証後 API は `BillingAccessGuard` を通す。
 
-## 7. Webhook、整合性、監査
+以下の表は特記なき限りすべて `/api/v1` prefix を省略している（例: `GET /me/billing/scopes` は `GET /api/v1/me/billing/scopes`）。
 
-1. Stripe 署名を raw body で検証し、endpoint secret は secret store のみから読む。検証前に JSON parse やログ出力をしない。
-2. event id を `billing_webhook_events` の UNIQUE で先に確保して冪等化する。同一 event の再配信は 200 を返し副作用を繰り返さない。異なる event の順不同は Stripe object の `created` と current state を照合し、古い状態で新しい状態を巻き戻さない。
-3. `checkout.session.completed` は Customer/contract の紐付け確認だけを行い、支払済み確定は invoice/subscription event に従う。`invoice.finalized/paid/payment_failed/voided` は `billing_invoices` と行明細を upsert、`customer.subscription.updated/deleted` は取消予約・period・scheduled change を同期する。
-4. handler は DB transaction を短くし、外部 Stripe 再読込は transaction 外で行う。失敗は指数 backoff で再処理可能にし、最大回数後は運営アラートと照合キューへ送る。event を握りつぶして 2xx にしない。
-5. `BILLING_CHECKOUT_CREATED`、`BILLING_CHANGE_SCHEDULED`、`BILLING_UPGRADED`、`BILLING_CANCEL_SCHEDULED`、`BILLING_CANCEL_RESCINDED`、`BILLING_PORTAL_OPENED`、`BILLING_INVOICE_VIEWED`、`BILLING_WEBHOOK_PROCESSED/FAILED` を audit_logs に actor/scope/contract/Stripe object ref/金額スナップショット（カード番号・住所全文・payload は除外）で記録する。
+| API | request（型/必須） | response `data` | status |
+|---|---|---|---|
+| `GET /me/billing/scopes` | なし | `items: Scope[]{kind enum,id int64,name string,manage boolean}` | 200 |
+| `GET /me/billing/summary` | `scopeKind enum`,`scopeId int64` | `scope`,`contract: Contract?`,`nextInvoice: Money?`,`cancel: {scheduledAt,endAt}?`,`quoteWindow:{available,availableAt?}` | 200/403 |
+| `GET /me/billing/invoices` | scope + `cursor:string?` + `size:int[1,100]=20` | `data: InvoiceSummary[]`, `meta:{nextCursor:string?,hasNext:boolean}` | 200/403 |
+| `GET /me/billing/invoices/{id}` | UUIDv7 | `InvoiceDetail{lines[],issuer,billingAddress?,totals}` | 200/403/404 |
+| `POST /me/billing/invoices/{id}/document-url` | `Idempotency-Key UUID` | `{url:https URL,expiresAt:datetime}` | 200/403/404/409/502 |
+| `POST /me/billing/quotes` | header key; `{scopeKind,scopeId,priceVersionId:UUID}` | `{quoteId:UUID,initialTotal:Money,nextMonthlyTotal:Money,expiresAt,periodStart,periodEnd}` | 201/403/409 |
+| `POST /me/billing/checkout-sessions` | header key; `{quoteId:UUID}` | `{checkoutUrl:https URL,expiresAt:datetime}` | 201/403/409/502 |
+| `POST /me/billing/contracts/{id}/change-previews` | header key; `{toPriceVersionId:UUID,version:int64}` | `{previewToken:opaque>=32,kind,amountDueNow:Money,effectiveAt,expiresAt}` | 201/403/404/409 |
+| `POST /me/billing/contracts/{id}/changes` | header key; `{previewToken:string,version:int64}` | `{changeId:UUID,status enum,effectiveAt}` | 202/403/404/409/502 |
+| `POST /me/billing/contracts/{id}/cancel` | header key; `{version:int64}` | `{scheduledAt,endAt,status:'SCHEDULED'}` | 200/403/404/409/502 |
+| `DELETE /me/billing/contracts/{id}/cancel` | header key + `version` query int64 | `{endAt,status:'ACTIVE'}` | 200/403/404/409/502 |
+| `POST /me/billing/portal-sessions` | header key; `{scopeKind,scopeId}` | `{url:https URL,expiresAt:datetime}` | 201/403/409/502 |
+| `POST /webhooks/stripe` | Stripe raw body/signature | empty | 200/400/500 |
 
-請求書/領収書のローカル投影は、請求後 7 年保持する。退会・脱退で表示権限を失っても法定・会計保持対象を削除せず、USER の個人情報は既存退会ポリシーに従い匿名化し、請求の金額・時期・法人名等の保存根拠をプライバシー通知に明記する。
+`Money={currency:'JPY',amountIncludingTax:int64,amountExcludingTax:int64,taxAmount:int64,taxName:string?,taxRateBasisPoints:int?}`。`TaxBreakdown={taxName:string?,taxRateBasisPoints:int?,taxAmount:int64}`。`Scope={kind:'USER'|'TEAM'|'ORG',id:int64,name:string,manage:boolean}`。`Contract={id:UUIDv7,status:'PENDING'|'ACTIVE'|'PAST_DUE'|'CANCELLED'|'EXPIRED',planKey:string,priceVersionId:UUIDv7?,currentPeriodEnd:datetime?,version:int64}`。`InvoiceSummary={id:UUIDv7,status:'DRAFT'|'OPEN'|'PAID'|'UNCOLLECTIBLE'|'VOID',periodStart:datetime?,periodEnd:datetime?,total:Money,paidAt:datetime?}`。`InvoiceLine={description:string,quantity:decimal,amountExcludingTax:int64,discount:int64,taxes:TaxBreakdown[],amountIncludingTax:int64,periodStart:datetime?,periodEnd:datetime?}`。`Address={country:string,line1:string,city:string?,postalCode:string?}`。`InvoiceDetail=InvoiceSummary & {lines:InvoiceLine[],issuer:{name:string},billingAddress:Address?,subtotal:Money,discount:Money}`。すべての日時は ISO-8601 offset 付き、nullable は `?` のみ、未知 enum は fail-closed とする。document/Portal URL は JSON の短命 URL に統一し 302 を使わない。preview token は random 256bit を hash 保存し、actor/scope/contract/version/request hash に束縛、一回だけ、`expiresAt`（最大10分）で無効化する。idempotency は `billing_api_idempotencies` の `actor_id,method,path,key` UNIQUE、同 key の hash 相違は409、同一は保存済 response を返す。
 
-## 8. 既存 operator-owned Customer の移行
+既存 `ENTITLEMENT_005`（scope forbidden/403）、`ENTITLEMENT_007`（contract not found/404）、`ENTITLEMENT_015`（Checkout失敗/502）、`ENTITLEMENT_016`（PENDING競合/409）を再利用する。新エラーは既存最大 `ENTITLEMENT_017` の次を実装開始時に再確認して予約する。現時点の案は `ENTITLEMENT_018`=invoice not found(404)、019=price not sellable(409)、020=preview expired(409)、021=change conflict(409)、022=month boundary(409)、023=quote expired(409)、024=migration required(409)、025=Stripe unavailable(502)。マージ時に最大+1を再確認し `GlobalExceptionHandler` へ明示登録する。
 
-Stripe Subscription の Customer をサイレントに別 Customer へ付け替えない。支払方法の権限と請求先の混同を起こすためである。
+## 8. 税、保持、監査、非機能
 
-1. 新規 USER/TEAM/ORG 契約は即時に `billing_customers` を作成し、新 Customer のみを使う。
-2. 既存 USER 契約は本人 Customer と scope が一致することを確認して `billing_customers` を backfill する。一致しないものも legacy 扱いにする。
-3. 既存 TEAM/ORG 契約で `psp_customer_ref` が操作管理者個人 Customer のものは `LEGACY_MIGRATION_REQUIRED`。現管理者には「現在の支払方法を引き継がず、次回更新日からチーム/組織の新しい契約へ切り替える」一回限りの移行 UI を出す。新 Customer で Checkout を完了し、開始日は旧 subscription の `current_period_end`、旧 subscription は同時点で `cancel_at_period_end=true` とする。重複請求のないことを webhook で確認して完了とする。
-4. 移行を拒否/未完了なら旧契約は期末で終了し、新しいスコープ Customer での再契約を案内する。旧 Customer のカード情報、請求先、他の個人契約は画面にも API にも出さない。
-5. 切替前に、契約数、Stripe subscription status、period end、既存 customer と scope 対応を dry-run 出力し、運営承認後に対象を段階実行する。失敗時は新 subscription を期首前に cancel し、旧契約を維持するため、既存 Customer を削除・detach しない。
+Stripe invoice/line を正本として金額を取得し、`subtotal - discount + tax = total`、各 line の税込/税抜/端数合計が invoice と一致しないと投影を確定しない。JPY は小数なし、Stripe の line amount を再丸めしない。invoice/line は割引、税名、税率、`is_included_in_price`、発行者/請求先 snapshot を不変保存し、bearer URL snapshot 列は持たない。請求書投影は7年、Webhook payloadは暗号化30日保持する。
 
-## 9. 非機能・テスト・受入条件
+`BILLING_CHECKOUT_CREATED`、`BILLING_CHANGE_*`、`BILLING_CANCEL_*`、`BILLING_PORTAL_OPENED`、`BILLING_INVOICE_VIEWED`、`BILLING_MIGRATION_*`、`BILLING_OPERATOR_VIEWED`、webhook成功/失敗を actor/scope/object ref/金額で監査する（カード番号、住所全文、URL、payloadは除外）。一覧 P95 は500ms、cursor既定20最大100、表示では Stripe 同期呼出しをせず投影を読む。rate limit は scope ごとに checkout/change/cancel/Portal 各10回/時、CSP/ログ/例外はPIIを出さない。
 
-- 料金ハブ/請求一覧は P95 500ms を目標とし、invoice 一覧は cursor pagination（既定20、最大100）。Stripe API をページ表示のたびに同期呼出しせず、webhook 投影を読む。請求書 download のみ短命 URL を取得する。
-- Checkout/変更/解約/撤回/Portal は scope ごとに 10 回/時のレート制限。個人情報を URL、フロントログ、監査ログ、例外メッセージに出さない。CSP は Stripe/Portal の許可先を最小限にする。
-- 単体: JST 月末/うるう年/年跨ぎ日割り、upgrade/downgrade、取消/撤回境界、price 未設定、idempotency、scope resolver、webhook 順不同・重複。
-- 結合: MySQL UNIQUE/索引、Flyway upgrade、権限（他 scope 403/404）、invoice 投影、legacy dry-run、退会後保持。
-- E2E: 個人・チーム・組織を一画面で切替、既存導線の文脈維持、税込内訳、Checkout success/cancel、解約一確認/撤回、メンバー非表示、支払失敗、6言語。Stripe は test clock/fixture と webhook 署名を用いる。
+## 9. テストと受入条件
 
-| AC | 受入条件 |
+| AC | ケース（種別/観測点） |
 |---|---|
-| AC-BC-01 | 操作者が異なっても、同じ TEAM/ORG は一つの scope-owned Customer を使い、操作者個人 Customer を参照しない |
-| AC-BC-02 | `/billing` は管理可能な全 scope を列挙し、active scope の変更だけで別 scope の履歴を失わない |
-| AC-BC-03 | 初回部分月、翌月満額、upgrade 差額、downgrade 翌月反映を JST 境界で正しく表示・請求する |
-| AC-BC-04 | 解約は一確認で月末終了、撤回は月末前のみ成功し、翌月の請求を作らない |
-| AC-BC-05 | 月別 invoice、税込主表示・税内訳、請求書/領収書、支払方法/請求先に管理者だけが到達できる |
-| AC-BC-06 | 無権限の scope/contract/invoice/portal 要求で他者の契約・請求情報を得られない |
-| AC-BC-07 | 同一 webhook/同一 idempotency key の再送で二重契約、二重請求、二重監査が起きない |
-| AC-BC-08 | legacy TEAM/ORG 契約は個人 Customer を再利用せず、期末切替または終了のいずれでも二重課金しない |
-| AC-BC-09 | Stripe Tax 登録なしで automatic_tax を有効化せず、販売不能な価格は CTA/API とも拒否する |
+| BC-01 | 正常・結合: USER/TEAM/ORG 各 Customer が一意、操作者交替後も同じ scope Customer |
+| BC-02 | 認可・結合: V196でADMINだけに `billing.manage` を既定付与、DEPUTY/MEMBERには未付与。明示付与したDEPUTYだけを許可し、取消後は即403。SYSTEM_ADMIN は消費者 invoice/Portal 403、他scope id は404 |
+| BC-03 | 境界・単体: `nextMonthStart-30分-1秒` は作成可、`-30分` ちょうど以後は `ENTITLEMENT_022`、月初直後は再作成可。quote/session同一 `nextMonthStart-1秒`、うるう年/年跨ぎも観測 |
+| BC-04 | 正常/外部失敗・Stripe fixture: 新規/upgrade は `invoice.paid` 前にACTIVE/権利なし、payment_failedで旧プラン維持 |
+| BC-05 | 正常・Stripe test clock: downgrade schedule が翌月1日まで権利/金額を変えず、完了eventで一回だけ切替 |
+| BC-06 | 境界・結合: 解約の前/ちょうど/後、撤回可否、`deleted`後EXPIRED/pointer削除/権利失効 |
+| BC-07 | 並行・結合: 同一/異なる idempotency key、version競合、重複/順不同 webhook で二重契約・監査・請求なし。`invoice.paid` が `checkout.session.completed` より先でも subscription metadata から同一contractを解決し一回だけACTIVE化 |
+| BC-08 | legacy補償・E2E+fixture: SetupIntent→future Schedule→旧cancelの順、schedule失敗/旧cancel失敗でschedule取消・旧cancel撤回 |
+| BC-09 | 税・結合: 税込主表示、割引/税/端数/請求先snapshotがStripe invoiceと一致、Tax未登録ではautomatic_taxなし |
+| BC-10 | UI/E2E: `/pricing`、既存導線文脈、全scope切替、月別明細/document URL、解約一確認/撤回、6言語キー解決 |
 
-## 10. ロールアウトとロールバック
+Flyway upgrade、全新表を含むE2E truncate、OpenAPI再生成、frontend生成型、backend/FE unit・integration・E2EをCI観測点とする。
 
-1. migration と read-only hub を feature flag 下で投入し、実データを dry-run 照合する。
-2. 新 Customer の新規契約、請求投影、Portal（限定設定）、取消/撤回、最後に有償変更を順に有効化する。
-3. 各段で webhook 遅延・invoice 差分・二重請求ゼロを監視する。異常時は新規 checkout/change flag を即時 OFF にし、既存 subscription/webhook 処理を維持する。既に作成した Customer、invoice、audit は削除しない。
-4. old operator-owned read path は、legacy 契約がゼロか移行期限終了後にのみ削除する。削除前に Stripe/DB の subscription 件数と scope customer の 1:1 制約を照合する。
+## 10. ロールアウト/ロールバック
+
+`read-only hub → price versions → scope Customer新規契約 → invoice投影 → Portal → cancel/resume → change → legacy migration` の順に feature flag で有効化する。各段で webhook遅延、Stripe/DB invoice差分、二重請求ゼロを監視する。異常時は新規作成 flag のみOFFにし、既存 Subscription/Webhook を止めない。作成済 Customer/invoice/audit を削除せず、legacy read path は全migration完了と照合後にだけ削除する。
