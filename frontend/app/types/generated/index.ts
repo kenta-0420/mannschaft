@@ -2064,13 +2064,13 @@ export interface paths {
         get?: never;
         /**
          * チームのプラン変更
-         * @description TEAM スコープ。ADMIN のみ。
+         * @description TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。
          */
         put: operations["changeForTeam"];
         post?: never;
         /**
          * チームの契約解約
-         * @description TEAM スコープ。ADMIN のみ。
+         * @description TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。
          */
         delete: operations["cancelForTeam"];
         options?: never;
@@ -4236,13 +4236,13 @@ export interface paths {
         get?: never;
         /**
          * 組織のプラン変更
-         * @description ORG スコープ。ADMIN のみ。
+         * @description ORG スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。
          */
         put: operations["changeForOrg"];
         post?: never;
         /**
          * 組織の契約解約
-         * @description ORG スコープ。ADMIN のみ。
+         * @description ORG スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。
          */
         delete: operations["cancelForOrg"];
         options?: never;
@@ -11745,7 +11745,7 @@ export interface paths {
         put?: never;
         /**
          * チームの契約作成
-         * @description TEAM スコープ。ADMIN のみ。Idempotency-Key 必須。
+         * @description TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。Idempotency-Key 必須。
          */
         post: operations["createForTeam_3"];
         delete?: never;
@@ -18804,7 +18804,7 @@ export interface paths {
         put?: never;
         /**
          * 組織の契約作成
-         * @description ORG スコープ。ADMIN のみ。Idempotency-Key 必須。
+         * @description ORG スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。Idempotency-Key 必須。
          */
         post: operations["createForOrg_3"];
         delete?: never;
