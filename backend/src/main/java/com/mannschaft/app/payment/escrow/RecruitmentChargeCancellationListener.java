@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.escrow;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.recruitment.event.RecruitmentCancelledEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,8 @@ public class RecruitmentChargeCancellationListener {
     private final EscrowLifecycleService escrowLifecycleService;
 
     // 手動・自動取消のトランザクションが commit した後に実行する。
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると取消済みの札に対する未captureの与信が残り、募集状態と決済状態が乖離する")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onRecruitmentCancelled(RecruitmentCancelledEvent event) {
         if (!event.paymentEnabled()) {
