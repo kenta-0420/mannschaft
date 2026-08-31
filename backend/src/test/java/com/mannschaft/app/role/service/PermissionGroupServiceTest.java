@@ -1,5 +1,6 @@
 package com.mannschaft.app.role.service;
 
+import com.mannschaft.app.billing.security.BillingPermissionGroupGuard;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -54,6 +55,9 @@ class PermissionGroupServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private BillingPermissionGroupGuard billingPermissionGroupGuard;
 
     @InjectMocks
     private PermissionGroupService permissionGroupService;
@@ -329,6 +333,120 @@ class PermissionGroupServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_006"));
+        }
+    }
+
+    // ========================================
+    // BillingPermissionGroupGuard 配線
+    // ========================================
+
+    @Nested
+    @DisplayName("BillingPermissionGroupGuard 配線")
+    class BillingPermissionGroupGuardWiring {
+
+        @Test
+        @DisplayName("更新: 変更前の課金権限を除去する場合も変更前・変更後IDを渡す")
+        void updatePermissionGroup_変更前と変更後の権限IDをガードへ渡す() {
+            PermissionGroupEntity existing = createGroupEntity(GROUP_ID, "課金管理");
+            PermissionGroupRequest req = new PermissionGroupRequest(
+                    "一般管理", "DEPUTY_ADMIN", List.of(PERM_ID_2));
+            given(permissionGroupRepository.findById(GROUP_ID)).willReturn(Optional.of(existing));
+            given(permissionRepository.findByIdIn(req.getPermissionIds()))
+                    .willReturn(List.of(createPermissionEntity(PERM_ID_2, "MEMBER_VIEW")));
+            given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of(
+                    PermissionGroupPermissionEntity.builder()
+                            .groupId(GROUP_ID).permissionId(PERM_ID_1).build()
+            ));
+            given(permissionGroupRepository.save(any(PermissionGroupEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            permissionGroupService.updatePermissionGroup(GROUP_ID, req, CREATED_BY);
+
+            verify(billingPermissionGroupGuard).authorizeMutation(
+                    BillingPermissionGroupGuard.Operation.UPDATE,
+                    CREATED_BY, SCOPE_ID, "TEAM", GROUP_ID,
+                    List.of(PERM_ID_1), List.of(PERM_ID_2));
+        }
+
+        @Test
+        @DisplayName("削除: 削除前の権限IDをガードへ渡す")
+        void deletePermissionGroup_変更前の権限IDをガードへ渡す() {
+            PermissionGroupEntity existing = createGroupEntity(GROUP_ID, "課金管理");
+            given(permissionGroupRepository.findById(GROUP_ID)).willReturn(Optional.of(existing));
+            given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of(
+                    PermissionGroupPermissionEntity.builder()
+                            .groupId(GROUP_ID).permissionId(PERM_ID_1).build()
+            ));
+
+            permissionGroupService.deletePermissionGroup(GROUP_ID, CREATED_BY);
+
+            verify(billingPermissionGroupGuard).authorizeMutation(
+                    BillingPermissionGroupGuard.Operation.DELETE,
+                    CREATED_BY, SCOPE_ID, "TEAM", GROUP_ID,
+                    List.of(PERM_ID_1), List.of());
+        }
+
+        @Test
+        @DisplayName("複製: 複製元の権限IDをガードへ渡す")
+        void duplicatePermissionGroup_複製元の権限IDをガードへ渡す() {
+            PermissionGroupEntity existing = createGroupEntity(GROUP_ID, "課金管理");
+            given(permissionGroupRepository.findById(GROUP_ID)).willReturn(Optional.of(existing));
+            given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of(
+                    PermissionGroupPermissionEntity.builder()
+                            .groupId(GROUP_ID).permissionId(PERM_ID_1).build()
+            ));
+            given(permissionGroupRepository.save(any(PermissionGroupEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            permissionGroupService.duplicatePermissionGroup(GROUP_ID, CREATED_BY);
+
+            verify(billingPermissionGroupGuard).authorizeMutation(
+                    BillingPermissionGroupGuard.Operation.DUPLICATE,
+                    CREATED_BY, SCOPE_ID, "TEAM", GROUP_ID,
+                    List.of(PERM_ID_1), List.of());
+        }
+
+        @Test
+        @DisplayName("再割り当て: 解除対象の現在値と新規値を合わせてガードへ渡す")
+        void assignUserPermissionGroups_現在値と新規値をガードへ渡す() {
+            Long newGroupId = GROUP_ID + 1;
+            PermissionGroupEntity currentGroup = createGroupEntity(GROUP_ID, "現在の課金管理");
+            PermissionGroupEntity newGroup = createGroupEntity(newGroupId, "新しい一般管理");
+            given(permissionGroupRepository.findByTeamId(SCOPE_ID))
+                    .willReturn(List.of(currentGroup, newGroup));
+            given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of(
+                    UserPermissionGroupEntity.builder()
+                            .userId(USER_ID).groupId(GROUP_ID).assignedBy(CREATED_BY).build()
+            ));
+            UserPermissionGroupAssignRequest req =
+                    new UserPermissionGroupAssignRequest(List.of(newGroupId));
+
+            permissionGroupService.assignUserPermissionGroups(
+                    USER_ID, SCOPE_ID, "TEAM", req, CREATED_BY);
+
+            verify(billingPermissionGroupGuard).authorizeAssignment(
+                    CREATED_BY, USER_ID, SCOPE_ID, "TEAM",
+                    List.of(GROUP_ID, newGroupId));
+        }
+
+        @Test
+        @DisplayName("全解除: 新規値が空でも解除対象の現在値をガードへ渡す")
+        void assignUserPermissionGroups_全解除時も現在値をガードへ渡す() {
+            PermissionGroupEntity currentGroup = createGroupEntity(GROUP_ID, "現在の課金管理");
+            given(permissionGroupRepository.findByTeamId(SCOPE_ID))
+                    .willReturn(List.of(currentGroup));
+            given(userPermissionGroupRepository.findByUserId(USER_ID)).willReturn(List.of(
+                    UserPermissionGroupEntity.builder()
+                            .userId(USER_ID).groupId(GROUP_ID).assignedBy(CREATED_BY).build()
+            ));
+            UserPermissionGroupAssignRequest req =
+                    new UserPermissionGroupAssignRequest(List.of());
+
+            permissionGroupService.assignUserPermissionGroups(
+                    USER_ID, SCOPE_ID, "TEAM", req, CREATED_BY);
+
+            verify(billingPermissionGroupGuard).authorizeAssignment(
+                    CREATED_BY, USER_ID, SCOPE_ID, "TEAM", List.of(GROUP_ID));
         }
     }
 
