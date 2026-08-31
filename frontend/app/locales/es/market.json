@@ -40,12 +40,19 @@
       "prefecture": "Prefectura",
       "city": "Ciudad",
       "category": "Categoría",
+      "ownerType": "Publicador",
       "keyword": "Buscar por palabra clave",
       "allPrefectures": "Nacional",
       "allCities": "Seleccionar ciudad",
       "allCategories": "Todas las categorías",
+      "allOwnerTypes": "Todos los publicadores",
       "includeRegionNone": "Incluir sin región",
       "mobileToggle": "Filtrar"
+    },
+    "ownerType": {
+      "personal": "Persona",
+      "team": "Equipo",
+      "organization": "Organización"
     },
     "breadcrumb": {
       "national": "Nacional",

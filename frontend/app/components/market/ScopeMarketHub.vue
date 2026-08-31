@@ -82,6 +82,7 @@ watch(
           :label="t('market.action.post')"
           icon="pi pi-plus"
           :disabled="!isAdminOrDeputy"
+          :data-testid="`market-${scopeType}-post-link`"
           @click="goToCreate"
         />
         <p v-if="!isAdminOrDeputy" class="mt-2 text-sm text-surface-500">

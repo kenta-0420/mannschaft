@@ -21,6 +21,9 @@
 
 export type MarketVisibility = 'PUBLIC' | 'FRIEND_TEAMS_ONLY' | 'SCOPE_ONLY' | 'SELECTED_SCOPES'
 
+/** 公開市で札主を絞り込む主体区分。 */
+export type MarketOwnerType = 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
+
 /** 個人札の所属先限定公開に使う、本人が現在所属するスコープ。 */
 export interface MarketAudienceScope {
   scopeType: 'TEAM' | 'ORGANIZATION'
@@ -190,6 +193,7 @@ export interface MarketListingsParams {
   prefecture?: string
   city?: string
   categoryId?: number
+  ownerType?: MarketOwnerType
   keyword?: string
   includeRegionNone?: boolean
   page?: number

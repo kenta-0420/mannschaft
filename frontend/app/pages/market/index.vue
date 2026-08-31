@@ -11,7 +11,7 @@
  * 設計書: docs/features/F22.1_market/03_ui_i18n.md §2
  * API:    GET /api/v1/public/market/listings
  */
-import type { MarketListingRegion, MarketListingResponse } from '~/types/market'
+import type { MarketListingRegion, MarketListingResponse, MarketOwnerType } from '~/types/market'
 import type { RecruitmentCategoryResponse } from '~/types/recruitment'
 
 definePageMeta({
@@ -48,6 +48,7 @@ const pageSize = 20
 
 const categories = ref<RecruitmentCategoryResponse[]>([])
 const selectedCategoryId = ref<number | null>(null)
+const selectedOwnerType = ref<MarketOwnerType | null>(null)
 const searchKeyword = ref<string>('')
 const includeRegionNone = ref(true)
 
@@ -75,6 +76,9 @@ function syncFromQuery() {
   if (typeof q.category === 'string' && q.category) {
     selectedCategoryId.value = Number(q.category) || null
   }
+  if (q.owner === 'PERSONAL' || q.owner === 'TEAM' || q.owner === 'ORGANIZATION') {
+    selectedOwnerType.value = q.owner
+  }
   if (typeof q.keyword === 'string') {
     searchKeyword.value = q.keyword
   }
@@ -88,6 +92,7 @@ function buildQuery(): Record<string, string> {
   if (selectedPrefecture.value) q.prefecture = selectedPrefecture.value
   if (selectedCity.value) q.city = selectedCity.value
   if (selectedCategoryId.value != null) q.category = String(selectedCategoryId.value)
+  if (selectedOwnerType.value) q.owner = selectedOwnerType.value
   if (searchKeyword.value.trim()) q.keyword = searchKeyword.value.trim()
   if (currentPage.value > 0) q.page = String(currentPage.value)
   return q
@@ -108,6 +113,7 @@ async function fetchListings() {
       prefecture: selectedPrefecture.value ?? undefined,
       city: selectedCity.value ?? undefined,
       categoryId: selectedCategoryId.value ?? undefined,
+      ownerType: selectedOwnerType.value ?? undefined,
       keyword: searchKeyword.value.trim() || undefined,
       includeRegionNone: includeRegionNone.value,
       page: currentPage.value,
@@ -155,6 +161,12 @@ async function onCityChange(_code: string | null) {
 }
 
 async function onCategoryChange() {
+  currentPage.value = 0
+  pushQuery()
+  await fetchListings()
+}
+
+async function onOwnerTypeChange() {
   currentPage.value = 0
   pushQuery()
   await fetchListings()
@@ -247,14 +259,14 @@ onMounted(async () => {
     <!-- ヘッダー -->
     <PageHeader :title="$t('market.title')" help @help="showGuide = true">
       <template #actions>
-        <!-- 市から直接札を立てない（導線のみ）-->
+        <!-- 個人名義の作成フォームへ直接つなぐ。チーム・組織は各管理市から主体を保持する。 -->
         <Button
           :label="$t('market.action.post')"
           icon="pi pi-tag"
           severity="secondary"
           outlined
           data-testid="market-post-link"
-          @click="navigateTo('/dashboard')"
+          @click="navigateTo({ path: '/me/market', query: { create: 'true' } })"
         />
       </template>
     </PageHeader>
@@ -355,6 +367,24 @@ onMounted(async () => {
           @change="onCategoryChange"
         />
 
+        <!-- 札主区分 -->
+        <Select
+          v-model="selectedOwnerType"
+          :options="[
+            { value: 'PERSONAL', label: $t('market.ownerType.personal') },
+            { value: 'TEAM', label: $t('market.ownerType.team') },
+            { value: 'ORGANIZATION', label: $t('market.ownerType.organization') },
+          ]"
+          option-label="label"
+          option-value="value"
+          :placeholder="$t('market.filter.allOwnerTypes')"
+          show-clear
+          class="w-44 field-bordered"
+          :aria-label="$t('market.filter.ownerType')"
+          data-testid="market-owner-type-select"
+          @change="onOwnerTypeChange"
+        />
+
         <!-- キーワード -->
         <IconField class="flex-1 min-w-[200px]">
           <InputIcon class="pi pi-search" />
@@ -399,10 +429,10 @@ onMounted(async () => {
         <!-- ログイン済み -->
         <template v-else>
           <Button
-            :label="$t('market.action.goToDashboard')"
-            icon="pi pi-home"
+            :label="$t('market.action.post')"
+            icon="pi pi-plus"
             severity="secondary"
-            @click="navigateTo('/dashboard')"
+            @click="navigateTo({ path: '/me/market', query: { create: 'true' } })"
           />
         </template>
       </div>

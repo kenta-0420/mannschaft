@@ -40,12 +40,19 @@
       "prefecture": "都道府县",
       "city": "市区町村",
       "category": "类别",
+      "ownerType": "发布者",
       "keyword": "关键词搜索",
       "allPrefectures": "全国",
       "allCities": "选择市区町村",
       "allCategories": "所有类别",
+      "allOwnerTypes": "所有发布者",
       "includeRegionNone": "包含未指定地区",
       "mobileToggle": "筛选"
+    },
+    "ownerType": {
+      "personal": "个人",
+      "team": "团队",
+      "organization": "组织"
     },
     "breadcrumb": {
       "national": "全国",
