@@ -177,13 +177,18 @@ public class RecruitmentListingVisibilityResolver
         Set<Long> viewerTeamIds = viewerTeamIds(viewerUserId);
         Set<Long> viewerOrganizationIds = new HashSet<>(
                 userRoleRepository.findOrganizationIdsByUserId(viewerUserId));
+        Set<Long> ownerTeamIds = viewerTeamIds(row.authorUserId());
+        Set<Long> ownerOrganizationIds = new HashSet<>(
+                userRoleRepository.findOrganizationIdsByUserId(row.authorUserId()));
         for (RecruitmentListingAudienceScopeEntity scope : audienceScopeRepository.findByListingId(row.id())) {
             if (scope.getScopeType() == RecruitmentAudienceScopeType.TEAM
-                    && viewerTeamIds.contains(scope.getScopeId())) {
+                    && viewerTeamIds.contains(scope.getScopeId())
+                    && ownerTeamIds.contains(scope.getScopeId())) {
                 return true;
             }
             if (scope.getScopeType() == RecruitmentAudienceScopeType.ORGANIZATION
-                    && viewerOrganizationIds.contains(scope.getScopeId())) {
+                    && viewerOrganizationIds.contains(scope.getScopeId())
+                    && ownerOrganizationIds.contains(scope.getScopeId())) {
                 return true;
             }
         }
