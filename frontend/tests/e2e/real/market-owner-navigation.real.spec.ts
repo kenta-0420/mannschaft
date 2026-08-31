@@ -129,13 +129,13 @@ async function confirmListingFromUi(
   }).toPass({ timeout: 30_000 })
 }
 
-async function filterPersonalListingsByStatus(page: Page, statusLabel: string) {
+async function filterPersonalListingsByFullStatus(page: Page) {
   const responsePromise = page.waitForResponse(response =>
     response.url().includes('/api/v1/me/market/listings?')
     && response.url().includes('status=FULL'),
   )
   await page.getByTestId('personal-market-status-filter').click()
-  await page.getByRole('option', { name: statusLabel, exact: true }).click()
+  await page.getByRole('option').filter({ hasText: '満員' }).click()
   expect((await responsePromise).status()).toBe(200)
 }
 
@@ -385,7 +385,7 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   await authenticate(page, ADMIN)
   await page.goto('/me/market')
   await waitForHydration(page)
-  await filterPersonalListingsByStatus(page, '満員（確認待ち）')
+  await filterPersonalListingsByFullStatus(page)
   const personalCard = page.locator('article').filter({ hasText: title })
   await expect(personalCard).toContainText('満員')
   await personalCard.getByRole('button', { name: '札を取り下げる', exact: true }).click()
