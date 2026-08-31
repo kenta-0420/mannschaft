@@ -38,7 +38,11 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   const title = `E2E-個人市-UI-${Date.now()}`
   await form.locator('#title').fill(title)
   await form.locator('#category').click()
-  await page.getByRole('option').first().click()
+  const practiceMatchOption = page.getByRole('option')
+    .filter({ hasText: '練習試合相手募集' })
+  await expect(practiceMatchOption).toBeVisible()
+  await practiceMatchOption.click()
+  await expect(form.locator('#category')).toContainText('練習試合相手募集')
   await fillDateTime(page, 'startAt', '2027-02-15T09:00')
   await fillDateTime(page, 'endAt', '2027-02-15T12:00')
   await fillDateTime(page, 'applicationDeadline', '2027-02-13T23:59')
@@ -88,8 +92,10 @@ test('MARKET-OWNER-UI-003: 組織市から主体を保って札作成画面へ�
   const organizations = (await organizationsResponse.json()) as {
     data: Array<{ slug: string, role: string }>
   }
-  const organization = organizations.data.find(item => item.role === 'ADMIN' && item.slug)
-  expect(organization, 'ADMIN 権限を持つ組織が前提データに存在する').toBeTruthy()
+  const organization = organizations.data.find(item =>
+    ['ADMIN', 'SYSTEM_ADMIN'].includes(item.role) && item.slug,
+  )
+  expect(organization, '管理権限を持つ組織が前提データに存在する').toBeTruthy()
 
   await page.goto(`/organizations/${organization!.slug}/market`)
   await waitForHydration(page)
