@@ -42,6 +42,16 @@ BEGIN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'F20.1 V196: duplicate legacy subscription reference';
     END IF;
+
+    SELECT COUNT(*) INTO invalid_count
+      FROM active_contract_pointers pointer_row
+      LEFT JOIN billing_contracts contract_row ON contract_row.id = pointer_row.contract_id
+     WHERE contract_row.id IS NULL;
+
+    IF invalid_count > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'F20.1 V196: orphan active contract pointer';
+    END IF;
 END;
 
 CALL billing_center_v196_precheck();

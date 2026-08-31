@@ -1,6 +1,7 @@
 package com.mannschaft.app.billing.migration;
 
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.FlywayException;
 import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.AfterAll;
@@ -122,6 +123,34 @@ class BillingCenterFoundationFlywayIT {
             assertBillingPermissionsAreAdminDefaultsOnly(connection);
             assertZeroPriceBandCannotBecomeSellable(connection);
             assertBillingForeignKeysAndCleanupOrder(connection);
+        }
+    }
+
+    @Test
+    @DisplayName("V196 は孤児ポインタを検出し、Expand開始前に安全停止する")
+    void orphanActiveContractPointerStopsBeforeExpand() throws Exception {
+        try (Connection connection = connection()) {
+            execute(connection, """
+                    INSERT INTO active_contract_pointers
+                        (id, scope_kind, scope_id, contract_kind, addon_feature_key, contract_id)
+                    VALUES
+                        (UNHEX('0199AABBCCDDEEFF0011223344556681'), 'USER', 910099,
+                         'PLAN', '', UNHEX('0199AABBCCDDEEFF0011223344556682'))
+                    """);
+        }
+
+        assertThatThrownBy(() -> configuredFlyway(null, false).migrate())
+                .isInstanceOf(FlywayException.class)
+                .hasMessageContaining("orphan active contract pointer");
+
+        try (Connection connection = connection()) {
+            assertThat(queryStrings(connection, """
+                    SELECT table_name
+                      FROM information_schema.tables
+                     WHERE table_schema = DATABASE()
+                    """))
+                    .as("番人失敗時はExpandの最初の表も作られないこと")
+                    .doesNotContain("billing_customers");
         }
     }
 
