@@ -610,11 +610,7 @@ ALTER TABLE stripe_webhook_events
     ADD COLUMN attempt_count INT NOT NULL DEFAULT 0,
     ADD KEY idx_swe_billing_contract (billing_contract_id),
     ADD KEY idx_swe_billing_customer (billing_customer_id),
-    ADD KEY idx_swe_retry (failed_at, attempt_count),
-    ADD CONSTRAINT fk_swe_billing_contract
-        FOREIGN KEY (billing_contract_id) REFERENCES billing_contracts (id),
-    ADD CONSTRAINT fk_swe_billing_customer
-        FOREIGN KEY (billing_customer_id) REFERENCES billing_customers (id);
+    ADD KEY idx_swe_retry (failed_at, attempt_count);
 
 -- ---------------------------------------------------------------------
 -- 8) consumer API idempotency / signed return state nonce
