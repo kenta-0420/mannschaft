@@ -14,8 +14,11 @@ import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +26,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -70,6 +75,8 @@ class RoleMembershipLeaveContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private RoleRepository roleRepository;
     @Autowired private TeamRepository teamRepository;
     @Autowired private OrganizationRepository organizationRepository;
+    @Autowired private PlatformTransactionManager transactionManager;
+    @PersistenceContext private EntityManager em;
 
     private Long adminRoleId;
     private Long memberRoleId;
@@ -139,6 +146,8 @@ class RoleMembershipLeaveContractIT extends AbstractMySqlIntegrationTest {
 
     /** 招待参加後と同じ形（user_roles 行 + アクティブ membership）で在籍させる。 */
     private void enroll(Long userId, ScopeType scopeType, Long scopeId, Long roleId) {
+        new TransactionTemplate(transactionManager)
+                .executeWithoutResult(status -> MembershipTestHelper.insertActiveUser(em, userId));
         var builder = UserRoleEntity.builder().userId(userId).roleId(roleId);
         if (scopeType == ScopeType.TEAM) {
             builder.teamId(scopeId);

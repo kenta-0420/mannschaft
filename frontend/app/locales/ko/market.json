@@ -40,12 +40,19 @@
       "prefecture": "도도부현",
       "city": "시구정촌",
       "category": "장르",
+      "ownerType": "게시 주체",
       "keyword": "키워드 검색",
       "allPrefectures": "전국",
       "allCities": "시구정촌 선택",
       "allCategories": "모든 장르",
+      "allOwnerTypes": "모든 게시 주체",
       "includeRegionNone": "지역 미지정 포함",
       "mobileToggle": "필터"
+    },
+    "ownerType": {
+      "personal": "개인",
+      "team": "팀",
+      "organization": "조직"
     },
     "breadcrumb": {
       "national": "전국",

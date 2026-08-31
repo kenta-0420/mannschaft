@@ -2,9 +2,11 @@ package com.mannschaft.app.auth.repository;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.entity.UserEntity.UserStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -19,6 +21,15 @@ import java.util.stream.Collectors;
  * ユーザーリポジトリ。
  */
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from UserEntity u where u.id = :id "
+            + "and u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE")
+    Optional<UserEntity> findByIdForUpdate(@Param("id") Long id);
+
+    /** 退会後の空集合cleanup用。対象行の存在だけを確認し、SQLRestrictionを迂回してlockする。 */
+    @Query(value = "select * from users where id = :id for update", nativeQuery = true)
+    Optional<UserEntity> findByIdForUpdateIncludingDeleted(@Param("id") Long id);
 
     Optional<UserEntity> findByEmail(String email);
 

@@ -118,6 +118,19 @@ public class MarketQueryService {
             String prefecture, String city, Long categoryId,
             String keyword, boolean includeRegionNone, Pageable pageable, String lang,
             Long viewerUserId) {
+        return searchListings(prefecture, city, categoryId, null, keyword, includeRegionNone,
+                pageable, lang, viewerUserId);
+    }
+
+    /**
+     * 札主区分を含めて市の札を検索する。
+     *
+     * @param ownerType 札主区分（null=全区分）
+     */
+    public Page<MarketListingResponse> searchListings(
+            String prefecture, String city, Long categoryId, RecruitmentScopeType ownerType,
+            String keyword, boolean includeRegionNone, Pageable pageable, String lang,
+            Long viewerUserId) {
         String normalizedPref = blankToNull(prefecture);
         String normalizedCity = blankToNull(city);
         // blankToNull → escape の順。null はエスケープせず透過する。
@@ -127,12 +140,12 @@ public class MarketQueryService {
         Page<RecruitmentListingEntity> page;
         if (viewerUserId == null) {
             page = listingRepository.searchMarketListings(
-                    normalizedPref, normalizedCity, categoryId, normalizedKeyword,
+                    normalizedPref, normalizedCity, categoryId, ownerType, normalizedKeyword,
                     includeRegionNone, pageable);
         } else {
             page = listingRepository.searchAccessibleMarketListings(
                     accessibleListingIdsOrSentinel(viewerUserId), normalizedPref, normalizedCity,
-                    categoryId, normalizedKeyword, includeRegionNone, pageable);
+                    categoryId, ownerType, normalizedKeyword, includeRegionNone, pageable);
         }
 
         // N+1 回避: ページ内の全札からカテゴリ/scope/地域コードを集約し、

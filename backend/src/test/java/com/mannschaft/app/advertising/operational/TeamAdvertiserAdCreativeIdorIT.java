@@ -6,7 +6,10 @@ import com.mannschaft.app.advertising.dto.AdCreativeResponse;
 import com.mannschaft.app.advertising.dto.CreateAdCreativeRequest;
 import com.mannschaft.app.advertising.dto.UpdateAdCreativeRequest;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,6 +73,8 @@ class TeamAdvertiserAdCreativeIdorIT extends AbstractMySqlIntegrationTest {
 
         insertUserRole(adminAId, adminRoleId, teamAId);
         insertUserRole(adminBId, adminRoleId, teamBId);
+        MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
 
         Long accountAId = insertAdvertiserAccount(teamAId, "IDORチームA広告主");
         Long accountBId = insertAdvertiserAccount(teamBId, "IDORチームB広告主");

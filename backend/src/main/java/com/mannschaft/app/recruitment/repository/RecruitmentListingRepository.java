@@ -325,6 +325,7 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
      * @param prefecture        都道府県コード（null=全国）
      * @param city              市区町村コード（null=県ロールアップ or 全国）
      * @param categoryId        ジャンル（null=全ジャンル）
+     * @param ownerType         札主区分（null=全区分）
      * @param keyword           タイトル部分一致（null=無条件・ワイルドカードはエスケープ済）
      * @param includeRegionNone 地域未設定（中間表 0 件）の札も含めるか
      * @param pageable          ページング
@@ -346,6 +347,7 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
               AND (:categoryId IS NULL OR l.categoryId = :categoryId)
+              AND (:ownerType IS NULL OR l.scopeType = :ownerType)
               AND (:keyword IS NULL OR l.title LIKE CONCAT('%', :keyword, '%') ESCAPE '\\')
               AND (
                     (:city IS NOT NULL AND EXISTS (
@@ -365,9 +367,17 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             @Param("prefecture") String prefecture,
             @Param("city") String city,
             @Param("categoryId") Long categoryId,
+            @Param("ownerType") RecruitmentScopeType ownerType,
             @Param("keyword") String keyword,
             @Param("includeRegionNone") boolean includeRegionNone,
             Pageable pageable);
+
+    default Page<RecruitmentListingEntity> searchMarketListings(
+            String prefecture, String city, Long categoryId, String keyword,
+            boolean includeRegionNone, Pageable pageable) {
+        return searchMarketListings(
+                prefecture, city, categoryId, null, keyword, includeRegionNone, pageable);
+    }
 
     /** 認証済み閲覧者向け: PUBLIC と、現在も選択公開先を共有する PERSONAL 札を検索する。 */
     @Query("""
@@ -390,6 +400,7 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
               AND (:categoryId IS NULL OR l.categoryId = :categoryId)
+              AND (:ownerType IS NULL OR l.scopeType = :ownerType)
               AND (:keyword IS NULL OR l.title LIKE CONCAT('%', :keyword, '%') ESCAPE '\\')
               AND (
                     (:city IS NOT NULL AND EXISTS (
@@ -410,9 +421,18 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             @Param("prefecture") String prefecture,
             @Param("city") String city,
             @Param("categoryId") Long categoryId,
+            @Param("ownerType") RecruitmentScopeType ownerType,
             @Param("keyword") String keyword,
             @Param("includeRegionNone") boolean includeRegionNone,
             Pageable pageable);
+
+    default Page<RecruitmentListingEntity> searchAccessibleMarketListings(
+            Collection<Long> selectedListingIds, String prefecture, String city,
+            Long categoryId, String keyword, boolean includeRegionNone, Pageable pageable) {
+        return searchAccessibleMarketListings(
+                selectedListingIds, prefecture, city, categoryId, null, keyword,
+                includeRegionNone, pageable);
+    }
 
     /**
      * 市の公開札を ID で取得する（PUBLIC かつ OPEN/FULL のみ）。

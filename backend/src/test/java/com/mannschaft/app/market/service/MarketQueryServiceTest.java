@@ -26,6 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -179,7 +180,7 @@ class MarketQueryServiceTest {
         PageRequest pageable = PageRequest.of(0, 20);
         given(listingVisibilityResolver.findAccessibleSelectedListingIds(9L)).willReturn(List.of(100L));
         given(listingRepository.searchAccessibleMarketListings(
-                Set.of(100L), null, null, null, null, true, pageable))
+                Set.of(100L), null, null, null, null, null, true, pageable))
                 .willReturn(new PageImpl<>(List.of(listing), pageable, 1));
         given(userService.getActiveMarketOwnerIdentities(Set.of(7L))).willReturn(Map.of(
                 7L, new UserService.MarketOwnerIdentity(
@@ -191,7 +192,42 @@ class MarketQueryServiceTest {
         assertThat(result.getContent()).singleElement()
                 .satisfies(item -> assertThat(item.getOwner().getDisplayName()).isEqualTo("共有 花子"));
         verify(listingRepository).searchAccessibleMarketListings(
-                Set.of(100L), null, null, null, null, true, pageable);
+                Set.of(100L), null, null, null, null, null, true, pageable);
+    }
+
+    @Test
+    @DisplayName("市の札主区分フィルターをリポジトリへ渡す")
+    void searchListings_passesOwnerTypeFilter() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        given(listingRepository.searchMarketListings(
+                null, null, null, RecruitmentScopeType.TEAM, null, true, pageable))
+                .willReturn(Page.empty(pageable));
+
+        service.searchListings(
+                null, null, null, RecruitmentScopeType.TEAM,
+                null, true, pageable, null, null);
+
+        verify(listingRepository).searchMarketListings(
+                null, null, null, RecruitmentScopeType.TEAM, null, true, pageable);
+    }
+
+    @Test
+    @DisplayName("認証済みの市検索でも札主区分フィルターをリポジトリへ渡す")
+    void searchListings_authenticatedPassesOwnerTypeFilter() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        given(listingVisibilityResolver.findAccessibleSelectedListingIds(9L)).willReturn(List.of());
+        given(listingRepository.searchAccessibleMarketListings(
+                Set.of(-1L), null, null, null, RecruitmentScopeType.ORGANIZATION,
+                null, true, pageable))
+                .willReturn(Page.empty(pageable));
+
+        service.searchListings(
+                null, null, null, RecruitmentScopeType.ORGANIZATION,
+                null, true, pageable, null, 9L);
+
+        verify(listingRepository).searchAccessibleMarketListings(
+                Set.of(-1L), null, null, null, RecruitmentScopeType.ORGANIZATION,
+                null, true, pageable);
     }
 
     private RecruitmentListingEntity personalListing() {

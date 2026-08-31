@@ -23,6 +23,10 @@ export async function loginViaApi(
   // :8080 に送った Set-Cookie も :3000 起源のブラウザコンテキストで有効になる。
   const apiBase = options.apiBaseUrl ?? process.env.API_BASE_URL ?? ''
 
+  // 先にアプリの origin を確立する。ログイン Cookie 発行後、currentUser を保存する前に
+  // 匿名状態でアプリを初期化すると、認証初期化処理が発行直後の Cookie を破棄しうる。
+  await page.goto('/')
+
   const loginRes = await page.request.post(`${apiBase}/api/v1/auth/login`, {
     data: { email: credentials.email, password: credentials.password },
   })
@@ -55,7 +59,6 @@ export async function loginViaApi(
 
   // アプリのオリジンへ遷移してから localStorage を書き込む（オリジンに紐づくため）。
   // useAuthStore は currentUser の有無で isAuthenticated を判定する。
-  await page.goto('/')
   await page.evaluate(
     ({ user, expiresAt }) => {
       localStorage.setItem('currentUser', JSON.stringify(user))

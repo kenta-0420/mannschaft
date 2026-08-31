@@ -40,12 +40,19 @@
       "prefecture": "Prefecture",
       "city": "City",
       "category": "Category",
+      "ownerType": "Listing owner",
       "keyword": "Search by keyword",
       "allPrefectures": "Nationwide",
       "allCities": "Select city",
       "allCategories": "All categories",
+      "allOwnerTypes": "All listing owners",
       "includeRegionNone": "Include listings without region",
       "mobileToggle": "Filter"
+    },
+    "ownerType": {
+      "personal": "Individual",
+      "team": "Team",
+      "organization": "Organization"
     },
     "breadcrumb": {
       "national": "Nationwide",

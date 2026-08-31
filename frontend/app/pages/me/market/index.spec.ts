@@ -19,6 +19,7 @@ describe('/me/market 個人市ページ契約', () => {
     expect(source).toContain('DashboardEmptyState')
     expect(source).toContain("t('market.personal.empty')")
     expect(source).toContain('showCreateForm = true')
+    expect(source).toContain("route.query.create === 'true'")
   })
 
   it('個人札では決済を無効化し、専用公開操作を使う', () => {
