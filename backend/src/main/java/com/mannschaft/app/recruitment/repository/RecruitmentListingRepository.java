@@ -325,6 +325,7 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
      * @param prefecture        都道府県コード（null=全国）
      * @param city              市区町村コード（null=県ロールアップ or 全国）
      * @param categoryId        ジャンル（null=全ジャンル）
+     * @param ownerType         札主区分（null=全区分）
      * @param keyword           タイトル部分一致（null=無条件・ワイルドカードはエスケープ済）
      * @param includeRegionNone 地域未設定（中間表 0 件）の札も含めるか
      * @param pageable          ページング

@@ -122,7 +122,11 @@ public class MarketQueryService {
                 pageable, lang, viewerUserId);
     }
 
-    /** 札主区分を含めて市の札を検索する。 */
+    /**
+     * 札主区分を含めて市の札を検索する。
+     *
+     * @param ownerType 札主区分（null=全区分）
+     */
     public Page<MarketListingResponse> searchListings(
             String prefecture, String city, Long categoryId, RecruitmentScopeType ownerType,
             String keyword, boolean includeRegionNone, Pageable pageable, String lang,

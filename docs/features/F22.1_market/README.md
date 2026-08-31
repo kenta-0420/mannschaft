@@ -73,7 +73,7 @@
 ### 札立ての導線制約（重要・セキュリティ）
 札は個人・チーム・組織の各管理市から立てる。公開市の「札を立てる」は個人市の作成フォームへ、チーム/組織は各主体の管理市から既存作成画面へ接続する。
 
-- 理由: 「どこの誰か」が検証済みの scope（チーム/組織）に必ず紐づけ、匿名・身元不明の投稿を**deny-by-default で排除**する。
+- 理由: チーム/組織札は管理権限を検証した scope、個人札は認証済み本人に札主を固定し、匿名・身元詐称の投稿を**deny-by-default で排除**する。
 - 市画面には個人札の作成導線を置き、チーム/組織名義の作成導線は各主体の管理市に置く（§03_ui_i18n）。
 
 ---
@@ -89,6 +89,7 @@
           AND (prefecture_code = :pref  OR :pref IS NULL)
           AND (city_code       = :city  OR :city IS NULL)
           AND (category_id     = :cat   OR :cat  IS NULL)
+          AND (scope_type      = :owner_type OR :owner_type IS NULL)
 ```
 
 ### 階層（県の市 ⊃ 市区町村の市）
