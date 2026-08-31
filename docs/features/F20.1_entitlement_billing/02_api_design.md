@@ -251,7 +251,7 @@ startPaidContract(scopeKind, scopeId, ..., priceJpy, operatorUserId):
   catch: abandonPendingContract(pending)（CANCELLED＋pointer DELETE の補償・孤児 PENDING を残さない）
          → throw ENTITLEMENT_015(502)
   return ContractResponse(status=PENDING, checkoutUrl)
-  # ACTIVE 化＋entitlements 発行は checkout.session.completed webhook（§3.4）で行う（AC-33）
+  # ACTIVE 化＋entitlements 発行は invoice.paid webhook（§3.4/05 §4）で行う（AC-33）
 ```
 
 レスポンス `ContractResponse`:
@@ -294,9 +294,8 @@ Body: { "planKey": "FULL" }         # me / organizations も同型
 認可: §3.1 と同一
 ```
 
-- 処理: 単一トランザクションで「旧契約 CANCELLED＋由来 entitlements revoke → 新契約 ACTIVE＋新 entitlements 発行 → **`active_contract_pointers.contract_id` を新契約へ UPDATE**（ポインタは付け替えるだけで行を増やさない）」（AC-19）。同一 planKey への変更は `ENTITLEMENT_006` 409。
-- **決済ガード（AC-44・検分差し戻し1番・御裁可済み簡潔案A）**: changePlan は決済レール（Checkout/サブスク差し替え）を持たないため、入口で二重ガード — (a) 既存契約が有償（`psp_subscription_ref` 非 NULL）は 409（旧契約だけ CANCELLED になり Stripe サブスクが孤児化して課金継続するため）／(b) 変更先プランの解決価格（`BillingPriceResolver`）が有償は 409（Checkout を経ない無償すり抜け＝D-4 の抜け穴）。いずれも `ENTITLEMENT_017 CONTRACT_CHANGE_REQUIRES_PAYMENT` で「一度解約してから新プランを契約」へ誘導。無償→無償のみ従来どおり成功。
-- ダウングレード（FULL→BASIC）で対象外となった機能は即 false（キャッシュ evict 込み）。
+- **legacy `changePlan`**: 互換409を返すだけで、契約、`active_contract_pointers`、entitlements、キャッシュを一切変更しない（AC-44）。同一 planKey も新 API では `ENTITLEMENT_006` 409。
+- **新 preview/change API（AC-44）**: `billing_contract_changes` を経由し、upgrade は即時日割り後に `invoice.paid` で確定する。downgrade は Stripe Subscription Schedule で翌月1日へ予約し、その時刻までは旧 entitlements を維持する。Schedule 適用を照合した `customer.subscription.updated` でのみ、旧 entitlements revoke・新 entitlements 発行・`active_contract_pointers.contract_id` の付替え・キャッシュ evict を同一トランザクションで原子的に行う（05 §3/§4/§7）。
 
 ### 3.4 決済 Webhook（2026-07-10 実決済・D-2）
 

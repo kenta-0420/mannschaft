@@ -15,13 +15,13 @@
 | プランカタログ閲覧（`GET /billing/plans`） | 認証ユーザー | `isAuthenticated()` |
 | 権利サマリ閲覧（`GET .../entitlements`） | USER=本人 / TEAM=当該チームのメンバー以上 / ORG=当該組織のメンバー以上 | me は本人固定（scopeId をパラメータで受けない）／`@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')` 等 |
 | 単一判定（`GET /billing/entitlements/check`） | 当該スコープのメンバー以上（USER は本人のみ） | Service 層で scopeKind 別に所有権検証（§2.2） |
-| 契約作成/解約/変更・invoice・Portal（TEAM/ORG） | `BillingAccessGuard` が許可する ADMIN、又は明示的 `billing.manage` を持つ DEPUTY_ADMIN | `@billingAccessGuard.canManage(authentication, #scopeKind, #scopeId)`。SYSTEM_ADMIN 短絡なし |
+| 契約作成/解約/変更・invoice・Portal（TEAM/ORG） | TEAM=ADMIN又は`MANAGE_TEAM_BILLING`を明示付与されたDEPUTY、ORG=ADMIN又は`MANAGE_ORGANIZATION_BILLING`を明示付与されたDEPUTY | `@billingAccessGuard.canManage(authentication, #scopeKind, #scopeId)`。SYSTEM_ADMIN 短絡なし |
 | 契約作成/解約/変更（USER） | 本人 | `/me/...` パス＝`SecurityUtils.getCurrentUserId()` 固定（scopeId を受けない） |
 | マスタ CRUD・手動付与 | SYSTEM_ADMIN | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` |
 | 運営の契約横断閲覧 | SYSTEM_ADMIN（read-only） | 理由必須の別 `/system-admin/billing/**`。文書URL/Portal/変更は不可、監査必須 |
 | org_type 自動更新 **【Phase 2 保留】** | システム（イベントリスナー）のみ | **営利自動切替に属し初期スコープ外**（マスター 2026-07-08・README §3.3）。Phase 2 で実装。API 経由の直接更新は organization ドメイン既存 API の認可に従う（billing からは**イベントのみ**・直接 UPDATE 禁止） |
 
-- 課金の消費者 API は `@accessGuard.isScopeAdmin(...)` を使わない。`BillingAccessGuard` が USER本人、TEAM/ORG ADMIN、明示的 `billing.manage` を持つ DEPUTY_ADMIN だけを許可する。SYSTEM_ADMIN は別の理由必須・read-only API に隔離し、DEPUTY_ADMIN をロール名だけで許可しない。
+- 課金の消費者 API は `@accessGuard.isScopeAdmin(...)` を使わない。`BillingAccessGuard` が USER本人、TEAM ADMIN/`MANAGE_TEAM_BILLING`を明示付与されたDEPUTY、ORG ADMIN/`MANAGE_ORGANIZATION_BILLING`を明示付与されたDEPUTYだけを許可する。SYSTEM_ADMIN は別の理由必須・read-only API に隔離し、DEPUTY_ADMIN をロール名だけで許可しない。
 - `isAdmin` 常時 true 等の負論理・独自可視性述語を禁止（memory `feedback_visibility_bypass_f00_audit`）。
 
 ---

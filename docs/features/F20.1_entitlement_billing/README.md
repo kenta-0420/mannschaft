@@ -78,10 +78,10 @@ Mannschaft の SaaS 課金（**運営 → 団体/個人**）の基盤を定義�
 
 ### 2.2 対象外（out・別フェーズ/別機能）
 - [ ] **営利自動切替（org_type 自動変異一式）** → **Phase 2 保留**（マスター 2026-07-08・冒頭 Phase 2 保留ブロック／§3.3）。初期は org_type 自己申告のまま。結線先（organization/notification/audit ドメイン）も初期スコープでは不要
-- [ ] **実決済（PSP 連携・請求・領収書）** → Phase 2。F22.1 Connect レール（自社受取ゆえ素 Checkout の可能性含め Phase 2 軍議で確定）
+- [ ] F22.1 との将来連携（実決済、請求、領収書自体は 05 で設計確定）
 - [ ] ベータ特典の付与条件判定・beta_grants → [F20.3](../F20.3_beta_perks/README.md)
 - [ ] 会費徴収（チーム→メンバー） → F08.9（逆向きの課金・§4.5）
-- [ ] 日割り計算・プラン按分・返金 → Phase 2
+- [ ] 年額・返金（暦月日割り/upgrade・downgrade按分は 05 で設計確定）
 - [ ] 多通貨（JPY 固定・列は `_jpy` サフィックスで明示）
 
 ---
@@ -262,8 +262,8 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 | AC-16 | 正常 | 契約取消（revoke）時、当該 scope の権利キャッシュ **evict が呼ばれる**（観測点＝evict 呼び出しの実行。TTL 失効の時間依存観測は行わず、キャッシュミス後 `isEntitled=false` を別途単体テストで検証・M-9） |
 | AC-17 | 異常 | SYSTEM_ADMIN 以外が plans/feature_catalog/price_bands の CRUD API を呼ぶ → 403 |
 | AC-18 | 異常 | `feature_catalog` に存在しない feature_key の `require` → 拒否（403）＋ WARN ログ（fail-safe） |
-| AC-19 | 正常 | プラン変更（BASIC→FULL・FULL→BASIC）: 旧契約由来 entitlements が `revoked_at` で無効化され、新プラン分が発行される。ダウングレードで対象外になった機能は即 false |
-| AC-20 | 正常 | 契約解約 → 当該契約由来の全 entitlements が revoke され、対象機能が 402 に戻る |
+| AC-19 | 正常 | upgrade は `invoice.paid` 後に新権利を発行、downgrade は翌月1日到達まで旧権利を維持する（05 §3/§4） |
+| AC-20 | 正常 | 有償契約の解約予約は当月末まで権利を維持し、`customer.subscription.deleted` で entitlements を revokeする。無償契約のみ即時取消 |
 | AC-21 | 異常 | 同一（scope×feature×source_kind×source_ref×valid_from）の重複 INSERT → UNIQUE 制約違反として 409 |
 | AC-22 | 境界 `[P2]` | **【Phase 2】**TEAM スコープの REVENUE 有効化（PLAN/ADDON 契約）では所属組織の org_type は更新されず、**所属する全 ACTIVE 組織**の ADMIN へ通知のみ |
 | AC-22b | 異常（否定・H-5）`[P2]` | **【Phase 2】NPO 組織にベータ特典（BETA_GRANT）を付与しても `RevenueFeatureActivatedEvent` は発火せず org_type は変化しない**（運営の無償配布は商用行動ではない） |
@@ -285,7 +285,7 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 | AC-38 | 境界（実決済 D-2） | F08.9 会費の `invoice.*`（billing に無い subscriptionId）は membership 側へ・billing は関与しない。billing の subscriptionId（`psp_subscription_ref` 逆引きヒット）は membership が処理しない（**相互 no-op**） |
 | AC-39 | 異常（実決済） | webhook 署名なし/不正 → 400・未処理（既存 `StripeWebhookController` の検証が billing イベントでも有効） |
 | AC-40 | 境界（実決済 D-4） | 価格入力後の**新規契約のみ**決済必須へ切替。入力前に結ばれた無償契約（`price_jpy_snapshot=NULL`）は不変（解約も即時のまま・遡及なし） |
-| AC-44 | 異常（実決済 検分差し戻し1番） | changePlan は決済レールを持たないため有償が絡む変更を 409（`ENTITLEMENT_017`）で拒否: (a) 既存契約が有償（`psp_subscription_ref` 非 NULL・Stripe サブスク孤児化防止）(b) 変更先プランが有償（Checkout を経ない無償すり抜け防止）。無償→無償は従来どおり成功 |
+| AC-44 | 正常（実決済） | 新 preview/change API は upgrade を `invoice.paid` で確定、downgrade を翌月1日のSubscription Schedule適用で確定する。旧 changePlan は互換409のみ |
 | AC-45 | 正常（実決済 検分差し戻し2番） | 退会 purge 確定（`AccountPurgedEvent`）で USER スコープの PENDING/ACTIVE/PAST_DUE 契約を CANCELLED＋pointer DELETE＋entitlements revoke＋evict し、有償契約は Stripe サブスクを**即時解約**（期末解約ではない・課金継続事故防止）。申請（猶予中）・撤回は明示 no-op（権利維持） |
 | AC-46 | 異常（実決済 検分差し戻し3番） | 期末解約予約済み（ACTIVE のまま `cancelled_at` セット済み）の有償契約への再解約 DELETE は `ENTITLEMENT_011`(409)（cancel_at_period_end 再送・valid_until 再上書きの防止） |
 | AC-47 | 正常（実決済） | `checkout.session.expired` で PENDING 契約は CANCELLED＋pointer 物理 DELETE（`uk_acp_slot` スロット解放＝同一スコープで再挑戦可能）。PENDING 以外への再送は no-op（冪等） |
@@ -300,7 +300,7 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 | **P2** | ベータ特典接続 | **M** | P1・F20.3 | `source_kind=BETA_GRANT` の発行・取消（F20.3 が主管） |
 | **P3** | FE 課金 UI | **M** | P1 | プラン一覧・ペイウォールモーダル・課金管理画面（04） |
 | **Phase 2a** | 営利自動切替（org_type 自動変異一式） | **M** | P1・organization/notification/audit ドメイン | `RevenueFeatureActivatedEvent`・org_type 自動更新・確認必須通知・差し戻し API・監査・R-1 自動判定（§3.3・02 §7・**別軍議**）。または「運営レビューのキューに積むソフトなシグナル」への再設計 |
-| **Phase 2b** | 実決済（PSP 連携） | **L** | P1〜P3・ベータ価格確定 | **🚧 実施中（2026-07-10 御裁可・D-1〜D-4 前倒し）**: `billing_contracts` へ PSP 列 Expand（V151）・Stripe Checkout `Mode.SUBSCRIPTION`（**自社受取・Connect 不使用**）・webhook（completed/expired/invoice.*/subscription.deleted）・期末解約。請求書・領収書・F22.1 連携可否確定は残（**別軍議**） |
+| **Phase 2b** | 実決済（PSP 連携） | **L** | P1〜P3・ベータ価格確定 | **🚧 実施中**: scope-owned Customer、Stripe Checkout/Subscription Schedule、invoice投影、請求書/領収書、支払方法、Webhook、期末解約・撤回を [05](05_billing_center.md) の正本で実装する。F22.1連携のみ将来軍議 |
 
 > BE/API はテスト先行（memory `feedback_test_first_be_api`）: 軍議 AC → `/試練` red → `/出陣` green → `/検分` 照合。
 
