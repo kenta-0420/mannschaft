@@ -304,6 +304,32 @@ class RecruitmentListingRegionRepositoryTest extends AbstractMySqlIntegrationTes
     }
 
     @Test
+    @DisplayName("公開市は ownerType でチームと組織の札を分離する")
+    void ownerTypeFilter_separatesTeamAndOrganizationListings() {
+        Long teamId = persistOpenListing(
+                "owner-team", RecruitmentScopeType.TEAM, 7001L, LocalDateTime.now().plusDays(5));
+        Long organizationId = persistOpenListing(
+                "owner-organization", RecruitmentScopeType.ORGANIZATION, 8001L,
+                LocalDateTime.now().plusDays(5));
+        em.flush();
+        em.clear();
+
+        Page<RecruitmentListingEntity> teams = listingRepository.searchMarketListings(
+                null, null, null, RecruitmentScopeType.TEAM, null, true,
+                PageRequest.of(0, 50));
+        Page<RecruitmentListingEntity> organizations = listingRepository.searchMarketListings(
+                null, null, null, RecruitmentScopeType.ORGANIZATION, null, true,
+                PageRequest.of(0, 50));
+
+        assertThat(teams.getContent()).extracting(RecruitmentListingEntity::getId)
+                .contains(teamId)
+                .doesNotContain(organizationId);
+        assertThat(organizations.getContent()).extracting(RecruitmentListingEntity::getId)
+                .contains(organizationId)
+                .doesNotContain(teamId);
+    }
+
+    @Test
     @DisplayName("findByListingIdInOrderBy...: バルク取得が listing_id 単位でまとまる")
     void bulkFetchByListingIds() {
         Long a = persistPublicListing("bulk-a");

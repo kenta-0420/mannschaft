@@ -154049,6 +154049,7 @@ export interface operations {
                 prefecture?: string;
                 city?: string;
                 category_id?: number;
+                owner_type?: "TEAM" | "ORGANIZATION" | "PERSONAL";
                 keyword?: string;
                 include_region_none?: boolean;
                 page?: number;

@@ -23,8 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -149,6 +149,14 @@ class MarketControllerTest {
         mockMvc.perform(get("/api/v1/public/market/listings")
                         .param("owner_type", "PERSONAL"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("GET /public/market/listings: 未知の owner_type は 400")
+    void listListings_unknownOwnerType_returns400() throws Exception {
+        mockMvc.perform(get("/api/v1/public/market/listings")
+                        .param("owner_type", "UNKNOWN"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

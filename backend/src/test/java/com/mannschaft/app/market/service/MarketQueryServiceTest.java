@@ -26,8 +26,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -209,6 +209,25 @@ class MarketQueryServiceTest {
 
         verify(listingRepository).searchMarketListings(
                 null, null, null, RecruitmentScopeType.TEAM, null, true, pageable);
+    }
+
+    @Test
+    @DisplayName("認証済みの市検索でも札主区分フィルターをリポジトリへ渡す")
+    void searchListings_authenticatedPassesOwnerTypeFilter() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        given(listingVisibilityResolver.findAccessibleSelectedListingIds(9L)).willReturn(List.of());
+        given(listingRepository.searchAccessibleMarketListings(
+                Set.of(-1L), null, null, null, RecruitmentScopeType.ORGANIZATION,
+                null, true, pageable))
+                .willReturn(Page.empty(pageable));
+
+        service.searchListings(
+                null, null, null, RecruitmentScopeType.ORGANIZATION,
+                null, true, pageable, null, 9L);
+
+        verify(listingRepository).searchAccessibleMarketListings(
+                Set.of(-1L), null, null, null, RecruitmentScopeType.ORGANIZATION,
+                null, true, pageable);
     }
 
     private RecruitmentListingEntity personalListing() {

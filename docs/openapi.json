@@ -126141,6 +126141,19 @@
             }
           },
           {
+            "name": "owner_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "TEAM",
+                "ORGANIZATION",
+                "PERSONAL"
+              ]
+            }
+          },
+          {
             "name": "keyword",
             "in": "query",
             "required": false,

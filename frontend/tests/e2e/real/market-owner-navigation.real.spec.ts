@@ -25,6 +25,14 @@ async function fillDateTime(page: Page, id: string, value: string) {
   await page.locator(`input#${id}`).dispatchEvent('change')
 }
 
+test('MARKET-OWNER-UI-000: 未ログインでは個人札の作成画面へ入れない', async ({ page }) => {
+  await page.goto('/market')
+  await waitForHydration(page)
+  await page.getByTestId('market-post-link').click()
+
+  await expect(page).toHaveURL(/\/login(?:\?|$)/)
+})
+
 test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を画面入力で作成できる', async ({ page }) => {
   await authenticate(page)
 
@@ -35,6 +43,8 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
 
   const form = page.locator('form').first()
   await expect(form).toBeVisible()
+  await page.locator('#personal-market-visibility').click()
+  await page.getByRole('option', { name: '全体公開', exact: true }).click()
   const title = `E2E-個人市-UI-${Date.now()}`
   await form.locator('#title').fill(title)
   await form.locator('#category').click()
@@ -60,6 +70,33 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   expect(createdResponse.status()).toBe(201)
   const created = (await createdResponse.json()) as { data: { id: number } }
 
+  await expect(page.getByRole('heading', { name: title })).toBeVisible()
+
+  const publishButton = page.getByRole('button', { name: '公開する', exact: true })
+  const [publishResponse] = await Promise.all([
+    page.waitForResponse(response =>
+      response.url().endsWith(`/api/v1/me/market/listings/${created.data.id}/publish`)
+      && response.request().method() === 'POST',
+    ),
+    publishButton.click(),
+  ])
+  expect(publishResponse.status()).toBe(200)
+
+  await page.goto('/market')
+  await waitForHydration(page)
+  const personalResponsePromise = page.waitForResponse(response =>
+    response.url().includes('/api/v1/public/market/listings?')
+    && response.url().includes('owner_type=PERSONAL'),
+  )
+  await page.getByTestId('market-owner-type-select').click()
+  await page.getByRole('option', { name: '個人', exact: true }).click()
+  const personalResponse = await personalResponsePromise
+  expect(personalResponse.status()).toBe(200)
+  const personalBody = (await personalResponse.json()) as {
+    data: Array<{ title: string, owner: { scopeType: string } }>
+  }
+  expect(personalBody.data.length).toBeGreaterThan(0)
+  expect(personalBody.data.every(listing => listing.owner.scopeType === 'PERSONAL')).toBe(true)
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
 
   // 後始末だけ API を使う。作成操作と永続化確認は上の UI 経路で完了している。
@@ -109,12 +146,11 @@ test('MARKET-OWNER-UI-003: 組織市から主体を保って札作成画面へ�
   await expect(page.locator('form')).toBeVisible()
 })
 
-test('MARKET-OWNER-UI-004: 公開市で個人・チーム・組織を画面から絞り込める', async ({ page }) => {
+test('MARKET-OWNER-UI-004: 公開市でチーム・組織を画面から絞り込める（個人はUI-001で検証）', async ({ page }) => {
   await page.goto('/market')
   await waitForHydration(page)
 
   for (const [label, ownerType] of [
-    ['個人', 'PERSONAL'],
     ['チーム', 'TEAM'],
     ['組織', 'ORGANIZATION'],
   ] as const) {
@@ -129,6 +165,7 @@ test('MARKET-OWNER-UI-004: 公開市で個人・チーム・組織を画面か�
     const body = (await response.json()) as {
       data: Array<{ owner: { scopeType: string } }>
     }
+    expect(body.data.length).toBeGreaterThan(0)
     expect(body.data.every(listing => listing.owner.scopeType === ownerType)).toBe(true)
     await expect(page).toHaveURL(new RegExp(`owner=${ownerType}`))
   }
