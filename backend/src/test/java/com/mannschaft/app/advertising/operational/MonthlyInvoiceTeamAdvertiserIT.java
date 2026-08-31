@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.YearMonth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -86,6 +87,8 @@ class MonthlyInvoiceTeamAdvertiserIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("ac5_4: TEAM 広告主のキャンペーンが前月分の請求書に明細として計上される")
     void ac5_4_チーム広告主のキャンペーンが月次請求に含まれる() {
+        YearMonth targetMonth = YearMonth.now().minusMonths(1);
+
         // given: TEAM スコープの ACTIVE 広告主アカウント（billing=INVOICE）
         Long teamAccountId = insertAdvertiserAccount("TEAM", 987654L, "チーム広告主", "INVOICE");
 
@@ -93,13 +96,13 @@ class MonthlyInvoiceTeamAdvertiserIT extends AbstractMySqlIntegrationTest {
         Long campaignId = insertCampaignForAccount(teamAccountId, "チーム運用型キャンペーン");
 
         // 前月内の日次統計（CPM 単価 500 円 × 2000 imp = cost 1000.00 円）
-        insertDailyStatsLastMonth(campaignId, 2000L, 10L, new BigDecimal("1000.00"));
+        insertDailyStats(campaignId, targetMonth, 2000L, 10L, new BigDecimal("1000.00"));
 
         em.flush();
         em.clear();
 
         // when: 月次請求バッチ（前月分）を実行
-        monthlyInvoiceBatchService.generateMonthlyInvoices();
+        monthlyInvoiceBatchService.generateMonthlyInvoices(targetMonth);
 
         em.flush();
         em.clear();
@@ -166,15 +169,15 @@ class MonthlyInvoiceTeamAdvertiserIT extends AbstractMySqlIntegrationTest {
         return ((Number) em.createNativeQuery("SELECT MAX(id) FROM ad_campaigns").getSingleResult()).longValue();
     }
 
-    /** 前月 15 日付の日次統計を 1 行 seed する（バッチの集計対象期間 = 前月）。 */
-    private void insertDailyStatsLastMonth(Long campaignId, long impressions, long clicks, BigDecimal cost) {
+    /** 対象月15日付の日次統計を1行seedする。 */
+    private void insertDailyStats(Long campaignId, YearMonth targetMonth,
+                                  long impressions, long clicks, BigDecimal cost) {
         em.createNativeQuery(
                         "INSERT INTO ad_daily_stats (campaign_id, ad_id, date, impressions, clicks, cost, "
                                 + "created_at, updated_at) "
-                                + "VALUES (:cid, 1, "
-                                + "DATE_ADD(DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH), INTERVAL 14 DAY), "
-                                + ":imp, :clk, :cost, NOW(), NOW())")
+                                + "VALUES (:cid, 1, :statDate, :imp, :clk, :cost, NOW(), NOW())")
                 .setParameter("cid", campaignId)
+                .setParameter("statDate", targetMonth.atDay(15))
                 .setParameter("imp", impressions)
                 .setParameter("clk", clicks)
                 .setParameter("cost", cost)
