@@ -1,6 +1,6 @@
 package com.mannschaft.app.role.service;
 
-import com.mannschaft.app.billing.security.BillingPermissionGroupGuard;
+import com.mannschaft.app.role.security.BillingPermissionGroupGuard;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;

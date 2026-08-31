@@ -1,7 +1,7 @@
 package com.mannschaft.app.billing;
 
 import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.billing.security.BillingPermissionGroupGuard;
+import com.mannschaft.app.role.security.BillingPermissionGroupGuard;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.role.entity.PermissionEntity;

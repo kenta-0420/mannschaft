@@ -1,4 +1,4 @@
-package com.mannschaft.app.billing.security;
+package com.mannschaft.app.role.security;
 
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;

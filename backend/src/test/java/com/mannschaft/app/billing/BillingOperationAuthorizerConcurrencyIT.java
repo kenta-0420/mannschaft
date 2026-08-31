@@ -202,10 +202,25 @@ class BillingOperationAuthorizerConcurrencyIT extends AbstractMySqlIntegrationTe
     }
 
     private void grantTeamRole(Long userId, String roleName) {
+        ensureRole(roleName);
         Number roleId = (Number) entityManager.createNativeQuery("SELECT id FROM roles WHERE name = :name")
                 .setParameter("name", roleName).getSingleResult();
         entityManager.persist(UserRoleEntity.builder().userId(userId).roleId(roleId.longValue())
                 .teamId(TEAM_ID).build());
+    }
+
+    private void ensureRole(String roleName) {
+        int priority = "ADMIN".equals(roleName) ? 100 : 80;
+        entityManager.createNativeQuery("""
+                        INSERT IGNORE INTO roles
+                            (name, display_name, priority, is_system, created_at, updated_at)
+                        VALUES (:name, :displayName, :priority, false, NOW(6), NOW(6))
+                        """)
+                .setParameter("name", roleName)
+                .setParameter("displayName", "ADMIN".equals(roleName) ? "管理者" : "副管理者")
+                .setParameter("priority", priority)
+                .executeUpdate();
+        entityManager.flush();
     }
 
     private void enroll(Long userId) {
@@ -215,6 +230,13 @@ class BillingOperationAuthorizerConcurrencyIT extends AbstractMySqlIntegrationTe
     }
 
     private Long permissionId(String name) {
+        entityManager.createNativeQuery("""
+                        INSERT IGNORE INTO permissions
+                            (name, display_name, scope, created_at, updated_at)
+                        VALUES (:name, 'チーム課金管理', 'TEAM', NOW(6), NOW(6))
+                        """)
+                .setParameter("name", name)
+                .executeUpdate();
         Number id = (Number) entityManager.createNativeQuery("SELECT id FROM permissions WHERE name = :name")
                 .setParameter("name", name).getSingleResult();
         return id.longValue();

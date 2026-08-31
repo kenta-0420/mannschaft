@@ -1,6 +1,6 @@
 package com.mannschaft.app.role.service;
 
-import com.mannschaft.app.billing.security.BillingPermissionGroupGuard;
+import com.mannschaft.app.role.security.BillingPermissionGroupGuard;
 import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.PermissionGroupEntity;
 import com.mannschaft.app.role.entity.PermissionGroupPermissionEntity;
