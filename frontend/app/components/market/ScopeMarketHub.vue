@@ -13,6 +13,7 @@ const props = defineProps<Props>()
 const { t } = useI18n()
 const router = useRouter()
 const recruitmentApi = useRecruitmentApi()
+const { resolveOrganizationNumericId } = useOrganizationNumericId()
 const { error } = useNotification()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess(props.scopeType, toRef(props, 'scopeId'))
 
@@ -26,10 +27,11 @@ async function loadListings() {
   listings.value = []
   selectedListingId.value = null
   try {
-    const result =
-      props.scopeType === 'team'
-        ? await recruitmentApi.listTeamListings(props.scopeId)
-        : await recruitmentApi.listOrganizationListings(props.scopeId)
+    const result = props.scopeType === 'team'
+      ? await recruitmentApi.listTeamListings(props.scopeId)
+      : await recruitmentApi.listOrganizationListings(
+          await resolveOrganizationNumericId(props.scopeId),
+        )
     listings.value = result.data
   } catch (e) {
     error(String(e))
@@ -82,6 +84,7 @@ watch(
           :label="t('market.action.post')"
           icon="pi pi-plus"
           :disabled="!isAdminOrDeputy"
+          :data-testid="`market-${scopeType}-post-link`"
           @click="goToCreate"
         />
         <p v-if="!isAdminOrDeputy" class="mt-2 text-sm text-surface-500">

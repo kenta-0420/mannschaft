@@ -425,6 +425,22 @@ public class RoleService {
     }
 
     /**
+     * 閲覧者と active な TEAM / ORGANIZATION 在籍を共有する対象ユーザーを一括解決する。
+     *
+     * @param viewerUserId 閲覧者
+     * @param ownerUserIds 個人札 owner 候補
+     * @return 共通所属を持つ owner ID 集合
+     */
+    public java.util.Set<Long> findUserIdsSharingAffiliation(
+            Long viewerUserId, java.util.Collection<Long> ownerUserIds) {
+        if (viewerUserId == null || ownerUserIds == null || ownerUserIds.isEmpty()) {
+            return java.util.Set.of();
+        }
+        return new java.util.LinkedHashSet<>(
+                userRoleRepository.findOwnerIdsSharingAffiliation(viewerUserId, ownerUserIds));
+    }
+
+    /**
      * 指定組織の ADMIN ロールを持つユーザー ID 一覧を返す。
      *
      * <p>他ドメイン（例: notification.credit の残高マイナスアラート通知先解決）が

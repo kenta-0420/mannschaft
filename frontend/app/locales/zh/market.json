@@ -40,12 +40,19 @@
       "prefecture": "都道府县",
       "city": "市区町村",
       "category": "类别",
+      "ownerType": "发布者",
       "keyword": "关键词搜索",
       "allPrefectures": "全国",
       "allCities": "选择市区町村",
       "allCategories": "所有类别",
+      "allOwnerTypes": "所有发布者",
       "includeRegionNone": "包含未指定地区",
       "mobileToggle": "筛选"
+    },
+    "ownerType": {
+      "personal": "个人",
+      "team": "团队",
+      "organization": "组织"
     },
     "breadcrumb": {
       "national": "全国",
@@ -60,11 +67,46 @@
       "organizer": "主办方"
     },
     "status": {
+      "DRAFT": "草稿",
       "OPEN": "招募中",
       "FULL": "已满（待确认）",
       "COMPLETED": "已成立",
       "CANCELLED": "已撤下",
       "AUTO_CANCELLED": "未成立（自动取消）"
+    },
+    "personal": {
+      "visibility": "公开范围",
+      "visibilityPublic": "全部公开",
+      "visibilitySelectedScopes": "仅限选定的球队和组织",
+      "visibilityDraft": "私密草稿",
+      "visibilityHelp": "选择可以查看此个人招募信息的范围。",
+      "audience": "球队和组织",
+      "audiencePlaceholder": "选择一个或多个群组",
+      "audienceRequired": "请至少选择一个球队或组织。",
+      "publish": "发布",
+      "published": "已发布招募信息。",
+      "title": "我的集市",
+      "description": "管理您的草稿招募。",
+      "create": "创建草稿",
+      "list": "我的招募",
+      "allStatuses": "所有状态",
+      "empty": "尚无招募。",
+      "matches": "匹配情况",
+      "noMatches": "尚无匹配。",
+      "previous": "上一页",
+      "next": "下一页",
+      "created": "已创建草稿。",
+      "loadFailed": "无法加载个人集市。",
+      "saveFailed": "无法保存草稿。",
+      "cancel": "取消草稿",
+      "cancelled": "已取消草稿。",
+      "cancelReason": "从个人集市取消",
+      "cancelConfirm": "要取消此草稿吗？",
+      "close": "关闭",
+      "edit": "编辑草稿",
+      "save": "保存",
+      "updated": "草稿已更新。",
+      "draftOnly": "个人招募目前保存为私密草稿。公开、申请和付款尚不可用。"
     },
     "visibility": {
       "public": "公开",
@@ -100,6 +142,10 @@
       "category": "类别",
       "notFound": "未找到该招募",
       "notPublic": "该招募未公开"
+    },
+    "report": {
+      "open": "举报此招募", "title": "举报招募", "reasonLabel": "理由", "description": "详细说明（可选）", "notice": "举报内容仅供管理人员查看。", "submit": "提交举报", "succeeded": "举报已提交。", "failed": "无法提交举报。",
+      "reason": { "SPAM": "垃圾信息", "HARASSMENT": "骚扰", "INAPPROPRIATE": "不当内容", "VIOLENCE": "暴力内容", "MISINFORMATION": "错误信息", "COPYRIGHT": "侵犯著作权", "OTHER": "其他" }
     },
     "notify": {
       "applicationReceived": "您的招募收到了申请（{owner} / {title}）",

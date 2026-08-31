@@ -40,12 +40,19 @@
       "prefecture": "Präfektur",
       "city": "Stadt",
       "category": "Kategorie",
+      "ownerType": "Anbieter",
       "keyword": "Nach Stichwort suchen",
       "allPrefectures": "Landesweit",
       "allCities": "Stadt auswählen",
       "allCategories": "Alle Kategorien",
+      "allOwnerTypes": "Alle Anbieter",
       "includeRegionNone": "Ohne Region einschließen",
       "mobileToggle": "Filtern"
+    },
+    "ownerType": {
+      "personal": "Person",
+      "team": "Team",
+      "organization": "Organisation"
     },
     "breadcrumb": {
       "national": "Landesweit",
@@ -60,11 +67,46 @@
       "organizer": "Veranstalter"
     },
     "status": {
+      "DRAFT": "Entwurf",
       "OPEN": "Offen",
       "FULL": "Voll (Bestätigung ausstehend)",
       "COMPLETED": "Abgeschlossen",
       "CANCELLED": "Entfernt",
       "AUTO_CANCELLED": "Automatisch abgebrochen"
+    },
+    "personal": {
+      "visibility": "Sichtbarkeit",
+      "visibilityPublic": "Öffentlich",
+      "visibilitySelectedScopes": "Nur ausgewählte Teams und Organisationen",
+      "visibilityDraft": "Privater Entwurf",
+      "visibilityHelp": "Wählen Sie, wer dieses persönliche Angebot sehen kann.",
+      "audience": "Teams und Organisationen",
+      "audiencePlaceholder": "Mindestens eine Gruppe auswählen",
+      "audienceRequired": "Wählen Sie mindestens ein Team oder eine Organisation aus.",
+      "publish": "Veröffentlichen",
+      "published": "Angebot veröffentlicht.",
+      "title": "Mein Markt",
+      "description": "Verwalte deine Entwürfe.",
+      "create": "Entwurf erstellen",
+      "list": "Meine Aushänge",
+      "allStatuses": "Alle Status",
+      "empty": "Noch keine Aushänge.",
+      "matches": "Zuordnungen",
+      "noMatches": "Noch keine Zuordnungen.",
+      "previous": "Zurück",
+      "next": "Weiter",
+      "created": "Entwurf erstellt.",
+      "loadFailed": "Dein Markt konnte nicht geladen werden.",
+      "saveFailed": "Entwurf konnte nicht gespeichert werden.",
+      "cancel": "Entwurf abbrechen",
+      "cancelled": "Entwurf abgebrochen.",
+      "cancelReason": "Vom persönlichen Markt abgebrochen",
+      "cancelConfirm": "Diesen Entwurf abbrechen?",
+      "close": "Schließen",
+      "edit": "Entwurf bearbeiten",
+      "save": "Speichern",
+      "updated": "Entwurf aktualisiert.",
+      "draftOnly": "Persönliche Aushänge werden derzeit als private Entwürfe gespeichert. Veröffentlichung, Bewerbungen und Zahlungen sind noch nicht verfügbar."
     },
     "visibility": {
       "public": "Öffentlich",
@@ -100,6 +142,10 @@
       "category": "Kategorie",
       "notFound": "Aushang nicht gefunden",
       "notPublic": "Dieser Aushang ist nicht öffentlich"
+    },
+    "report": {
+      "open": "Diesen Aushang melden", "title": "Aushang melden", "reasonLabel": "Grund", "description": "Details (optional)", "notice": "Nur das Moderationsteam kann die Meldung einsehen.", "submit": "Meldung senden", "succeeded": "Die Meldung wurde gesendet.", "failed": "Die Meldung konnte nicht gesendet werden.",
+      "reason": { "SPAM": "Spam", "HARASSMENT": "Belästigung", "INAPPROPRIATE": "Unangemessener Inhalt", "VIOLENCE": "Gewaltinhalt", "MISINFORMATION": "Falschinformation", "COPYRIGHT": "Urheberrechtsverletzung", "OTHER": "Sonstiges" }
     },
     "notify": {
       "applicationReceived": "Jemand hat sich für deinen Aushang beworben ({owner} / {title})",

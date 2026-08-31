@@ -74590,6 +74590,31 @@
             }
           },
           {
+            "name": "prefectureCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cityCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "required": false,
@@ -74616,7 +74641,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseRecruitmentListingSummaryResponse"
+                  "$ref": "#/components/schemas/PagedResponsePersonalMarketListingSummaryResponse"
                 }
               }
             }
@@ -74639,6 +74664,38 @@
           },
           "required": true
         },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecruitmentListingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/market/listings/{id}/publish": {
+      "post": {
+        "tags": [
+          "personal-market-listing-controller"
+        ],
+        "summary": "個人札の公開",
+        "operationId": "publish_5",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -126055,7 +126112,7 @@
           "F22.1 市（Market）公開閲覧"
         ],
         "summary": "市の札一覧",
-        "description": "未ログインで実行可能。visibility\u003dPUBLIC かつ status IN (OPEN,FULL) の札を返す。city 指定でその市区町村、prefecture のみで配下市区町村をロールアップ。",
+        "description": "未ログインではPUBLIC、認証時は認可済みSELECTED_SCOPESも含むOPEN/FULL札を返す。city 指定でその市区町村、prefecture のみで配下市区町村をロールアップ。",
         "operationId": "listListings",
         "parameters": [
           {
@@ -126081,6 +126138,19 @@
             "schema": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          {
+            "name": "owner_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "TEAM",
+                "ORGANIZATION",
+                "PERSONAL"
+              ]
             }
           },
           {
@@ -134770,6 +134840,58 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListMembershipSubscriptionListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/market/listings/{id}/matches": {
+      "get": {
+        "tags": [
+          "personal-market-listing-controller"
+        ],
+        "summary": "個人市の札のマッチング状況を取得",
+        "operationId": "listMatches_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponsePersonalMarketMatchResponse"
                 }
               }
             }
@@ -175223,6 +175345,7 @@
               "SCOPE_ONLY",
               "SUPPORTERS_ONLY",
               "CUSTOM_TEMPLATE",
+              "SELECTED_SCOPES",
               "FRIEND_TEAMS_ONLY"
             ]
           },
@@ -175474,12 +175597,38 @@
           }
         }
       },
+      "AudienceScopeRequest": {
+        "type": "object",
+        "properties": {
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string",
+            "enum": [
+              "TEAM",
+              "ORGANIZATION"
+            ]
+          }
+        },
+        "required": [
+          "scopeId",
+          "scopeType"
+        ]
+      },
       "CreateRecruitmentListingRequest": {
         "type": "object",
         "properties": {
           "applicationDeadline": {
             "type": "string",
             "format": "date-time"
+          },
+          "audienceScopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudienceScopeRequest"
+            }
           },
           "autoCancelAt": {
             "type": "string",
@@ -175605,6 +175754,7 @@
               "SCOPE_ONLY",
               "SUPPORTERS_ONLY",
               "CUSTOM_TEMPLATE",
+              "SELECTED_SCOPES",
               "FRIEND_TEAMS_ONLY"
             ]
           }
@@ -204836,6 +204986,7 @@
               "SCOPE_ONLY",
               "SUPPORTERS_ONLY",
               "CUSTOM_TEMPLATE",
+              "SELECTED_SCOPES",
               "FRIEND_TEAMS_ONLY"
             ]
           },
@@ -204871,6 +205022,12 @@
           "applicationDeadline": {
             "type": "string",
             "format": "date-time"
+          },
+          "audienceScopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudienceScopeRequest"
+            }
           },
           "autoCancelAt": {
             "type": "string",
@@ -204967,6 +205124,7 @@
               "SCOPE_ONLY",
               "SUPPORTERS_ONLY",
               "CUSTOM_TEMPLATE",
+              "SELECTED_SCOPES",
               "FRIEND_TEAMS_ONLY"
             ]
           }
@@ -229648,6 +229806,160 @@
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "PagedResponsePersonalMarketListingSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonalMarketListingSummaryResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "PersonalMarketAudienceScopeResponse": {
+        "type": "object",
+        "properties": {
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string"
+          }
+        }
+      },
+      "PersonalMarketListingSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "applicationDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "audienceScopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonalMarketAudienceScopeResponse"
+            }
+          },
+          "capacity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "categoryId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "categoryNameI18nKey": {
+            "type": "string"
+          },
+          "confirmedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "minCapacity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "participationType": {
+            "type": "string"
+          },
+          "paymentEnabled": {
+            "type": "boolean"
+          },
+          "price": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "waitlistCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResponsePersonalMarketMatchResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonalMarketMatchResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "PersonalMarketMatchResponse": {
+        "type": "object",
+        "properties": {
+          "appliedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "participantId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "participantType": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "TEAM"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "APPLIED",
+              "CONFIRMED",
+              "WAITLISTED",
+              "CANCELLED",
+              "NO_SHOW",
+              "ATTENDED"
+            ]
+          },
+          "statusChangedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "waitlistPosition": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

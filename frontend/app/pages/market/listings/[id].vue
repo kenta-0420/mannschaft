@@ -3,14 +3,15 @@
  * F22.1 市（Market）— 公開札詳細ページ
  *
  * - 未ログイン公開（middleware なし・permitAll）
- * - 公開札（visibility='PUBLIC'）のみ表示。非公開/scope限定は 404。
+ * - 公開札、またはログイン利用者が選択公開先に所属する札を表示。権限外は 404。
  * - 未ログイン: 応募ボタンを「ログインして応募」に置換。
  * - ログイン済み: 「札に応じる」ボタン（応募API呼び出し）。
- * - PII抑制: 主催はチーム公称名+アイコンのみ表示。
+ * - PII抑制: 個人札は API が閲覧者との所属関係に応じて実名またはニックネームを返す。
  *
  * 設計書: docs/features/F22.1_market/03_ui_i18n.md §3
  * API:    GET /api/v1/public/market/listings/{id}
  *         POST /api/v1/recruitment-listings/{id}/applications
+ *         POST /api/v1/reports
  */
 import type { MarketListingRegion, MarketListingResponse } from '~/types/market'
 import type { ScopeKind } from '~/types/marketPayment'
@@ -48,6 +49,12 @@ const myParticipation = ref<RecruitmentParticipantResponse | null>(null)
 const autoOpenPayment = ref(false)
 /** TEAM 型募集のときに選択されたチームID。 */
 const selectedTeamId = ref<number | null>(null)
+const reportDialogVisible = ref(false)
+const reportReason = ref('INAPPROPRIATE')
+const reportDescription = ref('')
+const reporting = ref(false)
+const reportReasons = ['SPAM', 'HARASSMENT', 'INAPPROPRIATE', 'VIOLENCE', 'MISINFORMATION', 'COPYRIGHT', 'OTHER']
+  .map(value => ({ value, label: t(`market.report.reason.${value}`) }))
 
 async function load() {
   pageLoading.value = true
@@ -84,6 +91,10 @@ watch(locale, async () => {
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isTeamListing = computed(() => listing.value?.participationType === 'TEAM')
+const isPaymentSupported = computed(() =>
+  listing.value?.paymentEnabled === true
+  && (listing.value.owner.scopeType === 'TEAM' || listing.value.owner.scopeType === 'ORGANIZATION'),
+)
 const canApply = computed(() => {
   if (
     participationLoading.value
@@ -133,7 +144,7 @@ async function applyToListing() {
       teamId: isTeam ? selectedTeamId.value : undefined,
     })
     myParticipation.value = result.data
-    autoOpenPayment.value = listing.value.paymentEnabled && result.data.status === 'CONFIRMED'
+    autoOpenPayment.value = isPaymentSupported.value && result.data.status === 'CONFIRMED'
     notification.success(t('recruitment.participantStatus.applied'))
     // 応募後に件数を更新するために再取得
     await load()
@@ -143,6 +154,23 @@ async function applyToListing() {
   }
   finally {
     applying.value = false
+  }
+}
+
+async function submitReport() {
+  if (!listing.value) return
+  reporting.value = true
+  try {
+    await marketApi.reportMarketListing(listing.value.id, reportReason.value, reportDescription.value)
+    reportDialogVisible.value = false
+    reportDescription.value = ''
+    notification.success(t('market.report.succeeded'))
+  }
+  catch (err) {
+    handleApiError(err, t('market.report.failed'))
+  }
+  finally {
+    reporting.value = false
   }
 }
 
@@ -183,7 +211,13 @@ function regionLabel(region: MarketListingRegion): string {
  */
 const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
   const l = listing.value
-  if (!l || !l.paymentEnabled || !isAuthenticated.value) {
+  // PERSONAL は Phase 4 では決済対象外。未知の owner 種別も fail closed にする。
+  if (
+    !l
+    || !l.paymentEnabled
+    || !isAuthenticated.value
+    || (l.owner.scopeType !== 'TEAM' && l.owner.scopeType !== 'ORGANIZATION')
+  ) {
     return null
   }
   const kind: ScopeKind = l.owner.scopeType === 'ORGANIZATION' ? 'ORG' : 'TEAM'
@@ -335,10 +369,54 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
             disabled
           />
         </div>
+        <div v-if="isAuthenticated" class="mt-5 flex justify-end">
+          <Button
+            :label="$t('market.report.open')"
+            icon="pi pi-flag"
+            severity="secondary"
+            text
+            @click="reportDialogVisible = true"
+          />
+        </div>
       </SectionCard>
 
+      <Dialog
+        v-model:visible="reportDialogVisible"
+        modal
+        :header="$t('market.report.title')"
+        class="w-full max-w-lg"
+      >
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-col gap-2">
+            <label for="market-report-reason">{{ $t('market.report.reasonLabel') }}</label>
+            <Select
+              id="market-report-reason"
+              v-model="reportReason"
+              :options="reportReasons"
+              option-label="label"
+              option-value="value"
+            />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label for="market-report-description">{{ $t('market.report.description') }}</label>
+            <Textarea
+              id="market-report-description"
+              v-model="reportDescription"
+              :maxlength="1000"
+              rows="4"
+              auto-resize
+            />
+          </div>
+          <p class="text-xs text-surface-500">{{ $t('market.report.notice') }}</p>
+          <div class="flex justify-end gap-2">
+            <Button :label="$t('common.cancel')" severity="secondary" text @click="reportDialogVisible = false" />
+            <Button :label="$t('market.report.submit')" :loading="reporting" @click="submitReport" />
+          </div>
+        </div>
+      </Dialog>
+
       <RecruitmentPaymentConfirmationButton
-        v-if="listing.paymentEnabled
+        v-if="isPaymentSupported
           && myParticipation?.participantType === 'USER'
           && myParticipation.status === 'CONFIRMED'"
         :listing-id="listing.id"

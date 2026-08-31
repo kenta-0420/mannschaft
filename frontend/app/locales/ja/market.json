@@ -40,12 +40,19 @@
       "prefecture": "都道府県",
       "city": "市区町村",
       "category": "ジャンル",
+      "ownerType": "札主",
       "keyword": "キーワード検索",
       "allPrefectures": "全国",
       "allCities": "市区町村を選択",
       "allCategories": "すべてのジャンル",
+      "allOwnerTypes": "すべての札主",
       "includeRegionNone": "地域指定なしも含む",
       "mobileToggle": "絞り込み"
+    },
+    "ownerType": {
+      "personal": "個人",
+      "team": "チーム",
+      "organization": "組織"
     },
     "breadcrumb": {
       "national": "全国",
@@ -60,11 +67,46 @@
       "organizer": "主催"
     },
     "status": {
+      "DRAFT": "下書き",
       "OPEN": "募集中",
       "FULL": "満員（認証待ち）",
       "COMPLETED": "成立",
       "CANCELLED": "取り下げ済み",
       "AUTO_CANCELLED": "不成立（自動取消）"
+    },
+    "personal": {
+      "visibility": "公開範囲",
+      "visibilityPublic": "全体公開",
+      "visibilitySelectedScopes": "選択したチーム・組織のみ",
+      "visibilityDraft": "下書き（非公開）",
+      "visibilityHelp": "個人札の閲覧範囲を選択します。選択した所属先の現メンバーには登録名、それ以外にはニックネームが表示されます。",
+      "audience": "公開するチーム・組織",
+      "audiencePlaceholder": "1つ以上選択してください",
+      "audienceRequired": "公開するチームまたは組織を1つ以上選択してください。",
+      "publish": "公開する",
+      "published": "個人札を公開しました。",
+      "title": "自分の市",
+      "description": "自分名義の下書き札を管理します。",
+      "create": "下書きの札を立てる",
+      "list": "立てた札",
+      "allStatuses": "すべての状態",
+      "empty": "立てた札はまだありません。最初の下書きを作成しましょう。",
+      "matches": "マッチング状況",
+      "noMatches": "マッチングはまだありません。",
+      "previous": "前へ",
+      "next": "次へ",
+      "created": "下書きを作成しました。",
+      "loadFailed": "個人市の情報取得に失敗しました。",
+      "saveFailed": "下書きの保存に失敗しました。",
+      "cancel": "下書きを取り消す",
+      "cancelled": "下書きを取り消しました。",
+      "cancelReason": "個人市からの下書き取消",
+      "cancelConfirm": "この下書きを取り消しますか？",
+      "close": "閉じる",
+      "edit": "下書きを編集",
+      "save": "保存",
+      "updated": "下書きを更新しました。",
+      "draftOnly": "個人札は現在、本人だけが見られる下書きとして保存されます。公開・応募・決済はまだ利用できません。"
     },
     "visibility": {
       "public": "市に公開",
@@ -100,6 +142,10 @@
       "category": "ジャンル",
       "notFound": "この札は見つかりません",
       "notPublic": "この札は公開されていません"
+    },
+    "report": {
+      "open": "この札を通報", "title": "札を通報", "reasonLabel": "理由", "description": "詳細（任意）", "notice": "通報内容は運営だけが確認します。虚偽や繰り返しの通報はお控えください。", "submit": "通報する", "succeeded": "通報を受け付けました。", "failed": "通報を送信できませんでした。",
+      "reason": { "SPAM": "スパム", "HARASSMENT": "嫌がらせ", "INAPPROPRIATE": "不適切な内容", "VIOLENCE": "暴力的な内容", "MISINFORMATION": "誤情報", "COPYRIGHT": "著作権侵害", "OTHER": "その他" }
     },
     "notify": {
       "applicationReceived": "あなたの札に声がかかりました（{owner} / {title}）",

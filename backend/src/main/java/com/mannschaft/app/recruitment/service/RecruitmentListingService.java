@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
@@ -23,6 +24,9 @@ import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
+import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest.AudienceScopeRequest;
+import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest.RecruitmentAudienceScopeType;
+import com.mannschaft.app.recruitment.entity.RecruitmentListingAudienceScopeEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentCancellationPolicyEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentDistributionTargetEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
@@ -54,6 +58,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -111,6 +116,7 @@ public class RecruitmentListingService {
     private final com.mannschaft.app.team.service.TeamService teamService;
     // F22.1 市 Phase 2 D: 複数地域募集（N:N）の中間表
     private final com.mannschaft.app.recruitment.repository.RecruitmentListingRegionRepository listingRegionRepository;
+    private final com.mannschaft.app.recruitment.repository.RecruitmentListingAudienceScopeRepository audienceScopeRepository;
 
     // ===========================================
     // 取得系
@@ -134,6 +140,13 @@ public class RecruitmentListingService {
 
     public RecruitmentListingResponse getListing(Long listingId, Long userId) {
         RecruitmentListingEntity entity = findOrThrow(listingId);
+        // PERSONAL の公開後レスポンスは閲覧者別の表示名・PII 抑制・no-store を担う
+        // /api/v1/public/market/** に一本化する。汎用詳細 DTO は scopeId / createdBy 等の
+        // 内部 ID を含むため、OPEN/FULL の PERSONAL をここから返してはならない。
+        if (entity.getScopeType() == RecruitmentScopeType.PERSONAL
+                && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
+            throw new BusinessException(MarketErrorCode.LISTING_NOT_FOUND);
+        }
         // DRAFT は作成者・スコープ ADMIN のみ閲覧可（機能側ローカル要件）。
         // F00 共通基盤の DRAFT 規約は「作成者 + SystemAdmin のみ」だが、
         // Recruitment 機能では従来から TEAM/ORG ADMIN にも DRAFT 閲覧を許可しており、
@@ -176,7 +189,7 @@ public class RecruitmentListingService {
     public RecruitmentListingResponse create(
             RecruitmentScopeType scopeType, Long scopeId, Long userId,
             CreateRecruitmentListingRequest request) {
-        validatePersonalCreate(scopeType, request);
+        validatePersonalCreate(scopeType, userId, request);
         checkListingManagementAccess(scopeType, scopeId, userId, null);
 
         // §5.1 必須カテゴリ + 存在チェック
@@ -265,6 +278,9 @@ public class RecruitmentListingService {
 
         // F22.1 市 Phase 2 D: 複数地域（N:N）を中間表へ replace（検証済み・代表は旧単一列に同期済み）。
         replaceListingRegions(saved.getId(), resolvedRegions);
+        if (scopeType == RecruitmentScopeType.PERSONAL) {
+            replaceAudienceScopes(saved.getId(), request.getAudienceScopes());
+        }
 
         log.info("F03.11 募集枠作成: id={}, scope={}/{}, status=DRAFT, regions={}",
                 saved.getId(), scopeType, scopeId, resolvedRegions.size());
@@ -384,7 +400,7 @@ public class RecruitmentListingService {
             throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.LISTING_NOT_FOUND);
         }
         checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
-        validatePersonalUpdate(entity, request);
+        validatePersonalUpdate(entity, userId, request);
         if (personalRoute && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
             throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
         }
@@ -450,6 +466,10 @@ public class RecruitmentListingService {
             replaceListingRegions(listingId, updatedRegions);
         }
 
+        if (entity.getScopeType() == RecruitmentScopeType.PERSONAL) {
+            replacePersonalAudienceScopesIfNeeded(entity, request);
+        }
+
         RecruitmentListingEntity saved = listingRepository.save(entity);
         log.info("F03.11 募集枠編集: id={}", listingId);
         return marketResponseEnricher.enrich(mapper.toListingResponse(saved), saved);
@@ -504,6 +524,35 @@ public class RecruitmentListingService {
         sendPublishedNotifications(saved, targets);
 
         log.info("F03.11 募集枠公開: id={} → OPEN, targets={}", listingId, targetCount);
+        return marketResponseEnricher.enrich(mapper.toListingResponse(saved), saved);
+    }
+
+    /** 個人札だけの公開。汎用 publish は PERSONAL を引き続き拒否する。 */
+    @Transactional
+    public RecruitmentListingResponse publishPersonal(Long listingId, Long userId) {
+        RecruitmentListingEntity entity = listingRepository
+                .findByIdAndScopeTypeAndScopeIdForUpdate(listingId, RecruitmentScopeType.PERSONAL, userId)
+                .orElseThrow(() -> new BusinessException(MarketErrorCode.LISTING_NOT_FOUND));
+        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
+        if (entity.getCreatedBy() == null || !entity.getCreatedBy().equals(userId)) {
+            throw new BusinessException(MarketErrorCode.LISTING_NOT_FOUND);
+        }
+        validatePersonalPaymentState(entity);
+        if (entity.getVisibility() != RecruitmentVisibility.PUBLIC
+                && entity.getVisibility() != RecruitmentVisibility.SELECTED_SCOPES) {
+            throw new BusinessException(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+        }
+        if (entity.getVisibility() == RecruitmentVisibility.SELECTED_SCOPES
+                && audienceScopeRepository.countByListingId(entity.getId()) == 0) {
+            throw new BusinessException(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+        }
+        try {
+            entity.publish();
+        } catch (IllegalStateException e) {
+            throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
+        RecruitmentListingEntity saved = listingRepository.save(entity);
+        // 個人札の公開は個別通知・配信対象を持たない。
         return marketResponseEnricher.enrich(mapper.toListingResponse(saved), saved);
     }
 
@@ -1082,7 +1131,8 @@ public class RecruitmentListingService {
         accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
     }
 
-    private void validatePersonalCreate(RecruitmentScopeType scopeType, CreateRecruitmentListingRequest request) {
+    private void validatePersonalCreate(
+            RecruitmentScopeType scopeType, Long userId, CreateRecruitmentListingRequest request) {
         if (scopeType != RecruitmentScopeType.PERSONAL) {
             return;
         }
@@ -1090,23 +1140,103 @@ public class RecruitmentListingService {
                 || request.getPayeeKind() != null || request.getPayeeUserId() != null) {
             throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.PERSONAL_PAYMENT_DISABLED);
         }
-        if (request.getVisibility() != RecruitmentVisibility.SCOPE_ONLY) {
+        if (request.getVisibility() != RecruitmentVisibility.SCOPE_ONLY
+                && request.getVisibility() != RecruitmentVisibility.PUBLIC
+                && request.getVisibility() != RecruitmentVisibility.SELECTED_SCOPES) {
             throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
         }
+        validatePersonalAudienceScopes(userId, request.getVisibility(), request.getAudienceScopes(), false);
     }
 
-    private void validatePersonalUpdate(RecruitmentListingEntity entity, UpdateRecruitmentListingRequest request) {
+    private void validatePersonalUpdate(
+            RecruitmentListingEntity entity, Long userId, UpdateRecruitmentListingRequest request) {
         if (entity.getScopeType() != RecruitmentScopeType.PERSONAL) {
             return;
         }
+        validatePersonalPaymentState(entity);
         if (Boolean.TRUE.equals(request.getPaymentEnabled())
-                || request.getPayeeKind() != null || request.getPayeeUserId() != null
-                || Boolean.TRUE.equals(entity.getPaymentEnabled())
-                || entity.getPayeeKind() != null || entity.getPayeeUserId() != null) {
-            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.PERSONAL_PAYMENT_DISABLED);
+                || request.getPayeeKind() != null || request.getPayeeUserId() != null) {
+            throw new BusinessException(MarketErrorCode.PERSONAL_PAYMENT_DISABLED);
         }
-        if (request.getVisibility() != null && request.getVisibility() != RecruitmentVisibility.SCOPE_ONLY) {
+        RecruitmentVisibility effectiveVisibility = request.getVisibility() == null
+                ? entity.getVisibility() : request.getVisibility();
+        if (effectiveVisibility != RecruitmentVisibility.SCOPE_ONLY
+                && effectiveVisibility != RecruitmentVisibility.PUBLIC
+                && effectiveVisibility != RecruitmentVisibility.SELECTED_SCOPES) {
             throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+        }
+        boolean hasStoredScopes = audienceScopeRepository.countByListingId(entity.getId()) > 0;
+        validatePersonalAudienceScopes(
+                userId, effectiveVisibility, request.getAudienceScopes(), hasStoredScopes);
+    }
+
+    private void validatePersonalPaymentState(RecruitmentListingEntity entity) {
+        if (Boolean.TRUE.equals(entity.getPaymentEnabled())
+                || entity.getPayeeKind() != null || entity.getPayeeUserId() != null) {
+            throw new BusinessException(MarketErrorCode.PERSONAL_PAYMENT_DISABLED);
+        }
+    }
+
+    /** 公開先は本人の現在の active user_roles ∪ memberships に限る。 */
+    private void validatePersonalAudienceScopes(
+            Long userId,
+            RecruitmentVisibility visibility,
+            List<AudienceScopeRequest> requestedScopes,
+            boolean hasStoredScopes) {
+        if (visibility == RecruitmentVisibility.SELECTED_SCOPES) {
+            if (requestedScopes == null) {
+                if (!hasStoredScopes) {
+                    throw new BusinessException(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+                }
+                return;
+            }
+            if (requestedScopes.isEmpty()) {
+                throw new BusinessException(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+            }
+            Set<Long> activeTeamIds = new LinkedHashSet<>(userRoleRepository.findTeamIdsByUserId(userId));
+            Set<Long> activeOrganizationIds = new LinkedHashSet<>(
+                    userRoleRepository.findOrganizationIdsByUserId(userId));
+            Set<String> seen = new LinkedHashSet<>();
+            for (AudienceScopeRequest scope : requestedScopes) {
+                if (scope == null || scope.scopeType() == null || scope.scopeId() == null
+                        || scope.scopeId() <= 0) {
+                    throw new BusinessException(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+                }
+                boolean active = scope.scopeType() == RecruitmentAudienceScopeType.TEAM
+                        ? activeTeamIds.contains(scope.scopeId())
+                        : activeOrganizationIds.contains(scope.scopeId());
+                if (!active || !seen.add(scope.scopeType() + ":" + scope.scopeId())) {
+                    throw new BusinessException(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+                }
+            }
+            return;
+        }
+        if (requestedScopes != null && !requestedScopes.isEmpty()) {
+            throw new BusinessException(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
+        }
+    }
+
+    private void replacePersonalAudienceScopesIfNeeded(
+            RecruitmentListingEntity entity, UpdateRecruitmentListingRequest request) {
+        RecruitmentVisibility effectiveVisibility = request.getVisibility() == null
+                ? entity.getVisibility() : request.getVisibility();
+        if (effectiveVisibility != RecruitmentVisibility.SELECTED_SCOPES) {
+            audienceScopeRepository.deleteByListingId(entity.getId());
+            return;
+        }
+        if (request.getAudienceScopes() != null) {
+            replaceAudienceScopes(entity.getId(), request.getAudienceScopes());
+        }
+    }
+
+    private void replaceAudienceScopes(Long listingId, List<AudienceScopeRequest> scopes) {
+        audienceScopeRepository.deleteByListingId(listingId);
+        if (scopes == null) {
+            return;
+        }
+        for (AudienceScopeRequest scope : scopes) {
+            audienceScopeRepository.save(RecruitmentListingAudienceScopeEntity.of(
+                    listingId, scope.scopeType(), scope.scopeId()));
         }
     }
 

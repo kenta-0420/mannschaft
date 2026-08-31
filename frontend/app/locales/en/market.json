@@ -40,12 +40,19 @@
       "prefecture": "Prefecture",
       "city": "City",
       "category": "Category",
+      "ownerType": "Listing owner",
       "keyword": "Search by keyword",
       "allPrefectures": "Nationwide",
       "allCities": "Select city",
       "allCategories": "All categories",
+      "allOwnerTypes": "All listing owners",
       "includeRegionNone": "Include listings without region",
       "mobileToggle": "Filter"
+    },
+    "ownerType": {
+      "personal": "Individual",
+      "team": "Team",
+      "organization": "Organization"
     },
     "breadcrumb": {
       "national": "Nationwide",
@@ -60,11 +67,46 @@
       "organizer": "Organizer"
     },
     "status": {
+      "DRAFT": "Draft",
       "OPEN": "Open",
       "FULL": "Full (pending confirmation)",
       "COMPLETED": "Completed",
       "CANCELLED": "Cancelled",
       "AUTO_CANCELLED": "Auto-cancelled"
+    },
+    "personal": {
+      "visibility": "Visibility",
+      "visibilityPublic": "Public",
+      "visibilitySelectedScopes": "Selected teams and organizations",
+      "visibilityDraft": "Private draft",
+      "visibilityHelp": "Choose who can view this personal listing. Members of selected groups see your registered name; everyone else sees your nickname.",
+      "audience": "Teams and organizations",
+      "audiencePlaceholder": "Select one or more groups",
+      "audienceRequired": "Select at least one team or organization.",
+      "publish": "Publish",
+      "published": "Listing published.",
+      "title": "My market",
+      "description": "Manage your draft listings.",
+      "create": "Create draft",
+      "list": "My listings",
+      "allStatuses": "All statuses",
+      "empty": "No listings yet.",
+      "matches": "Matches",
+      "noMatches": "No matches yet.",
+      "previous": "Previous",
+      "next": "Next",
+      "created": "Draft created.",
+      "loadFailed": "Failed to load your market.",
+      "saveFailed": "Failed to save draft.",
+      "cancel": "Cancel draft",
+      "cancelled": "Draft cancelled.",
+      "cancelReason": "Cancelled from personal market",
+      "cancelConfirm": "Cancel this draft?",
+      "close": "Close",
+      "edit": "Edit draft",
+      "save": "Save",
+      "updated": "Draft updated.",
+      "draftOnly": "Personal listings are currently saved as private drafts. Publishing, applications, and payments are not available yet."
     },
     "visibility": {
       "public": "Public",
@@ -100,6 +142,10 @@
       "category": "Category",
       "notFound": "Listing not found",
       "notPublic": "This listing is not public"
+    },
+    "report": {
+      "open": "Report this listing", "title": "Report listing", "reasonLabel": "Reason", "description": "Details (optional)", "notice": "Only moderators can review your report. Please avoid false or repeated reports.", "submit": "Submit report", "succeeded": "Your report was submitted.", "failed": "Could not submit the report.",
+      "reason": { "SPAM": "Spam", "HARASSMENT": "Harassment", "INAPPROPRIATE": "Inappropriate content", "VIOLENCE": "Violent content", "MISINFORMATION": "Misinformation", "COPYRIGHT": "Copyright infringement", "OTHER": "Other" }
     },
     "notify": {
       "applicationReceived": "Someone applied to your listing ({owner} / {title})",

@@ -13,6 +13,7 @@ import com.mannschaft.app.market.dto.MarketSummaryResponse;
 import com.mannschaft.app.market.service.MarketQueryService;
 import com.mannschaft.app.matching.service.RegionTranslationService;
 import com.mannschaft.app.proxy.ProxyInputContext;
+import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.RecruitmentCategoryResponse;
 import com.mannschaft.app.recruitment.service.RecruitmentCategoryService;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -124,7 +126,7 @@ class MarketControllerTest {
     @DisplayName("GET /public/market/listings 200: 未ログインで一覧に到達し PII 抑制 DTO が返る")
     void listListings_anonymous_returns200() throws Exception {
         given(marketQueryService.searchListings(
-                isNull(), isNull(), isNull(), isNull(), anyBoolean(), any(), any()))
+                isNull(), isNull(), isNull(), isNull(), isNull(), anyBoolean(), any(), any(), isNull()))
                 .willReturn(new PageImpl<>(List.of(sampleListing()), PageRequest.of(0, 20), 1));
 
         mockMvc.perform(get("/api/v1/public/market/listings"))
@@ -137,9 +139,30 @@ class MarketControllerTest {
     }
 
     @Test
+    @DisplayName("GET /public/market/listings: owner_type を検索サービスへ渡す")
+    void listListings_ownerType_passesFilter() throws Exception {
+        given(marketQueryService.searchListings(
+                isNull(), isNull(), isNull(), eq(RecruitmentScopeType.PERSONAL), isNull(),
+                anyBoolean(), any(), any(), isNull()))
+                .willReturn(Page.empty());
+
+        mockMvc.perform(get("/api/v1/public/market/listings")
+                        .param("owner_type", "PERSONAL"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("GET /public/market/listings: 未知の owner_type は 400")
+    void listListings_unknownOwnerType_returns400() throws Exception {
+        mockMvc.perform(get("/api/v1/public/market/listings")
+                        .param("owner_type", "UNKNOWN"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("GET /public/market/listings/{id} 200: 公開札詳細に到達")
     void getListing_public_returns200() throws Exception {
-        given(marketQueryService.getListing(eq(LISTING_ID), any())).willReturn(sampleListing());
+        given(marketQueryService.getListing(eq(LISTING_ID), any(), isNull())).willReturn(sampleListing());
 
         mockMvc.perform(get("/api/v1/public/market/listings/{id}", LISTING_ID))
                 .andExpect(status().isOk())
@@ -150,7 +173,7 @@ class MarketControllerTest {
     @Test
     @DisplayName("GET /public/market/listings/{id} 200: 複数地域 regions[] が camelCase で返る（F22.1 Phase2 D）")
     void getListing_multiRegion_returnsRegionsCamelCase() throws Exception {
-        given(marketQueryService.getListing(eq(LISTING_ID), any()))
+        given(marketQueryService.getListing(eq(LISTING_ID), any(), isNull()))
                 .willReturn(multiRegionListing());
 
         mockMvc.perform(get("/api/v1/public/market/listings/{id}", LISTING_ID))
@@ -218,7 +241,7 @@ class MarketControllerTest {
     @DisplayName("GET /public/market/listings/{id} 404: 非公開 / 不在は MARKET_404")
     void getListing_notPublic_returns404() throws Exception {
         willThrow(new BusinessException(MarketErrorCode.LISTING_NOT_FOUND))
-                .given(marketQueryService).getListing(eq(LISTING_ID), any());
+                .given(marketQueryService).getListing(eq(LISTING_ID), any(), isNull());
 
         mockMvc.perform(get("/api/v1/public/market/listings/{id}", LISTING_ID))
                 .andExpect(status().isNotFound());
@@ -231,7 +254,7 @@ class MarketControllerTest {
     @Test
     @DisplayName("公開 DTO に禁則ワードが漏洩していないこと（個人名 / 連絡先 / 応募者）")
     void marketListingResponse_doesNotLeakSensitiveFields() throws Exception {
-        given(marketQueryService.getListing(eq(LISTING_ID), any())).willReturn(sampleListing());
+        given(marketQueryService.getListing(eq(LISTING_ID), any(), isNull())).willReturn(sampleListing());
 
         MvcResult result = mockMvc.perform(get("/api/v1/public/market/listings/{id}", LISTING_ID))
                 .andExpect(status().isOk())

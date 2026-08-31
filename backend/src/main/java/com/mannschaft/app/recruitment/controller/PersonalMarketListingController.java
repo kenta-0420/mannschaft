@@ -6,8 +6,10 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
+import com.mannschaft.app.recruitment.dto.PersonalMarketMatchResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingSummaryResponse;
+import com.mannschaft.app.recruitment.dto.PersonalMarketListingSummaryResponse;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.service.PersonalMarketListingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,12 +48,31 @@ public class PersonalMarketListingController {
     @SelfScopedEndpoint("認証済みユーザーIDを履歴の検索スコープへ固定する")
     @GetMapping
     @Operation(summary = "個人市で立てた札の履歴を取得")
-    public ResponseEntity<PagedResponse<RecruitmentListingSummaryResponse>> list(
+    public ResponseEntity<PagedResponse<PersonalMarketListingSummaryResponse>> list(
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String prefectureCode,
+            @RequestParam(required = false) String cityCode,
+            @RequestParam(required = false) Long categoryId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<RecruitmentListingSummaryResponse> result = personalMarketListingService.list(
-                SecurityUtils.getCurrentUserId(), status, PageRequest.of(page, size));
+        Page<PersonalMarketListingSummaryResponse> result = personalMarketListingService.list(
+                SecurityUtils.getCurrentUserId(), status, prefectureCode, cityCode, categoryId,
+                PageRequest.of(page, size));
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
+        return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
+    }
+
+    /** PersonalMarketListingController#listMatches の自己スコープ契約は PersonalMarketListingControllerTest が固定する。 */
+    @SelfScopedEndpoint("認証済みユーザーIDをPERSONALのscopeIdとcreatedByへ複合固定する")
+    @GetMapping("/{id}/matches")
+    @Operation(summary = "個人市の札のマッチング状況を取得")
+    public ResponseEntity<PagedResponse<PersonalMarketMatchResponse>> listMatches(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<PersonalMarketMatchResponse> result = personalMarketListingService.listMatches(
+                SecurityUtils.getCurrentUserId(), id, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -64,6 +85,14 @@ public class PersonalMarketListingController {
             @PathVariable Long id, @Valid @RequestBody UpdateRecruitmentListingRequest request) {
         return ResponseEntity.ok(ApiResponse.of(personalMarketListingService.update(
                 SecurityUtils.getCurrentUserId(), id, request)));
+    }
+
+    @SelfScopedEndpoint("個人札の scopeId と createdBy をログインユーザーへ固定して公開する")
+    @PostMapping("/{id}/publish")
+    @Operation(summary = "個人札の公開")
+    public ResponseEntity<ApiResponse<RecruitmentListingResponse>> publish(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.of(personalMarketListingService.publish(
+                SecurityUtils.getCurrentUserId(), id)));
     }
 
     @SelfScopedEndpoint("個人札の所有者を認証済みユーザーに固定する")

@@ -12,6 +12,7 @@ const route = useRoute()
 const router = useRouter()
 const { t, te } = useI18n()
 const api = useRecruitmentApi()
+const { resolveOrganizationNumericId } = useOrganizationNumericId()
 const { success, error } = useNotification()
 
 const orgSlug = computed(() => String(route.params.slug))
@@ -61,7 +62,8 @@ async function onSubmit(body: CreateRecruitmentListingRequest) {
       friendTargets:
         marketVisibility.value === 'FRIEND_TEAMS_ONLY' ? marketFriendTargets.value : [],
     }
-    const result = await api.createOrgListing(orgSlug.value, fullBody)
+    const orgNumericId = await resolveOrganizationNumericId(orgSlug.value)
+    const result = await api.createOrgListing(orgNumericId, fullBody)
     // F22.1 市: visibility=PUBLIC の札は publish 時に配信対象へ PUBLIC_FEED を含むことが必須（BE §5.1 RECRUITMENT_207）。
     //   BE の create は配信対象を保存しない設計のため、作成直後に PUBLIC_FEED を配信対象として登録しておく。
     //   これを怠ると publish が RECRUITMENT_204（配信対象 0 件）で失敗し、PUBLIC 札が市に出ない。

@@ -19,9 +19,43 @@
 // 可視性 / ステータス
 // ===========================================
 
-export type MarketVisibility = 'PUBLIC' | 'FRIEND_TEAMS_ONLY' | 'SCOPE_ONLY'
+export type MarketVisibility = 'PUBLIC' | 'FRIEND_TEAMS_ONLY' | 'SCOPE_ONLY' | 'SELECTED_SCOPES'
 
-export type MarketListingStatus = 'OPEN' | 'FULL' | 'COMPLETED' | 'CANCELLED' | 'AUTO_CANCELLED'
+/** 公開市で札主を絞り込む主体区分。 */
+export type MarketOwnerType = 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
+
+/** 個人札の所属先限定公開に使う、本人が現在所属するスコープ。 */
+export interface MarketAudienceScope {
+  scopeType: 'TEAM' | 'ORGANIZATION'
+  scopeId: number
+}
+
+export type MarketListingStatus =
+  | 'DRAFT'
+  | 'OPEN'
+  | 'FULL'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'AUTO_CANCELLED'
+
+/** Phase 3 個人市の最小マッチング表示。応募者の識別子は含めない。 */
+export interface PersonalMarketMatch {
+  participantId: number
+  participantType: 'USER' | 'TEAM'
+  status: import('~/types/recruitment').RecruitmentParticipantStatus
+  waitlistPosition: number | null
+  appliedAt: string
+  statusChangedAt: string
+}
+
+export interface PersonalMarketListingsParams {
+  status?: import('~/types/recruitment').RecruitmentListingStatus
+  prefectureCode?: string
+  cityCode?: string
+  categoryId?: number
+  page?: number
+  size?: number
+}
 
 // ===========================================
 // 地域
@@ -68,8 +102,9 @@ export interface MarketSummary {
  * BE: MarketOwnerDto（scopeType / scopeId / displayName / iconUrl）
  */
 export interface MarketOwner {
-  scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: string
+  scopeType: 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
+  /** PERSONAL は公開DTOで主体IDを出さない。 */
+  scopeId: number | null
   displayName: string
   iconUrl: string | null
 }
@@ -158,6 +193,7 @@ export interface MarketListingsParams {
   prefecture?: string
   city?: string
   categoryId?: number
+  ownerType?: MarketOwnerType
   keyword?: string
   includeRegionNone?: boolean
   page?: number
@@ -199,10 +235,7 @@ export interface FriendTargetTeam {
  * フレンド宛先（3粒度の混在可・discriminated union で型安全に表現）
  * `any` 禁止・複雑型パズル禁止（CLAUDE.md）
  */
-export type FriendTargetInput =
-  | FriendTargetAllFriends
-  | FriendTargetFolder
-  | FriendTargetTeam
+export type FriendTargetInput = FriendTargetAllFriends | FriendTargetFolder | FriendTargetTeam
 
 // ===========================================
 // 札立てリクエスト拡張（既存 CreateRecruitmentListingRequest への追加項目）
