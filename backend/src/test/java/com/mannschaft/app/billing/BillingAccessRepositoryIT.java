@@ -60,9 +60,9 @@ class BillingAccessRepositoryIT extends AbstractMySqlIntegrationTest {
         flushClear();
 
         assertThat(billingAccessRepository.existsAdmin(
-                admin, EntitlementScopeKind.ORGANIZATION, ORGANIZATION_A)).isTrue();
+                admin, EntitlementScopeKind.ORG, ORGANIZATION_A)).isTrue();
         assertThat(billingAccessRepository.existsAdmin(
-                admin, EntitlementScopeKind.ORGANIZATION, ORGANIZATION_B)).isFalse();
+                admin, EntitlementScopeKind.ORG, ORGANIZATION_B)).isFalse();
     }
 
     @Test
@@ -92,10 +92,10 @@ class BillingAccessRepositoryIT extends AbstractMySqlIntegrationTest {
         flushClear();
 
         assertThat(billingAccessRepository.existsDeputyPermissionGroup(
-                deputy, EntitlementScopeKind.ORGANIZATION,
+                deputy, EntitlementScopeKind.ORG,
                 ORGANIZATION_A, ORGANIZATION_PERMISSION)).isTrue();
         assertThat(billingAccessRepository.existsDeputyPermissionGroup(
-                deputy, EntitlementScopeKind.ORGANIZATION,
+                deputy, EntitlementScopeKind.ORG,
                 ORGANIZATION_B, ORGANIZATION_PERMISSION)).isFalse();
     }
 

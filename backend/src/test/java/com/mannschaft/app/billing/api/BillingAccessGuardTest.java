@@ -52,13 +52,13 @@ class BillingAccessGuardTest {
     @Test
     @DisplayName("DEPUTY_ADMIN は同一 scope permission group の明示付与時だけ許可する")
     void deputy_explicitPermissionGroup_isAllowed() {
-        given(billingAccessRepository.existsAdmin(42L, EntitlementScopeKind.ORGANIZATION, 10L)).willReturn(false);
+        given(billingAccessRepository.existsAdmin(42L, EntitlementScopeKind.ORG, 10L)).willReturn(false);
         given(billingAccessRepository.existsDeputyPermissionGroup(
-                42L, EntitlementScopeKind.ORGANIZATION, 10L,
+                42L, EntitlementScopeKind.ORG, 10L,
                 "MANAGE_ORGANIZATION_BILLING")).willReturn(true);
 
         assertThat(guard.canManage(
-                authentication("ROLE_DEPUTY_ADMIN"), EntitlementScopeKind.ORGANIZATION, 10L)).isTrue();
+                authentication("ROLE_DEPUTY_ADMIN"), EntitlementScopeKind.ORG, 10L)).isTrue();
     }
 
     @Test

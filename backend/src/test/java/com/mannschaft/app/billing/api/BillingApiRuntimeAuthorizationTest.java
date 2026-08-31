@@ -164,7 +164,7 @@ class BillingApiRuntimeAuthorizationTest {
     @DisplayName("契約作成 ORG: BillingAccessGuard=false, 'ORGANIZATION' は 403（SpEL 引数まで実評価）")
     void createForOrg_nonAdmin_403() throws Exception {
         authenticate("100", "ROLE_ADMIN");
-        given(billingAccessGuard.canManage(any(), eq(EntitlementScopeKind.ORGANIZATION), eq(55L))).willReturn(false);
+        given(billingAccessGuard.canManage(any(), eq(EntitlementScopeKind.ORG), eq(55L))).willReturn(false);
 
         mockMvc.perform(post("/api/v1/organizations/{orgId}/billing/contracts", 55L)
                         .header("Idempotency-Key", "idem-3")

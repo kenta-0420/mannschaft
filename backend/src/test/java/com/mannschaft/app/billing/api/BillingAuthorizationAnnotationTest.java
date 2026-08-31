@@ -65,7 +65,7 @@ class BillingAuthorizationAnnotationTest {
             PreAuthorize pre = target.getAnnotation(PreAuthorize.class);
             assertThat(pre).as("%s に @PreAuthorize", m).isNotNull();
             assertThat(pre.value()).contains("@billingAccessGuard.canManage")
-                    .contains("EntitlementScopeKind).ORGANIZATION").doesNotContain("isScopeAdmin");
+                    .contains("EntitlementScopeKind).ORG").doesNotContain("isScopeAdmin");
         }
     }
 
