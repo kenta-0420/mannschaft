@@ -144,6 +144,7 @@ class PermissionGroupScopeIntegrationTest extends AbstractMySqlIntegrationTest {
     }
 
     private void addMembership(Long userId, Long organizationId, RoleKind roleKind) {
+        persistRoleIfNeeded(roleKind.name(), roleKind == RoleKind.MEMBER ? 4 : 5);
         MembershipEntity ms = MembershipEntity.builder()
                 .userId(userId)
                 .scopeType(ScopeType.ORGANIZATION)
