@@ -7,6 +7,7 @@ import com.mannschaft.app.billing.api.dto.ContractResponse;
 import com.mannschaft.app.billing.api.dto.EntitlementSummaryResponse;
 import com.mannschaft.app.billing.api.dto.PagedContractResponse;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.common.security.AccessGuard;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -71,6 +72,10 @@ class BillingApiRuntimeAuthorizationTest {
     //   WebMvcTest スライスは本 Guard を走査しないため、mock を同名で登録する。
     @MockitoBean(name = "billingAccessGuard")
     private BillingAccessGuard billingAccessGuard;
+
+    // 権利サマリ閲覧は従来どおり汎用scope member guardを使う。
+    @MockitoBean(name = "accessGuard")
+    private AccessGuard accessGuard;
 
     // ---- @WebMvcTest コンテキスト用: フィルタ・SpEL ガードの依存解決 mock ----
     @MockitoBean
