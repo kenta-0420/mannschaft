@@ -12,6 +12,7 @@ import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantHistoryEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentCancelledEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
@@ -22,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -63,6 +65,7 @@ public class RecruitmentAutoCancelBatch {
     private final RecruitmentParticipantRepository participantRepository;
     private final RecruitmentParticipantHistoryRepository historyRepository;
     private final ConfirmableNotificationService confirmableNotificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 5分間隔で自動キャンセル対象の募集を処理する。
@@ -218,6 +221,8 @@ public class RecruitmentAutoCancelBatch {
 
         // 募集を保存
         listingRepository.save(listing);
+        eventPublisher.publishEvent(new RecruitmentCancelledEvent(
+                listing.getId(), Boolean.TRUE.equals(listing.getPaymentEnabled())));
 
         log.info("F03.11 自動キャンセル実行: listingId={}, 参加者キャンセル数={}", listingId, totalProcessed);
 

@@ -64,6 +64,9 @@ class RecruitmentAutoCancelBatchTest {
     @Mock
     private ConfirmableNotificationService confirmableNotificationService;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private RecruitmentAutoCancelBatch batch;
 

@@ -35,6 +35,7 @@ import com.mannschaft.app.recruitment.entity.RecruitmentParticipantHistoryEntity
 import com.mannschaft.app.recruitment.entity.RecruitmentReminderEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentTemplateEntity;
 import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
+import com.mannschaft.app.recruitment.event.RecruitmentCancelledEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentDistributionTargetRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
@@ -722,6 +723,8 @@ public class RecruitmentListingService {
         RecruitmentListingEntity saved = listingRepository.save(entity);
         Set<Long> affectedUserIds = cancelActiveParticipants(listingId, userId);
         sendCancelledNotifications(saved, affectedUserIds);
+        eventPublisher.publishEvent(new RecruitmentCancelledEvent(
+                saved.getId(), Boolean.TRUE.equals(saved.getPaymentEnabled())));
         log.info("F03.11 募集枠キャンセル(主催者): id={}", listingId);
         return mapper.toListingResponse(saved);
     }

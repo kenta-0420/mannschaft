@@ -119,6 +119,9 @@ class RecruitmentListingServiceTest {
     @Mock
     private org.springframework.context.MessageSource messageSource;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private RecruitmentListingService service;
 
