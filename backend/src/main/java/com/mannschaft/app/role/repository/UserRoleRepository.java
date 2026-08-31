@@ -4,9 +4,11 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -57,9 +59,31 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     Optional<UserRoleEntity> findByUserIdAndOrganizationId(Long userId, Long organizationId);
 
+    /** 外側transactionのRR snapshotに依存せず、対象TEAMロール行を最新状態で取得する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ur FROM UserRoleEntity ur WHERE ur.userId = :userId AND ur.teamId = :teamId")
+    Optional<UserRoleEntity> findByUserIdAndTeamIdForUpdate(
+            @Param("userId") Long userId, @Param("teamId") Long teamId);
+
+    /** 外側transactionのRR snapshotに依存せず、対象ORGANIZATIONロール行を最新状態で取得する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ur FROM UserRoleEntity ur WHERE ur.userId = :userId AND ur.organizationId = :organizationId")
+    Optional<UserRoleEntity> findByUserIdAndOrganizationIdForUpdate(
+            @Param("userId") Long userId, @Param("organizationId") Long organizationId);
+
     List<UserRoleEntity> findByTeamIdAndRoleId(Long teamId, Long roleId);
 
     long countByTeamIdAndRoleId(Long teamId, Long roleId);
+
+    /** 同一TEAMのADMIN行をID順にロックし、最後のADMIN判定と変更を直列化する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ur FROM UserRoleEntity ur WHERE ur.teamId = :teamId AND ur.roleId = :roleId ORDER BY ur.id")
+    List<UserRoleEntity> lockAdminsByTeamId(@Param("teamId") Long teamId, @Param("roleId") Long roleId);
+
+    /** 他ドメインへEntityを漏らさず、ロック済みADMINのuserIdだけを返す。 */
+    default List<Long> lockAdminUserIdsByTeamId(Long teamId, Long roleId) {
+        return lockAdminsByTeamId(teamId, roleId).stream().map(UserRoleEntity::getUserId).toList();
+    }
 
     boolean existsByUserIdAndScopeKey(Long userId, String scopeKey);
 
@@ -68,6 +92,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     long countByTeamId(Long teamId);
 
     long countByOrganizationIdAndRoleId(Long organizationId, Long roleId);
+
+    /** 同一ORGANIZATIONのADMIN行をID順にロックし、最後のADMIN判定と変更を直列化する。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ur FROM UserRoleEntity ur WHERE ur.organizationId = :organizationId AND ur.roleId = :roleId ORDER BY ur.id")
+    List<UserRoleEntity> lockAdminsByOrganizationId(@Param("organizationId") Long organizationId,
+                                                     @Param("roleId") Long roleId);
+
+    /** 他ドメインへEntityを漏らさず、ロック済みADMINのuserIdだけを返す。 */
+    default List<Long> lockAdminUserIdsByOrganizationId(Long organizationId, Long roleId) {
+        return lockAdminsByOrganizationId(organizationId, roleId).stream()
+                .map(UserRoleEntity::getUserId).toList();
+    }
 
     Page<UserRoleEntity> findByOrganizationId(Long organizationId, Pageable pageable);
 
@@ -591,12 +627,38 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      AND ms.left_at IS NULL " +
             ") cand " +
             "JOIN users u ON u.id = cand.user_id " +
+            "JOIN roles cand_role ON cand_role.id = cand.role_id " +
             "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND NOT EXISTS ( " +
+            "    SELECT 1 FROM user_roles stronger_ur " +
+            "    JOIN roles stronger_role ON stronger_role.id = stronger_ur.role_id " +
+            "    WHERE stronger_ur.user_id = cand.user_id " +
+            "      AND stronger_ur.organization_id = :organizationId " +
+            "      AND stronger_role.priority < cand_role.priority " +
+            "  ) " +
+            "  AND EXISTS ( " +
+            "    SELECT 1 FROM memberships active_ms " +
+            "    WHERE active_ms.user_id = cand.user_id " +
+            "      AND active_ms.scope_type = 'ORGANIZATION' " +
+            "      AND active_ms.scope_id = :organizationId " +
+            "      AND active_ms.left_at IS NULL " +
+            "  ) " +
             "  AND ( " +
             "    EXISTS ( " +
             "      SELECT 1 FROM role_permissions rp " +
+            "      JOIN roles candidate_permission_role ON candidate_permission_role.id = rp.role_id " +
             "      JOIN permissions p ON p.id = rp.permission_id " +
-            "      WHERE rp.role_id = cand.role_id AND p.name = :permissionName AND rp.is_default = 1 " +
+            "      WHERE rp.role_id = cand.role_id " +
+            "        AND candidate_permission_role.name IN ('ADMIN', 'MEMBER') " +
+            "        AND (candidate_permission_role.name = 'ADMIN' OR NOT EXISTS ( " +
+            "          SELECT 1 FROM user_permission_groups member_override " +
+            "          JOIN permission_groups member_override_group ON member_override_group.id = member_override.group_id " +
+            "          WHERE member_override.user_id = cand.user_id " +
+            "            AND member_override_group.organization_id = :organizationId " +
+            "            AND member_override_group.target_role = 'MEMBER' " +
+            "            AND member_override_group.deleted_at IS NULL " +
+            "        )) " +
+            "        AND p.name = :permissionName AND rp.is_default = 1 " +
             "    ) OR EXISTS ( " +
             "      SELECT 1 FROM user_permission_groups upg " +
             "      JOIN permission_groups pg ON pg.id = upg.group_id " +
@@ -605,6 +667,32 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      WHERE upg.user_id = cand.user_id " +
             "        AND pg.organization_id = :organizationId " +
             "        AND pg.deleted_at IS NULL " +
+            "        AND pg.target_role = ( " +
+            "          CASE " +
+            "            WHEN EXISTS ( " +
+            "              SELECT 1 FROM user_roles effective_admin " +
+            "              JOIN roles effective_admin_role ON effective_admin_role.id = effective_admin.role_id " +
+            "              WHERE effective_admin.user_id = cand.user_id " +
+            "                AND effective_admin.organization_id = :organizationId " +
+            "                AND effective_admin_role.name = 'ADMIN' " +
+            "            ) THEN 'ADMIN' " +
+            "            WHEN EXISTS ( " +
+            "              SELECT 1 FROM user_roles effective_deputy " +
+            "              JOIN roles effective_deputy_role ON effective_deputy_role.id = effective_deputy.role_id " +
+            "              WHERE effective_deputy.user_id = cand.user_id " +
+            "                AND effective_deputy.organization_id = :organizationId " +
+            "                AND effective_deputy_role.name = 'DEPUTY_ADMIN' " +
+            "            ) THEN 'DEPUTY_ADMIN' " +
+            "            WHEN EXISTS ( " +
+            "              SELECT 1 FROM memberships effective_member " +
+            "              WHERE effective_member.user_id = cand.user_id " +
+            "                AND effective_member.scope_type = 'ORGANIZATION' " +
+            "                AND effective_member.scope_id = :organizationId " +
+            "                AND effective_member.role_kind = 'MEMBER' " +
+            "                AND effective_member.left_at IS NULL " +
+            "            ) THEN 'MEMBER' " +
+            "          END " +
+            "        ) " +
             "        AND p2.name = :permissionName " +
             "    ) " +
             "  )",
@@ -657,9 +745,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     @Query(value =
             "SELECT COUNT(*) FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
             "WHERE ur.user_id = :userId " +
             "  AND ur.organization_id = :organizationId " +
             "  AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND EXISTS ( " +
+            "    SELECT 1 FROM memberships active_ms " +
+            "    WHERE active_ms.user_id = ur.user_id " +
+            "      AND active_ms.scope_type = 'ORGANIZATION' " +
+            "      AND active_ms.scope_id = ur.organization_id " +
+            "      AND active_ms.left_at IS NULL " +
+            "  ) " +
             "  AND ( " +
             "    EXISTS ( " +
             "      SELECT 1 FROM role_permissions rp " +
@@ -673,6 +770,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      WHERE upg.user_id = ur.user_id " +
             "        AND pg.organization_id = ur.organization_id " +
             "        AND pg.deleted_at IS NULL " +
+            "        AND pg.target_role = 'DEPUTY_ADMIN' " +
             "        AND p2.name = :permissionName " +
             "    ) " +
             "  )",
@@ -2228,11 +2326,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "WHERE ur.team_id = :teamId " +
             "AND r.name = 'DEPUTY_ADMIN' " +
             "AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "AND EXISTS ( " +
+            "  SELECT 1 FROM memberships active_ms " +
+            "  WHERE active_ms.user_id = ur.user_id " +
+            "    AND active_ms.scope_type = 'TEAM' " +
+            "    AND active_ms.scope_id = ur.team_id " +
+            "    AND active_ms.left_at IS NULL " +
+            ") " +
             "AND ( " +
             "  EXISTS ( " +
             "    SELECT 1 FROM role_permissions rp " +
             "    JOIN permissions p ON p.id = rp.permission_id " +
-            "    WHERE rp.role_id = ur.role_id AND p.name = :permissionName " +
+            "    WHERE rp.role_id = ur.role_id AND p.name = :permissionName AND rp.is_default = 1 " +
             "  ) OR EXISTS ( " +
             "    SELECT 1 FROM user_permission_groups upg " +
             "    JOIN permission_groups pg ON pg.id = upg.group_id " +
@@ -2241,6 +2346,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "    WHERE upg.user_id = ur.user_id " +
             "      AND pg.team_id = ur.team_id " +
             "      AND pg.deleted_at IS NULL " +
+            "      AND pg.target_role = 'DEPUTY_ADMIN' " +
             "      AND p.name = :permissionName " +
             "  ) " +
             ")",

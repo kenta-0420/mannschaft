@@ -146,6 +146,7 @@ class TimelineScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private void setAuthentication(Long userId) {
+        MembershipTestHelper.insertActiveUser(em, userId);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
     }

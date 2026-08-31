@@ -13,6 +13,7 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.timeline.controller.TimelineFeedController;
 import com.mannschaft.app.timeline.controller.TimelinePostController;
 import com.mannschaft.app.timeline.dto.CreatePostRequest;
@@ -33,6 +34,8 @@ import com.mannschaft.app.village.entity.enums.VillageType;
 import com.mannschaft.app.village.entity.enums.VillageVisibility;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -106,6 +109,9 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private UserRoleRepository userRoleRepository;
 
+    @PersistenceContext
+    private EntityManager em;
+
     /** 組織 slug の一意性確保用の連番（slug は 30 文字・UNIQUE）。 */
     private int deliveryOrgSeq = 0;
 
@@ -172,6 +178,7 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private void setAuthentication(Long userId) {
+        MembershipTestHelper.insertActiveUser(em, userId);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
     }
