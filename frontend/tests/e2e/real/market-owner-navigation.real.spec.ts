@@ -30,6 +30,10 @@ let restorePublicProfileEnabled: boolean | null = null
 const cleanupOperationalListings: Array<{ id: number, credentials: Credentials }> = []
 
 async function authenticate(page: Page, credentials = ADMIN) {
+  if (/^https?:/.test(page.url())) {
+    await page.evaluate(() => localStorage.clear())
+  }
+  await page.context().clearCookies()
   await loginViaApi(page, credentials, { apiBaseUrl: API_BASE_URL })
   await expect.poll(async () => page.evaluate(() => localStorage.getItem('currentUser') !== null))
     .toBe(true)
@@ -48,8 +52,6 @@ async function fillDateTime(page: Page, id: string, value: string) {
 }
 
 async function applyToListingFromUi(page: Page, listingId: number, credentials: Credentials) {
-  await page.context().clearCookies()
-  await page.evaluate(() => localStorage.clear())
   await authenticate(page, credentials)
   await page.goto(`/market/listings/${listingId}`)
   await waitForHydration(page)
@@ -70,9 +72,8 @@ async function applyToListingFromUi(page: Page, listingId: number, credentials: 
 async function cancelOperationalListingFromUi(
   page: Page,
   listingId: number,
-  marketPath: string,
 ) {
-  await page.goto(marketPath)
+  await page.goto(`/recruitment-listings/${listingId}`)
   await waitForHydration(page)
   page.once('dialog', dialog => dialog.accept())
   const [response] = await Promise.all([
@@ -80,7 +81,7 @@ async function cancelOperationalListingFromUi(
       candidate.url().endsWith(`/api/v1/recruitment-listings/${listingId}/cancel`)
       && candidate.request().method() === 'POST',
     ),
-    page.getByTestId(`market-listing-cancel-${listingId}`).click(),
+    page.getByTestId('recruitment-listing-cancel').click(),
   ])
   expect(response.status(), `UIからの札取消が成功すること: ${await response.text()}`).toBe(200)
 }
@@ -90,8 +91,6 @@ async function assertParticipationInactiveFromUi(
   listingId: number,
   credentials: Credentials,
 ) {
-  await page.context().clearCookies()
-  await page.evaluate(() => localStorage.clear())
   await authenticate(page, credentials)
   await page.goto('/me/recruitment-listings')
   await waitForHydration(page)
@@ -103,9 +102,8 @@ async function confirmListingFromUi(
   listingId: number,
   title: string,
   credentials: Credentials,
+  personal = false,
 ) {
-  await page.context().clearCookies()
-  await page.evaluate(() => localStorage.clear())
   await authenticate(page, credentials)
   await page.goto('/notifications')
   await waitForHydration(page)
@@ -119,13 +117,26 @@ async function confirmListingFromUi(
     ),
     confirmButton.click(),
   ])
-  expect(response.status(), `UIからの募集成立確認が成功すること: ${await response.text()}`).toBe(204)
+  expect(response.status(), 'UIからの募集成立確認が204になること').toBe(204)
 
   await expect(async () => {
-    await page.goto(`/recruitment-listings/${listingId}`)
+    await page.goto(personal ? '/me/market' : `/recruitment-listings/${listingId}`)
     await waitForHydration(page)
-    await expect(page.locator('main')).toContainText('募集成立')
+    const target = personal
+      ? page.locator('article').filter({ hasText: title })
+      : page.locator('main')
+    await expect(target).toContainText(personal ? '成立' : '募集成立')
   }).toPass({ timeout: 30_000 })
+}
+
+async function filterPersonalListingsByStatus(page: Page, statusLabel: string) {
+  const responsePromise = page.waitForResponse(response =>
+    response.url().includes('/api/v1/me/market/listings?')
+    && response.url().includes('status=FULL'),
+  )
+  await page.getByTestId('personal-market-status-filter').click()
+  await page.getByRole('option', { name: statusLabel, exact: true }).click()
+  expect((await responsePromise).status()).toBe(200)
 }
 
 function localDateTime(minutesFromNow: number) {
@@ -374,6 +385,7 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   await authenticate(page, ADMIN)
   await page.goto('/me/market')
   await waitForHydration(page)
+  await filterPersonalListingsByStatus(page, '満員（確認待ち）')
   const personalCard = page.locator('article').filter({ hasText: title })
   await expect(personalCard).toContainText('満員')
   await personalCard.getByRole('button', { name: '札を取り下げる', exact: true }).click()
@@ -393,7 +405,7 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   const completedTitle = `E2E-個人市-成立-UI-${Date.now()}`
   const completedListingId = await createAndPublishPersonalListing(page, completedTitle)
   await applyToListingFromUi(page, completedListingId, USER)
-  await confirmListingFromUi(page, completedListingId, completedTitle, ADMIN)
+  await confirmListingFromUi(page, completedListingId, completedTitle, ADMIN, true)
   cleanupPersonalListingId = null
 
 })
@@ -401,7 +413,10 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
 test('MARKET-OWNER-UI-002: チーム市から主体を保って札を画面作成・公開できる', async ({ page }) => {
   await authenticate(page, TEAM_ADMIN)
 
-  await page.goto('/teams/fc-u-18/market')
+  await page.goto('/teams/fc-u-18')
+  await waitForHydration(page)
+  await page.getByTestId('team-market-link').click()
+  await expect(page).toHaveURL(/\/teams\/fc-u-18\/market$/)
   await waitForHydration(page)
   const postLink = page.getByTestId('market-team-post-link')
   await expect(postLink).toBeEnabled()
@@ -413,7 +428,7 @@ test('MARKET-OWNER-UI-002: チーム市から主体を保って札を画面作�
   await expect(page.locator('main h1', { hasText: title })).toBeVisible()
   await applyToListingFromUi(page, listingId, USER)
   await authenticate(page, TEAM_ADMIN)
-  await cancelOperationalListingFromUi(page, listingId, '/teams/fc-u-18/market')
+  await cancelOperationalListingFromUi(page, listingId)
   await assertParticipationInactiveFromUi(page, listingId, USER)
 
   await authenticate(page, TEAM_ADMIN)
@@ -439,7 +454,10 @@ test('MARKET-OWNER-UI-003: 組織市から主体を保って札を画面作成�
   const organization = organizations.data.find(item => item.role === 'ADMIN')
   expect(organization, '一般ユーザーが ADMIN の組織が前提データに存在する').toBeTruthy()
 
-  await page.goto(`/organizations/${organization!.slug}/market`)
+  await page.goto(`/organizations/${organization!.slug}`)
+  await waitForHydration(page)
+  await page.getByTestId('organization-market-link').click()
+  await expect(page).toHaveURL(new RegExp(`/organizations/${organization!.slug}/market$`))
   await waitForHydration(page)
   const postLink = page.getByTestId('market-organization-post-link')
   await expect(postLink).toBeEnabled()
@@ -453,11 +471,7 @@ test('MARKET-OWNER-UI-003: 組織市から主体を保って札を画面作成�
   await expect(page.locator('main h1', { hasText: title })).toBeVisible()
   await applyToListingFromUi(page, listingId, ADMIN)
   await authenticate(page, USER)
-  await cancelOperationalListingFromUi(
-    page,
-    listingId,
-    `/organizations/${organization!.slug}/market`,
-  )
+  await cancelOperationalListingFromUi(page, listingId)
   await assertParticipationInactiveFromUi(page, listingId, ADMIN)
 
   await authenticate(page, USER)
@@ -492,4 +506,32 @@ test('MARKET-OWNER-UI-004: 公開市でチーム・組織を画面から絞り�
     expect(body.data.every(listing => listing.owner.scopeType === ownerType)).toBe(true)
     await expect(page).toHaveURL(new RegExp(`owner=${ownerType}`))
   }
+})
+
+test('MARKET-OWNER-UI-005: 日時の前後関係が不正な札は画面で止まりPOSTしない', async ({ page }) => {
+  await authenticate(page, TEAM_ADMIN)
+  await page.goto('/teams/fc-u-18/recruitment-listings/new')
+  await waitForHydration(page)
+  await page.locator('#title').fill(`E2E-日時不正-${Date.now()}`)
+  await page.locator('#category').click()
+  await page.getByRole('option').filter({ hasText: '練習試合相手募集' }).first().click()
+  await fillDateTime(page, 'startAt', localDateTime(24 * 60))
+  await fillDateTime(page, 'endAt', localDateTime(23 * 60))
+  await fillDateTime(page, 'applicationDeadline', localDateTime(60))
+  await fillDateTime(page, 'autoCancelAt', localDateTime(60))
+  await page.locator('#capacity input').fill('1')
+  await page.locator('#minCapacity input').fill('1')
+
+  let createRequests = 0
+  page.on('request', (request) => {
+    if (/\/api\/v1\/teams\/[^/]+\/recruitment-listings$/.test(request.url())
+      && request.method() === 'POST') {
+      createRequests += 1
+    }
+  })
+  await page.getByRole('button', { name: '作成', exact: true }).click()
+
+  await expect(page.getByTestId('recruitment-form-validation-error'))
+    .toContainText('開催終了は開催開始より後に指定してください')
+  expect(createRequests).toBe(0)
 })

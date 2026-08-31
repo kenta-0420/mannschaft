@@ -56,6 +56,10 @@ const editDialogVisible = computed({
 
 const totalPages = computed(() => Math.ceil(totalRecords.value / rows.value))
 const matchesTotalPages = computed(() => Math.ceil(matchesTotalRecords.value / PAGE_SIZE))
+const statusOptions = computed(() => (['DRAFT', 'OPEN', 'FULL', 'CANCELLED'] as const).map(value => ({
+  value,
+  label: t(`market.status.${value}`),
+})))
 const audienceOptions = computed(() => [
   ...teamStore.myTeams.map((team) => ({
     key: `TEAM:${team.id}`,
@@ -321,9 +325,12 @@ onMounted(async () => {
       <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
         <Select
           v-model="status"
-          :options="['DRAFT', 'OPEN', 'FULL', 'CANCELLED']"
+          :options="statusOptions"
+          option-label="label"
+          option-value="value"
           :placeholder="t('market.personal.allStatuses')"
           show-clear
+          data-testid="personal-market-status-filter"
           @change="reloadFromFirstPage"
         />
         <Select
