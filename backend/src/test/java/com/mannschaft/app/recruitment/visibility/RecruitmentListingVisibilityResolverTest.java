@@ -198,12 +198,35 @@ class RecruitmentListingVisibilityResolverTest {
                     .thenReturn(UserScopeRoleSnapshot.empty());
             when(userRoleRepository.findTeamIdsByUserId(5L)).thenReturn(List.of(12L));
             when(userRoleRepository.findOrganizationIdsByUserId(5L)).thenReturn(List.of());
+            when(userRoleRepository.findTeamIdsByUserId(99L)).thenReturn(List.of(12L));
+            when(userRoleRepository.findOrganizationIdsByUserId(99L)).thenReturn(List.of());
             when(audienceScopeRepository.findByListingId(1L)).thenReturn(List.of(
                     RecruitmentListingAudienceScopeEntity.of(
                             1L, RecruitmentAudienceScopeType.TEAM, 12L)));
 
             assertThat(resolver.canView(1L, 5L)).isTrue();
             assertThat(resolver.canView(1L, null)).isFalse();
+        }
+
+        @Test
+        @DisplayName("SELECTED_SCOPES は札主が選択先から退会した時点で不可視になる")
+        void selected_scopes_invisible_after_owner_leaves_selected_scope() {
+            RecruitmentListingVisibilityProjection p = projection(
+                    1L, "PERSONAL", 99L, 99L, null,
+                    RecruitmentListingStatus.OPEN, RecruitmentVisibility.SELECTED_SCOPES);
+            when(recruitmentListingRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(p));
+            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+            when(userRoleRepository.findTeamIdsByUserId(5L)).thenReturn(List.of(12L));
+            when(userRoleRepository.findOrganizationIdsByUserId(5L)).thenReturn(List.of());
+            when(userRoleRepository.findTeamIdsByUserId(99L)).thenReturn(List.of());
+            when(userRoleRepository.findOrganizationIdsByUserId(99L)).thenReturn(List.of());
+            when(audienceScopeRepository.findByListingId(1L)).thenReturn(List.of(
+                    RecruitmentListingAudienceScopeEntity.of(
+                            1L, RecruitmentAudienceScopeType.TEAM, 12L)));
+
+            assertThat(resolver.canView(1L, 5L)).isFalse();
         }
 
         @Test
