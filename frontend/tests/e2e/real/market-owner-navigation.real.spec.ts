@@ -29,6 +29,11 @@ let cleanupPersonalListingId: number | null = null
 let restorePublicProfileEnabled: boolean | null = null
 const cleanupOperationalListings: Array<{ id: number, credentials: Credentials }> = []
 
+function markOperationalListingInactive(listingId: number) {
+  const index = cleanupOperationalListings.findIndex(listing => listing.id === listingId)
+  if (index >= 0) cleanupOperationalListings.splice(index, 1)
+}
+
 async function authenticate(page: Page, credentials = ADMIN) {
   if (/^https?:/.test(page.url())) {
     await page.evaluate(() => localStorage.clear())
@@ -429,6 +434,7 @@ test('MARKET-OWNER-UI-002: チーム市から主体を保って札を画面作�
   await applyToListingFromUi(page, listingId, USER)
   await authenticate(page, TEAM_ADMIN)
   await cancelOperationalListingFromUi(page, listingId)
+  markOperationalListingInactive(listingId)
   await assertParticipationInactiveFromUi(page, listingId, USER)
 
   await authenticate(page, TEAM_ADMIN)
@@ -438,6 +444,12 @@ test('MARKET-OWNER-UI-002: チーム市から主体を保って札を画面作�
   const completedListingId = await createAndPublishOperationalListing(page, completedTitle, TEAM_ADMIN)
   await applyToListingFromUi(page, completedListingId, USER)
   await confirmListingFromUi(page, completedListingId, completedTitle, TEAM_ADMIN)
+  markOperationalListingInactive(completedListingId)
+
+  await authenticate(page, TEAM_ADMIN)
+  await page.goto('/teams/fc-u-18/recruitment-listings/new')
+  await waitForHydration(page)
+  await createAndPublishOperationalListing(page, `E2E-チーム市-絞込-${Date.now()}`, TEAM_ADMIN)
 })
 
 test('MARKET-OWNER-UI-003: 組織市から主体を保って札を画面作成・公開できる', async ({ page }) => {
@@ -472,6 +484,7 @@ test('MARKET-OWNER-UI-003: 組織市から主体を保って札を画面作成�
   await applyToListingFromUi(page, listingId, ADMIN)
   await authenticate(page, USER)
   await cancelOperationalListingFromUi(page, listingId)
+  markOperationalListingInactive(listingId)
   await assertParticipationInactiveFromUi(page, listingId, ADMIN)
 
   await authenticate(page, USER)
@@ -481,6 +494,12 @@ test('MARKET-OWNER-UI-003: 組織市から主体を保って札を画面作成�
   const completedListingId = await createAndPublishOperationalListing(page, completedTitle, USER)
   await applyToListingFromUi(page, completedListingId, ADMIN)
   await confirmListingFromUi(page, completedListingId, completedTitle, USER)
+  markOperationalListingInactive(completedListingId)
+
+  await authenticate(page, USER)
+  await page.goto(`/organizations/${organization!.slug}/recruitment-listings/new`)
+  await waitForHydration(page)
+  await createAndPublishOperationalListing(page, `E2E-組織市-絞込-${Date.now()}`, USER)
 })
 
 test('MARKET-OWNER-UI-004: 公開市でチーム・組織を画面から絞り込める（個人はUI-001で検証）', async ({ page }) => {
