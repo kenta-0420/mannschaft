@@ -151,7 +151,7 @@ test.beforeAll(async () => {
     headers: headers(owner),
     data: { publicProfileEnabled: true },
   })
-  expect(profileResponse.status(), '札主の公開プロフィールを有効化').toBe(200)
+  expect(profileResponse.status(), '札主の公開プロフィールを有効化').toBe(204)
 
   const suffix = Date.now()
   publicListingId = await createAndPublish(`E2E-PERSONAL-PUBLIC-${suffix}`, 'PUBLIC')
