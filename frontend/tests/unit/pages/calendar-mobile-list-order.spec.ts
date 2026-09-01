@@ -1,6 +1,6 @@
 import { defineComponent, h } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import CalendarPage from '~/pages/calendar.vue'
@@ -55,13 +55,16 @@ const CalendarGridStub = defineComponent({
   },
 })
 
-// ScheduleListRow の代わりに、順序検証だけができる最小スタブを使う
-// （ScheduleMobileListView 自体は実物のまま使い、並べ替えロジックを実際に通す）。
-const ScheduleListRowStub = defineComponent({
-  name: 'ScheduleListRow',
-  props: { event: Object },
+// この試験の責務は calendar.vue が子へ渡す events の順序である。
+// 子の非同期描画まで経由すると全体並行実行時に行の描画前を観測し得るため、
+// props を同期描画する最小スタブに固定する（子自身は専用specで検証済み）。
+const ScheduleMobileListViewStub = defineComponent({
+  name: 'ScheduleMobileListView',
+  props: { events: { type: Array, default: () => [] } },
   setup(props) {
-    return () => h('div', { 'data-testid': 'row-title' }, (props.event as { title: string }).title)
+    return () => h('div', (props.events as Array<{ title: string }>).map(event =>
+      h('div', { 'data-testid': 'row-title' }, event.title),
+    ))
   },
 })
 
@@ -114,7 +117,7 @@ async function mountCalendarPage() {
     global: {
       stubs: {
         CalendarGrid: CalendarGridStub,
-        ScheduleListRow: ScheduleListRowStub,
+        ScheduleMobileListView: ScheduleMobileListViewStub,
         Select: true,
         Button: true,
         DashboardWidgetCard: true,
@@ -138,13 +141,21 @@ async function mountCalendarPage() {
 
 describe('pages/calendar.vue: モバイルリストの並べ替え（時差混在の回帰）', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-08-15T00:00:00Z'))
     setActivePinia(createPinia())
     localStorage.clear()
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
     scheduleApiMock.listPersonalSchedules.mockReset().mockResolvedValue(emptyPersonal)
     scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: mixedOffsetEntries() })
     scheduleApiMock.getMyCalendarLayers.mockReset().mockResolvedValue({ data: layersFixture })
     ganttApiMock.getMyCalendarTodos.mockReset().mockResolvedValue(emptyTodos)
     presetTeamStore()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
   it('時差の異なる予定が混在しても、モバイルの一覧は実際の時系列順（ISO 文字列の辞書順ではない）に並ぶ', async () => {
