@@ -27,7 +27,15 @@
     "table_field": "フィールド",
     "cancel_button": "キャンセル",
     "delete_button": "削除する",
-    "fetch_error": "削除プレビューの取得に失敗しました"
+    "fetch_error": "削除プレビューの取得に失敗しました",
+    "last_admin_title": "退会前に対応が必要な組織・チームがあります",
+    "last_admin_description": "以下のスコープではあなたが唯一の管理者（ADMIN）です。他のメンバーがいる間は、後任を指名するかアーカイブしてから退会してください。",
+    "scope_type_organization": "組織",
+    "scope_type_team": "チーム",
+    "other_members_count": "他 {count} 名が所属",
+    "transfer_ownership_button": "後任を指名する",
+    "archive_button": "アーカイブする",
+    "blocked_notice": "上記のすべてに対応するまで退会できません"
   },
   "signature": {
     "clear": "クリア"
@@ -400,7 +408,8 @@
       "password_placeholder": "現在のパスワード",
       "retention_note": "※ 一部のデータは法的要件により {days} 日間保持された後に削除されます。",
       "delete_success": "アカウントを削除しました。ご利用ありがとうございました。",
-      "delete_error": "アカウントの削除に失敗しました"
+      "delete_error": "アカウントの削除に失敗しました",
+      "gdpr_011_error": "唯一の管理者になっている組織・チームがあるため退会できません。後任の指名またはアーカイブが必要です。"
     },
     "storage": {
       "page_title": "ストレージ",

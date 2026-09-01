@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DeletionPreviewResponse } from '~/composables/useGdprApi'
+import type { DeletionPreviewResponse, LastAdminScope } from '~/composables/useGdprApi'
 
 const props = defineProps<{
   visible: boolean
@@ -41,6 +41,16 @@ const anonymizedRows = computed<AnonymizedRow[]>(() => {
   return preview.value?.anonymized ?? []
 })
 
+/**
+ * 柱①「ADMINゼロ根治」AC1 — 他メンバーが残る唯一ADMINスコープ一覧。
+ * 1件でもあれば退会（削除）ボタンを無効化する（BE GDPR_011 と同じ判定条件を FE 側でも表現）。
+ */
+const lastAdminScopes = computed<LastAdminScope[]>(() => {
+  return preview.value?.lastAdminScopes ?? []
+})
+
+const isBlockedByLastAdmin = computed(() => lastAdminScopes.value.length > 0)
+
 async function loadPreview() {
   if (loadingPreview.value) return
   loadingPreview.value = true
@@ -54,6 +64,14 @@ async function loadPreview() {
   }
 }
 
+/** 親（account.vue）が GDPR_011 で退会に失敗した際に、最新の判定を取り直すために呼ぶ。 */
+async function reloadPreview() {
+  preview.value = null
+  await loadPreview()
+}
+
+defineExpose({ reloadPreview })
+
 watch(
   () => props.visible,
   (val) => {
@@ -63,12 +81,19 @@ watch(
   },
 )
 
+/** スコープ種別ごとの管理導線（一覧ページ）へ遷移する。ダイアログは閉じる。 */
+function goToScopeManagement(scope: LastAdminScope) {
+  emit('update:visible', false)
+  navigateTo(scope.scopeType === 'ORGANIZATION' ? '/organizations' : '/teams')
+}
+
 function cancel() {
   currentPassword.value = ''
   emit('update:visible', false)
 }
 
 function confirm() {
+  if (isBlockedByLastAdmin.value) return
   emit('confirmed', props.hasPassword ? currentPassword.value : null)
   currentPassword.value = ''
   emit('update:visible', false)
@@ -81,6 +106,7 @@ function confirm() {
     :header="$t('deletion_preview.dialog_title')"
     :modal="true"
     class="w-full max-w-2xl"
+    data-testid="settings-deletion-preview-dialog"
     @update:visible="emit('update:visible', $event)"
   >
     <div class="space-y-5">
@@ -94,6 +120,58 @@ function confirm() {
       </div>
 
       <template v-else-if="preview">
+        <!-- 柱①「ADMINゼロ根治」AC1: 唯一ADMINスコープが残っている間は退会不可 -->
+        <div
+          v-if="lastAdminScopes.length"
+          data-testid="settings-deletion-preview-last-admin-block"
+          class="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20"
+        >
+          <p class="mb-1 text-sm font-semibold text-red-700 dark:text-red-400">
+            {{ $t('deletion_preview.last_admin_title') }}
+          </p>
+          <p class="mb-3 text-sm text-red-700 dark:text-red-400">
+            {{ $t('deletion_preview.last_admin_description') }}
+          </p>
+          <ul class="space-y-2">
+            <li
+              v-for="scope in lastAdminScopes"
+              :key="`${scope.scopeType}:${scope.scopeId}`"
+              class="flex flex-wrap items-center justify-between gap-2 rounded-md bg-white/60 p-2 text-sm dark:bg-surface-900/40"
+            >
+              <span class="font-medium">
+                {{
+                  scope.scopeType === 'ORGANIZATION'
+                    ? $t('deletion_preview.scope_type_organization')
+                    : $t('deletion_preview.scope_type_team')
+                }}
+                「{{ scope.scopeName }}」
+                <template v-if="scope.otherMembersCount > 0">
+                  （{{ $t('deletion_preview.other_members_count', { count: scope.otherMembersCount }) }}）
+                </template>
+              </span>
+              <span class="flex gap-2">
+                <Button
+                  translate="no"
+                  size="small"
+                  severity="secondary"
+                  :label="$t('deletion_preview.transfer_ownership_button')"
+                  :data-testid="`settings-deletion-preview-transfer-${scope.scopeType}-${scope.scopeId}`"
+                  @click="goToScopeManagement(scope)"
+                />
+                <Button
+                  translate="no"
+                  size="small"
+                  severity="secondary"
+                  outlined
+                  :label="$t('deletion_preview.archive_button')"
+                  :data-testid="`settings-deletion-preview-archive-${scope.scopeType}-${scope.scopeId}`"
+                  @click="goToScopeManagement(scope)"
+                />
+              </span>
+            </li>
+          </ul>
+        </div>
+
         <div v-if="preview.warnings?.length" class="rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
           <p class="mb-1 text-sm font-semibold text-yellow-700 dark:text-yellow-400">{{ $t('deletion_preview.warning_title') }}</p>
           <ul class="list-inside list-disc space-y-1">
@@ -156,21 +234,31 @@ function confirm() {
     </div>
 
     <template #footer>
-      <div class="flex justify-end gap-2">
-        <Button
-          translate="no"
-          :label="$t('deletion_preview.cancel_button')"
-          severity="secondary"
-          @click="cancel"
-        />
-        <Button
-          translate="no"
-          :label="$t('deletion_preview.delete_button')"
-          severity="danger"
-          icon="pi pi-trash"
-          :disabled="loadingPreview || (hasPassword && !currentPassword)"
-          @click="confirm"
-        />
+      <div class="flex w-full flex-col items-end gap-2">
+        <p
+          v-if="isBlockedByLastAdmin"
+          data-testid="settings-deletion-preview-blocked-notice"
+          class="text-xs text-red-600"
+        >
+          {{ $t('deletion_preview.blocked_notice') }}
+        </p>
+        <div class="flex justify-end gap-2">
+          <Button
+            translate="no"
+            :label="$t('deletion_preview.cancel_button')"
+            severity="secondary"
+            @click="cancel"
+          />
+          <Button
+            translate="no"
+            :label="$t('deletion_preview.delete_button')"
+            severity="danger"
+            icon="pi pi-trash"
+            data-testid="settings-deletion-preview-delete-button"
+            :disabled="loadingPreview || isBlockedByLastAdmin || (hasPassword && !currentPassword)"
+            @click="confirm"
+          />
+        </div>
       </div>
     </template>
   </Dialog>

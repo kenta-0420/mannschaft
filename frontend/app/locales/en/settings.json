@@ -27,7 +27,15 @@
     "table_field": "Field",
     "cancel_button": "Cancel",
     "delete_button": "Delete",
-    "fetch_error": "Failed to retrieve deletion preview"
+    "fetch_error": "Failed to retrieve deletion preview",
+    "last_admin_title": "Some organizations/teams need action before you can withdraw",
+    "last_admin_description": "You are the sole administrator (ADMIN) of the scopes below. While other members remain, please appoint a successor or archive the scope before withdrawing.",
+    "scope_type_organization": "Organization",
+    "scope_type_team": "Team",
+    "other_members_count": "{count} other members",
+    "transfer_ownership_button": "Appoint a successor",
+    "archive_button": "Archive",
+    "blocked_notice": "You cannot withdraw until all of the above are resolved"
   },
   "signature": {
     "clear": "Clear"
@@ -400,7 +408,8 @@
       "password_placeholder": "Current Password",
       "retention_note": "※ Some data may be retained for {days} days due to legal requirements before being deleted.",
       "delete_success": "Your account has been deleted. Thank you for using our service.",
-      "delete_error": "Failed to delete the account"
+      "delete_error": "Failed to delete the account",
+      "gdpr_011_error": "You cannot withdraw because you are the sole administrator of an organization or team. Please appoint a successor or archive it first."
     },
     "notification": {
       "load_error": "Failed to load settings",

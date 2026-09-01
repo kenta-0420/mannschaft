@@ -27,7 +27,15 @@
     "table_field": "Feld",
     "cancel_button": "Abbrechen",
     "delete_button": "Löschen",
-    "fetch_error": "Löschvorschau konnte nicht abgerufen werden"
+    "fetch_error": "Löschvorschau konnte nicht abgerufen werden",
+    "last_admin_title": "Vor der Kontokündigung müssen einige Organisationen/Teams bearbeitet werden",
+    "last_admin_description": "Sie sind der einzige Administrator (ADMIN) der folgenden Bereiche. Solange andere Mitglieder vorhanden sind, benennen Sie bitte einen Nachfolger oder archivieren Sie den Bereich, bevor Sie kündigen.",
+    "scope_type_organization": "Organisation",
+    "scope_type_team": "Team",
+    "other_members_count": "{count} weitere Mitglieder",
+    "transfer_ownership_button": "Nachfolger benennen",
+    "archive_button": "Archivieren",
+    "blocked_notice": "Sie können erst kündigen, wenn alle oben genannten Punkte gelöst sind"
   },
   "signature": {
     "clear": "Löschen"
@@ -400,7 +408,8 @@
       "password_placeholder": "Aktuelles Passwort",
       "retention_note": "※ Einige Daten werden aufgrund gesetzlicher Anforderungen {days} Tage lang aufbewahrt, bevor sie gelöscht werden.",
       "delete_success": "Ihr Konto wurde gelöscht. Vielen Dank für Ihre Nutzung.",
-      "delete_error": "Konto konnte nicht gelöscht werden"
+      "delete_error": "Konto konnte nicht gelöscht werden",
+      "gdpr_011_error": "Sie können nicht kündigen, da Sie der einzige Administrator einer Organisation oder eines Teams sind. Benennen Sie zuerst einen Nachfolger oder archivieren Sie den Bereich."
     },
     "notification": {
       "load_error": "Einstellungen konnten nicht geladen werden",

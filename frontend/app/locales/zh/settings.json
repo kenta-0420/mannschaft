@@ -27,7 +27,15 @@
     "table_field": "字段",
     "cancel_button": "取消",
     "delete_button": "删除",
-    "fetch_error": "获取删除预览失败"
+    "fetch_error": "获取删除预览失败",
+    "last_admin_title": "退会前需要处理以下组织/团队",
+    "last_admin_description": "您是以下范围中唯一的管理员（ADMIN）。在其他成员仍存在的情况下，请先指定继任者或将其归档后再退会。",
+    "scope_type_organization": "组织",
+    "scope_type_team": "团队",
+    "other_members_count": "另有 {count} 名成员",
+    "transfer_ownership_button": "指定继任者",
+    "archive_button": "归档",
+    "blocked_notice": "在完成以上所有事项之前无法退会"
   },
   "signature": {
     "clear": "清除"
@@ -400,7 +408,8 @@
       "password_placeholder": "当前密码",
       "retention_note": "※ 由于法律要求，部分数据将在 {days} 天后删除。",
       "delete_success": "账户已删除。感谢您的使用。",
-      "delete_error": "删除账户失败"
+      "delete_error": "删除账户失败",
+      "gdpr_011_error": "由于您是某个组织或团队的唯一管理员，无法退会。请先指定继任者或将其归档。"
     },
     "notification": {
       "load_error": "获取设置失败",

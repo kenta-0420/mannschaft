@@ -8,10 +8,27 @@ export interface DataExportResponse {
   createdAt: string
 }
 
+/**
+ * 柱①「ADMINゼロ根治」— 退会予定ユーザーが唯一のADMINであるスコープ。
+ * BE {@code com.mannschaft.app.role.dto.LastAdminScope} と 1:1。
+ */
+export interface LastAdminScope {
+  /** ORGANIZATION / TEAM */
+  scopeType: string
+  /** teams.id または organizations.id */
+  scopeId: number
+  /** 表示用スコープ名 */
+  scopeName: string
+  /** 自分以外のメンバー数（0人なら purge 時に自動 archive の対象） */
+  otherMembersCount: number
+}
+
 export interface DeletionPreviewResponse {
   retentionDays: number
   dataSummary: Record<string, number>
   anonymized: Array<{ entity: string; field: string }>
+  /** 柱①ADMINゼロ根治 AC1: 他メンバーが残る唯一ADMINスコープ一覧。1件でもあれば退会不可（GDPR_011）。 */
+  lastAdminScopes: LastAdminScope[]
   warnings: string[]
 }
 

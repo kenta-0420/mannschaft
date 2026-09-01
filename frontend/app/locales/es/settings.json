@@ -27,7 +27,15 @@
     "table_field": "Campo",
     "cancel_button": "Cancelar",
     "delete_button": "Eliminar",
-    "fetch_error": "Error al obtener la vista previa de eliminación"
+    "fetch_error": "Error al obtener la vista previa de eliminación",
+    "last_admin_title": "Hay organizaciones/equipos que requieren atención antes de darse de baja",
+    "last_admin_description": "Usted es el único administrador (ADMIN) de los siguientes ámbitos. Mientras haya otros miembros, designe un sucesor o archive el ámbito antes de darse de baja.",
+    "scope_type_organization": "Organización",
+    "scope_type_team": "Equipo",
+    "other_members_count": "{count} otros miembros",
+    "transfer_ownership_button": "Designar sucesor",
+    "archive_button": "Archivar",
+    "blocked_notice": "No podrá darse de baja hasta resolver todo lo anterior"
   },
   "signature": {
     "clear": "Limpiar"
@@ -400,7 +408,8 @@
       "password_placeholder": "Contraseña actual",
       "retention_note": "※ Algunos datos pueden retenerse durante {days} días por requisitos legales antes de ser eliminados.",
       "delete_success": "Su cuenta ha sido eliminada. Gracias por usar nuestro servicio.",
-      "delete_error": "No se pudo eliminar la cuenta"
+      "delete_error": "No se pudo eliminar la cuenta",
+      "gdpr_011_error": "No puede darse de baja porque es el único administrador de una organización o equipo. Designe un sucesor o archívelo primero."
     },
     "notification": {
       "load_error": "Error al cargar la configuración",
