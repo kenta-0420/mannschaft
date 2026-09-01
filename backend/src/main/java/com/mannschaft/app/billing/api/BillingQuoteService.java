@@ -6,6 +6,8 @@ import com.mannschaft.app.billing.api.dto.CreateBillingQuoteRequest;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -19,6 +21,7 @@ import java.time.ZoneId;
  * <p>入力検証 → JST 月境界判定 → scope 認可 → 見積り計算 → snapshot 保存の順に進む。
  * 検証・月境界で弾く場合は calculator/repository へ一切触れない fail-closed とする。</p>
  */
+@Service
 @RequiredArgsConstructor
 public class BillingQuoteService {
 
@@ -37,6 +40,8 @@ public class BillingQuoteService {
     /** 課金の月境界判定に用いるサーバー基準ゾーン（正本: {@link UserZoneLocalDateTimeParser#SERVER_ZONE}）。 */
     private static final ZoneId BILLING_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
+    /** 月境界（JST）判定を行うため壁時計を用いる。ゾーンは {@link #BILLING_ZONE} で明示するため取り違え事故は起きない。 */
+    @Qualifier("wallClock")
     private final Clock clock;
     private final BillingCheckoutAccessGuard scopeGuard;
     private final BillingQuoteRepository quoteRepository;

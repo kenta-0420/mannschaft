@@ -5,6 +5,8 @@ import com.mannschaft.app.billing.api.dto.CreateBillingCheckoutSessionRequest;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -23,6 +25,7 @@ import java.util.UUID;
  * 再検証で弾く場合は Stripe を一切呼ばない fail-closed とし、Stripe 成功後に DB 側が
  * 倒れた場合は照合キューへ退避してから 502 を返す（黙って握りつぶさない）。</p>
  */
+@Service
 @RequiredArgsConstructor
 public class BillingCheckoutApplicationService {
     public record CheckoutSessionResponse(String checkoutUrl, Instant expiresAt) { }
@@ -39,6 +42,8 @@ public class BillingCheckoutApplicationService {
     /** 課金の月境界判定に用いるサーバー基準ゾーン（正本: {@link UserZoneLocalDateTimeParser#SERVER_ZONE}）。 */
     private static final ZoneId BILLING_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
+    /** 月境界（JST）判定を行うため壁時計を用いる。ゾーンは {@link #BILLING_ZONE} で明示する。 */
+    @Qualifier("wallClock")
     private final Clock clock;
     private final BillingCheckoutAccessGuard scopeGuard;
     private final BillingQuoteRepository quoteRepository;

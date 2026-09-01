@@ -6,11 +6,33 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 /** V196 idempotency lease の所有者付き CAS query。 */
 public interface BillingApiIdempotencyJpaRepository
         extends JpaRepository<BillingApiIdempotencyEntity, UUID> {
+
+    /** {@code uk_bai_actor_request} と同じ 4 点で既存の冪等レコードを逆引きする。 */
+    Optional<BillingApiIdempotencyEntity> findByActorIdAndHttpMethodAndRequestPathAndIdempotencyKey(
+            Long actorId, String httpMethod, String requestPath, String idempotencyKey);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update BillingApiIdempotencyEntity entity
+               set entity.status = com.mannschaft.app.billing.api.BillingIdempotencyStatus.FAILED,
+                   entity.responseStatus = :responseStatus,
+                   entity.responseJson = :responseJson,
+                   entity.completedAt = :completedAt
+             where entity.id = :id
+               and entity.status = com.mannschaft.app.billing.api.BillingIdempotencyStatus.PROCESSING
+               and entity.leaseOwner = :leaseOwner
+            """)
+    int failIfLeaseOwner(@Param("id") UUID id,
+                         @Param("leaseOwner") String leaseOwner,
+                         @Param("responseStatus") int responseStatus,
+                         @Param("responseJson") String responseJson,
+                         @Param("completedAt") Instant completedAt);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""

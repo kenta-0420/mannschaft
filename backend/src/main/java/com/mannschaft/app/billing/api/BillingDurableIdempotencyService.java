@@ -3,6 +3,8 @@ package com.mannschaft.app.billing.api;
 import com.mannschaft.app.billing.EntitlementErrorCode;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -16,6 +18,7 @@ import java.util.UUID;
  * <p>actor/method/path/key と request hash に束縛し、lease 所有者付きの条件付き CAS で
  * 二重実行を防ぐ。既存応答本文は 409 の例外メッセージへ載せない。</p>
  */
+@Service
 @RequiredArgsConstructor
 class BillingDurableIdempotencyService {
 
@@ -25,6 +28,8 @@ class BillingDurableIdempotencyService {
     /** 冪等レコードの保持期間。 */
     private static final Duration RECORD_TTL = Duration.ofHours(24);
 
+    /** TTL/lease は Instant 比較のみ。Checkout フローと同じ時間軸を共有するため壁時計を用いる。 */
+    @Qualifier("wallClock")
     private final Clock clock;
     private final BillingApiIdempotencyRepository repository;
 

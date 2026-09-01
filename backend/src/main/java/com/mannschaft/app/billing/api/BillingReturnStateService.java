@@ -2,6 +2,8 @@ package com.mannschaft.app.billing.api;
 
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -24,6 +26,7 @@ import java.util.UUID;
  * nonce 平文は token に載せない（token が漏えいしても CAS 消費を突破できないようにするため）。
  * 検証失敗はすべて {@link BillingReturnStateException} に畳み、token や scope を露出しない。
  */
+@Service
 @RequiredArgsConstructor
 public class BillingReturnStateService {
     public enum Purpose { CHECKOUT_SUCCESS, CHECKOUT_CANCEL, PORTAL_RETURN, PAYMENT_ACTION_RETURN }
@@ -43,6 +46,8 @@ public class BillingReturnStateService {
     private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder DECODER = Base64.getUrlDecoder();
 
+    /** Checkout の月境界フローと同じ時間軸を共有するため壁時計を用いる（判定は Instant 比較のみ）。 */
+    @Qualifier("wallClock")
     private final Clock clock;
     private final BillingReturnSigningKeyProvider signingKeyProvider;
     private final BillingReturnStateNonceRepository nonceRepository;
