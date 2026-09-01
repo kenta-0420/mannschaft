@@ -338,10 +338,13 @@ class RoleSuccessionServiceTest {
             org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(userRowLockService, adminRoleMutationLockService);
             inOrder.verify(userRowLockService).lockAll(WITHDRAWING_USER_ID, DEPUTY_ID);
             inOrder.verify(adminRoleMutationLockService).lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM");
+            // 一括ロックのみ・追加のロック取得（リトライ）が発生していないことを確認する。
+            verify(userRowLockService, times(1)).lockAll(WITHDRAWING_USER_ID, DEPUTY_ID);
         }
 
         @Test
-        @DisplayName("promoteForBatchSuccession: userRowLockService.lockがadminRoleMutationLockServiceより先に呼ばれる")
+        @DisplayName("promoteForBatchSuccession: userRowLockService.lockAllがadminRoleMutationLockServiceより先に呼ばれる"
+                + "（1回だけ・一括ロック。Codex第3巡P1: リトライによる追加ロック取得は行わない）")
         void promoteForBatchSuccessionはusersを先にロックする() {
             given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM"))
                     .willReturn(List.of());
@@ -349,14 +352,17 @@ class RoleSuccessionServiceTest {
             given(roleRepository.findByName("ADMIN"))
                     .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
             given(userRoleRepository.findByUserIdAndTeamIdForUpdate(DEPUTY_ID, SCOPE_ID)).willReturn(Optional.empty());
-            given(userRowLockService.lock(DEPUTY_ID)).willReturn(UserRowLockService.UserState.ACTIVE);
+            given(userRowLockService.lockAll(DEPUTY_ID)).willReturn(
+                    java.util.Map.of(DEPUTY_ID, UserRowLockService.UserState.ACTIVE));
             given(membershipService.isActiveMemberForUpdate(DEPUTY_ID, ScopeType.TEAM, SCOPE_ID)).willReturn(true);
 
             service.promoteForBatchSuccession(SCOPE_ID, "TEAM");
 
             org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(userRowLockService, adminRoleMutationLockService);
-            inOrder.verify(userRowLockService).lock(DEPUTY_ID);
+            inOrder.verify(userRowLockService).lockAll(DEPUTY_ID);
             inOrder.verify(adminRoleMutationLockService).lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM");
+            // 一括ロックのみ・追加のロック取得（リトライ）が発生していないことを確認する。
+            verify(userRowLockService, times(1)).lockAll(DEPUTY_ID);
         }
 
         @Test
@@ -376,22 +382,25 @@ class RoleSuccessionServiceTest {
     }
 
     @Nested
-    @DisplayName("P1-2: ロック取得後の実行直前再検証で候補が失格していれば次点候補へフォールバックする")
+    @DisplayName("P1-2 / Codex第3巡P1: ロック下の実行直前評価で先頭候補が失格していれば優先順で次点が昇格する"
+            + "（事前に一括仮決定した集合内での評価。追加ロックは取得しない）")
     class P1_2ReVerificationFallback {
 
         @Test
-        @DisplayName("P1-2: 最古参候補が再検証で失格（退会済等）なら次点候補が昇格する")
+        @DisplayName("P1-2: 最古参候補が失格（退会済等）なら、同一lockAllで一括ロック済みの次点候補が昇格する")
         void 最古参が失格なら次点候補が昇格する() {
             Long secondCandidateId = 55L;
             given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM"))
                     .willReturn(List.of(WITHDRAWING_USER_ID));
             given(userRoleRepository.findDeputyAdminCandidateIdsByTeam(SCOPE_ID))
                     .willReturn(List.of(DEPUTY_ID, secondCandidateId));
-            // 最古参 DEPUTY_ID は選定後に状態が変化し再検証で失格（例: 退会済 → INELIGIBLE_EXISTING）
-            given(userRowLockService.lockAll(WITHDRAWING_USER_ID, DEPUTY_ID)).willReturn(java.util.Map.of(
+            // 退会者本人 + 上位2候補（DEPUTY_ID, secondCandidateId）を1回のlockAllで一括ロックする。
+            // DEPUTY_ID は状態変化により失格（例: 退会済 → INELIGIBLE_EXISTING）、secondCandidateId は現役。
+            given(userRowLockService.lockAll(WITHDRAWING_USER_ID, DEPUTY_ID, secondCandidateId)).willReturn(java.util.Map.of(
                     WITHDRAWING_USER_ID, UserRowLockService.UserState.ACTIVE,
-                    DEPUTY_ID, UserRowLockService.UserState.INELIGIBLE_EXISTING));
-            givenEligibleForPurge(WITHDRAWING_USER_ID, secondCandidateId);
+                    DEPUTY_ID, UserRowLockService.UserState.INELIGIBLE_EXISTING,
+                    secondCandidateId, UserRowLockService.UserState.ACTIVE));
+            given(membershipService.isActiveMemberForUpdate(secondCandidateId, ScopeType.TEAM, SCOPE_ID)).willReturn(true);
             given(roleRepository.findByName("ADMIN"))
                     .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
             given(userRoleRepository.findByUserIdAndTeamIdForUpdate(secondCandidateId, SCOPE_ID)).willReturn(Optional.empty());
@@ -400,23 +409,55 @@ class RoleSuccessionServiceTest {
 
             verify(userRoleRepository).save(argThatRoleIdAndUser(ADMIN_ROLE_ID, secondCandidateId));
             verify(userRoleRepository, never()).save(argThatRoleIdAndUser(ADMIN_ROLE_ID, DEPUTY_ID));
+            // lockAllは1回だけ（DEPUTY_ID失格を理由に追加のロック取得＝リトライはしない）。
+            verify(userRowLockService, times(1)).lockAll(WITHDRAWING_USER_ID, DEPUTY_ID, secondCandidateId);
         }
 
         @Test
-        @DisplayName("P1-2: 全候補が再検証で失格すればarchiveへフォールバックする")
-        void 全候補失格ならarchiveされる() {
+        @DisplayName("Codex第3巡P1: 仮決定した上位5件が全滅し、他に候補が存在しない場合はarchiveへフォールバックする")
+        void 上位5件全滅かつ他候補なしならarchiveされる() {
+            List<Long> fiveDeputies = List.of(11L, 12L, 13L, 14L, 15L);
             given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM"))
                     .willReturn(List.of(WITHDRAWING_USER_ID));
-            given(userRoleRepository.findDeputyAdminCandidateIdsByTeam(SCOPE_ID)).willReturn(List.of(DEPUTY_ID));
-            given(userRoleRepository.findMemberCandidateIdsByTeam(SCOPE_ID)).willReturn(List.of());
-            given(userRowLockService.lockAll(WITHDRAWING_USER_ID, DEPUTY_ID)).willReturn(java.util.Map.of(
-                    WITHDRAWING_USER_ID, UserRowLockService.UserState.ACTIVE,
-                    DEPUTY_ID, UserRowLockService.UserState.ABSENT));
+            // ちょうど5件（それ以上は存在しない）。deputies.size()(5) >= limit(5) のため
+            // findMemberCandidateIdsByTeam は呼ばれない（早期return）。
+            given(userRoleRepository.findDeputyAdminCandidateIdsByTeam(SCOPE_ID)).willReturn(fiveDeputies);
+            java.util.Map<Long, UserRowLockService.UserState> allAbsent = new java.util.LinkedHashMap<>();
+            allAbsent.put(WITHDRAWING_USER_ID, UserRowLockService.UserState.ACTIVE);
+            fiveDeputies.forEach(id -> allAbsent.put(id, UserRowLockService.UserState.ABSENT));
+            given(userRowLockService.lockAll(
+                    WITHDRAWING_USER_ID, 11L, 12L, 13L, 14L, 15L)).willReturn(allAbsent);
 
             service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, UUID.randomUUID());
 
             verify(teamService).archiveTeam(SCOPE_ID);
             verify(userRoleRepository, never()).save(any());
+            verify(userRowLockService, times(1)).lockAll(WITHDRAWING_USER_ID, 11L, 12L, 13L, 14L, 15L);
+        }
+
+        @Test
+        @DisplayName("Codex第3巡P1: 仮決定した上位5件が全滅だが他に候補が存在する場合は"
+                + "本トランザクションでは是正せず終了する（archiveしない・追加ロックも取らない）")
+        void 上位5件全滅だが他候補があればTXを終了しarchiveしない() {
+            // 6件存在（上位5件のみ仮決定・6件目は評価対象外＝moreExist=true）。
+            List<Long> sixDeputies = List.of(21L, 22L, 23L, 24L, 25L, 26L);
+            given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM"))
+                    .willReturn(List.of(WITHDRAWING_USER_ID));
+            given(userRoleRepository.findDeputyAdminCandidateIdsByTeam(SCOPE_ID)).willReturn(sixDeputies);
+            java.util.Map<Long, UserRowLockService.UserState> allAbsent = new java.util.LinkedHashMap<>();
+            allAbsent.put(WITHDRAWING_USER_ID, UserRowLockService.UserState.ACTIVE);
+            List.of(21L, 22L, 23L, 24L, 25L).forEach(id -> allAbsent.put(id, UserRowLockService.UserState.ABSENT));
+            given(userRowLockService.lockAll(
+                    WITHDRAWING_USER_ID, 21L, 22L, 23L, 24L, 25L)).willReturn(allAbsent);
+
+            service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, UUID.randomUUID());
+
+            // 是正せず終了: archiveもsaveも呼ばれない。lockAllは仮決定した上位5件分の1回だけで、
+            // 6件目（26L）を含む追加のロック取得（＝リトライ）は行わない。
+            verify(teamService, never()).archiveTeam(any());
+            verify(organizationService, never()).archiveOrganization(any());
+            verify(userRoleRepository, never()).save(any());
+            verify(userRowLockService, times(1)).lockAll(WITHDRAWING_USER_ID, 21L, 22L, 23L, 24L, 25L);
         }
     }
 

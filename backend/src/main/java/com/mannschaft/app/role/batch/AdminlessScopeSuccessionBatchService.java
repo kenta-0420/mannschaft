@@ -24,7 +24,7 @@ import java.util.List;
  *   <li>夜次実行、チャンクサイズ 500、ShedLock 排他、手動発火可</li>
  *   <li>§12 のスコープロックを同じ手順で通す（{@code RoleSuccessionService#promoteForBatchSuccession}
  *       が既存 {@code AdminRoleMutationLockService} 経由でロックする。バッチ専用の別ロック経路は作らない）</li>
- *   <li>承継ロジックは §11.2 の優先順位・候補資格をそのまま適用する（{@code selectSuccessionCandidate}）</li>
+ *   <li>承継ロジックは §11.2 の優先順位・候補資格をそのまま適用する（{@code selectTopCandidates}）</li>
  *   <li>昇格の実装経路は {@code AccountPurgedEvent} の issuer が存在しないため、
  *       {@code RoleSuccessionService#promoteForBatchSuccession}（{@code forceTransferForPurge}
  *       とは別メソッド）を使う</li>
@@ -93,6 +93,7 @@ public class AdminlessScopeSuccessionBatchService {
         int promoted = 0;
         int archived = 0;
         int skipped = 0;
+        int retryLater = 0;
         int failed = 0;
         int total = 0;
 
@@ -116,6 +117,9 @@ public class AdminlessScopeSuccessionBatchService {
                             corrected++;
                         }
                         case NOT_NEEDED -> skipped++;
+                        // Codex第3巡P1: 上位候補が全滅したが他に候補が存在する可能性がある場合、
+                        // 本トランザクションでは是正せず次回バッチ実行に委ねる（archive しない）。
+                        case RETRY_LATER -> retryLater++;
                     }
                 } catch (Exception e) {
                     // AC9: 1スコープの失敗が他スコープ処理を止めない。
@@ -129,8 +133,9 @@ public class AdminlessScopeSuccessionBatchService {
             }
         }
 
-        log.info("ADMIN不在スコープ検出バッチ完了: scopeType={}, 対象={}件, 昇格={}件, 凍結={}件, スキップ={}件, 失敗={}件",
-                scopeType, total, promoted, archived, skipped, failed);
+        log.info("ADMIN不在スコープ検出バッチ完了: scopeType={}, 対象={}件, 昇格={}件, 凍結={}件, "
+                        + "スキップ={}件, 次回再試行={}件, 失敗={}件",
+                scopeType, total, promoted, archived, skipped, retryLater, failed);
         return corrected;
     }
 }
