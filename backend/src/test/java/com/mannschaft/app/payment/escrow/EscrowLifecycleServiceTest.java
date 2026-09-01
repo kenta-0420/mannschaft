@@ -174,6 +174,34 @@ class EscrowLifecycleServiceTest {
         verify(stripePaymentProvider, never()).cancelAuthorization(anyString(), anyString());
     }
 
+    @Test
+    @DisplayName("募集取下げでは PENDING_CONFIRMATION の与信を取消す")
+    void recruitmentCancellation_cancelsPendingConfirmation() {
+        EscrowLifecycleService svc = service();
+        EscrowTransactionEntity e = escrow(EscrowStatus.PENDING_CONFIRMATION, "pi_market_cancel");
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(e));
+        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        assertThat(svc.cancelForRecruitmentCancellation(ESCROW_ID)).isTrue();
+
+        verify(stripePaymentProvider).cancelAuthorization("pi_market_cancel", "cancel-" + ESCROW_ID);
+        assertThat(e.getStatus()).isEqualTo(EscrowStatus.CANCELLED);
+        verify(escrowNotificationService).notifyCancelled(eq(e), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("募集取下げでも capture 済みは与信取消ししない")
+    void recruitmentCancellation_doesNotCancelCaptured() {
+        EscrowLifecycleService svc = service();
+        EscrowTransactionEntity e = escrow(EscrowStatus.CAPTURED, "pi_captured");
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(e));
+
+        assertThat(svc.cancelForRecruitmentCancellation(ESCROW_ID)).isFalse();
+
+        verify(stripePaymentProvider, never()).cancelAuthorization(anyString(), anyString());
+        verify(escrowNotificationService, never()).notifyCancelled(any(), anyString(), anyString());
+    }
+
     // ── HELD 昇格 ──
 
     @Test

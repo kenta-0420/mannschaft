@@ -1,6 +1,8 @@
 package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.RecruitmentParticipantType;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -33,11 +36,13 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -60,6 +65,12 @@ class RecruitmentAutoCancelBatchTest {
 
     @Mock
     private ConfirmableNotificationService confirmableNotificationService;
+
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private ObjectProvider<RecruitmentAutoCancelBatch> selfProvider;
 
     @InjectMocks
     private RecruitmentAutoCancelBatch batch;
@@ -86,6 +97,23 @@ class RecruitmentAutoCancelBatchTest {
             // then: listingRepository.findByIdForUpdate は一切呼ばれない
             verify(listingRepository, never()).findByIdForUpdate(anyLong());
         }
+
+        @Test
+        @DisplayName("候補の処理はトランザクションプロキシを経由する")
+        void run_candidates_useTransactionalProxy() {
+            RecruitmentListingEntity candidate = mock(RecruitmentListingEntity.class);
+            RecruitmentAutoCancelBatch proxiedBatch = mock(RecruitmentAutoCancelBatch.class);
+            given(candidate.getId()).willReturn(LISTING_ID);
+            given(listingRepository.findAutoCancelTargets(any())).willReturn(List.of(candidate));
+            given(selfProvider.getObject()).willReturn(proxiedBatch);
+            given(proxiedBatch.processSingleListing(eq(LISTING_ID), any())).willReturn(1);
+
+            batch.run();
+
+            verify(selfProvider).getObject();
+            verify(proxiedBatch).processSingleListing(eq(LISTING_ID), any());
+            verify(listingRepository, never()).findByIdForUpdate(anyLong());
+        }
     }
 
     // ========================================
@@ -95,6 +123,24 @@ class RecruitmentAutoCancelBatchTest {
     @Nested
     @DisplayName("processSingleListing - 募集1件の自動キャンセル処理")
     class ProcessSingleListing {
+
+        @Test
+        @DisplayName("PERSONAL札も期限超過時に自動キャンセルする")
+        void processSingleListing_personal_autoCancels() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing(10, 0, 5);
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(participantRepository.findByListingIdAndStatusIn(anyLong(), any(), any()))
+                    .willReturn(Page.empty());
+
+            int result = batch.processSingleListing(LISTING_ID, LocalDateTime.now());
+
+            assertThat(result).isZero();
+            assertThat(listing.getStatus()).isEqualTo(RecruitmentListingStatus.AUTO_CANCELLED);
+            verify(listingRepository).save(listing);
+            verify(confirmableNotificationService, never()).send(any(), any(), any(), any(), any(), any(),
+                    any(), any(), any(), any(), any(), any());
+        }
 
         @Test
         @DisplayName("OPEN 状態の listing + CONFIRMED 参加者 → 自動キャンセル実行")

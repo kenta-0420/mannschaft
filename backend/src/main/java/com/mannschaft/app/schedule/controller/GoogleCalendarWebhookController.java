@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.controller;
 
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.schedule.service.GoogleCalendarWebhookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -64,6 +66,8 @@ public class GoogleCalendarWebhookController {
      * @param resourceId    Google リソース ID
      * @return 200 OK（処理成功）
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "Google Calendarの変更通知をGate状態にかかわらず受領するため")
     @PostMapping("/google-calendar")
     @Operation(summary = "Google Calendar Webhook 受信", description = "Google Calendar Push Notification を受信し双方向同期を実行する")
     public ResponseEntity<Void> receiveWebhook(

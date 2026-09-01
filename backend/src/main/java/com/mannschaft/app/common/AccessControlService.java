@@ -237,6 +237,12 @@ public class AccessControlService {
             return Optional.of(new EffectiveRole("SYSTEM_ADMIN", 1));
         }
 
+        // 非アクティブ利用者だけをここで遮断する。user_roles は移行期間にも既存の認可情報源であり、
+        // membership 行が未作成というだけで既存 ADMIN/DEPUTY_ADMIN を無権限化してはならない。
+        if (!userRoleRepository.isActiveUser(userId)) {
+            return Optional.empty();
+        }
+
         EffectiveRole best = null;
 
         // 1) 権限ロール（user_roles 由来: ADMIN / DEPUTY_ADMIN / GUEST 等）
@@ -419,6 +425,13 @@ public class AccessControlService {
      */
     public void checkAdminOrAbove(Long userId, Long scopeId, String scopeType) {
         if (!isAdminOrAbove(userId, scopeId, scopeType)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /** F09.14 の wallet/委任 mutation 用。scope ADMIN 本人だけを許可し、SYSTEM_ADMIN は監査 read-only とする。 */
+    public void checkScopeAdminOnly(Long userId, Long scopeId, String scopeType) {
+        if (isSystemAdmin(userId) || !isAdmin(userId, scopeId, scopeType)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
     }

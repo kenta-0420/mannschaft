@@ -6,6 +6,9 @@ import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.ContentPaymentGateRepository;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.PaymentItemRepository;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
+import com.mannschaft.app.payment.PaymentItemType;
+import com.mannschaft.app.payment.constant.ContentGateType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,6 +17,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * F08.9 P4: ペイウォール（受益者キー判定）サービス（設計書 F08.9 02 §6 / 03_security §4 / README §5）。
@@ -52,6 +62,17 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class PaymentGateService {
 
+    /** 実在コンテンツのscopeを束縛して課金判定するController向け入口。 */
+    public GateCheckResponse checkAccess(String contentType, Long contentId, Long viewerUserId,
+                                         ContentGateTarget target) {
+        if (contentId == null || target == null) {
+            return new GateCheckResponse(false, true, List.of());
+        }
+        return checkAccessBatch(contentType, List.of(contentId), viewerUserId,
+                Map.of(contentId, target)).getOrDefault(contentId,
+                        new GateCheckResponse(false, true, List.of()));
+    }
+
     private final ContentPaymentGateRepository contentPaymentGateRepository;
     private final MemberPaymentRepository memberPaymentRepository;
     private final PaymentItemRepository paymentItemRepository;
@@ -74,12 +95,15 @@ public class PaymentGateService {
         if (gates.isEmpty()) {
             return new GateCheckResponse(true, false, List.of());
         }
+        if (ContentGateType.POST.equals(contentType) || ContentGateType.ANNOUNCEMENT.equals(contentType)) {
+            // 実在コンテンツのscopeを受け取らない旧入口では解錠させない。
+            return new GateCheckResponse(false, true, List.of());
+        }
 
         // タイトル秘匿はゲート設定の OR（1つでも秘匿なら存在ごと秘匿）
-        boolean titleHidden = gates.stream()
-                .anyMatch(g -> Boolean.TRUE.equals(g.getIsTitleHidden()));
-
         boolean allSatisfied = true;
+        boolean titleHidden = false;
+        boolean invalidGate = false;
         List<GateCheckResponse.RequiredItem> requiredItems = new ArrayList<>();
 
         for (ContentPaymentGateEntity gate : gates) {
@@ -90,6 +114,8 @@ public class PaymentGateService {
                 log.warn("ペイウォール判定不能（payment_item_id 欠落）: contentType={}, contentId={}, gateId={} → accessible=false",
                         contentType, contentId, gate.getId());
                 allSatisfied = false;
+                titleHidden |= Boolean.TRUE.equals(gate.getIsTitleHidden());
+                invalidGate = true;
                 continue;
             }
 
@@ -99,6 +125,8 @@ public class PaymentGateService {
                 log.warn("ペイウォール判定不能（payment_item 消失）: contentType={}, contentId={}, paymentItemId={} → accessible=false",
                         contentType, contentId, itemId);
                 allSatisfied = false;
+                titleHidden |= Boolean.TRUE.equals(gate.getIsTitleHidden());
+                invalidGate = true;
                 continue;
             }
             PaymentItemEntity item = itemOpt.get();
@@ -107,16 +135,155 @@ public class PaymentGateService {
             boolean satisfied = memberPaymentRepository.existsValidPaidPayment(viewerUserId, itemId);
             if (!satisfied) {
                 allSatisfied = false;
+                titleHidden |= Boolean.TRUE.equals(gate.getIsTitleHidden());
             }
 
-            requiredItems.add(new GateCheckResponse.RequiredItem(
-                    itemId, item.getName(), item.getAmount(), satisfied));
+            if (!satisfied) {
+                requiredItems.add(new GateCheckResponse.RequiredItem(
+                        itemId, item.getName(), item.getAmount(), false));
+            }
         }
 
         // titleHidden=true は存在ごと秘匿 → requiredItems の中身（名称・金額）も露出させない
-        List<GateCheckResponse.RequiredItem> exposedItems = titleHidden ? List.of() : requiredItems;
+        List<GateCheckResponse.RequiredItem> exposedItems = titleHidden || invalidGate ? List.of() : requiredItems;
 
-        return new GateCheckResponse(allSatisfied, titleHidden, exposedItems);
+        return new GateCheckResponse(allSatisfied, titleHidden || invalidGate, exposedItems);
+    }
+
+    /** 可視性判定結果と課金判定を正規の3値へ合成する。 */
+    public ContentAccessState resolveState(boolean visibilityAllowed, GateCheckResponse gate) {
+        return ContentAccessDecision.resolve(visibilityAllowed, gate);
+    }
+
+    /**
+     * 指定種別・ID集合を課金軸だけ一括判定する。判定ループ内でSQLを発行しない。
+     * ゲートなしIDも明示的に accessible として返す。
+     */
+    public Map<Long, GateCheckResponse> checkAccessBatch(
+            String contentType, Collection<Long> contentIds, Long viewerUserId) {
+        if (contentIds == null || contentIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = contentIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        if (ContentGateType.POST.equals(contentType) || ContentGateType.ANNOUNCEMENT.equals(contentType)) {
+            return ids.stream().collect(Collectors.toMap(Function.identity(),
+                    ignored -> new GateCheckResponse(false, true, List.of())));
+        }
+        List<ContentPaymentGateEntity> gates =
+                contentPaymentGateRepository.findByContentTypeAndContentIdIn(contentType, ids);
+        Map<Long, List<ContentPaymentGateEntity>> byContent = gates.stream()
+                .collect(Collectors.groupingBy(ContentPaymentGateEntity::getContentId));
+        Set<Long> itemIds = gates.stream().map(ContentPaymentGateEntity::getPaymentItemId)
+                .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, PaymentItemEntity> items = paymentItemRepository.findAllById(itemIds).stream()
+                .collect(Collectors.toMap(PaymentItemEntity::getId, Function.identity()));
+        Set<Long> paid = viewerUserId == null || itemIds.isEmpty()
+                ? Set.of() : new HashSet<>(memberPaymentRepository
+                        .findValidPaidPaymentItemIds(viewerUserId, itemIds.stream().toList()));
+        Map<Long, GateCheckResponse> result = new HashMap<>();
+        for (Long id : ids) {
+            List<ContentPaymentGateEntity> contentGates = byContent.getOrDefault(id, List.of());
+            if (contentGates.isEmpty()) {
+                result.put(id, new GateCheckResponse(true, false, List.of()));
+                continue;
+            }
+            boolean allSatisfied = true;
+            boolean titleHidden = false;
+            List<GateCheckResponse.RequiredItem> required = new ArrayList<>();
+            for (ContentPaymentGateEntity gate : contentGates) {
+                PaymentItemEntity item = gate.getPaymentItemId() == null ? null : items.get(gate.getPaymentItemId());
+                boolean satisfied = item != null && paid.contains(gate.getPaymentItemId());
+                if (!satisfied) {
+                    allSatisfied = false;
+                    titleHidden |= Boolean.TRUE.equals(gate.getIsTitleHidden());
+                }
+                if (item != null && !satisfied) {
+                    required.add(new GateCheckResponse.RequiredItem(item.getId(), item.getName(), item.getAmount(), satisfied));
+                }
+            }
+            result.put(id, new GateCheckResponse(allSatisfied, titleHidden,
+                    titleHidden ? List.of() : required));
+        }
+        return result;
+    }
+
+    /** 実コンテンツscopeを束縛したbatch判定。target欠落や不正scopeはHIDDENにする。 */
+    public Map<Long, GateCheckResponse> checkAccessBatch(
+            String contentType, Collection<Long> contentIds, Long viewerUserId,
+            Map<Long, ContentGateTarget> targetsById) {
+        List<Long> ids = contentIds == null ? List.of() : contentIds.stream()
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) return Map.of();
+        List<ContentPaymentGateEntity> gates;
+        try {
+            gates = contentPaymentGateRepository.findByContentTypeAndContentIdIn(contentType, ids);
+            if (gates == null) throw new IllegalStateException("gate query returned null");
+        } catch (RuntimeException e) {
+            return ids.stream().collect(Collectors.toMap(Function.identity(),
+                    ignored -> new GateCheckResponse(false, true, List.of())));
+        }
+        Set<Long> itemIds = gates.stream().map(ContentPaymentGateEntity::getPaymentItemId)
+                .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, PaymentItemEntity> items;
+        try {
+            items = paymentItemRepository.findAllById(itemIds).stream()
+                    .collect(Collectors.toMap(PaymentItemEntity::getId, Function.identity()));
+        } catch (RuntimeException e) {
+            return ids.stream().collect(Collectors.toMap(Function.identity(),
+                    ignored -> new GateCheckResponse(false, true, List.of())));
+        }
+        Set<Long> paid;
+        try {
+            paid = viewerUserId == null || itemIds.isEmpty() ? Set.of()
+                    : new HashSet<>(memberPaymentRepository.findValidPaidPaymentItemIds(
+                            viewerUserId, itemIds.stream().toList()));
+        } catch (RuntimeException e) {
+            return ids.stream().collect(Collectors.toMap(Function.identity(),
+                    ignored -> new GateCheckResponse(false, true, List.of())));
+        }
+        Map<Long, List<ContentPaymentGateEntity>> byContent = gates.stream()
+                .collect(Collectors.groupingBy(ContentPaymentGateEntity::getContentId));
+        Map<Long, GateCheckResponse> bound = new HashMap<>();
+        for (Long id : ids) {
+            ContentGateTarget target = targetsById == null ? null : targetsById.get(id);
+            boolean invalid = target == null || (!target.hasExactlyOneScope() && !target.isPersonal());
+            boolean allSatisfied = true;
+            boolean titleHidden = false;
+            List<GateCheckResponse.RequiredItem> required = new ArrayList<>();
+            for (ContentPaymentGateEntity gate : byContent.getOrDefault(id, List.of())) {
+                PaymentItemEntity item = items.get(gate.getPaymentItemId());
+                invalid |= item == null || item.getDeletedAt() != null || item.getType() == PaymentItemType.DONATION;
+                boolean satisfied = item != null && paid.contains(gate.getPaymentItemId());
+                if (!satisfied) {
+                    allSatisfied = false;
+                    titleHidden |= Boolean.TRUE.equals(gate.getIsTitleHidden());
+                    if (item != null) {
+                        required.add(new GateCheckResponse.RequiredItem(
+                                item.getId(), item.getName(), item.getAmount(), false));
+                    }
+                }
+                if (item != null) {
+                    if (target != null && target.teamId() != null) {
+                        invalid |= !target.teamId().equals(item.getTeamId()) || item.getOrganizationId() != null;
+                    } else if (target != null && target.organizationId() != null) {
+                        invalid |= !target.organizationId().equals(item.getOrganizationId()) || item.getTeamId() != null;
+                    } else if (target != null) {
+                        invalid |= item.getTeamId() != null || item.getOrganizationId() != null;
+                    }
+                }
+            }
+            if (invalid) {
+                bound.put(id, new GateCheckResponse(false, true, List.of()));
+            } else if (titleHidden) {
+                bound.put(id, new GateCheckResponse(false, true, List.of()));
+            } else {
+                bound.put(id, new GateCheckResponse(allSatisfied, false, required));
+            }
+        }
+        return bound;
     }
 
     /**

@@ -86,6 +86,7 @@ public class GlobalExceptionHandler {
             Map.entry("RETURN_STAY_PLAN_005", HttpStatus.CONFLICT),
             Map.entry("RETURN_STAY_PLAN_006", HttpStatus.CONFLICT),
             Map.entry("RETURN_STAY_PLAN_007", HttpStatus.NOT_FOUND),
+            Map.entry("PAYMENT_015", HttpStatus.NOT_FOUND),
             // F00 共通可視性基盤（Severity.WARN デフォルト 400 を設計書 §7.4 の正しい status に上書き）
             Map.entry("VISIBILITY_001", HttpStatus.FORBIDDEN),   // 認可拒否（権限不足）→ 403
             Map.entry("VISIBILITY_004", HttpStatus.NOT_FOUND),  // コンテンツ不在 → 404
@@ -160,8 +161,19 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_000.getCode(), HttpStatus.UNAUTHORIZED),
             Map.entry(CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN),
             Map.entry(CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT),
+            // F04.12 承諾型招待: 宛先照合 IDOR（他人宛て招待を第三者が承諾/辞退）は 403 が既定。
+            //（発行時の特権ロール指定は 422 でスロー箇所が httpStatusOverride を明示する。§6）
+            Map.entry("ROLE_009", HttpStatus.FORBIDDEN),
             // 未マップAPIパス・staticリソース不在は 404（Severity.WARN デフォルト 400 を上書き）
             Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
+            // F01.2 オーナー委譲 承諾型オファー（2026-07-18 承諾型化。Severity.WARN 既定 400 を上書き）
+            //（ROLE_009 宛先照合失敗=403 は上の F04.12 承諾型招待ブロックで既に定義済みのため重複登録しない。
+            //   Map.ofEntries は重複キーで IllegalArgumentException になるため統合時に一本化した）
+            Map.entry("ROLE_010", HttpStatus.UNPROCESSABLE_ENTITY), // 承諾者 2FA 未設定 → 422
+            Map.entry("ROLE_011", HttpStatus.CONFLICT),             // 重複 PENDING 打診 → 409
+            Map.entry("ROLE_012", HttpStatus.CONFLICT),             // オファー状態不整合/期限切れ/発行後状態変化 → 409
+            Map.entry("ROLE_013", HttpStatus.NOT_FOUND),            // オファー不在（BOLA）/対象非所属 → 404
+            Map.entry("ROLE_014", HttpStatus.UNPROCESSABLE_ENTITY), // 自己委譲など不正対象 → 422
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
             // 組織不在は 404（Severity.WARN 既定の 400 を上書き）。兄弟の TEAM_001 と流儀を揃える。
@@ -1061,6 +1073,9 @@ public class GlobalExceptionHandler {
             Map.entry("MARKET_003", HttpStatus.FORBIDDEN),           // フレンド未成立チームを宛先指定
             Map.entry("MARKET_004", HttpStatus.FORBIDDEN),           // 他チーム所有フォルダを宛先指定
             Map.entry("MARKET_005", HttpStatus.BAD_REQUEST),         // FRIEND_TEAMS_ONLY × distribution_targets 併用
+            Map.entry("MARKET_006", HttpStatus.BAD_REQUEST),         // 個人札の決済/受領者指定はPhase 5まで禁止
+            Map.entry("MARKET_007", HttpStatus.FORBIDDEN),           // 個人札主本人の自己応募
+            Map.entry("MARKET_008", HttpStatus.BAD_REQUEST),         // 個人札の公開/フレンド限定はPhase 4まで禁止
             Map.entry("MARKET_404", HttpStatus.NOT_FOUND),           // 非公開 / 不在の札（存在秘匿）
             // F03.11 / F22.1 募集枠 公開（publish）時の配信対象検証
             //   いずれも「入力不備」であり 400（MARKET_002 と対称）。未登録だと Severity.ERROR 既定の 500 になり、
@@ -2437,7 +2452,11 @@ public class GlobalExceptionHandler {
         String message = resolveMessage(errorCode);
         log.warn("BusinessException: code={}, message={}", errorCode.getCode(), message);
 
-        HttpStatus status = resolveHttpStatus(errorCode);
+        // スロー箇所固有のステータス上書きがあれば優先する（F04.12 ROLE_009 は
+        // 宛先照合 IDOR=403 / 発行時の特権ロール指定=422 と、同一コードで文脈により異なる）。
+        HttpStatus status = ex.getHttpStatusOverride() != null
+                ? ex.getHttpStatusOverride()
+                : resolveHttpStatus(errorCode);
 
         // F10.6: 5xx を返す BusinessException のみ記録対象（severity=MEDIUM）
         if (status.is5xxServerError()) {

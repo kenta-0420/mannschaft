@@ -99,9 +99,9 @@ describe('featureGates 定数と純関数', () => {
     const staticOnly = all.filter((p) => !p.includes('*'))
 
     // 実測の内訳（doc・PR 本文・Issue と数値を揃えてある）。
-    expect(all).toHaveLength(91)
-    expect(staticOnly).toHaveLength(47)
-    expect(dynamic).toHaveLength(44)
+    expect(all).toHaveLength(94)
+    expect(staticOnly).toHaveLength(48)
+    expect(dynamic).toHaveLength(46)
 
     const rules = buildGateRouteRules()
     // 静的プレフィクスは 1 件につき `/x` と `/x/**` の 2 エントリを生む。

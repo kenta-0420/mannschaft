@@ -4,7 +4,10 @@ import com.mannschaft.app.advertising.controller.OrganizationOperationalAdCampai
 import com.mannschaft.app.advertising.controller.SystemAdminOperationalAdCampaignController;
 import com.mannschaft.app.advertising.dto.RejectOperationalCampaignRequest;
 import com.mannschaft.app.auth.repository.AuditLogRepository;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.awaitility.Awaitility;
@@ -77,6 +80,7 @@ class OperationalAdCampaignAuditLogIT extends AbstractMySqlIntegrationTest {
 
         insertUserRole(adminId, roleId("ADMIN"), orgId);
         insertUserRole(sysAdminId, roleId("SYSTEM_ADMIN"), null);
+        MembershipTestHelper.insertMembership(em, adminId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
         accountId = insertAdvertiserAccount(orgId, "監査ログ広告主");
         rateCardId = insertRateCard();
 

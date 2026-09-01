@@ -18,11 +18,11 @@ import com.mannschaft.app.organization.service.OrganizationHierarchyService;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
-import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Nested;
@@ -91,6 +91,9 @@ class OrganizationServiceTest {
     @Mock
     private MediaUrlResolver mediaUrlResolver;
 
+    @Mock
+    private AdminRoleMutationLockService adminRoleMutationLockService;
+
     @InjectMocks
     private OrganizationService organizationService;
 
@@ -110,9 +113,8 @@ class OrganizationServiceTest {
 
             given(organizationRepository.existsByName("テスト組織")).willReturn(false);
 
-            RoleEntity adminRole = RoleEntity.builder()
-                    .id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者").priority(2).isSystem(true).build();
-            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(adminRole));
+            given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
+                    .willReturn(Optional.of(ADMIN_ROLE_ID));
 
             given(organizationRepository.save(any(OrganizationEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -157,9 +159,7 @@ class OrganizationServiceTest {
                     "新組織", "COMPANY", null, null, null, null, null);
 
             given(organizationRepository.existsByName("新組織")).willReturn(false);
-            given(organizationRepository.save(any(OrganizationEntity.class)))
-                    .willAnswer(inv -> inv.getArgument(0));
-            given(roleRepository.findByName("ADMIN")).willReturn(Optional.empty());
+            given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> organizationService.createOrganization(USER_ID, req))
                     .isInstanceOf(BusinessException.class)
@@ -175,9 +175,8 @@ class OrganizationServiceTest {
 
             given(organizationRepository.existsByName("非公開組織")).willReturn(false);
 
-            RoleEntity adminRole = RoleEntity.builder()
-                    .id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者").priority(2).isSystem(true).build();
-            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(adminRole));
+            given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
+                    .willReturn(Optional.of(ADMIN_ROLE_ID));
 
             given(organizationRepository.save(any(OrganizationEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -196,9 +195,8 @@ class OrganizationServiceTest {
 
             given(organizationRepository.existsByName("子組織")).willReturn(false);
 
-            RoleEntity adminRole = RoleEntity.builder()
-                    .id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者").priority(2).isSystem(true).build();
-            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(adminRole));
+            given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
+                    .willReturn(Optional.of(ADMIN_ROLE_ID));
 
             given(organizationRepository.save(any(OrganizationEntity.class)))
                     .willAnswer(inv -> {

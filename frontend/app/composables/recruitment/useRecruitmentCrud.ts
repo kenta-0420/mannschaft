@@ -13,6 +13,7 @@ import type {
   UpdateCancellationPolicyRequest,
   UpdateRecruitmentListingRequest,
 } from '~/types/recruitment'
+import type { PersonalMarketListingsParams, PersonalMarketMatch } from '~/types/market'
 
 interface ApiResponse<T> {
   data: T
@@ -71,10 +72,9 @@ export function useRecruitmentCrud() {
   }
 
   async function archiveTeamSubcategory(teamId: string, subcategoryId: number) {
-    return api(
-      `/api/v1/teams/${teamId}/recruitment-subcategories/${subcategoryId}/archive`,
-      { method: 'POST' },
-    )
+    return api(`/api/v1/teams/${teamId}/recruitment-subcategories/${subcategoryId}/archive`, {
+      method: 'POST',
+    })
   }
 
   // ===========================================
@@ -95,10 +95,79 @@ export function useRecruitmentCrud() {
     )
   }
 
+  async function listOrganizationListings(
+    orgId: string,
+    params?: { status?: string; page?: number; size?: number },
+  ) {
+    const q = new URLSearchParams()
+    if (params?.status) q.set('status', params.status)
+    if (params?.page != null) q.set('page', String(params.page))
+    if (params?.size != null) q.set('size', String(params.size))
+    const suffix = q.toString() ? `?${q.toString()}` : ''
+    return api<PagedResponse<RecruitmentListingSummaryResponse>>(
+      `/api/v1/organizations/${orgId}/recruitment-listings${suffix}`,
+    )
+  }
+
   async function createListing(teamId: string, body: CreateRecruitmentListingRequest) {
     return api<ApiResponse<RecruitmentListingResponse>>(
       `/api/v1/teams/${teamId}/recruitment-listings`,
       { method: 'POST', body },
+    )
+  }
+
+  function personalMarketQuery(params?: PersonalMarketListingsParams) {
+    const q = new URLSearchParams()
+    if (params?.status) q.set('status', params.status)
+    if (params?.prefectureCode) q.set('prefectureCode', params.prefectureCode)
+    if (params?.cityCode) q.set('cityCode', params.cityCode)
+    if (params?.categoryId != null) q.set('categoryId', String(params.categoryId))
+    if (params?.page != null) q.set('page', String(params.page))
+    if (params?.size != null) q.set('size', String(params.size))
+    return q.toString() ? `?${q.toString()}` : ''
+  }
+
+  async function listMyMarketListings(params?: PersonalMarketListingsParams) {
+    return api<PagedResponse<RecruitmentListingSummaryResponse>>(
+      `/api/v1/me/market/listings${personalMarketQuery(params)}`,
+    )
+  }
+
+  async function createMyMarketListing(body: CreateRecruitmentListingRequest) {
+    return api<ApiResponse<RecruitmentListingResponse>>('/api/v1/me/market/listings', {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function updateMyMarketListing(listingId: number, body: UpdateRecruitmentListingRequest) {
+    return api<ApiResponse<RecruitmentListingResponse>>(`/api/v1/me/market/listings/${listingId}`, {
+      method: 'PATCH',
+      body,
+    })
+  }
+
+  async function cancelMyMarketListing(listingId: number, body?: CancelRecruitmentListingRequest) {
+    return api<ApiResponse<RecruitmentListingResponse>>(
+      `/api/v1/me/market/listings/${listingId}/cancel`,
+      { method: 'POST', body: body ?? {} },
+    )
+  }
+
+  async function publishMyMarketListing(listingId: number) {
+    return api<ApiResponse<RecruitmentListingResponse>>(
+      `/api/v1/me/market/listings/${listingId}/publish`,
+      { method: 'POST' },
+    )
+  }
+
+  async function listMyMarketMatches(listingId: number, params?: { page?: number; size?: number }) {
+    const q = new URLSearchParams()
+    if (params?.page != null) q.set('page', String(params.page))
+    if (params?.size != null) q.set('size', String(params.size))
+    const suffix = q.toString() ? `?${q.toString()}` : ''
+    return api<PagedResponse<PersonalMarketMatch>>(
+      `/api/v1/me/market/listings/${listingId}/matches${suffix}`,
     )
   }
 
@@ -110,9 +179,7 @@ export function useRecruitmentCrud() {
   }
 
   async function getListing(listingId: number) {
-    return api<ApiResponse<RecruitmentListingResponse>>(
-      `/api/v1/recruitment-listings/${listingId}`,
-    )
+    return api<ApiResponse<RecruitmentListingResponse>>(`/api/v1/recruitment-listings/${listingId}`)
   }
 
   async function updateListing(listingId: number, body: UpdateRecruitmentListingRequest) {
@@ -165,15 +232,10 @@ export function useRecruitmentCrud() {
   }
 
   async function getCancellationPolicy(policyId: number) {
-    return api<ApiResponse<CancellationPolicyResponse>>(
-      `/api/v1/cancellation-policies/${policyId}`,
-    )
+    return api<ApiResponse<CancellationPolicyResponse>>(`/api/v1/cancellation-policies/${policyId}`)
   }
 
-  async function updateCancellationPolicy(
-    policyId: number,
-    body: UpdateCancellationPolicyRequest,
-  ) {
+  async function updateCancellationPolicy(policyId: number, body: UpdateCancellationPolicyRequest) {
     return api<ApiResponse<CancellationPolicyResponse>>(
       `/api/v1/cancellation-policies/${policyId}`,
       { method: 'PATCH', body },
@@ -210,7 +272,14 @@ export function useRecruitmentCrud() {
     createTeamSubcategory,
     archiveTeamSubcategory,
     listTeamListings,
+    listOrganizationListings,
     createListing,
+    listMyMarketListings,
+    createMyMarketListing,
+    updateMyMarketListing,
+    cancelMyMarketListing,
+    publishMyMarketListing,
+    listMyMarketMatches,
     createOrgListing,
     getListing,
     updateListing,

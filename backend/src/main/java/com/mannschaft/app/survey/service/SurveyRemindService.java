@@ -4,8 +4,6 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.organization.service.OrganizationMembershipService;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.SurveyErrorCode;
 import com.mannschaft.app.survey.SurveyNotificationType;
@@ -13,10 +11,8 @@ import com.mannschaft.app.survey.SurveyStatus;
 import com.mannschaft.app.survey.dto.RemindResponse;
 import com.mannschaft.app.survey.entity.SurveyEntity;
 import com.mannschaft.app.survey.entity.SurveyResponseEntity;
-import com.mannschaft.app.survey.entity.SurveyTargetEntity;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
-import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -49,12 +45,11 @@ public class SurveyRemindService {
     private static final long REMIND_COOLDOWN_HOURS = 24L;
 
     private final SurveyRepository surveyRepository;
-    private final SurveyTargetRepository targetRepository;
     private final SurveyResponseRepository responseRepository;
-    private final UserRoleRepository userRoleRepository;
     private final AccessControlService accessControlService;
     private final NotificationHelper notificationHelper;
-    private final OrganizationMembershipService organizationMembershipService;
+    /** 母集団解決の唯一の窓口（公開時の target_count スナップショットと同一定義）。 */
+    private final SurveyUniverseResolver universeResolver;
     private final MessageSource messageSource;
 
     /**
@@ -165,7 +160,7 @@ public class SurveyRemindService {
      *
      * <p>母集団は {@link SurveyEntity#getDistributionMode()} に応じて切り替える:
      * <ul>
-     *   <li>{@link DistributionMode#ALL} → {@code user_roles} 経由でスコープ内全メンバーを取得</li>
+     *   <li>{@link DistributionMode#ALL} → スコープ内全メンバー（組織は配下 ACTIVE チームまで再帰展開）</li>
      *   <li>{@link DistributionMode#TARGETED} → {@code survey_targets} 登録ユーザー</li>
      * </ul>
      * 設計書 F05.4 §1035-1036 を参照。回答済みユーザーは母集団から除外する。
@@ -193,25 +188,14 @@ public class SurveyRemindService {
     /**
      * distribution_mode に応じて母集団ユーザーIDリストを取得する。
      *
+     * <p>母集団の定義は {@link SurveyUniverseResolver} に一元化されている。
+     * ここで自前に分岐を書き戻すと、公開時にスナップショットする分母（{@code target_count}）と
+     * 督促の宛先が別々の母集団を見ることになる（Issue #2787 / CMP-042）。</p>
+     *
      * @param survey 対象アンケート
-     * @return 母集団ユーザーIDリスト（順序は配信モードのソース順）
+     * @return 母集団ユーザーIDリスト
      */
     private List<Long> resolveUniverseUserIds(SurveyEntity survey) {
-        if (survey.getDistributionMode() == DistributionMode.ALL) {
-            // 組織×ALL は配下参加チームを展開する（OrganizationMembershipService 経由・越境是正）。
-            // チームスコープ（および COMMITTEE 等）は配下展開なし・従来挙動を維持する。
-            if ("ORGANIZATION".equals(survey.getScopeType())) {
-                return organizationMembershipService.resolveOrgDistributionUserIds(
-                        survey.getScopeId(), Boolean.TRUE.equals(survey.getIncludeSupporters()));
-            }
-            return userRoleRepository.findUserIdsByScope(survey.getScopeType(), survey.getScopeId());
-        }
-        // TARGETED: survey_targets が母集団
-        List<SurveyTargetEntity> targets = targetRepository.findBySurveyId(survey.getId());
-        List<Long> ids = new ArrayList<>(targets.size());
-        for (SurveyTargetEntity t : targets) {
-            ids.add(t.getUserId());
-        }
-        return ids;
+        return universeResolver.resolveUniverseUserIds(survey);
     }
 }

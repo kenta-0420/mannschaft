@@ -6,6 +6,10 @@ import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,6 +24,7 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -60,6 +65,9 @@ class AnnouncementReadProxyInputTest {
     @Mock
     private RoleResolver roleResolver;
 
+    @Mock
+    private PaymentGateService paymentGateService;
+
     // AnnouncementCreationService のモック（AnnouncementReadService が buildAndSaveAnnouncementProxyRecord を呼ぶ）
     @InjectMocks
     private AnnouncementCreationService announcementCreationService;
@@ -80,17 +88,30 @@ class AnnouncementReadProxyInputTest {
      * 単体テストでも当該スコープのフィードを返す必要がある。</p>
      */
     private AnnouncementFeedEntity buildScopedFeed() {
-        return AnnouncementFeedEntity.builder()
+        AnnouncementFeedEntity feed = AnnouncementFeedEntity.builder()
                 .scopeType(AnnouncementScopeType.TEAM)
                 .scopeId(TEAM_ID)
                 .sourceType(AnnouncementSourceType.BLOG_POST)
                 .sourceId(1L)
                 .titleCache("代理確認テスト用お知らせ")
+                .visibility(AnnouncementVisibility.MEMBERS_AND_ABOVE)
                 .build();
+        try {
+            java.lang.reflect.Field field = com.mannschaft.app.common.BaseEntity.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(feed, ANNOUNCEMENT_ID);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new IllegalStateException("announcement feed id設定に失敗", e);
+        }
+        return feed;
     }
 
     @BeforeEach
     void setUp() {
+        lenient().when(paymentGateService.checkAccess(
+                eq(ContentGateType.ANNOUNCEMENT), eq(ANNOUNCEMENT_ID), eq(USER_ID),
+                any(ContentGateTarget.class)))
+                .thenReturn(new GateCheckResponse(true, false, List.of()));
         // AnnouncementReadService に creationService を注入
         try {
             java.lang.reflect.Field f = AnnouncementReadService.class.getDeclaredField("creationService");
@@ -123,6 +144,22 @@ class AnnouncementReadProxyInputTest {
     @Nested
     @DisplayName("通常既読（isProxy=false）")
     class NormalRead {
+
+        @Test
+        @DisplayName("HIDDENの単件既読は拒否し、既読行を作成しない")
+        void hiddenAnnouncementIsNotMarkedRead() {
+            given(feedRepository.findById(ANNOUNCEMENT_ID)).willReturn(Optional.of(buildScopedFeed()));
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID)).willReturn(ViewerRole.MEMBER);
+            given(paymentGateService.checkAccess(
+                    eq(ContentGateType.ANNOUNCEMENT), eq(ANNOUNCEMENT_ID), eq(USER_ID),
+                    any(ContentGateTarget.class)))
+                    .willReturn(new GateCheckResponse(false, true, List.of()));
+
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> announcementReadService.markAsRead(
+                    AnnouncementScopeType.TEAM, TEAM_ID, ANNOUNCEMENT_ID, USER_ID))
+                    .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+            verify(readStatusRepository, never()).insertReadStatusesIgnoringExisting(anyLong(), any());
+        }
 
         @Test
         @DisplayName("通常既読時_冪等UPSERTで1行作られ代理記録は作られない")

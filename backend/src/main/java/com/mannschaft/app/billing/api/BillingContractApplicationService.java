@@ -25,9 +25,10 @@ import java.util.UUID;
  *
  * <p>Controller とドメインの {@link BillingContractService} の間に立ち、(1) テナント
  * {@code organizationId} の解決（USER=null / ORG=自身 / TEAM=主所属組織）、(2) 冪等キーによる
- * 二重送信の吸収（M-1）、(3) {@link ContractResponse} への組み立て、を担う。認可（scope ADMIN・
- * 本人固定）は Controller の {@code @PreAuthorize} が一次防御、契約の所属スコープ一致（IDOR）は
- * ドメイン層 {@code loadContractInScope} が二重防御する（03 §2）。</p>
+ * 二重送信の吸収（M-1）、(3) {@link ContractResponse} への組み立て、を担う。認可は Controller の
+ * {@code @PreAuthorize} を一次防御とし、契約変更トランザクション内でも操作者行をロックして現在権限を
+ * 再確認する。契約の所属スコープ一致（IDOR）はドメイン層 {@code loadContractInScope} が二重防御する
+ * （03 §2）。</p>
  */
 @Service
 @RequiredArgsConstructor

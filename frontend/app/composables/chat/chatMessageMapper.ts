@@ -4,6 +4,10 @@ import type {
   ChatMessageAttachment,
   ChatThreadResponse,
   ChatUser,
+  ChatInviteData,
+  ChatInviteScopeType,
+  ChatInviteStatus,
+  ChatMessageType,
 } from '~/types/chat'
 
 // ============================================================================
@@ -45,11 +49,34 @@ export interface BeSender {
   avatarUrl: string | null
 }
 
+/**
+ * BE 招待カードペイロード（F04.12・設計書 §5 `inviteData`）。
+ *
+ * BE ネスト `MessageResponse` の {@code inviteData} ブロックに対応。
+ * 生成型（types/generated）はチャットメッセージについて名前衝突で空スタブのため、
+ * 他の BE メッセージ形状と同様にここで手書き interface として明示定義する。
+ */
+export interface BeInviteData {
+  tokenId: number
+  /** 宛先本人にのみ返る UUID トークン。非宛先（発行者側）は BE が null で返す（多層防御）。 */
+  token: string | null
+  scopeType: string
+  scopeId: number
+  scopeName: string
+  status: string
+  isTarget: boolean
+  expiresAt: string
+}
+
 /** BE `MessageResponse`（ネスト形状） */
 export interface BeMessageResponse {
   id: number
   channelId: number
   senderId: number | null
+  /** メッセージ種別（F04.12）。無い場合は TEXT 扱い（後方互換） */
+  messageType?: string | null
+  /** 招待カードペイロード（F04.12）。INVITE_CARD 以外では null/undefined */
+  inviteData?: BeInviteData | null
   /** 並行 BE PR が付与する送信者ネスト。無い間は senderId からフォールバック合成する */
   sender?: BeSender | null
   /** WebSocket ブロードキャストでのみ届く可能性のある送信者表示名（後方互換フォールバック） */
@@ -151,6 +178,41 @@ export function aggregateReactions(
 }
 
 // ============================================================================
+// 招待カード変換ヘルパー（F04.12）
+// ============================================================================
+
+/** BE の未知値に備えつつ既知の招待状態のみ受理する（未知は PENDING 扱いにせず素通しを避ける）。 */
+const INVITE_STATUSES: readonly ChatInviteStatus[] = ['PENDING', 'JOINED', 'EXPIRED', 'REVOKED']
+const INVITE_SCOPE_TYPES: readonly ChatInviteScopeType[] = ['TEAM', 'ORGANIZATION']
+
+/**
+ * BE `inviteData`（{@link BeInviteData}）を FE 型（{@link ChatInviteData}）へ変換する。
+ *
+ * status / scopeType は既知の列挙値のみ受理し、想定外の値は握りつぶさず
+ * それぞれ EXPIRED（安全側・操作不可）/ TEAM を既定にフォールバックする。
+ */
+function mapInviteData(raw: BeInviteData): ChatInviteData {
+  const status: ChatInviteStatus = INVITE_STATUSES.includes(raw.status as ChatInviteStatus)
+    ? (raw.status as ChatInviteStatus)
+    : 'EXPIRED'
+  const scopeType: ChatInviteScopeType = INVITE_SCOPE_TYPES.includes(
+    raw.scopeType as ChatInviteScopeType,
+  )
+    ? (raw.scopeType as ChatInviteScopeType)
+    : 'TEAM'
+  return {
+    tokenId: raw.tokenId,
+    token: raw.token,
+    scopeType,
+    scopeId: raw.scopeId,
+    scopeName: raw.scopeName,
+    status,
+    isTarget: raw.isTarget,
+    expiresAt: raw.expiresAt,
+  }
+}
+
+// ============================================================================
 // メッセージマッパー（全取得経路の唯一の通過点）
 // ============================================================================
 
@@ -189,6 +251,11 @@ export function mapBeMessage(
     }),
   )
 
+  // メッセージ種別・招待カード（F04.12）: messageType が INVITE_CARD のときのみ inviteData を展開。
+  const messageType: ChatMessageType = raw.messageType === 'INVITE_CARD' ? 'INVITE_CARD' : 'TEXT'
+  const inviteData: ChatInviteData | null =
+    messageType === 'INVITE_CARD' && raw.inviteData ? mapInviteData(raw.inviteData) : null
+
   // 送信者解決: 並行 BE PR の sender ネストを最優先。無ければ senderId フォールバック。
   const senderId = raw.sender?.id ?? raw.senderId ?? null
   const sender: ChatUser | null = senderId != null
@@ -222,6 +289,8 @@ export function mapBeMessage(
     rootId: raw.thread?.rootId ?? null,
     depth: raw.thread?.depth ?? 0,
     suggestBoardMigration: raw.thread?.suggestBoardMigration ?? false,
+    messageType,
+    inviteData,
   }
 }
 

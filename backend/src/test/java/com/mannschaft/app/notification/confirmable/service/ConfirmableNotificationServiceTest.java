@@ -30,8 +30,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -115,6 +117,30 @@ class ConfirmableNotificationServiceTest {
     @Nested
     @DisplayName("send")
     class Send {
+
+        @Test
+        @DisplayName("PLATFORM確認通知は組織通知クレジットを消費しない")
+        void send_platform_doesNotConsumeOrganizationCredit() {
+            List<Long> recipientIds = List.of(USER_ID_1);
+            ConfirmableNotificationSettingsEntity settings = ConfirmableNotificationSettingsEntity.builder()
+                    .scopeType(ScopeType.PLATFORM)
+                    .scopeId(USER_ID_1)
+                    .build();
+            given(settingsService.getOrCreate(ScopeType.PLATFORM, USER_ID_1)).willReturn(settings);
+            given(userRepository.findById(USER_ID_1)).willReturn(Optional.empty());
+            given(userRepository.getReferenceById(USER_ID_1)).willReturn(mock(UserEntity.class));
+            given(notificationRepository.save(any(ConfirmableNotificationEntity.class)))
+                    .willReturn(createActiveNotification());
+            given(recipientRepository.saveAll(any()))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            notificationService.send(
+                    ScopeType.PLATFORM, USER_ID_1, "個人札の最終認証", null,
+                    ConfirmableNotificationPriority.HIGH, null,
+                    null, null, null, null, null, USER_ID_1, recipientIds);
+
+            verify(notificationCreditService, never()).consume(any(), anyInt(), any());
+        }
 
         @Test
         @DisplayName("send_正常系_受信者3名でsendを呼ぶとnotificationと3件のrecipientが作成される")

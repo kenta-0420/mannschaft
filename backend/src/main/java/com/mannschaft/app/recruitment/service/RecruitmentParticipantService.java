@@ -93,7 +93,11 @@ public class RecruitmentParticipantService {
 
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-
+        // 自己応募は個人札が将来公開された後も不変の禁止契約であり、汚染行の存在秘匿より優先する。
+        if (listing.getScopeType() == com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                && listing.getScopeId().equals(userId)) {
+            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.SELF_APPLICATION_FORBIDDEN);
+        }
         // §5.2 step3 締切チェック
         if (LocalDateTime.now().isAfter(listing.getApplicationDeadline())) {
             throw new BusinessException(RecruitmentErrorCode.DEADLINE_EXCEEDED);
@@ -204,21 +208,8 @@ public class RecruitmentParticipantService {
                 listingId, userId, saved.getStatus(), waitlistPosition);
 
         // F22.1 市: 謝礼有効な札に確定（非キャンセル待ち）したら謝礼の与信（authorize）を開始する（§5.1）。
-        // payment.escrow が購読し ConnectChargeService.authorize を呼ぶ（疎結合・クロスドメイン FK 無し）。
-        if (!isWaitlisted && Boolean.TRUE.equals(listing.getPaymentEnabled())
-                && listing.getPrice() != null && isUserApplication) {
-            eventPublisher.publishEvent(new RecruitmentParticipantConfirmedEvent(
-                    listingId,
-                    saved.getId(),
-                    userId,
-                    listing.getScopeType().name(),
-                    listing.getScopeId(),
-                    listing.getPayeeKind(),
-                    listing.getPayeeUserId(),
-                    listing.getPrice().longValue(),
-                    // 役務日（役務完了の見込み＝札の start_at）。第三陣-b で「成立〜役務日 > 7日」なら成立時に与信せず
-                    // 完了時即時払い（DEFERRED）へフォールバックする判定に使う。start_at 未設定の札は null（安全側で従来与信）。
-                    listing.getStartAt()));
+        if (!isWaitlisted) {
+            publishPaymentAuthorizationIfNeeded(listing, saved, userId);
         }
 
         // F22.1 市: この申込で FULL に到達したら最終認証の確認通知を送る（§6.1）。
@@ -248,7 +239,6 @@ public class RecruitmentParticipantService {
         // PESSIMISTIC_WRITE で listing をロック
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-
         RecruitmentParticipantEntity participant = participantRepository
                 .findActiveByListingAndUser(listingId, userId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
@@ -346,6 +336,7 @@ public class RecruitmentParticipantService {
 
     public Page<RecruitmentParticipantResponse> listParticipants(Long listingId, Long userId, Pageable pageable) {
         RecruitmentListingEntity listing = listingService.findOrThrow(listingId);
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
         accessControlService.checkAdminOrAbove(userId, listing.getScopeId(), listing.getScopeType().name());
 
         return participantRepository.findByListingIdOrderByAppliedAtAsc(listingId, pageable)
@@ -355,6 +346,7 @@ public class RecruitmentParticipantService {
     @Transactional
     public RecruitmentParticipantResponse markAttended(Long listingId, Long participantId, Long userId) {
         RecruitmentListingEntity listing = listingService.findOrThrow(listingId);
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
         accessControlService.checkAdminOrAbove(userId, listing.getScopeId(), listing.getScopeType().name());
 
         RecruitmentParticipantEntity participant = participantRepository.findByIdAndListingId(participantId, listingId)
@@ -416,8 +408,40 @@ public class RecruitmentParticipantService {
                     .changeReason(ParticipantHistoryReason.AUTO_PROMOTE)
                     .build());
 
+            // 応募時だけでなくキャンセル待ちの昇格時にも起票しないと、支払者の決済画面が恒久的に 404 になる。
+            publishPaymentAuthorizationIfNeeded(listing, candidate, candidate.getUserId());
+
             log.info("F03.11 Phase3 キャンセル待ち昇格: listingId={}, userId={}",
                     listing.getId(), candidate.getUserId());
         });
+    }
+
+    /**
+     * F22.1 市: 有料の個人応募が CONFIRMED になった時点で謝礼の与信開始イベントを発火する。
+     */
+    private void publishPaymentAuthorizationIfNeeded(
+            RecruitmentListingEntity listing,
+            RecruitmentParticipantEntity participant,
+            Long payerUserId) {
+        if (!Boolean.TRUE.equals(listing.getPaymentEnabled())
+                || listing.getPrice() == null
+                || participant.getUserId() == null
+                || payerUserId == null) {
+            return;
+        }
+
+        // payment.escrow が購読し ConnectChargeService.authorize を呼ぶ（疎結合・クロスドメイン FK 無し）。
+        eventPublisher.publishEvent(new RecruitmentParticipantConfirmedEvent(
+                listing.getId(),
+                participant.getId(),
+                payerUserId,
+                listing.getScopeType().name(),
+                listing.getScopeId(),
+                listing.getPayeeKind(),
+                listing.getPayeeUserId(),
+                listing.getPrice().longValue(),
+                // 役務日（役務完了の見込み＝札の start_at）。第三陣-b で「成立〜役務日 > 7日」なら成立時に与信せず
+                // 完了時即時払い（DEFERRED）へフォールバックする判定に使う。start_at 未設定の札は null（安全側で従来与信）。
+                listing.getStartAt()));
     }
 }

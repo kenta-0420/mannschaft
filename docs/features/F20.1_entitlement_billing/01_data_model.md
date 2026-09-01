@@ -128,6 +128,8 @@ CREATE TABLE plan_price_bands (
 
 ## 3. 業務テーブル（UUIDv7）
 
+> **2026-08-31 改訂**: `billing_customers`、`billing_price_versions`、`billing_quotes`、`billing_change_previews`、`billing_contract_changes`、`billing_contract_operations`、`billing_customer_migrations`、請求投影と既存表 ALTER は [05_billing_center.md §5](05_billing_center.md#5-完全-ddl-と-flyway) を正本とする。`psp_customer_ref` は scope-owned Customer の履歴参照であり、TEAM/ORG の Customer を操作者個人へ解決する実装は廃止する。
+
 ### 3.1 `billing_contracts`（PLAN/ADDON 契約行）
 
 `entitlements(source_kind IN ('PLAN','ADDON'))` の発行元。**2026-07-10 実決済前倒し（D-1）**: 当初「ベータ中は決済を伴わない契約状態のみ」だったが、マスター御裁可により PSP 列を V151 で Expand 済み（下記 DDL は V150+V151 適用後の姿）。
@@ -147,8 +149,8 @@ CREATE TABLE billing_contracts (
     price_jpy_snapshot INT UNSIGNED NULL COMMENT '契約時単価スナップショット（円）。ベータ中=NULL（無償）。遡及防止の焼き付け（F22.1 fee_policy_key と同型）',
     contracted_at DATETIME(6) NOT NULL COMMENT '契約開始日時',
     cancelled_at DATETIME(6) NULL COMMENT '解約日時（無償=CANCELLED と同時／有償=期末解約予約と同時・status は ACTIVE のまま）',
-    psp_customer_ref VARCHAR(64) NULL COMMENT 'Stripe Customer ID（cus_xxx・論理参照）。決済フローの契約のみ（V151）',
-    psp_subscription_ref VARCHAR(64) NULL COMMENT 'Stripe Subscription ID（sub_xxx・論理参照）。webhook 逆引きキー（V151）',
+    psp_customer_ref VARCHAR(255) NULL COMMENT 'Stripe Customer ID（scope-owned Customerの履歴参照。V196でbilling_customer_idへ正規化）',
+    psp_subscription_ref VARCHAR(255) NULL COMMENT 'Stripe Subscription ID（sub_xxx・論理参照）。webhook 逆引きキー（V151、V196で255文字へ拡張）',
     current_period_end DATETIME(6) NULL COMMENT '現サイクル終了（valid_until 上限／期末解約の失効時刻・V151）',
     created_by BIGINT UNSIGNED NULL COMMENT '契約操作者（論理参照。シスアド手動付与時はシスアドの userId）',
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -171,7 +173,7 @@ CREATE TABLE billing_contracts (
 ```
 
 - **契約の一意性は DB で保証する**（アプリ層 exists チェックだけでは TOCTOU レースで二重契約が作れるため）。§3.1.1 の「アクティブ契約ポインタ表」で物理担保する。`billing_contracts` 自体は**契約履歴（append-only）**として全行を残す（`status` を含む UNIQUE は CANCELLED→再契約の履歴を壊すので張らない）。
-- **PSP 列（V151・2026-07-10 前倒し済み・D-1）**: `psp_customer_ref` / `psp_subscription_ref` / `current_period_end`。`uk_bc_psp_subscription` は webhook 逆引き用 UNIQUE（MySQL の UNIQUE は NULL を重複扱いしないため無償契約＝NULL が複数あっても衝突しない）。この逆引きヒットの有無で F08.9 会費の subscription と分離する（D-2・AC-38）。
+- **PSP 列**: `psp_customer_ref` / `psp_subscription_ref` / `current_period_end` は履歴/逆引き用に温存する。V196 で `billing_customer_id` と不変 `price_band_version_id` を追加する。親`billing_price_versions`はcatalog revision、Money/税/Stripe Priceを持つ子`billing_price_band_versions`を販売正本とし、以後の所有者・販売価格を正規化する（05 §5）。
 - Repository: `BillingContractRepository extends AbstractTenantAwareRepository<BillingContractEntity, UUID>`（`organization_id` NULL 許容＋`deleted_at` 保持で適用・escrow 前例・§0）。
 
 ### 3.1.1 `active_contract_pointers`（契約一意性の DB バックストップ・H-1）
@@ -300,7 +302,7 @@ activeMemberCount(scopeKind, scopeId):
 （契約 API）──▶ ACTIVE ──(解約 API)──▶ CANCELLED（終端・即時失効）
 
 【決済フロー（価格設定済み・D-2/D-3/D-4）】
-（契約 API）──▶ PENDING ──(checkout.session.completed)──▶ ACTIVE
+（契約 API）──▶ PENDING ──(invoice.paid)──▶ ACTIVE
    PENDING ──(checkout.session.expired / Checkout 生成失敗の補償)──▶ CANCELLED（pointer 解放・再挑戦可）
    ACTIVE  ──(invoice.payment_failed)──▶ PAST_DUE ──(invoice.paid)──▶ ACTIVE（回復）
    ACTIVE  ──(解約 API: cancel_at_period_end 予約・status は ACTIVE のまま cancelled_at セット)
@@ -310,9 +312,9 @@ activeMemberCount(scopeKind, scopeId):
 
 - **無償** `ACTIVE → CANCELLED` 時、当該契約由来の entitlements（`source_ref_id = contract.id` かつ `revoked_at IS NULL`）を**同一トランザクションで全件 revoke**（AC-20/AC-36）。
 - **有償解約（D-3）**: `cancel_at_period_end` を予約し、由来 entitlements の `valid_until` を `current_period_end` にセット（webhook 未達でも期末に自動失効する保険・半開区間・AC-35）。EXPIRED 確定は `customer.subscription.deleted` webhook。
-- **PENDING では entitlements を発行しない**（入金確定＝`checkout.session.completed` で初めて発行・AC-32/33）。
-- **PAST_DUE は権利を触らない**（`current_period_end` まで利用可・AC-37）。
-- プラン変更（BASIC→FULL 等）は「旧契約 CANCELLED ＋ 新契約 ACTIVE」の 2 操作を 1 トランザクションで行う（AC-19・02 §4.3）。
+- **PENDING では entitlements を発行しない**（入金確定＝`invoice.paid` で初めて発行・AC-32/33・05 §4）。
+- **renewal の PAST_DUE は権利を触らない**（既存`current_period_end`まで利用可）。`invoice.payment_failed`では期間を延長せず、retryの`invoice.paid`だけが次periodを延長する。upgrade change invoiceのSCA失敗は05のREQUIRES_ACTIONであり、この遷移を流用しない（AC-37/05 §4）。
+- プラン変更は `billing_contract_changes` のSagaで扱う。upgrade は `invoice.paid`、downgrade は翌月1日到達後の `customer.subscription.updated` で確定し、当月に旧権利を即時取消しない（05 §4/§5）。
 
 ---
 
@@ -377,7 +379,7 @@ team_org_memberships（status=ACTIVE）─(論理・読取のみ)─ チーム�
 - **マスタ 4 表は全シャード複製**（マスタ例外の定義どおり）。
 - **キャッシュ**: `isEntitled` は Valkey `@Cacheable(value = "entitlement:check", key = "#scopeKind.name() + ':' + #scopeId + ':' + #featureKey")`・TTL 60 秒（`RedisConfig` に個別登録。既定 30 分は取消反映が遅すぎる）。付与/取消/契約変更で `@CacheEvict`（全キー特定が困難な契約変更は cacheName 単位 `allEntries=true` で evict・発生頻度が低いため許容）。`teamPlan` キャッシュ（`TeamPlanService`）も同時 evict（README §4.1）。
 - **後方互換**: `team_subscriptions`・`TeamPlanService.hasPaidPlan` シグネチャ・`RESERVATION_029`(402)・`TMPL_004` の挙動を変えない（AC-14/15）。`feature_catalog.free_for_nonprofit` 初期全 FALSE で現行課金挙動と完全一致。
-- **段階拡張**: 実決済 PSP 連携は **2026-07-10 前倒し実施**（列 Expand=V151 済み・Checkout `Mode.SUBSCRIPTION` 自社受取・§3.1/§4.2）。請求書・領収書・F22.1 連携可否確定は残（別軍議）。
+- **段階拡張**: 実決済 PSP 連携は **2026-07-10 前倒し実施**（列 Expand=V151 済み・Checkout `Mode.SUBSCRIPTION` 自社受取・§3.1/§4.2）。scope-owned Customer、請求書・領収書、支払方法、日割り、変更・解約は 05 を正本とする。F22.1 連携だけは将来の検討対象である。
 
 ---
 
@@ -399,8 +401,9 @@ team_org_memberships（status=ACTIVE）─(論理・読取のみ)─ チーム�
 | 版（実採番済み） | 内容 |
 |---|---|
 | `V151.20260710123257__expand_billing_contracts_psp.sql` | **実決済（D-1・2026-07-10）**: `billing_contracts` へ `psp_customer_ref`/`psp_subscription_ref`/`current_period_end` を ALTER 追加＋`uk_bc_psp_subscription`（webhook 逆引き）＋`chk_bc_status` を DROP→5 値（`PENDING`/`ACTIVE`/`PAST_DUE`/`CANCELLED`/`EXPIRED`）で再 ADD |
+| `V196.20260831000000__expand_billing_center.sql`（仮番） | scope-owned Customer・価格版・請求投影・変更/移行 Saga・権限 catalog を追加し、`billing_contracts.psp_customer_ref` と `psp_subscription_ref` をともに `VARCHAR(255)` へ明示拡張する。マージ直前に Flyway 最大番号+1へ再採番する |
 
-- **既存データ番人テストの要否**: P1（V150 系）は新規 CREATE＋シードのみで不要。**V151 は既存テーブルへの ALTER＋CHECK 置換**だが、既存行の status は全て旧 3 値内であり新 CHECK は旧値を包含する（列追加は全て NULL 許容・UPDATE 不要）ため安全。from-scratch 起動テストと `FlywayTimestampNamingGuardTest` 準拠。
+- **既存データ番人テストの要否**: P1（V150 系）は新規 CREATE＋シードのみで不要。**V151 は既存テーブルへの ALTER＋CHECK 置換**だが、既存行の status は全て旧 3 値内であり新 CHECK は旧値を包含する（列追加は全て NULL 許容・UPDATE 不要）ため安全。V196 の事前番人は `psp_customer_ref`/`psp_subscription_ref` の最大長が255以下、非NULL subscription ref の一意性、既存 status/金額が不変であることを検査し、不適合なら migration を停止する。適用テストは V151 既存行を投入して V196 後も参照値・status・履歴行数が不変であることを確認する。from-scratch 起動テストと `FlywayTimestampNamingGuardTest` 準拠。
 
 ---
 

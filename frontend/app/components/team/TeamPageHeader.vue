@@ -39,6 +39,13 @@ function toggleOverflowMenu(event: Event) {
 }
 const overflowMenuItems = computed(() => {
   const items: { label: string, icon: string, command: () => void }[] = []
+  if (props.roleName) {
+    items.push({
+      label: t('market.management.title'),
+      icon: 'pi pi-shopping-bag',
+      command: () => navigateTo(`/teams/${props.team.slug}/market`),
+    })
+  }
   if (props.isAdminOrDeputy) {
     items.push({
       label: t('market.action.post'),
@@ -105,6 +112,17 @@ const overflowMenuItems = computed(() => {
           entity-type="TEAM"
           :entity-id="String(team.id)"
           :entity-name="displayName"
+        />
+        <Button
+          v-if="roleName"
+          :label="$t('market.management.title')"
+          icon="pi pi-shopping-bag"
+          severity="secondary"
+          outlined
+          size="small"
+          class="hidden sm:inline-flex"
+          data-testid="team-market-link"
+          @click="navigateTo(`/teams/${team.slug}/market`)"
         />
         <template v-if="team.visibility?.supporterEnabled && !roleName">
           <Button

@@ -86,6 +86,7 @@
     },
     "admin": {
       "pageTitle": "Payment management",
+      "contentGate": {"title":"Content gate management","loading":"Loading…","loadError":"Failed to load content gates","contentType":"Content type","contentId":"Content ID","post":"Post","announcement":"Announcement","save":"Save","saveSuccess":"Content gate saved","saveError":"Failed to save content gate","titleHidden":"Hide title","noItems":"No eligible payment items","clearHint":"Remove all items and save to clear the gate"},
       "permissionDenied": "このページは管理者のみアクセスできます",
       "itemsTitle": "Payment items",
       "selectItem": "Select a payment item",

@@ -1,6 +1,7 @@
 package com.mannschaft.app.files.service;
 
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.R2StorageService.PresignedPartUrl;
 import com.mannschaft.app.files.dto.CompleteMultipartRequest;
 import com.mannschaft.app.files.dto.CompleteMultipartResponse;
@@ -51,6 +52,12 @@ class MultipartUploadServiceTest {
 
     @Mock
     private MultipartUploadSessionRepository sessionRepository;
+
+    @Mock
+    private StorageAclService storageAclService;
+
+    @Mock
+    private MultipartUploadCleanupService cleanupService;
 
     @InjectMocks
     private MultipartUploadService service;
@@ -107,6 +114,42 @@ class MultipartUploadServiceTest {
 
             // then
             assertThat(result.getFileKey()).startsWith("files/");
+        }
+
+        @Test
+        @DisplayName("ACL登録失敗時はR2 multipartを補償abortする")
+        void acl登録失敗時はR2Multipartを補償abortする() {
+            StartMultipartUploadRequest req = new StartMultipartUploadRequest(
+                    null, "test-video.mp4", "video/mp4", 200 * 1024 * 1024L,
+                    10, 20 * 1024 * 1024L, "blog/");
+            given(r2StorageService.createMultipartUpload(anyString(), anyString())).willReturn(UPLOAD_ID);
+            given(sessionRepository.save(any(MultipartUploadSessionEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            RuntimeException failure = new RuntimeException("acl unavailable");
+            org.mockito.Mockito.doThrow(failure).when(storageAclService).registerPending(
+                    anyString(), any(), anyString(), any(), anyString(), any(), any(), any());
+
+            assertThatThrownBy(() -> service.startUpload(USER_ID, req)).isSameAs(failure);
+            then(r2StorageService).should().abortMultipartUpload(anyString(), eq(UPLOAD_ID));
+        }
+
+        @Test
+        @DisplayName("補償abort失敗時は別Txの再試行台帳へ記録する")
+        void 補償abort失敗時は再試行台帳へ記録する() {
+            StartMultipartUploadRequest req = new StartMultipartUploadRequest(
+                    null, "test-video.mp4", "video/mp4", 200 * 1024 * 1024L,
+                    10, 20 * 1024 * 1024L, "blog/");
+            given(r2StorageService.createMultipartUpload(anyString(), anyString())).willReturn(UPLOAD_ID);
+            given(sessionRepository.save(any(MultipartUploadSessionEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            org.mockito.Mockito.doThrow(new RuntimeException("acl unavailable")).when(storageAclService)
+                    .registerPending(anyString(), any(), anyString(), any(), anyString(), any(), any(), any());
+            org.mockito.Mockito.doThrow(new RuntimeException("r2 unavailable")).when(r2StorageService)
+                    .abortMultipartUpload(anyString(), eq(UPLOAD_ID));
+
+            assertThatThrownBy(() -> service.startUpload(USER_ID, req)).isInstanceOf(RuntimeException.class);
+            org.mockito.Mockito.verify(cleanupService).markAbortPending(
+                    eq(UPLOAD_ID), anyString(), eq("blog"), eq("PERSONAL"), eq(USER_ID), eq(USER_ID), eq("video/mp4"));
         }
 
         @Test

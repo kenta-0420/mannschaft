@@ -3,6 +3,7 @@ package com.mannschaft.app.files.service;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.R2StorageService.PresignedPartUrl;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.files.dto.CompleteMultipartRequest;
 import com.mannschaft.app.files.dto.CompleteMultipartResponse;
 import com.mannschaft.app.files.dto.PartUrlRequest;
@@ -73,6 +74,8 @@ public class MultipartUploadService {
 
     private final R2StorageService r2StorageService;
     private final MultipartUploadSessionRepository sessionRepository;
+    private final StorageAclService storageAclService;
+    private final MultipartUploadCleanupService cleanupService;
 
     /**
      * Multipart Upload を開始する。
@@ -135,7 +138,29 @@ public class MultipartUploadService {
                 .status("IN_PROGRESS")
                 .expiresAt(LocalDateTime.now().plus(SESSION_TTL))
                 .build();
-        sessionRepository.save(session);
+        try {
+            sessionRepository.save(session);
+            storageAclService.registerPending(
+                    r2Key, uploaderId, "PERSONAL", uploaderId, req.getContentType(), SESSION_TTL,
+                    "MULTIPART_UPLOAD", null);
+        } catch (RuntimeException registrationFailure) {
+            try {
+                r2StorageService.abortMultipartUpload(r2Key, r2UploadId);
+            } catch (RuntimeException abortFailure) {
+                registrationFailure.addSuppressed(abortFailure);
+                log.warn("Multipart Upload の補償abortに失敗しました: uploadId={}, fileKey={}",
+                        r2UploadId, r2Key, abortFailure);
+                try {
+                    cleanupService.markAbortPending(r2UploadId, r2Key, resolveFeature(prefix), "PERSONAL",
+                            uploaderId, uploaderId, req.getContentType());
+                } catch (RuntimeException markerFailure) {
+                    registrationFailure.addSuppressed(markerFailure);
+                    log.error("Multipart補償abortの再試行台帳登録にも失敗しました: uploadId={}, fileKey={}",
+                            r2UploadId, r2Key, markerFailure);
+                }
+            }
+            throw registrationFailure;
+        }
 
         log.info("Multipart Upload 開始: uploaderId={}, r2Key={}, uploadId={}", uploaderId, r2Key, r2UploadId);
         return new StartMultipartUploadResponse(r2UploadId, r2Key, req.getPartCount(), req.getPartSize());

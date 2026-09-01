@@ -25,14 +25,86 @@ import java.util.Optional;
  */
 public interface RecruitmentListingRepository extends JpaRepository<RecruitmentListingEntity, Long> {
 
+    /** @return モデレーションによる非表示を含む募集札の最小通報情報 */
+    @Query(value = """
+            SELECT id, scope_type AS scopeType, scope_id AS scopeId, created_by AS createdBy, title,
+                   visibility, status, moderation_hidden_at AS moderationHiddenAt
+            FROM recruitment_listings
+            WHERE id = :listingId AND deleted_at IS NULL
+            """, nativeQuery = true)
+    Optional<ModerationListingProjection> findModerationListingById(@Param("listingId") Long listingId);
+
+    /** モデレーションによる募集札の可逆的な非表示。 */
+    @Modifying
+    @Query(value = """
+            UPDATE recruitment_listings
+            SET moderation_hidden_at = CURRENT_TIMESTAMP
+            WHERE id = :listingId AND deleted_at IS NULL
+            """, nativeQuery = true)
+    int hideForModeration(@Param("listingId") Long listingId);
+
+    /** モデレーション非表示の解除。凍結解除だけではこの操作を呼ばない。 */
+    @Modifying
+    @Query(value = """
+            UPDATE recruitment_listings
+            SET moderation_hidden_at = NULL
+            WHERE id = :listingId AND deleted_at IS NULL
+            """, nativeQuery = true)
+    int restoreFromModeration(@Param("listingId") Long listingId);
+
+    interface ModerationListingProjection {
+        Long getId();
+        String getScopeType();
+        Long getScopeId();
+        Long getCreatedBy();
+        String getTitle();
+        String getVisibility();
+        String getStatus();
+        java.time.Instant getModerationHiddenAt();
+    }
+
     Page<RecruitmentListingEntity> findByScopeTypeAndScopeIdOrderByStartAtDesc(
             RecruitmentScopeType scopeType, Long scopeId, Pageable pageable);
 
     Page<RecruitmentListingEntity> findByScopeTypeAndScopeIdAndStatusOrderByStartAtDesc(
             RecruitmentScopeType scopeType, Long scopeId, RecruitmentListingStatus status, Pageable pageable);
 
+    Optional<RecruitmentListingEntity> findByIdAndScopeTypeAndScopeIdAndCreatedBy(
+            Long id, RecruitmentScopeType scopeType, Long scopeId, Long createdBy);
+
+    @Query("""
+            SELECT l FROM RecruitmentListingEntity l
+            WHERE l.scopeType = com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+              AND l.scopeId = :userId
+              AND l.createdBy = :userId
+              AND (:status IS NULL OR l.status = :status)
+              AND (:categoryId IS NULL OR l.categoryId = :categoryId)
+              AND (:cityCode IS NULL OR EXISTS (
+                  SELECT 1 FROM RecruitmentListingRegionEntity rr
+                  WHERE rr.listingId = l.id AND rr.cityCode = :cityCode))
+              AND (:cityCode IS NOT NULL OR :prefectureCode IS NULL OR EXISTS (
+                  SELECT 1 FROM RecruitmentListingRegionEntity rr
+                  WHERE rr.listingId = l.id AND rr.prefectureCode = :prefectureCode))
+            ORDER BY l.startAt DESC
+            """)
+    Page<RecruitmentListingEntity> findPersonalMarketListings(
+            @Param("userId") Long userId,
+            @Param("status") RecruitmentListingStatus status,
+            @Param("prefectureCode") String prefectureCode,
+            @Param("cityCode") String cityCode,
+            @Param("categoryId") Long categoryId,
+            Pageable pageable);
+
     Optional<RecruitmentListingEntity> findByIdAndScopeTypeAndScopeId(
             Long id, RecruitmentScopeType scopeType, Long scopeId);
+
+    /** 個人札の編集・取消用。複合スコープ条件を含めて行ロックし、IDOR と競合を同時に防ぐ。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT l FROM RecruitmentListingEntity l WHERE l.id = :id AND l.scopeType = :scopeType AND l.scopeId = :scopeId")
+    Optional<RecruitmentListingEntity> findByIdAndScopeTypeAndScopeIdForUpdate(
+            @Param("id") Long id,
+            @Param("scopeType") RecruitmentScopeType scopeType,
+            @Param("scopeId") Long scopeId);
 
     /**
      * F03.11 Phase 4 全体検索クエリ (§9.x)。
@@ -165,6 +237,11 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL
               )
+              AND l.scopeType IN (
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL,
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION
+              )
               AND l.confirmedCount < l.minCapacity
             ORDER BY l.autoCancelAt ASC
             """)
@@ -181,6 +258,10 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             SELECT l FROM RecruitmentListingEntity l
             WHERE l.scopeId IN :scopeIds
               AND l.status = 'OPEN'
+              AND l.scopeType IN (
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION
+              )
             ORDER BY l.createdAt DESC
             """)
     List<RecruitmentListingEntity> findOpenByScopeIds(
@@ -203,6 +284,7 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
                 CASE
                     WHEN r.scopeType = com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM THEN 'TEAM'
                     WHEN r.scopeType = com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION THEN 'ORGANIZATION'
+                    WHEN r.scopeType = com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL THEN 'PERSONAL'
                     ELSE NULL
                 END,
                 r.scopeId,
@@ -244,6 +326,7 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
      * @param prefecture        都道府県コード（null=全国）
      * @param city              市区町村コード（null=県ロールアップ or 全国）
      * @param categoryId        ジャンル（null=全ジャンル）
+     * @param ownerType         札主区分（null=全区分）
      * @param keyword           タイトル部分一致（null=無条件・ワイルドカードはエスケープ済）
      * @param includeRegionNone 地域未設定（中間表 0 件）の札も含めるか
      * @param pageable          ページング
@@ -252,10 +335,20 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
     @Query("""
             SELECT l FROM RecruitmentListingEntity l
             WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL)
+              AND (l.scopeType <> com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                   OR EXISTS (
+                       SELECT 1 FROM UserEntity u
+                       WHERE u.id = l.scopeId
+                         AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE
+                         AND u.publicProfileEnabled = TRUE))
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
               AND (:categoryId IS NULL OR l.categoryId = :categoryId)
+              AND (:ownerType IS NULL OR l.scopeType = :ownerType)
               AND (:keyword IS NULL OR l.title LIKE CONCAT('%', :keyword, '%') ESCAPE '\\')
               AND (
                     (:city IS NOT NULL AND EXISTS (
@@ -269,15 +362,76 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
                         SELECT 1 FROM RecruitmentListingRegionEntity rr
                         WHERE rr.listingId = l.id))
               )
-            ORDER BY l.startAt ASC
             """)
     Page<RecruitmentListingEntity> searchMarketListings(
             @Param("prefecture") String prefecture,
             @Param("city") String city,
             @Param("categoryId") Long categoryId,
+            @Param("ownerType") RecruitmentScopeType ownerType,
             @Param("keyword") String keyword,
             @Param("includeRegionNone") boolean includeRegionNone,
             Pageable pageable);
+
+    default Page<RecruitmentListingEntity> searchMarketListings(
+            String prefecture, String city, Long categoryId, String keyword,
+            boolean includeRegionNone, Pageable pageable) {
+        return searchMarketListings(
+                prefecture, city, categoryId, null, keyword, includeRegionNone, pageable);
+    }
+
+    /** 認証済み閲覧者向け: PUBLIC と、現在も選択公開先を共有する PERSONAL 札を検索する。 */
+    @Query("""
+            SELECT l FROM RecruitmentListingEntity l
+            WHERE (l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+                    OR (l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.SELECTED_SCOPES
+                        AND l.scopeType = com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                        AND l.id IN :selectedListingIds))
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL)
+              AND (l.scopeType <> com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                   OR EXISTS (
+                       SELECT 1 FROM UserEntity u
+                       WHERE u.id = l.scopeId
+                         AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE
+                         AND (l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.SELECTED_SCOPES
+                              OR u.publicProfileEnabled = TRUE)))
+              AND l.status IN (
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
+              AND (:categoryId IS NULL OR l.categoryId = :categoryId)
+              AND (:ownerType IS NULL OR l.scopeType = :ownerType)
+              AND (:keyword IS NULL OR l.title LIKE CONCAT('%', :keyword, '%') ESCAPE '\\')
+              AND (
+                    (:city IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM RecruitmentListingRegionEntity rr
+                        WHERE rr.listingId = l.id AND rr.cityCode = :city))
+                 OR (:city IS NULL AND :prefecture IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM RecruitmentListingRegionEntity rr
+                        WHERE rr.listingId = l.id AND rr.prefectureCode = :prefecture))
+                 OR (:city IS NULL AND :prefecture IS NULL)
+                 OR (:includeRegionNone = TRUE AND NOT EXISTS (
+                        SELECT 1 FROM RecruitmentListingRegionEntity rr
+                        WHERE rr.listingId = l.id))
+              )
+            """)
+    Page<RecruitmentListingEntity> searchAccessibleMarketListings(
+            @Param("selectedListingIds") Collection<Long> selectedListingIds,
+            @Param("prefecture") String prefecture,
+            @Param("city") String city,
+            @Param("categoryId") Long categoryId,
+            @Param("ownerType") RecruitmentScopeType ownerType,
+            @Param("keyword") String keyword,
+            @Param("includeRegionNone") boolean includeRegionNone,
+            Pageable pageable);
+
+    default Page<RecruitmentListingEntity> searchAccessibleMarketListings(
+            Collection<Long> selectedListingIds, String prefecture, String city,
+            Long categoryId, String keyword, boolean includeRegionNone, Pageable pageable) {
+        return searchAccessibleMarketListings(
+                selectedListingIds, prefecture, city, categoryId, null, keyword,
+                includeRegionNone, pageable);
+    }
 
     /**
      * 市の公開札を ID で取得する（PUBLIC かつ OPEN/FULL のみ）。
@@ -290,11 +444,46 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             SELECT l FROM RecruitmentListingEntity l
             WHERE l.id = :id
               AND l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL)
+              AND (l.scopeType <> com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                   OR EXISTS (
+                       SELECT 1 FROM UserEntity u
+                       WHERE u.id = l.scopeId
+                         AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE
+                         AND u.publicProfileEnabled = TRUE))
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
             """)
     Optional<RecruitmentListingEntity> findPublicMarketListingById(@Param("id") Long id);
+
+    /** PUBLIC または閲覧者が選択公開先に現在所属する札を、存在秘匿条件付きで取得する。 */
+    @Query("""
+            SELECT l FROM RecruitmentListingEntity l
+            WHERE l.id = :id
+              AND (l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+                    OR (l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.SELECTED_SCOPES
+                        AND l.scopeType = com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                        AND l.id IN :selectedListingIds))
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL)
+              AND (l.scopeType <> com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                   OR EXISTS (
+                       SELECT 1 FROM UserEntity u
+                       WHERE u.id = l.scopeId
+                         AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE
+                         AND (l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.SELECTED_SCOPES
+                              OR u.publicProfileEnabled = TRUE)))
+              AND l.status IN (
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
+                  com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
+            """)
+    Optional<RecruitmentListingEntity> findAccessibleMarketListingById(
+            @Param("id") Long id,
+            @Param("selectedListingIds") Collection<Long> selectedListingIds);
 
     /**
      * 都道府県ノードごとの公開札件数（市の summary・パンくず用・F22.1 Phase2 D 複数地域対応）。
@@ -313,6 +502,15 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             FROM RecruitmentListingRegionEntity rr
             JOIN RecruitmentListingEntity l ON l.id = rr.listingId
             WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL)
+              AND (l.scopeType <> com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                   OR EXISTS (
+                       SELECT 1 FROM UserEntity u
+                       WHERE u.id = l.scopeId
+                         AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE
+                         AND u.publicProfileEnabled = TRUE))
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)
@@ -335,6 +533,15 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             FROM RecruitmentListingRegionEntity rr
             JOIN RecruitmentListingEntity l ON l.id = rr.listingId
             WHERE l.visibility = com.mannschaft.app.recruitment.RecruitmentVisibility.PUBLIC
+              AND l.scopeType IN (com.mannschaft.app.recruitment.RecruitmentScopeType.TEAM,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.ORGANIZATION,
+                                  com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL)
+              AND (l.scopeType <> com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
+                   OR EXISTS (
+                       SELECT 1 FROM UserEntity u
+                       WHERE u.id = l.scopeId
+                         AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE
+                         AND u.publicProfileEnabled = TRUE))
               AND l.status IN (
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.OPEN,
                   com.mannschaft.app.recruitment.RecruitmentListingStatus.FULL)

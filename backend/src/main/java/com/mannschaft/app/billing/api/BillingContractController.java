@@ -6,6 +6,8 @@ import com.mannschaft.app.billing.api.dto.ContractResponse;
 import com.mannschaft.app.billing.api.dto.CreateContractRequest;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -59,6 +61,8 @@ public class BillingContractController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(body));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "本人の既存課金契約をGate状態にかかわらず解約可能にするため")
     @DeleteMapping("/me/billing/contracts/{contractId}")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "自分の契約解約", description = "USER スコープ。")
@@ -83,8 +87,8 @@ public class BillingContractController {
     // ============================================================
 
     @PostMapping("/teams/{teamId}/billing/contracts")
-    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
-    @Operation(summary = "チームの契約作成", description = "TEAM スコープ。ADMIN のみ。Idempotency-Key 必須。")
+    @PreAuthorize("@billingAccessGuard.canManage(authentication, T(com.mannschaft.app.billing.EntitlementScopeKind).TEAM, #teamId)")
+    @Operation(summary = "チームの契約作成", description = "TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。Idempotency-Key 必須。")
     public ResponseEntity<ApiResponse<ContractResponse>> createForTeam(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateContractRequest request,
@@ -95,9 +99,11 @@ public class BillingContractController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(body));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "チームの既存課金契約をGate状態にかかわらず解約可能にするため")
     @DeleteMapping("/teams/{teamId}/billing/contracts/{contractId}")
-    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
-    @Operation(summary = "チームの契約解約", description = "TEAM スコープ。ADMIN のみ。")
+    @PreAuthorize("@billingAccessGuard.canManage(authentication, T(com.mannschaft.app.billing.EntitlementScopeKind).TEAM, #teamId)")
+    @Operation(summary = "チームの契約解約", description = "TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。")
     public ResponseEntity<ApiResponse<ContractResponse>> cancelForTeam(
             @PathVariable Long teamId, @PathVariable UUID contractId) {
         Long operatorUserId = SecurityUtils.getCurrentUserId();
@@ -106,8 +112,8 @@ public class BillingContractController {
     }
 
     @PutMapping("/teams/{teamId}/billing/contracts/{contractId}")
-    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
-    @Operation(summary = "チームのプラン変更", description = "TEAM スコープ。ADMIN のみ。")
+    @PreAuthorize("@billingAccessGuard.canManage(authentication, T(com.mannschaft.app.billing.EntitlementScopeKind).TEAM, #teamId)")
+    @Operation(summary = "チームのプラン変更", description = "TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。")
     public ResponseEntity<ApiResponse<ContractResponse>> changeForTeam(
             @PathVariable Long teamId, @PathVariable UUID contractId,
             @Valid @RequestBody ChangePlanRequest request) {
@@ -121,8 +127,8 @@ public class BillingContractController {
     // ============================================================
 
     @PostMapping("/organizations/{orgId}/billing/contracts")
-    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
-    @Operation(summary = "組織の契約作成", description = "ORG スコープ。ADMIN のみ。Idempotency-Key 必須。")
+    @PreAuthorize("@billingAccessGuard.canManage(authentication, T(com.mannschaft.app.billing.EntitlementScopeKind).ORG, #orgId)")
+    @Operation(summary = "組織の契約作成", description = "ORG スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。Idempotency-Key 必須。")
     public ResponseEntity<ApiResponse<ContractResponse>> createForOrg(
             @PathVariable Long orgId,
             @Valid @RequestBody CreateContractRequest request,
@@ -133,9 +139,11 @@ public class BillingContractController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(body));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "組織の既存課金契約をGate状態にかかわらず解約可能にするため")
     @DeleteMapping("/organizations/{orgId}/billing/contracts/{contractId}")
-    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
-    @Operation(summary = "組織の契約解約", description = "ORG スコープ。ADMIN のみ。")
+    @PreAuthorize("@billingAccessGuard.canManage(authentication, T(com.mannschaft.app.billing.EntitlementScopeKind).ORG, #orgId)")
+    @Operation(summary = "組織の契約解約", description = "ORG スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。")
     public ResponseEntity<ApiResponse<ContractResponse>> cancelForOrg(
             @PathVariable Long orgId, @PathVariable UUID contractId) {
         Long operatorUserId = SecurityUtils.getCurrentUserId();
@@ -144,8 +152,8 @@ public class BillingContractController {
     }
 
     @PutMapping("/organizations/{orgId}/billing/contracts/{contractId}")
-    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
-    @Operation(summary = "組織のプラン変更", description = "ORG スコープ。ADMIN のみ。")
+    @PreAuthorize("@billingAccessGuard.canManage(authentication, T(com.mannschaft.app.billing.EntitlementScopeKind).ORG, #orgId)")
+    @Operation(summary = "組織のプラン変更", description = "ORG スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。")
     public ResponseEntity<ApiResponse<ContractResponse>> changeForOrg(
             @PathVariable Long orgId, @PathVariable UUID contractId,
             @Valid @RequestBody ChangePlanRequest request) {

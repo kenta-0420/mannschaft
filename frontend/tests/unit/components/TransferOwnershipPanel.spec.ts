@@ -9,30 +9,38 @@ import type { MemberResponse } from '~/types/member'
  * CMP-051 TransferOwnershipPanel.vue ユニットテスト。
  *
  * テスト観点:
- *  - TOP-001: 確認入力が未一致のあいだは transferOwnership が呼ばれない（誤爆防止）
- *  - TOP-002: 譲渡先未選択でも transferOwnership が呼ばれない
- *  - TOP-003: 確認完了後、チームは useTeamApi.transferOwnership(slug, userId) で呼ばれる
- *  - TOP-004: 組織は useOrganizationApi.transferOwnership(slug, userId) で呼ばれる
+ *  - TOP-001: 確認入力が未一致のあいだは createOwnershipOffer が呼ばれない（誤爆防止）
+ *  - TOP-002: 譲渡先未選択でも createOwnershipOffer が呼ばれない
+ *  - TOP-003: 確認完了後、チームは useTeamApi.createOwnershipOffer(slug, userId) で呼ばれる
+ *  - TOP-004: 組織は useOrganizationApi.createOwnershipOffer(slug, userId) で呼ばれる
  *  - TOP-005: API エラー（ROLE_001 等）は握りつぶさず handleApiError へ渡す＆ダイアログを閉じない
- *  - TOP-006: 成功時は成功トースト + transferred emit
+ *  - TOP-006: 成功時は成功トースト + offered emit
  *  - TOP-007: 譲渡先候補から自分自身が除外される
  */
 
-const mockTeamTransfer = vi.fn()
+const mockTeamCreateOffer = vi.fn()
 const mockTeamGetMembers = vi.fn()
-const mockOrgTransfer = vi.fn()
+const mockTeamGetPendingOffers = vi.fn()
+const mockTeamCancelOffer = vi.fn()
+const mockOrgCreateOffer = vi.fn()
 const mockOrgGetMembers = vi.fn()
+const mockOrgGetPendingOffers = vi.fn()
+const mockOrgCancelOffer = vi.fn()
 
 vi.mock('~/composables/useTeamApi', () => ({
   useTeamApi: () => ({
-    transferOwnership: mockTeamTransfer,
+    createOwnershipOffer: mockTeamCreateOffer,
+    getPendingOwnershipOffers: mockTeamGetPendingOffers,
+    cancelOwnershipOffer: mockTeamCancelOffer,
     getMembers: mockTeamGetMembers,
   }),
 }))
 
 vi.mock('~/composables/useOrganizationApi', () => ({
   useOrganizationApi: () => ({
-    transferOwnership: mockOrgTransfer,
+    createOwnershipOffer: mockOrgCreateOffer,
+    getPendingOwnershipOffers: mockOrgGetPendingOffers,
+    cancelOwnershipOffer: mockOrgCancelOffer,
     getMembers: mockOrgGetMembers,
   }),
 }))
@@ -79,6 +87,18 @@ function pagedMembers(members: MemberResponse[]) {
   }
 }
 
+function offerResponse(targetUserId: number) {
+  return {
+    data: {
+      offerId: '00000000-0000-0000-0000-000000000001',
+      status: 'PENDING',
+      target: { userId: targetUserId, displayName: null },
+      issuedBy: { userId: MY_USER_ID, displayName: null },
+      expiresAt: '2026-09-04T00:00:00',
+    },
+  }
+}
+
 /** コンポーネント内部状態への型付きアクセス（script setup の expose 経由）。 */
 interface PanelVm {
   dialogVisible: boolean
@@ -108,13 +128,19 @@ async function mountPanel(scopeType: 'team' | 'organization', scopeName = 'My Te
 
 beforeEach(() => {
   setActivePinia(createPinia())
-  mockTeamTransfer.mockReset()
-  mockOrgTransfer.mockReset()
+  mockTeamCreateOffer.mockReset()
+  mockOrgCreateOffer.mockReset()
   mockToastSuccess.mockReset()
   mockToastError.mockReset()
   mockHandleApiError.mockReset()
   mockTeamGetMembers.mockReset()
   mockOrgGetMembers.mockReset()
+  mockTeamGetPendingOffers.mockReset()
+  mockOrgGetPendingOffers.mockReset()
+  mockTeamCancelOffer.mockReset()
+  mockOrgCancelOffer.mockReset()
+  mockTeamGetPendingOffers.mockResolvedValue({ data: [] })
+  mockOrgGetPendingOffers.mockResolvedValue({ data: [] })
   mockTeamGetMembers.mockResolvedValue(
     pagedMembers([
       buildMember({ userId: MY_USER_ID, displayName: 'Owner', roleName: 'ADMIN' }),
@@ -136,7 +162,7 @@ afterEach(() => {
 })
 
 describe('TransferOwnershipPanel.vue', () => {
-  it('TOP-001: 確認入力が未一致のあいだは transferOwnership が呼ばれない', async () => {
+  it('TOP-001: 確認入力が未一致のあいだは createOwnershipOffer が呼ばれない', async () => {
     const { wrapper, vm } = await mountPanel('team')
     await vm.openDialog()
     vm.targetUserId = 200
@@ -148,7 +174,7 @@ describe('TransferOwnershipPanel.vue', () => {
 
     await vm.submit()
 
-    expect(mockTeamTransfer).not.toHaveBeenCalled()
+    expect(mockTeamCreateOffer).not.toHaveBeenCalled()
     expect(mockToastSuccess).not.toHaveBeenCalled()
   })
 
@@ -163,11 +189,11 @@ describe('TransferOwnershipPanel.vue', () => {
 
     await vm.submit()
 
-    expect(mockTeamTransfer).not.toHaveBeenCalled()
+    expect(mockTeamCreateOffer).not.toHaveBeenCalled()
   })
 
-  it('TOP-003: 確認完了後、チームは (slug, userId) で transferOwnership が呼ばれる', async () => {
-    mockTeamTransfer.mockResolvedValueOnce(undefined)
+  it('TOP-003: 確認完了後、チームは (slug, userId) で createOwnershipOffer が呼ばれる', async () => {
+    mockTeamCreateOffer.mockResolvedValueOnce(offerResponse(200))
     const { wrapper, vm } = await mountPanel('team')
     await vm.openDialog()
     vm.targetUserId = 200
@@ -177,13 +203,13 @@ describe('TransferOwnershipPanel.vue', () => {
     expect(vm.canSubmit).toBe(true)
     await vm.submit()
 
-    expect(mockTeamTransfer).toHaveBeenCalledTimes(1)
-    expect(mockTeamTransfer).toHaveBeenCalledWith('my-slug', 200)
-    expect(mockOrgTransfer).not.toHaveBeenCalled()
+    expect(mockTeamCreateOffer).toHaveBeenCalledTimes(1)
+    expect(mockTeamCreateOffer).toHaveBeenCalledWith('my-slug', 200)
+    expect(mockOrgCreateOffer).not.toHaveBeenCalled()
   })
 
-  it('TOP-004: 組織は useOrganizationApi.transferOwnership が呼ばれる', async () => {
-    mockOrgTransfer.mockResolvedValueOnce(undefined)
+  it('TOP-004: 組織は useOrganizationApi.createOwnershipOffer が呼ばれる', async () => {
+    mockOrgCreateOffer.mockResolvedValueOnce(offerResponse(300))
     const { wrapper, vm } = await mountPanel('organization', 'My Org')
     await vm.openDialog()
     vm.targetUserId = 300
@@ -192,15 +218,15 @@ describe('TransferOwnershipPanel.vue', () => {
 
     await vm.submit()
 
-    expect(mockOrgTransfer).toHaveBeenCalledTimes(1)
-    expect(mockOrgTransfer).toHaveBeenCalledWith('my-slug', 300)
-    expect(mockTeamTransfer).not.toHaveBeenCalled()
+    expect(mockOrgCreateOffer).toHaveBeenCalledTimes(1)
+    expect(mockOrgCreateOffer).toHaveBeenCalledWith('my-slug', 300)
+    expect(mockTeamCreateOffer).not.toHaveBeenCalled()
   })
 
   it('TOP-005: API エラーは握りつぶさず handleApiError へ渡し、ダイアログを閉じない', async () => {
     // CMP-050: 譲渡先が凍結ユーザーのとき BE は ROLE_001 を返す。
     const roleError = { data: { error: { code: 'ROLE_001', message: '対象ユーザーは凍結されています' } } }
-    mockTeamTransfer.mockRejectedValueOnce(roleError)
+    mockTeamCreateOffer.mockRejectedValueOnce(roleError)
 
     const { wrapper, vm } = await mountPanel('team')
     await vm.openDialog()
@@ -214,13 +240,13 @@ describe('TransferOwnershipPanel.vue', () => {
     expect(mockHandleApiError).toHaveBeenCalledTimes(1)
     expect(mockHandleApiError.mock.calls[0]?.[0]).toBe(roleError)
     expect(mockToastSuccess).not.toHaveBeenCalled()
-    expect(wrapper.emitted('transferred')).toBeFalsy()
+    expect(wrapper.emitted('offered')).toBeFalsy()
     // 失敗時はダイアログを閉じない（やり直せる）
     expect(vm.dialogVisible).toBe(true)
   })
 
-  it('TOP-006: 成功時は成功トースト + transferred emit + ダイアログを閉じる', async () => {
-    mockTeamTransfer.mockResolvedValueOnce(undefined)
+  it('TOP-006: 成功時は成功トースト + offered emit + ダイアログを閉じる', async () => {
+    mockTeamCreateOffer.mockResolvedValueOnce(offerResponse(200))
     const { wrapper, vm } = await mountPanel('team')
     await vm.openDialog()
     vm.targetUserId = 200
@@ -231,7 +257,7 @@ describe('TransferOwnershipPanel.vue', () => {
     await wrapper.vm.$nextTick()
 
     expect(mockToastSuccess).toHaveBeenCalledTimes(1)
-    expect(wrapper.emitted('transferred')).toBeTruthy()
+    expect(wrapper.emitted('offered')).toBeTruthy()
     expect(vm.dialogVisible).toBe(false)
     expect(mockHandleApiError).not.toHaveBeenCalled()
   })

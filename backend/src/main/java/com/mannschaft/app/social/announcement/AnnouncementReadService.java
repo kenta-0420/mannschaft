@@ -3,6 +3,10 @@ package com.mannschaft.app.social.announcement;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.dashboard.ViewerRole;
 import com.mannschaft.app.dashboard.service.RoleResolver;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -95,6 +100,7 @@ public class AnnouncementReadService {
      * （ドメイン間のデータ取得は Service メソッド呼び出し経由・CLAUDE.md ドメイン境界の原則）。</p>
      */
     private final RoleResolver roleResolver;
+    private final PaymentGateService paymentGateService;
 
     // ═════════════════════════════════════════════════════════════
     // 2.5 既読マーク（単件）
@@ -236,12 +242,38 @@ public class AnnouncementReadService {
                 return logCompleted(scopeType, scopeId, userId, markedCount);
             }
 
+            // HIDDEN（未充足かつtitleHidden）は一覧・未読件数・既読副作用から除外する。
+            Long batchLastId = unreadFeedIds.get(unreadFeedIds.size() - 1);
+            Map<Long, ContentGateTarget> targets = unreadFeedIds.stream()
+                    .collect(Collectors.toMap(id -> id, id -> scopeType == AnnouncementScopeType.TEAM
+                            ? new ContentGateTarget(id, scopeId, null)
+                            : scopeType == AnnouncementScopeType.ORGANIZATION
+                            ? new ContentGateTarget(id, null, scopeId)
+                            : null,
+                            (left, right) -> left));
+            Map<Long, GateCheckResponse> gateResults = paymentGateService == null ? Map.of()
+                    : paymentGateService.checkAccessBatch(
+                            ContentGateType.ANNOUNCEMENT, unreadFeedIds, userId, targets);
+            if (gateResults == null) {
+                lastSeenId = batchLastId;
+                continue;
+            } else {
+                unreadFeedIds = unreadFeedIds.stream().filter(id -> {
+                    GateCheckResponse gate = gateResults.get(id);
+                    return gate != null && !gate.isTitleHidden();
+                }).toList();
+                if (unreadFeedIds.isEmpty()) {
+                    lastSeenId = batchLastId;
+                    continue;
+                }
+            }
+
             // 1 チャンク = 1 本の UPSERT。ネイティブクエリなので永続化コンテキストを経由せず、
             // 同一トランザクション内の後続クエリ（次チャンクの NOT EXISTS）から即座に見える。
             readStatusRepository.insertReadStatusesIgnoringExisting(userId, unreadFeedIds);
             markedCount += unreadFeedIds.size();
             // ID 昇順で返るので末尾が最大 ID。次周回のカーソルにする。
-            lastSeenId = unreadFeedIds.get(unreadFeedIds.size() - 1);
+            lastSeenId = batchLastId;
 
             // 取得件数がチャンク未満なら未読は尽きている（余計な空クエリを 1 回省く）。
             if (unreadFeedIds.size() < MARK_ALL_BATCH_SIZE) {
@@ -314,7 +346,8 @@ public class AnnouncementReadService {
                 // 1. 帰属検証（他テナントの ID を自スコープ URL に差し込ませない）
                 .filter(feed -> feed.getScopeType() == scopeType && scopeId.equals(feed.getScopeId()))
                 // 2. 可視性検証（一覧に出るものと同じ集合。ロール解決はスコープ一致時のみ発火させる）
-                .filter(feed -> isReadable(feed, resolveAllowedVisibilities(scopeType, scopeId, userId)))
+                .filter(feed -> isReadable(feed, resolveAllowedVisibilities(scopeType, scopeId, userId), userId,
+                        scopeType, scopeId))
                 .orElseThrow(() -> new BusinessException(AnnouncementErrorCode.ANNOUNCE_001));
     }
 
@@ -360,14 +393,35 @@ public class AnnouncementReadService {
      * これらを見ないと「一覧に出ないお知らせを既読化でき、応答差分から実在も判別できる」
      * という同一ドメイン内の挙動割れが残る。</p>
      */
-    private boolean isReadable(AnnouncementFeedEntity feed, Set<String> allowedVisibilities) {
+    private static ContentGateTarget targetOf(AnnouncementFeedEntity feed) {
+        if (feed == null || feed.getId() == null || feed.getScopeType() == null || feed.getScopeId() == null) {
+            return null;
+        }
+        return feed.getScopeType() == AnnouncementScopeType.TEAM
+                ? new ContentGateTarget(feed.getId(), feed.getScopeId(), null)
+                : feed.getScopeType() == AnnouncementScopeType.ORGANIZATION
+                    ? new ContentGateTarget(feed.getId(), null, feed.getScopeId()) : null;
+    }
+
+    private boolean isReadable(AnnouncementFeedEntity feed, Set<String> allowedVisibilities,
+                               Long userId, AnnouncementScopeType scopeType, Long scopeId) {
         if (feed.getSourceDeletedAt() != null) {
             return false;
         }
         if (feed.getExpiresAt() != null && !feed.getExpiresAt().isAfter(LocalDateTime.now())) {
             return false;
         }
-        return allowedVisibilities.contains(feed.getVisibility());
+        if (!allowedVisibilities.contains(feed.getVisibility())) {
+            return false;
+        }
+        ViewerRole role = roleResolver.resolveViewerRole(userId, scopeType.name(), scopeId);
+        if (role == ViewerRole.ADMIN || role == ViewerRole.SYSTEM_ADMIN) {
+            return true;
+        }
+        GateCheckResponse gate = paymentGateService == null ? null : paymentGateService.checkAccess(
+                ContentGateType.ANNOUNCEMENT, feed.getId(), userId, targetOf(feed));
+        // null は評価不能として fail-closed にする。
+        return gate != null && (gate.isAccessible() || !gate.isTitleHidden());
     }
 
     // ═════════════════════════════════════════════════════════════

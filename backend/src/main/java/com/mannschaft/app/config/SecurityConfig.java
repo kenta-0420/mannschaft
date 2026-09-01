@@ -3,17 +3,21 @@ package com.mannschaft.app.config;
 import com.mannschaft.app.admin.filter.AdminImpersonationFilter;
 import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
 import com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter;
 import com.mannschaft.app.event.EventDelegationRateLimitFilter;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter;
+import com.mannschaft.app.recruitment.filter.MarketMutationRateLimitFilter;
 import com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter;
 import com.mannschaft.app.village.VillageAffinityRateLimitFilter;
+import com.mannschaft.app.village.VillageInvitationAcceptRateLimitFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -62,6 +66,7 @@ public class SecurityConfig {
     private final EventDelegationRateLimitFilter eventDelegationRateLimitFilter;
     private final DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter;
     private final VillageAffinityRateLimitFilter villageAffinityRateLimitFilter;
+    private final ObjectProvider<MarketMutationRateLimitFilter> marketMutationRateLimitFilterProvider;
 
     /**
      * F10.1: AdminImpersonationFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -196,8 +201,49 @@ public class SecurityConfig {
         return registration;
     }
 
+    /**
+     * 村招待の受諾レートリミット（依頼書 §5.5・10req/分/ユーザー）。
+     *
+     * <p>本フィルタだけ {@code @Component} ではなくここで Bean 定義する。@Component にすると、
+     * SecurityConfig を取り込む多数のスライステストが個別にこのフィルタの Bean を用意しない限り
+     * コンテキストロードに失敗するため（既存フィルタ群で実際に起きている）。
+     * ここで定義すれば SecurityConfig を取り込んだ時点で必ず供給され、テスト側の追随が要らない。</p>
+     */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public VillageInvitationAcceptRateLimitFilter villageInvitationAcceptRateLimitFilter(
+            ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        return new VillageInvitationAcceptRateLimitFilter(rateLimiterProvider);
+    }
+
+    /**
+     * {@link VillageInvitationAcceptRateLimitFilter} のサーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterAfter）のみで動作させ、
+     * JWT 認証後の確定した SecurityContext から userId を解決できるようにする。
+     */
+    @Bean
+    public FilterRegistrationBean<VillageInvitationAcceptRateLimitFilter>
+            villageInvitationAcceptRateLimitFilterRegistration(
+                    VillageInvitationAcceptRateLimitFilter filter) {
+        FilterRegistrationBean<VillageInvitationAcceptRateLimitFilter> registration =
+                new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    @ConditionalOnBean(MarketMutationRateLimitFilter.class)
+    public FilterRegistrationBean<MarketMutationRateLimitFilter>
+            marketMutationRateLimitFilterRegistration(MarketMutationRateLimitFilter filter) {
+        FilterRegistrationBean<MarketMutationRateLimitFilter> registration =
+                new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+            VillageInvitationAcceptRateLimitFilter villageInvitationAcceptRateLimitFilter)
+            throws Exception {
         http
             .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
@@ -525,6 +571,12 @@ public class SecurityConfig {
             http.addFilterAfter(gateFilter, JwtAuthenticationFilter.class);
         }
 
+        MarketMutationRateLimitFilter marketMutationRateLimitFilter =
+                marketMutationRateLimitFilterProvider.getIfAvailable();
+        if (marketMutationRateLimitFilter != null) {
+            http.addFilterAfter(marketMutationRateLimitFilter, JwtAuthenticationFilter.class);
+        }
+
         http
             .addFilterBefore(publicApiRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(adPublicEndpointRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
@@ -540,7 +592,9 @@ public class SecurityConfig {
             // F22.1 scope-tabs 並べ替え連打防止（§5・30req/分/ユーザー）。JWT 認証後に動かす。
             .addFilterAfter(dashboardScopeTabRateLimitFilter, JwtAuthenticationFilter.class)
             // F17.2 ⑤相性表示（§8.4・30req/分/userId+villageId）。差分攻撃を村単位で捕捉。JWT 認証後に動かす。
-            .addFilterAfter(villageAffinityRateLimitFilter, JwtAuthenticationFilter.class);
+            .addFilterAfter(villageAffinityRateLimitFilter, JwtAuthenticationFilter.class)
+            // 村招待の受諾（§5.5・10req/分/ユーザー）。トークン総当たりを回数で絞る。JWT 認証後に動かす。
+            .addFilterAfter(villageInvitationAcceptRateLimitFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 }

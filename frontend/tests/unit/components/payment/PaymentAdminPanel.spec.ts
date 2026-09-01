@@ -30,6 +30,8 @@ const mockSendReminder = vi.fn()
 const mockExportPayments = vi.fn()
 const mockGetBeneficiarySetting = vi.fn()
 const mockUpdateBeneficiarySetting = vi.fn()
+const mockGetContentPaymentGates = vi.fn()
+const mockUpdateContentPaymentGates = vi.fn()
 
 vi.mock('~/composables/usePaymentApi', () => ({
   usePaymentApi: () => ({
@@ -43,6 +45,13 @@ vi.mock('~/composables/usePaymentApi', () => ({
     exportPayments: mockExportPayments,
     getBeneficiarySetting: mockGetBeneficiarySetting,
     updateBeneficiarySetting: mockUpdateBeneficiarySetting,
+  }),
+}))
+
+vi.mock('~/composables/useContentPaymentGateApi', () => ({
+  useContentPaymentGateApi: () => ({
+    getContentPaymentGates: mockGetContentPaymentGates,
+    updateContentPaymentGates: mockUpdateContentPaymentGates,
   }),
 }))
 
@@ -133,6 +142,11 @@ beforeEach(() => {
   // デフォルト: 受益者制限設定（false=制限なし）
   mockGetBeneficiarySetting.mockResolvedValue({ data: { beneficiaryMemberOnly: false } })
   mockUpdateBeneficiarySetting.mockResolvedValue(undefined)
+  mockGetContentPaymentGates.mockResolvedValue({
+    data: [],
+    meta: { page: 0, size: 50, totalElements: 0, totalPages: 0 },
+  })
+  mockUpdateContentPaymentGates.mockResolvedValue({ data: {} })
 })
 
 /** 項目を選択して支払い一覧をロードした状態の panel を返す（team スコープ）。 */

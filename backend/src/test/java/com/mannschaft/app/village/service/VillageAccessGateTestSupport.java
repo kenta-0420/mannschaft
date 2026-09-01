@@ -75,6 +75,8 @@ public final class VillageAccessGateTestSupport {
                 .when(gateMock).findVisibleVillage(any(), any());
         lenient().doAnswer(inv -> real.filterVisible(inv.getArgument(0), inv.getArgument(1)))
                 .when(gateMock).filterVisible(any(), any());
+        lenient().doAnswer(inv -> real.findVillageByCapability(inv.getArgument(0)))
+                .when(gateMock).findVillageByCapability(any());
 
         return real;
     }

@@ -158,6 +158,7 @@ class UserRolePermissionGroupNativeQueryTest extends AbstractMySqlIntegrationTes
                 .organizationId(organizationId)
                 .build();
         em.persist(ur);
+        addMembership(userId, ScopeType.ORGANIZATION, organizationId, RoleKind.MEMBER, null);
     }
 
     private void grantTeamRole(Long userId, Long teamId, String roleName, int priority) {
@@ -167,6 +168,7 @@ class UserRolePermissionGroupNativeQueryTest extends AbstractMySqlIntegrationTes
                 .teamId(teamId)
                 .build();
         em.persist(ur);
+        addMembership(userId, ScopeType.TEAM, teamId, RoleKind.MEMBER, null);
     }
 
     private void addMembership(Long userId, ScopeType scopeType, Long scopeId,
@@ -635,5 +637,53 @@ class UserRolePermissionGroupNativeQueryTest extends AbstractMySqlIntegrationTes
         assertThat(userRoleRepository.findDeputyAdminUserIdsByTeamIdAndPermission(teamB, permissionName))
                 .as("teamB の権限グループ経由の DEPUTY_ADMIN のみが返るべきである")
                 .containsExactly(crossTeamDeputy);
+    }
+
+    @Test
+    @DisplayName("F09.14: 一般候補queryはactive direct membershipとeffective role一致を要求する")
+    void f0914_一般候補queryはactiveMembershipとeffectiveRoleが一致したgroupだけ返す() {
+        Long orgId = persistOrganization(null);
+        String permissionName = "F0914_EFFECTIVE_ROLE_PERMISSION";
+        Long permissionId = persistPermission(permissionName);
+        Long deputyRoleId = persistRoleIfNeeded("DEPUTY_ADMIN", 3);
+
+        Long activeDeputy = persistActiveUser();
+        grantOrgRole(activeDeputy, orgId, "DEPUTY_ADMIN", 3);
+        Long deputyGroup = persistOrgPermissionGroup(orgId);
+        addPermissionToGroup(deputyGroup, permissionId);
+        assignGroupToUser(activeDeputy, deputyGroup);
+
+        Long leftOnly = persistActiveUser();
+        em.persist(UserRoleEntity.builder()
+                .userId(leftOnly)
+                .roleId(deputyRoleId)
+                .organizationId(orgId)
+                .build());
+        addMembership(leftOnly, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER,
+                LocalDateTime.now().minusMinutes(1));
+
+        Long memberWithDeputyGroup = persistActiveUser();
+        addMembership(memberWithDeputyGroup, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER, null);
+        Long mismatchedGroup = persistOrgPermissionGroup(orgId);
+        addPermissionToGroup(mismatchedGroup, permissionId);
+        assignGroupToUser(memberWithDeputyGroup, mismatchedGroup);
+
+        Long memberRoleId = persistRoleIfNeeded("MEMBER", 4);
+        grantRolePermission(memberRoleId, permissionId);
+        Long memberWithEmptyMatchingGroup = persistActiveUser();
+        addMembership(memberWithEmptyMatchingGroup, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER, null);
+        PermissionGroupEntity emptyMemberGroup = PermissionGroupEntity.builder()
+                .organizationId(orgId)
+                .targetRole(PermissionGroupEntity.TargetRole.MEMBER)
+                .name("F0914 empty member group" + nextSeq())
+                .build();
+        em.persist(emptyMemberGroup);
+        em.flush();
+        assignGroupToUser(memberWithEmptyMatchingGroup, emptyMemberGroup.getId());
+        flushClear();
+
+        assertThat(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(orgId, permissionName))
+                .containsExactlyInAnyOrder(activeDeputy, memberWithDeputyGroup)
+                .doesNotContain(leftOnly, memberWithEmptyMatchingGroup);
     }
 }

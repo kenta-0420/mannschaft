@@ -2,6 +2,7 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
@@ -34,11 +35,14 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * {@link RecruitmentParticipantService} の単体テスト。
@@ -162,6 +166,45 @@ class RecruitmentParticipantServiceTest {
         }
 
         @Test
+        @DisplayName("公開PERSONAL札へ札主以外のユーザーが応募できる")
+        void apply_personalByAnotherUser_succeeds() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            setField(listing, "scopeId", USER_ID);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(listingRepository.incrementConfirmedAtomic(LISTING_ID)).willReturn(1);
+            given(listingRepository.findById(LISTING_ID)).willReturn(Optional.of(listing));
+            given(participantRepository.save(any(RecruitmentParticipantEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            assertThatCode(() -> service.apply(LISTING_ID, USER_ID + 1,
+                    new ApplyToRecruitmentRequest(RecruitmentParticipantType.USER, null, null)))
+                    .doesNotThrowAnyException();
+
+            verify(visibilityChecker).assertCanView(
+                    com.mannschaft.app.common.visibility.ReferenceType.RECRUITMENT_LISTING,
+                    LISTING_ID, USER_ID + 1);
+            verify(participantRepository).save(any(RecruitmentParticipantEntity.class));
+        }
+
+        @Test
+        @DisplayName("PERSONAL札主本人の応募はMARKET_007を優先し後段Repositoryを呼ばない")
+        void apply_personalOwner_throwsMarket007First() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            setField(listing, "scopeId", USER_ID);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.apply(LISTING_ID, USER_ID,
+                    new ApplyToRecruitmentRequest(RecruitmentParticipantType.USER, null, null)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.SELF_APPLICATION_FORBIDDEN);
+
+            verify(cancellationRecordRepository, never()).existsByUserIdAndPaymentStatusIn(anyLong(), any());
+        }
+
+        @Test
         @DisplayName("締切過ぎ → DEADLINE_EXCEEDED")
         void apply_deadlineExceeded_throws() throws Exception {
             RecruitmentListingEntity listing = buildOpenListing();
@@ -207,6 +250,62 @@ class RecruitmentParticipantServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.CANCELLATION_PAYMENT_FAILED);
+        }
+    }
+
+    @Nested
+    @DisplayName("PERSONAL運用経路")
+    class PersonalOperationalRouteGuard {
+
+        @Test
+        @DisplayName("応募者本人はPERSONAL札への応募を取り消せる")
+        void cancel_personal_succeeds() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            RecruitmentParticipantEntity participant = buildConfirmedParticipant();
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(participantRepository.findActiveByListingAndUser(LISTING_ID, USER_ID))
+                    .willReturn(Optional.of(participant));
+            given(policyService.calculateFee(any(), any()))
+                    .willReturn(new RecruitmentCancellationPolicyService.CalculatedFee(
+                            null, null, null, null, 0, true, 48.0));
+            given(cancellationRecordRepository.save(any()))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            assertThatCode(() -> service.cancelMyApplication(LISTING_ID, USER_ID,
+                    new CancelMyApplicationRequest(true, 0)))
+                    .doesNotThrowAnyException();
+
+            verify(participantRepository).save(participant);
+        }
+
+        @Test
+        @DisplayName("参加者一覧はPERSONAL札をMARKET_404で存在秘匿し参加者Repositoryを呼ばない")
+        void listParticipants_personal_doesNotQueryParticipant() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(listingService.findOrThrow(LISTING_ID)).willReturn(listing);
+
+            assertThatThrownBy(() -> service.listParticipants(LISTING_ID, USER_ID,
+                    org.springframework.data.domain.PageRequest.of(0, 20)))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+
+            verify(participantRepository, never()).findByListingIdOrderByAppliedAtAsc(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("出席記録はPERSONAL札をMARKET_404で存在秘匿し参加者Repositoryを呼ばない")
+        void markAttended_personal_doesNotQueryParticipant() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(listingService.findOrThrow(LISTING_ID)).willReturn(listing);
+
+            assertThatThrownBy(() -> service.markAttended(LISTING_ID, 999L, USER_ID))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+
+            verify(participantRepository, never()).findByIdAndListingId(anyLong(), anyLong());
         }
     }
 

@@ -62,11 +62,27 @@ class SurveyPublishNotificationListenerTest {
     @Mock
     private NotificationFanoutJobService fanoutJobService;
 
+    @Mock
+    private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+
     /** Issue #2715 CMP-055 lot C-5: newly added i18n dependencies. */
     @Mock private MessageSource messageSource;
 
     @InjectMocks
     private SurveyPublishNotificationListener listener;
+
+    /**
+     * 母集団解決（{@link com.mannschaft.app.survey.service.SurveyUniverseResolver}）は
+     * <b>本物</b>を注入する。ここをモックにすると「どの母集団を数えるか」という本質が
+     * テストから消えるため、実クラスへ既存のリポジトリモックを渡し、
+     * 従来どおり最下層のスタブ（{@code userRoleRepository} 等）で振る舞いを決める。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void 母集団リゾルバを実クラスで注入する() {
+        org.springframework.test.util.ReflectionTestUtils.setField(listener, "universeResolver",
+                new com.mannschaft.app.survey.service.SurveyUniverseResolver(
+                        organizationMembershipService, userRoleRepository, surveyTargetRepository));
+    }
 
     /**
      * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for

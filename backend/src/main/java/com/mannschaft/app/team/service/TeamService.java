@@ -27,10 +27,10 @@ import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
-import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.common.util.SlugGenerator;
 import com.mannschaft.app.common.util.SlugValidator;
@@ -90,6 +90,7 @@ public class TeamService {
     private final MembershipRepository membershipRepository;
     /** 画像 URL 根治 Phase 1: 生 R2 キー → 署名付き表示 URL の解決を担う共通部品。 */
     private final MediaUrlResolver mediaUrlResolver;
+    private final AdminRoleMutationLockService adminRoleMutationLockService;
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。
@@ -112,14 +113,14 @@ public class TeamService {
                 .build();
         // F22.1 市 Phase 2 足場C: 構造化地域コードを反映（どちらも null 許容＝未指定はそのまま NULL）
         team.updateRegionCodes(req.getPrefectureCode(), req.getCityCode());
+        Long adminRoleId = adminRoleMutationLockService.lockAdminRoleIdForCreation(userId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_005));
         teamRepository.save(team);
 
         // 作成者をADMINロールで紐付ける
-        RoleEntity adminRole = roleRepository.findByName("ADMIN")
-                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_005));
         UserRoleEntity userRole = UserRoleEntity.builder()
                 .userId(userId)
-                .roleId(adminRole.getId())
+                .roleId(adminRoleId)
                 .teamId(team.getId())
                 .build();
         userRoleRepository.save(userRole);
@@ -240,6 +241,35 @@ public class TeamService {
      * @param cityCode       市区町村コード（JIS X 0402、null=未設定）
      */
     public record TeamRegionCodes(String prefectureCode, String cityCode) {
+    }
+
+    /**
+     * チームの存在確認・アーカイブ状態・表示名を軽量サマリとして返す。
+     *
+     * <p>他ドメイン（role の承諾型招待 F04.12 等）が「スコープ存在確認・アーカイブ判定・
+     * スコープ名解決」に使う read-only な横断クエリ。クロスドメインで Entity を直接渡さない方針
+     * （CLAUDE.md 原則 1・原則 5）のため、{@link TeamSummary}（必要フィールドのみの軽量 DTO）
+     * として公開する。</p>
+     *
+     * <p>論理削除済み（{@code @SQLRestriction}）チームは取得対象外（空を返す＝存在しない扱い）。</p>
+     *
+     * @param teamId チーム ID
+     * @return チームサマリ。存在しない／論理削除済みの場合は空。
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<TeamSummary> findTeamSummary(Long teamId) {
+        return teamRepository.findById(teamId)
+                .map(team -> new TeamSummary(
+                        team.getName(), team.getArchivedAt() != null));
+    }
+
+    /**
+     * チームの軽量サマリ（他ドメイン公開用）。
+     *
+     * @param name     チーム表示名
+     * @param archived アーカイブ済みか（{@code archived_at} が非 NULL）
+     */
+    public record TeamSummary(String name, boolean archived) {
     }
 
     /**

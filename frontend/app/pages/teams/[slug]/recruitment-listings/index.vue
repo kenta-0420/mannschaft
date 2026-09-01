@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import type { RecruitmentListingSummaryResponse } from '~/types/recruitment'
 
-definePageMeta({ layout: 'team' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
@@ -20,11 +20,9 @@ async function load() {
   try {
     const result = await api.listTeamListings(teamSlug.value, { status: status.value })
     listings.value = result.data
-  }
-  catch (e) {
+  } catch (e) {
     error(String(e))
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -44,11 +42,7 @@ onMounted(() => load())
   <div class="container mx-auto max-w-4xl p-4">
     <div class="mb-4 flex items-center justify-between">
       <PageHeader :title="t('recruitment.page.teamRecruitmentListings')" />
-      <Button
-        :label="t('recruitment.action.create')"
-        icon="pi pi-plus"
-        @click="goToCreate"
-      />
+      <Button :label="t('recruitment.action.create')" icon="pi pi-plus" @click="goToCreate" />
     </div>
 
     <div v-if="loading" class="flex justify-center p-8">

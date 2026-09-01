@@ -86,9 +86,7 @@ export const GATE_ROUTE_MAP: Record<string, string[]> = {
     '/teams/*/advertiser',
     '/teams/*/signage',
   ],
-  FEATURE_MARKET_ENABLED: [
-    '/market',
-  ],
+  FEATURE_MARKET_ENABLED: ['/market', '/me/market', '/teams/*/market', '/organizations/*/market'],
   FEATURE_WORKFLOW_FORMS_ENABLED: [
     '/organizations/*/forms',
     '/organizations/*/workflows',
@@ -115,10 +113,7 @@ export const GATE_ROUTE_MAP: Record<string, string[]> = {
     '/me/guardianship',
     '/teams/*/school-attendance',
   ],
-  FEATURE_SKILL_RESUME_ENABLED: [
-    '/my/resume',
-    '/teams/*/skills',
-  ],
+  FEATURE_SKILL_RESUME_ENABLED: ['/my/resume', '/teams/*/skills'],
   FEATURE_RECRUITMENT_ENABLED: [
     '/recruitment-listings',
     '/me/recruitment-listings',
@@ -135,9 +130,7 @@ export const GATE_ROUTE_MAP: Record<string, string[]> = {
     '/my/proxy-requests',
     '/organizations/*/succession',
   ],
-  FEATURE_GDPR_DISCLOSURE_ENABLED: [
-    '/system-admin/gdpr',
-  ],
+  FEATURE_GDPR_DISCLOSURE_ENABLED: ['/system-admin/gdpr'],
   FEATURE_MODERATION_INCIDENT_ENABLED: [
     '/admin/moderation',
     '/system-admin/incident-banners',
@@ -174,7 +167,9 @@ function normalizePath(path: string): string {
 
 /** パスをセグメント配列にする（先頭の空要素を落とす）。 */
 function segments(path: string): string[] {
-  return normalizePath(path).split('/').filter((s) => s.length > 0)
+  return normalizePath(path)
+    .split('/')
+    .filter((s) => s.length > 0)
 }
 
 /**
@@ -233,11 +228,11 @@ export function matchGateKey(path: string): string | null {
  * <b>`*`（動的セグメント）を含むプレフィクスは routeRules に出さないため、SSR 抑止が掛からない。</b>
  * 実測の内訳は次のとおりで、<b>およそ半分が抑止の対象外</b>である。
  * <ul>
- *   <li>静的プレフィクス（`ssr: false` を出す） … 47 件</li>
- *   <li>動的プレフィクス（<b>出さない = SSR 抑止なし</b>） … 44 件（`/teams/{slug}/…`・
+ *   <li>静的プレフィクス（`ssr: false` を出す） … 48 件</li>
+ *   <li>動的プレフィクス（<b>出さない = SSR 抑止なし</b>） … 46 件（`/teams/{slug}/…`・
  *       `/organizations/{slug}/…` 系がまるごと該当）</li>
  * </ul>
- * この 44 経路は <b>routeRules による SSR 抑止も middleware 判定も掛からない</b>
+ * この 46 経路は <b>routeRules による SSR 抑止も middleware 判定も掛からない</b>
  * （middleware は SSR では `ssr-defer` で一切判定しないため）。
  * 隔離は<b>ハイドレーション後のクライアント側判定だけに依存する</b>。
  *
@@ -276,7 +271,7 @@ export type GateDecision =
   | { action: 'pass' }
   | { action: 'ssr-defer' }
   | { action: 'ensure' }
-  | { action: 'deny', gateKey: string }
+  | { action: 'deny'; gateKey: string }
 
 /**
  * ガード判定の純関数（三値判定: enabled / disabled / unknown）。

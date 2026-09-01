@@ -2,6 +2,8 @@ package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.service.AuthOAuthLinkService;
 import com.mannschaft.app.common.security.IntentionallyPublic;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,6 +57,8 @@ public class AuthOAuthCallbackController {
      * @param error    プロバイダ側エラー文字列（エラー時のみ存在）
      * @return 302 リダイレクト
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "開始済みOAuthフローの外部callbackをGate状態にかかわらず完了するため")
     @GetMapping("/{provider}/callback")
     public ResponseEntity<Void> handleCallback(
             @PathVariable String provider,

@@ -4,6 +4,7 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
+import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentParticipationType;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
@@ -124,6 +125,32 @@ class MarketFinalizeServiceTest {
     }
 
     @Test
+    @DisplayName("PERSONAL札は札主本人へ最終認証通知を送る")
+    void sendFinalizeConfirmation_personal_sendsToOwner() throws Exception {
+        RecruitmentListingEntity listing = fullListing();
+        setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+        setField(listing, "scopeId", 7L);
+        given(confirmableNotificationRepository.existsBySourceTypeAndSourceIdAndStatus(
+                eq(MarketFinalizeService.SOURCE_TYPE_MARKET_FINALIZE),
+                eq(LISTING_ID),
+                eq(ConfirmableNotificationStatus.ACTIVE)))
+                .willReturn(false);
+
+        service.sendFinalizeConfirmation(listing);
+
+        verify(confirmableNotificationService).sendFromSource(
+                eq(MarketFinalizeService.SOURCE_TYPE_MARKET_FINALIZE),
+                eq(LISTING_ID),
+                eq(ScopeType.PLATFORM),
+                eq(7L),
+                any(), any(),
+                eq(ConfirmableNotificationPriority.HIGH),
+                any(), any(),
+                eq(7L),
+                eq(List.of(7L)));
+    }
+
+    @Test
     @DisplayName("FULL 以外の札では何もしない")
     void sendFinalizeConfirmation_notFull_noop() throws Exception {
         RecruitmentListingEntity listing = fullListing();
@@ -210,6 +237,22 @@ class MarketFinalizeServiceTest {
         service.finalizeBySourceId(LISTING_ID);
 
         verify(eventPublisher, never()).publishEvent(any(MarketListingFinalizedEvent.class));
+    }
+
+    @Test
+    @DisplayName("PERSONAL札も最終認証でCOMPLETEDへ遷移する")
+    void finalizeBySourceId_personal_finalizesAndPublishesEvent() throws Exception {
+        RecruitmentListingEntity listing = fullListing(false);
+        setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+        given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+        service.finalizeBySourceId(LISTING_ID);
+
+        verify(listingRepository).save(listing);
+        verify(eventPublisher).publishEvent(argThat((Object e) ->
+                e instanceof MarketListingFinalizedEvent ev
+                        && LISTING_ID.equals(ev.listingId())
+                        && !ev.paymentEnabled()));
     }
 
     private void setField(Object entity, String name, Object value) throws Exception {

@@ -19,7 +19,7 @@ import { test, expect, type Page, type Route } from '@playwright/test'
  *   MARKET-002: PII無し（公開市の一覧/詳細に個人名・メール等PIIが表示されない）
  *   MARKET-003: フィルタ連動（都道府県→市区町村連動・絞り込み）
  *   MARKET-004: 非公開札は非表示・直URL詳細が404
- *   MARKET-005: 札立て導線（フレンドのみ選択時に宛先セレクタ3粒度が出る・市から直接立てられない）
+ *   MARKET-005: 札立て導線（公開市→個人市・フレンドのみ選択時の宛先セレクタ3粒度）
  *   MARKET-006: 札に応じる（ログインユーザーが応募可・未ログインはログイン誘導）
  */
 
@@ -250,6 +250,15 @@ async function injectAuth(page: Page): Promise<void> {
   await page.addInitScript((user) => {
     localStorage.setItem('currentUser', JSON.stringify(user))
   }, mockUser)
+  await page.route('**/api/v1/feature-flags', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [{ flagKey: 'FEATURE_MARKET_ENABLED', enabled: true }],
+      }),
+    })
+  })
   // auth/me または refresh エンドポイントをモック
   await page.route('**/api/v1/auth/refresh**', async (route: Route) => {
     await route.fulfill({
@@ -316,7 +325,7 @@ test('MARKET-001: 未ログインで /market にアクセスすると 2xx 到達
   await expect(page.getByText(MOCK_LISTING_1.owner.displayName)).toBeVisible()
   await expect(page.getByText(MOCK_LISTING_2.owner.displayName)).toBeVisible()
 
-  // 「札を立てる」ボタンはダッシュボードへの導線として存在する（市から直接立てない）
+  // 「札を立てる」ボタンは個人市の作成フォームへの導線として存在する
   await expect(page.getByTestId('market-post-link')).toBeVisible()
 })
 
@@ -491,6 +500,8 @@ test('MARKET-003b: 都道府県・市区町村の絞り込み後に一覧が変�
   await expect(prefListbox).toBeVisible({ timeout: 5_000 })
   await prefListbox.getByText('大分県', { exact: false }).first().click()
 
+  await page.getByTestId('market-search-button').click()
+
   // 絞り込み後: 1件のみ表示
   await expect(page.getByTestId(`market-listing-card-${MOCK_LISTING_1.id}`)).toBeVisible({ timeout: 8_000 })
   await expect(page.getByTestId(`market-listing-card-${MOCK_LISTING_2.id}`)).toHaveCount(0)
@@ -525,15 +536,17 @@ test('MARKET-003c: キーワード入力で絞り込み結果が変化する', a
   await page.goto('/market')
   await expect(page.getByTestId('market-listing-grid')).toBeVisible({ timeout: 10_000 })
 
-  // キーワード入力（debounce 500ms があるため入力後待機）
+  // キーワードを入力し、検索ボタンでまとめて適用する
   const keywordInput = page.getByTestId('market-keyword-input')
   await keywordInput.fill('練習試合')
 
-  // 2回目の API 呼び出しを待つ
-  await page.waitForResponse(
+  // 検索ボタンによる2回目の API 呼び出しを待つ
+  const responsePromise = page.waitForResponse(
     (res) => res.url().includes('/api/v1/public/market/listings') && res.status() === 200,
     { timeout: 5_000 },
   )
+  await page.getByTestId('market-search-button').click()
+  await responsePromise
 
   // 絞り込み結果が変化することを確認
   await expect(page.getByTestId(`market-listing-card-${MOCK_LISTING_1.id}`)).toBeVisible({ timeout: 5_000 })
@@ -582,10 +595,11 @@ test('MARKET-004b: 非公開札の直URL（/market/listings/{id}）は 404 に�
 })
 
 // ──────────────────────────────────────────────────────────────────────────
-// MARKET-005: 札立て導線（ダッシュボードへの誘導・フレンド宛先セレクタ3粒度）
+// MARKET-005: 札立て導線（個人市への誘導・フレンド宛先セレクタ3粒度）
 // ──────────────────────────────────────────────────────────────────────────
 
-test('MARKET-005a: 市ページの「札を立てる」ボタンはダッシュボードへの導線のみ（市から直接立てられない）', async ({ page }) => {
+test('MARKET-005a: 市ページの「札を立てる」ボタンから個人市の作成フォームへ進める', async ({ page }) => {
+  await injectAuth(page)
   await mockMarketRegions(page)
   await mockCategories(page)
   await mockMarketListings(page)
@@ -593,13 +607,13 @@ test('MARKET-005a: 市ページの「札を立てる」ボタンはダッシュ�
   await page.goto('/market')
   await expect(page.getByTestId('market-page')).toBeVisible({ timeout: 10_000 })
 
-  // 「札を立てる」ボタンが存在する（導線として）
+  // 「札を立てる」ボタンが存在する
   const postBtn = page.getByTestId('market-post-link')
   await expect(postBtn).toBeVisible()
 
-  // ボタンをクリックすると /dashboard へ遷移する（市から直接フォームを開かない）
+  // ボタンをクリックすると個人市へ create=true を保って遷移する
   await postBtn.click()
-  await page.waitForURL(/\/dashboard/, { timeout: 10_000 })
+  await page.waitForURL(/\/me\/market\?create=true$/, { timeout: 10_000 })
 })
 
 test('MARKET-005b: MarketListingFormExtension で FRIEND_TEAMS_ONLY 選択時に宛先セレクタ3粒度が表示される', async ({ page }) => {
@@ -636,7 +650,7 @@ test('MARKET-005b: MarketListingFormExtension で FRIEND_TEAMS_ONLY 選択時に
   })
 
   // 市一覧ページでのフォームコンポーネント使用確認は、コンポーネントテストで担保
-  // E2E では「市から直接 form が表示されないこと」を確認する
+  // 公開市そのものにはチーム・組織向け拡張フォームを埋め込まないことを確認する
   await mockMarketRegions(page)
   await mockCategories(page)
   await mockMarketListings(page)
@@ -644,7 +658,7 @@ test('MARKET-005b: MarketListingFormExtension で FRIEND_TEAMS_ONLY 選択時に
   await page.goto('/market')
   await expect(page.getByTestId('market-page')).toBeVisible({ timeout: 10_000 })
 
-  // 市ページに market-form-extension が存在しない（ダッシュボードのみに存在する）
+  // 市ページにチーム・組織向け market-form-extension が存在しない
   await expect(page.getByTestId('market-form-extension')).toHaveCount(0)
   await expect(page.getByTestId('market-visibility-selector')).toHaveCount(0)
   await expect(page.getByTestId('market-friend-target-selector')).toHaveCount(0)

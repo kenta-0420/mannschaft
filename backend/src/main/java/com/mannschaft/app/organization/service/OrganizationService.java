@@ -24,10 +24,10 @@ import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
 import com.mannschaft.app.organization.dto.UpdateOrganizationRequest;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
-import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.organization.event.OrganizationCreatedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
@@ -75,6 +75,7 @@ public class OrganizationService {
     private final OrganizationHierarchyService organizationHierarchyService;
     private final MembershipService membershipService;
     private final MediaUrlResolver mediaUrlResolver;
+    private final AdminRoleMutationLockService adminRoleMutationLockService;
 
     /**
      * 組織を作成し、作成者をADMINロールで紐付ける。
@@ -101,14 +102,14 @@ public class OrganizationService {
                 .parentOrganizationId(req.getParentOrganizationId())
                 .supporterEnabled(false)
                 .build();
+        Long adminRoleId = adminRoleMutationLockService.lockAdminRoleIdForCreation(userId)
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_005));
         organizationRepository.save(org);
 
         // 作成者をADMINロールで紐付ける
-        RoleEntity adminRole = roleRepository.findByName("ADMIN")
-                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_005));
         UserRoleEntity userRole = UserRoleEntity.builder()
                 .userId(userId)
-                .roleId(adminRole.getId())
+                .roleId(adminRoleId)
                 .organizationId(org.getId())
                 .build();
         userRoleRepository.save(userRole);
@@ -153,6 +154,35 @@ public class OrganizationService {
      */
     public Long resolveOrgId(String slug) {
         return findOrganizationBySlugOrThrow(slug).getId();
+    }
+
+    /**
+     * 組織の存在確認・アーカイブ状態・表示名を軽量サマリとして返す。
+     *
+     * <p>他ドメイン（role の承諾型招待 F04.12 等）が「スコープ存在確認・アーカイブ判定・
+     * スコープ名解決」に使う read-only な横断クエリ。クロスドメインで Entity を直接渡さない方針
+     * （CLAUDE.md 原則 1・原則 5）のため、{@link OrganizationSummary}（必要フィールドのみの軽量 DTO）
+     * として公開する。</p>
+     *
+     * <p>論理削除済み組織は取得対象外（空を返す＝存在しない扱い）。</p>
+     *
+     * @param organizationId 組織 ID
+     * @return 組織サマリ。存在しない／論理削除済みの場合は空。
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<OrganizationSummary> findOrganizationSummary(Long organizationId) {
+        return organizationRepository.findById(organizationId)
+                .map(org -> new OrganizationSummary(
+                        org.getName(), org.getArchivedAt() != null));
+    }
+
+    /**
+     * 組織の軽量サマリ（他ドメイン公開用）。
+     *
+     * @param name     組織表示名
+     * @param archived アーカイブ済みか（{@code archived_at} が非 NULL）
+     */
+    public record OrganizationSummary(String name, boolean archived) {
     }
 
     /**
