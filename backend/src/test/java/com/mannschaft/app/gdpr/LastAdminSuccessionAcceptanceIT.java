@@ -15,6 +15,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,6 +25,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -74,6 +77,15 @@ class LastAdminSuccessionAcceptanceIT extends AbstractMySqlIntegrationTest {
 
         em.flush();
         em.clear();
+
+        // Redis は基底クラス（AbstractMySqlIntegrationTest）で Mock 化されているため、
+        // 値操作を明示的に張る（金型: ScheduleAuthzScopeContractIT）。
+        // AC2/AC3 は退会が実際に成功する経路まで進み、UserService#requestWithdrawal 内の
+        // authTokenService.checkRateLimit が redisTemplate.opsForValue().increment(...) を呼ぶ。
+        // 未スタブのままだと opsForValue() が null を返し NullPointerException で 500 になる。
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
     }
 
     @Nested
