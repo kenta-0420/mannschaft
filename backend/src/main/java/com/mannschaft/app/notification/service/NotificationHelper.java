@@ -487,9 +487,20 @@ public class NotificationHelper {
         // 一度失敗すると後続の locale グループへ処理が進まず、呼び出し元の @Transactional
         // （SurveyRemindService#remind / SurveyService#extendDeadline 等）を巻き添えにしていた。
         // グループ単位で try/catch し、失敗を握って次のグループへ継続する（欠落は log.warn で可視化）。
-        // この catch が実際に止められるのは MessageFormat エラー等の非DB例外であり、
-        // notifyAllPreAuthorized 内部で DB 層例外が起きた場合の rollback-only までは守らない
-        // （同一トランザクション内であれば残る＝根治は Issue #2834 / CMP-056 の範囲）。
+        //
+        // rollback-only について（Issue #2990 で実測し直した現状）:
+        // 本メソッドの下流はバルク経路（notifyAllPreAuthorized → NotificationBulkFanoutService）であり、
+        // チャンク INSERT は TransactionTemplate に PROPAGATION_REQUIRES_NEW を設定した独立トランザクション
+        // （NotificationBulkFanoutService の 72-73 行で設定、173 行で実行）で走る。したがって
+        // 通知の DB 層例外が呼び出し元の業務トランザクションへ rollback-only を伝播することはない。
+        // ここでの catch は、その独立トランザクションの外側で起きる非DB例外（bodyBuilder の
+        // MessageFormat エラー等）を受け止めて次の locale グループへ進むためのものである。
+        //
+        // ただし本クラスの非バルク経路（notify / notifyAll / notifyAllLocalized）は
+        // NotificationService#createNotification を呼び出し元と同一トランザクションで実行するため、
+        // 依然として rollback-only を伝播する。それらの呼び出し元は業務TX内で通知を発火せず、
+        // AFTER_COMMIT 境界の後へ移すこと（契約: backend/.claudecode.md 原則5 / 原則5-1、
+        // 番人: common/architecture/NotificationTransactionBoundaryGuardTest）。
         //
         // Codex 三巡目・四巡目是正を経て評価（PR #2873）: 当初は notifyAllPreAuthorized の戻り値
         // （失敗受信者数）を deliveredRecipientCount / failedRecipientCount として再集計していたが、

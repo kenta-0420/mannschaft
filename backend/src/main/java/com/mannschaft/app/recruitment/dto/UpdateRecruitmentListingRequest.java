@@ -49,6 +49,7 @@ public class UpdateRecruitmentListingRequest {
 
     private final RecruitmentVisibility visibility;
 
+    @Pattern(regexp = "(?s).*\\S.*", message = "location は空白以外の文字を含めてください")
     @Size(max = 200)
     private final String location;
 

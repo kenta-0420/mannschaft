@@ -39,4 +39,10 @@ describe('/me/market 個人市ページ契約', () => {
     expect(source).toContain('organizationStore.fetchMyOrganizations')
     expect(source).toContain('market.personal.audienceRequired')
   })
+
+  it('成立済みと自動取下げをステータスで絞り込める', () => {
+    expect(source).toContain("'COMPLETED'")
+    expect(source).toContain("'AUTO_CANCELLED'")
+    expect(source).toContain('personal-market-status-filter')
+  })
 })

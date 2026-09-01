@@ -5,6 +5,7 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.security.IntentionallyPublic;
+import com.mannschaft.app.market.MarketListingSort;
 import com.mannschaft.app.market.dto.MarketListingResponse;
 import com.mannschaft.app.market.dto.MarketRegionNodeResponse;
 import com.mannschaft.app.market.dto.MarketSummaryResponse;
@@ -89,6 +90,7 @@ public class MarketController {
      * @param categoryId        ジャンル（任意）
      * @param keyword           タイトル部分一致（任意）
      * @param includeRegionNone 地域未指定の札も含めるか（既定 true）
+     * @param sort              並び順（既定は開催日時が近い順）
      * @param page              ページ番号（既定 0）
      * @param size              ページサイズ（既定 20）
      * @return PII 抑制済みの公開札ページ（認証時は認可済み所属限定札を含む）
@@ -105,6 +107,7 @@ public class MarketController {
             @RequestParam(name = "owner_type", required = false) RecruitmentScopeType ownerType,
             @RequestParam(required = false) String keyword,
             @RequestParam(name = "include_region_none", defaultValue = "true") boolean includeRegionNone,
+            @RequestParam(defaultValue = "START_AT_ASC") MarketListingSort sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String lang,
@@ -112,7 +115,7 @@ public class MarketController {
         String resolvedLang = resolveLang(lang, acceptLanguage);
         Page<MarketListingResponse> result = marketQueryService.searchListings(
                 prefecture, city, categoryId, ownerType, keyword, includeRegionNone,
-                PageRequest.of(page, size), resolvedLang, SecurityUtils.getCurrentUserIdOrNull());
+                PageRequest.of(page, size), resolvedLang, SecurityUtils.getCurrentUserIdOrNull(), sort);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok()

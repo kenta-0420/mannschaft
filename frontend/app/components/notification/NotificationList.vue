@@ -17,7 +17,7 @@ const toast = useToast()
 const notifications = ref<NotificationResponse[]>([])
 const notifBadgeCount = useState<number>('badge:notifCount', () => 0)
 const loading = ref(false)
-const nextCursor = ref<number | null>(null)
+const nextPage = ref(0)
 const hasNext = ref(false)
 const filter = ref<'all' | 'unread'>('all')
 
@@ -82,21 +82,22 @@ async function onSnooze(notif: NotificationResponse, preset: SnoozePreset) {
 
 // ─── 通知読み込み ──────────────────────────────
 
-async function loadNotifications(cursor?: number) {
+async function loadNotifications(page = 0) {
   loading.value = true
   try {
     const res = await getNotifications({
-      cursor,
+      page,
+      size: 20,
       isRead: filter.value === 'unread' ? false : undefined,
     })
-    if (!cursor) {
+    if (page === 0) {
       notifications.value = res.data
     }
     else {
       notifications.value.push(...res.data)
     }
-    nextCursor.value = res.meta.nextCursor
-    hasNext.value = res.meta.hasNext
+    nextPage.value = res.meta.page + 1
+    hasNext.value = nextPage.value < res.meta.totalPages
     // 確認通知のサマリ（未確認件数等）を並列取得（権限が無いものは静かにスキップ）
     await loadConfirmableSummariesForList()
   }
@@ -492,7 +493,7 @@ defineExpose({ refresh: () => loadNotifications() })
 
     <!-- もっと読む -->
     <div v-if="hasNext" class="flex justify-center py-4">
-      <Button label="もっと読む" text :loading="loading" @click="loadNotifications(nextCursor!)" />
+      <Button label="もっと読む" text :loading="loading" @click="loadNotifications(nextPage)" />
     </div>
 
     <div v-if="loading && notifications.length === 0" class="flex justify-center py-8">

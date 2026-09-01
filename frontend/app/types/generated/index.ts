@@ -38131,6 +38131,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/billing/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 公開プラン・アドオン価格
+         * @description scopeKindごとの公開価格を返す
+         */
+        get: operations["getPublicBillingPlans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/activities/{id}": {
         parameters: {
             query?: never;
@@ -57908,7 +57928,7 @@ export interface components {
             endAt: string;
             friendTargets?: components["schemas"]["FriendTargetRequest"][];
             imageUrl?: string;
-            location?: string;
+            location: string;
             /** Format: int32 */
             minCapacity: number;
             /** @enum {string} */
@@ -75921,6 +75941,96 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+        };
+        ApiResponsePublicBillingCatalogResponse: {
+            data?: components["schemas"]["PublicBillingCatalogResponse"];
+        };
+        /** @description 公開アドオン価格 */
+        PublicAddon: {
+            available?: boolean;
+            descriptionKey?: string;
+            displayNameKey?: string;
+            featureKey?: string;
+            priceBands?: components["schemas"]["PublicPriceBand"][];
+            quoteRequired?: boolean;
+            /** @description 月額の起点（税込）。見積り必須又は未提供時はnull */
+            startingMonthlyTotal?: components["schemas"]["PublicMoney"];
+        };
+        /** @description スコープ種別ごとの公開プラン・アドオン価格 */
+        PublicBillingCatalogResponse: {
+            addons?: components["schemas"]["PublicAddon"][];
+            plans?: components["schemas"]["PublicPlan"][];
+            /**
+             * @description 価格を表示するスコープ種別
+             * @enum {string}
+             */
+            scopeKind?: "USER" | "TEAM" | "ORG";
+        };
+        /** @description 公開価格のJPY金額と税内訳 */
+        PublicMoney: {
+            /**
+             * Format: int64
+             * @description 税抜金額
+             * @example 1000
+             */
+            amountExcludingTax?: number;
+            /**
+             * Format: int64
+             * @description 税込金額
+             * @example 1100
+             */
+            amountIncludingTax?: number;
+            /**
+             * @description 通貨。公開価格はJPYのみ
+             * @example JPY
+             */
+            currency?: string;
+            /**
+             * Format: int64
+             * @description 税額
+             * @example 100
+             */
+            taxAmount?: number;
+            /**
+             * @description 税名称
+             * @example 消費税
+             */
+            taxName?: string;
+            /**
+             * Format: int32
+             * @description 税率（basis points）
+             * @example 1000
+             */
+            taxRateBasisPoints?: number;
+        };
+        /** @description 公開プラン価格 */
+        PublicPlan: {
+            available?: boolean;
+            descriptionKey?: string;
+            displayNameKey?: string;
+            featureKeys?: string[];
+            planKey?: string;
+            priceBands?: components["schemas"]["PublicPriceBand"][];
+            quoteRequired?: boolean;
+            /** @description 月額の起点（税込）。見積り必須又は未提供時はnull */
+            startingMonthlyTotal?: components["schemas"]["PublicMoney"];
+        };
+        /** @description 公開価格の人数帯 */
+        PublicPriceBand: {
+            /**
+             * Format: int32
+             * @description この帯の最大人数。上限なしはnull
+             * @example 10
+             */
+            maxMembers?: number;
+            /**
+             * Format: int32
+             * @description この帯の最小人数
+             * @example 1
+             */
+            minMembers?: number;
+            /** @description この帯の月額（税込）。見積り必須又は未提供時はnull */
+            startingMonthlyTotal?: components["schemas"]["PublicMoney"];
         };
         PagedResponseSessionListResponse: {
             data?: components["schemas"]["SessionListResponse"][];
@@ -154089,6 +154199,7 @@ export interface operations {
                 owner_type?: "TEAM" | "ORGANIZATION" | "PERSONAL";
                 keyword?: string;
                 include_region_none?: boolean;
+                sort?: "START_AT_ASC" | "DEADLINE_ASC" | "DEADLINE_DESC";
                 page?: number;
                 size?: number;
                 lang?: string;
@@ -154154,6 +154265,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListRecruitmentCategoryResponse"];
+                };
+            };
+        };
+    };
+    getPublicBillingPlans: {
+        parameters: {
+            query: {
+                scopeKind: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicBillingCatalogResponse"];
                 };
             };
         };

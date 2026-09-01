@@ -699,6 +699,10 @@
       "description": "F04.2 チャットファイルアップロード"
     },
     {
+      "name": "公開課金価格",
+      "description": "未認証で参照できる公開価格カタログ"
+    },
+    {
       "name": "F03.11.1 募集キャンセル料",
       "description": "募集キャンセル料の免除"
     },
@@ -126196,6 +126200,20 @@
             }
           },
           {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "START_AT_ASC",
+              "enum": [
+                "START_AT_ASC",
+                "DEADLINE_ASC",
+                "DEADLINE_DESC"
+              ]
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "required": false,
@@ -126310,6 +126328,38 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListRecruitmentCategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/billing/plans": {
+      "get": {
+        "tags": [
+          "公開課金価格"
+        ],
+        "summary": "公開プラン・アドオン価格",
+        "description": "scopeKindごとの公開価格を返す",
+        "operationId": "getPublicBillingPlans",
+        "parameters": [
+          {
+            "name": "scopeKind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePublicBillingCatalogResponse"
                 }
               }
             }
@@ -175708,7 +175758,7 @@
           "location": {
             "type": "string",
             "maxLength": 200,
-            "minLength": 0
+            "minLength": 1
           },
           "minCapacity": {
             "type": "integer",
@@ -175790,6 +175840,7 @@
           "capacity",
           "categoryId",
           "endAt",
+          "location",
           "minCapacity",
           "participationType",
           "paymentEnabled",
@@ -205085,7 +205136,8 @@
           "location": {
             "type": "string",
             "maxLength": 200,
-            "minLength": 0
+            "minLength": 0,
+            "pattern": "(?s).*\\S.*"
           },
           "minCapacity": {
             "type": "integer",
@@ -224883,6 +224935,171 @@
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "ApiResponsePublicBillingCatalogResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PublicBillingCatalogResponse"
+          }
+        }
+      },
+      "PublicAddon": {
+        "type": "object",
+        "description": "公開アドオン価格",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "descriptionKey": {
+            "type": "string"
+          },
+          "displayNameKey": {
+            "type": "string"
+          },
+          "featureKey": {
+            "type": "string"
+          },
+          "priceBands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicPriceBand"
+            }
+          },
+          "quoteRequired": {
+            "type": "boolean"
+          },
+          "startingMonthlyTotal": {
+            "$ref": "#/components/schemas/PublicMoney",
+            "description": "月額の起点（税込）。見積り必須又は未提供時はnull"
+          }
+        }
+      },
+      "PublicBillingCatalogResponse": {
+        "type": "object",
+        "description": "スコープ種別ごとの公開プラン・アドオン価格",
+        "properties": {
+          "addons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicAddon"
+            }
+          },
+          "plans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicPlan"
+            }
+          },
+          "scopeKind": {
+            "type": "string",
+            "description": "価格を表示するスコープ種別",
+            "enum": [
+              "USER",
+              "TEAM",
+              "ORG"
+            ]
+          }
+        }
+      },
+      "PublicMoney": {
+        "type": "object",
+        "description": "公開価格のJPY金額と税内訳",
+        "properties": {
+          "amountExcludingTax": {
+            "type": "integer",
+            "format": "int64",
+            "description": "税抜金額",
+            "example": 1000
+          },
+          "amountIncludingTax": {
+            "type": "integer",
+            "format": "int64",
+            "description": "税込金額",
+            "example": 1100
+          },
+          "currency": {
+            "type": "string",
+            "description": "通貨。公開価格はJPYのみ",
+            "example": "JPY"
+          },
+          "taxAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "税額",
+            "example": 100
+          },
+          "taxName": {
+            "type": "string",
+            "description": "税名称",
+            "example": "消費税"
+          },
+          "taxRateBasisPoints": {
+            "type": "integer",
+            "format": "int32",
+            "description": "税率（basis points）",
+            "example": 1000
+          }
+        }
+      },
+      "PublicPlan": {
+        "type": "object",
+        "description": "公開プラン価格",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "descriptionKey": {
+            "type": "string"
+          },
+          "displayNameKey": {
+            "type": "string"
+          },
+          "featureKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "planKey": {
+            "type": "string"
+          },
+          "priceBands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicPriceBand"
+            }
+          },
+          "quoteRequired": {
+            "type": "boolean"
+          },
+          "startingMonthlyTotal": {
+            "$ref": "#/components/schemas/PublicMoney",
+            "description": "月額の起点（税込）。見積り必須又は未提供時はnull"
+          }
+        }
+      },
+      "PublicPriceBand": {
+        "type": "object",
+        "description": "公開価格の人数帯",
+        "properties": {
+          "maxMembers": {
+            "type": "integer",
+            "format": "int32",
+            "description": "この帯の最大人数。上限なしはnull",
+            "example": 10
+          },
+          "minMembers": {
+            "type": "integer",
+            "format": "int32",
+            "description": "この帯の最小人数",
+            "example": 1
+          },
+          "startingMonthlyTotal": {
+            "$ref": "#/components/schemas/PublicMoney",
+            "description": "この帯の月額（税込）。見積り必須又は未提供時はnull"
           }
         }
       },
