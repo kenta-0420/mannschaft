@@ -26,8 +26,9 @@ vi.mock('~/composables/useScheduleApi', () => ({
 vi.mock('~/composables/useTodoGantt', () => ({
   useTodoGantt: () => ({ getMyCalendarTodos }),
 }))
+const handleApiError = vi.fn()
 vi.mock('~/composables/useErrorHandler', () => ({
-  useErrorHandler: () => ({ handleApiError: vi.fn() }),
+  useErrorHandler: () => ({ handleApiError }),
 }))
 vi.mock('~/composables/useErrorReport', () => ({
   useErrorReport: () => ({ captureQuiet: vi.fn() }),
@@ -268,6 +269,107 @@ describe('自動色リセット時の再取得失敗（P2-③）', () => {
     expect(await cal.setLayerColor('TEAM', 42, '#DB2777')).toBe(false)
     // 直前の成功時の色のまま（失敗した変更を先に反映してしまわない）
     expect(cal.filteredEvents.value.map(e => e.color)).toEqual([NEW_COLOR])
+  })
+})
+
+describe('並行操作と通知の重複（P2-④/P2-⑤）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  /**
+   * 判定が「この呼び出しに閉じている」か。共有フラグを見ていると、月移動など
+   * 並行する別の取得の失敗を自分の失敗と取り違える。
+   */
+  it('並行する別の再取得が失敗しても、成功したリセットは true のまま', async () => {
+    const cal = await setup()
+    deleteMyCalendarLayer.mockResolvedValue(undefined)
+    getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669'), teamLayer(RESET_COLOR, 'LAYER_AUTO')] })
+    // 1回目（並行して走る loadEvents）は失敗、2回目（リセットの再取得）は成功。
+    getCalendarRange.mockReset()
+    getCalendarRange
+      .mockRejectedValueOnce(new Error('別リクエストの失敗'))
+      .mockResolvedValue({ data: [sharedEntry(RESET_COLOR, 'LAYER_AUTO')] })
+    notifyError.mockClear()
+
+    const other = cal.loadEvents()
+    const ok = await cal.resetLayerColor('TEAM', 42)
+    await other
+
+    expect(ok).toBe(true)
+    expect(notifyError).not.toHaveBeenCalled()
+  })
+
+  /**
+   * 逆向き: 自分の失敗が、並行する別の取得の**成功**で消えてはならない。
+   *
+   * 「直近の取得の成否」を共有 ref に持つ実装を捉えるため、時系列を作り込む:
+   * t≈0 リセットの再取得が失敗 → t=10 並行する loadEvents が成功（共有 ref なら true に戻る）
+   * → t=20 リセット側のレイヤー取得が終わり判定に入る。呼び出しごとに閉じた判定なら false のまま。
+   */
+  it('並行する別の再取得が成功しても、失敗したリセットは false のまま', async () => {
+    const cal = await setup()
+    deleteMyCalendarLayer.mockResolvedValue(undefined)
+    // レイヤー取得を遅らせ、判定の時点を並行取得の成功より後ろに置く。
+    getMyCalendarLayers.mockImplementation(() => new Promise(resolve =>
+      setTimeout(() => resolve({ data: [personalLayer('#059669'), teamLayer(RESET_COLOR, 'LAYER_AUTO')] }), 20)))
+    getCalendarRange.mockReset()
+    // 呼び出し順は 1回目=並行する loadEvents、2回目=リセットの再取得
+    // （リセットは DELETE の await を挟むぶん後発になる）。
+    // 1回目は遅れて成功（t=10）、2回目は即失敗（t≈0）。
+    getCalendarRange
+      .mockImplementationOnce(() => new Promise(resolve =>
+        setTimeout(() => resolve({ data: [sharedEntry(RESET_COLOR, 'LAYER_AUTO')] }), 10)))
+      .mockRejectedValue(new Error('リセットの再取得が失敗'))
+    notifyError.mockClear()
+
+    const reset = cal.resetLayerColor('TEAM', 42)
+    const other = cal.loadEvents()
+    const ok = await reset
+    await other
+
+    expect(ok).toBe(false)
+  })
+
+  /** P2-⑤: 部分失敗で通知が二重に出ない。ただし 0 回にもならない。 */
+  it('予定の再取得だけが失敗したとき、通知はちょうど1回', async () => {
+    const cal = await setup()
+    deleteMyCalendarLayer.mockResolvedValue(undefined)
+    getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669'), teamLayer(RESET_COLOR, 'LAYER_AUTO')] })
+    getCalendarRange.mockRejectedValue(new Error('boom'))
+    notifyError.mockClear()
+    handleApiError.mockClear()
+
+    expect(await cal.resetLayerColor('TEAM', 42)).toBe(false)
+
+    expect(notifyError).toHaveBeenCalledTimes(1)
+    expect(handleApiError).not.toHaveBeenCalled()
+  })
+
+  it('レイヤー一覧の取得が失敗したとき、通知は共通ハンドラの1回だけ（重ねない）', async () => {
+    const cal = await setup()
+    deleteMyCalendarLayer.mockResolvedValue(undefined)
+    // 両方失敗させる。原因は同じ通信障害であり、通知は1回に集約する。
+    getMyCalendarLayers.mockRejectedValue(new Error('boom'))
+    getCalendarRange.mockRejectedValue(new Error('boom'))
+    notifyError.mockClear()
+    handleApiError.mockClear()
+
+    expect(await cal.resetLayerColor('TEAM', 42)).toBe(false)
+
+    expect(handleApiError).toHaveBeenCalledTimes(1)
+    expect(notifyError).not.toHaveBeenCalled()
+  })
+
+  it('429 / 5xx は共通ハンドラがトースト済みのため重ねない（黙るのではなく共通側が出す）', async () => {
+    const cal = await setup()
+    deleteMyCalendarLayer.mockResolvedValue(undefined)
+    getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669'), teamLayer(RESET_COLOR, 'LAYER_AUTO')] })
+    getCalendarRange.mockRejectedValue({ statusCode: 500 })
+    notifyError.mockClear()
+
+    expect(await cal.resetLayerColor('TEAM', 42)).toBe(false)
+    expect(notifyError).not.toHaveBeenCalled()
   })
 })
 

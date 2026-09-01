@@ -477,36 +477,21 @@ export function useMyCalendarData() {
     return merged
   }
 
-  /**
-   * 直近の予定取得（`loadEvents` / `refresh`）が失敗したか。
-   *
-   * `useCalendarEvents` の `refresh()` は例外を内部で捕らえて**正常に解決する**
-   * （月移動で画面全体が落ちないための既存の設計であり、他の呼び出し元がその挙動に
-   * 依存しているため消さない）。そのぶん、失敗を知りたい呼び出し箇所は
-   * このフラグで検知する。`onError` は `loadEvents`/`refresh` の失敗時にのみ呼ばれる。
-   */
-  const eventsFetchFailed = ref(false)
-
-  const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday, navigateTo } =
+  const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, refreshWithResult, onPrevMonth, onNextMonth, goToToday, navigateTo } =
     useCalendarEvents(fetcher, {
       cacheHalfMonths: 0,
+      // 予定取得（loadEvents / refresh / 月移動）の失敗を調査用に必ず記録する。
+      // ここでユーザー提示はしない（一律にトーストを出すと useApi の共通ハンドラと
+      // 二重になる）。提示するかどうかは、失敗を受け取った呼び出し箇所が文脈込みで決める。
+      //
+      // **成否の判定にこのコールバックを使わないこと。** 月移動（navigateTo）も同じ
+      // コールバックを呼ぶため、ref に成否を書くと並行する別の取得の結果で上書きされ、
+      // 「自分が投げた再取得が成功したか」を取り違える。判定は呼び出しごとに閉じた
+      // refreshWithResult() の戻り値で行う。
       onError: (error: unknown) => {
-        eventsFetchFailed.value = true
-        // ユーザー提示は各呼び出し箇所の文脈で行う（ここで一律にトーストを出すと
-        // useApi の共通ハンドラと二重になる）。調査用の記録だけは必ず残す。
         errorReport.captureQuiet(error, { context: 'useMyCalendarData.calendarEvents' })
       },
     })
-
-  /**
-   * 予定を取り直し、**成功したかを返す**（`refresh()` は失敗しても解決するため、
-   * 戻り値だけでは成否が分からない）。呼び出し前にフラグを倒してから測る。
-   */
-  async function refreshEventsChecked(): Promise<boolean> {
-    eventsFetchFailed.value = false
-    await refresh()
-    return !eventsFetchFailed.value
-  }
 
   /**
    * レイヤー一覧の取得（§5.1）。events とは独立。月移動では呼ばない（AC-03）。
@@ -518,7 +503,7 @@ export function useMyCalendarData() {
    * ただし握りつぶしはしない — errorHandler へ委譲して報告し、layersFailed で
    * 利用側（画面）に部分失敗を明示できるようにする（todosFailed と同じ流儀）。
    */
-  async function loadLayers(): Promise<void> {
+  async function loadLayers(): Promise<boolean> {
     try {
       // P2修繕: 同一SPAセッション内でのユーザー切替を検知する。useAuthStore.logout() は
       // team/organization ストアをクリアしないため、旧ユーザーの所属データが残ったままだと
@@ -553,12 +538,19 @@ export function useMyCalendarData() {
         layersDegraded.value = false
         selectedScopes.value = layers.value.filter((l) => !l.hidden).map((l) => layerKey(l.scopeType, l.scopeId))
       }
+      return true
     }
     catch (e) {
       layersFailed.value = true
+      // 失敗はここで**必ずユーザーへ提示する**（共通ハンドラがトースト or ペイウォールを出す）。
+      // 呼び出し元がさらに通知を重ねないよう、戻り値 false で「提示済みの失敗」を伝える。
       errorHandler.handleApiError(e, 'useMyCalendarData.getMyCalendarLayers')
       // layersLoaded は false のまま。layers.value は空配列のまま（初期値）で、
       // 呼び出し元（initStorage）はレイヤー情報無しの前提で続行できる。
+      //
+      // 成否は**この呼び出しの戻り値**で返す。layersFailed（共有 ref）は画面表示用であり、
+      // 並行する別の loadLayers に上書きされうるため判定には使わない。
+      return false
     }
   }
 
@@ -919,13 +911,31 @@ export function useMyCalendarData() {
     try {
       await scheduleApi.deleteMyCalendarLayer(scopeType as CalendarLayerScopeType, scopeId)
       // loadLayers も refresh も失敗を内部で捕らえて解決するため、Promise.all の完了は
-      // 「両方成功した」ことを意味しない。**それぞれの失敗フラグで測る**
-      // （握りつぶしの上に「成功しました」という嘘を重ねない）。
-      const [, eventsOk] = await Promise.all([loadLayers(), refreshEventsChecked()])
-      if (!eventsOk || layersFailed.value) {
-        // 設定の削除自体は成功している（サーバー上は自動色に戻っている）。
-        // 食い違っているのは手元の表示だけなので、そう伝える。
-        notification.error(t('dialog.error'), t('schedule.calendar.error.colorResetRefreshFailed'))
+      // 「両方成功した」ことを意味しない。**この呼び出しに閉じた戻り値**で測る
+      // （握りつぶしの上に「成功しました」という嘘を重ねない。共有 ref は月移動など
+      //  並行する取得に上書きされるため使わない）。
+      const [layersOk, eventsResult] = await Promise.all([loadLayers(), refreshWithResult()])
+
+      // --- ユーザーへの通知は必ず1回。どの経路で誰が出すかは以下のとおり ---
+      // (a) レイヤー一覧の取得に失敗: loadLayers が errorHandler 経由で提示済み。
+      //     ここでは重ねない（同じ事象で2回出さない）。予定の再取得も同時に失敗して
+      //     いた場合も、原因は同じ通信障害なので (a) の1回に集約する。
+      // (b) 予定の再取得だけが失敗し、共通ハンドラが黙る種類（4xx・応答なし）:
+      //     ここで文脈付き（色は戻したが表示の更新に失敗）の通知を出す。
+      // (c) 予定の再取得だけが失敗し、429 / 5xx: useApi の onResponseError が既に
+      //     トーストを出している。ここで重ねず、調査用の記録だけ残す。
+      // いずれの経路でも「何も出ない」ことは無く、かつ戻り値 false で呼び出し元にも伝わる。
+      if (!layersOk) {
+        return false
+      }
+      if (!eventsResult.ok) {
+        const context = 'useMyCalendarData.resetLayerColor.refresh'
+        if (shouldNotifyTodoLoadFailure(extractHttpStatus(eventsResult.error))) {
+          notification.error(t('dialog.error'), t('schedule.calendar.error.colorResetRefreshFailed'))
+        }
+        else {
+          errorReport.captureQuiet(eventsResult.error, { context })
+        }
         return false
       }
       return true
