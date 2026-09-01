@@ -1,4 +1,5 @@
 import type { CalendarEventItem } from './useCalendarEvents'
+import type { CalendarLayerScopeType } from './schedule/useScheduleCrud'
 import type { MyCalendarTodo } from '~/types/todo'
 
 interface CalendarEntryRaw {
@@ -15,6 +16,9 @@ interface CalendarEntryRaw {
     referenceKind?: string | null
     // F03.19 §4.6: BE が解決済みの表示色（LAYER_USER > SCHEDULE > CATEGORY > LAYER_AUTO の優先順位で決定済み）。
     color?: string | null
+    // 同上の「どの優先順位で決まったか」（§4.3.2 の共通4値）。
+    // LAYER_AUTO のときだけ color がそのスコープの自動色（§3.3）そのものである。
+    colorSource?: string | null
   }
   time: { startAt: string; endAt: string; allDay: boolean }
   scope: { scopeType: string; scopeId: string; scopeName: string | null; scopeIconUrl: string | null; scopeSlug?: string | null }
@@ -46,6 +50,11 @@ export interface CalEvent extends CalendarEventItem {
   scopeRouteId?: string
   scopeIconUrl?: string | null
   isTodo?: boolean
+  /**
+   * 色の由来（§4.3.2 の共通4値）。`LAYER_AUTO` のときに限り {@link CalEvent.color} は
+   * そのスコープの自動色（§3.3）そのものであり、フォールバックチップの色として使える。
+   */
+  colorSource?: string
 }
 
 export interface ScopeOption {
@@ -63,6 +72,20 @@ export interface ScopeOption {
    * （フォールバックは元々レイヤーに存在しないスコープのため対応する数値キーが無い）。
    */
   filterKey?: string
+  /**
+   * レイヤーチップの色ドットに使う #RRGGBB（F03.19 §6.4）。BE が解決済みで返した色
+   * （`/me/calendar-layers` の `color`）をそのまま持つ。FE 側でハッシュ再計算はしない（§3.3）。
+   */
+  color?: string
+  /** 色の由来（`LAYER_USER` / `LAYER_AUTO`）。「自動に戻す」の出し分けに使う。 */
+  colorSource?: string
+  /**
+   * レイヤー一覧に無いスコープのフォールバックチップか（§5.2.1・AC-23）。
+   * true のチップは色変更ポップオーバーを開かない（表示／非表示のみ・§6.4）。
+   */
+  isFallback?: boolean
+  /** レイヤー設定 API のパスに渡す数値 scopeId（PERSONAL は 0）。フォールバックには無い。 */
+  layerScopeId?: number
 }
 
 /** `/me/calendar-layers` 応答を正規化した1レイヤー分の表示情報（F03.19 §4.3）。 */
@@ -104,6 +127,19 @@ function normalizeLayer(raw: CalendarLayerRaw): CalendarLayerView {
 /** F03.19 §4.3.1: PERSONAL の scopeId は DB・API・URL・FE レイヤーキーのすべてで 0 に統一する。 */
 export const PERSONAL_KEY = 'PERSONAL:0'
 export const FILTER_OVERFLOW = 5
+
+/** レイヤー一覧に無いスコープ（フォールバックチップ・§5.2.1）の色ドットに使う中立色。 */
+export const FALLBACK_CHIP_COLOR = '#94A3B8'
+
+/**
+ * レイヤー設定 API（§4.4/§4.5）のエラーコード → §8 の文言キー。
+ * ここに無いコードは共通のエラーハンドラへ委譲する。
+ */
+const LAYER_ERROR_MESSAGE_KEYS: Record<string, string> = {
+  SCHEDULE_101: 'schedule.calendar.error.notMember',
+  SCHEDULE_102: 'schedule.calendar.error.invalidColor',
+  SCHEDULE_104: 'schedule.calendar.error.layerLimit',
+}
 
 /** F03.19 §5.3: localStorage の新スキーマ・旧キー2種。 */
 const LAYER_STATE_KEY = 'mannschaft:calendar:layerState'
@@ -275,6 +311,7 @@ export function useMyCalendarData() {
   const ganttApi = useTodoGantt()
   const { buildDayStartStr, buildDayEndStr } = useDatetime()
   const errorHandler = useErrorHandler()
+  const notification = useNotification()
   const errorReport = useErrorReport()
   const authStore = useAuthStore()
   const teamStore = useTeamStore()
@@ -389,6 +426,7 @@ export function useMyCalendarData() {
         // F03.19 §4.6/§5.2: BE が解決済みの色を使う（FE でハッシュ計算しない）。
         // 未デプロイ環境等で content.color が来ない場合のみ null へフォールバックする（明示的な劣化）。
         color: e.content?.color ?? null,
+        colorSource: e.content?.colorSource ?? undefined,
         isPersonal: false,
         scopeType: e.scope?.scopeType ?? '',
         // P1修繕: scopeId は必ずレイヤー API と同じ「数値ID文字列」にする（フィルタ照合用）。
@@ -439,8 +477,21 @@ export function useMyCalendarData() {
     return merged
   }
 
-  const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday, navigateTo } =
-    useCalendarEvents(fetcher, { cacheHalfMonths: 0 })
+  const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, refreshWithResult, onPrevMonth, onNextMonth, goToToday, navigateTo } =
+    useCalendarEvents(fetcher, {
+      cacheHalfMonths: 0,
+      // 予定取得（loadEvents / refresh / 月移動）の失敗を調査用に必ず記録する。
+      // ここでユーザー提示はしない（一律にトーストを出すと useApi の共通ハンドラと
+      // 二重になる）。提示するかどうかは、失敗を受け取った呼び出し箇所が文脈込みで決める。
+      //
+      // **成否の判定にこのコールバックを使わないこと。** 月移動（navigateTo）も同じ
+      // コールバックを呼ぶため、ref に成否を書くと並行する別の取得の結果で上書きされ、
+      // 「自分が投げた再取得が成功したか」を取り違える。判定は呼び出しごとに閉じた
+      // refreshWithResult() の戻り値で行う。
+      onError: (error: unknown) => {
+        errorReport.captureQuiet(error, { context: 'useMyCalendarData.calendarEvents' })
+      },
+    })
 
   /**
    * レイヤー一覧の取得（§5.1）。events とは独立。月移動では呼ばない（AC-03）。
@@ -452,7 +503,7 @@ export function useMyCalendarData() {
    * ただし握りつぶしはしない — errorHandler へ委譲して報告し、layersFailed で
    * 利用側（画面）に部分失敗を明示できるようにする（todosFailed と同じ流儀）。
    */
-  async function loadLayers(): Promise<void> {
+  async function loadLayers(): Promise<boolean> {
     try {
       // P2修繕: 同一SPAセッション内でのユーザー切替を検知する。useAuthStore.logout() は
       // team/organization ストアをクリアしないため、旧ユーザーの所属データが残ったままだと
@@ -487,12 +538,19 @@ export function useMyCalendarData() {
         layersDegraded.value = false
         selectedScopes.value = layers.value.filter((l) => !l.hidden).map((l) => layerKey(l.scopeType, l.scopeId))
       }
+      return true
     }
     catch (e) {
       layersFailed.value = true
+      // 失敗はここで**必ずユーザーへ提示する**（共通ハンドラがトースト or ペイウォールを出す）。
+      // 呼び出し元がさらに通知を重ねないよう、戻り値 false で「提示済みの失敗」を伝える。
       errorHandler.handleApiError(e, 'useMyCalendarData.getMyCalendarLayers')
       // layersLoaded は false のまま。layers.value は空配列のまま（初期値）で、
       // 呼び出し元（initStorage）はレイヤー情報無しの前提で続行できる。
+      //
+      // 成否は**この呼び出しの戻り値**で返す。layersFailed（共有 ref）は画面表示用であり、
+      // 並行する別の loadLayers に上書きされうるため判定には使わない。
+      return false
     }
   }
 
@@ -563,6 +621,32 @@ export function useMyCalendarData() {
     return layerKey(ext.scopeType ?? '', ext.scopeId ?? '')
   }
 
+  /**
+   * フォールバックチップの色を決める（§5.2.1 は「§3.3 の自動色」を要求する）。
+   *
+   * **FE で自動色を算出してはならない**（§3.3「FE 側にハッシュ実装を持たない」）。
+   * そこで、そのスコープの予定のうち **`colorSource === 'LAYER_AUTO'`** のもの、すなわち
+   * BE が自動色そのものを載せて返した予定の色を採る。これは BE 由来の自動色であり、
+   * §5.2.1 の要求と §3.3 の禁止を同時に満たす唯一の経路である。
+   *
+   * **限界（設計書の要求を完全には満たせない）**: そのスコープの予定が全て予定自身の色
+   * （`SCHEDULE`）やカテゴリ色（`CATEGORY`）で塗られている場合、応答のどこにも
+   * そのスコープの自動色は載っていない（`/my/calendar` は解決済み色と由来しか返さず、
+   * 自動色を別フィールドで返さない。`/me/calendar-layers` は所属スコープしか返さず、
+   * フォールバックは定義上そこに現れない）。その場合は**予定の色を借りず中立色を使う** —
+   * 予定色やカテゴリ色をチップ色に流用すると「チップの色＝そのレイヤーの色」という
+   * 読みが崩れ、レイヤー色と食い違う嘘になるためである。
+   * 恒久解は BE 応答に自動色（またはフォールバックスコープを含むレイヤー行）を載せること
+   * であり、別工程・別 PR の範囲。
+   */
+  function fallbackChipColor(key: string): string {
+    for (const e of extendedEvents.value) {
+      if (eventLayerKey(e) !== key) continue
+      if (e.colorSource === 'LAYER_AUTO' && e.color) return e.color
+    }
+    return FALLBACK_CHIP_COLOR
+  }
+
   const fallbackScopeOptions = computed<ScopeOption[]>(() => {
     if (!layersLoaded.value) return []
     const seen = new Set<string>()
@@ -576,6 +660,11 @@ export function useMyCalendarData() {
         value: key,
         scopeType: e.scopeType ?? '',
         scopeId: e.scopeId ?? '',
+        // §6.4: フォールバックチップも通常チップと同じ見た目（色ドット＋名前）で並べる。
+        // 色は BE 由来の自動色のみを採用する（上記 fallbackChipColor の限界コメント参照）。
+        // 色変更は開かない（isFallback）。
+        color: fallbackChipColor(key),
+        isFallback: true,
       })
     }
     return result
@@ -583,7 +672,17 @@ export function useMyCalendarData() {
 
   /** レイヤー一覧（BE 由来・予定の有無に依存しない）＋フォールバックチップ（§5.1/§5.2.1）。 */
   const allScopeOptions = computed<ScopeOption[]>(() => [
-    ...layers.value.map((l) => ({ label: layerLabel(l), value: layerKey(l.scopeType, l.scopeId), scopeType: l.scopeType, scopeId: String(l.scopeId) })),
+    ...layers.value.map((l) => ({
+      label: layerLabel(l),
+      value: layerKey(l.scopeType, l.scopeId),
+      scopeType: l.scopeType,
+      scopeId: String(l.scopeId),
+      // §6.4: チップは色ドット＋名前を併記する。色は BE 解決済みの値をそのまま使う。
+      color: l.color,
+      colorSource: l.colorSource,
+      isFallback: false,
+      layerScopeId: l.scopeId,
+    })),
     ...fallbackScopeOptions.value,
   ])
 
@@ -717,7 +816,138 @@ export function useMyCalendarData() {
     view.value = 'month'
   }
 
+  /**
+   * レイヤー設定の変更でサーバーが返したエラーを、設計書 §7 のコードに対応する
+   * §8 の文言でユーザーへ見せる。既知コード以外は共通ハンドラへ委譲する。
+   * **握りつぶさない** — 必ずどちらかの経路で表示・記録する。
+   */
+  function reportLayerError(e: unknown, context: string): void {
+    const code = (e as { data?: { error?: { code?: string } } })?.data?.error?.code
+    const messageKey = LAYER_ERROR_MESSAGE_KEYS[code ?? '']
+    if (messageKey) {
+      errorReport.captureQuiet(e, { context })
+      notification.error(t('dialog.error'), t(messageKey))
+      return
+    }
+    errorHandler.handleApiError(e, context)
+  }
+
+  /** レイヤー一覧の該当行を差し替える（PATCH 応答・DELETE 後の再取得結果の反映）。 */
+  function replaceLayer(updated: CalendarLayerView): void {
+    const key = layerKey(updated.scopeType, updated.scopeId)
+    layers.value = layers.value.map((l) => (layerKey(l.scopeType, l.scopeId) === key ? updated : l))
+  }
+
+  /**
+   * 表示中の予定の色を、変更後のレイヤー色で塗り替える（§10 のキャッシュ方針・P2）。
+   *
+   * レイヤー色は §3.4 の優先1であり、**そのスコープの予定は例外なくこの色になる**。
+   * よって PATCH 成功後にローカルで塗り替えれば BE の再解決と必ず一致する
+   * （再取得を強いない＝月移動やリロードまで旧色が残る不整合を作らない）。
+   *
+   * `extendedEvents` の要素は `useCalendarEvents` の `allEvents`（`events`/`filteredEvents` の出所）と
+   * **同一オブジェクト**である（fetcher が返した配列がそのまま両者に入る）ため、ここでの
+   * in-place 更新はグリッド・アジェンダの描画にもそのまま届く。
+   *
+   * TODO と reflection は §3.4.1 でレイヤー色の対象外（固定色が優先度・種別の意味を担う）
+   * ため塗り替えない。
+   */
+  function applyLayerColorToLoadedEvents(scopeType: string, scopeId: number, color: string): void {
+    const key = layerKey(scopeType, scopeId)
+    for (const e of extendedEvents.value) {
+      if (e.isTodo || e.isReflection) continue
+      if (eventLayerKey(e) !== key) continue
+      e.color = color
+    }
+  }
+
+  /**
+   * レイヤーの色をユーザー指定色へ変更する（§4.4 の PATCH）。
+   *
+   * **`color` のみ送る。`hidden` は送らない**ため現在値が保たれる（AC-08b）。
+   * 成功したらチップだけでなく**表示中の予定の色も同時に更新する**（§10 のキャッシュ方針は
+   * 「色変更直後に反映されない不整合」を害と明記しており、FE 側で同じ不整合を作らない）。
+   *
+   * こちらは PATCH 応答だけで完結し、**失敗を内部で捕らえる関数（`refresh` / `loadLayers`）を
+   * 一切呼ばない**。よって「途中の失敗を握りつぶしたまま true を返す」経路は存在しない
+   * （PATCH 自体が失敗すれば catch に入り false を返す）。
+   *
+   * @returns 成功したか。失敗時はユーザーへ通知済み（例外は投げ直さない）。
+   */
+  async function setLayerColor(scopeType: string, scopeId: number, color: string): Promise<boolean> {
+    try {
+      const res = await scheduleApi.updateMyCalendarLayer(
+        scopeType as CalendarLayerScopeType, scopeId, { color },
+      )
+      const updated = normalizeLayer(res.data as unknown as CalendarLayerRaw)
+      replaceLayer(updated)
+      // 応答が返した色（BE の正規化後の値）で塗る。送った文字列をそのまま使わない。
+      applyLayerColorToLoadedEvents(scopeType, scopeId, updated.color)
+      return true
+    }
+    catch (e) {
+      reportLayerError(e, 'useMyCalendarData.setLayerColor')
+      return false
+    }
+  }
+
+  /**
+   * レイヤーの色設定を消して自動色へ戻す（§4.5 の DELETE）。
+   *
+   * PATCH の `color: null` は「変更しない」であって「自動に戻す」ではないため、
+   * この操作は必ず DELETE で行う（§4.4 の注記）。DELETE は応答本文を持たないので、
+   * 解決後の自動色を知るためにレイヤー一覧を取り直す。
+   *
+   * **予定の色は `refresh()` で取り直す。** リセット後の各予定の色は §3.4 の優先2〜4
+   * （予定自身の色 → カテゴリ色 → 自動色）で個別に決まり、**どれが効くかは予定ごとに違う**。
+   * FE はカテゴリ色も自動色も持たない（§3.3 は FE でのハッシュ実装を禁じている）ため、
+   * ローカルでは正しい色を作れない。ここだけは BE に解かせるのが唯一の正解である。
+   * ユーザー操作を待たずその場で取り直すので、旧色が残ることはない（`refresh` は
+   * 全画面スピナーを出さない静かな再取得）。
+   *
+   * @returns 成功したか。失敗時はユーザーへ通知済み（例外は投げ直さない）。
+   */
+  async function resetLayerColor(scopeType: string, scopeId: number): Promise<boolean> {
+    try {
+      await scheduleApi.deleteMyCalendarLayer(scopeType as CalendarLayerScopeType, scopeId)
+      // loadLayers も refresh も失敗を内部で捕らえて解決するため、Promise.all の完了は
+      // 「両方成功した」ことを意味しない。**この呼び出しに閉じた戻り値**で測る
+      // （握りつぶしの上に「成功しました」という嘘を重ねない。共有 ref は月移動など
+      //  並行する取得に上書きされるため使わない）。
+      const [layersOk, eventsResult] = await Promise.all([loadLayers(), refreshWithResult()])
+
+      // --- ユーザーへの通知は必ず1回。どの経路で誰が出すかは以下のとおり ---
+      // (a) レイヤー一覧の取得に失敗: loadLayers が errorHandler 経由で提示済み。
+      //     ここでは重ねない（同じ事象で2回出さない）。予定の再取得も同時に失敗して
+      //     いた場合も、原因は同じ通信障害なので (a) の1回に集約する。
+      // (b) 予定の再取得だけが失敗し、共通ハンドラが黙る種類（4xx・応答なし）:
+      //     ここで文脈付き（色は戻したが表示の更新に失敗）の通知を出す。
+      // (c) 予定の再取得だけが失敗し、429 / 5xx: useApi の onResponseError が既に
+      //     トーストを出している。ここで重ねず、調査用の記録だけ残す。
+      // いずれの経路でも「何も出ない」ことは無く、かつ戻り値 false で呼び出し元にも伝わる。
+      if (!layersOk) {
+        return false
+      }
+      if (!eventsResult.ok) {
+        const context = 'useMyCalendarData.resetLayerColor.refresh'
+        if (shouldNotifyTodoLoadFailure(extractHttpStatus(eventsResult.error))) {
+          notification.error(t('dialog.error'), t('schedule.calendar.error.colorResetRefreshFailed'))
+        }
+        else {
+          errorReport.captureQuiet(eventsResult.error, { context })
+        }
+        return false
+      }
+      return true
+    }
+    catch (e) {
+      reportLayerError(e, 'useMyCalendarData.resetLayerColor')
+      return false
+    }
+  }
+
   return {
+    setLayerColor, resetLayerColor,
     currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday, navigateTo,
     extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes, filteredEvents,
     toggleScope, multiSelectScopes, initStorage,

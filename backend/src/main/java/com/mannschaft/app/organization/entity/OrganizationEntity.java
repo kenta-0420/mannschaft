@@ -141,6 +141,16 @@ public class OrganizationEntity extends BaseEntity {
     private boolean timelinePostsPublic = false;
 
     /**
+     * 柱②-1: 販促プロビジョニング。PROVISIONED（承諾前の事前作成状態）/ ACTIVE（通常）。
+     * <p>本 PR では ACTIVE 以外を生成するコードは存在しない（DDL とエンティティ骨格のみ）。
+     * 作成 API とゲート（PROVISIONED を通常導線から隠す等）は後続 PR で実装する。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lifecycle_status", nullable = false, length = 20)
+    @Builder.Default
+    private LifecycleStatus lifecycleStatus = LifecycleStatus.ACTIVE;
+
+    /**
      * 組織種別
      */
     public enum OrgType {
@@ -170,6 +180,31 @@ public class OrganizationEntity extends BaseEntity {
         NONE,
         BASIC,
         FULL
+    }
+
+    /**
+     * 柱②-1: 販促プロビジョニングのライフサイクル状態。
+     */
+    public enum LifecycleStatus {
+        /** 承諾前の事前作成状態。招待未承諾のため通常導線には出さない想定（ゲートは後続 PR）。 */
+        PROVISIONED,
+        /** 通常の組織（既定値）。 */
+        ACTIVE
+    }
+
+    /**
+     * PROVISIONED（承諾前の事前作成状態）かどうかを判定する。
+     */
+    public boolean isProvisioned() {
+        return this.lifecycleStatus == LifecycleStatus.PROVISIONED;
+    }
+
+    /**
+     * 招待承諾により PROVISIONED から ACTIVE へ引き上げる。
+     * <p>本 PR では呼び出し元が存在しない（承諾 API は後続 PR）。</p>
+     */
+    public void activate() {
+        this.lifecycleStatus = LifecycleStatus.ACTIVE;
     }
 
     /**

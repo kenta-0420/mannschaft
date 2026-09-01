@@ -14,8 +14,12 @@ import CalendarPage from '~/pages/calendar.vue'
  * チップの選択状態が一切変化しない」（§5.4/§9）。
  *
  * `selectedScopes` は script setup のクロージャ内にあり外部から直接参照できないため、
- * DOM 上のレイヤーチップの選択スタイル（`border-primary` 系クラスの有無）を通じて
- * 間接的に検証する。
+ * DOM 上のレイヤーチップの選択状態を通じて間接的に検証する。
+ *
+ * 【F03.19 W2-d2 での契約変更】レイヤーチップは `CalendarLayerChips` へ移り、選択状態は
+ * **`aria-pressed`** が正本になった（旧実装の `border-primary` / `border-surface-300` という
+ * CSS クラスは、チップがレイヤー色でインラインに塗られるようになったため存在しない）。
+ * 検証手段だけを移し、検証している事実（どのチップが選択されているか）は変えていない。
  */
 
 const scheduleApiMock = {
@@ -205,15 +209,15 @@ describe('pages/calendar.vue: AC-11 作成スコープと表示フィルタの�
 
     const teamChipBefore = chipFor('チームA')
     expect(teamChipBefore).toBeTruthy()
-    expect(teamChipBefore!.classes()).toContain('border-primary')
+    expect(teamChipBefore!.attributes('aria-pressed')).toBe('true')
 
     // ユーザーがチームAのレイヤーチップを非表示にする（表示フィルタから外す）
     await teamChipBefore!.trigger('click')
     await wrapper.vm.$nextTick()
 
     const teamChipAfterToggle = chipFor('チームA')!
-    expect(teamChipAfterToggle.classes()).not.toContain('border-primary')
-    expect(teamChipAfterToggle.classes()).toContain('border-surface-300')
+    expect(teamChipAfterToggle.attributes('aria-pressed')).toBe('false')
+    expect(teamChipAfterToggle.attributes('style')).toContain('background-color: transparent')
 
     // 作成スコープ Select を「個人」からチームAへ変更する
     const select = wrapper.get('[data-testid="create-scope-select"]')
@@ -222,14 +226,14 @@ describe('pages/calendar.vue: AC-11 作成スコープと表示フィルタの�
 
     // AC-11: 表示中のレイヤーチップの選択状態（チームAが非選択のまま）は一切変化しない
     const teamChipAfterScopeChange = chipFor('チームA')!
-    expect(teamChipAfterScopeChange.classes()).not.toContain('border-primary')
-    expect(teamChipAfterScopeChange.classes()).toContain('border-surface-300')
+    expect(teamChipAfterScopeChange.attributes('aria-pressed')).toBe('false')
+    expect(teamChipAfterScopeChange.attributes('style')).toContain('background-color: transparent')
 
     // 個人チップも変化しない（選択されたまま）。
     // F03.19 W2-a との統合修繕: 個人レイヤーの表示名は本戦役から `schedule.calendar.layer.personal`
     // 経由の翻訳になった（旧実装は '個人' 直書き）。テスト環境の既定ロケールは en のため 'Personal'。
     const personalChip = chipFor('Personal')!
-    expect(personalChip.classes()).toContain('border-primary')
+    expect(personalChip.attributes('aria-pressed')).toBe('true')
   })
 })
 
@@ -260,7 +264,7 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     // チームAのレイヤーチップを非表示にする
     await chipFor('チームA')!.trigger('click')
     await wrapper.vm.$nextTick()
-    expect(chipFor('チームA')!.classes()).not.toContain('border-primary')
+    expect(chipFor('チームA')!.attributes('aria-pressed')).toBe('false')
 
     // 作成スコープをチームAへ変更してから保存する
     const select = wrapper.get('[data-testid="create-scope-select"]')
@@ -280,13 +284,13 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     // 案内が現れる。表示フィルタはまだ書き換わっていない（P2: 押すまで変えない）
     const notice = wrapper.get('[data-testid="hidden-layer-notice"]')
     expect(notice.text()).toContain('チームA')
-    expect(chipFor('チームA')!.classes()).not.toContain('border-primary')
+    expect(chipFor('チームA')!.attributes('aria-pressed')).toBe('false')
 
     // 「表示する」ボタンを押すと、そのレイヤーだけが選択状態になる
     await wrapper.get('[data-testid="hidden-layer-show-button"]').trigger('click')
     await wrapper.vm.$nextTick()
 
-    expect(chipFor('チームA')!.classes()).toContain('border-primary')
+    expect(chipFor('チームA')!.attributes('aria-pressed')).toBe('true')
     expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
   })
 
@@ -313,7 +317,7 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     // チームAのレイヤーチップを非表示にする
     await chipFor('チームA')!.trigger('click')
     await wrapper.vm.$nextTick()
-    expect(chipFor('チームA')!.classes()).not.toContain('border-primary')
+    expect(chipFor('チームA')!.attributes('aria-pressed')).toBe('false')
 
     // 作成スコープ Select は「個人」のまま変更しない（上部とフォーム内の食い違いを作る）
     expect(wrapper.get<HTMLSelectElement>('[data-testid="create-scope-select"]').element.value).toBe('personal')
@@ -351,7 +355,7 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     await chipFor('チームA')!.trigger('click')
     await wrapper.vm.$nextTick()
 
-    expect(chipFor('チームA')!.classes()).toContain('border-primary')
+    expect(chipFor('チームA')!.attributes('aria-pressed')).toBe('true')
     expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
   })
 
@@ -424,8 +428,8 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     // 「案内が出ない」という形で検出できる）。
     await secondTeamChip!.trigger('click')
     await wrapper.vm.$nextTick()
-    expect(firstTeamChip!.classes()).toContain('border-primary')
-    expect(secondTeamChip!.classes()).not.toContain('border-primary')
+    expect(firstTeamChip!.attributes('aria-pressed')).toBe('true')
+    expect(secondTeamChip!.attributes('aria-pressed')).toBe('false')
 
     // 作成スコープ Select で2つ目のチーム（slug=team-b-second）を選ぶ
     const select = wrapper.get('[data-testid="create-scope-select"]')
@@ -447,8 +451,8 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     await wrapper.vm.$nextTick()
 
     const chipsAfter = chipsFor('チームB')
-    expect(chipsAfter[0]!.classes()).toContain('border-primary')
-    expect(chipsAfter[1]!.classes()).toContain('border-primary')
+    expect(chipsAfter[0]!.attributes('aria-pressed')).toBe('true')
+    expect(chipsAfter[1]!.attributes('aria-pressed')).toBe('true')
     expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
   })
 })
@@ -523,7 +527,7 @@ describe('pages/calendar.vue: AC-13 月/週ビュー切替', () => {
 
     // レイヤー選択（チップの選択状態）も保持される
     const teamChip = wrapper.findAll('button').find(b => b.text() === 'チームA')!
-    expect(teamChip.classes()).toContain('border-primary')
+    expect(teamChip.attributes('aria-pressed')).toBe('true')
 
     // 月へ戻しても再取得しない
     await wrapper.get('[data-testid="calendar-view-month"]').trigger('click')

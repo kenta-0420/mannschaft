@@ -77,6 +77,10 @@ class GdprControllerTest {
     @MockitoBean
     private UserRepository userRepository;
 
+    // 柱①ADMINゼロ根治: GdprController#buildDeletionPreview が lastAdminScopes 充填に使う
+    @MockitoBean
+    private com.mannschaft.app.role.service.RoleSuccessionService roleSuccessionService;
+
     /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
     @MockitoBean
     private AccessGuard accessGuard;

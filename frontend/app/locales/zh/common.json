@@ -1411,7 +1411,11 @@
           "detail": "团队・组织的显示切换暂时无法使用。日程仍会显示。请稍后重新加载。"
         },
         "hiddenNotice": "创建目标图层已隐藏",
-        "showIt": "显示"
+        "showIt": "显示",
+        "title": "图层",
+        "count": "{count} 个图层",
+        "color": "更改颜色",
+        "colorAuto": "恢复自动"
       },
       "more": "还有{count}项",
       "today": "今天",
@@ -1438,6 +1442,12 @@
         "weekGrid": "{range} 这一周",
         "slot": "{date} {time} {content}",
         "allDayList": "全天日程"
+      },
+      "error": {
+        "invalidColor": "颜色格式不正确",
+        "notMember": "无权更改此图层的设置",
+        "layerLimit": "已达到图层设置上限",
+        "colorResetRefreshFailed": "颜色已恢复为自动，但日历刷新失败。请重新加载页面。"
       }
     }
   },

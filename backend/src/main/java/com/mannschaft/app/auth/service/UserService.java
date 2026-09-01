@@ -94,6 +94,8 @@ public class UserService {
     private final UserRoleRepository userRoleRepository;
     private final ParentalConsentService parentalConsentService;
     private final AccessControlService accessControlService;
+    private final com.mannschaft.app.role.service.RoleSuccessionService roleSuccessionService;
+    private final com.mannschaft.app.gdpr.service.PurgeStartGuard purgeStartGuard;
     private final CountryResolver countryResolver;
     private final PostalCodePolicyRegistry postalCodePolicyRegistry;
     private final MediaUrlResolver mediaUrlResolver;
@@ -599,6 +601,10 @@ public class UserService {
         // F01.9: 唯一の保護者退会ブロック
         parentalConsentService.checkWithdrawalBlock(userId);
 
+        // 柱①ADMINゼロ根治 AC1/§14: 他メンバー1人以上のスコープで唯一のADMINなら409（GDPR_011）。
+        // 他メンバー0人のスコープはブロックしない（purge時にarchiveへ委ねる、AC3）。
+        roleSuccessionService.checkNoLastAdminScopes(userId);
+
         // 1. レートリミット
         authTokenService.checkRateLimit(
                 "mannschaft:auth:withdrawal_attempt:" + userId,
@@ -640,6 +646,9 @@ public class UserService {
      */
     @Transactional
     public ApiResponse<MessageResponse> cancelWithdrawal(Long userId) {
+        // 柱①ADMINゼロ根治 §12.5/AC11: purge開始マーク済みならcancelを拒否する。
+        purgeStartGuard.checkCancelAllowed(userId);
+
         UserEntity user = findUserOrThrow(userId);
 
         // deleted_at が NULL の場合、退会リクエストが存在しない

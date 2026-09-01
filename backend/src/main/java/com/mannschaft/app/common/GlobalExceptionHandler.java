@@ -2113,6 +2113,11 @@ public class GlobalExceptionHandler {
             Map.entry("GDPR_009", HttpStatus.CONFLICT),                     // エクスポート未完了（ダウンロード不可）
             Map.entry("GDPR_010", HttpStatus.GONE),                         // エクスポート期限切れ
             Map.entry("GDPR_006", HttpStatus.CONFLICT),                     // 唯一のSYSTEM_ADMIN退会拒否
+            // 柱①ADMINゼロ根治: 他メンバー1人以上のlastAdminスコープが残る退会要求（409・
+            // RoleSuccessionService#checkNoLastAdminScopes）／purge開始マーク後のcancel拒否
+            // （409・PurgeStartGuard#checkCancelAllowed）。いずれも状態競合。
+            Map.entry("GDPR_011", HttpStatus.CONFLICT),
+            Map.entry("GDPR_012", HttpStatus.CONFLICT),
 
             // 認可監査 Wave6 ロットE: 時間割管理（TimetableErrorCode）の残り未登録分。
             // NOT_FOUND 系は既存登録済み。ステータス遷移ガード・学期期間重複・
