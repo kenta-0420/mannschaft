@@ -166,6 +166,27 @@ describe('ScheduleEventForm: 初期日時のプリセット（F03.19 §6.6.5）'
     expect(v.endTime).toBe('10:00')
   }, 60000)
 
+  it('initialEndAt が無い場合、終了時刻は開始の1時間後に補完される（自動補正 watcher と同じ規則）', async () => {
+    // 開始は 14:15 とする。フォーム初期値の終了（10:00）と +1時間後（15:15）が一致してしまうと
+    // 「補完していない」状態でもテストが通ってしまうため、既定値と重ならない時刻を選ぶ。
+    const v = await mountForm({ initialStartAt: '2026-08-06T14:15:00+09:00' })
+
+    expect(v.startTime).toBe('14:15')
+    // 抑止フラグで watcher を止めているぶん、呼び出し側が同じ規則を適用する責任を負う。
+    expect(v.endTime).toBe('15:15')
+    expect(v.startDate).toBe('2026-08-06')
+    expect(v.endDate).toBe('2026-08-06')
+  }, 60000)
+
+  it('initialEndAt が無く 23:30 開始のとき、終了は翌日 00:30 へ繰り上がる（日付繰り上がりの境界）', async () => {
+    const v = await mountForm({ initialStartAt: '2026-08-06T23:30:00+09:00' })
+
+    expect(v.startTime).toBe('23:30')
+    expect(v.startDate).toBe('2026-08-06')
+    expect(v.endTime).toBe('00:30')
+    expect(v.endDate).toBe('2026-08-07')
+  }, 60000)
+
   it('initialStartAt は initialDate より優先される', async () => {
     const v = await mountForm({
       initialDate: '2026-01-01',

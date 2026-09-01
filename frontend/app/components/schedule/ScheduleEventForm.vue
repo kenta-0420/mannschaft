@@ -344,6 +344,29 @@ function toUserZonedParts(iso: string): { date: Date; time: string } | null {
 }
 
 /**
+ * 「終了時刻は開始の1時間後」規則を明示的に適用する（F03.19 §6.6.5）。
+ * `form.value.startTime` の watcher（自動補正）と**同じ規則**を保つこと — 24時をまたぐ場合は
+ * 時刻を 24 で折り返し、終了日を翌日へ繰り上げる。
+ */
+function applyDefaultEndOneHourAfter(startDate: Date, startTime: string) {
+  const parts = startTime.split(':').map(Number)
+  const h = parts[0] ?? 0
+  const m = parts[1] ?? 0
+  const endH = h + 1
+  const mm = String(m).padStart(2, '0')
+  if (endH >= 24) {
+    form.value.endTime = `${String(endH - 24).padStart(2, '0')}:${mm}`
+    const next = new Date(startDate)
+    next.setDate(next.getDate() + 1)
+    form.value.endDate = next
+  }
+  else {
+    form.value.endTime = `${String(endH).padStart(2, '0')}:${mm}`
+    form.value.endDate = startDate
+  }
+}
+
+/**
  * 作成ダイアログを開くときの初期日時をフォームへ適用する（F03.19 §6.6.5）。
  * 優先順位: `initialStartAt`/`initialEndAt`（時刻付き）> `initialDate`（日付のみ・従来挙動）。
  * `initialDate` 経路の挙動は一切変更していない（AC-22c）。
@@ -363,8 +386,10 @@ function applyInitialDateTime() {
         form.value.endTime = end.time
       }
       else {
-        // 終了が渡されない場合は開始日と同じ日付だけ揃え、終了時刻は既定のままとする。
-        form.value.endDate = start.date
+        // 終了が渡されない場合、抑止した自動補正の規則（開始の1時間後・日付繰り上がり込み）を
+        // 呼び出し側で明示的に適用する。抑止しておきながら補完しないと、終了時刻がフォーム初期値の
+        // まま残り「開始より前の終了」になりうるため（watcher を止めた分の責任をここで引き受ける）。
+        applyDefaultEndOneHourAfter(start.date, start.time)
       }
       return
     }
