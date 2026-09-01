@@ -1,8 +1,8 @@
 # 柱③-B 組織契約の請求担当と個人支払手段の分離 設計書
 
-> 起票日: 2026-09-02（Codex 検分1巡目 P0×4/P1×8/P2×3 → 検分2巡目 P0×1/P1×5 の差し戻しを受け改訂。第3巡は合否確認のみの見込み）
+> 起票日: 2026-09-02（Codex 検分1巡目 P0×4/P1×8/P2×3 → 検分2巡目 P0×1/P1×5 → 検分3巡目 P0×1/P1×3 の差し戻しを受け改訂。以後の巡回は合否確認のみの見込み）
 > 担当: 足軽（本設計書は Codex 検分の要求事項を踏まえた仕様固め）
-> ステータス: 🟡 設計段階（レビュー待ち・検分3巡目待ち）
+> ステータス: 🟡 設計段階（レビュー待ち・検分4巡目〈合否確認〉待ち）
 > 課題管理: CMP-260901-1538
 > 参照: [`account_purge_last_admin_succession.md`](./account_purge_last_admin_succession.md) / [`withdrawal_flow_immediate_anonymization_fix.md`](./withdrawal_flow_immediate_anonymization_fix.md) / [`domain_db_design_principles.md`](./domain_db_design_principles.md)
 
@@ -15,7 +15,7 @@
 | # | 重大度 | 論点要約 | 採否 | 対処（反映章） |
 |---|---|---|---|---|
 | P0-1 | P0 | 置換方式では新旧サブスクの併存期間に二重課金が起きる | ○ | 新サブスクは `trial_end=旧 current_period_end` で作成し、旧期末まで無課金にする方式へ変更（§2.3） |
-| P0-2 | P0 | Idempotency-Key は24hで失効し一次防衛にならない | ○ | 一次防衛を DB（`psp_new_subscription_ref` 永続化）＋ Stripe metadata 検索へ移す。Key は補助（§3.2〜3.4） |
+| P0-2 | P0 | Idempotency-Key は24hで失効し一次防衛にならない | ○ | 一次防衛を DB（`psp_new_subscription_ref` 永続化）＋ Stripe metadata 照合へ移す。Key は補助（§3.2〜3.4）。**※照合手段は検分3巡目でSearch APIからList Subscriptions APIへ変更（§0.2参照）** |
 | P0-3 | P0 | 旧サブスクの webhook が `hardDeleteBySlot` で新契約の pointer を消しうる | ○ | `hardDeleteBySlot` をスロット単位から `contract_id` 一致条件へ変更する実装項目を追加。AC-14 を書き換え（§3.7、§8） |
 | P0-4 | P0 | 新契約作成時点で pointer を持つと `uk_acp_slot` と衝突し得る | ○ | 状態機械に `PENDING_HANDOVER`（pointer 無し）を追加し、切替 TX でのみ pointer を新へ移す（§3.1） |
 | P1-5 | P1 | 成功条件が複数 webhook に分散し不整合の余地がある | ○ | `checkout.session.completed` を正とし他は冪等な補強と明記。PAST_DUE/3DS/PaymentMethod無しの遷移表を追加（§3.6） |
@@ -40,7 +40,17 @@
 | R2-P1-4 | P1 | 旧契約が `PAST_DUE`／`current_period_end` が過去の場合の扱いが未確定 | ○ | 分岐確定: 該当時は `trial_end` 方式を使わず**引継要求自体を拒否**。先に旧契約の支払回収 or 解約を要求する。AC追加（§3.6改・AC-29） |
 | R2-P1-5 | P1 | SCA/3DS対応が PaymentMethod有無確認のみで不十分 | ○ | Checkout(subscriptionモード)は3DSをCheckoutフロー内で完了させることを公式で確認。加えてtrial終了時のoff-session請求に備え`pending_setup_intent`の確認/事前認証をSWITCHING前検証に追加（§3.6改・AC-30） |
 | R2-P1-6 | P1 | 引継対象契約の絞り込み条件が粗い（無償/PSP未作成契約の扱い未定義） | ○ | 検出クエリに `psp_subscription_ref IS NOT NULL AND current_period_end IS NOT NULL` を追加。無償/PSP未作成契約は「payer概念のみ更新（Stripe操作なし）」の別経路として1行定義（§5.1改） |
-| R2-P0-2注記 | — | Search API の60秒を保証値であるかのように書いていた | ○ | 「最短でも60秒」（保証ではない旨）に文言修正（§3.2） |
+| R2-P0-2注記 | — | Search API の60秒を保証値であるかのように書いていた | ○（後に§0.2で不使用に変更） | 「最短でも60秒」（保証ではない旨）に文言修正（§3.2）→検分3巡目でSearch自体を不使用に変更 |
+
+### §0.2 検分3巡目対応表（残 P0×1・P1×3）
+
+| # | 重大度 | 論点要約 | 採否 | 対処（反映章） |
+|---|---|---|---|---|
+| R3-P0 | P0 | 二重サブスク作成の回復経路（Search API）が鮮度遅延を持ち一次防衛として弱い | ○ | 回復経路の照合を **List Subscriptions（`customer`指定・`status=all`）+ `metadata.handoverRequestId`クライアント側フィルタ**へ変更。Stripe公式ドキュメント（`docs.stripe.com/search`）が「read-after-writeフローにはリストアップAPIを使え。これらはSearchの鮮度遅延の影響を受けない」と明記していることを根拠に確認。「DBにref無し AND Listにも無し」の両方確認後にのみ新規作成を許可。Search APIの記述は削除し不使用に変更（§3.2） |
+| R3-P1-3 | P1 | 旧解約失敗時に二重課金しうる構造的リスク（切替時cancelImmediately方式） | ○ | `cancelImmediately`方式を廃止。**承諾確定（`checkout.session.completed`）と同時に旧サブスクへ`cancel_at_period_end=true`を設定**する方式へ変更。以後どの後続手順が失敗しても旧は期末で必ず終了し二重課金の余地が構造的に無くなる。引継が期末前にFAILED確定した場合のみ`cancel_at_period_end=false`へ差し戻し継続。切替TXはローカルDB操作（pointer付替え＋状態遷移）のみとなりStripe呼び出しを含まないため冪等リトライが単純化。`PARTIALLY_COMPLETED`の意味を「Stripe側確定済み・ローカル切替のみ未了」に再定義し終端/非終端の記述矛盾（P2該当）も解消（§2.3、§3.1、§3.4、§3.5、§3.6） |
+| R3-P1-2 | P1 | `pending_setup_intent`検証の実行主体・タイミングが不明確で(b)pointer切替条件（旧期末到達のみ）と矛盾しうる | ○ | 認可者を明確化: **切替バッチ（旧期末到達時）が唯一の切替TX実行者**。実行前チェックで`pending_setup_intent`が未解決なら**切替せずhandoverをFAILEDに確定**（新trialサブスクをcancelImmediately=無課金取消、旧サブスクは`cancel_at_period_end`を解除して継続）。ACCEPTED直後（1段目・通知のみ）と旧期末到達時（2段目・最終確定）の二段チェックとして遷移表に反映（§3.6） |
+| R3-P1-4 | P1 | AC-6が旧仕様（cancelImmediately + invoice.paid待ち）のまま矛盾していた（伝播漏れ） | ○ | AC-6を新仕様（承諾時cancel_at_period_end予約／切替はローカルのみ）へ書き換え。本文全体を `cancelImmediately` / `invoice.paid` 切替条件 / `Search` の3語でgrepし残骸を総なめして除去（§8、全章） |
+| R3-P2 | P2 | AC-25の間隔表記（60秒）が新方式（List・鮮度遅延なし）と不整合 | ○ | List Subscriptionsはread-after-write整合のため待機間隔が不要である旨に統一（§8 AC-25） |
 
 ---
 
@@ -105,9 +115,9 @@ Stripe公式ドキュメント（`docs.stripe.com/api/subscriptions/create`・`d
 | 併存期間の課金 | ゼロ。新サブスクは `trialing` のまま旧期末まで請求されない |
 | 旧期末と新開始の隙間 | ゼロ。新サブスクの `trial_end` = 旧サブスクの `current_period_end` と同一 Unix timestamp を明示指定するため、隙間・重複とも発生しない（AC-15 で検証） |
 | 新サブスクの初回請求日 | 旧 `current_period_end` と同時刻。`billing_cycle_anchor` はその時刻にリセットされ、以後はその日を起点に周期が回る |
-| 旧サブスクの扱い | **（R2-P1-2/3 裁定で確定）** 旧サブスクの `current_period_end`（＝新サブスクの `trial_end` と同一時刻）に到達した時点で、`invoice.paid` を待たずに切替TXを実行し旧サブスクを `cancelImmediately`（既存 `StripeBillingPaymentGateway#cancelImmediately`）で止める。理由: entitlement を担保する pointer 切替を webhook到達という非同期・不確定なタイミングに依存させると空白/二重付与のリスクが残るため、アプリ側で厳密に判定できる時刻条件（旧期末到達）に一本化した（§3.1）。新サブスクの初回請求の成否は独立事象として扱い、失敗時は通常の `PAST_DUE` 遷移に乗せる（§3.6） |
-| trial 中に新 payer が離脱した場合 | `trial_end` 到達前に新サブスクを `cancelImmediately` すれば無課金のまま取消可能（課金が一切発生していないため返金処理不要） |
-| PaymentMethod 未設定時の挙動 | trial 終了時に決済手段が無いと `customer.subscription.deleted`（Stripe既定の `missing_payment_method` 終了時動作が `cancel` の場合）または `past_due` に陥る。**そのため ACCEPTED→SWITCHING 遷移の前に新 payer の PaymentMethod 有無を検証する（§3.6・P1-6/11 対応）** |
+| 旧サブスクの扱い | **（R3-P1-3 裁定で確定・二重課金構造裁定）** `cancelImmediately` は廃止する。**承諾確定（(a)引継確定条件 = `checkout.session.completed` 到達）と同時に、旧サブスクへ `cancel_at_period_end=true` を設定する**（既存 `StripeBillingPaymentGateway#cancelAtPeriodEnd` を流用）。これにより承諾が確定した瞬間から、旧サブスクは Stripe 側の保証で期末に必ず終了し、以後どの後続手順（切替TX・新サブスクの請求成否等）が失敗しても**旧が更新され続けて二重課金する余地が構造的に無くなる**。旧期末到達時に実行する切替TXは**ローカルDB操作（pointer付替え＋状態遷移）のみ**であり、Stripe API呼び出しを含まない（Stripe側は承諾確定時点で既に確定済みのため）。引継が期末前に `FAILED` 確定した場合のみ、旧サブスクの `cancel_at_period_end` を `false` に戻し継続させる（§3.6） |
+| trial 中に新 payer が離脱した場合 | `trial_end` 到達前に新サブスクを `cancelImmediately`（新サブスク側にのみ適用。無課金のため即時解約で問題ない）すれば取消可能。このとき旧サブスクの `cancel_at_period_end` は `false` に戻し、旧の継続を回復する |
+| PaymentMethod 未設定時の挙動 | trial 終了時に決済手段が無いと `customer.subscription.deleted`（Stripe既定の `missing_payment_method` 終了時動作が `cancel` の場合）または `past_due` に陥る。**そのため ACCEPTED直後（新サブスク作成前）に新 payer の PaymentMethod 有無を検証する（§3.6・P1-6/11 対応・ACCEPTED時点と期末時点の二段検証の1段目）** |
 | クーポン/割引・税 | 従来どおり引き継がない（新規指定が必要。本サービスは現状未提供のため対象外、§2.4 に維持） |
 
 ### 2.4 proration・クーポン・税の扱い（変更なし部分を維持）
@@ -129,52 +139,58 @@ Stripe公式ドキュメント（`docs.stripe.com/api/subscriptions/create`・`d
 ```
 [要求レベル: billing_payer_handover_requests.status]
 REQUESTED（要求）
-   │ 対象スコープの他 ADMIN が承諾 + 新 payer の PaymentMethod 存在確認（§3.6）
+   │ 対象スコープの他 ADMIN が承諾 + 新 payer の PaymentMethod 存在確認（§3.6・二段検証の1段目）
    ▼
 ACCEPTED（承諾）
    │ 新サブスク作成 API 呼び出し（trial_end=旧current_period_end で作成、§2.3）
    │ 新 billing_contracts 行を PENDING_HANDOVER 状態で作成（pointer は持たない）
-   │ pending_setup_intent の確認/事前認証（§3.6・R2-P1-5）
+   │ ↓ checkout.session.completed 到達で (a)引継確定条件が成立
+   │   同時に旧サブスクへ cancel_at_period_end=true を設定（R3-P1-3・旧は以後 Stripe 側の保証で必ず期末終了）
    ▼
-SWITCHING（切替中）
-   │ 判定条件は「旧契約の current_period_end に到達したか」のみ（R2-P1-2 裁定・invoice.paid は待たない）
-   │ 切替TX: pointer を旧contractから新contractへ付け替え + 旧contract を CANCELLED 化 + 新contract を PENDING_HANDOVER→ACTIVE 化
-   │ 旧サブスクを cancelImmediately
+SWITCHING（切替中・Stripe側は既に確定済み。以後はローカル切替の完了を待つだけ）
+   │ 切替バッチが唯一の切替TX実行者。判定条件は「旧契約の current_period_end に到達したか」のみ（R2-P1-2・invoice.paid は待たない）
+   │ 実行前チェック: pending_setup_intent が未解決なら切替せず FAILED へ（§3.6・二段検証の2段目）
+   │ 切替TX（ローカルDB操作のみ・Stripe API呼び出し無し）: pointer を旧contractから新contractへ付け替え
+   │   + 旧contract を CANCELLED 化 + 新contract を PENDING_HANDOVER→ACTIVE 化
    ▼
-COMPLETED（完了） ─┬─ 新規作成/trial中の異常で旧期末前に脱落 → FAILED（新contractはPENDING_HANDOVERのまま無効化、pointerは旧に残り続けるため旧契約は無傷）
-                    └─ 新は成功したが旧解約 or 切替TXの一部が失敗 → PARTIALLY_COMPLETED（§3.5 補償対象）
+COMPLETED（完了） ─┬─ 新規作成/trial中の異常で旧期末前に脱落、または pending_setup_intent 未解決 → FAILED
+                    │   （新contractはPENDING_HANDOVERのまま無効化・新trialサブスクをcancelImmediately=無課金のまま取消、
+                    │    旧サブスクは cancel_at_period_end=false へ戻し継続。旧契約は実質無傷）
+                    └─ ローカル切替TXのみが未了（Stripe側は既に確定済み） → PARTIALLY_COMPLETED（§3.5 再定義・非終端・リトライ対象）
 
 [契約レベル: billing_contracts.status]（既存5値 + 新設1値。§4.1でCHECK/ enum を6値へ拡張）
 PENDING_HANDOVER（新設）: 引継の新契約が作成された直後〜切替TX実行前。entitlements は「新契約の PENDING_HANDOVER 状態でも pointer 未設定のため未発行」ではなく、
                           entitlement の実体は旧契約 pointer が旧期末まで担保し続ける（R2-P1-2）。
   │ 入口: ACCEPTED（要求レベル）遷移時、新規に billing_contracts 行を PENDING_HANDOVER で作成
   │ 出口: 切替TX成功 → ACTIVE（pointer付替え完了と同時）
-  │ 出口: 新規作成/trial失敗 → CANCELLED（無効化。旧契約のpointerは無傷のため利用者影響なし）
+  │ 出口: 新規作成/trial失敗/pending_setup_intent未解決 → CANCELLED（無効化。旧契約のpointerは無傷のため利用者影響なし）
 既存5値（PENDING → ACTIVE → PAST_DUE ⇄ ACTIVE、ACTIVE →（期末解約予約）→ EXPIRED、いずれも CANCELLED へ遷移可）は変更なし。
 ```
 
 **pointer 一意制約との整合（P0-4 根治）**: `active_contract_pointers.uk_acp_slot`（スロット単位 UNIQUE）は「1スロットに1 pointer」を保証する制約であり、**新旧2契約が同時に pointer を持とうとすると衝突する**。そこで新契約は `PENDING_HANDOVER` の間 pointer を作らず、切替TXで「旧pointerを物理DELETE→新pointerをINSERT」を同一トランザクション内で行う（§3.7 の `hardDeleteBySlot` 修正と合わせ、旧pointerの削除条件を `contract_id` 一致に絞ることで、切替TXの外側で発生する旧webhookが誤って新pointerを消さないようにする）。
 
-**entitlement 空白ゼロ・二重付与ゼロの根拠（R2-P1-2 裁定）**: 切替TXの発火条件を「旧契約の `current_period_end` に到達したか」という**アプリ側で判定可能な時刻条件**に一本化し、Stripe側の非同期webhook（`invoice.paid`）の到達を待たない。旧契約の pointer は旧期末の瞬間まで entitlement を担保し続け、切替TXは旧pointerの削除と新pointerの作成を**同一トランザクション**で行うため、entitlement が「どちらの契約からも発行されていない空白時間」は発生しない（旧削除と新作成はDBトランザクションの原子性で同時に確定する）。同じ理由で「旧・新両方が同時にentitlementを持つ二重付与」も発生しない（pointerは常にどちらか一方の契約にのみ存在する）。
+**entitlement 空白ゼロ・二重付与ゼロの根拠（R2-P1-2 裁定・維持）**: 切替TXの発火条件を「旧契約の `current_period_end` に到達したか」という**アプリ側で判定可能な時刻条件**に一本化し、Stripe側の非同期webhook（`invoice.paid`）の到達を待たない。旧契約の pointer は旧期末の瞬間まで entitlement を担保し続け、切替TXは旧pointerの削除と新pointerの作成を**同一トランザクション**で行うため、entitlement が「どちらの契約からも発行されていない空白時間」は発生しない（旧削除と新作成はDBトランザクションの原子性で同時に確定する）。同じ理由で「旧・新両方が同時にentitlementを持つ二重付与」も発生しない（pointerは常にどちらか一方の契約にのみ存在する）。**さらにR3-P1-3裁定により切替TXはStripe API呼び出しを含まないローカルDB操作のみになったため、entitlement空白ゼロの保証にStripe側の応答可用性が絡む余地も無くなった**（DBトランザクションの原子性のみに依存する、より単純な保証）。
 
 新サブスクの**初回請求（trial終了時の請求）が失敗した場合**は、新契約は既に切替TXで `ACTIVE` に遷移済み（pointer切替は旧期末到達のみが条件のため、請求成功可否とは独立して先に完了している）であり、この失敗は**通常の継続課金の支払失敗と同型**として扱う。すなわち `ACTIVE → PAST_DUE`（`invoice.payment_failed`）という既存の状態遷移にそのまま乗せ、督促・停止フローも通常契約と同一にする。引継固有の特別な救済フローは設けない（AC-27/28、§3.6にも遷移表を追加）。
 
-### 3.2 Idempotency-Key の限界と一次防衛の移設（P0-2 根治）
+### 3.2 Idempotency-Key の限界と一次防衛の移設（P0-2 根治・R3-P0 で List Subscriptions 方式へ変更）
 
 Stripe 公式ドキュメント（Idempotent requests）で確認した仕様: Idempotency-Key は**最短24時間で失効**し、失効後の再利用は新規リクエストとして扱われる。**24時間を跨ぐ再試行では Idempotency-Key だけでは二重作成を防げない。**
 
 → **一次防衛を DB 側に移す。** Idempotency-Key は「同一プロセス内・短時間の再送」に対する補助防御として残すが、正の防衛線は以下:
 
 1. `billing_payer_handover_requests.psp_new_subscription_ref` を Stripe 新サブスク作成 API が成功した**直後・同一トランザクション**で永続化する
-2. 新サブスク作成の全呼び出し（初回・リトライとも）で `metadata.handoverRequestId = {handoverRequestId}` を**必ず**指定する（Stripe Subscriptions Search API `metadata["handoverRequestId"]:"{id}"` で後から引ける状態にするため）
+2. 新サブスク作成の全呼び出し（初回・リトライとも）で `metadata.handoverRequestId = {handoverRequestId}` を**必ず**指定する（回復経路で照合キーとして使うため）
 3. 新サブスク作成を試みる前に、必ず次の順で確認する:
    1. DB の `psp_new_subscription_ref` が既に埋まっているか確認 → 埋まっていれば作成をスキップしてそのサブスクを使う
-   2. 埋まっていなければ Stripe Subscriptions Search API を `metadata["handoverRequestId"]:"{id}"` で検索 → ヒットすれば「Stripe には作成済みだが DB 反映前に落ちた」ケースと判定し、そのサブスク ID を DB に書き戻してから続行（二重作成回避）
-   3. どちらも見つからない場合のみ新規作成 API を呼ぶ（このときのみ Idempotency-Key `billing-handover-create-{handoverRequestId}` を付与）
+   2. 埋まっていなければ **Stripe List Subscriptions API を `customer={新Customer}&status=all` で照会**し、返却された一覧を `metadata.handoverRequestId == {id}` でクライアント側フィルタする → ヒットすれば「Stripe には作成済みだが DB 反映前に落ちた」ケースと判定し、そのサブスク ID を DB に書き戻してから続行（二重作成回避）
+   3. 「DB に `psp_new_subscription_ref` が無い」かつ「List 照会にもヒットが無い」の**両方**を確認して初めて新規作成 API を呼ぶ（このときのみ Idempotency-Key `billing-handover-create-{handoverRequestId}` を付与）
 
-**Search API の鮮度に関する既知の制約（要注意・実装ITで踏まえる）**: Stripe公式ドキュメントは「通常運用下でも検索可能になるまで最大1分程度かかる場合があり、read-after-write（書き込み直後の読み取り）フローでの利用は推奨しない」と明記している。この「最大1分程度」は**上限側の目安であり下限の保証値ではない**（Stripe側の障害時はさらに遅延し得るとも明記されている）。したがって「60秒待てば必ず検索可能になる」という前提には立てない。**最短でも60秒は空けてから Search を試すが、それでヒットしない場合は「まだ未反映」と「本当に未作成」を区別できないため、Search 結果は"見つかった場合の二重作成回避"にのみ使い、"見つからないこと"を新規作成してよい根拠にはしない**（見つからなければ、DBの `psp_new_subscription_ref` 未設定と合わせて新規作成を許可するが、その新規作成自体は必ず Idempotency-Key付きで行い、万一直前の呼び出しがStripe側で成立していた場合でもキー一致により二重サブスクにはならないようにする）。60秒未満の即時リトライでは Search に頼らず、まず Idempotency-Key による同一リクエスト再送（Stripe側が最初の結果をそのまま返す）で吸収し、Search はそれより長い間隔の再試行（夜次バッチ等）でのみ二重作成検出の手段として使う。
+**回復経路の照合を Search API から List Subscriptions API へ変更した根拠（R3-P0・公式ドキュメントで確認済み）**: Stripe公式ドキュメント（Search: `docs.stripe.com/search`）は、Search APIの鮮度遅延について明記した直後に「read-after-write（書き込み直後の読み取り）フローが即時にデータを必要とする場合は、[請求書の一覧表示](https://docs.stripe.com/api/invoices/list)などの各種**リストアップAPI**を使用してください。これらのAPIは、上記のデータ利用の遅延の影響を受けません」と明記している。List Subscriptions API（`docs.stripe.com/api/subscriptions/list`）は Search のような検索インデックスを経由せず、Stripe側のプライマリデータを直接返す通常のリソース一覧エンドポイントであり、**検索インデックスの反映遅延という概念自体が存在しない**（read-after-write整合）。また `customer` パラメータで対象Customerに絞り込め、`status=all` を指定すれば `trialing`/`canceled` を含む全ステータスが対象になるため、直前の新規作成呼び出しが成功していれば即座に一覧へ現れる。
 
-4. **現行 `StripePaymentProvider`/`StripeBillingPaymentGateway` は Idempotency-Key 未対応（実コード確認: `createBillingSubscriptionCheckoutSession` 等の呼び出しにキー引数が無い）。実装 PR で Gateway 層に Idempotency-Key 引数と `metadata` 引数を追加する拡張が必須。本設計書はその拡張を PR-2 のスコープに含める（§8）**
+**Search APIは補助手段としても採用しない（格下げではなく不使用に変更・R3-P0）**: 上記のとおり List で read-after-write 整合の照合が可能なため、鮮度遅延という余分なリスクを持つ Search API を一次防衛はもとより補助手段としても使う理由が無い。§3.2の照合は常に List Subscriptions を使う。
+
+4. **現行 `StripePaymentProvider`/`StripeBillingPaymentGateway` は Idempotency-Key 未対応（実コード確認: `createBillingSubscriptionCheckoutSession` 等の呼び出しにキー引数が無い）。実装 PR で Gateway 層に Idempotency-Key 引数と `metadata` 引数、および List Subscriptions 呼び出し用メソッドを追加する拡張が必須。本設計書はその拡張を PR-2 のスコープに含める（§8）**
 
 ### 3.3 相関 ID の永続化
 
@@ -184,13 +200,20 @@ Stripe 公式ドキュメント（Idempotent requests）で確認した仕様: I
 
 | 操作 | Idempotency-Key | 既存キーとの関係 |
 |---|---|---|
-| 新サブスク作成 | `billing-handover-create-{handoverRequestId}` | 新設。§3.2 のとおり一次防衛は DB+Search、本キーは短時間再送の補助 |
-| handover 経由の旧サブスク解約 | `billing-handover-cancel-{handoverRequestId}` | 新設。**通常の（引継を伴わない）解約が使う既存キー `"billing-cancel-" + subscriptionRef`（`StripeBillingPaymentGateway#cancelAtPeriodEnd` 実装）とは別名前空間にする**ことで、同一 `subscriptionRef` に対し「通常解約」と「引継による解約」が同時に走っても Idempotency-Key の衝突（パラメータ不一致エラー）を起こさない |
+| 新サブスク作成 | `billing-handover-create-{handoverRequestId}` | 新設。§3.2 のとおり一次防衛は DB+List Subscriptions、本キーは短時間再送の補助 |
+| 承諾確定時の旧サブスク `cancel_at_period_end=true` 設定（R3-P1-3で新設・旧の「解約」ではなく承諾確定と同時に行う） | `billing-handover-schedule-cancel-{handoverRequestId}` | 新設。**通常の（引継を伴わない）解約が使う既存キー `"billing-cancel-" + subscriptionRef`（`StripeBillingPaymentGateway#cancelAtPeriodEnd` 実装）とは別名前空間にする**ことで、同一 `subscriptionRef` に対し「通常解約」と「引継による予約解約」が同時に走っても Idempotency-Key の衝突（パラメータ不一致エラー）を起こさない |
+| FAILED確定時の旧サブスク `cancel_at_period_end=false` への差し戻し（R3-P1-3で新設） | `billing-handover-revert-cancel-{handoverRequestId}` | 新設。上記と対の操作のため別キーにする |
+| 新trialサブスクの `cancelImmediately`（新payer離脱・pending_setup_intent未解決等でFAILED確定時） | `billing-handover-cancel-new-{handoverRequestId}` | 新設。新サブスク側のみに適用（旧サブスクの操作とは別対象・別キー） |
 
-### 3.5 補償（変更なし・維持）
+**旧サブスクへの `cancelImmediately` は本方式では使わない（R3-P1-3・§2.3/§3.1参照）。** 切替TX自体はローカルDB操作のみのためIdempotency-Keyを持たない（Stripe API呼び出しが無いため）。
 
-- 切替TXの一部（pointer 付替え or 旧解約）が失敗した場合、状態を `PARTIALLY_COMPLETED` にし、未完了の操作を夜次バッチのリトライ対象にする（既存 `findPurgedPaidSubscriptionRefsPendingStripeCancel` と同型のクエリを新設）
-- 新契約は既に ACTIVE のため利用者影響は無く、`PARTIALLY_COMPLETED` は緊急度低
+### 3.5 補償（`PARTIALLY_COMPLETED` の意味を再定義・R3-P1-3で終端/非終端の矛盾を解消）
+
+**`PARTIALLY_COMPLETED` の意味（再定義）**: R3-P1-3裁定により、Stripe側の状態確定（旧サブスクの`cancel_at_period_end=true`設定）は**承諾確定（ACCEPTED→checkout.session.completed）の時点で既に完了している**。したがって切替TX実行時点でStripe側の操作が失敗するという事態そのものが起こらない（切替TXはローカルDB操作のみのため）。`PARTIALLY_COMPLETED` が意味するのは**「Stripe側は確定済み（旧は期末で終わることが保証されている）だが、ローカルの切替TX（pointer付替え＋状態遷移）自体がDB書き込み失敗等で未完了」**という状態のみになった。
+
+- これにより §4.2 の状態遷移表にあった旧来の「終端/終端外の記述矛盾」（Stripe操作の失敗と、ローカル操作の失敗を同じ状態名で扱っていた点）を解消する: `PARTIALLY_COMPLETED` は **非終端**（`open_old_contract_id` 生成列の対象に含める。§4.2で明記）とし、ローカル切替TXが成功するまで夜次バッチでリトライし続け、成功次第 `COMPLETED` へ遷移する
+- リトライは「pointer付替え＋状態遷移」という冪等な操作（同じ`old_contract_id`/`new_contract_id`に対して再実行しても結果が同じ）のため、Stripe側との整合を都度確認する必要が無く単純化される
+- 利用者影響: 新契約は「旧期末到達済み」の時点で本来 `ACTIVE` になるはずだが `PARTIALLY_COMPLETED` の間は `PENDING_HANDOVER` のまま pointer が旧のまま残っている可能性があるため、**entitlementの実体は旧pointerが担保し続ける**（旧サブスク自体は既にStripe側でcanceled済みでも、DB上の旧pointerがまだ新へ付け替わっていないだけなので、アプリ側のentitlement判定はDBの`active_contract_pointers`を見る限り連続している。§3.1の空白ゼロ原則と整合）
 
 ### 3.6 成功条件の三段階分離・PaymentMethod/SCA事前検証・PAST_DUE分岐（P1-5・P1-6・P1-11・R2-P1-3・R2-P1-4・R2-P1-5 対応）
 
@@ -198,8 +221,8 @@ Stripe 公式ドキュメント（Idempotent requests）で確認した仕様: I
 
 | 段階 | 条件 | 意味 | このタイミングで行うこと |
 |---|---|---|---|
-| (a) 引継確定条件 | `checkout.session.completed`（新サブスク作成成功・ステータスは `trialing`） | 「新 payer が新サブスクの作成に同意し、Stripeへの登録が完了した」ことの確定。**この時点ではまだ課金は一切発生していない**（trial中のため） | `billing_payer_handover_requests` を `SWITCHING` へ遷移させ、新 `billing_contracts` 行を `PENDING_HANDOVER` で確定させる。§3.1参照 |
-| (b) pointer切替条件 | 旧契約の `current_period_end` 到達（R2-P1-2裁定・時刻ベースのアプリ側判定） | 「entitlementの担保元をどちらの契約にするか」の切替タイミング | 切替TX実行・旧サブスク即時解約 |
+| (a) 引継確定条件 | `checkout.session.completed`（新サブスク作成成功・ステータスは `trialing`） | 「新 payer が新サブスクの作成に同意し、Stripeへの登録が完了した」ことの確定。**この時点ではまだ課金は一切発生していない**（trial中のため） | `billing_payer_handover_requests` を `SWITCHING` へ遷移させ、新 `billing_contracts` 行を `PENDING_HANDOVER` で確定させる**と同時に、旧サブスクへ `cancel_at_period_end=true` を設定する**（R3-P1-3・§2.3/§3.1参照。これにより旧はStripe側の保証で以後必ず期末終了する） |
+| (b) pointer切替条件 | 旧契約の `current_period_end` 到達（R2-P1-2裁定・時刻ベースのアプリ側判定） | 「entitlementの担保元をどちらの契約にするか」の切替タイミング。**唯一の実行者は切替バッチ**（旧期末到達を監視する夜次/定期バッチ）であり、他の経路（webhook等）はこの判定・実行を代行しない | 切替バッチが実行前チェック（`pending_setup_intent`未解決なら中止しFAILEDへ、§3.6下記）を経て、切替TX（ローカルDB操作のみ）を実行。**旧サブスクへのStripe API呼び出しは行わない**（(a)の時点で既に`cancel_at_period_end=true`が設定済みのため） |
 | (c) 事後健全性確認 | `invoice.paid`（新サブスクのtrial終了時初回請求） | 「実際に課金が成功したか」の確認。**(a)(b)いずれの判断にも使わない** | 失敗時は§3.1のとおり通常の`PAST_DUE`遷移。成功時は監視上のヘルスチェックとして記録するのみ |
 
 **誤読防止の注記（R2-P1-3）**: Subscription作成レスポンスの `status=trialing` は「新payerが登録された」ことの確認であり、**「新payerへの請求が成功した」ことを意味しない**（trial中は請求自体が発生しないため、成功も失敗もまだ判定不能な状態）。実装・監視ダッシュボードの双方で `trialing` を「課金成功」と表示・ログしないこと（レビュー観点として明記）。
@@ -209,9 +232,9 @@ Stripe 公式ドキュメント（Idempotent requests）で確認した仕様: I
 | ケース | 判定タイミング | 挙動 |
 |---|---|---|
 | 旧契約が `PAST_DUE` または `current_period_end` が既に過去（R2-P1-4 裁定） | **引継要求の作成時点（REQUESTED発行前）で検証** | `trial_end` 方式は「過去のタイムスタンプをtrial_endに指定する」ことになり Stripe API 上不正（trial_endは未来日時である必要がある）。よって**この場合は引継要求自体を拒否**する。ADMINには「先に旧契約の支払回収（督促の完了を待つ）または解約を完了してから引継を申請してください」という案内を返す（AC-29） |
-| 新 payer に有効な PaymentMethod が無い | ACCEPTED直後・新サブスク作成前に必須検証（P1-6/11） | 検証失敗なら承諾自体を差し戻し、状態は `ACCEPTED` に留めず `REQUIRES_PAYMENT_METHOD`（新設の中間状態）へ落とす。旧契約は無傷のまま。新 payer にカード登録を促す通知を送る |
-| 新サブスク作成後、`pending_setup_intent` が非NULL（R2-P1-5・SCA/3DS対応） | 新サブスク作成直後・SWITCHING前の必須検証項目として追加 | Stripe公式ドキュメント（Subscriptionオブジェクト`pending_setup_intent`・SCA移行ガイド Scenario 2）を確認: `pending_setup_intent` は「即時課金なしでサブスクを作成した場合に、off-session課金を成功させるための事前認証収集用SetupIntent」。**Checkout Session（subscriptionモード）は公式に「SCA要件を自動的に処理する」と明記されており、通常はCheckoutフロー完了時点（=(a)引継確定条件成立時点）で3DS認証も完了している**ため`pending_setup_intent`はNULLになるのが期待値。もし非NULLのまま残っている場合（Checkoutを経由しない直接API経路等）は、trial終了時のoff-session請求が3DS要求で失敗するリスクがあるため、**新payerに追加認証（SetupIntent confirm）の完了を促し、確認が取れるまでSWITCHINGへの遷移（pointer切替の準備）を進めない**。ただし(b)pointer切替条件自体は「旧期末到達」のみで判定するため、認証未完了のまま旧期末に達した場合は切替TXを実行した上で、新契約は`PAST_DUE`遷移で対処する（§3.1の初回請求失敗と同型・特別扱いしない） |
-| 新サブスクが `trialing` のまま Stripe 側で `canceled`（何らかの理由） | webhook `customer.subscription.deleted` | 状態を `FAILED` に落とし、`old_contract_id` は無傷のまま。ADMIN 通知 |
+| 新 payer に有効な PaymentMethod が無い（**二段検証の1段目**） | ACCEPTED直後・新サブスク作成前に必須検証（P1-6/11） | 検証失敗なら承諾自体を差し戻し、状態は `ACCEPTED` に留めず `REQUIRES_PAYMENT_METHOD`（新設の中間状態）へ落とす。旧契約は無傷のまま（まだ`cancel_at_period_end`も設定していない）。新 payer にカード登録を促す通知を送る |
+| 新サブスク作成後、`pending_setup_intent` が非NULL（R2-P1-5／R3-P1-2・SCA/3DS対応・**認可者と二段検証の明確化**） | **1段目**: 新サブスク作成直後・(a)引継確定条件成立直後の即時チェック。**2段目（最終確定）**: (b)切替バッチが旧期末到達時に行う実行前チェック（唯一の切替TX実行者・§3.6上表） | Stripe公式ドキュメント（Subscriptionオブジェクト`pending_setup_intent`・SCA移行ガイド Scenario 2）を確認: `pending_setup_intent` は「即時課金なしでサブスクを作成した場合に、off-session課金を成功させるための事前認証収集用SetupIntent」。**Checkout Session（subscriptionモード）は公式に「SCA要件を自動的に処理する」と明記されており、通常はCheckoutフロー完了時点（=(a)引継確定条件成立時点）で3DS認証も完了している**ため`pending_setup_intent`はNULLになるのが期待値。1段目チェックで非NULLの場合（Checkoutを経由しない直接API経路等）は新payerに追加認証（SetupIntent confirm）の完了を促す通知を送るのみで、この時点ではまだ状態遷移させない（旧の`cancel_at_period_end=true`は既に設定済みのため引継自体は進行中扱い）。**2段目（切替バッチによる最終確定）**: 旧期末到達時点で改めて`pending_setup_intent`を確認し、依然として未解決（=認証未完了）であれば**切替TXを実行せず、handoverを`FAILED`に確定する**。このとき新trialサブスクを`cancelImmediately`（無課金のまま取消）し、旧サブスクの`cancel_at_period_end`を`false`へ差し戻して継続させる（§3.1状態機械参照）。**2段目チェックで`pending_setup_intent`がNULL（=認証完了済み）であれば通常どおり切替TXへ進む**（この場合の初回請求失敗は§3.1のとおり通常の`PAST_DUE`遷移で対処し特別扱いしない） |
+| 新サブスクが `trialing` のまま Stripe 側で `canceled`（何らかの理由） | webhook `customer.subscription.deleted` | 状態を `FAILED` に落とし、`old_contract_id` は無傷のまま。旧サブスクの`cancel_at_period_end`を`false`へ差し戻す。ADMIN 通知 |
 
 ### 3.7 `hardDeleteBySlot` の contract_id 一致化（P0-3 根治・実装項目）
 
@@ -261,8 +284,10 @@ CREATE TABLE billing_payer_handover_requests (
     scope_id BIGINT NOT NULL,
     old_payer_user_id BIGINT NOT NULL COMMENT '退会予定・引継元の payer',
     new_payer_user_id BIGINT NULL COMMENT '承諾した引継先 ADMIN（ACCEPTED 以降で確定）',
-    status VARCHAR(24) NOT NULL COMMENT 'REQUESTED/ACCEPTED/REQUIRES_PAYMENT_METHOD/SWITCHING/COMPLETED/PARTIALLY_COMPLETED/FAILED/EXPIRED',
+    status VARCHAR(24) NOT NULL COMMENT 'REQUESTED/ACCEPTED/REQUIRES_PAYMENT_METHOD/SWITCHING/PARTIALLY_COMPLETED/COMPLETED/FAILED/EXPIRED',
     -- 生成列: 終端状態（COMPLETED/FAILED/EXPIRED）以外のときだけ old_contract_id を値として持つ。
+    -- PARTIALLY_COMPLETED は R3-P1-3 裁定で「非終端・リトライ対象」と再定義したため、
+    -- CASE 式の対象外（＝値を保持し続ける）のままで正しい（§3.5参照）。
     -- 終端状態では NULL になるため UNIQUE 制約に抵触せず、同一契約への再要求（前回終了後）を許可する。
     open_old_contract_id BINARY(16) GENERATED ALWAYS AS (
         CASE WHEN status IN ('COMPLETED', 'FAILED', 'EXPIRED') THEN NULL ELSE old_contract_id END
@@ -292,9 +317,9 @@ CREATE TABLE billing_payer_handover_requests (
 | `REQUESTED` | 通知済み・未承諾 | （初期状態） | `ACCEPTED` / `EXPIRED` / `FAILED`（退会取消時） |
 | `ACCEPTED` | 承諾済み・PaymentMethod検証前 | `REQUESTED` | `REQUIRES_PAYMENT_METHOD` / `SWITCHING` |
 | `REQUIRES_PAYMENT_METHOD` | PaymentMethod未登録で差し戻し中 | `ACCEPTED` | `ACCEPTED`（登録後再検証）/ `EXPIRED` |
-| `SWITCHING` | 新サブスク作成済み・trial中または切替TX実行中 | `ACCEPTED` | `COMPLETED` / `PARTIALLY_COMPLETED` / `FAILED` |
-| `COMPLETED` | 切替完了（終端） | `SWITCHING` | — |
-| `PARTIALLY_COMPLETED` | 新は成功・旧解約またはpointer付替えが未完了（終端扱い、リトライ対象） | `SWITCHING` | `COMPLETED`（リトライ成功時） |
+| `SWITCHING` | 旧期末到達待ち・旧サブスクは`cancel_at_period_end=true`で確定済み | `ACCEPTED` | `COMPLETED`（切替TX一発成功時） / `PARTIALLY_COMPLETED`（切替TXのDB書き込みのみ失敗時） / `FAILED`（新規作成/trial中の異常・pending_setup_intent未解決時） |
+| `PARTIALLY_COMPLETED` | **非終端**。Stripe側は確定済み（旧は期末で終わることが保証）・ローカルの切替TX（pointer付替え＋状態遷移）のみ未了・夜次バッチのリトライ対象（§3.5再定義） | `SWITCHING` | `COMPLETED`（リトライ成功時） |
+| `COMPLETED` | 切替完了（終端） | `SWITCHING` / `PARTIALLY_COMPLETED` | — |
 | `FAILED` | 失敗（終端。旧契約は無傷） | 各状態 | — |
 | `EXPIRED` | 期限切れ（終端） | `REQUESTED` / `REQUIRES_PAYMENT_METHOD` | — |
 
@@ -330,7 +355,7 @@ CREATE TABLE billing_payer_handover_requests (
 
 ### 5.4 purge×handover の相互条件表（P1-9 新設）
 
-**原則: handover が `REQUESTED`/`ACCEPTED`/`REQUIRES_PAYMENT_METHOD`/`SWITCHING`（＝非終端）の間は、purge 側の期末解約フォールバックを発火させない。handover の期限切れ（`EXPIRED`）または失敗（`FAILED`）が先に確定してから、purge の fallback 判定に処理を渡す。**
+**原則: handover が `REQUESTED`/`ACCEPTED`/`REQUIRES_PAYMENT_METHOD`/`SWITCHING`/`PARTIALLY_COMPLETED`（＝非終端。§4.2の生成列定義と一致）の間は、purge 側の期末解約フォールバックを発火させない。handover の期限切れ（`EXPIRED`）または失敗（`FAILED`）が先に確定してから、purge の fallback 判定に処理を渡す。**
 
 | 交錯パターン | 挙動 |
 |---|---|
@@ -407,8 +432,8 @@ public List<String> cancelAllForPayerOnWithdrawal(Long payerUserId) { ... }
 | AC-3 | `cancelAllUserContractsForPurge` は `scope_kind=USER` に加え `payer_user_id` 一致の TEAM/ORG 契約も検出する | (c) | IT |
 | AC-4 | 新サブスクは `trial_end=旧current_period_end` で作成され、trial中（＝旧期末まで）は一切課金されない | (a) | IT: Stripeテストモードで trial 中の invoice が生成されないことを確認 |
 | AC-5 | 新サブスクの trial 終了と旧サブスクの期末に隙間・重複が発生しない（`trial_end` と旧 `current_period_end` が同一 Unix timestamp） | (a) | IT: 両者のタイムスタンプ一致をアサーション |
-| AC-6 | 旧サブスクの `cancelImmediately` は新サブスクの初回請求成功（`invoice.paid`）確認後にのみ呼ばれる | (a) | IT: 新サブスク作成失敗をモックし、旧が解約されないことを確認 |
-| AC-7 | 同一 `handoverRequestId` で新サブスク作成を複数回試行しても Stripe 側には1つのサブスクしか作られない（DB確認→Search確認→新規作成の順序、Idempotency-Keyは補助） | (a)(d) | IT: DB書き込み失敗を模擬したリトライで二重作成されないことを確認 |
+| AC-6 | **（R3-P1-4で新方式へ書き換え）** 旧サブスクの `cancel_at_period_end=true` は、承諾確定（`checkout.session.completed`）と**同時に**設定される（`cancelImmediately`は使わない）。切替TX（旧期末到達時）はローカルDB操作（pointer付替え＋状態遷移）のみで、Stripe API呼び出しを含まない | (a) | IT: 承諾確定直後に旧サブスクの`cancel_at_period_end`が`true`になることを確認。また切替TX実行時にStripe API呼び出しが発生しないことをモック検証（呼び出し回数0を確認） |
+| AC-7 | 同一 `handoverRequestId` で新サブスク作成を複数回試行しても Stripe 側には1つのサブスクしか作られない（DB確認→List Subscriptions確認→新規作成の順序、Idempotency-Keyは補助） | (a)(d) | IT: DB書き込み失敗を模擬したリトライで二重作成されないことを確認 |
 | AC-8 | 引継要求が期限（14日）内に `ACCEPTED` にならなければ `EXPIRED` となり、purgeバッチが対象契約を期末解約する | (c)(e) | IT |
 | AC-9 | 通知文言に「請求日は変わらない（新サブスクは旧期末から開始）」旨が含まれる（i18n 6言語対応） | (e) | FEレビュー＋ロケールファイル確認 |
 | AC-10 | ADMINが0人または他ADMIN全員が退会予定の場合、引継要求は発行されず即座に `FAILED`→purgeのfallback判定に委ねられる | (c) | IT |
@@ -425,18 +450,20 @@ public List<String> cancelAllForPayerOnWithdrawal(Long payerUserId) { ... }
 | AC-21 | 「複数ADMIN全員無視」分岐: 猶予期限到来で `EXPIRED` | (e) | IT |
 | AC-22 | 競合: 承諾操作とpurge fallbackが同時に走っても、非終端状態のhandoverに対してfallbackは発火しない | (d) | IT |
 | AC-23 | 競合: 承諾直後に期限切れバッチが走っても、既に`ACCEPTED`以降の行は`EXPIRED`にされない（`SELECT...FOR UPDATE`と期限バッチのロック順序を検証） | (d) | IT |
-| AC-24 | 競合: 切替TX実行中に旧サブスクの解約処理が二重に起動されても、Idempotency-Key（`billing-handover-cancel-*`）により実害が出ない | (d) | IT |
-| AC-25 | 競合: Stripe新サブスク作成が成功した直後にDBトランザクションがロールバックしても、次回リトライでSearch APIから回収できる（60秒以上の間隔を空けたリトライで検証） | (d) | IT |
+| AC-24 | 競合: 承諾確定時の`cancel_at_period_end=true`設定処理が二重に起動されても、Idempotency-Key（`billing-handover-schedule-cancel-*`）により実害が出ない（Stripe側は同一リクエストとして扱われる） | (d) | IT |
+| AC-25 | 競合: Stripe新サブスク作成が成功した直後にDBトランザクションがロールバックしても、次回リトライで List Subscriptions API（`customer`＋`status=all`指定・`metadata.handoverRequestId`でクライアント側フィルタ）から回収できる。List はread-after-write整合のため、Search API利用時に必要だった待機間隔は不要（間隔ゼロで即座に再試行可） | (d) | IT: DBロールバック直後（間隔を空けずに）リトライし、Listから回収できることを確認 |
 | AC-26 | 競合: webhook処理と同期処理（切替TX）が同時に同じhandover行を更新しようとしても、行ロックにより一方が待たされ不整合が生じない | (d) | IT |
 | AC-27 | 切替TXは旧契約の`current_period_end`到達のみを条件に実行され、`invoice.paid`の到達を待たない。旧pointer削除と新pointer作成が同一トランザクションで行われ、entitlementが一瞬たりとも「どちらの契約からも発行されていない」状態にならない | (c) | IT: 旧期末到達時刻ちょうどでentitlement照会を行い、途切れがないことを確認 |
 | AC-28 | 新サブスクの初回請求（trial終了時）が失敗した場合、新契約は特別扱いされず通常の`ACTIVE→PAST_DUE`遷移に乗り、既存の督促・停止フローがそのまま適用される | (c) | IT: 初回請求失敗をモックし、新契約が`PAST_DUE`になり通常契約と同じ督促処理が走ることを確認 |
 | AC-29 | 旧契約が`PAST_DUE`または`current_period_end`が過去の場合、引継要求の作成自体が拒否され、ADMINへ「先に旧契約を解消してください」という案内が返る | (c)(e) | IT: 該当条件のフィクスチャで引継要求APIを呼び、400系エラーと案内文言を確認 |
-| AC-30 | 新サブスク作成後に`pending_setup_intent`が非NULLの場合、SWITCHINGへの遷移が保留され新payerに追加認証を促す通知が送られる。認証未完了のまま旧期末に達した場合は切替TXを実行した上で新契約が通常の`PAST_DUE`遷移に乗る（特別扱いしない） | (e) | IT: `pending_setup_intent`非NULLのフィクスチャで検証、および旧期末到達との競合ケースを確認 |
+| AC-30 | **（R3-P1-2で新方式へ書き換え）** 新サブスク作成直後（1段目チェック）に`pending_setup_intent`が非NULLの場合、新payerへ追加認証を促す通知のみ送り状態遷移はさせない。**切替バッチが旧期末到達時（2段目・最終確定）に再度`pending_setup_intent`を確認し、依然未解決なら切替TXを実行せずhandoverを`FAILED`に確定**（新trialサブスクを`cancelImmediately`で無課金取消・旧サブスクの`cancel_at_period_end`を`false`へ差し戻し継続）。2段目で解決済みなら通常どおり切替TXへ進む | (e) | IT: 1段目で非NULLのまま2段目（旧期末到達）に達するケースをフィクスチャで再現し、`FAILED`確定・新サブスク無課金取消・旧サブスク継続の3点を確認 |
+| AC-31 | 承諾確定（`checkout.session.completed`）と同時に旧サブスクへ`cancel_at_period_end=true`が設定されるため、承諾確定以降はどの後続手順（切替TX・pending_setup_intent未解決によるFAILED確定等）が失敗しても、旧サブスクが更新され続けて二重課金する余地が無い | (a) | IT: 承諾確定後に切替TX・通知処理等を意図的に全て失敗させても、旧サブスクの`cancel_at_period_end`が`true`のまま保たれ期末で終了することを確認 |
+| AC-32 | handoverが期末前に`FAILED`確定した場合（新規作成失敗・trial中の異常・pending_setup_intent未解決の2段目確定等いずれの経路でも）、旧サブスクの`cancel_at_period_end`が`false`へ差し戻され、旧契約が継続することを確認する | (c) | IT: 各FAILED経路ごとに旧サブスクの`cancel_at_period_end`が`false`に戻ることを確認 |
 
 ### PR 分割案
 
 1. **PR-1（DDL＋読み取り専用の土台）**: `payer_user_id`/`handover_request_id` 列追加・`chk_bc_status` CHECK 6値化・`ContractStatus` enum への `PENDING_HANDOVER` 追加・バックフィル・`billing_payer_handover_requests` テーブル新設・`ActiveContractPointerRepository#hardDeleteBySlotAndContractId` 新設（AC-1, AC-2, AC-15, AC-14の土台）
-2. **PR-2（BillingContractService拡張＋Gateway拡張）**: purge検出クエリ拡張（R2-P1-6の絞り込み条件含む）・引継要求/承諾API・状態機械（`PENDING_HANDOVER`含む）・`trial_end`方式での新サブスク作成・旧期末到達を条件とする切替TX・PAST_DUE/過去期末の拒否分岐（R2-P1-4）・`pending_setup_intent`検証（R2-P1-5）・Idempotency-Key/metadata対応のためのGateway拡張・DB+Search優先のリトライ手順（AC-3〜12, AC-16, AC-22〜30の大半）
+2. **PR-2（BillingContractService拡張＋Gateway拡張）**: purge検出クエリ拡張（R2-P1-6の絞り込み条件含む）・引継要求/承諾API・状態機械（`PENDING_HANDOVER`含む）・`trial_end`方式での新サブスク作成・承諾確定時の旧サブスク`cancel_at_period_end`予約/差し戻し（R3-P1-3）・旧期末到達を条件とするローカル切替TX（Stripe API呼び出し無し）・PAST_DUE/過去期末の拒否分岐（R2-P1-4）・`pending_setup_intent`の二段検証（R3-P1-2）・Idempotency-Key/metadata対応とList Subscriptions照会のためのGateway拡張・DB+List優先のリトライ手順（AC-3〜12, AC-16, AC-22〜32の大半）
 3. **PR-3（membership_subscriptions連携＋WithdrawalStripeHandler実装）**: `cancelAllForPayerOnWithdrawal`新設・`WithdrawalStripeHandler`実装（旧`TeamSubscriptionEntity`参照撤去）（AC-13）
 4. **PR-4（hardDeleteBySlotAndContractId移行＋webhook順序耐性の仕上げ・監視）**: 旧webhookハンドラの呼び出し先切替・`SWITCHING`詰まり監視アラート・5分岐通知の実装（AC-14, AC-17〜21）
 
