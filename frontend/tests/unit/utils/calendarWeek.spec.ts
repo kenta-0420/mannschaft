@@ -3,6 +3,7 @@ import {
   dateToOrdinal,
   eventDayOccupancy,
   eventOccupiesDate,
+  monthGridDates,
   ordinalToDate,
   shiftDate,
   todayInTimezone,
@@ -181,5 +182,70 @@ describe('utils/calendarWeek', () => {
       }
       expect(eventOccupiesDate(broken, '2026-08-04')).toBe(true)
     })
+  })
+
+  /**
+   * 殿の是正指摘（検分二度目）: `CalendarGrid.vue` の `calendarDays`（月ビュー・42セル）は
+   * `monthGridDates` から導出する形へ改めた（以前はコメントで等価性を主張するだけで、
+   * 実体は「1日の直前の日曜から42日」を2箇所で独自に計算していた）。
+   *
+   * 改修前に `CalendarGrid.vue:119-137` が実際に計算していたロジックをここへ再現し
+   * （`legacyCalendarDays`）、`monthGridDates` の返す42日と全境界で一致することを機械的に
+   * 検証する。片方だけが直された場合にこのテストが赤くなる ＝ ドリフト検出そのものが目的。
+   */
+  describe('monthGridDates: CalendarGrid.vue の旧 calendarDays と全境界で一致する', () => {
+    interface LegacyDay {
+      dateStr: string
+      isCurrentMonth: boolean
+    }
+
+    /** `CalendarGrid.vue`（改修前）の `calendarDays` 算出をそのまま再現した参照実装。 */
+    function legacyCalendarDays(year: number, month: number): LegacyDay[] {
+      const pad2 = (n: number) => String(n).padStart(2, '0')
+      const firstDay = new Date(year, month - 1, 1)
+      const startOffset = firstDay.getDay()
+      const totalDays = new Date(year, month, 0).getDate()
+      const days: LegacyDay[] = []
+
+      const prevLastDay = new Date(year, month - 1, 0).getDate()
+      for (let i = startOffset - 1; i >= 0; i--) {
+        const d = prevLastDay - i
+        const m = month === 1 ? 12 : month - 1
+        const y = month === 1 ? year - 1 : year
+        days.push({ dateStr: `${y}-${pad2(m)}-${pad2(d)}`, isCurrentMonth: false })
+      }
+      for (let d = 1; d <= totalDays; d++) {
+        days.push({ dateStr: `${year}-${pad2(month)}-${pad2(d)}`, isCurrentMonth: true })
+      }
+      const remaining = 42 - days.length
+      for (let d = 1; d <= remaining; d++) {
+        const m = month === 12 ? 1 : month + 1
+        const y = month === 12 ? year + 1 : year
+        days.push({ dateStr: `${y}-${pad2(m)}-${pad2(d)}`, isCurrentMonth: false })
+      }
+      return days
+    }
+
+    const cases: Array<[string, number, number]> = [
+      ['1日が日曜（startOffset=0・翌月へのはみ出しが最大）', 2026, 2],
+      ['1月（前月が前年12月へ跨ぐ）', 2026, 1],
+      ['12月（翌月が翌年1月へ跨ぐ）', 2026, 12],
+      ['閏年の2月（29日）', 2028, 2],
+      ['平年の2月（28日）', 2026, 2],
+      ['31日の月', 2026, 8],
+      ['30日の月', 2026, 4],
+      ['1日が日曜・31日の月', 2026, 3],
+    ]
+
+    for (const [label, year, month] of cases) {
+      it(`${label}（${year}-${String(month).padStart(2, '0')}）`, () => {
+        const legacy = legacyCalendarDays(year, month)
+        const actual = monthGridDates(year, month)
+        expect(actual).toHaveLength(42)
+        expect(legacy).toHaveLength(42)
+        expect(actual.map(d => ({ dateStr: d.dateStr, isCurrentMonth: d.isCurrentMonth })))
+          .toEqual(legacy)
+      })
+    }
   })
 })

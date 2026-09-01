@@ -17,6 +17,7 @@
  */
 import dayjs from 'dayjs'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
+import { monthGridDates } from '~/utils/calendarWeek'
 
 const { userTimezone } = useDatetime()
 const { t } = useI18n()
@@ -110,34 +111,24 @@ interface WeekData {
   laneOverflowByCol: number[]
 }
 
-const pad = (n: number) => String(n).padStart(2, '0')
 const dateOf = (dt: string) => dt.split('T')[0] ?? ''
 const isMultiDay = (e: CalendarEventItem) => dateOf(e.startAt) !== dateOf(e.endAt)
 
-const calendarDays = computed<DayInfo[]>(() => {
-  const firstDay = new Date(props.year, props.month - 1, 1)
-  const startOffset = firstDay.getDay()
-  const totalDays = new Date(props.year, props.month, 0).getDate()
-  const days: DayInfo[] = []
-
-  const prevLastDay = new Date(props.year, props.month - 1, 0).getDate()
-  for (let i = startOffset - 1; i >= 0; i--) {
-    const d = prevLastDay - i
-    const m = props.month === 1 ? 12 : props.month - 1
-    const y = props.month === 1 ? props.year - 1 : props.year
-    days.push({ date: d, month: m, year: y, isCurrentMonth: false, dateStr: `${y}-${pad(m)}-${pad(d)}` })
-  }
-  for (let d = 1; d <= totalDays; d++) {
-    days.push({ date: d, month: props.month, year: props.year, isCurrentMonth: true, dateStr: `${props.year}-${pad(props.month)}-${pad(d)}` })
-  }
-  const remaining = 42 - days.length
-  for (let d = 1; d <= remaining; d++) {
-    const m = props.month === 12 ? 1 : props.month + 1
-    const y = props.month === 12 ? props.year + 1 : props.year
-    days.push({ date: d, month: m, year: y, isCurrentMonth: false, dateStr: `${y}-${pad(m)}-${pad(d)}` })
-  }
-  return days
-})
+/**
+ * 月グリッド42日分の導出は {@link monthGridDates}（`utils/calendarWeek.ts`）に一本化する
+ * （殿の是正指摘。以前は本コンポーネントと `CalendarAgendaList.vue` がそれぞれ「1日の直前の
+ * 日曜から42日」を独自に計算しており、コメントで等価性を主張するだけで機械的な保証が無かった。
+ * 片方だけ直された場合、月ビューとアジェンダビューが異なる42日を描くドリフトが生まれ、
+ * AC-13（同じ予定集合を描く）を静かに破る）。`date`/`month`/`year` は `dateStr` から機械的に導く。
+ */
+const calendarDays = computed<DayInfo[]>(() =>
+  monthGridDates(props.year, props.month).map(({ dateStr, isCurrentMonth }) => ({
+    date: Number(dateStr.slice(8, 10)),
+    month: Number(dateStr.slice(5, 7)),
+    year: Number(dateStr.slice(0, 4)),
+    isCurrentMonth,
+    dateStr,
+  })))
 
 const weeks = computed<WeekData[]>(() =>
   Array.from({ length: 6 }, (_, w) => {
