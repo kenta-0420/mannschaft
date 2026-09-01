@@ -1296,6 +1296,15 @@ public class GlobalExceptionHandler {
             Map.entry("ENTITLEMENT_015", HttpStatus.BAD_GATEWAY),         // CHECKOUT_SESSION_FAILED（Stripe 呼び出し失敗 → 502）
             Map.entry("ENTITLEMENT_016", HttpStatus.CONFLICT),           // CONTRACT_PENDING_PAYMENT（PENDING スロット占有中）
             Map.entry("ENTITLEMENT_017", HttpStatus.CONFLICT),           // CONTRACT_CHANGE_REQUIRES_PAYMENT（有償が絡む changePlan 拒否・AC-44）
+            Map.entry("ENTITLEMENT_018", HttpStatus.NOT_FOUND),          // INVOICE_NOT_FOUND（IDOR 秘匿）
+            Map.entry("ENTITLEMENT_019", HttpStatus.CONFLICT),           // PRICE_NOT_SELLABLE
+            Map.entry("ENTITLEMENT_020", HttpStatus.CONFLICT),           // PREVIEW_EXPIRED
+            Map.entry("ENTITLEMENT_021", HttpStatus.CONFLICT),           // CHANGE_CONFLICT
+            Map.entry("ENTITLEMENT_022", HttpStatus.CONFLICT),           // MONTH_BOUNDARY
+            Map.entry("ENTITLEMENT_023", HttpStatus.CONFLICT),           // QUOTE_EXPIRED / QUOTE_STALE
+            Map.entry("ENTITLEMENT_024", HttpStatus.CONFLICT),           // MIGRATION_REQUIRED
+            Map.entry("ENTITLEMENT_025", HttpStatus.BAD_GATEWAY),        // STRIPE_UNAVAILABLE
+            Map.entry("ENTITLEMENT_026", HttpStatus.CONFLICT),           // BILLING_FLOW_REQUIRED
             // F20.3 ベータ特典（設計書 02 §8）。登録漏れは Severity 既定 400/500 にフォールバックする前科（#1279）ゆえ明示登録。
             Map.entry("BETA_PERK_001", HttpStatus.NOT_FOUND),            // GRANT_NOT_FOUND（IDOR 秘匿含む）
             Map.entry("BETA_PERK_002", HttpStatus.CONFLICT),            // GRANT_ALREADY_EXISTS（uk_bg_scope_phase）
