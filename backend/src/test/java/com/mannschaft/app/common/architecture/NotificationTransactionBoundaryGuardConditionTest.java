@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.common.architecture.NotificationTransactionBoundaryGuardTest.Violation;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -488,4 +489,140 @@ class NotificationTransactionBoundaryGuardConditionTest {
                     .isNotEmpty();
         }
     }
+    /**
+     * 台帳ゲート（{@code validateLedger}）と検出力ゲートの<b>変異テスト</b>。
+     *
+     * <p>このリポジトリでは過去に「門番が門に辿り着く前に死ぬ」「一致検証だけは全壊で偽 green」が
+     * 繰り返し起きている。<b>新しく足したゲートが本当に何かを測っているか</b>を、
+     * 実際に壊して fail することで確かめる。
+     */
+    @Nested
+    @DisplayName("台帳ゲート・検出力ゲートの変異テスト")
+    class 台帳ゲートの変異 {
+
+        private List<String> realLines() {
+            return NotificationTransactionBoundaryGuardTest.readFreezeLines();
+        }
+
+        private Set<String> realFoundKeys() {
+            return NotificationTransactionBoundaryGuardTest
+                    .scanRoot(NotificationTransactionBoundaryGuardTest.mainSourceRoot(), fqcn -> true)
+                    .stream()
+                    .map(Violation::key)
+                    .collect(Collectors.toCollection(java.util.TreeSet::new));
+        }
+
+        /** 凍結エントリ（コメントでも空行でもない行）を1つ返す。 */
+        private String anyActiveKey(List<String> lines) {
+            return lines.stream().map(String::strip)
+                    .filter(s -> !s.isEmpty() && !s.startsWith("#"))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("凍結エントリが1件も無い"));
+        }
+
+        @Test
+        @DisplayName("現状の凍結ファイルは台帳検証を通る（ゲートが常に赤ではない）")
+        void 現状は緑() {
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(realLines(), realFoundKeys()))
+                    .as("ゲートが常に赤なら、以降の変異テストは何も証明しない")
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("変異: baseline から理由なく1行消すと fail する")
+        void 理由なき削除は落ちる() {
+            List<String> lines = new ArrayList<>(realLines());
+            String victim = anyActiveKey(lines);
+            lines.removeIf(s -> s.strip().equals(victim));
+
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(lines, realFoundKeys()))
+                    .as("凍結エントリを1行そっと消しても台帳ゲートが通ってしまう（削除 %s）", victim)
+                    .isNotEmpty()
+                    .anySatisfy(msg -> assertThat(msg).contains("台帳の総数が下限を割っている"));
+        }
+
+        @Test
+        @DisplayName("変異: 消した行に REMOVED を足しても、実際にはまだ検出されるなら fail する")
+        void 嘘の削除理由は落ちる() {
+            List<String> lines = new ArrayList<>(realLines());
+            String victim = anyActiveKey(lines);
+            lines.removeIf(s -> s.strip().equals(victim));
+            // 「偽陽性だったので消した」と主張する。総数は保たれるので (d) は通るが、
+            // (b) の実測裏取り（そのキーは今も検出されている）で落ちなければならない。
+            lines.add("# REMOVED: " + victim + " : 偽陽性だったと主張するが実際にはまだ検出される行");
+
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(lines, realFoundKeys()))
+                    .as("削除理由さえ書けば検出中のキーを baseline から消せてしまう（削除 %s）", victim)
+                    .isNotEmpty()
+                    .anySatisfy(msg -> assertThat(msg).contains("現在の判定では検出されている"));
+        }
+
+        @Test
+        @DisplayName("変異: REMOVED の理由が実質空だと fail する")
+        void 空の削除理由は落ちる() {
+            List<String> lines = new ArrayList<>(realLines());
+            String victim = anyActiveKey(lines);
+            lines.removeIf(s -> s.strip().equals(victim));
+            lines.add("# REMOVED: " + victim + " : 偽陽性");
+
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(lines, realFoundKeys()))
+                    .as("三文字の言い訳で baseline から行を消せてしまう")
+                    .isNotEmpty()
+                    .anySatisfy(msg -> assertThat(msg).contains("削除理由が短すぎる"));
+        }
+
+        @Test
+        @DisplayName("変異: 既存の REMOVED 行が再び検出されるようになったら fail する")
+        void 既存のREMOVEDが再検出されたら落ちる() {
+            List<String> lines = realLines();
+            List<NotificationTransactionBoundaryGuardTest.RemovalEntry> removed =
+                    NotificationTransactionBoundaryGuardTest.parseRemovalLedger(lines);
+            assertThat(removed).as("REMOVED 行が1件も無い＝この変異テストが何も測っていない").isNotEmpty();
+
+            // 「判定を戻して偽陽性がまた出るようになった」状態を、検出結果側を汚して模す。
+            Set<String> polluted = new java.util.TreeSet<>(realFoundKeys());
+            polluted.add(removed.get(0).key());
+
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(lines, polluted))
+                    .as("REMOVED と主張したキーが再び検出されても台帳ゲートが通ってしまう")
+                    .isNotEmpty()
+                    .anySatisfy(msg -> assertThat(msg).contains("現在の判定では検出されている"));
+        }
+
+        @Test
+        @DisplayName("変異: 判定（構造条件）を厳しくすると検出力の下限を割る")
+        void 判定を緩めると検出力が落ちる() {
+            NotificationTransactionBoundaryGuardTest.DetectionPower actual =
+                    NotificationTransactionBoundaryGuardTest.measureDetectionPower(
+                            NotificationTransactionBoundaryGuardTest.mainSourceRoot());
+            assertThat(actual.structuralNotifyCalls())
+                    .as("現行の実測が凍結下限を割っている＝下限の設定ミス")
+                    .isGreaterThanOrEqualTo(NotificationTransactionBoundaryGuardTest.STRUCTURAL_NOTIFY_CALLS_MIN);
+
+            // 攻撃の模擬: notifyCallOffsets に「引数を2つ以上取ること」という条件を足して
+            // 通知発火点を減らす（＝違反を静かに消す変異）。本番の判定は変えずに、
+            // 同じ本番コーパスへ変異版の条件を当てて件数を数える。
+            long mutated = 0;
+            for (Path file : NotificationTransactionBoundaryGuardTest.javaFiles(
+                    NotificationTransactionBoundaryGuardTest.mainSourceRoot())) {
+                String src = JavaSourceScanningUtils.maskCommentsAndLiterals(
+                        NotificationTransactionBoundaryGuardTest.read(file));
+                for (String body : NotificationTransactionBoundaryGuardTest.parseMethods(src).stream()
+                        .map(NotificationTransactionBoundaryGuardTest.MethodBlock::body).toList()) {
+                    for (int off : NotificationTransactionBoundaryGuardTest.notifyCallOffsets(body)) {
+                        int open = body.indexOf('(', off);
+                        int close = open < 0 ? -1 : body.indexOf(')', open);
+                        if (close > 0 && body.substring(open + 1, close).contains(",")) {
+                            mutated++;
+                        }
+                    }
+                }
+            }
+            assertThat(mutated)
+                    .as("判定を厳しくしても検出力の下限（%s）を割らない＝下限が緩すぎて何も守っていない",
+                            NotificationTransactionBoundaryGuardTest.STRUCTURAL_NOTIFY_CALLS_MIN)
+                    .isLessThan(NotificationTransactionBoundaryGuardTest.STRUCTURAL_NOTIFY_CALLS_MIN);
+        }
+    }
+
 }

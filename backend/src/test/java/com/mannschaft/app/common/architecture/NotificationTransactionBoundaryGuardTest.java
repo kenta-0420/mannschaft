@@ -706,9 +706,11 @@ class NotificationTransactionBoundaryGuardTest {
                 .filter(NotificationTransactionBoundaryGuardTest::firesNotification)
                 .count();
         // 違反件数ではなく「走査対象の構文」の出現数を数える（負債ゼロで自壊しないため）。
+        // 下限は実測値で固定する。「50件超」では実測（NOTIFY_BEARING_FILES_MIN）から大きく緩く、
+        // 判定を絞って半減させても素通りしてしまう（Codex 独立検分の指摘）。
         assertThat(notifyCallSites)
-                .as("通知発火点を1件も見つけられていない＝走査ロジックが壊れている")
-                .isGreaterThan(50L);
+                .as("通知発火点を持つファイル数が実測下限を割った＝判定が緩んだか走査が壊れている")
+                .isGreaterThanOrEqualTo(NOTIFY_BEARING_FILES_MIN);
     }
 
     @Test
@@ -790,6 +792,235 @@ class NotificationTransactionBoundaryGuardTest {
         } catch (IOException e) {
             // 一次資料の書き出しは番人の合否に影響させない。
         }
+    }
+
+    // ------------------------------------------------------------------
+    // 番人の「自壊」を防ぐ二重の不変量（Codex 独立検分の High 指摘への回答）
+    // ------------------------------------------------------------------
+
+    /**
+     * 初回投入時（L0）に実測した違反キーの総数。<b>台帳（凍結エントリ + REMOVED）の下限</b>の既定値。
+     *
+     * <p>ファイル内に {@code # CENSUS_FLOOR: <n>} 行があればそちらが優先される。
+     */
+    private static final int INITIAL_CENSUS = 97;
+
+    /**
+     * 検出力の凍結値。<b>判定を緩めた瞬間に減る量</b>を下限で固定する。
+     *
+     * <p><b>なぜこれが「判定と baseline を同時に緩める」攻撃を捕まえるのか</b>:
+     * baseline の完全一致検証は「分類の結果」しか見ないので、
+     * {@link #notifyCallOffsets} や {@link #NOTIFY_CALL_CANDIDATE} を緩めて違反を消し、
+     * 同じPRで baseline からその行を消せば、完全一致は再び成立して緑になる。
+     * そこで<b>分類の手前の量</b>を独立に固定する:
+     *
+     * <ul>
+     *   <li>{@code RAW_CANDIDATE_HITS_MIN} — 構造条件を通す前の {@code NOTIFY_CALL_CANDIDATE} の生ヒット数。
+     *       語彙（正規表現）を狭めれば必ず減る。</li>
+     *   <li>{@code STRUCTURAL_NOTIFY_CALLS_MIN} — 構造条件（レシーバが識別子・引数1つ以上）を
+     *       通過した通知発火点の数。構造条件を厳しくして違反を消せば必ず減る。</li>
+     *   <li>{@code PARSED_METHODS_MIN} — {@link #parseMethods} が本番ソースから取り出したメソッド数。
+     *       メソッド parse を壊せば違反は丸ごと消えるが、この数も同時に落ちる。</li>
+     * </ul>
+     *
+     * <p><b>非対称性が効く理由</b>: 正規の是正は通知呼び出しを<b>消さず、AFTER_COMMIT の入口へ移す</b>。
+     * 呼び出し自体はリスナークラスへ移動するだけなので上の3つの量は減らない（分類だけが変わる）。
+     * 逆に判定を緩めた場合は、分類が変わるのと同時にこの3つの量のいずれかが必ず減る。
+     * よって「実装は直していないのに違反だけ消えた」を、baseline を見ずに検出できる。
+     *
+     * <p>下限であり上限ではない。通知が増えれば値は上がってよい（その場合は緑のまま）。
+     * <b>下げる変更は必ず fail させる</b>ので、意図的に下げるなら実装差分と根拠を同じPRに置くこと。
+     *
+     * <p><b>この下限が捕まえない形</b>: 通知呼び出しを1件も減らさずに
+     * {@code isAllowedEntryPoint} だけを緩める攻撃（許可入口の語彙を広げる）は3つの量を動かさない。
+     * そちらは {@code NotificationTransactionBoundaryGuardConditionTest} の
+     * 「許可入口の判定」節が negative fixture で固定している。
+     */
+    static final long RAW_CANDIDATE_HITS_MIN = 182L; // 実測 182（2026-09-01）
+
+    /** @see #RAW_CANDIDATE_HITS_MIN */
+    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 162L; // 実測 162（2026-09-01）
+
+    /**
+     * 実測 17045。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。
+     * このメトリクスは本番コードの規模そのものであり、クラスを1つ消しただけで動く。
+     * 守りたいのは「parse が壊れて 0 近くまで落ちる」形なので、桁が落ちれば必ず捕まる。
+     *
+     * @see #RAW_CANDIDATE_HITS_MIN
+     */
+    static final long PARSED_METHODS_MIN = 16000L;
+
+    /**
+     * 通知発火点を1つ以上持つ本番ファイル数の実測下限（実測 98）。
+     * 旧実装の「50件超」は実測の半分であり、判定を半減させても素通りしていた。
+     *
+     * @see #RAW_CANDIDATE_HITS_MIN
+     */
+    static final long NOTIFY_BEARING_FILES_MIN = 98L;
+
+    /** 検出力の実測値。 */
+    record DetectionPower(long rawCandidateHits, long structuralNotifyCalls, long parsedMethods) {}
+
+    /** 本番ソース全体に対して検出力を実測する。 */
+    static DetectionPower measureDetectionPower(Path root) {
+        long raw = 0;
+        long structural = 0;
+        long methods = 0;
+        for (Path file : javaFiles(root)) {
+            String src = JavaSourceScanningUtils.maskCommentsAndLiterals(read(file));
+            Matcher m = NOTIFY_CALL_CANDIDATE.matcher(src);
+            while (m.find()) {
+                raw++;
+            }
+            for (MethodBlock mb : parseMethods(src)) {
+                methods++;
+                structural += notifyCallOffsets(mb.body()).size();
+            }
+        }
+        return new DetectionPower(raw, structural, methods);
+    }
+
+    /** 削除台帳の1エントリ。 */
+    record RemovalEntry(String key, String reason) {}
+
+    /** {@code # REMOVED: <key> : <理由>} 行。 */
+    private static final Pattern REMOVED_LINE = Pattern.compile(
+            "^#\\s*REMOVED:\\s*(\\S+#\\S+\\s*->\\s*\\w+)\\s*:\\s*(.+)$");
+
+    /** 凍結ファイルの行から削除台帳を読む（コメント行のうち REMOVED 形式のものだけ）。 */
+    static List<RemovalEntry> parseRemovalLedger(List<String> lines) {
+        List<RemovalEntry> entries = new ArrayList<>();
+        for (String raw : lines) {
+            String line = stripBom(raw).strip();
+            Matcher m = REMOVED_LINE.matcher(line);
+            if (m.matches()) {
+                entries.add(new RemovalEntry(
+                        m.group(1).replaceAll("\\s*->\\s*", " -> ").strip(), m.group(2).strip()));
+            }
+        }
+        return entries;
+    }
+
+    /**
+     * 台帳（凍結エントリ + 削除台帳）の検証。問題を日本語の文字列リストで返す（空 = 合格）。
+     *
+     * <p>純粋関数として切り出してあるのは、メタテスト側が<b>改竄した内容</b>を渡して
+     * 「実際に fail すること」を確かめられるようにするため（変異テスト）。
+     * 「門番が門に辿り着く前に死ぬ」を避けるため、検証は例外ではなく問題リストで返す。
+     *
+     * @param lines     凍結ファイルの全行
+     * @param foundKeys 現在の判定ロジックが本番ソースから検出したキー
+     */
+    static List<String> validateLedger(List<String> lines, Set<String> foundKeys) {
+        List<String> problems = new ArrayList<>();
+        Set<String> active = lines.stream()
+                .map(NotificationTransactionBoundaryGuardTest::stripBom)
+                .map(String::strip)
+                .filter(s -> !s.isEmpty() && !s.startsWith("#"))
+                .collect(Collectors.toCollection(TreeSet::new));
+        List<RemovalEntry> removed = parseRemovalLedger(lines);
+        Set<String> removedKeys = removed.stream().map(RemovalEntry::key)
+                .collect(Collectors.toCollection(TreeSet::new));
+
+        if (removedKeys.size() != removed.size()) {
+            problems.add("削除台帳に重複キーがある（同じキーの REMOVED 行が2つ以上）");
+        }
+        for (RemovalEntry e : removed) {
+            // (a) 理由が実質空でないこと。「偽陽性」の3文字だけで消せてはならない。
+            if (e.reason().length() < 10) {
+                problems.add("削除理由が短すぎる（10文字未満）: " + e.key() + " : " + e.reason());
+            }
+            // (b) 主張の裏取り。「判定を直したので検出されなくなった」が本当かを実測で確認する。
+            //     判定を戻した／別の理由で再び検出されるようになったら、ここで必ず落ちる。
+            if (foundKeys.contains(e.key())) {
+                problems.add("削除台帳が「検出されない」と主張しているが、現在の判定では検出されている: " + e.key());
+            }
+            // (c) 凍結エントリと重複していない。
+            if (active.contains(e.key())) {
+                problems.add("凍結エントリと削除台帳の両方に居る: " + e.key());
+            }
+        }
+        // (d) 台帳の総数が下限を割らない。
+        //     ＝「凍結エントリから行をそっと消す」だけでは通らない。消すなら REMOVED 行として
+        //       理由を書いて (b) の実測裏取りを通すか、CENSUS_FLOOR を実装差分と同じPRで下げること。
+        long floor = censusFloor(lines);
+        long total = (long) active.size() + removedKeys.size();
+        if (total < floor) {
+            problems.add("台帳の総数が下限を割っている: 凍結 " + active.size() + " + 削除 " + removedKeys.size()
+                    + " = " + total + " < 下限 " + floor
+                    + "。是正でエントリを消した場合は # CENSUS_FLOOR 行を実装差分と同じPRで下げること。");
+        }
+        return problems;
+    }
+
+    /**
+     * 台帳の総数下限。{@code # CENSUS_FLOOR: <n>} 行があればそれを、無ければ {@link #INITIAL_CENSUS}。
+     *
+     * <p><b>下げるときは実装差分（＝実際に是正したコード）と同じPRであること</b>が人手レビューの
+     * 見どころになるよう、ファイル内の明示的な1行として置く。番人は「黙って減った」だけを機械的に止める。
+     */
+    static long censusFloor(List<String> lines) {
+        for (String raw : lines) {
+            String line = stripBom(raw).strip();
+            if (line.startsWith("# CENSUS_FLOOR:")) {
+                return Long.parseLong(line.substring("# CENSUS_FLOOR:".length()).strip());
+            }
+        }
+        return INITIAL_CENSUS;
+    }
+
+    /** Windows のエディタが付ける UTF-8 BOM を剥がす（付いたままだと先頭行がコメントに見えない）。 */
+    private static String stripBom(String s) {
+        return s.startsWith("﻿") ? s.substring(1) : s;
+    }
+
+    /** 凍結ファイルの全行を読む。 */
+    static List<String> readFreezeLines() {
+        Path p = Paths.get(FREEZE_FILE);
+        if (!Files.exists(p)) {
+            p = Paths.get("backend").resolve(FREEZE_FILE);
+        }
+        if (!Files.exists(p)) {
+            throw new IllegalStateException(
+                    "凍結リストが見つからない: " + FREEZE_FILE + "（CWD=" + Paths.get("").toAbsolutePath() + "）");
+        }
+        try {
+            return Files.readAllLines(p, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    @Test
+    @DisplayName("削除台帳が完全である（baseline から理由なく行を消せない・偽陽性の主張を実測で裏取りする）")
+    void 削除台帳が完全である() {
+        Set<String> foundKeys = scanRoot(mainSourceRoot(), fqcn -> true).stream()
+                .map(Violation::key).collect(Collectors.toCollection(TreeSet::new));
+        assertThat(validateLedger(readFreezeLines(), foundKeys))
+                .as("""
+                        凍結リスト %s の台帳検証に失敗した。
+                        baseline から行を減らすときは、削除理由を持つ機械台帳の行
+                          # REMOVED: <FQCN>#<method> -> <種別> : <理由>
+                        を同じPRで足すこと（偽陽性だった場合）。
+                        実際に是正してエントリが消えた場合は # CENSUS_FLOOR: <n> を実装差分と同じPRで下げること。""",
+                        FREEZE_FILE)
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("番人の検出力が下限を下回っていない（判定と baseline を同時に緩める攻撃を捕まえる）")
+    void 検出力が下限を下回っていない() {
+        DetectionPower power = measureDetectionPower(mainSourceRoot());
+        assertThat(power.rawCandidateHits())
+                .as("NOTIFY_CALL_CANDIDATE の生ヒット数が下限を割った（＝語彙を狭めた）。実測=%s", power)
+                .isGreaterThanOrEqualTo(RAW_CANDIDATE_HITS_MIN);
+        assertThat(power.structuralNotifyCalls())
+                .as("構造条件を通過した通知発火点が下限を割った（＝判定を厳しくして違反を消した）。実測=%s", power)
+                .isGreaterThanOrEqualTo(STRUCTURAL_NOTIFY_CALLS_MIN);
+        assertThat(power.parsedMethods())
+                .as("parseMethods が取り出したメソッド数が下限を割った（＝parse を壊して丸ごと不可視にした）。実測=%s",
+                        power)
+                .isGreaterThanOrEqualTo(PARSED_METHODS_MIN);
     }
 
     static Set<String> readFreezeList() {

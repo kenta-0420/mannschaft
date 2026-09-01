@@ -44,6 +44,25 @@
 #       （stripePaymentProvider.createNotificationCreditCheckoutSession）
 # 再発防止: いずれも fixtures/notification/GuardBlindSpotFixture に検体として常設し、
 #           NotificationTransactionBoundaryGuardConditionTest の「偽陽性」節が固定している。
+#
+# 削除の機械台帳（下の REMOVED 行が正本。上の散文は読み手向けの要約）。
+# 書式: # REMOVED: <完全修飾クラス名>#<メソッド名> -> <種別> : <理由>
+# 番人（除外台帳が完全である）が各行について次を機械的に検証する:
+#   (a) 理由が空でないこと
+#   (b) そのキーが現在の判定ロジックでも実際に検出されないこと（＝偽陽性の主張を実測で裏取り）
+#   (c) 凍結エントリ側と重複していないこと
+#   (d) 凍結エントリ + REMOVED の総数が歴史的下限を下回らないこと（＝理由なく行を消せない）
+# REMOVED: com.mannschaft.app.analytics.service.AnalyticsAlertService#createRule -> TX_NOTIFY_BARE : ビルダーのセッタ連鎖 .notifyChannels(...)。通知発火ではなく DTO 組み立て。
+# REMOVED: com.mannschaft.app.family.service.AnniversaryService#createAnniversary -> TX_NOTIFY_BARE : ビルダーのセッタ連鎖 .notifyDaysBefore(...)。通知発火ではない。
+# REMOVED: com.mannschaft.app.family.service.CareLinkService#toResponse -> TX_NOTIFY_BARE : ビルダーのセッタ連鎖 .notifyOnRsvp(...)。レスポンス DTO 組み立て。
+# REMOVED: com.mannschaft.app.family.service.CareLinkService#toOverrideResponse -> TX_NOTIFY_BARE : ビルダーのセッタ連鎖 .notifyOnRsvp(...)。レスポンス DTO 組み立て。
+# REMOVED: com.mannschaft.app.timetable.personal.service.PersonalTimetableSettingsService#update -> TX_NOTIFY_BARE : req.notifyTeamSlotNoteUpdates() は引数ゼロの record アクセサ。値の読み取り。
+# REMOVED: com.mannschaft.app.timetable.service.TimetableChangeService#createChange -> TX_NOTIFY_BARE : data.notifyMembers() は引数ゼロの record アクセサ。業務TX内は publishEvent のみで正規形そのもの。
+# REMOVED: com.mannschaft.app.timetable.service.TimetableChangeService#updateChange -> TX_NOTIFY_BARE : data.notifyMembers() は引数ゼロの record アクセサ。業務TX内は publishEvent のみで正規形そのもの。
+# REMOVED: com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService#createCheckout -> TX_NOTIFY_IN_TRY : stripePaymentProvider.createNotificationCreditCheckoutSession は Stripe の Checkout Session 作成であり通知ではない。
+# 台帳（凍結エントリ + REMOVED）の総数下限。是正でエントリを消したら実装差分と同じPRでここを下げる。
+# CENSUS_FLOOR: 97
+
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
 com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService#executeAt -> TX_NOTIFY_IN_TRY
