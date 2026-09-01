@@ -4,9 +4,12 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
+import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.RoleService;
+import com.mannschaft.app.role.service.RoleSuccessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -18,6 +21,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 30 日後物理削除（{@link AccountPurgedEvent}）を購読し、
@@ -52,7 +56,9 @@ import java.util.List;
 public class RolePurgeEventListener {
 
     private final UserRoleRepository userRoleRepository;
+    private final RoleRepository roleRepository;
     private final RoleService roleService;
+    private final RoleSuccessionService roleSuccessionService;
     private final AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     /**
@@ -73,6 +79,7 @@ public class RolePurgeEventListener {
         int removed = 0;
         int skipped = 0;
         int failed = 0;
+        UUID purgeId = deriveDeterministicPurgeId(userId);
         for (UserRoleEntity userRole : userRoles) {
             try {
                 Long scopeId;
@@ -88,6 +95,11 @@ public class RolePurgeEventListener {
                             userRole.getId(), userId);
                     skipped++;
                     continue;
+                }
+                // 柱①ADMINゼロ根治 §11/§13: ADMIN行を削除する前に承継フックを呼ぶ（AC4〜AC8, AC12）。
+                // ADMIN以外（DEPUTY_ADMIN/GUEST/SYSTEM_ADMIN等）はそのまま除名する。
+                if (isAdminRole(userRole)) {
+                    roleSuccessionService.forceTransferForPurge(scopeId, scopeType, userId, purgeId);
                 }
                 roleService.removeMemberWithoutAdminCheck(scopeId, scopeType, userId);
                 removed++;
@@ -125,6 +137,7 @@ public class RolePurgeEventListener {
     public boolean retryPurge(Long userId) {
         List<UserRoleEntity> userRoles = userRoleRepository.findAllByUserId(userId);
         int failed = 0;
+        UUID purgeId = deriveDeterministicPurgeId(userId);
         for (UserRoleEntity userRole : userRoles) {
             try {
                 Long scopeId;
@@ -140,6 +153,9 @@ public class RolePurgeEventListener {
                             userRole.getId(), userId);
                     continue;
                 }
+                if (isAdminRole(userRole)) {
+                    roleSuccessionService.forceTransferForPurge(scopeId, scopeType, userId, purgeId);
+                }
                 roleService.removeMemberWithoutAdminCheck(scopeId, scopeType, userId);
             } catch (Exception e) {
                 log.warn("role purge retry 失敗 userId={} userRoleId={}", userId, userRole.getId(), e);
@@ -147,5 +163,22 @@ public class RolePurgeEventListener {
             }
         }
         return failed == 0;
+    }
+
+    private boolean isAdminRole(UserRoleEntity userRole) {
+        return roleRepository.findById(userRole.getRoleId())
+                .map(RoleEntity::getName)
+                .filter("ADMIN"::equals)
+                .isPresent();
+    }
+
+    /**
+     * {@code AccountPurgedEvent} は purgeId 相当の識別子を持たない（{@code userId} のみ、§10.9 前提）。
+     * 冪等性は {@link RoleSuccessionService#forceTransferForPurge} 側の DB 実状態チェックで
+     * 担保しているため、ここでは監査ログの補助情報として userId から決定的に導出した UUID を渡す
+     * （再配送でも同じ値になり、監査ログの突合に使える）。
+     */
+    private UUID deriveDeterministicPurgeId(Long userId) {
+        return UUID.nameUUIDFromBytes(("role-purge-" + userId).getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }

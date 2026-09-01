@@ -3,8 +3,10 @@ package com.mannschaft.app.role.event;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.RoleService;
+import com.mannschaft.app.role.service.RoleSuccessionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +31,11 @@ class RolePurgeEventListenerTest {
     @Mock
     private UserRoleRepository userRoleRepository;
     @Mock
+    private RoleRepository roleRepository;
+    @Mock
     private RoleService roleService;
+    @Mock
+    private RoleSuccessionService roleSuccessionService;
     @Mock
     private AccountPurgeCompletionStatusRepository completionStatusRepository;
 

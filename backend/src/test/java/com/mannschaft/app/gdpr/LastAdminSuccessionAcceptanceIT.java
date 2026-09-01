@@ -23,14 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -43,10 +36,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 金型: {@code OwnershipTransferOfferScopeContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)} +
  * 実 MySQL Testcontainers + 手動 SecurityContext）。</p>
  *
- * <p>本テストは骨格未配線（{@code UserService#requestWithdrawal} は現状ガードを呼ばず、
- * {@code GdprController#buildDeletionPreview} は {@code lastAdminScopes} を充填しない）の
- * ため、既存の実際の挙動に対して受け入れ条件を検証すると red になる。実装（出陣）で
- * 骨格クラスを配線した時点で green化する設計。</p>
+ * <p>出陣で {@code UserService#requestWithdrawal} に {@code RoleSuccessionService#checkNoLastAdminScopes}
+ * を、{@code GdprController#buildDeletionPreview} に {@code findBlockingLastAdminScopes} を配線済み。
+ * Docker が使えない環境では {@code @EnabledIf} によりこのクラスの実行自体がスキップされる
+ * （コンパイル確認のみ・CI 側で実行確認する）。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -178,65 +171,11 @@ class LastAdminSuccessionAcceptanceIT extends AbstractMySqlIntegrationTest {
         }
     }
 
-    @Nested
-    @DisplayName("AC10: 同時退会の直列化 — 他メンバー1人以上のスコープのADMIN数0が発生しない")
-    class Ac10 {
-
-        @Test
-        @DisplayName("AC10: ADMIN2人が並行退会要求しても他メンバー1人以上のスコープでADMIN数0が発生しない")
-        void 並行退会でADMIN数0が発生しない() throws Exception {
-            // teamにもう1人ADMINを追加し、2人同時に退会要求させる
-            Long admin2Id = insertUser("lasacc-admin2-" + System.nanoTime() + "@example.com");
-            MembershipTestHelper.insertMembership(em, admin2Id, ScopeType.TEAM, teamId, RoleKind.MEMBER);
-            MembershipTestHelper.insertUserRole(em, admin2Id, "ADMIN", teamId, null);
-            em.flush();
-            em.clear();
-
-            ExecutorService pool = Executors.newFixedThreadPool(2);
-            CountDownLatch ready = new CountDownLatch(2);
-            CountDownLatch go = new CountDownLatch(1);
-            AtomicInteger conflictCount = new AtomicInteger();
-
-            List<Future<Integer>> futures = List.of(
-                    pool.submit(() -> withdrawConcurrently(adminId, ready, go)),
-                    pool.submit(() -> withdrawConcurrently(admin2Id, ready, go)));
-            ready.await(5, TimeUnit.SECONDS);
-            go.countDown();
-
-            for (Future<Integer> f : futures) {
-                int status = f.get(10, TimeUnit.SECONDS);
-                if (status == 409) {
-                    conflictCount.incrementAndGet();
-                }
-            }
-            pool.shutdown();
-
-            // 直列化されていれば、他メンバー1人以上のスコープのADMINが同時に0人になることは
-            // 許されないため、少なくとも片方は409で拒否されるはず。
-            assertThat(conflictCount.get()).isGreaterThanOrEqualTo(1);
-
-            long remainingAdmins = ((Number) em.createNativeQuery(
-                            "SELECT COUNT(*) FROM user_roles ur JOIN roles r ON r.id = ur.role_id "
-                                    + "WHERE ur.team_id = :tid AND r.name = 'ADMIN'")
-                    .setParameter("tid", teamId)
-                    .getSingleResult()).longValue();
-            assertThat(remainingAdmins).isGreaterThanOrEqualTo(1);
-        }
-
-        private int withdrawConcurrently(Long userId, CountDownLatch ready, CountDownLatch go) {
-            try {
-                ready.countDown();
-                go.await();
-                setAuth(userId);
-                return mockMvc.perform(delete("/api/v1/users/me")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(withdrawalBody())))
-                        .andReturn().getResponse().getStatus();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
+    // AC10（同時退会の直列化）は別クラス LastAdminConcurrentLeaveScopeIT を参照。
+    // 本クラスは class 単位 @Transactional（ロールバック前提）だが、AC10 はマルチスレッドで
+    // 別コネクション・別トランザクションを要するため、@Transactional 内のセットアップ行が
+    // 他スレッドから可視化されない（コミット前）。そのため @Transactional を外した
+    // 専用クラスに分離する（金型: BillingOperationAuthorizerConcurrencyIT の TransactionTemplate 方式）。
 
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー

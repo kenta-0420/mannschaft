@@ -56,6 +56,7 @@ public class AccountPurgeService {
     private boolean dryRun;
 
     private final UserRepository userRepository;
+    private final PurgeStartGuard purgeStartGuard;
     private final DataExportRepository dataExportRepository;
     private final StorageService storageService;
 
@@ -110,6 +111,10 @@ public class AccountPurgeService {
     @Transactional
     void purgeUser(UserEntity user) {
         Long userId = user.getId();
+
+        // 柱①ADMINゼロ根治 §12.5: purge開始マークを先に独立コミットする（AC11）。
+        // これにより本メソッドの以降の処理が失敗しても cancel-withdrawal は確実に止まる。
+        purgeStartGuard.markPurgeStarted(userId);
 
         // Phase 1: トークン・セッション系の削除
         refreshTokenRepository.findByUserIdAndRevokedAtIsNull(userId)

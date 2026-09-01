@@ -67,7 +67,15 @@ public enum GdprErrorCode implements ErrorCode {
      * {@code RoleSuccessionService#checkNoLastAdminScopes} 相当のガードから投げる。
      * 正本: docs/architecture/account_purge_last_admin_succession.md §14。</p>
      */
-    GDPR_011("GDPR_011", "退会前に処理が必要な組織があります", Severity.WARN);
+    GDPR_011("GDPR_011", "退会前に処理が必要な組織があります", Severity.WARN),
+
+    /**
+     * 柱①「ADMINゼロ根治」AC11 — purge開始マーク後のcancel-withdrawal拒否（409）。
+     *
+     * <p>正本: docs/architecture/account_purge_last_admin_succession.md §12.5。
+     * {@code PurgeStartGuard#checkCancelAllowed} から投げる。</p>
+     */
+    GDPR_012("GDPR_012", "削除処理が開始されているため退会を取り消せません", Severity.WARN);
 
     private final String code;
     private final String message;
