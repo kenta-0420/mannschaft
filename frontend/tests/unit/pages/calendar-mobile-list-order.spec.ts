@@ -87,13 +87,17 @@ function presetTeamStore() {
  * ISO 文字列としての大小関係が実時刻と逆になるよう組み立てる。
  */
 function mixedOffsetEntries() {
+  // カレンダーの初期表示月に合わせる。固定日にすると実行月が変わった
+  // 瞬間にイベントが表示範囲外になり、並び順ではなく空配列を検査してしまう。
+  const now = new Date()
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-04`
   return [
     {
       id: 1,
       scheduleId: 1,
       content: { title: 'Bイベント（実際には遅い・文字列としては早い）', eventType: 'SCHEDULE', status: 'PUBLISHED' },
       // 実時刻: 2026-08-04T01:00:00Z
-      time: { startAt: '2026-08-04T01:00:00Z', endAt: '2026-08-04T02:00:00Z', allDay: false },
+      time: { startAt: `${date}T01:00:00Z`, endAt: `${date}T02:00:00Z`, allDay: false },
       scope: { scopeType: 'TEAM', scopeId: '1', scopeSlug: 't1', scopeName: 'チームA', scopeIconUrl: null },
       myAttendanceStatus: 'UNDECIDED',
     },
@@ -102,7 +106,7 @@ function mixedOffsetEntries() {
       scheduleId: 2,
       content: { title: 'Aイベント（実際には早い・文字列としては遅い）', eventType: 'SCHEDULE', status: 'PUBLISHED' },
       // 実時刻: 2026-08-04T00:00:00Z（+09:00 表記のため文字列上の時刻部分は '09' で '01' より大きい）
-      time: { startAt: '2026-08-04T09:00:00+09:00', endAt: '2026-08-04T10:00:00+09:00', allDay: false },
+      time: { startAt: `${date}T09:00:00+09:00`, endAt: `${date}T10:00:00+09:00`, allDay: false },
       scope: { scopeType: 'TEAM', scopeId: '1', scopeSlug: 't1', scopeName: 'チームA', scopeIconUrl: null },
       myAttendanceStatus: 'UNDECIDED',
     },

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -96,6 +97,17 @@ class RecruitmentListingRegionRepositoryTest extends AbstractMySqlIntegrationTes
         em.persist(listing);
         em.flush();
         return listing.getId();
+    }
+
+    private void setApplicationDeadline(Long listingId, LocalDateTime deadline) {
+        em.createQuery("""
+                UPDATE RecruitmentListingEntity l
+                SET l.applicationDeadline = :deadline
+                WHERE l.id = :listingId
+                """)
+                .setParameter("deadline", deadline)
+                .setParameter("listingId", listingId)
+                .executeUpdate();
     }
 
     @Test
@@ -290,16 +302,49 @@ class RecruitmentListingRegionRepositoryTest extends AbstractMySqlIntegrationTes
     }
 
     @Test
-    @DisplayName("includeRegionNone=true: 地域行を持たない札も含む / false では含まない")
-    void includeRegionNone_togglesNoRegionListings() {
+    @DisplayName("都道府県検索はincludeRegionNone=trueで地域なしを含み、falseで除外する")
+    void prefectureFilter_includeRegionNoneTogglesNoRegionListings() {
         Long noRegionId = persistPublicListing("no-region-listing");
-        // 地域行を一切作らない。
+        Long tokyoId = persistPublicListing("tokyo-listing");
+        addRegion(tokyoId, "13", "13101");
         em.flush();
         em.clear();
 
         Page<RecruitmentListingEntity> included = listingRepository.searchMarketListings(
-                null, null, null, null, true, PageRequest.of(0, 50));
-        assertThat(included.getContent()).extracting(RecruitmentListingEntity::getId).contains(noRegionId);
+                "13", null, null, null, true, PageRequest.of(0, 50));
+        Page<RecruitmentListingEntity> excluded = listingRepository.searchMarketListings(
+                "13", null, null, null, false, PageRequest.of(0, 50));
+
+        assertThat(included.getContent()).extracting(RecruitmentListingEntity::getId)
+                .contains(tokyoId, noRegionId);
+        assertThat(excluded.getContent()).extracting(RecruitmentListingEntity::getId)
+                .contains(tokyoId)
+                .doesNotContain(noRegionId);
+    }
+
+    @Test
+    @DisplayName("Pageableの締切順を匿名・認証済みの両市検索へ適用する")
+    void pageableDeadlineSort_appliesToPublicAndAccessibleSearches() {
+        Long nearId = persistPublicListing("deadline-near");
+        Long farId = persistPublicListing("deadline-far");
+        LocalDateTime base = LocalDateTime.now();
+        setApplicationDeadline(nearId, base.plusDays(1));
+        setApplicationDeadline(farId, base.plusDays(10));
+        em.flush();
+        em.clear();
+
+        PageRequest deadlineDesc = PageRequest.of(0, 50, Sort.by(
+                Sort.Order.desc("applicationDeadline"), Sort.Order.asc("id")));
+        Page<RecruitmentListingEntity> publicResult = listingRepository.searchMarketListings(
+                null, null, null, null, true, deadlineDesc);
+        Page<RecruitmentListingEntity> accessibleResult =
+                listingRepository.searchAccessibleMarketListings(
+                        List.of(-1L), null, null, null, null, true, deadlineDesc);
+
+        assertThat(publicResult.getContent()).extracting(RecruitmentListingEntity::getId)
+                .containsSubsequence(farId, nearId);
+        assertThat(accessibleResult.getContent()).extracting(RecruitmentListingEntity::getId)
+                .containsSubsequence(farId, nearId);
     }
 
     @Test

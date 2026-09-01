@@ -24,6 +24,9 @@ export type MarketVisibility = 'PUBLIC' | 'FRIEND_TEAMS_ONLY' | 'SCOPE_ONLY' | '
 /** 公開市で札主を絞り込む主体区分。 */
 export type MarketOwnerType = 'PERSONAL' | 'TEAM' | 'ORGANIZATION'
 
+/** 公開市の札一覧で利用できる並び順。 */
+export type MarketListingSort = 'START_AT_ASC' | 'DEADLINE_ASC' | 'DEADLINE_DESC'
+
 /** 個人札の所属先限定公開に使う、本人が現在所属するスコープ。 */
 export interface MarketAudienceScope {
   scopeType: 'TEAM' | 'ORGANIZATION'
@@ -196,6 +199,7 @@ export interface MarketListingsParams {
   ownerType?: MarketOwnerType
   keyword?: string
   includeRegionNone?: boolean
+  sort?: MarketListingSort
   page?: number
   size?: number
   /** 表示言語（札に付随する地域名の多言語表示。未訳は BE 側で日本語フォールバック）。 */

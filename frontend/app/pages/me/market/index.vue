@@ -56,7 +56,9 @@ const editDialogVisible = computed({
 
 const totalPages = computed(() => Math.ceil(totalRecords.value / rows.value))
 const matchesTotalPages = computed(() => Math.ceil(matchesTotalRecords.value / PAGE_SIZE))
-const statusOptions = computed(() => (['DRAFT', 'OPEN', 'FULL', 'CANCELLED'] as const).map(value => ({
+const statusOptions = computed(() => (
+  ['DRAFT', 'OPEN', 'FULL', 'COMPLETED', 'CANCELLED', 'AUTO_CANCELLED'] as const
+).map(value => ({
   value,
   label: t(`market.status.${value}`),
 })))
@@ -177,6 +179,11 @@ function openEditor(listing: RecruitmentListingSummaryResponse) {
 
 async function saveEdit() {
   if (!editingListing.value) return
+  const location = editForm.location?.trim()
+  if (!location) {
+    notification.warn(t('validation.required'))
+    return
+  }
   if (visibility.value === 'SELECTED_SCOPES' && audienceScopes().length === 0) {
     notification.warn(t('market.personal.audienceRequired'))
     return
@@ -185,6 +192,7 @@ async function saveEdit() {
   try {
     await api.updateMyMarketListing(editingListing.value.id, {
       ...editForm,
+      location,
       visibility: visibility.value,
       audienceScopes: visibility.value === 'SELECTED_SCOPES' ? audienceScopes() : [],
     })
@@ -498,7 +506,8 @@ onMounted(async () => {
           <InputNumber v-model="editForm.capacity" :min="1" required />
           <InputNumber v-model="editForm.minCapacity" :min="1" required />
         </div>
-        <InputText v-model="editForm.location" :placeholder="t('recruitment.field.location')" />
+        <label for="personal-market-edit-location">{{ t('recruitment.field.location') }}<span class="ml-1 text-red-500">＊</span></label>
+        <InputText id="personal-market-edit-location" v-model="editForm.location" required />
         <div class="flex flex-col gap-3">
           <label for="personal-market-edit-visibility">{{ t('market.personal.visibility') }}</label>
           <Select

@@ -126196,6 +126196,20 @@
             }
           },
           {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "START_AT_ASC",
+              "enum": [
+                "START_AT_ASC",
+                "DEADLINE_ASC",
+                "DEADLINE_DESC"
+              ]
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "required": false,
@@ -175708,7 +175722,7 @@
           "location": {
             "type": "string",
             "maxLength": 200,
-            "minLength": 0
+            "minLength": 1
           },
           "minCapacity": {
             "type": "integer",
@@ -175790,6 +175804,7 @@
           "capacity",
           "categoryId",
           "endAt",
+          "location",
           "minCapacity",
           "participationType",
           "paymentEnabled",
@@ -205085,7 +205100,8 @@
           "location": {
             "type": "string",
             "maxLength": 200,
-            "minLength": 0
+            "minLength": 0,
+            "pattern": "(?s).*\\S.*"
           },
           "minCapacity": {
             "type": "integer",
