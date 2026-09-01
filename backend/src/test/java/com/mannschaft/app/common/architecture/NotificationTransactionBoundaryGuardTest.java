@@ -836,13 +836,13 @@ class NotificationTransactionBoundaryGuardTest {
      * そちらは {@code NotificationTransactionBoundaryGuardConditionTest} の
      * 「許可入口の判定」節が negative fixture で固定している。
      */
-    static final long RAW_CANDIDATE_HITS_MIN = 182L; // 実測 182（2026-09-01）
+    static final long RAW_CANDIDATE_HITS_MIN = 185L; // 実測 185（2026-09-01 main 取り込み後）
 
     /** @see #RAW_CANDIDATE_HITS_MIN */
-    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 162L; // 実測 162（2026-09-01）
+    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 165L; // 実測 165（2026-09-01 main 取り込み後）
 
     /**
-     * 実測 17045。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。
+     * 実測 17309（2026-09-01 main 取り込み後）。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。
      * このメトリクスは本番コードの規模そのものであり、クラスを1つ消しただけで動く。
      * 守りたいのは「parse が壊れて 0 近くまで落ちる」形なので、桁が落ちれば必ず捕まる。
      *

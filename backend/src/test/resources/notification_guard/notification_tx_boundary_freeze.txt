@@ -61,7 +61,7 @@
 # REMOVED: com.mannschaft.app.timetable.service.TimetableChangeService#updateChange -> TX_NOTIFY_BARE : data.notifyMembers() は引数ゼロの record アクセサ。業務TX内は publishEvent のみで正規形そのもの。
 # REMOVED: com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService#createCheckout -> TX_NOTIFY_IN_TRY : stripePaymentProvider.createNotificationCreditCheckoutSession は Stripe の Checkout Session 作成であり通知ではない。
 # 台帳（凍結エントリ + REMOVED）の総数下限。是正でエントリを消したら実装差分と同じPRでここを下げる。
-# CENSUS_FLOOR: 97
+# CENSUS_FLOOR: 100
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -154,3 +154,10 @@ com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlot
 com.mannschaft.app.todo.batch.TodoDueReminderBatch#notifyAssignees -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.todo.event.MilestoneNotificationListener#onMilestoneUnlocked -> ASYNC_WITHOUT_EXECUTOR
 com.mannschaft.app.todo.event.MilestoneNotificationListener#onMilestoneUnlocked -> PLAIN_EVENT_LISTENER
+
+# --- 2026-09-01 main 取り込みで増えた既存負債（本PRの差分が生んだものではない）---
+# baseline 採取後に main へ着地した実装が持ち込んだ3件。番人が正しく検知したため既存負債として凍結し、
+# 是正は L1 のロットへ回す（CENSUS_FLOOR 97 -> 100）。
+com.mannschaft.app.recruitment.service.RecruitmentListingService#sendCancelledNotifications -> TX_NOTIFY_BARE
+com.mannschaft.app.role.service.OwnershipTransferOfferService#createOffer -> TX_NOTIFY_BARE
+com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX_NOTIFY_BARE
