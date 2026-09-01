@@ -1411,7 +1411,11 @@
           "detail": "Team/organization filters are temporarily unavailable. Events are still shown. Please reload later."
         },
         "hiddenNotice": "The layer you created it in is hidden",
-        "showIt": "Show it"
+        "showIt": "Show it",
+        "title": "Layers",
+        "count": "{count} layers",
+        "color": "Change color",
+        "colorAuto": "Reset to auto"
       },
       "more": "+{count} more",
       "today": "Today",
@@ -1438,6 +1442,12 @@
         "weekGrid": "Week of {range}",
         "slot": "{date} {time} {content}",
         "allDayList": "All-day events"
+      },
+      "error": {
+        "invalidColor": "Invalid color format",
+        "notMember": "You cannot change settings for this layer",
+        "layerLimit": "Layer settings limit reached",
+        "colorResetRefreshFailed": "The color was reset to automatic, but the calendar could not be refreshed. Please reload the page."
       }
     }
   },
