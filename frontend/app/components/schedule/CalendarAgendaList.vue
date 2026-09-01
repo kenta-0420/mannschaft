@@ -14,7 +14,7 @@
  * 「無効化する実装」ではなく「実装しない」ことによる保証であり、対処療法ではない。
  */
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
-import { dateToOrdinal, eventOccupiesDate, ordinalToDate, todayInTimezone } from '~/utils/calendarWeek'
+import { eventOccupiesDate, monthGridDates, todayInTimezone } from '~/utils/calendarWeek'
 
 const props = defineProps<{
   /** 表示中の月の年（月ナビラベル・期間算出用）。 */
@@ -55,22 +55,27 @@ const periodLabel = computed(() =>
 const dayHeaderFormatter = computed(() =>
   new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric', weekday: 'short', timeZone: 'UTC' }))
 
-function daysInMonth(year: number, month: number): number {
-  // month は 1-12。翌月の0日目 = 当月末日。
-  return new Date(Date.UTC(year, month, 0)).getUTCDate()
-}
-
 interface AgendaDay {
   dateStr: string
-  ord: number
   label: string
   isToday: boolean
+  /** 表示中の月そのものの日か（前後月へのはみ出しは false・見出しを淡色で描き分ける）。 */
+  isCurrentMonth: boolean
   events: CalendarEventItem[]
 }
 
 /**
- * 表示中の月の日付ごとに、その日を占有する予定を束ねる（{@link eventOccupiesDate} が唯一の判定基準
- * — 時間グリッド・日別ポップオーバーと同じ関数を使い、基準の食い違いを作らない）。
+ * 表示中の**月グリッド42日分**（前後月へのはみ出しを含む・{@link monthGridDates}）の日付ごとに、
+ * その日を占有する予定を束ねる（{@link eventOccupiesDate} が唯一の判定基準 — 時間グリッド・
+ * 日別ポップオーバーと同じ関数を使い、基準の食い違いを作らない）。
+ *
+ * **月境界で絞り込んではならない**（殿の是正指摘）: `pages/calendar.vue` の取得範囲は
+ * 「表示月の6週グリッド」であり、`filteredEvents` には前後月へはみ出す日の予定が既に含まれる。
+ * 月ビューはそれを42セルとして描いている（`CalendarGrid.vue:119-137`）。アジェンダだけ当月の
+ * 日付（1〜末日）に絞ると、月ビューでは見えている予定がビュー切替で消える＝AC-13 違反であり、
+ * 「アジェンダには+N件が無い」という P3 の最終保証（AC-13b）も、月境界という別経路での
+ * 取りこぼしが残っていては成立しない。
+ *
  * 予定0件の日は見出しごと出さない（一次元リストで空の日を並べても情報が無い）。
  * 各日の中では開始時刻の実際の瞬間（Date.parse）昇順に並べる — ISO 文字列のまま
  * localeCompare すると、オフセットの異なる予定（+09:00 と Z 等）で前後関係が食い違う
@@ -78,21 +83,19 @@ interface AgendaDay {
  */
 const agendaDays = computed<AgendaDay[]>(() => {
   const today = todayInTimezone(userTimezone.value)
-  const count = daysInMonth(props.year, props.month)
-  const firstOrd = dateToOrdinal(`${props.year}-${String(props.month).padStart(2, '0')}-01`)
   const days: AgendaDay[] = []
-  for (let i = 0; i < count; i++) {
-    const ord = firstOrd + i
-    const dateStr = ordinalToDate(ord)
+  for (const { dateStr, isCurrentMonth } of monthGridDates(props.year, props.month)) {
     const dayEvents = props.events
       .filter(ev => eventOccupiesDate(ev, dateStr))
       .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt))
     if (dayEvents.length === 0) continue
     days.push({
       dateStr,
-      ord,
-      label: dayHeaderFormatter.value.format(new Date(ord * 86400000 + 12 * 3600000)),
+      label: dayHeaderFormatter.value.format(new Date(Date.UTC(
+        Number(dateStr.slice(0, 4)), Number(dateStr.slice(5, 7)) - 1, Number(dateStr.slice(8, 10)), 12,
+      ))),
       isToday: dateStr === today,
+      isCurrentMonth,
       events: dayEvents,
     })
   }
@@ -155,10 +158,11 @@ function onRowOpen(event: CalendarEventItem) {
           :key="day.dateStr"
           :data-testid="`agenda-day-${day.dateStr}`"
           :data-agenda-today="day.isToday ? 'true' : undefined"
+          :data-agenda-outside-month="!day.isCurrentMonth ? 'true' : undefined"
         >
           <div
             class="sticky top-0 z-10 border-b border-surface-200 bg-surface-100 px-3 py-1.5 text-xs font-semibold text-surface-600 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300"
-            :class="{ 'text-primary': day.isToday }"
+            :class="{ 'text-primary': day.isToday, 'opacity-60': !day.isCurrentMonth }"
           >
             {{ day.label }}
           </div>

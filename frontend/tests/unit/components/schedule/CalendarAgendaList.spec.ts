@@ -187,4 +187,37 @@ describe('CalendarAgendaList (F03.19 §6.1/§6.2)', () => {
     const wrapper = await mountAgenda([], 2026, 9)
     expect(() => (wrapper.vm as unknown as { focusToday: () => void }).focusToday()).not.toThrow()
   })
+
+  /**
+   * 殿の是正指摘（検分差し戻し）: 月ビューは 2026年8月を「1日の直前の日曜（7/26）から42日」の
+   * 6週グリッドで描き、`pages/calendar.vue` の取得範囲もその6週グリッドを包含する
+   * （`CalendarGrid.vue:119-137`／`pages/calendar.vue:508` のコメント）。よって `filteredEvents`
+   * には 7/26〜7/31・9/1〜9/5 の予定が既に含まれている。アジェンダを当月の日付だけに絞ると、
+   * 月ビューには見えているこれらの予定がビュー切替で消える（AC-13 違反・AC-13b の趣旨が崩れる）。
+   */
+  it('AC-13/AC-13b: 月境界で絞り込まず、前後月へはみ出した6週グリッド分の予定も行として現れる', async () => {
+    const events = [
+      // 前月側のはみ出し（月グリッドの開始日 = 2026-07-26 の日曜）
+      ev({ id: 701, title: '前月末の予定', startAt: '2026-07-26T09:00:00+09:00', endAt: '2026-07-26T10:00:00+09:00' }),
+      ev({ id: 702, title: '前月末の予定2', startAt: '2026-07-30T09:00:00+09:00', endAt: '2026-07-30T10:00:00+09:00' }),
+      // 当月内（比較用）
+      ev({ id: 703, title: '当月の予定', startAt: '2026-08-15T09:00:00+09:00', endAt: '2026-08-15T10:00:00+09:00' }),
+      // 翌月側のはみ出し（月グリッドの終了日 = 2026-09-05 の土曜）
+      ev({ id: 704, title: '翌月頭の予定', startAt: '2026-09-01T09:00:00+09:00', endAt: '2026-09-01T10:00:00+09:00' }),
+      ev({ id: 705, title: '翌月頭の予定2', startAt: '2026-09-05T09:00:00+09:00', endAt: '2026-09-05T10:00:00+09:00' }),
+      // グリッド範囲そのものの外（月グリッドは 7/26〜9/5。9/6 は範囲外なので出てはならない）
+      ev({ id: 706, title: '範囲外', startAt: '2026-09-06T09:00:00+09:00', endAt: '2026-09-06T10:00:00+09:00' }),
+    ]
+    const wrapper = await mountAgenda(events)
+
+    for (const id of [701, 702, 703, 704, 705]) {
+      expect(wrapper.find(`[data-testid="agenda-row-${id}"]`).exists()).toBe(true)
+    }
+    expect(wrapper.find('[data-testid="agenda-row-706"]').exists()).toBe(false)
+
+    // 前後月の日付見出しには「存在を隠さない」ため見出し自体は出るが、区別のため目印を持つ
+    expect(wrapper.get('[data-testid="agenda-day-2026-07-26"]').attributes('data-agenda-outside-month')).toBe('true')
+    expect(wrapper.get('[data-testid="agenda-day-2026-09-05"]').attributes('data-agenda-outside-month')).toBe('true')
+    expect(wrapper.get('[data-testid="agenda-day-2026-08-15"]').attributes('data-agenda-outside-month')).toBeUndefined()
+  })
 })

@@ -49,6 +49,36 @@ export function shiftDate(dateStr: string, days: number): string {
   return ordinalToDate(dateToOrdinal(dateStr) + days)
 }
 
+/** 月グリッドの1マス（`CalendarGrid.vue` の `DayInfo` 相当）。 */
+export interface MonthGridDay {
+  dateStr: string
+  /** 表示中の月そのものの日か（前後月へのはみ出しは false）。 */
+  isCurrentMonth: boolean
+}
+
+/**
+ * `year`/`month` の月グリッド42日分（6週 = 前後月へのはみ出しを含む）を返す。
+ *
+ * `CalendarGrid.vue:119-137` の `calendarDays` と同一の導出（**1日の直前の日曜から42日**）を
+ * ここへ寄せたもの。月ビューが実際に描いている42セルと同じ範囲を、アジェンダビュー
+ * （`CalendarAgendaList.vue`）が独自ロジックで再導出して食い違わせないための共通化。
+ *
+ * `weekStartOf` は日曜起点（§6.5.3 と同じ規約）で、1日を含む週の日曜まで戻ってくれるため、
+ * 前月へのはみ出し日数は `CalendarGrid.vue` の `startOffset`（`firstDay.getDay()`）と必ず一致する
+ * （どちらも「1日の曜日」から導かれる同じ値であり、暦日の曜日はタイムゾーン非依存のため
+ * `new Date(year, month-1, 1).getDay()`（端末ローカル）と `dateToOrdinal` 経由の UTC 通日番号の
+ * どちらで計算しても結果は同じ）。
+ */
+export function monthGridDates(year: number, month: number): MonthGridDay[] {
+  const firstOfMonth = `${year}-${String(month).padStart(2, '0')}-01`
+  const gridStart = weekStartOf(firstOfMonth)
+  const startOrd = dateToOrdinal(gridStart)
+  return Array.from({ length: 42 }, (_, i) => {
+    const dateStr = ordinalToDate(startOrd + i)
+    return { dateStr, isCurrentMonth: Number(dateStr.slice(5, 7)) === month && Number(dateStr.slice(0, 4)) === year }
+  })
+}
+
 /**
  * **ユーザー設定タイムゾーン**における「今日」の日付を返す。
  *
