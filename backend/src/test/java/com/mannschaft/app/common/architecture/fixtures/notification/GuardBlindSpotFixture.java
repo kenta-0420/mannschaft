@@ -2,6 +2,7 @@ package com.mannschaft.app.common.architecture.fixtures.notification;
 
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.GatewayStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.HelperStub;
+import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.InheritingWorkerStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.RepositoryStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.RunnerStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.SilentWorkerStub;
@@ -31,6 +32,19 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *       この検体は「違反として検出される」のではなく「曖昧性として報告される」ことが固定される。</li>
  * </ul>
  *
+ * <p><b>Codex 独立検分 2巡目の更新（番人強化の最終巡）</b>:
+ * <ul>
+ *   <li><b>形状10（継承・インターフェース経由の宣言）を塞いだ</b>。通知 API の宣言が親クラスや
+ *       インターフェースにあると、語彙が完全一致していても「レシーバ型がその API を宣言している」
+ *       条件を満たせず機械ゲートが発火しなかった。継承は Java で最もありふれた宣言の置き場所である。</li>
+ *   <li><b>形状11（完全修飾で宣言されたフィールド）を塞いだ</b>。
+ *       {@code private final com.x.Y y;} は型が解決できないうえ<b>曖昧性としても報告されない</b>ため、
+ *       静かに追跡外へ落ちていた。</li>
+ *   <li><b>形状12（メソッド参照のレシーバ型の曖昧性）を判定不能として出すようにした</b>。
+ *       委譲判定は「割れたら判定不能」なのに、メソッド参照の経路にだけ曖昧性ゲートが無く、
+ *       無関係な同名候補で静かに偽陽性／偽陰性へ倒れうる非対称があった。</li>
+ * </ul>
+ *
  * <h2>なぜ「検出できない形」を検体として持つのか</h2>
  * <p>従来の負例 fixture には<b>番人が構文的に見逃す形が1つも入っていなかった</b>ため、
  * 「負例が全部検出できている」ことが「番人に死角が無い」ことのように読めていた。
@@ -54,6 +68,16 @@ public class GuardBlindSpotFixture {
     private final RepositoryStub repository = new RepositoryStub();
     private final GatewayStub gateway = new GatewayStub();
     private final WorkerStub notificationWorker = new WorkerStub();
+    /** 形状10（継承経由の宣言）用。自分では何も宣言せず {@code notify} を親から継承する。 */
+    private final InheritingWorkerStub inheritingWorker = new InheritingWorkerStub();
+    /**
+     * 形状11（完全修飾で宣言されたフィールド）用。
+     *
+     * <p>{@code TYPED_DECLARATION} は {@code [A-Z][\w$]*} で始まる型しか拾わないため、
+     * この書き方は<b>型が解決できず、委譲先として追えないうえ曖昧性ゲートにも掛からず静かに追跡外</b>だった。
+     */
+    private final com.mannschaft.app.common.architecture.fixtures.notification.FullyQualifiedWorkerStub
+            fullyQualifiedWorker = new FullyQualifiedWorkerStub();
     /** 形状9（シャドーイング）用。ローカル変数に同じ名前で隠される側。 */
     private final WorkerStub shadowedWorker = new WorkerStub();
     /** 本物の Spring {@code TransactionTemplate}。検体は走査されるだけで実行されないため null で足りる。 */
@@ -189,6 +213,37 @@ public class GuardBlindSpotFixture {
         sink.accept(userId);
     }
 
+    /**
+     * 形状10: 通知 API の宣言が<b>親クラス</b>にあるレシーバへのメソッド参照（Codex 独立検分 High）。
+     *
+     * <p>{@code InheritingWorkerStub} 自身の本体は空で、{@code notify} は
+     * {@code BaseNotifierStub} が宣言している。番人の {@code declaredMethodNames} が
+     * 対象クラスの {@code typeBlock} しか見ていなかった頃は、語彙が完全一致していても
+     * 「レシーバ型がその API を宣言している」条件を満たせず
+     * {@code NOTIFY_METHOD_REFERENCE} が<b>発火しなかった</b>（静かな偽陰性）。
+     * 継承は Java で最もありふれた宣言の置き場所であり、死角として放置できない。
+     */
+    @Transactional
+    public void notifyViaInheritedMethodReference(Long userId) {
+        repository.save(userId);
+        Consumer<Long> sink = inheritingWorker::notify;
+        sink.accept(userId);
+    }
+
+    /**
+     * 形状11: フィールドを<b>完全修飾</b>で宣言し、その先で通知する（Codex 独立検分の未解決指摘）。
+     *
+     * <p>{@code private final com.x.Y y;} は {@code TYPED_DECLARATION} が拾わないため、
+     * かつては型が解決できず委譲先として追えなかった。しかも
+     * <b>「型が解決できない」は曖昧性としても報告されない</b>ので、静かに追跡外へ落ちていた。
+     * 完全修飾はそれ自体が一意な名前解決なので、単一型 import と同じ扱いで解決に使う。
+     */
+    @Transactional
+    public void delegateViaFullyQualifiedField(Long userId) {
+        repository.save(userId);
+        fullyQualifiedWorker.send(userId);
+    }
+
     // ------------------------------------------------------------------
     // 塞げない形（原理的に判定不能。検出できるフリをせず「判定不能」として落とす）
     // ------------------------------------------------------------------
@@ -213,6 +268,37 @@ public class GuardBlindSpotFixture {
         repository.save(userId);
         SilentWorkerStub shadowedWorker = new SilentWorkerStub();
         shadowedWorker.send(userId);
+    }
+
+    /**
+     * 形状12: <b>メソッド参照のレシーバ型が曖昧</b>な形（足軽が発見した非対称の検体）。
+     *
+     * <p>{@code declaredTypes} はスコープを持たないので、同じ変数名が別のメソッドで別の型として
+     * 宣言されていると、1つの名前に2つの型が対応する（{@link #unrelatedMethodWithSameVariableName}）。
+     * 一方は {@code notify} を宣言し、他方は宣言していない。
+     *
+     * <p>かつて {@code declaresApi} は「候補のいずれかが宣言していれば true」という
+     * <b>存在量化</b>だった。委譲判定が「割れたら判定不能」なのに、メソッド参照の経路にだけ
+     * 曖昧性ゲートが無かったということである。無関係な同名候補がたまたま同じ名前の API を持てば、
+     * 実際のレシーバ型が通知系でなくても静かに違反へ倒れる。
+     * いまは委譲判定と同じく<b>判定不能</b>として報告される。
+     */
+    @Transactional
+    public void methodReferenceOnAmbiguousReceiver(Long userId) {
+        repository.save(userId);
+        HelperStub ambiguousNotifier = new HelperStub();
+        Consumer<Long> sink = ambiguousNotifier::notify;
+        sink.accept(userId);
+    }
+
+    /**
+     * 形状12 の対になる宣言。同じ変数名を<b>通知を宣言しない型</b>で宣言するためだけに存在する。
+     *
+     * <p>通知もTXも持たないので、このメソッド自体は違反にならない。
+     */
+    public void unrelatedMethodWithSameVariableName(Long userId) {
+        RepositoryStub ambiguousNotifier = new RepositoryStub();
+        ambiguousNotifier.save(userId);
     }
 
     // ------------------------------------------------------------------

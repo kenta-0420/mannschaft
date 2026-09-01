@@ -441,6 +441,41 @@ class NotificationTransactionBoundaryGuardConditionTest {
         }
 
         @Test
+        @DisplayName("形状10: 宣言が親クラスにあるレシーバへのメソッド参照を検出する（Codex 検分 High）")
+        void 形状10_継承経由のメソッド参照() {
+            assertThat(keysOf(FIXTURE))
+                    .as("InheritingWorkerStub 自身の本体は空で、notify は BaseNotifierStub が宣言している。"
+                            + "declaredMethodNames が対象クラスの typeBlock しか見ていないと、"
+                            + "語彙が完全一致していても『レシーバ型がその API を宣言している』条件を満たせず"
+                            + "NOTIFY_METHOD_REFERENCE が発火しない（静かな偽陰性）")
+                    .contains(blindSpotKey("notifyViaInheritedMethodReference",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.NOTIFY_METHOD_REFERENCE));
+        }
+
+        @Test
+        @DisplayName("形状11: 完全修飾で宣言されたフィールドへの委譲を検出する")
+        void 形状11_完全修飾フィールド() {
+            assertThat(keysOf(FIXTURE))
+                    .as("private final com.x.Y y; は TYPED_DECLARATION が拾わないため型が解決できず、"
+                            + "委譲先として追えないうえ曖昧性ゲートにも掛からず静かに追跡外だった")
+                    .contains(blindSpotKey("delegateViaFullyQualifiedField",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_VIA_DELEGATE));
+        }
+
+        @Test
+        @DisplayName("形状12: メソッド参照のレシーバ型が割れたら判定不能として報告する（経路間の非対称の解消）")
+        void 形状12_メソッド参照の曖昧性() {
+            assertThat(ambiguitiesOf(FIXTURE))
+                    .as("委譲判定は『候補間で割れたら判定不能』なのに、メソッド参照の経路にだけ"
+                            + "曖昧性ゲートが無かった。無関係な同名候補がたまたま同じ名前の API を持てば"
+                            + "静かに違反へ倒れる（逆向きの偽陰性も同様）。扱いは経路によって変えてはならない")
+                    .anySatisfy(a -> assertThat(a).contains("#methodReferenceOnAmbiguousReceiver"));
+            assertThat(keysOf(FIXTURE))
+                    .as("判定不能なものを違反として数えている（＝検出できるフリ）")
+                    .noneMatch(k -> k.contains("#methodReferenceOnAmbiguousReceiver "));
+        }
+
+        @Test
         @DisplayName("形状7: 同名オーバーロードの畳み込みを @Transactional の宣言で分離する")
         void 形状7_オーバーロード畳み込み() {
             Set<String> keys = keysOf(FIXTURE);
@@ -610,6 +645,156 @@ class NotificationTransactionBoundaryGuardConditionTest {
                             NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_VIA_DELEGATE));
         }
 
+        /** 検体パッケージの型を単純名で引く。 */
+        private NotificationTransactionBoundaryGuardTest.TypeRef fixtureType(String simpleName) {
+            return NotificationTransactionBoundaryGuardTest.typeIndex()
+                    .getOrDefault(simpleName, List.of()).stream()
+                    .filter(r -> r.fqcn().startsWith(FIXTURE_PACKAGE))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("索引に無い: " + simpleName));
+        }
+
+        @Test
+        @DisplayName("変異: extends 節を消すと親の宣言が見えなくなる（形状10 は継承を辿って効いている）")
+        void 継承を辿っていることの裏取り() {
+            NotificationTransactionBoundaryGuardTest.TypeRef ref = fixtureType("InheritingWorkerStub");
+            String masked = JavaSourceScanningUtils.maskCommentsAndLiterals(
+                    NotificationTransactionBoundaryGuardTest.read(ref.file()));
+
+            // (1) 自分の本体には notify が無い。＝旧実装（typeBlock だけを見る）では見えない。
+            String ownBlock = NotificationTransactionBoundaryGuardTest.typeBlock(masked, "InheritingWorkerStub");
+            assertThat(NotificationTransactionBoundaryGuardTest.parseMethods(ownBlock).stream()
+                    .map(NotificationTransactionBoundaryGuardTest.MethodBlock::name).toList())
+                    .as("検体の本体にメソッドが書かれている＝『継承を辿らないと見えない』状況を作れていない")
+                    .doesNotContain("notify");
+
+            // (2) 継承を辿ると見える。
+            assertThat(NotificationTransactionBoundaryGuardTest.declaredMethodNames(ref))
+                    .as("継承階層を辿れていない＝親クラスに宣言を置くだけで機械ゲートをすり抜けられる")
+                    .contains("notify");
+
+            // (3) 変異: extends 節を1つ消すと親が引けなくなる（＝綴りで当てているのではない）。
+            assertThat(NotificationTransactionBoundaryGuardTest
+                    .superTypeNames(masked, "InheritingWorkerStub"))
+                    .contains("BaseNotifierStub");
+            assertThat(NotificationTransactionBoundaryGuardTest.superTypeNames(
+                    masked.replace("InheritingWorkerStub extends BaseNotifierStub",
+                            "InheritingWorkerStub"), "InheritingWorkerStub"))
+                    .as("extends 節を消しても親が見つかる＝宣言を読まずに別の理由で当てている")
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("interface 側にしか宣言が無い形も辿れる（implements 節）")
+        void インターフェース経由の宣言も辿る() {
+            assertThat(NotificationTransactionBoundaryGuardTest.declaredMethodNames(
+                    fixtureType("PortImplStub")))
+                    .as("implements 節を辿れていない＝インターフェースに宣言を置くだけですり抜けられる")
+                    .contains("notify");
+        }
+
+        @Test
+        @DisplayName("変異: 完全修飾の型宣言を消すと形状11 の検出が消える")
+        void 完全修飾フィールドの型宣言を消すと消える() {
+            String target = key(FIXTURE, "delegateViaFullyQualifiedField",
+                    NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_VIA_DELEGATE);
+            assertThat(keysOf(FIXTURE)).contains(target);
+            assertThat(keysOfMutated(FIXTURE,
+                    "private final com.mannschaft.app.common.architecture.fixtures.notification"
+                            + ".FullyQualifiedWorkerStub",
+                    "private final Object"))
+                    .as("完全修飾の型宣言を Object へ変えても検出が残る＝型ではなく変数名の綴りで当てている")
+                    .doesNotContain(target);
+        }
+
+        @Test
+        @DisplayName("import は authoritative — 索引に無い型を指す import で別候補へフォールバックしない")
+        void importが索引に無ければ別候補へ倒れない() {
+            // 索引に居る単純名（検体の WorkerStub）と同じ名前を、索引の外の型として import している状況。
+            // 旧実装は「import 先が索引に無い」と同一パッケージ／全候補へフォールバックしており、
+            // まったく別の型のソースを読んで発火判定する静かな誤解決が起きえた。
+            assertThat(NotificationTransactionBoundaryGuardTest.resolveCandidates(
+                    "WorkerStub", java.util.Map.of("WorkerStub", "com.example.external.WorkerStub"), ""))
+                    .as("import が索引の外の型を指しているのに、索引側の同名型へ黙って倒れている")
+                    .isEmpty();
+            // 対照: import が索引の型を指していれば、その1件に解決できる。
+            assertThat(NotificationTransactionBoundaryGuardTest.resolveCandidates(
+                    "WorkerStub",
+                    java.util.Map.of("WorkerStub", FIXTURE_PACKAGE + ".NotificationFixtureStubs.WorkerStub"),
+                    ""))
+                    .as("正しい import まで空にしている＝解決が効きすぎて委譲追跡が死ぬ")
+                    .isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("限界の固定: static import は型解決に使わない（検出できるフリをしない）")
+        void staticImportは型解決に使わない() {
+            // Javadoc の「名前解決の限界」節に明記した振る舞いを、検体として固定する。
+            // static import が持ち込むのはメンバであって型名の束縛ではないため、
+            // 単純名 -> 型の解決には使えない。ネスト型の static import も同様に再現できない。
+            String src = """
+                    package p;
+                    import static p.Outer.Inner;
+                    import static java.util.Map.entry;
+                    import p.other.WorkerStub;
+                    class C { }
+                    """;
+            assertThat(NotificationTransactionBoundaryGuardTest.singleTypeImports(src))
+                    .as("static import を型解決に使っている＝Javadoc の限界の記述と実装が乖離している")
+                    .doesNotContainKey("Inner")
+                    .doesNotContainKey("entry")
+                    .containsEntry("WorkerStub", "p.other.WorkerStub");
+        }
+
+        @Test
+        @DisplayName("限界の固定: 完全修飾のネスト型宣言は拾わない（Map.Entry を巻き込まないための境界）")
+        void 完全修飾のネスト型宣言は拾わない() {
+            assertThat(NotificationTransactionBoundaryGuardTest.qualifiedDeclarationTypes(
+                    "{ private final com.x.y.Worker worker = null; }"))
+                    .as("完全修飾のトップレベル型を拾えていない＝形状11 の解決が効かない")
+                    .containsEntry("Worker", "com.x.y.Worker");
+            assertThat(NotificationTransactionBoundaryGuardTest.qualifiedDeclarationTypes(
+                    "{ private final Map.Entry<String, String> entry = null; }"))
+                    .as("JDK のネスト型まで拾っている＝無関係な変数が declaredTypes へ大量に入り、"
+                            + "判定の当たり方が変わる。ここは意図的に閉じている")
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("declaresApi は委譲判定と同じ三値（候補が割れたら判定不能）")
+        void declaresApiは三値である() {
+            java.util.Map<String, String> noHints = java.util.Map.of();
+            assertThat(NotificationTransactionBoundaryGuardTest.declaresApi(
+                    Set.of("HelperStub"), "notify", noHints, FIXTURE_PACKAGE))
+                    .as("宣言している型を false と判定している").isEqualTo(Boolean.TRUE);
+            assertThat(NotificationTransactionBoundaryGuardTest.declaresApi(
+                    Set.of("RepositoryStub"), "notify", noHints, FIXTURE_PACKAGE))
+                    .as("宣言していない型を true と判定している").isEqualTo(Boolean.FALSE);
+            assertThat(NotificationTransactionBoundaryGuardTest.declaresApi(
+                    Set.of("HelperStub", "RepositoryStub"), "notify", noHints, FIXTURE_PACKAGE))
+                    .as("候補が割れているのに片方へ倒している＝委譲判定と扱いが非対称")
+                    .isNull();
+        }
+
+        @Test
+        @DisplayName("変異: 委譲先入口の注釈を変えると導出される ImpactClass が反転する（任務4）")
+        void 影響区分はソースの注釈から導出している() {
+            NotificationTransactionBoundaryGuardTest.TypeRef worker = fixtureType("WorkerStub");
+            assertThat(NotificationTransactionBoundaryGuardTest.delegateEntryImpact(worker, "send"))
+                    .as("無印（＝呼び出し元のTXに参加する）を ROLLBACK_COUPLED と判定できていない")
+                    .isEqualTo(NotificationTransactionBoundaryGuardTest.ImpactClass.ROLLBACK_COUPLED);
+
+            NotificationTransactionBoundaryGuardTest.TypeRef executor =
+                    NotificationTransactionBoundaryGuardTest.typeIndex()
+                            .getOrDefault("ErrorReportAsyncExecutor", List.of()).stream().findFirst()
+                            .orElseThrow(() -> new IllegalStateException("本番の @Async 委譲先が索引に無い"));
+            assertThat(NotificationTransactionBoundaryGuardTest.delegateEntryImpact(
+                    executor, "recordBackendException"))
+                    .as("@Async(\"event-pool\") で別スレッド・別TXへ逃げる形を ROLLBACK_COUPLED と誤分類している。"
+                            + "分類を誤ると是正の手当てを誤る（TXから切り離す／AFTER_COMMIT へ移す は別物）")
+                    .isEqualTo(NotificationTransactionBoundaryGuardTest.ImpactClass.ORDERING_ONLY);
+        }
+
         @Test
         @DisplayName("変異: @Transactional を外すと形状7 の DIRECT_RUNNER_CALL 分離が元に戻る")
         void オーバーロード分離はTransactionalの宣言で効いている() {
@@ -739,8 +924,7 @@ class NotificationTransactionBoundaryGuardConditionTest {
         }
 
         private Set<String> realFoundKeys() {
-            return NotificationTransactionBoundaryGuardTest
-                    .scanRoot(NotificationTransactionBoundaryGuardTest.mainSourceRoot(), fqcn -> true)
+            return NotificationTransactionBoundaryGuardTest.mainScan().violations()
                     .stream()
                     .map(Violation::key)
                     .collect(Collectors.toCollection(java.util.TreeSet::new));
@@ -811,6 +995,69 @@ class NotificationTransactionBoundaryGuardConditionTest {
         void 現状は緑() {
             assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(realLines(), realFoundKeys()))
                     .as("ゲートが常に赤なら、以降の変異テストは何も証明しない")
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("変異: 判定不能が台帳に載っていないと fail する（0件でも仕組みは動いている）")
+        void 台帳に無い判定不能は落ちる() {
+            List<String> lines = realLines();
+            // 現状は0件。偽の判定不能を1件流し込み、台帳ゲートがそれを是正対象として要求することを確かめる。
+            List<String> fabricated = List.of(
+                    "com.example.Foo#bar : レシーバ型が一意に決まらず候補ごとに判定が割れる。候補=A/B");
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(
+                    lines, realFoundKeys(), fabricated, java.util.Map.of()))
+                    .as("判定不能が発生しても台帳ゲートが通ってしまう＝曖昧性が是正対象の一覧から消える。"
+                            + "この戦役では『一覧が実態より小さい』が既に5回起きている")
+                    .isNotEmpty()
+                    .anySatisfy(msg -> assertThat(msg).contains("判定不能")
+                            .contains("台帳に載っていない"));
+        }
+
+        @Test
+        @DisplayName("変異: 台帳の AMBIGUOUS 行が現在は曖昧でないなら fail する（古い行が残らない）")
+        void 解消済みの判定不能行は落ちる() {
+            List<String> lines = new ArrayList<>(realLines());
+            lines.add("# AMBIGUOUS: com.example.Foo#bar : もう起きていない古い理由をここに書いておく");
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(
+                    lines, realFoundKeys(), List.of(), java.util.Map.of()))
+                    .as("解消済みの判定不能行が残っていても通ってしまう＝台帳が実態から乖離する")
+                    .isNotEmpty()
+                    .anySatisfy(msg -> assertThat(msg).contains("現在の判定では曖昧ではない"));
+        }
+
+        @Test
+        @DisplayName("変異: 分類をソース由来の区分と食い違わせると fail する（任務4）")
+        void 分類がソースと食い違うと落ちる() {
+            List<String> lines = realLines();
+            String classified = anyClassifiedLine(lines);
+            String key = NotificationTransactionBoundaryGuardTest.entryKey(classified);
+            String written = NotificationTransactionBoundaryGuardTest.entryClassification(classified);
+            NotificationTransactionBoundaryGuardTest.ImpactClass opposite =
+                    NotificationTransactionBoundaryGuardTest.ImpactClass.ROLLBACK_COUPLED.name().equals(written)
+                            ? NotificationTransactionBoundaryGuardTest.ImpactClass.ORDERING_ONLY
+                            : NotificationTransactionBoundaryGuardTest.ImpactClass.ROLLBACK_COUPLED;
+
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(
+                    lines, realFoundKeys(), List.of(), java.util.Map.of(key, opposite)))
+                    .as("台帳の分類が実ソースの注釈と食い違っていても通ってしまう＝"
+                            + "分類は綴りチェックだけで、是正の手当てを誤る経路が残っている（対象 %s）", key)
+                    .isNotEmpty()
+                    .anySatisfy(msg -> assertThat(msg).contains("ソースの注釈から導出した区分と一致しない"));
+        }
+
+        @Test
+        @DisplayName("本番の分類9件がすべてソース由来の区分と一致している（実測での裏取り）")
+        void 本番の分類はソースと一致している() {
+            java.util.Map<String, NotificationTransactionBoundaryGuardTest.ImpactClass> derived =
+                    NotificationTransactionBoundaryGuardTest.derivedImpacts(
+                            NotificationTransactionBoundaryGuardTest.mainScan().violations());
+            assertThat(derived)
+                    .as("委譲違反の区分が1件も導出できていない＝任務4 の機械照合が何も測っていない")
+                    .isNotEmpty();
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(
+                    realLines(), realFoundKeys(), List.of(), derived))
+                    .as("台帳の分類とソース由来の区分が食い違っている")
                     .isEmpty();
         }
 

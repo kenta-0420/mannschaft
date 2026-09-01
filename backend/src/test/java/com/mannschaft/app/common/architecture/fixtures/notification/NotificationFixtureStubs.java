@@ -107,6 +107,42 @@ public final class NotificationFixtureStubs {
         }
     }
 
+    /**
+     * 通知 API を<b>親クラスで宣言している</b>基底クラス相当（Codex 独立検分 High）。
+     *
+     * <p>Java では宣言の置き場所として最もありふれた形なのに、番人の
+     * {@code declaredMethodNames} は対象クラス自身の本体しか見ていなかった。
+     * そのため {@code worker::notify} は語彙が一致していても
+     * 「レシーバ型がその API を宣言している」条件を満たせず、機械ゲートが発火しなかった。
+     */
+    public abstract static class BaseNotifierStub {
+        private final HelperStub notificationHelper = new HelperStub();
+
+        /** 子クラスは何も宣言せず、この宣言だけを継承する。 */
+        public void notify(Long userId) {
+            notificationHelper.notify(userId, "TYPE", "件名", "本文");
+        }
+    }
+
+    /**
+     * {@link BaseNotifierStub} を継承するだけで<b>自分では何も宣言しない</b>ワーカー相当。
+     *
+     * <p>本体が空であることが本質。ここにメソッドを足すと「継承を辿れているか」を測れなくなる。
+     */
+    public static class InheritingWorkerStub extends BaseNotifierStub {
+    }
+
+    /**
+     * インターフェースで通知 API を宣言する形（継承と同じく、実装クラス本体には宣言が無い）。
+     */
+    public interface NotifierPort {
+        void notify(Long userId);
+    }
+
+    /** {@link NotifierPort} を実装するが、宣言はインターフェース側にしか無い形。 */
+    public abstract static class PortImplStub implements NotifierPort {
+    }
+
     /** 業務側リポジトリ相当（業務TXが実在することを形として示すためだけのもの）。 */
     public static class RepositoryStub {
         public void save(Object entity) {
