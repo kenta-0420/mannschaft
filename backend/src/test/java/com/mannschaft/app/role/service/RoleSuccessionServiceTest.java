@@ -79,8 +79,21 @@ class RoleSuccessionServiceTest {
     private static final Long MEMBER_ID = 3L;
     private static final Long ADMIN_ROLE_ID = 9L;
 
-    /** 候補が資格再検証（P1-2）を通過する状態にする（現役・当該スコープに在籍）。 */
-    private void givenEligible(Long candidateId) {
+    /**
+     * 候補が資格再検証（P1-2）を通過する状態にする（現役・当該スコープに在籍）。
+     * {@code forceTransferForPurge} 用: ロック順序修正（Codex第2巡P1）により
+     * {@code userRowLockService.lockAll(withdrawingUserId, candidateId)} 経由で判定するため、
+     * その形でスタブする。
+     */
+    private void givenEligibleForPurge(Long withdrawingUserId, Long candidateId) {
+        given(userRowLockService.lockAll(withdrawingUserId, candidateId)).willReturn(java.util.Map.of(
+                withdrawingUserId, UserRowLockService.UserState.ACTIVE,
+                candidateId, UserRowLockService.UserState.ACTIVE));
+        given(membershipService.isActiveMemberForUpdate(candidateId, ScopeType.TEAM, SCOPE_ID)).willReturn(true);
+    }
+
+    /** {@code forceAssignInitialAdminOnUnarchive} 用: 単一ユーザーの {@code lock} 経由で判定する。 */
+    private void givenEligibleForUnarchive(Long candidateId) {
         given(userRowLockService.lock(candidateId)).willReturn(UserRowLockService.UserState.ACTIVE);
         given(membershipService.isActiveMemberForUpdate(candidateId, ScopeType.TEAM, SCOPE_ID)).willReturn(true);
     }
@@ -173,7 +186,7 @@ class RoleSuccessionServiceTest {
             given(roleRepository.findByName("ADMIN"))
                     .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
             given(userRoleRepository.findByUserIdAndTeamIdForUpdate(DEPUTY_ID, SCOPE_ID)).willReturn(Optional.empty());
-            givenEligible(DEPUTY_ID);
+            givenEligibleForPurge(WITHDRAWING_USER_ID, DEPUTY_ID);
 
             service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, UUID.randomUUID());
 
@@ -246,7 +259,7 @@ class RoleSuccessionServiceTest {
             given(roleRepository.findByName("ADMIN"))
                     .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
             given(userRoleRepository.findByUserIdAndTeamIdForUpdate(DEPUTY_ID, SCOPE_ID)).willReturn(Optional.empty());
-            givenEligible(DEPUTY_ID);
+            givenEligibleForPurge(WITHDRAWING_USER_ID, DEPUTY_ID);
 
             service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, UUID.randomUUID());
 
@@ -292,7 +305,7 @@ class RoleSuccessionServiceTest {
             given(roleRepository.findByName("ADMIN"))
                     .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
             given(userRoleRepository.findByUserIdAndTeamIdForUpdate(DEPUTY_ID, SCOPE_ID)).willReturn(Optional.empty());
-            givenEligible(DEPUTY_ID);
+            givenEligibleForPurge(WITHDRAWING_USER_ID, DEPUTY_ID);
 
             service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, purgeId);
             service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, purgeId);
@@ -301,6 +314,64 @@ class RoleSuccessionServiceTest {
                     any(), any(), any(), anyString());
             verify(notificationHelper, times(1)).notify(any(), anyString(), any(), anyString(), anyString(),
                     anyString(), any(), any(), any(), any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("Codex第2巡P1: ロック取得順序はusers先→ADMIN行後（既存RoleService#transferOwnershipと同順）")
+    class LockOrderUsersBeforeAdmin {
+
+        @Test
+        @DisplayName("forceTransferForPurge: userRowLockService.lockAllがadminRoleMutationLockServiceより先に呼ばれる"
+                + "（逆順だとpurge/バッチ経路とtransfer/leave経路が相互待ちデッドロックする）")
+        void forceTransferForPurgeはusersを先にロックする() {
+            given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM"))
+                    .willReturn(List.of(WITHDRAWING_USER_ID));
+            given(userRoleRepository.findDeputyAdminCandidateIdsByTeam(SCOPE_ID)).willReturn(List.of(DEPUTY_ID));
+            given(roleRepository.findByName("ADMIN"))
+                    .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
+            given(userRoleRepository.findByUserIdAndTeamIdForUpdate(DEPUTY_ID, SCOPE_ID)).willReturn(Optional.empty());
+            givenEligibleForPurge(WITHDRAWING_USER_ID, DEPUTY_ID);
+
+            service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, UUID.randomUUID());
+
+            org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(userRowLockService, adminRoleMutationLockService);
+            inOrder.verify(userRowLockService).lockAll(WITHDRAWING_USER_ID, DEPUTY_ID);
+            inOrder.verify(adminRoleMutationLockService).lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("promoteForBatchSuccession: userRowLockService.lockがadminRoleMutationLockServiceより先に呼ばれる")
+        void promoteForBatchSuccessionはusersを先にロックする() {
+            given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM"))
+                    .willReturn(List.of());
+            given(userRoleRepository.findDeputyAdminCandidateIdsByTeam(SCOPE_ID)).willReturn(List.of(DEPUTY_ID));
+            given(roleRepository.findByName("ADMIN"))
+                    .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
+            given(userRoleRepository.findByUserIdAndTeamIdForUpdate(DEPUTY_ID, SCOPE_ID)).willReturn(Optional.empty());
+            given(userRowLockService.lock(DEPUTY_ID)).willReturn(UserRowLockService.UserState.ACTIVE);
+            given(membershipService.isActiveMemberForUpdate(DEPUTY_ID, ScopeType.TEAM, SCOPE_ID)).willReturn(true);
+
+            service.promoteForBatchSuccession(SCOPE_ID, "TEAM");
+
+            org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(userRowLockService, adminRoleMutationLockService);
+            inOrder.verify(userRowLockService).lock(DEPUTY_ID);
+            inOrder.verify(adminRoleMutationLockService).lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("forceAssignInitialAdminOnUnarchive: userRowLockService.lockがadminRoleMutationLockServiceより先に呼ばれる")
+        void forceAssignInitialAdminOnUnarchiveはusersを先にロックする() {
+            given(roleRepository.findByName("ADMIN"))
+                    .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
+            given(userRoleRepository.findByUserIdAndTeamIdForUpdate(DEPUTY_ID, SCOPE_ID)).willReturn(Optional.empty());
+            givenEligibleForUnarchive(DEPUTY_ID);
+
+            service.forceAssignInitialAdminOnUnarchive(SCOPE_ID, "TEAM", DEPUTY_ID, 999L);
+
+            org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(userRowLockService, adminRoleMutationLockService);
+            inOrder.verify(userRowLockService).lock(DEPUTY_ID);
+            inOrder.verify(adminRoleMutationLockService).lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM");
         }
     }
 
@@ -317,8 +388,10 @@ class RoleSuccessionServiceTest {
             given(userRoleRepository.findDeputyAdminCandidateIdsByTeam(SCOPE_ID))
                     .willReturn(List.of(DEPUTY_ID, secondCandidateId));
             // 最古参 DEPUTY_ID は選定後に状態が変化し再検証で失格（例: 退会済 → INELIGIBLE_EXISTING）
-            given(userRowLockService.lock(DEPUTY_ID)).willReturn(UserRowLockService.UserState.INELIGIBLE_EXISTING);
-            givenEligible(secondCandidateId);
+            given(userRowLockService.lockAll(WITHDRAWING_USER_ID, DEPUTY_ID)).willReturn(java.util.Map.of(
+                    WITHDRAWING_USER_ID, UserRowLockService.UserState.ACTIVE,
+                    DEPUTY_ID, UserRowLockService.UserState.INELIGIBLE_EXISTING));
+            givenEligibleForPurge(WITHDRAWING_USER_ID, secondCandidateId);
             given(roleRepository.findByName("ADMIN"))
                     .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
             given(userRoleRepository.findByUserIdAndTeamIdForUpdate(secondCandidateId, SCOPE_ID)).willReturn(Optional.empty());
@@ -336,7 +409,9 @@ class RoleSuccessionServiceTest {
                     .willReturn(List.of(WITHDRAWING_USER_ID));
             given(userRoleRepository.findDeputyAdminCandidateIdsByTeam(SCOPE_ID)).willReturn(List.of(DEPUTY_ID));
             given(userRoleRepository.findMemberCandidateIdsByTeam(SCOPE_ID)).willReturn(List.of());
-            given(userRowLockService.lock(DEPUTY_ID)).willReturn(UserRowLockService.UserState.ABSENT);
+            given(userRowLockService.lockAll(WITHDRAWING_USER_ID, DEPUTY_ID)).willReturn(java.util.Map.of(
+                    WITHDRAWING_USER_ID, UserRowLockService.UserState.ACTIVE,
+                    DEPUTY_ID, UserRowLockService.UserState.ABSENT));
 
             service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, UUID.randomUUID());
 
@@ -356,7 +431,7 @@ class RoleSuccessionServiceTest {
             given(roleRepository.findByName("ADMIN"))
                     .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
             given(userRoleRepository.findByUserIdAndTeamIdForUpdate(DEPUTY_ID, SCOPE_ID)).willReturn(Optional.empty());
-            givenEligible(DEPUTY_ID);
+            givenEligibleForUnarchive(DEPUTY_ID);
 
             service.forceAssignInitialAdminOnUnarchive(SCOPE_ID, "TEAM", DEPUTY_ID, systemAdminId);
 
