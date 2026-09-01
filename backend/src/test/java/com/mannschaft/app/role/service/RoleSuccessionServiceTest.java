@@ -6,11 +6,11 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.service.MembershipService;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.role.dto.LastAdminScope;
 import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.event.AdminSuccessionForcedNotificationEvent;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.service.TeamService;
@@ -21,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -60,7 +61,7 @@ class RoleSuccessionServiceTest {
     @Mock
     private AuditLogService auditLogService;
     @Mock
-    private NotificationHelper notificationHelper;
+    private ApplicationEventPublisher eventPublisher;
     @Mock
     private TeamService teamService;
     @Mock
@@ -194,8 +195,9 @@ class RoleSuccessionServiceTest {
             verify(auditLogService).record(anyString(), eq(WITHDRAWING_USER_ID), eq(DEPUTY_ID),
                     eq(SCOPE_ID), isNull(), any(), any(), any(),
                     org.mockito.ArgumentMatchers.contains("\"forced\":true"));
-            verify(notificationHelper).notify(eq(DEPUTY_ID), anyString(), any(), anyString(), anyString(),
-                    anyString(), any(), any(), eq(SCOPE_ID), any(), eq(WITHDRAWING_USER_ID));
+            verify(eventPublisher).publishEvent(eq(new AdminSuccessionForcedNotificationEvent(
+                    "TEAM", SCOPE_ID, DEPUTY_ID, WITHDRAWING_USER_ID,
+                    AdminSuccessionForcedNotificationEvent.Reason.PURGE)));
         }
     }
 
@@ -312,8 +314,7 @@ class RoleSuccessionServiceTest {
 
             verify(auditLogService, times(1)).record(anyString(), any(), any(), any(), any(),
                     any(), any(), any(), anyString());
-            verify(notificationHelper, times(1)).notify(any(), anyString(), any(), anyString(), anyString(),
-                    anyString(), any(), any(), any(), any(), any());
+            verify(eventPublisher, times(1)).publishEvent(any(AdminSuccessionForcedNotificationEvent.class));
         }
     }
 

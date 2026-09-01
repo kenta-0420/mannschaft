@@ -7,19 +7,18 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.service.MembershipService;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.role.dto.LastAdminScope;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.event.AdminSuccessionForcedNotificationEvent;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,8 +85,6 @@ import java.util.UUID;
 public class RoleSuccessionService {
 
     private static final String SCOPE_TEAM = "TEAM";
-    private static final String NOTIF_ADMIN_SUCCESSION_FORCED = "ADMIN_SUCCESSION_FORCED";
-    private static final String NOTIF_SOURCE_USER = "USER";
     /**
      * ロック無し読みで仮決定する候補の最大件数（Codex第3巡P1）。
      * この件数分をまとめて1回の{@code lockAll}でロックし、ロック下で優先順に評価する
@@ -99,7 +96,7 @@ public class RoleSuccessionService {
     private final RoleRepository roleRepository;
     private final AdminRoleMutationLockService adminRoleMutationLockService;
     private final AuditLogService auditLogService;
-    private final NotificationHelper notificationHelper;
+    private final ApplicationEventPublisher eventPublisher;
     private final TeamService teamService;
     private final OrganizationService organizationService;
     private final UserRowLockService userRowLockService;
@@ -376,18 +373,11 @@ public class RoleSuccessionService {
                 "{\"forced\":true,\"reason\":\"PURGE_LAST_ADMIN_SUCCESSION\""
                         + ",\"purgeId\":" + (purgeId == null ? "null" : "\"" + purgeId + "\"") + "}");
 
-        notificationHelper.notify(
-                candidateId,
-                NOTIF_ADMIN_SUCCESSION_FORCED,
-                NotificationPriority.HIGH,
-                "管理者に自動指名されました",
-                "先任の管理者の退会に伴い、あなたが管理者に自動で指名されました。",
-                NOTIF_SOURCE_USER,
-                null,
-                team ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION,
-                scopeId,
-                null,
-                withdrawingUserId);
+        // 通知のトランザクション境界番人（Issue #2834 / CMP-056 / #2990）: 業務TX内ではイベント発行のみ。
+        // 実配送は AdminSuccessionNotificationListener（AFTER_COMMIT）が担う。
+        eventPublisher.publishEvent(new AdminSuccessionForcedNotificationEvent(
+                scopeType, scopeId, candidateId, withdrawingUserId,
+                AdminSuccessionForcedNotificationEvent.Reason.PURGE));
 
         log.info("forceTransferForPurge 完了: scopeType={}, scopeId={}, withdrawingUserId={}, candidateId={}",
                 scopeType, scopeId, withdrawingUserId, candidateId);
@@ -490,18 +480,11 @@ public class RoleSuccessionService {
                 null, null, null,
                 "{\"forced\":true,\"reason\":\"ADMINLESS_SCOPE_BATCH_SUCCESSION\"}");
 
-        notificationHelper.notify(
-                candidateId,
-                NOTIF_ADMIN_SUCCESSION_FORCED,
-                NotificationPriority.HIGH,
-                "管理者に自動指名されました",
-                "管理者不在の状態が検出されたため、あなたが管理者に自動で指名されました。",
-                NOTIF_SOURCE_USER,
-                null,
-                team ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION,
-                scopeId,
-                null,
-                null);
+        // 通知のトランザクション境界番人（Issue #2834 / CMP-056 / #2990）: 業務TX内ではイベント発行のみ。
+        // 実配送は AdminSuccessionNotificationListener（AFTER_COMMIT）が担う。
+        eventPublisher.publishEvent(new AdminSuccessionForcedNotificationEvent(
+                scopeType, scopeId, candidateId, null,
+                AdminSuccessionForcedNotificationEvent.Reason.BATCH_ADMINLESS_SCOPE));
 
         log.info("promoteForBatchSuccession 完了: scopeType={}, scopeId={}, candidateId={}",
                 scopeType, scopeId, candidateId);
