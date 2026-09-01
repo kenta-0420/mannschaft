@@ -48,6 +48,10 @@ class BillingCheckoutApplicationServiceTrialTest {
     private static final UUID BAND_ID = UUID.fromString("01999d74-5130-7000-8000-000000000012");
     private static final UUID CONTRACT_ID = UUID.fromString("01999d74-5130-7000-8000-000000000013");
 
+    /** clock=2028-02-10T03:00Z（JST 2/10 12:00）から導かれる JST 当月 period。 */
+    private static final Instant JST_PERIOD_START = Instant.parse("2028-01-31T15:00:00Z");
+    private static final Instant JST_PERIOD_END = Instant.parse("2028-02-29T15:00:00Z");
+
     @Mock private BillingCheckoutScopeGuard scopeGuard;
     @Mock private BillingQuoteRepository quoteRepository;
     @Mock private BillingCheckoutCustomerRepository customerRepository;
@@ -97,7 +101,10 @@ class BillingCheckoutApplicationServiceTrialTest {
     @Test
     @DisplayName("BC-13: 価格/人数/税/period/prorationのどれかが変わればquote未消費の023 QUOTE_STALE")
     void checkout_snapshotがstale_quote未消費で409にする() {
-        BillingQuoteSnapshot stale = quote(clock.instant().plusSeconds(600));
+        // 旧 period（2028-01 相当）を抱えた本当に stale な検体。
+        BillingQuoteSnapshot stale = quote(clock.instant().plusSeconds(600),
+                Instant.parse("2027-12-31T15:00:00Z"), Instant.parse("2028-01-31T15:00:00Z"),
+                Instant.parse("2028-01-10T03:00:00Z"));
         given(quoteRepository.findById(QUOTE_ID)).willReturn(Optional.of(stale));
 
         assertThatThrownBy(() -> service.create(ACTOR_ID,
@@ -174,9 +181,10 @@ class BillingCheckoutApplicationServiceTrialTest {
     @Test
     @DisplayName("BC-13: 月末許可境界ではSession expiryを翌月初60秒前に切り詰める")
     void checkout_月末許可境界_sessionExpiryは翌月初60秒前() {
-        Clock monthEndClock = Clock.fixed(Instant.parse("2028-02-29T14:29:00Z"), JST);
-        service = newService(monthEndClock);
-        arrangeSuccessfulCheckout(monthEndClock.instant().plusSeconds(600));
+        // fixture の共通 arrange は field の clock を基準に stub するため、月末時刻も field へ差し替える。
+        clock = Clock.fixed(Instant.parse("2028-02-29T14:29:00Z"), JST);
+        service = newService(clock);
+        arrangeSuccessfulCheckout(clock.instant().plusSeconds(600));
 
         service.create(ACTOR_ID, new CreateBillingCheckoutSessionRequest(QUOTE_ID),
                 "00000000-0000-0000-0000-000000000106");
@@ -227,14 +235,21 @@ class BillingCheckoutApplicationServiceTrialTest {
                 "cus_scope_team_91", "ACTIVE");
     }
 
+    /** JST 当月 period と整合した正常な quote 検体。 */
     private BillingQuoteSnapshot quote(Instant expiresAt) {
+        return quote(expiresAt, JST_PERIOD_START, JST_PERIOD_END, clock.instant());
+    }
+
+    /** period/proration を差し替えられる quote 検体（stale 検体の生成用）。 */
+    private BillingQuoteSnapshot quote(Instant expiresAt, Instant periodStart, Instant periodEnd,
+                                       Instant prorationAt) {
         BillingMoney initial = new BillingMoney("JPY", 1000, 909, 91, "消費税", 1000);
         BillingMoney next = new BillingMoney("JPY", 3000, 2727, 273, "消費税", 1000);
         return new BillingQuoteSnapshot(QUOTE_ID, ACTOR_ID, EntitlementScopeKind.TEAM, SCOPE_ID,
                 CUSTOMER_ID, BillingProductKind.PLAN, "PRO", BAND_ID, "price_existing_pro_21",
                 21, initial, next, "{\"rateBasisPoints\":1000}",
-                Instant.parse("2028-02-01T00:00:00Z"), Instant.parse("2028-03-01T00:00:00Z"),
-                clock.instant(), null, "b".repeat(64), expiresAt, null, 0L);
+                periodStart, periodEnd,
+                prorationAt, null, "b".repeat(64), expiresAt, null, 0L);
     }
 
     private void assertBusinessError(Runnable action, EntitlementErrorCode code, HttpStatus status) {
