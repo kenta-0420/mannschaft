@@ -16,6 +16,9 @@ interface CalendarEntryRaw {
     referenceKind?: string | null
     // F03.19 §4.6: BE が解決済みの表示色（LAYER_USER > SCHEDULE > CATEGORY > LAYER_AUTO の優先順位で決定済み）。
     color?: string | null
+    // 同上の「どの優先順位で決まったか」（§4.3.2 の共通4値）。
+    // LAYER_AUTO のときだけ color がそのスコープの自動色（§3.3）そのものである。
+    colorSource?: string | null
   }
   time: { startAt: string; endAt: string; allDay: boolean }
   scope: { scopeType: string; scopeId: string; scopeName: string | null; scopeIconUrl: string | null; scopeSlug?: string | null }
@@ -47,6 +50,11 @@ export interface CalEvent extends CalendarEventItem {
   scopeRouteId?: string
   scopeIconUrl?: string | null
   isTodo?: boolean
+  /**
+   * 色の由来（§4.3.2 の共通4値）。`LAYER_AUTO` のときに限り {@link CalEvent.color} は
+   * そのスコープの自動色（§3.3）そのものであり、フォールバックチップの色として使える。
+   */
+  colorSource?: string
 }
 
 export interface ScopeOption {
@@ -418,6 +426,7 @@ export function useMyCalendarData() {
         // F03.19 §4.6/§5.2: BE が解決済みの色を使う（FE でハッシュ計算しない）。
         // 未デプロイ環境等で content.color が来ない場合のみ null へフォールバックする（明示的な劣化）。
         color: e.content?.color ?? null,
+        colorSource: e.content?.colorSource ?? undefined,
         isPersonal: false,
         scopeType: e.scope?.scopeType ?? '',
         // P1修繕: scopeId は必ずレイヤー API と同じ「数値ID文字列」にする（フィルタ照合用）。
@@ -592,6 +601,32 @@ export function useMyCalendarData() {
     return layerKey(ext.scopeType ?? '', ext.scopeId ?? '')
   }
 
+  /**
+   * フォールバックチップの色を決める（§5.2.1 は「§3.3 の自動色」を要求する）。
+   *
+   * **FE で自動色を算出してはならない**（§3.3「FE 側にハッシュ実装を持たない」）。
+   * そこで、そのスコープの予定のうち **`colorSource === 'LAYER_AUTO'`** のもの、すなわち
+   * BE が自動色そのものを載せて返した予定の色を採る。これは BE 由来の自動色であり、
+   * §5.2.1 の要求と §3.3 の禁止を同時に満たす唯一の経路である。
+   *
+   * **限界（設計書の要求を完全には満たせない）**: そのスコープの予定が全て予定自身の色
+   * （`SCHEDULE`）やカテゴリ色（`CATEGORY`）で塗られている場合、応答のどこにも
+   * そのスコープの自動色は載っていない（`/my/calendar` は解決済み色と由来しか返さず、
+   * 自動色を別フィールドで返さない。`/me/calendar-layers` は所属スコープしか返さず、
+   * フォールバックは定義上そこに現れない）。その場合は**予定の色を借りず中立色を使う** —
+   * 予定色やカテゴリ色をチップ色に流用すると「チップの色＝そのレイヤーの色」という
+   * 読みが崩れ、レイヤー色と食い違う嘘になるためである。
+   * 恒久解は BE 応答に自動色（またはフォールバックスコープを含むレイヤー行）を載せること
+   * であり、別工程・別 PR の範囲。
+   */
+  function fallbackChipColor(key: string): string {
+    for (const e of extendedEvents.value) {
+      if (eventLayerKey(e) !== key) continue
+      if (e.colorSource === 'LAYER_AUTO' && e.color) return e.color
+    }
+    return FALLBACK_CHIP_COLOR
+  }
+
   const fallbackScopeOptions = computed<ScopeOption[]>(() => {
     if (!layersLoaded.value) return []
     const seen = new Set<string>()
@@ -606,9 +641,9 @@ export function useMyCalendarData() {
         scopeType: e.scopeType ?? '',
         scopeId: e.scopeId ?? '',
         // §6.4: フォールバックチップも通常チップと同じ見た目（色ドット＋名前）で並べる。
-        // レイヤー設定が存在しないスコープのため色は予定自身の色にフォールバックし、
-        // それも無ければ中立色にする。色変更は開かない（isFallback）。
-        color: e.color ?? FALLBACK_CHIP_COLOR,
+        // 色は BE 由来の自動色のみを採用する（上記 fallbackChipColor の限界コメント参照）。
+        // 色変更は開かない（isFallback）。
+        color: fallbackChipColor(key),
         isFallback: true,
       })
     }
@@ -784,9 +819,34 @@ export function useMyCalendarData() {
   }
 
   /**
+   * 表示中の予定の色を、変更後のレイヤー色で塗り替える（§10 のキャッシュ方針・P2）。
+   *
+   * レイヤー色は §3.4 の優先1であり、**そのスコープの予定は例外なくこの色になる**。
+   * よって PATCH 成功後にローカルで塗り替えれば BE の再解決と必ず一致する
+   * （再取得を強いない＝月移動やリロードまで旧色が残る不整合を作らない）。
+   *
+   * `extendedEvents` の要素は `useCalendarEvents` の `allEvents`（`events`/`filteredEvents` の出所）と
+   * **同一オブジェクト**である（fetcher が返した配列がそのまま両者に入る）ため、ここでの
+   * in-place 更新はグリッド・アジェンダの描画にもそのまま届く。
+   *
+   * TODO と reflection は §3.4.1 でレイヤー色の対象外（固定色が優先度・種別の意味を担う）
+   * ため塗り替えない。
+   */
+  function applyLayerColorToLoadedEvents(scopeType: string, scopeId: number, color: string): void {
+    const key = layerKey(scopeType, scopeId)
+    for (const e of extendedEvents.value) {
+      if (e.isTodo || e.isReflection) continue
+      if (eventLayerKey(e) !== key) continue
+      e.color = color
+    }
+  }
+
+  /**
    * レイヤーの色をユーザー指定色へ変更する（§4.4 の PATCH）。
    *
    * **`color` のみ送る。`hidden` は送らない**ため現在値が保たれる（AC-08b）。
+   * 成功したらチップだけでなく**表示中の予定の色も同時に更新する**（§10 のキャッシュ方針は
+   * 「色変更直後に反映されない不整合」を害と明記しており、FE 側で同じ不整合を作らない）。
    *
    * @returns 成功したか。失敗時はユーザーへ通知済み（例外は投げ直さない）。
    */
@@ -795,7 +855,10 @@ export function useMyCalendarData() {
       const res = await scheduleApi.updateMyCalendarLayer(
         scopeType as CalendarLayerScopeType, scopeId, { color },
       )
-      replaceLayer(normalizeLayer(res.data as unknown as CalendarLayerRaw))
+      const updated = normalizeLayer(res.data as unknown as CalendarLayerRaw)
+      replaceLayer(updated)
+      // 応答が返した色（BE の正規化後の値）で塗る。送った文字列をそのまま使わない。
+      applyLayerColorToLoadedEvents(scopeType, scopeId, updated.color)
       return true
     }
     catch (e) {
@@ -811,12 +874,19 @@ export function useMyCalendarData() {
    * この操作は必ず DELETE で行う（§4.4 の注記）。DELETE は応答本文を持たないので、
    * 解決後の自動色を知るためにレイヤー一覧を取り直す。
    *
+   * **予定の色は `refresh()` で取り直す。** リセット後の各予定の色は §3.4 の優先2〜4
+   * （予定自身の色 → カテゴリ色 → 自動色）で個別に決まり、**どれが効くかは予定ごとに違う**。
+   * FE はカテゴリ色も自動色も持たない（§3.3 は FE でのハッシュ実装を禁じている）ため、
+   * ローカルでは正しい色を作れない。ここだけは BE に解かせるのが唯一の正解である。
+   * ユーザー操作を待たずその場で取り直すので、旧色が残ることはない（`refresh` は
+   * 全画面スピナーを出さない静かな再取得）。
+   *
    * @returns 成功したか。失敗時はユーザーへ通知済み（例外は投げ直さない）。
    */
   async function resetLayerColor(scopeType: string, scopeId: number): Promise<boolean> {
     try {
       await scheduleApi.deleteMyCalendarLayer(scopeType as CalendarLayerScopeType, scopeId)
-      await loadLayers()
+      await Promise.all([loadLayers(), refresh()])
       return true
     }
     catch (e) {
