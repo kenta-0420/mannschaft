@@ -30,6 +30,7 @@ HTTP|com.mannschaft.app.admin.controller.SystemAdminFeedbackController|3|3
 HTTP|com.mannschaft.app.admin.controller.SystemAdminGdprPurgeController|0|5
 HTTP|com.mannschaft.app.admin.controller.SystemAdminMaintenanceController|7|7
 HTTP|com.mannschaft.app.admin.controller.SystemAdminNotificationStatsController|1|1
+HTTP|com.mannschaft.app.admin.controller.SystemAdminScopeForceUnarchiveController|1|1
 HTTP|com.mannschaft.app.admin.controller.SystemAdminSecurityScanController|1|1
 HTTP|com.mannschaft.app.admin.systemlog.InternalSsrLogController|1|1
 HTTP|com.mannschaft.app.admin.systemlog.SystemAdminSystemLogController|1|1
