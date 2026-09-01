@@ -349,45 +349,198 @@ class NotificationTransactionBoundaryGuardConditionTest {
         }
 
         @Test
-        @DisplayName("形状1・2・3・4・8: 現時点では検出できない（限界の記録。検出できるフリはしない）")
-        void 検出できない形を記録する() {
+        @DisplayName("形状1: 別 Bean への1ホップ委譲を検出する（Issue #3039 で塞いだ）")
+        void 形状1_別Beanへの委譲() {
+            assertThat(keysOf(FIXTURE))
+                    .as("@Transactional な業務メソッドが無印の別 Bean を呼び、その先で通知する形。"
+                            + "委譲先は呼び出し元の業務TXにそのまま参加するため、失敗すれば業務ごと巻き戻る。"
+                            + "レシーバの宣言から型を引き、その型のソースを引けば1ホップは追える")
+                    .contains(blindSpotKey("delegateToAnotherBean",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_VIA_DELEGATE));
+        }
+
+        @Test
+        @DisplayName("形状2: TransactionTemplate の lambda 内の通知を検出する（Issue #3039 で塞いだ）")
+        void 形状2_TransactionTemplateのlambda() {
             Set<String> keys = keysOf(FIXTURE);
             assertThat(keys)
-                    .as("形状1（別 Bean への委譲）: 番人は同一クラス内の無修飾呼び出ししか TX 文脈を伝播しない。"
-                            + "検出できるようになったらここを負例側へ移すこと")
-                    .noneMatch(k -> k.contains("#delegateToAnotherBean "));
+                    .as("外側メソッドに @Transactional が無くても execute(...) の引数の内側は確実に TX 内である。"
+                            + "本番には TransactionTemplate を持つクラスが7つあり、死角として放置できない")
+                    .contains(blindSpotKey("notifyInsideTransactionTemplate",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE));
             assertThat(keys)
-                    .as("形状2（TransactionTemplate の lambda 内）: TX の開始が手続きで決まるため"
-                            + "annotation ベースの判定軸が当たらない")
-                    .noneMatch(k -> k.contains("#notifyInsideTransactionTemplate "));
-            assertThat(keys)
-                    .as("形状3（命名語彙の外の通知 API）: send / publishNotification / enqueue は綴りで拾えない。"
-                            + "語彙を広げるほどアクセサ・ビルダーの偽陽性が増える緊張関係にある")
-                    .noneMatch(k -> k.contains("#notifyViaUnnamedApi "));
-            assertThat(keys)
-                    .as("形状4（合成アノテーション）: メタ注釈を辿るのは字句走査の枠外")
-                    .noneMatch(k -> k.contains("#composedAnnotationTxNotify "));
-            assertThat(keys)
-                    .as("形状8（メソッド参照）: 参照の生成は TX 内でも実行位置は字句から決まらない")
+                    .as("TransactionTemplate の外側で発火する通知まで違反にしている＝判定が『範囲』ではなく"
+                            + "『TransactionTemplate を持つクラス全体』になっている")
+                    .noneMatch(k -> k.contains("#notifyOutsideTransactionTemplate "));
+        }
+
+        @Test
+        @DisplayName("形状3: 命名語彙の外の通知 API を型で捕まえる（Issue #3039 で塞いだ）")
+        void 形状3_命名語彙の外のAPI() {
+            assertThat(keysOf(FIXTURE))
+                    .as("gateway.send / publishNotification / enqueue は綴りでは拾えない。"
+                            + "語彙を広げるとアクセサ・ビルダーの偽陽性が増えるので広げず、"
+                            + "『委譲先の型が実際に通知を発火するか』という型の軸で捕まえる")
+                    .contains(blindSpotKey("notifyViaUnnamedApi",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_VIA_DELEGATE));
+        }
+
+        @Test
+        @DisplayName("形状4: 合成アノテーションの TX 文脈を検出する（Issue #3039 で塞いだ）")
+        void 形状4_合成アノテーション() {
+            assertThat(NotificationTransactionBoundaryGuardTest.composedTxAnnotations())
+                    .as("注釈の定義側の走査が空振りしている＝以降の判定が何も測っていない")
+                    .contains("BusinessTransaction");
+            assertThat(keysOf(FIXTURE))
+                    .as("メタ注釈で @Transactional を持つ独自注釈は、注釈の定義側を走査すれば字句のまま解決できる")
+                    .contains(blindSpotKey("composedAnnotationTxNotify",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE));
+        }
+
+        @Test
+        @DisplayName("形状8: メソッド参照は塞がない（本番0件・塞ぐと偽陽性を生む）")
+        void 形状8_メソッド参照は塞がない() {
+            assertThat(keysOf(FIXTURE))
+                    .as("参照の生成は TX 内でも実行位置は字句から決まらない（別スレッド・コミット後・"
+                            + "そもそも呼ばれない、のいずれもありうる）。src/main/java に該当形状は0件であり"
+                            + "（Issue #3039 で `::notify` 等を実測）、生成位置＝実行位置と決め打つ判定は"
+                            + "正しい遅延実行まで違反にする。契約として backend/.claudecode.md 原則5 に明文化した。"
+                            + "検出できるようにしたらここを負例側へ移すこと")
                     .noneMatch(k -> k.contains("#notifyViaMethodReference "));
         }
 
         @Test
-        @DisplayName("形状7: オーバーロード畳み込みで DIRECT_RUNNER_CALL は抑止され、TX_NOTIFY_BARE は残る")
+        @DisplayName("形状7: 同名オーバーロードの畳み込みを @Transactional の宣言で分離する")
         void 形状7_オーバーロード畳み込み() {
             Set<String> keys = keysOf(FIXTURE);
             assertThat(keys)
-                    .as("キーが FQCN#メソッド名（引数を含まない）であるため、AFTER_COMMIT 入口の handle(String) から"
-                            + "委譲された名前 'handle' が業務側 handle(Long) にも及び、sendOne 直呼びが許可扱いになる。"
-                            + "呼び出し先の実体を字句から決められない以上これは原理的な畳み込みであり、"
-                            + "src/main/java に該当形状は存在しない（確認済み）")
-                    .doesNotContain(blindSpotKey("handle",
-                            NotificationTransactionBoundaryGuardTest.ViolationKind.DIRECT_RUNNER_CALL));
-            assertThat(keys)
-                    .as("畳み込みで全部が消えるわけではない。自身の @Transactional による TX 内通知としては残る。"
-                            + "『全部見逃す』でも『全部見える』でもない中途半端さを固定する")
+                    .as("AFTER_COMMIT 入口 handle(String) から委譲された名前 'handle' が"
+                            + "業務側 handle(Long) にも及び、sendOne 直呼びが許可扱いになっていた（偽陰性）。"
+                            + "引数の型は字句から解決できないが、『自分で @Transactional を宣言している"
+                            + "＝業務TXの入口であって AFTER_COMMIT 境界の内側ではない』という条件で分離できる")
+                    .contains(blindSpotKey("handle",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.DIRECT_RUNNER_CALL))
                     .contains(blindSpotKey("handle",
                             NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE));
+        }
+
+        @Test
+        @DisplayName("正規形の private ヘルパは巻き込まない（形状7 の分離が効きすぎていない）")
+        void 正規形のヘルパは許可のまま() {
+            assertThat(keysOf("TxNotificationFixture"))
+                    .as("AFTER_COMMIT 入口 → 無印 private ヘルパ → runner.sendOne は金型の正規形であり、"
+                            + "形状7 の分離（@Transactional 宣言で切る）がここまで巻き込んではならない")
+                    .noneMatch(k -> k.contains("#afterCommitListener "));
+        }
+    }
+
+    @Nested
+    @DisplayName("死角を塞いだ判定の変異テスト（1文字変えると検出できなくなることの裏取り）")
+    class 死角の変異 {
+
+        private static final String FIXTURE = "GuardBlindSpotFixture";
+
+        @Test
+        @DisplayName("変異: executeWithoutResult を別名にすると TransactionTemplate 判定が消える")
+        void TransactionTemplateの綴りを変えると消える() {
+            String target = key(FIXTURE, "notifyInsideTransactionTemplate",
+                    NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE);
+            assertThat(keysOf(FIXTURE)).contains(target);
+            assertThat(keysOfMutated(FIXTURE,
+                    "transactionTemplate.executeWithoutResult(status -> {",
+                    "transactionTemplate.runWithoutResult(status -> {"))
+                    .as("execute / executeWithoutResult 以外でも検出が残る＝範囲判定ではなく"
+                            + "『TransactionTemplate を持つクラス全体』を TX とみなしている")
+                    .doesNotContain(target);
+        }
+
+        @Test
+        @DisplayName("変異: フィールドの型名を変えると TransactionTemplate 判定が消える")
+        void 型名を変えると消える() {
+            String target = key(FIXTURE, "notifyInsideTransactionTemplate",
+                    NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE);
+            assertThat(keysOfMutated(FIXTURE,
+                    "private final TransactionTemplate transactionTemplate",
+                    "private final Object transactionTemplate"))
+                    .as("型宣言を変えても検出が残る＝変数名 'transactionTemplate' の綴りで判定している。"
+                            + "本番の変数名は chunkTxTemplate / enqueueTxTemplate 等で統一されていないため、"
+                            + "綴り判定では取りこぼす")
+                    .doesNotContain(target);
+        }
+
+        @Test
+        @DisplayName("変異: 合成アノテーションの定義から @Transactional を外すと形状4 の検出が消える")
+        void 合成アノテーションの定義を変えると消える() {
+            String target = key(FIXTURE, "composedAnnotationTxNotify",
+                    NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE);
+            assertThat(keysOf(FIXTURE)).contains(target);
+
+            // 注釈の「定義側」を変異させる。定義を辿っていなければ結果は変わらない。
+            Path fixtures = NotificationTransactionBoundaryGuardTest.testSourceRoot()
+                    .resolve("com/mannschaft/app/common/architecture/fixtures/notification");
+            List<Path> files = new ArrayList<>(NotificationTransactionBoundaryGuardTest.javaFiles(fixtures));
+            assertThat(NotificationTransactionBoundaryGuardTest.findComposedTxAnnotations(files))
+                    .as("検体パッケージから合成アノテーションを1件も見つけられていない")
+                    .contains("BusinessTransaction");
+            List<Path> withoutAnnotationDef = files.stream()
+                    .filter(p -> !p.getFileName().toString().equals("BusinessTransaction.java"))
+                    .collect(Collectors.toList());
+            assertThat(NotificationTransactionBoundaryGuardTest
+                    .findComposedTxAnnotations(withoutAnnotationDef))
+                    .as("定義ファイルを除いても合成アノテーションが見つかる＝定義を辿っていない")
+                    .doesNotContain("BusinessTransaction");
+        }
+
+        @Test
+        @DisplayName("変異: Javadoc の中の @Transactional を合成アノテーションと誤認しない")
+        void コメント中の綴りを拾わない() {
+            // 本番の BackgroundFeaturePolicy は Javadoc に @TransactionalEventListener と書いている。
+            // マスクを外すと 350 箇所の @BackgroundFeaturePolicy 付きメソッドが一斉に TX 扱いになる。
+            assertThat(NotificationTransactionBoundaryGuardTest.composedTxAnnotations())
+                    .as("Javadoc 中の言及を合成アノテーションとして拾っている（コメントのマスク漏れ）")
+                    .doesNotContain("BackgroundFeaturePolicy");
+        }
+
+        @Test
+        @DisplayName("変異: 委譲先から通知を消すと形状1 の検出が消える")
+        void 委譲先が通知しなければ消える() {
+            // 委譲先（WorkerStub#send）の中身を見ずに「別 Bean を呼んだ」だけで違反にしているなら、
+            // 呼び先が通知を発火しない別メソッドへ変えても検出が残ってしまう。
+            String target = key(FIXTURE, "delegateToAnotherBean",
+                    NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_VIA_DELEGATE);
+            assertThat(keysOf(FIXTURE)).contains(target);
+            assertThat(keysOfMutated(FIXTURE,
+                    "notificationWorker.send(userId);",
+                    "repository.save(userId);"))
+                    .as("委譲先を通知しないメソッドへ変えても検出が残る＝呼び先の中身を見ていない")
+                    .doesNotContain(target);
+        }
+
+        @Test
+        @DisplayName("変異: レシーバの型宣言を消すと形状1・3 の検出が消える")
+        void 型が解決できなければ消える() {
+            String target = key(FIXTURE, "notifyViaUnnamedApi",
+                    NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_VIA_DELEGATE);
+            assertThat(keysOf(FIXTURE)).contains(target);
+            assertThat(keysOfMutated(FIXTURE,
+                    "private final GatewayStub gateway = new GatewayStub();",
+                    "private final Object gateway = null;"))
+                    .as("レシーバの型が解決できなくても検出が残る＝型ではなく変数名の綴りで判定している")
+                    .doesNotContain(target);
+        }
+
+        @Test
+        @DisplayName("変異: @Transactional を外すと形状7 の DIRECT_RUNNER_CALL 分離が元に戻る")
+        void オーバーロード分離はTransactionalの宣言で効いている() {
+            String target = key(FIXTURE, "handle",
+                    NotificationTransactionBoundaryGuardTest.ViolationKind.DIRECT_RUNNER_CALL);
+            assertThat(keysOf(FIXTURE)).contains(target);
+            assertThat(keysOfMutated(FIXTURE,
+                    "@Transactional\n    public void handle(Long userId)",
+                    "public void handle(Long userId)"))
+                    .as("@Transactional を外しても DIRECT_RUNNER_CALL が残る＝別の理由で当たっている。"
+                            + "分離条件は『自分で TX を開いていること』であり、無印なら畳み込みは残るのが正しい")
+                    .doesNotContain(target);
         }
     }
 

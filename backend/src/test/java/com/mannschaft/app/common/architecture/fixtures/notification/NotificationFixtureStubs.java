@@ -39,20 +39,28 @@ public final class NotificationFixtureStubs {
      * 命名規約から外れた通知 API を持つゲートウェイ相当。
      *
      * <p>番人は綴り（{@code notify*} / {@code sendOne} 等）で通知発火を判定するため、
-     * こういう命名は原理的に見えない。{@code GuardBlindSpotFixture} が
-     * 「見えないこと」を明示的に固定するために使う。
+     * こういう命名は<b>綴りからは</b>見えない。Issue #3039 以降は
+     * 「委譲先の型が実際に通知を発火するか」という型の軸で捕まえるので、
+     * <b>中で本当に通知しているものだけ</b>が検出される。したがってこのスタブの
+     * {@code send} / {@code publishNotification} / {@code enqueue} は実際に通知を発火させ、
+     * 逆に {@code createNotificationCreditCheckoutSession} は発火させない（＝検出されないのが正しい）。
      */
     public static class GatewayStub {
+        private final HelperStub notificationHelper = new HelperStub();
+
+        /** 綴りは通知に見えないが、中では実際に通知を発火している。 */
         public void send(Object... args) {
-            // 検体用スタブ。実処理は持たない。
+            notificationHelper.notify(args);
         }
 
+        /** 同上（{@code publish*} 綴り）。 */
         public void publishNotification(Object... args) {
-            // 検体用スタブ。実処理は持たない。
+            notificationHelper.notify(args);
         }
 
+        /** 同上（{@code enqueue*} 綴り）。1段の同一クラス内委譲を挟む。 */
         public void enqueue(Object... args) {
-            // 検体用スタブ。実処理は持たない。
+            send(args);
         }
 
         /**
@@ -65,20 +73,13 @@ public final class NotificationFixtureStubs {
         }
     }
 
-    /** 別 Bean へ委譲された先で通知するワーカー相当（番人は別 Bean の先を追えない）。 */
+    /** 別 Bean へ委譲された先で通知するワーカー相当（Issue #3039 以降は1ホップだけ追える）。 */
     public static class WorkerStub {
         private final HelperStub notificationHelper = new HelperStub();
 
         /** {@code @Transactional} は無いが、呼び出し元の業務TXにそのまま参加する。 */
         public void send(Long userId) {
             notificationHelper.notify(userId, "TYPE", "件名", "本文");
-        }
-    }
-
-    /** {@code TransactionTemplate} 相当（lambda の内側を番人は追わない）。 */
-    public static class TransactionTemplateStub {
-        public void execute(Runnable action) {
-            action.run();
         }
     }
 

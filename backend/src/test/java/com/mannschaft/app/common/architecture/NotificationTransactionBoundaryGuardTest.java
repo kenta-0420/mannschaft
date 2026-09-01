@@ -46,26 +46,49 @@ import org.junit.jupiter.api.Test;
  * <ul>
  *   <li><b>interface 経由・複数実装</b>: 呼び出し先の実体を字句から解決できない。
  *       既存番人も同じ限界を自認している（{@code AuthzControllerGuardArchTest} の BFS 深さ2）。</li>
- *   <li><b>{@code TransactionTemplate} による手続き的TX</b>: lambda の内外・伝播・実行順を追わない。
- *       {@code NotificationBulkFanoutService} のように {@code REQUIRES_NEW} を明示していても本番人は見ない。</li>
  *   <li><b>reflection / {@code getBean} / {@code invokedynamic}</b>: 呼び出し辺として現れない。</li>
- *   <li><b>呼び出し元から継承されるTX文脈（部分的にのみ対応）</b>: 同一クラス内の無修飾呼び出しに限り
- *       TX 文脈を伝播して追う（{@link #transactionalClosure}）。<b>別 Bean へ委譲した先は追えない</b>ため、
- *       {@code @Transactional} な業務サービスが無印の別 Bean を呼んでそこで通知する形は検出できない
- *       （＝<b>偽陰性</b>）。本番人が挙げる件数は実態の<b>下限</b>である。</li>
  *   <li><b>字句走査ゆえの型解決なし</b>: レシーバ名とメソッド名の綴りで通知発火を判定する
- *       （{@link JavaSourceScanningUtils} を使う既存番人と同じ方式）。</li>
- *   <li><b>オーバーロードの畳み込み</b>: キーは {@code FQCN#メソッド名} であり引数リストを含まない。
- *       委譲の推移閉包も名前だけで追うため、{@code AFTER_COMMIT} 入口と同名の業務オーバーロードが
- *       許可扱いになりうる（{@code DIRECT_RUNNER_CALL} は抑止されるが {@code TX_NOTIFY_BARE} は残る）。</li>
- *   <li><b>合成アノテーション</b>: メタ注釈で {@code @Transactional} を持つ独自注釈は綴りから判定できない。</li>
- *   <li><b>命名語彙の外の通知 API</b>: {@code gateway.send} / {@code publishNotification} /
- *       {@code enqueue} は綴りに掛からない。語彙を広げるほどアクセサ・ビルダーの偽陽性が増える。</li>
- *   <li><b>メソッド参照</b>: {@code helper::notify} は参照の生成位置しか分からず、実行位置は決まらない。</li>
+ *       （{@link JavaSourceScanningUtils} を使う既存番人と同じ方式）。
+ *       ただしレシーバの<b>宣言の綴り</b>からは型が読めるので、そこだけは
+ *       {@link #declaredTypes} / {@link #typeIndex} で1ホップの型解決をしている。</li>
+ *   <li><b>2ホップ以上の委譲</b>: 別 Bean 委譲は1ホップ＋委譲先クラス内の閉包までしか追わない
+ *       （{@link ViolationKind#TX_NOTIFY_VIA_DELEGATE}）。A→B→C と挟まれると追えない。
+ *       本番人が挙げる件数は依然として実態の<b>下限</b>である。</li>
+ *   <li><b>オーバーロードの畳み込み（縮小したが残る）</b>: キーは {@code FQCN#メソッド名} であり
+ *       引数リストを含まない。委譲の推移閉包も名前だけで追う。
+ *       {@code AFTER_COMMIT} 入口と同名の業務オーバーロードについては
+ *       「自分で {@code @Transactional} を宣言しているメソッドは入口の境界の内側ではない」という
+ *       条件で分離した（{@link #delegationClosure}）ため、{@code DIRECT_RUNNER_CALL} の偽陰性は解消した。
+ *       <b>残るのは「@Transactional を持たない同名オーバーロード」</b>で、これは字句からは
+ *       原理的に区別できない（引数の型を解決する必要がある）ため対象外とする。
+ *       本番ソースに該当形状は存在しない（Issue #3039 で確認済み）。</li>
+ *   <li><b>命名語彙の外の通知 API</b>: {@code gateway.send} のような綴りは直接は掛からない。
+ *       語彙を広げるほどアクセサ・ビルダーの偽陽性が増えるため<b>語彙は広げない</b>。
+ *       代わりに<b>型で捕まえる</b>——委譲先の型が実際に通知を発火するなら綴りに関係なく違反にする
+ *       （{@link ViolationKind#TX_NOTIFY_VIA_DELEGATE}）。よって「命名外 API を持つ通知 Bean へ
+ *       業務TXから委譲する」形は塞がった。塞がっていないのは<b>型が解決できないレシーバ</b>
+ *       （interface のみを import した DI、ローカルに組んだラムダ等）の場合である。</li>
+ *   <li><b>メソッド参照</b>: {@code helper::notify} は参照の生成位置しか分からず、実行位置は決まらない
+ *       （別スレッド・コミット後・そもそも呼ばれない、のいずれもありうる）。
+ *       <b>塞がない</b>と決めた。本番ソースに該当形状は0件（Issue #3039 で実測）であり、
+ *       「生成位置＝実行位置」と決め打つ判定を足すと、正しい遅延実行まで違反にする偽陽性を生む。
+ *       契約として「通知はメソッド参照で遅延させない」を {@code backend/.claudecode.md} 原則5 に明文化した。</li>
  * </ul>
  *
- * <p>これらの死角は<b>検体として実在する</b>。
- * {@code fixtures/notification/GuardBlindSpotFixture} が上記8形状を1クラスに並べ、
+ * <h2>Issue #3039 で塞いだ死角</h2>
+ * <ul>
+ *   <li><b>{@code TransactionTemplate} の lambda</b>: 外側が無印でも
+ *       {@code execute(...)} / {@code executeWithoutResult(...)} の引数の内側は<b>構文から TX 内だと断定できる</b>。
+ *       {@link #transactionTemplateRanges} で範囲を取り、その中の通知発火を TX 内として分類する。</li>
+ *   <li><b>合成アノテーション</b>: {@link #composedTxAnnotations} が注釈の<b>定義側</b>を走査し、
+ *       メタ注釈に {@code @Transactional} を持つ独自注釈名を集めて TX 文脈とみなす。</li>
+ *   <li><b>別 Bean への委譲（1ホップ）</b>: {@link #declaredTypes} でレシーバの型を宣言から引き、
+ *       {@link #typeIndex} でその型のソースを引き、{@link #notificationFiringMethods} で
+ *       委譲先が通知を発火するかを判定する。</li>
+ * </ul>
+ *
+ * <p>これらの形は<b>検体として実在する</b>。
+ * {@code fixtures/notification/GuardBlindSpotFixture} が8形状を1クラスに並べ、
  * {@code NotificationTransactionBoundaryGuardConditionTest} の「死角」テストが
  * どれが検出でき・どれが検出できないかを1つずつ表明する。
  * <b>Javadoc のこの記述とテストは常に一致していなければならない</b>
@@ -126,7 +149,17 @@ class NotificationTransactionBoundaryGuardTest {
         /** {@code @Transactional} 文脈で通知を発火し、try で囲って失敗を握っている。 */
         TX_NOTIFY_IN_TRY,
         /** {@code @Transactional} 文脈で通知を発火している（try 無しの単発）。 */
-        TX_NOTIFY_BARE
+        TX_NOTIFY_BARE,
+        /**
+         * {@code @Transactional} 文脈から<b>別 Bean</b>（フィールド／ローカル変数の型で解決）へ委譲し、
+         * その先で通知が発火する。
+         *
+         * <p>委譲先が無印なら呼び出し元の TX にそのまま参加する。委譲先が {@code @Async} /
+         * {@code REQUIRES_NEW} でも<b>違反であることは変わらない</b>——本契約の判定軸は
+         * 「TX に参加したか」ではなく「{@code AFTER_COMMIT} 境界を越えたか」であり、
+         * どちらも「業務コミット後」という因果を保証しないからである（原則5 の核心）。
+         */
+        TX_NOTIFY_VIA_DELEGATE
     }
 
     /** 検出した違反1件。{@code line} は診断用でありキーには含めない。 */
@@ -158,9 +191,15 @@ class NotificationTransactionBoundaryGuardTest {
      * 配送層が公開している生成 API は2つしかないので、ここは<b>閉じた列挙</b>にする
      * （API が増えたらここに足すこと）。
      */
+    static final String NOTIFY_METHOD_VOCABULARY =
+            "notify[A-Za-z]*|createNotification(?:PreAuthorized)?"
+                    + "|sendOne|insertAndDispatchChunk|dispatchBatch";
+
+    /** 語彙そのもの（メソッド名だけを照合する版）。委譲判定の二重計上除外と語彙網羅ゲートが使う。 */
+    static final Pattern NOTIFY_METHOD_NAME = Pattern.compile(NOTIFY_METHOD_VOCABULARY);
+
     private static final Pattern NOTIFY_CALL_CANDIDATE = Pattern.compile(
-            "([\\w$]*)\\s*\\.\\s*(notify[A-Za-z]*|createNotification(?:PreAuthorized)?"
-                    + "|sendOne|insertAndDispatchChunk|dispatchBatch)\\s*\\(");
+            "([\\w$]*)\\s*\\.\\s*(" + NOTIFY_METHOD_VOCABULARY + ")\\s*\\(");
 
     /** 配送 Runner の直接呼び出し。 */
     private static final Pattern SEND_ONE_CALL = Pattern.compile("\\.sendOne\\s*\\(");
@@ -256,6 +295,9 @@ class NotificationTransactionBoundaryGuardTest {
                 .anyMatch(m -> firesNotification(m.body()));
         Set<String> delegatedFromAllowedEntry = delegationClosure(methods);
         Set<String> inheritedTxContext = transactionalClosure(methods, classAnnotations);
+        Set<String> templateNames = transactionTemplateNames(src);
+        java.util.Map<String, String> declaredTypes = declaredTypes(src);
+        String selfSimpleName = fqcn.substring(fqcn.lastIndexOf('.') + 1);
 
         for (MethodBlock m : methods) {
             String ann = m.annotations();
@@ -302,12 +344,43 @@ class NotificationTransactionBoundaryGuardTest {
                         lineOf(src, m.declOffset()), "許可された入口以外からの sendOne"));
             }
 
+            // TransactionTemplate の lambda の内側は、外側メソッドが無印でも確実に TX 内（Issue #3039 形状2）。
+            List<int[]> templateRanges = transactionTemplateRanges(m.body(), templateNames);
+
+            // (7) @Transactional 文脈から別 Bean へ委譲し、その先で通知が発火する（Issue #3039 形状1）。
+            if (!allowedEntry) {
+                Matcher call = QUALIFIED_CALL.matcher(m.body());
+                Set<String> reported = new LinkedHashSet<>();
+                while (call.find()) {
+                    if (!inTxContext && !isWithin(templateRanges, call.start())) {
+                        continue;
+                    }
+                    String receiverType = declaredTypes.get(call.group(1));
+                    String callee = call.group(2);
+                    if (receiverType == null || receiverType.equals(selfSimpleName)
+                            || !notificationFiringMethods(receiverType).contains(callee)) {
+                        continue;
+                    }
+                    // 語彙で既に拾える呼び出し（notificationHelper.notify 等）は二重計上しない。
+                    if (NOTIFY_METHOD_NAME.matcher(callee).matches()) {
+                        continue;
+                    }
+                    if (reported.add(receiverType + "#" + callee)) {
+                        violations.add(new Violation(fqcn, m.name(), ViolationKind.TX_NOTIFY_VIA_DELEGATE,
+                                lineOf(src, m.declOffset()), "委譲先=" + receiverType + "#" + callee));
+                    }
+                }
+            }
+
             // (5)(6) @Transactional 文脈での通知発火。try の内外で分類する。
-            if (firesNotification && inTxContext && !allowedEntry) {
+            if (firesNotification && !allowedEntry) {
                 List<int[]> tryRanges = tryBlockRanges(m.body());
                 boolean anyInTry = false;
                 boolean anyBare = false;
                 for (int offset : notifyCallOffsets(m.body())) {
+                    if (!inTxContext && !isWithin(templateRanges, offset)) {
+                        continue;
+                    }
                     if (isWithin(tryRanges, offset)) {
                         anyInTry = true;
                     } else {
@@ -339,9 +412,21 @@ class NotificationTransactionBoundaryGuardTest {
      * 既存番人 {@code CrossDomainTransactionalArchTest} が直接依存しか追わないのと同じ限界である。
      */
     static Set<String> delegationClosure(List<MethodBlock> methods) {
-        return sameClassClosure(methods, methods.stream()
+        Set<String> reached = sameClassClosure(methods, methods.stream()
                 .filter(m -> isAllowedEntryPoint(m.annotations()))
                 .collect(Collectors.toList()));
+        // オーバーロード畳み込みの縮小（Issue #3039）:
+        // 自分自身に @Transactional を宣言しているメソッドは「業務TXの入口」であって
+        // AFTER_COMMIT リスナーの境界の内側ではない。名前だけで追う閉包は
+        // handle(String)（AFTER_COMMIT 入口）から同名の handle(Long)（@Transactional な業務側）へ
+        // 誤って伝播し、sendOne 直呼びを許可扱いにしていた（DIRECT_RUNNER_CALL の偽陰性）。
+        // 引数リストまでは字句から解決できないが、「自分で TX を開いている」という宣言だけで
+        // 両者を分離できる。正規形の private ヘルパは @Transactional を持たないので巻き込まない。
+        methods.stream()
+                .filter(m -> hasTransactional(m.annotations()) && !isAllowedEntryPoint(m.annotations()))
+                .map(MethodBlock::name)
+                .forEach(reached::remove);
+        return reached;
     }
 
     /**
@@ -438,6 +523,25 @@ class NotificationTransactionBoundaryGuardTest {
      * これが無いと、その1行だけで TX 文脈の判定が丸ごと外れて静かに偽陰性になる。
      */
     static boolean hasTransactional(String annotations) {
+        if (hasLiteralTransactional(annotations)) {
+            return true;
+        }
+        for (String composed : composedTxAnnotations()) {
+            if (Pattern.compile("@(?:[\\w$]+\\.)*" + Pattern.quote(composed) + "\\b")
+                    .matcher(annotations).find()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 綴りそのままの {@code @Transactional} か（合成アノテーションは見ない）。
+     *
+     * <p>{@link #composedTxAnnotations()} がこれを使う。{@link #hasTransactional} を使うと
+     * 合成アノテーションの解決が自分自身を呼んで循環する。
+     */
+    static boolean hasLiteralTransactional(String annotations) {
         return Pattern.compile("@(?:[\\w$]+\\.)*Transactional\\b").matcher(annotations).find();
     }
 
@@ -449,6 +553,228 @@ class NotificationTransactionBoundaryGuardTest {
     static boolean hasAsyncExecutorName(String annotations) {
         return Pattern.compile("@(?:[\\w$]+\\.)*Async\\s*\\(\\s*\"").matcher(annotations).find();
     }
+
+    // ------------------------------------------------------------------
+    // 死角を塞ぐ機構（Issue #3039）: 合成アノテーション / TransactionTemplate / 別 Bean 委譲
+    // ------------------------------------------------------------------
+
+    /** アノテーション型の宣言（{@code public @interface Name}）。 */
+    static final Pattern ANNOTATION_DECL = Pattern.compile(
+            "(?m)^[ \\t]*(?:(?:public|protected|private|static|final|abstract)\\s+)*@interface\\s+([A-Za-z_$][\\w$]*)");
+
+    /** 合成アノテーション名のキャッシュ（走査は重いので1度だけ）。 */
+    private static volatile Set<String> composedTxAnnotationsCache;
+
+    /**
+     * メタ注釈として {@code @Transactional} を持つ<b>合成アノテーション</b>の単純名（Issue #3039 形状4）。
+     *
+     * <p>{@code @BusinessTransaction} のような独自注釈が付いたメソッドは実行時に TX 内で走るが、
+     * 綴りだけを見る番人には {@code @Transactional} が見えない（＝静かな偽陰性）。
+     * <b>注釈の定義側を走査すれば字句のままで解決できる</b>ので、宣言に先行するアノテーション行に
+     * {@code @Transactional} を持つ {@code @interface} を集め、その名前も TX 文脈とみなす。
+     *
+     * <p>走査対象は本番ソース全体と検体パッケージ。Javadoc 中の {@code @TransactionalEventListener}
+     * のような<b>文章としての言及</b>を拾わないよう、必ずコメントをマスクしてから判定する
+     * （実際に {@code BackgroundFeaturePolicy} の Javadoc がこの綴りを含んでおり、
+     * マスクしないと本番の全 {@code @BackgroundFeaturePolicy} 付きメソッドが TX 扱いになる）。
+     */
+    static Set<String> composedTxAnnotations() {
+        Set<String> cached = composedTxAnnotationsCache;
+        if (cached == null) {
+            List<Path> files = new ArrayList<>(javaFiles(mainSourceRoot()));
+            Path fixtures = testSourceRoot().resolve(
+                    "com/mannschaft/app/common/architecture/fixtures/notification");
+            if (Files.isDirectory(fixtures)) {
+                files.addAll(javaFiles(fixtures));
+            }
+            cached = findComposedTxAnnotations(files);
+            composedTxAnnotationsCache = cached;
+        }
+        return cached;
+    }
+
+    /** {@link #composedTxAnnotations()} の純粋部分（メタテストが任意のファイル集合で呼べるように分けてある）。 */
+    static Set<String> findComposedTxAnnotations(List<Path> files) {
+        Set<String> names = new TreeSet<>();
+        for (Path file : files) {
+            String raw = read(file);
+            if (!raw.contains("@interface")) {
+                continue; // 高速な足切り（本番 9600 ファイルのうち十数件しか該当しない）
+            }
+            String src = JavaSourceScanningUtils.maskCommentsAndLiterals(raw);
+            Matcher m = ANNOTATION_DECL.matcher(src);
+            while (m.find()) {
+                if (hasLiteralTransactional(leadingAnnotations(src, m.start()))) {
+                    names.add(m.group(1));
+                }
+            }
+        }
+        return names;
+    }
+
+    /**
+     * {@code TransactionTemplate} 型の変数宣言（フィールド／コンストラクタ引数／ローカル）。
+     *
+     * <p>型名で受けるため、変数名の綴り（{@code chunkTxTemplate} 等、本番では統一されていない）に
+     * 依存しない。
+     */
+    static final Pattern TRANSACTION_TEMPLATE_DECL = Pattern.compile(
+            "\\bTransactionTemplate\\s+([A-Za-z_$][\\w$]*)\\s*[;=,)]");
+
+    /** ソース中で {@code TransactionTemplate} 型を持つ変数名。 */
+    static Set<String> transactionTemplateNames(String src) {
+        Set<String> names = new LinkedHashSet<>();
+        Matcher m = TRANSACTION_TEMPLATE_DECL.matcher(src);
+        while (m.find()) {
+            names.add(m.group(1));
+        }
+        return names;
+    }
+
+    /**
+     * {@code transactionTemplate.execute(...)} / {@code executeWithoutResult(...)} の
+     * 引数（＝ lambda 本体）が占める範囲（Issue #3039 形状2）。
+     *
+     * <p>外側のメソッドに {@code @Transactional} が無くても、この括弧の内側は<b>確実に TX 内</b>である。
+     * 「TX でないことは証明できない」という本番人の基本方針の例外で、ここは<b>構文から TX 内だと断定できる</b>。
+     * 本番には 7 クラスが {@code TransactionTemplate} を持つ（実測）ので死角として放置できない。
+     */
+    static List<int[]> transactionTemplateRanges(String body, Set<String> templateNames) {
+        List<int[]> ranges = new ArrayList<>();
+        for (String name : templateNames) {
+            Matcher m = Pattern.compile("(^|[^\\w$])(?:this\\s*\\.\\s*)?" + Pattern.quote(name)
+                    + "\\s*\\.\\s*(?:execute|executeWithoutResult)\\s*\\(").matcher(body);
+            while (m.find()) {
+                int open = body.lastIndexOf('(', m.end() - 1);
+                int close = open < 0 ? -1 : matchPair(body, open, '(', ')');
+                if (close > 0) {
+                    ranges.add(new int[]{open, close});
+                }
+            }
+        }
+        return ranges;
+    }
+
+    /** 型が解決できた宣言（フィールド／ローカル／引数）。 */
+    private static final Pattern TYPED_DECLARATION = Pattern.compile(
+            "(?:^|[;{}(),])\\s*(?:(?:private|protected|public|static|final|volatile|transient)\\s+)*"
+                    + "([A-Z][\\w$]*)(?:\\s*<[^<>;{}]{0,200}>)?\\s+([a-z_$][\\w$]*)\\s*[;=,)]");
+
+    /**
+     * ソース中の「変数名 → 型の単純名」。フィールド・コンストラクタ引数・ローカル変数を区別せず集める。
+     *
+     * <p>型解決を持たない字句走査でも、<b>宣言の綴りからレシーバの型は分かる</b>。
+     * これが別 Bean 委譲（形状1）を1ホップ追うための足場になる。同名の再宣言は先勝ち。
+     */
+    static java.util.Map<String, String> declaredTypes(String src) {
+        java.util.Map<String, String> types = new java.util.LinkedHashMap<>();
+        Matcher m = TYPED_DECLARATION.matcher(src);
+        while (m.find()) {
+            types.putIfAbsent(m.group(2), m.group(1));
+        }
+        return types;
+    }
+
+    /** 型の単純名 → その型を宣言しているソース。 */
+    record TypeRef(String fqcn, Path file) {}
+
+    private static volatile java.util.Map<String, TypeRef> typeIndexCache;
+
+    /** 単純名から宣言ソースを引く索引（本番ソース全体＋検体パッケージ）。先勝ち。 */
+    static java.util.Map<String, TypeRef> typeIndex() {
+        java.util.Map<String, TypeRef> cached = typeIndexCache;
+        if (cached == null) {
+            java.util.Map<String, TypeRef> index = new java.util.HashMap<>();
+            Path mainRoot = mainSourceRoot();
+            indexRoot(index, mainRoot, javaFiles(mainRoot));
+            Path fixtures = testSourceRoot().resolve(
+                    "com/mannschaft/app/common/architecture/fixtures/notification");
+            if (Files.isDirectory(fixtures)) {
+                indexRoot(index, testSourceRoot(), javaFiles(fixtures));
+            }
+            cached = index;
+            typeIndexCache = cached;
+        }
+        return cached;
+    }
+
+    private static void indexRoot(java.util.Map<String, TypeRef> index, Path root, List<Path> files) {
+        for (Path file : files) {
+            String fqcn = toFqcn(root, file);
+            Matcher m = TYPE_DECL.matcher(JavaSourceScanningUtils.maskCommentsAndLiterals(read(file)));
+            while (m.find()) {
+                index.putIfAbsent(m.group(1), new TypeRef(fqcn, file));
+            }
+        }
+    }
+
+    /** 型の単純名 → その型で「通知を発火するメソッド名」の集合。 */
+    private static final java.util.Map<String, Set<String>> FIRING_METHODS_CACHE =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * 委譲先の型が持つ「通知を発火するメソッド名」（Issue #3039 形状1）。
+     *
+     * <p>委譲先クラス自身の無修飾呼び出しは辿る（{@code send} → private {@code doSend} → 通知）。
+     * <b>1ホップ＋委譲先クラス内の閉包</b>までで打ち切る。2ホップ以上は型解決の精度が落ち、
+     * 偽陽性が積み上がるため塞がない（＝ここは依然として下限である）。
+     *
+     * <p>{@link #AUDITED_EXCEPTIONS}（通知自体が業務目的）へ委譲する形は契約の対象外なので空を返す。
+     * {@link #DELIVERY_INFRASTRUCTURE} は<b>対象に含める</b>——業務TXから配送層を直接叩くことこそが
+     * 本契約の禁じている形だからである。
+     */
+    static Set<String> notificationFiringMethods(String typeSimpleName) {
+        return FIRING_METHODS_CACHE.computeIfAbsent(typeSimpleName, name -> {
+            TypeRef ref = typeIndex().get(name);
+            if (ref == null || AUDITED_EXCEPTIONS.contains(ref.fqcn())) {
+                return Set.of();
+            }
+            String block = typeBlock(JavaSourceScanningUtils.maskCommentsAndLiterals(read(ref.file())), name);
+            if (block == null) {
+                return Set.of();
+            }
+            List<MethodBlock> methods = parseMethods(block);
+            Set<String> firing = methods.stream()
+                    .filter(m -> firesNotification(m.body()) && !isAllowedEntryPoint(m.annotations()))
+                    .map(MethodBlock::name)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            // 委譲先クラス内で「通知を発火するメソッドを呼ぶメソッド」へ逆向きに広げる。
+            boolean grown = true;
+            while (grown) {
+                grown = false;
+                for (MethodBlock caller : methods) {
+                    if (firing.contains(caller.name()) || isAllowedEntryPoint(caller.annotations())) {
+                        continue;
+                    }
+                    if (firing.stream().anyMatch(f -> containsUnqualifiedCall(caller.body(), f))) {
+                        firing.add(caller.name());
+                        grown = true;
+                    }
+                }
+            }
+            return firing;
+        });
+    }
+
+    /** マスク済みソースから、指定した単純名の型宣言ブロック（{@code &#123;} … {@code &#125;}）を切り出す。 */
+    static String typeBlock(String maskedSrc, String simpleName) {
+        Matcher m = TYPE_DECL.matcher(maskedSrc);
+        while (m.find()) {
+            if (!m.group(1).equals(simpleName)) {
+                continue;
+            }
+            int brace = maskedSrc.indexOf('{', m.end());
+            int end = brace < 0 ? -1 : matchPair(maskedSrc, brace, '{', '}');
+            if (end > 0) {
+                return maskedSrc.substring(brace, end + 1);
+            }
+        }
+        return null;
+    }
+
+    /** {@code receiver.method(} 形の呼び出し（レシーバは単純な識別子）。 */
+    private static final Pattern QUALIFIED_CALL = Pattern.compile(
+            "([A-Za-z_$][\\w$]*)\\s*\\.\\s*([A-Za-z_$][\\w$]*)\\s*\\(");
 
     /** 同一クラス内の無修飾呼び出し（{@code foo(...)}／{@code this.foo(...)}）か。 */
     static boolean containsUnqualifiedCall(String body, String methodName) {
@@ -462,7 +788,12 @@ class NotificationTransactionBoundaryGuardTest {
     // ------------------------------------------------------------------
 
     /** メソッド1つ分（宣言位置・アノテーション・本文）。 */
-    record MethodBlock(String name, String annotations, String body, int declOffset) {
+    record MethodBlock(String name, String annotations, String body, int declOffset,
+                       String modifiers, String params) {
+        /** 修飾子・引数を知らなくてよい呼び出し側（メタテスト）向けの簡易生成。 */
+        MethodBlock(String name, String annotations, String body, int declOffset) {
+            this(name, annotations, body, declOffset, "", "");
+        }
     }
 
     private static int typeDeclStart(String src) {
@@ -539,7 +870,8 @@ class NotificationTransactionBoundaryGuardTest {
             }
             // 同一行のアノテーションは前行から集めた分と合わせて扱う（両方に書ける形があるため）。
             out.add(new MethodBlock(name, leadingAnnotations(src, m.start()) + sameLineAnnotations,
-                    src.substring(brace, bodyEnd + 1), m.start()));
+                    src.substring(brace, bodyEnd + 1), m.start(),
+                    m.group(2), src.substring(openParen + 1, closeParen)));
             cursor = bodyEnd + 1;
         }
         return out;
@@ -743,6 +1075,77 @@ class NotificationTransactionBoundaryGuardTest {
                 .as("""
                         baseline に居るのに検出されなくなった違反。是正したなら同じPRで %s から削ること。
                         心当たりが無い場合はキーのドリフト（メソッド名変更・クラス移動）を疑うこと。""", FREEZE_FILE)
+                .isEmpty();
+    }
+
+    /**
+     * 配送層クラスの public メソッドのうち、番人の語彙判定に関わるもの。
+     *
+     * <p>「番人の語彙」と「配送層が実際に公開している API」を突き合わせるための材料。
+     */
+    static List<MethodBlock> deliveryLayerPublicMethods() {
+        List<MethodBlock> out = new ArrayList<>();
+        for (String fqcn : DELIVERY_INFRASTRUCTURE) {
+            TypeRef ref = typeIndex().get(fqcn.substring(fqcn.lastIndexOf('.') + 1));
+            if (ref == null) {
+                continue;
+            }
+            for (MethodBlock m : parseMethods(
+                    JavaSourceScanningUtils.maskCommentsAndLiterals(read(ref.file())))) {
+                if (m.modifiers().contains("public")) {
+                    out.add(m);
+                }
+            }
+        }
+        return out;
+    }
+
+    @Test
+    @DisplayName("配送層の createNotification* API が番人の語彙から漏れていない（閉じた列挙の機械ゲート）")
+    void 配送層の生成APIが語彙から漏れていない() {
+        // NOTIFY_CALL_CANDIDATE は createNotification(?:PreAuthorized)? という「閉じた列挙」であり、
+        // 配送層に新しい生成 API が増えると静かに死角になる（Issue #3039）。
+        // Javadoc の「増えたらここに足すこと」だけでは守られないので、型側から列挙して突き合わせる。
+        List<MethodBlock> methods = deliveryLayerPublicMethods();
+        assertThat(methods)
+                .as("配送層クラスの public メソッドが1件も取れていない＝このゲートが何も測っていない")
+                .isNotEmpty();
+        List<String> uncovered = methods.stream()
+                .map(MethodBlock::name)
+                .filter(n -> n.startsWith("createNotification"))
+                .filter(n -> !NOTIFY_METHOD_NAME.matcher(n).matches())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+        assertThat(uncovered)
+                .as("""
+                        配送層が公開している createNotification* API が番人の語彙 (%s) に含まれていない。
+                        この API を業務TX内から呼んでも番人は違反として挙げない（静かな死角）。
+                        NOTIFY_METHOD_VOCABULARY に足すこと。語彙を無闇に開くと決済 API
+                        （createNotificationCreditCheckoutSession）まで拾うため、必ず名前を明示して足す。""",
+                        NOTIFY_METHOD_VOCABULARY)
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("配送層の通知 API は必ず引数を取る（引数ゼロ除外が死角にならない契約）")
+    void 通知APIは必ず引数を取る() {
+        // notifyCallOffsets は引数ゼロの呼び出しを一律除外している（record アクセサ / Object#notifyAll
+        // を落とすため）。したがって「引数ゼロの通知 API」を足した瞬間に静かな偽陰性になる。
+        // 契約「通知 API は必ず宛先・種別を引数に取る」を型側から機械的に強制する（Issue #3039）。
+        List<String> zeroArg = deliveryLayerPublicMethods().stream()
+                .filter(m -> NOTIFY_METHOD_NAME.matcher(m.name()).matches())
+                .filter(m -> m.params().isBlank())
+                .map(MethodBlock::name)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+        assertThat(zeroArg)
+                .as("""
+                        配送層に引数ゼロの通知 API がある。番人の notifyCallOffsets は引数ゼロの呼び出しを
+                        一律で除外するため、この API の呼び出しは業務TX内にあっても検出できない。
+                        引数（宛先・種別）を取る形へ直すか、notifyCallOffsets の除外条件を
+                        「レシーバがアクセサ形である」等の別の軸へ置き換えること。""")
                 .isEmpty();
     }
 

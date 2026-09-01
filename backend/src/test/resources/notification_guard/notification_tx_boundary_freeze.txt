@@ -17,6 +17,7 @@
 #   ASYNC_WITHOUT_EXECUTOR 通知発火クラスの @Async が executor 無指定（event-pool へ載る）
 #   TX_NOTIFY_IN_TRY       @Transactional 文脈で通知を発火し try で失敗を握っている
 #   TX_NOTIFY_BARE         @Transactional 文脈で通知を発火している（try 無しの単発）
+#   TX_NOTIFY_VIA_DELEGATE @Transactional 文脈から別 Bean へ委譲し、その先で通知が発火する（Issue #3039）
 #
 # 契約: 付随通知は業務TX内ではイベント発行だけを行う。実通知は明示的な AFTER_COMMIT 境界の後、
 #       または項目TX完了を待つ非トランザクションのバッチオーケストレータからのみ実行する。
@@ -61,7 +62,7 @@
 # REMOVED: com.mannschaft.app.timetable.service.TimetableChangeService#updateChange -> TX_NOTIFY_BARE : data.notifyMembers() は引数ゼロの record アクセサ。業務TX内は publishEvent のみで正規形そのもの。
 # REMOVED: com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService#createCheckout -> TX_NOTIFY_IN_TRY : stripePaymentProvider.createNotificationCreditCheckoutSession は Stripe の Checkout Session 作成であり通知ではない。
 # 台帳（凍結エントリ + REMOVED）の総数下限。是正でエントリを消したら実装差分と同じPRでここを下げる。
-# CENSUS_FLOOR: 100
+# CENSUS_FLOOR: 109
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -161,3 +162,18 @@ com.mannschaft.app.todo.event.MilestoneNotificationListener#onMilestoneUnlocked 
 com.mannschaft.app.recruitment.service.RecruitmentListingService#sendCancelledNotifications -> TX_NOTIFY_BARE
 com.mannschaft.app.role.service.OwnershipTransferOfferService#createOffer -> TX_NOTIFY_BARE
 com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX_NOTIFY_BARE
+
+# --- 2026-09-01 Issue #3039: 番人の死角を塞いだ結果あらたに検出された既存負債（9件）---
+# 別 Bean への1ホップ委譲（TX_NOTIFY_VIA_DELEGATE）を追えるようにしたことで表に出た。
+# 本PRの差分が生んだものではなく、以前から存在していて番人に見えていなかった負債である。
+# 9件すべて呼び出し元の @Transactional（クラス単位を含む）を実地確認済み・偽陽性ゼロ。
+# 是正は L1 以降のロットへ回す（CENSUS_FLOOR 100 -> 109）。
+com.mannschaft.app.digest.service.DigestGenerationService#generate -> TX_NOTIFY_VIA_DELEGATE
+com.mannschaft.app.digest.service.DigestGenerationService#regenerate -> TX_NOTIFY_VIA_DELEGATE
+com.mannschaft.app.directmail.service.DirectMailService#sendMail -> TX_NOTIFY_VIA_DELEGATE
+com.mannschaft.app.errorreport.service.ErrorReportService#recordBackendException -> TX_NOTIFY_VIA_DELEGATE
+com.mannschaft.app.payment.connect.ConnectAccountService#promoteHeldEscrowsForPayee -> TX_NOTIFY_VIA_DELEGATE
+com.mannschaft.app.recruitment.service.PersonalMarketListingService#cancel -> TX_NOTIFY_VIA_DELEGATE
+com.mannschaft.app.schedule.batch.ProxyDelegationCleanupBatchService#cleanupScheduleDelegations -> TX_NOTIFY_VIA_DELEGATE
+com.mannschaft.app.schedule.service.ScheduleAttendanceService#respondAttendance -> TX_NOTIFY_VIA_DELEGATE
+com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX_NOTIFY_VIA_DELEGATE
