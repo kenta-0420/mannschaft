@@ -25,6 +25,10 @@ const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
 const showGuide = ref(false)
 const selectedDate = ref<string | undefined>(undefined)
+// F03.19 §6.6.5: 週ビューのグリッド選択で確定した開始・終了（ISO 8601・ユーザー TZ の
+// オフセット付き）。日付クリック経路では undefined に戻す（前回のドラッグ値が漏れない・AC-22c）。
+const selectedStartAt = ref<string | undefined>(undefined)
+const selectedEndAt = ref<string | undefined>(undefined)
 
 // サイドパネル用
 const selectedDay = ref<string | null>(null)
@@ -84,7 +88,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
 const {
   currentYear, currentMonth, loading, calendarLoading, loadEvents, refresh,
   onPrevMonth: calPrevMonth, onNextMonth: calNextMonth, goToToday, navigateTo,
-  extendedEvents, todosFailed, layersFailed, availableScopes, allScopeOptions, selectedScopes,
+  extendedEvents, todosFailed, layersFailed, layers, availableScopes, allScopeOptions, selectedScopes,
   filteredEvents, toggleScope, multiSelectScopes, initStorage, view,
 } = useMyCalendarData()
 
@@ -133,6 +137,23 @@ const dayEvents = computed(() => {
 function onDateClick(date: string) {
   selectedDay.value = date
   selectedDate.value = date
+  // AC-22c: 直前に週ビューでドラッグしていても、その時刻を日付クリックへ持ち越さない。
+  selectedStartAt.value = undefined
+  selectedEndAt.value = undefined
+  showEventPanel.value = false
+  showDayPanel.value = false
+  showCreateDialog.value = true
+}
+
+/**
+ * 週ビューのグリッド選択確定（§6.6.5）。受け取った時刻をそのまま作成ダイアログへ流し込む。
+ * 作成先スコープは既存の `selectedCreateScope`（＋予定追加ボタンと同じ）を使い、導線によって
+ * 作成先を変えない。表示フィルタ（`selectedScopes`）には一切触れない（P2）。
+ */
+function onRangeSelect(startAt: string, endAt: string) {
+  selectedStartAt.value = startAt
+  selectedEndAt.value = endAt
+  selectedDate.value = undefined
   showEventPanel.value = false
   showDayPanel.value = false
   showCreateDialog.value = true
@@ -276,6 +297,19 @@ const createScopeOptions = computed<CreateScope[]>(() => [
 const selectedCreateScope = computed(
   () => createScopeOptions.value.find(o => o.value === createScopeKey.value) ?? createScopeOptions.value[0]!,
 )
+
+/**
+ * §6.6.6: 週ビューの選択ハイライト色は**作成スコープ**のレイヤー色。
+ * 表示フィルタ（`selectedScopes`）は参照しない（(d) との整合・P2）。
+ * レイヤーが未取得／該当なしのときは undefined（週ビュー側の既定色にフォールバック）。
+ */
+const createScopeColor = computed<string | undefined>(() => {
+  const key = selectedCreateScope.value.isPersonal
+    ? PERSONAL_KEY
+    : availableScopes.value.find(sc => sc.value === createScopeKey.value)?.filterKey
+  if (!key) return undefined
+  return layers.value.find(l => `${l.scopeType}:${l.scopeId}` === key)?.color
+})
 
 // AC-11b（§5.4）: 表示フィルタで非表示のレイヤーへ予定を作成すると、作った予定が何の説明も
 // 無く現れない（無言で消える＝P3違反）。作成完了時にだけ判定し、案内＋「表示する」ボタンを出す。
@@ -744,8 +778,10 @@ onMounted(async () => {
                 ref="calendarWeekGridRef"
                 :week-start="weekStart"
                 :events="filteredEvents"
+                :create-scope-color="createScopeColor"
                 @event-click="onEventClick"
                 @reflection-click="onReflectionClick"
+                @range-select="onRangeSelect"
                 @prev-week="onPrevWeek"
                 @next-week="onNextWeek"
                 @today="onToday"
@@ -922,6 +958,8 @@ onMounted(async () => {
       :scope-type="selectedCreateScope.scopeType"
       :scope-id="selectedCreateScope.scopeId"
       :initial-date="selectedDate"
+      :initial-start-at="selectedStartAt"
+      :initial-end-at="selectedEndAt"
       :is-personal="selectedCreateScope.isPersonal"
       :scope-options="createScopeOptions.length > 1 ? createScopeOptions : undefined"
       @saved="onCreated"

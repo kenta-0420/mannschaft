@@ -541,3 +541,116 @@ describe('pages/calendar.vue: AC-13 月/週ビュー切替', () => {
     expect(wrapper.find('[data-testid="calendar-grid-stub"]').exists()).toBe(false)
   })
 })
+
+/**
+ * F03.19 §6.6.5 / AC-22c: 週ビューの `rangeSelect` と作成ダイアログの結線。
+ *
+ * 週ビュー・月ビューのスタブから明示的にイベントを発火させ、作成ダイアログ
+ * （ScheduleEventForm）へ渡る props を検証する。
+ */
+const RangeSelectWeekGridStub = defineComponent({
+  name: 'CalendarWeekGrid',
+  props: {
+    weekStart: String,
+    events: { type: Array, default: () => [] },
+    createScopeColor: { type: String, default: undefined },
+  },
+  emits: ['prevWeek', 'nextWeek', 'eventClick', 'reflectionClick', 'today', 'rangeSelect'],
+  setup(props, { emit }) {
+    return () => h('div', {
+      'data-testid': 'calendar-week-grid-stub',
+      'data-create-scope-color': props.createScopeColor ?? '',
+    }, [
+      h('button', {
+        'data-testid': 'emit-range-select',
+        'onClick': () => emit('rangeSelect', '2026-07-10T09:00:00+09:00', '2026-07-10T10:30:00+09:00'),
+      }, 'range'),
+    ])
+  },
+})
+
+const DateClickGridStub = defineComponent({
+  name: 'CalendarGrid',
+  props: { year: Number, month: Number, events: Array },
+  emits: ['prevMonth', 'nextMonth', 'dateClick', 'eventClick', 'reflectionClick', 'today'],
+  setup(_props, { emit }) {
+    return () => h('div', { 'data-testid': 'calendar-grid-stub' }, [
+      h('button', { 'data-testid': 'emit-date-click', 'onClick': () => emit('dateClick', '2026-07-15') }, 'date'),
+    ])
+  },
+})
+
+describe('pages/calendar.vue: 週ビューのグリッド選択と作成ダイアログの結線（F03.19 §6.6.5）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    scheduleApiMock.listPersonalSchedules.mockReset().mockResolvedValue(emptyPersonal)
+    scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [teamCalendarEntry()] })
+    scheduleApiMock.getMyCalendarLayers.mockReset().mockResolvedValue({ data: layersFixture })
+    ganttApiMock.getMyCalendarTodos.mockReset().mockResolvedValue(emptyTodos)
+    presetTeamStore()
+  })
+
+  async function mountWithRangeSelect() {
+    return mountCalendarPage({
+      DashboardWidgetCard: DashboardWidgetCardSlotStub,
+      CalendarWeekGrid: RangeSelectWeekGridStub,
+      CalendarGrid: DateClickGridStub,
+    })
+  }
+
+  async function toWeekView(wrapper: Awaited<ReturnType<typeof mountCalendarPage>>) {
+    await wrapper.get('[data-testid="calendar-view-week"]').trigger('click')
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+  }
+
+  it('rangeSelect を受けると作成ダイアログへ initialStartAt / initialEndAt が渡る', async () => {
+    const wrapper = await mountWithRangeSelect()
+    await toWeekView(wrapper)
+
+    await wrapper.get('[data-testid="emit-range-select"]').trigger('click')
+    await flushPromises()
+
+    const form = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    expect(form.props('visible')).toBe(true)
+    expect(form.props('initialStartAt')).toBe('2026-07-10T09:00:00+09:00')
+    expect(form.props('initialEndAt')).toBe('2026-07-10T10:30:00+09:00')
+  }, 60000)
+
+  it('AC-22c: 週ビューでドラッグした直後に月ビューの日付をクリックすると、時刻が漏れない', async () => {
+    const wrapper = await mountWithRangeSelect()
+    await toWeekView(wrapper)
+
+    await wrapper.get('[data-testid="emit-range-select"]').trigger('click')
+    await flushPromises()
+    const form = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    expect(form.props('initialStartAt')).toBe('2026-07-10T09:00:00+09:00')
+
+    // 月ビューへ戻して日付セルをクリックする（既存導線）
+    await wrapper.get('[data-testid="calendar-view-month"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="emit-date-click"]').trigger('click')
+    await flushPromises()
+
+    expect(form.props('initialDate')).toBe('2026-07-15')
+    expect(form.props('initialStartAt')).toBeUndefined()
+    expect(form.props('initialEndAt')).toBeUndefined()
+  }, 60000)
+
+  it('§6.6.6: 週ビューへ渡すハイライト色は作成スコープのレイヤー色である', async () => {
+    const wrapper = await mountWithRangeSelect()
+    await toWeekView(wrapper)
+
+    // 既定の作成スコープは「個人」= PERSONAL:0 のレイヤー色
+    expect(wrapper.get('[data-testid="calendar-week-grid-stub"]').attributes('data-create-scope-color'))
+      .toBe('#059669')
+
+    // 作成スコープをチームAへ変えると、チームAのレイヤー色になる（表示フィルタは参照しない）
+    await wrapper.get('[data-testid="create-scope-select"]').setValue('TEAM:t1')
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-testid="calendar-week-grid-stub"]').attributes('data-create-scope-color'))
+      .toBe('#2563eb')
+  }, 60000)
+})
