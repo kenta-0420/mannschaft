@@ -82,14 +82,17 @@ class BillingCheckoutContractRepositoryAdapter implements BillingCheckoutContrac
     }
 
     /**
-     * Stripe Checkout Session を契約へ紐付ける。
+     * Stripe Checkout Session を契約へ紐付ける（V198 {@code billing_contracts.stripe_checkout_session_ref}）。
      *
-     * <p><b>現状</b>: {@code billing_contracts} には Checkout Session 専用列が無く（V196・設計書 05 とも
-     * 未定義）、{@code psp_subscription_ref} は webhook の Subscription 逆引き専用（{@code uk_bc_psp_subscription}）
-     * のため流用できない。そこで本メソッドは「予約した PENDING 契約が実在すること」を検証するに留める。
-     * 検証に失敗した場合は握りつぶさず例外を投げ、呼び出し元の照合キュー退避（Stripe 側 Session の回収）へ倒す。
-     * Session ↔ 契約の突合自体は Stripe metadata（{@code billingContractId}）と
-     * {@code stripe_webhook_events.billing_contract_id} で成立する。</p>
+     * <p>条件付き UPDATE（CAS）で書き込む。条件は「対象契約が実在し、論理削除されておらず、status=PENDING で
+     * あり、Session ref が未設定か同一 ref であること」。同一 ref の再送は 1 行更新として通る（冪等）ため、
+     * <b>再送時に「この契約は既に Session を持つ」を DB だけで判定でき</b>、既に別 Session を持つ契約への
+     * 上書き＝Stripe の二重 Session 作成をアプリ側で確実に弾ける。「別契約が同じ Session を握る」経路は
+     * {@code uk_bc_checkout_session} が DB 側で塞ぐ。</p>
+     *
+     * <p>更新行数が 1 でなければ握りつぶさず例外を投げ、呼び出し元の照合キュー退避＋502 経路へ倒す。
+     * {@code psp_subscription_ref} は webhook の Subscription 逆引き専用（F08.9 会費との分離キー）ゆえ
+     * 流用しない。</p>
      */
     @Override
     @Transactional
@@ -97,10 +100,19 @@ class BillingCheckoutContractRepositoryAdapter implements BillingCheckoutContrac
         if (contractId == null || stripeSessionId == null || stripeSessionId.isBlank()) {
             throw new IllegalArgumentException("contractId and stripeSessionId must not be blank");
         }
-        BillingContractEntity contract = billingContractRepository.findByIdAndDeletedAtIsNull(contractId)
-                .orElseThrow(() -> new IllegalStateException("pending billing contract not found"));
-        if (contract.getStatus() != ContractStatus.PENDING) {
-            throw new IllegalStateException("billing contract is no longer pending");
+        LocalDateTime now = LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE));
+        int updated;
+        try {
+            updated = billingContractRepository
+                    .attachCheckoutSessionIfPending(contractId, stripeSessionId, now);
+        } catch (DataIntegrityViolationException e) {
+            // uk_bc_checkout_session 違反 = 同一 Session を別契約が既に握っている。
+            throw new IllegalStateException(
+                    "stripe checkout session is already attached to another billing contract", e);
+        }
+        if (updated != 1) {
+            throw new IllegalStateException(
+                    "billing contract is not attachable (missing, not PENDING, or bound to another session)");
         }
     }
 
