@@ -1446,7 +1446,8 @@
       "error": {
         "invalidColor": "Formato de color no válido",
         "notMember": "No puedes cambiar la configuración de esta capa",
-        "layerLimit": "Se alcanzó el límite de configuraciones de capa"
+        "layerLimit": "Se alcanzó el límite de configuraciones de capa",
+        "colorResetRefreshFailed": "El color se restableció a automático, pero no se pudo actualizar el calendario. Recarga la página."
       }
     }
   },

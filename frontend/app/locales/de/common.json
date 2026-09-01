@@ -1446,7 +1446,8 @@
       "error": {
         "invalidColor": "Ungültiges Farbformat",
         "notMember": "Du kannst die Einstellungen dieser Ebene nicht ändern",
-        "layerLimit": "Grenze für Ebeneneinstellungen erreicht"
+        "layerLimit": "Grenze für Ebeneneinstellungen erreicht",
+        "colorResetRefreshFailed": "Die Farbe wurde auf automatisch zurückgesetzt, aber der Kalender konnte nicht aktualisiert werden. Bitte lade die Seite neu."
       }
     }
   },

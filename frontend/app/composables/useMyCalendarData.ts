@@ -477,8 +477,36 @@ export function useMyCalendarData() {
     return merged
   }
 
+  /**
+   * 直近の予定取得（`loadEvents` / `refresh`）が失敗したか。
+   *
+   * `useCalendarEvents` の `refresh()` は例外を内部で捕らえて**正常に解決する**
+   * （月移動で画面全体が落ちないための既存の設計であり、他の呼び出し元がその挙動に
+   * 依存しているため消さない）。そのぶん、失敗を知りたい呼び出し箇所は
+   * このフラグで検知する。`onError` は `loadEvents`/`refresh` の失敗時にのみ呼ばれる。
+   */
+  const eventsFetchFailed = ref(false)
+
   const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday, navigateTo } =
-    useCalendarEvents(fetcher, { cacheHalfMonths: 0 })
+    useCalendarEvents(fetcher, {
+      cacheHalfMonths: 0,
+      onError: (error: unknown) => {
+        eventsFetchFailed.value = true
+        // ユーザー提示は各呼び出し箇所の文脈で行う（ここで一律にトーストを出すと
+        // useApi の共通ハンドラと二重になる）。調査用の記録だけは必ず残す。
+        errorReport.captureQuiet(error, { context: 'useMyCalendarData.calendarEvents' })
+      },
+    })
+
+  /**
+   * 予定を取り直し、**成功したかを返す**（`refresh()` は失敗しても解決するため、
+   * 戻り値だけでは成否が分からない）。呼び出し前にフラグを倒してから測る。
+   */
+  async function refreshEventsChecked(): Promise<boolean> {
+    eventsFetchFailed.value = false
+    await refresh()
+    return !eventsFetchFailed.value
+  }
 
   /**
    * レイヤー一覧の取得（§5.1）。events とは独立。月移動では呼ばない（AC-03）。
@@ -848,6 +876,10 @@ export function useMyCalendarData() {
    * 成功したらチップだけでなく**表示中の予定の色も同時に更新する**（§10 のキャッシュ方針は
    * 「色変更直後に反映されない不整合」を害と明記しており、FE 側で同じ不整合を作らない）。
    *
+   * こちらは PATCH 応答だけで完結し、**失敗を内部で捕らえる関数（`refresh` / `loadLayers`）を
+   * 一切呼ばない**。よって「途中の失敗を握りつぶしたまま true を返す」経路は存在しない
+   * （PATCH 自体が失敗すれば catch に入り false を返す）。
+   *
    * @returns 成功したか。失敗時はユーザーへ通知済み（例外は投げ直さない）。
    */
   async function setLayerColor(scopeType: string, scopeId: number, color: string): Promise<boolean> {
@@ -886,7 +918,16 @@ export function useMyCalendarData() {
   async function resetLayerColor(scopeType: string, scopeId: number): Promise<boolean> {
     try {
       await scheduleApi.deleteMyCalendarLayer(scopeType as CalendarLayerScopeType, scopeId)
-      await Promise.all([loadLayers(), refresh()])
+      // loadLayers も refresh も失敗を内部で捕らえて解決するため、Promise.all の完了は
+      // 「両方成功した」ことを意味しない。**それぞれの失敗フラグで測る**
+      // （握りつぶしの上に「成功しました」という嘘を重ねない）。
+      const [, eventsOk] = await Promise.all([loadLayers(), refreshEventsChecked()])
+      if (!eventsOk || layersFailed.value) {
+        // 設定の削除自体は成功している（サーバー上は自動色に戻っている）。
+        // 食い違っているのは手元の表示だけなので、そう伝える。
+        notification.error(t('dialog.error'), t('schedule.calendar.error.colorResetRefreshFailed'))
+        return false
+      }
       return true
     }
     catch (e) {

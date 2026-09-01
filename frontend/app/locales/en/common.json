@@ -1446,7 +1446,8 @@
       "error": {
         "invalidColor": "Invalid color format",
         "notMember": "You cannot change settings for this layer",
-        "layerLimit": "Layer settings limit reached"
+        "layerLimit": "Layer settings limit reached",
+        "colorResetRefreshFailed": "The color was reset to automatic, but the calendar could not be refreshed. Please reload the page."
       }
     }
   },

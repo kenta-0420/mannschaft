@@ -1446,7 +1446,8 @@
       "error": {
         "invalidColor": "颜色格式不正确",
         "notMember": "无权更改此图层的设置",
-        "layerLimit": "已达到图层设置上限"
+        "layerLimit": "已达到图层设置上限",
+        "colorResetRefreshFailed": "颜色已恢复为自动，但日历刷新失败。请重新加载页面。"
       }
     }
   },

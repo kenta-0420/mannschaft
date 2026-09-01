@@ -32,8 +32,9 @@ vi.mock('~/composables/useErrorHandler', () => ({
 vi.mock('~/composables/useErrorReport', () => ({
   useErrorReport: () => ({ captureQuiet: vi.fn() }),
 }))
+const notifyError = vi.fn()
 vi.mock('~/composables/useNotification', () => ({
-  useNotification: () => ({ error: vi.fn(), success: vi.fn() }),
+  useNotification: () => ({ error: notifyError, success: vi.fn() }),
 }))
 vi.mock('~/stores/useAuthStore', () => ({
   useAuthStore: () => ({ currentUser: { id: 1 } }),
@@ -197,6 +198,76 @@ describe('レイヤー色変更の即時反映（§10・P2）', () => {
 
     // 想起予定の橙は「種別」の意味を担うため、個人レイヤーの色では塗り替えない
     expect(cal.filteredEvents.value.map(e => e.color)).toEqual(['#f59e0b'])
+  })
+})
+
+describe('自動色リセット時の再取得失敗（P2-③）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  /**
+   * refresh() は例外を内部で捕らえて正常に解決するため、Promise.all の完了は
+   * 「予定を取り直せた」ことを意味しない。失敗を検知して呼び出し元へ伝えられているか。
+   */
+  it('予定の再取得が失敗したら false を返し、ユーザーへ通知する', async () => {
+    const cal = await setup()
+    updateMyCalendarLayer.mockResolvedValue({ data: teamLayer(NEW_COLOR, 'LAYER_USER') })
+    await cal.setLayerColor('TEAM', 42, NEW_COLOR)
+    expect(cal.filteredEvents.value.map(e => e.color)).toEqual([NEW_COLOR])
+
+    // 設定の削除とレイヤー一覧の取り直しは成功するが、予定の再取得だけが落ちる。
+    deleteMyCalendarLayer.mockResolvedValue(undefined)
+    getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669'), teamLayer(RESET_COLOR, 'LAYER_AUTO')] })
+    getCalendarRange.mockRejectedValue(new Error('boom'))
+    notifyError.mockClear()
+
+    const ok = await cal.resetLayerColor('TEAM', 42)
+
+    expect(ok).toBe(false)
+    expect(notifyError).toHaveBeenCalled()
+  })
+
+  /**
+   * 「常に false を返す実装」でも上のテストは緑になるため、成功経路が true を返すことを
+   * 同じファイルで押さえる（偽の緑よけ）。
+   */
+  it('再取得が成功する経路では true を返し、通知を出さない', async () => {
+    const cal = await setup()
+    deleteMyCalendarLayer.mockResolvedValue(undefined)
+    getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669'), teamLayer(RESET_COLOR, 'LAYER_AUTO')] })
+    getCalendarRange.mockResolvedValue({ data: [sharedEntry(RESET_COLOR, 'LAYER_AUTO')] })
+    notifyError.mockClear()
+
+    const ok = await cal.resetLayerColor('TEAM', 42)
+
+    expect(ok).toBe(true)
+    expect(notifyError).not.toHaveBeenCalled()
+    expect(cal.filteredEvents.value.map(e => e.color)).toEqual([RESET_COLOR])
+  })
+
+  it('レイヤー一覧の取り直しが失敗した場合も false を返す', async () => {
+    const cal = await setup()
+    deleteMyCalendarLayer.mockResolvedValue(undefined)
+    getMyCalendarLayers.mockRejectedValue(new Error('boom'))
+    getCalendarRange.mockResolvedValue({ data: [sharedEntry(RESET_COLOR, 'LAYER_AUTO')] })
+    notifyError.mockClear()
+
+    const ok = await cal.resetLayerColor('TEAM', 42)
+
+    expect(ok).toBe(false)
+  })
+
+  /** 色変更（PATCH のみで完結する経路）には同じ穴が無いことも押さえる。 */
+  it('色変更は PATCH が成功すれば true・失敗すれば false を返す', async () => {
+    const cal = await setup()
+    updateMyCalendarLayer.mockResolvedValue({ data: teamLayer(NEW_COLOR, 'LAYER_USER') })
+    expect(await cal.setLayerColor('TEAM', 42, NEW_COLOR)).toBe(true)
+
+    updateMyCalendarLayer.mockRejectedValue({ data: { error: { code: 'SCHEDULE_101' } } })
+    expect(await cal.setLayerColor('TEAM', 42, '#DB2777')).toBe(false)
+    // 直前の成功時の色のまま（失敗した変更を先に反映してしまわない）
+    expect(cal.filteredEvents.value.map(e => e.color)).toEqual([NEW_COLOR])
   })
 })
 
