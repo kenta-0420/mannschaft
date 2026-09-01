@@ -202,6 +202,7 @@ test('MRC-001: 実 UI の作成フォーム → publish ボタンだけで PUBLI
   // 4) カテゴリ（PrimeVue Select）を「練習試合」で選択
   await page.locator('#category').click()
   await page.getByRole('option').filter({ hasText: '練習試合' }).first().click()
+  await page.locator('#location').fill('E2E市民競技場')
 
   // 5) 日時 4 種（datetime-local）
   await fillDateTime(page, 'startAt', FUTURE_UI.startAt)

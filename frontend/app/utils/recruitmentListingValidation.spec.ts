@@ -8,6 +8,7 @@ const valid = {
   autoCancelAt: '2026-09-02T08:00',
   capacity: 5,
   minCapacity: 1,
+  location: '市民競技場',
 }
 
 describe('getRecruitmentListingValidationKey', () => {
@@ -16,6 +17,8 @@ describe('getRecruitmentListingValidationKey', () => {
   })
 
   it.each([
+    [{ ...valid, location: '' }, 'validation.required'],
+    [{ ...valid, location: '   ' }, 'validation.required'],
     [{ ...valid, endAt: valid.startAt }, 'recruitment.validation.eventTimeRange'],
     [{ ...valid, applicationDeadline: valid.startAt }, 'recruitment.validation.applicationDeadline'],
     [{ ...valid, autoCancelAt: '2026-09-02T09:01' }, 'recruitment.validation.autoCancelAt'],

@@ -215,6 +215,7 @@ function onSubmit() {
     autoCancelAt: autoCancelAt.value,
     capacity: capacity.value,
     minCapacity: minCapacity.value,
+    location: location.value,
   })
   if (validationKey) {
     scheduleError.value = t(validationKey)
@@ -239,7 +240,7 @@ function onSubmit() {
     paymentEnabled: submittedPaymentEnabled,
     price: submittedPaymentEnabled ? price.value : null,
     visibility: visibility.value,
-    location: location.value || null,
+    location: location.value.trim(),
     // F22.1 市 謝礼決済
     payeeKind: submittedPaymentEnabled ? payeeKind.value : null,
     payeeUserId: submittedPaymentEnabled && payeeKind.value === 'USER' ? payeeUserId.value : null,
@@ -258,12 +259,12 @@ function onSubmit() {
       {{ scheduleError }}
     </Message>
     <div class="flex flex-col gap-2">
-      <label for="title">{{ t('recruitment.field.title') }}</label>
+      <label for="title">{{ t('recruitment.field.title') }}<span class="ml-1 text-red-500">＊</span></label>
       <InputText id="title" v-model="title" required />
     </div>
 
     <div class="flex flex-col gap-2">
-      <label for="category">{{ t('recruitment.field.category') }}</label>
+      <label for="category">{{ t('recruitment.field.category') }}<span class="ml-1 text-red-500">＊</span></label>
       <Select
         id="category"
         v-model="categoryId"
@@ -284,7 +285,7 @@ function onSubmit() {
     </div>
 
     <div class="flex flex-col gap-2">
-      <label>{{ t('recruitment.field.participationType') }}</label>
+      <label>{{ t('recruitment.field.participationType') }}<span class="ml-1 text-red-500">＊</span></label>
       <SelectButton
         v-model="participationType"
         :options="[
@@ -303,15 +304,15 @@ function onSubmit() {
 
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
       <div class="flex flex-col gap-2">
-        <label for="startAt">{{ t('recruitment.field.startAt') }}</label>
+        <label for="startAt">{{ t('recruitment.field.startAt') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputText id="startAt" v-model="startAt" type="datetime-local" required />
       </div>
       <div class="flex flex-col gap-2">
-        <label for="endAt">{{ t('recruitment.field.endAt') }}</label>
+        <label for="endAt">{{ t('recruitment.field.endAt') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputText id="endAt" v-model="endAt" type="datetime-local" required />
       </div>
       <div class="flex flex-col gap-2">
-        <label for="applicationDeadline">{{ t('recruitment.field.applicationDeadline') }}</label>
+        <label for="applicationDeadline">{{ t('recruitment.field.applicationDeadline') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputText
           id="applicationDeadline"
           v-model="applicationDeadline"
@@ -320,22 +321,22 @@ function onSubmit() {
         />
       </div>
       <div class="flex flex-col gap-2">
-        <label for="autoCancelAt">{{ t('recruitment.field.autoCancelAt') }}</label>
+        <label for="autoCancelAt">{{ t('recruitment.field.autoCancelAt') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputText id="autoCancelAt" v-model="autoCancelAt" type="datetime-local" required />
       </div>
       <div class="flex flex-col gap-2">
-        <label for="capacity">{{ t('recruitment.field.capacity') }}</label>
+        <label for="capacity">{{ t('recruitment.field.capacity') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputNumber id="capacity" v-model="capacity" :min="1" required />
       </div>
       <div class="flex flex-col gap-2">
-        <label for="minCapacity">{{ t('recruitment.field.minCapacity') }}</label>
+        <label for="minCapacity">{{ t('recruitment.field.minCapacity') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputNumber id="minCapacity" v-model="minCapacity" :min="1" required />
       </div>
     </div>
 
     <div class="flex flex-col gap-2">
-      <label for="location">{{ t('recruitment.field.location') }}</label>
-      <InputText id="location" v-model="location" />
+      <label for="location">{{ t('recruitment.field.location') }}<span class="ml-1 text-red-500">＊</span></label>
+      <InputText id="location" v-model="location" required />
     </div>
 
     <div v-if="!hidePayment" class="flex items-center gap-2">
@@ -345,7 +346,7 @@ function onSubmit() {
 
     <template v-if="!hidePayment && paymentEnabled">
       <div class="flex flex-col gap-2">
-        <label for="price">{{ t('recruitment.field.price') }}</label>
+        <label for="price">{{ t('recruitment.field.price') }}<span class="ml-1 text-red-500">＊</span></label>
         <InputNumber id="price" v-model="price" :min="0" required />
       </div>
 
@@ -353,7 +354,7 @@ function onSubmit() {
       <div class="flex flex-col gap-2">
         <label for="payeeKind">
           {{ t('recruitment.field.payeeKind') }}
-          <span class="ml-1 text-red-500">*</span>
+          <span class="ml-1 text-red-500">＊</span>
         </label>
         <Select
           id="payeeKind"
@@ -371,7 +372,7 @@ function onSubmit() {
       <div v-if="payeeKind === 'USER'" class="flex flex-col gap-2">
         <label for="payeeUserId">
           {{ t('recruitment.field.payeeUser') }}
-          <span class="ml-1 text-red-500">*</span>
+          <span class="ml-1 text-red-500">＊</span>
         </label>
         <Select
           id="payeeUserId"
@@ -388,7 +389,7 @@ function onSubmit() {
     </template>
 
     <div v-if="!hideVisibility" class="flex flex-col gap-2">
-      <label for="visibility">{{ t('recruitment.field.visibility') }}</label>
+      <label for="visibility">{{ t('recruitment.field.visibility') }}<span class="ml-1 text-red-500">＊</span></label>
       <Select
         id="visibility"
         v-model="visibility"

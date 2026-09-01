@@ -55,6 +55,7 @@
 | `owner_type` | enum | 任意 | 札主区分（`PERSONAL` / `TEAM` / `ORGANIZATION`） |
 | `keyword` | string | 任意 | タイトル部分一致 |
 | `include_region_none` | bool | 任意 | "地域を問わない" 札も含めるか（既定 true） |
+| `sort` | enum | 任意 | `START_AT_ASC`（開催日時が近い順、既定）/ `DEADLINE_ASC`（締切が近い順）/ `DEADLINE_DESC`（締切が遠い順） |
 | `page` / `size` | int | 任意 | ページネーション（既定 0 / 20） |
 
 **サーバ側の絞り込み（固定条件）**

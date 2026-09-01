@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.market.MarketErrorCode;
+import com.mannschaft.app.market.MarketListingSort;
 import com.mannschaft.app.market.dto.MarketCategoryDto;
 import com.mannschaft.app.market.dto.MarketListingResponse;
 import com.mannschaft.app.market.dto.MarketOwnerDto;
@@ -32,6 +33,7 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -131,21 +133,37 @@ public class MarketQueryService {
             String prefecture, String city, Long categoryId, RecruitmentScopeType ownerType,
             String keyword, boolean includeRegionNone, Pageable pageable, String lang,
             Long viewerUserId) {
+        return searchListings(prefecture, city, categoryId, ownerType, keyword, includeRegionNone,
+                pageable, lang, viewerUserId, MarketListingSort.START_AT_ASC);
+    }
+
+    /**
+     * 札主区分と公開済み並び順を含めて市の札を検索する。
+     *
+     * @param sort 公開 API で許可する並び順
+     */
+    public Page<MarketListingResponse> searchListings(
+            String prefecture, String city, Long categoryId, RecruitmentScopeType ownerType,
+            String keyword, boolean includeRegionNone, Pageable pageable, String lang,
+            Long viewerUserId, MarketListingSort sort) {
         String normalizedPref = blankToNull(prefecture);
         String normalizedCity = blankToNull(city);
         // blankToNull → escape の順。null はエスケープせず透過する。
         // LIKE ワイルドカード（% / _ / \）をリテラル化し、フィルタ無効化を防ぐ（JPQL の ESCAPE '\' と対）。
         String normalizedKeyword = LikeEscapeUtil.escape(blankToNull(keyword));
+        MarketListingSort effectiveSort = sort == null ? MarketListingSort.START_AT_ASC : sort;
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(), pageable.getPageSize(), effectiveSort.toSort());
 
         Page<RecruitmentListingEntity> page;
         if (viewerUserId == null) {
             page = listingRepository.searchMarketListings(
                     normalizedPref, normalizedCity, categoryId, ownerType, normalizedKeyword,
-                    includeRegionNone, pageable);
+                    includeRegionNone, sortedPageable);
         } else {
             page = listingRepository.searchAccessibleMarketListings(
                     accessibleListingIdsOrSentinel(viewerUserId), normalizedPref, normalizedCity,
-                    categoryId, ownerType, normalizedKeyword, includeRegionNone, pageable);
+                    categoryId, ownerType, normalizedKeyword, includeRegionNone, sortedPageable);
         }
 
         // N+1 回避: ページ内の全札からカテゴリ/scope/地域コードを集約し、

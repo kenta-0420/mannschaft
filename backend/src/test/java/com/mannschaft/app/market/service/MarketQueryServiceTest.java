@@ -3,6 +3,7 @@ package com.mannschaft.app.market.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.market.MarketListingSort;
 import com.mannschaft.app.market.dto.MarketListingResponse;
 import com.mannschaft.app.matching.repository.CityRepository;
 import com.mannschaft.app.matching.repository.PrefectureRepository;
@@ -178,10 +179,11 @@ class MarketQueryServiceTest {
         RecruitmentListingEntity listing = personalListing();
         ReflectionTestUtils.setField(listing, "visibility", RecruitmentVisibility.SELECTED_SCOPES);
         PageRequest pageable = PageRequest.of(0, 20);
+        PageRequest sortedPageable = PageRequest.of(0, 20, MarketListingSort.START_AT_ASC.toSort());
         given(listingVisibilityResolver.findAccessibleSelectedListingIds(9L)).willReturn(List.of(100L));
         given(listingRepository.searchAccessibleMarketListings(
-                Set.of(100L), null, null, null, null, null, true, pageable))
-                .willReturn(new PageImpl<>(List.of(listing), pageable, 1));
+                Set.of(100L), null, null, null, null, null, true, sortedPageable))
+                .willReturn(new PageImpl<>(List.of(listing), sortedPageable, 1));
         given(userService.getActiveMarketOwnerIdentities(Set.of(7L))).willReturn(Map.of(
                 7L, new UserService.MarketOwnerIdentity(
                         7L, "市場ニックネーム", "共有 花子", null, false, false)));
@@ -192,34 +194,36 @@ class MarketQueryServiceTest {
         assertThat(result.getContent()).singleElement()
                 .satisfies(item -> assertThat(item.getOwner().getDisplayName()).isEqualTo("共有 花子"));
         verify(listingRepository).searchAccessibleMarketListings(
-                Set.of(100L), null, null, null, null, null, true, pageable);
+                Set.of(100L), null, null, null, null, null, true, sortedPageable);
     }
 
     @Test
     @DisplayName("市の札主区分フィルターをリポジトリへ渡す")
     void searchListings_passesOwnerTypeFilter() {
         PageRequest pageable = PageRequest.of(0, 20);
+        PageRequest sortedPageable = PageRequest.of(0, 20, MarketListingSort.START_AT_ASC.toSort());
         given(listingRepository.searchMarketListings(
-                null, null, null, RecruitmentScopeType.TEAM, null, true, pageable))
-                .willReturn(Page.empty(pageable));
+                null, null, null, RecruitmentScopeType.TEAM, null, true, sortedPageable))
+                .willReturn(Page.empty(sortedPageable));
 
         service.searchListings(
                 null, null, null, RecruitmentScopeType.TEAM,
                 null, true, pageable, null, null);
 
         verify(listingRepository).searchMarketListings(
-                null, null, null, RecruitmentScopeType.TEAM, null, true, pageable);
+                null, null, null, RecruitmentScopeType.TEAM, null, true, sortedPageable);
     }
 
     @Test
     @DisplayName("認証済みの市検索でも札主区分フィルターをリポジトリへ渡す")
     void searchListings_authenticatedPassesOwnerTypeFilter() {
         PageRequest pageable = PageRequest.of(0, 20);
+        PageRequest sortedPageable = PageRequest.of(0, 20, MarketListingSort.START_AT_ASC.toSort());
         given(listingVisibilityResolver.findAccessibleSelectedListingIds(9L)).willReturn(List.of());
         given(listingRepository.searchAccessibleMarketListings(
                 Set.of(-1L), null, null, null, RecruitmentScopeType.ORGANIZATION,
-                null, true, pageable))
-                .willReturn(Page.empty(pageable));
+                null, true, sortedPageable))
+                .willReturn(Page.empty(sortedPageable));
 
         service.searchListings(
                 null, null, null, RecruitmentScopeType.ORGANIZATION,
@@ -227,7 +231,46 @@ class MarketQueryServiceTest {
 
         verify(listingRepository).searchAccessibleMarketListings(
                 Set.of(-1L), null, null, null, RecruitmentScopeType.ORGANIZATION,
-                null, true, pageable);
+                null, true, sortedPageable);
+    }
+
+    @Test
+    @DisplayName("締切が近い順はapplicationDeadline昇順とID昇順で公開検索へ渡す")
+    void searchListings_deadlineAscPassesStableSortToPublicRepository() {
+        PageRequest input = PageRequest.of(2, 10);
+        PageRequest expected = PageRequest.of(2, 10, MarketListingSort.DEADLINE_ASC.toSort());
+        given(listingRepository.searchMarketListings(
+                null, null, null, null, null, true, expected))
+                .willReturn(Page.empty(expected));
+
+        service.searchListings(
+                null, null, null, null, null, true, input, null, null,
+                MarketListingSort.DEADLINE_ASC);
+
+        verify(listingRepository).searchMarketListings(
+                null, null, null, null, null, true, expected);
+        assertThat(expected.getSort().getOrderFor("applicationDeadline").isAscending()).isTrue();
+        assertThat(expected.getSort().getOrderFor("id").isAscending()).isTrue();
+    }
+
+    @Test
+    @DisplayName("締切が遠い順は認証済み検索にも同じ安定ソートを渡す")
+    void searchListings_deadlineDescPassesStableSortToAccessibleRepository() {
+        PageRequest input = PageRequest.of(0, 20);
+        PageRequest expected = PageRequest.of(0, 20, MarketListingSort.DEADLINE_DESC.toSort());
+        given(listingVisibilityResolver.findAccessibleSelectedListingIds(9L)).willReturn(List.of());
+        given(listingRepository.searchAccessibleMarketListings(
+                Set.of(-1L), null, null, null, null, null, true, expected))
+                .willReturn(Page.empty(expected));
+
+        service.searchListings(
+                null, null, null, null, null, true, input, null, 9L,
+                MarketListingSort.DEADLINE_DESC);
+
+        verify(listingRepository).searchAccessibleMarketListings(
+                Set.of(-1L), null, null, null, null, null, true, expected);
+        assertThat(expected.getSort().getOrderFor("applicationDeadline").isDescending()).isTrue();
+        assertThat(expected.getSort().getOrderFor("id").isAscending()).isTrue();
     }
 
     private RecruitmentListingEntity personalListing() {

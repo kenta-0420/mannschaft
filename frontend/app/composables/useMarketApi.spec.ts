@@ -20,4 +20,18 @@ describe('useMarketApi', () => {
       '/api/v1/public/market/listings?owner_type=ORGANIZATION',
     )
   })
+
+  it('地域除外・締切順・ページングを一覧 API の契約名で送る', async () => {
+    await useMarketApi().listMarketListings({
+      prefecture: '13',
+      includeRegionNone: false,
+      sort: 'DEADLINE_ASC',
+      page: 2,
+      size: 20,
+    })
+
+    expect(mockApi).toHaveBeenCalledWith(
+      '/api/v1/public/market/listings?prefecture=13&include_region_none=false&sort=DEADLINE_ASC&page=2&size=20',
+    )
+  })
 })
