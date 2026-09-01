@@ -1430,6 +1430,14 @@
         "dragHint": "Drag to create an event",
         "dragHintTouch": "Press and hold, then drag to create an event",
         "selectedRange": "{start} – {end}"
+      },
+      "a11y": {
+        "selecting": "Selecting {start} to {end}",
+        "emptySlot": "Available",
+        "time": "{hour}:{minute}",
+        "weekGrid": "Week of {range}",
+        "slot": "{date} {time} {content}",
+        "allDayList": "All-day events"
       }
     }
   },

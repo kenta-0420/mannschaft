@@ -1430,6 +1430,14 @@
         "dragHint": "드래그하여 일정 만들기",
         "dragHintTouch": "길게 누른 후 드래그하여 일정을 만들 수 있습니다",
         "selectedRange": "{start} – {end}"
+      },
+      "a11y": {
+        "selecting": "{start}부터 {end}까지 선택 중",
+        "emptySlot": "비어 있음",
+        "time": "{hour}시 {minute}분",
+        "weekGrid": "{range} 주간",
+        "slot": "{date} {time} {content}",
+        "allDayList": "종일 일정"
       }
     }
   },

@@ -1430,6 +1430,14 @@
         "dragHint": "ドラッグして予定を作成",
         "dragHintTouch": "長押ししてなぞると予定を作成できます",
         "selectedRange": "{start} – {end}"
+      },
+      "a11y": {
+        "selecting": "{start}から{end}を選択中",
+        "emptySlot": "空き",
+        "time": "{hour}時{minute}分",
+        "weekGrid": "{range}の週",
+        "slot": "{date} {time} {content}",
+        "allDayList": "終日の予定"
       }
     }
   },
