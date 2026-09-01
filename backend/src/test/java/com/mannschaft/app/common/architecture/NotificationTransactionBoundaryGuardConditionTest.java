@@ -75,6 +75,24 @@ class NotificationTransactionBoundaryGuardConditionTest {
                 .collect(Collectors.toSet());
     }
 
+    /** 検体の走査で報告された「判定不能（曖昧）」の一覧。 */
+    private static List<String> ambiguitiesOf(String simpleName) {
+        String fqcn = FIXTURE_PACKAGE + "." + simpleName;
+        return NotificationTransactionBoundaryGuardTest
+                .scanSourceDetailed(fqcn, sourceOf(simpleName)).ambiguities();
+    }
+
+    /** 変異させた検体の走査で報告された「判定不能（曖昧）」の一覧。 */
+    private static List<String> ambiguitiesOfMutated(String simpleName, String from, String to) {
+        String source = sourceOf(simpleName);
+        assertThat(source)
+                .as("変異の起点となる文字列 '%s' が検体に存在しない＝変異テストが空振りしている", from)
+                .contains(from);
+        return NotificationTransactionBoundaryGuardTest
+                .scanSourceDetailed(FIXTURE_PACKAGE + "." + simpleName, source.replace(from, to))
+                .ambiguities();
+    }
+
     private static String sourceOf(String simpleName) {
         Path root = NotificationTransactionBoundaryGuardTest.testSourceRoot();
         return NotificationTransactionBoundaryGuardTest.read(
@@ -398,15 +416,28 @@ class NotificationTransactionBoundaryGuardConditionTest {
         }
 
         @Test
-        @DisplayName("形状8: メソッド参照は塞がない（本番0件・塞ぐと偽陽性を生む）")
-        void 形状8_メソッド参照は塞がない() {
+        @DisplayName("形状8: 通知発火 API のメソッド参照を検出する（Codex 独立検分 条件3 で塞いだ）")
+        void 形状8_メソッド参照を検出する() {
             assertThat(keysOf(FIXTURE))
-                    .as("参照の生成は TX 内でも実行位置は字句から決まらない（別スレッド・コミット後・"
-                            + "そもそも呼ばれない、のいずれもありうる）。src/main/java に該当形状は0件であり"
-                            + "（Issue #3039 で `::notify` 等を実測）、生成位置＝実行位置と決め打つ判定は"
-                            + "正しい遅延実行まで違反にする。契約として backend/.claudecode.md 原則5 に明文化した。"
-                            + "検出できるようにしたらここを負例側へ移すこと")
-                    .noneMatch(k -> k.contains("#notifyViaMethodReference "));
+                    .as("実行位置が字句から決まらないということは『AFTER_COMMIT 境界の後だ』とも言えない、"
+                            + "ということである。契約文書（原則5-2）に書くだけでは追加された瞬間に見逃すので、"
+                            + "許可された入口の外では一律に違反とする機械ゲートにした")
+                    .contains(blindSpotKey("notifyViaMethodReference",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.NOTIFY_METHOD_REFERENCE));
+        }
+
+        @Test
+        @DisplayName("形状9: シャドーイングは塞げない。ただし先勝ちせず『判定不能』として落とす")
+        void 形状9_シャドーイングは判定不能として報告される() {
+            assertThat(ambiguitiesOf(FIXTURE))
+                    .as("ローカル変数がフィールドを隠すと同じ名前に2つの型が対応する。"
+                            + "字句走査にスコープは無いので正しくは解けないが、"
+                            + "先勝ちで片方を採ると『実際に呼ばれているのは別の型なのに片方で判定する』ことになる。"
+                            + "候補を捨てず、判定が割れたら違反でも合格でもなく判定不能として落とす")
+                    .anySatisfy(a -> assertThat(a).contains("#localShadowsField"));
+            assertThat(keysOf(FIXTURE))
+                    .as("判定不能なものを違反として数えている（＝検出できるフリ）")
+                    .noneMatch(k -> k.contains("#localShadowsField "));
         }
 
         @Test
@@ -527,6 +558,56 @@ class NotificationTransactionBoundaryGuardConditionTest {
                     "private final Object gateway = null;"))
                     .as("レシーバの型が解決できなくても検出が残る＝型ではなく変数名の綴りで判定している")
                     .doesNotContain(target);
+        }
+
+        @Test
+        @DisplayName("変異: メソッド参照の名前を語彙外にすると形状8 の検出が消える")
+        void メソッド参照は語彙の完全一致で判定している() {
+            String target = key(FIXTURE, "notifyViaMethodReference",
+                    NotificationTransactionBoundaryGuardTest.ViolationKind.NOTIFY_METHOD_REFERENCE);
+            assertThat(keysOf(FIXTURE)).contains(target);
+            // main の ::toNotificationResponse / ::getNotifyTeamSlotNoteUpdates（mapper・getter）を
+            // 巻き込まないことの裏取り。HelperStub#toResponse は「型は宣言しているが語彙の外」であり、
+            // 語彙の条件だけが検出を落とせる形になっている（型の条件では落ちない）。
+            assertThat(keysOfMutated(FIXTURE,
+                    "Consumer<Long> sink = notificationHelper::notify;",
+                    "Consumer<Long> sink = notificationHelper::toResponse;"))
+                    .as("語彙の外の API のメソッド参照でも検出が残る＝綴りを見ておらず、"
+                            + "main の ::toNotificationResponse 等の mapper を巻き込む")
+                    .doesNotContain(target);
+        }
+
+        @Test
+        @DisplayName("変異: レシーバの型が当該 API を宣言していないと形状8 の検出が消える")
+        void メソッド参照は型で裏取りしている() {
+            String target = key(FIXTURE, "notifyViaMethodReference",
+                    NotificationTransactionBoundaryGuardTest.ViolationKind.NOTIFY_METHOD_REFERENCE);
+            assertThat(keysOfMutated(FIXTURE,
+                    "private final HelperStub notificationHelper = new HelperStub();",
+                    "private final RepositoryStub notificationHelper = new RepositoryStub();"))
+                    .as("レシーバの型が notify を宣言していなくても検出が残る＝綴りだけで判定しており、"
+                            + "通知系の型に属するという条件が効いていない")
+                    .doesNotContain(target);
+        }
+
+        @Test
+        @DisplayName("変異: シャドーイングを解消すると曖昧性が消えて違反として検出される")
+        void シャドーイングが解消すれば判定できる() {
+            assertThat(ambiguitiesOf(FIXTURE)).anySatisfy(a -> assertThat(a).contains("#localShadowsField"));
+            // ローカルの型をフィールドと同じにすると候補が一致し、判定は割れなくなる。
+            // 「常に曖昧と言っているだけ」ではないことの裏取り。
+            assertThat(ambiguitiesOfMutated(FIXTURE,
+                    "SilentWorkerStub shadowedWorker = new SilentWorkerStub();",
+                    "WorkerStub shadowedWorker = new WorkerStub();"))
+                    .as("候補が一致しても曖昧だと言い続ける＝『割れているか』を見ておらず、"
+                            + "シャドーイングの有無だけで落としている")
+                    .noneSatisfy(a -> assertThat(a).contains("#localShadowsField"));
+            assertThat(keysOfMutated(FIXTURE,
+                    "SilentWorkerStub shadowedWorker = new SilentWorkerStub();",
+                    "WorkerStub shadowedWorker = new WorkerStub();"))
+                    .as("候補が一致したのに違反として検出されない＝曖昧性の判定が委譲検出そのものを殺している")
+                    .contains(key(FIXTURE, "localShadowsField",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_VIA_DELEGATE));
         }
 
         @Test
@@ -665,12 +746,64 @@ class NotificationTransactionBoundaryGuardConditionTest {
                     .collect(Collectors.toCollection(java.util.TreeSet::new));
         }
 
-        /** 凍結エントリ（コメントでも空行でもない行）を1つ返す。 */
+        /** 凍結エントリのキー（分類部分を除いたもの）を1つ返す。 */
         private String anyActiveKey(List<String> lines) {
-            return lines.stream().map(String::strip)
-                    .filter(s -> !s.isEmpty() && !s.startsWith("#"))
+            return NotificationTransactionBoundaryGuardTest.entryLines(lines).stream()
+                    .map(NotificationTransactionBoundaryGuardTest::entryKey)
                     .findFirst()
                     .orElseThrow(() -> new IllegalStateException("凍結エントリが1件も無い"));
+        }
+
+        /** 分類（{@code | ROLLBACK_COUPLED} 等）が付いている行を1つ返す。 */
+        private String anyClassifiedLine(List<String> lines) {
+            return NotificationTransactionBoundaryGuardTest.entryLines(lines).stream()
+                    .filter(l -> NotificationTransactionBoundaryGuardTest.entryClassification(l) != null)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("分類済みエントリが1件も無い"));
+        }
+
+        @Test
+        @DisplayName("変異: 分類を1件外すと fail する（任務5 の分類が黙って消えない）")
+        void 分類を外すと落ちる() {
+            List<String> lines = new ArrayList<>(realLines());
+            String classified = anyClassifiedLine(lines);
+            String stripped = NotificationTransactionBoundaryGuardTest.entryKey(classified);
+            assertThat(lines.removeIf(l -> l.strip().equals(classified))).isTrue();
+            lines.add(stripped);
+
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(lines, realFoundKeys()))
+                    .as("分類をそっと外しても台帳ゲートが通ってしまう（対象 %s）", classified)
+                    .isNotEmpty()
+                    .anySatisfy(msg -> assertThat(msg).contains("分類済みエントリ数が下限を割っている"));
+        }
+
+        @Test
+        @DisplayName("変異: 分類に ImpactClass 以外の語を書くと fail する")
+        void 出鱈目な分類は落ちる() {
+            List<String> lines = new ArrayList<>(realLines());
+            String classified = anyClassifiedLine(lines);
+            String key = NotificationTransactionBoundaryGuardTest.entryKey(classified);
+            assertThat(lines.removeIf(l -> l.strip().equals(classified))).isTrue();
+            lines.add(key + " | ATODEYARU");
+
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(lines, realFoundKeys()))
+                    .as("台帳の分類欄に何を書いても通ってしまう＝機械可読ではない")
+                    .isNotEmpty()
+                    .anySatisfy(msg -> assertThat(msg).contains("ImpactClass の名前ではない"));
+        }
+
+        @Test
+        @DisplayName("分類を持つ行のキーが baseline のキーとして正しく読めている")
+        void 分類付きの行もキーとして読める() {
+            String classified = anyClassifiedLine(realLines());
+            String key = NotificationTransactionBoundaryGuardTest.entryKey(classified);
+            assertThat(NotificationTransactionBoundaryGuardTest.readFreezeList())
+                    .as("分類を付けた行が baseline のキー集合から落ちている＝"
+                            + "分類の導入そのものが凍結を無効化している（静かな緩和）")
+                    .contains(key);
+            assertThat(realFoundKeys())
+                    .as("分類を付けたキーが本番の検出結果に存在しない＝キーの切り出しが壊れている")
+                    .contains(key);
         }
 
         @Test

@@ -26,6 +26,25 @@
 # 増加は常に CI fail。減少は該当実装差分と同じPRでのみ許可（是正したら必ずこの行を削る）。
 # 最終目標は baseline ゼロ。
 #
+# ------------------------------------------------------------------------------
+# 影響区分（任務5 / Codex 独立検分を受けた追加。エントリ行の末尾に " | <区分>" で付ける）
+# ------------------------------------------------------------------------------
+# ここに並ぶ違反は「原則5 に違反している」という点では一貫しているが、
+# 性質の異なる2種類が混在しており、是正の手当ては同じとは限らない。
+# ロット割り当ての前に機械可読な形で区別できるよう、区分を列として持つ。
+#
+#   ROLLBACK_COUPLED  (i)  通知の失敗が業務トランザクションを巻き戻す。#2990 が問題にしている本体。
+#                          委譲先が無印（＝呼び出し元の TX にそのまま参加）／同一 TX 内の直接発火。
+#   ORDERING_ONLY     (ii) 巻き戻しはしないが「業務コミット後」という因果順序を保証しない。
+#                          委譲先が @Async / REQUIRES_NEW で別スレッド・別TXに逃げている形。
+#                          業務側が後でロールバックしても通知だけ残る「逆向きの不整合」が通る。
+#
+# 区分の無い行は「未分類」。全109件の分類は後続ロットで埋める前提であり、
+# 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
+# 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
+#
+# CLASSIFIED_FLOOR: 9
+#
 
 # --- 2026-09-01 の是正（Codex 独立検分の指摘: 番人の偽陽性）---
 # 初回投入の97件のうち8件は通知発火ではなく、番人の綴り一致の欠陥だった。
@@ -168,12 +187,30 @@ com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX
 # 本PRの差分が生んだものではなく、以前から存在していて番人に見えていなかった負債である。
 # 9件すべて呼び出し元の @Transactional（クラス単位を含む）を実地確認済み・偽陽性ゼロ。
 # 是正は L1 以降のロットへ回す（CENSUS_FLOOR 100 -> 109）。
-com.mannschaft.app.digest.service.DigestGenerationService#generate -> TX_NOTIFY_VIA_DELEGATE
-com.mannschaft.app.digest.service.DigestGenerationService#regenerate -> TX_NOTIFY_VIA_DELEGATE
-com.mannschaft.app.directmail.service.DirectMailService#sendMail -> TX_NOTIFY_VIA_DELEGATE
-com.mannschaft.app.errorreport.service.ErrorReportService#recordBackendException -> TX_NOTIFY_VIA_DELEGATE
-com.mannschaft.app.payment.connect.ConnectAccountService#promoteHeldEscrowsForPayee -> TX_NOTIFY_VIA_DELEGATE
-com.mannschaft.app.recruitment.service.PersonalMarketListingService#cancel -> TX_NOTIFY_VIA_DELEGATE
-com.mannschaft.app.schedule.batch.ProxyDelegationCleanupBatchService#cleanupScheduleDelegations -> TX_NOTIFY_VIA_DELEGATE
-com.mannschaft.app.schedule.service.ScheduleAttendanceService#respondAttendance -> TX_NOTIFY_VIA_DELEGATE
-com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX_NOTIFY_VIA_DELEGATE
+#
+# 影響区分は委譲先メソッドの宣言を1件ずつ実地確認して付けた（内訳: ROLLBACK_COUPLED 4 / ORDERING_ONLY 5）:
+#   DigestGenerationService#generate/#regenerate  -> DigestAsyncExecutor#generateAiDigestAsync
+#       @Async + @Transactional（別スレッド・別TX）              ... ORDERING_ONLY
+#   DirectMailService#sendMail                    -> NotificationCreditService#consume
+#       @Transactional（既定 REQUIRED = 呼び出し元のTXに参加）   ... ROLLBACK_COUPLED
+#   ErrorReportService#recordBackendException     -> ErrorReportAsyncExecutor#recordBackendException
+#       @Async("event-pool") + @Transactional                    ... ORDERING_ONLY
+#   ConnectAccountService#promoteHeldEscrowsForPayee -> EscrowLifecycleService#promoteHeldEscrow
+#       @Transactional(REQUIRES_NEW)                             ... ORDERING_ONLY
+#   PersonalMarketListingService#cancel           -> RecruitmentListingService#cancelPersonalListing
+#       @Transactional(REQUIRED)                                 ... ROLLBACK_COUPLED
+#   ProxyDelegationCleanupBatchService#cleanupScheduleDelegations -> ScheduleDelegationService#cancelOnMemberLeft
+#       @Transactional(REQUIRED)                                 ... ROLLBACK_COUPLED
+#   ScheduleAttendanceService#respondAttendance   -> ScheduleDelegationService#onDelegatorAttendanceChanged
+#       @Transactional(REQUIRED)                                 ... ROLLBACK_COUPLED
+#   ShiftBudgetFailedEventService#retry           -> ShiftBudgetRetryExecutor#execute
+#       @Transactional(REQUIRES_NEW)                             ... ORDERING_ONLY
+com.mannschaft.app.digest.service.DigestGenerationService#generate -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
+com.mannschaft.app.digest.service.DigestGenerationService#regenerate -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
+com.mannschaft.app.directmail.service.DirectMailService#sendMail -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
+com.mannschaft.app.errorreport.service.ErrorReportService#recordBackendException -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
+com.mannschaft.app.payment.connect.ConnectAccountService#promoteHeldEscrowsForPayee -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
+com.mannschaft.app.recruitment.service.PersonalMarketListingService#cancel -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
+com.mannschaft.app.schedule.batch.ProxyDelegationCleanupBatchService#cleanupScheduleDelegations -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
+com.mannschaft.app.schedule.service.ScheduleAttendanceService#respondAttendance -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
+com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY

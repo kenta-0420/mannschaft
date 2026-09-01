@@ -26,6 +26,17 @@ public final class NotificationFixtureStubs {
         public void notifyAllPreAuthorized(Object... args) {
             // 検体用スタブ。実処理は持たない。
         }
+
+        /**
+         * 語彙の外にある API。メソッド参照ゲートの変異テストで使う。
+         *
+         * <p>「レシーバの型がその名前の API を宣言している」という条件だけでは通してしまう形を
+         * 語彙の完全一致が落としていることを確かめるため、<b>宣言はされているが語彙に一致しない</b>
+         * 名前が必要になる。
+         */
+        public Object toResponse(Object... args) {
+            return null;
+        }
     }
 
     /** {@code NotificationDeliveryRunner} 相当（{@code sendOne} を持つ配送 Runner）。 */
@@ -80,6 +91,19 @@ public final class NotificationFixtureStubs {
         /** {@code @Transactional} は無いが、呼び出し元の業務TXにそのまま参加する。 */
         public void send(Long userId) {
             notificationHelper.notify(userId, "TYPE", "件名", "本文");
+        }
+    }
+
+    /**
+     * {@link WorkerStub} と<b>同じメソッド名を持つが通知しない</b>ワーカー相当。
+     *
+     * <p>ローカル変数がフィールドをシャドーイングする検体（Codex 独立検分 条件2）で使う。
+     * 「どちらの型で判定するか」によって結論が反転する状況を作るのが目的なので、
+     * {@code send} という綴りは {@link WorkerStub} と揃えたうえで中身は通知しない。
+     */
+    public static class SilentWorkerStub {
+        public void send(Long userId) {
+            // 通知しない。検体の対照として存在する。
         }
     }
 

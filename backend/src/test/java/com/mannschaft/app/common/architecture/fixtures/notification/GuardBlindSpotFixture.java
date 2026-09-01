@@ -4,6 +4,7 @@ import com.mannschaft.app.common.architecture.fixtures.notification.Notification
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.HelperStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.RepositoryStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.RunnerStub;
+import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.SilentWorkerStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.WorkerStub;
 import java.util.function.Consumer;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,14 +13,23 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * 通知番人の<b>死角</b>を固定する検体 — Codex の独立検分（PR #3006）が挙げた8形状。
+ * 通知番人の<b>死角</b>を固定する検体 — Codex の独立検分（PR #3006 / #3048）が挙げた形状。
  *
  * <p><b>Issue #3039 の更新</b>: 8形状のうち<b>形状1（別 Bean 委譲）・2（{@code TransactionTemplate}）・
  * 3（命名語彙の外の API）・4（合成アノテーション）・7（オーバーロード畳み込み）は塞いだ</b>。
  * 塞いだものは「検出されることを確かめるテスト」へ移してある（記録が古いままだと
- * 次の担当者が死角だと誤認するため）。塞がないままなのは<b>形状8（メソッド参照）だけ</b>で、
- * これは本番に0件であり、塞ぐと正しい遅延実行まで違反にする偽陽性を生むという理由で
- * 契約（{@code backend/.claudecode.md} 原則5-2）へ回した。
+ * 次の担当者が死角だと誤認するため）。
+ *
+ * <p><b>Codex 独立検分（PR #3048）の更新</b>:
+ * <ul>
+ *   <li><b>形状8（メソッド参照）も塞いだ</b>。かつては「本番0件だから契約文書で足りる」としていたが、
+ *       文書は追加された瞬間には効かない。語彙の完全一致＋レシーバ型が当該 API を宣言していること、
+ *       という2条件で偽陽性を避けつつ機械ゲートにした（{@code NOTIFY_METHOD_REFERENCE}）。</li>
+ *   <li><b>形状9（ローカル変数によるフィールドのシャドーイング）は塞げない</b>。
+ *       字句走査にスコープが無いためである。ただし<b>先勝ちで黙って片方を採るのはやめた</b>——
+ *       候補間で判定が割れたら「判定不能」として番人を落とす。
+ *       この検体は「違反として検出される」のではなく「曖昧性として報告される」ことが固定される。</li>
+ * </ul>
  *
  * <h2>なぜ「検出できない形」を検体として持つのか</h2>
  * <p>従来の負例 fixture には<b>番人が構文的に見逃す形が1つも入っていなかった</b>ため、
@@ -44,6 +54,8 @@ public class GuardBlindSpotFixture {
     private final RepositoryStub repository = new RepositoryStub();
     private final GatewayStub gateway = new GatewayStub();
     private final WorkerStub notificationWorker = new WorkerStub();
+    /** 形状9（シャドーイング）用。ローカル変数に同じ名前で隠される側。 */
+    private final WorkerStub shadowedWorker = new WorkerStub();
     /** 本物の Spring {@code TransactionTemplate}。検体は走査されるだけで実行されないため null で足りる。 */
     private final TransactionTemplate transactionTemplate = null;
 
@@ -154,27 +166,53 @@ public class GuardBlindSpotFixture {
         notificationHelper.notify(userId, "TYPE", "件名", "本文");
     }
 
-    // ------------------------------------------------------------------
-    // 塞がない形（原理的に判定不能。隠さず検体として持つ）
-    // ------------------------------------------------------------------
-
     /**
-     * 形状8: 通知をメソッド参照として {@code Consumer} に載せ、後から呼ぶ。
+     * 形状8: 通知発火 API をメソッド参照として {@code Consumer} に載せ、後から呼ぶ。
      *
      * <p>参照の<b>生成</b>は TX 内だが<b>実行</b>がどこで起きるかは字句からは決まらない
      * （別スレッド・コミット後・そもそも呼ばれない、のいずれもありうる）。
-     * 呼び出し括弧が無いため綴り一致にも掛からない。
+     * 呼び出し括弧が無いため通常の綴り一致にも掛からない。
      *
-     * <p><b>塞がないと決めた根拠</b>（Issue #3039）: {@code src/main/java} に
-     * {@code ::notify} / {@code ::sendOne} / {@code ::publishNotification} 等は<b>0件</b>（実測）。
-     * 「生成位置＝実行位置」と決め打つ判定を足すと、正しい遅延実行まで違反にする偽陽性を生む。
-     * 契約として {@code backend/.claudecode.md} 原則5-2 に「通知をメソッド参照で遅延させない」を明文化した。
+     * <p><b>Issue #3039 / Codex 独立検分 条件3 で機械ゲートを足した</b>。かつては
+     * 「本番0件だから契約文書に書くだけでよい」としていたが、書いてあるだけでは追加された瞬間に
+     * 番人が静かに見逃す。実行位置が決まらないということは<b>「AFTER_COMMIT 境界の後だ」とも言えない</b>
+     * のだから、許可された入口の外では一律に違反として扱うのが契約に忠実である。
+     *
+     * <p>偽陽性は<b>型</b>で避ける: 語彙の完全一致に加えて、レシーバの型が実際にその名前の API を
+     * 宣言していることを要求する。main に7件ある {@code ::toNotificationResponse} /
+     * {@code ::getNotifyTeamSlotNoteUpdates}（mapper・getter）は語彙の完全一致で落ちる。
      */
     @Transactional
     public void notifyViaMethodReference(Long userId) {
         repository.save(userId);
         Consumer<Long> sink = notificationHelper::notify;
         sink.accept(userId);
+    }
+
+    // ------------------------------------------------------------------
+    // 塞げない形（原理的に判定不能。検出できるフリをせず「判定不能」として落とす）
+    // ------------------------------------------------------------------
+
+    /**
+     * 形状9: ローカル変数がフィールドを<b>シャドーイング</b>する（Codex 独立検分 条件2）。
+     *
+     * <p>番人の {@code declaredTypes} はスコープを持たず、フィールド・引数・ローカルを
+     * 1つの表に集める。かつては先勝ちで<b>宣言順の早いフィールド（{@code WorkerStub}）を黙って採用</b>して
+     * いたため、実際に呼ばれているのはローカル（{@code SilentWorkerStub}＝通知しない）なのに
+     * 「通知を発火する委譲」として違反に数える偽陽性が原理的に起こりえた。
+     *
+     * <p><b>塞げるか</b>: 正しく解くにはスコープ解析が要り、字句走査の範囲では実装できない。
+     * そこで<b>候補を捨てない</b>形に変え、候補間で判定が割れたときは違反でも合格でもなく
+     * {@code ScanResult#ambiguities()}（＝判定不能）として番人を落とすようにした。
+     * したがってこの検体は「違反として検出される」のではなく
+     * <b>「曖昧性として報告される」</b>ことがテストで固定される。
+     * 検出できないものを検出できるフリのテストで包まないための形である。
+     */
+    @Transactional
+    public void localShadowsField(Long userId) {
+        repository.save(userId);
+        SilentWorkerStub shadowedWorker = new SilentWorkerStub();
+        shadowedWorker.send(userId);
     }
 
     // ------------------------------------------------------------------
