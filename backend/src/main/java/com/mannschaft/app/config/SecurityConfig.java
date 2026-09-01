@@ -339,6 +339,9 @@ public class SecurityConfig {
                 // トークン総当りは PublicApiRateLimitFilter で公開 file-links バケットとしてレート制限する。
                 .requestMatchers(HttpMethod.POST, "/api/v1/public/file-links/*/access").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/public/file-links/*/download-url").permitAll()
+                // F20.1: 公開価格はこの exact GET だけを未認証公開する。その他のmethodはdeny-by-defaultで認証必須。
+                // PublicApiRateLimitFilter の PUBLIC_BILLING zone（認証状態によらず60/min/IP）で総当りを抑止する。
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/billing/plans").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/posts/*").permitAll()
