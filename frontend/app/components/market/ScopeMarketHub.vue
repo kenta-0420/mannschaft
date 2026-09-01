@@ -14,12 +14,13 @@ const { t } = useI18n()
 const router = useRouter()
 const recruitmentApi = useRecruitmentApi()
 const { resolveOrganizationNumericId } = useOrganizationNumericId()
-const { error } = useNotification()
+const { error, success } = useNotification()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess(props.scopeType, toRef(props, 'scopeId'))
 
 const listings = ref<RecruitmentListingSummaryResponse[]>([])
 const loading = ref(false)
 const selectedListingId = ref<number | null>(null)
+const cancellingListingId = ref<number | null>(null)
 const routes = computed(() => getScopeMarketRoutes(props.scopeType, props.scopeId))
 
 async function loadListings() {
@@ -50,6 +51,22 @@ function goToHistory() {
 
 function selectForMatching(listingId: number) {
   selectedListingId.value = listingId
+}
+
+async function cancelListing(listing: RecruitmentListingSummaryResponse) {
+  if (!window.confirm(t('recruitment.confirmModal.cancel.message'))) return
+  cancellingListingId.value = listing.id
+  try {
+    await recruitmentApi.cancelListing(listing.id, {
+      reason: t('recruitment.action.cancelListing'),
+    })
+    success(t('recruitment.action.cancelledListing'))
+    await loadListings()
+  } catch (cause) {
+    error(String(cause))
+  } finally {
+    cancellingListingId.value = null
+  }
 }
 
 onMounted(async () => {
@@ -152,6 +169,18 @@ watch(
               severity="secondary"
               outlined
               @click="router.push(`/recruitment-listings/${listing.id}`)"
+            />
+            <Button
+              v-if="!['CANCELLED', 'AUTO_CANCELLED', 'COMPLETED'].includes(listing.status)"
+              :label="t('recruitment.action.cancelListing')"
+              icon="pi pi-times"
+              size="small"
+              severity="danger"
+              outlined
+              :disabled="!isAdminOrDeputy"
+              :loading="cancellingListingId === listing.id"
+              :data-testid="`market-listing-cancel-${listing.id}`"
+              @click="cancelListing(listing)"
             />
           </div>
         </article>

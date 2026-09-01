@@ -91,6 +91,15 @@ public enum RecruitmentErrorCode implements ErrorCode {
     /** 短時間の申込多すぎ（レート制限 → 429） */
     APPLY_RATE_LIMIT_EXCEEDED("RECRUITMENT_208", "短時間に多くの申込を行いました。しばらく経ってから再試行してください", Severity.WARN),
 
+    /** start_at >= end_at */
+    INVALID_EVENT_TIME_RANGE("RECRUITMENT_216", "開催終了は開催開始より後に指定してください", Severity.WARN),
+
+    /** application_deadline >= start_at */
+    INVALID_APPLICATION_DEADLINE("RECRUITMENT_217", "応募締切は開催開始より前に指定してください", Severity.WARN),
+
+    /** auto_cancel_at > application_deadline */
+    INVALID_AUTO_CANCEL_AT("RECRUITMENT_218", "自動キャンセル判定は応募締切以前に指定してください", Severity.WARN),
+
     // ========================================
     // 15.4 ペナルティ・キャンセル料エラー (300〜399)
     // ========================================

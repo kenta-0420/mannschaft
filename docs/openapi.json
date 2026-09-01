@@ -74719,7 +74719,7 @@
         "tags": [
           "personal-market-listing-controller"
         ],
-        "summary": "個人札のDRAFT取消",
+        "summary": "個人札の取消",
         "operationId": "cancel_10",
         "parameters": [
           {
@@ -75050,6 +75050,31 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/me/confirmable-notifications/{notificationId}/confirm": {
+      "post": {
+        "tags": [
+          "確認通知（個人）"
+        ],
+        "summary": "自分宛ての確認通知を確認済みにする",
+        "operationId": "confirm_6",
+        "parameters": [
+          {
+            "name": "notificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "確認成功"
           }
         }
       }

@@ -83,6 +83,7 @@
       "audience": "Teams und Organisationen",
       "audiencePlaceholder": "Mindestens eine Gruppe auswählen",
       "audienceRequired": "Wählen Sie mindestens ein Team oder eine Organisation aus.",
+      "visibilityRequiredToPublish": "Wählen Sie vor der Veröffentlichung Öffentlich oder ausgewählte Teams/Organisationen.",
       "publish": "Veröffentlichen",
       "published": "Angebot veröffentlicht.",
       "title": "Mein Markt",
@@ -98,15 +99,15 @@
       "created": "Entwurf erstellt.",
       "loadFailed": "Dein Markt konnte nicht geladen werden.",
       "saveFailed": "Entwurf konnte nicht gespeichert werden.",
-      "cancel": "Entwurf abbrechen",
-      "cancelled": "Entwurf abgebrochen.",
-      "cancelReason": "Vom persönlichen Markt abgebrochen",
-      "cancelConfirm": "Diesen Entwurf abbrechen?",
+      "cancel": "Angebot zurückziehen",
+      "cancelled": "Angebot zurückgezogen.",
+      "cancelReason": "Vom persönlichen Markt zurückgezogen",
+      "cancelConfirm": "Dieses Angebot zurückziehen? Veröffentlichte Angebote betreffen auch Bewerber.",
       "close": "Schließen",
       "edit": "Entwurf bearbeiten",
       "save": "Speichern",
       "updated": "Entwurf aktualisiert.",
-      "draftOnly": "Persönliche Aushänge werden derzeit als private Entwürfe gespeichert. Veröffentlichung, Bewerbungen und Zahlungen sind noch nicht verfügbar."
+      "draftOnly": "Gib die Pflichtangaben ein und speichere zuerst einen privaten Entwurf. Danach kannst du ihn prüfen und veröffentlichen. Zahlungen sind für persönliche Angebote noch nicht verfügbar."
     },
     "visibility": {
       "public": "Öffentlich",

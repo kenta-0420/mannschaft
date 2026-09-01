@@ -97,7 +97,7 @@ public class PersonalMarketListingController {
 
     @SelfScopedEndpoint("個人札の所有者を認証済みユーザーに固定する")
     @PostMapping("/{id}/cancel")
-    @Operation(summary = "個人札のDRAFT取消")
+    @Operation(summary = "個人札の取消")
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> cancel(
             @PathVariable Long id, @RequestBody(required = false) CancelRecruitmentListingRequest request) {
         return ResponseEntity.ok(ApiResponse.of(personalMarketListingService.cancel(

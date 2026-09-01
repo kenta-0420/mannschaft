@@ -83,6 +83,7 @@
       "audience": "Equipos y organizaciones",
       "audiencePlaceholder": "Selecciona uno o más grupos",
       "audienceRequired": "Selecciona al menos un equipo u organización.",
+      "visibilityRequiredToPublish": "Elige Público o equipos/organizaciones seleccionados antes de publicar.",
       "publish": "Publicar",
       "published": "Anuncio publicado.",
       "title": "Mi mercado",
@@ -98,15 +99,15 @@
       "created": "Borrador creado.",
       "loadFailed": "No se pudo cargar tu mercado.",
       "saveFailed": "No se pudo guardar el borrador.",
-      "cancel": "Cancelar borrador",
-      "cancelled": "Borrador cancelado.",
-      "cancelReason": "Cancelado desde el mercado personal",
-      "cancelConfirm": "¿Cancelar este borrador?",
+      "cancel": "Retirar anuncio",
+      "cancelled": "Anuncio retirado.",
+      "cancelReason": "Retirado del mercado personal",
+      "cancelConfirm": "¿Retirar este anuncio? Si ya está publicado, afectará a los solicitantes.",
       "close": "Cerrar",
       "edit": "Editar borrador",
       "save": "Guardar",
       "updated": "Borrador actualizado.",
-      "draftOnly": "Los anuncios personales se guardan como borradores privados. La publicación, las solicitudes y los pagos aún no están disponibles."
+      "draftOnly": "Completa los campos obligatorios y guarda primero un borrador privado. Después podrás revisarlo y publicarlo. Los pagos aún no están disponibles para anuncios personales."
     },
     "visibility": {
       "public": "Público",

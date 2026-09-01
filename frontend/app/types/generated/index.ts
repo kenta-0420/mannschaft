@@ -2064,13 +2064,13 @@ export interface paths {
         get?: never;
         /**
          * チームのプラン変更
-         * @description TEAM スコープ。ADMIN のみ。
+         * @description TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。
          */
         put: operations["changeForTeam"];
         post?: never;
         /**
          * チームの契約解約
-         * @description TEAM スコープ。ADMIN のみ。
+         * @description TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。
          */
         delete: operations["cancelForTeam"];
         options?: never;
@@ -4236,13 +4236,13 @@ export interface paths {
         get?: never;
         /**
          * 組織のプラン変更
-         * @description ORG スコープ。ADMIN のみ。
+         * @description ORG スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。
          */
         put: operations["changeForOrg"];
         post?: never;
         /**
          * 組織の契約解約
-         * @description ORG スコープ。ADMIN のみ。
+         * @description ORG スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。
          */
         delete: operations["cancelForOrg"];
         options?: never;
@@ -11745,7 +11745,7 @@ export interface paths {
         put?: never;
         /**
          * チームの契約作成
-         * @description TEAM スコープ。ADMIN のみ。Idempotency-Key 必須。
+         * @description TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。Idempotency-Key 必須。
          */
         post: operations["createForTeam_3"];
         delete?: never;
@@ -18804,7 +18804,7 @@ export interface paths {
         put?: never;
         /**
          * 組織の契約作成
-         * @description ORG スコープ。ADMIN のみ。Idempotency-Key 必須。
+         * @description ORG スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。Idempotency-Key 必須。
          */
         post: operations["createForOrg_3"];
         delete?: never;
@@ -19906,7 +19906,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 個人札のDRAFT取消 */
+        /** 個人札の取消 */
         post: operations["cancel_10"];
         delete?: never;
         options?: never;
@@ -20045,6 +20045,23 @@ export interface paths {
          * @description 指定エンティティをお気に入りに追加する。先頭（displayOrder=0）に挿入される。20件上限・重複チェック・エンティティ存在確認を行う。
          */
         post: operations["addFavorite_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/confirmable-notifications/{notificationId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 自分宛ての確認通知を確認済みにする */
+        post: operations["confirm_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -123682,6 +123699,26 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseFavoriteResponse"];
                 };
+            };
+        };
+    };
+    confirm_6: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notificationId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 確認成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

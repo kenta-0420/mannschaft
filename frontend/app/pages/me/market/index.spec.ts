@@ -25,8 +25,10 @@ describe('/me/market 個人市ページ契約', () => {
   it('個人札では決済を無効化し、専用公開操作を使う', () => {
     expect(source).toContain('hide-payment')
     expect(source).toContain('paymentEnabled: false')
-    expect(source).toContain("const visibility = ref<'PUBLIC' | 'SELECTED_SCOPES' | 'SCOPE_ONLY'>('SCOPE_ONLY')")
+    expect(source).toContain("const visibility = ref<'PUBLIC' | 'SELECTED_SCOPES' | 'SCOPE_ONLY'>('PUBLIC')")
     expect(source).toContain('api.publishMyMarketListing')
+    expect(source).toContain("listing.visibility === 'SCOPE_ONLY'")
+    expect(source).toContain('market.personal.visibilityRequiredToPublish')
     expect(source).not.toContain('paymentEnabled = true')
   })
 

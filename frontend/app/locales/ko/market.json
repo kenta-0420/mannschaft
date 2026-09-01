@@ -83,6 +83,7 @@
       "audience": "팀 및 조직",
       "audiencePlaceholder": "하나 이상의 그룹 선택",
       "audienceRequired": "팀 또는 조직을 하나 이상 선택하세요.",
+      "visibilityRequiredToPublish": "공개하기 전에 전체 공개 또는 선택한 팀/조직을 지정하세요.",
       "publish": "공개",
       "published": "공고를 공개했습니다.",
       "title": "내 장터",
@@ -98,15 +99,15 @@
       "created": "초안을 만들었습니다.",
       "loadFailed": "개인 장터를 불러오지 못했습니다.",
       "saveFailed": "초안을 저장하지 못했습니다.",
-      "cancel": "초안 취소",
-      "cancelled": "초안을 취소했습니다.",
-      "cancelReason": "개인 장터에서 취소",
-      "cancelConfirm": "이 초안을 취소하시겠습니까?",
+      "cancel": "공고 내리기",
+      "cancelled": "공고를 내렸습니다.",
+      "cancelReason": "개인 장터에서 공고 내림",
+      "cancelConfirm": "이 공고를 내리시겠습니까? 공개된 경우 신청자에게도 영향을 줍니다.",
       "close": "닫기",
       "edit": "초안 편집",
       "save": "저장",
       "updated": "초안을 업데이트했습니다.",
-      "draftOnly": "개인 모집은 현재 비공개 초안으로 저장됩니다. 공개, 지원 및 결제는 아직 사용할 수 없습니다."
+      "draftOnly": "필수 항목을 입력해 먼저 비공개 초안으로 저장하세요. 저장 후 내용을 확인하고 공개할 수 있습니다. 개인 공고의 결제는 아직 지원되지 않습니다."
     },
     "visibility": {
       "public": "공개",

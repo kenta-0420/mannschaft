@@ -55,7 +55,6 @@ public class MarketFinalizeService {
      */
     @Transactional
     public void sendFinalizeConfirmation(RecruitmentListingEntity listing) {
-        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
         if (listing.getStatus() != RecruitmentListingStatus.FULL) {
             return;
         }
@@ -72,13 +71,20 @@ public class MarketFinalizeService {
             return;
         }
 
-        ScopeType scopeType = listing.getScopeType() == RecruitmentScopeType.TEAM
-                ? ScopeType.TEAM : ScopeType.ORGANIZATION;
+        ScopeType scopeType = switch (listing.getScopeType()) {
+            // 個人札には membership の組織スコープが無いため、明示受信者付き PLATFORM を使う。
+            case PERSONAL -> ScopeType.PLATFORM;
+            case TEAM -> ScopeType.TEAM;
+            case ORGANIZATION -> ScopeType.ORGANIZATION;
+        };
 
         // 札主 scope の ADMIN を受信者にする。ADMIN 不在なら作成者本人にフォールバック。
-        List<Long> recipientUserIds = scopeType == ScopeType.TEAM
-                ? userRoleRepository.findUserIdsByTeamIdAndRoleName(listing.getScopeId(), "ADMIN")
-                : userRoleRepository.findUserIdsByScope("ORGANIZATION", listing.getScopeId());
+        List<Long> recipientUserIds = switch (scopeType) {
+            case PLATFORM -> List.of(listing.getCreatedBy());
+            case TEAM -> userRoleRepository.findUserIdsByTeamIdAndRoleName(listing.getScopeId(), "ADMIN");
+            case ORGANIZATION -> userRoleRepository.findUserIdsByScope("ORGANIZATION", listing.getScopeId());
+            default -> List.of();
+        };
         if (recipientUserIds == null || recipientUserIds.isEmpty()) {
             recipientUserIds = List.of(listing.getCreatedBy());
         }
@@ -118,7 +124,6 @@ public class MarketFinalizeService {
             log.warn("F22.1 市: 最終認証対象の札が不在（削除済み等）: listingId={}", listingId);
             return;
         }
-        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
         if (listing.getStatus() != RecruitmentListingStatus.FULL) {
             // 先勝ち COMPLETED / バッチによる AUTO_CANCELLED 等 → 冪等 no-op。
             log.info("F22.1 市: 最終認証 no-op（FULL 以外）: listingId={}, status={}",

@@ -4,7 +4,8 @@ import type { SnoozePreset } from '~/utils/snoozePreset'
 import { computeSnoozeUntil } from '~/utils/snoozePreset'
 
 const { getNotifications, markAsRead, markAsUnread, markAllAsRead, snooze } = useNotificationApi()
-const { confirmNotification, getNotificationDetail } = useConfirmableNotificationApi()
+const { confirmNotification, confirmPersonalNotification, getNotificationDetail }
+  = useConfirmableNotificationApi()
 const { confirmClosure } = useEmergencyClosureApi()
 const { showError } = useNotification()
 const { t } = useI18n()
@@ -247,18 +248,26 @@ function getConfirmableSummary(notif: NotificationResponse): UnconfirmedSummary 
 
 /** 確認通知の「確認する」ボタンをクリックした時の処理 */
 async function onConfirmNotification(notif: NotificationResponse) {
-  if (!notif.scopeType || !notif.scopeId || !notif.sourceId) {
+  if (!notif.scopeType || !notif.sourceId) {
     showError('確認通知の情報が不足しています')
     return
   }
-  // scopeTypeをTEAM/ORGANIZATIONに変換（PersonalやSystemには来ない想定）
-  const scopeType = notif.scopeType as 'TEAM' | 'ORGANIZATION'
-  if (scopeType !== 'TEAM' && scopeType !== 'ORGANIZATION') {
+  const scopeType = notif.scopeType
+  if (scopeType !== 'TEAM' && scopeType !== 'ORGANIZATION' && scopeType !== 'SYSTEM') {
     showError('スコープが不正です')
     return
   }
   try {
-    await confirmNotification(scopeType, notif.scopeId, notif.sourceId)
+    if (scopeType === 'SYSTEM') {
+      await confirmPersonalNotification(notif.sourceId)
+    }
+    else {
+      if (!notif.scopeId) {
+        showError('確認通知の情報が不足しています')
+        return
+      }
+      await confirmNotification(scopeType, notif.scopeId, notif.sourceId)
+    }
     await markAsRead(notif.id)
     notif.isRead = true
     toast.add({ severity: 'success', summary: '確認しました', life: 3000 })
