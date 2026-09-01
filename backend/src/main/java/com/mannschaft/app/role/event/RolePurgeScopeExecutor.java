@@ -44,16 +44,34 @@ public class RolePurgeScopeExecutor {
      * ロールバックされるのは<b>このスコープの分だけ</b>であり、呼び出し元や他スコープの
      * トランザクションには影響しない。</p>
      *
+     * <p><b>検分反映（Codex第4巡 P1-a）</b>: {@code isAdmin} の場合、承継フック
+     * （{@link RoleSuccessionService#forceTransferForPurge}）の結果が
+     * {@link RoleSuccessionService.PurgeSuccessionResult#RETRY_LATER} のときは、
+     * <b>{@code removeMemberWithoutAdminCheck} を呼ばずに例外を投げる</b>。承継が未完了
+     * （旧 ADMIN が引き続きこのスコープの唯一の ADMIN）のまま除名すると、承継しないまま
+     * 旧 ADMIN 行だけが消えて「ADMIN 0」が発生するため。本メソッドは
+     * {@code REQUIRES_NEW}（P1-1）なので、この例外はこのスコープ分だけをロールバックし、
+     * 呼び出し元 {@code RolePurgeEventListener} の既存の失敗継続ルール（failed カウント・
+     * completion_status を SUCCESS にしない）に乗って再配送 / 補正バッチでの再試行に委ねる。</p>
+     *
      * @param userId    退会（purge）対象ユーザー ID
      * @param scopeId   対象スコープ ID
      * @param scopeType TEAM / ORGANIZATION
      * @param isAdmin   対象ユーザーがこのスコープで ADMIN であったか（承継フック要否の判定）
      * @param purgeId   冪等キー補助情報（監査ログ用）
+     * @throws IllegalStateException 承継が RETRY_LATER で未完了のまま終わった場合
+     *                                （呼び出し元の失敗カウントへ乗せるため意図的に投げる）
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processScope(Long userId, Long scopeId, String scopeType, boolean isAdmin, UUID purgeId) {
         if (isAdmin) {
-            roleSuccessionService.forceTransferForPurge(scopeId, scopeType, userId, purgeId);
+            RoleSuccessionService.PurgeSuccessionResult result =
+                    roleSuccessionService.forceTransferForPurge(scopeId, scopeType, userId, purgeId);
+            if (result == RoleSuccessionService.PurgeSuccessionResult.RETRY_LATER) {
+                throw new IllegalStateException(
+                        "承継未完了（RETRY_LATER）のためremoveMemberWithoutAdminCheckを実行せず失敗扱いにする: "
+                                + "scopeType=" + scopeType + ", scopeId=" + scopeId + ", userId=" + userId);
+            }
         }
         roleService.removeMemberWithoutAdminCheck(scopeId, scopeType, userId);
     }
