@@ -38,6 +38,11 @@ Codex は設計、調査、実装、修正、テスト、文書更新など通�
 - 大名コマンドの呼び出しにはプロジェクトスキル `mannschaft-daimyo` を使う。このスキルは `.claude/commands/*.md` を正本として参照する。
 - Codex 専用に同内容の規約、検分チェックリスト、引継書を複製しない。Codex 固有の差分が増えた場合だけ、このファイルへ短く追記する。
 
+### Windows の GitHub 資格情報
+
+- Codex の通常コマンドは隔離ユーザー `codexsandboxoffline` で動くため、通常ユーザーが Windows Credential Manager に記憶した GitHub CLI 資格情報をそのまま利用できない。`gh pr checks/view/merge` など既存資格情報を使う GitHub 操作は、必要な最小コマンドだけサンドボックス外で実行する。
+- 通常実行の `gh` が 401 でも、直ちに資格情報の失効や Claude Code 側の障害と判断せず、サンドボックス外で同じ読み取りコマンドを再確認する。Windows に記憶済みの資格情報がある利用者へ、先に `gh auth login` を求めない。
+
 ## 自動進行（このプロジェクト限定）
 
 - ユーザーが開発要件・仕様・優先度の判断を求めていない限り、通常の開発フローは確認待ちにせず継続する。具体的には、worktree 作成、調査、実装、検証、commit、push、PR 作成、CI 監視、最新 main への追従、再CI、マージ、作業用 worktree／ブランチの片付けを自動で進める。
