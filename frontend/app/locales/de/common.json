@@ -1411,7 +1411,11 @@
           "detail": "Die Team-/Organisationsfilter sind vorübergehend nicht verfügbar. Termine werden weiterhin angezeigt. Bitte später erneut laden."
         },
         "hiddenNotice": "Die Ebene, in der du ihn erstellt hast, ist ausgeblendet",
-        "showIt": "Anzeigen"
+        "showIt": "Anzeigen",
+        "title": "Ebenen",
+        "count": "{count} Ebenen",
+        "color": "Farbe ändern",
+        "colorAuto": "Auf automatisch zurücksetzen"
       },
       "more": "+{count} weitere",
       "today": "Heute",
@@ -1430,6 +1434,20 @@
         "dragHint": "Ziehen, um einen Termin zu erstellen",
         "dragHintTouch": "Gedrückt halten und ziehen, um einen Termin zu erstellen",
         "selectedRange": "{start} – {end}"
+      },
+      "a11y": {
+        "selecting": "{start} bis {end} wird ausgewählt",
+        "emptySlot": "Frei",
+        "time": "{hour}:{minute}",
+        "weekGrid": "Woche vom {range}",
+        "slot": "{date} {time} {content}",
+        "allDayList": "Ganztägige Termine"
+      },
+      "error": {
+        "invalidColor": "Ungültiges Farbformat",
+        "notMember": "Du kannst die Einstellungen dieser Ebene nicht ändern",
+        "layerLimit": "Grenze für Ebeneneinstellungen erreicht",
+        "colorResetRefreshFailed": "Die Farbe wurde auf automatisch zurückgesetzt, aber der Kalender konnte nicht aktualisiert werden. Bitte lade die Seite neu."
       }
     }
   },

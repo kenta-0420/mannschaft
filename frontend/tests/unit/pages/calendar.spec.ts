@@ -14,8 +14,12 @@ import CalendarPage from '~/pages/calendar.vue'
  * チップの選択状態が一切変化しない」（§5.4/§9）。
  *
  * `selectedScopes` は script setup のクロージャ内にあり外部から直接参照できないため、
- * DOM 上のレイヤーチップの選択スタイル（`border-primary` 系クラスの有無）を通じて
- * 間接的に検証する。
+ * DOM 上のレイヤーチップの選択状態を通じて間接的に検証する。
+ *
+ * 【F03.19 W2-d2 での契約変更】レイヤーチップは `CalendarLayerChips` へ移り、選択状態は
+ * **`aria-pressed`** が正本になった（旧実装の `border-primary` / `border-surface-300` という
+ * CSS クラスは、チップがレイヤー色でインラインに塗られるようになったため存在しない）。
+ * 検証手段だけを移し、検証している事実（どのチップが選択されているか）は変えていない。
  */
 
 const scheduleApiMock = {
@@ -205,15 +209,15 @@ describe('pages/calendar.vue: AC-11 作成スコープと表示フィルタの�
 
     const teamChipBefore = chipFor('チームA')
     expect(teamChipBefore).toBeTruthy()
-    expect(teamChipBefore!.classes()).toContain('border-primary')
+    expect(teamChipBefore!.attributes('aria-pressed')).toBe('true')
 
     // ユーザーがチームAのレイヤーチップを非表示にする（表示フィルタから外す）
     await teamChipBefore!.trigger('click')
     await wrapper.vm.$nextTick()
 
     const teamChipAfterToggle = chipFor('チームA')!
-    expect(teamChipAfterToggle.classes()).not.toContain('border-primary')
-    expect(teamChipAfterToggle.classes()).toContain('border-surface-300')
+    expect(teamChipAfterToggle.attributes('aria-pressed')).toBe('false')
+    expect(teamChipAfterToggle.attributes('style')).toContain('background-color: transparent')
 
     // 作成スコープ Select を「個人」からチームAへ変更する
     const select = wrapper.get('[data-testid="create-scope-select"]')
@@ -222,14 +226,14 @@ describe('pages/calendar.vue: AC-11 作成スコープと表示フィルタの�
 
     // AC-11: 表示中のレイヤーチップの選択状態（チームAが非選択のまま）は一切変化しない
     const teamChipAfterScopeChange = chipFor('チームA')!
-    expect(teamChipAfterScopeChange.classes()).not.toContain('border-primary')
-    expect(teamChipAfterScopeChange.classes()).toContain('border-surface-300')
+    expect(teamChipAfterScopeChange.attributes('aria-pressed')).toBe('false')
+    expect(teamChipAfterScopeChange.attributes('style')).toContain('background-color: transparent')
 
     // 個人チップも変化しない（選択されたまま）。
     // F03.19 W2-a との統合修繕: 個人レイヤーの表示名は本戦役から `schedule.calendar.layer.personal`
     // 経由の翻訳になった（旧実装は '個人' 直書き）。テスト環境の既定ロケールは en のため 'Personal'。
     const personalChip = chipFor('Personal')!
-    expect(personalChip.classes()).toContain('border-primary')
+    expect(personalChip.attributes('aria-pressed')).toBe('true')
   })
 })
 
@@ -260,7 +264,7 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     // チームAのレイヤーチップを非表示にする
     await chipFor('チームA')!.trigger('click')
     await wrapper.vm.$nextTick()
-    expect(chipFor('チームA')!.classes()).not.toContain('border-primary')
+    expect(chipFor('チームA')!.attributes('aria-pressed')).toBe('false')
 
     // 作成スコープをチームAへ変更してから保存する
     const select = wrapper.get('[data-testid="create-scope-select"]')
@@ -280,13 +284,13 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     // 案内が現れる。表示フィルタはまだ書き換わっていない（P2: 押すまで変えない）
     const notice = wrapper.get('[data-testid="hidden-layer-notice"]')
     expect(notice.text()).toContain('チームA')
-    expect(chipFor('チームA')!.classes()).not.toContain('border-primary')
+    expect(chipFor('チームA')!.attributes('aria-pressed')).toBe('false')
 
     // 「表示する」ボタンを押すと、そのレイヤーだけが選択状態になる
     await wrapper.get('[data-testid="hidden-layer-show-button"]').trigger('click')
     await wrapper.vm.$nextTick()
 
-    expect(chipFor('チームA')!.classes()).toContain('border-primary')
+    expect(chipFor('チームA')!.attributes('aria-pressed')).toBe('true')
     expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
   })
 
@@ -313,7 +317,7 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     // チームAのレイヤーチップを非表示にする
     await chipFor('チームA')!.trigger('click')
     await wrapper.vm.$nextTick()
-    expect(chipFor('チームA')!.classes()).not.toContain('border-primary')
+    expect(chipFor('チームA')!.attributes('aria-pressed')).toBe('false')
 
     // 作成スコープ Select は「個人」のまま変更しない（上部とフォーム内の食い違いを作る）
     expect(wrapper.get<HTMLSelectElement>('[data-testid="create-scope-select"]').element.value).toBe('personal')
@@ -351,7 +355,7 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     await chipFor('チームA')!.trigger('click')
     await wrapper.vm.$nextTick()
 
-    expect(chipFor('チームA')!.classes()).toContain('border-primary')
+    expect(chipFor('チームA')!.attributes('aria-pressed')).toBe('true')
     expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
   })
 
@@ -424,8 +428,8 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     // 「案内が出ない」という形で検出できる）。
     await secondTeamChip!.trigger('click')
     await wrapper.vm.$nextTick()
-    expect(firstTeamChip!.classes()).toContain('border-primary')
-    expect(secondTeamChip!.classes()).not.toContain('border-primary')
+    expect(firstTeamChip!.attributes('aria-pressed')).toBe('true')
+    expect(secondTeamChip!.attributes('aria-pressed')).toBe('false')
 
     // 作成スコープ Select で2つ目のチーム（slug=team-b-second）を選ぶ
     const select = wrapper.get('[data-testid="create-scope-select"]')
@@ -447,8 +451,8 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     await wrapper.vm.$nextTick()
 
     const chipsAfter = chipsFor('チームB')
-    expect(chipsAfter[0]!.classes()).toContain('border-primary')
-    expect(chipsAfter[1]!.classes()).toContain('border-primary')
+    expect(chipsAfter[0]!.attributes('aria-pressed')).toBe('true')
+    expect(chipsAfter[1]!.attributes('aria-pressed')).toBe('true')
     expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
   })
 })
@@ -523,7 +527,7 @@ describe('pages/calendar.vue: AC-13 月/週ビュー切替', () => {
 
     // レイヤー選択（チップの選択状態）も保持される
     const teamChip = wrapper.findAll('button').find(b => b.text() === 'チームA')!
-    expect(teamChip.classes()).toContain('border-primary')
+    expect(teamChip.attributes('aria-pressed')).toBe('true')
 
     // 月へ戻しても再取得しない
     await wrapper.get('[data-testid="calendar-view-month"]').trigger('click')
@@ -540,4 +544,160 @@ describe('pages/calendar.vue: AC-13 月/週ビュー切替', () => {
     expect(wrapper.find('[data-testid="calendar-week-grid-stub"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="calendar-grid-stub"]').exists()).toBe(false)
   })
+})
+
+/**
+ * F03.19 §6.6.5 / AC-22c: 週ビューの `rangeSelect` と作成ダイアログの結線。
+ *
+ * 週ビュー・月ビューのスタブから明示的にイベントを発火させ、作成ダイアログ
+ * （ScheduleEventForm）へ渡る props を検証する。
+ */
+const RangeSelectWeekGridStub = defineComponent({
+  name: 'CalendarWeekGrid',
+  props: {
+    weekStart: String,
+    events: { type: Array, default: () => [] },
+    createScopeColor: { type: String, default: undefined },
+  },
+  emits: ['prevWeek', 'nextWeek', 'eventClick', 'reflectionClick', 'today', 'rangeSelect'],
+  setup(props, { emit }) {
+    return () => h('div', {
+      'data-testid': 'calendar-week-grid-stub',
+      'data-create-scope-color': props.createScopeColor ?? '',
+    }, [
+      h('button', {
+        'data-testid': 'emit-range-select',
+        'onClick': () => emit('rangeSelect', '2026-07-10T09:00:00+09:00', '2026-07-10T10:30:00+09:00'),
+      }, 'range'),
+    ])
+  },
+})
+
+const DateClickGridStub = defineComponent({
+  name: 'CalendarGrid',
+  props: { year: Number, month: Number, events: Array },
+  emits: ['prevMonth', 'nextMonth', 'dateClick', 'eventClick', 'reflectionClick', 'today'],
+  setup(_props, { emit }) {
+    return () => h('div', { 'data-testid': 'calendar-grid-stub' }, [
+      h('button', { 'data-testid': 'emit-date-click', 'onClick': () => emit('dateClick', '2026-07-15') }, 'date'),
+    ])
+  },
+})
+
+describe('pages/calendar.vue: 週ビューのグリッド選択と作成ダイアログの結線（F03.19 §6.6.5）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    scheduleApiMock.listPersonalSchedules.mockReset().mockResolvedValue(emptyPersonal)
+    scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [teamCalendarEntry()] })
+    scheduleApiMock.getMyCalendarLayers.mockReset().mockResolvedValue({ data: layersFixture })
+    ganttApiMock.getMyCalendarTodos.mockReset().mockResolvedValue(emptyTodos)
+    presetTeamStore()
+  })
+
+  /** PrimeVue Button の軽量スタブ。label をテキストとして描画し、クリックで実 DOM の click を出す。 */
+  const LabeledButtonStub = defineComponent({
+    name: 'Button',
+    props: { label: String, icon: String, size: String, text: Boolean, severity: String },
+    emits: ['click'],
+    setup(props, { emit }) {
+      return () => h('button', { type: 'button', onClick: (e: Event) => emit('click', e) }, props.label ?? props.icon ?? '')
+    },
+  })
+
+  async function mountWithRangeSelect() {
+    return mountCalendarPage({
+      DashboardWidgetCard: DashboardWidgetCardSlotStub,
+      CalendarWeekGrid: RangeSelectWeekGridStub,
+      CalendarGrid: DateClickGridStub,
+    })
+  }
+
+  async function toWeekView(wrapper: Awaited<ReturnType<typeof mountCalendarPage>>) {
+    await wrapper.get('[data-testid="calendar-view-week"]').trigger('click')
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+  }
+
+  it('rangeSelect を受けると作成ダイアログへ initialStartAt / initialEndAt が渡る', async () => {
+    const wrapper = await mountWithRangeSelect()
+    await toWeekView(wrapper)
+
+    await wrapper.get('[data-testid="emit-range-select"]').trigger('click')
+    await flushPromises()
+
+    const form = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    expect(form.props('visible')).toBe(true)
+    expect(form.props('initialStartAt')).toBe('2026-07-10T09:00:00+09:00')
+    expect(form.props('initialEndAt')).toBe('2026-07-10T10:30:00+09:00')
+  }, 60000)
+
+  it('AC-22c: 週ビューでドラッグした直後に月ビューの日付をクリックすると、時刻が漏れない', async () => {
+    const wrapper = await mountWithRangeSelect()
+    await toWeekView(wrapper)
+
+    await wrapper.get('[data-testid="emit-range-select"]').trigger('click')
+    await flushPromises()
+    const form = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    expect(form.props('initialStartAt')).toBe('2026-07-10T09:00:00+09:00')
+
+    // 月ビューへ戻して日付セルをクリックする（既存導線）
+    await wrapper.get('[data-testid="calendar-view-month"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="emit-date-click"]').trigger('click')
+    await flushPromises()
+
+    expect(form.props('initialDate')).toBe('2026-07-15')
+    expect(form.props('initialStartAt')).toBeUndefined()
+    expect(form.props('initialEndAt')).toBeUndefined()
+  }, 60000)
+
+  it('AC-22c: 範囲選択のあと「予定を追加」ボタンで開くと、時刻プリセットが漏れない', async () => {
+    const wrapper = await mountCalendarPage({
+      DashboardWidgetCard: DashboardWidgetCardSlotStub,
+      CalendarWeekGrid: RangeSelectWeekGridStub,
+      CalendarGrid: DateClickGridStub,
+      Button: LabeledButtonStub,
+    })
+    await toWeekView(wrapper)
+
+    // まず範囲選択で実際に値を入れる（値が入っていない状態から undefined を確かめても
+    // 何も検証したことにならないため、ここで「漏れうる状態」を必ず作る）。
+    await wrapper.get('[data-testid="emit-range-select"]').trigger('click')
+    await flushPromises()
+    const form = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    expect(form.props('initialStartAt')).toBe('2026-07-10T09:00:00+09:00')
+    expect(form.props('initialEndAt')).toBe('2026-07-10T10:30:00+09:00')
+
+    // 保存またはキャンセルでダイアログを閉じる
+    form.vm.$emit('update:visible', false)
+    await flushPromises()
+
+    // 「予定を追加」ボタン（日付クリックとは別の入口）から開き直す
+    // テスト環境の i18n は en を解決するため両方の表記を許容する（t('schedule.event_add')）。
+    const addButton = wrapper.findAll('button').find(b => b.text() === 'Add event' || b.text() === '予定を追加')
+    expect(addButton).toBeTruthy()
+    await addButton!.trigger('click')
+    await flushPromises()
+
+    expect(form.props('visible')).toBe(true)
+    expect(form.props('initialStartAt')).toBeUndefined()
+    expect(form.props('initialEndAt')).toBeUndefined()
+  }, 60000)
+
+  it('§6.6.6: 週ビューへ渡すハイライト色は作成スコープのレイヤー色である', async () => {
+    const wrapper = await mountWithRangeSelect()
+    await toWeekView(wrapper)
+
+    // 既定の作成スコープは「個人」= PERSONAL:0 のレイヤー色
+    expect(wrapper.get('[data-testid="calendar-week-grid-stub"]').attributes('data-create-scope-color'))
+      .toBe('#059669')
+
+    // 作成スコープをチームAへ変えると、チームAのレイヤー色になる（表示フィルタは参照しない）
+    await wrapper.get('[data-testid="create-scope-select"]').setValue('TEAM:t1')
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-testid="calendar-week-grid-stub"]').attributes('data-create-scope-color'))
+      .toBe('#2563eb')
+  }, 60000)
 })

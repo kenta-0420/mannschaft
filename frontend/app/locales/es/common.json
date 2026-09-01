@@ -1411,7 +1411,11 @@
           "detail": "Los filtros de equipo/organización no están disponibles temporalmente. Los eventos siguen mostrándose. Vuelve a intentarlo más tarde."
         },
         "hiddenNotice": "La capa en la que lo creaste está oculta",
-        "showIt": "Mostrar"
+        "showIt": "Mostrar",
+        "title": "Capas",
+        "count": "{count} capas",
+        "color": "Cambiar color",
+        "colorAuto": "Restablecer a automático"
       },
       "more": "+{count} más",
       "today": "Hoy",
@@ -1430,6 +1434,20 @@
         "dragHint": "Arrastra para crear un evento",
         "dragHintTouch": "Mantén pulsado y arrastra para crear un evento",
         "selectedRange": "{start} – {end}"
+      },
+      "a11y": {
+        "selecting": "Seleccionando de {start} a {end}",
+        "emptySlot": "Disponible",
+        "time": "{hour}:{minute}",
+        "weekGrid": "Semana del {range}",
+        "slot": "{date} {time} {content}",
+        "allDayList": "Eventos de todo el día"
+      },
+      "error": {
+        "invalidColor": "Formato de color no válido",
+        "notMember": "No puedes cambiar la configuración de esta capa",
+        "layerLimit": "Se alcanzó el límite de configuraciones de capa",
+        "colorResetRefreshFailed": "El color se restableció a automático, pero no se pudo actualizar el calendario. Recarga la página."
       }
     }
   },

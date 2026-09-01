@@ -16,7 +16,13 @@ import type { Dayjs } from 'dayjs'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 import { MINUTES_PER_DAY, dateToOrdinal, eventDayOccupancy, ordinalToDate, todayInTimezone } from '~/utils/calendarWeek'
 import type { GridPoint } from '~/composables/useGridRangeSelect'
-import { MIN_RANGE_MIN, snapMinutesForDensity, useGridRangeSelect } from '~/composables/useGridRangeSelect'
+import {
+  DEFAULT_DURATION_MIN,
+  MIN_RANGE_MIN,
+  snapMinutesForDensity,
+  snapToBoundary,
+  useGridRangeSelect,
+} from '~/composables/useGridRangeSelect'
 
 const { userTimezone } = useDatetime()
 const { t, locale } = useI18n()
@@ -439,6 +445,19 @@ function toUserTzRangeIso(dayIndex: number, startMin: number, endMin: number): [
   return [start.format(), end.format()]
 }
 
+/**
+ * §6.7.3 `prefers-reduced-motion: reduce`。ハイライトの追従アニメーションと
+ * 自動スクロールの補間を止め、即座にジャンプさせる。
+ *
+ * SSR では `window` が無いため既定 `false`（＝通常の動き）で描き、マウント後に実測して切り替える。
+ * `matchMedia` を持たない実行環境（jsdom の一部設定）でも例外にしない。
+ */
+const prefersReducedMotion = ref(false)
+onMounted(() => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+  prefersReducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+})
+
 const gridSelect = useGridRangeSelect({
   // このコンポーネント自体が週ビューなので常に有効。月ビュー／アジェンダビューは
   // そもそもこの composable を使わない（§6.6.2 の「週ビュー限定」＝ AC-22b）。
@@ -446,6 +465,7 @@ const gridSelect = useGridRangeSelect({
   snapMinutes: () => snapMinutesForDensity(HOUR_H),
   resolvePoint: resolveGridPoint,
   scrollEl: () => scrollEl.value,
+  reducedMotion: () => prefersReducedMotion.value,
   onCommit: (range) => {
     const [startAt, endAt] = toUserTzRangeIso(range.dayIndex, range.startMin, range.endMin)
     emit('rangeSelect', startAt, endAt)
@@ -495,6 +515,239 @@ onMounted(() => {
 })
 const dragHintText = computed(() =>
   t(isCoarsePointer.value ? 'schedule.calendar.week.dragHintTouch' : 'schedule.calendar.week.dragHint'))
+
+// ---- キーボード操作とアクセシビリティ（§6.7・AC-25 / AC-25b） ----
+
+/** 1スロットの分（15分）。`SNAP_MINUTES` の刻みと必ず一致する。 */
+const SLOT_MIN = 60 / SNAP_MINUTES.length
+
+/** 現在のスナップ単位(分)。ポインタ経路と同じ導出を使う（経路で刻みが変わってはならない）。 */
+function currentSnap(): number {
+  return snapMinutesForDensity(HOUR_H)
+}
+
+/**
+ * フォーカスセル。**グリッド全体で1タブストップ**とし（§6.7.1）、
+ * DOM のフォーカスはグリッドのコンテナに置いたまま、
+ * どのセルに居るかは `aria-activedescendant` で支援技術へ伝える（ロービングフォーカス）。
+ * 42×96 個のセルを個別のタブストップにすると `Tab` を数千回押す羽目になる。
+ */
+const focusDayIndex = ref(0)
+const focusMinutes = ref(EIGHT_AM_MIN)
+/** グリッドがフォーカスを持っているか。フォーカスリングの表示にだけ使う。 */
+const isGridFocused = ref(false)
+
+onMounted(() => {
+  // 週内に今日があればそこから始める。無ければ週頭。
+  focusDayIndex.value = todayColIndex.value >= 0 ? todayColIndex.value : 0
+})
+
+/** セルの DOM id（`aria-activedescendant` の参照先）。data-testid とは別名にして衝突を避ける。 */
+function slotDomId(dayIndex: number, minutes: number): string {
+  return `wg-slot-${dayIndex}-${minutes}`
+}
+
+const activeDescendantId = computed(() =>
+  slotDomId(focusDayIndex.value, snapToBoundary(focusMinutes.value, SLOT_MIN)))
+
+/**
+ * 読み上げ用の時刻（例 `9時00分`・§6.7.2）。
+ *
+ * `Intl.DateTimeFormat` の時刻書式は ja でも `9:00` になり、**読み上げでは「きゅうころんゼロゼロ」**の
+ * ように読まれうる。時刻の読み上げ表現はロケールごとの文言としてキー化する（§8）。
+ */
+function fmtA11yTime(minutes: number): string {
+  const m = Math.min(MINUTES_PER_DAY, Math.max(0, Math.floor(minutes)))
+  return t('schedule.calendar.a11y.time', { hour: Math.floor(m / 60), minute: pad(m % 60) })
+}
+
+/**
+ * 読み上げ用の日付（例 `8月6日 水曜日`）。
+ * `timeZone: 'UTC'` は必須（{@link ordinalToUtcNoon} と同根。UTC+14 の端末で1日ずれる）。
+ */
+const a11yDateFormatter = computed(() =>
+  new Intl.DateTimeFormat(locale.value, { month: 'long', day: 'numeric', weekday: 'long', timeZone: 'UTC' }))
+
+/** 1日あたりのスロット数（15分刻みで96個）。 */
+const SLOTS_PER_DAY = MINUTES_PER_DAY / SLOT_MIN
+
+/** 96個ぶんの時刻表記。全曜日で共通なので1本だけ作って使い回す。 */
+const a11yTimeLabels = computed(() =>
+  Array.from({ length: SLOTS_PER_DAY }, (_, i) => fmtA11yTime(i * SLOT_MIN)))
+
+/**
+ * 各 `gridcell` の `aria-label`（§6.7.2）。**時刻を必ず含める**。
+ * そのスロットに掛かっている予定があればタイトルを、無ければ「空き」を添える。
+ *
+ * **7×96 = 672 個ぶんをまとめて computed で持つ。**
+ * テンプレートから1セルずつ関数を呼ぶ形にすると、選択範囲が1段階伸びるたびに
+ * 672 回の `Intl` 整形と `t()` が走り、キーを押すたびに描画が固まる
+ * （実測: 並列実行下でテストが 5秒のタイムアウトに掛かった）。
+ * ラベルは**週・予定・ロケールだけの関数**であり選択状態には依存しないので、
+ * computed に置けばキー操作では一切再計算されない。
+ */
+const slotAriaLabels = computed<string[][]>(() => {
+  const emptyLabel = t('schedule.calendar.a11y.emptySlot')
+  const dateFormatter = a11yDateFormatter.value
+  const times = a11yTimeLabels.value
+  return weekDays.value.map((day, dayIndex) => {
+    const dateLabel = dateFormatter.format(ordinalToUtcNoon(day.ord))
+    const segs = classified.value.segmentsByDay[dayIndex] ?? []
+    return Array.from({ length: SLOTS_PER_DAY }, (_, i) => {
+      const minutes = i * SLOT_MIN
+      const titles = segs
+        .filter(seg => seg.startMin < minutes + SLOT_MIN && seg.endMin > minutes)
+        .map(seg => seg.event.title)
+      return t('schedule.calendar.a11y.slot', {
+        date: dateLabel,
+        time: times[i] ?? '',
+        content: titles.length > 0 ? titles.join(' ') : emptyLabel,
+      })
+    })
+  })
+})
+
+function slotAriaLabel(dayIndex: number, minutes: number): string {
+  return slotAriaLabels.value[dayIndex]?.[minutes / SLOT_MIN] ?? ''
+}
+
+/** そのセルが選択範囲に入っているか（`aria-selected`）。 */
+function isSlotSelected(dayIndex: number, minutes: number): boolean {
+  const sel = gridSelect.selection.value
+  if (!sel || sel.dayIndex !== dayIndex) return false
+  return minutes >= sel.startMin && minutes < sel.endMin
+}
+
+/** `role="grid"` の `aria-label`（例「2026年8月2日～8日の週」・§6.7.2）。 */
+const gridAriaLabel = computed(() => t('schedule.calendar.a11y.weekGrid', { range: weekLabel.value }))
+
+/** 選択範囲の変化を `aria-live="polite"` でアナウンスする文言（§6.7.2）。 */
+const selectionAnnouncement = computed(() => {
+  const sel = gridSelect.selection.value
+  if (!sel) return ''
+  return t('schedule.calendar.a11y.selecting', {
+    start: fmtA11yTime(sel.startMin),
+    end: fmtA11yTime(sel.endMin),
+  })
+})
+
+/**
+ * フォーカスセルが見えるところまでスクロールする。
+ * `reduce` 指定時は補間せず即座にジャンプする（§6.7.3）。
+ */
+function scrollFocusIntoView(): void {
+  const el = scrollEl.value
+  if (!el) return
+  const top = focusMinutes.value * MIN_H
+  const bottom = top + SLOT_H
+  let next = el.scrollTop
+  if (top < el.scrollTop) next = top
+  else if (bottom > el.scrollTop + el.clientHeight) next = bottom - el.clientHeight
+  if (next === el.scrollTop) return
+  if (!prefersReducedMotion.value && typeof el.scrollTo === 'function') {
+    el.scrollTo({ top: next, behavior: 'smooth' })
+    return
+  }
+  el.scrollTop = next
+}
+
+/**
+ * `↑` `↓`（Shift なし）: フォーカスをスナップ単位で動かす。
+ * **選択中に素の矢印を押したら選択は破棄する** — 選択の起点から離れたフォーカスを残すと、
+ * 次の `Enter` がどの範囲を確定するのか操作者に分からなくなる。
+ */
+function moveFocusMinutes(deltaMin: number): void {
+  gridSelect.cancel()
+  const snap = currentSnap()
+  const next = snapToBoundary(focusMinutes.value, snap) + deltaMin
+  focusMinutes.value = Math.min(MINUTES_PER_DAY - snap, Math.max(0, next))
+  scrollFocusIntoView()
+}
+
+/** `←` `→`: 前日・翌日へ。**週の端では前週・翌週へ繰り上がる**（§6.7.1）。 */
+function moveFocusDay(delta: number): void {
+  gridSelect.cancel()
+  const lastCol = weekDays.value.length - 1
+  const next = focusDayIndex.value + delta
+  if (next < 0) {
+    focusDayIndex.value = lastCol
+    emit('prevWeek')
+    return
+  }
+  if (next > lastCol) {
+    focusDayIndex.value = 0
+    emit('nextWeek')
+    return
+  }
+  focusDayIndex.value = next
+}
+
+/**
+ * `Shift` + `↑` `↓`: 選択範囲の延長・縮小（§6.7.1）。
+ * **ポインタ経路と同じ `beginAt` / `extendTo` を使う**（別系統の状態を作らない）。
+ * 縮小は composable の `normalizeRange` が最小15分で止める。
+ */
+function extendSelection(deltaMin: number): void {
+  if (!gridSelect.selection.value) {
+    // まだ選択が無いときの `Shift`+`↓` は「フォーカス位置から選択を開始する」。
+    // 何も無い状態での `Shift`+`↑`（縮小）は対象が無いので何もしない。
+    if (deltaMin <= 0) return
+    gridSelect.beginAt({ dayIndex: focusDayIndex.value, minutes: focusMinutes.value })
+    scrollFocusIntoView()
+    return
+  }
+  const sel = gridSelect.selection.value
+  gridSelect.extendTo(Math.min(MINUTES_PER_DAY, Math.max(0, sel.endMin + deltaMin)))
+  scrollFocusIntoView()
+}
+
+/**
+ * `Enter` / `Space`: 範囲選択中ならその範囲で、そうでなければフォーカス位置から既定60分で確定する。
+ *
+ * **どちらも composable の `commit()` へ落とす。** ドラッグ経路と出口を共有することが、
+ * 「経路が違うだけで到達点は同一」（§6.7.1 末尾）の実装上の担保である。
+ */
+function commitFromKeyboard(): void {
+  if (gridSelect.selection.value) {
+    gridSelect.commit()
+    return
+  }
+  gridSelect.beginAt({ dayIndex: focusDayIndex.value, minutes: focusMinutes.value })
+  gridSelect.extendTo(focusMinutes.value + DEFAULT_DURATION_MIN)
+  gridSelect.commit()
+}
+
+function onGridKeydown(event: KeyboardEvent): void {
+  const snap = currentSnap()
+  switch (event.key) {
+    case 'ArrowDown':
+      if (event.shiftKey) extendSelection(snap)
+      else moveFocusMinutes(snap)
+      break
+    case 'ArrowUp':
+      if (event.shiftKey) extendSelection(-snap)
+      else moveFocusMinutes(-snap)
+      break
+    case 'ArrowLeft':
+      moveFocusDay(-1)
+      break
+    case 'ArrowRight':
+      moveFocusDay(1)
+      break
+    case 'Enter':
+    case ' ':
+      commitFromKeyboard()
+      break
+    case 'Escape':
+      gridSelect.cancel()
+      break
+    default:
+      // 未対応キーは既定動作のまま通す（Tab で抜けられなくなるのを防ぐ）。
+      return
+  }
+  // ここへ来たキーはすべて処理済み。ページスクロール等の既定動作を止める。
+  event.preventDefault()
+}
 
 // ---- スロット（§6.5.4 の data-testid 規約） ----
 const slotRows = computed(() =>
@@ -673,11 +926,21 @@ function onEventClick(event: CalendarEventItem) {
                 :data-testid="`week-allday-col-${di}`"
               />
             </div>
-            <div class="relative" :style="{ height: `${Math.max(classified.laneHeight, BAR_H + 4)}px` }">
+            <!--
+              §6.7.2 終日帯は `role="grid"` の外に置き、独立した `role="list"` とする。
+              時間軸を持たないため grid の行列モデルに乗らない。
+            -->
+            <div
+              role="list"
+              :aria-label="t('schedule.calendar.a11y.allDayList')"
+              class="relative"
+              :style="{ height: `${Math.max(classified.laneHeight, BAR_H + 4)}px` }"
+            >
               <div
                 v-for="slot in classified.allDaySlots.filter(s => s.lane < classified.visibleBarLaneCap)"
                 :key="`allday-${slot.event.uniqueKey}`"
                 :data-testid="`week-allday-event-${slot.event.uniqueKey}`"
+                role="listitem"
                 class="absolute flex cursor-pointer select-none items-center overflow-hidden text-xs font-medium"
                 :style="allDayBarStyle(slot)"
                 @click.stop="onEventClick(slot.event)"
@@ -693,6 +956,7 @@ function onEventClick(event: CalendarEventItem) {
                 v-for="cell in laneOverflowCells"
                 :key="`allday-overflow-${cell.di}`"
                 type="button"
+                role="listitem"
                 :data-testid="`day-overflow-${cell.dateStr}`"
                 class="absolute flex items-center rounded bg-surface-100 px-1 text-left text-[10px] font-medium text-surface-500 dark:bg-surface-700 dark:text-surface-300"
                 :style="allDayOverflowStyle(cell.di)"
@@ -722,17 +986,30 @@ function onEventClick(event: CalendarEventItem) {
             `touch-action` は**選択モード中だけ** none にする（§6.6.4-4）。
             常時 none にするとタッチでの縦スクロールが完全に死ぬ。
           -->
+          <!--
+            §6.7.1 グリッド全体で **1タブストップ**（ロービングフォーカス）。
+            どのセルに居るかは `aria-activedescendant` で伝える。
+            42×96 個のセルを個別のタブストップにすると `Tab` を数千回押す羽目になる。
+          -->
           <div
             ref="columnsEl"
             data-testid="week-grid-columns"
-            class="relative flex flex-1"
+            role="grid"
+            tabindex="0"
+            :aria-label="gridAriaLabel"
+            :aria-activedescendant="activeDescendantId"
+            class="relative flex flex-1 outline-none focus-visible:ring-2 focus-visible:ring-primary"
             :style="{ touchAction: gridSelect.isSelecting.value ? 'none' : 'auto' }"
             @pointerdown="gridSelect.onPointerDown"
             @touchstart="gridSelect.onTouchStart"
+            @keydown="onGridKeydown"
+            @focus="isGridFocused = true"
+            @blur="isGridFocused = false"
           >
             <div
               v-for="(day, di) in weekDays"
               :key="`col-${day.dateStr}`"
+              role="row"
               class="relative flex-1 border-l border-surface-200 dark:border-surface-700"
               :class="{ 'bg-primary/5': isToday(day.dateStr) }"
               :style="{ height: `${24 * HOUR_H}px` }"
@@ -740,12 +1017,21 @@ function onEventClick(event: CalendarEventItem) {
               <!-- スナップスロット（§6.5.4・E2E はこの box を基準に座標を出す） -->
               <div
                 v-for="cell in slotRows"
+                :id="slotDomId(di, cell.hour * 60 + cell.minute)"
                 :key="`slot-${di}-${cell.hour}-${cell.minute}`"
                 :data-testid="`week-slot-${di}-${cell.hour}-${cell.minute}`"
+                role="gridcell"
+                :aria-label="slotAriaLabel(di, cell.hour * 60 + cell.minute)"
+                :aria-selected="isSlotSelected(di, cell.hour * 60 + cell.minute)"
                 class="absolute inset-x-0"
-                :class="cell.minute === 0
-                  ? 'border-t border-surface-200 dark:border-surface-700'
-                  : (cell.minute === 30 ? 'border-t border-dashed border-surface-100 dark:border-surface-800' : '')"
+                :class="[
+                  cell.minute === 0
+                    ? 'border-t border-surface-200 dark:border-surface-700'
+                    : (cell.minute === 30 ? 'border-t border-dashed border-surface-100 dark:border-surface-800' : ''),
+                  isGridFocused && di === focusDayIndex && cell.hour * 60 + cell.minute === snapToBoundary(focusMinutes, SLOT_MIN)
+                    ? 'ring-2 ring-inset ring-primary'
+                    : '',
+                ]"
                 :style="{ top: `${(cell.hour * 60 + cell.minute) * MIN_H}px`, height: `${SLOT_H}px` }"
               />
 
@@ -783,7 +1069,9 @@ function onEventClick(event: CalendarEventItem) {
               <div
                 v-if="gridSelect.selection.value && gridSelect.selection.value.dayIndex === di"
                 data-testid="week-selection-highlight"
+                aria-hidden="true"
                 class="pointer-events-none absolute inset-x-0 z-20 flex items-center justify-center overflow-hidden rounded border-2 border-dashed"
+                :class="prefersReducedMotion ? '' : 'transition-[top,height] duration-100 ease-out'"
                 :style="selectionBoxStyle"
               >
                 <span class="absolute inset-0" :style="selectionFillStyle" />
@@ -796,6 +1084,7 @@ function onEventClick(event: CalendarEventItem) {
               <div
                 v-if="di === todayColIndex"
                 data-testid="week-now-line"
+                aria-hidden="true"
                 class="pointer-events-none absolute inset-x-0 z-20 flex items-center"
                 :style="{ top: `${nowState.minutes * MIN_H}px` }"
               >
@@ -809,6 +1098,12 @@ function onEventClick(event: CalendarEventItem) {
         </div>
       </div>
     </div>
+
+    <!--
+      §6.7.2 選択範囲の変化のアナウンス。ハイライト（視覚表現）の等価物であり、
+      画面には出さないが読み上げには乗せる。`polite` は操作の邪魔をしない。
+    -->
+    <p class="sr-only" aria-live="polite" data-testid="week-selection-announcement">{{ selectionAnnouncement }}</p>
 
     <!-- 日別ポップオーバー（§6.2。終日帯の「+N件」から開く。月ビューと共有） -->
     <ScheduleDayDetailPopover

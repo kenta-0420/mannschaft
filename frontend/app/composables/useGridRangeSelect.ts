@@ -121,6 +121,15 @@ export interface UseGridRangeSelectOptions {
   onCommit: (range: GridRange) => void
   /** 触覚フィードバック（§6.6.4-3）。既定は `navigator.vibrate`。**非対応環境では何も起きない**。 */
   vibrate?: (durationMs: number) => void
+  /**
+   * `prefers-reduced-motion: reduce` が有効か（§6.7.3）。
+   *
+   * 有効なとき、自動スクロールは「毎フレーム 8px」の**補間をやめ、端まで一度に飛ぶ**。
+   * 前庭障害のある利用者にとって、連続的に流れ続ける長い画面こそが症状の引き金であり、
+   * 「ゆっくり動かす」のではなく「動きそのものを見せない」のが `reduce` の意味である。
+   * 到達点（＝選択できる範囲）は補間の有無で変わらないため、機能は落ちない。
+   */
+  reducedMotion?: () => boolean
 }
 
 export interface UseGridRangeSelect {
@@ -209,9 +218,11 @@ export function useGridRangeSelect(options: UseGridRangeSelectOptions): UseGridR
     const el = options.scrollEl()
     if (el) {
       const rect = el.getBoundingClientRect()
+      // reduce 指定時は 8px の補間をやめ、その向きの端まで一度に飛ばす（§6.7.3）。
+      const step = options.reducedMotion?.() === true ? Number.POSITIVE_INFINITY : AUTOSCROLL_STEP_PX
       let delta = 0
-      if (lastClientY < rect.top + AUTOSCROLL_EDGE_PX) delta = -AUTOSCROLL_STEP_PX
-      else if (lastClientY > rect.bottom - AUTOSCROLL_EDGE_PX) delta = AUTOSCROLL_STEP_PX
+      if (lastClientY < rect.top + AUTOSCROLL_EDGE_PX) delta = -step
+      else if (lastClientY > rect.bottom - AUTOSCROLL_EDGE_PX) delta = step
       if (delta !== 0) {
         const maxTop = Math.max(0, el.scrollHeight - el.clientHeight)
         const next = clamp(el.scrollTop + delta, 0, maxTop)
