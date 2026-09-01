@@ -88,6 +88,24 @@ public class BillingContractEntity extends UuidV7Entity {
     @Column(name = "price_jpy_snapshot")
     private Integer priceJpySnapshot;
 
+    /**
+     * V196 で追加した scope 所有 Stripe Customer（{@code billing_customers.id}）。Billing Center 経由の
+     * 契約のみ非 NULL（legacy 行は NULL のまま）。
+     */
+    @Column(name = "billing_customer_id", columnDefinition = "BINARY(16)")
+    private java.util.UUID billingCustomerId;
+
+    /** V196 で追加した販売正本（{@code billing_price_band_versions.id}）。 */
+    @Column(name = "price_band_version_id", columnDefinition = "BINARY(16)")
+    private java.util.UUID priceBandVersionId;
+
+    /**
+     * V196 で追加した契約操作の CAS 用 version。Hibernate の暗黙 optimistic lock（{@code @Version}）には
+     * しない（既存の全更新経路の挙動を変えないため）。CAS は明示的な条件付き UPDATE で行う。
+     */
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "contracted_at", nullable = false)
     private LocalDateTime contractedAt;
 
@@ -143,6 +161,9 @@ public class BillingContractEntity extends UuidV7Entity {
         }
         if (this.contractedAt == null) {
             this.contractedAt = now;
+        }
+        if (this.version == null) {
+            this.version = 0L;
         }
     }
 
