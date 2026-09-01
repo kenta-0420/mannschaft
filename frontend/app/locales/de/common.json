@@ -1430,6 +1430,14 @@
         "dragHint": "Ziehen, um einen Termin zu erstellen",
         "dragHintTouch": "Gedrückt halten und ziehen, um einen Termin zu erstellen",
         "selectedRange": "{start} – {end}"
+      },
+      "a11y": {
+        "selecting": "{start} bis {end} wird ausgewählt",
+        "emptySlot": "Frei",
+        "time": "{hour}:{minute}",
+        "weekGrid": "Woche vom {range}",
+        "slot": "{date} {time} {content}",
+        "allDayList": "Ganztägige Termine"
       }
     }
   },
