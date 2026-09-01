@@ -2456,4 +2456,16 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
         Long getUserId();
         String getRoleKind();
     }
+
+    /**
+     * 柱①「ADMINゼロ根治」§14 — {@code userId} が唯一のADMIN（ADMIN数=1）であるスコープを列挙する。
+     *
+     * <p>承継候補の有無判定はここでは行わない（サービス層 {@code RoleSuccessionService} の責務）。
+     * 正本: docs/architecture/account_purge_last_admin_succession.md §5.4 / §14。</p>
+     *
+     * TODO 出陣で実装。
+     */
+    default List<com.mannschaft.app.role.dto.LastAdminScope> findLastAdminScopes(Long userId) {
+        throw new UnsupportedOperationException("出陣で実装");
+    }
 }

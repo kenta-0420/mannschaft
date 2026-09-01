@@ -58,7 +58,16 @@ public enum GdprErrorCode implements ErrorCode {
      * という意味を正確に表すため 404 ではなく 410 GONE を返す（再取得しても復活しないことを
      * クライアントに伝える）。</p>
      */
-    GDPR_010("GDPR_010", "エクスポートデータの保持期限が切れています", Severity.WARN);
+    GDPR_010("GDPR_010", "エクスポートデータの保持期限が切れています", Severity.WARN),
+
+    /**
+     * 柱①「ADMINゼロ根治」AC1 — 他メンバー1人以上のスコープで唯一のADMINが退会要求した場合の409。
+     *
+     * <p>TODO 出陣で実装: {@code UserService#requestWithdrawal} 冒頭で
+     * {@code RoleSuccessionService#checkNoLastAdminScopes} 相当のガードから投げる。
+     * 正本: docs/architecture/account_purge_last_admin_succession.md §14。</p>
+     */
+    GDPR_011("GDPR_011", "退会前に処理が必要な組織があります", Severity.WARN);
 
     private final String code;
     private final String message;
