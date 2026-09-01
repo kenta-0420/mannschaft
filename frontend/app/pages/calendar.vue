@@ -21,7 +21,12 @@ const activeTab = ref<CalendarTab>(route.query.tab === 'gantt' ? 'gantt' : 'cale
 // スコープ変更時にガントビューをフェードで再描画するためのキー
 const ganttKey = ref(0)
 
-const showCreateDialog = ref(false)
+/**
+ * 作成ダイアログの開閉状態（内部状態）。**直接 true にしてはならない** —
+ * 開く操作は必ず {@link openCreateDialog} を通す。テンプレートへ公開するのは
+ * {@link createDialogVisible} の方であり、そちらの setter も true を openCreateDialog へ委ねる。
+ */
+const createDialogOpen = ref(false)
 const showEditDialog = ref(false)
 const showGuide = ref(false)
 const selectedDate = ref<string | undefined>(undefined)
@@ -29,6 +34,39 @@ const selectedDate = ref<string | undefined>(undefined)
 // オフセット付き）。日付クリック経路では undefined に戻す（前回のドラッグ値が漏れない・AC-22c）。
 const selectedStartAt = ref<string | undefined>(undefined)
 const selectedEndAt = ref<string | undefined>(undefined)
+
+/**
+ * 作成ダイアログを開く**唯一の入口**（F03.19 §6.6.5・AC-22c）。
+ *
+ * 時刻プリセット（`selectedStartAt`/`selectedEndAt`）は**この関数が必ず上書きする**。
+ * したがって `preset` を渡さない入口（＋予定追加ボタン・日付クリック等）は、
+ * 何もしなくても常にクリアされた状態から始まる。個々の入口にリセットを書き足す形だと
+ * 新しい入口が増えたときに再び漏れるため、「入口が増えても漏れない」形にしてある。
+ */
+function openCreateDialog(preset?: { startAt: string, endAt: string }) {
+  selectedStartAt.value = preset?.startAt
+  selectedEndAt.value = preset?.endAt
+  if (preset) {
+    // 時刻を指定して開く経路では、日付のみの初期値（initialDate）は使わない。
+    selectedDate.value = undefined
+  }
+  showEventPanel.value = false
+  showDayPanel.value = false
+  createDialogOpen.value = true
+}
+
+/**
+ * テンプレートへ公開する作成ダイアログの可視状態。
+ * **true を代入しても必ず {@link openCreateDialog} を経由する**ため、新しい入口が
+ * `v-model:visible` や `= true` で直接開こうとしても時刻プリセットのクリアを飛ばせない。
+ */
+const createDialogVisible = computed<boolean>({
+  get: () => createDialogOpen.value,
+  set: (v) => {
+    if (v) openCreateDialog()
+    else createDialogOpen.value = false
+  },
+})
 
 // サイドパネル用
 const selectedDay = ref<string | null>(null)
@@ -137,12 +175,9 @@ const dayEvents = computed(() => {
 function onDateClick(date: string) {
   selectedDay.value = date
   selectedDate.value = date
-  // AC-22c: 直前に週ビューでドラッグしていても、その時刻を日付クリックへ持ち越さない。
-  selectedStartAt.value = undefined
-  selectedEndAt.value = undefined
-  showEventPanel.value = false
-  showDayPanel.value = false
-  showCreateDialog.value = true
+  // AC-22c: 直前に週ビューでドラッグしていても、その時刻を日付クリックへ持ち越さない
+  // （プリセット無しで開く＝openCreateDialog がクリアする）。
+  openCreateDialog()
 }
 
 /**
@@ -151,12 +186,7 @@ function onDateClick(date: string) {
  * 作成先を変えない。表示フィルタ（`selectedScopes`）には一切触れない（P2）。
  */
 function onRangeSelect(startAt: string, endAt: string) {
-  selectedStartAt.value = startAt
-  selectedEndAt.value = endAt
-  selectedDate.value = undefined
-  showEventPanel.value = false
-  showDayPanel.value = false
-  showCreateDialog.value = true
+  openCreateDialog({ startAt, endAt })
 }
 
 /**
@@ -676,7 +706,7 @@ onMounted(async () => {
             class="text-sm"
             style="min-width: 120px"
           />
-          <Button :label="t('schedule.event_add')" icon="pi pi-plus" @click="showCreateDialog = true" />
+          <Button :label="t('schedule.event_add')" icon="pi pi-plus" @click="openCreateDialog()" />
         </div>
       </template>
     </PageHeader>
@@ -898,7 +928,7 @@ onMounted(async () => {
             <div class="space-y-3">
               <div class="flex items-center justify-between">
                 <h3 class="font-bold text-sm">{{ selectedDay }} の予定</h3>
-                <Button icon="pi pi-plus" size="small" text @click="showCreateDialog = true" />
+                <Button icon="pi pi-plus" size="small" text @click="openCreateDialog()" />
               </div>
               <div v-if="dayEvents.length === 0" class="text-sm text-surface-400 text-center py-4">
                 予定はありません
@@ -954,7 +984,7 @@ onMounted(async () => {
 
     <!-- 作成ダイアログ -->
     <ScheduleEventForm
-      v-model:visible="showCreateDialog"
+      v-model:visible="createDialogVisible"
       :scope-type="selectedCreateScope.scopeType"
       :scope-id="selectedCreateScope.scopeId"
       :initial-date="selectedDate"

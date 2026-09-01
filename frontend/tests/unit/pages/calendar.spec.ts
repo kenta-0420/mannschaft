@@ -591,6 +591,16 @@ describe('pages/calendar.vue: 週ビューのグリッド選択と作成ダイ�
     presetTeamStore()
   })
 
+  /** PrimeVue Button の軽量スタブ。label をテキストとして描画し、クリックで実 DOM の click を出す。 */
+  const LabeledButtonStub = defineComponent({
+    name: 'Button',
+    props: { label: String, icon: String, size: String, text: Boolean, severity: String },
+    emits: ['click'],
+    setup(props, { emit }) {
+      return () => h('button', { type: 'button', onClick: (e: Event) => emit('click', e) }, props.label ?? props.icon ?? '')
+    },
+  })
+
   async function mountWithRangeSelect() {
     return mountCalendarPage({
       DashboardWidgetCard: DashboardWidgetCardSlotStub,
@@ -634,6 +644,39 @@ describe('pages/calendar.vue: 週ビューのグリッド選択と作成ダイ�
     await flushPromises()
 
     expect(form.props('initialDate')).toBe('2026-07-15')
+    expect(form.props('initialStartAt')).toBeUndefined()
+    expect(form.props('initialEndAt')).toBeUndefined()
+  }, 60000)
+
+  it('AC-22c: 範囲選択のあと「予定を追加」ボタンで開くと、時刻プリセットが漏れない', async () => {
+    const wrapper = await mountCalendarPage({
+      DashboardWidgetCard: DashboardWidgetCardSlotStub,
+      CalendarWeekGrid: RangeSelectWeekGridStub,
+      CalendarGrid: DateClickGridStub,
+      Button: LabeledButtonStub,
+    })
+    await toWeekView(wrapper)
+
+    // まず範囲選択で実際に値を入れる（値が入っていない状態から undefined を確かめても
+    // 何も検証したことにならないため、ここで「漏れうる状態」を必ず作る）。
+    await wrapper.get('[data-testid="emit-range-select"]').trigger('click')
+    await flushPromises()
+    const form = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    expect(form.props('initialStartAt')).toBe('2026-07-10T09:00:00+09:00')
+    expect(form.props('initialEndAt')).toBe('2026-07-10T10:30:00+09:00')
+
+    // 保存またはキャンセルでダイアログを閉じる
+    form.vm.$emit('update:visible', false)
+    await flushPromises()
+
+    // 「予定を追加」ボタン（日付クリックとは別の入口）から開き直す
+    // テスト環境の i18n は en を解決するため両方の表記を許容する（t('schedule.event_add')）。
+    const addButton = wrapper.findAll('button').find(b => b.text() === 'Add event' || b.text() === '予定を追加')
+    expect(addButton).toBeTruthy()
+    await addButton!.trigger('click')
+    await flushPromises()
+
+    expect(form.props('visible')).toBe(true)
     expect(form.props('initialStartAt')).toBeUndefined()
     expect(form.props('initialEndAt')).toBeUndefined()
   }, 60000)
