@@ -172,6 +172,26 @@ export function useCalendarEvents(
     }
   }
 
+  /**
+   * `refresh()` と同じ再取得を行い、**この呼び出しの成否を戻り値で返す**。
+   *
+   * `refresh()` は失敗しても正常に解決する（月移動で画面が落ちないための設計であり、
+   * 既存の呼び出し元がその挙動に依存しているため変えない）。そのため「自分が投げた
+   * 再取得が成功したか」を知りたい呼び出し元は本関数を使う。
+   *
+   * **成否は呼び出しごとに閉じている**（共有フラグを見ない）。`ref` に成否を書いて
+   * 後から読む形だと、月移動など並行する別の取得の結果で上書きされ、取り違える。
+   */
+  async function refreshWithResult(): Promise<{ ok: boolean; error?: unknown }> {
+    try {
+      await fetchAndCache(currentYear.value, currentMonth.value)
+      return { ok: true }
+    } catch (error) {
+      onError?.(error)
+      return { ok: false, error }
+    }
+  }
+
   /** 表示中の年月を任意の年月へ直接移動する（キャッシュ範囲外なら再取得）。 */
   function navigateTo(year: number, month: number): void {
     currentYear.value = year
@@ -219,6 +239,7 @@ export function useCalendarEvents(
     calendarLoading,
     loadEvents,
     refresh,
+    refreshWithResult,
     onPrevMonth,
     onNextMonth,
     goToToday,
