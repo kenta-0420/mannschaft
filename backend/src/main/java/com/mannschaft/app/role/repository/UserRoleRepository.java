@@ -2564,25 +2564,33 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     List<Long> findMemberCandidateIdsByOrganization(@Param("organizationId") Long organizationId);
 
     /**
-     * 柱①「ADMINゼロ根治」§13 — 未アーカイブの TEAM のうち ADMIN が 0 人のスコープ ID 一覧を返す
-     * （{@code AdminlessScopeSuccessionBatchService} の既存データ検出用）。
+     * 柱①「ADMINゼロ根治」§13 — 未アーカイブの TEAM のうち ADMIN が 0 人のスコープ ID を
+     * {@code id} keyset ページングで返す（{@code AdminlessScopeSuccessionBatchService} の
+     * 既存データ検出用）。
+     *
+     * <p>検分反映（P2-2）: 全件を Java ヒープへ {@code List} で読み込んでから
+     * {@code subList} で分割していた実装を、DB 側の {@code WHERE id > :afterId ... LIMIT}
+     * によるページングへ変更した（大規模化時の全件読み込みを回避）。</p>
+     *
+     * @param afterId  前チャンクの最後の ID（初回は 0）
+     * @param pageSize チャンクサイズ
      */
     @Query(value =
             "SELECT t.id FROM teams t " +
-            "WHERE t.archived_at IS NULL " +
+            "WHERE t.archived_at IS NULL AND t.id > :afterId " +
             "  AND NOT EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id " +
             "                  WHERE r.name = 'ADMIN' AND ur.team_id = t.id) " +
-            "ORDER BY t.id ASC",
+            "ORDER BY t.id ASC LIMIT :pageSize",
             nativeQuery = true)
-    List<Long> findTeamIdsWithoutActiveAdmin();
+    List<Long> findTeamIdsWithoutActiveAdminPage(@Param("afterId") long afterId, @Param("pageSize") int pageSize);
 
-    /** {@link #findTeamIdsWithoutActiveAdmin()} の ORGANIZATION 版。 */
+    /** {@link #findTeamIdsWithoutActiveAdminPage(long, int)} の ORGANIZATION 版。 */
     @Query(value =
             "SELECT o.id FROM organizations o " +
-            "WHERE o.archived_at IS NULL " +
+            "WHERE o.archived_at IS NULL AND o.id > :afterId " +
             "  AND NOT EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id " +
             "                  WHERE r.name = 'ADMIN' AND ur.organization_id = o.id) " +
-            "ORDER BY o.id ASC",
+            "ORDER BY o.id ASC LIMIT :pageSize",
             nativeQuery = true)
-    List<Long> findOrganizationIdsWithoutActiveAdmin();
+    List<Long> findOrganizationIdsWithoutActiveAdminPage(@Param("afterId") long afterId, @Param("pageSize") int pageSize);
 }

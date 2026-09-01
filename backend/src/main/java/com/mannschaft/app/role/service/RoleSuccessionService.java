@@ -2,8 +2,11 @@ package com.mannschaft.app.role.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.gdpr.GdprErrorCode;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -20,8 +23,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -55,6 +60,8 @@ public class RoleSuccessionService {
     private final NotificationHelper notificationHelper;
     private final TeamService teamService;
     private final OrganizationService organizationService;
+    private final UserRowLockService userRowLockService;
+    private final MembershipService membershipService;
 
     /**
      * {@code userId} が唯一の ADMIN であるスコープを全て返す（他メンバー0人のスコープも含む）。
@@ -99,22 +106,78 @@ public class RoleSuccessionService {
      * @return 候補ユーザー ID。候補資格者が1人もいなければ {@link Optional#empty()}
      */
     public Optional<Long> selectSuccessionCandidate(Long scopeId, String scopeType) {
-        return selectSuccessionCandidateExcluding(scopeId, scopeType, null);
+        return selectSuccessionCandidateExcluding(scopeId, scopeType, Set.of());
     }
 
-    private Optional<Long> selectSuccessionCandidateExcluding(Long scopeId, String scopeType, Long excludeUserId) {
+    private Optional<Long> selectSuccessionCandidateExcluding(Long scopeId, String scopeType, Set<Long> excludeUserIds) {
         boolean team = SCOPE_TEAM.equals(scopeType);
         List<Long> deputies = team
                 ? userRoleRepository.findDeputyAdminCandidateIdsByTeam(scopeId)
                 : userRoleRepository.findDeputyAdminCandidateIdsByOrganization(scopeId);
-        Optional<Long> deputy = deputies.stream().filter(id -> !id.equals(excludeUserId)).findFirst();
+        Optional<Long> deputy = deputies.stream().filter(id -> !excludeUserIds.contains(id)).findFirst();
         if (deputy.isPresent()) {
             return deputy;
         }
         List<Long> members = team
                 ? userRoleRepository.findMemberCandidateIdsByTeam(scopeId)
                 : userRoleRepository.findMemberCandidateIdsByOrganization(scopeId);
-        return members.stream().filter(id -> !id.equals(excludeUserId)).findFirst();
+        return members.stream().filter(id -> !excludeUserIds.contains(id)).findFirst();
+    }
+
+    /**
+     * 柱①「ADMINゼロ根治」検分反映（P1-2） — §12.6 のとおり、候補資格は
+     * 「選定時点」と「ロック取得後の実行直前」の二段で検証する。
+     *
+     * <p>候補選定クエリ（{@code findDeputyAdminCandidateIdsByTeam} 等）は
+     * {@code users.deleted_at IS NULL AND users.status = 'ACTIVE'} で「退会受付済み・
+     * 匿名化済み・利用停止中」を除外している。この codebase の {@code UserEntity} は
+     * 退会受付（{@code requestDeletion()}）と物理削除前提の論理削除の両方を単一の
+     * {@code deleted_at} で表現し、匿名化（{@code anonymize()}）も必ず
+     * {@code softDelete()}（= {@code deleted_at} セット）と対で呼ばれる設計（別カラムの
+     * {@code withdrawal_requested_at}/{@code anonymized_at} は実スキーマに存在しない）。
+     * よって SQL 側の条件は候補選定時点では十分であるが、<b>選定から昇格実行までの間に
+     * 候補自身が退会・停止・当該スコープからの離脱に陥るレース</b>には対処できないため、
+     * ロック取得後・書き込み直前に本メソッドで再検証する。</p>
+     *
+     * <p>資格を失っていた場合は呼び出し側が次点候補へフォールバックする
+     * （{@link #selectVerifiedSuccessionCandidate} 参照）。</p>
+     */
+    private boolean isEligibleForPromotion(Long userId, Long scopeId, String scopeType) {
+        if (userRowLockService.lock(userId) != UserRowLockService.UserState.ACTIVE) {
+            return false;
+        }
+        ScopeType membershipScopeType = SCOPE_TEAM.equals(scopeType) ? ScopeType.TEAM : ScopeType.ORGANIZATION;
+        return membershipService.isActiveMemberForUpdate(userId, membershipScopeType, scopeId);
+    }
+
+    /**
+     * 候補選定 → 資格再検証を、資格を満たす候補が見つかるか候補が尽きるまで繰り返す。
+     * 呼び出し前提: スコープの ADMIN 行ロック（{@link AdminRoleMutationLockService}）を
+     * 取得済みであること。
+     *
+     * @param scopeId          対象スコープ ID
+     * @param scopeType        TEAM / ORGANIZATION
+     * @param initialExcludeId 選定候補から除外する ID（purge 経路の退会者本人など。無ければ null）
+     * @return 資格確認済みの候補ユーザー ID。候補が尽きれば空
+     */
+    private Optional<Long> selectVerifiedSuccessionCandidate(Long scopeId, String scopeType, Long initialExcludeId) {
+        Set<Long> excluded = new LinkedHashSet<>();
+        if (initialExcludeId != null) {
+            excluded.add(initialExcludeId);
+        }
+        while (true) {
+            Optional<Long> next = selectSuccessionCandidateExcluding(scopeId, scopeType, excluded);
+            if (next.isEmpty()) {
+                return Optional.empty();
+            }
+            Long candidateId = next.get();
+            if (isEligibleForPromotion(candidateId, scopeId, scopeType)) {
+                return Optional.of(candidateId);
+            }
+            log.info("候補資格の再検証で失格（選定後に状態変化）: scopeType={}, scopeId={}, candidateId={}",
+                    scopeType, scopeId, candidateId);
+            excluded.add(candidateId);
+        }
     }
 
     /**
@@ -161,9 +224,10 @@ public class RoleSuccessionService {
             return;
         }
 
-        Optional<Long> candidateOpt = selectSuccessionCandidateExcluding(scopeId, scopeType, withdrawingUserId);
+        // P1-2: 選定 + ロック下の実行直前再検証（§12.6）。
+        Optional<Long> candidateOpt = selectVerifiedSuccessionCandidate(scopeId, scopeType, withdrawingUserId);
         if (candidateOpt.isEmpty()) {
-            // AC8: 候補ゼロ → archive
+            // AC8: 候補ゼロ（または資格を満たす候補が尽きた）→ archive
             archiveScope(scopeId, scopeType);
             return;
         }
@@ -218,7 +282,8 @@ public class RoleSuccessionService {
             return BatchSuccessionResult.NOT_NEEDED;
         }
 
-        Optional<Long> candidateOpt = selectSuccessionCandidate(scopeId, scopeType);
+        // P1-2: 選定 + ロック下の実行直前再検証（§12.6）。
+        Optional<Long> candidateOpt = selectVerifiedSuccessionCandidate(scopeId, scopeType, null);
         if (candidateOpt.isEmpty()) {
             archiveScope(scopeId, scopeType);
             return BatchSuccessionResult.ARCHIVED;
@@ -259,19 +324,35 @@ public class RoleSuccessionService {
      * 柱①「ADMINゼロ根治」§15 — SYSTEM_ADMIN の force-unarchive 経由で初期 ADMIN を指名する。
      *
      * <p>{@code SystemAdminScopeForceUnarchiveController} 専用。ADMIN 不在のまま unarchive
-     * させないよう、呼び出し元（コントローラ）は unarchive とセットで本メソッドを呼ぶこと。
-     * 資格チェックは行わない（SYSTEM_ADMIN の明示指名を尊重する。§15 は「ADMIN 指名を伴わない
-     * unarchive を拒否する」ことが本旨であり、指名対象の候補資格までは要求しない）。</p>
+     * させないよう、呼び出し元（コントローラ）は unarchive とセットで本メソッドを呼ぶこと。</p>
+     *
+     * <p><b>検分反映（P1-3）</b>: 指名ユーザーが「現役（{@code deleted_at IS NULL} かつ
+     * {@code status = 'ACTIVE'}）かつ当該スコープの active membership を持つ」ことを
+     * {@link #isEligibleForPromotion} で検証する。満たさない場合は
+     * {@code BusinessException(RoleErrorCode.ROLE_001)}（404）を投げ、membership の無い
+     * ADMIN 行を作らない。SYSTEM_ADMIN が明示指名したからといって、在籍実態の無いユーザーを
+     * ADMIN 化することまでは許容しない（「ADMIN 指名を伴わない unarchive の拒否」は
+     * あくまで「無指名を許さない」意であり、「在籍実態の無い者への指名まで許す」意ではない）。</p>
      *
      * @param scopeId       対象スコープ ID
      * @param scopeType     TEAM / ORGANIZATION
      * @param newAdminUserId SYSTEM_ADMIN が指名した初期 ADMIN のユーザー ID
      * @param actingSystemAdminId 実行した SYSTEM_ADMIN のユーザー ID（監査ログ用）
+     * @throws BusinessException 指名ユーザーが現役でない、または当該スコープの active
+     *                            membership を持たない場合（{@link RoleErrorCode#ROLE_001}・404）
      */
     @Transactional
     public void forceAssignInitialAdminOnUnarchive(
             Long scopeId, String scopeType, Long newAdminUserId, Long actingSystemAdminId) {
         adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
+
+        if (!isEligibleForPromotion(newAdminUserId, scopeId, scopeType)) {
+            log.warn("forceAssignInitialAdminOnUnarchive: 指名ユーザーが現役でないか非在籍のため拒否 "
+                            + "scopeType={}, scopeId={}, newAdminUserId={}",
+                    scopeType, scopeId, newAdminUserId);
+            throw new BusinessException(RoleErrorCode.ROLE_001);
+        }
+
         promoteToAdmin(scopeId, scopeType, newAdminUserId);
 
         boolean team = SCOPE_TEAM.equals(scopeType);

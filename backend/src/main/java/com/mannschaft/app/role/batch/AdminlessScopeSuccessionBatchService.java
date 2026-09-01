@@ -30,6 +30,15 @@ import java.util.List;
  *       とは別メソッド）を使う</li>
  * </ul>
  *
+ * <p>検分反映（P2-1）: スコープ ID の取得を「全件 List → Java 側 subList 分割」から
+ * DB 側の {@code id} keyset ページング（{@code WHERE id > :afterId ... LIMIT}）へ変更した。
+ * 大規模化時に全件をヒープへ展開しない。</p>
+ *
+ * <p>各スコープの是正（{@code RoleSuccessionService#promoteForBatchSuccession}）は
+ * {@code @Transactional}（デフォルト伝播）であり、本クラスの {@code run()} 自体は
+ * トランザクション境界を持たないため、呼び出しごとに独立した新規トランザクションになる
+ * （P1-1 のような rollback-only 巻き添えは構造的に発生しない）。</p>
+ *
  * <p>AC9: バッチ処理対象時点で active スコープの ADMIN 数 0 が 0 件になること
  * （昇格 or archive）。1スコープの失敗が他スコープ処理を止めないこと。</p>
  */
@@ -68,21 +77,33 @@ public class AdminlessScopeSuccessionBatchService {
      */
     public int run() {
         int corrected = 0;
-        corrected += processScopes("TEAM", userRoleRepository.findTeamIdsWithoutActiveAdmin());
-        corrected += processScopes("ORGANIZATION", userRoleRepository.findOrganizationIdsWithoutActiveAdmin());
+        corrected += processScopeType("TEAM", userRoleRepository::findTeamIdsWithoutActiveAdminPage);
+        corrected += processScopeType("ORGANIZATION", userRoleRepository::findOrganizationIdsWithoutActiveAdminPage);
         return corrected;
     }
 
-    private int processScopes(String scopeType, List<Long> scopeIds) {
+    /** ページ供給関数。{@code (afterId, pageSize) -> id昇順の次ページ}。 */
+    @FunctionalInterface
+    private interface PageFetcher {
+        List<Long> fetch(long afterId, int pageSize);
+    }
+
+    private int processScopeType(String scopeType, PageFetcher pageFetcher) {
         int corrected = 0;
         int promoted = 0;
         int archived = 0;
         int skipped = 0;
         int failed = 0;
+        int total = 0;
 
-        for (int offset = 0; offset < scopeIds.size(); offset += CHUNK_SIZE) {
-            List<Long> chunk = scopeIds.subList(offset, Math.min(offset + CHUNK_SIZE, scopeIds.size()));
-            for (Long scopeId : chunk) {
+        long afterId = 0L;
+        while (true) {
+            List<Long> page = pageFetcher.fetch(afterId, CHUNK_SIZE);
+            if (page.isEmpty()) {
+                break;
+            }
+            for (Long scopeId : page) {
+                total++;
                 try {
                     BatchSuccessionResult result = roleSuccessionService.promoteForBatchSuccession(scopeId, scopeType);
                     switch (result) {
@@ -102,10 +123,14 @@ public class AdminlessScopeSuccessionBatchService {
                     log.error("ADMIN不在スコープ是正失敗: scopeType={}, scopeId={}", scopeType, scopeId, e);
                 }
             }
+            afterId = page.get(page.size() - 1);
+            if (page.size() < CHUNK_SIZE) {
+                break;
+            }
         }
 
         log.info("ADMIN不在スコープ検出バッチ完了: scopeType={}, 対象={}件, 昇格={}件, 凍結={}件, スキップ={}件, 失敗={}件",
-                scopeType, scopeIds.size(), promoted, archived, skipped, failed);
+                scopeType, total, promoted, archived, skipped, failed);
         return corrected;
     }
 }

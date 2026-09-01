@@ -9,7 +9,6 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.RoleService;
-import com.mannschaft.app.role.service.RoleSuccessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -41,6 +40,12 @@ import java.util.UUID;
  * </ul>
  * </p>
  *
+ * <p><b>スコープ単位のトランザクション分離（柱①ADMINゼロ根治 検分反映 P1-1）</b>:
+ * 実際のドメイン操作（承継フック + ロール除名）は {@link RolePurgeScopeExecutor#processScope}
+ * （別 Bean・{@code @Transactional(REQUIRES_NEW)}）に委譲する。1 スコープの失敗が
+ * {@code rollback-only} マークを通じて他スコープの成功分まで巻き添えロールバックしないための
+ * 分離（詳細は {@link RolePurgeScopeExecutor} の Javadoc 参照）。</p>
+ *
  * <p><b>SYSTEM_ADMIN 行の扱い:</b>
  * {@code team_id} と {@code organization_id} がともに NULL の SYSTEM_ADMIN 行は
  * {@code removeMemberWithoutAdminCheck} が要求する scopeId/scopeType を構築できないため
@@ -57,8 +62,7 @@ public class RolePurgeEventListener {
 
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
-    private final RoleService roleService;
-    private final RoleSuccessionService roleSuccessionService;
+    private final RolePurgeScopeExecutor scopeExecutor;
     private final AccountPurgeCompletionStatusRepository completionStatusRepository;
 
     /**
@@ -98,10 +102,8 @@ public class RolePurgeEventListener {
                 }
                 // 柱①ADMINゼロ根治 §11/§13: ADMIN行を削除する前に承継フックを呼ぶ（AC4〜AC8, AC12）。
                 // ADMIN以外（DEPUTY_ADMIN/GUEST/SYSTEM_ADMIN等）はそのまま除名する。
-                if (isAdminRole(userRole)) {
-                    roleSuccessionService.forceTransferForPurge(scopeId, scopeType, userId, purgeId);
-                }
-                roleService.removeMemberWithoutAdminCheck(scopeId, scopeType, userId);
+                // 実処理は scopeExecutor.processScope（別Bean・REQUIRES_NEW）へ委譲する（P1-1）。
+                scopeExecutor.processScope(userId, scopeId, scopeType, isAdminRole(userRole), purgeId);
                 removed++;
             } catch (Exception e) {
                 log.warn("ユーザー退会 role purge: 削除失敗 userRoleId={}, userId={}, error={}",
@@ -133,7 +135,6 @@ public class RolePurgeEventListener {
      * @param userId retry 対象ユーザー ID
      * @return true=全操作成功（0 件失敗）、false=1 件以上失敗
      */
-    @Transactional
     public boolean retryPurge(Long userId) {
         List<UserRoleEntity> userRoles = userRoleRepository.findAllByUserId(userId);
         int failed = 0;
@@ -153,10 +154,7 @@ public class RolePurgeEventListener {
                             userRole.getId(), userId);
                     continue;
                 }
-                if (isAdminRole(userRole)) {
-                    roleSuccessionService.forceTransferForPurge(scopeId, scopeType, userId, purgeId);
-                }
-                roleService.removeMemberWithoutAdminCheck(scopeId, scopeType, userId);
+                scopeExecutor.processScope(userId, scopeId, scopeType, isAdminRole(userRole), purgeId);
             } catch (Exception e) {
                 log.warn("role purge retry 失敗 userId={} userRoleId={}", userId, userRole.getId(), e);
                 failed++;
@@ -174,9 +172,9 @@ public class RolePurgeEventListener {
 
     /**
      * {@code AccountPurgedEvent} は purgeId 相当の識別子を持たない（{@code userId} のみ、§10.9 前提）。
-     * 冪等性は {@link RoleSuccessionService#forceTransferForPurge} 側の DB 実状態チェックで
-     * 担保しているため、ここでは監査ログの補助情報として userId から決定的に導出した UUID を渡す
-     * （再配送でも同じ値になり、監査ログの突合に使える）。
+     * 冪等性は {@link com.mannschaft.app.role.service.RoleSuccessionService#forceTransferForPurge}
+     * 側の DB 実状態チェックで担保しているため、ここでは監査ログの補助情報として userId から
+     * 決定的に導出した UUID を渡す（再配送でも同じ値になり、監査ログの突合に使える）。
      */
     private UUID deriveDeterministicPurgeId(Long userId) {
         return UUID.nameUUIDFromBytes(("role-purge-" + userId).getBytes(java.nio.charset.StandardCharsets.UTF_8));

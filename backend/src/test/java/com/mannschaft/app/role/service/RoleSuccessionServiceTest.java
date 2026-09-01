@@ -1,11 +1,14 @@
 package com.mannschaft.app.role.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.role.dto.LastAdminScope;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -62,6 +65,10 @@ class RoleSuccessionServiceTest {
     private TeamService teamService;
     @Mock
     private OrganizationService organizationService;
+    @Mock
+    private UserRowLockService userRowLockService;
+    @Mock
+    private MembershipService membershipService;
 
     @InjectMocks
     private RoleSuccessionService service;
@@ -71,6 +78,12 @@ class RoleSuccessionServiceTest {
     private static final Long DEPUTY_ID = 2L;
     private static final Long MEMBER_ID = 3L;
     private static final Long ADMIN_ROLE_ID = 9L;
+
+    /** 候補が資格再検証（P1-2）を通過する状態にする（現役・当該スコープに在籍）。 */
+    private void givenEligible(Long candidateId) {
+        given(userRowLockService.lock(candidateId)).willReturn(UserRowLockService.UserState.ACTIVE);
+        given(membershipService.isActiveMemberForUpdate(candidateId, ScopeType.TEAM, SCOPE_ID)).willReturn(true);
+    }
 
     private LastAdminScope scope(long otherMembers) {
         return LastAdminScope.builder()
@@ -160,6 +173,7 @@ class RoleSuccessionServiceTest {
             given(roleRepository.findByName("ADMIN"))
                     .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
             given(userRoleRepository.findByUserIdAndTeamIdForUpdate(DEPUTY_ID, SCOPE_ID)).willReturn(Optional.empty());
+            givenEligible(DEPUTY_ID);
 
             service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, UUID.randomUUID());
 
@@ -232,6 +246,7 @@ class RoleSuccessionServiceTest {
             given(roleRepository.findByName("ADMIN"))
                     .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
             given(userRoleRepository.findByUserIdAndTeamIdForUpdate(DEPUTY_ID, SCOPE_ID)).willReturn(Optional.empty());
+            givenEligible(DEPUTY_ID);
 
             service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, UUID.randomUUID());
 
@@ -277,6 +292,7 @@ class RoleSuccessionServiceTest {
             given(roleRepository.findByName("ADMIN"))
                     .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
             given(userRoleRepository.findByUserIdAndTeamIdForUpdate(DEPUTY_ID, SCOPE_ID)).willReturn(Optional.empty());
+            givenEligible(DEPUTY_ID);
 
             service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, purgeId);
             service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, purgeId);
@@ -285,6 +301,95 @@ class RoleSuccessionServiceTest {
                     any(), any(), any(), anyString());
             verify(notificationHelper, times(1)).notify(any(), anyString(), any(), anyString(), anyString(),
                     anyString(), any(), any(), any(), any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("P1-2: ロック取得後の実行直前再検証で候補が失格していれば次点候補へフォールバックする")
+    class P1_2ReVerificationFallback {
+
+        @Test
+        @DisplayName("P1-2: 最古参候補が再検証で失格（退会済等）なら次点候補が昇格する")
+        void 最古参が失格なら次点候補が昇格する() {
+            Long secondCandidateId = 55L;
+            given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM"))
+                    .willReturn(List.of(WITHDRAWING_USER_ID));
+            given(userRoleRepository.findDeputyAdminCandidateIdsByTeam(SCOPE_ID))
+                    .willReturn(List.of(DEPUTY_ID, secondCandidateId));
+            // 最古参 DEPUTY_ID は選定後に状態が変化し再検証で失格（例: 退会済 → INELIGIBLE_EXISTING）
+            given(userRowLockService.lock(DEPUTY_ID)).willReturn(UserRowLockService.UserState.INELIGIBLE_EXISTING);
+            givenEligible(secondCandidateId);
+            given(roleRepository.findByName("ADMIN"))
+                    .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
+            given(userRoleRepository.findByUserIdAndTeamIdForUpdate(secondCandidateId, SCOPE_ID)).willReturn(Optional.empty());
+
+            service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, UUID.randomUUID());
+
+            verify(userRoleRepository).save(argThatRoleIdAndUser(ADMIN_ROLE_ID, secondCandidateId));
+            verify(userRoleRepository, never()).save(argThatRoleIdAndUser(ADMIN_ROLE_ID, DEPUTY_ID));
+        }
+
+        @Test
+        @DisplayName("P1-2: 全候補が再検証で失格すればarchiveへフォールバックする")
+        void 全候補失格ならarchiveされる() {
+            given(adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(SCOPE_ID, "TEAM"))
+                    .willReturn(List.of(WITHDRAWING_USER_ID));
+            given(userRoleRepository.findDeputyAdminCandidateIdsByTeam(SCOPE_ID)).willReturn(List.of(DEPUTY_ID));
+            given(userRoleRepository.findMemberCandidateIdsByTeam(SCOPE_ID)).willReturn(List.of());
+            given(userRowLockService.lock(DEPUTY_ID)).willReturn(UserRowLockService.UserState.ABSENT);
+
+            service.forceTransferForPurge(SCOPE_ID, "TEAM", WITHDRAWING_USER_ID, UUID.randomUUID());
+
+            verify(teamService).archiveTeam(SCOPE_ID);
+            verify(userRoleRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("P1-3: force-unarchiveは指名ユーザーの現役性・スコープ所属を検証する")
+    class P1_3ForceUnarchiveValidatesNominee {
+
+        @Test
+        @DisplayName("P1-3: 現役かつ当該スコープの active membership を持つ指名者はADMIN化される")
+        void 現役かつ在籍していれば昇格する() {
+            Long systemAdminId = 999L;
+            given(roleRepository.findByName("ADMIN"))
+                    .willReturn(Optional.of(RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").build()));
+            given(userRoleRepository.findByUserIdAndTeamIdForUpdate(DEPUTY_ID, SCOPE_ID)).willReturn(Optional.empty());
+            givenEligible(DEPUTY_ID);
+
+            service.forceAssignInitialAdminOnUnarchive(SCOPE_ID, "TEAM", DEPUTY_ID, systemAdminId);
+
+            verify(userRoleRepository).save(argThatRoleIdAndUser(ADMIN_ROLE_ID, DEPUTY_ID));
+        }
+
+        @Test
+        @DisplayName("P1-3: 指名者が現役でない場合はROLE_001（404）で拒否されuser_rolesは作られない")
+        void 現役でない指名者は拒否される() {
+            Long systemAdminId = 999L;
+            given(userRowLockService.lock(DEPUTY_ID)).willReturn(UserRowLockService.UserState.INELIGIBLE_EXISTING);
+
+            assertThatThrownBy(() -> service.forceAssignInitialAdminOnUnarchive(SCOPE_ID, "TEAM", DEPUTY_ID, systemAdminId))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(RoleErrorCode.ROLE_001));
+
+            verify(userRoleRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("P1-3: 指名者が当該スコープの active membership を持たない場合はROLE_001（404）で拒否される")
+        void スコープ非在籍の指名者は拒否される() {
+            Long systemAdminId = 999L;
+            given(userRowLockService.lock(DEPUTY_ID)).willReturn(UserRowLockService.UserState.ACTIVE);
+            given(membershipService.isActiveMemberForUpdate(DEPUTY_ID, ScopeType.TEAM, SCOPE_ID)).willReturn(false);
+
+            assertThatThrownBy(() -> service.forceAssignInitialAdminOnUnarchive(SCOPE_ID, "TEAM", DEPUTY_ID, systemAdminId))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(RoleErrorCode.ROLE_001));
+
+            verify(userRoleRepository, never()).save(any());
         }
     }
 
