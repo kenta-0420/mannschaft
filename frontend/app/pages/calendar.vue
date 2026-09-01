@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { GanttResponse, GanttTodo } from '~/types/todo'
-import { useMyCalendarData, PERSONAL_KEY, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
+import { useMyCalendarData, PERSONAL_KEY } from '~/composables/useMyCalendarData'
 import type { CalendarViewMode } from '~/composables/useMyCalendarData'
 import { dateToOrdinal, shiftDate, todayInTimezone, weekStartOf } from '~/utils/calendarWeek'
 
@@ -85,7 +85,8 @@ const {
   currentYear, currentMonth, loading, calendarLoading, loadEvents, refresh,
   onPrevMonth: calPrevMonth, onNextMonth: calNextMonth, goToToday, navigateTo,
   extendedEvents, todosFailed, layersFailed, availableScopes, allScopeOptions, selectedScopes,
-  filteredEvents, toggleScope, multiSelectScopes, initStorage, view,
+  filteredEvents, toggleScope, initStorage, view,
+  setLayerColor, resetLayerColor,
 } = useMyCalendarData()
 
 // F03.19 §6.8（Wave 3-c）: モバイル（<768px）では常にリスト表示のため md 以上の `view`
@@ -465,6 +466,19 @@ function onMultiSelectChange(vals: string[]) {
   selectedScopes.value = vals
 }
 
+/**
+ * レイヤー色の変更（§4.4 の PATCH）。`color` のみ送るため `hidden` は保たれる（AC-08b）。
+ * 失敗時は composable 側でユーザーへ通知済み（握りつぶしていない）。
+ */
+async function onChangeLayerColor(payload: { scopeType: string; scopeId: number; color: string }) {
+  await setLayerColor(payload.scopeType, payload.scopeId, payload.color)
+}
+
+/** 「自動に戻す」（§4.5 の DELETE）。PATCH の color:null では表現しない。 */
+async function onResetLayerColor(payload: { scopeType: string; scopeId: number }) {
+  await resetLayerColor(payload.scopeType, payload.scopeId)
+}
+
 async function onTabChange(tab: CalendarTab) {
   activeTab.value = tab
   if (tab === 'gantt') {
@@ -793,45 +807,17 @@ onMounted(async () => {
             </Transition>
           </div>
 
-          <!-- 凡例 + フィルタ -->
-          <div class="mt-4 flex flex-wrap items-center gap-4 text-xs text-surface-500">
-            <span><span class="mr-1 inline-block h-3 w-3 rounded-full bg-green-500" />個人</span>
-            <span><span class="mr-1 inline-block h-3 w-3 rounded-full bg-indigo-500" />チーム/組織</span>
-            <!-- #51: スコープフィルタ（個人含む全スコープ） -->
-            <div v-if="allScopeOptions.length > 0" class="flex gap-2 flex-wrap items-center">
-              <span class="text-xs text-surface-400">表示:</span>
-
-              <!-- ≤5件: 横並びトグルボタン -->
-              <template v-if="allScopeOptions.length <= FILTER_OVERFLOW">
-                <button
-                  v-for="sc in allScopeOptions"
-                  :key="sc.value"
-                  type="button"
-                  class="text-xs px-2 py-0.5 rounded-full border transition-colors"
-                  :class="selectedScopes.includes(sc.value)
-                    ? 'border-primary text-primary bg-primary/10'
-                    : 'border-surface-300 text-surface-400'"
-                  @click="onToggleScope(sc.value)"
-                >
-                  {{ sc.label }}
-                </button>
-              </template>
-
-              <!-- 6件以上: MultiSelect ドロップダウン -->
-              <MultiSelect
-                v-else
-                :model-value="multiSelectScopes"
-                :options="allScopeOptions"
-                option-label="label"
-                option-value="value"
-                :placeholder="t('schedule.filter.allTeamsOrgs')"
-                :max-selected-labels="2"
-                selected-items-label="{0}件選択中"
-                class="text-xs"
-                style="min-width: 180px"
-                @update:model-value="onMultiSelectChange"
-              />
-            </div>
+          <!-- レイヤー凡例・フィルタ（F03.19 §6.4） -->
+          <div class="mt-4 text-xs text-surface-500">
+            <CalendarLayerChips
+              v-if="allScopeOptions.length > 0"
+              :options="allScopeOptions"
+              :selected="selectedScopes"
+              @toggle="onToggleScope"
+              @update:selected="onMultiSelectChange"
+              @color="onChangeLayerColor"
+              @reset-color="onResetLayerColor"
+            />
           </div>
         </div>
 

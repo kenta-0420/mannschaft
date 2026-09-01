@@ -1411,7 +1411,11 @@
           "detail": "팀・조직 표시 전환을 일시적으로 사용할 수 없습니다. 일정은 계속 표시됩니다. 잠시 후 다시 시도해 주세요."
         },
         "hiddenNotice": "생성한 레이어가 숨겨져 있습니다",
-        "showIt": "표시하기"
+        "showIt": "표시하기",
+        "title": "레이어",
+        "count": "레이어 {count}개",
+        "color": "색상 변경",
+        "colorAuto": "자동으로 되돌리기"
       },
       "more": "외 {count}건",
       "today": "오늘",
@@ -1438,6 +1442,11 @@
         "weekGrid": "{range} 주간",
         "slot": "{date} {time} {content}",
         "allDayList": "종일 일정"
+      },
+      "error": {
+        "invalidColor": "색상 형식이 올바르지 않습니다",
+        "notMember": "이 레이어의 설정을 변경할 권한이 없습니다",
+        "layerLimit": "레이어 설정 상한에 도달했습니다"
       }
     }
   },

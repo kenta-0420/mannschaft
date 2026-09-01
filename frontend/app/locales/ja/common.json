@@ -1411,7 +1411,11 @@
           "detail": "チーム・組織の表示切り替えが一時的に使えません。予定は表示されています。時間をおいて再読み込みしてください。"
         },
         "hiddenNotice": "作成先のレイヤーが非表示です",
-        "showIt": "表示する"
+        "showIt": "表示する",
+        "title": "レイヤー",
+        "count": "{count}件のレイヤー",
+        "color": "色を変更",
+        "colorAuto": "自動に戻す"
       },
       "more": "他{count}件",
       "today": "今日",
@@ -1438,6 +1442,11 @@
         "weekGrid": "{range}の週",
         "slot": "{date} {time} {content}",
         "allDayList": "終日の予定"
+      },
+      "error": {
+        "invalidColor": "色の指定が不正です",
+        "notMember": "このレイヤーの設定を変更する権限がありません",
+        "layerLimit": "レイヤー設定の上限に達しています"
       }
     }
   },
