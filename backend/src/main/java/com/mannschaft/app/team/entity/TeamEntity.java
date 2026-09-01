@@ -105,6 +105,16 @@ public class TeamEntity extends BaseEntity {
 
     private LocalDateTime deletedAt;
 
+    /**
+     * 柱②-1: 販促プロビジョニング。PROVISIONED（承諾前の事前作成状態）/ ACTIVE（通常）。
+     * <p>本 PR では ACTIVE 以外を生成するコードは存在しない（DDL とエンティティ骨格のみ）。
+     * 作成 API とゲート（PROVISIONED を通常導線から隠す等）は後続 PR で実装する。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lifecycle_status", nullable = false, length = 20)
+    @Builder.Default
+    private LifecycleStatus lifecycleStatus = LifecycleStatus.ACTIVE;
+
     // --- F01.2 拡張プロフィールフィールド ---
 
     @Column(name = "icon_url", length = 500)
@@ -204,6 +214,31 @@ public class TeamEntity extends BaseEntity {
         GUESTS_AND_ABOVE,
         SUPPORTERS_AND_ABOVE,
         MEMBERS_AND_ABOVE
+    }
+
+    /**
+     * 柱②-1: 販促プロビジョニングのライフサイクル状態。
+     */
+    public enum LifecycleStatus {
+        /** 承諾前の事前作成状態。招待未承諾のため通常導線には出さない想定(ゲートは後続 PR)。 */
+        PROVISIONED,
+        /** 通常のチーム(既定値)。 */
+        ACTIVE
+    }
+
+    /**
+     * PROVISIONED（承諾前の事前作成状態）かどうかを判定する。
+     */
+    public boolean isProvisioned() {
+        return this.lifecycleStatus == LifecycleStatus.PROVISIONED;
+    }
+
+    /**
+     * 招待承諾により PROVISIONED から ACTIVE へ引き上げる。
+     * <p>本 PR では呼び出し元が存在しない（承諾 API は後続 PR）。</p>
+     */
+    public void activate() {
+        this.lifecycleStatus = LifecycleStatus.ACTIVE;
     }
 
     /**

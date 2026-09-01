@@ -1,0 +1,598 @@
+package com.mannschaft.app.role.service;
+
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.gdpr.GdprErrorCode;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.role.RoleErrorCode;
+import com.mannschaft.app.role.dto.LastAdminScope;
+import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.event.AdminSuccessionForcedNotificationEvent;
+import com.mannschaft.app.role.repository.RoleRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.team.service.TeamService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * 柱①「ADMINゼロ根治」— purge（アカウント物理削除）例外経路限定の自動承継（案 C′）。
+ *
+ * <p>正本: docs/architecture/account_purge_last_admin_succession.md §11〜§14。
+ * 通常のオーナー委譲（承諾型オファー・{@link OwnershipTransferOfferService} 相当）とは別系統。
+ * purge 経路は退会者本人の30日タイムリミットに阻害されないよう、承諾を待たない
+ * 「承諾スキップの強制委譲」を採る（§10.11 後半 / §11.1）。</p>
+ *
+ * <p><b>①-0 直列化</b>: ADMIN 行の変更は既存 {@link AdminRoleMutationLockService} が提供する
+ * 「ADMIN ロール定義行 → スコープ内 ADMIN 行」の悲観ロック（{@code SELECT ... FOR UPDATE}）を
+ * 経由させる。{@code RoleService#removeMember} / {@code #leaveScope} / {@code #transferOwnership}
+ * が既にこの経路でロックしているため、本サービスも同じ経路を再利用し、ロック方式を二重化しない
+ * （decision: 新規ロックサービスを起こさず既存 {@code AdminRoleMutationLockService} を拡張なしで再利用）。</p>
+ *
+ * <p><b>ロック取得順序（Codex検分第2巡→第3巡 P1 反映）</b>: 全メソッドで
+ * {@code users}（{@link UserRowLockService}）→ {@code ADMIN} ロール定義行・スコープ内 ADMIN 行
+ * （{@link AdminRoleMutationLockService#lockScopeAdminRowsAfterUsersLocked}、契約どおり
+ * users ロック済み前提で呼ぶ）→ {@code user_roles} 行（{@code findByUserIdAndTeamIdForUpdate} 等）
+ * → {@code memberships} 行（{@code MembershipService#isActiveMemberForUpdate}）の順で、
+ * <b>各段 1 トランザクションにつき 1 回だけ</b>取得する。これは
+ * {@code RoleService#transferOwnership}（{@code RoleService.java:641→650}）と同一順序であり、
+ * 既存の通常経路（除名・脱退・降格・委譲）と対称にすることで、purge/バッチ経路との間の
+ * 相互待ちデッドロックを構造的に防ぐ。</p>
+ *
+ * <p><b>候補選定は「事前に1回だけロック」できるよう設計する（第3巡 P1 反映）</b>: 第2巡の実装は
+ * 「候補1件を仮決定→ロック→再検証→失格ならロックを保持したまま次候補を再選定」というリトライを
+ * 行っており、リトライのたびに {@code lockAll} を呼び直していた。{@code lockAll} 内部は ID 昇順でも、
+ * <b>呼び出し間</b>の全体順序までは保証されないため、ADMIN 行を保持したまま次候補の users 行を
+ * 待つ状態と、users 行を保持したまま ADMIN 行を待つ状態が交錯し、デッドロックが再発しうる。
+ * 根治として、リトライという概念自体を無くした:</p>
+ * <ol>
+ *   <li>①ロック無し読みで候補を優先順に<b>最大 {@link #MAX_SUCCESSION_ATTEMPTS} 件</b>仮決定する
+ *       （{@code selectTopCandidates}）</li>
+ *   <li>②（purge 経路のみ）退会者本人 + 仮決定した候補全件の user 行を<b>1 回の {@code lockAll}</b>で
+ *       一括ロックする（users 先）</li>
+ *   <li>③ ADMIN 行をロックする</li>
+ *   <li>④ ロック下で候補を優先順に評価し、最初に資格（現役性 + membership 在籍）を満たした者を昇格する。
+ *       上位 N 件が全滅した場合: ロック無し読みの時点で N 件を超える候補が存在した可能性があるなら、
+ *       <b>本トランザクションでは archive せずそのまま終了する</b>（追加のロック取得＝リトライを
+ *       本トランザクション内で行わない）。是正の再試行は {@code RolePurgeEventListener} の
+ *       再配送 / 手動 retry、または夜次の {@code AdminlessScopeSuccessionBatchService} という
+ *       <b>別トランザクション</b>に委ねる。N 件以内で全候補を使い切っていた場合のみ archive する</li>
+ * </ol>
+ * <p>これにより users → ADMIN の一方向・各段 1 回きりの取得になり、リトライによる追加ロックが
+ * 構造的に発生しない。仮決定とロック下評価の間に候補集合が実際には変化していても（新規参加者が
+ * より古参になる等）、「その時点で仮決定した N 件の中で決める」で安全側に倒す（資格を満たす者しか
+ * 昇格させないため、誤って不適格者を昇格させることはない）。</p>
+ */
+@Slf4j
+@Service
+@Transactional(readOnly = true)
+@RequiredArgsConstructor
+public class RoleSuccessionService {
+
+    private static final String SCOPE_TEAM = "TEAM";
+    /**
+     * ロック無し読みで仮決定する候補の最大件数（Codex第3巡P1）。
+     * この件数分をまとめて1回の{@code lockAll}でロックし、ロック下で優先順に評価する
+     * （リトライのたびに追加ロックを取らない設計。詳細はクラス Javadoc 参照）。
+     */
+    private static final int MAX_SUCCESSION_ATTEMPTS = 5;
+
+    private final UserRoleRepository userRoleRepository;
+    private final RoleRepository roleRepository;
+    private final AdminRoleMutationLockService adminRoleMutationLockService;
+    private final AuditLogService auditLogService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
+    private final UserRowLockService userRowLockService;
+    private final MembershipService membershipService;
+
+    /**
+     * {@code userId} が唯一の ADMIN であるスコープを全て返す（他メンバー0人のスコープも含む）。
+     */
+    public List<LastAdminScope> findLastAdminScopes(Long userId) {
+        return userRoleRepository.findLastAdminScopes(userId);
+    }
+
+    /**
+     * {@code userId} が唯一の ADMIN であるスコープのうち、他メンバーが1人以上いるものだけを返す
+     * （deletion-preview 表示用。§14）。
+     */
+    public List<LastAdminScope> findBlockingLastAdminScopes(Long userId) {
+        return findLastAdminScopes(userId).stream()
+                .filter(scope -> scope.getOtherMembersCount() >= 1)
+                .toList();
+    }
+
+    /**
+     * §14 の退会受付ガード。他メンバー1人以上の lastAdmin スコープが残っていれば
+     * {@code BusinessException(GdprErrorCode.GDPR_011)} を投げる（AC1）。
+     * 他メンバー0人のスコープはブロックしない（purge 時 archive に委ねる、AC3）。
+     *
+     * <p>§12.7 のとおり、ここはロックなしの事前チェック（UX 用の早期拒否）。
+     * 実行時（purge）の再判定は {@link #forceTransferForPurge} がロック下で行う。</p>
+     */
+    public void checkNoLastAdminScopes(Long userId) {
+        if (!findBlockingLastAdminScopes(userId).isEmpty()) {
+            throw new BusinessException(GdprErrorCode.GDPR_011);
+        }
+    }
+
+    /**
+     * §11.2 の優先順位・候補資格に従って承継候補を選定する。
+     *
+     * <p>優先順位: ① 候補資格を満たす DEPUTY_ADMIN の最古参（{@code created_at} 昇順・
+     * {@code id} 昇順でタイブレーク） → ② 候補資格を満たす MEMBER の最古参
+     * （{@code joined_at} 昇順・{@code id} 昇順） → 候補ゼロなら空を返す。</p>
+     *
+     * @param scopeId   対象スコープ ID
+     * @param scopeType TEAM / ORGANIZATION
+     * @return 候補ユーザー ID。候補資格者が1人もいなければ {@link Optional#empty()}
+     */
+    public Optional<Long> selectSuccessionCandidate(Long scopeId, String scopeType) {
+        return selectSuccessionCandidateExcluding(scopeId, scopeType, Set.of());
+    }
+
+    private Optional<Long> selectSuccessionCandidateExcluding(Long scopeId, String scopeType, Set<Long> excludeUserIds) {
+        boolean team = SCOPE_TEAM.equals(scopeType);
+        List<Long> deputies = team
+                ? userRoleRepository.findDeputyAdminCandidateIdsByTeam(scopeId)
+                : userRoleRepository.findDeputyAdminCandidateIdsByOrganization(scopeId);
+        Optional<Long> deputy = deputies.stream().filter(id -> !excludeUserIds.contains(id)).findFirst();
+        if (deputy.isPresent()) {
+            return deputy;
+        }
+        List<Long> members = team
+                ? userRoleRepository.findMemberCandidateIdsByTeam(scopeId)
+                : userRoleRepository.findMemberCandidateIdsByOrganization(scopeId);
+        return members.stream().filter(id -> !excludeUserIds.contains(id)).findFirst();
+    }
+
+    /**
+     * {@code selectTopCandidates} の結果。{@code ids} は優先順位順の候補（最大
+     * {@link #MAX_SUCCESSION_ATTEMPTS} 件）、{@code moreExist} はロック無し読みの時点で
+     * それを超える候補が存在したか（存在した場合、{@code ids} 全滅時に archive せず
+     * 別トランザクションでの再試行に委ねる判断材料になる）。
+     */
+    private record TopCandidates(List<Long> ids, boolean moreExist) { }
+
+    /**
+     * §11.2 の優先順位・候補資格に従って、承継候補をロック無し読みで優先順に最大 {@code limit} 件
+     * 仮決定する（Codex第3巡P1: リトライによる追加ロック取得を廃止するための事前一括選定）。
+     *
+     * <p>優先順位は {@link #selectSuccessionCandidate} と同じ: ① 候補資格を満たす DEPUTY_ADMIN
+     * の最古参から順に → DEPUTY_ADMIN が {@code limit} 件に満たない場合のみ ② 候補資格を満たす
+     * MEMBER の最古参から順に埋める。</p>
+     *
+     * <p><b>検分反映（Codex第4巡 P1-b）</b>: DEPUTY_ADMIN 権限を持つユーザーも在籍上は
+     * {@code memberships}（{@code role_kind = 'MEMBER'}）に行を持つため、{@code deputies} と
+     * {@code members} の2クエリの結果に同一 userId が重複しうる。重複したまま結合すると
+     * {@code limit} 件枠を同一ユーザーが2回分食い潰し、後続の真の MEMBER 候補が漏れる上、
+     * {@code moreExist} も配列長ベースで誤判定（実際は枠が余っているのに他候補ありと誤認する等）
+     * しうる。よって members 側から deputies に含まれる userId を明示的に除外してから結合し、
+     * {@code moreExist} は重複排除後の件数で判定する（DEPUTY としての優先順位・位置は維持される。
+     * 二重カウントしないだけで、順序自体は変えない）。</p>
+     *
+     * @param scopeId         対象スコープ ID
+     * @param scopeType       TEAM / ORGANIZATION
+     * @param excludeUserId   候補から除外する ID（purge 経路の退会者本人。無ければ null）
+     * @param limit           仮決定する最大件数
+     */
+    private TopCandidates selectTopCandidates(Long scopeId, String scopeType, Long excludeUserId, int limit) {
+        boolean team = SCOPE_TEAM.equals(scopeType);
+        List<Long> deputies = (team
+                ? userRoleRepository.findDeputyAdminCandidateIdsByTeam(scopeId)
+                : userRoleRepository.findDeputyAdminCandidateIdsByOrganization(scopeId))
+                .stream().filter(id -> !id.equals(excludeUserId)).distinct().toList();
+
+        if (deputies.size() >= limit) {
+            return new TopCandidates(deputies.subList(0, limit), deputies.size() > limit);
+        }
+
+        Set<Long> deputySet = new HashSet<>(deputies);
+        // P1-b: DEPUTY_ADMIN は memberships 側にも MEMBER として載りうるため、
+        // 既に deputies で採用済みの userId は members 側から除外する（DEPUTY優先の位置を維持）。
+        List<Long> members = (team
+                ? userRoleRepository.findMemberCandidateIdsByTeam(scopeId)
+                : userRoleRepository.findMemberCandidateIdsByOrganization(scopeId))
+                .stream()
+                .filter(id -> !id.equals(excludeUserId))
+                .filter(id -> !deputySet.contains(id))
+                .distinct()
+                .toList();
+
+        List<Long> combined = new ArrayList<>(deputies);
+        int remaining = limit - combined.size();
+        // members は deputies との重複を既に排除したユニーク集合なので、そのまま件数比較でよい。
+        boolean moreExist = members.size() > remaining;
+        for (Long memberId : members) {
+            if (combined.size() >= limit) {
+                break;
+            }
+            combined.add(memberId);
+        }
+        return new TopCandidates(combined, moreExist);
+    }
+
+    /**
+     * 候補ユーザーが当該スコープの active membership を持つかを、悲観ロック下で検証する
+     * （{@code memberships} 行ロック。呼び出し前提: users → ADMIN 行のロックを取得済みであること）。
+     *
+     * <p>ユーザー自体の現役性（{@code deleted_at IS NULL AND status = 'ACTIVE'}）は
+     * {@link UserRowLockService#lockAll} の戻り値（呼び出し元で users を先にロックした結果）で
+     * 判定する。ここでは membership の在籍だけを見る。</p>
+     */
+    private boolean isMembershipEligible(Long userId, Long scopeId, String scopeType) {
+        ScopeType membershipScopeType = SCOPE_TEAM.equals(scopeType) ? ScopeType.TEAM : ScopeType.ORGANIZATION;
+        return membershipService.isActiveMemberForUpdate(userId, membershipScopeType, scopeId);
+    }
+
+    // 柱①「ADMINゼロ根治」検分反映（P1-2 / Codex第2巡 P1・ロック順序） — §12.6 のとおり、
+    // 候補資格は「選定時点」と「ロック取得後の実行直前」の二段で検証する。
+    //
+    // 候補選定クエリ（findDeputyAdminCandidateIdsByTeam 等）は
+    // users.deleted_at IS NULL AND users.status = 'ACTIVE' で「退会受付済み・
+    // 匿名化済み・利用停止中」を除外している。この codebase の UserEntity は
+    // 退会受付（requestDeletion()）と物理削除前提の論理削除の両方を単一の
+    // deleted_at で表現し、匿名化（anonymize()）も必ず softDelete()（= deleted_at セット）
+    // と対で呼ばれる設計（別カラムの withdrawal_requested_at/anonymized_at は実スキーマに
+    // 存在しない）。よって SQL 側の条件は候補選定時点では十分であるが、選定から昇格実行までの
+    // 間に候補自身が退会・停止・当該スコープからの離脱に陥るレースには対処できないため、
+    // ロック取得後・書き込み直前に各呼び出し元（forceTransferForPurge /
+    // promoteForBatchSuccession / forceAssignInitialAdminOnUnarchive）で再検証する
+    // （ユーザー現役性は UserRowLockService のロック結果、membership 在籍は
+    // isMembershipEligible から判定する。ロック順序は users → ADMIN 行 → membership）。
+
+    /**
+     * 承諾スキップの強制委譲を実行する（purge 経路専用）。
+     *
+     * <p>通常の承諾型 {@code acceptOffer} とは別メソッドとして分離する（§10.11 後半）。
+     * 監査ログに {@code forced=true} を記録し、昇格された利用者へ通知を発行する。
+     * ①-0 直列化のスコープロック下で候補資格を再検証してから実行する（§12.6）。</p>
+     *
+     * <p><b>冪等性（AC12）</b>: {@code AccountPurgedEvent} の再配送（at-least-once）に備え、
+     * 「{@code withdrawingUserId} が現時点でもこのスコープの ADMIN であるか」を
+     * ロック取得後に再確認する。既に処理済（委譲済 or 他経路で ADMIN 行が変化済）なら
+     * 何もせず return する。{@code AccountPurgedEvent} は {@code purgeId} 相当の識別子を
+     * payload に持たないため（{@code userId} のみ）、冪等キーは DB 上の実状態
+     * （scope + userId の ADMIN 行の有無）で代替する（設計書 §12.6 からの実装上の妥当な逸脱。
+     * 詳細は PR 報告に記載）。</p>
+     *
+     * <p>AC7: {@code scopeType} ごとに独立実行し、TEAM の承継処理が同一ユーザーの
+     * ORGANIZATION 側 {@code user_roles} 行を一切変更しない（本メソッドは引数の
+     * {@code scopeId}/{@code scopeType} のみを対象にクエリ・更新するため、構造的に越境しない）。</p>
+     *
+     * <p><b>検分反映（Codex第4巡 P1-a）</b>: 本メソッドはかつて {@code void} で、
+     * 「候補全滅かつ他に候補が存在する可能性がある（RETRY_LATER 相当）」場合も単に return する
+     * だけだった。呼び出し元 {@code RolePurgeScopeExecutor#processScope} はこの直後に
+     * 無条件で {@code roleService#removeMemberWithoutAdminCheck} を実行して旧 ADMIN 行を
+     * 削除するため、承継しないまま ADMIN 行だけが消え「ADMIN 0」が発生する欠陥があった。
+     * 本メソッドは戻り値で結果（{@link PurgeSuccessionResult}）を返すようにし、
+     * {@code RETRY_LATER} のときは呼び出し元が {@code removeMemberWithoutAdminCheck} を
+     * <b>実行しない</b>でスコープ処理を失敗扱いにし、{@code RolePurgeEventListener} の
+     * 既存の失敗継続ルール（failed カウント・completion_status を SUCCESS にしない）に
+     * 乗せて再配送 / 補正バッチでの再試行に委ねる。</p>
+     *
+     * @param scopeId           対象スコープ ID
+     * @param scopeType         TEAM / ORGANIZATION
+     * @param withdrawingUserId 退会（purge）対象の旧 ADMIN ユーザー ID
+     * @param purgeId           冪等キーの補助情報（現状は監査ログの metadata に残すのみ。上記参照）
+     * @return 処理結果。呼び出し元は {@link PurgeSuccessionResult#RETRY_LATER} のときのみ
+     *         {@code removeMemberWithoutAdminCheck} を呼ばず失敗扱いにすること
+     */
+    @Transactional
+    public PurgeSuccessionResult forceTransferForPurge(
+            Long scopeId, String scopeType, Long withdrawingUserId, UUID purgeId) {
+        // ① ロック無し読みで候補を優先順に最大 MAX_SUCCESSION_ATTEMPTS 件仮決定する
+        // （Codex第3巡P1: リトライで追加ロックを取らないための事前一括選定）。
+        TopCandidates top = selectTopCandidates(scopeId, scopeType, withdrawingUserId, MAX_SUCCESSION_ATTEMPTS);
+
+        // ② 退会者本人 + 仮決定した候補全件の user 行を、1 回の lockAll で一括ロックする
+        // （users 先。lockAll 内部で ID 昇順ロックが保証される）。
+        List<Long> lockTargets = new ArrayList<>(top.ids().size() + 1);
+        lockTargets.add(withdrawingUserId);
+        lockTargets.addAll(top.ids());
+        Map<Long, UserRowLockService.UserState> userStates =
+                userRowLockService.lockAll(lockTargets.toArray(new Long[0]));
+
+        // ③ ADMIN 行ロック（users ロック済み前提、契約どおり）。
+        List<Long> lockedAdminUserIds =
+                adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
+
+        // AC12 冪等性: withdrawingUserId が既にこのスコープの ADMIN でなければ、再配送または
+        // 別経路で既に処理済（委譲済・除名済）。何もしない。
+        if (!lockedAdminUserIds.contains(withdrawingUserId)) {
+            log.info("forceTransferForPurge: 冪等スキップ（既に処理済）scopeType={}, scopeId={}, withdrawingUserId={}",
+                    scopeType, scopeId, withdrawingUserId);
+            return PurgeSuccessionResult.IDEMPOTENT_SKIP;
+        }
+        // AC3: withdrawingUserId 以外にも ADMIN が残っているなら是正不要。
+        if (lockedAdminUserIds.size() > 1) {
+            log.info("forceTransferForPurge: 他にADMINが残存のため是正不要 scopeType={}, scopeId={}",
+                    scopeType, scopeId);
+            return PurgeSuccessionResult.NOT_NEEDED;
+        }
+
+        // ④ ロック下で候補を優先順に評価し、最初に資格（現役性 + membership 在籍）を満たした者を選ぶ。
+        Long candidateId = null;
+        for (Long candidate : top.ids()) {
+            if (userStates.get(candidate) == UserRowLockService.UserState.ACTIVE
+                    && isMembershipEligible(candidate, scopeId, scopeType)) {
+                candidateId = candidate;
+                break;
+            }
+        }
+
+        if (candidateId == null) {
+            if (top.moreExist()) {
+                // 上位 MAX_SUCCESSION_ATTEMPTS 件が全滅したが、ロック無し読みの時点でそれを超える
+                // 候補が存在した可能性がある。本トランザクション内で追加ロックを取得する
+                // （＝リトライする）とデッドロック再発の温床になるため行わない。archive もせず、
+                // RETRY_LATER を返す。呼び出し元（RolePurgeScopeExecutor）は
+                // removeMemberWithoutAdminCheck を実行せず本スコープを失敗扱いにし、
+                // 是正の再試行は RolePurgeEventListener の再配送 / 手動 retry、または夜次の
+                // AdminlessScopeSuccessionBatchService という別トランザクションに委ねる
+                // （Codex第4巡 P1-a: 旧実装は return するだけで、呼び出し元が無条件に
+                // removeMemberWithoutAdminCheck を実行してしまい ADMIN 0 が発生していた）。
+                log.warn("forceTransferForPurge: 上位{}件が全て失格。他に候補が存在する可能性があるため"
+                                + "本トランザクションでは是正せず終了する（再試行は別トランザクションに委ねる）"
+                                + " scopeType={}, scopeId={}, withdrawingUserId={}",
+                        MAX_SUCCESSION_ATTEMPTS, scopeType, scopeId, withdrawingUserId);
+                return PurgeSuccessionResult.RETRY_LATER;
+            }
+            // AC8: 候補ゼロ、または仮決定した全候補が失格かつ他に候補が存在しない → archive。
+            archiveScope(scopeId, scopeType);
+            return PurgeSuccessionResult.ARCHIVED;
+        }
+
+        promoteToAdmin(scopeId, scopeType, candidateId);
+
+        boolean team = SCOPE_TEAM.equals(scopeType);
+        auditLogService.record(
+                (team ? AuditEventType.TEAM_ADMIN_SUCCESSION_FORCED : AuditEventType.ORGANIZATION_ADMIN_SUCCESSION_FORCED).name(),
+                withdrawingUserId,
+                candidateId,
+                team ? scopeId : null,
+                team ? null : scopeId,
+                null, null, null,
+                "{\"forced\":true,\"reason\":\"PURGE_LAST_ADMIN_SUCCESSION\""
+                        + ",\"purgeId\":" + (purgeId == null ? "null" : "\"" + purgeId + "\"") + "}");
+
+        // 通知のトランザクション境界番人（Issue #2834 / CMP-056 / #2990）: 業務TX内ではイベント発行のみ。
+        // 実配送は AdminSuccessionNotificationListener（AFTER_COMMIT）が担う。
+        eventPublisher.publishEvent(new AdminSuccessionForcedNotificationEvent(
+                scopeType, scopeId, candidateId, withdrawingUserId,
+                AdminSuccessionForcedNotificationEvent.Reason.PURGE));
+
+        log.info("forceTransferForPurge 完了: scopeType={}, scopeId={}, withdrawingUserId={}, candidateId={}",
+                scopeType, scopeId, withdrawingUserId, candidateId);
+        return PurgeSuccessionResult.SUCCEEDED;
+    }
+
+    /**
+     * {@link #forceTransferForPurge} の結果種別（Codex第4巡 P1-a）。
+     *
+     * <p>{@code RETRY_LATER} は呼び出し元にとって最重要のケースである: 承継が完了していない
+     * （旧 ADMIN が引き続きこのスコープの唯一の ADMIN のまま）ため、
+     * {@code RolePurgeScopeExecutor} はこの結果を受け取ったら
+     * {@code roleService#removeMemberWithoutAdminCheck} を呼んではならない
+     * （呼ぶと承継しないまま旧 ADMIN 行だけが消え「ADMIN 0」が発生する）。</p>
+     */
+    public enum PurgeSuccessionResult {
+        /** 候補への昇格が完了した。 */
+        SUCCEEDED,
+        /** 候補資格者が1人もおらず（またはロック下再検証で全滅かつ他候補なし）スコープを archive した。 */
+        ARCHIVED,
+        /** withdrawingUserId 以外にも ADMIN が残存しており是正不要だった（AC3）。 */
+        NOT_NEEDED,
+        /** 冪等スキップ: withdrawingUserId が既にこのスコープの ADMIN でなかった（再配送・多重処理）。 */
+        IDEMPOTENT_SKIP,
+        /**
+         * 仮決定した上位候補が全滅したが、ロック無し読みの時点でそれを超える候補が存在した
+         * 可能性があるため、本トランザクションでは是正せず終了した。<b>承継未完了</b>のため、
+         * 呼び出し元は {@code removeMemberWithoutAdminCheck} を実行せずスコープ処理を
+         * 失敗扱いにし、再配送 / 補正バッチでの再試行に委ねること。
+         */
+        RETRY_LATER
+    }
+
+    /**
+     * {@link #promoteForBatchSuccession(Long, String)} の結果種別。
+     * {@code RETRY_LATER}: 仮決定した上位 {@link #MAX_SUCCESSION_ATTEMPTS} 件が全滅したが、
+     * ロック無し読みの時点でそれを超える候補が存在した可能性があるため、本トランザクションでは
+     * archive せず終了した（次回バッチ実行という別トランザクションでの再試行に委ねる）。
+     */
+    public enum BatchSuccessionResult { PROMOTED, ARCHIVED, NOT_NEEDED, RETRY_LATER }
+
+    /**
+     * 柱①「ADMINゼロ根治」§13 — {@code AdminlessScopeSuccessionBatchService} 専用の是正実行。
+     *
+     * <p>{@code AccountPurgedEvent} の issuer（退会者コンテキスト）が存在しないバッチ経路のため、
+     * {@link #forceTransferForPurge} とは別メソッドに分離する（既存裁定の踏襲）。
+     * ロック方式・候補選定・archive フォールバックは {@link #forceTransferForPurge} と同一。</p>
+     */
+    @Transactional
+    public BatchSuccessionResult promoteForBatchSuccession(Long scopeId, String scopeType) {
+        // ① ロック無し読みで候補を優先順に最大 MAX_SUCCESSION_ATTEMPTS 件仮決定する
+        // （ロック方式は forceTransferForPurge と同一。詳細はクラス Javadoc 参照）。
+        TopCandidates top = selectTopCandidates(scopeId, scopeType, null, MAX_SUCCESSION_ATTEMPTS);
+
+        // ② 仮決定した候補全件の user 行を、1 回の lockAll で一括ロックする（users 先）。
+        Map<Long, UserRowLockService.UserState> userStates = top.ids().isEmpty()
+                ? Map.of()
+                : userRowLockService.lockAll(top.ids().toArray(new Long[0]));
+
+        // ③ ADMIN 行ロック（users ロック済み前提）。
+        List<Long> lockedAdminUserIds =
+                adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
+        if (!lockedAdminUserIds.isEmpty()) {
+            // 既に是正済（並行実行・他経路での復旧）。
+            return BatchSuccessionResult.NOT_NEEDED;
+        }
+
+        // ④ ロック下で候補を優先順に評価し、最初に資格を満たした者を選ぶ。
+        Long candidateId = null;
+        for (Long candidate : top.ids()) {
+            if (userStates.get(candidate) == UserRowLockService.UserState.ACTIVE
+                    && isMembershipEligible(candidate, scopeId, scopeType)) {
+                candidateId = candidate;
+                break;
+            }
+        }
+
+        if (candidateId == null) {
+            if (top.moreExist()) {
+                // 上位 MAX_SUCCESSION_ATTEMPTS 件が全滅したが他に候補が存在する可能性がある。
+                // 本トランザクションでは追加ロックを取得せず終了し、次回バッチ実行に委ねる。
+                log.warn("promoteForBatchSuccession: 上位{}件が全て失格。次回バッチ実行に委ねる"
+                                + " scopeType={}, scopeId={}",
+                        MAX_SUCCESSION_ATTEMPTS, scopeType, scopeId);
+                return BatchSuccessionResult.RETRY_LATER;
+            }
+            archiveScope(scopeId, scopeType);
+            return BatchSuccessionResult.ARCHIVED;
+        }
+
+        promoteToAdmin(scopeId, scopeType, candidateId);
+
+        boolean team = SCOPE_TEAM.equals(scopeType);
+        auditLogService.record(
+                (team ? AuditEventType.TEAM_ADMIN_SUCCESSION_FORCED : AuditEventType.ORGANIZATION_ADMIN_SUCCESSION_FORCED).name(),
+                null,
+                candidateId,
+                team ? scopeId : null,
+                team ? null : scopeId,
+                null, null, null,
+                "{\"forced\":true,\"reason\":\"ADMINLESS_SCOPE_BATCH_SUCCESSION\"}");
+
+        // 通知のトランザクション境界番人（Issue #2834 / CMP-056 / #2990）: 業務TX内ではイベント発行のみ。
+        // 実配送は AdminSuccessionNotificationListener（AFTER_COMMIT）が担う。
+        eventPublisher.publishEvent(new AdminSuccessionForcedNotificationEvent(
+                scopeType, scopeId, candidateId, null,
+                AdminSuccessionForcedNotificationEvent.Reason.BATCH_ADMINLESS_SCOPE));
+
+        log.info("promoteForBatchSuccession 完了: scopeType={}, scopeId={}, candidateId={}",
+                scopeType, scopeId, candidateId);
+        return BatchSuccessionResult.PROMOTED;
+    }
+
+    /**
+     * 柱①「ADMINゼロ根治」§15 — SYSTEM_ADMIN の force-unarchive 経由で初期 ADMIN を指名する。
+     *
+     * <p>{@code SystemAdminScopeForceUnarchiveController} 専用。ADMIN 不在のまま unarchive
+     * させないよう、呼び出し元（コントローラ）は unarchive とセットで本メソッドを呼ぶこと。</p>
+     *
+     * <p><b>検分反映（P1-3 / Codex第2巡〜第3巡 P1・ロック順序）</b>: 指名ユーザーが「現役
+     * （{@code deleted_at IS NULL} かつ {@code status = 'ACTIVE'}）かつ当該スコープの
+     * active membership を持つ」ことを検証する。指名ユーザーは SYSTEM_ADMIN が明示指定する
+     * 単一 ID であり候補選定・リトライを伴わないため、本メソッドはもともと users → ADMIN 行の
+     * 各段 1 回きりのロック取得になっている（第3巡 P1 の「リトライで追加ロックを取らない」設計を
+     * 満たすために変更が必要だったのは候補選定を伴う {@link #forceTransferForPurge} /
+     * {@link #promoteForBatchSuccession} の 2 メソッドのみ）。満たさない場合は
+     * {@code BusinessException(RoleErrorCode.ROLE_001)}（404）を投げ、membership の無い
+     * ADMIN 行を作らない。SYSTEM_ADMIN が明示指名したからといって、在籍実態の無いユーザーを
+     * ADMIN 化することまでは許容しない（「ADMIN 指名を伴わない unarchive の拒否」は
+     * あくまで「無指名を許さない」意であり、「在籍実態の無い者への指名まで許す」意ではない）。
+     * ロック順序はクラス Javadoc のとおり users（{@code newAdminUserId}）→ ADMIN 行 →
+     * membership の順で取得する。</p>
+     *
+     * @param scopeId       対象スコープ ID
+     * @param scopeType     TEAM / ORGANIZATION
+     * @param newAdminUserId SYSTEM_ADMIN が指名した初期 ADMIN のユーザー ID
+     * @param actingSystemAdminId 実行した SYSTEM_ADMIN のユーザー ID（監査ログ用）
+     * @throws BusinessException 指名ユーザーが現役でない、または当該スコープの active
+     *                            membership を持たない場合（{@link RoleErrorCode#ROLE_001}・404）
+     */
+    @Transactional
+    public void forceAssignInitialAdminOnUnarchive(
+            Long scopeId, String scopeType, Long newAdminUserId, Long actingSystemAdminId) {
+        // ① users を先にロック（新ADMIN指名者の現役性はこのロック結果で判定する）。
+        UserRowLockService.UserState newAdminState = userRowLockService.lock(newAdminUserId);
+        // ② ADMIN 行ロック（users ロック済み前提）。
+        adminRoleMutationLockService.lockScopeAdminRowsAfterUsersLocked(scopeId, scopeType);
+
+        boolean eligible = newAdminState == UserRowLockService.UserState.ACTIVE
+                // ③ membership 再検証（ADMIN 行ロックの後）。
+                && isMembershipEligible(newAdminUserId, scopeId, scopeType);
+        if (!eligible) {
+            log.warn("forceAssignInitialAdminOnUnarchive: 指名ユーザーが現役でないか非在籍のため拒否 "
+                            + "scopeType={}, scopeId={}, newAdminUserId={}",
+                    scopeType, scopeId, newAdminUserId);
+            throw new BusinessException(RoleErrorCode.ROLE_001);
+        }
+
+        promoteToAdmin(scopeId, scopeType, newAdminUserId);
+
+        boolean team = SCOPE_TEAM.equals(scopeType);
+        auditLogService.record(
+                (team ? AuditEventType.TEAM_ADMIN_SUCCESSION_FORCED : AuditEventType.ORGANIZATION_ADMIN_SUCCESSION_FORCED).name(),
+                actingSystemAdminId,
+                newAdminUserId,
+                team ? scopeId : null,
+                team ? null : scopeId,
+                null, null, null,
+                "{\"forced\":true,\"reason\":\"SYSTEM_ADMIN_FORCE_UNARCHIVE\"}");
+
+        log.info("forceAssignInitialAdminOnUnarchive 完了: scopeType={}, scopeId={}, newAdminUserId={}, actingSystemAdminId={}",
+                scopeType, scopeId, newAdminUserId, actingSystemAdminId);
+    }
+
+    /** 候補ユーザーを既存ロール行から ADMIN 行へ差し替える（{@code RoleService#transferOwnership} と同型）。 */
+    private void promoteToAdmin(Long scopeId, String scopeType, Long candidateId) {
+        RoleEntity adminRole = roleRepository.findByName("ADMIN")
+                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
+
+        boolean team = SCOPE_TEAM.equals(scopeType);
+        Optional<UserRoleEntity> existing = team
+                ? userRoleRepository.findByUserIdAndTeamIdForUpdate(candidateId, scopeId)
+                : userRoleRepository.findByUserIdAndOrganizationIdForUpdate(candidateId, scopeId);
+        // delete→save が同一 scope_key を再挿入するため flush で DELETE を先に確定させる
+        // （uq_user_roles_user_scope ユニーク制約の衝突回避。RoleService#transferOwnership と同型）。
+        existing.ifPresent(row -> {
+            userRoleRepository.delete(row);
+            userRoleRepository.flush();
+        });
+
+        var builder = UserRoleEntity.builder()
+                .userId(candidateId)
+                .roleId(adminRole.getId());
+        if (team) {
+            builder.teamId(scopeId);
+        } else {
+            builder.organizationId(scopeId);
+        }
+        userRoleRepository.save(builder.build());
+    }
+
+    /** AC8: 候補資格者が1人もいないスコープを archive する（既存 archive API を再利用）。 */
+    private void archiveScope(Long scopeId, String scopeType) {
+        try {
+            if (SCOPE_TEAM.equals(scopeType)) {
+                teamService.archiveTeam(scopeId);
+            } else {
+                organizationService.archiveOrganization(scopeId);
+            }
+            log.info("forceTransferForPurge: 候補ゼロのためスコープをアーカイブ scopeType={}, scopeId={}",
+                    scopeType, scopeId);
+        } catch (BusinessException e) {
+            // 既に archive 済（多重配送・並行処理由来）は冪等に握りつぶさず記録だけ残す。
+            log.info("forceTransferForPurge: スコープは既にアーカイブ済 scopeType={}, scopeId={}, code={}",
+                    scopeType, scopeId, e.getErrorCode().getCode());
+        }
+    }
+}
