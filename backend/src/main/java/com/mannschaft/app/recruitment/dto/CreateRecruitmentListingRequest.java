@@ -5,6 +5,7 @@ import com.mannschaft.app.recruitment.RecruitmentParticipationType;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
@@ -65,7 +66,9 @@ public class CreateRecruitmentListingRequest {
     @NotNull
     private final RecruitmentVisibility visibility;
 
-    @Size(max = 200)
+    @NotNull
+    @NotBlank
+    @Size(min = 1, max = 200)
     private final String location;
 
     private final Long reservationLineId;

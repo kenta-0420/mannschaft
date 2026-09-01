@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.market.MarketErrorCode;
+import com.mannschaft.app.market.MarketListingSort;
 import com.mannschaft.app.market.dto.MarketCategoryDto;
 import com.mannschaft.app.market.dto.MarketListingResponse;
 import com.mannschaft.app.market.dto.MarketOwnerDto;
@@ -126,7 +127,8 @@ class MarketControllerTest {
     @DisplayName("GET /public/market/listings 200: 未ログインで一覧に到達し PII 抑制 DTO が返る")
     void listListings_anonymous_returns200() throws Exception {
         given(marketQueryService.searchListings(
-                isNull(), isNull(), isNull(), isNull(), isNull(), anyBoolean(), any(), any(), isNull()))
+                isNull(), isNull(), isNull(), isNull(), isNull(), anyBoolean(), any(), any(), isNull(),
+                eq(MarketListingSort.START_AT_ASC)))
                 .willReturn(new PageImpl<>(List.of(sampleListing()), PageRequest.of(0, 20), 1));
 
         mockMvc.perform(get("/api/v1/public/market/listings"))
@@ -143,7 +145,7 @@ class MarketControllerTest {
     void listListings_ownerType_passesFilter() throws Exception {
         given(marketQueryService.searchListings(
                 isNull(), isNull(), isNull(), eq(RecruitmentScopeType.PERSONAL), isNull(),
-                anyBoolean(), any(), any(), isNull()))
+                anyBoolean(), any(), any(), isNull(), eq(MarketListingSort.START_AT_ASC)))
                 .willReturn(Page.empty());
 
         mockMvc.perform(get("/api/v1/public/market/listings")
@@ -156,6 +158,27 @@ class MarketControllerTest {
     void listListings_unknownOwnerType_returns400() throws Exception {
         mockMvc.perform(get("/api/v1/public/market/listings")
                         .param("owner_type", "UNKNOWN"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("GET /public/market/listings: 締切が遠い順を検索サービスへ渡す")
+    void listListings_deadlineDesc_passesSort() throws Exception {
+        given(marketQueryService.searchListings(
+                isNull(), isNull(), isNull(), isNull(), isNull(), anyBoolean(), any(), any(), isNull(),
+                eq(MarketListingSort.DEADLINE_DESC)))
+                .willReturn(Page.empty());
+
+        mockMvc.perform(get("/api/v1/public/market/listings")
+                        .param("sort", "DEADLINE_DESC"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("GET /public/market/listings: 未知の並び順は 400")
+    void listListings_unknownSort_returns400() throws Exception {
+        mockMvc.perform(get("/api/v1/public/market/listings")
+                        .param("sort", "CREATED_AT_DESC"))
                 .andExpect(status().isBadRequest());
     }
 

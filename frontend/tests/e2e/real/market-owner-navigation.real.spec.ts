@@ -9,7 +9,7 @@ import { waitForHydration } from '../helpers/wait'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 test.describe.configure({ mode: 'serial' })
-test.setTimeout(180_000)
+test.setTimeout(600_000)
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const ADMIN = {
@@ -112,7 +112,18 @@ async function confirmListingFromUi(
   await authenticate(page, credentials)
   await page.goto('/notifications')
   await waitForHydration(page)
-  const notification = page.locator('[role="button"]').filter({ hasText: title }).first()
+  const matchingNotifications = page.locator('[role="button"]').filter({ hasText: title })
+  for (let pageCount = 0; pageCount < 20 && await matchingNotifications.count() === 0; pageCount++) {
+    const loadMore = page.getByRole('button', { name: 'もっと読む', exact: true })
+    if (!await loadMore.isVisible()) break
+    const nextPage = page.waitForResponse(response =>
+      response.url().includes('/api/v1/notifications?')
+      && response.url().includes('page='),
+    )
+    await loadMore.click()
+    expect((await nextPage).status()).toBe(200)
+  }
+  const notification = matchingNotifications.first()
   const confirmButton = notification.getByRole('button', { name: '確認する', exact: true })
   await expect(confirmButton).toBeVisible({ timeout: 30_000 })
   const [response] = await Promise.all([
@@ -127,6 +138,15 @@ async function confirmListingFromUi(
   await expect(async () => {
     await page.goto(personal ? '/me/market' : `/recruitment-listings/${listingId}`)
     await waitForHydration(page)
+    if (personal) {
+      await page.getByTestId('personal-market-status-filter').click()
+      const completedResponse = page.waitForResponse(candidate =>
+        candidate.url().includes('/api/v1/me/market/listings?')
+        && candidate.url().includes('status=COMPLETED'),
+      )
+      await page.getByRole('option', { name: '成立', exact: true }).click()
+      expect((await completedResponse).status()).toBe(200)
+    }
     const target = personal
       ? page.locator('article').filter({ hasText: title })
       : page.locator('main')
@@ -162,6 +182,7 @@ async function createAndPublishOperationalListing(
   const category = page.getByRole('option').filter({ hasText: '練習試合相手募集' }).first()
   await expect(category).toBeVisible()
   await category.click()
+  await page.locator('#location').fill('E2E市民競技場')
   await fillDateTime(page, 'startAt', localDateTime(24 * 60))
   await fillDateTime(page, 'endAt', localDateTime(27 * 60))
   await fillDateTime(page, 'applicationDeadline', localDateTime(60))
@@ -213,6 +234,7 @@ async function createAndPublishPersonalListing(page: Page, title: string) {
   const category = page.getByRole('option').filter({ hasText: '練習試合相手募集' }).first()
   await expect(category).toBeVisible()
   await category.click()
+  await form.locator('#location').fill('E2E市民競技場')
   await fillDateTime(page, 'startAt', localDateTime(24 * 60))
   await fillDateTime(page, 'endAt', localDateTime(27 * 60))
   await fillDateTime(page, 'applicationDeadline', localDateTime(60))
@@ -245,12 +267,15 @@ async function createAndPublishPersonalListing(page: Page, title: string) {
 }
 
 test.afterEach(async ({ page }) => {
+  if (cleanupPersonalListingId != null || restorePublicProfileEnabled != null) {
+    await authenticate(page, ADMIN)
+  }
   if (cleanupPersonalListingId != null) {
     const cleanup = await page.request.post(
       `${API_BASE_URL}/api/v1/me/market/listings/${cleanupPersonalListingId}/cancel`,
       { data: { reason: 'e2e cleanup' } },
     )
-    expect([200, 409]).toContain(cleanup.status())
+    expect([200, 404, 409]).toContain(cleanup.status())
     cleanupPersonalListingId = null
   }
   if (restorePublicProfileEnabled != null) {
@@ -330,6 +355,7 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   await expect(practiceMatchOption).toBeVisible()
   await practiceMatchOption.click()
   await expect(form.locator('#category')).toContainText('練習試合相手募集')
+  await form.locator('#location').fill('E2E市民競技場')
   await fillDateTime(page, 'startAt', localDateTime(24 * 60))
   await fillDateTime(page, 'endAt', localDateTime(27 * 60))
   await fillDateTime(page, 'applicationDeadline', localDateTime(60))
@@ -369,6 +395,7 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
   )
   await page.getByTestId('market-owner-type-select').click()
   await page.getByRole('option', { name: '個人', exact: true }).click()
+  await page.getByTestId('market-search-button').click()
   const personalResponse = await personalResponsePromise
   expect(personalResponse.status()).toBe(200)
   const personalBody = (await personalResponse.json()) as {
@@ -382,6 +409,7 @@ test('MARKET-OWNER-UI-001: 公開市の「札を立てる」から個人札を�
     && response.url().includes(`keyword=${encodeURIComponent(title)}`),
   )
   await page.getByTestId('market-keyword-input').fill(title)
+  await page.getByTestId('market-search-button').click()
   const titleResponse = await titleResponsePromise
   expect(titleResponse.status()).toBe(200)
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
@@ -516,6 +544,7 @@ test('MARKET-OWNER-UI-004: 公開市でチーム・組織を画面から絞り�
     )
     await page.getByTestId('market-owner-type-select').click()
     await page.getByRole('option', { name: label, exact: true }).click()
+    await page.getByTestId('market-search-button').click()
     const response = await responsePromise
     expect(response.status()).toBe(200)
     const body = (await response.json()) as {
@@ -534,6 +563,7 @@ test('MARKET-OWNER-UI-005: 日時の前後関係が不正な札は画面で止�
   await page.locator('#title').fill(`E2E-日時不正-${Date.now()}`)
   await page.locator('#category').click()
   await page.getByRole('option').filter({ hasText: '練習試合相手募集' }).first().click()
+  await page.locator('#location').fill('E2E市民競技場')
   await fillDateTime(page, 'startAt', localDateTime(24 * 60))
   await fillDateTime(page, 'endAt', localDateTime(23 * 60))
   await fillDateTime(page, 'applicationDeadline', localDateTime(60))

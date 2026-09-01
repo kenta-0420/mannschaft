@@ -57908,7 +57908,7 @@ export interface components {
             endAt: string;
             friendTargets?: components["schemas"]["FriendTargetRequest"][];
             imageUrl?: string;
-            location?: string;
+            location: string;
             /** Format: int32 */
             minCapacity: number;
             /** @enum {string} */
@@ -154089,6 +154089,7 @@ export interface operations {
                 owner_type?: "TEAM" | "ORGANIZATION" | "PERSONAL";
                 keyword?: string;
                 include_region_none?: boolean;
+                sort?: "START_AT_ASC" | "DEADLINE_ASC" | "DEADLINE_DESC";
                 page?: number;
                 size?: number;
                 lang?: string;

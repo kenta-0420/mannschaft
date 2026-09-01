@@ -362,7 +362,6 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
                         SELECT 1 FROM RecruitmentListingRegionEntity rr
                         WHERE rr.listingId = l.id))
               )
-            ORDER BY l.startAt ASC
             """)
     Page<RecruitmentListingEntity> searchMarketListings(
             @Param("prefecture") String prefecture,
@@ -415,7 +414,6 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
                         SELECT 1 FROM RecruitmentListingRegionEntity rr
                         WHERE rr.listingId = l.id))
               )
-            ORDER BY l.startAt ASC
             """)
     Page<RecruitmentListingEntity> searchAccessibleMarketListings(
             @Param("selectedListingIds") Collection<Long> selectedListingIds,

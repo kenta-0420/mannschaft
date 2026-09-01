@@ -500,6 +500,8 @@ test('MARKET-003b: 都道府県・市区町村の絞り込み後に一覧が変�
   await expect(prefListbox).toBeVisible({ timeout: 5_000 })
   await prefListbox.getByText('大分県', { exact: false }).first().click()
 
+  await page.getByTestId('market-search-button').click()
+
   // 絞り込み後: 1件のみ表示
   await expect(page.getByTestId(`market-listing-card-${MOCK_LISTING_1.id}`)).toBeVisible({ timeout: 8_000 })
   await expect(page.getByTestId(`market-listing-card-${MOCK_LISTING_2.id}`)).toHaveCount(0)
@@ -534,15 +536,17 @@ test('MARKET-003c: キーワード入力で絞り込み結果が変化する', a
   await page.goto('/market')
   await expect(page.getByTestId('market-listing-grid')).toBeVisible({ timeout: 10_000 })
 
-  // キーワード入力（debounce 500ms があるため入力後待機）
+  // キーワードを入力し、検索ボタンでまとめて適用する
   const keywordInput = page.getByTestId('market-keyword-input')
   await keywordInput.fill('練習試合')
 
-  // 2回目の API 呼び出しを待つ
-  await page.waitForResponse(
+  // 検索ボタンによる2回目の API 呼び出しを待つ
+  const responsePromise = page.waitForResponse(
     (res) => res.url().includes('/api/v1/public/market/listings') && res.status() === 200,
     { timeout: 5_000 },
   )
+  await page.getByTestId('market-search-button').click()
+  await responsePromise
 
   // 絞り込み結果が変化することを確認
   await expect(page.getByTestId(`market-listing-card-${MOCK_LISTING_1.id}`)).toBeVisible({ timeout: 5_000 })

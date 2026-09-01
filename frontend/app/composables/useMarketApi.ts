@@ -22,7 +22,7 @@ interface ApiResponse<T> {
  *   - GET /api/v1/public/market/categories  : ジャンルマスタ一覧（ApiResponse 形: data 配列）
  *
  * ⚠️ クエリパラメータ名は BE の @RequestParam に一致させること（MarketController）:
- *   prefecture / city / category_id / owner_type / keyword / include_region_none / page / size
+ *   prefecture / city / category_id / owner_type / keyword / include_region_none / sort / page / size
  *
  * 設計書: docs/features/F22.1_market/02_api_design.md §3
  */
@@ -43,6 +43,7 @@ export function useMarketApi() {
     if (params?.includeRegionNone != null) {
       q.set('include_region_none', String(params.includeRegionNone))
     }
+    if (params?.sort) q.set('sort', params.sort)
     if (params?.page != null) q.set('page', String(params.page))
     if (params?.size != null) q.set('size', String(params.size))
     if (params?.lang) q.set('lang', params.lang)
