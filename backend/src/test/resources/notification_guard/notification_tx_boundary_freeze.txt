@@ -25,12 +25,30 @@
 # 増加は常に CI fail。減少は該当実装差分と同じPRでのみ許可（是正したら必ずこの行を削る）。
 # 最終目標は baseline ゼロ。
 #
+
+# --- 2026-09-01 の是正（Codex 独立検分の指摘: 番人の偽陽性）---
+# 初回投入の97件のうち8件は通知発火ではなく、番人の綴り一致の欠陥だった。
+# 番人側（NOTIFY_CALL_CANDIDATE の構造条件・createNotification* の閉じた列挙）を直して
+# 検出されなくなったため削除した。実地確認の内訳:
+#   ビルダーのセッタ連鎖（.notifyOnRsvp(...) 等。通知ではなく DTO 組み立て）:
+#     CareLinkService#toResponse / #toOverrideResponse
+#     AnalyticsAlertService#createRule（.notifyChannels）
+#     AnniversaryService#createAnniversary（.notifyDaysBefore）
+#   record/DTO のアクセサ（引数ゼロ。通知ではなく値の読み取り）:
+#     PersonalTimetableSettingsService#update（req.notifyTeamSlotNoteUpdates()）
+#     TimetableChangeService#createChange / #updateChange（data.notifyMembers()）
+#     ※ この2件は業務TX内で publishEvent しかしておらず、本戦役が目指す正規形そのもの。
+#        番人が模範解答を違反として数えていた。
+#   綴りが createNotification で始まるだけの決済 API:
+#     NotificationCreditCheckoutService#createCheckout
+#       （stripePaymentProvider.createNotificationCreditCheckoutSession）
+# 再発防止: いずれも fixtures/notification/GuardBlindSpotFixture に検体として常設し、
+#           NotificationTransactionBoundaryGuardConditionTest の「偽陽性」節が固定している。
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
 com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService#executeAt -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.admin.batch.BatchEventListener#onCompleted -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTENER
-com.mannschaft.app.analytics.service.AnalyticsAlertService#createRule -> TX_NOTIFY_BARE
 com.mannschaft.app.analytics.service.AnalyticsBackfillService#executeAsync -> ASYNC_WITHOUT_EXECUTOR
 com.mannschaft.app.analytics.service.AnalyticsBackfillService#startBackfill -> ASYNC_SELF_INVOCATION
 com.mannschaft.app.billing.beta.BetaGrantService#safeNotify -> TX_NOTIFY_IN_TRY
@@ -52,9 +70,6 @@ com.mannschaft.app.event.service.EventDelegationService#createDelegation -> TX_N
 com.mannschaft.app.event.service.EventDelegationService#reject -> TX_NOTIFY_BARE
 com.mannschaft.app.event.service.EventRollCallService#submitRollCall -> TX_NOTIFY_BARE
 com.mannschaft.app.event.service.EventRsvpService#submitRsvp -> TX_NOTIFY_BARE
-com.mannschaft.app.family.service.AnniversaryService#createAnniversary -> TX_NOTIFY_BARE
-com.mannschaft.app.family.service.CareLinkService#toOverrideResponse -> TX_NOTIFY_BARE
-com.mannschaft.app.family.service.CareLinkService#toResponse -> TX_NOTIFY_BARE
 com.mannschaft.app.family.service.EventEndReminderBatchService#sendReminderNotification -> TX_NOTIFY_BARE
 com.mannschaft.app.jobmatching.service.JobApplicationService#apply -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.jobmatching.service.JobCheckInService#fireNotifications -> TX_NOTIFY_IN_TRY
@@ -72,7 +87,6 @@ com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendC
 com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendExpiryAlertAsync -> ASYNC_WITHOUT_EXECUTOR
 com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendExpiryAlertAsync -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.notification.credit.service.NotificationCreditAlertSender#sendNegativeBalanceAlert -> ASYNC_WITHOUT_EXECUTOR
-com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService#createCheckout -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.notification.credit.service.NotificationCreditService#consume -> ASYNC_SELF_INVOCATION
 com.mannschaft.app.notification.credit.service.NotificationCreditService#sendFreeQuotaAlertAsync -> ASYNC_WITHOUT_EXECUTOR
 com.mannschaft.app.notification.credit.service.NotificationCreditService#sendFreeQuotaAlertAsync -> TX_NOTIFY_IN_TRY
@@ -118,9 +132,6 @@ com.mannschaft.app.ticket.service.TicketExpiryBatchService#expireTickets -> TX_N
 com.mannschaft.app.ticket.service.TicketExpiryBatchService#sendExpiryNotifications -> TX_NOTIFY_BARE
 com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.timetable.personal.service.PersonalTimetableSettingsService#update -> TX_NOTIFY_BARE
-com.mannschaft.app.timetable.service.TimetableChangeService#createChange -> TX_NOTIFY_BARE
-com.mannschaft.app.timetable.service.TimetableChangeService#updateChange -> TX_NOTIFY_BARE
 com.mannschaft.app.todo.batch.TodoDueReminderBatch#notifyAssignees -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.todo.event.MilestoneNotificationListener#onMilestoneUnlocked -> ASYNC_WITHOUT_EXECUTOR
 com.mannschaft.app.todo.event.MilestoneNotificationListener#onMilestoneUnlocked -> PLAIN_EVENT_LISTENER

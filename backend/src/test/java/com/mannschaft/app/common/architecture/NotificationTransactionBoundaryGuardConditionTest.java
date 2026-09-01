@@ -315,11 +315,172 @@ class NotificationTransactionBoundaryGuardConditionTest {
         }
     }
 
+    @Nested
+    @DisplayName("死角: 検出できる形と検出できない形を明示的に固定する（Codex 検分 8形状）")
+    class 死角 {
+
+        private static final String FIXTURE = "GuardBlindSpotFixture";
+
+        private String blindSpotKey(String method,
+                                    NotificationTransactionBoundaryGuardTest.ViolationKind kind) {
+            return key(FIXTURE, method, kind);
+        }
+
+        @Test
+        @DisplayName("形状6: 同一行アノテーションのメソッドを検出する（parse 落ちしない）")
+        void 形状6_同一行アノテーション() {
+            assertThat(keysOf(FIXTURE))
+                    .as("`@Transactional public void x(...)` のように宣言と同じ行にアノテーションを置くと、"
+                            + "行頭が @ になるため METHOD_DECL がメソッド自体を parse できず、"
+                            + "本文の通知呼び出しごと不可視になっていた（静かな偽陰性）")
+                    .contains(blindSpotKey("sameLineAnnotatedTxNotify",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE));
+        }
+
+        @Test
+        @DisplayName("形状5: 完全修飾アノテーションでも TX 文脈を見失わない")
+        void 形状5_完全修飾アノテーション() {
+            assertThat(keysOf(FIXTURE))
+                    .as("@org.springframework.transaction.annotation.Transactional と書かれると、"
+                            + "literal 一致の hasTransactional では TX 文脈の判定が丸ごと外れる")
+                    .contains(blindSpotKey("fullyQualifiedTxNotify",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE));
+        }
+
+        @Test
+        @DisplayName("形状1・2・3・4・8: 現時点では検出できない（限界の記録。検出できるフリはしない）")
+        void 検出できない形を記録する() {
+            Set<String> keys = keysOf(FIXTURE);
+            assertThat(keys)
+                    .as("形状1（別 Bean への委譲）: 番人は同一クラス内の無修飾呼び出ししか TX 文脈を伝播しない。"
+                            + "検出できるようになったらここを負例側へ移すこと")
+                    .noneMatch(k -> k.contains("#delegateToAnotherBean "));
+            assertThat(keys)
+                    .as("形状2（TransactionTemplate の lambda 内）: TX の開始が手続きで決まるため"
+                            + "annotation ベースの判定軸が当たらない")
+                    .noneMatch(k -> k.contains("#notifyInsideTransactionTemplate "));
+            assertThat(keys)
+                    .as("形状3（命名語彙の外の通知 API）: send / publishNotification / enqueue は綴りで拾えない。"
+                            + "語彙を広げるほどアクセサ・ビルダーの偽陽性が増える緊張関係にある")
+                    .noneMatch(k -> k.contains("#notifyViaUnnamedApi "));
+            assertThat(keys)
+                    .as("形状4（合成アノテーション）: メタ注釈を辿るのは字句走査の枠外")
+                    .noneMatch(k -> k.contains("#composedAnnotationTxNotify "));
+            assertThat(keys)
+                    .as("形状8（メソッド参照）: 参照の生成は TX 内でも実行位置は字句から決まらない")
+                    .noneMatch(k -> k.contains("#notifyViaMethodReference "));
+        }
+
+        @Test
+        @DisplayName("形状7: オーバーロード畳み込みで DIRECT_RUNNER_CALL は抑止され、TX_NOTIFY_BARE は残る")
+        void 形状7_オーバーロード畳み込み() {
+            Set<String> keys = keysOf(FIXTURE);
+            assertThat(keys)
+                    .as("キーが FQCN#メソッド名（引数を含まない）であるため、AFTER_COMMIT 入口の handle(String) から"
+                            + "委譲された名前 'handle' が業務側 handle(Long) にも及び、sendOne 直呼びが許可扱いになる。"
+                            + "呼び出し先の実体を字句から決められない以上これは原理的な畳み込みであり、"
+                            + "src/main/java に該当形状は存在しない（確認済み）")
+                    .doesNotContain(blindSpotKey("handle",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.DIRECT_RUNNER_CALL));
+            assertThat(keys)
+                    .as("畳み込みで全部が消えるわけではない。自身の @Transactional による TX 内通知としては残る。"
+                            + "『全部見逃す』でも『全部見える』でもない中途半端さを固定する")
+                    .contains(blindSpotKey("handle",
+                            NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE));
+        }
+    }
+
+    @Nested
+    @DisplayName("偽陽性: 通知ではないのに綴りが一致する形を違反にしない")
+    class 偽陽性 {
+
+        @Test
+        @DisplayName("ビルダーのセッタ連鎖・DTO アクセサ・Object#notifyAll を通知とみなさない")
+        void 通知でない綴り一致を挙げない() {
+            Set<String> keys = keysOf("GuardBlindSpotFixture");
+            assertThat(keys)
+                    .as("ビルダーの .notifyOnRsvp(...) は通知発火ではない。"
+                            + "初版の番人は CareLinkService#toResponse / #toOverrideResponse を"
+                            + "この形で baseline に凍結していた")
+                    .noneMatch(k -> k.contains("#builderSettersAreNotNotifications "));
+            assertThat(keys)
+                    .as("record アクセサ request.notifyMembers() は通知発火ではない。"
+                            + "初版の番人は TimetableChangeService#createChange / #updateChange"
+                            + "（業務TX内は publishEvent だけという本戦役の正規形そのもの）を違反として数えていた")
+                    .noneMatch(k -> k.contains("#accessorsAreNotNotifications "));
+            assertThat(keys)
+                    .as("Object#notifyAll() は引数ゼロであり通知発火ではない")
+                    .noneMatch(k -> k.contains("#objectNotifyAllIsNotANotification "));
+            assertThat(keys)
+                    .as("createNotificationCreditCheckoutSession は Stripe の決済 API であり通知ではない。"
+                            + "初版の番人は createNotification[A-Za-z]* と開いていたため"
+                            + "NotificationCreditCheckoutService#createCheckout を凍結していた")
+                    .noneMatch(k -> k.contains("#createNotificationPrefixedButNotANotification "));
+        }
+
+        @Test
+        @DisplayName("判定は綴りの除外リストではなく形（レシーバ・引数）で行う")
+        void 形で判定している() {
+            assertThat(NotificationTransactionBoundaryGuardTest.firesNotification(
+                    "{ return Foo.builder().id(x).notifyOnRsvp(e.getNotifyOnRsvp()).build(); }"))
+                    .as("チェーンの途中のセッタを通知とみなしている")
+                    .isFalse();
+            assertThat(NotificationTransactionBoundaryGuardTest.firesNotification(
+                    "{ return req.notifyMembers() == null; }"))
+                    .as("引数ゼロのアクセサを通知とみなしている")
+                    .isFalse();
+            assertThat(NotificationTransactionBoundaryGuardTest.firesNotification(
+                    "{ notificationHelper.notify(userId, \"T\", \"s\", \"b\"); }"))
+                    .as("本物の通知発火を取りこぼしている＝絞り込みが効きすぎている")
+                    .isTrue();
+            assertThat(NotificationTransactionBoundaryGuardTest.firesNotification(
+                    "{ notificationHelper\n        .notify(userId, \"T\"); }"))
+                    .as("レシーバと . の間に改行があるだけで取りこぼしている")
+                    .isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("許可入口の厳密性")
+    class 許可入口 {
+
+        @Test
+        @DisplayName("AFTER_COMMIT を含むだけの別の phase 値を許可しない")
+        void 部分一致のphaseを許可しない() {
+            assertThat(NotificationTransactionBoundaryGuardTest.isAllowedEntryPoint(
+                    "@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)\n"))
+                    .as("正規の AFTER_COMMIT を弾いている")
+                    .isTrue();
+            assertThat(NotificationTransactionBoundaryGuardTest.isAllowedEntryPoint(
+                    "@TransactionalEventListener\n"))
+                    .as("phase 省略時の既定は AFTER_COMMIT なので許可する")
+                    .isTrue();
+            assertThat(NotificationTransactionBoundaryGuardTest.isAllowedEntryPoint(
+                    "@TransactionalEventListener(phase = CustomPhase.AFTER_COMMIT_POLICY)\n"))
+                    .as("文字列 AFTER_COMMIT を含むだけの別の値を許可している。"
+                            + "ホワイトリストはここ1箇所であり、緩めば契約全体が緩む")
+                    .isFalse();
+            assertThat(NotificationTransactionBoundaryGuardTest.isAllowedEntryPoint(
+                    "@TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)\n"))
+                    .as("BEFORE_COMMIT を許可している")
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("完全修飾の @TransactionalEventListener も許可入口として認識する")
+        void 完全修飾の許可入口() {
+            assertThat(NotificationTransactionBoundaryGuardTest.isAllowedEntryPoint(
+                    "@org.springframework.transaction.event.TransactionalEventListener\n"))
+                    .as("完全修飾で書かれた正規形を違反側へ落としてしまう")
+                    .isTrue();
+        }
+    }
+
     @Test
     @DisplayName("検体そのものが空振りしていない（fixture から実際に違反が出ている）")
     void 検体が空振りしていない() {
         List<String> fixtures = List.of("TxNotificationFixture", "AsyncSelfInvocationFixture",
-                "AsyncSelfInvocationBatchFixture", "PlainEventListenerFixture");
+                "AsyncSelfInvocationBatchFixture", "PlainEventListenerFixture", "GuardBlindSpotFixture");
         for (String f : fixtures) {
             assertThat(keysOf(f))
                     .as("検体 %s から違反が1件も出ていない＝走査が空振りしており、"

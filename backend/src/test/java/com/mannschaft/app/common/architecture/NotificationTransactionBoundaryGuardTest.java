@@ -55,8 +55,21 @@ import org.junit.jupiter.api.Test;
  *       （＝<b>偽陰性</b>）。本番人が挙げる件数は実態の<b>下限</b>である。</li>
  *   <li><b>字句走査ゆえの型解決なし</b>: レシーバ名とメソッド名の綴りで通知発火を判定する
  *       （{@link JavaSourceScanningUtils} を使う既存番人と同じ方式）。</li>
- *   <li><b>オーバーロードの畳み込み</b>: キーは {@code FQCN#メソッド名} であり引数リストを含まない。</li>
+ *   <li><b>オーバーロードの畳み込み</b>: キーは {@code FQCN#メソッド名} であり引数リストを含まない。
+ *       委譲の推移閉包も名前だけで追うため、{@code AFTER_COMMIT} 入口と同名の業務オーバーロードが
+ *       許可扱いになりうる（{@code DIRECT_RUNNER_CALL} は抑止されるが {@code TX_NOTIFY_BARE} は残る）。</li>
+ *   <li><b>合成アノテーション</b>: メタ注釈で {@code @Transactional} を持つ独自注釈は綴りから判定できない。</li>
+ *   <li><b>命名語彙の外の通知 API</b>: {@code gateway.send} / {@code publishNotification} /
+ *       {@code enqueue} は綴りに掛からない。語彙を広げるほどアクセサ・ビルダーの偽陽性が増える。</li>
+ *   <li><b>メソッド参照</b>: {@code helper::notify} は参照の生成位置しか分からず、実行位置は決まらない。</li>
  * </ul>
+ *
+ * <p>これらの死角は<b>検体として実在する</b>。
+ * {@code fixtures/notification/GuardBlindSpotFixture} が上記8形状を1クラスに並べ、
+ * {@code NotificationTransactionBoundaryGuardConditionTest} の「死角」テストが
+ * どれが検出でき・どれが検出できないかを1つずつ表明する。
+ * <b>Javadoc のこの記述とテストは常に一致していなければならない</b>
+ * （検出できるようになったらテストが赤くなるので、ここも同時に直すこと）。
  *
  * <h2>baseline（凍結）の方針</h2>
  * <p>ArchUnit の {@code FreezingArchRule} は使わない。理由は3つ。
@@ -128,17 +141,89 @@ class NotificationTransactionBoundaryGuardTest {
     // 判定の中核（メタテスト NotificationTransactionBoundaryGuardConditionTest から直接呼ばれる）
     // ------------------------------------------------------------------
 
-    /** 通知発火とみなす呼び出し。字句一致であり型解決はしない（本番人の限界）。 */
-    private static final Pattern NOTIFY_CALL = Pattern.compile(
-            "\\.(notify[A-Za-z]*|createNotification[A-Za-z]*"
+    /**
+     * 通知発火の<b>候補</b>となる呼び出し。綴りだけを拾い、本当に発火かどうかは
+     * {@link #notifyCallOffsets} が形（レシーバ・引数）まで見て絞る。
+     *
+     * <p>group(1) は「ドットの直前に置かれた単純な識別子（レシーバ）」。
+     * メソッドチェーンの途中（直前が {@code )}）や配列添字の後ろでは空文字になる。
+     *
+     * <p><b>語彙の開き方が {@code notify*} と {@code createNotification*} で非対称なのは意図的</b>。
+     * {@code notify*} の後半はドメイン語（{@code notifyCheckin} / {@code notifyBudgetWarning} …）で
+     * 事前に列挙できないため開いたままにし、偽陽性は下の構造条件で落とす。一方
+     * {@code createNotification*} を開いたままにすると
+     * {@code stripePaymentProvider.createNotificationCreditCheckoutSession(...)}
+     * （Stripe の Checkout Session 作成であり通知ではない）まで拾い、実際に
+     * {@code NotificationCreditCheckoutService#createCheckout} を baseline に凍結していた。
+     * 配送層が公開している生成 API は2つしかないので、ここは<b>閉じた列挙</b>にする
+     * （API が増えたらここに足すこと）。
+     */
+    private static final Pattern NOTIFY_CALL_CANDIDATE = Pattern.compile(
+            "([\\w$]*)\\s*\\.\\s*(notify[A-Za-z]*|createNotification(?:PreAuthorized)?"
                     + "|sendOne|insertAndDispatchChunk|dispatchBatch)\\s*\\(");
 
     /** 配送 Runner の直接呼び出し。 */
     private static final Pattern SEND_ONE_CALL = Pattern.compile("\\.sendOne\\s*\\(");
 
-    /** メソッド宣言の入口（戻り値型 + メソッド名 + 開き括弧）。コンストラクタは意図的に対象外。 */
+    /**
+     * 通知発火とみなす呼び出しの<b>開始位置</b>を返す。字句一致であり型解決はしない（本番人の限界）。
+     *
+     * <p>綴りだけで判定すると、通知とは無関係な次の2形を必ず拾ってしまう。実際に初版の番人は
+     * これで5件の偽陽性を baseline に凍結していた（CareLinkService#toResponse /
+     * #toOverrideResponse、PersonalTimetableSettingsService#update、
+     * TimetableChangeService#createChange / #updateChange）。しかも後者2件は
+     * 「業務TX内では publishEvent だけ」という<b>本戦役が目指している正規形そのもの</b>であり、
+     * 番人が模範解答を違反として数えていた。綴りの除外リスト（{@code notifyOn*} を弾く等）は
+     * 次の似た命名で同じ穴が開くため、<b>形</b>で判定する:
+     *
+     * <ol>
+     *   <li><b>レシーバが単純な識別子であること</b> — {@code notificationHelper.notify(...)} は通すが、
+     *       ビルダーのセッタ連鎖 {@code .id(x).notifyOnRsvp(y)}（ドットの直前が {@code )}）は通さない。
+     *       通知コラボレータは必ずフィールド／変数として名前を持つため、この条件で落ちない。</li>
+     *   <li><b>引数を1つ以上取ること</b> — 通知の発火は必ず宛先や種別を引数に取る。
+     *       引数ゼロの {@code data.notifyMembers()} / {@code req.notifyTeamSlotNoteUpdates()} は
+     *       record のアクセサであり、{@code Object#notifyAll()} も同様にここで落ちる。</li>
+     * </ol>
+     *
+     * <p><b>残る限界</b>: レシーバを識別子で受けたビルダー（{@code builder.notifyOnRsvp(x)}）は
+     * 依然として区別できない。本番コードには現存しないが、現れたら baseline ではなく
+     * ここの判定を直すこと。
+     */
+    static List<Integer> notifyCallOffsets(String body) {
+        List<Integer> offsets = new ArrayList<>();
+        Matcher m = NOTIFY_CALL_CANDIDATE.matcher(body);
+        while (m.find()) {
+            if (m.group(1).isEmpty()) {
+                continue; // (1) レシーバが識別子でない（チェーンの途中など）
+            }
+            int open = body.indexOf('(', m.end(2));
+            int close = open < 0 ? -1 : matchPair(body, open, '(', ')');
+            if (close < 0 || body.substring(open + 1, close).isBlank()) {
+                continue; // (2) 引数ゼロ＝アクセサ／Object#notifyAll
+            }
+            offsets.add(m.start());
+        }
+        return offsets;
+    }
+
+    /** 本文が通知を発火しているか。 */
+    static boolean firesNotification(String body) {
+        return !notifyCallOffsets(body).isEmpty();
+    }
+
+    /**
+     * メソッド宣言の入口（同一行アノテーション + 修飾子 + 戻り値型 + メソッド名 + 開き括弧）。
+     * コンストラクタは意図的に対象外。
+     *
+     * <p>group(1) は<b>宣言と同じ行に置かれたアノテーション</b>。これを許容しないと
+     * {@code @Transactional public void execute(...)} 形のメソッドは行頭が {@code @} であるために
+     * <b>メソッドとして parse されず、本文の通知呼び出しごと丸ごと不可視</b>になる
+     * （＝静かな偽陰性）。現時点の {@code src/main/java} にこの形は存在しないが、
+     * 1つ書かれた瞬間に番人がすり抜けるため構文として先に塞ぐ。
+     */
     private static final Pattern METHOD_DECL = Pattern.compile(
-            "(?m)^[ \\t]*((?:(?:public|protected|private|static|final|synchronized|abstract|native|strictfp|default)"
+            "(?m)^[ \\t]*((?:@[\\w$.]+(?:\\([^()]{0,200}\\))?[ \\t]+)*)"
+                    + "((?:(?:public|protected|private|static|final|synchronized|abstract|native|strictfp|default)"
                     + "\\s+)*)(?:<[^>]{0,200}>\\s*)?([\\w$.\\[\\]<>,?]+)\\s+([A-Za-z_$][\\w$]*)\\s*\\(");
 
     /** メソッド宣言の {@code )} と本文の {@code &#123;} の間に挟まる throws 節。 */
@@ -168,7 +253,7 @@ class NotificationTransactionBoundaryGuardTest {
         List<MethodBlock> methods = parseMethods(src);
 
         boolean classFiresNotification = methods.stream()
-                .anyMatch(m -> NOTIFY_CALL.matcher(m.body()).find());
+                .anyMatch(m -> firesNotification(m.body()));
         Set<String> delegatedFromAllowedEntry = delegationClosure(methods);
         Set<String> inheritedTxContext = transactionalClosure(methods, classAnnotations);
 
@@ -203,7 +288,7 @@ class NotificationTransactionBoundaryGuardTest {
                         lineOf(src, m.declOffset()), "@Async に executor 名が無い"));
             }
 
-            boolean firesNotification = NOTIFY_CALL.matcher(m.body()).find();
+            boolean firesNotification = firesNotification(m.body());
 
             // (2) 通知を発火するリスナーが素の @EventListener
             if (firesNotification && hasPlainEventListener(ann)) {
@@ -222,9 +307,8 @@ class NotificationTransactionBoundaryGuardTest {
                 List<int[]> tryRanges = tryBlockRanges(m.body());
                 boolean anyInTry = false;
                 boolean anyBare = false;
-                Matcher call = NOTIFY_CALL.matcher(m.body());
-                while (call.find()) {
-                    if (isWithin(tryRanges, call.start())) {
+                for (int offset : notifyCallOffsets(m.body())) {
+                    if (isWithin(tryRanges, offset)) {
                         anyInTry = true;
                     } else {
                         anyBare = true;
@@ -308,40 +392,62 @@ class NotificationTransactionBoundaryGuardTest {
      * <p>{@code @TransactionalEventListener} の phase 既定値は {@code AFTER_COMMIT} なので、
      * phase 未指定は許可する。明示的に他 phase を書いた場合は許可しない。
      * {@code @Async} / {@code REQUIRES_NEW} / {@code NOT_SUPPORTED} は<b>単独では許可しない</b>。
+     *
+     * <p>phase の値は<b>トークンとして厳密に</b>照合する。素朴な {@code contains("AFTER_COMMIT")} は
+     * {@code phase = CustomPhase.AFTER_COMMIT_POLICY} のように文字列を含むだけの別の値を許可してしまい、
+     * ホワイトリストがここ1箇所である以上それは契約全体の穴になる。
+     * {@code AFTER_COMMIT} は {@code AFTER_COMMIT_POLICY} の接頭辞なので、
+     * 語境界（{@code _} は語構成文字）で終端を要求することで両者を分離する。
      */
+    static final Pattern AFTER_COMMIT_PHASE = Pattern.compile(
+            "phase\\s*=\\s*[\\w$.]*\\bAFTER_COMMIT\\b");
+
+    /**
+     * {@code @TransactionalEventListener}（完全修飾表記も含む）。
+     *
+     * <p>{@code @Transactional} 側と同じく、import せず完全修飾で書く流儀を取りこぼさない。
+     */
+    static final Pattern TRANSACTIONAL_EVENT_LISTENER =
+            Pattern.compile("@(?:[\\w$]+\\.)*TransactionalEventListener\\b");
+
     static boolean isAllowedEntryPoint(String annotations) {
-        if (!annotations.contains("@TransactionalEventListener")) {
+        if (!TRANSACTIONAL_EVENT_LISTENER.matcher(annotations).find()) {
             return false;
         }
         if (!annotations.contains("phase")) {
             return true; // 既定 = AFTER_COMMIT
         }
-        return annotations.contains("AFTER_COMMIT");
+        return AFTER_COMMIT_PHASE.matcher(annotations).find();
     }
 
     /** 素の {@code @EventListener}（{@code @TransactionalEventListener} ではない）か。 */
     static boolean hasPlainEventListener(String annotations) {
-        return Pattern.compile("(?<!Transactional)@EventListener\\b").matcher(annotations).find()
-                && !annotations.contains("@TransactionalEventListener");
+        return Pattern.compile("@(?:[\\w$]+\\.)*(?<!Transactional)EventListener\\b")
+                .matcher(annotations).find()
+                && !TRANSACTIONAL_EVENT_LISTENER.matcher(annotations).find();
     }
 
     /**
      * {@code @Transactional} が付いているか。
      *
-     * <p>{@code @Transactional\b} は {@code @TransactionalEventListener} には一致しない
+     * <p>末尾の {@code \b} により {@code @TransactionalEventListener} には一致しない
      * （"Transactional" と "EventListener" の境目は語境界ではないため）。この性質に依存している。
+     *
+     * <p>先頭の {@code (?:[\w$]+\.)*} は import せず完全修飾で書く流儀
+     * （{@code @org.springframework.transaction.annotation.Transactional}）への対応。
+     * これが無いと、その1行だけで TX 文脈の判定が丸ごと外れて静かに偽陰性になる。
      */
     static boolean hasTransactional(String annotations) {
-        return Pattern.compile("@Transactional\\b").matcher(annotations).find();
+        return Pattern.compile("@(?:[\\w$]+\\.)*Transactional\\b").matcher(annotations).find();
     }
 
     static boolean hasAsync(String annotations) {
-        return Pattern.compile("@Async\\b").matcher(annotations).find();
+        return Pattern.compile("@(?:[\\w$]+\\.)*Async\\b").matcher(annotations).find();
     }
 
     /** {@code @Async("name")} のように executor 名が指定されているか。 */
     static boolean hasAsyncExecutorName(String annotations) {
-        return Pattern.compile("@Async\\s*\\(\\s*\"").matcher(annotations).find();
+        return Pattern.compile("@(?:[\\w$]+\\.)*Async\\s*\\(\\s*\"").matcher(annotations).find();
     }
 
     /** 同一クラス内の無修飾呼び出し（{@code foo(...)}／{@code this.foo(...)}）か。 */
@@ -401,15 +507,16 @@ class NotificationTransactionBoundaryGuardTest {
         // find(int) は毎回リセットして指定位置から探すため、走査位置を明示的に持ち回る。
         // これにより本文の内側（ネストクラス・匿名クラス）のメソッドを二重に拾わない。
         while (cursor < src.length() && m.find(cursor)) {
-            String returnType = m.group(2);
-            String name = m.group(3);
+            String sameLineAnnotations = m.group(1);
+            String returnType = m.group(3);
+            String name = m.group(4);
             int nextCursor = m.end();
             // 制御構文（if (...) { など）を誤検出しない
             if (isKeyword(returnType) || isKeyword(name)) {
                 cursor = nextCursor;
                 continue;
             }
-            int openParen = src.indexOf('(', m.end(3));
+            int openParen = src.indexOf('(', m.end(4));
             int closeParen = openParen < 0 ? -1 : matchPair(src, openParen, '(', ')');
             if (closeParen < 0) {
                 cursor = nextCursor;
@@ -430,7 +537,8 @@ class NotificationTransactionBoundaryGuardTest {
                 cursor = nextCursor;
                 continue;
             }
-            out.add(new MethodBlock(name, leadingAnnotations(src, m.start()),
+            // 同一行のアノテーションは前行から集めた分と合わせて扱う（両方に書ける形があるため）。
+            out.add(new MethodBlock(name, leadingAnnotations(src, m.start()) + sameLineAnnotations,
                     src.substring(brace, bodyEnd + 1), m.start()));
             cursor = bodyEnd + 1;
         }
@@ -556,9 +664,19 @@ class NotificationTransactionBoundaryGuardTest {
         }
     }
 
+    /**
+     * ソースを読み、改行を LF に正規化する。
+     *
+     * <p><b>正規化しないと Windows のチェックアウトで変異テストが空振りする。</b>
+     * このリポジトリは {@code .gitattributes} を持たず {@code core.autocrlf=true} のため、
+     * Windows の作業木ではソースが CRLF になる。メタテストの変異文字列
+     * （{@code "@Transactional\n    public void bareNotifyWithinTx"} など）は LF 前提なので
+     * 一致せず、Linux の CI では緑・手元では赤という<b>環境依存の偽陰性／偽陽性</b>を生む。
+     * 行番号は {@code '\n'} を数えるので、{@code '\r'} を落としても診断表示はずれない。
+     */
     static String read(Path p) {
         try {
-            return new String(Files.readAllBytes(p), StandardCharsets.UTF_8);
+            return new String(Files.readAllBytes(p), StandardCharsets.UTF_8).replace("\r\n", "\n");
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -585,7 +703,7 @@ class NotificationTransactionBoundaryGuardTest {
         long notifyCallSites = files.stream()
                 .map(NotificationTransactionBoundaryGuardTest::read)
                 .map(JavaSourceScanningUtils::maskCommentsAndLiterals)
-                .filter(s -> NOTIFY_CALL.matcher(s).find())
+                .filter(NotificationTransactionBoundaryGuardTest::firesNotification)
                 .count();
         // 違反件数ではなく「走査対象の構文」の出現数を数える（負債ゼロで自壊しないため）。
         assertThat(notifyCallSites)
