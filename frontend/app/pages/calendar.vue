@@ -116,6 +116,7 @@ async function onToday() {
   await nextTick()
   await nextTick()
   if (isWeekView.value) calendarWeekGridRef.value?.focusToday()
+  else if (isAgendaView.value) calendarAgendaListRef.value?.focusToday()
   else calendarGridRef.value?.focusToday()
 }
 
@@ -476,18 +477,20 @@ async function onTabChange(tab: CalendarTab) {
 // ここではその値に応じて描画コンポーネントを切り替え、週ビューの表示週を管理するだけで、
 // **ビュー切替では一切データを取得しない**（filteredEvents を束ね直すだけ・AC-13）。
 const calendarWeekGridRef = ref<{ focusToday: () => void } | null>(null)
+// アジェンダ（W3-b）: 「今日」ボタンから今日の日付見出しへスクロールするための参照。
+const calendarAgendaListRef = ref<{ focusToday: () => void } | null>(null)
 
 /**
- * 選択肢は配列で持つ。W3-b でアジェンダ（`agenda`）を1行足すだけで3値へ拡張できる形にしておく。
+ * 選択肢は配列で持つ。
  */
 const viewOptions: Array<{ mode: CalendarViewMode; labelKey: string }> = [
   { mode: 'month', labelKey: 'schedule.calendar.view.month' },
   { mode: 'week', labelKey: 'schedule.calendar.view.week' },
+  { mode: 'agenda', labelKey: 'schedule.calendar.view.agenda' },
 ]
 
-// `agenda`（W3-b で実装）が localStorage から復元された場合も、未実装のビューで白画面にせず
-// 月ビューへ落とす。W3-b が `agenda` の分岐を足した時点でこの読み替えは不要になる。
 const isWeekView = computed(() => view.value === 'week')
+const isAgendaView = computed(() => view.value === 'agenda')
 
 /**
  * 「今日」は**ユーザー設定タイムゾーン**で判定する（Codex 検分 [3]）。
@@ -749,6 +752,21 @@ onMounted(async () => {
                 @prev-week="onPrevWeek"
                 @next-week="onNextWeek"
                 @today="onToday"
+              />
+              <CalendarAgendaList
+                v-else-if="isAgendaView"
+                ref="calendarAgendaListRef"
+                :year="currentYear"
+                :month="currentMonth"
+                :events="filteredEvents"
+                scope-type="team"
+                scope-id=""
+                @prev-month="onPrevMonth"
+                @next-month="onNextMonth"
+                @today="onToday"
+                @event-click="onEventClick"
+                @reflection-click="onReflectionClick"
+                @responded="refresh"
               />
               <CalendarGrid
                 v-else
