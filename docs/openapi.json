@@ -1919,6 +1919,10 @@
       "description": "F03.8 組織スコープのイベントCRUD・ステータス管理"
     },
     {
+      "name": "システム管理 - スコープ強制復元",
+      "description": "柱①ADMINゼロ根治 force-unarchive"
+    },
+    {
       "name": "議決権行使・委任状",
       "description": "F08.3 委任状管理"
     },
@@ -52786,6 +52790,56 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseFieldResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/{scopeType}/{scopeId}/force-unarchive": {
+      "post": {
+        "tags": [
+          "システム管理 - スコープ強制復元"
+        ],
+        "summary": "スコープ強制復元（SYSTEM_ADMIN専用・ADMIN指名必須）",
+        "operationId": "forceUnarchive",
+        "parameters": [
+          {
+            "name": "scopeType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForceUnarchiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "復元成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMessageResponse"
                 }
               }
             }
@@ -183148,6 +183202,18 @@
           }
         }
       },
+      "ForceUnarchiveRequest": {
+        "type": "object",
+        "properties": {
+          "newAdminUserId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "newAdminUserId"
+        ]
+      },
       "CreatePresetRequest": {
         "type": "object",
         "properties": {
@@ -235516,6 +235582,12 @@
               "format": "int64"
             }
           },
+          "lastAdminScopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LastAdminScope"
+            }
+          },
           "retentionDays": {
             "type": "integer",
             "format": "int32"
@@ -235525,6 +235597,25 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "LastAdminScope": {
+        "type": "object",
+        "properties": {
+          "otherMembersCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string"
           }
         }
       },

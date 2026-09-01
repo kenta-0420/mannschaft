@@ -12848,6 +12848,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/{scopeType}/{scopeId}/force-unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** スコープ強制復元（SYSTEM_ADMIN専用・ADMIN指名必須） */
+        post: operations["forceUnarchive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/village-categories": {
         parameters: {
             query?: never;
@@ -60561,6 +60578,10 @@ export interface components {
             skippedCount?: number;
             skippedUserIds?: number[];
         };
+        ForceUnarchiveRequest: {
+            /** Format: int64 */
+            newAdminUserId: number;
+        };
         CreatePresetRequest: {
             bonusPointRules?: string;
             description?: string;
@@ -80013,9 +80034,18 @@ export interface components {
             dataSummary?: {
                 [key: string]: number;
             };
+            lastAdminScopes?: components["schemas"]["LastAdminScope"][];
             /** Format: int32 */
             retentionDays?: number;
             warnings?: string[];
+        };
+        LastAdminScope: {
+            /** Format: int64 */
+            otherMembersCount?: number;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeName?: string;
+            scopeType?: string;
         };
         ApiResponseListMapStringString: {
             data?: {
@@ -110117,6 +110147,33 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseFieldResponse"];
+                };
+            };
+        };
+    };
+    forceUnarchive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeType: string;
+                scopeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForceUnarchiveRequest"];
+            };
+        };
+        responses: {
+            /** @description 復元成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMessageResponse"];
                 };
             };
         };
