@@ -439,15 +439,33 @@ async function chipStates(values: string[]): Promise<Array<string | null>> {
   return Promise.all(values.map(v => chip(v).getAttribute('aria-pressed')))
 }
 
-/** 週ビューのスロット上端（+1px）の client 座標。中心ではなく上端を使う理由は AC-21 のコメント参照。 */
+/**
+ * 週ビューのスロット上端（+1px）の client 座標。
+ *
+ * 中心ではなく上端を使う理由は AC-21 のコメントを参照。
+ * **座標を測る前にスクロールを済ませておくこと**（{@link scrollSlotsIntoView}）。
+ * 測ってからスクロールすると、先に測った座標が現在の画面位置とずれる。
+ */
 async function slotTopPoint(
   dayIndex: number, hour: number, minute: number, target: Page = page,
 ): Promise<{ x: number; y: number }> {
-  const slot = target.getByTestId(`week-slot-${dayIndex}-${hour}-${minute}`)
-  await slot.scrollIntoViewIfNeeded()
-  const box = await slot.boundingBox()
+  const box = await target.getByTestId(`week-slot-${dayIndex}-${hour}-${minute}`).boundingBox()
   expect(box, `week-slot-${dayIndex}-${hour}-${minute} の bounding box`).not.toBeNull()
   return { x: box!.x + box!.width / 2, y: box!.y + 1 }
+}
+
+/**
+ * ドラッグで使う複数スロットを、**すべて同時に画面へ入れてから**測れるようにする。
+ *
+ * 終端側を先にスクロールインし、次に始端側を入れる。1時間 = 48px なので数時間ぶんの
+ * 範囲は同一ビューポートに収まる。この順序を守らないと、始端を測ったあとに終端の
+ * スクロールが走り、始端の座標が画面外を指してドラッグが成立しない（19:00 のように
+ * 初期スクロール位置から外れた時間帯で実際に踏んだ）。
+ */
+async function scrollSlotsIntoView(dayIndex: number, slots: Array<[number, number]>): Promise<void> {
+  for (const [hour, minute] of [...slots].reverse()) {
+    await page.getByTestId(`week-slot-${dayIndex}-${hour}-${minute}`).scrollIntoViewIfNeeded()
+  }
 }
 
 /** 週ビューのスロット間を実座標でドラッグする（マウス）。 */
@@ -455,6 +473,7 @@ async function dragSlots(
   dayIndex: number, from: [number, number], to: [number, number],
   options: { release?: boolean } = {},
 ): Promise<void> {
+  await scrollSlotsIntoView(dayIndex, [from, to])
   const start = await slotTopPoint(dayIndex, from[0], from[1])
   const end = await slotTopPoint(dayIndex, to[0], to[1])
   await page.mouse.move(start.x, start.y)
@@ -927,6 +946,7 @@ test('AC-21b/AC-21c: ドラッグ中にハイライトと時刻が出て、保�
   await expect(highlight).toContainText('10:30')
 
   // さらに動かすとラベルがリアルタイムに更新される
+  // ドラッグ中なのでスクロールはしない（9:45 は 9:00-10:30 の範囲内で既に見えている）
   const shorter = await slotTopPoint(DRAG_DAY_INDEX, 9, 45)
   await page.mouse.move(shorter.x, shorter.y, { steps: 5 })
   await expect(highlight, '時刻ラベルがリアルタイムで更新される').toContainText('9:45')
@@ -973,6 +993,7 @@ test('AC-21: 9:00→10:30 をなぞると時刻がプリセットされ、保存
 
 test('AC-21g: 時間グリッドを単クリックすると既定 60 分の範囲でダイアログが開く', async () => {
   await openCalendar({ view: 'week' })
+  await scrollSlotsIntoView(DRAG_DAY_INDEX, [[14, 0]])
   const point = await slotTopPoint(DRAG_DAY_INDEX, 14, 0)
   await page.mouse.move(point.x, point.y)
   await page.mouse.down()
@@ -1104,7 +1125,9 @@ test('AC-22e（付随）: 作成ダイアログの「作成先」が現在のス
   // 壊れているのは**初期表示だけ**である。
   await openCalendar({ view: 'week' })
   await selectCreateScope(teamA.name)
-  await dragSlots(DRAG_DAY_INDEX, [11, 0], [12, 0])
+  // 直前の AC-22e が 11:00-12:00 に予定を保存するため、そこをなぞると予定バーの上での
+  // ドラッグになり選択が始まらない（＝AC-22d の正しい挙動）。空いている時間帯を使う。
+  await dragSlots(DRAG_DAY_INDEX, [19, 0], [20, 0])
   await expect(dialog()).toBeVisible()
   await expect(
     dialog().locator('button').filter({ hasText: teamA.name }).first(),
