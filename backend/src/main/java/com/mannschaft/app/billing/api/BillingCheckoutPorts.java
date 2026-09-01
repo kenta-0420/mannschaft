@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /** PR4 試練が固定する application service の境界。実装は出陣で行う。 */
-interface BillingCheckoutScopeGuard {
+interface BillingCheckoutAccessGuard {
     void check(long actorId, EntitlementScopeKind scopeKind, long scopeId);
 }
 

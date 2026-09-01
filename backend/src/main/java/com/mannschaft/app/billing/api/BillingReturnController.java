@@ -1,5 +1,7 @@
 package com.mannschaft.app.billing.api;
 
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +43,7 @@ public class BillingReturnController {
     private static final String GENERIC_ERROR_REDIRECT = "/billing?scopeKind=USER&tab=plan&error=return";
 
     private final BillingReturnStateService returnStateService;
-    private final BillingCheckoutScopeGuard scopeGuard;
+    private final BillingCheckoutAccessGuard scopeGuard;
 
     /**
      * Checkout 成功 callback。
@@ -50,6 +52,8 @@ public class BillingReturnController {
      * @param principal 認証済み actor（未認証なら null）
      * @return clean URL / login / generic error への 303
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "Stripe Checkout からの top-level GET 復帰。決済完了後の唯一の復帰導線であり feature flag で遮断すると決済済み利用者が宙に浮くため常時到達とする")
     @GetMapping("/checkout/success")
     public ResponseEntity<Void> checkoutSuccess(@RequestParam String state, Principal principal,
                                                  HttpServletResponse response) {
@@ -63,6 +67,8 @@ public class BillingReturnController {
      * @param principal 認証済み actor（未認証なら null）
      * @return clean URL / login / generic error への 303
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "Stripe Checkout からの top-level GET 復帰。中断後の復帰導線であり遮断すると利用者が Stripe 側に取り残されるため常時到達とする")
     @GetMapping("/checkout/cancel")
     public ResponseEntity<Void> checkoutCancel(@RequestParam String state, Principal principal,
                                                 HttpServletResponse response) {
@@ -76,6 +82,8 @@ public class BillingReturnController {
      * @param principal 認証済み actor（未認証なら null）
      * @return clean URL / login / generic error への 303
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "Stripe Customer Portal からの top-level GET 復帰。外部サイトからの戻り導線であり遮断できないため常時到達とする")
     @GetMapping("/portal/return")
     public ResponseEntity<Void> portalReturn(@RequestParam String state, Principal principal,
                                               HttpServletResponse response) {
@@ -90,6 +98,8 @@ public class BillingReturnController {
      * @param principal 認証済み actor（未認証なら null）
      * @return clean URL / login / generic error への 303
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "3DS など payment action 完了後の top-level GET 復帰。認証済み決済の完了導線であり遮断できないため常時到達とする")
     @GetMapping("/payment-action/return")
     public ResponseEntity<Void> paymentActionReturn(
             @CookieValue(name = RETURN_STATE_COOKIE, required = false) String state,

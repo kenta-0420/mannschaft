@@ -34,7 +34,7 @@ class BillingReturnControllerTrialTest {
     private static final String TOKEN = "kid-current.opaque-payload.signature";
 
     @Mock private BillingReturnStateService returnStateService;
-    @Mock private BillingCheckoutScopeGuard scopeGuard;
+    @Mock private BillingCheckoutAccessGuard scopeGuard;
 
     private MockMvc mockMvc;
 

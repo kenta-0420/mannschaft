@@ -3,6 +3,7 @@ package com.mannschaft.app.billing.api;
 import com.mannschaft.app.billing.EntitlementErrorCode;
 import com.mannschaft.app.billing.api.dto.CreateBillingCheckoutSessionRequest;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import lombok.RequiredArgsConstructor;
 
 import java.time.Clock;
@@ -35,10 +36,11 @@ public class BillingCheckoutApplicationService {
     /** Customer が Checkout に使える唯一の状態。 */
     private static final String CUSTOMER_ACTIVE = "ACTIVE";
 
-    private static final ZoneId BILLING_ZONE = ZoneId.of("Asia/Tokyo");
+    /** 課金の月境界判定に用いるサーバー基準ゾーン（正本: {@link UserZoneLocalDateTimeParser#SERVER_ZONE}）。 */
+    private static final ZoneId BILLING_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final Clock clock;
-    private final BillingCheckoutScopeGuard scopeGuard;
+    private final BillingCheckoutAccessGuard scopeGuard;
     private final BillingQuoteRepository quoteRepository;
     private final BillingCheckoutCustomerRepository customerRepository;
     private final BillingCheckoutPriceRepository priceRepository;

@@ -41,7 +41,7 @@ class BillingQuoteServiceTrialTest {
     private static final UUID BAND_ID = UUID.fromString("01999d74-5130-7000-8000-000000000002");
     private static final UUID QUOTE_ID = UUID.fromString("01999d74-5130-7000-8000-000000000003");
 
-    @Mock private BillingCheckoutScopeGuard scopeGuard;
+    @Mock private BillingCheckoutAccessGuard scopeGuard;
     @Mock private BillingQuoteRepository quoteRepository;
     @Mock private BillingQuoteCalculator quoteCalculator;
 

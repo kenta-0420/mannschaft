@@ -52,7 +52,7 @@ class BillingCheckoutApplicationServiceTrialTest {
     private static final Instant JST_PERIOD_START = Instant.parse("2028-01-31T15:00:00Z");
     private static final Instant JST_PERIOD_END = Instant.parse("2028-02-29T15:00:00Z");
 
-    @Mock private BillingCheckoutScopeGuard scopeGuard;
+    @Mock private BillingCheckoutAccessGuard scopeGuard;
     @Mock private BillingQuoteRepository quoteRepository;
     @Mock private BillingCheckoutCustomerRepository customerRepository;
     @Mock private BillingCheckoutPriceRepository priceRepository;

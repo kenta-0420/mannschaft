@@ -4,6 +4,7 @@ import com.mannschaft.app.billing.EntitlementErrorCode;
 import com.mannschaft.app.billing.api.dto.BillingQuoteResponse;
 import com.mannschaft.app.billing.api.dto.CreateBillingQuoteRequest;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import lombok.RequiredArgsConstructor;
 
 import java.time.Clock;
@@ -33,10 +34,11 @@ public class BillingQuoteService {
     /** Session 作成に必要な最小残り期間（BC-13: 30分+60秒）。 */
     private static final Duration MINIMUM_SESSION_WINDOW = Duration.ofMinutes(30).plusSeconds(60);
 
-    private static final ZoneId BILLING_ZONE = ZoneId.of("Asia/Tokyo");
+    /** 課金の月境界判定に用いるサーバー基準ゾーン（正本: {@link UserZoneLocalDateTimeParser#SERVER_ZONE}）。 */
+    private static final ZoneId BILLING_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final Clock clock;
-    private final BillingCheckoutScopeGuard scopeGuard;
+    private final BillingCheckoutAccessGuard scopeGuard;
     private final BillingQuoteRepository quoteRepository;
     private final BillingQuoteCalculator quoteCalculator;
 
