@@ -8,7 +8,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
@@ -30,7 +29,7 @@ class BillingPriceSelectorTest {
     void returnsUniqueActiveRevisionAfterPromotion() {
         BillingPriceVersionEntity version = version();
         BillingPriceBandVersionEntity band = band(version, 1_100L, "price_full_user_1");
-        LocalDateTime now = LocalDateTime.now(clock);
+        Instant now = clock.instant();
         given(snapshotReader.readActive(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER, now))
                 .willReturn(java.util.Optional.of(new BillingPriceSnapshotReader.Candidate(version, List.of(band))));
         BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock);
@@ -45,7 +44,7 @@ class BillingPriceSelectorTest {
     void rejectsNonSellableBand() {
         BillingPriceVersionEntity version = version();
         BillingPriceBandVersionEntity band = band(version, 0L, null);
-        LocalDateTime now = LocalDateTime.now(clock);
+        Instant now = clock.instant();
         given(snapshotReader.readActive(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER, now))
                 .willReturn(java.util.Optional.of(new BillingPriceSnapshotReader.Candidate(version, List.of(band))));
         BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock);
@@ -61,7 +60,7 @@ class BillingPriceSelectorTest {
                 band(version, 1, 1, 20, 1_100L),
                 band(version, 2, 21, 50, 2_200L),
                 band(version, 3, 51, null, 3_300L));
-        LocalDateTime now = LocalDateTime.now(clock);
+        Instant now = clock.instant();
         given(snapshotReader.readActive(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER, now))
                 .willReturn(java.util.Optional.of(new BillingPriceSnapshotReader.Candidate(version, bands)));
         BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock);
@@ -77,7 +76,7 @@ class BillingPriceSelectorTest {
         List<BillingPriceBandVersionEntity> bands = List.of(
                 band(version, 1, 1, 20, 1_100L),
                 band(version, 2, 20, null, 2_200L));
-        LocalDateTime now = LocalDateTime.now(clock);
+        Instant now = clock.instant();
         given(snapshotReader.readActive(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER, now))
                 .willReturn(java.util.Optional.of(new BillingPriceSnapshotReader.Candidate(version, bands)));
         BillingPriceSelector selector = new BillingPriceSelector(promotionService, snapshotReader, clock);
@@ -91,7 +90,7 @@ class BillingPriceSelectorTest {
         BillingPriceVersionEntity version = version();
         BillingPriceBandVersionEntity missingMinimum = band(version, 1, 1, null, 1_100L);
         missingMinimum.setMinMembers(null);
-        LocalDateTime now = LocalDateTime.now(clock);
+        Instant now = clock.instant();
         given(snapshotReader.readActive(BillingProductKind.PLAN, "FULL", EntitlementScopeKind.USER, now))
                 .willReturn(java.util.Optional.of(new BillingPriceSnapshotReader.Candidate(
                         version, List.of(missingMinimum))));
@@ -113,7 +112,7 @@ class BillingPriceSelectorTest {
                 .productKind(BillingProductKind.PLAN).productKey("FULL")
                 .scopeKind(EntitlementScopeKind.USER).catalogRevision("2026-09")
                 .revisionNo(1L).status(BillingPriceVersionStatus.ACTIVE)
-                .effectiveFrom(LocalDateTime.of(2026, 9, 1, 0, 0))
+                .effectiveFrom(Instant.parse("2026-09-01T00:00:00Z"))
                 .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL).build();
         entity.setId(UUID.randomUUID());
         return entity;

@@ -6,7 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,12 +23,12 @@ class BillingPriceSnapshotReaderTest {
     @Test
     @DisplayName("ACTIVE親の一部bandがACTIVEでなければ部分販売せず候補全体を落とす")
     void rejectsPartiallyActiveBands() {
-        LocalDateTime now = LocalDateTime.of(2026, 9, 1, 0, 0);
+        Instant now = Instant.parse("2026-09-01T00:00:00Z");
         BillingPriceVersionEntity revision = BillingPriceVersionEntity.builder()
                 .productKind(BillingProductKind.PLAN)
                 .productKey("FULL")
                 .scopeKind(EntitlementScopeKind.TEAM)
-                .effectiveFrom(now.minusMonths(1))
+                .effectiveFrom(Instant.parse("2026-08-01T00:00:00Z"))
                 .status(BillingPriceVersionStatus.ACTIVE)
                 .build();
         revision.setId(UUID.randomUUID());
@@ -53,7 +53,7 @@ class BillingPriceSnapshotReaderTest {
             BillingPriceVersionEntity revision,
             int bandNo,
             BillingPriceVersionStatus status,
-            LocalDateTime now) {
+            Instant now) {
         return BillingPriceBandVersionEntity.builder()
                 .priceVersionId(revision.getId())
                 .productKind(revision.getProductKind())
@@ -61,7 +61,7 @@ class BillingPriceSnapshotReaderTest {
                 .scopeKind(revision.getScopeKind())
                 .bandNo(bandNo)
                 .minMembers(bandNo)
-                .effectiveFrom(now.minusMonths(1))
+                .effectiveFrom(Instant.parse("2026-08-01T00:00:00Z"))
                 .status(status)
                 .build();
     }

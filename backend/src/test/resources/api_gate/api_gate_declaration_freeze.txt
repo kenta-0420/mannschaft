@@ -87,6 +87,7 @@ HTTP|com.mannschaft.app.auth.controller.UserOAuthLinkController|2|2
 HTTP|com.mannschaft.app.billing.api.BillingContractController|6|9
 HTTP|com.mannschaft.app.billing.api.BillingEntitlementSummaryController|2|3
 HTTP|com.mannschaft.app.billing.api.BillingPlanController|2|2
+HTTP|com.mannschaft.app.billing.api.PublicBillingCatalogController|0|1
 HTTP|com.mannschaft.app.billing.api.SystemAdminBillingController|14|14
 HTTP|com.mannschaft.app.billing.beta.api.BetaPerkController|3|3
 HTTP|com.mannschaft.app.billing.beta.api.SystemAdminBetaPerkController|9|9

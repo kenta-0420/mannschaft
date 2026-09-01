@@ -22,7 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -146,7 +146,7 @@ class BillingPublicCatalogQueryServiceTest {
         BillingPriceVersionEntity version = BillingPriceVersionEntity.builder()
                 .productKind(BillingProductKind.PLAN).productKey("FULL").scopeKind(scopeKind)
                 .catalogRevision("2026-09").revisionNo(1L).status(BillingPriceVersionStatus.ACTIVE)
-                .effectiveFrom(LocalDateTime.of(2026, 9, 1, 0, 0))
+                .effectiveFrom(Instant.parse("2026-09-01T00:00:00Z"))
                 .creationSource(BillingPriceCreationSource.SYSTEM_BACKFILL).build();
         version.setId(UUID.randomUUID());
         BillingPriceBandVersionEntity band = BillingPriceBandVersionEntity.builder()

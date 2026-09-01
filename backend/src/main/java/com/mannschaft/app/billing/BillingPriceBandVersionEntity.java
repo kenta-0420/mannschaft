@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -94,10 +94,10 @@ public class BillingPriceBandVersionEntity extends UuidV7Entity {
     private Long amountIncludingTax;
 
     @Column(name = "effective_from", nullable = false)
-    private LocalDateTime effectiveFrom;
+    private Instant effectiveFrom;
 
     @Column(name = "effective_until")
-    private LocalDateTime effectiveUntil;
+    private Instant effectiveUntil;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 24)
@@ -118,15 +118,15 @@ public class BillingPriceBandVersionEntity extends UuidV7Entity {
     private BillingPriceCreationSource creationSource;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+            createdAt = Instant.now();
         }
         if (currency == null) {
             currency = "JPY";

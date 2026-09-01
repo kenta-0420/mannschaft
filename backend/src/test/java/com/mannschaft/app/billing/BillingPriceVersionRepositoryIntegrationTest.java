@@ -7,7 +7,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +27,7 @@ class BillingPriceVersionRepositoryIntegrationTest extends AbstractMySqlIntegrat
     @Test
     @DisplayName("revision と band を BINARY(16) UUIDv7・enum・JSON を保ったまま永続化できる")
     void persistsRevisionAndBand() {
-        LocalDateTime effectiveFrom = LocalDateTime.of(2026, 9, 1, 0, 0);
+        Instant effectiveFrom = Instant.parse("2026-09-01T00:00:00Z");
         BillingPriceVersionEntity revision = priceVersionRepository.save(newRevision("catalog-202609", 1L, effectiveFrom));
         BillingPriceBandVersionEntity band = priceBandVersionRepository.save(newBand(revision, 1, 1, null));
 
@@ -48,7 +48,7 @@ class BillingPriceVersionRepositoryIntegrationTest extends AbstractMySqlIntegrat
     @Test
     @DisplayName("時点・人数・状態で販売候補を絞り、revision と全 band を悲観ロック取得できる")
     void findsEffectiveCandidatesAndLocksRevisionBands() {
-        LocalDateTime effectiveFrom = LocalDateTime.of(2026, 9, 1, 0, 0);
+        Instant effectiveFrom = Instant.parse("2026-09-01T00:00:00Z");
         BillingPriceVersionEntity revision = priceVersionRepository.save(newRevision("catalog-202609", 2L, effectiveFrom));
         priceBandVersionRepository.save(newBand(revision, 1, 1, 10));
         priceBandVersionRepository.save(newBand(revision, 2, 11, null));
@@ -76,7 +76,7 @@ class BillingPriceVersionRepositoryIntegrationTest extends AbstractMySqlIntegrat
                 .extracting(BillingPriceBandVersionEntity::getBandNo).containsExactly(1, 2);
     }
 
-    private BillingPriceVersionEntity newRevision(String catalogRevision, Long revisionNo, LocalDateTime effectiveFrom) {
+    private BillingPriceVersionEntity newRevision(String catalogRevision, Long revisionNo, Instant effectiveFrom) {
         return BillingPriceVersionEntity.builder()
                 .productKind(BillingProductKind.PLAN)
                 .productKey("standard")

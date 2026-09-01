@@ -6,7 +6,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -23,7 +23,7 @@ public class BillingPriceSelector {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public Optional<SelectedPrice> selectNow(
             BillingProductKind productKind, String productKey, EntitlementScopeKind scopeKind) {
-        LocalDateTime now = LocalDateTime.now(clock);
+        Instant now = clock.instant();
         promotionService.promoteDue(productKind, productKey, scopeKind, now);
 
         Optional<BillingPriceSnapshotReader.Candidate> candidate =

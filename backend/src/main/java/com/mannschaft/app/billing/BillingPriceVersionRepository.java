@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -32,7 +32,7 @@ public interface BillingPriceVersionRepository extends JpaRepository<BillingPric
             @Param("productKey") String productKey,
             @Param("scopeKind") EntitlementScopeKind scopeKind,
             @Param("statuses") Collection<BillingPriceVersionStatus> statuses,
-            @Param("at") LocalDateTime at);
+            @Param("at") Instant at);
 
     /** 同じ商品・スコープの revision を直列化するために悲観ロックして取得する。 */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

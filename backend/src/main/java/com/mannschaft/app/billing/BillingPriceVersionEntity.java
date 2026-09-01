@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * F20.1 の不変な価格カタログ revision。
@@ -63,10 +63,10 @@ public class BillingPriceVersionEntity extends UuidV7Entity {
     private String lastProvisionErrorCode;
 
     @Column(name = "effective_from", nullable = false)
-    private LocalDateTime effectiveFrom;
+    private Instant effectiveFrom;
 
     @Column(name = "effective_until")
-    private LocalDateTime effectiveUntil;
+    private Instant effectiveUntil;
 
     @Version
     @Column(name = "lock_version", nullable = false)
@@ -80,15 +80,15 @@ public class BillingPriceVersionEntity extends UuidV7Entity {
     private BillingPriceCreationSource creationSource;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+            createdAt = Instant.now();
         }
         if (status == null) {
             status = BillingPriceVersionStatus.DRAFT;

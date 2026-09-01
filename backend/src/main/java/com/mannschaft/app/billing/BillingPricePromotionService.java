@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 /** 開始時刻を迎えた価格版を、公開参照に先立って原子的に昇格する。 */
@@ -20,7 +20,7 @@ public class BillingPricePromotionService {
             BillingProductKind productKind,
             String productKey,
             EntitlementScopeKind scopeKind,
-            LocalDateTime now) {
+            Instant now) {
         if (priceVersionRepository.findEffectiveCandidates(
                 productKind,
                 productKey,
@@ -73,7 +73,7 @@ public class BillingPricePromotionService {
         return true;
     }
 
-    private static boolean isEffectiveAt(BillingPriceVersionEntity revision, LocalDateTime at) {
+    private static boolean isEffectiveAt(BillingPriceVersionEntity revision, Instant at) {
         return !revision.getEffectiveFrom().isAfter(at)
                 && (revision.getEffectiveUntil() == null || at.isBefore(revision.getEffectiveUntil()));
     }
@@ -81,7 +81,7 @@ public class BillingPricePromotionService {
     private static boolean isReadyForPromotion(
             BillingPriceVersionEntity revision,
             BillingPriceBandVersionEntity band,
-            LocalDateTime at) {
+            Instant at) {
         return band.getStatus() == BillingPriceVersionStatus.SCHEDULED
                 && revision.getId().equals(band.getPriceVersionId())
                 && revision.getProductKind() == band.getProductKind()

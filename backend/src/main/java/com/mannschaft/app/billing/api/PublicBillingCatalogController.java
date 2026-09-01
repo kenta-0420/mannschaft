@@ -3,6 +3,8 @@ package com.mannschaft.app.billing.api;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.api.dto.PublicBillingCatalogResponse;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.IntentionallyPublic;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,6 +31,9 @@ public class PublicBillingCatalogController {
 
     private final BillingPublicCatalogQueryService catalogQueryService;
 
+    @AlwaysReachable(
+            category = AlwaysReachableCategory.PUBLIC_LIFELINE,
+            reason = "公開価格カタログは未認証の購入導線に常時必要")
     @GetMapping("/plans")
     @Operation(
             operationId = "getPublicBillingPlans",

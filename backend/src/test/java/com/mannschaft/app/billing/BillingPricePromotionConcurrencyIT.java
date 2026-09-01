@@ -11,7 +11,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BillingPricePromotionConcurrencyIT extends AbstractMySqlIntegrationTest {
 
     private static final long TIMEOUT_SECONDS = 10L;
-    private static final LocalDateTime NOW = LocalDateTime.of(2026, 9, 1, 0, 0);
+    private static final Instant NOW = Instant.parse("2026-09-01T00:00:00Z");
 
     @Autowired private BillingPricePromotionService promotionService;
     @Autowired private BillingPriceVersionRepository versionRepository;
@@ -45,7 +45,8 @@ class BillingPricePromotionConcurrencyIT extends AbstractMySqlIntegrationTest {
         productKey = "IT-LAZY-" + System.nanoTime();
         transactionTemplate.executeWithoutResult(tx -> {
             BillingPriceVersionEntity current = persistVersion(
-                    "current", 1L, BillingPriceVersionStatus.ACTIVE, NOW.minusMonths(1), NOW);
+                    "current", 1L, BillingPriceVersionStatus.ACTIVE,
+                    Instant.parse("2026-08-01T00:00:00Z"), NOW);
             BillingPriceVersionEntity next = persistVersion(
                     "next", 2L, BillingPriceVersionStatus.SCHEDULED, NOW, null);
             currentId = current.getId();
@@ -108,7 +109,7 @@ class BillingPricePromotionConcurrencyIT extends AbstractMySqlIntegrationTest {
 
     private BillingPriceVersionEntity persistVersion(
             String revision, long revisionNo, BillingPriceVersionStatus status,
-            LocalDateTime from, LocalDateTime until) {
+            Instant from, Instant until) {
         BillingPriceVersionEntity entity = BillingPriceVersionEntity.builder()
                 .productKind(BillingProductKind.PLAN).productKey(productKey)
                 .scopeKind(EntitlementScopeKind.USER).catalogRevision(revision)

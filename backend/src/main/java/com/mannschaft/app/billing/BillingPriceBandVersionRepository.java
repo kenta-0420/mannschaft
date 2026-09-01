@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -31,7 +31,7 @@ public interface BillingPriceBandVersionRepository extends JpaRepository<Billing
             @Param("productKey") String productKey,
             @Param("scopeKind") EntitlementScopeKind scopeKind,
             @Param("statuses") Collection<BillingPriceVersionStatus> statuses,
-            @Param("at") LocalDateTime at,
+            @Param("at") Instant at,
             @Param("memberCount") int memberCount);
 
     /** revision の全 band を悲観ロックして取得する。 */

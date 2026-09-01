@@ -6,7 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,9 +25,9 @@ class BillingPricePromotionServiceTest {
     @Test
     @DisplayName("開始済みSCHEDULEDを一度だけACTIVEへ昇格し、旧ACTIVEをRETIREDにする")
     void promotesDueRevisionAtomicallyAndIdempotently() {
-        LocalDateTime now = LocalDateTime.of(2026, 9, 1, 0, 0);
+        Instant now = Instant.parse("2026-09-01T00:00:00Z");
         BillingPriceVersionEntity current = version("current", BillingPriceVersionStatus.ACTIVE,
-                now.minusMonths(1), now);
+                Instant.parse("2026-08-01T00:00:00Z"), now);
         BillingPriceVersionEntity next = version("next", BillingPriceVersionStatus.SCHEDULED, now, null);
         BillingPriceBandVersionEntity currentBand = band(current, BillingPriceVersionStatus.ACTIVE);
         BillingPriceBandVersionEntity nextBand = band(next, BillingPriceVersionStatus.SCHEDULED);
@@ -52,7 +52,7 @@ class BillingPricePromotionServiceTest {
     @Test
     @DisplayName("due SCHEDULEDが重複している場合はどちらも昇格しない")
     void duplicateDueRevisionFailsClosed() {
-        LocalDateTime now = LocalDateTime.of(2026, 9, 1, 0, 0);
+        Instant now = Instant.parse("2026-09-01T00:00:00Z");
         BillingPriceVersionEntity first = version("first", BillingPriceVersionStatus.SCHEDULED, now, null);
         BillingPriceVersionEntity second = version("second", BillingPriceVersionStatus.SCHEDULED, now, null);
         given(versionRepository.findEffectiveCandidates(BillingProductKind.PLAN, "FULL",
@@ -71,9 +71,9 @@ class BillingPricePromotionServiceTest {
     @Test
     @DisplayName("親価格版と有効期間が一致しないbandでは旧ACTIVEを退役させない")
     void inconsistentScheduledBandFailsClosedBeforeRetiringCurrent() {
-        LocalDateTime now = LocalDateTime.of(2026, 9, 1, 0, 0);
+        Instant now = Instant.parse("2026-09-01T00:00:00Z");
         BillingPriceVersionEntity current = version("current", BillingPriceVersionStatus.ACTIVE,
-                now.minusMonths(1), now);
+                Instant.parse("2026-08-01T00:00:00Z"), now);
         BillingPriceVersionEntity next = version("next", BillingPriceVersionStatus.SCHEDULED, now, null);
         BillingPriceBandVersionEntity inconsistentBand = band(next, BillingPriceVersionStatus.SCHEDULED);
         inconsistentBand.setEffectiveFrom(now.plusSeconds(1));
@@ -93,7 +93,7 @@ class BillingPricePromotionServiceTest {
     }
 
     private static BillingPriceVersionEntity version(
-            String revision, BillingPriceVersionStatus status, LocalDateTime from, LocalDateTime until) {
+            String revision, BillingPriceVersionStatus status, Instant from, Instant until) {
         BillingPriceVersionEntity entity = BillingPriceVersionEntity.builder()
                 .productKind(BillingProductKind.PLAN)
                 .productKey("FULL")

@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,7 +21,7 @@ public class BillingPriceSnapshotReader {
             BillingProductKind productKind,
             String productKey,
             EntitlementScopeKind scopeKind,
-            LocalDateTime at) {
+            Instant at) {
         List<BillingPriceVersionEntity> active = priceVersionRepository.findEffectiveCandidates(
                 productKind,
                 productKey,
@@ -41,7 +41,7 @@ public class BillingPriceSnapshotReader {
         return Optional.of(new Candidate(revision, List.copyOf(bands)));
     }
 
-    private static boolean isEffectiveAt(BillingPriceBandVersionEntity band, LocalDateTime at) {
+    private static boolean isEffectiveAt(BillingPriceBandVersionEntity band, Instant at) {
         return !band.getEffectiveFrom().isAfter(at)
                 && (band.getEffectiveUntil() == null || at.isBefore(band.getEffectiveUntil()));
     }
