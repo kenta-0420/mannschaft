@@ -35,7 +35,8 @@
     "other_members_count": "다른 {count}명이 소속",
     "transfer_ownership_button": "후임자 지정",
     "archive_button": "보관 처리",
-    "blocked_notice": "위 항목을 모두 해결할 때까지 탈퇴할 수 없습니다"
+    "blocked_notice": "위 항목을 모두 해결할 때까지 탈퇴할 수 없습니다",
+    "retry_button": "다시 시도"
   },
   "signature": {
     "clear": "지우기"

@@ -35,7 +35,8 @@
     "other_members_count": "他 {count} 名が所属",
     "transfer_ownership_button": "後任を指名する",
     "archive_button": "アーカイブする",
-    "blocked_notice": "上記のすべてに対応するまで退会できません"
+    "blocked_notice": "上記のすべてに対応するまで退会できません",
+    "retry_button": "再試行"
   },
   "signature": {
     "clear": "クリア"

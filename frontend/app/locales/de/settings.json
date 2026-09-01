@@ -35,7 +35,8 @@
     "other_members_count": "{count} weitere Mitglieder",
     "transfer_ownership_button": "Nachfolger benennen",
     "archive_button": "Archivieren",
-    "blocked_notice": "Sie können erst kündigen, wenn alle oben genannten Punkte gelöst sind"
+    "blocked_notice": "Sie können erst kündigen, wenn alle oben genannten Punkte gelöst sind",
+    "retry_button": "Erneut versuchen"
   },
   "signature": {
     "clear": "Löschen"

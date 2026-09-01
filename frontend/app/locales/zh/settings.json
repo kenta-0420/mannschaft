@@ -35,7 +35,8 @@
     "other_members_count": "另有 {count} 名成员",
     "transfer_ownership_button": "指定继任者",
     "archive_button": "归档",
-    "blocked_notice": "在完成以上所有事项之前无法退会"
+    "blocked_notice": "在完成以上所有事项之前无法退会",
+    "retry_button": "重试"
   },
   "signature": {
     "clear": "清除"

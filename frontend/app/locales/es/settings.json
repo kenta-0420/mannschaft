@@ -35,7 +35,8 @@
     "other_members_count": "{count} otros miembros",
     "transfer_ownership_button": "Designar sucesor",
     "archive_button": "Archivar",
-    "blocked_notice": "No podrá darse de baja hasta resolver todo lo anterior"
+    "blocked_notice": "No podrá darse de baja hasta resolver todo lo anterior",
+    "retry_button": "Reintentar"
   },
   "signature": {
     "clear": "Limpiar"

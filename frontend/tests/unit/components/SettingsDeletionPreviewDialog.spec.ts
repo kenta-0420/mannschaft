@@ -135,4 +135,82 @@ describe('SettingsDeletionPreviewDialog.vue', () => {
     await flush()
     expect(navigateToMock).toHaveBeenCalledWith('/organizations')
   })
+
+  it('アーカイブボタンのクリックで TEAM スコープは /teams へ遷移する', async () => {
+    getDeletionPreviewMock.mockResolvedValueOnce({
+      data: makePreview({
+        lastAdminScopes: [
+          { scopeType: 'TEAM', scopeId: 202, scopeName: 'U-12チーム', otherMembersCount: 2 },
+        ],
+      }),
+    })
+    const wrapper = await mountSuspended(SettingsDeletionPreviewDialog, {
+      props: { visible: false, hasPassword: false },
+    })
+    await wrapper.setProps({ visible: true })
+    await flush()
+
+    const archiveBtn = getByTestId<HTMLButtonElement>('settings-deletion-preview-archive-TEAM-202')
+    archiveBtn.click()
+    await flush()
+    expect(navigateToMock).toHaveBeenCalledWith('/teams')
+  })
+
+  // P1-1（Codex検分）: 取得失敗/欠落は「0件」ではなく「不明」。安全側に倒して disabled を保つこと。
+  it('プレビュー取得失敗時は削除ボタンが disabled になり、エラー表示と再試行導線が出る', async () => {
+    getDeletionPreviewMock.mockRejectedValueOnce(new Error('network error'))
+    const wrapper = await mountSuspended(SettingsDeletionPreviewDialog, {
+      props: { visible: false, hasPassword: false },
+    })
+    await wrapper.setProps({ visible: true })
+    await flush()
+
+    expect(findByTestId('settings-deletion-preview-fetch-error')).not.toBeNull()
+    const retryBtn = findByTestId<HTMLButtonElement>('settings-deletion-preview-retry-button')
+    expect(retryBtn).not.toBeNull()
+    const deleteBtn = getByTestId<HTMLButtonElement>('settings-deletion-preview-delete-button')
+    expect(deleteBtn.disabled).toBe(true)
+  })
+
+  it('reloadPreview 後、lastAdminScopes: [] が取得できれば削除ボタンが再有効化される', async () => {
+    getDeletionPreviewMock.mockRejectedValueOnce(new Error('network error'))
+    const wrapper = await mountSuspended(SettingsDeletionPreviewDialog, {
+      props: { visible: false, hasPassword: false },
+    })
+    await wrapper.setProps({ visible: true })
+    await flush()
+
+    let deleteBtn = getByTestId<HTMLButtonElement>('settings-deletion-preview-delete-button')
+    expect(deleteBtn.disabled).toBe(true)
+
+    getDeletionPreviewMock.mockResolvedValueOnce({ data: makePreview() })
+    const vm = wrapper.vm as unknown as { reloadPreview: () => Promise<void> }
+    await vm.reloadPreview()
+    await flush()
+
+    expect(findByTestId('settings-deletion-preview-fetch-error')).toBeNull()
+    deleteBtn = getByTestId<HTMLButtonElement>('settings-deletion-preview-delete-button')
+    expect(deleteBtn.disabled).toBe(false)
+  })
+
+  it('reloadPreview 後の再取得も失敗すれば disabled が維持される', async () => {
+    getDeletionPreviewMock.mockResolvedValueOnce({ data: makePreview() })
+    const wrapper = await mountSuspended(SettingsDeletionPreviewDialog, {
+      props: { visible: false, hasPassword: false },
+    })
+    await wrapper.setProps({ visible: true })
+    await flush()
+
+    let deleteBtn = getByTestId<HTMLButtonElement>('settings-deletion-preview-delete-button')
+    expect(deleteBtn.disabled).toBe(false)
+
+    getDeletionPreviewMock.mockRejectedValueOnce(new Error('network error again'))
+    const vm = wrapper.vm as unknown as { reloadPreview: () => Promise<void> }
+    await vm.reloadPreview()
+    await flush()
+
+    expect(findByTestId('settings-deletion-preview-fetch-error')).not.toBeNull()
+    deleteBtn = getByTestId<HTMLButtonElement>('settings-deletion-preview-delete-button')
+    expect(deleteBtn.disabled).toBe(true)
+  })
 })

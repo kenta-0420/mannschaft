@@ -19,6 +19,14 @@ const preview = ref<DeletionPreviewResponse | null>(null)
 const loadingPreview = ref(false)
 const currentPassword = ref('')
 
+/**
+ * P1-1（Codex 検分・柱①ADMINゼロ根治）: プレビュー取得に失敗した、または応答に
+ * `lastAdminScopes` が欠落していた（＝生成型どおり optional なフィールドが未着地）場合に true。
+ * 「取得できなかった＝0件」と誤読しないよう、この状態は削除ボタンを無条件disabledにする
+ * 安全側の判定に使う（isBlockedByLastAdmin 参照）。
+ */
+const previewFetchFailed = ref(false)
+
 interface SummaryRow {
   category: string
   count: number
@@ -44,20 +52,47 @@ const anonymizedRows = computed<AnonymizedRow[]>(() => {
 /**
  * 柱①「ADMINゼロ根治」AC1 — 他メンバーが残る唯一ADMINスコープ一覧。
  * 1件でもあれば退会（削除）ボタンを無効化する（BE GDPR_011 と同じ判定条件を FE 側でも表現）。
+ *
+ * <p>取得失敗時（{@code previewFetchFailed}）は空配列にフォールバックするが、その場合の
+ * 「安全側に倒す」判定は {@code isBlockedByLastAdmin} 側で行う（ここでは表示用の一覧のみ）。</p>
  */
 const lastAdminScopes = computed<LastAdminScope[]>(() => {
   return preview.value?.lastAdminScopes ?? []
 })
 
-const isBlockedByLastAdmin = computed(() => lastAdminScopes.value.length > 0)
+/**
+ * P1-1（Codex 検分）: 「未取得/取得失敗」は「唯一ADMINスコープ0件」と区別できない不明状態のため、
+ * 安全側に倒して削除ボタンを disabled にする。disabled になるのは以下のいずれか:
+ *  - まだプレビューを取得できていない（preview が null）
+ *  - 取得は完了したがエラー、または lastAdminScopes フィールド自体が応答から欠落した
+ *  - 取得できた lastAdminScopes が1件以上ある
+ */
+const isBlockedByLastAdmin = computed(() => {
+  if (previewFetchFailed.value) return true
+  if (!preview.value) return true
+  return lastAdminScopes.value.length > 0
+})
 
 async function loadPreview() {
   if (loadingPreview.value) return
   loadingPreview.value = true
   try {
     const res = await getDeletionPreview()
-    preview.value = res?.data ?? null
+    const data = res?.data ?? null
+    // P1-2（Codex 検分）: 生成型どおり lastAdminScopes は optional。応答自体が無い、または
+    // lastAdminScopes フィールドが欠落している場合は「安全判定に必要な情報が欠落した取得失敗」
+    // として扱う（「0件」と静かに誤読しない）。
+    if (!data || !Array.isArray(data.lastAdminScopes)) {
+      preview.value = null
+      previewFetchFailed.value = true
+      notification.error(t('deletion_preview.fetch_error'))
+      return
+    }
+    preview.value = data
+    previewFetchFailed.value = false
   } catch {
+    preview.value = null
+    previewFetchFailed.value = true
     notification.error(t('deletion_preview.fetch_error'))
   } finally {
     loadingPreview.value = false
@@ -67,6 +102,7 @@ async function loadPreview() {
 /** 親（account.vue）が GDPR_011 で退会に失敗した際に、最新の判定を取り直すために呼ぶ。 */
 async function reloadPreview() {
   preview.value = null
+  previewFetchFailed.value = false
   await loadPreview()
 }
 
@@ -119,6 +155,23 @@ function confirm() {
         <span>{{ $t('button.loading') }}</span>
       </div>
 
+      <!-- P1-1（Codex検分）: 取得失敗/欠落は「0件」ではなく「不明」。エラー表示＋再試行導線を出す -->
+      <div
+        v-else-if="previewFetchFailed"
+        data-testid="settings-deletion-preview-fetch-error"
+        class="flex flex-col items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
+      >
+        <span>{{ $t('deletion_preview.fetch_error') }}</span>
+        <Button
+          translate="no"
+          size="small"
+          severity="secondary"
+          :label="$t('deletion_preview.retry_button')"
+          data-testid="settings-deletion-preview-retry-button"
+          @click="loadPreview"
+        />
+      </div>
+
       <template v-else-if="preview">
         <!-- 柱①「ADMINゼロ根治」AC1: 唯一ADMINスコープが残っている間は退会不可 -->
         <div
@@ -145,7 +198,7 @@ function confirm() {
                     : $t('deletion_preview.scope_type_team')
                 }}
                 「{{ scope.scopeName }}」
-                <template v-if="scope.otherMembersCount > 0">
+                <template v-if="(scope.otherMembersCount ?? 0) > 0">
                   （{{ $t('deletion_preview.other_members_count', { count: scope.otherMembersCount }) }}）
                 </template>
               </span>
@@ -236,7 +289,7 @@ function confirm() {
     <template #footer>
       <div class="flex w-full flex-col items-end gap-2">
         <p
-          v-if="isBlockedByLastAdmin"
+          v-if="!loadingPreview && isBlockedByLastAdmin"
           data-testid="settings-deletion-preview-blocked-notice"
           class="text-xs text-red-600"
         >

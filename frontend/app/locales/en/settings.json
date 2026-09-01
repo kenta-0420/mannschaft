@@ -35,7 +35,8 @@
     "other_members_count": "{count} other members",
     "transfer_ownership_button": "Appoint a successor",
     "archive_button": "Archive",
-    "blocked_notice": "You cannot withdraw until all of the above are resolved"
+    "blocked_notice": "You cannot withdraw until all of the above are resolved",
+    "retry_button": "Retry"
   },
   "signature": {
     "clear": "Clear"
