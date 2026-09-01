@@ -38,10 +38,17 @@ export function ordinalToDate(ord: number): string {
  * その日付を含む週（**起点は日曜**・§6.5.3）の起点日を返す。
  *
  * 1970-01-01（通日番号 0）は木曜なので、日曜まで戻す量は `(ord + 4) % 7`。
+ *
+ * **1970-01-01 より前（`ord` が負）の日付を扱う際は必ず結果を 0〜6 へ正規化すること**
+ * （Codex 検分 P2・是正済み）。JavaScript の `%` は被除数の符号に従うため、`ord` が負だと
+ * `(ord + 4) % 7` 自体が負値になりうる。正規化せずに `ord - (負値)` を計算すると、
+ * 意図した「その日以前の直近の日曜まで戻る」引き算が符号反転して「その日以後の日曜まで
+ * 進む」加算になり、月グリッドが1週間後ろへずれて月初の数日が42セルから丸ごと脱落する。
  */
 export function weekStartOf(dateStr: string): string {
   const ord = dateToOrdinal(dateStr)
-  return ordinalToDate(ord - ((ord + 4) % 7))
+  const back = (((ord + 4) % 7) + 7) % 7
+  return ordinalToDate(ord - back)
 }
 
 /** `dateStr` から `days` 日ずらした日付。 */

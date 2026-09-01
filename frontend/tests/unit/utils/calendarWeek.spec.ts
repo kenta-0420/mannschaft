@@ -28,6 +28,21 @@ describe('utils/calendarWeek', () => {
     expect(weekStartOf('2026-08-09')).toBe('2026-08-09')
   })
 
+  /**
+   * Codex 検分 P2（是正済み）: `dateToOrdinal` は 1970-01-01 起点の通日番号を返すため、
+   * それ以前の日付では `ord` が負になる。JS の `%` は被除数の符号に従うため正規化しないと
+   * 「その日以前の直近の日曜」ではなく「その日以後の日曜」へ向きが反転する
+   * （症状は「曜日がずれる」ではなく「1週間後ろから始まり月初の数日がグリッドから脱落する」）。
+   */
+  it('weekStartOf: 1970年より前の日付でも「その日以前の直近の日曜」を返す（Codex 検分 P2）', () => {
+    // 1969-01-01(水) → 1968-12-29(日)。正規化が無いと 1969-01-05(日) へ向きが反転する。
+    expect(weekStartOf('1969-01-01')).toBe('1968-12-29')
+    // 1968-06-01(土) → 1968-05-26(日)。正規化が無いと 1968-06-02(日) へ反転する。
+    expect(weekStartOf('1968-06-01')).toBe('1968-05-26')
+    // 日曜自身は自分自身が起点であること（正の日付と同じ規約が負側でも保たれる）
+    expect(weekStartOf('1968-12-29')).toBe('1968-12-29')
+  })
+
   it('shiftDate: 月・年をまたいでも正しくずれる', () => {
     expect(shiftDate('2026-08-02', 7)).toBe('2026-08-09')
     expect(shiftDate('2026-08-02', -7)).toBe('2026-07-26')
@@ -235,6 +250,11 @@ describe('utils/calendarWeek', () => {
       ['31日の月', 2026, 8],
       ['30日の月', 2026, 4],
       ['1日が日曜・31日の月', 2026, 3],
+      // Codex 検分 P2（是正済み）: 1970-01-01 より前は dateToOrdinal の通日番号が負になる。
+      // legacyCalendarDays は getDay() ベースで元から正しいため、そのまま比較すれば
+      // weekStartOf の負剰余バグ（月ビューへ一本化で流入した回帰）を検出できる。
+      ['1970年より前（前月が前年へ跨ぐ）', 1969, 1],
+      ['1970年より前', 1968, 6],
     ]
 
     for (const [label, year, month] of cases) {
@@ -247,5 +267,16 @@ describe('utils/calendarWeek', () => {
           .toEqual(legacy)
       })
     }
+
+    it('1969年1月: 1968-12-29(日)始まりの42日で、1/1〜1/4 がグリッドから脱落しない', () => {
+      const grid = monthGridDates(1969, 1)
+      expect(grid).toHaveLength(42)
+      expect(grid[0]!.dateStr).toBe('1968-12-29')
+      for (const d of ['1969-01-01', '1969-01-02', '1969-01-03', '1969-01-04']) {
+        const day = grid.find(g => g.dateStr === d)
+        expect(day).toBeDefined()
+        expect(day!.isCurrentMonth).toBe(true)
+      }
+    })
   })
 })
