@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { GanttResponse, GanttTodo } from '~/types/todo'
-import { useMyCalendarData, PERSONAL_KEY } from '~/composables/useMyCalendarData'
+import { useMyCalendarData, PERSONAL_KEY, layerKey } from '~/composables/useMyCalendarData'
 import type { CalendarViewMode } from '~/composables/useMyCalendarData'
 import { dateToOrdinal, shiftDate, todayInTimezone, weekStartOf } from '~/utils/calendarWeek'
+import { PERSONAL_SCOPE_KEY } from '~/utils/scheduleScopeKey'
+import { toCalendarPanelEvent, type NestedScheduleResponse } from '~/utils/scheduleCalendar'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -248,26 +250,34 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       // レイヤーキー照合用の数値IDに変わったため、詳細取得には ext.scopeRouteId を使う。
       const sid = ext.scopeRouteId ?? ''
       const res = await scheduleApi.getSchedule(st, sid, eventId)
-      const d = res.data as EventDetail & { createdByDisplayName?: string; myAttendanceStatus?: string }
-      selectedEvent.value = {
-        ...d,
+      // F03.19 実機E2E 欠陥1 の根治: この EP の応答は BE ScheduleResponse（content / time /
+      // scope / academic / audit にネストした構造）であり、平坦な title / startAt / endAt は
+      // 存在しない。旧実装は `res.data as EventDetail`（＝嘘のキャスト）で受けてそのまま
+      // スプレッドしていたため、題名も日時も常に undefined になっていた（パネルは開くが
+      // 題名が空・日時が区切り記号だけ）。個人予定側と同じく明示的に詰め替える。
+      // 変換はチーム／組織カレンダーと同じ toCalendarPanelEvent に一本化する
+      // （画面ごとに詰め替えを書くと、また1画面だけ取り残される）。
+      selectedEvent.value = toCalendarPanelEvent(res.data as NestedScheduleResponse, {
         scheduleId: ext.scheduleId ?? null,
         scopeType: ext.scopeType,
         scopeId: ext.scopeRouteId,
-        scopeName: (d as EventDetail).scopeName ?? ext.scopeName,
-        scopeIconUrl: (d as EventDetail).scopeIconUrl ?? null,
-        createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
-        myAttendance: d.myAttendanceStatus ?? null,
-        targetMode: d.targetMode ?? ext.targetMode,
-        targetCount: d.targetCount ?? ext.targetCount,
-        targets: d.targets ?? ext.targets,
-      }
+        scopeName: ext.scopeName,
+        targetMode: ext.targetMode,
+        targetCount: ext.targetCount,
+        targets: ext.targets,
+      })
     }
     showEventPanel.value = true
     showDayPanel.value = false
   }
   catch {
     // エラーは api 側で処理
+    //
+    // 注意（F03.19 実機E2E 欠陥1）: この握りつぶしが上記の詰め替え欠陥を**画面から隠していた**。
+    // 応答の構造が食い違って題名・日時が空になっても例外は出ないため握りつぶしとは無関係に
+    // 見えるが、「この経路は失敗しても画面に何も出ない」ことが、異常に気付く機会を
+    // 奪っていたのは事実である。ここを広く直すと他の失敗（ネットワーク断等）の扱いにも
+    // 波及するため本修繕では触らず、事実だけを残す。
   }
 }
 
@@ -305,7 +315,7 @@ async function onSaved() {
 }
 
 // #52: 作成スコープ選択
-const createScopeKey = ref<string>('personal')
+const createScopeKey = ref<string>(PERSONAL_SCOPE_KEY)
 
 interface CreateScope {
   label: string
@@ -316,7 +326,7 @@ interface CreateScope {
 }
 
 const createScopeOptions = computed<CreateScope[]>(() => [
-  { label: '個人の予定', value: 'personal', isPersonal: true, scopeType: 'team', scopeId: '' },
+  { label: '個人の予定', value: PERSONAL_SCOPE_KEY, isPersonal: true, scopeType: 'team', scopeId: '' },
   ...availableScopes.value.map(sc => ({
     label: sc.label,
     value: sc.value,
@@ -340,7 +350,7 @@ const createScopeColor = computed<string | undefined>(() => {
     ? PERSONAL_KEY
     : availableScopes.value.find(sc => sc.value === createScopeKey.value)?.filterKey
   if (!key) return undefined
-  return layers.value.find(l => `${l.scopeType}:${l.scopeId}` === key)?.color
+  return layers.value.find(l => layerKey(l.scopeType, l.scopeId) === key)?.color
 })
 
 // AC-11b（§5.4）: 表示フィルタで非表示のレイヤーへ予定を作成すると、作った予定が何の説明も
@@ -386,7 +396,7 @@ function savedScopeFilterKey(scope: SavedScope): string {
   const created = availableScopes.value.find(
     sc => sc.scopeId === scope.scopeId && sc.scopeType.toLowerCase() === scope.scopeType,
   )
-  return created?.filterKey ?? `${scope.scopeType.toUpperCase()}:${scope.scopeId}`
+  return created?.filterKey ?? layerKey(scope.scopeType.toUpperCase(), scope.scopeId)
 }
 
 /** 案内に出すレイヤー表示名。allScopeOptions（表示フィルタと同じ一覧）から引く。 */
