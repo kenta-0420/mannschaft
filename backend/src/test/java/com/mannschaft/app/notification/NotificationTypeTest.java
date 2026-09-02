@@ -12,20 +12,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NotificationTypeTest {
 
     @Test
-    @DisplayName("通知種別が全て定義されている（既存31種別 + OWNERSHIP_TRANSFER_* 2種 = 33）")
-    void 全33種別が定義() {
+    @DisplayName("通知種別が全て定義されている（既存31種別 + OWNERSHIP_TRANSFER_* 2種 + ADMIN_SUCCESSION_FORCED 1種 = 34）")
+    void 全34種別が定義() {
         // 内訳: 設計書§5 の通知種別（F03.4.5 §6.1 の RESERVATION_WAITLIST_OPENING を含む 25 種別）
         //       ＋ TODO_HANDED_OFF（後付け）＋ F20.3 ベータ特典の BETA_PERK_GRANTED/_REVOKED/_EXTENDED/
         //       _REVIEW_FLAGGED（4 種）＋ F03.4.5 §6.3 の RESERVATION_PENDING_EXPIRED（仮押さえ自動失効）
         //       ＋ F01.2 オーナー委譲承諾型の OWNERSHIP_TRANSFER_OFFERED / _DECLINED（2種）
-        //       = 計 33 種別。
-        assertThat(NotificationType.values()).hasSize(33);
+        //       ＋ 柱①ADMINゼロ根治の ADMIN_SUCCESSION_FORCED（強制承継通知、1種）
+        //       = 計 34 種別。
+        assertThat(NotificationType.values()).hasSize(34);
         assertThat(NotificationType.values())
                 .contains(NotificationType.BETA_PERK_GRANTED, NotificationType.BETA_PERK_REVOKED,
                         NotificationType.BETA_PERK_EXTENDED, NotificationType.BETA_PERK_REVIEW_FLAGGED,
                         NotificationType.RESERVATION_PENDING_EXPIRED,
                         NotificationType.OWNERSHIP_TRANSFER_OFFERED,
-                        NotificationType.OWNERSHIP_TRANSFER_DECLINED);
+                        NotificationType.OWNERSHIP_TRANSFER_DECLINED,
+                        NotificationType.ADMIN_SUCCESSION_FORCED);
     }
 
     @Test

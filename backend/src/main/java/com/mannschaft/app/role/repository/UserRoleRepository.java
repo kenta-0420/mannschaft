@@ -2456,4 +2456,141 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
         Long getUserId();
         String getRoleKind();
     }
+
+    /**
+     * 柱①「ADMINゼロ根治」§14 — {@code userId} が唯一のADMIN（ADMIN数=1）であるスコープを列挙する。
+     *
+     * <p>承継候補の有無判定はここでは行わない（サービス層 {@code RoleSuccessionService} の責務）。
+     * 正本: docs/architecture/account_purge_last_admin_succession.md §5.4 / §14。</p>
+     */
+    default List<com.mannschaft.app.role.dto.LastAdminScope> findLastAdminScopes(Long userId) {
+        return findLastAdminScopeRows(userId).stream()
+                .map(row -> com.mannschaft.app.role.dto.LastAdminScope.builder()
+                        .scopeType(row.getScopeType())
+                        .scopeId(row.getScopeId())
+                        .scopeName(row.getScopeName())
+                        .otherMembersCount(row.getOtherMembersCount())
+                        .build())
+                .toList();
+    }
+
+    /** {@link #findLastAdminScopes(Long)} の native 実装（射影）。 */
+    @Query(value =
+            "SELECT 'TEAM' AS scopeType, t.id AS scopeId, t.name AS scopeName, " +
+            "  (SELECT COUNT(*) FROM memberships m2 WHERE m2.scope_type = 'TEAM' " +
+            "     AND m2.scope_id = t.id AND m2.left_at IS NULL AND m2.user_id <> :userId) AS otherMembersCount " +
+            "FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN teams t ON t.id = ur.team_id " +
+            "WHERE ur.user_id = :userId AND r.name = 'ADMIN' AND ur.team_id IS NOT NULL " +
+            "  AND (SELECT COUNT(*) FROM user_roles ur2 JOIN roles r2 ON r2.id = ur2.role_id " +
+            "       WHERE r2.name = 'ADMIN' AND ur2.team_id = t.id) = 1 " +
+            "UNION ALL " +
+            "SELECT 'ORGANIZATION' AS scopeType, o.id AS scopeId, o.name AS scopeName, " +
+            "  (SELECT COUNT(*) FROM memberships m3 WHERE m3.scope_type = 'ORGANIZATION' " +
+            "     AND m3.scope_id = o.id AND m3.left_at IS NULL AND m3.user_id <> :userId) AS otherMembersCount " +
+            "FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN organizations o ON o.id = ur.organization_id " +
+            "WHERE ur.user_id = :userId AND r.name = 'ADMIN' AND ur.organization_id IS NOT NULL " +
+            "  AND (SELECT COUNT(*) FROM user_roles ur3 JOIN roles r3 ON r3.id = ur3.role_id " +
+            "       WHERE r3.name = 'ADMIN' AND ur3.organization_id = o.id) = 1",
+            nativeQuery = true)
+    List<LastAdminScopeRow> findLastAdminScopeRows(@Param("userId") Long userId);
+
+    /** {@link #findLastAdminScopeRows(Long)} の射影行。 */
+    interface LastAdminScopeRow {
+        String getScopeType();
+        Long getScopeId();
+        String getScopeName();
+        Long getOtherMembersCount();
+    }
+
+    /**
+     * 柱①「ADMINゼロ根治」§11.2 — TEAM スコープの DEPUTY_ADMIN 承継候補（候補資格を満たす者のみ）を
+     * {@code created_at} 昇順・{@code id} 昇順（タイブレーク）で返す。
+     *
+     * <p>候補資格: 現役在籍（{@code memberships} が active）／退会予定でない
+     * （{@code users.deleted_at IS NULL}）／利用停止・匿名化でない（{@code users.status = 'ACTIVE'}）。</p>
+     */
+    @Query(value =
+            "SELECT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.team_id = :teamId AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = ur.user_id " +
+            "    AND m.scope_type = 'TEAM' AND m.scope_id = :teamId AND m.left_at IS NULL) " +
+            "ORDER BY ur.created_at ASC, ur.id ASC",
+            nativeQuery = true)
+    List<Long> findDeputyAdminCandidateIdsByTeam(@Param("teamId") Long teamId);
+
+    /** {@link #findDeputyAdminCandidateIdsByTeam(Long)} の ORGANIZATION 版。 */
+    @Query(value =
+            "SELECT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.organization_id = :organizationId AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND EXISTS (SELECT 1 FROM memberships m WHERE m.user_id = ur.user_id " +
+            "    AND m.scope_type = 'ORGANIZATION' AND m.scope_id = :organizationId AND m.left_at IS NULL) " +
+            "ORDER BY ur.created_at ASC, ur.id ASC",
+            nativeQuery = true)
+    List<Long> findDeputyAdminCandidateIdsByOrganization(@Param("organizationId") Long organizationId);
+
+    /**
+     * 柱①「ADMINゼロ根治」§11.2 — TEAM スコープの MEMBER 承継候補（候補資格を満たす者のみ）を
+     * {@code joined_at} 昇順・{@code id} 昇順（タイブレーク）で返す。
+     */
+    @Query(value =
+            "SELECT m.user_id FROM memberships m " +
+            "JOIN users u ON u.id = m.user_id " +
+            "WHERE m.scope_type = 'TEAM' AND m.scope_id = :teamId AND m.left_at IS NULL " +
+            "  AND m.role_kind = 'MEMBER' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "ORDER BY m.joined_at ASC, m.id ASC",
+            nativeQuery = true)
+    List<Long> findMemberCandidateIdsByTeam(@Param("teamId") Long teamId);
+
+    /** {@link #findMemberCandidateIdsByTeam(Long)} の ORGANIZATION 版。 */
+    @Query(value =
+            "SELECT m.user_id FROM memberships m " +
+            "JOIN users u ON u.id = m.user_id " +
+            "WHERE m.scope_type = 'ORGANIZATION' AND m.scope_id = :organizationId AND m.left_at IS NULL " +
+            "  AND m.role_kind = 'MEMBER' " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "ORDER BY m.joined_at ASC, m.id ASC",
+            nativeQuery = true)
+    List<Long> findMemberCandidateIdsByOrganization(@Param("organizationId") Long organizationId);
+
+    /**
+     * 柱①「ADMINゼロ根治」§13 — 未アーカイブの TEAM のうち ADMIN が 0 人のスコープ ID を
+     * {@code id} keyset ページングで返す（{@code AdminlessScopeSuccessionBatchService} の
+     * 既存データ検出用）。
+     *
+     * <p>検分反映（P2-2）: 全件を Java ヒープへ {@code List} で読み込んでから
+     * {@code subList} で分割していた実装を、DB 側の {@code WHERE id > :afterId ... LIMIT}
+     * によるページングへ変更した（大規模化時の全件読み込みを回避）。</p>
+     *
+     * @param afterId  前チャンクの最後の ID（初回は 0）
+     * @param pageSize チャンクサイズ
+     */
+    @Query(value =
+            "SELECT t.id FROM teams t " +
+            "WHERE t.archived_at IS NULL AND t.id > :afterId " +
+            "  AND NOT EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id " +
+            "                  WHERE r.name = 'ADMIN' AND ur.team_id = t.id) " +
+            "ORDER BY t.id ASC LIMIT :pageSize",
+            nativeQuery = true)
+    List<Long> findTeamIdsWithoutActiveAdminPage(@Param("afterId") long afterId, @Param("pageSize") int pageSize);
+
+    /** {@link #findTeamIdsWithoutActiveAdminPage(long, int)} の ORGANIZATION 版。 */
+    @Query(value =
+            "SELECT o.id FROM organizations o " +
+            "WHERE o.archived_at IS NULL AND o.id > :afterId " +
+            "  AND NOT EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id " +
+            "                  WHERE r.name = 'ADMIN' AND ur.organization_id = o.id) " +
+            "ORDER BY o.id ASC LIMIT :pageSize",
+            nativeQuery = true)
+    List<Long> findOrganizationIdsWithoutActiveAdminPage(@Param("afterId") long afterId, @Param("pageSize") int pageSize);
 }

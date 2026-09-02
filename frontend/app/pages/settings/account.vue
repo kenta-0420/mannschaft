@@ -5,6 +5,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const showDeletionPreviewDialog = ref(false)
+const deletionPreviewDialogRef = ref<{ reloadPreview: () => Promise<void> } | null>(null)
 const api = useApi()
 const notification = useNotification()
 
@@ -17,7 +18,16 @@ async function handleDeleteAccount(currentPassword: string | null) {
     notification.success(t('settings.delete_account.delete_success'))
     authStore.logout()
     setTimeout(() => navigateTo('/login'), 2000)
-  } catch {
+  } catch (err) {
+    // 柱①「ADMINゼロ根治」§14: 唯一ADMINスコープが残っている場合、BE は 409 GDPR_011 を返す。
+    // 握りつぶさず、退会プレビューダイアログを開き直して後任指名・アーカイブの導線を再提示する。
+    const code = (err as { data?: { error?: { code?: string } } })?.data?.error?.code
+    if (code === 'GDPR_011') {
+      notification.error(t('settings.delete_account.gdpr_011_error'))
+      showDeletionPreviewDialog.value = true
+      await deletionPreviewDialogRef.value?.reloadPreview()
+      return
+    }
     notification.error(t('settings.delete_account.delete_error'))
   }
 }
@@ -269,6 +279,7 @@ onMounted(async () => {
       <SettingsDeleteAccountSection @show-deletion-preview="showDeletionPreviewDialog = true" />
 
       <SettingsDeletionPreviewDialog
+        ref="deletionPreviewDialogRef"
         v-model:visible="showDeletionPreviewDialog"
         :has-password="profile.hasPassword"
         @confirmed="handleDeleteAccount"

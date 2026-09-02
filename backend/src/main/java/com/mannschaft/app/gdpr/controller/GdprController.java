@@ -48,6 +48,7 @@ public class GdprController {
     private final ChatMessageRepository chatMessageRepository;
     private final MemberPaymentRepository memberPaymentRepository;
     private final UserRepository userRepository;
+    private final com.mannschaft.app.role.service.RoleSuccessionService roleSuccessionService;
 
     /**
      * POST /api/v1/account/data-export
@@ -195,9 +196,14 @@ public class GdprController {
         warnings.add("退会後30日以内であれば取り消しが可能です");
         warnings.add("ダウンロード済みのデータエクスポートは引き続き有効です");
 
+        // 柱①ADMINゼロ根治 AC1/§14: 他メンバー1人以上のスコープで唯一のADMINである一覧を追加する。
+        java.util.List<com.mannschaft.app.role.dto.LastAdminScope> lastAdminScopes =
+                roleSuccessionService.findBlockingLastAdminScopes(userId);
+
         return DeletionPreviewResponse.builder()
                 .retentionDays(30)
                 .dataSummary(dataSummary)
+                .lastAdminScopes(lastAdminScopes)
                 .anonymized(anonymized)
                 .warnings(warnings)
                 .build();
