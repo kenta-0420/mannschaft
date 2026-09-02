@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.payment.connect.event.ConnectPayoutsEnabledEvent;
 import com.mannschaft.app.payment.connect.dto.ConnectStatusResponse;
 import com.mannschaft.app.payment.connect.dto.OnboardingLinkRequest;
 import com.mannschaft.app.payment.connect.dto.OnboardingLinkResponse;
@@ -30,7 +31,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -48,8 +48,7 @@ class ConnectAccountServiceTest {
     @Mock private ConnectAccountRepository connectAccountRepository;
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private AccessControlService accessControlService;
-    @Mock private com.mannschaft.app.payment.escrow.EscrowTransactionRepository escrowTransactionRepository;
-    @Mock private com.mannschaft.app.payment.escrow.EscrowLifecycleService escrowLifecycleService;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private ConnectAccountService service;
 
@@ -61,7 +60,7 @@ class ConnectAccountServiceTest {
         ObjectMapper objectMapper = new ObjectMapper();
         service = new ConnectAccountService(
                 connectAccountRepository, stripePaymentProvider, accessControlService,
-                resolver, objectMapper, escrowTransactionRepository, escrowLifecycleService);
+                resolver, objectMapper, eventPublisher);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(String.valueOf(ME), null,
                         List.of(new SimpleGrantedAuthority("ROLE_USER"))));
@@ -212,11 +211,18 @@ class ConnectAccountServiceTest {
         assertThat(response.stripeAccountId()).isEqualTo("acct_existing");
     }
 
-    // ── F22.1 第三陣: account.updated による HELD 昇格 ──
+    // ── F22.1 第三陣 / Issue #2990 L3: account.updated は昇格を「イベント発行」に留める ──
+    //
+    // 是正前はここで escrowLifecycleService.promoteHeldEscrow がモックされ「呼ばれたこと」を検証していた。
+    // しかし promoteHeldEscrow は REQUIRES_NEW で payee 口座を読み直し payouts_enabled を検証するため、
+    // 業務TX 未 commit の状態で呼ばれる本番では常に旧値（false）を読んで no-op に落ちていた。
+    // モックがその再読取を消していたので、死んだ経路のまま緑だった（#2990 L2 と同じ罠）。
+    // 是正後は「業務TX 内ではイベント発行だけ」を検証し、昇格の実処理は
+    // ConnectHeldEscrowPromotionListenerTest（AFTER_COMMIT 側）で検証する。
 
     @Test
-    @DisplayName("第三陣: payouts_enabled false→true で HELD escrow を各件昇格へ委譲する")
-    void accountUpdated_promotesHeldEscrowsOnPayoutsEnabled() {
+    @DisplayName("第三陣: payouts_enabled false→true で昇格イベントを発行する（業務TX内では発行のみ）")
+    void accountUpdated_publishesPromotionEventOnPayoutsEnabled() {
         ConnectAccountEntity acct = account(ScopeKind.TEAM, 42L);
         acct.setPayoutsEnabled(false); // 旧値 false
         UUID acctId = UUID.fromString("019607a0-0000-7000-8000-0000000000c1");
@@ -225,25 +231,16 @@ class ConnectAccountServiceTest {
                 .willReturn(Optional.of(acct));
         given(connectAccountRepository.save(any())).willAnswer(i -> i.getArgument(0));
 
-        UUID e1 = UUID.randomUUID();
-        UUID e2 = UUID.randomUUID();
-        var held1 = heldEscrow(e1, acctId);
-        var held2 = heldEscrow(e2, acctId);
-        given(escrowTransactionRepository.findByPayeeConnectAccountIdAndStatus(
-                eq(acctId), eq(com.mannschaft.app.payment.escrow.EscrowStatus.HELD)))
-                .willReturn(List.of(held1, held2));
-
         service.applyAccountUpdated("acct_existing", true, true, List.of());
 
-        // 鏡像更新は壊さず（payouts_enabled=true 反映）、HELD escrow を各件昇格へ委譲する。
+        // 鏡像更新は壊さず（payouts_enabled=true 反映）、昇格は AFTER_COMMIT へ委ねる。
         assertThat(acct.getPayoutsEnabled()).isTrue();
-        verify(escrowLifecycleService).promoteHeldEscrow(e1);
-        verify(escrowLifecycleService).promoteHeldEscrow(e2);
+        verify(eventPublisher).publishEvent(new ConnectPayoutsEnabledEvent(acctId));
     }
 
     @Test
-    @DisplayName("第三陣: payouts_enabled が変化しない（true→true）と昇格しない")
-    void accountUpdated_noPromotionWhenPayoutsUnchanged() {
+    @DisplayName("第三陣: payouts_enabled が変化しない（true→true）と昇格イベントを発行しない")
+    void accountUpdated_noPromotionEventWhenPayoutsUnchanged() {
         ConnectAccountEntity acct = account(ScopeKind.TEAM, 42L);
         acct.setPayoutsEnabled(true); // 旧値 true
         given(connectAccountRepository.findByStripeAccountId("acct_existing"))
@@ -252,47 +249,6 @@ class ConnectAccountServiceTest {
 
         service.applyAccountUpdated("acct_existing", true, true, List.of());
 
-        verify(escrowTransactionRepository, never())
-                .findByPayeeConnectAccountIdAndStatus(any(), any());
-        verify(escrowLifecycleService, never()).promoteHeldEscrow(any());
-    }
-
-    @Test
-    @DisplayName("第三陣: 1 件の昇格失敗でも他件の昇格は継続する（個別失敗分離）")
-    void accountUpdated_promotionFailureDoesNotStopOthers() {
-        ConnectAccountEntity acct = account(ScopeKind.TEAM, 42L);
-        acct.setPayoutsEnabled(false);
-        UUID acctId = UUID.fromString("019607a0-0000-7000-8000-0000000000c2");
-        acct.setId(acctId);
-        given(connectAccountRepository.findByStripeAccountId("acct_existing"))
-                .willReturn(Optional.of(acct));
-        given(connectAccountRepository.save(any())).willAnswer(i -> i.getArgument(0));
-
-        UUID bad = UUID.randomUUID();
-        UUID good = UUID.randomUUID();
-        given(escrowTransactionRepository.findByPayeeConnectAccountIdAndStatus(
-                eq(acctId), eq(com.mannschaft.app.payment.escrow.EscrowStatus.HELD)))
-                .willReturn(List.of(heldEscrow(bad, acctId), heldEscrow(good, acctId)));
-        doThrow(new RuntimeException("stripe down"))
-                .when(escrowLifecycleService).promoteHeldEscrow(bad);
-
-        service.applyAccountUpdated("acct_existing", true, true, List.of());
-
-        // bad で例外でも good は昇格される（握りつぶさず継続）。
-        verify(escrowLifecycleService).promoteHeldEscrow(good);
-    }
-
-    private com.mannschaft.app.payment.escrow.EscrowTransactionEntity heldEscrow(UUID id, UUID payeeAccountId) {
-        var e = com.mannschaft.app.payment.escrow.EscrowTransactionEntity.builder()
-                .sourceKind(com.mannschaft.app.payment.escrow.EscrowSourceKind.RECRUITMENT)
-                .sourceId(1L).sourceParticipantId(2L)
-                .captureMode(com.mannschaft.app.payment.escrow.EscrowCaptureMode.MANUAL)
-                .payerScopeKind(ScopeKind.USER).payerScopeId(9L)
-                .payeeKind(ScopeKind.TEAM).payeeConnectAccountId(payeeAccountId)
-                .faceAmount(10_000L).amount(10_250L).applicationFeeAmount(500L)
-                .currency("JPY").status(com.mannschaft.app.payment.escrow.EscrowStatus.HELD)
-                .build();
-        e.setId(id);
-        return e;
+        verify(eventPublisher, never()).publishEvent(any(ConnectPayoutsEnabledEvent.class));
     }
 }
