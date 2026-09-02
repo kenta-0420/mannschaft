@@ -43,7 +43,7 @@
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 9
+# CLASSIFIED_FLOOR: 5
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
 # TX_NOTIFY_VIA_DELEGATE については委譲先の入口メソッドの宣言から区分を導出し、
@@ -108,7 +108,31 @@
 # REMOVED: com.mannschaft.app.timetable.service.TimetableChangeService#updateChange -> TX_NOTIFY_BARE : data.notifyMembers() は引数ゼロの record アクセサ。業務TX内は publishEvent のみで正規形そのもの。
 # REMOVED: com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService#createCheckout -> TX_NOTIFY_IN_TRY : stripePaymentProvider.createNotificationCreditCheckoutSession は Stripe の Checkout Session 作成であり通知ではない。
 # 台帳（凍結エントリ + REMOVED）の総数下限。是正でエントリを消したら実装差分と同じPRでここを下げる。
-# CENSUS_FLOOR: 109
+#
+# --- 2026-09-02 Issue #2990 L2: ROLLBACK_COUPLED 4件の是正（CENSUS_FLOOR 109 -> 95）---
+# 分類済み4件（ROLLBACK_COUPLED）を正規形（業務TXは publishEvent のみ／AFTER_COMMIT + @Async("event-pool")
+# 配送リスナー／1件ごと REQUIRES_NEW の NotificationDeliveryRunner#sendOne）へ移した。
+# 是正は「通知発火の位置」を移したものであり、通知そのものを削っていない。
+# 14件が消えたのは、4件それぞれの根に別の凍結エントリがぶら下がっていたためである:
+#   ① DirectMailService#sendMail（委譲先 NotificationCreditService#consume）
+#      根 = consume が @Async protected な sendFreeQuotaAlertAsync を自己呼び出しし、@Async が失効して
+#      業務TX内で同期実行されていた。イベント + NotificationCreditFreeQuotaAlertListener へ移設。
+#      連動して消えた: NotificationCreditService#consume(ASYNC_SELF_INVOCATION)、
+#      同#sendFreeQuotaAlertAsync(ASYNC_WITHOUT_EXECUTOR / TX_NOTIFY_IN_TRY) の3件。
+#   ② PersonalMarketListingService#cancel（委譲先 RecruitmentListingService#cancelPersonalListing）
+#      根 = cancelInternal が業務TX内で sendCancelledNotifications を呼んでいた。
+#      イベント + RecruitmentCancelledNotificationListener へ移設。
+#      連動して消えた: RecruitmentListingService#sendCancelledNotifications(TX_NOTIFY_BARE) の1件。
+#   ③④ ProxyDelegationCleanupBatchService#cleanupScheduleDelegations /
+#      ScheduleAttendanceService#respondAttendance（委譲先はいずれも ScheduleDelegationService）
+#      根 = ScheduleDelegationNotifier が素の @Component で業務TXから同期呼び出しされていた。
+#      ScheduleDelegationNotifier 自体を AFTER_COMMIT リスナーへ作り替え、Service は
+#      ScheduleDelegationNotificationEvent を publish するだけにした。
+#      連動して消えた: ScheduleDelegationService の accept / cancelInternal / cancelOnMemberLeft /
+#      createDelegation / onDelegatorAttendanceChanged / reject（すべて TX_NOTIFY_BARE）の6件。
+# CLASSIFIED_FLOOR は分類済み9件のうち ROLLBACK_COUPLED 4件を是正で消したため 9 -> 5。
+# 残る分類済み5件はすべて ORDERING_ONLY であり、#2990 本体（巻き戻り）ではない。
+# CENSUS_FLOOR: 95
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -153,9 +177,6 @@ com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendC
 com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendExpiryAlertAsync -> ASYNC_WITHOUT_EXECUTOR
 com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendExpiryAlertAsync -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.notification.credit.service.NotificationCreditAlertSender#sendNegativeBalanceAlert -> ASYNC_WITHOUT_EXECUTOR
-com.mannschaft.app.notification.credit.service.NotificationCreditService#consume -> ASYNC_SELF_INVOCATION
-com.mannschaft.app.notification.credit.service.NotificationCreditService#sendFreeQuotaAlertAsync -> ASYNC_WITHOUT_EXECUTOR
-com.mannschaft.app.notification.credit.service.NotificationCreditService#sendFreeQuotaAlertAsync -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.payment.escrow.EscrowLifecycleService#notifyCancelled -> TX_NOTIFY_BARE
 com.mannschaft.app.payment.escrow.EscrowLifecycleService#promoteHeldEscrow -> TX_NOTIFY_BARE
@@ -175,12 +196,6 @@ com.mannschaft.app.schedule.service.ScheduleAttendanceService#openAttendanceSoli
 com.mannschaft.app.schedule.service.ScheduleCommentNotifier#sendMentioned -> DIRECT_RUNNER_CALL
 com.mannschaft.app.schedule.service.ScheduleCommentNotifier#sendReplied -> DIRECT_RUNNER_CALL
 com.mannschaft.app.schedule.service.ScheduleCommentService#registerNotificationAfterCommit -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.schedule.service.ScheduleDelegationService#accept -> TX_NOTIFY_BARE
-com.mannschaft.app.schedule.service.ScheduleDelegationService#cancelInternal -> TX_NOTIFY_BARE
-com.mannschaft.app.schedule.service.ScheduleDelegationService#cancelOnMemberLeft -> TX_NOTIFY_BARE
-com.mannschaft.app.schedule.service.ScheduleDelegationService#createDelegation -> TX_NOTIFY_BARE
-com.mannschaft.app.schedule.service.ScheduleDelegationService#onDelegatorAttendanceChanged -> TX_NOTIFY_BARE
-com.mannschaft.app.schedule.service.ScheduleDelegationService#reject -> TX_NOTIFY_BARE
 com.mannschaft.app.schedule.service.ScheduleKeepNotificationPublisher#publishConverted -> TX_NOTIFY_BARE
 com.mannschaft.app.schedule.service.ScheduleKeepService#notifyConverted -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.schedule.service.ScheduleReminderNotificationListener#onReminderNotification -> PLAIN_EVENT_LISTENER
@@ -205,7 +220,6 @@ com.mannschaft.app.todo.event.MilestoneNotificationListener#onMilestoneUnlocked 
 # --- 2026-09-01 main 取り込みで増えた既存負債（本PRの差分が生んだものではない）---
 # baseline 採取後に main へ着地した実装が持ち込んだ3件。番人が正しく検知したため既存負債として凍結し、
 # 是正は L1 のロットへ回す（CENSUS_FLOOR 97 -> 100）。
-com.mannschaft.app.recruitment.service.RecruitmentListingService#sendCancelledNotifications -> TX_NOTIFY_BARE
 com.mannschaft.app.role.service.OwnershipTransferOfferService#createOffer -> TX_NOTIFY_BARE
 com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX_NOTIFY_BARE
 
@@ -234,10 +248,6 @@ com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX
 #       @Transactional(REQUIRES_NEW)                             ... ORDERING_ONLY
 com.mannschaft.app.digest.service.DigestGenerationService#generate -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
 com.mannschaft.app.digest.service.DigestGenerationService#regenerate -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
-com.mannschaft.app.directmail.service.DirectMailService#sendMail -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
 com.mannschaft.app.errorreport.service.ErrorReportService#recordBackendException -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
 com.mannschaft.app.payment.connect.ConnectAccountService#promoteHeldEscrowsForPayee -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
-com.mannschaft.app.recruitment.service.PersonalMarketListingService#cancel -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
-com.mannschaft.app.schedule.batch.ProxyDelegationCleanupBatchService#cleanupScheduleDelegations -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
-com.mannschaft.app.schedule.service.ScheduleAttendanceService#respondAttendance -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
 com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
