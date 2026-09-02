@@ -55,9 +55,10 @@ describe('receipt.json ロケールキー集合パリティ（AC-20）', () => {
   })
 
   it('6言語すべての receipt.json がパース可能な JSON である', () => {
+    // 不在の言語を読み飛ばすと、6言語とも存在しない間このテストが空振りで緑になる
+    // （条件を検査できていない偽 green）。不在もパース不能と同じく赤にする。
     const broken: string[] = []
     for (const lang of LANGS) {
-      if (!existsSync(receiptPath(lang))) continue
       try {
         readJson(receiptPath(lang))
       } catch {
