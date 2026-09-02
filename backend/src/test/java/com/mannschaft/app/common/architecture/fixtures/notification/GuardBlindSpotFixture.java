@@ -2,17 +2,48 @@ package com.mannschaft.app.common.architecture.fixtures.notification;
 
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.GatewayStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.HelperStub;
+import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.InheritingWorkerStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.RepositoryStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.RunnerStub;
-import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.TransactionTemplateStub;
+import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.SilentWorkerStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.WorkerStub;
 import java.util.function.Consumer;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * 通知番人の<b>死角</b>を固定する検体 — Codex の独立検分（PR #3006）が挙げた8形状。
+ * 通知番人の<b>死角</b>を固定する検体 — Codex の独立検分（PR #3006 / #3048）が挙げた形状。
+ *
+ * <p><b>Issue #3039 の更新</b>: 8形状のうち<b>形状1（別 Bean 委譲）・2（{@code TransactionTemplate}）・
+ * 3（命名語彙の外の API）・4（合成アノテーション）・7（オーバーロード畳み込み）は塞いだ</b>。
+ * 塞いだものは「検出されることを確かめるテスト」へ移してある（記録が古いままだと
+ * 次の担当者が死角だと誤認するため）。
+ *
+ * <p><b>Codex 独立検分（PR #3048）の更新</b>:
+ * <ul>
+ *   <li><b>形状8（メソッド参照）も塞いだ</b>。かつては「本番0件だから契約文書で足りる」としていたが、
+ *       文書は追加された瞬間には効かない。語彙の完全一致＋レシーバ型が当該 API を宣言していること、
+ *       という2条件で偽陽性を避けつつ機械ゲートにした（{@code NOTIFY_METHOD_REFERENCE}）。</li>
+ *   <li><b>形状9（ローカル変数によるフィールドのシャドーイング）は塞げない</b>。
+ *       字句走査にスコープが無いためである。ただし<b>先勝ちで黙って片方を採るのはやめた</b>——
+ *       候補間で判定が割れたら「判定不能」として番人を落とす。
+ *       この検体は「違反として検出される」のではなく「曖昧性として報告される」ことが固定される。</li>
+ * </ul>
+ *
+ * <p><b>Codex 独立検分 2巡目の更新（番人強化の最終巡）</b>:
+ * <ul>
+ *   <li><b>形状10（継承・インターフェース経由の宣言）を塞いだ</b>。通知 API の宣言が親クラスや
+ *       インターフェースにあると、語彙が完全一致していても「レシーバ型がその API を宣言している」
+ *       条件を満たせず機械ゲートが発火しなかった。継承は Java で最もありふれた宣言の置き場所である。</li>
+ *   <li><b>形状11（完全修飾で宣言されたフィールド）を塞いだ</b>。
+ *       {@code private final com.x.Y y;} は型が解決できないうえ<b>曖昧性としても報告されない</b>ため、
+ *       静かに追跡外へ落ちていた。</li>
+ *   <li><b>形状12（メソッド参照のレシーバ型の曖昧性）を判定不能として出すようにした</b>。
+ *       委譲判定は「割れたら判定不能」なのに、メソッド参照の経路にだけ曖昧性ゲートが無く、
+ *       無関係な同名候補で静かに偽陽性／偽陰性へ倒れうる非対称があった。</li>
+ * </ul>
  *
  * <h2>なぜ「検出できない形」を検体として持つのか</h2>
  * <p>従来の負例 fixture には<b>番人が構文的に見逃す形が1つも入っていなかった</b>ため、
@@ -37,7 +68,20 @@ public class GuardBlindSpotFixture {
     private final RepositoryStub repository = new RepositoryStub();
     private final GatewayStub gateway = new GatewayStub();
     private final WorkerStub notificationWorker = new WorkerStub();
-    private final TransactionTemplateStub transactionTemplate = new TransactionTemplateStub();
+    /** 形状10（継承経由の宣言）用。自分では何も宣言せず {@code notify} を親から継承する。 */
+    private final InheritingWorkerStub inheritingWorker = new InheritingWorkerStub();
+    /**
+     * 形状11（完全修飾で宣言されたフィールド）用。
+     *
+     * <p>{@code TYPED_DECLARATION} は {@code [A-Z][\w$]*} で始まる型しか拾わないため、
+     * この書き方は<b>型が解決できず、委譲先として追えないうえ曖昧性ゲートにも掛からず静かに追跡外</b>だった。
+     */
+    private final com.mannschaft.app.common.architecture.fixtures.notification.FullyQualifiedWorkerStub
+            fullyQualifiedWorker = new FullyQualifiedWorkerStub();
+    /** 形状9（シャドーイング）用。ローカル変数に同じ名前で隠される側。 */
+    private final WorkerStub shadowedWorker = new WorkerStub();
+    /** 本物の Spring {@code TransactionTemplate}。検体は走査されるだけで実行されないため null で足りる。 */
+    private final TransactionTemplate transactionTemplate = null;
 
     // ------------------------------------------------------------------
     // 検出できる形（番人が実際に網に掛けられるもの）
@@ -69,15 +113,16 @@ public class GuardBlindSpotFixture {
     }
 
     // ------------------------------------------------------------------
-    // 検出できない形（静的解析の限界。隠さず検体として持つ）
+    // Issue #3039 で塞いだ形（かつては検出できなかった）
     // ------------------------------------------------------------------
 
     /**
      * 形状1: 業務TXから<b>別 Bean</b>（無印）へ委譲し、その先で通知する。
      *
      * <p>{@code WorkerStub#send} には {@code @Transactional} が無いが、呼び出し元の業務TXに
-     * そのまま参加する。番人は同一クラス内の無修飾呼び出ししか伝播を追わないため、
-     * この形は<b>原理的に検出できない</b>。baseline が実態の下限である最大の理由。
+     * そのまま参加する。かつては同一クラス内の無修飾呼び出ししか伝播を追えず検出できなかった。
+     * <b>レシーバの宣言から型を引き、その型のソースを引く</b>ことで1ホップぶんは追えるようになった
+     * （{@code TX_NOTIFY_VIA_DELEGATE}）。2ホップ以上は依然として追わない。
      */
     @Transactional
     public void delegateToAnotherBean(Long userId) {
@@ -88,14 +133,27 @@ public class GuardBlindSpotFixture {
     /**
      * 形状2: {@code TransactionTemplate} の lambda 内で通知する（外側は無印）。
      *
-     * <p>TX の開始・終了が宣言的アノテーションではなく手続きで決まるため、
-     * 番人の annotation ベースの判定軸そのものが当たらない。
+     * <p>TX の開始・終了が宣言的アノテーションではなく手続きで決まるため、annotation ベースの
+     * 判定軸は当たらない。ただし {@code execute(...)} の<b>引数の括弧の内側</b>は
+     * 構文から TX 内だと断定できるので、そこだけを範囲として拾う（Issue #3039 で塞いだ）。
      */
     public void notifyInsideTransactionTemplate(Long userId) {
-        transactionTemplate.execute(() -> {
+        transactionTemplate.executeWithoutResult(status -> {
             repository.save(userId);
             notificationHelper.notify(userId, "TYPE", "件名", "本文");
         });
+    }
+
+    /**
+     * 形状2の対照。{@code TransactionTemplate} の<b>外側</b>で通知する（正規形に近い）。
+     *
+     * <p>{@code execute(...)} の括弧の内側だけを TX とみなしていることの裏取り。
+     * ここまで違反にすると「TransactionTemplate を持つクラスの全通知」が違反になってしまい、
+     * 判定が範囲ではなくクラス単位になっていることに気付けない。
+     */
+    public void notifyOutsideTransactionTemplate(Long userId) {
+        transactionTemplate.executeWithoutResult(status -> repository.save(userId));
+        notificationHelper.notify(userId, "TYPE", "件名", "本文");
     }
 
     /**
@@ -104,6 +162,10 @@ public class GuardBlindSpotFixture {
      * <p>{@code send} / {@code publishNotification} / {@code enqueue} はいずれも通知発火だが、
      * 番人は {@code notify*} / {@code createNotification*} / {@code sendOne} 等の綴りしか見ない。
      * 語彙を広げれば拾えるが、広げるほど偽陽性（アクセサ・ビルダー）が増える緊張関係にある。
+     * <b>そこで語彙は広げず、型で捕まえる</b>——{@code GatewayStub} の中身が実際に通知を発火するので
+     * {@code TX_NOTIFY_VIA_DELEGATE} として検出される（Issue #3039 で塞いだ）。
+     * 綴りが通知に見えるだけで中身が通知でない
+     * {@code createNotificationCreditCheckoutSession} は、逆に検出されないままである（正しい）。
      */
     @Transactional
     public void notifyViaUnnamedApi(Long userId) {
@@ -116,8 +178,11 @@ public class GuardBlindSpotFixture {
     /**
      * 形状4: メタ注釈で {@code @Transactional} を持つ<b>合成アノテーション</b>。
      *
-     * <p>実行時は TX 内で走るが、字句走査からは {@code @BusinessTransaction} という綴りしか見えない。
-     * 解決するには注釈の定義を辿る必要があり、字句走査の枠を出る。
+     * <p>実行時は TX 内で走るが、メソッドの側からは {@code @BusinessTransaction} という綴りしか見えない。
+     * <b>注釈の定義側を走査すれば字句のまま解決できる</b>ので塞いだ（Issue #3039）。
+     * 定義の走査ではコメントを必ずマスクすること——本番の {@code BackgroundFeaturePolicy} は
+     * Javadoc に {@code @TransactionalEventListener} と書いており、マスクを外すと
+     * 350 箇所のメソッドが一斉に TX 扱いになる。
      */
     @BusinessTransaction
     public void composedAnnotationTxNotify(Long userId) {
@@ -126,11 +191,20 @@ public class GuardBlindSpotFixture {
     }
 
     /**
-     * 形状8: 通知をメソッド参照として {@code Consumer} に載せ、後から呼ぶ。
+     * 形状8: 通知発火 API をメソッド参照として {@code Consumer} に載せ、後から呼ぶ。
      *
      * <p>参照の<b>生成</b>は TX 内だが<b>実行</b>がどこで起きるかは字句からは決まらない
      * （別スレッド・コミット後・そもそも呼ばれない、のいずれもありうる）。
-     * 呼び出し括弧が無いため綴り一致にも掛からない。
+     * 呼び出し括弧が無いため通常の綴り一致にも掛からない。
+     *
+     * <p><b>Issue #3039 / Codex 独立検分 条件3 で機械ゲートを足した</b>。かつては
+     * 「本番0件だから契約文書に書くだけでよい」としていたが、書いてあるだけでは追加された瞬間に
+     * 番人が静かに見逃す。実行位置が決まらないということは<b>「AFTER_COMMIT 境界の後だ」とも言えない</b>
+     * のだから、許可された入口の外では一律に違反として扱うのが契約に忠実である。
+     *
+     * <p>偽陽性は<b>型</b>で避ける: 語彙の完全一致に加えて、レシーバの型が実際にその名前の API を
+     * 宣言していることを要求する。main に7件ある {@code ::toNotificationResponse} /
+     * {@code ::getNotifyTeamSlotNoteUpdates}（mapper・getter）は語彙の完全一致で落ちる。
      */
     @Transactional
     public void notifyViaMethodReference(Long userId) {
@@ -139,8 +213,96 @@ public class GuardBlindSpotFixture {
         sink.accept(userId);
     }
 
+    /**
+     * 形状10: 通知 API の宣言が<b>親クラス</b>にあるレシーバへのメソッド参照（Codex 独立検分 High）。
+     *
+     * <p>{@code InheritingWorkerStub} 自身の本体は空で、{@code notify} は
+     * {@code BaseNotifierStub} が宣言している。番人の {@code declaredMethodNames} が
+     * 対象クラスの {@code typeBlock} しか見ていなかった頃は、語彙が完全一致していても
+     * 「レシーバ型がその API を宣言している」条件を満たせず
+     * {@code NOTIFY_METHOD_REFERENCE} が<b>発火しなかった</b>（静かな偽陰性）。
+     * 継承は Java で最もありふれた宣言の置き場所であり、死角として放置できない。
+     */
+    @Transactional
+    public void notifyViaInheritedMethodReference(Long userId) {
+        repository.save(userId);
+        Consumer<Long> sink = inheritingWorker::notify;
+        sink.accept(userId);
+    }
+
+    /**
+     * 形状11: フィールドを<b>完全修飾</b>で宣言し、その先で通知する（Codex 独立検分の未解決指摘）。
+     *
+     * <p>{@code private final com.x.Y y;} は {@code TYPED_DECLARATION} が拾わないため、
+     * かつては型が解決できず委譲先として追えなかった。しかも
+     * <b>「型が解決できない」は曖昧性としても報告されない</b>ので、静かに追跡外へ落ちていた。
+     * 完全修飾はそれ自体が一意な名前解決なので、単一型 import と同じ扱いで解決に使う。
+     */
+    @Transactional
+    public void delegateViaFullyQualifiedField(Long userId) {
+        repository.save(userId);
+        fullyQualifiedWorker.send(userId);
+    }
+
     // ------------------------------------------------------------------
-    // 形状7: オーバーロードの畳み込み（部分的に検出できる）
+    // 塞げない形（原理的に判定不能。検出できるフリをせず「判定不能」として落とす）
+    // ------------------------------------------------------------------
+
+    /**
+     * 形状9: ローカル変数がフィールドを<b>シャドーイング</b>する（Codex 独立検分 条件2）。
+     *
+     * <p>番人の {@code declaredTypes} はスコープを持たず、フィールド・引数・ローカルを
+     * 1つの表に集める。かつては先勝ちで<b>宣言順の早いフィールド（{@code WorkerStub}）を黙って採用</b>して
+     * いたため、実際に呼ばれているのはローカル（{@code SilentWorkerStub}＝通知しない）なのに
+     * 「通知を発火する委譲」として違反に数える偽陽性が原理的に起こりえた。
+     *
+     * <p><b>塞げるか</b>: 正しく解くにはスコープ解析が要り、字句走査の範囲では実装できない。
+     * そこで<b>候補を捨てない</b>形に変え、候補間で判定が割れたときは違反でも合格でもなく
+     * {@code ScanResult#ambiguities()}（＝判定不能）として番人を落とすようにした。
+     * したがってこの検体は「違反として検出される」のではなく
+     * <b>「曖昧性として報告される」</b>ことがテストで固定される。
+     * 検出できないものを検出できるフリのテストで包まないための形である。
+     */
+    @Transactional
+    public void localShadowsField(Long userId) {
+        repository.save(userId);
+        SilentWorkerStub shadowedWorker = new SilentWorkerStub();
+        shadowedWorker.send(userId);
+    }
+
+    /**
+     * 形状12: <b>メソッド参照のレシーバ型が曖昧</b>な形（足軽が発見した非対称の検体）。
+     *
+     * <p>{@code declaredTypes} はスコープを持たないので、同じ変数名が別のメソッドで別の型として
+     * 宣言されていると、1つの名前に2つの型が対応する（{@link #unrelatedMethodWithSameVariableName}）。
+     * 一方は {@code notify} を宣言し、他方は宣言していない。
+     *
+     * <p>かつて {@code declaresApi} は「候補のいずれかが宣言していれば true」という
+     * <b>存在量化</b>だった。委譲判定が「割れたら判定不能」なのに、メソッド参照の経路にだけ
+     * 曖昧性ゲートが無かったということである。無関係な同名候補がたまたま同じ名前の API を持てば、
+     * 実際のレシーバ型が通知系でなくても静かに違反へ倒れる。
+     * いまは委譲判定と同じく<b>判定不能</b>として報告される。
+     */
+    @Transactional
+    public void methodReferenceOnAmbiguousReceiver(Long userId) {
+        repository.save(userId);
+        HelperStub ambiguousNotifier = new HelperStub();
+        Consumer<Long> sink = ambiguousNotifier::notify;
+        sink.accept(userId);
+    }
+
+    /**
+     * 形状12 の対になる宣言。同じ変数名を<b>通知を宣言しない型</b>で宣言するためだけに存在する。
+     *
+     * <p>通知もTXも持たないので、このメソッド自体は違反にならない。
+     */
+    public void unrelatedMethodWithSameVariableName(Long userId) {
+        RepositoryStub ambiguousNotifier = new RepositoryStub();
+        ambiguousNotifier.save(userId);
+    }
+
+    // ------------------------------------------------------------------
+    // 形状7: オーバーロードの畳み込み（Issue #3039 で分離した）
     // ------------------------------------------------------------------
 
     /**
@@ -159,9 +321,11 @@ public class GuardBlindSpotFixture {
     /**
      * 形状7の業務側オーバーロード。{@code @Transactional} で {@code sendOne} を直呼びする。
      *
-     * <p>畳み込みにより {@code DIRECT_RUNNER_CALL} は<b>抑止されてしまう</b>（偽陰性）が、
-     * 自身の {@code @Transactional} により {@code TX_NOTIFY_BARE} は残る。
-     * 「全部見逃す」でも「全部見える」でもないこの中途半端さこそ固定する価値がある。
+     * <p>かつては畳み込みにより {@code DIRECT_RUNNER_CALL} が<b>抑止されていた</b>（偽陰性）。
+     * 引数の型は字句から解決できないが、<b>「自分で {@code @Transactional} を宣言している
+     * ＝業務TXの入口であって {@code AFTER_COMMIT} 境界の内側ではない」</b>という条件で分離できる
+     * （Issue #3039）。正規形の private ヘルパは {@code @Transactional} を持たないので巻き込まれない。
+     * 残る死角は「{@code @Transactional} を持たない同名オーバーロード」で、これは対象外とする。
      */
     @Transactional
     public void handle(Long userId) {

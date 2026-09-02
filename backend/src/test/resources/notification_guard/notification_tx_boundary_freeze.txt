@@ -17,6 +17,7 @@
 #   ASYNC_WITHOUT_EXECUTOR 通知発火クラスの @Async が executor 無指定（event-pool へ載る）
 #   TX_NOTIFY_IN_TRY       @Transactional 文脈で通知を発火し try で失敗を握っている
 #   TX_NOTIFY_BARE         @Transactional 文脈で通知を発火している（try 無しの単発）
+#   TX_NOTIFY_VIA_DELEGATE @Transactional 文脈から別 Bean へ委譲し、その先で通知が発火する（Issue #3039）
 #
 # 契約: 付随通知は業務TX内ではイベント発行だけを行う。実通知は明示的な AFTER_COMMIT 境界の後、
 #       または項目TX完了を待つ非トランザクションのバッチオーケストレータからのみ実行する。
@@ -24,6 +25,52 @@
 #
 # 増加は常に CI fail。減少は該当実装差分と同じPRでのみ許可（是正したら必ずこの行を削る）。
 # 最終目標は baseline ゼロ。
+#
+# ------------------------------------------------------------------------------
+# 影響区分（任務5 / Codex 独立検分を受けた追加。エントリ行の末尾に " | <区分>" で付ける）
+# ------------------------------------------------------------------------------
+# ここに並ぶ違反は「原則5 に違反している」という点では一貫しているが、
+# 性質の異なる2種類が混在しており、是正の手当ては同じとは限らない。
+# ロット割り当ての前に機械可読な形で区別できるよう、区分を列として持つ。
+#
+#   ROLLBACK_COUPLED  (i)  通知の失敗が業務トランザクションを巻き戻す。#2990 が問題にしている本体。
+#                          委譲先が無印（＝呼び出し元の TX にそのまま参加）／同一 TX 内の直接発火。
+#   ORDERING_ONLY     (ii) 巻き戻しはしないが「業務コミット後」という因果順序を保証しない。
+#                          委譲先が @Async / REQUIRES_NEW で別スレッド・別TXに逃げている形。
+#                          業務側が後でロールバックしても通知だけ残る「逆向きの不整合」が通る。
+#
+# 区分の無い行は「未分類」。全109件の分類は後続ロットで埋める前提であり、
+# 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
+# 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
+#
+# CLASSIFIED_FLOOR: 9
+#
+# 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
+# TX_NOTIFY_VIA_DELEGATE については委譲先の入口メソッドの宣言から区分を導出し、
+# 台帳の値と一致しなければ番人が落ちる。導出規則:
+#   委譲先入口に @Async が付く、または @Transactional(propagation = REQUIRES_NEW / NOT_SUPPORTED / NEVER)
+#     -> ORDERING_ONLY（呼び出し元のTXに参加しない＝巻き戻らないが因果順序は保証されない）
+#   それ以外（無印・既定の REQUIRED ほか）
+#     -> ROLLBACK_COUPLED（呼び出し元のTXに参加する＝通知の失敗で業務が巻き戻る）
+# 分類を誤ると是正の手当てを誤る（「TXから切り離す」と「AFTER_COMMIT リスナーへ移す」は別物）ため、
+# 人手のコメントではなく機械照合を正とする。
+#
+# ------------------------------------------------------------------------------
+# 判定不能（曖昧）の台帳
+# ------------------------------------------------------------------------------
+# 型解決の候補が一意に決まらず、しかも候補ごとに判定が割れる箇所は、番人にとって
+# 「違反である」とも「違反でない」とも言えない。これを violations() に入れずに放置すると、
+# CI は赤いのに是正対象の一覧（このファイル）には現れず、ロット計画は実違反数を過少報告する。
+# この戦役では「一覧が実態より小さい」が既に5回起きているので、曖昧性も同じ台帳に載せる。
+#
+# 書式: # AMBIGUOUS: <完全修飾クラス名>#<メソッド名> : <理由>
+# 番人が次を機械的に検証する:
+#   - 検出された判定不能はすべてこの台帳に載っていること（載っていなければ fail）
+#   - 台帳の行がすべて現在も判定不能であること（解消したら行を消し CENSUS_FLOOR も下げる）
+#   - 理由が10文字以上であること
+#   - 総数（凍結エントリ + REMOVED + AMBIGUOUS）が CENSUS_FLOOR を下回らないこと
+# 現時点の判定不能は 0 件（AMBIGUOUS 行なし）。0件でも仕組みは動いており、
+# 台帳ゲートの変異テストが偽の判定不能を流して裏取りしている。
 #
 
 # --- 2026-09-01 の是正（Codex 独立検分の指摘: 番人の偽陽性）---
@@ -61,7 +108,7 @@
 # REMOVED: com.mannschaft.app.timetable.service.TimetableChangeService#updateChange -> TX_NOTIFY_BARE : data.notifyMembers() は引数ゼロの record アクセサ。業務TX内は publishEvent のみで正規形そのもの。
 # REMOVED: com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService#createCheckout -> TX_NOTIFY_IN_TRY : stripePaymentProvider.createNotificationCreditCheckoutSession は Stripe の Checkout Session 作成であり通知ではない。
 # 台帳（凍結エントリ + REMOVED）の総数下限。是正でエントリを消したら実装差分と同じPRでここを下げる。
-# CENSUS_FLOOR: 100
+# CENSUS_FLOOR: 109
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -161,3 +208,36 @@ com.mannschaft.app.todo.event.MilestoneNotificationListener#onMilestoneUnlocked 
 com.mannschaft.app.recruitment.service.RecruitmentListingService#sendCancelledNotifications -> TX_NOTIFY_BARE
 com.mannschaft.app.role.service.OwnershipTransferOfferService#createOffer -> TX_NOTIFY_BARE
 com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX_NOTIFY_BARE
+
+# --- 2026-09-01 Issue #3039: 番人の死角を塞いだ結果あらたに検出された既存負債（9件）---
+# 別 Bean への1ホップ委譲（TX_NOTIFY_VIA_DELEGATE）を追えるようにしたことで表に出た。
+# 本PRの差分が生んだものではなく、以前から存在していて番人に見えていなかった負債である。
+# 9件すべて呼び出し元の @Transactional（クラス単位を含む）を実地確認済み・偽陽性ゼロ。
+# 是正は L1 以降のロットへ回す（CENSUS_FLOOR 100 -> 109）。
+#
+# 影響区分は委譲先メソッドの宣言を1件ずつ実地確認して付けた（内訳: ROLLBACK_COUPLED 4 / ORDERING_ONLY 5）:
+#   DigestGenerationService#generate/#regenerate  -> DigestAsyncExecutor#generateAiDigestAsync
+#       @Async + @Transactional（別スレッド・別TX）              ... ORDERING_ONLY
+#   DirectMailService#sendMail                    -> NotificationCreditService#consume
+#       @Transactional（既定 REQUIRED = 呼び出し元のTXに参加）   ... ROLLBACK_COUPLED
+#   ErrorReportService#recordBackendException     -> ErrorReportAsyncExecutor#recordBackendException
+#       @Async("event-pool") + @Transactional                    ... ORDERING_ONLY
+#   ConnectAccountService#promoteHeldEscrowsForPayee -> EscrowLifecycleService#promoteHeldEscrow
+#       @Transactional(REQUIRES_NEW)                             ... ORDERING_ONLY
+#   PersonalMarketListingService#cancel           -> RecruitmentListingService#cancelPersonalListing
+#       @Transactional(REQUIRED)                                 ... ROLLBACK_COUPLED
+#   ProxyDelegationCleanupBatchService#cleanupScheduleDelegations -> ScheduleDelegationService#cancelOnMemberLeft
+#       @Transactional(REQUIRED)                                 ... ROLLBACK_COUPLED
+#   ScheduleAttendanceService#respondAttendance   -> ScheduleDelegationService#onDelegatorAttendanceChanged
+#       @Transactional(REQUIRED)                                 ... ROLLBACK_COUPLED
+#   ShiftBudgetFailedEventService#retry           -> ShiftBudgetRetryExecutor#execute
+#       @Transactional(REQUIRES_NEW)                             ... ORDERING_ONLY
+com.mannschaft.app.digest.service.DigestGenerationService#generate -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
+com.mannschaft.app.digest.service.DigestGenerationService#regenerate -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
+com.mannschaft.app.directmail.service.DirectMailService#sendMail -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
+com.mannschaft.app.errorreport.service.ErrorReportService#recordBackendException -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
+com.mannschaft.app.payment.connect.ConnectAccountService#promoteHeldEscrowsForPayee -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
+com.mannschaft.app.recruitment.service.PersonalMarketListingService#cancel -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
+com.mannschaft.app.schedule.batch.ProxyDelegationCleanupBatchService#cleanupScheduleDelegations -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
+com.mannschaft.app.schedule.service.ScheduleAttendanceService#respondAttendance -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
+com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
