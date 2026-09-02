@@ -1,6 +1,7 @@
 import type { CalendarEventItem } from './useCalendarEvents'
 import type { CalendarLayerScopeType } from './schedule/useScheduleCrud'
 import type { MyCalendarTodo } from '~/types/todo'
+import { scheduleScopeKey } from '~/utils/scheduleScopeKey'
 
 interface CalendarEntryRaw {
   // reflection 等 UUID 主キードメインの行は id=null（§6.2/AC-21）。
@@ -126,6 +127,17 @@ function normalizeLayer(raw: CalendarLayerRaw): CalendarLayerView {
 
 /** F03.19 §4.3.1: PERSONAL の scopeId は DB・API・URL・FE レイヤーキーのすべてで 0 に統一する。 */
 export const PERSONAL_KEY = 'PERSONAL:0'
+
+/**
+ * 表示フィルタ（`selectedScopes` / `allScopeOptions`）用のレイヤーキーを作る**唯一の関数**。
+ * 作成先スコープの鍵（`scheduleScopeKey`・slug 由来）とは別の鍵体系であり、こちらは
+ * **数値 scopeId** を使う。素の文字列連結を各所に書くと両者が静かに混ざるため、
+ * 生成をこの関数に閉じる。
+ */
+export function layerKey(scopeType: string, scopeId: number | string): string {
+  return `${scopeType}:${scopeId}`
+}
+
 export const FILTER_OVERFLOW = 5
 
 /** レイヤー一覧に無いスコープ（フォールバックチップ・§5.2.1）の色ドットに使う中立色。 */
@@ -554,10 +566,6 @@ export function useMyCalendarData() {
     }
   }
 
-  function layerKey(scopeType: string, scopeId: number | string): string {
-    return `${scopeType}:${scopeId}`
-  }
-
   function layerLabel(l: CalendarLayerView): string {
     if (l.scopeType === 'PERSONAL' && l.scopeNameKey) return t(l.scopeNameKey)
     return l.scopeName || t('schedule.calendar.layer.unknown')
@@ -599,7 +607,9 @@ export function useMyCalendarData() {
       if (!slug) continue
       result.push({
         label: layerLabel(l),
-        value: `${l.scopeType}:${slug}`,
+        // 鍵の生成は scheduleScopeKey に一本化する（作成ダイアログ側の初期選択と
+        // 同じ関数で作らないと照合が外れる。F03.19 実機E2E 欠陥2）。
+        value: scheduleScopeKey(l.scopeType, slug),
         scopeType: l.scopeType,
         scopeId: slug,
         // P2修繕: layers.value の走査中にしか分からない数値キーを、slug と一緒にここで確定させる。

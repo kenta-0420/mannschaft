@@ -2,6 +2,7 @@
 import dayjs from 'dayjs'
 import type { RecurrenceEndType, RecurrenceType, ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
 import type { ScheduleTargetMode } from '~/types/schedule'
+import { PERSONAL_SCOPE_KEY, scheduleScopeKey } from '~/utils/scheduleScopeKey'
 
 interface ScopeOption {
   label: string
@@ -41,18 +42,25 @@ const emit = defineEmits<{
 }>()
 
 // スコープ選択（フォーム内で変更可能）
-const selectedScopeKey = ref<string>(
-  (props.isPersonal ?? false) ? 'personal' : `${props.scopeType}_${props.scopeId}`,
-)
+/**
+ * props のスコープに対応する選択鍵。**必ず {@link scheduleScopeKey} で作る**
+ * （素の文字列連結で作っていた頃は選択肢側の `TEAM:<slug>` と形式が食い違い、
+ * 初期表示でどのボタンにも選択状態が付かなかった。F03.19 実機E2E 欠陥2）。
+ */
+function currentScopeKey(): string {
+  return (props.isPersonal ?? false)
+    ? PERSONAL_SCOPE_KEY
+    : scheduleScopeKey(props.scopeType, props.scopeId)
+}
+
+const selectedScopeKey = ref<string>(currentScopeKey())
 
 // ダイアログが開くたびにスコープキーを prop に合わせてリセット
 watch(
   () => props.visible,
   (v) => {
     if (v) {
-      selectedScopeKey.value = (props.isPersonal ?? false)
-        ? 'personal'
-        : `${props.scopeType}_${props.scopeId}`
+      selectedScopeKey.value = currentScopeKey()
     }
   },
 )
