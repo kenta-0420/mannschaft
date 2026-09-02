@@ -20,17 +20,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.core.task.SyncTaskExecutor;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +41,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -77,31 +78,30 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * リサイズ結果はモックが受け取った <b>実バイト列を {@code ImageIO} でデコードして</b>検証するため、
  * 「呼ばれたこと」だけを見る偽 green にはならない。</p>
  *
- * <h2>監査ログの待ち方（AC-33）</h2>
- * <p>{@code AuditLogService.record} は {@code @Async} の fire-and-forget である。
- * 設計書 AC-33 の指定どおり <b>同期 Executor に差し替えて決定論化</b>し、Awaitility での
- * 待機は採らない（CI 負荷で揺れて flaky になるため）。{@code AsyncConfig} が複数の
- * {@code Executor} Bean を定義しているため {@code @Async}（無修飾）は型で一意解決できず、
- * Spring は Bean 名 {@code "taskExecutor"} を探しにいく。そこへ {@link SyncTaskExecutor} を
- * 差し込むことで、呼び出しは呼び出し元スレッド上で同期実行される。</p>
+ * <h2>監査ログの待ち方（AC-33）— 設計書の指定から変更した理由</h2>
+ * <p>設計書 AC-33 は「Bean 名 {@code taskExecutor} へ {@code SyncTaskExecutor} を差して
+ * {@code @Async} を同期化し、Awaitility は採らない」と指定していた。しかし
+ * <b>実行でその前提が崩れることが CI で実証された</b>（run 33668464015）。同期化していれば
+ * 監査ログはテストトランザクション内に書かれて末尾でロールバックされるはずだが、実際には
+ * <b>ある試験が書いた行が後続の試験から見えた</b>（自分の行は 0 件、他試験の行が 1 件）。
+ * すなわち書き込みは依然として別スレッド・独立トランザクションで commit されており、
+ * 差し替えは効いていなかった。</p>
+ *
+ * <p>よって本クラスは、<b>リポジトリで確立済みの
+ * {@code Awaitility + REQUIRES_NEW TransactionTemplate} パターン</b>
+ * （{@code RepairPlanAuditLogIntegrationTest} / {@code OperationalAdCampaignAuditLogIT}）に倣う。
+ * 検証する事実（イベントがちょうど 1 件・metadata に旧値と新値の双方）は一切緩めていない。</p>
+ *
+ * <p>加えて、非同期書き込みはテストトランザクションの外で commit されるため
+ * <b>共有 DB を汚染する</b>。そこで (a) 参照は必ず当該試験の {@code teamId} で絞り込み、
+ * 他クラス・他試験が残した行を拾わないようにし、(b) {@code @AfterEach} で自分が書いた行を
+ * REQUIRES_NEW で掃除する。</p>
  */
 @AutoConfigureMockMvc
 @Transactional
-@Import(ReceiptIssuerSettingsLogoAndAuditIT.SyncAsyncTestConfig.class)
 @DisplayName("F08.4 発行者設定 ロゴ・監査ログ契約テスト（試練・実装前 red）")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
-
-    /**
-     * {@code @Async} を同期実行に差し替えるテスト専用構成（AC-33）。
-     */
-    @TestConfiguration
-    static class SyncAsyncTestConfig {
-        @Bean("taskExecutor")
-        TaskExecutor syncTaskExecutor() {
-            return new SyncTaskExecutor();
-        }
-    }
 
     private static final String PATH = "/api/v1/admin/receipt-settings";
     private static final String LOGO_PATH = PATH + "/logo";
@@ -130,6 +130,10 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private AuditLogRepository auditLogRepository;
+
+    /** 非同期に commit された監査ログを、テストトランザクションの外から読む/消すために使う。 */
+    @Autowired
+    private PlatformTransactionManager txManager;
 
     /**
      * 外部境界（R2 / S3）。ここだけモックしてよい。
@@ -401,6 +405,43 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
 
     // ───────────────────────────── AC-33: 監査ログ ─────────────────────────────
 
+    private static final String RECEIPT_SETTINGS_UPDATED = "RECEIPT_SETTINGS_UPDATED";
+
+    /** REQUIRES_NEW の新規トランザクションで処理を実行する（テスト tx の外を見る/触るため）。 */
+    private <T> T inNewTransaction(java.util.function.Function<Object, T> work) {
+        TransactionTemplate newTx = new TransactionTemplate(txManager);
+        newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return newTx.execute(status -> work.apply(status));
+    }
+
+    /**
+     * 当該試験のスコープに紐づく {@code RECEIPT_SETTINGS_UPDATED} 行だけを読む。
+     *
+     * <p>{@code teamId} で絞るのは、非同期書き込みがテスト tx の外で commit される以上、
+     * 他クラス（{@code ContractIT} / {@code SnapshotIT}）や同クラスの他試験が残した行が
+     * 同じテーブルに見えてしまうためである。チームは {@code @BeforeEach} で毎回新規採番されるので、
+     * この絞り込みで試験ごとに完全に隔離される。</p>
+     */
+    private List<AuditLogEntity> findReceiptSettingsLogs() {
+        return inNewTransaction(status -> auditLogRepository.findAll().stream()
+                .filter(l -> RECEIPT_SETTINGS_UPDATED.equals(l.getEventType()))
+                .filter(l -> teamAId.equals(l.getTeamId()))
+                .toList());
+    }
+
+    /** 非同期に commit された行はロールバックされないため、試験ごとに掃除して共有 DB を汚さない。 */
+    @AfterEach
+    void cleanUpAuditLogs() {
+        inNewTransaction(status -> {
+            List<AuditLogEntity> logs = auditLogRepository.findAll().stream()
+                    .filter(l -> RECEIPT_SETTINGS_UPDATED.equals(l.getEventType()))
+                    .filter(l -> teamAId.equals(l.getTeamId()))
+                    .toList();
+            auditLogRepository.deleteAll(logs);
+            return null;
+        });
+    }
+
     @Test
     @WithMockUser(username = "920141001")
     @DisplayName("AC-33: 登録番号を変更して保存すると RECEIPT_SETTINGS_UPDATED が旧値→新値付きで記録される")
@@ -412,17 +453,16 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
                         .content("{\"invoiceRegistrationNumber\":\"T2222222222222\"}"))
                 .andExpect(status().isOk());
 
-        List<AuditLogEntity> logs = auditLogRepository.findAll().stream()
-                .filter(l -> "RECEIPT_SETTINGS_UPDATED".equals(l.getEventType()))
-                .toList();
-
-        assertThat(logs)
-                .as("audit_logs に RECEIPT_SETTINGS_UPDATED がちょうど 1 件記録されること")
-                .hasSize(1);
-        assertThat(logs.get(0).getMetadata())
-                .as("metadata に旧値と新値の両方が含まれること")
-                .contains("T1111111111111")
-                .contains("T2222222222222");
+        Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            List<AuditLogEntity> logs = findReceiptSettingsLogs();
+            assertThat(logs)
+                    .as("audit_logs に RECEIPT_SETTINGS_UPDATED がちょうど 1 件記録されること")
+                    .hasSize(1);
+            assertThat(logs.get(0).getMetadata())
+                    .as("metadata に旧値と新値の両方が含まれること")
+                    .contains("T1111111111111")
+                    .contains("T2222222222222");
+        });
     }
 
     @Test
@@ -437,16 +477,15 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
                                 + "\"invoiceRegistrationNumber\":\"\"}"))
                 .andExpect(status().isOk());
 
-        List<AuditLogEntity> logs = auditLogRepository.findAll().stream()
-                .filter(l -> "RECEIPT_SETTINGS_UPDATED".equals(l.getEventType()))
-                .toList();
-
-        assertThat(logs).hasSize(1);
-        assertThat(logs.get(0).getMetadata())
-                .as("isQualifiedInvoicer の旧値 true と新値 false が含まれること")
-                .contains("isQualifiedInvoicer")
-                .contains("true")
-                .contains("false");
+        Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            List<AuditLogEntity> logs = findReceiptSettingsLogs();
+            assertThat(logs).hasSize(1);
+            assertThat(logs.get(0).getMetadata())
+                    .as("isQualifiedInvoicer の旧値 true と新値 false が含まれること")
+                    .contains("isQualifiedInvoicer")
+                    .contains("true")
+                    .contains("false");
+        });
     }
 
     @Test
@@ -460,9 +499,13 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
                         .content("{\"customFooter\":\"フッターだけ変更\"}"))
                 .andExpect(status().isOk());
 
-        assertThat(auditLogRepository.findAll().stream()
-                .filter(l -> "RECEIPT_SETTINGS_UPDATED".equals(l.getEventType()))
-                .toList())
-                .isEmpty();
+        // 「書かれない」ことの検証は 1 回読むだけでは偽 green になる（非同期の書き込みが
+        // まだ届いていないだけかもしれない）。一定時間ずっと 0 件であり続けることを確認する。
+        Awaitility.await()
+                .during(Duration.ofSeconds(2))
+                .atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> assertThat(findReceiptSettingsLogs())
+                        .as("適格フラグ・登録番号を変えない保存では監査ログを記録しないこと")
+                        .isEmpty());
     }
 }
