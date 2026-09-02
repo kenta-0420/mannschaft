@@ -20119,6 +20119,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/billing/quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 見積り発行
+         * @description scope は本文で指定し、操作者の課金管理権限をサービス層で検証する。Idempotency-Key 必須。
+         */
+        post: operations["createQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/billing/contracts": {
         parameters: {
             query?: never;
@@ -20133,6 +20153,26 @@ export interface paths {
          * @description USER スコープ。Idempotency-Key 必須。
          */
         post: operations["createForMe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/billing/checkout-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Checkout Session 作成
+         * @description quote の所有者・scope・価格・月境界を再検証してから Stripe Checkout を作成する。Idempotency-Key 必須。
+         */
+        post: operations["createCheckoutSession"];
         delete?: never;
         options?: never;
         head?: never;
@@ -30518,6 +30558,70 @@ export interface paths {
         };
         /** iCalフィード配信（認証不要） */
         get: operations["getIcalFeed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/portal/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["portalReturn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/payment-action/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["paymentActionReturn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/checkout/success": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["checkoutSuccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/checkout/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["checkoutCancel"];
         put?: never;
         post?: never;
         delete?: never;
@@ -64534,6 +64638,56 @@ export interface components {
             careRecipientUserId: number;
             /** @enum {string} */
             relationship: "PARENT" | "CHILD" | "SPOUSE" | "GRANDPARENT" | "GRANDCHILD" | "SIBLING" | "LEGAL_GUARDIAN" | "CARETAKER" | "OTHER";
+        };
+        CreateBillingQuoteRequest: {
+            productKey?: string;
+            productKind?: string;
+            /** Format: int64 */
+            scopeId?: number;
+            /** @enum {string} */
+            scopeKind?: "USER" | "TEAM" | "ORG";
+        };
+        ApiResponseBillingQuoteResponse: {
+            data?: components["schemas"]["BillingQuoteResponse"];
+        };
+        BillingQuoteResponse: {
+            /** Format: date-time */
+            expiresAt?: string;
+            initialTotal?: components["schemas"]["Money"];
+            nextMonthlyTotal?: components["schemas"]["Money"];
+            /** Format: date-time */
+            periodEnd?: string;
+            /** Format: date-time */
+            periodStart?: string;
+            productKey?: string;
+            /** @enum {string} */
+            productKind?: "PLAN" | "ADDON";
+            /** Format: uuid */
+            quoteId?: string;
+        };
+        Money: {
+            /** Format: int64 */
+            amountExcludingTax?: number;
+            /** Format: int64 */
+            amountIncludingTax?: number;
+            currency?: string;
+            /** Format: int64 */
+            taxAmount?: number;
+            taxName?: string;
+            /** Format: int32 */
+            taxRateBasisPoints?: number;
+        };
+        CreateBillingCheckoutSessionRequest: {
+            /** Format: uuid */
+            quoteId?: string;
+        };
+        ApiResponseCheckoutSessionResponse: {
+            data?: components["schemas"]["CheckoutSessionResponse"];
+        };
+        CheckoutSessionResponse: {
+            checkoutUrl?: string;
+            /** Format: date-time */
+            expiresAt?: string;
         };
         FamilyAttendanceNoticeRequest: {
             attachedFileKeys?: string[];
@@ -123937,6 +124091,32 @@ export interface operations {
             };
         };
     };
+    createQuote: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBillingQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingQuoteResponse"];
+                };
+            };
+        };
+    };
     createForMe: {
         parameters: {
             query?: never;
@@ -123959,6 +124139,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
+                };
+            };
+        };
+    };
+    createCheckoutSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBillingCheckoutSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseCheckoutSessionResponse"];
                 };
             };
         };
@@ -143809,6 +144015,86 @@ export interface operations {
                 content: {
                     "*/*": string;
                 };
+            };
+        };
+    };
+    portalReturn: {
+        parameters: {
+            query: {
+                state: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    paymentActionReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                billing_return_state?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    checkoutSuccess: {
+        parameters: {
+            query: {
+                state: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    checkoutCancel: {
+        parameters: {
+            query: {
+                state: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
