@@ -31,6 +31,22 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query(value = "select * from users where id = :id for update", nativeQuery = true)
     Optional<UserEntity> findByIdForUpdateIncludingDeleted(@Param("id") Long id);
 
+    /**
+     * 柱①「ADMINゼロ根治」§12.5 — purge開始マークを冪等に記録する（{@code purge_started_at} が
+     * まだ NULL のときだけ現在時刻を書く）。{@code @Modifying} native UPDATE のため
+     * {@link org.springframework.data.jpa.repository.Query} 経由で直接発行し、
+     * Entity のロード・SQLRestriction を経由しない（退会済ユーザーにも書き込める必要があるため）。
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = "UPDATE users SET purge_started_at = NOW() WHERE id = :id AND purge_started_at IS NULL",
+            nativeQuery = true)
+    int markPurgeStarted(@Param("id") Long id);
+
+    /** {@link #markPurgeStarted(Long)} でマーク済みかどうかを返す。 */
+    @Query(value = "SELECT CASE WHEN purge_started_at IS NOT NULL THEN 1 ELSE 0 END FROM users WHERE id = :id",
+            nativeQuery = true)
+    Optional<Integer> findPurgeStartedFlag(@Param("id") Long id);
+
     Optional<UserEntity> findByEmail(String email);
 
     /** @ハンドルでユーザーを取得する（F04.8 連絡先機能）。 */
