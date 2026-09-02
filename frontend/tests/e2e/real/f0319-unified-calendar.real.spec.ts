@@ -142,6 +142,19 @@ const DRAG_DAY_INDEX = 4
 
 let api: APIRequestContext
 let token = ''
+/** アクセストークンを取得した時刻(ms)。有効期限の管理に使う。 */
+let tokenIssuedAt = 0
+
+/**
+ * アクセストークンの寿命(ms)に対する再取得の閾値。
+ *
+ * BE のアクセストークンは `expiresIn: 900`（15分）である。本 spec のフルランは実測で
+ * **16分を超える**ため、beforeAll で1度取ったきりにすると**終盤のテストだけが 401 で落ちる**
+ * （実際に AC-25 がこれで落ちた。実装の欠陥でも #3051 の回帰でもなく、テストが実行時間に
+ * 依存していた）。API を叩く直前に期限が近ければ取り直し、時間依存を断つ。
+ * 余裕を持って 10 分で切り替える。
+ */
+const TOKEN_REFRESH_AFTER_MS = 10 * 60 * 1000
 
 function authHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
@@ -151,23 +164,30 @@ async function login(): Promise<void> {
   const res = await api.post(`${API}/api/v1/auth/login`, { data: OUTSIDER })
   expect(res.status(), `${OUTSIDER.email} の実ログイン`).toBe(200)
   token = ((await res.json()) as { data: { accessToken: string } }).data.accessToken
+  tokenIssuedAt = Date.now()
+}
+
+/** トークンが古ければ取り直す。すべての API ヘルパーの先頭で呼ぶ。 */
+async function freshAuthHeaders(): Promise<Record<string, string>> {
+  if (Date.now() - tokenIssuedAt >= TOKEN_REFRESH_AFTER_MS) await login()
+  return authHeaders()
 }
 
 async function getLayers(): Promise<Layer[]> {
-  const res = await api.get(`${API}/api/v1/me/calendar-layers`, { headers: authHeaders() })
+  const res = await api.get(`${API}/api/v1/me/calendar-layers`, { headers: await freshAuthHeaders() })
   expect(res.status(), 'レイヤー一覧の取得').toBe(200)
   return ((await res.json()) as { data: Layer[] }).data
 }
 
 async function getCalendar(from = TARGET_RANGE.from, to = TARGET_RANGE.to): Promise<CalendarEntry[]> {
-  const res = await api.get(`${API}/api/v1/my/calendar?from=${from}&to=${to}`, { headers: authHeaders() })
+  const res = await api.get(`${API}/api/v1/my/calendar?from=${from}&to=${to}`, { headers: await freshAuthHeaders() })
   expect(res.status(), `横断カレンダーの取得 (${from}〜${to})`).toBe(200)
   return ((await res.json()) as { data: CalendarEntry[] }).data
 }
 
 async function createTeam(name: string): Promise<{ slug: string; numericId: number }> {
   const res = await api.post(`${API}/api/v1/teams`, {
-    headers: authHeaders(),
+    headers: await freshAuthHeaders(),
     data: { name, sportType: 'SOCCER', description: `${RUN} fixture` },
   })
   expect(res.status(), `チーム作成: ${name}`).toBe(201)
@@ -179,7 +199,7 @@ async function createTeamSchedule(
   slug: string, title: string, startAt: string, endAt: string, allDay = false,
 ): Promise<number> {
   const res = await api.post(`${API}/api/v1/teams/${slug}/schedules`, {
-    headers: authHeaders(),
+    headers: await freshAuthHeaders(),
     data: {
       title, startAt, endAt, allDay,
       eventType: 'OTHER', targetMode: 'ALL_MEMBERS', targetUserIds: [], attendanceRequired: false,
@@ -191,7 +211,7 @@ async function createTeamSchedule(
 
 async function createPersonalSchedule(title: string, startAt: string, endAt: string): Promise<number> {
   const res = await api.post(`${API}/api/v1/me/schedules`, {
-    headers: authHeaders(),
+    headers: await freshAuthHeaders(),
     data: { title, startAt, endAt, allDay: false },
   })
   expect(res.status(), `個人予定作成: ${title}`).toBe(201)
@@ -207,12 +227,12 @@ async function deleteTeamWithSchedules(slug: string): Promise<void> {
   for (const entry of await getCalendar(WIDE_FROM, WIDE_TO)) {
     if (entry.id && entry.scope.scopeSlug === slug) {
       const del = await api.delete(`${API}/api/v1/teams/${slug}/schedules/${entry.id}`, {
-        headers: authHeaders(),
+        headers: await freshAuthHeaders(),
       })
       expect([204, 404], `チーム ${slug} の予定 ${entry.id} の削除`).toContain(del.status())
     }
   }
-  const del = await api.delete(`${API}/api/v1/teams/${slug}`, { headers: authHeaders() })
+  const del = await api.delete(`${API}/api/v1/teams/${slug}`, { headers: await freshAuthHeaders() })
   expect([204, 404], `チーム ${slug} の削除`).toContain(del.status())
 }
 
@@ -248,7 +268,7 @@ const createdTeamSlugs: string[] = []
 // ---------------------------------------------------------------------------
 
 async function cleanupStale(): Promise<void> {
-  const res = await api.get(`${API}/api/v1/me/teams?limit=200`, { headers: authHeaders() })
+  const res = await api.get(`${API}/api/v1/me/teams?limit=200`, { headers: await freshAuthHeaders() })
   expect(res.status(), '所属チーム一覧').toBe(200)
   const teams = ((await res.json()) as {
     data: Array<{ slug: string; basicInfo?: { name: string }; name?: string }>
@@ -260,7 +280,7 @@ async function cleanupStale(): Promise<void> {
 
   for (const entry of await getCalendar(WIDE_FROM, WIDE_TO)) {
     if (entry.id && entry.content.title.startsWith(PREFIX) && entry.scope.scopeType === 'PERSONAL') {
-      const del = await api.delete(`${API}/api/v1/me/schedules/${entry.id}`, { headers: authHeaders() })
+      const del = await api.delete(`${API}/api/v1/me/schedules/${entry.id}`, { headers: await freshAuthHeaders() })
       expect([204, 404], `古い個人予定 ${entry.id} の削除`).toContain(del.status())
     }
   }
@@ -269,7 +289,7 @@ async function cleanupStale(): Promise<void> {
   for (const layer of await getLayers()) {
     const del = await api.delete(
       `${API}/api/v1/me/calendar-layers/${layer.scopeType}/${layer.scopeId}`,
-      { headers: authHeaders() },
+      { headers: await freshAuthHeaders() },
     )
     expect([204, 404], `レイヤー設定 ${layer.scopeType}:${layer.scopeId} の初期化`).toContain(del.status())
   }
@@ -297,7 +317,7 @@ async function ensureFallbackFixture(): Promise<void> {
   const team = await createTeam(`${PREFIX}-FB-${Date.now()}`)
   fallbackTitle = `${RUN}-FALLBACK`
   await createTeamSchedule(team.slug, fallbackTitle, at(EVENTS_DATE, '20:00'), at(EVENTS_DATE, '21:00'))
-  const del = await api.delete(`${API}/api/v1/teams/${team.slug}`, { headers: authHeaders() })
+  const del = await api.delete(`${API}/api/v1/teams/${team.slug}`, { headers: await freshAuthHeaders() })
   expect(del.status(), 'フォールバック用チームの削除（予定は意図的に残す）').toBe(204)
   fallbackTeamId = team.numericId
 }
@@ -602,13 +622,13 @@ test.afterAll(async () => {
     for (const slug of createdTeamSlugs) await deleteTeamWithSchedules(slug)
     for (const entry of await getCalendar(WIDE_FROM, WIDE_TO)) {
       if (entry.id && entry.scope.scopeType === 'PERSONAL' && entry.content.title.startsWith(PREFIX)) {
-        await api.delete(`${API}/api/v1/me/schedules/${entry.id}`, { headers: authHeaders() })
+        await api.delete(`${API}/api/v1/me/schedules/${entry.id}`, { headers: await freshAuthHeaders() })
       }
     }
     for (const layer of await getLayers()) {
       await api.delete(
         `${API}/api/v1/me/calendar-layers/${layer.scopeType}/${layer.scopeId}`,
-        { headers: authHeaders() },
+        { headers: await freshAuthHeaders() },
       )
     }
   }
@@ -1234,11 +1254,18 @@ test('AC-22: タッチでは素早いスワイプでスクロールし、長押�
 
 test('AC-15: /calendar のレイヤー選択がダッシュボードの WidgetMyCalendar にも反映される', async () => {
   const keys = layerKeys()
-  // WidgetMyCalendar には data-testid が無いため、見出しで存在を確かめる。
-  // 予定そのものはページ全体から可視要素として探す（`/dashboard` でカレンダーの
-  // 予定を描くのはこのウィジェットだけであり、タイトルは本実行に固有）。
+  // WidgetMyCalendar には data-testid が無いため、**見出し「マイカレンダー」と月グリッド
+  // （7列）の両方を含む最も内側の要素**をウィジェット本体とみなす。
+  // ページ全体から予定タイトルを探してはならない — `/dashboard` には
+  // WidgetScheduleCalendar / WidgetAttendanceResults など**予定タイトルを描く別ウィジェット**が
+  // 同居しており、それらはレイヤー選択の影響を受けない。ページ全体で探すと、
+  // 別ウィジェットの表示を掴んで「非表示になっていない」と誤判定する（実際に一度誤検知した）。
   const widgetHeading = page.getByRole('heading', { name: 'マイカレンダー' })
-  const widgetEvent = () => page.getByText(titles.widget, { exact: false }).filter({ visible: true })
+  const widget = () => page.locator('div')
+    .filter({ has: page.getByRole('heading', { name: 'マイカレンダー' }) })
+    .filter({ has: page.locator('.grid.grid-cols-7') })
+    .last()
+  const widgetEvent = () => widget().getByText(titles.widget, { exact: false }).filter({ visible: true })
 
   await openCalendar({ view: 'month' })
   await chip(keys.teamA).click()
