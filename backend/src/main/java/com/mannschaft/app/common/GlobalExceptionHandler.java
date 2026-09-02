@@ -2439,7 +2439,19 @@ public class GlobalExceptionHandler {
             //    是正した（兄弟の STORAGE_001/002/004 と同じ外部ストレージ障害のため）。
             // Gate 基盤工事③: @RequireFeature ゲート拒否は Severity.WARN 既定の 400 ではなく
             // 403 FORBIDDEN（マスター裁可済み）。
-            Map.entry("FEATURE_GATE_001", HttpStatus.FORBIDDEN)
+            Map.entry("FEATURE_GATE_001", HttpStatus.FORBIDDEN),
+
+            // 柱②-2 販促プロビジョニング（試練・.claude/campaigns/2026-09-01-org-governance.md）:
+            // 招待不在／メール不一致は状態秘匿のため404/403、期限切れ・取消済・二重承諾競合は409、
+            // PROVISIONED スコープへの通常導線アクセスは423（Locked）とする。実装は後続 PR（出陣）。
+            Map.entry("PROV_001", HttpStatus.NOT_FOUND),
+            Map.entry("PROV_002", HttpStatus.CONFLICT),
+            Map.entry("PROV_003", HttpStatus.CONFLICT),
+            Map.entry("PROV_006", HttpStatus.FORBIDDEN),
+            Map.entry("PROV_007", HttpStatus.FORBIDDEN),
+            Map.entry("PROV_008", HttpStatus.LOCKED),
+            Map.entry("PROV_009", HttpStatus.NOT_FOUND),
+            Map.entry("PROV_010", HttpStatus.NOT_FOUND)
     );
 
     /**

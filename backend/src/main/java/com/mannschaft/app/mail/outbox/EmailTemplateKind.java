@@ -63,5 +63,9 @@ public enum EmailTemplateKind {
 
     // 広告メール配信系 (Phase 18-f — TC-4 package-private 化で前倒し移行)
     /** F09.17 ダイレクトメール配信 (DirectMailService 経由、スルー方式) */
-    DIRECT_MAIL_AD
+    DIRECT_MAIL_AD,
+
+    // 組織/チーム統治系 (柱②-2 販促プロビジョニング。骨格追加のみ・レンダラは出陣で実装)
+    /** 柱②-2: SYSTEM_ADMIN による販促プロビジョニング招待メール (raw token 含む) */
+    PROVISIONING_ADMIN_INVITE
 }
