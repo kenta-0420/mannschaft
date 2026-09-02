@@ -36,6 +36,7 @@ import com.mannschaft.app.recruitment.entity.RecruitmentReminderEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentTemplateEntity;
 import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import com.mannschaft.app.recruitment.event.RecruitmentCancelledEvent;
+import com.mannschaft.app.recruitment.event.RecruitmentCancelledNotificationEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentDistributionTargetRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
@@ -722,7 +723,11 @@ public class RecruitmentListingService {
 
         RecruitmentListingEntity saved = listingRepository.save(entity);
         Set<Long> affectedUserIds = cancelActiveParticipants(listingId, userId);
-        sendCancelledNotifications(saved, affectedUserIds);
+        // Issue #2990 L2: 取下げ通知は業務TX内で発火せず AFTER_COMMIT 後の配送リスナーへ移す（原則5）。
+        // 是正前はここで notifyAllLocalized（非バルク = REQUIRED 伝播）を同期実行しており、
+        // 通知の DB 例外が rollback-only を残して募集キャンセルごと巻き戻していた。
+        eventPublisher.publishEvent(new RecruitmentCancelledNotificationEvent(
+                saved.getId(), List.copyOf(affectedUserIds)));
         eventPublisher.publishEvent(new RecruitmentCancelledEvent(
                 saved.getId(), Boolean.TRUE.equals(saved.getPaymentEnabled())));
         log.info("F03.11 募集枠キャンセル(主催者): id={}", listingId);
@@ -761,34 +766,6 @@ public class RecruitmentListingService {
             }
         }
         return affectedUserIds;
-    }
-
-    private void sendCancelledNotifications(
-            RecruitmentListingEntity listing, Set<Long> affectedUserIds) {
-        if (affectedUserIds.isEmpty()) {
-            return;
-        }
-        NotificationScopeType scopeType = switch (listing.getScopeType()) {
-            case PERSONAL -> NotificationScopeType.PERSONAL;
-            case TEAM -> NotificationScopeType.TEAM;
-            case ORGANIZATION -> NotificationScopeType.ORGANIZATION;
-        };
-        notificationHelper.notifyAllLocalized(
-                new ArrayList<>(affectedUserIds),
-                "RECRUITMENT_CANCELLED",
-                "RECRUITMENT_LISTING", listing.getId(),
-                scopeType, listing.getScopeId(),
-                "/market", listing.getCancelledBy(),
-                (recipientUserId, locale) -> new NotificationHelper.LocalizedMessage(
-                        messageSource.getMessage(
-                                "notification.recruitment.cancelled.title", null,
-                                "募集が取り下げられました", locale),
-                        messageSource.getMessage(
-                                "notification.recruitment.cancelled.body",
-                                new Object[]{listing.getTitle(),
-                                        listing.getCancelledReason() != null
-                                                ? listing.getCancelledReason() : "-"},
-                                listing.getTitle() + " は主催者により取り下げられました。", locale)));
     }
 
     /**
