@@ -100,20 +100,40 @@ export function useReceiptApi() {
   }
 
   // === Settings ===
-  async function getSettings() {
-    return api<{ data: ReceiptIssuerSettings }>('/api/v1/admin/receipt-settings')
+  // scopeType/scopeId は BE が全4本で必須クエリパラメータとして要求する（F08.4 D-1）。
+  async function getSettings(scopeType: 'TEAM' | 'ORGANIZATION', scopeId: string | number) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api<{ data: ReceiptIssuerSettings }>(`/api/v1/admin/receipt-settings?${qs}`)
   }
 
-  async function updateSettings(body: Record<string, unknown>) {
-    return api('/api/v1/admin/receipt-settings', { method: 'PUT', body })
+  // BE は PATCH（差分更新）。フル置換の PUT ではない（F08.4 §9.2）。
+  async function updateSettings(
+    scopeType: 'TEAM' | 'ORGANIZATION',
+    scopeId: string | number,
+    body: Record<string, unknown>,
+  ) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api<{ data: ReceiptIssuerSettings }>(`/api/v1/admin/receipt-settings?${qs}`, {
+      method: 'PATCH',
+      body,
+    })
   }
 
-  async function uploadLogo(formData: FormData) {
-    return api('/api/v1/admin/receipt-settings/logo', { method: 'POST', body: formData })
+  async function uploadLogo(
+    scopeType: 'TEAM' | 'ORGANIZATION',
+    scopeId: string | number,
+    formData: FormData,
+  ) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api<{ data: ReceiptIssuerSettings }>(`/api/v1/admin/receipt-settings/logo?${qs}`, {
+      method: 'POST',
+      body: formData,
+    })
   }
 
-  async function deleteLogo() {
-    return api('/api/v1/admin/receipt-settings/logo', { method: 'DELETE' })
+  async function deleteLogo(scopeType: 'TEAM' | 'ORGANIZATION', scopeId: string | number) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api(`/api/v1/admin/receipt-settings/logo?${qs}`, { method: 'DELETE' })
   }
 
   // === Presets ===
