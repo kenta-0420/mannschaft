@@ -46,26 +46,97 @@ import org.junit.jupiter.api.Test;
  * <ul>
  *   <li><b>interface 経由・複数実装</b>: 呼び出し先の実体を字句から解決できない。
  *       既存番人も同じ限界を自認している（{@code AuthzControllerGuardArchTest} の BFS 深さ2）。</li>
- *   <li><b>{@code TransactionTemplate} による手続き的TX</b>: lambda の内外・伝播・実行順を追わない。
- *       {@code NotificationBulkFanoutService} のように {@code REQUIRES_NEW} を明示していても本番人は見ない。</li>
  *   <li><b>reflection / {@code getBean} / {@code invokedynamic}</b>: 呼び出し辺として現れない。</li>
- *   <li><b>呼び出し元から継承されるTX文脈（部分的にのみ対応）</b>: 同一クラス内の無修飾呼び出しに限り
- *       TX 文脈を伝播して追う（{@link #transactionalClosure}）。<b>別 Bean へ委譲した先は追えない</b>ため、
- *       {@code @Transactional} な業務サービスが無印の別 Bean を呼んでそこで通知する形は検出できない
- *       （＝<b>偽陰性</b>）。本番人が挙げる件数は実態の<b>下限</b>である。</li>
  *   <li><b>字句走査ゆえの型解決なし</b>: レシーバ名とメソッド名の綴りで通知発火を判定する
- *       （{@link JavaSourceScanningUtils} を使う既存番人と同じ方式）。</li>
- *   <li><b>オーバーロードの畳み込み</b>: キーは {@code FQCN#メソッド名} であり引数リストを含まない。
- *       委譲の推移閉包も名前だけで追うため、{@code AFTER_COMMIT} 入口と同名の業務オーバーロードが
- *       許可扱いになりうる（{@code DIRECT_RUNNER_CALL} は抑止されるが {@code TX_NOTIFY_BARE} は残る）。</li>
- *   <li><b>合成アノテーション</b>: メタ注釈で {@code @Transactional} を持つ独自注釈は綴りから判定できない。</li>
- *   <li><b>命名語彙の外の通知 API</b>: {@code gateway.send} / {@code publishNotification} /
- *       {@code enqueue} は綴りに掛からない。語彙を広げるほどアクセサ・ビルダーの偽陽性が増える。</li>
- *   <li><b>メソッド参照</b>: {@code helper::notify} は参照の生成位置しか分からず、実行位置は決まらない。</li>
+ *       （{@link JavaSourceScanningUtils} を使う既存番人と同じ方式）。
+ *       ただしレシーバの<b>宣言の綴り</b>からは型が読めるので、そこだけは
+ *       {@link #declaredTypes} / {@link #typeIndex} で1ホップの型解決をしている。</li>
+ *   <li><b>2ホップ以上の委譲（仕様上の明示的な下限として承認済み）</b>: 別 Bean 委譲は
+ *       <b>1ホップ</b>＋委譲先クラス内の閉包までしか追わない
+ *       （{@link ViolationKind#TX_NOTIFY_VIA_DELEGATE}）。A→B→C と挟まれると追えない。
+ *       <b>これは実装の未完成ではなく、偽陽性と引き換えにしないと広げられないことを承知のうえで
+ *       採った仕様上の下限である</b>（2ホップ以上は型解決の精度が落ち、無関係な呼び出しを違反に数え始める）。
+ *       したがって<b>本番人が挙げる件数は実態の「下限」であり総数ではない</b>——
+ *       {@value #FREEZE_FILE} が空になっても「通知境界の負債が無くなった」とは読めない。
+ *       2ホップ以上へ広げる判断は後続ロットで扱う（Codex 独立検分 条件4）。</li>
+ *   <li><b>オーバーロードの畳み込み（縮小したが残る）</b>: キーは {@code FQCN#メソッド名} であり
+ *       引数リストを含まない。委譲の推移閉包も名前だけで追う。
+ *       {@code AFTER_COMMIT} 入口と同名の業務オーバーロードについては
+ *       「自分で {@code @Transactional} を宣言しているメソッドは入口の境界の内側ではない」という
+ *       条件で分離した（{@link #delegationClosure}）ため、{@code DIRECT_RUNNER_CALL} の偽陰性は解消した。
+ *       <b>残るのは「@Transactional を持たない同名オーバーロード」</b>で、これは字句からは
+ *       原理的に区別できない（引数の型を解決する必要がある）ため対象外とする。
+ *       本番ソースに該当形状は存在しない（Issue #3039 で確認済み）。</li>
+ *   <li><b>命名語彙の外の通知 API</b>: {@code gateway.send} のような綴りは直接は掛からない。
+ *       語彙を広げるほどアクセサ・ビルダーの偽陽性が増えるため<b>語彙は広げない</b>。
+ *       代わりに<b>型で捕まえる</b>——委譲先の型が実際に通知を発火するなら綴りに関係なく違反にする
+ *       （{@link ViolationKind#TX_NOTIFY_VIA_DELEGATE}）。よって「命名外 API を持つ通知 Bean へ
+ *       業務TXから委譲する」形は塞がった。塞がっていないのは<b>型が解決できないレシーバ</b>
+ *       （interface のみを import した DI、ローカルに組んだラムダ等）の場合である。</li>
+ *   <li><b>変数のシャドーイング</b>: {@link #declaredTypes} はスコープを持たないため、
+ *       ローカル変数がフィールドを隠すと同じ名前に2つの型が対応する。字句走査では正しく解けない。
+ *       <b>塞げないが、先勝ちで黙って片方を採るのはやめた</b>——候補間で判定が割れたら
+ *       違反でも合格でもなく {@link ScanResult#ambiguities()}（＝判定不能）として番人を落とす
+ *       （Codex 独立検分 条件2）。</li>
  * </ul>
  *
- * <p>これらの死角は<b>検体として実在する</b>。
- * {@code fixtures/notification/GuardBlindSpotFixture} が上記8形状を1クラスに並べ、
+ * <h2>名前解決の限界（Codex 独立検分・import 解決の穴。塞いだものと残したものを分けて書く）</h2>
+ * <ul>
+ *   <li><b>塞いだ: import 先が索引に無いときのフォールバック</b>。かつては
+ *       {@code import com.other.Foo;} が索引に無いと、同一パッケージ／全候補へ黙って倒れていた。
+ *       別パッケージの同名 {@code Foo} のソースを読んで発火判定する<b>静かな誤解決</b>であり、
+ *       候補が1つに絞れてしまうため曖昧性ゲートにも掛からなかった。いまは
+ *       <b>import を authoritative に扱い</b>、一致する候補が無ければ「索引の外の型」と結論して
+ *       追跡しない（{@link #resolveCandidates}）。</li>
+ *   <li><b>塞いだ: 完全修飾で宣言されたフィールド</b>。{@code private final com.x.Y y;} は
+ *       {@link #TYPED_DECLARATION} が拾わず、型が解決できないうえ<b>曖昧性としても報告されない</b>ため
+ *       静かに追跡外だった。{@link #qualifiedDeclarationTypes} が拾い、完全修飾名を
+ *       単一型 import と同じ解決の手掛かりとして使う（{@link #resolutionHints}）。</li>
+ *   <li><b>塞いだ: 継承・インターフェース経由の宣言</b>。{@link #declaredMethodNames} が
+ *       {@code extends} / {@code implements} を {@link #SUPERTYPE_MAX_DEPTH} 段まで辿る。
+ *       親が索引の外（Spring の基底クラス等）ならそこで打ち切られる。</li>
+ *   <li><b>残る限界: static import</b>。{@link #singleTypeImports} は {@code import static} を
+ *       明示的に除外している。static import が持ち込むのはメンバであって型名の束縛ではないため、
+ *       単純名 → 型の解決には使えない。したがって
+ *       {@code import static p.Outer.Inner;}（＝ネスト型の static import）で持ち込んだ
+ *       {@code Inner} の型解決は<b>再現できない</b>。検体で現状の振る舞いを固定してある。</li>
+ *   <li><b>残る限界: 同名ネスト型</b>。索引の {@code fqcn} はファイル単位なので、
+ *       import とネスト型の対応は<b>接頭辞一致</b>で見ている（{@code p.Outer.Inner} が
+ *       {@code p.Outer} で始まる、という判定）。完全な Java の名前解決ではないため、
+ *       {@code p.Outer} と {@code p.Outer2.Outer} のような紛らわしい配置は原理的に区別できない。</li>
+ *   <li><b>残る限界: 完全修飾のネスト型宣言</b>。{@code private final p.Outer.Inner x;} は
+ *       パッケージ部分に大文字始まりのセグメントが混じるため
+ *       {@link #QUALIFIED_TYPED_DECLARATION} が拾わない。ここを開くと {@code Map.Entry} 等の
+ *       JDK ネスト型まで一斉に入って判定の当たり方が変わるため、意図的に閉じている。</li>
+ * </ul>
+ *
+ * <h2>Codex 独立検分（PR #3048）で塞いだ死角</h2>
+ * <ul>
+ *   <li><b>単純名の曖昧性</b>: {@link #typeIndex} を先勝ちから<b>全候補保持</b>へ変えた。
+ *       本番の単純名重複は実測 174 種類・428 宣言あり、委譲先になりうる型も重複している
+ *       （{@code MaintenanceScheduleService} / {@code PromotionService} / {@code ReceiptService}）。
+ *       {@link #resolveCandidates} が単一型 import と同一パッケージで絞り、
+ *       それでも決まらず<b>かつ候補ごとに判定が割れる</b>ときだけ落とす。</li>
+ *   <li><b>通知発火 API のメソッド参照</b>: {@link ViolationKind#NOTIFY_METHOD_REFERENCE}。
+ *       実行位置が字句から決まらないということは「{@code AFTER_COMMIT} 境界の後だ」とも言えない、
+ *       ということである。契約文書に書くだけでは追加された瞬間に見逃すので機械ゲートにした。
+ *       偽陽性は<b>語彙の完全一致</b>＋<b>レシーバ型がその API を宣言していること</b>で避ける。</li>
+ * </ul>
+ *
+ * <h2>Issue #3039 で塞いだ死角</h2>
+ * <ul>
+ *   <li><b>{@code TransactionTemplate} の lambda</b>: 外側が無印でも
+ *       {@code execute(...)} / {@code executeWithoutResult(...)} の引数の内側は<b>構文から TX 内だと断定できる</b>。
+ *       {@link #transactionTemplateRanges} で範囲を取り、その中の通知発火を TX 内として分類する。</li>
+ *   <li><b>合成アノテーション</b>: {@link #composedTxAnnotations} が注釈の<b>定義側</b>を走査し、
+ *       メタ注釈に {@code @Transactional} を持つ独自注釈名を集めて TX 文脈とみなす。</li>
+ *   <li><b>別 Bean への委譲（1ホップ）</b>: {@link #declaredTypes} でレシーバの型を宣言から引き、
+ *       {@link #typeIndex} でその型のソースを引き、{@link #notificationFiringMethods} で
+ *       委譲先が通知を発火するかを判定する。</li>
+ * </ul>
+ *
+ * <p>これらの形は<b>検体として実在する</b>。
+ * {@code fixtures/notification/GuardBlindSpotFixture} が8形状を1クラスに並べ、
  * {@code NotificationTransactionBoundaryGuardConditionTest} の「死角」テストが
  * どれが検出でき・どれが検出できないかを1つずつ表明する。
  * <b>Javadoc のこの記述とテストは常に一致していなければならない</b>
@@ -126,11 +197,41 @@ class NotificationTransactionBoundaryGuardTest {
         /** {@code @Transactional} 文脈で通知を発火し、try で囲って失敗を握っている。 */
         TX_NOTIFY_IN_TRY,
         /** {@code @Transactional} 文脈で通知を発火している（try 無しの単発）。 */
-        TX_NOTIFY_BARE
+        TX_NOTIFY_BARE,
+        /**
+         * {@code @Transactional} 文脈から<b>別 Bean</b>（フィールド／ローカル変数の型で解決）へ委譲し、
+         * その先で通知が発火する。
+         *
+         * <p>委譲先が無印なら呼び出し元の TX にそのまま参加する。委譲先が {@code @Async} /
+         * {@code REQUIRES_NEW} でも<b>違反であることは変わらない</b>——本契約の判定軸は
+         * 「TX に参加したか」ではなく「{@code AFTER_COMMIT} 境界を越えたか」であり、
+         * どちらも「業務コミット後」という因果を保証しないからである（原則5 の核心）。
+         */
+        TX_NOTIFY_VIA_DELEGATE,
+        /**
+         * 通知発火 API を<b>メソッド参照</b>として遅延させている（Issue #3039 / Codex 独立検分 条件3）。
+         *
+         * <p>参照の生成位置と実行位置は字句からは一致しない。だからこそ
+         * 「業務コミット後に実行される」ことも保証できない——本契約が要求しているのは
+         * {@code AFTER_COMMIT} 境界を<b>構文として明示すること</b>なので、
+         * 通知発火 API をメソッド参照で遅延させる形は許可された入口の外では一律に違反とする。
+         *
+         * <p>偽陽性を避けるため、<b>語彙一致（完全一致）かつレシーバの型が実際にその API を宣言している</b>
+         * ことを条件にする。main に7件ある {@code ::toNotificationResponse} /
+         * {@code ::getNotifyTeamSlotNoteUpdates}（mapper・getter）は語彙の完全一致で落ちる。
+         */
+        NOTIFY_METHOD_REFERENCE
     }
 
     /** 検出した違反1件。{@code line} は診断用でありキーには含めない。 */
-    record Violation(String ownerFqcn, String methodName, ViolationKind kind, int line, String detail) {
+    record Violation(String ownerFqcn, String methodName, ViolationKind kind, int line, String detail,
+                     ImpactClass derivedImpact) {
+
+        /** 影響区分をソースから導出できない種別（大半）はこちらで作る。 */
+        Violation(String ownerFqcn, String methodName, ViolationKind kind, int line, String detail) {
+            this(ownerFqcn, methodName, kind, line, detail, null);
+        }
+
         /** baseline と突き合わせる正規化キー。行番号を含めない。 */
         String key() {
             return ownerFqcn + "#" + methodName + " -> " + kind.name();
@@ -158,9 +259,15 @@ class NotificationTransactionBoundaryGuardTest {
      * 配送層が公開している生成 API は2つしかないので、ここは<b>閉じた列挙</b>にする
      * （API が増えたらここに足すこと）。
      */
+    static final String NOTIFY_METHOD_VOCABULARY =
+            "notify[A-Za-z]*|createNotification(?:PreAuthorized)?"
+                    + "|sendOne|insertAndDispatchChunk|dispatchBatch";
+
+    /** 語彙そのもの（メソッド名だけを照合する版）。委譲判定の二重計上除外と語彙網羅ゲートが使う。 */
+    static final Pattern NOTIFY_METHOD_NAME = Pattern.compile(NOTIFY_METHOD_VOCABULARY);
+
     private static final Pattern NOTIFY_CALL_CANDIDATE = Pattern.compile(
-            "([\\w$]*)\\s*\\.\\s*(notify[A-Za-z]*|createNotification(?:PreAuthorized)?"
-                    + "|sendOne|insertAndDispatchChunk|dispatchBatch)\\s*\\(");
+            "([\\w$]*)\\s*\\.\\s*(" + NOTIFY_METHOD_VOCABULARY + ")\\s*\\(");
 
     /** 配送 Runner の直接呼び出し。 */
     private static final Pattern SEND_ONE_CALL = Pattern.compile("\\.sendOne\\s*\\(");
@@ -244,9 +351,26 @@ class NotificationTransactionBoundaryGuardTest {
      * @param rawSource ソース全文（コメント・リテラルのマスクは本メソッド内で行う）
      */
     static List<Violation> scanSource(String fqcn, String rawSource) {
+        return scanSourceDetailed(fqcn, rawSource).violations();
+    }
+
+    /**
+     * 1ファイル分の走査結果。
+     *
+     * <p>{@code ambiguities} は<b>「型解決が曖昧で、しかもその曖昧さが判定を左右する」</b>箇所。
+     * 空でなければ番人は落ちる（{@link #単純名の曖昧性が判定に影響していない()}）。
+     * 違反として数えないのは、それが「違反である」という主張ではなく
+     * <b>「判定できない」という主張</b>だからである。判定できないものを違反でも合格でもなく
+     * 別の口から出すことで、先勝ちで静かにどちらかへ倒れることを構造的に無くす。
+     */
+    record ScanResult(List<Violation> violations, List<String> ambiguities) {}
+
+    /** @see ScanResult */
+    static ScanResult scanSourceDetailed(String fqcn, String rawSource) {
         List<Violation> violations = new ArrayList<>();
+        List<String> ambiguities = new ArrayList<>();
         if (DELIVERY_INFRASTRUCTURE.contains(fqcn) || AUDITED_EXCEPTIONS.contains(fqcn)) {
-            return violations;
+            return new ScanResult(violations, ambiguities);
         }
         String src = JavaSourceScanningUtils.maskCommentsAndLiterals(rawSource);
         String classAnnotations = leadingAnnotations(src, typeDeclStart(src));
@@ -256,6 +380,12 @@ class NotificationTransactionBoundaryGuardTest {
                 .anyMatch(m -> firesNotification(m.body()));
         Set<String> delegatedFromAllowedEntry = delegationClosure(methods);
         Set<String> inheritedTxContext = transactionalClosure(methods, classAnnotations);
+        Set<String> templateNames = transactionTemplateNames(src);
+        java.util.Map<String, Set<String>> declaredTypes = declaredTypes(src);
+        // import に加えて「完全修飾で書かれた宣言」も名前解決の手掛かりに使う。
+        java.util.Map<String, String> imports = resolutionHints(src);
+        String ownPackage = packageOf(src);
+        String selfSimpleName = fqcn.substring(fqcn.lastIndexOf('.') + 1);
 
         for (MethodBlock m : methods) {
             String ann = m.annotations();
@@ -302,12 +432,99 @@ class NotificationTransactionBoundaryGuardTest {
                         lineOf(src, m.declOffset()), "許可された入口以外からの sendOne"));
             }
 
+            // TransactionTemplate の lambda の内側は、外側メソッドが無印でも確実に TX 内（Issue #3039 形状2）。
+            List<int[]> templateRanges = transactionTemplateRanges(m.body(), templateNames);
+
+            // (7) @Transactional 文脈から別 Bean へ委譲し、その先で通知が発火する（Issue #3039 形状1）。
+            if (!allowedEntry) {
+                Matcher call = QUALIFIED_CALL.matcher(m.body());
+                Set<String> reported = new LinkedHashSet<>();
+                while (call.find()) {
+                    if (!inTxContext && !isWithin(templateRanges, call.start())) {
+                        continue;
+                    }
+                    String receiver = call.group(1);
+                    String callee = call.group(2);
+                    Set<String> receiverTypes = declaredTypes.getOrDefault(receiver, Set.of());
+                    if (receiverTypes.isEmpty() || receiverTypes.contains(selfSimpleName)) {
+                        continue;
+                    }
+                    // 語彙で既に拾える呼び出し（notificationHelper.notify 等）は二重計上しない。
+                    if (NOTIFY_METHOD_NAME.matcher(callee).matches()) {
+                        continue;
+                    }
+                    Boolean fires = delegateFiresNotification(receiverTypes, callee, imports, ownPackage);
+                    if (fires == null) {
+                        ambiguities.add(fqcn + "#" + m.name() + " : " + receiver + "." + callee
+                                + "(...) のレシーバ型が一意に決まらず、候補ごとに『通知を発火するか』の"
+                                + "判定が割れる。候補=" + describeCandidates(receiverTypes, imports, ownPackage));
+                        continue;
+                    }
+                    if (!fires) {
+                        continue;
+                    }
+                    String label = String.join("/", new TreeSet<>(receiverTypes)) + "#" + callee;
+                    if (reported.add(label)) {
+                        violations.add(new Violation(fqcn, m.name(), ViolationKind.TX_NOTIFY_VIA_DELEGATE,
+                                lineOf(src, m.declOffset()), "委譲先=" + label,
+                                deriveDelegateImpact(receiverTypes, callee, imports, ownPackage)));
+                    }
+                }
+            }
+
+            // (8) 通知発火 API をメソッド参照で遅延させている（Codex 独立検分 条件3 / 原則5-2 の機械ゲート）。
+            // TX 文脈を問わない: 参照の生成位置がどこであれ、実行位置が AFTER_COMMIT 境界の後だと
+            // 構文からは言えないからである。許可された入口（およびその境界内のヘルパ）だけを除く。
+            if (!allowedBoundary) {
+                Matcher ref = METHOD_REFERENCE.matcher(m.body());
+                Set<String> reportedRefs = new LinkedHashSet<>();
+                while (ref.find()) {
+                    String receiver = ref.group(1);
+                    String callee = ref.group(2);
+                    // 語彙の「完全一致」だけを見る。前方一致にすると main の
+                    // ::toNotificationResponse / ::getNotifyTeamSlotNoteUpdates（mapper・getter）を巻き込む。
+                    if (!NOTIFY_METHOD_NAME.matcher(callee).matches()) {
+                        continue;
+                    }
+                    Set<String> receiverTypes = new LinkedHashSet<>(
+                            declaredTypes.getOrDefault(receiver, Set.of()));
+                    if (receiverTypes.isEmpty() && Character.isUpperCase(receiver.charAt(0))) {
+                        receiverTypes.add(receiver); // Type::method 形（レシーバが型名そのもの）
+                    }
+                    if (receiverTypes.isEmpty() || receiverTypes.contains(selfSimpleName)) {
+                        continue;
+                    }
+                    // 綴りだけでは落とさない。レシーバの型が実際にその名前の API を宣言していることまで要求する
+                    // （＝通知系の型に属することが条件。同名の無関係な API を持たない型は巻き込まれない）。
+                    Boolean declares = declaresApi(receiverTypes, callee, imports, ownPackage);
+                    if (declares == null) {
+                        // 委譲判定と同じ扱い（足軽が発見した非対称の解消）。候補ごとに
+                        // 「その API を宣言しているか」が割れる＝どちらへ倒しても静かに誤るので、
+                        // 違反でも合格でもなく判定不能として出す。
+                        ambiguities.add(fqcn + "#" + m.name() + " : " + receiver + "::" + callee
+                                + " のレシーバ型が一意に決まらず、候補ごとに『その API を宣言しているか』の"
+                                + "判定が割れる。候補=" + describeCandidates(receiverTypes, imports, ownPackage));
+                        continue;
+                    }
+                    if (!declares) {
+                        continue;
+                    }
+                    if (reportedRefs.add(receiver + "::" + callee)) {
+                        violations.add(new Violation(fqcn, m.name(), ViolationKind.NOTIFY_METHOD_REFERENCE,
+                                lineOf(src, m.declOffset()), "メソッド参照=" + receiver + "::" + callee));
+                    }
+                }
+            }
+
             // (5)(6) @Transactional 文脈での通知発火。try の内外で分類する。
-            if (firesNotification && inTxContext && !allowedEntry) {
+            if (firesNotification && !allowedEntry) {
                 List<int[]> tryRanges = tryBlockRanges(m.body());
                 boolean anyInTry = false;
                 boolean anyBare = false;
                 for (int offset : notifyCallOffsets(m.body())) {
+                    if (!inTxContext && !isWithin(templateRanges, offset)) {
+                        continue;
+                    }
                     if (isWithin(tryRanges, offset)) {
                         anyInTry = true;
                     } else {
@@ -324,7 +541,7 @@ class NotificationTransactionBoundaryGuardTest {
                 }
             }
         }
-        return violations;
+        return new ScanResult(violations, ambiguities);
     }
 
     /**
@@ -339,9 +556,21 @@ class NotificationTransactionBoundaryGuardTest {
      * 既存番人 {@code CrossDomainTransactionalArchTest} が直接依存しか追わないのと同じ限界である。
      */
     static Set<String> delegationClosure(List<MethodBlock> methods) {
-        return sameClassClosure(methods, methods.stream()
+        Set<String> reached = sameClassClosure(methods, methods.stream()
                 .filter(m -> isAllowedEntryPoint(m.annotations()))
                 .collect(Collectors.toList()));
+        // オーバーロード畳み込みの縮小（Issue #3039）:
+        // 自分自身に @Transactional を宣言しているメソッドは「業務TXの入口」であって
+        // AFTER_COMMIT リスナーの境界の内側ではない。名前だけで追う閉包は
+        // handle(String)（AFTER_COMMIT 入口）から同名の handle(Long)（@Transactional な業務側）へ
+        // 誤って伝播し、sendOne 直呼びを許可扱いにしていた（DIRECT_RUNNER_CALL の偽陰性）。
+        // 引数リストまでは字句から解決できないが、「自分で TX を開いている」という宣言だけで
+        // 両者を分離できる。正規形の private ヘルパは @Transactional を持たないので巻き込まない。
+        methods.stream()
+                .filter(m -> hasTransactional(m.annotations()) && !isAllowedEntryPoint(m.annotations()))
+                .map(MethodBlock::name)
+                .forEach(reached::remove);
+        return reached;
     }
 
     /**
@@ -438,6 +667,25 @@ class NotificationTransactionBoundaryGuardTest {
      * これが無いと、その1行だけで TX 文脈の判定が丸ごと外れて静かに偽陰性になる。
      */
     static boolean hasTransactional(String annotations) {
+        if (hasLiteralTransactional(annotations)) {
+            return true;
+        }
+        for (String composed : composedTxAnnotations()) {
+            if (Pattern.compile("@(?:[\\w$]+\\.)*" + Pattern.quote(composed) + "\\b")
+                    .matcher(annotations).find()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 綴りそのままの {@code @Transactional} か（合成アノテーションは見ない）。
+     *
+     * <p>{@link #composedTxAnnotations()} がこれを使う。{@link #hasTransactional} を使うと
+     * 合成アノテーションの解決が自分自身を呼んで循環する。
+     */
+    static boolean hasLiteralTransactional(String annotations) {
         return Pattern.compile("@(?:[\\w$]+\\.)*Transactional\\b").matcher(annotations).find();
     }
 
@@ -449,6 +697,663 @@ class NotificationTransactionBoundaryGuardTest {
     static boolean hasAsyncExecutorName(String annotations) {
         return Pattern.compile("@(?:[\\w$]+\\.)*Async\\s*\\(\\s*\"").matcher(annotations).find();
     }
+
+    // ------------------------------------------------------------------
+    // 死角を塞ぐ機構（Issue #3039）: 合成アノテーション / TransactionTemplate / 別 Bean 委譲
+    // ------------------------------------------------------------------
+
+    /** アノテーション型の宣言（{@code public @interface Name}）。 */
+    static final Pattern ANNOTATION_DECL = Pattern.compile(
+            "(?m)^[ \\t]*(?:(?:public|protected|private|static|final|abstract)\\s+)*@interface\\s+([A-Za-z_$][\\w$]*)");
+
+    /** 合成アノテーション名のキャッシュ（走査は重いので1度だけ）。 */
+    private static volatile Set<String> composedTxAnnotationsCache;
+
+    /**
+     * メタ注釈として {@code @Transactional} を持つ<b>合成アノテーション</b>の単純名（Issue #3039 形状4）。
+     *
+     * <p>{@code @BusinessTransaction} のような独自注釈が付いたメソッドは実行時に TX 内で走るが、
+     * 綴りだけを見る番人には {@code @Transactional} が見えない（＝静かな偽陰性）。
+     * <b>注釈の定義側を走査すれば字句のままで解決できる</b>ので、宣言に先行するアノテーション行に
+     * {@code @Transactional} を持つ {@code @interface} を集め、その名前も TX 文脈とみなす。
+     *
+     * <p>走査対象は本番ソース全体と検体パッケージ。Javadoc 中の {@code @TransactionalEventListener}
+     * のような<b>文章としての言及</b>を拾わないよう、必ずコメントをマスクしてから判定する
+     * （実際に {@code BackgroundFeaturePolicy} の Javadoc がこの綴りを含んでおり、
+     * マスクしないと本番の全 {@code @BackgroundFeaturePolicy} 付きメソッドが TX 扱いになる）。
+     */
+    static Set<String> composedTxAnnotations() {
+        Set<String> cached = composedTxAnnotationsCache;
+        if (cached == null) {
+            List<Path> files = new ArrayList<>(javaFiles(mainSourceRoot()));
+            Path fixtures = testSourceRoot().resolve(
+                    "com/mannschaft/app/common/architecture/fixtures/notification");
+            if (Files.isDirectory(fixtures)) {
+                files.addAll(javaFiles(fixtures));
+            }
+            cached = findComposedTxAnnotations(files);
+            composedTxAnnotationsCache = cached;
+        }
+        return cached;
+    }
+
+    /** {@link #composedTxAnnotations()} の純粋部分（メタテストが任意のファイル集合で呼べるように分けてある）。 */
+    static Set<String> findComposedTxAnnotations(List<Path> files) {
+        Set<String> names = new TreeSet<>();
+        for (Path file : files) {
+            String raw = read(file);
+            if (!raw.contains("@interface")) {
+                continue; // 高速な足切り（本番 9600 ファイルのうち十数件しか該当しない）
+            }
+            String src = JavaSourceScanningUtils.maskCommentsAndLiterals(raw);
+            Matcher m = ANNOTATION_DECL.matcher(src);
+            while (m.find()) {
+                if (hasLiteralTransactional(leadingAnnotations(src, m.start()))) {
+                    names.add(m.group(1));
+                }
+            }
+        }
+        return names;
+    }
+
+    /**
+     * {@code TransactionTemplate} 型の変数宣言（フィールド／コンストラクタ引数／ローカル）。
+     *
+     * <p>型名で受けるため、変数名の綴り（{@code chunkTxTemplate} 等、本番では統一されていない）に
+     * 依存しない。
+     */
+    static final Pattern TRANSACTION_TEMPLATE_DECL = Pattern.compile(
+            "\\bTransactionTemplate\\s+([A-Za-z_$][\\w$]*)\\s*[;=,)]");
+
+    /** ソース中で {@code TransactionTemplate} 型を持つ変数名。 */
+    static Set<String> transactionTemplateNames(String src) {
+        Set<String> names = new LinkedHashSet<>();
+        Matcher m = TRANSACTION_TEMPLATE_DECL.matcher(src);
+        while (m.find()) {
+            names.add(m.group(1));
+        }
+        return names;
+    }
+
+    /**
+     * {@code transactionTemplate.execute(...)} / {@code executeWithoutResult(...)} の
+     * 引数（＝ lambda 本体）が占める範囲（Issue #3039 形状2）。
+     *
+     * <p>外側のメソッドに {@code @Transactional} が無くても、この括弧の内側は<b>確実に TX 内</b>である。
+     * 「TX でないことは証明できない」という本番人の基本方針の例外で、ここは<b>構文から TX 内だと断定できる</b>。
+     * 本番には 7 クラスが {@code TransactionTemplate} を持つ（実測）ので死角として放置できない。
+     */
+    static List<int[]> transactionTemplateRanges(String body, Set<String> templateNames) {
+        List<int[]> ranges = new ArrayList<>();
+        for (String name : templateNames) {
+            Matcher m = Pattern.compile("(^|[^\\w$])(?:this\\s*\\.\\s*)?" + Pattern.quote(name)
+                    + "\\s*\\.\\s*(?:execute|executeWithoutResult)\\s*\\(").matcher(body);
+            while (m.find()) {
+                int open = body.lastIndexOf('(', m.end() - 1);
+                int close = open < 0 ? -1 : matchPair(body, open, '(', ')');
+                if (close > 0) {
+                    ranges.add(new int[]{open, close});
+                }
+            }
+        }
+        return ranges;
+    }
+
+    /** 型が解決できた宣言（フィールド／ローカル／引数）。 */
+    private static final Pattern TYPED_DECLARATION = Pattern.compile(
+            "(?:^|[;{}(),])\\s*(?:(?:private|protected|public|static|final|volatile|transient)\\s+)*"
+                    + "([A-Z][\\w$]*)(?:\\s*<[^<>;{}]{0,200}>)?\\s+([a-z_$][\\w$]*)\\s*[;=,)]");
+
+    /**
+     * ソース中の「変数名 → その名前に対して宣言されている型の単純名の<b>集合</b>」。
+     * フィールド・コンストラクタ引数・ローカル変数を区別せず集める。
+     *
+     * <p>型解決を持たない字句走査でも、<b>宣言の綴りからレシーバの型は分かる</b>。
+     * これが別 Bean 委譲（形状1）を1ホップ追うための足場になる。
+     *
+     * <p><b>なぜ先勝ちの1件ではなく集合なのか</b>（Codex 独立検分 条件2）:
+     * 本メソッドはスコープを持たないため、ローカル変数がフィールドを<b>シャドーイング</b>すると
+     * 同じ名前に2つの型が対応する。かつては {@code putIfAbsent} の先勝ちで宣言順の早い方
+     * （＝ふつうフィールド）を黙って採っており、<b>実際に呼ばれているのが別の型なのに
+     * 片方の型で判定する</b>ことが原理的に起こりえた。スコープ解析は字句走査の範囲では実装できないので、
+     * <b>候補を捨てない</b>方針に変え、判定が候補間で割れたときだけ
+     * {@link ScanResult#ambiguities()} として番人を落とす。
+     * 割れないとき（全候補が同じ結論）はシャドーイングがあっても結果は変わらないので通す。
+     */
+    static java.util.Map<String, Set<String>> declaredTypes(String src) {
+        return declaredTypesInternal(src);
+    }
+
+    /**
+     * <b>完全修飾で書かれた</b>宣言（{@code private final com.x.Y y;}）。
+     *
+     * <p>パッケージ部分は「小文字始まりのセグメントの並び」に限る。{@code Map.Entry<K,V> e}
+     * のようなネスト型（先頭が大文字）まで拾うと、無関係な変数が大量に
+     * {@link #declaredTypes} へ入って判定の当たり方が変わってしまうため。
+     */
+    private static final Pattern QUALIFIED_TYPED_DECLARATION = Pattern.compile(
+            "(?:^|[;{}(),])\\s*(?:(?:private|protected|public|static|final|volatile|transient)\\s+)*"
+                    + "((?:[a-z][\\w$]*\\.)+([A-Z][\\w$]*))(?:\\s*<[^<>;{}]{0,200}>)?\\s+([a-z_$][\\w$]*)\\s*[;=,)]");
+
+    /**
+     * 完全修飾で宣言された型の「単純名 → 完全修飾名」（Codex 独立検分の未解決指摘）。
+     *
+     * <p>{@code private final com.x.Y y;} は {@link #TYPED_DECLARATION} が拾わないため、
+     * かつては型が解決できず<b>委譲先として追えないうえ曖昧性ゲートにも掛からず静かに追跡外</b>だった。
+     * 完全修飾はそれ自体が一意な名前解決なので、単一型 import と同じ扱いで解決に使う。
+     */
+    static java.util.Map<String, String> qualifiedDeclarationTypes(String src) {
+        java.util.Map<String, String> types = new java.util.LinkedHashMap<>();
+        Matcher m = QUALIFIED_TYPED_DECLARATION.matcher(src);
+        while (m.find()) {
+            types.putIfAbsent(m.group(2), m.group(1));
+        }
+        return types;
+    }
+
+    /**
+     * 名前解決に使う「単純名 → 完全修飾名」。単一型 import に、完全修飾で書かれた宣言を足したもの。
+     *
+     * <p>import が書かれている名前はそちらが優先（同じ名前を完全修飾でも書いていれば同じ型のはず）。
+     */
+    static java.util.Map<String, String> resolutionHints(String src) {
+        java.util.Map<String, String> hints = new java.util.LinkedHashMap<>(qualifiedDeclarationTypes(src));
+        hints.putAll(singleTypeImports(src));
+        return hints;
+    }
+
+    private static java.util.Map<String, Set<String>> declaredTypesInternal(String src) {
+        java.util.Map<String, Set<String>> types = new java.util.LinkedHashMap<>();
+        Matcher m = TYPED_DECLARATION.matcher(src);
+        while (m.find()) {
+            types.computeIfAbsent(m.group(2), k -> new LinkedHashSet<>()).add(m.group(1));
+        }
+        // 完全修飾で書かれた宣言も同じ表へ入れる（単純名で持ち、解決は resolutionHints が行う）。
+        Matcher q = QUALIFIED_TYPED_DECLARATION.matcher(src);
+        while (q.find()) {
+            types.computeIfAbsent(q.group(3), k -> new LinkedHashSet<>()).add(q.group(2));
+        }
+        return types;
+    }
+
+    /** ソースの {@code package} 宣言（無ければ空文字）。 */
+    static String packageOf(String src) {
+        Matcher m = Pattern.compile("(?m)^\\s*package\\s+([\\w$.]+)\\s*;").matcher(src);
+        return m.find() ? m.group(1) : "";
+    }
+
+    /**
+     * 単一型 import（{@code import com.x.Y;}）の「単純名 → 完全修飾名」。
+     * ワイルドカード import と static import は対象外（前者は曖昧性を消さないため）。
+     *
+     * <p><b>これが単純名の曖昧性を原理的に消す一次手段である</b>（Codex 独立検分 条件1）。
+     * 同一ファイル内で {@code PromotionService} と単純名で書けるのは、
+     * (a) その名前を import している、(b) 同一パッケージに居る、(c) 完全修飾で書いている、のいずれか。
+     * (a)(b) は字句から一意に決まるので、索引に同名が何件あろうと迷わない。
+     */
+    static java.util.Map<String, String> singleTypeImports(String src) {
+        java.util.Map<String, String> imports = new java.util.LinkedHashMap<>();
+        Matcher m = Pattern.compile("(?m)^\\s*import\\s+(?!static\\b)([\\w$.]+)\\s*;").matcher(src);
+        while (m.find()) {
+            String fqcn = m.group(1);
+            imports.put(fqcn.substring(fqcn.lastIndexOf('.') + 1), fqcn);
+        }
+        return imports;
+    }
+
+    /** 型の単純名 → その型を宣言しているソース。 */
+    record TypeRef(String simpleName, String fqcn, Path file) {}
+
+    private static volatile java.util.Map<String, List<TypeRef>> typeIndexCache;
+
+    /**
+     * 単純名から宣言ソースを引く索引（本番ソース全体＋検体パッケージ）。
+     *
+     * <p><b>先勝ちではなく全候補を持つ</b>（Codex 独立検分 条件1）。本番の単純名重複は実測で
+     * 174種類・428宣言あり、うち委譲先になりうる型も複数ある
+     * （{@code MaintenanceScheduleService} admin/incident、{@code PromotionService} promotion/tournament、
+     * {@code ReceiptService} payment/receipt）。かつては {@code putIfAbsent} で
+     * <b>索引順の片方を無警告で採用</b>していたため、別の型のソースを読んで
+     * 「通知を発火しない」と結論する（またはその逆）ことが原理的に起こりえた。
+     *
+     * <p>候補が複数のときは {@link #resolveCandidates} が import／同一パッケージで絞り、
+     * それでも決まらず<b>かつ判定が候補間で割れる</b>ときだけ番人を落とす。
+     * 「重複が存在するだけで落とす」設計にしないのは、174種類のせいで常時赤になり
+     * 番人として使い物にならなくなるからである。
+     */
+    static java.util.Map<String, List<TypeRef>> typeIndex() {
+        java.util.Map<String, List<TypeRef>> cached = typeIndexCache;
+        if (cached == null) {
+            java.util.Map<String, List<TypeRef>> index = new java.util.HashMap<>();
+            Path mainRoot = mainSourceRoot();
+            indexRoot(index, mainRoot, javaFiles(mainRoot));
+            Path fixtures = testSourceRoot().resolve(
+                    "com/mannschaft/app/common/architecture/fixtures/notification");
+            if (Files.isDirectory(fixtures)) {
+                indexRoot(index, testSourceRoot(), javaFiles(fixtures));
+            }
+            cached = index;
+            typeIndexCache = cached;
+        }
+        return cached;
+    }
+
+    private static void indexRoot(java.util.Map<String, List<TypeRef>> index, Path root, List<Path> files) {
+        for (Path file : files) {
+            String fqcn = toFqcn(root, file);
+            Matcher m = TYPE_DECL.matcher(JavaSourceScanningUtils.maskCommentsAndLiterals(read(file)));
+            while (m.find()) {
+                List<TypeRef> refs = index.computeIfAbsent(m.group(1), k -> new ArrayList<>());
+                TypeRef ref = new TypeRef(m.group(1), fqcn, file);
+                if (refs.stream().noneMatch(r -> r.fqcn().equals(ref.fqcn()))) {
+                    refs.add(ref);
+                }
+            }
+        }
+    }
+
+    /** 完全修飾名のパッケージ部分。 */
+    static String packageOfFqcn(String fqcn) {
+        int dot = fqcn.lastIndexOf('.');
+        return dot < 0 ? "" : fqcn.substring(0, dot);
+    }
+
+    /**
+     * 単純名から「判定に使う型」の候補を返す。一意に決まれば1件、決まらなければ全候補（＝曖昧）。
+     *
+     * <p>絞り込みの順序は Java の名前解決そのもの:
+     * <ol>
+     *   <li><b>単一型 import</b> — {@code import com.x.PromotionService;} があればそれ。
+     *       索引の {@code fqcn} はファイル単位なので、ネスト型の import
+     *       （{@code ...Stubs.HelperStub}）は接頭辞一致で拾う。</li>
+     *   <li><b>同一パッケージ</b> — import 無しで単純名参照できるのは同一パッケージの型だけ。</li>
+     * </ol>
+     * どちらでも決まらないときだけ全候補を返し、呼び出し側が
+     * 「候補ごとに判定が割れるか」を見て曖昧性として落とす。
+     */
+    static List<TypeRef> resolveCandidates(String simpleName, java.util.Map<String, String> imports,
+                                           String ownPackage) {
+        List<TypeRef> candidates = typeIndex().getOrDefault(simpleName, List.of());
+        String imported = imports.get(simpleName);
+        if (imported != null) {
+            // import は authoritative である。索引に一致する候補が居ればそれ「だけ」を採り、
+            // 一致する候補が1つも無ければ「索引の外の型（JDK・ライブラリ）」と結論して空を返す。
+            //
+            // 【なぜ以前の実装が危険だったか（Codex 独立検分の未解決指摘）】
+            // 旧実装は (1) 候補が1件なら import を見ずにその1件を返し、
+            // (2) import 先が索引に無ければ黙って同一パッケージ／全候補へフォールバックしていた。
+            // どちらも「import は com.other.Foo を指しているのに、索引に居る別パッケージの Foo の
+            // ソースを読んで発火判定する」という静かな誤解決を許す。曖昧性ゲートにも掛からない
+            // （候補が1つに絞れてしまっているため割れない）ので、誤りが警告なしで通る。
+            for (TypeRef c : candidates) {
+                if (imported.equals(c.fqcn()) || imported.startsWith(c.fqcn() + ".")) {
+                    return List.of(c);
+                }
+            }
+            return List.of();
+        }
+        if (candidates.size() <= 1) {
+            return candidates;
+        }
+        List<TypeRef> samePackage = candidates.stream()
+                .filter(c -> packageOfFqcn(c.fqcn()).equals(ownPackage))
+                .collect(Collectors.toList());
+        if (samePackage.size() == 1) {
+            return samePackage;
+        }
+        return candidates;
+    }
+
+    /**
+     * 委譲先が通知を発火するか。{@code TRUE} / {@code FALSE} / {@code null}（＝候補間で判定が割れる）。
+     *
+     * <p><b>なぜこの形なら「静かに誤る」ことが起きないのか</b>:
+     * 判定に関わる型の候補（単純名の重複 × 変数シャドーイング）を<b>1つも捨てずに全部評価する</b>。
+     * 全候補が同じ結論なら、どれが正解であっても結果は同じなので通してよい。
+     * 結論が割れたときだけ {@code null} を返し、呼び出し側が違反でも合格でもなく
+     * 「判定不能」として番人を落とす。したがって
+     * <b>「片方の候補を採ったから見逃した／誤検出した」という経路が構造的に存在しない</b>。
+     */
+    static Boolean delegateFiresNotification(Set<String> receiverTypeNames, String callee,
+                                             java.util.Map<String, String> imports, String ownPackage) {
+        boolean sawTrue = false;
+        boolean sawFalse = false;
+        for (String simpleName : receiverTypeNames) {
+            List<TypeRef> refs = resolveCandidates(simpleName, imports, ownPackage);
+            if (refs.isEmpty()) {
+                sawFalse = true; // 索引に無い型（JDK 型・完全修飾宣言など）＝従来どおり見送り
+                continue;
+            }
+            for (TypeRef ref : refs) {
+                if (notificationFiringMethods(ref).contains(callee)) {
+                    sawTrue = true;
+                } else {
+                    sawFalse = true;
+                }
+            }
+        }
+        if (sawTrue && sawFalse) {
+            return null;
+        }
+        return sawTrue;
+    }
+
+    /**
+     * レシーバの型のいずれかが、その名前の API を実際に宣言しているか（メソッド参照ゲート用）。
+     * {@code TRUE} / {@code FALSE} / {@code null}（＝候補間で判定が割れる）。
+     *
+     * <p><b>なぜ Boolean なのか（足軽が発見した非対称の解消）</b>:
+     * かつてこのメソッドは「候補のいずれかが宣言していれば true」という<b>存在量化</b>だった。
+     * 委譲判定（{@link #delegateFiresNotification}）は「候補間で判定が割れたら判定不能」なのに、
+     * メソッド参照の経路にだけ曖昧性ゲートが無かったということである。
+     * 単純名が重複していて<b>無関係な同名候補</b>がたまたま同じ名前の API を持っていれば、
+     * 実際のレシーバ型が通知系でなくても静かに違反へ倒れる（偽陽性）。逆向きも同様に起こる。
+     * 曖昧性の扱いは経路によって変えてはならないので、こちらも三値へ揃えた。
+     */
+    static Boolean declaresApi(Set<String> receiverTypeNames, String methodName,
+                               java.util.Map<String, String> imports, String ownPackage) {
+        boolean sawTrue = false;
+        boolean sawFalse = false;
+        for (String simpleName : receiverTypeNames) {
+            List<TypeRef> refs = resolveCandidates(simpleName, imports, ownPackage);
+            if (refs.isEmpty()) {
+                sawFalse = true; // 索引に無い型（JDK 型など）＝宣言を確認できないので見送り側
+                continue;
+            }
+            for (TypeRef ref : refs) {
+                if (declaredMethodNames(ref).contains(methodName)) {
+                    sawTrue = true;
+                } else {
+                    sawFalse = true;
+                }
+            }
+        }
+        if (sawTrue && sawFalse) {
+            return null;
+        }
+        return sawTrue;
+    }
+
+    private static final java.util.Map<String, Set<String>> DECLARED_METHODS_CACHE =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * 型が宣言しているメソッド名。<b>{@code extends} / {@code implements} で辿れる先も含む</b>
+     * （Codex 独立検分 High: 継承・インターフェース経由のメソッド参照）。
+     *
+     * <p>かつては対象クラス自身の {@code typeBlock} だけを見ていたため、
+     * {@code class NotificationWorker extends BaseNotificationWorker {}} のような
+     * <b>宣言を親に持つ型</b>に対する {@code worker::notify} は、語彙が一致していても
+     * {@link #declaresApi} が false になり {@code NOTIFY_METHOD_REFERENCE} が発火しなかった。
+     * 継承は Java では最もありふれた「宣言の置き場所」であり、死角として放置できない。
+     *
+     * <p>親の解決は単純名の索引を通すため、親が索引の外（Spring の基底クラス等）なら
+     * そこで打ち切られる。循環と多重継承の爆発を避けるため訪問済み集合を持ち、
+     * 深さは {@link #SUPERTYPE_MAX_DEPTH} で切る。
+     */
+    static Set<String> declaredMethodNames(TypeRef ref) {
+        return DECLARED_METHODS_CACHE.computeIfAbsent(ref.fqcn() + "|" + ref.simpleName(), key -> {
+            Set<String> names = new LinkedHashSet<>();
+            collectDeclaredMethodNames(ref, names, new LinkedHashSet<>(), 0);
+            return names;
+        });
+    }
+
+    /** 継承階層を辿る深さの上限（無限ループと組合せ爆発の保険。実用上これで足りる）。 */
+    static final int SUPERTYPE_MAX_DEPTH = 5;
+
+    private static void collectDeclaredMethodNames(TypeRef ref, Set<String> out, Set<String> visited,
+                                                   int depth) {
+        if (depth > SUPERTYPE_MAX_DEPTH || !visited.add(ref.fqcn() + "|" + ref.simpleName())) {
+            return;
+        }
+        String masked = JavaSourceScanningUtils.maskCommentsAndLiterals(read(ref.file()));
+        String block = typeBlock(masked, ref.simpleName());
+        if (block != null) {
+            parseMethods(block).stream().map(MethodBlock::name).forEach(out::add);
+            out.addAll(abstractMethodNames(block));
+        }
+        // 親の単純名は、その型が書かれているファイルの import と package で解決する。
+        java.util.Map<String, String> hints = singleTypeImports(masked);
+        String pkg = packageOf(masked);
+        for (String superName : superTypeNames(masked, ref.simpleName())) {
+            for (TypeRef parent : resolveCandidates(superName, hints, pkg)) {
+                collectDeclaredMethodNames(parent, out, visited, depth + 1);
+            }
+        }
+    }
+
+    /**
+     * <b>本文を持たない</b>メソッド宣言の名前（interface のメソッド・abstract メソッド）。
+     *
+     * <p>{@link #parseMethods} は本文の {@code &#123;} を要求するため、interface に宣言だけ置く形を
+     * 拾わない。「その型がその API を<b>宣言している</b>か」を問う {@link #declaresApi} にとっては
+     * 本文の有無は関係ないので、宣言だけの形もここで拾う。
+     */
+    static Set<String> abstractMethodNames(String block) {
+        Set<String> names = new LinkedHashSet<>();
+        Matcher m = METHOD_DECL.matcher(block);
+        int cursor = 0;
+        while (cursor < block.length() && m.find(cursor)) {
+            String name = m.group(4);
+            int openParen = block.indexOf('(', m.end(4));
+            int closeParen = openParen < 0 ? -1 : matchPair(block, openParen, '(', ')');
+            if (closeParen < 0) {
+                cursor = m.end();
+                continue;
+            }
+            String after = block.substring(closeParen + 1);
+            Matcher decl = Pattern.compile("\\A\\s*(?:throws\\s[\\w$.,\\s]+?)?;").matcher(after);
+            if (decl.find() && !isKeywordName(name)) {
+                names.add(name);
+            }
+            cursor = closeParen + 1;
+        }
+        return names;
+    }
+
+    private static boolean isKeywordName(String s) {
+        return Set.of("if", "for", "while", "switch", "catch", "return", "new", "synchronized",
+                "do", "else", "try").contains(s);
+    }
+
+    /**
+     * 型宣言の {@code extends} / {@code implements} 節に並ぶ型の<b>単純名</b>。
+     *
+     * <p>ジェネリクスの型引数（{@code extends Base<Foo>} の {@code Foo}）は親ではないので落とす。
+     * 完全修飾で書かれていれば最後のセグメントを単純名として採る。
+     */
+    static Set<String> superTypeNames(String maskedSrc, String simpleName) {
+        Set<String> names = new LinkedHashSet<>();
+        Matcher m = TYPE_DECL.matcher(maskedSrc);
+        while (m.find()) {
+            if (!m.group(1).equals(simpleName)) {
+                continue;
+            }
+            int brace = maskedSrc.indexOf('{', m.end());
+            if (brace < 0) {
+                continue;
+            }
+            String header = maskedSrc.substring(m.end(), brace);
+            // 型引数を落としてから extends / implements 節だけを見る。
+            String flattened = header.replaceAll("<[^<>]*>", " ").replaceAll("<[^<>]*>", " ");
+            Matcher clause = Pattern.compile("\\b(?:extends|implements)\\b([^{]*)").matcher(flattened);
+            while (clause.find()) {
+                for (String token : clause.group(1).split("[,\\s]+")) {
+                    String name = token.trim();
+                    int dot = name.lastIndexOf('.');
+                    if (dot >= 0) {
+                        name = name.substring(dot + 1);
+                    }
+                    if (!name.isEmpty() && Character.isUpperCase(name.charAt(0))
+                            && name.chars().allMatch(c -> Character.isLetterOrDigit(c) || c == '_'
+                                    || c == '$')) {
+                        names.add(name);
+                    }
+                }
+            }
+        }
+        return names;
+    }
+
+    /** 曖昧性メッセージ用に候補を並べる。 */
+    static String describeCandidates(Set<String> receiverTypeNames, java.util.Map<String, String> imports,
+                                     String ownPackage) {
+        List<String> out = new ArrayList<>();
+        for (String simpleName : receiverTypeNames) {
+            List<TypeRef> refs = resolveCandidates(simpleName, imports, ownPackage);
+            if (refs.isEmpty()) {
+                out.add(simpleName + "(索引に無い)");
+            } else {
+                out.add(simpleName + "→" + refs.stream().map(TypeRef::fqcn).sorted()
+                        .collect(Collectors.joining(",")));
+            }
+        }
+        return String.join(" / ", out);
+    }
+
+    /** 型の単純名 → その型で「通知を発火するメソッド名」の集合。 */
+    private static final java.util.Map<String, Set<String>> FIRING_METHODS_CACHE =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * 委譲先の型が持つ「通知を発火するメソッド名」（Issue #3039 形状1）。
+     *
+     * <p>委譲先クラス自身の無修飾呼び出しは辿る（{@code send} → private {@code doSend} → 通知）。
+     * <b>1ホップ＋委譲先クラス内の閉包</b>までで打ち切る。2ホップ以上は型解決の精度が落ち、
+     * 偽陽性が積み上がるため塞がない（＝ここは依然として下限である）。
+     *
+     * <p>{@link #AUDITED_EXCEPTIONS}（通知自体が業務目的）へ委譲する形は契約の対象外なので空を返す。
+     * {@link #DELIVERY_INFRASTRUCTURE} は<b>対象に含める</b>——業務TXから配送層を直接叩くことこそが
+     * 本契約の禁じている形だからである。
+     */
+    static Set<String> notificationFiringMethods(TypeRef ref) {
+        return FIRING_METHODS_CACHE.computeIfAbsent(ref.fqcn() + "|" + ref.simpleName(), key -> {
+            if (AUDITED_EXCEPTIONS.contains(ref.fqcn())) {
+                return Set.of();
+            }
+            String block = typeBlock(
+                    JavaSourceScanningUtils.maskCommentsAndLiterals(read(ref.file())), ref.simpleName());
+            if (block == null) {
+                return Set.of();
+            }
+            List<MethodBlock> methods = parseMethods(block);
+            Set<String> firing = methods.stream()
+                    .filter(m -> firesNotification(m.body()) && !isAllowedEntryPoint(m.annotations()))
+                    .map(MethodBlock::name)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            // 委譲先クラス内で「通知を発火するメソッドを呼ぶメソッド」へ逆向きに広げる。
+            boolean grown = true;
+            while (grown) {
+                grown = false;
+                for (MethodBlock caller : methods) {
+                    if (firing.contains(caller.name()) || isAllowedEntryPoint(caller.annotations())) {
+                        continue;
+                    }
+                    if (firing.stream().anyMatch(f -> containsUnqualifiedCall(caller.body(), f))) {
+                        firing.add(caller.name());
+                        grown = true;
+                    }
+                }
+            }
+            return firing;
+        });
+    }
+
+    /**
+     * 委譲先の入口メソッドの宣言から {@link ImpactClass} を導出する（任務4）。
+     * 候補間で結論が割れる／宣言が見つからない場合は {@code null}（＝機械照合の対象外）。
+     *
+     * <p><b>導出の根拠</b>: 委譲先の入口に {@code @Async} が付く、または
+     * {@code @Transactional} の伝播が {@code REQUIRES_NEW} / {@code NOT_SUPPORTED} なら、
+     * 呼び出し元の業務TXには参加しない＝通知の失敗で業務が巻き戻ることはない（{@link ImpactClass#ORDERING_ONLY}）。
+     * それ以外（無印・既定の {@code REQUIRED} / {@code MANDATORY} / {@code SUPPORTS} / {@code NESTED}）は
+     * 呼び出し元のTXに参加する＝巻き戻る（{@link ImpactClass#ROLLBACK_COUPLED}）。
+     *
+     * <p>プロキシを経る別 Bean 呼び出しなので、判定に効くのは<b>入口メソッド（＝呼ばれた名前）自身</b>の
+     * 宣言である。委譲先クラス内で更に private ヘルパへ流れても、そこは自己呼び出しであり
+     * 伝播設定は効かない。
+     */
+    static ImpactClass deriveDelegateImpact(Set<String> receiverTypeNames, String callee,
+                                            java.util.Map<String, String> imports, String ownPackage) {
+        Set<ImpactClass> seen = new LinkedHashSet<>();
+        for (String simpleName : receiverTypeNames) {
+            for (TypeRef ref : resolveCandidates(simpleName, imports, ownPackage)) {
+                if (!notificationFiringMethods(ref).contains(callee)) {
+                    continue;
+                }
+                ImpactClass one = delegateEntryImpact(ref, callee);
+                if (one != null) {
+                    seen.add(one);
+                }
+            }
+        }
+        return seen.size() == 1 ? seen.iterator().next() : null;
+    }
+
+    /** 伝播が「呼び出し元のTXに参加しない」ものか。 */
+    private static final Pattern TX_DETACHING_PROPAGATION =
+            Pattern.compile("propagation\\s*=\\s*[\\w$.]*\\b(?:REQUIRES_NEW|NOT_SUPPORTED|NEVER)\\b");
+
+    /** 委譲先の型 {@code ref} の入口メソッド {@code callee} の {@link ImpactClass}（見つからなければ null）。 */
+    static ImpactClass delegateEntryImpact(TypeRef ref, String callee) {
+        String masked = JavaSourceScanningUtils.maskCommentsAndLiterals(read(ref.file()));
+        String block = typeBlock(masked, ref.simpleName());
+        if (block == null) {
+            return null;
+        }
+        String classAnnotations = typeAnnotations(masked, ref.simpleName());
+        for (MethodBlock m : parseMethods(block)) {
+            if (!m.name().equals(callee)) {
+                continue;
+            }
+            String ann = m.annotations() + "\n" + classAnnotations;
+            if (hasAsync(ann) || TX_DETACHING_PROPAGATION.matcher(ann).find()) {
+                return ImpactClass.ORDERING_ONLY;
+            }
+            return ImpactClass.ROLLBACK_COUPLED;
+        }
+        return null;
+    }
+
+    /** マスク済みソースから、指定した単純名の型宣言に先行するアノテーションを取り出す。 */
+    static String typeAnnotations(String maskedSrc, String simpleName) {
+        Matcher m = TYPE_DECL.matcher(maskedSrc);
+        while (m.find()) {
+            if (m.group(1).equals(simpleName)) {
+                return leadingAnnotations(maskedSrc, m.start());
+            }
+        }
+        return "";
+    }
+
+    /** マスク済みソースから、指定した単純名の型宣言ブロック（{@code &#123;} … {@code &#125;}）を切り出す。 */
+    static String typeBlock(String maskedSrc, String simpleName) {
+        Matcher m = TYPE_DECL.matcher(maskedSrc);
+        while (m.find()) {
+            if (!m.group(1).equals(simpleName)) {
+                continue;
+            }
+            int brace = maskedSrc.indexOf('{', m.end());
+            int end = brace < 0 ? -1 : matchPair(maskedSrc, brace, '{', '}');
+            if (end > 0) {
+                return maskedSrc.substring(brace, end + 1);
+            }
+        }
+        return null;
+    }
+
+    /** {@code receiver.method(} 形の呼び出し（レシーバは単純な識別子）。 */
+    private static final Pattern QUALIFIED_CALL = Pattern.compile(
+            "([A-Za-z_$][\\w$]*)\\s*\\.\\s*([A-Za-z_$][\\w$]*)\\s*\\(");
+
+    /**
+     * メソッド参照（{@code receiver::method}）。レシーバは単純な識別子（変数名または型名）。
+     *
+     * <p>{@code ::new}（コンストラクタ参照）は語彙一致で落ちるので特別扱いしない。
+     */
+    static final Pattern METHOD_REFERENCE = Pattern.compile(
+            "([A-Za-z_$][\\w$]*)\\s*::\\s*([A-Za-z_$][\\w$]*)");
 
     /** 同一クラス内の無修飾呼び出し（{@code foo(...)}／{@code this.foo(...)}）か。 */
     static boolean containsUnqualifiedCall(String body, String methodName) {
@@ -462,7 +1367,12 @@ class NotificationTransactionBoundaryGuardTest {
     // ------------------------------------------------------------------
 
     /** メソッド1つ分（宣言位置・アノテーション・本文）。 */
-    record MethodBlock(String name, String annotations, String body, int declOffset) {
+    record MethodBlock(String name, String annotations, String body, int declOffset,
+                       String modifiers, String params) {
+        /** 修飾子・引数を知らなくてよい呼び出し側（メタテスト）向けの簡易生成。 */
+        MethodBlock(String name, String annotations, String body, int declOffset) {
+            this(name, annotations, body, declOffset, "", "");
+        }
     }
 
     private static int typeDeclStart(String src) {
@@ -539,7 +1449,8 @@ class NotificationTransactionBoundaryGuardTest {
             }
             // 同一行のアノテーションは前行から集めた分と合わせて扱う（両方に書ける形があるため）。
             out.add(new MethodBlock(name, leadingAnnotations(src, m.start()) + sameLineAnnotations,
-                    src.substring(brace, bodyEnd + 1), m.start()));
+                    src.substring(brace, bodyEnd + 1), m.start(),
+                    m.group(2), src.substring(openParen + 1, closeParen)));
             cursor = bodyEnd + 1;
         }
         return out;
@@ -624,16 +1535,44 @@ class NotificationTransactionBoundaryGuardTest {
 
     /** 指定ルート配下（FQCN が {@code filter} を満たすもの）を走査する。 */
     static List<Violation> scanRoot(Path root, Predicate<String> filter) {
+        return scanRootDetailed(root, filter).violations();
+    }
+
+    /** 指定ルート配下を走査し、違反と「判定不能（曖昧）」の両方を返す。 */
+    static ScanResult scanRootDetailed(Path root, Predicate<String> filter) {
         List<Violation> all = new ArrayList<>();
+        List<String> ambiguities = new ArrayList<>();
         for (Path file : javaFiles(root)) {
             String fqcn = toFqcn(root, file);
             if (!filter.test(fqcn)) {
                 continue;
             }
-            all.addAll(scanSource(fqcn, read(file)));
+            ScanResult one = scanSourceDetailed(fqcn, read(file));
+            all.addAll(one.violations());
+            ambiguities.addAll(one.ambiguities());
         }
         all.sort((a, b) -> a.key().compareTo(b.key()));
-        return all;
+        ambiguities.sort(String::compareTo);
+        return new ScanResult(all, ambiguities);
+    }
+
+    private static volatile ScanResult mainScanCache;
+
+    /**
+     * 本番ソース全体の走査結果（クラス内で使い回すためメモ化する）。
+     *
+     * <p>走査は 9600 ファイルの読み込み＋コメントマスク＋正規表現であり、1回あたりの実測が重い。
+     * 本クラスには本番全体を走査するテストが複数あり（凍結一致・監査済み例外・削除台帳・曖昧性）、
+     * 素直に書くとその数だけ全走査が走って番人1つで数十分かかる。
+     * 判定は入力（ソース）に対して純粋なので、1度だけ走らせて共有してよい。
+     */
+    static ScanResult mainScan() {
+        ScanResult cached = mainScanCache;
+        if (cached == null) {
+            cached = scanRootDetailed(mainSourceRoot(), fqcn -> true);
+            mainScanCache = cached;
+        }
+        return cached;
     }
 
     static Path mainSourceRoot() {
@@ -716,10 +1655,10 @@ class NotificationTransactionBoundaryGuardTest {
     @Test
     @DisplayName("通知のトランザクション境界違反が baseline と完全一致する（増加も減少も fail）")
     void 違反が凍結リストと完全一致する() {
-        List<Violation> found = scanRoot(mainSourceRoot(), fqcn -> true);
+        List<Violation> found = mainScan().violations();
         Set<String> foundKeys = found.stream().map(Violation::key)
                 .collect(Collectors.toCollection(TreeSet::new));
-        dumpForLotPlanning(found);
+        dumpForLotPlanning(found, mainScan().ambiguities());
         Set<String> frozen = readFreezeList();
 
         Set<String> added = new TreeSet<>(foundKeys);
@@ -746,10 +1685,82 @@ class NotificationTransactionBoundaryGuardTest {
                 .isEmpty();
     }
 
+    /**
+     * 配送層クラスの public メソッドのうち、番人の語彙判定に関わるもの。
+     *
+     * <p>「番人の語彙」と「配送層が実際に公開している API」を突き合わせるための材料。
+     */
+    static List<MethodBlock> deliveryLayerPublicMethods() {
+        List<MethodBlock> out = new ArrayList<>();
+        for (String fqcn : DELIVERY_INFRASTRUCTURE) {
+            TypeRef ref = typeIndex().getOrDefault(fqcn.substring(fqcn.lastIndexOf('.') + 1), List.of())
+                    .stream().filter(r -> r.fqcn().equals(fqcn)).findFirst().orElse(null);
+            if (ref == null) {
+                continue;
+            }
+            for (MethodBlock m : parseMethods(
+                    JavaSourceScanningUtils.maskCommentsAndLiterals(read(ref.file())))) {
+                if (m.modifiers().contains("public")) {
+                    out.add(m);
+                }
+            }
+        }
+        return out;
+    }
+
+    @Test
+    @DisplayName("配送層の createNotification* API が番人の語彙から漏れていない（閉じた列挙の機械ゲート）")
+    void 配送層の生成APIが語彙から漏れていない() {
+        // NOTIFY_CALL_CANDIDATE は createNotification(?:PreAuthorized)? という「閉じた列挙」であり、
+        // 配送層に新しい生成 API が増えると静かに死角になる（Issue #3039）。
+        // Javadoc の「増えたらここに足すこと」だけでは守られないので、型側から列挙して突き合わせる。
+        List<MethodBlock> methods = deliveryLayerPublicMethods();
+        assertThat(methods)
+                .as("配送層クラスの public メソッドが1件も取れていない＝このゲートが何も測っていない")
+                .isNotEmpty();
+        List<String> uncovered = methods.stream()
+                .map(MethodBlock::name)
+                .filter(n -> n.startsWith("createNotification"))
+                .filter(n -> !NOTIFY_METHOD_NAME.matcher(n).matches())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+        assertThat(uncovered)
+                .as("""
+                        配送層が公開している createNotification* API が番人の語彙 (%s) に含まれていない。
+                        この API を業務TX内から呼んでも番人は違反として挙げない（静かな死角）。
+                        NOTIFY_METHOD_VOCABULARY に足すこと。語彙を無闇に開くと決済 API
+                        （createNotificationCreditCheckoutSession）まで拾うため、必ず名前を明示して足す。""",
+                        NOTIFY_METHOD_VOCABULARY)
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("配送層の通知 API は必ず引数を取る（引数ゼロ除外が死角にならない契約）")
+    void 通知APIは必ず引数を取る() {
+        // notifyCallOffsets は引数ゼロの呼び出しを一律除外している（record アクセサ / Object#notifyAll
+        // を落とすため）。したがって「引数ゼロの通知 API」を足した瞬間に静かな偽陰性になる。
+        // 契約「通知 API は必ず宛先・種別を引数に取る」を型側から機械的に強制する（Issue #3039）。
+        List<String> zeroArg = deliveryLayerPublicMethods().stream()
+                .filter(m -> NOTIFY_METHOD_NAME.matcher(m.name()).matches())
+                .filter(m -> m.params().isBlank())
+                .map(MethodBlock::name)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+        assertThat(zeroArg)
+                .as("""
+                        配送層に引数ゼロの通知 API がある。番人の notifyCallOffsets は引数ゼロの呼び出しを
+                        一律で除外するため、この API の呼び出しは業務TX内にあっても検出できない。
+                        引数（宛先・種別）を取る形へ直すか、notifyCallOffsets の除外条件を
+                        「レシーバがアクセサ形である」等の別の軸へ置き換えること。""")
+                .isEmpty();
+    }
+
     @Test
     @DisplayName("監査済み例外4クラスを違反として挙げない")
     void 監査済み例外を違反として挙げない() {
-        List<Violation> found = scanRoot(mainSourceRoot(), fqcn -> true);
+        List<Violation> found = mainScan().violations();
         Set<String> owners = found.stream().map(Violation::ownerFqcn)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         assertThat(owners)
@@ -772,7 +1783,7 @@ class NotificationTransactionBoundaryGuardTest {
      * <p>L1 以降のロット割り当ての一次資料。番人本体の合否には影響しない（書けなくても失敗させない）。
      * 種別ごとの内訳を先頭に付ける。
      */
-    private static void dumpForLotPlanning(List<Violation> found) {
+    private static void dumpForLotPlanning(List<Violation> found, List<String> ambiguities) {
         try {
             Path out = Paths.get("build").resolve("notification-guard-violations.txt");
             Files.createDirectories(out.getParent());
@@ -782,11 +1793,21 @@ class NotificationTransactionBoundaryGuardTest {
                 long n = found.stream().filter(v -> v.kind() == kind).count();
                 sb.append("#   ").append(kind.name()).append(": ").append(n).append('\n');
             }
+            // 判定不能（曖昧）は violations() に入らない。件数を「0件でも必ず」併記して、
+            // ロット計画の一次資料が実態より小さく見える経路を塞ぐ（任務3）。
+            sb.append("# 判定不能（曖昧・違反かどうか決められない。是正対象として扱うこと）: ")
+                    .append(ambiguities.size()).append('\n');
             sb.append('\n');
             for (Violation v : found) {
                 sb.append(v.key()).append("  (")
                         .append(v.ownerFqcn().substring(v.ownerFqcn().lastIndexOf('.') + 1))
-                        .append(".java:").append(v.line()).append(" / ").append(v.detail()).append(")\n");
+                        .append(".java:").append(v.line()).append(" / ").append(v.detail())
+                        .append(v.derivedImpact() == null ? "" : " / 区分=" + v.derivedImpact().name())
+                        .append(")\n");
+            }
+            sb.append("\n# --- 判定不能（曖昧）---\n");
+            for (String a : ambiguities) {
+                sb.append("AMBIGUOUS ").append(a).append('\n');
             }
             Files.writeString(out, sb.toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -880,8 +1901,89 @@ class NotificationTransactionBoundaryGuardTest {
         return new DetectionPower(raw, structural, methods);
     }
 
+    /**
+     * 凍結エントリの<b>影響区分</b>（任務5: 契約違反であることは同じでも、是正の手当てが違う2種を分ける）。
+     *
+     * <p>台帳の109件には性質の異なる2種類が混在している。契約としてはどちらも違反で一貫しているが、
+     * 直し方が同じとは限らないため、ロット割り当ての前に<b>機械可読な形で</b>区別できるようにする。
+     */
+    enum ImpactClass {
+        /**
+         * (i) 通知の失敗が<b>業務トランザクションを巻き戻す</b>。Issue #2990 が問題にしている本体。
+         *
+         * <p>委譲先が無印（呼び出し元の TX にそのまま参加）／同一 TX 内で直接発火している形。
+         * 通知配送の失敗で業務データが消えるので、是正の優先度が高い。
+         */
+        ROLLBACK_COUPLED,
+        /**
+         * (ii) 巻き戻しはしないが<b>「業務コミット後」という因果順序を保証しない</b>。
+         *
+         * <p>委譲先が {@code @Async} / {@code REQUIRES_NEW} で別スレッド・別 TX に逃げている形
+         * （例: {@code ErrorReportService} の委譲先 {@code ErrorReportAsyncExecutor#recordBackendException}
+         * は {@code @Async("event-pool")} + {@code @Transactional}）。
+         * 業務側が後でロールバックしても通知だけ残る<b>逆向きの不整合</b>が通る。
+         * 原則5 の判定軸（AFTER_COMMIT 境界を越えたか）では違反だが、
+         * 手当ては「TX から切り離す」ではなく「AFTER_COMMIT リスナーへ移す」になる。
+         */
+        ORDERING_ONLY
+    }
+
+    /** 凍結エントリ行の分類部分の区切り。書式は {@code <key> | <ImpactClass>}。 */
+    static final String CLASSIFICATION_SEPARATOR = "|";
+
+    /** エントリ行からキー部分（分類を除いた部分）を取り出す。 */
+    static String entryKey(String line) {
+        int bar = line.indexOf(CLASSIFICATION_SEPARATOR);
+        return (bar < 0 ? line : line.substring(0, bar)).strip();
+    }
+
+    /** エントリ行の分類部分（無ければ null）。 */
+    static String entryClassification(String line) {
+        int bar = line.indexOf(CLASSIFICATION_SEPARATOR);
+        return bar < 0 ? null : line.substring(bar + 1).strip();
+    }
+
+    /** 凍結ファイルの「エントリ行」（BOM を剥がし、コメントと空行を除いた行）。 */
+    static List<String> entryLines(List<String> lines) {
+        return lines.stream()
+                .map(NotificationTransactionBoundaryGuardTest::stripBom)
+                .map(String::strip)
+                .filter(s -> !s.isEmpty() && !s.startsWith("#"))
+                .collect(Collectors.toList());
+    }
+
     /** 削除台帳の1エントリ。 */
     record RemovalEntry(String key, String reason) {}
+
+    /**
+     * 判定不能（曖昧）台帳の1エントリ（任務3）。
+     *
+     * <p>キーは {@code <FQCN>#<メソッド名>}。違反キーと違い種別を持たない
+     * （曖昧性は「どの種別か」も含めて決まっていない、という主張だからである）。
+     */
+    record AmbiguityEntry(String key, String reason) {}
+
+    /** {@code # AMBIGUOUS: <FQCN>#<method> : <理由>} 行。 */
+    private static final Pattern AMBIGUOUS_LINE = Pattern.compile(
+            "^#\\s*AMBIGUOUS:\\s*([\\w$.]+#[\\w$]+)\\s*:\\s*(.+)$");
+
+    /** 凍結ファイルの行から判定不能台帳を読む。 */
+    static List<AmbiguityEntry> parseAmbiguityLedger(List<String> lines) {
+        List<AmbiguityEntry> entries = new ArrayList<>();
+        for (String raw : lines) {
+            Matcher m = AMBIGUOUS_LINE.matcher(stripBom(raw).strip());
+            if (m.matches()) {
+                entries.add(new AmbiguityEntry(m.group(1).strip(), m.group(2).strip()));
+            }
+        }
+        return entries;
+    }
+
+    /** 曖昧性メッセージ（{@code FQCN#method : ...}）からキー部分を取り出す。 */
+    static String ambiguityKey(String message) {
+        int colon = message.indexOf(" : ");
+        return (colon < 0 ? message : message.substring(0, colon)).strip();
+    }
 
     /** {@code # REMOVED: <key> : <理由>} 行。 */
     private static final Pattern REMOVED_LINE = Pattern.compile(
@@ -912,12 +2014,54 @@ class NotificationTransactionBoundaryGuardTest {
      * @param foundKeys 現在の判定ロジックが本番ソースから検出したキー
      */
     static List<String> validateLedger(List<String> lines, Set<String> foundKeys) {
+        return validateLedger(lines, foundKeys, List.of(), java.util.Map.of());
+    }
+
+    /**
+     * 台帳の検証（曖昧性台帳・分類の機械照合まで含む完全版）。
+     *
+     * @param lines          凍結ファイルの全行
+     * @param foundKeys      現在の判定ロジックが検出した違反キー
+     * @param ambiguities    現在の判定ロジックが報告した「判定不能」メッセージ
+     * @param derivedImpacts 違反キー → ソースから導出した {@link ImpactClass}（導出できたものだけ）
+     */
+    static List<String> validateLedger(List<String> lines, Set<String> foundKeys,
+                                       List<String> ambiguities,
+                                       java.util.Map<String, ImpactClass> derivedImpacts) {
         List<String> problems = new ArrayList<>();
-        Set<String> active = lines.stream()
-                .map(NotificationTransactionBoundaryGuardTest::stripBom)
-                .map(String::strip)
-                .filter(s -> !s.isEmpty() && !s.startsWith("#"))
+        List<String> entries = entryLines(lines);
+        Set<String> active = entries.stream().map(NotificationTransactionBoundaryGuardTest::entryKey)
                 .collect(Collectors.toCollection(TreeSet::new));
+        // 分類（任務5）: 書いてあるなら ImpactClass の名前でなければならない。
+        // 書いていない行は「未分類」であり、後続ロットで埋める前提で許す。
+        long classified = 0;
+        for (String entry : entries) {
+            String classification = entryClassification(entry);
+            if (classification == null) {
+                continue;
+            }
+            if (java.util.Arrays.stream(ImpactClass.values())
+                    .noneMatch(c -> c.name().equals(classification))) {
+                problems.add("凍結エントリの分類が ImpactClass の名前ではない: " + entry
+                        + "（許可: " + java.util.Arrays.toString(ImpactClass.values()) + "）");
+                continue;
+            }
+            classified++;
+            // 任務4: 分類が「ソースの実際の注釈から導出した区分」と一致すること。
+            // 綴りと件数だけを見ていた頃は、分類を取り違えたまま是正の手当てを誤りうる状態だった。
+            ImpactClass derived = derivedImpacts.get(entryKey(entry));
+            if (derived != null && !derived.name().equals(classification)) {
+                problems.add("凍結エントリの分類がソースの注釈から導出した区分と一致しない: " + entryKey(entry)
+                        + " 台帳=" + classification + " / ソース由来=" + derived.name()
+                        + "（委譲先入口の @Async・@Transactional の伝播設定から導出。"
+                        + "台帳を直すか、導出規則 deriveDelegateImpact を直すこと）");
+            }
+        }
+        long classifiedFloor = classifiedFloor(lines);
+        if (classified < classifiedFloor) {
+            problems.add("分類済みエントリ数が下限を割っている: " + classified + " < 下限 " + classifiedFloor
+                    + "。分類は一度付けたら外さない（後続ロットで増やす方向にしか動かさない）。");
+        }
         List<RemovalEntry> removed = parseRemovalLedger(lines);
         Set<String> removedKeys = removed.stream().map(RemovalEntry::key)
                 .collect(Collectors.toCollection(TreeSet::new));
@@ -940,13 +2084,47 @@ class NotificationTransactionBoundaryGuardTest {
                 problems.add("凍結エントリと削除台帳の両方に居る: " + e.key());
             }
         }
+        // ------------------------------------------------------------------
+        // 判定不能（曖昧）の台帳（任務3）
+        // ------------------------------------------------------------------
+        // 曖昧性は violations() に入らないため、放っておくと「CI は赤いが是正対象の一覧には現れない」
+        // ＝ロット計画上は実違反数を過少報告する、という状態になる。この戦役では
+        // 「一覧が実態より小さい」が既に5回起きている。曖昧性を別窓に置いてその6回目にしないため、
+        // 是正対象と同じ台帳に載せることを強制する（＝対象表を作る人間が必ず見る場所に出る）。
+        Set<String> ambiguousKeys = ambiguities.stream()
+                .map(NotificationTransactionBoundaryGuardTest::ambiguityKey)
+                .collect(Collectors.toCollection(TreeSet::new));
+        List<AmbiguityEntry> ambiguityLedger = parseAmbiguityLedger(lines);
+        Set<String> ledgerAmbiguousKeys = ambiguityLedger.stream().map(AmbiguityEntry::key)
+                .collect(Collectors.toCollection(TreeSet::new));
+        if (ledgerAmbiguousKeys.size() != ambiguityLedger.size()) {
+            problems.add("判定不能台帳に重複キーがある（同じキーの AMBIGUOUS 行が2つ以上）");
+        }
+        for (AmbiguityEntry e : ambiguityLedger) {
+            if (e.reason().length() < 10) {
+                problems.add("判定不能の理由が短すぎる（10文字未満）: " + e.key() + " : " + e.reason());
+            }
+            if (!ambiguousKeys.contains(e.key())) {
+                problems.add("判定不能として台帳に載っているが、現在の判定では曖昧ではない: " + e.key()
+                        + "（解消したなら AMBIGUOUS 行を消し、# CENSUS_FLOOR も同じPRで下げること）");
+            }
+        }
+        for (String key : ambiguousKeys) {
+            if (!ledgerAmbiguousKeys.contains(key)) {
+                problems.add("判定不能（型解決が割れて違反かどうか決められない）が台帳に載っていない: " + key
+                        + "。解消するか、理由を書いて # AMBIGUOUS: <FQCN>#<メソッド> : <理由> 行として"
+                        + "台帳へ載せること（是正対象の一覧から漏らさないため）。");
+            }
+        }
+
         // (d) 台帳の総数が下限を割らない。
         //     ＝「凍結エントリから行をそっと消す」だけでは通らない。消すなら REMOVED 行として
         //       理由を書いて (b) の実測裏取りを通すか、CENSUS_FLOOR を実装差分と同じPRで下げること。
         long floor = censusFloor(lines);
-        long total = (long) active.size() + removedKeys.size();
+        long total = (long) active.size() + removedKeys.size() + ledgerAmbiguousKeys.size();
         if (total < floor) {
             problems.add("台帳の総数が下限を割っている: 凍結 " + active.size() + " + 削除 " + removedKeys.size()
+                    + " + 判定不能 " + ledgerAmbiguousKeys.size()
                     + " = " + total + " < 下限 " + floor
                     + "。是正でエントリを消した場合は # CENSUS_FLOOR 行を実装差分と同じPRで下げること。");
         }
@@ -959,6 +2137,22 @@ class NotificationTransactionBoundaryGuardTest {
      * <p><b>下げるときは実装差分（＝実際に是正したコード）と同じPRであること</b>が人手レビューの
      * 見どころになるよう、ファイル内の明示的な1行として置く。番人は「黙って減った」だけを機械的に止める。
      */
+    /**
+     * 分類済みエントリ数の下限。{@code # CLASSIFIED_FLOOR: <n>} 行があればそれ、無ければ 0。
+     *
+     * <p>全109件の分類は後続ロットで埋める前提なので「全件分類」は要求しない。
+     * 代わりに<b>一度付けた分類が黙って外れること</b>だけを機械的に止める。
+     */
+    static long classifiedFloor(List<String> lines) {
+        for (String raw : lines) {
+            String line = stripBom(raw).strip();
+            if (line.startsWith("# CLASSIFIED_FLOOR:")) {
+                return Long.parseLong(line.substring("# CLASSIFIED_FLOOR:".length()).strip());
+            }
+        }
+        return 0L;
+    }
+
     static long censusFloor(List<String> lines) {
         for (String raw : lines) {
             String line = stripBom(raw).strip();
@@ -994,9 +2188,10 @@ class NotificationTransactionBoundaryGuardTest {
     @Test
     @DisplayName("削除台帳が完全である（baseline から理由なく行を消せない・偽陽性の主張を実測で裏取りする）")
     void 削除台帳が完全である() {
-        Set<String> foundKeys = scanRoot(mainSourceRoot(), fqcn -> true).stream()
+        Set<String> foundKeys = mainScan().violations().stream()
                 .map(Violation::key).collect(Collectors.toCollection(TreeSet::new));
-        assertThat(validateLedger(readFreezeLines(), foundKeys))
+        assertThat(validateLedger(readFreezeLines(), foundKeys,
+                mainScan().ambiguities(), derivedImpacts(mainScan().violations())))
                 .as("""
                         凍結リスト %s の台帳検証に失敗した。
                         baseline から行を減らすときは、削除理由を持つ機械台帳の行
@@ -1004,6 +2199,68 @@ class NotificationTransactionBoundaryGuardTest {
                         を同じPRで足すこと（偽陽性だった場合）。
                         実際に是正してエントリが消えた場合は # CENSUS_FLOOR: <n> を実装差分と同じPRで下げること。""",
                         FREEZE_FILE)
+                .isEmpty();
+    }
+
+    /** 違反キー → ソースから導出した影響区分（導出できたものだけ）。 */
+    static java.util.Map<String, ImpactClass> derivedImpacts(List<Violation> violations) {
+        java.util.Map<String, ImpactClass> out = new java.util.TreeMap<>();
+        for (Violation v : violations) {
+            if (v.derivedImpact() != null) {
+                out.put(v.key(), v.derivedImpact());
+            }
+        }
+        return out;
+    }
+
+    @Test
+    @DisplayName("継承を辿るようにしても main の mapper・getter のメソッド参照を誤検出しない")
+    void メソッド参照ゲートが本番のmapperを巻き込まない() {
+        // declaredMethodNames が継承・インターフェースまで辿るようになると、
+        // 「レシーバ型がその API を宣言している」条件は必ず緩む方向に動く。偽陽性の受け皿は
+        // 語彙の完全一致だけになるので、main で1件も湧いていないことを独立に固定する
+        // （main には ::toNotificationResponse / ::getNotifyTeamSlotNoteUpdates が7件ある）。
+        List<Violation> refs = mainScan().violations().stream()
+                .filter(v -> v.kind() == ViolationKind.NOTIFY_METHOD_REFERENCE)
+                .collect(Collectors.toList());
+        assertThat(refs)
+                .as("""
+                        通知発火 API のメソッド参照が main に現れた。
+                        本物なら凍結リストへ追記し、mapper・getter の巻き込み（偽陽性）なら
+                        語彙の完全一致条件が壊れていないかを先に疑うこと。
+                        検出内訳:
+                        %s""", refs.stream().map(v -> "  - " + v.key() + " (" + v.detail() + ")")
+                        .collect(Collectors.joining("\n")))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("判定不能（曖昧）が台帳に載っていて、いまは0件である（是正対象の一覧から漏れない）")
+    void 判定不能が台帳に載っている() {
+        // 任務3: 曖昧性は violations() に入らないので、放っておくと是正対象の一覧から消える。
+        // 台帳に載せることを validateLedger が強制しているので、ここでは「今は0件である」ことを固定する。
+        // 0件でも仕組みは動いている（台帳ゲートの変異テストが偽の曖昧性を流して確かめている）。
+        assertThat(mainScan().ambiguities())
+                .as("判定不能が発生している。解消するか、# AMBIGUOUS 行として台帳へ載せること")
+                .isEmpty();
+        assertThat(parseAmbiguityLedger(readFreezeLines()))
+                .as("判定不能台帳に行が残っている（現在の判定では0件なので、行があるなら古い）")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("単純名の曖昧性が判定に影響していない（先勝ちで静かに誤らない）")
+    void 単純名の曖昧性が判定に影響していない() {
+        List<String> ambiguities = mainScan().ambiguities();
+        assertThat(ambiguities)
+                .as("""
+                        委譲先の型が一意に決まらず、しかも候補ごとに「通知を発火するか」の判定が割れている。
+                        番人はここで片方を先勝ちで採らず、判定不能として落ちる（Codex 独立検分 条件1・2）。
+                        直し方は次のいずれか:
+                          (1) 単一型 import を書く（同名クラスが複数あっても import があれば一意に決まる）
+                          (2) 変数名を変えてローカルとフィールドのシャドーイングを解消する
+                          (3) 判定を型解決へ寄せる（resolveCandidates を強くする）
+                        「曖昧なので見送る」は選ばない。見送りは静かな偽陰性そのものだからである。""")
                 .isEmpty();
     }
 
@@ -1033,12 +2290,10 @@ class NotificationTransactionBoundaryGuardTest {
                     "凍結リストが見つからない: " + FREEZE_FILE + "（CWD=" + Paths.get("").toAbsolutePath() + "）");
         }
         try {
-            return Files.readAllLines(p, StandardCharsets.UTF_8).stream()
-                    // Windows のエディタ・PowerShell の Out-File は UTF-8 BOM を付ける。
-                    // BOM が付くと先頭行が "#" 始まりに見えずコメントとして落ちないため、明示的に剥がす。
-                    .map(s -> s.startsWith("﻿") ? s.substring(1) : s)
-                    .map(String::strip)
-                    .filter(s -> !s.isEmpty() && !s.startsWith("#"))
+            // BOM の除去とコメント・空行の除外は entryLines が行う。
+            // 分類（" | ROLLBACK_COUPLED" 等）はキーの一部ではないので entryKey で落とす。
+            return entryLines(Files.readAllLines(p, StandardCharsets.UTF_8)).stream()
+                    .map(NotificationTransactionBoundaryGuardTest::entryKey)
                     .collect(Collectors.toCollection(TreeSet::new));
         } catch (IOException e) {
             throw new UncheckedIOException(e);

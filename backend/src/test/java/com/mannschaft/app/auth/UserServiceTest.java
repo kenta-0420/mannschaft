@@ -101,6 +101,14 @@ class UserServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    // 柱①ADMINゼロ根治: requestWithdrawal 冒頭の GDPR_011 ガード
+    @Mock
+    private com.mannschaft.app.role.service.RoleSuccessionService roleSuccessionService;
+
+    // 柱①ADMINゼロ根治 §12.5: cancelWithdrawal 冒頭の purge×cancel 勝敗判定
+    @Mock
+    private com.mannschaft.app.gdpr.service.PurgeStartGuard purgeStartGuard;
+
     @Mock
     private MediaUrlResolver mediaUrlResolver;
 
