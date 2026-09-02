@@ -6,6 +6,9 @@
 #   - 標準入力で PreToolUse の JSON を受け取る（tool_input.command, cwd）。
 #   - コマンド行を ; / && / || 区切りでセグメントに分割し、セグメントごとに
 #     判定する（複合コマンドの一部だけが変更系操作であっても見落とさない）。
+#     分割はクォート認識で行い、'...' / "..." の内側の区切り文字では分割しない
+#     （分断すると `wsl ... 'cd X && git checkout'` の wsl 接頭辞が失われ、
+#     WSL 側なのに Windows の cwd＝本陣を対象と誤認して誤検知するため）。
 #   - 各セグメントについて、先頭が wsl(.exe) 呼び出しならそれを剥がし、
 #     内側のコマンドを本体として扱う。
 #   - 変更系 git サブコマンド（checkout/switch/commit/reset/merge/rebase/
@@ -89,11 +92,73 @@ function Test-IsHonjinDir {
     return $true
 }
 
-# コマンド行を ; / && / || で素朴に分割する（複合コマンドの各セグメントを
-# 個別に判定するため）。クォート内の区切り文字までは考慮しないが、その場合
-# 誤ってセグメントが分断されても既定の判定対象（cwd）が変わるわけではない
-# ので、保護が緩む方向には倒れない。
-$segments = [regex]::Split($cmd, '\s*(?:&&|\|\||;)\s*')
+# コマンド行を ; / && / || でセグメントに分割する（複合コマンドの各セグメントを
+# 個別に判定するため）。ただし **クォートの内側にある区切り文字では分割しない**。
+#
+# なぜクォートを見る必要があるか（誤検知の根治）:
+#   wsl -d Ubuntu-24.04 -- bash -lc 'cd ~/verify && git checkout -B x origin/main'
+#   を素朴に分割すると `git checkout -B x origin/main` という断片になり、
+#   先頭の `wsl` が失われる。すると「wsl 経由」の判定が偽になり、本来は
+#   判定不能として fail-open すべきところで Windows 側の cwd（本陣）が
+#   対象とみなされ、誤って deny されていた。
+#   つまり分断は「保護が緩む」方向ではなく「締まりすぎる」方向に倒れる。
+#   同じことは `bash -lc 'cd X && git commit'` や
+#   `powershell -Command "... && git reset"` でも起きるため、
+#   wsl だけを特別扱いするのではなくクォート認識そのものを直す。
+#
+# 分割規則:
+#   - シングルクォート内は何も解釈しない（終端の ' まで素通し）
+#   - ダブルクォート内はバックスラッシュエスケープのみ解釈して素通し
+#   - クォート外のバックスラッシュエスケープは次の1文字を素通し
+#   - クォートが閉じないまま終端した場合、残り全体を1セグメントとして扱う
+#     （判定対象が cwd のままになるだけで、保護は緩まない）
+function Split-CommandSegments {
+    param([string]$command)
+
+    $segments = New-Object System.Collections.Generic.List[string]
+    $sb = New-Object System.Text.StringBuilder
+    $quote = $null   # 現在囲まれているクォート文字（' または "）。囲まれていなければ $null
+    $i = 0
+
+    while ($i -lt $command.Length) {
+        $ch = $command[$i]
+
+        if ($null -ne $quote) {
+            if ($ch -eq '\' -and $quote -eq '"' -and ($i + 1) -lt $command.Length) {
+                [void]$sb.Append($ch); [void]$sb.Append($command[$i + 1]); $i += 2; continue
+            }
+            if ($ch -eq $quote) { $quote = $null }
+            [void]$sb.Append($ch); $i++; continue
+        }
+
+        if ($ch -eq "'" -or $ch -eq '"') {
+            $quote = $ch; [void]$sb.Append($ch); $i++; continue
+        }
+        if ($ch -eq '\' -and ($i + 1) -lt $command.Length) {
+            [void]$sb.Append($ch); [void]$sb.Append($command[$i + 1]); $i += 2; continue
+        }
+        if (($ch -eq '&' -or $ch -eq '|') -and ($i + 1) -lt $command.Length -and $command[$i + 1] -eq $ch) {
+            [void]$segments.Add($sb.ToString()); [void]$sb.Clear(); $i += 2; continue
+        }
+        if ($ch -eq ';') {
+            [void]$segments.Add($sb.ToString()); [void]$sb.Clear(); $i++; continue
+        }
+
+        [void]$sb.Append($ch); $i++
+    }
+
+    [void]$segments.Add($sb.ToString())
+    return $segments
+}
+
+$segments = Split-CommandSegments $cmd
+
+# 複合コマンドの途中の `cd <path>` を追跡し、以降のセグメントの実効 cwd とする。
+# `cd .claude/worktrees/foo && git commit` は実際には worktree の中で走るので
+# ツール呼び出し時の cwd（本陣）で判定すると誤検知になる。
+# 逆に `cd C:\Claude\mannschaft && git commit` を worktree から実行した場合は
+# 実効 cwd が本陣になるため、追跡することで**保護は強くなる**。
+$effectiveCwd = $cwd
 
 $denyReason = $null
 foreach ($segment in $segments) {
@@ -109,6 +174,18 @@ foreach ($segment in $segments) {
         $inner = $Matches[2]
     }
 
+    # 単独の `cd <path>` セグメントは実効 cwd の更新として扱う（wsl 経由は除く。
+    # WSL 側のファイルシステムは Windows の cwd とは別物のため追跡しない）。
+    if ((-not $isWsl) -and ($inner -match '^\s*cd\s+["'']?([^"''&|;]+?)["'']?\s*$')) {
+        $cdTarget = $Matches[1].Trim()
+        if ($cdTarget -match '^([A-Za-z]:[\\/]|[\\/])') {
+            $effectiveCwd = $cdTarget            # 絶対パス
+        } else {
+            $effectiveCwd = Join-Path $effectiveCwd $cdTarget   # 相対パス
+        }
+        continue
+    }
+
     if ($inner -notmatch $mutating) { continue }
 
     # worktree を明示的に対象にしているセグメントは許可
@@ -122,8 +199,8 @@ foreach ($segment in $segments) {
     } elseif ($inner -match '--git-dir=["'']?([^\s"'']+)') {
         $targetDir = $Matches[1]
     } elseif (-not $isWsl) {
-        # wsl 経由でない場合のみ、ツール呼び出し時の cwd を対象とみなす。
-        $targetDir = $cwd
+        # wsl 経由でない場合のみ、実効 cwd（cd 追跡込み）を対象とみなす。
+        $targetDir = $effectiveCwd
     }
     # wsl 経由かつ -C 等の明示指定が無い場合、WSL 側の実際の cwd は
     # このフックからは分からないため $targetDir は $null のまま
