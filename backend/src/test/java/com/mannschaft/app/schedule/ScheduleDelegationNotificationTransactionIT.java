@@ -53,8 +53,10 @@ import static org.mockito.Mockito.verify;
  * <b>2 件とも赤になること</b>を確認した（tests=2 / failures=2 / skipped=0）。失敗の中身も
  * {@code TransactionAspectSupport} 経由で {@code ScheduleDelegationService} の
  * {@code @Transactional} 境界から巻き戻りが抜けてくる形であり、狙いどおりの理由で赤い。
- * 本戦役の 3 本の IT のうち、<b>巻き戻りそのものを再現できているのはこの IT だけである</b>
- * （他 2 本の限界はそれぞれのクラス javadoc に明記した）。</p>
+ * 本戦役で<b>巻き戻りそのものを再現できている IT</b>は、本 IT と
+ * {@code NotificationCreditFreeQuotaAlertTransactionIT}（実 DB の CHECK 制約で通知 INSERT を
+ * 失敗させる手法）の 2 本である。残る
+ * {@code PersonalMarketCancelNotificationTransactionIT} の限界は同クラスの javadoc に明記した。</p>
  *
  * <p>検証対象は<b>委譲先の入口メソッド</b>（{@code cancelOnMemberLeft} /
  * {@code onDelegatorAttendanceChanged}）そのものである。台帳が
