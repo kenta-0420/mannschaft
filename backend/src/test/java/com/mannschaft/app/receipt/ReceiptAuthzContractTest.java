@@ -33,8 +33,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -301,7 +301,7 @@ class ReceiptAuthzContractTest extends AbstractMySqlIntegrationTest {
     @WithMockUser(username = "920100002")
     @DisplayName("AC-2-4a: teamAの非ADMINメンバーが発行者設定を変更 → 403")
     void upsertSettings_byNonAdminMember_forbidden() throws Exception {
-        mockMvc.perform(put("/api/v1/admin/receipt-settings")
+        mockMvc.perform(patch("/api/v1/admin/receipt-settings")
                         .param("scopeType", "TEAM")
                         .param("scopeId", String.valueOf(teamAId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -314,7 +314,7 @@ class ReceiptAuthzContractTest extends AbstractMySqlIntegrationTest {
     @WithMockUser(username = "920100001")
     @DisplayName("AC-2-4b(正常系): teamAのADMINは発行者設定を変更できる → 200")
     void upsertSettings_byValidAdmin_ok() throws Exception {
-        mockMvc.perform(put("/api/v1/admin/receipt-settings")
+        mockMvc.perform(patch("/api/v1/admin/receipt-settings")
                         .param("scopeType", "TEAM")
                         .param("scopeId", String.valueOf(teamAId))
                         .contentType(MediaType.APPLICATION_JSON)
