@@ -1863,29 +1863,47 @@ class NotificationTransactionBoundaryGuardTest {
      * <h2>2026-09-02 に 185 -> 178 へ下げた根拠（同じPRに実装差分がある）</h2>
      * <p>上の javadoc は「正規の是正は呼び出しをリスナークラスへ<b>移す</b>だけなので、この量は減らない」と
      * 書いているが、これは<b>1 呼び出し = 1 移設</b>の場合に限って成り立つ。#2990 L2 の
-     * {@code ScheduleDelegationService} の是正は 1:1 の移設ではなく<b>集約</b>だった。
-     * 同サービスは通知の種別ごとに {@code notifier.notifyRequestPending(...)} 〜
-     * {@code notifier.notifyDelegatorLeft(...)} と<b>8 箇所</b>の呼び出しを持っていたが、
-     * 移設先の {@code ScheduleDelegationNotifier}（AFTER_COMMIT リスナー化）では
-     * 種別を {@code ScheduleDelegationNotificationEvent.Kind} の switch で捌き、
-     * 発火点は {@code notificationDeliveryRunner.sendOne(...)} <b>1 箇所</b>に集約される。
-     * 発火点そのものが消えたのではなく、同じ発火が 8 箇所から 1 箇所へまとまった。</p>
+     * {@code ScheduleDelegationService} の是正は 1:1 の移設ではなく<b>集約</b>だった。</p>
      *
-     * <p>残りは {@code RecruitmentListingService#sendCancelledNotifications} と
-     * {@code NotificationCreditService#sendFreeQuotaAlertAsync} の
-     * {@code notificationHelper.notifyAllLocalized(...)} 各 1 箇所が、新設リスナーの
-     * {@code sendOne(...)} 各 1 箇所へ 1:1 で移っており、こちらは増減ゼロである。</p>
+     * <h2>実測（下げる前に必ずこれを取ること）</h2>
+     * <p>是正前（{@code 362cf1bca9}）と是正後（本PR）で、本番ソース全体の生ヒットを
+     * {@code file:line:receiver.method} 付きで列挙して差分を取った。<b>是正前 186 / 是正後 178（-8）</b>。
+     * 消えた 13 件・増えた 5 件の内訳は次のとおりで、<b>すべてが本PRの是正に対応し、説明の付かない消失は無い</b>。</p>
+     * <ul>
+     *   <li>{@code ScheduleDelegationService} の {@code notifier.notifyXxx(...)} <b>8 箇所が消滅</b>
+     *       （{@code eventPublisher.publishEvent(...)} へ置換され、語彙に当たらなくなった）。</li>
+     *   <li>{@code ScheduleDelegationNotifier#send} の {@code notificationService.createNotification(...)}
+     *       1 箇所が、リスナー化後の {@code notificationDeliveryRunner.sendOne(...)} 1 箇所へ<b>1:1 で置換</b>（増減ゼロ）。</li>
+     *   <li>{@code RecruitmentListingService#sendCancelledNotifications} の
+     *       {@code notificationHelper.notifyAllLocalized(...)} 1 箇所が
+     *       {@code RecruitmentCancelledNotificationListener} の {@code sendOne(...)} へ<b>1:1</b>（増減ゼロ）。
+     *       同ファイルの他 2 箇所（{@code confirmApplication} / {@code sendPublishedNotifications}）は
+     *       行番号がずれただけで健在。</li>
+     *   <li>{@code NotificationCreditService#sendFreeQuotaAlertAsync} の
+     *       {@code notificationHelper.notifyAllLocalized(...)} 1 箇所が
+     *       {@code NotificationCreditFreeQuotaAlertListener} の {@code sendOne(...)} へ<b>1:1</b>（増減ゼロ）。</li>
+     * </ul>
+     *
+     * <p><b>訂正（本PR内の自己是正）</b>: 当初この javadoc は減少を「8 箇所 -> 1 箇所の集約で -7」と説明していたが、
+     * 実測すると<b>集約先の 1 箇所は元から存在していた</b>（{@code createNotification} が {@code sendOne} に
+     * 置き換わっただけ）。つまり正しい理解は「8 箇所が<b>丸ごと消え</b>、移設先は増えていない」であり、
+     * 減少幅は -7 ではなく<b>-8</b> である。定数が 185 -> 178（-7）で辻褄が合っているのは、
+     * <b>旧下限 185 が当時の実測 186 より 1 低く置かれていた</b>ため。
+     * 新しい 178 は 2026-09-02 の実測ちょうどであり、余裕はゼロになっている。</p>
      *
      * <p>下限を下げてよいと判断した根拠は「語彙も構造条件も一切触っていない」こと。
      * {@link #NOTIFY_METHOD_VOCABULARY} と {@link #notifyCallOffsets} は本PRで無変更であり、
-     * 減少はすべて本番コードの呼び出し箇所の集約に対応する。今後この値を下げるときも、
-     * 同じように「どの呼び出しがどこへ何対何で移ったか」を書けないなら下げてはならない。</p>
+     * 減少はすべて本番コードの呼び出し箇所の消滅・置換に対応する。今後この値を下げるときも、
+     * <b>上と同じ粒度の実測差分（消えた行・増えた行の全列挙）を書けないなら下げてはならない</b>。
+     * コミットメッセージに理由が書いてあることは根拠ではない。</p>
      */
     static final long RAW_CANDIDATE_HITS_MIN = 178L;
 
     /**
      * 実測 158（2026-09-02 / Issue #2990 L2 の是正後）。165 -> 158 の根拠は
-     * {@link #RAW_CANDIDATE_HITS_MIN} の javadoc と同一（8 箇所 -> 1 箇所の集約）。
+     * {@link #RAW_CANDIDATE_HITS_MIN} の javadoc と同一。構造条件を通過した発火点でも
+     * 差分は生ヒットと完全に一致し（是正前 166 / 是正後 158・消えた 13 件と増えた 5 件の顔ぶれも同一）、
+     * 「構造条件だけを厳しくして違反を消した」形跡は無いことを実測で確認している。
      *
      * @see #RAW_CANDIDATE_HITS_MIN
      */

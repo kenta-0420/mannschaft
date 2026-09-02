@@ -49,6 +49,13 @@ import static org.mockito.Mockito.verify;
  * 是正前・是正後のどちらの経路でも必ず通るため、是正前のコードでは委任の CANCELLED 化が
  * {@code UnexpectedRollbackException} で巻き戻って本テストは赤になる。</p>
  *
+ * <p><b>実測済み</b>（2026-09-02）: 是正前のコード（{@code 362cf1bca9}）へこの IT を当てて
+ * <b>2 件とも赤になること</b>を確認した（tests=2 / failures=2 / skipped=0）。失敗の中身も
+ * {@code TransactionAspectSupport} 経由で {@code ScheduleDelegationService} の
+ * {@code @Transactional} 境界から巻き戻りが抜けてくる形であり、狙いどおりの理由で赤い。
+ * 本戦役の 3 本の IT のうち、<b>巻き戻りそのものを再現できているのはこの IT だけである</b>
+ * （他 2 本の限界はそれぞれのクラス javadoc に明記した）。</p>
+ *
  * <p>検証対象は<b>委譲先の入口メソッド</b>（{@code cancelOnMemberLeft} /
  * {@code onDelegatorAttendanceChanged}）そのものである。台帳が
  * {@code ROLLBACK_COUPLED} と判定した根拠がまさにこの 2 メソッドの

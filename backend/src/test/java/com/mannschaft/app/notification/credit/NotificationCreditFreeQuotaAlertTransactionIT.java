@@ -4,6 +4,7 @@ import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
 import com.mannschaft.app.notification.credit.entity.OrganizationNotificationBalanceEntity;
 import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
 import com.mannschaft.app.notification.credit.service.NotificationCreditService;
+import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -40,12 +41,29 @@ import static org.mockito.Mockito.verify;
  * 実害の入口は {@code DirectMailService#sendMail}（台帳キー
  * {@code DirectMailService#sendMail -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED}）である。</p>
  *
- * <h2>この IT が欠陥を捕まえる仕組み</h2>
- * <p>{@link NotificationService#createNotification} を spy して例外を投げさせる。ここは
- * <b>是正前・是正後のどちらの経路でも必ず通る</b>ため、是正前のコードでは
- * {@code consume} のコミットが {@code UnexpectedRollbackException} で失敗して残高行が
- * 更新されず（＝本テストは赤）、是正後は AFTER_COMMIT リスナー内の
- * {@code REQUIRES_NEW} に閉じ込められて業務行が残る（＝緑）。</p>
+ * <h2>この IT が固定していること / <b>していないこと</b>（2026-09-02 実測で書き直した）</h2>
+ * <p><b>固定していること</b>: 是正後の正規形が実際に成立していること。すなわち
+ * {@code consume} がイベントを publish して<b>コミットまで到達</b>し、その後
+ * AFTER_COMMIT + {@code @Async("event-pool")} のリスナーが起きて
+ * {@link NotificationDeliveryRunner#sendOne} まで進み、その 1 件が例外で失敗しても
+ * 残高行（無料枠消費・アラート送信済フラグ）が残ることを、実 DB で測っている。</p>
+ *
+ * <p><b>是正前のコードに当てると赤くなることは実測済み</b>（{@code 362cf1bca9} にこの IT を当てて確認）。
+ * ただし<b>赤くなる理由は巻き戻りではない</b>。是正前は受信者を
+ * {@code UserRoleRepository#findAdminUserIdsByOrganizationId} で直接引いており、本テストが差し替える
+ * {@link RoleService} を経由しないため受信者が 0 件になり、
+ * {@code createNotification} との相互作用がゼロのまま
+ * 「配送が試みられたこと」の検証で落ちる。</p>
+ *
+ * <p><b>していないこと（正直に書いておく）</b>: 是正前の {@code ROLLBACK_COUPLED} を
+ * <b>この IT で再現することはできない</b>。是正前の {@code sendFreeQuotaAlertAsync} は本体全体を
+ * try/catch で包んでいたため、モックが投げる例外は握りつぶされて巻き戻りは起きない。
+ * あの欠陥は「{@code createNotification} が同一トランザクションで実際に DB 失敗し、
+ * rollback-only マークを残したままコミット時に {@code UnexpectedRollbackException} になる」形でしか
+ * 現れず、モック例外では再現できない（モックは DB に触れないので rollback-only が立たない）。
+ * <b>この穴を「実ユーザーの user_roles フィクスチャを足す」で埋めようとしてはならない</b>。
+ * 受信者が 1 件でも返ると、是正前でも例外は try/catch に飲まれて残高は残り、
+ * 配送検証も通ってしまうので<b>是正前のコードで緑になる</b>（＝何も検証しないテストに退化する）。</p>
  *
  * <h2>クラスに {@code @Transactional} を付けない理由</h2>
  * <p>通知は {@code AFTER_COMMIT} で発火する。テストメソッドをトランザクションで包むと
