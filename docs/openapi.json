@@ -25712,94 +25712,6 @@
         }
       }
     },
-    "/api/v1/admin/receipt-settings": {
-      "get": {
-        "tags": [
-          "領収書発行者設定"
-        ],
-        "summary": "発行者設定取得",
-        "operationId": "getSettings_13",
-        "parameters": [
-          {
-            "name": "scopeType",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "scopeId",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "取得成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseIssuerSettingsResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "領収書発行者設定"
-        ],
-        "summary": "発行者設定更新（差分更新）",
-        "operationId": "upsertSettings",
-        "parameters": [
-          {
-            "name": "scopeType",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "scopeId",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateIssuerSettingsRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "更新成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseIssuerSettingsResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/admin/receipt-presets/{id}": {
       "put": {
         "tags": [
@@ -84473,8 +84385,7 @@
                 ]
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -90004,7 +89915,7 @@
           "予約設定管理"
         ],
         "summary": "予約設定（チームポリシー）取得",
-        "operationId": "getSettings_14",
+        "operationId": "getSettings_13",
         "parameters": [
           {
             "name": "teamId",
@@ -90549,7 +90460,7 @@
           "順番待ち設定管理"
         ],
         "summary": "設定取得",
-        "operationId": "getSettings_15",
+        "operationId": "getSettings_14",
         "parameters": [
           {
             "name": "teamId",
@@ -94167,7 +94078,7 @@
           "チームシフト設定"
         ],
         "summary": "チームシフト設定取得（メンバー限定）",
-        "operationId": "getSettings_16",
+        "operationId": "getSettings_15",
         "parameters": [
           {
             "name": "slug",
@@ -106406,6 +106317,94 @@
         }
       }
     },
+    "/api/v1/admin/receipt-settings": {
+      "get": {
+        "tags": [
+          "領収書発行者設定"
+        ],
+        "summary": "発行者設定取得",
+        "operationId": "getSettings_16",
+        "parameters": [
+          {
+            "name": "scopeType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseIssuerSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "領収書発行者設定"
+        ],
+        "summary": "発行者設定更新（差分更新）",
+        "operationId": "upsertSettings",
+        "parameters": [
+          {
+            "name": "scopeType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIssuerSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseIssuerSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/receipt-queue/{id}/skip": {
       "patch": {
         "tags": [
@@ -110174,7 +110173,8 @@
                   "SHIFT",
                   "BULLETIN",
                   "TOURNAMENT",
-                  "MATCH"
+                  "MATCH",
+                  "RECEIPT"
                 ]
               }
             }
@@ -117580,7 +117580,8 @@
                   "SHIFT",
                   "BULLETIN",
                   "TOURNAMENT",
-                  "MATCH"
+                  "MATCH",
+                  "RECEIPT"
                 ]
               }
             }
@@ -132612,7 +132613,8 @@
                   "SHIFT",
                   "BULLETIN",
                   "TOURNAMENT",
-                  "MATCH"
+                  "MATCH",
+                  "RECEIPT"
                 ]
               }
             }
@@ -142128,7 +142130,8 @@
                   "SHIFT",
                   "BULLETIN",
                   "TOURNAMENT",
-                  "MATCH"
+                  "MATCH",
+                  "RECEIPT"
                 ]
               }
             }
@@ -164840,154 +164843,6 @@
             "items": {
               "$ref": "#/components/schemas/FixedAnswer"
             }
-          }
-        }
-      },
-      "UpdateIssuerSettingsRequest": {
-        "type": "object",
-        "properties": {
-          "address": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 0
-          },
-          "autoResetNumber": {
-            "type": "boolean"
-          },
-          "customFooter": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 0
-          },
-          "defaultSealUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "defaultSealVariant": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 0
-          },
-          "fiscalYearStartMonth": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 12,
-            "minimum": 1
-          },
-          "invoiceRegistrationNumber": {
-            "type": "string",
-            "maxLength": 14,
-            "minLength": 0,
-            "pattern": "^(|T\\d{13})$"
-          },
-          "isQualifiedInvoicer": {
-            "type": "boolean"
-          },
-          "issuerName": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          },
-          "phone": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 0
-          },
-          "postalCode": {
-            "type": "string",
-            "maxLength": 10,
-            "minLength": 0
-          },
-          "receiptNoteTemplate": {
-            "type": "string"
-          },
-          "receiptNumberPrefix": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 0
-          }
-        }
-      },
-      "ApiResponseIssuerSettingsResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/IssuerSettingsResponse"
-          }
-        }
-      },
-      "IssuerSettingsResponse": {
-        "type": "object",
-        "properties": {
-          "address": {
-            "type": "string"
-          },
-          "autoResetNumber": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "customFooter": {
-            "type": "string"
-          },
-          "defaultSealUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "defaultSealVariant": {
-            "type": "string"
-          },
-          "fiscalYearStartMonth": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "invoiceRegistrationNumber": {
-            "type": "string"
-          },
-          "isQualifiedInvoicer": {
-            "type": "boolean"
-          },
-          "issuerName": {
-            "type": "string"
-          },
-          "logoStorageKey": {
-            "type": "string"
-          },
-          "logoUrl": {
-            "type": "string"
-          },
-          "nextReceiptNumber": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "phone": {
-            "type": "string"
-          },
-          "postalCode": {
-            "type": "string"
-          },
-          "receiptNoteTemplate": {
-            "type": "string"
-          },
-          "receiptNumberPrefix": {
-            "type": "string"
-          },
-          "scopeId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scopeType": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
           }
         }
       },
@@ -199686,6 +199541,89 @@
           }
         }
       },
+      "ApiResponseIssuerSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/IssuerSettingsResponse"
+          }
+        }
+      },
+      "IssuerSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "autoResetNumber": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "customFooter": {
+            "type": "string"
+          },
+          "defaultSealUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "defaultSealVariant": {
+            "type": "string"
+          },
+          "fiscalYearStartMonth": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "invoiceRegistrationNumber": {
+            "type": "string"
+          },
+          "isQualifiedInvoicer": {
+            "type": "boolean"
+          },
+          "issuerName": {
+            "type": "string"
+          },
+          "logoStorageKey": {
+            "type": "string"
+          },
+          "logoUrl": {
+            "type": "string"
+          },
+          "nextReceiptNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "receiptNoteTemplate": {
+            "type": "string"
+          },
+          "receiptNumberPrefix": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ApproveQueueRequest": {
         "type": "object",
         "properties": {
@@ -207262,6 +207200,71 @@
           "note": {
             "type": "string",
             "maxLength": 2000,
+            "minLength": 0
+          }
+        }
+      },
+      "UpdateIssuerSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "autoResetNumber": {
+            "type": "boolean"
+          },
+          "customFooter": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "defaultSealUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "defaultSealVariant": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "fiscalYearStartMonth": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 12,
+            "minimum": 1
+          },
+          "invoiceRegistrationNumber": {
+            "type": "string",
+            "maxLength": 14,
+            "minLength": 0,
+            "pattern": "^(|T\\d{13})$"
+          },
+          "isQualifiedInvoicer": {
+            "type": "boolean"
+          },
+          "issuerName": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "postalCode": {
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 0
+          },
+          "receiptNoteTemplate": {
+            "type": "string"
+          },
+          "receiptNumberPrefix": {
+            "type": "string",
+            "maxLength": 20,
             "minLength": 0
           }
         }

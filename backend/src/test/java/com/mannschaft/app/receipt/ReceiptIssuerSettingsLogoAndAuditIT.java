@@ -2,6 +2,7 @@ package com.mannschaft.app.receipt;
 
 import com.mannschaft.app.auth.entity.AuditLogEntity;
 import com.mannschaft.app.auth.repository.AuditLogRepository;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.receipt.entity.ReceiptIssuerSettingsEntity;
 import com.mannschaft.app.receipt.repository.ReceiptIssuerSettingsRepository;
@@ -130,9 +131,21 @@ class ReceiptIssuerSettingsLogoAndAuditIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private AuditLogRepository auditLogRepository;
 
-    /** 外部境界（R2 / S3）。ここだけモックしてよい。 */
+    /**
+     * 外部境界（R2 / S3）。ここだけモックしてよい。
+     *
+     * <p><b>インターフェース {@link StorageService} ではなく具象 {@link R2StorageService} を
+     * モックする理由</b>: {@code StorageService} 型で差し替えると Bean 名 {@code r2StorageService}
+     * の型がモックプロキシに置き換わり、{@code StoragePathMigrationBatchService} が要求する
+     * 具象型 {@code R2StorageService} に一致しなくなって
+     * {@code BeanNotOfRequiredTypeException} でコンテキストが起動しない。
+     * 同バッチは {@code copyObject}（R2 固有・インターフェース非公開）を使うため具象依存が正当であり、
+     * 直すべきはテスト側である。{@code R2StorageService} は無条件 {@code @Service} で
+     * テストプロファイル唯一の {@code StorageService} 実装なので、これをモックすれば
+     * 発行者設定サービスへの {@code StorageService} 注入も同じモックで満たされる。</p>
+     */
     @MockitoBean
-    private StorageService storageService;
+    private R2StorageService storageService;
 
     private Long teamAId;
 

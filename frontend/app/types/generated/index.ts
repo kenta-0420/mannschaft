@@ -5189,24 +5189,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/admin/receipt-settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 発行者設定取得 */
-        get: operations["getSettings_13"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** 発行者設定更新（差分更新） */
-        patch: operations["upsertSettings"];
-        trace?: never;
-    };
     "/api/v1/admin/receipt-presets/{id}": {
         parameters: {
             query?: never;
@@ -25187,7 +25169,7 @@ export interface paths {
             cookie?: never;
         };
         /** 予約設定（チームポリシー）取得 */
-        get: operations["getSettings_14"];
+        get: operations["getSettings_13"];
         put?: never;
         post?: never;
         delete?: never;
@@ -25312,7 +25294,7 @@ export interface paths {
             cookie?: never;
         };
         /** 設定取得 */
-        get: operations["getSettings_15"];
+        get: operations["getSettings_14"];
         put?: never;
         post?: never;
         delete?: never;
@@ -26334,7 +26316,7 @@ export interface paths {
             cookie?: never;
         };
         /** チームシフト設定取得（メンバー限定） */
-        get: operations["getSettings_16"];
+        get: operations["getSettings_15"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30193,6 +30175,24 @@ export interface paths {
         head?: never;
         /** 下書き領収書の承認 */
         patch: operations["approveReceipt"];
+        trace?: never;
+    };
+    "/api/v1/admin/receipt-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 発行者設定取得 */
+        get: operations["getSettings_16"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 発行者設定更新（差分更新） */
+        patch: operations["upsertSettings"];
         trace?: never;
     };
     "/api/v1/admin/receipt-queue/{id}/skip": {
@@ -53914,56 +53914,6 @@ export interface components {
             /** @description 固定質問の回答リスト（answer 空はクリア） */
             fixedAnswers?: components["schemas"]["FixedAnswer"][];
         };
-        UpdateIssuerSettingsRequest: {
-            address?: string;
-            autoResetNumber?: boolean;
-            customFooter?: string;
-            /** Format: int64 */
-            defaultSealUserId?: number;
-            defaultSealVariant?: string;
-            /** Format: int32 */
-            fiscalYearStartMonth?: number;
-            invoiceRegistrationNumber?: string;
-            isQualifiedInvoicer?: boolean;
-            issuerName?: string;
-            phone?: string;
-            postalCode?: string;
-            receiptNoteTemplate?: string;
-            receiptNumberPrefix?: string;
-        };
-        ApiResponseIssuerSettingsResponse: {
-            data?: components["schemas"]["IssuerSettingsResponse"];
-        };
-        IssuerSettingsResponse: {
-            address?: string;
-            autoResetNumber?: boolean;
-            /** Format: date-time */
-            createdAt?: string;
-            customFooter?: string;
-            /** Format: int64 */
-            defaultSealUserId?: number;
-            defaultSealVariant?: string;
-            /** Format: int32 */
-            fiscalYearStartMonth?: number;
-            /** Format: int64 */
-            id?: number;
-            invoiceRegistrationNumber?: string;
-            isQualifiedInvoicer?: boolean;
-            issuerName?: string;
-            logoStorageKey?: string;
-            logoUrl?: string;
-            /** Format: int32 */
-            nextReceiptNumber?: number;
-            phone?: string;
-            postalCode?: string;
-            receiptNoteTemplate?: string;
-            receiptNumberPrefix?: string;
-            /** Format: int64 */
-            scopeId?: number;
-            scopeType?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-        };
         PermissionGroupRequest: {
             name?: string;
             permissionIds?: number[];
@@ -66537,6 +66487,39 @@ export interface components {
             /** Format: int32 */
             voidedCount?: number;
         };
+        ApiResponseIssuerSettingsResponse: {
+            data?: components["schemas"]["IssuerSettingsResponse"];
+        };
+        IssuerSettingsResponse: {
+            address?: string;
+            autoResetNumber?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            customFooter?: string;
+            /** Format: int64 */
+            defaultSealUserId?: number;
+            defaultSealVariant?: string;
+            /** Format: int32 */
+            fiscalYearStartMonth?: number;
+            /** Format: int64 */
+            id?: number;
+            invoiceRegistrationNumber?: string;
+            isQualifiedInvoicer?: boolean;
+            issuerName?: string;
+            logoStorageKey?: string;
+            logoUrl?: string;
+            /** Format: int32 */
+            nextReceiptNumber?: number;
+            phone?: string;
+            postalCode?: string;
+            receiptNoteTemplate?: string;
+            receiptNumberPrefix?: string;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeType?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         ApproveQueueRequest: {
             amount?: number;
             description?: string;
@@ -69256,6 +69239,23 @@ export interface components {
             freezeUntil?: string;
             guidelineSection?: string;
             note?: string;
+        };
+        UpdateIssuerSettingsRequest: {
+            address?: string;
+            autoResetNumber?: boolean;
+            customFooter?: string;
+            /** Format: int64 */
+            defaultSealUserId?: number;
+            defaultSealVariant?: string;
+            /** Format: int32 */
+            fiscalYearStartMonth?: number;
+            invoiceRegistrationNumber?: string;
+            isQualifiedInvoicer?: boolean;
+            issuerName?: string;
+            phone?: string;
+            postalCode?: string;
+            receiptNoteTemplate?: string;
+            receiptNumberPrefix?: string;
         };
         UpdateSynonymRequest: {
             memo?: string;
@@ -94744,56 +94744,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-        };
-    };
-    getSettings_13: {
-        parameters: {
-            query: {
-                scopeType: string;
-                scopeId: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 取得成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseIssuerSettingsResponse"];
-                };
-            };
-        };
-    };
-    upsertSettings: {
-        parameters: {
-            query: {
-                scopeType: string;
-                scopeId: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateIssuerSettingsRequest"];
-            };
-        };
-        responses: {
-            /** @description 更新成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseIssuerSettingsResponse"];
-                };
             };
         };
     };
@@ -129976,7 +129926,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "multipart/form-data": {
                     /** Format: binary */
@@ -133282,7 +133232,7 @@ export interface operations {
             };
         };
     };
-    getSettings_14: {
+    getSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -133599,7 +133549,7 @@ export interface operations {
             };
         };
     };
-    getSettings_15: {
+    getSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -135640,7 +135590,7 @@ export interface operations {
             };
         };
     };
-    getSettings_16: {
+    getSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -143283,6 +143233,56 @@ export interface operations {
             };
         };
     };
+    getSettings_16: {
+        parameters: {
+            query: {
+                scopeType: string;
+                scopeId: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseIssuerSettingsResponse"];
+                };
+            };
+        };
+    };
+    upsertSettings: {
+        parameters: {
+            query: {
+                scopeType: string;
+                scopeId: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateIssuerSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseIssuerSettingsResponse"];
+                };
+            };
+        };
+    };
     skipQueueItem: {
         parameters: {
             query: {
@@ -145415,7 +145415,7 @@ export interface operations {
         parameters: {
             query?: {
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "RECEIPT")[];
                 from?: string;
                 to?: string;
                 cursor?: string;
@@ -149390,7 +149390,7 @@ export interface operations {
             query?: {
                 userId?: number;
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "RECEIPT")[];
                 from?: string;
                 to?: string;
                 cursor?: string;
@@ -157613,7 +157613,7 @@ export interface operations {
             query?: {
                 userId?: number;
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "RECEIPT")[];
                 from?: string;
                 to?: string;
                 cursor?: string;
@@ -163476,7 +163476,7 @@ export interface operations {
                 teamId?: number;
                 organizationId?: number;
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "RECEIPT")[];
                 sessionHash?: string;
                 from?: string;
                 to?: string;
