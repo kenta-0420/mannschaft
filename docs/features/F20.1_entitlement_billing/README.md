@@ -44,7 +44,9 @@
 
 ---
 
-> **Phase 2b 追補（2026-08-31）**: 本書で Phase 2 扱いとしていた Stripe 実決済の顧客所有、日割り、請求書/領収書、支払方法、解約・プラン変更は [05_billing_center.md](05_billing_center.md) で設計確定した。本書の「日割り/按分は対象外」「有償プラン変更を拒否」の旧記述は当該追補により置換される。
+> **Phase 2b 追補（2026-08-31 / 2026-09-02 訂正）**: 本書で Phase 2 扱いとしていた Stripe 実決済の顧客所有、日割り、**Stripe invoice の DB 投影**、支払方法、解約・プラン変更は [05_billing_center.md](05_billing_center.md) で設計確定した。本書の「日割り/按分は対象外」「有償プラン変更を拒否」の旧記述は当該追補により置換される。
+>
+> **訂正（2026-09-02）**: 本行はかつて「請求書/領収書は 05 で設計確定した」と記していたが、これは事実に反する。05 が確定しているのは **Stripe invoice の投影（`InvoiceSummary` / `InvoiceDetail` の照会）まで**であり、**領収書（適格請求書を含む）の発行は未設計**である。運営がユーザーから受け取る収入に対する領収書の発行主体・発行者設定・番号採番・インボイス対応はいずれも決まっておらず、別途軍議にかける。組織/チーム → メンバーの領収書は [F08.4](../F08.4_receipt.md) が正本だが、同書は運営スコープを明示的に対象外としている（F08.4 §2）。
 
 
 ## 1. 概要
@@ -78,7 +80,7 @@ Mannschaft の SaaS 課金（**運営 → 団体/個人**）の基盤を定義�
 
 ### 2.2 対象外（out・別フェーズ/別機能）
 - [ ] **営利自動切替（org_type 自動変異一式）** → **Phase 2 保留**（マスター 2026-07-08・冒頭 Phase 2 保留ブロック／§3.3）。初期は org_type 自己申告のまま。結線先（organization/notification/audit ドメイン）も初期スコープでは不要
-- [ ] F22.1 との将来連携（実決済、請求、領収書自体は 05 で設計確定）
+- [ ] F22.1 との将来連携（実決済・請求は 05 で設計確定。**領収書の発行は未設計・別途軍議**。05 が扱うのは Stripe invoice の投影まで）
 - [ ] ベータ特典の付与条件判定・beta_grants → [F20.3](../F20.3_beta_perks/README.md)
 - [ ] 会費徴収（チーム→メンバー） → F08.9（逆向きの課金・§4.5）
 - [ ] 返金方針（暦月日割り/upgrade・downgrade按分は 05 で設計確定。年額は将来対応で、現時点では販売しない）
@@ -301,7 +303,7 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 | **P2** | ベータ特典接続 | **M** | P1・F20.3 | `source_kind=BETA_GRANT` の発行・取消（F20.3 が主管） |
 | **P3** | FE 課金 UI | **M** | P1 | プラン一覧・ペイウォールモーダル・課金管理画面（04） |
 | **Phase 2a** | 営利自動切替（org_type 自動変異一式） | **M** | P1・organization/notification/audit ドメイン | `RevenueFeatureActivatedEvent`・org_type 自動更新・確認必須通知・差し戻し API・監査・R-1 自動判定（§3.3・02 §7・**別軍議**）。または「運営レビューのキューに積むソフトなシグナル」への再設計 |
-| **Phase 2b** | 実決済（PSP 連携） | **L** | P1〜P3・ベータ価格確定 | **🚧 実施中**: scope-owned Customer、Stripe Checkout/Subscription Schedule、invoice投影、請求書/領収書、支払方法、Webhook、期末解約・撤回を [05](05_billing_center.md) の正本で実装する。F22.1連携のみ将来軍議 |
+| **Phase 2b** | 実決済（PSP 連携） | **L** | P1〜P3・ベータ価格確定 | **🚧 実施中**: scope-owned Customer、Stripe Checkout/Subscription Schedule、invoice投影、支払方法、Webhook、期末解約・撤回を [05](05_billing_center.md) の正本で実装する。**領収書の発行は 05 の対象外＝未設計であり別途軍議**（05 は Stripe invoice の投影までを扱う）。F22.1連携のみ将来軍議 |
 
 > BE/API はテスト先行（memory `feedback_test_first_be_api`）: 軍議 AC → `/試練` red → `/出陣` green → `/検分` 照合。
 

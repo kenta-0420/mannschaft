@@ -379,7 +379,7 @@ team_org_memberships（status=ACTIVE）─(論理・読取のみ)─ チーム�
 - **マスタ 4 表は全シャード複製**（マスタ例外の定義どおり）。
 - **キャッシュ**: `isEntitled` は Valkey `@Cacheable(value = "entitlement:check", key = "#scopeKind.name() + ':' + #scopeId + ':' + #featureKey")`・TTL 60 秒（`RedisConfig` に個別登録。既定 30 分は取消反映が遅すぎる）。付与/取消/契約変更で `@CacheEvict`（全キー特定が困難な契約変更は cacheName 単位 `allEntries=true` で evict・発生頻度が低いため許容）。`teamPlan` キャッシュ（`TeamPlanService`）も同時 evict（README §4.1）。
 - **後方互換**: `team_subscriptions`・`TeamPlanService.hasPaidPlan` シグネチャ・`RESERVATION_029`(402)・`TMPL_004` の挙動を変えない（AC-14/15）。`feature_catalog.free_for_nonprofit` 初期全 FALSE で現行課金挙動と完全一致。
-- **段階拡張**: 実決済 PSP 連携は **2026-07-10 前倒し実施**（列 Expand=V151 済み・Checkout `Mode.SUBSCRIPTION` 自社受取・§3.1/§4.2）。scope-owned Customer、請求書・領収書、支払方法、日割り、変更・解約は 05 を正本とする。F22.1 連携だけは将来の検討対象である。
+- **段階拡張**: 実決済 PSP 連携は **2026-07-10 前倒し実施**（列 Expand=V151 済み・Checkout `Mode.SUBSCRIPTION` 自社受取・§3.1/§4.2）。scope-owned Customer、Stripe invoice の投影、支払方法、日割り、変更・解約は 05 を正本とする（**領収書の発行は 05 の対象外＝未設計。別途軍議**）。F22.1 連携だけは将来の検討対象である。
 
 ---
 
