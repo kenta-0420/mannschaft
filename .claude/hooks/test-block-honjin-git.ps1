@@ -28,8 +28,12 @@ Write-Host "worktree: $worktree"
 Write-Host ''
 
 function Invoke-Hook {
-    param([string]$Command, [string]$Cwd)
-    $payload = @{ cwd = $Cwd; tool_input = @{ command = $Command } } | ConvertTo-Json -Compress -Depth 5
+    param([string]$Command, [string]$Cwd, [string]$Tool = 'Bash')
+    # tool_name は Bash / PowerShell のどちらでも与える。実測（2026-09-02）では
+    # PowerShell ツールの PreToolUse ペイロードも Bash と同じ `tool_input.command`
+    # キーでコマンド行を渡してくるため、フック本体はツール名で分岐しない。
+    # ここで tool_name を載せるのは、どのツールを模したケースかを明示するため。
+    $payload = @{ cwd = $Cwd; tool_name = $Tool; tool_input = @{ command = $Command } } | ConvertTo-Json -Compress -Depth 5
     $out = $payload | & powershell -NoProfile -ExecutionPolicy Bypass -File $hookPath
     if ([string]::IsNullOrWhiteSpace($out)) { return 'allow' }
     if ($out -match '"permissionDecision"\s*:\s*"deny"') { return 'deny' }
@@ -60,16 +64,30 @@ $cases = @(
     @{ name = 'git worktree add';                  cwd = $honjin;   expect = 'allow'; cmd = 'git worktree add .claude/worktrees/foo -b feature/foo origin/main' },
     @{ name = 'cd worktree してから commit';       cwd = $honjin;   expect = 'allow'; cmd = 'cd .claude/worktrees/fix-hook && git commit -m x' },
     @{ name = 'git 以外（変更系サブコマンド無し）'; cwd = $honjin;   expect = 'allow'; cmd = 'git status' },
-    @{ name = 'bash -lc のクォート内 cd＋worktree commit'; cwd = $honjin; expect = 'allow'; cmd = "bash -lc 'cd .claude/worktrees/fix-hook && git commit -m x'" }
+    @{ name = 'bash -lc のクォート内 cd＋worktree commit'; cwd = $honjin; expect = 'allow'; cmd = "bash -lc 'cd .claude/worktrees/fix-hook && git commit -m x'" },
+
+    # --- PowerShell ツール経由（Windows の主シェル側からの迂回を塞ぐ） ---
+    # 背景: 本陣保護フックの登録 matcher が長らく Bash のみだったため、
+    # PowerShell ツールへ切り替えるだけでガードを丸ごと迂回できた（実事故あり）。
+    # settings.local.json の PreToolUse に matcher "PowerShell" を足して塞いだ。
+    @{ tool = 'PowerShell'; name = 'PS: 本陣 cwd で git commit';        cwd = $honjin;   expect = 'deny';  cmd = 'git commit -m "テスト"' },
+    @{ tool = 'PowerShell'; name = 'PS: worktree cwd で git commit';    cwd = $worktree; expect = 'allow'; cmd = 'git commit -m "テスト"' },
+    @{ tool = 'PowerShell'; name = 'PS: Set-Location 本陣 ; git commit'; cwd = $worktree; expect = 'deny';  cmd = "Set-Location `"$honjin`" ; git commit -m x" },
+    @{ tool = 'PowerShell'; name = 'PS: sl 本陣 ; git commit（別名）';   cwd = $worktree; expect = 'deny';  cmd = "sl `"$honjin`" ; git commit -m x" },
+    @{ tool = 'PowerShell'; name = 'PS: Set-Location -Path 本陣 ; git commit'; cwd = $worktree; expect = 'deny'; cmd = "Set-Location -Path `"$honjin`" ; git commit -m x" },
+    @{ tool = 'PowerShell'; name = 'PS: -C で本陣を明示して commit';    cwd = $worktree; expect = 'deny';  cmd = "git -C `"$honjin`" commit -m x" },
+    @{ tool = 'PowerShell'; name = 'PS: Set-Location worktree ; git commit（誤検知しない）'; cwd = $honjin; expect = 'allow'; cmd = "Set-Location `"$worktree`" ; git commit -m x" },
+    @{ tool = 'PowerShell'; name = 'PS: 本陣 cwd で git status（誤検知しない）'; cwd = $honjin; expect = 'allow'; cmd = 'git status --short' }
 )
 
 $fail = 0
 foreach ($c in $cases) {
-    $actual = Invoke-Hook -Command $c.cmd -Cwd $c.cwd
+    $tool = if ($c.ContainsKey('tool')) { $c.tool } else { 'Bash' }
+    $actual = Invoke-Hook -Command $c.cmd -Cwd $c.cwd -Tool $tool
     $ok = ($actual -eq $c.expect)
     if (-not $ok) { $fail++ }
     $mark = if ($ok) { 'OK  ' } else { 'NG  ' }
-    Write-Host ("{0}期待={1,-5} 実際={2,-5} : {3}" -f $mark, $c.expect, $actual, $c.name)
+    Write-Host ("{0}[{1,-10}] 期待={2,-5} 実際={3,-5} : {4}" -f $mark, $tool, $c.expect, $actual, $c.name)
     if (-not $ok) { Write-Host ("      コマンド: {0}" -f ($c.cmd -replace "`n", '\n')) }
 }
 
