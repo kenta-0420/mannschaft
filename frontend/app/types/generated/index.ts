@@ -144020,12 +144020,14 @@ export interface operations {
     };
     portalReturn: {
         parameters: {
-            query: {
-                state: string;
+            query?: {
+                state?: string;
             };
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                billing_return_state?: string;
+            };
         };
         requestBody?: never;
         responses: {
@@ -144060,12 +144062,14 @@ export interface operations {
     };
     checkoutSuccess: {
         parameters: {
-            query: {
-                state: string;
+            query?: {
+                state?: string;
             };
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                billing_return_state?: string;
+            };
         };
         requestBody?: never;
         responses: {
@@ -144080,12 +144084,14 @@ export interface operations {
     };
     checkoutCancel: {
         parameters: {
-            query: {
-                state: string;
+            query?: {
+                state?: string;
             };
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                billing_return_state?: string;
+            };
         };
         requestBody?: never;
         responses: {

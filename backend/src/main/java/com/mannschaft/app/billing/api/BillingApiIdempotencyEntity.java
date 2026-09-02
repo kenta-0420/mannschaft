@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,7 +16,12 @@ import java.time.Instant;
 
 /** V196 billing_api_idempotencies の JPA mapping 骨格。 */
 @Entity
-@Table(name = "billing_api_idempotencies")
+@Table(name = "billing_api_idempotencies",
+        // V196 の uk_bai_actor_request を mapping にも写す。Entity 由来 DDL の test profile で
+        // 同一キー同時予約の UNIQUE 競合が再現できるようにするため（写していないと競合が起きず、
+        // 「競合を冪等応答へ写す」経路を検証するテストが原理的に偽 green になる）。
+        uniqueConstraints = @UniqueConstraint(name = "uk_bai_actor_request",
+                columnNames = {"actor_id", "http_method", "request_path", "idempotency_key"}))
 @Getter
 @SuperBuilder(toBuilder = true)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

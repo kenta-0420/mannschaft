@@ -1,13 +1,21 @@
 package com.mannschaft.app.billing.api;
 
+import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -33,6 +41,9 @@ class BillingReturnCallbackSecurityIT extends AbstractMySqlIntegrationTest {
     /** 署名検証は必ず失敗する検体。ここで測るのは「controller まで届くか」であり検証結果ではない。 */
     private static final String OPAQUE_STATE = "kid.payload.signature";
 
+    /** USER scope の callback を踏む actor。USER scope は actorId==scopeId だけで許可される。 */
+    private static final long ACTOR_ID = 7L;
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -43,7 +54,7 @@ class BillingReturnCallbackSecurityIT extends AbstractMySqlIntegrationTest {
     void checkoutSuccess_未認証_loginへ303() throws Exception {
         mockMvc.perform(get("/billing/checkout/success").param("state", OPAQUE_STATE))
                 .andExpect(status().isSeeOther())
-                .andExpect(header().string("Location", "/login?next=%2Fbilling"))
+                .andExpect(header().string("Location", "/login?next=%2Fbilling%2Fcheckout%2Fsuccess"))
                 // 署名済み state は HttpOnly Cookie へ退避される（URL・body には出さない）。
                 .andExpect(header().string("Set-Cookie",
                         org.hamcrest.Matchers.containsString("billing_return_state=")))
@@ -56,7 +67,7 @@ class BillingReturnCallbackSecurityIT extends AbstractMySqlIntegrationTest {
     void checkoutCancel_未認証_loginへ303() throws Exception {
         mockMvc.perform(get("/billing/checkout/cancel").param("state", OPAQUE_STATE))
                 .andExpect(status().isSeeOther())
-                .andExpect(header().string("Location", "/login?next=%2Fbilling"));
+                .andExpect(header().string("Location", "/login?next=%2Fbilling%2Fcheckout%2Fcancel"));
     }
 
     @Test
@@ -64,7 +75,7 @@ class BillingReturnCallbackSecurityIT extends AbstractMySqlIntegrationTest {
     void portalReturn_未認証_loginへ303() throws Exception {
         mockMvc.perform(get("/billing/portal/return").param("state", OPAQUE_STATE))
                 .andExpect(status().isSeeOther())
-                .andExpect(header().string("Location", "/login?next=%2Fbilling"));
+                .andExpect(header().string("Location", "/login?next=%2Fbilling%2Fportal%2Freturn"));
     }
 
     @Test
@@ -91,5 +102,78 @@ class BillingReturnCallbackSecurityIT extends AbstractMySqlIntegrationTest {
     void checkoutSuccess_POST_未認証_401() throws Exception {
         mockMvc.perform(post("/billing/checkout/success").param("state", OPAQUE_STATE))
                 .andExpect(status().isUnauthorized());
+    }
+
+    // ═════════ P1-2: 未認証退避 → 再認証 → callback 自身が cookie を消費する一連 ═════════
+
+    @Autowired
+    private BillingReturnStateService returnStateService;
+
+    /**
+     * BC-16 の復帰導線が「未認証で落ちた要求 → login → 同じ callback → nonce 消費 → clean URL」で
+     * 実際に閉じることを、実フィルタ鎖のまま一連で通して実証する。
+     *
+     * <p>回帰の的: 以前は checkout/success が {@code @RequestParam String state} しか読まず、
+     * 退避 Cookie を受け取る実装が payment-action にしか無かった。その状態では
+     * 第2脚（param 無し・Cookie のみ）は 400（必須 param 欠落）になり、nonce は永遠に消費されない。</p>
+     */
+    @Test
+    @DisplayName("未認証 checkout/success の退避 Cookie を、再認証後の同じ callback が消費して clean URL へ 303 する")
+    void checkoutSuccess_未認証退避cookieを再認証後の同callbackが消費する() throws Exception {
+        String token = issueUserScopeState(BillingReturnStateService.Purpose.CHECKOUT_SUCCESS);
+
+        // 第1脚: 未認証。nonce は消費せず Cookie へ退避し、callback 自身へ戻る login URL を返す。
+        MvcResult unauthenticated = mockMvc.perform(
+                        get("/billing/checkout/success").param("state", token))
+                .andExpect(status().isSeeOther())
+                .andExpect(header().string("Location", "/login?next=%2Fbilling%2Fcheckout%2Fsuccess"))
+                .andReturn();
+        Cookie saved = unauthenticated.getResponse().getCookie("billing_return_state");
+        org.assertj.core.api.Assertions.assertThat(saved).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(saved.getValue()).isEqualTo(token);
+
+        // 第2脚: 再認証後、query param を伴わず Cookie だけで同じ callback を踏む。
+        mockMvc.perform(get("/billing/checkout/success").cookie(saved).with(user(String.valueOf(ACTOR_ID))))
+                .andExpect(status().isSeeOther())
+                .andExpect(header().string("Location", "/billing?scopeKind=USER&scopeId=" + ACTOR_ID + "&tab=plan"))
+                .andExpect(header().string("Location", org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("state="))))
+                // 消費後の Cookie は必ず失効させる。
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .cookie().maxAge("billing_return_state", 0));
+
+        // 第3脚: 同じ Cookie の再利用は nonce CAS が一度しか通らないため generic hub へ落ちる。
+        mockMvc.perform(get("/billing/checkout/success").cookie(saved).with(user(String.valueOf(ACTOR_ID))))
+                .andExpect(status().isSeeOther())
+                .andExpect(header().string("Location", "/billing?scopeKind=USER&tab=plan&error=return"));
+    }
+
+    @Test
+    @DisplayName("query param と Cookie が両方来たら param を優先する（古い退避 state に上書きされない）")
+    void checkoutSuccess_paramとcookie両方_paramを優先する() throws Exception {
+        String cookieToken = issueUserScopeState(BillingReturnStateService.Purpose.CHECKOUT_SUCCESS);
+        String paramToken = issueUserScopeState(BillingReturnStateService.Purpose.CHECKOUT_SUCCESS);
+
+        mockMvc.perform(get("/billing/checkout/success")
+                        .param("state", paramToken)
+                        .cookie(new Cookie("billing_return_state", cookieToken))
+                        .with(user(String.valueOf(ACTOR_ID))))
+                .andExpect(status().isSeeOther())
+                .andExpect(header().string("Location", "/billing?scopeKind=USER&scopeId=" + ACTOR_ID + "&tab=plan"));
+
+        // param 側だけが消費されているので、cookie 側の state は今なお一度だけ消費できる。
+        mockMvc.perform(get("/billing/checkout/success")
+                        .cookie(new Cookie("billing_return_state", cookieToken))
+                        .with(user(String.valueOf(ACTOR_ID))))
+                .andExpect(status().isSeeOther())
+                .andExpect(header().string("Location", "/billing?scopeKind=USER&scopeId=" + ACTOR_ID + "&tab=plan"));
+    }
+
+    /** USER scope（actor 自身）の state を実サービスで発行する。nonce 台帳にも実際に登録される。 */
+    private String issueUserScopeState(BillingReturnStateService.Purpose purpose) {
+        Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        return returnStateService.issue(new BillingReturnStateService.ReturnState(
+                purpose, EntitlementScopeKind.USER, ACTOR_ID, ACTOR_ID, "plan",
+                null, null, null, now, now.plusSeconds(1800), UUID.randomUUID().toString()));
     }
 }

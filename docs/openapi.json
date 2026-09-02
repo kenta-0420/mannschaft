@@ -107330,7 +107330,15 @@
           {
             "name": "state",
             "in": "query",
-            "required": true,
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billing_return_state",
+            "in": "cookie",
+            "required": false,
             "schema": {
               "type": "string"
             }
@@ -107376,7 +107384,15 @@
           {
             "name": "state",
             "in": "query",
-            "required": true,
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billing_return_state",
+            "in": "cookie",
+            "required": false,
             "schema": {
               "type": "string"
             }
@@ -107399,7 +107415,15 @@
           {
             "name": "state",
             "in": "query",
-            "required": true,
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billing_return_state",
+            "in": "cookie",
+            "required": false,
             "schema": {
               "type": "string"
             }

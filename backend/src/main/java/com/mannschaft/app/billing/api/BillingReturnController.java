@@ -38,9 +38,19 @@ public class BillingReturnController {
     private static final String COOKIE_PATH = "/billing";
     private static final String SAME_SITE_LAX = "Lax";
     private static final Duration COOKIE_MAX_AGE = Duration.ofMinutes(30);
-    private static final String LOGIN_REDIRECT = "/login?next="
-            + URLEncoder.encode("/billing", StandardCharsets.UTF_8);
     private static final String GENERIC_ERROR_REDIRECT = "/billing?scopeKind=USER&tab=plan&error=return";
+
+    /**
+     * 未認証時の再ログイン先。{@code next} は<b>その callback 自身</b>のパスを指す。
+     *
+     * <p>設計正本（05_billing_center.md BC-16 / BC-28）は「再認証後 callback 自身が
+     * HMAC/purpose/expiry → actor/Guard → nonce CAS の順で一回消費し clean URL へ 303 する」
+     * と定める。{@code next=/billing} では callback が二度と呼ばれず nonce が消費されないため、
+     * 退避 Cookie（path=/billing）が届く callback 自身へ戻す。</p>
+     */
+    private static String loginRedirect(String callbackPath) {
+        return "/login?next=" + URLEncoder.encode(callbackPath, StandardCharsets.UTF_8);
+    }
 
     private final BillingReturnStateService returnStateService;
     private final BillingCheckoutAccessGuard scopeGuard;
@@ -55,9 +65,12 @@ public class BillingReturnController {
     @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
             reason = "Stripe Checkout からの top-level GET 復帰。決済完了後の唯一の復帰導線であり feature flag で遮断すると決済済み利用者が宙に浮くため常時到達とする")
     @GetMapping("/checkout/success")
-    public ResponseEntity<Void> checkoutSuccess(@RequestParam String state, Principal principal,
-                                                 HttpServletResponse response) {
-        return handle(state, principal, BillingReturnStateService.Purpose.CHECKOUT_SUCCESS, false);
+    public ResponseEntity<Void> checkoutSuccess(
+            @RequestParam(name = "state", required = false) String state,
+            @CookieValue(name = RETURN_STATE_COOKIE, required = false) String cookieState,
+            Principal principal, HttpServletResponse response) {
+        return handle(state, cookieState, principal,
+                BillingReturnStateService.Purpose.CHECKOUT_SUCCESS, "/billing/checkout/success");
     }
 
     /**
@@ -70,9 +83,12 @@ public class BillingReturnController {
     @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
             reason = "Stripe Checkout からの top-level GET 復帰。中断後の復帰導線であり遮断すると利用者が Stripe 側に取り残されるため常時到達とする")
     @GetMapping("/checkout/cancel")
-    public ResponseEntity<Void> checkoutCancel(@RequestParam String state, Principal principal,
-                                                HttpServletResponse response) {
-        return handle(state, principal, BillingReturnStateService.Purpose.CHECKOUT_CANCEL, false);
+    public ResponseEntity<Void> checkoutCancel(
+            @RequestParam(name = "state", required = false) String state,
+            @CookieValue(name = RETURN_STATE_COOKIE, required = false) String cookieState,
+            Principal principal, HttpServletResponse response) {
+        return handle(state, cookieState, principal,
+                BillingReturnStateService.Purpose.CHECKOUT_CANCEL, "/billing/checkout/cancel");
     }
 
     /**
@@ -85,9 +101,12 @@ public class BillingReturnController {
     @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
             reason = "Stripe Customer Portal からの top-level GET 復帰。外部サイトからの戻り導線であり遮断できないため常時到達とする")
     @GetMapping("/portal/return")
-    public ResponseEntity<Void> portalReturn(@RequestParam String state, Principal principal,
-                                              HttpServletResponse response) {
-        return handle(state, principal, BillingReturnStateService.Purpose.PORTAL_RETURN, false);
+    public ResponseEntity<Void> portalReturn(
+            @RequestParam(name = "state", required = false) String state,
+            @CookieValue(name = RETURN_STATE_COOKIE, required = false) String cookieState,
+            Principal principal, HttpServletResponse response) {
+        return handle(state, cookieState, principal,
+                BillingReturnStateService.Purpose.PORTAL_RETURN, "/billing/portal/return");
     }
 
     /**
@@ -104,22 +123,41 @@ public class BillingReturnController {
     public ResponseEntity<Void> paymentActionReturn(
             @CookieValue(name = RETURN_STATE_COOKIE, required = false) String state,
             Principal principal, HttpServletRequest request, HttpServletResponse response) {
-        return handle(state, principal, BillingReturnStateService.Purpose.PAYMENT_ACTION_RETURN, true);
+        // URL 由来の state は受け取らない（Cookie 専用入口）。
+        return handle(null, state, principal,
+                BillingReturnStateService.Purpose.PAYMENT_ACTION_RETURN, "/billing/payment-action/return");
     }
 
     /**
      * callback 共通処理。失敗理由は一切外へ出さず generic な hub へ畳む。
      *
-     * @param clearCookie 処理後に退避 Cookie を失効させるか
+     * <p><b>state の優先順位</b>: query param &gt; Cookie。Stripe / issuer からの直接復帰
+     * （param 有り）が正で、Cookie は「未認証で一度落ちた要求を再ログイン後に運ぶ」ための
+     * 退避経路に過ぎない。両方来た場合に Cookie を優先すると、古い退避 state が新しい復帰を
+     * 上書きしうるため param を採る。PAYMENT_ACTION_RETURN だけは param を一切読まない
+     * （短命 client secret 経路のため URL へ出さない設計）。</p>
+     *
+     * <p>Cookie が存在した要求では、消費に成功したか否かに関わらず必ず失効させる
+     * （nonce は CAS で一回しか通らないため、残しても再利用できない使い捨てを持ち回るだけになる）。</p>
+     *
+     * @param paramState   query param 由来の state（PAYMENT_ACTION_RETURN では常に null）
+     * @param cookieState  退避 Cookie 由来の state
+     * @param callbackPath 未認証時に再ログイン後へ戻す callback 自身のパス
      */
-    private ResponseEntity<Void> handle(String state, Principal principal,
-                                        BillingReturnStateService.Purpose purpose, boolean clearCookie) {
+    private ResponseEntity<Void> handle(String paramState, String cookieState, Principal principal,
+                                        BillingReturnStateService.Purpose purpose,
+                                        String callbackPath) {
+        boolean cookiePresent = cookieState != null && !cookieState.isBlank();
+        String state = (paramState != null && !paramState.isBlank()) ? paramState : cookieState;
+        boolean clearCookie = cookiePresent
+                || purpose == BillingReturnStateService.Purpose.PAYMENT_ACTION_RETURN;
         if (state == null || state.isBlank()) {
             return redirect(GENERIC_ERROR_REDIRECT, clearCookie ? expiredCookie() : null);
         }
         if (principal == null) {
-            // 未認証: nonce は消費せず state を HttpOnly Cookie へ退避してから再ログインさせる。
-            return redirect(LOGIN_REDIRECT, stateCookie(state));
+            // 未認証: nonce は消費せず state を HttpOnly Cookie へ退避し、
+            // 再ログイン後に「この callback 自身」へ戻して消費させる。
+            return redirect(loginRedirect(callbackPath), stateCookie(state));
         }
         try {
             BillingReturnStateService.ReturnState verified = returnStateService.verify(state, purpose);

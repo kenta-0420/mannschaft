@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -41,23 +42,55 @@ class BillingDurableIdempotencyService {
         Optional<BillingIdempotencyRecord> existing =
                 repository.find(actorId, httpMethod, requestPath, idempotencyKey);
         if (existing.isEmpty()) {
-            BillingIdempotencyRecord reserved = repository.reserve(new BillingIdempotencyRecord(
-                    null, actorId, httpMethod, requestPath, idempotencyKey, requestHash,
-                    BillingIdempotencyStatus.PROCESSING, null, null, leaseOwner,
-                    now.plus(LEASE_DURATION), now, null, now.plus(RECORD_TTL)));
-            return new BillingIdempotencyDecision(BillingIdempotencyDecisionKind.ACQUIRED,
-                    reserved == null ? null : reserved.id(), null, null, 0L);
+            try {
+                BillingIdempotencyRecord reserved = repository.reserve(new BillingIdempotencyRecord(
+                        null, actorId, httpMethod, requestPath, idempotencyKey, requestHash,
+                        BillingIdempotencyStatus.PROCESSING, null, null, leaseOwner,
+                        now.plus(LEASE_DURATION), now, null, now.plus(RECORD_TTL)));
+                return new BillingIdempotencyDecision(BillingIdempotencyDecisionKind.ACQUIRED,
+                        reserved == null ? null : reserved.id(), null, null, 0L);
+            } catch (DataIntegrityViolationException e) {
+                // 握り潰しではない。同一キーの同時到達で両者が find で空を観測し、
+                // 一方の INSERT が uk_bai_actor_request と衝突した状態である。
+                // これは「先に予約した側が居る」という冪等性そのものの事実なので、
+                // 既存レコードを読み直して PROCESSING / REPLAY / hash 不一致 409 の
+                // 正規の冪等応答へ写す。読み直しても不在なら別の制約違反であり、
+                // 事実を隠さず元の例外をそのまま送出する。
+                BillingIdempotencyRecord raced =
+                        repository.find(actorId, httpMethod, requestPath, idempotencyKey)
+                                .orElseThrow(() -> e);
+                return evaluateExisting(raced, requestHash, leaseOwner, now);
+            }
         }
 
-        BillingIdempotencyRecord record = existing.get();
+        return evaluateExisting(existing.get(), requestHash, leaseOwner, now);
+    }
+
+    /**
+     * 既存レコードから冪等応答を導く。
+     *
+     * <p>PROCESSING かつ lease が期限切れなら、観測した owner / expiry を CAS 条件に含めて
+     * 回収を試みる。CAS に勝てば新しい leaseOwner で ACQUIRED（＝再実行可能）とし、
+     * 負けた場合は他 worker が先に回収した後なので横取りせず PROCESSING を返す。
+     * これが無いと、予約後に落ちた worker のキーが RECORD_TTL いっぱい詰まる。</p>
+     */
+    private BillingIdempotencyDecision evaluateExisting(BillingIdempotencyRecord record,
+                                                        String requestHash, String leaseOwner,
+                                                        Instant now) {
         if (!requestHash.equals(record.requestHash())) {
             // 既存 response 本文は漏らさず、コード由来の定型メッセージだけを返す。
             throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
         }
         if (record.status() == BillingIdempotencyStatus.PROCESSING) {
-            long retryAfterSeconds = record.leaseExpiresAt() == null
+            Instant leaseExpiresAt = record.leaseExpiresAt();
+            if (leaseExpiresAt != null && !leaseExpiresAt.isAfter(now)
+                    && recoverStale(record.id(), record.leaseOwner(), leaseExpiresAt, leaseOwner)) {
+                return new BillingIdempotencyDecision(BillingIdempotencyDecisionKind.ACQUIRED,
+                        record.id(), null, null, 0L);
+            }
+            long retryAfterSeconds = leaseExpiresAt == null
                     ? 0L
-                    : Math.max(0L, Duration.between(now, record.leaseExpiresAt()).toSeconds());
+                    : Math.max(0L, Duration.between(now, leaseExpiresAt).toSeconds());
             return new BillingIdempotencyDecision(BillingIdempotencyDecisionKind.PROCESSING,
                     record.id(), null, null, retryAfterSeconds);
         }
@@ -104,12 +137,17 @@ class BillingDurableIdempotencyService {
         return found == null ? Optional.empty() : found.map(BillingIdempotencyRecord::id);
     }
 
-    void recoverStale(UUID id, String previousLeaseOwner, Instant observedExpiry,
-                      String newLeaseOwner) {
+    /**
+     * 期限切れ lease を新しい所有者へ回収する。
+     *
+     * @return CAS に勝って回収できたら true（負けた＝他 worker が先に回収した場合は false）
+     */
+    boolean recoverStale(UUID id, String previousLeaseOwner, Instant observedExpiry,
+                         String newLeaseOwner) {
         Instant now = clock.instant();
         // 観測した owner と expiry を CAS 条件に含め、他 worker との二重回収を防ぐ。
-        repository.recoverStaleLease(id, previousLeaseOwner, observedExpiry, newLeaseOwner,
-                now.plus(LEASE_DURATION), now);
+        return repository.recoverStaleLease(id, previousLeaseOwner, observedExpiry, newLeaseOwner,
+                now.plus(LEASE_DURATION), now) == 1;
     }
 }
 

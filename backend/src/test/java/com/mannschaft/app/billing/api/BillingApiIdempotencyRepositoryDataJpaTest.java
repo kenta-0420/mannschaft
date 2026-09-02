@@ -6,9 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.dao.DataIntegrityViolationException;
+
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** BC-23: V196 PROCESSING lease の所有者付きCASをJPA sliceで固定する。 */
 @DataJpaTest(properties = {
@@ -57,6 +60,16 @@ class BillingApiIdempotencyRepositoryDataJpaTest {
         assertThat(acquired).isEqualTo(1);
         assertThat(duplicate).isZero();
         assertThat(repository.findById(entity.getId()).orElseThrow().getLeaseOwner()).isEqualTo("worker-b");
+    }
+
+    @Test
+    @DisplayName("P2-1: 同一 actor/method/path/key の二重予約は uk_bai_actor_request で必ず弾かれる")
+    void reserve_同一キーの二重予約はUNIQUE違反になる() {
+        repository.saveAndFlush(processing("owner-a", NOW.plusSeconds(60)));
+
+        // service 側が「競合を冪等応答へ写す」ために捕捉する例外型を、実 DDL 上で固定する。
+        assertThatThrownBy(() -> repository.saveAndFlush(processing("owner-b", NOW.plusSeconds(60))))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private BillingApiIdempotencyEntity processing(String owner, Instant leaseExpiry) {
