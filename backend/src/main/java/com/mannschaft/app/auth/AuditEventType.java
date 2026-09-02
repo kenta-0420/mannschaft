@@ -508,7 +508,19 @@ public enum AuditEventType {
     /**
      * 記録係（scorekeeper_user_id）を変更した（03 §C.7）。
      */
-    MATCH_SCOREKEEPER_CHANGED(AuditEventCategory.MATCH);
+    MATCH_SCOREKEEPER_CHANGED(AuditEventCategory.MATCH),
+
+    // ─── PROVISIONING (柱②-2 販促プロビジョニング) ──────────────────
+    /** SYSTEM_ADMIN が組織/チームを PROVISIONED 状態で事前作成した。 */
+    PROVISIONING_SCOPE_CREATED(AuditEventCategory.PROVISIONING),
+    /** 管理予定者へ ADMIN 招待を発行した（作成直後の初回発行を含む）。 */
+    PROVISIONING_INVITATION_SENT(AuditEventCategory.PROVISIONING),
+    /** 招待を再送した（旧トークンは CANCELLED、新トークンを発行）。 */
+    PROVISIONING_INVITATION_RESENT(AuditEventCategory.PROVISIONING),
+    /** 招待を取消した。 */
+    PROVISIONING_INVITATION_CANCELLED(AuditEventCategory.PROVISIONING),
+    /** 招待が承諾され、ADMIN 付与・スコープ ACTIVE 化が完了した。 */
+    PROVISIONING_INVITATION_ACCEPTED(AuditEventCategory.PROVISIONING);
 
     private final AuditEventCategory category;
 }

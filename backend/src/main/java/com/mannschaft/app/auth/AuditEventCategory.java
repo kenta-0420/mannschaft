@@ -33,5 +33,7 @@ public enum AuditEventCategory {
     /** F08.7 / F08.7.1 大会（連絡スペース公開設定変更等）。 */
     TOURNAMENT,
     /** F08.10 試合記録・分析（スコア確定 / status 遷移 / 記録モード切替 / 記録係変更）。 */
-    MATCH
+    MATCH,
+    /** 柱②-2 販促プロビジョニング（PROVISIONED作成・招待発行/再送/取消/承諾）。 */
+    PROVISIONING
 }

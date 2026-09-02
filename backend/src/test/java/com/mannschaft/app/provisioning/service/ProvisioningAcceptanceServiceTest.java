@@ -1,5 +1,6 @@
 package com.mannschaft.app.provisioning.service;
 
+import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.token.SecretTokenVault;
@@ -128,6 +129,11 @@ class ProvisioningAcceptanceServiceTest {
         lenient().when(secretTokenVault.hash(TOKEN_PLAINTEXT)).thenReturn(TOKEN_HASH);
         lenient().when(invitationRepository.findByTokenHashForUpdate(TOKEN_HASH))
                 .thenReturn(Optional.of(pendingInvitation(Instant.now().plus(1, ChronoUnit.DAYS))));
+        lenient().when(userRepository.findById(ACTOR_USER_ID))
+                .thenReturn(Optional.of(UserEntity.builder()
+                        .email("someone-else@example.com")
+                        .status(UserEntity.UserStatus.ACTIVE)
+                        .build()));
         lenient().when(emailNormalizer.normalize("invited@example.com")).thenReturn("invited@example.com");
         lenient().when(emailNormalizer.normalize("someone-else@example.com")).thenReturn("someone-else@example.com");
 

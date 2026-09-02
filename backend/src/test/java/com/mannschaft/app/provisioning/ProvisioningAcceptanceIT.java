@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,8 +17,12 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,8 +63,25 @@ class ProvisioningAcceptanceIT extends AbstractMySqlIntegrationTest {
     @PersistenceContext
     private EntityManager em;
 
+    @Autowired
+    private PlatformTransactionManager txManager;
+
     private Long systemAdminId;
     private Long ordinaryUserId;
+
+    @AfterEach
+    void cleanUpAsyncAuditLogs() {
+        // AuditLogService#record は @Async + 独立トランザクションでテストTXの外にcommitするため、
+        // テストTXロールバックでは消えない。共有DB汚染防止のためREQUIRES_NEWで明示的に掃除する
+        // （金型: OperationalAdCampaignAuditLogIT）。
+        TransactionTemplate cleanupTx = new TransactionTemplate(txManager);
+        cleanupTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        cleanupTx.execute(status -> {
+            em.createNativeQuery("DELETE FROM audit_logs WHERE event_type LIKE 'PROVISIONING%'")
+                    .executeUpdate();
+            return null;
+        });
+    }
 
     @BeforeEach
     void setUp() {
@@ -126,13 +149,18 @@ class ProvisioningAcceptanceIT extends AbstractMySqlIntegrationTest {
             assertThat(invitation[0]).isEqualTo("PENDING");
             assertThat((String) invitation[1]).matches("^[0-9a-f]{64}$");
 
-            // AC15: 監査ログに記録されていること。
-            long auditCount = ((Number) em.createNativeQuery(
-                            "SELECT COUNT(*) FROM audit_logs WHERE user_id = :uid "
-                                    + "AND event_type LIKE 'PROVISIONING%'")
-                    .setParameter("uid", systemAdminId)
-                    .getSingleResult()).longValue();
-            assertThat(auditCount).isGreaterThan(0);
+            // AC15: 監査ログに記録されていること（@Async + 独立TXで書かれるため
+            // Awaitility + REQUIRES_NEW で待つ。金型: OperationalAdCampaignAuditLogIT）。
+            Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+                TransactionTemplate newTx = new TransactionTemplate(txManager);
+                newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+                Long auditCount = newTx.execute(status -> ((Number) em.createNativeQuery(
+                                "SELECT COUNT(*) FROM audit_logs WHERE user_id = :uid "
+                                        + "AND event_type LIKE 'PROVISIONING%'")
+                        .setParameter("uid", systemAdminId)
+                        .getSingleResult()).longValue());
+                assertThat(auditCount).isGreaterThan(0);
+            });
         }
     }
 
@@ -218,7 +246,9 @@ class ProvisioningAcceptanceIT extends AbstractMySqlIntegrationTest {
             insertUserRoleForTeam(systemAdminId, "ADMIN", teamId);
 
             setAuth(systemAdminId);
-            Map<String, Object> body = Map.of("maxUses", 1, "expiresInHours", 24);
+            Long memberRoleId = ((Number) em.createNativeQuery("SELECT id FROM roles WHERE name = 'MEMBER'")
+                    .getSingleResult()).longValue();
+            Map<String, Object> body = Map.of("roleId", memberRoleId, "maxUses", 1, "expiresIn", "7d");
 
             mockMvc.perform(post("/api/v1/teams/{slug}/invite-tokens", slug)
                             .contentType(MediaType.APPLICATION_JSON)

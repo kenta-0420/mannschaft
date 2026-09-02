@@ -184,6 +184,11 @@ public class TeamService {
         if (team.getVisibility() != TeamEntity.Visibility.PUBLIC) {
             throw new BusinessException(TeamErrorCode.TEAM_001);
         }
+        // 柱②-3 販促プロビジョニングゲート: PROVISIONED（承諾前の事前作成状態）は
+        // 招待未承諾のため、他の非公開状態と同じく 404 に畳む（エニュメレーション対策）。
+        if (team.isProvisioned()) {
+            throw new BusinessException(TeamErrorCode.TEAM_001);
+        }
         // 画像 URL 根治 Phase 1: icon/banner を署名付き表示 URL へ解決して渡す。
         return TeamPublicDetailResponse.from(
                 team,

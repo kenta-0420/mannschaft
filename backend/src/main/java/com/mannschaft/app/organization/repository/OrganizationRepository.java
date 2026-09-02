@@ -55,6 +55,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     @Query("""
             SELECT o FROM OrganizationEntity o
             WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+              AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE
               AND o.archivedAt IS NULL
               AND (o.name LIKE %:keyword% OR o.nameKana LIKE %:keyword%)
             """)
@@ -186,6 +187,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
             SELECT o FROM OrganizationEntity o
             WHERE o.parentOrganizationId = :parentId
               AND (:cursorId IS NULL OR o.id > :cursorId)
+              AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE
               AND (o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
                    OR o.id IN :memberOrgIds)
             ORDER BY o.id ASC
@@ -270,6 +272,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     @Query("SELECT o FROM OrganizationEntity o " +
            "WHERE o.id = :id " +
            "AND o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC " +
+           "AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE " +
            "AND o.archivedAt IS NULL")
     Optional<OrganizationEntity> findPublicOrganizationById(@Param("id") Long id);
 
@@ -282,6 +285,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
      */
     @Query("SELECT o FROM OrganizationEntity o " +
            "WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC " +
+           "AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE " +
            "AND o.archivedAt IS NULL " +
            "ORDER BY o.id ASC")
     List<OrganizationEntity> findAllPublicOrganizations();
@@ -303,6 +307,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     @Query("""
             SELECT o FROM OrganizationEntity o
             WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+              AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE
               AND o.archivedAt IS NULL
               AND (:keyword IS NULL OR o.name LIKE %:keyword% OR o.nameKana LIKE %:keyword%)
               AND (:prefecture IS NULL OR o.prefecture = :prefecture)
@@ -327,6 +332,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     @Query("""
             SELECT COUNT(o) FROM OrganizationEntity o
             WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+              AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE
               AND o.deletedAt IS NULL
               AND o.supporterNameDisclosure
                   = com.mannschaft.app.publicview.enums.NameDisclosureMode.REAL_NAME
@@ -343,6 +349,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     @Query("""
             SELECT COUNT(o) FROM OrganizationEntity o
             WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+              AND o.lifecycleStatus = com.mannschaft.app.organization.entity.OrganizationEntity.LifecycleStatus.ACTIVE
               AND o.deletedAt IS NULL
             """)
     long countPublicOrganizations();

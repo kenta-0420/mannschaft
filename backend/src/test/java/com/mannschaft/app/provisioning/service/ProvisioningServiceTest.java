@@ -17,6 +17,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 
 /**
@@ -44,7 +45,8 @@ class ProvisioningServiceTest {
     @Test
     @DisplayName("AC2: Service層単体でも非SYSTEM_ADMINは403（COMMON_002）で拒否する")
     void createOrganizationRejectsNonSystemAdminAtServiceLayer() {
-        lenient().when(accessControlService.isSystemAdmin(NON_ADMIN_ID)).thenReturn(false);
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(accessControlService).checkSystemAdmin(NON_ADMIN_ID);
         ProvisioningOrganizationCreateRequest request =
                 new ProvisioningOrganizationCreateRequest("新規組織", "admin-to-be@example.com");
 
@@ -57,9 +59,10 @@ class ProvisioningServiceTest {
     @Test
     @DisplayName("AC2: チーム作成でもService層単体で非SYSTEM_ADMINは403")
     void createTeamRejectsNonSystemAdminAtServiceLayer() {
-        lenient().when(accessControlService.isSystemAdmin(NON_ADMIN_ID)).thenReturn(false);
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(accessControlService).checkSystemAdmin(NON_ADMIN_ID);
         ProvisioningTeamCreateRequest request =
-                new ProvisioningTeamCreateRequest(100L, "新規チーム", "admin-to-be@example.com");
+                new ProvisioningTeamCreateRequest("新規チーム", "admin-to-be@example.com");
 
         assertThatThrownBy(() -> provisioningService.createTeam(NON_ADMIN_ID, request))
                 .isInstanceOf(BusinessException.class)

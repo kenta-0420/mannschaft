@@ -55,6 +55,7 @@ public interface TeamRepository
     @Query("""
             SELECT t FROM TeamEntity t
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
               AND t.archivedAt IS NULL
               AND (t.name LIKE %:keyword% OR t.nameKana LIKE %:keyword%)
             """)
@@ -228,6 +229,7 @@ public interface TeamRepository
     @Query("SELECT t FROM TeamEntity t " +
            "WHERE t.id = :id " +
            "AND t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC " +
+           "AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE " +
            "AND t.archivedAt IS NULL")
     Optional<TeamEntity> findPublicTeamById(@Param("id") Long id);
 
@@ -240,6 +242,7 @@ public interface TeamRepository
      */
     @Query("SELECT t FROM TeamEntity t " +
            "WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC " +
+           "AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE " +
            "AND t.archivedAt IS NULL " +
            "ORDER BY t.id ASC")
     List<TeamEntity> findAllPublicTeams();
@@ -330,6 +333,7 @@ public interface TeamRepository
     @Query("""
             SELECT t FROM TeamEntity t
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
               AND t.archivedAt IS NULL
               AND (:keyword IS NULL OR t.name LIKE %:keyword% OR t.nameKana LIKE %:keyword%)
               AND (
@@ -358,6 +362,7 @@ public interface TeamRepository
     @Query("""
             SELECT COUNT(t) FROM TeamEntity t
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
               AND t.deletedAt IS NULL
               AND t.supporterNameDisclosure
                   = com.mannschaft.app.publicview.enums.NameDisclosureMode.REAL_NAME
@@ -374,6 +379,7 @@ public interface TeamRepository
     @Query("""
             SELECT COUNT(t) FROM TeamEntity t
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
               AND t.deletedAt IS NULL
             """)
     long countPublicTeams();
