@@ -287,13 +287,26 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #
 #   ④ ErrorReportService#recordBackendException
 #      なぜ AFTER_COMMIT へ移してはならないか: これはエラー報告であり、
-#      呼び出し元は GlobalExceptionHandler（@ControllerAdvice）と RequestLoggingFilter である。
-#      いずれも業務TXが例外で「ロールバック済み」になった後に走る。commit される業務TXは
-#      そもそも存在せず、AFTER_COMMIT に載せれば記録も通知も永久に発火しない。
+#      呼び出し元は 2026-09-03 時点で次の3経路である（実地確認済み）。
+#        - GlobalExceptionHandler（@ControllerAdvice）
+#        - RequestLoggingFilter
+#        - PointCardRematchBatchService#execute（128行・167行）
+#      前2者は業務TXが例外で「ロールバック済み」になった後に走る。
+#      PointCardRematchBatchService#execute は @Transactional を付けず
+#      processChunk を REQUIRES_NEW で切る設計であり、呼び出し時点で
+#      チャンクのTXは既に決着している（execute 自身のTXは存在しない）。
+#      すなわち3経路のいずれにも「これから commit される業務TX」は無い。
+#      AFTER_COMMIT に載せれば記録も通知も永久に発火しない。
 #      障害時にこそ記録が要るという要件と正面から衝突するため、移設は退行である。
 #      番人が検出しているのは ErrorReportService のクラス単位 @Transactional（37行目）であって、
 #      実際の呼び出し元が業務TXの内側にいるためではない。因果順序の逆転も起きない
 #      （記録対象の業務は既に巻き戻っており、後から commit されることがない）。
+#      【2026-09-03 訂正】当初この欄は呼び出し元を GlobalExceptionHandler と
+#      RequestLoggingFilter の2経路とのみ記していたが、検分で
+#      PointCardRematchBatchService の2箇所が漏れていることが判明したため列挙を補った。
+#      補った経路も execute に @Transactional が無いため、
+#      「commit される業務TXが存在しない」という監査済み例外の結論自体は変わらない
+#      （列挙の不足であって判断の誤りではない）。
 #
 #   ⑤ ShiftBudgetFailedEventService#retry
 #      なぜ AFTER_COMMIT へ移さないか: これは失敗イベントの手動リトライであり、
