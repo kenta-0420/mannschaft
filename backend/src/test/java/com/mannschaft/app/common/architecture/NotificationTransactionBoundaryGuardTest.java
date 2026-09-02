@@ -1857,10 +1857,39 @@ class NotificationTransactionBoundaryGuardTest {
      * そちらは {@code NotificationTransactionBoundaryGuardConditionTest} の
      * 「許可入口の判定」節が negative fixture で固定している。
      */
-    static final long RAW_CANDIDATE_HITS_MIN = 185L; // 実測 185（2026-09-01 main 取り込み後）
+    /**
+     * 実測 178（2026-09-02 / Issue #2990 L2 の是正後）。
+     *
+     * <h2>2026-09-02 に 185 -> 178 へ下げた根拠（同じPRに実装差分がある）</h2>
+     * <p>上の javadoc は「正規の是正は呼び出しをリスナークラスへ<b>移す</b>だけなので、この量は減らない」と
+     * 書いているが、これは<b>1 呼び出し = 1 移設</b>の場合に限って成り立つ。#2990 L2 の
+     * {@code ScheduleDelegationService} の是正は 1:1 の移設ではなく<b>集約</b>だった。
+     * 同サービスは通知の種別ごとに {@code notifier.notifyRequestPending(...)} 〜
+     * {@code notifier.notifyDelegatorLeft(...)} と<b>8 箇所</b>の呼び出しを持っていたが、
+     * 移設先の {@code ScheduleDelegationNotifier}（AFTER_COMMIT リスナー化）では
+     * 種別を {@code ScheduleDelegationNotificationEvent.Kind} の switch で捌き、
+     * 発火点は {@code notificationDeliveryRunner.sendOne(...)} <b>1 箇所</b>に集約される。
+     * 発火点そのものが消えたのではなく、同じ発火が 8 箇所から 1 箇所へまとまった。</p>
+     *
+     * <p>残りは {@code RecruitmentListingService#sendCancelledNotifications} と
+     * {@code NotificationCreditService#sendFreeQuotaAlertAsync} の
+     * {@code notificationHelper.notifyAllLocalized(...)} 各 1 箇所が、新設リスナーの
+     * {@code sendOne(...)} 各 1 箇所へ 1:1 で移っており、こちらは増減ゼロである。</p>
+     *
+     * <p>下限を下げてよいと判断した根拠は「語彙も構造条件も一切触っていない」こと。
+     * {@link #NOTIFY_METHOD_VOCABULARY} と {@link #notifyCallOffsets} は本PRで無変更であり、
+     * 減少はすべて本番コードの呼び出し箇所の集約に対応する。今後この値を下げるときも、
+     * 同じように「どの呼び出しがどこへ何対何で移ったか」を書けないなら下げてはならない。</p>
+     */
+    static final long RAW_CANDIDATE_HITS_MIN = 178L;
 
-    /** @see #RAW_CANDIDATE_HITS_MIN */
-    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 165L; // 実測 165（2026-09-01 main 取り込み後）
+    /**
+     * 実測 158（2026-09-02 / Issue #2990 L2 の是正後）。165 -> 158 の根拠は
+     * {@link #RAW_CANDIDATE_HITS_MIN} の javadoc と同一（8 箇所 -> 1 箇所の集約）。
+     *
+     * @see #RAW_CANDIDATE_HITS_MIN
+     */
+    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 158L;
 
     /**
      * 実測 17309（2026-09-01 main 取り込み後）。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。
