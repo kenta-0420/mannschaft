@@ -39,6 +39,13 @@ interface BillingCheckoutContractRepository {
     UUID reservePendingContract(BillingQuoteSnapshot quote, long actorId);
 
     void attachStripeSession(UUID contractId, String stripeSessionId);
+
+    /**
+     * 予約済み PENDING 契約を解放してスロットを空ける（Stripe 作成失敗時の補償）。
+     *
+     * <p>実装は冪等でなければならない（PENDING 以外は no-op）。</p>
+     */
+    void abandonPendingContract(UUID contractId);
 }
 
 interface BillingStripeCheckoutGateway {

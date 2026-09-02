@@ -3,6 +3,7 @@ package com.mannschaft.app.billing.api;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
@@ -14,6 +15,7 @@ class BillingReturnStateNonceRepositoryAdapter implements BillingReturnStateNonc
     private final BillingReturnStateNonceJpaRepository nonceJpaRepository;
 
     @Override
+    @Transactional
     public void register(String nonceHash, BillingReturnStateService.Purpose purpose, long actorId,
                          EntitlementScopeKind scopeKind, long scopeId, Instant expiresAt) {
         nonceJpaRepository.saveAndFlush(BillingReturnStateNonceEntity.builder()
@@ -27,7 +29,9 @@ class BillingReturnStateNonceRepositoryAdapter implements BillingReturnStateNonc
                 .build());
     }
 
+    /** nonce の一回消費 CAS（{@code @Modifying}）。callback は非トランザクションで到達するため境界を張る。 */
     @Override
+    @Transactional
     public int consumeIfValid(String nonceHash, BillingReturnStateService.Purpose purpose, long actorId,
                               EntitlementScopeKind scopeKind, long scopeId, Instant now) {
         if (nonceHash == null || purpose == null || scopeKind == null || now == null) {

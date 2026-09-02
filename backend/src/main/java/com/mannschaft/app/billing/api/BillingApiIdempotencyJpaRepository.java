@@ -30,7 +30,7 @@ public interface BillingApiIdempotencyJpaRepository
             """)
     int failIfLeaseOwner(@Param("id") UUID id,
                          @Param("leaseOwner") String leaseOwner,
-                         @Param("responseStatus") int responseStatus,
+                         @Param("responseStatus") Integer responseStatus,
                          @Param("responseJson") String responseJson,
                          @Param("completedAt") Instant completedAt);
 

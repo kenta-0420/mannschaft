@@ -4,6 +4,7 @@ import com.mannschaft.app.billing.ActiveContractPointerEntity;
 import com.mannschaft.app.billing.ActiveContractPointerRepository;
 import com.mannschaft.app.billing.BillingContractEntity;
 import com.mannschaft.app.billing.BillingContractRepository;
+import com.mannschaft.app.billing.BillingContractService;
 import com.mannschaft.app.billing.BillingProductKind;
 import com.mannschaft.app.billing.ContractKind;
 import com.mannschaft.app.billing.ContractStatus;
@@ -33,6 +34,8 @@ import java.util.UUID;
 class BillingCheckoutContractRepositoryAdapter implements BillingCheckoutContractRepository {
 
     private final BillingContractRepository billingContractRepository;
+    /** PENDING 契約の放棄（補償）は既存決済フローと同じ正本 {@link BillingContractService} に委ねる。 */
+    private final BillingContractService billingContractService;
     private final ActiveContractPointerRepository activeContractPointerRepository;
     private final Clock clock;
 
@@ -114,6 +117,27 @@ class BillingCheckoutContractRepositoryAdapter implements BillingCheckoutContrac
             throw new IllegalStateException(
                     "billing contract is not attachable (missing, not PENDING, or bound to another session)");
         }
+    }
+
+    /**
+     * Stripe Checkout Session の作成に失敗したときに PENDING 契約を解放する（BC-13 の補償）。
+     *
+     * <p>既存決済フロー（{@code BillingCheckoutService#startPaidContract}）と<b>同じ流儀</b>で、
+     * {@link BillingContractService#abandonPendingContract} へ委ねる（CANCELLED 化 ＋
+     * {@code active_contract_pointers} の物理 DELETE）。ここを自前で書くと解放条件が二重管理になり、
+     * 片方だけ直る事故を招くため委譲に徹する。PENDING 以外は no-op で冪等。</p>
+     *
+     * <p>これが無いと、Stripe 作成が落ちるたびに孤児 PENDING がスロットを占有し、
+     * {@code uk_acp_slot} により<b>当該 scope の以後の購入が永久に 016 で詰む</b>
+     * （Session が存在しないため {@code checkout.session.expired} でも解放されない）。</p>
+     */
+    @Override
+    @Transactional
+    public void abandonPendingContract(UUID contractId) {
+        if (contractId == null) {
+            return;
+        }
+        billingContractService.abandonPendingContract(contractId);
     }
 
     /** 翌月満額（税込・円）を契約 snapshot へ焼き付ける。 */

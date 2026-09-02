@@ -10,6 +10,7 @@ import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
@@ -66,6 +68,13 @@ class BillingCheckoutControllerAuthorizationTest {
     private BillingQuoteService quoteService;
     @MockitoBean
     private BillingCheckoutApplicationService checkoutApplicationService;
+    /**
+     * BC-23 根治で入口が耐久冪等性を通るようになったため、slice へ mock を供給する。
+     * 本クラスが測るのは<b>認可</b>であり、冪等性は素通り（ACQUIRED）に固定して影響を与えない
+     * （冪等性そのものの検証は {@link BillingCheckoutControllerIdempotencyTest}）。
+     */
+    @MockitoBean
+    private BillingDurableIdempotencyService idempotencyService;
 
     // ---- @WebMvcTest コンテキスト用: フィルタ・SpEL ガードの依存解決 mock ----
     @MockitoBean
@@ -76,6 +85,15 @@ class BillingCheckoutControllerAuthorizationTest {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    @BeforeEach
+    void acquireIdempotencyLease() {
+        given(idempotencyService.begin(anyLong(), anyString(), anyString(), anyString(),
+                anyString(), anyString()))
+                .willReturn(new BillingIdempotencyDecision(
+                        BillingIdempotencyDecisionKind.ACQUIRED,
+                        UUID.fromString("01999d74-5130-7000-8000-000000000021"), null, null, 0L));
+    }
 
     @AfterEach
     void clearContext() {

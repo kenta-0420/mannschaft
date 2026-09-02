@@ -1,6 +1,7 @@
 package com.mannschaft.app.common;
 
 import com.mannschaft.app.billing.FeatureNotEntitledException;
+import com.mannschaft.app.billing.api.BillingIdempotencyProcessingException;
 import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -2520,6 +2522,26 @@ public class GlobalExceptionHandler {
         FeatureNotEntitledErrorResponse body =
                 new FeatureNotEntitledErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
         return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
+    }
+
+    /**
+     * F20.1 PR4 BC-23: 同一 {@code Idempotency-Key} の先行要求が処理中の場合のハンドラ。
+     *
+     * <p>{@link BillingIdempotencyProcessingException} は {@link BusinessException} のサブクラスだが、
+     * Spring は最も具体的な例外型のハンドラを優先するため本メソッドが先に選ばれる。
+     * 409 の本文は素の {@link ErrorResponse} のまま（既存応答・lease 所有者を漏らさない）で、
+     * {@code Retry-After} ヘッダだけを追加する。</p>
+     */
+    @ExceptionHandler(BillingIdempotencyProcessingException.class)
+    public ResponseEntity<ErrorResponse> handleBillingIdempotencyProcessing(
+            BillingIdempotencyProcessingException ex) {
+        String message = resolveMessage(ex.getErrorCode());
+        log.warn("BillingIdempotencyProcessingException: code={}, retryAfterSeconds={}",
+                ex.getErrorCode().getCode(), ex.getRetryAfterSeconds());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
+                .body(new ErrorResponse(
+                        new ErrorResponse.ErrorDetail(ex.getErrorCode().getCode(), message, List.of())));
     }
 
     /**

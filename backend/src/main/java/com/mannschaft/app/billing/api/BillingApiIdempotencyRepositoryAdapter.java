@@ -2,6 +2,7 @@ package com.mannschaft.app.billing.api;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -32,7 +33,12 @@ class BillingApiIdempotencyRepositoryAdapter implements BillingApiIdempotencyRep
                 .map(this::toRecord);
     }
 
+    /**
+     * PROCESSING 予約。設計（BC-23）が要求する「DB reservation → <b>commit</b> → 外部 Stripe →
+     * CAS 確定」の順序を成立させるため、外部呼び出しを含まない独立トランザクションで確定させる。
+     */
     @Override
+    @Transactional
     public BillingIdempotencyRecord reserve(BillingIdempotencyRecord record) {
         BillingApiIdempotencyEntity entity = BillingApiIdempotencyEntity.builder()
                 .actorId(record.actorId())
@@ -54,6 +60,7 @@ class BillingApiIdempotencyRepositoryAdapter implements BillingApiIdempotencyRep
     }
 
     @Override
+    @Transactional
     public int completeIfLeaseOwner(UUID id, String leaseOwner, int responseStatus,
                                     String responseJson, Instant completedAt) {
         if (id == null || leaseOwner == null) {
@@ -64,7 +71,8 @@ class BillingApiIdempotencyRepositoryAdapter implements BillingApiIdempotencyRep
     }
 
     @Override
-    public int failIfLeaseOwner(UUID id, String leaseOwner, int responseStatus,
+    @Transactional
+    public int failIfLeaseOwner(UUID id, String leaseOwner, Integer responseStatus,
                                 String responseJson, Instant completedAt) {
         if (id == null || leaseOwner == null) {
             return 0;
@@ -74,6 +82,7 @@ class BillingApiIdempotencyRepositoryAdapter implements BillingApiIdempotencyRep
     }
 
     @Override
+    @Transactional
     public int recoverStaleLease(UUID id, String previousLeaseOwner, Instant observedExpiry,
                                  String newLeaseOwner, Instant newLeaseExpiry, Instant now) {
         if (id == null || previousLeaseOwner == null || observedExpiry == null) {

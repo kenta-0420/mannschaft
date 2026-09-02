@@ -5,6 +5,7 @@ import com.mannschaft.app.billing.api.dto.CreateBillingCheckoutSessionRequest;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -25,10 +26,18 @@ import java.util.UUID;
  * 再検証で弾く場合は Stripe を一切呼ばない fail-closed とし、Stripe 成功後に DB 側が
  * 倒れた場合は照合キューへ退避してから 502 を返す（黙って握りつぶさない）。</p>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BillingCheckoutApplicationService {
     public record CheckoutSessionResponse(String checkoutUrl, Instant expiresAt) { }
+
+    /** 耐久冪等性（BC-23）が本 API を識別するための HTTP method / path の正本。 */
+    static final String IDEMPOTENCY_METHOD = "POST";
+    static final String IDEMPOTENCY_PATH = "/api/v1/me/billing/checkout-sessions";
+
+    /** PENDING 契約の補償にも失敗した場合の運用アラート marker。 */
+    static final String ORPHAN_PENDING_MARKER = "BILLING_CHECKOUT_ORPHAN_PENDING_CONTRACT";
 
     /** Session 期限の上限（BC-13: now+23h59m）。 */
     private static final Duration SESSION_MAX_WINDOW = Duration.ofHours(23).plusMinutes(59);
@@ -51,10 +60,13 @@ public class BillingCheckoutApplicationService {
     private final BillingCheckoutPriceRepository priceRepository;
     private final BillingCheckoutContractRepository contractRepository;
     /**
-     * BC-23 の耐久冪等性。HTTP 入口（controller）が begin/complete で本サービス呼び出しを包む担当を持つ。
+     * BC-23 の耐久冪等性。begin/complete による API 応答の replay は HTTP 入口
+     * （{@link BillingCheckoutController}）が担当する（begin の 3 分岐は HTTP 応答へ写す必要があり、
+     * かつ quote 側の入口と同一の作法で包む必要があるため）。本サービスは、照合キューへ退避する行に
+     * <b>当該 API 呼び出しの冪等レコード id</b> を刻むために参照する（退避行から「どの再送で
+     * 孤児 Session が生まれたか」を辿れるようにするため。乱数を刻むと追跡不能になる）。
      * Stripe 側の二重実行は本サービスが渡す stripeIdempotencyKey で塞ぐ。
      */
-    @SuppressWarnings("unused")
     private final BillingDurableIdempotencyService idempotencyService;
     private final BillingStripeCheckoutGateway stripeCheckoutGateway;
     private final BillingCheckoutReconciliationQueue reconciliationQueue;
@@ -89,8 +101,18 @@ public class BillingCheckoutApplicationService {
         }
 
         UUID contractId = contractRepository.reservePendingContract(quote, actorId);
-        BillingStripeCheckoutResult result = stripeCheckoutGateway.createSubscription(
-                stripeRequest(quote, customer, contractId, now, idempotencyKey));
+
+        // Stripe 呼び出しは外部 I/O。ここが倒れると PENDING 契約が孤児として残り uk_acp_slot を占有し、
+        // 当該 scope の以後の購入が永久に 016 で詰む（Session が無いので expired webhook でも解放されない）。
+        // 既存決済フロー（BillingCheckoutService#startPaidContract）と同じ流儀で必ず補償する。
+        BillingStripeCheckoutResult result;
+        try {
+            result = stripeCheckoutGateway.createSubscription(
+                    stripeRequest(quote, customer, contractId, now, idempotencyKey));
+        } catch (RuntimeException e) {
+            releasePendingContract(contractId, e);
+            throw new BusinessException(EntitlementErrorCode.CHECKOUT_SESSION_FAILED, e);
+        }
 
         // ここから先の失敗は「Stripe 上に Session が実在する」状態での失敗。必ず照合キューへ残す。
         try {
@@ -99,11 +121,47 @@ public class BillingCheckoutApplicationService {
             }
             contractRepository.attachStripeSession(contractId, result.sessionId());
         } catch (RuntimeException e) {
-            reconciliationQueue.enqueue(result.sessionId(), customer.stripeCustomerRef(), UUID.randomUUID());
+            reconciliationQueue.enqueue(result.sessionId(), customer.stripeCustomerRef(),
+                    idempotencyRecordId(actorId, idempotencyKey));
             throw new BusinessException(EntitlementErrorCode.STRIPE_UNAVAILABLE, e);
         }
 
         return new CheckoutSessionResponse(result.checkoutUrl(), result.expiresAt());
+    }
+
+    /**
+     * Stripe 作成失敗の補償。PENDING 契約を解放してスロットを空ける（冪等）。
+     *
+     * <p>補償自体が落ちた場合も事実を失わない。ここで再送出すると呼び出し元の
+     * 「015 で上申する」経路そのものを失い、しかも孤児が残った事実まで消えるため、
+     * marker 付き ERROR ログに残して記録に徹する（握りつぶしではない）。
+     * Checkout URL・token・PII は出さず、契約 id だけを出す。</p>
+     */
+    private void releasePendingContract(UUID contractId, RuntimeException cause) {
+        log.error("Stripe Checkout Session の作成に失敗。PENDING 契約を補償します contractId={}", contractId, cause);
+        try {
+            contractRepository.abandonPendingContract(contractId);
+        } catch (RuntimeException compensationFailure) {
+            log.error("{} PENDING 契約の補償に失敗（スロットが占有されたまま・要手動解放）contractId={}",
+                    ORPHAN_PENDING_MARKER, contractId, compensationFailure);
+        }
+    }
+
+    /**
+     * 照合キューへ刻む冪等レコード id。取得できない場合だけ乱数へ退避する
+     * （退避行そのものを失わないため。id が無いことを理由に事実を捨てない）。
+     */
+    private UUID idempotencyRecordId(long actorId, String idempotencyKey) {
+        try {
+            Optional<UUID> found = idempotencyService.findRecordId(
+                    actorId, IDEMPOTENCY_METHOD, IDEMPOTENCY_PATH, idempotencyKey);
+            if (found != null && found.isPresent()) {
+                return found.get();
+            }
+        } catch (RuntimeException e) {
+            log.warn("冪等レコード id の解決に失敗したため照合キューには代替 id を刻みます", e);
+        }
+        return UUID.randomUUID();
     }
 
     /**

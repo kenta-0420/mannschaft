@@ -7,6 +7,7 @@ import com.mannschaft.app.billing.BillingPriceBandVersionRepository;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -30,6 +31,7 @@ class BillingQuoteRepositoryAdapter implements BillingQuoteRepository {
     private final ObjectMapper objectMapper;
 
     @Override
+    @Transactional
     public BillingQuoteSnapshot save(BillingQuoteSnapshot quote) {
         BillingQuoteEntity entity = BillingQuoteEntity.builder()
                 .actorId(quote.actorId())
@@ -64,7 +66,13 @@ class BillingQuoteRepositoryAdapter implements BillingQuoteRepository {
                 .map(entity -> toSnapshot(entity, resolveStripePriceRef(entity.getPriceBandVersionId())));
     }
 
+    /**
+     * quote の一回消費 CAS。{@code @Modifying} クエリのため書き込みトランザクションが必須であり、
+     * 呼び出し元（Stripe 呼び出しを跨ぐ application service）には境界を置けないため、ここで
+     * <b>Stripe 成功後の DB 更新だけを包む短いトランザクション</b>を張る。
+     */
     @Override
+    @Transactional
     public int consumeIfUnchanged(UUID quoteId, long actorId, long version, Instant now) {
         if (quoteId == null || now == null) {
             return 0;

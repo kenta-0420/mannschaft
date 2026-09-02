@@ -47,6 +47,15 @@ public class BillingQuoteService {
     private final BillingQuoteRepository quoteRepository;
     private final BillingQuoteCalculator quoteCalculator;
 
+    /**
+     * quote を発行する。
+     *
+     * @param idempotencyKey 冪等キー。BC-23 の耐久冪等性（同一キー同一 hash の replay・hash 相違の 409）は
+     *                       HTTP 入口 {@link BillingCheckoutController} が
+     *                       {@link BillingDurableIdempotencyService} の begin/complete で施行しており、
+     *                       本メソッドは ACQUIRED（＝そのキーで初回実行と確定した）ときだけ呼ばれる。
+     *                       トランザクション境界は quote 保存アダプタ側にある。
+     */
     public BillingQuoteResponse create(long actorId, CreateBillingQuoteRequest request, String idempotencyKey) {
         validate(request);
 

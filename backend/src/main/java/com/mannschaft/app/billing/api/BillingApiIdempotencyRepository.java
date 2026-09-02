@@ -14,7 +14,7 @@ interface BillingApiIdempotencyRepository {
     int completeIfLeaseOwner(UUID id, String leaseOwner, int responseStatus,
                              String responseJson, Instant completedAt);
 
-    int failIfLeaseOwner(UUID id, String leaseOwner, int responseStatus,
+    int failIfLeaseOwner(UUID id, String leaseOwner, Integer responseStatus,
                          String responseJson, Instant completedAt);
 
     int recoverStaleLease(UUID id, String previousLeaseOwner, Instant observedExpiry,

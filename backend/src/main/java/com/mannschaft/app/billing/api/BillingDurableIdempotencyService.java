@@ -3,6 +3,7 @@ package com.mannschaft.app.billing.api;
 import com.mannschaft.app.billing.EntitlementErrorCode;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ import java.util.UUID;
  * <p>actor/method/path/key と request hash に束縛し、lease 所有者付きの条件付き CAS で
  * 二重実行を防ぐ。既存応答本文は 409 の例外メッセージへ載せない。</p>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 class BillingDurableIdempotencyService {
@@ -69,6 +71,37 @@ class BillingDurableIdempotencyService {
             // CAS 失敗＝lease を他者に奪われている。成功扱いにせず競合として返す。
             throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
         }
+    }
+
+    /**
+     * 確定済みでない（＝処理が例外で終わった）冪等レコードを FAILED へ確定する。
+     *
+     * <p>元の業務例外を握り潰さないため、ここでは例外を投げない（CAS 失敗＝lease を
+     * 他者に奪われた場合は記録だけ残す）。応答 status / body は<b>保存しない</b>
+     * （失敗時の HTTP status を controller が推測して刻むと嘘の記録になるため。
+     * 保存済み本文が無い FAILED は replay できず、再送は 021/409 として弾かれる）。</p>
+     */
+    void fail(UUID id, String leaseOwner) {
+        if (id == null || leaseOwner == null) {
+            return;
+        }
+        try {
+            if (repository.failIfLeaseOwner(id, leaseOwner, null, null, clock.instant()) != 1) {
+                log.warn("冪等レコードの FAILED 確定が CAS で成立しませんでした id={}", id);
+            }
+        } catch (RuntimeException e) {
+            log.error("冪等レコードの FAILED 確定に失敗しました id={}", id, e);
+        }
+    }
+
+    /**
+     * actor/method/path/key で既存の冪等レコード id を引く（照合キューへ刻む追跡子の解決用）。
+     */
+    Optional<UUID> findRecordId(long actorId, String httpMethod, String requestPath,
+                                String idempotencyKey) {
+        Optional<BillingIdempotencyRecord> found =
+                repository.find(actorId, httpMethod, requestPath, idempotencyKey);
+        return found == null ? Optional.empty() : found.map(BillingIdempotencyRecord::id);
     }
 
     void recoverStale(UUID id, String previousLeaseOwner, Instant observedExpiry,
