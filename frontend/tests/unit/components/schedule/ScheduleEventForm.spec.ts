@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import ScheduleEventForm from '~/components/schedule/ScheduleEventForm.vue'
+import { PERSONAL_SCOPE_KEY, scheduleScopeKey } from '~/utils/scheduleScopeKey'
 
 /**
  * [P2回帰・検分四巡目] ScheduleEventForm の `saved` イベントが渡すスコープの回帰テスト。
@@ -108,8 +109,11 @@ const globalStubs = {
   Button: ButtonStub,
 }
 
-const teamScope = { label: 'チームA', value: 'team_t1', isPersonal: false, scopeType: 'team' as const, scopeId: 't1' }
-const personalScope = { label: '個人', value: 'personal', isPersonal: true, scopeType: 'team' as const, scopeId: '' }
+// 選択肢の鍵は実運用（useMyCalendarData.availableScopes）と同じく scheduleScopeKey で作る。
+// レイヤー API 由来のスコープ種別は大文字（TEAM）で、ダイアログの props は小文字（team）— この
+// 食い違いこそが欠陥2 の温床だったため、テストでもその非対称を再現する。
+const teamScope = { label: 'チームA', value: scheduleScopeKey('TEAM', 't1'), isPersonal: false, scopeType: 'team' as const, scopeId: 't1' }
+const personalScope = { label: '個人', value: PERSONAL_SCOPE_KEY, isPersonal: true, scopeType: 'team' as const, scopeId: '' }
 
 describe('ScheduleEventForm: saved イベントのスコープ', () => {
   beforeEach(() => {
@@ -165,5 +169,55 @@ describe('ScheduleEventForm: saved イベントのスコープ', () => {
     const savedEvents = wrapper.emitted('saved')
     expect(savedEvents).toBeTruthy()
     expect(savedEvents![0]).toEqual([{ isPersonal: false, scopeType: 'team', scopeId: 't1' }])
+  })
+})
+
+/**
+ * F03.19 実機E2E 欠陥2 の回帰テスト。
+ *
+ * 選択肢側は `TEAM:<slug>`、ダイアログ側は `team_<slug>` と鍵の形式が食い違っていたため、
+ * 初期表示ではどの作成先ボタンにも選択状態が付かなかった（保存先自体は props フォールバックで
+ * 正しかったので、既存テスト（saved イベント）は緑のまま通り抜けていた）。
+ * ここでは **選択肢のどれかに一致すること** そのものを検証する。
+ */
+describe('ScheduleEventForm: 作成先の初期選択', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('初期表示の選択鍵が、選択肢（availableScopes と同じ形式）の値と一致する', async () => {
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: {
+        visible: true,
+        scopeType: 'team',
+        scopeId: 't1',
+        isPersonal: false,
+        scopeOptions: [teamScope, personalScope],
+      },
+      global: { stubs: globalStubs },
+    })
+
+    const selector = wrapper.findComponent(ScopeSelectorStub)
+    expect(selector.exists()).toBe(true)
+    const key = selector.props('selectedScopeKey')
+    // 「選択肢のいずれかに一致する」ことが要件。'personal' 等と偶然一致して緑にならないよう、
+    // どの選択肢に一致したかまで確かめる。
+    expect([teamScope.value, personalScope.value]).toContain(key)
+    expect(key).toBe(teamScope.value)
+  })
+
+  it('個人予定として開いたときは個人の選択肢に一致する', async () => {
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: {
+        visible: true,
+        scopeType: 'team',
+        scopeId: '',
+        isPersonal: true,
+        scopeOptions: [teamScope, personalScope],
+      },
+      global: { stubs: globalStubs },
+    })
+
+    expect(wrapper.findComponent(ScopeSelectorStub).props('selectedScopeKey')).toBe(personalScope.value)
   })
 })
