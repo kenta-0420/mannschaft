@@ -176,7 +176,13 @@ foreach ($segment in $segments) {
 
     # 単独の `cd <path>` セグメントは実効 cwd の更新として扱う（wsl 経由は除く。
     # WSL 側のファイルシステムは Windows の cwd とは別物のため追跡しない）。
-    if ((-not $isWsl) -and ($inner -match '^\s*cd\s+["'']?([^"''&|;]+?)["'']?\s*$')) {
+    #
+    # PowerShell ツール経由では `cd` の別名（Set-Location / sl / chdir）が使われる。
+    # これらを追跡しないと `Set-Location <本陣>; git commit` で実効 cwd が worktree の
+    # ままと誤判定され、ガードを丸ごと迂回できてしまう（当家で実際に迂回された形）。
+    # なお Push-Location / pushd は意図的に扱わない。対になる Pop-Location を
+    # 追跡できないため、追跡すると「pop 後も worktree 扱い」で保護が緩む方向に倒れる。
+    if ((-not $isWsl) -and ($inner -match '^\s*(?:cd|chdir|sl|Set-Location)\s+(?:-(?:Path|LiteralPath)\s+)?["'']?([^"''&|;]+?)["'']?\s*$')) {
         $cdTarget = $Matches[1].Trim()
         if ($cdTarget -match '^([A-Za-z]:[\\/]|[\\/])') {
             $effectiveCwd = $cdTarget            # 絶対パス
