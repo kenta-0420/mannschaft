@@ -116,10 +116,6 @@ const NEXT_MONTH_8TH = utc(TODAY.getUTCFullYear(), TODAY.getUTCMonth() + 2, 8)
 const TARGET_SUNDAY = sundayOf(NEXT_MONTH_8TH)
 const TARGET_WEEK = Array.from({ length: 7 }, (_, i) => iso(addDays(TARGET_SUNDAY, i)))
 const TARGET_MONTH_PREFIX = TARGET_WEEK[0]!.slice(0, 7)
-/** 今日の週から表示対象の週まで、`week-next` を押す回数。 */
-const WEEKS_AHEAD = Math.round(
-  (TARGET_SUNDAY.getTime() - sundayOf(TODAY).getTime()) / (7 * 24 * 60 * 60 * 1000),
-)
 
 function monthRange(prefix: string): { from: string; to: string } {
   const y = Number(prefix.slice(0, 4))
@@ -405,16 +401,40 @@ async function setViewTo(view: 'week' | 'agenda'): Promise<void> {
   }
   else {
     await expect(page.getByTestId('week-grid-columns')).toBeVisible()
-    const targetDay = String(Number(EVENTS_DATE.slice(8)))
-    for (let i = 0; i < 6; i++) {
-      const header = await page.getByTestId('week-day-header-1').innerText()
-      if (header.includes(targetDay)) break
-      await page.getByTestId('week-next').click()
-    }
-    await expect(page.getByTestId('week-day-header-1')).toContainText(targetDay)
+    await gotoTargetWeek()
   }
   await expect(spinner()).toHaveCount(0)
   await expect(page.getByTestId('calendar-layer-chips')).toBeVisible()
+}
+
+/**
+ * `week-day-header-{i}` が示す「日」を数値で読む。
+ *
+ * ヘッダーは曜日ラベルと日にちだけを描く（`CalendarWeekGrid.vue`）ので、最初に現れる
+ * 数字がその日である。**部分一致で判定してはならない** — 例えば目的の日が 6 日のとき、
+ * 別の週の月曜が 26 日だと `includes('6')` が真になり、**間違った週で止まる**。
+ */
+async function weekHeaderDay(dayIndex: number): Promise<number> {
+  const text = await page.getByTestId(`week-day-header-${dayIndex}`).innerText()
+  const matched = text.match(/\d+/)
+  expect(matched, `week-day-header-${dayIndex} に日付が含まれる`).not.toBeNull()
+  return Number(matched![0])
+}
+
+/**
+ * 表示中の週を、フィクスチャを置いた週（`EVENTS_DATE` を含む週）まで `week-next` で進める。
+ *
+ * 押す回数を日付から計算せず、**実際に描かれたヘッダーを見て収束させる**。週ビューの起点は
+ * `calendar.vue#setView` が表示月から決めるため、「今日の週から N 回」という前提が成り立たない。
+ * 到達したことは計算ではなく表示で確かめる。
+ */
+async function gotoTargetWeek(): Promise<void> {
+  const targetDay = Number(EVENTS_DATE.slice(8))
+  for (let i = 0; i < 6; i++) {
+    if (await weekHeaderDay(1) === targetDay) break
+    await page.getByTestId('week-next').click()
+  }
+  expect(await weekHeaderDay(1), '表示対象の週へ移動できた').toBe(targetDay)
 }
 
 /** 月ビューの日付セル（当月の日付数字で特定する）。 */
@@ -787,12 +807,7 @@ test('AC-13: 週ビューへ切り替えてもレイヤー選択と予定集合�
   ).toEqual(JSON.parse(storedBefore ?? '{}').selected)
 
   // 表示対象の週へ移動すると、月ビューと同じチップ・同じ予定集合が 7 日分描かれる
-  const targetDay = String(Number(EVENTS_DATE.slice(8)))
-  for (let i = 0; i < 6; i++) {
-    if ((await page.getByTestId('week-day-header-1').innerText()).includes(targetDay)) break
-    await page.getByTestId('week-next').click()
-  }
-  await expect(page.getByTestId('week-day-header-1')).toContainText(targetDay)
+  await gotoTargetWeek()
   expect(await chipValues()).toEqual(values)
   expect(await chipStates(values), 'チップの選択状態も同一').toEqual(before)
   await expect(page.locator('[data-testid^="week-event-"]').filter({ hasText: titles.timed })).toHaveCount(1)
@@ -1201,7 +1216,14 @@ test('AC-22: タッチでは素早いスワイプでスクロールし、長押�
     await expect(dialog(touch), '離すと作成ダイアログが開く').toBeVisible()
   }
   finally {
-    await cdp?.detach().catch(() => undefined)
+    // 後始末の失敗はテスト結果を覆さないが、握りつぶさずログには残す。
+    // finally の中で throw すると本来の失敗理由が上書きされて消えるため再 throw はしない。
+    try {
+      await cdp?.detach()
+    }
+    catch (error) {
+      console.warn('CDP セッションの切断に失敗した（テストの合否には影響させない）:', error)
+    }
     await touch.close()
   }
 })
