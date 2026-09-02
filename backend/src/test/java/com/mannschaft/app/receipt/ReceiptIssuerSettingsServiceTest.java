@@ -1,7 +1,9 @@
 package com.mannschaft.app.receipt;
 
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.receipt.dto.UpdateIssuerSettingsRequest;
 import com.mannschaft.app.receipt.entity.ReceiptIssuerSettingsEntity;
 import com.mannschaft.app.receipt.repository.ReceiptIssuerSettingsRepository;
@@ -18,6 +20,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,6 +35,11 @@ class ReceiptIssuerSettingsServiceTest {
     @Mock private ReceiptIssuerSettingsRepository issuerSettingsRepository;
     @Mock private ReceiptMapper receiptMapper;
     @Mock private AccessControlService accessControlService;
+    // D-8 / D-3 / AC-33 でサービスの依存に加わった協力者。
+    // @InjectMocks は未登録の型に null を渡すため、宣言しないと NPE になる。
+    @Mock private ReceiptLogoUrlProvider logoUrlProvider;
+    @Mock private StorageService storageService;
+    @Mock private AuditLogService auditLogService;
 
     @InjectMocks
     private ReceiptIssuerSettingsService service;
@@ -184,7 +192,7 @@ class ReceiptIssuerSettingsServiceTest {
             ReceiptIssuerSettingsEntity saved = ReceiptIssuerSettingsEntity.builder()
                     .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).issuerName("テスト組織").build();
             given(issuerSettingsRepository.save(any())).willReturn(saved);
-            given(receiptMapper.toIssuerSettingsResponse(saved)).willReturn(null);
+            given(receiptMapper.toIssuerSettingsResponse(eq(saved), any())).willReturn(null);
 
             service.upsertSettings(SCOPE_TYPE, SCOPE_ID, 100L, request);
 

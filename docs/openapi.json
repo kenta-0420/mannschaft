@@ -25751,11 +25751,11 @@
           }
         }
       },
-      "put": {
+      "patch": {
         "tags": [
           "領収書発行者設定"
         ],
-        "summary": "発行者設定更新",
+        "summary": "発行者設定更新（差分更新）",
         "operationId": "upsertSettings",
         "parameters": [
           {
@@ -84457,6 +84457,25 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "アップロード成功",
@@ -164859,7 +164878,7 @@
             "type": "string",
             "maxLength": 14,
             "minLength": 0,
-            "pattern": "^T\\d{13}$"
+            "pattern": "^(|T\\d{13})$"
           },
           "isQualifiedInvoicer": {
             "type": "boolean"
@@ -164887,10 +164906,7 @@
             "maxLength": 20,
             "minLength": 0
           }
-        },
-        "required": [
-          "isQualifiedInvoicer"
-        ]
+        }
       },
       "ApiResponseIssuerSettingsResponse": {
         "type": "object",
@@ -164941,6 +164957,9 @@
             "type": "string"
           },
           "logoStorageKey": {
+            "type": "string"
+          },
+          "logoUrl": {
             "type": "string"
           },
           "nextReceiptNumber": {

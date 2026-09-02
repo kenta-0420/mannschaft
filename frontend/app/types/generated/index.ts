@@ -5198,13 +5198,13 @@ export interface paths {
         };
         /** 発行者設定取得 */
         get: operations["getSettings_13"];
-        /** 発行者設定更新 */
-        put: operations["upsertSettings"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** 発行者設定更新（差分更新） */
+        patch: operations["upsertSettings"];
         trace?: never;
     };
     "/api/v1/admin/receipt-presets/{id}": {
@@ -53924,7 +53924,7 @@ export interface components {
             /** Format: int32 */
             fiscalYearStartMonth?: number;
             invoiceRegistrationNumber?: string;
-            isQualifiedInvoicer: boolean;
+            isQualifiedInvoicer?: boolean;
             issuerName?: string;
             phone?: string;
             postalCode?: string;
@@ -53951,6 +53951,7 @@ export interface components {
             isQualifiedInvoicer?: boolean;
             issuerName?: string;
             logoStorageKey?: string;
+            logoUrl?: string;
             /** Format: int32 */
             nextReceiptNumber?: number;
             phone?: string;
@@ -129975,7 +129976,14 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
         responses: {
             /** @description アップロード成功 */
             200: {
