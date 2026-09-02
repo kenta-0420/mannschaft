@@ -86,6 +86,8 @@ class ProvisioningAcceptanceIT extends AbstractMySqlIntegrationTest {
     @BeforeEach
     void setUp() {
         insertRole("SYSTEM_ADMIN", "システム管理者", 1);
+        insertRole("ADMIN", "管理者", 2);
+        insertRole("MEMBER", "メンバー", 3);
         systemAdminId = insertUser("prov-sysadmin-" + System.nanoTime() + "@example.com");
         em.createNativeQuery(
                         "INSERT INTO user_roles (user_id, role_id, team_id, organization_id, created_at, updated_at) "
@@ -226,7 +228,7 @@ class ProvisioningAcceptanceIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("AC10: PROVISIONEDかつPUBLICなチームの公開詳細APIは404")
         void publicTeamDetailHidesProvisionedTeam() throws Exception {
-            String slug = "ac10-provisioned-" + System.nanoTime();
+            String slug = "ac10-prov-" + (System.nanoTime() % 1_000_000_000L);
             insertTeamWithSlugAndVisibility("AC10隠蔽対象チーム", slug, "PUBLIC", "PROVISIONED");
 
             mockMvc.perform(get("/api/v1/public/teams/{slug}", slug))
@@ -241,11 +243,14 @@ class ProvisioningAcceptanceIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("AC11: PROVISIONEDチームへの招待トークン発行は423または404で拒否される")
         void inviteTokenCreationBlockedForProvisionedTeam() throws Exception {
-            String slug = "ac11-provisioned-" + System.nanoTime();
+            String slug = "ac11-prov-" + (System.nanoTime() % 1_000_000_000L);
             Long teamId = insertTeamWithSlugAndVisibility("AC11隠蔽対象チーム", slug, "PUBLIC", "PROVISIONED");
-            insertUserRoleForTeam(systemAdminId, "ADMIN", teamId);
+            // AccessControlService#resolveEffectiveRole は SYSTEM_ADMIN を最強ロールとして
+            // 即座に確定させるため（team 側の ADMIN 行までは見ない）、SYSTEM_ADMIN ユーザーで
+            // checkAdminOrAbove を通そうとすると常に403になる。ここではチーム ADMIN 本人で検証する。
+            insertUserRoleForTeam(ordinaryUserId, "ADMIN", teamId);
 
-            setAuth(systemAdminId);
+            setAuth(ordinaryUserId);
             Long memberRoleId = ((Number) em.createNativeQuery("SELECT id FROM roles WHERE name = 'MEMBER'")
                     .getSingleResult()).longValue();
             Map<String, Object> body = Map.of("roleId", memberRoleId, "maxUses", 1, "expiresIn", "7d");
