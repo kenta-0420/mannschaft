@@ -43,7 +43,7 @@
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 9
+# CLASSIFIED_FLOOR: 2
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
 # TX_NOTIFY_VIA_DELEGATE については委譲先の入口メソッドの宣言から区分を導出し、
@@ -108,7 +108,31 @@
 # REMOVED: com.mannschaft.app.timetable.service.TimetableChangeService#updateChange -> TX_NOTIFY_BARE : data.notifyMembers() は引数ゼロの record アクセサ。業務TX内は publishEvent のみで正規形そのもの。
 # REMOVED: com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService#createCheckout -> TX_NOTIFY_IN_TRY : stripePaymentProvider.createNotificationCreditCheckoutSession は Stripe の Checkout Session 作成であり通知ではない。
 # 台帳（凍結エントリ + REMOVED）の総数下限。是正でエントリを消したら実装差分と同じPRでここを下げる。
-# CENSUS_FLOOR: 109
+#
+# --- 2026-09-02 Issue #2990 L2: ROLLBACK_COUPLED 4件の是正（CENSUS_FLOOR 109 -> 95）---
+# 分類済み4件（ROLLBACK_COUPLED）を正規形（業務TXは publishEvent のみ／AFTER_COMMIT + @Async("event-pool")
+# 配送リスナー／1件ごと REQUIRES_NEW の NotificationDeliveryRunner#sendOne）へ移した。
+# 是正は「通知発火の位置」を移したものであり、通知そのものを削っていない。
+# 14件が消えたのは、4件それぞれの根に別の凍結エントリがぶら下がっていたためである:
+#   ① DirectMailService#sendMail（委譲先 NotificationCreditService#consume）
+#      根 = consume が @Async protected な sendFreeQuotaAlertAsync を自己呼び出しし、@Async が失効して
+#      業務TX内で同期実行されていた。イベント + NotificationCreditFreeQuotaAlertListener へ移設。
+#      連動して消えた: NotificationCreditService#consume(ASYNC_SELF_INVOCATION)、
+#      同#sendFreeQuotaAlertAsync(ASYNC_WITHOUT_EXECUTOR / TX_NOTIFY_IN_TRY) の3件。
+#   ② PersonalMarketListingService#cancel（委譲先 RecruitmentListingService#cancelPersonalListing）
+#      根 = cancelInternal が業務TX内で sendCancelledNotifications を呼んでいた。
+#      イベント + RecruitmentCancelledNotificationListener へ移設。
+#      連動して消えた: RecruitmentListingService#sendCancelledNotifications(TX_NOTIFY_BARE) の1件。
+#   ③④ ProxyDelegationCleanupBatchService#cleanupScheduleDelegations /
+#      ScheduleAttendanceService#respondAttendance（委譲先はいずれも ScheduleDelegationService）
+#      根 = ScheduleDelegationNotifier が素の @Component で業務TXから同期呼び出しされていた。
+#      ScheduleDelegationNotifier 自体を AFTER_COMMIT リスナーへ作り替え、Service は
+#      ScheduleDelegationNotificationEvent を publish するだけにした。
+#      連動して消えた: ScheduleDelegationService の accept / cancelInternal / cancelOnMemberLeft /
+#      createDelegation / onDelegatorAttendanceChanged / reject（すべて TX_NOTIFY_BARE）の6件。
+# CLASSIFIED_FLOOR は分類済み9件のうち ROLLBACK_COUPLED 4件を是正で消したため 9 -> 5。
+# 残る分類済み5件はすべて ORDERING_ONLY であり、#2990 本体（巻き戻り）ではない。
+# CENSUS_FLOOR: 92
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -153,9 +177,6 @@ com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendC
 com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendExpiryAlertAsync -> ASYNC_WITHOUT_EXECUTOR
 com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendExpiryAlertAsync -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.notification.credit.service.NotificationCreditAlertSender#sendNegativeBalanceAlert -> ASYNC_WITHOUT_EXECUTOR
-com.mannschaft.app.notification.credit.service.NotificationCreditService#consume -> ASYNC_SELF_INVOCATION
-com.mannschaft.app.notification.credit.service.NotificationCreditService#sendFreeQuotaAlertAsync -> ASYNC_WITHOUT_EXECUTOR
-com.mannschaft.app.notification.credit.service.NotificationCreditService#sendFreeQuotaAlertAsync -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.payment.escrow.EscrowLifecycleService#notifyCancelled -> TX_NOTIFY_BARE
 com.mannschaft.app.payment.escrow.EscrowLifecycleService#promoteHeldEscrow -> TX_NOTIFY_BARE
@@ -175,12 +196,6 @@ com.mannschaft.app.schedule.service.ScheduleAttendanceService#openAttendanceSoli
 com.mannschaft.app.schedule.service.ScheduleCommentNotifier#sendMentioned -> DIRECT_RUNNER_CALL
 com.mannschaft.app.schedule.service.ScheduleCommentNotifier#sendReplied -> DIRECT_RUNNER_CALL
 com.mannschaft.app.schedule.service.ScheduleCommentService#registerNotificationAfterCommit -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.schedule.service.ScheduleDelegationService#accept -> TX_NOTIFY_BARE
-com.mannschaft.app.schedule.service.ScheduleDelegationService#cancelInternal -> TX_NOTIFY_BARE
-com.mannschaft.app.schedule.service.ScheduleDelegationService#cancelOnMemberLeft -> TX_NOTIFY_BARE
-com.mannschaft.app.schedule.service.ScheduleDelegationService#createDelegation -> TX_NOTIFY_BARE
-com.mannschaft.app.schedule.service.ScheduleDelegationService#onDelegatorAttendanceChanged -> TX_NOTIFY_BARE
-com.mannschaft.app.schedule.service.ScheduleDelegationService#reject -> TX_NOTIFY_BARE
 com.mannschaft.app.schedule.service.ScheduleKeepNotificationPublisher#publishConverted -> TX_NOTIFY_BARE
 com.mannschaft.app.schedule.service.ScheduleKeepService#notifyConverted -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.schedule.service.ScheduleReminderNotificationListener#onReminderNotification -> PLAIN_EVENT_LISTENER
@@ -205,7 +220,6 @@ com.mannschaft.app.todo.event.MilestoneNotificationListener#onMilestoneUnlocked 
 # --- 2026-09-01 main 取り込みで増えた既存負債（本PRの差分が生んだものではない）---
 # baseline 採取後に main へ着地した実装が持ち込んだ3件。番人が正しく検知したため既存負債として凍結し、
 # 是正は L1 のロットへ回す（CENSUS_FLOOR 97 -> 100）。
-com.mannschaft.app.recruitment.service.RecruitmentListingService#sendCancelledNotifications -> TX_NOTIFY_BARE
 com.mannschaft.app.role.service.OwnershipTransferOfferService#createOffer -> TX_NOTIFY_BARE
 com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX_NOTIFY_BARE
 
@@ -232,12 +246,84 @@ com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX
 #       @Transactional(REQUIRED)                                 ... ROLLBACK_COUPLED
 #   ShiftBudgetFailedEventService#retry           -> ShiftBudgetRetryExecutor#execute
 #       @Transactional(REQUIRES_NEW)                             ... ORDERING_ONLY
-com.mannschaft.app.digest.service.DigestGenerationService#generate -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
-com.mannschaft.app.digest.service.DigestGenerationService#regenerate -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
-com.mannschaft.app.directmail.service.DirectMailService#sendMail -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
 com.mannschaft.app.errorreport.service.ErrorReportService#recordBackendException -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
-com.mannschaft.app.payment.connect.ConnectAccountService#promoteHeldEscrowsForPayee -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
-com.mannschaft.app.recruitment.service.PersonalMarketListingService#cancel -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
-com.mannschaft.app.schedule.batch.ProxyDelegationCleanupBatchService#cleanupScheduleDelegations -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
-com.mannschaft.app.schedule.service.ScheduleAttendanceService#respondAttendance -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
 com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
+
+# --- 2026-09-03 Issue #2990 L3: ORDERING_ONLY 5件の処理（CENSUS_FLOOR 95 -> 92 / CLASSIFIED_FLOOR 5 -> 2）---
+#
+# ORDERING_ONLY は #2990 本体（通知失敗で業務が巻き戻る）ではない。委譲先が @Async / REQUIRES_NEW で
+# 別スレッド・別TXへ逃げているため巻き戻りはしない。残る欠陥は「業務コミットの後」という
+# 因果順序が保証されていないことである。したがって L3 の是正目的は
+# 「巻き戻りを止めること」ではなく「通知が業務コミットの後に出ることを保証すること」であり、
+# 5件を機械的に正規形へ移すことではない。1件ずつ実態を調べ、3件を是正し 2件を監査済み例外として残した。
+#
+# ■ 是正した3件（エントリを削除。CENSUS_FLOOR -3）
+#
+#   ① DigestGenerationService#generate / ②#regenerate（委譲先 DigestAsyncExecutor#generateAiDigestAsync）
+#      壊れ方: 業務TX（timeline_digests への GENERATING 行 INSERT）の内側から @Async を起動していた。
+#      非同期スレッドは commit を待たずに走り出し、別TXで digestRepository.findById(digestId) を行う。
+#      READ COMMITTED では未 commit の GENERATING 行が見えないため IllegalStateException となり、
+#      executor の catch が markFailed して「ダイジェスト生成失敗」の通知を利用者へ送りうる。
+#      すなわち因果順序の欠如が「正常な要求に対する嘘の失敗通知」として表面化する経路だった。
+#      是正: 業務TX 内は DigestAiGenerationRequestedEvent の publish のみ。起動は
+#      DigestAiGenerationDispatchListener（@TransactionalEventListener AFTER_COMMIT）が行う。
+#      委譲先 generateAiDigestAsync 自体が @Async なのでリスナーに @Async は重ねない（ホップを増やすだけ）。
+#
+#   ③ ConnectAccountService#promoteHeldEscrowsForPayee（委譲先 EscrowLifecycleService#promoteHeldEscrow）
+#      壊れ方: 順序の乱れに留まらず「機能が丸ごと死んでいた」。promoteHeldEscrow は REQUIRES_NEW で
+#      payee 口座を読み直し payouts_enabled を検証するが、それを true にした鏡像更新の業務TXは
+#      まだ commit していない。別TX・READ COMMITTED では未 commit の更新を読めないため、
+#      読み直しは常に旧値 false となり「HELD 昇格スキップ: payee 口座が解決不能/未 READY」で
+#      毎回 no-op に落ちていた。HELD escrow の自動昇格も札主への決済確認依頼通知も発火していない。
+#      既存の単体テストが escrowLifecycleService をモックしてこの再読取を消していたため緑のままだった
+#      （#2990 L2 の「モックに隠れた死んだ経路」と同型）。
+#      是正: 業務TX 内は ConnectPayoutsEnabledEvent の publish のみ。昇格ループは
+#      ConnectHeldEscrowPromotionListener（AFTER_COMMIT）へ移設。
+#      裏取り: ConnectHeldEscrowPromotionOrderingIT が実DBで PENDING_CONFIRMATION 遷移を検証する
+#      （是正前のコードでは HELD のまま落ちる。落ちる理由が検証したい因果順序そのものである）。
+#
+# ■ 監査済み例外として残す2件（エントリは消さない。分類 ORDERING_ONLY のまま据え置き）
+#    契約の「通知自体が業務目的の経路は監査済み例外として明示する」に該当する。
+#
+#   ④ ErrorReportService#recordBackendException
+#      なぜ AFTER_COMMIT へ移してはならないか: これはエラー報告であり、
+#      呼び出し元は 2026-09-03 時点で次の3経路である（実地確認済み）。
+#        - GlobalExceptionHandler（@ControllerAdvice）
+#        - RequestLoggingFilter
+#        - PointCardRematchBatchService#execute（128行・167行）
+#      前2者は業務TXが例外で「ロールバック済み」になった後に走る。
+#      PointCardRematchBatchService#execute は @Transactional を付けず
+#      processChunk を REQUIRES_NEW で切る設計であり、呼び出し時点で
+#      チャンクのTXは既に決着している（execute 自身のTXは存在しない）。
+#      すなわち3経路のいずれにも「これから commit される業務TX」は無い。
+#      AFTER_COMMIT に載せれば記録も通知も永久に発火しない。
+#      障害時にこそ記録が要るという要件と正面から衝突するため、移設は退行である。
+#      番人が検出しているのは ErrorReportService のクラス単位 @Transactional（37行目）であって、
+#      実際の呼び出し元が業務TXの内側にいるためではない。因果順序の逆転も起きない
+#      （記録対象の業務は既に巻き戻っており、後から commit されることがない）。
+#      【2026-09-03 訂正】当初この欄は呼び出し元を GlobalExceptionHandler と
+#      RequestLoggingFilter の2経路とのみ記していたが、検分で
+#      PointCardRematchBatchService の2箇所が漏れていることが判明したため列挙を補った。
+#      補った経路も execute に @Transactional が無いため、
+#      「commit される業務TXが存在しない」という監査済み例外の結論自体は変わらない
+#      （列挙の不足であって判断の誤りではない）。
+#
+#   ⑤ ShiftBudgetFailedEventService#retry
+#      なぜ AFTER_COMMIT へ移さないか: これは失敗イベントの手動リトライであり、
+#      「通知の再送そのものが業務目的」である（NOTIFICATION_SEND の再実行が通知を出す）。
+#      委譲先 ShiftBudgetRetryExecutor#execute の REQUIRES_NEW は
+#      「監査ログ側のTXが落ちてもリトライ結果を巻き戻さない」ための意図的な設計である。
+#      さらに retry は同期 API であり、実行結果（success / 新ステータス）を
+#      そのまま FailedEventResponse で返す契約になっている。AFTER_COMMIT へ移すと
+#      応答時点で結果が確定せず API 契約が壊れる。
+#      因果順序の観点: retry の業務TXは retryExecutor.execute より前に一切書き込みを行わない
+#      （featureService.requireEnabled / requireBudgetAdmin / findById はすべて読み取り）。
+#      よって「まだ確定していない業務の通知が先に出る」形にはならない。
+#      残る不整合は「リトライは成立したのに後段の監査ログ INSERT が落ちて巻き戻る」形だけであり、
+#      これは REQUIRES_NEW の設計意図どおりの（リトライ結果を優先する）割り切りである。
+#
+# ■ 検出力の下限（RAW_CANDIDATE_HITS_MIN / STRUCTURAL_NOTIFY_CALLS_MIN / PARSED_METHODS_MIN）は下げない。
+#    L3 の是正はいずれも「通知呼び出しを消す」ものではなく「起動位置を AFTER_COMMIT の後へ移す」ものであり、
+#    実際の通知発火点（DigestAsyncExecutor#notificationHelper.notify /
+#    EscrowLifecycleService#escrowNotificationService.notifyPaymentRequired）は 1 箇所も動いていない。
+#    移設したのは通知を含まない委譲呼び出し（generateAiDigestAsync / promoteHeldEscrow）だけである。
