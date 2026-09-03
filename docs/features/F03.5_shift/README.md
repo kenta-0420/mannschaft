@@ -82,4 +82,4 @@ v2.2 では以下を追補する:
 | [02_api_design.md](02_api_design.md) | §4 API設計 |
 | [03_business_logic.md](03_business_logic.md) | §5 ビジネスロジック |
 | [04_security_operations.md](04_security_operations.md) | §6 セキュリティ / §7 Flyway / §8 未解決事項 / §8.5 運用 / §9 変更履歴 |
-| [05_unpublished_visibility.md](05_unpublished_visibility.md) | §10 未公開シフト表の遮断方針（CMP-260826-2127・情報の層 × ステータスによる可視性設計） |
+| [05_unpublished_visibility.md](05_unpublished_visibility.md) | §10 未公開シフト表の遮断方針（CMP-260826-2127・情報の層 × ステータスによる可視性設計・未決事項あり） |
