@@ -669,6 +669,11 @@ class RecruitmentListingServiceTest {
                     .isEqualTo(com.mannschaft.app.recruitment.RecruitmentParticipantStatus.CANCELLED);
             verify(participantRepository).save(participant);
             verify(participantHistoryRepository).save(any());
+            // Issue #2990 L2: 取下げ通知は業務TX内で発火せず、受信者IDを載せたイベントを publish する。
+            // 「通知を消して番人を黙らせる」是正になっていないことを、この検証が固定する。
+            verify(eventPublisher).publishEvent(
+                    new com.mannschaft.app.recruitment.event.RecruitmentCancelledNotificationEvent(
+                            listing.getId(), java.util.List.of(99L)));
         }
     }
 

@@ -35,5 +35,7 @@ public enum AuditEventCategory {
     /** F08.10 試合記録・分析（スコア確定 / status 遷移 / 記録モード切替 / 記録係変更）。 */
     MATCH,
     /** 柱②-2 販促プロビジョニング（PROVISIONED作成・招待発行/再送/取消/承諾）。 */
-    PROVISIONING
+    PROVISIONING,
+    /** F08.4 領収書（発行者設定の変更等）。 */
+    RECEIPT
 }
