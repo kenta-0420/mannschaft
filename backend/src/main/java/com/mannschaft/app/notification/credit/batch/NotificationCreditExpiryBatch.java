@@ -168,8 +168,17 @@ public class NotificationCreditExpiryBatch {
                 } catch (RejectedExecutionException ree) {
                     log.warn("{}日前アラートの非同期投入が拒否されたため同期送信へフォールバック: purchaseId={}",
                             daysRemaining, target.purchaseId(), ree);
-                    alertSender.sendExpiryAlertNow(target.organizationId(), target.purchaseId(),
-                            target.expiresOn(), daysRemaining);
+                    try {
+                        alertSender.sendExpiryAlertNow(target.organizationId(), target.purchaseId(),
+                                target.expiresOn(), daysRemaining);
+                    } catch (Exception fallbackFailure) {
+                        // 再検分是正: フォールバックまで失敗した場合、フラグは既に立っているため
+                        // 次回バッチの検索条件から外れ、この通知は永久に届かない。握り潰さず ERROR で残す。
+                        log.error("{}日前アラートが同期フォールバックでも送信できず永久欠落: "
+                                        + "organizationId={}, purchaseId={}",
+                                daysRemaining, target.organizationId(), target.purchaseId(),
+                                fallbackFailure);
+                    }
                 }
                 sent++;
             } catch (Exception e) {
@@ -207,8 +216,17 @@ public class NotificationCreditExpiryBatch {
                     } catch (RejectedExecutionException ree) {
                         log.warn("失効通知の非同期投入が拒否されたため同期送信へフォールバック: purchaseId={}",
                                 purchase.getId(), ree);
-                        alertSender.sendCreditExpiredAlertNow(
-                                outcome.organizationId(), outcome.expiredCredits());
+                        try {
+                            alertSender.sendCreditExpiredAlertNow(
+                                    outcome.organizationId(), outcome.expiredCredits());
+                        } catch (Exception fallbackFailure) {
+                            // 失効通知はフラグを戻すこともできない（残高からの差し引きが済んでいる）。
+                            // 永久欠落が確定するため ERROR で残す。
+                            log.error("失効通知が同期フォールバックでも送信できず永久欠落: "
+                                            + "organizationId={}, purchaseId={}, expiredCredits={}",
+                                    outcome.organizationId(), purchase.getId(),
+                                    outcome.expiredCredits(), fallbackFailure);
+                        }
                     }
                 }
             } catch (Exception e) {

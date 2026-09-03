@@ -19,8 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -137,6 +142,63 @@ class NotificationAsyncBoundaryDeclarationTest {
                         .isNull();
             }
         }
+
+        /**
+         * 再検分是正: 上の検体は「{@code *Now} が非同期でない」ことしか固定しておらず、
+         * <b>バッチが実際に投入拒否を捕らえてフォールバックすること自体</b>は守っていなかった。
+         * バッチから {@code catch (RejectedExecutionException)} が消えれば、通知は投入拒否時に
+         * 永久欠落へ戻るが、番人は緑のままになる。
+         *
+         * <p>{@code @Async} の投入拒否はプロキシの内部で起きるためリフレクションでは観測できない。
+         * そこでバッチのソースを読み、非同期送信の各呼び出しに対して
+         * 「{@code RejectedExecutionException} を捕らえ、対応する {@code *Now} を呼ぶ」構造が
+         * 残っていることを固定する。</p>
+         */
+        @Test
+        @DisplayName("バッチは投入拒否を捕らえて *Now へフォールバックする（構造をソースで固定）")
+        void バッチが投入拒否を捕らえてフォールバックする() throws IOException {
+            String source = readSource(NotificationCreditExpiryBatch.class);
+
+            assertThat(source)
+                    .as("event-pool の AbortPolicy による投入拒否を捕らえること"
+                            + "（捕らえないとフラグだけ立って通知が永久欠落する）")
+                    .contains("catch (RejectedExecutionException");
+
+            for (List<String> pair : List.of(
+                    List.of("alertSender.sendExpiryAlert(", "alertSender.sendExpiryAlertNow("),
+                    List.of("alertSender.sendCreditExpiredAlert(", "alertSender.sendCreditExpiredAlertNow("))) {
+                String asyncCall = pair.get(0);
+                String syncCall = pair.get(1);
+                assertThat(source).as("%s を呼んでいること", asyncCall).contains(asyncCall);
+
+                int asyncAt = source.indexOf(asyncCall);
+                int catchAt = source.indexOf("catch (RejectedExecutionException", asyncAt);
+                int syncAt = source.indexOf(syncCall, catchAt < 0 ? asyncAt : catchAt);
+                assertThat(catchAt)
+                        .as("%s の直後に RejectedExecutionException の catch があること", asyncCall)
+                        .isGreaterThan(asyncAt);
+                assertThat(syncAt)
+                        .as("その catch の中で同期版 %s を呼び直していること"
+                                + "（呼ばないと投入拒否＝通知の永久欠落）", syncCall)
+                        .isGreaterThan(catchAt);
+            }
+
+            assertThat(source)
+                    .as("フォールバック自体が失敗した場合も握り潰さず ERROR で可視化すること")
+                    .contains("永久欠落");
+        }
+    }
+
+    /** 対象クラスの本体ソースを読む（宣言では観測できない構造を固定するため）。 */
+    private static String readSource(Class<?> type) throws IOException {
+        String relative = type.getName().replace('.', '/') + ".java";
+        for (String root : List.of("src/main/java", "backend/src/main/java")) {
+            Path path = Path.of(root, relative);
+            if (Files.exists(path)) {
+                return Files.readString(path, StandardCharsets.UTF_8);
+            }
+        }
+        throw new AssertionError(relative + " のソースが見つからない");
     }
 
     @Nested

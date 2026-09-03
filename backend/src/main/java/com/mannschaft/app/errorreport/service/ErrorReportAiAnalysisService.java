@@ -1,23 +1,18 @@
 package com.mannschaft.app.errorreport.service;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.errorreport.ErrorReportActivityType;
 import com.mannschaft.app.errorreport.ErrorReportErrorCode;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.entity.ErrorReportAiAnalysisEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
-import com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -52,15 +47,15 @@ public class ErrorReportAiAnalysisService {
     private static final int USER_COMMENT_MAX_CHARS = 200;
 
     private final ErrorReportRepository errorReportRepository;
-    private final ErrorReportAiAnalysisRepository aiAnalysisRepository;
     private final ErrorReportClaudeAiProvider provider;
     private final ErrorReportSanitizer sanitizer;
     private final ErrorReportAiBudgetService budgetService;
-    private final ErrorReportActivityService activityService;
     private final ErrorReportNotifier notifier;
     private final ErrorReportProperties props;
     /** Issue #2990 L4 検分是正: FAILED 記録を呼び出し元のロールバックから切り離すための独立TX Bean。 */
     private final ErrorReportAiAnalysisFailureRecorder failureRecorder;
+    /** Issue #2990 L4 再検分是正: SUCCESS の書き込みを AI 呼び出しの外の短命TXに閉じ込めるための Bean。 */
+    private final ErrorReportAiAnalysisResultRecorder resultRecorder;
 
     // Issue #2990 L4: analyzeAfterCommit / analyzeAsync は自己呼び出しにより @Async と @Transactional が
     // いずれも失効していたため、ErrorReportAiAnalysisDispatcher / ErrorReportAiAnalysisAsyncRunner へ
@@ -69,11 +64,34 @@ public class ErrorReportAiAnalysisService {
     /**
      * 同期的に AI 分析を実行する（手動再分析用）。
      *
+     * <h2>3段構成である理由（Issue #2990 L4 再検分是正）</h2>
+     * <p>本メソッドには<b>意図的に {@code @Transactional} を付けていない</b>。
+     * 内訳は次の3段で、Claude API への HTTP 呼び出し（②）は<b>トランザクションの外</b>で走る。</p>
+     * <pre>
+     *   ① 読み取り  : findById / buildContext        （リポジトリ単位の短命TX）
+     *   ② AI 呼び出し: provider.analyze              （TXなし＝DB接続を1本も握らない）
+     *   ③ 書き込み  : ErrorReportAiAnalysisResultRecorder#recordSuccess（短命TX）
+     *                 失敗時は ErrorReportAiAnalysisFailureRecorder#recordFailure（短命TX）
+     * </pre>
+     * <p>是正前は①〜③が単一トランザクションで、AI 応答を待つ秒〜分のあいだ Hikari 接続を
+     * 占有していた。管理者の再分析 API は HTTP スレッドから本メソッドを直接呼ぶため
+     * {@code ai-analysis-pool} の max2 では同時実行数を縛れず、
+     * 「接続を握ったまま AI を待つ外側」＋「追加接続を要求する {@code REQUIRES_NEW} の失敗記録」で
+     * 接続枯渇 → FAILED 記録自体の失敗 → 再試行ループ再発、という経路が成立していた。
+     * また③の途中（{@code last_ai_analysis_at} 更新後）で失敗すると、外側が握った
+     * {@code error_reports} の行ロックを内側の {@code REQUIRES_NEW} が待つ自己デッドロックになった。
+     * TX を跨がせないことで、これらの根（AI 呼び出しが TX 内にあること）を断っている。</p>
+     *
+     * <p><b>本メソッドを外側トランザクションの中から呼んではならない。</b>
+     * 呼ぶと②の最中に接続が握られ、上記の問題がそのまま復活する。
+     * 唯一の同期呼び出し元である {@code SystemAdminErrorReportController#reanalyze} は
+     * {@code @Transactional} を持たない。この制約は
+     * {@code ErrorReportAiAnalysisTransactionBoundaryTest} が機械的に固定している。</p>
+     *
      * @param errorReportId エラーレポート ID
      * @param createdBy     操作者ユーザー ID
      * @return 永続化された分析履歴エンティティ
      */
-    @Transactional
     public ErrorReportAiAnalysisEntity analyzeSync(Long errorReportId, Long createdBy) {
         if (!props.getAi().isEnabled()) {
             throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_007);
@@ -84,72 +102,49 @@ public class ErrorReportAiAnalysisService {
             throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_008);
         }
 
+        // ① 読み取り（短命TX。以降 report は detached なので、書き込みは③で読み直す）
         ErrorReportEntity report = errorReportRepository.findById(errorReportId)
                 .orElseThrow(() -> new BusinessException(ErrorReportErrorCode.ERROR_REPORT_NOT_FOUND));
-
         SanitizedErrorContext ctx = buildContext(report);
 
+        // ② AI 呼び出し（TX外）と ③ 書き込み。
+        //   catch はこの2段のみを覆う。通知（④）を含めないのは、
+        //   分析が成功して記録も確定したあとの通知失敗まで FAILED として記録すると、
+        //   同一レポートに SUCCESS と FAILED の両方が立ち履歴が嘘になるため。
         ErrorReportAiAnalysisEntity entity;
         try {
             AiAnalysisResult result = provider.analyze(ctx);
 
-            // 実コスト計上
             int costJpy = ClaudeModelPricing.estimateJpy(
                     props.getAi().getModel(),
                     result.getPromptTokens(),
                     result.getCompletionTokens());
-            budgetService.recordExpense(costJpy);
 
-            String suggestedFiles = serializeSuggestedFiles(result.getSuggestedFiles());
-
-            entity = ErrorReportAiAnalysisEntity.builder()
-                    .errorReportId(errorReportId)
-                    .modelName(props.getAi().getModel())
-                    .promptTokens(result.getPromptTokens())
-                    .completionTokens(result.getCompletionTokens())
-                    .estimatedCause(result.getEstimatedCause())
-                    .fixProposal(result.getFixProposal())
-                    .impactAssessment(result.getImpactAssessment())
-                    .suggestedFiles(suggestedFiles)
-                    .rawResponse(result.getRawResponse())
-                    .status("SUCCESS")
-                    .createdBy(createdBy)
-                    .build();
-            entity = aiAnalysisRepository.save(entity);
-
-            // 親レコードの最終分析日時を更新
-            report.setLastAiAnalysisAt(LocalDateTime.now());
-
-            // activities に記録
-            Map<String, Object> metadata = new HashMap<>();
-            metadata.put("modelName", props.getAi().getModel());
-            metadata.put("promptTokens", result.getPromptTokens());
-            metadata.put("completionTokens", result.getCompletionTokens());
-            if (createdBy == null) {
-                activityService.recordSystemActivity(
-                        errorReportId, ErrorReportActivityType.AI_ANALYZED, metadata);
-            } else {
-                activityService.record(
-                        errorReportId, createdBy,
-                        ErrorReportActivityType.AI_ANALYZED, null, metadata);
-            }
-
-            // CRITICAL のみ通知
-            if (report.getSeverity() == ErrorReportSeverity.CRITICAL) {
-                notifier.notifyAiAnalysisCompleted(report, entity);
-            }
-            return entity;
+            entity = resultRecorder.recordSuccess(
+                    errorReportId,
+                    props.getAi().getModel(),
+                    result,
+                    serializeSuggestedFiles(result.getSuggestedFiles()),
+                    costJpy,
+                    createdBy,
+                    LocalDateTime.now());
         } catch (BusinessException e) {
             // 予算系エラーは saved レコードを残さず再投入
             throw e;
         } catch (Exception e) {
             // FAILED の永続化（再試行ループを防ぐため last_ai_analysis_at は更新する）。
             //
-            // Issue #2990 L4 検分是正: この記録は必ず「別トランザクション」で確定させること。
-            // 本メソッドの @Async/@Transactional は L4 で初めて実効化したため、ここで直接 save しても
-            // 直後の throw で既定のロールバック規則により巻き戻り、FAILED 行も last_ai_analysis_at も
-            // 残らない。残らなければ ErrorReportAiAnalysisBatch（last_ai_analysis_at IS NULL が検索条件）が
-            // 5 分ごとに同じレポートを AI へ投げ続ける = 再試行ループそのものが起きる。
+            // ここに到達する経路は2つある。
+            //   (a) ② の AI 呼び出しが失敗した   → DB には何も書いていない
+            //   (b) ③ の書き込みが失敗した       → recordSuccess のTXは戻る前に既にロールバック済み
+            // いずれの場合も<b>この時点で有効なトランザクションは存在しない</b>。したがって
+            // recordFailure（REQUIRES_NEW）が待つべき行ロックも、握られたままの接続も無い。
+            // 是正前は analyzeSync 自体が @Transactional だったため (b) の経路で
+            // 「外側が error_reports の行ロックを保持したまま内側が同じ行を更新する」
+            // 自己デッドロックが成立しえた。成立には setLastAiAnalysisAt の後に
+            // error_reports を巻き込むオートフラッシュ（JPQL/ネイティブクエリ）が必要で、
+            // 条件は当初の見立てより狭い（実測の詳細は ErrorReportAiAnalysisFailureRecordIT の javadoc）。
+            // 現在は TX 自体が無いため、フラッシュ契機に関係なく成立しない。
             //
             // 例外は握り潰さず投げ直す。手動再分析 API は失敗を呼び出し元に返す必要があり、
             // 「投げるのをやめる」は失敗を隠す対処療法になるため採らない。
@@ -161,6 +156,18 @@ public class ErrorReportAiAnalysisService {
                     LocalDateTime.now());
             throw new RuntimeException("AI 分析に失敗しました: " + e.getMessage(), e);
         }
+
+        // ④ CRITICAL のみ通知。記録済みの分析結果を通知失敗で巻き戻さないため、TX の外・catch の外で行う。
+        //    通知の失敗は握り潰さず ERROR ログで可視化したうえで、分析結果自体は呼び出し元へ返す。
+        if (report.getSeverity() == ErrorReportSeverity.CRITICAL) {
+            try {
+                notifier.notifyAiAnalysisCompleted(report, entity);
+            } catch (Exception e) {
+                log.error("AI 分析完了通知の送信に失敗（分析結果自体は記録済み）: errorReportId={}",
+                        errorReportId, e);
+            }
+        }
+        return entity;
     }
 
     /**

@@ -1,14 +1,12 @@
 package com.mannschaft.app.errorreport.service;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.errorreport.ErrorReportActivityType;
 import com.mannschaft.app.errorreport.ErrorReportErrorCode;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
 import com.mannschaft.app.errorreport.entity.ErrorReportAiAnalysisEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
-import com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -44,20 +41,19 @@ class ErrorReportAiAnalysisServiceTest {
     @Mock
     private ErrorReportRepository errorReportRepository;
     @Mock
-    private ErrorReportAiAnalysisRepository aiAnalysisRepository;
-    @Mock
     private ErrorReportClaudeAiProvider provider;
     @Mock
     private ErrorReportSanitizer sanitizer;
     @Mock
     private ErrorReportAiBudgetService budgetService;
     @Mock
-    private ErrorReportActivityService activityService;
-    @Mock
     private ErrorReportNotifier notifier;
     /** Issue #2990 L4 検分是正: FAILED 記録は独立TXの別 Bean が担う。 */
     @Mock
     private ErrorReportAiAnalysisFailureRecorder failureRecorder;
+    /** Issue #2990 L4 再検分是正: SUCCESS の書き込みは AI 呼び出しの外の短命TX（別 Bean）が担う。 */
+    @Mock
+    private ErrorReportAiAnalysisResultRecorder resultRecorder;
 
     private ErrorReportProperties props;
 
@@ -72,9 +68,8 @@ class ErrorReportAiAnalysisServiceTest {
         props.getAi().setEnabled(true);
         props.getAi().setModel("claude-haiku-4-5");
         service = new ErrorReportAiAnalysisService(
-                errorReportRepository, aiAnalysisRepository,
-                provider, sanitizer, budgetService,
-                activityService, notifier, props, failureRecorder);
+                errorReportRepository, provider, sanitizer, budgetService,
+                notifier, props, failureRecorder, resultRecorder);
 
         // sanitizer は素通しでよい（buildContext を呼ばないテストでは未使用）
         lenient().when(sanitizer.sanitize(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -130,18 +125,26 @@ class ErrorReportAiAnalysisServiceTest {
                 .completionTokens(50)
                 .rawResponse("{}")
                 .build());
-        given(aiAnalysisRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(resultRecorder.recordSuccess(anyLong(), any(), any(), any(), anyInt(), any(), any()))
+                .willAnswer(inv -> ErrorReportAiAnalysisEntity.builder()
+                        .errorReportId(inv.getArgument(0))
+                        .modelName(inv.getArgument(1))
+                        .status("SUCCESS")
+                        .estimatedCause(((AiAnalysisResult) inv.getArgument(2)).getEstimatedCause())
+                        .suggestedFiles(inv.getArgument(3))
+                        .build());
 
         ErrorReportAiAnalysisEntity entity = service.analyzeSync(REPORT_ID, ACTOR_ID);
 
         assertThat(entity.getStatus()).isEqualTo("SUCCESS");
         assertThat(entity.getEstimatedCause()).isEqualTo("原因");
         assertThat(entity.getSuggestedFiles()).isEqualTo("a.vue,b.ts");
-        assertThat(report.getLastAiAnalysisAt()).isNotNull();
 
-        verify(budgetService).recordExpense(anyInt());
-        verify(activityService).record(eq(REPORT_ID), eq(ACTOR_ID),
-                eq(ErrorReportActivityType.AI_ANALYZED), eq(null), anyMap());
+        // 履歴の save・コスト計上・last_ai_analysis_at 更新・activity 記録は
+        // すべて第3段（recordSuccess）の短命TXの中で行う（Issue #2990 L4 再検分是正）。
+        verify(resultRecorder).recordSuccess(eq(REPORT_ID), eq("claude-haiku-4-5"),
+                any(), eq("a.vue,b.ts"), anyInt(), eq(ACTOR_ID), any());
+        verify(failureRecorder, never()).recordFailure(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -154,7 +157,8 @@ class ErrorReportAiAnalysisServiceTest {
                 .estimatedCause("c").fixProposal("f").impactAssessment("i")
                 .suggestedFiles(List.of()).promptTokens(50).completionTokens(20)
                 .rawResponse("{}").build());
-        given(aiAnalysisRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(resultRecorder.recordSuccess(anyLong(), any(), any(), any(), anyInt(), any(), any()))
+                .willReturn(ErrorReportAiAnalysisEntity.builder().status("SUCCESS").build());
 
         service.analyzeSync(REPORT_ID, ACTOR_ID);
 
@@ -171,7 +175,8 @@ class ErrorReportAiAnalysisServiceTest {
                 .estimatedCause("c").fixProposal("f").impactAssessment("i")
                 .suggestedFiles(List.of()).promptTokens(50).completionTokens(20)
                 .rawResponse("{}").build());
-        given(aiAnalysisRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(resultRecorder.recordSuccess(anyLong(), any(), any(), any(), anyInt(), any(), any()))
+                .willReturn(ErrorReportAiAnalysisEntity.builder().status("SUCCESS").build());
 
         service.analyzeSync(REPORT_ID, ACTOR_ID);
 
@@ -197,10 +202,56 @@ class ErrorReportAiAnalysisServiceTest {
         //   （欠陥を隠していた検体）。実際の永続化は ErrorReportAiAnalysisFailureRecordIT が実DBで検証する。
         verify(failureRecorder).recordFailure(
                 eq(REPORT_ID), eq("claude-haiku-4-5"), contains("API エラー"), eq(ACTOR_ID), any());
-        verify(aiAnalysisRepository, never()).save(any());
-        // activity は記録しない（FAILED 時）
-        verify(activityService, never())
-                .record(anyLong(), any(), any(), any(), any());
+        // SUCCESS の書き込みには一切入らない（FAILED 時）
+        verify(resultRecorder, never())
+                .recordSuccess(anyLong(), any(), any(), any(), anyInt(), any(), any());
+    }
+
+    @Test
+    @DisplayName("再検分是正: AI 成功後の書き込みが失敗した場合も FAILED が記録される（自己デッドロックの経路）")
+    void analyzeSync_persistsFailedWhenResultWriteFails() {
+        ErrorReportEntity report = sampleReport(ErrorReportSeverity.HIGH);
+        given(budgetService.canExpend(anyInt())).willReturn(true);
+        given(errorReportRepository.findById(REPORT_ID)).willReturn(Optional.of(report));
+        given(provider.analyze(any())).willReturn(AiAnalysisResult.builder()
+                .estimatedCause("c").fixProposal("f").impactAssessment("i")
+                .suggestedFiles(List.of()).promptTokens(50).completionTokens(20)
+                .rawResponse("{}").build());
+        // 第3段（コスト計上・履歴 save・last_ai_analysis_at 更新・activity 記録）の失敗を模す。
+        // 是正前はこの経路でも catch に入るが、外側TXが error_reports の行ロックを保持したまま
+        // REQUIRES_NEW が同じ行を更新するため自己デッドロックになった。
+        given(resultRecorder.recordSuccess(anyLong(), any(), any(), any(), anyInt(), any(), any()))
+                .willThrow(new IllegalStateException("activity 記録で DB 障害"));
+
+        assertThatThrownBy(() -> service.analyzeSync(REPORT_ID, ACTOR_ID))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("AI 分析に失敗しました");
+
+        verify(failureRecorder).recordFailure(
+                eq(REPORT_ID), eq("claude-haiku-4-5"), contains("activity 記録で DB 障害"),
+                eq(ACTOR_ID), any());
+    }
+
+    @Test
+    @DisplayName("再検分是正: 通知の失敗は FAILED として記録せず、分析結果を返す（ERROR ログで可視化）")
+    void analyzeSync_notificationFailureDoesNotMarkFailed() {
+        ErrorReportEntity report = sampleReport(ErrorReportSeverity.CRITICAL);
+        given(budgetService.canExpend(anyInt())).willReturn(true);
+        given(errorReportRepository.findById(REPORT_ID)).willReturn(Optional.of(report));
+        given(provider.analyze(any())).willReturn(AiAnalysisResult.builder()
+                .estimatedCause("c").fixProposal("f").impactAssessment("i")
+                .suggestedFiles(List.of()).promptTokens(50).completionTokens(20)
+                .rawResponse("{}").build());
+        given(resultRecorder.recordSuccess(anyLong(), any(), any(), any(), anyInt(), any(), any()))
+                .willReturn(ErrorReportAiAnalysisEntity.builder().status("SUCCESS").build());
+        org.mockito.BDDMockito.willThrow(new IllegalStateException("通知配送に失敗"))
+                .given(notifier).notifyAiAnalysisCompleted(any(), any());
+
+        ErrorReportAiAnalysisEntity entity = service.analyzeSync(REPORT_ID, ACTOR_ID);
+
+        assertThat(entity.getStatus()).isEqualTo("SUCCESS");
+        // 記録済みの分析を FAILED で上書きすると履歴が嘘になるため、通知失敗は FAILED にしない。
+        verify(failureRecorder, never()).recordFailure(any(), any(), any(), any(), any());
     }
 
     @Test

@@ -18,11 +18,13 @@ import java.util.List;
 import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -132,5 +134,55 @@ class NotificationCreditAlertSenderTest {
         NotificationHelper.LocalizedMessage message = builderCaptor.getValue().build(5L, Locale.ENGLISH);
         assertThat(message.title()).isEqualTo("Notification credits have expired");
         assertThat(message.body()).doesNotContain("{0}").contains("50");
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // Issue #2990 L4 再検分是正: 同期版（*Now）は送信失敗を握り潰さない
+    // ─────────────────────────────────────────────────────────
+
+    /**
+     * 是正前は {@code *Now} の本体が {@code catch (Exception)} で送信失敗を飲み込んでいた。
+     * バッチの投入拒否フォールバックは {@code *Now} を呼ぶため、
+     * <b>フォールバック経路の失敗まで静かに消え</b>、通知が失われたことを誰も知り得なかった。
+     */
+    @Test
+    @DisplayName("sendExpiryAlertNow: 送信失敗は握り潰さず呼び出し元へ投げる")
+    void sendExpiryAlertNow_propagatesFailure() {
+        given(roleService.getAdminUserIdsByOrganizationId(1L)).willReturn(List.of(5L));
+        willThrow(new IllegalStateException("配送基盤の障害"))
+                .given(notificationHelper).notifyAllLocalized(
+                        any(), anyString(), anyString(), any(), any(), any(), anyString(), any(), any());
+
+        assertThatThrownBy(() -> sender.sendExpiryAlertNow(1L, 200L, LocalDate.of(2026, 9, 1), 30))
+                .as("同期フォールバック経路の失敗は呼び出し元（バッチ）が ERROR ログに出せるよう伝播すること")
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("sendCreditExpiredAlertNow: 送信失敗は握り潰さず呼び出し元へ投げる")
+    void sendCreditExpiredAlertNow_propagatesFailure() {
+        given(roleService.getAdminUserIdsByOrganizationId(1L)).willReturn(List.of(5L));
+        willThrow(new IllegalStateException("配送基盤の障害"))
+                .given(notificationHelper).notifyAllLocalized(
+                        any(), anyString(), anyString(), any(), any(), any(), anyString(), any(), any());
+
+        assertThatThrownBy(() -> sender.sendCreditExpiredAlertNow(1L, 50L))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    /**
+     * 非同期経路には例外を受け取る呼び出し元がいない（{@code @Async} の戻り値は void）。
+     * こちらは ERROR ログ化したうえで飲み込むのが正しい。
+     */
+    @Test
+    @DisplayName("sendExpiryAlert（非同期経路）は例外を外へ漏らさない")
+    void sendExpiryAlert_swallowsAfterLogging() {
+        given(roleService.getAdminUserIdsByOrganizationId(1L)).willReturn(List.of(5L));
+        willThrow(new IllegalStateException("配送基盤の障害"))
+                .given(notificationHelper).notifyAllLocalized(
+                        any(), anyString(), anyString(), any(), any(), any(), anyString(), any(), any());
+
+        sender.sendExpiryAlert(1L, 200L, LocalDate.of(2026, 9, 1), 30);
+        sender.sendCreditExpiredAlert(1L, 50L);
     }
 }

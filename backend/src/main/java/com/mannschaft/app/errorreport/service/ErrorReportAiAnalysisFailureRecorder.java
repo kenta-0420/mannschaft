@@ -35,10 +35,32 @@ import java.time.LocalDateTime;
  *
  * <p>{@code REQUIRES_NEW} は同一 Bean 内の自己呼び出しでは効かないため、別 Bean に切り出している。</p>
  *
- * <h2>デッドロックしない根拠</h2>
- * <p>呼び出し元の外側トランザクションは、この catch に到達する時点で {@code error_reports} 行に対して
- * <b>読み取りしか行っていない</b>（AI 呼び出しは {@code buildContext} の直後・親の更新より前に走る）。
- * したがって内側の独立トランザクションが同じ行を更新しても、外側が保持する行ロックと競合しない。</p>
+ * <h2>デッドロックしない根拠（再検分是正で書き直した）</h2>
+ * <p><b>以前ここに書いていた根拠は誤りだった。</b>「catch に到達する時点で外側TXは
+ * {@code error_reports} を読み取りしかしていない」と書いていたが、それが成り立つのは
+ * AI 呼び出し自体が失敗した経路だけである。{@code analyzeSync} の catch は try 全体を覆っており、
+ * AI 成功後の後続処理（コスト計上・履歴 save・{@code last_ai_analysis_at} 更新・activity 記録・通知）が
+ * 失敗した場合にもここへ来る。その時点では {@code activityService.record}（伝播 REQUIRED・
+ * 同一 PersistenceContext）のオートフラッシュにより {@code error_reports} の UPDATE が発行済みで、
+ * 外側TXが当該行の排他ロックを保持しうる。そこへ同じ行を更新する {@code REQUIRES_NEW} が入れば
+ * 自己デッドロック（ロック待ちタイムアウト）になる。</p>
+ *
+ * <p><b>成立条件は実測で絞り込んである。</b>{@code setLastAiAnalysisAt} はダーティチェック対象に
+ * なるだけで即座には UPDATE を発行しないため、行ロックが取られるのは
+ * 「{@code error_reports} を巻き込むオートフラッシュ（JPQL/ネイティブクエリの発行）が起き、
+ * <b>その後で</b>失敗する」経路に限られる。activity 記録の失敗だけを注入した実測では
+ * 再現しなかった（{@code ErrorReportAiAnalysisFailureRecordIT} の javadoc に記録）。
+ * 危険性は実在するが、旧 javadoc が書いていた「読み取りしかしていないから安全」もまた誤りである。</p>
+ *
+ * <p>現在はこの前提自体を無くしてある。{@link ErrorReportAiAnalysisService#analyzeSync} から
+ * {@code @Transactional} を外し、「①読み取り → ②AI 呼び出し（TX外）→ ③書き込み」の3段に割った。
+ * 本 Bean が呼ばれる時点で<b>有効なトランザクションは1つも存在しない</b>（③のTXは
+ * 失敗して戻る前にロールバック済み）。よって待つべき行ロックも、握られたままの接続も無い。
+ * 接続枯渇（外側が接続を握って AI を待つ最中に内側が追加接続を要求する）も同じ理由で成立しない。</p>
+ *
+ * <p>{@code REQUIRES_NEW} は据え置く。{@code analyzeSync} は外側TXから呼ばれない前提だが、
+ * 万一そう呼ばれた場合に FAILED 記録が呼び出し元のロールバックへ巻き込まれる退行を防ぐためである
+ * （その前提自体は {@code ErrorReportAiAnalysisTransactionBoundaryTest} が機械的に固定する）。</p>
  */
 @Slf4j
 @Component
