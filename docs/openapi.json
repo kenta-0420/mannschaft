@@ -14257,7 +14257,7 @@
           "システム管理 - ナビ機能管理"
         ],
         "summary": "ナビ項目更新",
-        "description": "ナビ項目を更新する。is_fixed=TRUEの項目のfixedをFALSEには変更不可。",
+        "description": "ナビ項目を更新する。is_fixed\u003dTRUEの項目のfixedをFALSEには変更不可。",
         "operationId": "update_20",
         "parameters": [
           {
@@ -14297,7 +14297,7 @@
           "システム管理 - ナビ機能管理"
         ],
         "summary": "ナビ項目削除",
-        "description": "ナビ項目を削除する。is_fixed=TRUEの項目は削除不可。",
+        "description": "ナビ項目を削除する。is_fixed\u003dTRUEの項目は削除不可。",
         "operationId": "delete_20",
         "parameters": [
           {
@@ -14695,7 +14695,7 @@
           "システム管理 - 手数料パターン管理"
         ],
         "summary": "手数料パターン無効化",
-        "description": "パターンを無効化する（enabled=false）。DEFAULT は不可（409）。",
+        "description": "パターンを無効化する（enabled\u003dfalse）。DEFAULT は不可（409）。",
         "operationId": "disable",
         "parameters": [
           {
@@ -14896,7 +14896,7 @@
           "システム管理 - 課金"
         ],
         "summary": "人数バンド一括置換",
-        "description": "band_no 昇順・min=前 max+1・最終のみ max=null 違反は 400。",
+        "description": "band_no 昇順・min\u003d前 max+1・最終のみ max\u003dnull 違反は 400。",
         "operationId": "replacePriceBands",
         "parameters": [
           {
@@ -16163,7 +16163,7 @@
           "ナビゲーション設定"
         ],
         "summary": "ナビ設定取得",
-        "description": "現在ユーザーのナビ項目表示設定を返す。is_enabled=TRUE の項目のみ。",
+        "description": "現在ユーザーのナビ項目表示設定を返す。is_enabled\u003dTRUE の項目のみ。",
         "operationId": "getNavSettings",
         "responses": {
           "200": {
@@ -25032,7 +25032,7 @@
           "チャットフォルダ"
         ],
         "summary": "フォルダアイテム一覧",
-        "description": "フォルダ内のアイテム一覧を取得する。sort=LAST_MESSAGE で最終DM日時降順",
+        "description": "フォルダ内のアイテム一覧を取得する。sort\u003dLAST_MESSAGE で最終DM日時降順",
         "operationId": "getFolderItems",
         "parameters": [
           {
@@ -31501,7 +31501,7 @@
         "tags": [
           "村ニュースレター (F17.1 Phase 3-β-E)"
         ],
-        "summary": "当該ユーザーの opt-out を解除する（= opt-in に戻す）",
+        "summary": "当該ユーザーの opt-out を解除する（\u003d opt-in に戻す）",
         "operationId": "optIn",
         "parameters": [
           {
@@ -33569,7 +33569,7 @@
         "tags": [
           "村歳時記カレンダー (F17.1)"
         ],
-        "summary": "年輪（その年の様子）一覧を取得する（村人・year 降順・?year= 絞り込み可）",
+        "summary": "年輪（その年の様子）一覧を取得する（村人・year 降順・?year\u003d 絞り込み可）",
         "operationId": "listLogs",
         "parameters": [
           {
@@ -35287,7 +35287,7 @@
           "TODO 予算紐付 (F08.7)"
         ],
         "summary": "TODO/プロジェクトと予算割当を紐付ける",
-        "description": "project_id と todo_id はどちらか一方のみ指定。link_amount と link_percentage はどちらか一方（両方 NULL = 割当全額）。",
+        "description": "project_id と todo_id はどちらか一方のみ指定。link_amount と link_percentage はどちらか一方（両方 NULL \u003d 割当全額）。",
         "operationId": "createLink",
         "parameters": [
           {
@@ -49259,7 +49259,7 @@
           "告知ウィザード"
         ],
         "summary": "チームへの告知ウィザード実行",
-        "description": "F02.8 告知ウィザード。チームスコープでコンテンツ作成 + お知らせフィード登録を一括実行する。MEMBER は priority=NORMAL のみ使用可。ADMIN/DEPUTY_ADMIN は全優先度が使用可。",
+        "description": "F02.8 告知ウィザード。チームスコープでコンテンツ作成 + お知らせフィード登録を一括実行する。MEMBER は priority\u003dNORMAL のみ使用可。ADMIN/DEPUTY_ADMIN は全優先度が使用可。",
         "operationId": "broadcastToTeam",
         "parameters": [
           {
@@ -49946,7 +49946,7 @@
           "チームお知らせウィジェット"
         ],
         "summary": "全件既読",
-        "description": "チームスコープの全未読お知らせを一括既読にする。1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread=true を返す。",
+        "description": "チームスコープの全未読お知らせを一括既読にする。1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread\u003dtrue を返す。",
         "operationId": "markAllAsRead",
         "parameters": [
           {
@@ -50010,7 +50010,7 @@
           "告知ウィザード範囲テンプレート"
         ],
         "summary": "チームテンプレート作成",
-        "description": "チームスコープの告知範囲テンプレートを作成する。ADMIN / DEPUTY_ADMIN のみ可。上限（20件）超過時は 409。is_default=true の場合、既存デフォルトを解除する。",
+        "description": "チームスコープの告知範囲テンプレートを作成する。ADMIN / DEPUTY_ADMIN のみ可。上限（20件）超過時は 409。is_default\u003dtrue の場合、既存デフォルトを解除する。",
         "operationId": "createTeamTemplate_1",
         "parameters": [
           {
@@ -53726,7 +53726,7 @@
           "システム管理 - 手数料パターン管理"
         ],
         "summary": "手数料パターン一覧",
-        "description": "全パターンを返す（enabled=false 含む全件・policy_key 昇順・割当数付き）。",
+        "description": "全パターンを返す（enabled\u003dfalse 含む全件・policy_key 昇順・割当数付き）。",
         "operationId": "list_40",
         "responses": {
           "200": {
@@ -54057,7 +54057,7 @@
           "システム管理 - 課金"
         ],
         "summary": "手動付与",
-        "description": "契約行を作って発行（created_by=シスアド・REVENUE イベント非発火）。",
+        "description": "契約行を作って発行（created_by\u003dシスアド・REVENUE イベント非発火）。",
         "operationId": "grant_1",
         "requestBody": {
           "content": {
@@ -54214,7 +54214,7 @@
           "システム管理 - ベータ特典"
         ],
         "summary": "取消",
-        "description": "reason=TERMS_VIOLATION|ACCOUNT_TRANSFER|OTHER（WITHDRAWAL 不可）。",
+        "description": "reason\u003dTERMS_VIOLATION|ACCOUNT_TRANSFER|OTHER（WITHDRAWAL 不可）。",
         "operationId": "revokeGrant",
         "parameters": [
           {
@@ -54257,7 +54257,7 @@
           "システム管理 - ベータ特典"
         ],
         "summary": "審査解決",
-        "description": "review_flag=true の grant のみ（問題なし）。",
+        "description": "review_flag\u003dtrue の grant のみ（問題なし）。",
         "operationId": "resolveReview",
         "parameters": [
           {
@@ -54290,7 +54290,7 @@
           "システム管理 - ベータ特典"
         ],
         "summary": "審査フラグ設定",
-        "description": "review_reason=MANUAL 固定。取消済みは 409。",
+        "description": "review_reason\u003dMANUAL 固定。取消済みは 409。",
         "operationId": "flagReview",
         "parameters": [
           {
@@ -57059,7 +57059,7 @@
           "F03.11 募集型予約 / NO_SHOW管理"
         ],
         "summary": "NO_SHOWマーク (管理者, §9.5)",
-        "description": "仮マーク。24h 後に確定バッチが confirmed=true にする。",
+        "description": "仮マーク。24h 後に確定バッチが confirmed\u003dtrue にする。",
         "operationId": "markNoShow_1",
         "parameters": [
           {
@@ -58690,7 +58690,7 @@
           "公開投稿コメント API (F19.1 Phase 6-B)"
         ],
         "summary": "公開投稿コメント一覧取得（未ログイン公開）",
-        "description": "未ログインでも実行可能。public_visible=true かつ visibility=PUBLIC かつ status=PUBLISHED の BlogPost のコメント一覧を返す。 対象投稿が存在しないか非公開の場合は 404。",
+        "description": "未ログインでも実行可能。public_visible\u003dtrue かつ visibility\u003dPUBLIC かつ status\u003dPUBLISHED の BlogPost のコメント一覧を返す。 対象投稿が存在しないか非公開の場合は 404。",
         "operationId": "getComments",
         "parameters": [
           {
@@ -59493,7 +59493,7 @@
         "tags": [
           "謝礼決済 返金"
         ],
-        "summary": "返金 / 与信取消（受取側 ADMIN・feeBearer=PAYER|PAYEE の 2モード）",
+        "summary": "返金 / 与信取消（受取側 ADMIN・feeBearer\u003dPAYER|PAYEE の 2モード）",
         "operationId": "refund_1",
         "parameters": [
           {
@@ -68827,7 +68827,7 @@
           "ポイントカード 自店プロバイダー"
         ],
         "summary": "自店プロバイダー一覧取得",
-        "description": "当該組織が発行した自店プロバイダー（type=SELF_ISSUED_STAMP）を返す。?active=true で is_active=true のみに絞り込み可能。",
+        "description": "当該組織が発行した自店プロバイダー（type\u003dSELF_ISSUED_STAMP）を返す。?active\u003dtrue で is_active\u003dtrue のみに絞り込み可能。",
         "operationId": "listProviders",
         "parameters": [
           {
@@ -68866,7 +68866,7 @@
           "ポイントカード 自店プロバイダー"
         ],
         "summary": "自店プロバイダー新規発行",
-        "description": "type=SELF_ISSUED_STAMP 固定で発行。code は org_{orgId}_{rand8} で自動生成。1 組織あたり 20 個上限。監査ログ POINT_CARD_PROVIDER_CREATED を 1 件記録。",
+        "description": "type\u003dSELF_ISSUED_STAMP 固定で発行。code は org_{orgId}_{rand8} で自動生成。1 組織あたり 20 個上限。監査ログ POINT_CARD_PROVIDER_CREATED を 1 件記録。",
         "operationId": "createProvider",
         "parameters": [
           {
@@ -72125,7 +72125,7 @@
           "組織お知らせウィジェット"
         ],
         "summary": "全件既読（組織）",
-        "description": "組織スコープの全未読お知らせを一括既読にする。1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread=true を返す。",
+        "description": "組織スコープの全未読お知らせを一括既読にする。1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread\u003dtrue を返す。",
         "operationId": "markAllAsRead_1",
         "parameters": [
           {
@@ -72189,7 +72189,7 @@
           "告知ウィザード範囲テンプレート"
         ],
         "summary": "組織テンプレート作成",
-        "description": "組織スコープの告知範囲テンプレートを作成する。ADMIN / DEPUTY_ADMIN のみ可。上限（20件）超過時は 409。is_default=true の場合、既存デフォルトを解除する。",
+        "description": "組織スコープの告知範囲テンプレートを作成する。ADMIN / DEPUTY_ADMIN のみ可。上限（20件）超過時は 409。is_default\u003dtrue の場合、既存デフォルトを解除する。",
         "operationId": "createOrgTemplate_1",
         "parameters": [
           {
@@ -75026,7 +75026,7 @@
           "お気に入り"
         ],
         "summary": "お気に入り一覧取得",
-        "description": "認証ユーザーのお気に入りを表示順（displayOrder昇順）で返す。削除済みエンティティは available=false として含まれる。",
+        "description": "認証ユーザーのお気に入りを表示順（displayOrder昇順）で返す。削除済みエンティティは available\u003dfalse として含まれる。",
         "operationId": "listFavorites",
         "responses": {
           "200": {
@@ -75056,7 +75056,7 @@
           "お気に入り"
         ],
         "summary": "お気に入り追加",
-        "description": "指定エンティティをお気に入りに追加する。先頭（displayOrder=0）に挿入される。20件上限・重複チェック・エンティティ存在確認を行う。",
+        "description": "指定エンティティをお気に入りに追加する。先頭（displayOrder\u003d0）に挿入される。20件上限・重複チェック・エンティティ存在確認を行う。",
         "operationId": "addFavorite_1",
         "requestBody": {
           "content": {
@@ -80204,7 +80204,7 @@
           "チャットメッセージ"
         ],
         "summary": "メッセージ一覧",
-        "description": "カーソルベースページネーションでメッセージを取得する。direction=after でWebSocket再接続後のキャッチアップが可能。",
+        "description": "カーソルベースページネーションでメッセージを取得する。direction\u003dafter でWebSocket再接続後のキャッチアップが可能。",
         "operationId": "listMessages",
         "parameters": [
           {
@@ -83700,7 +83700,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/html;charset=UTF-8": {
+              "text/html;charset\u003dUTF-8": {
                 "schema": {
                   "type": "string"
                 }
@@ -101566,7 +101566,7 @@
           "ポイントカード 自店プロバイダー"
         ],
         "summary": "自店プロバイダー停止",
-        "description": "is_active=false に更新（物理削除しない）。ADMIN のみ実行可能。監査ログ POINT_CARD_PROVIDER_DEACTIVATED を 1 件記録。",
+        "description": "is_active\u003dfalse に更新（物理削除しない）。ADMIN のみ実行可能。監査ログ POINT_CARD_PROVIDER_DEACTIVATED を 1 件記録。",
         "operationId": "deactivateProvider",
         "parameters": [
           {
@@ -105171,7 +105171,7 @@
         "tags": [
           "F03.11 募集型予約 / キャンセルポリシー"
         ],
-        "summary": "ポリシー編集 (is_template_policy=true のみ)",
+        "summary": "ポリシー編集 (is_template_policy\u003dtrue のみ)",
         "operationId": "update_61",
         "parameters": [
           {
@@ -106048,7 +106048,7 @@
           "Admin 投稿者識別モード切替 API (F19.1 Phase 2)"
         ],
         "summary": "チーム投稿者識別モード切替",
-        "description": "ADMIN または SYSTEM_ADMIN が teams.supporter_name_disclosure を変更する。 confirmed=true が必須（REAL_NAME への切替時は警告ダイアログで確認後に送信すること）。",
+        "description": "ADMIN または SYSTEM_ADMIN が teams.supporter_name_disclosure を変更する。 confirmed\u003dtrue が必須（REAL_NAME への切替時は警告ダイアログで確認後に送信すること）。",
         "operationId": "patchTeamDisclosure",
         "parameters": [
           {
@@ -106706,7 +106706,7 @@
           "Admin 投稿者識別モード切替 API (F19.1 Phase 2)"
         ],
         "summary": "組織投稿者識別モード切替",
-        "description": "ADMIN または SYSTEM_ADMIN が organizations.supporter_name_disclosure を変更する。 confirmed=true が必須。",
+        "description": "ADMIN または SYSTEM_ADMIN が organizations.supporter_name_disclosure を変更する。 confirmed\u003dtrue が必須。",
         "operationId": "patchOrganizationDisclosure",
         "parameters": [
           {
@@ -107168,7 +107168,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "application/xml;charset=UTF-8": {
+              "application/xml;charset\u003dUTF-8": {
                 "schema": {
                   "type": "string"
                 }
@@ -107201,7 +107201,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "application/xml;charset=UTF-8": {
+              "application/xml;charset\u003dUTF-8": {
                 "schema": {
                   "type": "string"
                 }
@@ -107253,7 +107253,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain;charset=UTF-8": {
+              "text/plain;charset\u003dUTF-8": {
                 "schema": {
                   "type": "string"
                 }
@@ -107795,13 +107795,13 @@
           "200": {
             "description": "取得成功",
             "content": {
-              "text/csv;charset=UTF-8": {
+              "text/csv;charset\u003dUTF-8": {
                 "schema": {
                   "type": "string",
                   "format": "byte"
                 }
               },
-              "text/csv; charset=UTF-8": {
+              "text/csv; charset\u003dUTF-8": {
                 "schema": {
                   "type": "string",
                   "format": "byte"
@@ -108774,7 +108774,7 @@
         "tags": [
           "村ニュースレター (F17.1 Phase 3-β-E)"
         ],
-        "summary": "村ニュースレター号の一覧（新しい順・?tagId= でタグ絞り込み可）",
+        "summary": "村ニュースレター号の一覧（新しい順・?tagId\u003d でタグ絞り込み可）",
         "operationId": "listIssues",
         "parameters": [
           {
@@ -110145,7 +110145,7 @@
           {
             "name": "from",
             "in": "query",
-            "description": "開始日時（yyyy-MM-dd'T'HH:mm:ss 形式）",
+            "description": "開始日時（yyyy-MM-dd\u0027T\u0027HH:mm:ss 形式）",
             "required": false,
             "schema": {
               "type": "string",
@@ -110155,7 +110155,7 @@
           {
             "name": "to",
             "in": "query",
-            "description": "終了日時（yyyy-MM-dd'T'HH:mm:ss 形式）",
+            "description": "終了日時（yyyy-MM-dd\u0027T\u0027HH:mm:ss 形式）",
             "required": false,
             "schema": {
               "type": "string",
@@ -115998,7 +115998,7 @@
           "管理者フィード"
         ],
         "summary": "管理者フィード一覧取得",
-        "description": "フレンドチームの share_with_friends=TRUE 投稿を降順で返す。folderId で特定フォルダのフレンドに絞り込み可能。cursor ページングにより大量データを分割取得できる。ADMIN または MANAGE_FRIEND_TEAMS 権限が必要。",
+        "description": "フレンドチームの share_with_friends\u003dTRUE 投稿を降順で返す。folderId で特定フォルダのフレンドに絞り込み可能。cursor ページングにより大量データを分割取得できる。ADMIN または MANAGE_FRIEND_TEAMS 権限が必要。",
         "operationId": "getFeed_1",
         "parameters": [
           {
@@ -116450,7 +116450,7 @@
           "主催者点呼"
         ],
         "summary": "点呼候補者一覧取得",
-        "description": "RSVP=ATTENDING/MAYBEの参加予定者一覧。ケア対象フラグ・保護者数・既チェックイン状態を含む。権限: ADMIN/STAFF",
+        "description": "RSVP\u003dATTENDING/MAYBEの参加予定者一覧。ケア対象フラグ・保護者数・既チェックイン状態を含む。権限: ADMIN/STAFF",
         "operationId": "getCandidates",
         "parameters": [
           {
@@ -117827,7 +117827,7 @@
           "学校出欠管理"
         ],
         "summary": "移動検知アラート一覧取得",
-        "description": "指定日のクラスの移動検知アラート一覧を取得する。unresolvedOnly=true で未解決のみに絞り込み可能。",
+        "description": "指定日のクラスの移動検知アラート一覧を取得する。unresolvedOnly\u003dtrue で未解決のみに絞り込み可能。",
         "operationId": "getAlerts",
         "parameters": [
           {
@@ -119523,7 +119523,7 @@
           "フレンドチーム管理"
         ],
         "summary": "フレンドチーム一覧取得",
-        "description": "SUPPORTER には is_public = TRUE のフレンドのみ返却。その他のロールは全件取得可能。",
+        "description": "SUPPORTER には is_public \u003d TRUE のフレンドのみ返却。その他のロールは全件取得可能。",
         "operationId": "listFriends",
         "parameters": [
           {
@@ -120020,7 +120020,7 @@
           "システム管理 - セキュリティスキャン"
         ],
         "summary": "セキュリティスキャン状態取得",
-        "description": "GitHub Actions の OWASP Dependency-Check 週次スキャンの最新実行状態を返す。 GitHub API 失敗時は conclusion=UNKNOWN を返す（例外は握りつぶさずログに記録する）。",
+        "description": "GitHub Actions の OWASP Dependency-Check 週次スキャンの最新実行状態を返す。 GitHub API 失敗時は conclusion\u003dUNKNOWN を返す（例外は握りつぶさずログに記録する）。",
         "operationId": "getSecurityScanStatus",
         "responses": {
           "200": {
@@ -121044,7 +121044,7 @@
           "システム管理 - 課金"
         ],
         "summary": "プラン一覧",
-        "description": "enabled=false 含む全件・sort_order 昇順。",
+        "description": "enabled\u003dfalse 含む全件・sort_order 昇順。",
         "operationId": "listPlans",
         "responses": {
           "200": {
@@ -121066,7 +121066,7 @@
           "システム管理 - 課金"
         ],
         "summary": "機能一覧",
-        "description": "enabled=false 含む全件・sort_order 昇順。",
+        "description": "enabled\u003dfalse 含む全件・sort_order 昇順。",
         "operationId": "listFeatures",
         "responses": {
           "200": {
@@ -124978,7 +124978,7 @@
           "公開ユーザープロフィール API (F19.1 Phase 6)"
         ],
         "summary": "ユーザープロフィール（未ログイン公開）",
-        "description": "未ログインでも実行可能。public_profile_enabled=true かつ未削除のユーザーのみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。",
+        "description": "未ログインでも実行可能。public_profile_enabled\u003dtrue かつ未削除のユーザーのみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。",
         "operationId": "getProfile_2",
         "parameters": [
           {
@@ -125011,7 +125011,7 @@
           "公開ユーザープロフィール API (F19.1 Phase 6)"
         ],
         "summary": "ユーザーの公開投稿一覧（未ログイン公開）",
-        "description": "未ログインでも実行可能。public_profile_enabled=true のユーザーの PUBLIC+PUBLISHED+public_visible=true 投稿のみ返す。 ユーザーが非公開の場合は 404（IDOR 対策）。",
+        "description": "未ログインでも実行可能。public_profile_enabled\u003dtrue のユーザーの PUBLIC+PUBLISHED+public_visible\u003dtrue 投稿のみ返す。 ユーザーが非公開の場合は 404（IDOR 対策）。",
         "operationId": "getPosts",
         "parameters": [
           {
@@ -125052,7 +125052,7 @@
           "公開タイムライン投稿 API (F19.1 Phase 7)"
         ],
         "summary": "チームの公開タイムライン投稿一覧（未ログイン公開）",
-        "description": "PUBLIC チームで timeline_posts_public=true の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE チームの場合は 404（IDOR 対策で隠蔽）。",
+        "description": "PUBLIC チームで timeline_posts_public\u003dtrue の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE チームの場合は 404（IDOR 対策で隠蔽）。",
         "operationId": "listTeamTimelinePosts",
         "parameters": [
           {
@@ -125236,7 +125236,7 @@
           "公開イベント API (F19.1 Phase 7)"
         ],
         "summary": "チームの公開イベント一覧（未ログイン公開）",
-        "description": "PUBLIC チームで public_events_enabled=true の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE チームの場合は 404（IDOR 対策で隠蔽）。",
+        "description": "PUBLIC チームで public_events_enabled\u003dtrue の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE チームの場合は 404（IDOR 対策で隠蔽）。",
         "operationId": "listTeamEvents",
         "parameters": [
           {
@@ -125435,7 +125435,7 @@
           "slug 解決 公開 API (F01.2 §5.9.5)"
         ],
         "summary": "チーム slug 解決（未ログイン公開・301 判定）",
-        "description": "現行 slug なら CURRENT、旧 slug なら MOVED（canonicalSlug=現行 slug）、該当なしは NOT_FOUND。canonicalSlug 以外の実データは返さない。",
+        "description": "現行 slug なら CURRENT、旧 slug なら MOVED（canonicalSlug\u003d現行 slug）、該当なしは NOT_FOUND。canonicalSlug 以外の実データは返さない。",
         "operationId": "resolveTeamSlug",
         "parameters": [
           {
@@ -125467,7 +125467,7 @@
           "公開チーム・組織検索 API (F19.1 Phase 4)"
         ],
         "summary": "公開チーム検索",
-        "description": "未ログインでも実行可能。keyword / prefecture（名称）/ prefectureCode（コード）でフィルタリングし、最近投稿があるチームを優先する（lastPostDate DESC NULLS LAST）。visibility=PUBLIC かつ未 archive / 未削除のチームのみ返す。F22.1: prefectureCode 指定時はコード優先、未指定なら prefecture 名称にフォールバック（dual-support）。",
+        "description": "未ログインでも実行可能。keyword / prefecture（名称）/ prefectureCode（コード）でフィルタリングし、最近投稿があるチームを優先する（lastPostDate DESC NULLS LAST）。visibility\u003dPUBLIC かつ未 archive / 未削除のチームのみ返す。F22.1: prefectureCode 指定時はコード優先、未指定なら prefecture 名称にフォールバック（dual-support）。",
         "operationId": "searchTeams_1",
         "parameters": [
           {
@@ -125847,7 +125847,7 @@
           "公開タイムライン投稿 API (F19.1 Phase 7)"
         ],
         "summary": "組織の公開タイムライン投稿一覧（未ログイン公開）",
-        "description": "PUBLIC 組織で timeline_posts_public=true の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。",
+        "description": "PUBLIC 組織で timeline_posts_public\u003dtrue の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。",
         "operationId": "listOrganizationTimelinePosts",
         "parameters": [
           {
@@ -126031,7 +126031,7 @@
           "公開イベント API (F19.1 Phase 7)"
         ],
         "summary": "組織の公開イベント一覧（未ログイン公開）",
-        "description": "PUBLIC 組織で public_events_enabled=true の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。",
+        "description": "PUBLIC 組織で public_events_enabled\u003dtrue の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。",
         "operationId": "listOrganizationEvents",
         "parameters": [
           {
@@ -126231,7 +126231,7 @@
           "slug 解決 公開 API (F01.2 §5.9.5)"
         ],
         "summary": "組織 slug 解決（未ログイン公開・301 判定）",
-        "description": "現行 slug なら CURRENT、旧 slug なら MOVED（canonicalSlug=現行 slug）、該当なしは NOT_FOUND。canonicalSlug 以外の実データは返さない。",
+        "description": "現行 slug なら CURRENT、旧 slug なら MOVED（canonicalSlug\u003d現行 slug）、該当なしは NOT_FOUND。canonicalSlug 以外の実データは返さない。",
         "operationId": "resolveOrganizationSlug",
         "parameters": [
           {
@@ -126263,7 +126263,7 @@
           "公開チーム・組織検索 API (F19.1 Phase 4)"
         ],
         "summary": "公開組織検索",
-        "description": "未ログインでも実行可能。keyword / prefecture でフィルタリングし、最近投稿がある組織を優先する（lastPostDate DESC NULLS LAST）。visibility=PUBLIC かつ未 archive / 未削除の組織のみ返す。",
+        "description": "未ログインでも実行可能。keyword / prefecture でフィルタリングし、最近投稿がある組織を優先する（lastPostDate DESC NULLS LAST）。visibility\u003dPUBLIC かつ未 archive / 未削除の組織のみ返す。",
         "operationId": "searchOrganizations",
         "parameters": [
           {
@@ -126528,7 +126528,7 @@
           "F22.1 市（Market）公開閲覧"
         ],
         "summary": "市の公開札詳細",
-        "description": "未ログインで実行可能。visibility != PUBLIC / 不在は 404 で存在秘匿。",
+        "description": "未ログインで実行可能。visibility !\u003d PUBLIC / 不在は 404 で存在秘匿。",
         "operationId": "getListing",
         "parameters": [
           {
@@ -127011,7 +127011,7 @@
           "ポイントカード プロバイダー"
         ],
         "summary": "プロバイダー一覧取得",
-        "description": "is_active=true のプロバイダーを category, display_name 昇順で返す",
+        "description": "is_active\u003dtrue のプロバイダーを category, display_name 昇順で返す",
         "operationId": "listProviders_1",
         "responses": {
           "200": {
@@ -127138,7 +127138,7 @@
         "tags": [
           "謝礼決済 確認/照会"
         ],
-        "summary": "エスクロー状態照会（支払者本人=clientSecret 含む / 受取側 ADMIN=状態・金額のみ）",
+        "summary": "エスクロー状態照会（支払者本人\u003dclientSecret 含む / 受取側 ADMIN\u003d状態・金額のみ）",
         "operationId": "getEscrow",
         "parameters": [
           {
@@ -127860,7 +127860,7 @@
           "組織管理"
         ],
         "summary": "直近の子組織一覧",
-        "description": "parent_organization_id = id かつ未削除の子組織のみ返す。PRIVATE 子組織は呼び出し者が直接所属メンバーの場合のみ含める。",
+        "description": "parent_organization_id \u003d id かつ未削除の子組織のみ返す。PRIVATE 子組織は呼び出し者が直接所属メンバーの場合のみ含める。",
         "operationId": "getChildren_1",
         "parameters": [
           {
@@ -127940,7 +127940,7 @@
           "組織管理"
         ],
         "summary": "祖先組織一覧（階層パンくず用）",
-        "description": "対象組織の上位組織チェーンを root から直近の親の順に返す。max-depth (default 5) を超える場合は途中で打ち切り、meta.truncated=true を立てる。",
+        "description": "対象組織の上位組織チェーンを root から直近の親の順に返す。max-depth (default 5) を超える場合は途中で打ち切り、meta.truncated\u003dtrue を立てる。",
         "operationId": "getAncestors",
         "parameters": [
           {
@@ -130779,7 +130779,7 @@
           "滞納エスカレーション（F09.15）"
         ],
         "summary": "未解決エスカレーション一覧（ADMIN 以上）",
-        "description": "組織内の未解決（resolvedAt = null）滞納エスカレーション一覧を返す。",
+        "description": "組織内の未解決（resolvedAt \u003d null）滞納エスカレーション一覧を返す。",
         "operationId": "listActive",
         "parameters": [
           {
@@ -135365,7 +135365,7 @@
           "保護者による子データ閲覧見守り"
         ],
         "summary": "子の代理入力履歴閲覧",
-        "description": "子の代わりに誰が何をしたか（代理入力記録・subject=子）を閲覧専用で取得する（有効な保護者のみ）",
+        "description": "子の代わりに誰が何をしたか（代理入力記録・subject\u003d子）を閲覧専用で取得する（有効な保護者のみ）",
         "operationId": "getChildProxyActions",
         "parameters": [
           {
@@ -135788,7 +135788,7 @@
           "課金 - 権利サマリ"
         ],
         "summary": "自分の権利サマリ",
-        "description": "USER スコープ（scopeId=本人固定）の契約・有効機能を返す。",
+        "description": "USER スコープ（scopeId\u003d本人固定）の契約・有効機能を返す。",
         "operationId": "me_1",
         "responses": {
           "200": {
@@ -137106,7 +137106,7 @@
         "tags": [
           "家族個人時間割閲覧"
         ],
-        "summary": "家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ）",
+        "summary": "家族メンバーの個人時間割一覧（status\u003dACTIVE のみ、共有設定済みのみ）",
         "operationId": "list_92",
         "parameters": [
           {
@@ -137849,7 +137849,7 @@
           "ダッシュボード"
         ],
         "summary": "個人ダッシュボード一括取得",
-        "description": "ログインユーザーの個人ダッシュボードを取得する。priority=CRITICALで第1段階ウィジェットのみ高速返却",
+        "description": "ログインユーザーの個人ダッシュボードを取得する。priority\u003dCRITICALで第1段階ウィジェットのみ高速返却",
         "operationId": "getPersonalDashboard",
         "parameters": [
           {
@@ -138141,7 +138141,7 @@
           "ダッシュボード（管理者レンズサマリ）"
         ],
         "summary": "チーム 予算サマリ（管理者レンズ）",
-        "description": "ADMIN または TEAM_BUDGET_VIEW 保有 DEPUTY 向け。現年度の 配分/実績/残/超過カテゴリ数 を返す。現年度未設定時は has_current_fiscal_year=false",
+        "description": "ADMIN または TEAM_BUDGET_VIEW 保有 DEPUTY 向け。現年度の 配分/実績/残/超過カテゴリ数 を返す。現年度未設定時は has_current_fiscal_year\u003dfalse",
         "operationId": "getTeamBudgetSummary",
         "parameters": [
           {
@@ -138183,7 +138183,7 @@
           "ダッシュボード（管理者承認待ち）"
         ],
         "summary": "チーム横断承認待ち集約",
-        "description": "ADMIN/DEPUTY 向け。予約承認待ち/シフトリクエスト/マッチング応募を集約。preview_size=0 で件数のみ",
+        "description": "ADMIN/DEPUTY 向け。予約承認待ち/シフトリクエスト/マッチング応募を集約。preview_size\u003d0 で件数のみ",
         "operationId": "getTeamAdminActionRequired",
         "parameters": [
           {
@@ -138313,7 +138313,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "0 始まりのページ番号（1 ページ = 6 件）",
+            "description": "0 始まりのページ番号（1 ページ \u003d 6 件）",
             "required": false,
             "schema": {
               "type": "integer",
@@ -138512,7 +138512,7 @@
           "ダッシュボード（管理者レンズサマリ）"
         ],
         "summary": "組織 予算サマリ（管理者レンズ）",
-        "description": "ADMIN または BUDGET_VIEW 保有 DEPUTY 向け。現年度の 配分/実績/残/超過カテゴリ数 を返す。現年度未設定時は has_current_fiscal_year=false",
+        "description": "ADMIN または BUDGET_VIEW 保有 DEPUTY 向け。現年度の 配分/実績/残/超過カテゴリ数 を返す。現年度未設定時は has_current_fiscal_year\u003dfalse",
         "operationId": "getOrgBudgetSummary",
         "parameters": [
           {
@@ -138554,7 +138554,7 @@
           "ダッシュボード（管理者承認待ち）"
         ],
         "summary": "組織横断承認待ち集約",
-        "description": "ADMIN/DEPUTY 向け。組織が発行した未収請求（SENT/VIEWED/OVERDUE）を集約。preview_size=0 で件数のみ",
+        "description": "ADMIN/DEPUTY 向け。組織が発行した未収請求（SENT/VIEWED/OVERDUE）を集約。preview_size\u003d0 で件数のみ",
         "operationId": "getOrgAdminActionRequired",
         "parameters": [
           {
@@ -144481,7 +144481,7 @@
           "F03.11 募集型予約 / 参加申込"
         ],
         "summary": "本人キャンセル",
-        "description": "acknowledged_fee=true 必須 (§9.10)",
+        "description": "acknowledged_fee\u003dtrue 必須 (§9.10)",
         "operationId": "cancelMyApplication",
         "parameters": [
           {
@@ -144558,7 +144558,7 @@
           "公開投稿コメント API (F19.1 Phase 6-B)"
         ],
         "summary": "公開投稿コメント削除（ログイン必須）",
-        "description": "投稿者本人または ADMIN（hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')）のみ実行可能。 コメントが存在しない場合は 404（PUBLIC_009）。 権限がない場合は 403（PUBLIC_010）。 未ログインの場合は 401。",
+        "description": "投稿者本人または ADMIN（hasRole(\u0027ADMIN\u0027) or hasRole(\u0027SYSTEM_ADMIN\u0027)）のみ実行可能。 コメントが存在しない場合は 404（PUBLIC_009）。 権限がない場合は 403（PUBLIC_010）。 未ログインの場合は 401。",
         "operationId": "deleteComment_7",
         "parameters": [
           {
@@ -150329,8 +150329,8 @@
           },
           "progressRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "projectId": {
             "type": "integer",
@@ -157134,7 +157134,7 @@
         "properties": {
           "beneficiaryMemberOnly": {
             "type": "boolean",
-            "description": "受益者を会員のみに限定するか（true=会員のみ／false=応援者も可）",
+            "description": "受益者を会員のみに限定するか（true\u003d会員のみ／false\u003d応援者も可）",
             "example": true
           }
         },
@@ -157156,7 +157156,7 @@
         "properties": {
           "beneficiaryMemberOnly": {
             "type": "boolean",
-            "description": "受益者を会員のみに限定するか（true=会員のみ／false=応援者も可）",
+            "description": "受益者を会員のみに限定するか（true\u003d会員のみ／false\u003d応援者も可）",
             "example": true
           }
         }
@@ -158598,19 +158598,19 @@
           "minActiveDays": {
             "type": "integer",
             "format": "int32",
-            "description": "アクティブ日数の下限（null=評価しない）",
+            "description": "アクティブ日数の下限（null\u003d評価しない）",
             "example": 14
           },
           "minActiveMembers": {
             "type": "integer",
             "format": "int32",
-            "description": "アクティブ人数の下限（TEAM_ORG のみ・null=評価しない）",
+            "description": "アクティブ人数の下限（TEAM_ORG のみ・null\u003d評価しない）",
             "example": 5
           },
           "minMembershipTenureDays": {
             "type": "integer",
             "format": "int32",
-            "description": "所属経過日数の下限（null=評価しない）",
+            "description": "所属経過日数の下限（null\u003d評価しない）",
             "example": 30
           }
         }
@@ -159233,7 +159233,7 @@
           "maxMonthlyHours": {
             "type": "number",
             "maximum": 9999.99,
-            "minimum": 0.0
+            "minimum": 0.00
           },
           "maxNightShiftsPerMonth": {
             "type": "integer",
@@ -159244,7 +159244,7 @@
           "minRestHoursBetweenShifts": {
             "type": "number",
             "maximum": 99.99,
-            "minimum": 0.0
+            "minimum": 0.00
           },
           "note": {
             "type": "string",
@@ -161926,7 +161926,7 @@
           },
           "componentType": {
             "type": "string",
-            "description": "項目（フィギュア=TES/PCS/DEDUCTION・体操=D_SCORE/E_SCORE）",
+            "description": "項目（フィギュア\u003dTES/PCS/DEDUCTION・体操\u003dD_SCORE/E_SCORE）",
             "enum": [
               "TES",
               "PCS",
@@ -162088,7 +162088,7 @@
           },
           "winnerSide": {
             "type": "string",
-            "description": "勝者サイド（HOME/AWAY・NULL=引分け）",
+            "description": "勝者サイド（HOME/AWAY・NULL\u003d引分け）",
             "enum": [
               "HOME",
               "AWAY"
@@ -163030,7 +163030,7 @@
         "properties": {
           "level": {
             "type": "string",
-            "description": "OUTLINE 段階式マスク（足場ラダー）の開示レベル。到来済み想起予定日数 k で決定論的に決まる（k≤2=FULL/k==3=PARTIAL/k≥4=HIDDEN）。",
+            "description": "OUTLINE 段階式マスク（足場ラダー）の開示レベル。到来済み想起予定日数 k で決定論的に決まる（k≤2\u003dFULL/k\u003d\u003d3\u003dPARTIAL/k≥4\u003dHIDDEN）。",
             "enum": [
               "FULL",
               "PARTIAL",
@@ -166509,8 +166509,8 @@
           },
           "cpiInflationRate": {
             "type": "number",
-            "maximum": 0.2,
-            "minimum": -0.1
+            "maximum": 0.20,
+            "minimum": -0.10
           },
           "deferralYears": {
             "type": "integer",
@@ -166547,8 +166547,8 @@
           },
           "reserveInflationRate": {
             "type": "number",
-            "maximum": 0.2,
-            "minimum": -0.1
+            "maximum": 0.20,
+            "minimum": -0.10
           },
           "scenarioHorizonYears": {
             "type": "integer",
@@ -170689,8 +170689,8 @@
           },
           "progressRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "projectId": {
             "type": "integer",
@@ -170744,8 +170744,8 @@
           },
           "link_percentage": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "project_id": {
             "type": "integer",
@@ -176031,7 +176031,7 @@
           },
           "payeeKind": {
             "type": "string",
-            "description": "受領主体種別（paymentEnabled=true のとき必須）",
+            "description": "受領主体種別（paymentEnabled\u003dtrue のとき必須）",
             "enum": [
               "USER",
               "TEAM",
@@ -176043,7 +176043,7 @@
           "payeeUserId": {
             "type": "integer",
             "format": "int64",
-            "description": "payeeKind=USER のとき必須の受領者ユーザー ID（users.id）",
+            "description": "payeeKind\u003dUSER のとき必須の受領者ユーザー ID（users.id）",
             "example": 123
           },
           "paymentEnabled": {
@@ -184452,11 +184452,11 @@
           "grantedBy": {
             "type": "integer",
             "format": "int64",
-            "description": "付与操作者 userId（自動付与バッチは null=SYSTEM）"
+            "description": "付与操作者 userId（自動付与バッチは null\u003dSYSTEM）"
           },
           "grantedByName": {
             "type": "string",
-            "description": "付与操作者の表示名（grantedBy が null=自動付与バッチなら null・FE側でSYSTEM表示）",
+            "description": "付与操作者の表示名（grantedBy が null\u003d自動付与バッチなら null・FE側でSYSTEM表示）",
             "example": "山田太郎"
           },
           "organizationId": {
@@ -184497,7 +184497,7 @@
           },
           "scopeDisplayName": {
             "type": "string",
-            "description": "スコープ表示名（USER=ユーザー表示名/TEAM=チーム名/ORG=組織名。解決不能なら null）",
+            "description": "スコープ表示名（USER\u003dユーザー表示名/TEAM\u003dチーム名/ORG\u003d組織名。解決不能なら null）",
             "example": "第一少年野球部"
           },
           "scopeId": {
@@ -187542,7 +187542,7 @@
           },
           "body": {
             "type": "string",
-            "description": "本文。削除済み（isDeleted=true）は null（本文を送らない・§5.3）"
+            "description": "本文。削除済み（isDeleted\u003dtrue）は null（本文を送らない・§5.3）"
           },
           "canDelete": {
             "type": "boolean"
@@ -187575,7 +187575,7 @@
           },
           "replies": {
             "type": "array",
-            "description": "同梱される返信（最大3件）。返信自体（depth=1）は常に null",
+            "description": "同梱される返信（最大3件）。返信自体（depth\u003d1）は常に null",
             "items": {
               "$ref": "#/components/schemas/ScheduleCommentResponse"
             }
@@ -191396,7 +191396,7 @@
         "properties": {
           "amount": {
             "type": "number",
-            "maximum": 1000000.0,
+            "maximum": 1000000.00,
             "minimum": 0.01
           },
           "note": {
@@ -200466,8 +200466,8 @@
           },
           "progress_rate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "related_todo_id": {
             "type": "integer",
@@ -201225,7 +201225,7 @@
         "properties": {
           "profilePublic": {
             "type": "boolean",
-            "description": "この村所属を所属村一覧に公開するか（true=公開/false=非公開）"
+            "description": "この村所属を所属村一覧に公開するか（true\u003d公開/false\u003d非公開）"
           }
         },
         "required": [
@@ -201686,8 +201686,8 @@
         "properties": {
           "progressRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           }
         },
         "required": [
@@ -202330,12 +202330,12 @@
         "properties": {
           "allowPublicReservation": {
             "type": "boolean",
-            "description": "一般公開予約を許可するか（null=据え置き）",
+            "description": "一般公開予約を許可するか（null\u003d据え置き）",
             "example": false
           },
           "approvalMode": {
             "type": "string",
-            "description": "承認モードの既定値（AUTO/MANUAL / null=据え置き）",
+            "description": "承認モードの既定値（AUTO/MANUAL / null\u003d据え置き）",
             "enum": [
               "AUTO",
               "MANUAL"
@@ -202345,40 +202345,40 @@
           "cancelDeadlineHours": {
             "type": "integer",
             "format": "int32",
-            "description": "キャンセル受付の締切（予約開始の何時間前まで・0〜8760 / null=据え置き）",
+            "description": "キャンセル受付の締切（予約開始の何時間前まで・0〜8760 / null\u003d据え置き）",
             "example": 24,
             "maximum": 8760,
             "minimum": 0
           },
           "clearPendingExpireHours": {
             "type": "boolean",
-            "description": "仮押さえ自動失効を無効化するか（true=自動失効しない。pendingExpireHours より優先）",
+            "description": "仮押さえ自動失効を無効化するか（true\u003d自動失効しない。pendingExpireHours より優先）",
             "example": false
           },
           "pendingExpireHours": {
             "type": "integer",
             "format": "int32",
-            "description": "仮押さえ(PENDING)を自動キャンセルするまでの時間数（1〜168 / null=据え置き）",
+            "description": "仮押さえ(PENDING)を自動キャンセルするまでの時間数（1〜168 / null\u003d据え置き）",
             "example": 24,
             "maximum": 168,
             "minimum": 1
           },
           "remindBeforeHours": {
             "type": "string",
-            "description": "リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列（null=据え置き）",
+            "description": "リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列（null\u003d据え置き）",
             "example": "24,1",
             "pattern": "^[1-9][0-9]*(,[1-9][0-9]*)*$"
           },
           "resourceNameCustom": {
             "type": "string",
-            "description": "自由入力の呼称（CUSTOM 選択時のみ有効・30文字以内 / null=据え置き）",
+            "description": "自由入力の呼称（CUSTOM 選択時のみ有効・30文字以内 / null\u003d据え置き）",
             "example": "施術台",
             "maxLength": 30,
             "minLength": 0
           },
           "resourceNameType": {
             "type": "string",
-            "description": "予約対象の呼称プリセット（null=据え置き）",
+            "description": "予約対象の呼称プリセット（null\u003d据え置き）",
             "enum": [
               "DEFAULT",
               "STAFF",
@@ -202406,12 +202406,12 @@
         "properties": {
           "allowPublicReservation": {
             "type": "boolean",
-            "description": "一般公開予約を許可するか（true=ログイン済みなら誰でも予約可 / false=チーム所属者のみ）",
+            "description": "一般公開予約を許可するか（true\u003dログイン済みなら誰でも予約可 / false\u003dチーム所属者のみ）",
             "example": false
           },
           "approvalMode": {
             "type": "string",
-            "description": "承認モードの既定値。AUTO=自動承認 / MANUAL=管理者の手動承認",
+            "description": "承認モードの既定値。AUTO\u003d自動承認 / MANUAL\u003d管理者の手動承認",
             "enum": [
               "AUTO",
               "MANUAL"
@@ -202432,7 +202432,7 @@
           "pendingExpireHours": {
             "type": "integer",
             "format": "int32",
-            "description": "仮押さえ(PENDING)を自動キャンセルするまでの時間数（null=自動失効しない）",
+            "description": "仮押さえ(PENDING)を自動キャンセルするまでの時間数（null\u003d自動失効しない）",
             "example": 24
           },
           "remindBeforeHours": {
@@ -202442,12 +202442,12 @@
           },
           "resourceNameCustom": {
             "type": "string",
-            "description": "自由入力の呼称（resourceNameType=CUSTOM のときのみ非 null）",
+            "description": "自由入力の呼称（resourceNameType\u003dCUSTOM のときのみ非 null）",
             "example": "施術台"
           },
           "resourceNameType": {
             "type": "string",
-            "description": "予約対象の呼称プリセット。DEFAULT=未設定（従来の『予約対象』表示）",
+            "description": "予約対象の呼称プリセット。DEFAULT\u003d未設定（従来の『予約対象』表示）",
             "enum": [
               "DEFAULT",
               "STAFF",
@@ -205551,7 +205551,7 @@
           "payeeUserId": {
             "type": "integer",
             "format": "int64",
-            "description": "payeeKind=USER のとき必須の受領者ユーザー ID（users.id・null は変更なし）",
+            "description": "payeeKind\u003dUSER のとき必須の受領者ユーザー ID（users.id・null は変更なし）",
             "example": 123
           },
           "paymentEnabled": {
@@ -206523,16 +206523,16 @@
       },
       "CalendarLayerUpdateRequest": {
         "type": "object",
-        "description": "カレンダーレイヤー設定の部分更新（null/未指定 = 変更しない）",
+        "description": "カレンダーレイヤー設定の部分更新（null/未指定 \u003d 変更しない）",
         "properties": {
           "color": {
             "type": "string",
-            "description": "ユーザー指定色（#RRGGBB。null/未指定 = 変更しない）",
+            "description": "ユーザー指定色（#RRGGBB。null/未指定 \u003d 変更しない）",
             "example": "#DC2626"
           },
           "hidden": {
             "type": "boolean",
-            "description": "既定で非表示にするか（null/未指定 = 変更しない）",
+            "description": "既定で非表示にするか（null/未指定 \u003d 変更しない）",
             "example": true
           }
         }
@@ -207642,8 +207642,8 @@
           },
           "progress_rate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "related_todo_id": {
             "type": "integer",
@@ -213007,7 +213007,7 @@
           "enabledCount": {
             "type": "integer",
             "format": "int32",
-            "description": "有効宛先数（is_enabled=true の件数）",
+            "description": "有効宛先数（is_enabled\u003dtrue の件数）",
             "example": 1
           },
           "freeLimit": {
@@ -215893,7 +215893,7 @@
           },
           "entitledFeatures": {
             "type": "array",
-            "description": "利用できる機能一覧（isEntitled=true の集合・virtual 合成込み）",
+            "description": "利用できる機能一覧（isEntitled\u003dtrue の集合・virtual 合成込み）",
             "items": {
               "$ref": "#/components/schemas/BillingEntitledFeature"
             }
@@ -223559,7 +223559,7 @@
           },
           "canPostReason": {
             "type": "string",
-            "description": "canPost=false の理由（CLOSED/CANCELLED/ROLE）。canPost=true は null"
+            "description": "canPost\u003dfalse の理由（CLOSED/CANCELLED/ROLE）。canPost\u003dtrue は null"
           },
           "commentsEnabled": {
             "type": "boolean"
@@ -229565,7 +229565,7 @@
           "usagePercent": {
             "type": "number",
             "format": "double",
-            "description": "使用率（%）。includedBytes=0 のときは 0",
+            "description": "使用率（%）。includedBytes\u003d0 のときは 0",
             "example": 9.77
           },
           "usedBytes": {
