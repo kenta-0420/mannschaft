@@ -7,8 +7,10 @@ import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.entity.ScheduleAttendanceEntity;
 import com.mannschaft.app.schedule.entity.ScheduleDelegationEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.event.ScheduleDelegationNotificationEvent;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleDelegationRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -41,7 +44,7 @@ class ScheduleDelegationServiceTest {
     @Mock private ScheduleAttendanceRepository attendanceRepository;
     @Mock private ScheduleService scheduleService;
     @Mock private ScheduleDelegationValidator validator;
-    @Mock private ScheduleDelegationNotifier notifier;
+    @Mock private ApplicationEventPublisher eventPublisher;
     /** 認可ガードは状態を持たない純粋な判定のため、実体を注入して本物の本人性判定を通す。 */
     @Spy private ScheduleAccessGuard scheduleAccessGuard = new ScheduleAccessGuard();
 
@@ -89,8 +92,12 @@ class ScheduleDelegationServiceTest {
 
             assertThat(result.getStatus()).isEqualTo(ScheduleDelegationStatus.ACCEPTED);
             verify(validator).validateForCreate(any(), eqLong(DELEGATOR_ID), eqLong(DELEGATE_ID));
-            verify(notifier).notifyAutoAccepted(any());
-            verify(notifier, never()).notifyRequestPending(any());
+            verify(eventPublisher).publishEvent(
+                    argThat((Object e) -> e instanceof ScheduleDelegationNotificationEvent ev
+                            && ev.kind() == ScheduleDelegationNotificationEvent.Kind.AUTO_ACCEPTED));
+            verify(eventPublisher, never()).publishEvent(
+                    argThat((Object e) -> e instanceof ScheduleDelegationNotificationEvent ev
+                            && ev.kind() == ScheduleDelegationNotificationEvent.Kind.REQUEST_PENDING));
         }
 
         @Test
@@ -104,8 +111,12 @@ class ScheduleDelegationServiceTest {
                     service.createDelegation(SCHEDULE_ID, DELEGATOR_ID, DELEGATE_ID, null);
 
             assertThat(result.getStatus()).isEqualTo(ScheduleDelegationStatus.PENDING);
-            verify(notifier).notifyRequestPending(any());
-            verify(notifier, never()).notifyAutoAccepted(any());
+            verify(eventPublisher).publishEvent(
+                    argThat((Object e) -> e instanceof ScheduleDelegationNotificationEvent ev
+                            && ev.kind() == ScheduleDelegationNotificationEvent.Kind.REQUEST_PENDING));
+            verify(eventPublisher, never()).publishEvent(
+                    argThat((Object e) -> e instanceof ScheduleDelegationNotificationEvent ev
+                            && ev.kind() == ScheduleDelegationNotificationEvent.Kind.AUTO_ACCEPTED));
         }
     }
 
@@ -123,7 +134,9 @@ class ScheduleDelegationServiceTest {
             ScheduleDelegationEntity result = service.accept(DELEGATION_ID, DELEGATE_ID);
 
             assertThat(result.getStatus()).isEqualTo(ScheduleDelegationStatus.ACCEPTED);
-            verify(notifier).notifyAccepted(any());
+            verify(eventPublisher).publishEvent(
+                    argThat((Object e) -> e instanceof ScheduleDelegationNotificationEvent ev
+                            && ev.kind() == ScheduleDelegationNotificationEvent.Kind.ACCEPTED));
         }
 
         @Test
@@ -157,7 +170,9 @@ class ScheduleDelegationServiceTest {
             ScheduleDelegationEntity result = service.reject(DELEGATION_ID, DELEGATE_ID);
 
             assertThat(result.getStatus()).isEqualTo(ScheduleDelegationStatus.REJECTED);
-            verify(notifier).notifyRejected(any());
+            verify(eventPublisher).publishEvent(
+                    argThat((Object e) -> e instanceof ScheduleDelegationNotificationEvent ev
+                            && ev.kind() == ScheduleDelegationNotificationEvent.Kind.REJECTED));
         }
     }
 
@@ -185,7 +200,9 @@ class ScheduleDelegationServiceTest {
             verify(attendanceRepository).save(captor.capture());
             assertThat(captor.getValue().getStatus()).isEqualTo(AttendanceStatus.UNDECIDED);
             assertThat(captor.getValue().getIsProxyInput()).isFalse();
-            verify(notifier).notifyCancelled(any());
+            verify(eventPublisher).publishEvent(
+                    argThat((Object e) -> e instanceof ScheduleDelegationNotificationEvent ev
+                            && ev.kind() == ScheduleDelegationNotificationEvent.Kind.CANCELLED));
         }
 
         @Test
@@ -236,7 +253,9 @@ class ScheduleDelegationServiceTest {
             service.onDelegatorAttendanceChanged(SCHEDULE_ID, DELEGATOR_ID, AttendanceStatus.ATTENDING);
 
             assertThat(d.getStatus()).isEqualTo(ScheduleDelegationStatus.CANCELLED);
-            verify(notifier).notifyCancelled(any());
+            verify(eventPublisher).publishEvent(
+                    argThat((Object e) -> e instanceof ScheduleDelegationNotificationEvent ev
+                            && ev.kind() == ScheduleDelegationNotificationEvent.Kind.CANCELLED));
         }
 
         @Test
@@ -261,7 +280,9 @@ class ScheduleDelegationServiceTest {
             service.cancelOnMemberLeft(d, DELEGATE_ID);
 
             assertThat(d.getStatus()).isEqualTo(ScheduleDelegationStatus.CANCELLED);
-            verify(notifier).notifyDelegateLeft(d);
+            verify(eventPublisher).publishEvent(
+                    argThat((Object e) -> e instanceof ScheduleDelegationNotificationEvent ev
+                            && ev.kind() == ScheduleDelegationNotificationEvent.Kind.DELEGATE_LEFT));
         }
 
         @Test
@@ -273,7 +294,9 @@ class ScheduleDelegationServiceTest {
 
             service.cancelOnMemberLeft(d, DELEGATOR_ID);
 
-            verify(notifier).notifyDelegatorLeft(d);
+            verify(eventPublisher).publishEvent(
+                    argThat((Object e) -> e instanceof ScheduleDelegationNotificationEvent ev
+                            && ev.kind() == ScheduleDelegationNotificationEvent.Kind.DELEGATOR_LEFT));
         }
     }
 

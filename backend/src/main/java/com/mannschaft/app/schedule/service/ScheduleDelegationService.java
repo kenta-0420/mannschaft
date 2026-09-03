@@ -7,10 +7,12 @@ import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.entity.ScheduleAttendanceEntity;
 import com.mannschaft.app.schedule.entity.ScheduleDelegationEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.event.ScheduleDelegationNotificationEvent;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleDelegationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,8 @@ import java.util.UUID;
  *
  * <p>代理指定・承認・拒否・取消と、それに伴う出欠ステータス連動（§5.4）を担当する。
  * schedule_attendances は schedule ドメイン内のため、出欠連動は同一トランザクションで更新する
- * （CLAUDE.md 原則5）。通知は {@link ScheduleDelegationNotifier} に委譲する。</p>
+ * （CLAUDE.md 原則5）。通知は業務トランザクションの内側では発火せず、{@link ScheduleDelegationNotificationEvent} を
+ * publish して AFTER_COMMIT 後に {@link ScheduleDelegationNotifier} が配送する（Issue #2990）。</p>
  *
  * <p>手本: {@code com.mannschaft.app.proxyvote.service.ProxyDelegationService}。</p>
  */
@@ -39,7 +42,11 @@ public class ScheduleDelegationService {
     private final ScheduleAttendanceRepository attendanceRepository;
     private final ScheduleService scheduleService;
     private final ScheduleDelegationValidator validator;
-    private final ScheduleDelegationNotifier notifier;
+    /**
+     * Issue #2990 L2: 通知は業務トランザクション内で発火せず、{@link ScheduleDelegationNotificationEvent}
+     * を publish して AFTER_COMMIT 後に {@link ScheduleDelegationNotifier} が配送する（原則5）。
+     */
+    private final ApplicationEventPublisher eventPublisher;
     private final ScheduleAccessGuard scheduleAccessGuard;
 
     /**
@@ -85,9 +92,11 @@ public class ScheduleDelegationService {
         if (autoAccept) {
             // ACCEPTED → 代理人 → ATTENDING（is_proxy_input=TRUE）
             updateDelegateAttending(scheduleId, delegateId);
-            notifier.notifyAutoAccepted(delegation);
+            eventPublisher.publishEvent(new ScheduleDelegationNotificationEvent(
+                    delegation.getId(), ScheduleDelegationNotificationEvent.Kind.AUTO_ACCEPTED));
         } else {
-            notifier.notifyRequestPending(delegation);
+            eventPublisher.publishEvent(new ScheduleDelegationNotificationEvent(
+                    delegation.getId(), ScheduleDelegationNotificationEvent.Kind.REQUEST_PENDING));
         }
 
         log.info("代理指定: scheduleId={}, delegatorId={}, delegateId={}, status={}",
@@ -115,7 +124,8 @@ public class ScheduleDelegationService {
 
         // 代理人 → ATTENDING（is_proxy_input=TRUE）
         updateDelegateAttending(delegation.getScheduleId(), delegation.getDelegateId());
-        notifier.notifyAccepted(delegation);
+        eventPublisher.publishEvent(new ScheduleDelegationNotificationEvent(
+                delegation.getId(), ScheduleDelegationNotificationEvent.Kind.ACCEPTED));
 
         log.info("代理承認: delegationId={}, delegateId={}", delegationId, actingUserId);
         return delegation;
@@ -140,7 +150,8 @@ public class ScheduleDelegationService {
         delegation = delegationRepository.save(delegation);
 
         // 委任者の出欠は ABSENT のまま（ユーザーが手動再設定）。通知のみ。
-        notifier.notifyRejected(delegation);
+        eventPublisher.publishEvent(new ScheduleDelegationNotificationEvent(
+                delegation.getId(), ScheduleDelegationNotificationEvent.Kind.REJECTED));
 
         log.info("代理拒否: delegationId={}, delegateId={}", delegationId, actingUserId);
         return delegation;
@@ -192,9 +203,11 @@ public class ScheduleDelegationService {
         delegationRepository.save(delegation);
         revertDelegateProxyAttendance(delegation.getScheduleId(), delegation.getDelegateId());
         if (delegateLeft) {
-            notifier.notifyDelegateLeft(delegation);
+            eventPublisher.publishEvent(new ScheduleDelegationNotificationEvent(
+                    delegation.getId(), ScheduleDelegationNotificationEvent.Kind.DELEGATE_LEFT));
         } else {
-            notifier.notifyDelegatorLeft(delegation);
+            eventPublisher.publishEvent(new ScheduleDelegationNotificationEvent(
+                    delegation.getId(), ScheduleDelegationNotificationEvent.Kind.DELEGATOR_LEFT));
         }
         log.info("退会連動で代理取消: scheduleId={}, leftUserId={}, delegateLeft={}",
                 delegation.getScheduleId(), leftUserId, delegateLeft);
@@ -238,7 +251,8 @@ public class ScheduleDelegationService {
                 .ifPresent(delegation -> {
                     delegation.cancel();
                     delegationRepository.save(delegation);
-                    notifier.notifyCancelled(delegation);
+                    eventPublisher.publishEvent(new ScheduleDelegationNotificationEvent(
+                            delegation.getId(), ScheduleDelegationNotificationEvent.Kind.CANCELLED));
                     log.info("委任者の自己出席により PENDING 代理を自動取消: scheduleId={}, delegatorId={}",
                             scheduleId, userId);
                 });
@@ -291,7 +305,8 @@ public class ScheduleDelegationService {
         delegationRepository.save(delegation);
         // 代理由来の代理人出欠のみ UNDECIDED に巻き戻す（本人入力は温存）
         revertDelegateProxyAttendance(delegation.getScheduleId(), delegation.getDelegateId());
-        notifier.notifyCancelled(delegation);
+        eventPublisher.publishEvent(new ScheduleDelegationNotificationEvent(
+                delegation.getId(), ScheduleDelegationNotificationEvent.Kind.CANCELLED));
     }
 
     /**
