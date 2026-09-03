@@ -31,6 +31,22 @@ public interface TeamRepository
     Optional<TeamEntity> findBySlugAndDeletedAtIsNull(String slug);
 
     /**
+     * カスタムスラッグでチームを取得する（URL識別子。ACTIVE 限定）。
+     *
+     * <p>柱②-3 検分 P1-2 根治: {@code findBySlugAndDeletedAtIsNull} は PROVISIONED
+     * （承諾前の事前作成状態）も返してしまい、{@code resolveTeamId} 経由で公開判定前に
+     * PROVISIONED スコープへ到達できてしまう恐れがあった。全ての slug 解決の入口は
+     * このメソッドへ差し替え、{@code lifecycleStatus = ACTIVE} を必須条件とする。
+     * SYSTEM_ADMIN の管理系・プロビジョニング自身は ID 直参照（{@code findById}）で
+     * PROVISIONED 行に到達するため、本メソッドの対象外で影響しない。</p>
+     *
+     * @param slug URL に使用するカスタムスラッグ
+     * @return ACTIVE かつ未削除のチームエンティティ
+     */
+    Optional<TeamEntity> findBySlugAndDeletedAtIsNullAndLifecycleStatus(
+            String slug, TeamEntity.LifecycleStatus lifecycleStatus);
+
+    /**
      * 指定スラッグが既に使用中かどうか確認する（一意性チェック用）。
      *
      * @param slug チェック対象のスラッグ
@@ -55,6 +71,7 @@ public interface TeamRepository
     @Query("""
             SELECT t FROM TeamEntity t
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
               AND t.archivedAt IS NULL
               AND (t.name LIKE %:keyword% OR t.nameKana LIKE %:keyword%)
             """)
@@ -228,6 +245,7 @@ public interface TeamRepository
     @Query("SELECT t FROM TeamEntity t " +
            "WHERE t.id = :id " +
            "AND t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC " +
+           "AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE " +
            "AND t.archivedAt IS NULL")
     Optional<TeamEntity> findPublicTeamById(@Param("id") Long id);
 
@@ -240,6 +258,7 @@ public interface TeamRepository
      */
     @Query("SELECT t FROM TeamEntity t " +
            "WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC " +
+           "AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE " +
            "AND t.archivedAt IS NULL " +
            "ORDER BY t.id ASC")
     List<TeamEntity> findAllPublicTeams();
@@ -330,6 +349,7 @@ public interface TeamRepository
     @Query("""
             SELECT t FROM TeamEntity t
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
               AND t.archivedAt IS NULL
               AND (:keyword IS NULL OR t.name LIKE %:keyword% OR t.nameKana LIKE %:keyword%)
               AND (
@@ -358,6 +378,7 @@ public interface TeamRepository
     @Query("""
             SELECT COUNT(t) FROM TeamEntity t
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
               AND t.deletedAt IS NULL
               AND t.supporterNameDisclosure
                   = com.mannschaft.app.publicview.enums.NameDisclosureMode.REAL_NAME
@@ -374,6 +395,7 @@ public interface TeamRepository
     @Query("""
             SELECT COUNT(t) FROM TeamEntity t
             WHERE t.visibility = com.mannschaft.app.team.entity.TeamEntity.Visibility.PUBLIC
+              AND t.lifecycleStatus = com.mannschaft.app.team.entity.TeamEntity.LifecycleStatus.ACTIVE
               AND t.deletedAt IS NULL
             """)
     long countPublicTeams();

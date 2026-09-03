@@ -20,12 +20,14 @@ import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.VisibilityErrorCode;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -83,6 +85,10 @@ class BlogPostServiceAdditionalTest {
     @Mock
     private OrganizationRepository organizationRepository;
     @Mock
+    private TeamService teamService;
+    @Mock
+    private OrganizationService organizationService;
+    @Mock
     private AccessControlService accessControlService;
     @Mock
     private PaymentGateService paymentGateService;
@@ -123,6 +129,10 @@ class BlogPostServiceAdditionalTest {
                 any(), any(), any(), any(Map.class)))
                 .thenReturn(Map.of(POST_ID, new GateCheckResponse(true, false, List.of())));
     }
+
+    // 検分第2巡 残存経路チェック（BlogPostService#assertScopeNotProvisioned）: Mockito の
+    // boolean mock は既定で false を返すため、teamService/organizationService.isProvisioned() は
+    // 未 stub のままで「PROVISIONED ではない」既定値になる。
 
     private BlogPostResponse createPostResponse() {
         return BlogPostResponse.builder()
