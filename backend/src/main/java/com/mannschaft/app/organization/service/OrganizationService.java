@@ -785,7 +785,11 @@ public class OrganizationService {
      * @return 組織エンティティ
      */
     private OrganizationEntity findOrganizationBySlugOrThrow(String slug) {
-        return organizationRepository.findBySlugAndDeletedAtIsNull(slug)
+        // 柱②-3 検分 P1-2 根治: PROVISIONED（承諾前の事前作成状態）を除外するため
+        // ACTIVE 限定クエリへ差し替える。getOrganization/resolveOrgId は多数の API の入口であり、
+        // 承諾前スコープを認可判定より前に解決できてはならない。
+        return organizationRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(
+                        slug, OrganizationEntity.LifecycleStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
     }
 

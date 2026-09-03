@@ -29,6 +29,22 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     Optional<OrganizationEntity> findBySlugAndDeletedAtIsNull(String slug);
 
     /**
+     * カスタムスラッグで組織を取得する（URL識別子。ACTIVE 限定）。
+     *
+     * <p>柱②-3 検分 P1-2 根治: {@code findBySlugAndDeletedAtIsNull} は PROVISIONED
+     * （承諾前の事前作成状態）も返してしまい、{@code resolveOrgId} 経由で公開判定前に
+     * PROVISIONED スコープへ到達できてしまう恐れがあった。全ての slug 解決の入口は
+     * このメソッドへ差し替え、{@code lifecycleStatus = ACTIVE} を必須条件とする。
+     * SYSTEM_ADMIN の管理系・プロビジョニング自身は ID 直参照（{@code findById}）で
+     * PROVISIONED 行に到達するため、本メソッドの対象外で影響しない。</p>
+     *
+     * @param slug URL に使用するカスタムスラッグ
+     * @return ACTIVE かつ未削除の組織エンティティ
+     */
+    Optional<OrganizationEntity> findBySlugAndDeletedAtIsNullAndLifecycleStatus(
+            String slug, OrganizationEntity.LifecycleStatus lifecycleStatus);
+
+    /**
      * 指定スラッグが既に使用中かどうか確認する（一意性チェック用）。
      *
      * @param slug チェック対象のスラッグ

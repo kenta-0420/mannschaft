@@ -41,7 +41,10 @@ public enum ProvisioningErrorCode implements ErrorCode {
     PROV_009("PROV_009", "対象が見つかりません", Severity.WARN),
 
     /** 招待は既に承諾済みです（承諾者本人以外からの再承諾） */
-    PROV_010("PROV_010", "招待が見つかりません", Severity.WARN);
+    PROV_010("PROV_010", "招待が見つかりません", Severity.WARN),
+
+    /** 招待は既に承諾済みのため resend/cancel できません（検分 P1-3 根治） */
+    PROV_011("PROV_011", "招待は既に承諾済みのため操作できません", Severity.WARN);
 
     private final String code;
     private final String message;

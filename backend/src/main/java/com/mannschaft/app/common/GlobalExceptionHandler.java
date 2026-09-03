@@ -2451,7 +2451,9 @@ public class GlobalExceptionHandler {
             Map.entry("PROV_007", HttpStatus.FORBIDDEN),
             Map.entry("PROV_008", HttpStatus.LOCKED),
             Map.entry("PROV_009", HttpStatus.NOT_FOUND),
-            Map.entry("PROV_010", HttpStatus.NOT_FOUND)
+            Map.entry("PROV_010", HttpStatus.NOT_FOUND),
+            // 検分 P1-3 根治: ACCEPTED 済み招待への resend/cancel は状態競合のため409。
+            Map.entry("PROV_011", HttpStatus.CONFLICT)
     );
 
     /**

@@ -1,126 +1,136 @@
 package com.mannschaft.app.common.architecture;
 
+import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.team.repository.TeamRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.jpa.repository.Query;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 柱②-3 販促プロビジョニングゲート番人。
+ * 柱②-3 販促プロビジョニングゲート番人（検分 P1-4 根治版）。
  *
- * <p>{@code TeamRepository} / {@code OrganizationRepository} の「PUBLIC 可視性で絞り込む」
- * クエリ（未認証でも到達しうる公開検索・sitemap・discover の直下）が、
- * {@code lifecycleStatus = ... .ACTIVE} 条件を併せ持つことを機械的に強制する。
+ * <p>旧実装は {@code TeamRepository} / {@code OrganizationRepository} のソースを
+ * 「{@code Visibility.PUBLIC} を含む行の前後15行テキスト窓」で検査していたため、
+ * derived query（{@code findBySlugAndDeletedAtIsNull} 等、{@code @Query} を持たない
+ * メソッド）を一切検査できず、slug 解決の PROVISIONED 漏出（検分 P1-2）を検出できなかった
+ * （偽陰性）。</p>
  *
- * <p>PROVISIONED（承諾前の事前作成状態）スコープは作成時に必ず非公開可視性
- * （org: PRIVATE / team: MEMBERS_AND_ABOVE）で作られるため、今この瞬間の実データでは
- * この 2 条件が食い違う行は存在しない。だが「将来 ADMIN が visibility を PUBLIC へ
- * 変更する経路が生まれても、accept() されるまでは PUBLIC 系クエリに絶対に出現しない」
- * という不変条件を保つのはこの機械チェックだけであり、レビューの見落としに頼らない
- * （検体でなく判定の軸として書く）。</p>
+ * <h2>本版の方式（クエリ単位・deny-by-default）</h2>
+ * <p>15行窓のテキストマッチではなく、{@link Class#getDeclaredMethods()} で
+ * リポジトリインタフェースが宣言する<strong>全メソッド</strong>を列挙し、メソッド単位で
+ * 判定する（{@code @Query} を持つメソッドは {@link Query#value()} を直接読み、
+ * derived query メソッドはメソッド名自体を判定対象とする。行番号や窓幅に依存しない）。</p>
  *
- * <p>ホワイトリストは「意図的に PROVISIONED 行を読む」経路（SYSTEM_ADMIN 管理系・
- * 承諾前の下見）に限定する。凍結値（本番人が現時点で確認した該当メソッド総数）を
- * アサートし、新規に PUBLIC 系クエリが増減した場合は本テストの数値を実測に合わせて
- * 更新すること（ホワイトリストへ安易に追加して回避するのは禁止）。
+ * <ol>
+ *   <li><b>公開系判定</b>: メソッド名に {@code Public} を含む（公開検索・sitemap・discover）、
+ *       {@code BySlug} を含む（URL識別子からの解決＝スコープ存在自体が漏れる）、
+ *       {@code searchByKeyword}（公開検索の実体）、{@code findChildrenPage}（階層公開表示）
+ *       のいずれか、または {@code @Query} 本文に {@code Visibility.PUBLIC} を含む場合を
+ *       「公開系」と判定する。</li>
+ *   <li><b>ACTIVE安全判定</b>: {@code @Query} を持つ場合は本文に {@code LifecycleStatus.ACTIVE}
+ *       を含むこと。derived query の場合はメソッド名に {@code LifecycleStatus} を含む
+ *       （= lifecycle_status を絞り込みパラメータとして持つ）こと。</li>
+ *   <li><b>deny-by-default</b>: 公開系と判定されたメソッドが ACTIVE 安全でない場合、
+ *       {@link #ALLOWLIST} に「非公開経路」として明示登録されていない限り fail する。
+ *       新規メソッド追加時、ALLOWLIST に載せない限り自動的に検査対象へ入るため、
+ *       レビューの見落としに頼らない（検出器は自分の偽陰性を最初に晒す、の戒め対応）。</li>
+ * </ol>
+ *
+ * <p><b>既知の残存債務（ALLOWLIST に理由付きで明示登録・別タスク対象）</b>:
+ * {@code findBySlugAndDeletedAtIsNull} は本 PR 以前から
+ * {@code BulletinScopeIdResolver} / {@code BlogPostService} が直接使用しており、
+ * これらも理論上は PROVISIONED スコープを解決し得る（本 PR の是正対象は
+ * {@code TeamService#resolveTeamId} / {@code OrganizationService#resolveOrgId} の
+ * 入口のみ）。凍結値の単純カウントで隠さず、ALLOWLIST に理由を明記した上で
+ * 追跡できるようにする。{@code existsBySlugAndDeletedAtIsNull} は真偽値のみを返し
+ * スコープの内容を漏らさないため、PROVISIONED を含めた一意性判定が正しい仕様である。</p>
  */
 class ProvisioningLeakGuardTest {
 
-    private static final Path TEAM_REPOSITORY =
-            Paths.get("src/main/java/com/mannschaft/app/team/repository/TeamRepository.java");
-    private static final Path ORGANIZATION_REPOSITORY =
-            Paths.get("src/main/java/com/mannschaft/app/organization/repository/OrganizationRepository.java");
-
-    /** PUBLIC 可視性で絞り込むクエリの行を検出する。 */
-    private static final Pattern PUBLIC_VISIBILITY_LINE = Pattern.compile("Visibility\\.PUBLIC");
-
-    /** 同一クエリ内に併存すべき lifecycle_status 条件。 */
-    private static final Pattern LIFECYCLE_ACTIVE = Pattern.compile("LifecycleStatus\\.ACTIVE");
-
     /**
-     * 意図的に PROVISIONED を含めて読んでよい経路のホワイトリスト（メソッド名）。
-     * 現時点では空（全 PUBLIC 系クエリに ACTIVE 条件を追加済み）。
+     * 「非公開経路」と明示宣言する（ACTIVE 安全でなくても許容する）メソッドの allowlist。
+     * key = 単純クラス名、value = 許容メソッド名の集合。
      */
-    private static final List<String> WHITELIST = List.of();
-
-    /** 本番人が現時点で確認した「PUBLIC 可視性で絞り込むクエリ行」の凍結総数。 */
-    private static final int FROZEN_TEAM_PUBLIC_QUERY_LINES = 6;
-    private static final int FROZEN_ORGANIZATION_PUBLIC_QUERY_LINES = 7;
+    private static final Map<String, Set<String>> ALLOWLIST = Map.of(
+            "TeamRepository", Set.of(
+                    // 真偽値のみを返し、内容を漏らさない一意性チェック（PROVISIONED込みで正しい仕様）。
+                    "existsBySlugAndDeletedAtIsNull",
+                    // 既存債務: BulletinScopeIdResolver / BlogPostService が直接使用中。
+                    // 是正は別タスク（本 PR は resolveTeamId の入口のみを対象とする）。
+                    "findBySlugAndDeletedAtIsNull"
+            ),
+            "OrganizationRepository", Set.of(
+                    "existsBySlugAndDeletedAtIsNull",
+                    "findBySlugAndDeletedAtIsNull"
+            )
+    );
 
     @Test
-    @DisplayName("柱②-3: TeamRepositoryのPUBLIC系クエリは全てlifecycleStatus=ACTIVE条件を伴う")
-    void teamPublicQueriesRequireActiveLifecycleStatus() throws IOException {
-        assertNoLeak(TEAM_REPOSITORY, FROZEN_TEAM_PUBLIC_QUERY_LINES);
+    @DisplayName("柱②-3: TeamRepositoryの公開系メソッドは全てACTIVE安全（deny-by-default・クエリ単位判定）")
+    void teamRepositoryPublicMethodsRequireActiveGate() {
+        assertNoLeak(TeamRepository.class);
     }
 
     @Test
-    @DisplayName("柱②-3: OrganizationRepositoryのPUBLIC系クエリは全てlifecycleStatus=ACTIVE条件を伴う")
-    void organizationPublicQueriesRequireActiveLifecycleStatus() throws IOException {
-        assertNoLeak(ORGANIZATION_REPOSITORY, FROZEN_ORGANIZATION_PUBLIC_QUERY_LINES);
+    @DisplayName("柱②-3: OrganizationRepositoryの公開系メソッドは全てACTIVE安全（deny-by-default・クエリ単位判定）")
+    void organizationRepositoryPublicMethodsRequireActiveGate() {
+        assertNoLeak(OrganizationRepository.class);
     }
 
-    private void assertNoLeak(Path file, int expectedTotal) throws IOException {
-        List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
-        int publicQueryLineCount = 0;
-        List<String> violations = new java.util.ArrayList<>();
+    private void assertNoLeak(Class<?> repositoryInterface) {
+        Set<String> allowlist = ALLOWLIST.getOrDefault(repositoryInterface.getSimpleName(), Set.of());
+        List<String> violations = new ArrayList<>();
+        int publicFacingCount = 0;
 
-        for (int i = 0; i < lines.size(); i++) {
-            Matcher m = PUBLIC_VISIBILITY_LINE.matcher(lines.get(i));
-            if (!m.find()) {
+        for (Method method : repositoryInterface.getDeclaredMethods()) {
+            if (!isPublicFacing(method)) {
                 continue;
             }
-            publicQueryLineCount++;
-
-            String methodName = findEnclosingMethodName(lines, i);
-            if (WHITELIST.contains(methodName)) {
+            publicFacingCount++;
+            if (isActiveSafe(method)) {
                 continue;
             }
-
-            // 同一 @Query ブロック内（前後15行の窓）に ACTIVE 条件があるかを確認する。
-            int windowStart = Math.max(0, i - 15);
-            int windowEnd = Math.min(lines.size(), i + 15);
-            boolean hasActiveCondition = false;
-            for (int j = windowStart; j < windowEnd; j++) {
-                if (LIFECYCLE_ACTIVE.matcher(lines.get(j)).find()) {
-                    hasActiveCondition = true;
-                    break;
-                }
+            if (allowlist.contains(method.getName())) {
+                continue;
             }
-            if (!hasActiveCondition) {
-                violations.add(file.getFileName() + ":" + (i + 1) + " method=" + methodName
-                        + " — PUBLIC可視性クエリにlifecycleStatus=ACTIVE条件が無い（PROVISIONED漏出の恐れ）");
-            }
+            violations.add(repositoryInterface.getSimpleName() + "#" + method.getName()
+                    + " — 公開系メソッドに lifecycleStatus=ACTIVE 条件が無く、"
+                    + "ALLOWLIST にも未登録（PROVISIONED漏出の恐れ。ACTIVE条件を追加するか、"
+                    + "非公開経路として理由付きで ALLOWLIST へ登録すること）");
         }
 
         assertThat(violations).as("PROVISIONED漏出ゲート違反: %s", violations).isEmpty();
-        assertThat(publicQueryLineCount)
-                .as("PUBLIC可視性クエリ行の凍結総数（増減したら本テストの期待値を実測に合わせて更新すること）")
-                .isEqualTo(expectedTotal);
+        // 公開系メソッドが 1 件も検出されない場合は判定ロジック自体が壊れている（偽陰性）。
+        assertThat(publicFacingCount)
+                .as("公開系メソッドが検出できていない（判定ロジックの偽陰性の恐れ）")
+                .isGreaterThan(0);
     }
 
-    /** 対象行より前を遡り、直近のメソッド宣言らしき行からメソッド名を推定する（レポート用途のみ）。 */
-    private String findEnclosingMethodName(List<String> lines, int fromIndex) {
-        Pattern methodDecl = Pattern.compile("\\b([A-Za-z][A-Za-z0-9_<>,\\s]*?)\\s+(\\w+)\\s*\\(");
-        for (int i = fromIndex; i < Math.min(lines.size(), fromIndex + 20); i++) {
-            String line = lines.get(i);
-            if (line.contains("@Query") || line.trim().isEmpty() || line.trim().startsWith("//")
-                    || line.trim().startsWith("*") || line.trim().startsWith("\"")) {
-                continue;
-            }
-            Matcher m = methodDecl.matcher(line);
-            if (m.find()) {
-                return m.group(2);
-            }
+    /** メソッド名または @Query 本文から「公開系」（未認証/未承諾でも到達しうる経路）かを判定する。 */
+    private boolean isPublicFacing(Method method) {
+        String name = method.getName();
+        if (name.contains("Public") || name.contains("BySlug")
+                || name.equals("searchByKeyword") || name.equals("findChildrenPage")) {
+            return true;
         }
-        return "(unknown)";
+        Query query = method.getAnnotation(Query.class);
+        return query != null && query.value().contains("Visibility.PUBLIC");
+    }
+
+    /** @Query 本文の ACTIVE 条件、または derived query のメソッド名に LifecycleStatus 条件があるかを判定する。 */
+    private boolean isActiveSafe(Method method) {
+        Query query = method.getAnnotation(Query.class);
+        if (query != null) {
+            return query.value().contains("LifecycleStatus.ACTIVE");
+        }
+        return method.getName().contains("LifecycleStatus");
     }
 }

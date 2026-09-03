@@ -41,7 +41,15 @@ public class ProvisioningEmailEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onInvitationIssued(ProvisioningInvitationIssuedEvent event) {
         try {
-            String acceptUrl = baseUrl + "/provisioning/accept?token=" + event.plaintextToken();
+            // 検分 P0 根治: トークンを URL フラグメント（#token=...）に格納する。
+            // フラグメントはブラウザからサーバーへ送信されないため、アクセスログ・Referer
+            // ヘッダーには一切載らない（クエリパラメータ ?token=... は両方に載り得る）。
+            // FE はフラグメントを JS で読み取り、確定設計どおり accept API へ POST ボディで渡す。
+            // 同様に平文トークンをメール本文へ載せる必要がある role.InviteService#inviteUrl /
+            // auth.AuthEmailEventListener#verifyUrl 等の既存招待メールはパス/クエリ形式のままだが、
+            // それらはメール内リンクという配送経路自体が本質的に平文を含む点で本 PR の対象と同型であり、
+            // 本 PR ではプロビジョニング招待のみ根治対象とする（要件どおり URL 形式の確定のみ）。
+            String acceptUrl = baseUrl + "/provisioning/accept#token=" + event.plaintextToken();
             emailOutboxService.enqueue(new EmailOutboxRequest(
                     EmailTemplateKind.PROVISIONING_ADMIN_INVITE.name(),
                     "ja",

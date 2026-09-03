@@ -3,8 +3,10 @@ package com.mannschaft.app.provisioning.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.provisioning.ProvisioningErrorCode;
 import com.mannschaft.app.provisioning.dto.ProvisioningOrganizationCreateRequest;
 import com.mannschaft.app.provisioning.dto.ProvisioningTeamCreateRequest;
+import com.mannschaft.app.provisioning.entity.ProvisioningInvitationEntity;
 import com.mannschaft.app.provisioning.repository.ProvisioningInvitationRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,7 +15,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -92,5 +98,88 @@ class ProvisioningServiceTest {
         List<?> result = provisioningService.list(SYSTEM_ADMIN_ID);
 
         assertThat(result).isEmpty();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 検分 P1-3 根治: resend/cancel の状態機械（悲観ロック取得 + ACCEPTED/CANCELLED拒否）
+    // ─────────────────────────────────────────────────────────────
+
+    private ProvisioningInvitationEntity invitationWithStatus(String status) {
+        return ProvisioningInvitationEntity.builder()
+                .id(UUID.randomUUID())
+                .organizationId(1L)
+                .inviteEmail("invited@example.com")
+                .tokenHash("hash")
+                .status(status)
+                .expiresAt(Instant.now().plus(1, ChronoUnit.DAYS))
+                .issuedBy(SYSTEM_ADMIN_ID)
+                .build();
+    }
+
+    @Test
+    @DisplayName("P1-3: ACCEPTED済み招待へのresendは409（PROV_011）")
+    void resendRejectsAcceptedInvitation() {
+        UUID invitationId = UUID.randomUUID();
+        lenient().when(invitationRepository.findByIdForUpdate(invitationId))
+                .thenReturn(Optional.of(invitationWithStatus("ACCEPTED")));
+
+        assertThatThrownBy(() -> provisioningService.resend(SYSTEM_ADMIN_ID, invitationId))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ProvisioningErrorCode.PROV_011);
+    }
+
+    @Test
+    @DisplayName("P1-3: CANCELLED済み招待へのresendは409（PROV_003）")
+    void resendRejectsCancelledInvitation() {
+        UUID invitationId = UUID.randomUUID();
+        lenient().when(invitationRepository.findByIdForUpdate(invitationId))
+                .thenReturn(Optional.of(invitationWithStatus("CANCELLED")));
+
+        assertThatThrownBy(() -> provisioningService.resend(SYSTEM_ADMIN_ID, invitationId))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ProvisioningErrorCode.PROV_003);
+    }
+
+    @Test
+    @DisplayName("P1-3: ACCEPTED済み招待へのcancelは409（PROV_011）")
+    void cancelRejectsAcceptedInvitation() {
+        UUID invitationId = UUID.randomUUID();
+        lenient().when(invitationRepository.findByIdForUpdate(invitationId))
+                .thenReturn(Optional.of(invitationWithStatus("ACCEPTED")));
+
+        assertThatThrownBy(() -> provisioningService.cancel(SYSTEM_ADMIN_ID, invitationId))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ProvisioningErrorCode.PROV_011);
+    }
+
+    @Test
+    @DisplayName("P1-3: CANCELLED済み招待への再cancelは409（PROV_003・冪等ではなく明示409）")
+    void cancelRejectsAlreadyCancelledInvitation() {
+        UUID invitationId = UUID.randomUUID();
+        lenient().when(invitationRepository.findByIdForUpdate(invitationId))
+                .thenReturn(Optional.of(invitationWithStatus("CANCELLED")));
+
+        assertThatThrownBy(() -> provisioningService.cancel(SYSTEM_ADMIN_ID, invitationId))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ProvisioningErrorCode.PROV_003);
+    }
+
+    @Test
+    @DisplayName("P1-3: resend/cancelはfindByIdではなく悲観ロック付きfindByIdForUpdateを使用する")
+    void resendUsesLockingLookupNotPlainFindById() {
+        UUID invitationId = UUID.randomUUID();
+        lenient().when(invitationRepository.findByIdForUpdate(invitationId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> provisioningService.resend(SYSTEM_ADMIN_ID, invitationId))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ProvisioningErrorCode.PROV_001);
+
+        org.mockito.Mockito.verify(invitationRepository).findByIdForUpdate(invitationId);
+        org.mockito.Mockito.verify(invitationRepository, org.mockito.Mockito.never()).findById(invitationId);
     }
 }

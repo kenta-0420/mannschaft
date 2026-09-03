@@ -1,14 +1,24 @@
 package com.mannschaft.app.provisioning.service;
 
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.token.SecretTokenVault;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.dto.MembershipDto;
+import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.provisioning.ProvisioningErrorCode;
+import com.mannschaft.app.provisioning.dto.ProvisioningInvitationAcceptResponse;
 import com.mannschaft.app.provisioning.entity.ProvisioningInvitationEntity;
 import com.mannschaft.app.provisioning.repository.ProvisioningInvitationRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,8 +28,15 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 /**
  * 柱②-2 試練（AC4・AC7〜AC10・AC12）: 販促プロビジョニング承諾サービスの UT。
@@ -45,6 +62,21 @@ class ProvisioningAcceptanceServiceTest {
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private OrganizationService organizationService;
+
+    @Mock
+    private TeamService teamService;
+
+    @Mock
+    private AdminRoleMutationLockService adminRoleMutationLockService;
+
+    @Mock
+    private MembershipService membershipService;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private ProvisioningAcceptanceService acceptanceService;
@@ -137,5 +169,47 @@ class ProvisioningAcceptanceServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ProvisioningErrorCode.PROV_006);
+    }
+
+    @Test
+    @DisplayName("P1-5(a): 成功accept — ADMIN role付与・membership付与・スコープACTIVE化・監査記録が全て行われる")
+    void acceptSucceedsAndGrantsAdminAndMembershipAndActivatesScope() {
+        Long adminRoleId = 55L;
+        ProvisioningInvitationEntity pending = pendingInvitation(Instant.now().plus(1, ChronoUnit.DAYS));
+
+        lenient().when(secretTokenVault.hash(TOKEN_PLAINTEXT)).thenReturn(TOKEN_HASH);
+        lenient().when(invitationRepository.findByTokenHashForUpdate(TOKEN_HASH))
+                .thenReturn(Optional.of(pending));
+        lenient().when(userService.findVerifiedEmail(ACTOR_USER_ID))
+                .thenReturn(Optional.of(new UserService.VerifiedEmail("invited@example.com", true)));
+        lenient().when(emailNormalizer.normalize("invited@example.com")).thenReturn("invited@example.com");
+        lenient().when(adminRoleMutationLockService.lockAdminRoleIdForCreation(ACTOR_USER_ID))
+                .thenReturn(Optional.of(adminRoleId));
+        lenient().when(organizationService.activateProvisionedOrganization(1L))
+                .thenReturn(Optional.of("AC5承諾テスト組織"));
+        lenient().when(membershipService.join(any(MembershipCreateRequest.class)))
+                .thenReturn(new MembershipDto(1L, ACTOR_USER_ID, null, 1L, null, null, null, null, null, false));
+        lenient().when(invitationRepository.save(any(ProvisioningInvitationEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ProvisioningInvitationAcceptResponse response = acceptanceService.accept(TOKEN_PLAINTEXT, ACTOR_USER_ID);
+
+        assertThat(response.organizationId()).isEqualTo(1L);
+        assertThat(response.status()).isEqualTo("ACCEPTED");
+
+        verify(adminRoleMutationLockService).grantAdminRole(ACTOR_USER_ID, adminRoleId, null, 1L);
+        verify(membershipService).join(any(MembershipCreateRequest.class));
+        verify(auditLogService).record(
+                eq(AuditEventType.PROVISIONING_INVITATION_ACCEPTED.name()),
+                eq(ACTOR_USER_ID), anyLong(), eq(null), eq(1L), any(), any(), any(), any());
+
+        ArgumentCaptor<ProvisioningInvitationEntity> savedCaptor =
+                ArgumentCaptor.forClass(ProvisioningInvitationEntity.class);
+        verify(invitationRepository, times(1)).save(savedCaptor.capture());
+        assertThat(savedCaptor.getValue().getStatus()).isEqualTo("ACCEPTED");
+        assertThat(savedCaptor.getValue().getAcceptedBy()).isEqualTo(ACTOR_USER_ID);
+        assertThat(savedCaptor.getValue().getAcceptedAt()).isNotNull();
+
+        verify(teamService, never()).activateProvisionedTeam(anyLong());
     }
 }

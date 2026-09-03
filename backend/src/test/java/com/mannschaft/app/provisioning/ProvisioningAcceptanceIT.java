@@ -222,6 +222,124 @@ class ProvisioningAcceptanceIT extends AbstractMySqlIntegrationTest {
     }
 
     @Nested
+    @DisplayName("P1-5(d): 招待下見（preview）の認可")
+    class Preview {
+
+        // preview() は accept() と異なり Controller 内で SecurityUtils.getCurrentUserId() を
+        // 呼ばない（@AuthorizedInService は静的解析用の監査マーカーに過ぎず実行時の認可は行わない）。
+        // 保護は SecurityConfig の宣言的 authenticated() のみが担うため、addFilters=false の
+        // 本クラスでは「未認証→401」を観測できない（フィルタ自体を通さないため）。
+        // 実フィルタチェーンでの検証は ProvisioningSecurityConfigLayerIT#anonymousPreviewReturns401
+        // に置く（金型: AC1のクラス javadoc に同種の限界説明あり）。
+
+        @Test
+        @DisplayName("preview: 存在しないトークンは404（PROV_001・存在秘匿）")
+        void previewWithUnknownTokenReturns404() throws Exception {
+            setAuth(ordinaryUserId);
+            Map<String, Object> body = Map.of("token", "unknown-token-" + UUID.randomUUID());
+
+            mockMvc.perform(post("/api/v1/provisioning/invitations/preview")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("preview: PENDING招待は認証済みなら誰でも200で下見できる（招待先メールと不一致でも良い）")
+        void previewWithPendingTokenReturns200() throws Exception {
+            Long orgId = insertOrganization("Preview下見テスト組織", "PROVISIONED");
+            String plaintextToken = "preview-plaintext-token-" + UUID.randomUUID();
+            String tokenHash = sha256Hex(plaintextToken);
+            em.createNativeQuery(
+                            "INSERT INTO provisioning_invitations "
+                                    + "(id, organization_id, invite_email, token_hash, status, expires_at, "
+                                    + "issued_by, created_at, updated_at) "
+                                    + "VALUES (UNHEX(REPLACE(UUID(),'-','')), :orgId, :email, :hash, 'PENDING', "
+                                    + "DATE_ADD(NOW(), INTERVAL 7 DAY), :issuedBy, NOW(), NOW())")
+                    .setParameter("orgId", orgId)
+                    .setParameter("email", "preview-invitee@example.com")
+                    .setParameter("hash", tokenHash)
+                    .setParameter("issuedBy", systemAdminId)
+                    .executeUpdate();
+            em.flush();
+            em.clear();
+
+            // ログインユーザー(ordinaryUserId)のメールと招待先メールは不一致だが、
+            // preview は承諾前の確認画面用であり AC4（メール一致必須）は accept のみに課す。
+            setAuth(ordinaryUserId);
+            Map<String, Object> body = Map.of("token", plaintextToken);
+
+            mockMvc.perform(post("/api/v1/provisioning/invitations/preview")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Nested
+    @DisplayName("P1-5(c): ACCEPTED済み招待への再accept — 本人は冪等200・他者は404")
+    class Ac9IdempotentReaccept {
+
+        @Test
+        @DisplayName("ACCEPTED済みへの本人再acceptは冪等200、他者は404")
+        void reacceptByAcceptorIsIdempotentAndByOtherUserIs404() throws Exception {
+            Long orgId = insertOrganization("AC9冪等再承諾テスト組織", "PROVISIONED");
+            Long acceptorId = insertUser("ac9-acceptor-" + System.nanoTime() + "@example.com");
+            Long otherUserId = insertUser("ac9-other-" + System.nanoTime() + "@example.com");
+            String inviteEmail = em.createNativeQuery("SELECT email FROM users WHERE id = :id")
+                    .setParameter("id", acceptorId)
+                    .getSingleResult().toString();
+
+            String plaintextToken = "ac9-plaintext-token-" + UUID.randomUUID();
+            String tokenHash = sha256Hex(plaintextToken);
+            em.createNativeQuery(
+                            "INSERT INTO provisioning_invitations "
+                                    + "(id, organization_id, invite_email, token_hash, status, expires_at, "
+                                    + "issued_by, created_at, updated_at) "
+                                    + "VALUES (UNHEX(REPLACE(UUID(),'-','')), :orgId, :email, :hash, 'PENDING', "
+                                    + "DATE_ADD(NOW(), INTERVAL 7 DAY), :issuedBy, NOW(), NOW())")
+                    .setParameter("orgId", orgId)
+                    .setParameter("email", inviteEmail)
+                    .setParameter("hash", tokenHash)
+                    .setParameter("issuedBy", systemAdminId)
+                    .executeUpdate();
+            em.flush();
+            em.clear();
+
+            Map<String, Object> body = Map.of("token", plaintextToken);
+
+            // 1回目: 本人が承諾 → 200
+            setAuth(acceptorId);
+            mockMvc.perform(post("/api/v1/provisioning/invitations/accept")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isOk());
+
+            // 2回目: 本人が再accept → 冪等200（AC9）
+            setAuth(acceptorId);
+            mockMvc.perform(post("/api/v1/provisioning/invitations/accept")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isOk());
+
+            // 他者が同じトークンでacceptを試みる → 存在秘匿のため404（AC9・PROV_010）
+            setAuth(otherUserId);
+            mockMvc.perform(post("/api/v1/provisioning/invitations/accept")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isNotFound());
+
+            long adminRoleCount = ((Number) em.createNativeQuery(
+                            "SELECT COUNT(*) FROM user_roles ur JOIN roles r ON r.id = ur.role_id "
+                                    + "WHERE ur.user_id = :uid AND ur.organization_id = :orgId AND r.name = 'ADMIN'")
+                    .setParameter("uid", acceptorId)
+                    .setParameter("orgId", orgId)
+                    .getSingleResult()).longValue();
+            assertThat(adminRoleCount).as("冪等再acceptでADMIN roleが重複挿入されない").isEqualTo(1);
+        }
+    }
+
+    @Nested
     @DisplayName("AC10: PROVISIONED組織/チームは公開検索・slug解決・公開ページで404")
     class Ac10 {
 

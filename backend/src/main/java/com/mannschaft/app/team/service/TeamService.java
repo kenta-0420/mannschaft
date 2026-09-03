@@ -935,7 +935,11 @@ public class TeamService {
      * @return チームエンティティ
      */
     private TeamEntity findTeamBySlugOrThrow(String slug) {
-        return teamRepository.findBySlugAndDeletedAtIsNull(slug)
+        // 柱②-3 検分 P1-2 根治: PROVISIONED（承諾前の事前作成状態）を除外するため
+        // ACTIVE 限定クエリへ差し替える。getTeam/resolveTeamId は多数の API の入口であり、
+        // 承諾前スコープを認可判定より前に解決できてはならない。
+        return teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(
+                        slug, TeamEntity.LifecycleStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
     }
 

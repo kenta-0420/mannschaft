@@ -56,6 +56,7 @@ public class ProvisioningService {
     private static final int INVITATION_TTL_DAYS = 7;
 
     private static final String STATUS_PENDING = "PENDING";
+    private static final String STATUS_ACCEPTED = "ACCEPTED";
     private static final String STATUS_CANCELLED = "CANCELLED";
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
@@ -126,8 +127,11 @@ public class ProvisioningService {
     @Transactional
     public ProvisioningInvitationResponse resend(Long actorUserId, UUID invitationId) {
         accessControlService.checkSystemAdmin(actorUserId); // AC2
-        ProvisioningInvitationEntity old = invitationRepository.findById(invitationId)
+        // 検分 P1-3 根治: accept（findByTokenHashForUpdate）と同一行を悲観ロックすることで、
+        // resend/cancel と accept の競合・resend 同士・resend と cancel の競合を直列化する。
+        ProvisioningInvitationEntity old = invitationRepository.findByIdForUpdate(invitationId)
                 .orElseThrow(() -> new BusinessException(ProvisioningErrorCode.PROV_001));
+        assertResendableOrCancellable(old);
 
         Instant now = Instant.now();
         old.setStatus(STATUS_CANCELLED);
@@ -155,8 +159,10 @@ public class ProvisioningService {
     @Transactional
     public void cancel(Long actorUserId, UUID invitationId) {
         accessControlService.checkSystemAdmin(actorUserId); // AC2
-        ProvisioningInvitationEntity invitation = invitationRepository.findById(invitationId)
+        // 検分 P1-3 根治: resend と同型で悲観ロック＋状態機械チェックを行う。
+        ProvisioningInvitationEntity invitation = invitationRepository.findByIdForUpdate(invitationId)
                 .orElseThrow(() -> new BusinessException(ProvisioningErrorCode.PROV_001));
+        assertResendableOrCancellable(invitation);
 
         invitation.setStatus(STATUS_CANCELLED);
         invitation.setResolvedAt(Instant.now());
@@ -173,6 +179,21 @@ public class ProvisioningService {
     }
 
     // ─────────────────────────────────────────────────────────────
+
+    /**
+     * 検分 P1-3 根治: resend/cancel が許されるのは PENDING（TTL 経過済みでも状態列は
+     * PENDING のまま＝実質 EXPIRED を含む）のみ。ACCEPTED は 409（PROV_011）、
+     * CANCELLED は 409（PROV_003・既存コードと同一メッセージ）とし、二重発行・
+     * 承諾済みスコープへの誤操作を防ぐ。
+     */
+    private void assertResendableOrCancellable(ProvisioningInvitationEntity invitation) {
+        if (STATUS_ACCEPTED.equals(invitation.getStatus())) {
+            throw new BusinessException(ProvisioningErrorCode.PROV_011);
+        }
+        if (STATUS_CANCELLED.equals(invitation.getStatus())) {
+            throw new BusinessException(ProvisioningErrorCode.PROV_003);
+        }
+    }
 
     private ProvisioningInvitationEntity issueInvitation(
             Long actorUserId, String inviteEmail, Long organizationId, Long teamId, String scopeName,

@@ -29,4 +29,16 @@ public interface ProvisioningInvitationRepository extends JpaRepository<Provisio
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM ProvisioningInvitationEntity i WHERE i.tokenHash = :tokenHash")
     Optional<ProvisioningInvitationEntity> findByTokenHashForUpdate(@Param("tokenHash") String tokenHash);
+
+    /**
+     * 検分 P1-3 根治: resend/cancel を状態機械で守るための悲観ロック付き ID 検索。
+     *
+     * <p>{@link #findByTokenHashForUpdate} と同型。resend/cancel と accept
+     * （{@link #findByTokenHashForUpdate}）は同じ行に対して悲観ロックを取得するため、
+     * 並行実行は DB レベルで直列化される（accept 進行中の招待への resend/cancel、
+     * resend 同士・resend と cancel の競合も含む）。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM ProvisioningInvitationEntity i WHERE i.id = :id")
+    Optional<ProvisioningInvitationEntity> findByIdForUpdate(@Param("id") UUID id);
 }
