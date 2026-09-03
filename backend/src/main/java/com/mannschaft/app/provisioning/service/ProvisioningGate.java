@@ -1,9 +1,9 @@
 package com.mannschaft.app.provisioning.service;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.provisioning.ProvisioningErrorCode;
-import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,8 +26,8 @@ public class ProvisioningGate {
 
     private static final String SCOPE_TEAM = "TEAM";
 
-    private final TeamRepository teamRepository;
-    private final OrganizationRepository organizationRepository;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
 
     /**
      * 指定スコープが PROVISIONED でないこと（＝通常導線を使ってよいこと）を要求する。
@@ -38,18 +38,11 @@ public class ProvisioningGate {
      */
     @Transactional(readOnly = true)
     public void requireActive(Long scopeId, String scopeType) {
-        if (SCOPE_TEAM.equals(scopeType)) {
-            teamRepository.findById(scopeId).ifPresent(team -> {
-                if (team.isProvisioned()) {
-                    throw new BusinessException(ProvisioningErrorCode.PROV_008);
-                }
-            });
-            return;
+        boolean provisioned = SCOPE_TEAM.equals(scopeType)
+                ? teamService.isProvisioned(scopeId)
+                : organizationService.isProvisioned(scopeId);
+        if (provisioned) {
+            throw new BusinessException(ProvisioningErrorCode.PROV_008);
         }
-        organizationRepository.findById(scopeId).ifPresent(org -> {
-            if (org.isProvisioned()) {
-                throw new BusinessException(ProvisioningErrorCode.PROV_008);
-            }
-        });
     }
 }

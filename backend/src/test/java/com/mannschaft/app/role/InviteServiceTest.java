@@ -5,6 +5,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.provisioning.service.ProvisioningGate;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.role.dto.InviteTokenResponse;
@@ -89,6 +90,9 @@ class InviteServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private ProvisioningGate provisioningGate;
 
     @InjectMocks
     private InviteService inviteService;

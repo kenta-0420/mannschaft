@@ -13053,6 +13053,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/provisioning/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チームをPROVISIONED状態で事前作成し、管理予定者へADMIN招待を送る */
+        post: operations["createTeam_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/provisioning/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織をPROVISIONED状態で事前作成し、管理予定者へADMIN招待を送る */
+        post: operations["createOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/provisioning/invitations/{invitationId}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 招待を再送する（旧トークンは失効し、新しいトークンを発行する） */
+        post: operations["resend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/provisioning/invitations/{invitationId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 招待を取消す */
+        post: operations["cancel_5"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/nav-features": {
         parameters: {
             query?: never;
@@ -14876,7 +14944,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 募集枠 主催者キャンセル */
-        post: operations["cancel_5"];
+        post: operations["cancel_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15238,6 +15306,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/provisioning/invitations/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 招待トークンの下見（承諾前確認画面用） */
+        post: operations["preview_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/provisioning/invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 招待トークンを承諾する（ADMIN役割+membership付与→スコープACTIVE化） */
+        post: operations["accept_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/point-cards": {
         parameters: {
             query?: never;
@@ -15525,7 +15627,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 組織作成 */
-        post: operations["createOrganization"];
+        post: operations["createOrganization_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16266,7 +16368,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["preview_3"];
+        post: operations["preview_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16330,7 +16432,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["cancel_6"];
+        post: operations["cancel_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17343,7 +17445,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 封緘解除申請のキャンセル（申請者本人または ADMIN） */
-        post: operations["cancel_7"];
+        post: operations["cancel_8"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17837,7 +17939,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 配信キャンセル */
-        post: operations["cancel_8"];
+        post: operations["cancel_9"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18192,7 +18294,7 @@ export interface paths {
          * 送り出し取消
          * @description 手放す側 org ADMIN のみ（応答前 DISPATCHED のみ）→ CANCELLED
          */
-        post: operations["cancel_9"];
+        post: operations["cancel_10"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18539,7 +18641,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 組織メールプレビュー */
-        post: operations["preview_4"];
+        post: operations["preview_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19924,7 +20026,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 個人札の取消 */
-        post: operations["cancel_10"];
+        post: operations["cancel_11"];
         delete?: never;
         options?: never;
         head?: never;
@@ -23224,7 +23326,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** @deprecated */
-        post: operations["cancel_11"];
+        post: operations["cancel_12"];
         delete?: never;
         options?: never;
         head?: never;
@@ -26145,7 +26247,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 確認通知キャンセル */
-        patch: operations["cancel_12"];
+        patch: operations["cancel_13"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/circulations/{documentId}": {
@@ -27463,7 +27565,7 @@ export interface paths {
          * 代理承認
          * @description F03.10 §4.1: 代理人が代理を承認する
          */
-        patch: operations["accept_1"];
+        patch: operations["accept_2"];
         trace?: never;
     };
     "/api/v1/safety-checks/templates/{templateId}": {
@@ -28764,7 +28866,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 協会請求の取消（CANCELLED） */
-        patch: operations["cancel_13"];
+        patch: operations["cancel_14"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/matches/{matchId}/events/{eventId}": {
@@ -28887,7 +28989,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 確認通知キャンセル（組織） */
-        patch: operations["cancel_14"];
+        patch: operations["cancel_15"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/circulations/{documentId}": {
@@ -29463,7 +29565,7 @@ export interface paths {
          * 代理承認
          * @description F03.10 §4.2: 代理人が代理を承認する
          */
-        patch: operations["accept_2"];
+        patch: operations["accept_3"];
         trace?: never;
     };
     "/api/v1/event-categories/{categoryId}": {
@@ -35432,6 +35534,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/provisioning/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** プロビジョニング招待の一覧を取得する */
+        get: operations["list_80"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/promotion-billing": {
         parameters: {
             query?: never;
@@ -35440,7 +35559,7 @@ export interface paths {
             cookie?: never;
         };
         /** 課金状況一覧 */
-        get: operations["list_80"];
+        get: operations["list_81"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35690,7 +35809,7 @@ export interface paths {
             cookie?: never;
         };
         /** エラーレポート一覧取得 */
-        get: operations["list_81"];
+        get: operations["list_82"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36328,7 +36447,7 @@ export interface paths {
          * 通報一覧
          * @description status / reasonCode で任意に絞り込んだ通報を created_at DESC で取得する。campaignId（メッセージ型）/ operationalCampaignId（運用型）を併記する。
          */
-        get: operations["list_82"];
+        get: operations["list_83"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36376,7 +36495,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_83"];
+        get: operations["list_84"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36412,7 +36531,7 @@ export interface paths {
          * 審査キュー一覧
          * @description 運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。
          */
-        get: operations["list_84"];
+        get: operations["list_85"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36931,7 +37050,7 @@ export interface paths {
             cookie?: never;
         };
         /** 失敗イベント一覧を取得 (status で絞り込み可、新しい順) */
-        get: operations["list_85"];
+        get: operations["list_86"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37458,7 +37577,7 @@ export interface paths {
          * キャンセル料記録の一覧
          * @description 受取先側の管理者・受取先本人・運営管理者が、自分が受け取るべきキャンセル料の記録を一覧する（免除対象を選ぶための一覧）。ページングはカーソル方式で、続きは meta.nextCursor を cursor に渡して取得する。
          */
-        get: operations["list_86"];
+        get: operations["list_87"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40041,7 +40160,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_87"];
+        get: operations["list_88"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40436,7 +40555,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_88"];
+        get: operations["list_89"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40607,7 +40726,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_89"];
+        get: operations["list_90"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40971,7 +41090,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村でなれる投稿主体一覧を取得する（村人のみ） */
-        get: operations["list_90"];
+        get: operations["list_91"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41039,7 +41158,7 @@ export interface paths {
             cookie?: never;
         };
         /** メモ添付一覧 */
-        get: operations["list_91"];
+        get: operations["list_92"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42533,7 +42652,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_92"];
+        get: operations["list_93"];
         put?: never;
         post?: never;
         delete?: never;
@@ -45474,7 +45593,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** チーム申請取消 */
-        delete: operations["cancel_15"];
+        delete: operations["cancel_16"];
         options?: never;
         head?: never;
         patch?: never;
@@ -46113,7 +46232,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 組織申請取消 */
-        delete: operations["cancel_16"];
+        delete: operations["cancel_17"];
         options?: never;
         head?: never;
         patch?: never;
@@ -46325,7 +46444,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 継続課金 期末解約（F08.9 P5） */
-        delete: operations["cancel_17"];
+        delete: operations["cancel_18"];
         options?: never;
         head?: never;
         patch?: never;
@@ -60770,6 +60889,28 @@ export interface components {
             /** Format: int32 */
             sortOrder?: number;
         };
+        ProvisioningTeamCreateRequest: {
+            inviteEmail?: string;
+            name?: string;
+        };
+        ProvisioningInvitationResponse: {
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: uuid */
+            id?: string;
+            inviteEmail?: string;
+            /** Format: int64 */
+            issuedBy?: number;
+            /** Format: int64 */
+            organizationId?: number;
+            status?: string;
+            /** Format: int64 */
+            teamId?: number;
+        };
+        ProvisioningOrganizationCreateRequest: {
+            inviteEmail?: string;
+            name?: string;
+        };
         NavFeatureCreateRequest: {
             enabled: boolean;
             fixed: boolean;
@@ -62466,6 +62607,27 @@ export interface components {
             /** Format: date */
             meetingDate?: string;
             title?: string;
+        };
+        ProvisioningInvitationAcceptRequest: {
+            token?: string;
+        };
+        ProvisioningInvitationPreviewResponse: {
+            /** Format: date-time */
+            expiresAt?: string;
+            inviteEmail?: string;
+            /** Format: int64 */
+            organizationId?: number;
+            scopeName?: string;
+            /** Format: int64 */
+            teamId?: number;
+        };
+        ProvisioningInvitationAcceptResponse: {
+            /** Format: int64 */
+            organizationId?: number;
+            scopeName?: string;
+            status?: string;
+            /** Format: int64 */
+            teamId?: number;
         };
         CreateUserPointCardRequest: {
             /** @enum {string} */
@@ -110643,6 +110805,96 @@ export interface operations {
             };
         };
     };
+    createTeam_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProvisioningTeamCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProvisioningInvitationResponse"];
+                };
+            };
+        };
+    };
+    createOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProvisioningOrganizationCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProvisioningInvitationResponse"];
+                };
+            };
+        };
+    };
+    resend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProvisioningInvitationResponse"];
+                };
+            };
+        };
+    };
+    cancel_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listAll: {
         parameters: {
             query?: never;
@@ -113880,7 +114132,7 @@ export interface operations {
             };
         };
     };
-    cancel_5: {
+    cancel_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -114561,6 +114813,54 @@ export interface operations {
             };
         };
     };
+    preview_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProvisioningInvitationAcceptRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProvisioningInvitationPreviewResponse"];
+                };
+            };
+        };
+    };
+    accept_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProvisioningInvitationAcceptRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProvisioningInvitationAcceptResponse"];
+                };
+            };
+        };
+    };
     listMyCards: {
         parameters: {
             query?: never;
@@ -114959,7 +115259,7 @@ export interface operations {
             };
         };
     };
-    createOrganization: {
+    createOrganization_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -116599,7 +116899,7 @@ export interface operations {
             };
         };
     };
-    preview_3: {
+    preview_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -116695,7 +116995,7 @@ export interface operations {
             };
         };
     };
-    cancel_6: {
+    cancel_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -118766,7 +119066,7 @@ export interface operations {
             };
         };
     };
-    cancel_7: {
+    cancel_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -119757,7 +120057,7 @@ export interface operations {
             };
         };
     };
-    cancel_8: {
+    cancel_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -120454,7 +120754,7 @@ export interface operations {
             };
         };
     };
-    cancel_9: {
+    cancel_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -121132,7 +121432,7 @@ export interface operations {
             };
         };
     };
-    preview_4: {
+    preview_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -123589,7 +123889,7 @@ export interface operations {
             };
         };
     };
-    cancel_10: {
+    cancel_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -129411,7 +129711,7 @@ export interface operations {
             };
         };
     };
-    cancel_11: {
+    cancel_12: {
         parameters: {
             query: {
                 organizationId: number;
@@ -135180,7 +135480,7 @@ export interface operations {
             };
         };
     };
-    cancel_12: {
+    cancel_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -137722,7 +138022,7 @@ export interface operations {
             };
         };
     };
-    accept_1: {
+    accept_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -140245,7 +140545,7 @@ export interface operations {
             };
         };
     };
-    cancel_13: {
+    cancel_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -140516,7 +140816,7 @@ export interface operations {
             };
         };
     };
-    cancel_14: {
+    cancel_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -141838,7 +142138,7 @@ export interface operations {
             };
         };
     };
-    accept_2: {
+    accept_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -145407,7 +145707,7 @@ export interface operations {
         parameters: {
             query?: {
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "PROVISIONING")[];
                 from?: string;
                 to?: string;
                 cursor?: string;
@@ -149382,7 +149682,7 @@ export interface operations {
             query?: {
                 userId?: number;
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "PROVISIONING")[];
                 from?: string;
                 to?: string;
                 cursor?: string;
@@ -150690,6 +150990,26 @@ export interface operations {
     };
     list_80: {
         parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProvisioningInvitationResponse"][];
+                };
+            };
+        };
+    };
+    list_81: {
+        parameters: {
             query?: {
                 billingStatus?: string;
                 page?: number;
@@ -150993,7 +151313,7 @@ export interface operations {
             };
         };
     };
-    list_81: {
+    list_82: {
         parameters: {
             query?: {
                 status?: string;
@@ -151851,7 +152171,7 @@ export interface operations {
             };
         };
     };
-    list_82: {
+    list_83: {
         parameters: {
             query?: {
                 status?: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
@@ -151924,7 +152244,7 @@ export interface operations {
             };
         };
     };
-    list_83: {
+    list_84: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -151969,7 +152289,7 @@ export interface operations {
             };
         };
     };
-    list_84: {
+    list_85: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -152678,7 +152998,7 @@ export interface operations {
             };
         };
     };
-    list_85: {
+    list_86: {
         parameters: {
             query?: {
                 status?: "PENDING" | "RETRYING" | "SUCCEEDED" | "EXHAUSTED" | "MANUAL_RESOLVED";
@@ -153408,7 +153728,7 @@ export interface operations {
             };
         };
     };
-    list_86: {
+    list_87: {
         parameters: {
             query?: {
                 status?: ("NOT_REQUIRED" | "PENDING" | "PAID" | "WAIVED" | "FAILED" | "UNCOLLECTIBLE")[];
@@ -157006,7 +157326,7 @@ export interface operations {
             };
         };
     };
-    list_87: {
+    list_88: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -157553,7 +157873,7 @@ export interface operations {
             };
         };
     };
-    list_88: {
+    list_89: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -157605,7 +157925,7 @@ export interface operations {
             query?: {
                 userId?: number;
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "PROVISIONING")[];
                 from?: string;
                 to?: string;
                 cursor?: string;
@@ -157792,7 +158112,7 @@ export interface operations {
             };
         };
     };
-    list_89: {
+    list_90: {
         parameters: {
             query?: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -158274,7 +158594,7 @@ export interface operations {
             };
         };
     };
-    list_90: {
+    list_91: {
         parameters: {
             query?: never;
             header?: never;
@@ -158358,7 +158678,7 @@ export interface operations {
             };
         };
     };
-    list_91: {
+    list_92: {
         parameters: {
             query?: never;
             header?: never;
@@ -160369,7 +160689,7 @@ export interface operations {
             };
         };
     };
-    list_92: {
+    list_93: {
         parameters: {
             query?: never;
             header?: never;
@@ -163468,7 +163788,7 @@ export interface operations {
                 teamId?: number;
                 organizationId?: number;
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "PROVISIONING")[];
                 sessionHash?: string;
                 from?: string;
                 to?: string;
@@ -164329,7 +164649,7 @@ export interface operations {
             };
         };
     };
-    cancel_15: {
+    cancel_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -165093,7 +165413,7 @@ export interface operations {
             };
         };
     };
-    cancel_16: {
+    cancel_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -165358,7 +165678,7 @@ export interface operations {
             };
         };
     };
-    cancel_17: {
+    cancel_18: {
         parameters: {
             query?: never;
             header?: never;

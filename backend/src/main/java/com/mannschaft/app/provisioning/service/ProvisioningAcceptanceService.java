@@ -1,27 +1,22 @@
 package com.mannschaft.app.provisioning.service;
 
 import com.mannschaft.app.auth.AuditEventType;
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.token.SecretTokenVault;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.service.MembershipService;
-import com.mannschaft.app.organization.entity.OrganizationEntity;
-import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.provisioning.ProvisioningErrorCode;
 import com.mannschaft.app.provisioning.dto.ProvisioningInvitationAcceptResponse;
 import com.mannschaft.app.provisioning.dto.ProvisioningInvitationPreviewResponse;
 import com.mannschaft.app.provisioning.entity.ProvisioningInvitationEntity;
 import com.mannschaft.app.provisioning.repository.ProvisioningInvitationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.AdminRoleMutationLockService;
-import com.mannschaft.app.team.entity.TeamEntity;
-import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -54,14 +49,14 @@ public class ProvisioningAcceptanceService {
 
     /**
      * ログインユーザーの検証済みメールアドレス（{@code status=ACTIVE} = 認証メール確認済み）の照合に使う。
-     * 越境読み取りは email 1 属性の単純な参照に限定する（role→user の表示名参照と同様の軽量参照）。
+     * D-1/D-5 に従い {@link UserService#findVerifiedEmail} 経由の軽量参照に限定する
+     * （role→user の表示名参照と同様、{@code UserEntity}/{@code UserRepository} は漏らさない）。
      */
-    private final UserRepository userRepository;
+    private final UserService userService;
 
-    private final OrganizationRepository organizationRepository;
-    private final TeamRepository teamRepository;
+    private final OrganizationService organizationService;
+    private final TeamService teamService;
     private final AdminRoleMutationLockService adminRoleMutationLockService;
-    private final UserRoleRepository userRoleRepository;
     private final MembershipService membershipService;
     private final AuditLogService auditLogService;
 
@@ -122,12 +117,11 @@ public class ProvisioningAcceptanceService {
 
         // AC4: verified email（status=ACTIVE = 認証メール確認済み）と invite_email の一致
         // （NFC正規化+lowercase+trim）。未検証（PENDING_VERIFICATION等）は不一致と同様に403へ畳む。
-        UserEntity actor = userRepository.findById(actorUserId)
+        UserService.VerifiedEmail actor = userService.findVerifiedEmail(actorUserId)
                 .orElseThrow(() -> new BusinessException(ProvisioningErrorCode.PROV_001));
         String normalizedInvite = emailNormalizer.normalize(invitation.getInviteEmail());
-        String normalizedActor = emailNormalizer.normalize(actor.getEmail());
-        boolean emailVerified = actor.getStatus() == UserEntity.UserStatus.ACTIVE;
-        if (!emailVerified || !normalizedInvite.equals(normalizedActor)) {
+        String normalizedActor = emailNormalizer.normalize(actor.email());
+        if (!actor.verified() || !normalizedInvite.equals(normalizedActor)) {
             throw new BusinessException(ProvisioningErrorCode.PROV_006);
         }
 
@@ -139,28 +133,17 @@ public class ProvisioningAcceptanceService {
         String scopeName;
         if (invitation.getTeamId() != null) {
             scopeType = "TEAM";
-            TeamEntity team = teamRepository.findById(invitation.getTeamId())
+            scopeName = teamService.activateProvisionedTeam(invitation.getTeamId())
                     .orElseThrow(() -> new BusinessException(ProvisioningErrorCode.PROV_001));
-            team.activate();
-            teamRepository.save(team);
-            scopeName = team.getName();
         } else {
             scopeType = "ORGANIZATION";
-            OrganizationEntity org = organizationRepository.findById(invitation.getOrganizationId())
+            scopeName = organizationService.activateProvisionedOrganization(invitation.getOrganizationId())
                     .orElseThrow(() -> new BusinessException(ProvisioningErrorCode.PROV_001));
-            org.activate();
-            organizationRepository.save(org);
-            scopeName = org.getName();
         }
 
         // ADMIN role 付与（OrganizationService#createOrganization L109-120 と同型）。
-        UserRoleEntity userRole = UserRoleEntity.builder()
-                .userId(actorUserId)
-                .roleId(adminRoleId)
-                .teamId(invitation.getTeamId())
-                .organizationId(invitation.getOrganizationId())
-                .build();
-        userRoleRepository.save(userRole);
+        adminRoleMutationLockService.grantAdminRole(
+                actorUserId, adminRoleId, invitation.getTeamId(), invitation.getOrganizationId());
 
         // membership 付与（認可はmembershipsを真実の源とするため必須。role_kind=MEMBER）。
         MembershipCreateRequest membershipReq = new MembershipCreateRequest();
@@ -202,11 +185,10 @@ public class ProvisioningAcceptanceService {
 
     private String resolveScopeName(ProvisioningInvitationEntity invitation) {
         if (invitation.getTeamId() != null) {
-            return teamRepository.findById(invitation.getTeamId()).map(TeamEntity::getName).orElse(null);
+            return teamService.findNameById(invitation.getTeamId()).orElse(null);
         }
         if (invitation.getOrganizationId() != null) {
-            return organizationRepository.findById(invitation.getOrganizationId())
-                    .map(OrganizationEntity::getName).orElse(null);
+            return organizationService.findNameById(invitation.getOrganizationId()).orElse(null);
         }
         return null;
     }

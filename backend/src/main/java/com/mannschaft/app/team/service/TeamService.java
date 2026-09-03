@@ -347,6 +347,62 @@ public class TeamService {
     }
 
     /**
+     * 柱②-2 販促プロビジョニング専用: チームを {@code PROVISIONED} 状態で事前作成する。
+     *
+     * <p>D-1/D-5（クロスドメイン Entity/Repository 参照禁止）に従い、{@code provisioning}
+     * ドメインへ {@link TeamEntity}/{@link TeamRepository} を漏らさず、この窓口経由で
+     * 作成する。作成直後は ADMIN/membership を一切持たない（招待承諾で初めて付与される）。</p>
+     *
+     * @param name チーム名
+     * @param slug 一意 slug（{@link #createUniqueSlug} 等で事前採番済みのもの）
+     * @return 作成したチームの ID
+     */
+    @Transactional
+    public Long createProvisionedTeam(String name, String slug) {
+        TeamEntity team = TeamEntity.builder()
+                .name(name)
+                .slug(slug)
+                // Team.Visibility に PRIVATE 相当は無いため、既存4値のうち最も制限的な
+                // MEMBERS_AND_ABOVE を採用する（承諾までメンバーが存在しないため実質非公開）。
+                .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE)
+                .supporterEnabled(false)
+                .lifecycleStatus(TeamEntity.LifecycleStatus.PROVISIONED)
+                .build();
+        teamRepository.save(team);
+        return team.getId();
+    }
+
+    /**
+     * 柱②-2/②-3 販促プロビジョニング専用: 指定チームが {@code PROVISIONED}（承諾前）かどうかを返す。
+     * 存在しないチームは非プロビジョニング（false）扱いとする（呼び出し元が別途404等を判断する）。
+     */
+    public boolean isProvisioned(Long teamId) {
+        return teamRepository.findById(teamId).map(TeamEntity::isProvisioned).orElse(false);
+    }
+
+    /**
+     * 柱②-2 販促プロビジョニング専用: 指定チームの {@code lifecycle_status} を
+     * {@code PROVISIONED} から {@code ACTIVE} へ遷移させ、チーム名を返す。
+     * 存在しなければ empty。
+     */
+    @Transactional
+    public Optional<String> activateProvisionedTeam(Long teamId) {
+        return teamRepository.findById(teamId).map(team -> {
+            team.activate();
+            teamRepository.save(team);
+            return team.getName();
+        });
+    }
+
+    /**
+     * 柱②-2 販促プロビジョニング専用: チーム ID からチーム名を解決する（存在しなければ empty）。
+     * 招待の表示名解決（下見/一覧/再送/取消）専用の軽量参照。
+     */
+    public Optional<String> findNameById(Long teamId) {
+        return teamRepository.findById(teamId).map(TeamEntity::getName);
+    }
+
+    /**
      * 作成時の slug を解決する（村方式に統一）。
      *
      * <p>ユーザーが slug を指定した場合は形式・予約語・一意性を検証して採用する。

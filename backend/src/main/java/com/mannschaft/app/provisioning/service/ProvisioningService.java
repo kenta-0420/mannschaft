@@ -7,8 +7,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.token.IssuedToken;
 import com.mannschaft.app.common.token.SecretTokenVault;
-import com.mannschaft.app.organization.entity.OrganizationEntity;
-import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.provisioning.ProvisioningErrorCode;
 import com.mannschaft.app.provisioning.dto.ProvisioningInvitationResponse;
@@ -17,8 +15,6 @@ import com.mannschaft.app.provisioning.dto.ProvisioningTeamCreateRequest;
 import com.mannschaft.app.provisioning.entity.ProvisioningInvitationEntity;
 import com.mannschaft.app.provisioning.event.ProvisioningInvitationIssuedEvent;
 import com.mannschaft.app.provisioning.repository.ProvisioningInvitationRepository;
-import com.mannschaft.app.team.entity.TeamEntity;
-import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,10 +62,8 @@ public class ProvisioningService {
 
     private final ProvisioningInvitationRepository invitationRepository;
     private final AccessControlService accessControlService;
-    private final OrganizationRepository organizationRepository;
-    private final TeamRepository teamRepository;
 
-    /** slug 生成ロジック（既存の一意 slug 採番）を共有ヘルパとして流用する。 */
+    /** slug 生成・作成・存在確認・名前解決を D-1/D-5 準拠でこの窓口経由で行う。 */
     private final OrganizationService organizationService;
     private final TeamService teamService;
 
@@ -87,21 +81,13 @@ public class ProvisioningService {
         validateInviteEmail(request.inviteEmail()); // AC13: 不正/空は400
 
         String slug = organizationService.createUniqueSlug(request.name());
-        OrganizationEntity org = OrganizationEntity.builder()
-                .name(request.name())
-                .slug(slug)
-                .orgType(OrganizationEntity.OrgType.OTHER)
-                .visibility(OrganizationEntity.Visibility.PRIVATE) // AC3: PRIVATE強制
-                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
-                .supporterEnabled(false)
-                .lifecycleStatus(OrganizationEntity.LifecycleStatus.PROVISIONED) // AC3: PROVISIONED強制
-                .build();
-        organizationRepository.save(org);
+        // AC3: PRIVATE + PROVISIONED 強制（OrganizationService#createProvisionedOrganization に固定）。
+        Long orgId = organizationService.createProvisionedOrganization(request.name(), slug);
 
         ProvisioningInvitationEntity invitation = issueInvitation(
-                actorUserId, request.inviteEmail(), org.getId(), null, org.getName(), true);
+                actorUserId, request.inviteEmail(), orgId, null, request.name(), true);
 
-        log.info("柱②-2 販促プロビジョニング組織作成完了: orgId={}, issuedBy={}", org.getId(), actorUserId);
+        log.info("柱②-2 販促プロビジョニング組織作成完了: orgId={}, issuedBy={}", orgId, actorUserId);
         return toResponse(invitation);
     }
 
@@ -114,21 +100,13 @@ public class ProvisioningService {
         validateInviteEmail(request.inviteEmail()); // AC13
 
         String slug = teamService.createUniqueSlug(request.name());
-        TeamEntity team = TeamEntity.builder()
-                .name(request.name())
-                .slug(slug)
-                // Team.Visibility に PRIVATE 相当は無いため、既存4値のうち最も制限的な
-                // MEMBERS_AND_ABOVE を採用する（承諾までメンバーが存在しないため実質非公開）。
-                .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE)
-                .supporterEnabled(false)
-                .lifecycleStatus(TeamEntity.LifecycleStatus.PROVISIONED) // AC3相当
-                .build();
-        teamRepository.save(team);
+        // AC3相当（MEMBERS_AND_ABOVE + PROVISIONED 強制）は TeamService#createProvisionedTeam に固定。
+        Long teamId = teamService.createProvisionedTeam(request.name(), slug);
 
         ProvisioningInvitationEntity invitation = issueInvitation(
-                actorUserId, request.inviteEmail(), null, team.getId(), team.getName(), true);
+                actorUserId, request.inviteEmail(), null, teamId, request.name(), true);
 
-        log.info("柱②-2 販促プロビジョニングチーム作成完了: teamId={}, issuedBy={}", team.getId(), actorUserId);
+        log.info("柱②-2 販促プロビジョニングチーム作成完了: teamId={}, issuedBy={}", teamId, actorUserId);
         return toResponse(invitation);
     }
 
@@ -236,11 +214,10 @@ public class ProvisioningService {
 
     private String resolveScopeName(ProvisioningInvitationEntity invitation) {
         if (invitation.getTeamId() != null) {
-            return teamRepository.findById(invitation.getTeamId()).map(TeamEntity::getName).orElse(null);
+            return teamService.findNameById(invitation.getTeamId()).orElse(null);
         }
         if (invitation.getOrganizationId() != null) {
-            return organizationRepository.findById(invitation.getOrganizationId())
-                    .map(OrganizationEntity::getName).orElse(null);
+            return organizationService.findNameById(invitation.getOrganizationId()).orElse(null);
         }
         return null;
     }
