@@ -1,7 +1,7 @@
 # F03.5 シフト管理 — §10 未公開シフト表の遮断方針（CMP-260826-2127）
 
-> **ステータス**: 🟡 設計完了・実装未着手
-> **初版**: 2026-09-03（軍議やり直し版） / **v1.1**: 2026-09-03（Codex 検分の指摘 12 件を反映）
+> **ステータス**: 🟢 設計確定（未決事項なし）・実装未着手
+> **初版**: 2026-09-03（軍議やり直し版） / **v1.1**: Codex 検分 12 件を反映 / **v1.2**: U-1 決着（案B・マスター裁可）で設計確定
 > **正本課題**: CMP-260826-2127「シフト表の未公開ステータスが API では絞られていない」
 > **関連**: 本ディレクトリ `04_security_operations.md` §6（PDF・IDOR・情報隠蔽の既存方針）、`02_api_design.md` §4（API 一覧）
 
@@ -91,15 +91,15 @@ L5/L6 は冒頭で `scheduleService.getSchedule(scheduleId, requesterId)` を呼
 |---|---|---|
 | **L-META** シフト表のメタ | 存在・`title`・`periodType`・`startDate`/`endDate`・`requestDeadline`・`status`・schedule の `note` | `ShiftScheduleResponse` 全体 |
 | **L-FRAME** 枠の骨格 | `slotDate`・`startTime`・`endTime`・`positionId`/`positionName`・`requiredCount`・slot の `note` | `ShiftSlotResponse` のうち `time` / `position` / `note` |
-| **L-ASSIGN** 割当内容 | **誰がどの枠に入るか** | `ShiftSlotResponse.assignedUserIds`、および team レイアウトの PDF |
+| **L-ASSIGN** 割当内容 | **誰がどの枠に入るか** | `ShiftSlotResponse.assignedUserIds`（伏せたことは新設 `assignmentMasked` で示す）、および team レイアウトの PDF |
 
 **非管理者に対する開閉表**（管理者＝当該チームの ADMIN/DEPUTY_ADMIN、および SYSTEM_ADMIN は全ステータス・全層を従来どおり閲覧）:
 
 | ステータス | L-META | L-FRAME | L-ASSIGN |
 |---|---|---|---|
 | `DRAFT` | ✕（存在ごと秘匿） | ✕ | ✕ |
-| `COLLECTING` | ○ | ○ | ✕（空配列にマスク） |
-| `ADJUSTING` | ○ | ○ | ✕（空配列にマスク） |
+| `COLLECTING` | ○ | ○ | ✕（`[]` + `assignmentMasked=true`） |
+| `ADJUSTING` | ○ | ○ | ✕（`[]` + `assignmentMasked=true`） |
 | `PUBLISHED` | ○ | ○ | ○ |
 | `ARCHIVED` かつ `publishedAt != null` | ○ | ○ | ○ |
 | `ARCHIVED` かつ `publishedAt == null` | ✕（DRAFT 相当として扱う） | ✕ | ✕ |
@@ -171,10 +171,11 @@ fail-closed により、そうした行は非管理者から見えなくなる�
 `assignedUserIds` は **404 でも 403 でもなく、フィールド単位で落とす**。
 枠一覧そのものは返す必要がある（L-FRAME）ためである。
 
-> ⚠️ **「空配列にする」で確定させてよいかは未決である。** 空配列は「本当に誰も割り当たっていない」と
-> 「マスクされた」を区別できず、実コード上で具体的な誤表示を起こす。
-> 選択肢と推奨は **§5.2 未決事項 U-1** に整理した。マスターの裁可を得るまで実装に入らないこと。
-> 以下の記述は、暫定的に「空配列」案を採った場合の注意点である。
+**確定形（U-1 案B・マスター裁可 2026-09-03）**: 伏せるときは
+**`assignedUserIds` を空配列 `[]` にし、同時に新設フィールド `assignmentMasked` を `true` にする**。
+空配列だけでは「本当に誰も割り当たっていない」と「伏せた」を区別できず、
+一般メンバーの画面で全枠が赤の「0/N」と誤表示されるためである（経緯と3案の比較は §5.2 U-1、
+確定した要求は §7 の AC-4）。
 
 - マスクは `ShiftSlotService#toSlotResponse`（:316 付近）ではなく、**呼び出し側の `listSlots` / `getSlot` で
   「閲覧者が管理者か」「schedule が公開済みか」を解決したうえで適用する**。
@@ -243,8 +244,8 @@ fail-closed により、そうした行は非管理者から見えなくなる�
 | ステータス | SysAdmin | Admin | Member | Supporter | Other |
 |---|---|---|---|---|---|
 | DRAFT | 200 全量 | 200 全量 | **404** | 403 | 403 |
-| COLLECTING | 200 全量 | 200 全量 | **200・割当をマスク**（§5.2 U-1 の裁可待ち） | 403 | 403 |
-| ADJUSTING | 200 全量 | 200 全量 | **200・割当をマスク**（同上） | 403 | 403 |
+| COLLECTING | 200 全量 | 200 全量 | **200・`assignedUserIds` は `[]` かつ `assignmentMasked=true`** | 403 | 403 |
+| ADJUSTING | 200 全量 | 200 全量 | **200・`assignedUserIds` は `[]` かつ `assignmentMasked=true`** | 403 | 403 |
 | PUBLISHED | 200 全量 | 200 全量 | 200 全量 | 403 | 403 |
 | ARCHIVED（publishedAt あり） | 200 全量 | 200 全量 | 200 全量 | 403 | 403 |
 | ARCHIVED（publishedAt なし） | 200 全量 | 200 全量 | **404** | 403 | 403 |
@@ -396,7 +397,7 @@ scheduleId を総当りすることで「このチームに未公開シフトが
 |---|---|---|---|---|---|
 | T1 | `ShiftScheduleServiceTest`（UT） | `GetSchedule.スケジュール単体取得_正常_レスポンス返却`（:231-246） | `createScheduleEntity()`（:94-105）が **`status(DRAFT)`**。`isMember=true` を stub し `isSystemAdmin` は stub していない（＝false） | **赤**。可視性判定で 404 になる | フィクスチャに PUBLISHED 版を足して正常系を移す。DRAFT に対する 404 を新規ケースで追加 |
 | T2 | `ShiftScheduleServiceTest`（UT） | `ListSchedules` 系（:180-220 付近） | 同じ DRAFT エンティティを返すモック | **赤の可能性**。返却リストが空になり件数アサーションが落ちる（書き方次第） | T1 と同じ方針。一覧の正常系は PUBLISHED フィクスチャへ |
-| T3 | `ShiftSlotServiceTest`（UT） | `ListSlots`（:116-132）／`GetSlot`（:166-175） | `@BeforeEach`（:87）で **`isSystemAdmin(ACTOR)` を `true`** に stub | **影響なし**。SYSTEM_ADMIN 短絡が認可・可視性の両方より前に来るため可視性判定に到達しない。`scheduleRepository.findById` の追加 stub も不要 | 変更不要。ただし非 SYSTEM_ADMIN のマスク挙動を見る新規テストは別途要る |
+| T3 | `ShiftSlotServiceTest`（UT） | `ListSlots`（:116-132）／`GetSlot`（:166-175） | `@BeforeEach`（:87）で **`isSystemAdmin(ACTOR)` を `true`** に stub | **影響なし**。SYSTEM_ADMIN 短絡が認可・可視性の両方より前に来るため可視性判定に到達しない。`scheduleRepository.findById` の追加 stub も不要 | 変更不要。ただし非 SYSTEM_ADMIN の伏せ挙動（`[]` + `assignmentMasked=true`）を見る新規テストは別途要る |
 | T4 | `ShiftPdfServiceAuthzTest`（UT） | `MEMBER_認可通過`（:133-148）／`MEMBER_personalPdf_認可通過`（:185-199） | `scheduleOf()`（:65-70）が `id` と `teamId` だけを設定し **`status` を設定していない（null）** | **赤**。§3.4.1 の fail-closed 規則により未公開扱いで 404 | `scheduleOf` に `ShiftStatusDto("PUBLISHED", ...)` を持たせる。加えて未公開 PDF の 404 ケースを新規追加 |
 | T5 | `ShiftPdfServiceAuthzTest`（UT） | `SUPPORTER_COMMON_002`（:117-131）／`IDOR_他チームのscheduleId`（:150-165） | 同上 | **影響なし**。認可 403 が可視性判定より前で発火するため status が null でも結論が変わらない | 変更不要（二層順序の正しさを裏付ける証拠でもある） |
 | T6 | `ShiftScheduleScopeContractIT`（IT） | `GetSchedule.一般メンバーは200`（:401 以降） | `scheduleA` が **`ShiftScheduleStatus.DRAFT`**（:126-135） | **赤**。404 になる | 期待値でなく**フィクスチャを直す**。PUBLISHED で 200 を固定し、DRAFT の 404 を新規ケースで追加 |
@@ -423,9 +424,13 @@ scheduleId を総当りすることで「このチームに未公開シフトが
 
 初版の「IT 2 件」は**過少見積りだった**。単体テスト 2 件（T1・T4）を数え落としていた。
 
-### 5.2 未決事項（マスターの裁可を仰ぐ）
+### 5.2 未決事項（1 件は決着済み・1 件は調査済み）
 
-#### U-1: 割当を伏せたことを、どう表現するか
+#### U-1: 割当を伏せたことを、どう表現するか — **決着（案B・マスター裁可 2026-09-03）**
+
+> **結論**: **案B を採用する。** `ShiftSlotResponse` に `assignmentMasked: boolean` を追加し、
+> FE はそのフラグに従って表示を切り替える。確定した要求は **§7 の AC-4** に記述した。
+> 以下は裁可に至るまでの調査と選択肢の記録であり、経緯として残す（削除しない）。
 
 **問題**: `assignedUserIds` を空配列 `[]` にすると、
 「本当に誰も割り当たっていない枠」と「伏せられた枠」を画面が区別できない。
@@ -459,10 +464,13 @@ scheduleId を総当りすることで「このチームに未公開シフトが
 案B ならフィールドが 1 つ増えるだけで、FE は `assignmentMasked` を見るだけでよく、判定規則は BE の 1 か所に閉じる。
 コストは OpenAPI 型の再生成 1 回である。
 
-**マスターへの問い**: 「割当を伏せたシフト表を、メンバーの画面でどう見せますか。
+**マスターへの問い**（2026-09-03 に上申）: 「割当を伏せたシフト表を、メンバーの画面でどう見せますか。
 （B）サーバーが『伏せました』という印を付けて返し、画面はそれに従う ← 推奨 /
 （A）サーバーは空で返し、画面側が状態を見て自前で表示を切り替える /
 （C）人数の情報自体をメンバーには返さない」
+
+**裁可（2026-09-03）: 案B。** 家老の推奨どおり。以後この設計書は案B前提で読むこと。
+AC-4 は暫定を外して確定形に書き換えた（§7）。
 
 #### U-2: 交代申請 API からの代替漏洩は無い（Codex 中8 への回答）
 
@@ -497,7 +505,7 @@ scheduleId を総当りすることで「このチームに未公開シフトが
 | R2 | 希望提出 API | `submitRequest`（:98-102）が使う `findScheduleOrThrow`（:392-395）に可視性 404 を混ぜる。**このメソッドは可視性判定を持たない素の取得口として保つこと** | メンバーが COLLECTING に希望を出せる（T11 が緑のまま） |
 | R3 | 希望提出リマインド通知 | `ShiftPreferenceReminderBatchService`（:229-262）は COLLECTING のシフト名を通知する**正規仕様**。バッチ経路に閲覧者依存の可視性判定を持ち込むと通知が壊れる | バッチ経路には可視性判定を入れない（バッチに「閲覧者」は存在しない）。T18 が緑のまま |
 | R4 | 管理者の調整画面・D&D ボード | `toSlotResponse`（:316 付近）自体でマスクすると `board.vue`・`shift/[id]/edit.vue` の割当編集が空になる。マスクは `listSlots` / `getSlot` の側で行う | 管理者で ADJUSTING のボードに既存割当が表示される |
-| R5 | FE の null 安全 | `assignedUserIds` を `null` にする | メンバーで COLLECTING の枠一覧を開いて TypeError が出ない（U-1 のどの案でも `null` は禁止） |
+| R5 | FE の null 安全 | `assignedUserIds` を `null` にする（案B でも `null` は禁止。空配列 + `assignmentMasked=true`） | メンバーで COLLECTING の枠一覧を開いて TypeError が出ない |
 | R6 | 既存の 403 契約 | 可視性判定を認可判定より前に置く | `ShiftScheduleScopeContractIT` / `ShiftSlotScopeContractIT` の 403 系（T8・T10）が全て緑のまま |
 | R7 | 自動割当・公開ゲート・サマリ | `getScheduleSummary`（:290-292）・`assertNoUnreviewedRuns` は管理者専用経路。可視性判定を足す必要は無い | 管理者の summary が従来どおり。T14 が緑のまま |
 | R8 | 検索の既存挙動 | 取得後 Java フィルタで実装する（上限 10 件を取ってから削るため結果がさらに減る） | 絞りが SQL 述語側で行われている |
@@ -519,7 +527,7 @@ BE が未公開を返さなくなる以上、FE 側の絞り込みは冗長で�
 
 ## 7. 受け入れ条件（AC）— v1.1 修正版
 
-各 AC に「これが無いと何が壊れるか」を添える。**U-1 の裁可が出るまで AC-4 は暫定である。**
+各 AC に「これが無いと何が壊れるか」を添える。**AC-4 は U-1 の裁可（案B・2026-09-03）を受けて確定済み。**
 
 ### 遮断（漏洩を閉じる）
 
@@ -532,13 +540,36 @@ BE が未公開を返さなくなる以上、FE 側の絞り込みは冗長で�
   → 無いと、一覧から消しても ID 直打ちで読める。単体経路を閉じないと AC-1 は見せかけになる。
 - **AC-3**: 非管理者が `GET /shifts/schedules/{id}/slots` で未公開のシフト表の枠を要求すると **404** を返す。
   → 無いと、schedule 単体を閉じても枠一覧から日程・ポジション・割当が読める。
-- **AC-4（暫定・U-1 の裁可待ち）**: 非管理者が `COLLECTING` または `ADJUSTING` のシフト表の枠一覧を取得したとき、
-  **200 が返り、割当内容が伏せられている**。枠の `slotDate` / `startTime` / `endTime` / `positionName` /
-  `requiredCount` は従来どおり返る。`assignedUserIds` は**いかなる案でも `null` にしない**。
-  伏せ方の具体形（空配列のみ／`assignmentMasked` フラグ併用／人数系を落とす）は U-1 の裁可に従い、
-  裁可後にこの AC を確定形へ書き換える。
-  → 伏せないと調整中の割当（本件の実害の中心）が漏れたままになる。
-     `null` にすると FE が `.length` / `.forEach` で落ちる（§5.2 U-1）。
+- **AC-4（確定・U-1 案B / マスター裁可 2026-09-03）**: 非管理者が `COLLECTING` または `ADJUSTING` の
+  シフト表の枠一覧を取得したとき、**200 が返り、割当内容が次の形で伏せられている**。
+
+  1. **`ShiftSlotResponse` に `assignmentMasked: boolean` を新設する。**
+     非管理者かつ `COLLECTING` / `ADJUSTING` のとき **`true`**、それ以外（管理者・SYSTEM_ADMIN の全ステータス、
+     および非管理者の `PUBLISHED` / 公開済み `ARCHIVED`）は **`false`**。既定値は `false` とし、
+     フィールド未設定を「伏せている」と解釈しない（fail-open にしないための既定値の向き）。
+  2. **`assignedUserIds` は空配列 `[]` を返す。`null` は禁止。**
+     `assignmentMasked=true` のときは常に `[]`、`false` のときは実際の割当。
+  3. **枠の骨格は従来どおり返る。** `slotDate` / `startTime` / `endTime` / `positionId` / `positionName` /
+     `requiredCount` / slot の `note` は伏せない（希望提出の判断材料であるため。§2.1 の L-FRAME）。
+  4. **FE は `assignmentMasked` に従って表示を切り替える。**
+     `frontend/app/pages/shift/[id]/index.vue` の `isUnderStaffed`（:129-131）と割当バッジ（:344-352）は
+     `assignmentMasked` を見て分岐し、**`true` のときは赤緑の充足バッジ（`0/2` 等）を出さず、
+     「調整中」相当の中立な表示に置き換える**。`assignedUserIds.length` を人数として描画しない。
+     判定に `schedule.status` を使ってはならない（それをすると案A になり、BE と FE で規則が二重化する）。
+  5. **OpenAPI 生成型の再生成が要る。** フィールド追加のため、実装時に
+     `cd frontend && npm run generate:types` を実行し、`frontend/app/types/generated/index.ts` の差分をコミットする。
+     手書き型 `frontend/app/types/shift.ts`（`assignedUserIds` を持つ :83 / :265）にも追随させること。
+
+  → **1 が無いと**、「本当に誰も割り当たっていない枠」と「伏せた枠」を画面が区別できない。
+  → **2 が無いと**（`null` にすると）、FE が `.length`（`shift/[id]/index.vue`:130,351、`edit.vue`:282,287）と
+     `.forEach`（`ShiftSwapRequestFormDialog.vue`:114,124）を null チェック無しで呼んでいるため TypeError で落ちる。
+  → **3 が無いと**、希望提出画面が「何人必要な枠か」を出せなくなる（AC-8 の回帰）。
+  → **4 が無いと**、一般メンバーの画面で**全枠が赤の「0/2」「0/3」となり、全枠が人員不足であるかのように誤表示される**
+     （`shift/[id]/index.vue` の一覧表は `canManage`:31-38 の外にあり、一般メンバーにも描画されるため。§5.2 U-1）。
+  → **5 が無いと**、FE が新フィールドを型として認識できず `assignmentMasked` を参照できない
+     （`types/generated/` は自動生成であり手編集禁止）。
+  → そもそも伏せないと、調整中の割当（本件の実害の中心）が漏れたままになる。
+
 - **AC-5**: 非管理者が未公開または `COLLECTING` / `ADJUSTING` のシフト表に対して
   `GET /shifts/schedules/{id}/pdf`（`layout=team` / `layout=personal` の両方）を要求すると **404** を返す。
   DTO の `status` が `null` の場合も未公開扱い（fail-closed）とする。
@@ -571,7 +602,8 @@ BE が未公開を返さなくなる以上、FE 側の絞り込みは冗長で�
 - **AC-9**: 当該チームの一般メンバーが `ADJUSTING` のシフト表を一覧・単体で取得でき、`status` として `ADJUSTING` を受け取れる。
   → 無いと、希望を出したシフト表が調整開始と同時に画面から消え、メンバーから見て機能が壊れたように見える。
 - **AC-10**: 当該チームの ADMIN / DEPUTY_ADMIN は、全ステータス（DRAFT を含む）で
-  一覧・単体・枠一覧・PDF・検索のすべてを従来どおり全量取得でき、枠の割当が伏せられない。
+  一覧・単体・枠一覧・PDF・検索のすべてを従来どおり全量取得でき、枠の割当が伏せられない
+  （`assignedUserIds` は実際の割当、`assignmentMasked` は `false`）。
   → 無いと、管理者の調整画面・D&D ボードが空になり、シフト作成そのものができなくなる。
 - **AC-11（修正）**: SYSTEM_ADMIN は、当該チームの**メンバーでなくても**全ステータスで AC-10 と同じ結果を得る。
   これを満たすには 2 つの実装が要る:
@@ -597,7 +629,16 @@ BE が未公開を返さなくなる以上、FE 側の絞り込みは冗長で�
   → 無いと、正規仕様の通知が沈黙する。バッチには「閲覧者」がおらず可視性判定を適用する主体が存在しない。
 - **AC-15**: `ShiftScheduleList.vue` の非管理者向けフィルタ（:21-23）が削除され、
   メンバーの画面に `COLLECTING` / `ADJUSTING` / `PUBLISHED` / `ARCHIVED`（公開済み）が表示される。
+  **FE は「どのシフト表を出すか」をステータスで判断しない**（BE が返したものをそのまま並べる）。
   → 無いと、BE を正しく直しても画面上は PUBLISHED しか出ず、BE と FE で規則が二重化したまま残る。
+
+  **AC-4(4) との棲み分け（矛盾しないことの確認）**: AC-15 は「シフト表を一覧に出すか否か」、
+  AC-4(4) は「出したシフト表の枠で、割当の充足バッジを出すか否か」であり、対象が異なる。
+  どちらも「FE がステータスを見て自前で判断しない」という同じ原則に立つ:
+  AC-15 では BE の返却有無に従い、AC-4(4) では BE が返す `assignmentMasked` に従う。
+  したがって AC-15 で削除するのは `ShiftScheduleList.vue` の **`status === 'PUBLISHED'` フィルタだけ**であり、
+  同ファイルの `statusConfig`（:24-30）によるステータスバッジ表示は**残す**
+  （ラベルの出し分けは判定ではなく表示であり、BE の返した `status` をそのまま描画しているにすぎない）。
 
 ### 設計指針（AC ではない）
 
@@ -640,6 +681,14 @@ BE が未公開を返さなくなる以上、FE 側の絞り込みは冗長で�
 
 ## 9. 変更履歴
 
+- **v1.2 (2026-09-03)**: 未決事項 U-1 にマスターの裁可（**案B**）が下りたため設計を締めた。
+  - AC-4 を暫定から**確定形**へ書き換え（`assignmentMasked: boolean` の新設・空配列の維持・
+    FE の分岐箇所・OpenAPI 生成型の再生成を 5 項目で明記）。
+  - §2.1 / §2.3 / §3.3 の「マスク」表記を案B前提（`[]` + `assignmentMasked=true`）へ統一。
+  - AC-10 に `assignmentMasked=false` を、R5 に案B でも `null` 禁止であることを追記。
+  - AC-15 に AC-4(4) との棲み分けを追記し、削除対象が `status === 'PUBLISHED'` フィルタのみで
+    `statusConfig` によるバッジ表示は残すことを明確化（重複・矛盾の解消）。
+  - §5.2 U-1 は削除せず「決着（案B・マスター裁可 2026-09-03）」として経緯を残した。
 - **v1.1 (2026-09-03)**: Codex 検分の指摘 12 件を反映。
   - 重大1: AC-6 の「件数一致」は現行実装では達成不能（総件数を返すクエリが無く上限 10 件で頭打ち）。
     AC を「未公開が 1 件も含まれないこと」に定義し直し、件数問題は B-10 として別起票。
