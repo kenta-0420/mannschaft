@@ -22,6 +22,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
@@ -55,6 +56,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
@@ -108,6 +110,21 @@ class BlogPostServiceTest {
     void stubPaywallAccessibleByDefault() {
         lenient().when(paymentGateService.checkAccess(any(), any(), any(), any(ContentGateTarget.class)))
                 .thenReturn(new GateCheckResponse(true, false, List.of()));
+    }
+
+    /**
+     * 検分第2巡 残存経路チェック（{@code BlogPostService#assertScopeActive}）用の既定 stub。
+     * 既存テストは PROVISIONED（承諾前の事前作成状態）の検証を意図していないため、
+     * team/organization は既定で ACTIVE（{@link TeamEntity}/{@link OrganizationEntity} の
+     * {@code @Builder.Default}）を返すようにしておく。PROVISIONED を検証する専用テストは
+     * 個別に override する。
+     */
+    @BeforeEach
+    void stubScopeActiveByDefault() {
+        lenient().when(teamRepository.findById(anyLong()))
+                .thenReturn(Optional.of(TeamEntity.builder().build()));
+        lenient().when(organizationRepository.findById(anyLong()))
+                .thenReturn(Optional.of(OrganizationEntity.builder().build()));
     }
 
     private static final Long TEAM_ID = 1L;

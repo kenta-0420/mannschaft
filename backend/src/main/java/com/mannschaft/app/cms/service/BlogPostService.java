@@ -30,6 +30,7 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
@@ -37,6 +38,7 @@ import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.payment.service.ContentAccessState;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
+import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -210,6 +212,13 @@ public class BlogPostService {
      * スコープ解決用であり閲覧者IDではないため使用しない）。</p>
      */
     public BlogPostResponse getBySlug(Long teamId, Long organizationId, Long userId, String slug) {
+        // 検分第2巡 残存経路チェック: teamId/organizationId は Controller が数値IDをそのまま
+        // 受け取る（slug 解決を経由しない）ため、PROVISIONED（承諾前の事前作成状態）スコープの
+        // ID を直接指定された場合の防御多層として、ここで lifecycleStatus=ACTIVE を確認する。
+        // PROVISIONED スコープは作成時点で会員が存在せず記事も作られ得ないため実害は現状無いが、
+        // 将来の経路変化に備えた最小差分の防御として追加する（存在秘匿のため POST_NOT_FOUND に畳む）。
+        assertScopeActive(teamId, organizationId);
+
         BlogPostEntity entity;
         if (teamId != null) {
             entity = postRepository.findByTeamIdAndSlug(teamId, slug)
@@ -915,6 +924,31 @@ public class BlogPostService {
             return organizationRepository.findBySlugAndDeletedAtIsNull(idStr)
                     .orElseThrow(() -> new BusinessException(CmsErrorCode.ORG_NOT_FOUND))
                     .getId();
+        }
+    }
+
+    /**
+     * 検分第2巡 残存経路チェック用: 指定スコープ（team もしくは organization）が
+     * {@code lifecycleStatus = ACTIVE} であることを確認する。PROVISIONED（承諾前の
+     * 事前作成状態）を数値 ID 直指定で通過させない防御多層。teamId/organizationId が
+     * 両方 null（個人記事）の場合は対象外。存在しない ID・PROVISIONED はいずれも
+     * 存在秘匿のため {@link CmsErrorCode#POST_NOT_FOUND} に畳む。
+     */
+    private void assertScopeActive(Long teamId, Long organizationId) {
+        if (teamId != null) {
+            boolean active = teamRepository.findById(teamId)
+                    .map(team -> team.getLifecycleStatus() == TeamEntity.LifecycleStatus.ACTIVE)
+                    .orElse(false);
+            if (!active) {
+                throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
+            }
+        } else if (organizationId != null) {
+            boolean active = organizationRepository.findById(organizationId)
+                    .map(org -> org.getLifecycleStatus() == OrganizationEntity.LifecycleStatus.ACTIVE)
+                    .orElse(false);
+            if (!active) {
+                throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
+            }
         }
     }
 }

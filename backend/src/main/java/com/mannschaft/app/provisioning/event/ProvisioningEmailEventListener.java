@@ -49,15 +49,29 @@ public class ProvisioningEmailEventListener {
             // auth.AuthEmailEventListener#verifyUrl 等の既存招待メールはパス/クエリ形式のままだが、
             // それらはメール内リンクという配送経路自体が本質的に平文を含む点で本 PR の対象と同型であり、
             // 本 PR ではプロビジョニング招待のみ根治対象とする（要件どおり URL 形式の確定のみ）。
+            //
+            // 検分第2巡 P1-1 裁定: 受け側 FE 画面（frontend/app/pages/provisioning/accept.vue）は
+            // 柱②-4 の別 PR で実装する（段階着地・許容済み）。"/provisioning/accept" というパスは
+            // BE/FE 間の確定契約であり、②-4 の実装時にこの文字列と齟齬なく一致させること
+            // （変更する場合は BE 側のこの1箇所も同時に更新する）。
             String acceptUrl = baseUrl + "/provisioning/accept#token=" + event.plaintextToken();
+            String scopeName = event.scopeName() != null ? event.scopeName() : "";
+
+            // 検分第2巡 P1-2 根治: EmailOutboxServiceImpl#renderTemplate のスルー方式
+            // （PROVISIONING_ADMIN_INVITE を通す case を新設）に合わせ、件名・本文はここで
+            // 組み立てて payloadVars の subject/body として渡す（金型: DataExportService
+            // #sendCompletionEmail）。renderTemplate 側に case を追加しただけでは、そこが
+            // vars から subject/body を取り出すだけなので、呼び出し元での組み立てが必須。
+            String subject = "【" + scopeName + "】管理者招待のお知らせ";
+            String htmlBody = "<p>" + scopeName + " の管理者としてご招待いたします。</p>"
+                    + "<p>以下のリンクから招待を承諾してください（有効期限は発行から7日間です）。</p>"
+                    + "<p><a href=\"" + acceptUrl + "\">" + acceptUrl + "</a></p>";
+
             emailOutboxService.enqueue(new EmailOutboxRequest(
                     EmailTemplateKind.PROVISIONING_ADMIN_INVITE.name(),
                     "ja",
                     event.inviteEmail(),
-                    Map.of(
-                            "scopeName", event.scopeName() != null ? event.scopeName() : "",
-                            "acceptUrl", acceptUrl
-                    ),
+                    Map.of("subject", subject, "body", htmlBody),
                     "provisioning",
                     "provisioning-invite:" + event.plaintextToken().hashCode() + ":" + System.nanoTime(),
                     null,
