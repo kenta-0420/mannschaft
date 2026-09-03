@@ -18,6 +18,8 @@ const scopeId = computed(() => scopeStore.current.id ?? '')
 const scopeType = computed((): 'TEAM' | 'ORGANIZATION' =>
   scopeStore.current.type === 'organization' ? 'ORGANIZATION' : 'TEAM',
 )
+// 発行者設定はチーム／組織スコープのみが対象（F08.4 §2）。個人スコープでは対象外の案内を出して終える。
+const isPersonalScope = computed(() => scopeStore.current.type === 'personal')
 
 const SEAL_VARIANTS = ['LAST_NAME', 'FULL_NAME', 'FIRST_NAME'] as const
 const sealVariantOptions = SEAL_VARIANTS.map((v) => ({
@@ -106,6 +108,11 @@ function extractStatus(err: unknown): number | undefined {
 }
 
 async function load() {
+  if (isPersonalScope.value) {
+    // 個人スコープは対象外。案内表示のみでローディングは即座に解除する。
+    loading.value = false
+    return
+  }
   if (!scopeId.value) return
   loading.value = true
   try {
@@ -129,8 +136,9 @@ async function load() {
   }
 }
 
-// scopeId が truthy になるのを待ってから初回発火する（空文字を Long へ送ると 400 になるため）
-watch(scopeId, (v) => { if (v) load() }, { immediate: true })
+// scopeId が truthy になるのを待ってから初回発火する（空文字を Long へ送ると 400 になるため）。
+// 個人スコープは scopeId が確定しない（null）ため、その場合も load() を呼んでローディングを解除する。
+watch([scopeId, isPersonalScope], ([v, personal]) => { if (v || personal) load() }, { immediate: true })
 
 function validate(): boolean {
   issuerNameError.value = null
@@ -160,22 +168,25 @@ async function save() {
   if (!scopeId.value || !validate()) return
   saving.value = true
   try {
+    // 送信直前に前後空白を trim する。validate() で trim 済みの値を検証しているため、
+    // 検証した値と送信する値を一致させる（trim 前を送ると BE の正規表現検証で弾かれる）。
+    // trim の結果が空文字になる場合は BE 契約どおり「明示クリア」として扱う（null=無変更 と区別）。
     const body: Record<string, unknown> = {
-      issuerName: form.value.issuerName,
-      postalCode: form.value.postalCode || '',
-      address: form.value.address || '',
-      phone: form.value.phone || '',
+      issuerName: form.value.issuerName.trim(),
+      postalCode: form.value.postalCode.trim(),
+      address: form.value.address.trim(),
+      phone: form.value.phone.trim(),
       isQualifiedInvoicer: form.value.isQualifiedInvoicer,
       // OFF で保存する場合は明示的に空文字を送って DB からも消す（§9.2 トグル挙動5）
       invoiceRegistrationNumber: form.value.isQualifiedInvoicer
-        ? form.value.invoiceRegistrationNumber
+        ? form.value.invoiceRegistrationNumber.trim()
         : '',
       defaultSealVariant: form.value.defaultSealVariant,
-      receiptNoteTemplate: form.value.receiptNoteTemplate || '',
-      receiptNumberPrefix: form.value.receiptNumberPrefix || '',
+      receiptNoteTemplate: form.value.receiptNoteTemplate.trim(),
+      receiptNumberPrefix: form.value.receiptNumberPrefix.trim(),
       fiscalYearStartMonth: form.value.fiscalYearStartMonth,
       autoResetNumber: form.value.autoResetNumber,
-      customFooter: form.value.customFooter || '',
+      customFooter: form.value.customFooter.trim(),
     }
     const res = await updateSettings(scopeType.value, scopeId.value, body)
     applyResponse(res.data)
@@ -285,6 +296,11 @@ onBeforeRouteLeave(() => {
     </PageHeader>
 
     <PageLoading v-if="loading" />
+
+    <div v-else-if="isPersonalScope" class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-sm text-surface-600 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-300">
+      <i class="pi pi-info-circle mr-1" />
+      {{ t('receipt.settings.notice.personalScopeUnsupported') }}
+    </div>
 
     <template v-else>
       <!-- 既発行領収書への非遡及の明示（常設） -->
