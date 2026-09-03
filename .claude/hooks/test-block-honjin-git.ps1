@@ -57,10 +57,15 @@ $cases = @(
     # 保護側に倒して deny のままとする（緩める方向の変更はしない）。
     @{ name = 'ヒアドキュメント本文の git commit（保護側に倒して deny）'; cwd = $honjin; expect = 'deny'; cmd = "cat <<'EOF'`nまず git commit する手順`nEOF" },
 
-    # ハイフン付きの配管コマンドのうち、作業木・インデックスを書き換えるものは
-    # 拒否を維持する（`` から `(?![\w-])` へ変えた際の取りこぼし防止）。
+    # ハイフン付きの配管コマンドのうち、インデックスや作業木を書き換えるものは
+    # 拒否を維持する。読み取り専用のものだけを除外する方式が「安全な側を列挙し
+    # 切れているか」を守る番人であり、除外方式へ変えた際の取りこぼしを検出する。
     @{ name = '本陣 cwd で git checkout-index（変更系ゆえ deny 維持）'; cwd = $honjin; expect = 'deny'; cmd = 'git checkout-index -a -f' },
     @{ name = '本陣 cwd で git merge-file（変更系ゆえ deny 維持）';     cwd = $honjin; expect = 'deny'; cmd = 'git merge-file a.txt base.txt b.txt' },
+    @{ name = '本陣 cwd で git merge-recursive（変更系ゆえ deny 維持）'; cwd = $honjin; expect = 'deny'; cmd = 'git merge-recursive base -- HEAD other' },
+    @{ name = '本陣 cwd で git merge-octopus（変更系ゆえ deny 維持）';   cwd = $honjin; expect = 'deny'; cmd = 'git merge-octopus -- HEAD a b' },
+    @{ name = '本陣 cwd で git merge-ours（変更系ゆえ deny 維持）';      cwd = $honjin; expect = 'deny'; cmd = 'git merge-ours base -- HEAD other' },
+    @{ name = '本陣 cwd で git merge-index（変更系ゆえ deny 維持）';     cwd = $honjin; expect = 'deny'; cmd = 'git merge-index git-merge-one-file -a' },
 
     # --- 通されるべき（誤検知しないこと） ---
     @{ name = 'worktree cwd で git commit';        cwd = $worktree; expect = 'allow'; cmd = 'git commit -m "テスト"' },
