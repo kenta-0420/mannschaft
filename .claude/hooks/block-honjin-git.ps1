@@ -68,7 +68,28 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 # よって既定は従来どおり `\b` で拒否したままとし、**読み取り専用であることが
 # 確かなものだけ**を否定先読みで除外する。既定が拒否なので、除外し忘れは
 # 誤検知（不便）になるだけで、保護の穴にはならない。
-$mutating = 'git(\s+-{1,2}\S+(\s+\S+)?)*\s+(checkout|switch|commit|reset|merge(?!-(?:base|tree)\b)|rebase|cherry-pick|pull)\b'
+#
+# 判定リストは「本陣の作業木・インデックス・ローカル参照を書き換える」ものを
+# 網羅する。以前は checkout/switch/commit/reset/merge/rebase/cherry-pick/pull の
+# 8 つしか無く、`git stash pop`・`git clean -fd`・`git revert`・`git restore` などが
+# 本陣で素通りしていた（2026-09-03 実測）。共有作業木ゆえ、これらは他セッションの
+# 未コミット作業を消しうる。とくに stash は退避スタックが全作業木で共有される。
+#
+# push / fetch は本陣の作業木を変えないため対象外（従来どおり）。
+# tag の作成は他セッションと衝突しにくく害が小さいため見送る。
+$mutating = 'git(\s+-{1,2}\S+(\s+\S+)?)*\s+(' + (@(
+    # --- 読み取り専用の形を持たないもの（無条件に拒否） ---
+    'checkout', 'switch', 'restore', 'commit', 'reset', 'rebase', 'cherry-pick',
+    'pull', 'revert', 'am', 'apply', 'clean', 'rm', 'mv', 'sparse-checkout',
+    'update-ref',
+    # --- 読み取り専用の形があるもの（それだけを否定先読みで除外） ---
+    # 既定は拒否のままにする。除外し忘れは誤検知（不便）で済むが、列挙し漏れは
+    # そのまま保護の穴になるため（#3079 の Codex 検分で実際に穴が見つかった）。
+    'merge(?!-(?:base|tree)\b)',        # merge-base / merge-tree は読み取り専用
+    'stash(?!\s+(?:list|show)\b)',      # stash list / show は読み取り専用
+    # branch は一覧表示が主用途のため、破壊的なオプション付きのときだけ拒否する
+    'branch\s+(?:-[dDmMcC]\b|--delete\b|--move\b|--copy\b|--force\b)'
+) -join '|') + ')\b'
 
 # `/mnt/<ドライブ文字>/...` 形式の WSL パスを Windows パスへ読み替える。
 # 大文字小文字・末尾スラッシュを問わない。読み替え不可なら元の文字列を返す。

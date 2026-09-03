@@ -67,6 +67,23 @@ $cases = @(
     @{ name = '本陣 cwd で git merge-ours（変更系ゆえ deny 維持）';      cwd = $honjin; expect = 'deny'; cmd = 'git merge-ours base -- HEAD other' },
     @{ name = '本陣 cwd で git merge-index（変更系ゆえ deny 維持）';     cwd = $honjin; expect = 'deny'; cmd = 'git merge-index git-merge-one-file -a' },
 
+    # 作業木・インデックス・ローカル参照を書き換えるサブコマンド群。
+    # 2026-09-03 まで判定リストに無く、本陣で素通りしていた（実測で確認）。
+    # 本陣は全セッション共有のため、これらは他セッションの未コミット作業を消しうる。
+    @{ name = '本陣 cwd で git revert';        cwd = $honjin; expect = 'deny'; cmd = 'git revert HEAD' },
+    @{ name = '本陣 cwd で git restore';       cwd = $honjin; expect = 'deny'; cmd = 'git restore .' },
+    @{ name = '本陣 cwd で git stash push';    cwd = $honjin; expect = 'deny'; cmd = 'git stash push -u -m wip' },
+    # stash の退避スタックは全作業木で共有される。pop は他セッションの退避を取り出しうる
+    @{ name = '本陣 cwd で git stash pop';     cwd = $honjin; expect = 'deny'; cmd = 'git stash pop' },
+    @{ name = '本陣 cwd で git clean -fd';     cwd = $honjin; expect = 'deny'; cmd = 'git clean -fd' },
+    @{ name = '本陣 cwd で git apply';         cwd = $honjin; expect = 'deny'; cmd = 'git apply fix.patch' },
+    @{ name = '本陣 cwd で git am';            cwd = $honjin; expect = 'deny'; cmd = 'git am 0001.patch' },
+    @{ name = '本陣 cwd で git rm';            cwd = $honjin; expect = 'deny'; cmd = 'git rm -r src' },
+    @{ name = '本陣 cwd で git mv';            cwd = $honjin; expect = 'deny'; cmd = 'git mv a.txt b.txt' },
+    @{ name = '本陣 cwd で git sparse-checkout'; cwd = $honjin; expect = 'deny'; cmd = 'git sparse-checkout set backend' },
+    @{ name = '本陣 cwd で git update-ref';    cwd = $honjin; expect = 'deny'; cmd = 'git update-ref refs/heads/main HEAD' },
+    @{ name = '本陣 cwd で git branch -D';     cwd = $honjin; expect = 'deny'; cmd = 'git branch -D feature/x' },
+
     # --- 通されるべき（誤検知しないこと） ---
     @{ name = 'worktree cwd で git commit';        cwd = $worktree; expect = 'allow'; cmd = 'git commit -m "テスト"' },
     @{ name = '-C で worktree 絶対パスを指定';     cwd = $honjin;   expect = 'allow'; cmd = "git -C `"$worktree`" commit -m x" },
@@ -78,6 +95,15 @@ $cases = @(
     # 境界として成立するため `merge` と誤認され、本陣の同期作業が拒否された。
     @{ name = 'git merge-base（読み取り専用・誤検知しない）'; cwd = $honjin; expect = 'allow'; cmd = 'git merge-base --is-ancestor HEAD origin/main' },
     @{ name = 'git merge-tree（読み取り専用・誤検知しない）'; cwd = $honjin; expect = 'allow'; cmd = 'git merge-tree main feature/x' },
+    # 上で拒否したサブコマンドの、読み取り専用の形。締めすぎていないことを守る番人。
+    @{ name = 'git stash list（読み取り専用・誤検知しない）'; cwd = $honjin; expect = 'allow'; cmd = 'git stash list' },
+    @{ name = 'git stash show（読み取り専用・誤検知しない）'; cwd = $honjin; expect = 'allow'; cmd = 'git stash show stash@{0}' },
+    @{ name = 'git branch（一覧表示・誤検知しない）';         cwd = $honjin; expect = 'allow'; cmd = 'git branch --list' },
+    # 変更系の語がオプションの値として現れるだけの場合。字面で拾わないことを守る番人。
+    @{ name = 'git log --grep=revert（誤検知しない）';        cwd = $honjin; expect = 'allow'; cmd = 'git log --grep=revert' },
+    # worktree 側では当然すべて通る
+    @{ name = 'worktree cwd で git stash pop';                cwd = $worktree; expect = 'allow'; cmd = 'git stash pop' },
+    @{ name = 'worktree cwd で git revert';                   cwd = $worktree; expect = 'allow'; cmd = 'git revert HEAD' },
     @{ name = 'bash -lc のクォート内 cd＋worktree commit'; cwd = $honjin; expect = 'allow'; cmd = "bash -lc 'cd .claude/worktrees/fix-hook && git commit -m x'" },
 
     # --- PowerShell ツール経由（Windows の主シェル側からの迂回を塞ぐ） ---
