@@ -152,7 +152,9 @@
       "dayOfWeek": "星期",
       "dayOfWeekHint": "仅在所选星期创建时段",
       "saveSuccess": "时段已保存",
-      "deleteSuccess": "时段已删除"
+      "deleteSuccess": "时段已删除",
+      "assignmentMasked": "调整中",
+      "assignmentMaskedHint": "公开前不显示排班分配"
     },
     "requests": {
       "submissionRate": "提交率",

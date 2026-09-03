@@ -185982,6 +185982,9 @@
               "format": "int64"
             }
           },
+          "assignmentMasked": {
+            "type": "boolean"
+          },
           "id": {
             "type": "integer",
             "format": "int64"

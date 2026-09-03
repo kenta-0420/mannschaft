@@ -81,6 +81,15 @@ export interface ShiftSlotResponse {
   positionName: string | null
   requiredCount: number
   assignedUserIds: number[]
+  /**
+   * 割当内容をサーバー側で伏せたか（CMP-260826-2127 / AC-4）。
+   *
+   * 非管理者が COLLECTING / ADJUSTING のシフト表の枠を取得したときだけ true になり、
+   * そのとき assignedUserIds は必ず空配列になる。
+   * 「本当に誰も割り当たっていない枠」と区別するために使う（人数バッジの出し分け）。
+   * 表示の判定に schedule.status を使ってはならない（BE と規則が二重化するため）。
+   */
+  assignmentMasked: boolean
   note: string | null
 }
 
