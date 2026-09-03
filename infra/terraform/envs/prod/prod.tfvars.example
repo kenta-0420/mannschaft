@@ -9,10 +9,11 @@
 # 注意: 秘密（API トークン・パスワード類）はこのファイルにも書かない。
 #       CLOUDFLARE_API_TOKEN は環境変数、DB パスワードは Secrets Manager 自動管理。
 
-# --- 必須 ---
-domain_name           = "mannschaft.example.com"
-cloudflare_account_id = "0123456789abcdef0123456789abcdef"
-cloudflare_zone_id    = "fedcba9876543210fedcba9876543210"
+# --- 必須（実値の例: 本番ドメインは mannschaft.app / 各 ID は Cloudflare ダッシュボードの
+#     ゾーン概要ページ右サイドバーに表示される。いずれも識別子であり秘密ではない）---
+domain_name           = "mannschaft.app"
+cloudflare_account_id = "84f8542dfb6c498c508de13c0a973766"
+cloudflare_zone_id    = "68957e39ff0a2bc8d42cbdcd972a3466"
 
 # --- 任意（既定値あり。負荷が増えたらここで上げる）---
 # db_instance_class = "db.t4g.micro"
