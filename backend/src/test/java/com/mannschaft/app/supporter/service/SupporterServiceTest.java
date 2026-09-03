@@ -13,6 +13,7 @@ import com.mannschaft.app.membership.dto.MembershipLeaveRequest;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.provisioning.service.ProvisioningGate;
 import com.mannschaft.app.supporter.SupporterApplicationStatus;
 import com.mannschaft.app.supporter.SupporterErrorCode;
 import com.mannschaft.app.supporter.dto.BulkApproveRequest;
@@ -70,6 +71,9 @@ class SupporterServiceTest {
 
     @Mock
     private MediaUrlResolver mediaUrlResolver;
+
+    @Mock
+    private ProvisioningGate provisioningGate;
 
     @InjectMocks
     private SupporterService service;

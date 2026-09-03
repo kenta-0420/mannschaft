@@ -260,4 +260,67 @@ class EmailOutboxServiceTest {
                     .isEqualTo("EMAIL_OUTBOX_002");
         }
     }
+
+    // -----------------------------------------------------------------------
+    // 検分第2巡 P1-2 根治: PROVISIONING_ADMIN_INVITE が renderTemplate のスルー方式
+    // case に未登録で "Unsupported templateKind" となっていた欠陥の再発防止。
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("PROVISIONING_ADMIN_INVITE: subject/bodyを含むpayloadでrenderTemplateが"
+            + "RenderedEmailを正しく返す（スルー方式case未登録の再発防止）")
+    void renderTemplate_provisioningAdminInvite_rendersSubjectAndBody() throws Exception {
+        Method m = EmailOutboxServiceImpl.class.getDeclaredMethod(
+                "renderTemplate", String.class, String.class, Map.class);
+        m.setAccessible(true);
+
+        Object rendered = m.invoke(service, "PROVISIONING_ADMIN_INVITE", "ja", Map.of(
+                "subject", "【テスト組織】管理者招待のお知らせ",
+                "body", "<p><a href=\"https://example.com/provisioning/accept#token=abc\">"
+                        + "https://example.com/provisioning/accept#token=abc</a></p>"
+        ));
+
+        assertThat(rendered).isInstanceOf(EmailOutboxServiceImpl.RenderedEmail.class);
+        EmailOutboxServiceImpl.RenderedEmail email = (EmailOutboxServiceImpl.RenderedEmail) rendered;
+        assertThat(email.subject()).isEqualTo("【テスト組織】管理者招待のお知らせ");
+        assertThat(email.html()).contains("provisioning/accept#token=abc");
+    }
+
+    @Test
+    @DisplayName("PROVISIONING_ADMIN_INVITE: subject/bodyを含むpayloadでenqueue成功（スルー方式）")
+    void enqueue_provisioningAdminInvitePassthrough() {
+        EmailOutboxRequest req = new EmailOutboxRequest(
+                "PROVISIONING_ADMIN_INVITE",
+                "ja",
+                "invited@example.com",
+                Map.of(
+                        "subject", "【テスト組織】管理者招待のお知らせ",
+                        "body", "<p>招待リンクです。</p>"
+                ),
+                "provisioning",
+                "provisioning-invite:test:1",
+                null,
+                null,
+                null
+        );
+        UUID id = service.enqueue(req);
+        assertThat(id).isNotNull();
+    }
+
+    @Test
+    @DisplayName("PROVISIONING_ADMIN_INVITE: subject欠落時にEMAIL_OUTBOX_002例外")
+    void renderTemplate_provisioningAdminInviteMissingSubject_throwsOutbox002() throws Exception {
+        Method m = EmailOutboxServiceImpl.class.getDeclaredMethod(
+                "renderTemplate", String.class, String.class, Map.class);
+        m.setAccessible(true);
+        try {
+            m.invoke(service, "PROVISIONING_ADMIN_INVITE", "ja", Map.of("body", "<p>本文</p>"));
+            fail("EMAIL_OUTBOX_002 例外が期待されるが発生しなかった");
+        } catch (InvocationTargetException ex) {
+            assertThat(ex.getCause())
+                    .isInstanceOf(EmailOutboxValidationException.class)
+                    .extracting(e -> ((EmailOutboxValidationException) e).getErrorCode())
+                    .isEqualTo("EMAIL_OUTBOX_002");
+        }
+    }
 }
