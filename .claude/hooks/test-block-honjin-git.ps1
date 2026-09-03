@@ -94,6 +94,10 @@ $cases = @(
     @{ name = 'apply の --apply 迂回';         cwd = $honjin; expect = 'deny'; cmd = 'git apply --check --apply fix.patch' },
     @{ name = 'rm の --no-dry-run 迂回';       cwd = $honjin; expect = 'deny'; cmd = 'git rm -n --no-dry-run src' },
     @{ name = 'clean の未知オプション混入';    cwd = $honjin; expect = 'deny'; cmd = 'git clean -n --unknown-flag' },
+    # `--` はオプション終端。その後ろの語はフラグではなくパス名であり、
+    # `git rm -- --dry-run` は「--dry-run という名のファイルを消す」操作である。
+    @{ name = 'rm の `--` 後パス名による迂回'; cwd = $honjin; expect = 'deny'; cmd = 'git rm -- --dry-run' },
+    @{ name = 'clean の `--` 後パス名による迂回'; cwd = $honjin; expect = 'deny'; cmd = 'git clean -- --dry-run' },
 
     # --- 通されるべき（誤検知しないこと） ---
     @{ name = 'worktree cwd で git commit';        cwd = $worktree; expect = 'allow'; cmd = 'git commit -m "テスト"' },

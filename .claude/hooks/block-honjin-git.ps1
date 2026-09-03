@@ -81,10 +81,15 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 # 除外する否定先読みを組み立てる。無害なトークンとは、$Safe に挙げたフラグか、
 # フラグでない語（パス等）である。集合に無い語が1つでも混じれば除外は成立せず、
 # 拒否側へ倒れる。`--no-dry-run` のような打ち消しオプションはここで弾かれる。
+# なお `--` はオプション終端であり、その後ろの語は**フラグではなくパス名**である。
+# `git rm -- --dry-run` は「--dry-run という名のファイルを消す」操作であって
+# 試算ではない。よって読み取り専用フラグは `--` より前にあるときだけ認め、
+# `--` 以降はパスとしてのみ許す（#3082 の Codex 検分が P1 として摘発）。
 function Read-OnlyForm {
     param([string]$Sub, [string]$Required, [string]$Safe)
-    $token = '(?:' + $Safe + '|[^-\s]\S*)'
-    return $Sub + '(?!(?:\s+' + $token + ')*\s+(?:' + $Required + ')(?:\s+' + $token + ')*\s*$)'
+    $before = '(?:' + $Safe + '|[^-\s]\S*)'      # `--` より前に置ける語
+    $after  = '(?:' + $Safe + '|--|[^-\s]\S*)'   # `--` 以降はパスも来る
+    return $Sub + '(?!(?:\s+' + $before + ')*\s+(?:' + $Required + ')(?:\s+' + $after + ')*\s*$)'
 }
 
 $mutating = 'git(\s+-{1,2}\S+(\s+\S+)?)*\s+(' + (@(
@@ -106,10 +111,10 @@ $mutating = 'git(\s+-{1,2}\S+(\s+\S+)?)*\s+(' + (@(
     # 1つでも混じれば拒否側へ倒れるので、`--no-` 形も未知のオプションも通らない。
     'merge(?!-(?:base|tree)\b)',                  # merge-base / merge-tree は読み取り専用
     'stash(?!\s+(?:list|show)\b)',                # stash list / show は読み取り専用
-    (Read-OnlyForm 'clean' '-[dxXq]*n[dxXq]*|--dry-run' '-[dxXqn]+|--dry-run|--quiet|--'),
-    (Read-OnlyForm 'apply' '--check|--stat|--numstat|--summary' '--check|--stat|--numstat|--summary|--verbose|-v|--'),
-    (Read-OnlyForm 'rm'    '-n|--dry-run' '-n|--dry-run|-r|-q|--cached|--'),
-    (Read-OnlyForm 'mv'    '-n|--dry-run' '-n|--dry-run|-v|--'),
+    (Read-OnlyForm 'clean' '-[dxXq]*n[dxXq]*|--dry-run' '-[dxXqn]+|--dry-run|--quiet'),
+    (Read-OnlyForm 'apply' '--check|--stat|--numstat|--summary' '--check|--stat|--numstat|--summary|--verbose|-v'),
+    (Read-OnlyForm 'rm'    '-n|--dry-run' '-n|--dry-run|-r|-q|--cached'),
+    (Read-OnlyForm 'mv'    '-n|--dry-run' '-n|--dry-run|-v'),
     'sparse-checkout(?!\s+(?:list|check-rules)\b)',
     # branch は一覧表示が主用途のため、**引数を伴う形**（作成・改名・削除・追跡
     # 設定はいずれもブランチ名を取る）だけを拒否する。`git branch feature/x` の
