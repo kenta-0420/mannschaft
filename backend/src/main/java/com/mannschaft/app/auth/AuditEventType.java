@@ -508,7 +508,16 @@ public enum AuditEventType {
     /**
      * 記録係（scorekeeper_user_id）を変更した（03 §C.7）。
      */
-    MATCH_SCOREKEEPER_CHANGED(AuditEventCategory.MATCH);
+    MATCH_SCOREKEEPER_CHANGED(AuditEventCategory.MATCH),
+
+    // ─── RECEIPT (F08.4 領収書) ──────────────────────────────
+    /**
+     * 領収書の発行者設定を変更した（F08.4 §9.5・AC-33）。
+     * userId=操作者 / teamId または organizationId=対象スコープ /
+     * metadata に isQualifiedInvoicer・invoiceRegistrationNumber の旧値→新値を含める。
+     * 登録番号は国税庁が公表する公開情報のため平文で記録してよい。
+     */
+    RECEIPT_SETTINGS_UPDATED(AuditEventCategory.RECEIPT);
 
     private final AuditEventCategory category;
 }
