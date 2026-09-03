@@ -6,6 +6,19 @@ spring:
   profiles:
     default: local
 
+  # マルチパート（ファイルアップロード）の枠
+  # Spring Boot 既定は 1MB。F08.4 領収書ロゴの業務上限 1MB を「サービス層で」判定させるため、
+  # 境界ちょうどのファイルがコンテナで先に弾かれない（MaxUploadSizeExceededException で
+  # 設計外の応答になる）よう、枠は業務上限より広い 2MB を明示する。
+  # 注意: この 2MB は F08.4 のための最小限の値であり「全体の正しい値」ではない。
+  # 既存機能はカルテ写真 10MB / 掲示板添付 10MB / DM 画像 5MB を業務上限として宣言しているが、
+  # コンテナ既定 1MB のため宣言どおりには動いていない。これは本設定とは別の既知の問題であり、
+  # ここで 10MB へ引き上げると無関係な機能の挙動を変えてしまうため行わない（枠の全体見直しは別戦役）。
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
+
   # Virtual Threads（Java 21）
   threads:
     virtual:
