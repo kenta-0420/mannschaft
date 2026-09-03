@@ -1,26 +1,17 @@
 package com.mannschaft.app.notification.credit.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
-import com.mannschaft.app.auth.AuditEventType;
-import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
-import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.credit.entity.NotificationCreditPurchaseEntity;
 import com.mannschaft.app.notification.credit.entity.NotificationCreditPurchaseStatus;
-import com.mannschaft.app.notification.credit.entity.OrganizationNotificationBalanceEntity;
 import com.mannschaft.app.notification.credit.repository.NotificationCreditPurchaseRepository;
-import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
-import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.notification.credit.service.NotificationCreditAlertSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.context.MessageSource;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,6 +27,31 @@ import java.util.List;
  * </ol>
  *
  * <p>ShedLock により複数インスタンス起動時の二重実行を防ぐ。</p>
+ *
+ * <h2>Issue #2990 L4: 単一 {@code @Transactional} + {@code @Async} 失効の是正</h2>
+ * <p>是正前の本クラスには次の二重の欠陥があった。</p>
+ * <ol>
+ *   <li><b>バッチ全体が単一の {@code @Transactional}</b> だった。項目ごとの {@code try/catch} は
+ *       隔離として機能せず、1 件でも DB 例外が出れば（catch してログを出しても）そのトランザクションは
+ *       rollback-only のままコミットへ進み {@code UnexpectedRollbackException} となる。
+ *       結果として<b>全組織ぶんのアラート送信済フラグ・{@code expired_at}・残高からの失効分の
+ *       差し引きがまとめて巻き戻る</b>。</li>
+ *   <li>期限アラート2種が<b>本クラス内の {@code @Async protected} メソッドの自己呼び出し</b>だった。
+ *       Spring のプロキシを経ないため {@code @Async} は失効し、通知送信は上記の単一トランザクションの
+ *       内側で<b>同期実行</b>されていた。つまり台帳上は「非同期だから安全」に見えて、実態は
+ *       {@code ROLLBACK_COUPLED}（通知の失敗で残高更新ごと巻き戻る）だった。</li>
+ * </ol>
+ * <p>是正後は L2 で確立した型に揃える:</p>
+ * <ul>
+ *   <li>本クラスは <b>{@code @Transactional} を持たないオーケストレータ</b>。対象一覧の読み取りと
+ *       ループ制御だけを行う</li>
+ *   <li>項目ごとの永続化は {@link NotificationCreditExpiryRunner}（{@code REQUIRES_NEW}）が担う。
+ *       1 件の失敗は他の項目を巻き添えにしない</li>
+ *   <li>通知は<b>項目TXのコミット後</b>に {@link NotificationCreditAlertSender}
+ *       （別 Bean・{@code @Async("event-pool")}）へ委譲する。凍結台帳ヘッダの契約
+ *       「項目TX完了を待つ非トランザクションのバッチオーケストレータからのみ実通知を行う」に従う
+ *       （{@code NotificationCreditMonthlyResetBatch} と同じ経路）</li>
+ * </ul>
  */
 @Slf4j
 @Service
@@ -43,19 +59,15 @@ import java.util.List;
 public class NotificationCreditExpiryBatch {
 
     private final NotificationCreditPurchaseRepository purchaseRepository;
-    private final OrganizationNotificationBalanceRepository balanceRepository;
-    private final NotificationHelper notificationHelper;
-    private final UserRoleRepository userRoleRepository;
-    private final AuditLogService auditLogService;
-    /**
-     * Issue #2715 CMP-055 ロットC-1: 通知本文の i18n。受信者 locale の解決自体は
-     * {@link NotificationHelper#notifyAllLocalized} 内部の {@link UserLocaleCache} が一括で担う
-     * （本クラスから直接 {@code UserLocaleCache} は呼ばない）。
-     */
-    private final MessageSource messageSource;
+    private final NotificationCreditExpiryRunner expiryRunner;
+    private final NotificationCreditAlertSender alertSender;
 
     /**
      * 有効期限バッチを実行する（毎日 AM 3:00 JST）。
+     *
+     * <p>本メソッド自体は対象一覧の読み取りとループ制御のみのため {@code @Transactional} を付けない
+     * （付けると項目ごとの {@code REQUIRES_NEW} の意味が薄れ、通知の失敗が全体を巻き戻す
+     * 是正前の欠陥へ戻る）。</p>
      */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "止めると期限切れクレジットが credit_balance から差し引かれず、実際には使えない残高が組織に残り続ける")
@@ -65,7 +77,6 @@ public class NotificationCreditExpiryBatch {
             name = "notificationCreditExpiryBatch",
             lockAtLeastFor = "PT5M",
             lockAtMostFor = "PT20M")
-    @Transactional
     public void runBatch() {
         LocalDateTime now = LocalDateTime.now();
         log.info("通知クレジット有効期限バッチ開始: {}", now);
@@ -94,20 +105,7 @@ public class NotificationCreditExpiryBatch {
                 purchaseRepository.findByExpiresAtBetweenAndPaymentStatusAndAlertSent30dFalse(
                         now, now.plusDays(30), NotificationCreditPurchaseStatus.PAID);
 
-        for (NotificationCreditPurchaseEntity purchase : targets) {
-            try {
-                purchase.markAlertSent30d();
-                purchaseRepository.save(purchase);
-                sendExpiryAlertAsync(purchase.getOrganizationId(), purchase.getId(),
-                        purchase.getExpiresAt(), 30);
-            } catch (Exception e) {
-                log.error("30日前アラート処理失敗: purchaseId={}", purchase.getId(), e);
-            }
-        }
-
-        if (!targets.isEmpty()) {
-            log.info("30日前アラート送信: {}件", targets.size());
-        }
+        processAlerts(targets, 30);
     }
 
     /**
@@ -118,19 +116,35 @@ public class NotificationCreditExpiryBatch {
                 purchaseRepository.findByExpiresAtBetweenAndPaymentStatusAndAlertSent7dFalse(
                         now, now.plusDays(7), NotificationCreditPurchaseStatus.PAID);
 
+        processAlerts(targets, 7);
+    }
+
+    /**
+     * 期限アラートを項目ごとに処理する（30日前 / 7日前の共通処理）。
+     *
+     * <p>フラグ更新は項目TX（{@code REQUIRES_NEW}）で確定させ、その<b>コミット後</b>に通知を送る。
+     * 通知の失敗はフラグ更新を巻き戻さない。</p>
+     */
+    private void processAlerts(List<NotificationCreditPurchaseEntity> targets, int daysRemaining) {
+        int sent = 0;
         for (NotificationCreditPurchaseEntity purchase : targets) {
             try {
-                purchase.markAlertSent7d();
-                purchaseRepository.save(purchase);
-                sendExpiryAlertAsync(purchase.getOrganizationId(), purchase.getId(),
-                        purchase.getExpiresAt(), 7);
+                NotificationCreditExpiryRunner.AlertTarget target =
+                        expiryRunner.markAlertSent(purchase.getId(), daysRemaining);
+                if (target == null) {
+                    continue;
+                }
+                // 項目TXはここで既にコミット済み。通知は別 Bean の @Async("event-pool") へ委譲する。
+                alertSender.sendExpiryAlert(target.organizationId(), target.purchaseId(),
+                        target.expiresAt(), daysRemaining);
+                sent++;
             } catch (Exception e) {
-                log.error("7日前アラート処理失敗: purchaseId={}", purchase.getId(), e);
+                log.error("{}日前アラート処理失敗: purchaseId={}", daysRemaining, purchase.getId(), e);
             }
         }
 
-        if (!targets.isEmpty()) {
-            log.info("7日前アラート送信: {}件", targets.size());
+        if (sent > 0) {
+            log.info("{}日前アラート送信: {}件", daysRemaining, sent);
         }
     }
 
@@ -142,130 +156,26 @@ public class NotificationCreditExpiryBatch {
                 purchaseRepository.findByExpiresAtBeforeAndPaymentStatusAndExpiredAtIsNull(
                         now, NotificationCreditPurchaseStatus.PAID);
 
+        int processed = 0;
         for (NotificationCreditPurchaseEntity purchase : expiredTargets) {
             try {
-                long expiredCredits = purchase.getRemainingCredits();
-                if (expiredCredits <= 0) {
-                    // 既に消費済みの場合はフラグのみ更新
-                    purchase.markExpired();
-                    purchaseRepository.save(purchase);
+                NotificationCreditExpiryRunner.ExpiryOutcome outcome =
+                        expiryRunner.expireOne(purchase.getId());
+                if (outcome == null) {
                     continue;
                 }
-
-                // クレジット残高から失効分を差し引く
-                OrganizationNotificationBalanceEntity balance =
-                        balanceRepository.findByOrganizationIdForUpdate(purchase.getOrganizationId())
-                                .orElse(null);
-                if (balance != null) {
-                    balance.consumeCredit(expiredCredits);
-                    balanceRepository.save(balance);
+                processed++;
+                if (outcome.expiredCredits() > 0) {
+                    // 項目TXはここで既にコミット済み。通知は別 Bean の @Async("event-pool") へ委譲する。
+                    alertSender.sendCreditExpiredAlert(outcome.organizationId(), outcome.expiredCredits());
                 }
-
-                // 購入レコードを失効済みにする
-                purchase.markExpired();
-                purchaseRepository.save(purchase);
-
-                // 監査ログ記録
-                auditLogService.record(
-                        AuditEventType.NOTIFICATION_CREDIT_EXPIRED.name(),
-                        null, null, null,
-                        purchase.getOrganizationId(),
-                        null, null, null,
-                        "{\"purchaseId\":" + purchase.getId()
-                                + ",\"expiredCredits\":" + expiredCredits + "}"
-                );
-
-                log.info("クレジット失効処理: purchaseId={}, organizationId={}, expiredCredits={}",
-                        purchase.getId(), purchase.getOrganizationId(), expiredCredits);
-
-                // 失効アラートを送信
-                sendCreditExpiredAlertAsync(purchase.getOrganizationId(), expiredCredits);
-
             } catch (Exception e) {
                 log.error("失効処理失敗: purchaseId={}", purchase.getId(), e);
             }
         }
 
-        if (!expiredTargets.isEmpty()) {
-            log.info("クレジット失効処理完了: {}件", expiredTargets.size());
-        }
-    }
-
-    /**
-     * 有効期限アラートをADMINへ非同期送信する。
-     *
-     * @param organizationId 組織ID
-     * @param purchaseId     購入ID
-     * @param expiresAt      有効期限日時
-     * @param daysRemaining  残り日数
-     */
-    @Async
-    protected void sendExpiryAlertAsync(Long organizationId, Long purchaseId,
-                                        LocalDateTime expiresAt, int daysRemaining) {
-        try {
-            List<Long> adminUserIds = userRoleRepository.findAdminUserIdsByOrganizationId(organizationId);
-            if (adminUserIds.isEmpty()) {
-                return;
-            }
-            notificationHelper.notifyAllLocalized(
-                    adminUserIds,
-                    "NOTIFICATION_CREDIT_EXPIRY_ALERT",
-                    "NOTIFICATION_CREDIT",
-                    organizationId,
-                    NotificationScopeType.ORGANIZATION,
-                    organizationId,
-                    "/organizations/" + organizationId + "/settings/notification-credits",
-                    null,
-                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
-                            messageSource.getMessage(
-                                    "notification.credit.expiryAlert.title",
-                                    new Object[]{daysRemaining},
-                                    "通知クレジットの有効期限まで残り" + daysRemaining + "日です", locale),
-                            messageSource.getMessage(
-                                    "notification.credit.expiryAlert.body",
-                                    new Object[]{purchaseId, expiresAt.toLocalDate()},
-                                    "購入ID#" + purchaseId + "の通知クレジットが "
-                                            + expiresAt.toLocalDate() + " に失効します。期限前にご利用ください。",
-                                    locale))
-            );
-        } catch (Exception e) {
-            log.error("有効期限アラート送信失敗: organizationId={}, purchaseId={}", organizationId, purchaseId, e);
-        }
-    }
-
-    /**
-     * クレジット失効通知をADMINへ非同期送信する。
-     *
-     * @param organizationId  組織ID
-     * @param expiredCredits  失効したクレジット通数
-     */
-    @Async
-    protected void sendCreditExpiredAlertAsync(Long organizationId, long expiredCredits) {
-        try {
-            List<Long> adminUserIds = userRoleRepository.findAdminUserIdsByOrganizationId(organizationId);
-            if (adminUserIds.isEmpty()) {
-                return;
-            }
-            notificationHelper.notifyAllLocalized(
-                    adminUserIds,
-                    "NOTIFICATION_CREDIT_EXPIRED",
-                    "NOTIFICATION_CREDIT",
-                    organizationId,
-                    NotificationScopeType.ORGANIZATION,
-                    organizationId,
-                    "/organizations/" + organizationId + "/settings/notification-credits",
-                    null,
-                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
-                            messageSource.getMessage(
-                                    "notification.credit.expired.title", null,
-                                    "通知クレジットが失効しました", locale),
-                            messageSource.getMessage(
-                                    "notification.credit.expired.body",
-                                    new Object[]{expiredCredits},
-                                    expiredCredits + "通のクレジットが有効期限切れにより失効しました。", locale))
-            );
-        } catch (Exception e) {
-            log.error("クレジット失効アラート送信失敗: organizationId={}", organizationId, e);
+        if (processed > 0) {
+            log.info("クレジット失効処理完了: {}件", processed);
         }
     }
 }

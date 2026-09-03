@@ -11,11 +11,8 @@ import com.mannschaft.app.errorreport.repository.ErrorReportAiAnalysisRepository
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -63,55 +60,9 @@ public class ErrorReportAiAnalysisService {
     private final ErrorReportNotifier notifier;
     private final ErrorReportProperties props;
 
-    /**
-     * トランザクションコミット後に非同期で AI 分析を実行する。
-     * {@code createOrAggregate} からの呼び出し用。
-     *
-     * <p>トランザクションコンテキストが無い場合（テスト等）は即時実行する。</p>
-     *
-     * @param errorReportId エラーレポート ID
-     * @param createdBy     操作者ユーザー ID（システム自動なら NULL）
-     */
-    public void analyzeAfterCommit(Long errorReportId, Long createdBy) {
-        // AC-10: 即時分析パスにも予算チェックを適用する。
-        // 予算超過時は Claude API を発火させず、警告ログのみ残してスキップする。
-        // last_ai_analysis_at は更新しないため、後追いの自動分析バッチが翌期に拾える設計を壊さない。
-        if (!props.getAi().isEnabled()) {
-            log.debug("AI 即時分析スキップ（機能無効）: errorReportId={}", errorReportId);
-            return;
-        }
-        if (!budgetService.canExpend(CONSERVATIVE_COST_ESTIMATE_JPY)) {
-            log.warn("AI 即時分析スキップ（月次予算超過・コストガード）: errorReportId={}, "
-                            + "monthlyExpenseJpy={}, budgetJpy={}。後追いバッチが翌期に再評価する。",
-                    errorReportId, budgetService.currentMonthlyExpense(),
-                    props.getAi().getMonthlyBudgetJpy());
-            return;
-        }
-
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    analyzeAsync(errorReportId, createdBy);
-                }
-            });
-        } else {
-            // トランザクションが無い場合は直接非同期化
-            analyzeAsync(errorReportId, createdBy);
-        }
-    }
-
-    /**
-     * 非同期エントリポイント。例外は呼び出し元に波及しない。
-     */
-    @Async("event-pool")
-    public void analyzeAsync(Long errorReportId, Long createdBy) {
-        try {
-            analyzeSync(errorReportId, createdBy);
-        } catch (Exception e) {
-            log.error("AI 分析失敗: errorReportId={}", errorReportId, e);
-        }
-    }
+    // Issue #2990 L4: analyzeAfterCommit / analyzeAsync は自己呼び出しにより @Async と @Transactional が
+    // いずれも失効していたため、ErrorReportAiAnalysisDispatcher / ErrorReportAiAnalysisAsyncRunner へ
+    // 段ごとに Bean を分けて移設した（各ホップがプロキシ境界を跨ぐようにするため）。
 
     /**
      * 同期的に AI 分析を実行する（手動再分析用）。
