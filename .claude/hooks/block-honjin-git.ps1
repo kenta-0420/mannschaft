@@ -54,7 +54,17 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 # `git -C <path> commit` のように git と本体サブコマンドの間に
 # -C/--git-dir 等のオプションが挟まるケースも拾えるよう、
 # 間に任意個のオプション（先頭が - のトークン）を許容する。
-$mutating = 'git(\s+-{1,2}\S+(\s+\S+)?)*\s+(checkout|switch|commit|reset|merge|rebase|cherry-pick|pull)\b'
+#
+# サブコマンド末尾は `\b` ではなく `(?![\w-])` で閉じる。`\b` はハイフンの
+# 直前でも境界として成立するため、`git merge-base`（読み取り専用）が
+# `merge` と誤認されて拒否されていた。実際に `git merge-base --is-ancestor`
+# が本陣の同期作業を妨げた。
+#
+# ただしハイフン付きの配管コマンドにも作業木・インデックスを書き換えるものが
+# あるため（checkout-index / merge-file / merge-index / merge-one-file）、
+# それらは明示的に列挙して従来どおり拒否を維持する。保護対象を広げる変更では
+# なく、`\b` 時代の拒否範囲をそのまま保つための列挙である。
+$mutating = 'git(\s+-{1,2}\S+(\s+\S+)?)*\s+(checkout|checkout-index|switch|commit|reset|merge|merge-file|merge-index|merge-one-file|rebase|cherry-pick|pull)(?![\w-])'
 
 # `/mnt/<ドライブ文字>/...` 形式の WSL パスを Windows パスへ読み替える。
 # 大文字小文字・末尾スラッシュを問わない。読み替え不可なら元の文字列を返す。
