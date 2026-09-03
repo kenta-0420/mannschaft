@@ -30,16 +30,16 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
-import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.payment.service.ContentAccessState;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
-import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -87,6 +87,10 @@ public class BlogPostService {
     // TODO: cms ドメインが team/organization ドメインを参照（CLAUDE.md 原則5）。将来はイベント駆動化を検討。
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
+    // 検分第2巡 残存経路チェック用（assertScopeNotProvisioned）。CrossDomainEntityImportArchTest(D-1)
+    // 根治のため Entity 直参照ではなく boolean のみを返す Service API 経由にする。
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
     private final AccessControlService accessControlService;
     // TODO: cms ドメインが payment ドメインを参照（CLAUDE.md 原則5）。クロスドメイン FK は張らず
     //       PaymentGateService のメソッド呼び（ID 渡し）に限定する。将来はイベント駆動化を検討。
@@ -217,7 +221,7 @@ public class BlogPostService {
         // ID を直接指定された場合の防御多層として、ここで lifecycleStatus=ACTIVE を確認する。
         // PROVISIONED スコープは作成時点で会員が存在せず記事も作られ得ないため実害は現状無いが、
         // 将来の経路変化に備えた最小差分の防御として追加する（存在秘匿のため POST_NOT_FOUND に畳む）。
-        assertScopeActive(teamId, organizationId);
+        assertScopeNotProvisioned(teamId, organizationId);
 
         BlogPostEntity entity;
         if (teamId != null) {
@@ -929,26 +933,23 @@ public class BlogPostService {
 
     /**
      * 検分第2巡 残存経路チェック用: 指定スコープ（team もしくは organization）が
-     * {@code lifecycleStatus = ACTIVE} であることを確認する。PROVISIONED（承諾前の
-     * 事前作成状態）を数値 ID 直指定で通過させない防御多層。teamId/organizationId が
-     * 両方 null（個人記事）の場合は対象外。存在しない ID・PROVISIONED はいずれも
-     * 存在秘匿のため {@link CmsErrorCode#POST_NOT_FOUND} に畳む。
+     * PROVISIONED（承諾前の事前作成状態）でないことを確認する。数値 ID 直指定で
+     * PROVISIONED スコープを通過させない防御多層。teamId/organizationId が
+     * 両方 null（個人記事）の場合は対象外。PROVISIONED は存在秘匿のため
+     * {@link CmsErrorCode#POST_NOT_FOUND} に畳む。
+     *
+     * <p>CI red根治（CrossDomainEntityImportArchTest, D-1）: 当初 {@code TeamEntity}/
+     * {@code OrganizationEntity} を直接 import して {@code lifecycleStatus} を比較していたが、
+     * cms ドメインが team/organization ドメインの Entity（の nested enum）へ新規依存する形になり
+     * クロスドメイン Entity 参照番人に違反した。{@link TeamService#isProvisioned(Long)} /
+     * {@link OrganizationService#isProvisioned(Long)}（boolean のみを返す既存の D-1 準拠 API、
+     * 柱②-2/②-3 で新設済み）経由に変更し、Entity を一切 cms ドメインへ持ち込まない。</p>
      */
-    private void assertScopeActive(Long teamId, Long organizationId) {
-        if (teamId != null) {
-            boolean active = teamRepository.findById(teamId)
-                    .map(team -> team.getLifecycleStatus() == TeamEntity.LifecycleStatus.ACTIVE)
-                    .orElse(false);
-            if (!active) {
-                throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
-            }
-        } else if (organizationId != null) {
-            boolean active = organizationRepository.findById(organizationId)
-                    .map(org -> org.getLifecycleStatus() == OrganizationEntity.LifecycleStatus.ACTIVE)
-                    .orElse(false);
-            if (!active) {
-                throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
-            }
+    private void assertScopeNotProvisioned(Long teamId, Long organizationId) {
+        if (teamId != null && teamService.isProvisioned(teamId)) {
+            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
+        } else if (organizationId != null && organizationService.isProvisioned(organizationId)) {
+            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
         }
     }
 }

@@ -22,8 +22,8 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.ContentAccessState;
@@ -32,6 +32,7 @@ import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -56,7 +57,6 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
@@ -94,6 +94,10 @@ class BlogPostServiceTest {
     @Mock
     private OrganizationRepository organizationRepository;
     @Mock
+    private TeamService teamService;
+    @Mock
+    private OrganizationService organizationService;
+    @Mock
     private AccessControlService accessControlService;
     @Mock
     private PaymentGateService paymentGateService;
@@ -112,20 +116,10 @@ class BlogPostServiceTest {
                 .thenReturn(new GateCheckResponse(true, false, List.of()));
     }
 
-    /**
-     * 検分第2巡 残存経路チェック（{@code BlogPostService#assertScopeActive}）用の既定 stub。
-     * 既存テストは PROVISIONED（承諾前の事前作成状態）の検証を意図していないため、
-     * team/organization は既定で ACTIVE（{@link TeamEntity}/{@link OrganizationEntity} の
-     * {@code @Builder.Default}）を返すようにしておく。PROVISIONED を検証する専用テストは
-     * 個別に override する。
-     */
-    @BeforeEach
-    void stubScopeActiveByDefault() {
-        lenient().when(teamRepository.findById(anyLong()))
-                .thenReturn(Optional.of(TeamEntity.builder().build()));
-        lenient().when(organizationRepository.findById(anyLong()))
-                .thenReturn(Optional.of(OrganizationEntity.builder().build()));
-    }
+    // 検分第2巡 残存経路チェック（BlogPostService#assertScopeNotProvisioned）: Mockito の
+    // boolean mock は既定で false を返すため、teamService/organizationService.isProvisioned() は
+    // 未 stub のままで「PROVISIONED ではない」既定値になる。PROVISIONED を検証する専用テストのみ
+    // 個別に true を stub する。
 
     private static final Long TEAM_ID = 1L;
     private static final String TEAM_ID_STR = TEAM_ID.toString();
