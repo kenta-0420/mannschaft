@@ -15,8 +15,9 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.dao.DataIntegrityViolationException;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.RejectedExecutionException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -155,16 +156,16 @@ class NotificationCreditExpiryBatchTest {
         given(purchaseRepository.findByExpiresAtBetweenAndPaymentStatusAndAlertSent7dFalse(
                 any(), any(), eq(NotificationCreditPurchaseStatus.PAID)))
                 .willReturn(List.of(purchase(21L)));
-        LocalDateTime expiresAt = LocalDateTime.of(2026, 12, 1, 0, 0);
+        LocalDate expiresOn = LocalDate.of(2026, 12, 1);
         given(expiryRunner.markAlertSent(20L, 30))
-                .willReturn(new NotificationCreditExpiryRunner.AlertTarget(1L, 20L, expiresAt));
+                .willReturn(new NotificationCreditExpiryRunner.AlertTarget(1L, 20L, expiresOn));
         given(expiryRunner.markAlertSent(21L, 7))
-                .willReturn(new NotificationCreditExpiryRunner.AlertTarget(2L, 21L, expiresAt));
+                .willReturn(new NotificationCreditExpiryRunner.AlertTarget(2L, 21L, expiresOn));
 
         batch.runBatch();
 
-        verify(alertSender).sendExpiryAlert(1L, 20L, expiresAt, 30);
-        verify(alertSender).sendExpiryAlert(2L, 21L, expiresAt, 7);
+        verify(alertSender).sendExpiryAlert(1L, 20L, expiresOn, 30);
+        verify(alertSender).sendExpiryAlert(2L, 21L, expiresOn, 7);
     }
 
     @Test
@@ -179,5 +180,43 @@ class NotificationCreditExpiryBatchTest {
         batch.runBatch();
 
         verify(alertSender, never()).sendExpiryAlert(anyLong(), anyLong(), any(), anyInt());
+    }
+
+    @Test
+    @DisplayName("投入拒否: 期限アラートの非同期投入が拒否されたら同期送信で送り直す（永久欠落の防止）")
+    void 期限アラートの投入拒否は同期送信へフォールバックする() {
+        noTargets();
+        given(purchaseRepository.findByExpiresAtBetweenAndPaymentStatusAndAlertSent30dFalse(
+                any(), any(), eq(NotificationCreditPurchaseStatus.PAID)))
+                .willReturn(List.of(purchase(31L)));
+        LocalDate expiresOn = LocalDate.now().plusDays(30);
+        given(expiryRunner.markAlertSent(31L, 30))
+                .willReturn(new NotificationCreditExpiryRunner.AlertTarget(7L, 31L, expiresOn));
+        // event-pool は AbortPolicy。投入拒否は @Async メソッド本体の try/catch より前に起きる。
+        doThrow(new RejectedExecutionException("event-pool saturated"))
+                .when(alertSender).sendExpiryAlert(eq(7L), eq(31L), any(), eq(30));
+
+        batch.runBatch();
+
+        // 是正前はここでログを出して終わり。alert_sent_30d は立ったままなので
+        // 次回バッチの検索条件（AlertSent30dFalse）から外れ、通知は二度と再試行されなかった。
+        verify(alertSender).sendExpiryAlertNow(eq(7L), eq(31L), eq(expiresOn), eq(30));
+    }
+
+    @Test
+    @DisplayName("投入拒否: 失効通知の非同期投入が拒否されたら同期送信で送り直す（残高差引は巻き戻せないため欠落は許されない）")
+    void 失効通知の投入拒否は同期送信へフォールバックする() {
+        noTargets();
+        given(purchaseRepository.findByExpiresAtBeforeAndPaymentStatusAndExpiredAtIsNull(
+                any(), eq(NotificationCreditPurchaseStatus.PAID)))
+                .willReturn(List.of(purchase(41L)));
+        given(expiryRunner.expireOne(41L))
+                .willReturn(new NotificationCreditExpiryRunner.ExpiryOutcome(8L, 250L));
+        doThrow(new RejectedExecutionException("event-pool saturated"))
+                .when(alertSender).sendCreditExpiredAlert(eq(8L), eq(250L));
+
+        batch.runBatch();
+
+        verify(alertSender).sendCreditExpiredAlertNow(eq(8L), eq(250L));
     }
 }

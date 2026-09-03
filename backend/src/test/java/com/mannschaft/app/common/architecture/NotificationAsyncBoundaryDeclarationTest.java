@@ -90,7 +90,18 @@ class NotificationAsyncBoundaryDeclarationTest {
             assertAsyncPool(NotificationCreditAlertSender.class, "sendExpiryAlert", "event-pool");
             assertAsyncPool(NotificationCreditAlertSender.class, "sendCreditExpiredAlert", "event-pool");
             assertAsyncPool(MilestoneNotificationListener.class, "onMilestoneUnlocked", "event-pool");
-            assertAsyncPool(ErrorReportAiAnalysisAsyncRunner.class, "analyzeAsync", "event-pool");
+        }
+
+        /**
+         * 検分是正: 当初この番人は analyzeAsync を "event-pool" として固定していた。
+         * 番人が誤った状態を正として固定すると、次に直そうとした者が番人に阻まれる。
+         * AI 分析は Claude API 呼び出しを含む長時間の外部 I/O であり、通知配送用の共用プールに
+         * 載せてはならない（判断根拠は AsyncConfig#aiAnalysisPool の javadoc）。
+         */
+        @Test
+        @DisplayName("外部 AI 呼び出しは専用の ai-analysis-pool（event-pool も job-pool も不可）")
+        void AI分析は専用プール() {
+            assertAsyncPool(ErrorReportAiAnalysisAsyncRunner.class, "analyzeAsync", "ai-analysis-pool");
         }
     }
 
@@ -104,6 +115,27 @@ class NotificationAsyncBoundaryDeclarationTest {
             assertDeclaresNoAsyncMethod(AnalyticsBackfillService.class);
             assertDeclaresNoAsyncMethod(ErrorReportAiAnalysisService.class);
             assertDeclaresNoAsyncMethod(NotificationCreditExpiryBatch.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("検分是正: 投入拒否時に通知を失わないための同期フォールバックが宣言されている")
+    class RejectionFallbackDeclared {
+
+        /**
+         * {@code event-pool} は AbortPolicy であり、投入拒否は {@code @Async} メソッド本体の
+         * try/catch より前に起きる。呼び出し元がフォールバックできるよう、本体は
+         * {@code @Async} の付かない {@code *Now} メソッドとして呼べる必要がある。
+         */
+        @Test
+        @DisplayName("*Now は同期メソッド（@Async を持たない）")
+        void 同期フォールバックは非Async() {
+            for (String name : new String[]{"sendExpiryAlertNow", "sendCreditExpiredAlertNow"}) {
+                Method m = method(NotificationCreditAlertSender.class, name);
+                assertThat(m.getAnnotation(Async.class))
+                        .as("%s は @Async を持たないこと（持つと拒否時のフォールバックが再び拒否される）", name)
+                        .isNull();
+            }
         }
     }
 

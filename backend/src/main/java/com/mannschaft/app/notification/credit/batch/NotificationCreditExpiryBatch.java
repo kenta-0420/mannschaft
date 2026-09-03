@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * F09.13 通知クレジット有効期限バッチ。
@@ -52,6 +53,31 @@ import java.util.List;
  *       「項目TX完了を待つ非トランザクションのバッチオーケストレータからのみ実通知を行う」に従う
  *       （{@code NotificationCreditMonthlyResetBatch} と同じ経路）</li>
  * </ul>
+ *
+ * <h2>検分是正: 投入拒否による通知の永久欠落を塞ぐ</h2>
+ * <p>フラグ（{@code alert_sent_30d} / {@code alert_sent_7d}）と {@code expired_at} は項目TXで
+ * <b>先に確定</b>する。一方 {@code event-pool} は AbortPolicy であり、飽和時の
+ * {@code RejectedExecutionException} は {@code @Async} メソッド本体の try/catch より<b>前</b>
+ * （プロキシの投入時点）で発生する。是正前はこれをバッチ側の catch でログするだけだったため、
+ * フラグは立ったまま次回バッチの検索条件（{@code AlertSent30dFalse} 等）から外れ、
+ * <b>通知は二度と再試行されなかった</b>。失効通知に至ってはフラグを戻すこともできない
+ * （残高からの差し引きが済んでおり巻き戻せない）。</p>
+ *
+ * <p><b>採った方針: 二重送信のリスクを取ってでも永久欠落を避ける</b>。投入拒否を捕らえ、
+ * 同期版（{@code sendExpiryAlertNow} / {@code sendCreditExpiredAlertNow}）で
+ * バッチスレッド上から送り直す。この判断の根拠:</p>
+ * <ul>
+ *   <li>通知クレジットの期限・失効は<b>金銭に直結する告知</b>であり、届かないと組織は使えない残高を
+ *       抱えたまま気づけない。届かない害が重複して届く害を明確に上回る</li>
+ *   <li>そもそも投入拒否は「タスクが一度も実行されていない」ことが保証される事象なので、
+ *       このフォールバック経路自体は二重送信を<b>作らない</b>。二重送信のリスクを取ったのは
+ *       「フラグを先に確定させる（＝送信前に立てる）」という元の設計を維持した点であり、
+ *       送信中のプロセス異常終了などでは重複しうる。それでも欠落よりは重複を選ぶ</li>
+ *   <li>フラグを送信成功後に立てる案は採らなかった。非同期送信の成否をバッチが待てず、
+ *       待たせると是正前と同じ「バッチが通知の完了を待つ」構造に戻るため</li>
+ * </ul>
+ * <p>バッチは非トランザクションのオーケストレータなので、同期送信が長引いても
+ * 巻き戻る対象は無い（ShedLock の {@code lockAtMostFor=PT20M} の範囲で完了する想定）。</p>
  */
 @Slf4j
 @Service
@@ -135,8 +161,16 @@ public class NotificationCreditExpiryBatch {
                     continue;
                 }
                 // 項目TXはここで既にコミット済み。通知は別 Bean の @Async("event-pool") へ委譲する。
-                alertSender.sendExpiryAlert(target.organizationId(), target.purchaseId(),
-                        target.expiresAt(), daysRemaining);
+                // 投入拒否時は同期送信へフォールバックする（下記 javadoc 参照）。
+                try {
+                    alertSender.sendExpiryAlert(target.organizationId(), target.purchaseId(),
+                            target.expiresOn(), daysRemaining);
+                } catch (RejectedExecutionException ree) {
+                    log.warn("{}日前アラートの非同期投入が拒否されたため同期送信へフォールバック: purchaseId={}",
+                            daysRemaining, target.purchaseId(), ree);
+                    alertSender.sendExpiryAlertNow(target.organizationId(), target.purchaseId(),
+                            target.expiresOn(), daysRemaining);
+                }
                 sent++;
             } catch (Exception e) {
                 log.error("{}日前アラート処理失敗: purchaseId={}", daysRemaining, purchase.getId(), e);
@@ -167,7 +201,15 @@ public class NotificationCreditExpiryBatch {
                 processed++;
                 if (outcome.expiredCredits() > 0) {
                     // 項目TXはここで既にコミット済み。通知は別 Bean の @Async("event-pool") へ委譲する。
-                    alertSender.sendCreditExpiredAlert(outcome.organizationId(), outcome.expiredCredits());
+                    // 投入拒否時は同期送信へフォールバックする（下記 javadoc 参照）。
+                    try {
+                        alertSender.sendCreditExpiredAlert(outcome.organizationId(), outcome.expiredCredits());
+                    } catch (RejectedExecutionException ree) {
+                        log.warn("失効通知の非同期投入が拒否されたため同期送信へフォールバック: purchaseId={}",
+                                purchase.getId(), ree);
+                        alertSender.sendCreditExpiredAlertNow(
+                                outcome.organizationId(), outcome.expiredCredits());
+                    }
                 }
             } catch (Exception e) {
                 log.error("失効処理失敗: purchaseId={}", purchase.getId(), e);

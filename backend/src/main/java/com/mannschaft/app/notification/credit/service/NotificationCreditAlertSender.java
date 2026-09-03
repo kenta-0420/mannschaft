@@ -9,7 +9,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -32,6 +32,15 @@ import java.util.List;
  * からのみ呼ぶこと（凍結台帳ヘッダの契約）。{@code @Transactional} の内側から呼ぶと、
  * {@code @Async} の投入が拒否された場合（{@code event-pool} は AbortPolicy）に例外が業務TXへ
  * 波及しうる。</p>
+ *
+ * <h2>投入拒否で通知を失わないための {@code *Now} 系（Issue #2990 L4 検分是正）</h2>
+ * <p>{@code event-pool} は AbortPolicy であり、飽和時の {@code RejectedExecutionException} は
+ * {@code @Async} メソッド<b>本体の try/catch より前</b>（プロキシによる投入時点）で発生する。
+ * つまり本体の catch では拾えない。呼び出し元が「送ったつもり」で先へ進むと通知は永久に失われる。
+ * そのため各 {@code @Async} メソッドは本体を {@code *Now}（{@code @Async} 無し = 同期）へ切り出し、
+ * 呼び出し元が拒否を捕らえて同期実行にフォールバックできるようにしてある。
+ * 投入拒否は「タスクが一度も実行されていない」ことが保証される事象なので、
+ * フォールバックしても二重送信にはならない。</p>
  *
  * <h2>D-5: 越境は Service 経由</h2>
  * <p>ADMIN ユーザーIDの解決は {@code role} ドメインの {@code UserRoleRepository} を直接注入せず
@@ -95,12 +104,29 @@ public class NotificationCreditAlertSender {
      *
      * @param organizationId 組織ID
      * @param purchaseId     購入ID
-     * @param expiresAt      有効期限日時
+     * @param expiresOn      有効期限日
      * @param daysRemaining  残り日数
      */
     @Async("event-pool")
     public void sendExpiryAlert(Long organizationId, Long purchaseId,
-                                LocalDateTime expiresAt, int daysRemaining) {
+                                LocalDate expiresOn, int daysRemaining) {
+        sendExpiryAlertNow(organizationId, purchaseId, expiresOn, daysRemaining);
+    }
+
+    /**
+     * 有効期限アラートを<b>呼び出しスレッドで同期送信する</b>（{@code event-pool} 投入拒否時のフォールバック）。
+     *
+     * <p>{@link #sendExpiryAlert} の本体。{@code @Async} を付けないため、プロキシ経由で呼んでも
+     * その場で実行される。バッチ側は {@code RejectedExecutionException} を捕らえてこちらを呼び直す
+     * （経緯は {@code NotificationCreditExpiryBatch#sendOrFallback} の javadoc を参照）。</p>
+     *
+     * @param organizationId 組織ID
+     * @param purchaseId     購入ID
+     * @param expiresOn      有効期限日
+     * @param daysRemaining  残り日数
+     */
+    public void sendExpiryAlertNow(Long organizationId, Long purchaseId,
+                                   LocalDate expiresOn, int daysRemaining) {
         try {
             List<Long> adminUserIds = roleService.getAdminUserIdsByOrganizationId(organizationId);
             if (adminUserIds.isEmpty()) {
@@ -122,9 +148,9 @@ public class NotificationCreditAlertSender {
                                     "通知クレジットの有効期限まで残り" + daysRemaining + "日です", locale),
                             messageSource.getMessage(
                                     "notification.credit.expiryAlert.body",
-                                    new Object[]{purchaseId, expiresAt.toLocalDate()},
+                                    new Object[]{purchaseId, expiresOn},
                                     "購入ID#" + purchaseId + "の通知クレジットが "
-                                            + expiresAt.toLocalDate() + " に失効します。期限前にご利用ください。",
+                                            + expiresOn + " に失効します。期限前にご利用ください。",
                                     locale))
             );
         } catch (Exception e) {
@@ -143,6 +169,18 @@ public class NotificationCreditAlertSender {
      */
     @Async("event-pool")
     public void sendCreditExpiredAlert(Long organizationId, long expiredCredits) {
+        sendCreditExpiredAlertNow(organizationId, expiredCredits);
+    }
+
+    /**
+     * クレジット失効通知を<b>呼び出しスレッドで同期送信する</b>（{@code event-pool} 投入拒否時のフォールバック）。
+     *
+     * <p>{@link #sendCreditExpiredAlert} の本体。用途は {@link #sendExpiryAlertNow} と同じ。</p>
+     *
+     * @param organizationId 組織ID
+     * @param expiredCredits 失効したクレジット通数
+     */
+    public void sendCreditExpiredAlertNow(Long organizationId, long expiredCredits) {
         try {
             List<Long> adminUserIds = roleService.getAdminUserIdsByOrganizationId(organizationId);
             if (adminUserIds.isEmpty()) {

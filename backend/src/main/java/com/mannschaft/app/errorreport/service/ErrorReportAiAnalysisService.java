@@ -59,6 +59,8 @@ public class ErrorReportAiAnalysisService {
     private final ErrorReportActivityService activityService;
     private final ErrorReportNotifier notifier;
     private final ErrorReportProperties props;
+    /** Issue #2990 L4 検分是正: FAILED 記録を呼び出し元のロールバックから切り離すための独立TX Bean。 */
+    private final ErrorReportAiAnalysisFailureRecorder failureRecorder;
 
     // Issue #2990 L4: analyzeAfterCommit / analyzeAsync は自己呼び出しにより @Async と @Transactional が
     // いずれも失効していたため、ErrorReportAiAnalysisDispatcher / ErrorReportAiAnalysisAsyncRunner へ
@@ -141,16 +143,22 @@ public class ErrorReportAiAnalysisService {
             // 予算系エラーは saved レコードを残さず再投入
             throw e;
         } catch (Exception e) {
-            // FAILED の永続化（再試行ループを防ぐため last_ai_analysis_at は更新する）
-            entity = ErrorReportAiAnalysisEntity.builder()
-                    .errorReportId(errorReportId)
-                    .modelName(props.getAi().getModel())
-                    .status("FAILED")
-                    .errorMessage(truncate(e.getMessage(), ERROR_MESSAGE_MAX_LENGTH))
-                    .createdBy(createdBy)
-                    .build();
-            aiAnalysisRepository.save(entity);
-            report.setLastAiAnalysisAt(LocalDateTime.now());
+            // FAILED の永続化（再試行ループを防ぐため last_ai_analysis_at は更新する）。
+            //
+            // Issue #2990 L4 検分是正: この記録は必ず「別トランザクション」で確定させること。
+            // 本メソッドの @Async/@Transactional は L4 で初めて実効化したため、ここで直接 save しても
+            // 直後の throw で既定のロールバック規則により巻き戻り、FAILED 行も last_ai_analysis_at も
+            // 残らない。残らなければ ErrorReportAiAnalysisBatch（last_ai_analysis_at IS NULL が検索条件）が
+            // 5 分ごとに同じレポートを AI へ投げ続ける = 再試行ループそのものが起きる。
+            //
+            // 例外は握り潰さず投げ直す。手動再分析 API は失敗を呼び出し元に返す必要があり、
+            // 「投げるのをやめる」は失敗を隠す対処療法になるため採らない。
+            failureRecorder.recordFailure(
+                    errorReportId,
+                    props.getAi().getModel(),
+                    truncate(e.getMessage(), ERROR_MESSAGE_MAX_LENGTH),
+                    createdBy,
+                    LocalDateTime.now());
             throw new RuntimeException("AI 分析に失敗しました: " + e.getMessage(), e);
         }
     }

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 /**
  * 通知クレジット有効期限バッチの 1 項目実行 Bean（Issue #2990 L4）。
@@ -68,7 +68,11 @@ public class NotificationCreditExpiryRunner {
             purchase.markAlertSent7d();
         }
         purchaseRepository.save(purchase);
-        return new AlertTarget(purchase.getOrganizationId(), purchase.getId(), purchase.getExpiresAt());
+        // 有効期限は通知本文で「日付」としてしか使わない。ここで LocalDate に落としておくことで、
+        // 日時ポリシー（docs/architecture/datetime_policy_utc_instant_vs_wallclock.md）が禁じる
+        // 新規 LocalDateTime フィールドを増やさずに済む（番人 DateTimeAndZoneGuardTest）。
+        LocalDate expiresOn = purchase.getExpiresAt() == null ? null : purchase.getExpiresAt().toLocalDate();
+        return new AlertTarget(purchase.getOrganizationId(), purchase.getId(), expiresOn);
     }
 
     /**
@@ -130,9 +134,9 @@ public class NotificationCreditExpiryRunner {
      *
      * @param organizationId 組織ID
      * @param purchaseId     購入ID
-     * @param expiresAt      有効期限日時
+     * @param expiresOn      有効期限日（通知本文は日付単位でしか使わないため壁時計の日付で持つ）
      */
-    public record AlertTarget(Long organizationId, Long purchaseId, LocalDateTime expiresAt) {
+    public record AlertTarget(Long organizationId, Long purchaseId, LocalDate expiresOn) {
     }
 
     /**

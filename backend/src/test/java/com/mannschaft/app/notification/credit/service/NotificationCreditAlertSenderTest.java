@@ -13,7 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 
@@ -87,7 +87,7 @@ class NotificationCreditAlertSenderTest {
         useRealMessageSource();
         given(roleService.getAdminUserIdsByOrganizationId(1L)).willReturn(List.of(5L));
 
-        sender.sendExpiryAlert(1L, 200L, LocalDateTime.of(2026, 9, 1, 0, 0), 30);
+        sender.sendExpiryAlert(1L, 200L, LocalDate.of(2026, 9, 1), 30);
 
         ArgumentCaptor<NotificationHelper.LocalizedMessageBuilder> builderCaptor =
                 ArgumentCaptor.forClass(NotificationHelper.LocalizedMessageBuilder.class);

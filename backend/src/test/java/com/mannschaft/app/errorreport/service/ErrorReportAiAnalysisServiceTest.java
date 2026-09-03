@@ -14,7 +14,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -28,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
@@ -55,6 +55,9 @@ class ErrorReportAiAnalysisServiceTest {
     private ErrorReportActivityService activityService;
     @Mock
     private ErrorReportNotifier notifier;
+    /** Issue #2990 L4 検分是正: FAILED 記録は独立TXの別 Bean が担う。 */
+    @Mock
+    private ErrorReportAiAnalysisFailureRecorder failureRecorder;
 
     private ErrorReportProperties props;
 
@@ -71,7 +74,7 @@ class ErrorReportAiAnalysisServiceTest {
         service = new ErrorReportAiAnalysisService(
                 errorReportRepository, aiAnalysisRepository,
                 provider, sanitizer, budgetService,
-                activityService, notifier, props);
+                activityService, notifier, props, failureRecorder);
 
         // sanitizer は素通しでよい（buildContext を呼ばないテストでは未使用）
         lenient().when(sanitizer.sanitize(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -187,13 +190,14 @@ class ErrorReportAiAnalysisServiceTest {
         assertThatThrownBy(() -> service.analyzeSync(REPORT_ID, ACTOR_ID))
                 .isInstanceOf(RuntimeException.class);
 
-        ArgumentCaptor<ErrorReportAiAnalysisEntity> captor =
-                ArgumentCaptor.forClass(ErrorReportAiAnalysisEntity.class);
-        verify(aiAnalysisRepository).save(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo("FAILED");
-        assertThat(captor.getValue().getErrorMessage()).contains("API エラー");
-        // last_ai_analysis_at も再試行ループ防止のため更新される
-        assertThat(report.getLastAiAnalysisAt()).isNotNull();
+        // Issue #2990 L4 検分是正: FAILED 記録は独立トランザクション（REQUIRES_NEW）の別 Bean へ委譲する。
+        // 本メソッド内で直接 save していた是正前は、直後の throw で @Transactional が巻き戻すため
+        // FAILED 行も last_ai_analysis_at も残らなかった。
+        // ※ この単体テストはモックが save の巻き戻りを再現できないため、是正前でも緑になる
+        //   （欠陥を隠していた検体）。実際の永続化は ErrorReportAiAnalysisFailureRecordIT が実DBで検証する。
+        verify(failureRecorder).recordFailure(
+                eq(REPORT_ID), eq("claude-haiku-4-5"), contains("API エラー"), eq(ACTOR_ID), any());
+        verify(aiAnalysisRepository, never()).save(any());
         // activity は記録しない（FAILED 時）
         verify(activityService, never())
                 .record(anyLong(), any(), any(), any(), any());
