@@ -80,15 +80,27 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 $mutating = 'git(\s+-{1,2}\S+(\s+\S+)?)*\s+(' + (@(
     # --- 読み取り専用の形を持たないもの（無条件に拒否） ---
     'checkout', 'switch', 'restore', 'commit', 'reset', 'rebase', 'cherry-pick',
-    'pull', 'revert', 'am', 'apply', 'clean', 'rm', 'mv', 'sparse-checkout',
-    'update-ref',
+    'pull', 'revert', 'am', 'update-ref',
     # --- 読み取り専用の形があるもの（それだけを否定先読みで除外） ---
     # 既定は拒否のままにする。除外し忘れは誤検知（不便）で済むが、列挙し漏れは
     # そのまま保護の穴になるため（#3079 の Codex 検分で実際に穴が見つかった）。
-    'merge(?!-(?:base|tree)\b)',        # merge-base / merge-tree は読み取り専用
-    'stash(?!\s+(?:list|show)\b)',      # stash list / show は読み取り専用
-    # branch は一覧表示が主用途のため、破壊的なオプション付きのときだけ拒否する
-    'branch\s+(?:-[dDmMcC]\b|--delete\b|--move\b|--copy\b|--force\b)'
+    # 除外は**先頭のトークンだけ**を見る。後方に紛れた読み取り専用フラグまで
+    # 拾おうとすると `git clean -f -n` のような打ち消し合う組み合わせを
+    # 読み違えるため、判りやすい形だけを通し、残りは拒否側へ倒す。
+    'merge(?!-(?:base|tree)\b)',                  # merge-base / merge-tree は読み取り専用
+    'stash(?!\s+(?:list|show)\b)',                # stash list / show は読み取り専用
+    'clean(?!\s+(?:-nd?|-dn|--dry-run)\b)',       # -n / --dry-run は試算のみ
+    'apply(?!\s+(?:--check|--stat|--numstat|--summary)\b)',
+    'rm(?!\s+(?:-n|--dry-run)\b)',
+    'mv(?!\s+(?:-n|--dry-run)\b)',
+    'sparse-checkout(?!\s+(?:list|check-rules)\b)',
+    # branch は一覧表示が主用途のため、**引数を伴う形**（作成・改名・削除・追跡
+    # 設定はいずれもブランチ名を取る）だけを拒否する。`git branch feature/x` の
+    # ようにオプション無しの作成も共有リポジトリのローカル参照を変えるため、
+    # 破壊的オプションの列挙では捕まえられない（#3082 の Codex 検分で判明）。
+    'branch(?=(?:\s+-\S+)*\s+[^-\s])',
+    # 引数を取らない破壊的オプション
+    'branch\s+(?:--unset-upstream|--edit-description)\b'
 ) -join '|') + ')\b'
 
 # `/mnt/<ドライブ文字>/...` 形式の WSL パスを Windows パスへ読み替える。

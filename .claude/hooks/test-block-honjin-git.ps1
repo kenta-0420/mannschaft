@@ -83,6 +83,11 @@ $cases = @(
     @{ name = '本陣 cwd で git sparse-checkout'; cwd = $honjin; expect = 'deny'; cmd = 'git sparse-checkout set backend' },
     @{ name = '本陣 cwd で git update-ref';    cwd = $honjin; expect = 'deny'; cmd = 'git update-ref refs/heads/main HEAD' },
     @{ name = '本陣 cwd で git branch -D';     cwd = $honjin; expect = 'deny'; cmd = 'git branch -D feature/x' },
+    # ブランチ「作成」も共有リポジトリのローカル参照を変える。破壊的オプションの
+    # 列挙では捕まらないため、引数を伴う形を拒否する（#3082 Codex 検分）。
+    @{ name = '本陣 cwd で git branch 作成';   cwd = $honjin; expect = 'deny'; cmd = 'git branch feature/x' },
+    @{ name = '本陣 cwd で git branch -t 作成'; cwd = $honjin; expect = 'deny'; cmd = 'git branch -t feature/x origin/main' },
+    @{ name = '本陣 cwd で git branch --unset-upstream'; cwd = $honjin; expect = 'deny'; cmd = 'git branch --unset-upstream' },
 
     # --- 通されるべき（誤検知しないこと） ---
     @{ name = 'worktree cwd で git commit';        cwd = $worktree; expect = 'allow'; cmd = 'git commit -m "テスト"' },
@@ -100,6 +105,15 @@ $cases = @(
     @{ name = 'git stash show（読み取り専用・誤検知しない）'; cwd = $honjin; expect = 'allow'; cmd = 'git stash show stash@{0}' },
     @{ name = 'git branch（一覧表示・誤検知しない）';         cwd = $honjin; expect = 'allow'; cmd = 'git branch --list' },
     # 変更系の語がオプションの値として現れるだけの場合。字面で拾わないことを守る番人。
+    @{ name = 'git branch（引数なし・誤検知しない）';          cwd = $honjin; expect = 'allow'; cmd = 'git branch' },
+    @{ name = 'git branch -a（一覧表示・誤検知しない）';       cwd = $honjin; expect = 'allow'; cmd = 'git branch -a' },
+    @{ name = 'git branch --show-current（誤検知しない）';     cwd = $honjin; expect = 'allow'; cmd = 'git branch --show-current' },
+    # 変更を伴わない診断形。これらまで拒否すると本陣で状態確認もできなくなる。
+    @{ name = 'git clean -n（試算のみ・誤検知しない）';        cwd = $honjin; expect = 'allow'; cmd = 'git clean -n' },
+    @{ name = 'git clean --dry-run（誤検知しない）';           cwd = $honjin; expect = 'allow'; cmd = 'git clean --dry-run -d' },
+    @{ name = 'git apply --check（検証のみ・誤検知しない）';   cwd = $honjin; expect = 'allow'; cmd = 'git apply --check fix.patch' },
+    @{ name = 'git apply --stat（誤検知しない）';              cwd = $honjin; expect = 'allow'; cmd = 'git apply --stat fix.patch' },
+    @{ name = 'git sparse-checkout list（誤検知しない）';      cwd = $honjin; expect = 'allow'; cmd = 'git sparse-checkout list' },
     @{ name = 'git log --grep=revert（誤検知しない）';        cwd = $honjin; expect = 'allow'; cmd = 'git log --grep=revert' },
     # worktree 側では当然すべて通る
     @{ name = 'worktree cwd で git stash pop';                cwd = $worktree; expect = 'allow'; cmd = 'git stash pop' },
