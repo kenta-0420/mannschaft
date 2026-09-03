@@ -224,7 +224,7 @@ class OrganizationServiceTest {
         @DisplayName("正常取得_組織情報が返される")
         void 正常取得_組織情報が返される() {
             OrganizationEntity org = createOrganization();
-            given(organizationRepository.findBySlugAndDeletedAtIsNull(ORG_SLUG)).willReturn(Optional.of(org));
+            given(organizationRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(ORG_SLUG, OrganizationEntity.LifecycleStatus.ACTIVE)).willReturn(Optional.of(org));
             given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(5L);
 
             ApiResponse<OrganizationResponse> response =
@@ -238,7 +238,7 @@ class OrganizationServiceTest {
         @DisplayName("F09.19.10: numericIdに内部BIGINT IDが返される(Spotlight scopeId解決用)")
         void numericIdに内部BIGINT_IDが返される() {
             OrganizationEntity org = createOrganization();
-            given(organizationRepository.findBySlugAndDeletedAtIsNull(ORG_SLUG)).willReturn(Optional.of(org));
+            given(organizationRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(ORG_SLUG, OrganizationEntity.LifecycleStatus.ACTIVE)).willReturn(Optional.of(org));
             given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(0L);
 
             ApiResponse<OrganizationResponse> response =
@@ -255,7 +255,7 @@ class OrganizationServiceTest {
             OrganizationEntity org = createOrganization();
             ReflectionTestUtils.setField(org, "iconUrl", "org/10/icon/raw.png");
             ReflectionTestUtils.setField(org, "bannerUrl", "org/10/banner/raw.png");
-            given(organizationRepository.findBySlugAndDeletedAtIsNull(ORG_SLUG)).willReturn(Optional.of(org));
+            given(organizationRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(ORG_SLUG, OrganizationEntity.LifecycleStatus.ACTIVE)).willReturn(Optional.of(org));
             given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(0L);
             given(mediaUrlResolver.resolve("org/10/icon/raw.png"))
                     .willReturn("https://cdn.example.com/signed/icon.png");
@@ -275,7 +275,7 @@ class OrganizationServiceTest {
         @DisplayName("組織不在_ORG_001例外")
         void 組織不在_ORG_001例外() {
             String unknownSlug = "unknown-org-999";
-            given(organizationRepository.findBySlugAndDeletedAtIsNull(unknownSlug)).willReturn(Optional.empty());
+            given(organizationRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(unknownSlug, OrganizationEntity.LifecycleStatus.ACTIVE)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> organizationService.getOrganization(unknownSlug))
                     .isInstanceOf(BusinessException.class)

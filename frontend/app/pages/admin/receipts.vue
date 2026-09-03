@@ -3,6 +3,7 @@ import type { ReceiptResponse } from '~/types/receipt'
 
 definePageMeta({ middleware: 'auth' })
 
+const { t } = useI18n()
 const {
   getReceipts,
   issueReceipt,
@@ -38,7 +39,7 @@ async function load() {
     receipts.value = res.data
     totalRecords.value = (res.meta?.total as number) ?? res.data.length
   } catch {
-    showError('領収書一覧の取得に失敗しました')
+    showError(t('receipt.list.toast.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -53,48 +54,48 @@ function onPage(event: { page: number; rows: number }) {
 async function handleApprove(id: number) {
   try {
     await approveReceipt(id)
-    success('承認しました')
+    success(t('receipt.list.toast.approved'))
     load()
   } catch {
-    showError('承認に失敗しました')
+    showError(t('receipt.list.toast.approveFailed'))
   }
 }
 
 async function handleVoid(id: number) {
   try {
     await voidReceipt(id)
-    success('無効化しました')
+    success(t('receipt.list.toast.voided'))
     load()
   } catch {
-    showError('無効化に失敗しました')
+    showError(t('receipt.list.toast.voidFailed'))
   }
 }
 
 async function handleReissue(id: number) {
   try {
     await reissueReceipt(id)
-    success('再発行しました')
+    success(t('receipt.list.toast.reissued'))
     load()
   } catch {
-    showError('再発行に失敗しました')
+    showError(t('receipt.list.toast.reissueFailed'))
   }
 }
 
 async function handleDownloadPdf(id: number) {
   try {
     await downloadPdf(id)
-    success('PDFをダウンロードしました')
+    success(t('receipt.list.toast.pdfDownloaded'))
   } catch {
-    showError('PDFダウンロードに失敗しました')
+    showError(t('receipt.list.toast.pdfDownloadFailed'))
   }
 }
 
 async function handleSendEmail(id: number) {
   try {
     await sendReceiptEmail(id)
-    success('メールを送信しました')
+    success(t('receipt.list.toast.emailSent'))
   } catch {
-    showError('メール送信に失敗しました')
+    showError(t('receipt.list.toast.emailSendFailed'))
   }
 }
 
@@ -114,11 +115,11 @@ async function submitIssue() {
       description: issueForm.value.description,
       notes: issueForm.value.notes,
     })
-    success('領収書を発行しました')
+    success(t('receipt.list.toast.issued'))
     showIssueDialog.value = false
     load()
   } catch {
-    showError('領収書の発行に失敗しました')
+    showError(t('receipt.list.toast.issueFailed'))
   } finally {
     issueSubmitting.value = false
   }
@@ -134,8 +135,8 @@ function statusSeverity(status: string): string {
 
 function statusLabel(status: string): string {
   switch (status) {
-    case 'DRAFT': return '下書き'
-    case 'ISSUED': return '発行済'
+    case 'DRAFT': return t('receipt.list.status.DRAFT')
+    case 'ISSUED': return t('receipt.list.status.ISSUED')
     default: return status
   }
 }
@@ -146,8 +147,13 @@ onMounted(() => load())
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-4 flex items-center justify-between">
-      <PageHeader title="領収書管理" />
-      <Button label="新規発行" icon="pi pi-plus" @click="openIssueDialog" />
+      <PageHeader :title="t('receipt.list.title')" />
+      <div class="flex gap-2">
+        <NuxtLink to="/admin/receipt-settings">
+          <Button :label="t('receipt.list.settingsButton')" icon="pi pi-cog" severity="secondary" outlined />
+        </NuxtLink>
+        <Button :label="t('receipt.list.issueButton')" icon="pi pi-plus" @click="openIssueDialog" />
+      </div>
     </div>
 
     <DataTable
@@ -163,10 +169,10 @@ onMounted(() => load())
       @page="onPage"
     >
       <template #empty>
-        <DashboardEmptyState icon="pi pi-file" message="領収書がありません" />
+        <DashboardEmptyState icon="pi pi-file" :message="t('receipt.list.empty')" />
       </template>
 
-      <Column header="発行日" style="width: 140px">
+      <Column :header="t('receipt.list.column.issuedAt')" style="width: 140px">
         <template #body="{ data }">
           <span class="text-sm">
             {{ data.issuedAt ? formatDate(data.issuedAt) : '-' }}
@@ -174,48 +180,48 @@ onMounted(() => load())
         </template>
       </Column>
 
-      <Column field="receiptNumber" header="領収書番号" style="width: 160px" />
+      <Column field="receiptNumber" :header="t('receipt.list.column.receiptNumber')" style="width: 160px" />
 
-      <Column field="recipientName" header="宛名" />
+      <Column field="recipientName" :header="t('receipt.list.column.recipientName')" />
 
-      <Column header="金額" style="width: 120px">
+      <Column :header="t('receipt.list.column.amount')" style="width: 120px">
         <template #body="{ data }">
           <span class="font-medium">{{ data.totalAmount.toLocaleString('ja-JP') }}円</span>
         </template>
       </Column>
 
-      <Column header="ステータス" style="width: 100px">
+      <Column :header="t('receipt.list.column.status')" style="width: 100px">
         <template #body="{ data }">
           <Tag :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" />
         </template>
       </Column>
 
-      <Column header="操作" style="width: 340px">
+      <Column :header="t('receipt.list.column.action')" style="width: 340px">
         <template #body="{ data }">
           <div class="flex flex-wrap gap-1">
             <Button
               v-if="data.status === 'DRAFT'"
-              label="承認"
+              :label="t('receipt.list.action.approve')"
               size="small"
               severity="success"
               @click="handleApprove(data.id)"
             />
             <Button
-              label="無効化"
+              :label="t('receipt.list.action.void')"
               size="small"
               severity="danger"
               outlined
               @click="handleVoid(data.id)"
             />
             <Button
-              label="再発行"
+              :label="t('receipt.list.action.reissue')"
               size="small"
               severity="info"
               outlined
               @click="handleReissue(data.id)"
             />
             <Button
-              v-tooltip="'PDF'"
+              v-tooltip="t('receipt.list.action.pdf')"
               icon="pi pi-file-pdf"
               size="small"
               severity="secondary"
@@ -223,7 +229,7 @@ onMounted(() => load())
               @click="handleDownloadPdf(data.id)"
             />
             <Button
-              v-tooltip="'メール送信'"
+              v-tooltip="t('receipt.list.action.sendEmail')"
               icon="pi pi-envelope"
               size="small"
               severity="secondary"
@@ -238,51 +244,51 @@ onMounted(() => load())
     <!-- 新規発行ダイアログ -->
     <Dialog
       v-model:visible="showIssueDialog"
-      header="領収書を発行"
+      :header="t('receipt.list.dialog.issueTitle')"
       :style="{ width: '480px' }"
       modal
       :draggable="false"
     >
       <div class="flex flex-col gap-4">
         <div>
-          <label class="mb-1 block text-sm font-medium">宛名 <span class="text-red-500">*</span></label>
+          <label class="mb-1 block text-sm font-medium">{{ t('receipt.list.dialog.recipientName') }} <span class="text-red-500">*</span></label>
           <InputText
             v-model="issueForm.recipientName"
             class="w-full"
-            placeholder="例: 山田 太郎"
+            :placeholder="t('receipt.list.dialog.recipientNamePlaceholder')"
           />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">金額（円） <span class="text-red-500">*</span></label>
+          <label class="mb-1 block text-sm font-medium">{{ t('receipt.list.dialog.amount') }} <span class="text-red-500">*</span></label>
           <InputText
             v-model="issueForm.totalAmount"
             type="number"
             class="w-full"
-            placeholder="例: 10000"
+            :placeholder="t('receipt.list.dialog.amountPlaceholder')"
           />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">品目・摘要</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('receipt.list.dialog.description') }}</label>
           <InputText
             v-model="issueForm.description"
             class="w-full"
-            placeholder="例: 月会費"
+            :placeholder="t('receipt.list.dialog.descriptionPlaceholder')"
           />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">メモ</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('receipt.list.dialog.notes') }}</label>
           <Textarea
             v-model="issueForm.notes"
             class="w-full"
             rows="3"
-            placeholder="備考など"
+            :placeholder="t('receipt.list.dialog.notesPlaceholder')"
           />
         </div>
       </div>
       <template #footer>
-        <Button label="キャンセル" severity="secondary" text @click="showIssueDialog = false" />
+        <Button :label="t('receipt.list.dialog.cancel')" severity="secondary" text @click="showIssueDialog = false" />
         <Button
-          label="発行する"
+          :label="t('receipt.list.dialog.submit')"
           icon="pi pi-check"
           :loading="issueSubmitting"
           :disabled="!issueForm.recipientName || !Number(issueForm.totalAmount)"
