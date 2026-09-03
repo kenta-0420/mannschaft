@@ -57,6 +57,16 @@ $cases = @(
     # 保護側に倒して deny のままとする（緩める方向の変更はしない）。
     @{ name = 'ヒアドキュメント本文の git commit（保護側に倒して deny）'; cwd = $honjin; expect = 'deny'; cmd = "cat <<'EOF'`nまず git commit する手順`nEOF" },
 
+    # ハイフン付きの配管コマンドのうち、インデックスや作業木を書き換えるものは
+    # 拒否を維持する。読み取り専用のものだけを除外する方式が「安全な側を列挙し
+    # 切れているか」を守る番人であり、除外方式へ変えた際の取りこぼしを検出する。
+    @{ name = '本陣 cwd で git checkout-index（変更系ゆえ deny 維持）'; cwd = $honjin; expect = 'deny'; cmd = 'git checkout-index -a -f' },
+    @{ name = '本陣 cwd で git merge-file（変更系ゆえ deny 維持）';     cwd = $honjin; expect = 'deny'; cmd = 'git merge-file a.txt base.txt b.txt' },
+    @{ name = '本陣 cwd で git merge-recursive（変更系ゆえ deny 維持）'; cwd = $honjin; expect = 'deny'; cmd = 'git merge-recursive base -- HEAD other' },
+    @{ name = '本陣 cwd で git merge-octopus（変更系ゆえ deny 維持）';   cwd = $honjin; expect = 'deny'; cmd = 'git merge-octopus -- HEAD a b' },
+    @{ name = '本陣 cwd で git merge-ours（変更系ゆえ deny 維持）';      cwd = $honjin; expect = 'deny'; cmd = 'git merge-ours base -- HEAD other' },
+    @{ name = '本陣 cwd で git merge-index（変更系ゆえ deny 維持）';     cwd = $honjin; expect = 'deny'; cmd = 'git merge-index git-merge-one-file -a' },
+
     # --- 通されるべき（誤検知しないこと） ---
     @{ name = 'worktree cwd で git commit';        cwd = $worktree; expect = 'allow'; cmd = 'git commit -m "テスト"' },
     @{ name = '-C で worktree 絶対パスを指定';     cwd = $honjin;   expect = 'allow'; cmd = "git -C `"$worktree`" commit -m x" },
@@ -64,6 +74,10 @@ $cases = @(
     @{ name = 'git worktree add';                  cwd = $honjin;   expect = 'allow'; cmd = 'git worktree add .claude/worktrees/foo -b feature/foo origin/main' },
     @{ name = 'cd worktree してから commit';       cwd = $honjin;   expect = 'allow'; cmd = 'cd .claude/worktrees/fix-hook && git commit -m x' },
     @{ name = 'git 以外（変更系サブコマンド無し）'; cwd = $honjin;   expect = 'allow'; cmd = 'git status' },
+    # 読み取り専用のハイフン付きサブコマンド。`merge` がハイフン直前でも
+    # 境界として成立するため `merge` と誤認され、本陣の同期作業が拒否された。
+    @{ name = 'git merge-base（読み取り専用・誤検知しない）'; cwd = $honjin; expect = 'allow'; cmd = 'git merge-base --is-ancestor HEAD origin/main' },
+    @{ name = 'git merge-tree（読み取り専用・誤検知しない）'; cwd = $honjin; expect = 'allow'; cmd = 'git merge-tree main feature/x' },
     @{ name = 'bash -lc のクォート内 cd＋worktree commit'; cwd = $honjin; expect = 'allow'; cmd = "bash -lc 'cd .claude/worktrees/fix-hook && git commit -m x'" },
 
     # --- PowerShell ツール経由（Windows の主シェル側からの迂回を塞ぐ） ---

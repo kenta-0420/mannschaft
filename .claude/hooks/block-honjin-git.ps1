@@ -54,7 +54,21 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 # `git -C <path> commit` のように git と本体サブコマンドの間に
 # -C/--git-dir 等のオプションが挟まるケースも拾えるよう、
 # 間に任意個のオプション（先頭が - のトークン）を許容する。
-$mutating = 'git(\s+-{1,2}\S+(\s+\S+)?)*\s+(checkout|switch|commit|reset|merge|rebase|cherry-pick|pull)\b'
+#
+# `\b` はハイフンの直前でも境界として成立するため、`git merge-base`
+# （読み取り専用）が `merge` と誤認されて拒否されていた。実際に
+# `git merge-base --is-ancestor` が本陣の同期作業を妨げた。
+#
+# 直し方として「サブコマンド末尾を `(?![\w-])` で閉じる」は採らない。それでは
+# merge-recursive / merge-octopus / merge-resolve / merge-ours / merge-subtree
+# や checkout-index / merge-file / merge-index / merge-one-file といった、
+# インデックスや作業木を書き換える配管コマンドまで素通りし、保護に穴が開く
+# （安全な側を列挙し切るのは取りこぼしやすい）。
+#
+# よって既定は従来どおり `\b` で拒否したままとし、**読み取り専用であることが
+# 確かなものだけ**を否定先読みで除外する。既定が拒否なので、除外し忘れは
+# 誤検知（不便）になるだけで、保護の穴にはならない。
+$mutating = 'git(\s+-{1,2}\S+(\s+\S+)?)*\s+(checkout|switch|commit|reset|merge(?!-(?:base|tree)\b)|rebase|cherry-pick|pull)\b'
 
 # `/mnt/<ドライブ文字>/...` 形式の WSL パスを Windows パスへ読み替える。
 # 大文字小文字・末尾スラッシュを問わない。読み替え不可なら元の文字列を返す。
