@@ -77,6 +77,16 @@ if ([string]::IsNullOrWhiteSpace($cmd)) { exit 0 }
 #
 # push / fetch は本陣の作業木を変えないため対象外（従来どおり）。
 # tag の作成は他セッションと衝突しにくく害が小さいため見送る。
+# 「読み取り専用フラグが1つ以上あり、かつ他のトークンがすべて無害」なときだけ
+# 除外する否定先読みを組み立てる。無害なトークンとは、$Safe に挙げたフラグか、
+# フラグでない語（パス等）である。集合に無い語が1つでも混じれば除外は成立せず、
+# 拒否側へ倒れる。`--no-dry-run` のような打ち消しオプションはここで弾かれる。
+function Read-OnlyForm {
+    param([string]$Sub, [string]$Required, [string]$Safe)
+    $token = '(?:' + $Safe + '|[^-\s]\S*)'
+    return $Sub + '(?!(?:\s+' + $token + ')*\s+(?:' + $Required + ')(?:\s+' + $token + ')*\s*$)'
+}
+
 $mutating = 'git(\s+-{1,2}\S+(\s+\S+)?)*\s+(' + (@(
     # --- 読み取り専用の形を持たないもの（無条件に拒否） ---
     'checkout', 'switch', 'restore', 'commit', 'reset', 'rebase', 'cherry-pick',
@@ -84,15 +94,22 @@ $mutating = 'git(\s+-{1,2}\S+(\s+\S+)?)*\s+(' + (@(
     # --- 読み取り専用の形があるもの（それだけを否定先読みで除外） ---
     # 既定は拒否のままにする。除外し忘れは誤検知（不便）で済むが、列挙し漏れは
     # そのまま保護の穴になるため（#3079 の Codex 検分で実際に穴が見つかった）。
-    # 除外は**先頭のトークンだけ**を見る。後方に紛れた読み取り専用フラグまで
-    # 拾おうとすると `git clean -f -n` のような打ち消し合う組み合わせを
-    # 読み違えるため、判りやすい形だけを通し、残りは拒否側へ倒す。
+    # 除外の判定は**セグメント全体**を見る。先頭トークンだけで読み取り専用と
+    # 判断すると、後続の打ち消しオプションで迂回できてしまう（#3082 の Codex
+    # 検分が P1 として摘発）。git は真偽オプションに `--no-` 形を自動生成するため、
+    #   git clean --dry-run --no-dry-run -f   … 実際にはファイルを消す
+    #   git apply --check --apply patch       … 実際にはパッチを当てる
+    # がいずれも「先頭が読み取り専用フラグ」を満たしてしまう。
+    #
+    # よって Read-OnlyForm は「読み取り専用フラグが1つ以上あり、**かつ他の
+    # トークンがすべて無害な集合に収まる**」ときだけ除外する。集合に無い語が
+    # 1つでも混じれば拒否側へ倒れるので、`--no-` 形も未知のオプションも通らない。
     'merge(?!-(?:base|tree)\b)',                  # merge-base / merge-tree は読み取り専用
     'stash(?!\s+(?:list|show)\b)',                # stash list / show は読み取り専用
-    'clean(?!\s+(?:-nd?|-dn|--dry-run)\b)',       # -n / --dry-run は試算のみ
-    'apply(?!\s+(?:--check|--stat|--numstat|--summary)\b)',
-    'rm(?!\s+(?:-n|--dry-run)\b)',
-    'mv(?!\s+(?:-n|--dry-run)\b)',
+    (Read-OnlyForm 'clean' '-[dxXq]*n[dxXq]*|--dry-run' '-[dxXqn]+|--dry-run|--quiet|--'),
+    (Read-OnlyForm 'apply' '--check|--stat|--numstat|--summary' '--check|--stat|--numstat|--summary|--verbose|-v|--'),
+    (Read-OnlyForm 'rm'    '-n|--dry-run' '-n|--dry-run|-r|-q|--cached|--'),
+    (Read-OnlyForm 'mv'    '-n|--dry-run' '-n|--dry-run|-v|--'),
     'sparse-checkout(?!\s+(?:list|check-rules)\b)',
     # branch は一覧表示が主用途のため、**引数を伴う形**（作成・改名・削除・追跡
     # 設定はいずれもブランチ名を取る）だけを拒否する。`git branch feature/x` の

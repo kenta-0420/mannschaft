@@ -88,6 +88,12 @@ $cases = @(
     @{ name = '本陣 cwd で git branch 作成';   cwd = $honjin; expect = 'deny'; cmd = 'git branch feature/x' },
     @{ name = '本陣 cwd で git branch -t 作成'; cwd = $honjin; expect = 'deny'; cmd = 'git branch -t feature/x origin/main' },
     @{ name = '本陣 cwd で git branch --unset-upstream'; cwd = $honjin; expect = 'deny'; cmd = 'git branch --unset-upstream' },
+    # 打ち消しオプションによる迂回。git は真偽オプションに `--no-` 形を自動生成する
+    # ため、先頭トークンだけで読み取り専用と判断すると保護を素通りできる（#3082 P1）。
+    @{ name = 'clean の --no-dry-run 迂回';    cwd = $honjin; expect = 'deny'; cmd = 'git clean --dry-run --no-dry-run -f' },
+    @{ name = 'apply の --apply 迂回';         cwd = $honjin; expect = 'deny'; cmd = 'git apply --check --apply fix.patch' },
+    @{ name = 'rm の --no-dry-run 迂回';       cwd = $honjin; expect = 'deny'; cmd = 'git rm -n --no-dry-run src' },
+    @{ name = 'clean の未知オプション混入';    cwd = $honjin; expect = 'deny'; cmd = 'git clean -n --unknown-flag' },
 
     # --- 通されるべき（誤検知しないこと） ---
     @{ name = 'worktree cwd で git commit';        cwd = $worktree; expect = 'allow'; cmd = 'git commit -m "テスト"' },
@@ -114,6 +120,10 @@ $cases = @(
     @{ name = 'git apply --check（検証のみ・誤検知しない）';   cwd = $honjin; expect = 'allow'; cmd = 'git apply --check fix.patch' },
     @{ name = 'git apply --stat（誤検知しない）';              cwd = $honjin; expect = 'allow'; cmd = 'git apply --stat fix.patch' },
     @{ name = 'git sparse-checkout list（誤検知しない）';      cwd = $honjin; expect = 'allow'; cmd = 'git sparse-checkout list' },
+    @{ name = 'git clean -n -d（誤検知しない）';               cwd = $honjin; expect = 'allow'; cmd = 'git clean -n -d' },
+    @{ name = 'git clean -n -- path（誤検知しない）';          cwd = $honjin; expect = 'allow'; cmd = 'git clean -n -- backend/build' },
+    @{ name = 'git apply --numstat（誤検知しない）';           cwd = $honjin; expect = 'allow'; cmd = 'git apply --numstat fix.patch' },
+    @{ name = 'git rm -n（試算のみ・誤検知しない）';           cwd = $honjin; expect = 'allow'; cmd = 'git rm -n -r src' },
     @{ name = 'git log --grep=revert（誤検知しない）';        cwd = $honjin; expect = 'allow'; cmd = 'git log --grep=revert' },
     # worktree 側では当然すべて通る
     @{ name = 'worktree cwd で git stash pop';                cwd = $worktree; expect = 'allow'; cmd = 'git stash pop' },
