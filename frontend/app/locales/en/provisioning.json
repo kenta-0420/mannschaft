@@ -12,7 +12,7 @@
         "nameLabel": "Name",
         "namePlaceholder": "e.g. Sample Village",
         "inviteEmailLabel": "Invite email address",
-        "inviteEmailPlaceholder": "admin@example.com",
+        "inviteEmailPlaceholder": "admin{'@'}example.com",
         "nameRequired": "Please enter a name",
         "emailRequired": "Please enter an invite email address",
         "emailInvalid": "The email address format is invalid"

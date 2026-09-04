@@ -12,7 +12,7 @@
         "nameLabel": "名称",
         "namePlaceholder": "例）〇〇村",
         "inviteEmailLabel": "招待先メールアドレス",
-        "inviteEmailPlaceholder": "admin@example.com",
+        "inviteEmailPlaceholder": "admin{'@'}example.com",
         "nameRequired": "名称を入力してください",
         "emailRequired": "招待先メールアドレスを入力してください",
         "emailInvalid": "メールアドレスの形式が正しくありません"
