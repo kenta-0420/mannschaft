@@ -5,10 +5,14 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.school.entity.AttendanceRequirementRuleEntity;
 import com.mannschaft.app.school.entity.DailyAttendanceRecordEntity;
 import com.mannschaft.app.school.entity.FamilyAttendanceNoticeEntity;
+import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity;
+import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity.EvaluationStatus;
 import com.mannschaft.app.school.event.AttendanceRequirementStatusChangedEvent;
+import com.mannschaft.app.school.event.AttendanceWeeklyRiskDigestReadyEvent;
 import com.mannschaft.app.school.event.DailyRollCallRecordedEvent;
 import com.mannschaft.app.school.event.FamilyAttendanceNoticeAcknowledgedEvent;
 import com.mannschaft.app.school.event.FamilyAttendanceNoticeSubmittedEvent;
+import com.mannschaft.app.school.repository.AttendanceRequirementEvaluationRepository;
 import com.mannschaft.app.school.repository.AttendanceRequirementRuleRepository;
 import com.mannschaft.app.school.repository.ClassHomeroomRepository;
 import com.mannschaft.app.school.repository.DailyAttendanceRecordRepository;
@@ -78,6 +82,7 @@ public class SchoolAttendanceNotificationListener {
     private final DailyAttendanceRecordRepository dailyAttendanceRecordRepository;
     private final FamilyAttendanceNoticeRepository familyAttendanceNoticeRepository;
     private final AttendanceRequirementRuleRepository ruleRepository;
+    private final AttendanceRequirementEvaluationRepository evaluationRepository;
     private final ClassHomeroomRepository homeroomRepository;
 
     /**
@@ -234,6 +239,62 @@ public class SchoolAttendanceNotificationListener {
         } catch (Exception e) {
             log.error("出席要件ステータス通知の配送に失敗しました: ruleId={}, studentUserId={}, status={}",
                     event.ruleId(), event.studentUserId(), event.newStatus(), e);
+        }
+    }
+
+    /**
+     * 週次リスクダイジェストを担任へ配送する。
+     *
+     * <p>是正前は {@code AttendanceRequirementBatchService#sendWeeklyDigest} が
+     * {@code @Transactional(readOnly = true)} のバッチTX内から
+     * {@code SchoolAttendanceNotificationService#sendWeeklyRiskDigest} を直接同期で呼んでいた。
+     * {@code readOnly} のため書き込みの巻き戻りは起きないが、配送が例外を投げるとチームのループが
+     * その場で中断し、以降のチームの週次ダイジェストが丸ごと未送信になっていた。
+     * 本リスナーへ移したことで、1 チームの失敗は他チームに波及しない。</p>
+     *
+     * <p>リスク生徒数と担任は業務TX で持ち回らず、ここで読み直す。</p>
+     *
+     * @param event 週次ダイジェスト配送対象イベント
+     */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_FAMILY_CARE_ENABLED",
+            reason = "止まるのは教員向けダイジェスト通知のみで DB は書き換わらず、"
+                    + "学校機能を閉じている間は受け取る教員の画面も閉じている")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onWeeklyRiskDigestReady(AttendanceWeeklyRiskDigestReadyEvent event) {
+        if (event.teamId() == null || event.academicYear() == null) {
+            log.error("週次リスクダイジェスト: teamId/academicYear が欠けているため配送を中止します: "
+                    + "teamId={}, academicYear={}", event.teamId(), event.academicYear());
+            return;
+        }
+
+        try {
+            List<AttendanceRequirementEvaluationEntity> atRiskEvals =
+                    evaluationRepository.findAtRiskByTeamId(
+                            event.teamId(), List.of(EvaluationStatus.RISK, EvaluationStatus.VIOLATION));
+            if (atRiskEvals.isEmpty()) {
+                // 業務TX のコミットからここまでの間に解消された場合。送るものが無いので何もしない。
+                log.debug("週次リスクダイジェスト: リスク生徒が居ないためスキップ: teamId={}", event.teamId());
+                return;
+            }
+
+            Long homeroomTeacherUserId = homeroomRepository
+                    .findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(event.teamId(), event.academicYear())
+                    .map(h -> h.getHomeroomTeacherUserId())
+                    .orElse(null);
+            if (homeroomTeacherUserId == null) {
+                log.debug("週次リスクダイジェスト: 担任が解決できないためスキップ: teamId={}, academicYear={}",
+                        event.teamId(), event.academicYear());
+                return;
+            }
+
+            notificationService.sendWeeklyRiskDigest(
+                    event.teamId(), atRiskEvals.size(), homeroomTeacherUserId);
+        } catch (Exception e) {
+            // 非同期イベント失敗の監査記録（規約上必須）。他チームのダイジェストは巻き添えにしない。
+            log.error("週次リスクダイジェストの配送に失敗しました: teamId={}, academicYear={}",
+                    event.teamId(), event.academicYear(), e);
         }
     }
 

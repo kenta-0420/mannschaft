@@ -51,6 +51,11 @@ import java.util.List;
  *   <li>{@code AttendanceRequirementBatchService} の要件評価 —
  *       WARNING / RISK / VIOLATION の評価結果の保存が巻き戻り、
  *       次回バッチまで出席要件の判定が古いままになる。</li>
+ *   <li>{@code AttendanceRequirementBatchService#sendWeeklyDigest} の週次ダイジェスト —
+ *       {@code readOnly} のため書き込みは巻き戻らないが、<b>1 チームの送信失敗でチームのループが中断し、
+ *       以降のチームの週次ダイジェストが丸ごと未送信になる</b>。
+ *       この 1 件は他の 5 件より遅れて是正した（番人の語彙 {@code NOTIFY_METHOD_VOCABULARY} に
+ *       {@code sendWeekly*} が無く、発火点として数えられていなかったため。Issue #3118）。</li>
  * </ul>
  * <p>通知は業務データより重要度が低い。<b>通知が失敗しても業務データは残る</b>——
  * この非対称性が上記の構造の目的である。</p>
@@ -213,14 +218,14 @@ public class SchoolAttendanceNotificationService {
         log.info("週次リスクダイジェスト（担任向け）: teamId={}, atRiskCount={}, teacherUserId={}",
                  teamId, atRiskCount, homeroomTeacherUserId);
         // TODO: NotificationDispatchService 経由でプッシュ通知を送信する
-        // ⚠ Phase 3 の実装者へ（このメソッドだけ事情が異なる。特に注意）:
-        //   本メソッドは他の 5 つと違い、いまも AttendanceRequirementBatchService#sendWeeklyDigest から
-        //   @Transactional(readOnly = true) のバッチTX内で直接同期に呼ばれている
-        //   （PR #3116 の是正時、番人の語彙外で発火点として数えられていなかったため移設対象外だった）。
-        //   readOnly なので書き込みの巻き戻りは起きないが、ここで例外を投げるとループが中断し、
-        //   以降のチームの週次ダイジェストが丸ごと送信されない。
-        //   実装時は「1 チームの送信失敗でループを止めない」ことを保証するか、
-        //   他の 5 つと同様にイベント publish + AFTER_COMMIT リスナーへ移設すること。
-        //   番人はこの退行を検出できない。クラス javadoc と Issue #3117 を参照。
+        // ⚠ Phase 3 の実装者へ: 呼び出し元は SchoolAttendanceNotificationListener の
+        //   AFTER_COMMIT + @Async であり、ここでの失敗は業務TXを巻き戻さず、
+        //   ほかのチームのダイジェストも巻き添えにしない（チームごとに 1 イベント）。
+        //   AttendanceRequirementBatchService#sendWeeklyDigest から直接同期で呼ぶ形に戻すと、
+        //   1 チームの送信失敗でチームのループが中断し、以降のチームの週次ダイジェストが
+        //   丸ごと未送信になる。
+        //   番人はこの退行を検出できない（NOTIFY_METHOD_VOCABULARY に sendWeekly* が無いため
+        //   本メソッドは発火点として数えられていない。Issue #3118 を参照）。
+        //   クラス javadoc と Issue #3117 も参照。
     }
 }

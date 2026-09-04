@@ -1981,10 +1981,11 @@ class NotificationTransactionBoundaryGuardTest {
      *   <li>{@code AttendanceRequirementBatchService} — 発火あり → <b>なし</b>。
      *       {@code notifyRequirementWarning} / {@code notifyRequirementRisk} /
      *       {@code notifyRequirementViolation} の 3 箇所を publish へ置換。
-     *       同クラスに残る {@code sendWeeklyRiskDigest} は
-     *       {@link #NOTIFY_METHOD_VOCABULARY} の語彙に含まれないため、元から発火点として数えられていない
-     *       （＝このファイルが落ちるのは「語彙内の発火点が 3 箇所とも移設された」ためであり、
-     *       週次ダイジェストの通知が消えたわけではない。同メソッドは 1 行も変更していない）。</li>
+     *       {@code sendWeeklyRiskDigest} の呼び出しも同ロットの追補で
+     *       {@code AttendanceWeeklyRiskDigestReadyEvent} の publish へ置換したが、
+     *       同メソッド名は {@link #NOTIFY_METHOD_VOCABULARY} の語彙に含まれず<b>元から発火点として
+     *       数えられていない</b>ため、この移設は 3 つのゲートいずれの数値も動かさない
+     *       （語彙に {@code sendWeekly*} が無い件は Issue #3118 として起票済み）。</li>
      *   <li>{@code SchoolAttendanceNotificationListener} — <b>新規に発火あり</b>。上記 6 箇所の移設先。</li>
      *   <li>{@code EventEndReminderBatchService} — 発火あり → <b>あり（不変）</b>。
      *       {@code createNotification} は同ファイルに残したまま、呼び出し位置だけを

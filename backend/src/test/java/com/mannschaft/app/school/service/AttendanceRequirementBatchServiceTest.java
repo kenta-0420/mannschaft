@@ -4,9 +4,9 @@ import com.mannschaft.app.school.dto.EvaluationResponse;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity.EvaluationStatus;
 import com.mannschaft.app.school.entity.AttendanceRequirementRuleEntity;
-import com.mannschaft.app.school.entity.ClassHomeroomEntity;
 import com.mannschaft.app.school.entity.StudentAttendanceSummaryEntity;
 import com.mannschaft.app.school.event.AttendanceRequirementStatusChangedEvent;
+import com.mannschaft.app.school.event.AttendanceWeeklyRiskDigestReadyEvent;
 import com.mannschaft.app.school.repository.AttendanceRequirementEvaluationRepository;
 import com.mannschaft.app.school.repository.AttendanceRequirementRuleRepository;
 import com.mannschaft.app.school.repository.ClassHomeroomRepository;
@@ -197,30 +197,36 @@ class AttendanceRequirementBatchServiceTest {
     class SendWeeklyDigest {
 
         @Test
-        @DisplayName("正常系: RISK生徒ありかつ担任ありのとき sendWeeklyRiskDigest が呼ばれる")
-        void sendsDigestToHomeroomTeacher() {
+        @DisplayName("正常系: リスク生徒がいるチームは配送イベントが publish される（通知は直接呼ばない）")
+        void publishesDigestEventForAtRiskTeam() {
             // Arrange
             AttendanceRequirementRuleEntity rule = buildRule(10L, null);
             AttendanceRequirementEvaluationEntity atRiskEval = buildEvalEntity(EvaluationStatus.RISK);
-            ClassHomeroomEntity homeroom = buildHomeroom(10L, 999L);
 
             given(ruleRepository.findAllActive(any(LocalDate.class), any(short.class)))
                     .willReturn(List.of(rule));
             given(evaluationRepository.findAtRiskByTeamId(eq(10L), any()))
                     .willReturn(List.of(atRiskEval));
-            given(homeroomRepository.findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(
-                    eq(10L), anyInt()))
-                    .willReturn(Optional.of(homeroom));
 
             // Act
             service.sendWeeklyDigest();
 
-            // Assert
-            verify(notificationService).sendWeeklyRiskDigest(eq(10L), eq(1), eq(999L));
+            // Assert: バッチTX内では通知を直接呼ばず、対象チーム／年度を載せたイベントだけを publish する
+            ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue())
+                    .isInstanceOf(AttendanceWeeklyRiskDigestReadyEvent.class);
+            AttendanceWeeklyRiskDigestReadyEvent event =
+                    (AttendanceWeeklyRiskDigestReadyEvent) captor.getValue();
+            assertThat(event.teamId()).isEqualTo(10L);
+            assertThat(event.academicYear()).isEqualTo(LocalDate.now().getYear());
+            verify(notificationService, never()).sendWeeklyRiskDigest(anyLong(), anyInt(), anyLong());
+            verify(homeroomRepository, never())
+                    .findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(anyLong(), anyInt());
         }
 
         @Test
-        @DisplayName("正常系: リスク生徒がいないチームは sendWeeklyRiskDigest が呼ばれない")
+        @DisplayName("正常系: リスク生徒がいないチームはイベントも publish されない")
         void skipsTeamWithNoAtRiskStudents() {
             // Arrange
             AttendanceRequirementRuleEntity rule = buildRule(10L, null);
@@ -230,10 +236,11 @@ class AttendanceRequirementBatchServiceTest {
             given(evaluationRepository.findAtRiskByTeamId(eq(10L), any()))
                     .willReturn(List.of());  // リスク生徒なし
 
-            // Act
+            // Assert
             service.sendWeeklyDigest();
 
             // Assert
+            verify(eventPublisher, never()).publishEvent(any(AttendanceWeeklyRiskDigestReadyEvent.class));
             verify(notificationService, never()).sendWeeklyRiskDigest(anyLong(), anyInt(), anyLong());
         }
     }
@@ -318,21 +325,4 @@ class AttendanceRequirementBatchServiceTest {
                 null, null, null);
     }
 
-    /**
-     * テスト用の学級担任エンティティを構築する。
-     *
-     * @param teamId                チームID
-     * @param homeroomTeacherUserId 担任ユーザーID
-     */
-    private ClassHomeroomEntity buildHomeroom(Long teamId, Long homeroomTeacherUserId) {
-        ClassHomeroomEntity homeroom = ClassHomeroomEntity.builder()
-                .teamId(teamId)
-                .homeroomTeacherUserId(homeroomTeacherUserId)
-                .academicYear(2026)
-                .effectiveFrom(LocalDate.of(2026, 4, 1))
-                .createdBy(1L)
-                .build();
-        ReflectionTestUtils.setField(homeroom, "id", 50L);
-        return homeroom;
-    }
 }

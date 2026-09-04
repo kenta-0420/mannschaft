@@ -9,9 +9,9 @@ import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity.Ev
 import com.mannschaft.app.school.entity.AttendanceRequirementRuleEntity;
 import com.mannschaft.app.school.entity.StudentAttendanceSummaryEntity;
 import com.mannschaft.app.school.event.AttendanceRequirementStatusChangedEvent;
+import com.mannschaft.app.school.event.AttendanceWeeklyRiskDigestReadyEvent;
 import com.mannschaft.app.school.repository.AttendanceRequirementEvaluationRepository;
 import com.mannschaft.app.school.repository.AttendanceRequirementRuleRepository;
-import com.mannschaft.app.school.repository.ClassHomeroomRepository;
 import com.mannschaft.app.school.repository.StudentAttendanceSummaryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,8 +44,6 @@ public class AttendanceRequirementBatchService {
     private final StudentAttendanceSummaryRepository summaryRepository;
     private final AttendanceRequirementEvaluationService evaluationService;
     private final AttendanceRequirementEvaluationRepository evaluationRepository;
-    private final ClassHomeroomRepository homeroomRepository;
-    private final SchoolAttendanceNotificationService notificationService;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -123,6 +121,10 @@ public class AttendanceRequirementBatchService {
      *
      * <p>チームごとに担任へリスク生徒一覧をダイジェスト通知する。
      * 同一チームが複数規程を持つ場合は重複送信しない。</p>
+     *
+     * <p>通知はバッチTX内では行わず、{@link AttendanceWeeklyRiskDigestReadyEvent} を publish するに留める。
+     * 実配送は {@code SchoolAttendanceNotificationListener} が {@code AFTER_COMMIT} +
+     * {@code @Async("event-pool")} で行い、1 チームの送信失敗が以降のチームを巻き添えにしない。</p>
      */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
             gateKeys = "FEATURE_FAMILY_CARE_ENABLED",
@@ -152,11 +154,9 @@ public class AttendanceRequirementBatchService {
 
             if (atRiskEvals.isEmpty()) continue;
 
-            // 担任を取得して通知
-            homeroomRepository.findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(
-                    rule.getTeamId(), (int) year)
-                .ifPresent(homeroom -> notificationService.sendWeeklyRiskDigest(
-                    rule.getTeamId(), atRiskEvals.size(), homeroom.getHomeroomTeacherUserId()));
+            // 通知はコミット後にリスナーへ委ねる（担任の解決・件数の再取得もリスナー側で行う）。
+            eventPublisher.publishEvent(
+                new AttendanceWeeklyRiskDigestReadyEvent(rule.getTeamId(), (int) year));
         }
 
         log.info("週次ダイジェストバッチ完了");

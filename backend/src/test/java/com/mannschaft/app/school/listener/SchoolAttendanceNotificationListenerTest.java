@@ -2,13 +2,16 @@ package com.mannschaft.app.school.listener;
 
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity.EvaluationStatus;
+import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity;
 import com.mannschaft.app.school.entity.AttendanceRequirementRuleEntity;
 import com.mannschaft.app.school.entity.ClassHomeroomEntity;
 import com.mannschaft.app.school.entity.DailyAttendanceRecordEntity;
 import com.mannschaft.app.school.entity.FamilyAttendanceNoticeEntity;
 import com.mannschaft.app.school.event.AttendanceRequirementStatusChangedEvent;
+import com.mannschaft.app.school.event.AttendanceWeeklyRiskDigestReadyEvent;
 import com.mannschaft.app.school.event.DailyRollCallRecordedEvent;
 import com.mannschaft.app.school.event.FamilyAttendanceNoticeSubmittedEvent;
+import com.mannschaft.app.school.repository.AttendanceRequirementEvaluationRepository;
 import com.mannschaft.app.school.repository.AttendanceRequirementRuleRepository;
 import com.mannschaft.app.school.repository.ClassHomeroomRepository;
 import com.mannschaft.app.school.repository.DailyAttendanceRecordRepository;
@@ -27,10 +30,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -58,6 +63,9 @@ class SchoolAttendanceNotificationListenerTest {
 
     @Mock
     private AttendanceRequirementRuleRepository ruleRepository;
+
+    @Mock
+    private AttendanceRequirementEvaluationRepository evaluationRepository;
 
     @Mock
     private ClassHomeroomRepository homeroomRepository;
@@ -166,6 +174,51 @@ class SchoolAttendanceNotificationListenerTest {
                 .doesNotThrowAnyException();
 
         verify(notificationService, never()).notifyRequirementRisk(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("週次ダイジェスト: リスク生徒数と担任を読み直して配送する")
+    void 週次ダイジェストを配送する() {
+        given(evaluationRepository.findAtRiskByTeamId(eq(TEAM_ID), any()))
+                .willReturn(List.of(mock(AttendanceRequirementEvaluationEntity.class),
+                        mock(AttendanceRequirementEvaluationEntity.class)));
+        ClassHomeroomEntity homeroom = ClassHomeroomEntity.builder()
+                .teamId(TEAM_ID)
+                .academicYear(2026)
+                .homeroomTeacherUserId(999L)
+                .build();
+        given(homeroomRepository.findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(eq(TEAM_ID), eq(2026)))
+                .willReturn(Optional.of(homeroom));
+
+        listener.onWeeklyRiskDigestReady(new AttendanceWeeklyRiskDigestReadyEvent(TEAM_ID, 2026));
+
+        verify(notificationService).sendWeeklyRiskDigest(eq(TEAM_ID), eq(2), eq(999L));
+    }
+
+    @Test
+    @DisplayName("週次ダイジェスト: 1 チームの配送失敗を外へ出さない（他チームのイベントを巻き添えにしない）")
+    void 週次ダイジェストの失敗は外へ出さない() {
+        given(evaluationRepository.findAtRiskByTeamId(eq(TEAM_ID), any()))
+                .willThrow(new RuntimeException("模擬DB障害"));
+
+        assertThatCode(() -> listener.onWeeklyRiskDigestReady(
+                new AttendanceWeeklyRiskDigestReadyEvent(TEAM_ID, 2026)))
+                .doesNotThrowAnyException();
+
+        verify(notificationService, never()).sendWeeklyRiskDigest(any(), anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("週次ダイジェスト: 担任が解決できなければ通知しない")
+    void 週次ダイジェストは担任不在でスキップ() {
+        given(evaluationRepository.findAtRiskByTeamId(eq(TEAM_ID), any()))
+                .willReturn(List.of(mock(AttendanceRequirementEvaluationEntity.class)));
+        given(homeroomRepository.findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(eq(TEAM_ID), eq(2026)))
+                .willReturn(Optional.empty());
+
+        listener.onWeeklyRiskDigestReady(new AttendanceWeeklyRiskDigestReadyEvent(TEAM_ID, 2026));
+
+        verify(notificationService, never()).sendWeeklyRiskDigest(any(), anyInt(), any());
     }
 
     private DailyAttendanceRecordEntity record(Long id, Long studentUserId, AttendanceStatus status) {
