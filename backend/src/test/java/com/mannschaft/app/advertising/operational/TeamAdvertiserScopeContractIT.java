@@ -116,8 +116,8 @@ class TeamAdvertiserScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
 
         // scope 化済み広告主アカウント（ORG = overview 用・TEAM A = チーム対 API 用）
-        insertAdvertiserAccount("ORGANIZATION", orgId, "組織広告主", "INVOICE");
-        Long teamAAccountId = insertAdvertiserAccount("TEAM", teamAId, "チームA広告主", "INVOICE");
+        insertAdvertiserAccount("ORGANIZATION", orgId, "組織広告主", "STRIPE");
+        Long teamAAccountId = insertAdvertiserAccount("TEAM", teamAId, "チームA広告主", "STRIPE");
 
         rateCardId = insertRateCard("CPM", UNIT_PRICE, MIN_DAILY_BUDGET, -30, null);
 

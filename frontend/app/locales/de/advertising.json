@@ -637,9 +637,21 @@
         "billing_method_label": "Zahlungsmethode",
         "billing_stripe": "Kreditkarte (Stripe)",
         "billing_invoice": "Auf Rechnung",
+        "billing_fixed_notice": "Nur Kreditkartenzahlung",
         "success_message": "Ihr Antrag wurde eingereicht. Nach der Prüfung können Sie den Dienst nutzen.",
         "error_message": "Registrierung fehlgeschlagen"
       }
+    },
+    "register": {
+      "title": "Werbetreibenden-Registrierung",
+      "submit": "Antrag einreichen",
+      "company_name_label": "Firmenname / Name des Werbetreibenden",
+      "company_name_placeholder": "Beispiel GmbH",
+      "contact_email_label": "Kontakt-E-Mail-Adresse",
+      "billing_method_label": "Zahlungsmethode",
+      "billing_fixed_notice": "Nur Kreditkartenzahlung",
+      "success_message": "Ihr Antrag wurde eingereicht. Nach der Prüfung können Sie den Dienst nutzen.",
+      "error_message": "Registrierung fehlgeschlagen"
     },
     "settings_ad_preferences_guide": {
       "page_title": "広告の受信設定 — 使い方ガイド",
