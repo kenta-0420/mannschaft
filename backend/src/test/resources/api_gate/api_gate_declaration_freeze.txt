@@ -419,6 +419,8 @@ HTTP|com.mannschaft.app.promotion.controller.TeamSegmentPresetController|4|4
 HTTP|com.mannschaft.app.promotion.controller.UserPromotionController|4|4
 HTTP|com.mannschaft.app.property.controller.PropertyWorkPackageController|13|13
 HTTP|com.mannschaft.app.property.controller.VendorController|6|6
+HTTP|com.mannschaft.app.provisioning.controller.ProvisioningInvitationController|2|2
+HTTP|com.mannschaft.app.provisioning.controller.SystemAdminProvisioningController|5|5
 HTTP|com.mannschaft.app.proxy.controller.ProxyInputConsentController|8|8
 HTTP|com.mannschaft.app.proxy.controller.ProxyMonthlySummaryController|1|1
 HTTP|com.mannschaft.app.proxyvote.controller.ProxyDelegationController|4|4

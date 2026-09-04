@@ -1,0 +1,145 @@
+{
+  "receipt": {
+    "nav": {
+      "receipts": "領収書一覧",
+      "settings": "発行者設定"
+    },
+    "list": {
+      "title": "領収書管理",
+      "settingsButton": "発行者設定",
+      "issueButton": "新規発行",
+      "empty": "領収書がありません",
+      "column": {
+        "issuedAt": "発行日",
+        "receiptNumber": "領収書番号",
+        "recipientName": "宛名",
+        "amount": "金額",
+        "status": "ステータス",
+        "action": "操作"
+      },
+      "status": {
+        "DRAFT": "下書き",
+        "ISSUED": "発行済"
+      },
+      "action": {
+        "approve": "承認",
+        "void": "無効化",
+        "reissue": "再発行",
+        "pdf": "PDF",
+        "sendEmail": "メール送信"
+      },
+      "dialog": {
+        "issueTitle": "領収書を発行",
+        "recipientName": "宛名",
+        "recipientNamePlaceholder": "例: 山田 太郎",
+        "amount": "金額（円）",
+        "amountPlaceholder": "例: 10000",
+        "description": "品目・摘要",
+        "descriptionPlaceholder": "例: 月会費",
+        "notes": "メモ",
+        "notesPlaceholder": "備考など",
+        "cancel": "キャンセル",
+        "submit": "発行する"
+      },
+      "toast": {
+        "loadFailed": "領収書一覧の取得に失敗しました",
+        "approved": "承認しました",
+        "approveFailed": "承認に失敗しました",
+        "voided": "無効化しました",
+        "voidFailed": "無効化に失敗しました",
+        "reissued": "再発行しました",
+        "reissueFailed": "再発行に失敗しました",
+        "pdfDownloaded": "PDFをダウンロードしました",
+        "pdfDownloadFailed": "PDFダウンロードに失敗しました",
+        "emailSent": "メールを送信しました",
+        "emailSendFailed": "メール送信に失敗しました",
+        "issued": "領収書を発行しました",
+        "issueFailed": "領収書の発行に失敗しました"
+      }
+    },
+    "settings": {
+      "title": "領収書発行者設定",
+      "description": "領収書の発行に使う発行者情報・インボイス対応・番号体系・PDF体裁を設定します。",
+      "backToList": "領収書一覧へ戻る",
+      "notice": {
+        "personalScopeUnsupported": "発行者設定は個人スコープでは利用できません。チームまたは組織スコープに切り替えてください。"
+      },
+      "firstTimeNotice": "まだ発行者設定が登録されていません。保存すると作成されます。",
+      "notRetroactiveNotice": "ここで変更した内容は、これから発行する領収書に適用されます。すでに発行済みの領収書の内容は法令上変更できません。",
+      "notRetroactiveAfterSave": "この変更は、これから発行する領収書にのみ適用されます。すでに発行済みの領収書は法令上変更できません。過去分を訂正したい場合は、対象の領収書を無効化してから再発行してください。",
+      "section": {
+        "issuer": "発行者情報",
+        "invoice": "インボイス対応",
+        "numbering": "領収書番号",
+        "pdf": "PDF体裁"
+      },
+      "form": {
+        "issuerName": "発行者名",
+        "postalCode": "郵便番号",
+        "address": "住所",
+        "phone": "電話番号",
+        "isQualifiedInvoicer": "適格請求書発行事業者である",
+        "invoiceRegistrationNumber": "インボイス登録番号",
+        "defaultSealVariant": "印鑑バリアント",
+        "receiptNoteTemplate": "但し書きテンプレート",
+        "receiptNumberPrefix": "領収書番号プレフィックス",
+        "fiscalYearStartMonth": "会計年度開始月",
+        "autoResetNumber": "年度切替で番号を自動リセット",
+        "customFooter": "PDFカスタムフッター",
+        "logo": "ロゴ画像",
+        "nextReceiptNumber": "次の領収書番号"
+      },
+      "placeholder": {
+        "issuerName": "例: 一般社団法人〇〇",
+        "postalCode": "例: 100-0001",
+        "address": "例: 東京都千代田区〇〇1-2-3",
+        "phone": "例: 03-1234-5678",
+        "invoiceRegistrationNumber": "例: T1234567890123",
+        "receiptNoteTemplate": "例: 会費として",
+        "receiptNumberPrefix": "例: RCP-",
+        "customFooter": "例: お問い合わせは事務局まで"
+      },
+      "sealVariant": {
+        "LAST_NAME": "姓のみ",
+        "FULL_NAME": "氏名",
+        "FIRST_NAME": "名のみ"
+      },
+      "hint": {
+        "notFirstYet": "まだ発行されていません",
+        "nextReceiptNumberFormat": "{prefix}{number}（発行後に採番されます）",
+        "registrationNumberDisabled": "登録番号は適格請求書発行事業者の場合のみ入力します",
+        "registrationNumberWillBeCleared": "保存すると登録番号も削除されます",
+        "logoResize": "アップロードした画像はサーバー側で長辺200px以内に縮小され、透過部分は白背景になります",
+        "logoNotSet": "ロゴ未設定",
+        "logoPosition": "設定すると、PDFのヘッダー左上とタイトル中央に表示されます",
+        "logoDisabledUntilSaved": "先に発行者設定を保存してください",
+        "unsavedChanges": "保存していない変更があります。移動すると失われます。"
+      },
+      "validation": {
+        "issuerNameRequired": "発行者名を入力してください",
+        "registrationNumberRequired": "インボイス登録番号を入力してください",
+        "registrationNumberFormat": "T + 数字13桁の形式で入力してください（例: T1234567890123）",
+        "logoTooLarge": "ロゴ画像は1MB以下にしてください",
+        "logoUnsupportedType": "ロゴ画像はPNGまたはJPEG形式にしてください"
+      },
+      "toast": {
+        "loadFailed": "発行者設定の取得に失敗しました",
+        "saved": "発行者設定を保存しました",
+        "saveFailed": "発行者設定の保存に失敗しました",
+        "logoUploaded": "ロゴ画像をアップロードしました",
+        "logoUploadFailed": "ロゴ画像のアップロードに失敗しました",
+        "logoDeleted": "ロゴ画像を削除しました",
+        "logoDeleteFailed": "ロゴ画像の削除に失敗しました",
+        "forbidden": "この操作を行う権限がありません"
+      },
+      "button": {
+        "save": "保存する",
+        "uploadLogo": "ロゴをアップロード",
+        "deleteLogo": "ロゴを削除",
+        "deleteLogoConfirm": "ロゴ画像を削除しますか？",
+        "cancel": "キャンセル",
+        "confirmDelete": "削除する"
+      }
+    }
+  }
+}

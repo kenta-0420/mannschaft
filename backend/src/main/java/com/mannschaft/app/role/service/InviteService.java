@@ -21,6 +21,7 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.provisioning.service.ProvisioningGate;
 import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.qr.BrandedQrImageWriter;
 import org.springframework.beans.factory.annotation.Value;
@@ -81,6 +82,7 @@ public class InviteService {
     private final AccessControlService accessControlService;
     private final UserRowLockService userRowLockService;
     private final AuditLogService auditLogService;
+    private final ProvisioningGate provisioningGate;
 
     /**
      * 招待トークンを作成する。
@@ -90,6 +92,10 @@ public class InviteService {
                                                                CreateInviteTokenRequest req, Long createdBy) {
         // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみ招待トークンを発行できる。
         accessControlService.checkAdminOrAbove(createdBy, scopeId, scopeType);
+
+        // 柱②-3 販促プロビジョニングゲート（AC11）: PROVISIONED（承諾前の事前作成状態）スコープへの
+        // 招待発行を遮断する。
+        provisioningGate.requireActive(scopeId, scopeType);
 
         RoleEntity role = roleRepository.findById(req.getRoleId())
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
