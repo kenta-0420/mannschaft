@@ -19,9 +19,15 @@ import { nextTick } from 'vue'
  *   ACCEPT-008: 承諾ボタン押下で accept() が PROV_006（メール不一致）を返した場合の表示
  *   ACCEPT-009: 承諾ボタン押下で accept() が PROV_010（承諾者本人以外による再承諾・存在秘匿）
  *               を返した場合、notFound 表示に畳む
- *   ACCEPT-010/011: ログイン往復のトークン退避 — sessionStorage に保存されたトークンから復元して
- *               preview を呼び、使用後は sessionStorage から即座に削除する（P1 検分対応）
- *   ACCEPT-012: フラグメントにトークンがある場合は sessionStorage より優先する
+ *   ACCEPT-010: ログイン往復のトークン退避 — sessionStorage に保存されたトークンから復元して preview を呼ぶ
+ *   ACCEPT-011: 復元したトークンは accept 成功まで sessionStorage に残す（検分 P2-1 再発防止:
+ *               preview 失敗→再試行でも同じトークンで再度 resolveToken() できる）
+ *   ACCEPT-011b: accept 成功時に sessionStorage のトークンを削除する
+ *   ACCEPT-012: フラグメントにトークンがある場合は sessionStorage の既存値を新しい値で
+ *               上書きする（検分 P2-2 再発防止）
+ *   ACCEPT-013: 未ログイン時は /login?redirect=%2Fprovisioning%2Faccept（トークン無し）へ
+ *               遷移する（検分 P1 再発防止）
+ *   ACCEPT-014: preview 失敗→再試行時、sessionStorage のトークンが保持されており再度 preview を呼べる
  */
 
 const mockPreview = vi.fn()
@@ -301,7 +307,7 @@ describe('pages/provisioning/accept.vue', () => {
     expect(wrapper.text()).toContain('サンプル組織')
   })
 
-  it('ACCEPT-011: sessionStorage から復元したトークンは使用後に即座に削除する', async () => {
+  it('ACCEPT-011: preview 成功直後は sessionStorage のトークンを保持したままにする（検分 P2-1）', async () => {
     setHash('')
     window.sessionStorage.setItem(TOKEN_STORAGE_KEY, 'stashed-token')
     mockPreview.mockResolvedValue({
@@ -315,10 +321,37 @@ describe('pages/provisioning/accept.vue', () => {
     await mountSuspended(AcceptPage)
     await flush()
 
+    expect(window.sessionStorage.getItem(TOKEN_STORAGE_KEY)).toBe('stashed-token')
+  })
+
+  it('ACCEPT-011b: accept 成功時に sessionStorage のトークンを削除する', async () => {
+    setHash('')
+    window.sessionStorage.setItem(TOKEN_STORAGE_KEY, 'stashed-token')
+    mockPreview.mockResolvedValue({
+      teamId: null,
+      organizationId: 1,
+      scopeName: 'サンプル組織',
+      inviteEmail: 'admin@example.com',
+      expiresAt: '2026-09-10T00:00:00Z',
+    })
+    mockAccept.mockResolvedValue({
+      teamId: null,
+      organizationId: 1,
+      scopeName: 'サンプル組織',
+      status: 'ACCEPTED',
+    })
+
+    const wrapper = await mountSuspended(AcceptPage)
+    await flush()
+
+    await wrapper.get('[data-testid="provisioning-accept-button"]').trigger('click')
+    await flush()
+
+    expect(mockAccept).toHaveBeenCalledWith('stashed-token')
     expect(window.sessionStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull()
   })
 
-  it('ACCEPT-012: フラグメントにトークンがある場合は sessionStorage より優先する', async () => {
+  it('ACCEPT-012: フラグメントにトークンがある場合は sessionStorage の既存値を新しい値で上書きする（検分 P2-2）', async () => {
     setHash('#token=from-hash')
     window.sessionStorage.setItem(TOKEN_STORAGE_KEY, 'from-storage')
     mockPreview.mockResolvedValue({
@@ -333,8 +366,63 @@ describe('pages/provisioning/accept.vue', () => {
     await flush()
 
     expect(mockPreview).toHaveBeenCalledWith('from-hash')
-    // フラグメント優先時、退避 sessionStorage は不要になった過去の値として残っていても害はないが、
-    // 使い捨て原則としてここでは読み取り自体を行わないため削除もされない。
-    expect(window.sessionStorage.getItem(TOKEN_STORAGE_KEY)).toBe('from-storage')
+    // フラグメント優先時、古いトークンの残留を防ぐため新しい値で上書きされる。
+    expect(window.sessionStorage.getItem(TOKEN_STORAGE_KEY)).toBe('from-hash')
+  })
+
+  it('ACCEPT-014: preview 失敗→再試行時、sessionStorage のトークンが保持されており再度 preview を呼べる（検分 P2-1）', async () => {
+    setHash('')
+    window.sessionStorage.setItem(TOKEN_STORAGE_KEY, 'stashed-token')
+    mockPreview.mockRejectedValueOnce({ statusCode: 500 })
+    mockPreview.mockResolvedValueOnce({
+      teamId: null,
+      organizationId: 1,
+      scopeName: 'サンプル組織',
+      inviteEmail: 'admin@example.com',
+      expiresAt: '2026-09-10T00:00:00Z',
+    })
+
+    const wrapper = await mountSuspended(AcceptPage)
+    await flush()
+    expect(wrapper.text()).toContain('provisioning.accept.previewError.title')
+    expect(window.sessionStorage.getItem(TOKEN_STORAGE_KEY)).toBe('stashed-token')
+
+    await wrapper.get('[data-testid="provisioning-preview-retry-button"]').trigger('click')
+    await flush()
+
+    expect(mockPreview).toHaveBeenCalledTimes(2)
+    expect(mockPreview).toHaveBeenNthCalledWith(2, 'stashed-token')
+    expect(wrapper.text()).toContain('サンプル組織')
+  })
+})
+
+describe('composables/useProvisioningAcceptAuthGuard', () => {
+  it('ACCEPT-013: 未ログイン時は /login?redirect=%2Fprovisioning%2Faccept（トークン無し）へ遷移する', async () => {
+    const { buildProvisioningAcceptLoginRedirect } = await import('~/composables/useProvisioningAcceptAuthGuard')
+
+    const target = buildProvisioningAcceptLoginRedirect('secret-token')
+
+    expect(target).toEqual({ path: '/login', query: { redirect: '/provisioning/accept' } })
+    // トークンが query 文字列やオブジェクトのどこにも含まれていないことを明示的に確認する。
+    expect(JSON.stringify(target)).not.toContain('secret-token')
+  })
+
+  it('ACCEPT-013b: フラグメントにトークンがあれば sessionStorage へ退避してから遷移先を返す', async () => {
+    window.sessionStorage.clear()
+    const { buildProvisioningAcceptLoginRedirect } = await import('~/composables/useProvisioningAcceptAuthGuard')
+
+    buildProvisioningAcceptLoginRedirect('secret-token')
+
+    expect(window.sessionStorage.getItem(TOKEN_STORAGE_KEY)).toBe('secret-token')
+  })
+
+  it('ACCEPT-013c: トークンが無い場合は sessionStorage を変更せず遷移先のみ返す', async () => {
+    window.sessionStorage.clear()
+    const { buildProvisioningAcceptLoginRedirect } = await import('~/composables/useProvisioningAcceptAuthGuard')
+
+    const target = buildProvisioningAcceptLoginRedirect(null)
+
+    expect(target).toEqual({ path: '/login', query: { redirect: '/provisioning/accept' } })
+    expect(window.sessionStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull()
   })
 })

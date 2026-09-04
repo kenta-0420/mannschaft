@@ -12,18 +12,22 @@
  * ログイン往復でのトークン漏出対策（検分 P1）: `redirect` クエリにフラグメントを
  * 含めると、ブラウザ履歴・Referer・（環境次第で）アクセスログにトークンが残りうる。
  * そのため、未ログイン時はカスタム inline middleware でフラグメントのトークンを
- * `sessionStorage`（{@link TOKEN_STORAGE_KEY}）へ退避してから、フラグメント・クエリ
- * 一切無しの `/provisioning/accept` を redirect 先にしてログイン画面へ送る。
- * ログイン後の復帰時は、フラグメントにトークンが無ければ sessionStorage から復元し、
- * 使用後は即座に削除する（使い捨て）。
+ * `sessionStorage`（{@link TOKEN_STORAGE_KEY}）へ退避してから、`frontend/app/middleware/auth.ts`
+ * の `redirect` クエリ復帰パターンに合わせて `/login?redirect=%2Fprovisioning%2Faccept`
+ * （トークンを含まない）へ遷移し、ログイン画面へ送る。
+ * ログイン後の復帰時は、フラグメントにトークンが無ければ sessionStorage から復元する。
+ * 復元したトークンは、accept 成功時（承諾フローが完全に終わったタイミング）まで
+ * sessionStorage に残す（検分 P2-1: preview 失敗後の再試行でも同じトークンで
+ * resolveToken() できるようにするため）。
  */
 import type {
   ProvisioningInvitationAcceptResponse,
   ProvisioningInvitationPreviewResponse,
 } from '~/composables/useProvisioningInvitationApi'
-
-/** ログイン往復中にトークンを一時退避する sessionStorage の固定キー。 */
-const TOKEN_STORAGE_KEY = 'provisioning_accept_token'
+import {
+  PROVISIONING_ACCEPT_TOKEN_STORAGE_KEY as TOKEN_STORAGE_KEY,
+  buildProvisioningAcceptLoginRedirect,
+} from '~/composables/useProvisioningAcceptAuthGuard'
 
 /** URL フラグメント（#token=...）から平文トークンを読み取る。クライアントのみで有効。 */
 function readTokenFromHash(): string | null {
@@ -48,17 +52,10 @@ definePageMeta({
       if (authStore.isAuthenticated) return
 
       // 未ログイン: フラグメントにトークンがあれば sessionStorage へ退避してから、
-      // トークンを含まない URL でログインへ誘導する（redirect クエリへの漏出防止）。
-      const tok = readTokenFromHash()
-      if (tok && typeof window !== 'undefined') {
-        try {
-          window.sessionStorage.setItem(TOKEN_STORAGE_KEY, tok)
-        } catch {
-          // sessionStorage が使えない環境（プライベートモード等）でも致命的ではない。
-          // ログイン後の復帰時にフラグメントが無く sessionStorage にも無ければ notFound 扱いになる。
-        }
-      }
-      return navigateTo({ path: '/provisioning/accept' })
+      // トークンを含まない redirect クエリでログイン画面へ誘導する
+      // （`frontend/app/middleware/auth.ts` の redirect クエリ復帰パターンに整合。
+      // 検分 P1 再発防止: 自ページへ遷移させて留まるのではなく、必ず /login へ送る）。
+      return navigateTo(buildProvisioningAcceptLoginRedirect(readTokenFromHash()))
     },
   ],
 })
@@ -95,23 +92,46 @@ function classifyError(err: unknown): ErrorKind {
 
 /**
  * トークンを解決する（フラグメント優先、無ければログイン往復で退避した sessionStorage
- * から復元）。復元に使ったら即座に sessionStorage から削除する（使い捨て）。
+ * から復元）。
+ *
+ * 検分 P2-1 根治: 復元直後に sessionStorage から削除すると、preview 失敗→再試行
+ * （再読み込み）時にトークンが既に消えて resolveToken() が失敗する。削除は
+ * accept 成功時（{@link clearStoredToken}）まで行わない。
+ *
+ * 検分 P2-2 根治: フラグメントにトークンがある場合は、古いトークンの残留を防ぐため
+ * sessionStorage の値をこの新しい値で上書きする。
  */
 function resolveToken(): string | null {
   const fromHash = readTokenFromHash()
-  if (fromHash) return fromHash
+  if (fromHash) {
+    if (typeof window !== 'undefined') {
+      try {
+        window.sessionStorage.setItem(TOKEN_STORAGE_KEY, fromHash)
+      } catch {
+        // sessionStorage が使えない環境でも致命的ではない（フラグメントの値はそのまま使う）。
+      }
+    }
+    return fromHash
+  }
 
   if (typeof window === 'undefined') return null
   try {
     const stored = window.sessionStorage.getItem(TOKEN_STORAGE_KEY)
-    if (stored) {
-      window.sessionStorage.removeItem(TOKEN_STORAGE_KEY)
-      return stored
-    }
+    if (stored) return stored
   } catch {
     // sessionStorage 不可時は復元できない（notFound へ畳む）。
   }
   return null
+}
+
+/** accept 成功など、承諾フローが完全に終わったタイミングで退避トークンを破棄する。 */
+function clearStoredToken(): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.removeItem(TOKEN_STORAGE_KEY)
+  } catch {
+    // sessionStorage 不可時は何もしない。
+  }
 }
 
 /**
@@ -150,6 +170,7 @@ async function accept() {
     const res = await provisioningApi.accept(token.value)
     acceptedResult.value = res
     state.value = 'accepted'
+    clearStoredToken()
     notification.success(t('provisioning.accept.acceptSuccess'))
   } catch (err) {
     console.error('provisioning/accept.vue: accept failed', err)
