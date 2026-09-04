@@ -166,7 +166,9 @@
       "dayOfWeek": "Day of week",
       "dayOfWeekHint": "Slots will be created only on the selected days of week",
       "saveSuccess": "Slot saved",
-      "deleteSuccess": "Slot deleted"
+      "deleteSuccess": "Slot deleted",
+      "assignmentMasked": "In adjustment",
+      "assignmentMaskedHint": "Assignments are hidden until the shift is published"
     },
     "requests": {
       "submissionRate": "Submission rate",

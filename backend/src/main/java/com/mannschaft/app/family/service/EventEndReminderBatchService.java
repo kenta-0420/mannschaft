@@ -6,6 +6,7 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.EventScopeType;
 import com.mannschaft.app.event.entity.EventEntity;
+import com.mannschaft.app.family.event.EventEndReminderDueEvent;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -88,6 +90,7 @@ public class EventEndReminderBatchService {
     private final NotificationService notificationService;
     private final NotificationDispatchService dispatchService;
     private final UserRoleRepository userRoleRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** Issue #2715 CMP-055 ロットC-2: 受信者 locale 別に通知本文を組み立てるための依存。 */
     private final UserLocaleCache userLocaleCache;
@@ -153,6 +156,46 @@ public class EventEndReminderBatchService {
     }
 
     // =========================================================
+    // 業務コミット後の配送入口（Issue #2990 L6）
+    // =========================================================
+
+    /**
+     * 解散リマインドを実配送する。{@code EventEndReminderDeliveryListener}（{@code AFTER_COMMIT}）専用の入口。
+     *
+     * <h2>なぜ配送コードをリスナー側へ移設しないのか</h2>
+     * <p>本文の組み立てには {@link EventRepository}（event ドメイン）と
+     * {@link UserRoleRepository}（role ドメイン）が要る。これらは family ドメインからのクロスドメイン
+     * 直接注入であり、本クラス冒頭の TODO のとおり既知の負債として据え置かれている。
+     * 配送コードを新クラスへ移すと、その既存違反が<b>新規違反として</b>
+     * クロスドメイン Repository 番人（D-3）の凍結ストアに登録される
+     * （凍結ストアはクラス名キーのため）。したがって #2990 の他ロットと同じく
+     * 「通知クラス自体は触らず<b>呼び出し位置だけ</b>を {@code AFTER_COMMIT} へ移す」方針を取り、
+     * 配送コードは本クラスに残したまま、業務TXの外から呼び直す入口だけを公開する。</p>
+     *
+     * <h2>トランザクション</h2>
+     * <p>{@code @Transactional} を宣言しない。呼び出し元のリスナーは {@code AFTER_COMMIT} かつ
+     * {@code @Async} であり、業務トランザクションは既に閉じている。
+     * {@code notificationService.createNotification} が自前で {@code @Transactional} を持つため、
+     * 通知 1 件ごとに独立したトランザクションで確定する。</p>
+     *
+     * @param eventId 対象イベントID
+     * @param stage   リマインド段階（0＝1回目 / 1＝2回目 / 2＝3回目）
+     */
+    public void deliverReminder(Long eventId, int stage) {
+        if (eventId == null) {
+            return;
+        }
+        EventEntity event = eventRepository.findById(eventId).orElse(null);
+        if (event == null) {
+            // 業務TXでコミットされたはずのイベントが引けない＝異常。握りつぶさず ERROR で残す。
+            log.error("解散通知リマインドの配送中止: イベントを読み直せませんでした: eventId={}, stage={}",
+                    eventId, stage);
+            return;
+        }
+        sendReminderByCount(event, stage);
+    }
+
+    // =========================================================
     // プライベートヘルパー
     // =========================================================
 
@@ -183,12 +226,13 @@ public class EventEndReminderBatchService {
             return false;
         }
 
-        // 段階に応じた通知を送信
-        sendReminderByCount(event, currentCount, now);
-
         // カウントインクリメント（ドメインメソッド経由）
         event.incrementOrganizerReminder();
         eventRepository.save(event);
+
+        // 段階に応じた通知の配送要求（Issue #2990 L6）。業務TX内では publish だけに留める。
+        // 実配送は commit 後に EventEndReminderDeliveryListener が deliverReminder を呼んで行う。
+        eventPublisher.publishEvent(new EventEndReminderDueEvent(event.getId(), currentCount));
 
         return true;
     }
@@ -198,9 +242,8 @@ public class EventEndReminderBatchService {
      *
      * @param event        イベントエンティティ
      * @param currentCount 現在のリマインド送信回数（0〜2）
-     * @param now          現在日時
      */
-    private void sendReminderByCount(EventEntity event, int currentCount, LocalDateTime now) {
+    private void sendReminderByCount(EventEntity event, int currentCount) {
         Long eventId = event.getId();
         String eventLabel = resolveEventLabel(event);
         Long createdBy = event.getCreatedBy();

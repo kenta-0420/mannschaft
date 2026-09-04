@@ -11,6 +11,7 @@ const emit = defineEmits<{
   create: []
 }>()
 
+const { t } = useI18n()
 const shiftApi = useShiftApi()
 const notification = useNotification()
 const confirm = useConfirm()
@@ -18,17 +19,23 @@ const confirm = useConfirm()
 const schedules = ref<ShiftScheduleResponse[]>([])
 const loading = ref(true)
 
-const visibleSchedules = computed(() =>
-  props.canManage ? schedules.value : schedules.value.filter(s => s.status === 'PUBLISHED')
-)
+// CMP-260826-2127 / AC-15: 「どのシフト表を出すか」はサーバーが決める。
+// かつてここで非管理者に PUBLISHED のみを出していたが、BE 側で未公開シフト表を
+// 返さないようにしたため、FE 側の絞り込みは冗長であり規則の二重化になる。
+// （ステータスバッジ statusConfig は表示であって判定ではないので残す。）
+const visibleSchedules = computed(() => schedules.value)
 
-const statusConfig: Record<string, { label: string; severity: string }> = {
-  DRAFT: { label: '下書き', severity: 'secondary' },
-  COLLECTING: { label: '希望収集中', severity: 'info' },
-  ADJUSTING: { label: '調整中', severity: 'warn' },
-  PUBLISHED: { label: '公開済', severity: 'success' },
-  ARCHIVED: { label: 'アーカイブ', severity: 'contrast' },
-}
+// ステータスバッジの表示定義。ラベルは i18n キー経由で引く（直書き禁止）。
+// CMP-260826-2127 / AC-15 で非管理者にも COLLECTING / ADJUSTING / ARCHIVED が
+// 並ぶようになったため、日本語以外のロケールで新たに見える状態名が
+// 未翻訳になっていた。キーは pages/shift/index.vue の statusOptions と共通。
+const statusConfig = computed<Record<string, { label: string; severity: string }>>(() => ({
+  DRAFT: { label: t('shift.status.draft'), severity: 'secondary' },
+  COLLECTING: { label: t('shift.status.collecting'), severity: 'info' },
+  ADJUSTING: { label: t('shift.status.adjusting'), severity: 'warn' },
+  PUBLISHED: { label: t('shift.status.published'), severity: 'success' },
+  ARCHIVED: { label: t('shift.status.archived'), severity: 'contrast' },
+}))
 
 async function load() {
   loading.value = true
@@ -125,7 +132,7 @@ onMounted(load)
     <DashboardEmptyState
       v-else
       icon="pi pi-table"
-      :message="canManage ? 'シフト表はまだありません' : '公開済みのシフト表はありません'"
+      :message="t('shift.empty.noSchedules')"
     />
   </div>
 </template>

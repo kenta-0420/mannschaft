@@ -637,9 +637,21 @@
         "billing_method_label": "Payment method",
         "billing_stripe": "Credit card (Stripe)",
         "billing_invoice": "Invoice",
+        "billing_fixed_notice": "Credit card payment only",
         "success_message": "Your application has been submitted. You can start using the service after review.",
         "error_message": "Registration failed"
       }
+    },
+    "register": {
+      "title": "Advertiser Registration",
+      "submit": "Submit application",
+      "company_name_label": "Company name / advertiser name",
+      "company_name_placeholder": "Sample Corp.",
+      "contact_email_label": "Contact email address",
+      "billing_method_label": "Payment method",
+      "billing_fixed_notice": "Credit card payment only",
+      "success_message": "Your application has been submitted. You can start using the service after review.",
+      "error_message": "Registration failed"
     },
     "settings_ad_preferences_guide": {
       "page_title": "広告の受信設定 — 使い方ガイド",
