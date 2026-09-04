@@ -2,6 +2,8 @@ package com.mannschaft.app.receipt;
 
 import com.jayway.jsonpath.JsonPath;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -110,6 +112,11 @@ class ReceiptPdfArchiveContractIT extends AbstractMySqlIntegrationTest {
 
         userRoleRepository.save(UserRoleEntity.builder()
                 .userId(ADMIN_USER).roleId(adminRoleId).teamId(teamId).build());
+
+        // F00.5 Phase 3 是正: ADMIN 権限（user_roles）だけでは checkMembership（isMember）は
+        // 通らない。isMember は memberships テーブルを見るため、所属そのものを別途 INSERT する
+        // 必要がある（MembershipTestHelper の Javadoc「2 系統の所属テーブル」参照）。
+        MembershipTestHelper.insertMembership(em, ADMIN_USER, ScopeType.TEAM, teamId, RoleKind.MEMBER);
 
         em.flush();
         em.clear();
