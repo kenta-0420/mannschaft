@@ -68,6 +68,13 @@ mannschaft:
     hmac-key: dGVzdC1obWFjLWtleS0tLTEyMzQ1Njc4OTBhYmNkZWY=
   storage:
     type: local
+  # PR4 Billing Center: return state 署名 — テスト決定性のために固定 secret を使用
+  billing:
+    return-state:
+      signing-keys:
+        - kid: v1
+          secret: test-billing-return-signing-key-32bytes-xxxx
+          active: true
   # F13.1 Phase 13.1.2: QR 署名 — テスト決定性のために固定 secret を使用
   # src/main/resources/application-test.yml と同一値（src/test/ が優先されるため同期必須）
   jobs:

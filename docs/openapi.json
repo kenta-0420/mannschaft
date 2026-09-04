@@ -1131,6 +1131,10 @@
       "description": "F04.2 チャットスレッド→掲示板移行"
     },
     {
+      "name": "課金 - 見積り/Checkout",
+      "description": "PR4 quote 発行と Stripe Checkout Session 作成"
+    },
+    {
       "name": "領収書発行者設定",
       "description": "F08.4 領収書発行者設定CRUD"
     },
@@ -75288,6 +75292,48 @@
         }
       }
     },
+    "/api/v1/me/billing/quotes": {
+      "post": {
+        "tags": [
+          "課金 - 見積り/Checkout"
+        ],
+        "summary": "見積り発行",
+        "description": "scope は本文で指定し、操作者の課金管理権限をサービス層で検証する。Idempotency-Key 必須。",
+        "operationId": "createQuote",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBillingQuoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingQuoteResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/billing/contracts": {
       "post": {
         "tags": [
@@ -75323,6 +75369,48 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/billing/checkout-sessions": {
+      "post": {
+        "tags": [
+          "課金 - 見積り/Checkout"
+        ],
+        "summary": "Checkout Session 作成",
+        "description": "quote の所有者・scope・価格・月境界を再検証してから Stripe Checkout を作成する。Idempotency-Key 必須。",
+        "operationId": "createCheckoutSession",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBillingCheckoutSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCheckoutSessionResponse"
                 }
               }
             }
@@ -107427,6 +107515,122 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/billing/portal/return": {
+      "get": {
+        "tags": [
+          "billing-return-controller"
+        ],
+        "operationId": "portalReturn",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billing_return_state",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/billing/payment-action/return": {
+      "get": {
+        "tags": [
+          "billing-return-controller"
+        ],
+        "operationId": "paymentActionReturn",
+        "parameters": [
+          {
+            "name": "billing_return_state",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/billing/checkout/success": {
+      "get": {
+        "tags": [
+          "billing-return-controller"
+        ],
+        "operationId": "checkoutSuccess",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billing_return_state",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/billing/checkout/cancel": {
+      "get": {
+        "tags": [
+          "billing-return-controller"
+        ],
+        "operationId": "checkoutCancel",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billing_return_state",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -194157,6 +194361,130 @@
           "careRecipientUserId",
           "relationship"
         ]
+      },
+      "CreateBillingQuoteRequest": {
+        "type": "object",
+        "properties": {
+          "productKey": {
+            "type": "string"
+          },
+          "productKind": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeKind": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "TEAM",
+              "ORG"
+            ]
+          }
+        }
+      },
+      "ApiResponseBillingQuoteResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingQuoteResponse"
+          }
+        }
+      },
+      "BillingQuoteResponse": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "initialTotal": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "nextMonthlyTotal": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "productKey": {
+            "type": "string"
+          },
+          "productKind": {
+            "type": "string",
+            "enum": [
+              "PLAN",
+              "ADDON"
+            ]
+          },
+          "quoteId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "Money": {
+        "type": "object",
+        "properties": {
+          "amountExcludingTax": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amountIncludingTax": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "taxAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "taxName": {
+            "type": "string"
+          },
+          "taxRateBasisPoints": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "CreateBillingCheckoutSessionRequest": {
+        "type": "object",
+        "properties": {
+          "quoteId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ApiResponseCheckoutSessionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CheckoutSessionResponse"
+          }
+        }
+      },
+      "CheckoutSessionResponse": {
+        "type": "object",
+        "properties": {
+          "checkoutUrl": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "FamilyAttendanceNoticeRequest": {
         "type": "object",
