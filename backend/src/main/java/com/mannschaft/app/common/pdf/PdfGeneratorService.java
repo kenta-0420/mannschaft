@@ -258,7 +258,13 @@ public class PdfGeneratorService {
                     // CJK（日本語）グリフを埋め込むには IDENTITY_H エンコーディングが必須。
                     // 既定の addFont(path, embedded) は BaseFont.CP1252 を使うため、
                     // 埋め込み自体は成功しても日本語グリフが欠落し無音で失敗する。
-                    fontResolver.addFont(fontUrl, BaseFont.IDENTITY_H, true);
+                    //
+                    // また family 名はここで familyName() へ明示的に上書きする。TTF内部の
+                    // name テーブル（例: "Noto Sans JP"、スペースあり）を自動採用させると、
+                    // pdf-common.css の font-family: 'NotoSansJP'（スペースなし）と一致せず
+                    // Flying Saucer がCJK非対応のフォールバックフォントへ静かに切り替わり、
+                    // 日本語グリフが欠落する。
+                    fontResolver.addFont(fontUrl, font.familyName(), BaseFont.IDENTITY_H, true, null);
                 }
             } catch (Exception e) {
                 log.error("フォント登録失敗: {}", font.familyName(), e);
