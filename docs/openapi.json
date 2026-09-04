@@ -181895,10 +181895,7 @@
             "type": "string",
             "minLength": 1
           }
-        },
-        "required": [
-          "billingMethod"
-        ]
+        }
       },
       "AdvertiserAccountResponse": {
         "type": "object",

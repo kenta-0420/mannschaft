@@ -60165,7 +60165,7 @@ export interface components {
         };
         RegisterAdvertiserRequest: {
             /** @enum {string} */
-            billingMethod: "STRIPE" | "INVOICE";
+            billingMethod?: "STRIPE" | "INVOICE";
             companyName?: string;
             contactEmail?: string;
         };
