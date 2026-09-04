@@ -515,6 +515,21 @@ public class SecurityConfig {
                 // deny-by-default に落ち、稼働中の Webhook 受信が全て 401 になる。ハンドラの実在は
                 // IncomingWebhookController の @PostMapping("/incoming/{token}") で確認できる。
                 .requestMatchers(HttpMethod.POST, "/incoming/*").permitAll()
+                // F20.1 PR4 Billing Center: Stripe / Customer Portal / 3DS issuer からの
+                // <b>top-level GET 復帰</b>（BC-16 / BC-28）。外部サイトからのブラウザ遷移であり
+                // Authorization ヘッダを持たないため、deny-by-default のままでは
+                // BillingReturnController へ到達する前に 401 になり、
+                // 「未認証なら nonce を消費せず HttpOnly Cookie へ退避して /login へ 303」という
+                // 設計そのものが起動しない（実測で確認済み）。
+                // CSRF 防御は Origin/Referer ではなく署名済み state（HMAC + purpose + expiry）と
+                // nonce の CAS 消費で行う（docs/features/F20.1_entitlement_billing/05_billing_center.md）。
+                // ⚠️ ワイルドカード（"/billing/**"）では開けない。復帰用の 4 入口ちょうどだけを
+                //    GET で開き、それ以外の /billing 配下は deny-by-default に残す。
+                //    宣言と @GetMapping の実パス一致は BillingReturnPublicPathGuardTest が機械検証する。
+                .requestMatchers(HttpMethod.GET, "/billing/checkout/success").permitAll()
+                .requestMatchers(HttpMethod.GET, "/billing/checkout/cancel").permitAll()
+                .requestMatchers(HttpMethod.GET, "/billing/portal/return").permitAll()
+                .requestMatchers(HttpMethod.GET, "/billing/payment-action/return").permitAll()
                 // WebSocket ハンドシェイク（SockJS）。STOMP CONNECT 時に
                 // WebSocketAuthChannelInterceptor が JWT を検証するため、ハンドシェイク自体は
                 // permitAll で許容する（docs/security/01 §5）。
