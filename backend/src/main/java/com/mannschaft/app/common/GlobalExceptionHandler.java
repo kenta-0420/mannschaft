@@ -1570,6 +1570,10 @@ public class GlobalExceptionHandler {
             Map.entry("RECEIPT_019", HttpStatus.CONFLICT),
             Map.entry("RECEIPT_021", HttpStatus.NOT_FOUND),
             Map.entry("RECEIPT_024", HttpStatus.CONFLICT),
+            // RECEIPT_020（ロゴアップロード失敗）は Severity.ERROR だが、実際の発生原因は
+            // 上限超過・非対応形式・MIME 偽装といった「入力の不備」である（F08.4 §9.4 AC-10）。
+            // Severity は変えずに status だけ 400 へ写像する。
+            Map.entry("RECEIPT_020", HttpStatus.BAD_REQUEST),
             // 認可根治戦役 Wave3-B3: moderation の createReReview は actionId 所有者検証(BOLA是正)で MODERATION_EXT_001、越境は 404。
             Map.entry("MODERATION_EXT_001", HttpStatus.NOT_FOUND),       // VIOLATION_NOT_FOUND（IDOR 秘匿 → 404）
             // 認可根治戦役 Wave3-B3: incident は entity 由来 scope で認可判定。ID 直指定 EP で scope 非所属は 404。
@@ -2439,7 +2443,21 @@ public class GlobalExceptionHandler {
             //    是正した（兄弟の STORAGE_001/002/004 と同じ外部ストレージ障害のため）。
             // Gate 基盤工事③: @RequireFeature ゲート拒否は Severity.WARN 既定の 400 ではなく
             // 403 FORBIDDEN（マスター裁可済み）。
-            Map.entry("FEATURE_GATE_001", HttpStatus.FORBIDDEN)
+            Map.entry("FEATURE_GATE_001", HttpStatus.FORBIDDEN),
+
+            // 柱②-2 販促プロビジョニング（試練・.claude/campaigns/2026-09-01-org-governance.md）:
+            // 招待不在／メール不一致は状態秘匿のため404/403、期限切れ・取消済・二重承諾競合は409、
+            // PROVISIONED スコープへの通常導線アクセスは423（Locked）とする。実装は後続 PR（出陣）。
+            Map.entry("PROV_001", HttpStatus.NOT_FOUND),
+            Map.entry("PROV_002", HttpStatus.CONFLICT),
+            Map.entry("PROV_003", HttpStatus.CONFLICT),
+            Map.entry("PROV_006", HttpStatus.FORBIDDEN),
+            Map.entry("PROV_007", HttpStatus.FORBIDDEN),
+            Map.entry("PROV_008", HttpStatus.LOCKED),
+            Map.entry("PROV_009", HttpStatus.NOT_FOUND),
+            Map.entry("PROV_010", HttpStatus.NOT_FOUND),
+            // 検分 P1-3 根治: ACCEPTED 済み招待への resend/cancel は状態競合のため409。
+            Map.entry("PROV_011", HttpStatus.CONFLICT)
     );
 
     /**

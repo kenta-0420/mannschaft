@@ -41,7 +41,8 @@ public class ErrorReportService {
     private final ErrorReportNotifier errorReportNotifier;
     private final StringRedisTemplate redisTemplate;
     /** F12.5 Phase 2-C — CRITICAL/HIGH 新規 / REOPEN 時に AI 即時分析をキックする。 */
-    private final ErrorReportAiAnalysisService aiAnalysisService;
+    /** Issue #2990 L4: AI 即時分析の起動は Dispatcher 経由（プロキシ境界を跨がせるため）。 */
+    private final ErrorReportAiAnalysisDispatcher aiAnalysisDispatcher;
     /**
      * F10.5/F10.6 Phase 10-β 後続-⑥ — @Async プロキシバイパス回避のため、
      * バックエンド例外の非同期記録処理は別 Bean に切り出している。
@@ -92,7 +93,7 @@ public class ErrorReportService {
                 errorReportNotifier.notifyRegression(report);
                 // F12.5 Phase 2-C — REOPEN かつ severity HIGH 以上なら AI 即時分析をキック
                 if (report.getSeverity().ordinal() >= ErrorReportSeverity.HIGH.ordinal()) {
-                    aiAnalysisService.analyzeAfterCommit(report.getId(), null);
+                    aiAnalysisDispatcher.analyzeAfterCommit(report.getId(), null);
                 }
                 log.info("エラーレポートリグレッション検知: id={}, hash={}", report.getId(), errorHash);
                 return report;
@@ -166,7 +167,7 @@ public class ErrorReportService {
             errorReportNotifier.notifySlack(saved);
             errorReportNotifier.notifySystemAdmins(saved);
             // F12.5 Phase 2-C — 新規 HIGH/CRITICAL は AI 即時分析をキック
-            aiAnalysisService.analyzeAfterCommit(saved.getId(), null);
+            aiAnalysisDispatcher.analyzeAfterCommit(saved.getId(), null);
         }
 
         log.info("エラーレポート新規作成: id={}, hash={}, severity={}", saved.getId(), errorHash, severity);

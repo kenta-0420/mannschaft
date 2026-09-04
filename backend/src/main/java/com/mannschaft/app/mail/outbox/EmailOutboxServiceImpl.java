@@ -276,7 +276,8 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
                  "RESERVATION_EMERGENCY_UNCONFIRMED",
                  "RESERVATION_RECEIVED_NOTIFY",
                  "GUARDIANSHIP_PROGRESSION_NOTICE",
-                 "DIRECT_MAIL_AD" -> {
+                 "DIRECT_MAIL_AD",
+                 "PROVISIONING_ADMIN_INVITE" -> {
                 String subject = vars.get("subject");
                 String htmlBody = vars.get("body");
                 if (subject == null || htmlBody == null) {

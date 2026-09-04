@@ -10,12 +10,14 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -85,12 +87,18 @@ class BlogPostServiceMediaResolutionTest {
     @Mock private PostAuthorSnapshotService postAuthorSnapshotService;
     @Mock private TeamRepository teamRepository;
     @Mock private OrganizationRepository organizationRepository;
+    @Mock private TeamService teamService;
+    @Mock private OrganizationService organizationService;
     @Mock private AccessControlService accessControlService;
     @Mock private PaymentGateService paymentGateService;
     /** 出陣で BlogPostService へ注入されるべき新規依存。 */
     @Mock private BlogBodyMediaResolver blogBodyMediaResolver;
 
     @InjectMocks private BlogPostService service;
+
+    // 検分第2巡 残存経路チェック（BlogPostService#assertScopeNotProvisioned）: Mockito の
+    // boolean mock は既定で false を返すため、teamService/organizationService.isProvisioned() は
+    // 未 stub のままで「PROVISIONED ではない」既定値になる。
 
     private static final Long TEAM_ID = 100L;
     private static final Long POST_ID = 500L;

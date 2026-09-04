@@ -109,7 +109,7 @@ class TeamServiceTest {
         @DisplayName("異常系: チーム不在でTEAM_001例外")
         void 取得_不在_例外() {
             // Given
-            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.empty());
+            given(teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(TEAM_SLUG, TeamEntity.LifecycleStatus.ACTIVE)).willReturn(Optional.empty());
 
             // When / Then
             assertThatThrownBy(() -> service.getTeam(TEAM_SLUG))
@@ -127,7 +127,7 @@ class TeamServiceTest {
                     .visibility(TeamEntity.Visibility.PUBLIC)
                     .build();
             org.springframework.test.util.ReflectionTestUtils.setField(team, "id", TEAM_ID);
-            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.of(team));
+            given(teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(TEAM_SLUG, TeamEntity.LifecycleStatus.ACTIVE)).willReturn(Optional.of(team));
             given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
             given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
             given(userRoleRepository.countByTeamId(any())).willReturn(0L);
@@ -453,7 +453,7 @@ class TeamServiceTest {
                     .visibility(TeamEntity.Visibility.PUBLIC)
                     .iconUrl(ICON_KEY).bannerUrl(BANNER_KEY).mapEmbedUrl(MAP_EMBED)
                     .build();
-            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.of(team));
+            given(teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(TEAM_SLUG, TeamEntity.LifecycleStatus.ACTIVE)).willReturn(Optional.of(team));
             stubCommonCounts();
             given(mediaUrlResolver.resolve(ICON_KEY)).willReturn(SIGNED_ICON);
             given(mediaUrlResolver.resolve(BANNER_KEY)).willReturn(SIGNED_BANNER);
@@ -477,7 +477,7 @@ class TeamServiceTest {
                     .slug(TEAM_SLUG).name("画像なしチーム").template("sports")
                     .visibility(TeamEntity.Visibility.PUBLIC)
                     .build();
-            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.of(team));
+            given(teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(TEAM_SLUG, TeamEntity.LifecycleStatus.ACTIVE)).willReturn(Optional.of(team));
             stubCommonCounts();
             // resolver はモック既定で null を返す（resolve(null)→null の縮退を模す）
 

@@ -184,6 +184,11 @@ public class TeamService {
         if (team.getVisibility() != TeamEntity.Visibility.PUBLIC) {
             throw new BusinessException(TeamErrorCode.TEAM_001);
         }
+        // 柱②-3 販促プロビジョニングゲート: PROVISIONED（承諾前の事前作成状態）は
+        // 招待未承諾のため、他の非公開状態と同じく 404 に畳む（エニュメレーション対策）。
+        if (team.isProvisioned()) {
+            throw new BusinessException(TeamErrorCode.TEAM_001);
+        }
         // 画像 URL 根治 Phase 1: icon/banner を署名付き表示 URL へ解決して渡す。
         return TeamPublicDetailResponse.from(
                 team,
@@ -339,6 +344,62 @@ public class TeamService {
             }
         }
         return SlugGenerator.withSuffix(base, (int) (System.currentTimeMillis() % 10000));
+    }
+
+    /**
+     * 柱②-2 販促プロビジョニング専用: チームを {@code PROVISIONED} 状態で事前作成する。
+     *
+     * <p>D-1/D-5（クロスドメイン Entity/Repository 参照禁止）に従い、{@code provisioning}
+     * ドメインへ {@link TeamEntity}/{@link TeamRepository} を漏らさず、この窓口経由で
+     * 作成する。作成直後は ADMIN/membership を一切持たない（招待承諾で初めて付与される）。</p>
+     *
+     * @param name チーム名
+     * @param slug 一意 slug（{@link #createUniqueSlug} 等で事前採番済みのもの）
+     * @return 作成したチームの ID
+     */
+    @Transactional
+    public Long createProvisionedTeam(String name, String slug) {
+        TeamEntity team = TeamEntity.builder()
+                .name(name)
+                .slug(slug)
+                // Team.Visibility に PRIVATE 相当は無いため、既存4値のうち最も制限的な
+                // MEMBERS_AND_ABOVE を採用する（承諾までメンバーが存在しないため実質非公開）。
+                .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE)
+                .supporterEnabled(false)
+                .lifecycleStatus(TeamEntity.LifecycleStatus.PROVISIONED)
+                .build();
+        teamRepository.save(team);
+        return team.getId();
+    }
+
+    /**
+     * 柱②-2/②-3 販促プロビジョニング専用: 指定チームが {@code PROVISIONED}（承諾前）かどうかを返す。
+     * 存在しないチームは非プロビジョニング（false）扱いとする（呼び出し元が別途404等を判断する）。
+     */
+    public boolean isProvisioned(Long teamId) {
+        return teamRepository.findById(teamId).map(TeamEntity::isProvisioned).orElse(false);
+    }
+
+    /**
+     * 柱②-2 販促プロビジョニング専用: 指定チームの {@code lifecycle_status} を
+     * {@code PROVISIONED} から {@code ACTIVE} へ遷移させ、チーム名を返す。
+     * 存在しなければ empty。
+     */
+    @Transactional
+    public Optional<String> activateProvisionedTeam(Long teamId) {
+        return teamRepository.findById(teamId).map(team -> {
+            team.activate();
+            teamRepository.save(team);
+            return team.getName();
+        });
+    }
+
+    /**
+     * 柱②-2 販促プロビジョニング専用: チーム ID からチーム名を解決する（存在しなければ empty）。
+     * 招待の表示名解決（下見/一覧/再送/取消）専用の軽量参照。
+     */
+    public Optional<String> findNameById(Long teamId) {
+        return teamRepository.findById(teamId).map(TeamEntity::getName);
     }
 
     /**
@@ -874,7 +935,11 @@ public class TeamService {
      * @return チームエンティティ
      */
     private TeamEntity findTeamBySlugOrThrow(String slug) {
-        return teamRepository.findBySlugAndDeletedAtIsNull(slug)
+        // 柱②-3 検分 P1-2 根治: PROVISIONED（承諾前の事前作成状態）を除外するため
+        // ACTIVE 限定クエリへ差し替える。getTeam/resolveTeamId は多数の API の入口であり、
+        // 承諾前スコープを認可判定より前に解決できてはならない。
+        return teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(
+                        slug, TeamEntity.LifecycleStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
     }
 
