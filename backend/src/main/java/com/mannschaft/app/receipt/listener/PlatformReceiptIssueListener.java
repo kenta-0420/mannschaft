@@ -1,6 +1,8 @@
 package com.mannschaft.app.receipt.listener;
 
 import com.mannschaft.app.advertising.event.AdInvoicePaidEvent;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.credit.event.NotificationCreditPurchasePaidEvent;
 import com.mannschaft.app.receipt.PlatformReceiptSourceResolver;
 import com.mannschaft.app.receipt.ReceiptSourceRef;
@@ -48,12 +50,14 @@ public class PlatformReceiptIssueListener {
     }
 
     /** 広告費の入金確定。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS, reason = "止めると入金済みの広告費に対する領収書が欠落する。入金確定（ad_invoices.paid_at）は既にコミット済みで巻き戻らない一方、本イベントは AFTER_COMMIT で一度きり配送されるため、停止期間中の入金は再送されず二度と拾えない。過去分を走査し直す常設バッチは存在しない（手動 backfill は第二陣で未実装）。領収書は電子帳簿保存法の保存対象であり欠落は法的な瑕疵になる。対応する gate_key も無く、そもそも止める手段が無い。")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onAdInvoicePaid(AdInvoicePaidEvent event) {
         issueQuietly(ReceiptSourceType.AD_INVOICE, ReceiptSourceRef.of(event.adInvoiceId()));
     }
 
     /** 通知プリペイドクレジット購入の入金確定。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS, reason = "止めると入金済みの通知クレジット購入に対する領収書が欠落する。決済は Stripe 側で完了し残高も加算済みであり巻き戻らない一方、本イベントは AFTER_COMMIT で一度きり配送されるため、停止期間中の購入は再送されず二度と拾えない。過去分を走査し直す常設バッチは存在しない（手動 backfill は第二陣で未実装）。領収書は電子帳簿保存法の保存対象であり欠落は法的な瑕疵になる。対応する gate_key も無く、そもそも止める手段が無い。")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onNotificationCreditPurchasePaid(NotificationCreditPurchasePaidEvent event) {
         issueQuietly(ReceiptSourceType.NOTIFICATION_CREDIT_PURCHASE,

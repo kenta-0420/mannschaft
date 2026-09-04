@@ -220,7 +220,7 @@ public class ReceiptEntity extends BaseEntity {
     @Column(name = "active_platform_source_key", insertable = false, updatable = false,
             columnDefinition = "VARCHAR(110) GENERATED ALWAYS AS ("
                     + "CASE WHEN scope_type = 'PLATFORM' AND voided_at IS NULL "
-                    + "AND source_type IS NOT NULL AND source_ref IS NOT NULL "
+                    + "AND NOT (source_type IS NULL OR source_ref IS NULL) "
                     + "THEN CONCAT(source_type, 0x1F, source_ref) ELSE NULL END) STORED")
     private String activePlatformSourceKey;
 

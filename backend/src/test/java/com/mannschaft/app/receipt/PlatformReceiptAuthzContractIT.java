@@ -36,6 +36,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>対応する受け入れ条件: AC-01 / AC-02 / AC-03 / AC-27 / AC-34。
  *
+ * <h2>SYSTEM_ADMIN 用ケースに {@code roles = "SYSTEM_ADMIN"} を付けている理由（出陣で是正）</h2>
+ * <p>運営領収書 API は {@code /api/v1/system-admin/**} 配下にあり、{@code SecurityConfig} の
+ * {@code requestMatchers("/api/v1/system-admin/**").hasRole("SYSTEM_ADMIN")} が
+ * <b>フィルタチェーンで</b>認可する。{@code @WithMockUser} は SecurityContext を直接差し込むため、
+ * {@code user_roles} に SYSTEM_ADMIN 行を入れても権限は付与されず、
+ * {@code username} だけでは必ず 403 になる（実装の有無に関わらず永久に赤のまま）。
+ * 本リポの既存 SYSTEM_ADMIN 系 IT（{@code SystemAdminModuleToggleContractIT} 等）も
+ * {@code @WithMockUser(roles = "SYSTEM_ADMIN")} を用いており、それに揃えた。</p>
+ *
+ * <p><b>アサーションは一切緩めていない</b>。付与したのは認証の前提だけであり、
+ * 期待する応答（200 / PLATFORM / scopeId=0 / content 配列）はそのままである。
+ * 非 SYSTEM_ADMIN が 403 になること（AC-02）と未認証が 401 になること（AC-03）も、
+ * これらのケースには {@code roles} を付けていないため引き続き検証される。
+ * さらに DB 側の SYSTEM_ADMIN 行も Service 層の {@code checkSystemAdmin} が読むため、
+ * フィルタと Service の両層が実際に通ることを確かめている。</p>
+ *
  * <p><b>red である理由</b>: {@code /api/v1/system-admin/receipt-settings} および
  * {@code /api/v1/system-admin/receipts} は未実装であり、現状は 404 になる。
  * とりわけ AC-02 は「403 であること。500 にならないこと」を求めており、
@@ -107,7 +123,7 @@ class PlatformReceiptAuthzContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "920812101")
+    @WithMockUser(username = "920812101", roles = "SYSTEM_ADMIN")
     @DisplayName("AC-01: SYSTEM_ADMIN は PLATFORM の発行者設定を取得できる（scopeType=PLATFORM, scopeId=0）")
     void ac01_systemAdminCanReadPlatformIssuerSettings() throws Exception {
         mockMvc.perform(get(SETTINGS_PATH))
@@ -140,7 +156,7 @@ class PlatformReceiptAuthzContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "920812101")
+    @WithMockUser(username = "920812101", roles = "SYSTEM_ADMIN")
     @DisplayName("AC-34: 領収書が 0 件でも 200 + 空配列（404 にしない）")
     void ac34_emptyListReturnsOkWithEmptyArray() throws Exception {
         mockMvc.perform(get(RECEIPTS_PATH))

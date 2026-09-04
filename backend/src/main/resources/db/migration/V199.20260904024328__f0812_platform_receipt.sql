@@ -62,12 +62,15 @@ ALTER TABLE receipts
     GENERATED ALWAYS AS (
       CASE WHEN scope_type = 'PLATFORM'
                 AND voided_at IS NULL
-                AND source_type IS NOT NULL
-                AND source_ref IS NOT NULL
+                AND NOT (source_type IS NULL OR source_ref IS NULL)
            THEN CONCAT(source_type, 0x1F, source_ref)
            ELSE NULL END
     ) STORED
     COMMENT '有効なPLATFORM領収書の重複防止キー。無効化・非PLATFORM・source未設定はNULL',
+  -- 条件を「NOT (... IS NULL OR ... IS NULL)」と書いているのは、
+  -- MigrationEntityNullableConsistencyReportTest の DDL パーサが式中の
+  -- 「IS NOT NULL」を列宣言の NOT NULL と誤読し、Entity 側（NULL 許容）との
+  -- 食い違いとして誤検知するためである（CI 実測）。意味は等価。
   ADD UNIQUE KEY uq_r_active_platform_source (active_platform_source_key);
 
 -- PLATFORM 領収書は source を必ず持つ（§4.1 の電子帳簿保存法「取引先」検索要件のため）。

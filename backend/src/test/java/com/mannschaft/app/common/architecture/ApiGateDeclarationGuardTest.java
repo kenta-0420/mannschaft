@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * API の mapped method が feature gate または明示的な常時到達理由を宣言することを監査する番人。
- * HTTP は 3,536 件、STOMP は Chat の 2 件と VillageLobbyPresenceController の 3 件、計 5 件を走査する。
+ * HTTP は 3,539 件、STOMP は Chat の 2 件と VillageLobbyPresenceController の 3 件、計 5 件を走査する。
  */
 class ApiGateDeclarationGuardTest {
 
@@ -41,7 +41,7 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3536);
+                .isEqualTo(3539);
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.STOMP).count())
                 .as("STOMP @MessageMapping の走査総数。Chat 2件と VillageLobbyPresence 3件")
                 .isEqualTo(5);
