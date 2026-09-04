@@ -88,7 +88,7 @@
 - ユーザーとの軽い対話・質問への回答
 - 1〜2ファイル限定の即時的な修正で、コミットせず確認だけする場合
 - ドキュメントの軽微な追記（**ただし `docs/task-list.md` は対象外**。正本であり並行編集の的になるため、軽微に見えてもコミットする場合は必ず worktree + PR で扱う。詳細は上記「大名システム活用ルール」節参照）
-- worktree のクリーンアップなど git 管理操作そのもの
+- worktree のクリーンアップなど git 管理操作そのもの（`git worktree add/remove/prune` と、**マージ済みローカルブランチの削除** `git branch -d/-D`。後者は本陣保護フックでも明示的に許可している。作成・改名・upstream 設定は本陣では拒否されるため worktree で行うこと）
 
 > worktree 隔離が必須な理由・起動すべき場面・並列セッションの作法の詳しい解説は [`docs/development/worktree_operations.md`](docs/development/worktree_operations.md) を参照（大名システムの運用に疑問が生じたら読む）。
 
