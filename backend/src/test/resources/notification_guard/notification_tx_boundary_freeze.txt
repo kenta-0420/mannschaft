@@ -566,5 +566,21 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #   5 件はいずれも「業務TX内の通知呼び出しを publishEvent へ置換」という**ソース上の宣言変更**で
 #   消えている。番人（NotificationTransactionBoundaryGuardTest）の判定ロジックは一行も変更していない。
 #
+# ■ 検出力の下限: NOTIFY_BEARING_FILES_MIN のみ 96 -> 94（実測列挙つき）
+#   RAW_CANDIDATE_HITS_MIN（169）と STRUCTURAL_NOTIFY_CALLS_MIN（149）は**下げない**。
+#   語彙内の通知発火点 6 箇所は 3 ファイルから 1 ファイルへ**まとまって移っただけ**で 1 箇所も消えておらず、
+#   実走でも両ゲートは緑のままだった（落ちたのはファイル数のゲート 1 本だけである）。
+#   ファイル数が 2 減った内訳（本ロットで触った 6 ファイルがすべて。他の本番ファイルは 1 行も変更していない）:
+#     - DailyAttendanceService                 発火あり -> なし（notifyDailyAttendance ×1 を publish へ）
+#     - FamilyAttendanceNoticeService          発火あり -> なし（notifyFamilyNoticeSubmitted / …Acknowledged ×2 を publish へ）
+#     - AttendanceRequirementBatchService      発火あり -> なし（notifyRequirementWarning / Risk / Violation ×3 を publish へ）
+#       ※ 同クラスに残る sendWeeklyRiskDigest は NOTIFY_METHOD_VOCABULARY の語彙外であり、
+#          元から発火点として数えられていない。週次ダイジェストの通知は消しておらず 1 行も変更していない。
+#     - SchoolAttendanceNotificationListener   新規に発火あり（上記 6 箇所の移設先）
+#     - EventEndReminderBatchService           発火あり -> あり（不変。createNotification は同ファイルに残した）
+#     - EventEndReminderDeliveryListener       発火なし（語彙外の deliverReminder を呼ぶだけ）
+#   差し引き -3 + 1 = -2。よって 96 -> 94。番人の判定ロジック
+#   （NOTIFY_METHOD_VOCABULARY / notifyCallOffsets）は本PRで一行も変更していない。
+#
 # ■ CLASSIFIED_FLOOR は 2 のまま据え置く
 #   分類（| <区分>）が付いた 2 件は本ロットの対象外であり、削除も分類変更もしていない。

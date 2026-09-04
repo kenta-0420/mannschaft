@@ -1967,9 +1967,39 @@ class NotificationTransactionBoundaryGuardTest {
      * 当初 98 と書いていたのは誤りで、算術が合わないまま残っていた（実測し直して訂正）。
      * 差分の全列挙は {@link #RAW_CANDIDATE_HITS_MIN} の L5 節にある。
      *
+     * <p><b>96 -&gt; 94 の根拠（2026-09-04・Issue #2990 L6）</b>: school ドメインの是正で
+     * 通知発火点を持つファイルが 3 減り、移設先として 1 増えた（差し引き -2）。
+     * 実測した内訳は次のとおりで、<b>全 6 ファイルとも本ロットで触ったファイルであり、
+     * これ以外の本番ファイルは 1 行も変更していない</b>。したがって減少はすべて是正由来であり、
+     * 番人の判定が緩んだことによる消失は 0 件である
+     * （{@link #NOTIFY_METHOD_VOCABULARY} と {@link #notifyCallOffsets} は本PRで無変更）。</p>
+     * <ul>
+     *   <li>{@code DailyAttendanceService} — 発火あり → <b>なし</b>。
+     *       {@code notifyDailyAttendance} を {@code DailyRollCallRecordedEvent} の publish へ置換。</li>
+     *   <li>{@code FamilyAttendanceNoticeService} — 発火あり → <b>なし</b>。
+     *       {@code notifyFamilyNoticeSubmitted} / {@code notifyFamilyNoticeAcknowledged} の 2 箇所を publish へ置換。</li>
+     *   <li>{@code AttendanceRequirementBatchService} — 発火あり → <b>なし</b>。
+     *       {@code notifyRequirementWarning} / {@code notifyRequirementRisk} /
+     *       {@code notifyRequirementViolation} の 3 箇所を publish へ置換。
+     *       同クラスに残る {@code sendWeeklyRiskDigest} は
+     *       {@link #NOTIFY_METHOD_VOCABULARY} の語彙に含まれないため、元から発火点として数えられていない
+     *       （＝このファイルが落ちるのは「語彙内の発火点が 3 箇所とも移設された」ためであり、
+     *       週次ダイジェストの通知が消えたわけではない。同メソッドは 1 行も変更していない）。</li>
+     *   <li>{@code SchoolAttendanceNotificationListener} — <b>新規に発火あり</b>。上記 6 箇所の移設先。</li>
+     *   <li>{@code EventEndReminderBatchService} — 発火あり → <b>あり（不変）</b>。
+     *       {@code createNotification} は同ファイルに残したまま、呼び出し位置だけを
+     *       {@code AFTER_COMMIT} の後（{@code deliverReminder}）へ移した。</li>
+     *   <li>{@code EventEndReminderDeliveryListener} — <b>発火なし</b>。
+     *       語彙外の {@code deliverReminder} を呼ぶだけで、通知 API は 1 つも呼ばない。</li>
+     * </ul>
+     *
+     * <p>{@link #RAW_CANDIDATE_HITS_MIN} と {@link #STRUCTURAL_NOTIFY_CALLS_MIN} は<b>下げない</b>。
+     * 語彙内の発火点 6 箇所は 3 ファイルから 1 ファイルへ<b>まとまって移っただけ</b>で 1 箇所も消えておらず、
+     * 実際に両ゲートは本ロットの実走で緑のままだった（落ちたのはファイル数のゲートだけである）。</p>
+     *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long NOTIFY_BEARING_FILES_MIN = 96L;
+    static final long NOTIFY_BEARING_FILES_MIN = 94L;
 
     /** 検出力の実測値。 */
     record DetectionPower(long rawCandidateHits, long structuralNotifyCalls, long parsedMethods) {}
