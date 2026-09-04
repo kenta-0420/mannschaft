@@ -8,6 +8,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import com.lowagie.text.pdf.BaseFont;
 import org.xhtmlrenderer.pdf.ITextFontResolver;
 import org.xhtmlrenderer.pdf.ITextRenderer;
 
@@ -254,7 +255,10 @@ public class PdfGeneratorService {
                 ClassPathResource resource = new ClassPathResource(font.classpathLocation());
                 try (InputStream is = resource.getInputStream()) {
                     String fontUrl = resource.getURL().toExternalForm();
-                    fontResolver.addFont(fontUrl, true);
+                    // CJK（日本語）グリフを埋め込むには IDENTITY_H エンコーディングが必須。
+                    // 既定の addFont(path, embedded) は BaseFont.CP1252 を使うため、
+                    // 埋め込み自体は成功しても日本語グリフが欠落し無音で失敗する。
+                    fontResolver.addFont(fontUrl, BaseFont.IDENTITY_H, true);
                 }
             } catch (Exception e) {
                 log.error("フォント登録失敗: {}", font.familyName(), e);
