@@ -132,7 +132,7 @@
 #      createDelegation / onDelegatorAttendanceChanged / reject（すべて TX_NOTIFY_BARE）の6件。
 # CLASSIFIED_FLOOR は分類済み9件のうち ROLLBACK_COUPLED 4件を是正で消したため 9 -> 5。
 # 残る分類済み5件はすべて ORDERING_ONLY であり、#2990 本体（巻き戻り）ではない。
-# CENSUS_FLOOR: 78
+# CENSUS_FLOOR: 77
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -142,7 +142,6 @@ com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTEN
 com.mannschaft.app.billing.beta.BetaGrantService#safeNotify -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_BARE
 com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisService#analyzeSync -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.errorreport.service.ErrorReportAsyncExecutor#doRecordBackendException -> TX_NOTIFY_BARE
 com.mannschaft.app.errorreport.service.ErrorReportService#createOrAggregate -> TX_NOTIFY_BARE
 com.mannschaft.app.errorreport.service.ErrorReportService#updateStatus -> TX_NOTIFY_BARE
@@ -358,7 +357,7 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #       本件の呼び出し元は createOrAggregate の2箇所のみ（recordBackendException からは
 #       呼ばれない。grep 実測）であり正常にコミットする業務経路のため、その例外事由は当てはまらない。
 #
-# ■ 削除した 14 行の全内訳
+# ■ 削除した 15 行の全内訳
 #
 #   [割当11件]
 #   ASYNC_SELF_INVOCATION (5):
@@ -375,11 +374,17 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #     NotificationCreditAlertSender#sendNegativeBalanceAlert … @Async("event-pool") を明示
 #     MilestoneNotificationListener#onMilestoneUnlocked   … @Async("event-pool") を明示
 #
-#   [相乗りで消えた3件]
-#   TX_NOTIFY_IN_TRY (2):
+#   [相乗りで消えた4件]
+#   TX_NOTIFY_IN_TRY (3):
 #     NotificationCreditExpiryBatch#sendCreditExpiredAlertAsync … メソッドごと AlertSender へ移設。
 #                                                                 移設先に @Transactional が無いため成立しない
 #     NotificationCreditExpiryBatch#sendExpiryAlertAsync        … 同上
+#     ErrorReportAiAnalysisService#analyzeSync                  … 再検分是正で analyzeSync から
+#                                                                 @Transactional を外し、読み取り／
+#                                                                 AI 呼び出し／書き込みの3段に分割した
+#                                                                 （上記 (3) の是正）。@Transactional が
+#                                                                 無くなったため TX_NOTIFY_IN_TRY は
+#                                                                 構造的に成立しない。
 #   PLAIN_EVENT_LISTENER (1):
 #     MilestoneNotificationListener#onMilestoneUnlocked         … @EventListener を
 #                                                                 @TransactionalEventListener(AFTER_COMMIT) へ変更
@@ -394,13 +399,19 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #   executor だけ直して PLAIN_EVENT_LISTENER を残すと「番人は静かになったが欠陥は残る」ため、
 #   同一メソッドの2件をまとめて是正した。
 #
-# ■ CENSUS_FLOOR: 92 -> 78 の裏取り（実測）
+# ■ CENSUS_FLOOR: 92 -> 77 の裏取り（実測）
 #   是正前: 凍結エントリ 84 + REMOVED 8 + AMBIGUOUS 0 = 92（= 是正前の CENSUS_FLOOR）
-#   是正後: 凍結エントリ 70 + REMOVED 8 + AMBIGUOUS 0 = 78
-#   消えた 14 件はすべて上記の是正由来であり、番人の検出力低下による消失は 0 件である。
-#   確認方法: 14 件はいずれも「@Async の executor 明示」「別 Bean への移設」
-#   「@TransactionalEventListener への変更」という**ソース上の宣言変更**で消えている。
+#   是正後: 凍結エントリ 69 + REMOVED 8 + AMBIGUOUS 0 = 77
+#   消えた 15 件はすべて上記の是正由来であり、番人の検出力低下による消失は 0 件である。
+#   確認方法: 15 件はいずれも「@Async の executor 明示」「別 Bean への移設」
+#   「@TransactionalEventListener への変更」「@Transactional の除去（TX 3分割）」という
+#   **ソース上の宣言変更**で消えている。
 #   番人側（NotificationTransactionBoundaryGuardTest）の判定ロジックは一行も変更していない。
+#
+#   なお 15 件目（ErrorReportAiAnalysisService#analyzeSync -> TX_NOTIFY_IN_TRY）は、
+#   再検分是正で analyzeSync から @Transactional を外した際に台帳から削り忘れていたものである。
+#   CI（run 33819476573 / shard 1）が「baseline に居るのに検出されなくなった違反」として
+#   検出し、本コミットで台帳と CENSUS_FLOOR を実装に追随させた。
 #
 # ■ CLASSIFIED_FLOOR は 2 のまま据え置く
 #   分類（| <区分>）が付いた 2 件は
