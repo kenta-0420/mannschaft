@@ -3,6 +3,7 @@ package com.mannschaft.app.billing;
 import com.mannschaft.app.common.repository.AbstractTenantAwareRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -61,6 +62,31 @@ public interface BillingContractRepository
      */
     List<BillingContractEntity> findByScopeKindAndScopeIdAndStatusAndPspSubscriptionRefIsNotNullAndDeletedAtIsNull(
             EntitlementScopeKind scopeKind, Long scopeId, ContractStatus status);
+
+    /**
+     * PENDING 契約へ Stripe Checkout Session ID を条件付き UPDATE（CAS）で紐付ける。
+     *
+     * <p>条件は「対象契約が実在し、論理削除されておらず、status=PENDING であり、Session ref が未設定か
+     * 同一 ref であること」。同一 ref の再送は 1 行更新として通す（冪等）。他の Session ref を既に持つ契約、
+     * PENDING でない契約、削除済み契約は 0 行となって弾かれる。{@code uk_bc_checkout_session} が
+     * 「別契約が同じ Session を握る」経路も DB 側で塞ぐ。</p>
+     *
+     * @return 更新行数（1 のときだけ紐付け成立）
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update BillingContractEntity contract
+               set contract.stripeCheckoutSessionRef = :sessionRef,
+                   contract.updatedAt = :now
+             where contract.id = :id
+               and contract.status = com.mannschaft.app.billing.ContractStatus.PENDING
+               and contract.deletedAt is null
+               and (contract.stripeCheckoutSessionRef is null
+                    or contract.stripeCheckoutSessionRef = :sessionRef)
+            """)
+    int attachCheckoutSessionIfPending(@Param("id") UUID id,
+                                       @Param("sessionRef") String sessionRef,
+                                       @Param("now") java.time.LocalDateTime now);
 
     /** 指定プランを参照する当該状態の契約が存在するか（シスアド マスタ DELETE の参照中判定・02 §4）。 */
     boolean existsByPlanKeyAndStatusAndDeletedAtIsNull(String planKey, ContractStatus status);

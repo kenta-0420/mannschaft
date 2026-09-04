@@ -132,34 +132,20 @@
 #      createDelegation / onDelegatorAttendanceChanged / reject（すべて TX_NOTIFY_BARE）の6件。
 # CLASSIFIED_FLOOR は分類済み9件のうち ROLLBACK_COUPLED 4件を是正で消したため 9 -> 5。
 # 残る分類済み5件はすべて ORDERING_ONLY であり、#2990 本体（巻き戻り）ではない。
-# CENSUS_FLOOR: 92
+# CENSUS_FLOOR: 68
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
 com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService#executeAt -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.admin.batch.BatchEventListener#onCompleted -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTENER
-com.mannschaft.app.analytics.service.AnalyticsBackfillService#executeAsync -> ASYNC_WITHOUT_EXECUTOR
-com.mannschaft.app.analytics.service.AnalyticsBackfillService#startBackfill -> ASYNC_SELF_INVOCATION
 com.mannschaft.app.billing.beta.BetaGrantService#safeNotify -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> ASYNC_WITHOUT_EXECUTOR
 com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_BARE
 com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisService#analyzeAfterCommit -> ASYNC_SELF_INVOCATION
-com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisService#analyzeSync -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.errorreport.service.ErrorReportAsyncExecutor#doRecordBackendException -> TX_NOTIFY_BARE
 com.mannschaft.app.errorreport.service.ErrorReportService#createOrAggregate -> TX_NOTIFY_BARE
 com.mannschaft.app.errorreport.service.ErrorReportService#updateStatus -> TX_NOTIFY_BARE
 com.mannschaft.app.errorreport.service.ErrorReportTimelineService#assign -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventCheckinService#selfCheckin -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventCheckinService#staffCheckin -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventDelegationService#accept -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventDelegationService#cancelInternal -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventDelegationService#cancelOnMemberLeft -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventDelegationService#createDelegation -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventDelegationService#reject -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventRollCallService#submitRollCall -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventRsvpService#submitRsvp -> TX_NOTIFY_BARE
 com.mannschaft.app.family.service.EventEndReminderBatchService#sendReminderNotification -> TX_NOTIFY_BARE
 com.mannschaft.app.jobmatching.service.JobApplicationService#apply -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.jobmatching.service.JobCheckInService#fireNotifications -> TX_NOTIFY_IN_TRY
@@ -169,14 +155,6 @@ com.mannschaft.app.memberinfo.service.MemberInfoResponseService#sendRemind -> TX
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfirmService#resendReminder -> TX_NOTIFY_BARE
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processAlertIfNeeded -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processReminders -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#process30DayAlert -> ASYNC_SELF_INVOCATION
-com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#process7DayAlert -> ASYNC_SELF_INVOCATION
-com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#processExpiry -> ASYNC_SELF_INVOCATION
-com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendCreditExpiredAlertAsync -> ASYNC_WITHOUT_EXECUTOR
-com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendCreditExpiredAlertAsync -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendExpiryAlertAsync -> ASYNC_WITHOUT_EXECUTOR
-com.mannschaft.app.notification.credit.batch.NotificationCreditExpiryBatch#sendExpiryAlertAsync -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.notification.credit.service.NotificationCreditAlertSender#sendNegativeBalanceAlert -> ASYNC_WITHOUT_EXECUTOR
 com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.payment.escrow.EscrowLifecycleService#notifyCancelled -> TX_NOTIFY_BARE
 com.mannschaft.app.payment.escrow.EscrowLifecycleService#promoteHeldEscrow -> TX_NOTIFY_BARE
@@ -214,8 +192,6 @@ com.mannschaft.app.ticket.service.TicketExpiryBatchService#sendExpiryNotificatio
 com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.todo.batch.TodoDueReminderBatch#notifyAssignees -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.todo.event.MilestoneNotificationListener#onMilestoneUnlocked -> ASYNC_WITHOUT_EXECUTOR
-com.mannschaft.app.todo.event.MilestoneNotificationListener#onMilestoneUnlocked -> PLAIN_EVENT_LISTENER
 
 # --- 2026-09-01 main 取り込みで増えた既存負債（本PRの差分が生んだものではない）---
 # baseline 採取後に main へ着地した実装が持ち込んだ3件。番人が正しく検知したため既存負債として凍結し、
@@ -327,3 +303,180 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #    実際の通知発火点（DigestAsyncExecutor#notificationHelper.notify /
 #    EscrowLifecycleService#escrowNotificationService.notifyPaymentRequired）は 1 箇所も動いていない。
 #    移設したのは通知を含まない委譲呼び出し（generateAiDigestAsync / promoteHeldEscrow）だけである。
+
+# ------------------------------------------------------------------------------
+# --- 2026-09-03 Issue #2990 L4: ASYNC 系 11件の是正（CENSUS_FLOOR 92 -> 78）---
+# ------------------------------------------------------------------------------
+# 割当は ASYNC_SELF_INVOCATION 5件 + ASYNC_WITHOUT_EXECUTOR 6件の計11件。
+# 是正に伴い、同じメソッドに相乗りしていた TX_NOTIFY_IN_TRY 2件と、同じリスナーの
+# PLAIN_EVENT_LISTENER 1件も一緒に消えたため、実際に削除したエントリは 14 行である。
+# 内訳（削除 14 行 = 割当 11 + 相乗り 3）を以下にすべて列挙する。
+#
+# ■ ASYNC_SELF_INVOCATION 5件の「巻き戻るのか」判定（任務1）
+#
+#   (1) NotificationCreditExpiryBatch#process30DayAlert / #process7DayAlert / #processExpiry
+#       → 巻き戻る。ROLLBACK_COUPLED 相当だった。
+#       runBatch がバッチ全体を覆う単一の @Transactional であり、@Async protected な
+#       sendExpiryAlertAsync / sendCreditExpiredAlertAsync を自クラス内から無修飾で呼んでいた。
+#       プロキシを経ないため @Async は失効し、通知送信はその単一トランザクションの内側で
+#       同期実行されていた。通知側で DB 例外が出ると、項目ごとの try/catch で握っても
+#       トランザクションは rollback-only のままコミットへ進み UnexpectedRollbackException となり、
+#       アラート送信済フラグ・expired_at・**残高からの失効分の差し引き**がまとめて巻き戻る。
+#       是正: runBatch から @Transactional を外して非トランザクションのオーケストレータにし、
+#       項目ごとの永続化を NotificationCreditExpiryRunner（REQUIRES_NEW）へ、
+#       通知を NotificationCreditAlertSender（別 Bean・@Async("event-pool")）へ移した。
+#       L2 の NotificationCreditService#consume と同じ型・同じ根本原因である。
+#
+#   (2) AnalyticsBackfillService#startBackfill
+#       → 巻き戻らない。startBackfill にも呼び出し元 AnalyticsAlertController にも
+#       @Transactional が無く、巻き戻る業務トランザクションがそもそも存在しない。
+#       実害は別種で、@Async 失効により最大183日ぶんの集計とコホート再計算と
+#       SYSTEM_ADMIN 全員への通知が HTTP リクエストスレッド上で同期実行されていた。
+#       status="RUNNING" を返す契約に反してジョブ完了までレスポンスを返さない。
+#       是正: 実行本体を AnalyticsBackfillRunner（@Async("job-pool")）へ切り出した。
+#
+#   (3) ErrorReportAiAnalysisService#analyzeAfterCommit
+#       → 巻き戻らない。登録先が afterCommit であり、実行時点で業務トランザクション
+#       （ErrorReportService#createOrAggregate）は既にコミット済みである。
+#       ただし analyzeAfterCommit → analyzeAsync → analyzeSync の3段がすべて自己呼び出しで、
+#       @Async と @Transactional が**いずれも失効**していた。実害は (a) Claude API 呼び出しを含む
+#       AI 分析がリクエストスレッドで同期実行される、(b) 即時分析経路で analyzeSync の
+#       @Transactional が効かず永続化が単一トランザクションにまとまらない、の2点。
+#       是正: 段ごとに Bean を分けた（Dispatcher → AsyncRunner → Service#analyzeSync）。
+#       なお L3 で ErrorReportService#recordBackendException を「業務TXがロールバック済みの後に
+#       走るので AFTER_COMMIT にすると永久に発火しない」として監査済み例外にしたが、
+#       本件の呼び出し元は createOrAggregate の2箇所のみ（recordBackendException からは
+#       呼ばれない。grep 実測）であり正常にコミットする業務経路のため、その例外事由は当てはまらない。
+#
+# ■ 削除した 15 行の全内訳
+#
+#   [割当11件]
+#   ASYNC_SELF_INVOCATION (5):
+#     AnalyticsBackfillService#startBackfill              … 実行本体を別 Bean へ切り出し自己呼び出し解消
+#     ErrorReportAiAnalysisService#analyzeAfterCommit     … Dispatcher/AsyncRunner へ段分割
+#     NotificationCreditExpiryBatch#process30DayAlert     … 通知を AlertSender へ移設
+#     NotificationCreditExpiryBatch#process7DayAlert      … 同上
+#     NotificationCreditExpiryBatch#processExpiry         … 同上
+#   ASYNC_WITHOUT_EXECUTOR (6):
+#     AnalyticsBackfillService#executeAsync               … AnalyticsBackfillRunner#executeAsync へ移設し @Async("job-pool")
+#     DigestAsyncExecutor#generateAiDigestAsync           … @Async("job-pool") を明示
+#     NotificationCreditExpiryBatch#sendCreditExpiredAlertAsync … AlertSender#sendCreditExpiredAlert へ移設し @Async("event-pool")
+#     NotificationCreditExpiryBatch#sendExpiryAlertAsync  … AlertSender#sendExpiryAlert へ移設し @Async("event-pool")
+#     NotificationCreditAlertSender#sendNegativeBalanceAlert … @Async("event-pool") を明示
+#     MilestoneNotificationListener#onMilestoneUnlocked   … @Async("event-pool") を明示
+#
+#   [相乗りで消えた4件]
+#   TX_NOTIFY_IN_TRY (3):
+#     NotificationCreditExpiryBatch#sendCreditExpiredAlertAsync … メソッドごと AlertSender へ移設。
+#                                                                 移設先に @Transactional が無いため成立しない
+#     NotificationCreditExpiryBatch#sendExpiryAlertAsync        … 同上
+#     ErrorReportAiAnalysisService#analyzeSync                  … 再検分是正で analyzeSync から
+#                                                                 @Transactional を外し、読み取り／
+#                                                                 AI 呼び出し／書き込みの3段に分割した
+#                                                                 （上記 (3) の是正）。@Transactional が
+#                                                                 無くなったため TX_NOTIFY_IN_TRY は
+#                                                                 構造的に成立しない。
+#   PLAIN_EVENT_LISTENER (1):
+#     MilestoneNotificationListener#onMilestoneUnlocked         … @EventListener を
+#                                                                 @TransactionalEventListener(AFTER_COMMIT) へ変更
+#
+# ■ MilestoneNotificationListener を割当外まで直した理由
+#   割当は ASYNC_WITHOUT_EXECUTOR 1件のみだったが、実測すると javadoc が
+#   「@Async 指定により、元トランザクションの commit 後に非同期で実行される」と書いていながら
+#   実際は素の @EventListener であり、**その記述は事実ではなかった**。publishEvent の時点、すなわち
+#   MilestoneGateService の業務TX（forceUnlock / rebuildChain / unlockSuccessors のいずれも
+#   @Transactional）がまだコミットしていない間に別スレッドへ渡されており、
+#   リスナーが milestoneRepository.findById で読み直す内容は未コミット変更を見られない。
+#   executor だけ直して PLAIN_EVENT_LISTENER を残すと「番人は静かになったが欠陥は残る」ため、
+#   同一メソッドの2件をまとめて是正した。
+#
+# ■ CENSUS_FLOOR: 92 -> 77 の裏取り（実測）
+#   是正前: 凍結エントリ 84 + REMOVED 8 + AMBIGUOUS 0 = 92（= 是正前の CENSUS_FLOOR）
+#   是正後: 凍結エントリ 69 + REMOVED 8 + AMBIGUOUS 0 = 77
+#   消えた 15 件はすべて上記の是正由来であり、番人の検出力低下による消失は 0 件である。
+#   確認方法: 15 件はいずれも「@Async の executor 明示」「別 Bean への移設」
+#   「@TransactionalEventListener への変更」「@Transactional の除去（TX 3分割）」という
+#   **ソース上の宣言変更**で消えている。
+#   番人側（NotificationTransactionBoundaryGuardTest）の判定ロジックは一行も変更していない。
+#
+#   なお 15 件目（ErrorReportAiAnalysisService#analyzeSync -> TX_NOTIFY_IN_TRY）は、
+#   再検分是正で analyzeSync から @Transactional を外した際に台帳から削り忘れていたものである。
+#   CI（run 33819476573 / shard 1）が「baseline に居るのに検出されなくなった違反」として
+#   検出し、本コミットで台帳と CENSUS_FLOOR を実装に追随させた。
+#
+# ■ CLASSIFIED_FLOOR は 2 のまま据え置く
+#   分類（| <区分>）が付いた 2 件は
+#     ErrorReportService#recordBackendException -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
+#     ShiftBudgetFailedEventService#retry        -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
+#   のいずれも本ロットの対象外であり、削除も分類変更もしていない。
+#   前者の委譲先は ErrorReportAsyncExecutor#recordBackendException（@Async 付き）で、
+#   本ロットでは触れていないため機械照合による導出結果も変わらない。
+
+# ------------------------------------------------------------------------------
+# --- 2026-09-04 Issue #2990 L5: event ドメイン 9件の是正（CENSUS_FLOOR 77 -> 68）---
+# ------------------------------------------------------------------------------
+# 割当は event ドメインの TX_NOTIFY_BARE 9件。相乗りで消えたエントリは無く、削除は 9 行ちょうど。
+# 9件は根が2つに分かれる（任務1の実測結果）。
+#
+# ■ 根(A) EventDelegationNotifier が素の @Component だった（5件）
+#   EventDelegationService#createDelegation / #accept / #reject / #cancelInternal /
+#   #cancelOnMemberLeft の5件は、L2（PR #3065）が schedule ドメインで直した
+#   ScheduleDelegationNotifier と**同一の欠陥・同一の構造**である。Notifier が素の @Component で
+#   業務TXから同期呼び出しされ、内部の createNotification が既定の REQUIRED 伝播で
+#   呼び出し元TXに参加していた。巻き戻る内容:
+#     createDelegation    … 委任行の作成 + RSVP モードの委任者 NOT_ATTENDING 反映（§5.4）
+#                           （自動承認時は代理人 ATTENDING 反映と F08.3 連携イベント発火も同TX）
+#     accept              … ACCEPTED への遷移 + 代理人 RSVP の ATTENDING 反映 + F08.3 連携発火
+#     reject              … REJECTED への遷移
+#     cancelInternal      … CANCELLED への遷移（withdraw / cancelBySystem の共通経路）
+#     cancelOnMemberLeft  … 退会連動の CANCELLED 化。呼び出し元は
+#                           EventDelegationMembershipListener#handleMembershipEnded と
+#                           ProxyDelegationCleanupBatchService#cleanupEventDelegations の2つ
+#                           （grep 実測）。後者は 1 件の通知失敗でその回の孤立委任の取消が全件巻き戻る
+#   是正: L2 の型をそのまま踏襲。EventDelegationNotifier 自体を AFTER_COMMIT +
+#   @Async("event-pool") のリスナーへ作り替え、Service は EventDelegationNotificationEvent
+#   （delegationId と Kind のみ）を publish するだけにした。配送は NotificationDeliveryRunner#sendOne。
+#   L2 と同じく、是正前に IN_APP のみだった 承認 / 取消 / 委任者退会 の3種に Push/WebSocket が付く
+#   （意図的な挙動変更。schedule 側と event 側で同じ F03.10 の通知が非対称なほうが不自然なため）。
+#
+# ■ 根(B) CareEventNotificationService を業務TX内から直接呼んでいた（4件）
+#   EventCheckinService#selfCheckin / #staffCheckin、EventRsvpService#submitRsvp、
+#   EventRollCallService#submitRollCall の4件。巻き戻る内容:
+#     staffCheckin / selfCheckin … チケットの use()（使用済み化）・event_checkins 行・
+#                                  イベントのチェックイン数カウンタ加算。
+#                                  会場入口で QR を通したのに来場記録が一切残らない
+#     submitRsvp                 … event_rsvp_responses 行。利用者の出欠回答そのものが失われる
+#     submitRollCall             … 点呼セッション1回ぶんの event_checkins 行が**全件**。
+#                                  ケア対象者1人の見守り通知の失敗で、その回に点呼した
+#                                  参加者全員の出欠が消える
+#   是正: CareEventNotificationService は**変更していない**（通知そのものが業務目的のクラスであり
+#   CMP-056 / #2990 の一括適用対象外。EventDismissalNotificationListener が解散通知について
+#   既に取った方針と同一）。変えたのは呼び出し位置だけで、業務TX内では
+#   EventCareNotificationTriggerEvent（eventId・Kind・宛先 userId 一覧）を publish するに留め、
+#   新設の EventCareNotificationTriggerListener（AFTER_COMMIT + @Async("event-pool")）が
+#   受信者ごとの try/catch 隔離つきで実配送する。
+#   NotificationDeliveryRunner へは置換していない。冪等ログ記録（event_care_notification_logs）と
+#   通知作成を1トランザクションに保つ必要があり、CareEventNotificationService の中身を
+#   分解する話は本ロットの範囲外であるため。配信面（create + dispatch）は是正前と等価。
+#
+# ■ submitRollCall のレスポンス値 guardianNotificationsSent の意味は変わらない
+#   同フィールドは是正前も「notifyCheckin を呼んだ回数」であり、配送成功数ではなかった
+#   （notifyCheckin は冪等チェックで内部的に 0 件送信になりうる）。是正後は「配送要求の宛先に
+#   載せた件数」であり、数え上げの条件（PRESENT かつ isUnderCare かつ見守り者1人以上かつ
+#   notifyGuardiansImmediately）は1行も変えていない。guardianSetupWarnings も同様。
+#
+# ■ CENSUS_FLOOR: 77 -> 68 の裏取り（実測）
+#   是正前: 凍結エントリ 69 + REMOVED 8 + AMBIGUOUS 0 = 77（= 是正前の CENSUS_FLOOR）
+#   是正後: 凍結エントリ 60 + REMOVED 8 + AMBIGUOUS 0 = 68
+#   消えた 9 件はすべて上記の是正由来であり、番人の検出力低下による消失は 0 件である。
+#   確認方法: 9 件はいずれも「業務TX内の通知呼び出しを publishEvent へ置換」という
+#   **ソース上の宣言変更**で消えている。番人（NotificationTransactionBoundaryGuardTest）の
+#   判定ロジックは一行も変更していない。通知の実発火点は 1 箇所も消えておらず、
+#   AFTER_COMMIT の後（EventDelegationNotifier#onEventDelegationNotification /
+#   EventCareNotificationTriggerListener#onEventCareNotificationTrigger）へ移設しただけである。
+#
+# ■ CLASSIFIED_FLOOR は 2 のまま据え置く
+#   分類（| <区分>）が付いた 2 件（ErrorReportService#recordBackendException /
+#   ShiftBudgetFailedEventService#retry、いずれも TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY）は
+#   本ロットの対象外であり、削除も分類変更もしていない。委譲先にも触れていないため
+#   機械照合による導出結果も変わらない。
