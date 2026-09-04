@@ -8,6 +8,7 @@ import com.mannschaft.app.event.entity.EventCheckinEntity;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventRegistrationEntity;
 import com.mannschaft.app.event.entity.EventTicketEntity;
+import com.mannschaft.app.event.event.EventCareNotificationTriggerEvent;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRegistrationRepository;
 import com.mannschaft.app.event.repository.EventRepository;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -37,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -218,6 +221,79 @@ class EventCheckinServiceTest {
         }
 
         @Test
+        @DisplayName("スタッフチェックイン_正常_見守り通知トリガーをpublishする")
+        void スタッフチェックイン_正常_見守り通知トリガーをpublishする() {
+            // Given
+            CheckinRequest request = new CheckinRequest(QR_TOKEN, "備考");
+            EventTicketEntity ticket = createValidTicket();
+            EventEntity event = EventEntity.builder()
+                    .scopeType(EventScopeType.TEAM).scopeId(10L).slug("ev")
+                    .status(EventStatus.REGISTRATION_OPEN)
+                    .visibility(com.mannschaft.app.event.entity.EventVisibility.MEMBERS_ONLY)
+                    .isApprovalRequired(false).build();
+            EventRegistrationEntity registration = EventRegistrationEntity.builder()
+                    .eventId(EVENT_ID).userId(SELF_USER_ID).ticketTypeId(3L)
+                    .status(RegistrationStatus.APPROVED).quantity(1).build();
+
+            given(ticketService.findTicketByQrTokenOrThrow(QR_TOKEN)).willReturn(ticket);
+            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(registration));
+            given(checkinRepository.existsByTicketId(any())).willReturn(false);
+            given(ticketRepository.save(any(EventTicketEntity.class))).willReturn(ticket);
+            given(checkinRepository.save(any(EventCheckinEntity.class))).willAnswer(inv -> {
+                EventCheckinEntity saved = inv.getArgument(0);
+                invokeOnCreate(saved);
+                return saved;
+            });
+            given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(event));
+            given(eventRepository.save(any(EventEntity.class))).willReturn(event);
+            given(eventMapper.toCheckinResponse(any(EventCheckinEntity.class)))
+                    .willReturn(createCheckinResponse());
+
+            // When
+            eventCheckinService.staffCheckin(STAFF_USER_ID, request);
+
+            // Then: eventId / Kind / 通知対象ユーザーIDまで検証する
+            verifyCareCheckinTriggerPublished(SELF_USER_ID);
+        }
+
+        @Test
+        @DisplayName("スタッフチェックイン_ゲスト参加(userId無し)_見守り通知トリガーをpublishしない")
+        void スタッフチェックイン_ゲスト参加_見守り通知トリガーをpublishしない() {
+            // Given
+            CheckinRequest request = new CheckinRequest(QR_TOKEN, null);
+            EventTicketEntity ticket = createValidTicket();
+            EventEntity event = EventEntity.builder()
+                    .scopeType(EventScopeType.TEAM).scopeId(10L).slug("ev")
+                    .status(EventStatus.REGISTRATION_OPEN)
+                    .visibility(com.mannschaft.app.event.entity.EventVisibility.MEMBERS_ONLY)
+                    .isApprovalRequired(false).build();
+            EventRegistrationEntity guestRegistration = EventRegistrationEntity.builder()
+                    .eventId(EVENT_ID).guestName("ゲスト").guestEmail("guest@example.com").ticketTypeId(3L)
+                    .status(RegistrationStatus.APPROVED).quantity(1).build();
+
+            given(ticketService.findTicketByQrTokenOrThrow(QR_TOKEN)).willReturn(ticket);
+            given(registrationRepository.findById(REGISTRATION_ID)).willReturn(Optional.of(guestRegistration));
+            given(checkinRepository.existsByTicketId(any())).willReturn(false);
+            given(ticketRepository.save(any(EventTicketEntity.class))).willReturn(ticket);
+            given(checkinRepository.save(any(EventCheckinEntity.class))).willAnswer(inv -> {
+                EventCheckinEntity saved = inv.getArgument(0);
+                invokeOnCreate(saved);
+                return saved;
+            });
+            given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(event));
+            given(eventRepository.save(any(EventEntity.class))).willReturn(event);
+            given(eventMapper.toCheckinResponse(any(EventCheckinEntity.class)))
+                    .willReturn(createCheckinResponse());
+
+            // When
+            eventCheckinService.staffCheckin(STAFF_USER_ID, request);
+
+            // Then: ケア対象者を特定できないため発火しない
+            verify(eventPublisher, never())
+                    .publishEvent(any(EventCareNotificationTriggerEvent.class));
+        }
+
+        @Test
         @DisplayName("スタッフチェックイン_チケット使用済み_例外スロー")
         void スタッフチェックイン_チケット使用済み_例外スロー() {
             // Given
@@ -293,6 +369,8 @@ class EventCheckinServiceTest {
 
             // Then
             assertThat(result.getCheckinType()).isEqualTo("SELF");
+            // eventId / Kind / 通知対象ユーザーIDまで検証する（publish 行を消せば赤くなる）
+            verifyCareCheckinTriggerPublished(SELF_USER_ID);
         }
 
         @Test
@@ -330,6 +408,24 @@ class EventCheckinServiceTest {
             assertThatThrownBy(() -> eventCheckinService.selfCheckin(SELF_USER_ID, request))
                     .isInstanceOf(BusinessException.class);
         }
+    }
+
+    /**
+     * F03.12 見守り通知トリガーが「業務TX内では publish されるだけ」であることを検証する（Issue #2990 L5）。
+     *
+     * <p>呼ばれたかどうかだけでは publish 行の消失を捕まえられないため、
+     * イベントID・種別・通知対象ユーザーIDの中身まで突き合わせる。</p>
+     *
+     * @param expectedCareRecipientUserId 通知対象として載っているはずのユーザーID
+     */
+    private void verifyCareCheckinTriggerPublished(Long expectedCareRecipientUserId) {
+        ArgumentCaptor<EventCareNotificationTriggerEvent> captor =
+                ArgumentCaptor.forClass(EventCareNotificationTriggerEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        EventCareNotificationTriggerEvent published = captor.getValue();
+        assertThat(published.eventId()).isEqualTo(EVENT_ID);
+        assertThat(published.kind()).isEqualTo(EventCareNotificationTriggerEvent.Kind.CHECKIN);
+        assertThat(published.careRecipientUserIds()).containsExactly(expectedCareRecipientUserId);
     }
 
     // ========================================

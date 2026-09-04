@@ -43,7 +43,14 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *   <li>{@code cancelOnMemberLeft} — 退会連動の {@code CANCELLED} 化。呼び出し元は
  *       {@code EventDelegationMembershipListener#handleMembershipEnded}（退会イベント連動）と
  *       {@code ProxyDelegationCleanupBatchService#cleanupEventDelegations}（日次バッチ）の2つで
- *       ある（grep 実測）。後者は 1 件の通知失敗でその回に処理した孤立委任の取消が全件巻き戻る。</li>
+ *       ある（grep 実測）。後者では 1 件の通知失敗でその委任の取消が巻き戻ったうえ、例外が
+ *       ループの外まで伝播して<b>その回の残りの孤立委任が一切処理されなくなる</b>
+ *       （取りこぼしは翌日の実行まで放置される）。
+ *       <b>なお「その回の取消が全件巻き戻る」ことはない</b>: {@code ProxyDelegationCleanupBatchService}
+ *       はクラスに {@code @Transactional} を持たず、{@code execute()} が
+ *       {@code cleanupEventDelegations()} を<b>自己呼び出し</b>しているためメソッドの
+ *       {@code @Transactional} が Spring プロキシを経由せず効いていない（本 PR とは無関係の既存の
+ *       潜在バグであり、ここでは触れていない）。</li>
  * </ul>
  *
  * <h2>是正後</h2>

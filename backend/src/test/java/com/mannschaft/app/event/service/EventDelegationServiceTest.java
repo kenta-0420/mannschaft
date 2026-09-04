@@ -106,7 +106,9 @@ class EventDelegationServiceTest {
         @DisplayName("auto-accept=FALSE: PENDING で作成し依頼通知・ACCEPTED イベント未発火")
         void 承認待ち() {
             given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event(false, EventAttendanceMode.RSVP));
-            given(delegationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            // 本番は @GeneratedValue が採番するため、UT でも採番を模倣する
+            // （通知イベントに読み直しキーが載ることを検証できるようにするため）
+            given(delegationRepository.save(any())).willAnswer(EventDelegationServiceTest.this::saveWithId);
             given(rsvpResponseRepository.findByEventIdAndUserId(any(), any())).willReturn(Optional.empty());
 
             EventDelegationEntity result =
@@ -230,6 +232,52 @@ class EventDelegationServiceTest {
     }
 
     @Nested
+    @DisplayName("withdraw / cancelOnMemberLeft")
+    class CancelPaths {
+
+        @Test
+        @DisplayName("withdraw: cancelInternal 経由で CANCELLED 通知を publish する")
+        void 委任者取消でCANCELLED通知() {
+            EventDelegationEntity active = delegation(EventDelegationStatus.ACCEPTED, null);
+            active.setId(DELEGATION_ID);
+            given(delegationRepository.findFirstByEventIdAndDelegatorIdAndStatusIn(
+                    ArgumentMatchers.eq(EVENT_ID), ArgumentMatchers.eq(DELEGATOR_ID), any()))
+                    .willReturn(Optional.of(active));
+            given(delegationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            service.withdraw(EVENT_ID, DELEGATOR_ID);
+
+            assertThat(active.getStatus()).isEqualTo(EventDelegationStatus.CANCELLED);
+            verifyNotificationPublished(DELEGATION_ID, EventDelegationNotificationEvent.Kind.CANCELLED);
+        }
+
+        @Test
+        @DisplayName("cancelOnMemberLeft: 委任者が退会した場合は DELEGATOR_LEFT 通知を publish する")
+        void 委任者退会でDELEGATOR_LEFT通知() {
+            EventDelegationEntity active = delegation(EventDelegationStatus.ACCEPTED, null);
+            active.setId(DELEGATION_ID);
+            given(delegationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            service.cancelOnMemberLeft(active, DELEGATOR_ID);
+
+            assertThat(active.getStatus()).isEqualTo(EventDelegationStatus.CANCELLED);
+            verifyNotificationPublished(DELEGATION_ID, EventDelegationNotificationEvent.Kind.DELEGATOR_LEFT);
+        }
+
+        @Test
+        @DisplayName("cancelOnMemberLeft: 代理人が退会した場合は DELEGATE_LEFT 通知を publish する")
+        void 代理人退会でDELEGATE_LEFT通知() {
+            EventDelegationEntity active = delegation(EventDelegationStatus.ACCEPTED, null);
+            active.setId(DELEGATION_ID);
+            given(delegationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            service.cancelOnMemberLeft(active, DELEGATE_ID);
+
+            verifyNotificationPublished(DELEGATION_ID, EventDelegationNotificationEvent.Kind.DELEGATE_LEFT);
+        }
+    }
+
+    @Nested
     @DisplayName("linkProxyDelegation")
     class LinkProxyDelegation {
 
@@ -276,6 +324,20 @@ class EventDelegationServiceTest {
     private void verifyNotificationPublished(EventDelegationNotificationEvent.Kind expectedKind) {
         verify(eventPublisher).publishEvent(ArgumentMatchers.<Object>argThat(
                 published -> published instanceof EventDelegationNotificationEvent notification
+                        && notification.kind() == expectedKind
+                        // 読み直しキーが載っていなければ配送側は受信者を解決できない
+                        && notification.delegationId() != null));
+    }
+
+    /**
+     * 通知イベントの中身（読み直しキーと種別）を突き合わせる版。
+     * 委任 ID が既知の経路（取消・退会連動）ではこちらを使う。
+     */
+    private void verifyNotificationPublished(UUID expectedDelegationId,
+                                             EventDelegationNotificationEvent.Kind expectedKind) {
+        verify(eventPublisher).publishEvent(ArgumentMatchers.<Object>argThat(
+                published -> published instanceof EventDelegationNotificationEvent notification
+                        && expectedDelegationId.equals(notification.delegationId())
                         && notification.kind() == expectedKind));
     }
 }

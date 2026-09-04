@@ -1957,12 +1957,14 @@ class NotificationTransactionBoundaryGuardTest {
      * 通知発火点を1つ以上持つ本番ファイル数の実測下限（実測 96 / 2026-09-04・Issue #2990 L5 の是正後）。
      * 旧実装の「50件超」は実測の半分であり、判定を半減させても素通りしていた。
      *
-     * <p><b>98 -> 96 の根拠</b>: L5 の是正で {@code EventCheckinService} /
+     * <p><b>99 -> 96 の根拠</b>: L5 の是正で {@code EventCheckinService} /
      * {@code EventDelegationService} / {@code EventRollCallService} / {@code EventRsvpService} の
      * 4 ファイルから通知発火点が消え（すべて {@code publishEvent} へ置換）、移設先として
      * {@code EventCareNotificationTriggerListener} 1 ファイルが増えた。
      * {@code EventDelegationNotifier} は {@code createNotification} が {@code sendOne} へ
      * 1:1 で置き換わったのみでファイル自体は発火点を持ち続ける。
+     * 是正前の値は 98 ではなく <b>99</b> である（99 - 4 + 1 = 96 で設定値と一致する）。
+     * 当初 98 と書いていたのは誤りで、算術が合わないまま残っていた（実測し直して訂正）。
      * 差分の全列挙は {@link #RAW_CANDIDATE_HITS_MIN} の L5 節にある。
      *
      * @see #RAW_CANDIDATE_HITS_MIN
