@@ -152,7 +152,9 @@
       "dayOfWeek": "Wochentag",
       "dayOfWeekHint": "Slots werden nur an den gewählten Wochentagen angelegt",
       "saveSuccess": "Slot gespeichert",
-      "deleteSuccess": "Slot gelöscht"
+      "deleteSuccess": "Slot gelöscht",
+      "assignmentMasked": "In Abstimmung",
+      "assignmentMaskedHint": "Zuweisungen werden bis zur Veröffentlichung ausgeblendet"
     },
     "requests": {
       "submissionRate": "Einreichungsquote",

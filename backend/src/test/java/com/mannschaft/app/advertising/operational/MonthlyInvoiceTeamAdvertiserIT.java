@@ -18,6 +18,10 @@ import java.math.BigDecimal;
 import java.time.YearMonth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 /**
  * F09.19.5 AC-5.4 月次請求バッチが TEAM 広告主のキャンペーンを請求書に含めることの検証（試練 / red 先行）。
@@ -89,8 +93,9 @@ class MonthlyInvoiceTeamAdvertiserIT extends AbstractMySqlIntegrationTest {
     void ac5_4_チーム広告主のキャンペーンが月次請求に含まれる() {
         YearMonth targetMonth = YearMonth.now().minusMonths(1);
 
-        // given: TEAM スコープの ACTIVE 広告主アカウント（billing=INVOICE）
-        Long teamAccountId = insertAdvertiserAccount("TEAM", 987654L, "チーム広告主", "INVOICE");
+        // given: TEAM スコープの ACTIVE 広告主アカウント。
+        // F08.12 §5.0 で後払い（INVOICE）は廃止済みのため STRIPE 方式で seed する。
+        Long teamAccountId = insertAdvertiserAccount("TEAM", 987654L, "チーム広告主", "STRIPE", "cus_team_test");
 
         // TEAM 広告主に advertiser_account_id で直結するキャンペーン（前方互換 seed）
         Long campaignId = insertCampaignForAccount(teamAccountId, "チーム運用型キャンペーン");
@@ -101,8 +106,24 @@ class MonthlyInvoiceTeamAdvertiserIT extends AbstractMySqlIntegrationTest {
         em.flush();
         em.clear();
 
-        // when: 月次請求バッチ（前月分）を実行
-        monthlyInvoiceBatchService.generateMonthlyInvoices(targetMonth);
+        // when: 月次請求バッチ（前月分）を実行。外部境界（Stripe SDK）だけをモックし、
+        // finalize 成功をシミュレートする。
+        com.stripe.model.Invoice stripeInvoice = mock(com.stripe.model.Invoice.class);
+        try (var invoiceStatic = mockStatic(com.stripe.model.Invoice.class);
+             var itemStatic = mockStatic(com.stripe.model.InvoiceItem.class)) {
+            when(stripeInvoice.getId()).thenReturn("in_team_test_0001");
+            try {
+                when(stripeInvoice.finalizeInvoice()).thenReturn(stripeInvoice);
+            } catch (Exception ignored) {
+                // モック定義時に実際の例外は発生しない
+            }
+            invoiceStatic.when(() -> com.stripe.model.Invoice.create(any(com.stripe.param.InvoiceCreateParams.class)))
+                    .thenReturn(stripeInvoice);
+            itemStatic.when(() -> com.stripe.model.InvoiceItem.create(any(com.stripe.param.InvoiceItemCreateParams.class)))
+                    .thenReturn(mock(com.stripe.model.InvoiceItem.class));
+
+            monthlyInvoiceBatchService.generateMonthlyInvoices(targetMonth);
+        }
 
         em.flush();
         em.clear();
@@ -115,6 +136,16 @@ class MonthlyInvoiceTeamAdvertiserIT extends AbstractMySqlIntegrationTest {
         assertThat(invoiceCount.longValue())
                 .as("TEAM 広告主の請求書が生成される（scope_id 流用バグの根治後は 1 件）")
                 .isEqualTo(1L);
+
+        // F08.12 §5.0: STRIPE 方式でも finalize 成功後は issue() が呼ばれ ISSUED になること
+        // （旧実装は INVOICE 分岐でしか issue() を呼んでおらず DRAFT のまま残っていた）
+        String status = (String) em.createNativeQuery(
+                        "SELECT status FROM ad_invoices WHERE advertiser_account_id = :aid")
+                .setParameter("aid", teamAccountId)
+                .getSingleResult();
+        assertThat(status)
+                .as("STRIPE 経路でも finalize 成功後は ISSUED に進むこと")
+                .isEqualTo("ISSUED");
 
         // 明細に当該キャンペーンが載り、subtotal = 集計 cost 合算（1000.00）
         Object subtotal = em.createNativeQuery(
@@ -133,15 +164,19 @@ class MonthlyInvoiceTeamAdvertiserIT extends AbstractMySqlIntegrationTest {
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
-    private Long insertAdvertiserAccount(String scopeType, Long scopeId, String companyName, String billingMethod) {
+    private Long insertAdvertiserAccount(String scopeType, Long scopeId, String companyName,
+                                          String billingMethod, String stripeCustomerId) {
         em.createNativeQuery(
                         "INSERT INTO advertiser_accounts (scope_type, scope_id, status, company_name, "
-                                + "contact_email, billing_method, credit_limit, created_at, updated_at) "
-                                + "VALUES (:st, :sid, 'ACTIVE', :cn, 'ads@example.com', :bm, 100000, NOW(), NOW())")
+                                + "contact_email, billing_method, stripe_customer_id, credit_limit, "
+                                + "created_at, updated_at) "
+                                + "VALUES (:st, :sid, 'ACTIVE', :cn, 'ads@example.com', :bm, :scid, 100000, "
+                                + "NOW(), NOW())")
                 .setParameter("st", scopeType)
                 .setParameter("sid", scopeId)
                 .setParameter("cn", companyName)
                 .setParameter("bm", billingMethod)
+                .setParameter("scid", stripeCustomerId)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
                         "SELECT id FROM advertiser_accounts WHERE company_name = :cn")
