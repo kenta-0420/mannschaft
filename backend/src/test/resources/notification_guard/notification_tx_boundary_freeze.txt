@@ -132,7 +132,7 @@
 #      createDelegation / onDelegatorAttendanceChanged / reject（すべて TX_NOTIFY_BARE）の6件。
 # CLASSIFIED_FLOOR は分類済み9件のうち ROLLBACK_COUPLED 4件を是正で消したため 9 -> 5。
 # 残る分類済み5件はすべて ORDERING_ONLY であり、#2990 本体（巻き戻り）ではない。
-# CENSUS_FLOOR: 77
+# CENSUS_FLOOR: 68
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -146,15 +146,6 @@ com.mannschaft.app.errorreport.service.ErrorReportAsyncExecutor#doRecordBackendE
 com.mannschaft.app.errorreport.service.ErrorReportService#createOrAggregate -> TX_NOTIFY_BARE
 com.mannschaft.app.errorreport.service.ErrorReportService#updateStatus -> TX_NOTIFY_BARE
 com.mannschaft.app.errorreport.service.ErrorReportTimelineService#assign -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventCheckinService#selfCheckin -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventCheckinService#staffCheckin -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventDelegationService#accept -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventDelegationService#cancelInternal -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventDelegationService#cancelOnMemberLeft -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventDelegationService#createDelegation -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventDelegationService#reject -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventRollCallService#submitRollCall -> TX_NOTIFY_BARE
-com.mannschaft.app.event.service.EventRsvpService#submitRsvp -> TX_NOTIFY_BARE
 com.mannschaft.app.family.service.EventEndReminderBatchService#sendReminderNotification -> TX_NOTIFY_BARE
 com.mannschaft.app.jobmatching.service.JobApplicationService#apply -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.jobmatching.service.JobCheckInService#fireNotifications -> TX_NOTIFY_IN_TRY
@@ -420,3 +411,72 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #   のいずれも本ロットの対象外であり、削除も分類変更もしていない。
 #   前者の委譲先は ErrorReportAsyncExecutor#recordBackendException（@Async 付き）で、
 #   本ロットでは触れていないため機械照合による導出結果も変わらない。
+
+# ------------------------------------------------------------------------------
+# --- 2026-09-04 Issue #2990 L5: event ドメイン 9件の是正（CENSUS_FLOOR 77 -> 68）---
+# ------------------------------------------------------------------------------
+# 割当は event ドメインの TX_NOTIFY_BARE 9件。相乗りで消えたエントリは無く、削除は 9 行ちょうど。
+# 9件は根が2つに分かれる（任務1の実測結果）。
+#
+# ■ 根(A) EventDelegationNotifier が素の @Component だった（5件）
+#   EventDelegationService#createDelegation / #accept / #reject / #cancelInternal /
+#   #cancelOnMemberLeft の5件は、L2（PR #3065）が schedule ドメインで直した
+#   ScheduleDelegationNotifier と**同一の欠陥・同一の構造**である。Notifier が素の @Component で
+#   業務TXから同期呼び出しされ、内部の createNotification が既定の REQUIRED 伝播で
+#   呼び出し元TXに参加していた。巻き戻る内容:
+#     createDelegation    … 委任行の作成 + RSVP モードの委任者 NOT_ATTENDING 反映（§5.4）
+#                           （自動承認時は代理人 ATTENDING 反映と F08.3 連携イベント発火も同TX）
+#     accept              … ACCEPTED への遷移 + 代理人 RSVP の ATTENDING 反映 + F08.3 連携発火
+#     reject              … REJECTED への遷移
+#     cancelInternal      … CANCELLED への遷移（withdraw / cancelBySystem の共通経路）
+#     cancelOnMemberLeft  … 退会連動の CANCELLED 化。呼び出し元は
+#                           EventDelegationMembershipListener#handleMembershipEnded と
+#                           ProxyDelegationCleanupBatchService#cleanupEventDelegations の2つ
+#                           （grep 実測）。後者は 1 件の通知失敗でその回の孤立委任の取消が全件巻き戻る
+#   是正: L2 の型をそのまま踏襲。EventDelegationNotifier 自体を AFTER_COMMIT +
+#   @Async("event-pool") のリスナーへ作り替え、Service は EventDelegationNotificationEvent
+#   （delegationId と Kind のみ）を publish するだけにした。配送は NotificationDeliveryRunner#sendOne。
+#   L2 と同じく、是正前に IN_APP のみだった 承認 / 取消 / 委任者退会 の3種に Push/WebSocket が付く
+#   （意図的な挙動変更。schedule 側と event 側で同じ F03.10 の通知が非対称なほうが不自然なため）。
+#
+# ■ 根(B) CareEventNotificationService を業務TX内から直接呼んでいた（4件）
+#   EventCheckinService#selfCheckin / #staffCheckin、EventRsvpService#submitRsvp、
+#   EventRollCallService#submitRollCall の4件。巻き戻る内容:
+#     staffCheckin / selfCheckin … チケットの use()（使用済み化）・event_checkins 行・
+#                                  イベントのチェックイン数カウンタ加算。
+#                                  会場入口で QR を通したのに来場記録が一切残らない
+#     submitRsvp                 … event_rsvp_responses 行。利用者の出欠回答そのものが失われる
+#     submitRollCall             … 点呼セッション1回ぶんの event_checkins 行が**全件**。
+#                                  ケア対象者1人の見守り通知の失敗で、その回に点呼した
+#                                  参加者全員の出欠が消える
+#   是正: CareEventNotificationService は**変更していない**（通知そのものが業務目的のクラスであり
+#   CMP-056 / #2990 の一括適用対象外。EventDismissalNotificationListener が解散通知について
+#   既に取った方針と同一）。変えたのは呼び出し位置だけで、業務TX内では
+#   EventCareNotificationTriggerEvent（eventId・Kind・宛先 userId 一覧）を publish するに留め、
+#   新設の EventCareNotificationTriggerListener（AFTER_COMMIT + @Async("event-pool")）が
+#   受信者ごとの try/catch 隔離つきで実配送する。
+#   NotificationDeliveryRunner へは置換していない。冪等ログ記録（event_care_notification_logs）と
+#   通知作成を1トランザクションに保つ必要があり、CareEventNotificationService の中身を
+#   分解する話は本ロットの範囲外であるため。配信面（create + dispatch）は是正前と等価。
+#
+# ■ submitRollCall のレスポンス値 guardianNotificationsSent の意味は変わらない
+#   同フィールドは是正前も「notifyCheckin を呼んだ回数」であり、配送成功数ではなかった
+#   （notifyCheckin は冪等チェックで内部的に 0 件送信になりうる）。是正後は「配送要求の宛先に
+#   載せた件数」であり、数え上げの条件（PRESENT かつ isUnderCare かつ見守り者1人以上かつ
+#   notifyGuardiansImmediately）は1行も変えていない。guardianSetupWarnings も同様。
+#
+# ■ CENSUS_FLOOR: 77 -> 68 の裏取り（実測）
+#   是正前: 凍結エントリ 69 + REMOVED 8 + AMBIGUOUS 0 = 77（= 是正前の CENSUS_FLOOR）
+#   是正後: 凍結エントリ 60 + REMOVED 8 + AMBIGUOUS 0 = 68
+#   消えた 9 件はすべて上記の是正由来であり、番人の検出力低下による消失は 0 件である。
+#   確認方法: 9 件はいずれも「業務TX内の通知呼び出しを publishEvent へ置換」という
+#   **ソース上の宣言変更**で消えている。番人（NotificationTransactionBoundaryGuardTest）の
+#   判定ロジックは一行も変更していない。通知の実発火点は 1 箇所も消えておらず、
+#   AFTER_COMMIT の後（EventDelegationNotifier#onEventDelegationNotification /
+#   EventCareNotificationTriggerListener#onEventCareNotificationTrigger）へ移設しただけである。
+#
+# ■ CLASSIFIED_FLOOR は 2 のまま据え置く
+#   分類（| <区分>）が付いた 2 件（ErrorReportService#recordBackendException /
+#   ShiftBudgetFailedEventService#retry、いずれも TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY）は
+#   本ロットの対象外であり、削除も分類変更もしていない。委譲先にも触れていないため
+#   機械照合による導出結果も変わらない。

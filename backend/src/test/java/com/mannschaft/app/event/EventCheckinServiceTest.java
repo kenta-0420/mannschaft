@@ -15,7 +15,6 @@ import com.mannschaft.app.event.repository.EventTicketRepository;
 import com.mannschaft.app.event.service.EventCheckinService;
 import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import com.mannschaft.app.event.service.EventTicketService;
-import com.mannschaft.app.family.service.CareEventNotificationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -65,8 +65,16 @@ class EventCheckinServiceTest {
     @Mock
     private EventMapper eventMapper;
 
+    /**
+     * F03.12 見守り通知の配送要求 publish 先（Issue #2990 L5）。
+     *
+     * <p>是正前は {@code CareEventNotificationService} を直接呼んでおり、その Service をモックして
+     * いたため、通知が業務トランザクションに参加している事実（= 通知失敗でチケットの使用済み化と
+     * チェックイン記録が巻き戻る）を本 UT は一切捕まえられなかった。実際の巻き戻り有無は
+     * {@code EventCareNotificationTransactionIT}（実 DB）で測る。</p>
+     */
     @Mock
-    private CareEventNotificationService careEventNotificationService;
+    private ApplicationEventPublisher eventPublisher;
 
     @Mock
     private EventScopeAccessGuard eventScopeAccessGuard;
