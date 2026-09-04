@@ -8,6 +8,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -37,7 +38,9 @@ import java.time.LocalDateTime;
  * <p>設計書: docs/features/F20.1_entitlement_billing/01_data_model.md §3.1</p>
  */
 @Entity
-@Table(name = "billing_contracts")
+@Table(name = "billing_contracts",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_bc_checkout_session", columnNames = "stripe_checkout_session_ref"))
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -88,6 +91,24 @@ public class BillingContractEntity extends UuidV7Entity {
     @Column(name = "price_jpy_snapshot")
     private Integer priceJpySnapshot;
 
+    /**
+     * V196 で追加した scope 所有 Stripe Customer（{@code billing_customers.id}）。Billing Center 経由の
+     * 契約のみ非 NULL（legacy 行は NULL のまま）。
+     */
+    @Column(name = "billing_customer_id", columnDefinition = "BINARY(16)")
+    private java.util.UUID billingCustomerId;
+
+    /** V196 で追加した販売正本（{@code billing_price_band_versions.id}）。 */
+    @Column(name = "price_band_version_id", columnDefinition = "BINARY(16)")
+    private java.util.UUID priceBandVersionId;
+
+    /**
+     * V196 で追加した契約操作の CAS 用 version。Hibernate の暗黙 optimistic lock（{@code @Version}）には
+     * しない（既存の全更新経路の挙動を変えないため）。CAS は明示的な条件付き UPDATE で行う。
+     */
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "contracted_at", nullable = false)
     private LocalDateTime contractedAt;
 
@@ -108,6 +129,17 @@ public class BillingContractEntity extends UuidV7Entity {
      */
     @Column(name = "psp_subscription_ref", length = 64)
     private String pspSubscriptionRef;
+
+    /**
+     * V198 で追加した Stripe Checkout Session ID（{@code cs_xxx}・論理参照）。Billing Center の Checkout 経由で
+     * 起票した契約のみ非 NULL（legacy 行は NULL のまま）。{@code uk_bc_checkout_session} により、
+     * 「この契約は既に Session を持つ」を DB だけで判定でき、同一 Session の二重紐付けを物理的に拒否する。
+     *
+     * <p>{@link #pspSubscriptionRef} は webhook の Subscription 逆引き専用（{@code uk_bc_psp_subscription}・
+     * F08.9 会費との分離キー）であり流用しない。別列として持つ。</p>
+     */
+    @Column(name = "stripe_checkout_session_ref", length = 255)
+    private String stripeCheckoutSessionRef;
 
     /**
      * 現サイクル終了（{@code valid_until} の上限／期末解約の失効時刻）。webhook（invoice.paid / subscription.*）で更新。
@@ -143,6 +175,9 @@ public class BillingContractEntity extends UuidV7Entity {
         }
         if (this.contractedAt == null) {
             this.contractedAt = now;
+        }
+        if (this.version == null) {
+            this.version = 0L;
         }
     }
 

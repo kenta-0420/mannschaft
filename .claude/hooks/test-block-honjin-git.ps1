@@ -82,7 +82,13 @@ $cases = @(
     @{ name = '本陣 cwd で git mv';            cwd = $honjin; expect = 'deny'; cmd = 'git mv a.txt b.txt' },
     @{ name = '本陣 cwd で git sparse-checkout'; cwd = $honjin; expect = 'deny'; cmd = 'git sparse-checkout set backend' },
     @{ name = '本陣 cwd で git update-ref';    cwd = $honjin; expect = 'deny'; cmd = 'git update-ref refs/heads/main HEAD' },
-    @{ name = '本陣 cwd で git branch -D';     cwd = $honjin; expect = 'deny'; cmd = 'git branch -D feature/x' },
+    @{ name = '本陣 cwd で git branch -D（後片付けのため許可）'; cwd = $honjin; expect = 'allow'; cmd = 'git branch -D feature/x' },
+    @{ name = '本陣 cwd で git branch -d（後片付けのため許可）'; cwd = $honjin; expect = 'allow'; cmd = 'git branch -d feature/x' },
+    @{ name = '本陣 cwd で git branch --delete（許可）';       cwd = $honjin; expect = 'allow'; cmd = 'git branch --delete feature/x' },
+    @{ name = '本陣 cwd で git branch -D 複数（許可）';        cwd = $honjin; expect = 'allow'; cmd = 'git branch -D feat/a fix/b' },
+    @{ name = '削除フラグに他の操作が混じれば拒否';            cwd = $honjin; expect = 'deny';  cmd = 'git branch -D topic -u origin/main' },
+    @{ name = 'リモート追跡参照の削除は許さない';              cwd = $honjin; expect = 'deny';  cmd = 'git branch -dr origin/topic' },
+    @{ name = '本陣 cwd で git branch -m 改名（拒否のまま）';  cwd = $honjin; expect = 'deny';  cmd = 'git branch -m old new' },
     # ブランチ「作成」も共有リポジトリのローカル参照を変える。破壊的オプションの
     # 列挙では捕まらないため、引数を伴う形を拒否する（#3082 Codex 検分）。
     @{ name = '本陣 cwd で git branch 作成';   cwd = $honjin; expect = 'deny'; cmd = 'git branch feature/x' },

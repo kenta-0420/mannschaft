@@ -297,6 +297,17 @@ mannschaft:
     connect:
       return-url: ${MANNSCHAFT_STRIPE_CONNECT_RETURN_URL:https://app.mannschaft.com/settings/stripe/return}
       refresh-url: ${MANNSCHAFT_STRIPE_CONNECT_REFRESH_URL:https://app.mannschaft.com/settings/stripe/refresh}
+  # PR4 Billing Center: Stripe からの復帰 state（HMAC 署名）の鍵。
+  # 本番は MANNSCHAFT_BILLING_RETURN_SIGNING_SECRET を必ず設定（UTF-8 で 32 bytes 以上）。
+  # 未設定なら起動時 ERROR ログを出し、復帰 URL 発行は fail-closed で拒否される
+  # （鍵が無いまま署名してしまうことは無い）。鍵ローテーション時は新鍵を末尾に足し、
+  # 旧鍵は active: false のまま残して検証だけ継続させる。
+  billing:
+    return-state:
+      signing-keys:
+        - kid: ${MANNSCHAFT_BILLING_RETURN_SIGNING_KID:v1}
+          secret: ${MANNSCHAFT_BILLING_RETURN_SIGNING_SECRET:}
+          active: true
   # F04.3: VAPID鍵ペア（PWA Push VAPID署名）
   vapid:
     public-key: ${VAPID_PUBLIC_KEY:}
