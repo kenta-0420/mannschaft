@@ -3,6 +3,7 @@ package com.mannschaft.app.team;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequiredException;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -75,7 +76,7 @@ class TeamServiceTest {
         @DisplayName("正常系: チームが作成され作成者がADMINになる")
         void 作成_正常_保存() {
             // Given
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", "sports", "東京都", "渋谷区", null, null, null, null);
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", "sports", "東京都", "渋谷区", null, null, null, null, false, null);
             given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID)).willReturn(Optional.of(1L));
             given(userRoleRepository.save(any(UserRoleEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
@@ -98,6 +99,27 @@ class TeamServiceTest {
             assertThat(joinReq.getScopeType()).isEqualTo(ScopeType.TEAM);
             assertThat(joinReq.getRoleKind()).isEqualTo(RoleKind.MEMBER);
             assertThat(joinReq.getSource()).isEqualTo("TEAM_CREATE");
+        }
+
+        @Test
+        @DisplayName("柱③-A AC-01/AC-02: 同名チームが存在する場合は"
+                + "DuplicateNameConfirmationRequiredException(409)を投げる（未実装のため red）")
+        void 作成_チーム名重複_確認要求例外() {
+            // Given: チーム名の重複は現行実装では一切チェックされないため、
+            // 同名チームが存在していても既存実装は素通りで作成を完了させてしまう。
+            CreateTeamRequest req = new CreateTeamRequest(
+                    "既存チーム", "sports", null, null, null, null, null, null, false, null);
+            given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID)).willReturn(Optional.of(1L));
+            given(userRoleRepository.save(any(UserRoleEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
+
+            // 出陣後の期待挙動: findActiveByNormalizedName で同名候補を検出し、
+            // confirmDuplicate=false のため DuplicateNameConfirmationRequiredException(409) を投げる。
+            // 現行実装は名称重複チェック自体を持たないため、例外を投げずに作成を完了してしまう
+            // （AssertJ が「例外が投げられなかった」ことをもって red と判定する）。
+            assertThatThrownBy(() -> service.createTeam(USER_ID, req))
+                    .isInstanceOf(DuplicateNameConfirmationRequiredException.class);
         }
     }
 

@@ -57,6 +57,23 @@ public interface TeamRepository
     List<TeamEntity> findByVisibility(TeamEntity.Visibility visibility);
 
     /**
+     * CMP-260901-1538 柱③-A: 同名確認フロー用の候補検索。
+     *
+     * <p>同名判定は MySQL 照合順序 {@code utf8mb4_0900_ai_ci} の {@code =} 比較（大文字小文字・
+     * アクセントを区別しない）＋前後 trim で行う。ACTIVE（{@code lifecycleStatus=ACTIVE}）かつ
+     * 未削除（{@code @SQLRestriction} により自動除外）のみを対象とする。作成 TX 内で
+     * 呼ばれることを想定し、常に最新状態を反映する。金型: {@code OrganizationRepository#findActiveByNormalizedName}。</p>
+     *
+     * @param name 判定対象の名称（未 trim で渡してよい。クエリ側で TRIM する）
+     * @return 同名の ACTIVE チーム一覧
+     */
+    @Query(value = "SELECT * FROM teams "
+            + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
+            + "AND TRIM(name) = TRIM(:name) COLLATE utf8mb4_0900_ai_ci",
+            nativeQuery = true)
+    List<TeamEntity> findActiveByNormalizedName(@Param("name") String name);
+
+    /**
      * チームをキーワード検索する（公開検索）。
      *
      * <p>認可根治 Wave6: 結果は <b>PUBLIC かつ未アーカイブ</b>のチームのみに限定する。

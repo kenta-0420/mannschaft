@@ -3,6 +3,8 @@ package com.mannschaft.app.common;
 import com.mannschaft.app.billing.FeatureNotEntitledException;
 import com.mannschaft.app.billing.api.BillingIdempotencyProcessingException;
 import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationErrorResponse;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequiredException;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
@@ -2540,6 +2542,25 @@ public class GlobalExceptionHandler {
         FeatureNotEntitledErrorResponse body =
                 new FeatureNotEntitledErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
         return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
+    }
+
+    /**
+     * CMP-260901-1538 柱③-A 409 details 追補: {@link DuplicateNameConfirmationRequiredException}
+     * 専用ハンドラ（金型: {@link #handleFeatureNotEntitled}）。
+     *
+     * <p>組織・チーム作成時、同名候補が存在し確認未完了（または確認後に fingerprint が不一致 = 確認後に
+     * 新たな同名が出現）の場合に 409 として候補一覧・fingerprint を返す。4xx のため error_reports への
+     * 記録はしない（{@link #handleBusinessException} と同じ方針）。</p>
+     */
+    @ExceptionHandler(DuplicateNameConfirmationRequiredException.class)
+    public ResponseEntity<DuplicateNameConfirmationErrorResponse> handleDuplicateNameConfirmationRequired(
+            DuplicateNameConfirmationRequiredException ex) {
+        String message = resolveMessage(ex.getErrorCode());
+        log.warn("DuplicateNameConfirmationRequiredException: code={}, candidateCount={}",
+                ex.getErrorCode().getCode(), ex.getDetails().candidates().size());
+        DuplicateNameConfirmationErrorResponse body =
+                new DuplicateNameConfirmationErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     /**

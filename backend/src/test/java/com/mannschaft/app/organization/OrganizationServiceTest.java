@@ -3,6 +3,7 @@ package com.mannschaft.app.organization;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequiredException;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -139,17 +140,42 @@ class OrganizationServiceTest {
         }
 
         @Test
-        @DisplayName("組織名重複_ORG_002例外")
-        void 組織名重複_ORG_002例外() {
+        @DisplayName("柱③-A AC-01/AC-02: 同名組織は一律ブロック(ORG_002)せず"
+                + "DuplicateNameConfirmationRequiredException(409)を投げる（未実装のため red）")
+        void 組織名重複_確認要求例外へ移行() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
                     "既存組織", "SCHOOL", null, null, null, null, null);
+            req.setConfirmDuplicate(false);
 
+            // 出陣後は existsByName に代わり findActiveByNormalizedName（trim + utf8mb4_0900_ai_ci）で
+            // 候補を検索する想定。現行実装は existsByName のみを見て ORG_002 で一律ブロックする。
             given(organizationRepository.existsByName("既存組織")).willReturn(true);
 
             assertThatThrownBy(() -> organizationService.createOrganization(USER_ID, req))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ORG_002"));
+                    .isInstanceOf(DuplicateNameConfirmationRequiredException.class);
+        }
+
+        @Test
+        @DisplayName("柱③-A AC-06/AC-10: confirmDuplicate=true かつ有効な fingerprint なら"
+                + "同名でも作成できる（未実装のため red）")
+        void 組織名重複_確認済みなら作成できる() {
+            CreateOrganizationRequest req = new CreateOrganizationRequest(
+                    "既存組織", "SCHOOL", null, null, null, null, null);
+            req.setConfirmDuplicate(true);
+            req.setDuplicateNameFingerprint("valid-fingerprint");
+
+            given(organizationRepository.existsByName("既存組織")).willReturn(true);
+            given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
+                    .willReturn(Optional.of(ADMIN_ROLE_ID));
+            given(organizationRepository.save(any(OrganizationEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            // 現行実装は confirmDuplicate/fingerprint を一切見ず existsByName=true で
+            // 常に ORG_002 を投げるため、この成功期待は red になる。
+            ApiResponse<OrganizationResponse> response =
+                    organizationService.createOrganization(USER_ID, req);
+
+            assertThat(response.getData().getBasicInfo().name()).isEqualTo("既存組織");
         }
 
         @Test

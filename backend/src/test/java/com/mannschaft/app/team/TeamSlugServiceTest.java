@@ -88,7 +88,7 @@ class TeamSlugServiceTest {
             givenCreateScaffold();
             given(teamRepository.existsBySlugAndDeletedAtIsNull("my-team")).willReturn(false);
 
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "my-team");
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "my-team", false, null);
 
             ApiResponse<TeamResponse> result = service.createTeam(USER_ID, req);
 
@@ -98,7 +98,7 @@ class TeamSlugServiceTest {
         @Test
         @DisplayName("形式不正 slug は TEAM_060")
         void 形式不正() {
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "Bad_Slug");
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "Bad_Slug", false, null);
 
             assertThatThrownBy(() -> service.createTeam(USER_ID, req))
                     .isInstanceOf(BusinessException.class)
@@ -109,7 +109,7 @@ class TeamSlugServiceTest {
         @Test
         @DisplayName("予約語 slug は TEAM_061")
         void 予約語() {
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "admin");
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "admin", false, null);
 
             assertThatThrownBy(() -> service.createTeam(USER_ID, req))
                     .isInstanceOf(BusinessException.class)
@@ -122,7 +122,7 @@ class TeamSlugServiceTest {
         void 重複() {
             given(teamRepository.existsBySlugAndDeletedAtIsNull("taken-slug")).willReturn(true);
 
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "taken-slug");
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "taken-slug", false, null);
 
             assertThatThrownBy(() -> service.createTeam(USER_ID, req))
                     .isInstanceOf(BusinessException.class)
@@ -142,7 +142,7 @@ class TeamSlugServiceTest {
             // 自動生成は createUniqueSlug 経由で existsBySlugAndDeletedAtIsNull を引く
             given(teamRepository.existsBySlugAndDeletedAtIsNull(eq("my-club"))).willReturn(false);
 
-            CreateTeamRequest req = new CreateTeamRequest("My Club", null, null, null, null, null, null, null);
+            CreateTeamRequest req = new CreateTeamRequest("My Club", null, null, null, null, null, null, null, false, null);
 
             ApiResponse<TeamResponse> result = service.createTeam(USER_ID, req);
 
@@ -155,7 +155,7 @@ class TeamSlugServiceTest {
             givenCreateScaffold();
             given(teamRepository.existsBySlugAndDeletedAtIsNull(eq("my-club"))).willReturn(false);
 
-            CreateTeamRequest req = new CreateTeamRequest("My Club", null, null, null, null, null, null, "  ");
+            CreateTeamRequest req = new CreateTeamRequest("My Club", null, null, null, null, null, null, "  ", false, null);
 
             ApiResponse<TeamResponse> result = service.createTeam(USER_ID, req);
 
