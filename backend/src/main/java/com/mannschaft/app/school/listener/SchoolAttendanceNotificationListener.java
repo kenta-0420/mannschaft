@@ -256,10 +256,14 @@ public class SchoolAttendanceNotificationListener {
      *
      * @param event 週次ダイジェスト配送対象イベント
      */
-    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
             gateKeys = "FEATURE_FAMILY_CARE_ENABLED",
-            reason = "止まるのは教員向けダイジェスト通知のみで DB は書き換わらず、"
-                    + "学校機能を閉じている間は受け取る教員の画面も閉じている")
+            reason = "落ちるのは教員向け週次リスクダイジェストの送信だけで、評価結果や担任割当の"
+                    + "DB 状態は一切書き換わらない。発行元の "
+                    + "AttendanceRequirementBatchService#sendWeeklyDigest が同じ gate_key で "
+                    + "SKIP_WHEN_DISABLED を宣言しており、機能停止中はそもそもイベントが発行されない。"
+                    + "ドロップしたイベントは再生されず通知は失われるが、リスク生徒は出席要件画面で"
+                    + "いつでも確認できるため整合性は壊れない")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onWeeklyRiskDigestReady(AttendanceWeeklyRiskDigestReadyEvent event) {
