@@ -11,6 +11,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -46,6 +47,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 本番 DDL（Flyway）と Entity の宣言が食い違うと、CI は緑なのに本番で重複が通る、という
  * 最悪の偽陰性になる。両者が一致していることを必ず確認すること。
  */
+@Transactional
 @DisplayName("F08.12 運営領収書の重複防止（生成列 + UNIQUE）統合テスト（試練・実装前 red）")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class PlatformReceiptDuplicateGuardIT extends AbstractMySqlIntegrationTest {
@@ -60,12 +62,9 @@ class PlatformReceiptDuplicateGuardIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        try {
-            MembershipTestHelper.insertActiveUser(em, ADMIN_USER);
-            em.flush();
-        } catch (RuntimeException ignored) {
-            // 既に存在する場合はそのまま利用する
-        }
+        MembershipTestHelper.insertActiveUser(em, ADMIN_USER);
+        em.flush();
+        em.clear();
         jdbcTemplate.update("DELETE FROM receipts WHERE issued_by = ?", ADMIN_USER);
     }
 
