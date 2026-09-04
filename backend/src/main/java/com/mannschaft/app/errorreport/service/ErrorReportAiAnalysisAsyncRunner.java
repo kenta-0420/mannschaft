@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
  * <pre>
  *   ErrorReportAiAnalysisDispatcher#analyzeAfterCommit   （AFTER_COMMIT 登録。非同期でも TX でもない）
  *     -&gt; ErrorReportAiAnalysisAsyncRunner#analyzeAsync   （@Async("ai-analysis-pool") が効く）
- *          -&gt; ErrorReportAiAnalysisService#analyzeSync   （@Transactional が効く）
+ *          -&gt; ErrorReportAiAnalysisService#analyzeSync   （TX は張らず、読み取り／AI 呼び出し／書き込みの3段に分ける）
  * </pre>
  * <p>1つの Bean に戻すと、その内側の呼び出しは再び自己呼び出しとなり同じ欠陥が復活する。</p>
  *
