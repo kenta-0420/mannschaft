@@ -322,6 +322,62 @@ public class AsyncConfig {
     }
 
     /**
+     * 外部 AI API 呼び出し専用スレッドプール（Issue #2990 L4 検分是正）。
+     *
+     * <p>{@link com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisAsyncRunner#analyzeAsync}
+     * 用。中身は Claude API への HTTP 呼び出しを含み、1 タスクが<b>秒〜分オーダーでスレッドを占有</b>する。</p>
+     *
+     * <h2>なぜ event-pool ではないのか</h2>
+     * <p>{@code event-pool} は core2/max5/queue100・AbortPolicy で、監査ログ記録や
+     * AFTER_COMMIT 通知配送など 160 箇所超が相乗りする共用プールである。滞留の長い AI 呼び出しを
+     * ここに載せると 5 スレッドが AI 応答待ちで塞がり、通知配送まで遅延・拒否される
+     * （Issue #2953 で event-pool の自己飽和が問題になった経緯がある）。
+     * 「重い処理は専用/バッチ側、通知配送は event-pool」という本 issue の方針にも反する。</p>
+     *
+     * <h2>なぜ job-pool でもないのか</h2>
+     * <p>{@code job-pool} は core2/max4/queue50 と細く、日次・定期バッチ（Analytics バックフィル、
+     * AI ダイジェスト生成）が使っている。エラーレポートの AI 即時分析は<b>障害発生時にバースト</b>する
+     * （1 障害で多数のレポートが立つ）性質があり、job-pool に相乗りさせるとバースト時に
+     * 定期バッチが飢える。滞留時間の桁が違う処理を混ぜないため専用プールに分離する。</p>
+     *
+     * <h2>拒否方針: AbortPolicy 既定のまま（欠落しない）</h2>
+     * <p>飽和時は既定どおり呼び出し元へ例外を返す。呼び出し元
+     * （{@code ErrorReportAiAnalysisAsyncRunner} を呼ぶ AFTER_COMMIT コールバック）は業務TXの外に
+     * いるため業務処理を巻き戻さない。かつ拒否時は {@code last_ai_analysis_at} が未更新のまま残るので、
+     * {@code ErrorReportAiAnalysisBatch}（{@code last_ai_analysis_at IS NULL} が検索条件）が
+     * 5 分後に必ず拾い直す。すなわち拒否は<b>遅延であって欠落ではない</b>。
+     * CallerRuns を採らないのは、呼び出し元が HTTP リクエストスレッドになりうるためである
+     * （そこで AI 応答を待たせるのは L4 で是正した当の欠陥に戻る）。</p>
+     *
+     * <p>サイジング: corePoolSize=1 / maxPoolSize=2 / queueCapacity=100。AI 呼び出しは
+     * 月次予算ガード（{@code ErrorReportAiBudgetService}）で総量が抑えられており、並列度より
+     * 「他プールを巻き添えにしないこと」を優先する。</p>
+     *
+     * @return ai-analysis-pool エグゼキュータ
+     */
+    @Bean("ai-analysis-pool")
+    public Executor aiAnalysisPool() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("ai-analysis-");
+        executor.setTaskDecorator(new MdcTaskDecorator());
+        // 拒否は「静かに捨てる」ではなく可視化する。欠落はしない（後追いバッチが拾う）が、
+        // 恒常的に拒否が出るならプール幅か AI 呼び出し頻度の見直しが要るためログで観測できるようにする。
+        executor.setRejectedExecutionHandler((runnable, poolExecutor) -> {
+            log.error("ai-analysis-pool 投入拒否: pool_saturated event=async_task_rejected pool=ai-analysis-pool "
+                            + "activeCount={} poolSize={} queueSize={} completedTaskCount={} "
+                            + "note=last_ai_analysis_at 未更新のため後追いバッチが再分析する",
+                    poolExecutor.getActiveCount(), poolExecutor.getPoolSize(),
+                    poolExecutor.getQueue().size(), poolExecutor.getCompletedTaskCount());
+            ABORT_POLICY.rejectedExecution(runnable, poolExecutor);
+        });
+        executor.initialize();
+        return executor;
+    }
+
+    /**
      * バッチジョブ用スレッドプール。
      * 定期実行タスクや重い処理に使用する。
      */

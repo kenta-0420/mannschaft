@@ -269,6 +269,64 @@ public class OrganizationService {
     }
 
     /**
+     * 柱②-2 販促プロビジョニング専用: 組織を {@code PROVISIONED} 状態で事前作成する。
+     *
+     * <p>D-1/D-5（クロスドメイン Entity/Repository 参照禁止）に従い、{@code provisioning}
+     * ドメインへ {@link OrganizationEntity}/{@link OrganizationRepository} を漏らさず、
+     * この窓口経由で作成する。作成直後は ADMIN/membership を一切持たない
+     * （招待承諾で初めて付与される）。可視性は常に {@code PRIVATE} 強制。</p>
+     *
+     * @param name 組織名
+     * @param slug 一意 slug（{@link #createUniqueSlug} 等で事前採番済みのもの）
+     * @return 作成した組織の ID
+     */
+    @Transactional
+    public Long createProvisionedOrganization(String name, String slug) {
+        OrganizationEntity org = OrganizationEntity.builder()
+                .name(name)
+                .slug(slug)
+                .orgType(OrganizationEntity.OrgType.OTHER)
+                .visibility(OrganizationEntity.Visibility.PRIVATE)
+                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
+                .supporterEnabled(false)
+                .lifecycleStatus(OrganizationEntity.LifecycleStatus.PROVISIONED)
+                .build();
+        organizationRepository.save(org);
+        return org.getId();
+    }
+
+    /**
+     * 柱②-2/②-3 販促プロビジョニング専用: 指定組織が {@code PROVISIONED}（承諾前）かどうかを返す。
+     * 存在しない組織は非プロビジョニング（false）扱いとする（呼び出し元が別途404等を判断する）。
+     */
+    public boolean isProvisioned(Long orgId) {
+        return organizationRepository.findById(orgId).map(OrganizationEntity::isProvisioned).orElse(false);
+    }
+
+    /**
+     * 柱②-2 販促プロビジョニング専用: 指定組織の {@code lifecycle_status} を
+     * {@code PROVISIONED} から {@code ACTIVE} へ遷移させ、組織名を返す。
+     * 存在しなければ empty。
+     */
+    @Transactional
+    public Optional<String> activateProvisionedOrganization(Long orgId) {
+        return organizationRepository.findById(orgId).map(org -> {
+            org.activate();
+            organizationRepository.save(org);
+            return org.getName();
+        });
+    }
+
+    /**
+     * 柱②-2 販促プロビジョニング専用: 組織 ID から組織名を解決する（存在しなければ empty）。
+     * 招待の表示名解決（下見/一覧/再送/取消）専用の軽量参照
+     * （{@link #findPublicOrganizationNameById} と異なり可視性を問わない）。
+     */
+    public Optional<String> findNameById(Long orgId) {
+        return organizationRepository.findById(orgId).map(OrganizationEntity::getName);
+    }
+
+    /**
      * 作成時の slug を解決する（村方式に統一）。
      *
      * <p>ユーザーが slug を指定した場合は形式・予約語・一意性を検証して採用する。
@@ -727,7 +785,11 @@ public class OrganizationService {
      * @return 組織エンティティ
      */
     private OrganizationEntity findOrganizationBySlugOrThrow(String slug) {
-        return organizationRepository.findBySlugAndDeletedAtIsNull(slug)
+        // 柱②-3 検分 P1-2 根治: PROVISIONED（承諾前の事前作成状態）を除外するため
+        // ACTIVE 限定クエリへ差し替える。getOrganization/resolveOrgId は多数の API の入口であり、
+        // 承諾前スコープを認可判定より前に解決できてはならない。
+        return organizationRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(
+                        slug, OrganizationEntity.LifecycleStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
     }
 
