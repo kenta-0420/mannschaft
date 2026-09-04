@@ -1,8 +1,7 @@
 package com.mannschaft.app.billing.api;
 
 import com.mannschaft.app.auth.AuditEventType;
-import com.mannschaft.app.auth.entity.AuditLogEntity;
-import com.mannschaft.app.auth.repository.AuditLogRepository;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.billing.EntitlementErrorCode;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.api.dto.BillingInvoiceAdjustmentResponse;
@@ -17,7 +16,6 @@ import com.mannschaft.app.billing.api.dto.BillingMoneyResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,10 +47,9 @@ import java.util.UUID;
  * <h2>監査（AC-60）</h2>
  * <p>明細閲覧で {@code BILLING_INVOICE_VIEWED} を記録する。metadata には object ref（invoice id）と
  * scope だけを載せ、<b>URL・請求先住所の全文・PSP payload は載せない</b>。
- * 記録は同一要求スレッドで同期に行う（{@code AuditLogService#record} は {@code @Async} のため、
- * 「閲覧は成功したのに監査がまだ無い」時間窓を作ってしまう）。</p>
+ * 記録は {@code AuditLogService#recordSync} で同一要求スレッドから同期に行う
+ * （{@code record} は {@code @Async} のため「閲覧は成功したのに監査がまだ無い」時間窓が開く）。</p>
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BillingInvoiceHistoryService {
@@ -69,7 +66,7 @@ public class BillingInvoiceHistoryService {
     private final BillingInvoiceAdjustmentJpaRepository adjustmentRepository;
     private final BillingAccessGuard billingAccessGuard;
     private final BillingManageableScopeRepository manageableScopeRepository;
-    private final AuditLogRepository auditLogRepository;
+    private final AuditLogService auditLogService;
 
     // ============================================================
     // 一覧（AC-45〜AC-51）
@@ -225,19 +222,19 @@ public class BillingInvoiceHistoryService {
         Long organizationId = invoice.getScopeKind() == EntitlementScopeKind.ORG
                 ? invoice.getScopeId() : invoice.getOrganizationId();
 
-        try {
-            auditLogRepository.save(AuditLogEntity.builder()
-                    .eventType(AuditEventType.BILLING_INVOICE_VIEWED.name())
-                    .userId(actorId)
-                    .teamId(teamId)
-                    .organizationId(organizationId)
-                    .metadata(metadata)
-                    .build());
-        } catch (RuntimeException e) {
-            // 監査は表示を止めない。ただし握りつぶさず ERROR で残す（欠落を検知できるように）。
-            log.error("BILLING_INVOICE_VIEWED の監査記録に失敗: actorId={}, invoiceId={}",
-                    actorId, invoice.getId(), e);
-        }
+        // auth ドメインの表へは Service 経由でのみ書く（repository / entity を直接触ると
+        // D-1 / D-5 のドメイン越境ガードが拒否する）。recordSync は呼び出しスレッドで
+        // 同期に書くため、200 を返した時点で監査行が存在することを保証できる。
+        auditLogService.recordSync(
+                AuditEventType.BILLING_INVOICE_VIEWED.name(),
+                actorId,
+                null,
+                teamId,
+                organizationId,
+                null,
+                null,
+                null,
+                metadata);
     }
 
     private BillingMoneyResponse money(Long amount, String currency) {
