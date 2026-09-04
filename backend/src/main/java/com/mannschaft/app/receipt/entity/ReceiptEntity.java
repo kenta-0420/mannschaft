@@ -14,7 +14,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import org.hibernate.annotations.Check;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
@@ -36,8 +35,6 @@ import java.time.LocalDateTime;
                 name = "uq_r_active_platform_source",
                 columnNames = "active_platform_source_key"),
         indexes = @Index(name = "idx_r_source", columnList = "source_type, source_ref"))
-@Check(name = "ck_r_platform_requires_source", constraints =
-        "scope_type <> 'PLATFORM' OR (source_type IS NOT NULL AND source_ref IS NOT NULL)")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
@@ -221,6 +218,31 @@ public class ReceiptEntity extends BaseEntity {
                     + "AND source_type IS NOT NULL AND source_ref IS NOT NULL "
                     + "THEN CONCAT(source_type, 0x1F, source_ref) ELSE NULL END) STORED")
     private String activePlatformSourceKey;
+
+    /**
+     * PLATFORM 領収書が {@code source_type} / {@code source_ref} を必ず持つことを DB で強制する
+     * 番人。<b>MySQL の STORED 生成列 + NOT NULL</b> であり Java からは読み取り専用。
+     * 条件を満たさない行は式が NULL に評価され、NOT NULL 違反として INSERT が拒否される。
+     *
+     * <p><b>なぜ CHECK 制約ではないか（実測に基づく判断）</b>: 当初は
+     * {@code CHECK (scope_type <> 'PLATFORM' OR ...)} で表現したが、MySQL は CHECK 違反を
+     * <b>エラー 3819 / SQLSTATE {@code HY000}</b> で返す。{@code HY000} は汎用コードであり、
+     * Spring の例外変換は {@code UncategorizedSQLException} にしか落とせない。
+     * その結果、呼び出し側（{@code PlatformReceiptIssueService} の
+     * {@code DataIntegrityViolationException} 捕捉）が整合性違反として扱えず、
+     * 並行発行の競合と区別できなくなる。実際に CI で AC-86 がこの理由で落ちた。</p>
+     *
+     * <p>NOT NULL 違反は<b>エラー 1048 / SQLSTATE {@code 23000}</b>（integrity constraint
+     * violation）であり、JDBC 4 の {@code SQLIntegrityConstraintViolationException} として
+     * 投げられるため {@code DataIntegrityViolationException} に正しく分類される。
+     * 「アプリ層が扱える形で違反が届く」ことまで含めて制約の設計とする。</p>
+     */
+    @Column(name = "platform_source_present", insertable = false, updatable = false,
+            columnDefinition = "TINYINT UNSIGNED GENERATED ALWAYS AS ("
+                    + "CASE WHEN scope_type = 'PLATFORM' "
+                    + "AND (source_type IS NULL OR source_ref IS NULL) "
+                    + "THEN NULL ELSE 1 END) STORED NOT NULL")
+    private Integer platformSourcePresent;
 
     /**
      * 領収書を無効化する。

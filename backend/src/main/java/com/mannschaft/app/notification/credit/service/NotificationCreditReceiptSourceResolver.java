@@ -3,7 +3,7 @@ package com.mannschaft.app.notification.credit.service;
 import com.mannschaft.app.notification.credit.entity.NotificationCreditPurchaseStatus;
 import com.mannschaft.app.notification.credit.entity.NotificationCreditPurchaseEntity;
 import com.mannschaft.app.notification.credit.repository.NotificationCreditPurchaseRepository;
-import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.receipt.PlatformReceiptSourceResolver;
 import com.mannschaft.app.receipt.ReceiptSourceRef;
 import com.mannschaft.app.receipt.ReceiptSourceType;
@@ -37,7 +37,12 @@ public class NotificationCreditReceiptSourceResolver implements PlatformReceiptS
     private static final BigDecimal TAX_DENOMINATOR = new BigDecimal("110");
 
     private final NotificationCreditPurchaseRepository purchaseRepository;
-    private final OrganizationRepository organizationRepository;
+    /**
+     * 組織名の解決は共有ドメインの窓口を通す。notification から organization の Repository を
+     * 直接引くと D-5「クロスドメイン Repository 依存」に抵触する
+     * （{@code CrossDomainRepositoryDependencyArchTest} が検出する）。
+     */
+    private final NameResolverService nameResolverService;
 
     @Override
     public ReceiptSourceType supportedSourceType() {
@@ -59,9 +64,9 @@ public class NotificationCreditReceiptSourceResolver implements PlatformReceiptS
         }
 
         // 領収書は「組織に対する売上」であり、購入操作をした個人宛ではない（§4.3）。
-        String recipientName = organizationRepository.findById(purchase.getOrganizationId())
-                .map(org -> org.getName())
-                .orElse(null);
+        String recipientName = nameResolverService
+                .resolveOrganizationNames(java.util.List.of(purchase.getOrganizationId()))
+                .get(purchase.getOrganizationId());
         if (recipientName == null) {
             log.warn("組織が見つからないため領収書の宛名を決められない purchaseId={}", purchase.getId());
             return Optional.empty();

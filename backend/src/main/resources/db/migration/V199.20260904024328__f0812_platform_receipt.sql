@@ -6,7 +6,7 @@
 --
 -- 【重要】統合テストのスキーマは Flyway ではなく Entity から生成される
 -- （application-test.yml: ddl-auto=create / flyway.enabled=false）。
--- 本ファイルの生成列・UNIQUE・CHECK は ReceiptEntity 側にも同じ内容で宣言してある。
+-- 本ファイルの生成列・UNIQUE は ReceiptEntity 側にも同じ内容で宣言してある。
 -- 片方だけを変更すると「CI 緑・本番で重複が通る」偽陰性になる。必ず両方を揃えること。
 
 -- ─────────────────────────────────────────────────────────────
@@ -72,9 +72,23 @@ ALTER TABLE receipts
 
 -- PLATFORM 領収書は source を必ず持つ（§4.1 の電子帳簿保存法「取引先」検索要件のため）。
 -- source が NULL の運営領収書が生まれると、その 1 件だけ取引先で検索できなくなる。
+--
+-- 【CHECK 制約を使わない理由（CI 実測で判明）】
+-- MySQL は CHECK 違反を エラー 3819 / SQLSTATE 'HY000' で返す。HY000 は汎用コードであり、
+-- Spring の例外変換は UncategorizedSQLException にしか落とせない。そのためアプリ層
+-- （PlatformReceiptIssueService の DataIntegrityViolationException 捕捉）が整合性違反として
+-- 扱えず、並行発行の競合と区別できなくなる。
+-- 一方 NOT NULL 違反は エラー 1048 / SQLSTATE '23000'（integrity constraint violation）で
+-- 返るため正しく分類される。よって「条件付き NOT NULL」を STORED 生成列 + NOT NULL で表現する。
+-- 違反行は式が NULL に評価され、NOT NULL 違反として INSERT が拒否される。
 ALTER TABLE receipts
-  ADD CONSTRAINT ck_r_platform_requires_source
-    CHECK (scope_type <> 'PLATFORM' OR (source_type IS NOT NULL AND source_ref IS NOT NULL));
+  ADD COLUMN platform_source_present TINYINT UNSIGNED
+    GENERATED ALWAYS AS (
+      CASE WHEN scope_type = 'PLATFORM'
+                AND (source_type IS NULL OR source_ref IS NULL)
+           THEN NULL ELSE 1 END
+    ) STORED NOT NULL
+    COMMENT 'PLATFORM領収書がsourceを持つことを強制する番人。違反行は式がNULLになりNOT NULL違反で拒否される';
 
 -- ─────────────────────────────────────────────────────────────
 -- 4. receipt_number_sequences: 採番の直列化解消（§3.2）
@@ -96,7 +110,7 @@ CREATE TABLE receipt_number_sequences (
     updated_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_rns_scope_period (scope_type, scope_id, period_key)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='領収書番号の採番シーケンス（発行者設定行のロックから切り離す）';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='領収書番号の採番シーケンス（発行者設定行のロックから切り離す）';
 
 -- ─────────────────────────────────────────────────────────────
 -- 5. receipt_pdf_archives: 電子帳簿保存法の原本保存（§3.3）
@@ -125,4 +139,4 @@ CREATE TABLE receipt_pdf_archives (
     INDEX idx_rpa_receipt (receipt_id),
     INDEX idx_rpa_retention (retention_until),
     CONSTRAINT fk_rpa_receipt FOREIGN KEY (receipt_id) REFERENCES receipts (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='領収書 PDF 原本アーカイブ（電子帳簿保存法）';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='領収書 PDF 原本アーカイブ（電子帳簿保存法）';
