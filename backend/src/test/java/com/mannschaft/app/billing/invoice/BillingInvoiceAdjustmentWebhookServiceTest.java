@@ -35,7 +35,20 @@ import static org.mockito.Mockito.when;
  * <b>1 行も投影せず、請求書の検索すら行わない</b>ことで確かめる。金銭ドメインで返金が別の請求書に
  * ぶら下がると利用者が見る金額が狂うため、近似は許されない。</p>
  *
- * <p>オフラインの IT では Stripe から charge を取得できないため、この経路の検証はここで担保する。</p>
+ * <p><b>IT との役割分担（AC-30 の検体がなぜ 2 種類あるか）</b>: 本番の Stripe webhook は
+ * {@code dispute.charge} を<b>ID 文字列</b>で送る。その場合 charge を retrieve しないと invoice が分からないが、
+ * オフラインの IT は Stripe API に到達できない。そこで</p>
+ * <ul>
+ *   <li>IT（{@code BillingInvoiceAdjustmentProjectionIT} の AC-30）は
+ *       {@code StripeWebhookPayloadFixture#disputeObjectWithExpandedCharge}（charge 展開済み）を使い、
+ *       「dispute 4 種が DISPUTE 行として積まれること」を実 DB で測る。</li>
+ *   <li><b>本クラス</b>が、現実の形である ID 文字列のみの検体
+ *       （{@code StripeWebhookPayloadFixture#disputeObject} と同じ形）で
+ *       「retrieve 経由で invoice が解決されること」と
+ *       「解決できないときは投影も請求書検索もしないこと」を測る。</li>
+ * </ul>
+ * <p>どちらか一方だけでは、現実の形（ID のみ）かオフラインで測れる形（展開済み）のどちらかが
+ * 穴になる。両方揃えて初めて経路全体が守られる。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)

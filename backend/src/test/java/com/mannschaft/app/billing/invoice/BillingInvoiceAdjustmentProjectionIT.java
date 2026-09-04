@@ -84,8 +84,8 @@ class BillingInvoiceAdjustmentProjectionIT extends AbstractBillingInvoiceWebhook
         for (int i = 0; i < disputeTypes.length; i++) {
             postSigned(StripeWebhookPayloadFixture.event(
                     "evt_ac30_" + i, disputeTypes[i],
-                    StripeWebhookPayloadFixture.disputeObject(
-                            "dp_ac30_" + i, CHARGE_REF, 10_450L, statuses[i])));
+                    StripeWebhookPayloadFixture.disputeObjectWithExpandedCharge(
+                            "dp_ac30_" + i, CHARGE_REF, INVOICE_REF, 10_450L, statuses[i])));
         }
 
         assertThat(adjustmentsOf(INVOICE_REF))

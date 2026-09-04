@@ -134,13 +134,49 @@ final class StripeWebhookPayloadFixture {
                 .formatted(creditNoteId, invoiceRef, amount, status);
     }
 
-    /** Stripe Dispute の {@code data.object} を組み立てる。 */
+    /**
+     * Stripe Dispute の {@code data.object} を組み立てる（{@code charge} は<b>ID 文字列</b>）。
+     *
+     * <p><b>これが本番の形である</b>。Stripe の {@code charge.dispute.*} は通常 {@code charge} を
+     * ID 文字列で送る。Dispute 自身は {@code invoice} を持たないため、実装は charge を retrieve して
+     * その {@code invoice} から対象請求書を一意に決める（「顧客の直近の請求書」などで推測しない）。</p>
+     *
+     * <p><b>この形は IT では検証できない</b>: オフラインの IT は Stripe API に到達できず charge を
+     * 取得できない。したがって<b>この経路（ID のみ → retrieve → invoice）の検証は
+     * {@code BillingInvoiceAdjustmentWebhookServiceTest} が担う</b>
+     * （retrieve 経由で解決される検体と、解決できないとき投影も請求書検索もしない検体の両方）。
+     * IT 側（AC-30）は代わりに {@link #disputeObjectWithExpandedCharge} を使う。</p>
+     */
     static String disputeObject(String disputeId, String chargeId, long amount, String status) {
         return """
                 {"id":"%s","object":"dispute","charge":"%s","amount":%d,"currency":"jpy",
                  "status":"%s","reason":"fraudulent","created":1769904000,
                  "payment_intent":"pi_fixture_%s"}"""
                 .formatted(disputeId, chargeId, amount, status, chargeId);
+    }
+
+    /**
+     * Stripe Dispute の {@code data.object} を組み立てる（{@code charge} を<b>展開した</b>版）。
+     *
+     * <p>Stripe は {@code expand} 指定や送出設定によって {@code charge} をオブジェクトで送ることがある。
+     * その場合 charge の {@code invoice} が payload に載るため、Stripe API へ問い合わせずに
+     * 対象請求書を一意に決められる。</p>
+     *
+     * <p><b>なぜ IT ではこちらを使うのか</b>: オフラインの IT は charge を retrieve できない。
+     * ここで ID のみの検体を使うと「Stripe に届かないから投影されない」という、
+     * 投影ロジックとは無関係な理由で赤くなり、AC-30 が測りたい
+     * 「dispute 4 種が DISPUTE 行として積まれること」を測れなくなる。
+     * ID のみの現実の形は {@link #disputeObject} と
+     * {@code BillingInvoiceAdjustmentWebhookServiceTest} の retrieve 経路テストで担保している。</p>
+     */
+    static String disputeObjectWithExpandedCharge(String disputeId, String chargeId, String invoiceRef,
+                                                  long amount, String status) {
+        return """
+                {"id":"%s","object":"dispute","amount":%d,"currency":"jpy",
+                 "status":"%s","reason":"fraudulent","created":1769904000,
+                 "payment_intent":"pi_fixture_%s",
+                 "charge":{"id":"%s","object":"charge","invoice":"%s","currency":"jpy","amount":%d}}"""
+                .formatted(disputeId, amount, status, chargeId, chargeId, invoiceRef, amount);
     }
 
     /** {@code customer.subscription.deleted} の {@code data.object} を組み立てる。 */
