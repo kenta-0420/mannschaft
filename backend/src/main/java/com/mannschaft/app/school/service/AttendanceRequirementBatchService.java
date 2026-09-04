@@ -8,6 +8,7 @@ import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity.EvaluationStatus;
 import com.mannschaft.app.school.entity.AttendanceRequirementRuleEntity;
 import com.mannschaft.app.school.entity.StudentAttendanceSummaryEntity;
+import com.mannschaft.app.school.event.AttendanceRequirementStatusChangedEvent;
 import com.mannschaft.app.school.repository.AttendanceRequirementEvaluationRepository;
 import com.mannschaft.app.school.repository.AttendanceRequirementRuleRepository;
 import com.mannschaft.app.school.repository.ClassHomeroomRepository;
@@ -16,11 +17,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -45,6 +46,7 @@ public class AttendanceRequirementBatchService {
     private final AttendanceRequirementEvaluationRepository evaluationRepository;
     private final ClassHomeroomRepository homeroomRepository;
     private final SchoolAttendanceNotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 日次評価バッチ（毎朝6時実行）。
@@ -93,9 +95,19 @@ public class AttendanceRequirementBatchService {
                     EvaluationResponse result = evaluationService.evaluateInternal(studentId, rule.getId());
                     evaluated++;
 
-                    // ステータス変化があれば通知
-                    if (prevStatus != result.status()) {
-                        notified += notifyStatusChange(studentId, rule, result.status());
+                    // ステータス変化があれば通知（Issue #2990 L6）。
+                    // 業務TX（＝バッチ全体を覆う単一 @Transactional）内では publish だけに留める。
+                    // 実配送を TX 内で行うと、通知側の実DBエラーが TX を rollback-only にして
+                    // commit 時にその日の評価結果が全生徒・全規程ぶん巻き戻る。
+                    // 通知対象のステータス（WARNING / RISK / VIOLATION）だけを publish する。
+                    // 是正前の notifyStatusChange の switch と同じ条件であり、OK 等への変化は
+                    // 従来どおり通知しない。通知先教員が解決できない場合の扱いだけがリスナー側へ移った
+                    // （notified は「配送要求を出した件数」であり、是正前の「通知を呼んだ件数」と
+                    //  担任未設定のケースだけ数え方が異なる）。
+                    if (prevStatus != result.status() && isNotifiableStatus(result.status())) {
+                        eventPublisher.publishEvent(new AttendanceRequirementStatusChangedEvent(
+                                studentId, rule.getId(), result.status()));
+                        notified++;
                     }
                 } catch (Exception e) {
                     log.error("評価失敗: studentId={}, ruleId={}", studentId, rule.getId(), e);
@@ -151,42 +163,17 @@ public class AttendanceRequirementBatchService {
     }
 
     /**
-     * ステータス変化に応じた教員通知を送信する。
+     * 教員への通知対象となる評価ステータスかどうかを返す。
      *
-     * @param studentId 対象生徒のユーザーID
-     * @param rule      適用規程
-     * @param newStatus 新しい評価ステータス
-     * @return 通知送信件数（0 または 1）
-     */
-    private int notifyStatusChange(Long studentId, AttendanceRequirementRuleEntity rule, EvaluationStatus newStatus) {
-        List<Long> teacherIds = getTeacherIds(rule);
-        if (teacherIds.isEmpty()) return 0;
-
-        switch (newStatus) {
-            case WARNING   -> notificationService.notifyRequirementWarning(studentId, rule.getName(), teacherIds);
-            case RISK      -> notificationService.notifyRequirementRisk(studentId, rule.getName(), teacherIds);
-            case VIOLATION -> notificationService.notifyRequirementViolation(studentId, rule.getName(), teacherIds);
-            default        -> { return 0; }
-        }
-        return 1;
-    }
-
-    /**
-     * 規程から担任のユーザーIDリストを取得する。
+     * <p>是正前の {@code notifyStatusChange} の switch（WARNING / RISK / VIOLATION のみ通知し
+     * それ以外は 0 を返す）と同一の条件である。</p>
      *
-     * @param rule 対象規程
-     * @return 担任のユーザーIDリスト（取得できない場合は空リスト）
+     * @param status 評価ステータス
+     * @return 通知対象なら true
      */
-    private List<Long> getTeacherIds(AttendanceRequirementRuleEntity rule) {
-        if (rule.getTeamId() == null) return List.of();
-        short year = (short) LocalDate.now().getYear();
-        return homeroomRepository.findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(
-                rule.getTeamId(), (int) year)
-            .map(h -> {
-                List<Long> ids = new ArrayList<>();
-                ids.add(h.getHomeroomTeacherUserId());
-                return ids;
-            })
-            .orElse(List.of());
+    private boolean isNotifiableStatus(EvaluationStatus status) {
+        return status == EvaluationStatus.WARNING
+                || status == EvaluationStatus.RISK
+                || status == EvaluationStatus.VIOLATION;
     }
 }

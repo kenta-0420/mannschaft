@@ -6,6 +6,7 @@ import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity.Ev
 import com.mannschaft.app.school.entity.AttendanceRequirementRuleEntity;
 import com.mannschaft.app.school.entity.ClassHomeroomEntity;
 import com.mannschaft.app.school.entity.StudentAttendanceSummaryEntity;
+import com.mannschaft.app.school.event.AttendanceRequirementStatusChangedEvent;
 import com.mannschaft.app.school.repository.AttendanceRequirementEvaluationRepository;
 import com.mannschaft.app.school.repository.AttendanceRequirementRuleRepository;
 import com.mannschaft.app.school.repository.ClassHomeroomRepository;
@@ -17,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -31,6 +34,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -62,6 +66,9 @@ class AttendanceRequirementBatchServiceTest {
 
     @Mock
     private SchoolAttendanceNotificationService notificationService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     // ========================================
     // runDailyEvaluation
@@ -106,8 +113,6 @@ class AttendanceRequirementBatchServiceTest {
             AttendanceRequirementEvaluationEntity prevEval = buildEvalEntity(EvaluationStatus.OK);
             // 今回は WARNING
             EvaluationResponse newResp = buildEvaluationResponse(EvaluationStatus.WARNING);
-            ClassHomeroomEntity homeroom = buildHomeroom(10L, 999L);
-
             given(ruleRepository.findAllActive(any(LocalDate.class), any(short.class)))
                     .willReturn(List.of(rule));
             given(summaryRepository.findClassSummaries(eq(10L), any(short.class)))
@@ -117,15 +122,22 @@ class AttendanceRequirementBatchServiceTest {
                     .willReturn(Optional.of(prevEval));
             given(evaluationService.evaluateInternal(eq(200L), anyLong()))
                     .willReturn(newResp);
-            given(homeroomRepository.findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(
-                    eq(10L), anyInt()))
-                    .willReturn(Optional.of(homeroom));
 
             // Act
             service.runDailyEvaluation();
 
-            // Assert: WARNING 通知が呼ばれること
-            verify(notificationService).notifyRequirementWarning(eq(200L), any(), any());
+            // Assert（Issue #2990 L6）: バッチの単一TX内では通知サービスを一切呼ばず、
+            // ID と新ステータスだけを載せたイベントを publish する。
+            // 実配送は SchoolAttendanceNotificationListener（AFTER_COMMIT）が行う。
+            ArgumentCaptor<AttendanceRequirementStatusChangedEvent> captor =
+                    ArgumentCaptor.forClass(AttendanceRequirementStatusChangedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            AttendanceRequirementStatusChangedEvent published = captor.getValue();
+            assertThat(published.studentUserId()).isEqualTo(200L);
+            assertThat(published.ruleId()).isEqualTo(rule.getId());
+            assertThat(published.newStatus()).isEqualTo(EvaluationStatus.WARNING);
+
+            verify(notificationService, never()).notifyRequirementWarning(anyLong(), any(), any());
         }
 
         @Test
