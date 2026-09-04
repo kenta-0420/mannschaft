@@ -1896,18 +1896,53 @@ class NotificationTransactionBoundaryGuardTest {
      * 減少はすべて本番コードの呼び出し箇所の消滅・置換に対応する。今後この値を下げるときも、
      * <b>上と同じ粒度の実測差分（消えた行・増えた行の全列挙）を書けないなら下げてはならない</b>。
      * コミットメッセージに理由が書いてあることは根拠ではない。</p>
+     *
+     * <h2>2026-09-04 に 178 -> 169 へ下げた根拠（Issue #2990 L5・同じPRに実装差分がある）</h2>
+     * <p>L2 と同じ<b>集約</b>型の是正であり、1 呼び出し = 1 移設ではない。是正前（{@code 6f21206e76}）と
+     * 是正後（本PR）で {@code src/main/java} 全体の生ヒットを {@code file:line:receiver.method} 付きで
+     * 列挙して差分を取った。<b>消えた 12 件・増えた 3 件（差 -9）</b>で、すべてが本PRの是正に対応し、
+     * 説明の付かない消失は無い。</p>
+     * <ul>
+     *   <li>{@code EventDelegationService} の {@code notifier.notifyXxx(...)} <b>7 箇所が消滅</b>
+     *       （{@code eventPublisher.publishEvent(...)} へ置換され語彙に当たらなくなった）:
+     *       {@code notifyAutoAccepted}(92) / {@code notifyRequestPending}(94) /
+     *       {@code notifyAccepted}(120) / {@code notifyRejected}(141) /
+     *       {@code notifyDelegateLeft}(181) / {@code notifyDelegatorLeft}(183) /
+     *       {@code notifyCancelled}(328)。7 種の通知メソッドを 1 本のリスナー
+     *       {@code EventDelegationNotifier#onEventDelegationNotification} へ集約したため。</li>
+     *   <li>{@code EventDelegationNotifier#send} の {@code notificationService.createNotification}(99)
+     *       1 箇所が、リスナー化後の {@code notificationDeliveryRunner.sendOne}(106) 1 箇所へ
+     *       <b>1:1 で置換</b>（増減ゼロ）。</li>
+     *   <li>{@code careEventNotificationService.notifyXxx(...)} の <b>4 箇所が 2 箇所へ集約</b>（-2）:
+     *       消滅は {@code EventCheckinService}(91, 129) / {@code EventRollCallService}(203) /
+     *       {@code EventRsvpService}(85)、移設先は
+     *       {@code EventCareNotificationTriggerListener}(81 {@code notifyRsvpConfirmed} /
+     *       83 {@code notifyCheckin}) の 2 箇所。4 つの業務メソッドが同じ 1 本のリスナーの
+     *       {@code switch} 2 分岐へまとまったため。</li>
+     * </ul>
+     *
+     * <p>下げてよいと判断した根拠は L2 と同じく「語彙も構造条件も一切触っていない」こと。
+     * {@link #NOTIFY_METHOD_VOCABULARY} と {@link #notifyCallOffsets} は本PRで無変更であり、
+     * 減少はすべて本番コードの呼び出し箇所の消滅・置換に対応する。通知の実発火点は 1 箇所も
+     * 失われておらず、AFTER_COMMIT の後へ移っただけである。
+     * 新しい 169 は 2026-09-04 の実測ちょうどで、余裕はゼロである。</p>
      */
-    static final long RAW_CANDIDATE_HITS_MIN = 178L;
+    static final long RAW_CANDIDATE_HITS_MIN = 169L;
 
     /**
-     * 実測 158（2026-09-02 / Issue #2990 L2 の是正後）。165 -> 158 の根拠は
+     * 実測 149（2026-09-04 / Issue #2990 L5 の是正後）。158 -> 149 の根拠は
+     * {@link #RAW_CANDIDATE_HITS_MIN} の L5 節と同一であり、構造条件を通過した発火点の差分は
+     * 生ヒットの差分と<b>完全に一致する</b>（消えた 12 件・増えた 3 件の顔ぶれも同一で、
+     * 「構造条件だけを厳しくして違反を消した」形跡は無い）。
+     *
+     * <p>それ以前の実測 158（2026-09-02 / Issue #2990 L2 の是正後）。165 -> 158 の根拠は
      * {@link #RAW_CANDIDATE_HITS_MIN} の javadoc と同一。構造条件を通過した発火点でも
      * 差分は生ヒットと完全に一致し（是正前 166 / 是正後 158・消えた 13 件と増えた 5 件の顔ぶれも同一）、
      * 「構造条件だけを厳しくして違反を消した」形跡は無いことを実測で確認している。
      *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 158L;
+    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 149L;
 
     /**
      * 実測 17309（2026-09-01 main 取り込み後）。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。
@@ -1919,12 +1954,22 @@ class NotificationTransactionBoundaryGuardTest {
     static final long PARSED_METHODS_MIN = 16000L;
 
     /**
-     * 通知発火点を1つ以上持つ本番ファイル数の実測下限（実測 98）。
+     * 通知発火点を1つ以上持つ本番ファイル数の実測下限（実測 96 / 2026-09-04・Issue #2990 L5 の是正後）。
      * 旧実装の「50件超」は実測の半分であり、判定を半減させても素通りしていた。
+     *
+     * <p><b>99 -> 96 の根拠</b>: L5 の是正で {@code EventCheckinService} /
+     * {@code EventDelegationService} / {@code EventRollCallService} / {@code EventRsvpService} の
+     * 4 ファイルから通知発火点が消え（すべて {@code publishEvent} へ置換）、移設先として
+     * {@code EventCareNotificationTriggerListener} 1 ファイルが増えた。
+     * {@code EventDelegationNotifier} は {@code createNotification} が {@code sendOne} へ
+     * 1:1 で置き換わったのみでファイル自体は発火点を持ち続ける。
+     * 是正前の値は 98 ではなく <b>99</b> である（99 - 4 + 1 = 96 で設定値と一致する）。
+     * 当初 98 と書いていたのは誤りで、算術が合わないまま残っていた（実測し直して訂正）。
+     * 差分の全列挙は {@link #RAW_CANDIDATE_HITS_MIN} の L5 節にある。
      *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long NOTIFY_BEARING_FILES_MIN = 98L;
+    static final long NOTIFY_BEARING_FILES_MIN = 96L;
 
     /** 検出力の実測値。 */
     record DetectionPower(long rawCandidateHits, long structuralNotifyCalls, long parsedMethods) {}

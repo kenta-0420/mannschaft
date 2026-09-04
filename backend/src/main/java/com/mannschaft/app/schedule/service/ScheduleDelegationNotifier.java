@@ -35,8 +35,14 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * <p>この欠陥が特に効くのは、業務側から見て「通知はついで」でしかない次の 2 経路である。</p>
  * <ul>
  *   <li>{@code ProxyDelegationCleanupBatchService#cleanupScheduleDelegations}（日次バッチ）—
- *       {@code cancelOnMemberLeft} 経由。1 件の通知失敗で、その回に処理した
- *       <b>孤立委任の CANCELLED 化が全件巻き戻る</b>。</li>
+ *       {@code cancelOnMemberLeft} 経由。1 件の通知失敗でその委任の CANCELLED 化が巻き戻り、
+ *       さらに例外がループの外まで伝播して<b>その回の残りの孤立委任が一切処理されなくなる</b>
+ *       （取りこぼしは翌日の実行まで放置される）。
+ *       <b>「その回の取消が全件巻き戻る」ことはない</b>: {@code ProxyDelegationCleanupBatchService}
+ *       はクラスに {@code @Transactional} を持たず、{@code execute()} が
+ *       {@code cleanupScheduleDelegations()} を<b>自己呼び出し</b>しているため、メソッドの
+ *       {@code @Transactional} が Spring プロキシを経由せず効いていない（是正とは無関係の
+ *       既存の潜在バグ。本 javadoc は当初これを見落として「全件巻き戻る」と書いていた）。</li>
  *   <li>{@code ScheduleAttendanceService#respondAttendance}（出欠回答）—
  *       {@code onDelegatorAttendanceChanged} 経由。通知失敗で
  *       <b>利用者本人の出欠回答そのものが失われる</b>。</li>
