@@ -152,7 +152,9 @@
       "dayOfWeek": "Día de la semana",
       "dayOfWeekHint": "Las franjas se crean solo en los días seleccionados",
       "saveSuccess": "Franja guardada",
-      "deleteSuccess": "Franja eliminada"
+      "deleteSuccess": "Franja eliminada",
+      "assignmentMasked": "En ajuste",
+      "assignmentMaskedHint": "Las asignaciones se ocultan hasta que se publique el turno"
     },
     "requests": {
       "submissionRate": "Tasa de envío",

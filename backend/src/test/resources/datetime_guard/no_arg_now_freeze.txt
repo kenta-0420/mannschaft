@@ -673,7 +673,7 @@ NO_ARG_NOW|com.mannschaft.app.school.entity.AttendanceRequirementRuleEntity|3
 NO_ARG_NOW|com.mannschaft.app.school.entity.DailyAttendanceRecordEntity|1
 NO_ARG_NOW|com.mannschaft.app.school.entity.PeriodAttendanceRecordEntity|1
 NO_ARG_NOW|com.mannschaft.app.school.entity.StudentAttendanceSummaryEntity|4
-NO_ARG_NOW|com.mannschaft.app.school.service.AttendanceRequirementBatchService|3
+NO_ARG_NOW|com.mannschaft.app.school.service.AttendanceRequirementBatchService|2
 NO_ARG_NOW|com.mannschaft.app.school.service.AttendanceRequirementEvaluationService|2
 NO_ARG_NOW|com.mannschaft.app.school.service.AttendanceRequirementService|4
 NO_ARG_NOW|com.mannschaft.app.school.service.AttendanceSummaryService|1

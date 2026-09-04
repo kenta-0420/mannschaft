@@ -60371,7 +60371,7 @@ export interface components {
         };
         RegisterAdvertiserRequest: {
             /** @enum {string} */
-            billingMethod: "STRIPE" | "INVOICE";
+            billingMethod?: "STRIPE" | "INVOICE";
             companyName?: string;
             contactEmail?: string;
         };
@@ -61950,6 +61950,7 @@ export interface components {
         };
         ShiftSlotResponse: {
             assignedUserIds?: number[];
+            assignmentMasked?: boolean;
             /** Format: int64 */
             id?: number;
             note?: string;

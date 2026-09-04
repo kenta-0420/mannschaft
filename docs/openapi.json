@@ -182390,10 +182390,7 @@
             "type": "string",
             "minLength": 1
           }
-        },
-        "required": [
-          "billingMethod"
-        ]
+        }
       },
       "AdvertiserAccountResponse": {
         "type": "object",
@@ -186616,6 +186613,9 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          "assignmentMasked": {
+            "type": "boolean"
           },
           "id": {
             "type": "integer",

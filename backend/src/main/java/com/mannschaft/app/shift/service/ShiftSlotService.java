@@ -10,6 +10,7 @@ import com.mannschaft.app.shift.dto.ShiftSlotResponse;
 import com.mannschaft.app.shift.dto.SlotAssignmentPatchRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
+import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -69,9 +70,11 @@ public class ShiftSlotService {
      * @return シフト枠一覧
      */
     public List<ShiftSlotResponse> listSlots(Long scheduleId, Long userId) {
+        // 二層: 認可（誰が）の 403 が先、可視性（何が）の 404 が後。
         checkScheduleReadAccess(scheduleId, userId);
+        boolean masked = resolveAssignmentMasked(scheduleId, userId);
         List<ShiftSlotEntity> entities = slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(scheduleId);
-        return entities.stream().map(this::toSlotResponse).toList();
+        return entities.stream().map(e -> applyMask(toSlotResponse(e), masked)).toList();
     }
 
     /**
@@ -84,7 +87,8 @@ public class ShiftSlotService {
     public ShiftSlotResponse getSlot(Long slotId, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
         checkScheduleReadAccess(entity.getScheduleId(), userId);
-        return toSlotResponse(entity);
+        boolean masked = resolveAssignmentMasked(entity.getScheduleId(), userId);
+        return applyMask(toSlotResponse(entity), masked);
     }
 
     /**
@@ -293,6 +297,60 @@ public class ShiftSlotService {
             return;
         }
         accessControlService.checkAdminOrAbove(userId, resolveTeamId(scheduleId), "TEAM");
+    }
+
+    /**
+     * 閲覧者に対する枠一覧の可視性を解決する（CMP-260826-2127 / AC-3・AC-4）。
+     *
+     * <p>未公開（{@code DRAFT} / {@code ARCHIVED} かつ {@code publishedAt} が NULL）なら 404、
+     * {@code COLLECTING} / {@code ADJUSTING} なら割当だけを伏せる。判定は
+     * {@link ShiftScheduleVisibilityPolicy} に閉じる（設計 G-1）。</p>
+     *
+     * <p><b>マスクを {@code toSlotResponse} 側で行わない理由</b>: 同メソッドは管理系
+     *（{@code createSlot} / {@code updateSlot} / 差分割当）からも呼ばれており、
+     * そこで伏せると管理画面の D&D 編集が空になる。</p>
+     *
+     * @param scheduleId スケジュール ID
+     * @param userId     閲覧者ユーザー ID
+     * @return 割当を伏せるべきなら true
+     * @throws BusinessException 未公開の場合（SHIFT_SCHEDULE_NOT_FOUND / 404）
+     */
+    private boolean resolveAssignmentMasked(Long scheduleId, Long userId) {
+        // SYSTEM_ADMIN 短絡は schedule の取得より前に置く（checkScheduleReadAccess と同じ順序）。
+        if (accessControlService.isSystemAdmin(userId)) {
+            return false;
+        }
+        ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+        if (accessControlService.isAdminOrAbove(userId, schedule.getTeamId(), "TEAM")) {
+            return false;
+        }
+        ShiftScheduleVisibilityPolicy.Visibility visibility = ShiftScheduleVisibilityPolicy
+                .classify(schedule.getStatus(), schedule.getPublishedAt());
+        if (visibility.isHidden()) {
+            throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+        }
+        return visibility.isAssignmentMasked();
+    }
+
+    /**
+     * 割当を伏せる（空配列 + {@code assignmentMasked=true}）。
+     *
+     * <p>{@code null} ではなく空配列にするのは、FE が {@code assignedUserIds.length} と
+     * {@code .forEach} を null チェック無しで呼んでいるためである（null にすると TypeError で落ちる）。</p>
+     *
+     * @param response 変換済みレスポンス
+     * @param masked   伏せるか
+     * @return 伏せた（あるいはそのままの）レスポンス
+     */
+    private ShiftSlotResponse applyMask(ShiftSlotResponse response, boolean masked) {
+        if (!masked) {
+            return response;
+        }
+        return response.toBuilder()
+                .assignedUserIds(List.of())
+                .assignmentMasked(true)
+                .build();
     }
 
     /**
