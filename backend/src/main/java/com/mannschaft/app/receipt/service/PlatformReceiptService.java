@@ -116,7 +116,8 @@ public class PlatformReceiptService {
                 actorUserId, ReceiptScopes.PLATFORM_SCOPE_ID, AccessControlService.PLATFORM_SCOPE_TYPE);
 
         return pdfArchiveRepository
-                .findByRetentionUntilLessThanEqualOrderByRetentionUntilAsc(LocalDate.now())
+                .findByRetentionUntilLessThanEqualOrderByRetentionUntilAsc(
+                        LocalDate.now(UserZoneLocalDateTimeParser.SERVER_ZONE))
                 .stream()
                 .map(a -> new RetentionExpiredArchiveResponse(
                         a.getReceiptId(),

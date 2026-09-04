@@ -80,6 +80,12 @@ public class ReceiptPdfArchiveService {
     /**
      * 領収書 PDF を取得する。保存済みの原本があればそれを返し、無ければ生成して保存する。
      *
+     * <p><b>パッケージ非公開</b>（{@code com.mannschaft.app.receipt.service} 内の同居サービスのみ
+     * 呼ぶ）。Entity をそのまま引数に取るため、{@code public} にすると
+     * {@code ServiceApiEntityBoundaryArchTest}（D-1 API 境界）に抵触する
+     * （他ドメインから呼ばれうる Service API は Entity を公開してはならない）。
+     * {@link ReceiptService} / {@link ReceiptMyService} は同一パッケージのため到達できる。</p>
+     *
      * @param receipt       対象領収書
      * @param lineItems     明細行
      * @param requestedKind 明示指定された種別。{@code null} の場合は現在の状態
@@ -87,8 +93,8 @@ public class ReceiptPdfArchiveService {
      * @return PDF バイト配列
      */
     @Transactional
-    public byte[] getOrArchive(ReceiptEntity receipt, List<ReceiptLineItemEntity> lineItems,
-                                ReceiptArchiveKind requestedKind) {
+    byte[] getOrArchive(ReceiptEntity receipt, List<ReceiptLineItemEntity> lineItems,
+                         ReceiptArchiveKind requestedKind) {
         ReceiptArchiveKind kind = resolveKind(receipt, requestedKind);
 
         // VOIDED を明示指定（または既定解決）されたが実際には無効化されていない場合は

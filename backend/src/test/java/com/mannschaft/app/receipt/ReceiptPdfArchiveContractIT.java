@@ -1,7 +1,7 @@
 package com.mannschaft.app.receipt;
 
 import com.jayway.jsonpath.JsonPath;
-import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -79,7 +79,7 @@ class ReceiptPdfArchiveContractIT extends AbstractMySqlIntegrationTest {
      * {@code mannschaft.storage.endpoint} 未設定時に最大 90 秒ハングするため
      * （設計書 §9 実測）、インメモリの Map で upload/download を模倣する。
      */
-    @MockitoBean private StorageService storageService;
+    @MockitoBean private R2StorageService storageService;
     private final Map<String, byte[]> storageStub = new ConcurrentHashMap<>();
 
     @PersistenceContext private EntityManager em;
