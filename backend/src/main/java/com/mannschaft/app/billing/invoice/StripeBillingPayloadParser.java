@@ -103,9 +103,16 @@ public class StripeBillingPayloadParser {
 
     /** {@code data.object} が dispute のときだけ {@link DisputeView} を返す。 */
     public Optional<DisputeView> parseDispute(String payload) {
-        return dataObject(payload, "dispute").map(node -> new DisputeView(
-                text(node, "id"), text(node, "charge"), node.path("amount").asLong(0L),
-                text(node, "status"), text(node, "reason"), longOrNull(node, "created")));
+        return dataObject(payload, "dispute").map(node -> {
+            JsonNode charge = node.path("charge");
+            // charge は ID 文字列のことも、expand されたオブジェクトのこともある。
+            String chargeRef = charge.isObject() ? text(charge, "id") : text(node, "charge");
+            String expandedInvoiceRef = charge.isObject() ? text(charge, "invoice") : null;
+            return new DisputeView(
+                    text(node, "id"), chargeRef, node.path("amount").asLong(0L),
+                    text(node, "status"), text(node, "reason"), longOrNull(node, "created"),
+                    expandedInvoiceRef);
+        });
     }
 
     // ───────────── 内部 ─────────────

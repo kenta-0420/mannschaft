@@ -9,7 +9,6 @@ import com.mannschaft.app.billing.invoice.StripeBillingObjectView.CreditNoteView
 import com.mannschaft.app.billing.invoice.StripeBillingObjectView.DisputeView;
 import com.mannschaft.app.billing.invoice.StripeBillingObjectView.EventEnvelope;
 import com.mannschaft.app.billing.invoice.StripeBillingObjectView.RefundView;
-import com.mannschaft.app.payment.StripeWebhookEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,7 +38,8 @@ public class BillingInvoiceAdjustmentWebhookService {
     private final StripeBillingPayloadParser parser;
     private final BillingInvoiceJpaRepository invoiceRepository;
     private final BillingInvoiceAdjustmentJpaRepository adjustmentRepository;
-    private final StripeWebhookEventRepository webhookEventRepository;
+    /** dispute の対象請求書を charge の invoice から一意に解決する（推測しない）。 */
+    private final StripeChargeInvoiceResolver chargeInvoiceResolver;
     private final BillingWebhookEventGate gate;
 
     /**
@@ -90,8 +90,7 @@ public class BillingInvoiceAdjustmentWebhookService {
         }
         BillingInvoiceEntity target = invoice.get();
 
-        // stripe_object_ref に charge id を残す。dispute は charge しか持たないため、
-        // ここで残した対応関係が唯一の手掛かりになる（下の resolveInvoiceByCharge）。
+        // stripe_object_ref には charge id を残す（監査で「どの charge のイベントか」を辿れるように）。
         return gate.run(env, payload, charge.id(), target.getContractId(), target.getBillingCustomerId(), () -> {
             for (RefundView refund : charge.refunds()) {
                 upsert(target, KIND_REFUND, refund.id(), refund.amount(),
@@ -142,7 +141,7 @@ public class BillingInvoiceAdjustmentWebhookService {
             return false;
         }
         DisputeView dispute = parsed.get();
-        Optional<BillingInvoiceEntity> invoice = resolveInvoiceByCharge(dispute.chargeRef());
+        Optional<BillingInvoiceEntity> invoice = resolveInvoiceForDispute(dispute);
         if (invoice.isEmpty()) {
             return false;
         }
@@ -153,22 +152,26 @@ public class BillingInvoiceAdjustmentWebhookService {
     }
 
     /**
-     * dispute の {@code charge} から対象 invoice を解決する。
+     * dispute の {@code charge} から対象 invoice を<b>一意に</b>解決する。
      *
-     * <p>Stripe の Dispute は charge しか持たず、charge → invoice の対応は
-     * {@code charge.refunded} などを受けたときに {@code stripe_webhook_events.stripe_object_ref} へ
-     * 残した記録から辿る（新テーブル・新列を作らない制約下での唯一の手掛かり）。</p>
+     * <p>Stripe の Dispute は {@code invoice} を持たないが、{@code Charge} は持つ。したがって
+     * 「Dispute → charge → charge.invoice」で一意に辿れる。payload 内で charge が展開されていれば
+     * それを使い、されていなければ Stripe から charge を取得する。</p>
      *
-     * <p><b>既知の限界</b>: 記録から辿れるのは billing_customer までで、その顧客の invoice が複数ある場合は
-     * 直近（{@code period_end} 降順）を選ぶ。将来 {@code billing_invoices.psp_charge_ref} 相当を足して
-     * 一意に解決できるようにすべきである（PR6 以降の課題として明示する）。</p>
+     * <p><b>推測しない（fail-closed）</b>: ここで解決できないときに「その顧客の直近の請求書」で
+     * 代用してはならない。返金・チャージバックが別の請求書にぶら下がると、利用者が見る金額が狂う。
+     * 解決できない場合は投影しない。</p>
      */
-    private Optional<BillingInvoiceEntity> resolveInvoiceByCharge(String chargeRef) {
-        return webhookEventRepository
-                .findFirstByStripeObjectRefAndBillingCustomerIdIsNotNullOrderByReceivedAtDesc(chargeRef)
-                .flatMap(event -> invoiceRepository
-                        .findFirstByBillingCustomerIdAndDeletedAtIsNullOrderByPeriodEndDescCreatedAtDesc(
-                                event.getBillingCustomerId()));
+    private Optional<BillingInvoiceEntity> resolveInvoiceForDispute(DisputeView dispute) {
+        Optional<String> invoiceRef = dispute.expandedChargeInvoiceRef() != null
+                ? Optional.of(dispute.expandedChargeInvoiceRef())
+                : chargeInvoiceResolver.resolveInvoiceRef(dispute.chargeRef());
+        if (invoiceRef.isEmpty()) {
+            log.info("F20.1 PR5: dispute の対象請求書を charge から特定できないため投影しません（推測しない）: "
+                    + "dispute={}, charge={}", dispute.id(), dispute.chargeRef());
+            return Optional.empty();
+        }
+        return invoiceRepository.findByPspInvoiceRef(invoiceRef.get());
     }
 
     private String mapDisputeStatus(String stripeStatus) {

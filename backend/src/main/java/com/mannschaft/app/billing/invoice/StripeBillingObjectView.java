@@ -82,8 +82,17 @@ public final class StripeBillingObjectView {
             String id, String invoiceRef, long amount, String status, String reason, Long createdEpochSec) {
     }
 
-    /** Stripe Dispute。 */
+    /**
+     * Stripe Dispute。
+     *
+     * <p>Dispute 自身は {@code invoice} を持たない（{@code charge} だけを持つ）。対象請求書は
+     * charge の {@code invoice} から一意に辿る。webhook の payload で charge が展開されていれば
+     * {@code expandedChargeInvoiceRef} に入り、Stripe への再取得を省ける。</p>
+     *
+     * @param expandedChargeInvoiceRef payload 内で charge が展開されていた場合のその {@code invoice}（無ければ null）
+     */
     public record DisputeView(
-            String id, String chargeRef, long amount, String status, String reason, Long createdEpochSec) {
+            String id, String chargeRef, long amount, String status, String reason, Long createdEpochSec,
+            String expandedChargeInvoiceRef) {
     }
 }
