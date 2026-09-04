@@ -8,6 +8,7 @@ import static org.mockito.Mockito.lenient;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
@@ -55,10 +56,10 @@ class OrganizationSlugServiceTest {
     @Mock private OrganizationHierarchyService organizationHierarchyService;
     @Mock private MembershipService membershipService;
     @Mock private MediaUrlResolver mediaUrlResolver;
+    @Mock private DuplicateNameGuardService duplicateNameGuardService;
     @InjectMocks private OrganizationService organizationService;
 
     private void givenCreateScaffold(String name) {
-        lenient().when(organizationRepository.existsByName(name)).thenReturn(false);
         RoleEntity adminRole = RoleEntity.builder()
                 .id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者").priority(2).isSystem(true).build();
         lenient().when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(adminRole));

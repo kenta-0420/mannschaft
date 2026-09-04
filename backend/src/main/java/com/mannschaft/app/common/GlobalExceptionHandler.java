@@ -2470,7 +2470,12 @@ public class GlobalExceptionHandler {
             Map.entry("PROV_009", HttpStatus.NOT_FOUND),
             Map.entry("PROV_010", HttpStatus.NOT_FOUND),
             // 検分 P1-3 根治: ACCEPTED 済み招待への resend/cancel は状態競合のため409。
-            Map.entry("PROV_011", HttpStatus.CONFLICT)
+            Map.entry("PROV_011", HttpStatus.CONFLICT),
+            // CMP-260901-1538 柱③-A: 組織・チーム名称の同名確認フロー。専用ハンドラ
+            // （handleDuplicateNameConfirmationRequired）が優先して処理するが、宣言ステータス
+            // 一致番人（ErrorCodeHttpStatusDeclarationGuardTest）は STATUS_MAP 経由の
+            // resolveHttpStatus() の結果で判定するため、金型 ENTITLEMENT_003 と同様に登録する。
+            Map.entry("DUPNAME_001", HttpStatus.CONFLICT)
     );
 
     /**

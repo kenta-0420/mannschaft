@@ -171909,6 +171909,12 @@
             "type": "string",
             "pattern": "\\d{5}"
           },
+          "confirmDuplicate": {
+            "type": "boolean"
+          },
+          "duplicateNameFingerprint": {
+            "type": "string"
+          },
           "name": {
             "type": "string",
             "minLength": 1
@@ -184025,6 +184031,12 @@
       "ProvisioningTeamCreateRequest": {
         "type": "object",
         "properties": {
+          "confirmDuplicate": {
+            "type": "boolean"
+          },
+          "duplicateNameFingerprint": {
+            "type": "string"
+          },
           "inviteEmail": {
             "type": "string",
             "minLength": 1
@@ -184069,6 +184081,12 @@
       "ProvisioningOrganizationCreateRequest": {
         "type": "object",
         "properties": {
+          "confirmDuplicate": {
+            "type": "boolean"
+          },
+          "duplicateNameFingerprint": {
+            "type": "string"
+          },
           "inviteEmail": {
             "type": "string",
             "minLength": 1
@@ -189237,6 +189255,12 @@
         "type": "object",
         "properties": {
           "city": {
+            "type": "string"
+          },
+          "confirmDuplicate": {
+            "type": "boolean"
+          },
+          "duplicateNameFingerprint": {
             "type": "string"
           },
           "name": {

@@ -17,11 +17,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 /**
- * CMP-260901-1538 柱③-A「組織・チーム名称の重複許可」試練（red）。
+ * CMP-260901-1538 柱③-A「組織・チーム名称の重複許可」受け入れ条件テスト（試練で red として設置し、
+ * 出陣で {@link DuplicateNameGuardServiceImpl} を実装して green 化した）。
  *
- * <p>{@link DuplicateNameGuardService} の作成前チェック中核ロジックの最終挙動を直接検査する。
- * 現時点では {@link DuplicateNameGuardServiceImpl} が {@link UnsupportedOperationException}
- * を投げる骨格のみのため、本テストは全件 red（未実装で例外伝播により FAIL）となる。</p>
+ * <p>{@link DuplicateNameGuardService} の作成前チェック中核ロジックの最終挙動を直接検査する。</p>
  *
  * <h2>AC ↔ テスト対応</h2>
  * <ul>
@@ -52,7 +51,7 @@ class DuplicateNameGuardServiceRedTest {
     private DuplicateNameGuardServiceImpl guardService;
 
     @Test
-    @DisplayName("AC-01: 同名候補が無ければ例外を投げず作成続行を許可する（未実装のため red）")
+    @DisplayName("AC-01: 同名候補が無ければ例外を投げず作成続行を許可する")
     void ac01_noCandidatesProceedsWithoutException() {
         assertThatCode(() -> guardService.checkForCreate(
                 DuplicateNameScopeKind.ORGANIZATION, "サンプル組織", 1L,
@@ -61,7 +60,7 @@ class DuplicateNameGuardServiceRedTest {
     }
 
     @Test
-    @DisplayName("AC-02: 未確認で同名候補があれば 409（候補一覧＋fingerprint）を投げる（未実装のため red）")
+    @DisplayName("AC-02: 未確認で同名候補があれば 409（候補一覧＋fingerprint）を投げる")
     void ac02_candidatesExistWithoutConfirmationThrows409() {
         when(fingerprintService.issue(any(), any(), any(), any())).thenReturn("dummy-fp");
 
@@ -81,7 +80,7 @@ class DuplicateNameGuardServiceRedTest {
     }
 
     @Test
-    @DisplayName("AC-03: PRIVATE 候補は名称を開示せず「存在のみ」を示す（未実装のため red）")
+    @DisplayName("AC-03: PRIVATE 候補は名称を開示せず「存在のみ」を示す")
     void ac03_privateCandidateHidesNameButIsCounted() {
         when(fingerprintService.issue(any(), any(), any(), any())).thenReturn("dummy-fp");
 
@@ -100,7 +99,7 @@ class DuplicateNameGuardServiceRedTest {
     }
 
     @Test
-    @DisplayName("AC-06: confirmDuplicate=true かつ fingerprint 一致なら作成続行を許可する（未実装のため red）")
+    @DisplayName("AC-06: confirmDuplicate=true かつ fingerprint 一致なら作成続行を許可する")
     void ac06_confirmedWithValidFingerprintProceeds() {
         when(fingerprintService.verify(any(), any(), any(), any(), any())).thenReturn(true);
 
@@ -112,7 +111,7 @@ class DuplicateNameGuardServiceRedTest {
     }
 
     @Test
-    @DisplayName("AC-07: 確認後に候補集合が変化（fingerprint不一致）していれば再度 409（未実装のため red）")
+    @DisplayName("AC-07: 確認後に候補集合が変化（fingerprint不一致）していれば再度 409")
     void ac07_fingerprintMismatchAfterConfirmationThrows409Again() {
         when(fingerprintService.verify(any(), any(), any(), any(), any())).thenReturn(false);
         when(fingerprintService.issue(any(), any(), any(), any())).thenReturn("new-fp");
@@ -133,7 +132,7 @@ class DuplicateNameGuardServiceRedTest {
     }
 
     @Test
-    @DisplayName("AC-08: confirmDuplicate=true だが fingerprint 未指定なら 409（未実装のため red）")
+    @DisplayName("AC-08: confirmDuplicate=true だが fingerprint 未指定なら 409")
     void ac08_confirmedWithoutFingerprintThrows409() {
         when(fingerprintService.issue(any(), any(), any(), any())).thenReturn("dummy-fp");
 
@@ -145,7 +144,7 @@ class DuplicateNameGuardServiceRedTest {
     }
 
     @Test
-    @DisplayName("AC-09: 候補供給コールバックは呼び出しごとに consult される（未実装のため red）")
+    @DisplayName("AC-09: 候補供給コールバックは呼び出しごとに consult される")
     void ac09_candidateSupplierIsConsultedOnEveryCall() {
         AtomicInteger callCount = new AtomicInteger();
 

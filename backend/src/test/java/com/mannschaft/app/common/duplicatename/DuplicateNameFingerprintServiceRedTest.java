@@ -8,12 +8,10 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * CMP-260901-1538 柱③-A「組織・チーム名称の重複許可」試練（red）。
+ * CMP-260901-1538 柱③-A「組織・チーム名称の重複許可」受け入れ条件テスト（試練で red として設置し、
+ * 出陣で {@link DuplicateNameFingerprintServiceImpl}（HMAC-SHA256）を実装して green 化した）。
  *
- * <p>{@link DuplicateNameFingerprintService} の HMAC fingerprint 発行・検証の最終挙動を直接検査する。
- * 現時点では {@link DuplicateNameFingerprintServiceImpl} が {@link UnsupportedOperationException}
- * を投げる骨格のみのため、本テストは全件 red（未実装で例外伝播により FAIL）となる。出陣（実装）
- * フェーズで HMAC-SHA256 署名・TTL 検証・束縛検証を実装し green 化する。</p>
+ * <p>{@link DuplicateNameFingerprintService} の HMAC fingerprint 発行・検証の最終挙動を直接検査する。</p>
  *
  * <h2>AC ↔ テスト対応</h2>
  * <ul>
@@ -31,10 +29,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class DuplicateNameFingerprintServiceRedTest {
 
-    private final DuplicateNameFingerprintService fingerprintService = new DuplicateNameFingerprintServiceImpl();
+    private final DuplicateNameFingerprintService fingerprintService =
+            new DuplicateNameFingerprintServiceImpl("", "test-fallback-secret-key-not-for-production-use");
 
     @Test
-    @DisplayName("AC-04: 発行直後・同一コンテキストでの検証は成功する（未実装のため red）")
+    @DisplayName("AC-04: 発行直後・同一コンテキストでの検証は成功する")
     void ac04_issuedFingerprintVerifiesWithExactSameContext() {
         List<String> candidateIds = List.of("1", "2");
 
@@ -48,7 +47,7 @@ class DuplicateNameFingerprintServiceRedTest {
     }
 
     @Test
-    @DisplayName("AC-04a: 操作者ユーザーIDが異なると検証失敗（未実装のため red）")
+    @DisplayName("AC-04a: 操作者ユーザーIDが異なると検証失敗")
     void ac04a_actorMismatchFailsVerification() {
         List<String> candidateIds = List.of("1");
 
@@ -61,7 +60,7 @@ class DuplicateNameFingerprintServiceRedTest {
     }
 
     @Test
-    @DisplayName("AC-04b: 候補ID集合が異なると検証失敗（未実装のため red）")
+    @DisplayName("AC-04b: 候補ID集合が異なると検証失敗")
     void ac04b_candidateSetMismatchFailsVerification() {
         String fingerprint = fingerprintService.issue(
                 DuplicateNameScopeKind.ORGANIZATION, "サンプル組織", 100L, List.of("1"));
@@ -72,7 +71,7 @@ class DuplicateNameFingerprintServiceRedTest {
     }
 
     @Test
-    @DisplayName("AC-04c: スコープ種別が異なると検証失敗（未実装のため red）")
+    @DisplayName("AC-04c: スコープ種別が異なると検証失敗")
     void ac04c_scopeKindMismatchFailsVerification() {
         List<String> candidateIds = List.of("1");
 
@@ -85,7 +84,7 @@ class DuplicateNameFingerprintServiceRedTest {
     }
 
     @Test
-    @DisplayName("AC-04d: 正規化名称が異なると検証失敗（未実装のため red）")
+    @DisplayName("AC-04d: 正規化名称が異なると検証失敗")
     void ac04d_normalizedNameMismatchFailsVerification() {
         List<String> candidateIds = List.of("1");
 

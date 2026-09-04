@@ -16,7 +16,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * CMP-260901-1538 柱③-A「組織・チーム名称の重複許可」試練（red）。
+ * CMP-260901-1538 柱③-A「組織・チーム名称の重複許可」受け入れ条件テスト（試練で red として設置し、
+ * 出陣で {@link DuplicateNameGuardServiceImpl} を実装して green 化した）。
  *
  * <p>同名判定は MySQL 照合順序 {@code utf8mb4_0900_ai_ci}（アクセント・大文字小文字を区別しない）の
  * {@code =} 比較＋前後 trim で行う設計であり、実 DB でしか検証できないため
@@ -24,13 +25,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * <h2>検証の二層</h2>
  * <ul>
- *   <li><b>Repository 層</b>（実装済み・green）: {@link OrganizationRepository#findActiveByNormalizedName}
+ *   <li><b>Repository 層</b>: {@link OrganizationRepository#findActiveByNormalizedName}
  *       / {@link TeamRepository#findActiveByNormalizedName} が trim・大小文字違いの同名を
  *       実 DB の照合順序で正しく拾うことを検証する（AC-05）。</li>
- *   <li><b>Guard 層</b>（未実装・red）: 上記 Repository の結果を候補供給コールバックとして
+ *   <li><b>Guard 層</b>: 上記 Repository の結果を候補供給コールバックとして
  *       {@link DuplicateNameGuardService#checkForCreate} に渡し、実 DB の同名判定結果に基づいて
- *       確認要求（409）に到達することを検証する（AC-01/AC-02/AC-05 の統合）。
- *       {@link DuplicateNameGuardServiceImpl} が骨格のみのため red。</li>
+ *       確認要求（409）に到達することを検証する（AC-01/AC-02/AC-05 の統合）。</li>
  * </ul>
  *
  * <h2>AC ↔ テスト対応</h2>
@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *       → {@link #ac05a_trimmedWhitespaceMatchesViaRealDb()}</li>
  *   <li>AC-05b 大文字小文字違い（ai_ci）の同名は実 DB で一致判定される（Repository層）
  *       → {@link #ac05b_caseInsensitiveMatchesViaRealDb()}</li>
- *   <li>AC-01/AC-02/AC-05 実 DB の同名候補を Guard 層へ渡すと確認要求（409）に到達する（未実装のため red）
+ *   <li>AC-01/AC-02/AC-05 実 DB の同名候補を Guard 層へ渡すと確認要求（409）に到達する
  *       → {@link #ac01_ac02_ac05_guardConsultsRealDbCandidatesAndRequiresConfirmation()}</li>
  * </ul>
  */
@@ -94,7 +94,7 @@ class DuplicateNameCollationGuardRedIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("AC-01/AC-02/AC-05: 実DBの同名候補をGuard層へ渡すと確認要求(409)に到達する（未実装のため red）")
+    @DisplayName("AC-01/AC-02/AC-05: 実DBの同名候補をGuard層へ渡すと確認要求(409)に到達する")
     void ac01_ac02_ac05_guardConsultsRealDbCandidatesAndRequiresConfirmation() {
         String suffix = shortSuffixDigits();
         String name = "重複確認IT組織" + suffix;

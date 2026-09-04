@@ -56556,6 +56556,8 @@ export interface components {
         CreateTeamRequest: {
             city?: string;
             cityCode?: string;
+            confirmDuplicate?: boolean;
+            duplicateNameFingerprint?: string;
             name?: string;
             prefecture?: string;
             prefectureCode?: string;
@@ -60945,6 +60947,8 @@ export interface components {
             sortOrder?: number;
         };
         ProvisioningTeamCreateRequest: {
+            confirmDuplicate?: boolean;
+            duplicateNameFingerprint?: string;
             inviteEmail?: string;
             name?: string;
         };
@@ -60963,6 +60967,8 @@ export interface components {
             teamId?: number;
         };
         ProvisioningOrganizationCreateRequest: {
+            confirmDuplicate?: boolean;
+            duplicateNameFingerprint?: string;
             inviteEmail?: string;
             name?: string;
         };
@@ -62912,6 +62918,8 @@ export interface components {
         };
         CreateOrganizationRequest: {
             city?: string;
+            confirmDuplicate?: boolean;
+            duplicateNameFingerprint?: string;
             name?: string;
             orgType?: string;
             /** Format: int64 */

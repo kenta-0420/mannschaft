@@ -3,7 +3,11 @@ package com.mannschaft.app.organization;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.duplicatename.DuplicateNameCandidate;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationDetails;
 import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequiredException;
+import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
+import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -45,6 +49,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -95,6 +100,9 @@ class OrganizationServiceTest {
     @Mock
     private AdminRoleMutationLockService adminRoleMutationLockService;
 
+    @Mock
+    private DuplicateNameGuardService duplicateNameGuardService;
+
     @InjectMocks
     private OrganizationService organizationService;
 
@@ -111,8 +119,6 @@ class OrganizationServiceTest {
         void 正常作成_組織とADMINロールが保存される() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
                     "テスト組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", null, null);
-
-            given(organizationRepository.existsByName("テスト組織")).willReturn(false);
 
             given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
                     .willReturn(Optional.of(ADMIN_ROLE_ID));
@@ -140,42 +146,90 @@ class OrganizationServiceTest {
         }
 
         @Test
-        @DisplayName("柱③-A AC-01/AC-02: 同名組織は一律ブロック(ORG_002)せず"
-                + "DuplicateNameConfirmationRequiredException(409)を投げる（未実装のため red）")
-        void 組織名重複_確認要求例外へ移行() {
+        @DisplayName("柱③-A AC-02: 同名候補があり未確認なら"
+                + "DuplicateNameConfirmationRequiredExceptionをそのまま伝播する")
+        void 組織名重複_確認要求例外を伝播する() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
                     "既存組織", "SCHOOL", null, null, null, null, null);
             req.setConfirmDuplicate(false);
 
-            // 出陣後は existsByName に代わり findActiveByNormalizedName（trim + utf8mb4_0900_ai_ci）で
-            // 候補を検索する想定。現行実装は existsByName のみを見て ORG_002 で一律ブロックする。
-            given(organizationRepository.existsByName("既存組織")).willReturn(true);
+            DuplicateNameConfirmationRequiredException expected =
+                    new DuplicateNameConfirmationRequiredException(
+                            new DuplicateNameConfirmationDetails("fp", 123L, java.util.List.of()));
+            org.mockito.BDDMockito.willThrow(expected)
+                    .given(duplicateNameGuardService)
+                    .checkForCreate(eq(DuplicateNameScopeKind.ORGANIZATION), eq("既存組織"), eq(USER_ID),
+                            eq(false), org.mockito.ArgumentMatchers.isNull(), any());
 
             assertThatThrownBy(() -> organizationService.createOrganization(USER_ID, req))
-                    .isInstanceOf(DuplicateNameConfirmationRequiredException.class);
+                    .isSameAs(expected);
+            // 作成処理（save/ADMIN紐付け）まで到達していないことを確認する。
+            verify(organizationRepository, org.mockito.Mockito.never()).save(any(OrganizationEntity.class));
         }
 
         @Test
-        @DisplayName("柱③-A AC-06/AC-10: confirmDuplicate=true かつ有効な fingerprint なら"
-                + "同名でも作成できる（未実装のため red）")
+        @DisplayName("柱③-A AC-06/AC-10: guardが続行を許可(通常返り)すればconfirmDuplicate=true"
+                + "＋有効fingerprintでも同名で作成できる")
         void 組織名重複_確認済みなら作成できる() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
                     "既存組織", "SCHOOL", null, null, null, null, null);
             req.setConfirmDuplicate(true);
             req.setDuplicateNameFingerprint("valid-fingerprint");
 
-            given(organizationRepository.existsByName("既存組織")).willReturn(true);
+            // guard は confirmDuplicate=true + 有効 fingerprint の場合、例外を投げず正常返却する
+            // （デフォルトの mock void 挙動＝何もしない、をもって「続行許可」を表現）。
             given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
                     .willReturn(Optional.of(ADMIN_ROLE_ID));
             given(organizationRepository.save(any(OrganizationEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
-            // 現行実装は confirmDuplicate/fingerprint を一切見ず existsByName=true で
-            // 常に ORG_002 を投げるため、この成功期待は red になる。
             ApiResponse<OrganizationResponse> response =
                     organizationService.createOrganization(USER_ID, req);
 
             assertThat(response.getData().getBasicInfo().name()).isEqualTo("既存組織");
+            verify(duplicateNameGuardService).checkForCreate(
+                    eq(DuplicateNameScopeKind.ORGANIZATION), eq("既存組織"), eq(USER_ID),
+                    eq(true), eq("valid-fingerprint"), any());
+        }
+
+        @Test
+        @DisplayName("柱③-A AC-05: 候補供給コールバックはfindActiveByNormalizedNameの結果を"
+                + "可視性ルールに従い変換する")
+        void 候補供給コールバック_可視性ルールで変換() {
+            CreateOrganizationRequest req = new CreateOrganizationRequest(
+                    "既存組織", "SCHOOL", null, null, null, null, null);
+
+            OrganizationEntity publicCandidate = OrganizationEntity.builder()
+                    .name("既存組織").visibility(OrganizationEntity.Visibility.PUBLIC).build();
+            ReflectionTestUtils.setField(publicCandidate, "id", 10L);
+            OrganizationEntity privateCandidate = OrganizationEntity.builder()
+                    .name("既存組織").visibility(OrganizationEntity.Visibility.PRIVATE).build();
+            ReflectionTestUtils.setField(privateCandidate, "id", 20L);
+            given(organizationRepository.findActiveByNormalizedName("既存組織"))
+                    .willReturn(java.util.List.of(publicCandidate, privateCandidate));
+            given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
+                    .willReturn(Optional.of(ADMIN_ROLE_ID));
+            given(organizationRepository.save(any(OrganizationEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            org.mockito.ArgumentCaptor<java.util.function.Supplier<java.util.List<DuplicateNameCandidate>>>
+                    supplierCaptor = org.mockito.ArgumentCaptor.forClass(java.util.function.Supplier.class);
+
+            organizationService.createOrganization(USER_ID, req);
+
+            verify(duplicateNameGuardService).checkForCreate(
+                    eq(DuplicateNameScopeKind.ORGANIZATION), eq("既存組織"), eq(USER_ID),
+                    eq(false), org.mockito.ArgumentMatchers.isNull(), supplierCaptor.capture());
+            java.util.List<DuplicateNameCandidate> candidates = supplierCaptor.getValue().get();
+            assertThat(candidates).hasSize(2);
+            DuplicateNameCandidate publicResult =
+                    candidates.stream().filter(c -> c.id().equals("10")).findFirst().orElseThrow();
+            assertThat(publicResult.nameVisible()).isTrue();
+            assertThat(publicResult.name()).isEqualTo("既存組織");
+            DuplicateNameCandidate privateResult =
+                    candidates.stream().filter(c -> c.id().equals("20")).findFirst().orElseThrow();
+            assertThat(privateResult.nameVisible()).isFalse();
+            assertThat(privateResult.name()).isNull();
         }
 
         @Test
@@ -184,7 +238,6 @@ class OrganizationServiceTest {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
                     "新組織", "COMPANY", null, null, null, null, null);
 
-            given(organizationRepository.existsByName("新組織")).willReturn(false);
             given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> organizationService.createOrganization(USER_ID, req))
@@ -199,7 +252,6 @@ class OrganizationServiceTest {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
                     "非公開組織", "NPO", null, null, null, null, null);
 
-            given(organizationRepository.existsByName("非公開組織")).willReturn(false);
 
             given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
                     .willReturn(Optional.of(ADMIN_ROLE_ID));
@@ -219,7 +271,6 @@ class OrganizationServiceTest {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
                     "子組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", 5L, null);
 
-            given(organizationRepository.existsByName("子組織")).willReturn(false);
 
             given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
                     .willReturn(Optional.of(ADMIN_ROLE_ID));
