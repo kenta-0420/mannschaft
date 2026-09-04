@@ -93,7 +93,34 @@ public enum EntitlementErrorCode implements ErrorCode {
      * のいずれも 409 で拒否し「一度解約してから新プランを契約」する導線へ誘導する。</p>
      */
     CONTRACT_CHANGE_REQUIRES_PAYMENT("ENTITLEMENT_017",
-            "有償プランが関わる変更はできません。一度解約してから新プランを契約してください", Severity.WARN);
+            "有償プランが関わる変更はできません。一度解約してから新プランを契約してください", Severity.WARN),
+
+    /** 請求書が存在しない又は他 scope のため秘匿する（404）。 */
+    INVOICE_NOT_FOUND("ENTITLEMENT_018", "指定された請求書が見つかりません", Severity.WARN),
+
+    /** 対象価格が販売可能でない（409）。 */
+    PRICE_NOT_SELLABLE("ENTITLEMENT_019", "指定された価格は現在販売できません", Severity.WARN),
+
+    /** 変更 preview が失効した（409）。 */
+    PREVIEW_EXPIRED("ENTITLEMENT_020", "変更内容の確認期限が切れています", Severity.WARN),
+
+    /** 契約変更が進行中操作と競合した（409）。 */
+    CHANGE_CONFLICT("ENTITLEMENT_021", "別の契約操作が進行中です", Severity.WARN),
+
+    /** JST 月境界の安全窓に入った（409）。 */
+    MONTH_BOUNDARY("ENTITLEMENT_022", "月初に最新金額を再見積りしてください", Severity.WARN),
+
+    /** quote が失効又は snapshot と不一致になった（409）。 */
+    QUOTE_EXPIRED("ENTITLEMENT_023", "見積りの有効期限が切れています", Severity.WARN),
+
+    /** legacy Customer の移行が必要（409）。 */
+    MIGRATION_REQUIRED("ENTITLEMENT_024", "支払方法の移行が必要です", Severity.WARN),
+
+    /** Stripe が利用不能（502）。 */
+    STRIPE_UNAVAILABLE("ENTITLEMENT_025", "決済サービスを利用できません", Severity.ERROR),
+
+    /** 旧有償 POST は Billing Center flow が必要（409）。 */
+    BILLING_FLOW_REQUIRED("ENTITLEMENT_026", "料金・契約画面から手続きを開始してください", Severity.WARN);
 
     private final String code;
     private final String message;
