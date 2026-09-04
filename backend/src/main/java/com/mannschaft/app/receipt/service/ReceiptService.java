@@ -9,6 +9,7 @@ import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.receipt.ReceiptErrorCode;
 import com.mannschaft.app.receipt.ReceiptMapper;
 import com.mannschaft.app.receipt.ReceiptPdfGenerator;
+import com.mannschaft.app.receipt.ReceiptPdfStatus;
 import com.mannschaft.app.receipt.ReceiptScopeType;
 import com.mannschaft.app.receipt.ReceiptStatus;
 import com.mannschaft.app.receipt.dto.BulkCreateReceiptRequest;
@@ -658,7 +659,12 @@ public class ReceiptService {
                         .build())
                 .toList();
 
-        String pdfStatus = receipt.getPdfStorageKey() != null ? "READY" : "GENERATING";
+        // F08.12 §3.1 是正: pdf_storage_key の NULL 判定からの導出をやめ、pdf_status 列を読む。
+        // 旧実装は updatePdfStorageKey() の呼び出し元が 0 件であるため常に GENERATING を返し、
+        // 「失敗したのか、まだ生成中なのか」を区別できなかった。
+        String pdfStatus = receipt.getPdfStatus() == null
+                ? ReceiptPdfStatus.GENERATING.name()
+                : receipt.getPdfStatus().name();
 
         return ReceiptResponse.builder()
                 .id(receipt.getId())

@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 public final class ReceiptSourceRef {
 
     /** 10 進数（ゼロ埋めなし）。先頭 0 は単独の "0" のみ許す。 */
-    private static final Pattern NUMERIC = Pattern.compile("^(0|[1-9]\d{0,19})$");
+    private static final Pattern NUMERIC = Pattern.compile("^(0|[1-9]\\d{0,19})$");
 
     /** 小文字ハイフン付き UUID（36 文字）。 */
     private static final Pattern LOWER_UUID =
