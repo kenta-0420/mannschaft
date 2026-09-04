@@ -35673,6 +35673,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/receipts/retention-expired": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 保存期限到来アーカイブ一覧（削除は行わない） */
+        get: operations["listRetentionExpiredArchives"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/provisioning/invitations": {
         parameters: {
             query?: never;
@@ -74063,6 +74080,20 @@ export interface components {
             taxAmount?: number;
             /** Format: date-time */
             voidedAt?: string;
+        };
+        ApiResponseListRetentionExpiredArchiveResponse: {
+            data?: components["schemas"]["RetentionExpiredArchiveResponse"][];
+        };
+        RetentionExpiredArchiveResponse: {
+            archiveKind?: string;
+            /** Format: date-time */
+            archivedAt?: string;
+            /** Format: int64 */
+            receiptId?: number;
+            retentionBackend?: string;
+            /** Format: date */
+            retentionUntil?: string;
+            storageKey?: string;
         };
         BillingRecordResponse: {
             /** Format: date-time */
@@ -151423,6 +151454,26 @@ export interface operations {
             };
         };
     };
+    listRetentionExpiredArchives: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListRetentionExpiredArchiveResponse"];
+                };
+            };
+        };
+    };
     list_80: {
         parameters: {
             query?: never;
@@ -158749,7 +158800,9 @@ export interface operations {
     };
     downloadMyReceiptPdf: {
         parameters: {
-            query?: never;
+            query?: {
+                kind?: string;
+            };
             header?: never;
             path: {
                 id: number;
@@ -163880,6 +163933,7 @@ export interface operations {
             query: {
                 scopeType: string;
                 scopeId: number;
+                kind?: string;
             };
             header?: never;
             path: {

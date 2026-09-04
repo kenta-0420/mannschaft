@@ -120388,6 +120388,27 @@
         }
       }
     },
+    "/api/v1/system-admin/receipts/retention-expired": {
+      "get": {
+        "tags": [
+          "運営領収書"
+        ],
+        "summary": "保存期限到来アーカイブ一覧（削除は行わない）",
+        "operationId": "listRetentionExpiredArchives",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListRetentionExpiredArchiveResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/provisioning/invitations": {
       "get": {
         "tags": [
@@ -133814,6 +133835,14 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -141993,6 +142022,14 @@
             "schema": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -219832,6 +219869,43 @@
           "voidedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "ApiResponseListRetentionExpiredArchiveResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RetentionExpiredArchiveResponse"
+            }
+          }
+        }
+      },
+      "RetentionExpiredArchiveResponse": {
+        "type": "object",
+        "properties": {
+          "archiveKind": {
+            "type": "string"
+          },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "receiptId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "retentionBackend": {
+            "type": "string"
+          },
+          "retentionUntil": {
+            "type": "string",
+            "format": "date"
+          },
+          "storageKey": {
+            "type": "string"
           }
         }
       },
