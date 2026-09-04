@@ -1574,6 +1574,16 @@ public class GlobalExceptionHandler {
             // 上限超過・非対応形式・MIME 偽装といった「入力の不備」である（F08.4 §9.4 AC-10）。
             // Severity は変えずに status だけ 400 へ写像する。
             Map.entry("RECEIPT_020", HttpStatus.BAD_REQUEST),
+            // F08.12 運営領収書。既定 500 に落ちないよう status を明示する
+            // （RECEIPT_020 が未登録で既定 500 になっていた前例を繰り返さない）。
+            Map.entry("RECEIPT_025", HttpStatus.NOT_FOUND),              // 運営の発行者設定が未登録
+            Map.entry("RECEIPT_026", HttpStatus.BAD_REQUEST),            // source 指定が必須
+            Map.entry("RECEIPT_027", HttpStatus.BAD_REQUEST),            // source_ref の形式不正
+            Map.entry("RECEIPT_028", HttpStatus.NOT_FOUND),              // 元データ不在
+            Map.entry("RECEIPT_029", HttpStatus.CONFLICT),               // 元データが未入金
+            Map.entry("RECEIPT_030", HttpStatus.NOT_FOUND),              // PDF 原本不在
+            Map.entry("RECEIPT_031", HttpStatus.SERVICE_UNAVAILABLE),    // PDF 再試行上限
+            Map.entry("RECEIPT_032", HttpStatus.CONFLICT),               // 未無効化からの再発行
             // 認可根治戦役 Wave3-B3: moderation の createReReview は actionId 所有者検証(BOLA是正)で MODERATION_EXT_001、越境は 404。
             Map.entry("MODERATION_EXT_001", HttpStatus.NOT_FOUND),       // VIOLATION_NOT_FOUND（IDOR 秘匿 → 404）
             // 認可根治戦役 Wave3-B3: incident は entity 由来 scope で認可判定。ID 直指定 EP で scope 非所属は 404。
