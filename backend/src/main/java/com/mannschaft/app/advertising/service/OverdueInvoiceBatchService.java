@@ -1,7 +1,5 @@
 package com.mannschaft.app.advertising.service;
 
-import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
-import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
@@ -68,10 +66,16 @@ public class OverdueInvoiceBatchService {
      *
      * <p>F08.12 §5.0 により後払い廃止に伴い定期実行（{@code @Scheduled}）は停止した。
      * {@code @BatchEndpoint} からの手動実行のみ残す。</p>
+     *
+     * <p><b>{@code @BackgroundFeaturePolicy} は付けない。</b> 同アノテーションの
+     * {@code SKIP_WHEN_DISABLED} は {@code @Scheduled} 専用であり（
+     * {@link com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode#SKIP_WHEN_DISABLED}）、
+     * {@code @Scheduled} を外した本メソッドに残すと番人
+     * （{@code BackgroundFeaturePolicyAnnotationGuardTest}）に検出される。
+     * {@code @BatchEndpoint} 経由の手動起動のみで、フラグによる停止判定自体が不要になったため、
+     * 同種の一回限り／手動専用バッチ（{@code UserBirthYearBackfillBatchService#execute}）に倣い、
+     * アノテーションごと外すのが正しい。</p>
      */
-    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
-            gateKeys = "FEATURE_PROMOTION_ENABLED",
-            reason = "支払期限切れ判定は due_date が本日より前という時刻条件のみで冪等に決まるため、止めても再開後の初回実行で同じ請求書をまとめて OVERDUE にできる")
     @BatchEndpoint(name = "advertising-invoice-overdue-mark-daily", description = "支払期限切れの広告請求書を OVERDUE に更新する（手動実行のみ。後払い廃止によりスケジュール停止）")
     @SchedulerLock(name = "overdueInvoiceMark", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     public void markOverdueInvoices() {
