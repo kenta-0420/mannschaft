@@ -1,0 +1,81 @@
+{
+  "provisioning": {
+    "admin": {
+      "title": "販促プロビジョニング",
+      "quickLinkLabel": "販促プロビジョニング",
+      "noPermission": "この操作を行う権限がありません",
+      "createOrgBtn": "組織を作成",
+      "createTeamBtn": "チームを作成",
+      "createOrgDialogTitle": "組織を事前作成",
+      "createTeamDialogTitle": "チームを事前作成",
+      "form": {
+        "nameLabel": "名称",
+        "namePlaceholder": "例）〇〇村",
+        "inviteEmailLabel": "招待先メールアドレス",
+        "inviteEmailPlaceholder": "admin@example.com",
+        "nameRequired": "名称を入力してください",
+        "emailRequired": "招待先メールアドレスを入力してください",
+        "emailInvalid": "メールアドレスの形式が正しくありません"
+      },
+      "createOrgSuccess": "組織を作成し、招待メールを送信しました",
+      "createTeamSuccess": "チームを作成し、招待メールを送信しました",
+      "createFailed": "作成に失敗しました",
+      "saveBtn": "作成",
+      "cancelBtn": "キャンセル",
+      "invitationsTitle": "招待一覧",
+      "loadFailed": "招待一覧の取得に失敗しました",
+      "noData": "招待はまだありません",
+      "table": {
+        "target": "対象",
+        "inviteEmail": "招待先メール",
+        "status": "状態",
+        "expiresAt": "有効期限",
+        "issuedBy": "発行者",
+        "actions": "操作"
+      },
+      "targetOrganization": "組織",
+      "targetTeam": "チーム",
+      "status": {
+        "PENDING": "承諾待ち",
+        "ACCEPTED": "承諾済み",
+        "CANCELLED": "取消済み",
+        "EXPIRED": "期限切れ"
+      },
+      "resendBtn": "再送",
+      "cancelInviteBtn": "取消",
+      "cancelConfirm": "この招待を取消してよいですか？",
+      "resendSuccess": "招待を再送しました",
+      "resendFailed": "招待の再送に失敗しました",
+      "cancelSuccess": "招待を取消しました",
+      "cancelFailed": "招待の取消に失敗しました"
+    },
+    "accept": {
+      "title": "管理者招待の承諾",
+      "loading": "招待内容を確認しています…",
+      "loginPrompt": "この招待を確認するにはログインが必要です",
+      "loginBtn": "ログインして続ける",
+      "targetOrganization": "組織",
+      "targetTeam": "チーム",
+      "expiresAtLabel": "有効期限",
+      "inviteEmailLabel": "招待先メールアドレス",
+      "acceptBtn": "招待を承諾する",
+      "accepting": "承諾しています…",
+      "acceptSuccess": "招待を承諾しました",
+      "alreadyAcceptedTitle": "この招待は承諾済みです",
+      "alreadyAcceptedMessage": "既にこの招待を承諾済みです。管理画面から操作を続けられます。",
+      "backToDashboard": "ダッシュボードへ戻る",
+      "errors": {
+        "notFoundTitle": "招待が見つかりません",
+        "notFoundMessage": "招待リンクが無効です。URLをご確認ください。",
+        "expiredTitle": "招待の有効期限が切れています",
+        "expiredMessage": "この招待の有効期限は既に切れています。発行者に再送を依頼してください。",
+        "cancelledTitle": "招待は取消されています",
+        "cancelledMessage": "この招待は取消または失効しています。発行者にお問い合わせください。",
+        "emailMismatchTitle": "メールアドレスが一致しません",
+        "emailMismatchMessage": "この招待は別のメールアドレス宛です。招待先メールアドレスでログインし直してください。",
+        "genericTitle": "招待を確認できませんでした",
+        "genericMessage": "予期しないエラーが発生しました。時間をおいて再度お試しください。"
+      }
+    }
+  }
+}
