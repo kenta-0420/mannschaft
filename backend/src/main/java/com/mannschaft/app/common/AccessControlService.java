@@ -517,6 +517,24 @@ public class AccessControlService {
     }
 
     /**
+     * 運営（プラットフォーム）名義の操作を記録するための代表 SYSTEM_ADMIN のユーザー ID を返す。
+     *
+     * <p>イベントリスナー・バッチからの発行には操作者が存在しないが、{@code receipts.issued_by}
+     * は {@code users(id)} への FK を持つ NOT NULL 列であるため、実在するユーザー ID が要る。
+     * ID が最小（＝最も古く付与された）SYSTEM_ADMIN を代表として用いる。</p>
+     *
+     * <p>receipt ドメインが role ドメインの Repository を直接引かないよう、共有ドメインである
+     * 本 Service が窓口になる（モジュラーモノリスの境界原則）。</p>
+     *
+     * @return 代表 SYSTEM_ADMIN のユーザー ID。1 人も居なければ空
+     */
+    public Optional<Long> findPlatformActorUserId() {
+        return userRoleRepository.findSystemAdminUserIds().stream()
+                .filter(java.util.Objects::nonNull)
+                .min(Long::compareTo);
+    }
+
+    /**
      * スコープ種別に応じて ADMIN 以上を要求する。PLATFORM（運営）スコープの場合は
      * SYSTEM_ADMIN を要求する（F08.12 §2.1）。
      *
