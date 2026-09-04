@@ -213,6 +213,11 @@ mannschaft:
     secret-key: ${MANNSCHAFT_R2_SECRET_KEY:}
     presigned-upload-ttl: ${MANNSCHAFT_R2_UPLOAD_TTL:600}
     presigned-download-ttl: ${MANNSCHAFT_R2_DOWNLOAD_TTL:3600}
+    # F08.12 §9.3: 領収書 PDF 原本の不変性担保手段。receipt_pdf_archives.retention_backend に写る。
+    # local: ローカル/CI（保持ルールなし。§9.4 御裁可済み） / r2-bucket-lock: 本番（§9.3.1 手動設定後）
+    # / s3-object-lock: storage.provider=s3 を使う場合
+    archive:
+      backend: ${MANNSCHAFT_STORAGE_ARCHIVE_BACKEND:local}
   cdn:
     workers-domain: ${MANNSCHAFT_CDN_WORKERS_DOMAIN:}  # 例: cdn.example.workers.dev
     enabled: ${MANNSCHAFT_CDN_ENABLED:false}

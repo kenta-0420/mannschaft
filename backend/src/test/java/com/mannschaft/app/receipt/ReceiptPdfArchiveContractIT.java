@@ -1,6 +1,7 @@
 package com.mannschaft.app.receipt;
 
 import com.jayway.jsonpath.JsonPath;
+import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -20,12 +21,19 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -66,12 +74,30 @@ class ReceiptPdfArchiveContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private TeamRepository teamRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
 
+    /**
+     * ストレージ（R2/S3）は外部境界のためモック化する。実 AWS エンドポイントへ向かうと
+     * {@code mannschaft.storage.endpoint} 未設定時に最大 90 秒ハングするため
+     * （設計書 §9 実測）、インメモリの Map で upload/download を模倣する。
+     */
+    @MockitoBean private StorageService storageService;
+    private final Map<String, byte[]> storageStub = new ConcurrentHashMap<>();
+
     @PersistenceContext private EntityManager em;
 
     private Long teamId;
 
     @BeforeEach
     void setUp() throws Exception {
+        storageStub.clear();
+        lenient().doAnswer(inv -> {
+            String key = inv.getArgument(0);
+            byte[] data = inv.getArgument(1);
+            storageStub.put(key, data);
+            return null;
+        }).when(storageService).upload(anyString(), any(byte[].class), anyString());
+        lenient().when(storageService.download(anyString()))
+                .thenAnswer(inv -> storageStub.get((String) inv.getArgument(0)));
+
         MembershipTestHelper.insertActiveUser(em, ADMIN_USER);
         Long adminRoleId = ensureRole("ADMIN", 2);
 

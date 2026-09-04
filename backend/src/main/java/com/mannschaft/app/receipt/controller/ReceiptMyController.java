@@ -2,6 +2,7 @@ package com.mannschaft.app.receipt.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.receipt.ReceiptArchiveKind;
 import com.mannschaft.app.receipt.ReceiptScopeType;
 import com.mannschaft.app.receipt.dto.AnnualSummaryResponse;
 import com.mannschaft.app.receipt.dto.MyReceiptResponse;
@@ -75,8 +76,11 @@ public class ReceiptMyController {
     @GetMapping("/{id}/pdf")
     @Operation(summary = "自分宛の領収書PDFダウンロード")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ダウンロード成功")
-    public ResponseEntity<byte[]> downloadMyReceiptPdf(@PathVariable Long id) {
-        byte[] pdf = receiptMyService.getMyReceiptPdf(SecurityUtils.getCurrentUserId(), id);
+    public ResponseEntity<byte[]> downloadMyReceiptPdf(
+            @PathVariable Long id,
+            @RequestParam(required = false) String kind) {
+        ReceiptArchiveKind archiveKind = kind == null ? null : ReceiptArchiveKind.valueOf(kind.toUpperCase());
+        byte[] pdf = receiptMyService.getMyReceiptPdf(SecurityUtils.getCurrentUserId(), id, archiveKind);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"receipt_" + id + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)

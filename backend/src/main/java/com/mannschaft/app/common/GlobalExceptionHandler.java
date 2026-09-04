@@ -1595,6 +1595,8 @@ public class GlobalExceptionHandler {
             Map.entry("RECEIPT_030", HttpStatus.NOT_FOUND),              // PDF 原本不在
             Map.entry("RECEIPT_031", HttpStatus.SERVICE_UNAVAILABLE),    // PDF 再試行上限
             Map.entry("RECEIPT_032", HttpStatus.CONFLICT),               // 未無効化からの再発行
+            Map.entry("RECEIPT_033", HttpStatus.INTERNAL_SERVER_ERROR),  // PDF 原本のストレージ書き込み失敗
+            Map.entry("RECEIPT_034", HttpStatus.INTERNAL_SERVER_ERROR),  // PDF 原本のハッシュ不一致（改ざんの疑い）
             // 認可根治戦役 Wave3-B3: moderation の createReReview は actionId 所有者検証(BOLA是正)で MODERATION_EXT_001、越境は 404。
             Map.entry("MODERATION_EXT_001", HttpStatus.NOT_FOUND),       // VIOLATION_NOT_FOUND（IDOR 秘匿 → 404）
             // 認可根治戦役 Wave3-B3: incident は entity 由来 scope で認可判定。ID 直指定 EP で scope 非所属は 404。
