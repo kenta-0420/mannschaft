@@ -72,7 +72,19 @@ public class DuplicateNameFingerprintServiceImpl implements DuplicateNameFingerp
         }
         String signature = parts[2];
 
-        if (Instant.now().getEpochSecond() > expiresAt) {
+        long now = Instant.now().getEpochSecond();
+        // 検分 P2-4 是正: TTL 契約を厳密化する。
+        //  - expiresAt は「以上」で失効させる（ちょうど期限時刻を有効のまま通さない）。
+        //  - issuedAt が未来（発行時刻が現在より後）であってはならない（改竄・時計異常の検知）。
+        //  - expiresAt - issuedAt は必ず TTL_SECONDS と一致する（発行者以外が組み立てた
+        //    issuedAt/expiresAt の組み合わせで TTL を延長する改竄を弾く）。
+        if (now >= expiresAt) {
+            return false;
+        }
+        if (issuedAt > now) {
+            return false;
+        }
+        if (expiresAt - issuedAt != TTL_SECONDS) {
             return false;
         }
 

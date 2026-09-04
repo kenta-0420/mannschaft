@@ -89,61 +89,63 @@ public class OrganizationService {
     public ApiResponse<OrganizationResponse> createOrganization(Long userId, CreateOrganizationRequest req) {
         // CMP-260901-1538 柱③-A: 組織名の重複は一律ブロックせず、同名候補があれば
         // 409（候補一覧＋fingerprint）で確認を求める二段方式に切り替える（ORG_002 一律ブロックは撤去）。
-        // 候補供給コールバックは本 @Transactional 内で実行されるため、確認時点と作成時点の
-        // 候補集合差分（fingerprint 不一致）を DuplicateNameGuardService 側で検知できる。
-        duplicateNameGuardService.checkForCreate(
+        // 検分 P1-2 是正: 「候補再計算 → 作成」の全体をアドバイザリロック保持中に実行する
+        // （TOCTOU 対策の設計判断は DuplicateNameGuardService の Javadoc を参照）。候補供給
+        // コールバックはロッキングリード（FOR UPDATE）で最新のコミット済みデータを読む。
+        return duplicateNameGuardService.checkForCreateAndRun(
                 DuplicateNameScopeKind.ORGANIZATION,
                 req.getName(),
                 userId,
                 req.isConfirmDuplicate(),
                 req.getDuplicateNameFingerprint(),
-                () -> organizationRepository.findActiveByNormalizedName(req.getName()).stream()
+                () -> organizationRepository.findActiveByNormalizedNameForUpdate(req.getName()).stream()
                         .map(this::toDuplicateNameCandidate)
-                        .toList());
+                        .toList(),
+                () -> {
+                    String slug = resolveSlugForCreate(req.getSlug(), req.getName());
+                    OrganizationEntity org = OrganizationEntity.builder()
+                            .name(req.getName())
+                            .slug(slug)
+                            .orgType(OrganizationEntity.OrgType.valueOf(req.getOrgType()))
+                            .prefecture(req.getPrefecture())
+                            .city(req.getCity())
+                            .visibility(req.getVisibility() != null
+                                    ? OrganizationEntity.Visibility.valueOf(req.getVisibility())
+                                    : OrganizationEntity.Visibility.PRIVATE)
+                            .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
+                            .parentOrganizationId(req.getParentOrganizationId())
+                            .supporterEnabled(false)
+                            .build();
+                    Long adminRoleId = adminRoleMutationLockService.lockAdminRoleIdForCreation(userId)
+                            .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_005));
+                    organizationRepository.save(org);
 
-        String slug = resolveSlugForCreate(req.getSlug(), req.getName());
-        OrganizationEntity org = OrganizationEntity.builder()
-                .name(req.getName())
-                .slug(slug)
-                .orgType(OrganizationEntity.OrgType.valueOf(req.getOrgType()))
-                .prefecture(req.getPrefecture())
-                .city(req.getCity())
-                .visibility(req.getVisibility() != null
-                        ? OrganizationEntity.Visibility.valueOf(req.getVisibility())
-                        : OrganizationEntity.Visibility.PRIVATE)
-                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
-                .parentOrganizationId(req.getParentOrganizationId())
-                .supporterEnabled(false)
-                .build();
-        Long adminRoleId = adminRoleMutationLockService.lockAdminRoleIdForCreation(userId)
-                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_005));
-        organizationRepository.save(org);
+                    // 作成者をADMINロールで紐付ける
+                    UserRoleEntity userRole = UserRoleEntity.builder()
+                            .userId(userId)
+                            .roleId(adminRoleId)
+                            .organizationId(org.getId())
+                            .build();
+                    userRoleRepository.save(userRole);
 
-        // 作成者をADMINロールで紐付ける
-        UserRoleEntity userRole = UserRoleEntity.builder()
-                .userId(userId)
-                .roleId(adminRoleId)
-                .organizationId(org.getId())
-                .build();
-        userRoleRepository.save(userRole);
+                    // F00.5 認可基盤根治: memberships にも MEMBER として入会させる。
+                    // 認可（AccessControlService.isMember）は memberships を真実の源とするため、
+                    // user_roles だけでは作成者本人が自組織から 403 で締め出される構造的欠陥を防ぐ。
+                    // 権限ロール（ADMIN）は user_roles が担い、membership は在籍有無のみ表す（role_kind=MEMBER）。
+                    MembershipCreateRequest membershipReq = new MembershipCreateRequest();
+                    membershipReq.setUserId(userId);
+                    membershipReq.setScopeType(ScopeType.ORGANIZATION);
+                    membershipReq.setScopeId(org.getId());
+                    membershipReq.setRoleKind(RoleKind.MEMBER);
+                    membershipReq.setSource("ORG_CREATE");
+                    membershipService.join(membershipReq);
 
-        // F00.5 認可基盤根治: memberships にも MEMBER として入会させる。
-        // 認可（AccessControlService.isMember）は memberships を真実の源とするため、
-        // user_roles だけでは作成者本人が自組織から 403 で締め出される構造的欠陥を防ぐ。
-        // 権限ロール（ADMIN）は user_roles が担い、membership は在籍有無のみ表す（role_kind=MEMBER）。
-        MembershipCreateRequest membershipReq = new MembershipCreateRequest();
-        membershipReq.setUserId(userId);
-        membershipReq.setScopeType(ScopeType.ORGANIZATION);
-        membershipReq.setScopeId(org.getId());
-        membershipReq.setRoleKind(RoleKind.MEMBER);
-        membershipReq.setSource("ORG_CREATE");
-        membershipService.join(membershipReq);
+                    // 監査ログ用イベント発行
+                    eventPublisher.publishEvent(new OrganizationCreatedEvent(userId, org.getId(), org.getName()));
 
-        // 監査ログ用イベント発行
-        eventPublisher.publishEvent(new OrganizationCreatedEvent(userId, org.getId(), org.getName()));
-
-        log.info("組織作成完了: orgId={}, userId={}", org.getId(), userId);
-        return ApiResponse.of(toResponse(org, 1));
+                    log.info("組織作成完了: orgId={}, userId={}", org.getId(), userId);
+                    return ApiResponse.of(toResponse(org, 1));
+                });
     }
 
     /**
@@ -302,27 +304,28 @@ public class OrganizationService {
     @Transactional
     public Long createProvisionedOrganization(String name, String slug, Long actorUserId,
             boolean confirmDuplicate, String duplicateNameFingerprint) {
-        duplicateNameGuardService.checkForCreate(
+        return duplicateNameGuardService.checkForCreateAndRun(
                 DuplicateNameScopeKind.ORGANIZATION,
                 name,
                 actorUserId,
                 confirmDuplicate,
                 duplicateNameFingerprint,
-                () -> organizationRepository.findActiveByNormalizedName(name).stream()
+                () -> organizationRepository.findActiveByNormalizedNameForUpdate(name).stream()
                         .map(this::toDuplicateNameCandidate)
-                        .toList());
-
-        OrganizationEntity org = OrganizationEntity.builder()
-                .name(name)
-                .slug(slug)
-                .orgType(OrganizationEntity.OrgType.OTHER)
-                .visibility(OrganizationEntity.Visibility.PRIVATE)
-                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
-                .supporterEnabled(false)
-                .lifecycleStatus(OrganizationEntity.LifecycleStatus.PROVISIONED)
-                .build();
-        organizationRepository.save(org);
-        return org.getId();
+                        .toList(),
+                () -> {
+                    OrganizationEntity org = OrganizationEntity.builder()
+                            .name(name)
+                            .slug(slug)
+                            .orgType(OrganizationEntity.OrgType.OTHER)
+                            .visibility(OrganizationEntity.Visibility.PRIVATE)
+                            .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
+                            .supporterEnabled(false)
+                            .lifecycleStatus(OrganizationEntity.LifecycleStatus.PROVISIONED)
+                            .build();
+                    organizationRepository.save(org);
+                    return org.getId();
+                });
     }
 
     /**

@@ -29,8 +29,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *       / {@link TeamRepository#findActiveByNormalizedName} が trim・大小文字違いの同名を
  *       実 DB の照合順序で正しく拾うことを検証する（AC-05）。</li>
  *   <li><b>Guard 層</b>: 上記 Repository の結果を候補供給コールバックとして
- *       {@link DuplicateNameGuardService#checkForCreate} に渡し、実 DB の同名判定結果に基づいて
- *       確認要求（409）に到達することを検証する（AC-01/AC-02/AC-05 の統合）。</li>
+ *       {@link DuplicateNameGuardService#checkForCreateAndRun} に渡し、実 DB の同名判定結果に
+ *       基づいて確認要求（409）に到達することを検証する（AC-01/AC-02/AC-05 の統合）。</li>
  * </ul>
  *
  * <h2>AC ↔ テスト対応</h2>
@@ -108,20 +108,21 @@ class DuplicateNameCollationGuardRedIT extends AbstractMySqlIntegrationTest {
                 .build();
         organizationRepository.saveAndFlush(org);
 
-        assertThatThrownBy(() -> duplicateNameGuardService.checkForCreate(
+        assertThatThrownBy(() -> duplicateNameGuardService.checkForCreateAndRun(
                 DuplicateNameScopeKind.ORGANIZATION, name, 999L, false, null,
                 () -> organizationRepository.findActiveByNormalizedName(name).stream()
                         .map(o -> new DuplicateNameCandidate(
                                 String.valueOf(o.getId()),
                                 o.getVisibility() == OrganizationEntity.Visibility.PUBLIC,
                                 o.getVisibility() == OrganizationEntity.Visibility.PUBLIC ? o.getName() : null))
-                        .toList()))
+                        .toList(),
+                () -> "should-not-be-created"))
                 .isInstanceOf(DuplicateNameConfirmationRequiredException.class)
                 .satisfies(ex -> {
                     DuplicateNameConfirmationDetails details =
                             ((DuplicateNameConfirmationRequiredException) ex).getDetails();
-                    assertThat(details.candidates()).hasSize(1);
-                    assertThat(details.candidates().get(0).name()).isEqualTo(name);
+                    assertThat(details.visibleCandidates()).hasSize(1);
+                    assertThat(details.visibleCandidates().get(0).name()).isEqualTo(name);
                 });
     }
 

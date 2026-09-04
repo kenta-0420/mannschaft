@@ -105,67 +105,70 @@ public class TeamService {
     public ApiResponse<TeamResponse> createTeam(Long userId, CreateTeamRequest req) {
         // CMP-260901-1538 柱③-A: チーム名の重複も組織と同様、409（候補一覧＋fingerprint）で
         // 確認を求める二段方式とする（従来チーム側には重複チェック自体が存在しなかった）。
-        // 候補供給コールバックは本 @Transactional 内で実行される。
-        duplicateNameGuardService.checkForCreate(
+        // 検分 P1-2 是正: 「候補再計算 → 作成」の全体をアドバイザリロック保持中に実行する
+        // （TOCTOU 対策の設計判断は DuplicateNameGuardService の Javadoc を参照）。候補供給
+        // コールバックはロッキングリード（FOR UPDATE）で最新のコミット済みデータを読む。
+        return duplicateNameGuardService.checkForCreateAndRun(
                 DuplicateNameScopeKind.TEAM,
                 req.getName(),
                 userId,
                 req.isConfirmDuplicate(),
                 req.getDuplicateNameFingerprint(),
-                () -> teamRepository.findActiveByNormalizedName(req.getName()).stream()
+                () -> teamRepository.findActiveByNormalizedNameForUpdate(req.getName()).stream()
                         .map(this::toDuplicateNameCandidate)
-                        .toList());
+                        .toList(),
+                () -> {
+                    String slug = resolveSlugForCreate(req.getSlug(), req.getName());
+                    TeamEntity team = TeamEntity.builder()
+                            .name(req.getName())
+                            .slug(slug)
+                            .template(req.getTemplate())
+                            .prefecture(req.getPrefecture())
+                            .city(req.getCity())
+                            .visibility(req.getVisibility() != null
+                                    ? TeamEntity.Visibility.valueOf(req.getVisibility())
+                                    : TeamEntity.Visibility.GUESTS_AND_ABOVE)
+                            .supporterEnabled(false)
+                            .build();
+                    // F22.1 市 Phase 2 足場C: 構造化地域コードを反映（どちらも null 許容＝未指定はそのまま NULL）
+                    team.updateRegionCodes(req.getPrefectureCode(), req.getCityCode());
+                    Long adminRoleId = adminRoleMutationLockService.lockAdminRoleIdForCreation(userId)
+                            .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_005));
+                    teamRepository.save(team);
 
-        String slug = resolveSlugForCreate(req.getSlug(), req.getName());
-        TeamEntity team = TeamEntity.builder()
-                .name(req.getName())
-                .slug(slug)
-                .template(req.getTemplate())
-                .prefecture(req.getPrefecture())
-                .city(req.getCity())
-                .visibility(req.getVisibility() != null
-                        ? TeamEntity.Visibility.valueOf(req.getVisibility())
-                        : TeamEntity.Visibility.GUESTS_AND_ABOVE)
-                .supporterEnabled(false)
-                .build();
-        // F22.1 市 Phase 2 足場C: 構造化地域コードを反映（どちらも null 許容＝未指定はそのまま NULL）
-        team.updateRegionCodes(req.getPrefectureCode(), req.getCityCode());
-        Long adminRoleId = adminRoleMutationLockService.lockAdminRoleIdForCreation(userId)
-                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_005));
-        teamRepository.save(team);
+                    // 作成者をADMINロールで紐付ける
+                    UserRoleEntity userRole = UserRoleEntity.builder()
+                            .userId(userId)
+                            .roleId(adminRoleId)
+                            .teamId(team.getId())
+                            .build();
+                    userRoleRepository.save(userRole);
 
-        // 作成者をADMINロールで紐付ける
-        UserRoleEntity userRole = UserRoleEntity.builder()
-                .userId(userId)
-                .roleId(adminRoleId)
-                .teamId(team.getId())
-                .build();
-        userRoleRepository.save(userRole);
+                    // F00.5 認可基盤根治: memberships にも MEMBER として入会させる。
+                    // 認可（AccessControlService.isMember）は memberships を真実の源とするため、
+                    // user_roles だけでは作成者本人が自チームから 403 で締め出される構造的欠陥を防ぐ。
+                    // 権限ロール（ADMIN）は user_roles が担い、membership は在籍有無のみ表す（role_kind=MEMBER）。
+                    MembershipCreateRequest membershipReq = new MembershipCreateRequest();
+                    membershipReq.setUserId(userId);
+                    membershipReq.setScopeType(ScopeType.TEAM);
+                    membershipReq.setScopeId(team.getId());
+                    membershipReq.setRoleKind(RoleKind.MEMBER);
+                    membershipReq.setSource("TEAM_CREATE");
+                    membershipService.join(membershipReq);
 
-        // F00.5 認可基盤根治: memberships にも MEMBER として入会させる。
-        // 認可（AccessControlService.isMember）は memberships を真実の源とするため、
-        // user_roles だけでは作成者本人が自チームから 403 で締め出される構造的欠陥を防ぐ。
-        // 権限ロール（ADMIN）は user_roles が担い、membership は在籍有無のみ表す（role_kind=MEMBER）。
-        MembershipCreateRequest membershipReq = new MembershipCreateRequest();
-        membershipReq.setUserId(userId);
-        membershipReq.setScopeType(ScopeType.TEAM);
-        membershipReq.setScopeId(team.getId());
-        membershipReq.setRoleKind(RoleKind.MEMBER);
-        membershipReq.setSource("TEAM_CREATE");
-        membershipService.join(membershipReq);
+                    // チームシフト設定をデフォルト値で初期化
+                    teamShiftSettingsService.initializeDefaultSettings(team.getId());
 
-        // チームシフト設定をデフォルト値で初期化
-        teamShiftSettingsService.initializeDefaultSettings(team.getId());
+                    // 監査ログ用イベント発行
+                    eventPublisher.publishEvent(new TeamCreatedEvent(userId, team.getId(), team.getName()));
 
-        // 監査ログ用イベント発行
-        eventPublisher.publishEvent(new TeamCreatedEvent(userId, team.getId(), team.getName()));
-
-        log.info("チーム作成完了: teamId={}, userId={}", team.getId(), userId);
-        long teamFriendCount = teamFriendRepository.countFriendsByTeamId(team.getId());
-        // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
-        long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
-                ScopeType.TEAM, team.getId(), RoleKind.SUPPORTER);
-        return ApiResponse.of(toResponse(team, 1, teamFriendCount, supporterCount));
+                    log.info("チーム作成完了: teamId={}, userId={}", team.getId(), userId);
+                    long teamFriendCount = teamFriendRepository.countFriendsByTeamId(team.getId());
+                    // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
+                    long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
+                            ScopeType.TEAM, team.getId(), RoleKind.SUPPORTER);
+                    return ApiResponse.of(toResponse(team, 1, teamFriendCount, supporterCount));
+                });
     }
 
     /**
@@ -383,27 +386,28 @@ public class TeamService {
     @Transactional
     public Long createProvisionedTeam(String name, String slug, Long actorUserId,
             boolean confirmDuplicate, String duplicateNameFingerprint) {
-        duplicateNameGuardService.checkForCreate(
+        return duplicateNameGuardService.checkForCreateAndRun(
                 DuplicateNameScopeKind.TEAM,
                 name,
                 actorUserId,
                 confirmDuplicate,
                 duplicateNameFingerprint,
-                () -> teamRepository.findActiveByNormalizedName(name).stream()
+                () -> teamRepository.findActiveByNormalizedNameForUpdate(name).stream()
                         .map(this::toDuplicateNameCandidate)
-                        .toList());
-
-        TeamEntity team = TeamEntity.builder()
-                .name(name)
-                .slug(slug)
-                // Team.Visibility に PRIVATE 相当は無いため、既存4値のうち最も制限的な
-                // MEMBERS_AND_ABOVE を採用する（承諾までメンバーが存在しないため実質非公開）。
-                .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE)
-                .supporterEnabled(false)
-                .lifecycleStatus(TeamEntity.LifecycleStatus.PROVISIONED)
-                .build();
-        teamRepository.save(team);
-        return team.getId();
+                        .toList(),
+                () -> {
+                    TeamEntity team = TeamEntity.builder()
+                            .name(name)
+                            .slug(slug)
+                            // Team.Visibility に PRIVATE 相当は無いため、既存4値のうち最も制限的な
+                            // MEMBERS_AND_ABOVE を採用する（承諾までメンバーが存在しないため実質非公開）。
+                            .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE)
+                            .supporterEnabled(false)
+                            .lifecycleStatus(TeamEntity.LifecycleStatus.PROVISIONED)
+                            .build();
+                    teamRepository.save(team);
+                    return team.getId();
+                });
     }
 
     /**

@@ -63,6 +63,22 @@ class TeamSlugServiceTest {
 
     private static final Long USER_ID = 1L;
 
+    /**
+     * 検分 P1-2 是正: {@code checkForCreateAndRun} は「候補判定→createAction 実行」を一体で
+     * 行う契約になったため、候補ゼロ相当として createAction をそのまま実行し結果を返すよう
+     * 既定でスタブする（{@code givenCreateScaffold()} を呼ばない slug 形式不正/予約語/重複の
+     * 異常系テストも、slug 検証自体は createAction 内で行われるため本スタブが必要）。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubDuplicateNameGuardToProceedByDefault() {
+        lenient().when(duplicateNameGuardService.checkForCreateAndRun(
+                        any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    java.util.function.Supplier<?> createAction = inv.getArgument(6);
+                    return createAction.get();
+                });
+    }
+
     private void givenCreateScaffold() {
         RoleEntity adminRole = RoleEntity.builder().name("ADMIN").build();
         try {

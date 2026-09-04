@@ -29,6 +29,7 @@ import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,8 +44,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,6 +74,21 @@ class TeamServiceTest {
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
     private static final String TEAM_SLUG = "test-team";
+
+    /**
+     * 検分 P1-2 是正: {@code checkForCreateAndRun} は「候補判定→createAction 実行」を一体で
+     * 行う契約になったため、既定では候補ゼロ相当として {@code createAction} をそのまま実行し
+     * 結果を返すようスタブする。重複確認フローそのものを検証するテストは個別に上書きする。
+     */
+    @BeforeEach
+    void stubDuplicateNameGuardToProceedByDefault() {
+        lenient().when(duplicateNameGuardService.checkForCreateAndRun(
+                        any(), any(), any(), anyBoolean(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    java.util.function.Supplier<?> createAction = inv.getArgument(6);
+                    return createAction.get();
+                });
+    }
 
     @Nested
     @DisplayName("createTeam")
@@ -114,11 +132,11 @@ class TeamServiceTest {
 
             DuplicateNameConfirmationRequiredException expected =
                     new DuplicateNameConfirmationRequiredException(
-                            new DuplicateNameConfirmationDetails("fp", 123L, java.util.List.of()));
+                            new DuplicateNameConfirmationDetails("fp", 123L, java.util.List.of(), 0));
             org.mockito.BDDMockito.willThrow(expected)
                     .given(duplicateNameGuardService)
-                    .checkForCreate(eq(DuplicateNameScopeKind.TEAM), eq("既存チーム"), eq(USER_ID),
-                            eq(false), org.mockito.ArgumentMatchers.isNull(), any());
+                    .checkForCreateAndRun(eq(DuplicateNameScopeKind.TEAM), eq("既存チーム"), eq(USER_ID),
+                            eq(false), org.mockito.ArgumentMatchers.isNull(), any(), any());
 
             assertThatThrownBy(() -> service.createTeam(USER_ID, req))
                     .isSameAs(expected);
@@ -140,9 +158,9 @@ class TeamServiceTest {
             ApiResponse<TeamResponse> result = service.createTeam(USER_ID, req);
 
             assertThat(result.getData().getBasicInfo().name()).isEqualTo("既存チーム");
-            verify(duplicateNameGuardService).checkForCreate(
+            verify(duplicateNameGuardService).checkForCreateAndRun(
                     eq(DuplicateNameScopeKind.TEAM), eq("既存チーム"), eq(USER_ID),
-                    eq(true), eq("valid-fingerprint"), any());
+                    eq(true), eq("valid-fingerprint"), any(), any());
         }
     }
 

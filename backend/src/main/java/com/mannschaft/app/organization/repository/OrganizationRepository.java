@@ -54,7 +54,8 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
 
     List<OrganizationEntity> findByVisibility(OrganizationEntity.Visibility visibility);
 
-    boolean existsByName(String name);
+    // existsByName は柱③-A で撤去済み（ORG_002 一律ブロックの残骸。検分P2-6是正）。
+    // 同名許可のため、代わりに findActiveByNormalizedName(ForUpdate) を使う。
 
     /**
      * CMP-260901-1538 柱③-A: 同名確認フロー用の候補検索。
@@ -72,6 +73,24 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
             + "AND TRIM(name) = TRIM(:name) COLLATE utf8mb4_0900_ai_ci",
             nativeQuery = true)
     List<OrganizationEntity> findActiveByNormalizedName(@Param("name") String name);
+
+    /**
+     * CMP-260901-1538 柱③-A 検分P1-2是正: {@link #findActiveByNormalizedName} のロッキングリード版。
+     *
+     * <p>{@code FOR UPDATE} により InnoDB の REPEATABLE READ スナップショットを無視して
+     * <b>最新のコミット済みデータ</b>を読む（呼び出し元がこのクエリより前に他のクエリを
+     * 発行しトランザクションのスナップショットが既に確立していても安全）。
+     * {@code DuplicateNameGuardService#checkForCreateAndRun} がアドバイザリロック保持中に
+     * 呼ぶことを前提とし、同名候補の TOCTOU（確認時点と作成時点の乖離）を防ぐ。</p>
+     *
+     * @param name 判定対象の名称（未 trim で渡してよい。クエリ側で TRIM する）
+     * @return 同名の ACTIVE 組織一覧（最新コミット済み状態）
+     */
+    @Query(value = "SELECT * FROM organizations "
+            + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
+            + "AND TRIM(name) = TRIM(:name) COLLATE utf8mb4_0900_ai_ci FOR UPDATE",
+            nativeQuery = true)
+    List<OrganizationEntity> findActiveByNormalizedNameForUpdate(@Param("name") String name);
 
     /**
      * 組織をキーワード検索する（公開検索）。

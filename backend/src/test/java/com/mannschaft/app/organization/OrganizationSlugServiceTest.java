@@ -60,6 +60,15 @@ class OrganizationSlugServiceTest {
     @InjectMocks private OrganizationService organizationService;
 
     private void givenCreateScaffold(String name) {
+        // 検分 P1-2 是正: checkForCreateAndRun は「候補判定→createAction 実行」を一体で行う
+        // 契約になったため、候補ゼロ相当として createAction をそのまま実行し結果を返すよう
+        // スタブする（同名確認フローそのものはこのファイルの検証対象外）。
+        lenient().when(duplicateNameGuardService.checkForCreateAndRun(
+                        any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    java.util.function.Supplier<?> createAction = inv.getArgument(6);
+                    return createAction.get();
+                });
         RoleEntity adminRole = RoleEntity.builder()
                 .id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者").priority(2).isSystem(true).build();
         lenient().when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(adminRole));

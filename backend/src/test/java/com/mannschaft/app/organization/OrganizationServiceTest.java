@@ -28,6 +28,7 @@ import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.AdminRoleMutationLockService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Nested;
@@ -49,8 +50,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -106,6 +109,23 @@ class OrganizationServiceTest {
     @InjectMocks
     private OrganizationService organizationService;
 
+    /**
+     * 検分 P1-2 是正: {@code checkForCreateAndRun} は「候補判定→createAction 実行」を
+     * ロック保持中に一体で行う契約になったため、既定では候補ゼロ相当として
+     * {@code createAction} をそのまま実行し結果を返すようスタブする（多数の既存テストが
+     * 「重複なしで正常作成される」前提のため）。重複確認フローそのものを検証するテストは
+     * このデフォルトを個別に上書きする。
+     */
+    @BeforeEach
+    void stubDuplicateNameGuardToProceedByDefault() {
+        lenient().when(duplicateNameGuardService.checkForCreateAndRun(
+                        any(), any(), any(), anyBoolean(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    java.util.function.Supplier<?> createAction = inv.getArgument(6);
+                    return createAction.get();
+                });
+    }
+
     // ========================================
     // createOrganization
     // ========================================
@@ -155,11 +175,11 @@ class OrganizationServiceTest {
 
             DuplicateNameConfirmationRequiredException expected =
                     new DuplicateNameConfirmationRequiredException(
-                            new DuplicateNameConfirmationDetails("fp", 123L, java.util.List.of()));
+                            new DuplicateNameConfirmationDetails("fp", 123L, java.util.List.of(), 0));
             org.mockito.BDDMockito.willThrow(expected)
                     .given(duplicateNameGuardService)
-                    .checkForCreate(eq(DuplicateNameScopeKind.ORGANIZATION), eq("既存組織"), eq(USER_ID),
-                            eq(false), org.mockito.ArgumentMatchers.isNull(), any());
+                    .checkForCreateAndRun(eq(DuplicateNameScopeKind.ORGANIZATION), eq("既存組織"), eq(USER_ID),
+                            eq(false), org.mockito.ArgumentMatchers.isNull(), any(), any());
 
             assertThatThrownBy(() -> organizationService.createOrganization(USER_ID, req))
                     .isSameAs(expected);
@@ -187,13 +207,13 @@ class OrganizationServiceTest {
                     organizationService.createOrganization(USER_ID, req);
 
             assertThat(response.getData().getBasicInfo().name()).isEqualTo("既存組織");
-            verify(duplicateNameGuardService).checkForCreate(
+            verify(duplicateNameGuardService).checkForCreateAndRun(
                     eq(DuplicateNameScopeKind.ORGANIZATION), eq("既存組織"), eq(USER_ID),
-                    eq(true), eq("valid-fingerprint"), any());
+                    eq(true), eq("valid-fingerprint"), any(), any());
         }
 
         @Test
-        @DisplayName("柱③-A AC-05: 候補供給コールバックはfindActiveByNormalizedNameの結果を"
+        @DisplayName("柱③-A AC-05: 候補供給コールバックはfindActiveByNormalizedNameForUpdateの結果を"
                 + "可視性ルールに従い変換する")
         void 候補供給コールバック_可視性ルールで変換() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
@@ -205,7 +225,7 @@ class OrganizationServiceTest {
             OrganizationEntity privateCandidate = OrganizationEntity.builder()
                     .name("既存組織").visibility(OrganizationEntity.Visibility.PRIVATE).build();
             ReflectionTestUtils.setField(privateCandidate, "id", 20L);
-            given(organizationRepository.findActiveByNormalizedName("既存組織"))
+            given(organizationRepository.findActiveByNormalizedNameForUpdate("既存組織"))
                     .willReturn(java.util.List.of(publicCandidate, privateCandidate));
             given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID))
                     .willReturn(Optional.of(ADMIN_ROLE_ID));
@@ -217,9 +237,9 @@ class OrganizationServiceTest {
 
             organizationService.createOrganization(USER_ID, req);
 
-            verify(duplicateNameGuardService).checkForCreate(
+            verify(duplicateNameGuardService).checkForCreateAndRun(
                     eq(DuplicateNameScopeKind.ORGANIZATION), eq("既存組織"), eq(USER_ID),
-                    eq(false), org.mockito.ArgumentMatchers.isNull(), supplierCaptor.capture());
+                    eq(false), org.mockito.ArgumentMatchers.isNull(), supplierCaptor.capture(), any());
             java.util.List<DuplicateNameCandidate> candidates = supplierCaptor.getValue().get();
             assertThat(candidates).hasSize(2);
             DuplicateNameCandidate publicResult =

@@ -3,6 +3,8 @@ package com.mannschaft.app.common.duplicatename;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,12 +27,20 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       → {@link #ac04c_scopeKindMismatchFailsVerification()}</li>
  *   <li>AC-04d 正規化名称が異なると検証失敗
  *       → {@link #ac04d_normalizedNameMismatchFailsVerification()}</li>
+ *   <li>P2-4 expiresAt ちょうど（境界）は失効として扱う（{@code >=} now）
+ *       → {@link #p2_4_expiresAtExactlyNowIsExpired()}</li>
+ *   <li>P2-4 issuedAt が現在時刻より未来なら無効
+ *       → {@link #p2_4_issuedAtInFutureIsInvalid()}</li>
+ *   <li>P2-4 expiresAt-issuedAt が TTL(300秒) と一致しなければ無効（TTL 延長の改竄防止）
+ *       → {@link #p2_4_ttlMismatchIsInvalid()}</li>
  * </ul>
  */
 class DuplicateNameFingerprintServiceRedTest {
 
-    private final DuplicateNameFingerprintService fingerprintService =
+    private final DuplicateNameFingerprintServiceImpl fingerprintServiceImpl =
             new DuplicateNameFingerprintServiceImpl("", "test-fallback-secret-key-not-for-production-use");
+
+    private final DuplicateNameFingerprintService fingerprintService = fingerprintServiceImpl;
 
     @Test
     @DisplayName("AC-04: 発行直後・同一コンテキストでの検証は成功する")
@@ -94,5 +104,74 @@ class DuplicateNameFingerprintServiceRedTest {
                 fingerprint, DuplicateNameScopeKind.ORGANIZATION, "サンプルB", 100L, candidateIds);
 
         assertThat(valid).isFalse();
+    }
+
+    @Test
+    @DisplayName("P2-4: expiresAt ちょうど（境界）は失効として扱う（>= now）")
+    void p2_4_expiresAtExactlyNowIsExpired() throws Exception {
+        long now = Instant.now().getEpochSecond();
+        long issuedAt = now - 300;
+        long expiresAt = now; // ちょうど今 = 境界
+
+        String fingerprint = craftFingerprint(
+                DuplicateNameScopeKind.ORGANIZATION, "サンプル組織", 100L, List.of("1"), issuedAt, expiresAt);
+
+        boolean valid = fingerprintService.verify(
+                fingerprint, DuplicateNameScopeKind.ORGANIZATION, "サンプル組織", 100L, List.of("1"));
+
+        assertThat(valid).isFalse();
+    }
+
+    @Test
+    @DisplayName("P2-4: issuedAt が現在時刻より未来なら無効")
+    void p2_4_issuedAtInFutureIsInvalid() throws Exception {
+        long issuedAt = Instant.now().getEpochSecond() + 100;
+        long expiresAt = issuedAt + 300;
+
+        String fingerprint = craftFingerprint(
+                DuplicateNameScopeKind.ORGANIZATION, "サンプル組織", 100L, List.of("1"), issuedAt, expiresAt);
+
+        boolean valid = fingerprintService.verify(
+                fingerprint, DuplicateNameScopeKind.ORGANIZATION, "サンプル組織", 100L, List.of("1"));
+
+        assertThat(valid).isFalse();
+    }
+
+    @Test
+    @DisplayName("P2-4: expiresAt-issuedAt が TTL(300秒) と一致しなければ無効（TTL 延長の改竄防止）")
+    void p2_4_ttlMismatchIsInvalid() throws Exception {
+        long issuedAt = Instant.now().getEpochSecond();
+        long expiresAt = issuedAt + 1000; // TTL 300 秒ではなく 1000 秒に延長
+
+        String fingerprint = craftFingerprint(
+                DuplicateNameScopeKind.ORGANIZATION, "サンプル組織", 100L, List.of("1"), issuedAt, expiresAt);
+
+        boolean valid = fingerprintService.verify(
+                fingerprint, DuplicateNameScopeKind.ORGANIZATION, "サンプル組織", 100L, List.of("1"));
+
+        assertThat(valid).isFalse();
+    }
+
+    /**
+     * {@link DuplicateNameFingerprintServiceImpl#issue} は issuedAt/expiresAt を
+     * 常に自前で（正しい TTL で）生成するため、TTL 境界異常系を作るには private の
+     * {@code buildPayload}/{@code sign} をリフレクションで直接叩き、任意の issuedAt/expiresAt を
+     * 持つ「正しく署名された」fingerprint を組み立てる必要がある（署名を割らずに検証ロジック単体を
+     * 直接検査するテスト技法。攻撃者が秘密鍵を得る前提ではない）。
+     */
+    private String craftFingerprint(DuplicateNameScopeKind scopeKind, String normalizedName, Long actorUserId,
+            List<String> candidateIds, long issuedAt, long expiresAt) throws Exception {
+        Method buildPayload = DuplicateNameFingerprintServiceImpl.class.getDeclaredMethod(
+                "buildPayload", DuplicateNameScopeKind.class, String.class, Long.class, List.class,
+                long.class, long.class);
+        buildPayload.setAccessible(true);
+        String payload = (String) buildPayload.invoke(
+                fingerprintServiceImpl, scopeKind, normalizedName, actorUserId, candidateIds, issuedAt, expiresAt);
+
+        Method sign = DuplicateNameFingerprintServiceImpl.class.getDeclaredMethod("sign", String.class);
+        sign.setAccessible(true);
+        String signature = (String) sign.invoke(fingerprintServiceImpl, payload);
+
+        return issuedAt + "." + expiresAt + "." + signature;
     }
 }
