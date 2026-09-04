@@ -10,7 +10,23 @@ import java.util.Locale;
  */
 public enum ReceiptScopeType {
     ORGANIZATION,
-    TEAM;
+    TEAM,
+
+    /**
+     * Mannschaft 運営（プラットフォーム事業者）自身が発行者となるスコープ（F08.12）。
+     *
+     * <p>{@code scope_id} には実テナントが存在しないため
+     * {@link ReceiptScopes#PLATFORM_SCOPE_ID}（0）を用いる。</p>
+     *
+     * <p>DDL 上の {@code scope_type} は {@code VARCHAR(20)}（ENUM ではない）ため、
+     * 値の追加にマイグレーションは不要である。</p>
+     */
+    PLATFORM;
+
+    /** 運営（プラットフォーム）スコープかどうか。 */
+    public boolean isPlatform() {
+        return this == PLATFORM;
+    }
 
     /**
      * クエリ文字列から安全にスコープ種別を解決する（F08.4 §9.1.1 D-5）。
