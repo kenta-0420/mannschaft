@@ -6,6 +6,7 @@ import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventVisibility;
 import com.mannschaft.app.event.repository.EventRepository;
+import com.mannschaft.app.family.event.EventEndReminderDueEvent;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -22,10 +23,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
 import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Locale;
 import java.util.Map;
 
@@ -64,6 +67,9 @@ class EventEndReminderBatchServiceTest {
 
     @Mock
     private MessageSource messageSource;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private EventEndReminderBatchService batchService;
@@ -106,9 +112,9 @@ class EventEndReminderBatchServiceTest {
         void 一回目リマインド送信() {
             // Arrange: count=0（未送信）の終了済みイベント
             EventEntity event = buildEventWithReminderCount(0);
-            given(eventRepository.findDismissalReminderTargets(
-                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
-                    .willReturn(List.of(event));
+            // Issue #2990 L6: 実配送は業務コミット後の入口 deliverReminder から行う。
+            // 本文の組み立て・優先度・宛先の検証内容は是正前と同一で、入口だけが変わっている。
+            given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(event));
             given(notificationService.createNotification(
                     anyLong(), any(), any(NotificationPriority.class),
                     any(), any(), any(), anyLong(),
@@ -116,7 +122,7 @@ class EventEndReminderBatchServiceTest {
                     .willReturn(buildNotification(ORGANIZER_USER_ID));
 
             // Act
-            batchService.runEndReminderCheck();
+            batchService.deliverReminder(EVENT_ID, 0);
 
             // Assert: NORMAL 優先度で主催者に送信。actionUrl は /teams/{teamId}/events/{eventId} 形式
             String expectedActionUrl = "/teams/" + TEAM_ID + "/events/" + EVENT_ID;
@@ -136,9 +142,9 @@ class EventEndReminderBatchServiceTest {
         void 二回目リマインド送信() {
             // Arrange: count=1（1回目送信済み）
             EventEntity event = buildEventWithReminderCount(1);
-            given(eventRepository.findDismissalReminderTargets(
-                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
-                    .willReturn(List.of(event));
+            // Issue #2990 L6: 実配送は業務コミット後の入口 deliverReminder から行う。
+            // 本文の組み立て・優先度・宛先の検証内容は是正前と同一で、入口だけが変わっている。
+            given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(event));
             given(notificationService.createNotification(
                     anyLong(), any(), any(NotificationPriority.class),
                     any(), any(), any(), anyLong(),
@@ -146,7 +152,7 @@ class EventEndReminderBatchServiceTest {
                     .willReturn(buildNotification(ORGANIZER_USER_ID));
 
             // Act
-            batchService.runEndReminderCheck();
+            batchService.deliverReminder(EVENT_ID, 1);
 
             // Assert: HIGH 優先度で主催者に送信
             verify(notificationService).createNotification(
@@ -164,9 +170,9 @@ class EventEndReminderBatchServiceTest {
         void 三回目リマインド送信_ADMIN全員に通知() {
             // Arrange: count=2（2回目送信済み）
             EventEntity event = buildEventWithReminderCount(2);
-            given(eventRepository.findDismissalReminderTargets(
-                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
-                    .willReturn(List.of(event));
+            // Issue #2990 L6: 実配送は業務コミット後の入口 deliverReminder から行う。
+            // 本文の組み立て・優先度・宛先の検証内容は是正前と同一で、入口だけが変わっている。
+            given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(event));
             given(notificationService.createNotification(
                     anyLong(), any(), any(NotificationPriority.class),
                     any(), any(), any(), anyLong(),
@@ -177,7 +183,7 @@ class EventEndReminderBatchServiceTest {
                     .willReturn(List.of(ORGANIZER_USER_ID, ADMIN_USER_ID_1, ADMIN_USER_ID_2));
 
             // Act
-            batchService.runEndReminderCheck();
+            batchService.deliverReminder(EVENT_ID, 2);
 
             // Assert: 主催者 + ADMIN 2名（計3名）に URGENT 通知（主催者は重複排除で2回目）
             // 主催者は sendReminderByCount 内の 3回目ブランチで一度呼ばれる
@@ -208,9 +214,8 @@ class EventEndReminderBatchServiceTest {
         void 一回目リマインド_主催者locale別に英語化される() {
             useRealMessageSource();
             EventEntity event = buildEventWithReminderCount(0);
-            given(eventRepository.findDismissalReminderTargets(
-                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
-                    .willReturn(List.of(event));
+            // Issue #2990 L6: 本文の locale 別組み立ては業務コミット後の入口 deliverReminder で行う。
+            given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(event));
             given(userLocaleCache.getLocale(ORGANIZER_USER_ID)).willReturn("en");
             given(notificationService.createNotification(
                     anyLong(), any(), any(NotificationPriority.class),
@@ -218,7 +223,7 @@ class EventEndReminderBatchServiceTest {
                     any(NotificationScopeType.class), anyLong(), any(), any()))
                     .willReturn(buildNotification(ORGANIZER_USER_ID));
 
-            batchService.runEndReminderCheck();
+            batchService.deliverReminder(EVENT_ID, 0);
 
             ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
             ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
@@ -235,9 +240,8 @@ class EventEndReminderBatchServiceTest {
         void 三回目リマインド_ADMIN通知はバルク解決() {
             useRealMessageSource();
             EventEntity event = buildEventWithReminderCount(2);
-            given(eventRepository.findDismissalReminderTargets(
-                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
-                    .willReturn(List.of(event));
+            // Issue #2990 L6: 本文の locale 別組み立ては業務コミット後の入口 deliverReminder で行う。
+            given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(event));
             given(notificationService.createNotification(
                     anyLong(), any(), any(NotificationPriority.class),
                     any(), any(), any(), anyLong(),
@@ -248,7 +252,7 @@ class EventEndReminderBatchServiceTest {
             given(userLocaleCache.getLocales(List.of(ORGANIZER_USER_ID, ADMIN_USER_ID_1, ADMIN_USER_ID_2)))
                     .willReturn(Map.of(ADMIN_USER_ID_1, "en", ADMIN_USER_ID_2, "en"));
 
-            batchService.runEndReminderCheck();
+            batchService.deliverReminder(EVENT_ID, 2);
 
             ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
             verify(notificationService).createNotification(
@@ -263,6 +267,36 @@ class EventEndReminderBatchServiceTest {
         }
 
         @Test
+        @DisplayName("#2990 L6: 業務TX内では通知を作らず、カウンタを進めて配送要求イベントを publish する")
+        void 業務TX内ではpublishのみ() {
+            EventEntity event = buildEventWithReminderCount(1);
+            given(eventRepository.findDismissalReminderTargets(
+                    any(LocalDateTime.class), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
+                    .willReturn(List.of(event));
+
+            batchService.runEndReminderCheck();
+
+            // 業務TX内で通知を作ってはならない（作ると通知の失敗でバッチのTXが
+            // rollback-only になり、その回のカウンタ増分が全イベントぶん巻き戻る）。
+            verify(notificationService, never()).createNotification(
+                    anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(dispatchService, never()).dispatch(any(NotificationEntity.class));
+
+            // 代わりに eventId と段階だけを載せたイベントを publish する。
+            ArgumentCaptor<EventEndReminderDueEvent> captor =
+                    ArgumentCaptor.forClass(EventEndReminderDueEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().eventId()).isEqualTo(EVENT_ID);
+            assertThat(captor.getValue().stage())
+                    .as("stage はインクリメント前のカウント（＝送るべき段階）でなければならない")
+                    .isEqualTo(1);
+
+            // カウンタは業務TX内で進めてコミットする（配送失敗でも同じ段階を再送しないため）。
+            assertThat(event.getOrganizerReminderSentCount().intValue()).isEqualTo(2);
+            verify(eventRepository).save(event);
+        }
+
+        @Test
         @DisplayName("解散済みイベントはスキップ: findDismissalReminderTargets が空 → 通知なし")
         void 解散済みイベントはスキップ() {
             // Arrange: dismissal_notification_sent_at が設定済み → リポジトリが空リストを返す
@@ -273,9 +307,11 @@ class EventEndReminderBatchServiceTest {
             // Act
             batchService.runEndReminderCheck();
 
-            // Assert: 通知なし
+            // Assert: 通知なし。是正後（#2990 L6）は createNotification が呼ばれないのは自明なので、
+            // 配送要求イベントの publish が起きないことまで見る。
             verify(notificationService, never()).createNotification(
                     anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(eventPublisher, never()).publishEvent(any(EventEndReminderDueEvent.class));
         }
 
         @Test
@@ -290,9 +326,11 @@ class EventEndReminderBatchServiceTest {
             // Act
             batchService.runEndReminderCheck();
 
-            // Assert: count >= MAX_REMINDER_COUNT でスキップ
+            // Assert: count >= MAX_REMINDER_COUNT でスキップ。是正後（#2990 L6）は
+            // 配送要求イベントの publish が起きないことまで見る。
             verify(notificationService, never()).createNotification(
                     anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(eventPublisher, never()).publishEvent(any(EventEndReminderDueEvent.class));
         }
     }
 
