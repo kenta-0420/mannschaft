@@ -33,6 +33,14 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AccessControlService {
 
+    /**
+     * 運営（プラットフォーム）スコープを表す {@code scope_type} 値。
+     *
+     * <p>{@code ScopeType} enum には存在しない値であるため、{@code ScopeType.valueOf} へ
+     * 到達させてはならない。receipt ドメインの {@code ReceiptScopeType.PLATFORM} と対応する。</p>
+     */
+    public static final String PLATFORM_SCOPE_TYPE = "PLATFORM";
+
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final RoleService roleService;
@@ -235,6 +243,15 @@ public class AccessControlService {
         // スコープ別 findUserRole() では取得できないため、最強ロールとして先に解決する。
         if (isSystemAdmin(userId)) {
             return Optional.of(new EffectiveRole("SYSTEM_ADMIN", 1));
+        }
+
+        // PLATFORM（運営）スコープには実テナントが無く、ScopeType enum にも値が無い。
+        // ここへ到達するのは「SYSTEM_ADMIN ではない利用者が PLATFORM スコープを指した」場合であり、
+        // そのまま下へ流すと ScopeType.valueOf("PLATFORM") が IllegalArgumentException を投げて
+        // 500 になる。認可の失敗は 403 でなければならないため、空（＝無権限）を返して打ち切る。
+        // F08.12 §2.1。
+        if (PLATFORM_SCOPE_TYPE.equals(scopeType)) {
+            return Optional.empty();
         }
 
         // 非アクティブ利用者だけをここで遮断する。user_roles は移行期間にも既存の認可情報源であり、
@@ -497,6 +514,27 @@ public class AccessControlService {
         if (!isSystemAdmin(userId)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
+    }
+
+    /**
+     * スコープ種別に応じて ADMIN 以上を要求する。PLATFORM（運営）スコープの場合は
+     * SYSTEM_ADMIN を要求する（F08.12 §2.1）。
+     *
+     * <p>運営領収書の管理 API は {@code /api/v1/system-admin/**} 配下に置かれるため、
+     * 通常はフィルタチェーン（{@code SecurityConfig} のパス認可）で先に 403 になる。
+     * 本メソッドは<b>Service 層が別経路（バッチ・イベントリスナー）から呼ばれた場合の
+     * 二重防御</b>であり、フィルタが無い経路でも 500 ではなく 403 に落ちることを保証する。</p>
+     *
+     * @param userId    操作ユーザー
+     * @param scopeId   スコープ ID（PLATFORM は 0）
+     * @param scopeType スコープ種別（{@code "PLATFORM"} / {@code "TEAM"} / {@code "ORGANIZATION"}）
+     */
+    public void checkAdminOrAboveIncludingPlatform(Long userId, Long scopeId, String scopeType) {
+        if (PLATFORM_SCOPE_TYPE.equals(scopeType)) {
+            checkSystemAdmin(userId);
+            return;
+        }
+        checkAdminOrAbove(userId, scopeId, scopeType);
     }
 
     /**

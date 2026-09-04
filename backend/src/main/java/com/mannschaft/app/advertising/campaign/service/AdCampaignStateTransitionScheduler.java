@@ -1,5 +1,6 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.common.SystemUsers;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
@@ -53,8 +54,14 @@ public class AdCampaignStateTransitionScheduler {
     /** UUIDv7 の最小値（キーセットページングの初期カーソル）。 */
     private static final UUID MIN_UUID = new UUID(0L, 0L);
 
-    /** F09.19.7 §10.5: スケジューラ起因（ユーザー操作なし）イベントの actor = システムユーザー（V1.012 seed）。 */
-    private static final Long SYSTEM_USER_ID = 1L;
+    /**
+     * F09.19.7 §10.5: スケジューラ起因（ユーザー操作なし）イベントの actor = システムユーザー。
+     *
+     * <p>実体は {@code V1.012__seed_system_user.sql} が投入する id=1 の行である。
+     * 従来は本クラス private の定数として重複して持っていたが、共有の
+     * {@link SystemUsers#SYSTEM_USER_ID} に一元化した。</p>
+     */
+    private static final Long SYSTEM_USER_ID = SystemUsers.SYSTEM_USER_ID;
 
     static final String AUDIT_CAMPAIGN_DELIVERING_STARTED = "CAMPAIGN_DELIVERING_STARTED";
     static final String AUDIT_CAMPAIGN_COMPLETED = "CAMPAIGN_COMPLETED";
