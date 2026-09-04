@@ -47,7 +47,9 @@
       "resendSuccess": "Invitation resent",
       "resendFailed": "Failed to resend invitation",
       "cancelSuccess": "Invitation cancelled",
-      "cancelFailed": "Failed to cancel invitation"
+      "cancelFailed": "Failed to cancel invitation",
+      "badge": "SYSTEM ADMIN",
+      "reloadTooltip": "Reload"
     },
     "accept": {
       "title": "Accept admin invitation",
@@ -61,8 +63,13 @@
       "acceptBtn": "Accept invitation",
       "accepting": "Accepting…",
       "acceptSuccess": "Invitation accepted",
-      "alreadyAcceptedTitle": "This invitation has already been accepted",
-      "alreadyAcceptedMessage": "You have already accepted this invitation. You can continue from the admin console.",
+      "acceptedTitle": "Invitation accepted",
+      "acceptedMessage": "This invitation has been accepted. You can continue from the admin console.",
+      "previewError": {
+        "title": "Could not check invitation",
+        "message": "We could not check this invitation's details, possibly due to a network issue. Please reload.",
+        "retryBtn": "Reload"
+      },
       "backToDashboard": "Back to dashboard",
       "errors": {
         "notFoundTitle": "Invitation not found",

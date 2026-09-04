@@ -194,7 +194,7 @@ async function cancelInvite(row: ProvisioningInvitationResponse) {
           <span
             class="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-600 dark:bg-red-900/30 dark:text-red-400"
           >
-            SYSTEM ADMIN
+            {{ t('provisioning.admin.badge') }}
           </span>
           <h1 class="text-2xl font-bold text-surface-800 dark:text-surface-100">
             {{ t('provisioning.admin.title') }}
@@ -202,7 +202,7 @@ async function cancelInvite(row: ProvisioningInvitationResponse) {
         </div>
         <div class="flex items-center gap-2">
           <Button
-            v-tooltip.left="'再読み込み'"
+            v-tooltip.left="t('provisioning.admin.reloadTooltip')"
             icon="pi pi-refresh"
             text
             rounded

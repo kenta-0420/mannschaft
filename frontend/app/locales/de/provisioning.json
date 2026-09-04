@@ -47,7 +47,9 @@
       "resendSuccess": "招待を再送しました",
       "resendFailed": "招待の再送に失敗しました",
       "cancelSuccess": "招待を取消しました",
-      "cancelFailed": "招待の取消に失敗しました"
+      "cancelFailed": "招待の取消に失敗しました",
+      "badge": "SYSTEM ADMIN",
+      "reloadTooltip": "再読み込み"
     },
     "accept": {
       "title": "管理者招待の承諾",
@@ -61,8 +63,13 @@
       "acceptBtn": "招待を承諾する",
       "accepting": "承諾しています…",
       "acceptSuccess": "招待を承諾しました",
-      "alreadyAcceptedTitle": "この招待は承諾済みです",
-      "alreadyAcceptedMessage": "既にこの招待を承諾済みです。管理画面から操作を続けられます。",
+      "acceptedTitle": "招待を承諾しました",
+      "acceptedMessage": "この招待の承諾が完了しました。管理画面から操作を続けられます。",
+      "previewError": {
+        "title": "招待を確認できませんでした",
+        "message": "通信状況などにより招待内容を確認できませんでした。再読み込みしてください。",
+        "retryBtn": "再読み込み"
+      },
       "backToDashboard": "ダッシュボードへ戻る",
       "errors": {
         "notFoundTitle": "招待が見つかりません",

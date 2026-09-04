@@ -9,42 +9,21 @@
  * アクセスログ・Referer に載らない。`window.location.hash` はクライアントでしか
  * 読めないため、SSR では何も描画せず `onMounted` でのみ読み取る。
  *
- * 未ログイン時は `middleware: 'auth'` が `/login?redirect=<fullPath>` へ誘導する
- * （Vue Router は URL のハッシュ部分も `fullPath` に含めるため、フラグメント付きの
- * まま遷移し、ログイン後 `login.vue` が `redirect` へ戻す＝この画面へ再訪する）。
+ * ログイン往復でのトークン漏出対策（検分 P1）: `redirect` クエリにフラグメントを
+ * 含めると、ブラウザ履歴・Referer・（環境次第で）アクセスログにトークンが残りうる。
+ * そのため、未ログイン時はカスタム inline middleware でフラグメントのトークンを
+ * `sessionStorage`（{@link TOKEN_STORAGE_KEY}）へ退避してから、フラグメント・クエリ
+ * 一切無しの `/provisioning/accept` を redirect 先にしてログイン画面へ送る。
+ * ログイン後の復帰時は、フラグメントにトークンが無ければ sessionStorage から復元し、
+ * 使用後は即座に削除する（使い捨て）。
  */
-definePageMeta({
-  middleware: 'auth',
-  layout: 'auth',
-})
+import type {
+  ProvisioningInvitationAcceptResponse,
+  ProvisioningInvitationPreviewResponse,
+} from '~/composables/useProvisioningInvitationApi'
 
-const { t } = useI18n()
-const notification = useNotification()
-const { formatDateTime } = useDatetime()
-
-type ViewState = 'loading' | 'preview' | 'accepted' | 'error'
-
-const state = ref<ViewState>('loading')
-const token = ref<string | null>(null)
-const preview = ref<{
-  teamId?: number | null
-  organizationId?: number | null
-  scopeName?: string | null
-  inviteEmail?: string | null
-  expiresAt?: string | null
-} | null>(null)
-const acceptedResult = ref<{
-  teamId?: number | null
-  organizationId?: number | null
-  scopeName?: string | null
-} | null>(null)
-const accepting = ref(false)
-
-/** preview/accept 失敗時に表示するエラー種別（BE エラーコードから写像）。 */
-type ErrorKind = 'notFound' | 'expired' | 'cancelled' | 'emailMismatch' | 'generic'
-const errorKind = ref<ErrorKind>('generic')
-
-const provisioningApi = useProvisioningInvitationApi()
+/** ログイン往復中にトークンを一時退避する sessionStorage の固定キー。 */
+const TOKEN_STORAGE_KEY = 'provisioning_accept_token'
 
 /** URL フラグメント（#token=...）から平文トークンを読み取る。クライアントのみで有効。 */
 function readTokenFromHash(): string | null {
@@ -60,19 +39,92 @@ function readTokenFromHash(): string | null {
   }
 }
 
-/** BE エラーコード → 表示エラー種別のマッピング。 */
+definePageMeta({
+  layout: 'auth',
+  middleware: [
+    () => {
+      if (import.meta.server) return
+      const authStore = useAuthStore()
+      if (authStore.isAuthenticated) return
+
+      // 未ログイン: フラグメントにトークンがあれば sessionStorage へ退避してから、
+      // トークンを含まない URL でログインへ誘導する（redirect クエリへの漏出防止）。
+      const tok = readTokenFromHash()
+      if (tok && typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.setItem(TOKEN_STORAGE_KEY, tok)
+        } catch {
+          // sessionStorage が使えない環境（プライベートモード等）でも致命的ではない。
+          // ログイン後の復帰時にフラグメントが無く sessionStorage にも無ければ notFound 扱いになる。
+        }
+      }
+      return navigateTo({ path: '/provisioning/accept' })
+    },
+  ],
+})
+
+const { t } = useI18n()
+const notification = useNotification()
+const { formatDateTime } = useDatetime()
+
+type ViewState = 'loading' | 'preview' | 'previewError' | 'accepted' | 'error'
+
+const state = ref<ViewState>('loading')
+const token = ref<string | null>(null)
+const preview = ref<ProvisioningInvitationPreviewResponse | null>(null)
+const acceptedResult = ref<ProvisioningInvitationAcceptResponse | null>(null)
+const accepting = ref(false)
+
+/** preview/accept 失敗時に表示するエラー種別（BE エラーコードから写像）。 */
+type ErrorKind = 'notFound' | 'expired' | 'cancelled' | 'emailMismatch' | 'generic'
+const errorKind = ref<ErrorKind>('generic')
+
+const provisioningApi = useProvisioningInvitationApi()
+
+/** BE エラーコード → 表示エラー種別のマッピング（accept() 応答にのみ適用）。 */
 function classifyError(err: unknown): ErrorKind {
   const code = (err as { data?: { error?: { code?: string } } })?.data?.error?.code
   if (code === 'PROV_002') return 'expired'
   if (code === 'PROV_003' || code === 'PROV_011') return 'cancelled'
   if (code === 'PROV_006') return 'emailMismatch'
-  // PROV_001（見つからない）/ PROV_009（対象秘匿込みの一律404）は同じ「見つからない」表示に畳む。
-  if (code === 'PROV_001' || code === 'PROV_009') return 'notFound'
+  // PROV_001（見つからない）/ PROV_009（対象秘匿込みの一律404）/ PROV_010（承諾者本人以外に
+  // よる再承諾＝存在秘匿のため本人以外には見つからない扱いに畳む）は同じ「見つからない」表示。
+  if (code === 'PROV_001' || code === 'PROV_009' || code === 'PROV_010') return 'notFound'
   return 'generic'
 }
 
+/**
+ * トークンを解決する（フラグメント優先、無ければログイン往復で退避した sessionStorage
+ * から復元）。復元に使ったら即座に sessionStorage から削除する（使い捨て）。
+ */
+function resolveToken(): string | null {
+  const fromHash = readTokenFromHash()
+  if (fromHash) return fromHash
+
+  if (typeof window === 'undefined') return null
+  try {
+    const stored = window.sessionStorage.getItem(TOKEN_STORAGE_KEY)
+    if (stored) {
+      window.sessionStorage.removeItem(TOKEN_STORAGE_KEY)
+      return stored
+    }
+  } catch {
+    // sessionStorage 不可時は復元できない（notFound へ畳む）。
+  }
+  return null
+}
+
+/**
+ * 招待の下見を読み込む。
+ *
+ * 検分 P0 根治: preview 失敗時に accept() を自動発火するフォールバックは廃止した
+ * （旧実装は preview の 500・ネットワーク断も含め、理由を問わず accept を自動で
+ * 呼んでしまい、トークンの有効性が preview で確認できていない状態でも accept が
+ * 発火しうる欠陥があった）。エラー種別の判別は、ユーザーが承諾ボタンを押した際の
+ * accept() 応答でのみ行う。preview 失敗時は再試行可能なエラー表示のみを出す。
+ */
 async function loadPreview() {
-  const tok = readTokenFromHash()
+  const tok = resolveToken()
   token.value = tok
   if (!tok) {
     state.value = 'error'
@@ -80,42 +132,14 @@ async function loadPreview() {
     return
   }
 
+  state.value = 'loading'
   try {
     const res = await provisioningApi.preview(tok)
     preview.value = res
     state.value = 'preview'
   } catch (err) {
-    // BE の preview() は存在秘匿（AC1）のため、PENDING以外（ACCEPTED/CANCELLED/EXPIRED/
-    // 存在しない）を一律 PROV_001 に畳んで返す。期限切れ/取消/本人による再承諾といった
-    // 実際の理由は accept() 側でのみ区別される（PROV_002/PROV_003・PROV_011/PROV_010）ため、
-    // preview が失敗した場合は accept を試みて実際の状態を判定する。
-    // accept() は状態遷移前に必ず現在状態を検査するため（AC6悲観ロック/AC8/AC9）、
-    // 既に PENDING でない招待に対する本呼び出しが誤って新規承諾を成立させることはない。
-    console.error('provisioning/accept.vue: preview failed, falling back to accept for detail', err)
-    await resolveViaAccept(tok)
-  }
-}
-
-/**
- * preview() が存在秘匿のため理由を返さない場合に、accept() を試みて実際の状態
- * （期限切れ/取消済み/本人による再承諾=冪等成功/メール不一致/真に存在しない）を判定する。
- */
-async function resolveViaAccept(tok: string) {
-  try {
-    const res = await provisioningApi.accept(tok)
-    acceptedResult.value = res
-    state.value = 'accepted'
-  } catch (err) {
-    const code = (err as { data?: { error?: { code?: string } } })?.data?.error?.code
-    if (code === 'PROV_010') {
-      // 招待は既に承諾済みだが、承諾者本人の再訪である。エラーにせず冪等成功として扱う。
-      acceptedResult.value = null
-      state.value = 'accepted'
-      return
-    }
-    console.error('provisioning/accept.vue: accept fallback failed', err)
-    state.value = 'error'
-    errorKind.value = classifyError(err)
+    console.error('provisioning/accept.vue: preview failed', err)
+    state.value = 'previewError'
   }
 }
 
@@ -123,10 +147,14 @@ async function accept() {
   if (!token.value || accepting.value) return
   accepting.value = true
   try {
-    await resolveViaAccept(token.value)
-    if (state.value === 'accepted') {
-      notification.success(t('provisioning.accept.acceptSuccess'))
-    }
+    const res = await provisioningApi.accept(token.value)
+    acceptedResult.value = res
+    state.value = 'accepted'
+    notification.success(t('provisioning.accept.acceptSuccess'))
+  } catch (err) {
+    console.error('provisioning/accept.vue: accept failed', err)
+    state.value = 'error'
+    errorKind.value = classifyError(err)
   } finally {
     accepting.value = false
   }
@@ -188,14 +216,32 @@ onMounted(() => {
         />
       </div>
 
-      <!-- 承諾成功（新規 / 冪等） -->
+      <!-- preview 失敗（再試行可能） -->
+      <div v-else-if="state === 'previewError'" class="text-center">
+        <i class="pi pi-exclamation-triangle mb-4 text-5xl text-yellow-500" aria-hidden="true" />
+        <h2 class="mb-2 text-lg font-bold">
+          {{ t('provisioning.accept.previewError.title') }}
+        </h2>
+        <p class="mb-6 text-sm text-surface-500">
+          {{ t('provisioning.accept.previewError.message') }}
+        </p>
+        <Button
+          :label="t('provisioning.accept.previewError.retryBtn')"
+          icon="pi pi-refresh"
+          class="w-full"
+          data-testid="provisioning-preview-retry-button"
+          @click="loadPreview"
+        />
+      </div>
+
+      <!-- 承諾成功 -->
       <div v-else-if="state === 'accepted'" class="text-center">
         <i class="pi pi-check-circle mb-4 text-5xl text-green-500" aria-hidden="true" />
         <h2 class="mb-2 text-lg font-bold">
-          {{ acceptedResult?.scopeName ?? t('provisioning.accept.alreadyAcceptedTitle') }}
+          {{ acceptedResult?.scopeName ?? t('provisioning.accept.acceptedTitle') }}
         </h2>
         <p class="mb-6 text-sm text-surface-500">
-          {{ t('provisioning.accept.alreadyAcceptedMessage') }}
+          {{ t('provisioning.accept.acceptedMessage') }}
         </p>
         <Button
           :label="t('provisioning.accept.backToDashboard')"
@@ -205,7 +251,7 @@ onMounted(() => {
         />
       </div>
 
-      <!-- エラー -->
+      <!-- エラー（accept() 応答由来） -->
       <div v-else-if="state === 'error'" class="text-center">
         <i class="pi pi-exclamation-triangle mb-4 text-5xl text-yellow-500" aria-hidden="true" />
         <h2 class="mb-2 text-lg font-bold">

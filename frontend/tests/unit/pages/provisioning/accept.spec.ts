@@ -8,13 +8,20 @@ import { nextTick } from 'vue'
  *
  * 検証観点:
  *   ACCEPT-001: URLフラグメント（#token=...）からトークンを読み取り preview を呼ぶ
- *   ACCEPT-002: フラグメントが無ければ notFound エラー表示（preview を呼ばない）
+ *   ACCEPT-002: フラグメントが無く sessionStorage にも無ければ notFound エラー表示（preview を呼ばない）
  *   ACCEPT-003: preview 成功後、承諾ボタン押下で accept を呼び成功表示へ遷移する
- *   ACCEPT-004~006/008: preview は存在秘匿のため一律 PROV_001 を返すため、実際の理由
- *               （期限切れ/取消済み/メール不一致/真に存在しない）は accept() へのフォールバック
- *               呼び出しで判定して表示する
- *   ACCEPT-007/009: accept が PROV_010（既に承諾済み・本人再訪）を返した場合、エラーではなく
- *               冪等成功として表示する（明示クリック経由・preview失敗フォールバック経由の両方）
+ *   ACCEPT-004: preview が 500 等で失敗した場合、再試行可能な previewError 表示になり、
+ *               accept() は一切呼ばれない（検分 P0: resolveViaAccept フォールバック全廃の再発防止）
+ *   ACCEPT-005: previewError 状態で再読み込みボタンを押すと preview を再試行する
+ *   ACCEPT-006: 承諾ボタン押下で accept() が実際のエラーコード（PROV_002 期限切れ）を返した場合、
+ *               対応するエラー表示に遷移する
+ *   ACCEPT-007: 承諾ボタン押下で accept() が PROV_003（取消済み）を返した場合の表示
+ *   ACCEPT-008: 承諾ボタン押下で accept() が PROV_006（メール不一致）を返した場合の表示
+ *   ACCEPT-009: 承諾ボタン押下で accept() が PROV_010（承諾者本人以外による再承諾・存在秘匿）
+ *               を返した場合、notFound 表示に畳む
+ *   ACCEPT-010/011: ログイン往復のトークン退避 — sessionStorage に保存されたトークンから復元して
+ *               preview を呼び、使用後は sessionStorage から即座に削除する（P1 検分対応）
+ *   ACCEPT-012: フラグメントにトークンがある場合は sessionStorage より優先する
  */
 
 const mockPreview = vi.fn()
@@ -77,6 +84,8 @@ mockNuxtImport('useRouter', () => () => ({
 
 const AcceptPage = (await import('~/pages/provisioning/accept.vue')).default
 
+const TOKEN_STORAGE_KEY = 'provisioning_accept_token'
+
 async function flush(times = 4): Promise<void> {
   for (let i = 0; i < times; i++) await nextTick()
 }
@@ -92,6 +101,7 @@ beforeEach(() => {
   mockNotifyError.mockReset()
   mockNotifySuccess.mockReset()
   setHash('')
+  window.sessionStorage.clear()
 })
 
 describe('pages/provisioning/accept.vue', () => {
@@ -112,7 +122,7 @@ describe('pages/provisioning/accept.vue', () => {
     expect(wrapper.text()).toContain('サンプル組織')
   })
 
-  it('ACCEPT-002: フラグメントが無ければ preview を呼ばずnotFoundエラー表示', async () => {
+  it('ACCEPT-002: フラグメントが無く sessionStorageにも無ければ preview を呼ばずnotFoundエラー表示', async () => {
     setHash('')
 
     const wrapper = await mountSuspended(AcceptPage)
@@ -147,68 +157,114 @@ describe('pages/provisioning/accept.vue', () => {
     expect(mockAccept).toHaveBeenCalledWith('abc-123')
     expect(mockNotifySuccess).toHaveBeenCalled()
     expect(wrapper.text()).toContain('サンプル組織')
-    expect(wrapper.text()).toContain('provisioning.accept.alreadyAcceptedMessage')
+    expect(wrapper.text()).toContain('provisioning.accept.acceptedMessage')
   })
 
-  it('ACCEPT-004: preview失敗→フォールバックaccept()がPROV_002（期限切れ）→ expiredエラー表示', async () => {
+  it('ACCEPT-004: preview が 500 で失敗した場合、previewError 表示になり accept() は呼ばれない（P0 再発防止）', async () => {
     setHash('#token=abc-123')
-    // preview() は存在秘匿のため一律 PROV_001 を返す。実際の理由は accept() が区別する。
-    mockPreview.mockRejectedValue({ data: { error: { code: 'PROV_001' } } })
-    mockAccept.mockRejectedValue({ data: { error: { code: 'PROV_002' } } })
+    mockPreview.mockRejectedValue({ statusCode: 500, data: { error: { code: 'INTERNAL_ERROR' } } })
 
     const wrapper = await mountSuspended(AcceptPage)
     await flush()
 
-    expect(mockAccept).toHaveBeenCalledWith('abc-123')
+    expect(mockPreview).toHaveBeenCalledWith('abc-123')
+    expect(mockAccept).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('provisioning.accept.previewError.title')
+    expect(wrapper.find('[data-testid="provisioning-accept-button"]').exists()).toBe(false)
+  })
+
+  it('ACCEPT-004b: preview がネットワーク断で失敗した場合も accept() は呼ばれない（P0 再発防止）', async () => {
+    setHash('#token=abc-123')
+    mockPreview.mockRejectedValue(new TypeError('Failed to fetch'))
+
+    const wrapper = await mountSuspended(AcceptPage)
+    await flush()
+
+    expect(mockAccept).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('provisioning.accept.previewError.title')
+  })
+
+  it('ACCEPT-005: previewError 状態で再読み込みボタンを押すと preview を再試行する', async () => {
+    setHash('#token=abc-123')
+    mockPreview.mockRejectedValueOnce({ statusCode: 500 })
+    mockPreview.mockResolvedValueOnce({
+      teamId: null,
+      organizationId: 1,
+      scopeName: 'サンプル組織',
+      inviteEmail: 'admin@example.com',
+      expiresAt: '2026-09-10T00:00:00Z',
+    })
+
+    const wrapper = await mountSuspended(AcceptPage)
+    await flush()
+    expect(wrapper.text()).toContain('provisioning.accept.previewError.title')
+
+    await wrapper.get('[data-testid="provisioning-preview-retry-button"]').trigger('click')
+    await flush()
+
+    expect(mockPreview).toHaveBeenCalledTimes(2)
+    expect(mockAccept).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('サンプル組織')
+  })
+
+  it('ACCEPT-006: 承諾ボタン押下でaccept()がPROV_002（期限切れ）→ expiredエラー表示', async () => {
+    setHash('#token=abc-123')
+    mockPreview.mockResolvedValue({
+      teamId: null,
+      organizationId: 1,
+      scopeName: 'サンプル組織',
+      inviteEmail: 'admin@example.com',
+      expiresAt: '2026-09-10T00:00:00Z',
+    })
+    mockAccept.mockRejectedValue({ data: { error: { code: 'PROV_002' } } })
+
+    const wrapper = await mountSuspended(AcceptPage)
+    await flush()
+    await wrapper.get('[data-testid="provisioning-accept-button"]').trigger('click')
+    await flush()
+
     expect(wrapper.text()).toContain('provisioning.accept.errors.expiredTitle')
   })
 
-  it('ACCEPT-005: preview失敗→フォールバックaccept()がPROV_003（取消済み）→ cancelledエラー表示', async () => {
+  it('ACCEPT-007: 承諾ボタン押下でaccept()がPROV_003（取消済み）→ cancelledエラー表示', async () => {
     setHash('#token=abc-123')
-    mockPreview.mockRejectedValue({ data: { error: { code: 'PROV_001' } } })
+    mockPreview.mockResolvedValue({
+      teamId: null,
+      organizationId: 1,
+      scopeName: 'サンプル組織',
+      inviteEmail: 'admin@example.com',
+      expiresAt: '2026-09-10T00:00:00Z',
+    })
     mockAccept.mockRejectedValue({ data: { error: { code: 'PROV_003' } } })
 
     const wrapper = await mountSuspended(AcceptPage)
+    await flush()
+    await wrapper.get('[data-testid="provisioning-accept-button"]').trigger('click')
     await flush()
 
     expect(wrapper.text()).toContain('provisioning.accept.errors.cancelledTitle')
   })
 
-  it('ACCEPT-006: preview失敗→フォールバックaccept()がPROV_006（メール不一致）→ emailMismatchエラー表示', async () => {
+  it('ACCEPT-008: 承諾ボタン押下でaccept()がPROV_006（メール不一致）→ emailMismatchエラー表示', async () => {
     setHash('#token=abc-123')
-    mockPreview.mockRejectedValue({ data: { error: { code: 'PROV_001' } } })
+    mockPreview.mockResolvedValue({
+      teamId: null,
+      organizationId: 1,
+      scopeName: 'サンプル組織',
+      inviteEmail: 'admin@example.com',
+      expiresAt: '2026-09-10T00:00:00Z',
+    })
     mockAccept.mockRejectedValue({ data: { error: { code: 'PROV_006' } } })
 
     const wrapper = await mountSuspended(AcceptPage)
+    await flush()
+    await wrapper.get('[data-testid="provisioning-accept-button"]').trigger('click')
     await flush()
 
     expect(wrapper.text()).toContain('provisioning.accept.errors.emailMismatchTitle')
   })
 
-  it('ACCEPT-008: preview失敗→フォールバックaccept()も真に見つからない（PROV_001）→ notFoundエラー表示', async () => {
-    setHash('#token=abc-123')
-    mockPreview.mockRejectedValue({ data: { error: { code: 'PROV_001' } } })
-    mockAccept.mockRejectedValue({ data: { error: { code: 'PROV_001' } } })
-
-    const wrapper = await mountSuspended(AcceptPage)
-    await flush()
-
-    expect(wrapper.text()).toContain('provisioning.accept.errors.notFoundTitle')
-  })
-
-  it('ACCEPT-009: preview失敗→フォールバックaccept()がPROV_010（本人の再訪）→ 冪等成功表示', async () => {
-    setHash('#token=abc-123')
-    mockPreview.mockRejectedValue({ data: { error: { code: 'PROV_001' } } })
-    mockAccept.mockRejectedValue({ data: { error: { code: 'PROV_010' } } })
-
-    const wrapper = await mountSuspended(AcceptPage)
-    await flush()
-
-    expect(wrapper.text()).toContain('provisioning.accept.alreadyAcceptedMessage')
-    expect(mockNotifyError).not.toHaveBeenCalled()
-  })
-
-  it('ACCEPT-007: acceptがPROV_010（本人による再承諾）を返した場合は冪等成功として表示する', async () => {
+  it('ACCEPT-009: 承諾ボタン押下でaccept()がPROV_010（本人以外の再承諾・存在秘匿）→ notFound表示', async () => {
     setHash('#token=abc-123')
     mockPreview.mockResolvedValue({
       teamId: null,
@@ -221,13 +277,64 @@ describe('pages/provisioning/accept.vue', () => {
 
     const wrapper = await mountSuspended(AcceptPage)
     await flush()
-
     await wrapper.get('[data-testid="provisioning-accept-button"]').trigger('click')
     await flush()
 
-    expect(wrapper.text()).not.toContain('provisioning.accept.errors')
-    expect(wrapper.text()).toContain('provisioning.accept.alreadyAcceptedMessage')
-    // PROV_010 は「既に承諾済み」であり、エラー扱いしないため notification.error は呼ばれない
-    expect(mockNotifyError).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('provisioning.accept.errors.notFoundTitle')
+  })
+
+  it('ACCEPT-010: ログイン往復で sessionStorage に退避されたトークンから復元して preview を呼ぶ', async () => {
+    setHash('') // ログイン後の復帰時はフラグメントが無い
+    window.sessionStorage.setItem(TOKEN_STORAGE_KEY, 'stashed-token')
+    mockPreview.mockResolvedValue({
+      teamId: null,
+      organizationId: 1,
+      scopeName: 'サンプル組織',
+      inviteEmail: 'admin@example.com',
+      expiresAt: '2026-09-10T00:00:00Z',
+    })
+
+    const wrapper = await mountSuspended(AcceptPage)
+    await flush()
+
+    expect(mockPreview).toHaveBeenCalledWith('stashed-token')
+    expect(wrapper.text()).toContain('サンプル組織')
+  })
+
+  it('ACCEPT-011: sessionStorage から復元したトークンは使用後に即座に削除する', async () => {
+    setHash('')
+    window.sessionStorage.setItem(TOKEN_STORAGE_KEY, 'stashed-token')
+    mockPreview.mockResolvedValue({
+      teamId: null,
+      organizationId: 1,
+      scopeName: 'サンプル組織',
+      inviteEmail: 'admin@example.com',
+      expiresAt: '2026-09-10T00:00:00Z',
+    })
+
+    await mountSuspended(AcceptPage)
+    await flush()
+
+    expect(window.sessionStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull()
+  })
+
+  it('ACCEPT-012: フラグメントにトークンがある場合は sessionStorage より優先する', async () => {
+    setHash('#token=from-hash')
+    window.sessionStorage.setItem(TOKEN_STORAGE_KEY, 'from-storage')
+    mockPreview.mockResolvedValue({
+      teamId: null,
+      organizationId: 1,
+      scopeName: 'サンプル組織',
+      inviteEmail: 'admin@example.com',
+      expiresAt: '2026-09-10T00:00:00Z',
+    })
+
+    await mountSuspended(AcceptPage)
+    await flush()
+
+    expect(mockPreview).toHaveBeenCalledWith('from-hash')
+    // フラグメント優先時、退避 sessionStorage は不要になった過去の値として残っていても害はないが、
+    // 使い捨て原則としてここでは読み取り自体を行わないため削除もされない。
+    expect(window.sessionStorage.getItem(TOKEN_STORAGE_KEY)).toBe('from-storage')
   })
 })
