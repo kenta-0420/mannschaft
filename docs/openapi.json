@@ -1511,6 +1511,10 @@
       "description": "F01.5 Phase 2 フレンドチーム通知送受信"
     },
     {
+      "name": "運営領収書",
+      "description": "F08.12 運営領収書・適格請求書発行（PLATFORM スコープ）"
+    },
+    {
       "name": "課金 - プランカタログ/判定",
       "description": "F20.1 プランカタログ・単一機能判定"
     },
@@ -14247,6 +14251,56 @@
         }
       }
     },
+    "/api/v1/system-admin/receipt-settings": {
+      "get": {
+        "tags": [
+          "運営領収書"
+        ],
+        "summary": "運営の発行者設定取得",
+        "operationId": "getSettings_6",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseIssuerSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "運営領収書"
+        ],
+        "summary": "運営の発行者設定更新",
+        "operationId": "updateSettings_6",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIssuerSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseIssuerSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/nav-features/{key}": {
       "put": {
         "tags": [
@@ -16647,7 +16701,7 @@
           "ポイっとメモ設定"
         ],
         "summary": "リマインド設定取得",
-        "operationId": "getSettings_6",
+        "operationId": "getSettings_7",
         "responses": {
           "200": {
             "description": "OK",
@@ -16667,7 +16721,7 @@
         ],
         "summary": "リマインド設定更新",
         "description": "apply_to: NEW_ONLY（新規メモのみ）/ UNSENT（未送信枠を再計算）/ ALL（全未整理メモを再計算）",
-        "operationId": "updateSettings_6",
+        "operationId": "updateSettings_7",
         "parameters": [
           {
             "name": "apply_to",
@@ -16952,7 +17006,7 @@
         ],
         "summary": "ウォレット設定取得",
         "description": "自分の設定を返す。レコードが無ければデフォルト（オプトアウト状態）で作成して返却",
-        "operationId": "getSettings_7",
+        "operationId": "getSettings_8",
         "responses": {
           "200": {
             "description": "OK",
@@ -16972,7 +17026,7 @@
         ],
         "summary": "ウォレット設定更新",
         "description": "オプトイン・規約同意・WebAuthn 要求設定を差分適用で更新",
-        "operationId": "updateSettings_7",
+        "operationId": "updateSettings_8",
         "requestBody": {
           "content": {
             "application/json": {
@@ -17770,7 +17824,7 @@
           "組織駐車区画管理"
         ],
         "summary": "組織駐車場設定取得",
-        "operationId": "getSettings_8",
+        "operationId": "getSettings_9",
         "parameters": [
           {
             "name": "organizationId",
@@ -17800,7 +17854,7 @@
           "組織駐車区画管理"
         ],
         "summary": "組織駐車場設定更新",
-        "operationId": "updateSettings_8",
+        "operationId": "updateSettings_9",
         "parameters": [
           {
             "name": "organizationId",
@@ -18367,7 +18421,7 @@
           "組織施設設定"
         ],
         "summary": "施設予約設定取得",
-        "operationId": "getSettings_9",
+        "operationId": "getSettings_10",
         "parameters": [
           {
             "name": "organizationId",
@@ -18397,7 +18451,7 @@
           "組織施設設定"
         ],
         "summary": "施設予約設定更新",
-        "operationId": "updateSettings_9",
+        "operationId": "updateSettings_10",
         "parameters": [
           {
             "name": "organizationId",
@@ -22236,7 +22290,7 @@
           "確認通知設定（組織）"
         ],
         "summary": "確認通知設定取得（組織）",
-        "operationId": "getSettings_10",
+        "operationId": "getSettings_11",
         "parameters": [
           {
             "name": "orgId",
@@ -22266,7 +22320,7 @@
           "確認通知設定（組織）"
         ],
         "summary": "確認通知設定更新（組織）",
-        "operationId": "updateSettings_10",
+        "operationId": "updateSettings_11",
         "parameters": [
           {
             "name": "orgId",
@@ -22871,7 +22925,7 @@
           "通知設定"
         ],
         "summary": "グローバル通知設定取得",
-        "operationId": "getSettings_11",
+        "operationId": "getSettings_12",
         "responses": {
           "200": {
             "description": "取得成功",
@@ -22890,7 +22944,7 @@
           "通知設定"
         ],
         "summary": "グローバル通知設定更新",
-        "operationId": "updateSettings_11",
+        "operationId": "updateSettings_12",
         "requestBody": {
           "content": {
             "application/json": {
@@ -23436,7 +23490,7 @@
           "振り返り通知設定"
         ],
         "summary": "想起通知設定取得",
-        "operationId": "getSettings_12",
+        "operationId": "getSettings_13",
         "responses": {
           "200": {
             "description": "OK",
@@ -23455,7 +23509,7 @@
           "振り返り通知設定"
         ],
         "summary": "想起通知設定更新",
-        "operationId": "updateSettings_12",
+        "operationId": "updateSettings_13",
         "requestBody": {
           "content": {
             "application/json": {
@@ -90096,7 +90150,7 @@
           "予約設定管理"
         ],
         "summary": "予約設定（チームポリシー）取得",
-        "operationId": "getSettings_13",
+        "operationId": "getSettings_14",
         "parameters": [
           {
             "name": "teamId",
@@ -90641,7 +90695,7 @@
           "順番待ち設定管理"
         ],
         "summary": "設定取得",
-        "operationId": "getSettings_14",
+        "operationId": "getSettings_15",
         "parameters": [
           {
             "name": "teamId",
@@ -90671,7 +90725,7 @@
           "順番待ち設定管理"
         ],
         "summary": "設定更新",
-        "operationId": "updateSettings_13",
+        "operationId": "updateSettings_14",
         "parameters": [
           {
             "name": "teamId",
@@ -94259,7 +94313,7 @@
           "チームシフト設定"
         ],
         "summary": "チームシフト設定取得（メンバー限定）",
-        "operationId": "getSettings_15",
+        "operationId": "getSettings_16",
         "parameters": [
           {
             "name": "slug",
@@ -94298,7 +94352,7 @@
           "チームシフト設定"
         ],
         "summary": "チームシフト設定更新（ADMIN/DEPUTY のみ）",
-        "operationId": "updateSettings_14",
+        "operationId": "updateSettings_15",
         "parameters": [
           {
             "name": "slug",
@@ -97363,7 +97417,7 @@
           "予定コメント"
         ],
         "summary": "スレッド開閉",
-        "operationId": "updateSettings_15",
+        "operationId": "updateSettings_16",
         "parameters": [
           {
             "name": "scheduleId",
@@ -104885,7 +104939,7 @@
           "チャットチャンネル"
         ],
         "summary": "チャンネル個人設定",
-        "operationId": "updateSettings_16",
+        "operationId": "updateSettings_17",
         "parameters": [
           {
             "name": "channelId",
@@ -106504,7 +106558,7 @@
           "領収書発行者設定"
         ],
         "summary": "発行者設定取得",
-        "operationId": "getSettings_16",
+        "operationId": "getSettings_17",
         "parameters": [
           {
             "name": "scopeType",
@@ -107223,7 +107277,7 @@
           "行動メモ設定"
         ],
         "summary": "行動メモ設定取得",
-        "operationId": "getSettings_17",
+        "operationId": "getSettings_18",
         "responses": {
           "200": {
             "description": "OK",
@@ -107242,7 +107296,7 @@
           "行動メモ設定"
         ],
         "summary": "行動メモ設定更新",
-        "operationId": "updateSettings_17",
+        "operationId": "updateSettings_18",
         "requestBody": {
           "content": {
             "application/json": {
@@ -120078,6 +120132,58 @@
         }
       }
     },
+    "/api/v1/system-admin/receipts": {
+      "get": {
+        "tags": [
+          "運営領収書"
+        ],
+        "summary": "運営領収書一覧",
+        "operationId": "listReceipts_1",
+        "parameters": [
+          {
+            "name": "include_voided",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponsePlatformReceiptSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/provisioning/invitations": {
       "get": {
         "tags": [
@@ -120261,7 +120367,7 @@
           "SYSTEM_ADMINモデレーション"
         ],
         "summary": "モデレーション設定一覧取得",
-        "operationId": "getSettings_18",
+        "operationId": "getSettings_19",
         "responses": {
           "200": {
             "description": "取得成功",
@@ -157726,6 +157832,154 @@
           },
           "parentId": {
             "type": "string"
+          }
+        }
+      },
+      "UpdateIssuerSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "autoResetNumber": {
+            "type": "boolean"
+          },
+          "customFooter": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "defaultSealUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "defaultSealVariant": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "fiscalYearStartMonth": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 12,
+            "minimum": 1
+          },
+          "invoiceRegistrationNumber": {
+            "type": "string",
+            "maxLength": 14,
+            "minLength": 0,
+            "pattern": "^(|T\\d{13})$"
+          },
+          "isQualifiedInvoicer": {
+            "type": "boolean"
+          },
+          "issuerName": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "postalCode": {
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 0
+          },
+          "receiptNoteTemplate": {
+            "type": "string"
+          },
+          "receiptNumberPrefix": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          }
+        }
+      },
+      "ApiResponseIssuerSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/IssuerSettingsResponse"
+          }
+        }
+      },
+      "IssuerSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "autoResetNumber": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "customFooter": {
+            "type": "string"
+          },
+          "defaultSealUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "defaultSealVariant": {
+            "type": "string"
+          },
+          "fiscalYearStartMonth": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "invoiceRegistrationNumber": {
+            "type": "string"
+          },
+          "isQualifiedInvoicer": {
+            "type": "boolean"
+          },
+          "issuerName": {
+            "type": "string"
+          },
+          "logoStorageKey": {
+            "type": "string"
+          },
+          "logoUrl": {
+            "type": "string"
+          },
+          "nextReceiptNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "receiptNoteTemplate": {
+            "type": "string"
+          },
+          "receiptNumberPrefix": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -199858,89 +200112,6 @@
           }
         }
       },
-      "ApiResponseIssuerSettingsResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/IssuerSettingsResponse"
-          }
-        }
-      },
-      "IssuerSettingsResponse": {
-        "type": "object",
-        "properties": {
-          "address": {
-            "type": "string"
-          },
-          "autoResetNumber": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "customFooter": {
-            "type": "string"
-          },
-          "defaultSealUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "defaultSealVariant": {
-            "type": "string"
-          },
-          "fiscalYearStartMonth": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "invoiceRegistrationNumber": {
-            "type": "string"
-          },
-          "isQualifiedInvoicer": {
-            "type": "boolean"
-          },
-          "issuerName": {
-            "type": "string"
-          },
-          "logoStorageKey": {
-            "type": "string"
-          },
-          "logoUrl": {
-            "type": "string"
-          },
-          "nextReceiptNumber": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "phone": {
-            "type": "string"
-          },
-          "postalCode": {
-            "type": "string"
-          },
-          "receiptNoteTemplate": {
-            "type": "string"
-          },
-          "receiptNumberPrefix": {
-            "type": "string"
-          },
-          "scopeId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scopeType": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
       "ApproveQueueRequest": {
         "type": "object",
         "properties": {
@@ -207517,71 +207688,6 @@
           "note": {
             "type": "string",
             "maxLength": 2000,
-            "minLength": 0
-          }
-        }
-      },
-      "UpdateIssuerSettingsRequest": {
-        "type": "object",
-        "properties": {
-          "address": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 0
-          },
-          "autoResetNumber": {
-            "type": "boolean"
-          },
-          "customFooter": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 0
-          },
-          "defaultSealUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "defaultSealVariant": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 0
-          },
-          "fiscalYearStartMonth": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 12,
-            "minimum": 1
-          },
-          "invoiceRegistrationNumber": {
-            "type": "string",
-            "maxLength": 14,
-            "minLength": 0,
-            "pattern": "^(|T\\d{13})$"
-          },
-          "isQualifiedInvoicer": {
-            "type": "boolean"
-          },
-          "issuerName": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          },
-          "phone": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 0
-          },
-          "postalCode": {
-            "type": "string",
-            "maxLength": 10,
-            "minLength": 0
-          },
-          "receiptNoteTemplate": {
-            "type": "string"
-          },
-          "receiptNumberPrefix": {
-            "type": "string",
-            "maxLength": 20,
             "minLength": 0
           }
         }
@@ -219316,6 +219422,88 @@
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "ApiResponsePageResponsePlatformReceiptSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageResponsePlatformReceiptSummaryResponse"
+          }
+        }
+      },
+      "PageResponsePlatformReceiptSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlatformReceiptSummaryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PlatformReceiptSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "amountExclTax": {
+            "type": "number"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "invoiceRegistrationNumber": {
+            "type": "string"
+          },
+          "isQualifiedInvoice": {
+            "type": "boolean"
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pdfStatus": {
+            "type": "string"
+          },
+          "receiptNumber": {
+            "type": "string"
+          },
+          "recipientName": {
+            "type": "string"
+          },
+          "sourceRef": {
+            "type": "string"
+          },
+          "sourceType": {
+            "type": "string"
+          },
+          "taxAmount": {
+            "type": "number"
+          },
+          "voidedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
