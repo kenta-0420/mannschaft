@@ -121,6 +121,8 @@ public enum AuditEventType {
     BILLING_PERMISSION_GROUP_DUPLICATE(AuditEventCategory.PAYMENT),
     BILLING_PERMISSION_GROUP_ASSIGN(AuditEventCategory.PAYMENT),
     BILLING_PERMISSION_GROUP_DENIED(AuditEventCategory.PAYMENT),
+    /** F20.1 Billing Center: 請求書明細を閲覧した（AC-60）。URL・住所全文・payload は metadata に載せない。 */
+    BILLING_INVOICE_VIEWED(AuditEventCategory.PAYMENT),
 
     // ─── SCHEDULE (Phase 3+) ──────────────────────────────────
     SCHEDULE_CREATED(AuditEventCategory.SCHEDULE),
