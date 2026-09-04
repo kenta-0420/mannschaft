@@ -25,6 +25,21 @@ public class BillingAccessGuard {
             EntitlementScopeKind scopeKind,
             Long scopeId) {
         Long userId = resolveUserId(authentication);
+        if (userId == null) {
+            return false;
+        }
+        return evaluate(userId, scopeKind, scopeId);
+    }
+
+    /**
+     * 解決済み actorId で同一判定を行う（{@code Authentication} を持たない
+     * application service 経路の唯一の判定入口。両経路がこのメソッドを通る）。
+     */
+    public boolean canManageByActorId(long actorId, EntitlementScopeKind scopeKind, Long scopeId) {
+        return evaluate(Long.valueOf(actorId), scopeKind, scopeId);
+    }
+
+    private boolean evaluate(Long userId, EntitlementScopeKind scopeKind, Long scopeId) {
         if (userId == null || scopeKind == null || scopeId == null) {
             return false;
         }
