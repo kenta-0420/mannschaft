@@ -21,7 +21,7 @@
                     <p class="font-large" th:text="${receipt.recipientName} + ' 様'">宛名 様</p>
                 </td>
                 <td style="width: 40%; text-align: right;">
-                    <p>発行日: <span th:text="${#temporals.format(receipt.issuedDate, 'yyyy年MM月dd日')}">2026年03月22日</span></p>
+                    <p>発行日: <span th:text="${#temporals.format(receipt.issuedAt, 'yyyy年MM月dd日')}">2026年03月22日</span></p>
                     <p th:text="'No. ' + ${receipt.receiptNumber}">No. R-00001</p>
                 </td>
             </tr>
@@ -32,7 +32,7 @@
                 <tr>
                     <td colspan="2" style="text-align: center; font-size: 20pt; padding: 15px;">
                         <span>金額　¥</span>
-                        <span class="amount" th:text="${#numbers.formatInteger(receipt.totalAmount, 1, 'COMMA')}">10,000</span>
+                        <span class="amount" th:text="${#numbers.formatInteger(receipt.amount, 1, 'COMMA')}">10,000</span>
                         <span>-</span>
                     </td>
                 </tr>
@@ -44,16 +44,14 @@
                 <thead>
                     <tr>
                         <th>品名</th>
-                        <th class="text-right">数量</th>
-                        <th class="text-right">単価</th>
+                        <th class="text-right">税率</th>
                         <th class="text-right">金額</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:each="item : ${lineItems}">
                         <td th:text="${item.description}">品名</td>
-                        <td class="text-right" th:text="${item.quantity}">1</td>
-                        <td class="amount" th:text="'¥' + ${#numbers.formatInteger(item.unitPrice, 1, 'COMMA')}">¥1,000</td>
+                        <td class="text-right" th:text="${item.taxRate} + '%'">10.00%</td>
                         <td class="amount" th:text="'¥' + ${#numbers.formatInteger(item.amount, 1, 'COMMA')}">¥1,000</td>
                     </tr>
                 </tbody>
