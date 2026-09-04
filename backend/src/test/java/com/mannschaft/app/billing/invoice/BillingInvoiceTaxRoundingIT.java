@@ -32,6 +32,14 @@ class BillingInvoiceTaxRoundingIT extends AbstractBillingInvoiceWebhookIT {
 
         assertThat(invoiceOf("in_ac34")).as("JPY 以外は投影しない").isEmpty();
         assertThat(invoiceLineRepository.count()).isZero();
+
+        // 陽性対照: 同じ形の JPY 検体は投影されること（未実装で何も入らない状態を緑と誤認しない）。
+        String jpyLine = StripeWebhookPayloadFixture.lineObject(
+                "il_ac34_jpy", "BASIC プラン", 1L, 1_000L, 0L, 100L, false, 1000);
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac34_jpy", "invoice.finalized",
+                StripeWebhookPayloadFixture.invoiceObject("in_ac34_jpy", BILLING_CUSTOMER_REF,
+                        BILLING_SUBSCRIPTION_REF, "open", "jpy", 1_000L, 0L, 100L, 1_100L, jpyLine)));
+        assertThat(invoiceOf("in_ac34_jpy")).as("陽性対照: JPY は投影される").isPresent();
     }
 
     @Test
@@ -155,5 +163,13 @@ class BillingInvoiceTaxRoundingIT extends AbstractBillingInvoiceWebhookIT {
                         BILLING_SUBSCRIPTION_REF, "open", "jpy", 1_000L, 0L, 100L, 1_100L, noTax)));
         assertThat(invoiceOf("in_ac39c"))
                 .as("税額があるのに税名/税率が無い invoice は投影しない").isEmpty();
+
+        // 陽性対照: 3 検体と同じ形で値だけ正当なものは投影されること。
+        String valid = StripeWebhookPayloadFixture.lineObject(
+                "il_ac39ok", "正当な line", 1L, 1_000L, 0L, 100L, false, 1000);
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac39_ok", "invoice.finalized",
+                StripeWebhookPayloadFixture.invoiceObject("in_ac39ok", BILLING_CUSTOMER_REF,
+                        BILLING_SUBSCRIPTION_REF, "open", "jpy", 1_000L, 0L, 100L, 1_100L, valid)));
+        assertThat(invoiceOf("in_ac39ok")).as("陽性対照: 正当な invoice は投影される").isPresent();
     }
 }

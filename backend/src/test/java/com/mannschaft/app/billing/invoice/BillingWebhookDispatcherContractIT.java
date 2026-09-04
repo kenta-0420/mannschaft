@@ -220,6 +220,13 @@ class BillingWebhookDispatcherContractIT extends AbstractBillingInvoiceWebhookIT
                 .as("customer が一致しない invoice を scope 所有として投影しない").isEmpty();
         assertThat(webhookEvent("evt_ac25_mismatch").map(e -> e.getProcessStatus()).orElse(null))
                 .as("PROCESSED として確定させない").isNotEqualTo(WebhookProcessStatus.PROCESSED);
+
+        // 陽性対照: customer も一致する双子は投影されること。これが無いと「未実装で常に空」でも
+        // 緑になり、二重照合を検証したことにならない。
+        postSigned(StripeWebhookPayloadFixture.event(
+                "evt_ac25_match", "invoice.paid", invoiceOf("in_ac25ok", "paid")));
+        assertThat(invoiceRepository.findByPspInvoiceRef("in_ac25ok"))
+                .as("陽性対照: customer も subscription も一致する invoice は投影される").isPresent();
     }
 
     @Test

@@ -131,7 +131,9 @@ abstract class AbstractBillingInvoiceWebhookIT extends AbstractMySqlIntegrationT
                         .pspSubscriptionRef(BILLING_SUBSCRIPTION_REF)
                         .version(0L)
                         .contractedAt(LocalDateTime.of(2026, 1, 1, 0, 0))
-                        .currentPeriodEnd(LocalDateTime.of(2026, 2, 1, 0, 0))
+                        // 投影イベントの period_end（2026-02-01）とは<b>別の値</b>にする。
+                        // 同じ値にすると「延長された」検証が、何もしなくても通る空虚な緑になる。
+                        .currentPeriodEnd(LocalDateTime.of(2026, 1, 15, 0, 0))
                         .createdAt(LocalDateTime.of(2026, 1, 1, 0, 0))
                         .updatedAt(LocalDateTime.of(2026, 1, 1, 0, 0))
                         .build());

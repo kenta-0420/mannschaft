@@ -105,6 +105,12 @@ class BillingInvoiceProjectionWebhookIT extends AbstractBillingInvoiceWebhookIT 
         postSigned(payload);
 
         assertThat(invoiceOf("in_ac5")).as("恒等式が破れた invoice は投影しない").isEmpty();
+
+        // 陽性対照: 恒等式の成り立つ双子は投影されること。これが無いと「何も実装されていないから空」でも
+        // 緑になり、fail-closed を検証したことにならない（全壊時の偽 green 回避）。
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac5_ok", "invoice.finalized",
+                standardInvoice("in_ac5_ok", "open")));
+        assertThat(invoiceOf("in_ac5_ok")).as("陽性対照: 恒等式の成り立つ invoice は投影される").isPresent();
     }
 
     @Test

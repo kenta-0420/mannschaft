@@ -54,6 +54,15 @@ class BillingInvoiceProjectionTransactionBoundaryIT extends AbstractBillingInvoi
         }
     }
 
+    /** 制約に触れない正常検体（陽性対照）。CHECK が付いていても投影できるはずのもの。 */
+    private String controlInvoice(String invoiceRef) {
+        String line = StripeWebhookPayloadFixture.lineObject(
+                "il_" + invoiceRef, "BASIC プラン", 10L, 10_000L, 500L, 950L, false, 1000);
+        return StripeWebhookPayloadFixture.invoiceObject(
+                invoiceRef, BILLING_CUSTOMER_REF, BILLING_SUBSCRIPTION_REF, "paid",
+                "jpy", 10_000L, 500L, 950L, 10_450L, line);
+    }
+
     /** line の INSERT が DB 層で必ず失敗する検体（invoice ヘッダは正常）。 */
     private String probeInvoice(String invoiceRef) {
         String line = StripeWebhookPayloadFixture.lineObject(
@@ -72,7 +81,15 @@ class BillingInvoiceProjectionTransactionBoundaryIT extends AbstractBillingInvoi
         assertThat(invoiceRepository.findByPspInvoiceRef("in_ac26"))
                 .as("line が落ちたのに invoice ヘッダだけ commit されているなら境界が張れていない")
                 .isEmpty();
-        assertThat(invoiceLineRepository.count()).as("line も残らない").isZero();
+        assertThat(invoiceLineRepository.findByInvoiceId(
+                new java.util.UUID(0L, 0L))).as("番兵 line は残らない").isEmpty();
+
+        // 陽性対照: 同じ CHECK 制約の下でも、番兵に触れない検体はきちんと投影されること。
+        // これが無いと「そもそも何も投影していない」状態でも緑になり、境界を測ったことにならない。
+        postSigned(StripeWebhookPayloadFixture.event(
+                "evt_ac26_control", "invoice.paid", controlInvoice("in_ac26_control")));
+        assertThat(invoiceRepository.findByPspInvoiceRef("in_ac26_control"))
+                .as("陽性対照: CHECK に触れない検体は投影される").isPresent();
     }
 
     @Test
@@ -88,6 +105,16 @@ class BillingInvoiceProjectionTransactionBoundaryIT extends AbstractBillingInvoi
                 .orElseThrow().getCurrentPeriodEnd())
                 .as("invoice 投影と契約期間延長は一体に成否する（片方だけ commit されない）")
                 .isEqualTo(before);
+
+        // 陽性対照: 落ちない検体なら期間が実際に延びること（延びない実装でも緑にならないように）。
+        postSigned(StripeWebhookPayloadFixture.event(
+                "evt_ac20tx_control", "invoice.paid", controlInvoice("in_ac20tx_control")));
+        assertThat(billingContractRepository.findByIdAndDeletedAtIsNull(billingContractId)
+                .orElseThrow().getCurrentPeriodEnd())
+                .as("陽性対照: 正常な invoice.paid では期間が延長される")
+                .isEqualTo(java.time.LocalDateTime.of(2026, 2, 1, 0, 0));
+        assertThat(invoiceRepository.findByPspInvoiceRef("in_ac20tx_control"))
+                .as("陽性対照: 投影も成立する").isPresent();
     }
 
     @Test
