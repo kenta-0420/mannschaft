@@ -22,9 +22,10 @@ import com.mannschaft.app.todo.repository.TodoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.HashSet;
 import java.util.List;
@@ -74,16 +75,27 @@ public class MilestoneNotificationListener {
      * </ol>
      * </p>
      *
-     * <p>{@link Async} 指定により、元トランザクションの commit 後に非同期で実行される
-     * （{@link com.mannschaft.app.config.AsyncConfig} により {@code @EnableAsync} 済み）。
-     * 通知送信の遅延・失敗が TODO ステータス変更トランザクションに影響を与えないよう分離する。</p>
+     * <p>Issue #2990 L4 で是正。是正前は素の {@code @EventListener} + executor 無指定の
+     * {@code @Async} であり、javadoc は「元トランザクションの commit 後に実行される」と述べていたが
+     * <b>事実ではなかった</b>。{@code @EventListener} は {@code publishEvent} の時点、すなわち
+     * {@code MilestoneGateService} の業務トランザクションが<b>まだコミットしていない</b>間に発火し、
+     * {@code @Async} によって直ちに別スレッド・別コネクションへ渡されていた。その結果:</p>
+     * <ul>
+     *   <li>リスナーが {@code milestoneRepository.findById} 等で読み直す内容は、業務TXの未コミット変更を
+     *       見られない。アンロック直後のマイルストーンが「見当たらず」でスキップされる競合があった</li>
+     *   <li>業務TXがあとからロールバックしても通知だけが残る「逆向きの不整合」が通っていた</li>
+     * </ul>
+     * <p>{@code @TransactionalEventListener(AFTER_COMMIT)} により業務コミット後の発火を保証し、
+     * executor を {@code event-pool} に明示する（無指定でも {@code @Primary} で同じプールへ載るが、
+     * 番人が要求する明示指定に揃える）。通知送信の遅延・失敗が TODO ステータス変更トランザクションへ
+     * 影響しない点は従来どおり。</p>
      *
      * @param event マイルストーンアンロックイベント
      */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。マイルストーン解放の通知。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
-    @Async
-    @EventListener
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onMilestoneUnlocked(MilestoneUnlockedEvent event) {
         ProjectMilestoneEntity milestone = milestoneRepository.findById(event.milestoneId()).orElse(null);
         if (milestone == null) {
