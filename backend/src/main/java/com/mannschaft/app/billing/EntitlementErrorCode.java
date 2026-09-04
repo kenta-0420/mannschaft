@@ -120,7 +120,26 @@ public enum EntitlementErrorCode implements ErrorCode {
     STRIPE_UNAVAILABLE("ENTITLEMENT_025", "決済サービスを利用できません", Severity.ERROR),
 
     /** 旧有償 POST は Billing Center flow が必要（409）。 */
-    BILLING_FLOW_REQUIRED("ENTITLEMENT_026", "料金・契約画面から手続きを開始してください", Severity.WARN);
+    BILLING_FLOW_REQUIRED("ENTITLEMENT_026", "料金・契約画面から手続きを開始してください", Severity.WARN),
+
+    /**
+     * Stripe Customer Portal の configuration が起動時照合を通っていない（503）。
+     *
+     * <p>PR5 Billing Center（05 §348）で追補採番。専用 Portal configuration が取得不能、又は
+     * {@code subscription_update} / {@code subscription_cancel} / {@code subscription_pause} が
+     * 無効になっていない場合、Portal を開くと PLAN/ADDON を Portal から変更・解約できてしまう。
+     * これを構造的に不可能にするため、照合が成立していない間は Portal 開始<b>だけ</b>を
+     * fail-closed で拒否する（アプリ自体は起動し、他の課金機能は使える）。</p>
+     */
+    PORTAL_UNAVAILABLE("ENTITLEMENT_027", "支払い管理画面を一時的に利用できません", Severity.ERROR),
+
+    /**
+     * Portal セッション発行が scope ごとの上限（10 回/時）に達した（429）。
+     *
+     * <p>PR5 Billing Center（05 §370 の rate limit 表）で追補採番。</p>
+     */
+    PORTAL_RATE_LIMITED("ENTITLEMENT_028", "支払い管理画面を開く回数が上限に達しました。しばらく待って再度お試しください",
+            Severity.WARN);
 
     private final String code;
     private final String message;

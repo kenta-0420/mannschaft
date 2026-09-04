@@ -529,7 +529,16 @@ public enum AuditEventType {
      * metadata に isQualifiedInvoicer・invoiceRegistrationNumber の旧値→新値を含める。
      * 登録番号は国税庁が公表する公開情報のため平文で記録してよい。
      */
-    RECEIPT_SETTINGS_UPDATED(AuditEventCategory.RECEIPT);
+    RECEIPT_SETTINGS_UPDATED(AuditEventCategory.RECEIPT),
+
+    // ─── BILLING (F20.1 課金センター) ──────────────────────────────
+    /**
+     * Stripe Customer Portal のセッションを発行した（PR5 AC-72・05 §370）。
+     * userId=操作者 / teamId または organizationId=対象スコープ /
+     * metadata に scopeKind・scopeId・billingCustomerId を含める。
+     * <b>Portal URL は含めない</b>（正本 §370: URL・payload は監査から除外）。
+     */
+    BILLING_PORTAL_OPENED(AuditEventCategory.BILLING);
 
     private final AuditEventCategory category;
 }

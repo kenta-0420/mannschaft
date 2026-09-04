@@ -37,5 +37,7 @@ public enum AuditEventCategory {
     /** 柱②-2 販促プロビジョニング（PROVISIONED作成・招待発行/再送/取消/承諾）。 */
     PROVISIONING,
     /** F08.4 領収書（発行者設定の変更等）。 */
-    RECEIPT
+    RECEIPT,
+    /** F20.1 課金センター（Checkout / Portal / 請求書閲覧 / 契約変更等）。 */
+    BILLING
 }
