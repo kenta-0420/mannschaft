@@ -14,7 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
 
 /**
  * 領収書番号の採番シーケンス（F08.12 §3.2）。
@@ -52,13 +51,11 @@ public class ReceiptNumberSequenceEntity extends UuidV7Entity {
     @Builder.Default
     private Integer nextNumber = 1;
 
-    @Column(name = "created_at", nullable = false)
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
-
-    @Column(name = "updated_at", nullable = false)
-    @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    // created_at / updated_at は DB 既定（DEFAULT CURRENT_TIMESTAMP / ON UPDATE
+    // CURRENT_TIMESTAMP）が全て面倒を見るため、Java 側にフィールドを持たない。
+    // 本エンティティのロジックはこれらを読まないので、LocalDateTime を新規に増やして
+    // 時刻方針（docs/architecture/datetime_policy_utc_instant_vs_wallclock.md）に
+    // 反する必要はない。
 
     /**
      * 番号レンジを確保し、開始番号を返す。
@@ -76,7 +73,6 @@ public class ReceiptNumberSequenceEntity extends UuidV7Entity {
         }
         int start = this.nextNumber;
         this.nextNumber = start + count;
-        this.updatedAt = LocalDateTime.now();
         return start;
     }
 }

@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * 領収書 PDF 原本アーカイブ（F08.12 §3.3。電子帳簿保存法）。
@@ -60,9 +60,13 @@ public class ReceiptPdfArchiveEntity extends UuidV7Entity {
     @Column(name = "byte_size", nullable = false)
     private Long byteSize;
 
+    /**
+     * 保存日時。<b>起きた瞬間</b>であるため {@link Instant} を用いる
+     * （時刻方針 4 章の型対応表。LocalDateTime は瞬間か壁時計か型から判別できないため新規禁止）。
+     */
     @Column(name = "archived_at", nullable = false)
     @Builder.Default
-    private LocalDateTime archivedAt = LocalDateTime.now();
+    private Instant archivedAt = Instant.now();
 
     /** 保存期限（{@code archived_at} + 7 年）。 */
     @Column(name = "retention_until", nullable = false)
@@ -76,11 +80,6 @@ public class ReceiptPdfArchiveEntity extends UuidV7Entity {
     @Column(name = "retention_backend", nullable = false, length = 30)
     private String retentionBackend;
 
-    @Column(name = "created_at", nullable = false)
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
-
-    @Column(name = "updated_at", nullable = false)
-    @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    // created_at / updated_at は DB 既定に委ねる（フィールドを持たない）。理由は
+    // ReceiptNumberSequenceEntity と同じ。
 }

@@ -1,6 +1,7 @@
 package com.mannschaft.app.receipt.service;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.receipt.ReceiptScopeType;
 import com.mannschaft.app.receipt.ReceiptScopes;
 import com.mannschaft.app.receipt.dto.IssuerSettingsResponse;
@@ -16,6 +17,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
 
 /**
  * 運営コンソール（SYSTEM_ADMIN）向けの運営領収書サービス（F08.12 §4.1）。
@@ -106,9 +110,20 @@ public class PlatformReceiptService {
                 r.getAmountExclTax(),
                 r.getIsQualifiedInvoice(),
                 r.getInvoiceRegistrationNumber(),
-                r.getIssuedAt(),
-                r.getVoidedAt(),
+                toInstant(r.getIssuedAt()),
+                toInstant(r.getVoidedAt()),
                 r.getPdfStatus() == null ? null : r.getPdfStatus().name());
+    }
+
+    /**
+     * 既存の {@code LocalDateTime} 列を、API 公開用の瞬間（{@link Instant}）へ変換する。
+     *
+     * <p>基準ゾーンは時刻方針 §7 が「既存の唯一の正」と定める
+     * {@code UserZoneLocalDateTimeParser.SERVER_ZONE} を参照する。ゾーンのリテラル直書きや
+     * {@code ZoneId.systemDefault()} は方針で禁じられている。</p>
+     */
+    private static Instant toInstant(LocalDateTime value) {
+        return value == null ? null : value.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant();
     }
 
     /** 未登録時に返す空の設定（スコープだけが確定している状態）。 */

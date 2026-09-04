@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * 運営領収書の一覧要素（F08.12 §4.1）。
@@ -27,8 +27,14 @@ public class PlatformReceiptSummaryResponse {
     private final Boolean isQualifiedInvoice;
     /** 未登録期に発行したものは null。 */
     private final String invoiceRegistrationNumber;
-    private final LocalDateTime issuedAt;
-    private final LocalDateTime voidedAt;
+    /**
+     * 発行日時。<b>起きた瞬間</b>なので {@link Instant} で公開する（時刻方針 4 章）。
+     * 元の {@code receipts.issued_at} は既存の {@code LocalDateTime} 列であるため、
+     * 変換には方針 §7 が「既存の唯一の正」と定める
+     * {@code UserZoneLocalDateTimeParser.SERVER_ZONE} を用いる（ゾーンの直書きはしない）。
+     */
+    private final Instant issuedAt;
+    private final Instant voidedAt;
     /** {@code READY} / {@code GENERATING} / {@code FAILED}。列を読む（NULL 判定からの導出はしない）。 */
     private final String pdfStatus;
 }

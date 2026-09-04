@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -182,9 +183,13 @@ public class ReceiptEntity extends BaseEntity {
     @Builder.Default
     private Integer pdfAttemptCount = 0;
 
-    /** 直近の失敗時刻。 */
+    /**
+     * 直近の失敗時刻。<b>起きた瞬間</b>であるため {@link Instant} を用いる
+     * （時刻方針 4 章。本エンティティの既存 LocalDateTime 列は凍結された負債であり、
+     * 新規追加分は新しい型で書く）。
+     */
     @Column(name = "pdf_failed_at")
-    private LocalDateTime pdfFailedAt;
+    private Instant pdfFailedAt;
 
     /** 直近の失敗理由（エラーコード + 要約。スタックトレースは入れない）。 */
     @Column(name = "pdf_failure_reason", length = 500)
@@ -325,7 +330,7 @@ public class ReceiptEntity extends BaseEntity {
     public void markPdfFailed(String failureReason) {
         this.pdfStatus = ReceiptPdfStatus.FAILED;
         this.pdfAttemptCount = (this.pdfAttemptCount == null ? 0 : this.pdfAttemptCount) + 1;
-        this.pdfFailedAt = LocalDateTime.now();
+        this.pdfFailedAt = Instant.now();
         this.pdfFailureReason = failureReason == null ? null
                 : failureReason.substring(0, Math.min(failureReason.length(), 500));
     }
