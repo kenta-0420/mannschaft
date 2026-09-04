@@ -1,7 +1,7 @@
 package com.mannschaft.app.receipt.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SystemUsers;
 import com.mannschaft.app.receipt.ReceiptErrorCode;
 import com.mannschaft.app.receipt.ReceiptScopeType;
 import com.mannschaft.app.receipt.ReceiptScopes;
@@ -51,7 +51,6 @@ public class PlatformReceiptIssueService {
     private final ReceiptRepository receiptRepository;
     private final ReceiptIssuerSettingsRepository issuerSettingsRepository;
     private final ReceiptNumberSequenceService numberSequenceService;
-    private final AccessControlService accessControlService;
 
     /**
      * 発行結果。既存を返した場合は {@code newlyIssued=false}。
@@ -107,8 +106,10 @@ public class PlatformReceiptIssueService {
                 .findByScopeTypeAndScopeId(ReceiptScopeType.PLATFORM, ReceiptScopes.PLATFORM_SCOPE_ID)
                 .orElseThrow(() -> new BusinessException(ReceiptErrorCode.PLATFORM_SETTINGS_NOT_FOUND));
 
-        Long issuedBy = accessControlService.findPlatformActorUserId()
-                .orElseThrow(() -> new BusinessException(ReceiptErrorCode.PLATFORM_SETTINGS_NOT_FOUND));
+        // 発行者は「システム自動発行」を表すシステムユーザー（V1.012 seed。id=1）に固定する。
+        // 実在の運営者個人を割り当てると、実際には操作していない人物が法的文書の発行者として
+        // 記録され続けるうえ、監査時に人が出したのか自動発行かを区別できなくなる。
+        Long issuedBy = SystemUsers.SYSTEM_USER_ID;
 
         String periodKey = ReceiptNumberSequenceService.periodKeyOf(command.paymentDate());
         int number = numberSequenceService.reserveRange(
