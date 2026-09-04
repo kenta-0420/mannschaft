@@ -61933,6 +61933,7 @@ export interface components {
         };
         ShiftSlotResponse: {
             assignedUserIds?: number[];
+            assignmentMasked?: boolean;
             /** Format: int64 */
             id?: number;
             note?: string;

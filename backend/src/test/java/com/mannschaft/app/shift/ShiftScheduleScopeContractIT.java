@@ -91,7 +91,7 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long supporterTeamAId;  // TEAM A の SUPPORTER（参照系の下限境界）
     private Long outsiderId;        // どのチームにも属さない認証済みユーザー
 
-    private Long scheduleAId;    // TEAM A のシフトスケジュール（DRAFT）
+    private Long scheduleAId;    // TEAM A のシフトスケジュール（PUBLISHED）
 
     @BeforeEach
     void setUp() {
@@ -121,7 +121,13 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
                 .periodType(ShiftPeriodType.WEEKLY)
                 .startDate(LocalDate.of(2026, 3, 1))
                 .endDate(LocalDate.of(2026, 3, 7))
-                .status(ShiftScheduleStatus.DRAFT)
+                // CMP-260826-2127（AC-13）: 本 IT が固定するのは<b>認可契約</b>（誰が触れるか）であり
+                // 可視性ではない。未公開シフト表の遮断が入ると DRAFT では一般メンバーの正常系が 404 になり、
+                // 「自チームの公開シフトを読める」という日常正常系の番人が消えてしまう。
+                // よって期待値でなくフィクスチャを公開済みへ直す（DRAFT に対する 404 は
+                // ShiftUnpublishedScheduleVisibilityContractIT が別途固定している）。
+                .status(ShiftScheduleStatus.PUBLISHED)
+                .publishedAt(java.time.LocalDateTime.of(2026, 2, 20, 10, 0))
                 .createdBy(adminTeamAId)
                 .build());
         scheduleAId = scheduleA.getId();

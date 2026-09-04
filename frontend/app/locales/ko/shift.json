@@ -152,7 +152,9 @@
       "dayOfWeek": "요일",
       "dayOfWeekHint": "선택한 요일에만 슬롯을 생성합니다",
       "saveSuccess": "슬롯을 저장했습니다",
-      "deleteSuccess": "슬롯을 삭제했습니다"
+      "deleteSuccess": "슬롯을 삭제했습니다",
+      "assignmentMasked": "조정 중",
+      "assignmentMaskedHint": "공개 전이므로 배정은 표시되지 않습니다"
     },
     "requests": {
       "submissionRate": "제출률",
