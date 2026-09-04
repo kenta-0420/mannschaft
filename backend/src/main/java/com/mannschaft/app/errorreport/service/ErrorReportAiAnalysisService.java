@@ -84,9 +84,16 @@ public class ErrorReportAiAnalysisService {
      *
      * <p><b>本メソッドを外側トランザクションの中から呼んではならない。</b>
      * 呼ぶと②の最中に接続が握られ、上記の問題がそのまま復活する。
-     * 唯一の同期呼び出し元である {@code SystemAdminErrorReportController#reanalyze} は
-     * {@code @Transactional} を持たない。この制約は
-     * {@code ErrorReportAiAnalysisTransactionBoundaryTest} が機械的に固定している。</p>
+     * 現在の呼び出し元は次の3箇所で、いずれも {@code @Transactional} を持たない
+     * （クラスレベルにも無い）。</p>
+     * <ul>
+     *   <li>{@code SystemAdminErrorReportController#reanalyze} — 管理者の手動再分析 API（同期）</li>
+     *   <li>{@link ErrorReportAiAnalysisAsyncRunner#analyzeAsync} — 即時分析（{@code ai-analysis-pool} 上の非同期）</li>
+     *   <li>{@link ErrorReportAiAnalysisBatch}{@code #executeAt} — 5 分間隔の未分析レポート拾い直しバッチ</li>
+     * </ul>
+     * <p>この制約は {@code ErrorReportAiAnalysisTransactionBoundaryTest} が機械的に固定している。
+     * 同テストは本メソッドの呼び出し元をバイトコードから<b>自動列挙</b>するため、
+     * 呼び出し元が増えても検査対象に自動で入る（テストの手動更新は不要）。</p>
      *
      * @param errorReportId エラーレポート ID
      * @param createdBy     操作者ユーザー ID
@@ -158,7 +165,16 @@ public class ErrorReportAiAnalysisService {
         }
 
         // ④ CRITICAL のみ通知。記録済みの分析結果を通知失敗で巻き戻さないため、TX の外・catch の外で行う。
-        //    通知の失敗は握り潰さず ERROR ログで可視化したうえで、分析結果自体は呼び出し元へ返す。
+        //
+        //    【握り潰しの実態（誇張しないための注記）】
+        //    本 PR で握り潰し（catch して黙る）を実際に削除したのは
+        //    NotificationCreditAlertSender の *Now 2メソッドだけであり、この経路ではない。
+        //    ErrorReportNotifier#notifyAiAnalysisCompleted は本体を丸ごと try/catch で包んで
+        //    log.warn するため、通知失敗はそこで止まり、下の catch には到達しない
+        //    （＝下の log.error は実質到達不能で、保険としてのみ置いてある）。
+        //    したがって「この経路の通知失敗は WARN でのみ可視化され、握り潰しは残っている」が正しい。
+        //    ErrorReportNotifier 側の握り潰し解消は影響範囲が本メソッド以外の通知経路にも及ぶため、
+        //    本 PR のスコープ外として別 Issue で扱う。
         if (report.getSeverity() == ErrorReportSeverity.CRITICAL) {
             try {
                 notifier.notifyAiAnalysisCompleted(report, entity);
