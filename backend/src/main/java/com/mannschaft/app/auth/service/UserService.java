@@ -139,6 +139,29 @@ public class UserService {
     }
 
     /**
+     * メールアドレスと検証済み（{@code status=ACTIVE}）かどうかを返す（柱②-2 販促プロビジョニング
+     * 招待承諾の AC4: 招待先メールと承諾者の検証済みメールの一致検証用）。
+     *
+     * <p>D-5（クロスドメイン Repository 依存禁止）に従い、他ドメインは {@code UserRepository}
+     * を直接 DI せず本メソッド（Service 経由）を使うこと。</p>
+     *
+     * @param userId ユーザーID
+     * @return メールアドレスと検証済みフラグ。ユーザーが存在しない場合は
+     *         {@link java.util.Optional#empty()}
+     */
+    public java.util.Optional<VerifiedEmail> findVerifiedEmail(Long userId) {
+        return userRepository.findById(userId)
+                .map(u -> new VerifiedEmail(u.getEmail(), u.getStatus() == UserEntity.UserStatus.ACTIVE));
+    }
+
+    /**
+     * {@link #findVerifiedEmail} の戻り値。他ドメインへ {@link UserEntity} を漏らさないための
+     * 最小内部値（D-1）。
+     */
+    public record VerifiedEmail(String email, boolean verified) {
+    }
+
+    /**
      * 個人札の owner 表示用情報を一括取得する（N+1 防止）。
      *
      * <p>ACTIVE 以外（凍結・退会・アーカイブ等）は返さず、呼び出し側を fail-closed にする。</p>

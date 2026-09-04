@@ -1131,6 +1131,10 @@
       "description": "F04.2 チャットスレッド→掲示板移行"
     },
     {
+      "name": "課金 - 見積り/Checkout",
+      "description": "PR4 quote 発行と Stripe Checkout Session 作成"
+    },
+    {
       "name": "領収書発行者設定",
       "description": "F08.4 領収書発行者設定CRUD"
     },
@@ -25708,94 +25712,6 @@
         "responses": {
           "200": {
             "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/receipt-settings": {
-      "get": {
-        "tags": [
-          "領収書発行者設定"
-        ],
-        "summary": "発行者設定取得",
-        "operationId": "getSettings_13",
-        "parameters": [
-          {
-            "name": "scopeType",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "scopeId",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "取得成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseIssuerSettingsResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "領収書発行者設定"
-        ],
-        "summary": "発行者設定更新",
-        "operationId": "upsertSettings",
-        "parameters": [
-          {
-            "name": "scopeType",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "scopeId",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateIssuerSettingsRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "更新成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseIssuerSettingsResponse"
-                }
-              }
-            }
           }
         }
       }
@@ -53292,6 +53208,125 @@
         }
       }
     },
+    "/api/v1/system-admin/provisioning/teams": {
+      "post": {
+        "tags": [
+          "販促プロビジョニング（SYSTEM_ADMIN）"
+        ],
+        "summary": "チームをPROVISIONED状態で事前作成し、管理予定者へADMIN招待を送る",
+        "operationId": "createTeam_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvisioningTeamCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisioningInvitationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/provisioning/organizations": {
+      "post": {
+        "tags": [
+          "販促プロビジョニング（SYSTEM_ADMIN）"
+        ],
+        "summary": "組織をPROVISIONED状態で事前作成し、管理予定者へADMIN招待を送る",
+        "operationId": "createOrganization",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvisioningOrganizationCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisioningInvitationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/provisioning/invitations/{invitationId}/resend": {
+      "post": {
+        "tags": [
+          "販促プロビジョニング（SYSTEM_ADMIN）"
+        ],
+        "summary": "招待を再送する（旧トークンは失効し、新しいトークンを発行する）",
+        "operationId": "resend",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisioningInvitationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/provisioning/invitations/{invitationId}/cancel": {
+      "post": {
+        "tags": [
+          "販促プロビジョニング（SYSTEM_ADMIN）"
+        ],
+        "summary": "招待を取消す",
+        "operationId": "cancel_5",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/nav-features": {
       "get": {
         "tags": [
@@ -58161,7 +58196,7 @@
           "F03.11 募集型予約 / 募集枠"
         ],
         "summary": "募集枠 主催者キャンセル",
-        "operationId": "cancel_5",
+        "operationId": "cancel_6",
         "parameters": [
           {
             "name": "id",
@@ -59257,6 +59292,68 @@
         }
       }
     },
+    "/api/v1/provisioning/invitations/preview": {
+      "post": {
+        "tags": [
+          "販促プロビジョニング招待（承諾者側）"
+        ],
+        "summary": "招待トークンの下見（承諾前確認画面用）",
+        "operationId": "preview_3",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvisioningInvitationAcceptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisioningInvitationPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/provisioning/invitations/accept": {
+      "post": {
+        "tags": [
+          "販促プロビジョニング招待（承諾者側）"
+        ],
+        "summary": "招待トークンを承諾する（ADMIN役割+membership付与→スコープACTIVE化）",
+        "operationId": "accept_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvisioningInvitationAcceptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisioningInvitationAcceptResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/point-cards": {
       "get": {
         "tags": [
@@ -59814,7 +59911,7 @@
           "組織管理"
         ],
         "summary": "組織作成",
-        "operationId": "createOrganization",
+        "operationId": "createOrganization_1",
         "requestBody": {
           "content": {
             "application/json": {
@@ -62608,7 +62705,7 @@
         "tags": [
           "organization-advertiser-messaging-campaign-controller"
         ],
-        "operationId": "preview_3",
+        "operationId": "preview_4",
         "parameters": [
           {
             "name": "organizationId",
@@ -62778,7 +62875,7 @@
         "tags": [
           "organization-ad-messaging-campaign-transition-controller"
         ],
-        "operationId": "cancel_6",
+        "operationId": "cancel_7",
         "parameters": [
           {
             "name": "organizationId",
@@ -66709,7 +66806,7 @@
           "封緘解除申請（F09.15）"
         ],
         "summary": "封緘解除申請のキャンセル（申請者本人または ADMIN）",
-        "operationId": "cancel_7",
+        "operationId": "cancel_8",
         "parameters": [
           {
             "name": "orgId",
@@ -68417,7 +68514,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "配信キャンセル",
-        "operationId": "cancel_8",
+        "operationId": "cancel_9",
         "parameters": [
           {
             "name": "orgId",
@@ -69647,7 +69744,7 @@
         ],
         "summary": "送り出し取消",
         "description": "手放す側 org ADMIN のみ（応答前 DISPATCHED のみ）→ CANCELLED",
-        "operationId": "cancel_9",
+        "operationId": "cancel_10",
         "parameters": [
           {
             "name": "orgId",
@@ -70880,7 +70977,7 @@
           "組織ダイレクトメール"
         ],
         "summary": "組織メールプレビュー",
-        "operationId": "preview_4",
+        "operationId": "preview_5",
         "parameters": [
           {
             "name": "orgId",
@@ -74774,7 +74871,7 @@
           "personal-market-listing-controller"
         ],
         "summary": "個人札の取消",
-        "operationId": "cancel_10",
+        "operationId": "cancel_11",
         "parameters": [
           {
             "name": "id",
@@ -75195,6 +75292,48 @@
         }
       }
     },
+    "/api/v1/me/billing/quotes": {
+      "post": {
+        "tags": [
+          "課金 - 見積り/Checkout"
+        ],
+        "summary": "見積り発行",
+        "description": "scope は本文で指定し、操作者の課金管理権限をサービス層で検証する。Idempotency-Key 必須。",
+        "operationId": "createQuote",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBillingQuoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingQuoteResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/billing/contracts": {
       "post": {
         "tags": [
@@ -75230,6 +75369,48 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/billing/checkout-sessions": {
+      "post": {
+        "tags": [
+          "課金 - 見積り/Checkout"
+        ],
+        "summary": "Checkout Session 作成",
+        "description": "quote の所有者・scope・価格・月境界を再検証してから Stripe Checkout を作成する。Idempotency-Key 必須。",
+        "operationId": "createCheckoutSession",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBillingCheckoutSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCheckoutSessionResponse"
                 }
               }
             }
@@ -83513,7 +83694,7 @@
         "tags": [
           "ad-messaging-campaign-transition-controller"
         ],
-        "operationId": "cancel_11",
+        "operationId": "cancel_12",
         "parameters": [
           {
             "name": "id",
@@ -84457,6 +84638,24 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "アップロード成功",
@@ -89985,7 +90184,7 @@
           "予約設定管理"
         ],
         "summary": "予約設定（チームポリシー）取得",
-        "operationId": "getSettings_14",
+        "operationId": "getSettings_13",
         "parameters": [
           {
             "name": "teamId",
@@ -90530,7 +90729,7 @@
           "順番待ち設定管理"
         ],
         "summary": "設定取得",
-        "operationId": "getSettings_15",
+        "operationId": "getSettings_14",
         "parameters": [
           {
             "name": "teamId",
@@ -93444,7 +93643,7 @@
           "チーム確認通知"
         ],
         "summary": "確認通知キャンセル",
-        "operationId": "cancel_12",
+        "operationId": "cancel_13",
         "parameters": [
           {
             "name": "teamId",
@@ -94148,7 +94347,7 @@
           "チームシフト設定"
         ],
         "summary": "チームシフト設定取得（メンバー限定）",
-        "operationId": "getSettings_16",
+        "operationId": "getSettings_15",
         "parameters": [
           {
             "name": "slug",
@@ -97328,7 +97527,7 @@
         ],
         "summary": "代理承認",
         "description": "F03.10 §4.1: 代理人が代理を承認する",
-        "operationId": "accept_1",
+        "operationId": "accept_2",
         "parameters": [
           {
             "name": "delegationId",
@@ -101604,7 +101803,7 @@
           "協会請求（協会視点）"
         ],
         "summary": "協会請求の取消（CANCELLED）",
-        "operationId": "cancel_13",
+        "operationId": "cancel_14",
         "parameters": [
           {
             "name": "orgId",
@@ -102112,7 +102311,7 @@
           "組織確認通知"
         ],
         "summary": "確認通知キャンセル（組織）",
-        "operationId": "cancel_14",
+        "operationId": "cancel_15",
         "parameters": [
           {
             "name": "orgId",
@@ -104137,7 +104336,7 @@
         ],
         "summary": "代理承認",
         "description": "F03.10 §4.2: 代理人が代理を承認する",
-        "operationId": "accept_2",
+        "operationId": "accept_3",
         "parameters": [
           {
             "name": "delegationId",
@@ -106387,6 +106586,94 @@
         }
       }
     },
+    "/api/v1/admin/receipt-settings": {
+      "get": {
+        "tags": [
+          "領収書発行者設定"
+        ],
+        "summary": "発行者設定取得",
+        "operationId": "getSettings_16",
+        "parameters": [
+          {
+            "name": "scopeType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseIssuerSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "領収書発行者設定"
+        ],
+        "summary": "発行者設定更新（差分更新）",
+        "operationId": "upsertSettings",
+        "parameters": [
+          {
+            "name": "scopeType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIssuerSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseIssuerSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/receipt-queue/{id}/skip": {
       "patch": {
         "tags": [
@@ -107228,6 +107515,122 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/billing/portal/return": {
+      "get": {
+        "tags": [
+          "billing-return-controller"
+        ],
+        "operationId": "portalReturn",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billing_return_state",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/billing/payment-action/return": {
+      "get": {
+        "tags": [
+          "billing-return-controller"
+        ],
+        "operationId": "paymentActionReturn",
+        "parameters": [
+          {
+            "name": "billing_return_state",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/billing/checkout/success": {
+      "get": {
+        "tags": [
+          "billing-return-controller"
+        ],
+        "operationId": "checkoutSuccess",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billing_return_state",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/billing/checkout/cancel": {
+      "get": {
+        "tags": [
+          "billing-return-controller"
+        ],
+        "operationId": "checkoutCancel",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billing_return_state",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -110155,7 +110558,9 @@
                   "SHIFT",
                   "BULLETIN",
                   "TOURNAMENT",
-                  "MATCH"
+                  "MATCH",
+                  "PROVISIONING",
+                  "RECEIPT"
                 ]
               }
             }
@@ -117561,7 +117966,9 @@
                   "SHIFT",
                   "BULLETIN",
                   "TOURNAMENT",
-                  "MATCH"
+                  "MATCH",
+                  "PROVISIONING",
+                  "RECEIPT"
                 ]
               }
             }
@@ -119875,13 +120282,37 @@
         }
       }
     },
+    "/api/v1/system-admin/provisioning/invitations": {
+      "get": {
+        "tags": [
+          "販促プロビジョニング（SYSTEM_ADMIN）"
+        ],
+        "summary": "プロビジョニング招待の一覧を取得する",
+        "operationId": "list_80",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProvisioningInvitationResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/promotion-billing": {
       "get": {
         "tags": [
           "プロモーション課金（SYSTEM_ADMIN）"
         ],
         "summary": "課金状況一覧",
-        "operationId": "list_80",
+        "operationId": "list_81",
         "parameters": [
           {
             "name": "billingStatus",
@@ -120355,7 +120786,7 @@
           "システム管理 - エラーレポート"
         ],
         "summary": "エラーレポート一覧取得",
-        "operationId": "list_81",
+        "operationId": "list_82",
         "parameters": [
           {
             "name": "status",
@@ -122022,7 +122453,7 @@
         ],
         "summary": "通報一覧",
         "description": "status / reasonCode で任意に絞り込んだ通報を created_at DESC で取得する。campaignId（メッセージ型）/ operationalCampaignId（運用型）を併記する。",
-        "operationId": "list_82",
+        "operationId": "list_83",
         "parameters": [
           {
             "name": "status",
@@ -122191,7 +122622,7 @@
         "tags": [
           "system-admin-ad-creative-controller"
         ],
-        "operationId": "list_83",
+        "operationId": "list_84",
         "parameters": [
           {
             "name": "status",
@@ -122271,7 +122702,7 @@
         ],
         "summary": "審査キュー一覧",
         "description": "運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。",
-        "operationId": "list_84",
+        "operationId": "list_85",
         "parameters": [
           {
             "name": "status",
@@ -123391,7 +123822,7 @@
           "シフト予算 失敗イベント (F08.7)"
         ],
         "summary": "失敗イベント一覧を取得 (status で絞り込み可、新しい順)",
-        "operationId": "list_85",
+        "operationId": "list_86",
         "parameters": [
           {
             "name": "X-Organization-Id",
@@ -124638,7 +125069,7 @@
         ],
         "summary": "キャンセル料記録の一覧",
         "description": "受取先側の管理者・受取先本人・運営管理者が、自分が受け取るべきキャンセル料の記録を一覧する（免除対象を選ぶための一覧）。ページングはカーソル方式で、続きは meta.nextCursor を cursor に渡して取得する。",
-        "operationId": "list_86",
+        "operationId": "list_87",
         "parameters": [
           {
             "name": "status",
@@ -131439,7 +131870,7 @@
         "tags": [
           "org-onboarding-progress-controller"
         ],
-        "operationId": "list_87",
+        "operationId": "list_88",
         "parameters": [
           {
             "name": "orgId",
@@ -132452,7 +132883,7 @@
         "tags": [
           "org-budget-transaction-controller"
         ],
-        "operationId": "list_88",
+        "operationId": "list_89",
         "parameters": [
           {
             "name": "orgId",
@@ -132593,7 +133024,9 @@
                   "SHIFT",
                   "BULLETIN",
                   "TOURNAMENT",
-                  "MATCH"
+                  "MATCH",
+                  "PROVISIONING",
+                  "RECEIPT"
                 ]
               }
             }
@@ -132930,7 +133363,7 @@
         "tags": [
           "onboarding-me-controller"
         ],
-        "operationId": "list_89",
+        "operationId": "list_90",
         "parameters": [
           {
             "name": "status",
@@ -133675,7 +134108,7 @@
           "村投稿主体 (F17.1)"
         ],
         "summary": "村でなれる投稿主体一覧を取得する（村人のみ）",
-        "operationId": "list_90",
+        "operationId": "list_91",
         "parameters": [
           {
             "name": "villageId",
@@ -133782,7 +134215,7 @@
           "個人メモ-添付"
         ],
         "summary": "メモ添付一覧",
-        "operationId": "list_91",
+        "operationId": "list_92",
         "parameters": [
           {
             "name": "noteId",
@@ -136903,7 +137336,7 @@
           "家族個人時間割閲覧"
         ],
         "summary": "家族メンバーの個人時間割一覧（status\u003dACTIVE のみ、共有設定済みのみ）",
-        "operationId": "list_92",
+        "operationId": "list_93",
         "parameters": [
           {
             "name": "teamId",
@@ -142109,7 +142542,9 @@
                   "SHIFT",
                   "BULLETIN",
                   "TOURNAMENT",
-                  "MATCH"
+                  "MATCH",
+                  "PROVISIONING",
+                  "RECEIPT"
                 ]
               }
             }
@@ -143620,7 +144055,7 @@
           "チーム区画申請"
         ],
         "summary": "チーム申請取消",
-        "operationId": "cancel_15",
+        "operationId": "cancel_16",
         "parameters": [
           {
             "name": "teamId",
@@ -144778,7 +145213,7 @@
           "組織区画申請"
         ],
         "summary": "組織申請取消",
-        "operationId": "cancel_16",
+        "operationId": "cancel_17",
         "parameters": [
           {
             "name": "organizationId",
@@ -145295,7 +145730,7 @@
           "継続課金"
         ],
         "summary": "継続課金 期末解約（F08.9 P5）",
-        "operationId": "cancel_17",
+        "operationId": "cancel_18",
         "parameters": [
           {
             "name": "id",
@@ -164824,154 +165259,6 @@
           }
         }
       },
-      "UpdateIssuerSettingsRequest": {
-        "type": "object",
-        "properties": {
-          "address": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 0
-          },
-          "autoResetNumber": {
-            "type": "boolean"
-          },
-          "customFooter": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 0
-          },
-          "defaultSealUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "defaultSealVariant": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 0
-          },
-          "fiscalYearStartMonth": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 12,
-            "minimum": 1
-          },
-          "invoiceRegistrationNumber": {
-            "type": "string",
-            "maxLength": 14,
-            "minLength": 0,
-            "pattern": "^T\\d{13}$"
-          },
-          "isQualifiedInvoicer": {
-            "type": "boolean"
-          },
-          "issuerName": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          },
-          "phone": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 0
-          },
-          "postalCode": {
-            "type": "string",
-            "maxLength": 10,
-            "minLength": 0
-          },
-          "receiptNoteTemplate": {
-            "type": "string"
-          },
-          "receiptNumberPrefix": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 0
-          }
-        },
-        "required": [
-          "isQualifiedInvoicer"
-        ]
-      },
-      "ApiResponseIssuerSettingsResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/IssuerSettingsResponse"
-          }
-        }
-      },
-      "IssuerSettingsResponse": {
-        "type": "object",
-        "properties": {
-          "address": {
-            "type": "string"
-          },
-          "autoResetNumber": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "customFooter": {
-            "type": "string"
-          },
-          "defaultSealUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "defaultSealVariant": {
-            "type": "string"
-          },
-          "fiscalYearStartMonth": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "invoiceRegistrationNumber": {
-            "type": "string"
-          },
-          "isQualifiedInvoicer": {
-            "type": "boolean"
-          },
-          "issuerName": {
-            "type": "string"
-          },
-          "logoStorageKey": {
-            "type": "string"
-          },
-          "nextReceiptNumber": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "phone": {
-            "type": "string"
-          },
-          "postalCode": {
-            "type": "string"
-          },
-          "receiptNoteTemplate": {
-            "type": "string"
-          },
-          "receiptNumberPrefix": {
-            "type": "string"
-          },
-          "scopeId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scopeType": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
       "PermissionGroupRequest": {
         "type": "object",
         "properties": {
@@ -183735,6 +184022,63 @@
           }
         }
       },
+      "ProvisioningTeamCreateRequest": {
+        "type": "object",
+        "properties": {
+          "inviteEmail": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ProvisioningInvitationResponse": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inviteEmail": {
+            "type": "string"
+          },
+          "issuedBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "organizationId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ProvisioningOrganizationCreateRequest": {
+        "type": "object",
+        "properties": {
+          "inviteEmail": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
       "NavFeatureCreateRequest": {
         "type": "object",
         "properties": {
@@ -188171,6 +188515,57 @@
             "type": "string",
             "maxLength": 200,
             "minLength": 0
+          }
+        }
+      },
+      "ProvisioningInvitationAcceptRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ProvisioningInvitationPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inviteEmail": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ProvisioningInvitationAcceptResponse": {
+        "type": "object",
+        "properties": {
+          "organizationId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -193970,6 +194365,130 @@
           "relationship"
         ]
       },
+      "CreateBillingQuoteRequest": {
+        "type": "object",
+        "properties": {
+          "productKey": {
+            "type": "string"
+          },
+          "productKind": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeKind": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "TEAM",
+              "ORG"
+            ]
+          }
+        }
+      },
+      "ApiResponseBillingQuoteResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingQuoteResponse"
+          }
+        }
+      },
+      "BillingQuoteResponse": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "initialTotal": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "nextMonthlyTotal": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "productKey": {
+            "type": "string"
+          },
+          "productKind": {
+            "type": "string",
+            "enum": [
+              "PLAN",
+              "ADDON"
+            ]
+          },
+          "quoteId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "Money": {
+        "type": "object",
+        "properties": {
+          "amountExcludingTax": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amountIncludingTax": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "taxAmount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "taxName": {
+            "type": "string"
+          },
+          "taxRateBasisPoints": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "CreateBillingCheckoutSessionRequest": {
+        "type": "object",
+        "properties": {
+          "quoteId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ApiResponseCheckoutSessionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CheckoutSessionResponse"
+          }
+        }
+      },
+      "CheckoutSessionResponse": {
+        "type": "object",
+        "properties": {
+          "checkoutUrl": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "FamilyAttendanceNoticeRequest": {
         "type": "object",
         "properties": {
@@ -199667,6 +200186,89 @@
           "voidedCount": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "ApiResponseIssuerSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/IssuerSettingsResponse"
+          }
+        }
+      },
+      "IssuerSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "autoResetNumber": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "customFooter": {
+            "type": "string"
+          },
+          "defaultSealUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "defaultSealVariant": {
+            "type": "string"
+          },
+          "fiscalYearStartMonth": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "invoiceRegistrationNumber": {
+            "type": "string"
+          },
+          "isQualifiedInvoicer": {
+            "type": "boolean"
+          },
+          "issuerName": {
+            "type": "string"
+          },
+          "logoStorageKey": {
+            "type": "string"
+          },
+          "logoUrl": {
+            "type": "string"
+          },
+          "nextReceiptNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "receiptNoteTemplate": {
+            "type": "string"
+          },
+          "receiptNumberPrefix": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -207246,6 +207848,71 @@
           "note": {
             "type": "string",
             "maxLength": 2000,
+            "minLength": 0
+          }
+        }
+      },
+      "UpdateIssuerSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "autoResetNumber": {
+            "type": "boolean"
+          },
+          "customFooter": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "defaultSealUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "defaultSealVariant": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "fiscalYearStartMonth": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 12,
+            "minimum": 1
+          },
+          "invoiceRegistrationNumber": {
+            "type": "string",
+            "maxLength": 14,
+            "minLength": 0,
+            "pattern": "^(|T\\d{13})$"
+          },
+          "isQualifiedInvoicer": {
+            "type": "boolean"
+          },
+          "issuerName": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "postalCode": {
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 0
+          },
+          "receiptNoteTemplate": {
+            "type": "string"
+          },
+          "receiptNumberPrefix": {
+            "type": "string",
+            "maxLength": 20,
             "minLength": 0
           }
         }

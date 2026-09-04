@@ -1,6 +1,7 @@
 package com.mannschaft.app.common;
 
 import com.mannschaft.app.billing.FeatureNotEntitledException;
+import com.mannschaft.app.billing.api.BillingIdempotencyProcessingException;
 import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -1296,6 +1298,15 @@ public class GlobalExceptionHandler {
             Map.entry("ENTITLEMENT_015", HttpStatus.BAD_GATEWAY),         // CHECKOUT_SESSION_FAILED（Stripe 呼び出し失敗 → 502）
             Map.entry("ENTITLEMENT_016", HttpStatus.CONFLICT),           // CONTRACT_PENDING_PAYMENT（PENDING スロット占有中）
             Map.entry("ENTITLEMENT_017", HttpStatus.CONFLICT),           // CONTRACT_CHANGE_REQUIRES_PAYMENT（有償が絡む changePlan 拒否・AC-44）
+            Map.entry("ENTITLEMENT_018", HttpStatus.NOT_FOUND),          // INVOICE_NOT_FOUND（IDOR 秘匿）
+            Map.entry("ENTITLEMENT_019", HttpStatus.CONFLICT),           // PRICE_NOT_SELLABLE
+            Map.entry("ENTITLEMENT_020", HttpStatus.CONFLICT),           // PREVIEW_EXPIRED
+            Map.entry("ENTITLEMENT_021", HttpStatus.CONFLICT),           // CHANGE_CONFLICT
+            Map.entry("ENTITLEMENT_022", HttpStatus.CONFLICT),           // MONTH_BOUNDARY
+            Map.entry("ENTITLEMENT_023", HttpStatus.CONFLICT),           // QUOTE_EXPIRED / QUOTE_STALE
+            Map.entry("ENTITLEMENT_024", HttpStatus.CONFLICT),           // MIGRATION_REQUIRED
+            Map.entry("ENTITLEMENT_025", HttpStatus.BAD_GATEWAY),        // STRIPE_UNAVAILABLE
+            Map.entry("ENTITLEMENT_026", HttpStatus.CONFLICT),           // BILLING_FLOW_REQUIRED
             // F20.3 ベータ特典（設計書 02 §8）。登録漏れは Severity 既定 400/500 にフォールバックする前科（#1279）ゆえ明示登録。
             Map.entry("BETA_PERK_001", HttpStatus.NOT_FOUND),            // GRANT_NOT_FOUND（IDOR 秘匿含む）
             Map.entry("BETA_PERK_002", HttpStatus.CONFLICT),            // GRANT_ALREADY_EXISTS（uk_bg_scope_phase）
@@ -1570,6 +1581,10 @@ public class GlobalExceptionHandler {
             Map.entry("RECEIPT_019", HttpStatus.CONFLICT),
             Map.entry("RECEIPT_021", HttpStatus.NOT_FOUND),
             Map.entry("RECEIPT_024", HttpStatus.CONFLICT),
+            // RECEIPT_020（ロゴアップロード失敗）は Severity.ERROR だが、実際の発生原因は
+            // 上限超過・非対応形式・MIME 偽装といった「入力の不備」である（F08.4 §9.4 AC-10）。
+            // Severity は変えずに status だけ 400 へ写像する。
+            Map.entry("RECEIPT_020", HttpStatus.BAD_REQUEST),
             // 認可根治戦役 Wave3-B3: moderation の createReReview は actionId 所有者検証(BOLA是正)で MODERATION_EXT_001、越境は 404。
             Map.entry("MODERATION_EXT_001", HttpStatus.NOT_FOUND),       // VIOLATION_NOT_FOUND（IDOR 秘匿 → 404）
             // 認可根治戦役 Wave3-B3: incident は entity 由来 scope で認可判定。ID 直指定 EP で scope 非所属は 404。
@@ -2439,7 +2454,21 @@ public class GlobalExceptionHandler {
             //    是正した（兄弟の STORAGE_001/002/004 と同じ外部ストレージ障害のため）。
             // Gate 基盤工事③: @RequireFeature ゲート拒否は Severity.WARN 既定の 400 ではなく
             // 403 FORBIDDEN（マスター裁可済み）。
-            Map.entry("FEATURE_GATE_001", HttpStatus.FORBIDDEN)
+            Map.entry("FEATURE_GATE_001", HttpStatus.FORBIDDEN),
+
+            // 柱②-2 販促プロビジョニング（試練・.claude/campaigns/2026-09-01-org-governance.md）:
+            // 招待不在／メール不一致は状態秘匿のため404/403、期限切れ・取消済・二重承諾競合は409、
+            // PROVISIONED スコープへの通常導線アクセスは423（Locked）とする。実装は後続 PR（出陣）。
+            Map.entry("PROV_001", HttpStatus.NOT_FOUND),
+            Map.entry("PROV_002", HttpStatus.CONFLICT),
+            Map.entry("PROV_003", HttpStatus.CONFLICT),
+            Map.entry("PROV_006", HttpStatus.FORBIDDEN),
+            Map.entry("PROV_007", HttpStatus.FORBIDDEN),
+            Map.entry("PROV_008", HttpStatus.LOCKED),
+            Map.entry("PROV_009", HttpStatus.NOT_FOUND),
+            Map.entry("PROV_010", HttpStatus.NOT_FOUND),
+            // 検分 P1-3 根治: ACCEPTED 済み招待への resend/cancel は状態競合のため409。
+            Map.entry("PROV_011", HttpStatus.CONFLICT)
     );
 
     /**
@@ -2511,6 +2540,26 @@ public class GlobalExceptionHandler {
         FeatureNotEntitledErrorResponse body =
                 new FeatureNotEntitledErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
         return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
+    }
+
+    /**
+     * F20.1 PR4 BC-23: 同一 {@code Idempotency-Key} の先行要求が処理中の場合のハンドラ。
+     *
+     * <p>{@link BillingIdempotencyProcessingException} は {@link BusinessException} のサブクラスだが、
+     * Spring は最も具体的な例外型のハンドラを優先するため本メソッドが先に選ばれる。
+     * 409 の本文は素の {@link ErrorResponse} のまま（既存応答・lease 所有者を漏らさない）で、
+     * {@code Retry-After} ヘッダだけを追加する。</p>
+     */
+    @ExceptionHandler(BillingIdempotencyProcessingException.class)
+    public ResponseEntity<ErrorResponse> handleBillingIdempotencyProcessing(
+            BillingIdempotencyProcessingException ex) {
+        String message = resolveMessage(ex.getErrorCode());
+        log.warn("BillingIdempotencyProcessingException: code={}, retryAfterSeconds={}",
+                ex.getErrorCode().getCode(), ex.getRetryAfterSeconds());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
+                .body(new ErrorResponse(
+                        new ErrorResponse.ErrorDetail(ex.getErrorCode().getCode(), message, List.of())));
     }
 
     /**

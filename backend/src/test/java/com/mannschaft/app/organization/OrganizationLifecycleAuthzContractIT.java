@@ -230,8 +230,9 @@ class OrganizationLifecycleAuthzContractIT extends AbstractMySqlIntegrationTest 
          * （ロットD: {@code ERROR_CODE_STATUS_MAP} 登録により 409 CONFLICT が期待値として固定できる）。</p>
          *
          * <p><b>既知の制約</b>: {@code restore} EP は現状 <b>本来の用途で到達不能</b>である。
-         * Controller が呼ぶ {@code resolveOrgId} は {@code findBySlugAndDeletedAtIsNull} を引くため、
-         * 論理削除済み組織の slug は解決できず ORG_001 になる。すなわち「削除済み組織を slug で復元する」
+         * Controller が呼ぶ {@code resolveOrgId} は {@code findBySlugAndDeletedAtIsNullAndLifecycleStatus}
+         * （ACTIVE限定・検分P1-2根治）を引くため、論理削除済み組織の slug は解決できず ORG_001 になる。
+         * すなわち「削除済み組織を slug で復元する」
          * 経路が成立しない。これは本タスク（認可）の範囲外の既存の機能バグであり、別途起票が必要。
          * そのため「正当 SYSTEM_ADMIN → 復元成功（204）」の正常系は本テストでは検証できない。</p>
          */
