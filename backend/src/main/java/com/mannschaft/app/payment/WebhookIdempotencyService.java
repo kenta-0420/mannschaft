@@ -48,8 +48,27 @@ public class WebhookIdempotencyService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean tryBegin(String eventId, String type, boolean livemode) {
+        return tryBegin(eventId, type, livemode, null, null, null, null);
+    }
+
+    /**
+     * V196 の billing 所有投影列（{@code payload_sha256} / {@code stripe_object_ref} /
+     * {@code billing_contract_id} / {@code billing_customer_id}）を伴う版（F20.1 PR5・AC-19）。
+     *
+     * <p><b>raw payload は保存しない</b>: 監査に必要なのは「同じ本文が来たか」を照合できることであって
+     * 本文そのものではない。PII（請求先氏名・住所）を webhook 記録に溜め込まないため、
+     * SHA-256 だけを残す（AC-12）。</p>
+     *
+     * <p>既存行に対しては、まだ入っていない列だけを埋める（後から所有が判明する場合に備える）。
+     * 既に入っている値は上書きしない（受信時の事実を書き換えない）。</p>
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean tryBegin(String eventId, String type, boolean livemode,
+                            String payloadSha256, String stripeObjectRef,
+                            java.util.UUID billingContractId, java.util.UUID billingCustomerId) {
         Optional<StripeWebhookEventEntity> existing = repository.findByEventId(eventId);
         if (existing.isPresent()) {
+            enrich(existing.get(), payloadSha256, stripeObjectRef, billingContractId, billingCustomerId);
             return decideReprocess(eventId, existing.get().getProcessStatus());
         }
         try {
@@ -58,6 +77,11 @@ public class WebhookIdempotencyService {
                     .type(type)
                     .livemode(livemode)
                     .processStatus(WebhookProcessStatus.RECEIVED)
+                    .payloadSha256(payloadSha256)
+                    .stripeObjectRef(stripeObjectRef)
+                    .billingContractId(billingContractId)
+                    .billingCustomerId(billingCustomerId)
+                    .attemptCount(0)
                     .build();
             repository.saveAndFlush(entity);
             return true;
@@ -118,5 +142,81 @@ public class WebhookIdempotencyService {
             e.setProcessedAt(LocalDateTime.now());
             repository.save(e);
         });
+    }
+
+    /**
+     * 一時失敗を記録し、試行回数を加算した結果を返す（F20.1 PR5・AC-13）。
+     *
+     * <p>{@code attempt_count} / {@code failed_at} は V196 で追加された列であり、
+     * <b>リトライ台帳の新テーブルを作らない</b>ための唯一の置き場である。呼び出し元は戻り値を見て
+     * 「まだ再送に委ねるか（5xx）」「打ち切って {@code FAILED} で確定するか（200）」を決める。</p>
+     *
+     * <p>ハンドラ本体のトランザクションがロールバックしても記録が消えないよう
+     * {@code REQUIRES_NEW} で独立コミットする。</p>
+     *
+     * @param eventId     Stripe イベント ID
+     * @param maxAttempts 打ち切り閾値（ログ用。判定自体は呼び出し元が戻り値で行う）
+     * @return 加算後の試行回数
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int markFailedWithAttempt(String eventId, int maxAttempts) {
+        Optional<StripeWebhookEventEntity> found = repository.findByEventId(eventId);
+        if (found.isEmpty()) {
+            log.warn("Webhook 失敗を記録しようとしたが受信記録がありません: eventId={}", eventId);
+            return 0;
+        }
+        StripeWebhookEventEntity e = found.get();
+        int attempts = (e.getAttemptCount() == null ? 0 : e.getAttemptCount()) + 1;
+        e.setAttemptCount(attempts);
+        e.setFailedAt(LocalDateTime.now());
+        e.setProcessStatus(WebhookProcessStatus.FAILED);
+        e.setProcessedAt(LocalDateTime.now());
+        repository.saveAndFlush(e);
+        log.info("Webhook 失敗を記録しました: eventId={}, attemptCount={}/{}", eventId, attempts, maxAttempts);
+        return attempts;
+    }
+
+    /**
+     * 恒久拒否（fail-closed）を記録する。再送しても結果が変わらない検体のため
+     * {@code FAILED} で確定し、{@code failed_at} を残す（試行回数は加算するが再送は促さない）。
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void markPermanentlyFailed(String eventId) {
+        repository.findByEventId(eventId).ifPresent(e -> {
+            e.setAttemptCount((e.getAttemptCount() == null ? 0 : e.getAttemptCount()) + 1);
+            e.setFailedAt(LocalDateTime.now());
+            e.setProcessStatus(WebhookProcessStatus.FAILED);
+            e.setProcessedAt(LocalDateTime.now());
+            repository.saveAndFlush(e);
+        });
+    }
+
+    /** 既存行の未設定列だけを埋める（受信時に確定した事実は上書きしない）。 */
+    private void enrich(StripeWebhookEventEntity entity, String payloadSha256, String stripeObjectRef,
+                        java.util.UUID billingContractId, java.util.UUID billingCustomerId) {
+        boolean dirty = false;
+        if (entity.getPayloadSha256() == null && payloadSha256 != null) {
+            entity.setPayloadSha256(payloadSha256);
+            dirty = true;
+        }
+        if (entity.getStripeObjectRef() == null && stripeObjectRef != null) {
+            entity.setStripeObjectRef(stripeObjectRef);
+            dirty = true;
+        }
+        if (entity.getBillingContractId() == null && billingContractId != null) {
+            entity.setBillingContractId(billingContractId);
+            dirty = true;
+        }
+        if (entity.getBillingCustomerId() == null && billingCustomerId != null) {
+            entity.setBillingCustomerId(billingCustomerId);
+            dirty = true;
+        }
+        if (entity.getAttemptCount() == null) {
+            entity.setAttemptCount(0);
+            dirty = true;
+        }
+        if (dirty) {
+            repository.saveAndFlush(entity);
+        }
     }
 }

@@ -18,4 +18,10 @@ public interface StripeWebhookEventRepository
 
     /** event_id から逆引きする。 */
     Optional<StripeWebhookEventEntity> findByEventId(String eventId);
+
+    /**
+     * F20.1 PR5: charge → billing 所有の対応を、受信記録から辿る（dispute の invoice 解決に使う）。
+     */
+    Optional<StripeWebhookEventEntity>
+            findFirstByStripeObjectRefAndBillingCustomerIdIsNotNullOrderByReceivedAtDesc(String stripeObjectRef);
 }
