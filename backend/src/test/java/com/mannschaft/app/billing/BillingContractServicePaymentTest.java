@@ -364,6 +364,25 @@ class BillingContractServicePaymentTest {
         verify(entitlementRepository, never()).saveAll(anyList());
     }
 
+    @Test
+    @DisplayName("柱③-B（Codex検分1巡目P1-2）: PENDING_HANDOVER 契約への subscription.deleted は EXPIRED 化しない")
+    void handoverPendingHandover_subscriptionDeleted_doesNotExpire() {
+        UUID id = UUID.randomUUID();
+        BillingContractEntity handoverContract = contract(id, ContractStatus.PENDING_HANDOVER, 2000, "sub_new_trial");
+        given(billingContractRepository.findByPspSubscriptionRefAndDeletedAtIsNull("sub_new_trial"))
+                .willReturn(Optional.of(handoverContract));
+
+        service.expireSubscriptionContract("sub_new_trial", PERIOD_END);
+
+        // 設計書§3.1: PENDING_HANDOVER の出口は切替TX成功時のACTIVE／引継失敗時のCANCELLEDのみであり、
+        // customer.subscription.deleted による無条件EXPIRED化の対象外（引継の新規trialサブスク取消/失敗が
+        // この経路に紛れ込んでも、引継中の契約を誤ってEXPIREDにしない）。
+        assertThat(handoverContract.getStatus()).isEqualTo(ContractStatus.PENDING_HANDOVER);
+        verify(billingContractRepository, never()).save(any());
+        verify(activeContractPointerRepository, never()).hardDeleteBySlot(any(), any(), any(), any());
+        verify(entitlementRepository, never()).saveAll(anyList());
+    }
+
     // ============================================================
     // AC-36 / AC-40: 無償解約=即時失効（既存フロー不変・遡及なし）
     // ============================================================

@@ -1,6 +1,7 @@
 package com.mannschaft.app.billing.migration;
 
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.FlywayException;
 import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.AfterAll;
@@ -104,6 +105,72 @@ class BillingPayerHandoverFoundationFlywayIT {
                     .isEqualTo(Long.parseLong(LEGACY_CREATED_BY));
             assertThat(result.getObject("handover_request_id")).as("既存契約は handover 対象外").isNull();
         }
+    }
+
+    @Test
+    @DisplayName("V200: Codex検分1巡目P1-1: created_by が NULL の既存契約は当該TEAMの最古参ADMINでバックフィルされる")
+    void payerUserIdBackfilledFromOldestAdminWhenCreatedByIsNull() throws Exception {
+        String bridgeContractHex = "0199BBCCDDEEFF00112233445566EE00";
+        long teamId = 950001L;
+        long olderAdminUserId = 960001L;
+        long newerAdminUserId = 960002L;
+
+        try (Connection connection = connection()) {
+            insertTeam(connection, teamId);
+            insertUser(connection, olderAdminUserId, "older-admin@example.test");
+            insertUser(connection, newerAdminUserId, "newer-admin@example.test");
+            // 最古参判定は user_roles.created_at 昇順（+id昇順のtie-break）で行う（V200 migration実装）。
+            insertTeamAdminRole(connection, teamId, olderAdminUserId, "2026-01-01 00:00:00.000000");
+            insertTeamAdminRole(connection, teamId, newerAdminUserId, "2026-06-01 00:00:00.000000");
+
+            // V150.20260710030428 のブリッジ契約と同型: created_by=NULL の TEAM PLAN 契約。
+            execute(connection, """
+                    INSERT INTO billing_contracts
+                        (id, scope_kind, scope_id, contract_kind, plan_key, status, contracted_at, created_by)
+                    VALUES
+                        (UNHEX('%s'), 'TEAM', %d, 'PLAN', 'FULL', 'ACTIVE',
+                         '2026-08-01 00:00:00.000000', NULL)
+                    """.formatted(bridgeContractHex, teamId));
+        }
+
+        migrateToV200();
+
+        try (Connection connection = connection();
+             Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery("""
+                     SELECT created_by, payer_user_id FROM billing_contracts
+                      WHERE id = UNHEX('%s')
+                     """.formatted(bridgeContractHex))) {
+            assertThat(result.next()).isTrue();
+            assertThat(result.getObject("created_by")).as("created_by の意味（作成操作者の監査記録）は変えない").isNull();
+            assertThat(result.getLong("payer_user_id"))
+                    .as("payer_user_id は当該TEAMの最古参ADMIN（older-admin）でバックフィルされること")
+                    .isEqualTo(olderAdminUserId);
+        }
+    }
+
+    @Test
+    @DisplayName("V200: Codex検分1巡目P1-1: created_by がNULLかつ当該TEAMにADMINが不在ならmigration自体をfailさせる")
+    void backfillGuardFailsMigrationWhenNoFallbackIsResolvable() throws Exception {
+        String orphanContractHex = "0199BBCCDDEEFF00112233445566EE01";
+        long teamWithoutAdminId = 950002L;
+
+        try (Connection connection = connection()) {
+            insertTeam(connection, teamWithoutAdminId);
+            // ADMIN の user_roles を一切投入しない = (a)(b) いずれのフォールバックでも解決できない行。
+            execute(connection, """
+                    INSERT INTO billing_contracts
+                        (id, scope_kind, scope_id, contract_kind, plan_key, status, contracted_at, created_by)
+                    VALUES
+                        (UNHEX('%s'), 'TEAM', %d, 'PLAN', 'FULL', 'ACTIVE',
+                         '2026-08-01 00:00:00.000000', NULL)
+                    """.formatted(orphanContractHex, teamWithoutAdminId));
+        }
+
+        assertThatThrownBy(this::migrateToV200)
+                .as("payer_user_id を解決できない行が残る場合、静かにNULLを残さずmigrationをfailさせること")
+                .isInstanceOf(FlywayException.class)
+                .hasMessageContaining("payer_user_id backfill left unresolved rows");
     }
 
     @Test
@@ -219,6 +286,34 @@ class BillingPayerHandoverFoundationFlywayIT {
                     .as("USER スコープは chk_bphr_scope_kind で拒否されること")
                     .isInstanceOf(SQLException.class);
         }
+    }
+
+    private void insertTeam(Connection connection, long teamId) throws SQLException {
+        // teams.visibility は V79 で ENUM('PUBLIC','GUESTS_AND_ABOVE','SUPPORTERS_AND_ABOVE','MEMBERS_AND_ABOVE')
+        // へ収束済み（PRIVATE は廃止値）。既定値（DEFAULT 'GUESTS_AND_ABOVE'）に任せる。
+        execute(connection, """
+                INSERT INTO teams (id, name, created_at, updated_at)
+                VALUES (%d, 'V200 backfill guard team', NOW(6), NOW(6))
+                """.formatted(teamId));
+    }
+
+    private void insertUser(Connection connection, long userId, String email) throws SQLException {
+        execute(connection, """
+                INSERT INTO users
+                    (id, email, last_name, first_name, display_name, created_at, updated_at)
+                VALUES
+                    (%d, '%s', 'Test', 'User', 'Test User', NOW(6), NOW(6))
+                """.formatted(userId, email));
+    }
+
+    /** {@code roles.name = 'ADMIN'} を team スコープで {@code userId} に付与する（V200 backfill fallback検証用）。 */
+    private void insertTeamAdminRole(Connection connection, long teamId, long userId, String createdAt)
+            throws SQLException {
+        execute(connection, """
+                INSERT INTO user_roles (user_id, role_id, team_id, created_at, updated_at)
+                SELECT %d, r.id, %d, '%s', '%s'
+                  FROM roles r WHERE r.name = 'ADMIN'
+                """.formatted(userId, teamId, createdAt, createdAt));
     }
 
     private void insertHandoverRequest(Connection connection, String idHex, String oldContractHex, String status)

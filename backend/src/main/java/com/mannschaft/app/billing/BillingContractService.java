@@ -2,6 +2,7 @@ package com.mannschaft.app.billing;
 
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +41,7 @@ import java.util.UUID;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BillingContractService {
 
     private final BillingContractRepository billingContractRepository;
@@ -489,6 +491,14 @@ public class BillingContractService {
     /**
      * 継続課金の失効（{@code customer.subscription.deleted}）: EXPIRED＋pointer 物理 DELETE＋残 entitlements revoke。
      * <b>冪等</b>: 既に EXPIRED/CANCELLED なら no-op。
+     *
+     * <p><b>柱③-B 請求担当引継（CMP-260901-1538・設計書 §3.1・Codex検分1巡目P1-2対応）</b>: {@code PENDING_HANDOVER}
+     * の契約はこの経路で {@code EXPIRED} 化しない。設計書上 {@code PENDING_HANDOVER} の出口は切替TX成功時の
+     * {@code ACTIVE} と引継失敗時の {@code CANCELLED} のみであり、通常の {@code customer.subscription.deleted}
+     * による失効遷移の対象ではない（引継の新契約に紐づく Stripe subscription の trial 取消・失敗による
+     * webhook がこの経路に入り得るため、無条件 EXPIRED 化のガードから明示的に除外する）。ここで検知した場合は
+     * 警告ログのみを残し状態は変更しない。将来的な自動救済（設計書 §3.6.2 の {@code MANUAL_INTERVENTION} 経由の
+     * 検知・アラート）は後続 PR（PR-4）のスコープとする。</p>
      */
     @Transactional
     public void expireSubscriptionContract(String pspSubscriptionRef, LocalDateTime currentPeriodEnd) {
@@ -497,6 +507,16 @@ public class BillingContractService {
         if (contract == null
                 || contract.getStatus() == ContractStatus.EXPIRED
                 || contract.getStatus() == ContractStatus.CANCELLED) {
+            return;
+        }
+        if (contract.getStatus() == ContractStatus.PENDING_HANDOVER) {
+            // 柱③-B: PENDING_HANDOVER は customer.subscription.deleted による EXPIRED 遷移の対象外
+            // （設計書§3.1。出口は切替TX成功時のACTIVE／引継失敗時のCANCELLEDのみ）。
+            log.warn("柱③-B: PENDING_HANDOVER 契約への customer.subscription.deleted webhook を検出し、"
+                    + "EXPIRED遷移をスキップしました（contractId={}, pspSubscriptionRef={}）。"
+                    + "引継の新規trialサブスク取消/失敗の可能性があり、手動確認またはPR-4のMANUAL_INTERVENTION"
+                    + "検知バッチでの救済が必要な場合があります。",
+                    contract.getId(), pspSubscriptionRef);
             return;
         }
         LocalDateTime now = LocalDateTime.now(clock);
