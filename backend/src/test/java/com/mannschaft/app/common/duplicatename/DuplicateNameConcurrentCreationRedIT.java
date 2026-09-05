@@ -1,17 +1,13 @@
 package com.mannschaft.app.common.duplicatename;
 
-import com.mannschaft.app.common.ApiResponse;
-import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
-import com.mannschaft.app.organization.dto.OrganizationResponse;
-import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,126 +17,88 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * CMP-260901-1538 柱③-A 検分P1-2/P2-5是正: 2 スレッドで同名を同時作成し、
- * {@code DuplicateNameGuardServiceImpl} のアドバイザリロック（{@code GET_LOCK}）が
- * 同名作成者同士を正しく直列化することを実 DB（Testcontainers MySQL）で検証する。
+ * CMP-260901-1538 柱③-A 検分第2巡是正: 「トランザクションが commit するまでアドバイザリロックが
+ * 解放されない」ことを実 DB（Testcontainers MySQL）で検証する。
  *
- * <p>アドバイザリロックによる直列化が機能していない場合、両スレッドとも「同名候補ゼロ」の
- * スナップショットを見て未確認のまま作成に成功し、同名の重複が確認プロンプトを一切経ずに
- * 生成されてしまう（TOCTOU）。本 IT はこれが起きず、<b>後着スレッドが必ず先着スレッドの
- * コミット結果を候補として検知し 409 を受け取る</b>ことを実測する。</p>
+ * <p>検分第1巡では「候補再計算 → 作成」の一体化のみを検証していたが、第2巡で
+ * 「{@code RELEASE_LOCK} が同一接続上の {@code finally} から実行されるため、
+ * {@code @Transactional} の commit（サービスメソッド終了後）より前にロックが解放されてしまう」
+ * という TOCTOU 残存が指摘された。{@link DuplicateNameGuardServiceImpl} は
+ * 専用 JDBC 接続方式（{@code GET_LOCK} を専用接続で取得し、トランザクション完了後
+ * （{@code afterCompletion}）まで解放を遅延させる設計）で是正済み。</p>
+ *
+ * <p>本 IT は {@link DuplicateNameGuardTransactionalTestHelper}（実 {@code @Transactional}
+ * 境界を持つテスト専用 Bean）を使い、T1 の {@code createAction} を
+ * {@link CountDownLatch} で意図的に保留した状態（＝T1 のトランザクションはまだ commit していない）
+ * を作り、その間に T2 が同じ正規化名でロック取得を試みると<b>待機の末にタイムアウトし
+ * DUPNAME_002（409）になる</b>ことを検証する。これが確認できれば、ロックの実際の解放が
+ * T1 のトランザクション完了より前に起きていないことの直接証拠になる。</p>
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("柱③-A 同名確認フロー 並行作成(アドバイザリロック直列化)統合テスト")
+@DisplayName("柱③-A 同名確認フロー 並行作成(ロックはTX完了まで解放されない)統合テスト")
 class DuplicateNameConcurrentCreationRedIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
-    private OrganizationService organizationService;
+    private DuplicateNameGuardTransactionalTestHelper transactionalHelper;
 
     @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    private String concurrentOrgName;
-
-    @AfterEach
-    void cleanUp() {
-        if (concurrentOrgName != null) {
-            jdbcTemplate.update("DELETE FROM organizations WHERE name = ?", concurrentOrgName);
-        }
-    }
+    private DuplicateNameGuardService duplicateNameGuardService;
 
     @Test
-    @DisplayName("2スレッドが同時に同名(新規)を未確認で作成すると、一方のみ成功し他方は409(候補1件)を受ける")
-    void concurrentUnconfirmedCreationsAreSerializedByAdvisoryLock() throws Exception {
-        ensureAdminRole();
-        concurrentOrgName = "並行作成IT組織" + System.nanoTime();
-        CreateOrganizationRequest req1 = new CreateOrganizationRequest(
-                concurrentOrgName, "OTHER", null, null, "PUBLIC", null, null);
-        CreateOrganizationRequest req2 = new CreateOrganizationRequest(
-                concurrentOrgName, "OTHER", null, null, "PUBLIC", null, null);
+    @DisplayName("T1のTXがcommitする前にT2が同名でロック取得を試みると、待機の末にDUPNAME_002になる"
+            + "（＝ロック解放がTX完了より前に起きていないことの直接証拠）")
+    void lockIsNotReleasedBeforeTransactionCommits() throws Exception {
+        String name = "並行作成IT組織" + System.nanoTime();
+        CountDownLatch t1EnteredCreateAction = new CountDownLatch(1);
+        CountDownLatch t1MayFinishCreateAction = new CountDownLatch(1);
 
-        Long userId1 = insertSyntheticUserId();
-        Long userId2 = insertSyntheticUserId();
-
-        CountDownLatch startLatch = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
-            Future<AttemptResult> future1 = executor.submit(() -> attemptCreate(startLatch, userId1, req1));
-            Future<AttemptResult> future2 = executor.submit(() -> attemptCreate(startLatch, userId2, req2));
+            // T1: 実トランザクション内でロックを取得し、createAction 内で意図的に保留する
+            // （＝この間、T1 のトランザクションはまだ commit していない）。
+            Future<String> future1 = executor.submit(() -> transactionalHelper.createWithPause(
+                    DuplicateNameScopeKind.ORGANIZATION, name, 9001L, List::of,
+                    t1EnteredCreateAction, t1MayFinishCreateAction));
 
-            // 2スレッドをほぼ同時に走らせ、GET_LOCK での競合を発生させやすくする。
-            startLatch.countDown();
-
-            AttemptResult result1 = future1.get(30, TimeUnit.SECONDS);
-            AttemptResult result2 = future2.get(30, TimeUnit.SECONDS);
-
-            // ちょうど一方だけが成功し、他方は DuplicateNameConfirmationRequiredException を受ける。
-            boolean exactlyOneSucceeded = result1.succeeded ^ result2.succeeded;
-            assertThat(exactlyOneSucceeded)
-                    .as("2スレッドのうち成功はちょうど1件のはず（result1=%s, result2=%s）", result1, result2)
+            // T1 が createAction に入る（＝GET_LOCK に成功し、候補ゼロで作成処理中）まで待つ。
+            assertThat(t1EnteredCreateAction.await(10, TimeUnit.SECONDS))
+                    .as("T1 が createAction に到達しなかった（ロック取得自体に失敗した疑い）")
                     .isTrue();
 
-            AttemptResult loser = result1.succeeded ? result2 : result1;
-            assertThat(loser.thrownConfirmationRequired).isTrue();
-            assertThat(loser.visibleCandidateCount).isEqualTo(1);
+            // この時点で T1 は createAction 内で保留中＝トランザクションは commit していない。
+            // 是正前の実装（同一接続の finally で即座に RELEASE_LOCK）であれば、この時点で
+            // 既にロックが解放されており、T2 は即座に GET_LOCK に成功してしまう。
+            // 是正後は専用接続方式によりロックが T1 の TX 完了まで保持されているため、
+            // T2 は GET_LOCK のタイムアウト（5秒）を待たされたのち DUPNAME_002 を受け取る。
+            Future<Boolean> future2 = executor.submit(() -> {
+                try {
+                    duplicateNameGuardService.checkForCreateAndRun(
+                            DuplicateNameScopeKind.ORGANIZATION, name, 9002L,
+                            false, null, List::of, () -> "should-not-be-created");
+                    return false; // ロックが取れて作成できてしまった＝直列化が効いていない
+                } catch (BusinessException e) {
+                    return "DUPNAME_002".equals(e.getErrorCode().getCode());
+                }
+            });
+
+            // GET_LOCK のタイムアウト（5秒）分の待ちを見込む。
+            Boolean t2GotLockTimeout = future2.get(15, TimeUnit.SECONDS);
+            assertThat(t2GotLockTimeout)
+                    .as("T2 は T1 のTX完了前にロックを取得できてはならず、DUPNAME_002 を受けるはず")
+                    .isTrue();
+
+            // T1 を解放して createAction を完了させ、トランザクションを commit させる。
+            t1MayFinishCreateAction.countDown();
+            String result1 = future1.get(10, TimeUnit.SECONDS);
+            assertThat(result1).isEqualTo("created");
+
+            // T1 の commit（afterCompletion）後は、同名でロックを再取得できる。
+            String result3 = duplicateNameGuardService.checkForCreateAndRun(
+                    DuplicateNameScopeKind.ORGANIZATION, name, 9003L,
+                    false, null, List::of, () -> "created-after-t1-commit");
+            assertThat(result3).isEqualTo("created-after-t1-commit");
         } finally {
             executor.shutdownNow();
         }
-
-        // DB上は結局1件のみ（後着はconfirmDuplicateしていないため作成されない）。
-        Long count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM organizations WHERE name = ?", Long.class, concurrentOrgName);
-        assertThat(count).isEqualTo(1L);
-    }
-
-    private AttemptResult attemptCreate(CountDownLatch startLatch, Long userId, CreateOrganizationRequest req) {
-        try {
-            startLatch.await(10, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        try {
-            ApiResponse<OrganizationResponse> response = organizationService.createOrganization(userId, req);
-            return new AttemptResult(true, false, response.getData().getBasicInfo().name(), 0);
-        } catch (DuplicateNameConfirmationRequiredException e) {
-            return new AttemptResult(false, true, null, e.getDetails().visibleCandidates().size());
-        }
-    }
-
-    private Long insertSyntheticUserId() {
-        String email = "dupname-concurrent-it-" + System.nanoTime() + "-" + Math.random() + "@example.com";
-        jdbcTemplate.update(
-                "INSERT INTO users (email, last_name, first_name, display_name, status, "
-                        + "is_searchable, handle_searchable, contact_approval_required, "
-                        + "online_visibility, dm_receive_from, encryption_key_version, "
-                        + "locale, timezone, reporting_restricted, follow_list_visibility, "
-                        + "care_notification_enabled, offline_only, created_at, updated_at) "
-                        + "VALUES (?, 'DUPNAME', 'テスト', 'DUPNAME テスト', 'ACTIVE', "
-                        + "1, 1, 1, 'NOBODY', 'ANYONE', 1, "
-                        + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', 1, 0, NOW(), NOW())",
-                email);
-        return jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = ?", Long.class, email);
-    }
-
-    /** roles.ADMIN が Flyway seed 無効の test profile に存在しない場合に備え、事前投入する。 */
-    private void ensureAdminRole() {
-        Long count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM roles WHERE name = 'ADMIN'", Long.class);
-        if (count == null || count == 0) {
-            jdbcTemplate.update(
-                    "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                            + "VALUES ('ADMIN', 'ADMIN', 99, 0, NOW(), NOW())");
-        }
-        Long memberCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM roles WHERE name = 'MEMBER'", Long.class);
-        if (memberCount == null || memberCount == 0) {
-            jdbcTemplate.update(
-                    "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                            + "VALUES ('MEMBER', 'MEMBER', 99, 0, NOW(), NOW())");
-        }
-    }
-
-    private record AttemptResult(
-            boolean succeeded, boolean thrownConfirmationRequired, String createdName, int visibleCandidateCount) {
     }
 }
