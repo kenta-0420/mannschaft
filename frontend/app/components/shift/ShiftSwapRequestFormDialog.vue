@@ -104,13 +104,13 @@ function isDayShift(startTime: string): boolean {
 }
 
 const sameDateSlots = computed(() =>
-  slots.value.filter((s) => s.slotDate === props.slotDate),
+  slots.value.filter((s) => s.time.slotDate === props.slotDate),
 )
 
 const dayShiftUserIds = computed((): number[] => {
   const ids = new Set<number>()
   for (const s of sameDateSlots.value) {
-    if (isDayShift(s.startTime)) {
+    if (isDayShift(s.time.startTime)) {
       s.assignedUserIds.forEach((id) => ids.add(id))
     }
   }
@@ -120,7 +120,7 @@ const dayShiftUserIds = computed((): number[] => {
 const nightShiftUserIds = computed((): number[] => {
   const ids = new Set<number>()
   for (const s of sameDateSlots.value) {
-    if (!isDayShift(s.startTime)) {
+    if (!isDayShift(s.time.startTime)) {
       s.assignedUserIds.forEach((id) => ids.add(id))
     }
   }

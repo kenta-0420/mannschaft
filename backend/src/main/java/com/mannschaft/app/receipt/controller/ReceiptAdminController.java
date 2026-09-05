@@ -2,6 +2,7 @@ package com.mannschaft.app.receipt.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.receipt.ReceiptArchiveKind;
 import com.mannschaft.app.receipt.ReceiptScopeType;
 import com.mannschaft.app.receipt.dto.BulkCreateReceiptRequest;
 import com.mannschaft.app.receipt.dto.BulkResultResponse;
@@ -222,9 +223,11 @@ public class ReceiptAdminController {
     public ResponseEntity<byte[]> downloadPdf(
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            @RequestParam(required = false) String kind) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        byte[] pdf = receiptService.getReceiptPdf(type, scopeId, id, SecurityUtils.getCurrentUserId());
+        ReceiptArchiveKind archiveKind = kind == null ? null : ReceiptArchiveKind.valueOf(kind.toUpperCase());
+        byte[] pdf = receiptService.getReceiptPdf(type, scopeId, id, SecurityUtils.getCurrentUserId(), archiveKind);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"receipt_" + id + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
