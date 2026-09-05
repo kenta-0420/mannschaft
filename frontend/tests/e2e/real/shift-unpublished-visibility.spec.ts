@@ -39,6 +39,7 @@ import {
   expect,
   request as playwrightRequest,
   type APIRequestContext,
+  type BrowserContext,
   type Page,
 } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
@@ -69,7 +70,15 @@ const LABEL_MASKED = '調整中' // shift.slot.assignmentMasked（shift.status.a
 const LABEL_MASKED_HINT = '公開前のため割当は表示されません' // shift.slot.assignmentMaskedHint
 const LABEL_START_COLLECTING = '希望収集を開始' // shift.detail.startCollecting
 const LABEL_CALENDAR_VIEW = 'カレンダー表示' // shift.detail.calendarView
-const LABEL_POSITION = '受付'
+/**
+ * 本 spec が作るポジション名・シフト表タイトルの接頭辞。
+ *
+ * 共有チーム fc-u-18 を使うため、同名ポジションは 409（SHIFT_014）で弾かれる。
+ * 実行ごとに一意な名前を付け、さらに setup で同じ接頭辞の残骸を掃除する
+ * （テストが中断されると afterAll が走らず、次の実行が前回の残骸で落ちるため）。
+ */
+const POSITION_PREFIX = '受付_E2E'
+const TITLE_PREFIX = '未公開遮断_'
 const LABEL_PREVIEW = '提出前確認' // shift.preview.title
 const LABEL_SUBMIT = '提出' // shift.action.submit
 const LABEL_TOTAL = '合計' // shift.preview.totalLabel
@@ -168,14 +177,49 @@ async function fetchRoleName(email: string, password: string): Promise<string> {
   })
 }
 
+/**
+ * 前回の中断で残った本 spec 由来のデータ（接頭辞で識別）を消してから始める。
+ *
+ * 共有チームを使うため、残骸があると次の実行が 409 や重複表示で落ちる。
+ * 掃除の対象は本 spec の名前空間（TITLE_PREFIX / POSITION_PREFIX）に限る。
+ */
+async function purgeLeftovers(ctx: APIRequestContext, token: string, teamId: number): Promise<void> {
+  const schedulesRes = await ctx.get(`${BE_API}/shifts/schedules?teamId=${teamId}`, {
+    headers: authHeaders(token),
+  })
+  if (!schedulesRes.ok()) {
+    throw new Error(`シフト表一覧取得失敗: ${schedulesRes.status()} ${await schedulesRes.text()}`)
+  }
+  const schedules = (await schedulesRes.json()).data as Array<{ id: number; title: string }>
+  for (const s of schedules) {
+    if (!s.title?.startsWith(TITLE_PREFIX)) continue
+    const res = await ctx.delete(`${BE_API}/shifts/schedules/${s.id}`, { headers: authHeaders(token) })
+    console.log(`[PURGE] DELETE /shifts/schedules/${s.id} (${s.title}) -> ${res.status()}`)
+  }
+
+  const positionsRes = await ctx.get(`${BE_API}/shifts/positions?teamId=${teamId}`, {
+    headers: authHeaders(token),
+  })
+  if (!positionsRes.ok()) {
+    throw new Error(`ポジション一覧取得失敗: ${positionsRes.status()} ${await positionsRes.text()}`)
+  }
+  const positions = (await positionsRes.json()).data as Array<{ id: number; name: string }>
+  for (const pos of positions) {
+    if (!pos.name?.startsWith(POSITION_PREFIX)) continue
+    const res = await ctx.delete(`${BE_API}/shifts/positions/${pos.id}`, { headers: authHeaders(token) })
+    console.log(`[PURGE] DELETE /shifts/positions/${pos.id} (${pos.name}) -> ${res.status()}`)
+  }
+}
+
 async function createPosition(
   ctx: APIRequestContext,
   token: string,
   teamId: number,
+  name: string,
 ): Promise<number> {
   const res = await ctx.post(`${BE_API}/shifts/positions?teamId=${teamId}`, {
     headers: authHeaders(token),
-    data: { name: LABEL_POSITION, displayOrder: 1 },
+    data: { name, displayOrder: 1 },
   })
   if (!res.ok()) throw new Error(`ポジション作成失敗: ${res.status()} ${await res.text()}`)
   return ((await res.json()).data as { id: number }).id
@@ -277,6 +321,8 @@ type FixtureKey = 'draft' | 'collecting' | 'adjusting' | 'published' | 'archived
 
 interface Fixture {
   team: TargetTeam
+  /** 本実行で作ったポジション名（実行ごとに一意）。 */
+  positionName: string
   adminRoleName: string
   memberRoleName: string
   slotDate: string
@@ -303,11 +349,15 @@ const test = base.extend<
   tokens: [
     // eslint-disable-next-line no-empty-pattern -- Playwright は fixture 第1引数にオブジェクト分割代入を要求する
     async ({}, use) => {
-      const ctx = await playwrightRequest.newContext()
-      const admin = await login(ctx, ADMIN_EMAIL, ADMIN_PASSWORD)
-      const memberToken = await login(ctx, MEMBER_EMAIL, MEMBER_PASSWORD)
-      const memberUserId = await fetchMyUserId(ctx, memberToken)
-      await ctx.dispose()
+      // ログインは withApi のキャッシュ経由に一本化し、ユーザーごとに 1 回しか行わない。
+      // await で直列化しているのは、同一ユーザーのログインが近接すると BE が
+      // refresh_tokens の更新でデッドロックし、リトライ無しに 500（COMMON_999）を返す
+      // 堅牢性の欠陥があるため（2026-09-05 実機で BE ログにより確認・別途起票済み）。
+      // 500 を握りつぶしてリトライするのではなく、ログイン回数そのものを減らして避ける。
+      const admin = await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, async (_ctx, token) => token)
+      const memberUserId = await withApi(
+        MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, token) => fetchMyUserId(ctx, token),
+      )
       await use({ admin, memberUserId })
     },
     { scope: 'worker' },
@@ -333,19 +383,22 @@ test.beforeAll(async ({ tokens }) => {
       throw new Error(`会員ユーザーの ${TEAM_SLUG} でのロールが MEMBER ではない: ${memberRoleName}`)
     }
 
-    const positionId = await createPosition(ctx, tokens.admin, team.numericId)
-    createdPositionId = positionId
+    await purgeLeftovers(ctx, tokens.admin, team.numericId)
+
     const nonce = String(Date.now()).slice(-6)
+    const positionName = `${POSITION_PREFIX}_${nonce}`
+    const positionId = await createPosition(ctx, tokens.admin, team.numericId, positionName)
+    createdPositionId = positionId
     const startDate = addDaysIso(todayIsoJst(), 7)
     const endDate = addDaysIso(startDate, 2)
     const slotDate = startDate
 
     const titles: Record<FixtureKey, string> = {
-      draft: `未公開遮断_下書き_${nonce}`,
-      collecting: `未公開遮断_希望収集_${nonce}`,
-      adjusting: `未公開遮断_調整_${nonce}`,
-      published: `未公開遮断_確定_${nonce}`,
-      archived: `未公開遮断_未公開のままアーカイブ_${nonce}`,
+      draft: `${TITLE_PREFIX}下書き_${nonce}`,
+      collecting: `${TITLE_PREFIX}希望収集_${nonce}`,
+      adjusting: `${TITLE_PREFIX}調整_${nonce}`,
+      published: `${TITLE_PREFIX}確定_${nonce}`,
+      archived: `${TITLE_PREFIX}未公開のままアーカイブ_${nonce}`,
     }
 
     /**
@@ -377,6 +430,7 @@ test.beforeAll(async ({ tokens }) => {
 
     fx = {
       team,
+      positionName,
       adminRoleName,
       memberRoleName,
       slotDate,
@@ -402,16 +456,64 @@ test.beforeAll(async ({ tokens }) => {
 // 画面操作ヘルパー
 // ============================================================================
 
-async function openAs(page: Page, email: string, password: string, path: string): Promise<void> {
+/** ブラウザ側のログイン結果（Cookie と、認証状態判定に使う localStorage の値）。 */
+interface BrowserSession {
+  cookies: Parameters<BrowserContext['addCookies']>[0]
+  currentUser: string | null
+  tokenExpiresAt: string | null
+}
+
+/**
+ * ブラウザ側のログイン結果をユーザー単位でキャッシュする。
+ *
+ * テストごとに新しいコンテキストが作られるため素直に書くとログインが 10 回走るが、
+ * 同一ユーザーのログインが近接すると BE が refresh_tokens の更新でデッドロックし、
+ * リトライ無しに 500（COMMON_999）を返す（2026-09-05 実機で BE ログにより確認）。
+ * これは製品側の堅牢性の欠陥であり別途起票済み。本 spec はシフトの遮断を確かめるのが
+ * 目的なので、500 を握りつぶすのではなく **ログインの回数自体を 1 ユーザー 1 回に減らして**
+ * その経路を踏まないようにする。
+ */
+const browserSessions = new Map<string, BrowserSession>()
+
+async function establishSession(page: Page, email: string, password: string): Promise<void> {
+  const cached = browserSessions.get(email)
+  if (cached) {
+    await page.context().addCookies(cached.cookies)
+    // localStorage はオリジンに紐づくため、書き込む前にアプリのオリジンへ入る。
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 180_000 })
+    await page.evaluate(({ currentUser, tokenExpiresAt }) => {
+      if (currentUser) localStorage.setItem('currentUser', currentUser)
+      if (tokenExpiresAt) localStorage.setItem('tokenExpiresAt', tokenExpiresAt)
+    }, cached)
+    return
+  }
+
   await loginViaApi(page, { email, password }, { apiBaseUrl: API_BASE_URL })
+  const cookies = await page.context().cookies()
+  const stored = await page.evaluate(() => ({
+    currentUser: localStorage.getItem('currentUser'),
+    tokenExpiresAt: localStorage.getItem('tokenExpiresAt'),
+  }))
+  browserSessions.set(email, { cookies, ...stored })
+}
+
+async function openAs(page: Page, email: string, password: string, path: string): Promise<void> {
+  await establishSession(page, email, password)
   await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 180_000 })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
 }
 
-/** シフト表詳細のカレンダー表に並ぶ枠チップ（`/shift/{id}/edit` へのリンク）。 */
+/**
+ * シフト表詳細のカレンダー表に並ぶ枠チップ。
+ *
+ * 枠チップの href は `/shift/{id}/edit` だが、**同じ href をタブナビの「編集」タブも持つ**
+ * （pages/shift/[id]/index.vue の tabs[1] と、カレンダー表のセル内 NuxtLink）。
+ * href だけで引くと 1 枠しか無い画面でも 2 件ヒットする。枠チップはカレンダー表
+ * （`<table>` の `<td>` 内）にしか無く、タブナビは `<nav>` 配下なので、表の中に限定して引く。
+ */
 function slotChips(page: Page, scheduleId: number) {
-  return page.locator(`a[href="/shift/${scheduleId}/edit"]`)
+  return page.locator(`table td a[href="/shift/${scheduleId}/edit"]`)
 }
 
 /**
@@ -435,12 +537,29 @@ async function selectTeamOnShiftIndex(page: Page, teamName: string): Promise<voi
   await waitForSpinnerGone(page)
 }
 
-/** /my/shift-request のステップ1（チーム選択）。所属が 1 件のみなら自動選択される。 */
+/**
+ * /my/shift-request のステップ1（チーム選択）で対象チームを選ぶ。
+ *
+ * チームカードの描画は teamStore.fetchMyTeams の解決後であり、ハイドレーション直後には
+ * まだ無い。カードの数を即座に数えると 0 になり、クリックせずステップ1に留まったまま
+ * 次の検証へ進んでしまう（実機 run4/run5 の C3 失敗はこれが原因。実 DOM を
+ * ヘッドレスブラウザで採取して確認した）。**カードが出るまで待ってからクリックする**。
+ *
+ * 「戻る」ボタンをステップ2の目印にしてはならない。PageHeader の戻るボタンが
+ * ステップ1の時点で既に存在するため、待ちが即座に成立して race を素通りする
+ * （実 DOM で確認済み）。
+ *
+ * 対象チームの会員（e2e-user）は複数チームに所属しているため、ページの
+ * 「所属が 1 件なら自動選択」の分岐には入らず、ステップ1は必ず描画される
+ * （GET /api/v1/me/teams で実測）。
+ */
 async function selectTeamOnShiftRequest(page: Page): Promise<void> {
   const teamCard = page.getByText(fx.team.name, { exact: true })
-  if ((await teamCard.count()) > 0) {
-    await teamCard.first().click()
-  }
+  await expect(
+    teamCard.first(),
+    'ステップ1のチーム選択に対象チームのカードが出ること',
+  ).toBeVisible({ timeout: 60_000 })
+  await teamCard.first().click()
   await waitForSpinnerGone(page)
 }
 
@@ -510,7 +629,7 @@ test.describe('B: 一般メンバーには調整段階の割当が伏せられ�
     const chips = slotChips(page, fx.collectingId)
     await expect(chips, '枠の骨格は見えること（AC-4(3)）').toHaveCount(1, { timeout: 30_000 })
     await expect(chips.first(), '枠の時刻が見えること').toContainText('09:00〜12:00')
-    await expect(chips.first(), '枠のポジションが見えること').toContainText(LABEL_POSITION)
+    await expect(chips.first(), '枠のポジションが見えること').toContainText(fx.positionName)
     await expect(maskedMarks(page), '割当が伏せられた印が付くこと').toHaveCount(1)
     await expect(chips.first(), '中立表示の文言が出ること').toContainText(LABEL_MASKED)
     await expect(
@@ -636,7 +755,7 @@ test.describe('D: 一般メンバーの希望提出フロー（非回帰・本�
       '枠の時刻が希望提出画面に出ること',
     ).toBeVisible({ timeout: 30_000 })
     await expect(
-      page.getByText(LABEL_POSITION, { exact: true }).first(),
+      page.getByText(fx.positionName, { exact: true }).first(),
       '枠のポジションが希望提出画面に出ること',
     ).toBeVisible()
 
