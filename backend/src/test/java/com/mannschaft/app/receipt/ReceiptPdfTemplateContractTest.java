@@ -37,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  *   <li>AC-12: 生成 PDF のテキスト抽出に日本語（宛名・但し書き）が含まれる</li>
  * </ul>
  */
+@DisplayName("F08.12 領収書 PDF テンプレート契約テスト")
 class ReceiptPdfTemplateContractTest {
 
     private ReceiptPdfGeneratorImpl generator;
