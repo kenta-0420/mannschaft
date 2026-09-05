@@ -1,12 +1,13 @@
 package com.mannschaft.app.payment.connect.event;
 
+import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.payment.connect.ConnectAccountEntity;
 import com.mannschaft.app.payment.connect.ConnectAccountRepository;
 import com.mannschaft.app.payment.connect.ConnectAccountService;
 import com.mannschaft.app.payment.connect.OnboardingStatus;
 import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.escrow.EscrowCaptureMode;
-import com.mannschaft.app.payment.escrow.EscrowNotificationService;
 import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.escrow.EscrowStatus;
 import com.mannschaft.app.payment.escrow.EscrowTransactionEntity;
@@ -16,14 +17,17 @@ import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -70,8 +74,11 @@ class ConnectHeldEscrowPromotionOrderingIT extends AbstractMySqlIntegrationTest 
     /** Stripe 実通信は遮断する（PI 作成は成功を返す）。 */
     @MockitoBean private StripePaymentProvider stripePaymentProvider;
 
-    /** 通知の実配送は本ITの関心外。発火したことだけを検証する。 */
-    @MockitoBean private EscrowNotificationService escrowNotificationService;
+    /**
+     * 通知の実配送は本ITの関心外。#2990 L7 で配送が AFTER_COMMIT リスナー経由になったため、
+     * 昇格の後段が到達したことは配送 Runner が呼ばれたかどうかで測る。
+     */
+    @MockitoBean private NotificationDeliveryRunner notificationDeliveryRunner;
 
     @Test
     @DisplayName("鏡像更新の commit 後に昇格が走るので、REQUIRES_NEW の読み直しが新値を見て PENDING_CONFIRMATION へ遷移する")
@@ -133,7 +140,13 @@ class ConnectHeldEscrowPromotionOrderingIT extends AbstractMySqlIntegrationTest 
                 .isEqualTo(EscrowStatus.PENDING_CONFIRMATION);
         assertThat(after.getStripePaymentIntentId()).isEqualTo("pi_ordering_test");
 
-        // 札主への決済確認依頼通知が発火していること（昇格の後段が到達していることの裏取り）
-        verify(escrowNotificationService).notifyPaymentRequired(any(), anyString(), anyString());
+        // 札主への決済確認依頼通知が発火していること（昇格の後段が到達していることの裏取り）。
+        // #2990 L7 以降、配送は AFTER_COMMIT + @Async のリスナー経由なので非同期に待つ。
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
+            ArgumentCaptor<NotificationDeliveryRequest> captor =
+                    ArgumentCaptor.forClass(NotificationDeliveryRequest.class);
+            verify(notificationDeliveryRunner).sendOne(captor.capture());
+            assertThat(captor.getValue().notificationType()).isEqualTo("ESCROW_PAYMENT_REQUIRED");
+        });
     }
 }

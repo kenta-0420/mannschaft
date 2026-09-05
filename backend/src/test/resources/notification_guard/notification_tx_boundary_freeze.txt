@@ -132,7 +132,7 @@
 #      createDelegation / onDelegatorAttendanceChanged / reject（すべて TX_NOTIFY_BARE）の6件。
 # CLASSIFIED_FLOOR は分類済み9件のうち ROLLBACK_COUPLED 4件を是正で消したため 9 -> 5。
 # 残る分類済み5件はすべて ORDERING_ONLY であり、#2990 本体（巻き戻り）ではない。
-# CENSUS_FLOOR: 63
+# CENSUS_FLOOR: 58
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -155,11 +155,6 @@ com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfi
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processAlertIfNeeded -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processReminders -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.payment.escrow.EscrowLifecycleService#notifyCancelled -> TX_NOTIFY_BARE
-com.mannschaft.app.payment.escrow.EscrowLifecycleService#promoteHeldEscrow -> TX_NOTIFY_BARE
-com.mannschaft.app.payment.escrow.EscrowNotificationService#notifyPaymentRequired -> TX_NOTIFY_BARE
-com.mannschaft.app.payment.escrow.EscrowNotificationService#notifyUser -> TX_NOTIFY_BARE
-com.mannschaft.app.payment.service.MemberPaymentService#sendRemind -> TX_NOTIFY_BARE
 com.mannschaft.app.recruitment.service.MarketFriendTargetService#distributeFriendListing -> TX_NOTIFY_BARE
 com.mannschaft.app.recruitment.service.RecruitmentListingService#confirmApplication -> TX_NOTIFY_BARE
 com.mannschaft.app.recruitment.service.RecruitmentListingService#sendPublishedNotifications -> TX_NOTIFY_BARE
@@ -581,6 +576,117 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #     - EventEndReminderDeliveryListener       発火なし（語彙外の deliverReminder を呼ぶだけ）
 #   差し引き -3 + 1 = -2。よって 96 -> 94。番人の判定ロジック
 #   （NOTIFY_METHOD_VOCABULARY / notifyCallOffsets）は本PRで一行も変更していない。
+#
+# ■ CLASSIFIED_FLOOR は 2 のまま据え置く
+#   分類（| <区分>）が付いた 2 件は本ロットの対象外であり、削除も分類変更もしていない。
+
+# ------------------------------------------------------------------------------
+# --- 2026-09-05 Issue #2990 L7: payment ドメイン 5件の是正（CENSUS_FLOOR 63 -> 58）---
+# ------------------------------------------------------------------------------
+# 割当は TX_NOTIFY_BARE 5件（escrow 4 + payment.service 1）。相乗りで消えたエントリは無く、
+# 削除したのはちょうど 5 行である。1件ずつ実態を調べた結果を以下に記す。
+#
+# ■ escrow 4件 — 共通の前提（Issue #2990 L3 / PR #3073 との関係を先に書く）
+#
+#   L3 は ConnectAccountService から promoteHeldEscrow を呼ぶ**位置**だけを
+#   ConnectHeldEscrowPromotionListener（AFTER_COMMIT）へ移した是正であり、
+#   「REQUIRES_NEW の読み直しが未 commit の payouts_enabled を読めず HELD 昇格が常に空振りしていた」
+#   という機能欠損を直したものである。**通知呼び出しそのものは promoteHeldEscrow の
+#   REQUIRES_NEW の内側に残ったままであり、本ロットの4件はすべて L3 のあとも未是正だった。**
+#   L3 の結果、これまで一度も発火していなかった副作用（PENDING_CONFIRMATION 遷移・
+#   Stripe PaymentIntent 作成・札主への決済確認依頼通知。Issue #3076）が実際に走るようになったため、
+#   下記の巻き戻り経路は L3 以降むしろ「現実に起こりうる」状態になっていた。
+#
+#   **@Transactional が実効かどうかの実測結果**: 4件とも実効である。
+#   EscrowLifecycleService の各 public メソッドは @Transactional(REQUIRES_NEW) をメソッドに宣言しており、
+#   呼び出し元は EscrowLifecycleBatch / ConnectHeldEscrowPromotionListener /
+#   RecruitmentChargeCancellationListener の3系統だけで、いずれも**別 Bean からの呼び出し**である
+#   （自己呼び出しは無い。#2990 L5 検分で見つかった ProxyDelegationCleanupBatchService の失効・
+#   Issue #3109 と同型の穴は本クラスには無い）。EscrowNotificationService も別 Bean であり
+#   @Transactional は既定の REQUIRED、すなわち呼び出し元の REQUIRES_NEW トランザクションに参加する。
+#
+#   (1) EscrowLifecycleService#notifyCancelled（private ヘルパ）
+#   (3) EscrowNotificationService#notifyPaymentRequired
+#   (4) EscrowNotificationService#notifyUser
+#       この3件は「取消通知／決済確認依頼通知の発火点」そのものである。
+#       巻き戻り方（取消経路）: cancelWithStripe が Stripe の PaymentIntent.cancel を**先に成功させた**あと、
+#       status=CANCELLED / cancelled_at を書いて通知へ進む。notifications への INSERT が落ちると
+#       例外が REQUIRES_NEW のトランザクションへ伝播し、**Stripe 側では与信が取り消されているのに
+#       DB は PENDING_CONFIRMATION / HELD / AUTHORIZED のまま**戻る。以後バッチは毎回この escrow を
+#       取消対象として拾い続け（Stripe 側は冪等キーで二重取消にはならない）、
+#       台帳は「まだ与信が生きている」と主張し続ける。金銭台帳と決済事業者の状態が恒久的に乖離する。
+#
+#   (2) EscrowLifecycleService#promoteHeldEscrow
+#       巻き戻り方（HELD 昇格経路）: manual-capture の Destination PaymentIntent を Stripe に
+#       **作成し終えた**あとに status=PENDING_CONFIRMATION と stripe_payment_intent_id を書き、
+#       通知へ進む。INSERT が落ちるとこの2つがまとめて巻き戻り、**作成済み PI の ID を台帳が失う**
+#       （孤児 PI）。escrow は HELD のまま残るため、札主は confirm 画面へ辿り着けず、
+#       やがて hold 失効で (1) の取消経路に落ちる。すなわち通知1件の失敗が謝礼の不成立に化ける。
+#
+#       是正: 業務TX内は EscrowCancelledEvent（escrowId + 取消理由の enum）/
+#       EscrowPaymentRequiredEvent（escrowId のみ）を publish するだけにした。
+#       配送は新設の EscrowLifecycleNotificationListener（AFTER_COMMIT + @Async("event-pool")）が
+#       escrow を読み直し、受信者ごとに try/catch で隔離して NotificationDeliveryRunner#sendOne
+#       （1件＝1独立トランザクション）を呼ぶ。EscrowNotificationService は呼び出し元が無くなったため削除した。
+#       文面の i18n キーと通知種別・sourceType・actionUrl は1文字も変えていない。
+#       ただし locale の解決だけは LocaleContextHolder から UserLocaleCache（受信者ごと）へ改めた。
+#       発火元はバッチと Webhook スレッドでありリクエスト locale が存在しない（＝実質つねに既定 locale）ため、
+#       移設ついでに正した。
+#
+#       **募集取下げ由来の取消（cancelForRecruitmentCancellation）について**: 是正前は AUTHORIZED 失効と
+#       同一の本文キーを渡していた。文面を変えないため Reason.RECRUITMENT_CANCELLED は
+#       MSG_CANCELLED_AUTHORIZED_BODY へ写像している（種別だけ分けて由来を失わないようにした）。
+#
+# ■ payment.service 1件
+#
+#   (5) MemberPaymentService#sendRemind
+#       **@Transactional が実効かどうかの実測結果**: 実効である。メソッドに @Transactional を宣言しており
+#       （クラスには @Transactional(readOnly = true)）、入口は OrganizationPaymentController と
+#       TeamPaymentController の2つの HTTP ハンドラだけで、**自己呼び出しは無い**。
+#
+#       **巻き戻るものは何か（正直に書く）**: sendRemind は業務行を1行も書かない
+#       （支払項目の読み取りと未払いユーザーIDの読み取りだけ）。したがって他の4件のような
+#       「業務データが巻き戻る」形ではない。それでも被害は同じ根から出ていた:
+#         - 通知呼び出しがループの内側にあり try で囲われていないため、1人ぶんの
+#           notifications INSERT が落ちると例外が sendRemind の外へ抜けてループが打ち切られ、
+#           **以降の未払いメンバーには送信すら試みられない**。
+#         - createNotification は既定の REQUIRED で sendRemind のトランザクションに参加するため、
+#           それまでに書けていた通知行も**全員ぶんまとめて巻き戻る**（＝一括リマインドの全損）。
+#         - 管理者には 500 が返り RemindResponse すら届かないので、誰に届いて誰に届かなかったかが観測できない。
+#       是正: 業務TX内は PaymentRemindNotificationEvent（paymentItemId / teamId / scopeId / 受信者IDの一覧）を
+#       publish するだけにし、配送は新設の PaymentRemindNotificationListener
+#       （AFTER_COMMIT + @Async("event-pool")）が担う。支払項目名は業務データのためイベントに載せず読み直す。
+#       金型は同ドメインの PaymentAdvanceSettledNotificationListener と OnboardingReminderNotificationListener。
+#       @BackgroundFeaturePolicy は前者に倣って DROP_WHEN_DISABLED / FEATURE_BILLING_PAYMENT_ENABLED とした
+#       （escrow 側の2リスナーは金銭処理の必須後段であり ALWAYS。いずれも SKIP_WHEN_DISABLED は使っていないので
+#       番人 AC-14 の「スキップしたつもりでイベントが消えている」には当たらない）。
+#
+# ■ CENSUS_FLOOR: 63 -> 58 の裏取り（実測）
+#   是正前: 凍結エントリ 55 + REMOVED 8 + AMBIGUOUS 0 = 63（= 是正前の CENSUS_FLOOR）
+#   是正後: 凍結エントリ 50 + REMOVED 8 + AMBIGUOUS 0 = 58
+#   消えた 5 件はすべて上記の是正由来であり、番人の検出力低下による消失は 0 件である。
+#   番人（NotificationTransactionBoundaryGuardTest）の判定ロジックは一行も変更していない
+#   （下限の3定数のみ、下記の実測にしたがって下げた）。
+#
+# ■ 検出力の下限: 3本すべてを下げた（実測列挙つき）
+#   RAW_CANDIDATE_HITS_MIN     169 -> 167
+#   STRUCTURAL_NOTIFY_CALLS_MIN 149 -> 147
+#   NOTIFY_BEARING_FILES_MIN     94 -> 93
+#
+#   消えた生ヒットを1件ずつ列挙する（本ロットで触った本番ファイルはこの5つがすべて）:
+#     - EscrowLifecycleService              2 -> 0
+#         escrowNotificationService.notifyCancelled(...)        （publishCancelled → publishEvent へ）
+#         escrowNotificationService.notifyPaymentRequired(...)  （publishEvent へ）
+#     - EscrowNotificationService           2 -> ファイルごと削除
+#         notificationService.createNotification(...) ×2（notifyPaymentRequired / notifyUser）
+#         ※ notifyUser(...) の呼び出しは同一クラス内の無修飾呼び出しであり、元から生ヒットに数えられていない。
+#     - MemberPaymentService                1 -> 0
+#         notificationHelper.notify(...)                        （publishEvent へ）
+#     - EscrowLifecycleNotificationListener  新規 0 -> 2（notificationDeliveryRunner.sendOne ×2）
+#     - PaymentRemindNotificationListener    新規 0 -> 1（notificationDeliveryRunner.sendOne ×1）
+#   生ヒット差し引き: -5 + 3 = -2。構造条件（レシーバが識別子・引数1つ以上）は上記8箇所すべてが満たすため
+#   STRUCTURAL も同じく -2。発火を持つファイル数は -3（上記3ファイル）+2（新規2ファイル）= -1。
+#   通知そのものは1件も消していない（発火点が別ファイルへ移り、経路が1本に集約されたぶんだけ減った）。
 #
 # ■ CLASSIFIED_FLOOR は 2 のまま据え置く
 #   分類（| <区分>）が付いた 2 件は本ロットの対象外であり、削除も分類変更もしていない。
