@@ -7,6 +7,7 @@ import type {
 } from '~/types/shift'
 import dayjs from 'dayjs'
 import { statusToStep } from '~/utils/shiftStatus'
+import { isSlotUnderStaffed } from '~/utils/shiftSlot'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -125,19 +126,6 @@ const slotsByDate = computed<Map<string, ShiftSlotResponse[]>>(() => {
   }
   return map
 })
-
-/**
- * 充足状況を判定する（CMP-260826-2127 / AC-4(4)）。
- *
- * サーバーが割当を伏せた枠（assignmentMasked=true）は assignedUserIds が空配列で返るため、
- * そのまま数えると全枠が「0/N」の人員不足に見えてしまう。伏せられている間は
- * 充足の判定自体を行わない。判定に schedule.status を使わないのは、
- * BE と FE で規則が二重化するのを避けるためである。
- */
-function isUnderStaffed(slot: ShiftSlotResponse): boolean {
-  if (slot.assignmentMasked) return false
-  return slot.assignedUserIds.length < slot.position.requiredCount
-}
 
 function formatDateShort(dateStr: string): string {
   const d = new Date(dateStr)
@@ -341,7 +329,7 @@ const tabs = computed(() => {
                       :to="`/shift/${scheduleId}/edit`"
                       class="inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-xs transition-colors hover:border-primary"
                       :class="
-                        isUnderStaffed(slot)
+                        isSlotUnderStaffed(slot)
                           ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300'
                           : 'border-surface-200 bg-surface-50 text-surface-700 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300'
                       "
@@ -360,7 +348,7 @@ const tabs = computed(() => {
                         v-else
                         class="rounded px-1 font-medium"
                         :class="
-                          isUnderStaffed(slot)
+                          isSlotUnderStaffed(slot)
                             ? 'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-200'
                             : 'bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-200'
                         "
