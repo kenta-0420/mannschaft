@@ -32,8 +32,7 @@
 -- マスタ例外に準じて自然キー（複合主キー）のまま設計する。
 CREATE TABLE duplicate_name_locks (
     scope_kind  VARCHAR(32)  NOT NULL COMMENT 'DuplicateNameScopeKind（ORGANIZATION/TEAM）',
-    name_key    VARCHAR(100) NOT NULL COMMENT 'trim済みの生の名称（organizations/teams.nameと同じ列長）。'
-                                              'テーブルのutf8mb4_0900_ai_ci照合により候補検索と同じ同名判定になる',
+    name_key    VARCHAR(100) NOT NULL COMMENT 'trim済みの生の名称（organizations/teams.nameと同じ列長）。テーブルのutf8mb4_0900_ai_ci照合により候補検索と同じ同名判定になる',
     created_at  TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (scope_kind, name_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
