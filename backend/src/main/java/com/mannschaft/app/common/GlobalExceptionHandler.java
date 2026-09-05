@@ -3,6 +3,8 @@ package com.mannschaft.app.common;
 import com.mannschaft.app.billing.FeatureNotEntitledException;
 import com.mannschaft.app.billing.api.BillingIdempotencyProcessingException;
 import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationErrorResponse;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequiredException;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
@@ -1168,7 +1170,8 @@ public class GlobalExceptionHandler {
             // F01.2 §5.9.5 slug リネーム: 他スコープ履歴に予約済み slug は 409（SLUG_RETIRED）
             Map.entry("TEAM_063", HttpStatus.CONFLICT),                      // SLUG_RETIRED（他チーム履歴予約）
             // ロットD追補: team の残り未登録分。organization と同型の兄弟コードのため同一方針で揃える
-            // （ORG_002/003/005/006/007/042/044/048/050/051 と同じ判定基準）。
+            // （ORG_003/005/006/007/042/044/048/050/051 と同じ判定基準。
+            // ORG_002 は柱③-A で existsByName 一律ブロックごと撤去済み＝DUPNAME_001 に統合）。
             Map.entry("TEAM_002", HttpStatus.CONFLICT),                      // チームはアーカイブ済み（操作不可の状態競合）
             Map.entry("TEAM_003", HttpStatus.CONFLICT),                      // 既にこのチームに所属
             Map.entry("TEAM_004", HttpStatus.FORBIDDEN),                     // ブロックされているため参加できない
@@ -1183,7 +1186,6 @@ public class GlobalExceptionHandler {
             // ロットD追補: organization の残り未登録分。権限不足は 403、名称重複・アーカイブ済み・
             // 既加入・並び替え競合等の状態競合は 409、役員/カスタムフィールド not found は
             // organizationId 束縛の IDOR 秘匿のため 404。
-            Map.entry("ORG_002", HttpStatus.CONFLICT),                       // 組織名重複
             Map.entry("ORG_003", HttpStatus.CONFLICT),                       // 組織はアーカイブ済み（操作不可の状態競合）
             Map.entry("ORG_005", HttpStatus.FORBIDDEN),                      // この操作を行う権限がありません
             Map.entry("ORG_006", HttpStatus.CONFLICT),                       // 削除されていないため復元できない
@@ -2480,7 +2482,15 @@ public class GlobalExceptionHandler {
             Map.entry("PROV_009", HttpStatus.NOT_FOUND),
             Map.entry("PROV_010", HttpStatus.NOT_FOUND),
             // 検分 P1-3 根治: ACCEPTED 済み招待への resend/cancel は状態競合のため409。
-            Map.entry("PROV_011", HttpStatus.CONFLICT)
+            Map.entry("PROV_011", HttpStatus.CONFLICT),
+            // CMP-260901-1538 柱③-A: 組織・チーム名称の同名確認フロー。専用ハンドラ
+            // （handleDuplicateNameConfirmationRequired）が優先して処理するが、宣言ステータス
+            // 一致番人（ErrorCodeHttpStatusDeclarationGuardTest）は STATUS_MAP 経由の
+            // resolveHttpStatus() の結果で判定するため、金型 ENTITLEMENT_003 と同様に登録する。
+            Map.entry("DUPNAME_001", HttpStatus.CONFLICT),
+            // 検分 P1-2 是正: アドバイザリロック（GET_LOCK）取得タイムアウト。同名同士の
+            // 同時作成競合を示す一時的な 409（クライアントは再試行してよい）。
+            Map.entry("DUPNAME_002", HttpStatus.CONFLICT)
     );
 
     /**
@@ -2552,6 +2562,26 @@ public class GlobalExceptionHandler {
         FeatureNotEntitledErrorResponse body =
                 new FeatureNotEntitledErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
         return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
+    }
+
+    /**
+     * CMP-260901-1538 柱③-A 409 details 追補: {@link DuplicateNameConfirmationRequiredException}
+     * 専用ハンドラ（金型: {@link #handleFeatureNotEntitled}）。
+     *
+     * <p>組織・チーム作成時、同名候補が存在し確認未完了（または確認後に fingerprint が不一致 = 確認後に
+     * 新たな同名が出現）の場合に 409 として候補一覧・fingerprint を返す。4xx のため error_reports への
+     * 記録はしない（{@link #handleBusinessException} と同じ方針）。</p>
+     */
+    @ExceptionHandler(DuplicateNameConfirmationRequiredException.class)
+    public ResponseEntity<DuplicateNameConfirmationErrorResponse> handleDuplicateNameConfirmationRequired(
+            DuplicateNameConfirmationRequiredException ex) {
+        String message = resolveMessage(ex.getErrorCode());
+        log.warn("DuplicateNameConfirmationRequiredException: code={}, visibleCandidateCount={}, hiddenCandidateCount={}",
+                ex.getErrorCode().getCode(), ex.getDetails().visibleCandidates().size(),
+                ex.getDetails().hiddenCandidateCount());
+        DuplicateNameConfirmationErrorResponse body =
+                new DuplicateNameConfirmationErrorResponse(ex.getErrorCode().getCode(), message, ex.getDetails());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     /**

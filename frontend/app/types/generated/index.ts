@@ -56658,12 +56658,47 @@ export interface components {
         CreateTeamRequest: {
             city?: string;
             cityCode?: string;
+            confirmDuplicate?: boolean;
+            duplicateNameFingerprint?: string;
             name?: string;
             prefecture?: string;
             prefectureCode?: string;
             slug?: string;
             template?: string;
             visibility?: string;
+        };
+        DuplicateNameCandidateView: {
+            id?: string;
+            name?: string;
+        };
+        DuplicateNameConfirmationDetails: {
+            /** Format: int64 */
+            expiresAtEpochSecond?: number;
+            fingerprint?: string;
+            /** Format: int32 */
+            hiddenCandidateCount?: number;
+            visibleCandidates?: components["schemas"]["DuplicateNameCandidateView"][];
+        };
+        /** @description 柱③-A 409 応答（候補一覧・fingerprint 付き） */
+        DuplicateNameConfirmationErrorResponse: {
+            error?: components["schemas"]["ErrorDetail"];
+        };
+        ErrorDetail: {
+            /**
+             * @description エラーコード
+             * @example DUPNAME_001
+             */
+            code?: string;
+            /** @description 同名確認フローの詳細（候補一覧・fingerprint） */
+            details?: components["schemas"]["DuplicateNameConfirmationDetails"];
+            /** @description フィールドエラー一覧（本エラーでは常に空） */
+            fieldErrors?: components["schemas"]["FieldError"][];
+            /** @description エラーメッセージ */
+            message?: string;
+        };
+        FieldError: {
+            field?: string;
+            message?: string;
         };
         CreateReminderRequest: {
             /** Format: date-time */
@@ -61047,6 +61082,8 @@ export interface components {
             sortOrder?: number;
         };
         ProvisioningTeamCreateRequest: {
+            confirmDuplicate?: boolean;
+            duplicateNameFingerprint?: string;
             inviteEmail?: string;
             name?: string;
         };
@@ -61065,6 +61102,8 @@ export interface components {
             teamId?: number;
         };
         ProvisioningOrganizationCreateRequest: {
+            confirmDuplicate?: boolean;
+            duplicateNameFingerprint?: string;
             inviteEmail?: string;
             name?: string;
         };
@@ -63015,6 +63054,8 @@ export interface components {
         };
         CreateOrganizationRequest: {
             city?: string;
+            confirmDuplicate?: boolean;
+            duplicateNameFingerprint?: string;
             name?: string;
             orgType?: string;
             /** Format: int64 */
@@ -100946,6 +100987,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseTeamResponse"];
                 };
             };
+            /** @description 柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DuplicateNameConfirmationErrorResponse"];
+                };
+            };
         };
     };
     listSchedules: {
@@ -111066,13 +111116,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description 作成成功 */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "*/*": components["schemas"]["ProvisioningInvitationResponse"];
+                };
+            };
+            /** @description 柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DuplicateNameConfirmationErrorResponse"];
                 };
             };
         };
@@ -111090,13 +111149,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description 作成成功 */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "*/*": components["schemas"]["ProvisioningInvitationResponse"];
+                };
+            };
+            /** @description 柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DuplicateNameConfirmationErrorResponse"];
                 };
             };
         };
@@ -115545,6 +115613,15 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseOrganizationResponse"];
+                };
+            };
+            /** @description 柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DuplicateNameConfirmationErrorResponse"];
                 };
             };
         };
