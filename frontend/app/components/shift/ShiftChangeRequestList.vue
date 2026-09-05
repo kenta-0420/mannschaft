@@ -74,30 +74,30 @@ function confirmReview(): void {
       class="text-sm"
     >
       <!-- 依頼者 -->
-      <Column :header="$t('common.member')" field="requestedBy" style="min-width: 100px">
+      <Column :header="$t('common.member')" field="requestInfo.requestedBy" style="min-width: 100px">
         <template #body="{ data }">
-          <span class="font-medium">{{ data.requestedBy }}</span>
+          <span class="font-medium">{{ data.requestInfo.requestedBy }}</span>
         </template>
       </Column>
 
       <!-- 種別 -->
-      <Column :header="$t('shift.changeRequest.title')" field="requestType" style="min-width: 120px">
+      <Column :header="$t('shift.changeRequest.title')" field="requestInfo.requestType" style="min-width: 120px">
         <template #body="{ data }">
-          <span class="text-xs">{{ typeLabel(data.requestType) }}</span>
+          <span class="text-xs">{{ typeLabel(data.requestInfo.requestType) }}</span>
         </template>
       </Column>
 
       <!-- 理由 -->
-      <Column :header="$t('shift.changeRequest.reason')" field="reason" style="min-width: 140px">
+      <Column :header="$t('shift.changeRequest.reason')" field="requestInfo.reason" style="min-width: 140px">
         <template #body="{ data }">
-          <span class="line-clamp-1 text-xs text-surface-500">{{ data.reason ?? '—' }}</span>
+          <span class="line-clamp-1 text-xs text-surface-500">{{ data.requestInfo.reason ?? '—' }}</span>
         </template>
       </Column>
 
       <!-- ステータス -->
-      <Column :header="$t('common.status')" field="status" style="min-width: 100px">
+      <Column :header="$t('common.status')" field="reviewInfo.status" style="min-width: 100px">
         <template #body="{ data }">
-          <Tag :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" />
+          <Tag :value="statusLabel(data.reviewInfo.status)" :severity="statusSeverity(data.reviewInfo.status)" />
         </template>
       </Column>
 
@@ -106,7 +106,7 @@ function confirmReview(): void {
         <template #body="{ data }">
           <div class="flex gap-2">
             <!-- ADMIN: 承認・却下 -->
-            <template v-if="isAdmin && data.status === 'OPEN'">
+            <template v-if="isAdmin && data.reviewInfo.status === 'OPEN'">
               <Button
                 :label="$t('shift.changeRequest.approve')"
                 severity="success"
@@ -123,7 +123,7 @@ function confirmReview(): void {
 
             <!-- 依頼者本人: 取下 -->
             <Button
-              v-if="data.requestedBy === currentUserId && data.status === 'OPEN'"
+              v-if="data.requestInfo.requestedBy === currentUserId && data.reviewInfo.status === 'OPEN'"
               :label="$t('shift.changeRequest.withdraw')"
               severity="secondary"
               size="small"

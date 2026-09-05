@@ -727,8 +727,17 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 564 → 565。マスタ例外（全テナント共通・複合自然キー {@code (beta_phase, grant_kind)}・独立発番不要）で
      * CLAUDE.md 原則 #6 の明記された例外に該当し、設計是認済み（設計書 F20.3 01 §0/§2）。違反隠蔽ではなく
      * 設計是認例外の正規登録（{@code village.VillageFestivalLivePostEntity} と同型）。</p>
+     *
+     * <p>CMP-260901-1538 柱③-A 検分第3巡（2026-09-05）: {@code common.duplicatename.DuplicateNameLockEntity}
+     * （同名確認フロー用の行ロック専用テーブル）を 1 件追加し 565 → 566。マスタ例外に準じる
+     * （テナント・ユーザーごとに行が増える通常のドメインテーブルではなく、正規化名の種類数だけ
+     * 存在するロック専用の恒久データ。シャーディング時は全シャードへ同じ行をコピーする運用が自然で、
+     * 原則 #6 の意図＝各ノード独立発番に該当しない）。実データを持たず、
+     * {@code DuplicateNameGuardServiceImpl} がネイティブ SQL で直接ロックを取得するために存在する
+     * （{@code docs/architecture/domain_db_design_principles.md} 参照）。違反隠蔽ではなく
+     * 設計是認例外の正規登録。</p>
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 565;
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 566;
 
     /**
      * 越境 Repository 依存禁止ストア（D-5）の期待行数。
