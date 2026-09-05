@@ -33,6 +33,40 @@
  *   本 spec の目的が招待経路の欠陥と無関係だからである（症状隠しではない）。
  *
  * 共有チームを使うため、本 spec が作ったシフト表・ポジションは後始末で必ず削除して原状復帰する。
+ *
+ * ============================================================================
+ * 【この spec の射程】検証していること・していないこと（Codex 検分 2026-09-05 を受けて明記）
+ * ============================================================================
+ *
+ * 検証している AC:
+ *   AC-1  非管理者の一覧から未公開シフト表が除外される
+ *         （メンバーが listSchedules の結果を直接見る画面＝希望提出のシフト表選択で確認。C3）
+ *   AC-2  非管理者の単体取得が 404（HTTP ステータスを実応答で確認。C1 / C2）
+ *   AC-3  非管理者の枠一覧が 404（同上。C1 / C2）
+ *   AC-4  COLLECTING / ADJUSTING は 200 で返り、assignmentMasked=true・assignedUserIds=[] で
+ *         割当が伏せられる。枠の骨格（時刻・ポジション・必要人数）は伏せない。
+ *         画面では充足バッジが出ず中立表示になる（B1 / B2。API 応答と画面の両方を見る）
+ *   AC-7  ARCHIVED かつ publishedAt が NULL は DRAFT と同一に扱われる（C2）
+ *   AC-8  一般メンバーの希望提出フローが通る（D1）
+ *   AC-9  非管理者が ADJUSTING を一覧・単体で取得できる（B2）
+ *   AC-10 管理者は全ステータスで一覧・単体・枠を全量取得でき、割当が伏せられない
+ *         （A1〜A3。ただし PDF と検索は未検証）
+ *   AC-17 PUBLISHED かつ publishedAt が NULL は公開済みとして扱われる（B4）
+ *
+ * 検証していない AC（本 spec の射程外。別 spec で足す必要がある）:
+ *   AC-5  PDF（layout=team / personal）の 404
+ *   AC-6  グローバル検索から未公開シフト表が除外されること
+ *   AC-10 のうち PDF・検索の経路
+ *   AC-11 非メンバーの SYSTEM_ADMIN が全ステータスを取得できること（PDF 経路含む）
+ *   AC-12 別 scope の ADMIN / SUPPORTER / 無所属が常に 403 であること（存在オラクルの不在）
+ *   AC-13 既存 IT の緑化（実装側のテストであり実機の射程外）
+ *   AC-14 COLLECTING 希望提出リマインド通知がシフト表名を含んで送られること
+ *   AC-15 ShiftScheduleList.vue の非管理者向けフィルタ撤去（チーム配下のシフト表タブ）。
+ *         当該画面は teamId に slug を渡しており BE の Long 変換で 400 になる既存の契約ずれが
+ *         あるため、本 spec では踏んでいない
+ *
+ * 管理者側（A1〜A3）は、実機の ADMIN アカウントがプラットフォーム SYSTEM_ADMIN を併せ持つため
+ * 「SYSTEM_ADMIN 短絡」経路を通る。AC-10（チーム管理者）を純粋な形では踏んでいない。
  */
 import {
   test as base,
@@ -42,6 +76,7 @@ import {
   type BrowserContext,
   type Page,
 } from '@playwright/test'
+import { execSync } from 'child_process'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 
@@ -79,6 +114,18 @@ const LABEL_CALENDAR_VIEW = 'カレンダー表示' // shift.detail.calendarView
  */
 const POSITION_PREFIX = '受付_E2E'
 const TITLE_PREFIX = '未公開遮断_'
+
+/**
+ * 実行ごとの一意な識別子。作るデータの名前に必ず含める。
+ *
+ * 共有チームを使うため、接頭辞一致だけで掃除すると並行して走る別実行のデータまで消してしまう
+ * （実際に殿の実行と相互干渉して赤が出た）。名前に実行 ID を持たせ、掃除は
+ * 「本 spec の接頭辞」かつ「十分に古い（= 生きている実行のものではない）」ものだけに限る。
+ */
+const RUN_TAG = `R${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+
+/** これより古い残骸だけを掃除の対象にする（生きている並行実行のデータを消さないため）。 */
+const STALE_LEFTOVER_MS = 2 * 60 * 60 * 1000
 const LABEL_PREVIEW = '提出前確認' // shift.preview.title
 const LABEL_SUBMIT = '提出' // shift.action.submit
 const LABEL_TOTAL = '合計' // shift.preview.totalLabel
@@ -178,23 +225,36 @@ async function fetchRoleName(email: string, password: string): Promise<string> {
 }
 
 /**
- * 前回の中断で残った本 spec 由来のデータ（接頭辞で識別）を消してから始める。
+ * 前回の中断で残った本 spec 由来のデータを消してから始める。
  *
- * 共有チームを使うため、残骸があると次の実行が 409 や重複表示で落ちる。
- * 掃除の対象は本 spec の名前空間（TITLE_PREFIX / POSITION_PREFIX）に限る。
+ * 共有チームを使うため、残骸があると次の実行が 409（同名ポジション）や重複表示で落ちる。
+ * 対象は「本 spec の接頭辞を持ち」かつ「STALE_LEFTOVER_MS より古い」ものだけに限る
+ * （接頭辞一致だけで消すと、並行して走る別実行のデータを道連れにする）。
+ * 削除の成否は assert する。403/409/500 を黙って見逃すと残骸が残り、次の実行が落ちる。
  */
 async function purgeLeftovers(ctx: APIRequestContext, token: string, teamId: number): Promise<void> {
+  const staleBefore = Date.now() - STALE_LEFTOVER_MS
+
   const schedulesRes = await ctx.get(`${BE_API}/shifts/schedules?teamId=${teamId}`, {
     headers: authHeaders(token),
   })
   if (!schedulesRes.ok()) {
     throw new Error(`シフト表一覧取得失敗: ${schedulesRes.status()} ${await schedulesRes.text()}`)
   }
-  const schedules = (await schedulesRes.json()).data as Array<{ id: number; title: string }>
+  const schedules = (await schedulesRes.json()).data as Array<{
+    id: number
+    content: { title: string }
+    audit: { createdAt: string }
+  }>
   for (const s of schedules) {
-    if (!s.title?.startsWith(TITLE_PREFIX)) continue
+    if (!s.content?.title?.startsWith(TITLE_PREFIX)) continue
+    if (Date.parse(s.audit?.createdAt ?? '') > staleBefore) continue
     const res = await ctx.delete(`${BE_API}/shifts/schedules/${s.id}`, { headers: authHeaders(token) })
-    console.log(`[PURGE] DELETE /shifts/schedules/${s.id} (${s.title}) -> ${res.status()}`)
+    console.log(`[PURGE] DELETE /shifts/schedules/${s.id} (${s.content.title}) -> ${res.status()}`)
+    expect(
+      res.status(),
+      `残骸のシフト表 ${s.id} を削除できること（消せないと次の実行が落ちる）`,
+    ).toBe(204)
   }
 
   const positionsRes = await ctx.get(`${BE_API}/shifts/positions?teamId=${teamId}`, {
@@ -203,12 +263,31 @@ async function purgeLeftovers(ctx: APIRequestContext, token: string, teamId: num
   if (!positionsRes.ok()) {
     throw new Error(`ポジション一覧取得失敗: ${positionsRes.status()} ${await positionsRes.text()}`)
   }
-  const positions = (await positionsRes.json()).data as Array<{ id: number; name: string }>
+  const positions = (await positionsRes.json()).data as Array<{
+    id: number
+    name: string
+    createdAt: string
+  }>
   for (const pos of positions) {
     if (!pos.name?.startsWith(POSITION_PREFIX)) continue
+    if (Date.parse(pos.createdAt ?? '') > staleBefore) continue
     const res = await ctx.delete(`${BE_API}/shifts/positions/${pos.id}`, { headers: authHeaders(token) })
     console.log(`[PURGE] DELETE /shifts/positions/${pos.id} (${pos.name}) -> ${res.status()}`)
+    expect(res.status(), `残骸のポジション ${pos.id} を削除できること`).toBe(204)
   }
+}
+
+/**
+ * MySQL へ直接 SQL を投げる（AC-17 のフィクスチャ作成専用）。
+ *
+ * wsl.exe 経由で docker のコンテナへ入る形は、既存の実機 spec
+ * （2fa-flow.spec.ts / matching-search.spec.ts）と同じ作法。
+ */
+function runSql(sql: string): string {
+  return execSync(
+    `wsl.exe -e docker exec mannschaft-mysql mysql -uroot -proot mannschaft -N -B -e "${sql}"`,
+    { stdio: 'pipe' },
+  ).toString().trim()
 }
 
 async function createPosition(
@@ -317,7 +396,13 @@ function addDaysIso(baseIso: string, days: number): string {
 // 前提データ（4 ステータス + 未公開 ARCHIVED を 1 チーム分そろえる）
 // ============================================================================
 
-type FixtureKey = 'draft' | 'collecting' | 'adjusting' | 'published' | 'archived'
+type FixtureKey =
+  | 'draft'
+  | 'collecting'
+  | 'adjusting'
+  | 'published'
+  | 'publishedNoTimestamp'
+  | 'archived'
 
 interface Fixture {
   team: TargetTeam
@@ -330,7 +415,11 @@ interface Fixture {
   collectingId: number
   adjustingId: number
   publishedId: number
+  /** AC-17: status=PUBLISHED かつ published_at IS NULL の不整合データ。 */
+  publishedNoTimestampId: number
   archivedUnpublishedId: number
+  /** 枠に割り当てた会員のユーザーID（API 応答の突き合わせに使う）。 */
+  memberUserId: number
   /** タイトルは実行ごとに一意化する（他実行の残骸と取り違えないため）。 */
   titles: Record<FixtureKey, string>
 }
@@ -365,6 +454,18 @@ const test = base.extend<
 })
 
 test.setTimeout(300_000)
+
+/**
+ * 直列実行にしている理由（1 件落ちると後続がスキップされる構造は承知のうえ）:
+ *
+ * 1. 前提データを共有チーム fc-u-18 に作るため、並列に走らせると同じチームのシフト表を
+ *    互いの掃除で消し合う（実際に並行実行で赤が出た）。
+ * 2. 同一ユーザーのログインが近接すると BE が refresh_tokens の更新でデッドロックし
+ *    500（COMMON_999）を返す製品側の欠陥があり、並列にすると必ず踏む。
+ *
+ * どちらも「使い捨てチーム＋ユーザーごとの隔離」で解けるが、その前提となる招待経路に
+ * 別の欠陥（AccessControlService の ADMIN_ROLES に SYSTEM_ADMIN が無い）があり今は使えない。
+ */
 test.describe.configure({ mode: 'serial' })
 
 test.beforeAll(async ({ tokens }) => {
@@ -385,8 +486,7 @@ test.beforeAll(async ({ tokens }) => {
 
     await purgeLeftovers(ctx, tokens.admin, team.numericId)
 
-    const nonce = String(Date.now()).slice(-6)
-    const positionName = `${POSITION_PREFIX}_${nonce}`
+    const positionName = `${POSITION_PREFIX}_${RUN_TAG}`
     const positionId = await createPosition(ctx, tokens.admin, team.numericId, positionName)
     createdPositionId = positionId
     const startDate = addDaysIso(todayIsoJst(), 7)
@@ -394,11 +494,12 @@ test.beforeAll(async ({ tokens }) => {
     const slotDate = startDate
 
     const titles: Record<FixtureKey, string> = {
-      draft: `${TITLE_PREFIX}下書き_${nonce}`,
-      collecting: `${TITLE_PREFIX}希望収集_${nonce}`,
-      adjusting: `${TITLE_PREFIX}調整_${nonce}`,
-      published: `${TITLE_PREFIX}確定_${nonce}`,
-      archived: `${TITLE_PREFIX}未公開のままアーカイブ_${nonce}`,
+      draft: `${TITLE_PREFIX}下書き_${RUN_TAG}`,
+      collecting: `${TITLE_PREFIX}希望収集_${RUN_TAG}`,
+      adjusting: `${TITLE_PREFIX}調整_${RUN_TAG}`,
+      published: `${TITLE_PREFIX}確定_${RUN_TAG}`,
+      publishedNoTimestamp: `${TITLE_PREFIX}確定日時なし_${RUN_TAG}`,
+      archived: `${TITLE_PREFIX}未公開のままアーカイブ_${RUN_TAG}`,
     }
 
     /**
@@ -425,6 +526,23 @@ test.beforeAll(async ({ tokens }) => {
     const collectingId = await seedOne(titles.collecting, ['COLLECTING'])
     const adjustingId = await seedOne(titles.adjusting, ['COLLECTING', 'ADJUSTING'])
     const publishedId = await seedOne(titles.published, ['COLLECTING', 'ADJUSTING', 'PUBLISHED'])
+
+    // AC-17 のフィクスチャ: status=PUBLISHED かつ published_at IS NULL。
+    // この形は API では作れない（transitionStatus は publish() で必ず published_at を打刻し、
+    // updateSchedule は status を受け付けず、duplicateSchedule は必ず DRAFT にする。
+    // いずれも origin/main の実装で確認済み）。一方 DB 側には status と published_at の
+    // 整合制約が無く（V3.070・設計書 §8 B-9）本番データにも存在しうる形なので、
+    // 自分が作った 1 行だけを id 指定で書き換えて再現する。
+    const publishedNoTimestampId = await seedOne(
+      titles.publishedNoTimestamp, ['COLLECTING', 'ADJUSTING', 'PUBLISHED'],
+    )
+    runSql(`UPDATE shift_schedules SET published_at = NULL WHERE id = ${publishedNoTimestampId};`)
+    const fixtureRow = runSql(
+      `SELECT CONCAT(status, ':', IFNULL(published_at, 'NULL')) FROM shift_schedules WHERE id = ${publishedNoTimestampId};`,
+    )
+    if (fixtureRow !== 'PUBLISHED:NULL') {
+      throw new Error(`AC-17 のフィクスチャを作れなかった: ${JSON.stringify(fixtureRow)}`)
+    }
     // DRAFT から直接 ARCHIVED へ落とす（published_at が NULL のまま＝未公開アーカイブ / AC-7）
     const archivedUnpublishedId = await seedOne(titles.archived, ['ARCHIVED'])
 
@@ -438,14 +556,17 @@ test.beforeAll(async ({ tokens }) => {
       collectingId,
       adjustingId,
       publishedId,
+      publishedNoTimestampId,
       archivedUnpublishedId,
+      memberUserId: tokens.memberUserId,
       titles,
     }
     console.log(
       `[SETUP] team=${team.slug}(#${team.numericId}) `
       + `adminRole=${adminRoleName} memberRole=${memberRoleName} `
       + `slotDate=${slotDate} draft=${draftId} collecting=${collectingId} `
-      + `adjusting=${adjustingId} published=${publishedId} archived=${archivedUnpublishedId}`,
+      + `adjusting=${adjustingId} published=${publishedId} `
+      + `publishedNoTimestamp=${publishedNoTimestampId} archived=${archivedUnpublishedId}`,
     )
   } finally {
     await ctx.dispose()
@@ -524,6 +645,44 @@ function slotChips(page: Page, scheduleId: number) {
  */
 function maskedMarks(page: Page) {
   return page.locator(`[title="${LABEL_MASKED_HINT}"]`)
+}
+
+/** 枠一覧 API（GET /shifts/schedules/{id}/slots）の応答かどうか。 */
+function isSlotsResponse(url: string, scheduleId: number): boolean {
+  return url.endsWith(`/api/v1/shifts/schedules/${scheduleId}/slots`)
+}
+
+/** 単体取得 API（GET /shifts/schedules/{id}）の応答かどうか（/slots とは別物）。 */
+function isScheduleResponse(url: string, scheduleId: number): boolean {
+  return url.endsWith(`/api/v1/shifts/schedules/${scheduleId}`)
+}
+
+/** 枠一覧 API の応答本体（画面が実際に受け取ったもの）。 */
+interface SlotApiRow {
+  id: number
+  assignmentMasked: boolean
+  assignedUserIds: number[]
+  position: { positionId: number | null; positionName: string | null; requiredCount: number }
+  time: { slotDate: string; startTime: string; endTime: string }
+}
+
+/**
+ * 画面が受け取った枠一覧 API の応答を待ち受ける。
+ *
+ * 画面の見た目だけを見ていると、API が誤って割当ユーザーIDを返していても
+ * UI が描画しなければ緑になってしまう（AC-4 は API の契約でもある）。
+ * 画面の検証に「上乗せ」して、実際に飛んだ応答の中身を突き合わせるために使う。
+ * 遷移より前に呼んで Promise を作っておくこと。
+ */
+function waitForSlotsResponse(page: Page, scheduleId: number) {
+  return page.waitForResponse(
+    r => r.request().method() === 'GET' && isSlotsResponse(r.url(), scheduleId),
+    { timeout: 120_000 },
+  )
+}
+
+async function readSlotRows(response: Awaited<ReturnType<typeof waitForSlotsResponse>>): Promise<SlotApiRow[]> {
+  return ((await response.json()) as { data: SlotApiRow[] }).data
 }
 
 /** /shift 一覧でチームを選ぶ（PrimeVue Select）。 */
@@ -619,7 +778,18 @@ test.describe('A: 管理者は全ステータスを見て操作できる', () =>
 // ============================================================================
 test.describe('B: 一般メンバーには調整段階の割当が伏せられる', () => {
   test('B1: COLLECTING の詳細は開けるが、充足バッジが出ず中立表示になる（AC-4(1)(3)(4)）', async ({ page }) => {
+    const slotsResponse = waitForSlotsResponse(page, fx.collectingId)
     await openAs(page, MEMBER_EMAIL, MEMBER_PASSWORD, `/shift/${fx.collectingId}`)
+
+    // --- API 契約（AC-4(1)(2)(3)）: 画面の描画に関係なく、応答そのものを突き合わせる ---
+    const response = await slotsResponse
+    expect(response.status(), '非管理者にも COLLECTING の枠一覧は 200 で返ること').toBe(200)
+    const rows = await readSlotRows(response)
+    expect(rows.length, '枠が 1 件返ること').toBe(1)
+    expect(rows[0]!.assignmentMasked, 'assignmentMasked が true であること（AC-4(1)）').toBe(true)
+    expect(rows[0]!.assignedUserIds, 'assignedUserIds が空配列であること（AC-4(2)）').toEqual([])
+    expect(rows[0]!.position.positionName, '枠の骨格は伏せないこと（AC-4(3)）').toBe(fx.positionName)
+    expect(rows[0]!.position.requiredCount, '必要人数は伏せないこと（AC-4(3)）').toBe(SLOT_REQUIRED_COUNT)
 
     await expect(
       page.getByText(fx.titles.collecting, { exact: true }),
@@ -639,7 +809,15 @@ test.describe('B: 一般メンバーには調整段階の割当が伏せられ�
   })
 
   test('B2: ADJUSTING もメンバーに見え、割当だけが伏せられる（AC-9 / AC-4）', async ({ page }) => {
+    const slotsResponse = waitForSlotsResponse(page, fx.adjustingId)
     await openAs(page, MEMBER_EMAIL, MEMBER_PASSWORD, `/shift/${fx.adjustingId}`)
+
+    const response = await slotsResponse
+    expect(response.status(), '非管理者にも ADJUSTING の枠一覧は 200 で返ること').toBe(200)
+    const rows = await readSlotRows(response)
+    expect(rows.length, '枠が 1 件返ること').toBe(1)
+    expect(rows[0]!.assignmentMasked, 'assignmentMasked が true であること（AC-4(1)）').toBe(true)
+    expect(rows[0]!.assignedUserIds, 'assignedUserIds が空配列であること（AC-4(2)）').toEqual([])
 
     await expect(
       page.getByText(fx.titles.adjusting, { exact: true }),
@@ -656,7 +834,14 @@ test.describe('B: 一般メンバーには調整段階の割当が伏せられ�
   })
 
   test('B3: PUBLISHED はメンバーにも全量（実割当人数バッジが出る）', async ({ page }) => {
+    const slotsResponse = waitForSlotsResponse(page, fx.publishedId)
     await openAs(page, MEMBER_EMAIL, MEMBER_PASSWORD, `/shift/${fx.publishedId}`)
+
+    const response = await slotsResponse
+    expect(response.status(), '公開済みの枠一覧は 200 で返ること').toBe(200)
+    const rows = await readSlotRows(response)
+    expect(rows[0]!.assignmentMasked, '公開後は伏せないこと').toBe(false)
+    expect(rows[0]!.assignedUserIds, '公開後は実際の割当が返ること').toEqual([fx.memberUserId])
 
     await expect(
       page.getByText(fx.titles.published, { exact: true }),
@@ -670,6 +855,36 @@ test.describe('B: 一般メンバーには調整段階の割当が伏せられ�
       `公開後は実割当人数 1/${SLOT_REQUIRED_COUNT} が出ること`,
     ).toContainText(`1/${SLOT_REQUIRED_COUNT}`)
     await expect(maskedMarks(page), '公開後に伏せた印は付かないこと').toHaveCount(0)
+  })
+
+  test('B4: PUBLISHED かつ publishedAt が NULL でも公開済みとして扱われる（AC-17）', async ({ page }) => {
+    // §2.2(e) の非対称規則の番人。PUBLISHED は publishedAt を見ない、という決めが崩れると
+    // ShiftSwapScopeContractIT / ShiftMapperTest が作る形のデータや、published_at に制約の無い
+    // 本番データ（V3.070）で、公開済みシフトが非管理者から消える。
+    const slotsResponse = waitForSlotsResponse(page, fx.publishedNoTimestampId)
+    await openAs(page, MEMBER_EMAIL, MEMBER_PASSWORD, `/shift/${fx.publishedNoTimestampId}`)
+
+    const response = await slotsResponse
+    expect(
+      response.status(),
+      'publishedAt が NULL でも枠一覧は 200（404 にならない）こと',
+    ).toBe(200)
+    const rows = await readSlotRows(response)
+    expect(rows[0]!.assignmentMasked, '公開済み扱いなので伏せないこと').toBe(false)
+    expect(rows[0]!.assignedUserIds, '公開済み扱いなので実際の割当が返ること').toEqual([fx.memberUserId])
+
+    await expect(
+      page.getByText(fx.titles.publishedNoTimestamp, { exact: true }),
+      'publishedAt が NULL でもメンバーの画面に表示されること',
+    ).toBeVisible({ timeout: 30_000 })
+
+    const chips = slotChips(page, fx.publishedNoTimestampId)
+    await expect(chips).toHaveCount(1, { timeout: 30_000 })
+    await expect(
+      chips.first(),
+      `実割当人数 1/${SLOT_REQUIRED_COUNT} が出ること`,
+    ).toContainText(`1/${SLOT_REQUIRED_COUNT}`)
+    await expect(maskedMarks(page), '伏せた印は付かないこと').toHaveCount(0)
   })
 })
 
@@ -685,11 +900,38 @@ test.describe('C: 一般メンバーの URL 直打ちが弾かれる', () => {
    * いずれも描画されないこと（＝ BE が 404 を返していること）を画面で見る。
    */
   async function expectBlocked(page: Page, scheduleId: number, title: string): Promise<void> {
-    await openAs(page, MEMBER_EMAIL, MEMBER_PASSWORD, `/shift/${scheduleId}`)
+    await establishSession(page, MEMBER_EMAIL, MEMBER_PASSWORD)
+
+    // 遷移より前に応答の待ち受けを張る。DOM の不在だけを見ると、403 / 500 / 通信失敗や
+    // 「FE が白紙を描いただけ」でも緑になってしまう（実際、契約ずれで画面が何も描画されない
+    // 局面が今日あった）。設計書 AC-2 / AC-3 は HTTP 404 を要求しているので、
+    // 実際に飛んだ応答のステータスで確かめる。
+    const scheduleResponse = page.waitForResponse(
+      r => r.request().method() === 'GET' && isScheduleResponse(r.url(), scheduleId),
+      { timeout: 120_000 },
+    )
+    const slotsResponse = page.waitForResponse(
+      r => r.request().method() === 'GET' && isSlotsResponse(r.url(), scheduleId),
+      { timeout: 120_000 },
+    )
+
+    await page.goto(`/shift/${scheduleId}`, { waitUntil: 'domcontentloaded', timeout: 180_000 })
+    await waitForHydration(page)
+
+    expect(
+      (await scheduleResponse).status(),
+      '単体取得が 404 であること（AC-2。403 や 500 では存在オラクルや別の欠陥が残る）',
+    ).toBe(404)
+    expect(
+      (await slotsResponse).status(),
+      '枠一覧が 404 であること（AC-3）',
+    ).toBe(404)
+
+    await waitForSpinnerGone(page)
 
     await expect(
       page.locator('.p-toast-message'),
-      '取得失敗のエラートーストが出ること（BE が 404 を返している証跡）',
+      '取得失敗のエラートーストが出ること',
     ).toBeVisible({ timeout: 30_000 })
     await expect(
       page.getByText(title, { exact: true }),
@@ -779,18 +1021,26 @@ test.describe('D: 一般メンバーの希望提出フロー（非回帰・本�
 // （チーム自体は他セッション・他テストが使うので絶対に削除しない）
 // ============================================================================
 test.afterAll(async () => {
+  const failures: string[] = []
   await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, async (ctx, token) => {
     for (const scheduleId of createdScheduleIds) {
       const res = await ctx.delete(`${BE_API}/shifts/schedules/${scheduleId}`, {
         headers: authHeaders(token),
       })
       console.log(`[CLEANUP] DELETE /shifts/schedules/${scheduleId} -> ${res.status()}`)
+      // 204 = 削除成功、404 = 既に無い。どちらも「残っていない」状態。それ以外は残骸が残る。
+      if (res.status() !== 204 && res.status() !== 404) {
+        failures.push(`schedule ${scheduleId} -> ${res.status()} ${await res.text()}`)
+      }
     }
     if (createdPositionId !== null) {
       const res = await ctx.delete(`${BE_API}/shifts/positions/${createdPositionId}`, {
         headers: authHeaders(token),
       })
       console.log(`[CLEANUP] DELETE /shifts/positions/${createdPositionId} -> ${res.status()}`)
+      if (res.status() !== 204 && res.status() !== 404) {
+        failures.push(`position ${createdPositionId} -> ${res.status()} ${await res.text()}`)
+      }
     }
   })
   createdScheduleIds.length = 0
@@ -799,4 +1049,6 @@ test.afterAll(async () => {
     await session.ctx.dispose()
   }
   apiSessions.clear()
+  // 共有チームに残骸を残さないことは本 spec の責務。失敗を表示だけして緑にしない。
+  expect(failures, '作成した前提データを後始末で全て削除できること').toEqual([])
 })

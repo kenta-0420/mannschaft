@@ -2092,6 +2092,13 @@
       "unchanged": "現在のスラッグと同じです（変更なし）"
     }
   },
+  "duplicate_name": {
+    "title": "同名の{entity}が既にあります",
+    "description": "入力した名前と同じ名前の{entity}が既に存在します。内容を確認のうえ、続けるかどうかを選んでください。",
+    "hidden_note": "非公開の{entity}が他に{count}件あります（名前・詳細は表示されません）",
+    "cancel": "やめる",
+    "confirm": "それでも作成する"
+  },
   "team_visibility": {
     "PUBLIC": "公開",
     "GUESTS_AND_ABOVE": "ゲスト以上",
