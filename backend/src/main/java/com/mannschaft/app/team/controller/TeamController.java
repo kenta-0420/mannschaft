@@ -93,6 +93,13 @@ public class TeamController {
     @PostMapping
     @Operation(summary = "チーム作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+            description = "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または"
+                    + " fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = com.mannschaft.app.common.duplicatename
+                                    .DuplicateNameConfirmationErrorResponse.class)))
     public ResponseEntity<ApiResponse<TeamResponse>> createTeam(
             @Valid @RequestBody CreateTeamRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED)

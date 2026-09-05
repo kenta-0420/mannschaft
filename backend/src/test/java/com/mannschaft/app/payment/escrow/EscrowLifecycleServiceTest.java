@@ -3,6 +3,8 @@ package com.mannschaft.app.payment.escrow;
 import com.mannschaft.app.payment.connect.ConnectAccountEntity;
 import com.mannschaft.app.payment.connect.ConnectAccountRepository;
 import com.mannschaft.app.payment.connect.ScopeKind;
+import com.mannschaft.app.payment.escrow.event.EscrowCancelledEvent;
+import com.mannschaft.app.payment.escrow.event.EscrowPaymentRequiredEvent;
 import com.mannschaft.app.payment.stripe.CaptureMethod;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import org.junit.jupiter.api.DisplayName;
@@ -10,7 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.support.StaticMessageSource;
+import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -38,15 +41,13 @@ class EscrowLifecycleServiceTest {
     @Mock private EscrowTransactionRepository escrowTransactionRepository;
     @Mock private ConnectAccountRepository connectAccountRepository;
     @Mock private StripePaymentProvider stripePaymentProvider;
-    @Mock private EscrowNotificationService escrowNotificationService;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private static final UUID ESCROW_ID = UUID.fromString("019607a0-0000-7000-8000-0000000000aa");
 
     private EscrowLifecycleService service() {
-        StaticMessageSource ms = new StaticMessageSource();
-        ms.setUseCodeAsDefaultMessage(true);
         return new EscrowLifecycleService(escrowTransactionRepository, connectAccountRepository,
-                stripePaymentProvider, escrowNotificationService, ms);
+                stripePaymentProvider, eventPublisher);
     }
 
     private EscrowTransactionEntity escrow(EscrowStatus status, String piId) {
@@ -61,6 +62,16 @@ class EscrowLifecycleServiceTest {
                 .build();
         e.setId(ESCROW_ID);
         return e;
+    }
+
+    /**
+     * 業務TX内で publish されたのが「取消イベント（対象IDと理由つき）」であることを検証する。
+     * 種別・対象IDまで見るのは、ID や理由を取り違えても緑にならないようにするためである。
+     */
+    private void assertCancelledEventPublished(EscrowCancelledEvent.Reason expectedReason) {
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue()).isEqualTo(new EscrowCancelledEvent(ESCROW_ID, expectedReason));
     }
 
     private ConnectAccountEntity payee(boolean payoutsEnabled) {
@@ -88,7 +99,7 @@ class EscrowLifecycleServiceTest {
         verify(stripePaymentProvider).cancelAuthorization("pi_abc", "cancel-" + ESCROW_ID);
         assertThat(e.getStatus()).isEqualTo(EscrowStatus.CANCELLED);
         assertThat(e.getCancelledAt()).isNotNull();
-        verify(escrowNotificationService).notifyCancelled(eq(e), anyString(), anyString());
+        assertCancelledEventPublished(EscrowCancelledEvent.Reason.PENDING_CONFIRMATION_EXPIRED);
         // 行ロックで取得していること（findById ではなく findByIdForUpdate）。
         verify(escrowTransactionRepository).findByIdForUpdate(ESCROW_ID);
     }
@@ -104,7 +115,7 @@ class EscrowLifecycleServiceTest {
 
         assertThat(result).isFalse();
         verify(stripePaymentProvider, never()).cancelAuthorization(anyString(), anyString());
-        verify(escrowNotificationService, never()).notifyCancelled(any(), anyString(), anyString());
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
     @Test
@@ -144,7 +155,7 @@ class EscrowLifecycleServiceTest {
         // PI 未作成のため Stripe cancel は呼ばない（capture 前ゆえ課金なし）。
         verify(stripePaymentProvider, never()).cancelAuthorization(anyString(), anyString());
         assertThat(e.getStatus()).isEqualTo(EscrowStatus.CANCELLED);
-        verify(escrowNotificationService).notifyCancelled(eq(e), anyString(), anyString());
+        assertCancelledEventPublished(EscrowCancelledEvent.Reason.HELD_EXPIRED);
     }
 
     @Test
@@ -160,7 +171,7 @@ class EscrowLifecycleServiceTest {
         assertThat(result).isTrue();
         verify(stripePaymentProvider).cancelAuthorization("pi_xyz", "cancel-" + ESCROW_ID);
         assertThat(e.getStatus()).isEqualTo(EscrowStatus.CANCELLED);
-        verify(escrowNotificationService).notifyCancelled(eq(e), anyString(), anyString());
+        assertCancelledEventPublished(EscrowCancelledEvent.Reason.AUTHORIZATION_EXPIRED);
     }
 
     @Test
@@ -186,7 +197,7 @@ class EscrowLifecycleServiceTest {
 
         verify(stripePaymentProvider).cancelAuthorization("pi_market_cancel", "cancel-" + ESCROW_ID);
         assertThat(e.getStatus()).isEqualTo(EscrowStatus.CANCELLED);
-        verify(escrowNotificationService).notifyCancelled(eq(e), anyString(), anyString());
+        assertCancelledEventPublished(EscrowCancelledEvent.Reason.RECRUITMENT_CANCELLED);
     }
 
     @Test
@@ -199,7 +210,7 @@ class EscrowLifecycleServiceTest {
         assertThat(svc.cancelForRecruitmentCancellation(ESCROW_ID)).isFalse();
 
         verify(stripePaymentProvider, never()).cancelAuthorization(anyString(), anyString());
-        verify(escrowNotificationService, never()).notifyCancelled(any(), anyString(), anyString());
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
     // ── HELD 昇格 ──
@@ -223,7 +234,9 @@ class EscrowLifecycleServiceTest {
         assertThat(result).isTrue();
         assertThat(e.getStatus()).isEqualTo(EscrowStatus.PENDING_CONFIRMATION);
         assertThat(e.getStripePaymentIntentId()).isEqualTo("pi_new");
-        verify(escrowNotificationService).notifyPaymentRequired(eq(e), anyString(), anyString());
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue()).isEqualTo(new EscrowPaymentRequiredEvent(ESCROW_ID));
         verify(escrowTransactionRepository).findByIdForUpdate(ESCROW_ID);
     }
 
@@ -237,7 +250,7 @@ class EscrowLifecycleServiceTest {
         assertThat(svc.promoteHeldEscrow(ESCROW_ID)).isFalse();
         verify(stripePaymentProvider, never()).createDestinationPaymentIntent(
                 anyLong(), anyString(), anyString(), anyLong(), anyString(), any(), anyString());
-        verify(escrowNotificationService, never()).notifyPaymentRequired(any(), anyString(), anyString());
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
     @Test
