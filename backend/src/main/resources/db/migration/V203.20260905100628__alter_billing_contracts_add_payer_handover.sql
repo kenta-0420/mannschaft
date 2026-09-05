@@ -15,15 +15,18 @@
 --       hasPaidPlanブリッジ）はcreated_byがNULLで投入されており、単純な
 --       `payer_user_id = created_by` だけではNULLが残る。
 --       段階フォールバック（優先順）:
---         (a) created_by が非NULLならそれを採用（既存方針のまま）
---         (b) created_by がNULLの場合、当該スコープ（TEAM/ORG）の
---             「最古参ADMIN」（user_roles×roles(name='ADMIN')をteam_id/organization_idで結合し、
---             created_at昇順→id昇順で最初の1件）のuser_idを採用
+--         (a) created_by が非NULLならそれを採用（既存方針のまま。USER/TEAM/ORG全スコープ対象）
+--         (b) created_by がNULLの場合、当該スコープ（TEAM/ORG。USERはpayer_user_id NULL許容のため
+--             対象外）の「最古参ADMIN」（user_roles×roles(name='ADMIN')をteam_id/organization_idで
+--             結合し、created_at昇順→id昇順で最初の1件。users.deleted_at IS NULLで論理削除済み
+--             ユーザーを除外＝Codex検分2巡目P1-2対応。退会済みユーザーを請求担当として復元しない）
+--             のuser_idを採用
 --         (c) (a)(b)いずれでも決められない行が残る場合は、静かにNULLを残すより安全という判断で
 --             migration自体をSIGNAL SQLSTATEでfailさせ手動対応を強制する（V196precheckと同型の作法）。
 --             teams/organizationsテーブルには作成者を示す列が存在しないため
 --             「契約対象スコープの作成者」フォールバックは本スキーマでは実装不能であり、
---             (b)の次は即座にfailとする）
+--             (b)の次は即座にfailとする。判定はscope_kind IN ('TEAM','ORG')に限定する
+--             （Codex検分2巡目P1-1対応。USERスコープはpayer_user_id NULL許容のため誤爆させない）
 --   3) status CHECK を 5 値 → 6 値へ拡張（PENDING_HANDOVER 追加・R2-P0-1対応）
 -- =====================================================================
 
@@ -44,6 +47,8 @@ ALTER TABLE billing_contracts
 UPDATE billing_contracts SET payer_user_id = created_by WHERE payer_user_id IS NULL;
 
 -- (b) created_by が NULL の行は、当該スコープの最古参 ADMIN（user_roles.created_at 昇順の先頭行）で補う。
+--     Codex検分2巡目P1-2対応: 論理削除済みユーザー（users.deleted_at IS NOT NULL）を最古参判定から
+--     除外する（退会済みユーザーを請求担当として復元してしまうと後続の引継検出・請求処理を誤らせるため）。
 --     TEAM スコープ分。
 UPDATE billing_contracts bc
 JOIN (
@@ -53,7 +58,8 @@ JOIN (
                  ROW_NUMBER() OVER (PARTITION BY ur.team_id ORDER BY ur.created_at ASC, ur.id ASC) AS rn
             FROM user_roles ur
             JOIN roles r ON r.id = ur.role_id
-           WHERE r.name = 'ADMIN' AND ur.team_id IS NOT NULL
+            JOIN users u ON u.id = ur.user_id
+           WHERE r.name = 'ADMIN' AND ur.team_id IS NOT NULL AND u.deleted_at IS NULL
       ) ranked
      WHERE ranked.rn = 1
 ) oldest_team_admin ON bc.scope_kind = 'TEAM' AND bc.scope_id = oldest_team_admin.team_id
@@ -70,7 +76,8 @@ JOIN (
                  ROW_NUMBER() OVER (PARTITION BY ur.organization_id ORDER BY ur.created_at ASC, ur.id ASC) AS rn
             FROM user_roles ur
             JOIN roles r ON r.id = ur.role_id
-           WHERE r.name = 'ADMIN' AND ur.organization_id IS NOT NULL
+            JOIN users u ON u.id = ur.user_id
+           WHERE r.name = 'ADMIN' AND ur.organization_id IS NOT NULL AND u.deleted_at IS NULL
       ) ranked
      WHERE ranked.rn = 1
 ) oldest_org_admin ON bc.scope_kind = 'ORG' AND bc.scope_id = oldest_org_admin.organization_id
@@ -79,6 +86,9 @@ JOIN (
 
 -- (c) (a)(b) いずれでも決められない行が残っていれば migration 自体を fail させる
 --     （静かに NULL を残すより安全。V196 の precheck プロシージャと同型の作法）。
+--     Codex検分2巡目P1-1対応: 判定対象を scope_kind IN ('TEAM','ORG') に限定する。
+--     設計書上 USER スコープの payer_user_id は NULL 許容（契約者本人が自明の payer のため）であり、
+--     USER契約でcreated_byがNULLの行（このガードの対象外）を誤って検出してmigrationをfailさせない。
 DROP PROCEDURE IF EXISTS billing_payer_handover_v203_backfill_guard;
 
 CREATE PROCEDURE billing_payer_handover_v203_backfill_guard()
@@ -87,12 +97,13 @@ BEGIN
 
     SELECT COUNT(*) INTO unresolved_count
       FROM billing_contracts
-     WHERE payer_user_id IS NULL;
+     WHERE payer_user_id IS NULL
+       AND scope_kind IN ('TEAM', 'ORG');
 
     IF unresolved_count > 0 THEN
+        -- MySQL の SIGNAL MESSAGE_TEXT は最大128文字のため簡潔にする（詳細は本ファイルのコメント参照）。
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = '柱③-B V203: payer_user_id backfill left unresolved rows '
-                '(created_by NULL かつ当該スコープに ADMIN が存在しない契約が残存。手動対応が必要)';
+            SET MESSAGE_TEXT = 'V203: payer_user_id backfill left unresolved rows (TEAM/ORG, no valid ADMIN)';
     END IF;
 END;
 

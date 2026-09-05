@@ -174,6 +174,82 @@ class BillingPayerHandoverFoundationFlywayIT {
     }
 
     @Test
+    @DisplayName("V203: Codex検分2巡目P1-1: USERスコープのcreated_by NULL行はmigrationをfailさせない")
+    void userScopeCreatedByNullDoesNotFailMigration() throws Exception {
+        String userScopeContractHex = "0199BBCCDDEEFF00112233445566EE02";
+
+        try (Connection connection = connection()) {
+            // USER スコープは payer_user_id が設計上 NULL 許容（契約者本人が自明の payer のため）。
+            // created_by が NULL でも TEAM/ORG のような ADMIN 解決対象ではなく、backfill guard の
+            // 対象外（scope_kind IN ('TEAM','ORG') に限定）であるべき。
+            execute(connection, """
+                    INSERT INTO billing_contracts
+                        (id, scope_kind, scope_id, contract_kind, plan_key, status, contracted_at, created_by)
+                    VALUES
+                        (UNHEX('%s'), 'USER', 970001, 'PLAN', 'FULL', 'ACTIVE',
+                         '2026-08-01 00:00:00.000000', NULL)
+                    """.formatted(userScopeContractHex));
+        }
+
+        migrateToV203();
+
+        try (Connection connection = connection();
+             Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery("""
+                     SELECT created_by, payer_user_id FROM billing_contracts
+                      WHERE id = UNHEX('%s')
+                     """.formatted(userScopeContractHex))) {
+            assertThat(result.next()).isTrue();
+            assertThat(result.getObject("created_by")).isNull();
+            assertThat(result.getObject("payer_user_id"))
+                    .as("USERスコープはpayer_user_idがNULLのまま残ってよい（設計上NULL許容）")
+                    .isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("V203: Codex検分2巡目P1-2: 最古参ADMINが論理削除済みなら次順位の有効なADMINが選ばれる")
+    void payerUserIdSkipsSoftDeletedOldestAdmin() throws Exception {
+        String bridgeContractHex = "0199BBCCDDEEFF00112233445566EE03";
+        long teamId = 950003L;
+        long deletedOldestAdminUserId = 960003L;
+        long activeNextAdminUserId = 960004L;
+
+        try (Connection connection = connection()) {
+            insertTeam(connection, teamId);
+            insertUser(connection, deletedOldestAdminUserId, "deleted-oldest-admin@example.test");
+            insertUser(connection, activeNextAdminUserId, "active-next-admin@example.test");
+            // 最古参（created_at が最も早い）は deletedOldestAdminUserId だが、論理削除済みのため
+            // 次順位の activeNextAdminUserId が選ばれるべき（Codex検分2巡目P1-2対応）。
+            softDeleteUser(connection, deletedOldestAdminUserId);
+            insertTeamAdminRole(connection, teamId, deletedOldestAdminUserId, "2026-01-01 00:00:00.000000");
+            insertTeamAdminRole(connection, teamId, activeNextAdminUserId, "2026-06-01 00:00:00.000000");
+
+            execute(connection, """
+                    INSERT INTO billing_contracts
+                        (id, scope_kind, scope_id, contract_kind, plan_key, status, contracted_at, created_by)
+                    VALUES
+                        (UNHEX('%s'), 'TEAM', %d, 'PLAN', 'FULL', 'ACTIVE',
+                         '2026-08-01 00:00:00.000000', NULL)
+                    """.formatted(bridgeContractHex, teamId));
+        }
+
+        migrateToV203();
+
+        try (Connection connection = connection();
+             Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery("""
+                     SELECT payer_user_id FROM billing_contracts
+                      WHERE id = UNHEX('%s')
+                     """.formatted(bridgeContractHex))) {
+            assertThat(result.next()).isTrue();
+            assertThat(result.getLong("payer_user_id"))
+                    .as("論理削除済みの最古参ADMINを飛ばし、次順位の有効なADMINが選ばれること")
+                    .isEqualTo(activeNextAdminUserId);
+        }
+    }
+
+    @Test
     @DisplayName("V203: status 列は PENDING_HANDOVER（16文字）を切り捨てずに受け入れる")
     void statusColumnAcceptsPendingHandoverWithoutTruncation() throws Exception {
         migrateToV203();
@@ -305,6 +381,13 @@ class BillingPayerHandoverFoundationFlywayIT {
                 VALUES
                     (%d, '%s', 'Test', 'User', 'Test User', NOW(6), NOW(6))
                 """.formatted(userId, email));
+    }
+
+    /** users.deleted_at を設定し論理削除済みにする（Codex検分2巡目P1-2の検証用）。 */
+    private void softDeleteUser(Connection connection, long userId) throws SQLException {
+        execute(connection, """
+                UPDATE users SET deleted_at = NOW(6) WHERE id = %d
+                """.formatted(userId));
     }
 
     /** {@code roles.name = 'ADMIN'} を team スコープで {@code userId} に付与する（V203 backfill fallback検証用）。 */
