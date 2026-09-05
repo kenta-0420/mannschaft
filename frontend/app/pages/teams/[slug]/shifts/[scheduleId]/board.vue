@@ -11,9 +11,9 @@
         </NuxtLink>
         <div>
           <h1 class="font-bold text-surface-800 text-lg">{{ $t('shift.board.title') }}</h1>
-          <p v-if="schedule" class="text-xs text-surface-500">{{ schedule.title }}</p>
+          <p v-if="schedule" class="text-xs text-surface-500">{{ schedule.content.title }}</p>
         </div>
-        <Tag v-if="schedule" :value="schedule.status" severity="info" class="text-xs" />
+        <Tag v-if="schedule" :value="schedule.status.status" severity="info" class="text-xs" />
       </div>
 
       <div class="flex items-center gap-2">
