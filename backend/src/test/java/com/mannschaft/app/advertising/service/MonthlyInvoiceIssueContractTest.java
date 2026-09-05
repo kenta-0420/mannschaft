@@ -54,6 +54,7 @@ import static org.mockito.Mockito.when;
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
+@DisplayName("F08.12 月次請求書発行（後払い廃止に伴う発行契機）契約テスト")
 class MonthlyInvoiceIssueContractTest {
 
     private static final YearMonth TARGET_MONTH = YearMonth.of(2026, 8);

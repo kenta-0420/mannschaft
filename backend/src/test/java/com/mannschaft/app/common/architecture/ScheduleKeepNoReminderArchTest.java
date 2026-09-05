@@ -4,6 +4,7 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.schedule.entity.ScheduleKeepEntity;
 import com.mannschaft.app.schedule.repository.ScheduleKeepRepository;
+import com.mannschaft.app.schedule.service.ScheduleKeepConvertedNotificationListener;
 import com.mannschaft.app.schedule.service.ScheduleKeepNotificationService;
 import com.mannschaft.app.schedule.service.ScheduleKeepService;
 import com.tngtech.archunit.base.DescribedPredicate;
@@ -86,7 +87,12 @@ class ScheduleKeepNoReminderArchTest {
      */
     private static final Set<String> ALLOWED_NOTIFIER_CLASS_NAMES = Set.of(
         ScheduleKeepNotificationService.class.getName(),
-        ScheduleKeepService.class.getName());
+        ScheduleKeepService.class.getName(),
+        // Issue #2990 L8: 変換通知を業務TXの外へ出すため、ScheduleKeepService から
+        // 「ScheduleKeepNotificationService を呼ぶ」役割だけを AFTER_COMMIT リスナーへ移した。
+        // 既に許可済みの ScheduleKeepService が持っていた責務がそのまま移動しただけで、
+        // 通知の宛先・種別・可視性判定は 1 つも変わっていない（F03.17 §6.1 の範囲は不変）。
+        ScheduleKeepConvertedNotificationListener.class.getName());
 
     /**
      * 中核型集合に {@code ScheduleKeepNotificationService} も含める理由【穴1の是正】。
