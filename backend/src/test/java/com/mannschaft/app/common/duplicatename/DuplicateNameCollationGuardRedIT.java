@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -45,6 +46,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("柱③-A 同名確認フロー 照合順序統合テスト")
+// 検分第3巡是正: duplicate_name_locks への行ロック取得（INSERT ... ON DUPLICATE KEY UPDATE）は
+// 呼び出し元のトランザクション内で実行する契約のため、Guard を直接呼ぶテストは @Transactional が必要
+// （なければ jakarta.persistence.TransactionRequiredException になる）。ロールバックにより
+// 後始末も兼ねる。
+@Transactional
 class DuplicateNameCollationGuardRedIT extends AbstractMySqlIntegrationTest {
 
     @Autowired

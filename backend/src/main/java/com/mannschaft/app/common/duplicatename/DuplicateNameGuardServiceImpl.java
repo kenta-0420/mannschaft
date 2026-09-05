@@ -1,20 +1,16 @@
 package com.mannschaft.app.common.duplicatename;
 
 import com.mannschaft.app.common.BusinessException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockTimeoutException;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.PessimisticLockException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import javax.sql.DataSource;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.function.Supplier;
@@ -22,63 +18,53 @@ import java.util.function.Supplier;
 /**
  * CMP-260901-1538 柱③-A: {@link DuplicateNameGuardService} の実装。
  *
- * <h2>検分 P1-2/第2巡 是正: ロックの持ち方（設計判断）</h2>
- * <p>組織名・チーム名は一意制約を持たない（同名の併存を許可する設計のため DB 一意制約で
- * 機械的に TOCTOU を防げない）。そのため MySQL の名前付きアドバイザリロック
- * （{@code GET_LOCK}/{@code RELEASE_LOCK}）で「候補再計算 → 作成」区間を
- * <b>同一正規化名の作成者同士だけ</b>直列化する。</p>
+ * <h2>検分第3巡是正（設計判断）: ロック専用テーブルの行ロック方式</h2>
+ * <p>組織名・チーム名は一意制約を持たない（同名の併存を許可する設計のため、通常の
+ * {@code UNIQUE} 制約では TOCTOU を機械的に防げない）。第1〜2巡では MySQL の名前付き
+ * アドバイザリロック（{@code GET_LOCK}/{@code RELEASE_LOCK}）で直列化を試みたが、
+ * 「解放のタイミング」と「専用接続の管理」に構造的な問題が消えなかった
+ * （rollback 経路での早期解放、Hikari 経由では {@code close()} が物理切断ではなく
+ * プール返却になる、専用接続を保持し続けることによる接続プール枯渇）。</p>
  *
- * <p><b>専用接続方式（第2巡是正）</b>: {@code GET_LOCK} は現在のトランザクションが使う
- * JDBC 接続ではなく、{@link DataSource} から直接取得した<b>専用の JDBC 接続</b>上で取得する。
- * 理由は以下の2点（検分 P1 で指摘された順に対応）:</p>
+ * <p>そのため <b>{@code duplicate_name_locks} テーブルの行ロック</b>方式へ転換した:</p>
  * <ol>
- *   <li><b>ロック解放は必ずトランザクション完了後にする</b>: {@code @Transactional} の
- *       commit はサービスメソッド終了後（AOP プロキシがメソッド呼び出しを抜けたあと）に起こる。
- *       同じ接続上で {@code finally} 節から {@code RELEASE_LOCK} を呼ぶと、
- *       メソッド内で解放 → メソッド外で commit という順序になり、解放後・commit 前の窓で
- *       別リクエストが（まだコミットされていない）候補集合を見落として直列化が崩れる。
- *       これを断つため、作成が成功しトランザクションが存在する場合は
- *       {@link TransactionSynchronizationManager#registerSynchronization} の
- *       {@code afterCompletion}（commit・rollback のどちらでも必ず呼ばれる）まで
- *       解放を遅延させる。専用接続を使うことで、サービスメソッドの JPA トランザクションの
- *       commit/rollback タイミングと無関係に、任意のタイミングで {@code RELEASE_LOCK} を
- *       発行できる（同一接続上でなければ {@code RELEASE_LOCK} はそのロックの保持者にしか
-     *   効かないため、取得したのと同じ専用接続を最後まで保持し続ける必要がある）。</li>
- *   <li><b>{@code RELEASE_LOCK} 失敗時でも接続プールへロックが残留しない</b>:
- *       専用接続は Hikari 等のコネクションプールに返却する接続ではなく、
- *       {@link DataSource#getConnection()} で直接取得したものを最後に必ず
- *       {@link Connection#close()} する運用にする。MySQL の名前付きロックは
- *       <b>セッション（接続）終了で自動的に解放される</b>ため、{@code RELEASE_LOCK}
- *       自体が例外を投げても、専用接続さえ確実に {@code close} すれば DB 側でロックは
- *       解放される（プール返却ではなく物理切断のため、Hikari 側の「実は解放されていない
- *       接続がプールに戻る」問題も原理的に起こらない）。{@code close} は
- *       {@link #releaseAndClose} 内で {@code try}/{@code finally} により二重に保証する
- *       （{@code RELEASE_LOCK} 実行時の例外を握っても必ず {@code close} へ到達する）。</li>
+ *   <li>呼び出し元と<b>同一トランザクション</b>内で
+ *       {@code INSERT INTO duplicate_name_locks ... ON DUPLICATE KEY UPDATE scope_kind = scope_kind}
+ *       を実行する（既存行でも X ロック＝排他ロックを取得できる。行が無ければ挿入、
+ *       あれば無害な自己代入 UPDATE でロックだけ取る）。</li>
+ *   <li>続けて {@code candidateSupplier}（{@code FOR UPDATE} ロッキングリード）で
+ *       最新のコミット済み候補集合を読む。</li>
+ *   <li>{@code createAction}（実際の作成処理）も同一トランザクション内で実行する。</li>
+ *   <li><b>明示的な解放処理は一切書かない。</b> InnoDB は commit・rollback のどちらでも
+ *       そのトランザクションが保持する行ロックを自動的に解放するため、
+ *       解放漏れが原理的に起こらない（専用接続・{@code afterCompletion}・
+ *       {@code RELEASE_LOCK} がすべて不要になる）。</li>
  * </ol>
  *
- * <p>トランザクションが存在しないコンテキスト（本来は起こらない想定だが、フェイルセーフとして
- * 対応する）では、{@code createAction} 完了直後に即座に解放・切断する。</p>
+ * <p>ロック待ちは MySQL の {@code innodb_lock_wait_timeout} に委ねる。タイムアウト時は
+ * {@link LockTimeoutException}/{@link PessimisticLockException}（または
+ * 同義の "Lock wait timeout exceeded" を含む例外）として現れるため、
+ * {@link DuplicateNameErrorCode#DUPNAME_002}（409）へ写像する。</p>
  *
- * <p>候補再計算は {@code candidateSupplier} 経由でロッキングリード（{@code FOR UPDATE}）を
- * 使う契約とする（呼び出し元がロック取得前に他クエリを発行し REPEATABLE READ スナップショットが
- * 先に確立していても、ロッキングリードはスナップショットを無視して最新を読むため安全）。</p>
+ * <p>{@code duplicate_name_locks} は実データを持たない恒久的なロック専用テーブルであり、
+ * ドメイン間 FK は張らない（{@code docs/architecture/domain_db_design_principles.md} 原則1）。
+ * 主キーは自然キー（複合PK: {@code scope_kind, name_key}）のままとし {@code UuidV7Entity} は
+ * 適用しない（同原則6の例外区分「マスタ例外」に準じる。シャーディング時は全シャードへ
+ * 同じ行をコピーする運用が自然であり、原則6の意図＝各ノード独立発番に該当しないため）。</p>
  */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class DuplicateNameGuardServiceImpl implements DuplicateNameGuardService {
-
-    /** アドバイザリロック取得のタイムアウト（秒）。 */
-    static final int LOCK_TIMEOUT_SECONDS = 5;
 
     /** {@link DuplicateNameFingerprintServiceImpl} の TTL と同値（フォールバック用の概算のみに使用）。 */
     private static final long FALLBACK_TTL_SECONDS = 300;
 
-    /** MySQL {@code GET_LOCK} のキー長上限（64バイト）に収めるため、ハッシュを 32 桁（16byte）に切り詰める。 */
-    private static final int LOCK_KEY_HASH_LENGTH = 16;
-
     private final DuplicateNameFingerprintService fingerprintService;
-    private final DataSource dataSource;
+
+    // @PersistenceContext はフィールド注入用のため final にしない
+    // （@RequiredArgsConstructor はコンストラクタ引数化された final フィールドのみを対象とする）。
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     public <T> T checkForCreateAndRun(DuplicateNameScopeKind scopeKind, String rawName, Long actorUserId,
@@ -86,66 +72,36 @@ public class DuplicateNameGuardServiceImpl implements DuplicateNameGuardService 
             Supplier<List<DuplicateNameCandidate>> candidateSupplier,
             Supplier<T> createAction) {
         String normalizedName = rawName == null ? "" : rawName.trim();
-        String lockKey = buildLockKey(scopeKind, normalizedName);
+        String nameKey = buildNameKey(scopeKind, normalizedName);
 
-        // 専用接続（現在のトランザクションが使う接続とは別物）を DataSource から直接取得する。
-        Connection lockConnection = openDedicatedConnection();
-        // finally で release+close するのは「自分がまだ責任を持っている」場合のみ。
-        // 作成成功かつトランザクションが存在する場合は afterCompletion へ責任を委譲する
-        // （このフラグを false にした後は、finally からは何もしない）。
-        boolean ownsRelease = true;
-        // GET_LOCK に成功したかどうか。失敗（タイムアウト）時は RELEASE_LOCK を呼ばず、
-        // 専用接続の close のみ行う（取得できていないロックを解放しようとしない）。
-        boolean lockAcquired = false;
-        try {
-            acquireLock(lockConnection, lockKey);
-            lockAcquired = true;
+        // 呼び出し元と同一トランザクション内で行ロックを取得する。解放処理は書かない
+        // （InnoDB が commit/rollback で自動的に行ロックを解放するため）。
+        acquireRowLock(scopeKind, nameKey);
 
-            List<DuplicateNameCandidate> candidates = candidateSupplier.get();
+        List<DuplicateNameCandidate> candidates = candidateSupplier.get();
 
-            if (!candidates.isEmpty()) {
-                List<String> candidateIds = candidates.stream().map(DuplicateNameCandidate::id).toList();
+        if (!candidates.isEmpty()) {
+            List<String> candidateIds = candidates.stream().map(DuplicateNameCandidate::id).toList();
 
-                boolean proceed = confirmDuplicate
-                        && suppliedFingerprint != null
-                        && !suppliedFingerprint.isBlank()
-                        && fingerprintService.verify(
-                                suppliedFingerprint, scopeKind, normalizedName, actorUserId, candidateIds);
+            boolean proceed = confirmDuplicate
+                    && suppliedFingerprint != null
+                    && !suppliedFingerprint.isBlank()
+                    && fingerprintService.verify(
+                            suppliedFingerprint, scopeKind, normalizedName, actorUserId, candidateIds);
 
-                if (!proceed) {
-                    // AC-02/AC-07/AC-08: 未確認、fingerprint 不一致（確認後に新規同名が出現）、
-                    // fingerprint 未指定のいずれもここに合流し、最新候補集合で新規 fingerprint を発行し直す。
-                    // 何も作成しないため、ロックは finally で即座に解放してよい。
-                    String newFingerprint =
-                            fingerprintService.issue(scopeKind, normalizedName, actorUserId, candidateIds);
-                    throw new DuplicateNameConfirmationRequiredException(
-                            buildDetails(newFingerprint, candidates));
-                }
-                // AC-06: 確認済みで候補集合が完全一致（fingerprint 検証成功）なら続行。
+            if (!proceed) {
+                // AC-02/AC-07/AC-08: 未確認、fingerprint 不一致（確認後に新規同名が出現）、
+                // fingerprint 未指定のいずれもここに合流し、最新候補集合で新規 fingerprint を発行し直す。
+                String newFingerprint =
+                        fingerprintService.issue(scopeKind, normalizedName, actorUserId, candidateIds);
+                throw new DuplicateNameConfirmationRequiredException(
+                        buildDetails(newFingerprint, candidates));
             }
-
-            // AC-01: 候補が空なら確認不要で続行。
-            T result = createAction.get();
-
-            if (TransactionSynchronizationManager.isSynchronizationActive()) {
-                // トランザクションが存在する場合、ロック解放を commit/rollback 完了後まで遅延させる。
-                Connection connectionToReleaseLater = lockConnection;
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override
-                    public void afterCompletion(int status) {
-                        releaseAndClose(connectionToReleaseLater, lockKey, true);
-                    }
-                });
-                ownsRelease = false;
-            }
-            // トランザクションが存在しない（想定外の）場合はここで finally が即座に解放・切断する。
-
-            return result;
-        } finally {
-            if (ownsRelease) {
-                releaseAndClose(lockConnection, lockKey, lockAcquired);
-            }
+            // AC-06: 確認済みで候補集合が完全一致（fingerprint 検証成功）なら続行。
         }
+
+        // AC-01: 候補が空なら確認不要で続行。
+        return createAction.get();
     }
 
     /**
@@ -163,75 +119,64 @@ public class DuplicateNameGuardServiceImpl implements DuplicateNameGuardService 
     }
 
     /**
-     * DataSource から専用の JDBC 接続を直接取得する（現在のトランザクションの接続とは無関係）。
-     * {@code DataSourceUtils.getConnection} ではなく {@link DataSource#getConnection()} を
-     * 直接呼ぶことで、Spring のトランザクション同期に参加しない独立した物理接続を得る。
+     * 検分第3巡是正: {@code duplicate_name_locks} テーブルへの
+     * {@code INSERT ... ON DUPLICATE KEY UPDATE} で行ロック（X ロック）を取得する。
+     * 呼び出し元の {@code EntityManager}（＝呼び出し元のトランザクション）上で実行するため、
+     * このロックは呼び出し元のトランザクションが commit/rollback するまで保持される。
+     *
+     * @throws BusinessException {@code DUPNAME_002}（409） ロック待ちが
+     *         {@code innodb_lock_wait_timeout} を超えた場合（同名同士の同時作成が競合）
      */
-    private Connection openDedicatedConnection() {
+    private void acquireRowLock(DuplicateNameScopeKind scopeKind, String nameKey) {
         try {
-            return dataSource.getConnection();
-        } catch (SQLException e) {
-            throw new IllegalStateException("同名確認フロー用の専用DB接続の取得に失敗しました", e);
-        }
-    }
-
-    private void acquireLock(Connection connection, String lockKey) {
-        try (PreparedStatement stmt = connection.prepareStatement("SELECT GET_LOCK(?, ?)")) {
-            stmt.setString(1, lockKey);
-            stmt.setInt(2, LOCK_TIMEOUT_SECONDS);
-            try (ResultSet rs = stmt.executeQuery()) {
-                rs.next();
-                int result = rs.getInt(1);
-                if (rs.wasNull() || result != 1) {
-                    throw new BusinessException(DuplicateNameErrorCode.DUPNAME_002);
-                }
+            entityManager.createNativeQuery(
+                            "INSERT INTO duplicate_name_locks (scope_kind, name_key) VALUES (?1, ?2) "
+                                    + "ON DUPLICATE KEY UPDATE scope_kind = scope_kind")
+                    .setParameter(1, scopeKind.name())
+                    .setParameter(2, nameKey)
+                    .executeUpdate();
+        } catch (RuntimeException e) {
+            if (isLockTimeout(e)) {
+                throw new BusinessException(DuplicateNameErrorCode.DUPNAME_002);
             }
-        } catch (SQLException e) {
-            throw new IllegalStateException("GET_LOCK の実行に失敗しました", e);
+            throw e;
         }
     }
 
     /**
-     * 検分 P1-2 是正: {@code RELEASE_LOCK} 自体が例外を投げても、専用接続の {@code close} には
-     * 必ず到達する（{@code try}/{@code finally} で二重に保証）。MySQL の名前付きロックは
-     * セッション（接続）終了で自動解放されるため、{@code close} さえ保証できれば
-     * {@code RELEASE_LOCK} の成否に関わらずロックは残留しない。
+     * 例外連鎖を辿り、ロック待ちタイムアウト（MySQL の {@code innodb_lock_wait_timeout} 超過、
+     * エラー1205「Lock wait timeout exceeded」）またはデッドロック検出かどうかを判定する。
      */
-    private void releaseAndClose(Connection connection, String lockKey, boolean lockWasAcquired) {
-        try {
-            if (lockWasAcquired) {
-                try (PreparedStatement stmt = connection.prepareStatement("SELECT RELEASE_LOCK(?)")) {
-                    stmt.setString(1, lockKey);
-                    stmt.execute();
-                } catch (SQLException e) {
-                    log.warn("RELEASE_LOCK に失敗しましたが、専用接続を close するためロックは"
-                            + "セッション終了で解放されます: lockKey={}", lockKey, e);
-                }
+    private boolean isLockTimeout(Throwable throwable) {
+        Throwable cause = throwable;
+        while (cause != null) {
+            if (cause instanceof LockTimeoutException || cause instanceof PessimisticLockException) {
+                return true;
             }
-        } finally {
-            try {
-                connection.close();
-            } catch (SQLException e) {
-                log.warn("同名確認フロー用の専用DB接続の close に失敗しました: lockKey={}", lockKey, e);
+            String message = cause.getMessage();
+            if (message != null
+                    && (message.contains("Lock wait timeout exceeded") || message.contains("Deadlock found"))) {
+                return true;
             }
+            cause = cause.getCause();
         }
+        return false;
     }
 
     /**
-     * ロックキーを組み立てる。{@code GET_LOCK} のキー長上限（64バイト）を超えないよう、
-     * {@code scopeKind + 正規化名} を SHA-256 でハッシュ化し先頭 {@link #LOCK_KEY_HASH_LENGTH}
-     * バイト（32 桁の16進文字列）のみを使う。
+     * ロック対象キーを組み立てる。{@code scope_kind + 正規化名} を SHA-256 でハッシュ化し、
+     * 64桁の16進文字列（{@code duplicate_name_locks.name_key} の列幅と一致）にする。
      */
-    private String buildLockKey(DuplicateNameScopeKind scopeKind, String normalizedName) {
+    private String buildNameKey(DuplicateNameScopeKind scopeKind, String normalizedName) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(
                     (scopeKind.name() + ":" + normalizedName).getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder();
-            for (int i = 0; i < LOCK_KEY_HASH_LENGTH; i++) {
-                hex.append(String.format("%02x", hash[i]));
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
             }
-            return "dupname:" + hex;
+            return hex.toString();
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 は JDK に必ず存在するはずである", e);
         }

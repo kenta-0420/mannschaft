@@ -16,24 +16,29 @@ import java.util.function.Supplier;
  *       確認後に新たな同名候補が出現していれば（fingerprint 不一致）再度 409</li>
  * </ol>
  *
- * <h2>検分 P1-2 是正: TOCTOU 対策（設計判断）</h2>
+ * <h2>検分第3巡是正: TOCTOU 対策（設計判断・ロック専用テーブルの行ロック方式）</h2>
  * <p>組織名・チーム名は一意制約を持たない（同名の併存を許可する設計のため、DB レベルの
- * 一意制約で TOCTOU を機械的に防げない）。そのため本実装は MySQL の
- * <b>名前付きアドバイザリロック（{@code GET_LOCK}/{@code RELEASE_LOCK}）</b>で
- * 「候補再計算 → 作成（INSERT）」区間を <b>同一正規化名の作成者同士だけ</b>直列化する。
- * ロックキーは {@code scopeKind + 正規化名} を SHA-256 でハッシュ化したもの
- * （{@code GET_LOCK} のキー長制限 64 文字に収めるため）。取得タイムアウトは数秒
- * （{@link DuplicateNameGuardServiceImpl#LOCK_TIMEOUT_SECONDS}）とし、トランザクション終了
- * または DB 接続切断で確実に解放される（MySQL のセッションスコープ関数のため）。</p>
+ * 一意制約で TOCTOU を機械的に防げない）。第1〜2巡では MySQL の名前付きアドバイザリロック
+ * （{@code GET_LOCK}/{@code RELEASE_LOCK}）を試みたが、解放タイミング（rollback 経路での
+ * 早期解放）と接続管理（Hikari 経由では {@code close()} が物理切断ではなくプール返却になる、
+ * 専用接続の保持による接続プール枯渇）に構造的な問題が消えなかったため、
+ * <b>{@code duplicate_name_locks} テーブルの行ロック</b>方式へ転換した。</p>
  *
- * <p>ロックを取っただけでは InnoDB の REPEATABLE READ スナップショットが古いままの恐れが
- * あるため（呼び出し元が本メソッド呼び出し前に他のクエリを発行しているとスナップショットが
- * 先に確立し得る）、{@code candidateSupplier} は <b>ロッキングリード（{@code FOR UPDATE}
+ * <p>実装（{@link DuplicateNameGuardServiceImpl}）は呼び出し元と<b>同一トランザクション</b>内で
+ * {@code INSERT INTO duplicate_name_locks ... ON DUPLICATE KEY UPDATE scope_kind = scope_kind}
+ * を実行し、正規化名ごとに1行だけ存在するロック専用行へ X ロック（排他ロック）を取得する。
+ * <b>明示的な解放処理は書かない</b>。InnoDB は commit・rollback のどちらでもそのトランザクションが
+ * 保持する行ロックを自動的に解放するため、解放漏れが原理的に起こらない
+ * （専用接続・{@code afterCompletion}・{@code RELEASE_LOCK} が一切不要になる）。</p>
+ *
+ * <p>行ロック取得後、{@code candidateSupplier} は <b>ロッキングリード（{@code FOR UPDATE}
  * 等、{@code PESSIMISTIC_WRITE} 相当）</b>で最新のコミット済みデータを読む契約とする
- * （{@code OrganizationRepository#findActiveByNormalizedNameForUpdate} 等を参照）。</p>
+ * （{@code OrganizationRepository#findActiveByNormalizedNameForUpdate} 等を参照）。
+ * ロック待ちが {@code innodb_lock_wait_timeout} を超えた場合は
+ * {@link DuplicateNameErrorCode#DUPNAME_002}（409）へ写像する。</p>
  *
- * <p>{@code createAction}（実際の作成処理）はロック保持中に実行することで、
- * 「判定 → 作成」の間に別の同名作成者が割り込めないようにする。</p>
+ * <p>{@code createAction}（実際の作成処理）も同一トランザクション内・行ロック保持中に
+ * 実行することで、「判定 → 作成」の間に別の同名作成者が割り込めないようにする。</p>
  */
 public interface DuplicateNameGuardService {
 
@@ -50,9 +55,9 @@ public interface DuplicateNameGuardService {
      * @param suppliedFingerprint クライアントが返送した fingerprint（confirmDuplicate=false 時は無視）
      * @param candidateSupplier 同名候補を検索するコールバック（trim + utf8mb4_0900_ai_ci 相当の
      *                          {@code =} 比較・<b>ロッキングリード</b>で検索し、可視性ルール適用済みの
-     *                          {@link DuplicateNameCandidate} 一覧を返す想定）。アドバイザリロック
+     *                          {@link DuplicateNameCandidate} 一覧を返す想定）。行ロック
      *                          保持中に呼ばれるため、同名作成者間では直列化された最新状態を反映する
-     * @param createAction      重複確認を通過した場合に実行する実際の作成処理（アドバイザリロック
+     * @param createAction      重複確認を通過した場合に実行する実際の作成処理（行ロック
      *                          保持中に実行される）
      * @param <T>               {@code createAction} の戻り値型
      * @return {@code createAction} の実行結果
