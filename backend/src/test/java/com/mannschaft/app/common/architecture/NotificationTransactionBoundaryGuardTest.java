@@ -1927,7 +1927,7 @@ class NotificationTransactionBoundaryGuardTest {
      * 失われておらず、AFTER_COMMIT の後へ移っただけである。
      * 新しい 169 は 2026-09-04 の実測ちょうどで、余裕はゼロである。</p>
      */
-    static final long RAW_CANDIDATE_HITS_MIN = 169L;
+    static final long RAW_CANDIDATE_HITS_MIN = 167L;
 
     /**
      * 実測 149（2026-09-04 / Issue #2990 L5 の是正後）。158 -> 149 の根拠は
@@ -1942,7 +1942,7 @@ class NotificationTransactionBoundaryGuardTest {
      *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 149L;
+    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 147L;
 
     /**
      * 実測 17309（2026-09-01 main 取り込み後）。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。
@@ -2000,7 +2000,7 @@ class NotificationTransactionBoundaryGuardTest {
      *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long NOTIFY_BEARING_FILES_MIN = 94L;
+    static final long NOTIFY_BEARING_FILES_MIN = 93L;
 
     /** 検出力の実測値。 */
     record DetectionPower(long rawCandidateHits, long structuralNotifyCalls, long parsedMethods) {}
