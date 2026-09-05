@@ -60,7 +60,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @AutoConfigureMockMvc
 @Transactional
-@DisplayName("F08.12 領収書 PDF 原本保存の契約テスト（試練・実装前 red）")
+@DisplayName("F08.12 領収書 PDF 原本保存の契約テスト")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class ReceiptPdfArchiveContractIT extends AbstractMySqlIntegrationTest {
 
