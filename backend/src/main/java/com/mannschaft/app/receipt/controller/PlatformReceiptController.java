@@ -6,6 +6,7 @@ import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.receipt.dto.IssuerSettingsResponse;
 import com.mannschaft.app.receipt.dto.PageResponse;
 import com.mannschaft.app.receipt.dto.PlatformReceiptSummaryResponse;
+import com.mannschaft.app.receipt.dto.RetentionExpiredArchiveResponse;
 import com.mannschaft.app.receipt.dto.UpdateIssuerSettingsRequest;
 import com.mannschaft.app.receipt.service.PlatformReceiptService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 運営領収書コンソール（F08.12 §4.1）。運営（プラットフォーム事業者）自身が発行者となる
@@ -79,5 +82,17 @@ public class PlatformReceiptController {
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.of(platformReceiptService.listReceipts(
                 SecurityUtils.getCurrentUserId(), includeVoided, page, size)));
+    }
+
+    /**
+     * 保存期限が到来した PDF 原本アーカイブを一覧する（F08.12 §9.5 AC-77）。
+     * <b>削除は行わない</b>（一覧のみ。削除は運用担当が手動で行う）。
+     */
+    @GetMapping("/receipts/retention-expired")
+    @Operation(summary = "保存期限到来アーカイブ一覧（削除は行わない）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<RetentionExpiredArchiveResponse>>> listRetentionExpiredArchives() {
+        return ResponseEntity.ok(ApiResponse.of(
+                platformReceiptService.listRetentionExpiredArchives(SecurityUtils.getCurrentUserId())));
     }
 }

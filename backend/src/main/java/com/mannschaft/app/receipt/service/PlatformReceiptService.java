@@ -7,9 +7,11 @@ import com.mannschaft.app.receipt.ReceiptScopes;
 import com.mannschaft.app.receipt.dto.IssuerSettingsResponse;
 import com.mannschaft.app.receipt.dto.PageResponse;
 import com.mannschaft.app.receipt.dto.PlatformReceiptSummaryResponse;
+import com.mannschaft.app.receipt.dto.RetentionExpiredArchiveResponse;
 import com.mannschaft.app.receipt.dto.UpdateIssuerSettingsRequest;
 import com.mannschaft.app.receipt.entity.ReceiptEntity;
 import com.mannschaft.app.receipt.repository.ReceiptIssuerSettingsRepository;
+import com.mannschaft.app.receipt.repository.ReceiptPdfArchiveRepository;
 import com.mannschaft.app.receipt.repository.ReceiptRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 運営コンソール（SYSTEM_ADMIN）向けの運営領収書サービス（F08.12 §4.1）。
@@ -42,6 +46,7 @@ public class PlatformReceiptService {
     private final ReceiptIssuerSettingsRepository issuerSettingsRepository;
     private final ReceiptIssuerSettingsService issuerSettingsService;
     private final AccessControlService accessControlService;
+    private final ReceiptPdfArchiveRepository pdfArchiveRepository;
 
     /**
      * PLATFORM 発行者設定を取得する。
@@ -96,6 +101,32 @@ public class PlatformReceiptService {
                         ReceiptScopeType.PLATFORM, ReceiptScopes.PLATFORM_SCOPE_ID, pageable);
 
         return PageResponse.of(receipts, PlatformReceiptService::toSummary);
+    }
+
+    /**
+     * 保存期限（7 年）が到来した PDF 原本アーカイブを一覧する（F08.12 §9.5 AC-77）。
+     *
+     * <p><b>削除は行わない</b>。欠損金が生じた事業年度は保存期間が 10 年に延びる等の例外があり、
+     * {@code retention_until} だけで機械的に削除すると消してはいけない証憑を消しうるため
+     * （非対称なリスク。安全側に倒す）。削除が必要な場合は運用担当が対象を確認したうえで
+     * 手動で行う（御裁可済み）。</p>
+     */
+    public List<RetentionExpiredArchiveResponse> listRetentionExpiredArchives(Long actorUserId) {
+        accessControlService.checkAdminOrAboveIncludingPlatform(
+                actorUserId, ReceiptScopes.PLATFORM_SCOPE_ID, AccessControlService.PLATFORM_SCOPE_TYPE);
+
+        return pdfArchiveRepository
+                .findByRetentionUntilLessThanEqualOrderByRetentionUntilAsc(
+                        LocalDate.now(UserZoneLocalDateTimeParser.SERVER_ZONE))
+                .stream()
+                .map(a -> new RetentionExpiredArchiveResponse(
+                        a.getReceiptId(),
+                        a.getArchiveKind().name(),
+                        a.getStorageKey(),
+                        a.getArchivedAt(),
+                        a.getRetentionUntil(),
+                        a.getRetentionBackend()))
+                .toList();
     }
 
     private static PlatformReceiptSummaryResponse toSummary(ReceiptEntity r) {
