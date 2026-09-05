@@ -81,7 +81,7 @@ function handleSlotSaved(slot: ShiftSlotResponse) {
     slots.value.push(slot)
   }
   // 日付順でソート
-  slots.value.sort((a, b) => a.slotDate.localeCompare(b.slotDate) || a.startTime.localeCompare(b.startTime))
+  slots.value.sort((a, b) => a.time.slotDate.localeCompare(b.time.slotDate) || a.time.startTime.localeCompare(b.time.startTime))
 }
 
 async function handleDeleteSlot(slotId: number) {
@@ -164,7 +164,7 @@ async function handleBulkCreate() {
     }
     const created = await bulkCreateSlots(scheduleId.value, { slots: generatedSlots })
     slots.value.push(...created)
-    slots.value.sort((a, b) => a.slotDate.localeCompare(b.slotDate) || a.startTime.localeCompare(b.startTime))
+    slots.value.sort((a, b) => a.time.slotDate.localeCompare(b.time.slotDate) || a.time.startTime.localeCompare(b.time.startTime))
     success(t('shift.slot.bulkCreateSuccess', { count: created.length }))
     showBulkDialog.value = false
   } catch (error) {
@@ -179,7 +179,7 @@ async function handleBulkCreate() {
 // =====================================================
 const sortedSlots = computed(() =>
   [...slots.value].sort(
-    (a, b) => a.slotDate.localeCompare(b.slotDate) || a.startTime.localeCompare(b.startTime),
+    (a, b) => a.time.slotDate.localeCompare(b.time.slotDate) || a.time.startTime.localeCompare(b.time.startTime),
   ),
 )
 
@@ -194,9 +194,9 @@ function formatDate(dateStr: string): string {
     <div class="mb-4 flex items-center gap-2">
       <BackButton :to="`/shift/${scheduleId}`" />
       <h1 class="text-xl font-bold text-surface-800 dark:text-surface-100">
-        {{ schedule?.title ?? '...' }}
+        {{ schedule?.content.title ?? '...' }}
       </h1>
-      <ShiftStatusBadge v-if="schedule" :status="schedule.status" />
+      <ShiftStatusBadge v-if="schedule" :status="schedule.status.status" />
     </div>
 
     <!-- タブ -->
@@ -260,17 +260,17 @@ function formatDate(dateStr: string): string {
           <!-- 日付 -->
           <div class="w-24 shrink-0">
             <p class="text-sm font-medium text-surface-700 dark:text-surface-200">
-              {{ formatDate(slot.slotDate) }}
+              {{ formatDate(slot.time.slotDate) }}
             </p>
           </div>
 
           <!-- 時間・ポジション -->
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium">
-              {{ slot.startTime.slice(0, 5) }} 〜 {{ slot.endTime.slice(0, 5) }}
+              {{ slot.time.startTime.slice(0, 5) }} 〜 {{ slot.time.endTime.slice(0, 5) }}
             </p>
-            <p v-if="slot.positionName" class="text-xs text-surface-500">
-              {{ slot.positionName }}
+            <p v-if="slot.position.positionName" class="text-xs text-surface-500">
+              {{ slot.position.positionName }}
             </p>
           </div>
 
@@ -279,12 +279,12 @@ function formatDate(dateStr: string): string {
             <span
               class="rounded-full px-2 py-0.5 text-xs font-medium"
               :class="
-                slot.assignedUserIds.length < slot.requiredCount
+                slot.assignedUserIds.length < slot.position.requiredCount
                   ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                   : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
               "
             >
-              {{ slot.assignedUserIds.length }} / {{ slot.requiredCount }}
+              {{ slot.assignedUserIds.length }} / {{ slot.position.requiredCount }}
             </span>
             <p class="mt-0.5 text-xs text-surface-400">{{ t('shift.slot.assigned') }}</p>
           </div>

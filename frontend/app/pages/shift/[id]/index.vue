@@ -80,7 +80,7 @@ const nextStatusLabelMap: Record<ShiftScheduleStatus, string> = {
 }
 
 const nextStatus = computed(() =>
-  schedule.value ? nextStatusMap[schedule.value.status] : null,
+  schedule.value ? nextStatusMap[schedule.value.status.status] : null,
 )
 
 async function handleTransition() {
@@ -106,8 +106,8 @@ async function handleTransition() {
 const dateList = computed<string[]>(() => {
   if (!schedule.value) return []
   const dates: string[] = []
-  const start = new Date(schedule.value.startDate)
-  const end = new Date(schedule.value.endDate)
+  const start = new Date(schedule.value.period.startDate)
+  const end = new Date(schedule.value.period.endDate)
   const cur = new Date(start)
   while (cur <= end && dates.length <= 60) {
     dates.push(dayjs(cur).tz(userTimezone.value).format('YYYY-MM-DD'))
@@ -119,9 +119,9 @@ const dateList = computed<string[]>(() => {
 const slotsByDate = computed<Map<string, ShiftSlotResponse[]>>(() => {
   const map = new Map<string, ShiftSlotResponse[]>()
   for (const slot of slots.value) {
-    const arr = map.get(slot.slotDate) ?? []
+    const arr = map.get(slot.time.slotDate) ?? []
     arr.push(slot)
-    map.set(slot.slotDate, arr)
+    map.set(slot.time.slotDate, arr)
   }
   return map
 })
@@ -136,7 +136,7 @@ const slotsByDate = computed<Map<string, ShiftSlotResponse[]>>(() => {
  */
 function isUnderStaffed(slot: ShiftSlotResponse): boolean {
   if (slot.assignmentMasked) return false
-  return slot.assignedUserIds.length < slot.requiredCount
+  return slot.assignedUserIds.length < slot.position.requiredCount
 }
 
 function formatDateShort(dateStr: string): string {
@@ -165,8 +165,8 @@ const saving = ref(false)
 function openEdit() {
   if (!schedule.value) return
   editForm.value = {
-    title: schedule.value.title,
-    note: schedule.value.note ?? '',
+    title: schedule.value.content.title,
+    note: schedule.value.content.note ?? '',
   }
   showEditDialog.value = true
 }
@@ -190,7 +190,7 @@ async function saveEdit() {
 }
 
 // ステッパーステップ番号
-const currentStep = computed(() => (schedule.value ? statusToStep(schedule.value.status) : 1))
+const currentStep = computed(() => (schedule.value ? statusToStep(schedule.value.status.status) : 1))
 
 // タブナビゲーション
 // 「希望一覧」「勤務制約」タブは BE 側が ADMIN/DEPUTY_ADMIN 限定のため、
@@ -217,11 +217,11 @@ const tabs = computed(() => {
     <template v-else-if="schedule">
       <!-- ヘッダー -->
       <div class="mb-4">
-        <PageHeader :title="schedule.title" back-to="/shift">
-          <ShiftStatusBadge :status="schedule.status" />
+        <PageHeader :title="schedule.content.title" back-to="/shift">
+          <ShiftStatusBadge :status="schedule.status.status" />
         </PageHeader>
         <p class="mb-3 text-sm text-surface-500">
-          {{ schedule.startDate }} 〜 {{ schedule.endDate }}
+          {{ schedule.period.startDate }} 〜 {{ schedule.period.endDate }}
         </p>
         <div v-if="canManage" class="flex items-center gap-2">
           <Button
@@ -234,7 +234,7 @@ const tabs = computed(() => {
           <Button
             v-if="nextStatus"
             icon="pi pi-arrow-right"
-            :label="t(nextStatusLabelMap[schedule.status])"
+            :label="t(nextStatusLabelMap[schedule.status.status])"
             size="small"
             :loading="transitioning"
             @click="handleTransition"
@@ -346,8 +346,8 @@ const tabs = computed(() => {
                           : 'border-surface-200 bg-surface-50 text-surface-700 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300'
                       "
                     >
-                      <span>{{ slot.startTime.slice(0, 5) }}〜{{ slot.endTime.slice(0, 5) }}</span>
-                      <span v-if="slot.positionName" class="text-surface-400">/{{ slot.positionName }}</span>
+                      <span>{{ slot.time.startTime.slice(0, 5) }}〜{{ slot.time.endTime.slice(0, 5) }}</span>
+                      <span v-if="slot.position.positionName" class="text-surface-400">/{{ slot.position.positionName }}</span>
                       <!-- 割当バッジ。サーバーが割当を伏せている間は人数を出さず中立表示にする -->
                       <span
                         v-if="slot.assignmentMasked"
@@ -365,7 +365,7 @@ const tabs = computed(() => {
                             : 'bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-200'
                         "
                       >
-                        {{ slot.assignedUserIds.length }}/{{ slot.requiredCount }}
+                        {{ slot.assignedUserIds.length }}/{{ slot.position.requiredCount }}
                       </span>
                     </NuxtLink>
                   </div>

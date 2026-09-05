@@ -69,7 +69,7 @@ async function selectTeam(id: number) {
   try {
     const all = await listSchedules(String(id))
     // COLLECTING 状態のみ表示
-    schedules.value = all.filter((s) => s.status === 'COLLECTING')
+    schedules.value = all.filter((s) => s.status.status === 'COLLECTING')
   } catch {
     showError(t('shift.notification.errorLoad'))
     step.value = 'team-select'
@@ -104,7 +104,7 @@ async function selectSchedule(schedule: ShiftScheduleResponse) {
         continue
       }
       // デフォルトプロファイルから曜日を取得（0=日曜）
-      const slotDate = new Date(slot.slotDate)
+      const slotDate = new Date(slot.time.slotDate)
       const dow = slotDate.getDay()
       const defaultPref = defaultProfiles.find((d) => d.dayOfWeek === dow)
       newPrefs.set(slot.id, defaultPref?.preference ?? 'AVAILABLE')
@@ -151,7 +151,7 @@ function applyBulk(payload: {
       next.set(slot.id, payload.preference)
       continue
     }
-    const dow = new Date(slot.slotDate).getDay()
+    const dow = new Date(slot.time.slotDate).getDay()
     const isWeekend = dow === 0 || dow === 6
     if (payload.target === 'weekday' && !isWeekend) {
       next.set(slot.id, payload.preference)
@@ -193,7 +193,7 @@ async function submitAll() {
         const payload: CreateShiftRequestRequest = {
           scheduleId: selectedSchedule.value.id,
           slotId: slot.id,
-          slotDate: slot.slotDate,
+          slotDate: slot.time.slotDate,
           preference: pref,
           note,
         }
@@ -217,8 +217,8 @@ async function submitAll() {
 const slotsByDate = computed(() => {
   const map = new Map<string, ShiftSlotResponse[]>()
   for (const slot of slots.value) {
-    if (!map.has(slot.slotDate)) map.set(slot.slotDate, [])
-    map.get(slot.slotDate)!.push(slot)
+    if (!map.has(slot.time.slotDate)) map.set(slot.time.slotDate, [])
+    map.get(slot.time.slotDate)!.push(slot)
   }
   return map
 })
@@ -312,13 +312,13 @@ onMounted(async () => {
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0 flex-1">
                 <h3 class="truncate text-sm font-semibold text-surface-800">
-                  {{ schedule.title }}
+                  {{ schedule.content.title }}
                 </h3>
                 <p class="mt-1 text-xs text-surface-500">
-                  {{ schedule.startDate }} 〜 {{ schedule.endDate }}
+                  {{ schedule.period.startDate }} 〜 {{ schedule.period.endDate }}
                 </p>
-                <p v-if="schedule.requestDeadline" class="mt-0.5 text-xs text-surface-400">
-                  {{ t('shift.field.deadline') }}: {{ schedule.requestDeadline }}
+                <p v-if="schedule.period.requestDeadline" class="mt-0.5 text-xs text-surface-400">
+                  {{ t('shift.field.deadline') }}: {{ schedule.period.requestDeadline }}
                 </p>
               </div>
               <span
@@ -356,9 +356,9 @@ onMounted(async () => {
         v-if="selectedSchedule"
         class="mb-4"
       >
-        <h3 class="text-sm font-semibold text-surface-800">{{ selectedSchedule.title }}</h3>
+        <h3 class="text-sm font-semibold text-surface-800">{{ selectedSchedule.content.title }}</h3>
         <p class="mt-0.5 text-xs text-surface-500">
-          {{ selectedSchedule.startDate }} 〜 {{ selectedSchedule.endDate }}
+          {{ selectedSchedule.period.startDate }} 〜 {{ selectedSchedule.period.endDate }}
         </p>
       </SectionCard>
 
@@ -380,13 +380,13 @@ onMounted(async () => {
                 <!-- 時刻・ポジション -->
                 <div class="mb-2 flex flex-wrap items-center gap-2">
                   <span class="text-xs font-medium text-surface-600">
-                    {{ formatTime(slot.startTime) }}–{{ formatTime(slot.endTime) }}
+                    {{ formatTime(slot.time.startTime) }}–{{ formatTime(slot.time.endTime) }}
                   </span>
                   <span
-                    v-if="slot.positionName"
+                    v-if="slot.position.positionName"
                     class="rounded bg-surface-200 px-1.5 py-0.5 text-xs text-surface-600"
                   >
-                    {{ slot.positionName }}
+                    {{ slot.position.positionName }}
                   </span>
                 </div>
 

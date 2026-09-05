@@ -58,7 +58,7 @@ const loading = ref(false)
 
 const filteredSchedules = computed(() => {
   if (!statusFilter.value) return schedules.value
-  return schedules.value.filter((s) => s.status === statusFilter.value)
+  return schedules.value.filter((s) => s.status.status === statusFilter.value)
 })
 
 async function load() {
