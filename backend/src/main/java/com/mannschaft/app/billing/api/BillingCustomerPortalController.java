@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.billing.EntitlementErrorCode;
+import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.api.dto.BillingCustomerPortalSessionResponse;
 import com.mannschaft.app.billing.api.dto.CreateBillingCustomerPortalSessionRequest;
 import com.mannschaft.app.common.ApiResponse;
@@ -37,6 +38,18 @@ import java.util.UUID;
  * scope はパスではなく<b>リクエスト本文</b>から来るため SpEL のパス引数では守れない
  * （PR4 の quote / checkout と同じ構造）。</p>
  *
+ * <p><b>認可は冪等台帳より先（AC-61）</b>: scope 認可を {@link BillingDurableIdempotencyService#begin}
+ * <b>より前</b>に通す。逆順にすると、他 scope 宛ての要求でも冪等レコードの読み書きが先に起き、
+ * 同一キーの hash 不一致による 409 が返りうる。その 409 は AC-63「Customer が ACTIVE でない」の
+ * 409 と区別が付かないため、<b>権限の無い scope について「存在するが ACTIVE でない」と読める
+ * 存在オラクル</b>になる。加えて、権限の無い要求に {@code billing_api_idempotencies} への
+ * 書き込みを許すこと自体が誤りである。認可に落ちた要求は、その先の状態を一切漏らしてはならない。</p>
+ *
+ * <p>application service 側の {@link BillingCustomerPortalScopeGuard} 呼び出しは残す。
+ * 判定正本は {@link BillingAccessGuard#canManageByActorId} の 1 箇所であり、
+ * 入口とサービスの双方がそこを通る（「共通ヘルパへの一元化」は「全経路が実際に通ること」を
+ * 保証しないため、公開入口側にも明示的な門を置く）。</p>
+ *
  * <p><b>冪等性（AC-69 / AC-70）</b>: {@code Idempotency-Key} ヘッダ必須。欠落は Spring の
  * {@code MissingRequestHeaderException} → 400。同一キー・同一 body の再送は保存済み応答を replay し、
  * 同一キー・<b>body 相違</b>は {@link BillingDurableIdempotencyService#begin} が hash 不一致として
@@ -55,6 +68,7 @@ public class BillingCustomerPortalController {
     private static final String METHOD = BillingCustomerPortalApplicationService.IDEMPOTENCY_METHOD;
     private static final String DATA_FIELD = "data";
 
+    private final BillingCustomerPortalAccessGuard scopeGuard;
     private final BillingCustomerPortalApplicationService portalApplicationService;
     private final BillingDurableIdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
@@ -84,6 +98,15 @@ public class BillingCustomerPortalController {
             @Valid @RequestBody CreateBillingCustomerPortalSessionRequest request,
             @RequestHeader("Idempotency-Key") String idempotencyKey) {
         Long actorId = SecurityUtils.getCurrentUserId();
+
+        // AC-61: 認可が最初。ここを通らない要求は冪等台帳にも Customer にも一切触れない。
+        EntitlementScopeKind scopeKind = request == null ? null : request.scopeKind();
+        Long scopeId = request == null ? null : request.scopeId();
+        if (scopeKind == null || scopeId == null) {
+            throw new BusinessException(EntitlementErrorCode.INVALID_SCOPE_KIND);
+        }
+        scopeGuard.check(actorId, scopeKind, scopeId);
+
         String requestHash = requestHash(actorId, request);
         String leaseOwner = UUID.randomUUID().toString();
         BillingIdempotencyDecision decision = idempotencyService.begin(

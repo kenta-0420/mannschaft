@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.billing.EntitlementErrorCode;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.stripe.exception.StripeException;
 import com.stripe.model.billingportal.Configuration;
 import com.stripe.model.billingportal.Session;
@@ -142,6 +144,14 @@ class BillingCustomerPortalStripeGateway implements BillingCustomerPortalGateway
      * AC-65: 起動完了時に configuration を照合する。失敗しても例外を投げず（＝アプリは起動する）、
      * 照合済み snapshot を持たないことで Portal 開始だけが fail-closed になる。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "Portal に対応する gate_key が無く停止条件を宣言できないため常時実行する。"
+                    + "本処理は Stripe を照合して結果を保持するだけで、既存データを書き換えない。"
+                    + "止めても壊れないが、止めた場合は照合済み snapshot が空のまま残り"
+                    + "Portal 開始が恒久的に 503 になる（fail-closed 側に倒れるため安全側ではある）。"
+                    + "DROP_WHEN_DISABLED は選べない。ApplicationReadyEvent の発火元は Spring Boot 自身であり、"
+                    + "Portal と同じ gate_key で閉じることが原理的に無いためである。"
+                    + "機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @EventListener(ApplicationReadyEvent.class)
     void verifyConfigurationOnStartup() {
         this.verifiedSnapshot = verifyConfiguration();
