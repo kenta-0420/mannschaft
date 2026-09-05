@@ -7,7 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 /**
@@ -23,6 +26,11 @@ import java.util.Optional;
 public class WebhookIdempotencyService {
 
     private final StripeWebhookEventRepository repository;
+    /**
+     * 時刻源。日時方針（{@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md}）に従い
+     * 「起きた瞬間」は {@link Instant} で取る。引数なしの現在時刻取得（暗黙の JVM 既定ゾーン依存）は使わない。
+     */
+    private final Clock clock;
 
     /**
      * イベントを冪等性テーブルへ登録し、ハンドラ実行可否を判定する。
@@ -68,8 +76,14 @@ public class WebhookIdempotencyService {
                             java.util.UUID billingContractId, java.util.UUID billingCustomerId) {
         Optional<StripeWebhookEventEntity> existing = repository.findByEventId(eventId);
         if (existing.isPresent()) {
+            boolean reprocess = decideReprocess(eventId, existing.get().getProcessStatus());
+            if (!reprocess) {
+                // 確定済み（真の重複）。冪等の趣旨どおり一切書き込まない。
+                // ここで列を埋め直すと、再送のたびに確定済み行へ UPDATE が走ってしまう。
+                return false;
+            }
             enrich(existing.get(), payloadSha256, stripeObjectRef, billingContractId, billingCustomerId);
-            return decideReprocess(eventId, existing.get().getProcessStatus());
+            return true;
         }
         try {
             StripeWebhookEventEntity entity = StripeWebhookEventEntity.builder()
@@ -119,11 +133,11 @@ public class WebhookIdempotencyService {
      */
     @Transactional
     public void markProcessed(String eventId, WebhookProcessStatus status) {
-        repository.findByEventId(eventId).ifPresent(e -> {
-            e.setProcessStatus(status);
-            e.setProcessedAt(LocalDateTime.now());
-            repository.save(e);
-        });
+        int updated = repository.updateProcessStatus(eventId, status, wallClockUtc());
+        if (updated == 0) {
+            // 受信記録が無いのに確定しようとしている＝上流の不整合。握り潰さず必ず残す。
+            log.warn("Webhook 状態を確定できませんでした（受信記録なし）: eventId={}, status={}", eventId, status);
+        }
     }
 
     /**
@@ -137,11 +151,10 @@ public class WebhookIdempotencyService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailed(String eventId) {
-        repository.findByEventId(eventId).ifPresent(e -> {
-            e.setProcessStatus(WebhookProcessStatus.FAILED);
-            e.setProcessedAt(LocalDateTime.now());
-            repository.save(e);
-        });
+        int updated = repository.updateProcessStatus(eventId, WebhookProcessStatus.FAILED, wallClockUtc());
+        if (updated == 0) {
+            log.warn("Webhook 失敗を確定できませんでした（受信記録なし）: eventId={}", eventId);
+        }
     }
 
     /**
@@ -168,9 +181,9 @@ public class WebhookIdempotencyService {
         StripeWebhookEventEntity e = found.get();
         int attempts = (e.getAttemptCount() == null ? 0 : e.getAttemptCount()) + 1;
         e.setAttemptCount(attempts);
-        e.setFailedAt(LocalDateTime.now());
+        e.setFailedAt(clock.instant());
         e.setProcessStatus(WebhookProcessStatus.FAILED);
-        e.setProcessedAt(LocalDateTime.now());
+        e.setProcessedAt(wallClockUtc());
         repository.saveAndFlush(e);
         log.info("Webhook 失敗を記録しました: eventId={}, attemptCount={}/{}", eventId, attempts, maxAttempts);
         return attempts;
@@ -184,9 +197,9 @@ public class WebhookIdempotencyService {
     public void markPermanentlyFailed(String eventId) {
         repository.findByEventId(eventId).ifPresent(e -> {
             e.setAttemptCount((e.getAttemptCount() == null ? 0 : e.getAttemptCount()) + 1);
-            e.setFailedAt(LocalDateTime.now());
+            e.setFailedAt(clock.instant());
             e.setProcessStatus(WebhookProcessStatus.FAILED);
-            e.setProcessedAt(LocalDateTime.now());
+            e.setProcessedAt(wallClockUtc());
             repository.saveAndFlush(e);
         });
     }
@@ -218,5 +231,16 @@ public class WebhookIdempotencyService {
         if (dirty) {
             repository.saveAndFlush(entity);
         }
+    }
+
+    /**
+     * {@code processed_at}（既存列・{@code LocalDateTime}）へ入れる値を {@link Clock} から作る。
+     *
+     * <p>この列は本来「起きた瞬間」なので {@link Instant} が正しいが、既存資産のため型を変えられない。
+     * せめて暗黙の JVM 既定ゾーンに依存しないよう UTC を明示して変換する
+     * （引数なしの現在時刻取得は使わない）。</p>
+     */
+    private LocalDateTime wallClockUtc() {
+        return LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
     }
 }

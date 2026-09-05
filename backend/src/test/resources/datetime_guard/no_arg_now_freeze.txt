@@ -445,7 +445,6 @@ NO_ARG_NOW|com.mannschaft.app.parking.service.ParkingVisitorReservationService|1
 NO_ARG_NOW|com.mannschaft.app.payment.FeePolicyAssignmentEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.FeePolicyEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.StripeWebhookEventEntity|1
-NO_ARG_NOW|com.mannschaft.app.payment.WebhookIdempotencyService|2
 NO_ARG_NOW|com.mannschaft.app.payment.admin.FeePolicyAdminService|1
 NO_ARG_NOW|com.mannschaft.app.payment.connect.ConnectAccountEntity|1
 NO_ARG_NOW|com.mannschaft.app.payment.entity.ContentPaymentGateEntity|1

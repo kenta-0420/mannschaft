@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -71,9 +72,17 @@ public class StripeWebhookEventEntity extends UuidV7Entity {
     @Column(name = "payload_sha256", length = 64)
     private String payloadSha256;
 
-    /** V196: 処理失敗時刻（リトライ判定に使用）。 */
+    /**
+     * V196: 処理失敗時刻（リトライ判定に使用）。
+     *
+     * <p><b>{@link Instant} である理由</b>: 「失敗が起きた瞬間」は絶対時刻であって壁時計ではない。
+     * 日時方針（{@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md}）に従い、
+     * 起きた瞬間は {@code Instant} で持つ。DDL は {@code DATETIME(6)} で UTC 値を格納する。
+     * 同表の {@code received_at}/{@code processed_at} が {@code LocalDateTime} なのは既存資産の都合であり、
+     * 新規列に同じ負債を増やさない。</p>
+     */
     @Column(name = "failed_at")
-    private LocalDateTime failedAt;
+    private Instant failedAt;
 
     /** V196: リトライ試行回数。 */
     @Column(name = "attempt_count", nullable = false)
