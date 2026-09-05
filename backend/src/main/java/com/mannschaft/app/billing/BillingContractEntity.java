@@ -72,8 +72,12 @@ public class BillingContractEntity extends UuidV7Entity {
     @Column(name = "feature_key", length = 64)
     private String featureKey;
 
+    /**
+     * 柱③-B 請求担当引継（CMP-260901-1538）: {@code PENDING_HANDOVER}（16文字）を格納可能にするため
+     * length を 12 → 20 へ拡張（V200 で DDL 側も VARCHAR(12) → VARCHAR(20) へ ALTER 済み）。
+     */
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 12)
+    @Column(name = "status", nullable = false, length = 20)
     private ContractStatus status;
 
     /** 契約時アクティブ人数スナップショット（TEAM/ORG のみ・memberships left_at IS NULL 数）。 */
@@ -150,6 +154,21 @@ public class BillingContractEntity extends UuidV7Entity {
     /** 契約操作者（論理参照。シスアド手動付与時はシスアドの userId）。 */
     @Column(name = "created_by")
     private Long createdBy;
+
+    /**
+     * 柱③-B 請求担当引継（CMP-260901-1538・V200・設計書 §4.1）: 現在この契約の実質決済者
+     * （Stripe Customer 紐付け先）。作成時は {@link #createdBy} と同値で初期化し、引継後に更新される。
+     * {@code created_by} の意味（作成操作者の監査記録）は変えない。
+     */
+    @Column(name = "payer_user_id")
+    private Long payerUserId;
+
+    /**
+     * 柱③-B 請求担当引継（CMP-260901-1538・V200・設計書 §4.1/§4.2）: {@code PENDING_HANDOVER} 中に
+     * 自分を作った {@code billing_payer_handover_requests.id}（新契約行のみ非NULL）。
+     */
+    @Column(name = "handover_request_id", columnDefinition = "BINARY(16)")
+    private java.util.UUID handoverRequestId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

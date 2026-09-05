@@ -166,6 +166,7 @@ public class BillingContractService {
                 .priceJpySnapshot(null)           // ベータ中は無償（NULL）。
                 .contractedAt(now)
                 .createdBy(operatorUserId)
+                .payerUserId(operatorUserId)
                 .build();
         BillingContractEntity saved = billingContractRepository.save(contract);
 
@@ -319,6 +320,7 @@ public class BillingContractService {
                 .priceJpySnapshot(null)
                 .contractedAt(now)
                 .createdBy(operatorUserId)
+                .payerUserId(operatorUserId)
                 .build();
         BillingContractEntity savedNew = billingContractRepository.save(newContract);
 
@@ -399,6 +401,7 @@ public class BillingContractService {
                 .priceJpySnapshot(priceJpy)
                 .contractedAt(now)
                 .createdBy(operatorUserId)
+                .payerUserId(operatorUserId)
                 .build();
         BillingContractEntity saved = billingContractRepository.save(contract);
 

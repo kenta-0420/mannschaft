@@ -148,6 +148,24 @@ class BillingContractServiceTest {
     }
 
     @Test
+    @DisplayName("AC-2: 新規 TEAM/ORG 契約作成時、payer_user_id は created_by（operatorUserId）と同値で初期化される")
+    void createContract_initializesPayerUserIdFromCreatedBy() {
+        stubSaveAssignsId();
+        given(planRepository.findById("FULL")).willReturn(Optional.of(plan("FULL", true)));
+        given(planFeatureRepository.findByPlanKey("FULL")).willReturn(List.of(pf("FULL", FeatureKeys.ADS_HIDE)));
+        given(scopeMemberCountService.countActiveMembers(EntitlementScopeKind.TEAM, 10L)).willReturn(34);
+        given(planPriceBandRepository.findByPlanKeyAndScopeKindOrderByBandNoAsc("FULL", PlanPriceBandScopeKind.TEAM))
+                .willReturn(List.of());
+
+        service.createContract(EntitlementScopeKind.TEAM, 10L, 99L, ContractKind.PLAN, "FULL", null, 7L);
+
+        ArgumentCaptor<BillingContractEntity> captor = ArgumentCaptor.forClass(BillingContractEntity.class);
+        verify(billingContractRepository).save(captor.capture());
+        assertThat(captor.getValue().getCreatedBy()).isEqualTo(7L);
+        assertThat(captor.getValue().getPayerUserId()).isEqualTo(7L);
+    }
+
+    @Test
     @DisplayName("AC-28/30: pointer の uk_acp_slot 衝突は CONTRACT_ALREADY_ACTIVE（entitlements 未発行）")
     void createContract_duplicatePointer_throwsAlreadyActive() {
         given(billingContractRepository.save(any(BillingContractEntity.class))).willAnswer(inv -> {

@@ -19,6 +19,17 @@ package com.mannschaft.app.billing;
  *           current_period_end へ。{@code customer.subscription.deleted} 到達で {@code EXPIRED}＋残 revoke。</li>
  *     </ul>
  *   </li>
+ *   <li><b>柱③-B 請求担当引継（CMP-260901-1538・設計書 §3.1・R2-P0-1 で 6 値化）</b>:
+ *     <ul>
+ *       <li>{@code PENDING_HANDOVER}: 引継の新契約が {@code billing_payer_handover_requests} の
+ *           {@code ACCEPTED} 遷移時に pointer 無しで先行作成された状態。entitlement の実体は旧契約の
+ *           pointer が旧期末まで担保する（新契約側では未発行）。</li>
+ *       <li>{@code PENDING_HANDOVER → ACTIVE}: 切替バッチが旧契約の {@code current_period_end} 到達を
+ *           条件に実行する切替TX（ローカルDB操作のみ）で pointer 付替えと同時に遷移。</li>
+ *       <li>{@code PENDING_HANDOVER → CANCELLED}: 新規作成/trial失敗・{@code pending_setup_intent}
+ *           未解決等で引継自体が {@code FAILED} 確定した場合の無効化（旧契約の pointer は無傷）。</li>
+ *     </ul>
+ *   </li>
  * </ul>
  */
 public enum ContractStatus {
@@ -31,5 +42,10 @@ public enum ContractStatus {
     /** 解約済み（無償=即時／決済フローの放棄）。 */
     CANCELLED,
     /** 失効（期末解約の完了・不払い確定）。 */
-    EXPIRED
+    EXPIRED,
+    /**
+     * 柱③-B 請求担当引継（CMP-260901-1538）: 引継の新契約が作成された直後〜切替TX実行前
+     * （pointer 未設定・entitlement は旧契約 pointer が担保）。
+     */
+    PENDING_HANDOVER
 }

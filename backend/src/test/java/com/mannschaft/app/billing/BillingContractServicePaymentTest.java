@@ -149,6 +149,8 @@ class BillingContractServicePaymentTest {
         verify(activeContractPointerRepository).saveAndFlush(any(ActiveContractPointerEntity.class));
         // ★entitlements は未発行（入金 webhook で初めて発行・AC-33）。
         verify(entitlementRepository, never()).saveAll(anyList());
+        // AC-2: 決済フロー起票（PENDING）でも payer_user_id は created_by と同値で初期化される。
+        assertThat(captor.getValue().getPayerUserId()).isEqualTo(9L);
     }
 
     @Test
