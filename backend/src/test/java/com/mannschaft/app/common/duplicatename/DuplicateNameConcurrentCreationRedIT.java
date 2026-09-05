@@ -10,6 +10,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -18,6 +19,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 /**
  * CMP-260901-1538 柱③-A 検分第3巡是正: 「トランザクションが commit するまで行ロックが
@@ -101,13 +103,17 @@ class DuplicateNameConcurrentCreationRedIT extends AbstractMySqlIntegrationTest 
                 }
             });
 
-            // T2 がまだブロックされている（T1 の行ロックを取得できていない）ことを確認する。
+            // T2 が一定時間ブロックされ続けている（T1 の行ロックを取得できていない）ことを確認する。
             // これが是正の核心: 是正前の GET_LOCK 方式であれば finally で即座に解放されており、
-            // T2 はここで既にロックを取得できてしまっていた。
-            Thread.sleep(1500);
-            assertThat(future2.isDone())
-                    .as("T2 は T1 の TX が commit するまで行ロックでブロックされているはず")
-                    .isFalse();
+            // T2 はここで既にロックを取得できてしまっていた。Thread.sleep ではなく Awaitility の
+            // during() で「その間ずっと isDone()==false のまま」であることを検証する
+            // （途中で true になった時点で失敗する。テスト規約: 固定 sleep 禁止）。
+            await("T2 は T1 の TX が commit するまで行ロックでブロックされ続けるはず")
+                    .pollDelay(Duration.ofMillis(200))
+                    .pollInterval(Duration.ofMillis(200))
+                    .during(Duration.ofMillis(1300))
+                    .atMost(Duration.ofMillis(2000))
+                    .until(() -> !future2.isDone());
 
             // T1 を解放して createAction（実際の組織作成）を完了させ、トランザクションを commit させる。
             t1MayFinishCreateAction.countDown();

@@ -9,9 +9,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -61,6 +63,61 @@ class DuplicateNameCollationGuardRedIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private DuplicateNameGuardService duplicateNameGuardService;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Test
+    @DisplayName("検分第4巡是正(P1-2): FOR UPDATE候補検索がname_trimmedの索引を"
+            + "候補として使えることをEXPLAINで実測する")
+    void r4_forUpdateCandidateQueryCanUseIndexOnNameTrimmed() {
+        // 注記: テスト DB はテーブルの行数が極small（数行）なため、MySQL のオプティマイザが
+        // コスト計算の結果「全表スキャンの方が安い」と判断し、実際に選択される実行計画
+        // （EXPLAIN の key 列）が索引を使わない可能性がある（これは行数が少ない場合の
+        // 正しい最適化であり、索引が機能していない証拠ではない）。そのため本テストは
+        // 「索引が候補（possible_keys）に挙がること」＝スキーマ上索引が存在し、
+        // このクエリ形状（name_trimmed = TRIM(?)）に対して有効であることを検証する
+        // （本番相当のデータ量下での実際の選択は EXPLAIN 実測を PR 本文に記録する）。
+        String orgSuffix = shortSuffixDigits();
+        String orgName = "EXPLAIN検証組織" + orgSuffix;
+        OrganizationEntity org = OrganizationEntity.builder()
+                .name(orgName)
+                .slug(shortSuffix("dupn-explain-org-"))
+                .orgType(OrganizationEntity.OrgType.OTHER)
+                .visibility(OrganizationEntity.Visibility.PUBLIC)
+                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
+                .supporterEnabled(false)
+                .build();
+        organizationRepository.saveAndFlush(org);
+
+        Map<String, Object> orgPlan = jdbcTemplate.queryForMap(
+                "EXPLAIN SELECT * FROM organizations "
+                        + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
+                        + "AND name_trimmed = TRIM(?) FOR UPDATE",
+                orgName);
+        System.out.println("[柱③-A P1-2 EXPLAIN実測] organizations: " + orgPlan);
+        assertThat(orgPlan.get("possible_keys")).as("organizations EXPLAIN: %s", orgPlan)
+                .asString().contains("idx_organizations_name_trimmed");
+
+        String teamSuffix = shortSuffixDigits();
+        String teamName = "ExplainTeam" + teamSuffix;
+        TeamEntity team = TeamEntity.builder()
+                .name(teamName)
+                .slug(shortSuffix("dupn-explain-team-"))
+                .visibility(TeamEntity.Visibility.PUBLIC)
+                .supporterEnabled(false)
+                .build();
+        teamRepository.saveAndFlush(team);
+
+        Map<String, Object> teamPlan = jdbcTemplate.queryForMap(
+                "EXPLAIN SELECT * FROM teams "
+                        + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
+                        + "AND name_trimmed = TRIM(?) FOR UPDATE",
+                teamName);
+        System.out.println("[柱③-A P1-2 EXPLAIN実測] teams: " + teamPlan);
+        assertThat(teamPlan.get("possible_keys")).as("teams EXPLAIN: %s", teamPlan)
+                .asString().contains("idx_teams_name_trimmed");
+    }
 
     @Test
     @DisplayName("AC-05a: 前後空白違いの組織名は実DBのtrim比較で同名判定される")

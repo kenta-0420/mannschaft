@@ -59,32 +59,36 @@ public interface TeamRepository
     /**
      * CMP-260901-1538 柱③-A: 同名確認フロー用の候補検索。
      *
-     * <p>同名判定は MySQL 照合順序 {@code utf8mb4_0900_ai_ci} の {@code =} 比較（大文字小文字・
-     * アクセントを区別しない）＋前後 trim で行う。ACTIVE（{@code lifecycleStatus=ACTIVE}）かつ
-     * 未削除（{@code @SQLRestriction} により自動除外）のみを対象とする。作成 TX 内で
-     * 呼ばれることを想定し、常に最新状態を反映する。金型: {@code OrganizationRepository#findActiveByNormalizedName}。</p>
+     * <p>検分第4巡是正: 索引の効く生成列 {@code name_trimmed}
+     * （{@code GENERATED ALWAYS AS (TRIM(name)) STORED}・V202 マイグレーション参照）への
+     * 等価比較へ書き換え済み。金型: {@code OrganizationRepository#findActiveByNormalizedName}。
+     * ACTIVE（{@code lifecycleStatus=ACTIVE}）かつ未削除（{@code @SQLRestriction} により
+     * 自動除外）のみを対象とする。作成 TX 内で呼ばれることを想定し、常に最新状態を反映する。</p>
      *
      * @param name 判定対象の名称（未 trim で渡してよい。クエリ側で TRIM する）
      * @return 同名の ACTIVE チーム一覧
      */
     @Query(value = "SELECT * FROM teams "
             + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
-            + "AND TRIM(name) = TRIM(:name) COLLATE utf8mb4_0900_ai_ci",
+            + "AND name_trimmed = TRIM(:name)",
             nativeQuery = true)
     List<TeamEntity> findActiveByNormalizedName(@Param("name") String name);
 
     /**
-     * CMP-260901-1538 柱③-A 検分P1-2是正: {@link #findActiveByNormalizedName} のロッキングリード版。
+     * CMP-260901-1538 柱③-A 検分P1-2/第4巡是正: {@link #findActiveByNormalizedName} の
+     * ロッキングリード版。
      *
      * <p>{@code FOR UPDATE} により InnoDB の REPEATABLE READ スナップショットを無視して
-     * <b>最新のコミット済みデータ</b>を読む。金型: {@code OrganizationRepository#findActiveByNormalizedNameForUpdate}。</p>
+     * <b>最新のコミット済みデータ</b>を読む。{@code name_trimmed} の索引を使うことで
+     * 索引レンジロックに収まり、全表ロックを避ける。
+     * 金型: {@code OrganizationRepository#findActiveByNormalizedNameForUpdate}。</p>
      *
      * @param name 判定対象の名称（未 trim で渡してよい。クエリ側で TRIM する）
      * @return 同名の ACTIVE チーム一覧（最新コミット済み状態）
      */
     @Query(value = "SELECT * FROM teams "
             + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
-            + "AND TRIM(name) = TRIM(:name) COLLATE utf8mb4_0900_ai_ci FOR UPDATE",
+            + "AND name_trimmed = TRIM(:name) FOR UPDATE",
             nativeQuery = true)
     List<TeamEntity> findActiveByNormalizedNameForUpdate(@Param("name") String name);
 

@@ -60,35 +60,42 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     /**
      * CMP-260901-1538 柱③-A: 同名確認フロー用の候補検索。
      *
-     * <p>同名判定は MySQL 照合順序 {@code utf8mb4_0900_ai_ci} の {@code =} 比較（大文字小文字・
-     * アクセントを区別しない）＋前後 trim で行う。ACTIVE（{@code lifecycleStatus=ACTIVE}）かつ
-     * 未削除（{@code @SQLRestriction} により自動除外）のみを対象とする。作成 TX 内で
-     * 呼ばれることを想定し、常に最新状態を反映する。</p>
+     * <p>検分第4巡是正: {@code TRIM(name) = TRIM(:name) COLLATE utf8mb4_0900_ai_ci} は
+     * {@code name} 列に索引が無いため全表走査になっていた。生成列
+     * {@code name_trimmed}（{@code GENERATED ALWAYS AS (TRIM(name)) STORED}・索引付き。
+     * V201 マイグレーション参照）に対する等価比較へ書き換え、索引を使えるようにする。
+     * 照合順序は列自体が {@code utf8mb4_0900_ai_ci}（大文字小文字・アクセントを区別しない）
+     * のため明示指定は不要。ACTIVE（{@code lifecycleStatus=ACTIVE}）かつ未削除
+     * （{@code @SQLRestriction} により自動除外）のみを対象とする。作成 TX 内で呼ばれることを
+     * 想定し、常に最新状態を反映する。</p>
      *
      * @param name 判定対象の名称（未 trim で渡してよい。クエリ側で TRIM する）
      * @return 同名の ACTIVE 組織一覧
      */
     @Query(value = "SELECT * FROM organizations "
             + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
-            + "AND TRIM(name) = TRIM(:name) COLLATE utf8mb4_0900_ai_ci",
+            + "AND name_trimmed = TRIM(:name)",
             nativeQuery = true)
     List<OrganizationEntity> findActiveByNormalizedName(@Param("name") String name);
 
     /**
-     * CMP-260901-1538 柱③-A 検分P1-2是正: {@link #findActiveByNormalizedName} のロッキングリード版。
+     * CMP-260901-1538 柱③-A 検分P1-2/第4巡是正: {@link #findActiveByNormalizedName} の
+     * ロッキングリード版。
      *
      * <p>{@code FOR UPDATE} により InnoDB の REPEATABLE READ スナップショットを無視して
      * <b>最新のコミット済みデータ</b>を読む（呼び出し元がこのクエリより前に他のクエリを
      * 発行しトランザクションのスナップショットが既に確立していても安全）。
-     * {@code DuplicateNameGuardService#checkForCreateAndRun} がアドバイザリロック保持中に
-     * 呼ぶことを前提とし、同名候補の TOCTOU（確認時点と作成時点の乖離）を防ぐ。</p>
+     * {@code name_trimmed} の索引を使うことで、{@code FOR UPDATE} が索引レンジロックに
+     * 収まり、全表ロック（＝無関係な名称の作成まで巻き込んでブロックする事故）を避ける。
+     * {@code DuplicateNameGuardService#checkForCreateAndRun} が行ロック保持中に呼ぶことを
+     * 前提とし、同名候補の TOCTOU（確認時点と作成時点の乖離）を防ぐ。</p>
      *
      * @param name 判定対象の名称（未 trim で渡してよい。クエリ側で TRIM する）
      * @return 同名の ACTIVE 組織一覧（最新コミット済み状態）
      */
     @Query(value = "SELECT * FROM organizations "
             + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
-            + "AND TRIM(name) = TRIM(:name) COLLATE utf8mb4_0900_ai_ci FOR UPDATE",
+            + "AND name_trimmed = TRIM(:name) FOR UPDATE",
             nativeQuery = true)
     List<OrganizationEntity> findActiveByNormalizedNameForUpdate(@Param("name") String name);
 

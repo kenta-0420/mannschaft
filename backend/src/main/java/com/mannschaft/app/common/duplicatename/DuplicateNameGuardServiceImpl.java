@@ -8,9 +8,6 @@ import jakarta.persistence.PessimisticLockException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.List;
 import java.util.function.Supplier;
@@ -164,22 +161,17 @@ public class DuplicateNameGuardServiceImpl implements DuplicateNameGuardService 
     }
 
     /**
-     * ロック対象キーを組み立てる。{@code scope_kind + 正規化名} を SHA-256 でハッシュ化し、
-     * 64桁の16進文字列（{@code duplicate_name_locks.name_key} の列幅と一致）にする。
+     * 検分第4巡是正: ロック対象キーは trim 済みの<b>生の名称そのもの</b>を使う
+     * （以前は SHA-256 ハッシュを使っていたが、Java 側で MySQL の
+     * {@code utf8mb4_0900_ai_ci} 照合を再現できず、"Foo" と "foo" が異なるハッシュ値＝
+     * 別ロック行になってしまい、直列化・候補検索の同名判定と食い違っていた）。
+     * {@code duplicate_name_locks} テーブル自体が {@code utf8mb4_0900_ai_ci} で作成されて
+     * いるため、この文字列をそのまま複合PKへ格納すれば、PK の等価判定
+     * （{@code INSERT ... ON DUPLICATE KEY UPDATE} の重複検知）が候補検索
+     * （{@code name_trimmed = TRIM(?)}）と完全に同じ照合順序になる。
      */
     private String buildNameKey(DuplicateNameScopeKind scopeKind, String normalizedName) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(
-                    (scopeKind.name() + ":" + normalizedName).getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder(hash.length * 2);
-            for (byte b : hash) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 は JDK に必ず存在するはずである", e);
-        }
+        return normalizedName;
     }
 
     /**
