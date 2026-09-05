@@ -132,7 +132,80 @@
 #      createDelegation / onDelegatorAttendanceChanged / reject（すべて TX_NOTIFY_BARE）の6件。
 # CLASSIFIED_FLOOR は分類済み9件のうち ROLLBACK_COUPLED 4件を是正で消したため 9 -> 5。
 # 残る分類済み5件はすべて ORDERING_ONLY であり、#2990 本体（巻き戻り）ではない。
-# CENSUS_FLOOR: 58
+# --- 2026-09-05 Issue #2990 L8: schedule ドメイン 7件の是正（CENSUS_FLOOR 58 -> 51）---
+# 7件すべてを正規形（業務TXは publishEvent のみ／AFTER_COMMIT 配送リスナー）へ移した。
+# 通知そのものは1件も削っていない（発火位置だけを移した）。
+#
+#   ① ScheduleAttendanceService#openAttendanceSolicitation（TX_NOTIFY_BARE）
+#      業務TX（出欠設定の適用 save ＋ 出欠レコードの saveAll）の内側で受信者ごとに
+#      createNotificationPreAuthorized + dispatch を try 無しで呼んでいた。通知の INSERT が1件でも
+#      落ちると出欠レコード全行と適用済みの回答締切・コメント要否・最低応答ロールが巻き戻る。
+#      即時経路の呼び出し元（ScheduleAttendanceSolicitationEventListener）は AFTER_COMMIT + @Async の
+#      イベントリスナーで再試行されないため、出欠募集が黙って行われないまま終わる。
+#      AttendanceSolicitationOpenedEvent(scheduleId) を publish し、
+#      新設 ScheduleAttendanceSolicitationNotificationListener（AFTER_COMMIT + @Async("event-pool")）が
+#      コミット済みの schedule_attendances から受信者を読み直して配送する。
+#      配送は notifyAllPreAuthorized（バルク・事前認可）のまま据え置いた。
+#      NotificationDeliveryRunner#sendOne（= createNotification・visibility 判定あり）へ寄せると
+#      組織スケジュールの出欠募集が配下チームの直属一般メンバーへ誤 deny で届かなくなる (B) レグが再発する。
+#
+#   ② ScheduleReminderNotificationListener#onReminderNotification（PLAIN_EVENT_LISTENER）
+#      素の @EventListener で、リマインダーバッチの @Transactional の内側で同期実行されていた。
+#      notifyAllPreAuthorized はチャンク失敗を catch して「業務TXを巻き添えにしない」と称しているが、
+#      その下流 NotificationBulkFanoutService は @Transactional を一切持たず呼び出し元のTXに参加する。
+#      よって実 DB の INSERT 失敗では rollback-only が立ち、catch は無力だった（単一TX内の一括 catch は
+#      機能しない・既知の形）。実害は PersonalScheduleReminderService#processDueReminders の
+#      markAsNotified() と ScheduleReminderService#processDueReminder の markAsSent() が巻き戻ること。
+#      送信済みの記録が消えるため次回実行でも同じリマインダーが due と判定され前へ進まない。
+#      @TransactionalEventListener(AFTER_COMMIT) + @Async("event-pool") へ変更。発火元は
+#      sendReminder / processDueReminder / processDueReminders のいずれも @Transactional 実効であり
+#      （processScheduledReminders は self. 経由のプロキシ呼び出し）、イベントが捨てられないことを確認済み。
+#
+#   ③④ ScheduleKeepService#notifyConverted（TX_NOTIFY_IN_TRY）/
+#      ScheduleKeepNotificationPublisher#publishConverted（TX_NOTIFY_BARE）
+#      「通知の永続化だけ」を REQUIRES_NEW の publisher へ逃がし、クラス javadoc は
+#      それで変換は守られると宣言していた。しかし同じ notifyConverted の中で TEAM スコープ時に走る
+#      NotificationFanoutJobService#enqueue（fan-out 親ジョブの INSERT）は外側の業務TXのままだった。
+#      これが落ちると rollback-only が立ち、呼び出し側の catch が「変換自体は成立」という嘘のログを
+#      残したうえでコミットが UnexpectedRollbackException になり、キープの SCHEDULED 化と
+#      変換先予定ごと失われる。通知経路の一部だけを逃がしても残りが業務TXにあれば守れていない。
+#      ScheduleKeepConvertedEvent(keepId, convertedScheduleId, actorUserId) を publish し、
+#      新設 ScheduleKeepConvertedNotificationListener（AFTER_COMMIT + @Async("event-pool")）が
+#      キープ・予定を読み直して notifyConverted を呼ぶ。配送がコミット後に移ったことで
+#      「内側 TX からは外側の未コミットデータが見えないので再検索禁止」という publisher の存在理由が
+#      消えたため ScheduleKeepNotificationPublisher は削除し、直送は
+#      ScheduleKeepNotificationService から createNotificationPreAuthorized を直接呼ぶ形にした
+#      （可視性は ReferenceType.SCHEDULE_KEEP で判定済みのため PreAuthorized のまま。
+#       createNotification へ寄せると sourceType="SCHEDULE" 経由で SUPPORTER が通る既存欠陥を踏む）。
+#      直送と fan-out enqueue は互いに巻き添えにしないよう独立に捕捉する。
+#
+#   ⑤⑥⑦ ScheduleCommentService#registerNotificationAfterCommit（TX_NOTIFY_IN_TRY）/
+#      ScheduleCommentNotifier#sendMentioned / #sendReplied（DIRECT_RUNNER_CALL）
+#      この3件は L0 で「クラス跨ぎの偽陽性の可能性あり・L1 で実地確認する前提」として凍結され、
+#      以後どのロットでも検証されないまま残っていた。L8 で決着させた結論:
+#      <b>巻き戻りは起きていなかった</b>。通知は TransactionSynchronizationManager.registerSynchronization
+#      の afterCommit() から呼ばれており、因果としては既にコミット後で、受信者ごとに
+#      ScheduleCommentNotificationRunner#sendOne（REQUIRES_NEW）へ委譲する正規形そのものだった。
+#      つまり #2990 本体（ROLLBACK_COUPLED）には該当しない。
+#      しかし手書きの同期コールバックは字句走査では業務TX内の通知と区別できず、番人は本経路を
+#      3件の違反として数え続けていた（番人自身が delegationClosure の javadoc で
+#      ScheduleCommentNotifier を「別 Bean 委譲先の境界は判定できない」限界の実例として名指ししている）。
+#      REMOVED（偽陽性）として台帳へ移す道は取らなかった。REMOVED 行は「現在の判定ロジックでも
+#      検出されないこと」を番人が機械検証するため、検出され続けるものは移せないからである。
+#      代わりに<b>同じ境界を Spring の宣言で表し直した</b>: ScheduleCommentPostedEvent を publish し、
+#      ScheduleCommentNotifier を @TransactionalEventListener(AFTER_COMMIT) の入口に変えた。
+#      sendMentioned / sendReplied は許可された入口から到達する private ヘルパになるため
+#      DIRECT_RUNNER_CALL も解消する。
+#      <b>@Async は意図的に付けていない</b>。是正前の afterCommit() はリクエストスレッド上で同期実行
+#      されており、巻き戻りが起こり得ない以上、非同期化しても得るものが無い一方で
+#      ScheduleCommentNotificationPartialFailureIT（1受信者の失敗が他へ波及しないことを実DBで
+#      検証する既存の回帰テスト）が競合するだけである。実行タイミングは是正前と同一。
+#
+# 58 -> 51 の裏取り（実測）
+#   凍結エントリ 50 + REMOVED 8 + AMBIGUOUS 0 = 58（= 是正前の CENSUS_FLOOR）
+#   凍結エントリ 43 + REMOVED 8 + AMBIGUOUS 0 = 51
+# CLASSIFIED_FLOOR は変更なし（本ロットの7件はいずれも未分類行であり、分類済み2件に触れていない）。
+# CENSUS_FLOOR: 51
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -164,13 +237,6 @@ com.mannschaft.app.reservation.service.EmergencyClosureService#sendClosure -> TX
 com.mannschaft.app.reservation.service.ReservationPendingExpireService#notifyApplicant -> TX_NOTIFY_BARE
 com.mannschaft.app.reservation.service.ReservationReminderDispatchBatchService#sendReminder -> TX_NOTIFY_BARE
 com.mannschaft.app.reservation.service.ReservationWaitlistService#notifySlotReopened -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.schedule.service.ScheduleAttendanceService#openAttendanceSolicitation -> TX_NOTIFY_BARE
-com.mannschaft.app.schedule.service.ScheduleCommentNotifier#sendMentioned -> DIRECT_RUNNER_CALL
-com.mannschaft.app.schedule.service.ScheduleCommentNotifier#sendReplied -> DIRECT_RUNNER_CALL
-com.mannschaft.app.schedule.service.ScheduleCommentService#registerNotificationAfterCommit -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.schedule.service.ScheduleKeepNotificationPublisher#publishConverted -> TX_NOTIFY_BARE
-com.mannschaft.app.schedule.service.ScheduleKeepService#notifyConverted -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.schedule.service.ScheduleReminderNotificationListener#onReminderNotification -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#sendReminderToUnsubmittedMembers -> TX_NOTIFY_BARE
 com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#triggerManualReminder -> TX_NOTIFY_BARE
 com.mannschaft.app.shiftbudget.service.ShiftBudgetRetryExecutor#retryNotificationSend -> TX_NOTIFY_BARE
