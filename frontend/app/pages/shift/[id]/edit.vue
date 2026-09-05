@@ -6,6 +6,7 @@ import type {
   ShiftPositionResponse,
   CreateShiftSlotRequest,
 } from '~/types/shift'
+import { isSlotUnderStaffed } from '~/utils/shiftSlot'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -274,19 +275,29 @@ function formatDate(dateStr: string): string {
             </p>
           </div>
 
-          <!-- 割当状況 -->
+          <!-- 割当状況。サーバーが割当を伏せている間は人数を出さず中立表示にする -->
           <div class="shrink-0 text-center">
             <span
+              v-if="slot.assignmentMasked"
+              class="rounded-full bg-surface-100 px-2 py-0.5 text-xs font-medium text-surface-600 dark:bg-surface-700 dark:text-surface-300"
+              :title="t('shift.slot.assignmentMaskedHint')"
+            >
+              {{ t('shift.slot.assignmentMasked') }}
+            </span>
+            <span
+              v-else
               class="rounded-full px-2 py-0.5 text-xs font-medium"
               :class="
-                slot.assignedUserIds.length < slot.position.requiredCount
+                isSlotUnderStaffed(slot)
                   ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                   : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
               "
             >
               {{ slot.assignedUserIds.length }} / {{ slot.position.requiredCount }}
             </span>
-            <p class="mt-0.5 text-xs text-surface-400">{{ t('shift.slot.assigned') }}</p>
+            <p v-if="!slot.assignmentMasked" class="mt-0.5 text-xs text-surface-400">
+              {{ t('shift.slot.assigned') }}
+            </p>
           </div>
 
           <!-- 操作 -->
