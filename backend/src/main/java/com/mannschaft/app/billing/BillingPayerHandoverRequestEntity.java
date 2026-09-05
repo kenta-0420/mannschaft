@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * 柱③-B 組織契約の請求担当引継（CMP-260901-1538・V200）: {@code billing_payer_handover_requests}。
+ * 柱③-B 組織契約の請求担当引継（CMP-260901-1538・V203）: {@code billing_payer_handover_requests}。
  *
  * <p>{@code billing_contracts} の payer（請求担当）引継要求を管理する。クロスドメイン FK 禁止方針
  * （{@code docs/architecture/domain_db_design_principles.md} 原則1）に従い、{@code old_payer_user_id}/

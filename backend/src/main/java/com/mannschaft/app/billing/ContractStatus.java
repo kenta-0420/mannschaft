@@ -2,7 +2,7 @@ package com.mannschaft.app.billing;
 
 /**
  * F20.1: {@code billing_contracts.status} の状態機械（VARCHAR(20) + CHECK。柱③-B 請求担当引継
- * ・CMP-260901-1538・V200 で {@code PENDING_HANDOVER}（16文字）を格納するため VARCHAR(12) から拡張）。
+ * ・CMP-260901-1538・V203 で {@code PENDING_HANDOVER}（16文字）を格納するため VARCHAR(12) から拡張）。
  *
  * <p><b>状態機械（実決済 D-1〜D-4・2026-07-10 御裁可・設計書 01 §4.2 / 02 §決済フロー）:</b></p>
  * <ul>

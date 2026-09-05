@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 柱③-B 組織契約の請求担当引継（CMP-260901-1538・V200）:
+ * 柱③-B 組織契約の請求担当引継（CMP-260901-1538・V203）:
  * {@code billing_payer_handover_requests} リポジトリ。
  *
  * <p>このフェーズ（PR-1）では DDL＋読み取り専用の土台のみ。引継要求作成・承諾・切替TX等の

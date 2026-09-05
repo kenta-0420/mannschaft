@@ -74,7 +74,7 @@ public class BillingContractEntity extends UuidV7Entity {
 
     /**
      * 柱③-B 請求担当引継（CMP-260901-1538）: {@code PENDING_HANDOVER}（16文字）を格納可能にするため
-     * length を 12 → 20 へ拡張（V200 で DDL 側も VARCHAR(12) → VARCHAR(20) へ ALTER 済み）。
+     * length を 12 → 20 へ拡張（V203 で DDL 側も VARCHAR(12) → VARCHAR(20) へ ALTER 済み）。
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
@@ -156,7 +156,7 @@ public class BillingContractEntity extends UuidV7Entity {
     private Long createdBy;
 
     /**
-     * 柱③-B 請求担当引継（CMP-260901-1538・V200・設計書 §4.1）: 現在この契約の実質決済者
+     * 柱③-B 請求担当引継（CMP-260901-1538・V203・設計書 §4.1）: 現在この契約の実質決済者
      * （Stripe Customer 紐付け先）。作成時は {@link #createdBy} と同値で初期化し、引継後に更新される。
      * {@code created_by} の意味（作成操作者の監査記録）は変えない。
      */
@@ -164,7 +164,7 @@ public class BillingContractEntity extends UuidV7Entity {
     private Long payerUserId;
 
     /**
-     * 柱③-B 請求担当引継（CMP-260901-1538・V200・設計書 §4.1/§4.2）: {@code PENDING_HANDOVER} 中に
+     * 柱③-B 請求担当引継（CMP-260901-1538・V203・設計書 §4.1/§4.2）: {@code PENDING_HANDOVER} 中に
      * 自分を作った {@code billing_payer_handover_requests.id}（新契約行のみ非NULL）。
      */
     @Column(name = "handover_request_id", columnDefinition = "BINARY(16)")
