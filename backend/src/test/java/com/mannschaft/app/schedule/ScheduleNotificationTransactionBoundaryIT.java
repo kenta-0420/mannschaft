@@ -117,6 +117,16 @@ class ScheduleNotificationTransactionBoundaryIT extends AbstractMySqlIntegration
 
     @BeforeEach
     void blockNotificationInsert() {
+        // MySQL は CHECK 制約の追加時に「既存の全行」を検証する（違反行が1行でもあれば errno 3819 で
+        // ALTER 自体が失敗する）。Testcontainers の MySQL は同一 JVM 内のテストクラス間で共有され、
+        // 先に走った他クラスが SCHEDULE_REMINDER / SCHEDULE_ATTENDANCE_REQUEST の通知行を
+        // 残していることがあるため、制約を張る前にその2種を取り除く。
+        // 本 IT の関心は「この IT の中で通知 INSERT が起きたか」だけであり、
+        // 事前に存在した他クラスの残骸は測定対象ではない（制約自体がテーブル全体に効く以上、
+        // この区間をこの IT が占有することは元々の前提）。
+        jdbcTemplate.update("DELETE FROM notifications WHERE notification_type IN "
+                + "('SCHEDULE_REMINDER', 'SCHEDULE_ATTENDANCE_REQUEST')");
+
         jdbcTemplate.execute("ALTER TABLE notifications ADD CONSTRAINT " + BLOCK_CONSTRAINT
                 + " CHECK (notification_type NOT IN ('SCHEDULE_REMINDER', 'SCHEDULE_ATTENDANCE_REQUEST'))");
     }
