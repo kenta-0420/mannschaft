@@ -22,15 +22,32 @@ const showGuide = ref(false)
 // =====================================================
 const selectedTeamId = ref<number | null>(null)
 
+/** シフトを参照できない所属ロール（BE が 403 にする側）。 */
+const SHIFT_UNREADABLE_ROLES = ['SUPPORTER', 'GUEST']
+
 /**
- * チーム選択セレクトの選択肢。
+ * チーム選択セレクトの選択肢＝「自分が所属し、かつシフトを参照できるチーム」。
  *
- * 「自分が所属する全チーム」を出す。一般メンバーも COLLECTING / ADJUSTING のシフト表を
- * 閲覧できる仕様（CMP-260826-2127）であり、ここを管理ロールで絞ると MEMBER として所属する
- * チームを選べず、シフト一覧そのものに到達できなくなるため。
- * 作成・編集ボタンの出し分けは選択肢ではなく canManage が担う。
+ * 管理ロールでは絞らない。一般メンバーも COLLECTING / ADJUSTING のシフト表を閲覧できる
+ * 仕様（CMP-260826-2127）であり、ここを ADMIN 系に絞ると MEMBER として所属するチームを
+ * 選べず、シフト一覧そのものに到達できなくなるため。作成・編集ボタンの出し分けは
+ * 選択肢ではなく canManage が担う。
+ *
+ * 一方で myTeams をそのまま出すこともできない。`GET /me/teams` は user_roles と memberships の
+ * <b>和集合</b>であり「一覧に出る＝その機能を使える」ではないためである。シフト参照の認可は
+ * BE の ShiftScheduleService#checkTeamReadAccess が持ち、
+ *   - membership が無い（純 GUEST は user_roles 由来で membership を持たない）→ isMember false で 403
+ *   - membership の role_kind が SUPPORTER → isSupporter true で 403
+ * となる。よって SUPPORTER / GUEST を除いた集合が BE の許可境界と一致する
+ * （memberships.role_kind は MEMBER / SUPPORTER の2値。GUEST は user_roles 側の権限ロール）。
+ *
+ * 絞らないと「選択肢には出るのに、選ぶと一覧取得が 403 で失敗する」組み合わせが生じる。
+ * 同じ集合のズレは CalendarLayerService の Javadoc にも
+ * 「GET /me/teams の一覧には出るのに色を設定すると 403」という前例として記録されている。
  */
-const selectableTeams = computed(() => teamStore.myTeams)
+const selectableTeams = computed(() =>
+  teamStore.myTeams.filter((t) => !SHIFT_UNREADABLE_ROLES.includes(t.role)),
+)
 
 /** ADMIN / SYSTEM_ADMIN / DEPUTY_ADMIN のチーム（シフト表の作成・編集権限あり。canManage 専用） */
 const manageableTeams = computed(() =>
