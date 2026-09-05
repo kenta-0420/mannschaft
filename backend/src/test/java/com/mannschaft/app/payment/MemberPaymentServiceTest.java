@@ -47,16 +47,14 @@ class MemberPaymentServiceTest {
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private PaymentMapper paymentMapper;
     @Mock private NameResolverService nameResolverService;
-    @Mock private com.mannschaft.app.notification.service.NotificationHelper notificationHelper;
     @Mock private com.mannschaft.app.payment.service.PaymentAuthorizationService paymentAuthorizationService;
     @Mock private com.mannschaft.app.payment.escrow.ConnectChargeService connectChargeService;
     @Mock private com.mannschaft.app.payment.connect.ConnectAccountRepository connectAccountRepository;
     @Mock private com.mannschaft.app.common.AccessControlService accessControlService;
     @Mock private com.mannschaft.app.payment.service.PaymentBeneficiarySettingService paymentBeneficiarySettingService;
     @Mock private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
-    // Issue #2715 ロットA: 通知本文の i18n 化で追加した依存。
-    @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
-    @Mock private org.springframework.context.MessageSource messageSource;
+    // Issue #2990 L7: 通知は業務TXの外（AFTER_COMMIT リスナー）へ移した。本サービスはイベントを publish するだけ。
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private MemberPaymentService service;
@@ -830,26 +828,28 @@ class MemberPaymentServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: 受信者localeに従って通知の件名・本文が切り替わる（Issue #2715）")
-        void 受信者localeに従って通知が組み立てられる() {
+        @DisplayName("正常系: 業務TX内では通知を送らず、未払い者のIDを載せたイベントを publish する（Issue #2990 L7）")
+        void 未払いリマインドはイベント発行のみ() {
             PaymentItemEntity item = PaymentItemEntity.builder()
                     .type(PaymentItemType.ANNUAL_FEE).name("年会費").teamId(TEAM_ID).build();
             given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
             given(memberPaymentRepository.findUnpaidUserIdsByPaymentItemId(PAYMENT_ITEM_ID))
-                    .willReturn(java.util.List.of(USER_ID));
-            given(userLocaleCache.getLocale(USER_ID)).willReturn("en");
-            given(messageSource.getMessage(eq("notification.payment.remind.title"), any(), any(), eq(java.util.Locale.forLanguageTag("en"))))
-                    .willReturn("Payment reminder");
-            given(messageSource.getMessage(eq("notification.payment.remind.body"), any(), any(), eq(java.util.Locale.forLanguageTag("en"))))
-                    .willReturn("Payment for 年会費 is still incomplete");
+                    .willReturn(java.util.List.of(USER_ID, USER_ID + 1));
 
             service.sendRemind(PAYMENT_ITEM_ID);
 
-            verify(notificationHelper).notify(
-                    eq(USER_ID), eq("PAYMENT_REMIND"),
-                    eq("Payment reminder"), eq("Payment for 年会費 is still incomplete"),
-                    eq("PAYMENT"), eq(PAYMENT_ITEM_ID),
-                    any(), any(), any(), any());
+            org.mockito.ArgumentCaptor<Object> captor =
+                    org.mockito.ArgumentCaptor.forClass(Object.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue())
+                    .isInstanceOf(com.mannschaft.app.payment.event.PaymentRemindNotificationEvent.class);
+            com.mannschaft.app.payment.event.PaymentRemindNotificationEvent event =
+                    (com.mannschaft.app.payment.event.PaymentRemindNotificationEvent) captor.getValue();
+            // イベントの中身（対象IDと受信者）まで検証する。ID を取り違えても緑にならないようにするため。
+            assertThat(event.paymentItemId()).isEqualTo(PAYMENT_ITEM_ID);
+            assertThat(event.teamId()).isEqualTo(TEAM_ID);
+            assertThat(event.scopeId()).isEqualTo(TEAM_ID);
+            assertThat(event.recipientUserIds()).containsExactly(USER_ID, USER_ID + 1);
         }
     }
 
