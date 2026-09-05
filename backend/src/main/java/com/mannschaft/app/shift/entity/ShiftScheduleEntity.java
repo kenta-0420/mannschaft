@@ -30,6 +30,18 @@ import java.time.LocalDateTime;
 @SuperBuilder(toBuilder = true)
 public class ShiftScheduleEntity extends BaseEntity {
 
+    /**
+     * 非管理者に「存在を見せてよい」シフト表を選ぶ JPQL 述語（別名 {@code s} 前提）。
+     *
+     * <p>CMP-260826-2127。{@code ShiftScheduleVisibilityPolicy.Visibility#HIDDEN} の否定であり、
+     * {@code MASKED}（COLLECTING / ADJUSTING）と {@code FULL}（PUBLISHED / 公開済み ARCHIVED）を含む。
+     * {@code @Query} のアノテーション値に埋め込むためコンパイル時定数として entity 側に置く
+     *（可視性判定の正本は {@code ShiftScheduleVisibilityPolicy}。条件式を各所へ書き写さないための唯一の複製）。</p>
+     */
+    public static final String NOT_HIDDEN_JPQL =
+            "(s.status IN ('COLLECTING', 'ADJUSTING', 'PUBLISHED') "
+                    + "OR (s.status = 'ARCHIVED' AND s.publishedAt IS NOT NULL))";
+
     @Column(nullable = false)
     private Long teamId;
 

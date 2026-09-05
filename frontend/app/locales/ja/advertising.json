@@ -637,9 +637,21 @@
         "billing_method_label": "決済方法",
         "billing_stripe": "クレジットカード（Stripe）",
         "billing_invoice": "請求書払い",
+        "billing_fixed_notice": "クレジットカード決済のみとなります",
         "success_message": "広告主登録を申請しました。審査後に利用開始できます。",
         "error_message": "登録に失敗しました"
       }
+    },
+    "register": {
+      "title": "広告主登録",
+      "submit": "登録申請",
+      "company_name_label": "会社名 / 広告主名",
+      "company_name_placeholder": "株式会社サンプル",
+      "contact_email_label": "連絡先メールアドレス",
+      "billing_method_label": "決済方法",
+      "billing_fixed_notice": "クレジットカード決済のみとなります",
+      "success_message": "広告主登録を申請しました。審査後に利用開始できます。",
+      "error_message": "登録に失敗しました"
     },
     "settings_ad_preferences_guide": {
       "page_title": "広告の受信設定 — 使い方ガイド",

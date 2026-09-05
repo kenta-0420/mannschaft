@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,11 +62,20 @@ class ShiftPdfServiceAuthzTest {
     private static final Long REQUESTER   = 99L;
     private static final Long OTHER_TEAM  = 20L;
 
-    /** テスト用の ShiftScheduleResponse（teamId = TEAM_ID）を返す。 */
+    /**
+     * テスト用の ShiftScheduleResponse（teamId = TEAM_ID）を返す。
+     *
+     * <p>CMP-260826-2127（AC-13）: 本フィクスチャはかつて {@code status} を設定しておらず、
+     * 未公開シフト表の遮断を入れると fail-closed で 404 になってしまっていた。
+     * 本クラスが検証したいのは<b>認可（誰が PDF を取れるか）</b>であり可視性ではないため、
+     * 期待値ではなくフィクスチャ側を「日常の正常系＝公開済みシフト表」に直してある。</p>
+     */
     private ShiftScheduleResponse scheduleOf(Long teamId) {
         return ShiftScheduleResponse.builder()
                 .id(SCHEDULE_ID)
                 .teamId(teamId)
+                .status(new ShiftScheduleResponse.ShiftStatusDto(
+                        "PUBLISHED", LocalDateTime.of(2026, 2, 20, 10, 0), null))
                 .build();
     }
 

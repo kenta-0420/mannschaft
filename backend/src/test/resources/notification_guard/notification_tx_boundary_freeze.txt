@@ -132,7 +132,7 @@
 #      createDelegation / onDelegatorAttendanceChanged / reject（すべて TX_NOTIFY_BARE）の6件。
 # CLASSIFIED_FLOOR は分類済み9件のうち ROLLBACK_COUPLED 4件を是正で消したため 9 -> 5。
 # 残る分類済み5件はすべて ORDERING_ONLY であり、#2990 本体（巻き戻り）ではない。
-# CENSUS_FLOOR: 68
+# CENSUS_FLOOR: 58
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -146,7 +146,6 @@ com.mannschaft.app.errorreport.service.ErrorReportAsyncExecutor#doRecordBackendE
 com.mannschaft.app.errorreport.service.ErrorReportService#createOrAggregate -> TX_NOTIFY_BARE
 com.mannschaft.app.errorreport.service.ErrorReportService#updateStatus -> TX_NOTIFY_BARE
 com.mannschaft.app.errorreport.service.ErrorReportTimelineService#assign -> TX_NOTIFY_BARE
-com.mannschaft.app.family.service.EventEndReminderBatchService#sendReminderNotification -> TX_NOTIFY_BARE
 com.mannschaft.app.jobmatching.service.JobApplicationService#apply -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.jobmatching.service.JobCheckInService#fireNotifications -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.jobmatching.service.JobContractService#acceptApplication -> TX_NOTIFY_IN_TRY
@@ -156,11 +155,6 @@ com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfi
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processAlertIfNeeded -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processReminders -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.payment.escrow.EscrowLifecycleService#notifyCancelled -> TX_NOTIFY_BARE
-com.mannschaft.app.payment.escrow.EscrowLifecycleService#promoteHeldEscrow -> TX_NOTIFY_BARE
-com.mannschaft.app.payment.escrow.EscrowNotificationService#notifyPaymentRequired -> TX_NOTIFY_BARE
-com.mannschaft.app.payment.escrow.EscrowNotificationService#notifyUser -> TX_NOTIFY_BARE
-com.mannschaft.app.payment.service.MemberPaymentService#sendRemind -> TX_NOTIFY_BARE
 com.mannschaft.app.recruitment.service.MarketFriendTargetService#distributeFriendListing -> TX_NOTIFY_BARE
 com.mannschaft.app.recruitment.service.RecruitmentListingService#confirmApplication -> TX_NOTIFY_BARE
 com.mannschaft.app.recruitment.service.RecruitmentListingService#sendPublishedNotifications -> TX_NOTIFY_BARE
@@ -177,10 +171,6 @@ com.mannschaft.app.schedule.service.ScheduleCommentService#registerNotificationA
 com.mannschaft.app.schedule.service.ScheduleKeepNotificationPublisher#publishConverted -> TX_NOTIFY_BARE
 com.mannschaft.app.schedule.service.ScheduleKeepService#notifyConverted -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.schedule.service.ScheduleReminderNotificationListener#onReminderNotification -> PLAIN_EVENT_LISTENER
-com.mannschaft.app.school.service.AttendanceRequirementBatchService#notifyStatusChange -> TX_NOTIFY_BARE
-com.mannschaft.app.school.service.DailyAttendanceService#submitDailyRollCall -> TX_NOTIFY_BARE
-com.mannschaft.app.school.service.FamilyAttendanceNoticeService#acknowledgeNotice -> TX_NOTIFY_BARE
-com.mannschaft.app.school.service.FamilyAttendanceNoticeService#submitNotice -> TX_NOTIFY_BARE
 com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#sendReminderToUnsubmittedMembers -> TX_NOTIFY_BARE
 com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#triggerManualReminder -> TX_NOTIFY_BARE
 com.mannschaft.app.shiftbudget.service.ShiftBudgetRetryExecutor#retryNotificationSend -> TX_NOTIFY_BARE
@@ -480,3 +470,223 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #   ShiftBudgetFailedEventService#retry、いずれも TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY）は
 #   本ロットの対象外であり、削除も分類変更もしていない。委譲先にも触れていないため
 #   機械照合による導出結果も変わらない。
+
+# ------------------------------------------------------------------------------
+# --- 2026-09-04 Issue #2990 L6: school / family ドメイン 5件の是正（CENSUS_FLOOR 68 -> 63）---
+# ------------------------------------------------------------------------------
+# 割当は TX_NOTIFY_BARE 5件（school 4 + family 1）。相乗りで消えたエントリは無く、
+# 削除したのはちょうど 5 行である。1件ずつ実態を調べた結果を以下に記す。
+#
+# ■ school ドメイン 4件 — 共通の前提（隠さず書く）
+#
+#   4件はいずれも SchoolAttendanceNotificationService へ落ちる。同サービスは 2026-09-04 時点で
+#   **全メソッドが log.info / log.debug だけのスタブ**であり、DB 書き込みも配信も一切行わない
+#   （各メソッドに「Phase 3 で NotificationDispatchService 経由の送信を実装する」TODO が付いている）。
+#   したがって **今日の本番でこの4件が実際に巻き戻ることはない**。
+#   それでも是正したのは、TODO が実装された瞬間に下記の巻き戻りが一斉に顕在化するためであり、
+#   本文組み立てを後から足しても境界が正しいままになる形に先に寄せておく判断である。
+#   （この判断はマスターの裁可を仰がずに足軽が行った。異論があれば差し戻されたい。）
+#
+#   (1) DailyAttendanceService#submitDailyRollCall — 被害が最も大きい。#2990 L5 の
+#       EventRollCallService#submitRollCall とほぼ同型である。
+#       通知呼び出しが生徒ごとのループの内側にあり try で囲われてもいないため、
+#       生徒1人ぶんの保護者通知が失敗すると、その朝クラス全員ぶんに書いた
+#       daily_attendance_records 行（新規・更新とも）が全件巻き戻る。担任の点呼作業1回ぶんが丸ごと消える。
+#       是正: 業務TX内は登録した行の ID を積んで DailyRollCallRecordedEvent を publish するだけ。
+#       配送は SchoolAttendanceNotificationListener（AFTER_COMMIT + @Async("event-pool")）が
+#       レコードを読み直し、生徒ごとに try/catch で隔離して行う。
+#
+#   (2) FamilyAttendanceNoticeService#submitNotice — 保護者が送った欠席・遅刻連絡
+#       （family_attendance_notices 行。暗号化された reasonDetail と添付キーを含む）が巻き戻る。
+#       保護者は送ったつもりでいるのに担任には何も届かない。
+#       是正: FamilyAttendanceNoticeSubmittedEvent（noticeId のみ）を publish。
+#
+#   (3) FamilyAttendanceNoticeService#acknowledgeNotice — 担任の確認済み化
+#       （acknowledged_by / acknowledged_at）が巻き戻り、連絡は未確認のまま残る。
+#       是正: FamilyAttendanceNoticeAcknowledgedEvent（noticeId のみ）を publish。
+#
+#   (4) AttendanceRequirementBatchService#notifyStatusChange
+#       **@Transactional が実効かどうかの実測結果**: 実効である。呼び出し元 runDailyEvaluation は
+#       クラスに @Transactional を持たず**メソッドに @Transactional を宣言**しており、
+#       入口は @Scheduled(cron = "0 0 6 * * *")（＝スケジューラが Spring プロキシ経由で呼ぶ）と
+#       @BatchEndpoint の2系統のみである。**自己呼び出しは無い**（#2990 L5 検分で見つかった
+#       ProxyDelegationCleanupBatchService の失効・Issue #3109 と同型の穴は本クラスには無い）。
+#       したがって notifyStatusChange はバッチ全体を覆う単一の業務TXの内側にある。
+#       巻き戻り方: 生徒ごとの try は例外そのものは握るが、通知側が実 DB エラーを起こすと
+#       Spring はそのTXを rollback-only にマークする。バッチは残りを処理して正常終了したように見え、
+#       commit の瞬間に UnexpectedRollbackException となって
+#       **その日の attendance_requirement_evaluations が全生徒・全規程ぶん巻き戻る**。
+#       是正: AttendanceRequirementStatusChangedEvent（studentUserId / ruleId / newStatus）を publish。
+#       private の notifyStatusChange と getTeacherIds は削除し、担任解決はリスナーへ移した。
+#       移設にあたり学年の解決を LocalDate.now() から rule.getAcademicYear() へ変えている
+#       （評価対象年度と一致するうえ、DateTimeAndZoneGuardTest の引数なし now() にも当たらない）。
+#       なお sendWeeklyDigest（@Transactional(readOnly = true)）は台帳の割当に含まれず、変更していない。
+#
+# ■ family ドメイン 1件
+#
+#   (5) EventEndReminderBatchService#sendReminderNotification
+#       **@Transactional が実効かどうかの実測結果**: 実効である。呼び出し元 runEndReminderCheck は
+#       @Scheduled(fixedDelay = 300_000) + @Transactional であり、入口はスケジューラ（プロキシ経由）と
+#       @BatchEndpoint のみ。**自己呼び出しは無い**。
+#       school の4件と違い、こちらは**実際に通知を作って配信している**（notificationService.createNotification
+#       ＋ dispatchService.dispatch）。createNotification は自身も @Transactional だが伝播は既定の
+#       REQUIRED であり、バッチのTXに参加する。
+#       巻き戻り方: notifications への INSERT が落ちるとバッチのTXが rollback-only になる。
+#       runEndReminderCheck のループには catch (Exception e) があるので例外自体は握られ、
+#       バッチは正常終了したように見えるが、commit 時に UnexpectedRollbackException となって
+#       **その回のバッチが書いた organizer_reminder_sent_count のインクリメントが全イベントぶん巻き戻る**。
+#       結果、5分後の次回実行で同じイベント群がふたたび全件リマインド対象になり、
+#       主催者へ1回目のリマインドが繰り返し飛び続ける（3回目まで進めばチーム全 ADMIN へ URGENT が飛ぶ）。
+#       冪等性の担保がカウンタ1本に載っているため、通知1件の失敗が
+#       **通知の無限リピート**という逆向きの障害に化ける経路だった。
+#       是正: 業務TX内でカウンタをインクリメント・保存してから EventEndReminderDueEvent(eventId, stage)
+#       を publish し、実配送は EventEndReminderDeliveryListener（AFTER_COMMIT + @Async("event-pool")）が
+#       EventEndReminderBatchService#deliverReminder を呼んで行う。
+#       配送が失敗してもカウンタは既にコミット済みなので同じ段階が再送されることはない。
+#
+#       **配送コードを新クラスへ移設しなかった理由（意図的な逸脱）**: 本文の組み立てには
+#       EventRepository（event ドメイン）と UserRoleRepository（role ドメイン）が要る。これらは
+#       family からのクロスドメイン直接注入であり、同クラス冒頭の TODO のとおり既知の負債として
+#       据え置かれている。配送コードを新クラスへ移すと、その既存違反が**新規違反として**
+#       クロスドメイン Repository 番人（D-3）の凍結ストアに登録される（凍結ストアはクラス名キーのため）。
+#       そこで #2990 の他ロットと同じく「通知クラス自体は触らず**呼び出し位置だけ**を AFTER_COMMIT へ移す」
+#       方針を取り、配送コードは EventEndReminderBatchService に残したまま、
+#       業務TXの外から呼び直す public 入口 deliverReminder(Long, int) だけを増やした。
+#       リスナー EventEndReminderDeliveryListener はクロスドメイン Repository を1つも注入していない。
+#
+# ■ CENSUS_FLOOR: 68 -> 63 の裏取り（実測）
+#   是正前: 凍結エントリ 60 + REMOVED 8 + AMBIGUOUS 0 = 68（= 是正前の CENSUS_FLOOR）
+#   是正後: 凍結エントリ 55 + REMOVED 8 + AMBIGUOUS 0 = 63
+#   消えた 5 件はすべて上記の是正由来であり、番人の検出力低下による消失は 0 件である。
+#   5 件はいずれも「業務TX内の通知呼び出しを publishEvent へ置換」という**ソース上の宣言変更**で
+#   消えている。番人（NotificationTransactionBoundaryGuardTest）の判定ロジックは一行も変更していない。
+#
+# ■ 検出力の下限: NOTIFY_BEARING_FILES_MIN のみ 96 -> 94（実測列挙つき）
+#   RAW_CANDIDATE_HITS_MIN（169）と STRUCTURAL_NOTIFY_CALLS_MIN（149）は**下げない**。
+#   語彙内の通知発火点 6 箇所は 3 ファイルから 1 ファイルへ**まとまって移っただけ**で 1 箇所も消えておらず、
+#   実走でも両ゲートは緑のままだった（落ちたのはファイル数のゲート 1 本だけである）。
+#   ファイル数が 2 減った内訳（本ロットで触った 6 ファイルがすべて。他の本番ファイルは 1 行も変更していない）:
+#     - DailyAttendanceService                 発火あり -> なし（notifyDailyAttendance ×1 を publish へ）
+#     - FamilyAttendanceNoticeService          発火あり -> なし（notifyFamilyNoticeSubmitted / …Acknowledged ×2 を publish へ）
+#     - AttendanceRequirementBatchService      発火あり -> なし（notifyRequirementWarning / Risk / Violation ×3 を publish へ）
+#       ※ 同クラスに残る sendWeeklyRiskDigest は NOTIFY_METHOD_VOCABULARY の語彙外であり、
+#          元から発火点として数えられていない。週次ダイジェストの通知は消しておらず 1 行も変更していない。
+#     - SchoolAttendanceNotificationListener   新規に発火あり（上記 6 箇所の移設先）
+#     - EventEndReminderBatchService           発火あり -> あり（不変。createNotification は同ファイルに残した）
+#     - EventEndReminderDeliveryListener       発火なし（語彙外の deliverReminder を呼ぶだけ）
+#   差し引き -3 + 1 = -2。よって 96 -> 94。番人の判定ロジック
+#   （NOTIFY_METHOD_VOCABULARY / notifyCallOffsets）は本PRで一行も変更していない。
+#
+# ■ CLASSIFIED_FLOOR は 2 のまま据え置く
+#   分類（| <区分>）が付いた 2 件は本ロットの対象外であり、削除も分類変更もしていない。
+
+# ------------------------------------------------------------------------------
+# --- 2026-09-05 Issue #2990 L7: payment ドメイン 5件の是正（CENSUS_FLOOR 63 -> 58）---
+# ------------------------------------------------------------------------------
+# 割当は TX_NOTIFY_BARE 5件（escrow 4 + payment.service 1）。相乗りで消えたエントリは無く、
+# 削除したのはちょうど 5 行である。1件ずつ実態を調べた結果を以下に記す。
+#
+# ■ escrow 4件 — 共通の前提（Issue #2990 L3 / PR #3073 との関係を先に書く）
+#
+#   L3 は ConnectAccountService から promoteHeldEscrow を呼ぶ**位置**だけを
+#   ConnectHeldEscrowPromotionListener（AFTER_COMMIT）へ移した是正であり、
+#   「REQUIRES_NEW の読み直しが未 commit の payouts_enabled を読めず HELD 昇格が常に空振りしていた」
+#   という機能欠損を直したものである。**通知呼び出しそのものは promoteHeldEscrow の
+#   REQUIRES_NEW の内側に残ったままであり、本ロットの4件はすべて L3 のあとも未是正だった。**
+#   L3 の結果、これまで一度も発火していなかった副作用（PENDING_CONFIRMATION 遷移・
+#   Stripe PaymentIntent 作成・札主への決済確認依頼通知。Issue #3076）が実際に走るようになったため、
+#   下記の巻き戻り経路は L3 以降むしろ「現実に起こりうる」状態になっていた。
+#
+#   **@Transactional が実効かどうかの実測結果**: 4件とも実効である。
+#   EscrowLifecycleService の各 public メソッドは @Transactional(REQUIRES_NEW) をメソッドに宣言しており、
+#   呼び出し元は EscrowLifecycleBatch / ConnectHeldEscrowPromotionListener /
+#   RecruitmentChargeCancellationListener の3系統だけで、いずれも**別 Bean からの呼び出し**である
+#   （自己呼び出しは無い。#2990 L5 検分で見つかった ProxyDelegationCleanupBatchService の失効・
+#   Issue #3109 と同型の穴は本クラスには無い）。EscrowNotificationService も別 Bean であり
+#   @Transactional は既定の REQUIRED、すなわち呼び出し元の REQUIRES_NEW トランザクションに参加する。
+#
+#   (1) EscrowLifecycleService#notifyCancelled（private ヘルパ）
+#   (3) EscrowNotificationService#notifyPaymentRequired
+#   (4) EscrowNotificationService#notifyUser
+#       この3件は「取消通知／決済確認依頼通知の発火点」そのものである。
+#       巻き戻り方（取消経路）: cancelWithStripe が Stripe の PaymentIntent.cancel を**先に成功させた**あと、
+#       status=CANCELLED / cancelled_at を書いて通知へ進む。notifications への INSERT が落ちると
+#       例外が REQUIRES_NEW のトランザクションへ伝播し、**Stripe 側では与信が取り消されているのに
+#       DB は PENDING_CONFIRMATION / HELD / AUTHORIZED のまま**戻る。以後バッチは毎回この escrow を
+#       取消対象として拾い続け（Stripe 側は冪等キーで二重取消にはならない）、
+#       台帳は「まだ与信が生きている」と主張し続ける。金銭台帳と決済事業者の状態が恒久的に乖離する。
+#
+#   (2) EscrowLifecycleService#promoteHeldEscrow
+#       巻き戻り方（HELD 昇格経路）: manual-capture の Destination PaymentIntent を Stripe に
+#       **作成し終えた**あとに status=PENDING_CONFIRMATION と stripe_payment_intent_id を書き、
+#       通知へ進む。INSERT が落ちるとこの2つがまとめて巻き戻り、**作成済み PI の ID を台帳が失う**
+#       （孤児 PI）。escrow は HELD のまま残るため、札主は confirm 画面へ辿り着けず、
+#       やがて hold 失効で (1) の取消経路に落ちる。すなわち通知1件の失敗が謝礼の不成立に化ける。
+#
+#       是正: 業務TX内は EscrowCancelledEvent（escrowId + 取消理由の enum）/
+#       EscrowPaymentRequiredEvent（escrowId のみ）を publish するだけにした。
+#       配送は新設の EscrowLifecycleNotificationListener（AFTER_COMMIT + @Async("event-pool")）が
+#       escrow を読み直し、受信者ごとに try/catch で隔離して NotificationDeliveryRunner#sendOne
+#       （1件＝1独立トランザクション）を呼ぶ。EscrowNotificationService は呼び出し元が無くなったため削除した。
+#       文面の i18n キーと通知種別・sourceType・actionUrl は1文字も変えていない。
+#       ただし locale の解決だけは LocaleContextHolder から UserLocaleCache（受信者ごと）へ改めた。
+#       発火元はバッチと Webhook スレッドでありリクエスト locale が存在しない（＝実質つねに既定 locale）ため、
+#       移設ついでに正した。
+#
+#       **募集取下げ由来の取消（cancelForRecruitmentCancellation）について**: 是正前は AUTHORIZED 失効と
+#       同一の本文キーを渡していた。文面を変えないため Reason.RECRUITMENT_CANCELLED は
+#       MSG_CANCELLED_AUTHORIZED_BODY へ写像している（種別だけ分けて由来を失わないようにした）。
+#
+# ■ payment.service 1件
+#
+#   (5) MemberPaymentService#sendRemind
+#       **@Transactional が実効かどうかの実測結果**: 実効である。メソッドに @Transactional を宣言しており
+#       （クラスには @Transactional(readOnly = true)）、入口は OrganizationPaymentController と
+#       TeamPaymentController の2つの HTTP ハンドラだけで、**自己呼び出しは無い**。
+#
+#       **巻き戻るものは何か（正直に書く）**: sendRemind は業務行を1行も書かない
+#       （支払項目の読み取りと未払いユーザーIDの読み取りだけ）。したがって他の4件のような
+#       「業務データが巻き戻る」形ではない。それでも被害は同じ根から出ていた:
+#         - 通知呼び出しがループの内側にあり try で囲われていないため、1人ぶんの
+#           notifications INSERT が落ちると例外が sendRemind の外へ抜けてループが打ち切られ、
+#           **以降の未払いメンバーには送信すら試みられない**。
+#         - createNotification は既定の REQUIRED で sendRemind のトランザクションに参加するため、
+#           それまでに書けていた通知行も**全員ぶんまとめて巻き戻る**（＝一括リマインドの全損）。
+#         - 管理者には 500 が返り RemindResponse すら届かないので、誰に届いて誰に届かなかったかが観測できない。
+#       是正: 業務TX内は PaymentRemindNotificationEvent（paymentItemId / teamId / scopeId / 受信者IDの一覧）を
+#       publish するだけにし、配送は新設の PaymentRemindNotificationListener
+#       （AFTER_COMMIT + @Async("event-pool")）が担う。支払項目名は業務データのためイベントに載せず読み直す。
+#       金型は同ドメインの PaymentAdvanceSettledNotificationListener と OnboardingReminderNotificationListener。
+#       @BackgroundFeaturePolicy は前者に倣って DROP_WHEN_DISABLED / FEATURE_BILLING_PAYMENT_ENABLED とした
+#       （escrow 側の2リスナーは金銭処理の必須後段であり ALWAYS。いずれも SKIP_WHEN_DISABLED は使っていないので
+#       番人 AC-14 の「スキップしたつもりでイベントが消えている」には当たらない）。
+#
+# ■ CENSUS_FLOOR: 63 -> 58 の裏取り（実測）
+#   是正前: 凍結エントリ 55 + REMOVED 8 + AMBIGUOUS 0 = 63（= 是正前の CENSUS_FLOOR）
+#   是正後: 凍結エントリ 50 + REMOVED 8 + AMBIGUOUS 0 = 58
+#   消えた 5 件はすべて上記の是正由来であり、番人の検出力低下による消失は 0 件である。
+#   番人（NotificationTransactionBoundaryGuardTest）の判定ロジックは一行も変更していない
+#   （下限の3定数のみ、下記の実測にしたがって下げた）。
+#
+# ■ 検出力の下限: 3本すべてを下げた（実測列挙つき）
+#   RAW_CANDIDATE_HITS_MIN     169 -> 167
+#   STRUCTURAL_NOTIFY_CALLS_MIN 149 -> 147
+#   NOTIFY_BEARING_FILES_MIN     94 -> 93
+#
+#   消えた生ヒットを1件ずつ列挙する（本ロットで触った本番ファイルはこの5つがすべて）:
+#     - EscrowLifecycleService              2 -> 0
+#         escrowNotificationService.notifyCancelled(...)        （publishCancelled → publishEvent へ）
+#         escrowNotificationService.notifyPaymentRequired(...)  （publishEvent へ）
+#     - EscrowNotificationService           2 -> ファイルごと削除
+#         notificationService.createNotification(...) ×2（notifyPaymentRequired / notifyUser）
+#         ※ notifyUser(...) の呼び出しは同一クラス内の無修飾呼び出しであり、元から生ヒットに数えられていない。
+#     - MemberPaymentService                1 -> 0
+#         notificationHelper.notify(...)                        （publishEvent へ）
+#     - EscrowLifecycleNotificationListener  新規 0 -> 2（notificationDeliveryRunner.sendOne ×2）
+#     - PaymentRemindNotificationListener    新規 0 -> 1（notificationDeliveryRunner.sendOne ×1）
+#   生ヒット差し引き: -5 + 3 = -2。構造条件（レシーバが識別子・引数1つ以上）は上記8箇所すべてが満たすため
+#   STRUCTURAL も同じく -2。発火を持つファイル数は -3（上記3ファイル）+2（新規2ファイル）= -1。
+#   通知そのものは1件も消していない（発火点が別ファイルへ移り、経路が1本に集約されたぶんだけ減った）。
+#
+# ■ CLASSIFIED_FLOOR は 2 のまま据え置く
+#   分類（| <区分>）が付いた 2 件は本ロットの対象外であり、削除も分類変更もしていない。

@@ -126,7 +126,16 @@ const slotsByDate = computed<Map<string, ShiftSlotResponse[]>>(() => {
   return map
 })
 
+/**
+ * 充足状況を判定する（CMP-260826-2127 / AC-4(4)）。
+ *
+ * サーバーが割当を伏せた枠（assignmentMasked=true）は assignedUserIds が空配列で返るため、
+ * そのまま数えると全枠が「0/N」の人員不足に見えてしまう。伏せられている間は
+ * 充足の判定自体を行わない。判定に schedule.status を使わないのは、
+ * BE と FE で規則が二重化するのを避けるためである。
+ */
 function isUnderStaffed(slot: ShiftSlotResponse): boolean {
+  if (slot.assignmentMasked) return false
   return slot.assignedUserIds.length < slot.requiredCount
 }
 
@@ -339,8 +348,16 @@ const tabs = computed(() => {
                     >
                       <span>{{ slot.startTime.slice(0, 5) }}〜{{ slot.endTime.slice(0, 5) }}</span>
                       <span v-if="slot.positionName" class="text-surface-400">/{{ slot.positionName }}</span>
-                      <!-- 割当バッジ -->
+                      <!-- 割当バッジ。サーバーが割当を伏せている間は人数を出さず中立表示にする -->
                       <span
+                        v-if="slot.assignmentMasked"
+                        class="rounded bg-surface-100 px-1 font-medium text-surface-600 dark:bg-surface-700 dark:text-surface-300"
+                        :title="$t('shift.slot.assignmentMaskedHint')"
+                      >
+                        {{ $t('shift.slot.assignmentMasked') }}
+                      </span>
+                      <span
+                        v-else
                         class="rounded px-1 font-medium"
                         :class="
                           isUnderStaffed(slot)
