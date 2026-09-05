@@ -2097,8 +2097,7 @@
     "description": "A {entity} with the same name already exists. Please review and decide whether to continue.",
     "hidden_note": "There are {count} more private {entity}(s) (names and details are hidden)",
     "cancel": "Cancel",
-    "confirm": "Create anyway",
-    "conflict_retry": "Another creation with the same name is in progress. Please try again shortly"
+    "confirm": "Create anyway"
   },
   "team_visibility": {
     "PUBLIC": "Public",

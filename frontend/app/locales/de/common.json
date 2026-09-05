@@ -2097,8 +2097,7 @@
     "description": "Es existiert bereits ein/e {entity} mit demselben Namen. Bitte prüfen und entscheiden, ob fortgefahren werden soll.",
     "hidden_note": "Es gibt {count} weitere private {entity}(s) (Namen und Details werden nicht angezeigt)",
     "cancel": "Abbrechen",
-    "confirm": "Trotzdem erstellen",
-    "conflict_retry": "Eine gleichzeitige Erstellung mit demselben Namen ist im Gange. Bitte in Kürze erneut versuchen"
+    "confirm": "Trotzdem erstellen"
   },
   "team_visibility": {
     "PUBLIC": "Öffentlich",

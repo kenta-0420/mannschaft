@@ -8,6 +8,16 @@ type DuplicateNameCandidateView = components['schemas']['DuplicateNameCandidateV
 type DuplicateNameConfirmationErrorResponse =
   components['schemas']['DuplicateNameConfirmationErrorResponse']
 
+// Codex検分是正: Record<string, unknown> ではなく生成型（BE DTO と1:1）で送信ボディを構築する。
+// BE の CreateTeamRequest/CreateOrganizationRequest には未定義だが、EntityCreateDialog が
+// 従来から送っている nameKana/nickname1/description/supporterEnabled は BE 側で無視される
+// 追加フィールド（本PRの変更範囲外の既存挙動）。生成型のみでは表現できないため
+// Record<string, unknown> との交差型で許容する。
+type TeamCreateBody = components['schemas']['CreateTeamRequest'] & Record<string, unknown>
+type OrganizationCreateBody = components['schemas']['CreateOrganizationRequest'] &
+  Record<string, unknown>
+type EntityCreateBody = TeamCreateBody | OrganizationCreateBody
+
 const props = defineProps<{
   entityType: 'team' | 'organization'
   visible: boolean
@@ -295,11 +305,11 @@ const duplicateCandidates = ref<DuplicateNameCandidateView[]>([])
 const duplicateHiddenCount = ref(0)
 const duplicateFingerprint = ref<string | null>(null)
 // 確認ダイアログ表示中に再送信するための、直前に組み立てたリクエストボディを保持する。
-let pendingSubmitBody: Record<string, unknown> | null = null
+let pendingSubmitBody: EntityCreateBody | null = null
 
-function buildRequestBody(): Record<string, unknown> {
+function buildRequestBody(): EntityCreateBody {
   const trimmedSlug = slug.value.trim()
-  const body: Record<string, unknown> = {
+  const common = {
     name: form.value.name,
     // 村方式: 空欄なら slug を送らず BE の自動生成に委ねる。
     slug: trimmedSlug || undefined,
@@ -312,19 +322,25 @@ function buildRequestBody(): Record<string, unknown> {
     supporterEnabled: form.value.supporterEnabled,
   }
   if (isTeam.value) {
-    body.template = form.value.template
-    // F22.1 Phase2 足場C 第三陣: チーム作成時のみ構造化地域コードを送る
-    // （BE CreateTeamRequest.prefectureCode/cityCode。組織作成 API は未対応のため送らない）。
-    body.prefectureCode = form.value.prefectureCode || undefined
-    body.cityCode = form.value.cityCode || undefined
-  } else {
-    body.orgType = form.value.orgType
+    const body: TeamCreateBody = {
+      ...common,
+      template: form.value.template,
+      // F22.1 Phase2 足場C 第三陣: チーム作成時のみ構造化地域コードを送る
+      // （BE CreateTeamRequest.prefectureCode/cityCode。組織作成 API は未対応のため送らない）。
+      prefectureCode: form.value.prefectureCode || undefined,
+      cityCode: form.value.cityCode || undefined,
+    }
+    return body
+  }
+  const body: OrganizationCreateBody = {
+    ...common,
+    orgType: form.value.orgType,
   }
   return body
 }
 
 /** 同名確認済み（confirmDuplicate=true + fingerprint）を付けて再送信するための共通ボディ加工。 */
-function withDuplicateConfirmation(body: Record<string, unknown>): Record<string, unknown> {
+function withDuplicateConfirmation(body: EntityCreateBody): EntityCreateBody {
   if (!duplicateFingerprint.value) return body
   return {
     ...body,
@@ -342,7 +358,7 @@ async function submit() {
   await performSubmit(buildRequestBody())
 }
 
-async function performSubmit(body: Record<string, unknown>) {
+async function performSubmit(body: EntityCreateBody) {
   submitting.value = true
   fieldErrors.value = {}
   try {

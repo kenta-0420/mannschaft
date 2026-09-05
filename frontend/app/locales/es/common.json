@@ -2097,8 +2097,7 @@
     "description": "Ya existe un/a {entity} con el mismo nombre introducido. Revisa el contenido y decide si deseas continuar.",
     "hidden_note": "Hay {count} {entity}(s) privados adicionales (no se muestran nombres ni detalles)",
     "cancel": "Cancelar",
-    "confirm": "Crear de todos modos",
-    "conflict_retry": "Otra creación con el mismo nombre está en curso. Inténtalo de nuevo en unos instantes"
+    "confirm": "Crear de todos modos"
   },
   "team_visibility": {
     "PUBLIC": "Público",
