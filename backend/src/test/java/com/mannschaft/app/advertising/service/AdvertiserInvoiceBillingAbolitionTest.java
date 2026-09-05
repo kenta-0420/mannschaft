@@ -39,6 +39,7 @@ import static org.mockito.Mockito.when;
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
+@DisplayName("F08.12 広告主請求 billingMethod=INVOICE 廃止契約テスト")
 class AdvertiserInvoiceBillingAbolitionTest {
 
     @Mock private AdvertiserAccountRepository advertiserAccountRepository;
