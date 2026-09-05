@@ -13,6 +13,7 @@ import com.mannschaft.app.receipt.entity.ReceiptIssuerSettingsEntity;
 import com.mannschaft.app.receipt.repository.ReceiptIssuerSettingsRepository;
 import com.mannschaft.app.receipt.repository.ReceiptLineItemRepository;
 import com.mannschaft.app.receipt.repository.ReceiptRepository;
+import com.mannschaft.app.receipt.service.ReceiptPdfArchiveService;
 import com.mannschaft.app.receipt.service.ReceiptService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -45,6 +46,7 @@ class ReceiptServiceTest {
     @Mock private NameResolverService nameResolverService;
     @Mock private MemberPaymentRepository memberPaymentRepository;
     @Mock private AccessControlService accessControlService;
+    @Mock private ReceiptPdfArchiveService pdfArchiveService;
 
     @InjectMocks
     private ReceiptService service;

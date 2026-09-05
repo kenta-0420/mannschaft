@@ -35673,6 +35673,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/receipts/retention-expired": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 保存期限到来アーカイブ一覧（削除は行わない） */
+        get: operations["listRetentionExpiredArchives"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/provisioning/invitations": {
         parameters: {
             query?: never;
@@ -56641,12 +56658,47 @@ export interface components {
         CreateTeamRequest: {
             city?: string;
             cityCode?: string;
+            confirmDuplicate?: boolean;
+            duplicateNameFingerprint?: string;
             name?: string;
             prefecture?: string;
             prefectureCode?: string;
             slug?: string;
             template?: string;
             visibility?: string;
+        };
+        DuplicateNameCandidateView: {
+            id?: string;
+            name?: string;
+        };
+        DuplicateNameConfirmationDetails: {
+            /** Format: int64 */
+            expiresAtEpochSecond?: number;
+            fingerprint?: string;
+            /** Format: int32 */
+            hiddenCandidateCount?: number;
+            visibleCandidates?: components["schemas"]["DuplicateNameCandidateView"][];
+        };
+        /** @description 柱③-A 409 応答（候補一覧・fingerprint 付き） */
+        DuplicateNameConfirmationErrorResponse: {
+            error?: components["schemas"]["ErrorDetail"];
+        };
+        ErrorDetail: {
+            /**
+             * @description エラーコード
+             * @example DUPNAME_001
+             */
+            code?: string;
+            /** @description 同名確認フローの詳細（候補一覧・fingerprint） */
+            details?: components["schemas"]["DuplicateNameConfirmationDetails"];
+            /** @description フィールドエラー一覧（本エラーでは常に空） */
+            fieldErrors?: components["schemas"]["FieldError"][];
+            /** @description エラーメッセージ */
+            message?: string;
+        };
+        FieldError: {
+            field?: string;
+            message?: string;
         };
         CreateReminderRequest: {
             /** Format: date-time */
@@ -61030,6 +61082,8 @@ export interface components {
             sortOrder?: number;
         };
         ProvisioningTeamCreateRequest: {
+            confirmDuplicate?: boolean;
+            duplicateNameFingerprint?: string;
             inviteEmail?: string;
             name?: string;
         };
@@ -61048,6 +61102,8 @@ export interface components {
             teamId?: number;
         };
         ProvisioningOrganizationCreateRequest: {
+            confirmDuplicate?: boolean;
+            duplicateNameFingerprint?: string;
             inviteEmail?: string;
             name?: string;
         };
@@ -62998,6 +63054,8 @@ export interface components {
         };
         CreateOrganizationRequest: {
             city?: string;
+            confirmDuplicate?: boolean;
+            duplicateNameFingerprint?: string;
             name?: string;
             orgType?: string;
             /** Format: int64 */
@@ -74064,6 +74122,20 @@ export interface components {
             taxAmount?: number;
             /** Format: date-time */
             voidedAt?: string;
+        };
+        ApiResponseListRetentionExpiredArchiveResponse: {
+            data?: components["schemas"]["RetentionExpiredArchiveResponse"][];
+        };
+        RetentionExpiredArchiveResponse: {
+            archiveKind?: string;
+            /** Format: date-time */
+            archivedAt?: string;
+            /** Format: int64 */
+            receiptId?: number;
+            retentionBackend?: string;
+            /** Format: date */
+            retentionUntil?: string;
+            storageKey?: string;
         };
         BillingRecordResponse: {
             /** Format: date-time */
@@ -100915,6 +100987,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseTeamResponse"];
                 };
             };
+            /** @description 柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DuplicateNameConfirmationErrorResponse"];
+                };
+            };
         };
     };
     listSchedules: {
@@ -111035,13 +111116,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description 作成成功 */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "*/*": components["schemas"]["ProvisioningInvitationResponse"];
+                };
+            };
+            /** @description 柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DuplicateNameConfirmationErrorResponse"];
                 };
             };
         };
@@ -111059,13 +111149,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description 作成成功 */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "*/*": components["schemas"]["ProvisioningInvitationResponse"];
+                };
+            };
+            /** @description 柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DuplicateNameConfirmationErrorResponse"];
                 };
             };
         };
@@ -115514,6 +115613,15 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseOrganizationResponse"];
+                };
+            };
+            /** @description 柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DuplicateNameConfirmationErrorResponse"];
                 };
             };
         };
@@ -151424,6 +151532,26 @@ export interface operations {
             };
         };
     };
+    listRetentionExpiredArchives: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListRetentionExpiredArchiveResponse"];
+                };
+            };
+        };
+    };
     list_80: {
         parameters: {
             query?: never;
@@ -158750,7 +158878,9 @@ export interface operations {
     };
     downloadMyReceiptPdf: {
         parameters: {
-            query?: never;
+            query?: {
+                kind?: string;
+            };
             header?: never;
             path: {
                 id: number;
@@ -163881,6 +164011,7 @@ export interface operations {
             query: {
                 scopeType: string;
                 scopeId: number;
+                kind?: string;
             };
             header?: never;
             path: {

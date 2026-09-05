@@ -3,6 +3,10 @@ package com.mannschaft.app.team;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationDetails;
+import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationRequiredException;
+import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
+import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -25,6 +29,7 @@ import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -39,8 +44,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,11 +68,27 @@ class TeamServiceTest {
     @Mock private MemberQueryDispatcher memberQueryDispatcher;
     @Mock private ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
     @Mock private AdminRoleMutationLockService adminRoleMutationLockService;
+    @Mock private DuplicateNameGuardService duplicateNameGuardService;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
     private static final String TEAM_SLUG = "test-team";
+
+    /**
+     * 検分 P1-2 是正: {@code checkForCreateAndRun} は「候補判定→createAction 実行」を一体で
+     * 行う契約になったため、既定では候補ゼロ相当として {@code createAction} をそのまま実行し
+     * 結果を返すようスタブする。重複確認フローそのものを検証するテストは個別に上書きする。
+     */
+    @BeforeEach
+    void stubDuplicateNameGuardToProceedByDefault() {
+        lenient().when(duplicateNameGuardService.checkForCreateAndRun(
+                        any(), any(), any(), anyBoolean(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    java.util.function.Supplier<?> createAction = inv.getArgument(6);
+                    return createAction.get();
+                });
+    }
 
     @Nested
     @DisplayName("createTeam")
@@ -75,7 +98,7 @@ class TeamServiceTest {
         @DisplayName("正常系: チームが作成され作成者がADMINになる")
         void 作成_正常_保存() {
             // Given
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", "sports", "東京都", "渋谷区", null, null, null, null);
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", "sports", "東京都", "渋谷区", null, null, null, null, false, null);
             given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID)).willReturn(Optional.of(1L));
             given(userRoleRepository.save(any(UserRoleEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
@@ -98,6 +121,46 @@ class TeamServiceTest {
             assertThat(joinReq.getScopeType()).isEqualTo(ScopeType.TEAM);
             assertThat(joinReq.getRoleKind()).isEqualTo(RoleKind.MEMBER);
             assertThat(joinReq.getSource()).isEqualTo("TEAM_CREATE");
+        }
+
+        @Test
+        @DisplayName("柱③-A AC-02: 同名候補があり未確認なら"
+                + "DuplicateNameConfirmationRequiredExceptionをそのまま伝播する")
+        void 作成_チーム名重複_確認要求例外を伝播する() {
+            CreateTeamRequest req = new CreateTeamRequest(
+                    "既存チーム", "sports", null, null, null, null, null, null, false, null);
+
+            DuplicateNameConfirmationRequiredException expected =
+                    new DuplicateNameConfirmationRequiredException(
+                            new DuplicateNameConfirmationDetails("fp", 123L, java.util.List.of(), 0));
+            org.mockito.BDDMockito.willThrow(expected)
+                    .given(duplicateNameGuardService)
+                    .checkForCreateAndRun(eq(DuplicateNameScopeKind.TEAM), eq("既存チーム"), eq(USER_ID),
+                            eq(false), org.mockito.ArgumentMatchers.isNull(), any(), any());
+
+            assertThatThrownBy(() -> service.createTeam(USER_ID, req))
+                    .isSameAs(expected);
+            verify(teamRepository, org.mockito.Mockito.never()).save(any(TeamEntity.class));
+        }
+
+        @Test
+        @DisplayName("柱③-A AC-06/AC-10: guardが続行を許可すればconfirmDuplicate=true"
+                + "＋fingerprintでも同名チームを作成できる")
+        void 作成_チーム名重複_確認済みなら作成できる() {
+            CreateTeamRequest req = new CreateTeamRequest(
+                    "既存チーム", "sports", null, null, null, null, null, null,
+                    true, "valid-fingerprint");
+            given(adminRoleMutationLockService.lockAdminRoleIdForCreation(USER_ID)).willReturn(Optional.of(1L));
+            given(userRoleRepository.save(any(UserRoleEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
+
+            ApiResponse<TeamResponse> result = service.createTeam(USER_ID, req);
+
+            assertThat(result.getData().getBasicInfo().name()).isEqualTo("既存チーム");
+            verify(duplicateNameGuardService).checkForCreateAndRun(
+                    eq(DuplicateNameScopeKind.TEAM), eq("既存チーム"), eq(USER_ID),
+                    eq(true), eq("valid-fingerprint"), any(), any());
         }
     }
 

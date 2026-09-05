@@ -107,7 +107,20 @@ public enum ReceiptErrorCode implements ErrorCode {
     PDF_RETRY_LIMIT_EXCEEDED("RECEIPT_031", "PDF の生成に繰り返し失敗しました。運営にお問い合わせください", Severity.ERROR),
 
     /** 無効化されていない領収書に対する再発行 */
-    NOT_VOIDED_FOR_REISSUE("RECEIPT_032", "無効化されていない領収書は再発行できません", Severity.WARN);
+    NOT_VOIDED_FOR_REISSUE("RECEIPT_032", "無効化されていない領収書は再発行できません", Severity.WARN),
+
+    /**
+     * PDF 原本の保存（ストレージ書き込み）に失敗した。
+     *
+     * <p>設計書 §6 の予約表では {@code RECEIPT_031} を {@code ARCHIVE_WRITE_FAILED} に
+     * 割り当てているが、#3100（{@code PDF_RETRY_LIMIT_EXCEEDED}）が先にその番号を
+     * 確定させたため、本番号を {@code RECEIPT_033} として採り直す
+     * （採番の注記どおり「マージ時に再確認して確定する」を適用した結果）。</p>
+     */
+    ARCHIVE_WRITE_FAILED("RECEIPT_033", "領収書原本の保存に失敗しました", Severity.ERROR),
+
+    /** 読み出した PDF 原本のハッシュが一致しない（改ざんの疑い） */
+    ARCHIVE_INTEGRITY_MISMATCH("RECEIPT_034", "領収書原本のハッシュが一致しません（改ざんの疑い）", Severity.ERROR);
 
     private final String code;
     private final String message;
