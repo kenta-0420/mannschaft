@@ -21,7 +21,18 @@ const showGuide = ref(false)
 // チーム選択
 // =====================================================
 const selectedTeamId = ref<number | null>(null)
-/** ADMIN / SYSTEM_ADMIN / DEPUTY_ADMIN のチーム（シフト管理権限あり） */
+
+/**
+ * チーム選択セレクトの選択肢。
+ *
+ * 「自分が所属する全チーム」を出す。一般メンバーも COLLECTING / ADJUSTING のシフト表を
+ * 閲覧できる仕様（CMP-260826-2127）であり、ここを管理ロールで絞ると MEMBER として所属する
+ * チームを選べず、シフト一覧そのものに到達できなくなるため。
+ * 作成・編集ボタンの出し分けは選択肢ではなく canManage が担う。
+ */
+const selectableTeams = computed(() => teamStore.myTeams)
+
+/** ADMIN / SYSTEM_ADMIN / DEPUTY_ADMIN のチーム（シフト表の作成・編集権限あり。canManage 専用） */
 const manageableTeams = computed(() =>
   teamStore.myTeams.filter(
     (t) => t.role === 'ADMIN' || t.role === 'SYSTEM_ADMIN' || t.role === 'DEPUTY_ADMIN',
@@ -58,7 +69,7 @@ const loading = ref(false)
 
 const filteredSchedules = computed(() => {
   if (!statusFilter.value) return schedules.value
-  return schedules.value.filter((s) => s.status === statusFilter.value)
+  return schedules.value.filter((s) => s.status.status === statusFilter.value)
 })
 
 async function load() {
@@ -93,8 +104,8 @@ watch(selectedTeamId, () => load())
 
 onMounted(async () => {
   await teamStore.fetchMyTeams()
-  if (manageableTeams.value.length > 0 && manageableTeams.value[0]) {
-    selectedTeamId.value = manageableTeams.value[0].id
+  if (selectableTeams.value.length > 0 && selectableTeams.value[0]) {
+    selectedTeamId.value = selectableTeams.value[0].id
   }
 })
 
@@ -169,7 +180,7 @@ function openDetail(scheduleId: number) {
       <!-- チーム選択 -->
       <Select
         v-model="selectedTeamId"
-        :options="manageableTeams"
+        :options="selectableTeams"
         option-label="name"
         option-value="id"
         :placeholder="t('shift.index.selectTeam')"

@@ -108,6 +108,13 @@ public class OrganizationController {
             description = "指定した親組織の ADMIN/DEPUTY 権限がない")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
             description = "指定した親組織が存在しない / 論理削除済み")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+            description = "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または"
+                    + " fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = com.mannschaft.app.common.duplicatename
+                                    .DuplicateNameConfirmationErrorResponse.class)))
     public ResponseEntity<ApiResponse<OrganizationResponse>> createOrganization(
             @Valid @RequestBody CreateOrganizationRequest req) {
         Long userId = SecurityUtils.getCurrentUserId();
