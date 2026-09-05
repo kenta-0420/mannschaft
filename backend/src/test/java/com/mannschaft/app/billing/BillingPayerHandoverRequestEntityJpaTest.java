@@ -6,7 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("billing_payer_handover_requests エンティティ/リポジトリ DataJpaTest")
 class BillingPayerHandoverRequestEntityJpaTest {
 
-    private static final LocalDateTime NOW = LocalDateTime.of(2026, 9, 5, 12, 0, 0);
+    private static final Instant NOW = Instant.parse("2026-09-05T12:00:00Z");
 
     @Autowired private BillingPayerHandoverRequestRepository repository;
 
@@ -41,7 +42,7 @@ class BillingPayerHandoverRequestEntityJpaTest {
                 .scopeKind(EntitlementScopeKind.TEAM)
                 .scopeId(10L)
                 .oldPayerUserId(1L)
-                .expiresAt(NOW.plusDays(14))
+                .expiresAt(NOW.plus(14, ChronoUnit.DAYS))
                 .build();
 
         BillingPayerHandoverRequestEntity saved = repository.saveAndFlush(request);
@@ -64,7 +65,7 @@ class BillingPayerHandoverRequestEntityJpaTest {
                             .oldPayerUserId(2L)
                             .status(status)
                             .requestedAt(NOW)
-                            .expiresAt(NOW.plusDays(14))
+                            .expiresAt(NOW.plus(14, ChronoUnit.DAYS))
                             .build());
 
             assertThat(repository.findById(saved.getId()).orElseThrow().getStatus()).isEqualTo(status);
@@ -94,7 +95,7 @@ class BillingPayerHandoverRequestEntityJpaTest {
                 .oldPayerUserId(3L)
                 .status(status)
                 .requestedAt(NOW)
-                .expiresAt(NOW.plusDays(14))
+                .expiresAt(NOW.plus(14, ChronoUnit.DAYS))
                 .build();
     }
 }

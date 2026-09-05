@@ -38,4 +38,5 @@ CREATE TABLE billing_payer_handover_requests (
     CONSTRAINT chk_bphr_status CHECK (status IN (
         'REQUESTED','ACCEPTED','REQUIRES_PAYMENT_METHOD','SWITCHING',
         'PARTIALLY_COMPLETED','MANUAL_INTERVENTION','COMPLETED','FAILED','EXPIRED'))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='billing_contracts の payer（請求担当）引継要求。UuidV7Entity 継承・自ドメイン内完結（クロスドメイン FK 無し）';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+  COMMENT='billing_contracts の payer（請求担当）引継要求。UuidV7Entity 継承・自ドメイン内完結（クロスドメイン FK 無し）';

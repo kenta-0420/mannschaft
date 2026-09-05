@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -72,18 +72,24 @@ public class BillingPayerHandoverRequestEntity extends UuidV7Entity {
     @Column(name = "status", nullable = false, length = 24)
     private PayerHandoverStatus status;
 
+    /**
+     * 要求が発行された瞬間。世界のどこで見ても同じ1点であるため
+     * {@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md} 方針3点目に従い
+     * {@link Instant} で持つ（Codex検分・DateTimeAndZoneGuardTest対応。以下同ファイル内の
+     * 全 {@link Instant} フィールドも同じ理由）。
+     */
     @Column(name = "requested_at", nullable = false)
-    private LocalDateTime requestedAt;
+    private Instant requestedAt;
 
     /** 既定 requested_at + 14日。期限内未引継は期末解約へフォールバック（設計書 §5.4）。 */
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
     @Column(name = "accepted_at")
-    private LocalDateTime acceptedAt;
+    private Instant acceptedAt;
 
     @Column(name = "completed_at")
-    private LocalDateTime completedAt;
+    private Instant completedAt;
 
     /** P0-2: 新サブスク作成成功時点で永続化する一次防衛の要。 */
     @Column(name = "psp_new_subscription_ref", length = 64)
@@ -94,17 +100,17 @@ public class BillingPayerHandoverRequestEntity extends UuidV7Entity {
      * NULLのままACCEPTED以降に残る行は設定が未完了/未確認であることを示し、夜次照合バッチの検出対象になる。
      */
     @Column(name = "old_cancel_scheduled_at")
-    private LocalDateTime oldCancelScheduledAt;
+    private Instant oldCancelScheduledAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         if (this.createdAt == null) {
             this.createdAt = now;
         }
@@ -121,6 +127,6 @@ public class BillingPayerHandoverRequestEntity extends UuidV7Entity {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 }
