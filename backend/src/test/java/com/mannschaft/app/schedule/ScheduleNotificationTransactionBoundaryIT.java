@@ -1,5 +1,7 @@
 package com.mannschaft.app.schedule;
 
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.PersonalScheduleReminderRepository;
@@ -10,6 +12,9 @@ import com.mannschaft.app.schedule.service.GoogleCalendarWebhookService;
 import com.mannschaft.app.schedule.service.PersonalScheduleReminderService;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,24 +41,30 @@ import static org.awaitility.Awaitility.await;
  * INSERT していたため、この失敗が rollback-only を残して業務側ごと巻き戻っていた。</p>
  *
  * <h2>モック例外では再現できない。だから実 DB 障害を注入する</h2>
- * <p>本ロットで是正した 3 経路のうち 2 経路（リマインド／出欠募集）は
+ * <p>本ロットで是正した経路のうちリマインド／出欠募集は
  * {@code NotificationHelper#notifyAllPreAuthorized} → {@code NotificationBulkFanoutService#insertAndDispatchChunk}
- * を通る。{@code notifyAllPreAuthorized} はチャンク失敗を {@code try/catch} で握って
- * 「呼び出し元の業務トランザクションを巻き添えロールバックさせない」と称しているが、
- * {@code NotificationBulkFanoutService} には {@code @Transactional} が<b>一切無く</b>
- * 呼び出し元のトランザクションにそのまま参加する。したがって:</p>
- * <ul>
- *   <li>spy に {@code RuntimeException} を投げさせても、それは Spring/Hibernate から見れば
- *       ただのアプリ例外であり <b>rollback-only は立たない</b>。catch に握られてテストは緑になり、
- *       欠陥を取り逃す（＝偽の緑）。</li>
- *   <li>実 DB の制約違反であれば永続化コンテキストが汚染されて rollback-only が立つ。
- *       ここで初めて「一括 catch が機能していない」という本当の姿が出る。</li>
- * </ul>
- * <p>そこで {@code notifications} テーブルへテスト側で CHECK 制約を張り、本ロットで扱う 3 種別の
- * INSERT だけを実 DB で失敗させる。制約は {@code @AfterEach} で必ず落とすため他テストに影響しない。
+ * を通り、そこでチャンク失敗が {@code try/catch} で握られる。spy に {@code RuntimeException} を
+ * 投げさせても catch に握られて終わり、テストは何も検証しないまま緑になる（＝偽の緑）。
+ * そこで {@code notifications} テーブルへテスト側で CHECK 制約を張り、対象種別の INSERT だけを
+ * <b>実 DB で失敗させる</b>。制約は {@code @AfterEach} で必ず落とすため他テストに影響しない。
  * CHECK 制約の付与・削除は MySQL の DDL であり暗黙コミットを伴うため、トランザクション外
  * （{@code @BeforeEach} / {@code @AfterEach}）で実行する
  * （手法は {@code NotificationCreditFreeQuotaAlertTransactionIT} と同型）。</p>
+ *
+ * <h2>是正前の実測結果（見立てとの食い違いを隠さず残す）</h2>
+ * <p>2026-09-05、是正前のコード（{@code ScheduleReminderNotificationListener} が素の
+ * {@code @EventListener}）へリマインドのテストを当てて実測した: <b>緑だった</b>
+ * （tests=2 / failures=1 のうち失敗は出欠募集側のフィクスチャ不備で、リマインドは PASS）。
+ * 通知は CHECK 制約で 0 件のまま、{@code markAsNotified} はコミットされていた。
+ * バルク INSERT が JPA の永続化コンテキストを経由しないため rollback-only が立たず、
+ * {@code notifyAllPreAuthorized} の一括 catch がこの経路では実際に効いていたためである。</p>
+ *
+ * <p>つまり<b>リマインド経路の実害は巻き戻りではなく順序（因果）であり、本テストは
+ * 「巻き戻りが起きないこと」を将来にわたって固定する回帰テストである</b>——是正前の欠陥を
+ * 再現する red テストではない。この区別を曖昧にすると「赤くなったから直った」という
+ * 誤った因果を残すので、実測のとおりに書いておく。順序そのもの（業務コミット後にのみ
+ * 通知が走ること）は {@code @TransactionalEventListener(AFTER_COMMIT)} の宣言と、
+ * それを機械検証する {@code NotificationTransactionBoundaryGuardTest} の凍結台帳が担保する。</p>
  *
  * <h2>クラスに {@code @Transactional} を付けない理由</h2>
  * <p>是正後の通知は {@code AFTER_COMMIT} で発火する。テストをトランザクションで包むとコミットが
@@ -93,6 +104,9 @@ class ScheduleNotificationTransactionBoundaryIT extends AbstractMySqlIntegration
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @PersistenceContext
+    private EntityManager em;
 
     /** 外部 API 呼び出しは本テストの対象外のため遮断する。 */
     @MockitoBean
@@ -137,9 +151,10 @@ class ScheduleNotificationTransactionBoundaryIT extends AbstractMySqlIntegration
     @Test
     @DisplayName("出欠募集通知の永続化が実DBで失敗しても、生成された出欠レコードはコミットされる")
     void 通知失敗でも出欠募集の出欠レコードは巻き戻らない() {
+        String nonce = String.valueOf(System.nanoTime());
         long teamId = 980_000_000L + (System.nanoTime() % 1_000_000L);
-        Long scheduleId = insertTeamSchedule(teamId, teamId + 1L);
-        insertTeamMember(teamId, teamId + 1L);
+        Long memberId = insertTeamMember(teamId, nonce);
+        Long scheduleId = insertTeamSchedule(teamId, memberId);
 
         assertThatCode(() -> scheduleAttendanceService.openAttendanceSolicitation(scheduleId))
                 .as("通知の永続化失敗が出欠募集の業務処理へ伝播してはならない")
@@ -199,12 +214,22 @@ class ScheduleNotificationTransactionBoundaryIT extends AbstractMySqlIntegration
                 .build()).getId());
     }
 
-    /** 出欠募集の宛先解決（{@code user_roles} の scope 検索）に載る行を 1 件作る。 */
-    private void insertTeamMember(long teamId, long userId) {
-        jdbcTemplate.update(
-                "INSERT INTO user_roles (user_id, team_id, role, created_at, updated_at) "
-                        + "VALUES (?, ?, 'MEMBER', NOW(), NOW())",
-                userId, teamId);
+    /**
+     * 出欠募集の宛先解決に載るメンバーを 1 名作る。
+     *
+     * <p>{@code UserRoleRepository#findUserIdsByScope} は {@code user_roles} と {@code memberships} の
+     * <b>和集合</b>を取り、さらに {@code users}（{@code deleted_at IS NULL} かつ {@code status='ACTIVE'}）へ
+     * JOIN する。したがって実在する users 行が要る（ID を捏造した行だけでは JOIN で落ちて
+     * 「対象0名」になり、テストが何も検証しないまま緑になる）。</p>
+     */
+    private Long insertTeamMember(long teamId, String nonce) {
+        return transactionTemplate.execute(tx -> {
+            Long userId = ScheduleCommentTestFixtures.insertUser(
+                    em, "l8-att-" + nonce + "@example.com", "L8 出欠対象");
+            MembershipTestHelper.insertMembership(em, userId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+            em.flush();
+            return userId;
+        });
     }
 
     private Long insertDueReminder(Long scheduleId) {

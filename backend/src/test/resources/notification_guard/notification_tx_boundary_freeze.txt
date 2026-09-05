@@ -150,16 +150,20 @@
 #      組織スケジュールの出欠募集が配下チームの直属一般メンバーへ誤 deny で届かなくなる (B) レグが再発する。
 #
 #   ② ScheduleReminderNotificationListener#onReminderNotification（PLAIN_EVENT_LISTENER）
-#      素の @EventListener で、リマインダーバッチの @Transactional の内側で同期実行されていた。
-#      notifyAllPreAuthorized はチャンク失敗を catch して「業務TXを巻き添えにしない」と称しているが、
-#      その下流 NotificationBulkFanoutService は @Transactional を一切持たず呼び出し元のTXに参加する。
-#      よって実 DB の INSERT 失敗では rollback-only が立ち、catch は無力だった（単一TX内の一括 catch は
-#      機能しない・既知の形）。実害は PersonalScheduleReminderService#processDueReminders の
-#      markAsNotified() と ScheduleReminderService#processDueReminder の markAsSent() が巻き戻ること。
-#      送信済みの記録が消えるため次回実行でも同じリマインダーが due と判定され前へ進まない。
-#      @TransactionalEventListener(AFTER_COMMIT) + @Async("event-pool") へ変更。発火元は
-#      sendReminder / processDueReminder / processDueReminders のいずれも @Transactional 実効であり
-#      （processScheduledReminders は self. 経由のプロキシ呼び出し）、イベントが捨てられないことを確認済み。
+#      素の @EventListener で、リマインダーバッチ／即時リマインドの @Transactional の内側で
+#      業務コミット前に同期実行されていた。@TransactionalEventListener(AFTER_COMMIT) +
+#      @Async("event-pool") へ変更。発火元は sendReminder / processDueReminder /
+#      processDueReminders のいずれも @Transactional 実効であり（processScheduledReminders は
+#      self. 経由のプロキシ呼び出し）、イベントが捨てられないことを確認済み。
+#      【実測で見立てを訂正】当初は「通知 INSERT の失敗が markAsNotified / markAsSent ごと
+#      巻き戻す」と書いていた。notifyAllPreAuthorized のチャンク catch の下流
+#      NotificationBulkFanoutService が @Transactional を持たないため「単一TX内の一括 catch は
+#      機能しない」既知の形に見えたからである。しかし ScheduleNotificationTransactionBoundaryIT で
+#      notifications に CHECK 制約を張って実DBの INSERT を失敗させ、是正前のコードで実測したところ
+#      markAsNotified は巻き戻らずコミットされた（通知は0件）。バルク INSERT が JPA の永続化
+#      コンテキストを経由せず rollback-only が立たないためで、この経路では catch が実際に効いていた。
+#      よって本件の実害は巻き戻り（ROLLBACK_COUPLED）ではなく順序（業務がロールバックしても
+#      通知だけ残る逆向きの不整合）であり、是正の意義は AFTER_COMMIT 境界の確立にある。
 #
 #   ③④ ScheduleKeepService#notifyConverted（TX_NOTIFY_IN_TRY）/
 #      ScheduleKeepNotificationPublisher#publishConverted（TX_NOTIFY_BARE）

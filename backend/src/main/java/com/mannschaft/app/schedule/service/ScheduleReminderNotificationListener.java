@@ -19,27 +19,30 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * 経由で IN_APP + PUSH を配信する。リマインダーバッチの {@code @Transactional} 内で同期実行され、
  * 通知作成は同一トランザクションで確定する（既存の代理出席通知と同じ作法）。</p>
  *
- * <h2>是正（Issue #2990 L8）— 何が巻き戻っていたか</h2>
+ * <h2>是正（Issue #2990 L8）— 何が問題だったか</h2>
  * <p>是正前の本リスナーは素の {@code @EventListener} であり、リマインダーバッチ／即時リマインドの
- * {@code @Transactional} の内側で<b>同期実行</b>されていた。{@link NotificationHelper#notifyAllPreAuthorized}
- * はチャンク失敗を {@code try/catch} で握って「呼び出し元の業務トランザクションを巻き添えロールバック
- * させない」と称しているが、その下流 {@code NotificationBulkFanoutService#insertAndDispatchChunk} は
- * {@code @Transactional} を一切持たず<b>呼び出し元の業務トランザクションにそのまま参加する</b>。
- * したがって INSERT が DB 例外で落ちるとトランザクションには rollback-only が立ち、catch して
- * 継続してもコミット時に {@code UnexpectedRollbackException} になる——
- * <b>単一トランザクション内の一括 catch は機能していなかった</b>。
- * 実害は次のとおり:</p>
- * <ul>
- *   <li>{@link PersonalScheduleReminderService#processDueReminders}（個人予定バッチ）—
- *       ページ内の全リマインダーに対する {@code markAsNotified()} が丸ごと巻き戻る。
- *       「送信済み」の記録が消えるため、<b>次回実行でも同じリマインダーが再び due と判定され、
- *       同じ失敗を繰り返して前へ進まない</b>。</li>
- *   <li>{@link ScheduleReminderService}（共有予定バッチ）— 同様に当該ページの送信済みマークが失われる。</li>
- * </ul>
+ * {@code @Transactional} の内側で<b>業務コミット前に同期実行</b>されていた。つまり通知が先に確定し、
+ * 業務側（{@code markAsNotified} / {@code markAsSent}）が後でロールバックすると
+ * <b>「送信済みの記録は消えたのに通知だけ届いている」逆向きの不整合</b>が残る。原則5 が
+ * {@code AFTER_COMMIT} 境界を要求するのはこの因果のためである。</p>
  *
- * <p>是正後は {@code @TransactionalEventListener(AFTER_COMMIT)} + {@code @Async("event-pool")} で
- * 業務コミット後に別スレッドで配送する。通知の失敗はもう業務側へ到達しない
- * （配送側の catch は業務TXの外にあるため、rollback で消えることもない）。</p>
+ * <h2>巻き戻りは実測では再現しなかった（隠さず記録する）</h2>
+ * <p>当初は「通知の INSERT 失敗がバッチの送信済みマークごと巻き戻す」と見立てていた。
+ * {@link NotificationHelper#notifyAllPreAuthorized} はチャンク失敗を {@code try/catch} で握るが、
+ * その下流 {@code NotificationBulkFanoutService} は {@code @Transactional} を持たず呼び出し元の
+ * トランザクションに参加するため、「単一トランザクション内の一括 catch は機能しない」既知の形に
+ * 見えたからである。しかし {@code ScheduleNotificationTransactionBoundaryIT} で
+ * {@code notifications} に CHECK 制約を張って<b>実 DB の INSERT を失敗させ</b>、
+ * 是正前のコード（素の {@code @EventListener}）で実測したところ、
+ * {@code markAsNotified} は<b>巻き戻らずコミットされた</b>（通知は 0 件のまま）。
+ * バルク INSERT が JPA の永続化コンテキストを経由しないため rollback-only が立たず、
+ * 一括 catch がこの経路では実際に効いていた、というのが実測の結論である。</p>
+ *
+ * <p>したがって本件の実害は<b>巻き戻り（ROLLBACK_COUPLED）ではなく順序（因果）</b>であり、
+ * 是正の意義もそこにある。{@code @TransactionalEventListener(AFTER_COMMIT)} +
+ * {@code @Async("event-pool")} へ変更し、通知が業務コミット後にのみ走ることを構造で保証する。
+ * <b>見立てと実測が食い違ったときは実測を正とし、見立てのほうを書き換えること</b>
+ * （この javadoc の初版は再現していない巻き戻りを断定的に書いていた）。</p>
  *
  * <p>通知種別は {@code SCHEDULE_REMINDER}。文言はイベントに同梱された
  * ローカライズ済みタイトル／本文を使用する（共有＝未回答者向け、個人＝所有者向け）。</p>
