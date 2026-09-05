@@ -14,8 +14,8 @@ import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventRsvpResponseEntity;
 import com.mannschaft.app.event.event.EventAdvanceNoticeNotificationEvent;
+import com.mannschaft.app.event.event.EventCareNotificationTriggerEvent;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
-import com.mannschaft.app.family.service.CareEventNotificationService;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +42,6 @@ public class EventRsvpService {
     private final EventRsvpResponseRepository rsvpResponseRepository;
     private final UserRepository userRepository;
     private final EventService eventService;
-    private final CareEventNotificationService careEventNotificationService;
 
     /** Issue #2834 / CMP-056: 通知は業務コミット後に発火する（業務サービスから Runner を直接呼ばない）。
      * 見守り者解決（{@code CareLinkService}）・ロケール解決・件名/本文組み立ては
@@ -80,9 +79,14 @@ public class EventRsvpService {
         EventRsvpResponseEntity saved = rsvpResponseRepository.save(entity);
         log.info("RSVP送信: eventId={}, userId={}, response={}", eventId, userId, req.getResponse());
 
-        // F03.12 ケア対象者見守り通知: ATTENDING の場合に見守り者へ通知
+        // F03.12 ケア対象者見守り通知: ATTENDING の場合に見守り者へ通知（Issue #2990 L5）。
+        // 業務TX内では publish だけに留め、実配送は EventCareNotificationTriggerListener が
+        // AFTER_COMMIT で行う。通知失敗で RSVP 回答そのものが巻き戻らないようにする。
         if ("ATTENDING".equals(req.getResponse())) {
-            careEventNotificationService.notifyRsvpConfirmed(userId, eventId);
+            eventPublisher.publishEvent(new EventCareNotificationTriggerEvent(
+                    eventId,
+                    EventCareNotificationTriggerEvent.Kind.RSVP_CONFIRMED,
+                    List.of(userId)));
         }
 
         String userName = getUserDisplayName(userId);

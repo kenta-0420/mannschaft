@@ -74,7 +74,9 @@
       "dayOfWeek": "曜日",
       "dayOfWeekHint": "選択した曜日にのみスロットを作成します",
       "saveSuccess": "スロットを保存しました",
-      "deleteSuccess": "スロットを削除しました"
+      "deleteSuccess": "スロットを削除しました",
+      "assignmentMasked": "調整中",
+      "assignmentMaskedHint": "公開前のため割当は表示されません"
     },
     "requests": {
       "submissionRate": "提出率",

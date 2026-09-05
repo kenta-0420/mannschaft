@@ -2,6 +2,8 @@ package com.mannschaft.app.advertising.controller;
 
 import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
+import com.mannschaft.app.advertising.event.AdInvoicePaidEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.featuregate.AlwaysReachable;
@@ -44,6 +46,7 @@ import java.util.Map;
 public class StripeAdInvoiceWebhookController {
 
     private final AdInvoiceRepository adInvoiceRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${mannschaft.stripe.webhook-secret.ad-invoices:}")
     private String webhookSecret;
@@ -112,6 +115,9 @@ public class StripeAdInvoiceWebhookController {
                         ? LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.getStatusTransitions().getPaidAt()), ZoneId.of("Asia/Tokyo"))
                         : LocalDateTime.now();
                 invoice.markPaid(paidAt, null);
+                // 運営領収書の発行契機（F08.12 §5.2）。markPaid は Webhook と手動確認の
+                // 唯一の合流点だが、Webhook はこの Controller で直接呼ぶため両方から publish する。
+                eventPublisher.publishEvent(new AdInvoicePaidEvent(invoice.getId()));
                 log.info("Stripe 入金確認: invoiceId={}", invoice.getId());
             }
             case "invoice.payment_failed" -> {

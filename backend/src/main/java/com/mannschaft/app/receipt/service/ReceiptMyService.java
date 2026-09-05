@@ -2,6 +2,7 @@ package com.mannschaft.app.receipt.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.receipt.ReceiptArchiveKind;
 import com.mannschaft.app.receipt.ReceiptErrorCode;
 import com.mannschaft.app.receipt.ReceiptPdfGenerator;
 import com.mannschaft.app.receipt.ReceiptScopeType;
@@ -37,6 +38,7 @@ public class ReceiptMyService {
     private final ReceiptRepository receiptRepository;
     private final ReceiptLineItemRepository lineItemRepository;
     private final ReceiptPdfGenerator pdfGenerator;
+    private final ReceiptPdfArchiveService pdfArchiveService;
 
     /**
      * 自分宛の領収書一覧を取得する。
@@ -90,15 +92,24 @@ public class ReceiptMyService {
      * @return PDF バイト配列
      */
     public byte[] getMyReceiptPdf(Long userId, Long receiptId) {
+        return getMyReceiptPdf(userId, receiptId, null);
+    }
+
+    /**
+     * 自分宛の領収書 PDF を取得する（種別指定つき）。F08.12 §9 是正: 初回取得時に原本を保存し、
+     * 2 回目以降は再生成せず保存済みの原本を返す（ReceiptService と同じ基盤を使う）。
+     *
+     * @param kind 明示指定された種別。{@code null} の場合は現在の状態から解決する
+     */
+    @Transactional
+    public byte[] getMyReceiptPdf(Long userId, Long receiptId, ReceiptArchiveKind kind) {
         ReceiptEntity receipt = receiptRepository.findByIdAndRecipientUserId(receiptId, userId)
                 .orElseThrow(() -> new BusinessException(ReceiptErrorCode.RECEIPT_NOT_FOUND));
 
         List<ReceiptLineItemEntity> lineItems = lineItemRepository.findByReceiptIdOrderBySortOrderAsc(receiptId);
-
-        if (receipt.isVoided()) {
-            return pdfGenerator.generateVoided(receipt, lineItems, null, null, null);
-        }
-        return pdfGenerator.generate(receipt, lineItems, null, null, null);
+        byte[] pdf = pdfArchiveService.getOrArchive(receipt, lineItems, kind);
+        receiptRepository.save(receipt);
+        return pdf;
     }
 
     /**

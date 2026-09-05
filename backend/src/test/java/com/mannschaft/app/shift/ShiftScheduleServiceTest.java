@@ -91,6 +91,15 @@ class ShiftScheduleServiceTest {
     private static final Long SCHEDULE_ID = 100L;
     private static final Long USER_ID = 10L;
 
+    /**
+     * テスト用のシフト表エンティティ。
+     *
+     * <p>CMP-260826-2127（AC-13）: かつて {@code DRAFT} だったが、未公開シフト表の遮断により
+     * 非管理者から見た DRAFT は「存在ごと秘匿（404）」になる。本クラスの正常系が固定したいのは
+     * 「当該チームのメンバーが自チームのシフト表を読める」という日常の振る舞いであるため、
+     * 期待値でなくフィクスチャ側を公開済みに直してある
+     *（DRAFT に対する 404 は {@code ShiftUnpublishedScheduleVisibilityContractIT} が固定する）。</p>
+     */
     private ShiftScheduleEntity createScheduleEntity() {
         return ShiftScheduleEntity.builder()
                 .teamId(TEAM_ID)
@@ -98,7 +107,8 @@ class ShiftScheduleServiceTest {
                 .periodType(ShiftPeriodType.WEEKLY)
                 .startDate(LocalDate.of(2026, 3, 1))
                 .endDate(LocalDate.of(2026, 3, 7))
-                .status(ShiftScheduleStatus.DRAFT)
+                .status(ShiftScheduleStatus.PUBLISHED)
+                .publishedAt(LocalDateTime.of(2026, 2, 20, 10, 0))
                 .createdBy(USER_ID)
                 .build();
     }

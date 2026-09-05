@@ -85,7 +85,8 @@ public class ShiftScheduleService {
      */
     public List<ShiftScheduleResponse> listSchedules(Long teamId, Long userId) {
         checkTeamReadAccess(teamId, userId);
-        List<ShiftScheduleEntity> entities = scheduleRepository.findByTeamIdOrderByStartDateDesc(teamId);
+        List<ShiftScheduleEntity> entities = filterVisible(
+                scheduleRepository.findByTeamIdOrderByStartDateDesc(teamId), teamId, userId);
         return shiftMapper.toScheduleResponseList(entities);
     }
 
@@ -100,8 +101,9 @@ public class ShiftScheduleService {
      */
     public List<ShiftScheduleResponse> listSchedulesByPeriod(Long teamId, LocalDate from, LocalDate to, Long userId) {
         checkTeamReadAccess(teamId, userId);
-        List<ShiftScheduleEntity> entities = scheduleRepository
-                .findByTeamIdAndStartDateBetweenOrderByStartDateDesc(teamId, from, to);
+        List<ShiftScheduleEntity> entities = filterVisible(
+                scheduleRepository.findByTeamIdAndStartDateBetweenOrderByStartDateDesc(teamId, from, to),
+                teamId, userId);
         return shiftMapper.toScheduleResponseList(entities);
     }
 
@@ -117,7 +119,10 @@ public class ShiftScheduleService {
      */
     public ShiftScheduleResponse getSchedule(Long id, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
+        // 二層: 認可（誰が）の 403 が先、可視性（何が）の 404 が後。順序を逆にすると
+        // 別チーム ADMIN が 403/404 の差で未公開シフト表の存在を観測できる（存在オラクル）。
         checkTeamReadAccess(entity.getTeamId(), userId);
+        checkScheduleVisible(entity, userId);
         return shiftMapper.toScheduleResponse(entity);
     }
 
@@ -384,6 +389,65 @@ public class ShiftScheduleService {
                 .scheduleId(schedule.getId())
                 .summaryByDate(dateSummaries)
                 .build();
+    }
+
+    /**
+     * 一覧から、閲覧者に対して存在ごと秘匿すべきシフト表を除外する（AC-1 / AC-7）。
+     *
+     * <p>判定は {@link ShiftScheduleVisibilityPolicy} に閉じる（設計 G-1）。
+     * 管理者判定はチーム単位で 1 度だけ行う。</p>
+     *
+     * @param entities 取得済みのシフト表
+     * @param teamId   対象チーム ID
+     * @param userId   閲覧者ユーザー ID
+     * @return 閲覧者に見せてよいシフト表
+     */
+    private List<ShiftScheduleEntity> filterVisible(List<ShiftScheduleEntity> entities, Long teamId, Long userId) {
+        if (isPrivilegedViewer(teamId, userId)) {
+            return entities;
+        }
+        return entities.stream()
+                .filter(e -> !ShiftScheduleVisibilityPolicy
+                        .classify(e.getStatus(), e.getPublishedAt()).isHidden())
+                .toList();
+    }
+
+    /**
+     * 閲覧者が「未公開シフト表も全量見てよい側」かを判定する。
+     *
+     * <p>SYSTEM_ADMIN 短絡を必ず最初に評価する。親組織 ADMIN・配下ツリー救済は含めない
+     *（シフト表は TEAM スコープ専用であり、同ドメインの書込系認可も配下概念を持たないため）。
+     * 例外を投げる {@code checkAdminOrAbove} でなく真偽を返す {@code isAdminOrAbove} を使うのは、
+     * フィルタ判定で例外を握り潰す実装を誘発しないため。</p>
+     *
+     * @param teamId 対象チーム ID
+     * @param userId 閲覧者ユーザー ID
+     * @return 管理者側なら true
+     */
+    private boolean isPrivilegedViewer(Long teamId, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return true;
+        }
+        return teamId != null && accessControlService.isAdminOrAbove(userId, teamId, "TEAM");
+    }
+
+    /**
+     * 未公開シフト表への単体アクセスを 404 に落とす（AC-2 / AC-7）。
+     *
+     * <p>403 にすると「存在するが未公開」を「存在しない ID」と区別でき、scheduleId の総当りで
+     * 未公開シフト表の本数が観測できるため 404（{@code SHIFT_001}）とする。</p>
+     *
+     * @param entity 対象シフト表
+     * @param userId 閲覧者ユーザー ID
+     * @throws BusinessException 閲覧者に対して秘匿すべき場合（SHIFT_SCHEDULE_NOT_FOUND / 404）
+     */
+    void checkScheduleVisible(ShiftScheduleEntity entity, Long userId) {
+        if (isPrivilegedViewer(entity.getTeamId(), userId)) {
+            return;
+        }
+        if (ShiftScheduleVisibilityPolicy.classify(entity.getStatus(), entity.getPublishedAt()).isHidden()) {
+            throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+        }
     }
 
     /**
