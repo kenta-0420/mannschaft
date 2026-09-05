@@ -120,10 +120,16 @@ class DuplicateNameCollationGuardRedIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("AC-05a: 前後空白違いの組織名は実DBのtrim比較で同名判定される")
+    @DisplayName("AC-05a: 前後半角スペース違いの組織名は実DBのname_trimmed(生成列)経由で同名判定される")
     void ac05a_trimmedWhitespaceMatchesViaRealDb() {
+        // 検分第5巡是正: name はあえて前後に半角スペースを付けたまま保存する（Java 側で
+        // 事前に trim しない）。これにより DB 側の生成列 name_trimmed
+        // （GENERATED ALWAYS AS (TRIM(name)) STORED）が実際に半角スペースを除去することを
+        // 検証できる。クエリ側は DuplicateNameNormalizer#trimSpaces で正規化済みの値を渡す
+        // （リポジトリのクエリ自体はもう TRIM() しない契約のため）。
+        String rawNameWithSpaces = "  照合順序テスト組織" + shortSuffixDigits() + "  ";
         OrganizationEntity org = OrganizationEntity.builder()
-                .name("  照合順序テスト組織  ".trim())
+                .name(rawNameWithSpaces)
                 .slug(shortSuffix("dupn-org-"))
                 .orgType(OrganizationEntity.OrgType.OTHER)
                 .visibility(OrganizationEntity.Visibility.PUBLIC)
@@ -132,10 +138,68 @@ class DuplicateNameCollationGuardRedIT extends AbstractMySqlIntegrationTest {
                 .build();
         organizationRepository.saveAndFlush(org);
 
-        List<OrganizationEntity> found =
-                organizationRepository.findActiveByNormalizedName("  照合順序テスト組織  ");
+        List<OrganizationEntity> found = organizationRepository.findActiveByNormalizedName(
+                DuplicateNameNormalizer.trimSpaces(rawNameWithSpaces));
 
         assertThat(found).extracting(OrganizationEntity::getId).contains(org.getId());
+    }
+
+    @Test
+    @DisplayName("検分第5巡是正: 半角スペースのみの前後trim違いは同名判定される"
+            + "（DuplicateNameNormalizer#trimSpacesとMySQL TRIM()の基準一致）")
+    void r5_spaceOnlyTrimMatchesAcrossJavaAndMysql() {
+        String bareName = "スペース正規化検証組織" + shortSuffixDigits();
+        OrganizationEntity org = OrganizationEntity.builder()
+                .name(bareName)
+                .slug(shortSuffix("dupn-space-"))
+                .orgType(OrganizationEntity.OrgType.OTHER)
+                .visibility(OrganizationEntity.Visibility.PUBLIC)
+                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
+                .supporterEnabled(false)
+                .build();
+        organizationRepository.saveAndFlush(org);
+
+        // クエリ側の入力に半角スペースを付けても、trimSpaces後は既存の bareName と一致する。
+        String queryWithSpaces = " " + bareName + " ";
+        List<OrganizationEntity> found = organizationRepository.findActiveByNormalizedName(
+                DuplicateNameNormalizer.trimSpaces(queryWithSpaces));
+
+        assertThat(found).extracting(OrganizationEntity::getId)
+                .as("半角スペースのみの前後trim違いは同名として扱われるはず")
+                .contains(org.getId());
+    }
+
+    @Test
+    @DisplayName("検分第5巡是正: 末尾タブ付きの名称はMySQL TRIM()の仕様通り別名扱いになる"
+            + "（タブは除去されないため、既存の同名と衝突しない）")
+    void r5_tabSuffixedNameIsTreatedAsDifferentNamePerMysqlTrimSemantics() {
+        String bareName = "タブ検証組織" + shortSuffixDigits();
+        OrganizationEntity org = OrganizationEntity.builder()
+                .name(bareName)
+                .slug(shortSuffix("dupn-tab-"))
+                .orgType(OrganizationEntity.OrgType.OTHER)
+                .visibility(OrganizationEntity.Visibility.PUBLIC)
+                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
+                .supporterEnabled(false)
+                .build();
+        organizationRepository.saveAndFlush(org);
+
+        // "bareName\t"（末尾タブ）は DuplicateNameNormalizer#trimSpaces では除去されない
+        // （半角スペースのみ trim するため）。MySQL の TRIM() も同じくタブを除去しないため、
+        // name_trimmed 列の値は "bareName\t" のまま残り、"bareName" とは別名として扱われる
+        // （＝候補として検出されない）。これが検分第5巡で修正した不整合そのものであり、
+        // 「タブ付き入力は既存の同名と衝突しない」という MySQL TRIM() 準拠の仕様を保証する。
+        String tabSuffixedInput = bareName + "\t";
+        String normalizedTabSuffixed = DuplicateNameNormalizer.trimSpaces(tabSuffixedInput);
+        // trimSpaces はタブを除去しないため、正規化後もタブは残ったままである。
+        assertThat(normalizedTabSuffixed).isEqualTo(tabSuffixedInput);
+
+        List<OrganizationEntity> found =
+                organizationRepository.findActiveByNormalizedName(normalizedTabSuffixed);
+
+        assertThat(found).extracting(OrganizationEntity::getId)
+                .as("末尾タブ付き名称はMySQL TRIM()準拠で別名扱いになり、既存の同名候補に含まれないはず")
+                .doesNotContain(org.getId());
     }
 
     @Test

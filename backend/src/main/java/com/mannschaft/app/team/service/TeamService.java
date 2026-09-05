@@ -2,6 +2,7 @@ package com.mannschaft.app.team.service;
 
 import com.mannschaft.app.common.duplicatename.DuplicateNameCandidate;
 import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
+import com.mannschaft.app.common.duplicatename.DuplicateNameNormalizer;
 import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.event.TeamCreatedEvent;
@@ -114,7 +115,9 @@ public class TeamService {
                 userId,
                 req.isConfirmDuplicate(),
                 req.getDuplicateNameFingerprint(),
-                () -> teamRepository.findActiveByNormalizedNameForUpdate(req.getName()).stream()
+                () -> teamRepository.findActiveByNormalizedNameForUpdate(
+                                DuplicateNameNormalizer.trimSpaces(req.getName()))
+                        .stream()
                         .map(this::toDuplicateNameCandidate)
                         .toList(),
                 () -> {
@@ -392,7 +395,9 @@ public class TeamService {
                 actorUserId,
                 confirmDuplicate,
                 duplicateNameFingerprint,
-                () -> teamRepository.findActiveByNormalizedNameForUpdate(name).stream()
+                () -> teamRepository.findActiveByNormalizedNameForUpdate(
+                                DuplicateNameNormalizer.trimSpaces(name))
+                        .stream()
                         .map(this::toDuplicateNameCandidate)
                         .toList(),
                 () -> {

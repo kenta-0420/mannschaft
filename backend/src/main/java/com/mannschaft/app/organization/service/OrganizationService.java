@@ -2,6 +2,7 @@ package com.mannschaft.app.organization.service;
 
 import com.mannschaft.app.common.duplicatename.DuplicateNameCandidate;
 import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
+import com.mannschaft.app.common.duplicatename.DuplicateNameNormalizer;
 import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.util.SlugGenerator;
@@ -98,7 +99,9 @@ public class OrganizationService {
                 userId,
                 req.isConfirmDuplicate(),
                 req.getDuplicateNameFingerprint(),
-                () -> organizationRepository.findActiveByNormalizedNameForUpdate(req.getName()).stream()
+                () -> organizationRepository.findActiveByNormalizedNameForUpdate(
+                                DuplicateNameNormalizer.trimSpaces(req.getName()))
+                        .stream()
                         .map(this::toDuplicateNameCandidate)
                         .toList(),
                 () -> {
@@ -310,7 +313,9 @@ public class OrganizationService {
                 actorUserId,
                 confirmDuplicate,
                 duplicateNameFingerprint,
-                () -> organizationRepository.findActiveByNormalizedNameForUpdate(name).stream()
+                () -> organizationRepository.findActiveByNormalizedNameForUpdate(
+                                DuplicateNameNormalizer.trimSpaces(name))
+                        .stream()
                         .map(this::toDuplicateNameCandidate)
                         .toList(),
                 () -> {

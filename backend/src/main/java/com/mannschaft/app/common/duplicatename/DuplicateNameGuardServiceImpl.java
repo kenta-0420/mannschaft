@@ -48,6 +48,16 @@ import java.util.function.Supplier;
  * 主キーは自然キー（複合PK: {@code scope_kind, name_key}）のままとし {@code UuidV7Entity} は
  * 適用しない（同原則6の例外区分「マスタ例外」に準じる。シャーディング時は全シャードへ
  * 同じ行をコピーする運用が自然であり、原則6の意図＝各ノード独立発番に該当しないため）。</p>
+ *
+ * <h2>検分第5巡是正: 正規化は DuplicateNameNormalizer#trimSpaces に一本化</h2>
+ * <p>Java の {@link String#trim()} は制御文字（タブ・改行等）も除去するが、MySQL の
+ * {@code TRIM()} は半角スペースのみを除去する。両者が混在すると、ロックキー生成（Java 側）と
+ * 候補検索（DB 側の生成列 {@code name_trimmed}）の正規化基準が食い違い、
+ * 例えば {@code "foo\t"}（末尾タブ）が既存 {@code "foo"} と Java 側では同一視されてしまい
+ * ロックキーが一致する一方、DB 側の {@code TRIM()} 相当ではタブが除去されず別名として
+ * 扱われ候補検索をすり抜ける、という不整合が起こり得る。そのため名称の正規化は
+ * {@link DuplicateNameNormalizer#trimSpaces} のみを使い、ロックキー生成・候補検索・
+ * fingerprint 計算のすべてで同一基準に統一する。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -68,7 +78,9 @@ public class DuplicateNameGuardServiceImpl implements DuplicateNameGuardService 
             boolean confirmDuplicate, String suppliedFingerprint,
             Supplier<List<DuplicateNameCandidate>> candidateSupplier,
             Supplier<T> createAction) {
-        String normalizedName = rawName == null ? "" : rawName.trim();
+        // 検分第5巡是正: Java の String#trim() ではなく DuplicateNameNormalizer#trimSpaces
+        // （MySQL TRIM() と同じ「半角スペースのみ除去」規則）を同名確認フロー唯一の正規化とする。
+        String normalizedName = DuplicateNameNormalizer.trimSpaces(rawName);
         String nameKey = buildNameKey(scopeKind, normalizedName);
 
         // 呼び出し元と同一トランザクション内で行ロックを取得する。解放処理は書かない

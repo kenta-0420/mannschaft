@@ -60,26 +60,30 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     /**
      * CMP-260901-1538 柱③-A: 同名確認フロー用の候補検索。
      *
-     * <p>検分第4巡是正: {@code TRIM(name) = TRIM(:name) COLLATE utf8mb4_0900_ai_ci} は
-     * {@code name} 列に索引が無いため全表走査になっていた。生成列
-     * {@code name_trimmed}（{@code GENERATED ALWAYS AS (TRIM(name)) STORED}・索引付き。
-     * V201 マイグレーション参照）に対する等価比較へ書き換え、索引を使えるようにする。
-     * 照合順序は列自体が {@code utf8mb4_0900_ai_ci}（大文字小文字・アクセントを区別しない）
-     * のため明示指定は不要。ACTIVE（{@code lifecycleStatus=ACTIVE}）かつ未削除
-     * （{@code @SQLRestriction} により自動除外）のみを対象とする。作成 TX 内で呼ばれることを
-     * 想定し、常に最新状態を反映する。</p>
+     * <p>検分第5巡是正: クエリ側の {@code TRIM()} を撤去した。Java の
+     * {@link String#trim()} は制御文字（タブ・改行等）も除去するのに対し MySQL の
+     * {@code TRIM()} は半角スペースのみ除去するため、両者を混在させると正規化基準が
+     * 食い違う（{@code "foo\t"} が Java 側では {@code "foo"} と同一視されるが DB 側では
+     * 別名として扱われる）。そのため呼び出し元は
+     * {@code DuplicateNameNormalizer#trimSpaces}（MySQL {@code TRIM()} と同じ規則）で
+     * 正規化済みの値を渡す契約とし、本クエリは {@code name_trimmed} 列との単純な等価比較のみ
+     * 行う（生成列 {@code name_trimmed} は {@code GENERATED ALWAYS AS (TRIM(name)) STORED}・
+     * 索引付き。V201 マイグレーション参照）。照合順序は列自体が {@code utf8mb4_0900_ai_ci}
+     * （大文字小文字・アクセントを区別しない）のため明示指定は不要。ACTIVE
+     * （{@code lifecycleStatus=ACTIVE}）かつ未削除（{@code @SQLRestriction} により自動除外）
+     * のみを対象とする。作成 TX 内で呼ばれることを想定し、常に最新状態を反映する。</p>
      *
-     * @param name 判定対象の名称（未 trim で渡してよい。クエリ側で TRIM する）
+     * @param nameTrimmed {@code DuplicateNameNormalizer#trimSpaces} で正規化済みの名称
      * @return 同名の ACTIVE 組織一覧
      */
     @Query(value = "SELECT * FROM organizations "
             + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
-            + "AND name_trimmed = TRIM(:name)",
+            + "AND name_trimmed = :nameTrimmed",
             nativeQuery = true)
-    List<OrganizationEntity> findActiveByNormalizedName(@Param("name") String name);
+    List<OrganizationEntity> findActiveByNormalizedName(@Param("nameTrimmed") String nameTrimmed);
 
     /**
-     * CMP-260901-1538 柱③-A 検分P1-2/第4巡是正: {@link #findActiveByNormalizedName} の
+     * CMP-260901-1538 柱③-A 検分P1-2/第4〜5巡是正: {@link #findActiveByNormalizedName} の
      * ロッキングリード版。
      *
      * <p>{@code FOR UPDATE} により InnoDB の REPEATABLE READ スナップショットを無視して
@@ -88,16 +92,18 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
      * {@code name_trimmed} の索引を使うことで、{@code FOR UPDATE} が索引レンジロックに
      * 収まり、全表ロック（＝無関係な名称の作成まで巻き込んでブロックする事故）を避ける。
      * {@code DuplicateNameGuardService#checkForCreateAndRun} が行ロック保持中に呼ぶことを
-     * 前提とし、同名候補の TOCTOU（確認時点と作成時点の乖離）を防ぐ。</p>
+     * 前提とし、同名候補の TOCTOU（確認時点と作成時点の乖離）を防ぐ。
+     * クエリ側の {@code TRIM()} を撤去した理由は {@link #findActiveByNormalizedName} と同じ
+     * （検分第5巡是正）。</p>
      *
-     * @param name 判定対象の名称（未 trim で渡してよい。クエリ側で TRIM する）
+     * @param nameTrimmed {@code DuplicateNameNormalizer#trimSpaces} で正規化済みの名称
      * @return 同名の ACTIVE 組織一覧（最新コミット済み状態）
      */
     @Query(value = "SELECT * FROM organizations "
             + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
-            + "AND name_trimmed = TRIM(:name) FOR UPDATE",
+            + "AND name_trimmed = :nameTrimmed FOR UPDATE",
             nativeQuery = true)
-    List<OrganizationEntity> findActiveByNormalizedNameForUpdate(@Param("name") String name);
+    List<OrganizationEntity> findActiveByNormalizedNameForUpdate(@Param("nameTrimmed") String nameTrimmed);
 
     /**
      * 組織をキーワード検索する（公開検索）。

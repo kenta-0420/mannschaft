@@ -97,6 +97,13 @@ public class DuplicateNameFingerprintServiceImpl implements DuplicateNameFingerp
     /**
      * 署名対象ペイロードを組み立てる。候補ID集合は呼び出し順序に依存させないためソートする
      * （候補供給コールバックが返す順序が実行のたびに変わっても、集合として同一なら一致判定できる）。
+     *
+     * <p>検分第5巡是正: {@code normalizedName} は呼び出し元
+     * （{@code DuplicateNameGuardServiceImpl}）が既に
+     * {@code DuplicateNameNormalizer#trimSpaces}（MySQL {@code TRIM()} と同じ規則）で
+     * 正規化済みの値を渡す契約のため、ここで Java の {@link String#trim()} を重ねて
+     * 適用しない（重ねて適用すると、同名確認フロー全体で「唯一の正規化」に統一する方針が
+     * 崩れ、タブ等の制御文字を含む名称で DB 側の判定と再び食い違う恐れがある）。</p>
      */
     private String buildPayload(DuplicateNameScopeKind scopeKind, String normalizedName, Long actorUserId,
             List<String> candidateIds, long issuedAt, long expiresAt) {
@@ -104,7 +111,7 @@ public class DuplicateNameFingerprintServiceImpl implements DuplicateNameFingerp
                 .sorted()
                 .collect(Collectors.joining(","));
         return scopeKind.name()
-                + "|" + normalizedName.trim()
+                + "|" + normalizedName
                 + "|" + actorUserId
                 + "|" + sortedCandidateIds
                 + "|" + issuedAt
