@@ -46,6 +46,7 @@ import com.stripe.param.RefundCreateParams;
 import com.stripe.param.SetupIntentCreateParams;
 import com.stripe.param.InvoiceUpdateParams;
 import com.stripe.param.SubscriptionCreateParams;
+import com.stripe.param.SubscriptionListParams;
 import com.stripe.param.SubscriptionUpdateParams;
 import com.stripe.param.TransferReversalCollectionCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
@@ -1303,6 +1304,139 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             log.error("Stripe Webhook data.object のフォールバック retrieve 失敗: object={}, id={}", objectType, id, e);
             throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
         }
+    }
+
+    // ========================================
+    // 柱③-B PR-2 請求支払者の引継（設計書 billing_payer_handover_design.md §2.3・§3.2・§3.4）
+    // ========================================
+
+    @Override
+    public CheckoutSessionInfo createBillingHandoverSubscriptionCheckoutSession(
+            String stripeCustomerId, long priceJpy, String productName,
+            String billingContractId, String handoverRequestId, String oldContractId,
+            long trialEndEpochSec, String successUrl, String cancelUrl, String idempotencyKey) {
+        try {
+            // 引継用サブスク: trial_end＝旧契約の current_period_end に揃えることで、旧期末までは
+            // 一切請求が発生しない（新旧併存期間の二重課金がゼロ・設計書 §2.3・AC-4/AC-5）。
+            // proration_behavior=none で trial 終了時の日割りを発生させない。
+            // Connect 項目（transfer_data/on_behalf_of/application_fee）は自社受取のため一切含めない（D-2）。
+            SessionCreateParams params = SessionCreateParams.builder()
+                    .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+                    .setCustomer(stripeCustomerId)
+                    .setSuccessUrl(successUrl)
+                    .setCancelUrl(cancelUrl)
+                    .addLineItem(SessionCreateParams.LineItem.builder()
+                            .setQuantity(1L)
+                            .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                    .setCurrency("jpy")
+                                    .setUnitAmount(priceJpy)
+                                    .setRecurring(SessionCreateParams.LineItem.PriceData.Recurring.builder()
+                                            .setInterval(SessionCreateParams.LineItem.PriceData.Recurring.Interval.MONTH)
+                                            .build())
+                                    .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                            .setName(productName)
+                                            .build())
+                                    .build())
+                            .build())
+                    .setSubscriptionData(SessionCreateParams.SubscriptionData.builder()
+                            .setTrialEnd(trialEndEpochSec)
+                            .setProrationBehavior(SessionCreateParams.SubscriptionData.ProrationBehavior.NONE)
+                            // 回復経路（§3.2・AC-7/AC-25/AC-33）の突合キー。DB へ psp_new_subscription_ref を
+                            // 書き戻す前に落ちても、List 全ページ走査＋本 metadata で実物を回収できる。
+                            .putMetadata("handoverRequestId", handoverRequestId)
+                            .putMetadata("oldContractId", oldContractId)
+                            .build())
+                    .putMetadata("billingContractId", billingContractId)
+                    .putMetadata("handoverRequestId", handoverRequestId)
+                    .build();
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            Session session = Session.create(params, options);
+
+            LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                    Instant.ofEpochSecond(session.getExpiresAt()),
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
+
+            log.info("引継サブスク Checkout Session 作成: sessionId={}, billingContractId={}, handoverRequestId={}, trialEnd={}",
+                    session.getId(), billingContractId, handoverRequestId, trialEndEpochSec);
+            return new CheckoutSessionInfo(session.getId(), session.getUrl(), expiresAt);
+        } catch (StripeException e) {
+            log.error("引継サブスク Checkout Session 作成失敗: customerId={}, billingContractId={}, handoverRequestId={}",
+                    stripeCustomerId, billingContractId, handoverRequestId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public SubscriptionDetail retrieveSubscriptionDetail(String subscriptionId) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            return toSubscriptionDetail(subscription);
+        } catch (StripeException e) {
+            log.error("引継: Stripe Subscription 取得失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public List<SubscriptionDetail> listSubscriptionsByCustomer(String stripeCustomerId) {
+        try {
+            SubscriptionListParams params = SubscriptionListParams.builder()
+                    .setCustomer(stripeCustomerId)
+                    .setStatus(SubscriptionListParams.Status.ALL)
+                    .setLimit(100L)
+                    .build();
+            // has_more を追い切る（autoPagingIterable）。1ページ目だけを見て「未作成」と判定すると
+            // 二重サブスク＝二重課金に直結するため禁止（設計書 §3.2 R4-P1-1・AC-33）。
+            List<SubscriptionDetail> details = new java.util.ArrayList<>();
+            for (Subscription subscription : Subscription.list(params).autoPagingIterable()) {
+                details.add(toSubscriptionDetail(subscription));
+            }
+            log.info("引継: Customer のサブスク列挙（全ページ）: customerId={}, count={}", stripeCustomerId, details.size());
+            return details;
+        } catch (StripeException e) {
+            log.error("引継: Customer のサブスク列挙失敗: customerId={}", stripeCustomerId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public SubscriptionInfo revertSubscriptionCancelAtPeriodEnd(String subscriptionId, String idempotencyKey) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            Subscription updated = subscription.update(
+                    SubscriptionUpdateParams.builder().setCancelAtPeriodEnd(false).build(), options);
+            log.info("引継: Stripe Subscription 期末解約予約の差し戻し: id={}, status={}, periodEnd={}",
+                    updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+            return new SubscriptionInfo(updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+        } catch (StripeException e) {
+            log.error("引継: Stripe Subscription 期末解約予約の差し戻し失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    /**
+     * Stripe {@link Subscription} を {@link SubscriptionDetail} へ写す（柱③-B PR-2）。
+     *
+     * <p>{@code cancel_at_period_end} は Stripe が {@code null} を返しうるため false 扱いにし、
+     * {@code metadata} は {@code null} を返さず空 Map に正規化する（呼び出し側の NPE を作らない）。</p>
+     */
+    private SubscriptionDetail toSubscriptionDetail(Subscription subscription) {
+        Map<String, String> metadata = subscription.getMetadata() == null
+                ? Collections.emptyMap()
+                : Map.copyOf(subscription.getMetadata());
+        return new SubscriptionDetail(
+                subscription.getId(),
+                subscription.getStatus(),
+                Boolean.TRUE.equals(subscription.getCancelAtPeriodEnd()),
+                subscription.getCurrentPeriodStart(),
+                subscription.getCurrentPeriodEnd(),
+                subscription.getPendingSetupIntent(),
+                metadata);
     }
 
     /**

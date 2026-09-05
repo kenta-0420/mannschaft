@@ -64,6 +64,46 @@ public interface BillingContractRepository
             EntitlementScopeKind scopeKind, Long scopeId, ContractStatus status);
 
     /**
+     * 柱③-B: 指定ユーザーが<b>実質決済者（payer）</b>として紐づく契約を取得する
+     * （設計書 billing_payer_handover_design.md §1.2・§5.1・AC-3）。
+     *
+     * <p><b>なぜ必要か（根本原因）</b>: 従来の purge 検出
+     * （{@code findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull} を {@code scope_kind=USER} 固定で使う）は
+     * 「契約のスコープが退会者本人か」しか見ていなかった。TEAM/ORG スコープの契約は、実際には退会者個人の
+     * Stripe Customer に課金されていても {@code scope_id} がチーム/組織 ID であるため<b>この検索条件に一切
+     * 引っかからない</b>。結果、退会30日後の強匿名化を経てもなお退会者個人へ課金が継続する（設計書 §1.4）。
+     * 本クエリは {@code payer_user_id} 起点に引き直すことでこの穴を塞ぐ。</p>
+     *
+     * <p>スコープ種別で絞らないのは、USER/TEAM/ORG のいずれであれ「その人が払っている契約」を漏れなく
+     * 拾う必要があるため。呼び出し側で用途に応じて絞り込む。</p>
+     *
+     * @param payerUserId 対象ユーザー（{@code payer_user_id} 一致）
+     * @param statuses    対象ステータス（通常は PENDING/ACTIVE/PAST_DUE）
+     * @return 当該ユーザーが payer である契約
+     */
+    List<BillingContractEntity> findByPayerUserIdAndStatusInAndDeletedAtIsNull(
+            Long payerUserId, java.util.Collection<ContractStatus> statuses);
+
+    /**
+     * 柱③-B: 引継の<b>適用対象</b>となる TEAM/ORG 契約を取得する（設計書 §5.1・R2-P1-6 の絞り込み）。
+     *
+     * <p>{@code psp_subscription_ref IS NOT NULL AND current_period_end IS NOT NULL} を条件に加えている理由:
+     * 引継フロー（{@code trial_end} 方式・pointer 切替）はいずれも「Stripe 側に実在するサブスクリプションの
+     * {@code current_period_end}」を前提にしているため、無償契約（価格 NULL）や PSP 側サブスク未作成の
+     * {@code PENDING} 初期段階の契約には<b>適用できない</b>。これらは Stripe 操作を一切伴わない
+     * 「payer 概念のみの更新」という別経路で処理する（設計書 §5.1 の1行定義）。</p>
+     *
+     * @param payerUserId 対象ユーザー
+     * @param scopeKinds  対象スコープ種別（TEAM/ORG）
+     * @param statuses    対象ステータス
+     * @return 引継適用対象の契約
+     */
+    List<BillingContractEntity>
+            findByPayerUserIdAndScopeKindInAndStatusInAndPspSubscriptionRefIsNotNullAndCurrentPeriodEndIsNotNullAndDeletedAtIsNull(
+            Long payerUserId, java.util.Collection<EntitlementScopeKind> scopeKinds,
+            java.util.Collection<ContractStatus> statuses);
+
+    /**
      * PENDING 契約へ Stripe Checkout Session ID を条件付き UPDATE（CAS）で紐付ける。
      *
      * <p>条件は「対象契約が実在し、論理削除されておらず、status=PENDING であり、Session ref が未設定か

@@ -1309,6 +1309,15 @@ public class GlobalExceptionHandler {
             Map.entry("ENTITLEMENT_024", HttpStatus.CONFLICT),           // MIGRATION_REQUIRED
             Map.entry("ENTITLEMENT_025", HttpStatus.BAD_GATEWAY),        // STRIPE_UNAVAILABLE
             Map.entry("ENTITLEMENT_026", HttpStatus.CONFLICT),           // BILLING_FLOW_REQUIRED
+            // 柱③-B PR-2 請求支払者の引継（設計書 billing_payer_handover_design.md）。
+            // 登録漏れは Severity 既定 400/500 へ黙ってフォールバックする前科（#1279）ゆえ明示登録。
+            Map.entry("ENTITLEMENT_027", HttpStatus.BAD_REQUEST),        // HANDOVER_SCOPE_NOT_SUPPORTED（USER スコープ）
+            Map.entry("ENTITLEMENT_028", HttpStatus.CONFLICT),           // HANDOVER_CONTRACT_NOT_ELIGIBLE（PAST_DUE/過去期末・AC-29）
+            Map.entry("ENTITLEMENT_029", HttpStatus.CONFLICT),           // HANDOVER_ALREADY_IN_PROGRESS（生成列+UNIQUE）
+            Map.entry("ENTITLEMENT_030", HttpStatus.NOT_FOUND),          // HANDOVER_NOT_FOUND（IDOR 秘匿・スコープ越境も404で畳む）
+            Map.entry("ENTITLEMENT_031", HttpStatus.CONFLICT),           // HANDOVER_NOT_ACCEPTABLE
+            Map.entry("ENTITLEMENT_032", HttpStatus.CONFLICT),           // HANDOVER_NO_CANDIDATE（§5.5 ①②）
+            Map.entry("ENTITLEMENT_033", HttpStatus.CONFLICT),           // HANDOVER_EXPIRED
             // F20.3 ベータ特典（設計書 02 §8）。登録漏れは Severity 既定 400/500 にフォールバックする前科（#1279）ゆえ明示登録。
             Map.entry("BETA_PERK_001", HttpStatus.NOT_FOUND),            // GRANT_NOT_FOUND（IDOR 秘匿含む）
             Map.entry("BETA_PERK_002", HttpStatus.CONFLICT),            // GRANT_ALREADY_EXISTS（uk_bg_scope_phase）

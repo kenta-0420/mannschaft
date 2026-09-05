@@ -53,6 +53,7 @@ class BillingSubscriptionWebhookServiceTest {
     @Mock private WebhookIdempotencyService idempotencyService;
     @Mock private BillingContractService billingContractService;
     @Mock private BillingContractRepository billingContractRepository;
+    @Mock private BillingPayerHandoverService payerHandoverService;
 
     private BillingSubscriptionWebhookService service;
 
@@ -60,7 +61,7 @@ class BillingSubscriptionWebhookServiceTest {
     void setUp() {
         service = new BillingSubscriptionWebhookService(
                 stripePaymentProvider, idempotencyService, billingContractService,
-                billingContractRepository, FIXED_CLOCK);
+                billingContractRepository, payerHandoverService, FIXED_CLOCK);
     }
 
     private BillingSubscriptionWebhookEventInfo event(
@@ -96,6 +97,33 @@ class BillingSubscriptionWebhookServiceTest {
         assertThat(handled).isTrue();
         verify(billingContractService).activatePaidContract(
                 eq(contractId), eq("cus_1"), eq("sub_bill"), eq(PERIOD_END_LDT));
+        verify(idempotencyService).markProcessed("evt_1", WebhookProcessStatus.PROCESSED);
+    }
+
+    @Test
+    @DisplayName("柱③-B AC-6/AC-31: 引継の新契約（handover_request_id あり）は activatePaidContract を通さず"
+            + "onHandoverCheckoutCompleted へ振り分ける")
+    void handover_checkoutCompleted_routesToHandoverService() {
+        UUID contractId = UUID.randomUUID();
+        UUID handoverRequestId = UUID.randomUUID();
+        BillingContractEntity newContract = billingContract();
+        newContract.setId(contractId);
+        newContract.setStatus(ContractStatus.PENDING_HANDOVER);
+        newContract.setHandoverRequestId(handoverRequestId);
+
+        given(stripePaymentProvider.constructBillingSubscriptionEvent("p", "s"))
+                .willReturn(event("checkout.session.completed", contractId.toString(), "sub_new", PERIOD_END_EPOCH));
+        given(idempotencyService.tryBegin("evt_1", "checkout.session.completed", false)).willReturn(true);
+        given(billingContractRepository.findById(contractId)).willReturn(java.util.Optional.of(newContract));
+
+        boolean handled = service.handleCheckoutCompletedIfBilling("p", "s");
+
+        assertThat(handled).isTrue();
+        verify(payerHandoverService).onHandoverCheckoutCompleted(handoverRequestId, "sub_new");
+        // activatePaidContract は契約を ACTIVE 化し pointer を張るため、旧契約が旧期末までスロットを
+        // 保持している引継では uk_acp_slot と衝突して webhook ごと落ちる（設計書 §3.1 P0-4）。
+        // 「引継のときは絶対に通らない」ことを never() で機械担保する。
+        verify(billingContractService, never()).activatePaidContract(any(), any(), any(), any());
         verify(idempotencyService).markProcessed("evt_1", WebhookProcessStatus.PROCESSED);
     }
 
