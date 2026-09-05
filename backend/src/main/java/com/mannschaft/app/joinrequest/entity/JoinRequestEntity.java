@@ -8,6 +8,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -15,7 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * MEMBER 参加申請エンティティ（柱③-A・CMP-260901-1538）。
@@ -24,12 +25,27 @@ import java.time.LocalDateTime;
  * 参加申請を表す。{@code invite_tokens} と同じ流儀（{@link #teamId} / {@link #organizationId} の
  * どちらか一方のみ非 NULL）でスコープを表現する（クロスドメイン FK 禁止・原則1）。</p>
  *
- * <p>PENDING 中の重複申請は冪等に扱う（サービス層で同一申請を返す。DB 制約では強制しない
- * ＝承認/却下後の再申請を新規行として許容するため、{@code UNIQUE(scope, requester, status)} は
- * 張らない）。</p>
+ * <p>PENDING 中の重複申請は {@code UNIQUE(scope, requester, status)}（TEAM/ORGANIZATION 双方）で
+ * DB 層でも拒否する。サービス層の事前チェックはこれの一次防御に過ぎず、競合時の
+ * {@code DataIntegrityViolationException} をサービス層で捕捉し既存 PENDING 行へ冪等応答する
+ * （二重防御。DB migration: {@code V203.20260905143506__create_join_requests_table.sql}）。</p>
+ *
+ * <p>日時は全て {@link Instant}（起きた瞬間）で保持する。壁時計ではなく瞬間であり、
+ * 番人 {@code DateTimeAndZoneGuardTest} が新規の {@code LocalDateTime} フィールドを禁じている
+ * （金型: {@code VillageInvitationEntity}）。</p>
  */
 @Entity
-@Table(name = "join_requests")
+@Table(
+        name = "join_requests",
+        // 本番 Flyway V203.20260905143506 の uk_jr_team_pending / uk_jr_org_pending を
+        // uniqueConstraints で宣言する。IT は ddl-auto=create（Hibernate が Entity から表生成・
+        // Flyway 非経由）のため、これが無いと IT 表に UNIQUE 制約が作られず、PENDING 中の
+        // 重複申請を DB 層で拒否する検証（検分P1-1/P2）が偽陽性で通ってしまう
+        // （金型: AdDailyStatsEntity#uk_campaign_ad_date）。
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_jr_team_pending", columnNames = {"team_id", "requester_user_id", "status"}),
+                @UniqueConstraint(name = "uk_jr_org_pending", columnNames = {"organization_id", "requester_user_id", "status"})
+        })
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PUBLIC)
@@ -62,20 +78,20 @@ public class JoinRequestEntity extends UuidV7Entity {
     private Long reviewerUserId;
 
     @Column(name = "reviewed_at")
-    private LocalDateTime reviewedAt;
+    private Instant reviewedAt;
 
     @Column(name = "review_comment", length = 500)
     private String reviewComment;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         if (this.createdAt == null) {
             this.createdAt = now;
         }
@@ -84,7 +100,7 @@ public class JoinRequestEntity extends UuidV7Entity {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 
     /** チームスコープの申請か。 */

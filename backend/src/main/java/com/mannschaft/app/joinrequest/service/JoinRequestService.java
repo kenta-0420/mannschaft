@@ -17,6 +17,7 @@ import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,7 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -106,7 +107,25 @@ public class JoinRequestService {
         } else {
             builder.organizationId(scopeId);
         }
-        JoinRequestEntity saved = joinRequestRepository.save(builder.build());
+
+        JoinRequestEntity saved;
+        try {
+            // saveAndFlush で INSERT を即時実行し、UNIQUE 制約違反をこの try 節内で検出する
+            // （UUIDv7 は assigned generator のため save() だけでは flush が遅延し得る）。
+            saved = joinRequestRepository.saveAndFlush(builder.build());
+        } catch (DataIntegrityViolationException ex) {
+            // 競合: 直前の findPending と save の間に他リクエストが同じ PENDING 行を先に
+            // 作成した（TEAM/ORGANIZATION いずれの UNIQUE 制約でも起こり得る）。
+            // MySQL は UNIQUE 制約違反だけではトランザクションを中断しないため、
+            // 同一トランザクション内で再照会し、既存 PENDING 行へ冪等応答する（二重防御）。
+            Optional<JoinRequestEntity> raceWinner = findPending(normalizedScopeType, scopeId, actorUserId);
+            if (raceWinner.isPresent()) {
+                log.info("参加申請の冪等応答（UNIQUE制約競合からの復旧）: scopeType={}, scopeId={}, requesterUserId={}",
+                        normalizedScopeType, scopeId, actorUserId);
+                return JoinRequestResponse.from(raceWinner.get());
+            }
+            throw ex;
+        }
 
         eventPublisher.publishEvent(new JoinRequestCreatedEvent(
                 saved.getId(), normalizedScopeType, scopeId, joinability.name(), actorUserId));
@@ -180,7 +199,7 @@ public class JoinRequestService {
         ScopeJoinability joinability = loadJoinableScope(normalizedScopeType, scopeId);
         accessControlService.checkAdminOrAbove(actorUserId, scopeId, normalizedScopeType);
 
-        JoinRequestEntity req = loadRequestForScope(normalizedScopeType, scopeId, requestId);
+        JoinRequestEntity req = lockRequestForScope(normalizedScopeType, scopeId, requestId);
         ensurePending(req);
 
         if (accessControlService.isMember(req.getRequesterUserId(), scopeId, normalizedScopeType)) {
@@ -192,7 +211,7 @@ public class JoinRequestService {
 
         req.setStatus(JoinRequestStatus.APPROVED);
         req.setReviewerUserId(actorUserId);
-        req.setReviewedAt(LocalDateTime.now());
+        req.setReviewedAt(Instant.now());
         req.setReviewComment(review != null ? review.reviewComment() : null);
         JoinRequestEntity saved = joinRequestRepository.save(req);
 
@@ -219,12 +238,12 @@ public class JoinRequestService {
         ScopeJoinability joinability = loadJoinableScope(normalizedScopeType, scopeId);
         accessControlService.checkAdminOrAbove(actorUserId, scopeId, normalizedScopeType);
 
-        JoinRequestEntity req = loadRequestForScope(normalizedScopeType, scopeId, requestId);
+        JoinRequestEntity req = lockRequestForScope(normalizedScopeType, scopeId, requestId);
         ensurePending(req);
 
         req.setStatus(JoinRequestStatus.REJECTED);
         req.setReviewerUserId(actorUserId);
-        req.setReviewedAt(LocalDateTime.now());
+        req.setReviewedAt(Instant.now());
         req.setReviewComment(review != null ? review.reviewComment() : null);
         JoinRequestEntity saved = joinRequestRepository.save(req);
 
@@ -281,9 +300,17 @@ public class JoinRequestService {
                         scopeId, requesterUserId, JoinRequestStatus.PENDING);
     }
 
-    /** 申請を取得し scope が一致することを確認する（IDOR 対策・不一致は不在と同一コード）。 */
-    private JoinRequestEntity loadRequestForScope(String scopeType, Long scopeId, UUID requestId) {
-        JoinRequestEntity req = joinRequestRepository.findById(requestId)
+    /**
+     * 申請を悲観ロック付きで取得し scope が一致することを確認する
+     * （IDOR 対策・不一致は不在と同一コード）。
+     *
+     * <p>approve/reject の直列化（レビューP1-2）: {@code findByIdForUpdate} で行ロックを取得後に
+     * 呼び出し元が {@link #ensurePending} で PENDING 状態を再確認することで、同時 approve/reject が
+     * 双方とも PENDING を確認してしまう競合状態を防ぐ。片方がロックを取得している間、もう片方は
+     * ロック解放（コミット）を待ってから読み直すため、後着は必ず更新後の状態を見る。</p>
+     */
+    private JoinRequestEntity lockRequestForScope(String scopeType, Long scopeId, UUID requestId) {
+        JoinRequestEntity req = joinRequestRepository.findByIdForUpdate(requestId)
                 .orElseThrow(() -> new BusinessException(JoinRequestErrorCode.REQUEST_NOT_FOUND, HttpStatus.NOT_FOUND));
         Long reqScopeId = SCOPE_TEAM.equals(scopeType) ? req.getTeamId() : req.getOrganizationId();
         if (reqScopeId == null || !reqScopeId.equals(scopeId)) {

@@ -99,7 +99,7 @@ class JoinRequestServiceTest {
             given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(joinRequestRepository.findByTeamIdAndRequesterUserIdAndStatus(
                     TEAM_ID, USER_ID, JoinRequestStatus.PENDING)).willReturn(Optional.empty());
-            given(joinRequestRepository.save(any(JoinRequestEntity.class)))
+            given(joinRequestRepository.saveAndFlush(any(JoinRequestEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
             JoinRequestResponse response = service.createRequest(
@@ -182,7 +182,27 @@ class JoinRequestServiceTest {
             JoinRequestResponse response = service.createRequest("TEAM", TEAM_ID, USER_ID, null);
 
             assertThat(response.requesterUserId()).isEqualTo(USER_ID);
-            verify(joinRequestRepository, never()).save(any(JoinRequestEntity.class));
+            verify(joinRequestRepository, never()).saveAndFlush(any(JoinRequestEntity.class));
+        }
+
+        @Test
+        @DisplayName("冪等性: findPending後-save前に競合しUNIQUE制約違反が起きても既存PENDING行へ復旧する")
+        void 冪等_UNIQUE制約競合からの復旧() {
+            given(teamService.findJoinabilitySummary(TEAM_ID)).willReturn(Optional.of(publicActiveTeam()));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            JoinRequestEntity raceWinner = pendingTeamRequest();
+            // 1回目の findPending（事前チェック）では未だ競合行が見えない → 2回目（catch節での再照会）で見える。
+            given(joinRequestRepository.findByTeamIdAndRequesterUserIdAndStatus(
+                    TEAM_ID, USER_ID, JoinRequestStatus.PENDING))
+                    .willReturn(Optional.empty())
+                    .willReturn(Optional.of(raceWinner));
+            given(joinRequestRepository.saveAndFlush(any(JoinRequestEntity.class)))
+                    .willThrow(new org.springframework.dao.DataIntegrityViolationException("uk_jr_team_pending"));
+
+            JoinRequestResponse response = service.createRequest("TEAM", TEAM_ID, USER_ID, null);
+
+            assertThat(response.requesterUserId()).isEqualTo(USER_ID);
+            verify(eventPublisher, never()).publishEvent(any(JoinRequestCreatedEvent.class));
         }
 
         @Test
@@ -192,7 +212,7 @@ class JoinRequestServiceTest {
             given(accessControlService.isMember(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             given(joinRequestRepository.findByOrganizationIdAndRequesterUserIdAndStatus(
                     ORG_ID, USER_ID, JoinRequestStatus.PENDING)).willReturn(Optional.empty());
-            given(joinRequestRepository.save(any(JoinRequestEntity.class)))
+            given(joinRequestRepository.saveAndFlush(any(JoinRequestEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
             JoinRequestResponse response = service.createRequest("ORGANIZATION", ORG_ID, USER_ID, null);
@@ -226,7 +246,7 @@ class JoinRequestServiceTest {
             req.setId(requestId);
 
             given(teamService.findJoinabilitySummary(TEAM_ID)).willReturn(Optional.of(publicActiveTeam()));
-            given(joinRequestRepository.findById(requestId)).willReturn(Optional.of(req));
+            given(joinRequestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(req));
             given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(joinRequestRepository.save(any(JoinRequestEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -249,7 +269,7 @@ class JoinRequestServiceTest {
             req.setStatus(JoinRequestStatus.APPROVED);
 
             given(teamService.findJoinabilitySummary(TEAM_ID)).willReturn(Optional.of(publicActiveTeam()));
-            given(joinRequestRepository.findById(requestId)).willReturn(Optional.of(req));
+            given(joinRequestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(req));
 
             assertThatThrownBy(() -> service.approve("TEAM", TEAM_ID, requestId, ADMIN_ID, null))
                     .isInstanceOfSatisfying(BusinessException.class, e ->
@@ -269,7 +289,7 @@ class JoinRequestServiceTest {
             req.setId(requestId);
 
             given(teamService.findJoinabilitySummary(TEAM_ID)).willReturn(Optional.of(publicActiveTeam()));
-            given(joinRequestRepository.findById(requestId)).willReturn(Optional.of(req));
+            given(joinRequestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(req));
 
             assertThatThrownBy(() -> service.approve("TEAM", TEAM_ID, requestId, ADMIN_ID, null))
                     .isInstanceOfSatisfying(BusinessException.class, e ->
@@ -304,7 +324,7 @@ class JoinRequestServiceTest {
             req.setId(requestId);
 
             given(teamService.findJoinabilitySummary(TEAM_ID)).willReturn(Optional.of(publicActiveTeam()));
-            given(joinRequestRepository.findById(requestId)).willReturn(Optional.of(req));
+            given(joinRequestRepository.findByIdForUpdate(requestId)).willReturn(Optional.of(req));
             given(joinRequestRepository.save(any(JoinRequestEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 

@@ -3,11 +3,13 @@ package com.mannschaft.app.joinrequest.dto;
 import com.mannschaft.app.joinrequest.entity.JoinRequestEntity;
 import com.mannschaft.app.joinrequest.entity.JoinRequestStatus;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
  * 参加申請レスポンス（柱③-A・CMP-260901-1538）。
+ *
+ * <p>日時は {@link Instant}（起きた瞬間）で保持する（{@code DateTimeAndZoneGuardTest} 準拠）。</p>
  */
 public record JoinRequestResponse(
         UUID id,
@@ -17,9 +19,9 @@ public record JoinRequestResponse(
         String message,
         JoinRequestStatus status,
         Long reviewerUserId,
-        LocalDateTime reviewedAt,
+        Instant reviewedAt,
         String reviewComment,
-        LocalDateTime createdAt
+        Instant createdAt
 ) {
 
     public static JoinRequestResponse from(JoinRequestEntity e) {

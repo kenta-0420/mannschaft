@@ -11,10 +11,10 @@ CREATE TABLE join_requests (
     message             VARCHAR(500)    NULL                                    COMMENT '申請時の任意の一言メッセージ',
     status              VARCHAR(20)     NOT NULL DEFAULT 'PENDING'              COMMENT 'PENDING/APPROVED/REJECTED',
     reviewer_user_id    BIGINT UNSIGNED NULL                                    COMMENT '審査したADMIN/DEPUTY_ADMINのユーザーID',
-    reviewed_at         DATETIME(6)     NULL,
+    reviewed_at         TIMESTAMP(6)    NULL,
     review_comment      VARCHAR(500)    NULL,
-    created_at          DATETIME(6)     NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-    updated_at          DATETIME(6)     NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    created_at          TIMESTAMP(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at          TIMESTAMP(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     -- PENDING 中の重複申請を DB 層でも拒否する（サービス層の冪等応答と二重防御）。
     -- status を含めるため APPROVED/REJECTED 後の再申請（新規 PENDING 行）は別キーとして許容される。

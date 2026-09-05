@@ -108,6 +108,17 @@ class MembershipGrantServiceTest {
     }
 
     @Test
+    @DisplayName("grantRole: 既にアクティブメンバーなら冪等にスキップする（二重付与防止・レビューP1-2）")
+    void grantRole_既にアクティブメンバーならスキップ() {
+        given(membershipService.isActiveMember(USER_ID, ScopeType.TEAM, TEAM_ID)).willReturn(true);
+
+        service.grantRole("TEAM", TEAM_ID, USER_ID, ROLE_ID, GRANTED_BY, "JOIN_REQUEST");
+
+        verify(userRoleRepository, never()).save(any(UserRoleEntity.class));
+        verify(membershipService, never()).join(any(MembershipCreateRequest.class));
+    }
+
+    @Test
     @DisplayName("grantMemberRole: MEMBER ロールがマスタに存在しなければ例外で入会もしない")
     void grantMemberRole_ロール不在() {
         given(roleRepository.findByName("MEMBER")).willReturn(Optional.empty());

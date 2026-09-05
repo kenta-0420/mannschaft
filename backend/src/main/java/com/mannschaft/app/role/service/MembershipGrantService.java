@@ -68,6 +68,17 @@ public class MembershipGrantService {
      */
     @Transactional
     public void grantRole(String scopeType, Long scopeId, Long userId, Long roleId, Long grantedBy, String source) {
+        // 冪等性チェック（P1-2）: 既に当該スコープのアクティブメンバーであれば、user_roles への
+        // 二重割当・membershipへの重複入会を行わずスキップする。同時 approve の直列化は
+        // JoinRequestService#approve の悲観ロックが一次防御だが、招待承諾など他の呼び出し元も
+        // 経由する共通経路であるため、本サービス自体にも二重防御として持たせる。
+        ScopeType st = "TEAM".equals(scopeType) ? ScopeType.TEAM : ScopeType.ORGANIZATION;
+        if (membershipService.isActiveMember(userId, st, scopeId)) {
+            log.info("ロール付与をスキップ（既にアクティブメンバー・冪等）: scopeType={}, scopeId={}, userId={}, source={}",
+                    scopeType, scopeId, userId, source);
+            return;
+        }
+
         var roleBuilder = UserRoleEntity.builder()
                 .userId(userId)
                 .roleId(roleId)
