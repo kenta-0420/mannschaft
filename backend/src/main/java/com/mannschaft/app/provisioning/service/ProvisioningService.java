@@ -83,7 +83,9 @@ public class ProvisioningService {
 
         String slug = organizationService.createUniqueSlug(request.name());
         // AC3: PRIVATE + PROVISIONED 強制（OrganizationService#createProvisionedOrganization に固定）。
-        Long orgId = organizationService.createProvisionedOrganization(request.name(), slug);
+        // 柱③-A: 通常作成と同じ同名確認フローを通す（confirmDuplicate/fingerprint はリクエスト由来）。
+        Long orgId = organizationService.createProvisionedOrganization(
+                request.name(), slug, actorUserId, request.confirmDuplicate(), request.duplicateNameFingerprint());
 
         ProvisioningInvitationEntity invitation = issueInvitation(
                 actorUserId, request.inviteEmail(), orgId, null, request.name(), true);
@@ -102,7 +104,9 @@ public class ProvisioningService {
 
         String slug = teamService.createUniqueSlug(request.name());
         // AC3相当（MEMBERS_AND_ABOVE + PROVISIONED 強制）は TeamService#createProvisionedTeam に固定。
-        Long teamId = teamService.createProvisionedTeam(request.name(), slug);
+        // 柱③-A: 通常作成と同じ同名確認フローを通す（confirmDuplicate/fingerprint はリクエスト由来）。
+        Long teamId = teamService.createProvisionedTeam(
+                request.name(), slug, actorUserId, request.confirmDuplicate(), request.duplicateNameFingerprint());
 
         ProvisioningInvitationEntity invitation = issueInvitation(
                 actorUserId, request.inviteEmail(), null, teamId, request.name(), true);
