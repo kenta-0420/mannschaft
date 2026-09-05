@@ -6,9 +6,11 @@ import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
+import com.mannschaft.app.receipt.ReceiptArchiveKind;
 import com.mannschaft.app.receipt.ReceiptErrorCode;
 import com.mannschaft.app.receipt.ReceiptMapper;
 import com.mannschaft.app.receipt.ReceiptPdfGenerator;
+import com.mannschaft.app.receipt.ReceiptPdfStatus;
 import com.mannschaft.app.receipt.ReceiptScopeType;
 import com.mannschaft.app.receipt.ReceiptStatus;
 import com.mannschaft.app.receipt.dto.BulkCreateReceiptRequest;
@@ -62,6 +64,7 @@ public class ReceiptService {
     private final NameResolverService nameResolverService;
     private final MemberPaymentRepository memberPaymentRepository;
     private final AccessControlService accessControlService;
+    private final ReceiptPdfArchiveService pdfArchiveService;
 
     /**
      * 領収書を発行する。
@@ -535,14 +538,30 @@ public class ReceiptService {
      * @return PDF バイト配列
      */
     public byte[] getReceiptPdf(ReceiptScopeType scopeType, Long scopeId, Long receiptId, Long actorUserId) {
+        return getReceiptPdf(scopeType, scopeId, receiptId, actorUserId, null);
+    }
+
+    /**
+     * 領収書 PDF のバイト配列を取得する（種別指定つき）。
+     *
+     * <p>F08.12 §9 是正: 初回取得時に生成 PDF をストレージへ保存し
+     * {@code receipt_pdf_archives} に記録する。2 回目以降は再生成せず保存済みの原本を返す
+     * （AC-38 / AC-39）。旧実装は {@code updatePdfStorageKey()} の呼び出し元が 0 件で
+     * 常に再生成していた。</p>
+     *
+     * @param kind 明示指定された種別（{@code ORIGINAL} / {@code VOIDED}）。{@code null} の場合は
+     *             現在の状態（{@code voided_at}）から解決する（設計書 §3.4.1）
+     */
+    @Transactional
+    public byte[] getReceiptPdf(ReceiptScopeType scopeType, Long scopeId, Long receiptId, Long actorUserId,
+                                 ReceiptArchiveKind kind) {
         ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
         accessControlService.checkMembership(actorUserId, receipt.getScopeId(), receipt.getScopeType().name());
         List<ReceiptLineItemEntity> lineItems = lineItemRepository.findByReceiptIdOrderBySortOrderAsc(receiptId);
 
-        if (receipt.isVoided()) {
-            return pdfGenerator.generateVoided(receipt, lineItems, null, null, null);
-        }
-        return pdfGenerator.generate(receipt, lineItems, null, null, null);
+        byte[] pdf = pdfArchiveService.getOrArchive(receipt, lineItems, kind);
+        receiptRepository.save(receipt);
+        return pdf;
     }
 
     /**
@@ -658,7 +677,12 @@ public class ReceiptService {
                         .build())
                 .toList();
 
-        String pdfStatus = receipt.getPdfStorageKey() != null ? "READY" : "GENERATING";
+        // F08.12 §3.1 是正: pdf_storage_key の NULL 判定からの導出をやめ、pdf_status 列を読む。
+        // 旧実装は updatePdfStorageKey() の呼び出し元が 0 件であるため常に GENERATING を返し、
+        // 「失敗したのか、まだ生成中なのか」を区別できなかった。
+        String pdfStatus = receipt.getPdfStatus() == null
+                ? ReceiptPdfStatus.GENERATING.name()
+                : receipt.getPdfStatus().name();
 
         return ReceiptResponse.builder()
                 .id(receipt.getId())

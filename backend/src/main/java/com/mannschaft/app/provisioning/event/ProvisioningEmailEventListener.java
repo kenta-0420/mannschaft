@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.web.util.HtmlUtils;
 
 import java.util.Map;
 
@@ -55,15 +56,16 @@ public class ProvisioningEmailEventListener {
             // BE/FE 間の確定契約であり、②-4 の実装時にこの文字列と齟齬なく一致させること
             // （変更する場合は BE 側のこの1箇所も同時に更新する）。
             String acceptUrl = baseUrl + "/provisioning/accept#token=" + event.plaintextToken();
-            String scopeName = event.scopeName() != null ? event.scopeName() : "";
-
-            // 検分第2巡 P1-2 根治: EmailOutboxServiceImpl#renderTemplate のスルー方式
-            // （PROVISIONING_ADMIN_INVITE を通す case を新設）に合わせ、件名・本文はここで
-            // 組み立てて payloadVars の subject/body として渡す（金型: DataExportService
-            // #sendCompletionEmail）。renderTemplate 側に case を追加しただけでは、そこが
-            // vars から subject/body を取り出すだけなので、呼び出し元での組み立てが必須。
+            String rawScopeName = event.scopeName() != null ? event.scopeName() : "";
+            // 根治: 組織名/チーム名はユーザー入力であり、メール本文（HTML）へ生埋め込みすると
+            // XSS の温床になる（金型: TodoSharedMemoService の HtmlUtils.htmlEscape 運用）。
+            // 件名はプレーンテキストとして扱われるためエスケープ不要だが、本文の HTML には必ず
+            // エスケープ後の scopeName のみを使う。acceptUrl はサーバー側で組み立てた固定書式
+            // （baseUrl + 固定パス + トークン）であり外部入力を含まないためエスケープ対象外。
+            String scopeName = rawScopeName;
+            String escapedScopeName = HtmlUtils.htmlEscape(rawScopeName);
             String subject = "【" + scopeName + "】管理者招待のお知らせ";
-            String htmlBody = "<p>" + scopeName + " の管理者としてご招待いたします。</p>"
+            String htmlBody = "<p>" + escapedScopeName + " の管理者としてご招待いたします。</p>"
                     + "<p>以下のリンクから招待を承諾してください（有効期限は発行から7日間です）。</p>"
                     + "<p><a href=\"" + acceptUrl + "\">" + acceptUrl + "</a></p>";
 

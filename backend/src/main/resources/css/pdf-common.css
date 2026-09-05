@@ -16,14 +16,14 @@
  */
 @font-face {
     font-family: 'NotoSansJP';
-    src: url('/fonts/NotoSansJP-Regular.ttf');
+    src: url('fonts/NotoSansJP-Regular.ttf');
     -fs-pdf-font-embed: embed;
     -fs-pdf-font-encoding: Identity-H;
 }
 
 @font-face {
     font-family: 'NotoSerifJP';
-    src: url('/fonts/NotoSerifJP-Regular.ttf');
+    src: url('fonts/NotoSerifJP-Regular.ttf');
     -fs-pdf-font-embed: embed;
     -fs-pdf-font-encoding: Identity-H;
 }

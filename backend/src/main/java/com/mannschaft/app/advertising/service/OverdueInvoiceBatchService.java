@@ -1,7 +1,5 @@
 package com.mannschaft.app.advertising.service;
 
-import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
-import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
@@ -9,7 +7,6 @@ import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -44,6 +41,16 @@ import java.util.List;
  * <h2>外向き契約</h2>
  * <p>{@code markOverdueInvoices} は是正前後とも戻り値 {@code void}。{@code @BatchEndpoint} 経由の
  * 管理コンソール実行も戻り値を持たないため、FE / OpenAPI への波及はない。</p>
+ *
+ * <h2>F08.12 §5.0: 後払い廃止に伴う定期実行の停止</h2>
+ * <p>後払い（{@code BillingMethod.INVOICE}）を新規登録で選べなくしたため、{@code due_date}
+ * を設定していた唯一の経路（{@code MonthlyInvoiceBatchService} の INVOICE 分岐）が無くなり、
+ * 本バッチの抽出条件（{@code status = ISSUED かつ due_date < today}）に該当する行は
+ * 恒久的にゼロ件になる。毎朝 0 件を舐めるだけのバッチを回し続けないため
+ * {@code @Scheduled} を外し、{@code @BatchEndpoint} からの手動実行のみ残す
+ * （将来、与信審査つきの後払いを復活させる場合に再開する）。クラス自体は削除しない
+ * （ArchUnit 凍結ストア・{@code no_arg_now_freeze.txt}・{@code shard-weights.properties}
+ * にクラス名が載っており、削除は本戦役の目的外の変更を混ぜることになるため）。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -54,14 +61,22 @@ public class OverdueInvoiceBatchService {
     private final OverdueInvoiceMarkRunner overdueInvoiceMarkRunner;
 
     /**
-     * OVERDUE 自動化バッチ。毎日 AM 6:00 (JST) に実行。
+     * OVERDUE 自動化バッチ。
      * status = ISSUED かつ due_date &lt; TODAY の請求書を 1 件ずつ独立トランザクションで OVERDUE に更新する。
+     *
+     * <p>F08.12 §5.0 により後払い廃止に伴い定期実行（{@code @Scheduled}）は停止した。
+     * {@code @BatchEndpoint} からの手動実行のみ残す。</p>
+     *
+     * <p><b>{@code @BackgroundFeaturePolicy} は付けない。</b> 同アノテーションの
+     * {@code SKIP_WHEN_DISABLED} は {@code @Scheduled} 専用であり（
+     * {@link com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode#SKIP_WHEN_DISABLED}）、
+     * {@code @Scheduled} を外した本メソッドに残すと番人
+     * （{@code BackgroundFeaturePolicyAnnotationGuardTest}）に検出される。
+     * {@code @BatchEndpoint} 経由の手動起動のみで、フラグによる停止判定自体が不要になったため、
+     * 同種の一回限り／手動専用バッチ（{@code UserBirthYearBackfillBatchService#execute}）に倣い、
+     * アノテーションごと外すのが正しい。</p>
      */
-    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
-            gateKeys = "FEATURE_PROMOTION_ENABLED",
-            reason = "支払期限切れ判定は due_date が本日より前という時刻条件のみで冪等に決まるため、止めても再開後の初回実行で同じ請求書をまとめて OVERDUE にできる")
-    @BatchEndpoint(name = "advertising-invoice-overdue-mark-daily", description = "支払期限切れの広告請求書を OVERDUE に更新する（毎日 06:00）")
-    @Scheduled(cron = "0 0 6 * * *", zone = "Asia/Tokyo")
+    @BatchEndpoint(name = "advertising-invoice-overdue-mark-daily", description = "支払期限切れの広告請求書を OVERDUE に更新する（手動実行のみ。後払い廃止によりスケジュール停止）")
     @SchedulerLock(name = "overdueInvoiceMark", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     public void markOverdueInvoices() {
         LocalDate today = LocalDate.now();

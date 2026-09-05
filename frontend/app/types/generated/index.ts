@@ -2474,6 +2474,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/receipt-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 運営の発行者設定取得 */
+        get: operations["getSettings_6"];
+        /** 運営の発行者設定更新 */
+        put: operations["updateSettings_6"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/nav-features/{key}": {
         parameters: {
             query?: never;
@@ -3106,12 +3124,12 @@ export interface paths {
             cookie?: never;
         };
         /** リマインド設定取得 */
-        get: operations["getSettings_6"];
+        get: operations["getSettings_7"];
         /**
          * リマインド設定更新
          * @description apply_to: NEW_ONLY（新規メモのみ）/ UNSENT（未送信枠を再計算）/ ALL（全未整理メモを再計算）
          */
-        put: operations["updateSettings_6"];
+        put: operations["updateSettings_7"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3185,12 +3203,12 @@ export interface paths {
          * ウォレット設定取得
          * @description 自分の設定を返す。レコードが無ければデフォルト（オプトアウト状態）で作成して返却
          */
-        get: operations["getSettings_7"];
+        get: operations["getSettings_8"];
         /**
          * ウォレット設定更新
          * @description オプトイン・規約同意・WebAuthn 要求設定を差分適用で更新
          */
-        put: operations["updateSettings_7"];
+        put: operations["updateSettings_8"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3385,9 +3403,9 @@ export interface paths {
             cookie?: never;
         };
         /** 組織駐車場設定取得 */
-        get: operations["getSettings_8"];
+        get: operations["getSettings_9"];
         /** 組織駐車場設定更新 */
-        put: operations["updateSettings_8"];
+        put: operations["updateSettings_9"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3495,9 +3513,9 @@ export interface paths {
             cookie?: never;
         };
         /** 施設予約設定取得 */
-        get: operations["getSettings_9"];
+        get: operations["getSettings_10"];
         /** 施設予約設定更新 */
-        put: operations["updateSettings_9"];
+        put: operations["updateSettings_10"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4216,9 +4234,9 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知設定取得（組織） */
-        get: operations["getSettings_10"];
+        get: operations["getSettings_11"];
         /** 確認通知設定更新（組織） */
-        put: operations["updateSettings_10"];
+        put: operations["updateSettings_11"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4370,9 +4388,9 @@ export interface paths {
             cookie?: never;
         };
         /** グローバル通知設定取得 */
-        get: operations["getSettings_11"];
+        get: operations["getSettings_12"];
         /** グローバル通知設定更新 */
-        put: operations["updateSettings_11"];
+        put: operations["updateSettings_12"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4537,9 +4555,9 @@ export interface paths {
             cookie?: never;
         };
         /** 想起通知設定取得 */
-        get: operations["getSettings_12"];
+        get: operations["getSettings_13"];
         /** 想起通知設定更新 */
-        put: operations["updateSettings_12"];
+        put: operations["updateSettings_13"];
         post?: never;
         delete?: never;
         options?: never;
@@ -25311,7 +25329,7 @@ export interface paths {
             cookie?: never;
         };
         /** 予約設定（チームポリシー）取得 */
-        get: operations["getSettings_13"];
+        get: operations["getSettings_14"];
         put?: never;
         post?: never;
         delete?: never;
@@ -25436,14 +25454,14 @@ export interface paths {
             cookie?: never;
         };
         /** 設定取得 */
-        get: operations["getSettings_14"];
+        get: operations["getSettings_15"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 設定更新 */
-        patch: operations["updateSettings_13"];
+        patch: operations["updateSettings_14"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/queue/counters/{counterId}": {
@@ -26458,14 +26476,14 @@ export interface paths {
             cookie?: never;
         };
         /** チームシフト設定取得（メンバー限定） */
-        get: operations["getSettings_15"];
+        get: operations["getSettings_16"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** チームシフト設定更新（ADMIN/DEPUTY のみ） */
-        patch: operations["updateSettings_14"];
+        patch: operations["updateSettings_15"];
         trace?: never;
     };
     "/api/v1/teams/{slug}/restore": {
@@ -27547,7 +27565,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** スレッド開閉 */
-        patch: operations["updateSettings_15"];
+        patch: operations["updateSettings_16"];
         trace?: never;
     };
     "/api/v1/schedule-delegations/{delegationId}/reject": {
@@ -29766,7 +29784,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チャンネル個人設定 */
-        patch: operations["updateSettings_16"];
+        patch: operations["updateSettings_17"];
         trace?: never;
     };
     "/api/v1/chat/channels/{channelId}/members/{userId}/role": {
@@ -30327,7 +30345,7 @@ export interface paths {
             cookie?: never;
         };
         /** 発行者設定取得 */
-        get: operations["getSettings_16"];
+        get: operations["getSettings_17"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30565,14 +30583,14 @@ export interface paths {
             cookie?: never;
         };
         /** 行動メモ設定取得 */
-        get: operations["getSettings_17"];
+        get: operations["getSettings_18"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 行動メモ設定更新 */
-        patch: operations["updateSettings_17"];
+        patch: operations["updateSettings_18"];
         trace?: never;
     };
     "/sitemap.xml": {
@@ -35638,6 +35656,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 運営領収書一覧 */
+        get: operations["listReceipts_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/receipts/retention-expired": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 保存期限到来アーカイブ一覧（削除は行わない） */
+        get: operations["listRetentionExpiredArchives"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/provisioning/invitations": {
         parameters: {
             query?: never;
@@ -35731,7 +35783,7 @@ export interface paths {
             cookie?: never;
         };
         /** モデレーション設定一覧取得 */
-        get: operations["getSettings_18"];
+        get: operations["getSettings_19"];
         put?: never;
         post?: never;
         delete?: never;
@@ -51330,6 +51382,56 @@ export interface components {
             name?: string;
             parentId?: string;
         };
+        UpdateIssuerSettingsRequest: {
+            address?: string;
+            autoResetNumber?: boolean;
+            customFooter?: string;
+            /** Format: int64 */
+            defaultSealUserId?: number;
+            defaultSealVariant?: string;
+            /** Format: int32 */
+            fiscalYearStartMonth?: number;
+            invoiceRegistrationNumber?: string;
+            isQualifiedInvoicer?: boolean;
+            issuerName?: string;
+            phone?: string;
+            postalCode?: string;
+            receiptNoteTemplate?: string;
+            receiptNumberPrefix?: string;
+        };
+        ApiResponseIssuerSettingsResponse: {
+            data?: components["schemas"]["IssuerSettingsResponse"];
+        };
+        IssuerSettingsResponse: {
+            address?: string;
+            autoResetNumber?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            customFooter?: string;
+            /** Format: int64 */
+            defaultSealUserId?: number;
+            defaultSealVariant?: string;
+            /** Format: int32 */
+            fiscalYearStartMonth?: number;
+            /** Format: int64 */
+            id?: number;
+            invoiceRegistrationNumber?: string;
+            isQualifiedInvoicer?: boolean;
+            issuerName?: string;
+            logoStorageKey?: string;
+            logoUrl?: string;
+            /** Format: int32 */
+            nextReceiptNumber?: number;
+            phone?: string;
+            postalCode?: string;
+            receiptNoteTemplate?: string;
+            receiptNumberPrefix?: string;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeType?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         NavFeatureUpdateRequest: {
             enabled: boolean;
             fixed: boolean;
@@ -60304,7 +60406,7 @@ export interface components {
         };
         RegisterAdvertiserRequest: {
             /** @enum {string} */
-            billingMethod: "STRIPE" | "INVOICE";
+            billingMethod?: "STRIPE" | "INVOICE";
             companyName?: string;
             contactEmail?: string;
         };
@@ -61887,6 +61989,7 @@ export interface components {
         };
         ShiftSlotResponse: {
             assignedUserIds?: number[];
+            assignmentMasked?: boolean;
             /** Format: int64 */
             id?: number;
             note?: string;
@@ -66844,39 +66947,6 @@ export interface components {
             /** Format: int32 */
             voidedCount?: number;
         };
-        ApiResponseIssuerSettingsResponse: {
-            data?: components["schemas"]["IssuerSettingsResponse"];
-        };
-        IssuerSettingsResponse: {
-            address?: string;
-            autoResetNumber?: boolean;
-            /** Format: date-time */
-            createdAt?: string;
-            customFooter?: string;
-            /** Format: int64 */
-            defaultSealUserId?: number;
-            defaultSealVariant?: string;
-            /** Format: int32 */
-            fiscalYearStartMonth?: number;
-            /** Format: int64 */
-            id?: number;
-            invoiceRegistrationNumber?: string;
-            isQualifiedInvoicer?: boolean;
-            issuerName?: string;
-            logoStorageKey?: string;
-            logoUrl?: string;
-            /** Format: int32 */
-            nextReceiptNumber?: number;
-            phone?: string;
-            postalCode?: string;
-            receiptNoteTemplate?: string;
-            receiptNumberPrefix?: string;
-            /** Format: int64 */
-            scopeId?: number;
-            scopeType?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-        };
         ApproveQueueRequest: {
             amount?: number;
             description?: string;
@@ -69596,23 +69666,6 @@ export interface components {
             freezeUntil?: string;
             guidelineSection?: string;
             note?: string;
-        };
-        UpdateIssuerSettingsRequest: {
-            address?: string;
-            autoResetNumber?: boolean;
-            customFooter?: string;
-            /** Format: int64 */
-            defaultSealUserId?: number;
-            defaultSealVariant?: string;
-            /** Format: int32 */
-            fiscalYearStartMonth?: number;
-            invoiceRegistrationNumber?: string;
-            isQualifiedInvoicer?: boolean;
-            issuerName?: string;
-            phone?: string;
-            postalCode?: string;
-            receiptNoteTemplate?: string;
-            receiptNumberPrefix?: string;
         };
         UpdateSynonymRequest: {
             memo?: string;
@@ -74037,6 +74090,52 @@ export interface components {
         PagedResponseReportResponse: {
             data?: components["schemas"]["ReportResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        ApiResponsePageResponsePlatformReceiptSummaryResponse: {
+            data?: components["schemas"]["PageResponsePlatformReceiptSummaryResponse"];
+        };
+        PageResponsePlatformReceiptSummaryResponse: {
+            content?: components["schemas"]["PlatformReceiptSummaryResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+        };
+        PlatformReceiptSummaryResponse: {
+            amount?: number;
+            amountExclTax?: number;
+            /** Format: int64 */
+            id?: number;
+            invoiceRegistrationNumber?: string;
+            isQualifiedInvoice?: boolean;
+            /** Format: date-time */
+            issuedAt?: string;
+            pdfStatus?: string;
+            receiptNumber?: string;
+            recipientName?: string;
+            sourceRef?: string;
+            sourceType?: string;
+            taxAmount?: number;
+            /** Format: date-time */
+            voidedAt?: string;
+        };
+        ApiResponseListRetentionExpiredArchiveResponse: {
+            data?: components["schemas"]["RetentionExpiredArchiveResponse"][];
+        };
+        RetentionExpiredArchiveResponse: {
+            archiveKind?: string;
+            /** Format: date-time */
+            archivedAt?: string;
+            /** Format: int64 */
+            receiptId?: number;
+            retentionBackend?: string;
+            /** Format: date */
+            retentionUntil?: string;
+            storageKey?: string;
         };
         BillingRecordResponse: {
             /** Format: date-time */
@@ -87835,6 +87934,50 @@ export interface operations {
             };
         };
     };
+    getSettings_6: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseIssuerSettingsResponse"];
+                };
+            };
+        };
+    };
+    updateSettings_6: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateIssuerSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseIssuerSettingsResponse"];
+                };
+            };
+        };
+    };
     update_20: {
         parameters: {
             query?: never;
@@ -89468,7 +89611,7 @@ export interface operations {
             };
         };
     };
-    getSettings_6: {
+    getSettings_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -89488,7 +89631,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_6: {
+    updateSettings_7: {
         parameters: {
             query?: {
                 apply_to?: string;
@@ -89680,7 +89823,7 @@ export interface operations {
             };
         };
     };
-    getSettings_7: {
+    getSettings_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -89700,7 +89843,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_7: {
+    updateSettings_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -90182,7 +90325,7 @@ export interface operations {
             };
         };
     };
-    getSettings_8: {
+    getSettings_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -90204,7 +90347,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_8: {
+    updateSettings_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -90522,7 +90665,7 @@ export interface operations {
             };
         };
     };
-    getSettings_9: {
+    getSettings_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -90544,7 +90687,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_9: {
+    updateSettings_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -92717,7 +92860,7 @@ export interface operations {
             };
         };
     };
-    getSettings_10: {
+    getSettings_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -92739,7 +92882,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_10: {
+    updateSettings_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -93123,7 +93266,7 @@ export interface operations {
             };
         };
     };
-    getSettings_11: {
+    getSettings_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -93143,7 +93286,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_11: {
+    updateSettings_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -93518,7 +93661,7 @@ export interface operations {
             };
         };
     };
-    getSettings_12: {
+    getSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -93538,7 +93681,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_12: {
+    updateSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -133815,7 +133958,7 @@ export interface operations {
             };
         };
     };
-    getSettings_13: {
+    getSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -134132,7 +134275,7 @@ export interface operations {
             };
         };
     };
-    getSettings_14: {
+    getSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -134154,7 +134297,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_13: {
+    updateSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -136173,7 +136316,7 @@ export interface operations {
             };
         };
     };
-    getSettings_15: {
+    getSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -136204,7 +136347,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_14: {
+    updateSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -138215,7 +138358,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_15: {
+    updateSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -142794,7 +142937,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_16: {
+    updateSettings_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -143816,7 +143959,7 @@ export interface operations {
             };
         };
     };
-    getSettings_16: {
+    getSettings_17: {
         parameters: {
             query: {
                 scopeType: string;
@@ -144249,7 +144392,7 @@ export interface operations {
             };
         };
     };
-    getSettings_17: {
+    getSettings_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -144269,7 +144412,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_17: {
+    updateSettings_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -151365,6 +151508,50 @@ export interface operations {
             };
         };
     };
+    listReceipts_1: {
+        parameters: {
+            query?: {
+                include_voided?: boolean;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePageResponsePlatformReceiptSummaryResponse"];
+                };
+            };
+        };
+    };
+    listRetentionExpiredArchives: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListRetentionExpiredArchiveResponse"];
+                };
+            };
+        };
+    };
     list_80: {
         parameters: {
             query?: never;
@@ -151475,7 +151662,7 @@ export interface operations {
             };
         };
     };
-    getSettings_18: {
+    getSettings_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -158691,7 +158878,9 @@ export interface operations {
     };
     downloadMyReceiptPdf: {
         parameters: {
-            query?: never;
+            query?: {
+                kind?: string;
+            };
             header?: never;
             path: {
                 id: number;
@@ -163822,6 +164011,7 @@ export interface operations {
             query: {
                 scopeType: string;
                 scopeId: number;
+                kind?: string;
             };
             header?: never;
             path: {

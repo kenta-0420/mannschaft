@@ -119,7 +119,7 @@ class GlobalSearchServiceTest {
                 .willReturn(List.of());
         given(facilityBookingRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class)))
                 .willReturn(List.of());
-        given(shiftScheduleRepository.searchByKeyword(any(), anyCollection(), any(Pageable.class)))
+        given(shiftScheduleRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(Pageable.class)))
                 .willReturn(List.of());
         given(safetyCheckRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(Pageable.class)))
                 .willReturn(List.of());
@@ -167,7 +167,7 @@ class GlobalSearchServiceTest {
             verify(scheduleRepository).searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class));
             verify(eventRepository).searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class));
             verify(facilityBookingRepository).searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class));
-            verify(shiftScheduleRepository).searchByKeyword(any(), anyCollection(), any(Pageable.class));
+            verify(shiftScheduleRepository).searchByKeyword(any(), anyCollection(), anyCollection(), any(Pageable.class));
             verify(safetyCheckRepository).searchByKeyword(any(), anyCollection(), anyCollection(), any(Pageable.class));
             verify(queueTicketRepository).searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class));
             verify(teamRepository).searchByKeyword(any(), any(Pageable.class));
@@ -206,7 +206,11 @@ class GlobalSearchServiceTest {
             verify(facilityBookingRepository).searchByKeyword(any(), teamIdsCaptor.capture(), anyCollection(), any(), any(Pageable.class));
             assertThat(teamIdsCaptor.getValue()).containsExactly(TEAM_ID);
 
-            verify(shiftScheduleRepository).searchByKeyword(any(), teamIdsCaptor.capture(), any(Pageable.class));
+            // CMP-260826-2127: shifts のクエリは所属チームを「管理者として」「一般メンバーとして」の
+            // 2 集合に割って渡すようになった（未公開シフト表を非管理者の母集団から外すため）。
+            // 本ケースの閲覧者は当該チームの ADMIN ではないため、第 3 引数（memberTeamIds）に載る。
+            verify(shiftScheduleRepository)
+                    .searchByKeyword(any(), anyCollection(), teamIdsCaptor.capture(), any(Pageable.class));
             assertThat(teamIdsCaptor.getValue()).containsExactly(TEAM_ID);
 
             verify(safetyCheckRepository).searchByKeyword(any(), teamIdsCaptor.capture(), anyCollection(), any(Pageable.class));

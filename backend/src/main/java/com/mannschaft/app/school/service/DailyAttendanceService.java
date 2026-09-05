@@ -11,21 +11,30 @@ import com.mannschaft.app.school.dto.DailyRollCallRequest;
 import com.mannschaft.app.school.dto.DailyRollCallSummary;
 import com.mannschaft.app.school.entity.DailyAttendanceRecordEntity;
 import com.mannschaft.app.school.error.SchoolErrorCode;
+import com.mannschaft.app.school.event.DailyRollCallRecordedEvent;
 import com.mannschaft.app.school.repository.DailyAttendanceRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 日次出欠サービス。
  *
- * <p>朝の点呼一括登録・出欠一覧取得・生徒履歴取得・個別修正の4操作を提供する。
- * 登録後、SchoolAttendanceNotificationService 経由で保護者への通知を送信する。</p>
+ * <p>朝の点呼一括登録・出欠一覧取得・生徒履歴取得・個別修正の4操作を提供する。</p>
+ *
+ * <p>保護者への通知は業務トランザクションの<b>コミット後</b>に送る（Issue #2990 L6）。
+ * 本サービスは登録した行の ID を載せた {@code DailyRollCallRecordedEvent} を publish するだけで、
+ * {@code SchoolAttendanceNotificationService} の呼び出しは
+ * {@code SchoolAttendanceNotificationListener}（{@code AFTER_COMMIT}）が行う。
+ * 是正前は通知呼び出しが生徒ごとのループの内側にあり try も無かったため、生徒 1 人ぶんの
+ * 通知失敗でその朝クラス全員ぶんの出欠記録が全件巻き戻っていた。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -35,7 +44,7 @@ public class DailyAttendanceService {
 
     private final DailyAttendanceRecordRepository dailyAttendanceRecordRepository;
     private final AccessControlService accessControlService;
-    private final SchoolAttendanceNotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ========================================
     // 朝の点呼一括登録
@@ -45,7 +54,8 @@ public class DailyAttendanceService {
      * 朝の点呼一括登録。
      *
      * <p>各生徒の DailyAttendanceRecordEntity を upsert する（既存なら更新、なければ新規作成）。
-     * 登録後、各生徒の status に応じて SchoolAttendanceNotificationService.notifyDailyAttendance() を呼び出す。</p>
+     * 保護者通知は業務コミット後に行うため、ここでは登録した行の ID を載せた
+     * {@code DailyRollCallRecordedEvent} を publish するだけに留める（Issue #2990 L6）。</p>
      *
      * @param teamId          クラスチームID
      * @param request         点呼一括登録リクエスト
@@ -58,6 +68,9 @@ public class DailyAttendanceService {
         int presentCount = 0;
         int absentCount = 0;
         int undecidedCount = 0;
+        // 保護者通知の対象（Issue #2990 L6）。業務TX内では登録した行の ID を積むだけに留め、
+        // 実配送は commit 後に SchoolAttendanceNotificationListener が行う。
+        List<Long> recordedIds = new ArrayList<>();
 
         for (var entry : request.getEntries()) {
             var existing = dailyAttendanceRecordRepository
@@ -89,11 +102,8 @@ public class DailyAttendanceService {
                         .build();
             }
 
-            dailyAttendanceRecordRepository.save(record);
-
-            // 通知送信
-            notificationService.notifyDailyAttendance(
-                    entry.getStudentUserId(), request.getAttendanceDate(), entry.getStatus());
+            record = dailyAttendanceRecordRepository.save(record);
+            recordedIds.add(record.getId());
 
             // 集計
             switch (entry.getStatus()) {
@@ -101,6 +111,12 @@ public class DailyAttendanceService {
                 case ABSENT -> absentCount++;
                 case UNDECIDED -> undecidedCount++;
             }
+        }
+
+        // 保護者通知の配送要求（Issue #2990 L6）。業務TX内では publish だけに留める。
+        // 生徒1人ぶんの通知失敗で、その朝クラス全員ぶんの出欠が巻き戻るのを防ぐ。
+        if (!recordedIds.isEmpty()) {
+            eventPublisher.publishEvent(new DailyRollCallRecordedEvent(teamId, List.copyOf(recordedIds)));
         }
 
         return DailyRollCallSummary.builder()
