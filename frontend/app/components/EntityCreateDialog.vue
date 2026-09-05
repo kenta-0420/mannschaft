@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import type { PrefectureResponse, CityResponse } from '~/types/matching'
 import type { SlugAvailabilityResponse, SlugUnavailableReason } from '~/types/slug'
+import type { components } from '~/types/generated'
 import { generateSlug, isSlugFormatValid } from '~/utils/slug'
+
+type DuplicateNameCandidateView = components['schemas']['DuplicateNameCandidateView']
+type DuplicateNameConfirmationErrorResponse =
+  components['schemas']['DuplicateNameConfirmationErrorResponse']
 
 const props = defineProps<{
   entityType: 'team' | 'organization'
@@ -284,39 +289,64 @@ const orgTypeOptions = [
   { label: 'その他', value: 'OTHER' },
 ]
 
+// CMP-260901-1538 柱③-A: BE の同名確認フロー（409 DUPNAME_001）に対応するダイアログの状態。
+const duplicateConfirmVisible = ref(false)
+const duplicateCandidates = ref<DuplicateNameCandidateView[]>([])
+const duplicateHiddenCount = ref(0)
+const duplicateFingerprint = ref<string | null>(null)
+// 確認ダイアログ表示中に再送信するための、直前に組み立てたリクエストボディを保持する。
+let pendingSubmitBody: Record<string, unknown> | null = null
+
+function buildRequestBody(): Record<string, unknown> {
+  const trimmedSlug = slug.value.trim()
+  const body: Record<string, unknown> = {
+    name: form.value.name,
+    // 村方式: 空欄なら slug を送らず BE の自動生成に委ねる。
+    slug: trimmedSlug || undefined,
+    nameKana: form.value.nameKana || undefined,
+    nickname1: form.value.nickname1 || undefined,
+    description: form.value.description || undefined,
+    prefecture: form.value.prefecture || undefined,
+    city: form.value.city || undefined,
+    visibility: form.value.visibility,
+    supporterEnabled: form.value.supporterEnabled,
+  }
+  if (isTeam.value) {
+    body.template = form.value.template
+    // F22.1 Phase2 足場C 第三陣: チーム作成時のみ構造化地域コードを送る
+    // （BE CreateTeamRequest.prefectureCode/cityCode。組織作成 API は未対応のため送らない）。
+    body.prefectureCode = form.value.prefectureCode || undefined
+    body.cityCode = form.value.cityCode || undefined
+  } else {
+    body.orgType = form.value.orgType
+  }
+  return body
+}
+
+/** 同名確認済み（confirmDuplicate=true + fingerprint）を付けて再送信するための共通ボディ加工。 */
+function withDuplicateConfirmation(body: Record<string, unknown>): Record<string, unknown> {
+  if (!duplicateFingerprint.value) return body
+  return {
+    ...body,
+    confirmDuplicate: true,
+    duplicateNameFingerprint: duplicateFingerprint.value,
+  }
+}
+
 async function submit() {
   // 送信前ガード: 形式不正・重複・予約語の slug は送らない（空欄は BE 自動生成に委ねる）。
   if (slugBlocksSubmit.value) {
     fieldErrors.value = { slug: slugMessage.value ?? t('slug.format') }
     return
   }
+  await performSubmit(buildRequestBody())
+}
+
+async function performSubmit(body: Record<string, unknown>) {
   submitting.value = true
   fieldErrors.value = {}
   try {
     const endpoint = isTeam.value ? '/api/v1/teams' : '/api/v1/organizations'
-    const trimmedSlug = slug.value.trim()
-    const body: Record<string, unknown> = {
-      name: form.value.name,
-      // 村方式: 空欄なら slug を送らず BE の自動生成に委ねる。
-      slug: trimmedSlug || undefined,
-      nameKana: form.value.nameKana || undefined,
-      nickname1: form.value.nickname1 || undefined,
-      description: form.value.description || undefined,
-      prefecture: form.value.prefecture || undefined,
-      city: form.value.city || undefined,
-      visibility: form.value.visibility,
-      supporterEnabled: form.value.supporterEnabled,
-    }
-    if (isTeam.value) {
-      body.template = form.value.template
-      // F22.1 Phase2 足場C 第三陣: チーム作成時のみ構造化地域コードを送る
-      // （BE CreateTeamRequest.prefectureCode/cityCode。組織作成 API は未対応のため送らない）。
-      body.prefectureCode = form.value.prefectureCode || undefined
-      body.cityCode = form.value.cityCode || undefined
-    } else {
-      body.orgType = form.value.orgType
-    }
-
     const response = await api<{ data: { id: string; name: string; slug: string } }>(endpoint, {
       method: 'POST',
       body,
@@ -327,6 +357,19 @@ async function submit() {
     emit('update:visible', false)
     resetForm()
   } catch (error) {
+    const apiError = error as { data?: DuplicateNameConfirmationErrorResponse }
+    // CMP-260901-1538 柱③-A: 409 DUPNAME_001 は確認ダイアログへ分岐する（フィールドエラー扱いにしない）。
+    if (apiError?.data?.error?.code === 'DUPNAME_001' && apiError.data.error.details) {
+      const details = apiError.data.error.details
+      duplicateCandidates.value = details.visibleCandidates ?? []
+      duplicateHiddenCount.value = details.hiddenCandidateCount ?? 0
+      duplicateFingerprint.value = details.fingerprint ?? null
+      pendingSubmitBody = body
+      duplicateConfirmVisible.value = true
+      return
+    }
+    // DUPNAME_002（ロック競合）はメッセージがそのまま「再試行してください」を含むため、
+    // handleApiError の通常経路（BE message をそのまま通知）に委ねる。
     fieldErrors.value = getFieldErrors(error)
     if (Object.keys(fieldErrors.value).length === 0) {
       handleApiError(error, isTeam.value ? 'チーム作成' : '組織作成')
@@ -334,6 +377,21 @@ async function submit() {
   } finally {
     submitting.value = false
   }
+}
+
+/** 確認ダイアログで「それでも作成する」を選んだ場合。fingerprint を付けて同じボディを再送する。 */
+async function confirmDuplicateAndSubmit() {
+  duplicateConfirmVisible.value = false
+  if (!pendingSubmitBody) return
+  const body = withDuplicateConfirmation(pendingSubmitBody)
+  pendingSubmitBody = null
+  await performSubmit(body)
+}
+
+function cancelDuplicateConfirm() {
+  duplicateConfirmVisible.value = false
+  pendingSubmitBody = null
+  duplicateFingerprint.value = null
 }
 
 function resetForm() {
@@ -365,6 +423,12 @@ function resetForm() {
     slugCheckTimer = null
   }
   slugCheckSeq++
+  // 同名確認フローの状態もリセットする。
+  duplicateConfirmVisible.value = false
+  duplicateCandidates.value = []
+  duplicateHiddenCount.value = 0
+  duplicateFingerprint.value = null
+  pendingSubmitBody = null
 }
 
 function close() {
@@ -528,6 +592,50 @@ function close() {
         :disabled="slugBlocksSubmit"
         data-testid="entity-create-submit"
         @click="submit"
+      />
+    </template>
+  </Dialog>
+
+  <!-- CMP-260901-1538 柱③-A: 同名確認ダイアログ（409 DUPNAME_001） -->
+  <Dialog
+    :visible="duplicateConfirmVisible"
+    :header="t('duplicate_name.title', { entity: isTeam ? 'チーム' : '組織' })"
+    :style="{ width: '480px' }"
+    modal
+    data-testid="duplicate-name-confirm-dialog"
+    @update:visible="cancelDuplicateConfirm"
+  >
+    <p class="mb-3 text-sm">
+      {{ t('duplicate_name.description', { entity: isTeam ? 'チーム' : '組織' }) }}
+    </p>
+    <ul v-if="duplicateCandidates.length" class="mb-3 list-disc pl-5 text-sm">
+      <li v-for="candidate in duplicateCandidates" :key="candidate.id">
+        {{ candidate.name }}
+      </li>
+    </ul>
+    <p v-if="duplicateHiddenCount > 0" class="text-sm text-gray-500">
+      {{
+        t('duplicate_name.hidden_note', {
+          entity: isTeam ? 'チーム' : '組織',
+          count: duplicateHiddenCount,
+        })
+      }}
+    </p>
+
+    <template #footer>
+      <Button
+        :label="t('duplicate_name.cancel')"
+        text
+        data-testid="duplicate-name-cancel"
+        @click="cancelDuplicateConfirm"
+      />
+      <Button
+        :label="t('duplicate_name.confirm')"
+        icon="pi pi-check"
+        severity="warn"
+        :loading="submitting"
+        data-testid="duplicate-name-confirm"
+        @click="confirmDuplicateAndSubmit"
       />
     </template>
   </Dialog>

@@ -2092,6 +2092,14 @@
       "unchanged": "Identisch mit dem aktuellen Slug (keine Änderung)"
     }
   },
+  "duplicate_name": {
+    "title": "Es existiert bereits ein/e {entity} mit diesem Namen",
+    "description": "Es existiert bereits ein/e {entity} mit demselben Namen. Bitte prüfen und entscheiden, ob fortgefahren werden soll.",
+    "hidden_note": "Es gibt {count} weitere private {entity}(s) (Namen und Details werden nicht angezeigt)",
+    "cancel": "Abbrechen",
+    "confirm": "Trotzdem erstellen",
+    "conflict_retry": "Eine gleichzeitige Erstellung mit demselben Namen ist im Gange. Bitte in Kürze erneut versuchen"
+  },
   "team_visibility": {
     "PUBLIC": "Öffentlich",
     "GUESTS_AND_ABOVE": "Gäste und höher",
