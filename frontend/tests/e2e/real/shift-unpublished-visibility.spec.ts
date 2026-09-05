@@ -19,8 +19,20 @@
  * 前提データは ADMIN の API で作る（スキル /実機 が API 利用を許す範囲＝ログイン・前提作成・後始末）。
  * 検証対象の操作（一覧表示・詳細表示・バッジ確認・希望提出）はすべて実 UI で踏む。
  *
- * チームは使い捨てチームを都度作る（写経元: reservation-member-role.spec.ts）。
- * 既存チームの所属・ロールに依存しないため、シードの揺れで偽陰性・偽陽性にならない。
+ * チームは既存の共有チーム `fc-u-18` を使う（役者は実測で揃っている: ADMIN=id24 / MEMBER=id23）。
+ *
+ * 【使い捨てチームを作らない理由（2026-09-03 実機で実測）】
+ *   当初は reservation-member-role.spec.ts を写経して「チーム作成 → 招待トークン → MEMBER 参加」で
+ *   隔離した前提を作っていたが、招待トークン発行が 403（COMMON_002）で必ず落ちる。
+ *   原因は製品側の欠陥で、`AccessControlService` の ADMIN_ROLES に SYSTEM_ADMIN が含まれておらず、
+ *   有効ロール解決が最強ロール（SYSTEM_ADMIN）を採るため、プラットフォーム SYSTEM_ADMIN 兼
+ *   チーム ADMIN のユーザーは `isAdminOrAbove` が false になる。`InviteService` は SYSTEM_ADMIN を
+ *   短絡しないため、自分で作ったチームの招待トークンすら発行できない。
+ *   本 spec の ADMIN（e2e-admin, id=24）はプラットフォーム SYSTEM_ADMIN を持つのでこの経路を必ず踏む。
+ *   欠陥自体は別件として起票済みであり、ここで迂回するのは「シフトの遮断を確かめる」という
+ *   本 spec の目的が招待経路の欠陥と無関係だからである（症状隠しではない）。
+ *
+ * 共有チームを使うため、本 spec が作ったシフト表・ポジションは後始末で必ず削除して原状復帰する。
  */
 import {
   test as base,
@@ -43,8 +55,11 @@ const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
 const MEMBER_EMAIL = process.env.TEST_MEMBER_EMAIL ?? 'e2e-user@test.mannschaft.local'
 const MEMBER_PASSWORD = process.env.TEST_MEMBER_PASSWORD ?? 'TestPass2026!'
 
-/** 招待トークンの roleId。4 = MEMBER（InviteTokenList.vue の既定値と同一）。 */
-const ROLE_ID_MEMBER = 4
+/**
+ * 役者がそろっている既存の共有チーム（URL 識別子 slug）。
+ * ADMIN=e2e-admin(id24) / MEMBER=e2e-user(id23) がこのチームに所属している。
+ */
+const TEAM_SLUG = process.env.TEST_TEAM_SLUG ?? 'fc-u-18'
 
 /** 枠の必要人数。1 名だけ割り当てるので、伏せなければ「1/2」が出る。 */
 const SLOT_REQUIRED_COUNT = 2
@@ -106,47 +121,50 @@ async function withApi<T>(
   return fn(session.ctx, session.token)
 }
 
-/** 本 spec が作った使い捨てチーム（後始末で削除する）。 */
-const createdTeamSlugs: string[] = []
+/** 本 spec が作った前提データ（共有チームを汚さないよう後始末で必ず消す）。 */
+const createdScheduleIds: number[] = []
+let createdPositionId: number | null = null
 
-interface CreatedTeam {
+interface TargetTeam {
   slug: string
   numericId: number
   name: string
 }
 
-async function createThrowawayTeam(ctx: APIRequestContext, adminToken: string): Promise<CreatedTeam> {
-  const name = `ShiftVis_${Date.now()}`
-  const res = await ctx.post(`${BE_API}/teams`, { headers: authHeaders(adminToken), data: { name } })
-  if (!res.ok()) throw new Error(`チーム作成失敗: ${res.status()} ${await res.text()}`)
-  const data = (await res.json()).data as { slug?: string; id: string; numericId: number }
-  const slug = data.slug ?? data.id
-  createdTeamSlugs.push(slug)
-  return { slug, numericId: data.numericId, name }
+/**
+ * 対象チームを slug から解決する。
+ *
+ * 数値 teamId を要求する API（シフト系は @RequestParam Long teamId）へ渡すため numericId を、
+ * 画面のチーム選択（Select の選択肢・希望提出のチームカード）を踏むため name を取る。
+ */
+async function fetchTargetTeam(ctx: APIRequestContext, token: string): Promise<TargetTeam> {
+  const res = await ctx.get(`${BE_API}/teams/${TEAM_SLUG}`, { headers: authHeaders(token) })
+  if (!res.ok()) throw new Error(`チーム取得失敗(${TEAM_SLUG}): ${res.status()} ${await res.text()}`)
+  const data = (await res.json()).data as {
+    numericId: number
+    basicInfo?: { name?: string }
+    name?: string
+  }
+  const name = data.basicInfo?.name ?? data.name
+  if (!name) throw new Error(`チーム名が取得できない(${TEAM_SLUG})`)
+  if (typeof data.numericId !== 'number') throw new Error(`numericId が取得できない(${TEAM_SLUG})`)
+  return { slug: TEAM_SLUG, numericId: data.numericId, name }
 }
 
-/** MEMBER ロールでチームへ参加させる（招待トークン → 参加 の実プロダクト経路）。 */
-async function joinAsMember(adminToken: string, slug: string): Promise<string> {
-  const inviteToken = await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, async (ctx) => {
-    const res = await ctx.post(`${BE_API}/teams/${slug}/invite-tokens`, {
-      headers: authHeaders(adminToken),
-      data: { roleId: ROLE_ID_MEMBER, expiresIn: '7d', maxUses: 10 },
+/**
+ * 当該チームでの実効ロールを取得する。
+ *
+ * 期待どおりの役者かを実レスポンスで裏取りするために使う。ここを省くと、
+ * シードの揺れで MEMBER が ADMIN になっていても「伏せられていない」ことに気づけず、
+ * 負の視点が静かに無効化される。
+ */
+async function fetchRoleName(email: string, password: string): Promise<string> {
+  return withApi(email, password, async (ctx, token) => {
+    const res = await ctx.get(`${BE_API}/teams/${TEAM_SLUG}/me/permissions`, {
+      headers: authHeaders(token),
     })
-    if (!res.ok()) throw new Error(`招待トークン作成失敗: ${res.status()} ${await res.text()}`)
-    return ((await res.json()).data as { token: string }).token
-  })
-
-  return withApi(MEMBER_EMAIL, MEMBER_PASSWORD, async (ctx, memberToken) => {
-    const joinRes = await ctx.post(`${BE_API}/invite/${inviteToken}/join`, {
-      headers: authHeaders(memberToken),
-      data: {},
-    })
-    if (!joinRes.ok()) throw new Error(`招待参加失敗: ${joinRes.status()} ${await joinRes.text()}`)
-    const permRes = await ctx.get(`${BE_API}/teams/${slug}/me/permissions`, {
-      headers: authHeaders(memberToken),
-    })
-    if (!permRes.ok()) throw new Error(`権限取得失敗: ${permRes.status()} ${await permRes.text()}`)
-    return ((await permRes.json()).data as { roleName: string }).roleName
+    if (!res.ok()) throw new Error(`権限取得失敗(${email}): ${res.status()} ${await res.text()}`)
+    return ((await res.json()).data as { roleName: string }).roleName
   })
 }
 
@@ -258,7 +276,8 @@ function addDaysIso(baseIso: string, days: number): string {
 type FixtureKey = 'draft' | 'collecting' | 'adjusting' | 'published' | 'archived'
 
 interface Fixture {
-  team: CreatedTeam
+  team: TargetTeam
+  adminRoleName: string
   memberRoleName: string
   slotDate: string
   draftId: number
@@ -301,13 +320,21 @@ test.describe.configure({ mode: 'serial' })
 test.beforeAll(async ({ tokens }) => {
   const ctx = await playwrightRequest.newContext()
   try {
-    const team = await createThrowawayTeam(ctx, tokens.admin)
-    const memberRoleName = await joinAsMember(tokens.admin, team.slug)
+    const team = await fetchTargetTeam(ctx, tokens.admin)
+
+    // 役者の裏取り。ロールが期待と違うまま進むと、負の視点（伏せられていること）が
+    // 静かに無効化されるため、ここで落とす。
+    const adminRoleName = await fetchRoleName(ADMIN_EMAIL, ADMIN_PASSWORD)
+    const memberRoleName = await fetchRoleName(MEMBER_EMAIL, MEMBER_PASSWORD)
+    if (adminRoleName !== 'ADMIN' && adminRoleName !== 'DEPUTY_ADMIN' && adminRoleName !== 'SYSTEM_ADMIN') {
+      throw new Error(`管理者ユーザーの ${TEAM_SLUG} でのロールが管理者ではない: ${adminRoleName}`)
+    }
     if (memberRoleName !== 'MEMBER') {
-      throw new Error(`会員ユーザーのロールが MEMBER ではない: ${memberRoleName}`)
+      throw new Error(`会員ユーザーの ${TEAM_SLUG} でのロールが MEMBER ではない: ${memberRoleName}`)
     }
 
     const positionId = await createPosition(ctx, tokens.admin, team.numericId)
+    createdPositionId = positionId
     const nonce = String(Date.now()).slice(-6)
     const startDate = addDaysIso(todayIsoJst(), 7)
     const endDate = addDaysIso(startDate, 2)
@@ -332,6 +359,7 @@ test.beforeAll(async ({ tokens }) => {
       const scheduleId = await createSchedule(
         ctx, tokens.admin, team.numericId, title, startDate, endDate,
       )
+      createdScheduleIds.push(scheduleId)
       const slotId = await createSlot(ctx, tokens.admin, scheduleId, slotDate, positionId)
       await assignOneUser(ctx, tokens.admin, slotId, tokens.memberUserId)
       for (const s of statuses) {
@@ -349,6 +377,7 @@ test.beforeAll(async ({ tokens }) => {
 
     fx = {
       team,
+      adminRoleName,
       memberRoleName,
       slotDate,
       draftId,
@@ -359,7 +388,8 @@ test.beforeAll(async ({ tokens }) => {
       titles,
     }
     console.log(
-      `[SETUP] team=${team.slug}(#${team.numericId}) memberRole=${memberRoleName} `
+      `[SETUP] team=${team.slug}(#${team.numericId}) `
+      + `adminRole=${adminRoleName} memberRole=${memberRoleName} `
       + `slotDate=${slotDate} draft=${draftId} collecting=${collectingId} `
       + `adjusting=${adjustingId} published=${publishedId} archived=${archivedUnpublishedId}`,
     )
@@ -626,16 +656,26 @@ test.describe('D: 一般メンバーの希望提出フロー（非回帰・本�
 })
 
 // ============================================================================
-// 後始末: 作った使い捨てチーム（配下のシフト表・枠ごと）を削除する
+// 後始末: 共有チームを汚さないよう、作ったシフト表とポジションを消して原状復帰する
+// （チーム自体は他セッション・他テストが使うので絶対に削除しない）
 // ============================================================================
 test.afterAll(async () => {
   await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, async (ctx, token) => {
-    for (const slug of createdTeamSlugs) {
-      const res = await ctx.delete(`${BE_API}/teams/${slug}`, { headers: authHeaders(token) })
-      console.log(`[CLEANUP] DELETE /teams/${slug} -> ${res.status()}`)
+    for (const scheduleId of createdScheduleIds) {
+      const res = await ctx.delete(`${BE_API}/shifts/schedules/${scheduleId}`, {
+        headers: authHeaders(token),
+      })
+      console.log(`[CLEANUP] DELETE /shifts/schedules/${scheduleId} -> ${res.status()}`)
+    }
+    if (createdPositionId !== null) {
+      const res = await ctx.delete(`${BE_API}/shifts/positions/${createdPositionId}`, {
+        headers: authHeaders(token),
+      })
+      console.log(`[CLEANUP] DELETE /shifts/positions/${createdPositionId} -> ${res.status()}`)
     }
   })
-  createdTeamSlugs.length = 0
+  createdScheduleIds.length = 0
+  createdPositionId = null
   for (const session of apiSessions.values()) {
     await session.ctx.dispose()
   }
