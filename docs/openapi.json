@@ -35903,6 +35903,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateNameConfirmationErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -53280,12 +53290,22 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK",
+          "201": {
+            "description": "作成成功",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ProvisioningInvitationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateNameConfirmationErrorResponse"
                 }
               }
             }
@@ -53311,12 +53331,22 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK",
+          "201": {
+            "description": "作成成功",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ProvisioningInvitationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateNameConfirmationErrorResponse"
                 }
               }
             }
@@ -60003,6 +60033,16 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseOrganizationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateNameConfirmationErrorResponse"
                 }
               }
             }
@@ -172200,6 +172240,12 @@
             "type": "string",
             "pattern": "\\d{5}"
           },
+          "confirmDuplicate": {
+            "type": "boolean"
+          },
+          "duplicateNameFingerprint": {
+            "type": "string"
+          },
           "name": {
             "type": "string",
             "minLength": 1
@@ -172218,6 +172264,84 @@
             "type": "string"
           },
           "visibility": {
+            "type": "string"
+          }
+        }
+      },
+      "DuplicateNameCandidateView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "DuplicateNameConfirmationDetails": {
+        "type": "object",
+        "properties": {
+          "expiresAtEpochSecond": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "hiddenCandidateCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "visibleCandidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DuplicateNameCandidateView"
+            }
+          }
+        }
+      },
+      "DuplicateNameConfirmationErrorResponse": {
+        "type": "object",
+        "description": "柱③-A 409 応答（候補一覧・fingerprint 付き）",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "エラーコード",
+            "example": "DUPNAME_001"
+          },
+          "details": {
+            "$ref": "#/components/schemas/DuplicateNameConfirmationDetails",
+            "description": "同名確認フローの詳細（候補一覧・fingerprint）"
+          },
+          "fieldErrors": {
+            "type": "array",
+            "description": "フィールドエラー一覧（本エラーでは常に空）",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          },
+          "message": {
+            "type": "string",
+            "description": "エラーメッセージ"
+          }
+        }
+      },
+      "FieldError": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "message": {
             "type": "string"
           }
         }
@@ -184313,6 +184437,12 @@
       "ProvisioningTeamCreateRequest": {
         "type": "object",
         "properties": {
+          "confirmDuplicate": {
+            "type": "boolean"
+          },
+          "duplicateNameFingerprint": {
+            "type": "string"
+          },
           "inviteEmail": {
             "type": "string",
             "minLength": 1
@@ -184357,6 +184487,12 @@
       "ProvisioningOrganizationCreateRequest": {
         "type": "object",
         "properties": {
+          "confirmDuplicate": {
+            "type": "boolean"
+          },
+          "duplicateNameFingerprint": {
+            "type": "string"
+          },
           "inviteEmail": {
             "type": "string",
             "minLength": 1
@@ -189528,6 +189664,12 @@
         "type": "object",
         "properties": {
           "city": {
+            "type": "string"
+          },
+          "confirmDuplicate": {
+            "type": "boolean"
+          },
+          "duplicateNameFingerprint": {
             "type": "string"
           },
           "name": {

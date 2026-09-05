@@ -40,6 +40,17 @@ public class SystemAdminProvisioningController {
 
     @PostMapping("/organizations")
     @Operation(summary = "組織をPROVISIONED状態で事前作成し、管理予定者へADMIN招待を送る")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = ProvisioningInvitationResponse.class)))
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+            description = "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または"
+                    + " fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = com.mannschaft.app.common.duplicatename
+                                    .DuplicateNameConfirmationErrorResponse.class)))
     public ResponseEntity<ProvisioningInvitationResponse> createOrganization(
             @Valid @RequestBody ProvisioningOrganizationCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -48,6 +59,17 @@ public class SystemAdminProvisioningController {
 
     @PostMapping("/teams")
     @Operation(summary = "チームをPROVISIONED状態で事前作成し、管理予定者へADMIN招待を送る")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = ProvisioningInvitationResponse.class)))
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+            description = "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または"
+                    + " fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = com.mannschaft.app.common.duplicatename
+                                    .DuplicateNameConfirmationErrorResponse.class)))
     public ResponseEntity<ProvisioningInvitationResponse> createTeam(
             @Valid @RequestBody ProvisioningTeamCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
