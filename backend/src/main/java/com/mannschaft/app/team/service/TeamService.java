@@ -301,6 +301,41 @@ public class TeamService {
     }
 
     /**
+     * 柱③-A 参加申請（join request）向けの軽量サマリ。
+     *
+     * <p>他ドメイン（joinrequest）が「PUBLIC な ACTIVE チームか」を判定するための read-only な
+     * 横断クエリ。論理削除済みチームは取得対象外（空を返す＝存在しない扱い＝存在秘匿）。
+     * チームの {@code Visibility} は 4 値（PUBLIC/GUESTS_AND_ABOVE/SUPPORTERS_AND_ABOVE/
+     * MEMBERS_AND_ABOVE）だが、参加申請対象は {@code PUBLIC} のみとする。</p>
+     *
+     * @param teamId チーム ID
+     * @return 参加可否サマリ。存在しない／論理削除済みの場合は空。
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<JoinabilitySummary> findJoinabilitySummary(Long teamId) {
+        return teamRepository.findById(teamId)
+                .map(team -> new JoinabilitySummary(
+                        team.getName(),
+                        team.getArchivedAt() != null,
+                        team.getVisibility() == TeamEntity.Visibility.PUBLIC,
+                        team.getLifecycleStatus() == TeamEntity.LifecycleStatus.PROVISIONED));
+    }
+
+    /**
+     * 参加申請可否サマリ（他ドメイン公開用）。
+     *
+     * @param name        チーム表示名
+     * @param archived    アーカイブ済みか
+     * @param isPublic    可視性が PUBLIC か
+     * @param provisioned PROVISIONED（承諾前の事前作成状態）か
+     */
+    public record JoinabilitySummary(String name, boolean archived, boolean isPublic, boolean provisioned) {
+        public boolean joinable() {
+            return !archived && !provisioned && isPublic;
+        }
+    }
+
+    /**
      * チームを slug（URL識別子）で取得する。
      *
      * <p>Phase 4-E: Valkey にて 10 分キャッシュ。更新・削除時に自動無効化される。</p>
