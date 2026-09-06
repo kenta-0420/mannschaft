@@ -76,7 +76,14 @@ public enum NotificationType {
      * 柱①ADMINゼロ根治: 退会purge経路（承諾スキップの強制委譲）で管理者に自動指名されたことの通知。
      * 正本: docs/architecture/account_purge_last_admin_succession.md §11。
      */
-    ADMIN_SUCCESSION_FORCED(NotificationPriority.HIGH, "USER");
+    ADMIN_SUCCESSION_FORCED(NotificationPriority.HIGH, "USER"),
+
+    /** 柱③-A: MEMBER 参加申請を受理した旨の ADMIN/DEPUTY_ADMIN 向け通知（CMP-260901-1538）。 */
+    JOIN_REQUEST_RECEIVED(NotificationPriority.NORMAL, "USER"),
+    /** 柱③-A: 参加申請が承認された旨の申請者向け通知（CMP-260901-1538）。 */
+    JOIN_REQUEST_APPROVED(NotificationPriority.NORMAL, "USER"),
+    /** 柱③-A: 参加申請が却下された旨の申請者向け通知（CMP-260901-1538）。 */
+    JOIN_REQUEST_REJECTED(NotificationPriority.NORMAL, "USER");
 
     private final NotificationPriority priority;
     private final String sourceType;

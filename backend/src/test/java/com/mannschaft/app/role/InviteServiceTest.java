@@ -3,19 +3,17 @@ package com.mannschaft.app.role;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.membership.dto.MembershipCreateRequest;
-import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.provisioning.service.ProvisioningGate;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.role.dto.InviteTokenResponse;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.InviteService;
+import com.mannschaft.app.role.service.MembershipGrantService;
 import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
 import com.mannschaft.app.scopefolder.entity.AssignedVia;
@@ -83,7 +81,7 @@ class InviteServiceTest {
     private MyScopeFolderRepository myScopeFolderRepository;
 
     @Mock
-    private MembershipService membershipService;
+    private MembershipGrantService membershipGrantService;
 
     @Mock
     private UserRowLockService userRowLockService;
@@ -375,8 +373,6 @@ class InviteServiceTest {
             given(inviteTokenRepository.findByTokenForUpdate(TOKEN_STR)).willReturn(Optional.of(token));
             given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(false);
             given(userRoleRepository.existsByUserIdAndTeamId(USER_ID, TEAM_ID)).willReturn(false);
-            given(userRoleRepository.save(any(UserRoleEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
             // F15.3: folderId 未指定なら findOrCreateDefaultInternal → addItemWithAssignedVia(DEFAULT) が呼ばれる
             MyScopeFolderEntity defaultFolder = MyScopeFolderEntity.builder()
                     .id(999L).userId(USER_ID).scopeType(ScopeType.TEAM)
@@ -388,22 +384,11 @@ class InviteServiceTest {
             inviteService.joinByInvite(TOKEN_STR, USER_ID);
 
             // Then
-            verify(userRoleRepository).save(any(UserRoleEntity.class));
             verify(myScopeFolderService).addItemWithAssignedVia(USER_ID, 999L, TEAM_ID, AssignedVia.DEFAULT);
             assertThat(token.getUsedCount()).isEqualTo(1);
-            // F00.5 認可基盤根治: memberships にも MEMBER として入会させる（join 経由）
-            org.mockito.ArgumentCaptor<MembershipCreateRequest> captor =
-                    org.mockito.ArgumentCaptor.forClass(MembershipCreateRequest.class);
-            verify(membershipService).join(captor.capture());
-            MembershipCreateRequest joinReq = captor.getValue();
-            assertThat(joinReq.getUserId()).isEqualTo(USER_ID);
-            assertThat(joinReq.getScopeType())
-                    .isEqualTo(com.mannschaft.app.membership.domain.ScopeType.TEAM);
-            assertThat(joinReq.getScopeId()).isEqualTo(TEAM_ID);
-            assertThat(joinReq.getRoleKind())
-                    .isEqualTo(com.mannschaft.app.membership.domain.RoleKind.MEMBER);
-            assertThat(joinReq.getInvitedBy()).isEqualTo(CREATED_BY);
-            assertThat(joinReq.getSource()).isEqualTo("INVITE_TOKEN");
+            // ロール割当・メンバーシップ入会は共通経路 MembershipGrantService へ委譲する
+            // （招待承諾と参加申請承認で同一の付与ロジックを再利用・重複実装しない）
+            verify(membershipGrantService).grantRole("TEAM", TEAM_ID, USER_ID, ROLE_ID, CREATED_BY, "INVITE_TOKEN");
         }
 
         @Test
