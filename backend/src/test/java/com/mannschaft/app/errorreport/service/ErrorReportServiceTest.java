@@ -8,6 +8,7 @@ import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.event.ErrorReportRaisedEvent;
 import com.mannschaft.app.errorreport.event.ErrorReportRegressionDetectedEvent;
 import com.mannschaft.app.errorreport.event.ErrorReportResolvedEvent;
+import com.mannschaft.app.errorreport.event.ErrorReportSeverityEscalatedEvent;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -18,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.LocalDateTime;
@@ -188,6 +190,58 @@ class ErrorReportServiceTest {
                     ArgumentCaptor.forClass(ErrorReportRegressionDetectedEvent.class);
             verify(eventPublisher).publishEvent(captor.capture());
             assertThat(captor.getValue().reportId()).isEqualTo(11L);
+        }
+
+        @Test
+        @DisplayName("重複集約で severity が MEDIUM → HIGH に昇格: ErrorReportSeverityEscalatedEvent を publish する")
+        void aggregation_severityEscalation_publishesEscalatedEvent() {
+            // OPEN の既存行（MEDIUM）へ同一ハッシュが再着弾し、影響ユーザー数 20 で HIGH へ昇格する経路。
+            ErrorReportEntity existing = report(12L, ErrorReportStatus.OPEN,
+                    ErrorReportSeverity.MEDIUM, 501L);
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.of(existing));
+
+            @SuppressWarnings("unchecked")
+            SetOperations<String, String> setOps = org.mockito.Mockito.mock(SetOperations.class);
+            given(redisTemplate.opsForSet()).willReturn(setOps);
+            given(setOps.size(org.mockito.ArgumentMatchers.anyString())).willReturn(20L);
+
+            service.createOrAggregate(ErrorReportRequest.builder()
+                    .errorMessage("boom")
+                    .pageUrl("https://example.com/home")
+                    .occurredAt(LocalDateTime.now())
+                    .userId(501L)
+                    .build(), "203.0.113.9");
+
+            ArgumentCaptor<ErrorReportSeverityEscalatedEvent> captor =
+                    ArgumentCaptor.forClass(ErrorReportSeverityEscalatedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().reportId()).isEqualTo(12L);
+            assertThat(captor.getValue().oldSeverity()).isEqualTo(ErrorReportSeverity.MEDIUM);
+            assertThat(captor.getValue().newSeverity()).isEqualTo(ErrorReportSeverity.HIGH);
+        }
+
+        @Test
+        @DisplayName("重複集約で severity が変わらない場合: 昇格イベントは publish されない")
+        void aggregation_withoutEscalation_publishesNothing() {
+            ErrorReportEntity existing = report(13L, ErrorReportStatus.OPEN,
+                    ErrorReportSeverity.MEDIUM, 502L);
+            given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
+                    .willReturn(Optional.of(existing));
+
+            @SuppressWarnings("unchecked")
+            SetOperations<String, String> setOps = org.mockito.Mockito.mock(SetOperations.class);
+            given(redisTemplate.opsForSet()).willReturn(setOps);
+            given(setOps.size(org.mockito.ArgumentMatchers.anyString())).willReturn(3L);
+
+            service.createOrAggregate(ErrorReportRequest.builder()
+                    .errorMessage("boom")
+                    .pageUrl("https://example.com/home")
+                    .occurredAt(LocalDateTime.now())
+                    .userId(502L)
+                    .build(), "203.0.113.9");
+
+            verify(eventPublisher, never()).publishEvent(any(ErrorReportSeverityEscalatedEvent.class));
         }
     }
 

@@ -124,6 +124,19 @@ class ErrorReportNotificationListenerTest {
             assertThatCode(() -> listener.onErrorReportRaised(
                     new ErrorReportRaisedEvent(REPORT_ID, true))).doesNotThrowAnyException();
         }
+
+        @Test
+        @DisplayName("被害半径: Slack が落ちても SYSTEM_ADMIN プッシュは配送される")
+        void slackFailure_doesNotBlockSystemAdminPush() {
+            given(errorReportRepository.findById(REPORT_ID)).willReturn(Optional.of(report()));
+            willThrow(new RuntimeException("Slack down"))
+                    .given(errorReportNotifier).notifySlack(any(ErrorReportEntity.class));
+
+            assertThatCode(() -> listener.onErrorReportRaised(
+                    new ErrorReportRaisedEvent(REPORT_ID, true))).doesNotThrowAnyException();
+
+            verify(errorReportNotifier).notifySystemAdmins(any(ErrorReportEntity.class));
+        }
     }
 
     @Nested

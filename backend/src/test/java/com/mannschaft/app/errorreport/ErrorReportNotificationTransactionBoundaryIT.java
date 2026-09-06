@@ -136,6 +136,17 @@ class ErrorReportNotificationTransactionBoundaryIT extends AbstractMySqlIntegrat
                         .isEqualTo(1L));
     }
 
+    /**
+     * <p><b>このテストは回帰ガードとしては弱い。</b>是正後の配送は {@code AFTER_COMMIT} +
+     * {@code @Async("event-pool")} で別スレッドに載り、さらに {@code notifyResolution} 自身が
+     * 受信者ごとの try/catch で例外を握るため、{@code doesNotThrowAnyException()} は
+     * 実装が正しかろうと壊れていようと成立してしまう。ここで意味があるのは「通知 INSERT が
+     * 実DBの CHECK 制約で本当に失敗している（握りつぶしの偽緑ではない）」ことと
+     * 「業務更新が RESOLVED のまま残る」ことの2点のみである。</p>
+     *
+     * <p>是正で実際に直った点（commit 前に通知が飛ばないこと・ロールバック時に通知が出ないこと）の
+     * 証明は、本クラスの因果テストと対照テストが担う。</p>
+     */
     @Test
     @DisplayName("被害半径: 解決通知の永続化が実DBで失敗しても RESOLVED への更新はコミットされる")
     void 通知失敗でも業務更新は巻き戻らない() {

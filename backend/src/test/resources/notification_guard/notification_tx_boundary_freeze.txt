@@ -772,11 +772,10 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #     (a) 因果順序が保証されない。非同期スレッドは commit を待たずに走り出すため、業務TXが後で
 #         ロールバックしても Slack / SYSTEM_ADMIN / 報告者への通知だけが残る。届く通知は
 #         /system-admin/error-reports/<id> への導線を持つが、その行はもう存在しない。
-#     (b) 管理下の JPA エンティティをスレッド跨ぎで渡していた。とくに
-#         ErrorReportService#createOrAggregate の重複集約経路では notifyEscalation(updated, ...) に
-#         渡した updated の severity を<b>通知発火の後で</b> setSeverity(newSeverity) で書き換えており、
-#         非同期スレッドがどちらの値を読むかはスレッドのタイミング次第だった。
-#         （通知本文の severity が実際の昇格後 severity と食い違いうる。）
+#     (b) 管理下の JPA エンティティをスレッド跨ぎで渡していた。notifySlack(saved) /
+#         notifyEscalation(updated, ...) に渡していたのは呼び出し元の永続化コンテキストに属する
+#         管理エンティティそのものであり、非同期スレッドはそれを未コミットの状態のまま読んでいた。
+#         （業務TXがロールバックすれば、通知本文が参照した状態はそもそも存在しなかったことになる。）
 #
 #   実DB計測（ErrorReportNotificationTransactionBoundaryIT）:
 #     - 通知 INSERT を CHECK 制約で失敗させても updateStatus の RESOLVED 更新はコミットされたまま。

@@ -38,10 +38,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *       {@code errorReportNotifier.notifySlack(saved)} の {@code saved} は
  *       呼び出し元の永続化コンテキストに属する管理エンティティであり、
  *       非同期スレッドはそれを未コミットの状態のまま読んでいた。
- *       {@link ErrorReportService#createOrAggregate} の重複集約経路では
- *       {@code notifyEscalation} に渡す {@code updated} の severity を
- *       <b>通知発火の後で</b> {@code setSeverity} で書き換えており、
- *       非同期スレッドが読む値がどちらになるかはスレッドのタイミング次第だった。</li>
+ *       {@link ErrorReportService#createOrAggregate} の重複集約経路で
+ *       {@code notifyEscalation} へ渡していた {@code updated} も同じ性質を持つ。</li>
  * </ol>
  *
  * <h2>是正後</h2>
@@ -82,13 +80,19 @@ public class ErrorReportNotificationListener {
         if (report == null) {
             return;
         }
-        try {
-            if (event.slackEnabled()) {
+        // Slack と SYSTEM_ADMIN プッシュは独立した配送先であり、片方の失敗を他方へ波及させない
+        // （被害半径の分離）。まとめて try で括ると Slack の失敗が SYSTEM_ADMIN 通知を巻き添えにする。
+        if (event.slackEnabled()) {
+            try {
                 errorReportNotifier.notifySlack(report);
+            } catch (Exception e) {
+                log.error("エラーレポート新規記録の Slack 通知に失敗しました: reportId={}", event.reportId(), e);
             }
+        }
+        try {
             errorReportNotifier.notifySystemAdmins(report);
         } catch (Exception e) {
-            log.error("エラーレポート新規記録通知の配送に失敗しました: reportId={}", event.reportId(), e);
+            log.error("エラーレポート新規記録の SYSTEM_ADMIN 通知に失敗しました: reportId={}", event.reportId(), e);
         }
     }
 
