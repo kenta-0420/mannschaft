@@ -48,4 +48,26 @@ public enum ReceiptScopeType {
             throw new BusinessException(CommonErrorCode.COMMON_001, e);
         }
     }
+
+    /**
+     * テナントスコープ（{@code ORGANIZATION} / {@code TEAM}）限定でスコープ種別を解決する。
+     *
+     * <p>{@link #from(String)} との違いは {@code PLATFORM} を受け付けない点である。
+     * 運営スコープの領収書 API は {@code PlatformReceiptController}（SYSTEM_ADMIN 限定・
+     * {@code checkAdminOrAboveIncludingPlatform} 経由）が担い、テナント向けの管理 API は
+     * membership の {@code ScopeType} を前提に認可する。テナント API に {@code PLATFORM} が
+     * 届くと {@code AccessControlService#isMember} 内の {@code ScopeType.valueOf("PLATFORM")}
+     * が {@link IllegalArgumentException} となり 500 になるため、入口で 400（COMMON_001）に
+     * 落とす。</p>
+     *
+     * @param value クエリで受け取った文字列（大文字小文字を問わない）
+     * @return テナントスコープ種別
+     */
+    public static ReceiptScopeType fromTenantScope(String value) {
+        ReceiptScopeType scopeType = from(value);
+        if (scopeType.isPlatform()) {
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
+        return scopeType;
+    }
 }

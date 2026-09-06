@@ -57,7 +57,7 @@ public class ReceiptMyController {
             @RequestParam(required = false) Long scopeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        ReceiptScopeType type = scopeType != null ? ReceiptScopeType.valueOf(scopeType.toUpperCase()) : null;
+        ReceiptScopeType type = scopeType != null ? ReceiptScopeType.from(scopeType) : null;
         PagedResponse<MyReceiptResponse> response = receiptMyService.listMyReceipts(
                 SecurityUtils.getCurrentUserId(), type, scopeId, page, size);
         return ResponseEntity.ok(response);
@@ -103,7 +103,7 @@ public class ReceiptMyController {
             @RequestParam int year,
             @RequestParam(required = false) String scopeType,
             @RequestParam(required = false) Long scopeId) {
-        ReceiptScopeType type = scopeType != null ? ReceiptScopeType.valueOf(scopeType.toUpperCase()) : null;
+        ReceiptScopeType type = scopeType != null ? ReceiptScopeType.from(scopeType) : null;
         AnnualSummaryResponse response = receiptMyService.getAnnualSummary(
                 SecurityUtils.getCurrentUserId(), year, type, scopeId);
         return ResponseEntity.ok(ApiResponse.of(response));
