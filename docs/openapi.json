@@ -731,6 +731,10 @@
       "description": "F17.1 Phase 1 — 村本体 CRUD と検索"
     },
     {
+      "name": "課金 - 請求履歴",
+      "description": "F20.1 請求書の一覧・明細・管理可能スコープ"
+    },
+    {
       "name": "ロール呼称",
       "description": "F01.4 ロール呼称カスタマイズ"
     },
@@ -2121,6 +2125,10 @@
     {
       "name": "回数券管理",
       "description": "F08.5 回数券管理（スタッフ向け）"
+    },
+    {
+      "name": "課金 - Customer Portal",
+      "description": "PR5 Stripe Customer Portal セッション発行"
     },
     {
       "name": "チーム確認通知",
@@ -75428,6 +75436,98 @@
         }
       }
     },
+    "/api/v1/me/billing/portal-sessions": {
+      "post": {
+        "tags": [
+          "課金 - Customer Portal"
+        ],
+        "summary": "Customer Portal セッション発行",
+        "description": "scope は本文で指定し、操作者の課金管理権限をサービス層で検証する。支払方法・請求先情報・請求書履歴のみを開く専用 configuration を用い、PLAN/ADDON の変更・解約は Portal から行えない。Idempotency-Key 必須。",
+        "operationId": "createPortalSession",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBillingCustomerPortalSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "発行成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingCustomerPortalSessionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "対象 scope の課金管理権限がない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingCustomerPortalSessionResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Customer が ACTIVE でない、又は同一キーで異なる要求が既にある",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingCustomerPortalSessionResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "scope ごとの発行回数上限（10 回/時）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingCustomerPortalSessionResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Stripe 側の失敗",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingCustomerPortalSessionResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Portal configuration の起動時照合が未成立（fail-closed）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingCustomerPortalSessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/billing/contracts": {
       "post": {
         "tags": [
@@ -110654,7 +110754,8 @@
                   "TOURNAMENT",
                   "MATCH",
                   "PROVISIONING",
-                  "RECEIPT"
+                  "RECEIPT",
+                  "BILLING"
                 ]
               }
             }
@@ -118062,7 +118163,8 @@
                   "TOURNAMENT",
                   "MATCH",
                   "PROVISIONING",
-                  "RECEIPT"
+                  "RECEIPT",
+                  "BILLING"
                 ]
               }
             }
@@ -133193,7 +133295,8 @@
                   "TOURNAMENT",
                   "MATCH",
                   "PROVISIONING",
-                  "RECEIPT"
+                  "RECEIPT",
+                  "BILLING"
                 ]
               }
             }
@@ -136429,6 +136532,127 @@
         }
       }
     },
+    "/api/v1/me/billing/scopes": {
+      "get": {
+        "tags": [
+          "課金 - 請求履歴"
+        ],
+        "summary": "課金を管理できるスコープ一覧",
+        "description": "本人の USER スコープと、ADMIN／課金権限付き DEPUTY_ADMIN のチーム・組織。",
+        "operationId": "scopes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingManageableScopeList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/billing/invoices": {
+      "get": {
+        "tags": [
+          "課金 - 請求履歴"
+        ],
+        "summary": "請求書一覧",
+        "description": "指定スコープの請求書を period_end 降順で返す。cursor は不透明値。",
+        "operationId": "list_93",
+        "parameters": [
+          {
+            "name": "scopeKind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "USER",
+                "TEAM",
+                "ORG"
+              ]
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPagedResponseBillingInvoiceSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/billing/invoices/{invoiceId}": {
+      "get": {
+        "tags": [
+          "課金 - 請求履歴"
+        ],
+        "summary": "請求書明細",
+        "description": "明細行・調整・税内訳を返す。他スコープの ID は存在秘匿のため 404。",
+        "operationId": "detail_2",
+        "parameters": [
+          {
+            "name": "invoiceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingInvoiceDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/beta-perks": {
       "get": {
         "tags": [
@@ -137511,7 +137735,7 @@
           "家族個人時間割閲覧"
         ],
         "summary": "家族メンバーの個人時間割一覧（status\u003dACTIVE のみ、共有設定済みのみ）",
-        "operationId": "list_93",
+        "operationId": "list_94",
         "parameters": [
           {
             "name": "teamId",
@@ -142727,7 +142951,8 @@
                   "TOURNAMENT",
                   "MATCH",
                   "PROVISIONING",
-                  "RECEIPT"
+                  "RECEIPT",
+                  "BILLING"
                 ]
               }
             }
@@ -194890,6 +195115,53 @@
           }
         }
       },
+      "CreateBillingCustomerPortalSessionRequest": {
+        "type": "object",
+        "properties": {
+          "scopeId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "対象スコープ ID",
+            "example": 1
+          },
+          "scopeKind": {
+            "type": "string",
+            "description": "対象スコープ種別",
+            "enum": [
+              "USER",
+              "TEAM",
+              "ORG"
+            ],
+            "example": "USER"
+          }
+        },
+        "required": [
+          "scopeId",
+          "scopeKind"
+        ]
+      },
+      "ApiResponseBillingCustomerPortalSessionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingCustomerPortalSessionResponse"
+          }
+        }
+      },
+      "BillingCustomerPortalSessionResponse": {
+        "type": "object",
+        "properties": {
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "発行時刻"
+          },
+          "url": {
+            "type": "string",
+            "description": "Stripe Customer Portal の短命 URL"
+          }
+        }
+      },
       "CreateBillingCheckoutSessionRequest": {
         "type": "object",
         "properties": {
@@ -231923,6 +232195,382 @@
             "items": {
               "$ref": "#/components/schemas/CalendarLayerResponse"
             }
+          }
+        }
+      },
+      "ApiResponseBillingManageableScopeList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingManageableScopeList"
+          }
+        }
+      },
+      "BillingManageableScope": {
+        "type": "object",
+        "description": "F20.1 課金を管理できるスコープ",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "スコープ ID",
+            "example": 123
+          },
+          "kind": {
+            "type": "string",
+            "description": "スコープ種別（USER / TEAM / ORG）",
+            "example": "TEAM"
+          },
+          "manage": {
+            "type": "boolean",
+            "description": "課金を管理できるか。列挙されるのは true のものだけ",
+            "example": true
+          },
+          "name": {
+            "type": "string",
+            "description": "表示名。USER スコープ（本人）は null",
+            "example": "桜サッカークラブ"
+          }
+        }
+      },
+      "BillingManageableScopeList": {
+        "type": "object",
+        "description": "F20.1 課金を管理できるスコープ一覧",
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "スコープ一覧（0 件でも空配列）",
+            "items": {
+              "$ref": "#/components/schemas/BillingManageableScope"
+            }
+          }
+        }
+      },
+      "BillingInvoiceSummary": {
+        "type": "object",
+        "description": "F20.1 請求書一覧の1件",
+        "properties": {
+          "billingReason": {
+            "type": "string",
+            "description": "請求理由（Stripe billing_reason）",
+            "example": "subscription_cycle"
+          },
+          "discount": {
+            "$ref": "#/components/schemas/BillingMoney",
+            "description": "値引"
+          },
+          "finalizedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "確定日時"
+          },
+          "id": {
+            "type": "string",
+            "description": "請求書 ID（UUID）"
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "支払日時"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date-time",
+            "description": "対象期間の終了"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date-time",
+            "description": "対象期間の開始"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "スコープ ID",
+            "example": 123
+          },
+          "scopeKind": {
+            "type": "string",
+            "description": "スコープ種別（USER / TEAM / ORG）",
+            "example": "USER"
+          },
+          "status": {
+            "type": "string",
+            "description": "請求書ステータス",
+            "example": "PAID"
+          },
+          "subtotal": {
+            "$ref": "#/components/schemas/BillingMoney",
+            "description": "小計"
+          },
+          "tax": {
+            "$ref": "#/components/schemas/BillingMoney",
+            "description": "税額"
+          },
+          "total": {
+            "$ref": "#/components/schemas/BillingMoney",
+            "description": "合計"
+          }
+        }
+      },
+      "BillingMoney": {
+        "type": "object",
+        "description": "F20.1 金額（最小通貨単位）",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "最小通貨単位の金額",
+            "example": 11000
+          },
+          "currency": {
+            "type": "string",
+            "description": "ISO-4217 通貨コード",
+            "example": "JPY"
+          }
+        }
+      },
+      "CursorPagedResponseBillingInvoiceSummary": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BillingInvoiceSummary"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CursorMeta"
+          }
+        }
+      },
+      "ApiResponseBillingInvoiceDetail": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingInvoiceDetail"
+          }
+        }
+      },
+      "BillingInvoiceAdjustment": {
+        "type": "object",
+        "description": "F20.1 請求書の調整（返金等）",
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/BillingMoney",
+            "description": "金額"
+          },
+          "effectiveAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "発効日時"
+          },
+          "id": {
+            "type": "string",
+            "description": "調整 ID（UUID）"
+          },
+          "kind": {
+            "type": "string",
+            "description": "種別（REFUND / CREDIT_NOTE / DISPUTE）",
+            "example": "REFUND"
+          },
+          "reason": {
+            "type": "string",
+            "description": "理由（PSP のコード）",
+            "example": "requested_by_customer"
+          },
+          "status": {
+            "type": "string",
+            "description": "ステータス",
+            "example": "SUCCEEDED"
+          }
+        }
+      },
+      "BillingInvoiceDetail": {
+        "type": "object",
+        "description": "F20.1 請求書の明細",
+        "properties": {
+          "adjustments": {
+            "type": "array",
+            "description": "調整（返金・credit note・dispute）",
+            "items": {
+              "$ref": "#/components/schemas/BillingInvoiceAdjustment"
+            }
+          },
+          "billingName": {
+            "type": "string",
+            "description": "請求先名（発行時スナップショット）"
+          },
+          "billingReason": {
+            "type": "string",
+            "description": "請求理由（Stripe billing_reason）",
+            "example": "subscription_cycle"
+          },
+          "discount": {
+            "$ref": "#/components/schemas/BillingMoney",
+            "description": "値引"
+          },
+          "finalizedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "確定日時"
+          },
+          "id": {
+            "type": "string",
+            "description": "請求書 ID（UUID）"
+          },
+          "issuer": {
+            "$ref": "#/components/schemas/BillingInvoiceIssuer",
+            "description": "発行元"
+          },
+          "lines": {
+            "type": "array",
+            "description": "明細行",
+            "items": {
+              "$ref": "#/components/schemas/BillingInvoiceLine"
+            }
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "支払日時"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date-time",
+            "description": "対象期間の終了"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date-time",
+            "description": "対象期間の開始"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "スコープ ID",
+            "example": 123
+          },
+          "scopeKind": {
+            "type": "string",
+            "description": "スコープ種別（USER / TEAM / ORG）",
+            "example": "USER"
+          },
+          "status": {
+            "type": "string",
+            "description": "請求書ステータス",
+            "example": "PAID"
+          },
+          "subtotal": {
+            "$ref": "#/components/schemas/BillingMoney",
+            "description": "小計"
+          },
+          "tax": {
+            "$ref": "#/components/schemas/BillingMoney",
+            "description": "税額"
+          },
+          "total": {
+            "$ref": "#/components/schemas/BillingMoney",
+            "description": "合計"
+          },
+          "voidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "無効化日時"
+          }
+        }
+      },
+      "BillingInvoiceIssuer": {
+        "type": "object",
+        "description": "F20.1 請求書の発行元",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "発行元名（発行時スナップショット）",
+            "example": "Mannschaft"
+          }
+        }
+      },
+      "BillingInvoiceLine": {
+        "type": "object",
+        "description": "F20.1 請求明細行",
+        "properties": {
+          "amountExcludingTax": {
+            "type": "integer",
+            "format": "int64",
+            "description": "税抜金額（最小通貨単位）",
+            "example": 10000
+          },
+          "amountIncludingTax": {
+            "type": "integer",
+            "format": "int64",
+            "description": "税込金額（最小通貨単位）",
+            "example": 11000
+          },
+          "description": {
+            "type": "string",
+            "description": "明細の説明（発行時スナップショット）",
+            "example": "プラン利用料"
+          },
+          "discountAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "値引額（最小通貨単位）",
+            "example": 0
+          },
+          "id": {
+            "type": "string",
+            "description": "明細行 ID（UUID）"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date-time",
+            "description": "対象期間の終了"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date-time",
+            "description": "対象期間の開始"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "数量",
+            "example": 1.0
+          },
+          "taxes": {
+            "type": "array",
+            "description": "税内訳",
+            "items": {
+              "$ref": "#/components/schemas/BillingInvoiceTaxBreakdown"
+            }
+          }
+        }
+      },
+      "BillingInvoiceTaxBreakdown": {
+        "type": "object",
+        "description": "F20.1 明細行の税内訳",
+        "properties": {
+          "includedInPrice": {
+            "type": "boolean",
+            "description": "税込価格に内包されているか",
+            "example": false
+          },
+          "taxAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "税額（最小通貨単位）",
+            "example": 100
+          },
+          "taxName": {
+            "type": "string",
+            "description": "税の表示名スナップショット",
+            "example": "消費税"
+          },
+          "taxRateBasisPoints": {
+            "type": "integer",
+            "format": "int32",
+            "description": "税率（basis points。1000 \u003d 10%）",
+            "example": 1000
           }
         }
       },

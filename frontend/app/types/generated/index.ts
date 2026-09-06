@@ -20241,6 +20241,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/billing/portal-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Customer Portal セッション発行
+         * @description scope は本文で指定し、操作者の課金管理権限をサービス層で検証する。支払方法・請求先情報・請求書履歴のみを開く専用 configuration を用い、PLAN/ADDON の変更・解約は Portal から行えない。Idempotency-Key 必須。
+         */
+        post: operations["createPortalSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/billing/contracts": {
         parameters: {
             query?: never;
@@ -42326,6 +42346,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/billing/scopes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 課金を管理できるスコープ一覧
+         * @description 本人の USER スコープと、ADMIN／課金権限付き DEPUTY_ADMIN のチーム・組織。
+         */
+        get: operations["scopes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/billing/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 請求書一覧
+         * @description 指定スコープの請求書を period_end 降順で返す。cursor は不透明値。
+         */
+        get: operations["list_93"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/billing/invoices/{invoiceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 請求書明細
+         * @description 明細行・調整・税内訳を返す。他スコープの ID は存在秘匿のため 404。
+         */
+        get: operations["detail_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/beta-perks": {
         parameters: {
             query?: never;
@@ -42808,7 +42888,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_93"];
+        get: operations["list_94"];
         put?: never;
         post?: never;
         delete?: never;
@@ -64934,6 +65014,32 @@ export interface components {
             /** Format: int32 */
             taxRateBasisPoints?: number;
         };
+        CreateBillingCustomerPortalSessionRequest: {
+            /**
+             * Format: int64
+             * @description 対象スコープ ID
+             * @example 1
+             */
+            scopeId: number;
+            /**
+             * @description 対象スコープ種別
+             * @example USER
+             * @enum {string}
+             */
+            scopeKind: "USER" | "TEAM" | "ORG";
+        };
+        ApiResponseBillingCustomerPortalSessionResponse: {
+            data?: components["schemas"]["BillingCustomerPortalSessionResponse"];
+        };
+        BillingCustomerPortalSessionResponse: {
+            /**
+             * Format: date-time
+             * @description 発行時刻
+             */
+            issuedAt?: string;
+            /** @description Stripe Customer Portal の短命 URL */
+            url?: string;
+        };
         CreateBillingCheckoutSessionRequest: {
             /** Format: uuid */
             quoteId?: string;
@@ -78672,6 +78778,285 @@ export interface components {
         };
         ApiResponseListCalendarLayerResponse: {
             data?: components["schemas"]["CalendarLayerResponse"][];
+        };
+        ApiResponseBillingManageableScopeList: {
+            data?: components["schemas"]["BillingManageableScopeList"];
+        };
+        /** @description F20.1 課金を管理できるスコープ */
+        BillingManageableScope: {
+            /**
+             * Format: int64
+             * @description スコープ ID
+             * @example 123
+             */
+            id?: number;
+            /**
+             * @description スコープ種別（USER / TEAM / ORG）
+             * @example TEAM
+             */
+            kind?: string;
+            /**
+             * @description 課金を管理できるか。列挙されるのは true のものだけ
+             * @example true
+             */
+            manage?: boolean;
+            /**
+             * @description 表示名。USER スコープ（本人）は null
+             * @example 桜サッカークラブ
+             */
+            name?: string;
+        };
+        /** @description F20.1 課金を管理できるスコープ一覧 */
+        BillingManageableScopeList: {
+            /** @description スコープ一覧（0 件でも空配列） */
+            items?: components["schemas"]["BillingManageableScope"][];
+        };
+        /** @description F20.1 請求書一覧の1件 */
+        BillingInvoiceSummary: {
+            /**
+             * @description 請求理由（Stripe billing_reason）
+             * @example subscription_cycle
+             */
+            billingReason?: string;
+            /** @description 値引 */
+            discount?: components["schemas"]["BillingMoney"];
+            /**
+             * Format: date-time
+             * @description 確定日時
+             */
+            finalizedAt?: string;
+            /** @description 請求書 ID（UUID） */
+            id?: string;
+            /**
+             * Format: date-time
+             * @description 支払日時
+             */
+            paidAt?: string;
+            /**
+             * Format: date-time
+             * @description 対象期間の終了
+             */
+            periodEnd?: string;
+            /**
+             * Format: date-time
+             * @description 対象期間の開始
+             */
+            periodStart?: string;
+            /**
+             * Format: int64
+             * @description スコープ ID
+             * @example 123
+             */
+            scopeId?: number;
+            /**
+             * @description スコープ種別（USER / TEAM / ORG）
+             * @example USER
+             */
+            scopeKind?: string;
+            /**
+             * @description 請求書ステータス
+             * @example PAID
+             */
+            status?: string;
+            /** @description 小計 */
+            subtotal?: components["schemas"]["BillingMoney"];
+            /** @description 税額 */
+            tax?: components["schemas"]["BillingMoney"];
+            /** @description 合計 */
+            total?: components["schemas"]["BillingMoney"];
+        };
+        /** @description F20.1 金額（最小通貨単位） */
+        BillingMoney: {
+            /**
+             * Format: int64
+             * @description 最小通貨単位の金額
+             * @example 11000
+             */
+            amount?: number;
+            /**
+             * @description ISO-4217 通貨コード
+             * @example JPY
+             */
+            currency?: string;
+        };
+        CursorPagedResponseBillingInvoiceSummary: {
+            data?: components["schemas"]["BillingInvoiceSummary"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        ApiResponseBillingInvoiceDetail: {
+            data?: components["schemas"]["BillingInvoiceDetail"];
+        };
+        /** @description F20.1 請求書の調整（返金等） */
+        BillingInvoiceAdjustment: {
+            /** @description 金額 */
+            amount?: components["schemas"]["BillingMoney"];
+            /**
+             * Format: date-time
+             * @description 発効日時
+             */
+            effectiveAt?: string;
+            /** @description 調整 ID（UUID） */
+            id?: string;
+            /**
+             * @description 種別（REFUND / CREDIT_NOTE / DISPUTE）
+             * @example REFUND
+             */
+            kind?: string;
+            /**
+             * @description 理由（PSP のコード）
+             * @example requested_by_customer
+             */
+            reason?: string;
+            /**
+             * @description ステータス
+             * @example SUCCEEDED
+             */
+            status?: string;
+        };
+        /** @description F20.1 請求書の明細 */
+        BillingInvoiceDetail: {
+            /** @description 調整（返金・credit note・dispute） */
+            adjustments?: components["schemas"]["BillingInvoiceAdjustment"][];
+            /** @description 請求先名（発行時スナップショット） */
+            billingName?: string;
+            /**
+             * @description 請求理由（Stripe billing_reason）
+             * @example subscription_cycle
+             */
+            billingReason?: string;
+            /** @description 値引 */
+            discount?: components["schemas"]["BillingMoney"];
+            /**
+             * Format: date-time
+             * @description 確定日時
+             */
+            finalizedAt?: string;
+            /** @description 請求書 ID（UUID） */
+            id?: string;
+            /** @description 発行元 */
+            issuer?: components["schemas"]["BillingInvoiceIssuer"];
+            /** @description 明細行 */
+            lines?: components["schemas"]["BillingInvoiceLine"][];
+            /**
+             * Format: date-time
+             * @description 支払日時
+             */
+            paidAt?: string;
+            /**
+             * Format: date-time
+             * @description 対象期間の終了
+             */
+            periodEnd?: string;
+            /**
+             * Format: date-time
+             * @description 対象期間の開始
+             */
+            periodStart?: string;
+            /**
+             * Format: int64
+             * @description スコープ ID
+             * @example 123
+             */
+            scopeId?: number;
+            /**
+             * @description スコープ種別（USER / TEAM / ORG）
+             * @example USER
+             */
+            scopeKind?: string;
+            /**
+             * @description 請求書ステータス
+             * @example PAID
+             */
+            status?: string;
+            /** @description 小計 */
+            subtotal?: components["schemas"]["BillingMoney"];
+            /** @description 税額 */
+            tax?: components["schemas"]["BillingMoney"];
+            /** @description 合計 */
+            total?: components["schemas"]["BillingMoney"];
+            /**
+             * Format: date-time
+             * @description 無効化日時
+             */
+            voidedAt?: string;
+        };
+        /** @description F20.1 請求書の発行元 */
+        BillingInvoiceIssuer: {
+            /**
+             * @description 発行元名（発行時スナップショット）
+             * @example Mannschaft
+             */
+            name?: string;
+        };
+        /** @description F20.1 請求明細行 */
+        BillingInvoiceLine: {
+            /**
+             * Format: int64
+             * @description 税抜金額（最小通貨単位）
+             * @example 10000
+             */
+            amountExcludingTax?: number;
+            /**
+             * Format: int64
+             * @description 税込金額（最小通貨単位）
+             * @example 11000
+             */
+            amountIncludingTax?: number;
+            /**
+             * @description 明細の説明（発行時スナップショット）
+             * @example プラン利用料
+             */
+            description?: string;
+            /**
+             * Format: int64
+             * @description 値引額（最小通貨単位）
+             * @example 0
+             */
+            discountAmount?: number;
+            /** @description 明細行 ID（UUID） */
+            id?: string;
+            /**
+             * Format: date-time
+             * @description 対象期間の終了
+             */
+            periodEnd?: string;
+            /**
+             * Format: date-time
+             * @description 対象期間の開始
+             */
+            periodStart?: string;
+            /**
+             * @description 数量
+             * @example 1
+             */
+            quantity?: number;
+            /** @description 税内訳 */
+            taxes?: components["schemas"]["BillingInvoiceTaxBreakdown"][];
+        };
+        /** @description F20.1 明細行の税内訳 */
+        BillingInvoiceTaxBreakdown: {
+            /**
+             * @description 税込価格に内包されているか
+             * @example false
+             */
+            includedInPrice?: boolean;
+            /**
+             * Format: int64
+             * @description 税額（最小通貨単位）
+             * @example 100
+             */
+            taxAmount?: number;
+            /**
+             * @description 税の表示名スナップショット
+             * @example 消費税
+             */
+            taxName?: string;
+            /**
+             * Format: int32
+             * @description 税率（basis points。1000 = 10%）
+             * @example 1000
+             */
+            taxRateBasisPoints?: number;
         };
         ApiResponseBetaPerkMyPerksResponse: {
             data?: components["schemas"]["BetaPerkMyPerksResponse"];
@@ -124588,6 +124973,77 @@ export interface operations {
             };
         };
     };
+    createPortalSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBillingCustomerPortalSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description 発行成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingCustomerPortalSessionResponse"];
+                };
+            };
+            /** @description 対象 scope の課金管理権限がない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingCustomerPortalSessionResponse"];
+                };
+            };
+            /** @description Customer が ACTIVE でない、又は同一キーで異なる要求が既にある */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingCustomerPortalSessionResponse"];
+                };
+            };
+            /** @description scope ごとの発行回数上限（10 回/時） */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingCustomerPortalSessionResponse"];
+                };
+            };
+            /** @description Stripe 側の失敗 */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingCustomerPortalSessionResponse"];
+                };
+            };
+            /** @description Portal configuration の起動時照合が未成立（fail-closed） */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingCustomerPortalSessionResponse"];
+                };
+            };
+        };
+    };
     createForMe: {
         parameters: {
             query?: never;
@@ -146227,7 +146683,7 @@ export interface operations {
         parameters: {
             query?: {
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "PROVISIONING" | "RECEIPT")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "PROVISIONING" | "RECEIPT" | "BILLING")[];
                 from?: string;
                 to?: string;
                 cursor?: string;
@@ -150202,7 +150658,7 @@ export interface operations {
             query?: {
                 userId?: number;
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "PROVISIONING" | "RECEIPT")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "PROVISIONING" | "RECEIPT" | "BILLING")[];
                 from?: string;
                 to?: string;
                 cursor?: string;
@@ -158489,7 +158945,7 @@ export interface operations {
             query?: {
                 userId?: number;
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "PROVISIONING" | "RECEIPT")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "PROVISIONING" | "RECEIPT" | "BILLING")[];
                 from?: string;
                 to?: string;
                 cursor?: string;
@@ -160622,6 +161078,73 @@ export interface operations {
             };
         };
     };
+    scopes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingManageableScopeList"];
+                };
+            };
+        };
+    };
+    list_93: {
+        parameters: {
+            query: {
+                scopeKind: "USER" | "TEAM" | "ORG";
+                scopeId: number;
+                size?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseBillingInvoiceSummary"];
+                };
+            };
+        };
+    };
+    detail_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingInvoiceDetail"];
+                };
+            };
+        };
+    };
     getMyBetaPerks: {
         parameters: {
             query?: never;
@@ -161255,7 +161778,7 @@ export interface operations {
             };
         };
     };
-    list_93: {
+    list_94: {
         parameters: {
             query?: never;
             header?: never;
@@ -164355,7 +164878,7 @@ export interface operations {
                 teamId?: number;
                 organizationId?: number;
                 eventType?: string;
-                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "PROVISIONING" | "RECEIPT")[];
+                eventCategory?: ("AUTH" | "ACCOUNT" | "OAUTH" | "MFA" | "ADMIN_ACTION" | "LIFECYCLE" | "TEAM" | "ORGANIZATION" | "PAYMENT" | "SCHEDULE" | "TODO" | "REPAIR_PLAN" | "RESIDENT" | "SUCCESSION" | "POINT_CARD" | "VILLAGE" | "SECURITY_RATE_LIMIT" | "CIRCULATION" | "FORM" | "SHIFT" | "BULLETIN" | "TOURNAMENT" | "MATCH" | "PROVISIONING" | "RECEIPT" | "BILLING")[];
                 sessionHash?: string;
                 from?: string;
                 to?: string;

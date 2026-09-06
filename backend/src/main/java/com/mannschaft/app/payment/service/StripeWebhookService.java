@@ -1,6 +1,9 @@
 package com.mannschaft.app.payment.service;
 
 import com.mannschaft.app.billing.BillingSubscriptionWebhookService;
+import com.mannschaft.app.billing.invoice.BillingInvoiceAdjustmentWebhookService;
+import com.mannschaft.app.billing.invoice.BillingWebhookEventGate;
+import com.mannschaft.app.billing.invoice.StripeBillingPayloadParser;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService;
 import com.mannschaft.app.payment.PaymentErrorCode;
@@ -38,9 +41,34 @@ public class StripeWebhookService {
     // TODO: billing ドメイン → payment ドメインの委譲（NotificationCreditCheckoutService と同型）。将来は WebhookEvent で分離予定
     /** F20.1 実決済: 自社受取サブスク（checkout.session.* / invoice.* / subscription.deleted）の委譲先（D-2 で F08.9 と分離）。 */
     private final BillingSubscriptionWebhookService billingSubscriptionWebhookService;
+    /** F20.1 PR5-B: 返金 / credit note / dispute の billing 投影。 */
+    private final BillingInvoiceAdjustmentWebhookService billingInvoiceAdjustmentWebhookService;
+    /** F20.1 PR5-A3: 本 PR で扱わないイベントを RECEIVED のまま記録する共通ゲート。 */
+    private final BillingWebhookEventGate billingWebhookEventGate;
+    private final StripeBillingPayloadParser billingPayloadParser;
 
     /** F22.1 与信系 platform Webhook の対象イベント種別（payment_intent.* の接頭辞）。 */
     private static final String ESCROW_EVENT_PREFIX = "payment_intent.";
+
+    /**
+     * F20.1 PR5 では<b>まだ扱わない</b>イベント種別（AC-22）。
+     *
+     * <p>受信記録は残すが {@code process_status} は {@code RECEIVED} のまま確定させない。
+     * ここで {@code PROCESSED}/{@code IGNORED} にしてしまうと、PR6 でこれらを実装したときに
+     * 冪等ゲートが「確定済み」と判定して<b>永久に拾えなくなる</b>。</p>
+     */
+    private static final java.util.Set<String> PR5_PENDING_EVENT_TYPES = java.util.Set.of(
+            "invoice.payment_action_required",
+            "customer.subscription.updated",
+            "customer.subscription.pending_update_applied",
+            "customer.subscription.pending_update_expired");
+
+    /** 同じく PR5 で扱わない種別（接頭辞一致）。 */
+    private static final String PENDING_SCHEDULE_PREFIX = "subscription_schedule.";
+
+    /** F20.1 PR5-B: billing の調整（返金 / credit note / dispute）として扱う種別。 */
+    private static final String CREDIT_NOTE_EVENT_PREFIX = "credit_note.";
+    private static final String DISPUTE_EVENT_PREFIX = "charge.dispute.";
 
     /**
      * Stripe Webhook を処理する。
@@ -56,10 +84,22 @@ public class StripeWebhookService {
             throw new BusinessException(PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID, e);
         }
 
+        // ─────────────────────────────────────────────────────────────────
+        // 所有判定の順序は Connect/escrow → Billing → F08.9 会費 に固定する（AC-27）。
+        // 先に判定したドメインが「自分のものだ」と言えば、後段のドメインには渡らない。
+        // ─────────────────────────────────────────────────────────────────
+
         // F22.1: 与信系（Destination Charge の PaymentIntent）は platform 上に作られ platform Webhook で届く。
         // event_id 冪等＋escrow 特定は EscrowWebhookService に委譲する（設計書 02 §4.2・専用 record で再パース）。
         if (event.type() != null && event.type().startsWith(ESCROW_EVENT_PREFIX)) {
             escrowWebhookService.handleWebhook(payload, sigHeader);
+            return;
+        }
+
+        // F20.1 PR5: 本 PR で扱わない種別は「受信したが確定しない」（RECEIVED のまま）で記録する（AC-22〜24）。
+        // 200 を返して Stripe の再送を止めつつ、PR6 で拾い直せる状態を保つ。
+        if (isPr5PendingEvent(event.type())) {
+            recordPendingEvent(payload, event.type());
             return;
         }
 
@@ -90,7 +130,16 @@ public class StripeWebhookService {
                 }
             }
             case "charge.refunded" -> handleChargeRefunded(event, payload, sigHeader);
-            default -> log.info("未対応の Webhook イベント: type={}", event.type());
+            default -> {
+                // F20.1 PR5-B: credit_note.* / charge.dispute.* は billing の調整投影へ。
+                if (event.type() != null
+                        && (event.type().startsWith(CREDIT_NOTE_EVENT_PREFIX)
+                            || event.type().startsWith(DISPUTE_EVENT_PREFIX))
+                        && billingInvoiceAdjustmentWebhookService.handleAdjustmentEventIfBilling(payload)) {
+                    return;
+                }
+                log.info("未対応の Webhook イベント: type={}", event.type());
+            }
         }
 
     }
@@ -194,6 +243,12 @@ public class StripeWebhookService {
             return;
         }
 
+        // F20.1 PR5-B: 次に billing（プラットフォーム受取の請求書）の調整投影。所有判定の順序は
+        // Connect/escrow → Billing → F08.9 会費（AC-27）。
+        if (billingInvoiceAdjustmentWebhookService.handleAdjustmentEventIfBilling(payload)) {
+            return;
+        }
+
         if (event.paymentIntentId() == null) {
             log.warn("paymentIntentId が含まれていません");
             return;
@@ -228,5 +283,31 @@ public class StripeWebhookService {
 
         log.info("全額返金 Webhook 処理完了: paymentIntentId={}, refundId={}",
                 event.paymentIntentId(), event.refundId());
+    }
+
+    /** PR5 で扱わない（受信するが確定させない）イベント種別か。 */
+    private boolean isPr5PendingEvent(String type) {
+        return type != null
+                && (PR5_PENDING_EVENT_TYPES.contains(type) || type.startsWith(PENDING_SCHEDULE_PREFIX));
+    }
+
+    /**
+     * 保留イベントを {@code RECEIVED} のまま記録する。
+     *
+     * <p>滞留件数は既存の {@code type} 列だけで判別できる（新規列を足さない・AC-23）。運用クエリは
+     * {@code SELECT COUNT(*) FROM stripe_webhook_events WHERE process_status = 'RECEIVED' AND type IN (...)}。</p>
+     */
+    private void recordPendingEvent(String payload, String type) {
+        billingPayloadParser.parseEnvelope(payload).ifPresentOrElse(
+                envelope -> billingWebhookEventGate.recordPending(
+                        envelope, payload, resolvePendingObjectRef(payload)),
+                () -> log.warn("保留対象イベントの封筒を読めませんでした。受信記録を残せません: type={}", type));
+    }
+
+    /** 保留イベントの対象オブジェクト参照（invoice があれば invoice ID）を拾う（読めなければ null）。 */
+    private String resolvePendingObjectRef(String payload) {
+        return billingPayloadParser.parseInvoice(payload)
+                .map(com.mannschaft.app.billing.invoice.StripeBillingObjectView.InvoiceView::id)
+                .orElse(null);
     }
 }

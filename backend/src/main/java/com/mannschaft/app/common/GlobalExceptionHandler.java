@@ -1309,6 +1309,8 @@ public class GlobalExceptionHandler {
             Map.entry("ENTITLEMENT_024", HttpStatus.CONFLICT),           // MIGRATION_REQUIRED
             Map.entry("ENTITLEMENT_025", HttpStatus.BAD_GATEWAY),        // STRIPE_UNAVAILABLE
             Map.entry("ENTITLEMENT_026", HttpStatus.CONFLICT),           // BILLING_FLOW_REQUIRED
+            Map.entry("ENTITLEMENT_027", HttpStatus.SERVICE_UNAVAILABLE), // PORTAL_UNAVAILABLE（Portal configuration 未照合 → 503）
+            Map.entry("ENTITLEMENT_028", HttpStatus.TOO_MANY_REQUESTS),  // PORTAL_RATE_LIMITED（scope ごと 10 回/時 → 429）
             // F20.3 ベータ特典（設計書 02 §8）。登録漏れは Severity 既定 400/500 にフォールバックする前科（#1279）ゆえ明示登録。
             Map.entry("BETA_PERK_001", HttpStatus.NOT_FOUND),            // GRANT_NOT_FOUND（IDOR 秘匿含む）
             Map.entry("BETA_PERK_002", HttpStatus.CONFLICT),            // GRANT_ALREADY_EXISTS（uk_bg_scope_phase）
