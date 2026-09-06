@@ -164,7 +164,7 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(adminTeamAId);
             mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.length()").value(4));
+                    .andExpect(jsonPath("$.data.length()").value(2));
         }
 
         @Test

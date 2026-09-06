@@ -577,7 +577,7 @@ HTTP|com.mannschaft.app.shift.controller.ShiftPositionController|4|4
 HTTP|com.mannschaft.app.shift.controller.ShiftRequestController|6|6
 HTTP|com.mannschaft.app.shift.controller.ShiftScheduleController|8|9
 HTTP|com.mannschaft.app.shift.controller.ShiftSlotController|6|6
-HTTP|com.mannschaft.app.shift.controller.ShiftSwapController|7|7
+HTTP|com.mannschaft.app.shift.controller.ShiftSwapController|5|5
 HTTP|com.mannschaft.app.shiftbudget.controller.BudgetThresholdAlertController|2|2
 HTTP|com.mannschaft.app.shiftbudget.controller.MonthlyShiftBudgetCloseController|1|1
 HTTP|com.mannschaft.app.shiftbudget.controller.ShiftBudgetAllocationController|5|5

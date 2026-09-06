@@ -701,7 +701,7 @@ NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftAssignmentRunEntity|4
 NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftChangeRequestEntity|4
 NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftRequestEntity|2
 NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftScheduleEntity|2
-NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftSwapRequestEntity|3
+NO_ARG_NOW|com.mannschaft.app.shift.entity.ShiftSwapRequestEntity|2
 NO_ARG_NOW|com.mannschaft.app.shift.service.ShiftAutoArchiveBatchService|1
 NO_ARG_NOW|com.mannschaft.app.shift.service.ShiftRequestService|1
 NO_ARG_NOW|com.mannschaft.app.shiftbudget.batch.ShiftBudgetRetryBatchJob|1
