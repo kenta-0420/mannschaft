@@ -130,8 +130,25 @@ class BillingInvoiceProjectionWebhookIT extends AbstractBillingInvoiceWebhookIT 
         assertThat(stored.getAmountIncludingTax()).isEqualTo(3_666L);
     }
 
+    /**
+     * AC-7（正本 05:82）: 所有外だけが既存 F08.9 へ <b>event id を消費せず</b> fallthrough し最終 200。
+     *
+     * <p><b>なぜ「誰も確定させない」ではなく「billing が触っていない」を測るのか</b>:
+     * 当初この検証は {@code process_status} が {@code PROCESSED}/{@code IGNORED} でないことを見ていたが、
+     * それは<b>行の最終状態しか見ておらず、誰が確定させたかを区別できていなかった</b>。
+     * 実際には F08.9 会費側（{@code MembershipSubscriptionWebhookService}）が
+     * 「対象 subscription なし（無関係 invoice）」を {@code IGNORED} で確定する。これは
+     * <b>会費側の正しい振る舞い</b>である（例外を投げて Stripe に再送させないための no-op であり、
+     * 再送しても対象が現れないため確定させてよい）。したがって「誰も確定させない」は過剰な期待だった。</p>
+     *
+     * <p>正本が定めているのは <b>billing が event id を消費しないこと</b>である。そこで本テストは
+     * billing が受信記録に触れた痕跡（V196 の billing 用列）が<b>一つも残っていないこと</b>を直接測る。
+     * billing が処理していれば {@code tryBegin} が payload_sha256 / stripe_object_ref /
+     * billing_contract_id / billing_customer_id を必ず埋めるため、これらが空であることが
+     * 「billing は素通りした」の十分な証拠になる（F08.9 側は 3 引数版を使うのでこれらを埋めない）。</p>
+     */
     @Test
-    @DisplayName("AC7: billing 所有でない invoice は event id を確定させず F08.9 会費側へ fallthrough し最終 200")
+    @DisplayName("AC7: billing 所有でない invoice は billing が event id を消費せず F08.9 会費側へ fallthrough し最終 200")
     void AC7_billing非所有はeventId未確定でfallthrough() throws Exception {
         String line = StripeWebhookPayloadFixture.lineObject(
                 "il_ac7", "会費", 1L, 1_000L, 0L, 0L, false, null);
@@ -143,14 +160,15 @@ class BillingInvoiceProjectionWebhookIT extends AbstractBillingInvoiceWebhookIT 
 
         assertThat(status).as("最終的に 200").isEqualTo(200);
         assertThat(invoiceOf("in_ac7")).as("billing の投影を作らない").isEmpty();
-        assertThat(webhookEvent("evt_ac7_foreign")
-                .map(e -> e.getProcessStatus() == WebhookProcessStatus.PROCESSED
-                        || e.getProcessStatus() == WebhookProcessStatus.IGNORED)
-                .orElse(false))
-                .as("billing 側が event id を確定させない（所有外は未消費で fallthrough）")
-                .isFalse();
-        assertThat(webhookEvent("evt_ac7_foreign").map(e -> e.getBillingContractId()).orElse(null))
-                .as("billing 所有として紐付けない").isNull();
+
+        // billing が受信記録に触れていないこと。billing が処理していれば tryBegin が
+        // 以下 4 列を必ず埋めるため、すべて空であることが「素通りした」証拠になる。
+        var event = webhookEvent("evt_ac7_foreign").orElseThrow(() ->
+                new AssertionError("受信記録そのものは残るはず（F08.9 側が記録する）: evt_ac7_foreign"));
+        assertThat(event.getBillingContractId()).as("billing 所有として契約に紐付けない").isNull();
+        assertThat(event.getBillingCustomerId()).as("billing 所有として Customer に紐付けない").isNull();
+        assertThat(event.getStripeObjectRef()).as("billing が対象 object を記録しない").isNull();
+        assertThat(event.getPayloadSha256()).as("billing が payload ハッシュを記録しない").isNull();
     }
 
     @Test
