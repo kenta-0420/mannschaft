@@ -313,6 +313,61 @@ class JoinRequestScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 4.5 自己スコープ性（SelfScopedEndpointMarkerGuardTest 対応契約テスト）
+    // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * {@code JoinRequestController#listMineForTeam} /
+     * {@code JoinRequestController#listMineForOrganization} の自己スコープ性を固定する。
+     *
+     * <p>両エンドポイントはパス・クエリで対象ユーザーを一切受け取らず、認証済みユーザーIDのみで
+     * 絞り込む（{@link com.mannschaft.app.common.security.SelfScopedEndpoint} 宣言）。
+     * 本テストは、他人の申請を作った状態で自分の一覧を取得しても他人の申請が混入しないこと、
+     * および自分の申請だけが返ることを実 HTTP 経由で固定する。</p>
+     */
+    @Nested
+    @DisplayName("4.5 自己スコープ性（JoinRequestController#listMineForTeam / #listMineForOrganization）")
+    class SelfScope {
+
+        @Test
+        @DisplayName("JoinRequestController#listMineForTeam は認証ユーザー自身の申請のみを返し、他人の申請は混入しない")
+        void listMineForTeam_自分の申請のみ返る() throws Exception {
+            JoinRequestEntity mine = persistPendingRequest(publicTeamAId, applicantId);
+            // 他人（adminTeamBId）が同じチームAへ申請した行。自分の一覧に混入してはならない。
+            persistPendingRequest(publicTeamAId, adminTeamBId);
+
+            setAuth(applicantId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/join-requests/me", publicTeamAId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].id").value(mine.getId().toString()));
+        }
+
+        @Test
+        @DisplayName("JoinRequestController#listMineForOrganization は認証ユーザー自身の申請のみを返す（他人の識別子を指定する余地が無い）")
+        void listMineForOrganization_自分の申請のみ返る() throws Exception {
+            Long orgId = insertOrganization("JRAUTHZ 公開組織-" + System.nanoTime());
+            JoinRequestEntity mine = joinRequestRepository.saveAndFlush(JoinRequestEntity.builder()
+                    .organizationId(orgId)
+                    .requesterUserId(applicantId)
+                    .status(JoinRequestStatus.PENDING)
+                    .build());
+            // 他人（adminTeamBId）が同じ組織へ申請した行。自分の一覧に混入してはならない。
+            joinRequestRepository.saveAndFlush(JoinRequestEntity.builder()
+                    .organizationId(orgId)
+                    .requesterUserId(adminTeamBId)
+                    .status(JoinRequestStatus.PENDING)
+                    .build());
+
+            setAuth(applicantId);
+            mockMvc.perform(get("/api/v1/organizations/{organizationId}/join-requests/me", orgId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].id").value(mine.getId().toString()));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // 5. Flyway 実スキーマ検証（UNIQUE制約・照合順序）
     // ═════════════════════════════════════════════════════════════════════
 
@@ -431,6 +486,19 @@ class JoinRequestScopeContractIT extends AbstractMySqlIntegrationTest {
                 .executeUpdate();
         return ((Number) em.createNativeQuery("SELECT id FROM teams WHERE slug = :slug")
                 .setParameter("slug", slug)
+                .getSingleResult()).longValue();
+    }
+
+    private Long insertOrganization(String name) {
+        em.createNativeQuery(
+                        "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
+                                + "supporter_enabled, version, slug, lifecycle_status, created_at, updated_at) "
+                                + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, "
+                                + "CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), 'ACTIVE', NOW(), NOW())")
+                .setParameter("name", name)
+                .executeUpdate();
+        return ((Number) em.createNativeQuery("SELECT id FROM organizations WHERE name = :name")
+                .setParameter("name", name)
                 .getSingleResult()).longValue();
     }
 }
