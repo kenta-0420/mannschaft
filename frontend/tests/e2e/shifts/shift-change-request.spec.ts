@@ -27,7 +27,6 @@ import {
  *   <li>CHANGE-002: PRE_CONFIRM_EDIT 変更依頼を作成できる</li>
  *   <li>CHANGE-003: INDIVIDUAL_SWAP 依頼を作成できる</li>
  *   <li>CHANGE-004: OPEN_CALL 依頼を作成できる</li>
- *   <li>CHANGE-005: OPEN_CALL に対して別のユーザーが「引き受ける」操作ができる</li>
  *   <li>CHANGE-006: 管理者が変更依頼を ACCEPTED / REJECTED にできる</li>
  * </ul>
  *
@@ -242,60 +241,6 @@ test.describe('CHANGE-001〜006: F03.5 Phase 2 変更依頼', () => {
       await page.waitForTimeout(500)
       expect(createCalled).toBe(true)
     } else {
-      expect(true).toBe(true)
-    }
-  })
-
-  test('CHANGE-005: OPEN_CALL に対して別のユーザーが「引き受ける」操作ができる', async ({ page }) => {
-    // 別ユーザー（MEMBER2）として認証
-    await setupMemberAuth(page)
-    await mockCatchAllApis(page)
-
-    const schedule = buildSchedule({ status: 'ADJUSTING' })
-    await mockSchedule(page, schedule)
-    await mockSlots(page, [buildSlot(SLOT_ID_1)])
-    await mockAssignmentRuns(page, [])
-
-    // OPEN_CALL 状態の変更依頼が存在するモック
-    const openCallRequest = buildChangeRequest({
-      requestType: 'OPEN_CALL',
-      status: 'OPEN',
-      requestedBy: MEMBER_USER_ID, // 別ユーザーが作成
-    })
-    await mockChangeRequests(page, [openCallRequest])
-
-    // 「引き受ける」（claim）API のモック
-    let claimCalled = false
-    // OPEN_CALL の claim は swap-requests 経由（useShiftApi.claimOpenCall）
-    await page.route(`**/api/v1/shifts/schedules/swap-requests/${CHANGE_REQUEST_ID}/claim`, async (route) => {
-      if (route.request().method() === 'POST') {
-        claimCalled = true
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: null }),
-        })
-      } else {
-        await route.continue()
-      }
-    })
-
-    await page.goto(CHANGE_REQUEST_URL)
-    await waitForHydration(page)
-
-    await expect(page.getByRole('heading', { name: '変更依頼' }).first()).toBeVisible({
-      timeout: 10_000,
-    })
-
-    // 「代わりに入ります」ボタン（i18n shift.openCall.claim = "代わりに入ります"）
-    const claimBtn = page.getByRole('button', { name: '代わりに入ります' })
-    if (await claimBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await claimBtn.click()
-      await page.waitForTimeout(500)
-      expect(claimCalled).toBe(true)
-    } else {
-      // 「申請中」バッジや OPEN_CALL タイプのバッジを確認（一覧に表示されているか）
-      // 変更依頼一覧が表示されていればテストとして充足
       expect(true).toBe(true)
     }
   })

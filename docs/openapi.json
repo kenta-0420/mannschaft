@@ -55876,49 +55876,6 @@
         }
       }
     },
-    "/api/v1/shifts/swap-requests/{swapId}/select-claimer": {
-      "post": {
-        "tags": [
-          "シフト交代リクエスト管理"
-        ],
-        "summary": "オープンコール候補者選定",
-        "operationId": "selectClaimer",
-        "parameters": [
-          {
-            "name": "swapId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "integer",
-                "format": "int64"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "選定成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSwapRequestResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/shifts/swap-requests/{swapId}/resolve": {
       "post": {
         "tags": [
@@ -55950,38 +55907,6 @@
         "responses": {
           "200": {
             "description": "処理成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSwapRequestResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/shifts/swap-requests/{swapId}/claim": {
-      "post": {
-        "tags": [
-          "シフト交代リクエスト管理"
-        ],
-        "summary": "オープンコール手挙げ",
-        "operationId": "claimOpenCall",
-        "parameters": [
-          {
-            "name": "swapId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "手挙げ成功",
             "content": {
               "*/*": {
                 "schema": {

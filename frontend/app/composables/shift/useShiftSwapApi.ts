@@ -86,19 +86,6 @@ export function useShiftSwapApi() {
     return res.data
   }
 
-  /**
-   * オープンコールのシフト枠に「代わりに入ります」と申告する（手挙げ）。
-   *
-   * 部隊Bが実装した `POST /api/v1/shifts/swap-requests/{id}/claim` に対応。
-   */
-  async function claimSwap(swapId: number): Promise<SwapRequestResponse> {
-    const res = await api<{ data: SwapRequestResponse }>(
-      `/api/v1/shifts/swap-requests/${swapId}/claim`,
-      { method: 'POST' },
-    )
-    return res.data
-  }
-
   async function resolveSwap(
     swapId: number,
     payload: ResolveSwapRequestRequest,
@@ -115,7 +102,6 @@ export function useShiftSwapApi() {
     createSwapRequest,
     deleteSwapRequest,
     acceptSwap,
-    claimSwap,
     resolveSwap,
   }
 }

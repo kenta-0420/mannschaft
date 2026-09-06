@@ -306,12 +306,6 @@
       "openCallLimit": "オープンコールは月3件まで",
       "fetchError": "変更依頼の取得に失敗しました"
     },
-    "openCall": {
-      "badge": "代替メンバー募集中",
-      "claim": "代わりに入ります",
-      "claimed": "手挙げ済み",
-      "full": "募集終了"
-    },
     "pdf": {
       "teamLayout": "チーム全体表 PDF",
       "personalLayout": "個人タイムライン PDF",

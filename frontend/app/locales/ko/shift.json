@@ -61,12 +61,6 @@
       "openCallLimit": "오픈 콜은 월 3건까지",
       "fetchError": "변경 요청 조회에 실패했습니다"
     },
-    "openCall": {
-      "badge": "대체 멤버 모집 중",
-      "claim": "제가 들어가겠습니다",
-      "claimed": "신청 완료",
-      "full": "모집 종료"
-    },
     "pdf": {
       "teamLayout": "팀 전체 표 PDF",
       "personalLayout": "개인 타임라인 PDF",
