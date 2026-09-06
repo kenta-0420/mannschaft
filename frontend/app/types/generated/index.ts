@@ -10627,6 +10627,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/join-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チームの参加申請一覧（ADMIN/DEPUTY_ADMIN） */
+        get: operations["listForTeam_2"];
+        put?: never;
+        /** チームへ参加申請を行う（PUBLIC な ACTIVE チームのみ） */
+        post: operations["createForTeam_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/join-requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チーム参加申請を却下（ADMIN/DEPUTY_ADMIN） */
+        post: operations["rejectForTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/join-requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チーム参加申請を承認（ADMIN/DEPUTY_ADMIN） */
+        post: operations["approveForTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/homerooms": {
         parameters: {
             query?: never;
@@ -11767,7 +11819,7 @@ export interface paths {
          * チームの契約作成
          * @description TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。Idempotency-Key 必須。
          */
-        post: operations["createForTeam_3"];
+        post: operations["createForTeam_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16176,6 +16228,58 @@ export interface paths {
         put?: never;
         /** 組織抽選実行 */
         post: operations["lottery_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/join-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織の参加申請一覧（ADMIN/DEPUTY_ADMIN） */
+        get: operations["listForOrganization"];
+        put?: never;
+        /** 組織へ参加申請を行う（PUBLIC な ACTIVE 組織のみ） */
+        post: operations["createForOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/join-requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織参加申請を却下（ADMIN/DEPUTY_ADMIN） */
+        post: operations["rejectForOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/join-requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織参加申請を承認（ADMIN/DEPUTY_ADMIN） */
+        post: operations["approveForOrganization"];
         delete?: never;
         options?: never;
         head?: never;
@@ -34057,6 +34161,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/join-requests/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 自分のチーム参加申請一覧（申請者本人） */
+        get: operations["listMineForTeam"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/invite-tokens/{tokenId}/pdf": {
         parameters: {
             query?: never;
@@ -39251,6 +39372,23 @@ export interface paths {
         };
         /** 組織空き区画一覧 */
         get: operations["listVacant_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/join-requests/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 自分の組織参加申請一覧（申請者本人） */
+        get: operations["listMineForOrganization"];
         put?: never;
         post?: never;
         delete?: never;
@@ -106423,6 +106561,112 @@ export interface operations {
             };
         };
     };
+    listForTeam_2: {
+        parameters: {
+            query?: {
+                status?: "PENDING" | "APPROVED" | "REJECTED";
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePageJoinRequestResponse"];
+                };
+            };
+        };
+    };
+    createForTeam_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["JoinRequestCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseJoinRequestResponse"];
+                };
+            };
+        };
+    };
+    rejectForTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["JoinRequestReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseJoinRequestResponse"];
+                };
+            };
+        };
+    };
+    approveForTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["JoinRequestReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseJoinRequestResponse"];
+                };
+            };
+        };
+    };
     listHomerooms: {
         parameters: {
             query: {
@@ -108768,7 +109012,7 @@ export interface operations {
             };
         };
     };
-    createForTeam_3: {
+    createForTeam_4: {
         parameters: {
             query?: never;
             header: {
@@ -116906,6 +117150,112 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListApplicationResponse"];
+                };
+            };
+        };
+    };
+    listForOrganization: {
+        parameters: {
+            query?: {
+                status?: "PENDING" | "APPROVED" | "REJECTED";
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                organizationId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePageJoinRequestResponse"];
+                };
+            };
+        };
+    };
+    createForOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["JoinRequestCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseJoinRequestResponse"];
+                };
+            };
+        };
+    };
+    rejectForOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: number;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["JoinRequestReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseJoinRequestResponse"];
+                };
+            };
+        };
+    };
+    approveForOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: number;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["JoinRequestReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseJoinRequestResponse"];
                 };
             };
         };
@@ -149384,6 +149734,28 @@ export interface operations {
             };
         };
     };
+    listMineForTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListJoinRequestResponse"];
+                };
+            };
+        };
+    };
     downloadQrPdf: {
         parameters: {
             query?: never;
@@ -156533,6 +156905,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListSpaceResponse"];
+                };
+            };
+        };
+    };
+    listMineForOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListJoinRequestResponse"];
                 };
             };
         };

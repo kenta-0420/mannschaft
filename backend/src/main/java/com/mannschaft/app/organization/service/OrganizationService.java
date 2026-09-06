@@ -204,6 +204,39 @@ public class OrganizationService {
     }
 
     /**
+     * 柱③-A 参加申請（join request）向けの軽量サマリ。
+     *
+     * <p>他ドメイン（joinrequest）が「PUBLIC な ACTIVE 組織か」を判定するための read-only な
+     * 横断クエリ。論理削除済み組織は取得対象外（空を返す＝存在しない扱い＝存在秘匿）。</p>
+     *
+     * @param organizationId 組織 ID
+     * @return 参加可否サマリ。存在しない／論理削除済みの場合は空。
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<JoinabilitySummary> findJoinabilitySummary(Long organizationId) {
+        return organizationRepository.findById(organizationId)
+                .map(org -> new JoinabilitySummary(
+                        org.getName(),
+                        org.getArchivedAt() != null,
+                        org.getVisibility() == OrganizationEntity.Visibility.PUBLIC,
+                        org.getLifecycleStatus() == OrganizationEntity.LifecycleStatus.PROVISIONED));
+    }
+
+    /**
+     * 参加申請可否サマリ（他ドメイン公開用）。
+     *
+     * @param name        組織表示名
+     * @param archived    アーカイブ済みか
+     * @param isPublic    可視性が PUBLIC か
+     * @param provisioned PROVISIONED（承諾前の事前作成状態）か
+     */
+    public record JoinabilitySummary(String name, boolean archived, boolean isPublic, boolean provisioned) {
+        public boolean joinable() {
+            return !archived && !provisioned && isPublic;
+        }
+    }
+
+    /**
      * F06.4 公開活動記録: 他ドメインが「この組織は匿名公開してよいか」を判定するための横断 SPI。
      *
      * <p>公開コンテンツ（活動記録など）を匿名公開する経路は、コンテンツ自身が PUBLIC でも

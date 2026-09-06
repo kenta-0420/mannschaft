@@ -2499,7 +2499,14 @@ public class GlobalExceptionHandler {
             Map.entry("DUPNAME_001", HttpStatus.CONFLICT),
             // 検分 P1-2 是正: アドバイザリロック（GET_LOCK）取得タイムアウト。同名同士の
             // 同時作成競合を示す一時的な 409（クライアントは再試行してよい）。
-            Map.entry("DUPNAME_002", HttpStatus.CONFLICT)
+            Map.entry("DUPNAME_002", HttpStatus.CONFLICT),
+
+            // CMP-260901-1538 柱③-A「MEMBER 参加申請（join request）」: 対象スコープ不存在／
+            // PRIVATE／PROVISIONED／アーカイブ済みは同一の 404 に畳んで存在を秘匿する
+            // （PARKING_020・PROV_001/009/010 と同じ流儀）。申請自体が見つからない場合
+            // （IDOR 対策で scope 不一致も含む）も同様に 404。
+            Map.entry("JOIN_REQUEST_001", HttpStatus.NOT_FOUND),
+            Map.entry("JOIN_REQUEST_003", HttpStatus.NOT_FOUND)
     );
 
     /**
