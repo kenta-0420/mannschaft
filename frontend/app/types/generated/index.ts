@@ -11734,6 +11734,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/billing/payer-handover-requests/{handoverRequestId}/acceptance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * チーム契約の請求担当引継を承諾
+         * @description 新 payer となる他 ADMIN が承諾する（2段目）。支払い方法未登録なら REQUIRES_PAYMENT_METHOD で差し戻す。
+         */
+        post: operations["acceptForTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/billing/contracts": {
         parameters: {
             query?: never;
@@ -11748,6 +11768,26 @@ export interface paths {
          * @description TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。Idempotency-Key 必須。
          */
         post: operations["createForTeam_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/billing/contracts/{contractId}/payer-handover-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * チーム契約の請求担当引継を申請
+         * @description 旧 payer が申請する（承諾型2段の1段目）。旧契約が PAST_DUE または期末が過去の場合は拒否される。
+         */
+        post: operations["requestForTeam"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16305,6 +16345,46 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["exportDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/billing/payer-handover-requests/{handoverRequestId}/acceptance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 組織契約の請求担当引継を承諾
+         * @description 新 payer となる他 ADMIN が承諾する（2段目）。支払い方法未登録なら REQUIRES_PAYMENT_METHOD で差し戻す。
+         */
+        post: operations["acceptForOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/billing/contracts/{contractId}/payer-handover-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 組織契約の請求担当引継を申請
+         * @description 旧 payer が申請する（承諾型2段の1段目）。旧契約が PAST_DUE または期末が過去の場合は拒否される。
+         */
+        post: operations["requestForOrganization"];
         delete?: never;
         options?: never;
         head?: never;
@@ -60025,6 +60105,20 @@ export interface components {
             targetRole?: string;
             targetTeamIds?: number[];
         };
+        ApiResponseBillingPayerHandoverAcceptResponse: {
+            data?: components["schemas"]["BillingPayerHandoverAcceptResponse"];
+        };
+        /** @description 請求担当引継の承諾結果 */
+        BillingPayerHandoverAcceptResponse: {
+            /** @description 新 payer が決済を完了するための Checkout URL（差し戻し時は null） */
+            checkoutUrl?: string;
+            /** @description 引継要求 ID */
+            handoverRequestId?: string;
+            /** @description 引継先として先行作成された契約 ID（PENDING_HANDOVER 状態。差し戻し時は null） */
+            newContractId?: string;
+            /** @description 承諾後の状態。REQUIRES_PAYMENT_METHOD は支払い方法未登録による差し戻し */
+            status?: string;
+        };
         /** @description F20.1 契約作成リクエスト */
         BillingCreateContractRequest: {
             /**
@@ -60042,6 +60136,35 @@ export interface components {
              * @example FULL
              */
             planKey?: string;
+        };
+        ApiResponseBillingPayerHandoverRequestResponse: {
+            data?: components["schemas"]["BillingPayerHandoverRequestResponse"];
+        };
+        /** @description 請求担当引継要求 */
+        BillingPayerHandoverRequestResponse: {
+            /**
+             * Format: date-time
+             * @description 承諾の猶予期限（既定: 申請から14日）
+             */
+            expiresAt?: string;
+            /** @description 引継要求 ID（UUIDv7） */
+            handoverRequestId?: string;
+            /** @description 引継元の契約 ID */
+            oldContractId?: string;
+            /**
+             * Format: date-time
+             * @description 申請時刻
+             */
+            requestedAt?: string;
+            /**
+             * Format: int64
+             * @description スコープ ID
+             */
+            scopeId?: number;
+            /** @description スコープ種別（TEAM / ORG。USER は引継の概念が無く対象外） */
+            scopeKind?: string;
+            /** @description 要求の状態（9値の状態機械） */
+            status?: string;
         };
         TransitionAlertResolveRequest: {
             note?: string;
@@ -108622,6 +108745,29 @@ export interface operations {
             };
         };
     };
+    acceptForTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                handoverRequestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPayerHandoverAcceptResponse"];
+                };
+            };
+        };
+    };
     createForTeam_3: {
         parameters: {
             query?: never;
@@ -108646,6 +108792,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
+                };
+            };
+        };
+    };
+    requestForTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPayerHandoverRequestResponse"];
                 };
             };
         };
@@ -117123,6 +117292,52 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseDisclosureExportResponse"];
+                };
+            };
+        };
+    };
+    acceptForOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: number;
+                handoverRequestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPayerHandoverAcceptResponse"];
+                };
+            };
+        };
+    };
+    requestForOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: number;
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPayerHandoverRequestResponse"];
                 };
             };
         };

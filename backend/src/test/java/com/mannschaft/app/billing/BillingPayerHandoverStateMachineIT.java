@@ -23,6 +23,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -106,9 +107,18 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
             grantTeamAdminRole(adminAUserId);
             grantTeamAdminRole(adminBUserId);
 
-            oldPeriodEnd = LocalDateTime.now(clock).plusDays(30);
+            // 秒未満を切り捨てる: MySQL の DATETIME は本フィクスチャの精度をそのまま保持しないため、
+            // 切り捨てずに投入すると DB 往復で値が変わり、AC-5 の trial_end 一致検証
+            // （stubGatewayForHappyPath の eq(oldEnd)）が実物と突合できなくなる。
+            oldPeriodEnd = LocalDateTime.now(clock).plusDays(30).truncatedTo(ChronoUnit.SECONDS);
             oldContractId = insertOldContract(ContractStatus.ACTIVE, oldPeriodEnd, OLD_SUBSCRIPTION_REF);
             insertPointerFor(oldContractId);
+            // 実装が読むのは DB に入った実値であるため、フィクスチャ側も DB 往復後の値へ揃える
+            // （一次キャッシュを通すと投入前の値が返るので flush/clear してから読み直す）。
+            entityManager.flush();
+            entityManager.clear();
+            oldPeriodEnd = billingContractRepository.findByIdAndDeletedAtIsNull(oldContractId)
+                    .orElseThrow().getCurrentPeriodEnd();
         });
         stubGatewayForHappyPath();
     }
