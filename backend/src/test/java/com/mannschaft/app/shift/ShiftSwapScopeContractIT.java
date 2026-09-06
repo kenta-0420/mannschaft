@@ -98,8 +98,6 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
 
     private Long pendingSwapAId;  // TEAM A の PENDING 交代申請（申請者 = memberTeamA）
     private Long acceptedSwapAId; // TEAM A の ACCEPTED 交代申請（承認・却下の対象）
-    private Long openCallSwapAId; // TEAM A の OPEN_CALL 交代申請（手挙げの対象）
-    private Long claimedSwapAId;  // TEAM A の CLAIMED 交代申請（候補者選定の対象）
     private Long pendingSwapBId;  // TEAM B の PENDING 交代申請（一覧に混入してはならない）
 
     @BeforeEach
@@ -131,12 +129,6 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
         ShiftSwapRequestEntity accepted = buildSwap(slotAId, memberTeamAId, SwapRequestStatus.PENDING, false);
         accepted.accept(member2TeamAId);
         acceptedSwapAId = swapRepository.save(accepted).getId();
-
-        openCallSwapAId = insertSwap(slotAId, memberTeamAId, SwapRequestStatus.OPEN_CALL, true);
-
-        ShiftSwapRequestEntity claimed = buildSwap(slotAId, memberTeamAId, SwapRequestStatus.OPEN_CALL, true);
-        claimed.claim(member2TeamAId);
-        claimedSwapAId = swapRepository.save(claimed).getId();
 
         em.flush();
         em.clear();
@@ -384,78 +376,6 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(adminTeamAId);
             mockMvc.perform(delete("/api/v1/shifts/swap-requests/{id}", pendingSwapAId))
                     .andExpect(status().isNoContent());
-        }
-    }
-
-    // ═════════════════════════════════════════════════════════════════════
-    // 6. POST /shifts/swap-requests/{swapId}/claim（オープンコール手挙げ）
-    // ═════════════════════════════════════════════════════════════════════
-
-    @Nested
-    @DisplayName("6. POST /shifts/swap-requests/{swapId}/claim（手挙げ）")
-    class ClaimOpenCall {
-
-        @Test
-        @DisplayName("部外者は403（オープンコールでも公開範囲はチーム内）")
-        void 部外者は403() throws Exception {
-            setAuth(outsiderId);
-            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/claim", openCallSwapAId))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @DisplayName("別scope ADMINは403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
-            setAuth(adminTeamBId);
-            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/claim", openCallSwapAId))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @DisplayName("正当メンバーは200（正常系）")
-        void 正当メンバーは200() throws Exception {
-            setAuth(member2TeamAId);
-            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/claim", openCallSwapAId))
-                    .andExpect(status().isOk());
-        }
-    }
-
-    // ═════════════════════════════════════════════════════════════════════
-    // 7. POST /shifts/swap-requests/{swapId}/select-claimer（候補者選定）
-    // ═════════════════════════════════════════════════════════════════════
-
-    @Nested
-    @DisplayName("7. POST /shifts/swap-requests/{swapId}/select-claimer（候補者選定）")
-    class SelectClaimer {
-
-        @Test
-        @DisplayName("申請者でない一般メンバーは403")
-        void 申請者でない一般メンバーは403() throws Exception {
-            setAuth(member2TeamAId);
-            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/select-claimer", claimedSwapAId)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(member2TeamAId.toString()))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @DisplayName("別scope ADMINは403（BOLA）")
-        void 別scopeADMINは403() throws Exception {
-            setAuth(adminTeamBId);
-            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/select-claimer", claimedSwapAId)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(member2TeamAId.toString()))
-                    .andExpect(status().isForbidden());
-        }
-
-        @Test
-        @DisplayName("申請者本人は200（正常系）")
-        void 申請者本人は200() throws Exception {
-            setAuth(memberTeamAId);
-            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/select-claimer", claimedSwapAId)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(member2TeamAId.toString()))
-                    .andExpect(status().isOk());
         }
     }
 

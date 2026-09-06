@@ -61,12 +61,6 @@
       "openCallLimit": "公开招募每月最多3次",
       "fetchError": "获取变更申请失败"
     },
-    "openCall": {
-      "badge": "招募替补成员",
-      "claim": "我来顶替",
-      "claimed": "已申请",
-      "full": "招募结束"
-    },
     "pdf": {
       "teamLayout": "团队排班表 PDF",
       "personalLayout": "个人时间表 PDF",

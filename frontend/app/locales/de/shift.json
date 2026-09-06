@@ -61,12 +61,6 @@
       "openCallLimit": "Offene Ausschreibungen sind auf 3 pro Monat begrenzt",
       "fetchError": "Fehler beim Abrufen der Änderungsanträge"
     },
-    "openCall": {
-      "badge": "Ersatzmitglied gesucht",
-      "claim": "Ich übernehme diese Schicht",
-      "claimed": "Bereits beansprucht",
-      "full": "Ausschreibung geschlossen"
-    },
     "pdf": {
       "teamLayout": "Team-Schichtplan PDF",
       "personalLayout": "Persönliche Zeitleiste PDF",

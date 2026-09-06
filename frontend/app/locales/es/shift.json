@@ -61,12 +61,6 @@
       "openCallLimit": "Las convocatorias abiertas están limitadas a 3 por mes",
       "fetchError": "Error al obtener las solicitudes de cambio"
     },
-    "openCall": {
-      "badge": "Buscando miembro sustituto",
-      "claim": "Cubriré este turno",
-      "claimed": "Ya solicitado",
-      "full": "Convocatoria cerrada"
-    },
     "pdf": {
       "teamLayout": "PDF del horario del equipo",
       "personalLayout": "PDF de la línea de tiempo personal",
