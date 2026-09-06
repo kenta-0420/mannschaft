@@ -120,7 +120,43 @@ public enum EntitlementErrorCode implements ErrorCode {
     STRIPE_UNAVAILABLE("ENTITLEMENT_025", "決済サービスを利用できません", Severity.ERROR),
 
     /** 旧有償 POST は Billing Center flow が必要（409）。 */
-    BILLING_FLOW_REQUIRED("ENTITLEMENT_026", "料金・契約画面から手続きを開始してください", Severity.WARN);
+    BILLING_FLOW_REQUIRED("ENTITLEMENT_026", "料金・契約画面から手続きを開始してください", Severity.WARN),
+
+    // ========================================
+    // 柱③-B PR-2 請求支払者の引継（設計書 billing_payer_handover_design.md §3.6・§5.5）
+    // ========================================
+
+    /** USER スコープ契約は引継の概念自体が無い（400・設計書 §4.2）。 */
+    HANDOVER_SCOPE_NOT_SUPPORTED("ENTITLEMENT_027",
+            "この契約は請求担当の引継に対応していません", Severity.WARN),
+
+    /**
+     * 旧契約が {@code PAST_DUE}、期末が既に過去、または Stripe サブスク未作成のため引継できない
+     * （409・設計書 §3.6 R2-P1-4・AC-29）。{@code trial_end} には未来時刻しか指定できないため、
+     * この条件では引継要求の作成自体を拒否し、先に支払回収または解約を促す。
+     */
+    HANDOVER_CONTRACT_NOT_ELIGIBLE("ENTITLEMENT_028",
+            "先に旧契約の支払回収または解約を完了してから、請求担当の引継を申請してください", Severity.WARN),
+
+    /** 同一契約への進行中（非終端）の引継要求は同時に1件のみ（409・設計書 §4.2 生成列+UNIQUE）。 */
+    HANDOVER_ALREADY_IN_PROGRESS("ENTITLEMENT_029",
+            "この契約には進行中の引継要求があります", Severity.WARN),
+
+    /** 引継要求が存在しない、またはスコープ越境（404・存在オラクルを残さないため404で畳む）。 */
+    HANDOVER_NOT_FOUND("ENTITLEMENT_030",
+            "指定された引継要求が見つかりません", Severity.WARN),
+
+    /** 承諾できる状態（{@code REQUESTED}/{@code REQUIRES_PAYMENT_METHOD}）ではない（409）。 */
+    HANDOVER_NOT_ACCEPTABLE("ENTITLEMENT_031",
+            "この引継要求は承諾できる状態ではありません", Severity.WARN),
+
+    /** 引継先候補の ADMIN が居ない、または全員が退会予定（409・設計書 §5.5 ①②・AC-10/17/18）。 */
+    HANDOVER_NO_CANDIDATE("ENTITLEMENT_032",
+            "引継先となる管理者が見つかりません", Severity.WARN),
+
+    /** 猶予期限（既定14日）を過ぎている（409・設計書 §5.3・AC-21）。 */
+    HANDOVER_EXPIRED("ENTITLEMENT_033",
+            "この引継要求は期限切れです", Severity.WARN);
 
     private final String code;
     private final String message;

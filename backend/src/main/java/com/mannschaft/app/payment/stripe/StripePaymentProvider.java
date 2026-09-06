@@ -761,4 +761,107 @@ public interface StripePaymentProvider {
             String eventId, String type, boolean livemode,
             String sessionId, String billingContractId, String subscriptionId, String customerId,
             Long currentPeriodEndEpochSec) {}
+
+    // ========================================
+    // 柱③-B PR-2 請求支払者の引継（設計書 billing_payer_handover_design.md §2.3・§3.2・§3.4）
+    // ========================================
+
+    /**
+     * 引継用の月額サブスク Checkout Session を作成する（{@code Mode.SUBSCRIPTION}・設計書 §2.3）。
+     *
+     * <p>{@link #createBillingSubscriptionCheckoutSession} との差分は3点:</p>
+     * <ol>
+     *   <li>{@code subscription_data.trial_end} に<b>旧契約の {@code current_period_end}</b>（unix 秒）を指定し、
+     *       新サブスクを {@code trialing} で作成する。旧期末までは一切請求が発生しないため、新旧併存期間の
+     *       <b>二重課金がゼロ</b>になる（設計書 §2.3・AC-4/AC-5 の核心）。</li>
+     *   <li>{@code subscription_data.metadata.handoverRequestId} を焼き付ける。DB へ
+     *       {@code psp_new_subscription_ref} を書き戻す前にプロセスが落ちた場合、
+     *       {@link #listSubscriptionsByCustomer} の全ページ走査＋本 metadata の突合で実物を回収し、
+     *       二重作成を防ぐ（設計書 §3.2・AC-7/AC-25/AC-33）。</li>
+     *   <li>{@code Idempotency-Key}（{@code billing-handover-create-{handoverRequestId}}）を付与する。
+     *       ただし Key は<b>24時間で失効する補助防御</b>にすぎず、一次防衛は上記 DB＋List 照合である
+     *       （設計書 §3.2 P0-2 根治）。</li>
+     * </ol>
+     *
+     * <p>{@code proration_behavior=none} を指定し、trial 終了時の日割りを発生させない（設計書 §2.3）。
+     * {@code metadata.billingContractId} は従来どおり焼き付け、{@code checkout.session.completed} で
+     * 契約を突合する（引継の新契約は {@code PENDING_HANDOVER} 状態で待機している）。</p>
+     *
+     * @param stripeCustomerId  新 payer の Stripe Customer ID（{@code cus_xxx}・get-or-create 済み）
+     * @param priceJpy          月額（円）
+     * @param productName       Stripe Product 表示名
+     * @param billingContractId 引継先の {@code billing_contracts.id}（{@code metadata.billingContractId}）
+     * @param handoverRequestId {@code billing_payer_handover_requests.id}（回復経路の突合キー）
+     * @param oldContractId     引継元の {@code billing_contracts.id}（監査用 metadata）
+     * @param trialEndEpochSec  旧契約の {@code current_period_end}（unix 秒・<b>未来時刻でなければならない</b>）
+     * @param successUrl        決済成功時の遷移先
+     * @param cancelUrl         決済中断時の遷移先
+     * @param idempotencyKey    冪等性キー（{@code billing-handover-create-{handoverRequestId}}）
+     * @return Checkout Session 情報（sessionId / checkoutUrl / expiresAt）
+     */
+    CheckoutSessionInfo createBillingHandoverSubscriptionCheckoutSession(
+            String stripeCustomerId, long priceJpy, String productName,
+            String billingContractId, String handoverRequestId, String oldContractId,
+            long trialEndEpochSec, String successUrl, String cancelUrl, String idempotencyKey);
+
+    /**
+     * Stripe Subscription の実物を取得する（設計書 §3.6.1(b)・§3.6 二段検証の2段目）。
+     *
+     * <p>DB の記録を信用せず Stripe 側の実値を突合するために用いる。切替バッチの実行前チェックでは
+     * {@code cancelAtPeriodEnd}（旧の期末終了が予約済みか）と {@code currentPeriodStart}（期末境界越えの判定）を、
+     * {@code pending_setup_intent} の二段検証では {@code pendingSetupIntentId} を参照する。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @return Subscription 実物のスナップショット
+     */
+    SubscriptionDetail retrieveSubscriptionDetail(String subscriptionId);
+
+    /**
+     * Customer に紐づく Subscription を<b>全ページ走査</b>して列挙する（設計書 §3.2・R4-P1-1・AC-33）。
+     *
+     * <p>{@code customer} 指定・{@code status=all}（{@code trialing}/{@code canceled} を含む）で照会する。
+     * <b>Search API は用いない</b>（Stripe 公式が「read-after-write フローにはリストアップ API を使え。
+     * これらは Search の鮮度遅延の影響を受けない」と明記しているため・設計書 §3.2 R3-P0 の裁定）。</p>
+     *
+     * <p><b>実装は必ず {@code autoPagingIterable()} を用いて {@code has_more} を追い切ること。</b>
+     * List は1リクエスト最大100件のページング型 API であり、対象 Customer が多数のサブスクを持つ場合、
+     * 目的のサブスクは2ページ目以降に存在しうる。<b>1ページ目だけを見て「未作成」と判定する実装は禁止</b>
+     * （そう判定すると二重サブスクを作ってしまい、二重課金に直結する）。</p>
+     *
+     * @param stripeCustomerId 対象 Stripe Customer ID（{@code cus_xxx}）
+     * @return 当該 Customer の全 Subscription（全ページ・全ステータス）
+     */
+    java.util.List<SubscriptionDetail> listSubscriptionsByCustomer(String stripeCustomerId);
+
+    /**
+     * Stripe Subscription の期末解約予約を<b>差し戻す</b>（{@code cancel_at_period_end=false}・設計書 §3.4）。
+     *
+     * <p>引継が旧期末前に {@code FAILED} 確定した場合、承諾確定時に予約した旧サブスクの期末終了を取り消し、
+     * 旧契約を継続させる（設計書 §2.3・§3.6.1・AC-32）。呼び出し側は本メソッドの成功後に
+     * {@code old_cancel_scheduled_at} を NULL クリアする責務を負う（対で行わないと夜次照合が誤判定する）。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @param idempotencyKey 冪等性キー（{@code billing-handover-revert-cancel-{handoverRequestId}}）
+     * @return Subscription 情報（id / status / currentPeriodEnd）
+     */
+    SubscriptionInfo revertSubscriptionCancelAtPeriodEnd(String subscriptionId, String idempotencyKey);
+
+    /**
+     * Stripe Subscription 実物のスナップショット（設計書 §3.6.1・§3.2）。
+     *
+     * <p>時刻は Stripe 由来の unix 秒のまま保持する（変換は呼び出し側の責務）。{@code metadata} は
+     * 回復経路の {@code handoverRequestId} 突合に用いる（設計書 §3.2）。</p>
+     *
+     * @param subscriptionId      Stripe Subscription ID（{@code sub_xxx}）
+     * @param status              Stripe ステータス（{@code trialing}/{@code active}/{@code canceled} 等）
+     * @param cancelAtPeriodEnd   期末解約が予約済みか（Stripe が null を返した場合は false 扱い）
+     * @param currentPeriodStart  現サイクル開始の unix 秒（期末境界越え判定に用いる・null 可）
+     * @param currentPeriodEnd    現サイクル終了の unix 秒（null 可）
+     * @param pendingSetupIntentId 未解決の SetupIntent ID（SCA/3DS 未完了時のみ非 null・設計書 §3.6）
+     * @param metadata            Subscription の metadata（{@code handoverRequestId} を含む・null 不可）
+     */
+    record SubscriptionDetail(String subscriptionId, String status, boolean cancelAtPeriodEnd,
+                              Long currentPeriodStart, Long currentPeriodEnd,
+                              String pendingSetupIntentId,
+                              java.util.Map<String, String> metadata) {}
 }
