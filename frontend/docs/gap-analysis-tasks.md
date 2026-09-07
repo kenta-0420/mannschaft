@@ -423,7 +423,7 @@
 
 ### コーディング規約
 - `FRONTEND_CODING_CONVENTION.md` に必ず準拠すること
-- 既存ページのレイアウトパターン（`PageHeader`, `ScopeSelector` 等の共通コンポーネント利用）に統一
+- 既存ページのレイアウトパターン（`PageHeader`, `SectionCard` 等の共通コンポーネント利用）に統一
 - Tailwind CSS でスタイリング
 - Zod + VeeValidate でフォームバリデーション
 - API呼び出しは `app/composables/use*Api.ts` パターンに準拠

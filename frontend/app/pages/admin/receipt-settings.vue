@@ -300,6 +300,7 @@ onBeforeRouteLeave(() => {
     <div v-else-if="isPersonalScope" class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-sm text-surface-600 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-300">
       <i class="pi pi-info-circle mr-1" />
       {{ t('receipt.settings.notice.personalScopeUnsupported') }}
+      <ScopeSwitchHint class="mt-3" />
     </div>
 
     <template v-else>

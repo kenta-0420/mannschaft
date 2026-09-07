@@ -2343,5 +2343,10 @@
       "confirmTitle": "Mitglied entfernen",
       "confirmMessage": "{name} aus den Mitgliedern entfernen?"
     }
+  },
+  "scopeSwitch": {
+    "hint": "Zum Wechseln öffnen Sie oben im Menü „Teams“ / „Organisationen“ das gewünschte Team bzw. die Organisation. Das geöffnete wird zum aktuellen Bereich.",
+    "goTeams": "Team auswählen",
+    "goOrganizations": "Organisation auswählen"
   }
 }
