@@ -46,13 +46,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       {@code AccessControlService#isMember} 内の {@code ScopeType.valueOf("PLATFORM")}
  *       （membership の ScopeType に PLATFORM は存在しない）で同じく <b>500</b> になっていた。
  *       運営スコープの入口は {@code PlatformReceiptController}（SYSTEM_ADMIN 限定）であり、
- *       テナント API は入口で 400 に落とすのが正しい。</li>
+ *       テナント API は入口で弾くのが正しい。</li>
+ *   <li>その入口で <b>PLATFORM と未知値を同じ 400 に畳んでいた</b>（F08.12 実機E2E AC-7 で発覚）。
+ *       未知値は<b>入力が不正</b>（400 / COMMON_001）だが、PLATFORM は enum として実在し
+ *       テナント API では扱えないスコープ＝<b>権限が無い</b>（403 / COMMON_002）であり、性質が違う。
+ *       発行者設定 API（{@code from} + {@code checkAdminOrAbove}）は同じ越境に既に 403 を
+ *       返しており、400 と 403 が混在すると応答からエンドポイントの実装差が読み取れてしまう。</li>
  * </ul>
  *
  * <h2>方針</h2>
  * <p>{@code MockMvcBuilders.standaloneSetup} ＋ {@link GlobalExceptionHandler}（{@code
- * BillingContractControllerTest} と同型）。検証対象は「不正な scopeType がサービス層へ到達せず
- * 400 / COMMON_001 で弾かれること」なので、サービスはモックのまま <b>1 度も呼ばれない</b>
+ * BillingContractControllerTest} と同型）。検証対象は「扱えない scopeType がサービス層へ到達せず
+ * 入口で弾かれること（未知値は 400 / COMMON_001、PLATFORM は 403 / COMMON_002）」なので、
+ * サービスはモックのまま <b>1 度も呼ばれない</b>
  * ことも併せて検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
@@ -126,56 +132,74 @@ class ReceiptScopeTypeContractTest {
     }
 
     @Test
-    @DisplayName("領収書一覧: scopeType=PLATFORM はテナント API では 400（COMMON_001）— 500 にならない")
-    void adminList_platformScopeType_badRequest() throws Exception {
+    @DisplayName("領収書一覧: scopeType=PLATFORM はテナント API では 403（COMMON_002）— 500 でも 400 でもない")
+    void adminList_platformScopeType_forbidden() throws Exception {
+        // F08.12 実機E2E AC-7: 団体 ADMIN が運営スコープを指したときの答えを、
+        // 発行者設定 API（/api/v1/admin/receipt-settings、from + checkAdminOrAbove で 403）と
+        // 揃える。400 と 403 が混在すると、越境要求への応答からエンドポイントの実装差が読み取れてしまう。
         adminMvc.perform(get("/api/v1/admin/receipts")
                         .param("scopeType", "PLATFORM")
                         .param("scopeId", "0"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("COMMON_001"));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("COMMON_002"));
         verifyNoInteractions(receiptService);
     }
 
     @Test
-    @DisplayName("CSVエクスポート: scopeType=PLATFORM / 未知値はいずれも 400（COMMON_001）")
-    void adminExport_invalidScopeType_badRequest() throws Exception {
-        for (String bad : new String[] {"PLATFORM", UNKNOWN, ""}) {
+    @DisplayName("CSVエクスポート: 未知値・空文字は 400（COMMON_001）、scopeType=PLATFORM は 403（COMMON_002）")
+    void adminExport_invalidScopeType_splitsBadRequestAndForbidden() throws Exception {
+        for (String bad : new String[] {UNKNOWN, ""}) {
             adminMvc.perform(get("/api/v1/admin/receipts/export")
                             .param("scopeType", bad)
                             .param("scopeId", "1"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error.code").value("COMMON_001"));
         }
+        adminMvc.perform(get("/api/v1/admin/receipts/export")
+                        .param("scopeType", "PLATFORM")
+                        .param("scopeId", "0"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("COMMON_002"));
         verifyNoInteractions(exportService);
     }
 
     // ───────────────────────── 発行待ちキュー（/api/v1/admin/receipt-queue） ─────────────────────────
 
     @Test
-    @DisplayName("キュー一覧: scopeType=PLATFORM / 未知値はいずれも 400（COMMON_001）")
-    void queueList_invalidScopeType_badRequest() throws Exception {
-        for (String bad : new String[] {"PLATFORM", UNKNOWN, ""}) {
+    @DisplayName("キュー一覧: 未知値・空文字は 400（COMMON_001）、scopeType=PLATFORM は 403（COMMON_002）")
+    void queueList_invalidScopeType_splitsBadRequestAndForbidden() throws Exception {
+        for (String bad : new String[] {UNKNOWN, ""}) {
             queueMvc.perform(get("/api/v1/admin/receipt-queue")
                             .param("scopeType", bad)
                             .param("scopeId", "1"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error.code").value("COMMON_001"));
         }
+        queueMvc.perform(get("/api/v1/admin/receipt-queue")
+                        .param("scopeType", "PLATFORM")
+                        .param("scopeId", "0"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("COMMON_002"));
         verifyNoInteractions(queueService);
     }
 
     // ───────────────────────── プリセット（/api/v1/admin/receipt-presets） ─────────────────────────
 
     @Test
-    @DisplayName("プリセット一覧: scopeType=PLATFORM / 未知値はいずれも 400（COMMON_001）")
-    void presetList_invalidScopeType_badRequest() throws Exception {
-        for (String bad : new String[] {"PLATFORM", UNKNOWN, ""}) {
+    @DisplayName("プリセット一覧: 未知値・空文字は 400（COMMON_001）、scopeType=PLATFORM は 403（COMMON_002）")
+    void presetList_invalidScopeType_splitsBadRequestAndForbidden() throws Exception {
+        for (String bad : new String[] {UNKNOWN, ""}) {
             presetMvc.perform(get("/api/v1/admin/receipt-presets")
                             .param("scopeType", bad)
                             .param("scopeId", "1"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error.code").value("COMMON_001"));
         }
+        presetMvc.perform(get("/api/v1/admin/receipt-presets")
+                        .param("scopeType", "PLATFORM")
+                        .param("scopeId", "0"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("COMMON_002"));
         verifyNoInteractions(presetService);
     }
 
