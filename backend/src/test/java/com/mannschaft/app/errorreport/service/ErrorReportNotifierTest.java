@@ -624,4 +624,91 @@ class ErrorReportNotifierTest {
             assertThat(bodyCaptor.getValue()).doesNotContain("{0}").contains("TypeError");
         }
     }
+
+    // ============================================================
+    // Issue #2990 L11 — 途中失敗: 1人の受信者への失敗が他へ波及しない
+    //
+    // 是正前は管理者ループ全体が1つの try に入っていたため、1人目への
+    // createNotification が落ちると残りの管理者全員が通知を受け取れなかった。
+    // ============================================================
+
+    @org.junit.jupiter.api.Nested
+    @DisplayName("受信者ごとの被害半径（#2990 L11）")
+    class PerRecipientIsolation {
+
+        @Test
+        @DisplayName("notifySystemAdmins: 1人目の通知が落ちても残りの管理者へ配送は続く")
+        void notifySystemAdmins_continuesAfterOneRecipientFails() {
+            given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(1L, 2L, 3L));
+            org.mockito.BDDMockito.willThrow(new RuntimeException("INSERT 失敗"))
+                    .given(notificationService).createNotification(
+                            eq(1L), anyString(), any(), anyString(), anyString(),
+                            anyString(), any(), any(), any(), anyString(), any());
+
+            notifier.notifySystemAdmins(sampleReport(ErrorReportSeverity.CRITICAL));
+
+            // 1人目が落ちても 2人目・3人目には届く（合計3回試行される）
+            verify(notificationService, times(3)).createNotification(
+                    anyLong(), anyString(), any(), anyString(), anyString(),
+                    anyString(), any(), any(), any(), anyString(), any());
+        }
+
+        @Test
+        @DisplayName("notifyEscalation: 1人目の通知が落ちても残りの管理者へ配送は続く")
+        void notifyEscalation_continuesAfterOneRecipientFails() {
+            given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(1L, 2L, 3L));
+            org.mockito.BDDMockito.willThrow(new RuntimeException("INSERT 失敗"))
+                    .given(notificationService).createNotification(
+                            eq(1L), anyString(), any(), anyString(), anyString(),
+                            anyString(), any(), any(), any(), anyString(), any());
+
+            notifier.notifyEscalation(sampleReport(ErrorReportSeverity.CRITICAL),
+                    ErrorReportSeverity.HIGH, ErrorReportSeverity.CRITICAL);
+
+            verify(notificationService, times(3)).createNotification(
+                    anyLong(), anyString(), any(), anyString(), anyString(),
+                    anyString(), any(), any(), any(), anyString(), any());
+        }
+
+        @Test
+        @DisplayName("notifyRegression: 1人目の通知が落ちても残りの管理者へ配送は続く")
+        void notifyRegression_continuesAfterOneRecipientFails() {
+            given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(1L, 2L, 3L));
+            org.mockito.BDDMockito.willThrow(new RuntimeException("INSERT 失敗"))
+                    .given(notificationService).createNotification(
+                            eq(1L), anyString(), any(), anyString(), anyString(),
+                            anyString(), any(), any(), any(), anyString(), any());
+
+            notifier.notifyRegression(sampleReport(ErrorReportSeverity.CRITICAL));
+
+            verify(notificationService, times(3)).createNotification(
+                    anyLong(), anyString(), any(), anyString(), anyString(),
+                    anyString(), any(), any(), any(), anyString(), any());
+        }
+
+        @Test
+        @DisplayName("notifySystemAdmins: 受信者が0名でも例外を投げず、通知は1件も出ない")
+        void notifySystemAdmins_emptyRecipients() {
+            given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of());
+
+            notifier.notifySystemAdmins(sampleReport(ErrorReportSeverity.CRITICAL));
+
+            verify(notificationService, never()).createNotification(
+                    anyLong(), anyString(), any(), anyString(), anyString(),
+                    anyString(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("notifySystemAdmins: 受信者リストの解決自体が落ちたら配送を中止し例外は伝播しない")
+        void notifySystemAdmins_recipientResolutionFailure() {
+            given(userRoleRepository.findSystemAdminUserIds())
+                    .willThrow(new RuntimeException("DB down"));
+
+            notifier.notifySystemAdmins(sampleReport(ErrorReportSeverity.CRITICAL));
+
+            verify(notificationService, never()).createNotification(
+                    anyLong(), anyString(), any(), anyString(), anyString(),
+                    anyString(), any(), any(), any(), any(), any());
+        }
+    }
 }
