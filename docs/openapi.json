@@ -999,6 +999,10 @@
       "description": "F03.10 スコープ共通の行事カテゴリ更新・削除"
     },
     {
+      "name": "柱③-A 参加申請",
+      "description": "PUBLIC な TEAM/ORGANIZATION への MEMBER 参加申請の受付・審査API"
+    },
+    {
       "name": "村紋 (F17.1 Phase 2)",
       "description": "村の紋（家紋・ロゴ）の設定／削除"
     },
@@ -35911,6 +35915,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateNameConfirmationErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -45286,6 +45300,210 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/join-requests": {
+      "get": {
+        "tags": [
+          "柱③-A 参加申請"
+        ],
+        "summary": "チームの参加申請一覧（ADMIN/DEPUTY_ADMIN）",
+        "operationId": "listForTeam_2",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "APPROVED",
+                "REJECTED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageJoinRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "柱③-A 参加申請"
+        ],
+        "summary": "チームへ参加申請を行う（PUBLIC な ACTIVE チームのみ）",
+        "operationId": "createForTeam_3",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinRequestCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJoinRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/join-requests/{id}/reject": {
+      "post": {
+        "tags": [
+          "柱③-A 参加申請"
+        ],
+        "summary": "チーム参加申請を却下（ADMIN/DEPUTY_ADMIN）",
+        "operationId": "rejectForTeam",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinRequestReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJoinRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/join-requests/{id}/approve": {
+      "post": {
+        "tags": [
+          "柱③-A 参加申請"
+        ],
+        "summary": "チーム参加申請を承認（ADMIN/DEPUTY_ADMIN）",
+        "operationId": "approveForTeam",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinRequestReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJoinRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/homerooms": {
       "get": {
         "tags": [
@@ -49277,7 +49495,7 @@
         ],
         "summary": "チームの契約作成",
         "description": "TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。Idempotency-Key 必須。",
-        "operationId": "createForTeam_3",
+        "operationId": "createForTeam_4",
         "parameters": [
           {
             "name": "teamId",
@@ -53288,12 +53506,22 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK",
+          "201": {
+            "description": "作成成功",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ProvisioningInvitationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateNameConfirmationErrorResponse"
                 }
               }
             }
@@ -53319,12 +53547,22 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK",
+          "201": {
+            "description": "作成成功",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ProvisioningInvitationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateNameConfirmationErrorResponse"
                 }
               }
             }
@@ -60014,6 +60252,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "柱③-A: 同名候補が存在し確認が必要（confirmDuplicate 未指定、または fingerprint 不一致＝確認後に新たな同名が出現）。候補一覧・fingerprint を返す",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateNameConfirmationErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -61881,6 +62129,210 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListApplicationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{organizationId}/join-requests": {
+      "get": {
+        "tags": [
+          "柱③-A 参加申請"
+        ],
+        "summary": "組織の参加申請一覧（ADMIN/DEPUTY_ADMIN）",
+        "operationId": "listForOrganization",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "APPROVED",
+                "REJECTED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageJoinRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "柱③-A 参加申請"
+        ],
+        "summary": "組織へ参加申請を行う（PUBLIC な ACTIVE 組織のみ）",
+        "operationId": "createForOrganization",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinRequestCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJoinRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{organizationId}/join-requests/{id}/reject": {
+      "post": {
+        "tags": [
+          "柱③-A 参加申請"
+        ],
+        "summary": "組織参加申請を却下（ADMIN/DEPUTY_ADMIN）",
+        "operationId": "rejectForOrganization",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinRequestReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJoinRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{organizationId}/join-requests/{id}/approve": {
+      "post": {
+        "tags": [
+          "柱③-A 参加申請"
+        ],
+        "summary": "組織参加申請を承認（ADMIN/DEPUTY_ADMIN）",
+        "operationId": "approveForOrganization",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinRequestReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJoinRequestResponse"
                 }
               }
             }
@@ -116101,6 +116553,38 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/join-requests/me": {
+      "get": {
+        "tags": [
+          "柱③-A 参加申請"
+        ],
+        "summary": "自分のチーム参加申請一覧（申請者本人）",
+        "operationId": "listMineForTeam",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListJoinRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/invite-tokens/{tokenId}/pdf": {
       "get": {
         "tags": [
@@ -128856,6 +129340,38 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListSpaceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{organizationId}/join-requests/me": {
+      "get": {
+        "tags": [
+          "柱③-A 参加申請"
+        ],
+        "summary": "自分の組織参加申請一覧（申請者本人）",
+        "operationId": "listMineForOrganization",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListJoinRequestResponse"
                 }
               }
             }
@@ -172425,6 +172941,12 @@
             "type": "string",
             "pattern": "\\d{5}"
           },
+          "confirmDuplicate": {
+            "type": "boolean"
+          },
+          "duplicateNameFingerprint": {
+            "type": "string"
+          },
           "name": {
             "type": "string",
             "minLength": 1
@@ -172443,6 +172965,84 @@
             "type": "string"
           },
           "visibility": {
+            "type": "string"
+          }
+        }
+      },
+      "DuplicateNameCandidateView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "DuplicateNameConfirmationDetails": {
+        "type": "object",
+        "properties": {
+          "expiresAtEpochSecond": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "hiddenCandidateCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "visibleCandidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DuplicateNameCandidateView"
+            }
+          }
+        }
+      },
+      "DuplicateNameConfirmationErrorResponse": {
+        "type": "object",
+        "description": "柱③-A 409 応答（候補一覧・fingerprint 付き）",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "エラーコード",
+            "example": "DUPNAME_001"
+          },
+          "details": {
+            "$ref": "#/components/schemas/DuplicateNameConfirmationDetails",
+            "description": "同名確認フローの詳細（候補一覧・fingerprint）"
+          },
+          "fieldErrors": {
+            "type": "array",
+            "description": "フィールドエラー一覧（本エラーでは常に空）",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            }
+          },
+          "message": {
+            "type": "string",
+            "description": "エラーメッセージ"
+          }
+        }
+      },
+      "FieldError": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "message": {
             "type": "string"
           }
         }
@@ -184538,6 +185138,12 @@
       "ProvisioningTeamCreateRequest": {
         "type": "object",
         "properties": {
+          "confirmDuplicate": {
+            "type": "boolean"
+          },
+          "duplicateNameFingerprint": {
+            "type": "string"
+          },
           "inviteEmail": {
             "type": "string",
             "minLength": 1
@@ -184582,6 +185188,12 @@
       "ProvisioningOrganizationCreateRequest": {
         "type": "object",
         "properties": {
+          "confirmDuplicate": {
+            "type": "boolean"
+          },
+          "duplicateNameFingerprint": {
+            "type": "string"
+          },
           "inviteEmail": {
             "type": "string",
             "minLength": 1
@@ -189753,6 +190365,12 @@
         "type": "object",
         "properties": {
           "city": {
+            "type": "string"
+          },
+          "confirmDuplicate": {
+            "type": "boolean"
+          },
+          "duplicateNameFingerprint": {
             "type": "string"
           },
           "name": {

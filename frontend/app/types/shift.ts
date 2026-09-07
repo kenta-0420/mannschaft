@@ -41,22 +41,37 @@ export type ShiftPeriodType = 'WEEKLY' | 'MONTHLY' | 'CUSTOM'
 // レスポンス DTO 型
 // =====================================================
 
-/** シフトスケジュールレスポンス */
+/**
+ * シフトスケジュールレスポンス。
+ *
+ * BE（`ShiftScheduleResponse`）は Wave 2-C-B（PR #3019）以降、
+ * `content` / `period` / `status` / `audit` の 4 グループにネストして返す。
+ * ここはその実際の応答形と 1:1 で対応させること（フラットに書き直すと
+ * 型検査が通るまま画面が空欄になる）。
+ */
 export interface ShiftScheduleResponse {
   id: number
   teamId: number
-  title: string
-  periodType: ShiftPeriodType | null
-  startDate: string
-  endDate: string
-  status: ShiftScheduleStatus
-  requestDeadline: string | null
-  note: string | null
-  createdBy: number | null
-  publishedAt: string | null
-  publishedBy: number | null
-  createdAt: string
-  updatedAt: string
+  content: {
+    title: string
+    periodType: ShiftPeriodType | null
+    note: string | null
+  }
+  period: {
+    startDate: string
+    endDate: string
+    requestDeadline: string | null
+  }
+  status: {
+    status: ShiftScheduleStatus
+    publishedAt: string | null
+    publishedBy: number | null
+  }
+  audit: {
+    createdBy: number | null
+    createdAt: string
+    updatedAt: string
+  }
 }
 
 /** シフトポジションレスポンス */
@@ -70,16 +85,26 @@ export interface ShiftPositionResponse {
   createdAt: string
 }
 
-/** シフト枠レスポンス */
+/**
+ * シフト枠レスポンス。
+ *
+ * BE（`ShiftSlotResponse`）は Wave 2-C-B（PR #3019）以降、
+ * 日時を `time`、ポジションを `position` にネストして返す。
+ * `assignedUserIds` / `assignmentMasked` / `note` はトップレベルのまま。
+ */
 export interface ShiftSlotResponse {
   id: number
   scheduleId: number
-  slotDate: string
-  startTime: string
-  endTime: string
-  positionId: number | null
-  positionName: string | null
-  requiredCount: number
+  time: {
+    slotDate: string
+    startTime: string
+    endTime: string
+  }
+  position: {
+    positionId: number | null
+    positionName: string | null
+    requiredCount: number
+  }
   assignedUserIds: number[]
   /**
    * 割当内容をサーバー側で伏せたか（CMP-260826-2127 / AC-4）。
@@ -425,19 +450,31 @@ export interface WorkConstraint {
 export type ChangeRequestType = 'PRE_CONFIRM_EDIT' | 'INDIVIDUAL_SWAP' | 'OPEN_CALL'
 export type ChangeRequestStatus = 'OPEN' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN' | 'EXPIRED'
 
+/**
+ * シフト変更依頼レスポンス。
+ *
+ * BE（`ChangeRequestResponse`）は Wave 2-C-B（PR #3019）以降、
+ * `requestInfo` / `reviewInfo` / `timing` の 3 グループにネストして返す。
+ */
 export interface ChangeRequest {
   id: number
   scheduleId: number
-  slotId?: number
-  requestType: ChangeRequestType
-  status: ChangeRequestStatus
-  requestedBy: number
-  reason?: string
-  reviewerId?: number
-  reviewComment?: string
-  reviewedAt?: string
-  expiresAt?: string
-  createdAt: string
+  slotId: number | null
+  requestInfo: {
+    requestType: ChangeRequestType
+    reason: string | null
+    requestedBy: number
+  }
+  reviewInfo: {
+    status: ChangeRequestStatus
+    reviewerId: number | null
+    reviewComment: string | null
+    reviewedAt: string | null
+  }
+  timing: {
+    expiresAt: string | null
+    createdAt: string
+  }
 }
 
 export interface CreateChangeRequestPayload {

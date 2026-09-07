@@ -48,7 +48,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 最悪の偽陰性になる。両者が一致していることを必ず確認すること。
  */
 @Transactional
-@DisplayName("F08.12 運営領収書の重複防止（生成列 + UNIQUE）統合テスト（試練・実装前 red）")
+@DisplayName("F08.12 運営領収書の重複防止（生成列 + UNIQUE）統合テスト")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class PlatformReceiptDuplicateGuardIT extends AbstractMySqlIntegrationTest {
 

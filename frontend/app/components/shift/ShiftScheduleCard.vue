@@ -32,14 +32,14 @@ function formatScheduleDate(dateStr: string): string {
     <!-- ヘッダー行 -->
     <div class="mb-2 flex items-start justify-between gap-2">
       <h3 class="min-w-0 flex-1 truncate font-semibold text-surface-800 dark:text-surface-100">
-        {{ schedule.title }}
+        {{ schedule.content.title }}
       </h3>
-      <ShiftStatusBadge :status="schedule.status" />
+      <ShiftStatusBadge :status="schedule.status.status" />
     </div>
 
     <!-- 期間 -->
     <p class="mb-3 text-xs text-surface-500">
-      {{ formatScheduleDate(schedule.startDate) }} 〜 {{ formatScheduleDate(schedule.endDate) }}
+      {{ formatScheduleDate(schedule.period.startDate) }} 〜 {{ formatScheduleDate(schedule.period.endDate) }}
     </p>
 
     <!-- 提出率 -->
@@ -56,8 +56,8 @@ function formatScheduleDate(dateStr: string): string {
     </div>
 
     <!-- 締切 -->
-    <p v-if="schedule.requestDeadline" class="mt-2 text-xs text-surface-400">
-      {{ t('shift.index.deadline') }}: {{ formatScheduleDate(schedule.requestDeadline) }}
+    <p v-if="schedule.period.requestDeadline" class="mt-2 text-xs text-surface-400">
+      {{ t('shift.index.deadline') }}: {{ formatScheduleDate(schedule.period.requestDeadline) }}
     </p>
   </div>
 </template>

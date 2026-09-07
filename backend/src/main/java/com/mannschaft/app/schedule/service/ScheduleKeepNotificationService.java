@@ -6,6 +6,7 @@ import com.mannschaft.app.membership.fanout.ScheduleKeepTeamFanoutRecipientSourc
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
+import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.schedule.ScheduleKeepScopeType;
 import com.mannschaft.app.schedule.authz.ScheduleKeepScope;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
@@ -29,11 +30,24 @@ import java.util.Objects;
  * キープが予定になりうる</b>ということであり、作成者への通知はその代償として設計上必須である。
  * 通知を省くと「勝手に日程が決まっていた」体験になり、機能の信頼が崩れる。</p>
  *
- * <h2>本クラスは呼び出し側の TX に乗り、永続化だけを別 TX に逃がす（§6.2.1）</h2>
- * <p>本クラス自身に {@code @Transactional} は付けない。宛先の判定は<b>外側 TX の中で</b>
- * 行う必要があるからである（変換中のキープ・予定は未コミットで、独立 TX からは見えない）。
- * 一方、rollback-only 汚染を外側へ持ち込みうる<b>永続化だけ</b>は
- * {@link ScheduleKeepNotificationPublisher}（{@code REQUIRES_NEW}）へ委ねる。</p>
+ * <h2>本クラスは業務コミット後に呼ばれる（Issue #2990 L8 で是正）</h2>
+ * <p>本クラス自身に {@code @Transactional} は付けない。是正前は
+ * {@code ScheduleKeepService#convert} の業務TXの内側から同期で呼ばれており、
+ * 「宛先判定は未コミットのキープを読む必要があるので外側 TX の中で行い、永続化だけを
+ * {@code REQUIRES_NEW} の publisher へ逃がす」という構成だった。しかし fan-out の
+ * {@link NotificationFanoutJobService#enqueue} は外側 TX に残っており、その INSERT が落ちると
+ * rollback-only が立って<b>変換ごと巻き戻っていた</b>（呼び出し側の catch は
+ * 「変換自体は成立」と嘘のログを残す）。</p>
+ *
+ * <p>是正後は {@link ScheduleKeepConvertedNotificationListener}（{@code AFTER_COMMIT} +
+ * {@code @Async("event-pool")}）が唯一の呼び出し元である。キープも予定も既にコミット済みのため
+ * 「未コミットで見えない」という制約が消え、{@code REQUIRES_NEW} の publisher は不要になった
+ * （役目を終えたので削除した）。ここで開かれるトランザクションは
+ * {@code createNotificationPreAuthorized} / {@code enqueue} それぞれの内側だけであり、
+ * 巻き添えにする業務トランザクションはもう存在しない。</p>
+ *
+ * <p><b>直送と fan-out は互いに巻き添えにしない</b>: 直送の失敗で fan-out を落とさないよう、
+ * 2 つのステップはそれぞれ独立に例外を捕捉してログに残す（握りつぶしではなく ERROR 記録）。</p>
  *
  * <h2>届け先として無効な作成者はスキップする（§6.1）</h2>
  * <p>作成者が退会済み・スコープを脱退済み・SUPPORTER へ降格して<b>キープ自体が見えなくなっている</b>
@@ -60,7 +74,7 @@ public class ScheduleKeepNotificationService {
     /** 変換先の予定を指す（遷移先・出所の記録用。可視性判定には使わない）。 */
     private static final String SOURCE_TYPE_SCHEDULE = "SCHEDULE";
 
-    private final ScheduleKeepNotificationPublisher scheduleKeepNotificationPublisher;
+    private final NotificationService notificationService;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final TeamService teamService;
     /** CMP-017c: TEAM スコープ MEMBER 以上 全員への耐久 fan-out 配信の enqueue 口（出陣で結線）。 */
@@ -102,11 +116,26 @@ public class ScheduleKeepNotificationService {
         //    直送は fan-out enqueue より前に行う。enqueue が失敗しても作成者は受領済みになる（best-effort・AC-9）。
         if (creatorId != null && !Objects.equals(creatorId, actorUserId)
                 && contentVisibilityChecker.canViewUuid(ReferenceType.SCHEDULE_KEEP, keep.getId(), creatorId)) {
-            // publisher は別 TX（REQUIRES_NEW）のため再検索できない。値はここで確定して渡す（§6.2.1）。
-            scheduleKeepNotificationPublisher.publishConverted(
-                    creatorId, NOTIFICATION_TYPE_CONVERTED, title, body,
-                    SOURCE_TYPE_SCHEDULE, schedule.getId(),
-                    notificationScopeTypeOf(scope), scope.id(), actionUrl, actorUserId);
+            // 可視性は上で ReferenceType.SCHEDULE_KEEP により判定済みのため、NotificationService 内蔵の
+            // F00 ガード（sourceType="SCHEDULE" → SCOPE_AFFILIATED で SUPPORTER が通る）は使わない。
+            try {
+                notificationService.createNotificationPreAuthorized(
+                        creatorId,
+                        NOTIFICATION_TYPE_CONVERTED,
+                        NotificationPriority.NORMAL,
+                        title,
+                        body,
+                        SOURCE_TYPE_SCHEDULE,
+                        schedule.getId(),
+                        notificationScopeTypeOf(scope),
+                        scope.id(),
+                        actionUrl,
+                        actorUserId);
+            } catch (Exception e) {
+                // 直送の失敗で TEAM 全員への fan-out まで落とさない（AC-9 の best-effort 契約）。
+                log.error("キープ変換通知（作成者への直送）に失敗しました: keepId={}, creatorId={}",
+                        keep.getId(), creatorId, e);
+            }
         } else if (creatorId != null && !Objects.equals(creatorId, actorUserId)) {
             log.debug("キープ作成者に閲覧権が無いため作成者への変換通知（直送）は発行しません: keepId={}, creatorId={}",
                     keep.getId(), creatorId);
@@ -120,7 +149,7 @@ public class ScheduleKeepNotificationService {
             String scopeRef = scope.id() + ":" + actorUserId + ":" + excludedCreator;
             // Issue #2871: fan-out 経路は描画済み文字列ではなく「文面種別＋利用者が書いた中身」を運ぶ。
             // 引数はキープ（予定）のタイトル 1 つで、title/body 双方の枠に同じものを差し込む。
-            // ※ 上の作成者向け直送（publishConverted）は受信者が 1 名に確定しているため従来どおり
+            // ※ 上の作成者向け直送は受信者が 1 名に確定しているため従来どおり
             //    ここで組み立てた日本語の title/body をそのまま使う（fan-out とは別経路）。
             scheduleKeepFanoutJobService.enqueue(
                     ScheduleKeepTeamFanoutRecipientSource.SCOPE_TYPE,

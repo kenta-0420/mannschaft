@@ -146,9 +146,9 @@ const pendingCount = computed(() => summary.value?.pendingCount ?? 0)
     <div class="mb-4 flex items-center gap-2">
       <BackButton :to="`/shift/${scheduleId}`" />
       <h1 class="text-xl font-bold text-surface-800 dark:text-surface-100">
-        {{ schedule?.title ?? '...' }}
+        {{ schedule?.content.title ?? '...' }}
       </h1>
-      <ShiftStatusBadge v-if="schedule" :status="schedule.status" />
+      <ShiftStatusBadge v-if="schedule" :status="schedule.status.status" />
     </div>
 
     <!-- タブ -->

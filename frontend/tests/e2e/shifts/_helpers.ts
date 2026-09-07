@@ -106,42 +106,77 @@ export async function mockCatchAllApis(page: Page): Promise<void> {
 // fixture ビルダ（BE DTO 準拠）
 // ---------------------------------------------------------------------------
 
-/** ShiftScheduleResponse の雛形。 */
-export function buildSchedule(overrides: Record<string, unknown> = {}) {
+/**
+ * ShiftScheduleResponse の雛形。
+ *
+ * BE は `content` / `period` / `status` / `audit` にネストして返す（Wave 2-C-B / PR #3019）。
+ * 呼び出し側の可読性のため overrides はフラットなキーで受け、ここでネスト形へ畳む。
+ */
+export function buildSchedule(
+  overrides: { title?: string; status?: string; startDate?: string; endDate?: string } = {},
+) {
   return {
     id: SCHEDULE_ID,
     teamId: TEAM_ID,
-    title: 'E2Eテスト用シフトスケジュール',
-    periodType: 'MONTHLY',
-    startDate: '2026-05-01',
-    endDate: '2026-05-31',
-    status: 'ADJUSTING',
-    requestDeadline: '2026-04-25',
-    note: null,
-    createdBy: ADMIN_USER_ID,
-    publishedAt: null,
-    publishedBy: null,
-    createdAt: '2026-04-20T00:00:00Z',
-    updatedAt: '2026-04-20T00:00:00Z',
-    ...overrides,
+    content: {
+      title: overrides.title ?? 'E2Eテスト用シフトスケジュール',
+      periodType: 'MONTHLY',
+      note: null,
+    },
+    period: {
+      startDate: overrides.startDate ?? '2026-05-01',
+      endDate: overrides.endDate ?? '2026-05-31',
+      requestDeadline: '2026-04-25',
+    },
+    status: {
+      status: overrides.status ?? 'ADJUSTING',
+      publishedAt: null,
+      publishedBy: null,
+    },
+    audit: {
+      createdBy: ADMIN_USER_ID,
+      createdAt: '2026-04-20T00:00:00Z',
+      updatedAt: '2026-04-20T00:00:00Z',
+    },
   }
 }
 
-/** ShiftSlotResponse の雛形（バックエンド DTO 準拠: assignedUserIds は number[]）。 */
-export function buildSlot(id: number, overrides: Record<string, unknown> = {}) {
+/**
+ * ShiftSlotResponse の雛形。
+ *
+ * BE は日時を `time`、ポジションを `position` にネストして返し、
+ * `assignedUserIds` / `assignmentMasked` / `note` はトップレベルのまま（Wave 2-C-B / PR #3019）。
+ */
+export function buildSlot(
+  id: number,
+  overrides: {
+    slotDate?: string
+    startTime?: string
+    endTime?: string
+    positionId?: number | null
+    positionName?: string | null
+    requiredCount?: number
+    assignedUserIds?: number[]
+    assignmentMasked?: boolean
+  } = {},
+) {
   return {
     id,
     scheduleId: SCHEDULE_ID,
-    slotDate: '2026-05-10',
-    startTime: '09:00:00',
-    endTime: '17:00:00',
-    positionId: null,
-    positionName: null,
-    requiredCount: 2,
-    assignedUserIds: [] as number[],
+    time: {
+      slotDate: overrides.slotDate ?? '2026-05-10',
+      startTime: overrides.startTime ?? '09:00:00',
+      endTime: overrides.endTime ?? '17:00:00',
+    },
+    position: {
+      positionId: overrides.positionId ?? null,
+      positionName: overrides.positionName ?? null,
+      requiredCount: overrides.requiredCount ?? 2,
+    },
+    assignedUserIds: overrides.assignedUserIds ?? ([] as number[]),
+    assignmentMasked: overrides.assignmentMasked ?? false,
     note: null,
     version: 0,
-    ...overrides,
   }
 }
 
@@ -177,21 +212,41 @@ export function buildAssignmentRun(overrides: Record<string, unknown> = {}) {
 }
 
 /** ChangeRequest の雛形。 */
-export function buildChangeRequest(overrides: Record<string, unknown> = {}) {
+/**
+ * ChangeRequestResponse の雛形。
+ *
+ * BE は `requestInfo` / `reviewInfo` / `timing` にネストして返す（Wave 2-C-B / PR #3019）。
+ * 呼び出し側の可読性のため overrides はフラットなキーで受け、ここでネスト形へ畳む。
+ */
+export function buildChangeRequest(
+  overrides: {
+    requestType?: string
+    status?: string
+    requestedBy?: number
+    reason?: string
+    reviewerId?: number | null
+    reviewComment?: string | null
+  } = {},
+) {
   return {
     id: CHANGE_REQUEST_ID,
     scheduleId: SCHEDULE_ID,
     slotId: SLOT_ID_1,
-    requestType: 'PRE_CONFIRM_EDIT',
-    status: 'OPEN',
-    requestedBy: MEMBER_USER_ID,
-    reason: 'E2Eテスト用の変更依頼です',
-    reviewerId: null,
-    reviewComment: null,
-    reviewedAt: null,
-    expiresAt: '2026-05-01T00:00:00Z',
-    createdAt: '2026-04-25T10:00:00Z',
-    ...overrides,
+    requestInfo: {
+      requestType: overrides.requestType ?? 'PRE_CONFIRM_EDIT',
+      reason: overrides.reason ?? 'E2Eテスト用の変更依頼です',
+      requestedBy: overrides.requestedBy ?? MEMBER_USER_ID,
+    },
+    reviewInfo: {
+      status: overrides.status ?? 'OPEN',
+      reviewerId: overrides.reviewerId ?? null,
+      reviewComment: overrides.reviewComment ?? null,
+      reviewedAt: null,
+    },
+    timing: {
+      expiresAt: '2026-05-01T00:00:00Z',
+      createdAt: '2026-04-25T10:00:00Z',
+    },
   }
 }
 

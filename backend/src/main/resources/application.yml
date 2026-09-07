@@ -198,6 +198,11 @@ mannschaft:
     jwt:
       unsubscribe-secret: ${MANNSCHAFT_AD_UNSUBSCRIBE_SECRET:}
       open-pixel-secret: ${MANNSCHAFT_AD_OPEN_PIXEL_SECRET:}
+  # CMP-260901-1538 柱③-A: 組織・チーム名称の同名確認フロー用 fingerprint 署名鍵。
+  # 未設定時は mannschaft.jwt.secret をそのまま使う（DuplicateNameFingerprintServiceImpl）。
+  # 本番は専用の 256bit 以上のキーを必ず明示すること。
+  duplicate-name:
+    fingerprint-secret: ${MANNSCHAFT_DUPLICATE_NAME_FINGERPRINT_SECRET:}
   encryption:
     key: ${MANNSCHAFT_ENCRYPTION_KEY:}
     hmac-key: ${MANNSCHAFT_HMAC_KEY:}

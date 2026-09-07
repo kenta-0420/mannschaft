@@ -28,9 +28,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.mannschaft.app.schedule.event.ScheduleCommentPostedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -72,7 +72,7 @@ public class ScheduleCommentService {
     private final NameResolverService nameResolverService;
     private final MembershipService membershipService;
     private final OrganizationMembershipService organizationMembershipService;
-    private final ScheduleCommentNotifier notifier;
+    private final ApplicationEventPublisher eventPublisher;
     private final ScheduleCommentRateLimiter rateLimiter;
 
     @PersistenceContext
@@ -387,33 +387,17 @@ public class ScheduleCommentService {
         Long replyRecipientId = (parent != null && parent.getUserId() != null && !parent.getUserId().equals(userId))
                 ? parent.getUserId()
                 : null;
-        String excerpt = ScheduleCommentNotifier.excerpt(body);
         UUID commentId = saved.getId();
-        registerNotificationAfterCommit(schedule, commentId, userId, mentionedUserIds, replyRecipientId, excerpt);
+        // 通知は業務TX内では発火しない。ID だけを載せたイベントを publish し、実配送は
+        // ScheduleCommentNotifier（AFTER_COMMIT）が担う（原則5 / Issue #2990 L8）。
+        eventPublisher.publishEvent(new ScheduleCommentPostedEvent(
+                scheduleId, commentId, userId,
+                mentionedUserIds == null ? List.of() : List.copyOf(mentionedUserIds),
+                replyRecipientId));
 
         ModerationContext ctx = buildModerationContext(schedule, userId);
         Map<Long, AuthorSummary> authors = loadAuthors(userId == null ? Set.of() : Set.of(userId));
         return toResponse(saved, userId, ctx, authors, null, depth == 0);
-    }
-
-    private void registerNotificationAfterCommit(
-            ScheduleEntity schedule, UUID commentId, Long actorId,
-            List<Long> mentionedUserIds, Long replyRecipientId, String excerpt) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            return;
-        }
-        Set<Long> mentionSet = new LinkedHashSet<>(mentionedUserIds == null ? List.of() : mentionedUserIds);
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    notifier.notify(schedule, commentId, actorId, mentionSet, replyRecipientId, excerpt);
-                } catch (Exception e) {
-                    log.error("SCHEDULE_COMMENT 通知の発火に失敗（投稿の巻き戻しはしない）: scheduleId={}, commentId={}",
-                            schedule.getId(), commentId, e);
-                }
-            }
-        });
     }
 
     // ═════════════════════════════════════════════════════════════════════

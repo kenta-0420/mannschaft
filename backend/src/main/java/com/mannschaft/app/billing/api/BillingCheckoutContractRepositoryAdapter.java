@@ -65,6 +65,7 @@ class BillingCheckoutContractRepositoryAdapter implements BillingCheckoutContrac
                 .version(0L)
                 .contractedAt(now)
                 .createdBy(actorId)
+                .payerUserId(actorId)
                 .build();
         BillingContractEntity saved = billingContractRepository.save(contract);
 

@@ -20,9 +20,9 @@ export function useChangeRequest(scheduleId: Ref<number>) {
       requests.value = await shiftApi.listChangeRequests(scheduleId.value)
       // OPEN の依頼を先頭に並べる
       requests.value.sort((a, b) => {
-        if (a.status === 'OPEN' && b.status !== 'OPEN') return -1
-        if (a.status !== 'OPEN' && b.status === 'OPEN') return 1
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        if (a.reviewInfo.status === 'OPEN' && b.reviewInfo.status !== 'OPEN') return -1
+        if (a.reviewInfo.status !== 'OPEN' && b.reviewInfo.status === 'OPEN') return 1
+        return new Date(b.timing.createdAt).getTime() - new Date(a.timing.createdAt).getTime()
       })
     } catch {
       showError(t('shift.changeRequest.fetchError'))
@@ -77,7 +77,11 @@ export function useChangeRequest(scheduleId: Ref<number>) {
       await shiftApi.withdrawChangeRequest(id)
       const idx = requests.value.findIndex((r) => r.id === id)
       if (idx !== -1) {
-        requests.value[idx] = { ...requests.value[idx]!, status: 'WITHDRAWN' }
+        const target = requests.value[idx]!
+        requests.value[idx] = {
+          ...target,
+          reviewInfo: { ...target.reviewInfo, status: 'WITHDRAWN' },
+        }
       }
       showSuccess(t('shift.changeRequest.withdraw'))
     } catch {

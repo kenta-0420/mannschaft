@@ -10,6 +10,7 @@ import static org.mockito.Mockito.lenient;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
@@ -57,9 +58,26 @@ class TeamSlugServiceTest {
     @Mock private MembershipRepository membershipRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private MediaUrlResolver mediaUrlResolver;
+    @Mock private DuplicateNameGuardService duplicateNameGuardService;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;
+
+    /**
+     * 検分 P1-2 是正: {@code checkForCreateAndRun} は「候補判定→createAction 実行」を一体で
+     * 行う契約になったため、候補ゼロ相当として createAction をそのまま実行し結果を返すよう
+     * 既定でスタブする（{@code givenCreateScaffold()} を呼ばない slug 形式不正/予約語/重複の
+     * 異常系テストも、slug 検証自体は createAction 内で行われるため本スタブが必要）。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubDuplicateNameGuardToProceedByDefault() {
+        lenient().when(duplicateNameGuardService.checkForCreateAndRun(
+                        any(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    java.util.function.Supplier<?> createAction = inv.getArgument(6);
+                    return createAction.get();
+                });
+    }
 
     private void givenCreateScaffold() {
         RoleEntity adminRole = RoleEntity.builder().name("ADMIN").build();
@@ -88,7 +106,7 @@ class TeamSlugServiceTest {
             givenCreateScaffold();
             given(teamRepository.existsBySlugAndDeletedAtIsNull("my-team")).willReturn(false);
 
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "my-team");
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "my-team", false, null);
 
             ApiResponse<TeamResponse> result = service.createTeam(USER_ID, req);
 
@@ -98,7 +116,7 @@ class TeamSlugServiceTest {
         @Test
         @DisplayName("形式不正 slug は TEAM_060")
         void 形式不正() {
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "Bad_Slug");
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "Bad_Slug", false, null);
 
             assertThatThrownBy(() -> service.createTeam(USER_ID, req))
                     .isInstanceOf(BusinessException.class)
@@ -109,7 +127,7 @@ class TeamSlugServiceTest {
         @Test
         @DisplayName("予約語 slug は TEAM_061")
         void 予約語() {
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "admin");
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "admin", false, null);
 
             assertThatThrownBy(() -> service.createTeam(USER_ID, req))
                     .isInstanceOf(BusinessException.class)
@@ -122,7 +140,7 @@ class TeamSlugServiceTest {
         void 重複() {
             given(teamRepository.existsBySlugAndDeletedAtIsNull("taken-slug")).willReturn(true);
 
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "taken-slug");
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", null, null, null, null, null, null, "taken-slug", false, null);
 
             assertThatThrownBy(() -> service.createTeam(USER_ID, req))
                     .isInstanceOf(BusinessException.class)
@@ -142,7 +160,7 @@ class TeamSlugServiceTest {
             // 自動生成は createUniqueSlug 経由で existsBySlugAndDeletedAtIsNull を引く
             given(teamRepository.existsBySlugAndDeletedAtIsNull(eq("my-club"))).willReturn(false);
 
-            CreateTeamRequest req = new CreateTeamRequest("My Club", null, null, null, null, null, null, null);
+            CreateTeamRequest req = new CreateTeamRequest("My Club", null, null, null, null, null, null, null, false, null);
 
             ApiResponse<TeamResponse> result = service.createTeam(USER_ID, req);
 
@@ -155,7 +173,7 @@ class TeamSlugServiceTest {
             givenCreateScaffold();
             given(teamRepository.existsBySlugAndDeletedAtIsNull(eq("my-club"))).willReturn(false);
 
-            CreateTeamRequest req = new CreateTeamRequest("My Club", null, null, null, null, null, null, "  ");
+            CreateTeamRequest req = new CreateTeamRequest("My Club", null, null, null, null, null, null, "  ", false, null);
 
             ApiResponse<TeamResponse> result = service.createTeam(USER_ID, req);
 

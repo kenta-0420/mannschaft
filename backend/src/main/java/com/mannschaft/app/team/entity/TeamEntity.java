@@ -6,6 +6,7 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Version;
@@ -24,7 +25,12 @@ import java.time.LocalDateTime;
  * チームマスターエンティティ。チームの基本情報・公開設定を管理する。
  */
 @Entity
-@Table(name = "teams")
+@Table(name = "teams", indexes = {
+        // CMP-260901-1538 柱③-A 検分第4巡是正(P1-2): FOR UPDATE候補検索が全表走査/全表ロックに
+        // ならないよう、生成列 name_trimmed に索引を張る。test profile（ddl-auto=create）では
+        // ここが唯一の索引定義源のため、Flyway側（V202）と定義を一致させること。
+        @Index(name = "idx_teams_name_trimmed", columnList = "name_trimmed")
+})
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -54,6 +60,18 @@ public class TeamEntity extends BaseEntity {
 
     @Column(nullable = false, length = 100)
     private String name;
+
+    /**
+     * CMP-260901-1538 柱③-A 検分第4巡是正: 同名確認フローの候補検索が索引を使えるようにする
+     * ための生成列（{@code GENERATED ALWAYS AS (TRIM(name)) STORED}）。DB 側が自動算出するため
+     * JPA からは書き込まない（{@code insertable/updatable=false}）。
+     * {@code columnDefinition} で明示することで、test profile（{@code ddl-auto=create}）でも
+     * 本番と同じ生成列としてスキーマが作られる（本番/開発は Flyway
+     * {@code V202.*__add_teams_name_trimmed.sql} が担う）。
+     */
+    @Column(name = "name_trimmed", insertable = false, updatable = false,
+            columnDefinition = "VARCHAR(100) GENERATED ALWAYS AS (TRIM(name)) STORED")
+    private String nameTrimmed;
 
     @Column(length = 100)
     private String nameKana;

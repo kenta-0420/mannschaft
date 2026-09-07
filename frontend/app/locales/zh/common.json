@@ -2092,6 +2092,13 @@
       "unchanged": "与当前标识相同（无更改）"
     }
   },
+  "duplicate_name": {
+    "title": "已存在同名的{entity}",
+    "description": "已存在与输入名称相同的{entity}。请确认内容后再决定是否继续。",
+    "hidden_note": "另有{count}个非公开的{entity}（不显示名称和详情）",
+    "cancel": "取消",
+    "confirm": "仍要创建"
+  },
   "team_visibility": {
     "PUBLIC": "公开",
     "GUESTS_AND_ABOVE": "访客及以上",

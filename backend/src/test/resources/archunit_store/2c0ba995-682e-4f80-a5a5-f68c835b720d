@@ -105,6 +105,7 @@ Class <com.mannschaft.app.committee.entity.CommitteeDistributionLogEntity> is no
 Class <com.mannschaft.app.committee.entity.CommitteeEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (CommitteeEntity.java:0)
 Class <com.mannschaft.app.committee.entity.CommitteeInvitationEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (CommitteeInvitationEntity.java:0)
 Class <com.mannschaft.app.committee.entity.CommitteeMemberEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (CommitteeMemberEntity.java:0)
+Class <com.mannschaft.app.common.duplicatename.DuplicateNameLockEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (DuplicateNameLockEntity.java:0)
 Class <com.mannschaft.app.common.entity.HolidayMasterEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (HolidayMasterEntity.java:0)
 Class <com.mannschaft.app.common.storage.migration.StorageMigrationErrorEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (StorageMigrationErrorEntity.java:0)
 Class <com.mannschaft.app.common.storage.quota.entity.StoragePlanEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (StoragePlanEntity.java:0)

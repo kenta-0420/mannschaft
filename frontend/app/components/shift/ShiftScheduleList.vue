@@ -96,18 +96,18 @@ onMounted(load)
       >
         <div class="flex items-center justify-between">
           <div>
-            <p class="font-medium">{{ s.title }}</p>
-            <p class="text-xs text-surface-500">{{ s.startDate }} 〜 {{ s.endDate }}</p>
+            <p class="font-medium">{{ s.content.title }}</p>
+            <p class="text-xs text-surface-500">{{ s.period.startDate }} 〜 {{ s.period.endDate }}</p>
           </div>
           <div class="flex items-center gap-2">
             <Tag
-              :value="statusConfig[s.status]?.label ?? s.status"
-              :severity="statusConfig[s.status]?.severity ?? 'secondary'"
+              :value="statusConfig[s.status.status]?.label ?? s.status.status"
+              :severity="statusConfig[s.status.status]?.severity ?? 'secondary'"
               rounded
             />
             <div v-if="canManage" class="flex gap-1" @click.stop>
               <Button
-                v-if="s.status === 'ADJUSTING'"
+                v-if="s.status.status === 'ADJUSTING'"
                 v-tooltip="'公開'"
                 icon="pi pi-send"
                 text
@@ -116,7 +116,7 @@ onMounted(load)
                 @click="publish(s.id)"
               />
               <Button
-                v-if="s.status === 'PUBLISHED'"
+                v-if="s.status.status === 'PUBLISHED'"
                 v-tooltip="'アーカイブ'"
                 icon="pi pi-box"
                 text

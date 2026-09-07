@@ -1926,8 +1926,32 @@ class NotificationTransactionBoundaryGuardTest {
      * 減少はすべて本番コードの呼び出し箇所の消滅・置換に対応する。通知の実発火点は 1 箇所も
      * 失われておらず、AFTER_COMMIT の後へ移っただけである。
      * 新しい 169 は 2026-09-04 の実測ちょうどで、余裕はゼロである。</p>
+     *
+     * <h2>L8（2026-09-05 / schedule ドメイン 7件）: 167 -> 166</h2>
+     * <p><b>消えた生ヒットは 1 件だけ</b>であり、実測で 1 件ずつ突き合わせた。是正で触れた
+     * 本番ファイル 12 本（変更 7・新規 5）の語彙内ヒットを是正前後で数えると 6 -> 5:</p>
+     * <ul>
+     *   <li>{@code ScheduleCommentService} の {@code notifier.notify(...)} <b>1 箇所が消滅</b>。
+     *       {@code eventPublisher.publishEvent(new ScheduleCommentPostedEvent(...))} へ置換され
+     *       語彙に当たらなくなった。<b>これが -1 の唯一の正体である。</b></li>
+     *   <li>{@code ScheduleAttendanceService} の {@code notificationService.createNotificationPreAuthorized}
+     *       1 箇所が、新設 {@code ScheduleAttendanceSolicitationNotificationListener} の
+     *       {@code notificationHelper.notifyAllPreAuthorized} 1 箇所へ<b>1:1 で置換</b>（増減ゼロ）。</li>
+     *   <li>{@code ScheduleKeepNotificationPublisher}（削除）の
+     *       {@code notificationService.createNotificationPreAuthorized} 1 箇所が、
+     *       {@code ScheduleKeepNotificationService} の同 API 1 箇所へ<b>1:1 で移設</b>（増減ゼロ）。</li>
+     *   <li>新規の 3 イベント record と {@code ScheduleKeepConvertedNotificationListener} は
+     *       語彙内の呼び出しを 1 つも持たない（+0）。</li>
+     *   <li>{@code ScheduleCommentNotifier} は {@code runner.sendOne} 2 箇所が不変。
+     *       リスナー入口から内部ヘルパへの {@code notify(...)} は<b>無修飾呼び出し</b>のため
+     *       {@code .notify(} の語彙に当たらず、数は動かない。</li>
+     * </ul>
+     * <p>語彙（{@link #NOTIFY_METHOD_VOCABULARY}）も構造条件（{@link #notifyCallOffsets}）も
+     * 本PRで無変更である。通知の実発火点は 1 箇所も失われておらず、業務TXから
+     * {@code AFTER_COMMIT} の後へ移っただけである。新しい 166 は 2026-09-05 の実測ちょうどで、
+     * 余裕はゼロである。</p>
      */
-    static final long RAW_CANDIDATE_HITS_MIN = 167L;
+    static final long RAW_CANDIDATE_HITS_MIN = 166L;
 
     /**
      * 実測 149（2026-09-04 / Issue #2990 L5 の是正後）。158 -> 149 の根拠は
@@ -1940,9 +1964,15 @@ class NotificationTransactionBoundaryGuardTest {
      * 差分は生ヒットと完全に一致し（是正前 166 / 是正後 158・消えた 13 件と増えた 5 件の顔ぶれも同一）、
      * 「構造条件だけを厳しくして違反を消した」形跡は無いことを実測で確認している。
      *
+     * <p>L8（2026-09-05 / schedule ドメイン 7件）で 147 -> 146。差分は生ヒットと完全に一致する
+     * （{@code ScheduleCommentService#createComment} の {@code notifier.notify(...)} 1 箇所のみ）。
+     * 構造条件（レシーバが識別子・引数1つ以上）は移設先の
+     * {@code notifyAllPreAuthorized} / {@code createNotificationPreAuthorized} も満たすため、
+     * 1:1 で置換した 2 組はここでも増減ゼロである。</p>
+     *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 147L;
+    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 146L;
 
     /**
      * 実測 17309（2026-09-01 main 取り込み後）。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。
@@ -1998,9 +2028,27 @@ class NotificationTransactionBoundaryGuardTest {
      * 語彙内の発火点 6 箇所は 3 ファイルから 1 ファイルへ<b>まとまって移っただけ</b>で 1 箇所も消えておらず、
      * 実際に両ゲートは本ロットの実走で緑のままだった（落ちたのはファイル数のゲートだけである）。</p>
      *
+     * <p>L8（2026-09-05 / schedule ドメイン 7件）で 93 -> 92。発火ありのファイルの出入りは
+     * 差し引き -1 である:</p>
+     * <ul>
+     *   <li>{@code ScheduleCommentService} — 発火あり → <b>なし</b>。唯一の発火点
+     *       {@code notifier.notify(...)} が {@code publishEvent} へ置換された（-1）。</li>
+     *   <li>{@code ScheduleKeepNotificationPublisher} — <b>クラスごと削除</b>（-1）。
+     *       役目（通知の永続化だけを REQUIRES_NEW へ逃がす）が AFTER_COMMIT 化で消えたため。</li>
+     *   <li>{@code ScheduleKeepNotificationService} — 発火なし → <b>あり</b>（+1）。上記の移設先。</li>
+     *   <li>{@code ScheduleAttendanceService} — 発火あり → <b>なし</b>（-1）。</li>
+     *   <li>{@code ScheduleAttendanceSolicitationNotificationListener} — <b>新規に発火あり</b>（+1）。
+     *       上記の移設先。</li>
+     *   <li>{@code ScheduleCommentNotifier} — 発火あり → <b>あり（不変）</b>。
+     *       {@code runner.sendOne} を同ファイルに残したまま、入口を
+     *       {@code @TransactionalEventListener(AFTER_COMMIT)} にした。</li>
+     *   <li>{@code ScheduleKeepConvertedNotificationListener} / 新規 3 イベント record —
+     *       <b>発火なし</b>。語彙内の通知 API を 1 つも呼ばない。</li>
+     * </ul>
+     *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long NOTIFY_BEARING_FILES_MIN = 93L;
+    static final long NOTIFY_BEARING_FILES_MIN = 92L;
 
     /** 検出力の実測値。 */
     record DetectionPower(long rawCandidateHits, long structuralNotifyCalls, long parsedMethods) {}

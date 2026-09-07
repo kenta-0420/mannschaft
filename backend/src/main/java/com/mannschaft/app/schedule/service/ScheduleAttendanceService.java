@@ -4,11 +4,6 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
-import com.mannschaft.app.notification.service.NotificationDispatchService;
-import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
@@ -36,6 +31,7 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.mannschaft.app.schedule.event.AttendanceSolicitationOpenedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -67,10 +63,6 @@ public class ScheduleAttendanceService {
     /** F03.1: チーム未所属（組織直接メンバー）枠の CSV 表示ラベル。 */
     private static final String CSV_TEAM_UNASSIGNED_LABEL = "チーム未所属（組織直接メンバー）";
 
-    /** 機能55: 出欠募集通知の種別（自由文字列。NotificationService の type 引数に渡す）。 */
-    private static final String NOTIFICATION_TYPE_ATTENDANCE_REQUEST = "SCHEDULE_ATTENDANCE_REQUEST";
-    private static final String NOTIFICATION_SOURCE_TYPE = "SCHEDULE";
-
     private final ScheduleAttendanceRepository attendanceRepository;
     private final ScheduleRepository scheduleRepository;
     private final ScheduleService scheduleService;
@@ -80,8 +72,6 @@ public class ScheduleAttendanceService {
     private final ProxyInputContext proxyInputContext;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
     private final ScheduleDelegationService scheduleDelegationService;
-    private final NotificationService notificationService;
-    private final NotificationDispatchService notificationDispatchService;
     private final ScheduleTargetRepository scheduleTargetRepository;
 
     /**
@@ -623,38 +613,15 @@ public class ScheduleAttendanceService {
         // 出欠レコード生成
         generateAttendanceRecords(scheduleId, memberUserIds);
 
-        // 出欠募集通知（IN_APP + PUSH）
-        NotificationScopeType notifScope = "ORGANIZATION".equals(scopeType)
-                ? NotificationScopeType.ORGANIZATION : NotificationScopeType.TEAM;
-        String title = "出欠の回答をお願いします";
-        String body = "「" + schedule.getTitle() + "」の出欠回答が募集されています。期日までに回答してください。";
-        String actionUrl = "/schedules/" + scheduleId;
+        // 出欠募集通知は業務TX内では発火しない（原則5 / Issue #2990 L8）。
+        // 是正前はここで受信者ごとに createNotificationPreAuthorized + dispatch を try 無しで呼んでおり、
+        // 通知の INSERT が1件でも落ちると生成済みの出欠レコードと適用済みの出欠設定ごと巻き戻っていた。
+        // 実配送は ScheduleAttendanceSolicitationNotificationListener（AFTER_COMMIT + @Async）が担う。
+        // 受信者はコミット済みの schedule_attendances から読み直すため、載せるのは予定 ID だけでよい。
+        eventPublisher.publishEvent(new AttendanceSolicitationOpenedEvent(scheduleId));
 
-        // TODO（規模対応 Tier3）: 数万規模の組織配信では、出欠レコード一括生成＋per-user 通知配信を
-        //   この単一トランザクション内で同期実行すると長大化する。チャンク分割した非同期ジョブ
-        //   （例: 1,000 件ごとに job-pool へ投入し、各チャンクを REQUIRES_NEW で確定）に移行するのが望ましい。
-        //   フェーズ A では「呼び出し元の非同期化（即時=AFTER_COMMIT @Async リスナー / 予約=バッチスレッド）」＋
-        //   「saveAll バッチ INSERT」までを範囲とし、リクエストをブロックしない構造は確保済み。
-        // 配信＝受信権 統一（関所(1)通知）: 受信者は配信母集団（ORG=resolveOrgDistributionUserIds の
-        // includeSupporters トグル準拠 / TEAM=findUserIdsByScope）で事前認可済みのため、
-        // createNotificationPreAuthorized を使い canView 二重判定をスキップする。これにより
-        // SURVEY/SCHEDULE の visibility（結果閲覧軸を含む）誤 deny で通知が届かない (B) レグを回避する。
-        int dispatched = 0;
-        for (Long userId : memberUserIds) {
-            NotificationEntity notification = notificationService.createNotificationPreAuthorized(
-                    userId,
-                    NOTIFICATION_TYPE_ATTENDANCE_REQUEST,
-                    NotificationPriority.NORMAL,
-                    title, body,
-                    NOTIFICATION_SOURCE_TYPE, scheduleId,
-                    notifScope, scopeId,
-                    actionUrl, schedule.getCreatedBy());
-            notificationDispatchService.dispatch(notification);
-            dispatched++;
-        }
-
-        log.info("出欠募集開始: scheduleId={}, scope={}:{}, 対象={}名, 通知配信={}件",
-                scheduleId, scopeType, scopeId, memberUserIds.size(), dispatched);
+        log.info("出欠募集開始: scheduleId={}, scope={}:{}, 対象={}名（通知は AFTER_COMMIT で配送）",
+                scheduleId, scopeType, scopeId, memberUserIds.size());
     }
 
     /**

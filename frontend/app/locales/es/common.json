@@ -2092,6 +2092,13 @@
       "unchanged": "Igual que el identificador actual (sin cambios)"
     }
   },
+  "duplicate_name": {
+    "title": "Ya existe un/a {entity} con este nombre",
+    "description": "Ya existe un/a {entity} con el mismo nombre introducido. Revisa el contenido y decide si deseas continuar.",
+    "hidden_note": "Hay {count} {entity}(s) privados adicionales (no se muestran nombres ni detalles)",
+    "cancel": "Cancelar",
+    "confirm": "Crear de todos modos"
+  },
   "team_visibility": {
     "PUBLIC": "Público",
     "GUESTS_AND_ABOVE": "Invitados y superiores",

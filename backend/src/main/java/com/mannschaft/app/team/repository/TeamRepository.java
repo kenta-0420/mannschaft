@@ -57,6 +57,47 @@ public interface TeamRepository
     List<TeamEntity> findByVisibility(TeamEntity.Visibility visibility);
 
     /**
+     * CMP-260901-1538 柱③-A: 同名確認フロー用の候補検索。
+     *
+     * <p>検分第5巡是正: クエリ側の {@code TRIM()} を撤去した（理由は
+     * {@code OrganizationRepository#findActiveByNormalizedName} と同じ。Java の
+     * {@link String#trim()} と MySQL {@code TRIM()} の正規化基準の食い違いを断つため、
+     * 呼び出し元は {@code DuplicateNameNormalizer#trimSpaces} で正規化済みの値を渡す契約）。
+     * 生成列 {@code name_trimmed}（{@code GENERATED ALWAYS AS (TRIM(name)) STORED}・
+     * V202 マイグレーション参照）との単純な等価比較のみ行う。
+     * 金型: {@code OrganizationRepository#findActiveByNormalizedName}。
+     * ACTIVE（{@code lifecycleStatus=ACTIVE}）かつ未削除（{@code @SQLRestriction} により
+     * 自動除外）のみを対象とする。作成 TX 内で呼ばれることを想定し、常に最新状態を反映する。</p>
+     *
+     * @param nameTrimmed {@code DuplicateNameNormalizer#trimSpaces} で正規化済みの名称
+     * @return 同名の ACTIVE チーム一覧
+     */
+    @Query(value = "SELECT * FROM teams "
+            + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
+            + "AND name_trimmed = :nameTrimmed",
+            nativeQuery = true)
+    List<TeamEntity> findActiveByNormalizedName(@Param("nameTrimmed") String nameTrimmed);
+
+    /**
+     * CMP-260901-1538 柱③-A 検分P1-2/第4〜5巡是正: {@link #findActiveByNormalizedName} の
+     * ロッキングリード版。
+     *
+     * <p>{@code FOR UPDATE} により InnoDB の REPEATABLE READ スナップショットを無視して
+     * <b>最新のコミット済みデータ</b>を読む。{@code name_trimmed} の索引を使うことで
+     * 索引レンジロックに収まり、全表ロックを避ける。クエリ側の {@code TRIM()} を撤去した
+     * 理由は {@link #findActiveByNormalizedName} と同じ（検分第5巡是正）。
+     * 金型: {@code OrganizationRepository#findActiveByNormalizedNameForUpdate}。</p>
+     *
+     * @param nameTrimmed {@code DuplicateNameNormalizer#trimSpaces} で正規化済みの名称
+     * @return 同名の ACTIVE チーム一覧（最新コミット済み状態）
+     */
+    @Query(value = "SELECT * FROM teams "
+            + "WHERE deleted_at IS NULL AND lifecycle_status = 'ACTIVE' "
+            + "AND name_trimmed = :nameTrimmed FOR UPDATE",
+            nativeQuery = true)
+    List<TeamEntity> findActiveByNormalizedNameForUpdate(@Param("nameTrimmed") String nameTrimmed);
+
+    /**
      * チームをキーワード検索する（公開検索）。
      *
      * <p>認可根治 Wave6: 結果は <b>PUBLIC かつ未アーカイブ</b>のチームのみに限定する。
