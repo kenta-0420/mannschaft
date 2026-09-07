@@ -2357,5 +2357,10 @@
       "confirmTitle": "移除成员",
       "confirmMessage": "确定将 {name} 从成员中移除吗？"
     }
+  },
+  "scopeSwitch": {
+    "hint": "切换方式：在页面上方的“团队”“组织”菜单中选择并打开对象。所打开的团体即为当前范围。",
+    "goTeams": "选择团队",
+    "goOrganizations": "选择组织"
   }
 }

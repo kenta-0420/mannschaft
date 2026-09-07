@@ -2357,5 +2357,10 @@
       "confirmTitle": "Eliminar miembro",
       "confirmMessage": "¿Eliminar a {name} de los miembros?"
     }
+  },
+  "scopeSwitch": {
+    "hint": "Para cambiar, abre un equipo u organización desde el menú «Equipos» / «Organizaciones» de la parte superior. El que abras pasa a ser el ámbito actual.",
+    "goTeams": "Elegir un equipo",
+    "goOrganizations": "Elegir una organización"
   }
 }
