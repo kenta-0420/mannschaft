@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Instant;
@@ -89,11 +90,29 @@ abstract class AbstractBillingInvoiceWebhookIT extends AbstractMySqlIntegrationT
     @Autowired
     protected JdbcTemplate jdbcTemplate;
 
+    /**
+     * Stripe API への往復（部分 payload の全件取得・同着裁定）を差し替える。
+     *
+     * <p>基底で宣言するのは、派生ごとに {@code @MockitoBean} を足すと ApplicationContext 構成が
+     * 分岐して TestContext Cache が分裂するため（本クラスの注意書きと同じ理由）。
+     * 既定は「取得できない」＝ fail-closed で、必要なテストだけが差し替える。</p>
+     */
+    @MockitoBean
+    protected StripeInvoiceRetriever stripeInvoiceRetriever;
+
+    /** Stripe から取得した invoice オブジェクト JSON を、本番と同じ写像で {@code InvoiceView} にする。 */
+    @Autowired
+    protected StripeBillingPayloadParser payloadParser;
+
     protected UUID billingCustomerId;
     protected UUID billingContractId;
 
     @BeforeEach
     void seedBillingOwnedScope() {
+        // 既定は fail-closed。全件取得を要するテストだけが明示的に差し替える。
+        org.mockito.BDDMockito.given(stripeInvoiceRetriever.retrieve(org.mockito.ArgumentMatchers.anyString()))
+                .willReturn(java.util.Optional.empty());
+
         // 逆 FK 順で掃除する（設計書 05 §7 の cleanup 正本順）。
         jdbcTemplate.update("DELETE FROM billing_invoice_lines");
         jdbcTemplate.update("DELETE FROM billing_invoice_adjustments");

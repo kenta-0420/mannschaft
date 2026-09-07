@@ -74,6 +74,20 @@ public class StripeBillingPayloadParser {
         return dataObject(payload, "invoice").map(this::toInvoice);
     }
 
+    /**
+     * Stripe API から取得した invoice オブジェクトの JSON（event 封筒ではない）を読む。
+     *
+     * <p>webhook の payload と<b>同じ写像</b>を使うために存在する。API 取得側で独自にマッピングすると、
+     * 税込・税抜の導出や税率の basis points 換算が payload 側と静かにずれる。</p>
+     *
+     * @param invoiceObjectJson {@code {"id":"in_...","object":"invoice",...}}
+     */
+    public Optional<InvoiceView> parseInvoiceObject(String invoiceObjectJson) {
+        return root(invoiceObjectJson)
+                .filter(node -> "invoice".equals(text(node, "object")))
+                .map(this::toInvoice);
+    }
+
     /** {@code data.object} が charge のときだけ {@link ChargeView} を返す。 */
     public Optional<ChargeView> parseCharge(String payload) {
         return dataObject(payload, "charge").map(node -> {

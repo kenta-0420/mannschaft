@@ -10,6 +10,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 
 /**
  * F20.1 PR5 試練 A: invoice 投影（AC-1〜AC-14）。
@@ -373,34 +374,56 @@ class BillingInvoiceProjectionWebhookIT extends AbstractBillingInvoiceWebhookIT 
     }
 
     @Test
-    @DisplayName("AC14: has_more=true の部分 payload では、載っていない既存明細を消さない")
-    void AC14_部分payloadでは既存明細を消さない() throws Exception {
+    @DisplayName("AC14: has_more=true の部分 payload でも、全件取得して明細が揃い投影される")
+    void AC14_部分payloadでも全件取得して投影される() throws Exception {
         long created = System.currentTimeMillis() / 1000L;
 
-        // 全明細（2行）を含む完全な payload で投影する。
-        String twoLines = StripeWebhookPayloadFixture.lineObject(
+        // 本番の Stripe は has_more=true でも subtotal/tax/total は「請求書全体」の値を返す。
+        // したがって載っている明細だけでは validate() の「line 税込合計 == total」を決して満たさず、
+        // 全件取得の経路が無ければこの請求書は最初から一度も投影できない。
+        String bothLines = StripeWebhookPayloadFixture.lineObject(
                 "il_ac14p_a", "BASIC プラン", 10L, 10_000L, 0L, 1_000L, false, 1000)
                 + ","
                 + StripeWebhookPayloadFixture.lineObject(
                 "il_ac14p_b", "追加席", 2L, 2_000L, 0L, 200L, false, 1000);
-        postSigned(StripeWebhookPayloadFixture.event("evt_ac14p_full", "invoice.updated",
-                StripeWebhookPayloadFixture.invoiceObject("in_ac14p", BILLING_CUSTOMER_REF,
-                        BILLING_SUBSCRIPTION_REF, "draft", "jpy",
-                        12_000L, 0L, 1_200L, 13_200L, twoLines), created));
-        assertThat(linesOf("in_ac14p")).hasSize(2);
-
-        // 続く webhook は件数上限で切られており has_more=true。
-        // これを「全明細」と誤認して差分削除すると、載らなかった il_ac14p_b が恒久的に消える。
-        String truncated = StripeWebhookPayloadFixture.lineObject(
+        String firstPageOnly = StripeWebhookPayloadFixture.lineObject(
                 "il_ac14p_a", "BASIC プラン", 10L, 10_000L, 0L, 1_000L, false, 1000);
+
+        given(stripeInvoiceRetriever.retrieve("in_ac14p")).willReturn(
+                payloadParser.parseInvoiceObject(StripeWebhookPayloadFixture.invoiceObject(
+                        "in_ac14p", BILLING_CUSTOMER_REF, BILLING_SUBSCRIPTION_REF, "open", "jpy",
+                        12_000L, 0L, 1_200L, 13_200L, bothLines)));
+
         postSigned(StripeWebhookPayloadFixture.event("evt_ac14p_truncated", "invoice.finalized",
                 StripeWebhookPayloadFixture.invoiceObject("in_ac14p", BILLING_CUSTOMER_REF,
                         BILLING_SUBSCRIPTION_REF, "open", "jpy",
-                        10_000L, 0L, 1_000L, 11_000L, truncated, true), created + 60L));
+                        12_000L, 0L, 1_200L, 13_200L, firstPageOnly, true), created));
 
         assertThat(linesOf("in_ac14p")).extracting(BillingInvoiceLineEntity::getPspLineRef)
-                .as("部分 payload に載らなかった明細を消してはならない")
+                .as("件数上限で切られていても全明細が投影される")
                 .containsExactlyInAnyOrder("il_ac14p_a", "il_ac14p_b");
+        assertThat(linesOf("in_ac14p").stream()
+                .mapToLong(BillingInvoiceLineEntity::getAmountIncludingTax).sum())
+                .as("明細の税込合計がヘッダ total と一致する")
+                .isEqualTo(requireInvoice("in_ac14p").getTotalAmount());
+        assertThat(requireInvoice("in_ac14p").getTotalAmount()).isEqualTo(13_200L);
+    }
+
+    @Test
+    @DisplayName("AC14: 全件取得できない部分 payload は投影しない（欠けた明細で確定させない）")
+    void AC14_全件取得できない部分payloadは投影しない() throws Exception {
+        long created = System.currentTimeMillis() / 1000L;
+        // 既定スタブ（Optional.empty＝取得失敗）のまま流す。
+        String firstPageOnly = StripeWebhookPayloadFixture.lineObject(
+                "il_ac14n_a", "BASIC プラン", 10L, 10_000L, 0L, 1_000L, false, 1000);
+
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac14n", "invoice.finalized",
+                StripeWebhookPayloadFixture.invoiceObject("in_ac14n", BILLING_CUSTOMER_REF,
+                        BILLING_SUBSCRIPTION_REF, "open", "jpy",
+                        12_000L, 0L, 1_200L, 13_200L, firstPageOnly, true), created));
+
+        assertThat(invoiceOf("in_ac14n"))
+                .as("明細が欠けたまま確定させない（fail-closed）").isEmpty();
     }
 
     @Test
@@ -433,5 +456,39 @@ class BillingInvoiceProjectionWebhookIT extends AbstractBillingInvoiceWebhookIT 
         assertThat(requireInvoice("in_ac9s").getStatus())
                 .as("ヘッダの状態も巻き戻さない").isEqualTo("OPEN");
         assertThat(requireInvoice("in_ac9s").getTotalAmount()).isEqualTo(22_000L);
+    }
+
+    @Test
+    @DisplayName("AC9: 同一秒・同一状態で衝突したら Stripe の現在値を正とし、古い payload で巻き戻らない")
+    void AC9_同一秒同一状態は取得値を正とする() throws Exception {
+        long created = System.currentTimeMillis() / 1000L;
+
+        String newLine = StripeWebhookPayloadFixture.lineObject(
+                "il_ac9t", "BASIC プラン", 20L, 20_000L, 0L, 2_000L, false, 1000);
+        String newInvoice = StripeWebhookPayloadFixture.invoiceObject("in_ac9t", BILLING_CUSTOMER_REF,
+                BILLING_SUBSCRIPTION_REF, "open", "jpy", 20_000L, 0L, 2_000L, 22_000L, newLine);
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac9t_first", "invoice.updated",
+                newInvoice, created));
+        assertThat(requireInvoice("in_ac9t").getTotalAmount()).isEqualTo(22_000L);
+
+        // 同じ秒・同じ status(open) の別イベントが後から届く。時刻でも状態でも先後を決められないので、
+        // payload ではなく Stripe の現在値（＝新しいほう）を正とする。
+        given(stripeInvoiceRetriever.retrieve("in_ac9t"))
+                .willReturn(payloadParser.parseInvoiceObject(newInvoice));
+
+        String staleLine = StripeWebhookPayloadFixture.lineObject(
+                "il_ac9t", "BASIC プラン", 10L, 10_000L, 0L, 1_000L, false, 1000);
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac9t_same_second", "invoice.updated",
+                StripeWebhookPayloadFixture.invoiceObject("in_ac9t", BILLING_CUSTOMER_REF,
+                        BILLING_SUBSCRIPTION_REF, "open", "jpy",
+                        10_000L, 0L, 1_000L, 11_000L, staleLine), created));
+
+        BillingInvoiceLineEntity line = linesOf("in_ac9t").get(0);
+        assertThat(requireInvoice("in_ac9t").getTotalAmount())
+                .as("同一秒・同一状態の古い payload でヘッダ合計を巻き戻さない").isEqualTo(22_000L);
+        assertThat(line.getAmountIncludingTax())
+                .as("明細の税込額も巻き戻さない").isEqualTo(22_000L);
+        assertThat(line.getQuantity().longValue())
+                .as("数量も巻き戻さない").isEqualTo(20L);
     }
 }

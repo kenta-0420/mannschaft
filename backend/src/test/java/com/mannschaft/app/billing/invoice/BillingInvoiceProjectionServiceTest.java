@@ -66,6 +66,8 @@ class BillingInvoiceProjectionServiceTest {
     private BillingInvoiceLineJpaRepository invoiceLineRepository;
     @Mock
     private StripeSubscriptionMetadataVerifier subscriptionMetadataVerifier;
+    @Mock
+    private StripeInvoiceRetriever invoiceRetriever;
 
     @InjectMocks
     private BillingInvoiceProjectionService service;

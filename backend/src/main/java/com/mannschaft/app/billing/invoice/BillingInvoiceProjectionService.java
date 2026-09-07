@@ -60,6 +60,8 @@ public class BillingInvoiceProjectionService {
     private final BillingInvoiceJpaRepository invoiceRepository;
     private final BillingInvoiceLineJpaRepository invoiceLineRepository;
     private final StripeSubscriptionMetadataVerifier subscriptionMetadataVerifier;
+    /** 部分 payload の全件取得と、同一秒・同一状態の同着裁定に使う（いずれも稀な経路）。 */
+    private final StripeInvoiceRetriever invoiceRetriever;
 
     /**
      * 請求書の発行者名（プラットフォーム＝運営）。請求先（利用者）の氏名ではない（AC-40）。
@@ -136,19 +138,40 @@ public class BillingInvoiceProjectionService {
      * @param eventCreatedEpoch {@code event.created}（単調更新の基準）
      * @throws BillingInvoiceProjectionRejectedException 恒久拒否（fail-closed）
      */
-    public void project(InvoiceView invoice, BillingInvoiceOwner owner, String eventType, long eventCreatedEpoch) {
-        validate(invoice);
+    public void project(InvoiceView incoming, BillingInvoiceOwner owner, String eventType, long eventCreatedEpoch) {
+        // 明細に依存しないヘッダ検査（通貨・符号・金額恒等式）は repository に触れる前に済ませる。
+        // ここを後ろへ動かすと「非 JPY を永続化を試みる前に拒否する」（AC-34）が崩れる。
+        validateHeader(incoming);
 
         Instant eventInstant = Instant.ofEpochSecond(eventCreatedEpoch);
-        Optional<BillingInvoiceEntity> existing = invoiceRepository.findByPspInvoiceRef(invoice.id());
-        String incomingStatus = mapStatus(invoice.status());
+        Optional<BillingInvoiceEntity> existing = invoiceRepository.findByPspInvoiceRef(incoming.id());
 
-        if (existing.isPresent() && existing.get().getUpdatedAt() != null
-                && isStale(existing.get(), incomingStatus, eventInstant)) {
-            log.info("F20.1 PR5: 投影より古い event のため適用しない（単調更新）: invoice={}, eventCreated={}, status={}",
-                    invoice.id(), eventInstant, incomingStatus);
-            return;
+        InvoiceView resolved = incoming;
+        if (existing.isPresent() && existing.get().getUpdatedAt() != null) {
+            Instant appliedAt = existing.get().getUpdatedAt();
+            if (appliedAt.isAfter(eventInstant)) {
+                log.info("F20.1 PR5: 投影より古い event のため適用しない（単調更新）: invoice={}, eventCreated={}",
+                        incoming.id(), eventInstant);
+                return;
+            }
+            if (appliedAt.equals(eventInstant)) {
+                int diff = statusRank(mapStatus(incoming.status())) - statusRank(existing.get().getStatus());
+                if (diff < 0) {
+                    log.info("F20.1 PR5: 同一秒で状態が後退する event のため適用しない: invoice={}, eventCreated={}",
+                            incoming.id(), eventInstant);
+                    return;
+                }
+                if (diff == 0) {
+                    resolved = authoritativeOnTie(incoming);
+                }
+            }
         }
+
+        // 以降は「全明細が揃い、検証を通った invoice」だけを扱う。
+        final InvoiceView invoice = withCompleteLines(resolved);
+        // 明細に依存する検査（税の裏付け・line 税込合計 == total）は、全明細が揃ってから行う。
+        validateLines(invoice);
+        String incomingStatus = mapStatus(invoice.status());
 
         BillingInvoiceEntity entity = existing.orElseGet(() -> BillingInvoiceEntity.builder()
                 .pspInvoiceRef(invoice.id())
@@ -210,10 +233,10 @@ public class BillingInvoiceProjectionService {
      * 恒久的に消え、F08.12 の請求書 PDF も欠けた明細で出る。
      * よって削除は {@link InvoiceView#linesComplete()} が true のときに限る（fail-safe）。</p>
      *
-     * <p><b>残る条件を黙って隠さない</b>: {@code has_more=true} の payload では取り下げ行が
-     * <b>削除されずに残る</b>。これは「消し過ぎ（復元不能）」より「残し過ぎ（次の完全な payload で
-     * 解消しうる）」を選んだ結果である。全明細を Stripe から取得して確定させる方法もあるが、
-     * webhook 処理中に外部 API 呼び出しを増やすことになり PR5 の範囲を超えるため採らない。</p>
+     * <p><b>完全性は呼び出し元が保証する</b>: {@link #project} は
+     * {@link StripeInvoiceRetriever} で全明細を取り直してからここへ来るため、実運用でこの条件が
+     * false になることはない（取得できなければ投影自体を見送る）。それでも条件を残すのは、
+     * 将来この経路が増えたときに「不完全な payload で全置換する」誤りを構造で止めるためである。</p>
      */
     private void projectLines(BillingInvoiceEntity invoiceEntity, InvoiceView invoice) {
         Map<String, BillingInvoiceLineEntity> existingByRef = new LinkedHashMap<>();
@@ -281,6 +304,12 @@ public class BillingInvoiceProjectionService {
      * 同一イベントで一体に成立させるべき契約遷移まで巻き添えで巻き戻る（設計書 05 §8）。</p>
      */
     void validate(InvoiceView invoice) {
+        validateHeader(invoice);
+        validateLines(invoice);
+    }
+
+    /** 明細に依存しないヘッダ検査。repository に触れる前に呼ぶ。 */
+    private void validateHeader(InvoiceView invoice) {
         if (invoice.currency() == null || !ALLOWED_CURRENCY.equalsIgnoreCase(invoice.currency())) {
             throw reject("非 JPY の invoice は投影しない: invoice=%s, currency=%s"
                     .formatted(invoice.id(), invoice.currency()));
@@ -292,6 +321,16 @@ public class BillingInvoiceProjectionService {
             throw reject(("金額恒等式が破れているため投影しない: invoice=%s, subtotal=%d, discount=%d, tax=%d, total=%d")
                     .formatted(invoice.id(), invoice.subtotal(), invoice.discount(), invoice.tax(), invoice.total()));
         }
+    }
+
+    /**
+     * 明細に依存する検査。<b>全明細が揃ってから</b>呼ぶ。
+     *
+     * <p>{@code line の税込合計 == total} は、部分 payload（{@code lines.has_more=true}）では
+     * 決して満たされない。Stripe は切られた頁でも {@code total} は請求書全体の値を返すためである。
+     * したがってこの検査は {@link #withCompleteLines} を通した後にのみ意味を持つ。</p>
+     */
+    private void validateLines(InvoiceView invoice) {
         if (invoice.lines().isEmpty()) {
             throw reject("明細行の無い invoice は投影しない: invoice=%s".formatted(invoice.id()));
         }
@@ -351,23 +390,52 @@ public class BillingInvoiceProjectionService {
     }
 
     /**
-     * この event を適用してはならないか（単調更新の判定正本・AC-9）。
+     * 単調更新の判定正本（AC-9）— 補助である「同着の裁定」と「明細の完全化」。
      *
      * <p>基準は投影行の {@code updated_at}（＝直近に適用した event の発生時刻）。それより古ければ
-     * 適用しない。<b>同一秒</b>のときは時刻では決められない——Stripe の {@code event.created} は
-     * 秒精度で、finalized と遅れて届いた draft が同じ秒を持ちうるためである。厳密比較だけだと
-     * 同一秒の古い draft が素通りし、確定済みの金額・数量が巻き戻る。そこで同一秒に限り
+     * 適用しない。<b>同一秒</b>は時刻では決められない——Stripe の {@code event.created} は秒精度で、
+     * finalized と遅れて届いた draft が同じ秒を持ちうるためである。同一秒はまず
      * <b>請求書状態の順序</b>（DRAFT &lt; OPEN &lt; PAID/VOID/UNCOLLECTIBLE）で決め、後退する側を退ける。</p>
      *
-     * <p>判定はここ 1 箇所に置く。明細側（{@link #projectLines}）へ二重化しない。</p>
+     * <p><b>同一秒かつ同一状態</b>（例: 同じ秒に届いた 2 つの {@code invoice.updated}）は、
+     * 時刻でも状態でも先後を決められない。ここで payload をそのまま信じると、古いほうが後に
+     * 届いただけで金額・明細が巻き戻る。よって<b>どちらの payload も信じず</b>、
+     * {@link StripeInvoiceRetriever} で「現在の Stripe 上の invoice」を取得してそれを正とする。
+     * 取得できなければ確定させず投げる（fail-closed・Stripe の再送で再試行）。</p>
+     *
+     * <p><b>この経路が高頻度で走らない根拠</b>: 走る条件は「同一 invoice の 2 イベントが<b>同じ秒</b>に
+     * 発生し、かつ<b>状態も同じ</b>」であり、通常のライフサイクル（created → finalized → paid）は
+     * 状態が進むので rank で決着し、ここへ来ない。到達するのは同一秒に同一状態の更新が二重に起きた
+     * ときだけで、1 請求書あたり多くとも数回、常態では 0 回である。したがって Stripe 呼び出しが
+     * webhook 処理の定常コストになることはない。</p>
      */
-    private boolean isStale(BillingInvoiceEntity existing, String incomingStatus, Instant eventInstant) {
-        Instant appliedAt = existing.getUpdatedAt();
-        if (appliedAt.isAfter(eventInstant)) {
-            return true;
+    private InvoiceView authoritativeOnTie(InvoiceView incoming) {
+        return invoiceRetriever.retrieve(incoming.id())
+                .orElseThrow(() -> new IllegalStateException(
+                        "同一秒・同一状態の event が衝突したが Stripe から invoice を取得できず、"
+                                + "どちらが新しいか決められないため投影しません: invoice=" + incoming.id()));
+    }
+
+    /**
+     * 明細が全件揃った invoice を返す（揃っていなければ Stripe から取り直す）。
+     *
+     * <p><b>なぜ必須か</b>: webhook の {@code lines.data} は件数上限で切られることがあり
+     * （{@code lines.has_more=true}）、そのとき {@code subtotal/tax/total} は<b>請求書全体の値</b>の
+     * ままである。したがって切られた明細だけでは {@link #validate} の「line の税込合計 == total」を
+     * 決して満たさず、<b>明細が上限を超える請求書は一度も投影できない</b>（fail-closed なのでデータは
+     * 壊れないが、履歴に永久に出ず webhook は失敗し続ける）。全件を取りに行くのが唯一の解である。</p>
+     *
+     * <p>取得できない場合は投げる。部分 payload で代用すると明細が欠けた請求書が確定してしまう。</p>
+     */
+    private InvoiceView withCompleteLines(InvoiceView invoice) {
+        if (invoice.linesComplete()) {
+            return invoice;
         }
-        return appliedAt.equals(eventInstant)
-                && statusRank(incomingStatus) < statusRank(existing.getStatus());
+        return invoiceRetriever.retrieve(invoice.id())
+                .filter(InvoiceView::linesComplete)
+                .orElseThrow(() -> new IllegalStateException(
+                        "明細が件数上限で切られた payload に対し Stripe から全明細を取得できなかったため"
+                                + "投影しません: invoice=" + invoice.id()));
     }
 
     /**
