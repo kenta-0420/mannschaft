@@ -143,6 +143,23 @@ public final class NotificationFixtureStubs {
     public abstract static class PortImplStub implements NotifierPort {
     }
 
+    /**
+     * <b>別 Bean の {@code @Async} 通知</b>相当（Issue #3149）。
+     *
+     * <p>呼び出し元が別 Bean なら Spring プロキシを確実に通るため、この入口は
+     * 呼び出し元の業務TXに参加しない。＝通知が落ちても業務データは巻き戻らない
+     * （{@code ImpactClass.ORDERING_ONLY}）。{@code executor} を明示しているのは
+     * {@code ASYNC_WITHOUT_EXECUTOR} を巻き込まないため。
+     */
+    public static class AsyncNotifierStub {
+        private final HelperStub notificationHelper = new HelperStub();
+
+        @org.springframework.scheduling.annotation.Async("event-pool")
+        public void notifyAsync(Long userId) {
+            notificationHelper.notify(userId, "TYPE", "件名", "本文");
+        }
+    }
+
     /** 業務側リポジトリ相当（業務TXが実在することを形として示すためだけのもの）。 */
     public static class RepositoryStub {
         public void save(Object entity) {

@@ -142,6 +142,24 @@ import org.junit.jupiter.api.Test;
  * <b>Javadoc のこの記述とテストは常に一致していなければならない</b>
  * （検出できるようになったらテストが赤くなるので、ここも同時に直すこと）。
  *
+ * <h2>Issue #3149 で塞いだ死角（影響区分の導出）</h2>
+ * <ul>
+ *   <li><b>{@code TX_NOTIFY_BARE} / {@code TX_NOTIFY_IN_TRY} に {@link ImpactClass} が付いていなかった</b>。
+ *       {@link #deriveDelegateImpact} は委譲種別からしか呼ばれておらず、番人は
+ *       「同一TX内の直接発火」に見える呼び出しについて<b>呼び先が別 Bean の {@code @Async} メソッドか</b>を
+ *       一切見ていなかった。L11 の errorreport 5件が実際にこの形で、巻き戻り経路が存在しないのに
+ *       「巻き戻る」側と区別なく台帳に並んでいた。{@link #deriveDirectNotifyImpact} が
+ *       レシーバ型を解決して区分を導く。</li>
+ *   <li><b>解決不能を {@link ImpactClass#ORDERING_ONLY} へ倒さない</b>。{@code ORDERING_ONLY} は
+ *       「巻き戻らない＝軽症」という主張なので、不明をそちらへ倒すと本物の地雷を軽症に見せる。
+ *       {@link ImpactClass#AMBIGUOUS} として明示し、台帳に理由の記載を強制する。</li>
+ *   <li><b>連続するフィールド宣言が1つおきに不可視だった</b>（型解決そのもののバグ）。
+ *       {@link #TYPED_DECLARATION} の先頭区切りが文字を消費していたため、
+ *       {@link Matcher#find()} の非重複性と相まって偶数番目の宣言が拾えなかった。
+ *       後読みへ変えて根治した。この欠落のせいで通知コラボレータの型が引けず、
+ *       影響区分が大量に {@code AMBIGUOUS} へ倒れていた（実測 19 件 → 0 件）。</li>
+ * </ul>
+ *
  * <h2>baseline（凍結）の方針</h2>
  * <p>ArchUnit の {@code FreezingArchRule} は使わない。理由は3つ。
  * (1) 凍結済み違反を出力しないため「番人の出力ゼロ」が「負債ゼロ」に見える、
@@ -297,7 +315,22 @@ class NotificationTransactionBoundaryGuardTest {
      * ここの判定を直すこと。
      */
     static List<Integer> notifyCallOffsets(String body) {
-        List<Integer> offsets = new ArrayList<>();
+        return notifyCalls(body).stream().map(NotifyCall::offset).collect(Collectors.toList());
+    }
+
+    /**
+     * 通知発火とみなした呼び出し1件（位置・レシーバ識別子・呼び先メソッド名）。
+     *
+     * <p>{@link #notifyCallOffsets} は位置しか返さないため、
+     * 「その呼び先が {@code @Async} / {@code REQUIRES_NEW} なのか」を後から問い直せなかった。
+     * {@link ImpactClass} を {@code TX_NOTIFY_BARE} / {@code TX_NOTIFY_IN_TRY} にも導出するには
+     * レシーバと呼び先の綴りが要る（Issue #3149）。
+     */
+    record NotifyCall(int offset, String receiver, String callee) {}
+
+    /** @see NotifyCall */
+    static List<NotifyCall> notifyCalls(String body) {
+        List<NotifyCall> calls = new ArrayList<>();
         Matcher m = NOTIFY_CALL_CANDIDATE.matcher(body);
         while (m.find()) {
             if (m.group(1).isEmpty()) {
@@ -308,9 +341,9 @@ class NotificationTransactionBoundaryGuardTest {
             if (close < 0 || body.substring(open + 1, close).isBlank()) {
                 continue; // (2) 引数ゼロ＝アクセサ／Object#notifyAll
             }
-            offsets.add(m.start());
+            calls.add(new NotifyCall(m.start(), m.group(1), m.group(2)));
         }
-        return offsets;
+        return calls;
     }
 
     /** 本文が通知を発火しているか。 */
@@ -521,23 +554,29 @@ class NotificationTransactionBoundaryGuardTest {
                 List<int[]> tryRanges = tryBlockRanges(m.body());
                 boolean anyInTry = false;
                 boolean anyBare = false;
-                for (int offset : notifyCallOffsets(m.body())) {
-                    if (!inTxContext && !isWithin(templateRanges, offset)) {
+                ImpactClass inTryImpact = null;
+                ImpactClass bareImpact = null;
+                for (NotifyCall call : notifyCalls(m.body())) {
+                    if (!inTxContext && !isWithin(templateRanges, call.offset())) {
                         continue;
                     }
-                    if (isWithin(tryRanges, offset)) {
+                    ImpactClass one = deriveDirectNotifyImpact(
+                            call, declaredTypes, imports, ownPackage, selfSimpleName);
+                    if (isWithin(tryRanges, call.offset())) {
                         anyInTry = true;
+                        inTryImpact = combineImpact(inTryImpact, one);
                     } else {
                         anyBare = true;
+                        bareImpact = combineImpact(bareImpact, one);
                     }
                 }
                 if (anyInTry) {
                     violations.add(new Violation(fqcn, m.name(), ViolationKind.TX_NOTIFY_IN_TRY,
-                            lineOf(src, m.declOffset()), "try で囲って失敗を握っている"));
+                            lineOf(src, m.declOffset()), "try で囲って失敗を握っている", inTryImpact));
                 }
                 if (anyBare) {
                     violations.add(new Violation(fqcn, m.name(), ViolationKind.TX_NOTIFY_BARE,
-                            lineOf(src, m.declOffset()), "try 無しの単発通知"));
+                            lineOf(src, m.declOffset()), "try 無しの単発通知", bareImpact));
                 }
             }
         }
@@ -799,9 +838,29 @@ class NotificationTransactionBoundaryGuardTest {
         return ranges;
     }
 
-    /** 型が解決できた宣言（フィールド／ローカル／引数）。 */
+    /**
+     * 型が解決できた宣言（フィールド／ローカル／引数）。
+     *
+     * <p><b>先頭の区切りは「消費しない」（後読み）でなければならない</b>（Issue #3149）。
+     * かつては {@code (?:^|[;{}(),])} と<b>文字を消費する</b>形で書いていたため、
+     * {@link Matcher#find()} が非重複であることと相まって
+     * <b>連続するフィールド宣言が1つおきに不可視になっていた</b>——
+     * 前の宣言のマッチが終端の {@code ;} を食べてしまい、次の宣言が区切りを見つけられない。
+     *
+     * <pre>{@code
+     * private final SurveyRepository surveyRepository;        // 拾える
+     * private final SurveyResponseRepository responseRepository; // 拾えない（前の ; が消費済み）
+     * private final AccessControlService accessControlService;   // 拾える
+     * private final NotificationHelper notificationHelper;       // 拾えない ← 通知コラボレータ
+     * }</pre>
+     *
+     * <p>実測でこの欠落は {@code SurveyRemindService#notificationHelper} を含む多数の
+     * 通知コラボレータに当たっており、影響区分の導出が「レシーバ型を引けない」＝
+     * {@link ImpactClass#AMBIGUOUS} へ倒れていた。後読みにすると区切りを消費しないので
+     * 連続宣言がすべて拾える。
+     */
     private static final Pattern TYPED_DECLARATION = Pattern.compile(
-            "(?:^|[;{}(),])\\s*(?:(?:private|protected|public|static|final|volatile|transient)\\s+)*"
+            "(?:^|(?<=[;{}(),]))\\s*(?:(?:private|protected|public|static|final|volatile|transient)\\s+)*"
                     + "([A-Z][\\w$]*)(?:\\s*<[^<>;{}]{0,200}>)?\\s+([a-z_$][\\w$]*)\\s*[;=,)]");
 
     /**
@@ -832,7 +891,7 @@ class NotificationTransactionBoundaryGuardTest {
      * {@link #declaredTypes} へ入って判定の当たり方が変わってしまうため。
      */
     private static final Pattern QUALIFIED_TYPED_DECLARATION = Pattern.compile(
-            "(?:^|[;{}(),])\\s*(?:(?:private|protected|public|static|final|volatile|transient)\\s+)*"
+            "(?:^|(?<=[;{}(),]))\\s*(?:(?:private|protected|public|static|final|volatile|transient)\\s+)*"
                     + "((?:[a-z][\\w$]*\\.)+([A-Z][\\w$]*))(?:\\s*<[^<>;{}]{0,200}>)?\\s+([a-z_$][\\w$]*)\\s*[;=,)]");
 
     /**
@@ -1295,8 +1354,26 @@ class NotificationTransactionBoundaryGuardTest {
     private static final Pattern TX_DETACHING_PROPAGATION =
             Pattern.compile("propagation\\s*=\\s*[\\w$.]*\\b(?:REQUIRES_NEW|NOT_SUPPORTED|NEVER)\\b");
 
+    /**
+     * {@link #delegateEntryImpact} の結果キャッシュ。
+     *
+     * <p>影響区分の導出を {@code TX_NOTIFY_BARE} / {@code TX_NOTIFY_IN_TRY} へも広げた結果
+     * （Issue #3149）、同じ委譲先ファイルを何度も読み直して再 parse するようになった。
+     * 走査時間が膨らむと番人そのものが避けられるようになるため、素直にキャッシュする。
+     * {@code null}（宣言が見つからない）も結果なのでラップして格納する。
+     */
+    private static final java.util.Map<String, java.util.Optional<ImpactClass>> ENTRY_IMPACT_CACHE =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
     /** 委譲先の型 {@code ref} の入口メソッド {@code callee} の {@link ImpactClass}（見つからなければ null）。 */
     static ImpactClass delegateEntryImpact(TypeRef ref, String callee) {
+        return ENTRY_IMPACT_CACHE.computeIfAbsent(
+                ref.fqcn() + "|" + ref.simpleName() + "|" + ref.file() + "|" + callee,
+                key -> java.util.Optional.ofNullable(delegateEntryImpactUncached(ref, callee)))
+                .orElse(null);
+    }
+
+    private static ImpactClass delegateEntryImpactUncached(TypeRef ref, String callee) {
         String masked = JavaSourceScanningUtils.maskCommentsAndLiterals(read(ref.file()));
         String block = typeBlock(masked, ref.simpleName());
         if (block == null) {
@@ -1314,6 +1391,80 @@ class NotificationTransactionBoundaryGuardTest {
             return ImpactClass.ROLLBACK_COUPLED;
         }
         return null;
+    }
+
+    /**
+     * 「同一TX内の直接発火」に見える通知呼び出し1件の {@link ImpactClass} を導出する（Issue #3149）。
+     *
+     * <p><b>なぜ必要か</b>: L11 まで、{@code TX_NOTIFY_BARE} / {@code TX_NOTIFY_IN_TRY} は
+     * {@code derivedImpact} を持たなかった。番人は「呼び先が<b>別 Bean の {@code @Async} メソッド</b>
+     * かどうか」を一切見ておらず、巻き戻り経路が存在しない呼び出しまで無分類で
+     * 「巻き戻る」側と区別なく並んでいた（errorreport ドメインの5件が実際にこの形だった）。
+     * 是正ロットの優先順位は深刻度に依存するので、この穴は取り違えを生む。
+     *
+     * <p><b>判定</b>:
+     * <ul>
+     *   <li>レシーバの型が<b>自クラス</b>ならプロキシを経ない自己呼び出しであり、
+     *       {@code @Async} も伝播設定も効かない ⇒ {@link ImpactClass#ROLLBACK_COUPLED}。</li>
+     *   <li>別 Bean なら {@link #delegateEntryImpact} と同じ規則
+     *       （入口の {@code @Async} / {@code REQUIRES_NEW} 等）で導出する。</li>
+     *   <li><b>型が解決できない・呼び先の宣言が見つからない・候補間で結論が割れる</b>場合は
+     *       {@link ImpactClass#AMBIGUOUS}。<b>{@code ORDERING_ONLY} へ倒してはならない</b>——
+     *       {@code ORDERING_ONLY} は「巻き戻らない＝軽症」を意味するので、
+     *       不明をそちらへ倒すと本物の地雷を軽症に見せる。安全側は常に
+     *       「巻き戻るかもしれない」側である。</li>
+     * </ul>
+     */
+    static ImpactClass deriveDirectNotifyImpact(NotifyCall call,
+                                                java.util.Map<String, Set<String>> declaredTypes,
+                                                java.util.Map<String, String> imports,
+                                                String ownPackage, String selfSimpleName) {
+        Set<String> receiverTypes = declaredTypes.getOrDefault(call.receiver(), Set.of());
+        if (receiverTypes.isEmpty()) {
+            return ImpactClass.AMBIGUOUS; // レシーバの宣言が字句から読めない
+        }
+        if (receiverTypes.contains(selfSimpleName)) {
+            // 自己呼び出しはプロキシを経ないため、呼び出し元のTXがそのまま生きている。
+            return ImpactClass.ROLLBACK_COUPLED;
+        }
+        Set<ImpactClass> seen = new LinkedHashSet<>();
+        for (String simpleName : receiverTypes) {
+            List<TypeRef> refs = resolveCandidates(simpleName, imports, ownPackage);
+            if (refs.isEmpty()) {
+                return ImpactClass.AMBIGUOUS; // 索引の外の型（宣言を読めない）
+            }
+            for (TypeRef ref : refs) {
+                ImpactClass one = delegateEntryImpact(ref, call.callee());
+                if (one == null) {
+                    return ImpactClass.AMBIGUOUS; // その型に当該メソッドの宣言が見つからない
+                }
+                seen.add(one);
+            }
+        }
+        return seen.size() == 1 ? seen.iterator().next() : ImpactClass.AMBIGUOUS;
+    }
+
+    /**
+     * 1メソッド内の複数の通知呼び出しの区分を畳む。
+     *
+     * <p>優先順位は {@code ROLLBACK_COUPLED} &gt; {@code AMBIGUOUS} &gt; {@code ORDERING_ONLY}。
+     * 巻き戻る呼び出しが1つでもあればそのメソッドは確実に巻き戻る（＝最も強い主張）。
+     * それが無く不明が混じるなら不明。全部が巻き戻らないと分かって初めて {@code ORDERING_ONLY}。
+     */
+    static ImpactClass combineImpact(ImpactClass accumulated, ImpactClass one) {
+        if (accumulated == null) {
+            return one;
+        }
+        if (one == null) {
+            return accumulated;
+        }
+        if (accumulated == ImpactClass.ROLLBACK_COUPLED || one == ImpactClass.ROLLBACK_COUPLED) {
+            return ImpactClass.ROLLBACK_COUPLED;
+        }
+        if (accumulated == ImpactClass.AMBIGUOUS || one == ImpactClass.AMBIGUOUS) {
+            return ImpactClass.AMBIGUOUS;
+        }
+        return ImpactClass.ORDERING_ONLY;
     }
 
     /** マスク済みソースから、指定した単純名の型宣言に先行するアノテーションを取り出す。 */
@@ -2138,7 +2289,20 @@ class NotificationTransactionBoundaryGuardTest {
          * 原則5 の判定軸（AFTER_COMMIT 境界を越えたか）では違反だが、
          * 手当ては「TX から切り離す」ではなく「AFTER_COMMIT リスナーへ移す」になる。
          */
-        ORDERING_ONLY
+        ORDERING_ONLY,
+        /**
+         * (iii) <b>巻き戻るかどうかを字句からは決められない</b>（Issue #3149）。
+         *
+         * <p>レシーバの型が宣言から読めない／索引の外（JDK・ライブラリ）／呼び先の宣言が
+         * 見つからない／候補間で結論が割れる、のいずれか。
+         *
+         * <p><b>不明を {@link #ORDERING_ONLY} へ倒してはならない</b>。{@code ORDERING_ONLY} は
+         * 「巻き戻らない＝深刻度が低い」という主張であり、不明をそちらへ倒すと
+         * <b>本物の地雷を軽症に見せる</b>。安全側は常に「巻き戻るかもしれない」側なので、
+         * 判定不能は判定不能として明示し、是正ロットでは {@link #ROLLBACK_COUPLED} と
+         * 同じ優先度で扱う（＝人手で1件ずつ確かめる）。
+         */
+        AMBIGUOUS
     }
 
     /** 凍結エントリ行の分類部分の区切り。書式は {@code <key> | <ImpactClass>}。 */
@@ -2196,6 +2360,31 @@ class NotificationTransactionBoundaryGuardTest {
     static String ambiguityKey(String message) {
         int colon = message.indexOf(" : ");
         return (colon < 0 ? message : message.substring(0, colon)).strip();
+    }
+
+    /**
+     * {@code # AMBIGUOUS_IMPACT: <key> : <理由>} 行（Issue #3149）。
+     *
+     * <p><b>{@code # AMBIGUOUS:} とは別物である</b>。あちらは「違反かどうかを決められない」
+     * （＝{@link ScanResult#ambiguities()}）であり、そもそも凍結エントリに載らない。
+     * こちらは「<b>違反であることは確定しているが、巻き戻るかどうかを決められない</b>」であり、
+     * 凍結エントリとして載ったうえで分類列が {@link ImpactClass#AMBIGUOUS} になる。
+     * 台帳の総数（{@code CENSUS_FLOOR}）に二重計上しないよう、別の綴りにしてある。
+     */
+    private static final Pattern AMBIGUOUS_IMPACT_LINE = Pattern.compile(
+            "^#\\s*AMBIGUOUS_IMPACT:\\s*(\\S+#\\S+\\s*->\\s*\\w+)\\s*:\\s*(.+)$");
+
+    /** 凍結ファイルの行から「影響区分が判定不能な理由」台帳を読む。 */
+    static List<RemovalEntry> parseAmbiguousImpactLedger(List<String> lines) {
+        List<RemovalEntry> entries = new ArrayList<>();
+        for (String raw : lines) {
+            Matcher m = AMBIGUOUS_IMPACT_LINE.matcher(stripBom(raw).strip());
+            if (m.matches()) {
+                entries.add(new RemovalEntry(
+                        m.group(1).replaceAll("\\s*->\\s*", " -> ").strip(), m.group(2).strip()));
+            }
+        }
+        return entries;
     }
 
     /** {@code # REMOVED: <key> : <理由>} 行。 */
@@ -2270,6 +2459,37 @@ class NotificationTransactionBoundaryGuardTest {
                         + "台帳を直すか、導出規則 deriveDelegateImpact を直すこと）");
             }
         }
+        // 任務3（Issue #3149）: AMBIGUOUS と分類した行には理由を書かせる。
+        // 「解決できないものをとりあえず AMBIGUOUS にして黙らせる」を防ぐため、
+        // 削除台帳と同じく理由の実質性（10文字以上）を機械で要求する。
+        Set<String> ambiguousImpactKeys = entries.stream()
+                .filter(e -> ImpactClass.AMBIGUOUS.name().equals(entryClassification(e)))
+                .map(NotificationTransactionBoundaryGuardTest::entryKey)
+                .collect(Collectors.toCollection(TreeSet::new));
+        List<RemovalEntry> impactReasons = parseAmbiguousImpactLedger(lines);
+        Set<String> impactReasonKeys = impactReasons.stream().map(RemovalEntry::key)
+                .collect(Collectors.toCollection(TreeSet::new));
+        if (impactReasonKeys.size() != impactReasons.size()) {
+            problems.add("影響区分の判定不能台帳に重複キーがある（同じキーの AMBIGUOUS_IMPACT 行が2つ以上）");
+        }
+        for (RemovalEntry e : impactReasons) {
+            if (e.reason().length() < 10) {
+                problems.add("影響区分が判定不能な理由が短すぎる（10文字未満）: " + e.key() + " : " + e.reason());
+            }
+            if (!ambiguousImpactKeys.contains(e.key())) {
+                problems.add("AMBIGUOUS_IMPACT 行があるが、その凍結エントリの分類は AMBIGUOUS ではない: "
+                        + e.key() + "（分類が決まったなら理由行も同じPRで消すこと）");
+            }
+        }
+        for (String key : ambiguousImpactKeys) {
+            if (!impactReasonKeys.contains(key)) {
+                problems.add("分類が AMBIGUOUS なのに理由が書かれていない: " + key
+                        + "。# AMBIGUOUS_IMPACT: <キー> : <なぜ型／宣言が解決できないのか> 行を足すこと"
+                        + "（AMBIGUOUS は ORDERING_ONLY へ倒さないための正直な札であって、"
+                        + "分類作業をしないための逃げ道ではない）。");
+            }
+        }
+
         long classifiedFloor = classifiedFloor(lines);
         if (classified < classifiedFloor) {
             problems.add("分類済みエントリ数が下限を割っている: " + classified + " < 下限 " + classifiedFloor

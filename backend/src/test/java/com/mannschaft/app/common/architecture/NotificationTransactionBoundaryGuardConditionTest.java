@@ -938,6 +938,23 @@ class NotificationTransactionBoundaryGuardConditionTest {
                     .orElseThrow(() -> new IllegalStateException("凍結エントリが1件も無い"));
         }
 
+        /**
+         * 凍結エントリを<b>キーで</b>1行消す。
+         *
+         * <p>行そのものの文字列一致で消してはならない。分類列（{@code | ROLLBACK_COUPLED}）が
+         * 付いた行はキーと一字一句同じにならないため、Issue #3149 で全 BARE / IN_TRY に分類を
+         * 付けた瞬間に<b>「消したつもりで何も消えていない」変異テスト</b>になった
+         * （＝変異が空振りしてゲートを何も測らなくなる）。
+         */
+        private void removeEntry(List<String> lines, String key) {
+            int before = lines.size();
+            lines.removeIf(s -> !s.strip().startsWith("#")
+                    && NotificationTransactionBoundaryGuardTest.entryKey(s).equals(key));
+            assertThat(lines.size())
+                    .as("変異が空振りしている（キー %s の凍結エントリ行を1行も消せていない）", key)
+                    .isEqualTo(before - 1);
+        }
+
         /** 分類（{@code | ROLLBACK_COUPLED} 等）が付いている行を1つ返す。 */
         private String anyClassifiedLine(List<String> lines) {
             return NotificationTransactionBoundaryGuardTest.entryLines(lines).stream()
@@ -1047,7 +1064,7 @@ class NotificationTransactionBoundaryGuardConditionTest {
         }
 
         @Test
-        @DisplayName("本番の分類9件がすべてソース由来の区分と一致している（実測での裏取り）")
+        @DisplayName("本番の分類がすべてソース由来の区分と一致している（実測での裏取り）")
         void 本番の分類はソースと一致している() {
             java.util.Map<String, NotificationTransactionBoundaryGuardTest.ImpactClass> derived =
                     NotificationTransactionBoundaryGuardTest.derivedImpacts(
@@ -1066,7 +1083,7 @@ class NotificationTransactionBoundaryGuardConditionTest {
         void 理由なき削除は落ちる() {
             List<String> lines = new ArrayList<>(realLines());
             String victim = anyActiveKey(lines);
-            lines.removeIf(s -> s.strip().equals(victim));
+            removeEntry(lines, victim);
 
             assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(lines, realFoundKeys()))
                     .as("凍結エントリを1行そっと消しても台帳ゲートが通ってしまう（削除 %s）", victim)
@@ -1079,7 +1096,7 @@ class NotificationTransactionBoundaryGuardConditionTest {
         void 嘘の削除理由は落ちる() {
             List<String> lines = new ArrayList<>(realLines());
             String victim = anyActiveKey(lines);
-            lines.removeIf(s -> s.strip().equals(victim));
+            removeEntry(lines, victim);
             // 「偽陽性だったので消した」と主張する。総数は保たれるので (d) は通るが、
             // (b) の実測裏取り（そのキーは今も検出されている）で落ちなければならない。
             lines.add("# REMOVED: " + victim + " : 偽陽性だったと主張するが実際にはまだ検出される行");
@@ -1095,7 +1112,7 @@ class NotificationTransactionBoundaryGuardConditionTest {
         void 空の削除理由は落ちる() {
             List<String> lines = new ArrayList<>(realLines());
             String victim = anyActiveKey(lines);
-            lines.removeIf(s -> s.strip().equals(victim));
+            removeEntry(lines, victim);
             lines.add("# REMOVED: " + victim + " : 偽陽性");
 
             assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(lines, realFoundKeys()))
@@ -1155,6 +1172,88 @@ class NotificationTransactionBoundaryGuardConditionTest {
                     .as("判定を厳しくしても検出力の下限（%s）を割らない＝下限が緩すぎて何も守っていない",
                             NotificationTransactionBoundaryGuardTest.STRUCTURAL_NOTIFY_CALLS_MIN)
                     .isLessThan(NotificationTransactionBoundaryGuardTest.STRUCTURAL_NOTIFY_CALLS_MIN);
+        }
+    }
+
+    @Nested
+    @DisplayName("影響区分: TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY にも ImpactClass が導出される（Issue #3149）")
+    class 影響区分 {
+
+        private static final String FIXTURE = "ImpactClassificationFixture";
+
+        private NotificationTransactionBoundaryGuardTest.ImpactClass impactOf(String method) {
+            String fqcn = FIXTURE_PACKAGE + "." + FIXTURE;
+            List<Violation> matched = NotificationTransactionBoundaryGuardTest
+                    .scanSource(fqcn, sourceOf(FIXTURE)).stream()
+                    .filter(v -> v.methodName().equals(method))
+                    .filter(v -> v.kind()
+                            == NotificationTransactionBoundaryGuardTest.ViolationKind.TX_NOTIFY_BARE)
+                    .collect(Collectors.toList());
+            assertThat(matched)
+                    .as("検体 %s#%s が TX_NOTIFY_BARE として検出されていない（分類以前に検出が壊れている）",
+                            FIXTURE, method)
+                    .hasSize(1);
+            return matched.get(0).derivedImpact();
+        }
+
+        @Test
+        @DisplayName("① 別 Bean の @Async メソッドを呼ぶ形は ORDERING_ONLY")
+        void 別Beanの非同期呼び出しはORDERING_ONLY() {
+            assertThat(impactOf("notifyViaAsyncBean"))
+                    .as("""
+                            別 Bean の @Async 入口はプロキシを確実に通るため呼び出し元の業務TXに参加しない。
+                            巻き戻り経路が存在しないので ORDERING_ONLY でなければならない
+                            （errorreport ドメイン5件が実際にこの形だった）。""")
+                    .isEqualTo(NotificationTransactionBoundaryGuardTest.ImpactClass.ORDERING_ONLY);
+        }
+
+        @Test
+        @DisplayName("② 同一TXの同期呼び出しは ROLLBACK_COUPLED")
+        void 同一TXの同期呼び出しはROLLBACK_COUPLED() {
+            assertThat(impactOf("notifySynchronously"))
+                    .as("無印の別 Bean は呼び出し元の業務TXにそのまま参加する＝通知の失敗で業務データが巻き戻る")
+                    .isEqualTo(NotificationTransactionBoundaryGuardTest.ImpactClass.ROLLBACK_COUPLED);
+        }
+
+        @Test
+        @DisplayName("③ レシーバの型が解決できない形は AMBIGUOUS（ORDERING_ONLY へ倒さない）")
+        void 解決不能なレシーバはAMBIGUOUS() {
+            assertThat(impactOf("notifyViaUnresolvableReceiver"))
+                    .as("""
+                            ORDERING_ONLY は「巻き戻らない＝軽症」という主張なので、
+                            解決できないレシーバをそちらへ倒すと本物の地雷を軽症に見せる。
+                            安全側は常に「巻き戻るかもしれない」側であり、不明は不明として明示する。""")
+                    .isEqualTo(NotificationTransactionBoundaryGuardTest.ImpactClass.AMBIGUOUS);
+        }
+
+        @Test
+        @DisplayName("変異: @Async を外すと ORDERING_ONLY が ROLLBACK_COUPLED へ反転する")
+        void 非同期注釈を外すと巻き戻る側へ反転する() {
+            // 「たまたま ORDERING_ONLY と書いてあるだけ」ではなく、@Async の宣言を実際に読んで
+            // 導出していることを独立に確かめる。
+            String mutated = sourceOf("NotificationFixtureStubs")
+                    .replace("@org.springframework.scheduling.annotation.Async(\"event-pool\")", "");
+            assertThat(mutated)
+                    .as("変異が空振りしている（スタブ側の @Async の綴りが変わった）")
+                    .doesNotContain("scheduling.annotation.Async(\"event-pool\")");
+            assertThat(NotificationTransactionBoundaryGuardTest.delegateEntryImpact(
+                    stubRefFrom(mutated), "notifyAsync"))
+                    .isEqualTo(NotificationTransactionBoundaryGuardTest.ImpactClass.ROLLBACK_COUPLED);
+        }
+
+        /** 変異させたスタブソースを一時ファイルへ書き、そこを指す {@code TypeRef} を作る。 */
+        private NotificationTransactionBoundaryGuardTest.TypeRef stubRefFrom(String mutatedSource) {
+            try {
+                Path tmp = java.nio.file.Files.createTempFile("MutatedStubs", ".java");
+                java.nio.file.Files.writeString(tmp, mutatedSource,
+                        java.nio.charset.StandardCharsets.UTF_8);
+                tmp.toFile().deleteOnExit();
+                return new NotificationTransactionBoundaryGuardTest.TypeRef(
+                        "AsyncNotifierStub",
+                        FIXTURE_PACKAGE + ".NotificationFixtureStubs.Mutated", tmp);
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
         }
     }
 
