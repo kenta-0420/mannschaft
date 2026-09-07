@@ -456,6 +456,20 @@ public class RoleService {
     }
 
     /**
+     * 指定チームの ADMIN/DEPUTY_ADMIN ユーザー ID 一覧を返す（柱③-A・CMP-260901-1538）。
+     *
+     * <p>{@link #getAdminUserIdsByOrganizationId} と同じ趣旨（D-5 ArchUnit 準拠）。既存の
+     * {@code findAdminUserIdsByTeamIds}（複数チーム一括版）を単一チームで呼ぶことで
+     * 新規ネイティブクエリを追加しない。</p>
+     *
+     * @param teamId 対象チーム ID
+     * @return 当該チームの ADMIN/DEPUTY_ADMIN ユーザー ID 一覧
+     */
+    public List<Long> getAdminUserIdsByTeamId(Long teamId) {
+        return userRoleRepository.findAdminUserIdsByTeamIds(List.of(teamId));
+    }
+
+    /**
      * 指定チームで指定ロールを持つユーザー ID 一覧を返す。
      *
      * <p>Issue #2834 / CMP-056 第1群ロットB で追加。{@code social} ドメインの通知配送リスナー
