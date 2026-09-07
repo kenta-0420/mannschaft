@@ -90,6 +90,23 @@ public class BillingContractService {
             List<String> revokedFeatureKeys) {
     }
 
+    /**
+     * 柱③-B: payer 起点で検出した引継対象契約（§1.2 の検出漏れを塞ぐクエリの返り値）。
+     *
+     * <p>D-1（API 境界）によりサービス API はエンティティを露出できないため、
+     * PR-3 の退会ハンドラ（{@code cancelAllForPayerOnWithdrawal}）が期末解約の判断に必要とする
+     * 項目だけを持つ値オブジェクトとして返す。{@code pspSubscriptionRef} と
+     * {@code currentPeriodEnd} は §5.1 の絞り込みにより非 null が保証される。</p>
+     */
+    public record HandoverTargetContract(
+            UUID contractId,
+            EntitlementScopeKind scopeKind,
+            Long scopeId,
+            ContractStatus status,
+            String pspSubscriptionRef,
+            LocalDateTime currentPeriodEnd) {
+    }
+
     // ============================================================
     // 作成（PLAN / ADDON）
     // ============================================================
@@ -635,15 +652,25 @@ public class BillingContractService {
      * 本メソッドはその<b>検出面のみ</b>を PR-2 として先行提供する。</p>
      *
      * @param payerUserId 退会予定ユーザー（{@code payer_user_id} 一致）
-     * @return 引継の適用対象となる TEAM/ORG 契約（該当なしなら空）
+     * @return 引継の適用対象となる TEAM/ORG 契約（該当なしなら空）。
+     *         D-1（API 境界）によりエンティティではなく {@link HandoverTargetContract} で返す
      */
     @Transactional(readOnly = true)
-    public List<BillingContractEntity> findHandoverTargetContractsForPayer(Long payerUserId) {
+    public List<HandoverTargetContract> findHandoverTargetContractsForPayer(Long payerUserId) {
         return billingContractRepository
                 .findByPayerUserIdAndScopeKindInAndStatusInAndPspSubscriptionRefIsNotNullAndCurrentPeriodEndIsNotNullAndDeletedAtIsNull(
                         payerUserId,
                         List.of(EntitlementScopeKind.TEAM, EntitlementScopeKind.ORG),
-                        List.of(ContractStatus.PENDING, ContractStatus.ACTIVE, ContractStatus.PAST_DUE));
+                        List.of(ContractStatus.PENDING, ContractStatus.ACTIVE, ContractStatus.PAST_DUE))
+                .stream()
+                .map(contract -> new HandoverTargetContract(
+                        contract.getId(),
+                        contract.getScopeKind(),
+                        contract.getScopeId(),
+                        contract.getStatus(),
+                        contract.getPspSubscriptionRef(),
+                        contract.getCurrentPeriodEnd()))
+                .toList();
     }
 
     /**
