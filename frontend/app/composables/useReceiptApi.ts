@@ -1,4 +1,10 @@
-import type { ReceiptResponse, ReceiptIssuerSettings, ReceiptPreset } from '~/types/receipt'
+import type {
+  ReceiptResponse,
+  ReceiptIssuerSettings,
+  ReceiptPreset,
+  MyReceiptResponse,
+  IssueReceiptRequest,
+} from '~/types/receipt'
 
 /** BE ReceiptAdminController / ReceiptSettingsController が受け付けるスコープ種別。 */
 export type ReceiptScopeType = 'TEAM' | 'ORGANIZATION'
@@ -9,10 +15,24 @@ export interface ReceiptListParams {
   size?: number
 }
 
+/** BE PagedResponse の meta 部。 */
+export interface ReceiptPageMeta {
+  total: number
+  page: number
+  size: number
+  totalPages: number
+}
+
 /** BE PagedResponse の実体（data + meta）。 */
 export interface PagedReceiptResponse {
   data: ReceiptResponse[]
-  meta: { total: number; page: number; size: number; totalPages: number }
+  meta: ReceiptPageMeta
+}
+
+/** マイページ領収書一覧（BE PagedResponse<MyReceiptResponse>）。 */
+export interface PagedMyReceiptResponse {
+  data: MyReceiptResponse[]
+  meta: ReceiptPageMeta
 }
 
 export function useReceiptApi() {
@@ -51,10 +71,13 @@ export function useReceiptApi() {
     return api<{ data: ReceiptResponse }>(`/api/v1/admin/receipts/${receiptId}?${qs}`)
   }
 
+  // BE `CreateReceiptRequest` は金額を `amount` で受ける（`totalAmount` ではない）。
+  // 名前違いを送っても BE は 400 を返さず金額 null の領収書を作ってしまうため、
+  // ここで型を固定して再発を防ぐ（CMP-260907-0915）。
   async function issueReceipt(
     scopeType: ReceiptScopeType,
     scopeId: string | number,
-    body: Record<string, unknown>,
+    body: IssueReceiptRequest,
   ) {
     const qs = buildQuery({ scopeType, scopeId })
     return api<{ data: ReceiptResponse }>(`/api/v1/admin/receipts?${qs}`, { method: 'POST', body })
@@ -69,10 +92,11 @@ export function useReceiptApi() {
     return api(`/api/v1/admin/receipts/bulk?${qs}`, { method: 'POST', body })
   }
 
+  // プレビューも発行と同じ `CreateReceiptRequest` を受ける。
   async function previewReceipt(
     scopeType: ReceiptScopeType,
     scopeId: string | number,
-    body: Record<string, unknown>,
+    body: IssueReceiptRequest,
   ) {
     const qs = buildQuery({ scopeType, scopeId })
     return api(`/api/v1/admin/receipts/preview?${qs}`, { method: 'POST', body })
@@ -247,7 +271,8 @@ export function useReceiptApi() {
   // === My Receipts ===
   async function getMyReceipts(params?: Record<string, unknown>) {
     const qs = buildQuery(params)
-    return api<{ data: ReceiptResponse[] }>(`/api/v1/my/receipts?${qs}`)
+    // BE は `PagedResponse<MyReceiptResponse>` を返す（管理者向け ReceiptResponse とは別形）。
+    return api<PagedMyReceiptResponse>(`/api/v1/my/receipts?${qs}`)
   }
 
   async function getMyAnnualSummary(params?: Record<string, unknown>) {

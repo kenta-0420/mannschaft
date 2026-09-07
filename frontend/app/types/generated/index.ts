@@ -67026,7 +67026,7 @@ export interface components {
             };
         };
         CreateReceiptRequest: {
-            amount?: number;
+            amount: number;
             description?: string;
             emailDelivery?: components["schemas"]["EmailDeliveryRequest"];
             lineItems?: components["schemas"]["LineItemRequest"][];
