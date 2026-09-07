@@ -187,7 +187,7 @@
 #      ScheduleCommentNotifier#sendMentioned / #sendReplied（DIRECT_RUNNER_CALL）
 #      この3件は L0 で「クラス跨ぎの偽陽性の可能性あり・L1 で実地確認する前提」として凍結され、
 #      以後どのロットでも検証されないまま残っていた。L8 で決着させた結論:
-#      <b>巻き戻りは起きていなかった</b>。通知は TransactionSynchronizationManager.registerSynchronization
+#      **巻き戻りは起きていなかった**。通知は TransactionSynchronizationManager.registerSynchronization
 #      の afterCommit() から呼ばれており、因果としては既にコミット後で、受信者ごとに
 #      ScheduleCommentNotificationRunner#sendOne（REQUIRES_NEW）へ委譲する正規形そのものだった。
 #      つまり #2990 本体（ROLLBACK_COUPLED）には該当しない。
@@ -196,11 +196,11 @@
 #      ScheduleCommentNotifier を「別 Bean 委譲先の境界は判定できない」限界の実例として名指ししている）。
 #      REMOVED（偽陽性）として台帳へ移す道は取らなかった。REMOVED 行は「現在の判定ロジックでも
 #      検出されないこと」を番人が機械検証するため、検出され続けるものは移せないからである。
-#      代わりに<b>同じ境界を Spring の宣言で表し直した</b>: ScheduleCommentPostedEvent を publish し、
+#      代わりに**同じ境界を Spring の宣言で表し直した**: ScheduleCommentPostedEvent を publish し、
 #      ScheduleCommentNotifier を @TransactionalEventListener(AFTER_COMMIT) の入口に変えた。
 #      sendMentioned / sendReplied は許可された入口から到達する private ヘルパになるため
 #      DIRECT_RUNNER_CALL も解消する。
-#      <b>@Async は意図的に付けていない</b>。是正前の afterCommit() はリクエストスレッド上で同期実行
+#      **@Async は意図的に付けていない**。是正前の afterCommit() はリクエストスレッド上で同期実行
 #      されており、巻き戻りが起こり得ない以上、非同期化しても得るものが無い一方で
 #      ScheduleCommentNotificationPartialFailureIT（1受信者の失敗が他へ波及しないことを実DBで
 #      検証する既存の回帰テスト）が競合するだけである。実行タイミングは是正前と同一。
@@ -763,7 +763,7 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #
 # ■ 是正前は何が壊れていたか（実コード読解＋実DB計測に基づく）
 #
-#   本ロットの5件は<b>1件も巻き戻っていなかった</b>。呼び先 ErrorReportNotifier の該当6メソッドは
+#   本ロットの5件は**1件も巻き戻っていなかった**。呼び先 ErrorReportNotifier の該当6メソッドは
 #   是正前から @Async("event-pool") が付いており、しかも別 Bean への呼び出しなのでプロキシを確実に
 #   通る。通知は業務スレッドとは別スレッド・別TXで走るため、通知の失敗が業務TXを巻き戻す経路は無い。
 #   よって性質は ROLLBACK_COUPLED ではなく ORDERING_ONLY（因果順序のみ）である。
@@ -816,7 +816,7 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #
 # ■ 受信者ごとの被害半径（正規形の3要素目）
 #
-#   notifySystemAdmins / notifyEscalation / notifyRegression は<b>管理者ループ全体が1つの try</b>に
+#   notifySystemAdmins / notifyEscalation / notifyRegression は**管理者ループ全体が1つの try**に
 #   入っており、1人目への createNotification が落ちると残りの管理者全員が通知を受け取れなかった。
 #   受信者リストの解決を外側 try、配送を受信者ごとの try/catch（ERROR ログに受信者IDを含む）へ分けた。
 #   あわせて Slack 送信も独立した try に切り出した（是正前は Slack が落ちると SYSTEM_ADMIN
@@ -825,7 +825,7 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #
 # ■ 既存テストが欠陥を隠していた（#2990 で8件目）
 #
-#   ErrorReportServiceTest は ErrorReportNotifier をモックしていながら<b>verify を1本も持っていなかった</b>。
+#   ErrorReportServiceTest は ErrorReportNotifier をモックしていながら**verify を1本も持っていなかった**。
 #   createOrAggregate / updateStatus の通知発火は実装から丸ごと削除しても緑のままだった
 #   （そもそも両メソッドに対する単体テストが1本も無かった）。是正にあわせてイベント publish の
 #   検証を6本追加した。あわせて、依存から外れて久しい ErrorReportAiAnalysisService の
