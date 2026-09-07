@@ -780,7 +780,7 @@ class NotificationTransactionBoundaryGuardConditionTest {
         @DisplayName("変異: 委譲先入口の注釈を変えると導出される ImpactClass が反転する（任務4）")
         void 影響区分はソースの注釈から導出している() {
             NotificationTransactionBoundaryGuardTest.TypeRef worker = fixtureType("WorkerStub");
-            assertThat(NotificationTransactionBoundaryGuardTest.delegateEntryImpact(worker, "send"))
+            assertThat(NotificationTransactionBoundaryGuardTest.delegateEntryImpact(worker, "send", false))
                     .as("無印（＝呼び出し元のTXに参加する）を ROLLBACK_COUPLED と判定できていない")
                     .isEqualTo(NotificationTransactionBoundaryGuardTest.ImpactClass.ROLLBACK_COUPLED);
 
@@ -789,7 +789,7 @@ class NotificationTransactionBoundaryGuardConditionTest {
                             .getOrDefault("ErrorReportAsyncExecutor", List.of()).stream().findFirst()
                             .orElseThrow(() -> new IllegalStateException("本番の @Async 委譲先が索引に無い"));
             assertThat(NotificationTransactionBoundaryGuardTest.delegateEntryImpact(
-                    executor, "recordBackendException"))
+                    executor, "recordBackendException", false))
                     .as("@Async(\"event-pool\") で別スレッド・別TXへ逃げる形を ROLLBACK_COUPLED と誤分類している。"
                             + "分類を誤ると是正の手当てを誤る（TXから切り離す／AFTER_COMMIT へ移す は別物）")
                     .isEqualTo(NotificationTransactionBoundaryGuardTest.ImpactClass.ORDERING_ONLY);
@@ -1005,6 +1005,77 @@ class NotificationTransactionBoundaryGuardConditionTest {
             assertThat(realFoundKeys())
                     .as("分類を付けたキーが本番の検出結果に存在しない＝キーの切り出しが壊れている")
                     .contains(key);
+        }
+
+        /**
+         * 分類済みの1行を {@code | AMBIGUOUS} へ書き換えた台帳を作る。
+         *
+         * <p>本番に AMBIGUOUS が0件でも「理由の記載を強制するゲート」が実際に発火することを
+         * 測るために要る。0件のまま放置すると、将来 AMBIGUOUS が出た瞬間に
+         * ゲートが期待どおり落ちる保証が無い（＝番人の番人が空）。
+         */
+        private String ambiguousify(List<String> lines) {
+            String classified = anyClassifiedLine(lines);
+            String key = NotificationTransactionBoundaryGuardTest.entryKey(classified);
+            assertThat(lines.removeIf(l -> l.strip().equals(classified)))
+                    .as("変異が空振りしている（分類済み行 %s を消せていない）", classified)
+                    .isTrue();
+            lines.add(key + " | AMBIGUOUS");
+            return key;
+        }
+
+        @Test
+        @DisplayName("変異: 分類を AMBIGUOUS にすると理由が無い限り fail する（判定不能の逃げ道封じ）")
+        void 理由なしのAMBIGUOUSは落ちる() {
+            List<String> lines = new ArrayList<>(realLines());
+            String key = ambiguousify(lines);
+
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(lines, realFoundKeys()))
+                    .as("AMBIGUOUS と書くだけで理由なしに通ってしまう（対象 %s）", key)
+                    .isNotEmpty()
+                    .anySatisfy(msg -> assertThat(msg).contains("分類が AMBIGUOUS なのに理由が書かれていない"));
+        }
+
+        @Test
+        @DisplayName("変異: 対応する AMBIGUOUS_IMPACT の理由行を足すと通る（ゲートが常に赤ではない）")
+        void 理由を足せば通る() {
+            List<String> lines = new ArrayList<>(realLines());
+            String key = ambiguousify(lines);
+            lines.add("# AMBIGUOUS_IMPACT: " + key
+                    + " : レシーバの型が字句から一意に決まらず、候補ごとに巻き戻りの結論が割れるため");
+
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(lines, realFoundKeys()))
+                    .as("理由を書いても通らないなら、このゲートは AMBIGUOUS を実質禁止しているだけで"
+                            + "「正直に判定不能と書く」道を塞いでいる")
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("変異: 理由が9文字だと fail する（形だけの理由で黙らせられない）")
+        void 短すぎる理由は落ちる() {
+            List<String> lines = new ArrayList<>(realLines());
+            String key = ambiguousify(lines);
+            lines.add("# AMBIGUOUS_IMPACT: " + key + " : 123456789");
+
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(lines, realFoundKeys()))
+                    .as("理由欄に何文字書いても通る＝実質ノーガード（対象 %s）", key)
+                    .isNotEmpty()
+                    .anySatisfy(msg -> assertThat(msg).contains("影響区分が判定不能な理由が短すぎる"));
+        }
+
+        @Test
+        @DisplayName("変異: 分類が AMBIGUOUS でないのに理由行だけあると fail する（孤児の理由行）")
+        void 孤児の理由行は落ちる() {
+            List<String> lines = new ArrayList<>(realLines());
+            String key = NotificationTransactionBoundaryGuardTest.entryKey(anyClassifiedLine(lines));
+            lines.add("# AMBIGUOUS_IMPACT: " + key
+                    + " : 分類が決まった後も消し忘れて残っている理由行（腐った記述）");
+
+            assertThat(NotificationTransactionBoundaryGuardTest.validateLedger(lines, realFoundKeys()))
+                    .as("分類が決まったのに理由行が残っていても気づけない＝台帳が腐っていく")
+                    .isNotEmpty()
+                    .anySatisfy(msg -> assertThat(msg)
+                            .contains("その凍結エントリの分類は AMBIGUOUS ではない"));
         }
 
         @Test
@@ -1227,6 +1298,38 @@ class NotificationTransactionBoundaryGuardConditionTest {
         }
 
         @Test
+        @DisplayName("④ 同期の REQUIRES_NEW へ握らずに呼ぶ形は ROLLBACK_COUPLED（@Async と同一視しない）")
+        void 同期の別TX伝播へのbare呼び出しはROLLBACK_COUPLED() {
+            assertThat(impactOf("notifyViaSyncRequiresNewBean"))
+                    .as("""
+                            REQUIRES_NEW が分離するのは「内側の作業」であって「例外の伝播」ではない。
+                            同期呼び出しなので通知が投げれば例外は呼び出し元へ返り、外側の業務TXも巻き戻る。
+                            巻き戻りを本当に断ち切るのは @Async（別スレッド）だけである。""")
+                    .isEqualTo(NotificationTransactionBoundaryGuardTest.ImpactClass.ROLLBACK_COUPLED);
+        }
+
+        @Test
+        @DisplayName("④' @Async への bare 呼び出しは ORDERING_ONLY のまま（④との区別が効いている証拠）")
+        void 非同期と同期別TXは区別されている() {
+            assertThat(impactOf("notifyViaAsyncBean"))
+                    .as("@Async と同期 REQUIRES_NEW を同じ区分にしてしまうと、④の反転は検出できない")
+                    .isEqualTo(NotificationTransactionBoundaryGuardTest.ImpactClass.ORDERING_ONLY);
+            assertThat(impactOf("notifyViaSyncRequiresNewBean"))
+                    .isNotEqualTo(impactOf("notifyViaAsyncBean"));
+        }
+
+        @Test
+        @DisplayName("⑤ 自クラス型のローカル変数がフィールドをシャドーイングする形は AMBIGUOUS")
+        void 自クラス型のシャドーイングはAMBIGUOUS() {
+            assertThat(impactOf("notifyViaShadowedSelfType"))
+                    .as("""
+                            receiverTypes はスコープを持たない型名の集合にすぎないので、
+                            自クラス型を含むというだけで this と決めつけて早期確定してはならない。
+                            候補が割れている（@Async のフィールド / 自己呼び出し）のだから AMBIGUOUS。""")
+                    .isEqualTo(NotificationTransactionBoundaryGuardTest.ImpactClass.AMBIGUOUS);
+        }
+
+        @Test
         @DisplayName("変異: @Async を外すと ORDERING_ONLY が ROLLBACK_COUPLED へ反転する")
         void 非同期注釈を外すと巻き戻る側へ反転する() {
             // 「たまたま ORDERING_ONLY と書いてあるだけ」ではなく、@Async の宣言を実際に読んで
@@ -1237,7 +1340,7 @@ class NotificationTransactionBoundaryGuardConditionTest {
                     .as("変異が空振りしている（スタブ側の @Async の綴りが変わった）")
                     .doesNotContain("scheduling.annotation.Async(\"event-pool\")");
             assertThat(NotificationTransactionBoundaryGuardTest.delegateEntryImpact(
-                    stubRefFrom(mutated), "notifyAsync"))
+                    stubRefFrom(mutated), "notifyAsync", false))
                     .isEqualTo(NotificationTransactionBoundaryGuardTest.ImpactClass.ROLLBACK_COUPLED);
         }
 

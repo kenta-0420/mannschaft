@@ -467,6 +467,8 @@ class NotificationTransactionBoundaryGuardTest {
 
             // TransactionTemplate の lambda の内側は、外側メソッドが無印でも確実に TX 内（Issue #3039 形状2）。
             List<int[]> templateRanges = transactionTemplateRanges(m.body(), templateNames);
+            // 影響区分の導出に使う（同期的な別TX伝播は例外を止めないため、握っているかで結論が変わる）。
+            List<int[]> tryRanges = tryBlockRanges(m.body());
 
             // (7) @Transactional 文脈から別 Bean へ委譲し、その先で通知が発火する（Issue #3039 形状1）。
             if (!allowedEntry) {
@@ -500,7 +502,8 @@ class NotificationTransactionBoundaryGuardTest {
                     if (reported.add(label)) {
                         violations.add(new Violation(fqcn, m.name(), ViolationKind.TX_NOTIFY_VIA_DELEGATE,
                                 lineOf(src, m.declOffset()), "委譲先=" + label,
-                                deriveDelegateImpact(receiverTypes, callee, imports, ownPackage)));
+                                deriveDelegateImpact(receiverTypes, callee, imports, ownPackage,
+                                        isWithin(tryRanges, call.start()))));
                     }
                 }
             }
@@ -551,7 +554,6 @@ class NotificationTransactionBoundaryGuardTest {
 
             // (5)(6) @Transactional 文脈での通知発火。try の内外で分類する。
             if (firesNotification && !allowedEntry) {
-                List<int[]> tryRanges = tryBlockRanges(m.body());
                 boolean anyInTry = false;
                 boolean anyBare = false;
                 ImpactClass inTryImpact = null;
@@ -560,9 +562,10 @@ class NotificationTransactionBoundaryGuardTest {
                     if (!inTxContext && !isWithin(templateRanges, call.offset())) {
                         continue;
                     }
+                    boolean contained = isWithin(tryRanges, call.offset());
                     ImpactClass one = deriveDirectNotifyImpact(
-                            call, declaredTypes, imports, ownPackage, selfSimpleName);
-                    if (isWithin(tryRanges, call.offset())) {
+                            call, declaredTypes, imports, ownPackage, selfSimpleName, contained);
+                    if (contained) {
                         anyInTry = true;
                         inTryImpact = combineImpact(inTryImpact, one);
                     } else {
@@ -1323,9 +1326,10 @@ class NotificationTransactionBoundaryGuardTest {
      * 委譲先の入口メソッドの宣言から {@link ImpactClass} を導出する（任務4）。
      * 候補間で結論が割れる／宣言が見つからない場合は {@code null}（＝機械照合の対象外）。
      *
-     * <p><b>導出の根拠</b>: 委譲先の入口に {@code @Async} が付く、または
-     * {@code @Transactional} の伝播が {@code REQUIRES_NEW} / {@code NOT_SUPPORTED} なら、
-     * 呼び出し元の業務TXには参加しない＝通知の失敗で業務が巻き戻ることはない（{@link ImpactClass#ORDERING_ONLY}）。
+     * <p><b>導出の根拠</b>: 委譲先の入口に {@code @Async} が付くなら、別スレッドなので
+     * 例外が呼び出し元へ返らない＝通知の失敗で業務が巻き戻ることはない（{@link ImpactClass#ORDERING_ONLY}）。
+     * 同期のまま伝播だけ別TXにする {@code REQUIRES_NEW} / {@code NOT_SUPPORTED} / {@code NEVER} は
+     * <b>例外を止めない</b>ので、呼び出し側が握っていなければ巻き戻る（{@link #delegateEntryImpact} を参照）。
      * それ以外（無印・既定の {@code REQUIRED} / {@code MANDATORY} / {@code SUPPORTS} / {@code NESTED}）は
      * 呼び出し元のTXに参加する＝巻き戻る（{@link ImpactClass#ROLLBACK_COUPLED}）。
      *
@@ -1334,14 +1338,15 @@ class NotificationTransactionBoundaryGuardTest {
      * 伝播設定は効かない。
      */
     static ImpactClass deriveDelegateImpact(Set<String> receiverTypeNames, String callee,
-                                            java.util.Map<String, String> imports, String ownPackage) {
+                                            java.util.Map<String, String> imports, String ownPackage,
+                                            boolean exceptionContained) {
         Set<ImpactClass> seen = new LinkedHashSet<>();
         for (String simpleName : receiverTypeNames) {
             for (TypeRef ref : resolveCandidates(simpleName, imports, ownPackage)) {
                 if (!notificationFiringMethods(ref).contains(callee)) {
                     continue;
                 }
-                ImpactClass one = delegateEntryImpact(ref, callee);
+                ImpactClass one = delegateEntryImpact(ref, callee, exceptionContained);
                 if (one != null) {
                     seen.add(one);
                 }
@@ -1362,18 +1367,59 @@ class NotificationTransactionBoundaryGuardTest {
      * 走査時間が膨らむと番人そのものが避けられるようになるため、素直にキャッシュする。
      * {@code null}（宣言が見つからない）も結果なのでラップして格納する。
      */
-    private static final java.util.Map<String, java.util.Optional<ImpactClass>> ENTRY_IMPACT_CACHE =
+    private static final java.util.Map<String, java.util.Optional<EntryKind>> ENTRY_IMPACT_CACHE =
             new java.util.concurrent.ConcurrentHashMap<>();
 
-    /** 委譲先の型 {@code ref} の入口メソッド {@code callee} の {@link ImpactClass}（見つからなければ null）。 */
-    static ImpactClass delegateEntryImpact(TypeRef ref, String callee) {
+    /**
+     * 委譲先の入口メソッドが持つ「呼び出し元TXからの離れ方」（Issue #3149 / Codex 検分 指摘A）。
+     *
+     * <p><b>なぜ区分を分けるのか</b>: 当初の実装は {@code @Async} と同期的な
+     * {@code REQUIRES_NEW / NOT_SUPPORTED / NEVER} を同じ扱いにして
+     * どちらも {@code ORDERING_ONLY} にしていた。これは誤りである。
+     * <b>{@code REQUIRES_NEW} が分離するのは「内側の作業」であって「例外の伝播」ではない。</b>
+     * 同期呼び出しである以上、通知が投げれば例外は呼び出し元へそのまま返り、
+     * 呼び出し元の業務トランザクションも巻き戻る。
+     * 巻き戻りを本当に断ち切るのは {@code @Async}（別スレッドなので例外が呼び出し元へ返らない）だけである。
+     */
+    enum EntryKind {
+        /** {@code @Async}。別スレッドなので例外が呼び出し元へ返らない。 */
+        ASYNC,
+        /** 同期だが伝播設定で別TXになる（{@code REQUIRES_NEW} 等）。例外は伝播する。 */
+        SYNC_DETACHED,
+        /** 呼び出し元のTXにそのまま参加する。 */
+        JOINING
+    }
+
+    /** 委譲先の型 {@code ref} の入口メソッド {@code callee} の {@link EntryKind}（宣言が無ければ null）。 */
+    static EntryKind delegateEntryKind(TypeRef ref, String callee) {
         return ENTRY_IMPACT_CACHE.computeIfAbsent(
                 ref.fqcn() + "|" + ref.simpleName() + "|" + ref.file() + "|" + callee,
-                key -> java.util.Optional.ofNullable(delegateEntryImpactUncached(ref, callee)))
+                key -> java.util.Optional.ofNullable(delegateEntryKindUncached(ref, callee)))
                 .orElse(null);
     }
 
-    private static ImpactClass delegateEntryImpactUncached(TypeRef ref, String callee) {
+    /**
+     * 委譲先の入口の {@link ImpactClass}（見つからなければ null）。
+     *
+     * @param exceptionContained 呼び出し側が {@code try} で囲っているか。
+     *     同期的な別TX伝播は例外が伝播するため、囲っていなければ巻き戻る。
+     *     囲っていても「その catch が本当に全例外を捕捉している」ことは字句からは言えないので
+     *     {@code ORDERING_ONLY} とは断定せず {@link ImpactClass#AMBIGUOUS} に倒す。
+     */
+    static ImpactClass delegateEntryImpact(TypeRef ref, String callee, boolean exceptionContained) {
+        EntryKind kind = delegateEntryKind(ref, callee);
+        if (kind == null) {
+            return null;
+        }
+        return switch (kind) {
+            case ASYNC -> ImpactClass.ORDERING_ONLY;
+            case SYNC_DETACHED ->
+                    exceptionContained ? ImpactClass.AMBIGUOUS : ImpactClass.ROLLBACK_COUPLED;
+            case JOINING -> ImpactClass.ROLLBACK_COUPLED;
+        };
+    }
+
+    private static EntryKind delegateEntryKindUncached(TypeRef ref, String callee) {
         String masked = JavaSourceScanningUtils.maskCommentsAndLiterals(read(ref.file()));
         String block = typeBlock(masked, ref.simpleName());
         if (block == null) {
@@ -1385,10 +1431,13 @@ class NotificationTransactionBoundaryGuardTest {
                 continue;
             }
             String ann = m.annotations() + "\n" + classAnnotations;
-            if (hasAsync(ann) || TX_DETACHING_PROPAGATION.matcher(ann).find()) {
-                return ImpactClass.ORDERING_ONLY;
+            if (hasAsync(ann)) {
+                return EntryKind.ASYNC;
             }
-            return ImpactClass.ROLLBACK_COUPLED;
+            if (TX_DETACHING_PROPAGATION.matcher(ann).find()) {
+                return EntryKind.SYNC_DETACHED;
+            }
+            return EntryKind.JOINING;
         }
         return null;
     }
@@ -1405,7 +1454,9 @@ class NotificationTransactionBoundaryGuardTest {
      * <p><b>判定</b>:
      * <ul>
      *   <li>レシーバの型が<b>自クラス</b>ならプロキシを経ない自己呼び出しであり、
-     *       {@code @Async} も伝播設定も効かない ⇒ {@link ImpactClass#ROLLBACK_COUPLED}。</li>
+     *       {@code @Async} も伝播設定も効かない ⇒ {@link ImpactClass#ROLLBACK_COUPLED}。
+     *       ただし早期確定はしない。自クラス型を含むだけでは {@code this} とは限らないので、
+     *       他候補と同じ土俵で畳んで結論が割れたら {@link ImpactClass#AMBIGUOUS} にする。</li>
      *   <li>別 Bean なら {@link #delegateEntryImpact} と同じ規則
      *       （入口の {@code @Async} / {@code REQUIRES_NEW} 等）で導出する。</li>
      *   <li><b>型が解決できない・呼び先の宣言が見つからない・候補間で結論が割れる</b>場合は
@@ -1418,23 +1469,28 @@ class NotificationTransactionBoundaryGuardTest {
     static ImpactClass deriveDirectNotifyImpact(NotifyCall call,
                                                 java.util.Map<String, Set<String>> declaredTypes,
                                                 java.util.Map<String, String> imports,
-                                                String ownPackage, String selfSimpleName) {
+                                                String ownPackage, String selfSimpleName,
+                                                boolean exceptionContained) {
         Set<String> receiverTypes = declaredTypes.getOrDefault(call.receiver(), Set.of());
         if (receiverTypes.isEmpty()) {
             return ImpactClass.AMBIGUOUS; // レシーバの宣言が字句から読めない
         }
-        if (receiverTypes.contains(selfSimpleName)) {
-            // 自己呼び出しはプロキシを経ないため、呼び出し元のTXがそのまま生きている。
-            return ImpactClass.ROLLBACK_COUPLED;
-        }
         Set<ImpactClass> seen = new LinkedHashSet<>();
         for (String simpleName : receiverTypes) {
+            if (simpleName.equals(selfSimpleName)) {
+                // 自クラス型が候補にある＝自己呼び出しの可能性。プロキシを経ないので巻き戻る。
+                // ただし「自クラス型を含む」だけでは this とは限らない（同名フィールドを
+                // ローカル変数がシャドーイングする形・自己プロキシとして同型 Bean を注入する形）。
+                // よって早期 return せず、他候補と同じ土俵で畳む（Codex 検分 指摘B）。
+                seen.add(ImpactClass.ROLLBACK_COUPLED);
+                continue;
+            }
             List<TypeRef> refs = resolveCandidates(simpleName, imports, ownPackage);
             if (refs.isEmpty()) {
                 return ImpactClass.AMBIGUOUS; // 索引の外の型（宣言を読めない）
             }
             for (TypeRef ref : refs) {
-                ImpactClass one = delegateEntryImpact(ref, call.callee());
+                ImpactClass one = delegateEntryImpact(ref, call.callee(), exceptionContained);
                 if (one == null) {
                     return ImpactClass.AMBIGUOUS; // その型に当該メソッドの宣言が見つからない
                 }

@@ -3,6 +3,7 @@ package com.mannschaft.app.common.architecture.fixtures.notification;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.AsyncNotifierStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.HelperStub;
 import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.RepositoryStub;
+import com.mannschaft.app.common.architecture.fixtures.notification.NotificationFixtureStubs.RequiresNewNotifierStub;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -78,4 +79,46 @@ public class ImpactClassificationFixture {
     private HelperStub resolveNotifier() {
         return notificationHelper;
     }
+
+    /**
+     * ④ 同期のまま伝播だけ別TXにする別 Bean を、例外を握らずに呼ぶ ⇒ {@code ROLLBACK_COUPLED}
+     * （Codex 検分 指摘A）。
+     *
+     * <p>{@code REQUIRES_NEW} が分離するのは「内側の作業」であって「例外の伝播」ではない。
+     * 通知が投げれば例外はここへそのまま返り、この業務TXも巻き戻る。
+     * ①（{@code @Async}）と同じ扱いにしてはならない。
+     */
+    public void notifyViaSyncRequiresNewBean(Long userId) {
+        repository.save(userId);
+        requiresNewNotifier.notifyInNewTransaction(userId);
+    }
+
+    /**
+     * ⑤ 自クラス型のローカル変数が同名フィールドをシャドーイングする形 ⇒ {@code AMBIGUOUS}
+     * （Codex 検分 指摘B）。
+     *
+     * <p>{@code shadowedNotifier} という識別子には
+     * {@link AsyncNotifierStub}（フィールド）と {@link ImpactClassificationFixture}（ローカル変数）の
+     * 2つの宣言がある。前者なら {@code @Async} で {@code ORDERING_ONLY}、後者なら自己呼び出しで
+     * {@code ROLLBACK_COUPLED} であり結論が割れる。<b>自クラス型を含むというだけで
+     * {@code this} と決めつけて早期確定すると、この割れが握り潰される。</b>
+     */
+    public void notifyViaShadowedSelfType(Long userId) {
+        repository.save(userId);
+        ImpactClassificationFixture shadowedNotifier = this;
+        shadowedNotifier.notifyAsync(userId);
+    }
+
+    /**
+     * ⑤の対照として自クラスにも同名の入口を置く（{@code @Async} は付けない）。
+     *
+     * <p>これが無いと「自クラス側では宣言が見つからない」経路で AMBIGUOUS になってしまい、
+     * <b>シャドーイングを見ているのか宣言不在を見ているのか</b>が区別できない。
+     */
+    public void notifyAsync(Long userId) {
+        notificationHelper.notify(userId, "TYPE", "件名", "本文");
+    }
+
+    private final AsyncNotifierStub shadowedNotifier = new AsyncNotifierStub();
+    private final RequiresNewNotifierStub requiresNewNotifier = new RequiresNewNotifierStub();
 }

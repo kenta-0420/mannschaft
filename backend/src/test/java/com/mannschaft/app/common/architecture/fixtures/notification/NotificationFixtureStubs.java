@@ -160,6 +160,26 @@ public final class NotificationFixtureStubs {
         }
     }
 
+    /**
+     * <b>同期のまま伝播だけ別TXにする</b>通知入口相当（Codex 検分 指摘A）。
+     *
+     * <p>{@code REQUIRES_NEW} が分離するのは「内側の作業」であって「例外の伝播」ではない。
+     * 同期呼び出しなので通知が投げれば例外は呼び出し元へそのまま返り、
+     * <b>呼び出し元の業務トランザクションも巻き戻る</b>。
+     * したがって呼び出し側が握っていなければ {@code ROLLBACK_COUPLED} でなければならない。
+     * ここを {@code @Async} と同一視して {@code ORDERING_ONLY} にすると、
+     * 巻き戻る地雷を軽症として是正ロットの後ろへ送ってしまう。
+     */
+    public static class RequiresNewNotifierStub {
+        private final HelperStub notificationHelper = new HelperStub();
+
+        @org.springframework.transaction.annotation.Transactional(
+                propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+        public void notifyInNewTransaction(Long userId) {
+            notificationHelper.notify(userId, "TYPE", "件名", "本文");
+        }
+    }
+
     /** 業務側リポジトリ相当（業務TXが実在することを形として示すためだけのもの）。 */
     public static class RepositoryStub {
         public void save(Object entity) {
