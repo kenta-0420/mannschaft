@@ -61,6 +61,8 @@
     "faqSettings": "FAQ设置",
     "billing": "账单与套餐管理",
     "leagueTransfers": "联赛升降级",
-    "adminConsole": "管理控制台"
+    "adminConsole": "管理控制台",
+    "receipts": "收据",
+    "receiptSettings": "收据开票方设置"
   }
 }

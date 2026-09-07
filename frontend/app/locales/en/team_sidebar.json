@@ -45,7 +45,9 @@
       "faqSettings": "FAQ Settings",
       "billing": "Billing & plan management",
       "leagueTransfers": "League Transfers",
-      "adminConsole": "Admin Console"
+      "adminConsole": "Admin Console",
+      "receipts": "Receipts",
+      "receiptSettings": "Receipt issuer settings"
     }
   }
 }

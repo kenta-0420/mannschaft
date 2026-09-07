@@ -1106,6 +1106,20 @@
     "unresponded_list": "未回答者一覧"
   },
   "organization": {
+    "basicInfoEdit": {
+      "sectionTitle": "基本情報",
+      "title": "基本情報の編集",
+      "name": "組織名",
+      "nameKana": "組織名（カナ）",
+      "nickname1": "ニックネーム1",
+      "nickname2": "ニックネーム2",
+      "prefecture": "都道府県",
+      "city": "市区町村",
+      "selectPlaceholder": "選択してください",
+      "nameRequired": "組織名を入力してください",
+      "versionMissing": "組織情報の読み込みが完了していません。画面を再読み込みしてからやり直してください。",
+      "saved": "基本情報を更新しました"
+    },
     "parent_chain": "上位組織",
     "children": "下位組織",
     "children_tab": "下位組織",

@@ -45,7 +45,9 @@
       "faqSettings": "Configuración de FAQ",
       "billing": "Facturación y gestión de planes",
       "leagueTransfers": "Ascensos y descensos",
-      "adminConsole": "Consola de administración"
+      "adminConsole": "Consola de administración",
+      "receipts": "Recibos",
+      "receiptSettings": "Configuración del emisor de recibos"
     }
   }
 }
