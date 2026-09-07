@@ -1106,6 +1106,20 @@
     "unresponded_list": "Unresponded members"
   },
   "organization": {
+    "basicInfoEdit": {
+      "sectionTitle": "Basic information",
+      "title": "Edit basic information",
+      "name": "Organization name",
+      "nameKana": "Organization name (kana)",
+      "nickname1": "Nickname 1",
+      "nickname2": "Nickname 2",
+      "prefecture": "Prefecture",
+      "city": "City",
+      "selectPlaceholder": "Select",
+      "nameRequired": "Please enter the organization name.",
+      "versionMissing": "The organization has not finished loading. Please reload the page and try again.",
+      "saved": "Basic information updated."
+    },
     "parent_chain": "Parent organizations",
     "children": "Sub-organizations",
     "children_tab": "Sub-organizations",

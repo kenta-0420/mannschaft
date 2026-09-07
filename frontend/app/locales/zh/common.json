@@ -1106,6 +1106,20 @@
     "unresponded_list": "未回答者列表"
   },
   "organization": {
+    "basicInfoEdit": {
+      "sectionTitle": "基本信息",
+      "title": "编辑基本信息",
+      "name": "组织名称",
+      "nameKana": "组织名称（假名）",
+      "nickname1": "昵称1",
+      "nickname2": "昵称2",
+      "prefecture": "都道府县",
+      "city": "市区町村",
+      "selectPlaceholder": "请选择",
+      "nameRequired": "请输入组织名称。",
+      "versionMissing": "组织信息尚未加载完成。请重新加载页面后重试。",
+      "saved": "基本信息已更新。"
+    },
     "parent_chain": "上级组织",
     "children": "下级组织",
     "children_tab": "下级组织",

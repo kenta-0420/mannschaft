@@ -61,6 +61,8 @@
     "faqSettings": "FAQ 설정",
     "billing": "결제 및 요금제 관리",
     "leagueTransfers": "리그 이적",
-    "adminConsole": "관리 콘솔"
+    "adminConsole": "관리 콘솔",
+    "receipts": "영수증",
+    "receiptSettings": "영수증 발행자 설정"
   }
 }

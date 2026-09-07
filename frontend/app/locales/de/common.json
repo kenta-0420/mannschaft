@@ -1106,6 +1106,20 @@
     "unresponded_list": "Nicht-Antwortende"
   },
   "organization": {
+    "basicInfoEdit": {
+      "sectionTitle": "Basisinformationen",
+      "title": "Basisinformationen bearbeiten",
+      "name": "Organisationsname",
+      "nameKana": "Organisationsname (Kana)",
+      "nickname1": "Spitzname 1",
+      "nickname2": "Spitzname 2",
+      "prefecture": "Präfektur",
+      "city": "Stadt/Gemeinde",
+      "selectPlaceholder": "Bitte auswählen",
+      "nameRequired": "Bitte geben Sie den Organisationsnamen ein.",
+      "versionMissing": "Die Organisationsdaten sind noch nicht geladen. Bitte laden Sie die Seite neu und versuchen Sie es erneut.",
+      "saved": "Basisinformationen aktualisiert."
+    },
     "parent_chain": "Übergeordnete Organisationen",
     "children": "Unterorganisationen",
     "children_tab": "Unterorganisationen",
