@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -66,4 +67,28 @@ public interface BillingPayerHandoverRequestRepository
             + "ORDER BY h.requestedAt")
     List<UUID> findSwitchDueIds(@Param("status") PayerHandoverStatus status,
                                 @Param("now") LocalDateTime now);
+
+    /**
+     * 猶予期限を過ぎたまま {@code ACCEPTED} に留まり、新サブスク参照が未確定の引継要求 ID を返す
+     * （設計書 §5.3・§3.6.1(a) の照合対象と同じ形・Codex検分4巡目 P1）。
+     *
+     * <p><b>なぜこの抽出が要るか</b>: 承諾後の Stripe List 照会が失敗すると、その承諾者の Customer に
+     * 新サブスクが在るか不明なまま {@code ACCEPTED} が残る（承諾者を固定して本人の再試行に委ねる設計）。
+     * 承諾者が戻らないとこの行は<b>誰にも触られず永久に残り</b>、非終端であるため §5.4 により purge の
+     * 期末解約フォールバックはスキップされ続け、生成列 + UNIQUE により同一旧契約への再要求も
+     * ブロックされ続ける。結果として「旧 payer の課金を止める」という本機能の目的が果たせない。</p>
+     *
+     * <p>{@code psp_new_subscription_ref IS NULL} を条件に含めるのは、参照が確定済みの行は
+     * 曖昧ではなく (a)引継確定条件の到来を待っている正常な進行中だからである。</p>
+     *
+     * @param status 通常 {@link PayerHandoverStatus#ACCEPTED}
+     * @param now    現在時刻（{@code expires_at} と同じ {@code Instant}）
+     */
+    @Query("SELECT h.id FROM BillingPayerHandoverRequestEntity h "
+            + "WHERE h.status = :status "
+            + "AND h.pspNewSubscriptionRef IS NULL "
+            + "AND h.expiresAt <= :now "
+            + "ORDER BY h.requestedAt")
+    List<UUID> findExpiredUnresolvedAcceptedIds(@Param("status") PayerHandoverStatus status,
+                                                @Param("now") Instant now);
 }

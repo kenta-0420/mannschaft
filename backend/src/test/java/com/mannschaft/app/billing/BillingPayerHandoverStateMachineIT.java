@@ -347,6 +347,63 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("P1(4巡目): Aが戻らず期限超過した曖昧ACCEPTEDは、Stripe不在確定ならEXPIREDで終端化され再要求が通る")
+    void expiredAmbiguousAcceptanceIsTerminatedWhenSubscriptionAbsent() {
+        UUID handoverId = createAmbiguousAcceptance();
+
+        // 承諾者 A は戻らないまま猶予期限（14日）を越える。
+        expireHandoverRow(handoverId);
+
+        assertThat(handoverService.findExpiredUnresolvedAcceptanceIds(clock.instant()))
+                .as("期限超過の未解決承諾として検出される").contains(handoverId);
+
+        // 照合は成功し「不在」が確定する（stubGatewayForHappyPath は Optional.empty を返す）。
+        Mockito.reset(billingPaymentGateway);
+        stubGatewayForHappyPath();
+        boolean continued = handoverService.reconcileExpiredAcceptance(handoverId);
+
+        assertThat(continued).as("回収するものが無いので続行しない").isFalse();
+        BillingPayerHandoverRequestEntity handover = reloadHandover(handoverId);
+        assertThat(handover.getStatus())
+                .as("EXPIRED で終端化される").isEqualTo(PayerHandoverStatus.EXPIRED);
+        assertThat(reloadContract(handover.getNewContractId()).getStatus())
+                .as("先行作成した PENDING_HANDOVER 契約は破棄される")
+                .isEqualTo(ContractStatus.CANCELLED);
+        assertThat(planPointerContractId())
+                .as("旧 pointer は無傷（旧契約の entitlement を巻き添えにしない）").isEqualTo(oldContractId);
+
+        // 終端化により生成列のブロックが解け、同一旧契約への再要求が通る（＝課金を止める道が戻る）。
+        HandoverRequestResult reRequested = handoverService.requestHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, oldContractId, oldPayerUserId);
+        assertThat(reRequested.status()).isEqualTo(PayerHandoverStatus.REQUESTED);
+    }
+
+    @Test
+    @DisplayName("P1(4巡目): 期限超過でもStripeに新サブスクが実在すれば回収して続行し、EXPIREDにしない")
+    void expiredAmbiguousAcceptanceRecoversWhenSubscriptionExists() {
+        UUID handoverId = createAmbiguousAcceptance();
+        expireHandoverRow(handoverId);
+
+        // 照合すると A の Customer に新サブスクが実在した（照会だけが落ちていたケース）。
+        Mockito.reset(billingPaymentGateway);
+        stubGatewayForHappyPath();
+        Mockito.when(billingPaymentGateway.findHandoverSubscriptionRef(eq(adminAUserId), eq(handoverId)))
+                .thenReturn(Optional.of(NEW_SUBSCRIPTION_REF));
+
+        boolean continued = handoverService.reconcileExpiredAcceptance(handoverId);
+
+        assertThat(continued).as("実在するので回収して続行する").isTrue();
+        BillingPayerHandoverRequestEntity handover = reloadHandover(handoverId);
+        assertThat(handover.getStatus())
+                .as("課金される新サブスクを孤児にしないため EXPIRED にしない")
+                .isEqualTo(PayerHandoverStatus.ACCEPTED);
+        assertThat(handover.getPspNewSubscriptionRef())
+                .as("新サブスク参照を回収して確定させる").isEqualTo(NEW_SUBSCRIPTION_REF);
+        assertThat(reloadContract(handover.getNewContractId()).getStatus())
+                .as("引継先契約は破棄しない").isEqualTo(ContractStatus.PENDING_HANDOVER);
+    }
+
+    @Test
     @DisplayName("P1-3(2巡目): 過去の承諾試行のexpiredが遅着しても、その後に成立した別ADMINの承諾を壊さない")
     void staleExpiredDoesNotRollBackTheCurrentAcceptance() {
         HandoverRequestResult requested = handoverService.requestHandover(
@@ -594,6 +651,33 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
         Mockito.when(billingPaymentGateway.retrieveSubscription(OLD_SUBSCRIPTION_REF))
                 .thenReturn(new SubscriptionSnapshot(OLD_SUBSCRIPTION_REF, "active", true,
                         oldEnd.minusSeconds(30L * 86_400L), oldEnd, null));
+    }
+
+    /**
+     * 「A が承諾したが List 照会に失敗し、Stripe 上の作成有無が曖昧なまま ACCEPTED が残った」状態を作る。
+     */
+    private UUID createAmbiguousAcceptance() {
+        HandoverRequestResult requested = handoverService.requestHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, oldContractId, oldPayerUserId);
+        Mockito.when(billingPaymentGateway.findHandoverSubscriptionRef(eq(adminAUserId), any(UUID.class)))
+                .thenThrow(new IllegalStateException("stripe list failed"));
+        assertThatThrownBy(() -> handoverService.acceptHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), adminAUserId))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(reloadHandover(requested.handoverRequestId()).getStatus())
+                .isEqualTo(PayerHandoverStatus.ACCEPTED);
+        return requested.handoverRequestId();
+    }
+
+    /** 猶予期限を過去にずらし「承諾者が戻らないまま期限を越えた」状況を作る。 */
+    private void expireHandoverRow(UUID handoverRequestId) {
+        transactionTemplate.executeWithoutResult(tx -> {
+            entityManager.clear();
+            BillingPayerHandoverRequestEntity handover =
+                    handoverRequestRepository.findById(handoverRequestId).orElseThrow();
+            handover.setExpiresAt(clock.instant().minusSeconds(60));
+            handoverRequestRepository.save(handover);
+        });
     }
 
     private Instant oldPeriodEndInstant() {

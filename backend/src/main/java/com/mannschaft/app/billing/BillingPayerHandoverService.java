@@ -4,6 +4,7 @@ import com.mannschaft.app.billing.BillingPaymentGateway.CheckoutSessionInfo;
 import com.mannschaft.app.billing.BillingPaymentGateway.SubscriptionSnapshot;
 import com.mannschaft.app.billing.BillingPayerHandoverTxService.AcceptTransition;
 import com.mannschaft.app.billing.BillingPayerHandoverTxService.CheckoutCompletion;
+import com.mannschaft.app.billing.BillingPayerHandoverTxService.ReconcileTarget;
 import com.mannschaft.app.billing.BillingPayerHandoverTxService.SwitchContext;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -487,6 +488,83 @@ public class BillingPayerHandoverService {
         // billing_contracts.current_period_end は LocalDateTime のため、同じ Clock の zone で壁時計へ変換して比較する。
         return handoverRequestRepository.findSwitchDueIds(
                 PayerHandoverStatus.SWITCHING, LocalDateTime.ofInstant(now, clock.getZone()));
+    }
+
+    // ============================================================
+    // 期限超過の未解決承諾の照合・終端化（設計書 §5.3・§3.6.1(a)・Codex検分4巡目 P1）
+    // ============================================================
+
+    /**
+     * 猶予期限を過ぎたまま {@code ACCEPTED} で未解決の引継要求 ID を返す。
+     *
+     * @param now 判定基準時刻
+     */
+    @Transactional(readOnly = true)
+    public List<UUID> findExpiredUnresolvedAcceptanceIds(Instant now) {
+        Objects.requireNonNull(now, "now must not be null");
+        return handoverRequestRepository.findExpiredUnresolvedAcceptedIds(
+                PayerHandoverStatus.ACCEPTED, now);
+    }
+
+    /**
+     * 期限超過のまま未解決だった承諾を、<b>Stripe と照合してから</b>安全に解決する。
+     *
+     * <p><b>塞ぐ穴</b>: 承諾後の List 照会が失敗すると「承諾者 A の Customer に新サブスクが在るか」が
+     * 不明なまま {@code ACCEPTED} が残る（§3.2 の照合は customer 指定のため、A を固定して本人の
+     * 再試行に委ねるのが唯一安全な扱い）。しかし A が戻らないとこの行は誰にも触られず、
+     * <b>非終端ゆえ §5.4 で purge の期末解約フォールバックはスキップされ続け</b>、生成列 + UNIQUE で
+     * 同一旧契約への再要求もブロックされ続ける。旧 payer の課金が止まらないまま永久に残るため、
+     * 期限超過後は機械的に決着させる経路が必須である。</p>
+     *
+     * <p><b>単純な期限切れにはできない</b>: Stripe 上に新サブスクが実在するのに {@code EXPIRED} に
+     * すると、課金される新サブスクを孤児として残す。よって必ず<b>記録済み承諾者の Customer を
+     * List 照合してから</b>分岐する:</p>
+     * <ul>
+     *   <li>(a) 実在した → {@code psp_new_subscription_ref} へ回収し、引継を続行させる
+     *       （以後は通常どおり (a)引継確定条件・切替バッチの経路に乗る）</li>
+     *   <li>(b) 不在が確定した → {@code EXPIRED} で終端化し、先行作成した {@code PENDING_HANDOVER}
+     *       契約を破棄する。これで再要求ブロックが解け、purge の期末解約フォールバックへ処理が渡る</li>
+     * </ul>
+     *
+     * <p><b>照会自体が失敗した場合は状態を変えない</b>（曖昧なまま終端化しない）。次回の照合で再試行する。
+     * 例外は握りつぶさず呼び出し元へ伝える。</p>
+     *
+     * <p><b>PR-4 の夜次照合バッチとの分界</b>: 設計書 §3.6.1(a) の夜次照合バッチは
+     * 「非終端かつ {@code old_cancel_scheduled_at IS NULL} の行を Stripe と突合して整合を回復する」
+     * 処理であり、本メソッドはその対象集合の<b>部分集合（承諾直後・期限超過）に対する同種の照合</b>である。
+     * {@code @Scheduled} 本体は PR-4 のスコープであるため本 PR では駆動を結線せず、
+     * {@link #findExpiredUnresolvedAcceptanceIds} と本メソッドの組で提供する
+     * （{@code findSwitchDueHandoverIds} / {@link #executeSwitch} と同じ分界）。PR-4 の夜次照合バッチは
+     * この2メソッドを呼ぶだけでよく、照合ロジックが二重実装にならない。</p>
+     *
+     * @return 引継を続行させたなら {@code true}（サブスク回収）、終端化したなら {@code false}
+     */
+    public boolean reconcileExpiredAcceptance(UUID handoverRequestId) {
+        ReconcileTarget target = handoverTxService.loadExpiredUnresolvedAcceptance(
+                handoverRequestId, clock.instant());
+        if (target == null) {
+            // 既に誰かが解決済み（本人の再試行で回収された・別経路で終端化された等）。
+            return false;
+        }
+
+        // ★終端化の前に必ず「承諾者本人の Customer」を照合する。ここを飛ばすと課金される
+        //   新サブスクを孤児として残す危険がある（§3.2 の照合は customer 指定のため、
+        //   照合できる Customer は要求行に記録された承諾者のもの<b>だけ</b>である）。
+        String subscriptionRef = billingPaymentGateway
+                .findHandoverSubscriptionRef(target.newPayerUserId(), handoverRequestId)
+                .orElse(null);
+
+        if (subscriptionRef != null) {
+            // (a) 実在した: 回収して引継を続行させる（終端化してはならない）。
+            handoverTxService.persistNewSubscriptionRef(handoverRequestId, subscriptionRef);
+            log.warn("柱③-B: 期限超過の承諾で新サブスクの実在を確認し回収しました（引継は続行）"
+                    + " handoverRequestId={}, subscriptionRef={}", handoverRequestId, subscriptionRef);
+            return true;
+        }
+
+        // (b) 不在が確定した: 安全に終端化できる。
+        handoverTxService.expireUnresolvedAcceptance(handoverRequestId, clock.instant());
+        return false;
     }
 
     // ============================================================

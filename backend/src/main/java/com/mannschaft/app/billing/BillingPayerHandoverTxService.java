@@ -207,6 +207,80 @@ public class BillingPayerHandoverTxService {
     }
 
     /**
+     * 期限超過の未解決承諾の照合に必要な最小情報。
+     *
+     * @param handoverRequestId 引継要求 ID
+     * @param newPayerUserId    記録済みの承諾者（この Customer だけが §3.2 の照合対象になり得る）
+     * @param newContractId     先行作成済みの引継先契約
+     */
+    public record ReconcileTarget(UUID handoverRequestId, Long newPayerUserId, UUID newContractId) {
+    }
+
+    /**
+     * 期限超過かつ未解決の {@code ACCEPTED} 行を読み出す（該当しなければ {@code null}）。
+     *
+     * <p>Stripe 照会は tx の外で行うため、ここでは照合に要る値だけを取り出して返す。</p>
+     */
+    @Transactional(readOnly = true)
+    public ReconcileTarget loadExpiredUnresolvedAcceptance(UUID handoverRequestId, Instant now) {
+        return handoverRequestRepository.findById(handoverRequestId)
+                .filter(h -> h.getStatus() == PayerHandoverStatus.ACCEPTED)
+                .filter(h -> h.getPspNewSubscriptionRef() == null)
+                .filter(h -> !h.getExpiresAt().isAfter(now))
+                .filter(h -> h.getNewPayerUserId() != null)
+                .map(h -> new ReconcileTarget(h.getId(), h.getNewPayerUserId(), h.getNewContractId()))
+                .orElse(null);
+    }
+
+    /**
+     * 期限超過のまま未解決だった承諾を {@code EXPIRED} で終端化する（設計書 §5.3・Codex検分4巡目 P1）。
+     *
+     * <p>Stripe 照会で<b>新サブスクが存在しないことを確定させてから</b>呼ぶこと。存在するのに終端化すると
+     * 課金される新サブスクを孤児として残してしまう。呼び出し側
+     * （{@link BillingPayerHandoverService#reconcileExpiredAcceptance}）がその確認を担う。</p>
+     *
+     * <p>終端化により生成列 {@code open_old_contract_id} が NULL になり、同一旧契約への再要求
+     * ブロックが解け、§5.4 により止められていた purge の期末解約フォールバックにも処理が渡る
+     * （＝旧 payer の課金を止められる状態に戻る）。</p>
+     *
+     * <p><b>冪等</b>: {@code ACCEPTED} 以外、または期限未到来なら no-op。</p>
+     *
+     * @return 実際に終端化したなら {@code true}
+     */
+    @Transactional
+    public boolean expireUnresolvedAcceptance(UUID handoverRequestId, Instant now) {
+        BillingPayerHandoverRequestEntity handover =
+                handoverRequestRepository.findByIdForUpdate(handoverRequestId).orElse(null);
+        if (handover == null
+                || handover.getStatus() != PayerHandoverStatus.ACCEPTED
+                || handover.getPspNewSubscriptionRef() != null
+                || handover.getExpiresAt().isAfter(now)) {
+            return false;
+        }
+
+        UUID newContractId = handover.getNewContractId();
+        handover.setStatus(PayerHandoverStatus.EXPIRED);
+        handoverRequestRepository.save(handover);
+
+        // 先行作成した PENDING_HANDOVER 契約は課金に至っていないので破棄する。
+        // pointer は触らない（同スロットの pointer は旧契約のものであり、消すと旧の entitlement が飛ぶ）。
+        if (newContractId != null) {
+            billingContractRepository.findByIdAndDeletedAtIsNull(newContractId).ifPresent(newContract -> {
+                if (newContract.getStatus() == ContractStatus.PENDING_HANDOVER) {
+                    newContract.setStatus(ContractStatus.CANCELLED);
+                    newContract.setCancelledAt(LocalDateTime.now(clock));
+                    billingContractRepository.save(newContract);
+                }
+            });
+        }
+
+        log.warn("柱③-B: 期限超過のまま未解決だった承諾を EXPIRED で終端化しました"
+                + "（Stripe 上に新サブスク不在を確認済み・purge の期末解約フォールバックへ渡る）"
+                + " handoverRequestId={}, discardedNewContractId={}", handoverRequestId, newContractId);
+        return true;
+    }
+
+    /**
      * {@code ACCEPTED} へ遷移し、引継先の {@code billing_contracts} 行を
      * <b>{@code PENDING_HANDOVER}</b> で先行作成する（設計書 §3.1・P0-4）。
      *
