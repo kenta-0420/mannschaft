@@ -13,9 +13,12 @@
  *       デッドロックで 500 になる: CMP-260905-0514）。API 前提データ操作は page.request 経由で
  *       ブラウザの Cookie を共有して行う。
  *
- * スコープ: /admin/receipt-settings には ScopeSelector が描画されない（scope.client.ts が
- *       localStorage.currentScope を復元するだけ）ため、実ユーザーが他画面で選択済みの状態を
- *       addInitScript で再現する。以降の「操作」は必ず実ブラウザのクリック・入力で行う。
+ * スコープ: 現在スコープの正本はルート（URL）であり、実ユーザーは /teams/{slug} ・
+ *       /organizations/{slug} を開くことで切り替える（scope.client.ts + useScopeRouteSync）。
+ *       /admin/receipt-settings 自体には切替 UI が無いため、本ファイルでは「実ユーザーが
+ *       直前に対象団体のページを開いていた」状態を addInitScript で再現する
+ *       （アプリ自身の永続化形式 localStorage.currentScope と同一）。
+ *       以降の「操作」は必ず実ブラウザのクリック・入力で行う。
  */
 import { test, expect, type Page } from '@playwright/test'
 import { waitForHydration } from '../../helpers/wait'
@@ -39,7 +42,7 @@ const SETTINGS_PATH = '/admin/receipt-settings'
 
 type ScopeType = 'personal' | 'team' | 'organization'
 
-/** 実ユーザーが ScopeSelector で選択した状態を再現する（アプリ自身の永続化形式と同一）。 */
+/** 実ユーザーが対象団体のページを開いた後の状態を再現する（アプリ自身の永続化形式と同一）。 */
 async function useScope(page: Page, type: ScopeType, id: number | null, name: string) {
   const scope = JSON.stringify({ type, id: id === null ? null : String(id), name })
   await page.addInitScript((s) => {

@@ -227,6 +227,7 @@ function statusLabel(status: string): string {
     >
       <i class="pi pi-info-circle mr-1" />
       {{ t('receipt.list.notice.personalScopeUnsupported') }}
+      <ScopeSwitchHint class="mt-3" />
     </div>
 
     <div

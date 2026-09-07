@@ -114,6 +114,14 @@ const categories: SidebarCategory[] = [
     icon: 'pi pi-credit-card',
     items: [
       { labelKey: 'orgSidebar.payments', icon: 'pi pi-credit-card', path: 'payments', moduleSlug: 'payment', requiredRole: 'MEMBER' },
+      // CMP-260907-0851: 領収書の2画面（/admin/receipts・/admin/receipt-settings）はスコープ配下ではなく
+      // 横断ルートに置かれており、これまでアプリ内のどこからも辿り着けなかった。
+      // 画面自体は現在スコープ（useScopeStore）を見て動くため、組織サイドバーからの遷移で正しく機能する。
+      // 領収書は「決済（payment）」モジュールの一部（モジュール説明にも「領収書発行を含む」と明記）なので、
+      // 無効な組織では BaseSidebar の moduleSlug 判定により項目自体が出ない（死んだ導線を作らない）。
+      // 操作は BE 側で checkAdminOrAbove を要求するため DEPUTY_ADMIN 以上に限る。
+      { labelKey: 'orgSidebar.receipts', icon: 'pi pi-receipt', path: '', absolutePath: '/admin/receipts', moduleSlug: 'payment', requiredRole: 'DEPUTY_ADMIN' },
+      { labelKey: 'orgSidebar.receiptSettings', icon: 'pi pi-id-card', path: '', absolutePath: '/admin/receipt-settings', moduleSlug: 'payment', requiredRole: 'DEPUTY_ADMIN' },
       { labelKey: 'orgSidebar.directMail', icon: 'pi pi-envelope', path: 'direct-mail', moduleSlug: 'direct_mail', requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.advertiser', icon: 'pi pi-megaphone', path: 'advertiser', moduleSlug: 'ad_display', requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.webhooks', icon: 'pi pi-code', path: 'webhooks', moduleSlug: null, requiredRole: 'ADMIN' },

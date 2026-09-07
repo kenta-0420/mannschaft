@@ -1106,6 +1106,20 @@
     "unresponded_list": "Unresponded members"
   },
   "organization": {
+    "basicInfoEdit": {
+      "sectionTitle": "Basic information",
+      "title": "Edit basic information",
+      "name": "Organization name",
+      "nameKana": "Organization name (kana)",
+      "nickname1": "Nickname 1",
+      "nickname2": "Nickname 2",
+      "prefecture": "Prefecture",
+      "city": "City",
+      "selectPlaceholder": "Select",
+      "nameRequired": "Please enter the organization name.",
+      "versionMissing": "The organization has not finished loading. Please reload the page and try again.",
+      "saved": "Basic information updated."
+    },
     "parent_chain": "Parent organizations",
     "children": "Sub-organizations",
     "children_tab": "Sub-organizations",
@@ -2343,5 +2357,10 @@
       "confirmTitle": "Remove member",
       "confirmMessage": "Remove {name} from members?"
     }
+  },
+  "scopeSwitch": {
+    "hint": "To switch, open a team or organization from the \"Teams\" / \"Organizations\" menu at the top of the screen. Whichever you open becomes the current scope.",
+    "goTeams": "Choose a team",
+    "goOrganizations": "Choose an organization"
   }
 }
