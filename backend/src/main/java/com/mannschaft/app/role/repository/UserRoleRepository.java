@@ -781,7 +781,29 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("permissionName") String permissionName);
 
     /**
+     * 指定組織で指定ロール名<b>のみ</b>を持つユーザーIDリストを取得する。
+     *
+     * <p>{@link #findAdminUserIdsByOrganizationId} は名前に反して ADMIN と DEPUTY_ADMIN の
+     * <b>両方</b>を返す（通知先を広く取るための意図的な仕様）。「ADMIN ロールを持つ者だけ」を
+     * 厳密に必要とする用途（柱③-B 請求担当引継の承諾者判定・設計書 §5.6 は
+     * 「当該スコープの ADMIN ロールを持つユーザーのみ許可」と定める）ではそれを使えないため、
+     * TEAM 側の {@link #findUserIdsByTeamIdAndRoleName} と対称なロール名指定版を用意する。</p>
+     */
+    @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.organization_id = :organizationId " +
+            "AND r.name = :roleName " +
+            "AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findUserIdsByOrganizationIdAndRoleName(@Param("organizationId") Long organizationId,
+            @Param("roleName") String roleName);
+
+    /**
      * 指定組織の ADMIN/DEPUTY_ADMIN ユーザーIDリストを取得する（F08.7 Phase 9-δ 通知用）。
+     *
+     * <p><b>注意</b>: メソッド名は {@code Admin} だが DEPUTY_ADMIN も含む。ADMIN のみが必要な場合は
+     * {@link #findUserIdsByOrganizationIdAndRoleName} を使うこと。</p>
      */
     @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +

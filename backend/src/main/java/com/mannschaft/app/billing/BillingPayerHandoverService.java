@@ -253,40 +253,44 @@ public class BillingPayerHandoverService {
         AcceptTransition accepted = handoverTxService.transitionToAccepted(
                 scopeKind, scopeId, handoverRequestId, operatorUserId);
 
-        // ★§3.2 回復順序（この順序が二重サブスク＝二重課金を防ぐ一次防衛。入れ替えてはならない）。
-        // (i) DB に psp_new_subscription_ref が既にあれば作成をスキップ。
-        String subscriptionRef = accepted.existingNewSubscriptionRef();
-        if (subscriptionRef == null) {
-            // (ii) Stripe List Subscriptions を全ページ走査し metadata.handoverRequestId で突合。
-            //      「Stripe には作成済みだが DB 反映前に落ちた」ケースを回収する（read-after-write 整合のため待機不要）。
-            subscriptionRef = billingPaymentGateway
-                    .findHandoverSubscriptionRef(accepted.newPayerUserId(), handoverRequestId)
-                    .orElse(null);
-            if (subscriptionRef != null) {
-                handoverTxService.persistNewSubscriptionRef(handoverRequestId, subscriptionRef);
-                log.warn("柱③-B: Stripe には作成済みだが DB 未反映の新サブスクを回収しました"
-                        + " handoverRequestId={}, subscriptionRef={}", handoverRequestId, subscriptionRef);
-            }
-        }
-        if (subscriptionRef != null) {
-            // 既存サブスクを再利用するため Checkout は生成しない（二重作成の回避）。
-            return new HandoverAcceptResult(handoverRequestId, PayerHandoverStatus.ACCEPTED,
-                    accepted.newContractId(), null);
-        }
-
-        // (iii) DB も List も空のときだけ新規作成する。
-        if (accepted.priceJpy() == null) {
-            // §5.1 の絞り込みを通っていれば有償契約のはず。ここに来るのは整合性の破れなので隠さず上申する。
-            throw new BusinessException(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);
-        }
-        // Checkout Session の作成に失敗したら承諾を巻き戻す（Codex検分1巡目 P1-3）。
-        // 巻き戻さないと状態が ACCEPTED のまま残り、再承諾の入口（REQUESTED / REQUIRES_PAYMENT_METHOD）に
-        // 該当しなくなって誰も再試行できず、猶予期限切れまで詰む。この時点では旧契約に一切触れていない
-        // （cancel_at_period_end は checkout.session.completed と同時にしか設定しない）ため巻き戻して安全。
+        // ここから先で失敗したら承諾を巻き戻す（Codex検分1巡目 P1-3・2巡目 P1-2）。
+        //
+        // ACCEPTED のまま残すと再承諾の入口（REQUESTED / REQUIRES_PAYMENT_METHOD）に該当しなくなり、
+        // 誰も再試行できないまま猶予期限切れまで詰む。巻き戻しの対象は Checkout 作成だけでは足りない:
+        // 先行する Stripe の List Subscriptions 照会（(ii)）も外部 API 呼び出しであり、ここで落ちても
+        // 同じ詰み方をする。よって transitionToAccepted 以降の Stripe 依存区間を丸ごと囲む。
+        //
+        // この区間では旧契約に一切触れていない（cancel_at_period_end は checkout.session.completed と
+        // 同時にしか設定しない・R3-P1-3）ため、巻き戻しても旧契約は無傷のままである。
         // 例外は握りつぶさず必ず再送出する（呼び出し元・監視に失敗を正しく伝える）。
-        CheckoutSessionInfo info;
         try {
-            info = billingPaymentGateway.createHandoverSubscriptionCheckout(
+            // ★§3.2 回復順序（この順序が二重サブスク＝二重課金を防ぐ一次防衛。入れ替えてはならない）。
+            // (i) DB に psp_new_subscription_ref が既にあれば作成をスキップ。
+            String subscriptionRef = accepted.existingNewSubscriptionRef();
+            if (subscriptionRef == null) {
+                // (ii) Stripe List Subscriptions を全ページ走査し metadata.handoverRequestId で突合。
+                //      「Stripe には作成済みだが DB 反映前に落ちた」ケースを回収する（read-after-write 整合のため待機不要）。
+                subscriptionRef = billingPaymentGateway
+                        .findHandoverSubscriptionRef(accepted.newPayerUserId(), handoverRequestId)
+                        .orElse(null);
+                if (subscriptionRef != null) {
+                    handoverTxService.persistNewSubscriptionRef(handoverRequestId, subscriptionRef);
+                    log.warn("柱③-B: Stripe には作成済みだが DB 未反映の新サブスクを回収しました"
+                            + " handoverRequestId={}, subscriptionRef={}", handoverRequestId, subscriptionRef);
+                }
+            }
+            if (subscriptionRef != null) {
+                // 既存サブスクを再利用するため Checkout は生成しない（二重作成の回避）。
+                return new HandoverAcceptResult(handoverRequestId, PayerHandoverStatus.ACCEPTED,
+                        accepted.newContractId(), null);
+            }
+
+            // (iii) DB も List も空のときだけ新規作成する。
+            if (accepted.priceJpy() == null) {
+                // §5.1 の絞り込みを通っていれば有償契約のはず。ここに来るのは整合性の破れなので隠さず上申する。
+                throw new BusinessException(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);
+            }
+            CheckoutSessionInfo info = billingPaymentGateway.createHandoverSubscriptionCheckout(
                     accepted.newPayerUserId(),
                     accepted.priceJpy(),
                     accepted.displayName(),
@@ -297,14 +301,16 @@ public class BillingPayerHandoverService {
                     accepted.oldPeriodEnd(),
                     appBaseUrl + "/billing/plans?handover=success",
                     appBaseUrl + "/billing/plans?handover=cancelled");
+
+            return new HandoverAcceptResult(handoverRequestId, PayerHandoverStatus.ACCEPTED,
+                    accepted.newContractId(), info.url());
         } catch (RuntimeException ex) {
+            // 自分自身が実行した承諾試行の巻き戻しであり、対象は今作った新契約に限る。
             handoverTxService.rollbackAcceptanceToRequested(
-                    handoverRequestId, "Checkout Session の作成に失敗: " + ex.getClass().getSimpleName());
+                    handoverRequestId, accepted.newContractId(),
+                    "承諾後の Stripe 連携に失敗: " + ex.getClass().getSimpleName());
             throw ex;
         }
-
-        return new HandoverAcceptResult(handoverRequestId, PayerHandoverStatus.ACCEPTED,
-                accepted.newContractId(), info.url());
     }
 
     /**
@@ -320,10 +326,16 @@ public class BillingPayerHandoverService {
      *
      * <p><b>冪等・webhook 逆順に安全</b>: {@code ACCEPTED} 以外は no-op のため、{@code completed} が先に
      * 処理されて {@code SWITCHING} へ進んだ後に {@code expired} が遅れて届いても引継を壊さない。</p>
+     *
+     * <p><b>過去の試行の遅着にも安全</b>: 承諾 A が失敗して巻き戻り、別 ADMIN の承諾 B が成立した後に
+     * A の Checkout の {@code expired} が届くことがある。イベント元の契約 ID を渡して要求行の現在の
+     * {@code new_contract_id} と照合させ、不一致なら巻き戻さない（Codex検分2巡目 P1-3）。</p>
+     *
+     * @param newContractId webhook の metadata が指す引継先契約 ID（＝どの承諾試行のイベントか）
      */
-    public void onHandoverCheckoutExpired(UUID handoverRequestId) {
+    public void onHandoverCheckoutExpired(UUID handoverRequestId, UUID newContractId) {
         handoverTxService.rollbackAcceptanceToRequested(
-                handoverRequestId, "checkout.session.expired（利用者が Checkout を放棄）");
+                handoverRequestId, newContractId, "checkout.session.expired（利用者が Checkout を放棄）");
     }
 
     // ============================================================

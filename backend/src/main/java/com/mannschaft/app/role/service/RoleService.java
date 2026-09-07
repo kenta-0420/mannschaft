@@ -487,6 +487,22 @@ public class RoleService {
     }
 
     /**
+     * 指定組織で指定ロールを持つユーザー ID 一覧を返す（{@link #getUserIdsByTeamIdAndRoleName} の ORG 版）。
+     *
+     * <p>柱③-B 請求担当引継（CMP-260901-1538・Codex検分2巡目 P1-1）で追加。
+     * {@link #getAdminUserIdsByOrganizationId} は名前に反して ADMIN と DEPUTY_ADMIN の
+     * <b>両方</b>を返すため、設計書 §5.6 の「当該スコープの ADMIN ロールを持つユーザーのみ許可」を
+     * 満たせない。ロール名を明示して厳密に絞るためのメソッドである。</p>
+     *
+     * @param organizationId 対象組織 ID
+     * @param roleName       ロール名（例: {@code "ADMIN"}）
+     * @return 当該組織で当該ロールを持つユーザー ID 一覧
+     */
+    public List<Long> getUserIdsByOrganizationIdAndRoleName(Long organizationId, String roleName) {
+        return userRoleRepository.findUserIdsByOrganizationIdAndRoleName(organizationId, roleName);
+    }
+
+    /**
      * 指定スコープで指定ロールを持つ生存ユーザーの連絡先（ユーザーID・メール）一覧を返す。
      *
      * <p>Issue #2834 / CMP-056 第2群ロット1 で追加。{@code advertising} ドメインの

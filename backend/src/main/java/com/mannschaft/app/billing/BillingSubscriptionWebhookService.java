@@ -102,7 +102,9 @@ public class BillingSubscriptionWebhookService {
                             .map(BillingContractEntity::getHandoverRequestId)
                             .filter(java.util.Objects::nonNull);
             if (handoverRequestId.isPresent()) {
-                payerHandoverService.onHandoverCheckoutExpired(handoverRequestId.get());
+                // イベント元の契約 ID を渡す。過去の承諾試行の expired が遅れて届いても、
+                // その後に成立した別 ADMIN の承諾を巻き戻さないための照合キーである。
+                payerHandoverService.onHandoverCheckoutExpired(handoverRequestId.get(), contractId);
                 return WebhookProcessStatus.PROCESSED;
             }
 

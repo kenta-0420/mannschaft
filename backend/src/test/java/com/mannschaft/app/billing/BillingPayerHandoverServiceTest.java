@@ -425,7 +425,33 @@ class BillingPayerHandoverServiceTest {
 
             // ACCEPTED のまま残すと再承諾の入口（REQUESTED / REQUIRES_PAYMENT_METHOD）に該当せず詰むため、
             // 必ず巻き戻して再試行可能な状態へ戻す。
-            verify(handoverTxService).rollbackAcceptanceToRequested(eq(handoverId), anyString());
+            verify(handoverTxService).rollbackAcceptanceToRequested(eq(handoverId), eq(newContractId), anyString());
+        }
+
+        @Test
+        @DisplayName("P1-2(2巡目): Stripe の List Subscriptions 照会が失敗しても承諾を巻き戻す（Checkout 作成前で詰まない）")
+        void subscriptionLookupFailure_rollsBackAcceptanceAndRethrows() {
+            given(handoverTxService.validateAcceptable(
+                    EntitlementScopeKind.TEAM, TEAM_ID, handoverId, NEW_PAYER))
+                    .willReturn(validation(null));
+            given(billingPaymentGateway.hasUsablePaymentMethod(NEW_PAYER)).willReturn(true);
+            given(handoverTxService.transitionToAccepted(
+                    EntitlementScopeKind.TEAM, TEAM_ID, handoverId, NEW_PAYER))
+                    .willReturn(transition(null));
+            RuntimeException listFailed = new IllegalStateException("stripe list failed");
+            given(billingPaymentGateway.findHandoverSubscriptionRef(NEW_PAYER, handoverId))
+                    .willThrow(listFailed);
+
+            assertThatThrownBy(() -> service.acceptHandover(
+                    EntitlementScopeKind.TEAM, TEAM_ID, handoverId, NEW_PAYER))
+                    .isSameAs(listFailed);
+
+            // Checkout 作成だけを try で囲んでいると、この経路は ACCEPTED のまま取り残される。
+            verify(handoverTxService).rollbackAcceptanceToRequested(
+                    eq(handoverId), eq(newContractId), anyString());
+            // 照会に失敗している以上、Checkout を作ってはならない。
+            verify(billingPaymentGateway, never()).createHandoverSubscriptionCheckout(
+                    any(), anyInt(), anyString(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -446,7 +472,7 @@ class BillingPayerHandoverServiceTest {
 
             service.acceptHandover(EntitlementScopeKind.TEAM, TEAM_ID, handoverId, NEW_PAYER);
 
-            verify(handoverTxService, never()).rollbackAcceptanceToRequested(any(), anyString());
+            verify(handoverTxService, never()).rollbackAcceptanceToRequested(any(), any(), anyString());
         }
 
         @Test
@@ -633,15 +659,17 @@ class BillingPayerHandoverServiceTest {
         @Test
         @DisplayName("P1-3: expired は承諾の巻き戻しへ委譲する（PENDING_HANDOVER が ACCEPTED のまま残らない）")
         void expiredDelegatesToRollback() {
-            service.onHandoverCheckoutExpired(handoverId);
+            service.onHandoverCheckoutExpired(handoverId, newContractId);
 
-            verify(handoverTxService).rollbackAcceptanceToRequested(eq(handoverId), anyString());
+            // イベント元の契約 ID をそのまま照合キーとして渡すこと。
+            verify(handoverTxService).rollbackAcceptanceToRequested(
+                    handoverId, newContractId, "checkout.session.expired（利用者が Checkout を放棄）");
         }
 
         @Test
         @DisplayName("P1-3: expired は旧契約にも Stripe にも一切触れない（旧契約は無傷）")
         void expiredTouchesNeitherOldContractNorStripe() {
-            service.onHandoverCheckoutExpired(handoverId);
+            service.onHandoverCheckoutExpired(handoverId, newContractId);
 
             // 承諾確定前のため cancel_at_period_end は未設定。Stripe を叩く余地がないことを機械担保する。
             verifyNoInteractions(billingPaymentGateway);

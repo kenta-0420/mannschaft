@@ -161,14 +161,31 @@ public class BillingPayerHandoverTxService {
      * 先に届いて {@code SWITCHING} へ進んだ後に {@code expired} が遅れて届いても、確定済みの引継を
      * 巻き戻さない。</p>
      *
-     * @param handoverRequestId 対象の引継要求
-     * @param reason            ログに残す巻き戻し理由
+     * <p><b>過去の試行に属する巻き戻し要求は無視する</b>（Codex検分2巡目 P1-3）: 承諾 A が失敗して
+     * 巻き戻り、別 ADMIN の承諾 B が成立した後に、<b>A の Checkout</b> の
+     * {@code checkout.session.expired} が遅れて届くことがある。イベント元の契約 ID を照合せずに
+     * 巻き戻すと、この遅着イベントが<b>進行中の承諾 B を壊す</b>。{@code expectedNewContractId} が
+     * 与えられた場合は要求行の現在の {@code new_contract_id} と一致するときだけ巻き戻す。</p>
+     *
+     * @param handoverRequestId     対象の引継要求
+     * @param expectedNewContractId 巻き戻しを許す新契約 ID。{@code null} なら照合しない
+     *                              （呼び出し元自身がその承諾試行の実行者である場合に限り使う）
+     * @param reason                ログに残す巻き戻し理由
      */
     @Transactional
-    public void rollbackAcceptanceToRequested(UUID handoverRequestId, String reason) {
+    public void rollbackAcceptanceToRequested(
+            UUID handoverRequestId, UUID expectedNewContractId, String reason) {
         BillingPayerHandoverRequestEntity handover =
                 handoverRequestRepository.findByIdForUpdate(handoverRequestId).orElse(null);
         if (handover == null || handover.getStatus() != PayerHandoverStatus.ACCEPTED) {
+            return;
+        }
+        if (expectedNewContractId != null
+                && !expectedNewContractId.equals(handover.getNewContractId())) {
+            // 過去の承諾試行に属する遅着イベント。現在進行中の承諾を巻き戻してはならない。
+            log.info("柱③-B: 過去の承諾試行に属する巻き戻し要求を無視しました"
+                    + " handoverRequestId={}, eventContractId={}, currentNewContractId={}, reason={}",
+                    handoverRequestId, expectedNewContractId, handover.getNewContractId(), reason);
             return;
         }
 

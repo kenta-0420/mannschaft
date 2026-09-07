@@ -154,6 +154,32 @@ class BillingSubscriptionWebhookServiceTest {
         verify(idempotencyService).markProcessed("evt_1", WebhookProcessStatus.PROCESSED);
     }
 
+    @Test
+    @DisplayName("P1-3: 引継の expired は abandonPendingContract を通さず引継専用の巻き戻しへルーティングする")
+    void checkoutExpired_handoverContract_routesToHandoverRollback() {
+        UUID contractId = UUID.randomUUID();
+        UUID handoverRequestId = UUID.randomUUID();
+        BillingContractEntity newContract = billingContract();
+        newContract.setId(contractId);
+        newContract.setStatus(ContractStatus.PENDING_HANDOVER);
+        newContract.setHandoverRequestId(handoverRequestId);
+
+        given(stripePaymentProvider.constructBillingSubscriptionEvent("p", "s"))
+                .willReturn(event("checkout.session.expired", contractId.toString(), null, null));
+        given(idempotencyService.tryBegin("evt_1", "checkout.session.expired", false)).willReturn(true);
+        given(billingContractRepository.findById(contractId)).willReturn(java.util.Optional.of(newContract));
+
+        boolean handled = service.handleCheckoutExpiredIfBilling("p", "s");
+
+        assertThat(handled).isTrue();
+        // イベント元の契約 ID を渡すこと（過去の承諾試行の遅着で進行中の承諾を壊さないための照合キー）。
+        verify(payerHandoverService).onHandoverCheckoutExpired(handoverRequestId, contractId);
+        // abandonPendingContract はスロット単位で pointer を物理 DELETE するため、引継に適用すると
+        // 同スロットの pointer を持つ旧契約の entitlement を巻き添えで剥がす。通らないことを機械担保する。
+        verify(billingContractService, never()).abandonPendingContract(any());
+        verify(idempotencyService).markProcessed("evt_1", WebhookProcessStatus.PROCESSED);
+    }
+
     // ============================================================
     // AC-34: 冪等（event_id 再送）＋失敗の FAILED 記録
     // ============================================================

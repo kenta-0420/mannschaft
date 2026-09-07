@@ -44,11 +44,12 @@ public class BillingPayerHandoverCandidateResolver {
      * 「ADMIN が0人」（分岐①）と「他 ADMIN 全員が退会予定」（分岐②）は同じ空リストとして現れ、
      * どちらも {@code HANDOVER_NO_CANDIDATE} になる。</p>
      *
-     * <p><b>ORG と TEAM で母集合が異なるのは意図的</b>: ORG 側の {@code getAdminUserIdsByOrganizationId} は
-     * ADMIN に加えて DEPUTY_ADMIN も返す（ORG では DEPUTY_ADMIN も課金を管理する権限を持つため）。
-     * 一方 TEAM 側は {@code ADMIN} ロールのみを返す。承諾者の適格性判定を本メソッドの結果に一本化することで、
-     * <b>スコープ種別ごとのこの差を承諾側でも自動的に踏襲</b>し、通知先（§5.2）と承諾できる者（§5.6）が
-     * 常に同一集合であることを保証する。</p>
+     * <p><b>ORG / TEAM とも ADMIN ロールのみに厳密に絞る</b>（設計書 §5.6「当該スコープの ADMIN ロールを
+     * 持つユーザーのみ許可」・AC-11）。ORG 側で {@code getAdminUserIdsByOrganizationId} を使ってはならない
+     * ——同メソッドは名前に反して DEPUTY_ADMIN も返すため、DEPUTY_ADMIN が引継先候補に混入し、
+     * 承諾者判定を本メソッドに委ねている以上そのまま<b>承諾もできてしまう</b>（Codex検分2巡目 P1-1）。
+     * ロール名を明示する {@code getUserIdsByOrganizationIdAndRoleName} を使い、TEAM 側の
+     * {@code getUserIdsByTeamIdAndRoleName} と母集合の定義を揃える。</p>
      *
      * @param oldPayerUserId 除外する旧 payer（{@code null} なら除外しない。自分へは引き継げない）
      * @return 候補の user_id（重複なし。該当なしなら空リスト）
@@ -58,7 +59,7 @@ public class BillingPayerHandoverCandidateResolver {
 
         List<Long> admins = switch (scopeKind) {
             case TEAM -> roleService.getUserIdsByTeamIdAndRoleName(scopeId, ADMIN_ROLE);
-            case ORG -> roleService.getAdminUserIdsByOrganizationId(scopeId);
+            case ORG -> roleService.getUserIdsByOrganizationIdAndRoleName(scopeId, ADMIN_ROLE);
             case USER -> List.of(); // 呼び出し前に弾いているが switch の網羅のため。
         };
         if (admins == null) {

@@ -81,7 +81,6 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
     private static final int PRICE_JPY = 4_800;
 
     @Autowired private BillingPayerHandoverService handoverService;
-    @Autowired private BillingPayerHandoverTxService handoverTxService;
     @Autowired private BillingContractRepository billingContractRepository;
     @Autowired private BillingPayerHandoverRequestRepository handoverRequestRepository;
     @Autowired private ActiveContractPointerRepository activeContractPointerRepository;
@@ -237,9 +236,8 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
                 EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), adminAUserId);
         UUID abandonedContractId = firstAccept.newContractId();
 
-        // Checkout Session 作成失敗／checkout.session.expired と同じ巻き戻し。
-        handoverTxService.rollbackAcceptanceToRequested(
-                requested.handoverRequestId(), "テスト: Checkout 失敗");
+        // checkout.session.expired が届いたのと同じ経路（webhook サービスが呼ぶ入口）で巻き戻す。
+        handoverService.onHandoverCheckoutExpired(requested.handoverRequestId(), abandonedContractId);
 
         BillingPayerHandoverRequestEntity rolledBack = reloadHandover(requested.handoverRequestId());
         assertThat(rolledBack.getStatus())
@@ -269,13 +267,42 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("P1-3(2巡目): 過去の承諾試行のexpiredが遅着しても、その後に成立した別ADMINの承諾を壊さない")
+    void staleExpiredDoesNotRollBackTheCurrentAcceptance() {
+        HandoverRequestResult requested = handoverService.requestHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, oldContractId, oldPayerUserId);
+        HandoverAcceptResult firstAccept = handoverService.acceptHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), adminAUserId);
+        UUID staleContractId = firstAccept.newContractId();
+
+        // 承諾 A が巻き戻り、別 ADMIN の承諾 B が成立する。
+        handoverService.onHandoverCheckoutExpired(requested.handoverRequestId(), staleContractId);
+        HandoverAcceptResult secondAccept = handoverService.acceptHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), adminBUserId);
+
+        // ここで承諾 A の Checkout の expired が遅れて届く（イベント元は破棄済みの staleContractId）。
+        handoverService.onHandoverCheckoutExpired(requested.handoverRequestId(), staleContractId);
+
+        BillingPayerHandoverRequestEntity handover = reloadHandover(requested.handoverRequestId());
+        assertThat(handover.getStatus())
+                .as("進行中の承諾Bは巻き戻らない").isEqualTo(PayerHandoverStatus.ACCEPTED);
+        assertThat(handover.getNewPayerUserId())
+                .as("承諾者はBのまま").isEqualTo(adminBUserId);
+        assertThat(handover.getNewContractId())
+                .as("Bの新契約の紐付けが維持される").isEqualTo(secondAccept.newContractId());
+        assertThat(reloadContract(secondAccept.newContractId()).getStatus())
+                .as("Bの新契約は PENDING_HANDOVER のまま")
+                .isEqualTo(ContractStatus.PENDING_HANDOVER);
+    }
+
+    @Test
     @DisplayName("P1-3: webhook逆順（completed後にexpiredが遅着）でも確定済みのSWITCHINGは巻き戻さない")
     void rollbackAcceptance_isNoOpAfterCheckoutCompleted() {
         UUID handoverId = requestAndAcceptAndComplete(adminAUserId);
         UUID newContractId = reloadHandover(handoverId).getNewContractId();
 
         // checkout.session.completed が先に処理された後に expired が遅れて届いたケース。
-        handoverTxService.rollbackAcceptanceToRequested(handoverId, "テスト: 遅着した expired");
+        handoverService.onHandoverCheckoutExpired(handoverId, newContractId);
 
         BillingPayerHandoverRequestEntity handover = reloadHandover(handoverId);
         assertThat(handover.getStatus())
