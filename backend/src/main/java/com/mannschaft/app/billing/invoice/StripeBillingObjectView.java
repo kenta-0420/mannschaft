@@ -44,7 +44,16 @@ public final class StripeBillingObjectView {
             String customerName,
             String customerEmail,
             String customerAddressJson,
-            List<InvoiceLineView> lines) {
+            List<InvoiceLineView> lines,
+            /**
+             * {@code lines} が請求書の<b>全明細</b>であると確認できたか。
+             *
+             * <p>Stripe の invoice webhook に載る {@code lines.data} は件数上限で切られることがあり、
+             * その場合 {@code lines.has_more} が true になる。切られた頁を「全明細」と誤認して
+             * 投影を全置換すると、載らなかった明細が恒久的に消える。完全性が確認できないときは
+             * false とし、投影側は削除を行わない（更新と追加のみ）。</p>
+             */
+            boolean linesComplete) {
     }
 
     /** Stripe Invoice の明細行。 */

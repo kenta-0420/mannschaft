@@ -371,4 +371,67 @@ class BillingInvoiceProjectionWebhookIT extends AbstractBillingInvoiceWebhookIT 
                 .as("明細の税込合計がヘッダ total と一致する")
                 .isEqualTo(requireInvoice("in_ac14d").getTotalAmount());
     }
+
+    @Test
+    @DisplayName("AC14: has_more=true の部分 payload では、載っていない既存明細を消さない")
+    void AC14_部分payloadでは既存明細を消さない() throws Exception {
+        long created = System.currentTimeMillis() / 1000L;
+
+        // 全明細（2行）を含む完全な payload で投影する。
+        String twoLines = StripeWebhookPayloadFixture.lineObject(
+                "il_ac14p_a", "BASIC プラン", 10L, 10_000L, 0L, 1_000L, false, 1000)
+                + ","
+                + StripeWebhookPayloadFixture.lineObject(
+                "il_ac14p_b", "追加席", 2L, 2_000L, 0L, 200L, false, 1000);
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac14p_full", "invoice.updated",
+                StripeWebhookPayloadFixture.invoiceObject("in_ac14p", BILLING_CUSTOMER_REF,
+                        BILLING_SUBSCRIPTION_REF, "draft", "jpy",
+                        12_000L, 0L, 1_200L, 13_200L, twoLines), created));
+        assertThat(linesOf("in_ac14p")).hasSize(2);
+
+        // 続く webhook は件数上限で切られており has_more=true。
+        // これを「全明細」と誤認して差分削除すると、載らなかった il_ac14p_b が恒久的に消える。
+        String truncated = StripeWebhookPayloadFixture.lineObject(
+                "il_ac14p_a", "BASIC プラン", 10L, 10_000L, 0L, 1_000L, false, 1000);
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac14p_truncated", "invoice.finalized",
+                StripeWebhookPayloadFixture.invoiceObject("in_ac14p", BILLING_CUSTOMER_REF,
+                        BILLING_SUBSCRIPTION_REF, "open", "jpy",
+                        10_000L, 0L, 1_000L, 11_000L, truncated, true), created + 60L));
+
+        assertThat(linesOf("in_ac14p")).extracting(BillingInvoiceLineEntity::getPspLineRef)
+                .as("部分 payload に載らなかった明細を消してはならない")
+                .containsExactlyInAnyOrder("il_ac14p_a", "il_ac14p_b");
+    }
+
+    @Test
+    @DisplayName("AC9: 同一秒に届いた古い draft では明細が巻き戻らない")
+    void AC9_同一秒の古いdraftで明細が巻き戻らない() throws Exception {
+        long created = System.currentTimeMillis() / 1000L;
+
+        String finalLine = StripeWebhookPayloadFixture.lineObject(
+                "il_ac9s", "BASIC プラン", 20L, 20_000L, 0L, 2_000L, false, 1000);
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac9s_finalized", "invoice.finalized",
+                StripeWebhookPayloadFixture.invoiceObject("in_ac9s", BILLING_CUSTOMER_REF,
+                        BILLING_SUBSCRIPTION_REF, "open", "jpy",
+                        20_000L, 0L, 2_000L, 22_000L, finalLine), created));
+
+        // Stripe の event.created は秒精度。遅れて届いた draft が finalized と同じ秒を持ちうる。
+        String draftLine = StripeWebhookPayloadFixture.lineObject(
+                "il_ac9s", "BASIC プラン", 10L, 10_000L, 500L, 950L, false, 1000);
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac9s_same_second_draft", "invoice.updated",
+                StripeWebhookPayloadFixture.invoiceObject("in_ac9s", BILLING_CUSTOMER_REF,
+                        BILLING_SUBSCRIPTION_REF, "draft", "jpy",
+                        10_000L, 500L, 950L, 10_450L, draftLine), created));
+
+        BillingInvoiceLineEntity line = linesOf("in_ac9s").get(0);
+        assertThat(line.getAmountExcludingTax())
+                .as("同一秒の古い draft で税抜額を巻き戻さない").isEqualTo(20_000L);
+        assertThat(line.getAmountIncludingTax())
+                .as("同一秒の古い draft で税込額を巻き戻さない").isEqualTo(22_000L);
+        assertThat(line.getQuantity().longValue())
+                .as("同一秒の古い draft で数量を巻き戻さない").isEqualTo(20L);
+        assertThat(requireInvoice("in_ac9s").getStatus())
+                .as("ヘッダの状態も巻き戻さない").isEqualTo("OPEN");
+        assertThat(requireInvoice("in_ac9s").getTotalAmount()).isEqualTo(22_000L);
+    }
 }

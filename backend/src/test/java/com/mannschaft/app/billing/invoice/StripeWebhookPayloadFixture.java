@@ -66,6 +66,17 @@ final class StripeWebhookPayloadFixture {
     static String invoiceObject(String invoiceId, String customerRef, String subscriptionRef, String status,
                                 String currency, long subtotal, long discount, long tax, long total,
                                 String linesJson) {
+        return invoiceObject(invoiceId, customerRef, subscriptionRef, status, currency,
+                subtotal, discount, tax, total, linesJson, false);
+    }
+
+    /**
+     * {@code lines.has_more} を指定できる版。true は「明細が件数上限で切られている」検体
+     * （＝この payload は全明細ではない）を作るために使う。
+     */
+    static String invoiceObject(String invoiceId, String customerRef, String subscriptionRef, String status,
+                                String currency, long subtotal, long discount, long tax, long total,
+                                String linesJson, boolean linesHasMore) {
         long periodStart = 1_767_225_600L; // 2026-01-01T00:00:00Z
         long periodEnd = 1_769_904_000L;   // 2026-02-01T00:00:00Z
         return """
@@ -77,11 +88,11 @@ final class StripeWebhookPayloadFixture {
                  "customer_address":{"country":"JP","postal_code":"1000001","state":"東京都","city":"千代田区",
                                      "line1":"千代田1-1","line2":null},
                  "total_discount_amounts":[{"amount":%d,"discount":"di_fixture"}],
-                 "lines":{"object":"list","has_more":false,"url":"/v1/invoices/%s/lines","data":[%s]}}"""
+                 "lines":{"object":"list","has_more":%b,"url":"/v1/invoices/%s/lines","data":[%s]}}"""
                 .formatted(invoiceId, customerRef,
                         subscriptionRef == null ? "null" : "\"" + subscriptionRef + "\"",
                         status, currency, subtotal, total, tax, total, total,
-                        periodStart, periodEnd, discount, invoiceId, linesJson);
+                        periodStart, periodEnd, discount, linesHasMore, invoiceId, linesJson);
     }
 
     /** Stripe Invoice line（{@code line_item}）を組み立てる。 */

@@ -101,7 +101,7 @@ class BillingInvoiceProjectionServiceTest {
                                 List<InvoiceLineView> lines) {
         return new InvoiceView("in_unit", CUSTOMER_REF, SUBSCRIPTION_REF, "open", "subscription_cycle",
                 currency, subtotal, discount, tax, total, 1_767_225_600L, 1_769_904_000L,
-                "請求先 太郎", "taro@example.com", "{\"country\":\"JP\"}", lines);
+                "請求先 太郎", "taro@example.com", "{\"country\":\"JP\"}", lines, true);
     }
 
     private InvoiceLineView line(long amount, long discount, long tax, Integer basisPoints, String taxName) {

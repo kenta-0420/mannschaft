@@ -141,11 +141,12 @@ public class BillingInvoiceProjectionService {
 
         Instant eventInstant = Instant.ofEpochSecond(eventCreatedEpoch);
         Optional<BillingInvoiceEntity> existing = invoiceRepository.findByPspInvoiceRef(invoice.id());
+        String incomingStatus = mapStatus(invoice.status());
 
         if (existing.isPresent() && existing.get().getUpdatedAt() != null
-                && existing.get().getUpdatedAt().isAfter(eventInstant)) {
-            log.info("F20.1 PR5: 投影より古い event のため適用しない（単調更新）: invoice={}, eventCreated={}",
-                    invoice.id(), eventInstant);
+                && isStale(existing.get(), incomingStatus, eventInstant)) {
+            log.info("F20.1 PR5: 投影より古い event のため適用しない（単調更新）: invoice={}, eventCreated={}, status={}",
+                    invoice.id(), eventInstant, incomingStatus);
             return;
         }
 
@@ -162,7 +163,7 @@ public class BillingInvoiceProjectionService {
         entity.setScopeId(owner.scopeId());
         entity.setPspSubscriptionRef(invoice.subscriptionRef());
         entity.setBillingReason(invoice.billingReason() == null ? "unspecified" : invoice.billingReason());
-        entity.setStatus(mapStatus(invoice.status()));
+        entity.setStatus(incomingStatus);
         entity.setPeriodStart(toInstant(invoice.periodStartEpochSec()));
         entity.setPeriodEnd(toInstant(invoice.periodEndEpochSec()));
         entity.setCurrency(ALLOWED_CURRENCY);
@@ -201,9 +202,18 @@ public class BillingInvoiceProjectionService {
      * 明細をそのイベントの内容で置き換えても、確定済み請求書が古い値へ巻き戻ることはない。
      * 単調性の判定をヘッダと明細で二重に持たない（判定正本は 1 箇所）。</p>
      *
-     * <p><b>消えた行は消す</b>: draft 段階の line が finalized で取り下げられることがある。
-     * 残置すると明細合計とヘッダ total が一致しなくなるため、今回の payload に無い行は削除し、
-     * 「その時点の Stripe の請求書」を丸ごと写した状態にする。</p>
+     * <p><b>消えた行は消す。ただし全明細を受け取ったときだけ</b>: draft 段階の line が finalized で
+     * 取り下げられることがあり、残置すると明細合計とヘッダ total が一致しなくなる。そこで今回の
+     * payload に無い行は削除する——が、これは payload が<b>請求書の全明細</b>であるときにしか
+     * 正しくない。Stripe の invoice webhook に載る {@code lines.data} は件数上限で切られることがあり
+     * （{@code lines.has_more=true}）、切られた頁を全明細と誤認して削除すると、載らなかった明細が
+     * 恒久的に消え、F08.12 の請求書 PDF も欠けた明細で出る。
+     * よって削除は {@link InvoiceView#linesComplete()} が true のときに限る（fail-safe）。</p>
+     *
+     * <p><b>残る条件を黙って隠さない</b>: {@code has_more=true} の payload では取り下げ行が
+     * <b>削除されずに残る</b>。これは「消し過ぎ（復元不能）」より「残し過ぎ（次の完全な payload で
+     * 解消しうる）」を選んだ結果である。全明細を Stripe から取得して確定させる方法もあるが、
+     * webhook 処理中に外部 API 呼び出しを増やすことになり PR5 の範囲を超えるため採らない。</p>
      */
     private void projectLines(BillingInvoiceEntity invoiceEntity, InvoiceView invoice) {
         Map<String, BillingInvoiceLineEntity> existingByRef = new LinkedHashMap<>();
@@ -251,7 +261,9 @@ public class BillingInvoiceProjectionService {
         }
 
         // payload に現れなかった既存行（＝取り下げられた line）を落とす。
-        if (!existingByRef.isEmpty()) {
+        // ただし payload が全明細だと確認できたときだけ。切られた頁を全明細と誤認して消すと、
+        // 載らなかった明細が恒久的に失われる（後述の Javadoc 参照）。
+        if (!existingByRef.isEmpty() && invoice.linesComplete()) {
             invoiceLineRepository.deleteAll(existingByRef.values());
         }
         if (!toSave.isEmpty()) {
@@ -336,6 +348,43 @@ public class BillingInvoiceProjectionService {
         if (entity.getVoidedAt() == null && ("invoice.voided".equals(eventType) || "void".equals(status))) {
             entity.setVoidedAt(eventInstant);
         }
+    }
+
+    /**
+     * この event を適用してはならないか（単調更新の判定正本・AC-9）。
+     *
+     * <p>基準は投影行の {@code updated_at}（＝直近に適用した event の発生時刻）。それより古ければ
+     * 適用しない。<b>同一秒</b>のときは時刻では決められない——Stripe の {@code event.created} は
+     * 秒精度で、finalized と遅れて届いた draft が同じ秒を持ちうるためである。厳密比較だけだと
+     * 同一秒の古い draft が素通りし、確定済みの金額・数量が巻き戻る。そこで同一秒に限り
+     * <b>請求書状態の順序</b>（DRAFT &lt; OPEN &lt; PAID/VOID/UNCOLLECTIBLE）で決め、後退する側を退ける。</p>
+     *
+     * <p>判定はここ 1 箇所に置く。明細側（{@link #projectLines}）へ二重化しない。</p>
+     */
+    private boolean isStale(BillingInvoiceEntity existing, String incomingStatus, Instant eventInstant) {
+        Instant appliedAt = existing.getUpdatedAt();
+        if (appliedAt.isAfter(eventInstant)) {
+            return true;
+        }
+        return appliedAt.equals(eventInstant)
+                && statusRank(incomingStatus) < statusRank(existing.getStatus());
+    }
+
+    /**
+     * 請求書状態の単調な順序。同一 {@code event.created} の順序付けにのみ使う。
+     *
+     * <p>DRAFT(0) → OPEN(1) → PAID / VOID / UNCOLLECTIBLE(2)。終端状態どうしは同順で、
+     * 互いに退けない（同一秒に PAID と VOID の両方が来る検体は Stripe 側で起きない）。</p>
+     */
+    private static int statusRank(String status) {
+        if (status == null) {
+            return 0;
+        }
+        return switch (status) {
+            case "DRAFT" -> 0;
+            case "OPEN" -> 1;
+            default -> 2;
+        };
     }
 
     /** Stripe の invoice status を DDL の CHECK（DRAFT/OPEN/PAID/UNCOLLECTIBLE/VOID）へ写す。 */

@@ -119,9 +119,13 @@ public class StripeBillingPayloadParser {
 
     private InvoiceView toInvoice(JsonNode node) {
         List<InvoiceLineView> lines = new ArrayList<>();
-        for (JsonNode l : node.path("lines").path("data")) {
+        JsonNode linesNode = node.path("lines");
+        for (JsonNode l : linesNode.path("data")) {
             lines.add(toLine(l));
         }
+        // lines list が存在し、かつ has_more=false のときだけ「全明細を受け取った」と言える。
+        // list そのものが無い payload は完全性を主張できないので不完全として扱う（fail-safe）。
+        boolean linesComplete = linesNode.isObject() && !linesNode.path("has_more").asBoolean(false);
         JsonNode address = node.path("customer_address");
         String addressJson = address.isMissingNode() || address.isNull() ? null : address.toString();
         return new InvoiceView(
@@ -140,7 +144,8 @@ public class StripeBillingPayloadParser {
                 text(node, "customer_name"),
                 text(node, "customer_email"),
                 addressJson,
-                lines);
+                lines,
+                linesComplete);
     }
 
     private InvoiceLineView toLine(JsonNode l) {
