@@ -89,7 +89,24 @@ public class BillingSubscriptionWebhookService {
             return false;
         }
         return runGated(event, () -> {
-            billingContractService.abandonPendingContract(UUID.fromString(event.billingContractId()));
+            UUID contractId = UUID.fromString(event.billingContractId());
+
+            // 柱③-B: 引継の新契約（PENDING_HANDOVER）は通常契約とは別経路で放棄する（設計書 §3.6・検分1巡目 P1-3）。
+            //
+            // abandonPendingContract は (1) PENDING 以外を no-op とするため PENDING_HANDOVER には効かず、
+            // (2) スロット単位で pointer を物理 DELETE するため、仮に効かせると旧契約の entitlement を
+            // 巻き添えで剥がす（引継では旧契約が旧期末まで同じスロットの pointer を保持し続けている）。
+            // よって引継側では承諾を REQUESTED へ巻き戻し、旧契約に触れないまま再承諾可能な状態へ戻す。
+            java.util.Optional<UUID> handoverRequestId =
+                    billingContractRepository.findById(contractId)
+                            .map(BillingContractEntity::getHandoverRequestId)
+                            .filter(java.util.Objects::nonNull);
+            if (handoverRequestId.isPresent()) {
+                payerHandoverService.onHandoverCheckoutExpired(handoverRequestId.get());
+                return WebhookProcessStatus.PROCESSED;
+            }
+
+            billingContractService.abandonPendingContract(contractId);
             return WebhookProcessStatus.PROCESSED;
         });
     }

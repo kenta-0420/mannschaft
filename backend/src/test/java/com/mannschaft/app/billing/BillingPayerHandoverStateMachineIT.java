@@ -81,6 +81,7 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
     private static final int PRICE_JPY = 4_800;
 
     @Autowired private BillingPayerHandoverService handoverService;
+    @Autowired private BillingPayerHandoverTxService handoverTxService;
     @Autowired private BillingContractRepository billingContractRepository;
     @Autowired private BillingPayerHandoverRequestRepository handoverRequestRepository;
     @Autowired private ActiveContractPointerRepository activeContractPointerRepository;
@@ -195,6 +196,95 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
                 .as("スロットの pointer は1件のまま（新契約ぶんを張ると uk_acp_slot 違反になる）").isEqualTo(1L);
         assertThat(planPointerContractId())
                 .as("旧契約の pointer が無傷で残る").isEqualTo(oldContractId);
+    }
+
+    // ============================================================
+    // 承諾者の認可境界（設計書 §5.6「対象スコープの他 ADMIN」・Codex検分1巡目 P1-2）
+    // ============================================================
+
+    @Test
+    @DisplayName("P1-2: 旧payer本人は自己承諾できない（requireCanManageは通るが他ADMINではないため403）")
+    void acceptHandover_oldPayerCannotAcceptOwnRequest() {
+        HandoverRequestResult requested = handoverService.requestHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, oldContractId, oldPayerUserId);
+
+        // oldPayerUserId は TEAM の ADMIN ロールを持つため requireCanManage は通過する。
+        // それでも「引継先候補（他 ADMIN）」ではないので承諾は拒否されなければならない
+        // （自己承諾を許すと支払担当が変わらないまま SWITCHING まで進んでしまう）。
+        assertThatThrownBy(() -> handoverService.acceptHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), oldPayerUserId))
+                .isInstanceOf(BusinessException.class);
+
+        BillingPayerHandoverRequestEntity handover = reloadHandover(requested.handoverRequestId());
+        assertThat(handover.getStatus())
+                .as("状態は REQUESTED のまま（他 ADMIN の承諾を待ち続ける）")
+                .isEqualTo(PayerHandoverStatus.REQUESTED);
+        assertThat(handover.getNewPayerUserId()).as("承諾者は記録されない").isNull();
+        assertThat(handover.getNewContractId()).as("新契約も作られない").isNull();
+        assertThat(planPointerContractId()).as("旧 pointer は無傷").isEqualTo(oldContractId);
+    }
+
+    // ============================================================
+    // 承諾の巻き戻しからの回復（Checkout 失敗・放棄／Codex検分1巡目 P1-3）
+    // ============================================================
+
+    @Test
+    @DisplayName("P1-3: 承諾を巻き戻すと新契約はCANCELLEDされREQUESTEDへ戻り、別ADMINが再承諾できる")
+    void rollbackAcceptance_allowsAnotherAdminToAcceptAgain() {
+        HandoverRequestResult requested = handoverService.requestHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, oldContractId, oldPayerUserId);
+        HandoverAcceptResult firstAccept = handoverService.acceptHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), adminAUserId);
+        UUID abandonedContractId = firstAccept.newContractId();
+
+        // Checkout Session 作成失敗／checkout.session.expired と同じ巻き戻し。
+        handoverTxService.rollbackAcceptanceToRequested(
+                requested.handoverRequestId(), "テスト: Checkout 失敗");
+
+        BillingPayerHandoverRequestEntity rolledBack = reloadHandover(requested.handoverRequestId());
+        assertThat(rolledBack.getStatus())
+                .as("再承諾の入口（REQUESTED）へ戻る").isEqualTo(PayerHandoverStatus.REQUESTED);
+        assertThat(rolledBack.getNewPayerUserId()).as("承諾者の紐付けは外れる").isNull();
+        assertThat(rolledBack.getNewContractId()).as("新契約の紐付けも外れる").isNull();
+        assertThat(reloadContract(abandonedContractId).getStatus())
+                .as("先行作成した PENDING_HANDOVER 契約は CANCELLED で破棄される")
+                .isEqualTo(ContractStatus.CANCELLED);
+        assertThat(planPointerCount())
+                .as("旧契約の pointer は巻き添えで消えない（スロット単位 DELETE を通さないこと）")
+                .isEqualTo(1L);
+        assertThat(planPointerContractId())
+                .as("pointer は旧契約を指したまま").isEqualTo(oldContractId);
+
+        // 別の ADMIN が改めて承諾でき、新契約が新しい payer で作り直される。
+        HandoverAcceptResult secondAccept = handoverService.acceptHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), adminBUserId);
+
+        assertThat(secondAccept.status()).isEqualTo(PayerHandoverStatus.ACCEPTED);
+        assertThat(secondAccept.newContractId())
+                .as("破棄した契約を使い回さず作り直す").isNotEqualTo(abandonedContractId);
+        assertThat(reloadContract(secondAccept.newContractId()).getPayerUserId())
+                .as("新契約の payer は再承諾した ADMIN").isEqualTo(adminBUserId);
+        assertThat(reloadHandover(requested.handoverRequestId()).getNewPayerUserId())
+                .isEqualTo(adminBUserId);
+    }
+
+    @Test
+    @DisplayName("P1-3: webhook逆順（completed後にexpiredが遅着）でも確定済みのSWITCHINGは巻き戻さない")
+    void rollbackAcceptance_isNoOpAfterCheckoutCompleted() {
+        UUID handoverId = requestAndAcceptAndComplete(adminAUserId);
+        UUID newContractId = reloadHandover(handoverId).getNewContractId();
+
+        // checkout.session.completed が先に処理された後に expired が遅れて届いたケース。
+        handoverTxService.rollbackAcceptanceToRequested(handoverId, "テスト: 遅着した expired");
+
+        BillingPayerHandoverRequestEntity handover = reloadHandover(handoverId);
+        assertThat(handover.getStatus())
+                .as("確定済みの引継は巻き戻さない").isEqualTo(PayerHandoverStatus.SWITCHING);
+        assertThat(handover.getNewContractId())
+                .as("新契約の紐付けは維持される").isEqualTo(newContractId);
+        assertThat(reloadContract(newContractId).getStatus())
+                .as("新契約は PENDING_HANDOVER のまま（CANCELLED にしない）")
+                .isEqualTo(ContractStatus.PENDING_HANDOVER);
     }
 
     // ============================================================

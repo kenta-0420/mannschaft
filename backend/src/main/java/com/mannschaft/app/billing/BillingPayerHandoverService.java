@@ -6,7 +6,6 @@ import com.mannschaft.app.billing.BillingPayerHandoverTxService.AcceptTransition
 import com.mannschaft.app.billing.BillingPayerHandoverTxService.CheckoutCompletion;
 import com.mannschaft.app.billing.BillingPayerHandoverTxService.SwitchContext;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.role.service.RoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -61,15 +60,12 @@ public class BillingPayerHandoverService {
     /** 承諾の猶予期限（設計書 §5.3・暫定 14 日）。 */
     static final Duration ACCEPTANCE_GRACE = Duration.ofDays(14);
 
-    /** 引継先候補として数えるロール名（設計書 §5.5 ①②）。 */
-    private static final String ADMIN_ROLE = "ADMIN";
-
     private final BillingPayerHandoverRequestRepository handoverRequestRepository;
     private final BillingContractRepository billingContractRepository;
     private final BillingOperationAuthorizer billingOperationAuthorizer;
     private final BillingPaymentGateway billingPaymentGateway;
     private final BillingPayerHandoverTxService handoverTxService;
-    private final RoleService roleService;
+    private final BillingPayerHandoverCandidateResolver candidateResolver;
     private final Clock clock;
 
     @Value("${app.base-url}")
@@ -161,8 +157,17 @@ public class BillingPayerHandoverService {
             throw new BusinessException(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);
         }
 
+        // ⑤-2 申請者は旧 payer 本人に限る（設計書 §3「1段目: 旧 payer による引継申請」・Codex検分1巡目 P1-1）。
+        //     requireCanManage はスコープの管理権限しか見ないため、これだけでは同一スコープの別 ADMIN が
+        //     他人の支払契約について勝手に引継を申請できてしまう（申請は他 ADMIN 全員への通知を発火させ、
+        //     uk_bphr_open_old_contract により当該契約への以後の申請を猶予期間中ブロックもする）。
+        //     契約の存在自体は認可済みスコープ内で既に見えているため、404 で畳まず 403 を返す。
+        if (!oldPayerUserId.equals(operatorUserId)) {
+            throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_OLD_PAYER);
+        }
+
         // ⑥ AC-10/17/18: 引継先候補が居なければ要求を作らない。
-        List<Long> candidates = candidateAdminUserIds(scopeKind, scopeId, oldPayerUserId);
+        List<Long> candidates = candidateResolver.candidateAdminUserIds(scopeKind, scopeId, oldPayerUserId);
         if (candidates.isEmpty()) {
             throw new BusinessException(EntitlementErrorCode.HANDOVER_NO_CANDIDATE);
         }
@@ -274,20 +279,51 @@ public class BillingPayerHandoverService {
             // §5.1 の絞り込みを通っていれば有償契約のはず。ここに来るのは整合性の破れなので隠さず上申する。
             throw new BusinessException(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);
         }
-        CheckoutSessionInfo info = billingPaymentGateway.createHandoverSubscriptionCheckout(
-                accepted.newPayerUserId(),
-                accepted.priceJpy(),
-                accepted.displayName(),
-                accepted.newContractId(),
-                accepted.oldContractId(),
-                handoverRequestId,
-                // ★AC-5: trial_end は旧契約の current_period_end と同一 unix 秒（隙間も重複も生じない）。
-                accepted.oldPeriodEnd(),
-                appBaseUrl + "/billing/plans?handover=success",
-                appBaseUrl + "/billing/plans?handover=cancelled");
+        // Checkout Session の作成に失敗したら承諾を巻き戻す（Codex検分1巡目 P1-3）。
+        // 巻き戻さないと状態が ACCEPTED のまま残り、再承諾の入口（REQUESTED / REQUIRES_PAYMENT_METHOD）に
+        // 該当しなくなって誰も再試行できず、猶予期限切れまで詰む。この時点では旧契約に一切触れていない
+        // （cancel_at_period_end は checkout.session.completed と同時にしか設定しない）ため巻き戻して安全。
+        // 例外は握りつぶさず必ず再送出する（呼び出し元・監視に失敗を正しく伝える）。
+        CheckoutSessionInfo info;
+        try {
+            info = billingPaymentGateway.createHandoverSubscriptionCheckout(
+                    accepted.newPayerUserId(),
+                    accepted.priceJpy(),
+                    accepted.displayName(),
+                    accepted.newContractId(),
+                    accepted.oldContractId(),
+                    handoverRequestId,
+                    // ★AC-5: trial_end は旧契約の current_period_end と同一 unix 秒（隙間も重複も生じない）。
+                    accepted.oldPeriodEnd(),
+                    appBaseUrl + "/billing/plans?handover=success",
+                    appBaseUrl + "/billing/plans?handover=cancelled");
+        } catch (RuntimeException ex) {
+            handoverTxService.rollbackAcceptanceToRequested(
+                    handoverRequestId, "Checkout Session の作成に失敗: " + ex.getClass().getSimpleName());
+            throw ex;
+        }
 
         return new HandoverAcceptResult(handoverRequestId, PayerHandoverStatus.ACCEPTED,
                 accepted.newContractId(), info.url());
+    }
+
+    /**
+     * Checkout の放棄（{@code checkout.session.expired}）を受けて承諾を巻き戻す
+     * （設計書 §3.6 遷移表・Codex検分1巡目 P1-3）。
+     *
+     * <p>通常契約の {@code checkout.session.expired} は
+     * {@code BillingContractService#abandonPendingContract} が {@code PENDING} 契約を破棄して再挑戦可能にするが、
+     * 同メソッドは <b>{@code PENDING} 以外を no-op</b> とするため引継の {@code PENDING_HANDOVER} 契約には効かず、
+     * 引継だけが {@code ACCEPTED} のまま取り残されて再承諾できなくなっていた。さらに同メソッドは
+     * スロット単位で pointer を物理 DELETE するため、仮に適用すると<b>旧契約の entitlement を巻き添えで剥がす</b>。
+     * よって引継専用のこの経路で巻き戻す。</p>
+     *
+     * <p><b>冪等・webhook 逆順に安全</b>: {@code ACCEPTED} 以外は no-op のため、{@code completed} が先に
+     * 処理されて {@code SWITCHING} へ進んだ後に {@code expired} が遅れて届いても引継を壊さない。</p>
+     */
+    public void onHandoverCheckoutExpired(UUID handoverRequestId) {
+        handoverTxService.rollbackAcceptanceToRequested(
+                handoverRequestId, "checkout.session.expired（利用者が Checkout を放棄）");
     }
 
     // ============================================================
@@ -436,43 +472,6 @@ public class BillingPayerHandoverService {
     // ============================================================
     // 内部ヘルパ
     // ============================================================
-
-    /**
-     * 引継先候補の ADMIN を列挙する（設計書 §5.5 ①②・AC-10/17/18）。
-     *
-     * <p><b>越境は Service 経由</b>（{@link RoleService}）で行う。{@code role} ドメインの Repository を
-     * 直接 DI するのは {@code CrossDomainRepositoryDependencyArchTest}（D-5）違反である。</p>
-     *
-     * <p><b>「退会予定」の除外はクエリ側で成立している</b>: {@code RoleService} の候補クエリは
-     * いずれも {@code users.deleted_at IS NULL AND users.status = 'ACTIVE'} で絞る。退会申請
-     * （{@code UserService#requestWithdrawal} → {@code UserEntity#requestDeletion}）は撤回ウィンドウ中でも
-     * {@code deleted_at} を立てるため、退会予定の ADMIN はそもそもこの一覧に現れない。よって
-     * 「ADMIN が0人」（分岐①）と「他 ADMIN 全員が退会予定」（分岐②）は同じ空リストとして現れ、
-     * どちらも {@code HANDOVER_NO_CANDIDATE} になる。</p>
-     *
-     * <p>ORG 側の {@code getAdminUserIdsByOrganizationId} は ADMIN に加えて DEPUTY_ADMIN も返すが、
-     * {@link BillingOperationAuthorizer#requireCanManage} も課金権限を持つ DEPUTY_ADMIN を承諾者として
-     * 許可するため、候補集合として整合している。</p>
-     *
-     * @param oldPayerUserId 旧 payer 自身は候補から除く（自分へは引き継げない）
-     */
-    private List<Long> candidateAdminUserIds(
-            EntitlementScopeKind scopeKind, Long scopeId, Long oldPayerUserId) {
-
-        List<Long> admins = switch (scopeKind) {
-            case TEAM -> roleService.getUserIdsByTeamIdAndRoleName(scopeId, ADMIN_ROLE);
-            case ORG -> roleService.getAdminUserIdsByOrganizationId(scopeId);
-            case USER -> List.of(); // 呼び出し前に弾いているが switch の網羅のため。
-        };
-        if (admins == null) {
-            return List.of();
-        }
-        return admins.stream()
-                .filter(java.util.Objects::nonNull)
-                .filter(userId -> !userId.equals(oldPayerUserId))
-                .distinct()
-                .toList();
-    }
 
     /**
      * {@code billing_contracts} の壁時計（{@link LocalDateTime}）を {@link Instant} へ変換する。

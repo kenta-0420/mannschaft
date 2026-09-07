@@ -41,6 +41,7 @@ public class BillingPayerHandoverTxService {
     private final BillingContractRepository billingContractRepository;
     private final ActiveContractPointerRepository activeContractPointerRepository;
     private final BillingOperationAuthorizer billingOperationAuthorizer;
+    private final BillingPayerHandoverCandidateResolver candidateResolver;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
@@ -69,6 +70,14 @@ public class BillingPayerHandoverTxService {
 
         // 認可は「行の scope と一致確認済みの引数 scope」に対して行う（AC-11）。
         billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
+
+        // ★承諾者の適格性（設計書 §5.6・§5.2・Codex検分1巡目 P1-2）。
+        //   requireCanManage は「スコープの課金を管理できるか」しか見ない。設計書が承諾者として定めるのは
+        //   一貫して「対象スコープの<b>他</b> ADMIN」（＝申請時に通知を送った引継先候補と同一集合）であり、
+        //   これを検証しないと (1) 旧 payer 本人が自己承諾して支払担当が変わらないまま SWITCHING まで進む、
+        //   (2) 候補として通知もされていない権限保持者（TEAM の DEPUTY_ADMIN 等）が承諾できる、
+        //   という2つの穴が開く。候補集合は申請時と同じ resolver に一本化して判定する。
+        requireEligibleAcceptor(handover, operatorUserId);
 
         Instant now = clock.instant();
         if (!handover.getExpiresAt().isAfter(now)) {
@@ -113,6 +122,7 @@ public class BillingPayerHandoverTxService {
 
         BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
         requireSameScope(handover, scopeKind, scopeId);
+        requireEligibleAcceptor(handover, operatorUserId);
         if (handover.getStatus() != PayerHandoverStatus.REQUESTED
                 && handover.getStatus() != PayerHandoverStatus.REQUIRES_PAYMENT_METHOD) {
             throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_ACCEPTABLE);
@@ -124,6 +134,65 @@ public class BillingPayerHandoverTxService {
                 BillingPayerHandoverNotificationKind.PAYMENT_METHOD_REQUIRED,
                 handover.getId(), handover.getScopeKind(), handover.getScopeId(),
                 List.of(operatorUserId), operatorUserId));
+    }
+
+    /**
+     * 承諾を {@code REQUESTED} へ巻き戻し、先行作成した {@code PENDING_HANDOVER} 契約を破棄する
+     * （設計書 §3.6 遷移表・Codex検分1巡目 P1-3）。
+     *
+     * <p><b>解決する詰み</b>: 承諾は「先に {@code ACCEPTED}＋{@code PENDING_HANDOVER} を DB 確定 →
+     * 後から Stripe の Checkout Session を作成」という順序で進む。Stripe 呼び出しが失敗すると
+     * 状態は {@code ACCEPTED} のまま残るが、<b>再承諾の入口は {@code REQUESTED} と
+     * {@code REQUIRES_PAYMENT_METHOD} しかない</b>ため、誰も再試行できず猶予期限まで放置され
+     * {@code EXPIRED} になるまで詰む。同じ詰みは利用者が Checkout を放棄した場合
+     * （{@code checkout.session.expired}）にも起きる。</p>
+     *
+     * <p><b>なぜ巻き戻して安全か</b>: この時点では<b>旧契約に一切触れていない</b>。旧サブスクへの
+     * {@code cancel_at_period_end=true} は (a)引継確定条件（{@code checkout.session.completed}）と
+     * 同時にしか設定されないため（§3.6 表(a)・R3-P1-3）、承諾確定前の巻き戻しは旧契約を無傷のまま残す。
+     * 設計書が支払い手段なしの場合に「状態は {@code ACCEPTED} に留めず差し戻す」と定めているのと同じ原理である。</p>
+     *
+     * <p><b>pointer は触らない</b>: {@code PENDING_HANDOVER} 契約はそもそも pointer を持たず、同スロットの
+     * pointer は<b>旧契約</b>のものである。{@code BillingContractService#abandonPendingContract} は
+     * スロット単位で pointer を物理 DELETE するため、これを引継契約に適用すると
+     * <b>旧契約の entitlement を巻き添えで剥がす</b>。本メソッドが別経路として存在する理由がこれである。</p>
+     *
+     * <p><b>冪等・webhook 逆順に安全</b>: {@code ACCEPTED} 以外は no-op。{@code checkout.session.completed} が
+     * 先に届いて {@code SWITCHING} へ進んだ後に {@code expired} が遅れて届いても、確定済みの引継を
+     * 巻き戻さない。</p>
+     *
+     * @param handoverRequestId 対象の引継要求
+     * @param reason            ログに残す巻き戻し理由
+     */
+    @Transactional
+    public void rollbackAcceptanceToRequested(UUID handoverRequestId, String reason) {
+        BillingPayerHandoverRequestEntity handover =
+                handoverRequestRepository.findByIdForUpdate(handoverRequestId).orElse(null);
+        if (handover == null || handover.getStatus() != PayerHandoverStatus.ACCEPTED) {
+            return;
+        }
+
+        UUID newContractId = handover.getNewContractId();
+        handover.setStatus(PayerHandoverStatus.REQUESTED);
+        handover.setAcceptedAt(null);
+        // 次の承諾者が別 ADMIN でも正しい payer で契約を作り直せるよう、承諾者と新契約の紐付けを外す。
+        handover.setNewPayerUserId(null);
+        handover.setNewContractId(null);
+        handoverRequestRepository.save(handover);
+
+        if (newContractId != null) {
+            billingContractRepository.findByIdAndDeletedAtIsNull(newContractId).ifPresent(newContract -> {
+                if (newContract.getStatus() == ContractStatus.PENDING_HANDOVER) {
+                    newContract.setStatus(ContractStatus.CANCELLED);
+                    newContract.setCancelledAt(LocalDateTime.now(clock));
+                    billingContractRepository.save(newContract);
+                }
+            });
+        }
+
+        log.warn("柱③-B: 承諾を REQUESTED へ巻き戻しました（旧契約は無傷・再承諾可能）"
+                + " handoverRequestId={}, discardedNewContractId={}, reason={}",
+                handoverRequestId, newContractId, reason);
     }
 
     /**
@@ -143,6 +212,9 @@ public class BillingPayerHandoverTxService {
 
         BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
         requireSameScope(handover, scopeKind, scopeId);
+        // 承諾者の適格性は「実際に書き込む」本メソッドでも独立に検証する（public 入口ごとの二重防御）。
+        // validateAcceptable を経ずに本メソッドだけを呼ばれても穴が開かないようにするため。
+        requireEligibleAcceptor(handover, operatorUserId);
         if (handover.getStatus() != PayerHandoverStatus.REQUESTED
                 && handover.getStatus() != PayerHandoverStatus.REQUIRES_PAYMENT_METHOD) {
             throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_ACCEPTABLE);
@@ -430,6 +502,23 @@ public class BillingPayerHandoverTxService {
             BillingPayerHandoverRequestEntity handover, EntitlementScopeKind scopeKind, Long scopeId) {
         if (handover.getScopeKind() != scopeKind || !handover.getScopeId().equals(scopeId)) {
             throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND);
+        }
+    }
+
+    /**
+     * 承諾者が「対象スコープの<b>他</b> ADMIN」であることを要求する（設計書 §5.6・Codex検分1巡目 P1-2）。
+     *
+     * <p>判定は申請時に通知先を決めたのと同一の {@link BillingPayerHandoverCandidateResolver} に委ね、
+     * 「通知を受け取る者」と「承諾できる者」が常に同じ集合であることを保証する。
+     * スコープの一致と管理権限は呼び出し側で検証済みであり、契約の存在は既に相手に見えているため、
+     * ここは 404 で畳まず 403（{@code HANDOVER_NOT_ELIGIBLE_ACCEPTOR}）を返す。</p>
+     */
+    private void requireEligibleAcceptor(
+            BillingPayerHandoverRequestEntity handover, Long operatorUserId) {
+        if (!candidateResolver.isEligibleAcceptor(
+                handover.getScopeKind(), handover.getScopeId(),
+                handover.getOldPayerUserId(), operatorUserId)) {
+            throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_ELIGIBLE_ACCEPTOR);
         }
     }
 

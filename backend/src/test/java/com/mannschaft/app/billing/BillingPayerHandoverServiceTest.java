@@ -90,9 +90,11 @@ class BillingPayerHandoverServiceTest {
 
     @BeforeEach
     void setUp() {
+        // resolver は実物を使う（候補判定は本番と同じロジックを通す）。越境先の RoleService だけをモックする。
         service = new BillingPayerHandoverService(
                 handoverRequestRepository, billingContractRepository, billingOperationAuthorizer,
-                billingPaymentGateway, handoverTxService, roleService, FIXED_CLOCK);
+                billingPaymentGateway, handoverTxService,
+                new BillingPayerHandoverCandidateResolver(roleService), FIXED_CLOCK);
         ReflectionTestUtils.setField(service, "appBaseUrl", "http://localhost:3000");
     }
 
@@ -319,6 +321,25 @@ class BillingPayerHandoverServiceTest {
             verify(billingOperationAuthorizer)
                     .requireCanManage(OLD_PAYER, EntitlementScopeKind.TEAM, TEAM_ID);
         }
+
+        @Test
+        @DisplayName("P1-1: 旧 payer 以外の ADMIN は申請できない（requireCanManage を通っても 403 で拒否し要求行を作らない）")
+        void nonOldPayerAdminCannotRequest() {
+            givenEligibleContractAndCandidates();
+
+            // NEW_PAYER は同一 TEAM の ADMIN であり requireCanManage は通る（モックは既定で例外を投げない）。
+            // それでも「他人の支払契約の引継を勝手に申請する」ことは許されない。
+            assertThatThrownBy(() -> service.requestHandover(
+                    EntitlementScopeKind.TEAM, TEAM_ID, oldContractId, NEW_PAYER))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(BillingPayerHandoverServiceTest::errorCodeOf)
+                    .isEqualTo(EntitlementErrorCode.HANDOVER_NOT_OLD_PAYER);
+
+            // 要求行が作られないこと＝他 ADMIN への通知も uk_bphr_open_old_contract のブロックも発生しない。
+            verify(handoverRequestRepository, never()).save(any());
+            verify(handoverTxService, never()).publishHandoverRequested(
+                    any(), any(), any(), any(), any());
+        }
     }
 
     // ============================================================
@@ -378,6 +399,54 @@ class BillingPayerHandoverServiceTest {
             verify(handoverTxService, never()).transitionToAccepted(any(), any(), any(), any());
             verify(handoverTxService, never()).transitionToRequiresPaymentMethod(any(), any(), any(), any());
             verifyNoInteractions(billingPaymentGateway);
+        }
+
+        @Test
+        @DisplayName("P1-3: Checkout 作成が失敗したら承諾を REQUESTED へ巻き戻し、例外は握りつぶさず再送出する")
+        void checkoutCreationFailure_rollsBackAcceptanceAndRethrows() {
+            given(handoverTxService.validateAcceptable(
+                    EntitlementScopeKind.TEAM, TEAM_ID, handoverId, NEW_PAYER))
+                    .willReturn(validation(null));
+            given(billingPaymentGateway.hasUsablePaymentMethod(NEW_PAYER)).willReturn(true);
+            given(handoverTxService.transitionToAccepted(
+                    EntitlementScopeKind.TEAM, TEAM_ID, handoverId, NEW_PAYER))
+                    .willReturn(transition(null));
+            given(billingPaymentGateway.findHandoverSubscriptionRef(NEW_PAYER, handoverId))
+                    .willReturn(Optional.empty());
+            RuntimeException stripeDown = new IllegalStateException("stripe down");
+            given(billingPaymentGateway.createHandoverSubscriptionCheckout(
+                    any(), anyInt(), anyString(), any(), any(), any(), any(), any(), any()))
+                    .willThrow(stripeDown);
+
+            // 失敗は隠さずそのまま伝播する（症状隠し禁止）。
+            assertThatThrownBy(() -> service.acceptHandover(
+                    EntitlementScopeKind.TEAM, TEAM_ID, handoverId, NEW_PAYER))
+                    .isSameAs(stripeDown);
+
+            // ACCEPTED のまま残すと再承諾の入口（REQUESTED / REQUIRES_PAYMENT_METHOD）に該当せず詰むため、
+            // 必ず巻き戻して再試行可能な状態へ戻す。
+            verify(handoverTxService).rollbackAcceptanceToRequested(eq(handoverId), anyString());
+        }
+
+        @Test
+        @DisplayName("P1-3: Checkout 作成が成功した通常経路では巻き戻しを行わない")
+        void checkoutCreationSuccess_doesNotRollBack() {
+            given(handoverTxService.validateAcceptable(
+                    EntitlementScopeKind.TEAM, TEAM_ID, handoverId, NEW_PAYER))
+                    .willReturn(validation(null));
+            given(billingPaymentGateway.hasUsablePaymentMethod(NEW_PAYER)).willReturn(true);
+            given(handoverTxService.transitionToAccepted(
+                    EntitlementScopeKind.TEAM, TEAM_ID, handoverId, NEW_PAYER))
+                    .willReturn(transition(null));
+            given(billingPaymentGateway.findHandoverSubscriptionRef(NEW_PAYER, handoverId))
+                    .willReturn(Optional.empty());
+            given(billingPaymentGateway.createHandoverSubscriptionCheckout(
+                    any(), anyInt(), anyString(), any(), any(), any(), any(), any(), any()))
+                    .willReturn(new CheckoutSessionInfo("cs_1", "https://checkout.stripe.com/c/cs_1"));
+
+            service.acceptHandover(EntitlementScopeKind.TEAM, TEAM_ID, handoverId, NEW_PAYER);
+
+            verify(handoverTxService, never()).rollbackAcceptanceToRequested(any(), anyString());
         }
 
         @Test
@@ -550,6 +619,33 @@ class BillingPayerHandoverServiceTest {
             service.onHandoverCheckoutCompleted(handoverId, NEW_SUB);
 
             verify(handoverTxService, never()).publishAdditionalAuthRequired(any());
+        }
+    }
+
+    // ============================================================
+    // onHandoverCheckoutExpired
+    // ============================================================
+
+    @Nested
+    @DisplayName("onHandoverCheckoutExpired（Checkout 放棄からの回復・P1-3）")
+    class CheckoutExpired {
+
+        @Test
+        @DisplayName("P1-3: expired は承諾の巻き戻しへ委譲する（PENDING_HANDOVER が ACCEPTED のまま残らない）")
+        void expiredDelegatesToRollback() {
+            service.onHandoverCheckoutExpired(handoverId);
+
+            verify(handoverTxService).rollbackAcceptanceToRequested(eq(handoverId), anyString());
+        }
+
+        @Test
+        @DisplayName("P1-3: expired は旧契約にも Stripe にも一切触れない（旧契約は無傷）")
+        void expiredTouchesNeitherOldContractNorStripe() {
+            service.onHandoverCheckoutExpired(handoverId);
+
+            // 承諾確定前のため cancel_at_period_end は未設定。Stripe を叩く余地がないことを機械担保する。
+            verifyNoInteractions(billingPaymentGateway);
+            verifyNoInteractions(billingContractRepository);
         }
     }
 

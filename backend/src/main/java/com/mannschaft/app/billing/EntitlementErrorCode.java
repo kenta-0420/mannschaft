@@ -156,7 +156,25 @@ public enum EntitlementErrorCode implements ErrorCode {
 
     /** 猶予期限（既定14日）を過ぎている（409・設計書 §5.3・AC-21）。 */
     HANDOVER_EXPIRED("ENTITLEMENT_033",
-            "この引継要求は期限切れです", Severity.WARN);
+            "この引継要求は期限切れです", Severity.WARN),
+
+    /**
+     * 引継を申請できるのは当該契約の旧 payer 本人のみ（403・設計書 §3「1段目: 旧 payer による引継申請」）。
+     *
+     * <p>スコープの管理権限（{@code requireCanManage}）だけでは足りない。同一スコープの別 ADMIN が
+     * 他人の支払契約について勝手に引継を申請できてしまうため、payer 本人であることを併せて検証する。</p>
+     */
+    HANDOVER_NOT_OLD_PAYER("ENTITLEMENT_034",
+            "この契約の引継を申請できるのは現在の支払担当者のみです", Severity.WARN),
+
+    /**
+     * 承諾できるのは当該スコープの<b>他</b> ADMIN のみ（403・設計書 §5.6・§5.5・AC-11）。
+     *
+     * <p>旧 payer 本人による自己承諾と、ADMIN 以外（{@code requireCanManage} は通るが引継先候補ではない
+     * 権限保持者）の承諾を拒否する。</p>
+     */
+    HANDOVER_NOT_ELIGIBLE_ACCEPTOR("ENTITLEMENT_035",
+            "この引継を承諾できるのは対象スコープの他の管理者のみです", Severity.WARN);
 
     private final String code;
     private final String message;
