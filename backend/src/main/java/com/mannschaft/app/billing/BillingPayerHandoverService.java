@@ -365,6 +365,21 @@ public class BillingPayerHandoverService {
 
         CheckoutCompletion completion = handoverTxService.markSwitching(handoverRequestId, newSubscriptionRef);
         if (completion == null) {
+            // ★孤児サブスクの補償（設計書 §3.6 遷移表・Codex検分5巡目 P1）。
+            //   期限超過の照合は「Stripe に不在」を確認してから EXPIRED へ終端化するが、その照会と
+            //   終端化の間に利用者が Checkout を完了させると、Stripe 上に新サブスクが在るのに要求は
+            //   EXPIRED という状態になる。ここで単に no-op を返すと、DB に記録されず解約もされない
+            //   サブスクが課金だけ続ける。DB 側の直列化では Stripe 側イベントの遅着を原理的に防げないため、
+            //   「起きてしまった後に金銭を守る」補償を最終防衛線として置く。
+            //   trial 中のため即時取消で課金は発生しない（§3.6 2段目の失敗経路と同じ扱い）。
+            String orphanRef =
+                    handoverTxService.detectOrphanNewSubscription(handoverRequestId, newSubscriptionRef);
+            if (orphanRef != null) {
+                log.error("柱③-B: 終端化(EXPIRED)後に遅着した引継確定 webhook が新サブスクを連れてきました。"
+                        + "孤児として課金され続けるのを防ぐため即時取消します"
+                        + " handoverRequestId={}, subscriptionRef={}", handoverRequestId, orphanRef);
+                billingPaymentGateway.cancelHandoverNewSubscription(orphanRef, handoverRequestId);
+            }
             return; // 冪等 no-op（対象なし／既に SWITCHING 以降）。
         }
 

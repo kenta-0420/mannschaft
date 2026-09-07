@@ -404,6 +404,67 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("P2(5巡目): 期限超過の照合でList照会自体が失敗したら状態を一切変えない（曖昧なまま終端化しない）")
+    void reconcileLeavesStateUntouchedWhenLookupFails() {
+        UUID handoverId = createAmbiguousAcceptance();
+        expireHandoverRow(handoverId);
+        UUID newContractId = reloadHandover(handoverId).getNewContractId();
+
+        Mockito.reset(billingPaymentGateway);
+        stubGatewayForHappyPath();
+        Mockito.when(billingPaymentGateway.findHandoverSubscriptionRef(eq(adminAUserId), eq(handoverId)))
+                .thenThrow(new IllegalStateException("stripe list failed again"));
+
+        assertThatThrownBy(() -> handoverService.reconcileExpiredAcceptance(handoverId))
+                .isInstanceOf(IllegalStateException.class);
+
+        BillingPayerHandoverRequestEntity handover = reloadHandover(handoverId);
+        assertThat(handover.getStatus())
+                .as("不在を確認できていないので終端化しない").isEqualTo(PayerHandoverStatus.ACCEPTED);
+        assertThat(handover.getPspNewSubscriptionRef()).as("参照も確定させない").isNull();
+        assertThat(handover.getNewContractId()).as("新契約の紐付けも維持").isEqualTo(newContractId);
+        assertThat(reloadContract(newContractId).getStatus())
+                .as("新契約を破棄しない（次回の照合で再試行する）")
+                .isEqualTo(ContractStatus.PENDING_HANDOVER);
+    }
+
+    @Test
+    @DisplayName("P1(5巡目): EXPIRED確定後にcompleted webhookが遅着したら、孤児サブスクを即時取消して課金を止める")
+    void lateCompletedAfterExpiryCancelsOrphanSubscription() {
+        UUID handoverId = createAmbiguousAcceptance();
+        expireHandoverRow(handoverId);
+
+        // 照合時点では不在 → EXPIRED で終端化される。
+        Mockito.reset(billingPaymentGateway);
+        stubGatewayForHappyPath();
+        handoverService.reconcileExpiredAcceptance(handoverId);
+        assertThat(reloadHandover(handoverId).getStatus()).isEqualTo(PayerHandoverStatus.EXPIRED);
+
+        // 照会と終端化の隙間で利用者が Checkout を完了しており、webhook が遅れて届く。
+        handoverService.onHandoverCheckoutCompleted(handoverId, NEW_SUBSCRIPTION_REF);
+
+        // 記録も解約もされない孤児として課金され続けるのを防ぐ（trial 中のため即時取消で無課金）。
+        Mockito.verify(billingPaymentGateway)
+                .cancelHandoverNewSubscription(NEW_SUBSCRIPTION_REF, handoverId);
+        // 終端化済みの引継を復活させない。旧サブスクへ期末解約を予約してもいけない。
+        assertThat(reloadHandover(handoverId).getStatus())
+                .as("EXPIRED のまま").isEqualTo(PayerHandoverStatus.EXPIRED);
+        Mockito.verify(billingPaymentGateway, Mockito.never())
+                .scheduleCancelAtPeriodEndForHandover(anyString(), any(UUID.class));
+        assertThat(planPointerContractId()).as("旧 pointer は無傷").isEqualTo(oldContractId);
+    }
+
+    @Test
+    @DisplayName("P1(5巡目): 正常にSWITCHINGへ進んだ引継では孤児取消を行わない")
+    void normalCompletionDoesNotCancelNewSubscription() {
+        UUID handoverId = requestAndAcceptAndComplete(adminAUserId);
+
+        assertThat(reloadHandover(handoverId).getStatus()).isEqualTo(PayerHandoverStatus.SWITCHING);
+        Mockito.verify(billingPaymentGateway, Mockito.never())
+                .cancelHandoverNewSubscription(anyString(), any(UUID.class));
+    }
+
+    @Test
     @DisplayName("P1-3(2巡目): 過去の承諾試行のexpiredが遅着しても、その後に成立した別ADMINの承諾を壊さない")
     void staleExpiredDoesNotRollBackTheCurrentAcceptance() {
         HandoverRequestResult requested = handoverService.requestHandover(

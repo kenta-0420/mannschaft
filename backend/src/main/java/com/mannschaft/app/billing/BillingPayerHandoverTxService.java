@@ -379,7 +379,7 @@ public class BillingPayerHandoverTxService {
             return null;
         }
         if (handover.getStatus() != PayerHandoverStatus.ACCEPTED) {
-            log.info("柱③-B: 引継確定 webhook は no-op（既に {} ）handoverRequestId={}",
+            log.info("柱③-B: 引継確定 webhook は状態遷移させない（既に {} ）handoverRequestId={}",
                     handover.getStatus(), handoverRequestId);
             return null;
         }
@@ -395,6 +395,41 @@ public class BillingPayerHandoverTxService {
                 .orElse(null);
         return new CheckoutCompletion(handover.getId(), oldSubscriptionRef,
                 handover.getPspNewSubscriptionRef());
+    }
+
+    /**
+     * 終端化済みの引継に対して遅着した {@code checkout.session.completed} が連れてきた
+     * <b>孤児サブスク</b>を検出する（設計書 §3.6 遷移表・Codex検分5巡目 P1）。
+     *
+     * <p><b>塞ぐ穴</b>: 期限超過の照合（{@code reconcileExpiredAcceptance}）は「Stripe に不在」を
+     * 確認してから {@code EXPIRED} へ終端化するが、その<b>照会と終端化の間に利用者が Checkout を
+     * 完了させる</b>ことがある。この場合 Stripe には新サブスクが生成済みなのに要求は
+     * {@code EXPIRED} になっており、遅れて届く {@code completed} webhook を単に no-op にすると、
+     * <b>DB に記録されず解約もされないサブスクが課金だけ続ける</b>（孤児）。</p>
+     *
+     * <p><b>DB 側の直列化では原理的に防げない</b>: 行ロックで DB 操作を直列化しても、Stripe 側で
+     * サブスクが生成された事実と webhook 到達の間の時間差は消せない。よって「起きてしまった後に
+     * 金銭を守る補償」を最終防衛線として置く必要がある。設計書も同種の状況
+     * （§3.6 2段目の {@code pending_setup_intent} 未解決・{@code customer.subscription.deleted}）で
+     * <b>新 trial サブスクを {@code cancelImmediately} して無課金のまま取り消す</b>ことを定めており、
+     * 本補償はその扱いと整合する（trial 中のため取り消せば課金は発生しない）。</p>
+     *
+     * <p><b>{@code EXPIRED} のみを対象にする理由</b>: {@code SWITCHING}/{@code PARTIALLY_COMPLETED}/
+     * {@code COMPLETED} は新サブスクを正当に保有している状態であり取り消してはならない。
+     * {@code FAILED} は §3.6 の失敗経路が既に新サブスクの取消を担っているため二重に取り消さない。
+     * 孤児が生じ得るのは「不在を確認して終端化した」本経路＝{@code EXPIRED} だけである。</p>
+     *
+     * @return 取り消すべきサブスク参照。該当しなければ {@code null}
+     */
+    @Transactional(readOnly = true)
+    public String detectOrphanNewSubscription(UUID handoverRequestId, String newSubscriptionRef) {
+        if (newSubscriptionRef == null) {
+            return null;
+        }
+        return handoverRequestRepository.findById(handoverRequestId)
+                .filter(h -> h.getStatus() == PayerHandoverStatus.EXPIRED)
+                .map(h -> newSubscriptionRef)
+                .orElse(null);
     }
 
     /**
