@@ -300,4 +300,94 @@ class TransactionalTestNotificationObservationGuardConditionTest {
                     .effectivelyTransactional("A", tree)).isFalse();
         }
     }
+
+    @Nested
+    @DisplayName("走査コストの削減が検出力を落としていないこと（#3072 と同型の時限爆弾対策）")
+    class 走査コスト {
+
+        /**
+         * 早期スキップ（ファイル全体に検証表現または配送観測が 1 つも無ければ重い解析へ入らない）が
+         * 偽陰性を生まないことの実測。
+         *
+         * <p>スキップ条件に<b>ぎりぎり引っかかりそうな</b>形、すなわち配送観測がテストメソッドの
+         * 本体には無く、通知語彙でない名前のヘルパの中にしか無い違反を当てる。
+         * スキップはファイル全体を見る真の上位集合なので、この形も落とさない。</p>
+         */
+        @Test
+        @DisplayName("配送観測がヘルパ本体にしか無い違反も早期スキップに落とされない")
+        void 早期スキップは観測がヘルパにしかない違反を落とさない() {
+            String source = """
+                    @Transactional
+                    class SomeIT extends AbstractMySqlIntegrationTest {
+                        void 無関係な準備() {
+                            repository.save(entity);
+                        }
+
+                        void 通知は作られない() {
+                            assertThat(rows(userId)).isZero();
+                        }
+
+                        private long rows(Long userId) {
+                            return jdbcTemplate.queryForObject(
+                                    "SELECT COUNT(*) FROM notifications WHERE user_id = ?", Long.class, userId);
+                        }
+                    }
+                    """;
+            assertThat(scanFixture(source))
+                    .as("スキップ条件はファイル全体で見るので、ヘルパ側の観測でも重い解析へ進む")
+                    .hasSize(1);
+        }
+
+        @Test
+        @DisplayName("検証表現だけがあり配送観測が無いファイルは違反にならない（スキップの正当性）")
+        void 観測が無ければ違反にならない() {
+            String source = """
+                    @Transactional
+                    class SomeIT extends AbstractMySqlIntegrationTest {
+                        void 予定が作られる() {
+                            assertThat(scheduleRepository.findById(id)).isPresent();
+                        }
+                    }
+                    """;
+            assertThat(scanFixture(source))
+                    .as("配送観測が皆無ならスキップしてもしなくても違反 0 件。スキップは真の上位集合")
+                    .isEmpty();
+        }
+
+        /**
+         * メソッド抽出の正規表現に<b>曖昧な繰り返し</b>を再導入させないための構造ガード。
+         *
+         * <p>初版は修飾子列の文字クラスに<b>空白を含めた</b>うえで直後にも空白リテラルを置いていた
+         * （{@code [A-Za-z0-9_<>\[\], ]+ }）。同じ並びを何通りにも分割して試すため、
+         * マッチしない行で走査が跳ね上がり、テスト木 2,490 ファイルの走査 76.7 秒のうち
+         * <b>67.2 秒</b>をここが占めていた。</p>
+         *
+         * <p><b>なぜ時間で測らないか</b>: 走査対象が増え続ける以上、
+         * {@code assertTimeout(30秒)} のような絶対時間の予算はいずれ必ず破綻する
+         * （{@code DateTimeAndZoneGuardTest} が抱える #3072 がまさにそれで、
+         * 本番人はその起票直後に同じ形を作りかけた）。実測でも、旧実装が跳ねるのは
+         * 「実ファイルの、マッチしない大量の行」という再現しづらい条件で、
+         * 合成入力では旧新の差が数倍にしか開かない（＝しきい値を置けない）。
+         * そこで時間ではなく<b>欠陥そのものの形</b>を固定する。</p>
+         */
+        @Test
+        @DisplayName("メソッド抽出の繰り返し部に空白を含む文字クラスを置かない（総当たり後戻りの再発防止）")
+        void メソッド抽出正規表現に曖昧な繰り返しを再導入しない() {
+            String pattern = TransactionalTestNotificationObservationGuardTest.METHOD_DECL.pattern();
+            int loopStart = pattern.indexOf("(?:");
+            int loopEnd = pattern.indexOf(")*", loopStart);
+
+            assertThat(loopStart).as("修飾子列の繰り返しグループが見当たらない").isNotNegative();
+            assertThat(loopEnd).as("繰り返しグループの終端が見当たらない").isGreaterThan(loopStart);
+
+            String loop = pattern.substring(loopStart, loopEnd);
+            assertThat(loop)
+                    .as("繰り返しの中の文字クラスに空白を入れると、同じ並びの分割が曖昧になり"
+                            + "マッチしない行で総当たりの後戻りが起きる（実測 67.2 秒）。"
+                            + "空白は文字クラスの外に 1 つ置き、各反復が消費する範囲を一意にすること")
+                    .doesNotContain(", ]")
+                    .doesNotContain("\s]");
+        }
+    }
+
 }

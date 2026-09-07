@@ -41,7 +41,8 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3546);   // main 3542 + #3100 3件 + 当PR(#3112) retention-expired 1件
+                .isEqualTo(3556);   // main 3542 + #3100 3件 + 当PR(#3112) retention-expired 1件
+                                    // + 柱③-A JoinRequestController 新設10件（CMP-260901-1538）
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.STOMP).count())
                 .as("STOMP @MessageMapping の走査総数。Chat 2件と VillageLobbyPresence 3件")
                 .isEqualTo(5);

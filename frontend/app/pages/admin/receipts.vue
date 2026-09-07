@@ -1,5 +1,13 @@
 <script setup lang="ts">
+/**
+ * F08.4 領収書一覧（運営・管理者向け）。
+ *
+ * BE `ReceiptAdminController` は admin 系エンドポイントで scopeType/scopeId を必須要求するため、
+ * 現在スコープが確定するまで API を叩かない（空の scopeId を Long へ送ると 400 になる。
+ * 発行者設定画面 `receipt-settings.vue` と同じ作法）。
+ */
 import type { ReceiptResponse } from '~/types/receipt'
+import type { ReceiptScopeType } from '~/composables/useReceiptApi'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -13,8 +21,18 @@ const {
   downloadPdf,
   sendReceiptEmail,
 } = useReceiptApi()
-const { success, error: showError } = useNotification()
+const { success } = useNotification()
+const { handleApiError } = useErrorHandler()
 const { formatDate } = useDatetime()
+
+const scopeStore = useScopeStore()
+const scopeId = computed(() => scopeStore.current.id ?? '')
+const scopeType = computed((): ReceiptScopeType =>
+  scopeStore.current.type === 'organization' ? 'ORGANIZATION' : 'TEAM',
+)
+// 領収書はチーム／組織スコープのみが対象（F08.4 §2）。個人スコープでは案内を出して終える。
+const isPersonalScope = computed(() => scopeStore.current.type === 'personal')
+const scopeReady = computed(() => !isPersonalScope.value && !!scopeId.value)
 
 const receipts = ref<ReceiptResponse[]>([])
 const loading = ref(false)
@@ -32,18 +50,38 @@ const issueForm = ref({
 })
 const issueSubmitting = ref(false)
 
+// 無効化ダイアログ（BE `VoidReceiptRequest.reason` は @NotBlank なので理由を必ず取る）
+const showVoidDialog = ref(false)
+const voidTargetId = ref<number | null>(null)
+const voidReason = ref('')
+const voidReasonError = ref<string | null>(null)
+const voidSubmitting = ref(false)
+
 async function load() {
+  if (!scopeReady.value) return
   loading.value = true
   try {
-    const res = await getReceipts({ page: page.value + 1, per_page: rows.value })
+    // BE は 0 起点の `page` と `size` を受ける（1 起点の page / per_page ではない）。
+    const res = await getReceipts(scopeType.value, scopeId.value, {
+      page: page.value,
+      size: rows.value,
+    })
     receipts.value = res.data
-    totalRecords.value = (res.meta?.total as number) ?? res.data.length
-  } catch {
-    showError(t('receipt.list.toast.loadFailed'))
+    totalRecords.value = res.meta?.total ?? res.data.length
+  } catch (err) {
+    // 握りつぶさない: 原因はコンソールへ、利用者にはサーバーが返した理由・エラーコードを見せる。
+    console.error('[receipts] 領収書一覧の取得に失敗しました', err)
+    handleApiError(err, 'receipts.load')
   } finally {
     loading.value = false
   }
 }
+
+// スコープが確定してから初回発火する（空の scopeId を Long へ送ると 400 になるため）。
+watch([scopeId, isPersonalScope], () => {
+  page.value = 0
+  load()
+}, { immediate: true })
 
 function onPage(event: { page: number; rows: number }) {
   page.value = event.page
@@ -53,49 +91,72 @@ function onPage(event: { page: number; rows: number }) {
 
 async function handleApprove(id: number) {
   try {
-    await approveReceipt(id)
+    await approveReceipt(scopeType.value, scopeId.value, id)
     success(t('receipt.list.toast.approved'))
     load()
-  } catch {
-    showError(t('receipt.list.toast.approveFailed'))
+  } catch (err) {
+    console.error('[receipts] 承認に失敗しました', err)
+    handleApiError(err, 'receipts.approve')
   }
 }
 
-async function handleVoid(id: number) {
+function openVoidDialog(id: number) {
+  voidTargetId.value = id
+  voidReason.value = ''
+  voidReasonError.value = null
+  showVoidDialog.value = true
+}
+
+async function submitVoid() {
+  const id = voidTargetId.value
+  const reason = voidReason.value.trim()
+  if (id === null) return
+  if (!reason) {
+    voidReasonError.value = t('receipt.list.validation.voidReasonRequired')
+    return
+  }
+  voidSubmitting.value = true
   try {
-    await voidReceipt(id)
+    await voidReceipt(scopeType.value, scopeId.value, id, { reason })
     success(t('receipt.list.toast.voided'))
+    showVoidDialog.value = false
     load()
-  } catch {
-    showError(t('receipt.list.toast.voidFailed'))
+  } catch (err) {
+    console.error('[receipts] 無効化に失敗しました', err)
+    handleApiError(err, 'receipts.void')
+  } finally {
+    voidSubmitting.value = false
   }
 }
 
 async function handleReissue(id: number) {
   try {
-    await reissueReceipt(id)
+    await reissueReceipt(scopeType.value, scopeId.value, id)
     success(t('receipt.list.toast.reissued'))
     load()
-  } catch {
-    showError(t('receipt.list.toast.reissueFailed'))
+  } catch (err) {
+    console.error('[receipts] 再発行に失敗しました', err)
+    handleApiError(err, 'receipts.reissue')
   }
 }
 
 async function handleDownloadPdf(id: number) {
   try {
-    await downloadPdf(id)
+    await downloadPdf(scopeType.value, scopeId.value, id)
     success(t('receipt.list.toast.pdfDownloaded'))
-  } catch {
-    showError(t('receipt.list.toast.pdfDownloadFailed'))
+  } catch (err) {
+    console.error('[receipts] PDF 取得に失敗しました', err)
+    handleApiError(err, 'receipts.pdf')
   }
 }
 
 async function handleSendEmail(id: number) {
   try {
-    await sendReceiptEmail(id)
+    await sendReceiptEmail(scopeType.value, scopeId.value, id)
     success(t('receipt.list.toast.emailSent'))
-  } catch {
-    showError(t('receipt.list.toast.emailSendFailed'))
+  } catch (err) {
+    console.error('[receipts] メール送信に失敗しました', err)
+    handleApiError(err, 'receipts.sendEmail')
   }
 }
 
@@ -106,10 +167,10 @@ function openIssueDialog() {
 
 async function submitIssue() {
   const amount = Number(issueForm.value.totalAmount)
-  if (!issueForm.value.recipientName || !amount) return
+  if (!issueForm.value.recipientName || !amount || !scopeReady.value) return
   issueSubmitting.value = true
   try {
-    await issueReceipt({
+    await issueReceipt(scopeType.value, scopeId.value, {
       recipientName: issueForm.value.recipientName,
       totalAmount: amount,
       description: issueForm.value.description,
@@ -118,8 +179,9 @@ async function submitIssue() {
     success(t('receipt.list.toast.issued'))
     showIssueDialog.value = false
     load()
-  } catch {
-    showError(t('receipt.list.toast.issueFailed'))
+  } catch (err) {
+    console.error('[receipts] 発行に失敗しました', err)
+    handleApiError(err, 'receipts.issue')
   } finally {
     issueSubmitting.value = false
   }
@@ -140,8 +202,6 @@ function statusLabel(status: string): string {
     default: return status
   }
 }
-
-onMounted(() => load())
 </script>
 
 <template>
@@ -152,11 +212,33 @@ onMounted(() => load())
         <NuxtLink to="/admin/receipt-settings">
           <Button :label="t('receipt.list.settingsButton')" icon="pi pi-cog" severity="secondary" outlined />
         </NuxtLink>
-        <Button :label="t('receipt.list.issueButton')" icon="pi pi-plus" @click="openIssueDialog" />
+        <Button
+          :label="t('receipt.list.issueButton')"
+          icon="pi pi-plus"
+          :disabled="!scopeReady"
+          @click="openIssueDialog"
+        />
       </div>
     </div>
 
+    <div
+      v-if="isPersonalScope"
+      class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-sm text-surface-600 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-300"
+    >
+      <i class="pi pi-info-circle mr-1" />
+      {{ t('receipt.list.notice.personalScopeUnsupported') }}
+    </div>
+
+    <div
+      v-else-if="!scopeReady"
+      class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-sm text-surface-600 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-300"
+    >
+      <i class="pi pi-info-circle mr-1" />
+      {{ t('receipt.list.notice.scopeNotReady') }}
+    </div>
+
     <DataTable
+      v-else
       :value="receipts"
       :loading="loading"
       :lazy="true"
@@ -211,7 +293,7 @@ onMounted(() => load())
               size="small"
               severity="danger"
               outlined
-              @click="handleVoid(data.id)"
+              @click="openVoidDialog(data.id)"
             />
             <Button
               :label="t('receipt.list.action.reissue')"
@@ -293,6 +375,41 @@ onMounted(() => load())
           :loading="issueSubmitting"
           :disabled="!issueForm.recipientName || !Number(issueForm.totalAmount)"
           @click="submitIssue"
+        />
+      </template>
+    </Dialog>
+
+    <!-- 無効化ダイアログ（BE は reason 必須） -->
+    <Dialog
+      v-model:visible="showVoidDialog"
+      :header="t('receipt.list.dialog.voidTitle')"
+      :style="{ width: '440px' }"
+      modal
+      :draggable="false"
+    >
+      <div>
+        <label class="mb-1 block text-sm font-medium">
+          {{ t('receipt.list.dialog.voidReason') }} <span class="text-red-500">*</span>
+        </label>
+        <Textarea
+          v-model="voidReason"
+          class="w-full"
+          rows="3"
+          :maxlength="500"
+          :placeholder="t('receipt.list.dialog.voidReasonPlaceholder')"
+          :invalid="!!voidReasonError"
+        />
+        <p v-if="voidReasonError" class="mt-1 text-xs text-red-500">{{ voidReasonError }}</p>
+      </div>
+      <template #footer>
+        <Button :label="t('receipt.list.dialog.cancel')" severity="secondary" text @click="showVoidDialog = false" />
+        <Button
+          :label="t('receipt.list.dialog.voidSubmit')"
+          icon="pi pi-ban"
+          severity="danger"
+          :loading="voidSubmitting"
+          :disabled="!voidReason.trim()"
+          @click="submitVoid"
         />
       </template>
     </Dialog>
