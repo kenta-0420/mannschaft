@@ -42,11 +42,12 @@ const rows = ref(20)
 
 // 新規発行ダイアログ
 const showIssueDialog = ref(false)
+// BE `CreateReceiptRequest` は金額を `amount` で受ける（`totalAmount` ではない）。
+// フォームのキーも BE に揃えて、送信時の写し違いが起きないようにする（CMP-260907-0915）。
 const issueForm = ref({
   recipientName: '',
-  totalAmount: '',
+  amount: '',
   description: '',
-  notes: '',
 })
 const issueSubmitting = ref(false)
 
@@ -161,20 +162,19 @@ async function handleSendEmail(id: number) {
 }
 
 function openIssueDialog() {
-  issueForm.value = { recipientName: '', totalAmount: '', description: '', notes: '' }
+  issueForm.value = { recipientName: '', amount: '', description: '' }
   showIssueDialog.value = true
 }
 
 async function submitIssue() {
-  const amount = Number(issueForm.value.totalAmount)
+  const amount = Number(issueForm.value.amount)
   if (!issueForm.value.recipientName || !amount || !scopeReady.value) return
   issueSubmitting.value = true
   try {
     await issueReceipt(scopeType.value, scopeId.value, {
       recipientName: issueForm.value.recipientName,
-      totalAmount: amount,
+      amount,
       description: issueForm.value.description,
-      notes: issueForm.value.notes,
     })
     success(t('receipt.list.toast.issued'))
     showIssueDialog.value = false
@@ -248,6 +248,7 @@ function statusLabel(status: string): string {
       :first="page * rows"
       data-key="id"
       striped-rows
+      responsive-layout="scroll"
       @page="onPage"
     >
       <template #empty>
@@ -267,8 +268,8 @@ function statusLabel(status: string): string {
       <Column field="recipientName" :header="t('receipt.list.column.recipientName')" />
 
       <Column :header="t('receipt.list.column.amount')" style="width: 120px">
-        <template #body="{ data }">
-          <span class="font-medium">{{ data.totalAmount.toLocaleString('ja-JP') }}円</span>
+        <template #body="{ data }: { data: ReceiptResponse }">
+          <span class="font-medium">{{ t('receipt.list.amountWithUnit', { amount: data.amount.toLocaleString('ja-JP') }) }}</span>
         </template>
       </Column>
 
@@ -343,7 +344,7 @@ function statusLabel(status: string): string {
         <div>
           <label class="mb-1 block text-sm font-medium">{{ t('receipt.list.dialog.amount') }} <span class="text-red-500">*</span></label>
           <InputText
-            v-model="issueForm.totalAmount"
+            v-model="issueForm.amount"
             type="number"
             class="w-full"
             :placeholder="t('receipt.list.dialog.amountPlaceholder')"
@@ -357,15 +358,6 @@ function statusLabel(status: string): string {
             :placeholder="t('receipt.list.dialog.descriptionPlaceholder')"
           />
         </div>
-        <div>
-          <label class="mb-1 block text-sm font-medium">{{ t('receipt.list.dialog.notes') }}</label>
-          <Textarea
-            v-model="issueForm.notes"
-            class="w-full"
-            rows="3"
-            :placeholder="t('receipt.list.dialog.notesPlaceholder')"
-          />
-        </div>
       </div>
       <template #footer>
         <Button :label="t('receipt.list.dialog.cancel')" severity="secondary" text @click="showIssueDialog = false" />
@@ -373,7 +365,7 @@ function statusLabel(status: string): string {
           :label="t('receipt.list.dialog.submit')"
           icon="pi pi-check"
           :loading="issueSubmitting"
-          :disabled="!issueForm.recipientName || !Number(issueForm.totalAmount)"
+          :disabled="!issueForm.recipientName || !Number(issueForm.amount)"
           @click="submitIssue"
         />
       </template>
