@@ -94,17 +94,21 @@ public class BillingContractService {
      * 柱③-B: payer 起点で検出した引継対象契約（§1.2 の検出漏れを塞ぐクエリの返り値）。
      *
      * <p>D-1（API 境界）によりサービス API はエンティティを露出できないため、
-     * PR-3 の退会ハンドラ（{@code cancelAllForPayerOnWithdrawal}）が期末解約の判断に必要とする
-     * 項目だけを持つ値オブジェクトとして返す。{@code pspSubscriptionRef} と
-     * {@code currentPeriodEnd} は §5.1 の絞り込みにより非 null が保証される。</p>
+     * PR-3 の退会ハンドラ（{@code cancelAllForPayerOnWithdrawal}）が期末解約を発行するのに必要な
+     * 項目だけを持つ値オブジェクトとして返す。{@code pspSubscriptionRef} は §5.1 の絞り込みにより
+     * 非 null が保証される。</p>
+     *
+     * <p><b>{@code currentPeriodEnd} を含めない理由</b>: 期末解約は Stripe 側で
+     * {@code cancel_at_period_end=true} を立てる操作であり、期末の日時値そのものを呼び出し側が
+     * 持つ必要がない（Stripe が保持する実物の期末が権威である）。ローカルの
+     * {@code current_period_end} は §5.1 の絞り込み条件としてのみ用いる。</p>
      */
     public record HandoverTargetContract(
             UUID contractId,
             EntitlementScopeKind scopeKind,
             Long scopeId,
             ContractStatus status,
-            String pspSubscriptionRef,
-            LocalDateTime currentPeriodEnd) {
+            String pspSubscriptionRef) {
     }
 
     // ============================================================
@@ -668,8 +672,7 @@ public class BillingContractService {
                         contract.getScopeKind(),
                         contract.getScopeId(),
                         contract.getStatus(),
-                        contract.getPspSubscriptionRef(),
-                        contract.getCurrentPeriodEnd()))
+                        contract.getPspSubscriptionRef()))
                 .toList();
     }
 
