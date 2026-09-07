@@ -128,7 +128,7 @@ public class ReceiptExportService {
      * @return ZIP ジョブレスポンス
      */
     public DownloadZipResponse createZipJob(DownloadZipRequest request, Long actorUserId) {
-        ReceiptScopeType scopeType = ReceiptScopeType.valueOf(request.getScopeType());
+        ReceiptScopeType scopeType = ReceiptScopeType.fromTenantScope(request.getScopeType());
         accessControlService.checkMembership(actorUserId, request.getScopeId(), scopeType.name());
 
         String jobId = UUID.randomUUID().toString().substring(0, 8);
