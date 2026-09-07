@@ -43,7 +43,7 @@
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 2
+# CLASSIFIED_FLOOR: 1
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
 # TX_NOTIFY_VIA_DELEGATE については委譲先の入口メソッドの宣言から区分を導出し、
@@ -187,7 +187,7 @@
 #      ScheduleCommentNotifier#sendMentioned / #sendReplied（DIRECT_RUNNER_CALL）
 #      この3件は L0 で「クラス跨ぎの偽陽性の可能性あり・L1 で実地確認する前提」として凍結され、
 #      以後どのロットでも検証されないまま残っていた。L8 で決着させた結論:
-#      <b>巻き戻りは起きていなかった</b>。通知は TransactionSynchronizationManager.registerSynchronization
+#      **巻き戻りは起きていなかった**。通知は TransactionSynchronizationManager.registerSynchronization
 #      の afterCommit() から呼ばれており、因果としては既にコミット後で、受信者ごとに
 #      ScheduleCommentNotificationRunner#sendOne（REQUIRES_NEW）へ委譲する正規形そのものだった。
 #      つまり #2990 本体（ROLLBACK_COUPLED）には該当しない。
@@ -196,11 +196,11 @@
 #      ScheduleCommentNotifier を「別 Bean 委譲先の境界は判定できない」限界の実例として名指ししている）。
 #      REMOVED（偽陽性）として台帳へ移す道は取らなかった。REMOVED 行は「現在の判定ロジックでも
 #      検出されないこと」を番人が機械検証するため、検出され続けるものは移せないからである。
-#      代わりに<b>同じ境界を Spring の宣言で表し直した</b>: ScheduleCommentPostedEvent を publish し、
+#      代わりに**同じ境界を Spring の宣言で表し直した**: ScheduleCommentPostedEvent を publish し、
 #      ScheduleCommentNotifier を @TransactionalEventListener(AFTER_COMMIT) の入口に変えた。
 #      sendMentioned / sendReplied は許可された入口から到達する private ヘルパになるため
 #      DIRECT_RUNNER_CALL も解消する。
-#      <b>@Async は意図的に付けていない</b>。是正前の afterCommit() はリクエストスレッド上で同期実行
+#      **@Async は意図的に付けていない**。是正前の afterCommit() はリクエストスレッド上で同期実行
 #      されており、巻き戻りが起こり得ない以上、非同期化しても得るものが無い一方で
 #      ScheduleCommentNotificationPartialFailureIT（1受信者の失敗が他へ波及しないことを実DBで
 #      検証する既存の回帰テスト）が競合するだけである。実行タイミングは是正前と同一。
@@ -209,7 +209,7 @@
 #   凍結エントリ 50 + REMOVED 8 + AMBIGUOUS 0 = 58（= 是正前の CENSUS_FLOOR）
 #   凍結エントリ 43 + REMOVED 8 + AMBIGUOUS 0 = 51
 # CLASSIFIED_FLOOR は変更なし（本ロットの7件はいずれも未分類行であり、分類済み2件に触れていない）。
-# CENSUS_FLOOR: 51
+# CENSUS_FLOOR: 46
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -219,10 +219,6 @@ com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTEN
 com.mannschaft.app.billing.beta.BetaGrantService#safeNotify -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_BARE
 com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.errorreport.service.ErrorReportAsyncExecutor#doRecordBackendException -> TX_NOTIFY_BARE
-com.mannschaft.app.errorreport.service.ErrorReportService#createOrAggregate -> TX_NOTIFY_BARE
-com.mannschaft.app.errorreport.service.ErrorReportService#updateStatus -> TX_NOTIFY_BARE
-com.mannschaft.app.errorreport.service.ErrorReportTimelineService#assign -> TX_NOTIFY_BARE
 com.mannschaft.app.jobmatching.service.JobApplicationService#apply -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.jobmatching.service.JobCheckInService#fireNotifications -> TX_NOTIFY_IN_TRY
 com.mannschaft.app.jobmatching.service.JobContractService#acceptApplication -> TX_NOTIFY_IN_TRY
@@ -282,7 +278,6 @@ com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX
 #       @Transactional(REQUIRED)                                 ... ROLLBACK_COUPLED
 #   ShiftBudgetFailedEventService#retry           -> ShiftBudgetRetryExecutor#execute
 #       @Transactional(REQUIRES_NEW)                             ... ORDERING_ONLY
-com.mannschaft.app.errorreport.service.ErrorReportService#recordBackendException -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
 com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
 
 # --- 2026-09-03 Issue #2990 L3: ORDERING_ONLY 5件の処理（CENSUS_FLOOR 95 -> 92 / CLASSIFIED_FLOOR 5 -> 2）---
@@ -760,3 +755,104 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #
 # ■ CLASSIFIED_FLOOR は 2 のまま据え置く
 #   分類（| <区分>）が付いた 2 件は本ロットの対象外であり、削除も分類変更もしていない。
+
+# ------------------------------------------------------------------------------
+# 2026-09-06 Issue #2990 L11: errorreport ドメイン 5件の是正（CENSUS_FLOOR 51 -> 46 /
+#                             CLASSIFIED_FLOOR 2 -> 1）
+# ------------------------------------------------------------------------------
+#
+# ■ 是正前は何が壊れていたか（実コード読解＋実DB計測に基づく）
+#
+#   本ロットの5件は**1件も巻き戻っていなかった**。呼び先 ErrorReportNotifier の該当6メソッドは
+#   是正前から @Async("event-pool") が付いており、しかも別 Bean への呼び出しなのでプロキシを確実に
+#   通る。通知は業務スレッドとは別スレッド・別TXで走るため、通知の失敗が業務TXを巻き戻す経路は無い。
+#   よって性質は ROLLBACK_COUPLED ではなく ORDERING_ONLY（因果順序のみ）である。
+#   実害は次の2つで、いずれも実コードの読解で確定した:
+#
+#     (a) 因果順序が保証されない。非同期スレッドは commit を待たずに走り出すため、業務TXが後で
+#         ロールバックしても Slack / SYSTEM_ADMIN / 報告者への通知だけが残る。届く通知は
+#         /system-admin/error-reports/<id> への導線を持つが、その行はもう存在しない。
+#     (b) 管理下の JPA エンティティをスレッド跨ぎで渡していた。notifySlack(saved) /
+#         notifyEscalation(updated, ...) に渡していたのは呼び出し元の永続化コンテキストに属する
+#         管理エンティティそのものであり、非同期スレッドはそれを未コミットの状態のまま読んでいた。
+#         （業務TXがロールバックすれば、通知本文が参照した状態はそもそも存在しなかったことになる。）
+#
+#   実DB計測（ErrorReportNotificationTransactionBoundaryIT）:
+#     - 通知 INSERT を CHECK 制約で失敗させても updateStatus の RESOLVED 更新はコミットされたまま。
+#       是正前後で同じ結果であり、巻き戻りは再現しなかった（見立てどおり ORDERING_ONLY）。
+#     - 業務TXをロールバックさせたとき通知が出ないことは、是正後にのみ成立する。
+#       これが本ロットで実際に直った点である。
+#
+# ■ 是正した5件
+#
+#   ① ErrorReportAsyncExecutor#doRecordBackendException（TX_NOTIFY_BARE）
+#      notifyRegression / notifyEscalation / notifySlack / notifySystemAdmins の4呼び出しを
+#      ErrorReportRegressionDetectedEvent / ErrorReportSeverityEscalatedEvent /
+#      ErrorReportRaisedEvent の publish へ置換。
+#   ② ErrorReportService#createOrAggregate（TX_NOTIFY_BARE）
+#      notifyRegression / notifyEscalation / notifySlack / notifySystemAdmins の4呼び出しを
+#      同じ3イベントの publish へ置換（Slack 抑制は ErrorReportRaisedEvent#slackEnabled で表す）。
+#   ③ ErrorReportService#updateStatus（TX_NOTIFY_BARE）
+#      notifyResolution を ErrorReportResolvedEvent の publish へ置換。
+#   ④ ErrorReportTimelineService#assign（TX_NOTIFY_BARE）
+#      notifyAssignment を ErrorReportAssignedEvent の publish へ置換。
+#   ⑤ ErrorReportService#recordBackendException（TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY）
+#      委譲先 ErrorReportAsyncExecutor#recordBackendException が①の是正で通知を発火しなくなったため、
+#      番人の delegateFiresNotification が false になり検出されなくなった。
+#      本メソッド自体は無変更である（委譲の形はそのまま。エラー記録は業務TXの巻き戻りと独立に
+#      残らねばならないので、@Async + 別TXへ逃がす構造そのものは正しい）。
+#      これに伴い分類済みエントリが1件減るため CLASSIFIED_FLOOR も 2 -> 1 へ下げた
+#      （残る分類済みは ShiftBudgetFailedEventService#retry の1件）。
+#
+#   配送先は新設の ErrorReportNotificationListener
+#   （@Async("event-pool") + @TransactionalEventListener(AFTER_COMMIT)）。
+#   イベントには ID と種別（および業務TX内でしか観測できない昇格前後の severity）だけを載せ、
+#   本文・受信者はコミット済みの error_reports 行を読み直して組み立てる。
+#
+#   ErrorReportNotifier の該当6メソッドからは @Async を外した。非同期化の責務は
+#   AFTER_COMMIT リスナーが持ち、二重のスレッドホップは配送順序を無意味に乱すだけであるため。
+#   本文組み立て（i18n の MessageSource 引き当て・Slack ペイロード整形）は既存の
+#   ErrorReportNotifierTest が固定している資産なので Notifier 側に残した。
+#
+# ■ 受信者ごとの被害半径（正規形の3要素目）
+#
+#   notifySystemAdmins / notifyEscalation / notifyRegression は**管理者ループ全体が1つの try**に
+#   入っており、1人目への createNotification が落ちると残りの管理者全員が通知を受け取れなかった。
+#   受信者リストの解決を外側 try、配送を受信者ごとの try/catch（ERROR ログに受信者IDを含む）へ分けた。
+#   あわせて Slack 送信も独立した try に切り出した（是正前は Slack が落ちると SYSTEM_ADMIN
+#   プッシュまで巻き添えで送られなかった。Slack と アプリ内通知は別の配送先である）。
+#   ErrorReportNotifierTest.PerRecipientIsolation が3経路とも固定している。
+#
+# ■ 既存テストが欠陥を隠していた（#2990 で8件目）
+#
+#   ErrorReportServiceTest は ErrorReportNotifier をモックしていながら**verify を1本も持っていなかった**。
+#   createOrAggregate / updateStatus の通知発火は実装から丸ごと削除しても緑のままだった
+#   （そもそも両メソッドに対する単体テストが1本も無かった）。是正にあわせてイベント publish の
+#   検証を6本追加した。あわせて、依存から外れて久しい ErrorReportAiAnalysisService の
+#   死んだ @Mock も実際の依存 ErrorReportAiAnalysisDispatcher へ差し替えた。
+#
+# ■ CENSUS_FLOOR: 51 -> 46 の裏取り（実測）
+#   是正前: 凍結エントリ 43 + REMOVED 8 + AMBIGUOUS 0 = 51（= 是正前の CENSUS_FLOOR）
+#   是正後: 凍結エントリ 38 + REMOVED 8 + AMBIGUOUS 0 = 46
+#   消えた 5 件はすべて上記の是正由来であり、番人の検出力低下による消失は 0 件である。
+#   番人（NotificationTransactionBoundaryGuardTest）の判定ロジック（語彙 NOTIFY_METHOD_VOCABULARY・
+#   構造条件 notifyCallOffsets・入口判定 isAllowedEntryPoint）は一行も変更していない。
+#   変更したのは検出力の下限3定数と javadoc のみである。
+#
+# ■ 検出力の下限: 3本すべてを下げた（実測列挙つき）
+#   RAW_CANDIDATE_HITS_MIN      166 -> 162
+#   STRUCTURAL_NOTIFY_CALLS_MIN 146 -> 142
+#   NOTIFY_BEARING_FILES_MIN     92 -> 90
+#
+#   触った本番ファイルの語彙内ヒットを是正前後で1件ずつ実測した（合計 18 -> 14 = -4）:
+#     - ErrorReportService                 5 -> 0（notifyRegression/notifyEscalation/notifySlack/
+#                                                  notifySystemAdmins/notifyResolution → publishEvent）
+#     - ErrorReportAsyncExecutor           4 -> 0（notifyRegression/notifyEscalation/notifySlack/
+#                                                  notifySystemAdmins → publishEvent）
+#     - ErrorReportTimelineService         1 -> 0（notifyAssignment → publishEvent）
+#     - ErrorReportNotificationListener  新規 0 -> 6（上記10箇所の移設先。通知種別ごとに1呼び出しへ集約）
+#     - ErrorReportNotifier                8 -> 8（不変。@Async を外しただけ）
+#     - 新規5イベント record               0 -> 0
+#   構造条件（レシーバが識別子・引数1つ以上）は消えた10箇所・増えた6箇所ともすべて満たすため
+#   STRUCTURAL も同じく -4。発火を持つファイル数は -3（上記3サービス）+1（新規リスナー）= -2。
+#   通知そのものは1件も消していない（6種すべて配送リスナーから呼ばれ続ける）。

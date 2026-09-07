@@ -1,5 +1,20 @@
 import type { ReceiptResponse, ReceiptIssuerSettings, ReceiptPreset } from '~/types/receipt'
 
+/** BE ReceiptAdminController / ReceiptSettingsController が受け付けるスコープ種別。 */
+export type ReceiptScopeType = 'TEAM' | 'ORGANIZATION'
+
+/** 領収書一覧のページング引数。BE は 0 起点の page と size を受ける。 */
+export interface ReceiptListParams {
+  page?: number
+  size?: number
+}
+
+/** BE PagedResponse の実体（data + meta）。 */
+export interface PagedReceiptResponse {
+  data: ReceiptResponse[]
+  meta: { total: number; page: number; size: number; totalPages: number }
+}
+
 export function useReceiptApi() {
   const api = useApi()
 
@@ -13,60 +28,136 @@ export function useReceiptApi() {
   }
 
   // === Admin Receipts ===
-  async function getReceipts(params?: Record<string, unknown>) {
-    const qs = buildQuery(params)
-    return api<{ data: ReceiptResponse[]; meta: Record<string, unknown> }>(
-      `/api/v1/admin/receipts?${qs}`,
-    )
+  // BE `ReceiptAdminController` は admin 系のほぼ全エンドポイントで
+  // `@RequestParam String scopeType` / `@RequestParam Long scopeId` を必須として要求する。
+  // 送らないと Spring が 400 を返して画面が全く動かないため、
+  // `=== Settings ===` 節と同じく第1・第2引数でスコープを受け取る（F08.4 AC-7）。
+  async function getReceipts(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    params?: ReceiptListParams,
+  ) {
+    // BE は page を 0 起点の `page`、件数を `size` で受ける（`per_page` ではない）。
+    const qs = buildQuery({ scopeType, scopeId, ...params })
+    return api<PagedReceiptResponse>(`/api/v1/admin/receipts?${qs}`)
   }
 
-  async function getReceipt(receiptId: number) {
-    return api<{ data: ReceiptResponse }>(`/api/v1/admin/receipts/${receiptId}`)
+  async function getReceipt(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    receiptId: number,
+  ) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api<{ data: ReceiptResponse }>(`/api/v1/admin/receipts/${receiptId}?${qs}`)
   }
 
-  async function issueReceipt(body: Record<string, unknown>) {
-    return api<{ data: ReceiptResponse }>('/api/v1/admin/receipts', { method: 'POST', body })
+  async function issueReceipt(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    body: Record<string, unknown>,
+  ) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api<{ data: ReceiptResponse }>(`/api/v1/admin/receipts?${qs}`, { method: 'POST', body })
   }
 
-  async function bulkIssueReceipts(body: Record<string, unknown>) {
-    return api('/api/v1/admin/receipts/bulk', { method: 'POST', body })
+  async function bulkIssueReceipts(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    body: Record<string, unknown>,
+  ) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api(`/api/v1/admin/receipts/bulk?${qs}`, { method: 'POST', body })
   }
 
-  async function previewReceipt(body: Record<string, unknown>) {
-    return api('/api/v1/admin/receipts/preview', { method: 'POST', body })
+  async function previewReceipt(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    body: Record<string, unknown>,
+  ) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api(`/api/v1/admin/receipts/preview?${qs}`, { method: 'POST', body })
   }
 
-  async function approveReceipt(receiptId: number) {
-    return api(`/api/v1/admin/receipts/${receiptId}/approve`, { method: 'PATCH' })
+  async function approveReceipt(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    receiptId: number,
+  ) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api<{ data: ReceiptResponse }>(`/api/v1/admin/receipts/${receiptId}/approve?${qs}`, {
+      method: 'PATCH',
+    })
   }
 
-  async function voidReceipt(receiptId: number, body?: Record<string, unknown>) {
-    return api(`/api/v1/admin/receipts/${receiptId}/void`, { method: 'POST', body })
+  // BE `VoidReceiptRequest.reason` は `@NotBlank`。本文なしで叩くと 400 になるため必須引数にする。
+  async function voidReceipt(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    receiptId: number,
+    body: { reason: string },
+  ) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api<{ data: ReceiptResponse }>(`/api/v1/admin/receipts/${receiptId}/void?${qs}`, {
+      method: 'POST',
+      body,
+    })
   }
 
-  async function bulkVoidReceipts(body: Record<string, unknown>) {
-    return api('/api/v1/admin/receipts/bulk-void', { method: 'POST', body })
+  async function bulkVoidReceipts(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    body: Record<string, unknown>,
+  ) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api(`/api/v1/admin/receipts/bulk-void?${qs}`, { method: 'POST', body })
   }
 
-  async function reissueReceipt(receiptId: number, body?: Record<string, unknown>) {
-    return api(`/api/v1/admin/receipts/${receiptId}/reissue`, { method: 'POST', body })
+  // BE は再発行プレビューを返す（実発行ではない）。`@RequestBody` は必須なので既定で空オブジェクトを送る。
+  async function reissueReceipt(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    receiptId: number,
+    body: Record<string, unknown> = {},
+  ) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api(`/api/v1/admin/receipts/${receiptId}/reissue?${qs}`, { method: 'POST', body })
   }
 
-  async function sendReceiptEmail(receiptId: number, body?: Record<string, unknown>) {
-    return api(`/api/v1/admin/receipts/${receiptId}/send-email`, { method: 'POST', body })
+  async function sendReceiptEmail(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    receiptId: number,
+    body: Record<string, unknown> = {},
+  ) {
+    const qs = buildQuery({ scopeType, scopeId })
+    return api(`/api/v1/admin/receipts/${receiptId}/send-email?${qs}`, { method: 'POST', body })
   }
 
-  async function downloadPdf(receiptId: number) {
-    return api(`/api/v1/admin/receipts/${receiptId}/pdf`)
+  async function downloadPdf(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    receiptId: number,
+    kind?: string,
+  ) {
+    const qs = buildQuery({ scopeType, scopeId, kind })
+    return api(`/api/v1/admin/receipts/${receiptId}/pdf?${qs}`)
   }
 
-  async function exportReceipts(params?: Record<string, unknown>) {
-    const qs = buildQuery(params)
+  async function exportReceipts(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    params?: Record<string, unknown>,
+  ) {
+    const qs = buildQuery({ scopeType, scopeId, ...params })
     return api(`/api/v1/admin/receipts/export?${qs}`)
   }
 
-  async function getDescriptionSuggestions(params?: Record<string, unknown>) {
-    const qs = buildQuery(params)
+  async function getDescriptionSuggestions(
+    scopeType: ReceiptScopeType,
+    scopeId: string | number,
+    params?: Record<string, unknown>,
+  ) {
+    const qs = buildQuery({ scopeType, scopeId, ...params })
     return api(`/api/v1/admin/receipts/description-suggestions?${qs}`)
   }
 
@@ -101,14 +192,14 @@ export function useReceiptApi() {
 
   // === Settings ===
   // scopeType/scopeId は BE が全4本で必須クエリパラメータとして要求する（F08.4 D-1）。
-  async function getSettings(scopeType: 'TEAM' | 'ORGANIZATION', scopeId: string | number) {
+  async function getSettings(scopeType: ReceiptScopeType, scopeId: string | number) {
     const qs = buildQuery({ scopeType, scopeId })
     return api<{ data: ReceiptIssuerSettings }>(`/api/v1/admin/receipt-settings?${qs}`)
   }
 
   // BE は PATCH（差分更新）。フル置換の PUT ではない（F08.4 §9.2）。
   async function updateSettings(
-    scopeType: 'TEAM' | 'ORGANIZATION',
+    scopeType: ReceiptScopeType,
     scopeId: string | number,
     body: Record<string, unknown>,
   ) {
@@ -120,7 +211,7 @@ export function useReceiptApi() {
   }
 
   async function uploadLogo(
-    scopeType: 'TEAM' | 'ORGANIZATION',
+    scopeType: ReceiptScopeType,
     scopeId: string | number,
     formData: FormData,
   ) {
@@ -131,7 +222,7 @@ export function useReceiptApi() {
     })
   }
 
-  async function deleteLogo(scopeType: 'TEAM' | 'ORGANIZATION', scopeId: string | number) {
+  async function deleteLogo(scopeType: ReceiptScopeType, scopeId: string | number) {
     const qs = buildQuery({ scopeType, scopeId })
     return api(`/api/v1/admin/receipt-settings/logo?${qs}`, { method: 'DELETE' })
   }

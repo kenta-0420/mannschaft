@@ -39,7 +39,11 @@
         "notes": "メモ",
         "notesPlaceholder": "備考など",
         "cancel": "キャンセル",
-        "submit": "発行する"
+        "submit": "発行する",
+        "voidTitle": "領収書を無効化",
+        "voidReason": "無効化の理由",
+        "voidReasonPlaceholder": "例: 金額誤りのため",
+        "voidSubmit": "無効化する"
       },
       "toast": {
         "loadFailed": "領収書一覧の取得に失敗しました",
@@ -55,6 +59,13 @@
         "emailSendFailed": "メール送信に失敗しました",
         "issued": "領収書を発行しました",
         "issueFailed": "領収書の発行に失敗しました"
+      },
+      "notice": {
+        "personalScopeUnsupported": "領収書管理は個人スコープでは利用できません。チームまたは組織スコープに切り替えてください。",
+        "scopeNotReady": "スコープを選択すると領収書一覧を表示します。"
+      },
+      "validation": {
+        "voidReasonRequired": "無効化の理由を入力してください"
       }
     },
     "settings": {

@@ -742,3 +742,4 @@ HTTP|com.mannschaft.app.workflow.controller.WorkflowTemplateStatusController|2|2
 STOMP|com.mannschaft.app.chat.controller.ChatTypingController|1|1
 STOMP|com.mannschaft.app.chat.controller.ChatWebSocketController|1|1
 STOMP|com.mannschaft.app.village.controller.VillageLobbyPresenceController|3|3
+HTTP|com.mannschaft.app.joinrequest.controller.JoinRequestController|10|10

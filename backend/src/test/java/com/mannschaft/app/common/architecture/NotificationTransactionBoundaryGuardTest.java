@@ -1927,6 +1927,29 @@ class NotificationTransactionBoundaryGuardTest {
      * 失われておらず、AFTER_COMMIT の後へ移っただけである。
      * 新しい 169 は 2026-09-04 の実測ちょうどで、余裕はゼロである。</p>
      *
+     * <h2>L11（2026-09-06 / errorreport ドメイン 5件）: 166 -> 162</h2>
+     * <p>触った本番ファイルは 4 本（変更）+ 6 本（新規）で、語彙内ヒットは 18 -> 14 の <b>-4</b>。
+     * 1 件ずつ実測して突き合わせた（内訳の合計が -4 に一致する）:</p>
+     * <ul>
+     *   <li>{@code ErrorReportService} 5 -> 0。{@code errorReportNotifier.} の
+     *       {@code notifyRegression} / {@code notifyEscalation} / {@code notifySlack} /
+     *       {@code notifySystemAdmins} / {@code notifyResolution} が
+     *       {@code eventPublisher.publishEvent(...)} へ置換された。</li>
+     *   <li>{@code ErrorReportAsyncExecutor} 4 -> 0。{@code notifyRegression} /
+     *       {@code notifyEscalation} / {@code notifySlack} / {@code notifySystemAdmins} が同様に置換。</li>
+     *   <li>{@code ErrorReportTimelineService} 1 -> 0。{@code notifyAssignment} が置換。</li>
+     *   <li>{@code ErrorReportNotificationListener}（新規）0 -> 6。上記 10 箇所の移設先で、
+     *       通知種別ごとに 1 呼び出しへ集約された（{@code notifySlack} /
+     *       {@code notifySystemAdmins} / {@code notifyEscalation} / {@code notifyRegression} /
+     *       {@code notifyResolution} / {@code notifyAssignment}）。</li>
+     *   <li>{@code ErrorReportNotifier} 8 -> 8（不変）。{@code @Async} を外しただけで
+     *       {@code notificationService.createNotification(...)} の数は動かない。</li>
+     *   <li>新規の 5 イベント record は語彙内の呼び出しを 1 つも持たない（+0）。</li>
+     * </ul>
+     * <p>減った 4 は「10 箇所の発火点が 6 箇所へ集約された」ぶんであり、通知の実発火点は
+     * 1 件も失われていない（Slack / SYSTEM_ADMIN / 昇格 / 再発 / 解決 / 担当割り当ての 6 種は
+     * すべて配送リスナーから呼ばれ続ける）。語彙も構造条件も本PRで無変更である。</p>
+     *
      * <h2>L8（2026-09-05 / schedule ドメイン 7件）: 167 -> 166</h2>
      * <p><b>消えた生ヒットは 1 件だけ</b>であり、実測で 1 件ずつ突き合わせた。是正で触れた
      * 本番ファイル 12 本（変更 7・新規 5）の語彙内ヒットを是正前後で数えると 6 -> 5:</p>
@@ -1951,7 +1974,7 @@ class NotificationTransactionBoundaryGuardTest {
      * {@code AFTER_COMMIT} の後へ移っただけである。新しい 166 は 2026-09-05 の実測ちょうどで、
      * 余裕はゼロである。</p>
      */
-    static final long RAW_CANDIDATE_HITS_MIN = 166L;
+    static final long RAW_CANDIDATE_HITS_MIN = 162L;
 
     /**
      * 実測 149（2026-09-04 / Issue #2990 L5 の是正後）。158 -> 149 の根拠は
@@ -1970,9 +1993,13 @@ class NotificationTransactionBoundaryGuardTest {
      * {@code notifyAllPreAuthorized} / {@code createNotificationPreAuthorized} も満たすため、
      * 1:1 で置換した 2 組はここでも増減ゼロである。</p>
      *
+     * <p>L11（2026-09-06 / errorreport ドメイン 5件）で 146 -> 142。差分は生ヒットと完全に一致する
+     * （構造条件＝レシーバが識別子・引数1つ以上は、消えた 10 箇所も増えた 6 箇所もすべて満たす）。
+     * 内訳の全列挙は {@link #RAW_CANDIDATE_HITS_MIN} の L11 節にある。</p>
+     *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 146L;
+    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 142L;
 
     /**
      * 実測 17309（2026-09-01 main 取り込み後）。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。
@@ -2046,9 +2073,22 @@ class NotificationTransactionBoundaryGuardTest {
      *       <b>発火なし</b>。語彙内の通知 API を 1 つも呼ばない。</li>
      * </ul>
      *
+     * <p>L11（2026-09-06 / errorreport ドメイン 5件）で 92 -> 90。発火ありのファイルの出入りは
+     * 差し引き -2 である:</p>
+     * <ul>
+     *   <li>{@code ErrorReportService} — 発火あり → <b>なし</b>（-1）。5 箇所すべてが publish へ。</li>
+     *   <li>{@code ErrorReportAsyncExecutor} — 発火あり → <b>なし</b>（-1）。4 箇所すべてが publish へ。</li>
+     *   <li>{@code ErrorReportTimelineService} — 発火あり → <b>なし</b>（-1）。1 箇所が publish へ。</li>
+     *   <li>{@code ErrorReportNotificationListener} — <b>新規に発火あり</b>（+1）。上記の移設先。</li>
+     *   <li>{@code ErrorReportNotifier} — 発火あり → <b>あり（不変）</b>。
+     *       {@code createNotification} を同ファイルに残したまま、呼び出し位置だけを
+     *       {@code AFTER_COMMIT} の後（配送リスナー）へ移した。</li>
+     *   <li>新規 5 イベント record — <b>発火なし</b>。</li>
+     * </ul>
+     *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long NOTIFY_BEARING_FILES_MIN = 92L;
+    static final long NOTIFY_BEARING_FILES_MIN = 90L;
 
     /** 検出力の実測値。 */
     record DetectionPower(long rawCandidateHits, long structuralNotifyCalls, long parsedMethods) {}
@@ -2090,8 +2130,10 @@ class NotificationTransactionBoundaryGuardTest {
          * (ii) 巻き戻しはしないが<b>「業務コミット後」という因果順序を保証しない</b>。
          *
          * <p>委譲先が {@code @Async} / {@code REQUIRES_NEW} で別スレッド・別 TX に逃げている形
-         * （例: {@code ErrorReportService} の委譲先 {@code ErrorReportAsyncExecutor#recordBackendException}
-         * は {@code @Async("event-pool")} + {@code @Transactional}）。
+         * （例: {@code ShiftBudgetFailedEventService#retry} の委譲先
+         * {@code ShiftBudgetRetryExecutor#execute} は {@code @Transactional(REQUIRES_NEW)}。
+         * かつて同じ例に挙げていた {@code ErrorReportService#recordBackendException} は
+         * Issue #2990 L11 で解消済み）。
          * 業務側が後でロールバックしても通知だけ残る<b>逆向きの不整合</b>が通る。
          * 原則5 の判定軸（AFTER_COMMIT 境界を越えたか）では違反だが、
          * 手当ては「TX から切り離す」ではなく「AFTER_COMMIT リスナーへ移す」になる。

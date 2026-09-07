@@ -3,7 +3,6 @@ package com.mannschaft.app.role.service;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.role.entity.InviteTokenEntity;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.InviteTokenRepository;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -17,10 +16,6 @@ import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.membership.domain.RoleKind;
-import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.dto.MembershipCreateRequest;
-import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.provisioning.service.ProvisioningGate;
 import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.qr.BrandedQrImageWriter;
@@ -77,7 +72,7 @@ public class InviteService {
     private final ApplicationEventPublisher eventPublisher;
     private final MyScopeFolderService myScopeFolderService;
     private final MyScopeFolderRepository myScopeFolderRepository;
-    private final MembershipService membershipService;
+    private final MembershipGrantService membershipGrantService;
     private final BrandedQrImageWriter brandedQrImageWriter;
     private final AccessControlService accessControlService;
     private final UserRowLockService userRowLockService;
@@ -303,30 +298,13 @@ public class InviteService {
             throw new BusinessException(TeamErrorCode.TEAM_003, org.springframework.http.HttpStatus.CONFLICT);
         }
 
-        // ロール割当
-        var roleBuilder = UserRoleEntity.builder()
-                .userId(userId)
-                .roleId(token.getRoleId());
-        if ("TEAM".equals(scopeType)) {
-            roleBuilder.teamId(scopeId);
-        } else {
-            roleBuilder.organizationId(scopeId);
-        }
-        userRoleRepository.save(roleBuilder.build());
-
-        // F00.5 認可基盤根治: memberships にも MEMBER として入会させる。
+        // ロール割当 ＋ 入会（role ドメイン user_roles ＋ membership ドメイン memberships）。
         // 認可（AccessControlService.isMember）は memberships を真実の源とするため、
         // user_roles だけでは招待参加者が当該スコープから 403 で締め出される構造的欠陥を防ぐ。
         // 招待トークンが配布するのは常に権限ロール（user_roles）であり SUPPORTER は配布しないため、
         // membership の role_kind は MEMBER 固定とする（在籍有無のみを表す）。
-        MembershipCreateRequest membershipReq = new MembershipCreateRequest();
-        membershipReq.setUserId(userId);
-        membershipReq.setScopeType("TEAM".equals(scopeType) ? ScopeType.TEAM : ScopeType.ORGANIZATION);
-        membershipReq.setScopeId(scopeId);
-        membershipReq.setRoleKind(RoleKind.MEMBER);
-        membershipReq.setInvitedBy(token.getCreatedBy());
-        membershipReq.setSource("INVITE_TOKEN");
-        membershipService.join(membershipReq);
+        // 参加申請承認（柱③-A・CMP-260901-1538）と共通の付与経路（重複実装しない）。
+        membershipGrantService.grantRole(scopeType, scopeId, userId, token.getRoleId(), token.getCreatedBy(), "INVITE_TOKEN");
 
         // 使用回数をインクリメント
         token.incrementUsedCount();
