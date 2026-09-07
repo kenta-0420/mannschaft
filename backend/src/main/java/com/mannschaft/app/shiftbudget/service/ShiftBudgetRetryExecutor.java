@@ -2,8 +2,6 @@ package com.mannschaft.app.shiftbudget.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventStatus;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetFailedEventEntity;
@@ -40,7 +38,7 @@ public class ShiftBudgetRetryExecutor {
 
     private final ShiftBudgetFailedEventRepository repository;
     private final ThresholdAlertEvaluationService thresholdAlertEvaluationService;
-    private final NotificationHelper notificationHelper;
+    private final ShiftBudgetNotificationResendService notificationResendService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -105,6 +103,19 @@ public class ShiftBudgetRetryExecutor {
         thresholdAlertEvaluationService.evaluateAndTrigger(allocationId);
     }
 
+    /**
+     * {@code NOTIFICATION_SEND} 失敗イベントの再実行（Issue #2990 L13 で是正）。
+     *
+     * <p>再送そのものは {@link ShiftBudgetNotificationResendService}（監査済み例外・
+     * {@code NOT_SUPPORTED}）へ委譲する。是正前はここで
+     * {@code notificationHelper.notifyAll(...)} を直接呼んでおり、その下流の
+     * {@code createNotification}（{@code REQUIRED}）が {@link #execute} のトランザクションへ
+     * 参加していたため、通知の DB 例外が rollback-only を立てて
+     * <b>着手マーク（{@code retry_count++}）も FAILED 化も commit 時に消えていた</b>
+     * （＝リトライ回数が積み上がらず、バッチが同じイベントを無限に拾い続ける）。
+     * 委譲先の {@code NOT_SUPPORTED} が本メソッドのトランザクションを中断するため、
+     * いまは失敗しても {@link #execute} の catch が記録した結果が確実にコミットされる。</p>
+     */
     private void retryNotificationSend(ShiftBudgetFailedEventEntity entity) {
         Map<String, Object> payload = parsePayload(entity);
         @SuppressWarnings("unchecked")
@@ -113,6 +124,9 @@ public class ShiftBudgetRetryExecutor {
             throw new IllegalStateException("NOTIFICATION_SEND payload has no user_ids");
         }
         List<Long> userIds = rawIds.stream().map(this::toLong).filter(Objects::nonNull).toList();
+        if (userIds.isEmpty()) {
+            throw new IllegalStateException("NOTIFICATION_SEND payload has no parsable user_ids");
+        }
         String type = String.valueOf(payload.getOrDefault("type", "SHIFT_BUDGET_THRESHOLD_ALERT"));
         String title = String.valueOf(payload.getOrDefault("title", ""));
         String body = String.valueOf(payload.getOrDefault("body", ""));
@@ -120,12 +134,21 @@ public class ShiftBudgetRetryExecutor {
         Long sourceId = toLong(payload.get("source_id"));
         Long scopeId = toLong(payload.get("scope_id"));
         String actionUrl = (String) payload.get("action_url");
+        // Issue #2908: 再送は保存済みの ja 固定文字列ではなく i18n キーから組み立て直す
+        // （title / body は運用ログ・フォレンジック用のフォールバックとしてのみ使う）。
+        // JSON 往復で Integer / Long / Double に化けるため threshold_percent は toLong で正規化する。
+        String titleKey = (String) payload.get("title_key");
+        String bodyKey = (String) payload.get("body_key");
+        Long thresholdPercent = toLong(payload.get("threshold_percent"));
+        if (titleKey == null || bodyKey == null) {
+            throw new IllegalStateException(
+                    "NOTIFICATION_SEND payload has no title_key/body_key (Issue #2908)");
+        }
 
-        notificationHelper.notifyAll(
-                userIds, type, title, body,
-                sourceType, sourceId,
-                NotificationScopeType.ORGANIZATION, scopeId,
-                actionUrl, null);
+        notificationResendService.resend(
+                userIds, type, titleKey, bodyKey,
+                thresholdPercent == null ? null : thresholdPercent.intValue(),
+                title, body, sourceType, sourceId, scopeId, actionUrl);
     }
 
     private Map<String, Object> parsePayload(ShiftBudgetFailedEventEntity entity) {

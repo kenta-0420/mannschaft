@@ -248,7 +248,7 @@ class NotificationTransactionBoundaryGuardConditionTest {
         }
 
         @Test
-        @DisplayName("監査済み例外4クラスと配送層基盤は走査結果に現れない")
+        @DisplayName("監査済み例外5クラスと配送層基盤は走査結果に現れない")
         void 監査済み例外と配送層は対象外() {
             for (String fqcn : NotificationTransactionBoundaryGuardTest.AUDITED_EXCEPTIONS) {
                 assertThat(NotificationTransactionBoundaryGuardTest.scanSource(fqcn,

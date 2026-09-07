@@ -190,7 +190,7 @@ class NotificationTransactionBoundaryGuardTest {
             "com.mannschaft.app.schedule.service.ScheduleCommentNotificationRunner");
 
     /**
-     * 監査済み例外 — 通知自体が業務目的である経路（CMP-056 で対象外と裁可された4クラス）。
+     * 監査済み例外 — 通知自体が業務目的である経路（CMP-056 で対象外と裁可された4クラス＋Issue #2990 L13 の1クラス）。
      *
      * <p>これらは「業務処理に<b>付随</b>する通知」ではなく、通知の作成・確定こそがユースケースの本体である。
      * 業務TXと通知を同時にロールバックさせることが正しい振る舞いなので、契約の適用対象から外す。
@@ -200,7 +200,13 @@ class NotificationTransactionBoundaryGuardTest {
             "com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService",
             "com.mannschaft.app.social.service.FriendNotificationService",
             "com.mannschaft.app.advertising.campaign.service.AdPushChannelService",
-            "com.mannschaft.app.family.service.CareEventNotificationService");
+            "com.mannschaft.app.family.service.CareEventNotificationService",
+            // Issue #2990 L13: NOTIFICATION_SEND 失敗イベントの再送。運用者が管理 API /
+            // リトライバッチから「あの通知をもう一度送れ」と命じる経路であり、通知を出すこと自体が
+            // ユースケースの本体である。同期 API の応答（success / 新ステータス）として結果を返す
+            // 契約のため AFTER_COMMIT へは移せない。呼び出し元の業務TXを汚さないよう
+            // NOT_SUPPORTED で呼び出し元TXを中断する形にしてある。
+            "com.mannschaft.app.shiftbudget.service.ShiftBudgetNotificationResendService");
 
     /** 違反の種別。baseline のキーの一部になるため、名前を変えると baseline の総入れ替えが必要。 */
     enum ViolationKind {
@@ -1965,7 +1971,7 @@ class NotificationTransactionBoundaryGuardTest {
     }
 
     @Test
-    @DisplayName("監査済み例外4クラスを違反として挙げない")
+    @DisplayName("監査済み例外5クラスを違反として挙げない")
     void 監査済み例外を違反として挙げない() {
         List<Violation> found = mainScan().violations();
         Set<String> owners = found.stream().map(Violation::ownerFqcn)
