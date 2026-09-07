@@ -80,7 +80,8 @@ public class BillingCustomerPortalApplicationService {
 
         BillingCustomerPortalResult result = portalGateway.createSession(
                 new BillingCustomerPortalRequest(actorId, scopeKind, scopeId, customer.id(),
-                        customer.stripeCustomerRef(), stripeIdempotencyKey(idempotencyKey, customer)));
+                        customer.stripeCustomerRef(),
+                        stripeIdempotencyKey(idempotencyKey, actorId, scopeKind, scopeId, customer)));
 
         recordPortalOpened(actorId, scopeKind, scopeId, customer);
         return new BillingCustomerPortalSessionResponse(result.portalUrl(), result.issuedAt());
@@ -101,11 +102,26 @@ public class BillingCustomerPortalApplicationService {
                 null, null, null, metadata);
     }
 
-    /** 再送時に Stripe 側で同一 Session が返るよう、呼び出し元の冪等キーへ束縛する。 */
-    private String stripeIdempotencyKey(String key, BillingCustomerPortalCustomer customer) {
-        return Optional.ofNullable(key)
+    /**
+     * 再送時に Stripe 側で同一 Session が返るよう、呼び出し元の冪等キーへ束縛する。
+     *
+     * <p><b>actor / scope を必ず含める</b>: {@code Idempotency-Key} はクライアントが決める値であり、
+     * 別の操作者が同じ値を送ってくることを妨げられない。アプリ側の耐久冪等台帳
+     * （{@link BillingDurableIdempotencyService}）は {@code actor / method / path / key} で
+     * 束ねているため両者は<b>別リクエスト</b>として通るのに、Stripe へ渡すキーが呼び出し元の
+     * 生値だけだと Stripe 側では同一キーとなり、<b>先行 actor の Portal Session URL が
+     * そのまま別 actor へ返る</b>（他人の請求情報を開く URL の横流し）。
+     * そこで台帳のキー構成に揃え、{@code actorId / scopeKind / scopeId / key} を連結して
+     * グローバルに一意化する。同一 actor・同一 scope・同一キーの再送では同じ値になるため、
+     * 「再送で同一 Session が返る」という本来の目的は保たれる。</p>
+     *
+     * <p>key が空のときは Customer id へ退避する（scope 内で一意であり、actor 間衝突も起きない）。</p>
+     */
+    private String stripeIdempotencyKey(String key, long actorId, EntitlementScopeKind scopeKind,
+                                        long scopeId, BillingCustomerPortalCustomer customer) {
+        String suffix = Optional.ofNullable(key)
                 .filter(value -> !value.isBlank())
-                .map(value -> STRIPE_IDEMPOTENCY_PREFIX + value)
-                .orElse(STRIPE_IDEMPOTENCY_PREFIX + customer.id());
+                .orElseGet(() -> customer.id().toString());
+        return STRIPE_IDEMPOTENCY_PREFIX + actorId + ':' + scopeKind.name() + ':' + scopeId + ':' + suffix;
     }
 }

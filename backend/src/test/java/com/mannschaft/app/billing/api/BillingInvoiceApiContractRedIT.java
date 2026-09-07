@@ -186,6 +186,27 @@ class BillingInvoiceApiContractRedIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("AC50_nullFlagが範囲外のcursorは空ページではなく400")
+    void AC50_異常なnullFlagのcursorは400() throws Exception {
+        // 実 API が返した正規カーソルの nullFlag だけを 2 に差し替える。
+        // 検証が甘いと SQL の比較条件に一致せず、400 ではなく静かに空ページが返る。
+        String valid = body(fetchPage(OWNER_ID, 2, null)).path("meta").path("nextCursor").asText();
+        String raw = new String(decodeBase64(valid), StandardCharsets.UTF_8);
+        String[] parts = raw.split("", -1);
+        parts[1] = "2";
+        String broken = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                String.join("", parts).getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(get(INVOICES)
+                        .with(user(String.valueOf(OWNER_ID)))
+                        .param("scopeKind", "USER")
+                        .param("scopeId", String.valueOf(OWNER_ID))
+                        .param("size", "2")
+                        .param("cursor", broken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("AC51_ページング中に新invoiceが入っても既出行は再出現しない")
     void AC51_ページング中の追加でも再出現しない() throws Exception {
         MvcResult first = fetchPage(OWNER_ID, 2, null);

@@ -60,6 +60,13 @@ record BillingInvoiceCursor(int nullFlag, Instant periodEnd, UUID id) {
                 throw new IllegalArgumentException("unexpected cursor layout");
             }
             int nullFlag = Integer.parseInt(parts[1]);
+            // nullFlag は SQL の第1整列キーと同じ 0/1 の二値でしかありえない。
+            // ここを二値へ狭めないと nullFlag=2 のような値が下の整合検査
+            // （(nullFlag == 1) != (periodEnd == null)）を素通りし、SQL の比較条件に
+            // 一致しないまま 400 ではなく「空ページ」を返してページングが静かに壊れる。
+            if (nullFlag != 0 && nullFlag != 1) {
+                throw new IllegalArgumentException("cursor nullFlag out of range: " + nullFlag);
+            }
             Instant periodEnd = parts[2].isEmpty()
                     ? null
                     : Instant.ofEpochMilli(Long.parseLong(parts[2]));

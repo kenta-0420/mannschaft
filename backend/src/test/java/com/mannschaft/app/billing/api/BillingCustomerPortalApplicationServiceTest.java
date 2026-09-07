@@ -35,6 +35,9 @@ class BillingCustomerPortalApplicationServiceTest {
     private static final UUID CUSTOMER_ID = UUID.fromString("00000000-0000-7000-8000-000000000401");
     private static final String CUSTOMER_REF = "cus_test_401";
     private static final String KEY = "key-401";
+    /** 同一 scope を管理できる別の操作者（冪等キー衝突の検体）。 */
+    private static final long OTHER_ACTOR_ID = 4_003L;
+    private static final long TEAM_SCOPE_ID = 4_100L;
 
     /** 呼び出し順を 1 本の列に記録し、AC-74 の「順序」を実行で観測する。 */
     private final List<String> calls = new ArrayList<>();
@@ -167,6 +170,62 @@ class BillingCustomerPortalApplicationServiceTest {
     void AC70_冪等キーがStripeへ束縛される() {
         service.create(ACTOR_ID, request(ACTOR_ID), KEY);
         assertThat(gateway.lastRequest.stripeIdempotencyKey()).contains(KEY);
+    }
+
+    @Test
+    @DisplayName("AC70_同一 Idempotency-Key を別 actor が送っても Stripe へ渡すキーは衝突しない")
+    void AC70_別actorの同一キーはStripeで衝突しない() {
+        // 同一 TEAM scope を管理できる 2 名。アプリ側の耐久冪等台帳は actor を含むため
+        // 両者とも本処理まで到達する。Stripe へ渡すキーが呼び出し元の生値だけだと、
+        // 後発 actor に先発 actor の Portal Session がそのまま返る。
+        customer = Optional.of(new BillingCustomerPortalCustomer(
+                CUSTOMER_ID, EntitlementScopeKind.TEAM, TEAM_SCOPE_ID, CUSTOMER_REF));
+        service = newServiceWithPermissiveGuard();
+        CreateBillingCustomerPortalSessionRequest request =
+                new CreateBillingCustomerPortalSessionRequest(EntitlementScopeKind.TEAM, TEAM_SCOPE_ID);
+
+        service.create(ACTOR_ID, request, KEY);
+        String firstActorKey = gateway.lastRequest.stripeIdempotencyKey();
+        service.create(OTHER_ACTOR_ID, request, KEY);
+        String secondActorKey = gateway.lastRequest.stripeIdempotencyKey();
+
+        assertThat(secondActorKey)
+                .as("別 actor が同じ Idempotency-Key を送っても Stripe 側のキーは別でなければならない")
+                .isNotEqualTo(firstActorKey);
+
+        // 陽性対照: 同一 actor・同一 scope・同一キーの再送では同じ値であること
+        //（Stripe 側で同一 Session が返るという本来の目的を壊していない）。
+        service.create(ACTOR_ID, request, KEY);
+        assertThat(gateway.lastRequest.stripeIdempotencyKey())
+                .as("同一 actor の再送は同一キーのまま")
+                .isEqualTo(firstActorKey);
+    }
+
+    @Test
+    @DisplayName("AC70_同一 actor でも scope が違えば Stripe へ渡すキーは別になる")
+    void AC70_別scopeの同一キーも衝突しない() {
+        customer = Optional.of(new BillingCustomerPortalCustomer(
+                CUSTOMER_ID, EntitlementScopeKind.TEAM, TEAM_SCOPE_ID, CUSTOMER_REF));
+        service = newServiceWithPermissiveGuard();
+
+        service.create(ACTOR_ID,
+                new CreateBillingCustomerPortalSessionRequest(EntitlementScopeKind.TEAM, TEAM_SCOPE_ID), KEY);
+        String teamKey = gateway.lastRequest.stripeIdempotencyKey();
+        service.create(ACTOR_ID,
+                new CreateBillingCustomerPortalSessionRequest(EntitlementScopeKind.TEAM, TEAM_SCOPE_ID + 1), KEY);
+
+        assertThat(gateway.lastRequest.stripeIdempotencyKey()).isNotEqualTo(teamKey);
+    }
+
+    /** scope 認可を通す版（同一 scope に複数の課金管理者が居る状況を作るため）。 */
+    private BillingCustomerPortalApplicationService newServiceWithPermissiveGuard() {
+        BillingCustomerPortalAccessGuard guard = (actorId, scopeKind, scopeId) -> calls.add("guard");
+        BillingCustomerPortalCustomerRepository repository = (scopeKind, scopeId) -> {
+            calls.add("customer");
+            return customer;
+        };
+        return new BillingCustomerPortalApplicationService(
+                guard, repository, rateLimiter, gateway, auditLogService);
     }
 
     /** 回数制限の port スタブ（許可回数を数えるだけ。Valkey には触れない）。 */

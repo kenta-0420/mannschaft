@@ -18,7 +18,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -182,13 +184,35 @@ public class BillingInvoiceProjectionService {
         projectLines(saved, invoice);
     }
 
-    /** {@code billing_invoice_lines} を UNIQUE(invoice_id, psp_line_ref) で冪等に積む（AC-14）。 */
+    /**
+     * {@code billing_invoice_lines} を UNIQUE(invoice_id, psp_line_ref) を鍵に<b>最新値へ揃える</b>（AC-14）。
+     *
+     * <p><b>なぜ「存在したら skip」ではないのか</b>: Stripe の請求書は draft → finalized の間に
+     * 金額・税・説明・数量が変わりうる。{@code invoice.created} で積んだ行を後続の
+     * {@code invoice.updated} / {@code invoice.finalized} で更新しないと、ヘッダ
+     * （{@code billing_invoices} の subtotal / tax / total）だけが新しくなり、明細合計と
+     * 食い違ったまま固定される。請求書 PDF（F08.12）はこの明細を正本にするため、
+     * 誤った金額の請求書を出すことになる。</p>
+     *
+     * <p><b>単調更新との整合（AC-9）</b>: 「古いイベントを適用しない」判定は
+     * {@link #project} が投影行の {@code updated_at} と {@code event.created} を比べて
+     * 既に一箇所で行っており、古いイベントはここへ到達しない。すなわち本メソッドが走るのは
+     * 「これまでに適用したどのイベントよりも新しい（または同時刻の）イベント」だけであり、
+     * 明細をそのイベントの内容で置き換えても、確定済み請求書が古い値へ巻き戻ることはない。
+     * 単調性の判定をヘッダと明細で二重に持たない（判定正本は 1 箇所）。</p>
+     *
+     * <p><b>消えた行は消す</b>: draft 段階の line が finalized で取り下げられることがある。
+     * 残置すると明細合計とヘッダ total が一致しなくなるため、今回の payload に無い行は削除し、
+     * 「その時点の Stripe の請求書」を丸ごと写した状態にする。</p>
+     */
     private void projectLines(BillingInvoiceEntity invoiceEntity, InvoiceView invoice) {
-        List<BillingInvoiceLineEntity> toInsert = new ArrayList<>();
+        Map<String, BillingInvoiceLineEntity> existingByRef = new LinkedHashMap<>();
+        for (BillingInvoiceLineEntity row : invoiceLineRepository.findByInvoiceId(invoiceEntity.getId())) {
+            existingByRef.put(row.getPspLineRef(), row);
+        }
+
+        List<BillingInvoiceLineEntity> toSave = new ArrayList<>();
         for (InvoiceLineView line : invoice.lines()) {
-            if (invoiceLineRepository.findByInvoiceIdAndPspLineRef(invoiceEntity.getId(), line.id()).isPresent()) {
-                continue;
-            }
             long discount = line.discountAmount();
             long including;
             long excluding;
@@ -201,28 +225,38 @@ public class BillingInvoiceProjectionService {
                 excluding = line.amount();
                 including = line.amount() - discount + line.taxAmount();
             }
-            toInsert.add(BillingInvoiceLineEntity.builder()
-                    .invoiceId(invoiceEntity.getId())
-                    .organizationId(invoiceEntity.getOrganizationId())
-                    .stripePriceRef(line.priceRef())
-                    .pspLineRef(line.id())
-                    .descriptionSnapshot(line.description())
-                    .quantity(line.quantity())
-                    .amountExcludingTax(excluding)
-                    .discountAmount(discount)
-                    .taxNameSnapshot(line.taxName())
-                    .taxRateBasisPoints(line.taxRateBasisPoints())
-                    .taxAmount(line.taxAmount())
-                    .includedInPrice(line.taxInclusive())
-                    .amountIncludingTax(including)
-                    .periodStart(toInstant(line.periodStartEpochSec()))
-                    .periodEnd(toInstant(line.periodEndEpochSec()))
-                    .createdAt(Instant.now())
-                    .build());
+
+            BillingInvoiceLineEntity entity = existingByRef.remove(line.id());
+            if (entity == null) {
+                entity = BillingInvoiceLineEntity.builder()
+                        .invoiceId(invoiceEntity.getId())
+                        .pspLineRef(line.id())
+                        .createdAt(Instant.now())
+                        .build();
+            }
+            entity.setOrganizationId(invoiceEntity.getOrganizationId());
+            entity.setStripePriceRef(line.priceRef());
+            entity.setDescriptionSnapshot(line.description());
+            entity.setQuantity(line.quantity());
+            entity.setAmountExcludingTax(excluding);
+            entity.setDiscountAmount(discount);
+            entity.setTaxNameSnapshot(line.taxName());
+            entity.setTaxRateBasisPoints(line.taxRateBasisPoints());
+            entity.setTaxAmount(line.taxAmount());
+            entity.setIncludedInPrice(line.taxInclusive());
+            entity.setAmountIncludingTax(including);
+            entity.setPeriodStart(toInstant(line.periodStartEpochSec()));
+            entity.setPeriodEnd(toInstant(line.periodEndEpochSec()));
+            toSave.add(entity);
         }
-        if (!toInsert.isEmpty()) {
+
+        // payload に現れなかった既存行（＝取り下げられた line）を落とす。
+        if (!existingByRef.isEmpty()) {
+            invoiceLineRepository.deleteAll(existingByRef.values());
+        }
+        if (!toSave.isEmpty()) {
             // flush して DB 制約違反をこの場で顕在化させる（握り潰さず呼び出し元の境界に伝える）。
-            invoiceLineRepository.saveAllAndFlush(toInsert);
+            invoiceLineRepository.saveAllAndFlush(toSave);
         }
     }
 
