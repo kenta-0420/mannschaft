@@ -195,8 +195,8 @@ class ErrorReportServiceTest {
         @Test
         @DisplayName("重複集約で severity が MEDIUM → HIGH に昇格: ErrorReportSeverityEscalatedEvent を publish する")
         void aggregation_severityEscalation_publishesEscalatedEvent() {
-            // OPEN の既存行（MEDIUM）へ同一ハッシュが再着弾し、影響ユーザー数 20 で HIGH へ昇格する経路。
-            ErrorReportEntity existing = report(12L, ErrorReportStatus.OPEN,
+            // NEW の既存行（MEDIUM）へ同一ハッシュが再着弾し、影響ユーザー数 20 で HIGH へ昇格する経路。
+            ErrorReportEntity existing = report(12L, ErrorReportStatus.NEW,
                     ErrorReportSeverity.MEDIUM, 501L);
             given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.of(existing));
@@ -224,7 +224,7 @@ class ErrorReportServiceTest {
         @Test
         @DisplayName("重複集約で severity が変わらない場合: 昇格イベントは publish されない")
         void aggregation_withoutEscalation_publishesNothing() {
-            ErrorReportEntity existing = report(13L, ErrorReportStatus.OPEN,
+            ErrorReportEntity existing = report(13L, ErrorReportStatus.NEW,
                     ErrorReportSeverity.MEDIUM, 502L);
             given(errorReportRepository.findByErrorHash(org.mockito.ArgumentMatchers.anyString()))
                     .willReturn(Optional.of(existing));
