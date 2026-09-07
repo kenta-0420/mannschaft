@@ -267,6 +267,86 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("P1(3巡目): Checkout作成失敗（照会は成功し不在確定）なら巻き戻り、別ADMINが承諾して自分のCustomerで照会できる")
+    void checkoutFailureRollsBackAndAnotherAdminCanAcceptWithOwnCustomerLookup() {
+        HandoverRequestResult requested = handoverService.requestHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, oldContractId, oldPayerUserId);
+
+        // A の承諾: List 照会は成功して「不在」を確定させたうえで、Checkout 作成だけが失敗する。
+        // 照会が成功している＝Stripe 上に何も無いことが確定しているため、巻き戻しても回収漏れは起きない。
+        Mockito.when(billingPaymentGateway.createHandoverSubscriptionCheckout(
+                        anyLong(), anyInt(), anyString(), any(UUID.class), any(UUID.class), any(UUID.class),
+                        any(), anyString(), anyString()))
+                .thenThrow(new IllegalStateException("stripe checkout failed"));
+        assertThatThrownBy(() -> handoverService.acceptHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), adminAUserId))
+                .isInstanceOf(IllegalStateException.class);
+
+        BillingPayerHandoverRequestEntity rolledBack = reloadHandover(requested.handoverRequestId());
+        assertThat(rolledBack.getStatus())
+                .as("不在が確定しているので REQUESTED へ巻き戻す").isEqualTo(PayerHandoverStatus.REQUESTED);
+        assertThat(rolledBack.getNewPayerUserId()).isNull();
+
+        // 別 ADMIN B が承諾できる。B の回復照会は B 自身の Customer に対して行われる。
+        Mockito.reset(billingPaymentGateway);
+        stubGatewayForHappyPath();
+        HandoverAcceptResult accepted = handoverService.acceptHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), adminBUserId);
+
+        assertThat(accepted.status()).isEqualTo(PayerHandoverStatus.ACCEPTED);
+        assertThat(accepted.checkoutUrl()).as("Bのために新しい Checkout が発行される").isNotNull();
+        assertThat(reloadContract(accepted.newContractId()).getPayerUserId()).isEqualTo(adminBUserId);
+        // 回復照会が B の Customer を対象に走ったことを実測する（A の Customer ではない）。
+        Mockito.verify(billingPaymentGateway)
+                .findHandoverSubscriptionRef(adminBUserId, requested.handoverRequestId());
+        assertThat(planPointerContractId()).as("旧 pointer は終始無傷").isEqualTo(oldContractId);
+    }
+
+    // ============================================================
+    // Stripe 作成有無が曖昧なまま残った承諾（Codex検分3巡目 P1）
+    // ============================================================
+
+    @Test
+    @DisplayName("P1(3巡目): List照会失敗で曖昧に残ったACCEPTEDは、承諾者本人だけが再試行でき別ADMINは承諾できない")
+    void ambiguousAcceptedIsRetryableOnlyByTheSameAcceptor() {
+        HandoverRequestResult requested = handoverService.requestHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, oldContractId, oldPayerUserId);
+
+        // A の承諾中に List 照会が落ちる（Stripe に作られたかどうか不明な状態で ACCEPTED が残る）。
+        Mockito.when(billingPaymentGateway.findHandoverSubscriptionRef(eq(adminAUserId), any(UUID.class)))
+                .thenThrow(new IllegalStateException("stripe list failed"));
+        assertThatThrownBy(() -> handoverService.acceptHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), adminAUserId))
+                .isInstanceOf(IllegalStateException.class);
+
+        BillingPayerHandoverRequestEntity ambiguous = reloadHandover(requested.handoverRequestId());
+        assertThat(ambiguous.getStatus())
+                .as("曖昧な間は REQUESTED へ戻さない（戻すと別ADMINが承諾でき二重サブスクの窓が開く）")
+                .isEqualTo(PayerHandoverStatus.ACCEPTED);
+        assertThat(ambiguous.getNewPayerUserId()).as("承諾者はAに固定される").isEqualTo(adminAUserId);
+        UUID contractOfA = ambiguous.getNewContractId();
+        assertThat(contractOfA).isNotNull();
+
+        // 別 ADMIN B は承諾できない（B の Customer 限定の照会では A のサブスクを発見できないため）。
+        assertThatThrownBy(() -> handoverService.acceptHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), adminBUserId))
+                .isInstanceOf(BusinessException.class);
+        assertThat(reloadHandover(requested.handoverRequestId()).getNewPayerUserId())
+                .as("Bの試行で承諾者が奪われない").isEqualTo(adminAUserId);
+
+        // A 本人は再試行でき、同じ Customer を照会して回収できる。今度は照会が成功する。
+        Mockito.reset(billingPaymentGateway);
+        stubGatewayForHappyPath();
+        HandoverAcceptResult retry = handoverService.acceptHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), adminAUserId);
+
+        assertThat(retry.status()).isEqualTo(PayerHandoverStatus.ACCEPTED);
+        assertThat(retry.newContractId())
+                .as("新契約は作り直さず再利用する（冪等）").isEqualTo(contractOfA);
+        assertThat(planPointerContractId()).as("旧 pointer は終始無傷").isEqualTo(oldContractId);
+    }
+
+    @Test
     @DisplayName("P1-3(2巡目): 過去の承諾試行のexpiredが遅着しても、その後に成立した別ADMINの承諾を壊さない")
     void staleExpiredDoesNotRollBackTheCurrentAcceptance() {
         HandoverRequestResult requested = handoverService.requestHandover(

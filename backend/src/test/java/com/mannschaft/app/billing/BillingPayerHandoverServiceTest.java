@@ -429,8 +429,8 @@ class BillingPayerHandoverServiceTest {
         }
 
         @Test
-        @DisplayName("P1-2(2巡目): Stripe の List Subscriptions 照会が失敗しても承諾を巻き戻す（Checkout 作成前で詰まない）")
-        void subscriptionLookupFailure_rollsBackAcceptanceAndRethrows() {
+        @DisplayName("P1(3巡目): List 照会失敗は「Stripe 上の作成有無が曖昧」なので REQUESTED へ巻き戻さない（二重サブスク防止）")
+        void subscriptionLookupFailure_doesNotRollBackToRequested() {
             given(handoverTxService.validateAcceptable(
                     EntitlementScopeKind.TEAM, TEAM_ID, handoverId, NEW_PAYER))
                     .willReturn(validation(null));
@@ -446,9 +446,10 @@ class BillingPayerHandoverServiceTest {
                     EntitlementScopeKind.TEAM, TEAM_ID, handoverId, NEW_PAYER))
                     .isSameAs(listFailed);
 
-            // Checkout 作成だけを try で囲んでいると、この経路は ACCEPTED のまま取り残される。
-            verify(handoverTxService).rollbackAcceptanceToRequested(
-                    eq(handoverId), eq(newContractId), anyString());
+            // ★巻き戻すと別 ADMIN B が承諾でき、B の Customer 限定の回復照会では A の Customer に
+            //   在るかもしれないサブスクを発見できず二重サブスク＝二重課金になる（設計書 §3.2 R3-P0）。
+            //   よって承諾者を A に固定したまま ACCEPTED に留め、A 本人の再試行で回収させる。
+            verify(handoverTxService, never()).rollbackAcceptanceToRequested(any(), any(), anyString());
             // 照会に失敗している以上、Checkout を作ってはならない。
             verify(billingPaymentGateway, never()).createHandoverSubscriptionCheckout(
                     any(), anyInt(), anyString(), any(), any(), any(), any(), any(), any());

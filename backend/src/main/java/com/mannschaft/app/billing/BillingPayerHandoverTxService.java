@@ -85,10 +85,7 @@ public class BillingPayerHandoverTxService {
             handoverRequestRepository.save(handover);
             throw new BusinessException(EntitlementErrorCode.HANDOVER_EXPIRED);
         }
-        if (handover.getStatus() != PayerHandoverStatus.REQUESTED
-                && handover.getStatus() != PayerHandoverStatus.REQUIRES_PAYMENT_METHOD) {
-            throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_ACCEPTABLE);
-        }
+        requireAcceptableStatus(handover, operatorUserId);
 
         return new AcceptValidation(handover.getId(), handover.getScopeKind(), handover.getScopeId(),
                 handover.getOldContractId(), handover.getStatus(), handover.getPspNewSubscriptionRef(),
@@ -123,10 +120,7 @@ public class BillingPayerHandoverTxService {
         BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
         requireSameScope(handover, scopeKind, scopeId);
         requireEligibleAcceptor(handover, operatorUserId);
-        if (handover.getStatus() != PayerHandoverStatus.REQUESTED
-                && handover.getStatus() != PayerHandoverStatus.REQUIRES_PAYMENT_METHOD) {
-            throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_ACCEPTABLE);
-        }
+        requireAcceptableStatus(handover, operatorUserId);
         handover.setStatus(PayerHandoverStatus.REQUIRES_PAYMENT_METHOD);
         handoverRequestRepository.save(handover);
 
@@ -232,10 +226,7 @@ public class BillingPayerHandoverTxService {
         // 承諾者の適格性は「実際に書き込む」本メソッドでも独立に検証する（public 入口ごとの二重防御）。
         // validateAcceptable を経ずに本メソッドだけを呼ばれても穴が開かないようにするため。
         requireEligibleAcceptor(handover, operatorUserId);
-        if (handover.getStatus() != PayerHandoverStatus.REQUESTED
-                && handover.getStatus() != PayerHandoverStatus.REQUIRES_PAYMENT_METHOD) {
-            throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_ACCEPTABLE);
-        }
+        requireAcceptableStatus(handover, operatorUserId);
 
         BillingContractEntity oldContract = billingContractRepository
                 .findByIdAndDeletedAtIsNull(handover.getOldContractId())
@@ -530,6 +521,42 @@ public class BillingPayerHandoverTxService {
      * スコープの一致と管理権限は呼び出し側で検証済みであり、契約の存在は既に相手に見えているため、
      * ここは 404 で畳まず 403（{@code HANDOVER_NOT_ELIGIBLE_ACCEPTOR}）を返す。</p>
      */
+    /**
+     * 承諾を受け付けてよい状態かを検証する（設計書 §3.6・Codex検分3巡目 P1）。
+     *
+     * <p>通常の入口は {@code REQUESTED}（新規・巻き戻し後）と {@code REQUIRES_PAYMENT_METHOD}（差し戻し後）。
+     * これに加えて<b>{@code ACCEPTED} は「記録済みの承諾者本人」だけが再試行できる</b>。</p>
+     *
+     * <p><b>なぜ本人限定の再試行が必要か</b>: 承諾後の Stripe List Subscriptions 照会（§3.2 の回復照合）が
+     * 失敗すると、「その承諾者の Customer に新サブスクが既に在るか」が<b>不明</b>なまま残る。この曖昧な状態で
+     * {@code REQUESTED} へ巻き戻して別 ADMIN B に承諾させると、B の承諾で走る回復照合は
+     * §3.2（R3-P0）の定めどおり {@code customer={B の Customer}} に絞って走査するため
+     * <b>A の Customer にあるサブスクを原理的に発見できず</b>、二重サブスク＝二重課金になる
+     * （Idempotency-Key も customer が変わればパラメータ不一致で効かない）。
+     * よって曖昧な間は承諾者を A に固定し、A 本人の再試行でのみ同じ Customer を照会させて回収する。</p>
+     *
+     * <p><b>状態機械は増やしていない</b>: 新しい状態も新しい遷移も追加せず、既存 {@code ACCEPTED} への
+     * 再入を承諾者本人に限って許すだけである。{@code transitionToAccepted} は元から
+     * 「既に新契約が作られていれば作り直さない」冪等実装であり、この再入を前提にしている。
+     * A が戻らなければ猶予期限で {@code EXPIRED} となり §5.3 の purge fallback に渡る
+     * （設計書が「誰も承諾しなかった場合」に定める既存の挙動と同じ）。</p>
+     */
+    private void requireAcceptableStatus(
+            BillingPayerHandoverRequestEntity handover, Long operatorUserId) {
+        PayerHandoverStatus status = handover.getStatus();
+        if (status == PayerHandoverStatus.REQUESTED
+                || status == PayerHandoverStatus.REQUIRES_PAYMENT_METHOD) {
+            return;
+        }
+        if (status == PayerHandoverStatus.ACCEPTED
+                && operatorUserId != null
+                && operatorUserId.equals(handover.getNewPayerUserId())) {
+            // Stripe 上の作成有無が曖昧なまま残った承諾の、本人による再試行。
+            return;
+        }
+        throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_ACCEPTABLE);
+    }
+
     private void requireEligibleAcceptor(
             BillingPayerHandoverRequestEntity handover, Long operatorUserId) {
         if (!candidateResolver.isEligibleAcceptor(
