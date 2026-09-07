@@ -70,16 +70,24 @@ class ReceiptScopeTypeResolutionTest {
     }
 
     @Test
-    @DisplayName("fromTenantScope: PLATFORM は 400（COMMON_001）— 500 にしない")
-    void fromTenantScope_rejectsPlatform() {
+    @DisplayName("fromTenantScope: PLATFORM は 403（COMMON_002）— 500 でも 400 でもない")
+    void fromTenantScope_rejectsPlatformAsForbidden() {
+        // PLATFORM は enum として実在するが、テナント API では扱えないスコープ＝権限が無い。
+        // 入力が不正な未知値（COMMON_001 / 400）とは性質が異なるため畳んではならない。
+        // 発行者設定 API（from + checkAdminOrAbove）が既に返している 403 と答えを揃える。
         assertThatThrownBy(() -> ReceiptScopeType.fromTenantScope("PLATFORM"))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(CommonErrorCode.COMMON_001);
+                .isEqualTo(CommonErrorCode.COMMON_002);
+        // 大文字小文字を問わず同じ扱いであること。
+        assertThatThrownBy(() -> ReceiptScopeType.fromTenantScope(" platform "))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.COMMON_002);
     }
 
     @Test
-    @DisplayName("fromTenantScope: 未知値・空文字も 400（COMMON_001）")
+    @DisplayName("fromTenantScope: 未知値・空文字は 400（COMMON_001）のまま（PLATFORM とは分ける）")
     void fromTenantScope_rejectsUnknown() {
         for (String bad : new String[] {null, "", "UNKNOWN_SCOPE"}) {
             BusinessException e = catchThrowableOfType(
