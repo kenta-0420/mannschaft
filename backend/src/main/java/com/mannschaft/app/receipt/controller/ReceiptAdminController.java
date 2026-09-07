@@ -83,7 +83,7 @@ public class ReceiptAdminController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             @Valid @RequestBody CreateReceiptRequest request) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         ReceiptResponse response = receiptService.createReceipt(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -98,7 +98,7 @@ public class ReceiptAdminController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             @Valid @RequestBody BulkCreateReceiptRequest request) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         BulkResultResponse response = receiptService.bulkCreateReceipts(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -114,7 +114,7 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @PathVariable Long id,
             @Valid @RequestBody VoidReceiptRequest request) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         ReceiptResponse response = receiptService.voidReceipt(type, scopeId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -130,7 +130,7 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @PathVariable Long id,
             @Valid @RequestBody ReissueReceiptRequest request) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         ReceiptPreviewResponse response = receiptService.reissuePreview(
                 type, scopeId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -146,7 +146,7 @@ public class ReceiptAdminController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             @Valid @RequestBody BulkVoidReceiptRequest request) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         BulkVoidResultResponse response = receiptService.bulkVoidReceipts(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -161,7 +161,7 @@ public class ReceiptAdminController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             @PathVariable Long id) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         ReceiptResponse response = receiptService.approveReceipt(type, scopeId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -176,7 +176,7 @@ public class ReceiptAdminController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             @Valid @RequestBody CreateReceiptRequest request) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         ReceiptPreviewResponse response = receiptService.previewReceipt(
                 type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -193,7 +193,7 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         PagedResponse<ReceiptSummaryResponse> response = receiptService.listReceipts(
                 type, scopeId, page, size, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(response);
@@ -209,7 +209,7 @@ public class ReceiptAdminController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             @PathVariable Long id) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         ReceiptResponse response = receiptService.getReceipt(type, scopeId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -225,7 +225,7 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @PathVariable Long id,
             @RequestParam(required = false) String kind) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         ReceiptArchiveKind archiveKind = kind == null ? null : ReceiptArchiveKind.valueOf(kind.toUpperCase());
         byte[] pdf = receiptService.getReceiptPdf(type, scopeId, id, SecurityUtils.getCurrentUserId(), archiveKind);
         return ResponseEntity.ok()
@@ -247,7 +247,7 @@ public class ReceiptAdminController {
             @RequestParam(required = false) LocalDate issuedFrom,
             @RequestParam(required = false) LocalDate issuedTo,
             @RequestParam(defaultValue = "false") boolean includeVoided) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         byte[] csv = exportService.exportCsv(
                 type, scopeId, year, issuedFrom, issuedTo, includeVoided, SecurityUtils.getCurrentUserId());
         String filename = "receipts_" + scopeType + "_" + scopeId +
@@ -292,7 +292,7 @@ public class ReceiptAdminController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             @RequestParam(required = false) Long memberPaymentId) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         DescriptionSuggestionResponse response = exportService.getDescriptionSuggestions(
                 type, scopeId, memberPaymentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -309,7 +309,7 @@ public class ReceiptAdminController {
             @RequestParam Long scopeId,
             @PathVariable Long id,
             @Valid @RequestBody SendEmailRequest request) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         SendEmailResponse response = receiptService.sendEmail(
                 type, scopeId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(response));
