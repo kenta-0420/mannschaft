@@ -57,16 +57,35 @@ public enum ReceiptScopeType {
      * {@code checkAdminOrAboveIncludingPlatform} 経由）が担い、テナント向けの管理 API は
      * membership の {@code ScopeType} を前提に認可する。テナント API に {@code PLATFORM} が
      * 届くと {@code AccessControlService#isMember} 内の {@code ScopeType.valueOf("PLATFORM")}
-     * が {@link IllegalArgumentException} となり 500 になるため、入口で 400（COMMON_001）に
-     * 落とす。</p>
+     * が {@link IllegalArgumentException} となり 500 になるため、入口で弾く。</p>
+     *
+     * <h2>未知値と PLATFORM でステータスを分ける理由</h2>
+     * <p>この 2 つは性質が異なるため、同じ 400 に畳んではならない。</p>
+     * <ul>
+     *   <li><b>未知値</b>（enum に存在しない文字列）は<b>入力が不正</b>である
+     *       → 400 / {@code COMMON_001}</li>
+     *   <li><b>{@code PLATFORM}</b> は enum として実在するが、テナント API では扱えない
+     *       スコープである。すなわち<b>権限が無い</b>
+     *       → 403 / {@code COMMON_002}</li>
+     * </ul>
+     *
+     * <p><b>403 に揃える理由</b>: 同じ receipt ドメインの
+     * {@code ReceiptIssuerSettingsController} は {@link #from(String)} を通してから
+     * {@code checkAdminOrAbove} で拒否するため、団体 ADMIN の PLATFORM 越境に
+     * <b>既に 403 を返している</b>。ここを 400 のままにすると、兄弟エンドポイント間で
+     * 越境要求への応答が割れ、<b>応答の差からエンドポイントの実装差が読み取れてしまう</b>。
+     * 403 に統一すれば「PLATFORM はここでは扱えない」と「あなたには権限が無い」が
+     * 同じ答えになり、余計な情報を返さない（F08.12 実機E2E AC-7）。</p>
      *
      * @param value クエリで受け取った文字列（大文字小文字を問わない）
      * @return テナントスコープ種別
+     * @throws BusinessException 未知値・null・空文字なら {@code COMMON_001}（400）、
+     *                           {@code PLATFORM} なら {@code COMMON_002}（403）
      */
     public static ReceiptScopeType fromTenantScope(String value) {
         ReceiptScopeType scopeType = from(value);
         if (scopeType.isPlatform()) {
-            throw new BusinessException(CommonErrorCode.COMMON_001);
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return scopeType;
     }
