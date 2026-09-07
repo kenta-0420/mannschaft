@@ -200633,7 +200633,10 @@
           "taxRate": {
             "type": "number"
           }
-        }
+        },
+        "required": [
+          "amount"
+        ]
       },
       "EmailDeliveryRequest": {
         "type": "object",
