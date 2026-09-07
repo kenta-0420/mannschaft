@@ -1,5 +1,6 @@
 package com.mannschaft.app.receipt;
 
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
@@ -24,13 +25,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -101,6 +107,33 @@ class ReceiptIssuerSettingsContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private ReceiptIssuerSettingsRepository issuerSettingsRepository;
 
+    /**
+     * 外部ストレージ（presign）をモックする。
+     *
+     * <p><b>なぜ必要か</b>: {@code logoUrl}（AC-38）は {@code ReceiptLogoUrlProvider} →
+     * {@code MediaUrlResolver} → {@code StorageService#generateDownloadUrl} という経路で
+     * 都度 presign して生成される。しかし test プロファイルでは
+     * {@code mannschaft.storage.access-key} / {@code secret-key} が空であり、
+     * {@code R2Config} は空のとき {@code StaticCredentialsProvider} を設定しないため、
+     * AWS SDK の既定資格情報チェーンに落ちる。CI には資格情報が無いので presign 自体が
+     * {@code SdkClientException: Unable to load credentials from any of the providers in the chain}
+     * で失敗し（実測で確認済み）、{@code MediaUrlResolver} の設計どおり null へ縮退して
+     * {@code logoUrl} が null になる。これは receipt 固有の問題ではなく、外部ストレージに
+     * 依存する IT すべてに共通する事情である。
+     *
+     * <p><b>金型</b>: 同じ receipt ドメインの {@code ReceiptIssuerSettingsLogoAndAuditIT} を
+     * はじめ、{@code ChatAuthzScopeContractIT} / {@code CirculationExportScopeContractIT} /
+     * {@code BudgetFlatWriteScopeContractIT} など既存 IT はいずれも
+     * {@code @MockitoBean R2StorageService} で外部ストレージを差し替えている。本クラスも同じ形に揃える。
+     *
+     * <p><b>インターフェース {@code StorageService} ではなく具象 {@link R2StorageService} を
+     * 指定する理由</b>: インターフェース型で置換すると bean が {@code StorageService$MockitoMock}
+     * 型にすり替わり、同一 context 内で具象 {@code R2StorageService} を注入する消費者が
+     * 解決できなくなる（既存 IT の Javadoc に記録された既知の罠）。</p>
+     */
+    @MockitoBean
+    private R2StorageService storageService;
+
     /** 発行者設定が「作成済み」のチーム。 */
     private Long teamAId;
     /** 発行者設定が「未作成」のチーム（UPSERT / 初回訪問の検証専用）。 */
@@ -110,6 +143,12 @@ class ReceiptIssuerSettingsContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // presign はローカル署名計算だが、資格情報が無いと SdkClientException になる（上記 Javadoc 参照）。
+        // 生成された URL の形は本テストの関心ではなく、「キーそのままではない絶対 URL が返ること」が AC-38。
+        given(storageService.generateDownloadUrl(anyString(), any(Duration.class)))
+                .willAnswer(invocation -> "https://storage.example.test/mannschaft-storage/"
+                        + invocation.getArgument(0) + "?X-Amz-Signature=dummy");
+
         MembershipTestHelper.insertActiveUser(em, ADMIN_A);
         MembershipTestHelper.insertActiveUser(em, MEMBER_A);
         MembershipTestHelper.insertActiveUser(em, ADMIN_B);
