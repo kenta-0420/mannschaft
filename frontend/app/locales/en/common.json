@@ -2343,5 +2343,10 @@
       "confirmTitle": "Remove member",
       "confirmMessage": "Remove {name} from members?"
     }
+  },
+  "scopeSwitch": {
+    "hint": "To switch, open a team or organization from the \"Teams\" / \"Organizations\" menu at the top of the screen. Whichever you open becomes the current scope.",
+    "goTeams": "Choose a team",
+    "goOrganizations": "Choose an organization"
   }
 }

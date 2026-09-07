@@ -2343,5 +2343,10 @@
       "confirmTitle": "멤버 제외",
       "confirmMessage": "{name} 님을 멤버에서 제외하시겠습니까?"
     }
+  },
+  "scopeSwitch": {
+    "hint": "전환하려면 화면 상단의 「팀」「조직」 메뉴에서 대상을 선택해 열어 주세요. 연 단체가 그대로 현재 스코프가 됩니다.",
+    "goTeams": "팀 선택",
+    "goOrganizations": "조직 선택"
   }
 }
