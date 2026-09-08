@@ -496,7 +496,7 @@ PR-3 の実装に対する独立検分で、上の1行仕様のままでは**成
 
 **作業行がそもそも作られない穴（2巡目 P1-2）**: 契約ごとの `prepare` で行を作る形だと、「複数契約の途中で停止し、まだ `prepare` に到達していない契約」に行が残らない。そこで **Stripe に触れる前に対象全件の行を1トランザクションで `PENDING` として commit する**（`reserveAll`）。それでも「退会本体の commit 後・非同期タスクが始まる前の停止」「`event-pool` の投入拒否」では `reserveAll` 自体が呼ばれない。この最後の穴は、作業行ではなく**退会状態そのもの**を起点にする `MembershipSubscriptionService#findWithdrawalCancelBacklog()`（`users.deleted_at IS NOT NULL` × `cancel_at_period_end = false`）が塞ぐ。行の有無に関係なく「やり残した解約」を再構築できる。
 
-**2経路の重複排除は PR-3 が持つ**（3巡目 P2）: PR-4 の再試行バッチは「非終端の作業行」と「backlog」の2つを走査するが、集合が重なると同じ契約へ二重投入されうる。その dedup は **PR-4 ではなく `findWithdrawalCancelBacklog()` が行う**——非終端の作業行を持つ契約は作業行経路が拾うため、backlog からは除外して返す。これで2集合は定義上互いに素になり、PR-4 側は単純に union できる。
+**2経路の重複排除**（3巡目 P2 / 4巡目 P2）: PR-4 の再試行バッチは「非終端の作業行」と「backlog」の2つを走査する。`findWithdrawalCancelBacklog()` は非終端の作業行を持つ契約を除外するので、**同一時点のスナップショットとしては**互いに素になる。ただし本メソッドは複数の独立クエリの組み合わせでトランザクションを張っておらず、照会の間に作業行が作られれば重なりうる——**時間軸を含めると「常に互いに素」ではない**。PR-4 の駆動側は、契約ごとの処理が行ロック下で状態を再検証する（本 PR の `prepare`/`prepareRestore` と同じ作法）ことで二重投入を無害化すること。
 
 **非終端のまま拾われ続ける行を作らない**（3巡目 P2）: 復旧中に対象が消えた・payer が変わった・期末が到来して終端化した場合、`prepareRestore` は空を返すだけでなく作業行を `SUPERSEDED` へ**終端化する**。そうしないと照合バッチが永久に同じ行を拾い続ける。
 
@@ -548,6 +548,31 @@ PR-3 の実装に対する独立検分で、上の1行仕様のままでは**成
 **本人の新しい意思との衝突**: 退会取消の**後**に本人が改めて明示解約した場合、復旧処理は同じ `cancel_at_period_end=true` しか見ないため、その新しい意思まで解除してしまう。人が新しい判断を下した瞬間——`MembershipSubscriptionService#cancel`——に由来の記録を `SUPERSEDED` へ終端化し、以後の復旧対象から外す。**無効化の対象には `PENDING` を含める**（3巡目 P1-3）——古い退会処理が `PENDING` の間に「退会取消＋明示解約」が入る競合があり、`SUCCEEDED`/`RESTORING` だけを対象にすると無効化が no-op になる。
 
 あわせて `applyScheduled` は**反映できなかったとき（`applied=false`）に `SUCCEEDED` を書かない**。「既に `cancel_at_period_end=true`」は本人の明示解約かもしれず、`SUCCEEDED` にすると復旧処理がそれを退会由来と誤認する。この場合は `SUPERSEDED`（＝自分が予約したのではない）とする。
+
+#### (7) Stripe 冪等キーの世代分離（4巡目 P1-1）
+
+Stripe の Idempotency-Key は**同一キーに対して最初の応答をそのまま返す**（24時間）。キーを `subscriptionId` だけから作ると、「世代Aで解約予約 → 取消で解除 → 24時間以内に世代Bで再退会」で世代Bのリクエストが世代Aと同じキーになり、**3回目の更新が実行されない**。DB は `cancel_at_period_end=true`、Stripe 実体は解除済み、という金銭事故に直結する乖離が残る。
+
+→ 冪等キーに**退会世代を含める**（`withdrawal-payer-cancel-<subscriptionId>-<generationEpochMilli>`、解除側は `withdrawal-payer-restore-` 接頭辞）。解約・解除で接頭辞を分けることで両者も衝突しない。
+
+#### (8) 世代の再検証は「書き込む全経路」で行う（4巡目 P1-2）
+
+確定（`applyScheduled`）だけでなく、**解除の確定（`applyRestore`）と失敗の記録（`markFailed` / `markRestoreFailed`）も世代と現在状態を再検証する**。していないと次が起きる。
+
+- 世代Aの解除が Stripe を呼んでいる間に世代Bの再退会が完了 → 遅れて戻った世代Aが**世代Bの解約予約を解除**する
+- 本人の明示解約で `SUPERSEDED` になった行に、古い Stripe 呼び出しの失敗が `FAILED` を書き戻す → 広げた復旧対象集合により**本人の明示解約が解除され得る**
+
+`markFailed` は「自分の世代かつ `PENDING`」、`markRestoreFailed` は「自分の世代かつ `RESTORING`」のときだけ書く。
+
+#### (9) 真値の確認はロック付きで行い、ロック順序を固定する（4巡目 P1-3・P2）
+
+退会状態を根拠に DB を書き換える経路は、`WithdrawalStateQueryService#lockAndFindPendingWithdrawalAttempt`（`select deleted_at ... for update`）でユーザー行をロックしてから判断する。ロックなしの読み取りでは「真値を見た直後・自分が書き込む前」に `cancelWithdrawal` や再退会が commit でき、確認と反映が線形化しない。
+
+**ロック順序の正準は `users` → `membership_subscriptions` → `membership_payer_withdrawal_cancellations`。** `PENDING` を復旧対象へ加えたことで解約側と解除側が同じ行集合を触るようになったため、順序を固定しないとデッドロックしうる。
+
+#### (10) 明示解約と由来の無効化は同一トランザクション（4巡目 P1-4）
+
+`supersedeByUserDecision` の伝播は `REQUIRED`（既定）にする。`REQUIRES_NEW` だと、内側が commit した後に外側（利用者の解約 API）がロールバックした場合、**DB 解約は成立していないのに作業行だけ終端化**され、以後の退会取消で本来戻すべき予約を復旧対象と認識できなくなる。
 
 #### (6) 復旧の「Stripe 成功・DB 失敗」（2巡目 P1-3）
 

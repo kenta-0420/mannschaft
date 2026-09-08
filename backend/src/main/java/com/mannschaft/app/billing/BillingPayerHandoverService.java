@@ -273,20 +273,31 @@ public class BillingPayerHandoverService {
         if (withdrawingPayerUserId == null) {
             throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND);
         }
-
-        // 「いま本当に退会申請中か」を処理時点の DB 真値で確かめる（Codex 検分2巡目 P1-1）。
-        // 退会と退会取消はどちらも共用 event-pool 上の非同期処理で到達順が保証されない。退会受付の
-        // 直後に取り消すと、取消処理が先に走って対象ゼロで終わり、そのあとに届いた古い退会イベントが
-        // REQUESTED の引継要求を作ってしまう。この防御は本メソッドが唯一の入口であるためここに置く。
-        if (withdrawalStateQueryService.findPendingWithdrawalAttempt(withdrawingPayerUserId).isEmpty()) {
-            log.info("柱③-B: 処理時点で退会申請中ではないため引継要求を作成しません userId={}, contractId={}",
-                    withdrawingPayerUserId, oldContractId);
-            throw new BusinessException(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);
-        }
         // 行ロックを取ってから読む。承諾（acceptHandover）や別経路の更新と競合しても、
         // payer の判定と要求作成が同じスナップショットの上で行われることを保証する。
         BillingContractEntity contract = billingContractRepository.findByIdForUpdate(oldContractId)
                 .orElseThrow(() -> new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND));
+
+        // ① 認可を最初に通す（Codex 検分4巡目 B）。
+        //    「この契約の払い手が、渡された本人か」は本経路における唯一の認可根拠であり、
+        //    契約の適格性（PSP 紐付け・期末・PAST_DUE）や退会状態より【先に】判定しなければならない。
+        //    後回しにすると、越境入力が payer 検証に到達する前に別の前提検証で弾かれ、
+        //    「越境を拒否できている」ことを誰も確認できなくなる（fail closed の順序）。
+        Long contractPayerUserId = contract.getPayerUserId() != null
+                ? contract.getPayerUserId() : contract.getCreatedBy();
+        if (contractPayerUserId == null || !contractPayerUserId.equals(withdrawingPayerUserId)) {
+            throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_OLD_PAYER);
+        }
+
+        // ② 「いま本当に退会申請中か」を処理時点の DB 真値で確かめる（Codex 検分2巡目 P1-1）。
+        //    退会と退会取消はどちらも共用 event-pool 上の非同期処理で到達順が保証されない。退会受付の
+        //    直後に取り消すと、取消処理が先に走って対象ゼロで終わり、そのあとに届いた古い退会イベントが
+        //    REQUESTED の引継要求を作ってしまう。この防御は本メソッドが唯一の入口であるためここに置く。
+        if (withdrawalStateQueryService.findPendingWithdrawalAttempt(contractPayerUserId).isEmpty()) {
+            log.info("柱③-B: 処理時点で退会申請中ではないため引継要求を作成しません userId={}, contractId={}",
+                    withdrawingPayerUserId, oldContractId);
+            throw new BusinessException(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);
+        }
 
         // スコープは呼び出し側からではなく【契約行から】読む（越境入力の余地を構造的に無くす）。
         return createHandoverRequest(contract, contract.getScopeKind(), contract.getScopeId(),

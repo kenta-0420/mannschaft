@@ -82,7 +82,8 @@ public class MembershipPayerWithdrawalTxService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<UUID> reserveAll(Collection<UUID> subscriptionIds, Long payerUserId) {
-        Optional<Instant> attempt = withdrawalStateQueryService.findPendingWithdrawalAttempt(payerUserId);
+        Optional<Instant> attempt =
+                withdrawalStateQueryService.lockAndFindPendingWithdrawalAttempt(payerUserId);
         if (attempt.isEmpty()) {
             // 退会取消が先に確定している。古い退会イベントで解約を作ってはならない。
             log.info("払い手退会に伴う期末解約: 処理時点で退会申請中ではないため中止します payerUserId={}", payerUserId);
@@ -126,6 +127,16 @@ public class MembershipPayerWithdrawalTxService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<PreparedTarget> prepare(UUID subscriptionId, Long payerUserId) {
+        // 【ロック順序】users → membership_subscriptions → membership_payer_withdrawal_cancellations。
+        // 全経路でこの順を守る（検分4巡目 P2 のデッドロック指摘）。ユーザー行をロックして読むことで、
+        // 真値の確認と本トランザクションの書き込みが線形化する（同 P1-3）。
+        Optional<Instant> attempt =
+                withdrawalStateQueryService.lockAndFindPendingWithdrawalAttempt(payerUserId);
+        if (attempt.isEmpty()) {
+            log.info("払い手退会に伴う期末解約: 処理時点で退会申請中ではないためスキップ subscriptionId={}", subscriptionId);
+            return Optional.empty();
+        }
+
         Optional<MembershipSubscriptionEntity> locked =
                 membershipSubscriptionRepository.findByIdForUpdate(subscriptionId);
         if (locked.isEmpty()) {
@@ -133,14 +144,6 @@ public class MembershipPayerWithdrawalTxService {
             return Optional.empty();
         }
         MembershipSubscriptionEntity subscription = locked.get();
-
-        // 行ロックを保持したまま「今この人は退会申請中か」を引く。退会取消が先に確定していれば
-        // ここで止まる（イベントの到達順に依存しない・検分2巡目 P1-1）。
-        Optional<Instant> attempt = withdrawalStateQueryService.findPendingWithdrawalAttempt(payerUserId);
-        if (attempt.isEmpty()) {
-            log.info("払い手退会に伴う期末解約: 処理時点で退会申請中ではないためスキップ subscriptionId={}", subscriptionId);
-            return Optional.empty();
-        }
 
         // 抽出時点から状態が変わっている可能性がある（webhook・本人操作）。ロック後に取り直して判断する。
         if (!payerUserId.equals(subscription.getPayerUserId())
@@ -183,6 +186,14 @@ public class MembershipPayerWithdrawalTxService {
     public ApplyOutcome applyScheduled(UUID subscriptionId, Long payerUserId,
             Instant withdrawalAttemptAt, Long currentPeriodEndEpochSec) {
 
+        // 【要】ここでも世代を再検証する（Codex 検分3巡目 P1-2）。
+        // tx① で真値を確かめてもロックはそこで解放され、Stripe 呼び出しの間に退会が取り消されうる。
+        // 再検証が無いと「退会取消済みなのに期末解約され、作業行は終端 SUCCEEDED」という、
+        // backlog にも再試行にも載らない回復不能な状態が作れてしまう。
+        // ロック順序は users → subscriptions → cancellations（検分4巡目 P2）。
+        Optional<Instant> current =
+                withdrawalStateQueryService.lockAndFindPendingWithdrawalAttempt(payerUserId);
+
         MembershipSubscriptionEntity subscription = membershipSubscriptionRepository
                 .findByIdForUpdate(subscriptionId)
                 .orElseThrow(() -> new IllegalStateException(
@@ -193,11 +204,6 @@ public class MembershipPayerWithdrawalTxService {
                     "期末解約の確定対象の payer が変わっています subscriptionId=" + subscriptionId);
         }
 
-        // 【要】ここでも世代を再検証する（Codex 検分3巡目 P1-2）。
-        // tx① で真値を確かめてもロックはそこで解放され、Stripe 呼び出しの間に退会が取り消されうる。
-        // 再検証が無いと「退会取消済みなのに期末解約され、作業行は終端 SUCCEEDED」という、
-        // backlog にも再試行にも載らない回復不能な状態が作れてしまう。
-        Optional<Instant> current = withdrawalStateQueryService.findPendingWithdrawalAttempt(payerUserId);
         if (current.isEmpty() || !current.get().equals(withdrawalAttemptAt)) {
             log.warn("払い手退会に伴う期末解約: Stripe 呼び出しの間に退会状態が変わったため DB へ反映しません "
                             + "subscriptionId={}, 着手時の世代={}, 現在={}",
@@ -266,8 +272,13 @@ public class MembershipPayerWithdrawalTxService {
      * PR-4 の再試行バッチは対象を拾いようがない。</p>
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markFailed(UUID subscriptionId, String error) {
+    public void markFailed(UUID subscriptionId, Instant withdrawalAttemptAt, String error) {
         cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId)
+                // 【要】自分の世代・自分が着手した行だけを FAILED にする（Codex 検分4巡目 P1-2）。
+                // 無条件に倒すと、本人の明示解約で SUPERSEDED になった行や別世代の SUCCEEDED 行まで
+                // FAILED へ戻り、広げた復旧対象集合によって【本人の明示解約が解除され得る】。
+                .filter(record -> matchesGeneration(record, withdrawalAttemptAt))
+                .filter(record -> record.getStatus() == MembershipPayerWithdrawalCancellationStatus.PENDING)
                 .ifPresent(record -> {
                     record.markFailed(error);
                     cancellationRepository.saveAndFlush(record);
@@ -291,6 +302,18 @@ public class MembershipPayerWithdrawalTxService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<PreparedTarget> prepareRestore(UUID subscriptionId, Long payerUserId) {
+        // 【ロック順序】users → membership_subscriptions → membership_payer_withdrawal_cancellations
+        // （検分4巡目 P2）。是正前は cancellations を先に取っており、applyScheduled と逆順で
+        // デッドロックしうる並びだった。
+        // 再退会が始まっていたら復旧しない（イベントの到達順に依存しない・検分2巡目 P1-1）。
+        if (withdrawalStateQueryService.lockAndFindPendingWithdrawalAttempt(payerUserId).isPresent()) {
+            log.info("払い手退会取消: 処理時点で再び退会申請中のため復旧しません subscriptionId={}", subscriptionId);
+            return Optional.empty();
+        }
+
+        Optional<MembershipSubscriptionEntity> locked =
+                membershipSubscriptionRepository.findByIdForUpdate(subscriptionId);
+
         Optional<MembershipPayerWithdrawalCancellationEntity> recordOpt =
                 cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId);
         if (recordOpt.isEmpty()
@@ -299,15 +322,7 @@ public class MembershipPayerWithdrawalTxService {
             return Optional.empty();
         }
 
-        // 再退会が始まっていたら復旧しない（イベントの到達順に依存しない・検分2巡目 P1-1）。
-        if (withdrawalStateQueryService.findPendingWithdrawalAttempt(payerUserId).isPresent()) {
-            log.info("払い手退会取消: 処理時点で再び退会申請中のため復旧しません subscriptionId={}", subscriptionId);
-            return Optional.empty();
-        }
-
         MembershipPayerWithdrawalCancellationEntity record = recordOpt.get();
-        Optional<MembershipSubscriptionEntity> locked =
-                membershipSubscriptionRepository.findByIdForUpdate(subscriptionId);
         if (locked.isEmpty()) {
             // 対象が消えた。非終端のまま残すと照合バッチが永久に拾い続ける（検分3巡目 P2）。
             terminateAsSuperseded(record, "対象の継続課金が存在しません");
@@ -357,11 +372,33 @@ public class MembershipPayerWithdrawalTxService {
      * 退会取消による復旧の確定（tx③・P1-3）。{@code cancel_at_period_end} を解除し、復旧済みとして記録する。
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public boolean applyRestore(UUID subscriptionId, Long payerUserId) {
+    public boolean applyRestore(UUID subscriptionId, Long payerUserId, Instant withdrawalAttemptAt) {
+        // 【要】復旧側でも世代と真値を再検証する（Codex 検分4巡目 P1-2）。
+        // 是正前は subscriptionId と payerUserId しか見ておらず、
+        // 「世代Aの復旧が Stripe を呼んでいる間に世代Bの再退会が完了」した場合、
+        // 遅れて戻った世代Aが【世代Bの解約予約を解除】できてしまった。
+        // ロック順序は users → subscriptions → cancellations。
+        if (withdrawalStateQueryService.lockAndFindPendingWithdrawalAttempt(payerUserId).isPresent()) {
+            log.warn("払い手退会取消: 復旧の確定時点で再び退会申請中のため DB を戻しません subscriptionId={}",
+                    subscriptionId);
+            return false;
+        }
+
         MembershipSubscriptionEntity subscription = membershipSubscriptionRepository
                 .findByIdForUpdate(subscriptionId)
                 .orElseThrow(() -> new IllegalStateException(
                         "復旧対象が見つかりません subscriptionId=" + subscriptionId));
+
+        Optional<MembershipPayerWithdrawalCancellationEntity> recordOpt =
+                cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId);
+        if (recordOpt.isEmpty()
+                || recordOpt.get().getStatus() != MembershipPayerWithdrawalCancellationStatus.RESTORING
+                || !matchesGeneration(recordOpt.get(), withdrawalAttemptAt)) {
+            // 自分が着手した復旧ではない（別世代・本人操作で SUPERSEDED 化・既に確定済み）。
+            log.info("払い手退会取消: 作業行が自分の復旧ではないため DB を戻しません subscriptionId={}, 世代={}",
+                    subscriptionId, withdrawalAttemptAt);
+            return false;
+        }
 
         boolean applied = false;
         if (payerUserId.equals(subscription.getPayerUserId())
@@ -372,12 +409,18 @@ public class MembershipPayerWithdrawalTxService {
             applied = true;
         }
 
-        cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId)
-                .ifPresent(record -> {
-                    record.markRestored(Instant.now());
-                    cancellationRepository.saveAndFlush(record);
-                });
+        MembershipPayerWithdrawalCancellationEntity record = recordOpt.get();
+        record.markRestored(Instant.now());
+        cancellationRepository.saveAndFlush(record);
         return applied;
+    }
+
+    /** 作業行が指定の退会世代に属するか（null 同士も一致とみなす）。 */
+    private boolean matchesGeneration(MembershipPayerWithdrawalCancellationEntity record,
+            Instant withdrawalAttemptAt) {
+        return withdrawalAttemptAt == null
+                ? record.getWithdrawalAttemptAt() == null
+                : withdrawalAttemptAt.equals(record.getWithdrawalAttemptAt());
     }
 
     /**
@@ -387,10 +430,12 @@ public class MembershipPayerWithdrawalTxService {
      * 逆向きになるためである。{@code RESTORING} のままなら「解除の途中」という正しい意味で拾える。</p>
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markRestoreFailed(UUID subscriptionId, String error) {
+    public void markRestoreFailed(UUID subscriptionId, Instant withdrawalAttemptAt, String error) {
         cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId)
+                // 同上。自分が RESTORING にした行だけへ理由を刻む（別世代・SUPERSEDED を巻き戻さない）。
+                .filter(record -> matchesGeneration(record, withdrawalAttemptAt))
+                .filter(record -> record.getStatus() == MembershipPayerWithdrawalCancellationStatus.RESTORING)
                 .ifPresent(record -> {
-                    record.setStatus(MembershipPayerWithdrawalCancellationStatus.RESTORING);
                     record.setLastError(error != null && error.length() > 1000
                             ? error.substring(0, 1000) : error);
                     cancellationRepository.saveAndFlush(record);
@@ -405,7 +450,14 @@ public class MembershipPayerWithdrawalTxService {
      * 本人が改めて明示解約した</b>場合、その新しい意思まで解除してしまう。人が新しい判断を下した瞬間に
      * 由来の記録を終端化することで、以後の復旧対象から外す。</p>
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    /*
+     * 【伝播は REQUIRED（既定）にする】。本メソッドだけは呼び出し元（利用者の解約 API）の
+     * トランザクションに参加させる。外部 API 呼び出しを含まない純粋な DB 更新であり、
+     * REQUIRES_NEW にすると「解約そのものがロールバックしたのに由来の無効化だけが残る」——
+     * すなわち退会由来の予約を復旧できなくなる——という取り違えが生じるため。
+     * 解約が成立したときだけ由来が上書きされるのが正しい（Codex 検分4巡目 C）。
+     */
+    @Transactional
     public void supersedeByUserDecision(UUID subscriptionId) {
         // 【要】PENDING も対象に含める（Codex 検分3巡目 P1-3）。進行中の古い退会処理が PENDING の間に
         // 「退会取消 → 本人の明示解約」が入ると、SUCCEEDED/RESTORING だけを対象にした無効化は no-op に

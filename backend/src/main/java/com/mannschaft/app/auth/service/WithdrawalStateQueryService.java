@@ -60,6 +60,26 @@ public class WithdrawalStateQueryService {
     }
 
     /**
+     * 同上を<b>ユーザー行をロックして</b>読む（Codex 検分4巡目 P1-3）。
+     *
+     * <p>ロックなしの確認では「真値を見た直後・自分が書き込む前」に {@code cancelWithdrawal} や
+     * 再退会が commit できてしまい、<b>確認と反映が線形化しない</b>。退会状態を根拠に DB を書き換える
+     * 経路（期末解約の着手／確定、引継要求の作成／終端化、予約の解除）は必ず本メソッドを使い、
+     * 呼び出し元のトランザクションが終わるまでユーザーの退会状態を固定する。</p>
+     *
+     * <p><b>ロック順序の正準は users → membership_subscriptions →
+     * membership_payer_withdrawal_cancellations</b>。本メソッドが最初に来るため、
+     * 呼び出し元はこの順を守れば相互デッドロックしない。</p>
+     */
+    @Transactional
+    public Optional<Instant> lockAndFindPendingWithdrawalAttempt(Long userId) {
+        if (userId == null) {
+            return Optional.empty();
+        }
+        return userRepository.findDeletedAtForUpdateIncludingDeleted(userId).map(this::toInstant);
+    }
+
+    /**
      * 退会申請中のユーザー ID を返す（PR-4 の再照合バッチの起点・Codex 検分2巡目 P1-2）。
      *
      * <p>作業行（{@code membership_payer_withdrawal_cancellations}）が<b>そもそも作られなかった</b>ケース

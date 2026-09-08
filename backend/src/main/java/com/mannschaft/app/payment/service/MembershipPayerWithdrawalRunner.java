@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -91,14 +92,15 @@ public class MembershipPayerWithdrawalRunner {
             try {
                 StripePaymentProvider.SubscriptionInfo info = stripePaymentProvider
                         .cancelSubscriptionAtPeriodEnd(stripeSubscriptionId,
-                                "withdrawal-payer-cancel-" + subscriptionId);
+                                idempotencyKey("withdrawal-payer-cancel", subscriptionId,
+                                        prepared.get().withdrawalAttemptAt()));
                 currentPeriodEnd = (info != null) ? info.currentPeriodEnd() : null;
             } catch (Exception e) {
                 // Stripe 側の成否が不明なまま終わることもある。処理状態は FAILED として残し、
                 // PR-4 の再試行バッチが Stripe 実状態と照合して回復する。
                 log.error("払い手退会に伴う期末解約: Stripe への期末解約発行に失敗しました "
                         + "subscriptionId={}, stripeSub={}", subscriptionId, stripeSubscriptionId, e);
-                markFailedQuietly(subscriptionId, e);
+                markFailedQuietly(subscriptionId, prepared.get().withdrawalAttemptAt(), e);
                 return Outcome.FAILED;
             }
         } else {
@@ -125,7 +127,7 @@ public class MembershipPayerWithdrawalRunner {
             // 「Stripe 成功・DB 失敗」。この非原子性こそ処理状態を永続化した理由である。
             log.error("払い手退会に伴う期末解約: Stripe 成功後の DB 反映に失敗しました subscriptionId={}",
                     subscriptionId, e);
-            markFailedQuietly(subscriptionId, e);
+            markFailedQuietly(subscriptionId, prepared.get().withdrawalAttemptAt(), e);
             return Outcome.FAILED;
         }
     }
@@ -153,24 +155,26 @@ public class MembershipPayerWithdrawalRunner {
         String stripeSubscriptionId = prepared.get().stripeSubscriptionId();
         if (stripeSubscriptionId != null) {
             try {
-                stripePaymentProvider.revertSubscriptionCancelAtPeriodEnd(
-                        stripeSubscriptionId, "withdrawal-payer-restore-" + subscriptionId);
+                stripePaymentProvider.revertSubscriptionCancelAtPeriodEnd(stripeSubscriptionId,
+                        idempotencyKey("withdrawal-payer-restore", subscriptionId,
+                                prepared.get().withdrawalAttemptAt()));
             } catch (Exception e) {
                 // Stripe が期末解約のままなら DB だけ戻すと乖離する。DB は触らず RESTORING で残す。
                 log.error("払い手退会取消: Stripe の期末解約解除に失敗しました subscriptionId={}, stripeSub={}",
                         subscriptionId, stripeSubscriptionId, e);
-                markRestoreFailedQuietly(subscriptionId, e);
+                markRestoreFailedQuietly(subscriptionId, prepared.get().withdrawalAttemptAt(), e);
                 return false;
             }
         }
 
         try {
-            return txService.applyRestore(subscriptionId, payerUserId);
+            return txService.applyRestore(subscriptionId, payerUserId,
+                    prepared.get().withdrawalAttemptAt());
         } catch (Exception e) {
             // Stripe は解除済み・DB は cancel_at_period_end=true のまま。この非対称こそ
             // RESTORING を Stripe 呼び出しの前に刻んだ理由である（検分2巡目 P1-3）。
             log.error("払い手退会取消: Stripe 解除後の DB 反映に失敗しました subscriptionId={}", subscriptionId, e);
-            markRestoreFailedQuietly(subscriptionId, e);
+            markRestoreFailedQuietly(subscriptionId, prepared.get().withdrawalAttemptAt(), e);
             return false;
         }
     }
@@ -191,19 +195,33 @@ public class MembershipPayerWithdrawalRunner {
         }
     }
 
+    /**
+     * Stripe の冪等キー。<b>退会世代を必ず含める</b>（Codex 検分4巡目 P1-1）。
+     *
+     * <p>是正前は {@code subscriptionId} だけから作っていたため、「世代Aで解約予約 → 取消で解除 →
+     * 24時間以内に世代Bで再退会」で世代Bのリクエストが世代Aと同じキーになる。Stripe は同一キーに
+     * <b>最初の応答をそのまま返す</b>ので3回目の更新が実行されず、DB は {@code cancel_at_period_end=true}
+     * なのに Stripe 実体は解除済み、という金銭事故に直結する乖離が残った。</p>
+     */
+    private static String idempotencyKey(String prefix, UUID subscriptionId, Instant withdrawalAttemptAt) {
+        long generation = withdrawalAttemptAt != null ? withdrawalAttemptAt.toEpochMilli() : 0L;
+        return prefix + "-" + subscriptionId + "-" + generation;
+    }
+
     /** 失敗の記録自体が失敗しても、元の失敗ログを消さないよう分けて捕捉する。 */
-    private void markFailedQuietly(UUID subscriptionId, Exception cause) {
+    private void markFailedQuietly(UUID subscriptionId, Instant withdrawalAttemptAt, Exception cause) {
         try {
-            txService.markFailed(subscriptionId, describe(cause));
+            txService.markFailed(subscriptionId, withdrawalAttemptAt, describe(cause));
         } catch (Exception e) {
             log.error("払い手退会に伴う期末解約: 失敗状態の記録にも失敗しました subscriptionId={}", subscriptionId, e);
         }
     }
 
     /** 復旧失敗は {@code RESTORING} のまま理由だけを刻む（{@code FAILED} は解約未了を意味し逆向きになる）。 */
-    private void markRestoreFailedQuietly(UUID subscriptionId, Exception cause) {
+    private void markRestoreFailedQuietly(UUID subscriptionId, Instant withdrawalAttemptAt,
+            Exception cause) {
         try {
-            txService.markRestoreFailed(subscriptionId, describe(cause));
+            txService.markRestoreFailed(subscriptionId, withdrawalAttemptAt, describe(cause));
         } catch (Exception e) {
             log.error("払い手退会取消: 失敗状態の記録にも失敗しました subscriptionId={}", subscriptionId, e);
         }

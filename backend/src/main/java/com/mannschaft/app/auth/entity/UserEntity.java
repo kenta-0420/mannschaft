@@ -155,6 +155,20 @@ public class UserEntity extends BaseEntity {
     @Column(name = "purged_at")
     private LocalDateTime purgedAt;
 
+    /**
+     * purge 開始マーク（柱①ADMINゼロ根治 §12.5・V197 で新設）。NULL の場合は未開始。
+     *
+     * <p>読み書きは {@code PurgeMarkerService}（native クエリ）が担い、本フィールドを直接更新する
+     * 経路は無い。それでも<b>マッピングを置く必要がある</b>——test プロファイルは
+     * {@code ddl-auto: create}＋{@code flyway.enabled: false} でスキーマを Entity から起こすため、
+     * ここに無い列は<b>統合テストのスキーマに存在せず</b>、当該 native クエリが
+     * {@code Unknown column 'purge_started_at'} で落ちる。実際に柱③-B PR-3 で
+     * {@code UserService#cancelWithdrawal} を IT から通した瞬間にこれが露見した
+     * （それまでは IT が SQL 直叩きで本番経路を迂回しており、誰も踏んでいなかった）。</p>
+     */
+    @Column(name = "purge_started_at")
+    private LocalDateTime purgeStartedAt;
+
     // === プライバシーポリシー同意記録（F_privacy_policy）===
 
     /**

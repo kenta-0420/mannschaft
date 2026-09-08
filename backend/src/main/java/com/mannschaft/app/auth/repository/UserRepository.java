@@ -44,6 +44,19 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<LocalDateTime> findDeletedAtIncludingDeleted(@Param("id") Long id);
 
     /**
+     * 同上を <b>{@code FOR UPDATE} 付き</b>で読む（柱③-B PR-3・Codex 検分4巡目 P1-3）。
+     *
+     * <p>ロックなしの読み取りでは「真値を確認した直後・自分が書き込む前」に
+     * {@code cancelWithdrawal} や再退会が commit できてしまい、確認と反映が線形化しない。
+     * 退会状態を根拠に書き込みを行う経路は、必ずこちらでユーザー行をロックしてから判断する。</p>
+     *
+     * <p>ロック順序の正準は <b>users → membership_subscriptions →
+     * membership_payer_withdrawal_cancellations</b>。デッドロックを避けるため、この順を崩さないこと。</p>
+     */
+    @Query(value = "select deleted_at from users where id = :id for update", nativeQuery = true)
+    Optional<LocalDateTime> findDeletedAtForUpdateIncludingDeleted(@Param("id") Long id);
+
+    /**
      * 退会申請中（{@code deleted_at IS NOT NULL}）のユーザー ID を返す（柱③-B PR-3・PR-4 の照合バッチの起点）。
      *
      * <p>同上の理由で native。退会申請から30日で物理 purge されるため運用上有界な集合である。</p>
