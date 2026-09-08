@@ -4,6 +4,7 @@ import com.mannschaft.app.shiftbudget.event.BudgetThresholdAlertTriggeredEvent;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -67,6 +68,19 @@ class ShiftBudgetThresholdAlertNotificationBoundaryIT extends AbstractMySqlInteg
     @PersistenceContext
     private EntityManager em;
 
+    /** 配送失敗を模す CHECK 制約の名前。 */
+    private static final String BLOCK_CONSTRAINT = "chk_issue2990_l13_block_notify_user";
+
+    private boolean blockedConstraintApplied;
+
+    @AfterEach
+    void unblockNotificationInsert() {
+        if (blockedConstraintApplied) {
+            jdbcTemplate.execute("ALTER TABLE notifications DROP CHECK " + BLOCK_CONSTRAINT);
+            blockedConstraintApplied = false;
+        }
+    }
+
     @Test
     @DisplayName("因果: イベントを publish した業務トランザクションがロールバックしたら通知は1件も出ない")
     void 業務がロールバックしたら通知も出ない() {
@@ -103,27 +117,85 @@ class ShiftBudgetThresholdAlertNotificationBoundaryIT extends AbstractMySqlInteg
                         .isEqualTo(1L));
     }
 
+    /**
+     * <p><b>当初この検体は「存在しないユーザーID を先頭に置けば配送が落ちる」前提で書いており、CI で落ちた。
+     * 前提のほうが誤りだった。</b>実コードを追うと:</p>
+     * <ul>
+     *   <li>{@code NotificationService#createNotification} は受信者の実在を検証しない
+     *       （visibility ガードのみ。{@code SHIFT_BUDGET_ALLOCATION} は {@code ReferenceType} 未対応なので
+     *       fail-soft で素通りし、そのまま {@code notifications} へ INSERT する）</li>
+     *   <li>{@code notifications.user_id → users} の FK（{@code fk_notifications_user}）は
+     *       {@code V100.001__phase2e_drop_misc_user_cascade_fk.sql} で撤廃済みである
+     *       （クロスドメイン FK 禁止＝{@code domain_db_design_principles.md} 原則1）</li>
+     * </ul>
+     * <p>したがって存在しないユーザーID でも通知行は普通に作られる。これは仕様どおりであり欠陥ではない。
+     * 「途中失敗」を測るには<b>配送が実際に失敗する条件</b>が要るので、当該受信者への INSERT だけを
+     * 実 DB の CHECK 制約で落とす（本戦役で確立した手法）。</p>
+     */
     @Test
-    @DisplayName("途中失敗: 受信者の一部が存在しなくても、残りの受信者へは配送が続く")
+    @DisplayName("途中失敗: 1人目の配送が実DBで落ちても、残りの受信者へ配送が続き、落ちた受信者は再試行台帳に残る")
     void 一部受信者の失敗で残りが巻き添えにならない() {
-        Long userId = insertUser("l13-partial-" + nonce() + "@example.com");
-        // 実在しないユーザーIDを先頭に置く（FK 違反で当該受信者の配送だけが落ちる）。
-        Long missingUserId = 987654321L;
+        Long blockedUserId = insertUser("l13-blocked-" + nonce() + "@example.com");
+        Long deliveredUserId = insertUser("l13-delivered-" + nonce() + "@example.com");
+        blockNotificationInsertFor(blockedUserId);
+        long failedEventsBefore = countFailedEvents();
 
         transactionTemplate.executeWithoutResult(tx ->
                 eventPublisher.publishEvent(new BudgetThresholdAlertTriggeredEvent(
-                        900L, ALLOCATION_ID, ORG_ID, 120, List.of(missingUserId, userId))));
+                        900L, ALLOCATION_ID, ORG_ID, 120,
+                        List.of(blockedUserId, deliveredUserId))));
 
         await().atMost(20, TimeUnit.SECONDS).untilAsserted(() ->
-                assertThat(countNotifications(userId))
-                        .as("先頭の受信者が落ちても後続の受信者へ配送が続くこと（被害半径の分離）")
+                assertThat(countNotifications(deliveredUserId))
+                        .as("先頭の受信者が実DBで落ちても、後続の受信者へ配送が続くこと（被害半径の分離）")
                         .isEqualTo(1L));
-        assertThat(countNotifications(missingUserId))
-                .as("存在しない受信者へは当然届かない")
+
+        assertThat(countNotifications(blockedUserId))
+                .as("CHECK 制約で本当に INSERT が落ちていること（握りつぶしの偽緑ではない）")
                 .isZero();
+
+        // Codex 検分 P1-a: 落ちた受信者が NOTIFICATION_SEND の failed event に残ること。
+        // 残らなければ本 PR で作った再送の仕組みがそもそも起動せず、通知は回復不能に失われる。
+        await().atMost(20, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(countFailedEvents())
+                        .as("""
+                                受信者単位の配送失敗が再試行台帳に残らないと、
+                                「alert は確定済みなのに通知は失われ、再送経路も無い」状態になる。""")
+                        .isEqualTo(failedEventsBefore + 1));
+        assertThat(latestFailedEventPayload())
+                .as("再送対象は失敗した受信者だけ（成功済みを混ぜると再送で重複配信になる）")
+                .contains(String.valueOf(blockedUserId))
+                .doesNotContain(String.valueOf(deliveredUserId));
     }
 
     // ---- フィクスチャ / ヘルパ ----
+
+    /**
+     * 指定ユーザー宛の通知 INSERT だけを実 DB で失敗させる。
+     *
+     * <p>MySQL は CHECK 制約の追加時に既存の全行を検証するため、対象ユーザーの行が無いことが前提
+     * （新規作成したユーザーなので 0 件）。DDL は暗黙コミットを伴うのでトランザクション外で実行する。</p>
+     */
+    private void blockNotificationInsertFor(Long userId) {
+        jdbcTemplate.execute("ALTER TABLE notifications ADD CONSTRAINT " + BLOCK_CONSTRAINT
+                + " CHECK (user_id <> " + userId + ")");
+        blockedConstraintApplied = true;
+    }
+
+    private Long countFailedEvents() {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM shift_budget_failed_events "
+                        + "WHERE event_type = 'NOTIFICATION_SEND' AND source_id = ?",
+                Long.class, ALLOCATION_ID);
+    }
+
+    private String latestFailedEventPayload() {
+        return jdbcTemplate.queryForObject(
+                "SELECT payload FROM shift_budget_failed_events "
+                        + "WHERE event_type = 'NOTIFICATION_SEND' AND source_id = ? "
+                        + "ORDER BY id DESC LIMIT 1",
+                String.class, ALLOCATION_ID);
+    }
 
     private static String nonce() {
         return String.valueOf(System.nanoTime());

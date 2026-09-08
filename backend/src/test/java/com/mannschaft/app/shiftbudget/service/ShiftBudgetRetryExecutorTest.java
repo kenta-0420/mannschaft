@@ -123,15 +123,45 @@ class ShiftBudgetRetryExecutorTest {
     }
 
     @Test
-    @DisplayName("Issue #2908: payload に i18n キーが無い → 再送せず FAILED（ja 固定へ暗黙フォールバックしない）")
-    void 通知再送_i18nキー欠落() {
+    @DisplayName("P1-b: 旧 payload（i18n キー無し）でも threshold_percent からキーを導出して再送に成功する")
+    void 通知再送_旧payloadを救う() {
+        // Issue #2908 より前に永続化された行にはこの2キーが無い。必須にすると
+        // アップグレードを境に未送信の通知がまとめて EXHAUSTED になって失われる。
         ShiftBudgetFailedEventEntity e = entity(
                 ShiftBudgetFailedEventType.NOTIFICATION_SEND, ALLOCATION_ID,
-                "{\"user_ids\":[10],\"title\":\"t\",\"body\":\"b\"}");
+                "{\"user_ids\":[10],\"type\":\"SHIFT_BUDGET_THRESHOLD_ALERT\","
+                        + "\"title\":\"シフト予算 警告 (120%)\",\"body\":\"予算 120% を超過しました（重大）\","
+                        + "\"source_type\":\"SHIFT_BUDGET_ALLOCATION\",\"source_id\":42,"
+                        + "\"scope_id\":1,\"action_url\":\"/u\",\"threshold_percent\":120}");
 
-        assertThat(executor.execute(e)).isFalse();
-        assertThat(e.getErrorMessage()).contains("title_key");
-        verifyNoInteractions(notificationResendService);
+        boolean result = executor.execute(e);
+
+        assertThat(result)
+                .as("旧形式 payload の再送が失敗すると、未送信の通知がリトライ上限で失われる")
+                .isTrue();
+        assertThat(e.getStatus()).isEqualTo(ShiftBudgetFailedEventStatus.SUCCEEDED);
+        verify(notificationResendService).resend(
+                eq(List.of(10L)), eq("SHIFT_BUDGET_THRESHOLD_ALERT"),
+                eq("notification.shiftBudget.thresholdAlert.title"),
+                eq("notification.shiftBudget.thresholdAlert.body120"),
+                eq(120),
+                eq("シフト予算 警告 (120%)"), eq("予算 120% を超過しました（重大）"),
+                eq("SHIFT_BUDGET_ALLOCATION"), eq(42L), eq(1L), eq("/u"));
+    }
+
+    @Test
+    @DisplayName("P1-b: threshold_percent すら無い最古の payload でも、保存済みの固定文言で再送する")
+    void 通知再送_閾値も無い最古payload() {
+        ShiftBudgetFailedEventEntity e = entity(
+                ShiftBudgetFailedEventType.NOTIFICATION_SEND, ALLOCATION_ID,
+                "{\"user_ids\":[10],\"title\":\"保存済み件名\",\"body\":\"保存済み本文\"}");
+
+        assertThat(executor.execute(e))
+                .as("i18n キーも閾値も無い行を捨てない（ja で届けるほうが失うよりよい）")
+                .isTrue();
+        verify(notificationResendService).resend(
+                eq(List.of(10L)), any(), eq(null), eq(null), eq(null),
+                eq("保存済み件名"), eq("保存済み本文"), any(), any(), any(), any());
     }
 
     @Test

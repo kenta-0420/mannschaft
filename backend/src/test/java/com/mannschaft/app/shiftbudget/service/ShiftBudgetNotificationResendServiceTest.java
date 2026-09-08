@@ -136,6 +136,23 @@ class ShiftBudgetNotificationResendServiceTest {
     }
 
     @Test
+    @DisplayName("P1-b: i18n キーが null（旧 payload）なら保存済みの固定文言で再送する")
+    void 旧payloadは固定文言で再送する() {
+        given(userLocaleCache.getLocales(any())).willReturn(Map.of(10L, "en"));
+
+        assertThatCode(() -> service.resend(
+                List.of(10L), TYPE, null, null, null, "保存済み件名", "保存済み本文",
+                SOURCE_TYPE, SOURCE_ID, SCOPE_ID, ACTION_URL))
+                .as("キーが無い行を拒否すると、未送信の通知がリトライ上限で失われる")
+                .doesNotThrowAnyException();
+
+        verify(notificationHelper).notify(
+                eq(10L), eq(TYPE), eq("保存済み件名"), eq("保存済み本文"),
+                eq(SOURCE_TYPE), eq(SOURCE_ID),
+                eq(NotificationScopeType.ORGANIZATION), eq(SCOPE_ID), eq(ACTION_URL), eq(null));
+    }
+
+    @Test
     @DisplayName("受信者 0 名 → notify を呼ばず、例外も投げない（空・0件の攻め口）")
     void 受信者ゼロ() {
         assertThatCode(() -> resend(List.of())).doesNotThrowAnyException();

@@ -2,9 +2,13 @@ package com.mannschaft.app.shiftbudget.listener;
 
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
+import com.mannschaft.app.shiftbudget.ShiftBudgetThresholdAlertMessages;
 import com.mannschaft.app.shiftbudget.event.BudgetThresholdAlertTriggeredEvent;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +19,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -28,8 +33,8 @@ import java.util.Map;
  * {@code notificationHelper.notifyAllLocalized(...)} を呼んでいた（{@code TX_NOTIFY_IN_TRY}）。</p>
  *
  * <p><b>try/catch で握っていたにもかかわらず、業務データは巻き戻る</b>。
- * {@code notifyAllLocalized} の下流は {@code NotificationService#createNotification}
- * （{@code @Transactional} 既定の {@code REQUIRED}）であり、呼び出し元の
+ * その下流 {@code NotificationService#createNotification}
+ * （{@code @Transactional} 既定の {@code REQUIRED}）は呼び出し元の
  * トランザクションにそのまま参加する。DB 層で例外が起きるとそのトランザクションは
  * rollback-only になるため、catch で握っても commit 時に
  * {@code UnexpectedRollbackException} となり、同一トランザクションで書いた
@@ -49,23 +54,39 @@ import java.util.Map;
  * するに留め、本リスナーが {@code AFTER_COMMIT} + {@code @Async("event-pool")} で受け取って配送する。
  * 3 つの技法はそれぞれ別の問題を解く: {@code AFTER_COMMIT}=因果（alert 行の確定後に通知が出る）、
  * {@code @Async}=遅延の切り離し（配送の失敗が業務スレッドへ例外として返らない）、
- * {@link NotificationHelper#notifyAllLocalized} 内の受信者ごとの try/catch=被害半径
- * （1 名への配送が落ちても残りの受信者へ配送が続く）。</p>
+ * 受信者ごとの {@link NotificationDeliveryRunner#sendOne}（1 件ごと {@code REQUIRES_NEW}）
+ * =被害半径（1 名への配送が落ちても残りの受信者へ配送が続く）。</p>
+ *
+ * <h2>なぜ {@code notifyAllLocalized} を使わないのか（Codex 検分 P1-a）</h2>
+ * <p>{@code notifyAllLocalized} は受信者ごとの {@code notify} 例外を<b>内部で捕捉して
+ * 呼び出し元へ何も返さない</b>。そのため、それを使うと「通知行の作成が一部あるいは全件失敗しても
+ * 外側の catch が実行されず {@code NOTIFICATION_SEND} の failed event が残らない」。
+ * locale 解決の後で DB 障害が起きると、<b>alert は確定済みなのに通知は失われ、再送経路も無い</b>
+ * という回復不能な状態になる。これは本 PR が
+ * {@code ShiftBudgetNotificationResendService} 側で直したのと<b>同じ根</b>の欠陥である。
+ * したがって配送は正規形どおり受信者ごとの {@code sendOne} で行い、
+ * <b>失敗した受信者を集めて failed event に残す</b>。
+ * locale の一括解決は {@link UserLocaleCache#getLocales} を直接呼んで N+1 を避ける。</p>
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ShiftBudgetThresholdAlertNotificationListener {
 
-    private final NotificationHelper notificationHelper;
+    private static final String NOTIFICATION_TYPE = "SHIFT_BUDGET_THRESHOLD_ALERT";
+    private static final String SOURCE_TYPE = "SHIFT_BUDGET_ALLOCATION";
+
+    private final NotificationDeliveryRunner notificationDeliveryRunner;
+    private final UserLocaleCache userLocaleCache;
     private final ShiftBudgetFailedEventService failedEventService;
     private final MessageSource messageSource;
 
-    /** 件名の i18n キー（failed_events の payload にも保存してリトライ経路で再利用する）。 */
-    static final String TITLE_KEY = "notification.shiftBudget.thresholdAlert.title";
-
     /**
      * 閾値超過警告の発火イベントを受け取り、受信者ごとの locale で通知を配送する。
+     *
+     * <p>配送に失敗した受信者は {@code NOTIFICATION_SEND} の failed event として記録し、
+     * リトライバッチ / 管理 API の再送経路へ載せる。<b>記録に載らなければ再送の仕組みは起動しない</b>ため、
+     * ここで失敗を握り潰してはならない。</p>
      *
      * @param event 閾値超過警告の発火イベント
      */
@@ -83,97 +104,108 @@ public class ShiftBudgetThresholdAlertNotificationListener {
         }
         int thresholdPercent = event.thresholdPercent();
         String actionUrl = "/shift-budget/allocations/" + event.allocationId();
-        // failed_events 記録用（運用向けの固定ログ。受信者ごとの locale とは独立に ja で確定させる）。
+
+        Map<Long, String> locales;
+        try {
+            locales = userLocaleCache.getLocales(recipientUserIds);
+        } catch (Exception e) {
+            // locale の一括解決で総崩れした（DB 接続喪失など）。1 名も配送できていないので全員を記録する。
+            log.error("F08.7: 受信者 locale の一括解決に失敗（全員を再送対象として記録）: "
+                            + "allocId={}, threshold={}%, recipients={}",
+                    event.allocationId(), thresholdPercent, recipientUserIds.size(), e);
+            recordFailure(event, actionUrl, recipientUserIds, e.getClass().getSimpleName() + ": " + e.getMessage());
+            return;
+        }
+
+        List<Long> failedUserIds = new ArrayList<>();
+        String lastError = null;
+        for (Long userId : recipientUserIds) {
+            try {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(userId, "ja"));
+                notificationDeliveryRunner.sendOne(new NotificationDeliveryRequest(
+                        userId,
+                        NOTIFICATION_TYPE,
+                        NotificationPriority.NORMAL,
+                        title(thresholdPercent, locale),
+                        body(thresholdPercent, locale),
+                        SOURCE_TYPE,
+                        event.allocationId(),
+                        NotificationScopeType.ORGANIZATION,
+                        event.organizationId(),
+                        actionUrl,
+                        null));  // システム自動発火、actor なし
+            } catch (Exception e) {
+                // 1 名の失敗で残りの受信者を諦めない（被害半径の分離）。
+                failedUserIds.add(userId);
+                lastError = e.getClass().getSimpleName() + ": " + e.getMessage();
+                log.error("F08.7 閾値超過警告の配送に失敗（当該受信者のみスキップして継続）: "
+                                + "userId={}, allocId={}, threshold={}%",
+                        userId, event.allocationId(), thresholdPercent, e);
+            }
+        }
+
+        if (!failedUserIds.isEmpty()) {
+            // 失敗した受信者<b>だけ</b>を記録する。成功済みの受信者を混ぜると再送で重複配信になる。
+            recordFailure(event, actionUrl, failedUserIds, lastError);
+            return;
+        }
+        log.info("F08.7 閾値超過警告を配送: allocId={}, threshold={}%, recipients={}",
+                event.allocationId(), thresholdPercent, recipientUserIds.size());
+    }
+
+    /**
+     * 配送に失敗した受信者を {@code NOTIFICATION_SEND} の failed event として記録する。
+     *
+     * <p>記録自体が失敗したらもう打つ手が無いので ERROR ログだけ残して諦める
+     * （ここで例外を投げても {@code @Async} の配送スレッドを殺すだけで誰も受け取らない）。</p>
+     */
+    private void recordFailure(BudgetThresholdAlertTriggeredEvent event, String actionUrl,
+                               List<Long> failedUserIds, String errorMessage) {
+        int thresholdPercent = event.thresholdPercent();
+        // 運用ログ・フォレンジック用の固定文言（受信者ごとの locale とは独立に ja で確定させる）。
+        // 再送は下の title_key / body_key から受信者 locale で組み立て直す（Issue #2908）。
         String title = title(thresholdPercent, Locale.JAPANESE);
         String body = body(thresholdPercent, Locale.JAPANESE);
-
         try {
-            // Issue #2715 CMP-055 ロットC-4: 受信者 locale に応じて件名・本文を組み立てる
-            // （locale 一括解決は notifyAllLocalized 内部の UserLocaleCache が担う）。
-            notificationHelper.notifyAllLocalized(
-                    recipientUserIds,
-                    "SHIFT_BUDGET_THRESHOLD_ALERT",
-                    "SHIFT_BUDGET_ALLOCATION",
-                    event.allocationId(),
-                    NotificationScopeType.ORGANIZATION,
+            failedEventService.recordFailure(
                     event.organizationId(),
-                    actionUrl,
-                    null,  // システム自動発火、actor なし
-                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
-                            title(thresholdPercent, locale), body(thresholdPercent, locale)));
-        } catch (Exception e) {
-            // 受信者ごとの失敗は notifyAllLocalized 内部で握られて次の受信者へ進む。ここへ来るのは
-            // 全体で総崩れする例外（visibility 絞り込み・locale 一括解決での DB 接続喪失など）だけである。
-            log.error("F08.7: 通知一括送信失敗（握りつぶし）: allocId={}, threshold={}%, recipients={}",
-                    event.allocationId(), thresholdPercent, recipientUserIds.size(), e);
-            try {
-                failedEventService.recordFailure(
-                        event.organizationId(),
-                        ShiftBudgetFailedEventType.NOTIFICATION_SEND,
-                        event.allocationId(),
-                        // Map.of は 10 組までなので ofEntries を使う（キーは 11 組ある）。
-                        Map.ofEntries(
-                                Map.entry("user_ids", recipientUserIds),
-                                Map.entry("type", "SHIFT_BUDGET_THRESHOLD_ALERT"),
-                                // Issue #2908: ja 固定の title / body は運用ログ・フォレンジック用。
-                                // リトライ経路は下の i18n キーから受信者 locale で組み立て直す。
-                                Map.entry("title", title),
-                                Map.entry("body", body),
-                                Map.entry("title_key", TITLE_KEY),
-                                Map.entry("body_key", bodyKeyForThreshold(thresholdPercent)),
-                                Map.entry("source_type", "SHIFT_BUDGET_ALLOCATION"),
-                                Map.entry("source_id", event.allocationId()),
-                                Map.entry("scope_id", event.organizationId()),
-                                Map.entry("action_url", actionUrl),
-                                Map.entry("threshold_percent", thresholdPercent)
-                        ),
-                        e.getClass().getSimpleName() + ": " + e.getMessage()
-                );
-            } catch (Exception recEx) {
-                log.error("F08.7: NOTIFICATION_SEND failed_events 記録自体も失敗（諦め）: allocId={}",
-                        event.allocationId(), recEx);
-            }
+                    ShiftBudgetFailedEventType.NOTIFICATION_SEND,
+                    event.allocationId(),
+                    // Map.of は 10 組までなので ofEntries を使う（キーは 11 組ある）。
+                    Map.ofEntries(
+                            Map.entry("user_ids", failedUserIds),
+                            Map.entry("type", NOTIFICATION_TYPE),
+                            Map.entry("title", title),
+                            Map.entry("body", body),
+                            Map.entry("title_key", ShiftBudgetThresholdAlertMessages.TITLE_KEY),
+                            Map.entry("body_key", ShiftBudgetThresholdAlertMessages.bodyKey(thresholdPercent)),
+                            Map.entry("source_type", SOURCE_TYPE),
+                            Map.entry("source_id", event.allocationId()),
+                            Map.entry("scope_id", event.organizationId()),
+                            Map.entry("action_url", actionUrl),
+                            Map.entry("threshold_percent", thresholdPercent)
+                    ),
+                    errorMessage
+            );
+        } catch (Exception recEx) {
+            log.error("F08.7: NOTIFICATION_SEND failed_events 記録自体も失敗（諦め）: allocId={}, failedUserIds={}",
+                    event.allocationId(), failedUserIds, recEx);
         }
     }
 
     /** 閾値ごとの通知件名（i18n）。 */
     private String title(int thresholdPercent, Locale locale) {
         return messageSource.getMessage(
-                TITLE_KEY,
+                ShiftBudgetThresholdAlertMessages.TITLE_KEY,
                 new Object[]{thresholdPercent},
-                "シフト予算 警告 (" + thresholdPercent + "%)", locale);
+                ShiftBudgetThresholdAlertMessages.defaultTitle(thresholdPercent), locale);
     }
 
     /** 閾値ごとの通知本文（i18n）。 */
     private String body(int thresholdPercent, Locale locale) {
         return messageSource.getMessage(
-                bodyKeyForThreshold(thresholdPercent),
+                ShiftBudgetThresholdAlertMessages.bodyKey(thresholdPercent),
                 new Object[]{thresholdPercent},
-                bodyForThreshold(thresholdPercent), locale);
-    }
-
-    /**
-     * 閾値ごとの本文 i18n キー。
-     *
-     * @param thresholdPercent 閾値
-     * @return ロケールファイル参照用のキー
-     */
-    private String bodyKeyForThreshold(int thresholdPercent) {
-        return switch (thresholdPercent) {
-            case 80 -> "notification.shiftBudget.thresholdAlert.body80";
-            case 100 -> "notification.shiftBudget.thresholdAlert.body100";
-            case 120 -> "notification.shiftBudget.thresholdAlert.body120";
-            default -> "notification.shiftBudget.thresholdAlert.bodyOther";
-        };
-    }
-
-    /** 閾値ごとの通知本文の既定値（ロケールファイルにキーが無い場合のフォールバック）。 */
-    private String bodyForThreshold(int thresholdPercent) {
-        return switch (thresholdPercent) {
-            case 80 -> "予算 80% に到達しました";
-            case 100 -> "予算を超過しました";
-            case 120 -> "予算 120% を超過しました（重大）";
-            default -> "シフト予算が閾値 " + thresholdPercent + "% に到達しました";
-        };
+                ShiftBudgetThresholdAlertMessages.defaultBody(thresholdPercent), locale);
     }
 }

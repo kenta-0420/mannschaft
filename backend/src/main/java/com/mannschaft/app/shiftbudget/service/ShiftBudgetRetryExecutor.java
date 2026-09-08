@@ -3,6 +3,7 @@ package com.mannschaft.app.shiftbudget.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventStatus;
+import com.mannschaft.app.shiftbudget.ShiftBudgetThresholdAlertMessages;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetFailedEventEntity;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetFailedEventRepository;
@@ -135,14 +136,28 @@ public class ShiftBudgetRetryExecutor {
         Long scopeId = toLong(payload.get("scope_id"));
         String actionUrl = (String) payload.get("action_url");
         // Issue #2908: 再送は保存済みの ja 固定文字列ではなく i18n キーから組み立て直す
-        // （title / body は運用ログ・フォレンジック用のフォールバックとしてのみ使う）。
+        // （title / body はロケールファイルにキーが無いときのフォールバックとしてのみ使う）。
         // JSON 往復で Integer / Long / Double に化けるため threshold_percent は toLong で正規化する。
+        Long thresholdPercent = toLong(payload.get("threshold_percent"));
         String titleKey = (String) payload.get("title_key");
         String bodyKey = (String) payload.get("body_key");
-        Long thresholdPercent = toLong(payload.get("threshold_percent"));
+
+        // Codex 検分 P1-b: title_key / body_key は Issue #2908 で<b>後から</b>足したキーである。
+        // この変更より前に永続化された PENDING / RETRYING の行には両方とも入っていない。
+        // 必須にすると、アップグレードを境に未送信の通知がまとめて EXHAUSTED になって失われる。
+        // 既存 payload にも入っている threshold_percent からキーを導出して救う。
+        if ((titleKey == null || bodyKey == null) && thresholdPercent != null) {
+            int percent = thresholdPercent.intValue();
+            log.info("F08.7 リトライ: 旧形式 payload（i18n キー無し）を threshold_percent={} から補完: id={}",
+                    percent, entity.getId());
+            titleKey = titleKey != null ? titleKey : ShiftBudgetThresholdAlertMessages.TITLE_KEY;
+            bodyKey = bodyKey != null ? bodyKey : ShiftBudgetThresholdAlertMessages.bodyKey(percent);
+        }
+        // threshold_percent すら無い payload（更に古い形 / 他経路で作られた行）は、
+        // 保存済みの title / body をそのまま再送する（是正前と同じ挙動。失うよりは ja で届けるほうがよい）。
         if (titleKey == null || bodyKey == null) {
-            throw new IllegalStateException(
-                    "NOTIFICATION_SEND payload has no title_key/body_key (Issue #2908)");
+            log.warn("F08.7 リトライ: payload に i18n キーも threshold_percent も無いため"
+                    + "保存済みの固定文言で再送する: id={}", entity.getId());
         }
 
         notificationResendService.resend(

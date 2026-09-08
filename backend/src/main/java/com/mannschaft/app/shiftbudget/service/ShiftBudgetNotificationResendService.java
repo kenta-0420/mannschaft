@@ -89,8 +89,9 @@ public class ShiftBudgetNotificationResendService {
      *
      * @param userIds          受信者ユーザーID
      * @param type             通知種別
-     * @param titleKey         件名の i18n キー
-     * @param bodyKey          本文の i18n キー
+     * @param titleKey         件名の i18n キー（{@code null} なら {@code fallbackTitle} をそのまま使う。
+     *                         Issue #2908 より前に保存された旧 payload 対応）
+     * @param bodyKey          本文の i18n キー（{@code null} なら {@code fallbackBody} をそのまま使う）
      * @param messageArgument  メッセージのプレースホルダ引数（閾値パーセント）
      * @param fallbackTitle    ロケールファイルにキーが無い場合の件名
      * @param fallbackBody     ロケールファイルにキーが無い場合の本文
@@ -116,8 +117,10 @@ public class ShiftBudgetNotificationResendService {
                 Locale locale = Locale.forLanguageTag(locales.getOrDefault(userId, "ja"));
                 notificationHelper.notify(
                         userId, type,
-                        messageSource.getMessage(titleKey, args, fallbackTitle, locale),
-                        messageSource.getMessage(bodyKey, args, fallbackBody, locale),
+                        titleKey == null ? fallbackTitle
+                                : messageSource.getMessage(titleKey, args, fallbackTitle, locale),
+                        bodyKey == null ? fallbackBody
+                                : messageSource.getMessage(bodyKey, args, fallbackBody, locale),
                         sourceType, sourceId,
                         NotificationScopeType.ORGANIZATION, scopeId,
                         actionUrl, null);

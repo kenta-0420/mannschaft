@@ -190,7 +190,7 @@ class NotificationTransactionBoundaryGuardTest {
             "com.mannschaft.app.schedule.service.ScheduleCommentNotificationRunner");
 
     /**
-     * 監査済み例外 — 通知自体が業務目的である経路（CMP-056 で対象外と裁可された4クラス＋Issue #2990 L13 の1クラス）。
+     * 監査済み例外 — 通知自体が業務目的である経路（CMP-056 で対象外と裁可された4クラス）。
      *
      * <p>これらは「業務処理に<b>付随</b>する通知」ではなく、通知の作成・確定こそがユースケースの本体である。
      * 業務TXと通知を同時にロールバックさせることが正しい振る舞いなので、契約の適用対象から外す。
@@ -200,13 +200,45 @@ class NotificationTransactionBoundaryGuardTest {
             "com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService",
             "com.mannschaft.app.social.service.FriendNotificationService",
             "com.mannschaft.app.advertising.campaign.service.AdPushChannelService",
-            "com.mannschaft.app.family.service.CareEventNotificationService",
+            "com.mannschaft.app.family.service.CareEventNotificationService");
+
+    /**
+     * 監査済み例外（<b>メソッド粒度</b>）— {@code <完全修飾クラス名>#<メソッド名>}。
+     *
+     * <h2>{@link #AUDITED_EXCEPTIONS}（クラス粒度）と基準が違う</h2>
+     * <p>クラス粒度の 4 クラスは「業務TXと通知を<b>同時にロールバックさせることが正しい</b>」経路である。
+     * こちらは逆で、<b>業務TXと通知を意図的に切り離す</b>経路を指す。共通するのは
+     * 「通知の作成・確定こそがユースケースの本体であり、業務コミットを待つ対象が存在しない」ことだけである。
+     * 基準が違うので同じリストに混ぜない。</p>
+     *
+     * <h2>なぜクラス粒度にしないのか（Issue #2990 L13 の検分指摘）</h2>
+     * <p>クラス粒度の免除は (i) そのクラスへ委譲する<b>あらゆる呼び出し元</b>を
+     * {@code TX_NOTIFY_VIA_DELEGATE} から外し、(ii) そのクラスに将来足される<b>任意のメソッド</b>を
+     * 無条件で契約の外に出す。免除したい 1 メソッドの周りで起きた回帰まで永久に緑になるため、
+     * 免除はメソッド単位に限る。</p>
+     *
+     * <h2>免除の前提条件は機械的に検査する</h2>
+     * <p>ここに載せたメソッドは {@link #監査済み例外メソッドは呼び出し元TXから切り離されている()} が
+     * 「呼び出し元TXから切り離す宣言（{@code NOT_SUPPORTED} / {@code NEVER} / {@code @Async}）を
+     * 実際に持っている」ことを検査する。<b>免除は無条件の許可ではなく、前提条件つきの許可である。</b>
+     * 宣言が外れた瞬間に番人が赤くなるので、免除がそのまま回帰の隠れ蓑になることはない。</p>
+     */
+    static final Set<String> AUDITED_EXCEPTION_METHODS = Set.of(
             // Issue #2990 L13: NOTIFICATION_SEND 失敗イベントの再送。運用者が管理 API /
             // リトライバッチから「あの通知をもう一度送れ」と命じる経路であり、通知を出すこと自体が
-            // ユースケースの本体である。同期 API の応答（success / 新ステータス）として結果を返す
-            // 契約のため AFTER_COMMIT へは移せない。呼び出し元の業務TXを汚さないよう
-            // NOT_SUPPORTED で呼び出し元TXを中断する形にしてある。
-            "com.mannschaft.app.shiftbudget.service.ShiftBudgetNotificationResendService");
+            // ユースケースの本体である。同期 API（ShiftBudgetFailedEventService#retry）の応答として
+            // 結果を返す契約のため AFTER_COMMIT へは移せない。呼び出し元の業務TXを汚さないよう
+            // NOT_SUPPORTED で呼び出し元TXを中断している（この宣言は下のゲートが検査する）。
+            "com.mannschaft.app.shiftbudget.service.ShiftBudgetNotificationResendService#resend");
+
+    /** {@code fqcn} に属する監査済み例外メソッド名（メソッド粒度）。 */
+    static Set<String> auditedExceptionMethodNames(String fqcn) {
+        String prefix = fqcn + "#";
+        return AUDITED_EXCEPTION_METHODS.stream()
+                .filter(k -> k.startsWith(prefix))
+                .map(k -> k.substring(prefix.length()))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
 
     /** 違反の種別。baseline のキーの一部になるため、名前を変えると baseline の総入れ替えが必要。 */
     enum ViolationKind {
@@ -417,7 +449,8 @@ class NotificationTransactionBoundaryGuardTest {
 
         boolean classFiresNotification = methods.stream()
                 .anyMatch(m -> firesNotification(m.body()));
-        Set<String> delegatedFromAllowedEntry = delegationClosure(methods);
+        Set<String> auditedMethods = auditedExceptionMethodNames(fqcn);
+        Set<String> delegatedFromAllowedEntry = delegationClosure(methods, auditedMethods);
         Set<String> inheritedTxContext = transactionalClosure(methods, classAnnotations);
         Set<String> templateNames = transactionTemplateNames(src);
         java.util.Map<String, Set<String>> declaredTypes = declaredTypes(src);
@@ -428,7 +461,8 @@ class NotificationTransactionBoundaryGuardTest {
 
         for (MethodBlock m : methods) {
             String ann = m.annotations();
-            boolean allowedEntry = isAllowedEntryPoint(ann);
+            // メソッド粒度の監査済み例外は許可入口と同じ扱いにする（クラス全体は免除しない）。
+            boolean allowedEntry = isAllowedEntryPoint(ann) || auditedMethods.contains(m.name());
             // 許可された入口から同一クラス内の無修飾呼び出しで到達する private ヘルパは、
             // 入口と同じ境界の内側にあるとみなす（金型 EventAdvanceNoticeNotificationListener が
             // AFTER_COMMIT リスナー → private sendOne(request) → runner.sendOne という形を取る）。
@@ -604,8 +638,18 @@ class NotificationTransactionBoundaryGuardTest {
      * 既存番人 {@code CrossDomainTransactionalArchTest} が直接依存しか追わないのと同じ限界である。
      */
     static Set<String> delegationClosure(List<MethodBlock> methods) {
+        return delegationClosure(methods, Set.of());
+    }
+
+    /**
+     * @param extraSeedNames 許可入口と同じ境界の内側とみなす追加のメソッド名
+     *                       （メソッド粒度の監査済み例外。{@link #AUDITED_EXCEPTION_METHODS}）
+     * @param methods 走査対象クラスのメソッド
+     * @return 境界の内側にあるメソッド名
+     */
+    static Set<String> delegationClosure(List<MethodBlock> methods, Set<String> extraSeedNames) {
         Set<String> reached = sameClassClosure(methods, methods.stream()
-                .filter(m -> isAllowedEntryPoint(m.annotations()))
+                .filter(m -> isAllowedEntryPoint(m.annotations()) || extraSeedNames.contains(m.name()))
                 .collect(Collectors.toList()));
         // オーバーロード畳み込みの縮小（Issue #3039）:
         // 自分自身に @Transactional を宣言しているメソッドは「業務TXの入口」であって
@@ -1292,6 +1336,7 @@ class NotificationTransactionBoundaryGuardTest {
      * 偽陽性が積み上がるため塞がない（＝ここは依然として下限である）。
      *
      * <p>{@link #AUDITED_EXCEPTIONS}（通知自体が業務目的）へ委譲する形は契約の対象外なので空を返す。
+     * {@link #AUDITED_EXCEPTION_METHODS} はメソッド粒度なので、当該 1 メソッドだけを集合から外す。
      * {@link #DELIVERY_INFRASTRUCTURE} は<b>対象に含める</b>——業務TXから配送層を直接叩くことこそが
      * 本契約の禁じている形だからである。
      */
@@ -1306,8 +1351,13 @@ class NotificationTransactionBoundaryGuardTest {
                 return Set.of();
             }
             List<MethodBlock> methods = parseMethods(block);
+            // メソッド粒度の監査済み例外は、その1メソッドだけを委譲先の発火点から外す
+            // （クラス粒度と違い、同じクラスの他のメソッドへ委譲する呼び出し元は今までどおり挙がる）。
+            Set<String> audited = auditedExceptionMethodNames(ref.fqcn());
             Set<String> firing = methods.stream()
-                    .filter(m -> firesNotification(m.body()) && !isAllowedEntryPoint(m.annotations()))
+                    .filter(m -> firesNotification(m.body())
+                            && !isAllowedEntryPoint(m.annotations())
+                            && !audited.contains(m.name()))
                     .map(MethodBlock::name)
                     .collect(Collectors.toCollection(LinkedHashSet::new));
             // 委譲先クラス内で「通知を発火するメソッドを呼ぶメソッド」へ逆向きに広げる。
@@ -1315,7 +1365,8 @@ class NotificationTransactionBoundaryGuardTest {
             while (grown) {
                 grown = false;
                 for (MethodBlock caller : methods) {
-                    if (firing.contains(caller.name()) || isAllowedEntryPoint(caller.annotations())) {
+                    if (firing.contains(caller.name()) || isAllowedEntryPoint(caller.annotations())
+                            || audited.contains(caller.name())) {
                         continue;
                     }
                     if (firing.stream().anyMatch(f -> containsUnqualifiedCall(caller.body(), f))) {
@@ -1970,8 +2021,71 @@ class NotificationTransactionBoundaryGuardTest {
                 .isEmpty();
     }
 
+    /**
+     * 呼び出し元のトランザクションから切り離す宣言を持つか
+     * （{@code NOT_SUPPORTED} / {@code NEVER} は中断・{@code @Async} は別スレッド）。
+     *
+     * <p><b>{@code REQUIRES_NEW} は含めない。</b>独立TXにはなるが、業務コミット前に通知だけが
+     * 先に確定する「逆向きの不整合」を生むため、免除の前提条件としては弱すぎる。</p>
+     *
+     * @param annotations メソッドの注釈（クラス注釈を連結して渡してよい）
+     * @return 呼び出し元TXから切り離されているなら true
+     */
+    static boolean isDetachedFromCallerTransaction(String annotations) {
+        return hasAsync(annotations) || TX_SUSPENDING_PROPAGATION.matcher(annotations).find();
+    }
+
+    /** 呼び出し元TXを「中断する」伝播（{@code REQUIRES_NEW} は独立TXを開くだけなので含めない）。 */
+    private static final Pattern TX_SUSPENDING_PROPAGATION =
+            Pattern.compile("propagation\\s*=\\s*[\\w$.]*\\b(?:NOT_SUPPORTED|NEVER)\\b");
+
     @Test
-    @DisplayName("監査済み例外5クラスを違反として挙げない")
+    @DisplayName("メソッド粒度の監査済み例外は呼び出し元TXから切り離されている（免除の前提条件を機械検査）")
+    void 監査済み例外メソッドは呼び出し元TXから切り離されている() {
+        assertThat(AUDITED_EXCEPTION_METHODS)
+                .as("メソッド粒度の監査済み例外が空＝このゲートが何も測っていない")
+                .isNotEmpty();
+
+        List<String> problems = new ArrayList<>();
+        for (String key : AUDITED_EXCEPTION_METHODS) {
+            String fqcn = key.substring(0, key.indexOf('#'));
+            String methodName = key.substring(key.indexOf('#') + 1);
+            TypeRef ref = typeIndex().getOrDefault(fqcn.substring(fqcn.lastIndexOf('.') + 1), List.of())
+                    .stream().filter(r -> r.fqcn().equals(fqcn)).findFirst().orElse(null);
+            if (ref == null) {
+                problems.add(key + " : クラスが見つからない（改名・移動でキーがドリフトした）");
+                continue;
+            }
+            String masked = JavaSourceScanningUtils.maskCommentsAndLiterals(read(ref.file()));
+            String classAnnotations = typeAnnotations(masked, ref.simpleName());
+            String block = typeBlock(masked, ref.simpleName());
+            List<MethodBlock> found = parseMethods(block == null ? masked : block).stream()
+                    .filter(m -> m.name().equals(methodName))
+                    .collect(Collectors.toList());
+            if (found.isEmpty()) {
+                problems.add(key + " : メソッドが見つからない（改名でキーがドリフトした）");
+                continue;
+            }
+            for (MethodBlock m : found) {
+                if (!isDetachedFromCallerTransaction(m.annotations() + "\n" + classAnnotations)) {
+                    problems.add(key + " : 呼び出し元TXから切り離す宣言が無い（注釈=" + m.annotations().strip() + "）");
+                }
+            }
+        }
+        assertThat(problems)
+                .as("""
+                        メソッド粒度の監査済み例外は「呼び出し元の業務TXから切り離されている」ことを
+                        前提に免除している。この宣言（NOT_SUPPORTED / NEVER / @Async）が外れると、
+                        通知の DB 例外が呼び出し元のトランザクションを rollback-only にし、
+                        呼び出し元が catch で握って書いた結果まで commit 時に消える
+                        （Issue #2990 L13 で直した ShiftBudgetRetryExecutor の無限リトライがまさにこれ）。
+                        免除したままでは番人が一行も赤くならないので、前提条件をここで検査する。
+                        宣言を外すなら AUDITED_EXCEPTION_METHODS からも外し、違反として台帳へ載せること。""")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("監査済み例外4クラスを違反として挙げない")
     void 監査済み例外を違反として挙げない() {
         List<Violation> found = mainScan().violations();
         Set<String> owners = found.stream().map(Violation::ownerFqcn)
