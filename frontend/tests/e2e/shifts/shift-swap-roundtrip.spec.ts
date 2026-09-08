@@ -239,13 +239,14 @@ test.describe('SWAP-001〜005: シフト交代募集の一往復（依頼→承�
     const list = swapListRoot(page)
     await expect(list.getByText(`申請者 #${MEMBER_USER_ID}`)).toBeVisible({ timeout: 15_000 })
     await expect(list.getByText(`スロット #${SLOT_ID_1}`)).toBeVisible()
-    await expect(list.getByText('保留中')).toBeVisible()
+    await expect(list.getByText('承諾待ち')).toBeVisible()
     expect(listCalled).toBe(true)
   })
 
-  // 注: 承諾ボタンの表示条件は「ログインユーザーが accepterId であること」であり、
-  // ADMIN 権限とは無関係（ShiftSwapList.vue の表示ガード）。ここで ADMIN を使っているのは
-  // 一覧 API を叩ける役割として都合が良いためで、権限の検証ではない。
+  // 注: 承諾ボタンの表示条件は「PENDING かつ申請者本人でないこと」であり、BE の
+  // ShiftSwapService#acceptSwapRequest の認可条件に揃えている（CMP-260908-2116）。
+  // 旧実装は「ログインユーザーが accepterId であること」を条件にしていたが、accepterId は
+  // 承諾した瞬間に初めて確定するため、承諾前は常に null で誰にも押せなかった。
   test('SWAP-003: 承諾ボタンで accept API が飛び、再取得後に状態が進む', async ({ page }) => {
     // /my/shift・チームシェル配下は dev サーバーの初回 SSR/最適化が重く、
     // 既定 60 秒ではハイドレーション待ちだけで枯れることがある（実測）。
@@ -285,15 +286,15 @@ test.describe('SWAP-001〜005: シフト交代募集の一往復（依頼→承�
     await page.getByRole('tab', { name: 'シフト交換' }).click()
 
     const list = swapListRoot(page)
-    await expect(list.getByText('保留中')).toBeVisible({ timeout: 15_000 })
+    await expect(list.getByText('承諾待ち')).toBeVisible({ timeout: 15_000 })
 
-    const acceptBtn = list.locator('button:has(.pi-check)')
+    const acceptBtn = list.locator(`[data-testid="swap-accept-${SWAP_REQUEST_ID}"]`)
     await expect(acceptBtn).toBeVisible()
     await acceptBtn.click()
 
     await expect.poll(() => acceptCalled, { timeout: 10_000 }).toBe(true)
-    await expect(list.getByText('承認')).toBeVisible({ timeout: 10_000 })
-    await expect(list.getByText('保留中')).toHaveCount(0)
+    await expect(list.getByText('承認待ち')).toBeVisible({ timeout: 10_000 })
+    await expect(list.getByText('承諾待ち')).toHaveCount(0)
   })
 
   test('SWAP-004: 一覧取得が 500 のとき取得失敗が利用者に伝わる（空表示に潰さない）', async ({
@@ -361,8 +362,9 @@ test.describe('SWAP-001〜005: シフト交代募集の一往復（依頼→承�
       timeout: 15_000,
     })
     // 承認・却下の導線も、依頼行そのものも出ない
-    await expect(list.locator('button:has(.pi-check)')).toHaveCount(0)
-    await expect(list.locator('button:has(.pi-times)')).toHaveCount(0)
+    await expect(list.locator('[data-testid^="swap-accept-"]')).toHaveCount(0)
+    await expect(list.locator('[data-testid^="swap-reject-"]')).toHaveCount(0)
+    await expect(list.locator('[data-testid^="swap-approve-"]')).toHaveCount(0)
     await expect(list.getByText(/申請者 #/)).toHaveCount(0)
   })
 })

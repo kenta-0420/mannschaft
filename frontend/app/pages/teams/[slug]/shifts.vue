@@ -106,7 +106,11 @@ onMounted(() => {
         </TabPanel>
         <TabPanel :value="1">
           <!-- 交代申請APIは数値 teamId を要求する。解決前は骨組みを出して誤リクエストを撃たない -->
-          <ShiftSwapList v-if="teamNumericId !== null" :team-id="teamNumericId" />
+          <ShiftSwapList
+            v-if="teamNumericId !== null"
+            :team-id="teamNumericId"
+            :can-manage="isAdminOrDeputy"
+          />
           <div v-else>
             <Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" />
           </div>

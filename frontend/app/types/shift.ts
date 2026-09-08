@@ -166,8 +166,6 @@ export interface SwapRequestResponse {
   resolvedBy: number | null
   resolvedAt: string | null
   createdAt: string
-  /** v2.1: オープンコールフラグ */
-  isOpenCall?: boolean
   /** v2.1: 手挙げしたユーザー ID */
   claimedBy?: number | null
   /**
@@ -333,7 +331,11 @@ export interface CreateSwapRequestRequest {
 
 /** シフト交代リクエスト承認・却下 */
 export interface ResolveSwapRequestRequest {
-  action: 'approve' | 'reject'
+  /**
+   * 承認・却下の指示。BE（`ShiftSwapService#resolveSwapRequest`）は
+   * **大文字**の `APPROVE` / `REJECT` と文字列比較する。小文字を送ると必ず失敗する。
+   */
+  action: 'APPROVE' | 'REJECT'
   adminNote?: string
 }
 
