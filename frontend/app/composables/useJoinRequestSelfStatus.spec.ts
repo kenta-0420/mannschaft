@@ -136,4 +136,61 @@ describe('useJoinRequestSelfStatus', () => {
     expect(joinRequestStatus.value).not.toBe('PENDING')
     expect(handleApiErrorMock).toHaveBeenCalled()
   })
+
+  // Codex 検分第2巡 P1-2 是正: 旧スコープの遅い応答が新スコープの状態を上書きしない
+  it('旧スコープ（成功）の遅い応答が、新スコープの状態を上書きしない', async () => {
+    let resolveOld: (value: unknown) => void = () => {}
+    mockApi.mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve })) // scopeId=7（旧・遅延）
+    mockApi.mockResolvedValueOnce({ data: [] }) // scopeId=12（新・即時 NONE）
+
+    const { joinRequestStatus, fetchJoinRequestStatus } = useJoinRequestSelfStatus('team')
+
+    const oldPromise = fetchJoinRequestStatus(7)
+    await fetchJoinRequestStatus(12)
+    expect(joinRequestStatus.value).toBe('NONE')
+
+    // 旧スコープ（7）の応答が今ごろ後着し、PENDING を返したとしても
+    // 新スコープ（12・NONE）の状態を上書きしてはならない。
+    resolveOld({ data: [makeRequest({ status: 'PENDING' })] })
+    await oldPromise
+
+    expect(joinRequestStatus.value).toBe('NONE')
+  })
+
+  it('旧スコープ（失敗）の遅い応答が、新スコープの状態を ERROR に落とさない', async () => {
+    let rejectOld: (reason: unknown) => void = () => {}
+    mockApi.mockReturnValueOnce(new Promise((_resolve, reject) => { rejectOld = reject })) // scopeId=7（旧・遅延失敗）
+    mockApi.mockResolvedValueOnce({ data: [] }) // scopeId=12（新・即時 NONE）
+
+    const { joinRequestStatus, fetchJoinRequestStatus } = useJoinRequestSelfStatus('team')
+
+    const oldPromise = fetchJoinRequestStatus(7)
+    await fetchJoinRequestStatus(12)
+    expect(joinRequestStatus.value).toBe('NONE')
+
+    rejectOld(new Error('old scope failed'))
+    // fetchJoinRequestStatus は例外を内部で捕捉して re-throw しないため、
+    // このawaitが拒否されることはない。
+    await oldPromise
+
+    expect(joinRequestStatus.value).toBe('NONE')
+    expect(handleApiErrorMock).not.toHaveBeenCalled()
+  })
+
+  it('同一スコープへの2回目の取得が完了する前に1回目の応答が来ても、2回目の結果で確定する', async () => {
+    let resolveFirst: (value: unknown) => void = () => {}
+    mockApi.mockReturnValueOnce(new Promise((resolve) => { resolveFirst = resolve }))
+    mockApi.mockResolvedValueOnce({ data: [makeRequest({ status: 'PENDING' })] })
+
+    const { joinRequestStatus, fetchJoinRequestStatus } = useJoinRequestSelfStatus('team')
+
+    const firstPromise = fetchJoinRequestStatus(12)
+    await fetchJoinRequestStatus(12)
+    expect(joinRequestStatus.value).toBe('PENDING')
+
+    resolveFirst({ data: [] })
+    await firstPromise
+
+    expect(joinRequestStatus.value).toBe('PENDING')
+  })
 })

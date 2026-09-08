@@ -145,4 +145,85 @@ describe('useJoinRequestManagement', () => {
 
     expect(mgmt.requestsError.value).toBe(false)
   })
+
+  // Codex 検分 CMP-260901-1538 第2巡 P1-3 是正: 追加取得と審査後再取得の競合
+  it('page1 追加取得中に承認→先頭ページ再取得が先に完了しても、後着した古い page1 応答は破棄される', async () => {
+    mockApi.mockResolvedValueOnce({
+      data: { content: Array.from({ length: 20 }, (_, i) => makeRequest(`req-${i}`)), totalElements: 21, totalPages: 2, number: 0, size: 20 },
+    })
+    const mgmt = useJoinRequestManagement(ref('team'), ref(12))
+    await mgmt.init()
+
+    // loadMore（page1）は未解決のまま保留する
+    let resolvePage1: (value: unknown) => void = () => {}
+    mockApi.mockReturnValueOnce(new Promise((resolve) => { resolvePage1 = resolve }))
+    const loadMorePromise = mgmt.loadMore()
+
+    // 承認 API・先頭ページ再取得は即時解決する
+    mockApi.mockResolvedValueOnce({ data: { id: 'req-0' } })
+    const freshHead = Array.from({ length: 19 }, (_, i) => makeRequest(`req-${i + 1}`))
+    mockApi.mockResolvedValueOnce({ data: { content: freshHead, totalElements: 20, totalPages: 1, number: 0, size: 20 } })
+    await mgmt.approve('req-0')
+
+    expect(mgmt.requests.value).toHaveLength(19)
+    expect(mgmt.totalElements.value).toBe(20)
+
+    // 古い page1 応答が今ごろ後着する
+    resolvePage1({ data: { content: [makeRequest('req-20')], totalElements: 21, totalPages: 2, number: 1, size: 20 } })
+    await loadMorePromise
+
+    // 破棄され、承認後の状態のまま（重複・古い行の復活・件数不整合が起きない）
+    expect(mgmt.requests.value).toHaveLength(19)
+    expect(mgmt.totalElements.value).toBe(20)
+    expect(mgmt.requests.value.some(r => r.id === 'req-20')).toBe(false)
+    expect(mgmt.requests.value.some(r => r.id === 'req-0')).toBe(false)
+  })
+
+  it('追加取得の応答に既存行と重複する ID が含まれていても二重に追加しない', async () => {
+    mockApi.mockResolvedValueOnce({
+      data: { content: [makeRequest('req-0')], totalElements: 2, totalPages: 2, number: 0, size: 20 },
+    })
+    const mgmt = useJoinRequestManagement(ref('team'), ref(12))
+    await mgmt.init()
+
+    mockApi.mockResolvedValueOnce({
+      data: { content: [makeRequest('req-0'), makeRequest('req-1')], totalElements: 2, totalPages: 2, number: 1, size: 20 },
+    })
+    await mgmt.loadMore()
+
+    const ids = mgmt.requests.value.map(r => r.id)
+    expect(ids.filter(id => id === 'req-0')).toHaveLength(1)
+    expect(ids).toContain('req-1')
+  })
+
+  it('古い世代（page1 追加取得）が後から失敗しても requestsError を立てない', async () => {
+    mockApi.mockResolvedValueOnce({
+      data: { content: Array.from({ length: 20 }, (_, i) => makeRequest(`req-${i}`)), totalElements: 21, totalPages: 2, number: 0, size: 20 },
+    })
+    const mgmt = useJoinRequestManagement(ref('team'), ref(12))
+    await mgmt.init()
+
+    // loadMore（page1）は未解決のまま保留する
+    let rejectPage1: (reason: unknown) => void = () => {}
+    mockApi.mockReturnValueOnce(new Promise((_resolve, reject) => { rejectPage1 = reject }))
+    const loadMorePromise = mgmt.loadMore()
+
+    // 承認により先頭ページ再取得が先に成功する（世代が進む）
+    mockApi.mockResolvedValueOnce({ data: { id: 'req-0' } })
+    mockApi.mockResolvedValueOnce({
+      data: { content: Array.from({ length: 19 }, (_, i) => makeRequest(`req-${i + 1}`)), totalElements: 20, totalPages: 1, number: 0, size: 20 },
+    })
+    await mgmt.approve('req-0')
+    expect(mgmt.requestsError.value).toBe(false)
+
+    // 古い世代の page1 取得が後から失敗する
+    rejectPage1(new Error('stale page1 failed'))
+    // fetchRequests は例外を内部で捕捉して re-throw しないため、
+    // このawaitが拒否されることはない。
+    await loadMorePromise
+
+    // 古い世代の失敗は現在の状態（requestsError=false）に影響しない
+    expect(mgmt.requestsError.value).toBe(false)
+    expect(mgmt.requests.value).toHaveLength(19)
+  })
 })

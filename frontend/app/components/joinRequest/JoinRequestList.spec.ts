@@ -56,7 +56,7 @@ describe('JoinRequestList', () => {
     expect(wrapper.text()).toContain('承認待ちの参加申請はありません')
   })
 
-  it('申請一覧を行として描画し、承認/却下ボタンで各 emit を発火する', async () => {
+  it('申請一覧を行として描画し、承認/却下ボタンで各 emit を発火する（1件目）', async () => {
     const requests = [makeRequest(), makeRequest({ id: 'req-2', requesterUserId: 1000, message: null })]
     const wrapper = await mountSuspended(JoinRequestList, {
       props: { ...baseProps, requests, totalElements: requests.length },
@@ -73,6 +73,29 @@ describe('JoinRequestList', () => {
 
     await buttons[1]!.trigger('click')
     expect(wrapper.emitted('reject')).toEqual([['req-1']])
+  })
+
+  // Codex 検分第2巡 P2 是正: 先頭行だけでなく2行目の ID 写像も検証する
+  // （行と ID の対応取り違えは1件だけのテストでは検出できない）
+  it('2行目の承認/却下ボタンは2行目の ID で emit する', async () => {
+    const requests = [
+      makeRequest({ id: 'req-1', requesterUserId: 100 }),
+      makeRequest({ id: 'req-2', requesterUserId: 200 }),
+    ]
+    const wrapper = await mountSuspended(JoinRequestList, {
+      props: { ...baseProps, requests, totalElements: requests.length },
+      global: { stubs },
+    })
+
+    const rows = wrapper.findAll('[data-testid="join-request-row"]')
+    expect(rows).toHaveLength(2)
+
+    const secondRowButtons = rows[1]!.findAll('button')
+    await secondRowButtons[0]!.trigger('click')
+    expect(wrapper.emitted('approve')).toEqual([['req-2']])
+
+    await secondRowButtons[1]!.trigger('click')
+    expect(wrapper.emitted('reject')).toEqual([['req-2']])
   })
 
   it('loading 中はローディング表示を出す', async () => {
@@ -157,6 +180,24 @@ describe('JoinRequestList', () => {
     })
     const buttons = wrapper.findAll('[data-testid="join-request-row"] button')
     expect(buttons).toHaveLength(2)
+    for (const button of buttons) {
+      expect(button.attributes('disabled')).toBeDefined()
+    }
+  })
+
+  // Codex 検分第2巡 P1-3 是正: 追加取得エラー時（既存行あり）は承認・却下操作を無効化する
+  // （前巡 P1-3 で塞いだはずの「エラー状態のまま操作が残る経路」の再発防止）
+  it('追加取得エラー時は既存の全行で承認・却下ボタンが無効化される（processingIds に無くても）', async () => {
+    const requests = [
+      makeRequest({ id: 'req-1' }),
+      makeRequest({ id: 'req-2' }),
+    ]
+    const wrapper = await mountSuspended(JoinRequestList, {
+      props: { ...baseProps, requests, totalElements: 21, hasMore: true, error: true, processingIds: [] },
+      global: { stubs },
+    })
+    const buttons = wrapper.findAll('[data-testid="join-request-row"] button')
+    expect(buttons).toHaveLength(4)
     for (const button of buttons) {
       expect(button.attributes('disabled')).toBeDefined()
     }

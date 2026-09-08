@@ -185,13 +185,6 @@ const overflowMenuItems = computed(() => {
             <i class="pi pi-check-circle" />{{ $t('joinRequest.approved') }}
           </span>
           <span
-            v-else-if="joinRequestStatus === 'REJECTED'"
-            class="flex items-center gap-2 text-sm text-gray-500"
-            data-testid="join-request-rejected"
-          >
-            <i class="pi pi-times-circle" />{{ $t('joinRequest.rejected') }}
-          </span>
-          <span
             v-else-if="joinRequestStatus === 'ERROR'"
             class="flex items-center gap-2 text-sm text-red-500"
             data-testid="join-request-error"
@@ -205,18 +198,32 @@ const overflowMenuItems = computed(() => {
               @click="emit('retryJoinRequestStatus')"
             />
           </span>
-          <Button
-            v-else
-            :label="$t('joinRequest.apply')"
-            icon="pi pi-user-plus"
-            severity="secondary"
-            outlined
-            size="small"
-            data-testid="join-request-apply-button"
-            :disabled="joinRequestStatus !== 'NONE'"
-            :loading="joinRequestLoading"
-            @click="emit('applyJoinRequest')"
-          />
+          <!--
+            REJECTED は「再申請不可」を意味しない。BE は既存の PENDING のみを
+            重複扱いし、却下後の新規申請を許可している（JoinRequestService.java）。
+            そのため却下された旨は表示しつつ、申請ボタンは NONE と同様に有効にする
+            （Codex 検分第2巡 P1-1 是正）。
+          -->
+          <template v-else>
+            <span
+              v-if="joinRequestStatus === 'REJECTED'"
+              class="text-xs text-gray-500"
+              data-testid="join-request-rejected"
+            >
+              {{ $t('joinRequest.rejected') }}
+            </span>
+            <Button
+              :label="$t('joinRequest.apply')"
+              icon="pi pi-user-plus"
+              severity="secondary"
+              outlined
+              size="small"
+              data-testid="join-request-apply-button"
+              :disabled="joinRequestStatus !== 'NONE' && joinRequestStatus !== 'REJECTED'"
+              :loading="joinRequestLoading"
+              @click="emit('applyJoinRequest')"
+            />
+          </template>
         </template>
         <!-- 低頻度アクション（市場出品導線・組織内告知・組織から退出）:
              デスクトップ(sm以上)は従来どおりインライン表示 -->

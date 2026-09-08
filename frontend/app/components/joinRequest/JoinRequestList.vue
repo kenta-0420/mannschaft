@@ -82,7 +82,7 @@ const { formatDate } = useDatetime()
             icon="pi pi-check"
             size="small"
             severity="success"
-            :disabled="processingIds.includes(req.id)"
+            :disabled="processingIds.includes(req.id) || error"
             :loading="processingIds.includes(req.id)"
             @click="emit('approve', req.id)"
           />
@@ -92,7 +92,7 @@ const { formatDate } = useDatetime()
             size="small"
             severity="danger"
             outlined
-            :disabled="processingIds.includes(req.id)"
+            :disabled="processingIds.includes(req.id) || error"
             :loading="processingIds.includes(req.id)"
             @click="emit('reject', req.id)"
           />

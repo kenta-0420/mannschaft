@@ -1,21 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
-import type { TeamResponse } from '~/types/team'
+import type { OrgDetail } from '~/composables/useOrgDetail'
 import type { JoinRequestUiStatus } from '~/composables/useJoinRequestApi'
-import TeamPageHeader from './TeamPageHeader.vue'
+import OrgPageHeader from './OrgPageHeader.vue'
 
 /**
- * 参加申請ボタンの状態別描画・無効化のテスト（Codex 検分 CMP-260901-1538 第1巡 P1-1/P1-5 是正）。
- *
- * 是正前は取得失敗が `NONE`（未申請）へ潰され、申請ボタンが常に有効だった（fail-open）。
- * `UNKNOWN`・`LOADING`・`ERROR` では申請操作を無効化する（fail-close）ことをここで固定する。
+ * 参加申請ボタンの状態別描画・無効化のテスト（組織ヘッダー版）。
+ * `TeamPageHeader.joinRequest.spec.ts` と同型（Codex 検分第2巡 P2: 組織側も未検証だった）。
  */
 
 const stubs = {
   ProfileHeader: { template: '<div><slot /></div>' },
   FavoriteToggleButton: true,
   RoleBadge: true,
-  Tag: true,
   Menu: true,
   BroadcastWizard: true,
   Button: {
@@ -25,22 +22,21 @@ const stubs = {
   },
 }
 
-function makeTeam(): TeamResponse {
+function makeOrg(): OrgDetail {
   return {
-    id: 1,
+    id: 'org-a',
     numericId: 1,
-    slug: 'team-a',
+    basicInfo: { name: '組織A' },
     visibility: { visibility: 'PUBLIC', supporterEnabled: false },
     metadata: { memberCount: 3 },
-    location: { template: 'default' },
-  } as unknown as TeamResponse
+  } as unknown as OrgDetail
 }
 
 async function mountHeader(joinRequestStatus: JoinRequestUiStatus) {
-  return mountSuspended(TeamPageHeader, {
+  return mountSuspended(OrgPageHeader, {
     props: {
-      team: makeTeam(),
-      displayName: 'チームA',
+      org: makeOrg(),
+      orgId: 'org-a',
       roleName: null,
       isAdmin: false,
       isAdminOrDeputy: false,
@@ -48,13 +44,13 @@ async function mountHeader(joinRequestStatus: JoinRequestUiStatus) {
       followLoading: false,
       joinRequestStatus,
       joinRequestLoading: false,
-      templateLabel: {},
+      ancestors: [],
     },
     global: { stubs },
   })
 }
 
-describe('TeamPageHeader 参加申請', () => {
+describe('OrgPageHeader 参加申請', () => {
   it('NONE のときのみ申請ボタンが有効になる', async () => {
     const wrapper = await mountHeader('NONE')
     const button = wrapper.find('[data-testid="join-request-apply-button"]')
@@ -91,9 +87,7 @@ describe('TeamPageHeader 参加申請', () => {
     expect(wrapper.find('[data-testid="join-request-approved"]').exists()).toBe(true)
   })
 
-  // Codex 検分第2巡 P1-1 是正: BE は却下後の新規申請を許可しているため、
-  // REJECTED でも申請ボタンは有効なままでなければならない（fail-open ではなく
-  // 正規の再申請経路を塞いだ前巡の退行）。
+  // Codex 検分第2巡 P1-1 是正: 組織側も却下後の再申請を許可する
   it('REJECTED のときは却下表示を出しつつ、申請ボタンは有効なまま（再申請できる）', async () => {
     const wrapper = await mountHeader('REJECTED')
     expect(wrapper.find('[data-testid="join-request-rejected"]').exists()).toBe(true)
