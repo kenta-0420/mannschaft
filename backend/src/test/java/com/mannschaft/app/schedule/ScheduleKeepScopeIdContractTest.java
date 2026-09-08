@@ -1,12 +1,16 @@
 package com.mannschaft.app.schedule;
 
 import com.mannschaft.app.config.OrgScopeId;
+import com.mannschaft.app.config.OpenApiConfig;
 import com.mannschaft.app.config.TeamScopeId;
 import com.mannschaft.app.schedule.controller.OrgScheduleKeepController;
 import com.mannschaft.app.schedule.controller.TeamScheduleKeepController;
+import io.swagger.v3.oas.models.media.StringSchema;
+import io.swagger.v3.oas.models.parameters.Parameter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -57,5 +61,22 @@ class ScheduleKeepScopeIdContractTest {
         Path source = Path.of("src/main/java", controller.getName().replace('.', '/') + ".java");
 
         assertThat(Files.readString(source)).doesNotContainPattern("\\.\\s*resolve(?:Team|Org)Id\\s*\\(");
+    }
+
+    @ParameterizedTest
+    @ValueSource(classes = {TeamScheduleKeepController.class, OrgScheduleKeepController.class})
+    @DisplayName("AC-6: OpenAPIのスコープIDはslugを表せるstring契約を維持する")
+    void openApiのスコープID契約を狭めない(Class<?> controller) {
+        Method endpoint = Arrays.stream(controller.getDeclaredMethods())
+                .filter(method -> method.getName().equals("create"))
+                .findFirst()
+                .orElseThrow();
+        Parameter parameter = new Parameter().schema(new StringSchema());
+
+        Parameter customized = new OpenApiConfig().scopeIdParameterCustomizer()
+                .customize(parameter, new MethodParameter(endpoint, 0));
+
+        assertThat(customized.getSchema()).isSameAs(parameter.getSchema());
+        assertThat(customized.getSchema().getType()).isEqualTo("string");
     }
 }
