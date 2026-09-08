@@ -9,7 +9,8 @@
       "detail": "詳細",
       "edit": "編集",
       "requests": "希望一覧",
-      "workConstraints": "勤務制約"
+      "workConstraints": "勤務制約",
+      "teamLoadFailed": "チーム情報の取得に失敗しました"
     },
     "status": {
       "all": "すべて",
@@ -193,7 +194,30 @@
         "nightShift": "夜シフト担当者",
         "selectedCount": "{count}名を選択中"
       },
-      "templateHint": "同じスケジュールの{period}シフト担当者に一括送信します"
+      "templateHint": "同じスケジュールの{period}シフト担当者に一括送信します",
+      "list": {
+        "title": "シフト交換リクエスト",
+        "requester": "申請者 #{id}",
+        "accepter": "交代相手 #{id}",
+        "accepterUndecided": "交代相手 未定",
+        "slot": "スロット #{id}",
+        "reason": "理由: {reason}",
+        "cancel": "取り下げ",
+        "reload": "再読み込み",
+        "empty": "交換リクエストはありません",
+        "loadFailed": "交換リクエストの取得に失敗しました",
+        "loadFailedBody": "交換リクエストを取得できませんでした",
+        "actionFailed": "処理に失敗しました",
+        "acceptSucceeded": "交代を承諾しました",
+        "approveSucceeded": "交代を承認しました",
+        "rejectSucceeded": "交代を却下しました",
+        "cancelSucceeded": "申請を取り下げました",
+        "statusPending": "承諾待ち",
+        "statusAccepted": "承認待ち",
+        "statusApproved": "承認済み",
+        "statusRejected": "却下",
+        "statusCancelled": "取り下げ"
+      }
     },
     "reminder": {
       "send": "リマインダーを送信",
@@ -436,8 +460,5 @@
         "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
       }
     }
-  },
-  "page": {
-    "teamLoadFailed": "チーム情報の取得に失敗しました"
   }
 }

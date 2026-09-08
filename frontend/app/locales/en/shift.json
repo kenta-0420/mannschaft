@@ -95,7 +95,8 @@
       "detail": "Detail",
       "edit": "Edit",
       "requests": "Requests",
-      "workConstraints": "Work Constraints"
+      "workConstraints": "Work Constraints",
+      "teamLoadFailed": "Failed to load team information"
     },
     "status": {
       "all": "All",
@@ -279,7 +280,30 @@
         "nightShift": "Night shift members",
         "selectedCount": "{count} selected"
       },
-      "templateHint": "Send to all {period} shift members in the same schedule"
+      "templateHint": "Send to all {period} shift members in the same schedule",
+      "list": {
+        "title": "Shift swap requests",
+        "requester": "Requester #{id}",
+        "accepter": "Partner #{id}",
+        "accepterUndecided": "Partner not decided",
+        "slot": "Slot #{id}",
+        "reason": "Reason: {reason}",
+        "cancel": "Withdraw",
+        "reload": "Reload",
+        "empty": "No swap requests",
+        "loadFailed": "Failed to load swap requests",
+        "loadFailedBody": "Could not load swap requests",
+        "actionFailed": "The operation failed",
+        "acceptSucceeded": "You accepted the swap",
+        "approveSucceeded": "The swap was approved",
+        "rejectSucceeded": "The swap was rejected",
+        "cancelSucceeded": "The request was withdrawn",
+        "statusPending": "Awaiting acceptance",
+        "statusAccepted": "Awaiting approval",
+        "statusApproved": "Approved",
+        "statusRejected": "Rejected",
+        "statusCancelled": "Withdrawn"
+      }
     },
     "reminder": {
       "send": "Send Reminder",
@@ -436,8 +460,5 @@
         "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
       }
     }
-  },
-  "page": {
-    "teamLoadFailed": "Failed to load team information"
   }
 }

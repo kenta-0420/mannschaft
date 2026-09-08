@@ -528,15 +528,14 @@ public class ShiftAutoAssignService {
         }
     }
 
+    /**
+     * 割当ユーザー ID リストを {@code assigned_user_ids} の JSON 形式へ直列化する。
+     *
+     * <p>CMP-260908-2117: 実体は {@link com.mannschaft.app.shift.ShiftAssignedUserIds}
+     *（割当 JSON の読み書きの唯一の定義）に委譲する。手動割当側と別実装のままだと
+     * 空リストの表現（{@code NULL} か {@code []} か）が経路ごとにずれる。</p>
+     */
     private String serializeList(List<Long> list) {
-        if (list == null || list.isEmpty()) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(list);
-        } catch (JsonProcessingException e) {
-            log.warn("リストのシリアライズに失敗: {}", e.getMessage());
-            return null;
-        }
+        return com.mannschaft.app.shift.ShiftAssignedUserIds.serialize(list);
     }
 }

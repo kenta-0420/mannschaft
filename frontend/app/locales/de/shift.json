@@ -81,7 +81,8 @@
       "detail": "Detail",
       "edit": "Bearbeiten",
       "requests": "Anfragen",
-      "workConstraints": "Arbeitsbeschränkungen"
+      "workConstraints": "Arbeitsbeschränkungen",
+      "teamLoadFailed": "Teaminformationen konnten nicht geladen werden"
     },
     "status": {
       "all": "Alle",
@@ -265,7 +266,30 @@
         "nightShift": "Nachtschicht-Mitglieder",
         "selectedCount": "{count} ausgewählt"
       },
-      "templateHint": "An alle {period}-Schichtmitglieder im gleichen Plan senden"
+      "templateHint": "An alle {period}-Schichtmitglieder im gleichen Plan senden",
+      "list": {
+        "title": "Schichttausch-Anfragen",
+        "requester": "Antragsteller #{id}",
+        "accepter": "Tauschpartner #{id}",
+        "accepterUndecided": "Tauschpartner offen",
+        "slot": "Schicht #{id}",
+        "reason": "Grund: {reason}",
+        "cancel": "Zurückziehen",
+        "reload": "Neu laden",
+        "empty": "Keine Tauschanfragen",
+        "loadFailed": "Tauschanfragen konnten nicht geladen werden",
+        "loadFailedBody": "Tauschanfragen konnten nicht abgerufen werden",
+        "actionFailed": "Die Aktion ist fehlgeschlagen",
+        "acceptSucceeded": "Tausch angenommen",
+        "approveSucceeded": "Tausch genehmigt",
+        "rejectSucceeded": "Tausch abgelehnt",
+        "cancelSucceeded": "Anfrage zurückgezogen",
+        "statusPending": "Wartet auf Annahme",
+        "statusAccepted": "Wartet auf Genehmigung",
+        "statusApproved": "Genehmigt",
+        "statusRejected": "Abgelehnt",
+        "statusCancelled": "Zurückgezogen"
+      }
     },
     "reminder": {
       "send": "Erinnerung senden",
@@ -436,8 +460,5 @@
         "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
       }
     }
-  },
-  "page": {
-    "teamLoadFailed": "Teaminformationen konnten nicht geladen werden"
   }
 }

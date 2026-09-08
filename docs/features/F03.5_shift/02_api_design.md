@@ -32,9 +32,10 @@
 | POST | `/api/v1/shifts/positions` | 必要 | ポジション作成 |
 | PATCH | `/api/v1/shifts/positions/{id}` | 必要 | ポジション更新（部分更新、PUT から PATCH へ変更） |
 | DELETE | `/api/v1/shifts/positions/{id}` | 必要 | ポジション削除（is_active=FALSE） |
+| GET | `/api/v1/shifts/swap-requests` | 必要 | シフト交代リクエスト一覧（`teamId` 必須。管理者は全件、一般メンバーは**自分に関係する依頼のみ**） **【🟢 可視範囲を是正 CMP-260908-2116 / 2026-09-08】** |
 | POST | `/api/v1/shifts/swap-requests` | 必要 | シフト交代リクエスト作成 |
 | POST | `/api/v1/shifts/swap-requests/{id}/accept` | 必要 | シフト交代を引き受ける（旧 PATCH → POST に変更） |
-| POST | `/api/v1/shifts/swap-requests/{id}/resolve` | 必要 | シフト交代の承認/却下統合（管理者用、リクエストボディの `decision` で `APPROVE`/`REJECT` を指定。旧 PATCH `/approve` + PATCH `/reject` を統合） |
+| POST | `/api/v1/shifts/swap-requests/{id}/resolve` | 必要 | シフト交代の承認/却下統合（管理者用、リクエストボディの `action` で **大文字** `APPROVE`/`REJECT` を指定。旧 PATCH `/approve` + PATCH `/reject` を統合） |
 | DELETE | `/api/v1/shifts/swap-requests/{id}` | 必要 | シフト交代リクエスト取り下げ |
 | GET | `/api/v1/shifts/availability` | 必要 | 自分のデフォルト可否プロファイル取得 |
 | PUT | `/api/v1/shifts/availability` | 必要 | デフォルト可否プロファイル一括更新 |
@@ -820,6 +821,8 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 ```
 
 - `confirmed_shifts`: `PUBLISHED` 状態のスケジュールで自分がアサインされているスロット
+  - **参照元は `shift_slots.assigned_user_ids`（割当の正本。CMP-260908-2117）**。`shift_assignments` は履歴表であり、状態問い合わせには使わない。旧実装は後者の `status = CONFIRMED` を引いており、手動割当（同表に書かない）が本人にまったく表示されなかった
+  - 可視性は `ShiftScheduleVisibilityPolicy.Visibility.FULL`（PUBLISHED / 公開済み ARCHIVED）に限る。割当を伏せる `MASKED`（COLLECTING / ADJUSTING）と `HIDDEN`（DRAFT 等）は本人にも返さない
 - `confirmed_shifts[].estimated_pay`: 時給設定がある場合のみ返却。`hours` はスロットの実勤務時間（深夜跨ぎ対応）、`hourly_rate` は `slot_date` 時点の適用時給、`amount = hours × hourly_rate`。時給未設定の場合は `null`
 - `pay_summary`: 取得期間内の全確定シフトの給与概算合計。時給未設定の場合は `null`。複数チームの場合はチーム別に集計しない（合計のみ）
 - `pending_requests`: `COLLECTING` 状態のスケジュールで自分が所属するチームのもの。未提出の場合は `my_request_count: 0` で含める（未提出の気づき促進）
@@ -1029,6 +1032,33 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 
 ---
 
+#### `GET /api/v1/shifts/swap-requests`
+
+指定チームの交代リクエスト一覧を取得する。**クエリ `teamId`（数値 ID）は必須**、`status` は任意のフィルタ。
+
+**可視範囲（CMP-260908-2116 で是正 / 2026-09-08）**
+
+| 閲覧者 | 見える範囲 |
+|---|---|
+| SYSTEM_ADMIN / 当該チームの ADMIN・DEPUTY_ADMIN | 当該チームの**全件** |
+| 当該チームの一般メンバー（SUPPORTER を除く） | **自分に関係する依頼のみ**（① `recipient_mode=SPECIFIC` かつ `target_user_ids` に自分が含まれる ② `recipient_mode=OPEN_CALL`（指名なし。誰でも承諾できる） ③ 自分が申請した ④ 自分が承諾済み） |
+| SUPPORTER / チーム外 | 403 |
+
+- **是正の背景**: 従来この API は ADMIN 限定であり、一般メンバーは 403 で一覧を引けなかった。
+  一方 `accept` は「同一チームの非 SUPPORTER メンバーなら申請者以外の誰でも承諾できる」ため、
+  **承諾できる相手が承諾すべき依頼を一覧できない**という矛盾があり、UI から承諾操作へ到達できなかった。
+- **絞り込みは必ず BE 側で行う**。`reason` には体調・家庭の事情など私的な内容が書かれうるため、
+  FE で表示を隠すだけでは他人の理由がレスポンス本文に乗って漏れる。関係のない依頼は**返さない**。
+- テナント越境は起こらない（`teamId` に対する認可が先に走り、取得も当該チームに閉じる）。
+
+**エラーレスポンス**
+| ステータス | 条件 |
+|-----------|------|
+| 400 | `teamId` 未指定 / 数値でない |
+| 403 | 当該チームのメンバーではない、または SUPPORTER |
+
+---
+
 #### `POST /api/v1/shifts/swap-requests`
 
 メンバーがシフト交代リクエストを作成する。`PUBLISHED` 状態のスケジュールに属する、自分がアサインされているスロットのみ対象。**v2.1 より 2 つのモードをサポート**: (A-2) 特定メンバー指名、(A-3) オープンコール（全体募集）。
@@ -1105,7 +1135,18 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 
 #### `POST /api/v1/shifts/swap-requests/{id}/resolve`
 
-> ※ 旧設計は `PATCH /approve` + `PATCH /reject` の 2 本。実装は `POST /resolve` 1 本に統合し、リクエストボディの `decision: "APPROVE" | "REJECT"` で分岐する方式に変更。以降のサブセクションは旧設計の参考情報として残す。
+> ※ 旧設計は `PATCH /approve` + `PATCH /reject` の 2 本。実装は `POST /resolve` 1 本に統合し、リクエストボディの `action: "APPROVE" | "REJECT"` で分岐する方式に変更。以降のサブセクションは旧設計の参考情報として残す。
+
+**リクエストボディ**
+```json
+{ "action": "APPROVE", "adminNote": "承認します" }
+```
+
+- フィールド名は `action`（旧設計の `decision` ではない）。
+- 値は**大文字**の `APPROVE` / `REJECT` のみ。BE は文字列を大文字のまま比較するため、
+  小文字（`approve` / `reject`）を送ると必ず失敗する（CMP-260908-2116 で FE の小文字送信を是正）。
+- 対象は **`ACCEPTED` の依頼のみ**。`PENDING` の依頼は承認・却下できない
+  （UI もこの契約に合わせ、承認・却下ボタンは管理者かつ `ACCEPTED` の行にだけ出す）。
 
 #### 【旧】`PATCH /api/v1/shifts/swap-requests/{id}/approve`
 
