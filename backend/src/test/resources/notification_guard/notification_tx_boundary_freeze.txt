@@ -1057,8 +1057,13 @@ com.mannschaft.app.recruitment.service.RecruitmentListingService#publish -> TX_N
 #   是正: 業務TX内は BudgetThresholdAlertTriggeredEvent の publish のみとし、配送は新設の
 #   ShiftBudgetThresholdAlertNotificationListener（@Async("event-pool") +
 #   @TransactionalEventListener(AFTER_COMMIT)）へ移した。イベントには ID・閾値・受信者IDだけを載せ、
-#   描画済み文字列も JPA 管理エンティティも載せていない。受信者ごとの被害半径は
-#   notifyAllLocalized 内部の受信者ごと try/catch が元から担っている。
+#   描画済み文字列も JPA 管理エンティティも載せていない。
+#   配送そのものは notifyAllLocalized ではなく受信者ごとの NotificationDeliveryRunner#sendOne
+#   （1件ごと REQUIRES_NEW）で行う。notifyAllLocalized は受信者ごとの例外を内部で握って
+#   呼び出し元へ何も返さないため、それを使うと通知が全滅してもリスナー外側の catch が発火せず
+#   NOTIFICATION_SEND の failed event が 1 件も残らない（＝alert は確定済みなのに通知は失われ、
+#   再送経路も無い）。sendOne なら被害半径の分離と、落ちた受信者の記録を両立できる。
+#   記録するのは落ちた受信者だけである（成功済みを混ぜると再送で重複配信になる）。
 #
 # ■ 根(B) ShiftBudgetRetryExecutor#retryNotificationSend（TX_NOTIFY_BARE）
 #   巻き戻る業務データ: execute（@Transactional(REQUIRES_NEW)）が通知呼び出しより前に行う
@@ -1076,7 +1081,15 @@ com.mannschaft.app.recruitment.service.RecruitmentListingService#publish -> TX_N
 #   markFailed が確実にコミットされる（リトライ回数が正しく積み上がる）。
 #   AFTER_COMMIT へ移さない理由は L3 の記述どおり: retry は同期 API であり、実行結果
 #   （success / 新ステータス）をそのまま FailedEventResponse で返す契約である。
-#   よって新クラスは番人の AUDITED_EXCEPTIONS（通知自体が業務目的）へ登録した。
+#   よって新クラスの resend は番人の免除対象とした。ただし AUDITED_EXCEPTIONS（クラス粒度）
+#   ではなく、新設した AUDITED_EXCEPTION_METHODS（FQCN#メソッド名）へ 1 メソッドだけ登録する。
+#   クラス粒度の免除は (i) そのクラスへ委譲するあらゆる呼び出し元を TX_NOTIFY_VIA_DELEGATE から外し、
+#   (ii) そのクラスに将来足される任意のメソッドを無条件で契約の外に出す。とりわけ
+#   ShiftBudgetRetryExecutor#retryNotificationSend（＝根(B) で直したまさにその箇所）が
+#   呼び出し元として沈黙するため、同じ欠陥が再発しても永久に緑のままになる。
+#   さらに免除は無条件の許可ではなく前提条件つきの許可とし、登録メソッドが呼び出し元TXを
+#   切り離す宣言（NOT_SUPPORTED / NEVER / @Async）を実際に持つことを番人自身が機械検査する
+#   （REQUIRES_NEW は業務コミット前に通知を先に確定させるので不可）。宣言が外れた瞬間に赤くなる。
 #   ついでに 1 件見つかった別の欠陥も直した: notifyAll は受信者ごとの失敗を内部で log.warn して
 #   握りつぶし呼び出し元へ何も返さないため、受信者全員への再送が失敗しても failed_event は
 #   SUCCEEDED になっていた。新クラスは受信者ごとに握って継続しつつ、1 名でも失敗したら
@@ -1100,11 +1113,12 @@ com.mannschaft.app.recruitment.service.RecruitmentListingService#publish -> TX_N
 # ■ 検出力の下限（RAW_CANDIDATE_HITS_MIN / STRUCTURAL_NOTIFY_CALLS_MIN / PARSED_METHODS_MIN）は下げない。
 #   通知の実発火点は 1 箇所も消していない。
 #     ThresholdAlertEvaluationService#sendNotifications の notifyAllLocalized(1 箇所)
-#       -> ShiftBudgetThresholdAlertNotificationListener の notifyAllLocalized(1 箇所)  … 1:1
+#       -> ShiftBudgetThresholdAlertNotificationListener の sendOne(1 箇所)              … 1:1
 #     ShiftBudgetRetryExecutor#retryNotificationSend の notifyAll(1 箇所)
 #       -> ShiftBudgetNotificationResendService の notify(1 箇所)                        … 1:1
-#   どちらも「起動位置を移した」だけであり、番人の判定ロジックは AUDITED_EXCEPTIONS への
-#   1 クラス追加以外一行も変えていない。
+#   どちらも「起動位置を移した」だけである。番人の判定ロジックへの変更は
+#   AUDITED_EXCEPTION_METHODS の新設とその前提条件ゲート（切り離し宣言の機械検査）のみで、
+#   違反を検出する軸そのもの（許可入口のホワイトリスト・語彙・委譲追跡）は一行も変えていない。
 #
 # ■ CENSUS_FLOOR: 49 -> 44 の裏取り（実測）
 #   是正前: 凍結エントリ 41 + REMOVED 8 + AMBIGUOUS 0 = 49
