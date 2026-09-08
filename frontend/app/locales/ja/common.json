@@ -1631,7 +1631,8 @@
       "load_error_body": "時間をおいて再度お試しください。権限がない場合は表示できないことがあります。",
       "back_to_dashboard": "ダッシュボードへ戻る",
       "retry": "再試行",
-      "slow_loading": "読み込みに時間がかかっています"
+      "slow_loading": "読み込みに時間がかかっています",
+      "join_request_applied": "参加申請を送信しました"
     },
     "unsavedChanges": {
       "title": "未保存の変更",
@@ -2184,7 +2185,8 @@
       "members": "メンバー",
       "invites": "招待",
       "supporters": "サポーター管理",
-      "modules": "機能設定"
+      "modules": "機能設定",
+      "joinRequests": "参加申請"
     },
     "action": {
       "leave_confirm_title": "チームから退出",
@@ -2201,7 +2203,8 @@
       "invites": "招待",
       "permission_groups": "権限グループ",
       "supporters": "サポーター管理",
-      "modules": "機能設定"
+      "modules": "機能設定",
+      "joinRequests": "参加申請"
     },
     "action": {
       "leave_confirm_title": "組織から退出",
@@ -2362,5 +2365,27 @@
     "hint": "切り替えは、画面上部の「チーム」「組織」メニューから対象を選んで開くと行われます。開いた団体が、そのまま現在のスコープになります。",
     "goTeams": "チームを選ぶ",
     "goOrganizations": "組織を選ぶ"
+  },
+  "joinRequest": {
+    "apply": "参加申請",
+    "pending": "申請中（承認待ち）",
+    "approved": "承認済み",
+    "rejected": "却下されました",
+    "fetchError": "取得に失敗しました",
+    "retry": "再試行",
+    "admin": {
+      "pendingTitle": "承認待ちの参加申請",
+      "empty": "承認待ちの参加申請はありません",
+      "requesterLabel": "ユーザーID: {userId}",
+      "requestedAt": "申請日",
+      "approve": "承認",
+      "reject": "却下",
+      "fetchError": "一覧の取得に失敗しました",
+      "retry": "再試行",
+      "loadMore": "さらに読み込む",
+      "loadMoreError": "追加読み込みに失敗しました",
+      "approveSuccess": "参加申請を承認しました",
+      "rejectSuccess": "参加申請を却下しました"
+    }
   }
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AncestorOrganization } from '~/types/organization'
 import type { OrgDetail } from '~/composables/useOrgDetail'
+import type { JoinRequestUiStatus } from '~/composables/useJoinRequestApi'
 import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
 const props = defineProps<{
@@ -11,6 +12,8 @@ const props = defineProps<{
   isAdminOrDeputy: boolean
   followStatus: 'NONE' | 'PENDING' | 'APPROVED'
   followLoading: boolean
+  joinRequestStatus: JoinRequestUiStatus
+  joinRequestLoading: boolean
   ancestors: AncestorOrganization[]
 }>()
 
@@ -18,6 +21,8 @@ const emit = defineEmits<{
   back: []
   applySupporter: []
   cancelSupporter: []
+  applyJoinRequest: []
+  retryJoinRequestStatus: []
   showCancelConfirm: []
   showLeaveConfirm: []
   iconUpdated: [url: string | null]
@@ -163,6 +168,62 @@ const overflowMenuItems = computed(() => {
             :loading="followLoading"
             @click="emit('applySupporter')"
           />
+        </template>
+        <template v-if="org.visibility?.visibility === 'PUBLIC' && !roleName">
+          <span
+            v-if="joinRequestStatus === 'PENDING'"
+            class="flex items-center gap-2 text-sm text-orange-500"
+            data-testid="join-request-pending"
+          >
+            <i class="pi pi-clock" />{{ $t('joinRequest.pending') }}
+          </span>
+          <span
+            v-else-if="joinRequestStatus === 'APPROVED'"
+            class="flex items-center gap-2 text-sm text-green-600"
+            data-testid="join-request-approved"
+          >
+            <i class="pi pi-check-circle" />{{ $t('joinRequest.approved') }}
+          </span>
+          <span
+            v-else-if="joinRequestStatus === 'ERROR'"
+            class="flex items-center gap-2 text-sm text-red-500"
+            data-testid="join-request-error"
+          >
+            <i class="pi pi-exclamation-triangle" />{{ $t('joinRequest.fetchError') }}
+            <Button
+              :label="$t('joinRequest.retry')"
+              text
+              size="small"
+              data-testid="join-request-retry-button"
+              @click="emit('retryJoinRequestStatus')"
+            />
+          </span>
+          <!--
+            REJECTED は「再申請不可」を意味しない。BE は既存の PENDING のみを
+            重複扱いし、却下後の新規申請を許可している（JoinRequestService.java）。
+            そのため却下された旨は表示しつつ、申請ボタンは NONE と同様に有効にする
+            （Codex 検分第2巡 P1-1 是正）。
+          -->
+          <template v-else>
+            <span
+              v-if="joinRequestStatus === 'REJECTED'"
+              class="text-xs text-gray-500"
+              data-testid="join-request-rejected"
+            >
+              {{ $t('joinRequest.rejected') }}
+            </span>
+            <Button
+              :label="$t('joinRequest.apply')"
+              icon="pi pi-user-plus"
+              severity="secondary"
+              outlined
+              size="small"
+              data-testid="join-request-apply-button"
+              :disabled="joinRequestStatus !== 'NONE' && joinRequestStatus !== 'REJECTED'"
+              :loading="joinRequestLoading"
+              @click="emit('applyJoinRequest')"
+            />
+          </template>
         </template>
         <!-- 低頻度アクション（市場出品導線・組織内告知・組織から退出）:
              デスクトップ(sm以上)は従来どおりインライン表示 -->
