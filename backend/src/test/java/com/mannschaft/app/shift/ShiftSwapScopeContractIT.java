@@ -99,6 +99,8 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long pendingSwapAId;  // TEAM A の PENDING 交代申請（申請者 = memberTeamA）
     private Long acceptedSwapAId; // TEAM A の ACCEPTED 交代申請（承認・却下の対象）
     private Long pendingSwapBId;  // TEAM B の PENDING 交代申請（一覧に混入してはならない）
+    private Long openCallSwapAId;  // TEAM A の指名なし（OPEN_CALL）申請（誰でも承諾できる）
+    private Long specificSwapAId;  // TEAM A の member2 を指名した申請
 
     @BeforeEach
     void setUp() {
@@ -126,6 +128,13 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
         pendingSwapAId = insertSwap(slotAId, memberTeamAId, SwapRequestStatus.PENDING, false);
         pendingSwapBId = insertSwap(slotBId, adminTeamBId, SwapRequestStatus.PENDING, false);
 
+        openCallSwapAId = swapRepository.save(
+                buildSwap(slotAId, memberTeamAId, SwapRequestStatus.PENDING, true)).getId();
+
+        ShiftSwapRequestEntity specific = buildSwap(slotAId, memberTeamAId, SwapRequestStatus.PENDING, false);
+        specific.setTargetUserIds("[" + member2TeamAId + "]");
+        specificSwapAId = swapRepository.save(specific).getId();
+
         ShiftSwapRequestEntity accepted = buildSwap(slotAId, memberTeamAId, SwapRequestStatus.PENDING, false);
         accepted.accept(member2TeamAId);
         acceptedSwapAId = swapRepository.save(accepted).getId();
@@ -143,9 +152,44 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
     class ListSwapRequests {
 
         @Test
-        @DisplayName("非ADMINメンバーは403")
-        void 非ADMINメンバーは403() throws Exception {
+        @DisplayName("★非ADMINメンバーも200（承諾するための一覧を引ける）")
+        void 非ADMINメンバーも200() throws Exception {
+            setAuth(member2TeamAId);
+            mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("★非ADMINメンバーの一覧は自分に関係する依頼だけ（他人同士の依頼は本文にも乗らない）")
+        void 非ADMINメンバーは自分に関係する依頼だけ見える() throws Exception {
+            setAuth(member2TeamAId);
+            mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk())
+                    // 自分が指名された依頼 / 指名なしの依頼 / 自分が承諾済みの依頼は見える
+                    .andExpect(jsonPath("$.data[?(@.id == " + specificSwapAId + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$.data[?(@.id == " + openCallSwapAId + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$.data[?(@.id == " + acceptedSwapAId + ")]").isNotEmpty())
+                    // ★他人同士の依頼（指名されておらず、指名なしでもなく、自分の依頼でもない）は含まれない。
+                    //   交代理由には体調・家庭の事情が書かれうるため、本文に乗ること自体が漏洩になる
+                    .andExpect(jsonPath("$.data[?(@.id == " + pendingSwapAId + ")]").isEmpty())
+                    // ★他チームの依頼も当然含まれない（テナント越境）
+                    .andExpect(jsonPath("$.data[?(@.id == " + pendingSwapBId + ")]").isEmpty())
+                    .andExpect(jsonPath("$.data[?(@.slotId == " + slotBId + ")]").isEmpty());
+        }
+
+        @Test
+        @DisplayName("★申請者本人には自分の依頼が見える")
+        void 申請者本人には自分の依頼が見える() throws Exception {
             setAuth(memberTeamAId);
+            mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.id == " + pendingSwapAId + ")]").isNotEmpty());
+        }
+
+        @Test
+        @DisplayName("部外者は403（メンバーですらない者には開かない）")
+        void 部外者は403() throws Exception {
+            setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
                     .andExpect(status().isForbidden());
         }
@@ -164,7 +208,12 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(adminTeamAId);
             mockMvc.perform(get("/api/v1/shifts/swap-requests").param("teamId", teamAId.toString()))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.length()").value(2));
+                    // 管理者は従来どおり当該チームの全件が見える（絞り込みで回帰していないこと）
+                    .andExpect(jsonPath("$.data.length()").value(4))
+                    .andExpect(jsonPath("$.data[?(@.id == " + pendingSwapAId + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$.data[?(@.id == " + openCallSwapAId + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$.data[?(@.id == " + specificSwapAId + ")]").isNotEmpty())
+                    .andExpect(jsonPath("$.data[?(@.id == " + acceptedSwapAId + ")]").isNotEmpty());
         }
 
         @Test
@@ -187,8 +236,8 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
                             .param("teamId", teamAId.toString())
                             .param("status", "PENDING"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.length()").value(1))
-                    .andExpect(jsonPath("$.data[0].id").value(pendingSwapAId));
+                    .andExpect(jsonPath("$.data.length()").value(3))
+                    .andExpect(jsonPath("$.data[?(@.id == " + pendingSwapBId + ")]").isEmpty());
         }
     }
 
@@ -270,6 +319,26 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", pendingSwapAId))
                     .andExpect(status().isOk());
         }
+
+        @Test
+        @DisplayName("★自分に関係する依頼を承諾すると accepterId が自分になり ACCEPTED になる")
+        void 承諾するとaccepterIdが自分になりACCEPTEDになる() throws Exception {
+            setAuth(member2TeamAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", specificSwapAId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("ACCEPTED"))
+                    .andExpect(jsonPath("$.data.accepterId").value(member2TeamAId));
+        }
+
+        @Test
+        @DisplayName("★申請者本人は自分の依頼を承諾できない")
+        void 申請者本人は承諾できない() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/accept", pendingSwapAId))
+                    .andExpect(status().is4xxClientError())
+                    .andExpect(result -> org.assertj.core.api.Assertions
+                            .assertThat(result.getResponse().getStatus()).isNotEqualTo(200));
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -321,13 +390,35 @@ class ShiftSwapScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("正当ADMINは200（正常系）")
+        @DisplayName("正当ADMINは200（正常系・大文字 APPROVE が受理される）")
         void 正当ADMINは200() throws Exception {
             setAuth(adminTeamAId);
             mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(resolveBody("APPROVE"))))
-                    .andExpect(status().isOk());
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("APPROVED"));
+        }
+
+        @Test
+        @DisplayName("★正当ADMINは大文字 REJECT で却下できる")
+        void 正当ADMINは却下できる() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("REJECT"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("REJECTED"));
+        }
+
+        @Test
+        @DisplayName("★小文字 action（reject）は受理されない（FE が大文字で送る契約を固定する）")
+        void 小文字actionは受理されない() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(post("/api/v1/shifts/swap-requests/{id}/resolve", acceptedSwapAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody("reject"))))
+                    .andExpect(status().is4xxClientError());
         }
 
         private Map<String, Object> resolveBody(String action) {
