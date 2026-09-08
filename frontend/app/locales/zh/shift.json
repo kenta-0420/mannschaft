@@ -266,7 +266,30 @@
         "nightShift": "夜班成员",
         "selectedCount": "已选{count}名"
       },
-      "templateHint": "向同一排班中{period}班次的所有成员批量发送"
+      "templateHint": "向同一排班中{period}班次的所有成员批量发送",
+      "list": {
+        "title": "排班交换申请",
+        "requester": "申请人 #{id}",
+        "accepter": "交换对象 #{id}",
+        "accepterUndecided": "交换对象未定",
+        "slot": "班次 #{id}",
+        "reason": "原因：{reason}",
+        "cancel": "撤回",
+        "reload": "重新加载",
+        "empty": "没有交换申请",
+        "loadFailed": "获取交换申请失败",
+        "loadFailedBody": "无法获取交换申请",
+        "actionFailed": "操作失败",
+        "acceptSucceeded": "已接受交换",
+        "approveSucceeded": "已批准交换",
+        "rejectSucceeded": "已拒绝交换",
+        "cancelSucceeded": "已撤回申请",
+        "statusPending": "等待接受",
+        "statusAccepted": "等待批准",
+        "statusApproved": "已批准",
+        "statusRejected": "已拒绝",
+        "statusCancelled": "已撤回"
+      }
     },
     "reminder": {
       "send": "发送提醒",
