@@ -15,6 +15,7 @@ const shiftApi = useShiftApi()
 // 未解決を握りつぶさず、本ページ自身で slug → numericId を解決する。
 const { team } = useTeamShellContext()
 const notification = useNotification()
+const { t } = useI18n()
 const teamApi = useTeamApi()
 const resolvedNumericId = ref<number | null>(null)
 const teamNumericId = computed<number | null>(
@@ -27,7 +28,7 @@ async function resolveTeamNumericId() {
     const res = await teamApi.getTeam(teamSlug)
     resolvedNumericId.value = res.data.numericId ?? null
   } catch {
-    notification.error('チーム情報の取得に失敗しました')
+    notification.error(t('shift.page.teamLoadFailed'))
   }
 }
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)

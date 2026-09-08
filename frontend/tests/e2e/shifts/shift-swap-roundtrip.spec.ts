@@ -243,7 +243,10 @@ test.describe('SWAP-001〜005: シフト交代募集の一往復（依頼→承�
     expect(listCalled).toBe(true)
   })
 
-  test('SWAP-003: 承認ボタンで accept API が飛び、再取得後に「承認」へ変わる', async ({ page }) => {
+  // 注: 承諾ボタンの表示条件は「ログインユーザーが accepterId であること」であり、
+  // ADMIN 権限とは無関係（ShiftSwapList.vue の表示ガード）。ここで ADMIN を使っているのは
+  // 一覧 API を叩ける役割として都合が良いためで、権限の検証ではない。
+  test('SWAP-003: 承諾ボタンで accept API が飛び、再取得後に状態が進む', async ({ page }) => {
     // /my/shift・チームシェル配下は dev サーバーの初回 SSR/最適化が重く、
     // 既定 60 秒ではハイドレーション待ちだけで枯れることがある（実測）。
     test.setTimeout(150_000)
@@ -326,8 +329,12 @@ test.describe('SWAP-001〜005: シフト交代募集の一往復（依頼→承�
     await expect(list.getByText('交換リクエストはありません')).toHaveCount(0)
   })
 
-  test('SWAP-005: 一覧が 403 のとき承認操作の導線が現れない', async ({ page }) => {
-    // 非 ADMIN メンバーは一覧 API が 403 を返す（BE 側の認可）
+  test('SWAP-005: 一覧取得が失敗したとき、空表示に潰さずエラー面を出し操作導線を出さない', async ({
+    page,
+  }) => {
+    // 403 を例に取るが、本テストが測るのは「一覧が取れなかったときの FE の振る舞い」であって
+    // 認可そのものではない（500 でも同じエラー面になるため、FE 側では両者を区別できない）。
+    // BE の認可は ShiftSwapScopeContractIT で担保している。
     // /my/shift・チームシェル配下は dev サーバーの初回 SSR/最適化が重く、
     // 既定 60 秒ではハイドレーション待ちだけで枯れることがある（実測）。
     test.setTimeout(150_000)

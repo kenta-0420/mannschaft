@@ -189,7 +189,7 @@ INDEX idx_shift_requests_schedule_date (schedule_id, slot_date)                 
 | `claimed_by` | BIGINT UNSIGNED | YES | NULL | **【v2.1 新規】** FK → users。オープンコールで先着した候補メンバー（先着優先、楽観ロックで競合防止） |
 | `claimed_at` | DATETIME | YES | NULL | **【v2.1 新規】** `claimed_by` が決まった日時 |
 | `accepter_id` | BIGINT UNSIGNED | YES | NULL | FK → users。実際に交代を引き受けるメンバー。個別交代では指名相手、オープンコールでは `claimed_by` と同値になるのが通常。管理者が別候補に差し替えると上書き可能 |
-| `status` | VARCHAR(20) | NO | 'PENDING' | リクエスト状態（PENDING / OPEN_CALL / CLAIMED / ACCEPTED / APPROVED / REJECTED / CANCELLED） |
+| `status` | VARCHAR(20) | NO | 'PENDING' | リクエスト状態（PENDING / ACCEPTED / APPROVED / REJECTED / CANCELLED）。`OPEN_CALL` / `CLAIMED` は **廃止（CMP-260903-0655）**。enum 定数は旧行の読み出し互換のため残置しているが、新規に書き込む経路は無い |
 | `reason` | VARCHAR(500) | YES | NULL | 交代理由（例: 「体調不良のため」） |
 | `admin_note` | VARCHAR(500) | YES | NULL | 管理者コメント（承認・却下時） |
 | `resolved_by` | BIGINT UNSIGNED | YES | NULL | FK → users。承認・却下した管理者 |
@@ -210,12 +210,12 @@ INDEX idx_shift_swap_requests_target (target_user_id, status)         -- 【v2.1
 **制約・備考**
 - ステータスライフサイクル:
   - **個別交代（is_open_call=FALSE, target_user_id=NOT NULL）**: `PENDING` → `ACCEPTED`（指名相手が引き受け）→ `APPROVED`（管理者承認）/ `REJECTED`（管理者却下）/ `CANCELLED`（依頼者取下）
-  - **オープンコール（is_open_call=TRUE, target_user_id=NULL）**: `OPEN_CALL`（募集中）→ `CLAIMED`（先着メンバー確定 = `claimed_by` 記録）→ `ACCEPTED`（依頼者 or 管理者が候補を確定、`accepter_id` = `claimed_by`）→ `APPROVED` / `REJECTED` / `CANCELLED`
+  - **オープンコール（is_open_call=TRUE, target_user_id=NULL）**: `PENDING`（募集中）→ `ACCEPTED` → `APPROVED` / `REJECTED` / `CANCELLED`。**【CMP-260903-0655】** 当初設計の `OPEN_CALL` → `CLAIMED`（手挙げ→候補者選定）の2段階は、作成経路が status を `PENDING` のままにしており到達不能な半実装だったため削除した。`claimed_by` / `claimed_at` / `version` 列と `PATCH /{id}/claim` の記述も同時に失効している
 - `APPROVED` 時の処理: スロットの `assigned_user_ids` から `requester_id` を除去し `accepter_id` を追加（1トランザクション内）。両メンバーにプッシュ通知
-- 同一スロットに `PENDING` / `OPEN_CALL` / `CLAIMED` / `ACCEPTED` の交代リクエストは1件のみ（Service 層バリデーション）
+- 同一スロットに `PENDING` / `ACCEPTED` の交代リクエストは1件のみ（Service 層バリデーション）
 - `PUBLISHED` 状態のスケジュールに属するスロットのみ交代リクエスト可能
 - **【v2.1】`is_open_call` と `target_user_id` の排他**: CHECK 制約で `(is_open_call = TRUE AND target_user_id IS NULL) OR (is_open_call = FALSE)` を強制
-- **【v2.1】`claimed_by` のレース条件対策**: 楽観的ロック（@Version）で「最初に `PATCH /{id}/claim` を発行した者が勝ち」のセマンティクスを保証。2人目以降は 409 Conflict で差し戻し、UI で「別の方が先に応じたため締め切られました」と Toast 表示
+- ~~**【v2.1】`claimed_by` のレース条件対策**~~ → **廃止（CMP-260903-0655）**。手挙げ API ごと削除したため、`claimed_by` / `claimed_at` は書き込まれない（列は既存行のため残置）
 - **【v2.1】オープンコールの悪用防止**: 同一ユーザーが 1 ヶ月（作成時点の年月）に作成できるオープンコール数の上限を **3 件** とする。超過時は 429 Too Many Requests。カウントは `SELECT COUNT(*) FROM shift_swap_requests WHERE requester_id = ? AND is_open_call = TRUE AND YEAR(created_at) = ? AND MONTH(created_at) = ?` で判定
 - **【v2.1】チーム全員への通知**: オープンコール作成時、チームメンバー全員（自分・SUPPORTER・GUEST を除く）にプッシュ + アプリ内通知を配信。ただし個人設定で「代打募集通知を受け取らない」を ON にしたユーザーは送信対象から除外（F04.3 通知設定を参照）
 - **【v2.1】候補選定の裁量**: `CLAIMED` 状態でも管理者（ADMIN/DEPUTY_ADMIN）は `accepter_id` を別メンバーに差し替える裁量を持つ（例: 先着者がスキル不足の場合、他候補に差し替えて `ACCEPTED` に進める）。依頼者は差し替え不可（管理者のみ）

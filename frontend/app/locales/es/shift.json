@@ -68,7 +68,7 @@
       "error": "Error al generar el PDF"
     },
     "myShifts": {
-      "title": "Mis turnos",
+      "title": "Mis Turnos",
       "empty": "No hay turnos",
       "fetchError": "Error al obtener la información de turnos"
     },
@@ -317,11 +317,6 @@
       "totalLabel": "Total",
       "confirmSubmit": "¿Enviar con esta configuración?"
     },
-    "myShifts": {
-      "title": "Mis Turnos",
-      "empty": "No hay turnos",
-      "fetchError": "Error al obtener la información de turnos"
-    },
     "myShift": {
       "confirmedTitle": "Turno Confirmado",
       "upcomingTitle": "Próximos turnos confirmados",
@@ -441,5 +436,8 @@
         "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
       }
     }
+  },
+  "page": {
+    "teamLoadFailed": "No se pudo obtener la información del equipo"
   }
 }

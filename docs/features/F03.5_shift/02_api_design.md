@@ -61,8 +61,6 @@
 | GET | `/api/v1/shifts/change-requests/{id}` | 必要 | **【v2.1】変更依頼の詳細取得** |
 | PATCH | `/api/v1/shifts/change-requests/{id}/review` | 必要 | **【v2.1】管理者が変更依頼を受諾（ACCEPTED）または却下（REJECTED）** |
 | DELETE | `/api/v1/shifts/change-requests/{id}` | 必要 | **【v2.1】依頼者本人が変更依頼を取下（WITHDRAWN）** |
-| POST | `/api/v1/shifts/swap-requests/{id}/claim` | 必要 | **【v2.1】オープンコール（全体募集）への手挙げ（先着優先、楽観ロック）** |
-| POST | `/api/v1/shifts/swap-requests/{id}/select-claimer` | 必要 | **【v2.1】オープンコール候補選定（依頼者または管理者が accepter を確定）** |
 | POST | `/api/v1/shifts/assignment-runs/{runId}/confirm-visual-review` | 必要 | **【v2.1】自動割当結果の目視確認を承認（PUBLISHED 遷移の前提条件）** |
 | GET | `/api/v1/shifts/schedules/{id}/pdf` | 必要 | **【v2.2】シフト表PDF出力（`layout=team` チーム全体マトリクス / `layout=personal` 個人タイムライン）** |
 
@@ -1177,7 +1175,7 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 
 **レスポンス（200 OK）**: 交代リクエスト単体を返却（`status: "CANCELLED"`）
 
-- **オープンコールの取下時（v2.1）**: 既に `CLAIMED` 状態でも依頼者本人なら取下可能。手挙げ済みだった `claimed_by` ユーザーに「募集が取下されました」通知を送信
+- ~~**オープンコールの取下時（v2.1）**: 既に `CLAIMED` 状態でも依頼者本人なら取下可能~~ → **廃止（CMP-260903-0655）**。`CLAIMED` へ遷移する経路が削除されたため、この分岐に入る行は発生しない
 
 **エラーレスポンス**
 | ステータス | 条件 |
@@ -1188,91 +1186,26 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 
 ---
 
-#### `POST /api/v1/shifts/swap-requests/{id}/claim`【v2.1 新規】
+#### `POST /api/v1/shifts/swap-requests/{id}/claim` / `select-claimer`【v2.1 → 廃止（CMP-260903-0655）】
 
-オープンコール（`is_open_call=true`, `status=OPEN_CALL`）に対して「代わりに入ります」と手を挙げる API。**先着優先**を楽観的ロックで保証する。
+**この2エンドポイントは削除済み。実装・呼び出し元ともに存在しない。**
 
-**リクエストボディ**
-```json
-{
-  "version": 0
-}
-```
+理由: 交代リクエストの作成経路（`POST /api/v1/shifts/swap-requests`）は `is_open_call=true` でも
+status を既定の `PENDING` のままにしており、`OPEN_CALL` へ遷移させる経路がどこにも無かった。
+`claim` は `status != 'OPEN_CALL'` を 409 で弾くため、本番データでは**一度も成功し得ない**死んだ API だった
+（`CLAIMED` 行も同じ理由で発生しない）。半実装のまま残すと、到達不能なコードが認可レビューの対象に
+残り続けるため、BE / FE / ロケール / OpenAPI から一式削除した。
 
-- `version`: 必須。クライアントが取得した時点の `shift_swap_requests.version`。サーバ側で `WHERE version = :version` で更新し、競合時は 409
+**撤退範囲（どこまで消したか）**:
+- 消したもの: 手挙げ（claim）と候補者選定（select-claimer）という**status 遷移の2段階**、および対応する
+  FE の `useOpenCall` / `ShiftOpenCallBadge` / `claimSwap` / `selectClaimer`
+- 残したもの: 交代リクエストの**受信者モードとしての `OPEN_CALL`**（`is_open_call=true` での作成、
+  チーム全員への通知、月次上限3件）。こちらは作成〜承認まで生きている
+- `SwapRequestStatus` の定数 `OPEN_CALL` / `CLAIMED` は**削除していない**。永続 enum のため、
+  万一の既存行の読み出しが落ちるのを避ける目的で残置している（新規に書き込む経路は無い）
 
-**レスポンス（200 OK）**
-```json
-{
-  "data": {
-    "id": 1,
-    "slot_id": 101,
-    "status": "CLAIMED",
-    "claimed_by": { "id": 12, "display_name": "高橋次郎" },
-    "claimed_at": "2026-04-23T10:05:00+09:00",
-    "version": 1
-  }
-}
-```
-
-- **処理（1トランザクション）**:
-  1. 対象 swap_request を `SELECT ... FOR UPDATE` でロック（念押しの悲観ロック併用）
-  2. `status != 'OPEN_CALL'` なら 409（既に他ユーザーが claim 済み or 取下済み）
-  3. `version` 不一致なら 409（並行 claim の片方が先着したケース）
-  4. `claimed_by = 認証ユーザーID`, `claimed_at = NOW()`, `status = 'CLAIMED'`, `version + 1` に更新
-  5. 依頼者・管理者にプッシュ通知（「高橋次郎さんが代打に応じました。候補を確定してください」）
-  6. ApplicationEvent: `ShiftOpenCallClaimedEvent`
-
-**エラーレスポンス**
-| ステータス | 条件 |
-|-----------|------|
-| 400 | `is_open_call = FALSE` の swap_request を対象にした（個別指名には claim 不可） |
-| 403 | チームメンバーではない / SUPPORTER/GUEST |
-| 403 | 依頼者本人が自分の募集に claim しようとした |
-| 404 | swap_request が存在しない |
-| 409 | `status != 'OPEN_CALL'`（既に他者が先着、または CANCELLED）/ 楽観的ロック競合 |
-
----
-
-#### `POST /api/v1/shifts/swap-requests/{id}/select-claimer`【v2.1 新規】
-
-オープンコールの `CLAIMED` 状態から `ACCEPTED` 状態へ遷移させ、`accepter_id` を確定する API。**依頼者または管理者**が実行可能。管理者は先着者（`claimed_by`）以外の候補に差し替える裁量を持つ（例: 手挙げ者が複数いた場合、過去に手挙げしたがキャンセルされた候補を選ぶ、スキル要件を満たす別メンバーを選ぶ）。
-
-**リクエストボディ**
-```json
-{
-  "accepter_user_id": 12,
-  "version": 1
-}
-```
-
-- `accepter_user_id`: 必須。確定する候補者の user_id。通常は `claimed_by` と同一値。管理者のみ異なる値を指定可能
-- `version`: 必須。楽観的ロック
-
-**レスポンス（200 OK）**
-```json
-{
-  "data": {
-    "id": 1,
-    "status": "ACCEPTED",
-    "accepter": { "id": 12, "display_name": "高橋次郎" },
-    "version": 2
-  }
-}
-```
-
-- 以降は通常の `PATCH /swap-requests/{id}/approve` フローで管理者承認に進む
-- 依頼者・確定された accepter の両方にプッシュ通知
-
-**エラーレスポンス**
-| ステータス | 条件 |
-|-----------|------|
-| 400 | `accepter_user_id` がチームメンバーではない / 依頼者本人を指定 / SUPPORTER/GUEST 指定 |
-| 403 | 依頼者本人でも管理者でもない / 依頼者が `claimed_by` 以外の値を指定（管理者のみ裁量可） |
-| 404 | swap_request が存在しない |
-| 409 | `status != 'CLAIMED'` / 楽観的ロック競合 |
-
----
+**現行のオープンコール依頼の扱い**: `is_open_call=true` で作られた依頼は `accepter_id` が NULL のまま
+`PENDING` で並ぶ。承諾の導線を通すかどうかは別途 CMP-260907-1531 で扱う。
 
 #### `GET /api/v1/shifts/availability`
 

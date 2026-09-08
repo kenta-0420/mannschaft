@@ -69,8 +69,8 @@
     },
     "myShifts": {
       "title": "Meine Schichten",
-      "empty": "Keine Schichten vorhanden",
-      "fetchError": "Fehler beim Abrufen der Schichtinformationen"
+      "empty": "Keine Schichten gefunden",
+      "fetchError": "Schichtinformationen konnten nicht abgerufen werden"
     },
     "page": {
       "title": "Schicht",
@@ -317,11 +317,6 @@
       "totalLabel": "Gesamt",
       "confirmSubmit": "Mit diesen Einstellungen einreichen?"
     },
-    "myShifts": {
-      "title": "Meine Schichten",
-      "empty": "Keine Schichten gefunden",
-      "fetchError": "Schichtinformationen konnten nicht abgerufen werden"
-    },
     "myShift": {
       "confirmedTitle": "Bestätigte Schicht",
       "upcomingTitle": "Bevorstehende bestätigte Schichten",
@@ -441,5 +436,8 @@
         "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
       }
     }
+  },
+  "page": {
+    "teamLoadFailed": "Teaminformationen konnten nicht geladen werden"
   }
 }
