@@ -12,6 +12,8 @@ import type { JoinRequestResponse, JoinRequestScopeType, JoinRequestUiStatus } f
  *
  * さらに、取得世代番号と対象 scopeId を保持し、旧スコープの遅い応答が
  * 新スコープの状態を上書きしないよう検証する（第2巡 P1-2）。
+ * 申請送信（applyJoinRequest）の成功時も、送信先スコープが今も表示中の
+ * スコープと一致する場合のみ状態を書き換える（第3巡 P1）。
  */
 export function useJoinRequestSelfStatus(scopeType: JoinRequestScopeType) {
   const { createJoinRequest, listMyJoinRequests } = useJoinRequestApi()
@@ -81,11 +83,16 @@ export function useJoinRequestSelfStatus(scopeType: JoinRequestScopeType) {
     joinRequestLoading.value = true
     try {
       await createJoinRequest(scopeType, scopeId)
-      // 直前まで進行中だった fetchJoinRequestStatus の応答が後着しても、
-      // 今まさに確定した PENDING を上書きしないよう世代を進めておく。
-      fetchSeq += 1
-      currentScopeId = scopeId
-      joinRequestStatus.value = 'PENDING'
+      // Codex 検分第3巡 P1 是正: 送信先スコープが「今も表示中のスコープ」であることを
+      // 確認してから状態を書き換える。確認せずに fetchSeq を進めて PENDING に上書きすると、
+      // 申請中に別スコープへ遷移していた場合、後発の正当な新スコープ取得（世代検証で
+      // 古い応答として弾かれる側）を巻き添えにして誤った PENDING 表示を残してしまう。
+      if (currentScopeId === scopeId) {
+        // 直前まで進行中だった同一スコープの fetchJoinRequestStatus の応答が後着しても、
+        // 今まさに確定した PENDING を上書きしないよう世代を進めておく。
+        fetchSeq += 1
+        joinRequestStatus.value = 'PENDING'
+      }
       notification.success(t('common.scopeShell.join_request_applied'))
     }
     catch (error) {

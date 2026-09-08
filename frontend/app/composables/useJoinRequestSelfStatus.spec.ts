@@ -115,10 +115,12 @@ describe('useJoinRequestSelfStatus', () => {
     expect(joinRequestStatus.value).toBe('NONE')
   })
 
-  it('申請送信に成功すると PENDING になる', async () => {
+  it('申請送信に成功すると PENDING になる（対象スコープが表示中の場合）', async () => {
+    mockApi.mockResolvedValueOnce({ data: [] }) // 事前の fetchJoinRequestStatus(12) で表示中スコープを確定
     mockApi.mockResolvedValueOnce({ data: makeRequest() })
-    const { joinRequestStatus, joinRequestLoading, applyJoinRequest } = useJoinRequestSelfStatus('team')
+    const { joinRequestStatus, joinRequestLoading, fetchJoinRequestStatus, applyJoinRequest } = useJoinRequestSelfStatus('team')
 
+    await fetchJoinRequestStatus(12)
     const promise = applyJoinRequest(12)
     expect(joinRequestLoading.value).toBe(true)
     await promise
@@ -128,13 +130,62 @@ describe('useJoinRequestSelfStatus', () => {
   })
 
   it('申請送信に失敗しても PENDING にはならない', async () => {
+    mockApi.mockResolvedValueOnce({ data: [] }) // 事前の fetchJoinRequestStatus(12)
     mockApi.mockRejectedValueOnce(new Error('boom'))
-    const { joinRequestStatus, applyJoinRequest } = useJoinRequestSelfStatus('team')
+    const { joinRequestStatus, fetchJoinRequestStatus, applyJoinRequest } = useJoinRequestSelfStatus('team')
 
+    await fetchJoinRequestStatus(12)
     await applyJoinRequest(12)
 
     expect(joinRequestStatus.value).not.toBe('PENDING')
     expect(handleApiErrorMock).toHaveBeenCalled()
+  })
+
+  // Codex 検分第3巡 P1 是正: 申請成功時、送信先スコープが表示中スコープと異なるなら状態を書き換えない
+  it('スコープA申請中にスコープBへ遷移→A成功が後着しても、Bの状態を上書きしない', async () => {
+    // A(7) の状態取得（表示中スコープを確定）
+    mockApi.mockResolvedValueOnce({ data: [] })
+    const { joinRequestStatus, fetchJoinRequestStatus, applyJoinRequest } = useJoinRequestSelfStatus('team')
+    await fetchJoinRequestStatus(7)
+    expect(joinRequestStatus.value).toBe('NONE')
+
+    // Aへ申請を送信するが、応答は保留する
+    let resolveApplyA: (value: unknown) => void = () => {}
+    mockApi.mockReturnValueOnce(new Promise((resolve) => { resolveApplyA = resolve }))
+    const applyAPromise = applyJoinRequest(7)
+
+    // その間に B(12) へ遷移し、Bの状態取得が完了する
+    mockApi.mockResolvedValueOnce({ data: [] })
+    await fetchJoinRequestStatus(12)
+    expect(joinRequestStatus.value).toBe('NONE')
+
+    // Aの申請が今ごろ成功する
+    resolveApplyA(makeRequest())
+    await applyAPromise
+
+    // Bの状態（NONE）を PENDING で上書きしてはならない
+    expect(joinRequestStatus.value).toBe('NONE')
+  })
+
+  it('スコープA申請中にスコープBへ遷移→A成功が後着しても、Bの後続取得（世代検証）は生きたまま', async () => {
+    mockApi.mockResolvedValueOnce({ data: [] }) // A(7) 初回取得
+    const { joinRequestStatus, fetchJoinRequestStatus, applyJoinRequest } = useJoinRequestSelfStatus('team')
+    await fetchJoinRequestStatus(7)
+
+    let resolveApplyA: (value: unknown) => void = () => {}
+    mockApi.mockReturnValueOnce(new Promise((resolve) => { resolveApplyA = resolve }))
+    const applyAPromise = applyJoinRequest(7)
+
+    // B(12) へ遷移し、B の取得が PENDING で解決する
+    mockApi.mockResolvedValueOnce({ data: [makeRequest({ status: 'PENDING' })] })
+    await fetchJoinRequestStatus(12)
+    expect(joinRequestStatus.value).toBe('PENDING')
+
+    // Aの申請が今ごろ成功しても、Bの正当な取得結果（PENDING）は変わらない
+    resolveApplyA(makeRequest())
+    await applyAPromise
+
+    expect(joinRequestStatus.value).toBe('PENDING')
   })
 
   // Codex 検分第2巡 P1-2 是正: 旧スコープの遅い応答が新スコープの状態を上書きしない

@@ -51,7 +51,8 @@ async function mountHeader(joinRequestStatus: JoinRequestUiStatus) {
 }
 
 describe('OrgPageHeader 参加申請', () => {
-  it('NONE のときのみ申請ボタンが有効になる', async () => {
+  // Codex 検分第3巡 P2 是正: REJECTED でも申請ボタンは有効（契約と矛盾しないテスト名にする）
+  it('NONE のとき申請ボタンが有効になる', async () => {
     const wrapper = await mountHeader('NONE')
     const button = wrapper.find('[data-testid="join-request-apply-button"]')
     expect(button.exists()).toBe(true)
