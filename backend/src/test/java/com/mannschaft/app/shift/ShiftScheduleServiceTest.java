@@ -9,12 +9,10 @@ import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleSummaryResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftScheduleRequest;
-import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
-import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -58,9 +56,6 @@ class ShiftScheduleServiceTest {
 
     @Mock
     private ShiftSlotRepository slotRepository;
-
-    @Mock
-    private ShiftAssignmentRepository assignmentRepository;
 
     @Mock
     private ShiftRequestRepository requestRepository;
@@ -815,7 +810,11 @@ class ShiftScheduleServiceTest {
             ShiftSlotEntity s1 = ShiftSlotEntity.builder()
                     .scheduleId(SCHEDULE_ID).slotDate(LocalDate.of(2026, 3, 1))
                     .startTime(java.time.LocalTime.of(9, 0)).endTime(java.time.LocalTime.of(17, 0))
-                    .positionId(1L).requiredCount(3).build();
+                    .positionId(1L).requiredCount(3)
+                    // CMP-260908-2117 AC-3: 充足数は割当の正本（assigned_user_ids）から数える。
+                    // 手動割当はこの列にしか書かれないため、旧実装（shift_assignments の
+                    // CONFIRMED 件数）では手動で埋めた枠が「未充足」に見えていた。
+                    .assignedUserIds("[50]").build();
             ReflectionTestUtils.setField(s1, "id", 1001L);
             ShiftSlotEntity s2 = ShiftSlotEntity.builder()
                     .scheduleId(SCHEDULE_ID).slotDate(LocalDate.of(2026, 3, 1))
@@ -824,18 +823,6 @@ class ShiftScheduleServiceTest {
             ReflectionTestUtils.setField(s2, "id", 1002L);
             given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
                     .willReturn(List.of(s1, s2));
-
-            // 確定アサイン
-            ShiftAssignmentEntity a1 = ShiftAssignmentEntity.builder()
-                    .slotId(1001L).userId(50L).assignedBy(USER_ID)
-                    .status(ShiftAssignmentStatus.CONFIRMED).build();
-            ShiftAssignmentEntity a2 = ShiftAssignmentEntity.builder()
-                    .slotId(1001L).userId(51L).assignedBy(USER_ID)
-                    .status(ShiftAssignmentStatus.PROPOSED).build(); // 確定ではない
-            // Phase 11 事後検分 fixup（2026-05-19）: N+1 解消で findAllByScheduleId に一本化したため
-            // slot ごとの Mock ではなくスケジュール単位の Mock に変更。Java 側で slotId グルーピングする。
-            given(assignmentRepository.findAllByScheduleId(SCHEDULE_ID))
-                    .willReturn(List.of(a1, a2));
 
             // 希望（slot_date 単位の延べ件数 3 件）
             ShiftRequestEntity r1 = ShiftRequestEntity.builder()

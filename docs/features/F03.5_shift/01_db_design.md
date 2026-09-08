@@ -338,6 +338,40 @@ INDEX idx_hourly_rates_team (team_id, user_id)                                 -
 
 自動割当の実行結果を保存する監査・差し戻し用のテーブル。`shift_slots.assigned_user_ids` は「現在の割当状態」を示すキャッシュ的な JSON 配列であるのに対し、本テーブルは「誰がいつどの戦略で割り当てたか」を個別レコードとして履歴保持する。手動割当も自動割当も同じテーブルに記録する。
 
+##### 二表の役割分担（正本はどちらか）— CMP-260908-2117
+
+| 観点 | `shift_slots.assigned_user_ids`（JSON） | `shift_assignments` |
+|---|---|---|
+| 役割 | **現在の割当状態の正本** | 操作履歴（監査証跡） |
+| 読み出し | 自分のシフト／今後の予定／充足サマリー／PDF／タスク生成／人件費予算はすべてこちら | 状態問い合わせには使わない |
+| 書き込み | 手動割当・枠更新・自動割当の確定同期 | 手動割当・自動割当の双方が追記 |
+
+**この分担が守られていなかったことによる不具合（CMP-260908-2117）**: 読み出しのうち 3 経路
+（`ShiftMyService#getMyConfirmedSlots` / 個人ダッシュボードの「今後の予定」 / `ShiftScheduleService#getScheduleSummary`）が
+`shift_assignments.status = CONFIRMED` を現在状態として引いていた。しかし同表に書き込むのは
+`ShiftAutoAssignService` だけであり、手動割当（`PATCH /shifts/slots/{id}/assignments`・枠更新）は
+JSON 列にしか書かない。結果として**手動で割り当てられた人のシフトはどこにも表示されず**、
+管理者の充足サマリーも埋まった枠を「未充足」と表示していた。
+
+現在は上記 3 経路とも JSON 列を引く（MySQL の `JSON_CONTAINS` を使うネイティブクエリ。
+JPQL では表現できないため、この挙動を固定できるのは実 MySQL の統合テストだけである）。
+併せて手動割当も本表に履歴を残すようになった。
+
+**未公開シフト表の遮断（CMP-260826-2127 との関係）**: 旧実装では `status = CONFIRMED` が
+偶然の公開ガードとして働いていた面があるため、JSON 参照へ移す際に可視性条件を明示している。
+「自分のシフト」「今後の予定」は割当そのものを返す経路なので、通すのは
+`ShiftScheduleVisibilityPolicy.Visibility.FULL`（PUBLISHED / 公開済み ARCHIVED）だけであり、
+割当を伏せる `MASKED`（COLLECTING / ADJUSTING）も通さない。SQL 側の述語は
+`ShiftScheduleEntity.FULLY_VISIBLE_SQL` が唯一の定義を持つ。
+
+**手動割当の履歴の書き方**（`ShiftSlotService#recordAssignmentHistory`）:
+
+- 1 行 = 1 回の割当。`created_at` が割当時刻、`REVOKED` へ遷移した時の `updated_at` が解除時刻
+- **追加**: 当該 (slot, user) に非 REVOKED 行が無ければ `CONFIRMED` 行を INSERT（`run_id` は NULL = 手動、`assigned_by` は操作者）。既にあれば何もしない（冪等）
+- **解除**: 当該 (slot, user) の非 REVOKED 行をすべて `REVOKED` へ遷移。自動割当由来の行も対象に含める（外したという事実は割当の出自によらず、残すと履歴表が現状と食い違うため）
+- **外して再度入れる**: 結果として REVOKED 行と新しい CONFIRMED 行が並ぶ。実 DDL の UNIQUE KEY は `(slot_id, user_id, run_id)` であり、`run_id` が NULL のとき MySQL は重複を許すため制約違反にならない
+- **既知の限界**: 解除した操作者は記録されない（`assigned_by` は割り当てた者を保持する）。記録するには列追加が必要で、本 CMP の射程外とした
+
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|---|------|-----------|------|
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |

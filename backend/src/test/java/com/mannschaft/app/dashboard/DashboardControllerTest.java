@@ -27,7 +27,10 @@ import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
-import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
+import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.entity.ShiftSlotEntity;
+import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
+import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
@@ -92,7 +95,9 @@ class DashboardControllerTest {
     @Mock private TeamRepository teamRepository;
     @Mock private OrganizationRepository organizationRepository;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
-    @Mock private ShiftAssignmentRepository shiftAssignmentRepository;
+    /** CMP-260908-2117: 「今後の予定」のシフトは割当の正本（assigned_user_ids）から引く。 */
+    @Mock private ShiftSlotRepository shiftSlotRepository;
+    @Mock private ShiftScheduleRepository shiftScheduleRepository;
     @Mock private ReservationRepository reservationRepository;
     @Mock private TeamService teamService;
     @Mock private OrganizationService organizationService;
@@ -114,7 +119,7 @@ class DashboardControllerTest {
         );
         // 司令塔第二弾: getUpcomingEvents はシフト/予約統合クエリを常に呼ぶため既定で空を返す
         // （LENIENT strictness だが、明示しておくことで各テストの意図を読みやすくする）。
-        given(shiftAssignmentRepository.findUpcomingByUserIdBetween(any(), any(), any())).willReturn(List.of());
+        given(shiftSlotRepository.findUpcomingAssignedByUserIdBetween(any(), any(), any())).willReturn(List.of());
         given(reservationRepository.findUpcomingByUserIdBetween(any(), any(), any())).willReturn(List.of());
     }
 
@@ -594,6 +599,29 @@ class DashboardControllerTest {
             return team;
         }
 
+        /** CMP-260908-2117: シフトは割当の正本（枠エンティティ）で返るようになった。 */
+        private ShiftSlotEntity buildShiftSlot(
+                Long id, Long scheduleId, LocalDate date, LocalTime start, LocalTime end) {
+            ShiftSlotEntity slot = ShiftSlotEntity.builder()
+                    .scheduleId(scheduleId)
+                    .slotDate(date)
+                    .startTime(start)
+                    .endTime(end)
+                    .assignedUserIds("[" + USER_ID + "]")
+                    .build();
+            ReflectionTestUtils.setField(slot, "id", id);
+            return slot;
+        }
+
+        private ShiftScheduleEntity buildShiftSchedule(Long id, String title) {
+            ShiftScheduleEntity schedule = ShiftScheduleEntity.builder()
+                    .teamId(TEAM_ID)
+                    .title(title)
+                    .build();
+            ReflectionTestUtils.setField(schedule, "id", id);
+            return schedule;
+        }
+
         // ========================================
         // 司令塔第二弾（ADHD-UX戦役第四陣）: シフト・予約統合
         // ========================================
@@ -611,11 +639,11 @@ class DashboardControllerTest {
             given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // シフト（06/02 09:00-17:00・中間）
-            Object[] shiftRow = new Object[]{
-                    100L, "早番シフト", LocalDate.of(2026, 6, 2), LocalTime.of(9, 0), LocalTime.of(17, 0), TEAM_ID
-            };
-            given(shiftAssignmentRepository.findUpcomingByUserIdBetween(eq(USER_ID), any(), any()))
-                    .willReturn(List.<Object[]>of(shiftRow));
+            given(shiftSlotRepository.findUpcomingAssignedByUserIdBetween(eq(USER_ID), any(), any()))
+                    .willReturn(List.of(buildShiftSlot(
+                            100L, 300L, LocalDate.of(2026, 6, 2), LocalTime.of(9, 0), LocalTime.of(17, 0))));
+            given(shiftScheduleRepository.findAllById(any()))
+                    .willReturn(List.of(buildShiftSchedule(300L, "早番シフト")));
 
             // 予約（06/01 10:00-11:00・最も早い）
             Object[] reservationRow = new Object[]{
@@ -657,7 +685,7 @@ class DashboardControllerTest {
             dashboardController.getUpcomingEvents(7);
 
             // Then: 呼び出しに使われる userId は常にログインユーザーの USER_ID（他人の ID の混入なし）
-            verify(shiftAssignmentRepository).findUpcomingByUserIdBetween(eq(USER_ID), any(), any());
+            verify(shiftSlotRepository).findUpcomingAssignedByUserIdBetween(eq(USER_ID), any(), any());
             verify(reservationRepository).findUpcomingByUserIdBetween(eq(USER_ID), any(), any());
         }
 
@@ -699,12 +727,14 @@ class DashboardControllerTest {
             given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // 同一チームに属する複数件のシフト・予約
-            Object[] shift1 = new Object[]{
-                    101L, "シフトA", LocalDate.of(2026, 6, 1), LocalTime.of(9, 0), LocalTime.of(17, 0), TEAM_ID};
-            Object[] shift2 = new Object[]{
-                    102L, "シフトB", LocalDate.of(2026, 6, 2), LocalTime.of(9, 0), LocalTime.of(17, 0), TEAM_ID};
-            given(shiftAssignmentRepository.findUpcomingByUserIdBetween(eq(USER_ID), any(), any()))
-                    .willReturn(List.of(shift1, shift2));
+            given(shiftSlotRepository.findUpcomingAssignedByUserIdBetween(eq(USER_ID), any(), any()))
+                    .willReturn(List.of(
+                            buildShiftSlot(101L, 300L,
+                                    LocalDate.of(2026, 6, 1), LocalTime.of(9, 0), LocalTime.of(17, 0)),
+                            buildShiftSlot(102L, 300L,
+                                    LocalDate.of(2026, 6, 2), LocalTime.of(9, 0), LocalTime.of(17, 0))));
+            given(shiftScheduleRepository.findAllById(any()))
+                    .willReturn(List.of(buildShiftSchedule(300L, "シフト表")));
 
             Object[] reservation1 = new Object[]{
                     201L, "予約A", LocalDate.of(2026, 6, 1), LocalTime.of(10, 0), LocalTime.of(11, 0), TEAM_ID};

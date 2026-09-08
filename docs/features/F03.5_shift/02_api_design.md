@@ -820,6 +820,8 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 ```
 
 - `confirmed_shifts`: `PUBLISHED` 状態のスケジュールで自分がアサインされているスロット
+  - **参照元は `shift_slots.assigned_user_ids`（割当の正本。CMP-260908-2117）**。`shift_assignments` は履歴表であり、状態問い合わせには使わない。旧実装は後者の `status = CONFIRMED` を引いており、手動割当（同表に書かない）が本人にまったく表示されなかった
+  - 可視性は `ShiftScheduleVisibilityPolicy.Visibility.FULL`（PUBLISHED / 公開済み ARCHIVED）に限る。割当を伏せる `MASKED`（COLLECTING / ADJUSTING）と `HIDDEN`（DRAFT 等）は本人にも返さない
 - `confirmed_shifts[].estimated_pay`: 時給設定がある場合のみ返却。`hours` はスロットの実勤務時間（深夜跨ぎ対応）、`hourly_rate` は `slot_date` 時点の適用時給、`amount = hours × hourly_rate`。時給未設定の場合は `null`
 - `pay_summary`: 取得期間内の全確定シフトの給与概算合計。時給未設定の場合は `null`。複数チームの場合はチーム別に集計しない（合計のみ）
 - `pending_requests`: `COLLECTING` 状態のスケジュールで自分が所属するチームのもの。未提出の場合は `my_request_count: 0` で含める（未提出の気づき促進）
