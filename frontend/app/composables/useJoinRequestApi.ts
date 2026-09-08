@@ -32,6 +32,16 @@
 export type JoinRequestScopeType = 'team' | 'organization'
 export type JoinRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
+/**
+ * 「自分の参加申請状態」の UI 表示用ステート（Codex 検分 CMP-260901-1538 P1-1 是正）。
+ *
+ * `NONE` は「BE から未申請と確認できた」ことを意味し、これのみ申請ボタンを有効化する。
+ * `UNKNOWN`（初期値・未取得）・`LOADING`（取得中）・`ERROR`（取得失敗）はすべて
+ * fail-close（申請操作を無効化）する。取得失敗を握りつぶして `NONE` に潰すと
+ * 「未申請」と誤表示したまま再送信可能になる fail-open になるため、必ず区別する。
+ */
+export type JoinRequestUiStatus = 'UNKNOWN' | 'LOADING' | 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'ERROR'
+
 export interface JoinRequestResponse {
   id: string
   scopeType: 'TEAM' | 'ORGANIZATION'

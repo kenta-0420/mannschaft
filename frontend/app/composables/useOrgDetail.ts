@@ -51,10 +51,16 @@ export function useOrgDetail(orgId: Ref<string>) {
   /**
    * MEMBER 参加申請（柱③-A・CMP-260901-1538）。
    * 取り下げ API は BE 未実装（PR #3139）のため PENDING 表示のみ提供する（対処療法禁止の原則）。
+   *
+   * 自分の申請状態の取得・送信は `useJoinRequestSelfStatus` に一本化している
+   * （Codex 検分第1巡 P1-1: 取得失敗を NONE に潰す fail-open を是正）。
    */
-  const { createJoinRequest, listMyJoinRequests } = useJoinRequestApi()
-  const joinRequestStatus = ref<'NONE' | 'PENDING'>('NONE')
-  const joinRequestLoading = ref(false)
+  const {
+    joinRequestStatus,
+    joinRequestLoading,
+    fetchJoinRequestStatus: fetchJoinRequestStatusRaw,
+    applyJoinRequest: applyJoinRequestRaw,
+  } = useJoinRequestSelfStatus('organization')
 
   async function fetchOrg() {
     loading.value = true
@@ -132,26 +138,12 @@ export function useOrgDetail(orgId: Ref<string>) {
     if (roleName.value) return
     if (org.value?.visibility?.visibility !== 'PUBLIC') return
     if (!org.value?.numericId) return
-    try {
-      const res = await listMyJoinRequests('organization', org.value.numericId)
-      joinRequestStatus.value = res.data.some(r => r.status === 'PENDING') ? 'PENDING' : 'NONE'
-    } catch {
-      joinRequestStatus.value = 'NONE'
-    }
+    await fetchJoinRequestStatusRaw(org.value.numericId)
   }
 
   async function applyJoinRequest() {
     if (!org.value?.numericId) return
-    joinRequestLoading.value = true
-    try {
-      await createJoinRequest('organization', org.value.numericId)
-      joinRequestStatus.value = 'PENDING'
-      notification.success(t('common.scopeShell.join_request_applied'))
-    } catch (error) {
-      handleApiError(error, '参加申請')
-    } finally {
-      joinRequestLoading.value = false
-    }
+    await applyJoinRequestRaw(org.value.numericId)
   }
 
   async function leaveOrganization() {

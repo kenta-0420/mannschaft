@@ -130,38 +130,27 @@ async function cancelSupporter() {
 /**
  * PUBLIC & ACTIVE チームへの MEMBER 参加申請。取り下げ API は BE 未実装（PR #3139）のため
  * 対処療法で偽装せず、PENDING 表示のみ提供する（対処療法禁止の原則）。
+ *
+ * 自分の申請状態の取得・送信は `useJoinRequestSelfStatus` に一本化している
+ * （Codex 検分 CMP-260901-1538 第1巡 P1-1: 取得失敗を NONE に潰す fail-open を是正）。
  */
-const { createJoinRequest, listMyJoinRequests } = useJoinRequestApi()
-const joinRequestStatus = ref<'NONE' | 'PENDING'>('NONE')
-const joinRequestLoading = ref(false)
+const {
+  joinRequestStatus,
+  joinRequestLoading,
+  fetchJoinRequestStatus: fetchJoinRequestStatusRaw,
+  applyJoinRequest: applyJoinRequestRaw,
+} = useJoinRequestSelfStatus('team')
 
 async function fetchJoinRequestStatus() {
   if (roleName.value) return
   if (team.value?.visibility?.visibility !== 'PUBLIC') return
   if (!team.value?.numericId) return
-  try {
-    const res = await listMyJoinRequests('team', team.value.numericId)
-    joinRequestStatus.value = res.data.some(r => r.status === 'PENDING') ? 'PENDING' : 'NONE'
-  }
-  catch {
-    joinRequestStatus.value = 'NONE'
-  }
+  await fetchJoinRequestStatusRaw(team.value.numericId)
 }
 
 async function applyJoinRequest() {
   if (!team.value?.numericId) return
-  joinRequestLoading.value = true
-  try {
-    await createJoinRequest('team', team.value.numericId)
-    joinRequestStatus.value = 'PENDING'
-    notification.success(t('common.scopeShell.join_request_applied'))
-  }
-  catch (error) {
-    handleApiError(error, '参加申請')
-  }
-  finally {
-    joinRequestLoading.value = false
-  }
+  await applyJoinRequestRaw(team.value.numericId)
 }
 
 // =============================================================================
@@ -421,12 +410,13 @@ watch(teamSlug, () => {
   teamLoaded.value = false
   team.value = null
   followStatus.value = 'NONE'
+  joinRequestStatus.value = 'UNKNOWN'
   reservationEnabled.value = false
   if (isShellRoute.value) void loadShellData()
 })
 
 /** 管理系タブ key（レンズ OFF・非管理者では滞在させない）。 */
-const ADMIN_ONLY_SEGMENTS = new Set(['invites', 'supporters', 'modules'])
+const ADMIN_ONLY_SEGMENTS = new Set(['invites', 'supporters', 'join-requests', 'modules'])
 
 /**
  * 管理者レンズ OFF、または管理権限を失った状態で管理ルートに滞在している場合は
@@ -602,6 +592,7 @@ provideTeamShellContext({
             @apply-supporter="applySupporter"
             @cancel-supporter="cancelSupporter"
             @apply-join-request="applyJoinRequest"
+            @retry-join-request-status="fetchJoinRequestStatus"
             @show-cancel-confirm="showCancelSupporterConfirm = true"
             @show-leave-confirm="showLeaveConfirm = true"
             @icon-updated="teamMutators.updateTeamIcon"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AncestorOrganization } from '~/types/organization'
 import type { OrgDetail } from '~/composables/useOrgDetail'
+import type { JoinRequestUiStatus } from '~/composables/useJoinRequestApi'
 import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
 const props = defineProps<{
@@ -11,7 +12,7 @@ const props = defineProps<{
   isAdminOrDeputy: boolean
   followStatus: 'NONE' | 'PENDING' | 'APPROVED'
   followLoading: boolean
-  joinRequestStatus: 'NONE' | 'PENDING'
+  joinRequestStatus: JoinRequestUiStatus
   joinRequestLoading: boolean
   ancestors: AncestorOrganization[]
 }>()
@@ -21,6 +22,7 @@ const emit = defineEmits<{
   applySupporter: []
   cancelSupporter: []
   applyJoinRequest: []
+  retryJoinRequestStatus: []
   showCancelConfirm: []
   showLeaveConfirm: []
   iconUpdated: [url: string | null]
@@ -175,6 +177,34 @@ const overflowMenuItems = computed(() => {
           >
             <i class="pi pi-clock" />{{ $t('joinRequest.pending') }}
           </span>
+          <span
+            v-else-if="joinRequestStatus === 'APPROVED'"
+            class="flex items-center gap-2 text-sm text-green-600"
+            data-testid="join-request-approved"
+          >
+            <i class="pi pi-check-circle" />{{ $t('joinRequest.approved') }}
+          </span>
+          <span
+            v-else-if="joinRequestStatus === 'REJECTED'"
+            class="flex items-center gap-2 text-sm text-gray-500"
+            data-testid="join-request-rejected"
+          >
+            <i class="pi pi-times-circle" />{{ $t('joinRequest.rejected') }}
+          </span>
+          <span
+            v-else-if="joinRequestStatus === 'ERROR'"
+            class="flex items-center gap-2 text-sm text-red-500"
+            data-testid="join-request-error"
+          >
+            <i class="pi pi-exclamation-triangle" />{{ $t('joinRequest.fetchError') }}
+            <Button
+              :label="$t('joinRequest.retry')"
+              text
+              size="small"
+              data-testid="join-request-retry-button"
+              @click="emit('retryJoinRequestStatus')"
+            />
+          </span>
           <Button
             v-else
             :label="$t('joinRequest.apply')"
@@ -183,6 +213,7 @@ const overflowMenuItems = computed(() => {
             outlined
             size="small"
             data-testid="join-request-apply-button"
+            :disabled="joinRequestStatus !== 'NONE'"
             :loading="joinRequestLoading"
             @click="emit('applyJoinRequest')"
           />

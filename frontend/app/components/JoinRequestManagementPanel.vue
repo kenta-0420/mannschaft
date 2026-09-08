@@ -10,9 +10,14 @@ const props = defineProps<{
 const {
   requests,
   requestsLoading,
+  requestsError,
   processingIds,
+  totalElements,
+  hasMore,
   approve,
   reject,
+  loadMore,
+  retry,
   init,
 } = useJoinRequestManagement(toRef(props, 'scopeType'), toRef(props, 'scopeId'))
 
@@ -25,8 +30,13 @@ onMounted(init)
       :requests="requests"
       :processing-ids="processingIds"
       :loading="requestsLoading"
+      :error="requestsError"
+      :total-elements="totalElements"
+      :has-more="hasMore"
       @approve="approve"
       @reject="reject"
+      @load-more="loadMore"
+      @retry="retry"
     />
   </div>
 </template>

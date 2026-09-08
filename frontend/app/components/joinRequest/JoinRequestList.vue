@@ -5,11 +5,16 @@ defineProps<{
   requests: JoinRequestResponse[]
   processingIds: string[]
   loading: boolean
+  error: boolean
+  totalElements: number
+  hasMore: boolean
 }>()
 
 const emit = defineEmits<{
   approve: [id: string]
   reject: [id: string]
+  loadMore: []
+  retry: []
 }>()
 
 const { formatDate } = useDatetime()
@@ -21,16 +26,32 @@ const { formatDate } = useDatetime()
       <h3 class="font-semibold">
         {{ $t('joinRequest.admin.pendingTitle') }}
         <Badge
-          v-if="requests.length > 0"
-          :value="requests.length"
+          v-if="totalElements > 0"
+          :value="totalElements"
           severity="warn"
           class="ml-2"
         />
       </h3>
     </div>
 
-    <div v-if="loading" class="flex justify-center py-6">
+    <div v-if="loading && requests.length === 0" class="flex justify-center py-6">
       <LoadingBounce />
+    </div>
+    <div
+      v-else-if="error && requests.length === 0"
+      class="rounded-lg border border-dashed border-red-300 py-8 text-center text-sm text-red-500"
+      data-testid="join-request-list-error"
+    >
+      <i class="pi pi-exclamation-triangle mb-2 text-2xl" />
+      <p>{{ $t('joinRequest.admin.fetchError') }}</p>
+      <Button
+        :label="$t('joinRequest.admin.retry')"
+        size="small"
+        outlined
+        class="mt-2"
+        data-testid="join-request-list-retry-button"
+        @click="emit('retry')"
+      />
     </div>
     <div
       v-else-if="requests.length === 0"
@@ -61,6 +82,7 @@ const { formatDate } = useDatetime()
             icon="pi pi-check"
             size="small"
             severity="success"
+            :disabled="processingIds.includes(req.id)"
             :loading="processingIds.includes(req.id)"
             @click="emit('approve', req.id)"
           />
@@ -70,10 +92,33 @@ const { formatDate } = useDatetime()
             size="small"
             severity="danger"
             outlined
+            :disabled="processingIds.includes(req.id)"
             :loading="processingIds.includes(req.id)"
             @click="emit('reject', req.id)"
           />
         </div>
+      </div>
+
+      <div v-if="error" class="pt-2 text-center" data-testid="join-request-load-more-error">
+        <p class="text-sm text-red-500">{{ $t('joinRequest.admin.loadMoreError') }}</p>
+        <Button
+          :label="$t('joinRequest.admin.retry')"
+          size="small"
+          outlined
+          class="mt-1"
+          data-testid="join-request-load-more-retry-button"
+          @click="emit('retry')"
+        />
+      </div>
+      <div v-else-if="hasMore" class="pt-2 text-center">
+        <Button
+          :label="$t('joinRequest.admin.loadMore')"
+          size="small"
+          outlined
+          :loading="loading"
+          data-testid="join-request-load-more-button"
+          @click="emit('loadMore')"
+        />
       </div>
     </div>
   </div>

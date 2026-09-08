@@ -135,6 +135,11 @@ async function refresh() {
   await fetchJoinRequestStatus(roleName)
 }
 
+/** 参加申請状態の再取得（ヘッダのエラー表示からの再試行導線）。 */
+async function retryJoinRequestStatus() {
+  await fetchJoinRequestStatus(roleName)
+}
+
 // =============================================================================
 // アクティブタブ導出（ルートセグメント → タブ key）
 // =============================================================================
@@ -277,7 +282,7 @@ watch(orgSlug, () => {
   orgLoaded.value = false
   org.value = null
   followStatus.value = 'NONE'
-  joinRequestStatus.value = 'NONE'
+  joinRequestStatus.value = 'UNKNOWN'
   if (isShellRoute.value) void loadShellData()
 })
 
@@ -447,6 +452,7 @@ provideOrgShellContext({
             @apply-supporter="applySupporter"
             @cancel-supporter="cancelSupporter"
             @apply-join-request="applyJoinRequest"
+            @retry-join-request-status="retryJoinRequestStatus"
             @show-cancel-confirm="showCancelSupporterConfirm = true"
             @show-leave-confirm="showLeaveConfirm = true"
             @icon-updated="orgMutators.updateOrgIcon"
