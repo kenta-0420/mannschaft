@@ -77,6 +77,7 @@ class MembershipSubscriptionFeeSplitTest {
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private MemberPaymentService memberPaymentService;
     @Mock private com.mannschaft.app.auth.repository.UserRepository userRepository;
+    @Mock private org.springframework.context.ApplicationEventPublisher applicationEventPublisher;
 
     /** 純粋関数なので実物を使う（モックで固定値を返すと「金額一致」の検証にならない）。 */
     private final PaymentFeeCalculator paymentFeeCalculator = new PaymentFeeCalculator();
@@ -105,7 +106,8 @@ class MembershipSubscriptionFeeSplitTest {
                 membershipSubscriptionRepository, paymentItemService, paymentItemRepository,
                 paymentAuthorizationService, connectAccountRepository, connectChargeService,
                 feePolicyResolver, stripeCustomerRepository, stripePaymentProvider,
-                memberPaymentService, userRepository, paymentFeeCalculator);
+                memberPaymentService, userRepository, paymentFeeCalculator,
+                applicationEventPublisher);
     }
 
     private PaymentItemEntity recurringItem(long faceAmount) {

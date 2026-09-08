@@ -20,6 +20,7 @@ import com.mannschaft.app.payment.dto.MembershipSubscriptionListItemResponse;
 import com.mannschaft.app.payment.entity.MembershipSubscriptionEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
+import com.mannschaft.app.payment.event.MembershipPayerWithdrawalNotificationEvent;
 import com.mannschaft.app.payment.escrow.ConnectChargeService;
 import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.escrow.MembershipChargeCommand;
@@ -30,11 +31,14 @@ import com.mannschaft.app.payment.repository.StripeCustomerRepository;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -102,6 +106,8 @@ public class MembershipSubscriptionService {
     private final UserRepository userRepository;
     /** 手数料折半の正典（純粋関数）。数式を再実装せず必ず本計算器を通す（初回サイクルと同一の値を得るため）。 */
     private final PaymentFeeCalculator paymentFeeCalculator;
+    /** 通知は業務 tx 内では publish のみ（配送は AFTER_COMMIT リスナー・rollback-only 防止）。 */
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
      * 【残債2 payment ドメイン公開 API】ユーザーの Stripe Customer 用メールアドレスを解決する。
@@ -460,6 +466,122 @@ public class MembershipSubscriptionService {
         log.info("継続課金 期末解約予約: subscriptionId={}, stripeSub={}, periodEnd={}",
                 subscriptionId, subscription.getStripeSubscriptionId(), subscription.getCurrentPeriodEnd());
         return subscription;
+    }
+
+    /**
+     * 柱③-B（CMP-260901-1538）PR-3: 退会する<b>払い手</b>の継続課金を一括で期末解約する
+     * （設計書 {@code billing_payer_handover_design.md} §6・AC-13）。
+     *
+     * <h2>なぜ必要か（§1.4-2）</h2>
+     * <p>{@code membership_subscriptions} は payer / beneficiary / payee の3分離が済んでいるにもかかわらず、
+     * 退会フロー（{@code WithdrawalStripeHandler}）は Stripe 連携が未実装のスタブであった。結果として
+     * <b>払い手が退会しても Stripe 側の継続課金は止まらず、退会済み個人の Customer への課金が続く</b>。
+     * 本メソッドはその穴を {@code payer_user_id} 起点で塞ぐ。</p>
+     *
+     * <h2>対象と挙動</h2>
+     * <ul>
+     *   <li>対象: {@code payer_user_id = payerUserId} かつ status が {@code ACTIVE}/{@code PAST_DUE}
+     *       （論理削除を除く）。{@code PENDING}（初回課金前）と終端（{@code CANCELLED}/{@code EXPIRED}）は対象外。</li>
+     *   <li>動作: Stripe に {@code cancel_at_period_end=true} を発行し、DB へ反映する（<b>即時解約はしない</b>。
+     *       受益者は支払い済みの期間を最後まで使えるべきであり、日割り返金も発生させない）。</li>
+     *   <li>通知: 受益者へ「payer の退会に伴い期末で終了する」旨を予告する
+     *       （{@link com.mannschaft.app.payment.event.MembershipPayerWithdrawalNotificationEvent}・publish のみ）。</li>
+     * </ul>
+     *
+     * <h2>冪等性</h2>
+     * <p>既に {@code cancel_at_period_end=true} の行は Stripe 呼び出しごとスキップする（再実行しても無害）。
+     * {@code stripe_subscription_id} 未連結の行は Stripe 操作できないため DB のみ予約して WARN を残す。</p>
+     *
+     * <h2>失敗の切り分け</h2>
+     * <p>1件の Stripe 失敗で残り全件を巻き添えにしない（退会は待ってくれない）。件ごとに catch して ERROR ログを
+     * 残しつつ継続し、最後に失敗件数を集計ログに出す。<b>握りつぶしではなく、成功した subscription のみを
+     * 戻り値に含める</b>ため、呼び出し側は「何件が実際に予約できたか」を見分けられる。</p>
+     *
+     * <p>{@code REQUIRES_NEW}: 呼び出し元は {@code @TransactionalEventListener(AFTER_COMMIT)} であり、
+     * 完了済み tx へ参加すると書き込みが silent no-op になるため独立 tx で行う
+     * （{@code BillingContractService#cancelAllUserContractsForPurge} と同じ理由）。</p>
+     *
+     * @param payerUserId 退会する払い手のユーザー ID
+     * @return 期末解約を予約できた継続課金の Stripe Subscription ID 一覧（該当なしなら空）
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public List<String> cancelAllForPayerOnWithdrawal(Long payerUserId) {
+        if (payerUserId == null) {
+            return List.of();
+        }
+        List<MembershipSubscriptionEntity> targets = membershipSubscriptionRepository
+                .findByPayerUserIdAndStatusInAndDeletedAtIsNullOrderByCreatedAtDesc(
+                        payerUserId,
+                        List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE));
+        if (targets.isEmpty()) {
+            log.info("払い手退会に伴う継続課金の期末解約: 対象なし payerUserId={}", payerUserId);
+            return List.of();
+        }
+
+        List<String> scheduled = new ArrayList<>();
+        int failed = 0;
+        for (MembershipSubscriptionEntity subscription : targets) {
+            try {
+                scheduleCancelForWithdrawal(subscription, payerUserId)
+                        .ifPresent(scheduled::add);
+            } catch (Exception e) {
+                failed++;
+                log.error("払い手退会に伴う期末解約に失敗しました（他の契約は継続処理）: subscriptionId={}, stripeSub={}, payerUserId={}",
+                        subscription.getId(), subscription.getStripeSubscriptionId(), payerUserId, e);
+            }
+        }
+
+        log.info("払い手退会に伴う継続課金の期末解約: payerUserId={}, 対象={}, 予約={}, 失敗={}",
+                payerUserId, targets.size(), scheduled.size(), failed);
+        return List.copyOf(scheduled);
+    }
+
+    /**
+     * 1件ぶんの期末解約予約（Stripe 先・DB 後）と受益者通知の publish を行う。
+     *
+     * @return Stripe 側へ予約できた Subscription ID（Stripe 未連結・既に予約済みなら空）
+     */
+    private Optional<String> scheduleCancelForWithdrawal(
+            MembershipSubscriptionEntity subscription, Long payerUserId) {
+
+        if (Boolean.TRUE.equals(subscription.getCancelAtPeriodEnd())) {
+            // 既に予約済み（再実行・利用者自身の解約操作と競合）。Stripe を叩き直す必要はない。
+            log.info("払い手退会に伴う期末解約: 既に予約済みのためスキップ subscriptionId={}", subscription.getId());
+            return Optional.empty();
+        }
+
+        String stripeSubscriptionId = subscription.getStripeSubscriptionId();
+        if (stripeSubscriptionId == null) {
+            // Stripe 未連結（自前バッチ運用の退避策など）。DB 側の予約だけは立てて整合を残す。
+            log.warn("払い手退会に伴う期末解約: stripe_subscription_id 未連結のため DB のみ予約 subscriptionId={}",
+                    subscription.getId());
+            subscription.scheduleCancelAtPeriodEnd();
+            publishWithdrawalCancelNotification(membershipSubscriptionRepository.save(subscription), payerUserId);
+            return Optional.empty();
+        }
+
+        // Stripe 先（cancel_at_period_end=true）・DB 後。Stripe 失敗は呼び出し元が件単位で捕捉する。
+        StripePaymentProvider.SubscriptionInfo subInfo = stripePaymentProvider.cancelSubscriptionAtPeriodEnd(
+                stripeSubscriptionId, "withdrawal-payer-cancel-" + subscription.getId());
+
+        subscription.scheduleCancelAtPeriodEnd();
+        if (subInfo != null && subInfo.currentPeriodEnd() != null) {
+            subscription = applyCurrentPeriodEnd(subscription, subInfo.currentPeriodEnd());
+        }
+        publishWithdrawalCancelNotification(membershipSubscriptionRepository.save(subscription), payerUserId);
+        return Optional.of(stripeSubscriptionId);
+    }
+
+    /** 受益者への予告通知を publish する（配送は AFTER_COMMIT リスナー・業務 tx を通知で巻き戻さない）。 */
+    private void publishWithdrawalCancelNotification(
+            MembershipSubscriptionEntity subscription, Long payerUserId) {
+        applicationEventPublisher.publishEvent(new MembershipPayerWithdrawalNotificationEvent(
+                subscription.getId(),
+                subscription.getBeneficiaryUserId(),
+                subscription.getScopeKind(),
+                subscription.getScopeId(),
+                subscription.getCurrentPeriodEnd(),
+                payerUserId));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
