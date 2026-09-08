@@ -562,13 +562,11 @@ public class GlobalExceptionHandler {
             // 存在秘匿で 404 にするため（Severity.WARN 既定の 400 を上書き）
             Map.entry("SHIFT_024", HttpStatus.NOT_FOUND),                   // ASSIGNMENT_RUN_NOT_FOUND（越境404秘匿にも使用）
             Map.entry("SHIFT_030", HttpStatus.NOT_FOUND),                   // CHANGE_REQUEST_NOT_FOUND（越境404秘匿にも使用）
-            // 認可根治 Wave6: 候補者選定の権限拒否は 403（Severity.WARN 既定の 400 を上書き）
-            Map.entry("SHIFT_035", HttpStatus.FORBIDDEN),                   // CLAIMER_SELECT_DENIED
             // 認可監査 Wave6 ロットC: F03.5 シフト管理の残り未登録分。
             //  - SHIFT_003/004/005/020 は not-found → 404
             //  - SHIFT_022（勤務制約の管理権限なし）は明確な認可拒否 → 403
-            //  - SHIFT_011/013/014/015/018/025/026/031/034 は状態競合（期限超過・ステータス不正・
-            //    重複・楽観ロック競合・目視確認未了・既に手挙げ済み等）→ 409
+            //  - SHIFT_011/013/014/015/018/025/026/031 は状態競合（期限超過・ステータス不正・
+            //    重複・楽観ロック競合・目視確認未了等）→ 409
             //    （SHIFT_018 OPTIMISTIC_LOCK_CONFLICT は兄弟 SHIFT_BUDGET_014 と同流儀で揃える）
             //  - SHIFT_036（連打防止スロットリング）はレート制限 → 429
             //  - SHIFT_017（SLOT_ASSIGNMENT_EXCEEDED）は既存番人
@@ -589,7 +587,6 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_025", HttpStatus.CONFLICT),
             Map.entry("SHIFT_026", HttpStatus.CONFLICT),
             Map.entry("SHIFT_031", HttpStatus.CONFLICT),
-            Map.entry("SHIFT_034", HttpStatus.CONFLICT),
             Map.entry("SHIFT_036", HttpStatus.TOO_MANY_REQUESTS),
             // F08.7 シフト予算 (Phase 9-α: 逆算 API)
             Map.entry("SHIFT_BUDGET_001", HttpStatus.SERVICE_UNAVAILABLE),  // FEATURE_DISABLED
