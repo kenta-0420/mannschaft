@@ -82,9 +82,19 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
     @Autowired private MembershipSubscriptionRepository membershipSubscriptionRepository;
     @Autowired private MembershipPayerWithdrawalCancellationRepository cancellationRepository;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private com.mannschaft.app.auth.service.UserService userService;
+    @Autowired private com.mannschaft.app.auth.repository.UserRepository userRepository;
     @PersistenceContext private EntityManager entityManager;
 
     @MockitoBean private StripePaymentProvider stripePaymentProvider;
+    /**
+     * 退会取消は本番経路 {@code UserService#cancelWithdrawal()} を通すため
+     * {@code WithdrawalCancelledEvent} が実際に発行される。そのリスナーは {@code @Async} で走るので、
+     * 本 IT の検証対象（payment 側のロジック）と競合して非決定になる。ハンドラ自体は
+     * {@code WithdrawalStripeHandlerTest} が検証済みであるため、ここでは無効化して
+     * サービスメソッドを明示的に駆動する。
+     */
+    @MockitoBean private com.mannschaft.app.gdpr.service.WithdrawalStripeHandler withdrawalStripeHandler;
 
     private Long payerUserId;
     private Long otherPayerUserId;
@@ -403,7 +413,9 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
         UUID target = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_race");
 
         // tx①（予約着手）まで進めた状態を作る。
-        assertThat(payerWithdrawalTxService.prepare(target, payerUserId)).isPresent();
+        Optional<MembershipPayerWithdrawalTxService.PreparedTarget> prepared =
+                payerWithdrawalTxService.prepare(target, payerUserId);
+        assertThat(prepared).isPresent();
 
         // ここで customer.subscription.deleted webhook が先に確定したと仮定する。
         transactionTemplate.executeWithoutResult(tx ->
@@ -411,11 +423,68 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
                                 "UPDATE membership_subscriptions SET status = 'CANCELLED' WHERE id = UNHEX(:id)")
                         .setParameter("id", hex(target)).executeUpdate());
 
-        boolean applied = payerWithdrawalTxService.applyScheduled(target, payerUserId, PERIOD_END_EPOCH);
+        MembershipPayerWithdrawalTxService.ApplyOutcome outcome = payerWithdrawalTxService.applyScheduled(
+                target, payerUserId, prepared.get().withdrawalAttemptAt(), PERIOD_END_EPOCH);
 
-        assertThat(applied).isFalse();
+        assertThat(outcome).isEqualTo(MembershipPayerWithdrawalTxService.ApplyOutcome.SKIPPED);
         assertThat(reload(target).getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELLED);
         assertThat(reload(target).getCancelAtPeriodEnd()).isFalse();
+        // 反映していないのに SUCCEEDED にしてはならない（検分3巡目 P1-3）。
+        assertThat(record(target)).isPresent().get().satisfies(r ->
+                assertThat(r.getStatus())
+                        .isEqualTo(MembershipPayerWithdrawalCancellationStatus.SUPERSEDED));
+    }
+
+    @Test
+    @DisplayName("P1-2 窓: Stripe 呼び出し中に退会が取り消されたら SUCCEEDED にせず RESTORING で残す")
+    void 世代変化_Stripe中の退会取消は確定させない() {
+        UUID target = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_window");
+
+        // tx① を終えた（＝作業行は PENDING、ロックは解放済み）状態。
+        Optional<MembershipPayerWithdrawalTxService.PreparedTarget> prepared =
+                payerWithdrawalTxService.prepare(target, payerUserId);
+        assertThat(prepared).isPresent();
+
+        // Stripe を呼んでいる最中に退会が取り消された（本番経路を通す）。
+        markNotWithdrawing(payerUserId);
+
+        MembershipPayerWithdrawalTxService.ApplyOutcome outcome = payerWithdrawalTxService.applyScheduled(
+                target, payerUserId, prepared.get().withdrawalAttemptAt(), PERIOD_END_EPOCH);
+
+        // 是正前はここで DB へ反映し SUCCEEDED を確定させていた。ユーザーは退会中でないため
+        // backlog にも入らず、再試行対象にもならず、回復不能だった。
+        assertThat(outcome).isEqualTo(
+                MembershipPayerWithdrawalTxService.ApplyOutcome.ABORTED_GENERATION_CHANGED);
+        assertThat(reload(target).getCancelAtPeriodEnd()).isFalse();
+        assertThat(record(target)).isPresent().get().satisfies(r ->
+                assertThat(r.getStatus())
+                        .isEqualTo(MembershipPayerWithdrawalCancellationStatus.RESTORING));
+        // 非終端なので照合バッチが拾える。
+        assertThat(nonTerminalRecords())
+                .extracting(MembershipPayerWithdrawalCancellationEntity::getSubscriptionId)
+                .contains(target);
+    }
+
+    @Test
+    @DisplayName("P1-3 競合: PENDING の最中に「退会取消＋本人の明示解約」が入っても本人の意思を覆さない")
+    void 競合_PENDING中の明示解約は復旧で解除されない() {
+        UUID target = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_pendingrace");
+
+        // 古い退会処理が tx① を終えた直後（作業行は PENDING）。
+        assertThat(payerWithdrawalTxService.prepare(target, payerUserId)).isPresent();
+
+        // そこへ「退会取消 → 本人が自分の意思で解約」が入る。
+        markNotWithdrawing(payerUserId);
+        membershipSubscriptionService.cancel(target, payerUserId);
+
+        // 是正前は SUPERSEDED 化が PENDING を対象外にしていたため no-op で、
+        // その後の復旧が本人の明示解約を解除していた。
+        assertThat(record(target)).isPresent().get().satisfies(r ->
+                assertThat(r.getStatus())
+                        .isEqualTo(MembershipPayerWithdrawalCancellationStatus.SUPERSEDED));
+        assertThat(membershipSubscriptionService.restoreAllForPayerOnWithdrawalCancelled(payerUserId))
+                .isEmpty();
+        assertThat(reload(target).getCancelAtPeriodEnd()).isTrue();
     }
 
     @Test
@@ -440,18 +509,31 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
     // フィクスチャ / DB 実値の読み出し
     // ════════════════════════════════════════════════════════════════
 
-    /** {@code UserService#requestWithdrawal} 相当（{@code deleted_at} を立てて commit）。 */
+    /**
+     * 退会申請中にする。{@code UserEntity#requestDeletion()}（本番と同じドメインメソッド）を通す。
+     *
+     * <p>{@code UserService#requestWithdrawal} 全体はパスワード検証やレートリミットを含み IT には重いが、
+     * 「{@code deleted_at} を立てて commit する」という本質は同じである。SQL 直叩きにしないのは、
+     * 列名や意味づけの変更をテストが素通りさせないため。</p>
+     */
     private void markWithdrawing(Long userId) {
-        transactionTemplate.executeWithoutResult(tx ->
-                entityManager.createNativeQuery("UPDATE users SET deleted_at = NOW(6) WHERE id = :id")
-                        .setParameter("id", userId).executeUpdate());
+        transactionTemplate.executeWithoutResult(tx -> {
+            UserEntity user = userRepository.findById(userId).orElseThrow();
+            user.requestDeletion();
+            userRepository.saveAndFlush(user);
+        });
     }
 
-    /** {@code UserService#cancelWithdrawal} 相当（{@code deleted_at} を NULL に戻して commit）。 */
+    /**
+     * 退会を取り消す。<b>本番経路 {@code UserService#cancelWithdrawal()} をそのまま通す</b>。
+     *
+     * <p>是正前はここが {@code UPDATE users SET deleted_at = NULL} の SQL 直叩きだったため、
+     * <b>本番の取消経路が {@code @SQLRestriction} に阻まれて {@code AUTH_015} で終了し、
+     * {@code WithdrawalCancelledEvent} に到達しない</b>という欠陥をテストが完全に隠していた
+     * （Codex 検分3巡目 P1-1）。テストは本番経路を通さなければ意味がない。</p>
+     */
     private void markNotWithdrawing(Long userId) {
-        transactionTemplate.executeWithoutResult(tx ->
-                entityManager.createNativeQuery("UPDATE users SET deleted_at = NULL WHERE id = :id")
-                        .setParameter("id", userId).executeUpdate());
+        userService.cancelWithdrawal(userId);
     }
 
     private List<MembershipPayerWithdrawalCancellationEntity> nonTerminalRecords() {

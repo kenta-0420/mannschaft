@@ -78,10 +78,15 @@ public interface MembershipSubscriptionRepository
      * （Codex 検分1巡目 P1-2）。ここでロックを取らないのは、抽出だけのために全対象行を
      * 長時間ロックしないためであり、代わりに各トランザクションが
      * {@link #findByIdForUpdate} でロックし直して状態を再検証する。</p>
+     *
+     * <p>第二ソートキー {@code s.id} を必ず付ける。{@code created_at} は同一マイクロ秒に
+     * なりうるため、これが無いと処理順が未定義になり「先行契約が commit された後に後続が失敗する」
+     * といった順序依存の検証が非決定になる（Codex 検分3巡目 P2）。主キーは UUIDv7 で時系列に
+     * 単調増加するため、第二キーとして挿入順と一致する。</p>
      */
     @Query("SELECT s.id FROM MembershipSubscriptionEntity s "
             + "WHERE s.payerUserId = :payerUserId AND s.status IN :statuses AND s.deletedAt IS NULL "
-            + "ORDER BY s.createdAt DESC")
+            + "ORDER BY s.createdAt DESC, s.id DESC")
     List<UUID> findIdsByPayerUserIdAndStatusIn(@Param("payerUserId") Long payerUserId,
             @Param("statuses") Collection<MembershipSubscriptionStatus> statuses);
 
@@ -97,7 +102,7 @@ public interface MembershipSubscriptionRepository
     @Query("SELECT s.id FROM MembershipSubscriptionEntity s "
             + "WHERE s.payerUserId IN :payerUserIds AND s.status IN :statuses "
             + "AND s.deletedAt IS NULL AND s.cancelAtPeriodEnd = false "
-            + "ORDER BY s.createdAt ASC")
+            + "ORDER BY s.createdAt ASC, s.id ASC")
     List<UUID> findUnscheduledIdsByPayerUserIdIn(@Param("payerUserIds") Collection<Long> payerUserIds,
             @Param("statuses") Collection<MembershipSubscriptionStatus> statuses);
 

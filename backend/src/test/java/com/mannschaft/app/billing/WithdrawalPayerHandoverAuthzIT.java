@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
@@ -63,8 +64,18 @@ class WithdrawalPayerHandoverAuthzIT extends AbstractMySqlIntegrationTest {
     @Autowired private BillingContractRepository billingContractRepository;
     @Autowired private BillingPayerHandoverRequestRepository handoverRequestRepository;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private com.mannschaft.app.auth.service.UserService userService;
+    @Autowired private com.mannschaft.app.auth.repository.UserRepository userRepository;
     @Autowired private Clock clock;
     @PersistenceContext private EntityManager entityManager;
+
+    /**
+     * 退会取消は本番経路 {@code UserService#cancelWithdrawal()} を通すため
+     * {@code WithdrawalCancelledEvent} が実際に発行される。そのリスナーは {@code @Async} で走り、
+     * 本 IT が明示的に駆動する終端化と競合して件数アサートが非決定になる。ハンドラ自体は
+     * {@code WithdrawalStripeHandlerTest} が検証済みのため、ここでは無効化する。
+     */
+    @MockitoBean private com.mannschaft.app.gdpr.service.WithdrawalStripeHandler withdrawalStripeHandler;
 
     private Long withdrawnPayerUserId;
     private Long otherAdminUserId;
@@ -93,11 +104,11 @@ class WithdrawalPayerHandoverAuthzIT extends AbstractMySqlIntegrationTest {
                     .pspSubscriptionRef(OLD_SUBSCRIPTION_REF)
                     .build()).getId();
 
-            // UserService#requestWithdrawal と同じ状態を作る（UserEntity#requestDeletion は deleted_at を立てる）。
+            // UserService#requestWithdrawal と同じ状態を作る（本番と同じドメインメソッドを通す）。
             // 本番ではこれが【先に commit され】、その後 AFTER_COMMIT で決済連携が走る。
-            entityManager.createNativeQuery("UPDATE users SET deleted_at = NOW(6) WHERE id = :id")
-                    .setParameter("id", withdrawnPayerUserId).executeUpdate();
-            entityManager.flush();
+            UserEntity withdrawing = userRepository.findById(withdrawnPayerUserId).orElseThrow();
+            withdrawing.requestDeletion();
+            userRepository.saveAndFlush(withdrawing);
             entityManager.clear();
         });
     }
@@ -141,10 +152,7 @@ class WithdrawalPayerHandoverAuthzIT extends AbstractMySqlIntegrationTest {
     @DisplayName("対照: 同じ契約・同じ操作者でも、退会していなければ対話API経路は成功する（赤の原因の切り分け）")
     void 対照_退会していなければ対話API経路は成功する() {
         // 直前のテストの赤が「退会（deleted_at）」に起因することを、唯一の差分を戻して確かめる。
-        transactionTemplate.executeWithoutResult(tx -> {
-            entityManager.createNativeQuery("UPDATE users SET deleted_at = NULL WHERE id = :id")
-                    .setParameter("id", withdrawnPayerUserId).executeUpdate();
-        });
+        cancelWithdrawalViaProductionPath();
 
         assertThatCode(() -> handoverService.requestHandover(
                 EntitlementScopeKind.TEAM, TEAM_ID, contractId, withdrawnPayerUserId))
@@ -156,10 +164,7 @@ class WithdrawalPayerHandoverAuthzIT extends AbstractMySqlIntegrationTest {
     @DisplayName("退会取消済みなら退会経路でも引継要求を作らない（イベント逆順・検分2巡目 P1-1）")
     void 逆順_退会取消後に届いた退会イベントは引継要求を作らない() {
         // 退会取消が先に確定した状態（deleted_at が NULL）。ここへ古い退会イベントが届く。
-        transactionTemplate.executeWithoutResult(tx -> {
-            entityManager.createNativeQuery("UPDATE users SET deleted_at = NULL WHERE id = :id")
-                    .setParameter("id", withdrawnPayerUserId).executeUpdate();
-        });
+        cancelWithdrawalViaProductionPath();
 
         BusinessException thrown = catchThrowableOfType(
                 () -> handoverService.requestHandoverForWithdrawal(contractId, withdrawnPayerUserId),
@@ -203,6 +208,9 @@ class WithdrawalPayerHandoverAuthzIT extends AbstractMySqlIntegrationTest {
         handoverService.requestHandoverForWithdrawal(contractId, withdrawnPayerUserId);
         assertThat(openRequests()).hasSize(1);
 
+        // 取消側も処理時点の真値を見るため、本番経路で実際に退会を取り消してから終端化する
+        // （検分3巡目 P1-4: 退会申請中のままなら終端化してはならない）。
+        cancelWithdrawalViaProductionPath();
         int terminated = handoverService
                 .failRequestedHandoversOnWithdrawalCancelled(withdrawnPayerUserId);
         assertThat(terminated).isEqualTo(1);
@@ -212,6 +220,8 @@ class WithdrawalPayerHandoverAuthzIT extends AbstractMySqlIntegrationTest {
         assertThat(rows.get(0).getStatus()).isEqualTo(PayerHandoverStatus.FAILED);
 
         // 終端化されていれば同一契約への次の申請が通る（残っていれば「進行中」で塞がれる）。
+        // 再申請は「退会申請中」でなければ通らないため、再度退会申請した状態にしてから確かめる。
+        markWithdrawingViaDomainMethod();
         assertThatCode(() -> handoverService
                 .requestHandoverForWithdrawal(contractId, withdrawnPayerUserId))
                 .doesNotThrowAnyException();
@@ -236,6 +246,26 @@ class WithdrawalPayerHandoverAuthzIT extends AbstractMySqlIntegrationTest {
                     .filter(h -> contractId.equals(h.getOldContractId()))
                     .toList();
         });
+    }
+
+    /**
+     * 退会を取り消す。<b>本番経路 {@code UserService#cancelWithdrawal()} をそのまま通す</b>。
+     *
+     * <p>是正前は {@code UPDATE users SET deleted_at = NULL} の SQL 直叩きで、本番の取消経路が
+     * {@code @SQLRestriction} に阻まれて {@code AUTH_015} で終了する欠陥を隠していた
+     * （Codex 検分3巡目 P1-1）。</p>
+     */
+    /** 退会申請中の状態にする（本番と同じドメインメソッドを通す）。 */
+    private void markWithdrawingViaDomainMethod() {
+        transactionTemplate.executeWithoutResult(tx -> {
+            UserEntity user = userRepository.findById(withdrawnPayerUserId).orElseThrow();
+            user.requestDeletion();
+            userRepository.saveAndFlush(user);
+        });
+    }
+
+    private void cancelWithdrawalViaProductionPath() {
+        userService.cancelWithdrawal(withdrawnPayerUserId);
     }
 
     private Long insertUser(String suffix) {

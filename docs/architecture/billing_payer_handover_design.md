@@ -496,6 +496,10 @@ PR-3 の実装に対する独立検分で、上の1行仕様のままでは**成
 
 **作業行がそもそも作られない穴（2巡目 P1-2）**: 契約ごとの `prepare` で行を作る形だと、「複数契約の途中で停止し、まだ `prepare` に到達していない契約」に行が残らない。そこで **Stripe に触れる前に対象全件の行を1トランザクションで `PENDING` として commit する**（`reserveAll`）。それでも「退会本体の commit 後・非同期タスクが始まる前の停止」「`event-pool` の投入拒否」では `reserveAll` 自体が呼ばれない。この最後の穴は、作業行ではなく**退会状態そのもの**を起点にする `MembershipSubscriptionService#findWithdrawalCancelBacklog()`（`users.deleted_at IS NOT NULL` × `cancel_at_period_end = false`）が塞ぐ。行の有無に関係なく「やり残した解約」を再構築できる。
 
+**2経路の重複排除は PR-3 が持つ**（3巡目 P2）: PR-4 の再試行バッチは「非終端の作業行」と「backlog」の2つを走査するが、集合が重なると同じ契約へ二重投入されうる。その dedup は **PR-4 ではなく `findWithdrawalCancelBacklog()` が行う**——非終端の作業行を持つ契約は作業行経路が拾うため、backlog からは除外して返す。これで2集合は定義上互いに素になり、PR-4 側は単純に union できる。
+
+**非終端のまま拾われ続ける行を作らない**（3巡目 P2）: 復旧中に対象が消えた・payer が変わった・期末が到来して終端化した場合、`prepareRestore` は空を返すだけでなく作業行を `SUPERSEDED` へ**終端化する**。そうしないと照合バッチが永久に同じ行を拾い続ける。
+
 > **リリース依存**: PR-3 単独では失敗した期末解約は自動では再試行されない（対象は DB に残るが、拾う主体が居ない）。自動回復が揃うのは PR-4 の夜次再試行バッチ着地時点である。PR-3 と PR-4 の間の期間は、非終端 3 状態（`PENDING`/`FAILED`/`RESTORING`）と `findWithdrawalCancelBacklog()` の件数を監視する運用で埋める。
 
 #### (3) 1件の失敗が全件を巻き添えにしない（P1-2）
@@ -527,15 +531,23 @@ PR-3 の実装に対する独立検分で、上の1行仕様のままでは**成
 
 | 処理 | 進める条件 |
 |---|---|
-| 期末解約（`prepare` / `reserveAll`） | 退会申請中である |
-| 引継要求（`requestHandoverForWithdrawal`） | 退会申請中である |
+| 期末解約 tx①（`prepare` / `reserveAll`） | 退会申請中である |
+| 期末解約 tx②（`applyScheduled`） | **tx① で見た世代と同一の退会が今も継続している** |
+| 引継要求の作成（`requestHandoverForWithdrawal`） | 退会申請中である |
+| 引継要求の終端化（`failRequestedOnWithdrawalCancelled`） | 退会申請中<b>ではない</b> |
 | 解約の解除（`prepareRestore`） | 退会申請中<b>ではない</b> |
 
-同一サブスクに対する解約と解除は**同じ行ロック**（`membership_subscriptions` の `SELECT ... FOR UPDATE`）で直列化されるため、後から走ったほうは必ず commit 済みの真値を見る。作業行には世代 `withdrawal_attempt_at` を刻み、退会 → 取消 → 再退会で同じ行を再利用しても「どの退会試行の結果か」を後から追える。
+**tx② でも世代を再検証するのが要点である**（3巡目 P1-2）。行ロックは各短期トランザクションの中でしか保持されず、**Stripe 呼び出しを跨いだ直列化にはならない**。tx① で真値を確かめてもロックはそこで解放され、その間に退会が取り消されうる。再検証が無いと「退会取消済みなのに期末解約が確定し、作業行は終端 `SUCCEEDED`」という、backlog にも再試行にも載らない回復不能な状態が生まれる。
+
+世代が変わっていた場合は DB へ反映せず、作業行を `RESTORING`（＝Stripe 側の予約を取り消す必要がある）にして**その場で解除へ切り替える**。Stripe には既に予約が入っている可能性があるため、放置は許されない。
 
 > **`users` は `@SQLRestriction("deleted_at IS NULL")` を持つ**ため、JPQL・`findById` では退会申請中のユーザーが1件も返らない（＝常に「申請中でない」と誤答する）。この判定は **native クエリでなければ成立しない**（`UserRepository#findDeletedAtIncludingDeleted`）。
+>
+> **同じ罠が `UserService#cancelWithdrawal` 本体にもあった**（3巡目 P1-1）。`findById` で退会者を引こうとして必ず `AUTH_015` で終了し、**退会取消そのものが一度も成立していなかった**（`WithdrawalCancelledEvent` も発行されない／直後の `AUTH_032` 分岐は到達不能な死んだコード）。`findByIdForUpdateIncludingDeleted` へ是正した。**IT がこの欠陥を隠していた**——`UPDATE users SET deleted_at = NULL` の SQL 直叩きで本番経路を迂回していたためである。IT は必ず `cancelWithdrawal()` を通す。
 
-**本人の新しい意思との衝突**: 退会取消の**後**に本人が改めて明示解約した場合、復旧処理は同じ `cancel_at_period_end=true` しか見ないため、その新しい意思まで解除してしまう。人が新しい判断を下した瞬間——`MembershipSubscriptionService#cancel`——に由来の記録を `SUPERSEDED` へ終端化し、以後の復旧対象から外す。
+**本人の新しい意思との衝突**: 退会取消の**後**に本人が改めて明示解約した場合、復旧処理は同じ `cancel_at_period_end=true` しか見ないため、その新しい意思まで解除してしまう。人が新しい判断を下した瞬間——`MembershipSubscriptionService#cancel`——に由来の記録を `SUPERSEDED` へ終端化し、以後の復旧対象から外す。**無効化の対象には `PENDING` を含める**（3巡目 P1-3）——古い退会処理が `PENDING` の間に「退会取消＋明示解約」が入る競合があり、`SUCCEEDED`/`RESTORING` だけを対象にすると無効化が no-op になる。
+
+あわせて `applyScheduled` は**反映できなかったとき（`applied=false`）に `SUCCEEDED` を書かない**。「既に `cancel_at_period_end=true`」は本人の明示解約かもしれず、`SUCCEEDED` にすると復旧処理がそれを退会由来と誤認する。この場合は `SUPERSEDED`（＝自分が予約したのではない）とする。
 
 #### (6) 復旧の「Stripe 成功・DB 失敗」（2巡目 P1-3）
 

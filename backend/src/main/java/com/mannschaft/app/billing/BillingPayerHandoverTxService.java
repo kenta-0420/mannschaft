@@ -43,6 +43,8 @@ public class BillingPayerHandoverTxService {
     private final ActiveContractPointerRepository activeContractPointerRepository;
     private final BillingOperationAuthorizer billingOperationAuthorizer;
     private final BillingPayerHandoverCandidateResolver candidateResolver;
+    /** 退会申請の現在状態（作成側と対称に、取消側も処理時点の真値を見る・検分3巡目 P1-4）。 */
+    private final com.mannschaft.app.auth.service.WithdrawalStateQueryService withdrawalStateQueryService;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
@@ -555,6 +557,16 @@ public class BillingPayerHandoverTxService {
                 || !oldPayerUserId.equals(handover.getOldPayerUserId())) {
             return false;
         }
+
+        // 【要】作成側と同じく、行ロックを保持したまま処理時点の真値を確かめる（Codex 検分3巡目 P1-4）。
+        // これが無いと「取消 → 再退会 → 新しい世代の REQUESTED を作成 → 旧世代の取消イベントが到着」で、
+        // 古いイベントが【新しい退会の引継要求】を FAILED にしてしまう。退会申請中なら何もしない。
+        if (withdrawalStateQueryService.findPendingWithdrawalAttempt(oldPayerUserId).isPresent()) {
+            log.info("柱③-B: 処理時点で再び退会申請中のため引継要求を終端化しません "
+                    + "handoverRequestId={}, oldPayerUserId={}", handoverRequestId, oldPayerUserId);
+            return false;
+        }
+
         handover.setStatus(PayerHandoverStatus.FAILED);
         handoverRequestRepository.save(handover);
         return true;

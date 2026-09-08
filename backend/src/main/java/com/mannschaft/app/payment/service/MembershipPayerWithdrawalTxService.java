@@ -169,7 +169,8 @@ public class MembershipPayerWithdrawalTxService {
         record.markAttempt(attempt.get(), subscription.getStripeSubscriptionId());
         cancellationRepository.saveAndFlush(record);
 
-        return Optional.of(new PreparedTarget(subscriptionId, subscription.getStripeSubscriptionId()));
+        return Optional.of(new PreparedTarget(
+                subscriptionId, subscription.getStripeSubscriptionId(), attempt.get()));
     }
 
     /**
@@ -179,7 +180,9 @@ public class MembershipPayerWithdrawalTxService {
      * @return DB へ期末解約を反映したら true（既に終端・既に予約済みなら false）
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public boolean applyScheduled(UUID subscriptionId, Long payerUserId, Long currentPeriodEndEpochSec) {
+    public ApplyOutcome applyScheduled(UUID subscriptionId, Long payerUserId,
+            Instant withdrawalAttemptAt, Long currentPeriodEndEpochSec) {
+
         MembershipSubscriptionEntity subscription = membershipSubscriptionRepository
                 .findByIdForUpdate(subscriptionId)
                 .orElseThrow(() -> new IllegalStateException(
@@ -188,6 +191,25 @@ public class MembershipPayerWithdrawalTxService {
         if (!payerUserId.equals(subscription.getPayerUserId())) {
             throw new IllegalStateException(
                     "期末解約の確定対象の payer が変わっています subscriptionId=" + subscriptionId);
+        }
+
+        // 【要】ここでも世代を再検証する（Codex 検分3巡目 P1-2）。
+        // tx① で真値を確かめてもロックはそこで解放され、Stripe 呼び出しの間に退会が取り消されうる。
+        // 再検証が無いと「退会取消済みなのに期末解約され、作業行は終端 SUCCEEDED」という、
+        // backlog にも再試行にも載らない回復不能な状態が作れてしまう。
+        Optional<Instant> current = withdrawalStateQueryService.findPendingWithdrawalAttempt(payerUserId);
+        if (current.isEmpty() || !current.get().equals(withdrawalAttemptAt)) {
+            log.warn("払い手退会に伴う期末解約: Stripe 呼び出しの間に退会状態が変わったため DB へ反映しません "
+                            + "subscriptionId={}, 着手時の世代={}, 現在={}",
+                    subscriptionId, withdrawalAttemptAt, current.orElse(null));
+            // Stripe 側には既に cancel_at_period_end=true が入っている可能性がある。
+            // RESTORING（＝取り消す必要がある）として非終端で残し、復旧経路に拾わせる。
+            cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId)
+                    .ifPresent(record -> {
+                        record.markRestoring();
+                        cancellationRepository.saveAndFlush(record);
+                    });
+            return ApplyOutcome.ABORTED_GENERATION_CHANGED;
         }
 
         boolean applied = false;
@@ -203,15 +225,24 @@ public class MembershipPayerWithdrawalTxService {
             membershipSubscriptionRepository.saveAndFlush(subscription);
             applied = true;
         } else {
-            // webhook が先に CANCELLED を確定させた等。「課金が止まる」という目的は既に達している。
-            log.info("払い手退会に伴う期末解約: 確定時点で既に対象外だったため DB 更新を行いません "
+            // webhook が先に終端化した／既に誰かが期末解約を予約していた。
+            // 【重要】この場合を SUCCEEDED にしてはならない（Codex 検分3巡目 P1-3）。
+            // 「既に cancel_at_period_end=true」は本人の明示解約かもしれず、SUCCEEDED にすると
+            // 退会取消の復旧処理が【本人の意思】を退会由来と誤認して解除してしまう。
+            log.info("払い手退会に伴う期末解約: 確定時点で自分が反映すべき状態ではないため DB 更新を行いません "
                     + "subscriptionId={}, status={}, cancelAtPeriodEnd={}",
                     subscriptionId, subscription.getStatus(), subscription.getCancelAtPeriodEnd());
         }
 
+        final boolean scheduledByUs = applied;
         cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId)
                 .ifPresent(record -> {
-                    record.markSucceeded(Instant.now());
+                    if (scheduledByUs) {
+                        record.markSucceeded(Instant.now());
+                    } else {
+                        // 自分が予約したのではない＝復旧の対象にしてはいけない。
+                        record.markSuperseded();
+                    }
                     cancellationRepository.saveAndFlush(record);
                 });
 
@@ -225,7 +256,7 @@ public class MembershipPayerWithdrawalTxService {
                     subscription.getCurrentPeriodEnd(),
                     payerUserId));
         }
-        return applied;
+        return applied ? ApplyOutcome.APPLIED : ApplyOutcome.SKIPPED;
     }
 
     /**
@@ -274,26 +305,52 @@ public class MembershipPayerWithdrawalTxService {
             return Optional.empty();
         }
 
+        MembershipPayerWithdrawalCancellationEntity record = recordOpt.get();
         Optional<MembershipSubscriptionEntity> locked =
                 membershipSubscriptionRepository.findByIdForUpdate(subscriptionId);
         if (locked.isEmpty()) {
+            // 対象が消えた。非終端のまま残すと照合バッチが永久に拾い続ける（検分3巡目 P2）。
+            terminateAsSuperseded(record, "対象の継続課金が存在しません");
             return Optional.empty();
         }
         MembershipSubscriptionEntity subscription = locked.get();
         if (!payerUserId.equals(subscription.getPayerUserId())
-                || !CANCELLABLE_STATUSES.contains(subscription.getStatus())
-                || !Boolean.TRUE.equals(subscription.getCancelAtPeriodEnd())) {
-            // 期末が既に到来して終端化した／本人が別途操作した。復旧はしない（勝手に復活させない）。
-            log.info("払い手退会取消: 復旧対象外のためスキップ subscriptionId={}, status={}, cancelAtPeriodEnd={}",
-                    subscriptionId, subscription.getStatus(), subscription.getCancelAtPeriodEnd());
+                || !CANCELLABLE_STATUSES.contains(subscription.getStatus())) {
+            // payer が変わった／期末が到来して終端化した。もう戻せないので非終端から降ろす。
+            terminateAsSuperseded(record,
+                    "復旧できない状態です（status=" + subscription.getStatus() + "）");
             return Optional.empty();
         }
 
-        MembershipPayerWithdrawalCancellationEntity record = recordOpt.get();
+        // DB が期末解約のままかどうかで扱いを分ける。
+        // - SUCCEEDED: 自分が予約した確証がある。予約が外れていれば本人が別の判断をしたということ。
+        // - PENDING/RESTORING: Stripe 側の状態が不明（tx② に到達しなかった窓）。DB が false でも
+        //   Stripe には予約が入っている可能性があるため、必ず Stripe の取り消しまで進める。
+        boolean dbScheduled = Boolean.TRUE.equals(subscription.getCancelAtPeriodEnd());
+        if (record.getStatus() == MembershipPayerWithdrawalCancellationStatus.SUCCEEDED && !dbScheduled) {
+            terminateAsSuperseded(record, "本人の操作で期末解約の予約が既に解除されています");
+            return Optional.empty();
+        }
+        if (!dbScheduled && subscription.getStripeSubscriptionId() == null) {
+            // Stripe 未連結かつ DB も予約なし＝取り消すものが何も無い。
+            terminateAsSuperseded(record, "取り消すべき予約がありません");
+            return Optional.empty();
+        }
+
         record.markRestoring();
         cancellationRepository.saveAndFlush(record);
 
-        return Optional.of(new PreparedTarget(subscriptionId, subscription.getStripeSubscriptionId()));
+        return Optional.of(new PreparedTarget(
+                subscriptionId, subscription.getStripeSubscriptionId(), record.getWithdrawalAttemptAt()));
+    }
+
+    /** 非終端のまま照合バッチに拾われ続けないよう、復旧不能な行を終端化する（検分3巡目 P2）。 */
+    private void terminateAsSuperseded(MembershipPayerWithdrawalCancellationEntity record, String reason) {
+        log.info("払い手退会取消: 復旧対象外のため作業行を終端化します subscriptionId={}, 理由={}",
+                record.getSubscriptionId(), reason);
+        record.markSuperseded();
+        record.setLastError(reason);
+        cancellationRepository.saveAndFlush(record);
     }
 
     /**
@@ -350,6 +407,9 @@ public class MembershipPayerWithdrawalTxService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void supersedeByUserDecision(UUID subscriptionId) {
+        // 【要】PENDING も対象に含める（Codex 検分3巡目 P1-3）。進行中の古い退会処理が PENDING の間に
+        // 「退会取消 → 本人の明示解約」が入ると、SUCCEEDED/RESTORING だけを対象にした無効化は no-op に
+        // なり、その後に復旧処理がその行を退会由来と誤認して【本人の明示解約】を解除してしまう。
         cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId)
                 .filter(MembershipPayerWithdrawalCancellationEntity::isRestorable)
                 .ifPresent(record -> {
@@ -364,7 +424,23 @@ public class MembershipPayerWithdrawalTxService {
      *
      * @param subscriptionId       継続課金 ID
      * @param stripeSubscriptionId Stripe Subscription ID（未連結なら null＝Stripe 操作は行えない）
+     * @param withdrawalAttemptAt  この作業が属する退会試行の世代。<b>Stripe 呼び出しを跨いで持ち回り、
+     *                             確定トランザクションで再検証する</b>ためのもの（Codex 検分3巡目 P1-2）
      */
-    public record PreparedTarget(UUID subscriptionId, String stripeSubscriptionId) {
+    public record PreparedTarget(UUID subscriptionId, String stripeSubscriptionId,
+            Instant withdrawalAttemptAt) {
+    }
+
+    /** 確定トランザクションの結末。 */
+    public enum ApplyOutcome {
+        /** DB へ期末解約を反映し、作業行を {@code SUCCEEDED} にした。 */
+        APPLIED,
+        /** 反映すべき状態になかった（webhook が先に終端化した等）。作業行は {@code SUPERSEDED}。 */
+        SKIPPED,
+        /**
+         * Stripe 呼び出しの間に退会が取り消された（または別の退会試行に変わった）。
+         * DB へは反映せず、作業行を {@code RESTORING}（＝Stripe 側の予約を取り消す必要がある）にした。
+         */
+        ABORTED_GENERATION_CHANGED
     }
 }

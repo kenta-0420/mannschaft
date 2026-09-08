@@ -132,10 +132,17 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
         this.status = MembershipPayerWithdrawalCancellationStatus.SUPERSEDED;
     }
 
-    /** この行が復旧に着手してよい状態か（{@code SUCCEEDED} か、着手済みで未確定の {@code RESTORING}）。 */
+    /**
+     * この行が復旧の検討対象か（＝終端していない）。
+     *
+     * <p>{@code PENDING} を含めるのが要点である（Codex 検分3巡目 P1-2）。tx① を終えて Stripe を
+     * 呼ぶ間に退会が取り消された場合、行は {@code PENDING} のまま残るが Stripe 側には予約が
+     * 入っている可能性がある。{@code SUCCEEDED}/{@code RESTORING} だけを対象にすると、この窓で
+     * 生まれた予約を誰も取り消せない。</p>
+     */
     public boolean isRestorable() {
-        return this.status == MembershipPayerWithdrawalCancellationStatus.SUCCEEDED
-                || this.status == MembershipPayerWithdrawalCancellationStatus.RESTORING;
+        return MembershipPayerWithdrawalCancellationStatus.NON_TERMINAL.contains(this.status)
+                || this.status == MembershipPayerWithdrawalCancellationStatus.SUCCEEDED;
     }
 
     /** Stripe・DB 双方の確定を記録する。 */

@@ -44,7 +44,12 @@ public class MembershipPayerWithdrawalRunner {
         /** 対象外だった（既に予約済み・終端・payer 不一致など）。失敗ではない。 */
         SKIPPED,
         /** 失敗した（処理状態は FAILED/PENDING で残るため再試行できる）。 */
-        FAILED
+        FAILED,
+        /**
+         * Stripe 呼び出しの間に退会が取り消された（世代が変わった）ため中止し、予約の取り消しへ切り替えた。
+         * 失敗ではない（利用者の意思に追随した正しい結末）。
+         */
+        ABORTED
     }
 
     /**
@@ -103,8 +108,19 @@ public class MembershipPayerWithdrawalRunner {
         }
 
         try {
-            boolean applied = txService.applyScheduled(subscriptionId, payerUserId, currentPeriodEnd);
-            return applied ? Outcome.SCHEDULED : Outcome.SKIPPED;
+            MembershipPayerWithdrawalTxService.ApplyOutcome outcome = txService.applyScheduled(
+                    subscriptionId, payerUserId, prepared.get().withdrawalAttemptAt(), currentPeriodEnd);
+            if (outcome == MembershipPayerWithdrawalTxService.ApplyOutcome.ABORTED_GENERATION_CHANGED) {
+                // Stripe を呼んでいる間に退会が取り消された。Stripe には予約が入っている可能性があるため、
+                // その場で取り消しに進む（放置すると「取消済みなのに期末で終了する」が残る）。
+                // ここで失敗しても行は RESTORING（非終端）なので、PR-4 の照合が拾い直せる。
+                log.warn("払い手退会に伴う期末解約: 退会が取り消されたため予約の取り消しへ切り替えます subscriptionId={}",
+                        subscriptionId);
+                restoreOne(subscriptionId, payerUserId);
+                return Outcome.ABORTED;
+            }
+            return outcome == MembershipPayerWithdrawalTxService.ApplyOutcome.APPLIED
+                    ? Outcome.SCHEDULED : Outcome.SKIPPED;
         } catch (Exception e) {
             // 「Stripe 成功・DB 失敗」。この非原子性こそ処理状態を永続化した理由である。
             log.error("払い手退会に伴う期末解約: Stripe 成功後の DB 反映に失敗しました subscriptionId={}",

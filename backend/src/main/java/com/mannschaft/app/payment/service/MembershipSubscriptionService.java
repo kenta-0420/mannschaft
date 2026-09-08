@@ -116,6 +116,20 @@ public class MembershipSubscriptionService {
     private final WithdrawalStateQueryService withdrawalStateQueryService;
 
     /**
+     * 柱③-B PR-3: 退会取消で「取り消すべき予約が残っているかもしれない」作業行の状態
+     * （Codex 検分3巡目 P1-2）。
+     *
+     * <p>{@code PENDING} を含めるのが要点。tx① を終えて Stripe を呼ぶ間に退会が取り消されると
+     * 行は {@code PENDING} のまま残るが、Stripe 側には予約が入っている可能性がある。
+     * {@code SUCCEEDED}/{@code RESTORING} だけを対象にすると、この窓で生まれた予約を誰も取り消せない。</p>
+     */
+    private static final List<MembershipPayerWithdrawalCancellationStatus> RESTORE_TARGET_STATUSES =
+            List.of(MembershipPayerWithdrawalCancellationStatus.PENDING,
+                    MembershipPayerWithdrawalCancellationStatus.FAILED,
+                    MembershipPayerWithdrawalCancellationStatus.SUCCEEDED,
+                    MembershipPayerWithdrawalCancellationStatus.RESTORING);
+
+    /**
      * 【残債2 payment ドメイン公開 API】ユーザーの Stripe Customer 用メールアドレスを解決する。
      *
      * <p>{@link PaymentMethodService#getOrCreateStripeCustomer} が Stripe Customer 新規作成時に渡す
@@ -556,7 +570,7 @@ public class MembershipSubscriptionService {
         for (UUID subscriptionId : reserved) {
             switch (payerWithdrawalRunner.cancelOne(subscriptionId, payerUserId)) {
                 case SCHEDULED -> scheduled.add(subscriptionId);
-                case SKIPPED -> skipped++;
+                case SKIPPED, ABORTED -> skipped++;
                 case FAILED -> failed++;
             }
         }
@@ -578,16 +592,32 @@ public class MembershipSubscriptionService {
      * <p>本 PR では駆動（夜次バッチ）は実装せず PR-4 に委ねるが、<b>検索経路は本 PR で用意する</b>。
      * 経路が無ければ PR-4 でも書きようがないためである。</p>
      *
-     * @return 期末解約を予約すべきなのに未予約の継続課金 ID（該当なしなら空）
+     * <h2>重複排除の責務は本メソッドが持つ（Codex 検分3巡目 P2）</h2>
+     * <p>PR-4 の再試行バッチは「非終端の作業行」と「本 backlog」の2経路を走査するが、両者の集合が
+     * 重なっていると同じ契約へ二重に投入されうる。<b>その dedup は PR-4 ではなく本メソッドが行う</b>——
+     * 非終端の作業行を持つ契約は既に作業行経路が拾うため、ここからは除外して返す。
+     * これにより2つの集合は定義上互いに素になり、PR-4 側は単純に union できる。</p>
+     *
+     * @return 期末解約を予約すべきなのに未予約で、かつ作業行も持たない継続課金 ID（該当なしなら空）
      */
     public List<UUID> findWithdrawalCancelBacklog() {
         List<Long> pendingWithdrawalUserIds = withdrawalStateQueryService.findUserIdsWithPendingWithdrawal();
         if (pendingWithdrawalUserIds.isEmpty()) {
             return List.of();
         }
-        return membershipSubscriptionRepository.findUnscheduledIdsByPayerUserIdIn(
+        List<UUID> unscheduled = membershipSubscriptionRepository.findUnscheduledIdsByPayerUserIdIn(
                 pendingWithdrawalUserIds,
                 List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE));
+        if (unscheduled.isEmpty()) {
+            return List.of();
+        }
+        // 非終端の作業行を持つ契約は作業行経路の担当。ここで落として集合を互いに素にする。
+        Set<UUID> handledByWorkRow = payerWithdrawalCancellationRepository
+                .findByStatusInOrderByUpdatedAtAsc(MembershipPayerWithdrawalCancellationStatus.NON_TERMINAL)
+                .stream()
+                .map(MembershipPayerWithdrawalCancellationEntity::getSubscriptionId)
+                .collect(java.util.stream.Collectors.toSet());
+        return unscheduled.stream().filter(id -> !handledByWorkRow.contains(id)).toList();
     }
 
     /**
@@ -610,10 +640,7 @@ public class MembershipSubscriptionService {
             return List.of();
         }
         List<UUID> targetIds = payerWithdrawalCancellationRepository
-                .findByPayerUserIdAndStatusIn(payerUserId, List.of(
-                        MembershipPayerWithdrawalCancellationStatus.SUCCEEDED,
-                        // Stripe 解除後に停止した行（RESTORING）も取消イベントの再処理で拾い直す。
-                        MembershipPayerWithdrawalCancellationStatus.RESTORING))
+                .findByPayerUserIdAndStatusIn(payerUserId, RESTORE_TARGET_STATUSES)
                 .stream()
                 .map(MembershipPayerWithdrawalCancellationEntity::getSubscriptionId)
                 .toList();

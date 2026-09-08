@@ -43,6 +43,8 @@ class MembershipSubscriptionPayerWithdrawalTest {
     private static final UUID SUB_ID = UUID.fromString("019607a0-0000-7000-8000-0000000000d1");
     private static final Long PAYER_ID = 5001L;
     private static final String STRIPE_SUB = "sub_withdrawal_unit";
+    /** 退会試行の世代。tx① から Stripe を跨いで tx② まで持ち回り、そこで再検証される。 */
+    private static final java.time.Instant GEN = java.time.Instant.parse("2026-09-08T00:00:00Z");
 
     @Mock private MembershipPayerWithdrawalTxService txService;
     @Mock private StripePaymentProvider stripePaymentProvider;
@@ -57,10 +59,11 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("正常系: 予約着手 → Stripe → DB 反映の順に進み SCHEDULED を返す")
         void 正常_三段の順に進む() {
             when(txService.prepare(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
             when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), anyString()))
                     .thenReturn(new StripePaymentProvider.SubscriptionInfo(STRIPE_SUB, "active", 1_800_000_000L));
-            when(txService.applyScheduled(SUB_ID, PAYER_ID, 1_800_000_000L)).thenReturn(true);
+            when(txService.applyScheduled(SUB_ID, PAYER_ID, GEN, 1_800_000_000L))
+                    .thenReturn(MembershipPayerWithdrawalTxService.ApplyOutcome.APPLIED);
 
             assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.SCHEDULED);
         }
@@ -72,15 +75,16 @@ class MembershipSubscriptionPayerWithdrawalTest {
 
             assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.SKIPPED);
             verify(stripePaymentProvider, never()).cancelSubscriptionAtPeriodEnd(anyString(), anyString());
-            verify(txService, never()).applyScheduled(any(), any(), any());
+            verify(txService, never()).applyScheduled(any(), any(), any(), any());
         }
 
         @Test
         @DisplayName("Stripe 未連結: Stripe を叩かずに DB のみ反映する")
         void Stripe未連結_DBのみ反映する() {
             when(txService.prepare(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, null)));
-            when(txService.applyScheduled(SUB_ID, PAYER_ID, null)).thenReturn(true);
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, null, GEN)));
+            when(txService.applyScheduled(SUB_ID, PAYER_ID, GEN, null))
+                    .thenReturn(MembershipPayerWithdrawalTxService.ApplyOutcome.APPLIED);
 
             assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.SCHEDULED);
             verify(stripePaymentProvider, never()).cancelSubscriptionAtPeriodEnd(anyString(), anyString());
@@ -90,12 +94,12 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("Stripe 失敗: DB 反映へ進まず、失敗を永続化して FAILED を返す")
         void Stripe失敗_失敗を永続化する() {
             when(txService.prepare(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
             when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), anyString()))
                     .thenThrow(new IllegalStateException("Stripe 障害"));
 
             assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.FAILED);
-            verify(txService, never()).applyScheduled(any(), any(), any());
+            verify(txService, never()).applyScheduled(any(), any(), any(), any());
             // ログだけでは PR-4 の再試行バッチが拾えない。DB に残すことが要点。
             verify(txService).markFailed(eq(SUB_ID), anyString());
         }
@@ -104,10 +108,10 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("Stripe 成功後の DB 失敗: 失敗を永続化して FAILED を返す（Stripe との乖離を残さない）")
         void DB失敗_失敗を永続化する() {
             when(txService.prepare(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
             when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), anyString()))
                     .thenReturn(new StripePaymentProvider.SubscriptionInfo(STRIPE_SUB, "active", null));
-            when(txService.applyScheduled(SUB_ID, PAYER_ID, null))
+            when(txService.applyScheduled(SUB_ID, PAYER_ID, GEN, null))
                     .thenThrow(new IllegalStateException("DB 障害"));
 
             assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.FAILED);
@@ -121,6 +125,23 @@ class MembershipSubscriptionPayerWithdrawalTest {
 
             assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.FAILED);
         }
+
+        @Test
+        @DisplayName("世代変化: Stripe 呼び出し中に退会が取り消されたら、そのまま予約の取り消しへ切り替える")
+        void 世代変化_取り消しへ切り替える() {
+            when(txService.prepare(SUB_ID, PAYER_ID))
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
+            when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), anyString()))
+                    .thenReturn(new StripePaymentProvider.SubscriptionInfo(STRIPE_SUB, "active", null));
+            when(txService.applyScheduled(SUB_ID, PAYER_ID, GEN, null)).thenReturn(
+                    MembershipPayerWithdrawalTxService.ApplyOutcome.ABORTED_GENERATION_CHANGED);
+            // 切り替え先の復旧経路（対象外で空を返しても、呼ばれること自体が要点）。
+            when(txService.prepareRestore(SUB_ID, PAYER_ID)).thenReturn(Optional.empty());
+
+            assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.ABORTED);
+            // 放置すると「退会取消済みなのに期末で終了する」が残る。必ず取り消しへ進む。
+            verify(txService).prepareRestore(SUB_ID, PAYER_ID);
+        }
     }
 
     @Nested
@@ -131,7 +152,7 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("正常系: Stripe の期末解約を解除してから DB を戻す")
         void 正常_Stripeを先に解除する() {
             when(txService.prepareRestore(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
             when(txService.applyRestore(SUB_ID, PAYER_ID)).thenReturn(true);
 
             assertThat(runner.restoreOne(SUB_ID, PAYER_ID)).isTrue();
@@ -153,7 +174,7 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("Stripe 失敗: DB を戻さず、復旧失敗を RESTORING のまま永続化する")
         void Stripe失敗_DBを戻さない() {
             when(txService.prepareRestore(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
             when(stripePaymentProvider.revertSubscriptionCancelAtPeriodEnd(eq(STRIPE_SUB), anyString()))
                     .thenThrow(new IllegalStateException("Stripe 障害"));
 
@@ -166,7 +187,7 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("Stripe 成功後の DB 失敗: FAILED ではなく RESTORING のまま残す（解約未了と混同しない）")
         void DB失敗_RESTORINGのまま残す() {
             when(txService.prepareRestore(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
             when(txService.applyRestore(SUB_ID, PAYER_ID))
                     .thenThrow(new IllegalStateException("DB 障害"));
 
