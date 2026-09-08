@@ -429,7 +429,22 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
         assertThat(outcome).isEqualTo(MembershipPayerWithdrawalTxService.ApplyOutcome.SKIPPED);
         assertThat(reload(target).getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELLED);
         assertThat(reload(target).getCancelAtPeriodEnd()).isFalse();
-        // 反映していないのに SUCCEEDED にしてはならない（検分3巡目 P1-3）。
+
+        // 作業行は【自分たちのもの】（世代一致かつ PENDING）なので SUCCEEDED で終端化する。
+        // webhook が先に CANCELLED を確定させただけであり「課金を止める」目的は達成されている。
+        // 検分3巡目 P1-3 の「applied=false を SUCCEEDED にしない」は、
+        // 【自分が予約したのではない】場合（本人の明示解約 = SUPERSEDED 済みの行）に向けた規則であり、
+        // ここには当たらない。その安全性はこのテスト自身が下で直接確かめる。
+        assertThat(record(target)).isPresent().get().satisfies(r ->
+                assertThat(r.getStatus())
+                        .isEqualTo(MembershipPayerWithdrawalCancellationStatus.SUCCEEDED));
+
+        // 【安全性の直接検証】終端化した契約を、退会取消の復旧が蘇らせないこと。
+        markNotWithdrawing(payerUserId);
+        assertThat(membershipSubscriptionService.restoreAllForPayerOnWithdrawalCancelled(payerUserId))
+                .isEmpty();
+        assertThat(reload(target).getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELLED);
+        // 復旧できない行は非終端のまま残さず SUPERSEDED へ降ろす（照合バッチが永久に拾わない）。
         assertThat(record(target)).isPresent().get().satisfies(r ->
                 assertThat(r.getStatus())
                         .isEqualTo(MembershipPayerWithdrawalCancellationStatus.SUPERSEDED));
