@@ -56,6 +56,8 @@ const {
   loading,
   followStatus,
   followLoading,
+  joinRequestStatus,
+  joinRequestLoading,
   showCancelSupporterConfirm,
   showLeaveConfirm,
   fetchOrg,
@@ -64,6 +66,8 @@ const {
   fetchFollowStatus,
   applySupporter,
   cancelSupporter,
+  fetchJoinRequestStatus,
+  applyJoinRequest,
   leaveOrganization,
 } = useOrgDetail(orgSlug)
 
@@ -128,6 +132,7 @@ async function tryRedirectMovedSlug(): Promise<boolean> {
 async function refresh() {
   await Promise.all([fetchOrg(), loadPermissions()])
   await fetchFollowStatus(roleName)
+  await fetchJoinRequestStatus(roleName)
 }
 
 // =============================================================================
@@ -142,6 +147,7 @@ const SEGMENT_TO_TAB: Record<string, string> = {
   invites: 'invites',
   'permission-groups': 'permission-groups',
   supporters: 'supporters',
+  'join-requests': 'join-requests',
   modules: 'modules',
 }
 
@@ -167,6 +173,7 @@ const SHELL_SEGMENTS = new Set([
   'invites',
   'permission-groups',
   'supporters',
+  'join-requests',
   'modules',
   // --- ウィジェット遷移先（ScopeDashboard.vue scopeLinks 正本・組織に実在する 13 セグメント） ---
   'schedule',
@@ -237,6 +244,7 @@ async function loadShellData() {
     fetchOrgTeams(),
     isAdmin.value ? fetchPermissionGroups() : Promise.resolve(),
     fetchFollowStatus(roleName),
+    fetchJoinRequestStatus(roleName),
     fetchAncestors(),
     fetchChildren(true),
   ])
@@ -269,11 +277,12 @@ watch(orgSlug, () => {
   orgLoaded.value = false
   org.value = null
   followStatus.value = 'NONE'
+  joinRequestStatus.value = 'NONE'
   if (isShellRoute.value) void loadShellData()
 })
 
 /** 管理系タブ key（レンズ OFF・非管理者では滞在させない）。 */
-const ADMIN_ONLY_SEGMENTS = new Set(['invites', 'permission-groups', 'supporters', 'modules'])
+const ADMIN_ONLY_SEGMENTS = new Set(['invites', 'permission-groups', 'supporters', 'join-requests', 'modules'])
 
 /**
  * 管理者レンズ OFF、または管理権限を失った状態で管理ルートに滞在している場合は
@@ -282,8 +291,8 @@ const ADMIN_ONLY_SEGMENTS = new Set(['invites', 'permission-groups', 'supporters
 watch([adminLens, isAdmin, isAdminOrDeputy, () => route.path], () => {
   const tab = activeTab.value
   if (!ADMIN_ONLY_SEGMENTS.has(tab)) return
-  // 招待は副管理者以上、その他（権限グループ/サポーター/機能設定）は管理者のみ。
-  const allowed = tab === 'invites' ? isAdminOrDeputy.value : isAdmin.value
+  // 招待・参加申請は副管理者以上、その他（権限グループ/サポーター/機能設定）は管理者のみ。
+  const allowed = (tab === 'invites' || tab === 'join-requests') ? isAdminOrDeputy.value : isAdmin.value
   if (!adminLens.value || !allowed) {
     navigateTo(`/organizations/${orgSlug.value}`)
   }
@@ -346,6 +355,13 @@ const tabs = computed<ScopeTab[]>(() => {
       icon: 'pi pi-heart',
       labelKey: 'orgShell.tab.supporters',
       visible: isAdmin.value && (org.value?.visibility?.supporterEnabled ?? false) && adminLens.value,
+    },
+    {
+      key: 'join-requests',
+      to: `${base}/join-requests`,
+      icon: 'pi pi-user-plus',
+      labelKey: 'orgShell.tab.joinRequests',
+      visible: isAdminOrDeputy.value && adminLens.value,
     },
     {
       key: 'modules',
@@ -424,10 +440,13 @@ provideOrgShellContext({
             :is-admin-or-deputy="isAdminOrDeputy"
             :follow-status="followStatus"
             :follow-loading="followLoading"
+            :join-request-status="joinRequestStatus"
+            :join-request-loading="joinRequestLoading"
             :ancestors="ancestors"
             @back="navigateTo('/dashboard')"
             @apply-supporter="applySupporter"
             @cancel-supporter="cancelSupporter"
+            @apply-join-request="applyJoinRequest"
             @show-cancel-confirm="showCancelSupporterConfirm = true"
             @show-leave-confirm="showLeaveConfirm = true"
             @icon-updated="orgMutators.updateOrgIcon"

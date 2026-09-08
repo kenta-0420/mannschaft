@@ -6,6 +6,7 @@ const emit = defineEmits<{
   back: []
   applySupporter: []
   cancelSupporter: []
+  applyJoinRequest: []
   showCancelConfirm: []
   showLeaveConfirm: []
   iconUpdated: [url: string | null]
@@ -20,6 +21,8 @@ const props = defineProps<{
   isAdminOrDeputy: boolean
   followStatus: 'NONE' | 'PENDING' | 'APPROVED'
   followLoading: boolean
+  joinRequestStatus: 'NONE' | 'PENDING'
+  joinRequestLoading: boolean
   templateLabel: Record<string, string>
 }>()
 
@@ -158,6 +161,26 @@ const overflowMenuItems = computed(() => {
             size="small"
             :loading="followLoading"
             @click="emit('applySupporter')"
+          />
+        </template>
+        <template v-if="team.visibility?.visibility === 'PUBLIC' && !roleName">
+          <span
+            v-if="joinRequestStatus === 'PENDING'"
+            class="flex items-center gap-2 text-sm text-orange-500"
+            data-testid="join-request-pending"
+          >
+            <i class="pi pi-clock" />{{ $t('joinRequest.pending') }}
+          </span>
+          <Button
+            v-else
+            :label="$t('joinRequest.apply')"
+            icon="pi pi-user-plus"
+            severity="secondary"
+            outlined
+            size="small"
+            data-testid="join-request-apply-button"
+            :loading="joinRequestLoading"
+            @click="emit('applyJoinRequest')"
           />
         </template>
         <!-- 低頻度アクション（市場出品導線・チーム内告知・チームから退出）:

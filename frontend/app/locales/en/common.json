@@ -1631,7 +1631,8 @@
       "load_error_body": "Please try again later. It may be hidden if you do not have permission.",
       "back_to_dashboard": "Back to dashboard",
       "retry": "Retry",
-      "slow_loading": "Loading is taking longer than expected"
+      "slow_loading": "Loading is taking longer than expected",
+      "join_request_applied": "参加申請を送信しました"
     },
     "unsavedChanges": {
       "title": "Unsaved changes",
@@ -2184,7 +2185,8 @@
       "members": "Members",
       "invites": "Invites",
       "supporters": "Supporter Management",
-      "modules": "Features"
+      "modules": "Features",
+      "joinRequests": "参加申請"
     },
     "action": {
       "leave_confirm_title": "Leave team",
@@ -2201,7 +2203,8 @@
       "invites": "Invites",
       "permission_groups": "Permission Groups",
       "supporters": "Supporter Management",
-      "modules": "Features"
+      "modules": "Features",
+      "joinRequests": "参加申請"
     },
     "action": {
       "leave_confirm_title": "Leave organization",
@@ -2362,5 +2365,17 @@
     "hint": "To switch, open a team or organization from the \"Teams\" / \"Organizations\" menu at the top of the screen. Whichever you open becomes the current scope.",
     "goTeams": "Choose a team",
     "goOrganizations": "Choose an organization"
+  },
+  "joinRequest": {
+    "apply": "参加申請",
+    "pending": "申請中（承認待ち）",
+    "admin": {
+      "pendingTitle": "承認待ちの参加申請",
+      "empty": "承認待ちの参加申請はありません",
+      "requesterLabel": "ユーザーID: {userId}",
+      "requestedAt": "申請日",
+      "approve": "承認",
+      "reject": "却下"
+    }
   }
 }

@@ -48,6 +48,14 @@ export function useOrgDetail(orgId: Ref<string>) {
   const showCancelSupporterConfirm = ref(false)
   const showLeaveConfirm = ref(false)
 
+  /**
+   * MEMBER 参加申請（柱③-A・CMP-260901-1538）。
+   * 取り下げ API は BE 未実装（PR #3139）のため PENDING 表示のみ提供する（対処療法禁止の原則）。
+   */
+  const { createJoinRequest, listMyJoinRequests } = useJoinRequestApi()
+  const joinRequestStatus = ref<'NONE' | 'PENDING'>('NONE')
+  const joinRequestLoading = ref(false)
+
   async function fetchOrg() {
     loading.value = true
     try {
@@ -120,6 +128,32 @@ export function useOrgDetail(orgId: Ref<string>) {
     }
   }
 
+  async function fetchJoinRequestStatus(roleName: Ref<string | null>) {
+    if (roleName.value) return
+    if (org.value?.visibility?.visibility !== 'PUBLIC') return
+    if (!org.value?.numericId) return
+    try {
+      const res = await listMyJoinRequests('organization', org.value.numericId)
+      joinRequestStatus.value = res.data.some(r => r.status === 'PENDING') ? 'PENDING' : 'NONE'
+    } catch {
+      joinRequestStatus.value = 'NONE'
+    }
+  }
+
+  async function applyJoinRequest() {
+    if (!org.value?.numericId) return
+    joinRequestLoading.value = true
+    try {
+      await createJoinRequest('organization', org.value.numericId)
+      joinRequestStatus.value = 'PENDING'
+      notification.success(t('common.scopeShell.join_request_applied'))
+    } catch (error) {
+      handleApiError(error, '参加申請')
+    } finally {
+      joinRequestLoading.value = false
+    }
+  }
+
   async function leaveOrganization() {
     try {
       await orgApi.leaveOrganization(orgId.value)
@@ -139,6 +173,8 @@ export function useOrgDetail(orgId: Ref<string>) {
     loading,
     followStatus,
     followLoading,
+    joinRequestStatus,
+    joinRequestLoading,
     showCancelSupporterConfirm,
     showLeaveConfirm,
     fetchOrg,
@@ -147,6 +183,8 @@ export function useOrgDetail(orgId: Ref<string>) {
     fetchFollowStatus,
     applySupporter,
     cancelSupporter,
+    fetchJoinRequestStatus,
+    applyJoinRequest,
     leaveOrganization,
   }
 }

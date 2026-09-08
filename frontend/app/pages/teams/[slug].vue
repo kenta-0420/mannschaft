@@ -125,6 +125,46 @@ async function cancelSupporter() {
 }
 
 // =============================================================================
+// MEMBER 参加申請（柱③-A・CMP-260901-1538）
+// =============================================================================
+/**
+ * PUBLIC & ACTIVE チームへの MEMBER 参加申請。取り下げ API は BE 未実装（PR #3139）のため
+ * 対処療法で偽装せず、PENDING 表示のみ提供する（対処療法禁止の原則）。
+ */
+const { createJoinRequest, listMyJoinRequests } = useJoinRequestApi()
+const joinRequestStatus = ref<'NONE' | 'PENDING'>('NONE')
+const joinRequestLoading = ref(false)
+
+async function fetchJoinRequestStatus() {
+  if (roleName.value) return
+  if (team.value?.visibility?.visibility !== 'PUBLIC') return
+  if (!team.value?.numericId) return
+  try {
+    const res = await listMyJoinRequests('team', team.value.numericId)
+    joinRequestStatus.value = res.data.some(r => r.status === 'PENDING') ? 'PENDING' : 'NONE'
+  }
+  catch {
+    joinRequestStatus.value = 'NONE'
+  }
+}
+
+async function applyJoinRequest() {
+  if (!team.value?.numericId) return
+  joinRequestLoading.value = true
+  try {
+    await createJoinRequest('team', team.value.numericId)
+    joinRequestStatus.value = 'PENDING'
+    notification.success(t('common.scopeShell.join_request_applied'))
+  }
+  catch (error) {
+    handleApiError(error, '参加申請')
+  }
+  finally {
+    joinRequestLoading.value = false
+  }
+}
+
+// =============================================================================
 // チームデータ + slug redirect
 // =============================================================================
 const team = ref<TeamResponse | null>(null)
@@ -201,6 +241,7 @@ async function leaveTeam() {
 async function refresh() {
   await Promise.all([fetchTeam(), loadPermissions()])
   await fetchFollowStatus()
+  await fetchJoinRequestStatus()
 }
 
 // =============================================================================
@@ -212,6 +253,7 @@ const SEGMENT_TO_TAB: Record<string, string> = {
   members: 'members',
   invites: 'invites',
   supporters: 'supporters',
+  'join-requests': 'join-requests',
   modules: 'modules',
   reservations: 'reservations',
   nav: 'nav',
@@ -240,6 +282,7 @@ const SHELL_SEGMENTS = new Set([
   'members',
   'invites',
   'supporters',
+  'join-requests',
   'modules',
   'reservations',
   'nav',
@@ -328,6 +371,7 @@ async function loadShellData() {
   try {
     await Promise.all([fetchTeam(), loadPermissions()])
     await fetchFollowStatus()
+    await fetchJoinRequestStatus()
     // ウィジェット可視性設定と予約モジュール有効フラグを並列取得。
     // 非メンバー・サポーターは 403/401 が想定内（装飾的な visible:false のみ失われ、ロールゲートは
     // defaultMinRole で生存）なので静かにフォールバック。それ以外の実エラーはログで表面化する。
@@ -431,6 +475,13 @@ const tabs = computed<ScopeTab[]>(() => {
       icon: 'pi pi-heart',
       labelKey: 'teamShell.tab.supporters',
       visible: isAdmin.value && (team.value?.visibility?.supporterEnabled ?? false) && adminLens.value,
+    },
+    {
+      key: 'join-requests',
+      to: `${base}/join-requests`,
+      icon: 'pi pi-user-plus',
+      labelKey: 'teamShell.tab.joinRequests',
+      visible: isAdminOrDeputy.value && adminLens.value,
     },
     {
       key: 'modules',
@@ -544,10 +595,13 @@ provideTeamShellContext({
             :is-admin-or-deputy="isAdminOrDeputy"
             :follow-status="followStatus"
             :follow-loading="followLoading"
+            :join-request-status="joinRequestStatus"
+            :join-request-loading="joinRequestLoading"
             :template-label="templateLabel"
             @back="navigateTo('/dashboard')"
             @apply-supporter="applySupporter"
             @cancel-supporter="cancelSupporter"
+            @apply-join-request="applyJoinRequest"
             @show-cancel-confirm="showCancelSupporterConfirm = true"
             @show-leave-confirm="showLeaveConfirm = true"
             @icon-updated="teamMutators.updateTeamIcon"
