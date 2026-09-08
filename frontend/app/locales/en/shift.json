@@ -95,7 +95,8 @@
       "detail": "Detail",
       "edit": "Edit",
       "requests": "Requests",
-      "workConstraints": "Work Constraints"
+      "workConstraints": "Work Constraints",
+      "teamLoadFailed": "Failed to load team information"
     },
     "status": {
       "all": "All",
@@ -436,8 +437,5 @@
         "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
       }
     }
-  },
-  "page": {
-    "teamLoadFailed": "Failed to load team information"
   }
 }

@@ -81,7 +81,8 @@
       "detail": "详情",
       "edit": "编辑",
       "requests": "申请列表",
-      "workConstraints": "工作限制"
+      "workConstraints": "工作限制",
+      "teamLoadFailed": "获取团队信息失败"
     },
     "status": {
       "all": "全部",
@@ -436,8 +437,5 @@
         "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
       }
     }
-  },
-  "page": {
-    "teamLoadFailed": "获取团队信息失败"
   }
 }
