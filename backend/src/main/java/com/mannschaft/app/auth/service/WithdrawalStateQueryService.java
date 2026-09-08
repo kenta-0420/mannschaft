@@ -2,6 +2,7 @@ package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ import java.util.UUID;
  * （{@code CrossDomainRepositoryDependencyArchTest} D-5）になる。CLAUDE.md の「ドメイン間は ID 参照＋
  * Service 経由のみ」に従い、本サービスを唯一の窓口にする。</p>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WithdrawalStateQueryService {
@@ -79,6 +81,14 @@ public class WithdrawalStateQueryService {
         UUID attemptId = userRepository.findWithdrawalAttemptIdHexIfPending(userId)
                 .map(WithdrawalStateQueryService::toUuid)
                 .orElse(null);
+        if (attemptId == null) {
+            // 【欠落は欠落として扱う】識別子が無ければ退会試行の同一性を判定できず、
+            // 冪等キーも世代の再検証も成り立たない。null のまま「正常な退会試行」として返すと
+            // 真値の欠落を隠したまま Stripe を操作してしまう。
+            // requestDeletion() は必ず採番し、V204 で既存行もバックフィル済みのため通常は到達しない。
+            log.error("退会試行の識別子が欠落しています（処理を進めません）: userId={}", userId);
+            return Optional.empty();
+        }
         return Optional.of(new WithdrawalAttempt(attemptId, toInstant(deletedAt.get())));
     }
 

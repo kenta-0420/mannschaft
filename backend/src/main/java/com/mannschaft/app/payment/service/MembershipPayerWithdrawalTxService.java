@@ -220,18 +220,30 @@ public class MembershipPayerWithdrawalTxService {
                     "期末解約の確定対象の payer が変わっています subscriptionId=" + subscriptionId);
         }
 
+        // 作業行は【自分の退会試行のものであるときだけ】更新する。この規則を分岐ごとに漏らさない。
+        Optional<MembershipPayerWithdrawalCancellationEntity> recordOpt =
+                cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId);
+        boolean recordIsOurs = recordOpt.isPresent() && sameAttempt(recordOpt.get(), withdrawalAttemptId);
+
         if (current.isEmpty() || !java.util.Objects.equals(current.get().attemptId(), withdrawalAttemptId)) {
             log.warn("払い手退会に伴う期末解約: Stripe 呼び出しの間に退会状態が変わったため DB へ反映しません "
                             + "subscriptionId={}, 着手時の退会試行={}, 現在={}",
                     subscriptionId, withdrawalAttemptId,
                     current.map(WithdrawalAttempt::attemptId).orElse(null));
-            // Stripe 側には既に cancel_at_period_end=true が入っている可能性がある。
-            // RESTORING（＝取り消す必要がある）として非終端で残し、復旧経路に拾わせる。
-            cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId)
-                    .ifPresent(record -> {
-                        record.markRestoring();
-                        cancellationRepository.saveAndFlush(record);
-                    });
+            if (recordIsOurs) {
+                // Stripe 側には既に cancel_at_period_end=true が入っている可能性がある。
+                // RESTORING（＝取り消す必要がある）として非終端で残し、復旧経路に拾わせる。
+                recordOpt.get().markRestoring();
+                cancellationRepository.saveAndFlush(recordOpt.get());
+            } else {
+                // 【要】作業行が既に別の退会試行のものになっている場合は触らない（単点確認3回目 P1）。
+                // 是正前はここを無条件に RESTORING へ上書きしており、
+                // 「Bが SUCCEEDED まで完了した行を、遅れて届いたAが非終端へ戻す」ことができた。
+                // その直後の prepareRestore は「現在Bの退会中」でスキップするため、
+                // Bの行が誤った非終端状態のまま残り続けた。
+                log.warn("払い手退会に伴う期末解約: 作業行は既に別の退会試行のものなので変更しません "
+                        + "subscriptionId={}, 着手時の退会試行={}", subscriptionId, withdrawalAttemptId);
+            }
             return ApplyOutcome.ABORTED_GENERATION_CHANGED;
         }
 
@@ -258,21 +270,20 @@ public class MembershipPayerWithdrawalTxService {
         }
 
         final boolean scheduledByUs = applied;
-        cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId)
-                .ifPresent(record -> {
-                    // 「自分たちの進行中の作業行」か（世代一致かつ PENDING）。
-                    // DB 列が既に true でも、それを立てたのが自分たちなら SUCCEEDED が正しい
-                    // （検分5巡目 P1-2 の経路では DB=true のまま Stripe へ発行し直している）。
-                    boolean ours = sameAttempt(record, withdrawalAttemptId)
-                            && record.getStatus() == MembershipPayerWithdrawalCancellationStatus.PENDING;
-                    if (scheduledByUs || ours) {
-                        record.markSucceeded(Instant.now());
-                    } else {
-                        // 自分が予約したのではない＝復旧の対象にしてはいけない（検分3巡目 P1-3）。
-                        record.markSuperseded();
-                    }
-                    cancellationRepository.saveAndFlush(record);
-                });
+        // ここでも「自分の退会試行の作業行」のときだけ更新する（他試行の行は一切触らない）。
+        if (recordIsOurs) {
+            MembershipPayerWithdrawalCancellationEntity record = recordOpt.get();
+            // DB 列が既に true でも、それを立てたのが自分たちなら SUCCEEDED が正しい
+            // （検分5巡目 P1-2 の経路では DB=true のまま Stripe へ発行し直している）。
+            boolean ours = record.getStatus() == MembershipPayerWithdrawalCancellationStatus.PENDING;
+            if (scheduledByUs || ours) {
+                record.markSucceeded(Instant.now());
+            } else {
+                // 自分が予約したのではない＝復旧の対象にしてはいけない（検分3巡目 P1-3）。
+                record.markSuperseded();
+            }
+            cancellationRepository.saveAndFlush(record);
+        }
 
         if (applied) {
             // 通知は業務 tx 内では publish のみ（配送は AFTER_COMMIT・rollback-only 防止）。
@@ -374,6 +385,9 @@ public class MembershipPayerWithdrawalTxService {
             return Optional.empty();
         }
 
+        // ここは識別子で絞らなくてよい。直前にユーザー行をロックして「退会申請中でない」ことを
+        // 確かめており、新しい退会試行は退会申請なしには生まれない（＝並行世代が存在しえない）。
+        // 逆に applyScheduled は Stripe を跨いでロックが切れるため、そちらは識別子で絞る必要がある。
         record.markRestoring();
         cancellationRepository.saveAndFlush(record);
 

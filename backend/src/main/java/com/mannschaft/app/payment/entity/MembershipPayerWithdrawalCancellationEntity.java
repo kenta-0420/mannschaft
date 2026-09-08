@@ -68,9 +68,9 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
     /**
      * 退会試行の世代（処理時点の {@code users.deleted_at}）。
      *
-     * <p>「どの退会申請に属する作業行か」を一意に指す（Codex 検分2巡目 P1-1）。退会は取り消して
-     * 再度申請できるため、同じサブスクの行が別の退会試行で再利用される。世代を刻んでおかないと、
-     * 遅延して届いた古い退会イベントの処理結果と、現在進行中の退会の処理結果を区別できない。</p>
+     * <p><b>診断・ログ用の情報であり、世代の同一性の判定には使わない。</b>
+     * 本番の {@code users.deleted_at} は {@code DATETIME}（小数秒なし）で、同一秒内の再退会を
+     * 区別できないためである。同一性は {@code withdrawal_attempt_id} だけで判定する。</p>
      */
     @Column(name = "withdrawal_attempt_at", nullable = false)
     private Instant withdrawalAttemptAt;
@@ -268,9 +268,9 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
         if (this.withdrawalAttemptToken == null) {
             this.withdrawalAttemptToken = com.mannschaft.app.common.UuidV7.generate();
         }
-        if (this.withdrawalAttemptId == null) {
-            this.withdrawalAttemptId = com.mannschaft.app.common.UuidV7.generate();
-        }
+        // withdrawal_attempt_id は【退会側が採番した正本】であり、ここで代わりに作ってはならない。
+        // 無関係な UUID を生成すると「どの退会試行の作業行か」という情報が捏造される。
+        // 未設定のままなら NOT NULL 制約で insert が落ちる（＝欠落が握りつぶされずに露見する）。
     }
 
     @PreUpdate
