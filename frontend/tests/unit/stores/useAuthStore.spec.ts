@@ -19,6 +19,7 @@ describe('useAuthStore.logout', () => {
     chatClear.mockClear()
     vi.stubGlobal('useChatTabsStore', () => ({ clearAll: chatClear }))
     vi.stubGlobal('navigateTo', vi.fn())
+    vi.stubGlobal('history', { state: null, pushState: vi.fn(), replaceState: vi.fn() })
     vi.stubGlobal('disarmProactiveRefresh', vi.fn())
   })
 
