@@ -81,7 +81,8 @@
       "detail": "Detalle",
       "edit": "Editar",
       "requests": "Solicitudes",
-      "workConstraints": "Restricciones de Trabajo"
+      "workConstraints": "Restricciones de Trabajo",
+      "teamLoadFailed": "No se pudo obtener la información del equipo"
     },
     "status": {
       "all": "Todos",
@@ -436,8 +437,5 @@
         "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
       }
     }
-  },
-  "page": {
-    "teamLoadFailed": "No se pudo obtener la información del equipo"
   }
 }
