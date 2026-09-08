@@ -76,6 +76,17 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
     private Instant withdrawalAttemptAt;
 
     /**
+     * この作業行が属する<b>退会試行</b>（{@code users.withdrawal_attempt_id}）。
+     *
+     * <p>世代の同一性は<b>この値だけ</b>で判定する。時刻（{@code withdrawal_attempt_at}）からも
+     * 作業行の状態（{@code PENDING}/{@code FAILED}）からも<b>推測しない</b>——どちらも
+     * 「同一秒内の再退会」「取消イベントが追いつく前の別世代」を区別できず、実際に同じ欠陥を
+     * 3度作った（Codex 単点確認の指定設計）。</p>
+     */
+    @Column(name = "withdrawal_attempt_id", nullable = false, columnDefinition = "BINARY(16)")
+    private UUID withdrawalAttemptId;
+
+    /**
      * 退会試行ごとに<b>一度だけ払い出す不変の識別子</b>。Stripe の冪等キーに使う
      * （Codex 絞り込み確認 P1）。
      *
@@ -85,9 +96,9 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
      * しまい、Stripe 側で同一操作として重複排除されない</b>（二重実行）。並行する2処理が
      * 行ロックを順に通過したあと異なるキーで Stripe を並行呼び出しすることもできた。</p>
      *
-     * <p>本トークンは {@link #rotateTokenUnlessSameAttemptContinues} により、
-     * <b>進行中の解約試行（PENDING/FAILED）の続きでないとき</b>に払い直される。
-     * 時刻にも試行回数にも依存しないため、同一秒内の再退会でも必ず新しい値になる。</p>
+     * <p>本トークンは {@link #rotateTokenIfWithdrawalAttemptChanged} により、
+     * <b>作業行が属する退会試行が変わったとき</b>にだけ払い直される。
+     * 時刻にも試行回数にも作業行の状態にも依存しない。</p>
      */
     @Column(name = "withdrawal_attempt_token", nullable = false, columnDefinition = "BINARY(16)")
     private UUID withdrawalAttemptToken;
@@ -128,8 +139,9 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
      * <p>世代を上書きするのは、退会 → 取消 → 再退会で同じ行を再利用するためである（1サブスク1行の
      * UNIQUE を保ったまま、行が常に「最新の退会試行」を指すようにする）。</p>
      */
-    public void markAttempt(Instant withdrawalAttemptAt, String stripeSubscriptionId) {
-        rotateTokenUnlessSameAttemptContinues();
+    public void markAttempt(UUID withdrawalAttemptId, Instant withdrawalAttemptAt,
+            String stripeSubscriptionId) {
+        rotateTokenIfWithdrawalAttemptChanged(withdrawalAttemptId);
         this.withdrawalAttemptAt = withdrawalAttemptAt;
         this.stripeSubscriptionId = stripeSubscriptionId;
         this.status = MembershipPayerWithdrawalCancellationStatus.PENDING;
@@ -143,8 +155,8 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
      * 世代（{@code withdrawal_attempt_at}）に着手する。作業行を {@code PENDING} へ戻すが
      * <b>試行回数は増やさない</b>（{@code reserveAll} 用）。
      */
-    public void reserveForGeneration(Instant withdrawalAttemptAt) {
-        rotateTokenUnlessSameAttemptContinues();
+    public void reserveForGeneration(UUID withdrawalAttemptId, Instant withdrawalAttemptAt) {
+        rotateTokenIfWithdrawalAttemptChanged(withdrawalAttemptId);
         this.withdrawalAttemptAt = withdrawalAttemptAt;
         this.status = MembershipPayerWithdrawalCancellationStatus.PENDING;
         this.lastError = null;
@@ -153,33 +165,37 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
     }
 
     /**
-     * <b>解約試行の続きではない</b>ときに冪等トークンを払い直す（Codex 単点確認 P1）。
+     * <b>作業行が属する退会試行が変わったとき</b>にだけ冪等トークンを払い直す
+     * （Codex 単点確認の指定設計）。
      *
-     * <h2>時刻で判定してはならない</h2>
-     * <p>是正前は「{@code withdrawal_attempt_at} が変わったか」で判定していた。しかし本番の
-     * {@code users.deleted_at} は {@code DATETIME}（小数秒なし）であり、<b>「世代Aで退会・解約 →
-     * 退会取消・復旧 → 同一秒内に世代Bで再退会」では A と B の値が一致する</b>。その結果トークンが
-     * 払い直されず、世代Bの Stripe 操作が世代Aの応答として重複排除され得た。
-     * トークンの値を時刻から切り離しても、<b>払い直しの判定が時刻のままでは同じ穴が残る</b>。</p>
+     * <h2>推測をやめ、退会側の正本と突き合わせる</h2>
+     * <p>過去3回の欠陥はいずれも「世代の同一性を推測した」ことが原因だった。</p>
+     * <ol>
+     *   <li>時刻（{@code users.deleted_at}）で判定 → 本番は {@code DATETIME}（秒精度）のため
+     *       同一秒内の再退会を区別できない</li>
+     *   <li>キーの値だけ時刻から外し、判定は時刻のまま → 判定側に同じ穴が残った</li>
+     *   <li>作業行の状態（{@code PENDING}/{@code FAILED} なら同一試行）で判定 →
+     *       <b>退会取消のイベントが追いつく前に次の退会イベントが走る</b>と、行はまだ前世代の
+     *       {@code PENDING} なので別世代を同一試行と誤認する</li>
+     * </ol>
      *
-     * <h2>状態遷移を根拠にする</h2>
-     * <p>トークンを再利用してよいのは「<b>いま進行中の解約試行の続き</b>」だけである。すなわち
-     * {@link MembershipPayerWithdrawalCancellationStatus#PENDING}（着手済・未確定）と
-     * {@link MembershipPayerWithdrawalCancellationStatus#FAILED}（失敗・同一試行の再試行対象）の2つ。
-     * それ以外——{@code SUCCEEDED}（確定済み）・{@code RESTORING}／{@code RESTORED}（解除に着手・完了）・
-     * {@code SUPERSEDED}（本人の意思で上書き）——から新たに予約へ入るのは<b>必ず別の退会試行</b>であり、
-     * かつ Stripe 側の状態が反対方向へ動かされた可能性がある。ゆえに新しいキーで発行し直す。</p>
+     * <p>本メソッドは {@code users.withdrawal_attempt_id}（退会申請のたびに新規採番される正本）と
+     * 作業行が保持する識別子を突き合わせるだけである。時刻にも状態にも依存しない。</p>
      *
-     * <p>この規則は時刻を一切参照しないため、同一秒内の再退会でも必ず新しいトークンになる。
-     * 逆に<b>同一試行の再試行では絶対に変わらない</b>（変えると Stripe が重複排除できず二重実行になる）。</p>
+     * <ul>
+     *   <li>同じ退会試行の続き（再送・再試行）→ トークンは<b>絶対に変わらない</b>
+     *       （変えると Stripe が重複排除できず二重実行になる）</li>
+     *   <li>別の退会試行 → 必ず<b>新しいトークン</b>（同一秒内の再退会でも）</li>
+     * </ul>
      */
-    private void rotateTokenUnlessSameAttemptContinues() {
-        boolean sameAttemptContinues = this.withdrawalAttemptToken != null
-                && (this.status == MembershipPayerWithdrawalCancellationStatus.PENDING
-                        || this.status == MembershipPayerWithdrawalCancellationStatus.FAILED);
-        if (!sameAttemptContinues) {
+    private void rotateTokenIfWithdrawalAttemptChanged(UUID currentWithdrawalAttemptId) {
+        boolean sameAttempt = this.withdrawalAttemptToken != null
+                && this.withdrawalAttemptId != null
+                && this.withdrawalAttemptId.equals(currentWithdrawalAttemptId);
+        if (!sameAttempt) {
             this.withdrawalAttemptToken = com.mannschaft.app.common.UuidV7.generate();
         }
+        this.withdrawalAttemptId = currentWithdrawalAttemptId;
     }
 
     /** 復旧に着手した（Stripe 呼び出しの<b>前</b>に刻む。以降は非終端として照合・再試行の対象）。 */
@@ -251,6 +267,9 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
         }
         if (this.withdrawalAttemptToken == null) {
             this.withdrawalAttemptToken = com.mannschaft.app.common.UuidV7.generate();
+        }
+        if (this.withdrawalAttemptId == null) {
+            this.withdrawalAttemptId = com.mannschaft.app.common.UuidV7.generate();
         }
     }
 

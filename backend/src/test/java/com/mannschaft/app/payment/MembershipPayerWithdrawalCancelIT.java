@@ -424,7 +424,7 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
                         .setParameter("id", hex(target)).executeUpdate());
 
         MembershipPayerWithdrawalTxService.ApplyOutcome outcome = payerWithdrawalTxService.applyScheduled(
-                target, payerUserId, prepared.get().withdrawalAttemptAt(), PERIOD_END_EPOCH);
+                target, payerUserId, prepared.get().withdrawalAttemptId(), PERIOD_END_EPOCH);
 
         assertThat(outcome).isEqualTo(MembershipPayerWithdrawalTxService.ApplyOutcome.SKIPPED);
         assertThat(reload(target).getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELLED);
@@ -464,7 +464,7 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
         markNotWithdrawing(payerUserId);
 
         MembershipPayerWithdrawalTxService.ApplyOutcome outcome = payerWithdrawalTxService.applyScheduled(
-                target, payerUserId, prepared.get().withdrawalAttemptAt(), PERIOD_END_EPOCH);
+                target, payerUserId, prepared.get().withdrawalAttemptId(), PERIOD_END_EPOCH);
 
         // 是正前はここで DB へ反映し SUCCEEDED を確定させていた。ユーザーは退会中でないため
         // backlog にも入らず、再試行対象にもならず、回復不能だった。

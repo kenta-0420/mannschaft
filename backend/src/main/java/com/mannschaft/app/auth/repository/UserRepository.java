@@ -57,6 +57,20 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<LocalDateTime> findDeletedAtForUpdateIncludingDeleted(@Param("id") Long id);
 
     /**
+     * <b>退会申請中のときだけ</b>、その退会試行の識別子（{@code withdrawal_attempt_id}）を
+     * 16進文字列で返す（柱③-B PR-3・Codex 単点確認の指定設計）。
+     *
+     * <p>退会試行の同一性は、時刻（{@code deleted_at} は DATETIME で秒精度）や作業行の状態からは
+     * 判定できない。退会側が採番したこの識別子だけが正本である。</p>
+     *
+     * <p>{@code HEX()} で返すのは、{@code BINARY(16)} をドライバ依存のバイト列表現に頼らず
+     * 一意な文字列として受け取るためである。呼び出し側で {@link java.util.UUID} へ復元する。</p>
+     */
+    @Query(value = "select hex(withdrawal_attempt_id) from users "
+            + "where id = :id and deleted_at is not null", nativeQuery = true)
+    Optional<String> findWithdrawalAttemptIdHexIfPending(@Param("id") Long id);
+
+    /**
      * 退会申請中（{@code deleted_at IS NOT NULL}）のユーザー ID を返す（柱③-B PR-3・PR-4 の照合バッチの起点）。
      *
      * <p>同上の理由で native。退会申請から30日で物理 purge されるため運用上有界な集合である。</p>

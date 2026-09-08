@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -100,7 +99,7 @@ public class MembershipPayerWithdrawalRunner {
                 // PR-4 の再試行バッチが Stripe 実状態と照合して回復する。
                 log.error("払い手退会に伴う期末解約: Stripe への期末解約発行に失敗しました "
                         + "subscriptionId={}, stripeSub={}", subscriptionId, stripeSubscriptionId, e);
-                markFailedQuietly(subscriptionId, prepared.get().withdrawalAttemptAt(), e);
+                markFailedQuietly(subscriptionId, prepared.get().withdrawalAttemptId(), e);
                 return Outcome.FAILED;
             }
         } else {
@@ -111,7 +110,7 @@ public class MembershipPayerWithdrawalRunner {
 
         try {
             MembershipPayerWithdrawalTxService.ApplyOutcome outcome = txService.applyScheduled(
-                    subscriptionId, payerUserId, prepared.get().withdrawalAttemptAt(), currentPeriodEnd);
+                    subscriptionId, payerUserId, prepared.get().withdrawalAttemptId(), currentPeriodEnd);
             if (outcome == MembershipPayerWithdrawalTxService.ApplyOutcome.ABORTED_GENERATION_CHANGED) {
                 // Stripe を呼んでいる間に退会が取り消された。Stripe には予約が入っている可能性があるため、
                 // その場で取り消しに進む（放置すると「取消済みなのに期末で終了する」が残る）。
@@ -127,7 +126,7 @@ public class MembershipPayerWithdrawalRunner {
             // 「Stripe 成功・DB 失敗」。この非原子性こそ処理状態を永続化した理由である。
             log.error("払い手退会に伴う期末解約: Stripe 成功後の DB 反映に失敗しました subscriptionId={}",
                     subscriptionId, e);
-            markFailedQuietly(subscriptionId, prepared.get().withdrawalAttemptAt(), e);
+            markFailedQuietly(subscriptionId, prepared.get().withdrawalAttemptId(), e);
             return Outcome.FAILED;
         }
     }
@@ -162,19 +161,19 @@ public class MembershipPayerWithdrawalRunner {
                 // Stripe が期末解約のままなら DB だけ戻すと乖離する。DB は触らず RESTORING で残す。
                 log.error("払い手退会取消: Stripe の期末解約解除に失敗しました subscriptionId={}, stripeSub={}",
                         subscriptionId, stripeSubscriptionId, e);
-                markRestoreFailedQuietly(subscriptionId, prepared.get().withdrawalAttemptAt(), e);
+                markRestoreFailedQuietly(subscriptionId, prepared.get().withdrawalAttemptId(), e);
                 return false;
             }
         }
 
         try {
             return txService.applyRestore(subscriptionId, payerUserId,
-                    prepared.get().withdrawalAttemptAt());
+                    prepared.get().withdrawalAttemptId());
         } catch (Exception e) {
             // Stripe は解除済み・DB は cancel_at_period_end=true のまま。この非対称こそ
             // RESTORING を Stripe 呼び出しの前に刻んだ理由である（検分2巡目 P1-3）。
             log.error("払い手退会取消: Stripe 解除後の DB 反映に失敗しました subscriptionId={}", subscriptionId, e);
-            markRestoreFailedQuietly(subscriptionId, prepared.get().withdrawalAttemptAt(), e);
+            markRestoreFailedQuietly(subscriptionId, prepared.get().withdrawalAttemptId(), e);
             return false;
         }
     }
@@ -223,19 +222,19 @@ public class MembershipPayerWithdrawalRunner {
     }
 
     /** 失敗の記録自体が失敗しても、元の失敗ログを消さないよう分けて捕捉する。 */
-    private void markFailedQuietly(UUID subscriptionId, Instant withdrawalAttemptAt, Exception cause) {
+    private void markFailedQuietly(UUID subscriptionId, UUID withdrawalAttemptId, Exception cause) {
         try {
-            txService.markFailed(subscriptionId, withdrawalAttemptAt, describe(cause));
+            txService.markFailed(subscriptionId, withdrawalAttemptId, describe(cause));
         } catch (Exception e) {
             log.error("払い手退会に伴う期末解約: 失敗状態の記録にも失敗しました subscriptionId={}", subscriptionId, e);
         }
     }
 
     /** 復旧失敗は {@code RESTORING} のまま理由だけを刻む（{@code FAILED} は解約未了を意味し逆向きになる）。 */
-    private void markRestoreFailedQuietly(UUID subscriptionId, Instant withdrawalAttemptAt,
+    private void markRestoreFailedQuietly(UUID subscriptionId, UUID withdrawalAttemptId,
             Exception cause) {
         try {
-            txService.markRestoreFailed(subscriptionId, withdrawalAttemptAt, describe(cause));
+            txService.markRestoreFailed(subscriptionId, withdrawalAttemptId, describe(cause));
         } catch (Exception e) {
             log.error("払い手退会取消: 失敗状態の記録にも失敗しました subscriptionId={}", subscriptionId, e);
         }

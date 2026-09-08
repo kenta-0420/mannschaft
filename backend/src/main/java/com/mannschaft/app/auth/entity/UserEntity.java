@@ -174,6 +174,18 @@ public class UserEntity extends BaseEntity {
     @Column(name = "purge_started_at")
     private java.time.Instant purgeStartedAt;
 
+    /**
+     * 退会申請ごとに一意な識別子（退会試行の<b>世代の正本</b>・V204）。
+     *
+     * <p>{@link #requestDeletion()} が毎回新規採番するため、<b>同一秒内の再退会でも必ず別の値</b>になる。
+     * 退会取消では消さず据え置く（次の退会申請で必ず更新される）。</p>
+     *
+     * <p>この列を足したのは、退会試行の同一性を「時刻」や「作業行の状態」から<b>推測</b>していたために
+     * 同じ欠陥を3度作ってしまったからである。推測をやめ、退会側に正本を置く。</p>
+     */
+    @Column(name = "withdrawal_attempt_id", columnDefinition = "BINARY(16)")
+    private UUID withdrawalAttemptId;
+
     // === プライバシーポリシー同意記録（F_privacy_policy）===
 
     /**
@@ -350,6 +362,8 @@ public class UserEntity extends BaseEntity {
      */
     public void requestDeletion() {
         this.deletedAt = LocalDateTime.now();
+        // 退会申請ごとに必ず新しい世代を採番する（同一秒内の再退会でも別の値になる）。
+        this.withdrawalAttemptId = com.mannschaft.app.common.UuidV7.generate();
     }
 
     /**

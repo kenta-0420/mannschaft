@@ -44,7 +44,8 @@ class MembershipSubscriptionPayerWithdrawalTest {
     private static final Long PAYER_ID = 5001L;
     private static final String STRIPE_SUB = "sub_withdrawal_unit";
     /** 退会試行の世代。tx① から Stripe を跨いで tx② まで持ち回り、そこで再検証される。 */
-    private static final java.time.Instant GEN = java.time.Instant.parse("2026-09-08T00:00:00Z");
+    /** 退会試行の識別子（users.withdrawal_attempt_id）。世代の同一性はこれだけで決まる。 */
+    private static final UUID GEN = UUID.fromString("019607a0-0000-7000-8000-0000000000e1");
     /** 退会試行ごとに一度だけ払い出される不変トークン（世代Aぶん）。 */
     private static final UUID TOKEN_A = UUID.fromString("019607a0-0000-7000-8000-00000000aaaa");
     /** 別の退会試行（世代Bぶん）のトークン。 */
@@ -280,16 +281,20 @@ class MembershipSubscriptionPayerWithdrawalTest {
     }
 
     @Nested
-    @DisplayName("冪等トークンの払い出し規則（作業行の実ロジックを直接検証・単点確認 P1）")
+    @DisplayName("冪等トークンの払い出し規則（作業行の実ロジックを直接検証・単点確認の指定設計）")
     class AttemptTokenRotation {
 
         /**
-         * <b>全ケースで同一の世代時刻を使う。</b>本番の {@code users.deleted_at} は DATETIME（秒精度）で
-         * あり「同一秒内の再退会」が現実に起きるため、時刻が変わることを前提にしたテストでは
-         * 欠陥を検出できない（この点を2度取りこぼした）。
+         * <b>全ケースで同一の時刻を使う。</b>本番の {@code users.deleted_at} は DATETIME（秒精度）で
+         * あり「同一秒内の再退会」が現実に起きる。時刻が変わることを前提にしたテストでは
+         * 欠陥を検出できず、実際に取りこぼした。
          */
         private static final java.time.Instant SAME_INSTANT =
                 java.time.Instant.parse("2026-09-08T00:00:00Z");
+        /** 世代A の退会試行識別子（users.withdrawal_attempt_id）。 */
+        private static final UUID ATTEMPT_A = UUID.fromString("019607a0-0000-7000-8000-0000000000a1");
+        /** 世代B（再退会）の識別子。時刻は同じでもこの値は必ず変わる。 */
+        private static final UUID ATTEMPT_B = UUID.fromString("019607a0-0000-7000-8000-0000000000b1");
 
         private com.mannschaft.app.payment.entity.MembershipPayerWithdrawalCancellationEntity newRecord() {
             return com.mannschaft.app.payment.entity.MembershipPayerWithdrawalCancellationEntity.builder()
@@ -300,87 +305,88 @@ class MembershipSubscriptionPayerWithdrawalTest {
         }
 
         @Test
-        @DisplayName("同一試行の続き（PENDING）ではトークンを払い直さない＝再試行で Stripe が重複排除できる")
-        void 進行中の再試行ではトークンが変わらない() {
+        @DisplayName("同一の退会試行なら再試行でトークンを払い直さない＝Stripe が重複排除できる")
+        void 同一試行の再試行ではトークンが変わらない() {
             var record = newRecord();
-            record.markAttempt(SAME_INSTANT, STRIPE_SUB);
+            record.markAttempt(ATTEMPT_A, SAME_INSTANT, STRIPE_SUB);
             UUID first = record.getWithdrawalAttemptToken();
 
-            record.markAttempt(SAME_INSTANT, STRIPE_SUB);
-            record.reserveForGeneration(SAME_INSTANT);
+            record.markAttempt(ATTEMPT_A, SAME_INSTANT, STRIPE_SUB);
+            record.reserveForGeneration(ATTEMPT_A, SAME_INSTANT);
 
             assertThat(first).isNotNull();
             assertThat(record.getWithdrawalAttemptToken()).isEqualTo(first);
         }
 
         @Test
-        @DisplayName("失敗（FAILED）からの再試行でもトークンを払い直さない（同一試行の続きだから）")
+        @DisplayName("同一の退会試行なら FAILED からの再試行でも払い直さない")
         void 失敗からの再試行ではトークンが変わらない() {
             var record = newRecord();
-            record.markAttempt(SAME_INSTANT, STRIPE_SUB);
+            record.markAttempt(ATTEMPT_A, SAME_INSTANT, STRIPE_SUB);
             UUID first = record.getWithdrawalAttemptToken();
 
             record.markFailed("Stripe 障害");
-            record.markAttempt(SAME_INSTANT, STRIPE_SUB);
+            record.markAttempt(ATTEMPT_A, SAME_INSTANT, STRIPE_SUB);
 
             assertThat(record.getWithdrawalAttemptToken()).isEqualTo(first);
         }
 
         @Test
-        @DisplayName("★同一秒★ 退会→解約確定→取消・復旧→再退会 で必ず新しいトークンになる")
+        @DisplayName("★核心★ 世代A の PENDING が残ったまま同一秒に世代B を予約してもトークンが変わる")
+        void 前世代のPENDINGが残っていても別試行なら払い直す() {
+            var record = newRecord();
+            // 世代A: 予約に着手したところで停止（取消イベントはまだ動いていない）。
+            record.markAttempt(ATTEMPT_A, SAME_INSTANT, STRIPE_SUB);
+            UUID generationA = record.getWithdrawalAttemptToken();
+            assertThat(record.getStatus()).isEqualTo(
+                    com.mannschaft.app.payment.entity
+                            .MembershipPayerWithdrawalCancellationStatus.PENDING);
+
+            // 退会取消が確定したが取消イベントは走らず、同一秒に世代B の退会イベントが先に走る。
+            // 是正前は「PENDING だから同一試行」と誤認してトークンAを再利用していた。
+            record.reserveForGeneration(ATTEMPT_B, SAME_INSTANT);
+
+            assertThat(record.getWithdrawalAttemptToken()).isNotNull().isNotEqualTo(generationA);
+            assertThat(record.getWithdrawalAttemptId()).isEqualTo(ATTEMPT_B);
+        }
+
+        @Test
+        @DisplayName("★同一秒★ 退会→解約確定→取消・復旧→再退会 でもトークンが変わる")
         void 同一秒の再退会でもトークンが変わる() {
             var record = newRecord();
-            // 世代A: 予約 → 解約確定
-            record.markAttempt(SAME_INSTANT, STRIPE_SUB);
+            record.markAttempt(ATTEMPT_A, SAME_INSTANT, STRIPE_SUB);
             UUID generationA = record.getWithdrawalAttemptToken();
             record.markSucceeded(SAME_INSTANT);
-            // 退会取消 → 復旧（Stripe 側は反対方向へ動かされた）
             record.markRestoring();
             record.markRestored(SAME_INSTANT);
 
-            // 世代B: 同一秒に再退会。時刻は一切変わっていない。
-            record.reserveForGeneration(SAME_INSTANT);
+            record.reserveForGeneration(ATTEMPT_B, SAME_INSTANT);
 
             assertThat(record.getWithdrawalAttemptToken()).isNotNull().isNotEqualTo(generationA);
         }
 
         @Test
-        @DisplayName("★同一秒★ 解約確定（SUCCEEDED）から新たに予約すれば別試行としてトークンが変わる")
-        void 同一秒でも確定済みからの予約はトークンが変わる() {
+        @DisplayName("★同一秒★ FAILED のまま別試行になってもトークンが変わる（状態では判定しない）")
+        void 同一秒でもFAILEDから別試行なら払い直す() {
             var record = newRecord();
-            record.markAttempt(SAME_INSTANT, STRIPE_SUB);
+            record.markAttempt(ATTEMPT_A, SAME_INSTANT, STRIPE_SUB);
             UUID generationA = record.getWithdrawalAttemptToken();
-            record.markSucceeded(SAME_INSTANT);
+            record.markFailed("Stripe 障害");
 
-            record.reserveForGeneration(SAME_INSTANT);
+            record.markAttempt(ATTEMPT_B, SAME_INSTANT, STRIPE_SUB);
 
             assertThat(record.getWithdrawalAttemptToken()).isNotEqualTo(generationA);
         }
 
         @Test
-        @DisplayName("★同一秒★ 本人の明示解約（SUPERSEDED）を経た予約もトークンが変わる")
-        void 同一秒でもSUPERSEDED経由の予約はトークンが変わる() {
+        @DisplayName("★同一秒★ 本人の明示解約（SUPERSEDED）を経た別試行でもトークンが変わる")
+        void 同一秒でもSUPERSEDED経由の別試行は払い直す() {
             var record = newRecord();
-            record.markAttempt(SAME_INSTANT, STRIPE_SUB);
+            record.markAttempt(ATTEMPT_A, SAME_INSTANT, STRIPE_SUB);
             UUID generationA = record.getWithdrawalAttemptToken();
             record.markSuperseded();
 
-            record.reserveForGeneration(SAME_INSTANT);
-
-            assertThat(record.getWithdrawalAttemptToken()).isNotEqualTo(generationA);
-        }
-
-        @Test
-        @DisplayName("★同一秒★ 復旧の途中（RESTORING）から再退会してもトークンが変わる")
-        void 同一秒でもRESTORING経由の予約はトークンが変わる() {
-            var record = newRecord();
-            record.markAttempt(SAME_INSTANT, STRIPE_SUB);
-            UUID generationA = record.getWithdrawalAttemptToken();
-            record.markSucceeded(SAME_INSTANT);
-            record.markRestoring();
-
-            // Stripe の解除が済んでいるかもしれない。以後の解約は必ず新しいキーで発行する。
-            record.reserveForGeneration(SAME_INSTANT);
+            record.reserveForGeneration(ATTEMPT_B, SAME_INSTANT);
 
             assertThat(record.getWithdrawalAttemptToken()).isNotEqualTo(generationA);
         }
