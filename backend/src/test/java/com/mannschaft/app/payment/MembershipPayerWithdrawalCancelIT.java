@@ -481,6 +481,51 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("★回帰★ 遅延した世代Aの確定が、世代Bで SUCCEEDED になった作業行を RESTORING へ戻さない")
+    void 遅延した旧世代の確定は新世代の作業行を書き換えない() {
+        UUID target = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_stale");
+
+        // ① 世代A が tx① を終える（作業行は世代A・PENDING）。以降Aは Stripe 呼び出しで止まっている。
+        Optional<MembershipPayerWithdrawalTxService.PreparedTarget> staleA =
+                payerWithdrawalTxService.prepare(target, payerUserId);
+        assertThat(staleA).isPresent();
+        UUID attemptA = staleA.get().withdrawalAttemptId();
+
+        // ② 退会取消 → ③ 同一の作業行に対して世代B の再退会が走り切る。
+        markNotWithdrawing(payerUserId);
+        markWithdrawing(payerUserId);
+        assertThat(membershipSubscriptionService.cancelAllForPayerOnWithdrawal(payerUserId))
+                .containsExactly(target);
+
+        UUID attemptB = record(target).orElseThrow().getWithdrawalAttemptId();
+        assertThat(attemptB).isNotNull().isNotEqualTo(attemptA);
+        assertThat(record(target)).isPresent().get().satisfies(r ->
+                assertThat(r.getStatus())
+                        .isEqualTo(MembershipPayerWithdrawalCancellationStatus.SUCCEEDED));
+
+        // ④ ここで遅れて世代A の確定が到着する。
+        MembershipPayerWithdrawalTxService.ApplyOutcome outcome =
+                payerWithdrawalTxService.applyScheduled(target, payerUserId, attemptA, PERIOD_END_EPOCH);
+
+        // 是正前は識別子の不一致を検出したあと【作業行の識別子を見ずに】RESTORING へ上書きしていた。
+        // その結果、世代B の完了済みの行が非終端へ戻り、直後の prepareRestore は
+        // 「現在は世代B の退会中」でスキップするため、誤った非終端状態のまま残り続けた。
+        assertThat(outcome).isEqualTo(
+                MembershipPayerWithdrawalTxService.ApplyOutcome.ABORTED_GENERATION_CHANGED);
+        assertThat(record(target)).isPresent().get().satisfies(r -> {
+            assertThat(r.getStatus())
+                    .isEqualTo(MembershipPayerWithdrawalCancellationStatus.SUCCEEDED);
+            assertThat(r.getWithdrawalAttemptId()).isEqualTo(attemptB);
+        });
+        // 非終端集合にも戻っていない（照合バッチが永久に拾い続けない）。
+        assertThat(nonTerminalRecords())
+                .extracting(MembershipPayerWithdrawalCancellationEntity::getSubscriptionId)
+                .doesNotContain(target);
+        // 世代B が確定させた期末解約も維持されている。
+        assertThat(reload(target).getCancelAtPeriodEnd()).isTrue();
+    }
+
+    @Test
     @DisplayName("P1-3 競合: PENDING の最中に「退会取消＋本人の明示解約」が入っても本人の意思を覆さない")
     void 競合_PENDING中の明示解約は復旧で解除されない() {
         UUID target = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_pendingrace");
