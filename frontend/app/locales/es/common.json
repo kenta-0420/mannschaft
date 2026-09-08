@@ -1106,6 +1106,20 @@
     "unresponded_list": "Miembros sin responder"
   },
   "organization": {
+    "basicInfoEdit": {
+      "sectionTitle": "Información básica",
+      "title": "Editar información básica",
+      "name": "Nombre de la organización",
+      "nameKana": "Nombre de la organización (kana)",
+      "nickname1": "Apodo 1",
+      "nickname2": "Apodo 2",
+      "prefecture": "Prefectura",
+      "city": "Municipio",
+      "selectPlaceholder": "Seleccionar",
+      "nameRequired": "Introduce el nombre de la organización.",
+      "versionMissing": "La organización aún no se ha cargado. Recarga la página e inténtalo de nuevo.",
+      "saved": "Información básica actualizada."
+    },
     "parent_chain": "Organizaciones superiores",
     "children": "Sub-organizaciones",
     "children_tab": "Sub-organizaciones",
@@ -2343,5 +2357,10 @@
       "confirmTitle": "Eliminar miembro",
       "confirmMessage": "¿Eliminar a {name} de los miembros?"
     }
+  },
+  "scopeSwitch": {
+    "hint": "Para cambiar, abre un equipo u organización desde el menú «Equipos» / «Organizaciones» de la parte superior. El que abras pasa a ser el ámbito actual.",
+    "goTeams": "Elegir un equipo",
+    "goOrganizations": "Elegir una organización"
   }
 }

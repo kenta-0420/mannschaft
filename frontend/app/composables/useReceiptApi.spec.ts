@@ -29,13 +29,29 @@ describe('useReceiptApi（admin 系はスコープ必須）', () => {
     )
   })
 
-  it('発行はスコープ付き URL へ POST する', async () => {
-    await useReceiptApi().issueReceipt('TEAM', 12, { recipientName: '山田' })
+  // BE `CreateReceiptRequest` は金額を `amount` で受ける（`totalAmount` ではない）。
+  // 名前違いは 400 にならず金額 null で 500 まで進んでいた（CMP-260907-0915）。
+  it('発行はスコープ付き URL へ POST し、金額を amount という名前で送る', async () => {
+    await useReceiptApi().issueReceipt('TEAM', 12, { recipientName: '山田', amount: 10000 })
 
     expect(mockApi).toHaveBeenCalledWith('/api/v1/admin/receipts?scopeType=TEAM&scopeId=12', {
       method: 'POST',
-      body: { recipientName: '山田' },
+      body: { recipientName: '山田', amount: 10000 },
     })
+    const body = mockApi.mock.calls[0]?.[1]?.body as Record<string, unknown>
+    expect(body).not.toHaveProperty('totalAmount')
+  })
+
+  it('マイページ一覧は PagedResponse をそのまま返す（管理者向けとは別形）', async () => {
+    mockApi.mockResolvedValueOnce({
+      data: [{ id: 1, amount: 3000 }],
+      meta: { total: 1, page: 0, size: 20, totalPages: 1 },
+    })
+
+    const res = await useReceiptApi().getMyReceipts({ page: 0, size: 20 })
+
+    expect(mockApi).toHaveBeenCalledWith('/api/v1/my/receipts?page=0&size=20')
+    expect(res.data[0]?.amount).toBe(3000)
   })
 
   it('承認は PATCH でスコープを送る', async () => {

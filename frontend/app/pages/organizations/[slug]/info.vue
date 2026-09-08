@@ -10,9 +10,9 @@ definePageMeta({
   layout: 'default',
 })
 
-const { org, isAdmin, ancestors } = useOrgShellContext()
+const { org, isAdmin, ancestors, refresh } = useOrgShellContext()
 </script>
 
 <template>
-  <OrgInfoTab v-if="org" :org="org" :is-admin="isAdmin" :ancestors="ancestors" />
+  <OrgInfoTab v-if="org" :org="org" :is-admin="isAdmin" :ancestors="ancestors" @updated="refresh" />
 </template>
