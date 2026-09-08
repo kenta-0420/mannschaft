@@ -255,6 +255,19 @@ class ShiftManualAssignmentSourceContractIT extends AbstractMySqlIntegrationTest
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.summaryByDate[0].totalConfirmed").value(1));
         }
+
+        @Test
+        @DisplayName("ポジション未設定の枠があってもサマリーが 500 にならない（NULL キーのグループ化）")
+        void ポジション未設定の枠でも500にならない() throws Exception {
+            // 本 IT のフィクスチャは positionId を設定していない。旧実装の
+            // Collectors.groupingBy(s -> s.getPositionId(), HashMap::new, ...) は
+            // 分類関数の戻り値を必ず null 検査するため、この状態で NPE → 500 になっていた
+            //（既存の単体テストは常に positionId を設定していたため気づけなかった）。
+            setAuth(adminId);
+            mockMvc.perform(get(SUMMARY_PATH, publishedScheduleId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.summaryByDate[0].byPosition[0].positionId").doesNotExist());
+        }
     }
 
     // =====================================================

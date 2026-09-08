@@ -31,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -332,12 +332,24 @@ public class ShiftScheduleService {
         for (LocalDate date : dates) {
             List<ShiftSlotEntity> daySlots = slotsByDate.get(date);
 
-            // positionId（NULL含む）でグループ化
-            Map<Long, List<ShiftSlotEntity>> byPosition = daySlots.stream()
-                    .collect(Collectors.groupingBy(
-                            s -> s.getPositionId(),
-                            HashMap::new,
-                            Collectors.toList()));
+            // positionId（NULL含む）でグループ化。
+            //
+            // CMP-260908-2117: ここはかつて Collectors.groupingBy(s -> s.getPositionId(), HashMap::new, ...)
+            // だったが、**positionId が NULL の枠が 1 つでもあるとサマリー API が 500 になる**バグがあった。
+            // groupingBy は分類関数の戻り値を必ず Objects.requireNonNull で検査するため、
+            // マップ実装に HashMap::new を渡しても NULL キーは通らない（「NULL含む」という
+            // 元コードの意図は成立していなかった）。ポジション未設定の枠は実運用で普通に作れる
+            //（createSlot の positionId は任意）。
+            //
+            // 既存の単体テストが緑だったのは、フィクスチャが常に positionId を設定していたためで、
+            // 本 CMP の統合テスト（ポジション未設定の枠）が初めてこれを暴いた。
+            //
+            // NULL キーを実際に受けられるよう手動でグループ化する。LinkedHashMap にするのは
+            // 出力順を枠の並び（日付・開始時刻昇順）で決定的にするため（HashMap ではハッシュ順に依存していた）。
+            Map<Long, List<ShiftSlotEntity>> byPosition = new LinkedHashMap<>();
+            for (ShiftSlotEntity daySlot : daySlots) {
+                byPosition.computeIfAbsent(daySlot.getPositionId(), k -> new ArrayList<>()).add(daySlot);
+            }
 
             List<ShiftScheduleSummaryResponse.PositionSummary> positionSummaries = byPosition.entrySet().stream()
                     .map(e -> {
