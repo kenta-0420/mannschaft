@@ -4,7 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
-import com.mannschaft.app.shift.ShiftAssignmentStatus;
+import com.mannschaft.app.shift.ShiftAssignedUserIds;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.ShiftPeriodType;
@@ -13,13 +13,11 @@ import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleSummaryResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftScheduleRequest;
-import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.event.ShiftPublishedEvent;
-import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -33,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -65,7 +63,6 @@ public class ShiftScheduleService {
 
     private final ShiftScheduleRepository scheduleRepository;
     private final ShiftSlotRepository slotRepository;
-    private final ShiftAssignmentRepository assignmentRepository;
     private final ShiftRequestRepository requestRepository;
     private final ShiftPositionRepository positionRepository;
     private final ShiftMapper shiftMapper;
@@ -300,16 +297,17 @@ public class ShiftScheduleService {
         List<ShiftSlotEntity> slots = slotRepository
                 .findByScheduleIdOrderBySlotDateAscStartTimeAsc(schedule.getId());
 
-        // 2) 全スロットの確定アサイン件数を集計（slotId → CONFIRMED 件数）。
-        //    Phase 11 事後検分 fixup（2026-05-17）: 旧実装は slot 数 N に対して N 回
-        //    findAllBySlotId() を発行する N+1 クエリだった。スケジュール ID で 1 回 JOIN 取得し、
-        //    Java 側で slotId でグルーピングする形に改修。
-        Map<Long, Long> confirmedCountBySlot = assignmentRepository
-                .findAllByScheduleId(schedule.getId()).stream()
-                .filter(a -> a.getStatus() == ShiftAssignmentStatus.CONFIRMED)
-                .collect(Collectors.groupingBy(
-                        ShiftAssignmentEntity::getSlotId,
-                        Collectors.counting()));
+        // 2) 全スロットの割当人数を集計（slotId → 割当人数）。
+        //    CMP-260908-2117: 旧実装は shift_assignments の CONFIRMED 件数を数えていたため、
+        //    手動割当（JSON 列にしか書かれない）が充足数に一切反映されず、
+        //    実際には埋まっている枠が管理者のサマリーで「未充足」に見えていた。
+        //    割当の正本である slots.assigned_user_ids から数える。
+        //    副次効果として shift_assignments への 1 クエリが不要になる（N+1 回避は維持）。
+        Map<Long, Long> confirmedCountBySlot = slots.stream()
+                .collect(Collectors.toMap(
+                        ShiftSlotEntity::getId,
+                        s -> (long) ShiftAssignedUserIds.parse(s.getAssignedUserIds()).size(),
+                        (a, b) -> a));
 
         // 3) スケジュール全希望を取得（後で日付ごとに分配）
         List<ShiftRequestEntity> allRequests = requestRepository
@@ -334,12 +332,24 @@ public class ShiftScheduleService {
         for (LocalDate date : dates) {
             List<ShiftSlotEntity> daySlots = slotsByDate.get(date);
 
-            // positionId（NULL含む）でグループ化
-            Map<Long, List<ShiftSlotEntity>> byPosition = daySlots.stream()
-                    .collect(Collectors.groupingBy(
-                            s -> s.getPositionId(),
-                            HashMap::new,
-                            Collectors.toList()));
+            // positionId（NULL含む）でグループ化。
+            //
+            // CMP-260908-2117: ここはかつて Collectors.groupingBy(s -> s.getPositionId(), HashMap::new, ...)
+            // だったが、**positionId が NULL の枠が 1 つでもあるとサマリー API が 500 になる**バグがあった。
+            // groupingBy は分類関数の戻り値を必ず Objects.requireNonNull で検査するため、
+            // マップ実装に HashMap::new を渡しても NULL キーは通らない（「NULL含む」という
+            // 元コードの意図は成立していなかった）。ポジション未設定の枠は実運用で普通に作れる
+            //（createSlot の positionId は任意）。
+            //
+            // 既存の単体テストが緑だったのは、フィクスチャが常に positionId を設定していたためで、
+            // 本 CMP の統合テスト（ポジション未設定の枠）が初めてこれを暴いた。
+            //
+            // NULL キーを実際に受けられるよう手動でグループ化する。LinkedHashMap にするのは
+            // 出力順を枠の並び（日付・開始時刻昇順）で決定的にするため（HashMap ではハッシュ順に依存していた）。
+            Map<Long, List<ShiftSlotEntity>> byPosition = new LinkedHashMap<>();
+            for (ShiftSlotEntity daySlot : daySlots) {
+                byPosition.computeIfAbsent(daySlot.getPositionId(), k -> new ArrayList<>()).add(daySlot);
+            }
 
             List<ShiftScheduleSummaryResponse.PositionSummary> positionSummaries = byPosition.entrySet().stream()
                     .map(e -> {

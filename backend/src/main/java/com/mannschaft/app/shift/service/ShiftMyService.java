@@ -1,12 +1,10 @@
 package com.mannschaft.app.shift.service;
 
-import com.mannschaft.app.shift.ShiftAssignmentStatus;
 import com.mannschaft.app.shift.dto.MyConfirmedSlotResponse;
-import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
+import com.mannschaft.app.shift.dto.UpcomingAssignedSlotResponse;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
-import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
@@ -17,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +33,6 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class ShiftMyService {
 
-    private final ShiftAssignmentRepository assignmentRepository;
     private final ShiftSlotRepository slotRepository;
     private final ShiftScheduleRepository scheduleRepository;
     private final ShiftPositionRepository positionRepository;
@@ -44,43 +42,47 @@ public class ShiftMyService {
     /**
      * ログインユーザーの確定シフト枠一覧を取得する。
      *
-     * <p>ShiftAssignment.status = CONFIRMED のみを対象とする。
-     * N+1 クエリを防ぐため、slot・schedule・position・team を一括取得してマップ化する。</p>
+     * <p><b>参照元（CMP-260908-2117）</b>: 現在の割当状態の正本である
+     * {@code shift_slots.assigned_user_ids} を引く。従来は {@code shift_assignments} の
+     * {@code status = CONFIRMED} を引いていたが、同表に書き込むのは自動割当の確定だけで、
+     * 手動割当（{@code PATCH /shifts/slots/{id}/assignments}・枠更新）は JSON 列にしか書かないため、
+     * <b>手動で割り当てられた本人にシフトが一切表示されなかった</b>。</p>
+     *
+     * <p><b>未公開シフト表の遮断</b>: 旧実装では {@code status = CONFIRMED} が偶然の公開ガードとして
+     * 働いていた面があるため、JSON 参照に移した後も {@link ShiftScheduleVisibilityPolicy} による
+     * {@code FULL} 判定を必ず通す（下の filter）。MASKED（COLLECTING / ADJUSTING）も返さない。</p>
+     *
+     * <p>N+1 クエリを防ぐため、schedule・position・team を一括取得してマップ化する。</p>
      *
      * @param userId ログインユーザーID
      * @return 確定シフト枠レスポンスのリスト（日付昇順・開始時刻昇順）
      */
     public List<MyConfirmedSlotResponse> getMyConfirmedSlots(Long userId) {
-        // 1. ユーザーの確定割当を全件取得
-        List<ShiftAssignmentEntity> assignments = assignmentRepository
-                .findAllByUserIdAndStatus(userId, ShiftAssignmentStatus.CONFIRMED);
+        // 1. ユーザーが割り当てられている枠を全件取得（割当の正本 = JSON 列）
+        List<ShiftSlotEntity> slots = slotRepository.findAllAssignedToUser(userId);
 
-        if (assignments.isEmpty()) {
+        if (slots.isEmpty()) {
             return Collections.emptyList();
         }
 
-        // 2. slotId 一覧から ShiftSlot を一括取得
-        Set<Long> slotIds = assignments.stream()
-                .map(ShiftAssignmentEntity::getSlotId)
-                .collect(Collectors.toSet());
-        Map<Long, ShiftSlotEntity> slotMap = slotRepository.findAllByIdIn(slotIds).stream()
-                .collect(Collectors.toMap(s -> s.getId(), s -> s));
+        Map<Long, ShiftSlotEntity> slotMap = slots.stream()
+                .collect(Collectors.toMap(s -> s.getId(), s -> s, (a, b) -> a));
 
-        // 3. scheduleId 一覧から ShiftSchedule を一括取得
+        // 2. scheduleId 一覧から ShiftSchedule を一括取得
         Set<Long> scheduleIds = slotMap.values().stream()
                 .map(ShiftSlotEntity::getScheduleId)
                 .collect(Collectors.toSet());
         Map<Long, ShiftScheduleEntity> scheduleMap = scheduleRepository.findAllById(scheduleIds).stream()
                 .collect(Collectors.toMap(s -> s.getId(), s -> s));
 
-        // 4. teamId 一覧から Team を一括取得（クロスドメイン: teamId のみ保持、FK制約なし）
+        // 3. teamId 一覧から Team を一括取得（クロスドメイン: teamId のみ保持、FK制約なし）
         Set<Long> teamIds = scheduleMap.values().stream()
                 .map(ShiftScheduleEntity::getTeamId)
                 .collect(Collectors.toSet());
         Map<Long, String> teamNameMap = teamRepository.findAllById(teamIds).stream()
                 .collect(Collectors.toMap(t -> t.getId(), TeamEntity::getName));
 
-        // 5. positionId 一覧から ShiftPosition を一括取得
+        // 4. positionId 一覧から ShiftPosition を一括取得
         Set<Long> positionIds = slotMap.values().stream()
                 .filter(s -> s.getPositionId() != null)
                 .map(ShiftSlotEntity::getPositionId)
@@ -90,18 +92,16 @@ public class ShiftMyService {
                 : positionRepository.findAllById(positionIds).stream()
                         .collect(Collectors.toMap(p -> p.getId(), ShiftPositionEntity::getName));
 
-        // 6. 結果を DTO に詰めて日付・開始時刻順にソートして返す
-        return assignments.stream()
-                .filter(a -> slotMap.containsKey(a.getSlotId()))
-                .filter(a -> {
-                    ShiftSlotEntity slot = slotMap.get(a.getSlotId());
+        // 5. 結果を DTO に詰めて日付・開始時刻順にソートして返す。
+        //    schedule が引けない枠は fail-closed で除外する（可視性を判定できないため）。
+        return slotMap.values().stream()
+                .filter(slot -> {
                     ShiftScheduleEntity schedule = scheduleMap.get(slot.getScheduleId());
                     return schedule != null
                             && ShiftScheduleVisibilityPolicy.classify(schedule.getStatus(), schedule.getPublishedAt())
                             == ShiftScheduleVisibilityPolicy.Visibility.FULL;
                 })
-                .map(a -> {
-                    ShiftSlotEntity slot = slotMap.get(a.getSlotId());
+                .map(slot -> {
                     ShiftScheduleEntity schedule = scheduleMap.get(slot.getScheduleId());
                     Long teamId = schedule != null ? schedule.getTeamId() : null;
                     String positionName = slot.getPositionId() != null
@@ -124,6 +124,59 @@ public class ShiftMyService {
                                 java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
                         .thenComparing(MyConfirmedSlotResponse::getStartTime,
                                 java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 指定ユーザーの、指定期間 {@code [fromDate, untilDate)} における
+     * 「公開済みシフト表に属する本人割当枠」を取得する（CMP-260908-2117）。
+     *
+     * <p>個人ダッシュボードの「今後の予定」向け。dashboard ドメインは shift の
+     * リポジトリ・エンティティへ直接依存できない（モジュラーモノリス原則・番人 D-1/D-5）ため、
+     * この Service 経由で {@link UpcomingAssignedSlotResponse} を受け取る。</p>
+     *
+     * <p><b>未公開シフト表の遮断</b>: 割当の正本である {@code assigned_user_ids} を引く際、
+     * クエリ側で {@link ShiftScheduleEntity#FULLY_VISIBLE_SQL} を必ず通す
+     * （{@link ShiftSlotRepository#findUpcomingAssignedByUserIdBetween}）。
+     * MASKED（COLLECTING / ADJUSTING）は返さない。</p>
+     *
+     * <p><b>クエリ本数</b>: 枠1本 + シフト表1本の固定 2 本。件数に依存しない（N+1 回避）。
+     * チーム名は呼び出し側が teamId から一括解決するため、ここでは引かない。</p>
+     *
+     * @param userId    対象ユーザーID
+     * @param fromDate  取得期間の開始日（含む）
+     * @param untilDate 取得期間の終了日（含まない）
+     * @return 日付・開始時刻の昇順（リポジトリの ORDER BY をそのまま維持）
+     */
+    public List<UpcomingAssignedSlotResponse> getUpcomingAssignedSlots(
+            Long userId, LocalDate fromDate, LocalDate untilDate) {
+        List<ShiftSlotEntity> slots =
+                slotRepository.findUpcomingAssignedByUserIdBetween(userId, fromDate, untilDate);
+        if (slots.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Long> scheduleIds = slots.stream()
+                .map(ShiftSlotEntity::getScheduleId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, ShiftScheduleEntity> scheduleMap = scheduleIds.isEmpty()
+                ? Collections.emptyMap()
+                : scheduleRepository.findAllById(scheduleIds).stream()
+                        .collect(Collectors.toMap(ShiftScheduleEntity::getId, s -> s));
+
+        return slots.stream()
+                .map(slot -> {
+                    ShiftScheduleEntity schedule = scheduleMap.get(slot.getScheduleId());
+                    return UpcomingAssignedSlotResponse.builder()
+                            .slotId(slot.getId())
+                            .scheduleTitle(schedule != null ? schedule.getTitle() : null)
+                            .slotDate(slot.getSlotDate())
+                            .startTime(slot.getStartTime())
+                            .endTime(slot.getEndTime())
+                            .teamId(schedule != null ? schedule.getTeamId() : null)
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
 }
