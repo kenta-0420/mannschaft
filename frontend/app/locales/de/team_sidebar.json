@@ -45,7 +45,9 @@
       "faqSettings": "FAQ-Einstellungen",
       "billing": "Abrechnung & Planverwaltung",
       "leagueTransfers": "Liga-Transfers",
-      "adminConsole": "Administrationskonsole"
+      "adminConsole": "Administrationskonsole",
+      "receipts": "Belege",
+      "receiptSettings": "Aussteller-Einstellungen für Belege"
     }
   }
 }

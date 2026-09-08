@@ -1106,6 +1106,20 @@
     "unresponded_list": "미응답자 목록"
   },
   "organization": {
+    "basicInfoEdit": {
+      "sectionTitle": "기본 정보",
+      "title": "기본 정보 편집",
+      "name": "조직명",
+      "nameKana": "조직명(가나)",
+      "nickname1": "닉네임1",
+      "nickname2": "닉네임2",
+      "prefecture": "도도부현",
+      "city": "시구정촌",
+      "selectPlaceholder": "선택하세요",
+      "nameRequired": "조직명을 입력하세요.",
+      "versionMissing": "조직 정보를 아직 불러오지 못했습니다. 페이지를 새로 고친 후 다시 시도하세요.",
+      "saved": "기본 정보를 업데이트했습니다."
+    },
     "parent_chain": "상위 조직",
     "children": "하위 조직",
     "children_tab": "하위 조직",
@@ -2343,5 +2357,10 @@
       "confirmTitle": "멤버 제외",
       "confirmMessage": "{name} 님을 멤버에서 제외하시겠습니까?"
     }
+  },
+  "scopeSwitch": {
+    "hint": "전환하려면 화면 상단의 「팀」「조직」 메뉴에서 대상을 선택해 열어 주세요. 연 단체가 그대로 현재 스코프가 됩니다.",
+    "goTeams": "팀 선택",
+    "goOrganizations": "조직 선택"
   }
 }

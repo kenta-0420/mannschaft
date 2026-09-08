@@ -109,6 +109,25 @@ public class PaymentMethodService {
     }
 
     /**
+     * ユーザーが既定 PaymentMethod を登録済みかを<b>DB 参照のみ</b>で判定する
+     * （柱③-B PR-2 請求支払者の引継・設計書 §3.6 二段検証の1段目・他ドメイン向け公開 API）。
+     *
+     * <p>判定のために外部 HTTP（Stripe API）を呼ばず、また<b>Customer を新規作成しない</b>
+     * （{@link #getOrCreateStripeCustomerId(Long)} を使うと、単なる判定のために Stripe 上へ孤児 Customer を
+     * 作る副作用が出るため）。Customer 行が無い＝そもそもカード登録導線を通っていないので false。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return {@code stripe_customers.default_payment_method} が登録済みなら true
+     */
+    @Transactional(readOnly = true)
+    public boolean hasDefaultPaymentMethod(Long userId) {
+        return stripeCustomerRepository.findByUserId(userId)
+                .map(StripeCustomerEntity::getDefaultPaymentMethod)
+                .filter(pm -> !pm.isBlank())
+                .isPresent();
+    }
+
+    /**
      * ユーザーの Stripe Customer を取得、無ければ作成する。
      *
      * <p>【残債2】新規作成時は {@link MembershipSubscriptionService#resolveEmailForStripeCustomer(Long)}
