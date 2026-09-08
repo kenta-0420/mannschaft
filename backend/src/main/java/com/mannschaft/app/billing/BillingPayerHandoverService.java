@@ -133,6 +133,30 @@ public class BillingPayerHandoverService {
         // ③ 契約解決。スコープ越境は存在自体を明かさず 404 で畳む（IDOR 二重防御）。
         BillingContractEntity contract = billingContractRepository.findByIdAndDeletedAtIsNull(oldContractId)
                 .orElseThrow(() -> new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND));
+
+        return createHandoverRequest(contract, scopeKind, scopeId, operatorUserId);
+    }
+
+    /**
+     * 引継要求作成の共通本体（対話 API・退会イベントの両経路が通る）。
+     *
+     * <p>認可だけが2経路で異なる（対話 API は {@code requireCanManage} を先に通す／退会経路は
+     * 「契約の payer が退会者本人であること」だけを見る）。それ以外の前提検証・候補解決・
+     * 進行中要求の排他・通知 publish はここに一元化する。</p>
+     *
+     * @param scopeKind 呼び出し側が期待するスコープ種別（対話 API では URL 由来・退会経路では契約行由来）
+     * @param scopeId   同上
+     * @param operatorUserId 旧 payer 本人であるべきユーザー ID
+     */
+    private HandoverRequestResult createHandoverRequest(BillingContractEntity contract,
+            EntitlementScopeKind scopeKind, Long scopeId, Long operatorUserId) {
+
+        UUID oldContractId = contract.getId();
+
+        // USER スコープは契約者本人以外に payer が存在し得ず、引継の概念自体が無い（設計書 §4.2）。
+        if (scopeKind == null || scopeKind == EntitlementScopeKind.USER) {
+            throw new BusinessException(EntitlementErrorCode.HANDOVER_SCOPE_NOT_SUPPORTED);
+        }
         if (contract.getScopeKind() != scopeKind || !contract.getScopeId().equals(scopeId)) {
             throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND);
         }
@@ -208,6 +232,87 @@ public class BillingPayerHandoverService {
 
         return new HandoverRequestResult(saved.getId(), oldContractId, scopeKind, scopeId,
                 PayerHandoverStatus.REQUESTED, now, expiresAt);
+    }
+
+    // ============================================================
+    // 1段目（内部経路）: 退会受付イベントによる引継申請
+    // ============================================================
+
+    /**
+     * 退会受付（{@code WithdrawalRequestedEvent}）から引継要求を作成する内部入口
+     * （設計書 §5.1・Codex 検分1巡目 P0 の是正）。
+     *
+     * <h2>なぜ {@link #requestHandover} を使ってはいけないのか</h2>
+     * <p>{@link #requestHandover} は対話 API 用であり {@code billingOperationAuthorizer.requireCanManage}
+     * を通る。その認可 SQL は {@code users.deleted_at IS NULL AND status = 'ACTIVE'} を必須条件にしている。
+     * ところが {@code UserService#requestWithdrawal} は<b>先に {@code deleted_at} を立てて commit し</b>、
+     * その後 {@code AFTER_COMMIT} で本処理を呼ぶ。したがって退会者は<b>必ず全件で認可に失敗</b>し、
+     * 引継要求は1件も作られない。現行 purge は USER スコープ契約しか処理しないため、
+     * TEAM/ORG の旧 payer への課金がそのまま継続していた。</p>
+     *
+     * <h2>ではこの経路の安全性は何が担保するのか</h2>
+     * <p>「現在もそのスコープの管理者か」ではなく、<b>「その契約の払い手が、いま退会したその人自身か」</b>
+     * を同一トランザクション内で行ロック後に検証する。呼び出し側は契約 ID しか渡せず、
+     * <b>スコープは契約行から読み出す</b>ため、任意ユーザー・任意スコープを渡して越境することはできない。
+     * 退会者は自分が払い手である契約の引継しか起こせない。</p>
+     *
+     * @param oldContractId            引継元契約 ID
+     * @param withdrawingPayerUserId   退会を申請した払い手のユーザー ID
+     * @return 作成した引継要求
+     * @throws BusinessException {@code HANDOVER_NOT_FOUND}（不存在）/
+     *                           {@code HANDOVER_SCOPE_NOT_SUPPORTED}（USER スコープ）/
+     *                           {@code HANDOVER_NOT_OLD_PAYER}（契約の payer が退会者ではない）/
+     *                           {@code HANDOVER_CONTRACT_NOT_ELIGIBLE} /
+     *                           {@code HANDOVER_NO_CANDIDATE} / {@code HANDOVER_ALREADY_IN_PROGRESS}
+     */
+    @Transactional
+    public HandoverRequestResult requestHandoverForWithdrawal(UUID oldContractId, Long withdrawingPayerUserId) {
+        if (withdrawingPayerUserId == null) {
+            throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND);
+        }
+        // 行ロックを取ってから読む。承諾（acceptHandover）や別経路の更新と競合しても、
+        // payer の判定と要求作成が同じスナップショットの上で行われることを保証する。
+        BillingContractEntity contract = billingContractRepository.findByIdForUpdate(oldContractId)
+                .orElseThrow(() -> new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND));
+
+        // スコープは呼び出し側からではなく【契約行から】読む（越境入力の余地を構造的に無くす）。
+        return createHandoverRequest(contract, contract.getScopeKind(), contract.getScopeId(),
+                withdrawingPayerUserId);
+    }
+
+    /**
+     * 退会取消（{@code WithdrawalCancelledEvent}）に伴い、退会者が旧 payer である {@code REQUESTED} の
+     * 引継要求を {@code FAILED} へ終端化する（設計書 §4.2 遷移表・Codex 検分1巡目 P1-3）。
+     *
+     * <p>本メソッド自身はトランザクションを開始しない。1件の失敗が他の要求の終端化を巻き添えに
+     * しないよう、要求ごとに {@link BillingPayerHandoverTxService#failRequestedOnWithdrawalCancelled}
+     * の独立トランザクションで確定させる。</p>
+     *
+     * @return 終端化できた要求の件数
+     */
+    public int failRequestedHandoversOnWithdrawalCancelled(Long oldPayerUserId) {
+        if (oldPayerUserId == null) {
+            return 0;
+        }
+        List<UUID> targetIds = handoverRequestRepository
+                .findByOldPayerUserIdAndStatus(oldPayerUserId, PayerHandoverStatus.REQUESTED)
+                .stream()
+                .map(BillingPayerHandoverRequestEntity::getId)
+                .toList();
+        int failed = 0;
+        for (UUID handoverRequestId : targetIds) {
+            try {
+                if (handoverTxService.failRequestedOnWithdrawalCancelled(handoverRequestId, oldPayerUserId)) {
+                    failed++;
+                }
+            } catch (Exception e) {
+                log.error("柱③-B: 退会取消に伴う引継要求の終端化に失敗しました handoverRequestId={}, oldPayerUserId={}",
+                        handoverRequestId, oldPayerUserId, e);
+            }
+        }
+        log.info("柱③-B: 退会取消に伴い引継要求を終端化しました oldPayerUserId={}, 対象={}, 終端化={}",
+                oldPayerUserId, targetIds.size(), failed);
+        return failed;
     }
 
     // ============================================================

@@ -1,8 +1,10 @@
 package com.mannschaft.app.billing;
 
 import com.mannschaft.app.common.repository.AbstractTenantAwareRepository;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -34,6 +36,17 @@ public interface BillingContractRepository
 
     /** 主キーで取得する（deleted_at 除外）。取消・プラン変更時の対象契約解決に使用。 */
     java.util.Optional<BillingContractEntity> findByIdAndDeletedAtIsNull(UUID id);
+
+    /**
+     * 主キーで取得し、行を {@code PESSIMISTIC_WRITE} ロックする（柱③-B PR-3・退会経路の引継申請）。
+     *
+     * <p>退会イベント由来の引継申請は「この契約の payer が、いま退会したその人自身か」だけを
+     * 認可の根拠にする。判定と要求作成の間に payer が別経路で書き換わると判定が無意味になるため、
+     * 先に行をロックしてから読む。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM BillingContractEntity c WHERE c.id = :id AND c.deletedAt IS NULL")
+    java.util.Optional<BillingContractEntity> findByIdForUpdate(@Param("id") UUID id);
 
     /**
      * スコープ×状態集合で契約を取得する（退会 purge 連動 AC-45: USER スコープの

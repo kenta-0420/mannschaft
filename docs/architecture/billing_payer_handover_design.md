@@ -467,6 +467,45 @@ public List<String> cancelAllForPayerOnWithdrawal(Long payerUserId) { ... }
 - 受益者への通知: 「あなたのメンバーシップは payer の退会に伴い期末で終了します」。受益者自身が新payerになる導線は本設計ではスコープ外（通知のみ）
 - 呼び出し元: `WithdrawalStripeHandler` を実装し、`WithdrawalRequestedEvent`（Day 0）購読時点で呼ぶ
 
+### §6.1 退会経路の実行モデル（PR-3・Codex 検分1巡目の是正で追加）
+
+PR-3 の実装に対する独立検分で、上の1行仕様のままでは**成立しない**欠陥が4件見つかった。ここに是正後の実行モデルを正本として記す。
+
+#### (1) 退会者は対話 API の認可を必ず通れない（P0）
+
+`UserService#requestWithdrawal` は**先に `deleted_at` を立てて commit し**、その後 `AFTER_COMMIT` で決済連携を呼ぶ。ところが対話 API 用の `BillingPayerHandoverService#requestHandover` は `billingOperationAuthorizer.requireCanManage` を通り、その認可 SQL は `users.deleted_at IS NULL AND status='ACTIVE'` を必須条件にしている。したがって**退会者は全件で認可に失敗し、TEAM/ORG の引継要求は1件も作られない**。現行 purge は USER スコープ契約しか処理しないため、旧 payer への課金がそのまま継続する。
+
+→ 退会イベント専用の内部入口 `requestHandoverForWithdrawal(oldContractId, withdrawingPayerUserId)` を設ける。認可の根拠を「現在もそのスコープの管理者か」から**「その契約の払い手が、いま退会したその人自身か」**へ置き換える。呼び出し側は契約 ID しか渡せず、**スコープは契約行から読み出す**ため任意ユーザー・任意スコープでの越境は構造的に成立しない。判定と要求作成の間に payer が書き換わらないよう、契約行を `SELECT ... FOR UPDATE` でロックしてから読む。
+
+#### (2) 失敗・プロセス停止の再試行経路（P1-1）
+
+退会イベントは永続化されない Spring のインメモリイベントで、ハンドラは共有 `event-pool` 上の非同期処理である。Stripe 失敗・投入拒否・commit 直後のプロセス停止では処理そのものが失われ、退会者への課金継続をログ監視だけに委ねることになる。
+
+→ **サブスク単位の処理状態を永続化する**（`membership_payer_withdrawal_cancellations`・V204）。`PENDING`（着手済・未確定）/`SUCCEEDED`（Stripe・DB 双方確定）/`FAILED`（要再試行）と `attempt_count`・`last_error` を持つ。**再試行の駆動（夜次バッチ）は PR-4 に委ねる**が、状態の永続化自体は PR-3 に入れる——状態が無ければ PR-4 でも対象を拾いようがないため。
+
+> **リリース依存**: PR-3 単独では失敗した期末解約は自動では再試行されない（対象は DB に残るが、拾う主体が居ない）。自動回復が揃うのは PR-4 の夜次再試行バッチ着地時点である。PR-3 と PR-4 の間の期間は、`membership_payer_withdrawal_cancellations` の `status IN ('PENDING','FAILED')` を監視する運用で埋める。
+
+#### (3) 1件の失敗が全件を巻き添えにしない（P1-2）
+
+全件を単一の `REQUIRES_NEW` トランザクションで処理してはならない。`save` の SQL 発行は commit まで遅延しうるため、**最後の flush/commit で1件でも DB 更新が失敗すると成功した全契約の DB 変更と通知イベントがまとめてロールバック**する一方、先に成功した Stripe の `cancel_at_period_end=true` は戻らない。
+
+→ **ID だけを抽出 → 1契約ずつ別 Bean の public メソッドで独立トランザクション**（Spring の `@Transactional` は自己呼び出しでは効かないため Bean 分離が必須）。実行単位は3段:
+
+| 段 | 主体 | 内容 |
+|---|---|---|
+| tx① | `MembershipPayerWithdrawalTxService#prepare` | 行ロック → payer/status/`cancel_at_period_end` を**取り直して**再検証 → 処理状態を `PENDING` で永続化して commit |
+| — | `MembershipPayerWithdrawalRunner` | Stripe `cancel_at_period_end=true`（tx 外・Idempotency-Key はサブスク ID 由来で固定） |
+| tx③ | `…TxService#applyScheduled` | 行ロック → 再検証 → `saveAndFlush` で契約単位に確定 → `SUCCEEDED` 記録 → 受益者通知を publish |
+
+各トランザクションが行ロックを取り直すのは、抽出クエリにロックが無いままだと `customer.subscription.deleted` webhook（同じ行のロックを取る）と競合し、古い ACTIVE エンティティを保持したままの UPDATE が webhook の `CANCELLED` を上書きしうるためである。確定時点で既に終端なら「課金が止まる」目的は達しているので DB は触らず `SUCCEEDED` として記録する。
+
+#### (4) 退会取消時の復旧（P1-3）
+
+退会は30日以内に取り消せる（`WithdrawalCancelledEvent`）。取り消したのに期末でメンバーシップが終了し、引継要求が `REQUESTED` のまま残って次の申請を塞ぎ続けるのでは筋が通らない。
+
+- **membership 側**: `membership_subscriptions.cancel_at_period_end` は boolean であり、**本人が退会前に明示解約した契約**と**退会処理が自動予約した契約**を区別できない。単純に payer の全予約を解除すると前者まで復活させてしまう。`membership_payer_withdrawal_cancellations`（退会処理が予約した行だけが存在する）を**由来の正本**として引き、`status='SUCCEEDED' AND restored_at IS NULL` の行だけを Stripe（`revertSubscriptionCancelAtPeriodEnd`）と DB の双方で戻す。
+- **handover 側**: §4.2 の遷移表どおり `REQUESTED → FAILED` へ終端化する。終端化しないと生成列 `open_old_contract_id` と `uk_bphr_open_old_contract` が同一契約への次の引継要求を猶予期間中ブロックし続ける。`ACCEPTED` 以降は対象にしない——新 payer 側で既に支払い手段の検証や新サブスク作成が進んでおり、退会取消だけを根拠に機械的に巻き戻すと Stripe 側と乖離するため、通常の期限・切替判定（§3.6）に委ねる。
+
 ---
 
 ## §7. GDPR×会計保持の境界（P2-15 具体化）

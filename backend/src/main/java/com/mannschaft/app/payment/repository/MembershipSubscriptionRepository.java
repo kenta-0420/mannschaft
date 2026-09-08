@@ -71,6 +71,21 @@ public interface MembershipSubscriptionRepository
             Long payerUserId, Collection<MembershipSubscriptionStatus> statuses);
 
     /**
+     * 柱③-B PR-3: 払い手退会の一括期末解約の<b>対象 ID だけ</b>を引く（{@code idx_ms_payer}）。
+     *
+     * <p>エンティティごと読まないのは意図的である。一括処理は「ID 抽出 → 1契約ずつ独立トランザクション」
+     * の形を採り、<b>実体の読み取りと行ロックは各トランザクションの中でやり直す</b>
+     * （Codex 検分1巡目 P1-2）。ここでロックを取らないのは、抽出だけのために全対象行を
+     * 長時間ロックしないためであり、代わりに各トランザクションが
+     * {@link #findByIdForUpdate} でロックし直して状態を再検証する。</p>
+     */
+    @Query("SELECT s.id FROM MembershipSubscriptionEntity s "
+            + "WHERE s.payerUserId = :payerUserId AND s.status IN :statuses AND s.deletedAt IS NULL "
+            + "ORDER BY s.createdAt DESC")
+    List<UUID> findIdsByPayerUserIdAndStatusIn(@Param("payerUserId") Long payerUserId,
+            @Param("statuses") Collection<MembershipSubscriptionStatus> statuses);
+
+    /**
      * 払い手視点の継続課金一覧（全状態・idx_ms_payer で引く）。
      */
     List<MembershipSubscriptionEntity> findByPayerUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long payerUserId);

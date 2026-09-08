@@ -1,5 +1,6 @@
 package com.mannschaft.app.gdpr;
 
+import com.mannschaft.app.auth.event.WithdrawalCancelledEvent;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
 import com.mannschaft.app.billing.BillingContractService;
 import com.mannschaft.app.billing.BillingContractService.HandoverTargetContract;
@@ -73,7 +74,7 @@ class WithdrawalStripeHandlerTest {
         @DisplayName("正常系: 退会イベントで payer の継続課金一括解約が呼ばれる")
         void 正常_継続課金の一括期末解約が呼ばれる() {
             given(membershipSubscriptionService.cancelAllForPayerOnWithdrawal(anyLong()))
-                    .willReturn(List.of("sub_1", "sub_2"));
+                    .willReturn(List.of(UUID.randomUUID(), UUID.randomUUID()));
             given(billingContractService.findHandoverTargetContractsForPayer(anyLong()))
                     .willReturn(List.of());
 
@@ -109,10 +110,8 @@ class WithdrawalStripeHandlerTest {
 
             handler.handleWithdrawal(event());
 
-            verify(billingPayerHandoverService).requestHandover(
-                    EntitlementScopeKind.TEAM, 71L, c1, USER_ID);
-            verify(billingPayerHandoverService).requestHandover(
-                    EntitlementScopeKind.TEAM, 72L, c2, USER_ID);
+            verify(billingPayerHandoverService).requestHandoverForWithdrawal(c1, USER_ID);
+            verify(billingPayerHandoverService).requestHandoverForWithdrawal(c2, USER_ID);
         }
 
         @Test
@@ -124,7 +123,7 @@ class WithdrawalStripeHandlerTest {
             handler.handleWithdrawal(event());
 
             verify(billingPayerHandoverService, never())
-                    .requestHandover(any(), anyLong(), any(), anyLong());
+                    .requestHandoverForWithdrawal(any(), anyLong());
         }
 
         @Test
@@ -134,15 +133,14 @@ class WithdrawalStripeHandlerTest {
             UUID ok = UUID.randomUUID();
             given(billingContractService.findHandoverTargetContractsForPayer(anyLong()))
                     .willReturn(List.of(target(failing, 81L), target(ok, 82L)));
-            given(billingPayerHandoverService.requestHandover(any(), eq(81L), any(), anyLong()))
+            given(billingPayerHandoverService.requestHandoverForWithdrawal(eq(failing), anyLong()))
                     .willThrow(new BusinessException(EntitlementErrorCode.HANDOVER_NO_CANDIDATE));
 
             assertThatCode(() -> handler.handleWithdrawal(event())).doesNotThrowAnyException();
 
             verify(billingPayerHandoverService, times(2))
-                    .requestHandover(any(), anyLong(), any(), anyLong());
-            verify(billingPayerHandoverService).requestHandover(
-                    EntitlementScopeKind.TEAM, 82L, ok, USER_ID);
+                    .requestHandoverForWithdrawal(any(), anyLong());
+            verify(billingPayerHandoverService).requestHandoverForWithdrawal(ok, USER_ID);
         }
 
         @Test
@@ -153,7 +151,41 @@ class WithdrawalStripeHandlerTest {
 
             assertThatCode(() -> handler.handleWithdrawal(event())).doesNotThrowAnyException();
             verify(billingPayerHandoverService, never())
-                    .requestHandover(any(), anyLong(), any(), anyLong());
+                    .requestHandoverForWithdrawal(any(), anyLong());
+        }
+    }
+
+    @Nested
+    @DisplayName("③ 退会取消時の復旧（設計書 §6.1・Codex 検分1巡目 P1-3）")
+    class WithdrawalCancellation {
+
+        private static WithdrawalCancelledEvent cancelledEvent() {
+            return new WithdrawalCancelledEvent(USER_ID);
+        }
+
+        @Test
+        @DisplayName("正常系: 期末解約の予約解除と引継要求の終端化が両方呼ばれる")
+        void 正常_2系統の復旧が呼ばれる() {
+            given(membershipSubscriptionService.restoreAllForPayerOnWithdrawalCancelled(anyLong()))
+                    .willReturn(List.of(UUID.randomUUID()));
+            given(billingPayerHandoverService.failRequestedHandoversOnWithdrawalCancelled(anyLong()))
+                    .willReturn(1);
+
+            handler.handleWithdrawalCancelled(cancelledEvent());
+
+            verify(membershipSubscriptionService).restoreAllForPayerOnWithdrawalCancelled(USER_ID);
+            verify(billingPayerHandoverService).failRequestedHandoversOnWithdrawalCancelled(USER_ID);
+        }
+
+        @Test
+        @DisplayName("異常系: 予約解除が失敗しても引継要求の終端化は実行され、例外は伝播しない")
+        void 異常_片方の失敗でもう片方を止めない() {
+            given(membershipSubscriptionService.restoreAllForPayerOnWithdrawalCancelled(anyLong()))
+                    .willThrow(new IllegalStateException("Stripe 障害"));
+
+            assertThatCode(() -> handler.handleWithdrawalCancelled(cancelledEvent()))
+                    .doesNotThrowAnyException();
+            verify(billingPayerHandoverService).failRequestedHandoversOnWithdrawalCancelled(USER_ID);
         }
     }
 }

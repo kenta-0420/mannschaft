@@ -1,232 +1,162 @@
 package com.mannschaft.app.payment.service;
 
-import com.mannschaft.app.payment.BillingInterval;
-import com.mannschaft.app.payment.MembershipSubscriptionStatus;
-import com.mannschaft.app.payment.connect.ScopeKind;
-import com.mannschaft.app.payment.entity.MembershipSubscriptionEntity;
-import com.mannschaft.app.payment.event.MembershipPayerWithdrawalNotificationEvent;
-import com.mannschaft.app.payment.repository.MembershipSubscriptionRepository;
+import com.mannschaft.app.payment.service.MembershipPayerWithdrawalRunner.Outcome;
+import com.mannschaft.app.payment.service.MembershipPayerWithdrawalTxService.PreparedTarget;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.springframework.context.ApplicationEventPublisher;
 
-import java.time.LocalDate;
-import java.util.Collection;
-import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
- * 柱③-B PR-3（CMP-260901-1538）AC-13: {@code cancelAllForPayerOnWithdrawal} の単体テスト。
+ * 柱③-B（CMP-260901-1538）PR-3: {@link MembershipPayerWithdrawalRunner} の<b>手順</b>の単体テスト。
  *
- * <p>設計書 {@code docs/architecture/billing_payer_handover_design.md} §6 の受け入れ条件
- * 「{@code payer_user_id} 一致かつ ACTIVE/PAST_DUE のみ期末解約し、受益者へ通知する」を検証する。</p>
+ * <h2>本テストが担う範囲と、担わない範囲</h2>
+ * <p>ここで固定するのは「Stripe とトランザクションの<b>呼び出し順序と失敗時の分岐</b>」だけである。
+ * すなわち ①予約着手を commit してから Stripe を呼ぶこと、②Stripe 失敗時に DB 反映へ進まず失敗を
+ * 永続化すること、③Stripe 成功後の DB 失敗も失敗として永続化すること。</p>
+ *
+ * <p>実際にトランザクションが分離しているか・行ロックが効くか・巻き添えロールバックが起きないかは
+ * <b>モックでは原理的に検証できない</b>。それは
+ * {@code com.mannschaft.app.payment.MembershipPayerWithdrawalCancelIT}（実 MySQL）が受け持つ。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
-@DisplayName("MembershipSubscriptionService#cancelAllForPayerOnWithdrawal（柱③-B PR-3・AC-13）")
+@DisplayName("MembershipPayerWithdrawalRunner（柱③-B PR-3・退会時の一括期末解約の手順）")
 class MembershipSubscriptionPayerWithdrawalTest {
 
-    private static final Long PAYER_USER_ID = 4001L;
-    private static final Long BENEFICIARY_USER_ID = 4002L;
+    private static final UUID SUB_ID = UUID.fromString("019607a0-0000-7000-8000-0000000000d1");
+    private static final Long PAYER_ID = 5001L;
+    private static final String STRIPE_SUB = "sub_withdrawal_unit";
 
-    @Mock
-    private MembershipSubscriptionRepository membershipSubscriptionRepository;
-    @Mock
-    private PaymentItemService paymentItemService;
-    @Mock
-    private com.mannschaft.app.payment.repository.PaymentItemRepository paymentItemRepository;
-    @Mock
-    private PaymentAuthorizationService paymentAuthorizationService;
-    @Mock
-    private com.mannschaft.app.payment.connect.ConnectAccountRepository connectAccountRepository;
-    @Mock
-    private com.mannschaft.app.payment.escrow.ConnectChargeService connectChargeService;
-    @Mock
-    private com.mannschaft.app.payment.FeePolicyResolver feePolicyResolver;
-    @Mock
-    private com.mannschaft.app.payment.repository.StripeCustomerRepository stripeCustomerRepository;
-    @Mock
-    private StripePaymentProvider stripePaymentProvider;
-    @Mock
-    private MemberPaymentService memberPaymentService;
-    @Mock
-    private com.mannschaft.app.auth.repository.UserRepository userRepository;
-    @Mock
-    private com.mannschaft.app.payment.PaymentFeeCalculator paymentFeeCalculator;
-    @Mock
-    private ApplicationEventPublisher applicationEventPublisher;
+    @Mock private MembershipPayerWithdrawalTxService txService;
+    @Mock private StripePaymentProvider stripePaymentProvider;
 
-    @InjectMocks
-    private MembershipSubscriptionService service;
+    @InjectMocks private MembershipPayerWithdrawalRunner runner;
 
-    /** ACTIVE の継続課金フィクスチャ（Stripe 連結済み・期末解約未予約）。 */
-    private MembershipSubscriptionEntity activeSubscription(String stripeSubscriptionId) {
-        return MembershipSubscriptionEntity.builder()
-                .organizationId(10L)
-                .paymentItemId(20L)
-                .beneficiaryUserId(BENEFICIARY_USER_ID)
-                .payerUserId(PAYER_USER_ID)
-                .scopeKind(ScopeKind.TEAM)
-                .scopeId(30L)
-                .payeeConnectAccountId(java.util.UUID.randomUUID())
-                .stripeSubscriptionId(stripeSubscriptionId)
-                .billingInterval(BillingInterval.MONTHLY)
-                .status(MembershipSubscriptionStatus.ACTIVE)
-                .faceAmount(3000)
-                .currentPeriodEnd(LocalDate.of(2026, 10, 31))
-                .cancelAtPeriodEnd(false)
-                .build();
+    @Nested
+    @DisplayName("期末解約（cancelOne）")
+    class CancelOne {
+
+        @Test
+        @DisplayName("正常系: 予約着手 → Stripe → DB 反映の順に進み SCHEDULED を返す")
+        void 正常_三段の順に進む() {
+            when(txService.prepare(SUB_ID, PAYER_ID))
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
+            when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), anyString()))
+                    .thenReturn(new StripePaymentProvider.SubscriptionInfo(STRIPE_SUB, "active", 1_800_000_000L));
+            when(txService.applyScheduled(SUB_ID, PAYER_ID, 1_800_000_000L)).thenReturn(true);
+
+            assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.SCHEDULED);
+        }
+
+        @Test
+        @DisplayName("対象外: 予約着手が空を返したら Stripe を叩かず SKIPPED")
+        void 対象外_Stripeを叩かない() {
+            when(txService.prepare(SUB_ID, PAYER_ID)).thenReturn(Optional.empty());
+
+            assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.SKIPPED);
+            verify(stripePaymentProvider, never()).cancelSubscriptionAtPeriodEnd(anyString(), anyString());
+            verify(txService, never()).applyScheduled(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("Stripe 未連結: Stripe を叩かずに DB のみ反映する")
+        void Stripe未連結_DBのみ反映する() {
+            when(txService.prepare(SUB_ID, PAYER_ID))
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, null)));
+            when(txService.applyScheduled(SUB_ID, PAYER_ID, null)).thenReturn(true);
+
+            assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.SCHEDULED);
+            verify(stripePaymentProvider, never()).cancelSubscriptionAtPeriodEnd(anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("Stripe 失敗: DB 反映へ進まず、失敗を永続化して FAILED を返す")
+        void Stripe失敗_失敗を永続化する() {
+            when(txService.prepare(SUB_ID, PAYER_ID))
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
+            when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), anyString()))
+                    .thenThrow(new IllegalStateException("Stripe 障害"));
+
+            assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.FAILED);
+            verify(txService, never()).applyScheduled(any(), any(), any());
+            // ログだけでは PR-4 の再試行バッチが拾えない。DB に残すことが要点。
+            verify(txService).markFailed(eq(SUB_ID), anyString());
+        }
+
+        @Test
+        @DisplayName("Stripe 成功後の DB 失敗: 失敗を永続化して FAILED を返す（Stripe との乖離を残さない）")
+        void DB失敗_失敗を永続化する() {
+            when(txService.prepare(SUB_ID, PAYER_ID))
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
+            when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), anyString()))
+                    .thenReturn(new StripePaymentProvider.SubscriptionInfo(STRIPE_SUB, "active", null));
+            when(txService.applyScheduled(SUB_ID, PAYER_ID, null))
+                    .thenThrow(new IllegalStateException("DB 障害"));
+
+            assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.FAILED);
+            verify(txService).markFailed(eq(SUB_ID), anyString());
+        }
+
+        @Test
+        @DisplayName("例外を外へ投げない: 1件の失敗で呼び出し元のループを止めない")
+        void 例外を伝播しない() {
+            when(txService.prepare(SUB_ID, PAYER_ID)).thenThrow(new IllegalStateException("ロック取得失敗"));
+
+            assertThat(runner.cancelOne(SUB_ID, PAYER_ID)).isEqualTo(Outcome.FAILED);
+        }
     }
 
-    @Test
-    @DisplayName("AC-13 正常系: payer 一致の ACTIVE/PAST_DUE を Stripe 期末解約し DB へ反映する")
-    void 正常_payer一致のACTIVEを期末解約する() {
-        MembershipSubscriptionEntity subscription = activeSubscription("sub_active_1");
-        given(membershipSubscriptionRepository
-                .findByPayerUserIdAndStatusInAndDeletedAtIsNullOrderByCreatedAtDesc(eq(PAYER_USER_ID), any()))
-                .willReturn(List.of(subscription));
-        given(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(anyString(), anyString()))
-                .willReturn(new StripePaymentProvider.SubscriptionInfo("sub_active_1", "active", null));
-        given(membershipSubscriptionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+    @Nested
+    @DisplayName("退会取消による復旧（restoreOne）")
+    class RestoreOne {
 
-        List<String> result = service.cancelAllForPayerOnWithdrawal(PAYER_USER_ID);
+        @Test
+        @DisplayName("正常系: Stripe の期末解約を解除してから DB を戻す")
+        void 正常_Stripeを先に解除する() {
+            when(txService.prepareRestore(SUB_ID, PAYER_ID))
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
+            when(txService.applyRestore(SUB_ID, PAYER_ID)).thenReturn(true);
 
-        assertThat(result).containsExactly("sub_active_1");
-        assertThat(subscription.getCancelAtPeriodEnd()).isTrue();
-        verify(stripePaymentProvider).cancelSubscriptionAtPeriodEnd(eq("sub_active_1"), anyString());
-        verify(membershipSubscriptionRepository).save(subscription);
-    }
+            assertThat(runner.restoreOne(SUB_ID, PAYER_ID)).isTrue();
+            verify(stripePaymentProvider).revertSubscriptionCancelAtPeriodEnd(eq(STRIPE_SUB), anyString());
+        }
 
-    @Test
-    @DisplayName("AC-13 対象の絞り込み: 検索は payer 一致かつ ACTIVE/PAST_DUE のみを条件にする")
-    void 対象_ACTIVEとPAST_DUEのみを検索する() {
-        given(membershipSubscriptionRepository
-                .findByPayerUserIdAndStatusInAndDeletedAtIsNullOrderByCreatedAtDesc(eq(PAYER_USER_ID), any()))
-                .willReturn(List.of());
+        @Test
+        @DisplayName("対象外: 退会処理由来でなければ Stripe も DB も触らない")
+        void 対象外_何もしない() {
+            when(txService.prepareRestore(SUB_ID, PAYER_ID)).thenReturn(Optional.empty());
 
-        service.cancelAllForPayerOnWithdrawal(PAYER_USER_ID);
+            assertThat(runner.restoreOne(SUB_ID, PAYER_ID)).isFalse();
+            verify(stripePaymentProvider, never())
+                    .revertSubscriptionCancelAtPeriodEnd(anyString(), anyString());
+            verify(txService, never()).applyRestore(any(), any());
+        }
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<Collection<MembershipSubscriptionStatus>> statuses =
-                ArgumentCaptor.forClass(Collection.class);
-        verify(membershipSubscriptionRepository)
-                .findByPayerUserIdAndStatusInAndDeletedAtIsNullOrderByCreatedAtDesc(
-                        eq(PAYER_USER_ID), statuses.capture());
-        assertThat(statuses.getValue()).containsExactlyInAnyOrder(
-                MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE);
-    }
+        @Test
+        @DisplayName("Stripe 失敗: DB を戻さない（Stripe が期末解約のまま乖離するのを防ぐ）")
+        void Stripe失敗_DBを戻さない() {
+            when(txService.prepareRestore(SUB_ID, PAYER_ID))
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
+            when(stripePaymentProvider.revertSubscriptionCancelAtPeriodEnd(eq(STRIPE_SUB), anyString()))
+                    .thenThrow(new IllegalStateException("Stripe 障害"));
 
-    @Test
-    @DisplayName("AC-13 通知: 受益者宛の期末解約予告イベントを publish する")
-    void 通知_受益者へ期末解約を予告する() {
-        MembershipSubscriptionEntity subscription = activeSubscription("sub_active_2");
-        given(membershipSubscriptionRepository
-                .findByPayerUserIdAndStatusInAndDeletedAtIsNullOrderByCreatedAtDesc(eq(PAYER_USER_ID), any()))
-                .willReturn(List.of(subscription));
-        given(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(anyString(), anyString()))
-                .willReturn(new StripePaymentProvider.SubscriptionInfo("sub_active_2", "active", null));
-        given(membershipSubscriptionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-
-        service.cancelAllForPayerOnWithdrawal(PAYER_USER_ID);
-
-        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
-        verify(applicationEventPublisher).publishEvent(captor.capture());
-        assertThat(captor.getValue()).isInstanceOf(MembershipPayerWithdrawalNotificationEvent.class);
-        MembershipPayerWithdrawalNotificationEvent event =
-                (MembershipPayerWithdrawalNotificationEvent) captor.getValue();
-        assertThat(event.beneficiaryUserId()).isEqualTo(BENEFICIARY_USER_ID);
-        assertThat(event.payerUserId()).isEqualTo(PAYER_USER_ID);
-        assertThat(event.scopeKind()).isEqualTo(ScopeKind.TEAM);
-        assertThat(event.currentPeriodEnd()).isEqualTo(LocalDate.of(2026, 10, 31));
-    }
-
-    @Test
-    @DisplayName("AC-13 冪等: 既に cancel_at_period_end=true の行は Stripe を叩き直さない")
-    void 冪等_既に予約済みならStripeを呼ばない() {
-        MembershipSubscriptionEntity subscription = activeSubscription("sub_already");
-        subscription.scheduleCancelAtPeriodEnd();
-        given(membershipSubscriptionRepository
-                .findByPayerUserIdAndStatusInAndDeletedAtIsNullOrderByCreatedAtDesc(eq(PAYER_USER_ID), any()))
-                .willReturn(List.of(subscription));
-
-        List<String> result = service.cancelAllForPayerOnWithdrawal(PAYER_USER_ID);
-
-        assertThat(result).isEmpty();
-        verify(stripePaymentProvider, never()).cancelSubscriptionAtPeriodEnd(anyString(), anyString());
-        verify(applicationEventPublisher, never()).publishEvent(any(Object.class));
-    }
-
-    @Test
-    @DisplayName("AC-13 失敗の切り分け: 1件の Stripe 失敗が他の契約の期末解約を巻き添えにしない")
-    void 失敗_1件のStripe失敗で残りを巻き添えにしない() {
-        MembershipSubscriptionEntity failing = activeSubscription("sub_fail");
-        MembershipSubscriptionEntity succeeding = activeSubscription("sub_ok");
-        given(membershipSubscriptionRepository
-                .findByPayerUserIdAndStatusInAndDeletedAtIsNullOrderByCreatedAtDesc(eq(PAYER_USER_ID), any()))
-                .willReturn(List.of(failing, succeeding));
-        given(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq("sub_fail"), anyString()))
-                .willThrow(new IllegalStateException("Stripe 障害"));
-        given(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq("sub_ok"), anyString()))
-                .willReturn(new StripePaymentProvider.SubscriptionInfo("sub_ok", "active", null));
-        given(membershipSubscriptionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-
-        List<String> result = service.cancelAllForPayerOnWithdrawal(PAYER_USER_ID);
-
-        assertThat(result).containsExactly("sub_ok");
-        assertThat(succeeding.getCancelAtPeriodEnd()).isTrue();
-        verify(stripePaymentProvider, times(2)).cancelSubscriptionAtPeriodEnd(anyString(), anyString());
-    }
-
-    @Test
-    @DisplayName("AC-13 Stripe 未連結: DB のみ予約し、戻り値には含めない")
-    void Stripe未連結_DBのみ予約する() {
-        MembershipSubscriptionEntity subscription = activeSubscription(null);
-        given(membershipSubscriptionRepository
-                .findByPayerUserIdAndStatusInAndDeletedAtIsNullOrderByCreatedAtDesc(eq(PAYER_USER_ID), any()))
-                .willReturn(List.of(subscription));
-        given(membershipSubscriptionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-
-        List<String> result = service.cancelAllForPayerOnWithdrawal(PAYER_USER_ID);
-
-        assertThat(result).isEmpty();
-        assertThat(subscription.getCancelAtPeriodEnd()).isTrue();
-        verify(stripePaymentProvider, never()).cancelSubscriptionAtPeriodEnd(anyString(), anyString());
-        verify(membershipSubscriptionRepository).save(subscription);
-    }
-
-    @Test
-    @DisplayName("AC-13 対象なし: 該当契約が無ければ Stripe を一切呼ばず空を返す")
-    void 対象なし_Stripeを呼ばない() {
-        given(membershipSubscriptionRepository
-                .findByPayerUserIdAndStatusInAndDeletedAtIsNullOrderByCreatedAtDesc(anyLong(), any()))
-                .willReturn(List.of());
-
-        assertThat(service.cancelAllForPayerOnWithdrawal(PAYER_USER_ID)).isEmpty();
-        verify(stripePaymentProvider, never()).cancelSubscriptionAtPeriodEnd(anyString(), anyString());
-    }
-
-    @Test
-    @DisplayName("防御: payerUserId が null なら何もせず空を返す")
-    void 防御_payerUserIdがnullなら何もしない() {
-        assertThat(service.cancelAllForPayerOnWithdrawal(null)).isEmpty();
-        verify(membershipSubscriptionRepository, never())
-                .findByPayerUserIdAndStatusInAndDeletedAtIsNullOrderByCreatedAtDesc(any(), any());
+            assertThat(runner.restoreOne(SUB_ID, PAYER_ID)).isFalse();
+            verify(txService, never()).applyRestore(any(), any());
+        }
     }
 }

@@ -1,5 +1,6 @@
 package com.mannschaft.app.gdpr.service;
 
+import com.mannschaft.app.auth.event.WithdrawalCancelledEvent;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
 import com.mannschaft.app.billing.BillingContractService;
 import com.mannschaft.app.billing.BillingContractService.HandoverTargetContract;
@@ -16,6 +17,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 退会受付（Day 0・{@link WithdrawalRequestedEvent}）時の決済連携ハンドラ
@@ -73,10 +75,46 @@ public class WithdrawalStripeHandler {
         requestPayerHandovers(userId);
     }
 
+    /**
+     * 退会取消（{@link WithdrawalCancelledEvent}）時の復旧（設計書 §6.1・Codex 検分1巡目 P1-3）。
+     *
+     * <p>退会は30日以内に取り消せる。取り消したのに期末でメンバーシップが終了し、引継要求が
+     * {@code REQUESTED} のまま残って次の申請を塞ぎ続けるのでは筋が通らない。退会受付時に行った
+     * 2系統をそれぞれ元へ戻す。</p>
+     *
+     * <p>復旧するのは<b>退会処理由来で予約したものだけ</b>である。本人が退会前に明示解約した契約を
+     * 勝手に復活させてはならないため、{@code membership_payer_withdrawal_cancellations} を由来の正本として引く。</p>
+     */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会を取り消しても期末解約の予約が残り、利用者の意思に反して継続課金が終了する。"
+                    + "引継要求も REQUESTED のまま残り、同一契約への次の引継申請を猶予期間中ブロックし続ける")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleWithdrawalCancelled(WithdrawalCancelledEvent event) {
+        Long userId = event.getUserId();
+
+        // 2系統は互いに独立。片方の失敗でもう片方の復旧を止めない。
+        try {
+            List<UUID> restored = membershipSubscriptionService
+                    .restoreAllForPayerOnWithdrawalCancelled(userId);
+            log.info("退会取消の決済連携: 継続課金の期末解約予約を解除しました userId={}, 件数={}",
+                    userId, restored.size());
+        } catch (Exception e) {
+            log.error("退会取消の決済連携: 継続課金の期末解約予約の解除に失敗しました userId={}", userId, e);
+        }
+
+        try {
+            int terminated = billingPayerHandoverService.failRequestedHandoversOnWithdrawalCancelled(userId);
+            log.info("退会取消の決済連携: 引継要求を終端化しました userId={}, 件数={}", userId, terminated);
+        } catch (Exception e) {
+            log.error("退会取消の決済連携: 引継要求の終端化に失敗しました userId={}", userId, e);
+        }
+    }
+
     /** ①受益者単位の会費（{@code membership_subscriptions}）を期末解約する（AC-13）。 */
     private void cancelMembershipSubscriptions(Long userId) {
         try {
-            List<String> scheduled = membershipSubscriptionService.cancelAllForPayerOnWithdrawal(userId);
+            List<UUID> scheduled = membershipSubscriptionService.cancelAllForPayerOnWithdrawal(userId);
             log.info("退会時の決済連携: 継続課金の期末解約を予約しました userId={}, 件数={}", userId, scheduled.size());
         } catch (Exception e) {
             log.error("退会時の決済連携: 継続課金の期末解約に失敗しました userId={}", userId, e);
@@ -101,8 +139,12 @@ public class WithdrawalStripeHandler {
         int skipped = 0;
         for (HandoverTargetContract target : targets) {
             try {
-                billingPayerHandoverService.requestHandover(
-                        target.scopeKind(), target.scopeId(), target.contractId(), userId);
+                // 対話 API 用の requestHandover は使えない。あちらは requireCanManage を通り、その認可 SQL は
+                // users.deleted_at IS NULL AND status='ACTIVE' を要求する。退会は先に deleted_at を
+                // commit してから本ハンドラを AFTER_COMMIT で呼ぶため、退会者は必ず全件で認可に失敗し、
+                // 引継要求が1件も作られない（Codex 検分1巡目 P0）。退会経路は契約行の payer 一致だけを
+                // 認可の根拠にし、スコープも契約行から読む専用入口を使う。
+                billingPayerHandoverService.requestHandoverForWithdrawal(target.contractId(), userId);
                 requested++;
             } catch (BusinessException e) {
                 // 引継先 ADMIN 不在・進行中の要求あり・契約が対象外（PAST_DUE/期末が過去）など、
