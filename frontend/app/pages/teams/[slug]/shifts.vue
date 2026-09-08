@@ -7,11 +7,30 @@ const teamSlug = String(route.params.slug)
 const shiftApi = useShiftApi()
 
 // 数値 teamId が必要な API 向けの解決経路。
-// `TeamResponse.id` は slug と同値の URL 識別子であり数値 ID ではないため、
-// 必ず `numericId` を使う（親 pages/teams/[slug].vue が provide 済みで追加往復なし）。
+// `TeamResponse.id` は slug と同値の URL 識別子であり数値 ID ではないため、必ず `numericId` を使う。
+//
+// 親 pages/teams/[slug].vue の provide は「シェル対象ルート」でしか team を取得しない
+// （SHELL_SEGMENTS に 'shifts' は含まれない）。したがって本ページでは team が永久に null であり、
+// シェルの provide だけに頼ると ShiftSwapList が骨組みのまま一生描画されない。
+// 未解決を握りつぶさず、本ページ自身で slug → numericId を解決する。
 const { team } = useTeamShellContext()
-const teamNumericId = computed<number | null>(() => team.value?.numericId ?? null)
 const notification = useNotification()
+const { t } = useI18n()
+const teamApi = useTeamApi()
+const resolvedNumericId = ref<number | null>(null)
+const teamNumericId = computed<number | null>(
+  () => team.value?.numericId ?? resolvedNumericId.value,
+)
+
+async function resolveTeamNumericId() {
+  if (teamNumericId.value !== null) return
+  try {
+    const res = await teamApi.getTeam(teamSlug)
+    resolvedNumericId.value = res.data.numericId ?? null
+  } catch {
+    notification.error(t('shift.page.teamLoadFailed'))
+  }
+}
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 const { userTimezone } = useDatetime()
 
@@ -57,7 +76,10 @@ function onScheduleSelect(id: number) {
   showRequestDialog.value = true
 }
 
-onMounted(() => loadPermissions())
+onMounted(() => {
+  loadPermissions()
+  void resolveTeamNumericId()
+})
 </script>
 
 <template>
@@ -84,7 +106,11 @@ onMounted(() => loadPermissions())
         </TabPanel>
         <TabPanel :value="1">
           <!-- 交代申請APIは数値 teamId を要求する。解決前は骨組みを出して誤リクエストを撃たない -->
-          <ShiftSwapList v-if="teamNumericId !== null" :team-id="teamNumericId" />
+          <ShiftSwapList
+            v-if="teamNumericId !== null"
+            :team-id="teamNumericId"
+            :can-manage="isAdminOrDeputy"
+          />
           <div v-else>
             <Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" />
           </div>

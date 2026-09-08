@@ -37,7 +37,8 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
-import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
+import com.mannschaft.app.shift.dto.UpcomingAssignedSlotResponse;
+import com.mannschaft.app.shift.service.ShiftMyService;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
@@ -104,7 +105,15 @@ public class DashboardController {
     private final OrganizationRepository organizationRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
     /** 司令塔第二弾: 個人「今後の予定」への本人シフト統合用（ADHD-UX戦役第四陣）。 */
-    private final ShiftAssignmentRepository shiftAssignmentRepository;
+    /**
+     * CMP-260908-2117: 「今後の予定」のシフトは割当の正本である
+     * {@code shift_slots.assigned_user_ids} から引く（旧: {@code ShiftAssignmentRepository}）。
+     * 旧経路は自動割当の確定行しか見ておらず、手動割当が本人に表示されなかった。
+     *
+     * <p>shift のリポジトリ・エンティティへ直接依存すると番人 D-1/D-5 に反するため、
+     * shift ドメインの Service 経由で DTO を受け取る（モジュラーモノリス原則）。</p>
+     */
+    private final ShiftMyService shiftMyService;
     /** 司令塔第二弾: 個人「今後の予定」への本人予約統合用（ADHD-UX戦役第四陣）。 */
     private final ReservationRepository reservationRepository;
 
@@ -328,16 +337,20 @@ public class DashboardController {
                 .map(e -> toScheduleMapOrg(e))
                 .forEach(items::add);
 
-        // 司令塔第二弾（ADHD-UX戦役第四陣）: 本人のシフト（CONFIRMED）・予約（CONFIRMED・代表行）を統合する。
+        // 司令塔第二弾（ADHD-UX戦役第四陣）: 本人のシフト・予約（CONFIRMED・代表行）を統合する。
         // それぞれ userId で絞り込み済みのため他人分の混入はない（AC-B2-2）。
-        // 各 1 クエリ + チーム名の一括解決 1 クエリのみで、items 件数に関わらず固定 3 クエリ（AC-B2-5・N+1回避）。
-        List<Object[]> shiftRows = shiftAssignmentRepository.findUpcomingByUserIdBetween(userId, fromDate, untilDate);
+        // CMP-260908-2117: シフトは割当の正本 shift_slots.assigned_user_ids から引く
+        //（旧実装は shift_assignments の CONFIRMED を引いており、手動割当が本人に表示されなかった）。
+        // 未公開シフト表の遮断は shift ドメイン側のクエリ（FULLY_VISIBLE_SQL）が担う。
+        // クエリ本数は「シフト枠1 + シフト表1（shift Service 内）+ 予約1 + チーム名1」の固定 4 本で、
+        // items 件数に依存しない（AC-B2-5・N+1回避。旧実装比で +1 本）。
+        List<UpcomingAssignedSlotResponse> shiftSlots =
+                shiftMyService.getUpcomingAssignedSlots(userId, fromDate, untilDate);
         List<Object[]> reservationRows = reservationRepository.findUpcomingByUserIdBetween(userId, fromDate, untilDate);
 
         Set<Long> teamIds = new HashSet<>();
-        for (Object[] row : shiftRows) {
-            Long teamId = (Long) row[5];
-            if (teamId != null) teamIds.add(teamId);
+        for (UpcomingAssignedSlotResponse slot : shiftSlots) {
+            if (slot.getTeamId() != null) teamIds.add(slot.getTeamId());
         }
         for (Object[] row : reservationRows) {
             Long teamId = (Long) row[5];
@@ -348,7 +361,9 @@ public class DashboardController {
                 : teamRepository.findAllById(teamIds).stream()
                         .collect(Collectors.toMap(TeamEntity::getId, t -> t));
 
-        shiftRows.stream().map(row -> toShiftMap(row, teamMap)).forEach(items::add);
+        shiftSlots.stream()
+                .map(slot -> toShiftMap(slot, teamMap))
+                .forEach(items::add);
         reservationRows.stream().map(row -> toReservationMap(row, teamMap)).forEach(items::add);
 
         items.sort((a, b) -> ((LocalDateTime) a.get("start_at")).compareTo((LocalDateTime) b.get("start_at")));
@@ -781,18 +796,20 @@ public class DashboardController {
     }
 
     /**
-     * シフト割当（本人分・CONFIRMED）を統合予定Mapに変換する。
+     * シフト枠（本人が割り当てられているもの・公開済みシフト表のみ）を統合予定 Map に変換する。
      *
-     * <p>row = {@code [id, scheduleTitle, slotDate, startTime, endTime, teamId]}
-     * （{@link ShiftAssignmentRepository#findUpcomingByUserIdBetween} の返却形）。</p>
+     * <p>CMP-260908-2117: 入力が {@code shift_assignments} の行から
+     * {@link ShiftSlotRepository#findUpcomingAssignedByUserIdBetween} の枠エンティティに変わった。
+     * {@code id} は枠 ID（旧: 割当履歴行の ID）。</p>
      */
-    private Map<String, Object> toShiftMap(Object[] row, Map<Long, TeamEntity> teamMap) {
-        Long id = (Long) row[0];
-        String title = (String) row[1];
-        LocalDate slotDate = (LocalDate) row[2];
-        LocalTime startTime = (LocalTime) row[3];
-        LocalTime endTime = (LocalTime) row[4];
-        Long teamId = (Long) row[5];
+    private Map<String, Object> toShiftMap(
+            UpcomingAssignedSlotResponse slot, Map<Long, TeamEntity> teamMap) {
+        Long id = slot.getSlotId();
+        String title = slot.getScheduleTitle();
+        LocalDate slotDate = slot.getSlotDate();
+        LocalTime startTime = slot.getStartTime();
+        LocalTime endTime = slot.getEndTime();
+        Long teamId = slot.getTeamId();
 
         Map<String, Object> map = new HashMap<>();
         map.put("id", id);

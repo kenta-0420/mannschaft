@@ -189,7 +189,7 @@ INDEX idx_shift_requests_schedule_date (schedule_id, slot_date)                 
 | `claimed_by` | BIGINT UNSIGNED | YES | NULL | **【v2.1 新規】** FK → users。オープンコールで先着した候補メンバー（先着優先、楽観ロックで競合防止） |
 | `claimed_at` | DATETIME | YES | NULL | **【v2.1 新規】** `claimed_by` が決まった日時 |
 | `accepter_id` | BIGINT UNSIGNED | YES | NULL | FK → users。実際に交代を引き受けるメンバー。個別交代では指名相手、オープンコールでは `claimed_by` と同値になるのが通常。管理者が別候補に差し替えると上書き可能 |
-| `status` | VARCHAR(20) | NO | 'PENDING' | リクエスト状態（PENDING / OPEN_CALL / CLAIMED / ACCEPTED / APPROVED / REJECTED / CANCELLED） |
+| `status` | VARCHAR(20) | NO | 'PENDING' | リクエスト状態（PENDING / ACCEPTED / APPROVED / REJECTED / CANCELLED）。`OPEN_CALL` / `CLAIMED` は **廃止（CMP-260903-0655）**。enum 定数は旧行の読み出し互換のため残置しているが、新規に書き込む経路は無い |
 | `reason` | VARCHAR(500) | YES | NULL | 交代理由（例: 「体調不良のため」） |
 | `admin_note` | VARCHAR(500) | YES | NULL | 管理者コメント（承認・却下時） |
 | `resolved_by` | BIGINT UNSIGNED | YES | NULL | FK → users。承認・却下した管理者 |
@@ -210,12 +210,12 @@ INDEX idx_shift_swap_requests_target (target_user_id, status)         -- 【v2.1
 **制約・備考**
 - ステータスライフサイクル:
   - **個別交代（is_open_call=FALSE, target_user_id=NOT NULL）**: `PENDING` → `ACCEPTED`（指名相手が引き受け）→ `APPROVED`（管理者承認）/ `REJECTED`（管理者却下）/ `CANCELLED`（依頼者取下）
-  - **オープンコール（is_open_call=TRUE, target_user_id=NULL）**: `OPEN_CALL`（募集中）→ `CLAIMED`（先着メンバー確定 = `claimed_by` 記録）→ `ACCEPTED`（依頼者 or 管理者が候補を確定、`accepter_id` = `claimed_by`）→ `APPROVED` / `REJECTED` / `CANCELLED`
+  - **オープンコール（is_open_call=TRUE, target_user_id=NULL）**: `PENDING`（募集中）→ `ACCEPTED` → `APPROVED` / `REJECTED` / `CANCELLED`。**【CMP-260903-0655】** 当初設計の `OPEN_CALL` → `CLAIMED`（手挙げ→候補者選定）の2段階は、作成経路が status を `PENDING` のままにしており到達不能な半実装だったため削除した。`claimed_by` / `claimed_at` / `version` 列と `PATCH /{id}/claim` の記述も同時に失効している
 - `APPROVED` 時の処理: スロットの `assigned_user_ids` から `requester_id` を除去し `accepter_id` を追加（1トランザクション内）。両メンバーにプッシュ通知
-- 同一スロットに `PENDING` / `OPEN_CALL` / `CLAIMED` / `ACCEPTED` の交代リクエストは1件のみ（Service 層バリデーション）
+- 同一スロットに `PENDING` / `ACCEPTED` の交代リクエストは1件のみ（Service 層バリデーション）
 - `PUBLISHED` 状態のスケジュールに属するスロットのみ交代リクエスト可能
 - **【v2.1】`is_open_call` と `target_user_id` の排他**: CHECK 制約で `(is_open_call = TRUE AND target_user_id IS NULL) OR (is_open_call = FALSE)` を強制
-- **【v2.1】`claimed_by` のレース条件対策**: 楽観的ロック（@Version）で「最初に `PATCH /{id}/claim` を発行した者が勝ち」のセマンティクスを保証。2人目以降は 409 Conflict で差し戻し、UI で「別の方が先に応じたため締め切られました」と Toast 表示
+- ~~**【v2.1】`claimed_by` のレース条件対策**~~ → **廃止（CMP-260903-0655）**。手挙げ API ごと削除したため、`claimed_by` / `claimed_at` は書き込まれない（列は既存行のため残置）
 - **【v2.1】オープンコールの悪用防止**: 同一ユーザーが 1 ヶ月（作成時点の年月）に作成できるオープンコール数の上限を **3 件** とする。超過時は 429 Too Many Requests。カウントは `SELECT COUNT(*) FROM shift_swap_requests WHERE requester_id = ? AND is_open_call = TRUE AND YEAR(created_at) = ? AND MONTH(created_at) = ?` で判定
 - **【v2.1】チーム全員への通知**: オープンコール作成時、チームメンバー全員（自分・SUPPORTER・GUEST を除く）にプッシュ + アプリ内通知を配信。ただし個人設定で「代打募集通知を受け取らない」を ON にしたユーザーは送信対象から除外（F04.3 通知設定を参照）
 - **【v2.1】候補選定の裁量**: `CLAIMED` 状態でも管理者（ADMIN/DEPUTY_ADMIN）は `accepter_id` を別メンバーに差し替える裁量を持つ（例: 先着者がスキル不足の場合、他候補に差し替えて `ACCEPTED` に進める）。依頼者は差し替え不可（管理者のみ）
@@ -337,6 +337,40 @@ INDEX idx_hourly_rates_team (team_id, user_id)                                 -
 #### `shift_assignments`【v2 新規】
 
 自動割当の実行結果を保存する監査・差し戻し用のテーブル。`shift_slots.assigned_user_ids` は「現在の割当状態」を示すキャッシュ的な JSON 配列であるのに対し、本テーブルは「誰がいつどの戦略で割り当てたか」を個別レコードとして履歴保持する。手動割当も自動割当も同じテーブルに記録する。
+
+##### 二表の役割分担（正本はどちらか）— CMP-260908-2117
+
+| 観点 | `shift_slots.assigned_user_ids`（JSON） | `shift_assignments` |
+|---|---|---|
+| 役割 | **現在の割当状態の正本** | 操作履歴（監査証跡） |
+| 読み出し | 自分のシフト／今後の予定／充足サマリー／PDF／タスク生成／人件費予算はすべてこちら | 状態問い合わせには使わない |
+| 書き込み | 手動割当・枠更新・自動割当の確定同期 | 手動割当・自動割当の双方が追記 |
+
+**この分担が守られていなかったことによる不具合（CMP-260908-2117）**: 読み出しのうち 3 経路
+（`ShiftMyService#getMyConfirmedSlots` / 個人ダッシュボードの「今後の予定」 / `ShiftScheduleService#getScheduleSummary`）が
+`shift_assignments.status = CONFIRMED` を現在状態として引いていた。しかし同表に書き込むのは
+`ShiftAutoAssignService` だけであり、手動割当（`PATCH /shifts/slots/{id}/assignments`・枠更新）は
+JSON 列にしか書かない。結果として**手動で割り当てられた人のシフトはどこにも表示されず**、
+管理者の充足サマリーも埋まった枠を「未充足」と表示していた。
+
+現在は上記 3 経路とも JSON 列を引く（MySQL の `JSON_CONTAINS` を使うネイティブクエリ。
+JPQL では表現できないため、この挙動を固定できるのは実 MySQL の統合テストだけである）。
+併せて手動割当も本表に履歴を残すようになった。
+
+**未公開シフト表の遮断（CMP-260826-2127 との関係）**: 旧実装では `status = CONFIRMED` が
+偶然の公開ガードとして働いていた面があるため、JSON 参照へ移す際に可視性条件を明示している。
+「自分のシフト」「今後の予定」は割当そのものを返す経路なので、通すのは
+`ShiftScheduleVisibilityPolicy.Visibility.FULL`（PUBLISHED / 公開済み ARCHIVED）だけであり、
+割当を伏せる `MASKED`（COLLECTING / ADJUSTING）も通さない。SQL 側の述語は
+`ShiftScheduleEntity.FULLY_VISIBLE_SQL` が唯一の定義を持つ。
+
+**手動割当の履歴の書き方**（`ShiftSlotService#recordAssignmentHistory`）:
+
+- 1 行 = 1 回の割当。`created_at` が割当時刻、`REVOKED` へ遷移した時の `updated_at` が解除時刻
+- **追加**: 当該 (slot, user) に非 REVOKED 行が無ければ `CONFIRMED` 行を INSERT（`run_id` は NULL = 手動、`assigned_by` は操作者）。既にあれば何もしない（冪等）
+- **解除**: 当該 (slot, user) の非 REVOKED 行をすべて `REVOKED` へ遷移。自動割当由来の行も対象に含める（外したという事実は割当の出自によらず、残すと履歴表が現状と食い違うため）
+- **外して再度入れる**: 結果として REVOKED 行と新しい CONFIRMED 行が並ぶ。実 DDL の UNIQUE KEY は `(slot_id, user_id, run_id)` であり、`run_id` が NULL のとき MySQL は重複を許すため制約違反にならない
+- **既知の限界**: 解除した操作者は記録されない（`assigned_by` は割り当てた者を保持する）。記録するには列追加が必要で、本 CMP の射程外とした
 
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|---|------|-----------|------|
