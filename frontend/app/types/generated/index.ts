@@ -14171,23 +14171,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/shifts/swap-requests/{swapId}/select-claimer": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** オープンコール候補者選定 */
-        post: operations["selectClaimer"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/shifts/swap-requests/{swapId}/resolve": {
         parameters: {
             query?: never;
@@ -14199,23 +14182,6 @@ export interface paths {
         put?: never;
         /** 交代リクエスト承認・却下 */
         post: operations["resolveSwapRequest"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/shifts/swap-requests/{swapId}/claim": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** オープンコール手挙げ */
-        post: operations["claimOpenCall"];
         delete?: never;
         options?: never;
         head?: never;
@@ -67026,7 +66992,7 @@ export interface components {
             };
         };
         CreateReceiptRequest: {
-            amount?: number;
+            amount: number;
             description?: string;
             emailDelivery?: components["schemas"]["EmailDeliveryRequest"];
             lineItems?: components["schemas"]["LineItemRequest"][];
@@ -113340,32 +113306,6 @@ export interface operations {
             };
         };
     };
-    selectClaimer: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                swapId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": number;
-            };
-        };
-        responses: {
-            /** @description 選定成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseSwapRequestResponse"];
-                };
-            };
-        };
-    };
     resolveSwapRequest: {
         parameters: {
             query?: never;
@@ -113382,28 +113322,6 @@ export interface operations {
         };
         responses: {
             /** @description 処理成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseSwapRequestResponse"];
-                };
-            };
-        };
-    };
-    claimOpenCall: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                swapId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 手挙げ成功 */
             200: {
                 headers: {
                     [name: string]: unknown;

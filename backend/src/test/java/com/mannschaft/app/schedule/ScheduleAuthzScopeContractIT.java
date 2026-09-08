@@ -5,8 +5,11 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.schedule.entity.ScheduleDelegationEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.entity.ScheduleKeepEntity;
+import com.mannschaft.app.schedule.entity.ScheduleKeepStatus;
 import com.mannschaft.app.schedule.repository.ScheduleDelegationRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.repository.ScheduleKeepRepository;
 import com.mannschaft.app.schedule.repository.UserGoogleCalendarConnectionRepository;
 import com.mannschaft.app.schedule.repository.UserIcalTokenRepository;
 import com.mannschaft.app.schedule.service.GoogleApiClient;
@@ -21,6 +24,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.redis.core.ValueOperations;
@@ -92,6 +97,9 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ScheduleRepository scheduleRepository;
+
+    @Autowired
+    private ScheduleKeepRepository scheduleKeepRepository;
 
     @Autowired
     private ScheduleDelegationRepository delegationRepository;
@@ -920,6 +928,105 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
     // フィクスチャ
     // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * CMP-260826-1920: キープAPIの数値ID対応と既存slug契約を固定する。
+     * 数値IDは実装前に404となるred、slugは既存契約の回帰防止柵である。
+     * 既存CMP-054の所属fixtureと実Controller・Service・認可・MySQLを共有する。
+     */
+    @Nested
+    @DisplayName("CMP-260826-1920: キープのスコープID互換性")
+    class KeepScopeIdCompat {
+
+        @ParameterizedTest(name = "{0} / {1}")
+        @CsvSource({"TEAM, ID", "TEAM, SLUG", "ORGANIZATION, ID", "ORGANIZATION, SLUG"})
+        @DisplayName("AC-1〜4: キープ詳細を数値ID・slugで取得できる")
+        void 詳細取得は数値IDとslugの両方で成功する(String scope, String representation) throws Exception {
+            ScheduleKeepEntity keep = saveScopeKeep(scope);
+            setAuthentication(memberId);
+
+            mockMvc.perform(get(keepPath(scope, representation) + "/{keepId}", keep.getId()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.id").value(keep.getId().toString()))
+                    .andExpect(jsonPath("$.data.title").value("スコープID互換キープ"));
+        }
+
+        @ParameterizedTest(name = "{0} / {1}")
+        @CsvSource({"TEAM, ID", "TEAM, SLUG", "ORGANIZATION, ID", "ORGANIZATION, SLUG"})
+        @DisplayName("AC-1〜4: キープを数値ID・slugで作成して再読込できる")
+        void 作成は数値IDとslugの両方で成功する(String scope, String representation) throws Exception {
+            setAuthentication(memberId);
+            String response = mockMvc.perform(post(keepPath(scope, representation))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("title", "スコープID作成キープ"))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.title").value("スコープID作成キープ"))
+                    .andExpect(jsonPath("$.data.status").value("KEPT"))
+                    .andReturn().getResponse().getContentAsString();
+
+            java.util.UUID keepId = java.util.UUID.fromString(
+                    objectMapper.readTree(response).path("data").path("id").asText());
+            em.flush();
+            em.clear();
+            ScheduleKeepEntity saved = scheduleKeepRepository.findById(keepId).orElseThrow();
+            assertThat(saved.getTitle()).isEqualTo("スコープID作成キープ");
+            assertThat(saved.getCreatedBy()).isEqualTo(memberId);
+            assertThat(saved.getTeamId()).isEqualTo("TEAM".equals(scope) ? teamId : null);
+            assertThat(saved.getOrganizationId()).isEqualTo("ORGANIZATION".equals(scope) ? orgId : null);
+        }
+
+        @ParameterizedTest(name = "{0} / {1}")
+        @CsvSource({"TEAM, ID", "TEAM, SLUG", "ORGANIZATION, ID", "ORGANIZATION, SLUG"})
+        @DisplayName("AC-5: 非所属者の詳細取得は両表現とも404で存在秘匿する")
+        void 非所属者の詳細取得は同じ404で拒否する(String scope, String representation) throws Exception {
+            ScheduleKeepEntity keep = saveScopeKeep(scope);
+            setAuthentication(outsiderId);
+
+            mockMvc.perform(get(keepPath(scope, representation) + "/{keepId}", keep.getId()))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SCHEDULE_KEEP_001"));
+        }
+
+        @ParameterizedTest(name = "{0} / {1}")
+        @CsvSource({"TEAM, ID", "TEAM, SLUG", "ORGANIZATION, ID", "ORGANIZATION, SLUG"})
+        @DisplayName("AC-5: 非所属者の作成は両表現とも404で拒否して保存しない")
+        void 非所属者の作成は同じ404で拒否する(String scope, String representation) throws Exception {
+            long countBefore = scheduleKeepRepository.count();
+            setAuthentication(outsiderId);
+
+            mockMvc.perform(post(keepPath(scope, representation))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("title", "拒否されるキープ"))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SCHEDULE_KEEP_001"));
+
+            em.flush();
+            em.clear();
+            assertThat(scheduleKeepRepository.count()).isEqualTo(countBefore);
+        }
+
+        private ScheduleKeepEntity saveScopeKeep(String scope) {
+            ScheduleKeepEntity keep = scheduleKeepRepository.save(ScheduleKeepEntity.builder()
+                    .teamId("TEAM".equals(scope) ? teamId : null)
+                    .organizationId("ORGANIZATION".equals(scope) ? orgId : null)
+                    .title("スコープID互換キープ")
+                    .status(ScheduleKeepStatus.KEPT)
+                    .sortOrder(0)
+                    .createdBy(memberId)
+                    .build());
+            em.flush();
+            em.clear();
+            return keep;
+        }
+
+        private String keepPath(String scope, String representation) {
+            boolean team = "TEAM".equals(scope);
+            String scopeId = "ID".equals(representation)
+                    ? (team ? teamId : orgId).toString()
+                    : (team ? teamSlug : orgSlug);
+            return "/api/v1/" + (team ? "teams/" : "organizations/") + scopeId + "/schedule-keeps";
+        }
+    }
 
     /** memberId の Google Calendar 連携行を有効な状態で作る。 */
     private void connectMember() {

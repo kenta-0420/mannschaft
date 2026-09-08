@@ -61,12 +61,6 @@
       "openCallLimit": "Offene Ausschreibungen sind auf 3 pro Monat begrenzt",
       "fetchError": "Fehler beim Abrufen der Änderungsanträge"
     },
-    "openCall": {
-      "badge": "Ersatzmitglied gesucht",
-      "claim": "Ich übernehme diese Schicht",
-      "claimed": "Bereits beansprucht",
-      "full": "Ausschreibung geschlossen"
-    },
     "pdf": {
       "teamLayout": "Team-Schichtplan PDF",
       "personalLayout": "Persönliche Zeitleiste PDF",
@@ -75,8 +69,8 @@
     },
     "myShifts": {
       "title": "Meine Schichten",
-      "empty": "Keine Schichten vorhanden",
-      "fetchError": "Fehler beim Abrufen der Schichtinformationen"
+      "empty": "Keine Schichten gefunden",
+      "fetchError": "Schichtinformationen konnten nicht abgerufen werden"
     },
     "page": {
       "title": "Schicht",
@@ -87,7 +81,8 @@
       "detail": "Detail",
       "edit": "Bearbeiten",
       "requests": "Anfragen",
-      "workConstraints": "Arbeitsbeschränkungen"
+      "workConstraints": "Arbeitsbeschränkungen",
+      "teamLoadFailed": "Teaminformationen konnten nicht geladen werden"
     },
     "status": {
       "all": "Alle",
@@ -322,11 +317,6 @@
       "totalCount": "Gesamt: {count}",
       "totalLabel": "Gesamt",
       "confirmSubmit": "Mit diesen Einstellungen einreichen?"
-    },
-    "myShifts": {
-      "title": "Meine Schichten",
-      "empty": "Keine Schichten gefunden",
-      "fetchError": "Schichtinformationen konnten nicht abgerufen werden"
     },
     "myShift": {
       "confirmedTitle": "Bestätigte Schicht",
