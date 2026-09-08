@@ -93,6 +93,13 @@ public class ShiftMyService {
         // 6. 結果を DTO に詰めて日付・開始時刻順にソートして返す
         return assignments.stream()
                 .filter(a -> slotMap.containsKey(a.getSlotId()))
+                .filter(a -> {
+                    ShiftSlotEntity slot = slotMap.get(a.getSlotId());
+                    ShiftScheduleEntity schedule = scheduleMap.get(slot.getScheduleId());
+                    return schedule != null
+                            && ShiftScheduleVisibilityPolicy.classify(schedule.getStatus(), schedule.getPublishedAt())
+                            == ShiftScheduleVisibilityPolicy.Visibility.FULL;
+                })
                 .map(a -> {
                     ShiftSlotEntity slot = slotMap.get(a.getSlotId());
                     ShiftScheduleEntity schedule = scheduleMap.get(slot.getScheduleId());
