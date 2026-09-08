@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.service;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.WithdrawalStateQueryService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.payment.BillingInterval;
@@ -111,6 +112,8 @@ public class MembershipSubscriptionService {
     private final MembershipPayerWithdrawalRunner payerWithdrawalRunner;
     /** 柱③-B PR-3: 「退会処理由来で予約したか」の正本（退会取消時の復旧対象判定・再試行の拾い直し）。 */
     private final MembershipPayerWithdrawalCancellationRepository payerWithdrawalCancellationRepository;
+    /** 柱③-B PR-3: 退会申請の現在状態（auth ドメインへは Service 経由でのみ触れる）。 */
+    private final WithdrawalStateQueryService withdrawalStateQueryService;
 
     /**
      * 【残債2 payment ドメイン公開 API】ユーザーの Stripe Customer 用メールアドレスを解決する。
@@ -466,6 +469,12 @@ public class MembershipSubscriptionService {
         }
         subscription = membershipSubscriptionRepository.save(subscription);
 
+        // 柱③-B PR-3（検分2巡目 P1-1）: 本人（または後見保護者）が明示的に解約を決めた瞬間、
+        // 「この期末解約は退会処理由来である」という記録を無効化する。無効化しないと、遅れて届いた
+        // 退会取消イベントの復旧処理が cancel_at_period_end=true しか見ないため、
+        // この新しい意思まで解除してしまう。
+        payerWithdrawalRunner.supersedeByUserDecision(subscriptionId);
+
         log.info("継続課金 期末解約予約: subscriptionId={}, stripeSub={}, periodEnd={}",
                 subscriptionId, subscription.getStripeSubscriptionId(), subscription.getCurrentPeriodEnd());
         return subscription;
@@ -531,10 +540,20 @@ public class MembershipSubscriptionService {
             return List.of();
         }
 
+        // Stripe に触れる前に対象【全件】の作業行を1トランザクションで確定させる（検分2巡目 P1-2）。
+        // ここを契約ごとの prepare に任せると、途中で停止した契約には行が残らず PR-4 が拾えない。
+        // 戻り値が空＝処理時点で退会申請中ではない（退会取消が先に確定した）ので、何もしない。
+        List<UUID> reserved = payerWithdrawalRunner.reserveAll(targetIds, payerUserId);
+        if (reserved.isEmpty()) {
+            log.info("払い手退会に伴う継続課金の期末解約: 予約対象なし（退会申請中でない/全件確定済み） payerUserId={}",
+                    payerUserId);
+            return List.of();
+        }
+
         List<UUID> scheduled = new ArrayList<>();
         int skipped = 0;
         int failed = 0;
-        for (UUID subscriptionId : targetIds) {
+        for (UUID subscriptionId : reserved) {
             switch (payerWithdrawalRunner.cancelOne(subscriptionId, payerUserId)) {
                 case SCHEDULED -> scheduled.add(subscriptionId);
                 case SKIPPED -> skipped++;
@@ -543,8 +562,32 @@ public class MembershipSubscriptionService {
         }
 
         log.info("払い手退会に伴う継続課金の期末解約: payerUserId={}, 対象={}, 予約={}, 対象外={}, 失敗={}",
-                payerUserId, targetIds.size(), scheduled.size(), skipped, failed);
+                payerUserId, reserved.size(), scheduled.size(), skipped, failed);
         return List.copyOf(scheduled);
+    }
+
+    /**
+     * 柱③-B PR-3: 退会申請中の払い手のうち<b>まだ期末解約が予約されていない</b>継続課金 ID を返す
+     * （PR-4 の照合バッチの起点・Codex 検分2巡目 P1-2）。
+     *
+     * <p>作業行（{@code membership_payer_withdrawal_cancellations}）の走査だけでは、行が
+     * <b>そもそも作られなかった</b>ケースを永久に拾えない——退会本体の commit 後・非同期タスク開始前の
+     * プロセス停止、{@code event-pool} の投入拒否がそれにあたる。本メソッドは作業行ではなく
+     * <b>退会状態そのもの</b>を起点にするため、行の有無に関係なく「やり残した解約」を再構築できる。</p>
+     *
+     * <p>本 PR では駆動（夜次バッチ）は実装せず PR-4 に委ねるが、<b>検索経路は本 PR で用意する</b>。
+     * 経路が無ければ PR-4 でも書きようがないためである。</p>
+     *
+     * @return 期末解約を予約すべきなのに未予約の継続課金 ID（該当なしなら空）
+     */
+    public List<UUID> findWithdrawalCancelBacklog() {
+        List<Long> pendingWithdrawalUserIds = withdrawalStateQueryService.findUserIdsWithPendingWithdrawal();
+        if (pendingWithdrawalUserIds.isEmpty()) {
+            return List.of();
+        }
+        return membershipSubscriptionRepository.findUnscheduledIdsByPayerUserIdIn(
+                pendingWithdrawalUserIds,
+                List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE));
     }
 
     /**
@@ -567,8 +610,10 @@ public class MembershipSubscriptionService {
             return List.of();
         }
         List<UUID> targetIds = payerWithdrawalCancellationRepository
-                .findByPayerUserIdAndStatusAndRestoredAtIsNull(
-                        payerUserId, MembershipPayerWithdrawalCancellationStatus.SUCCEEDED)
+                .findByPayerUserIdAndStatusIn(payerUserId, List.of(
+                        MembershipPayerWithdrawalCancellationStatus.SUCCEEDED,
+                        // Stripe 解除後に停止した行（RESTORING）も取消イベントの再処理で拾い直す。
+                        MembershipPayerWithdrawalCancellationStatus.RESTORING))
                 .stream()
                 .map(MembershipPayerWithdrawalCancellationEntity::getSubscriptionId)
                 .toList();

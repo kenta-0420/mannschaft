@@ -147,7 +147,7 @@ public class WithdrawalStripeHandler {
                 billingPayerHandoverService.requestHandoverForWithdrawal(target.contractId(), userId);
                 requested++;
             } catch (BusinessException e) {
-                // 引継先 ADMIN 不在・進行中の要求あり・契約が対象外（PAST_DUE/期末が過去）など、
+                // 引継先 ADMIN 不在・進行中の要求あり・契約が対象外（PAST_DUE/期末が過去/退会取消済み）など、
                 // 「その契約では引継が成立しない」業務的な結論。purge 側の期末解約フォールバックに委ねる（§5.3・§5.4）。
                 skipped++;
                 log.warn("退会時の決済連携: 引継要求を発行できませんでした（purge のフォールバックに委ねます）: "

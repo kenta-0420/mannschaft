@@ -65,6 +65,16 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
     @Column(name = "payer_user_id", nullable = false)
     private Long payerUserId;
 
+    /**
+     * 退会試行の世代（処理時点の {@code users.deleted_at}）。
+     *
+     * <p>「どの退会申請に属する作業行か」を一意に指す（Codex 検分2巡目 P1-1）。退会は取り消して
+     * 再度申請できるため、同じサブスクの行が別の退会試行で再利用される。世代を刻んでおかないと、
+     * 遅延して届いた古い退会イベントの処理結果と、現在進行中の退会の処理結果を区別できない。</p>
+     */
+    @Column(name = "withdrawal_attempt_at", nullable = false)
+    private Instant withdrawalAttemptAt;
+
     /** 予約時点の Stripe Subscription ID（未連結なら null）。 */
     @Column(name = "stripe_subscription_id", length = 255)
     private String stripeSubscriptionId;
@@ -95,14 +105,37 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    /** 予約に着手する（試行回数を1つ進め、前回の失敗理由・復旧記録を消して PENDING へ戻す）。 */
-    public void markAttempt(String stripeSubscriptionId) {
+    /**
+     * 予約に着手する（試行回数を1つ進め、前回の失敗理由・復旧記録を消して PENDING へ戻す）。
+     *
+     * <p>世代を上書きするのは、退会 → 取消 → 再退会で同じ行を再利用するためである（1サブスク1行の
+     * UNIQUE を保ったまま、行が常に「最新の退会試行」を指すようにする）。</p>
+     */
+    public void markAttempt(Instant withdrawalAttemptAt, String stripeSubscriptionId) {
+        this.withdrawalAttemptAt = withdrawalAttemptAt;
         this.stripeSubscriptionId = stripeSubscriptionId;
         this.status = MembershipPayerWithdrawalCancellationStatus.PENDING;
         this.attemptCount = (this.attemptCount == null ? 0 : this.attemptCount) + 1;
         this.lastError = null;
         this.scheduledAt = null;
         this.restoredAt = null;
+    }
+
+    /** 復旧に着手した（Stripe 呼び出しの<b>前</b>に刻む。以降は非終端として照合・再試行の対象）。 */
+    public void markRestoring() {
+        this.status = MembershipPayerWithdrawalCancellationStatus.RESTORING;
+        this.lastError = null;
+    }
+
+    /** 本人の明示操作により由来が上書きされた（終端・復旧対象外）。 */
+    public void markSuperseded() {
+        this.status = MembershipPayerWithdrawalCancellationStatus.SUPERSEDED;
+    }
+
+    /** この行が復旧に着手してよい状態か（{@code SUCCEEDED} か、着手済みで未確定の {@code RESTORING}）。 */
+    public boolean isRestorable() {
+        return this.status == MembershipPayerWithdrawalCancellationStatus.SUCCEEDED
+                || this.status == MembershipPayerWithdrawalCancellationStatus.RESTORING;
     }
 
     /** Stripe・DB 双方の確定を記録する。 */
@@ -118,9 +151,11 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
         this.lastError = truncate(error);
     }
 
-    /** 退会取消による復旧を記録する。 */
+    /** 退会取消による復旧の確定を記録する（終端）。 */
     public void markRestored(Instant restoredAt) {
+        this.status = MembershipPayerWithdrawalCancellationStatus.RESTORED;
         this.restoredAt = restoredAt;
+        this.lastError = null;
     }
 
     /** {@code last_error} は VARCHAR(1000)。スタックトレース混入で INSERT ごと落とさないため機械的に切る。 */

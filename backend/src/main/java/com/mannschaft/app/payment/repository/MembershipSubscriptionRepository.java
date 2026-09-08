@@ -86,6 +86,22 @@ public interface MembershipSubscriptionRepository
             @Param("statuses") Collection<MembershipSubscriptionStatus> statuses);
 
     /**
+     * 柱③-B PR-3: 退会申請中の払い手のうち、<b>まだ期末解約が予約されていない</b>継続課金 ID を引く
+     * （PR-4 の照合バッチの本体・Codex 検分2巡目 P1-2）。
+     *
+     * <p>作業行（{@code membership_payer_withdrawal_cancellations}）を走査する経路では、行が
+     * <b>そもそも作られなかった</b>ケース——退会本体の commit 後・非同期タスク開始前の停止、
+     * {@code event-pool} の投入拒否——を永久に拾えない。退会状態そのものを起点にすれば、
+     * 行の有無に関係なく「やり残した解約」を再構築できる。</p>
+     */
+    @Query("SELECT s.id FROM MembershipSubscriptionEntity s "
+            + "WHERE s.payerUserId IN :payerUserIds AND s.status IN :statuses "
+            + "AND s.deletedAt IS NULL AND s.cancelAtPeriodEnd = false "
+            + "ORDER BY s.createdAt ASC")
+    List<UUID> findUnscheduledIdsByPayerUserIdIn(@Param("payerUserIds") Collection<Long> payerUserIds,
+            @Param("statuses") Collection<MembershipSubscriptionStatus> statuses);
+
+    /**
      * 払い手視点の継続課金一覧（全状態・idx_ms_payer で引く）。
      */
     List<MembershipSubscriptionEntity> findByPayerUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long payerUserId);

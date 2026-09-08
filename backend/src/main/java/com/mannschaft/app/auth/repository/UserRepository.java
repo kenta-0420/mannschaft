@@ -32,6 +32,26 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<UserEntity> findByIdForUpdateIncludingDeleted(@Param("id") Long id);
 
     /**
+     * 退会申請時刻（{@code deleted_at}）を SQLRestriction を迂回して読む（柱③-B PR-3）。
+     *
+     * <p>{@link UserEntity} には {@code @SQLRestriction("deleted_at IS NULL")} が付いており、
+     * JPQL や {@code findById} では<b>退会申請中のユーザーは1件も返らない</b>。退会処理そのものが
+     * 「退会申請中か」を判定する必要があるため、ここは native で読む必要がある。</p>
+     *
+     * @return 退会申請中ならその時刻、未申請なら空の Optional（行自体が無い場合も空）
+     */
+    @Query(value = "select deleted_at from users where id = :id", nativeQuery = true)
+    Optional<LocalDateTime> findDeletedAtIncludingDeleted(@Param("id") Long id);
+
+    /**
+     * 退会申請中（{@code deleted_at IS NOT NULL}）のユーザー ID を返す（柱③-B PR-3・PR-4 の照合バッチの起点）。
+     *
+     * <p>同上の理由で native。退会申請から30日で物理 purge されるため運用上有界な集合である。</p>
+     */
+    @Query(value = "select id from users where deleted_at is not null", nativeQuery = true)
+    List<Long> findIdsByDeletedAtIsNotNull();
+
+    /**
      * 柱①「ADMINゼロ根治」§12.5 — purge開始マークを冪等に記録する（{@code purge_started_at} が
      * まだ NULL のときだけ現在時刻を書く）。{@code @Modifying} native UPDATE のため
      * {@link org.springframework.data.jpa.repository.Query} 経由で直接発行し、

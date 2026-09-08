@@ -6,6 +6,7 @@ import com.mannschaft.app.billing.BillingPayerHandoverTxService.AcceptTransition
 import com.mannschaft.app.billing.BillingPayerHandoverTxService.CheckoutCompletion;
 import com.mannschaft.app.billing.BillingPayerHandoverTxService.ReconcileTarget;
 import com.mannschaft.app.billing.BillingPayerHandoverTxService.SwitchContext;
+import com.mannschaft.app.auth.service.WithdrawalStateQueryService;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -67,6 +68,8 @@ public class BillingPayerHandoverService {
     private final BillingPaymentGateway billingPaymentGateway;
     private final BillingPayerHandoverTxService handoverTxService;
     private final BillingPayerHandoverCandidateResolver candidateResolver;
+    /** 退会申請の現在状態（auth ドメインへは Service 経由でのみ触れる・検分2巡目 P1-1）。 */
+    private final WithdrawalStateQueryService withdrawalStateQueryService;
     private final Clock clock;
 
     @Value("${app.base-url}")
@@ -269,6 +272,16 @@ public class BillingPayerHandoverService {
     public HandoverRequestResult requestHandoverForWithdrawal(UUID oldContractId, Long withdrawingPayerUserId) {
         if (withdrawingPayerUserId == null) {
             throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND);
+        }
+
+        // 「いま本当に退会申請中か」を処理時点の DB 真値で確かめる（Codex 検分2巡目 P1-1）。
+        // 退会と退会取消はどちらも共用 event-pool 上の非同期処理で到達順が保証されない。退会受付の
+        // 直後に取り消すと、取消処理が先に走って対象ゼロで終わり、そのあとに届いた古い退会イベントが
+        // REQUESTED の引継要求を作ってしまう。この防御は本メソッドが唯一の入口であるためここに置く。
+        if (withdrawalStateQueryService.findPendingWithdrawalAttempt(withdrawingPayerUserId).isEmpty()) {
+            log.info("柱③-B: 処理時点で退会申請中ではないため引継要求を作成しません userId={}, contractId={}",
+                    withdrawingPayerUserId, oldContractId);
+            throw new BusinessException(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);
         }
         // 行ロックを取ってから読む。承諾（acceptHandover）や別経路の更新と競合しても、
         // payer の判定と要求作成が同じスナップショットの上で行われることを保証する。

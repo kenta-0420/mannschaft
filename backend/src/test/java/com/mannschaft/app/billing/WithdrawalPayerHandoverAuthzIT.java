@@ -3,6 +3,7 @@ package com.mannschaft.app.billing;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.billing.BillingPayerHandoverService.HandoverRequestResult;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
@@ -24,6 +25,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 /**
  * 柱③-B（CMP-260901-1538・PR-3）: <b>退会済み payer</b> からの引継要求作成を実 MySQL で検証する
@@ -117,13 +119,54 @@ class WithdrawalPayerHandoverAuthzIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    @DisplayName("是正前の欠陥: 対話API経路は退会済み payer では認可に落ち、引継要求が1件も作られない")
+    @DisplayName("是正前の欠陥: 対話API経路は退会済み payer では【認可で】落ち、引継要求が1件も作られない")
     void 欠陥再現_対話API経路は退会済みpayerでは失敗する() {
-        assertThatThrownBy(() -> handoverService.requestHandover(
-                EntitlementScopeKind.TEAM, TEAM_ID, contractId, withdrawnPayerUserId))
-                .isInstanceOf(BusinessException.class);
+        // 例外型だけでは「別の業務エラーでたまたま赤い」を排除できない。赤くなった理由が
+        // 狙った機構（requireCanManage の認可 SQL が deleted_at IS NULL を要求すること）である
+        // ことを、エラーコードまで見て確定させる（Codex 検分2巡目 P2）。
+        BusinessException thrown = catchThrowableOfType(
+                () -> handoverService.requestHandover(
+                        EntitlementScopeKind.TEAM, TEAM_ID, contractId, withdrawnPayerUserId),
+                BusinessException.class);
 
-        // 「別の理由で落ちた」のではないことを、行が作られていない事実で押さえる。
+        assertThat(thrown).isNotNull();
+        // requireCanManage は allowed=false のとき CommonErrorCode.COMMON_002 を投げる。
+        // 退会済みユーザーは billing_access の認可 SQL（users.deleted_at IS NULL AND status='ACTIVE'）に
+        // 合致しないため、必ずこの経路で落ちる。
+        assertThat(thrown.getErrorCode()).isEqualTo(CommonErrorCode.COMMON_002);
+        assertThat(openRequests()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("対照: 同じ契約・同じ操作者でも、退会していなければ対話API経路は成功する（赤の原因の切り分け）")
+    void 対照_退会していなければ対話API経路は成功する() {
+        // 直前のテストの赤が「退会（deleted_at）」に起因することを、唯一の差分を戻して確かめる。
+        transactionTemplate.executeWithoutResult(tx -> {
+            entityManager.createNativeQuery("UPDATE users SET deleted_at = NULL WHERE id = :id")
+                    .setParameter("id", withdrawnPayerUserId).executeUpdate();
+        });
+
+        assertThatCode(() -> handoverService.requestHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, contractId, withdrawnPayerUserId))
+                .doesNotThrowAnyException();
+        assertThat(openRequests()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("退会取消済みなら退会経路でも引継要求を作らない（イベント逆順・検分2巡目 P1-1）")
+    void 逆順_退会取消後に届いた退会イベントは引継要求を作らない() {
+        // 退会取消が先に確定した状態（deleted_at が NULL）。ここへ古い退会イベントが届く。
+        transactionTemplate.executeWithoutResult(tx -> {
+            entityManager.createNativeQuery("UPDATE users SET deleted_at = NULL WHERE id = :id")
+                    .setParameter("id", withdrawnPayerUserId).executeUpdate();
+        });
+
+        BusinessException thrown = catchThrowableOfType(
+                () -> handoverService.requestHandoverForWithdrawal(contractId, withdrawnPayerUserId),
+                BusinessException.class);
+
+        assertThat(thrown).isNotNull();
+        assertThat(thrown.getErrorCode()).isEqualTo(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);
         assertThat(openRequests()).isEmpty();
     }
 

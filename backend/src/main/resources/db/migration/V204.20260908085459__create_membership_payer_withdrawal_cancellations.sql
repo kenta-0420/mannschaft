@@ -24,8 +24,9 @@ CREATE TABLE membership_payer_withdrawal_cancellations (
     id BINARY(16) NOT NULL COMMENT 'UUIDv7',
     subscription_id BINARY(16) NOT NULL COMMENT 'membership_subscriptions.id への論理参照',
     payer_user_id BIGINT UNSIGNED NOT NULL COMMENT '退会申請した払い手（users.id への論理参照）',
+    withdrawal_attempt_at DATETIME(6) NOT NULL COMMENT '退会試行の世代。処理時点の users.deleted_at。どの退会申請に属する作業行かを一意に指す',
     stripe_subscription_id VARCHAR(255) NULL COMMENT '予約時点の Stripe Subscription ID（未連結なら NULL）',
-    status VARCHAR(16) NOT NULL COMMENT 'PENDING（予約着手済・未確定）/SUCCEEDED（Stripe・DB 双方確定）/FAILED（要再試行）',
+    status VARCHAR(16) NOT NULL COMMENT 'PENDING/SUCCEEDED/FAILED/RESTORING/RESTORED/SUPERSEDED（6値）。非終端は PENDING・FAILED・RESTORING',
     attempt_count INT NOT NULL DEFAULT 0 COMMENT '試行回数。PR-4 の再試行バッチが上限判定に使う',
     last_error VARCHAR(1000) NULL COMMENT '直近の失敗理由（再試行の切り分け用・PII は含めない）',
     scheduled_at DATETIME(6) NULL COMMENT 'Stripe と DB の双方で期末解約予約が確定した瞬間（SUCCEEDED と同時に埋まる）',
@@ -38,7 +39,8 @@ CREATE TABLE membership_payer_withdrawal_cancellations (
     KEY idx_mpwc_payer_status (payer_user_id, status, restored_at)
         COMMENT '退会取消時の復旧対象（payer 一致・SUCCEEDED・restored_at IS NULL）を引く',
     KEY idx_mpwc_retry (status, updated_at)
-        COMMENT 'PR-4 の再試行バッチが PENDING/FAILED を古い順に拾う',
-    CONSTRAINT chk_mpwc_status CHECK (status IN ('PENDING', 'SUCCEEDED', 'FAILED'))
+        COMMENT 'PR-4 の再試行バッチが PENDING/FAILED/RESTORING を古い順に拾う',
+    CONSTRAINT chk_mpwc_status CHECK (status IN (
+        'PENDING', 'SUCCEEDED', 'FAILED', 'RESTORING', 'RESTORED', 'SUPERSEDED'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='払い手の退会に伴う継続課金の期末解約の処理状態。再試行の拾い直しと退会取消時の復旧対象判定の正本';

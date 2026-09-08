@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -44,6 +45,22 @@ public class MembershipPayerWithdrawalRunner {
         SKIPPED,
         /** 失敗した（処理状態は FAILED/PENDING で残るため再試行できる）。 */
         FAILED
+    }
+
+    /**
+     * Stripe に触れる前に、対象<b>全件</b>の作業行を1トランザクションで {@code PENDING} として確定させる
+     * （検分2巡目 P1-2）。あわせて「処理時点で本当に退会申請中か」を判定する。
+     *
+     * @return 実際に予約対象として確定した継続課金 ID（退会申請中でなければ空）
+     */
+    public List<UUID> reserveAll(List<UUID> subscriptionIds, Long payerUserId) {
+        try {
+            return txService.reserveAll(subscriptionIds, payerUserId);
+        } catch (Exception e) {
+            // ここで落ちると作業行が1件も残らない。握りつぶさず、上位が「0件」として扱えるようにする。
+            log.error("払い手退会に伴う期末解約: 作業行の先行永続化に失敗しました payerUserId={}", payerUserId, e);
+            return List.of();
+        }
     }
 
     /**
@@ -115,15 +132,18 @@ public class MembershipPayerWithdrawalRunner {
             return false;
         }
 
+        // ここに到達した時点で処理状態は RESTORING として commit 済みである（prepareRestore）。
+        // これにより「Stripe 解除成功・DB 反映前に停止」でも行が非終端で残り、PR-4 の照合が拾える。
         String stripeSubscriptionId = prepared.get().stripeSubscriptionId();
         if (stripeSubscriptionId != null) {
             try {
                 stripePaymentProvider.revertSubscriptionCancelAtPeriodEnd(
                         stripeSubscriptionId, "withdrawal-payer-restore-" + subscriptionId);
             } catch (Exception e) {
-                // Stripe が期末解約のままなら DB だけ戻すと乖離する。DB は触らず失敗として残す。
+                // Stripe が期末解約のままなら DB だけ戻すと乖離する。DB は触らず RESTORING で残す。
                 log.error("払い手退会取消: Stripe の期末解約解除に失敗しました subscriptionId={}, stripeSub={}",
                         subscriptionId, stripeSubscriptionId, e);
+                markRestoreFailedQuietly(subscriptionId, e);
                 return false;
             }
         }
@@ -131,17 +151,49 @@ public class MembershipPayerWithdrawalRunner {
         try {
             return txService.applyRestore(subscriptionId, payerUserId);
         } catch (Exception e) {
-            log.error("払い手退会取消: DB 反映に失敗しました subscriptionId={}", subscriptionId, e);
+            // Stripe は解除済み・DB は cancel_at_period_end=true のまま。この非対称こそ
+            // RESTORING を Stripe 呼び出しの前に刻んだ理由である（検分2巡目 P1-3）。
+            log.error("払い手退会取消: Stripe 解除後の DB 反映に失敗しました subscriptionId={}", subscriptionId, e);
+            markRestoreFailedQuietly(subscriptionId, e);
             return false;
+        }
+    }
+
+    /**
+     * 本人（または後見保護者）が明示的に期末解約を決めたときに、「退会処理由来」という由来の記録を
+     * 無効化する（検分2巡目 P1-1）。
+     *
+     * <p>解約 API そのものを道連れにしないため例外は外へ出さない。無効化に失敗しても解約自体は成立し、
+     * 最悪でも「遅れて届いた退会取消が1件を戻す」に留まる（利用者は再度解約できる）。ただし黙らせず
+     * ERROR で残す。</p>
+     */
+    public void supersedeByUserDecision(UUID subscriptionId) {
+        try {
+            txService.supersedeByUserDecision(subscriptionId);
+        } catch (Exception e) {
+            log.error("払い手退会由来の期末解約記録の無効化に失敗しました subscriptionId={}", subscriptionId, e);
         }
     }
 
     /** 失敗の記録自体が失敗しても、元の失敗ログを消さないよう分けて捕捉する。 */
     private void markFailedQuietly(UUID subscriptionId, Exception cause) {
         try {
-            txService.markFailed(subscriptionId, cause.getClass().getSimpleName() + ": " + cause.getMessage());
+            txService.markFailed(subscriptionId, describe(cause));
         } catch (Exception e) {
             log.error("払い手退会に伴う期末解約: 失敗状態の記録にも失敗しました subscriptionId={}", subscriptionId, e);
         }
+    }
+
+    /** 復旧失敗は {@code RESTORING} のまま理由だけを刻む（{@code FAILED} は解約未了を意味し逆向きになる）。 */
+    private void markRestoreFailedQuietly(UUID subscriptionId, Exception cause) {
+        try {
+            txService.markRestoreFailed(subscriptionId, describe(cause));
+        } catch (Exception e) {
+            log.error("払い手退会取消: 失敗状態の記録にも失敗しました subscriptionId={}", subscriptionId, e);
+        }
+    }
+
+    private static String describe(Exception cause) {
+        return cause.getClass().getSimpleName() + ": " + cause.getMessage();
     }
 }

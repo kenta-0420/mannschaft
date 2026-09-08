@@ -11,10 +11,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -148,7 +150,7 @@ class MembershipSubscriptionPayerWithdrawalTest {
         }
 
         @Test
-        @DisplayName("Stripe 失敗: DB を戻さない（Stripe が期末解約のまま乖離するのを防ぐ）")
+        @DisplayName("Stripe 失敗: DB を戻さず、復旧失敗を RESTORING のまま永続化する")
         void Stripe失敗_DBを戻さない() {
             when(txService.prepareRestore(SUB_ID, PAYER_ID))
                     .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
@@ -157,6 +159,65 @@ class MembershipSubscriptionPayerWithdrawalTest {
 
             assertThat(runner.restoreOne(SUB_ID, PAYER_ID)).isFalse();
             verify(txService, never()).applyRestore(any(), any());
+            verify(txService).markRestoreFailed(eq(SUB_ID), anyString());
+        }
+
+        @Test
+        @DisplayName("Stripe 成功後の DB 失敗: FAILED ではなく RESTORING のまま残す（解約未了と混同しない）")
+        void DB失敗_RESTORINGのまま残す() {
+            when(txService.prepareRestore(SUB_ID, PAYER_ID))
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB)));
+            when(txService.applyRestore(SUB_ID, PAYER_ID))
+                    .thenThrow(new IllegalStateException("DB 障害"));
+
+            assertThat(runner.restoreOne(SUB_ID, PAYER_ID)).isFalse();
+            // FAILED は「解約が未了」を意味し、再試行バッチの扱いが逆向きになる。
+            verify(txService, never()).markFailed(any(), anyString());
+            verify(txService).markRestoreFailed(eq(SUB_ID), anyString());
+        }
+    }
+
+    @Nested
+    @DisplayName("作業行の先行永続化（reserveAll・検分2巡目 P1-2）")
+    class ReserveAll {
+
+        @Test
+        @DisplayName("正常系: トランザクション単位へそのまま委譲する")
+        void 正常_委譲する() {
+            when(txService.reserveAll(List.of(SUB_ID), PAYER_ID)).thenReturn(List.of(SUB_ID));
+
+            assertThat(runner.reserveAll(List.of(SUB_ID), PAYER_ID)).containsExactly(SUB_ID);
+        }
+
+        @Test
+        @DisplayName("異常系: 先行永続化に失敗しても例外を投げず空を返す（呼び出し元は0件として扱う）")
+        void 異常_例外を伝播しない() {
+            when(txService.reserveAll(List.of(SUB_ID), PAYER_ID))
+                    .thenThrow(new IllegalStateException("DB 障害"));
+
+            assertThat(runner.reserveAll(List.of(SUB_ID), PAYER_ID)).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("本人の明示操作による由来の無効化（supersede・検分2巡目 P1-1）")
+    class Supersede {
+
+        @Test
+        @DisplayName("正常系: トランザクション単位へ委譲する")
+        void 正常_委譲する() {
+            runner.supersedeByUserDecision(SUB_ID);
+
+            verify(txService).supersedeByUserDecision(SUB_ID);
+        }
+
+        @Test
+        @DisplayName("異常系: 無効化に失敗しても解約 API を道連れにしない")
+        void 異常_例外を伝播しない() {
+            org.mockito.Mockito.doThrow(new IllegalStateException("DB 障害"))
+                    .when(txService).supersedeByUserDecision(SUB_ID);
+
+            assertThatCode(() -> runner.supersedeByUserDecision(SUB_ID)).doesNotThrowAnyException();
         }
     }
 }

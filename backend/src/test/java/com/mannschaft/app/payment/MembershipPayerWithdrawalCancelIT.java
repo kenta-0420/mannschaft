@@ -38,7 +38,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * 柱③-B（CMP-260901-1538・PR-3）: 払い手退会に伴う継続課金の一括期末解約を<b>実 MySQL・実 Spring
- * プロキシ</b>で検証する統合テスト（AC-13 の受け入れ／Codex 検分1巡目 P1-1・P1-2・P1-3 の是正）。
+ * プロキシ</b>で検証する統合テスト（AC-13 の受け入れ／Codex 検分1巡目 P1-1〜3・2巡目 P1-1〜3 の是正）。
  *
  * <h2>なぜ UT では足りないのか</h2>
  * <p>Mockito 単体テストは Spring AOP・{@code REQUIRES_NEW}・flush/commit・実 Repository 検索・
@@ -49,10 +49,13 @@ import static org.mockito.Mockito.when;
  * <ul>
  *   <li>AC-13: {@code payer_user_id} 一致かつ {@code ACTIVE}/{@code PAST_DUE} のみを期末解約する</li>
  *   <li>複数 payer の隔離: 他人が払い手の継続課金には一切触れない</li>
- *   <li>P1-2: 1件の Stripe 失敗が、<b>既に commit 済みの他契約を巻き戻さない</b></li>
- *   <li>P1-1: 失敗はログではなく DB の処理状態として残り、再試行対象として拾える</li>
+ *   <li>検分1巡目 P1-2: <b>先行契約の commit 後に後続契約の DB flush が失敗しても、先行が巻き戻らない</b></li>
+ *   <li>検分1巡目 P1-1: 失敗はログではなく DB の処理状態として残り、再試行対象として拾える</li>
  *   <li>同時 webhook: 確定直前に {@code CANCELLED} が入っていたら ACTIVE へ<b>戻さない</b></li>
- *   <li>P1-3: 退会取消で退会処理由来の予約だけを解除し、<b>本人が明示解約した契約は復活させない</b></li>
+ *   <li>検分2巡目 P1-1: 退会取消が先に確定していれば、遅れて届いた退会イベントは何も作らない（逆順実行）</li>
+ *   <li>検分2巡目 P1-1: 退会取消の<b>後</b>に本人が明示解約した契約は、遅れて届いた復旧処理が解除しない</li>
+ *   <li>検分2巡目 P1-2: 作業行は Stripe に触れる前に<b>全件</b>確定し、退会状態からも再構築できる</li>
+ *   <li>検分2巡目 P1-3: 復旧の途中停止は {@code RESTORING} として残り、非終端＝再試行対象になる</li>
  * </ul>
  *
  * <p>クラスに {@code @Transactional} を付けない。付けるとテスト側の tx が全体を包み、
@@ -68,6 +71,11 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
     private static final long PAYMENT_ITEM_ID = 900_312L;
     /** Stripe が返す期末（2027-01-31T00:00:00Z 相当の unix 秒）。 */
     private static final long PERIOD_END_EPOCH = 1_801_440_000L;
+    /**
+     * MySQL の DATE 上限（9999-12-31）を超える期末。tx③ の flush を<b>実 DB で</b>失敗させるために使う
+     * （検分2巡目 P2: モックではなく本物の flush/commit 失敗を再現する）。
+     */
+    private static final long OUT_OF_RANGE_PERIOD_END_EPOCH = 253_402_300_800L;
 
     @Autowired private MembershipSubscriptionService membershipSubscriptionService;
     @Autowired private MembershipPayerWithdrawalTxService payerWithdrawalTxService;
@@ -99,6 +107,10 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
             entityManager.flush();
             entityManager.clear();
         });
+        // 退会処理は「退会申請中である」ことを処理時点の DB 真値で確かめる（検分2巡目 P1-1）。
+        // 本番では UserService#requestWithdrawal が先に commit する状態を、ここで作る。
+        markWithdrawing(payerUserId);
+        markWithdrawing(otherPayerUserId);
     }
 
     @AfterEach
@@ -116,6 +128,10 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
                     .setParameter("c", beneficiaryUserId).executeUpdate();
         });
     }
+
+    // ════════════════════════════════════════════════════════════════
+    // AC-13: 対象の選別と反映
+    // ════════════════════════════════════════════════════════════════
 
     @Test
     @DisplayName("AC-13: payer 一致の ACTIVE/PAST_DUE だけを期末解約し、処理状態を SUCCEEDED で残す")
@@ -141,12 +157,13 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
                 .isEqualTo(LocalDate.ofInstant(Instant.ofEpochSecond(PERIOD_END_EPOCH),
                         com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE));
 
-        // 処理状態が SUCCEEDED で永続化されている（P1-1: 再試行の拾い直しの土台）。
         assertThat(record(active)).isPresent()
                 .get().satisfies(r -> {
                     assertThat(r.getStatus()).isEqualTo(MembershipPayerWithdrawalCancellationStatus.SUCCEEDED);
                     assertThat(r.getScheduledAt()).isNotNull();
                     assertThat(r.getRestoredAt()).isNull();
+                    // 世代（どの退会試行の作業行か）が刻まれている（検分2巡目 P1-1）。
+                    assertThat(r.getWithdrawalAttemptAt()).isNotNull();
                 });
         assertThat(record(pending)).isEmpty();
     }
@@ -164,56 +181,160 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
         assertThat(record(theirs)).isEmpty();
     }
 
+    // ════════════════════════════════════════════════════════════════
+    // 検分1巡目 P1-2: 巻き添えロールバックの排除
+    // ════════════════════════════════════════════════════════════════
+
     @Test
-    @DisplayName("P1-2: 1件の Stripe 失敗が、既に commit 済みの他契約を巻き戻さない")
-    void 失敗隔離_1件の失敗で成功済みの契約が巻き戻らない() {
-        UUID ok = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_ok");
+    @DisplayName("P1-2 核心: 先行契約の commit 後に後続契約の DB flush が失敗しても、先行は巻き戻らない")
+    void 失敗隔離_後続契約のDB失敗で先行契約が巻き戻らない() {
+        // 対象の処理順は findIdsByPayerUserIdAndStatusIn（created_at DESC）に従う。
+        // 「先行契約が commit 済みになった後に後続が失敗する」順序を作るため、ng を先に挿入して
+        // ok を後に挿入する（DESC なので ok が先に処理される）。
         UUID ng = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_ng");
+        UUID ok = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_ok");
+        // Stripe は成功させ、tx③ の DB 反映だけを【実 DB の制約で】失敗させる。
+        // MySQL の DATE 上限を超える期末を返させると saveAndFlush が本当に落ちる（モック例外ではない）。
         when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq("sub_it_ng"), anyString()))
-                .thenThrow(new IllegalStateException("Stripe 障害"));
+                .thenReturn(new StripePaymentProvider.SubscriptionInfo(
+                        "sub_it_ng", "active", OUT_OF_RANGE_PERIOD_END_EPOCH));
 
         List<UUID> scheduled = membershipSubscriptionService.cancelAllForPayerOnWithdrawal(payerUserId);
 
+        // 是正前は全件が単一 REQUIRES_NEW だったため、ng の flush 失敗で ok まで巻き戻っていた。
         assertThat(scheduled).containsExactly(ok);
-        // 是正前は、全件が単一 REQUIRES_NEW だったため成功済みの ok まで巻き戻っていた。
         assertThat(reload(ok).getCancelAtPeriodEnd()).isTrue();
         assertThat(reload(ng).getCancelAtPeriodEnd()).isFalse();
 
-        // P1-1: 失敗はログではなく DB に残り、再試行対象として拾える。
-        assertThat(record(ng)).isPresent()
-                .get().satisfies(r -> {
-                    assertThat(r.getStatus()).isEqualTo(MembershipPayerWithdrawalCancellationStatus.FAILED);
-                    assertThat(r.getLastError()).isNotBlank();
-                    assertThat(r.getAttemptCount()).isEqualTo(1);
-                });
-        assertThat(cancellationRepository.findByStatusInAndRestoredAtIsNullOrderByUpdatedAtAsc(
-                List.of(MembershipPayerWithdrawalCancellationStatus.PENDING,
-                        MembershipPayerWithdrawalCancellationStatus.FAILED)))
-                .extracting(MembershipPayerWithdrawalCancellationEntity::getSubscriptionId)
-                .contains(ng);
+        assertThat(record(ok)).isPresent().get().satisfies(r ->
+                assertThat(r.getStatus()).isEqualTo(MembershipPayerWithdrawalCancellationStatus.SUCCEEDED));
+        assertThat(record(ng)).isPresent().get().satisfies(r -> {
+            assertThat(r.getStatus()).isEqualTo(MembershipPayerWithdrawalCancellationStatus.FAILED);
+            assertThat(r.getLastError()).isNotBlank();
+        });
     }
 
     @Test
-    @DisplayName("同時 webhook: 確定直前に CANCELLED が入っていたら ACTIVE へ戻さない")
-    void 競合_webhookのCANCELLEDを上書きしない() {
-        UUID target = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_race");
+    @DisplayName("P1-1: Stripe 失敗は FAILED として DB に残り、再試行対象（非終端）として拾える")
+    void 失敗永続化_Stripe失敗が再試行対象になる() {
+        // 同上（created_at DESC で ok が先に処理されるよう ng を先に挿入する）。
+        UUID ng = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_s_ng");
+        UUID ok = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_s_ok");
+        when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq("sub_it_s_ng"), anyString()))
+                .thenThrow(new IllegalStateException("Stripe 障害"));
 
-        // tx①（予約着手）まで進めた状態を作る。
-        assertThat(payerWithdrawalTxService.prepare(target, payerUserId)).isPresent();
+        assertThat(membershipSubscriptionService.cancelAllForPayerOnWithdrawal(payerUserId))
+                .containsExactly(ok);
 
-        // ここで customer.subscription.deleted webhook が先に確定したと仮定する。
-        transactionTemplate.executeWithoutResult(tx -> {
-            entityManager.createNativeQuery(
-                            "UPDATE membership_subscriptions SET status = 'CANCELLED' WHERE id = UNHEX(:id)")
-                    .setParameter("id", hex(target)).executeUpdate();
+        assertThat(record(ng)).isPresent().get().satisfies(r -> {
+            assertThat(r.getStatus()).isEqualTo(MembershipPayerWithdrawalCancellationStatus.FAILED);
+            assertThat(r.getAttemptCount()).isEqualTo(1);
         });
-
-        boolean applied = payerWithdrawalTxService.applyScheduled(target, payerUserId, PERIOD_END_EPOCH);
-
-        assertThat(applied).isFalse();
-        assertThat(reload(target).getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELLED);
-        assertThat(reload(target).getCancelAtPeriodEnd()).isFalse();
+        assertThat(nonTerminalRecords())
+                .extracting(MembershipPayerWithdrawalCancellationEntity::getSubscriptionId)
+                .contains(ng).doesNotContain(ok);
     }
+
+    // ════════════════════════════════════════════════════════════════
+    // 検分2巡目 P1-2: 作業行が「作られない」穴
+    // ════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("P1-2: 作業行は Stripe に触れる前に対象【全件】が確定している")
+    void 先行永続化_Stripe前に全件の作業行が残る() {
+        UUID a = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_r_a");
+        UUID b = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_r_b");
+
+        List<UUID> reserved = payerWithdrawalTxService.reserveAll(List.of(a, b), payerUserId);
+
+        assertThat(reserved).containsExactlyInAnyOrder(a, b);
+        // reserveAll は独立トランザクションで commit 済みでなければならない（ここで DB から読み直す）。
+        assertThat(record(a)).isPresent().get().satisfies(r ->
+                assertThat(r.getStatus()).isEqualTo(MembershipPayerWithdrawalCancellationStatus.PENDING));
+        assertThat(record(b)).isPresent().get().satisfies(r ->
+                assertThat(r.getStatus()).isEqualTo(MembershipPayerWithdrawalCancellationStatus.PENDING));
+        verify(stripePaymentProvider, never()).cancelSubscriptionAtPeriodEnd(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("P1-2: 作業行が1件も無くても、退会状態を起点に未処理の解約を再構築できる")
+    void 照合_作業行が無くても退会状態から拾い直せる() {
+        UUID target = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_backlog");
+        // 「非同期タスクが始まる前にプロセスが止まった」状態＝作業行が1件も無い。
+        assertThat(record(target)).isEmpty();
+
+        assertThat(membershipSubscriptionService.findWithdrawalCancelBacklog()).contains(target);
+
+        // 解約が済めば backlog から外れる。
+        membershipSubscriptionService.cancelAllForPayerOnWithdrawal(payerUserId);
+        assertThat(membershipSubscriptionService.findWithdrawalCancelBacklog()).doesNotContain(target);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // 検分2巡目 P1-1: イベントの逆順・本人の新しい意思
+    // ════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("P1-1 逆順: 退会取消が先に確定していれば、遅れて届いた退会イベントは何もしない")
+    void 逆順_退会取消後に届いた退会イベントは解約を作らない() {
+        UUID target = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_late");
+        markNotWithdrawing(payerUserId);
+
+        assertThat(membershipSubscriptionService.cancelAllForPayerOnWithdrawal(payerUserId)).isEmpty();
+
+        assertThat(reload(target).getCancelAtPeriodEnd()).isFalse();
+        assertThat(record(target)).isEmpty();
+        verify(stripePaymentProvider, never()).cancelSubscriptionAtPeriodEnd(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("P1-1 再退会: 再び退会申請中なら、遅れて届いた取消イベントは解約を解除しない")
+    void 逆順_再退会中は遅延した取消イベントで復旧しない() {
+        UUID target = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_regen");
+        membershipSubscriptionService.cancelAllForPayerOnWithdrawal(payerUserId);
+        assertThat(reload(target).getCancelAtPeriodEnd()).isTrue();
+
+        // 取消 → 再退会（deleted_at が再び入っている）。ここへ前回退会ぶんの取消イベントが遅れて届く。
+        markNotWithdrawing(payerUserId);
+        markWithdrawing(payerUserId);
+
+        assertThat(membershipSubscriptionService.restoreAllForPayerOnWithdrawalCancelled(payerUserId))
+                .isEmpty();
+        assertThat(reload(target).getCancelAtPeriodEnd()).isTrue();
+        verify(stripePaymentProvider, never())
+                .revertSubscriptionCancelAtPeriodEnd(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("P1-1: 退会取消の【後】に本人が明示解約した契約は、遅れて届いた復旧処理が解除しない")
+    void 本人意思_取消後の明示解約は復旧で解除されない() {
+        UUID target = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_selfagain");
+        membershipSubscriptionService.cancelAllForPayerOnWithdrawal(payerUserId);
+
+        // 退会取消。ただし復旧イベントはまだ届いていない。
+        markNotWithdrawing(payerUserId);
+        // その間に本人が「やはり自分で解約する」と決めた（＝新しい人間の判断）。
+        // 明示解約は一度予約を戻してから行う（実運用では復旧が先に走っている状況に相当）。
+        transactionTemplate.executeWithoutResult(tx ->
+                entityManager.createNativeQuery(
+                                "UPDATE membership_subscriptions SET cancel_at_period_end = false "
+                                        + "WHERE id = UNHEX(:id)")
+                        .setParameter("id", hex(target)).executeUpdate());
+        membershipSubscriptionService.cancel(target, payerUserId);
+        assertThat(reload(target).getCancelAtPeriodEnd()).isTrue();
+
+        // ここで遅れて退会取消の復旧処理が走る。本人の新しい意思を覆してはならない。
+        assertThat(membershipSubscriptionService.restoreAllForPayerOnWithdrawalCancelled(payerUserId))
+                .isEmpty();
+        assertThat(reload(target).getCancelAtPeriodEnd()).isTrue();
+        assertThat(record(target)).isPresent().get().satisfies(r ->
+                assertThat(r.getStatus())
+                        .isEqualTo(MembershipPayerWithdrawalCancellationStatus.SUPERSEDED));
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // 退会取消の正常系と、その途中停止（検分2巡目 P1-3）
+    // ════════════════════════════════════════════════════════════════
 
     @Test
     @DisplayName("P1-3: 退会取消は退会処理由来の予約だけを解除し、本人が明示解約した契約は復活させない")
@@ -230,19 +351,71 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
         membershipSubscriptionService.cancelAllForPayerOnWithdrawal(payerUserId);
         assertThat(reload(byWithdrawal).getCancelAtPeriodEnd()).isTrue();
 
+        markNotWithdrawing(payerUserId);
         List<UUID> restored = membershipSubscriptionService
                 .restoreAllForPayerOnWithdrawalCancelled(payerUserId);
 
         assertThat(restored).containsExactly(byWithdrawal);
         assertThat(reload(byWithdrawal).getCancelAtPeriodEnd()).isFalse();
-        // 本人の意思による解約は退会取消では戻さない（ここが boolean だけでは区別できなかった点）。
+        // 本人の意思による解約は退会取消では戻さない（boolean だけでは区別できなかった点）。
         assertThat(reload(bySelf).getCancelAtPeriodEnd()).isTrue();
-        assertThat(record(byWithdrawal)).isPresent()
-                .get().satisfies(r -> assertThat(r.getRestoredAt()).isNotNull());
+        assertThat(record(byWithdrawal)).isPresent().get().satisfies(r -> {
+            assertThat(r.getStatus()).isEqualTo(MembershipPayerWithdrawalCancellationStatus.RESTORED);
+            assertThat(r.getRestoredAt()).isNotNull();
+        });
 
-        // 二重復旧は起こらない（restored_at 済みは対象から外れる）。
+        // 二重復旧は起こらない（RESTORED は復旧対象から外れる）。
         assertThat(membershipSubscriptionService.restoreAllForPayerOnWithdrawalCancelled(payerUserId))
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("P1-3: 復旧の途中で止まっても RESTORING として残り、非終端＝再試行対象になる")
+    void 復旧途中停止_RESTORINGで残り再試行対象になる() {
+        UUID target = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_restoring");
+        membershipSubscriptionService.cancelAllForPayerOnWithdrawal(payerUserId);
+        markNotWithdrawing(payerUserId);
+
+        // tx①（復旧着手）まで進んだところでプロセスが止まった状態を作る。
+        assertThat(payerWithdrawalTxService.prepareRestore(target, payerUserId)).isPresent();
+
+        // 是正前はここが SUCCEEDED のままで、再試行対象（PENDING/FAILED）に入らず永久に取り残された。
+        assertThat(record(target)).isPresent().get().satisfies(r ->
+                assertThat(r.getStatus())
+                        .isEqualTo(MembershipPayerWithdrawalCancellationStatus.RESTORING));
+        assertThat(nonTerminalRecords())
+                .extracting(MembershipPayerWithdrawalCancellationEntity::getSubscriptionId)
+                .contains(target);
+
+        // 取消イベントの再処理で RESTORING の行を拾い直し、最後まで完了できる。
+        assertThat(membershipSubscriptionService.restoreAllForPayerOnWithdrawalCancelled(payerUserId))
+                .containsExactly(target);
+        assertThat(reload(target).getCancelAtPeriodEnd()).isFalse();
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // 競合・冪等
+    // ════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("同時 webhook: 確定直前に CANCELLED が入っていたら ACTIVE へ戻さない")
+    void 競合_webhookのCANCELLEDを上書きしない() {
+        UUID target = insertSubscription(payerUserId, MembershipSubscriptionStatus.ACTIVE, "sub_it_race");
+
+        // tx①（予約着手）まで進めた状態を作る。
+        assertThat(payerWithdrawalTxService.prepare(target, payerUserId)).isPresent();
+
+        // ここで customer.subscription.deleted webhook が先に確定したと仮定する。
+        transactionTemplate.executeWithoutResult(tx ->
+                entityManager.createNativeQuery(
+                                "UPDATE membership_subscriptions SET status = 'CANCELLED' WHERE id = UNHEX(:id)")
+                        .setParameter("id", hex(target)).executeUpdate());
+
+        boolean applied = payerWithdrawalTxService.applyScheduled(target, payerUserId, PERIOD_END_EPOCH);
+
+        assertThat(applied).isFalse();
+        assertThat(reload(target).getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELLED);
+        assertThat(reload(target).getCancelAtPeriodEnd()).isFalse();
     }
 
     @Test
@@ -257,11 +430,37 @@ class MembershipPayerWithdrawalCancelIT extends AbstractMySqlIntegrationTest {
         verify(stripePaymentProvider, Mockito.times(1))
                 .cancelSubscriptionAtPeriodEnd(eq("sub_it_idem"), anyString());
         assertThat(reload(target).getCancelAtPeriodEnd()).isTrue();
+        // 再送で SUCCEEDED を PENDING へ差し戻していないこと（同一世代の確定済みは触らない）。
+        assertThat(record(target)).isPresent().get().satisfies(r ->
+                assertThat(r.getStatus())
+                        .isEqualTo(MembershipPayerWithdrawalCancellationStatus.SUCCEEDED));
     }
 
-    // ============================================================
+    // ════════════════════════════════════════════════════════════════
     // フィクスチャ / DB 実値の読み出し
-    // ============================================================
+    // ════════════════════════════════════════════════════════════════
+
+    /** {@code UserService#requestWithdrawal} 相当（{@code deleted_at} を立てて commit）。 */
+    private void markWithdrawing(Long userId) {
+        transactionTemplate.executeWithoutResult(tx ->
+                entityManager.createNativeQuery("UPDATE users SET deleted_at = NOW(6) WHERE id = :id")
+                        .setParameter("id", userId).executeUpdate());
+    }
+
+    /** {@code UserService#cancelWithdrawal} 相当（{@code deleted_at} を NULL に戻して commit）。 */
+    private void markNotWithdrawing(Long userId) {
+        transactionTemplate.executeWithoutResult(tx ->
+                entityManager.createNativeQuery("UPDATE users SET deleted_at = NULL WHERE id = :id")
+                        .setParameter("id", userId).executeUpdate());
+    }
+
+    private List<MembershipPayerWithdrawalCancellationEntity> nonTerminalRecords() {
+        return transactionTemplate.execute(tx -> {
+            entityManager.clear();
+            return cancellationRepository.findByStatusInOrderByUpdatedAtAsc(
+                    MembershipPayerWithdrawalCancellationStatus.NON_TERMINAL);
+        });
+    }
 
     private UUID insertSubscription(Long payer, MembershipSubscriptionStatus status, String stripeSubId) {
         return transactionTemplate.execute(tx -> {

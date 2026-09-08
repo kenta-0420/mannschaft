@@ -38,19 +38,25 @@ public interface MembershipPayerWithdrawalCancellationRepository
     /**
      * 退会取消時の復旧対象（{@code idx_mpwc_payer_status} で引く）。
      *
-     * <p>「退会処理由来で予約が成立し、まだ復旧していない」行だけを返す。
-     * 本人が退会前に明示解約した契約はそもそもこの表に行を持たないため、復活対象にならない
-     * （Codex 検分1巡目 P1-3 の核心）。</p>
+     * <p>「退会処理由来で予約が成立し、まだ復旧を終えていない」行だけを返す。本人が退会前に明示解約した
+     * 契約はそもそもこの表に行を持たず、退会取消の<b>後</b>に本人が明示操作した契約は
+     * {@code SUPERSEDED} へ終端化されているため、いずれも復活対象にならない
+     * （Codex 検分1巡目 P1-3・2巡目 P1-1）。</p>
+     *
+     * <p>{@code RESTORING} を含めるのは、Stripe 解除後に停止した行を取消イベントの再処理でも
+     * 拾い直せるようにするためである。</p>
      */
-    List<MembershipPayerWithdrawalCancellationEntity> findByPayerUserIdAndStatusAndRestoredAtIsNull(
-            Long payerUserId, MembershipPayerWithdrawalCancellationStatus status);
+    List<MembershipPayerWithdrawalCancellationEntity> findByPayerUserIdAndStatusIn(
+            Long payerUserId, List<MembershipPayerWithdrawalCancellationStatus> statuses);
 
     /**
-     * 再試行対象（PR-4 の夜次バッチが使う・{@code idx_mpwc_retry} で引く）。
+     * 再試行・照合対象（PR-4 の夜次バッチが使う・{@code idx_mpwc_retry} で引く）。
      *
      * <p>本 PR では駆動そのものは実装しない（リリース依存として PR-4 に委ねる）。ただし
-     * <b>状態と検索経路は本 PR で用意する</b>——状態が無ければ PR-4 でも拾いようがないため。</p>
+     * <b>状態と検索経路は本 PR で用意する</b>——状態が無ければ PR-4 でも拾いようがないため。
+     * 非終端は {@code PENDING}（解約未確定）・{@code FAILED}（解約失敗）・{@code RESTORING}
+     * （解除未確定）の3つ。</p>
      */
-    List<MembershipPayerWithdrawalCancellationEntity> findByStatusInAndRestoredAtIsNullOrderByUpdatedAtAsc(
+    List<MembershipPayerWithdrawalCancellationEntity> findByStatusInOrderByUpdatedAtAsc(
             List<MembershipPayerWithdrawalCancellationStatus> statuses);
 }
