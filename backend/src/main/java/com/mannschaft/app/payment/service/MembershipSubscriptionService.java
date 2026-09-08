@@ -546,9 +546,25 @@ public class MembershipSubscriptionService {
             return List.of();
         }
         // ロックは取らず ID だけを抽出する（ロックは契約ごとの独立 tx の中で取り直す）。
-        List<UUID> targetIds = membershipSubscriptionRepository.findIdsByPayerUserIdAndStatusIn(
-                payerUserId,
+        //
+        // 対象は次の【和集合】である（Codex 検分5巡目 P1-2 の是正）:
+        //   (a) まだ期末解約が予約されていない継続課金
+        //   (b) 自分たちの作業行が非終端（PENDING/FAILED/RESTORING）で残っている継続課金
+        //
+        // (a) だけに絞る理由: 既に cancel_at_period_end=true の契約を無条件に対象へ入れると、
+        // 【本人が自分の意思で解約した契約】にまで作業行（PENDING）を作ってしまい、その後の
+        // 退会取消でそれを「退会処理由来」と誤認して解除してしまう。
+        // (b) を足す理由: 「Stripe 側は解除済みなのに DB だけ true」という乖離が残った契約は
+        // (a) から漏れるため、非終端の作業行を手がかりに拾い直して Stripe と揃え直す必要がある。
+        List<UUID> unscheduled = membershipSubscriptionRepository.findUnscheduledIdsByPayerUserIdIn(
+                List.of(payerUserId),
                 List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE));
+        java.util.LinkedHashSet<UUID> targetSet = new java.util.LinkedHashSet<>(unscheduled);
+        payerWithdrawalCancellationRepository
+                .findByPayerUserIdAndStatusIn(payerUserId,
+                        MembershipPayerWithdrawalCancellationStatus.NON_TERMINAL)
+                .forEach(record -> targetSet.add(record.getSubscriptionId()));
+        List<UUID> targetIds = List.copyOf(targetSet);
         if (targetIds.isEmpty()) {
             log.info("払い手退会に伴う継続課金の期末解約: 対象なし payerUserId={}", payerUserId);
             return List.of();

@@ -59,7 +59,7 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("正常系: 予約着手 → Stripe → DB 反映の順に進み SCHEDULED を返す")
         void 正常_三段の順に進む() {
             when(txService.prepare(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN, 1)));
             when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), anyString()))
                     .thenReturn(new StripePaymentProvider.SubscriptionInfo(STRIPE_SUB, "active", 1_800_000_000L));
             when(txService.applyScheduled(SUB_ID, PAYER_ID, GEN, 1_800_000_000L))
@@ -82,7 +82,7 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("Stripe 未連結: Stripe を叩かずに DB のみ反映する")
         void Stripe未連結_DBのみ反映する() {
             when(txService.prepare(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, null, GEN)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, null, GEN, 1)));
             when(txService.applyScheduled(SUB_ID, PAYER_ID, GEN, null))
                     .thenReturn(MembershipPayerWithdrawalTxService.ApplyOutcome.APPLIED);
 
@@ -94,7 +94,7 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("Stripe 失敗: DB 反映へ進まず、失敗を永続化して FAILED を返す")
         void Stripe失敗_失敗を永続化する() {
             when(txService.prepare(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN, 1)));
             when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), anyString()))
                     .thenThrow(new IllegalStateException("Stripe 障害"));
 
@@ -108,7 +108,7 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("Stripe 成功後の DB 失敗: 失敗を永続化して FAILED を返す（Stripe との乖離を残さない）")
         void DB失敗_失敗を永続化する() {
             when(txService.prepare(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN, 1)));
             when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), anyString()))
                     .thenReturn(new StripePaymentProvider.SubscriptionInfo(STRIPE_SUB, "active", null));
             when(txService.applyScheduled(SUB_ID, PAYER_ID, GEN, null))
@@ -130,7 +130,7 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("世代変化: Stripe 呼び出し中に退会が取り消されたら、そのまま予約の取り消しへ切り替える")
         void 世代変化_取り消しへ切り替える() {
             when(txService.prepare(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN, 1)));
             when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), anyString()))
                     .thenReturn(new StripePaymentProvider.SubscriptionInfo(STRIPE_SUB, "active", null));
             when(txService.applyScheduled(SUB_ID, PAYER_ID, GEN, null)).thenReturn(
@@ -152,7 +152,7 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("正常系: Stripe の期末解約を解除してから DB を戻す")
         void 正常_Stripeを先に解除する() {
             when(txService.prepareRestore(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN, 1)));
             when(txService.applyRestore(SUB_ID, PAYER_ID, GEN)).thenReturn(true);
 
             assertThat(runner.restoreOne(SUB_ID, PAYER_ID)).isTrue();
@@ -174,7 +174,7 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("Stripe 失敗: DB を戻さず、復旧失敗を RESTORING のまま永続化する")
         void Stripe失敗_DBを戻さない() {
             when(txService.prepareRestore(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN, 1)));
             when(stripePaymentProvider.revertSubscriptionCancelAtPeriodEnd(eq(STRIPE_SUB), anyString()))
                     .thenThrow(new IllegalStateException("Stripe 障害"));
 
@@ -187,7 +187,7 @@ class MembershipSubscriptionPayerWithdrawalTest {
         @DisplayName("Stripe 成功後の DB 失敗: FAILED ではなく RESTORING のまま残す（解約未了と混同しない）")
         void DB失敗_RESTORINGのまま残す() {
             when(txService.prepareRestore(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN, 1)));
             when(txService.applyRestore(SUB_ID, PAYER_ID, GEN))
                     .thenThrow(new IllegalStateException("DB 障害"));
 
@@ -202,10 +202,8 @@ class MembershipSubscriptionPayerWithdrawalTest {
     @DisplayName("Stripe 冪等キーの世代分離（検分4巡目 P1-1）")
     class IdempotencyKeyGeneration {
 
-        private static final java.time.Instant GEN_B = java.time.Instant.parse("2026-10-01T00:00:00Z");
-
         @Test
-        @DisplayName("解約: 退会世代が違えば冪等キーも違う（同一キーだと Stripe が2回目を実行しない）")
+        @DisplayName("解約: 【同一秒の】退会世代でも試行番号で冪等キーが分かれる（時刻精度に依存しない）")
         void 解約_世代ごとに冪等キーが異なる() {
             org.mockito.ArgumentCaptor<String> keys = org.mockito.ArgumentCaptor.forClass(String.class);
             when(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), anyString()))
@@ -214,30 +212,30 @@ class MembershipSubscriptionPayerWithdrawalTest {
                     .thenReturn(MembershipPayerWithdrawalTxService.ApplyOutcome.APPLIED);
 
             when(txService.prepare(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN, 1)));
             runner.cancelOne(SUB_ID, PAYER_ID);
             when(txService.prepare(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN_B)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN, 2)));
             runner.cancelOne(SUB_ID, PAYER_ID);
 
             verify(stripePaymentProvider, org.mockito.Mockito.times(2))
                     .cancelSubscriptionAtPeriodEnd(eq(STRIPE_SUB), keys.capture());
-            // 是正前は subscriptionId だけのキーで、取消→再退会が 24h 以内だと Stripe が
-            // 最初の応答を返すだけで更新を実行せず、DB と Stripe が乖離した。
+            // 本番の users.deleted_at は DATETIME（秒精度）であり、同一秒内の
+            // 「退会A → 取消 → 再退会B」では世代値が同一になる。時刻ではなく試行番号で分ける。
             assertThat(keys.getAllValues()).doesNotHaveDuplicates();
         }
 
         @Test
-        @DisplayName("復旧: 解約キーとも世代とも衝突しない")
+        @DisplayName("復旧: 解約キーとも試行ごとにも衝突しない")
         void 復旧_世代ごとに冪等キーが異なる() {
             org.mockito.ArgumentCaptor<String> keys = org.mockito.ArgumentCaptor.forClass(String.class);
             when(txService.applyRestore(eq(SUB_ID), eq(PAYER_ID), any())).thenReturn(true);
 
             when(txService.prepareRestore(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN, 1)));
             runner.restoreOne(SUB_ID, PAYER_ID);
             when(txService.prepareRestore(SUB_ID, PAYER_ID))
-                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN_B)));
+                    .thenReturn(Optional.of(new PreparedTarget(SUB_ID, STRIPE_SUB, GEN, 2)));
             runner.restoreOne(SUB_ID, PAYER_ID);
 
             verify(stripePaymentProvider, org.mockito.Mockito.times(2))

@@ -293,7 +293,10 @@ public class BillingPayerHandoverService {
         //    退会と退会取消はどちらも共用 event-pool 上の非同期処理で到達順が保証されない。退会受付の
         //    直後に取り消すと、取消処理が先に走って対象ゼロで終わり、そのあとに届いた古い退会イベントが
         //    REQUESTED の引継要求を作ってしまう。この防御は本メソッドが唯一の入口であるためここに置く。
-        if (withdrawalStateQueryService.findPendingWithdrawalAttempt(contractPayerUserId).isEmpty()) {
+        // 【ロック版必須】非ロック読み取りだと「退会中を読む → 取消が commit → 取消イベントが対象ゼロで
+        //   終了 → 古い処理が REQUESTED を作成」が成立する（Codex 検分5巡目 P1-1）。
+        if (withdrawalStateQueryService.lockAndFindPendingWithdrawalAttempt(contractPayerUserId)
+                .isEmpty()) {
             log.info("柱③-B: 処理時点で退会申請中ではないため引継要求を作成しません userId={}, contractId={}",
                     withdrawingPayerUserId, oldContractId);
             throw new BusinessException(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);

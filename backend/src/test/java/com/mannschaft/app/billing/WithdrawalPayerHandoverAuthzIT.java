@@ -194,10 +194,14 @@ class WithdrawalPayerHandoverAuthzIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("越境不可: 契約の payer ではないユーザーを渡しても引継要求は作られない")
     void 越境_payer不一致は拒否される() {
-        assertThatThrownBy(() -> handoverService
-                .requestHandoverForWithdrawal(contractId, otherAdminUserId))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining(EntitlementErrorCode.HANDOVER_NOT_OLD_PAYER.getCode());
+        // BusinessException#getMessage() は人向けの文言だけでエラーコードを含まない。
+        // 「赤くなった理由が狙った機構か」はコードそのもので確かめる（検分5巡目で判明）。
+        BusinessException thrown = catchThrowableOfType(
+                () -> handoverService.requestHandoverForWithdrawal(contractId, otherAdminUserId),
+                BusinessException.class);
+
+        assertThat(thrown).isNotNull();
+        assertThat(thrown.getErrorCode()).isEqualTo(EntitlementErrorCode.HANDOVER_NOT_OLD_PAYER);
 
         assertThat(openRequests()).isEmpty();
     }

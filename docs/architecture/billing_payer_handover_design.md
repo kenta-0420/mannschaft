@@ -553,7 +553,12 @@ PR-3 の実装に対する独立検分で、上の1行仕様のままでは**成
 
 Stripe の Idempotency-Key は**同一キーに対して最初の応答をそのまま返す**（24時間）。キーを `subscriptionId` だけから作ると、「世代Aで解約予約 → 取消で解除 → 24時間以内に世代Bで再退会」で世代Bのリクエストが世代Aと同じキーになり、**3回目の更新が実行されない**。DB は `cancel_at_period_end=true`、Stripe 実体は解除済み、という金銭事故に直結する乖離が残る。
 
-→ 冪等キーに**退会世代を含める**（`withdrawal-payer-cancel-<subscriptionId>-<generationEpochMilli>`、解除側は `withdrawal-payer-restore-` 接頭辞）。解約・解除で接頭辞を分けることで両者も衝突しない。
+→ 冪等キーに**退会試行ごとに必ず異なる値**を含める。ここで**時刻を使ってはならない**（5巡目 P1-3）——本番の `users.deleted_at` は `DATETIME`（小数秒なし）であり、同一秒内の「退会A → 取消 → 再退会B」では世代値が一致してしまう。**作業行の `attempt_count`**（`markAttempt` が退会試行のたびに単調増加させる、時刻に依存しない値）を使う。
+
+    withdrawal-payer-cancel-<subscriptionId>-<attemptCount>
+    withdrawal-payer-restore-<subscriptionId>-<attemptCount>
+
+解約・解除で接頭辞を分けるため両者も衝突しない。
 
 #### (8) 世代の再検証は「書き込む全経路」で行う（4巡目 P1-2）
 
@@ -566,9 +571,23 @@ Stripe の Idempotency-Key は**同一キーに対して最初の応答をその
 
 #### (9) 真値の確認はロック付きで行い、ロック順序を固定する（4巡目 P1-3・P2）
 
-退会状態を根拠に DB を書き換える経路は、`WithdrawalStateQueryService#lockAndFindPendingWithdrawalAttempt`（`select deleted_at ... for update`）でユーザー行をロックしてから判断する。ロックなしの読み取りでは「真値を見た直後・自分が書き込む前」に `cancelWithdrawal` や再退会が commit でき、確認と反映が線形化しない。
+退会状態を根拠に DB を書き換える経路は、`WithdrawalStateQueryService#lockAndFindPendingWithdrawalAttempt`（`select deleted_at ... for update`）でユーザー行をロックしてから判断する。ロックなしの読み取りでは「真値を見た直後・自分が書き込む前」に `cancelWithdrawal` や再退会が commit でき、確認と反映が線形化しない。**引継要求の作成（`requestHandoverForWithdrawal`）と終端化（`failRequestedOnWithdrawalCancelled`）も例外ではない**（5巡目 P1-1。規定を書きながら呼び出し側が非ロック版のまま残っていた）。
 
 **ロック順序の正準は `users` → `membership_subscriptions` → `membership_payer_withdrawal_cancellations`。** `PENDING` を復旧対象へ加えたことで解約側と解除側が同じ行集合を触るようになったため、順序を固定しないとデッドロックしうる。
+
+#### (11) 「既に予約済みだからスキップ」を DB 列だけで判断しない（5巡目 P1-2）
+
+`prepare` が `membership_subscriptions.cancel_at_period_end` だけを見てスキップすると、次の経路で **Stripe=false・DB=true・作業行=`PENDING`** という誰も進めない状態が残る。
+
+1. 世代Aの復旧で Stripe の予約解除が成功する
+2. `applyRestore` の前に世代Bの再退会が commit する
+3. `applyRestore` が再退会を検出して `false` を返し、DB の `true` を残す
+4. 世代Bの `reserveAll` が作業行を `PENDING` にする
+5. `prepare` が DB の `true` だけを見てスキップする → 世代Bの Stripe 解約が永久に発行されない
+
+→ **作業行が非終端（`PENDING`/`FAILED`/`RESTORING`）＝自分たちの処理が途中である間は、DB が `true` でも Stripe へ発行して揃える。** DB 列は Stripe 側の実態と乖離しうる前提で扱う。「自分たち以外が予約した」（作業行が無い、または終端）ときだけスキップする。
+
+あわせて `applyScheduled` は、DB 列を変更できなかった（`applied=false`）場合でも**その作業行が自分たちのもの（世代一致かつ `PENDING`）なら `SUCCEEDED`** とする。`SUPERSEDED` にするのは「自分が予約したのではない」ときだけである（4巡目 P1-3 の意図はそのまま維持される）。
 
 #### (10) 明示解約と由来の無効化は同一トランザクション（4巡目 P1-4）
 

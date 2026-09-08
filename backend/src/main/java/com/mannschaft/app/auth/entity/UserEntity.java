@@ -165,9 +165,14 @@ public class UserEntity extends BaseEntity {
      * {@code Unknown column 'purge_started_at'} で落ちる。実際に柱③-B PR-3 で
      * {@code UserService#cancelWithdrawal} を IT から通した瞬間にこれが露見した
      * （それまでは IT が SQL 直叩きで本番経路を迂回しており、誰も踏んでいなかった）。</p>
+     *
+     * <p>型を {@link java.time.Instant} にしているのは、本クラスの他の時刻列（legacy な
+     * {@link LocalDateTime}）に合わせるより {@code datetime_policy} の方針に従うほうが正しいためである。
+     * 本フィールドを JPA 経由で読み書きする経路は存在せず（native のみ）、型は DDL 生成にしか効かない。
+     * {@code LocalDateTime} にすると {@code DateTimeAndZoneGuardTest} の凍結台帳を新規に1件増やすことになる。</p>
      */
     @Column(name = "purge_started_at")
-    private LocalDateTime purgeStartedAt;
+    private java.time.Instant purgeStartedAt;
 
     // === プライバシーポリシー同意記録（F_privacy_policy）===
 

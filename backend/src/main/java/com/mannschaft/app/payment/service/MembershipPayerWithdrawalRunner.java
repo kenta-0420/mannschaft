@@ -93,7 +93,7 @@ public class MembershipPayerWithdrawalRunner {
                 StripePaymentProvider.SubscriptionInfo info = stripePaymentProvider
                         .cancelSubscriptionAtPeriodEnd(stripeSubscriptionId,
                                 idempotencyKey("withdrawal-payer-cancel", subscriptionId,
-                                        prepared.get().withdrawalAttemptAt()));
+                                        prepared.get().attemptCount()));
                 currentPeriodEnd = (info != null) ? info.currentPeriodEnd() : null;
             } catch (Exception e) {
                 // Stripe 側の成否が不明なまま終わることもある。処理状態は FAILED として残し、
@@ -157,7 +157,7 @@ public class MembershipPayerWithdrawalRunner {
             try {
                 stripePaymentProvider.revertSubscriptionCancelAtPeriodEnd(stripeSubscriptionId,
                         idempotencyKey("withdrawal-payer-restore", subscriptionId,
-                                prepared.get().withdrawalAttemptAt()));
+                                prepared.get().attemptCount()));
             } catch (Exception e) {
                 // Stripe が期末解約のままなら DB だけ戻すと乖離する。DB は触らず RESTORING で残す。
                 log.error("払い手退会取消: Stripe の期末解約解除に失敗しました subscriptionId={}, stripeSub={}",
@@ -196,16 +196,24 @@ public class MembershipPayerWithdrawalRunner {
     }
 
     /**
-     * Stripe の冪等キー。<b>退会世代を必ず含める</b>（Codex 検分4巡目 P1-1）。
+     * Stripe の冪等キー。<b>退会試行ごとに必ず異なる値</b>を含める（Codex 検分4巡目 P1-1・5巡目 P1-3）。
      *
-     * <p>是正前は {@code subscriptionId} だけから作っていたため、「世代Aで解約予約 → 取消で解除 →
-     * 24時間以内に世代Bで再退会」で世代Bのリクエストが世代Aと同じキーになる。Stripe は同一キーに
-     * <b>最初の応答をそのまま返す</b>ので3回目の更新が実行されず、DB は {@code cancel_at_period_end=true}
-     * なのに Stripe 実体は解除済み、という金銭事故に直結する乖離が残った。</p>
+     * <p>是正の経緯:</p>
+     * <ol>
+     *   <li>当初は {@code subscriptionId} だけだった。「世代Aで解約予約 → 取消で解除 → 24時間以内に
+     *       世代Bで再退会」で世代Bが世代Aと同じキーになり、Stripe は同一キーに<b>最初の応答を
+     *       そのまま返す</b>ので3回目の更新が実行されない。</li>
+     *   <li>次に退会世代（{@code users.deleted_at}）の epoch millis を足したが、<b>本番の
+     *       {@code users.deleted_at} は {@code DATETIME}（小数秒なし）</b>であり、同一秒内の
+     *       「退会A → 取消 → 再退会B」では A と B の世代値が同一になる。列の精度に依存する設計が誤りだった。</li>
+     *   <li>そこで<b>時刻に依存しない</b>作業行の試行番号（{@code attempt_count}）を使う。
+     *       退会試行のたびに {@code markAttempt} が単調増加させるため、同一秒内でも必ず別値になる。</li>
+     * </ol>
+     *
+     * <p>解約と解除で接頭辞を分けるため、両者のキーも衝突しない。</p>
      */
-    private static String idempotencyKey(String prefix, UUID subscriptionId, Instant withdrawalAttemptAt) {
-        long generation = withdrawalAttemptAt != null ? withdrawalAttemptAt.toEpochMilli() : 0L;
-        return prefix + "-" + subscriptionId + "-" + generation;
+    private static String idempotencyKey(String prefix, UUID subscriptionId, Integer attemptCount) {
+        return prefix + "-" + subscriptionId + "-" + (attemptCount != null ? attemptCount : 0);
     }
 
     /** 失敗の記録自体が失敗しても、元の失敗ログを消さないよう分けて捕捉する。 */

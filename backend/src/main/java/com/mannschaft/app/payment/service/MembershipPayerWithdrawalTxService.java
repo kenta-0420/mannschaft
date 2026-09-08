@@ -152,12 +152,6 @@ public class MembershipPayerWithdrawalTxService {
                     subscriptionId, subscription.getStatus());
             return Optional.empty();
         }
-        if (Boolean.TRUE.equals(subscription.getCancelAtPeriodEnd())) {
-            // 既に予約済み（再送・利用者自身の解約操作と競合）。Stripe を叩き直す必要はない。
-            log.info("払い手退会に伴う期末解約: 既に予約済みのためスキップ subscriptionId={}", subscriptionId);
-            return Optional.empty();
-        }
-
         MembershipPayerWithdrawalCancellationEntity record =
                 cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId)
                         .orElseGet(() -> MembershipPayerWithdrawalCancellationEntity.builder()
@@ -167,13 +161,30 @@ public class MembershipPayerWithdrawalTxService {
                                 .withdrawalAttemptAt(attempt.get())
                                 .status(MembershipPayerWithdrawalCancellationStatus.PENDING)
                                 .build());
+
+        // 【要】「既に cancel_at_period_end=true だからスキップ」を DB の列だけで判断してはならない
+        // （Codex 検分5巡目 P1-2）。次の経路で Stripe と DB が乖離した状態が作れる:
+        //   ①世代Aの復旧で Stripe の予約解除が成功 → ②applyRestore の前に世代Bの再退会が commit →
+        //   ③applyRestore が再退会を検出して DB の true を残したまま false を返す →
+        //   ④世代Bの reserveAll が作業行を PENDING にする → ⑤ここで DB の true だけを見てスキップ。
+        // 結果「Stripe=false・DB=true・作業行=PENDING」で、世代Bの解約が永久に発行されない。
+        // 作業行が【非終端】＝自分たちの処理が途中である間は、DB が true でも Stripe へ発行して揃える。
+        boolean workInFlight = record.getId() != null
+                && MembershipPayerWithdrawalCancellationStatus.NON_TERMINAL.contains(record.getStatus());
+        if (Boolean.TRUE.equals(subscription.getCancelAtPeriodEnd()) && !workInFlight) {
+            // 本人の明示解約など、自分たち以外が予約したもの。触らない。
+            log.info("払い手退会に伴う期末解約: 既に予約済み（自分たちの処理ではない）のためスキップ subscriptionId={}",
+                    subscriptionId);
+            return Optional.empty();
+        }
+
         // 退会 → 取消 → 再退会で払い手が同じ行を再利用する。payer と世代は毎回上書きする。
         record.setPayerUserId(payerUserId);
         record.markAttempt(attempt.get(), subscription.getStripeSubscriptionId());
         cancellationRepository.saveAndFlush(record);
 
-        return Optional.of(new PreparedTarget(
-                subscriptionId, subscription.getStripeSubscriptionId(), attempt.get()));
+        return Optional.of(new PreparedTarget(subscriptionId, subscription.getStripeSubscriptionId(),
+                attempt.get(), record.getAttemptCount()));
     }
 
     /**
@@ -243,10 +254,15 @@ public class MembershipPayerWithdrawalTxService {
         final boolean scheduledByUs = applied;
         cancellationRepository.findBySubscriptionIdForUpdate(subscriptionId)
                 .ifPresent(record -> {
-                    if (scheduledByUs) {
+                    // 「自分たちの進行中の作業行」か（世代一致かつ PENDING）。
+                    // DB 列が既に true でも、それを立てたのが自分たちなら SUCCEEDED が正しい
+                    // （検分5巡目 P1-2 の経路では DB=true のまま Stripe へ発行し直している）。
+                    boolean ours = matchesGeneration(record, withdrawalAttemptAt)
+                            && record.getStatus() == MembershipPayerWithdrawalCancellationStatus.PENDING;
+                    if (scheduledByUs || ours) {
                         record.markSucceeded(Instant.now());
                     } else {
-                        // 自分が予約したのではない＝復旧の対象にしてはいけない。
+                        // 自分が予約したのではない＝復旧の対象にしてはいけない（検分3巡目 P1-3）。
                         record.markSuperseded();
                     }
                     cancellationRepository.saveAndFlush(record);
@@ -355,8 +371,8 @@ public class MembershipPayerWithdrawalTxService {
         record.markRestoring();
         cancellationRepository.saveAndFlush(record);
 
-        return Optional.of(new PreparedTarget(
-                subscriptionId, subscription.getStripeSubscriptionId(), record.getWithdrawalAttemptAt()));
+        return Optional.of(new PreparedTarget(subscriptionId, subscription.getStripeSubscriptionId(),
+                record.getWithdrawalAttemptAt(), record.getAttemptCount()));
     }
 
     /** 非終端のまま照合バッチに拾われ続けないよう、復旧不能な行を終端化する（検分3巡目 P2）。 */
@@ -478,9 +494,13 @@ public class MembershipPayerWithdrawalTxService {
      * @param stripeSubscriptionId Stripe Subscription ID（未連結なら null＝Stripe 操作は行えない）
      * @param withdrawalAttemptAt  この作業が属する退会試行の世代。<b>Stripe 呼び出しを跨いで持ち回り、
      *                             確定トランザクションで再検証する</b>ためのもの（Codex 検分3巡目 P1-2）
+     * @param attemptCount         作業行の試行番号。<b>Stripe 冪等キーの一意化に使う</b>——
+     *                             時刻由来の世代値は本番の {@code users.deleted_at} が
+     *                             {@code DATETIME}（秒精度）であるため同一秒内の
+     *                             「退会A → 取消 → 再退会B」で衝突する（Codex 検分5巡目 P1-3）
      */
     public record PreparedTarget(UUID subscriptionId, String stripeSubscriptionId,
-            Instant withdrawalAttemptAt) {
+            Instant withdrawalAttemptAt, Integer attemptCount) {
     }
 
     /** 確定トランザクションの結末。 */

@@ -561,7 +561,10 @@ public class BillingPayerHandoverTxService {
         // 【要】作成側と同じく、行ロックを保持したまま処理時点の真値を確かめる（Codex 検分3巡目 P1-4）。
         // これが無いと「取消 → 再退会 → 新しい世代の REQUESTED を作成 → 旧世代の取消イベントが到着」で、
         // 古いイベントが【新しい退会の引継要求】を FAILED にしてしまう。退会申請中なら何もしない。
-        if (withdrawalStateQueryService.findPendingWithdrawalAttempt(oldPayerUserId).isPresent()) {
+        // 【ロック版必須】非ロック読み取りだと「取消済みを読む → 再退会が commit」と競合し、
+        //   新しい世代の REQUESTED を取りこぼして終端化してしまう（Codex 検分5巡目 P1-1）。
+        if (withdrawalStateQueryService.lockAndFindPendingWithdrawalAttempt(oldPayerUserId)
+                .isPresent()) {
             log.info("柱③-B: 処理時点で再び退会申請中のため引継要求を終端化しません "
                     + "handoverRequestId={}, oldPayerUserId={}", handoverRequestId, oldPayerUserId);
             return false;
