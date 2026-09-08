@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia'
+import { useOrganizationStore } from './useOrganizationStore'
+import { useTeamStore } from './useTeamStore'
 
 interface AuthUser {
   id: number
@@ -228,6 +230,10 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem('tokenExpiresAt')
       }
       useChatTabsStore().clearAll()
+      // 所属スコープはユーザー固有の表示データであるため、次のログイン前に必ず破棄する。
+      // 非同期キャッシュ削除を待つ前に同期的に消し、同一 SPA セッションでの情報残留を防ぐ。
+      useTeamStore().clear()
+      useOrganizationStore().clear()
 
       // ② 重いクリーンアップ（Cache Storage + IndexedDB）を並走で起動する。
       //   navigateTo より前に起動することで「必ず走る」ことを保証しつつ、
