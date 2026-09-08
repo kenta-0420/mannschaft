@@ -32,8 +32,22 @@ mockNuxtImport('useShiftApi', () => () => ({
 
 const CURRENT_USER_ID = 20
 
-mockNuxtImport('useAuthStore', () => () => ({
-  currentUser: { id: CURRENT_USER_ID },
+// useAuthStore は「素の差し替え」にしてはならない。
+// app/plugins/auth.client.ts が Nuxt アプリ初期化のたびに `loadFromStorage()` を呼び、
+// `isAuthenticated` が真なら `armProactiveRefresh()` がトークン更新を走らせて
+// 失敗時に `logout()` を呼ぶ。これらが欠けたスタブを渡すとプラグインが初期化中に落ち、
+// その後始末で router のナビゲーションが走って jsdom 破棄後に
+// `ReferenceError: history is not defined` の Unhandled Rejection になる
+// （テストは全件 green のまま vitest だけが exit 1 になる。#2609 と同種）。
+// 既存の金型（tests/unit/components/dashboard/ActionRequiredModalsInitialLoad.spec.ts ほか）に
+// 揃え、プラグインが触る API を欠かさずに持つスタブをモジュール単位で差し替える。
+vi.mock('~/stores/useAuthStore', () => ({
+  useAuthStore: () => ({
+    currentUser: { id: CURRENT_USER_ID },
+    isAuthenticated: false,
+    loadFromStorage: vi.fn(),
+    logout: vi.fn(),
+  }),
 }))
 
 mockNuxtImport('useNotification', () => () => ({
