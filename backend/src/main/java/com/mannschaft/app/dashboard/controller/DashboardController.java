@@ -37,10 +37,8 @@ import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
-import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
-import com.mannschaft.app.shift.entity.ShiftSlotEntity;
-import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
-import com.mannschaft.app.shift.repository.ShiftSlotRepository;
+import com.mannschaft.app.shift.dto.UpcomingAssignedSlotResponse;
+import com.mannschaft.app.shift.service.ShiftMyService;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.service.TeamService;
@@ -111,9 +109,11 @@ public class DashboardController {
      * CMP-260908-2117: 「今後の予定」のシフトは割当の正本である
      * {@code shift_slots.assigned_user_ids} から引く（旧: {@code ShiftAssignmentRepository}）。
      * 旧経路は自動割当の確定行しか見ておらず、手動割当が本人に表示されなかった。
+     *
+     * <p>shift のリポジトリ・エンティティへ直接依存すると番人 D-1/D-5 に反するため、
+     * shift ドメインの Service 経由で DTO を受け取る（モジュラーモノリス原則）。</p>
      */
-    private final ShiftSlotRepository shiftSlotRepository;
-    private final ShiftScheduleRepository shiftScheduleRepository;
+    private final ShiftMyService shiftMyService;
     /** 司令塔第二弾: 個人「今後の予定」への本人予約統合用（ADHD-UX戦役第四陣）。 */
     private final ReservationRepository reservationRepository;
 
@@ -341,26 +341,16 @@ public class DashboardController {
         // それぞれ userId で絞り込み済みのため他人分の混入はない（AC-B2-2）。
         // CMP-260908-2117: シフトは割当の正本 shift_slots.assigned_user_ids から引く
         //（旧実装は shift_assignments の CONFIRMED を引いており、手動割当が本人に表示されなかった）。
-        // 未公開シフト表の遮断はクエリ側の FULLY_VISIBLE_SQL が担う。
-        // クエリ本数は「シフト枠1 + シフト表1 + 予約1 + チーム名1」の固定 4 本で、
+        // 未公開シフト表の遮断は shift ドメイン側のクエリ（FULLY_VISIBLE_SQL）が担う。
+        // クエリ本数は「シフト枠1 + シフト表1（shift Service 内）+ 予約1 + チーム名1」の固定 4 本で、
         // items 件数に依存しない（AC-B2-5・N+1回避。旧実装比で +1 本）。
-        List<ShiftSlotEntity> shiftSlots =
-                shiftSlotRepository.findUpcomingAssignedByUserIdBetween(userId, fromDate, untilDate);
+        List<UpcomingAssignedSlotResponse> shiftSlots =
+                shiftMyService.getUpcomingAssignedSlots(userId, fromDate, untilDate);
         List<Object[]> reservationRows = reservationRepository.findUpcomingByUserIdBetween(userId, fromDate, untilDate);
 
-        // 枠のスケジュール（タイトル・チーム）を ID 一括取得で解決する（件数に関わらず 1 クエリ）。
-        Set<Long> shiftScheduleIds = shiftSlots.stream()
-                .map(ShiftSlotEntity::getScheduleId)
-                .filter(java.util.Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<Long, ShiftScheduleEntity> shiftScheduleMap = shiftScheduleIds.isEmpty()
-                ? Map.of()
-                : shiftScheduleRepository.findAllById(shiftScheduleIds).stream()
-                        .collect(Collectors.toMap(ShiftScheduleEntity::getId, s -> s));
-
         Set<Long> teamIds = new HashSet<>();
-        for (ShiftScheduleEntity schedule : shiftScheduleMap.values()) {
-            if (schedule.getTeamId() != null) teamIds.add(schedule.getTeamId());
+        for (UpcomingAssignedSlotResponse slot : shiftSlots) {
+            if (slot.getTeamId() != null) teamIds.add(slot.getTeamId());
         }
         for (Object[] row : reservationRows) {
             Long teamId = (Long) row[5];
@@ -372,7 +362,7 @@ public class DashboardController {
                         .collect(Collectors.toMap(TeamEntity::getId, t -> t));
 
         shiftSlots.stream()
-                .map(slot -> toShiftMap(slot, shiftScheduleMap.get(slot.getScheduleId()), teamMap))
+                .map(slot -> toShiftMap(slot, teamMap))
                 .forEach(items::add);
         reservationRows.stream().map(row -> toReservationMap(row, teamMap)).forEach(items::add);
 
@@ -813,13 +803,13 @@ public class DashboardController {
      * {@code id} は枠 ID（旧: 割当履歴行の ID）。</p>
      */
     private Map<String, Object> toShiftMap(
-            ShiftSlotEntity slot, ShiftScheduleEntity schedule, Map<Long, TeamEntity> teamMap) {
-        Long id = slot.getId();
-        String title = schedule != null ? schedule.getTitle() : null;
+            UpcomingAssignedSlotResponse slot, Map<Long, TeamEntity> teamMap) {
+        Long id = slot.getSlotId();
+        String title = slot.getScheduleTitle();
         LocalDate slotDate = slot.getSlotDate();
         LocalTime startTime = slot.getStartTime();
         LocalTime endTime = slot.getEndTime();
-        Long teamId = schedule != null ? schedule.getTeamId() : null;
+        Long teamId = slot.getTeamId();
 
         Map<String, Object> map = new HashMap<>();
         map.put("id", id);

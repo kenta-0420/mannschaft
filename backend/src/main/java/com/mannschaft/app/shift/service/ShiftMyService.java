@@ -1,6 +1,7 @@
 package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.shift.dto.MyConfirmedSlotResponse;
+import com.mannschaft.app.shift.dto.UpcomingAssignedSlotResponse;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -122,6 +124,59 @@ public class ShiftMyService {
                                 java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
                         .thenComparing(MyConfirmedSlotResponse::getStartTime,
                                 java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 指定ユーザーの、指定期間 {@code [fromDate, untilDate)} における
+     * 「公開済みシフト表に属する本人割当枠」を取得する（CMP-260908-2117）。
+     *
+     * <p>個人ダッシュボードの「今後の予定」向け。dashboard ドメインは shift の
+     * リポジトリ・エンティティへ直接依存できない（モジュラーモノリス原則・番人 D-1/D-5）ため、
+     * この Service 経由で {@link UpcomingAssignedSlotResponse} を受け取る。</p>
+     *
+     * <p><b>未公開シフト表の遮断</b>: 割当の正本である {@code assigned_user_ids} を引く際、
+     * クエリ側で {@link ShiftScheduleEntity#FULLY_VISIBLE_SQL} を必ず通す
+     * （{@link ShiftSlotRepository#findUpcomingAssignedByUserIdBetween}）。
+     * MASKED（COLLECTING / ADJUSTING）は返さない。</p>
+     *
+     * <p><b>クエリ本数</b>: 枠1本 + シフト表1本の固定 2 本。件数に依存しない（N+1 回避）。
+     * チーム名は呼び出し側が teamId から一括解決するため、ここでは引かない。</p>
+     *
+     * @param userId    対象ユーザーID
+     * @param fromDate  取得期間の開始日（含む）
+     * @param untilDate 取得期間の終了日（含まない）
+     * @return 日付・開始時刻の昇順（リポジトリの ORDER BY をそのまま維持）
+     */
+    public List<UpcomingAssignedSlotResponse> getUpcomingAssignedSlots(
+            Long userId, LocalDate fromDate, LocalDate untilDate) {
+        List<ShiftSlotEntity> slots =
+                slotRepository.findUpcomingAssignedByUserIdBetween(userId, fromDate, untilDate);
+        if (slots.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Long> scheduleIds = slots.stream()
+                .map(ShiftSlotEntity::getScheduleId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, ShiftScheduleEntity> scheduleMap = scheduleIds.isEmpty()
+                ? Collections.emptyMap()
+                : scheduleRepository.findAllById(scheduleIds).stream()
+                        .collect(Collectors.toMap(ShiftScheduleEntity::getId, s -> s));
+
+        return slots.stream()
+                .map(slot -> {
+                    ShiftScheduleEntity schedule = scheduleMap.get(slot.getScheduleId());
+                    return UpcomingAssignedSlotResponse.builder()
+                            .slotId(slot.getId())
+                            .scheduleTitle(schedule != null ? schedule.getTitle() : null)
+                            .slotDate(slot.getSlotDate())
+                            .startTime(slot.getStartTime())
+                            .endTime(slot.getEndTime())
+                            .teamId(schedule != null ? schedule.getTeamId() : null)
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
 }
