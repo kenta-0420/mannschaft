@@ -75,6 +75,22 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
     @Column(name = "withdrawal_attempt_at", nullable = false)
     private Instant withdrawalAttemptAt;
 
+    /**
+     * 退会試行ごとに<b>一度だけ払い出す不変の識別子</b>。Stripe の冪等キーに使う
+     * （Codex 絞り込み確認 P1）。
+     *
+     * <p>冪等キーの要件は「<b>同一世代・同一操作の再試行では固定、別世代では変更</b>」である。
+     * 是正前は {@code attempt_count} を使っていたが、これは {@code markAttempt} が試行のたびに
+     * 増やす値であり、<b>結果不明となった Stripe 呼び出しの再試行やイベント再送でキーが変わって
+     * しまい、Stripe 側で同一操作として重複排除されない</b>（二重実行）。並行する2処理が
+     * 行ロックを順に通過したあと異なるキーで Stripe を並行呼び出しすることもできた。</p>
+     *
+     * <p>本トークンは {@link #rotateTokenIfGenerationChanged} により<b>世代が変わったときだけ</b>
+     * 新しくなる。時刻にも試行回数にも依存しない。</p>
+     */
+    @Column(name = "withdrawal_attempt_token", nullable = false, columnDefinition = "BINARY(16)")
+    private UUID withdrawalAttemptToken;
+
     /** 予約時点の Stripe Subscription ID（未連結なら null）。 */
     @Column(name = "stripe_subscription_id", length = 255)
     private String stripeSubscriptionId;
@@ -112,6 +128,7 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
      * UNIQUE を保ったまま、行が常に「最新の退会試行」を指すようにする）。</p>
      */
     public void markAttempt(Instant withdrawalAttemptAt, String stripeSubscriptionId) {
+        rotateTokenIfGenerationChanged(withdrawalAttemptAt);
         this.withdrawalAttemptAt = withdrawalAttemptAt;
         this.stripeSubscriptionId = stripeSubscriptionId;
         this.status = MembershipPayerWithdrawalCancellationStatus.PENDING;
@@ -119,6 +136,32 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
         this.lastError = null;
         this.scheduledAt = null;
         this.restoredAt = null;
+    }
+
+    /**
+     * 世代（{@code withdrawal_attempt_at}）に着手する。作業行を {@code PENDING} へ戻すが
+     * <b>試行回数は増やさない</b>（{@code reserveAll} 用）。
+     */
+    public void reserveForGeneration(Instant withdrawalAttemptAt) {
+        rotateTokenIfGenerationChanged(withdrawalAttemptAt);
+        this.withdrawalAttemptAt = withdrawalAttemptAt;
+        this.status = MembershipPayerWithdrawalCancellationStatus.PENDING;
+        this.lastError = null;
+        this.scheduledAt = null;
+        this.restoredAt = null;
+    }
+
+    /**
+     * 世代が変わったときだけ冪等トークンを払い直す。
+     *
+     * <p><b>同一世代では絶対に変えない</b>——変えると再試行が Stripe で重複排除されず二重実行になる。</p>
+     */
+    private void rotateTokenIfGenerationChanged(Instant nextWithdrawalAttemptAt) {
+        boolean generationChanged = this.withdrawalAttemptAt == null
+                || !this.withdrawalAttemptAt.equals(nextWithdrawalAttemptAt);
+        if (generationChanged || this.withdrawalAttemptToken == null) {
+            this.withdrawalAttemptToken = com.mannschaft.app.common.UuidV7.generate();
+        }
     }
 
     /** 復旧に着手した（Stripe 呼び出しの<b>前</b>に刻む。以降は非終端として照合・再試行の対象）。 */
@@ -187,6 +230,9 @@ public class MembershipPayerWithdrawalCancellationEntity extends UuidV7Entity {
         }
         if (this.attemptCount == null) {
             this.attemptCount = 0;
+        }
+        if (this.withdrawalAttemptToken == null) {
+            this.withdrawalAttemptToken = com.mannschaft.app.common.UuidV7.generate();
         }
     }
 

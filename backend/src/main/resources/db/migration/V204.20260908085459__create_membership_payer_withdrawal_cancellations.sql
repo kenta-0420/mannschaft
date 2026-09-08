@@ -25,6 +25,7 @@ CREATE TABLE membership_payer_withdrawal_cancellations (
     subscription_id BINARY(16) NOT NULL COMMENT 'membership_subscriptions.id への論理参照',
     payer_user_id BIGINT UNSIGNED NOT NULL COMMENT '退会申請した払い手（users.id への論理参照）',
     withdrawal_attempt_at DATETIME(6) NOT NULL COMMENT '退会試行の世代。処理時点の users.deleted_at。どの退会申請に属する作業行かを一意に指す',
+    withdrawal_attempt_token BINARY(16) NOT NULL COMMENT '退会試行ごとに一度だけ払い出す不変の識別子（UUID）。Stripe の冪等キーに使う。再試行では変わらず、再退会（世代変化）でのみ新しくなる',
     stripe_subscription_id VARCHAR(255) NULL COMMENT '予約時点の Stripe Subscription ID（未連結なら NULL）',
     status VARCHAR(16) NOT NULL COMMENT 'PENDING/SUCCEEDED/FAILED/RESTORING/RESTORED/SUPERSEDED（6値）。非終端は PENDING・FAILED・RESTORING',
     attempt_count INT NOT NULL DEFAULT 0 COMMENT '試行回数。PR-4 の再試行バッチが上限判定に使う',

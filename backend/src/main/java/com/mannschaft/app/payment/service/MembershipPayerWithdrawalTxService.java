@@ -108,10 +108,8 @@ public class MembershipPayerWithdrawalTxService {
                 continue;
             }
             record.setPayerUserId(payerUserId);
-            record.setWithdrawalAttemptAt(withdrawalAttemptAt);
-            record.setStatus(MembershipPayerWithdrawalCancellationStatus.PENDING);
-            record.setScheduledAt(null);
-            record.setRestoredAt(null);
+            // 冪等トークンは世代が変わったときだけ払い直す（同一世代の再送では固定・絞り込み確認 P1）。
+            record.reserveForGeneration(withdrawalAttemptAt);
             cancellationRepository.saveAndFlush(record);
             reserved.add(subscriptionId);
         }
@@ -184,7 +182,7 @@ public class MembershipPayerWithdrawalTxService {
         cancellationRepository.saveAndFlush(record);
 
         return Optional.of(new PreparedTarget(subscriptionId, subscription.getStripeSubscriptionId(),
-                attempt.get(), record.getAttemptCount()));
+                attempt.get(), record.getWithdrawalAttemptToken()));
     }
 
     /**
@@ -372,7 +370,7 @@ public class MembershipPayerWithdrawalTxService {
         cancellationRepository.saveAndFlush(record);
 
         return Optional.of(new PreparedTarget(subscriptionId, subscription.getStripeSubscriptionId(),
-                record.getWithdrawalAttemptAt(), record.getAttemptCount()));
+                record.getWithdrawalAttemptAt(), record.getWithdrawalAttemptToken()));
     }
 
     /** 非終端のまま照合バッチに拾われ続けないよう、復旧不能な行を終端化する（検分3巡目 P2）。 */
@@ -494,13 +492,12 @@ public class MembershipPayerWithdrawalTxService {
      * @param stripeSubscriptionId Stripe Subscription ID（未連結なら null＝Stripe 操作は行えない）
      * @param withdrawalAttemptAt  この作業が属する退会試行の世代。<b>Stripe 呼び出しを跨いで持ち回り、
      *                             確定トランザクションで再検証する</b>ためのもの（Codex 検分3巡目 P1-2）
-     * @param attemptCount         作業行の試行番号。<b>Stripe 冪等キーの一意化に使う</b>——
-     *                             時刻由来の世代値は本番の {@code users.deleted_at} が
-     *                             {@code DATETIME}（秒精度）であるため同一秒内の
-     *                             「退会A → 取消 → 再退会B」で衝突する（Codex 検分5巡目 P1-3）
+     * @param attemptToken         退会試行ごとに一度だけ払い出す不変の識別子。
+     *                             <b>Stripe 冪等キー</b>に使う。同一世代・同一操作の再試行では固定され、
+     *                             別世代でのみ変わる（Codex 検分5巡目 P1-3・絞り込み確認 P1）
      */
     public record PreparedTarget(UUID subscriptionId, String stripeSubscriptionId,
-            Instant withdrawalAttemptAt, Integer attemptCount) {
+            Instant withdrawalAttemptAt, UUID attemptToken) {
     }
 
     /** 確定トランザクションの結末。 */
