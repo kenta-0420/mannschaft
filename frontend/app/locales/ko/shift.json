@@ -81,7 +81,8 @@
       "detail": "상세",
       "edit": "편집",
       "requests": "신청 목록",
-      "workConstraints": "근무 제약"
+      "workConstraints": "근무 제약",
+      "teamLoadFailed": "팀 정보를 불러오지 못했습니다"
     },
     "status": {
       "all": "전체",
@@ -436,8 +437,5 @@
         "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
       }
     }
-  },
-  "page": {
-    "teamLoadFailed": "팀 정보를 불러오지 못했습니다"
   }
 }

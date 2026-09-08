@@ -9,7 +9,8 @@
       "detail": "詳細",
       "edit": "編集",
       "requests": "希望一覧",
-      "workConstraints": "勤務制約"
+      "workConstraints": "勤務制約",
+      "teamLoadFailed": "チーム情報の取得に失敗しました"
     },
     "status": {
       "all": "すべて",
@@ -436,8 +437,5 @@
         "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
       }
     }
-  },
-  "page": {
-    "teamLoadFailed": "チーム情報の取得に失敗しました"
   }
 }
