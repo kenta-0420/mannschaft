@@ -56,18 +56,9 @@
    ON DUPLICATE KEY UPDATE description = VALUES(description);
    ```
 
-2. BE: `ShiftAutoAssignController` の**「新たに割り当てを生む 4 経路」にメソッドレベルで `@RequireFeature("FEATURE_SHIFT_AUTO_ASSIGN_ENABLED")`** を付ける。**実装クラスに付けること**（インターフェースへの付与は Aspect が拾わず、番人 `RequireFeatureInterfaceGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/RequireFeatureInterfaceGuardTest.java`）が禁止している）。
+2. BE: `ShiftAutoAssignController` に**クラスレベルで `@RequireFeature("FEATURE_SHIFT_AUTO_ASSIGN_ENABLED")`** を付ける。**実装クラスに付けること**（インターフェースへの付与は Aspect が拾わず、番人 `RequireFeatureInterfaceGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/RequireFeatureInterfaceGuardTest.java`）が禁止している）。**6 エンドポイントすべて**が `FEATURE_GATE_001` で拒否される。
 
-   > **クラスレベル一括付与は採らない。** 理由は §11.1.3（既存データが人質になる）。
-
-   | 経路 | ゲート |
-   |---|---|
-   | `POST /schedules/{id}/auto-assign`（実行） | **する** |
-   | `POST /schedules/{id}/auto-assign/confirm`（割当確定） | **する** |
-   | `GET /schedules/{id}/assignment-runs`（履歴一覧） | **する** |
-   | `GET /assignment-runs/{runId}`（履歴詳細） | **する** |
-   | `DELETE /schedules/{id}/auto-assign`（破棄） | **しない**（後始末の経路） |
-   | `POST /assignment-runs/{runId}/confirm-visual-review`（目視確認） | **しない**（後始末の経路） |
+   > **メソッド単位の付け外しは採らない。** ゲートは**全経路を一括で塞ぐ方が穴が少ない**。メソッドごとに付けると、将来エンドポイントが増えたときに付け忘れる。実際に同ドメインの `ShiftScheduleController` は **9 本中 8 本で `@RequireFeature` が抜けている**（§11.8-3）。ここでは単純さが安全につながる。
 
 3. **入口で塞ぐ。FE だけ外すのは不可。** API を直叩きされると「時刻を見ない割当」が入り、`shift_slots.assigned_user_ids` が汚れるため。
 
@@ -79,24 +70,18 @@
 
 7. `docs/inventory/feature-inventory.yaml` に停止理由を記載する:「時刻を見ない割当が二重割当を生むため。方針転換 2026-09-09」。
 
-### 11.1.3 停止が既存データを人質に取らないこと【重要・Codex 検分 P1-1】
+### 11.1.3 未確認 run を持つシフト表は公開できなくなる（既知の制約）【Codex 検分 P1-1・申し送り】
 
-**実測（`origin/main`）**:
+**実測（`origin/main`）**: `PUBLISHED` への遷移時に `autoAssignService.assertNoUnreviewedRuns(id)` が呼ばれ（`backend/src/main/java/com/mannschaft/app/shift/service/ShiftScheduleService.java:226`）、当該 schedule に **`SUCCEEDED` の run が 1 件でも存在すれば** `VISUAL_REVIEW_REQUIRED` を投げる（`ShiftAutoAssignService.java:320-326`）。これを解除する唯一の手段は `confirmVisualReview` が run の status を `SUCCEEDED` → `CONFIRMED` へ遷移させることだが（`ShiftAutoAssignService.java:294-306` / `ShiftAssignmentRunEntity.java:117-123`）、**その経路もクラスレベルのゲートで塞がれる**。したがってフラグを OFF にすると、未確認の `SUCCEEDED` run を持つシフト表は公開できなくなる。**これは本設計における既知の制約であり、仕様である。** 本プロジェクトは**本番稼働前でありローカル環境のデータしか存在しないため、該当行は破棄してよい**（移行設計もデータ移行マイグレーションも不要）。
 
-| 観測点 | 実測結果 | 出典 |
-|---|---|---|
-| 公開時のゲート | `PUBLISHED` への遷移時に `autoAssignService.assertNoUnreviewedRuns(id)` を呼ぶ | `backend/src/main/java/com/mannschaft/app/shift/service/ShiftScheduleService.java:226` |
-| ゲートの条件 | 当該 schedule に **`SUCCEEDED` の run が 1 件でも存在すれば** `VISUAL_REVIEW_REQUIRED` を投げる | `backend/src/main/java/com/mannschaft/app/shift/service/ShiftAutoAssignService.java:320-326` |
-| ゲートを外す唯一の手段 | `confirmVisualReview` が run の status を **`SUCCEEDED` → `CONFIRMED`** へ遷移させること | `ShiftAutoAssignService.java:294-306` / `ShiftAssignmentRunEntity.java:117-123`（`confirmByVisualReview`） |
-
-**したがって、`confirm-visual-review` をゲートで塞ぐと**、未確認の `SUCCEEDED` run を抱えたシフト表は **永久に公開できなくなる**。破棄（`DELETE .../auto-assign`）も塞げば、後始末の手段が 1 つも残らない。
-
-**設計（マスター再裁可が必要な方針変更）**:
-
-1. **後始末の 2 経路（目視確認・破棄）はゲートしない**（§11.1.2 の表）。停止の目的は「**新たに時刻を見ない割当を生ませない**」ことであり、既に生まれた run の始末を妨げることではない。この 2 経路は割当を新規生成しないため、目的と矛盾しない。
-2. **公開ゲート `assertNoUnreviewedRuns` は変更しない。** フラグ状態で分岐させると「フラグを戻したら急に公開できなくなる」という時限爆弾になる。
-3. **データ移行（既存 run の一括 `CONFIRMED` 昇格）は行わない。** 目視確認は「管理者が中身を見た」という記録であり、マイグレーションで機械的に押すことは**記録の意味を偽る**（`visual_review_confirmed_by` に誰も入らない確認済み行が残る）。経路を開けておけば、利用者が自分の手で確認または破棄できる。
-4. FE: 未確認 run を抱えたシフト表の公開が拒否されたとき、**「自動割当は停止中ですが、過去の実行結果の目視確認または破棄は行えます」**と、到達可能な導線とともに案内する（行き止まりを作らない）。
+> ⚠️ **将来への申し送り（消してはならない）**
+>
+> **本番データが存在する状態で改めてこのフラグを OFF にする場合、この経路は障害になる。** 未確認 `SUCCEEDED` run を抱えたシフト表が**永久に公開できなくなり、利用者のデータが人質になる**。その時点では、次のいずれかの移行手順が必須である。
+>
+> - 停止前に未確認 run を洗い出し、目視確認または破棄を利用者に促す（停止を段階的に行う）
+> - あるいは後始末の 2 経路（`confirm-visual-review` / `DELETE .../auto-assign`）をゲートの例外として開ける
+>
+> **上記が不要なのは「守るべき実データが無い」という現在の前提に依存している。前提が変わったら、この節を読み直すこと。**
 
 ---
 
@@ -571,11 +556,11 @@ ALTER TABLE shift_requests
 
 → [`07_authoring_cost.md`](07_authoring_cost.md) §12.9 を参照。
 
-### AC-11群 自動割当の停止 ＋ 非回帰（13件・PR B1/B2）
+### AC-11群 自動割当の停止 ＋ 非回帰（11件・PR B1/B2）
 
 | ID | 種別 | 受け入れ条件 |
 |---|---|---|
-| AC-11-01 | [IT] | `FEATURE_SHIFT_AUTO_ASSIGN_ENABLED = FALSE` のとき、`ShiftAutoAssignController` の **割当を生む 4 経路**（実行 / 割当確定 / 履歴一覧 / 履歴詳細）が `FEATURE_GATE_001` で拒否される |
+| AC-11-01 | [IT] | `FEATURE_SHIFT_AUTO_ASSIGN_ENABLED = FALSE` のとき、`ShiftAutoAssignController` の **6 経路すべて**（実行 / 割当確定 / 破棄 / 履歴一覧 / 履歴詳細 / **目視確認**）が `FEATURE_GATE_001` で拒否される |
 | AC-11-02 | [IT] | 上記の拒否時に `shift_assignment_runs` の**行が 1 件も増えない** |
 | AC-11-03 | [IT] | フラグ ON で既存の自動割当テストが**全 green**（テストを削除していないことの担保） |
 | AC-11-04 | [E2E] | `board.vue` の自動割当ボタンが**「停止中」表示で存在**し、DOM から消えていない（disabled ＋ 理由のツールチップ） |
@@ -585,9 +570,7 @@ ALTER TABLE shift_requests
 | AC-11-08 | [IT] | 非回帰: シフト交代依頼（3 パターン）が従前どおり動作する |
 | AC-11-09 | [IT] | 非回帰: `ShiftPublishedEvent` 発火後の**消化記録件数が従前と一致**する |
 | AC-11-10 | [IT] | 非回帰: シフト-TODO 連携（F08.7）が従前どおり動作する |
-| AC-11-11 | [IT] | **移行ケース**: 未確認の `SUCCEEDED` run を持つシフト表でフラグを OFF にしても、`POST /assignment-runs/{runId}/confirm-visual-review` が **200 で通り**（`FEATURE_GATE_001` にならず）、run が `CONFIRMED` へ遷移する |
-| AC-11-12 | [IT] | **移行ケース**: 上記の確認後、当該シフト表の `PUBLISHED` への遷移が**成功**する（`VISUAL_REVIEW_REQUIRED` にならない）。＝**停止によって公開不能になるシフト表が存在しない** |
-| AC-11-13 | [IT] | **移行ケース**: フラグ OFF でも `DELETE /schedules/{id}/auto-assign`（破棄）が **200 で通り**、破棄後に `PUBLISHED` への遷移が成功する（確認・破棄の**2 通りの出口**が両方生きている） |
+| AC-11-11 | [IT] | **既知の制約の固定**: フラグ OFF のとき、未確認 `SUCCEEDED` run を持つシフト表の `PUBLISHED` 遷移が `assertNoUnreviewedRuns` により **`VISUAL_REVIEW_REQUIRED` で拒否される**。**これは欠陥ではなく仕様である**旨を、テストメソッド名（例: `フラグOFF時_未確認runを持つシフト表は公開できない_既知の制約`）とコメントに明示し、§11.1.3 の申し送りを参照させる |
 
 ### AC-12群 失敗の可視化と情報漏洩の防止（6件・全 PR 横断）
 
