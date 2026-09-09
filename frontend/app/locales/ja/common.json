@@ -1510,6 +1510,8 @@
   "common": {
     "cancel": "キャンセル",
     "search": "検索",
+    "edit": "編集",
+    "save": "保存",
     "resume": {
       "title": "履歴書・職務経歴書",
       "listTitle": "履歴書バージョン一覧",

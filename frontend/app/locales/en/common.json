@@ -1510,6 +1510,8 @@
   "common": {
     "cancel": "Cancel",
     "search": "Search",
+    "edit": "Edit",
+    "save": "Save",
     "resume": {
       "title": "Resume & Work History",
       "listTitle": "Resume Versions",

@@ -1510,6 +1510,8 @@
   "common": {
     "cancel": "취소",
     "search": "검색",
+    "edit": "편집",
+    "save": "저장",
     "resume": {
       "title": "이력서・직무경력서",
       "listTitle": "이력서 버전 목록",
