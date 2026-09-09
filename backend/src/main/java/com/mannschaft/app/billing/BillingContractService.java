@@ -547,8 +547,14 @@ public class BillingContractService {
         }
         billingContractRepository.save(contract);
         String slotAddonKey = contract.getContractKind() == ContractKind.ADDON ? contract.getFeatureKey() : "";
-        activeContractPointerRepository.hardDeleteBySlot(
-                contract.getScopeKind(), contract.getScopeId(), contract.getContractKind(), slotAddonKey);
+        // ★柱③-B AC-14（設計書 §3.7・P0-3 根治）: 削除条件に contract_id 一致を課す。
+        //   スロット単位（scope + kind + slot）のままだと、引継の切替TXで【既に新契約へ付け替わった】
+        //   pointer まで同一スロット条件でヒットし、遅れて届いた旧サブスクの webhook が
+        //   新契約の entitlement を巻き添えで剥がす。自分（旧契約）が今も pointer の持ち主である
+        //   場合のみ削除し、付け替わっていれば 0 件更新（副作用なし）で終わる。
+        activeContractPointerRepository.hardDeleteBySlotAndContractId(
+                contract.getScopeKind(), contract.getScopeId(), contract.getContractKind(),
+                slotAddonKey, contract.getId());
         List<String> revokedKeys = revokeEntitlementsOfContract(contract, null, now);
         evictAfterCommit(contract.getScopeKind(), contract.getScopeId(), revokedKeys);
     }
