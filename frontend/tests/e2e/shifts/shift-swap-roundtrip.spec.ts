@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
+import { mockFeatureFlags } from '../helpers/feature-flags'
 import {
   TEAM_ID,
   SCHEDULE_ID,
@@ -61,22 +62,6 @@ function buildSwapRequest(
     createdAt: '2026-05-01T00:00:00Z',
     updatedAt: '2026-05-01T00:00:00Z',
   }
-}
-
-/**
- * 公開フィーチャーフラグのモック。
- *
- * global middleware `feature-gate` が `/my/shift` と `/teams/{slug}/shifts` を束縛しており、
- * FEATURE_SHIFT_ENABLED が有効でないと /dashboard へ差し戻される（テスト以前にページに入れない）。
- */
-async function mockFeatureFlags(page: Page): Promise<void> {
-  await page.route('**/api/v1/feature-flags', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: [{ flagKey: 'FEATURE_SHIFT_ENABLED', enabled: true }] }),
-    })
-  })
 }
 
 /**

@@ -1,11 +1,16 @@
 import { test, expect } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
+import { mockFeatureFlags } from '../helpers/feature-flags'
+import { setupAdminAuth } from '../shifts/_helpers'
 import { TEAM_ID, mockTeam, mockTeamFeatureApis } from './helpers'
 
 test.describe('TEAM-014〜016: シフト管理', () => {
   test.beforeEach(async ({ page }) => {
+    await setupAdminAuth(page)
     await mockTeam(page)
     await mockTeamFeatureApis(page)
+    // catch-all 相当のチーム配下モックより後に個別登録し、feature-gate の差し戻しを防ぐ
+    await mockFeatureFlags(page)
     // シフトAPIはチーム配下ではなく /api/v1/shifts 配下
     await page.route('**/api/v1/shifts/**', async (route) => {
       await route.fulfill({
