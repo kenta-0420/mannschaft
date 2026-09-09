@@ -354,6 +354,23 @@
         "schedule": "スケジュール",
         "noSlot": "この日のシフトはありません"
       }
+    },
+    "entry": {
+      "sectionTitle": "希望の提出・シフトボード",
+      "bulkRequest": "まとめて希望を出す",
+      "board": "シフトボード",
+      "weeklyDefault": "曜日ごとの既定を設定",
+      "closed": "希望の受付は終了しました"
+    },
+    "submitConfirm": {
+      "title": "この内容で送信しますか？",
+      "filledLabel": "入力済みの日",
+      "defaultAppliedLabel": "既定から自動で入った日",
+      "untouchedLabel": "未入力の日",
+      "dayCount": "{count}日",
+      "untouchedNotice": "未入力の日は「できれば休みたい」希望として提出されます。ただし人手が足りない場合はシフトの依頼が来ることがあります。",
+      "submit": "送信する",
+      "back": "戻って編集"
     }
   },
   "my_shift_guide": {

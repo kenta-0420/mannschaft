@@ -354,6 +354,23 @@
         "schedule": "스케줄",
         "noSlot": "이 날의 근무가 없습니다"
       }
+    },
+    "entry": {
+      "sectionTitle": "희망 제출 / 시프트 보드",
+      "bulkRequest": "한꺼번에 희망 제출",
+      "board": "시프트 보드",
+      "weeklyDefault": "요일별 기본값 설정",
+      "closed": "희망 접수가 종료되었습니다"
+    },
+    "submitConfirm": {
+      "title": "이 내용으로 제출할까요?",
+      "filledLabel": "입력한 날",
+      "defaultAppliedLabel": "기본값에서 자동 입력된 날",
+      "untouchedLabel": "입력하지 않은 날",
+      "dayCount": "{count}일",
+      "untouchedNotice": "입력하지 않은 날은 \"가급적 쉬고 싶음\"으로 제출됩니다. 다만 인력이 부족하면 근무 요청이 올 수 있습니다.",
+      "submit": "제출",
+      "back": "돌아가서 수정"
     }
   },
   "my_shift_guide": {

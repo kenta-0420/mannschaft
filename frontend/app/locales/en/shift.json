@@ -354,6 +354,23 @@
       "totalCount": "Total: {count}",
       "totalLabel": "Total",
       "confirmSubmit": "Submit with these settings?"
+    },
+    "entry": {
+      "sectionTitle": "Submit requests / Shift board",
+      "bulkRequest": "Submit requests in bulk",
+      "board": "Shift board",
+      "weeklyDefault": "Set weekly defaults",
+      "closed": "Request submission has closed"
+    },
+    "submitConfirm": {
+      "title": "Submit with this content?",
+      "filledLabel": "Days you filled in",
+      "defaultAppliedLabel": "Days filled from your weekly defaults",
+      "untouchedLabel": "Days left untouched",
+      "dayCount": "{count} day(s)",
+      "untouchedNotice": "Untouched days are submitted as \"prefer to rest\". You may still be asked to work if staffing runs short.",
+      "submit": "Submit",
+      "back": "Back to edit"
     }
   },
   "my_shift_guide": {
