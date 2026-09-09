@@ -101,13 +101,10 @@ let apiCtx: APIRequestContext
 let adminToken: string
 let fx: Fixture
 
-const test = base.extend<Record<string, never>>({
-  // 各テストで役者ごとにログインするため、既定の storageState は使わない
-  // eslint-disable-next-line no-empty-pattern -- Playwright の fixture 定義形式
-  storageState: async ({}, use) => {
-    await use(undefined)
-  },
-})
+// 各テストで役者ごとにログインするため、既定の storageState は使わない
+// （activity-authz.spec.ts と同作法）
+base.use({ storageState: { cookies: [], origins: [] } })
+const test = base
 
 // dev サーバーの初回ルートコンパイルが重く、既定 60s では役者 2 人ぶんの
 // ページ遷移が入るテストが落ちる（症状隠しではなく実測に基づく余裕の確保）。
