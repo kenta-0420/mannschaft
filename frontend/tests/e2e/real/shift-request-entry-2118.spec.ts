@@ -111,7 +111,7 @@ const test = base.extend<Record<string, never>>({
 
 // dev サーバーの初回ルートコンパイルが重く、既定 60s では役者 2 人ぶんの
 // ページ遷移が入るテストが落ちる（症状隠しではなく実測に基づく余裕の確保）。
-test.beforeEach(({}, testInfo) => {
+test.beforeEach((_, testInfo) => {
   testInfo.setTimeout(180_000)
 })
 
