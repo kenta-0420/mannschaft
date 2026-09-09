@@ -98,22 +98,10 @@ public class BillingPayerHandoverTxService {
         //   期末後の cancel_at_period_end=false は終了済みサブスクを復旧できないため、
         //   「期末より前に FAILED として差し戻す」という安全条件が成立しない。
         //   承諾は Stripe に新サブスクを作る不可逆な一歩なので、その直前に必ず見る。
-        BillingContractEntity oldContract = billingContractRepository
+        requirePeriodEndHeadroom(billingContractRepository
                 .findByIdAndDeletedAtIsNull(handover.getOldContractId())
-                .orElseThrow(() -> new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND));
-        if (oldContract.getCurrentPeriodEnd() == null
-                || oldContract.getPspSubscriptionRef() == null
-                || oldContract.getStatus() == ContractStatus.PAST_DUE) {
-            throw new BusinessException(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);
-        }
-        Instant oldPeriodEnd = toInstant(oldContract.getCurrentPeriodEnd());
-        if (oldPeriodEnd.isBefore(now.plus(BillingPayerHandoverService.PENDING_SETUP_INTENT_DEADLINE)
-                .plus(BillingPayerHandoverService.PERIOD_END_SAFETY_MARGIN))) {
-            log.info("柱③-B: 承諾時点で旧期末までの猶予が不足しているため承諾を拒否します"
-                            + " handoverRequestId={}, oldPeriodEnd={}, now={}",
-                    handoverRequestId, oldPeriodEnd, now);
-            throw new BusinessException(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);
-        }
+                .orElseThrow(() -> new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND)),
+                handoverRequestId);
 
         return new AcceptValidation(handover.getId(), handover.getScopeKind(), handover.getScopeId(),
                 handover.getOldContractId(), handover.getStatus(), handover.getPspNewSubscriptionRef(),
@@ -333,6 +321,14 @@ public class BillingPayerHandoverTxService {
         BillingContractEntity oldContract = billingContractRepository
                 .findByIdAndDeletedAtIsNull(handover.getOldContractId())
                 .orElseThrow(() -> new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND));
+
+        // ★【確定する TX の中で、ロック下に猶予・期末を再検証する】（PR-4 Codex検分4巡目）
+        //   validateAcceptable（tx1）の検証は入口の早期リターンにすぎない。その後に
+        //   Stripe 照会を挟んで本メソッド（tx2）へ来るため、その間に境界時刻を跨いだり
+        //   旧サブスクの期末が更新されたりすると、猶予不足のまま【新サブスク作成という
+        //   不可逆な一歩】へ進んでしまう。第2〜3巡で繰り返した「CAS を取ってから外部呼び出し」と
+        //   同じ原則であり、実際に書き込むこの TX が最後の防衛線である。
+        requirePeriodEndHeadroom(oldContract, handover.getId());
 
         Instant now = clock.instant();
         handover.setStatus(PayerHandoverStatus.ACCEPTED);
@@ -1093,6 +1089,32 @@ public class BillingPayerHandoverTxService {
     // ============================================================
     // 内部ヘルパ
     // ============================================================
+
+    /**
+     * 旧期末までの猶予が残っていることを要求する（PR-4 Codex検分3巡目 P1-4・4巡目）。
+     *
+     * <p>要求は14日間有効なので、作成時の検証だけでは足りない（作成時に31時間あった契約でも
+     * 24時間後に承諾すれば残り7時間）。{@code expires_at} しか見ないと<b>旧期末を過ぎていても
+     * 承諾できて</b>しまい、期末後の {@code cancel_at_period_end=false} は終了済みサブスクを
+     * 復旧できないため「期末より前に {@code FAILED} として差し戻す」という安全条件が成立しない。</p>
+     */
+    private void requirePeriodEndHeadroom(BillingContractEntity oldContract, UUID handoverRequestId) {
+        if (oldContract.getCurrentPeriodEnd() == null
+                || oldContract.getPspSubscriptionRef() == null
+                || oldContract.getStatus() == ContractStatus.PAST_DUE) {
+            throw new BusinessException(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);
+        }
+        Instant oldPeriodEnd = toInstant(oldContract.getCurrentPeriodEnd());
+        Instant deadline = clock.instant()
+                .plus(BillingPayerHandoverService.PENDING_SETUP_INTENT_DEADLINE)
+                .plus(BillingPayerHandoverService.PERIOD_END_SAFETY_MARGIN);
+        if (oldPeriodEnd.isBefore(deadline)) {
+            log.info("柱③-B: 旧期末までの猶予が不足しているため承諾を拒否します"
+                            + " handoverRequestId={}, oldPeriodEnd={}, 必要={}",
+                    handoverRequestId, oldPeriodEnd, deadline);
+            throw new BusinessException(EntitlementErrorCode.HANDOVER_CONTRACT_NOT_ELIGIBLE);
+        }
+    }
 
     private BillingPayerHandoverRequestEntity lockOrThrow(UUID handoverRequestId) {
         return handoverRequestRepository.findByIdForUpdate(handoverRequestId)
