@@ -18,10 +18,8 @@
 -- NULL は「既定（差し戻す・再通知する）」を意味し、本 migration 以前の行と互換である。
 ALTER TABLE billing_payer_handover_requests
     ADD COLUMN cleanup_revert_old_cancel BOOLEAN NULL
-        COMMENT 'PR-4: 失敗確定の後始末で旧サブスクの cancel_at_period_end を差し戻すか。'
-                'RESUME→FAILED では運用者が明示的に選ぶ。NULL は既定（差し戻す）'
+        COMMENT 'PR-4: 失敗確定の後始末で旧サブスクの cancel_at_period_end を差し戻すか。RESUME→FAILED では運用者が明示的に選ぶ。NULL は既定（差し戻す）'
         AFTER setup_intent_verified_at,
     ADD COLUMN cleanup_renotify BOOLEAN NULL
-        COMMENT 'PR-4: 失敗確定後に AC-20 の再要求・再通知を行うか。'
-                'RESUME→FAILED（引継自体を諦める判断）では false。NULL は既定（再通知する）'
+        COMMENT 'PR-4: 失敗確定後に AC-20 の再要求・再通知を行うか。RESUME→FAILED（引継自体を諦める判断）では false。NULL は既定（再通知する）'
         AFTER cleanup_revert_old_cancel;

@@ -17,9 +17,7 @@
 -- （＝これまでどおり次回の夜次照合で1度だけ確認される）。
 ALTER TABLE billing_payer_handover_requests
     ADD COLUMN setup_intent_verified_at DATETIME NULL
-        COMMENT 'PR-4: 新サブスクの pending_setup_intent が解決済みであることを確認した時刻。'
-                'SWITCHING 滞留の夜次照合はこの列が NULL の行だけを対象にする'
-                '（正常待機行が上限を埋めて認証未解決行を飢餓させるのを防ぐ）'
+        COMMENT 'PR-4: 新サブスクの pending_setup_intent が解決済みであることを確認した時刻。SWITCHING 滞留の夜次照合はこの列が NULL の行だけを対象にする（正常待機行が上限を埋めて認証未解決行を飢餓させるのを防ぐ）'
         AFTER old_cancel_scheduled_at;
 
 -- 滞留抽出のキーセット送り（accepted_at, id の複合カーソル）に対応するインデックス。
