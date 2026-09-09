@@ -394,7 +394,8 @@ public class ShiftSlotService {
                 .id(entity.getId())
                 .scheduleId(entity.getScheduleId())
                 .time(new ShiftSlotResponse.ShiftSlotTimeDto(
-                        entity.getSlotDate(), entity.getStartTime(), entity.getEndTime()))
+                        entity.getSlotDate(), entity.getStartTime(), entity.getEndTime(),
+                        entity.isEndsNextDay()))
                 .position(new ShiftSlotResponse.ShiftSlotPositionDto(
                         entity.getPositionId(), positionName, entity.getRequiredCount()))
                 .assignedUserIds(deserializeUserIds(entity.getAssignedUserIds()))

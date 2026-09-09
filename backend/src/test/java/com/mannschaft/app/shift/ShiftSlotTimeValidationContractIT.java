@@ -30,7 +30,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -136,6 +138,34 @@ class ShiftSlotTimeValidationContractIT extends AbstractMySqlIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(created.isEndsNextDay()).isTrue();
+    }
+
+    @Test
+    @DisplayName("endsNextDay は作成・一覧の応答から読み出せる（到達可能性）")
+    void 日跨ぎフラグは応答から読み出せる() throws Exception {
+        // 作成応答に含まれる
+        mockMvc.perform(post("/api/v1/shifts/schedules/{id}/slots", scheduleId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                slotBody("22:00:00", "02:00:00", Boolean.TRUE))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.time.endsNextDay").value(true));
+
+        // 日跨ぎでない枠は false で返る
+        mockMvc.perform(post("/api/v1/shifts/schedules/{id}/slots", scheduleId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                slotBody("09:00:00", "17:00:00", null))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.time.endsNextDay").value(false));
+
+        // 一覧応答にも含まれる（クライアントが end < start の推測に戻らずに済む）
+        mockMvc.perform(get("/api/v1/shifts/schedules/{id}/slots", scheduleId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.time.startTime == '22:00:00')].time.endsNextDay")
+                        .value(org.hamcrest.Matchers.hasItem(true)))
+                .andExpect(jsonPath("$.data[?(@.time.startTime == '09:00:00')].time.endsNextDay")
+                        .value(org.hamcrest.Matchers.hasItem(false)));
     }
 
     private Map<String, Object> slotBody(String startTime, String endTime, Boolean endsNextDay) {

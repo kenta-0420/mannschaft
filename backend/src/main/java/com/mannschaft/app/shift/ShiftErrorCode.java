@@ -87,7 +87,7 @@ public enum ShiftErrorCode implements ErrorCode {
     MANUAL_REMINDER_THROTTLED("SHIFT_036", "リマインドは連続して送信できません。15 秒ほど待ってから再操作してください", Severity.WARN),
 
     /** 枠時刻の前後関係が不正（F03.5 §11.2.5・400） */
-    INVALID_TIME_RANGE("SHIFT_040", "開始時刻は終了時刻より前である必要があります", Severity.WARN),
+    INVALID_TIME_RANGE("SHIFT_040", "開始時刻と終了時刻の組み合わせが正しくありません。日をまたぐ枠は「翌日終了」を指定し、またがない枠は開始時刻を終了時刻より前にしてください", Severity.WARN),
 
     /** 枠時刻の刻み・枠長が不正（F03.5 §11.2.5・400） */
     INVALID_SLOT_GRANULARITY("SHIFT_041", "シフト枠は15分単位で、最小15分以上24時間未満である必要があります", Severity.WARN);

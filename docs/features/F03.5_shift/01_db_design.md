@@ -102,7 +102,7 @@ INDEX idx_shift_positions_team (team_id, display_order)              -- チー�
 | `slot_date` | DATE | NO | — | シフト日付（深夜跨ぎスロットの場合は開始日を格納。例: 22:00-06:00 のスロットは slot_date = 開始日） |
 | `start_time` | TIME | NO | — | 開始時刻 |
 | `end_time` | TIME | NO | — | 終了時刻 |
-| `ends_next_day` | BOOLEAN | NO | FALSE | 翌日終了（日跨ぎ）か。日跨ぎは本フラグで**明示**し、暗黙の `end_time < start_time` では表現しない（設計 §11.2.5 規則5・`06_manual_authoring.md`）。既存行は FALSE |
+| `ends_next_day` | BOOLEAN | NO | FALSE | 翌日終了（日跨ぎ）か。日跨ぎは本フラグで**明示**し、暗黙の `end_time < start_time` では表現しない（設計 §11.2.5 規則5・`06_manual_authoring.md`）。導入時のマイグレーション（V208）で既存の `end_time < start_time` の行を TRUE へバックフィルする（`end_time = start_time` の枠長ゼロ行は 24 時間枠を捏造しないため FALSE のまま） |
 | `position_id` | BIGINT UNSIGNED | YES | NULL | FK → shift_positions。ON DELETE SET NULL。NULL = ポジション指定なし |
 | `required_count` | TINYINT UNSIGNED | NO | 1 | 必要人数（時間帯単位） |
 | `assigned_user_ids` | JSON | YES | NULL | 確定した担当者の user_id 配列（例: `[10, 11, 12]`）。公開前は NULL |
