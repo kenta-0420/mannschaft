@@ -36,7 +36,7 @@ async function performLogin(
   await passwordInput.click()
   await passwordInput.pressSequentially(password, { delay: 10 })
 
-  await page.getByRole('button', { name: 'ログイン' }).click()
+  await page.getByRole('button', { name: 'ログイン', exact: true }).click()
 }
 
 // ----------------------------------------------------------------------------------
@@ -143,7 +143,7 @@ test.describe('AUTH-006〜009: ログイン失敗フロー', () => {
     await passwordInput.click()
     await passwordInput.pressSequentially(USER_PASSWORD, { delay: 10 })
 
-    await page.getByRole('button', { name: 'ログイン' }).click()
+    await page.getByRole('button', { name: 'ログイン', exact: true }).click()
 
     // HTML5 required バリデーションでフォーム送信がブロックされ、/login に留まること
     // 短時間待機してから URL を確認（ナビゲーションが起きていないことを検証）
@@ -162,7 +162,7 @@ test.describe('AUTH-006〜009: ログイン失敗フロー', () => {
     await emailInput.click()
     await emailInput.pressSequentially(USER_EMAIL, { delay: 10 })
 
-    await page.getByRole('button', { name: 'ログイン' }).click()
+    await page.getByRole('button', { name: 'ログイン', exact: true }).click()
 
     // HTML5 required バリデーションでフォーム送信がブロックされ、/login に留まること
     await page.waitForTimeout(2_000)
@@ -173,7 +173,7 @@ test.describe('AUTH-006〜009: ログイン失敗フロー', () => {
 // ----------------------------------------------------------------------------------
 // AUTH-010〜012: ログアウトフロー
 // ----------------------------------------------------------------------------------
-test.describe('AUTH-010〜012: ログアウトフロー', () => {
+test.describe('AUTH-010〜012 / AUTH-016: ログアウトフロー', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
   test('AUTH-010: ログイン後にログアウト → /login にリダイレクト', async ({ page }) => {
@@ -236,7 +236,64 @@ test.describe('AUTH-010〜012: ログアウトフロー', () => {
     // ログインフォームが表示されていること
     await expect(page.locator('input#email')).toBeVisible({ timeout: 5_000 })
     await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByRole('button', { name: 'ログイン' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'ログイン', exact: true })).toBeVisible()
+  })
+
+  test('AUTH-016: ログアウト時にチーム・組織スコープを同一SPA内で破棄する', async ({ page }) => {
+    await performLogin(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 20_000 })
+
+    await page.goto('/dashboard')
+    await waitForHydration(page)
+
+    const readScopeCounts = () => page.evaluate(() => {
+      interface PiniaState {
+        team?: { myTeams?: unknown[] }
+        organization?: { myOrganizations?: unknown[] }
+      }
+      interface NuxtMountElement extends HTMLElement {
+        __vue_app__?: {
+          config: {
+            globalProperties: {
+              $pinia?: { state: { value: PiniaState } }
+            }
+          }
+        }
+      }
+
+      const mount = document.querySelector('#__nuxt') as NuxtMountElement | null
+      const state = mount?.__vue_app__?.config.globalProperties.$pinia?.state.value
+      if (!state) throw new Error('実ブラウザのPinia stateを取得できません')
+      return {
+        teams: state.team?.myTeams?.length ?? 0,
+        organizations: state.organization?.myOrganizations?.length ?? 0,
+      }
+    })
+
+    await expect.poll(async () => (await readScopeCounts()).teams, {
+      message: 'ログアウト前に実APIからチームスコープが読み込まれること',
+      timeout: 30_000,
+    }).toBeGreaterThan(0)
+    await expect.poll(async () => (await readScopeCounts()).organizations, {
+      message: 'ログアウト前に実APIから組織スコープが読み込まれること',
+      timeout: 30_000,
+    }).toBeGreaterThan(0)
+
+    const logoutButton = page
+      .locator('header button')
+      .filter({ has: page.locator('.pi-sign-out') })
+      .first()
+    await expect(logoutButton).toBeVisible({ timeout: 10_000 })
+    await logoutButton.click()
+    await page.waitForURL(/\/login/, { timeout: 15_000 })
+
+    await expect(page.locator('input#email')).toBeVisible()
+    await expect.poll(async () => (await readScopeCounts()).teams, {
+      message: 'ログアウト後にチームスコープが残留しないこと',
+    }).toBe(0)
+    await expect.poll(async () => (await readScopeCounts()).organizations, {
+      message: 'ログアウト後に組織スコープが残留しないこと',
+    }).toBe(0)
   })
 })
 
