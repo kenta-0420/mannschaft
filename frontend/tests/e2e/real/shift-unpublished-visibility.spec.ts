@@ -133,6 +133,7 @@ const RUN_TAG = `R${Date.now().toString(36)}${Math.random().toString(36).slice(2
 const STALE_LEFTOVER_MS = 2 * 60 * 60 * 1000
 const LABEL_PREVIEW = '提出前確認' // shift.preview.title
 const LABEL_SUBMIT = '提出' // shift.action.submit
+const LABEL_CONFIRM_SUBMIT = '送信する' // common.submit
 const LABEL_TOTAL = '合計' // shift.preview.totalLabel
 const LABEL_ERROR_TOAST = 'エラーが発生しました' // dialog.error
 
@@ -1082,6 +1083,10 @@ test.describe('D: 一般メンバーの希望提出フロー（非回帰・本�
     await page.getByRole('button', { name: LABEL_PREVIEW }).click()
     await expect(page.getByText(LABEL_TOTAL)).toBeVisible({ timeout: 30_000 })
     await page.getByRole('button', { name: LABEL_SUBMIT, exact: true }).click()
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: LABEL_CONFIRM_SUBMIT, exact: true })
+      .click()
 
     const toast = page.locator('.p-toast-message')
     await expect(toast, '提出結果のトーストが出ること').toBeVisible({ timeout: 30_000 })

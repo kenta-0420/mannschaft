@@ -3,6 +3,8 @@ package com.mannschaft.app.billing.api;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.api.dto.PayerHandoverAcceptResponse;
 import com.mannschaft.app.billing.api.dto.PayerHandoverRequestResponse;
+import com.mannschaft.app.billing.api.dto.PayerHandoverResumeRequest;
+import com.mannschaft.app.billing.api.dto.PayerHandoverResumeResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.featuregate.AlwaysReachable;
@@ -13,7 +15,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -103,5 +107,48 @@ public class BillingPayerHandoverController {
         Long operatorUserId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.of(payerHandoverApplicationService.accept(
                 EntitlementScopeKind.ORG, organizationId, handoverRequestId, operatorUserId)));
+    }
+
+    // ============================================================
+    // 手動介入からの再開（RESUME・設計書 §3.6.2・AC-37）
+    // ============================================================
+
+    /**
+     * 手動介入中の引継を再開・終端化する（{@code MANUAL_INTERVENTION} 専用の出口）。
+     *
+     * <p>{@code MANUAL_INTERVENTION} は非終端であり、生成列 {@code open_old_contract_id} が値を保持し続けるため、
+     * <b>解消するまで同一契約への新しい引継申請はブロックされ、purge の期末解約フォールバックも発火しない</b>
+     * （AC-36）。放置は「旧 payer への課金が止まらない」に直結するため、必ず人手で決着させる必要がある。</p>
+     */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "手動介入で止まった引継を再開できないと旧 payer への課金が止まらないため、Gate状態にかかわらず到達可能でなければならない")
+    @PostMapping("/teams/{teamId}/billing/payer-handover-requests/{handoverRequestId}/resume")
+    @PreAuthorize("@billingAccessGuard.canManage(authentication, T(com.mannschaft.app.billing.EntitlementScopeKind).TEAM, #teamId)")
+    @Operation(summary = "チーム契約の請求担当引継を手動介入から再開",
+            description = "MANUAL_INTERVENTION の引継を SWITCHING へ戻す（切替再試行）か FAILED で確定する。"
+                    + "FAILED 確定時に旧サブスクの期末解約予約を差し戻すかは運用者が明示的に選ぶ"
+                    + "（旧が既に次の期間へ更新済みの場合、差し戻しは不適切なことがある）。")
+    public ResponseEntity<ApiResponse<PayerHandoverResumeResponse>> resumeForTeam(
+            @PathVariable Long teamId, @PathVariable UUID handoverRequestId,
+            @Valid @RequestBody PayerHandoverResumeRequest request) {
+        Long operatorUserId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.of(payerHandoverApplicationService.resume(
+                EntitlementScopeKind.TEAM, teamId, handoverRequestId, operatorUserId, request)));
+    }
+
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "手動介入で止まった引継を再開できないと旧 payer への課金が止まらないため、Gate状態にかかわらず到達可能でなければならない")
+    @PostMapping("/organizations/{organizationId}/billing/payer-handover-requests/{handoverRequestId}/resume")
+    @PreAuthorize("@billingAccessGuard.canManage(authentication, T(com.mannschaft.app.billing.EntitlementScopeKind).ORG, #organizationId)")
+    @Operation(summary = "組織契約の請求担当引継を手動介入から再開",
+            description = "MANUAL_INTERVENTION の引継を SWITCHING へ戻す（切替再試行）か FAILED で確定する。"
+                    + "FAILED 確定時に旧サブスクの期末解約予約を差し戻すかは運用者が明示的に選ぶ"
+                    + "（旧が既に次の期間へ更新済みの場合、差し戻しは不適切なことがある）。")
+    public ResponseEntity<ApiResponse<PayerHandoverResumeResponse>> resumeForOrganization(
+            @PathVariable Long organizationId, @PathVariable UUID handoverRequestId,
+            @Valid @RequestBody PayerHandoverResumeRequest request) {
+        Long operatorUserId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.of(payerHandoverApplicationService.resume(
+                EntitlementScopeKind.ORG, organizationId, handoverRequestId, operatorUserId, request)));
     }
 }

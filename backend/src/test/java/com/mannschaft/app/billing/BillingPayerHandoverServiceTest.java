@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -34,11 +35,14 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -634,7 +638,7 @@ class BillingPayerHandoverServiceTest {
 
             verify(handoverTxService).publishAdditionalAuthRequired(handoverId);
             // 1段目では FAILED にしない（旧の cancel_at_period_end は設定済みで引継は進行中扱い）。
-            verify(handoverTxService, never()).markFailedAndClearCancelSchedule(any());
+            verify(handoverTxService, never()).markFailedPendingCleanup(any(), any(), anyBoolean(), anyBoolean());
             verify(billingPaymentGateway, never()).cancelHandoverNewSubscription(any(), any());
         }
 
@@ -722,17 +726,42 @@ class BillingPayerHandoverServiceTest {
             given(billingPaymentGateway.retrieveSubscription(NEW_SUB))
                     .willReturn(new SubscriptionSnapshot(NEW_SUB, "trialing", false,
                             NOW, OLD_PERIOD_END_INSTANT, "seti_123"));
+            given(handoverTxService.markFailedPendingCleanup(
+                    handoverId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES, true, true)).willReturn(true);
 
             service.executeSwitch(handoverId);
 
             // ①切替TXは実行されない
             verify(handoverTxService, never()).executeSwitchTx(any());
+            // ★3巡目 P1-1: CAS で権利を取ってから Stripe を変更し、後始末の完了を最後に記録する。
+            //   順序そのものが fencing であり、逆順だと「DB は別 worker が COMPLETED まで進めたのに
+            //   新サブスクだけ取消済み」という乖離が残る。
+            InOrder order = inOrder(handoverTxService, billingPaymentGateway);
+            order.verify(handoverTxService).markFailedPendingCleanup(
+                    handoverId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES, true, true);
             // ②新 trial サブスクを無課金取消
-            verify(billingPaymentGateway).cancelHandoverNewSubscription(NEW_SUB, handoverId);
+            order.verify(billingPaymentGateway).cancelHandoverNewSubscription(NEW_SUB, handoverId);
             // ③旧サブスクを継続へ差し戻し
-            verify(billingPaymentGateway).revertCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
-            // ④FAILED 確定と old_cancel_scheduled_at の NULL クリアは対で行う（R5-P2）
-            verify(handoverTxService).markFailedAndClearCancelSchedule(handoverId);
+            order.verify(billingPaymentGateway).revertCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
+            // ④後始末が全て成功した後にだけ old_cancel_scheduled_at をクリアする（R5-P2・3巡目 P1-2）
+            order.verify(handoverTxService).finalizeFailure(handoverId, true);
+        }
+
+        @Test
+        @DisplayName("3巡目 P1-1: 切替の FAILED 経路も CAS 先行——CAS に負けたら Stripe に触れない")
+        void ac30_secondStage_casLost_doesNotTouchStripe() {
+            given(handoverTxService.loadSwitchContext(handoverId)).willReturn(ctx());
+            given(billingPaymentGateway.retrieveSubscription(NEW_SUB))
+                    .willReturn(new SubscriptionSnapshot(NEW_SUB, "trialing", false,
+                            NOW, OLD_PERIOD_END_INSTANT, "seti_123"));
+            // 別 worker が先に COMPLETED まで進めた＝CAS は拒否する。
+            given(handoverTxService.markFailedPendingCleanup(any(), any(), anyBoolean(), anyBoolean())).willReturn(false);
+
+            service.executeSwitch(handoverId);
+
+            verify(billingPaymentGateway, never()).cancelHandoverNewSubscription(any(), any());
+            verify(billingPaymentGateway, never()).revertCancelAtPeriodEndForHandover(any(), any());
+            verify(handoverTxService, never()).finalizeFailure(any(), org.mockito.ArgumentMatchers.anyBoolean());
         }
 
         @Test
@@ -794,7 +823,7 @@ class BillingPayerHandoverServiceTest {
             service.executeSwitch(handoverId);
 
             verify(handoverTxService).markPartiallyCompleted(handoverId);
-            verify(handoverTxService, never()).markFailedAndClearCancelSchedule(any());
+            verify(handoverTxService, never()).markFailedPendingCleanup(any(), any(), anyBoolean(), anyBoolean());
         }
 
         @Test
@@ -814,19 +843,24 @@ class BillingPayerHandoverServiceTest {
     // ============================================================
 
     @Test
-    @DisplayName("findSwitchDueHandoverIds: SWITCHING かつ旧期末到達済みの ID を返す（期末は契約側の壁時計で比較）")
+    @DisplayName("findSwitchDueHandoverIds: SWITCHING/PARTIALLY_COMPLETED かつ旧期末到達済みの ID を返す（期末は契約側の壁時計で比較）")
     void findSwitchDue_delegatesWithConvertedWallClock() {
         UUID due = UUID.randomUUID();
         given(handoverRequestRepository.findSwitchDueIds(
-                eq(PayerHandoverStatus.SWITCHING), any(LocalDateTime.class)))
+                anyList(), any(LocalDateTime.class)))
                 .willReturn(List.of(due));
 
         List<UUID> result = service.findSwitchDueHandoverIds(NOW);
 
         assertThat(result).containsExactly(due);
         ArgumentCaptor<LocalDateTime> cutoff = ArgumentCaptor.forClass(LocalDateTime.class);
+        ArgumentCaptor<List<PayerHandoverStatus>> statuses = ArgumentCaptor.forClass(List.class);
         verify(handoverRequestRepository)
-                .findSwitchDueIds(eq(PayerHandoverStatus.SWITCHING), cutoff.capture());
+                .findSwitchDueIds(statuses.capture(), cutoff.capture());
+        // ★PR-4: PARTIALLY_COMPLETED（ローカル切替TXのみ未了・非終端）も同じバッチが拾い直さないと
+        //   pointer が旧のまま宙ぶらりんで残る。MANUAL_INTERVENTION は運用者の RESUME 待ちのため含めない。
+        assertThat(statuses.getValue()).containsExactly(
+                PayerHandoverStatus.SWITCHING, PayerHandoverStatus.PARTIALLY_COMPLETED);
         // Instant → billing_contracts の壁時計へ、同じ Clock の zone で変換される。
         assertThat(cutoff.getValue()).isEqualTo(LocalDateTime.ofInstant(NOW, ZoneOffset.UTC));
     }
