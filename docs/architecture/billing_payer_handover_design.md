@@ -287,6 +287,8 @@ R3-P1-3裁定（§2.3・§3.1）は「承諾確定と同時に旧サブスクへ
 
 **状態一覧への追加**: `billing_payer_handover_requests.status` の許容値は本改訂で8値→9値になる: `REQUESTED`/`ACCEPTED`/`REQUIRES_PAYMENT_METHOD`/`SWITCHING`/`PARTIALLY_COMPLETED`/`MANUAL_INTERVENTION`（新設）/`COMPLETED`/`FAILED`/`EXPIRED`（§4.2でDDLのCHECK/コメントを更新）。
 
+> **PR-4 追記（V206）**: さらに `FAILING_CLEANUP` を加えて **10値** になった。失敗確定は決まったが Stripe の後始末（新 trial サブスクの即時取消・旧サブスクの `cancel_at_period_end` 差し戻し）が未了であることを表す**非終端**状態である。**非終端3値ではなく4値**（`PARTIALLY_COMPLETED`・`MANUAL_INTERVENTION`・`FAILING_CLEANUP` と進行中の各状態）が `open_old_contract_id` 生成列で値を保持する。出口は「後始末の成功を確認したうえでの `FAILED`」のみ。
+
 **遷移表**:
 
 | 状態 | 意味 | 遷移元（入口） | 遷移先（出口） |
@@ -352,7 +354,7 @@ CREATE TABLE billing_payer_handover_requests (
     scope_id BIGINT NOT NULL,
     old_payer_user_id BIGINT NOT NULL COMMENT '退会予定・引継元の payer',
     new_payer_user_id BIGINT NULL COMMENT '承諾した引継先 ADMIN（ACCEPTED 以降で確定）',
-    status VARCHAR(24) NOT NULL COMMENT 'REQUESTED/ACCEPTED/REQUIRES_PAYMENT_METHOD/SWITCHING/PARTIALLY_COMPLETED/MANUAL_INTERVENTION/COMPLETED/FAILED/EXPIRED（R5-P1-2でMANUAL_INTERVENTION追加・9値）',
+    status VARCHAR(24) NOT NULL COMMENT 'REQUESTED/ACCEPTED/REQUIRES_PAYMENT_METHOD/SWITCHING/PARTIALLY_COMPLETED/MANUAL_INTERVENTION/FAILING_CLEANUP/COMPLETED/FAILED/EXPIRED（R5-P1-2でMANUAL_INTERVENTION追加、PR-4のV206でFAILING_CLEANUP追加・10値）',
     -- 生成列: 終端状態（COMPLETED/FAILED/EXPIRED）以外のときだけ old_contract_id を値として持つ。
     -- PARTIALLY_COMPLETED は R3-P1-3 裁定で「非終端・リトライ対象」、MANUAL_INTERVENTION は R5-P1-2 裁定で
     -- 「非終端・運用者のRESUME待ち」とそれぞれ再定義したため、いずれもCASE式の対象外
@@ -500,7 +502,7 @@ PR-3 の実装に対する独立検分で、上の1行仕様のままでは**成
 
 **非終端のまま拾われ続ける行を作らない**（3巡目 P2）: 復旧中に対象が消えた・payer が変わった・期末が到来して終端化した場合、`prepareRestore` は空を返すだけでなく作業行を `SUPERSEDED` へ**終端化する**。そうしないと照合バッチが永久に同じ行を拾い続ける。
 
-> **リリース依存**: PR-3 単独では失敗した期末解約は自動では再試行されない（対象は DB に残るが、拾う主体が居ない）。自動回復が揃うのは PR-4 の夜次再試行バッチ着地時点である。PR-3 と PR-4 の間の期間は、非終端 3 状態（`PENDING`/`FAILED`/`RESTORING`）と `findWithdrawalCancelBacklog()` の件数を監視する運用で埋める。
+> **リリース依存（PR-4 で解消済み）**: PR-3 単独では失敗した期末解約は自動では再試行されなかった（対象は DB に残るが、拾う主体が居ない）。**PR-4 の `MembershipPayerWithdrawalRetryBatchService`（日次 03:20 JST）が駆動主体として着地し、この依存は解消した。** 同バッチは「非終端の作業行（`PENDING`/`FAILED`）」と「`findWithdrawalCancelBacklog()`」を**払い手単位で union/dedup** してから解約側を、`RESTORING` を解除側として別パスで駆動する。dedup を入れるのは、backlog の照会が複数の独立クエリの組み合わせでトランザクションを張っておらず、**照会の間に作業行が作られれば重なりうる**ためである（「同一時点のスナップショットとしては互いに素」＝「常に互いに素」ではない）。仮に重複しても、払い手ごとの処理が行ロック下で状態を取り直して再検証するため二重発行にはならない（抽出側の dedup と処理側の再検証という二段の防御）。
 
 #### (3) 1件の失敗が全件を巻き添えにしない（P1-2）
 
@@ -673,13 +675,41 @@ Stripe の予約解除に成功した直後・DB 反映前に落ちると、**St
 1. **PR-1（DDL＋読み取り専用の土台）**: `payer_user_id`/`handover_request_id` 列追加・`chk_bc_status` CHECK 6値化・`ContractStatus` enum への `PENDING_HANDOVER` 追加・バックフィル・`billing_payer_handover_requests` テーブル新設・`ActiveContractPointerRepository#hardDeleteBySlotAndContractId` 新設（AC-1, AC-2, AC-15, AC-14の土台）
 2. **PR-2（BillingContractService拡張＋Gateway拡張）**: purge検出クエリ拡張（R2-P1-6の絞り込み条件含む）・引継要求/承諾API・状態機械（`PENDING_HANDOVER`含む）・`trial_end`方式での新サブスク作成・承諾確定時の旧サブスク`cancel_at_period_end`予約/差し戻し（R3-P1-3）・旧期末到達を条件とするローカル切替TX（Stripe API呼び出し無し）・PAST_DUE/過去期末の拒否分岐（R2-P1-4）・`pending_setup_intent`の二段検証（R3-P1-2）・Idempotency-Key/metadata対応とList Subscriptions照会（全ページ走査・R4-P1-1）のためのGateway拡張・DB+List優先のリトライ手順（AC-3〜12, AC-16, AC-22〜33の大半）
 3. **PR-3（membership_subscriptions連携＋WithdrawalStripeHandler実装）**: `cancelAllForPayerOnWithdrawal`新設・`WithdrawalStripeHandler`実装（旧`TeamSubscriptionEntity`参照撤去）（AC-13）
-4. **PR-4（hardDeleteBySlotAndContractId移行＋webhook順序耐性の仕上げ・監視）**: 旧webhookハンドラの呼び出し先切替・`SWITCHING`詰まり監視アラート・5分岐通知の実装・`cancel_at_period_end`夜次照合バッチと切替バッチの実行前チェック実装（R4-P1-2・AC-34/35）・期末境界越え検知と`MANUAL_INTERVENTION`状態および`RESUME`操作（運用者向けAPI/画面）の実装（R5-P1-1/2・AC-35〜37）（AC-14, AC-17〜21, AC-34〜37）
+4. **PR-4（着地済み・hardDeleteBySlotAndContractId移行＋夜次バッチの結線・MANUAL_INTERVENTION/RESUME）**: 旧webhookハンドラの呼び出し先切替・`SWITCHING`詰まり監視アラート・5分岐通知の実装・`cancel_at_period_end`夜次照合バッチと切替バッチの実行前チェック実装（R4-P1-2・AC-34/35）・期末境界越え検知と`MANUAL_INTERVENTION`状態および`RESUME`操作（運用者向けAPI/画面）の実装（R5-P1-1/2・AC-35〜37）（AC-14, AC-17〜21, AC-34〜37）
 
 各PRはBEテスト先行（CLAUDE.md「BE/API はテスト先行」原則）。PR-1はDDLのみのためマイグレーション適用確認ITを先行させる。
+
+#### PR-4 の実装対応（着地時点の正本）
+
+| 設計上の項目 | 実装 |
+|---|---|
+| 切替バッチ（唯一の切替TX実行者・§3.6 (b)） | `BillingPayerHandoverBatchService#runPayerHandoverSwitch`（毎時 hh:10 JST・ShedLock `billing_payer_handover_switch`）。抽出は `SWITCHING` に加え **`PARTIALLY_COMPLETED`** も含む（§3.5・非終端のリトライ対象。含めないと pointer が旧のまま宙ぶらりんで残る）。`MANUAL_INTERVENTION` は含めない（運用者の `RESUME` 待ち） |
+| 夜次照合バッチ（§3.6.1(a)・AC-34） | `BillingPayerHandoverBatchService#runPayerHandoverNightlyReconcile`（日次 02:40 JST）。①期限超過承諾の照合（§5.3）②`old_cancel_scheduled_at` 未確認行を **Stripe 実物と突合**。抽出を `SWITCHING`/`PARTIALLY_COMPLETED` に限るのは、`ACCEPTED` 段階での未設定は**正常**（旧への予約は引継確定と同時に行う設計）であり、含めると正常な進行中の行に対して毎晩 Stripe を叩き予約すべきでない旧サブスクを予約してしまうため |
+| 期末解約の再試行バッチ（§6.1 (2)） | `MembershipPayerWithdrawalRetryBatchService#runWithdrawalCancelRetry`（日次 03:20 JST）。上記「リリース依存」節を参照 |
+| `MANUAL_INTERVENTION` のアラート（§3.6.2） | `BillingPayerHandoverTxService#markManualIntervention` が通知（`MANUAL_INTERVENTION_REQUIRED`・当該スコープの引継先候補 ADMIN 宛・i18n 6言語）を publish し、あわせて ERROR ログで運用へ上申する |
+| `RESUME`（§3.6.2 出口・AC-37） | `POST /api/v1/{teams\|organizations}/{id}/billing/payer-handover-requests/{handoverRequestId}/resume`。`target=SWITCHING\|FAILED` を運用者が明示的に選ぶ。`FAILED` 確定時の旧サブスク差し戻しは `revertOldCancelSchedule` で**運用者が選ぶ**（旧が既に次の期間へ更新済みの場合、差し戻しは旧をさらに継続させるため不適切なことがある）。`MANUAL_INTERVENTION` 以外からは `HANDOVER_NOT_RESUMABLE`（409） |
+| `SWITCHING` 詰まり監視／追加認証の期限（§5.5 ④・AC-20） | `BillingPayerHandoverBatchService` の夜次照合に `reconcileStalledSwitching` を追加。承諾確定（`accepted_at`）から24時間を過ぎた `SWITCHING` を抽出し、**Stripe 実物の `pending_setup_intent` を再検証**して未解決なら `FAILED` を確定し、新 trial サブスクを無課金取消・旧を差し戻したうえで**他の候補 ADMIN へ再通知**する。旧期末到達まで待つと、そのとき旧サブスクは既に終了していて差し戻しても継続を復旧できないため、**期末より前に決着させる**必要がある |
+| 恒久失敗の `MANUAL_INTERVENTION` 化（§3.6.2 入口3） | `reconcileOldCancelSchedule` が設定 API の失敗を捕捉し、承諾確定から `CANCEL_SCHEDULE_ESCALATION`（3日）を過ぎても解消しない場合に `MANUAL_INTERVENTION` へ倒す。試行回数の列を足さずに**経過時間**で測るのは、恒久性の証拠として「何回叩いたか」より「いつまで解消しないか」のほうが確実であるため（単一要求行の経過時間であり、退会世代の推測ではない） |
+| 状態遷移の CAS 化 | `executeSwitchTx` / `markPartiallyCompleted` / `markManualIntervention` / `markFailedAndClearCancelSchedule` / `failStalledSwitchingAndRenotify` の全てが**行ロック取得後に期待元状態を再検証**する。`loadSwitchContext` 〜 Stripe 照会の間は行ロックが無いため、並行実行の失敗補償が**終端状態（`COMPLETED`）を非終端へ引き戻す**経路が実在した。ShedLock は `lockAtMostFor` 超過や webhook 等の他経路との競合に対する fencing にならない |
+| 失敗の恒久/一時分類（§3.6.2 入口3） | Stripe の HTTP ステータスで分類する（`4xx`（`429` 除く）＝恒久で即 `MANUAL_INTERVENTION`、`429`/`5xx`/接続断＝一時で再試行）。**時間（`CANCEL_SCHEDULE_ESCALATION`＝3日）は分類の根拠ではなく、分類が付かない一時失敗が続いた場合の上限**として併用する。分類を可能にするため `StripePaymentProviderImpl` の該当3メソッドが `StripeException` を cause として保持するよう是正した（握り潰すと呼び出し側は代理指標で推測するしかない） |
+| 状態変更の CAS（呼び出し元ごとの期待元状態） | `markFailedAndClearCancelSchedule` は**期待元状態を引数で受ける**。切替バッチの失敗補償は `SWITCHING`/`PARTIALLY_COMPLETED`、`RESUME→FAILED` は `MANUAL_INTERVENTION` のみ。「終端でなければ何でも可」は CAS ではなく、古いスナップショットを持つ worker が運用者の `MANUAL_INTERVENTION` を握り潰せてしまう |
+| Stripe 変更と CAS の順序 | **CAS で権利を取ってから Stripe を変更する**（取れなければ Stripe に触らない）。逆順だと、Stripe 照会中に別 worker が `COMPLETED` へ進めた場合に「DB は `COMPLETED`・Stripe は新サブスク取消済み」という乖離が残り、pointer が指す新契約と Stripe 実物が矛盾する |
+| 滞留抽出のキーセット送り | 滞留抽出は**処理しても状態が変わらない行**（認証完了済みで旧期末待ちの正常な `SWITCHING`）を返しうる唯一の照合であり、固定の先頭 N 件で切ると後続の認証未解決行が永久に検査されない。`accepted_at` を carry して前へ進む。他の3照合は処理すると必ず状態が動いて集合から抜けるため先頭から詰めれば足りる |
+| 旧期末までの猶予の要件化 | 引継要求の作成時に**旧期末まで `PENDING_SETUP_INTENT_DEADLINE + PERIOD_END_SAFETY_MARGIN`（30時間）以上**を要求する。加えて滞留抽出は「承諾+24時間」**または**「旧期末が 6 時間以内に迫っている」で拾う。旧期末を過ぎると `cancel_at_period_end=false` を送っても終了済みサブスクは復旧できず、「期末より前に `FAILED` として差し戻す」という安全条件が原理的に成立しないため |
+| **`FAILING_CLEANUP`（非終端・V206）** | 失敗確定を「決めた瞬間」と「Stripe の後始末が終わった瞬間」に分ける。CAS で `FAILING_CLEANUP` を取り、後始末の成功を確認してから `FAILED` へ終端化する。この状態は終端3値に含まれないため、生成列 `open_old_contract_id` が値を保持し、**`uk_bphr_open_old_contract` が通常の作成入口も含めて同一契約への新規要求を物理的に拒む**（＝旧試行のサブスクが Stripe に残ったまま別 ADMIN の承諾が進む二重サブスクを構造的に防ぐ）。同時に非終端なので夜次バッチが必ず回収できる。目印列の有無で表していた前案は、目印を消した瞬間に「回収不能」と「UNIQUE 枠の解放」が同時に起きる欠陥があった |
+| 終端化と再要求は同一 TX | `finalizeFailure` が「`FAILED` 化・`old_cancel_scheduled_at` クリア・新契約の無効化・AC-20 の再要求と通知」を1つの TX で確定する。分けると、その間の停止で「元要求は `FAILED`・再要求は無し」が残り、**終端は抽出対象外なので夜次バッチからも永久に見えない**。1 TX なら失敗しても `FAILING_CLEANUP` のまま残り次回が拾い直す |
+| 再要求は共通の作成要件で判定 | 再要求の可否は通常の作成入口と同じ要件（旧契約が今も引継可能か・**旧期末までの猶予**・候補 ADMIN の存在）だけで決める。**「旧 payer が退会申請中か」は要件にしない**——通常の `requestHandover` が退会を要件にしていない以上、これを課すと**対話 API から始めた正当な引継**で追加認証が失敗したときに他 ADMIN が居ても再要求が作られなくなる |
+| 失敗確定の3段構え（CAS → Stripe → 完了記録） | `FAILED` へ倒す全経路（切替の `pending_setup_intent` 未解決・`RESUME→FAILED`・滞留照合）が**同一の順序**を通る。①`markFailedPendingCleanup` が期待元状態つき CAS で権利を取る（取れなければ Stripe に触らない）②Stripe の後始末 ③`finishFailureCleanup` が `old_cancel_scheduled_at` を NULL クリア。②が落ちるとこの列が残るため、**「`FAILED` なのに残っている」が後始末未了の証跡**になり、夜次バッチ（`findFailedWithPendingCleanupIds`）が必ず回収する。新しい状態も列も増やさずに回収可能性を確保している |
+| AC-20 の再要求は後始末の後 | 再要求（`renotifyWithFreshRequest`）は**後始末が完了してから**作る。先に作ると、後始末が落ちた場合に「旧試行のサブスクが Stripe に残ったまま、別 ADMIN が新しい承諾を進められる」＝**二重サブスク**の窓が開く。再要求は共通の作成要件（旧 payer が今も退会申請中か・旧契約が今も引継可能か・旧期末までの猶予・候補 ADMIN の存在）を**Tx 層で再検証**し、満たさなければ作らない（元要求は `FAILED` のままなので生成列の枠が空き、purge の期末解約フォールバックへ渡る） |
+| 承諾時の期末猶予の再検証 | 要求は14日間有効なので、作成時の検証だけでは足りない（作成時31時間の契約でも24時間後に承諾すれば残り7時間）。`expires_at` しか見ないと**旧期末を過ぎていても承諾できて**しまい、期末後の差し戻しは終了済みサブスクを復旧できない。承諾は Stripe に新サブスクを作る不可逆な一歩なので、その直前に旧期末の猶予を再検証する |
+| 滞留抽出の複合カーソルと正常行の除外 | `(accepted_at, id)` の複合カーソルで進む（`accepted_at` 単独では同一時刻行がページ境界で全て脱落する）。あわせて **V205 の `setup_intent_verified_at`** を追加し、認証完了を確認した行を抽出から外す。認証完了行は処理しても状態が変わらないため、除外しないと実行件数の上限を埋めて**認証未解決行を永久に飢餓させる**（カーソルは実行のたびに初期化されるため、上限に達する限りその先へ到達しない） |
+| AC-14（`hardDeleteBySlotAndContractId` 移行） | `BillingContractService#expireSubscriptionContract`（旧サブスク由来の `customer.subscription.deleted` webhook 経路）を `contract_id` 一致条件つき削除へ移行。切替TX後に遅着した旧 webhook は 0 件更新で終わる |
 
 ---
 
 ## §9. 未決事項（実装フェーズで確定させる・変更なし）
+
+- **`RESUME` の運用権限（PR-4 Codex 検分1巡目 P1-5・未決）**: §3.6.2 は「Stripe 実データを確認できる運用チームが `RESUME` 権限を持つ」ことを前提にしているが、本リポジトリには**テナント横断の運用権限という型が存在しない**。`BillingAccessGuard` が扱うのは当該スコープの ADMIN と課金権限付き DEPUTY_ADMIN だけであり、`AccessGuard` の `SYSTEM_ADMIN` は「常に通す」短絡であって専用権限ではない。現状の PR-4 は当該スコープの ADMIN のみに `RESUME` を許しているため、**Stripe の void/refund を確認した運用担当者自身は決着させられない**。選択肢は (a) 専用の運用 permission を新設し監査ログと対象スコープ確認を伴わせる、(b) 管理コンソール側の別 API として切り出す、(c) 当面テナント ADMIN のみとし運用手順で補う、の3案。**権限体系の新設は本設計の射程を越えるため、殿の判断を仰ぐ**（この決着までは (c) の状態である）。
 
 - 通知基盤の具体的な実装クラスは実装フェーズで家老が偵察して決定する
 - 猶予期間14日は暫定値。マスターの最終承認時に法務・UX観点で調整余地あり

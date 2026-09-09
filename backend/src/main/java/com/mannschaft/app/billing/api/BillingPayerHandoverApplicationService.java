@@ -4,6 +4,8 @@ import com.mannschaft.app.billing.BillingPayerHandoverService;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.api.dto.PayerHandoverAcceptResponse;
 import com.mannschaft.app.billing.api.dto.PayerHandoverRequestResponse;
+import com.mannschaft.app.billing.api.dto.PayerHandoverResumeRequest;
+import com.mannschaft.app.billing.api.dto.PayerHandoverResumeResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -75,6 +77,35 @@ public class BillingPayerHandoverApplicationService {
                 .status(result.status().name())
                 .newContractId(result.newContractId() == null ? null : result.newContractId().toString())
                 .checkoutUrl(result.checkoutUrl())
+                .build();
+    }
+
+    /**
+     * 手動介入中（{@code MANUAL_INTERVENTION}）の引継を再開・終端化する
+     * （設計書 §3.6.2・AC-37・PR-4）。
+     *
+     * <p>{@code MANUAL_INTERVENTION} 以外からの呼び出しはドメイン層が
+     * {@code HANDOVER_NOT_RESUMABLE}（409）で拒否する。スコープ越境は 404 で畳む。</p>
+     */
+    public PayerHandoverResumeResponse resume(
+            EntitlementScopeKind scopeKind, Long scopeId, UUID handoverRequestId,
+            Long operatorUserId, PayerHandoverResumeRequest request) {
+
+        BillingPayerHandoverService.ResumeTarget target =
+                request.target() == PayerHandoverResumeRequest.ResumeTargetValue.FAILED
+                        ? BillingPayerHandoverService.ResumeTarget.FAILED
+                        : BillingPayerHandoverService.ResumeTarget.SWITCHING;
+        // 差し戻しは FAILED 確定時のみ意味を持つ（SWITCHING では旧の予約を維持したまま再試行する）。
+        boolean revert = target == BillingPayerHandoverService.ResumeTarget.FAILED
+                && request.revertOldCancelSchedule();
+
+        payerHandoverService.resumeManualIntervention(
+                scopeKind, scopeId, handoverRequestId, operatorUserId, target, revert);
+
+        return PayerHandoverResumeResponse.builder()
+                .handoverRequestId(handoverRequestId.toString())
+                .status(target.name())
+                .oldCancelScheduleReverted(revert)
                 .build();
     }
 }

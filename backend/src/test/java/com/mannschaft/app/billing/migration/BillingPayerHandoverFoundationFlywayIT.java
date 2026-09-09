@@ -329,8 +329,69 @@ class BillingPayerHandoverFoundationFlywayIT {
     }
 
     @Test
-    @DisplayName("V203: chk_bphr_status は9値の状態機械を許容し、scope_kindはTEAM/ORGのみ許容する")
-    void handoverStatusCheckAllowsNineValuesAndTeamOrgScopeOnly() throws Exception {
+    @DisplayName("V206/PR-4: FAILING_CLEANUP（後始末未了）の行がある間は、同一契約への新規要求が"
+            + "【通常の作成入口も含めて】UNIQUE で拒否される")
+    void failingCleanupBlocksNewRequestOnSameContract() throws Exception {
+        migrateToV203();
+
+        try (Connection connection = connection()) {
+            // 失敗確定の権利は取ったが Stripe の後始末が未了、という実際の状態を作る。
+            insertHandoverRequest(connection, "0199BBCCDDEEFF00112233445566EE01",
+                    LEGACY_CONTRACT_HEX, "FAILING_CLEANUP");
+
+            // ★この状態は【非終端】なので open_old_contract_id が値を保持している。
+            //   したがって同一旧契約への新規要求は、経路を問わず物理的に作れない。
+            //   これが「後始末未了の間に別 ADMIN の承諾が進んで二重サブスクになる」ことの構造的な防御。
+            assertThatThrownBy(() -> insertHandoverRequest(
+                    connection, "0199BBCCDDEEFF00112233445566EE02", LEGACY_CONTRACT_HEX, "REQUESTED"))
+                    .as("FAILING_CLEANUP が残っている間は同一契約への新規要求を uk_bphr_open_old_contract が拒否する")
+                    .isInstanceOf(SQLException.class);
+
+            try (Statement statement = connection.createStatement();
+                 ResultSet result = statement.executeQuery("""
+                         SELECT HEX(open_old_contract_id) AS open_id FROM billing_payer_handover_requests
+                          WHERE id = UNHEX('0199BBCCDDEEFF00112233445566EE01')
+                         """)) {
+                assertThat(result.next()).isTrue();
+                assertThat(result.getString("open_id"))
+                        .as("FAILING_CLEANUP は非終端なので生成列が値を保持すること")
+                        .isEqualTo(LEGACY_CONTRACT_HEX);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("V206/PR-4: 後始末の成功を確認して FAILED へ終端化すると、初めて同一契約への再要求が通る")
+    void finalizingCleanupReleasesTheUniqueSlot() throws Exception {
+        migrateToV203();
+
+        try (Connection connection = connection()) {
+            insertHandoverRequest(connection, "0199BBCCDDEEFF00112233445566EE11",
+                    LEGACY_CONTRACT_HEX, "FAILING_CLEANUP");
+            // 後始末が成功したときにだけ行う終端化。
+            execute(connection, """
+                    UPDATE billing_payer_handover_requests SET status = 'FAILED'
+                     WHERE id = UNHEX('0199BBCCDDEEFF00112233445566EE11')
+                    """);
+
+            // 終端化して初めて生成列が NULL になり、再要求（＝AC-20 の再生成や通常の申請）が通る。
+            insertHandoverRequest(connection, "0199BBCCDDEEFF00112233445566EE12",
+                    LEGACY_CONTRACT_HEX, "REQUESTED");
+
+            try (Statement statement = connection.createStatement();
+                 ResultSet result = statement.executeQuery("""
+                         SELECT COUNT(*) AS cnt FROM billing_payer_handover_requests
+                          WHERE old_contract_id = UNHEX('%s')
+                         """.formatted(LEGACY_CONTRACT_HEX))) {
+                assertThat(result.next()).isTrue();
+                assertThat(result.getInt("cnt")).isEqualTo(2);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("chk_bphr_status は10値の状態機械（V206 の FAILING_CLEANUP 含む）を許容し、scope_kindはTEAM/ORGのみ許容する")
+    void handoverStatusCheckAllowsAllStatusesAndTeamOrgScopeOnly() throws Exception {
         migrateToV203();
         // 生成列 open_old_contract_id + UNIQUE（uk_bphr_open_old_contract）は「同一契約に対する非終端要求は
         // 同時に1件のみ」を保証する（設計書§4.2）。MANUAL_INTERVENTION と PARTIALLY_COMPLETED はいずれも

@@ -345,8 +345,11 @@ class BillingContractServicePaymentTest {
 
         assertThat(paid.getStatus()).isEqualTo(ContractStatus.EXPIRED);
         assertThat(e1.getRevokedAt()).isEqualTo(NOW);
-        verify(activeContractPointerRepository).hardDeleteBySlot(
-                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "");
+        // ★柱③-B AC-14: 削除は contract_id 一致条件つき（切替後に届いた旧 webhook が
+        //   新契約の pointer を巻き添えで消さないことの、呼び出し側での担保）。
+        verify(activeContractPointerRepository).hardDeleteBySlotAndContractId(
+                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "", id);
+        verify(activeContractPointerRepository, never()).hardDeleteBySlot(any(), any(), any(), any());
         verify(cacheEvictor).evictScopeFeatures(eq(EntitlementScopeKind.USER), eq(9L), any());
     }
 
@@ -361,6 +364,8 @@ class BillingContractServicePaymentTest {
 
         verify(billingContractRepository, never()).save(any());
         verify(activeContractPointerRepository, never()).hardDeleteBySlot(any(), any(), any(), any());
+        verify(activeContractPointerRepository, never())
+                .hardDeleteBySlotAndContractId(any(), any(), any(), any(), any());
         verify(entitlementRepository, never()).saveAll(anyList());
     }
 
@@ -380,6 +385,8 @@ class BillingContractServicePaymentTest {
         assertThat(handoverContract.getStatus()).isEqualTo(ContractStatus.PENDING_HANDOVER);
         verify(billingContractRepository, never()).save(any());
         verify(activeContractPointerRepository, never()).hardDeleteBySlot(any(), any(), any(), any());
+        verify(activeContractPointerRepository, never())
+                .hardDeleteBySlotAndContractId(any(), any(), any(), any(), any());
         verify(entitlementRepository, never()).saveAll(anyList());
     }
 
