@@ -71,6 +71,42 @@ public interface MembershipSubscriptionRepository
             Long payerUserId, Collection<MembershipSubscriptionStatus> statuses);
 
     /**
+     * 柱③-B PR-3: 払い手退会の一括期末解約の<b>対象 ID だけ</b>を引く（{@code idx_ms_payer}）。
+     *
+     * <p>エンティティごと読まないのは意図的である。一括処理は「ID 抽出 → 1契約ずつ独立トランザクション」
+     * の形を採り、<b>実体の読み取りと行ロックは各トランザクションの中でやり直す</b>
+     * （Codex 検分1巡目 P1-2）。ここでロックを取らないのは、抽出だけのために全対象行を
+     * 長時間ロックしないためであり、代わりに各トランザクションが
+     * {@link #findByIdForUpdate} でロックし直して状態を再検証する。</p>
+     *
+     * <p>第二ソートキー {@code s.id} を必ず付ける。{@code created_at} は同一マイクロ秒に
+     * なりうるため、これが無いと処理順が未定義になり「先行契約が commit された後に後続が失敗する」
+     * といった順序依存の検証が非決定になる（Codex 検分3巡目 P2）。主キーは UUIDv7 で時系列に
+     * 単調増加するため、第二キーとして挿入順と一致する。</p>
+     */
+    @Query("SELECT s.id FROM MembershipSubscriptionEntity s "
+            + "WHERE s.payerUserId = :payerUserId AND s.status IN :statuses AND s.deletedAt IS NULL "
+            + "ORDER BY s.createdAt DESC, s.id DESC")
+    List<UUID> findIdsByPayerUserIdAndStatusIn(@Param("payerUserId") Long payerUserId,
+            @Param("statuses") Collection<MembershipSubscriptionStatus> statuses);
+
+    /**
+     * 柱③-B PR-3: 退会申請中の払い手のうち、<b>まだ期末解約が予約されていない</b>継続課金 ID を引く
+     * （PR-4 の照合バッチの本体・Codex 検分2巡目 P1-2）。
+     *
+     * <p>作業行（{@code membership_payer_withdrawal_cancellations}）を走査する経路では、行が
+     * <b>そもそも作られなかった</b>ケース——退会本体の commit 後・非同期タスク開始前の停止、
+     * {@code event-pool} の投入拒否——を永久に拾えない。退会状態そのものを起点にすれば、
+     * 行の有無に関係なく「やり残した解約」を再構築できる。</p>
+     */
+    @Query("SELECT s.id FROM MembershipSubscriptionEntity s "
+            + "WHERE s.payerUserId IN :payerUserIds AND s.status IN :statuses "
+            + "AND s.deletedAt IS NULL AND s.cancelAtPeriodEnd = false "
+            + "ORDER BY s.createdAt ASC, s.id ASC")
+    List<UUID> findUnscheduledIdsByPayerUserIdIn(@Param("payerUserIds") Collection<Long> payerUserIds,
+            @Param("statuses") Collection<MembershipSubscriptionStatus> statuses);
+
+    /**
      * 払い手視点の継続課金一覧（全状態・idx_ms_payer で引く）。
      */
     List<MembershipSubscriptionEntity> findByPayerUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long payerUserId);

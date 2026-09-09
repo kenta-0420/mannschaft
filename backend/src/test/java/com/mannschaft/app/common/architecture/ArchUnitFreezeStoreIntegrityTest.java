@@ -767,8 +767,16 @@ class ArchUnitFreezeStoreIntegrityTest {
      * このマージ作業で {@code SurveyUniverseResolver}（survey ドメイン）の
      * {@code UserRoleRepository}（role ドメイン）依存 4 行を新規の許容違反として凍結ストアへ
      * 追記した（母集団解決の唯一の窓口という設計意図があり、意図的に凍結許容する）。</p>
+     *
+     * <p>2026-09-08 更新（1972→1967）: 柱③-B PR-3（CMP-260901-1538）で
+     * {@code WithdrawalStripeHandler}（gdpr ドメイン）がスタブのまま直接 DI していた
+     * {@code StripeCustomerRepository} 3 行・{@code TeamSubscriptionRepository} 2 行の計 5 行を返済した。
+     * 退会時の決済連携を実装するにあたり、payment ドメインへは
+     * {@code MembershipSubscriptionService} 経由（Service 経由・CLAUDE.md のモジュラーモノリス原則）で
+     * のみ触れる形に是正し、Repository への直接依存を撤去したため。
+     * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1972;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1967;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
