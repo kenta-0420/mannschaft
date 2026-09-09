@@ -75,6 +75,7 @@ import {
   type APIRequestContext,
   type BrowserContext,
   type Page,
+  type Response,
 } from '@playwright/test'
 import { execSync } from 'child_process'
 import { loginViaApi } from '../fixtures/auth'
@@ -90,6 +91,10 @@ const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
 /** 一般メンバー視点の検証に使う永続ユーザー。 */
 const MEMBER_EMAIL = process.env.TEST_MEMBER_EMAIL ?? 'e2e-user@test.mannschaft.local'
 const MEMBER_PASSWORD = process.env.TEST_MEMBER_PASSWORD ?? 'TestPass2026!'
+
+/** どのチームにも所属しない、他テナント境界の実機確認用ユーザー。 */
+const OUTSIDER_EMAIL = process.env.TEST_OUTSIDER_EMAIL ?? 'e2e-outsider@test.mannschaft.local'
+const OUTSIDER_PASSWORD = process.env.TEST_OUTSIDER_PASSWORD ?? 'TestPass2026!'
 
 /**
  * 役者がそろっている既存の共有チーム（URL 識別子 slug）。
@@ -155,6 +160,17 @@ async function fetchMyUserId(ctx: APIRequestContext, token: string): Promise<num
   const res = await ctx.get(`${BE_API}/users/me`, { headers: { Authorization: `Bearer ${token}` } })
   if (!res.ok()) throw new Error(`/users/me 失敗: ${res.status()} ${await res.text()}`)
   return ((await res.json()).data as { id: number }).id
+}
+
+async function fetchMyTeams(
+  ctx: APIRequestContext,
+  token: string,
+): Promise<Array<{ id: number; slug: string }>> {
+  const res = await ctx.get(`${BE_API}/me/teams?limit=200`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok()) throw new Error(`/me/teams 失敗: ${res.status()} ${await res.text()}`)
+  return ((await res.json()).data as Array<{ id: number; slug: string }>)
 }
 
 /**
@@ -280,12 +296,13 @@ async function purgeLeftovers(ctx: APIRequestContext, token: string, teamId: num
 /**
  * MySQL へ直接 SQL を投げる（AC-17 のフィクスチャ作成専用）。
  *
- * wsl.exe 経由で docker のコンテナへ入る形は、既存の実機 spec
- * （2fa-flow.spec.ts / matching-search.spec.ts）と同じ作法。
+ * Windows では wsl.exe 経由、WSL/Linux では docker を直接呼び出す。
+ * どちらも同じローカル MySQL コンテナへ接続する。
  */
 function runSql(sql: string): string {
+  const dockerCommand = `docker exec mannschaft-mysql mysql -uroot -proot mannschaft -N -B -e "${sql}"`
   return execSync(
-    `wsl.exe -e docker exec mannschaft-mysql mysql -uroot -proot mannschaft -N -B -e "${sql}"`,
+    process.platform === 'win32' ? `wsl.exe -e ${dockerCommand}` : dockerCommand,
     { stdio: 'pipe' },
   ).toString().trim()
 }
@@ -402,7 +419,9 @@ type FixtureKey =
   | 'adjusting'
   | 'published'
   | 'publishedNoTimestamp'
+  | 'archivedPublished'
   | 'archived'
+  | 'adminPublished'
 
 interface Fixture {
   team: TargetTeam
@@ -417,9 +436,12 @@ interface Fixture {
   publishedId: number
   /** AC-17: status=PUBLISHED かつ published_at IS NULL の不整合データ。 */
   publishedNoTimestampId: number
+  archivedPublishedId: number
   archivedUnpublishedId: number
+  adminPublishedId: number
   /** 枠に割り当てた会員のユーザーID（API 応答の突き合わせに使う）。 */
   memberUserId: number
+  adminUserId: number
   /** タイトルは実行ごとに一意化する（他実行の残骸と取り違えないため）。 */
   titles: Record<FixtureKey, string>
 }
@@ -429,7 +451,7 @@ let fx: Fixture
 const test = base.extend<
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- test スコープの追加 fixture は無い
   {},
-  { tokens: { admin: string; memberUserId: number } }
+  { tokens: { admin: string; adminUserId: number; memberUserId: number } }
 >({
   // eslint-disable-next-line no-empty-pattern -- Playwright は fixture 第1引数にオブジェクト分割代入を要求する
   storageState: async ({}, use) => {
@@ -444,10 +466,13 @@ const test = base.extend<
       // 堅牢性の欠陥があるため（2026-09-05 実機で BE ログにより確認・別途起票済み）。
       // 500 を握りつぶしてリトライするのではなく、ログイン回数そのものを減らして避ける。
       const admin = await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, async (_ctx, token) => token)
+      const adminUserId = await withApi(
+        ADMIN_EMAIL, ADMIN_PASSWORD, (ctx, token) => fetchMyUserId(ctx, token),
+      )
       const memberUserId = await withApi(
         MEMBER_EMAIL, MEMBER_PASSWORD, (ctx, token) => fetchMyUserId(ctx, token),
       )
-      await use({ admin, memberUserId })
+      await use({ admin, adminUserId, memberUserId })
     },
     { scope: 'worker' },
   ],
@@ -484,6 +509,13 @@ test.beforeAll(async ({ tokens }) => {
       throw new Error(`会員ユーザーの ${TEAM_SLUG} でのロールが MEMBER ではない: ${memberRoleName}`)
     }
 
+    const outsiderTeams = await withApi(
+      OUTSIDER_EMAIL, OUTSIDER_PASSWORD, (api, token) => fetchMyTeams(api, token),
+    )
+    if (outsiderTeams.some(candidate => candidate.slug === TEAM_SLUG || candidate.id === team.numericId)) {
+      throw new Error(`他テナント役の ${OUTSIDER_EMAIL} が対象チーム ${TEAM_SLUG} に所属している`)
+    }
+
     await purgeLeftovers(ctx, tokens.admin, team.numericId)
 
     const positionName = `${POSITION_PREFIX}_${RUN_TAG}`
@@ -499,7 +531,9 @@ test.beforeAll(async ({ tokens }) => {
       adjusting: `${TITLE_PREFIX}調整_${RUN_TAG}`,
       published: `${TITLE_PREFIX}確定_${RUN_TAG}`,
       publishedNoTimestamp: `${TITLE_PREFIX}確定日時なし_${RUN_TAG}`,
+      archivedPublished: `${TITLE_PREFIX}公開後アーカイブ_${RUN_TAG}`,
       archived: `${TITLE_PREFIX}未公開のままアーカイブ_${RUN_TAG}`,
+      adminPublished: `${TITLE_PREFIX}管理者本人割当_${RUN_TAG}`,
     }
 
     /**
@@ -509,13 +543,17 @@ test.beforeAll(async ({ tokens }) => {
      * 「閲覧者とステータス」であって「割当データの有無」ではない、という設計を
      * 固定するため、全ステータスで同じ 1 名割当を持たせる。
      */
-    async function seedOne(title: string, statuses: string[]): Promise<number> {
+    async function seedOne(
+      title: string,
+      statuses: string[],
+      assignedUserId = tokens.memberUserId,
+    ): Promise<number> {
       const scheduleId = await createSchedule(
         ctx, tokens.admin, team.numericId, title, startDate, endDate,
       )
       createdScheduleIds.push(scheduleId)
       const slotId = await createSlot(ctx, tokens.admin, scheduleId, slotDate, positionId)
-      await assignOneUser(ctx, tokens.admin, slotId, tokens.memberUserId)
+      await assignOneUser(ctx, tokens.admin, slotId, assignedUserId)
       for (const s of statuses) {
         await transition(ctx, tokens.admin, scheduleId, s)
       }
@@ -543,8 +581,17 @@ test.beforeAll(async ({ tokens }) => {
     if (fixtureRow !== 'PUBLISHED:NULL') {
       throw new Error(`AC-17 のフィクスチャを作れなかった: ${JSON.stringify(fixtureRow)}`)
     }
+    const archivedPublishedId = await seedOne(
+      titles.archivedPublished,
+      ['COLLECTING', 'ADJUSTING', 'PUBLISHED', 'ARCHIVED'],
+    )
     // DRAFT から直接 ARCHIVED へ落とす（published_at が NULL のまま＝未公開アーカイブ / AC-7）
     const archivedUnpublishedId = await seedOne(titles.archived, ['ARCHIVED'])
+    const adminPublishedId = await seedOne(
+      titles.adminPublished,
+      ['COLLECTING', 'ADJUSTING', 'PUBLISHED'],
+      tokens.adminUserId,
+    )
 
     fx = {
       team,
@@ -557,8 +604,11 @@ test.beforeAll(async ({ tokens }) => {
       adjustingId,
       publishedId,
       publishedNoTimestampId,
+      archivedPublishedId,
       archivedUnpublishedId,
+      adminPublishedId,
       memberUserId: tokens.memberUserId,
+      adminUserId: tokens.adminUserId,
       titles,
     }
     console.log(
@@ -566,7 +616,9 @@ test.beforeAll(async ({ tokens }) => {
       + `adminRole=${adminRoleName} memberRole=${memberRoleName} `
       + `slotDate=${slotDate} draft=${draftId} collecting=${collectingId} `
       + `adjusting=${adjustingId} published=${publishedId} `
-      + `publishedNoTimestamp=${publishedNoTimestampId} archived=${archivedUnpublishedId}`,
+      + `publishedNoTimestamp=${publishedNoTimestampId} `
+      + `archivedPublished=${archivedPublishedId} archived=${archivedUnpublishedId} `
+      + `adminPublished=${adminPublishedId}`,
     )
   } finally {
     await ctx.dispose()
@@ -679,6 +731,30 @@ function waitForSlotsResponse(page: Page, scheduleId: number) {
     r => r.request().method() === 'GET' && isSlotsResponse(r.url(), scheduleId),
     { timeout: 120_000 },
   )
+}
+
+/** マイシフト画面が実際に呼ぶ自己スコープ API の応答を待ち受ける。 */
+function waitForMyConfirmedSlotsResponse(page: Page) {
+  return page.waitForResponse(
+    r => r.request().method() === 'GET'
+      && r.url().endsWith('/api/v1/shifts/my/confirmed-slots'),
+    { timeout: 120_000 },
+  )
+}
+
+interface MyConfirmedSlotApiRow {
+  scheduleId: number
+  scheduleName: string | null
+  teamId: number
+  teamName: string | null
+  positionName: string | null
+}
+
+async function readMyConfirmedSlotsResponse(
+  response: Response,
+): Promise<MyConfirmedSlotApiRow[]> {
+  const body = await response.json() as { data: MyConfirmedSlotApiRow[] }
+  return body.data
 }
 
 async function readSlotRows(response: Awaited<ReturnType<typeof waitForSlotsResponse>>): Promise<SlotApiRow[]> {
@@ -1020,6 +1096,128 @@ test.describe('D: 一般メンバーの希望提出フロー（非回帰・本�
 // 後始末: 共有チームを汚さないよう、作ったシフト表とポジションを消して原状復帰する
 // （チーム自体は他セッション・他テストが使うので絶対に削除しない）
 // ============================================================================
+// ============================================================================
+// 【アリシゼーション（ペルソナ駆動）＋自己スコープ認可】
+// 「次の勤務を確認したい割当メンバー」「自分の勤務も持つシステム管理者」
+// 「対象チームと無関係な利用者」「ログイン前の利用者」が、それぞれ実際の導線で
+// /my/shift を開いたときの体験を通し、本人の公開済み割当だけが画面へ出ることを確認する。
+// （CMP-260903-0651 / CMP-260908-2117）
+// ============================================================================
+test.describe('E: アリシゼーション（ペルソナ駆動）— マイシフトの公開境界・自己スコープ認可', () => {
+  const unpublishedKeys = ['draft', 'collecting', 'adjusting', 'archived'] as const
+
+  async function openTargetDate(page: Page): Promise<void> {
+    const [year, month, day] = fx.slotDate.split('-').map(Number)
+    const now = new Date()
+    const monthDiff = (year! - now.getFullYear()) * 12 + month! - (now.getMonth() + 1)
+    const buttonName = monthDiff >= 0 ? '次の期間' : '前の期間'
+    for (let i = 0; i < Math.abs(monthDiff); i++) {
+      await page.getByRole('button', { name: buttonName }).click()
+    }
+
+    const calendarGrid = page.locator('.grid.grid-cols-7.gap-px').first()
+    const targetCell = calendarGrid.locator('> div').filter({
+      has: page.locator('span').filter({ hasText: new RegExp(`^${day!}$`) }),
+    }).first()
+    await expect(targetCell, `${fx.slotDate} の日付セルが表示されること`).toBeVisible()
+    await targetCell.click()
+  }
+
+  test('E1: [割当メンバー] 次の勤務を確認すると公開済みだけが表示される', async ({ page }) => {
+    const responsePromise = waitForMyConfirmedSlotsResponse(page)
+    await openAs(page, MEMBER_EMAIL, MEMBER_PASSWORD, '/my/shift')
+
+    const response = await responsePromise
+    expect(response.status(), '本人の確定シフトAPIが成功すること').toBe(200)
+    const rows = await readMyConfirmedSlotsResponse(response)
+    const fixtureRows = rows.filter(row => Object.values(fx.titles).includes(row.scheduleName ?? ''))
+    expect(fixtureRows.map(row => row.scheduleId).sort((a, b) => a - b)).toEqual(
+      [fx.publishedId, fx.publishedNoTimestampId, fx.archivedPublishedId].sort((a, b) => a - b),
+    )
+
+    await openTargetDate(page)
+    await expect(page.getByText(fx.titles.published, { exact: true })).toBeVisible()
+    await expect(page.getByText(fx.titles.publishedNoTimestamp, { exact: true })).toBeVisible()
+    await expect(page.getByText(fx.titles.archivedPublished, { exact: true })).toBeVisible()
+    await expect(page.getByText(fx.titles.adminPublished, { exact: true })).toHaveCount(0)
+    for (const key of unpublishedKeys) {
+      await expect(
+        page.getByText(fx.titles[key], { exact: true }),
+        `${key} の割当がマイシフト画面へ出ないこと`,
+      ).toHaveCount(0)
+    }
+  })
+
+  for (const actor of [
+    {
+      label: 'SYSTEM_ADMIN',
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
+      ownSchedule: () => ({ id: fx.adminPublishedId, title: fx.titles.adminPublished }),
+    },
+    {
+      label: '他テナントの無所属ユーザー',
+      email: OUTSIDER_EMAIL,
+      password: OUTSIDER_PASSWORD,
+      ownSchedule: () => null,
+    },
+  ]) {
+    test(`E2: [${actor.label}] 他人のURLを渡されても自分の勤務体験から逸脱しない`, async ({ page }) => {
+      const responsePromise = waitForMyConfirmedSlotsResponse(page)
+      await openAs(page, actor.email, actor.password, `/my/shift?userId=${fx.memberUserId}`)
+
+      const response = await responsePromise
+      expect(response.status(), `${actor.label}自身のAPIは認証済みとして成功すること`).toBe(200)
+      const rows = await readMyConfirmedSlotsResponse(response)
+      const scheduleIds = rows.map(row => row.scheduleId)
+      for (const scheduleId of [
+        fx.draftId,
+        fx.collectingId,
+        fx.adjustingId,
+        fx.publishedId,
+        fx.publishedNoTimestampId,
+        fx.archivedPublishedId,
+        fx.archivedUnpublishedId,
+      ]) {
+        expect(scheduleIds, `${actor.label}へ他人の scheduleId=${scheduleId} を返さないこと`)
+          .not.toContain(scheduleId)
+      }
+
+      const ownSchedule = actor.ownSchedule()
+      if (ownSchedule) {
+        expect(scheduleIds, `${actor.label}には本人の公開済み割当が返ること`)
+          .toContain(ownSchedule.id)
+      }
+
+      if (ownSchedule) {
+        await openTargetDate(page)
+        for (const title of Object.values(fx.titles).filter(title => title !== ownSchedule.title)) {
+          await expect(
+            page.getByText(title, { exact: true }),
+            `${actor.label}の画面へ他人のシフト表名を出さないこと`,
+          ).toHaveCount(0)
+        }
+        await expect(page.getByText(ownSchedule.title, { exact: true })).toBeVisible()
+      } else {
+        await expect(page.getByText('シフトがありません', { exact: true })).toBeVisible()
+        for (const title of Object.values(fx.titles)) {
+          await expect(
+            page.getByText(title, { exact: true }),
+            `${actor.label}の空状態画面へ他人のシフト表名を出さないこと`,
+          ).toHaveCount(0)
+        }
+      }
+    })
+  }
+
+  test('E3: [ログイン前の利用者] マイシフトURLを開くとログイン導線へ戻される', async ({ page }) => {
+    await page.goto('/my/shift')
+    await page.waitForURL(/\/login/, { timeout: 15_000 })
+    await expect(page.locator('input#email')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'ログイン', exact: true })).toBeVisible()
+  })
+})
+
 test.afterAll(async () => {
   const failures: string[] = []
   await withApi(ADMIN_EMAIL, ADMIN_PASSWORD, async (ctx, token) => {
