@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -714,6 +715,11 @@ public class BillingPayerHandoverTxService {
                     });
         }
 
+        // ★終端化を先に flush する。生成列 open_old_contract_id は終端状態で NULL になるため、
+        //   これを確定させてからでないと下の「新しい要求」の INSERT が
+        //   uk_bphr_open_old_contract に弾かれる。
+        handoverRequestRepository.saveAndFlush(handover);
+
         // 承諾しなかった他の候補 ADMIN へ再通知（承諾を試みた本人は除く）。
         List<Long> others = candidateResolver
                 .candidateAdminUserIds(handover.getScopeKind(), handover.getScopeId(),
@@ -721,14 +727,52 @@ public class BillingPayerHandoverTxService {
                 .stream()
                 .filter(id -> !id.equals(handover.getNewPayerUserId()))
                 .toList();
-        if (!others.isEmpty()) {
-            eventPublisher.publishEvent(new BillingPayerHandoverNotificationEvent(
-                    BillingPayerHandoverNotificationKind.HANDOVER_REQUESTED,
-                    handover.getId(), handover.getScopeKind(), handover.getScopeId(),
-                    others, handover.getOldPayerUserId()));
+        if (others.isEmpty()) {
+            log.warn("柱③-B: 追加認証が期限内に完了しなかったため引継を FAILED 確定しました"
+                    + "（他の引継先候補が居ないため再通知は行いません）handoverRequestId={}",
+                    handoverRequestId);
+            return true;
         }
-        log.warn("柱③-B: 追加認証が期限内に完了しなかったため引継を FAILED 確定し他 ADMIN へ再通知しました"
-                        + " handoverRequestId={}, 再通知先={}", handoverRequestId, others.size());
+
+        // ★【承諾可能な新しい要求を作ってから通知する】（PR-4 Codex検分2巡目 P1-4）
+        //   是正前は<b>いま FAILED にしたばかりの同じ要求 ID</b> を HANDOVER_REQUESTED として
+        //   送っていた。しかし承諾できるのは REQUESTED / REQUIRES_PAYMENT_METHOD /
+        //   同一承諾者の ACCEPTED だけで、FAILED は必ず拒否される。通知の action URL も同じ
+        //   要求 ID を指すため、受け取った ADMIN は<b>押しても必ず失敗する導線</b>へ誘導されていた。
+        //   新規要求 API は旧 payer 本人しか実行できず（退会済みなら実行者が居ない）、
+        //   結果として「複数 ADMIN 在籍時は再通知して別 ADMIN が再試行する」という AC-20 の
+        //   出口が機能していなかった。終端化で生成列の枠が空いた直後に、同じ旧契約に対する
+        //   新しい REQUESTED を作り、その ID で通知する。
+        Instant now = clock.instant();
+        BillingPayerHandoverRequestEntity renewed = BillingPayerHandoverRequestEntity.builder()
+                .oldContractId(handover.getOldContractId())
+                .scopeKind(handover.getScopeKind())
+                .scopeId(handover.getScopeId())
+                .oldPayerUserId(handover.getOldPayerUserId())
+                .status(PayerHandoverStatus.REQUESTED)
+                .requestedAt(now)
+                .expiresAt(now.plus(BillingPayerHandoverService.ACCEPTANCE_GRACE))
+                .build();
+        UUID renewedId;
+        try {
+            renewedId = handoverRequestRepository.saveAndFlush(renewed).getId();
+        } catch (DataIntegrityViolationException e) {
+            // 既に別経路が同じ旧契約への進行中要求を作っていた（生成列 + UNIQUE が物理拒否）。
+            // 再通知はその要求が担うので、ここでは終端化だけで終える。
+            log.warn("柱③-B: 再試行用の新しい引継要求は既に存在するため作成しません"
+                    + " oldContractId={}", handover.getOldContractId(), e);
+            return true;
+        }
+
+        eventPublisher.publishEvent(new BillingPayerHandoverNotificationEvent(
+                BillingPayerHandoverNotificationKind.HANDOVER_REQUESTED,
+                renewedId, handover.getScopeKind(), handover.getScopeId(),
+                others, handover.getOldPayerUserId()));
+
+        log.warn("柱③-B: 追加認証が期限内に完了しなかったため引継を FAILED 確定し、"
+                        + "承諾可能な新しい要求を作って他 ADMIN へ再通知しました"
+                        + " failedHandoverRequestId={}, renewedHandoverRequestId={}, 再通知先={}",
+                handoverRequestId, renewedId, others.size());
         return true;
     }
 
