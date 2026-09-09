@@ -174,7 +174,16 @@ public enum EntitlementErrorCode implements ErrorCode {
      * 権限保持者）の承諾を拒否する。</p>
      */
     HANDOVER_NOT_ELIGIBLE_ACCEPTOR("ENTITLEMENT_035",
-            "この引継を承諾できるのは対象スコープの他の管理者のみです", Severity.WARN);
+            "この引継を承諾できるのは対象スコープの他の管理者のみです", Severity.WARN),
+
+    /**
+     * {@code RESUME} は {@code MANUAL_INTERVENTION} からのみ許される（409・設計書 §3.6.2・AC-37）。
+     *
+     * <p>他状態からの {@code RESUME} を許すと、正常に進行中の引継を人手で
+     * {@code SWITCHING}／{@code FAILED} へ飛ばせてしまう（状態機械の外側からの割り込み）。</p>
+     */
+    HANDOVER_NOT_RESUMABLE("ENTITLEMENT_036",
+            "この引継要求は手動介入からの再開ができる状態ではありません", Severity.WARN);
 
     private final String code;
     private final String message;

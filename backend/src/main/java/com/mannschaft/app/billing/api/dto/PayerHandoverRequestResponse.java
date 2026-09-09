@@ -11,7 +11,7 @@ import java.time.Instant;
  *
  * <p>状態は要求レベルの状態機械（{@code REQUESTED}/{@code ACCEPTED}/{@code REQUIRES_PAYMENT_METHOD}/
  * {@code SWITCHING}/{@code PARTIALLY_COMPLETED}/{@code MANUAL_INTERVENTION}/{@code COMPLETED}/
- * {@code FAILED}/{@code EXPIRED} の9値）を文字列で返す。契約レベルの状態（{@code billing_contracts.status}）
+ * {@code FAILING_CLEANUP}/{@code FAILED}/{@code EXPIRED} の10値。{@code FAILING_CLEANUP} は失敗確定後に Stripe の後始末が未了である<b>非終端</b>状態）を文字列で返す。契約レベルの状態（{@code billing_contracts.status}）
  * とは別物であり混同しないこと。</p>
  *
  * <p>時刻は {@link Instant}（真の瞬間・UTC）で返す。引継の申請・期限は壁時計ではなく絶対時刻で判定するため
@@ -34,7 +34,7 @@ public class PayerHandoverRequestResponse {
     @Schema(description = "スコープ ID")
     private final Long scopeId;
 
-    @Schema(description = "要求の状態（9値の状態機械）")
+    @Schema(description = "要求の状態（10値の状態機械。FAILING_CLEANUP は後始末未了の非終端）")
     private final String status;
 
     @Schema(description = "申請時刻")

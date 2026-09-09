@@ -23,5 +23,14 @@ public enum BillingPayerHandoverNotificationKind {
      * 新サブスクに {@code pending_setup_intent} が残っており追加認証（SCA/3DS）が必要
      * （設計書 §3.6 二段検証の1段目・AC-30）。<b>この通知は状態遷移を伴わない</b>。
      */
-    ADDITIONAL_AUTH_REQUIRED
+    ADDITIONAL_AUTH_REQUIRED,
+
+    /**
+     * 引継が {@code MANUAL_INTERVENTION} へ倒れ、運用者・管理者の手動対応が必要になった
+     * （設計書 §3.6.2「アラート先」・AC-35/AC-36・PR-4）。
+     *
+     * <p>宛先は当該スコープの引継先候補 ADMIN。この状態は<b>非終端</b>であり、
+     * 誰も気づかなければ引継が止まったまま旧契約への課金が続くため、必ず通知する。</p>
+     */
+    MANUAL_INTERVENTION_REQUIRED
 }
