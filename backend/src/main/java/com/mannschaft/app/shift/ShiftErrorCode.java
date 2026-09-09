@@ -84,7 +84,13 @@ public enum ShiftErrorCode implements ErrorCode {
     OPEN_CALL_MONTHLY_LIMIT_EXCEEDED("SHIFT_032", "オープンコールは月3件までしか申請できません", Severity.WARN),
 
     /** 手動リマインドの連打防止スロットリング（Valkey 同時実行ロック取得失敗） */
-    MANUAL_REMINDER_THROTTLED("SHIFT_036", "リマインドは連続して送信できません。15 秒ほど待ってから再操作してください", Severity.WARN);
+    MANUAL_REMINDER_THROTTLED("SHIFT_036", "リマインドは連続して送信できません。15 秒ほど待ってから再操作してください", Severity.WARN),
+
+    /** 枠時刻の前後関係が不正（F03.5 §11.2.5。【試練スタブ】出陣で本実装が使用する） */
+    INVALID_TIME_RANGE("SHIFT_040", "開始時刻は終了時刻より前である必要があります", Severity.WARN),
+
+    /** 枠時刻の刻み・枠長が不正（F03.5 §11.2.5。【試練スタブ】出陣で本実装が使用する） */
+    INVALID_SLOT_GRANULARITY("SHIFT_041", "シフト枠は15分単位で、最小15分以上24時間未満である必要があります", Severity.WARN);
 
     private final String code;
     private final String message;
