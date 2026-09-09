@@ -143,6 +143,43 @@ public class BillingPayerHandoverBatchService {
         reconcileExpiredAcceptances();
         reconcileOldCancelSchedules();
         reconcileStalledSwitching();
+        retryFailureCleanups();
+    }
+
+    /**
+     * 失敗確定後に取り残された Stripe 後始末を回収する（PR-4 Codex検分3巡目 P1-2）。
+     *
+     * <p>失敗確定は「CAS で権利を取る → Stripe の後始末 → 完了の記録」の3段で進む。
+     * 2段目が落ちると<b>要求は終端済みなのに旧試行のサブスクが Stripe に残る</b>。
+     * そのまま別 ADMIN が新しい承諾を進めれば二重サブスクになり得るため、
+     * 「{@code FAILED} なのに {@code old_cancel_scheduled_at} が残っている」行を必ず拾い直す。</p>
+     */
+    private void retryFailureCleanups() {
+        List<UUID> targets;
+        try {
+            targets = handoverService.findFailureCleanupBacklogIds();
+        } catch (Exception e) {
+            log.error("柱③-B 夜次照合: 失敗確定後の後始末未了行の抽出に失敗しました", e);
+            return;
+        }
+        int recovered = 0;
+        int failed = 0;
+        for (UUID handoverRequestId : limit(targets)) {
+            try {
+                if (handoverService.retryFailureCleanup(handoverRequestId)) {
+                    recovered++;
+                }
+            } catch (Exception e) {
+                failed++;
+                log.error("柱③-B 夜次照合: 失敗確定後の後始末の再試行に失敗しました handoverRequestId={}",
+                        handoverRequestId, e);
+            }
+        }
+        if (!targets.isEmpty()) {
+            log.warn("柱③-B 夜次照合（失敗確定後の後始末）: 対象={}, 回収={}, 失敗={}"
+                    + "（対象が常時0件でない場合は Stripe 側の恒久エラーを調査すること）",
+                    targets.size(), recovered, failed);
+        }
     }
 
     /** §5.3・AC-21: 猶予期限を過ぎたまま誰にも承諾されなかった要求を EXPIRED で終端化する。 */
@@ -185,13 +222,14 @@ public class BillingPayerHandoverBatchService {
      */
     private void reconcileStalledSwitching() {
         Instant cursor = Instant.EPOCH;
+        UUID cursorId = null;
         int scanned = 0;
         int failedOut = 0;
         int errors = 0;
         for (int page = 0; page < MAX_PAGES_PER_RUN; page++) {
             BillingPayerHandoverService.StalledSwitchingPage batch;
             try {
-                batch = handoverService.findStalledSwitchingPage(cursor, MAX_TARGETS_PER_RUN);
+                batch = handoverService.findStalledSwitchingPage(cursor, cursorId, MAX_TARGETS_PER_RUN);
             } catch (Exception e) {
                 log.error("柱③-B 夜次照合: SWITCHING 滞留の抽出に失敗しました cursor={}", cursor, e);
                 return;
@@ -214,7 +252,9 @@ public class BillingPayerHandoverBatchService {
             if (batch.lastAcceptedAt() == null) {
                 break;
             }
+            // ★複合カーソル（3巡目 P1-3）。acceptedAt 単独だと同一時刻行がページ境界で脱落する。
             cursor = batch.lastAcceptedAt();
+            cursorId = batch.lastId();
         }
         if (scanned > 0) {
             log.warn("柱③-B 夜次照合（SWITCHING 滞留）: 走査={}, 終端化={}, 失敗={}"

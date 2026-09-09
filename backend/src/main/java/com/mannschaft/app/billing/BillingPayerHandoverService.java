@@ -102,6 +102,9 @@ public class BillingPayerHandoverService {
      */
     static final Duration PERIOD_END_SAFETY_MARGIN = Duration.ofHours(6);
 
+    /** 複合カーソルの初回値（全ての UUID より小さい）。 */
+    private static final UUID MIN_UUID = new UUID(0L, 0L);
+
     /**
      * 猶予期限到来で {@code EXPIRED} へ倒せる状態（設計書 §4.2 遷移表の「{@code EXPIRED} の遷移元」）。
      *
@@ -635,16 +638,17 @@ public class BillingPayerHandoverService {
             log.error("柱③-B: 旧期末到達時点でも pending_setup_intent が未解決のため引継を FAILED 確定します"
                             + " handoverRequestId={}, newSubscriptionRef={}",
                     handoverRequestId, ctx.newSubscriptionRef());
-            // (a) 新 trial サブスクを無課金取消（trial 中のため即時解約で害はない）。
-            billingPaymentGateway.cancelHandoverNewSubscription(ctx.newSubscriptionRef(), handoverRequestId);
-            // (b) 旧サブスクを継続へ差し戻し。
-            billingPaymentGateway.revertCancelAtPeriodEndForHandover(ctx.oldSubscriptionRef(), handoverRequestId);
-            // (c) ★AC-32/R5-P2: 差し戻しと対で old_cancel_scheduled_at を NULL クリアする
-            //     （クリア忘れは「予約済み」の誤認となり夜次照合の検出対象から外れる）。
-            // 期待元状態は「切替待ちの2状態」（PR-4 P1-2）。運用者が既に MANUAL_INTERVENTION へ
-            // 倒した行を、遅れて届いたこの補償が FAILED へ上書きしてはならない。
-            handoverTxService.markFailedAndClearCancelSchedule(
-                    handoverRequestId, SWITCH_TARGET_STATUSES);
+            // ★【CAS で権利を取ってから Stripe を変更する】（PR-4 Codex検分3巡目 P1-1）
+            //   是正前は Stripe を先に叩いてから CAS を呼んでいた。CAS 自体の期待元状態検証は
+            //   正しくても、外部副作用より後に呼ぶ以上 fencing になっていない——Stripe 照会中に
+            //   別 worker が COMPLETED へ進めていても、新サブスクは既に取り消されている。
+            if (!handoverTxService.markFailedPendingCleanup(
+                    handoverRequestId, SWITCH_TARGET_STATUSES)) {
+                log.warn("柱③-B: 他の処理が先に状態を進めたため Stripe には触れません handoverRequestId={}",
+                        handoverRequestId);
+                return;
+            }
+            cleanupAfterFailure(handoverRequestId, ctx.oldSubscriptionRef(), ctx.newSubscriptionRef());
             return;
         }
 
@@ -871,8 +875,16 @@ public class BillingPayerHandoverService {
     // SWITCHING 滞留の監視と追加認証の期限処理（設計書 §5.5 ④・AC-20・P1-6）
     // ============================================================
 
-    /** 滞留抽出の1ページ（キーセット送り用に「最後に見た acceptedAt」を伴う）。 */
-    public record StalledSwitchingPage(List<UUID> handoverRequestIds, Instant lastAcceptedAt) {
+    /**
+     * 滞留抽出の1ページ（キーセット送り用に「最後に見た {@code (acceptedAt, id)}」を伴う）。
+     *
+     * <p><b>複合カーソルである理由</b>（3巡目 P1-3）: {@code acceptedAt} 単独では、
+     * 同一 {@code acceptedAt} の行がページサイズを超えたときに、1ページ目に入らなかった
+     * 同時刻行が次ページの {@code >} 条件から<b>全て脱落する</b>。承諾は同時操作で
+     * 同一秒に固まりうるため、{@code id} まで含めて厳密に前へ進む。</p>
+     */
+    public record StalledSwitchingPage(
+            List<UUID> handoverRequestIds, Instant lastAcceptedAt, UUID lastId) {
     }
 
     /**
@@ -896,17 +908,22 @@ public class BillingPayerHandoverService {
      * @param afterAcceptedAt 直前ページの最後の {@code acceptedAt}（初回は {@link Instant#EPOCH}）
      */
     @Transactional(readOnly = true)
-    public StalledSwitchingPage findStalledSwitchingPage(Instant afterAcceptedAt, int pageSize) {
+    public StalledSwitchingPage findStalledSwitchingPage(
+            Instant afterAcceptedAt, UUID afterId, int pageSize) {
         Instant now = clock.instant();
         List<Object[]> rows = handoverRequestRepository.findStalledSwitchingPage(
                 PayerHandoverStatus.SWITCHING,
                 now.minus(PENDING_SETUP_INTENT_DEADLINE),
                 LocalDateTime.ofInstant(now.plus(PERIOD_END_SAFETY_MARGIN), clock.getZone()),
                 afterAcceptedAt == null ? Instant.EPOCH : afterAcceptedAt,
+                afterId == null ? MIN_UUID : afterId,
                 org.springframework.data.domain.PageRequest.of(0, pageSize));
         List<UUID> ids = rows.stream().map(r -> (UUID) r[0]).toList();
-        Instant last = rows.isEmpty() ? null : (Instant) rows.get(rows.size() - 1)[1];
-        return new StalledSwitchingPage(ids, last);
+        if (rows.isEmpty()) {
+            return new StalledSwitchingPage(ids, null, null);
+        }
+        Object[] last = rows.get(rows.size() - 1);
+        return new StalledSwitchingPage(ids, (Instant) last[1], (UUID) last[0]);
     }
 
     /**
@@ -940,8 +957,13 @@ public class BillingPayerHandoverService {
             return false;
         }
         if (!newSnapshot.hasPendingSetupIntent()) {
-            // 認証は完了している。滞留の理由は旧期末待ちであり異常ではない（監視ログのみ）。
-            log.info("柱③-B 滞留監視: 追加認証は完了済みのため終端化しません（旧期末待ち）"
+            // ★認証は完了している＝この行は【正常な旧期末待ち】であり、以後この照合で見る必要が無い。
+            //   記録して抽出対象から外す（3巡目 P1-3）。外さないと、状態が変わらないこの種の行が
+            //   毎晩の抽出に残り続け、1回の実行件数の上限を埋めて
+            //   【後続の認証未解決行を永久に飢餓させる】（カーソルは実行のたびに初期化されるため、
+            //   上限に達する限りその先へは決して到達しない）。
+            handoverTxService.markSetupIntentVerified(handoverRequestId);
+            log.info("柱③-B 滞留監視: 追加認証は完了済みのため以後の抽出から外します（旧期末待ち）"
                     + " handoverRequestId={}", handoverRequestId);
             return false;
         }
@@ -961,24 +983,74 @@ public class BillingPayerHandoverService {
             return false;
         }
 
-        // 権利を取った後にだけ Stripe を変更する。ここで失敗しても DB は FAILED で確定しており、
-        // 差し戻し漏れは ERROR として上申する（黙って握り潰さない）。
+        // 権利を取った後にだけ Stripe を変更する。後始末が落ちても
+        // old_cancel_scheduled_at が残るため、夜次バッチが必ず回収する（3巡目 P1-2）。
+        cleanupAfterFailure(handoverRequestId, target.oldSubscriptionRef(), target.newSubscriptionRef());
+
+        // ★再要求の作成と再通知は【後始末が終わってから】（3巡目 P1-2）。
+        //   先に作ると、後始末が落ちた場合に「旧試行のサブスクが Stripe に残ったまま、
+        //   別 ADMIN が新しい承諾を進められる」＝二重サブスクの窓が開く。
+        handoverTxService.renotifyWithFreshRequest(handoverRequestId);
+        return true;
+    }
+
+    /**
+     * 失敗確定後の Stripe 後始末（新 trial サブスクの無課金取消・旧サブスクの差し戻し）を行い、
+     * 完了を記録する（PR-4 Codex検分3巡目 P1-1/P1-2）。
+     *
+     * <p><b>必ず CAS で失敗確定の権利を取った後に呼ぶこと。</b> 完了の記録
+     * （{@code old_cancel_scheduled_at} の NULL クリア）は全ての Stripe 呼び出しが成功した後にだけ行う。
+     * 途中で落ちれば列は残り、「{@code FAILED} なのに残っている」という証跡から
+     * 夜次バッチが回収して再試行する（Stripe 側の操作はいずれも冪等）。</p>
+     *
+     * @param oldSubscriptionRef 差し戻す旧サブスク（差し戻さない判断のときは {@code null}）
+     */
+    private void cleanupAfterFailure(UUID handoverRequestId, String oldSubscriptionRef,
+            String newSubscriptionRef) {
         try {
-            // 新 trial サブスクは無課金のうちに取り消す（放置すると孤児として課金され得る）。
-            billingPaymentGateway.cancelHandoverNewSubscription(
-                    target.newSubscriptionRef(), handoverRequestId);
-            if (target.oldSubscriptionRef() != null) {
-                // ★旧期末より前なので差し戻しが有効に効く（AC-32）。
+            if (newSubscriptionRef != null) {
+                billingPaymentGateway.cancelHandoverNewSubscription(newSubscriptionRef, handoverRequestId);
+            }
+            if (oldSubscriptionRef != null) {
                 billingPaymentGateway.revertCancelAtPeriodEndForHandover(
-                        target.oldSubscriptionRef(), handoverRequestId);
+                        oldSubscriptionRef, handoverRequestId);
             }
         } catch (RuntimeException e) {
-            log.error("柱③-B 滞留監視: FAILED 確定後の Stripe 後始末に失敗しました。"
-                            + "旧サブスクが期末解約予約のまま残っている恐れがあり手動確認が必要です"
+            log.error("柱③-B: 失敗確定後の Stripe 後始末に失敗しました。"
+                            + "old_cancel_scheduled_at を残して夜次バッチの回収対象にします"
                             + " handoverRequestId={}, oldSubscriptionRef={}, newSubscriptionRef={}",
-                    handoverRequestId, target.oldSubscriptionRef(), target.newSubscriptionRef(), e);
+                    handoverRequestId, oldSubscriptionRef, newSubscriptionRef, e);
             throw e;
         }
+        handoverTxService.finishFailureCleanup(handoverRequestId);
+    }
+
+    /**
+     * {@code FAILED} で終端したが Stripe の後始末が未了の引継要求 ID を返す
+     * （PR-4 Codex検分3巡目 P1-2・夜次バッチの回収経路）。
+     */
+    @Transactional(readOnly = true)
+    public List<UUID> findFailureCleanupBacklogIds() {
+        return handoverRequestRepository.findFailedWithPendingCleanupIds(PayerHandoverStatus.FAILED);
+    }
+
+    /**
+     * 失敗確定後に取り残された Stripe 後始末を再試行し、完了したら AC-20 の再要求まで進める。
+     *
+     * <p>Stripe 側の操作（新サブスクの即時解約・旧サブスクの差し戻し）はいずれも冪等であり、
+     * 既に済んでいる場合も安全に再送できる。</p>
+     *
+     * @return 後始末を完了できたなら {@code true}
+     */
+    public boolean retryFailureCleanup(UUID handoverRequestId) {
+        BillingPayerHandoverTxService.FailureCleanupTarget target =
+                handoverTxService.loadFailureCleanupTarget(handoverRequestId);
+        if (target == null) {
+            return false;
+        }
+        cleanupAfterFailure(handoverRequestId, target.oldSubscriptionRef(), target.newSubscriptionRef());
+        // 後始末が終わって初めて、承諾可能な新しい要求を作れる（作成要件は Tx 層が再検証する）。
+        handoverTxService.renotifyWithFreshRequest(handoverRequestId);
         return true;
     }
 
@@ -1021,19 +1093,18 @@ public class BillingPayerHandoverService {
             return;
         }
 
-        // FAILED 確定。新 trial サブスクは無課金のため取り消してよい（放置すると孤児として課金され得る）。
-        if (ctx.newSubscriptionRef() != null) {
-            billingPaymentGateway.cancelHandoverNewSubscription(ctx.newSubscriptionRef(), handoverRequestId);
+        // ★【CAS で権利を取ってから Stripe を変更する】（PR-4 Codex検分3巡目 P1-1）。
+        //   期待元状態は MANUAL_INTERVENTION のみ（同2巡目 P1-2）——同時 RESUME の一方が
+        //   SWITCHING へ戻した直後に、他方の FAILED 確定が成立してしまうのを防ぐ。
+        if (!handoverTxService.markFailedPendingCleanup(
+                handoverRequestId, List.of(PayerHandoverStatus.MANUAL_INTERVENTION))) {
+            log.warn("柱③-B: 他の処理が先に状態を進めたため RESUME→FAILED を中止します"
+                    + " handoverRequestId={}", handoverRequestId);
+            return;
         }
-        if (revertOldCancelSchedule && ctx.oldSubscriptionRef() != null) {
-            billingPaymentGateway.revertCancelAtPeriodEndForHandover(
-                    ctx.oldSubscriptionRef(), handoverRequestId);
-        }
-        // ★AC-32/R5-P2: 差し戻しと対で old_cancel_scheduled_at を NULL クリアする。
-        // 期待元状態は MANUAL_INTERVENTION のみ（PR-4 P1-2）。同時 RESUME の一方が
-        // SWITCHING へ戻した直後に、他方の FAILED 確定が成立してしまうのを防ぐ。
-        handoverTxService.markFailedAndClearCancelSchedule(
-                handoverRequestId, List.of(PayerHandoverStatus.MANUAL_INTERVENTION));
+        // 新 trial サブスクは無課金のため取り消してよい（放置すると孤児として課金され得る）。
+        cleanupAfterFailure(handoverRequestId, revertOldCancelSchedule ? ctx.oldSubscriptionRef() : null,
+                ctx.newSubscriptionRef());
         log.warn("柱③-B: 運用者の RESUME により引継を FAILED で確定しました"
                         + " handoverRequestId={}, operatorUserId={}, 旧サブスク差し戻し={}",
                 handoverRequestId, operatorUserId, revertOldCancelSchedule);

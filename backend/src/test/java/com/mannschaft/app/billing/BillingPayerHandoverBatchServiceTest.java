@@ -52,8 +52,9 @@ class BillingPayerHandoverBatchServiceTest {
      * 個々のテストで進み方を検証したい場合だけ上書きする。
      */
     private void givenNoStalledSwitching() {
-        given(handoverService.findStalledSwitchingPage(any(), org.mockito.ArgumentMatchers.anyInt()))
-                .willReturn(new BillingPayerHandoverService.StalledSwitchingPage(List.of(), null));
+        given(handoverService.findStalledSwitchingPage(any(), any(), org.mockito.ArgumentMatchers.anyInt()))
+                .willReturn(new BillingPayerHandoverService.StalledSwitchingPage(List.of(), null, null));
+        given(handoverService.findFailureCleanupBacklogIds()).willReturn(List.of());
     }
 
     @Test
@@ -153,20 +154,39 @@ class BillingPayerHandoverBatchServiceTest {
         given(handoverService.findExpiredUnresolvedAcceptanceIds(any())).willReturn(List.of());
         given(handoverService.findOldCancelScheduleUnconfirmedIds()).willReturn(List.of());
         // 1ページ目は cursor=EPOCH、2ページ目は【1ページ目の最後の acceptedAt】で呼ばれること。
-        given(handoverService.findStalledSwitchingPage(Instant.EPOCH, 200))
+        given(handoverService.findFailureCleanupBacklogIds()).willReturn(List.of());
+        given(handoverService.findStalledSwitchingPage(Instant.EPOCH, null, 200))
                 .willReturn(new BillingPayerHandoverService.StalledSwitchingPage(
-                        List.of(first), firstCursor));
-        given(handoverService.findStalledSwitchingPage(firstCursor, 200))
+                        List.of(first), firstCursor, first));
+        // ★2ページ目は【(acceptedAt, id) の複合カーソル】で呼ばれること（3巡目 P1-3）。
+        //   acceptedAt 単独だと同一時刻行がページ境界で全て脱落する。
+        given(handoverService.findStalledSwitchingPage(firstCursor, first, 200))
                 .willReturn(new BillingPayerHandoverService.StalledSwitchingPage(
-                        List.of(second), secondCursor));
-        given(handoverService.findStalledSwitchingPage(secondCursor, 200))
-                .willReturn(new BillingPayerHandoverService.StalledSwitchingPage(List.of(), null));
+                        List.of(second), secondCursor, second));
+        given(handoverService.findStalledSwitchingPage(secondCursor, second, 200))
+                .willReturn(new BillingPayerHandoverService.StalledSwitchingPage(List.of(), null, null));
 
         service().runPayerHandoverNightlyReconcile();
 
         // 先頭を舐め直すのではなく、2ページ目の行まで到達している。
         verify(handoverService).reconcileStalledSwitching(first);
         verify(handoverService).reconcileStalledSwitching(second);
+    }
+
+    @Test
+    @DisplayName("P1-2: 失敗確定後に後始末が残った行を夜次バッチが回収する"
+            + "（終端済みで誰にも拾われない状態を作らない）")
+    void nightlyReconcile_retriesFailureCleanup() {
+        UUID target = UUID.randomUUID();
+        givenNoStalledSwitching();
+        given(handoverService.findOverdueUnacceptedIds(any())).willReturn(List.of());
+        given(handoverService.findExpiredUnresolvedAcceptanceIds(any())).willReturn(List.of());
+        given(handoverService.findOldCancelScheduleUnconfirmedIds()).willReturn(List.of());
+        given(handoverService.findFailureCleanupBacklogIds()).willReturn(List.of(target));
+
+        service().runPayerHandoverNightlyReconcile();
+
+        verify(handoverService).retryFailureCleanup(target);
     }
 
     @Test

@@ -159,22 +159,59 @@ public interface BillingPayerHandoverRequestRepository
      *
      * @param cutoff          {@code accepted_at} がこの時刻以前の行を滞留とみなす
      * @param periodEndCutoff 旧契約の期末がこの時刻以前なら、承諾からの経過に関わらず拾う
+     * <h2>複合カーソルである理由（3巡目 P1-3）</h2>
+     * <p>{@code accepted_at} 単独のカーソル（{@code > :afterAcceptedAt}）では、
+     * <b>同一 {@code accepted_at} の行がページサイズを超えると、1ページ目に入らなかった同時刻行が
+     * 次ページの条件から全て脱落する</b>。承諾はバッチ処理や同時操作で同一秒に固まりうるため、
+     * {@code (accepted_at, id)} の複合カーソルで厳密に前へ進む。</p>
+     *
+     * <h2>正常待機行を除外する理由（同）</h2>
+     * <p>{@code setup_intent_verified_at IS NULL} を条件に含める。認証完了を確認済みの行は
+     * 処理しても状態が変わらず、抽出に残り続けると実行件数の上限を埋めて
+     * <b>後続の認証未解決行を永久に飢餓させる</b>（カーソルは実行のたびに初期化されるため、
+     * 上限に達する限りその先へは決して到達しない）。</p>
+     *
      * @param afterAcceptedAt 直前ページの最後の {@code accepted_at}（初回は {@code Instant.EPOCH}）
+     * @param afterId         直前ページの最後の {@code id}（同一 {@code accepted_at} 内の順序）
      */
     @Query("SELECT h.id, h.acceptedAt FROM BillingPayerHandoverRequestEntity h "
             + "JOIN BillingContractEntity c ON c.id = h.oldContractId "
             + "WHERE h.status = :status "
             + "AND h.pspNewSubscriptionRef IS NOT NULL "
             + "AND h.acceptedAt IS NOT NULL "
+            + "AND h.setupIntentVerifiedAt IS NULL "
             + "AND (h.acceptedAt <= :cutoff "
             + "     OR (c.currentPeriodEnd IS NOT NULL AND c.currentPeriodEnd <= :periodEndCutoff)) "
-            + "AND h.acceptedAt > :afterAcceptedAt "
-            + "ORDER BY h.acceptedAt")
+            + "AND (h.acceptedAt > :afterAcceptedAt "
+            + "     OR (h.acceptedAt = :afterAcceptedAt AND h.id > :afterId)) "
+            + "ORDER BY h.acceptedAt, h.id")
     List<Object[]> findStalledSwitchingPage(@Param("status") PayerHandoverStatus status,
                                             @Param("cutoff") Instant cutoff,
                                             @Param("periodEndCutoff") LocalDateTime periodEndCutoff,
                                             @Param("afterAcceptedAt") Instant afterAcceptedAt,
+                                            @Param("afterId") UUID afterId,
                                             Pageable pageable);
+
+    /**
+     * {@code FAILED} で終端したが<b>Stripe の後始末が未了</b>の引継要求 ID を返す
+     * （PR-4 Codex 検分3巡目 P1-2）。
+     *
+     * <p><b>何を回収するか</b>: 失敗確定の経路は「CAS で権利を取る → Stripe の新サブスク取消と
+     * 旧サブスク差し戻し → 後始末完了の記録」の3段で進む（外部副作用より先に fencing を取るため
+     * この順序でなければならない）。2段目が失敗すると、要求は終端済みなのに
+     * <b>旧試行の新サブスクが Stripe に残り、旧サブスクは期末解約予約のまま</b>になる。
+     * そのまま放置すると、別 ADMIN の次の承諾で作られる新サブスクとの二重サブスクになり得る。</p>
+     *
+     * <p><b>目印は {@code old_cancel_scheduled_at}</b>: 後始末が完了した時点でこの列を NULL へ
+     * クリアする（差し戻しと対の操作・§3.6.1 R5-P2）。したがって
+     * 「{@code FAILED} なのに NULL でない」は<b>後始末が未了であることの証跡</b>そのものである。
+     * 新しい状態も列も増やさずに、回収可能性を確保している。</p>
+     */
+    @Query("SELECT h.id FROM BillingPayerHandoverRequestEntity h "
+            + "WHERE h.status = :status "
+            + "AND h.oldCancelScheduledAt IS NOT NULL "
+            + "ORDER BY h.requestedAt")
+    List<UUID> findFailedWithPendingCleanupIds(@Param("status") PayerHandoverStatus status);
 
     /**
      * 猶予期限を過ぎたまま {@code ACCEPTED} に留まり、新サブスク参照が未確定の引継要求 ID を返す

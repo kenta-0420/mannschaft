@@ -208,15 +208,19 @@ class BillingPayerHandoverReconcileResumeTest {
         given(billingPaymentGateway.retrieveSubscription(NEW_SUB))
                 .willReturn(new SubscriptionSnapshot(NEW_SUB, "trialing", false, null, null, "seti_1"));
         given(handoverTxService.failStalledSwitchingAndRenotify(handoverId)).willReturn(true);
+        given(handoverTxService.finishFailureCleanup(handoverId)).willReturn(true);
 
         service.reconcileStalledSwitching(handoverId);
 
-        // ★CAS を先に取り、そのあとで Stripe を変更する（PR-4 Codex検分2巡目 P1-1）。
+        // ★CAS を先に取り、そのあとで Stripe を変更し、【後始末が終わってから】再要求を作る
+        //   （PR-4 Codex検分2巡目 P1-1・3巡目 P1-2）。
         InOrder order = inOrder(handoverTxService, billingPaymentGateway);
         order.verify(handoverTxService).failStalledSwitchingAndRenotify(handoverId);
         order.verify(billingPaymentGateway).cancelHandoverNewSubscription(NEW_SUB, handoverId);
         // ★旧期末より前なので差し戻しが有効に効く（期末到達後だと復旧できない）。
         order.verify(billingPaymentGateway).revertCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
+        order.verify(handoverTxService).finishFailureCleanup(handoverId);
+        order.verify(handoverTxService).renotifyWithFreshRequest(handoverId);
     }
 
     @Test
@@ -250,6 +254,9 @@ class BillingPayerHandoverReconcileResumeTest {
 
         verify(handoverTxService, never()).failStalledSwitchingAndRenotify(any());
         verify(billingPaymentGateway, never()).cancelHandoverNewSubscription(anyString(), any());
+        // ★P1-3: 認証完了を記録し、以後この照合の抽出対象から外す
+        //   （外さないと状態が変わらない正常行が上限を埋め、認証未解決行を飢餓させる）。
+        verify(handoverTxService).markSetupIntentVerified(handoverId);
     }
 
     @Test
@@ -282,7 +289,7 @@ class BillingPayerHandoverReconcileResumeTest {
 
         verify(handoverTxService).resumeToSwitching(handoverId);
         verify(billingPaymentGateway, never()).revertCancelAtPeriodEndForHandover(anyString(), any());
-        verify(handoverTxService, never()).markFailedAndClearCancelSchedule(any(), any());
+        verify(handoverTxService, never()).markFailedPendingCleanup(any(), any());
     }
 
     @Test
@@ -291,13 +298,14 @@ class BillingPayerHandoverReconcileResumeTest {
         given(handoverTxService.loadResumeContext(
                 EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR))
                 .willReturn(new ResumeContext(handoverId, OLD_SUB, NEW_SUB));
+        given(handoverTxService.markFailedPendingCleanup(any(), any())).willReturn(true);
 
         service.resumeManualIntervention(EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR,
                 ResumeTarget.FAILED, true);
 
         verify(billingPaymentGateway).cancelHandoverNewSubscription(NEW_SUB, handoverId);
         verify(billingPaymentGateway).revertCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
-        verify(handoverTxService).markFailedAndClearCancelSchedule(
+        verify(handoverTxService).markFailedPendingCleanup(
                 handoverId, java.util.List.of(PayerHandoverStatus.MANUAL_INTERVENTION));
     }
 
@@ -307,13 +315,48 @@ class BillingPayerHandoverReconcileResumeTest {
         given(handoverTxService.loadResumeContext(
                 EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR))
                 .willReturn(new ResumeContext(handoverId, OLD_SUB, NEW_SUB));
+        given(handoverTxService.markFailedPendingCleanup(any(), any())).willReturn(true);
 
         service.resumeManualIntervention(EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR,
                 ResumeTarget.FAILED, false);
 
         verify(billingPaymentGateway, never()).revertCancelAtPeriodEndForHandover(anyString(), any());
-        verify(handoverTxService).markFailedAndClearCancelSchedule(
+        verify(handoverTxService).markFailedPendingCleanup(
                 handoverId, java.util.List.of(PayerHandoverStatus.MANUAL_INTERVENTION));
+    }
+
+    @Test
+    @DisplayName("P1-1: RESUME→FAILED も CAS 先行——CAS に負けたら Stripe に触れない")
+    void resume_toFailed_casLost_doesNotTouchStripe() {
+        given(handoverTxService.loadResumeContext(
+                EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR))
+                .willReturn(new ResumeContext(handoverId, OLD_SUB, NEW_SUB));
+        // 別 worker が先に状態を進めた＝CAS は拒否する。
+        given(handoverTxService.markFailedPendingCleanup(any(), any())).willReturn(false);
+
+        service.resumeManualIntervention(EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR,
+                ResumeTarget.FAILED, true);
+
+        verify(billingPaymentGateway, never()).cancelHandoverNewSubscription(anyString(), any());
+        verify(billingPaymentGateway, never()).revertCancelAtPeriodEndForHandover(anyString(), any());
+        verify(handoverTxService, never()).finishFailureCleanup(any());
+    }
+
+    @Test
+    @DisplayName("P1-2: 後始末が落ちたら完了を記録しない（FAILED のまま old_cancel_scheduled_at を残し夜次で回収）")
+    void resume_toFailed_cleanupFails_doesNotFinish() {
+        given(handoverTxService.loadResumeContext(
+                EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR))
+                .willReturn(new ResumeContext(handoverId, OLD_SUB, NEW_SUB));
+        given(handoverTxService.markFailedPendingCleanup(any(), any())).willReturn(true);
+        willThrow(stripeTransient())
+                .given(billingPaymentGateway).cancelHandoverNewSubscription(NEW_SUB, handoverId);
+
+        assertThatThrownBy(() -> service.resumeManualIntervention(
+                EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR, ResumeTarget.FAILED, true))
+                .isInstanceOf(BusinessException.class);
+
+        verify(handoverTxService, never()).finishFailureCleanup(any());
     }
 
     @Test

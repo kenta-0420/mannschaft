@@ -694,6 +694,10 @@ Stripe の予約解除に成功した直後・DB 反映前に落ちると、**St
 | Stripe 変更と CAS の順序 | **CAS で権利を取ってから Stripe を変更する**（取れなければ Stripe に触らない）。逆順だと、Stripe 照会中に別 worker が `COMPLETED` へ進めた場合に「DB は `COMPLETED`・Stripe は新サブスク取消済み」という乖離が残り、pointer が指す新契約と Stripe 実物が矛盾する |
 | 滞留抽出のキーセット送り | 滞留抽出は**処理しても状態が変わらない行**（認証完了済みで旧期末待ちの正常な `SWITCHING`）を返しうる唯一の照合であり、固定の先頭 N 件で切ると後続の認証未解決行が永久に検査されない。`accepted_at` を carry して前へ進む。他の3照合は処理すると必ず状態が動いて集合から抜けるため先頭から詰めれば足りる |
 | 旧期末までの猶予の要件化 | 引継要求の作成時に**旧期末まで `PENDING_SETUP_INTENT_DEADLINE + PERIOD_END_SAFETY_MARGIN`（30時間）以上**を要求する。加えて滞留抽出は「承諾+24時間」**または**「旧期末が 6 時間以内に迫っている」で拾う。旧期末を過ぎると `cancel_at_period_end=false` を送っても終了済みサブスクは復旧できず、「期末より前に `FAILED` として差し戻す」という安全条件が原理的に成立しないため |
+| 失敗確定の3段構え（CAS → Stripe → 完了記録） | `FAILED` へ倒す全経路（切替の `pending_setup_intent` 未解決・`RESUME→FAILED`・滞留照合）が**同一の順序**を通る。①`markFailedPendingCleanup` が期待元状態つき CAS で権利を取る（取れなければ Stripe に触らない）②Stripe の後始末 ③`finishFailureCleanup` が `old_cancel_scheduled_at` を NULL クリア。②が落ちるとこの列が残るため、**「`FAILED` なのに残っている」が後始末未了の証跡**になり、夜次バッチ（`findFailedWithPendingCleanupIds`）が必ず回収する。新しい状態も列も増やさずに回収可能性を確保している |
+| AC-20 の再要求は後始末の後 | 再要求（`renotifyWithFreshRequest`）は**後始末が完了してから**作る。先に作ると、後始末が落ちた場合に「旧試行のサブスクが Stripe に残ったまま、別 ADMIN が新しい承諾を進められる」＝**二重サブスク**の窓が開く。再要求は共通の作成要件（旧 payer が今も退会申請中か・旧契約が今も引継可能か・旧期末までの猶予・候補 ADMIN の存在）を**Tx 層で再検証**し、満たさなければ作らない（元要求は `FAILED` のままなので生成列の枠が空き、purge の期末解約フォールバックへ渡る） |
+| 承諾時の期末猶予の再検証 | 要求は14日間有効なので、作成時の検証だけでは足りない（作成時31時間の契約でも24時間後に承諾すれば残り7時間）。`expires_at` しか見ないと**旧期末を過ぎていても承諾できて**しまい、期末後の差し戻しは終了済みサブスクを復旧できない。承諾は Stripe に新サブスクを作る不可逆な一歩なので、その直前に旧期末の猶予を再検証する |
+| 滞留抽出の複合カーソルと正常行の除外 | `(accepted_at, id)` の複合カーソルで進む（`accepted_at` 単独では同一時刻行がページ境界で全て脱落する）。あわせて **V205 の `setup_intent_verified_at`** を追加し、認証完了を確認した行を抽出から外す。認証完了行は処理しても状態が変わらないため、除外しないと実行件数の上限を埋めて**認証未解決行を永久に飢餓させる**（カーソルは実行のたびに初期化されるため、上限に達する限りその先へ到達しない） |
 | AC-14（`hardDeleteBySlotAndContractId` 移行） | `BillingContractService#expireSubscriptionContract`（旧サブスク由来の `customer.subscription.deleted` webhook 経路）を `contract_id` 一致条件つき削除へ移行。切替TX後に遅着した旧 webhook は 0 件更新で終わる |
 
 ---
