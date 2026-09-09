@@ -81,6 +81,8 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
     private static final int PRICE_JPY = 4_800;
 
     @Autowired private BillingPayerHandoverService handoverService;
+    /** PR-4 5巡目 P1-4: 状態遷移そのものを実 DB で検証するため実 Bean を使う（モックでは何も保証されない）。 */
+    @Autowired private BillingPayerHandoverTxService handoverTxService;
     @Autowired private BillingContractRepository billingContractRepository;
     @Autowired private BillingPayerHandoverRequestRepository handoverRequestRepository;
     @Autowired private ActiveContractPointerRepository activeContractPointerRepository;
@@ -668,6 +670,111 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
 
         assertThat(due).as("期末到達済みの SWITCHING 行は抽出される").contains(dueHandoverId);
         assertThat(due).as("期末未到達の SWITCHING 行は抽出されない").doesNotContain(notDueHandoverId);
+    }
+
+    // ============================================================
+    // PR-4 Codex検分5巡目 P1-4: 失敗確定の後始末を【本番メソッドを通し実 DB の状態で】固定する
+    //
+    // 5巡連続で「モックした呼出順の検証は状態遷移の正しさを何一つ保証しない」と指摘された箇所である。
+    // ここでは Tx 層の実 Bean を呼び、遷移後の行・契約・要求件数を DB から読み直して検証する
+    // （SQL 直叩きで状態を作らない＝本番経路の欠陥を隠さない）。
+    // ============================================================
+
+    @Test
+    @DisplayName("P1-4: 後始末が未了（finalizeFailure 未到達）の間は FAILING_CLEANUP が維持され、"
+            + "夜次の回収対象に入り、同一契約への新規要求も塞がれ続ける")
+    void failingCleanupIsRetainedUntilCleanupSucceeds() {
+        UUID handoverRequestId = requestAndAcceptAndComplete(adminAUserId);
+
+        // 失敗確定の権利だけを取る（Stripe 後始末が落ちた直後と同じ実状態）。
+        // 外側で TX を張らない（本番メソッド自身の境界を測るため。上の同名の理由と同じ）。
+        boolean claimed = handoverTxService.markFailedPendingCleanup(
+                handoverRequestId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES, true, true);
+        assertThat(claimed).isTrue();
+
+        assertThat(reloadHandover(handoverRequestId).getStatus())
+                .as("後始末が終わるまで終端化しないこと")
+                .isEqualTo(PayerHandoverStatus.FAILING_CLEANUP);
+        assertThat(handoverService.findFailureCleanupBacklogIds())
+                .as("FAILING_CLEANUP は状態だけを根拠に夜次へ拾われること（5巡目 P1-1）")
+                .contains(handoverRequestId);
+        assertThat(openRequestCount(oldContractId))
+                .as("非終端として数えられ、同一契約への新規要求を塞ぎ続けること")
+                .isEqualTo(1L);
+        assertThatThrownBy(() -> handoverService.requestHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, oldContractId, oldPayerUserId))
+                .as("後始末未了の間は通常の作成入口からも新規要求を作れないこと")
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("P1-4: finalizeFailure は【FAILED 化・新契約の CANCELLED 化・AC-20 再要求の作成】を"
+            + "1つの TX でまとめて確定する")
+    void finalizeFailureAtomicallyTerminatesAndCreatesRenewal() {
+        UUID handoverRequestId = requestAndAcceptAndComplete(adminAUserId);
+        UUID newContractId = reloadHandover(handoverRequestId).getNewContractId();
+        assertThat(newContractId).isNotNull();
+
+        // ★【外側で TX を張らずに本番メソッドを呼ぶ】。
+        //   TransactionTemplate で包むと、テストが自分自身のトランザクションを測ってしまい、
+        //   finalizeFailure から @Transactional が消えても緑のままになる（本リポジトリの既知の罠）。
+        //   境界そのものを測る以上、TX は本番メソッド側にだけ張らせる。
+        handoverTxService.markFailedPendingCleanup(
+                handoverRequestId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES, true, true);
+        boolean finalized = handoverTxService.finalizeFailure(handoverRequestId, true);
+
+        assertThat(finalized).isTrue();
+        BillingPayerHandoverRequestEntity finalizedRow = reloadHandover(handoverRequestId);
+        assertThat(finalizedRow.getStatus())
+                .as("後始末の成功を確認して初めて FAILED へ終端化すること")
+                .isEqualTo(PayerHandoverStatus.FAILED);
+        assertThat(finalizedRow.getOldCancelScheduledAt())
+                .as("AC-32: 差し戻しと対で old_cancel_scheduled_at を NULL クリアすること")
+                .isNull();
+        assertThat(reloadContract(newContractId).getStatus())
+                .as("先行作成した PENDING_HANDOVER 契約が無効化されること")
+                .isEqualTo(ContractStatus.CANCELLED);
+
+        // ★AC-20: 死んだ要求 ID へ誘導しないため、承諾可能な【新しい要求】が同じ TX で作られている。
+        List<BillingPayerHandoverRequestEntity> open = transactionTemplate.execute(tx -> {
+            entityManager.clear();
+            return handoverRequestRepository.findByOldContractIdAndStatusNotIn(
+                    oldContractId, BillingPayerHandoverTxService.TERMINAL_STATUSES);
+        });
+        assertThat(open).as("再要求がちょうど1件作られること").hasSize(1);
+        assertThat(open.get(0).getId())
+                .as("元要求とは別の、新しい要求であること").isNotEqualTo(handoverRequestId);
+        assertThat(open.get(0).getStatus())
+                .as("再要求は承諾可能な REQUESTED であること")
+                .isEqualTo(PayerHandoverStatus.REQUESTED);
+    }
+
+    @Test
+    @DisplayName("P1-4: 要求後に旧期末が迫った場合、承諾は拒否され新契約も作られない（猶予不足の確定拒否）")
+    void acceptanceIsRejectedWhenPeriodEndHeadroomIsInsufficient() {
+        HandoverRequestResult requested = handoverService.requestHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, oldContractId, oldPayerUserId);
+
+        // 要求は14日間有効なので、その間に旧期末が近づく（承諾時に猶予が失われる）ことは実際に起こる。
+        transactionTemplate.executeWithoutResult(tx -> {
+            entityManager.clear();
+            BillingContractEntity contract = billingContractRepository
+                    .findByIdAndDeletedAtIsNull(oldContractId).orElseThrow();
+            contract.setCurrentPeriodEnd(LocalDateTime.now(clock).plusHours(2));
+            billingContractRepository.save(contract);
+        });
+
+        assertThatThrownBy(() -> handoverService.acceptHandover(
+                EntitlementScopeKind.TEAM, TEAM_ID, requested.handoverRequestId(), adminAUserId))
+                .as("猶予不足の承諾は拒否されること")
+                .isInstanceOf(BusinessException.class);
+
+        assertThat(reloadHandover(requested.handoverRequestId()).getStatus())
+                .as("拒否された承諾は ACCEPTED にならないこと")
+                .isEqualTo(PayerHandoverStatus.REQUESTED);
+        assertThat(contractCountByHandoverRequestId(requested.handoverRequestId()))
+                .as("新契約（PENDING_HANDOVER）も作られないこと")
+                .isZero();
     }
 
     // ============================================================

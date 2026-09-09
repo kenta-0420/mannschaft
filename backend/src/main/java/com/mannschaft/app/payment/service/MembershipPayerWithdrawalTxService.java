@@ -273,10 +273,29 @@ public class MembershipPayerWithdrawalTxService {
         // ここでも「自分の退会試行の作業行」のときだけ更新する（他試行の行は一切触らない）。
         if (recordIsOurs) {
             MembershipPayerWithdrawalCancellationEntity record = recordOpt.get();
-            // DB 列が既に true でも、それを立てたのが自分たちなら SUCCEEDED が正しい
-            // （検分5巡目 P1-2 の経路では DB=true のまま Stripe へ発行し直している）。
-            boolean ours = record.getStatus() == MembershipPayerWithdrawalCancellationStatus.PENDING;
-            if (scheduledByUs || ours) {
+            MembershipPayerWithdrawalCancellationStatus recordStatus = record.getStatus();
+            // ★【同一世代の後行処理が来歴を壊さない】（PR-4 Codex検分1巡目 P1-2）
+            //   元イベントと夜次再試行バッチは、同じ PENDING 行に対してそれぞれ prepare を通過できる
+            //   （行ロックは各短期トランザクションの中でしか保持されず、Stripe 呼び出しを跨げない）。
+            //   先行が SUCCEEDED まで確定させたあと、後行がここへ来ると
+            //   「DB は既に cancel_at_period_end=true・作業行は SUCCEEDED」に見えるため、
+            //   是正前は ours=false と判定して SUPERSEDED へ落としていた。
+            //   SUPERSEDED は復旧対象外であり、【退会由来という来歴が失われて】
+            //   後日の退会取消で期末解約が解除されなくなる（利用者の意思に反する終了）。
+            //   recordIsOurs は「この行が自分と同一の退会試行のものである」ことを
+            //   users.withdrawal_attempt_id 由来の正本で確認済みなので、
+            //   同一世代の SUCCEEDED は【冪等な成功】として維持するのが正しい。
+            if (recordStatus == MembershipPayerWithdrawalCancellationStatus.SUCCEEDED) {
+                log.info("払い手退会に伴う期末解約: 同一の退会試行で既に確定済みのため冪等成功として維持します "
+                        + "subscriptionId={}, 退会試行={}", subscriptionId, withdrawalAttemptId);
+            } else if (recordStatus == MembershipPayerWithdrawalCancellationStatus.RESTORING) {
+                // 解除に着手済みの行を解約側が上書きしてはならない（処理の向きが逆）。
+                log.warn("払い手退会に伴う期末解約: 解除処理が進行中の作業行のため状態を変更しません "
+                        + "subscriptionId={}, 退会試行={}", subscriptionId, withdrawalAttemptId);
+            } else if (scheduledByUs
+                    || recordStatus == MembershipPayerWithdrawalCancellationStatus.PENDING) {
+                // DB 列が既に true でも、それを立てたのが自分たちなら SUCCEEDED が正しい
+                // （検分5巡目 P1-2 の経路では DB=true のまま Stripe へ発行し直している）。
                 record.markSucceeded(Instant.now());
             } else {
                 // 自分が予約したのではない＝復旧の対象にしてはいけない（検分3巡目 P1-3）。
