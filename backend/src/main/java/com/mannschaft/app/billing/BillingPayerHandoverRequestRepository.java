@@ -33,6 +33,16 @@ public interface BillingPayerHandoverRequestRepository
     Optional<BillingPayerHandoverRequestEntity> findByNewContractId(UUID newContractId);
 
     /**
+     * 旧 payer 起点で、指定状態の要求を引く（柱③-B PR-3・退会取消時の終端化に使う）。
+     *
+     * <p>設計書 §4.2 の遷移表は退会取消時に {@code REQUESTED → FAILED} と定めている。終端化しないと
+     * {@code REQUESTED} 行が残り、生成列 + {@code uk_bphr_open_old_contract} が同一契約への
+     * 次の引継要求をブロックし続ける（Codex 検分1巡目 P1-3）。</p>
+     */
+    List<BillingPayerHandoverRequestEntity> findByOldPayerUserIdAndStatus(
+            Long oldPayerUserId, PayerHandoverStatus status);
+
+    /**
      * 引継要求を <b>{@code SELECT ... FOR UPDATE}</b> で行ロックして取得する（設計書 §4.2・§5.6・AC-12）。
      *
      * <p>複数 ADMIN が同時に承諾操作を行っても、状態遷移（{@code REQUESTED → ACCEPTED}）が
