@@ -687,8 +687,9 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
         UUID handoverRequestId = requestAndAcceptAndComplete(adminAUserId);
 
         // 失敗確定の権利だけを取る（Stripe 後始末が落ちた直後と同じ実状態）。
-        Boolean claimed = transactionTemplate.execute(tx -> handoverTxService.markFailedPendingCleanup(
-                handoverRequestId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES, true, true));
+        // 外側で TX を張らない（本番メソッド自身の境界を測るため。上の同名の理由と同じ）。
+        boolean claimed = handoverTxService.markFailedPendingCleanup(
+                handoverRequestId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES, true, true);
         assertThat(claimed).isTrue();
 
         assertThat(reloadHandover(handoverRequestId).getStatus())
@@ -714,10 +715,13 @@ class BillingPayerHandoverStateMachineIT extends AbstractMySqlIntegrationTest {
         UUID newContractId = reloadHandover(handoverRequestId).getNewContractId();
         assertThat(newContractId).isNotNull();
 
-        transactionTemplate.executeWithoutResult(tx -> handoverTxService.markFailedPendingCleanup(
-                handoverRequestId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES, true, true));
-        Boolean finalized = transactionTemplate.execute(
-                tx -> handoverTxService.finalizeFailure(handoverRequestId, true));
+        // ★【外側で TX を張らずに本番メソッドを呼ぶ】。
+        //   TransactionTemplate で包むと、テストが自分自身のトランザクションを測ってしまい、
+        //   finalizeFailure から @Transactional が消えても緑のままになる（本リポジトリの既知の罠）。
+        //   境界そのものを測る以上、TX は本番メソッド側にだけ張らせる。
+        handoverTxService.markFailedPendingCleanup(
+                handoverRequestId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES, true, true);
+        boolean finalized = handoverTxService.finalizeFailure(handoverRequestId, true);
 
         assertThat(finalized).isTrue();
         BillingPayerHandoverRequestEntity finalizedRow = reloadHandover(handoverRequestId);

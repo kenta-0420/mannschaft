@@ -390,8 +390,8 @@ class BillingPayerHandoverFoundationFlywayIT {
     }
 
     @Test
-    @DisplayName("V203: chk_bphr_status は9値の状態機械を許容し、scope_kindはTEAM/ORGのみ許容する")
-    void handoverStatusCheckAllowsNineValuesAndTeamOrgScopeOnly() throws Exception {
+    @DisplayName("chk_bphr_status は10値の状態機械（V206 の FAILING_CLEANUP 含む）を許容し、scope_kindはTEAM/ORGのみ許容する")
+    void handoverStatusCheckAllowsAllStatusesAndTeamOrgScopeOnly() throws Exception {
         migrateToV203();
         // 生成列 open_old_contract_id + UNIQUE（uk_bphr_open_old_contract）は「同一契約に対する非終端要求は
         // 同時に1件のみ」を保証する（設計書§4.2）。MANUAL_INTERVENTION と PARTIALLY_COMPLETED はいずれも

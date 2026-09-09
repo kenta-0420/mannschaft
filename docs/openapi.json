@@ -182271,7 +182271,7 @@
           },
           "status": {
             "type": "string",
-            "description": "要求の状態（9値の状態機械）"
+            "description": "要求の状態（10値の状態機械。FAILING_CLEANUP は後始末未了の非終端）"
           }
         }
       },
