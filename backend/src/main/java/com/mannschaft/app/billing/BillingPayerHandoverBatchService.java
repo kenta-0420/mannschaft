@@ -1,6 +1,8 @@
 package com.mannschaft.app.billing;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -51,6 +53,9 @@ public class BillingPayerHandoverBatchService {
      * {@code ScheduledBatchGuardTest} のルール4）。並走しても行ロックで直列化されるが、
      * Stripe 呼び出しが二重に走る余地を残さない。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_BILLING_PAYMENT_ENABLED",
+            reason = "決済を閉栓している間は引継の承諾も新サブスク作成も起こらず、切替待ちの行は DB に残るだけである。抽出条件は「旧期末に到達したか」という時刻条件のみで毎回作り直されるため、再開後の最初の実行が取りこぼしごと拾い直す")
     @BatchEndpoint(name = "billing-payer-handover-switch",
             description = "旧期末に到達した請求担当引継の pointer 切替を実行する（柱③-B・毎時）")
     @Scheduled(cron = "${mannschaft.billing.payer-handover.switch-cron:0 10 * * * *}", zone = "Asia/Tokyo")
@@ -97,6 +102,9 @@ public class BillingPayerHandoverBatchService {
      * 後者は「旧サブスクが解約予約されないまま課金を続ける」という金銭事故の検出であり、
      * 他の照合の失敗を理由にスキップしてよいものではない。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_BILLING_PAYMENT_ENABLED",
+            reason = "照合対象は毎回 DB から再抽出する（期限超過・old_cancel_scheduled_at が NULL 等の状態そのものが条件）ため、閉栓中にスキップしても対象が失われない。再開後の最初の夜次実行がまとめて突合し直す")
     @BatchEndpoint(name = "billing-payer-handover-reconcile",
             description = "請求担当引継の期限超過承諾と cancel_at_period_end 設定漏れを Stripe と照合する（柱③-B・日次）")
     @Scheduled(cron = "${mannschaft.billing.payer-handover.reconcile-cron:0 40 2 * * *}", zone = "Asia/Tokyo")

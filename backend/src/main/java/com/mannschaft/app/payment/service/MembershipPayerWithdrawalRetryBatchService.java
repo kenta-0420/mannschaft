@@ -1,6 +1,8 @@
 package com.mannschaft.app.payment.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -52,6 +54,9 @@ public class MembershipPayerWithdrawalRetryBatchService {
      * {@code membership_payer_withdrawal_cancellations}）を両パスが共有しており、
      * パス間の順序を固定しておくほうが競合の再現性が高いためである。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_BILLING_PAYMENT_ENABLED",
+            reason = "再試行対象は作業行の非終端状態と退会状態そのものから毎回導出するため、閉栓中にスキップしても失われない。閉栓中は Stripe への解約発行自体を止めたい局面でもあり、再開後の最初の実行が同じ対象を拾い直す")
     @BatchEndpoint(name = "membership-payer-withdrawal-retry",
             description = "払い手退会に伴う期末解約／その解除のやり残しを再試行する（柱③-B・日次）")
     @Scheduled(cron = "${mannschaft.payment.payer-withdrawal-retry.cron:0 20 3 * * *}", zone = "Asia/Tokyo")
