@@ -72,6 +72,28 @@ public class BillingPayerHandoverService {
             List.of(PayerHandoverStatus.SWITCHING, PayerHandoverStatus.PARTIALLY_COMPLETED);
 
     /**
+     * 夜次照合が同じ失敗を繰り返しても解消しないとき、恒久失敗と判断して
+     * {@code MANUAL_INTERVENTION} へ倒すまでの猶予（設計書 §3.6.2 入口3・PR-4 Codex検分1巡目 P1-3）。
+     *
+     * <p><b>なぜ時間で測るか</b>: 試行回数を持つには列の追加（＝マイグレーション）が要るが、
+     * 恒久失敗の判定に必要なのは「何回叩いたか」ではなく<b>「いつまで解消しないか」</b>である。
+     * 承諾確定（{@code accepted_at}）から本猶予を過ぎてなお旧サブスクの期末解約予約を
+     * 確認できない行は、毎晩の再試行では解消しないものとして人手へ渡す。
+     * これは<b>単一の引継要求行の経過時間</b>であり、退会世代の推測ではない。</p>
+     */
+    static final Duration CANCEL_SCHEDULE_ESCALATION = Duration.ofDays(3);
+
+    /**
+     * {@code SWITCHING} のまま {@code pending_setup_intent} が解決しない場合に
+     * {@code FAILED} を確定させるまでの猶予（設計書 §5.5 ④・AC-20・PR-4 Codex検分1巡目 P1-6）。
+     *
+     * <p>設計書は「一定時間（既定24時間）認証未完了なら {@code FAILED} とし、他の ADMIN へ
+     * 再度通知を送る」と定める。旧期末到達まで待つと、そのとき旧サブスクは既に終了しており
+     * <b>差し戻しても継続を復旧できない</b>ため、期末より前に決着させる必要がある。</p>
+     */
+    static final Duration PENDING_SETUP_INTENT_DEADLINE = Duration.ofHours(24);
+
+    /**
      * 猶予期限到来で {@code EXPIRED} へ倒せる状態（設計書 §4.2 遷移表の「{@code EXPIRED} の遷移元」）。
      *
      * <p>いずれも Stripe には一切触れていない段階のため、照合なしで安全に終端化できる。</p>
@@ -728,14 +750,121 @@ public class BillingPayerHandoverService {
             log.warn("柱③-B 夜次照合: 旧サブスクの cancel_at_period_end が未設定でした。再設定します"
                     + " handoverRequestId={}, oldSubscriptionRef={}",
                     handoverRequestId, target.oldSubscriptionRef());
-            billingPaymentGateway.scheduleCancelAtPeriodEndForHandover(
-                    target.oldSubscriptionRef(), handoverRequestId);
+            try {
+                billingPaymentGateway.scheduleCancelAtPeriodEndForHandover(
+                        target.oldSubscriptionRef(), handoverRequestId);
+            } catch (RuntimeException e) {
+                // ★恒久失敗の受け皿（PR-4 Codex検分1巡目 P1-3・設計書 §3.6.2 入口3）。
+                //   是正前はここで例外がバッチ外周へ抜け、ログだけ残して状態も試行管理も
+                //   変わらなかった。恒久的な Stripe 4xx や参照不整合は毎晩同じ失敗を繰り返し、
+                //   行は SWITCHING のまま永久に残る。RESUME は MANUAL_INTERVENTION 専用なので
+                //   運用者にも決着させる手段が無い（＝旧 payer への課金が止まらない）。
+                if (isPermanentlyFailing(target, e)) {
+                    log.error("柱③-B 夜次照合: cancel_at_period_end の設定が恒久的に解消しないため"
+                                    + " MANUAL_INTERVENTION へ倒します handoverRequestId={}, 猶予={}",
+                            handoverRequestId, CANCEL_SCHEDULE_ESCALATION, e);
+                    handoverTxService.markManualIntervention(handoverRequestId);
+                    return;
+                }
+                // 一時的失敗と判断した場合のみ、次回の照合へ委ねる（DB は書き換えない）。
+                throw e;
+            }
         } else {
             log.warn("柱③-B 夜次照合: Stripe 側は予約済みで DB 記録だけが欠けていました。DB を回復します"
                     + " handoverRequestId={}, oldSubscriptionRef={}",
                     handoverRequestId, target.oldSubscriptionRef());
         }
         handoverTxService.persistOldCancelScheduledAt(handoverRequestId, clock.instant());
+    }
+
+    /**
+     * 恒久失敗と判断してよいかを分類する（設計書 §3.6.2 入口3・PR-4 Codex検分1巡目 P1-3）。
+     *
+     * <p>一時的な失敗（ネットワーク断・Stripe 側の 5xx）まで即座に人手へ回すと、
+     * 自動回復できたはずの引継まで止めてしまう。逆に恒久失敗を無限に再試行すると
+     * {@code SWITCHING} のまま永久に残り、{@code RESUME} も使えない（{@code RESUME} は
+     * {@code MANUAL_INTERVENTION} 専用の出口だからである）。両者を分ける基準として
+     * <b>承諾確定からの経過時間</b>を使う——「毎晩繰り返しても猶予内に解消しなかった」ことは、
+     * 例外の種類を推測するより確実な恒久性の証拠である。</p>
+     *
+     * <p>{@code accepted_at} が無い（PR-2 以前に作られた行）場合は判定材料が無いため
+     * 恒久とはみなさず、次回の照合に委ねる。</p>
+     */
+    private boolean isPermanentlyFailing(
+            BillingPayerHandoverTxService.CancelScheduleTarget target, RuntimeException cause) {
+        Instant acceptedAt = target.acceptedAt();
+        if (acceptedAt == null) {
+            log.warn("柱③-B 夜次照合: accepted_at が無いため恒久失敗の判定を保留します handoverRequestId={}",
+                    target.handoverRequestId(), cause);
+            return false;
+        }
+        return !clock.instant().isBefore(acceptedAt.plus(CANCEL_SCHEDULE_ESCALATION));
+    }
+
+    // ============================================================
+    // SWITCHING 滞留の監視と追加認証の期限処理（設計書 §5.5 ④・AC-20・P1-6）
+    // ============================================================
+
+    /**
+     * 承諾確定から {@link #PENDING_SETUP_INTENT_DEADLINE} を過ぎてなお {@code SWITCHING} の
+     * 引継要求 ID を返す（設計書 PR-4 射程の「{@code SWITCHING} 詰まり監視」）。
+     */
+    @Transactional(readOnly = true)
+    public List<UUID> findStalledSwitchingIds() {
+        return handoverRequestRepository.findStalledSwitchingIds(
+                PayerHandoverStatus.SWITCHING,
+                clock.instant().minus(PENDING_SETUP_INTENT_DEADLINE));
+    }
+
+    /**
+     * {@code SWITCHING} 滞留を Stripe 実物と突合し、追加認証が期限内に完了していなければ
+     * {@code FAILED} を確定して他 ADMIN へ再通知する（設計書 §5.5 ④・AC-20）。
+     *
+     * <p><b>DB の滞留だけで終端化してはならない</b>。滞留は「認証が終わっていない」とは限らず、
+     * 単に旧期末が遠いだけのこともある。よって必ず Stripe の {@code pending_setup_intent} を
+     * 再検証し、<b>未解決のときだけ</b>終端化する。解決済みなら滞留として記録し、
+     * 通常どおり旧期末到達時の切替バッチに委ねる。</p>
+     *
+     * <p>終端化するときは §3.6 の FAILED 経路と同じ後始末を伴う: 新 trial サブスクを無課金取消し、
+     * 旧サブスクの {@code cancel_at_period_end} を差し戻し、{@code old_cancel_scheduled_at} を
+     * NULL クリアする。この時点なら<b>旧期末はまだ来ていないため差し戻しが有効</b>である。</p>
+     *
+     * @return 終端化したなら {@code true}
+     */
+    public boolean reconcileStalledSwitching(UUID handoverRequestId) {
+        BillingPayerHandoverTxService.StalledSwitchingTarget target =
+                handoverTxService.loadStalledSwitchingTarget(handoverRequestId);
+        if (target == null) {
+            return false;
+        }
+
+        SubscriptionSnapshot newSnapshot =
+                billingPaymentGateway.retrieveSubscription(target.newSubscriptionRef());
+        if (newSnapshot == null) {
+            // 実物を引けない間は判断材料が無い。状態は変えず次回の照合に委ねる。
+            log.error("柱③-B 滞留監視: 新サブスクを Stripe から取得できません handoverRequestId={}",
+                    handoverRequestId);
+            return false;
+        }
+        if (!newSnapshot.hasPendingSetupIntent()) {
+            // 認証は完了している。滞留の理由は旧期末待ちであり異常ではない（監視ログのみ）。
+            log.info("柱③-B 滞留監視: 追加認証は完了済みのため終端化しません（旧期末待ち）"
+                    + " handoverRequestId={}", handoverRequestId);
+            return false;
+        }
+
+        log.error("柱③-B 滞留監視: 承諾から {} を過ぎても pending_setup_intent が未解決のため"
+                        + " FAILED を確定し他 ADMIN へ再通知します handoverRequestId={}",
+                PENDING_SETUP_INTENT_DEADLINE, handoverRequestId);
+        // 新 trial サブスクは無課金のうちに取り消す（放置すると孤児として課金され得る）。
+        billingPaymentGateway.cancelHandoverNewSubscription(
+                target.newSubscriptionRef(), handoverRequestId);
+        if (target.oldSubscriptionRef() != null) {
+            // ★旧期末より前なので差し戻しが有効に効く（AC-32）。
+            billingPaymentGateway.revertCancelAtPeriodEndForHandover(
+                    target.oldSubscriptionRef(), handoverRequestId);
+        }
+        return handoverTxService.failStalledSwitchingAndRenotify(handoverRequestId);
     }
 
     // ============================================================

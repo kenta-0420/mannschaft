@@ -136,6 +136,25 @@ public interface BillingPayerHandoverRequestRepository
                                         @Param("now") Instant now);
 
     /**
+     * {@code SWITCHING} のまま滞留している引継要求 ID を返す
+     * （設計書 §5.5 ④・PR-4 射程の「{@code SWITCHING} 詰まり監視」・AC-20）。
+     *
+     * <p>承諾確定（{@code accepted_at}）から一定時間を過ぎてなお {@code SWITCHING} に留まる行は、
+     * 追加認証（SCA/3DS）が完了していないか、引継が事実上停止している。旧期末到達まで放置すると
+     * <b>旧サブスクが先に終了してしまい、差し戻しても継続を復旧できない</b>。
+     * 抽出には Stripe 照会を伴わない（実物の再検証は呼び出し側が行う）。</p>
+     *
+     * @param cutoff {@code accepted_at} がこの時刻以前の行を滞留とみなす
+     */
+    @Query("SELECT h.id FROM BillingPayerHandoverRequestEntity h "
+            + "WHERE h.status = :status "
+            + "AND h.pspNewSubscriptionRef IS NOT NULL "
+            + "AND h.acceptedAt IS NOT NULL AND h.acceptedAt <= :cutoff "
+            + "ORDER BY h.acceptedAt")
+    List<UUID> findStalledSwitchingIds(@Param("status") PayerHandoverStatus status,
+                                       @Param("cutoff") Instant cutoff);
+
+    /**
      * 猶予期限を過ぎたまま {@code ACCEPTED} に留まり、新サブスク参照が未確定の引継要求 ID を返す
      * （設計書 §5.3・§3.6.1(a) の照合対象と同じ形・Codex検分4巡目 P1）。
      *

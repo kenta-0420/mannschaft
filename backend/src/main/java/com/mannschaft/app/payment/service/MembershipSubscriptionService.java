@@ -131,6 +131,21 @@ public class MembershipSubscriptionService {
                     MembershipPayerWithdrawalCancellationStatus.RESTORING);
 
     /**
+     * 柱③-B PR-4: 退会取消イベントを取りこぼした払い手を拾い直すための走査対象
+     * （Codex 検分1巡目 P1-1）。
+     *
+     * <p>{@code SUCCEEDED}（予約は成立した）と非終端3値（{@code PENDING}/{@code FAILED}/
+     * {@code RESTORING}）の和。{@code RESTORED}/{@code SUPERSEDED} は既に決着済みのため含めない。
+     * この集合から「いま退会申請中の払い手」を差し引いたものが、解除されるべきなのに
+     * 駆動主体を失っている行である。</p>
+     */
+    private static final List<MembershipPayerWithdrawalCancellationStatus> RESTORE_BACKLOG_STATUSES =
+            List.of(MembershipPayerWithdrawalCancellationStatus.PENDING,
+                    MembershipPayerWithdrawalCancellationStatus.FAILED,
+                    MembershipPayerWithdrawalCancellationStatus.RESTORING,
+                    MembershipPayerWithdrawalCancellationStatus.SUCCEEDED);
+
+    /**
      * 【残債2 payment ドメイン公開 API】ユーザーの Stripe Customer 用メールアドレスを解決する。
      *
      * <p>{@link PaymentMethodService#getOrCreateStripeCustomer} が Stripe Customer 新規作成時に渡す
@@ -698,10 +713,37 @@ public class MembershipSubscriptionService {
      */
     public List<Long> findWithdrawalRestoreRetryPayerUserIds() {
         Set<Long> payerUserIds = new LinkedHashSet<>();
+
+        // ① RESTORING: 解除に着手したが確定に至っていない行（Stripe 解除後の停止など）。
         payerWithdrawalCancellationRepository
                 .findByStatusInOrderByUpdatedAtAsc(List.of(
                         MembershipPayerWithdrawalCancellationStatus.RESTORING))
                 .forEach(record -> payerUserIds.add(record.getPayerUserId()));
+
+        // ② ★退会取消イベントそのものを取りこぼした払い手（PR-4 Codex検分1巡目 P1-1）。
+        //   RESTORING だけを見ると、取消イベントが prepareRestore に到達する前に失われた場合
+        //   （event-pool の投入拒否・commit 直後のプロセス停止）を永久に拾えない。その行は
+        //   PENDING / FAILED / SUCCEEDED のまま残り、解約側へ回しても「今は退会申請中でない」ため
+        //   reserveAll が空を返すだけで終端化もされない。結果、
+        //   <b>退会を取り消した利用者のメンバーシップが期末で終了する</b>。
+        //
+        //   判定は【状態や時刻から世代を推測せず】、退会状態そのものの正本
+        //   （auth ドメインの native 経路 = users.deleted_at / withdrawal_attempt_id）に問う。
+        //   「復旧しうる行を持つ払い手」から「いま退会申請中の払い手」を差し引いた集合が
+        //   取りこぼしである。行ごとの最終判断は prepareRestore が行ロック下で再検証するため、
+        //   ここで多めに拾っても（その間に再退会していれば）安全に空振りする。
+        Set<Long> restorableCandidates = new LinkedHashSet<>();
+        payerWithdrawalCancellationRepository
+                .findByStatusInOrderByUpdatedAtAsc(RESTORE_BACKLOG_STATUSES)
+                .forEach(record -> restorableCandidates.add(record.getPayerUserId()));
+        if (!restorableCandidates.isEmpty()) {
+            Set<Long> stillWithdrawing =
+                    Set.copyOf(withdrawalStateQueryService.findUserIdsWithPendingWithdrawal());
+            restorableCandidates.stream()
+                    .filter(id -> id != null && !stillWithdrawing.contains(id))
+                    .forEach(payerUserIds::add);
+        }
+
         payerUserIds.remove(null);
         return List.copyOf(payerUserIds);
     }

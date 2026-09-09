@@ -37,8 +37,28 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BillingPayerHandoverBatchService {
 
+    /**
+     * 1回の実行で処理する上限件数（PR-4 Codex検分1巡目 P2-2）。
+     *
+     * <p>対象1件ごとに複数の Stripe API を同期実行するため、無制限に流すと
+     * {@code lockAtMostFor} を超えて<b>次回起動と並走し得る</b>。上限を設けても
+     * 抽出条件は毎回 DB の状態から導出されるため、あふれた分は次回の実行が拾い直す
+     * （取りこぼしにはならない）。</p>
+     */
+    static final int MAX_TARGETS_PER_RUN = 200;
+
     private final BillingPayerHandoverService handoverService;
     private final Clock clock;
+
+    /** 1回の実行で処理する件数を {@link #MAX_TARGETS_PER_RUN} で頭打ちにする。 */
+    private List<UUID> limit(List<UUID> targets) {
+        if (targets.size() <= MAX_TARGETS_PER_RUN) {
+            return targets;
+        }
+        log.warn("柱③-B: 対象が上限を超えたため今回は {} 件だけ処理します（残りは次回実行が拾う）: 対象={}",
+                MAX_TARGETS_PER_RUN, targets.size());
+        return targets.subList(0, MAX_TARGETS_PER_RUN);
+    }
 
     /**
      * 旧期末に到達した引継の pointer 切替を実行する（設計書 §3.6 (b)・AC-27/AC-30/AC-35）。
@@ -70,7 +90,7 @@ public class BillingPayerHandoverBatchService {
         }
 
         int failed = 0;
-        for (UUID handoverRequestId : targets) {
+        for (UUID handoverRequestId : limit(targets)) {
             try {
                 handoverService.executeSwitch(handoverRequestId);
             } catch (Exception e) {
@@ -114,6 +134,39 @@ public class BillingPayerHandoverBatchService {
         expireOverdueUnaccepted();
         reconcileExpiredAcceptances();
         reconcileOldCancelSchedules();
+        reconcileStalledSwitching();
+    }
+
+    /**
+     * §5.5 ④・AC-20: {@code SWITCHING} の滞留を Stripe 実物と突合し、追加認証が期限内に
+     * 完了していなければ {@code FAILED} を確定して他 ADMIN へ再通知する（PR-4 Codex検分1巡目 P1-6）。
+     */
+    private void reconcileStalledSwitching() {
+        List<UUID> targets;
+        try {
+            targets = handoverService.findStalledSwitchingIds();
+        } catch (Exception e) {
+            log.error("柱③-B 夜次照合: SWITCHING 滞留の抽出に失敗しました", e);
+            return;
+        }
+        int failedOut = 0;
+        int errors = 0;
+        for (UUID handoverRequestId : limit(targets)) {
+            try {
+                if (handoverService.reconcileStalledSwitching(handoverRequestId)) {
+                    failedOut++;
+                }
+            } catch (Exception e) {
+                errors++;
+                log.error("柱③-B 夜次照合: SWITCHING 滞留の照合に失敗しました handoverRequestId={}",
+                        handoverRequestId, e);
+            }
+        }
+        if (!targets.isEmpty()) {
+            log.warn("柱③-B 夜次照合（SWITCHING 滞留）: 対象={}, 終端化={}, 失敗={}"
+                    + "（滞留が積み上がる場合は追加認証の導線を調査すること）",
+                    targets.size(), failedOut, errors);
+        }
     }
 
     /** §5.3・AC-21: 猶予期限を過ぎたまま誰にも承諾されなかった要求を EXPIRED で終端化する。 */
@@ -127,7 +180,7 @@ public class BillingPayerHandoverBatchService {
         }
         int expired = 0;
         int failed = 0;
-        for (UUID handoverRequestId : targets) {
+        for (UUID handoverRequestId : limit(targets)) {
             try {
                 if (handoverService.expireOverdueUnaccepted(handoverRequestId)) {
                     expired++;
@@ -154,7 +207,7 @@ public class BillingPayerHandoverBatchService {
             return;
         }
         int failed = 0;
-        for (UUID handoverRequestId : targets) {
+        for (UUID handoverRequestId : limit(targets)) {
             try {
                 handoverService.reconcileExpiredAcceptance(handoverRequestId);
             } catch (Exception e) {
@@ -178,7 +231,7 @@ public class BillingPayerHandoverBatchService {
             return;
         }
         int failed = 0;
-        for (UUID handoverRequestId : targets) {
+        for (UUID handoverRequestId : limit(targets)) {
             try {
                 handoverService.reconcileOldCancelSchedule(handoverRequestId);
             } catch (Exception e) {

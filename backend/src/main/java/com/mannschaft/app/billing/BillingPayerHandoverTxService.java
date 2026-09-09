@@ -510,8 +510,15 @@ public class BillingPayerHandoverTxService {
      * 旧契約の pointer は無傷のため利用者影響は無い。</p>
      */
     @Transactional
-    public void markFailedAndClearCancelSchedule(UUID handoverRequestId) {
+    public boolean markFailedAndClearCancelSchedule(UUID handoverRequestId) {
         BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
+        // ★期待元状態つき CAS（P1-4）: 既に COMPLETED まで進んだ引継を、遅れて届いた
+        //   失敗補償が FAILED へ引き戻して新契約まで CANCELLED にしてしまうのを防ぐ。
+        if (TERMINAL_STATUSES.contains(handover.getStatus())) {
+            log.warn("柱③-B: 既に終端のため FAILED 確定を行いません handoverRequestId={}, status={}",
+                    handoverRequestId, handover.getStatus());
+            return false;
+        }
         handover.setStatus(PayerHandoverStatus.FAILED);
         handover.setOldCancelScheduledAt(null);
         handoverRequestRepository.save(handover);
@@ -525,6 +532,7 @@ public class BillingPayerHandoverTxService {
                         billingContractRepository.save(c);
                     });
         }
+        return true;
     }
 
     /**
@@ -576,8 +584,16 @@ public class BillingPayerHandoverTxService {
     }
 
     @Transactional
-    public void markManualIntervention(UUID handoverRequestId) {
+    public boolean markManualIntervention(UUID handoverRequestId) {
         BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
+        // ★期待元状態つき CAS（P1-4）。終端（COMPLETED/FAILED/EXPIRED）や
+        //   既に MANUAL_INTERVENTION の行を再び倒して通知を二重に飛ばさない。
+        if (handover.getStatus() != PayerHandoverStatus.SWITCHING
+                && handover.getStatus() != PayerHandoverStatus.PARTIALLY_COMPLETED) {
+            log.warn("柱③-B: MANUAL_INTERVENTION へ倒せる状態ではないため状態を変更しません"
+                    + " handoverRequestId={}, status={}", handoverRequestId, handover.getStatus());
+            return false;
+        }
         handover.setStatus(PayerHandoverStatus.MANUAL_INTERVENTION);
         handoverRequestRepository.save(handover);
 
@@ -597,6 +613,7 @@ public class BillingPayerHandoverTxService {
                         + " handoverRequestId={}, scope={}/{}, oldContractId={}, 通知先ADMIN数={}",
                 handover.getId(), handover.getScopeKind(), handover.getScopeId(),
                 handover.getOldContractId(), recipients.size());
+        return true;
     }
 
     // ============================================================
@@ -625,7 +642,86 @@ public class BillingPayerHandoverTxService {
         if (oldContract == null || oldContract.getPspSubscriptionRef() == null) {
             return null;
         }
-        return new CancelScheduleTarget(handover.getId(), oldContract.getPspSubscriptionRef());
+        return new CancelScheduleTarget(handover.getId(), oldContract.getPspSubscriptionRef(),
+                handover.getAcceptedAt());
+    }
+
+    /**
+     * {@code SWITCHING} のまま滞留している引継の照合対象を読み出す
+     * （設計書 §5.5 ④・AC-20・PR-4 Codex検分1巡目 P1-6）。対象外なら {@code null}。
+     *
+     * <p><b>なぜ旧期末を待ってはいけないか</b>: {@code pending_setup_intent}（SCA/3DS 未完了）の
+     * 最終確定を旧期末到達時まで先送りすると、その時点で旧サブスクは既に
+     * {@code cancel_at_period_end=true} で終了しており、{@code FAILED} に倒して差し戻しても
+     * <b>旧契約の継続を復旧できない</b>。設計書が「一定時間（既定24時間）認証未完了なら
+     * {@code FAILED} とし他 ADMIN へ再通知」と定めるのは、期末より前に決着させるためである。</p>
+     */
+    @Transactional(readOnly = true)
+    public StalledSwitchingTarget loadStalledSwitchingTarget(UUID handoverRequestId) {
+        BillingPayerHandoverRequestEntity handover =
+                handoverRequestRepository.findById(handoverRequestId).orElse(null);
+        if (handover == null
+                || handover.getStatus() != PayerHandoverStatus.SWITCHING
+                || handover.getPspNewSubscriptionRef() == null) {
+            return null;
+        }
+        String oldSubscriptionRef = billingContractRepository
+                .findByIdAndDeletedAtIsNull(handover.getOldContractId())
+                .map(BillingContractEntity::getPspSubscriptionRef)
+                .orElse(null);
+        return new StalledSwitchingTarget(handover.getId(), oldSubscriptionRef,
+                handover.getPspNewSubscriptionRef(), handover.getAcceptedAt(),
+                handover.getNewPayerUserId());
+    }
+
+    /**
+     * 追加認証が期限内に完了しなかった引継を {@code FAILED} で確定し、
+     * <b>他の引継先候補 ADMIN へ再通知する</b>（設計書 §5.5 ④・AC-20）。
+     *
+     * <p>再通知は「複数 ADMIN がいる場合のみ再トライ」という設計書の定めに対応する。
+     * 終端化により生成列 {@code open_old_contract_id} が NULL になるため、
+     * 通知を受けた別 ADMIN は<b>新しい引継要求を作れる状態に戻っている</b>
+     * （終端化しないまま通知だけ送っても、UNIQUE 制約が次の要求を塞いだままで意味がない）。</p>
+     *
+     * @return 実際に終端化＋再通知したなら {@code true}
+     */
+    @Transactional
+    public boolean failStalledSwitchingAndRenotify(UUID handoverRequestId) {
+        BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
+        // 期待元状態つき CAS（P1-4）。
+        if (handover.getStatus() != PayerHandoverStatus.SWITCHING) {
+            return false;
+        }
+        handover.setStatus(PayerHandoverStatus.FAILED);
+        handover.setOldCancelScheduledAt(null);
+        handoverRequestRepository.save(handover);
+
+        if (handover.getNewContractId() != null) {
+            billingContractRepository.findByIdAndDeletedAtIsNull(handover.getNewContractId())
+                    .filter(c -> c.getStatus() == ContractStatus.PENDING_HANDOVER)
+                    .ifPresent(c -> {
+                        c.setStatus(ContractStatus.CANCELLED);
+                        c.setCancelledAt(LocalDateTime.ofInstant(clock.instant(), clock.getZone()));
+                        billingContractRepository.save(c);
+                    });
+        }
+
+        // 承諾しなかった他の候補 ADMIN へ再通知（承諾を試みた本人は除く）。
+        List<Long> others = candidateResolver
+                .candidateAdminUserIds(handover.getScopeKind(), handover.getScopeId(),
+                        handover.getOldPayerUserId())
+                .stream()
+                .filter(id -> !id.equals(handover.getNewPayerUserId()))
+                .toList();
+        if (!others.isEmpty()) {
+            eventPublisher.publishEvent(new BillingPayerHandoverNotificationEvent(
+                    BillingPayerHandoverNotificationKind.HANDOVER_REQUESTED,
+                    handover.getId(), handover.getScopeKind(), handover.getScopeId(),
+                    others, handover.getOldPayerUserId()));
+        }
+        log.warn("柱③-B: 追加認証が期限内に完了しなかったため引継を FAILED 確定し他 ADMIN へ再通知しました"
+                        + " handoverRequestId={}, 再通知先={}", handoverRequestId, others.size());
+        return true;
     }
 
     /**
@@ -726,8 +822,28 @@ public class BillingPayerHandoverTxService {
      * <b>分割してはならない。</b></p>
      */
     @Transactional
-    public void executeSwitchTx(UUID handoverRequestId) {
+    public boolean executeSwitchTx(UUID handoverRequestId) {
         BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
+
+        // ★【行ロック取得後の状態再検証】（PR-4 Codex検分1巡目 P1-4）
+        //   loadSwitchContext 〜 Stripe 照会の間は行ロックを保持していない（外部 API を
+        //   ロック保持中の tx に抱えない設計の裏返し）。したがって、ここへ到達した時点で
+        //   別経路が既に切替を完了している可能性がある。状態を見ずに pointer を INSERT すると
+        //   uk_acp_slot 違反となり、呼び出し側の失敗補償が
+        //   【COMPLETED（終端）を PARTIALLY_COMPLETED（非終端）へ引き戻す】。
+        //   終端に達した引継が再試行対象へ戻り、以後のバッチが同じ対象を延々と拾い続ける。
+        //   ShedLock は lockAtMostFor 超過や webhook 等の他経路との競合に対する fencing にはならない。
+        if (handover.getStatus() == PayerHandoverStatus.COMPLETED) {
+            log.info("柱③-B: 既に切替完了済みのため冪等 no-op とします handoverRequestId={}", handoverRequestId);
+            return false;
+        }
+        if (handover.getStatus() != PayerHandoverStatus.SWITCHING
+                && handover.getStatus() != PayerHandoverStatus.PARTIALLY_COMPLETED) {
+            log.warn("柱③-B: 切替可能な状態ではないため切替TXを実行しません handoverRequestId={}, status={}",
+                    handoverRequestId, handover.getStatus());
+            return false;
+        }
+
         BillingContractEntity oldContract = billingContractRepository
                 .findByIdAndDeletedAtIsNull(handover.getOldContractId())
                 .orElseThrow(() -> new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND));
@@ -766,6 +882,7 @@ public class BillingPayerHandoverTxService {
         handover.setStatus(PayerHandoverStatus.COMPLETED);
         handover.setCompletedAt(clock.instant());
         handoverRequestRepository.save(handover);
+        return true;
     }
 
     /**
@@ -776,10 +893,19 @@ public class BillingPayerHandoverTxService {
      * <b>終端扱いにしてはならない</b>（リトライ経路から外れて宙ぶらりんになる）。</p>
      */
     @Transactional
-    public void markPartiallyCompleted(UUID handoverRequestId) {
+    public boolean markPartiallyCompleted(UUID handoverRequestId) {
         BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
+        // ★期待元状態つき CAS（P1-4）: 失敗補償が【終端状態を上書きしない】ことを構造的に保証する。
+        //   並行実行の一方が COMPLETED にした後に、もう一方の失敗補償がここへ来る経路が実在する。
+        if (handover.getStatus() != PayerHandoverStatus.SWITCHING
+                && handover.getStatus() != PayerHandoverStatus.PARTIALLY_COMPLETED) {
+            log.warn("柱③-B: PARTIALLY_COMPLETED へ倒せる状態ではないため状態を変更しません"
+                    + " handoverRequestId={}, status={}", handoverRequestId, handover.getStatus());
+            return false;
+        }
         handover.setStatus(PayerHandoverStatus.PARTIALLY_COMPLETED);
         handoverRequestRepository.save(handover);
+        return true;
     }
 
     // ============================================================
@@ -892,7 +1018,17 @@ public class BillingPayerHandoverTxService {
     }
 
     /** {@code cancel_at_period_end} 照合の対象（{@link #loadCancelScheduleTarget}・AC-34）。 */
-    public record CancelScheduleTarget(UUID handoverRequestId, String oldSubscriptionRef) {
+    public record CancelScheduleTarget(
+            UUID handoverRequestId, String oldSubscriptionRef, Instant acceptedAt) {
+    }
+
+    /**
+     * {@code SWITCHING} 滞留の照合対象（{@link #loadStalledSwitchingTarget}・AC-20・P1-6）。
+     *
+     * @param acceptedAt 承諾確定時刻（{@code pending_setup_intent} 猶予の起点）
+     */
+    public record StalledSwitchingTarget(UUID handoverRequestId, String oldSubscriptionRef,
+            String newSubscriptionRef, Instant acceptedAt, Long newPayerUserId) {
     }
 
     /** {@code RESUME} の前提情報（{@link #loadResumeContext}・AC-37）。 */

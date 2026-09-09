@@ -686,11 +686,16 @@ Stripe の予約解除に成功した直後・DB 反映前に落ちると、**St
 | 期末解約の再試行バッチ（§6.1 (2)） | `MembershipPayerWithdrawalRetryBatchService#runWithdrawalCancelRetry`（日次 03:20 JST）。上記「リリース依存」節を参照 |
 | `MANUAL_INTERVENTION` のアラート（§3.6.2） | `BillingPayerHandoverTxService#markManualIntervention` が通知（`MANUAL_INTERVENTION_REQUIRED`・当該スコープの引継先候補 ADMIN 宛・i18n 6言語）を publish し、あわせて ERROR ログで運用へ上申する |
 | `RESUME`（§3.6.2 出口・AC-37） | `POST /api/v1/{teams\|organizations}/{id}/billing/payer-handover-requests/{handoverRequestId}/resume`。`target=SWITCHING\|FAILED` を運用者が明示的に選ぶ。`FAILED` 確定時の旧サブスク差し戻しは `revertOldCancelSchedule` で**運用者が選ぶ**（旧が既に次の期間へ更新済みの場合、差し戻しは旧をさらに継続させるため不適切なことがある）。`MANUAL_INTERVENTION` 以外からは `HANDOVER_NOT_RESUMABLE`（409） |
+| `SWITCHING` 詰まり監視／追加認証の期限（§5.5 ④・AC-20） | `BillingPayerHandoverBatchService` の夜次照合に `reconcileStalledSwitching` を追加。承諾確定（`accepted_at`）から24時間を過ぎた `SWITCHING` を抽出し、**Stripe 実物の `pending_setup_intent` を再検証**して未解決なら `FAILED` を確定し、新 trial サブスクを無課金取消・旧を差し戻したうえで**他の候補 ADMIN へ再通知**する。旧期末到達まで待つと、そのとき旧サブスクは既に終了していて差し戻しても継続を復旧できないため、**期末より前に決着させる**必要がある |
+| 恒久失敗の `MANUAL_INTERVENTION` 化（§3.6.2 入口3） | `reconcileOldCancelSchedule` が設定 API の失敗を捕捉し、承諾確定から `CANCEL_SCHEDULE_ESCALATION`（3日）を過ぎても解消しない場合に `MANUAL_INTERVENTION` へ倒す。試行回数の列を足さずに**経過時間**で測るのは、恒久性の証拠として「何回叩いたか」より「いつまで解消しないか」のほうが確実であるため（単一要求行の経過時間であり、退会世代の推測ではない） |
+| 状態遷移の CAS 化 | `executeSwitchTx` / `markPartiallyCompleted` / `markManualIntervention` / `markFailedAndClearCancelSchedule` / `failStalledSwitchingAndRenotify` の全てが**行ロック取得後に期待元状態を再検証**する。`loadSwitchContext` 〜 Stripe 照会の間は行ロックが無いため、並行実行の失敗補償が**終端状態（`COMPLETED`）を非終端へ引き戻す**経路が実在した。ShedLock は `lockAtMostFor` 超過や webhook 等の他経路との競合に対する fencing にならない |
 | AC-14（`hardDeleteBySlotAndContractId` 移行） | `BillingContractService#expireSubscriptionContract`（旧サブスク由来の `customer.subscription.deleted` webhook 経路）を `contract_id` 一致条件つき削除へ移行。切替TX後に遅着した旧 webhook は 0 件更新で終わる |
 
 ---
 
 ## §9. 未決事項（実装フェーズで確定させる・変更なし）
+
+- **`RESUME` の運用権限（PR-4 Codex 検分1巡目 P1-5・未決）**: §3.6.2 は「Stripe 実データを確認できる運用チームが `RESUME` 権限を持つ」ことを前提にしているが、本リポジトリには**テナント横断の運用権限という型が存在しない**。`BillingAccessGuard` が扱うのは当該スコープの ADMIN と課金権限付き DEPUTY_ADMIN だけであり、`AccessGuard` の `SYSTEM_ADMIN` は「常に通す」短絡であって専用権限ではない。現状の PR-4 は当該スコープの ADMIN のみに `RESUME` を許しているため、**Stripe の void/refund を確認した運用担当者自身は決着させられない**。選択肢は (a) 専用の運用 permission を新設し監査ログと対象スコープ確認を伴わせる、(b) 管理コンソール側の別 API として切り出す、(c) 当面テナント ADMIN のみとし運用手順で補う、の3案。**権限体系の新設は本設計の射程を越えるため、殿の判断を仰ぐ**（この決着までは (c) の状態である）。
 
 - 通知基盤の具体的な実装クラスは実装フェーズで家老が偵察して決定する
 - 猶予期間14日は暫定値。マスターの最終承認時に法務・UX観点で調整余地あり
