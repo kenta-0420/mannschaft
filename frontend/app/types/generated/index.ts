@@ -60333,7 +60333,7 @@ export interface components {
             scopeId?: number;
             /** @description スコープ種別（TEAM / ORG。USER は引継の概念が無く対象外） */
             scopeKind?: string;
-            /** @description 要求の状態（9値の状態機械） */
+            /** @description 要求の状態（10値の状態機械。FAILING_CLEANUP は後始末未了の非終端） */
             status?: string;
         };
         TransitionAlertResolveRequest: {
