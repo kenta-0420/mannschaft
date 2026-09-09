@@ -9,6 +9,7 @@
 
 ## 変更履歴
 
+- **v2.5 (2026-09-09)**: シフト希望に「入れる時間帯」（`available_start_time` / `available_end_time`）を持たせる設計を `06_request_time_window.md` として追補（CMP-260909-1142）。部分被覆の申請は自動割当の候補から外し、管理者へは希望一覧と申し送り警告 `PARTIAL_TIME_COVERAGE` で必ず可視化する。前提として CMP-260909-1143（同日 2 枠目の希望が出せない）の是正を PR1 として射程に含む。実装は未着手
 - **v2.4 (2026-09-03)**: 未公開シフト表（DRAFT/COLLECTING/ADJUSTING/未公開 ARCHIVED）の API 遮断方針を `05_unpublished_visibility.md` として追補（CMP-260826-2127）。実装は未着手
 - **v2.3.2 (2026-05-17)**: API 乖離スキャナ Stage 3 第二陣 2-α triage 反映。§4 API 仕様表のメソッド/パスを実装に整合（PUT→PATCH 4 件、PATCH→POST 統合 5 件、`/shifts/my` → `/shifts/my/requests`、work-constraints をチームスコープに階層化、`POST /shifts/schedules/{id}/duplicate` `GET /shifts/requests/summary` `DELETE /shifts/availability` を追記、未実装の `summary`/`remind`/`hourly-rates 複数形` に注記）。詳細は `docs/internal/triage_log/shifts.md` 参照
 - **v2.3.1 (2026-04-28)**: Phase 2 自動割当本体（PR #139）と Phase 3 シフトボード FE 修正 + E2E 18 ケース（PR #153）の実装完了をステータス・ヘッダーへ反映。仕様変更なし、状態追従のみ
@@ -83,3 +84,4 @@ v2.2 では以下を追補する:
 | [03_business_logic.md](03_business_logic.md) | §5 ビジネスロジック |
 | [04_security_operations.md](04_security_operations.md) | §6 セキュリティ / §7 Flyway / §8 未解決事項 / §8.5 運用 / §9 変更履歴 |
 | [05_unpublished_visibility.md](05_unpublished_visibility.md) | §10 未公開シフト表の遮断方針（CMP-260826-2127・情報の層 × ステータスによる可視性設計・未決事項あり） |
+| [06_request_time_window.md](06_request_time_window.md) | §11 シフト希望の「入れる時間帯」（CMP-260909-1142・DDL / API / 自動割当の被覆判定 / 使い方ガイド / 受け入れ条件 63 件） |
