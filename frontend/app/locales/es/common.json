@@ -1510,6 +1510,8 @@
   "common": {
     "cancel": "Cancelar",
     "search": "Buscar",
+    "edit": "Editar",
+    "save": "Guardar",
     "resume": {
       "title": "Currículum y hoja de vida",
       "listTitle": "Versiones del currículum",

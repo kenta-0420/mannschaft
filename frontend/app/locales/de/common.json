@@ -1510,6 +1510,8 @@
   "common": {
     "cancel": "Abbrechen",
     "search": "Suchen",
+    "edit": "Bearbeiten",
+    "save": "Speichern",
     "resume": {
       "title": "Lebenslauf und Berufserfahrung",
       "listTitle": "Lebenslauf-Versionen",

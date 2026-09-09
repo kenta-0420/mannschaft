@@ -1510,6 +1510,8 @@
   "common": {
     "cancel": "取消",
     "search": "搜索",
+    "edit": "编辑",
+    "save": "保存",
     "resume": {
       "title": "简历・职务经历书",
       "listTitle": "简历版本列表",
