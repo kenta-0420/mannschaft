@@ -266,6 +266,74 @@ class NotificationTransactionBoundaryGuardConditionTest {
     }
 
     @Nested
+    @DisplayName("メソッド粒度の監査済み例外（Issue #2990 L13）")
+    class 監査済み例外メソッド {
+
+        /** 実在する監査済み例外メソッドのクラス。合成ソースを当てて粒度だけを測る。 */
+        private static final String RESEND_FQCN =
+                "com.mannschaft.app.shiftbudget.service.ShiftBudgetNotificationResendService";
+
+        private Set<String> scan(String body) {
+            return NotificationTransactionBoundaryGuardTest.scanSource(RESEND_FQCN, body).stream()
+                    .map(Violation::key)
+                    .collect(Collectors.toSet());
+        }
+
+        @Test
+        @DisplayName("免除されるのは登録した1メソッドだけで、同じクラスの別メソッドは今までどおり違反として挙がる")
+        void 免除はメソッド単位でクラス全体には及ばない() {
+            Set<String> keys = scan("""
+                    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+                    public void resend(Long userId) { helper.notify(userId, "TYPE", "件名", "本文"); }
+
+                    @Transactional
+                    public void somethingAddedLater(Long userId) { helper.notify(userId, "TYPE", "件名", "本文"); }
+                    """);
+
+            assertThat(keys)
+                    .as("登録した監査済み例外メソッドは違反として挙げない")
+                    .doesNotContain(RESEND_FQCN + "#resend -> TX_NOTIFY_BARE");
+            assertThat(keys)
+                    .as("""
+                            クラス粒度の免除だと、同じクラスに後から足された任意のメソッドまで
+                            無条件で契約の外に出てしまう。メソッド粒度ならここは挙がり続ける。""")
+                    .contains(RESEND_FQCN + "#somethingAddedLater -> TX_NOTIFY_BARE");
+        }
+
+        @Test
+        @DisplayName("免除の前提条件は NOT_SUPPORTED / NEVER / @Async のみで、REQUIRES_NEW や無印では満たされない")
+        void 免除の前提条件は切り離しの宣言である() {
+            // このゲートが赤くなる＝ AUDITED_EXCEPTION_METHODS に載せたまま宣言だけ外した状態を
+            // 番人が検出できる、ということ。②の「回帰が止まる証拠」がこれにあたる。
+            assertThat(NotificationTransactionBoundaryGuardTest.isDetachedFromCallerTransaction(
+                    "@Transactional(propagation = Propagation.NOT_SUPPORTED)"))
+                    .as("NOT_SUPPORTED は呼び出し元TXを中断する")
+                    .isTrue();
+            assertThat(NotificationTransactionBoundaryGuardTest.isDetachedFromCallerTransaction(
+                    "@Transactional(propagation = Propagation.NEVER)"))
+                    .as("NEVER も呼び出し元TXの内側では走らない")
+                    .isTrue();
+            assertThat(NotificationTransactionBoundaryGuardTest.isDetachedFromCallerTransaction(
+                    "@Async(\"event-pool\")"))
+                    .as("@Async は別スレッドなので呼び出し元TXから切り離される")
+                    .isTrue();
+
+            assertThat(NotificationTransactionBoundaryGuardTest.isDetachedFromCallerTransaction(
+                    "@Transactional"))
+                    .as("""
+                            既定の REQUIRED は呼び出し元TXに参加する。ここを true にすると
+                            Issue #2990 L13 で直した欠陥（通知の DB 例外が rollback-only を立て、
+                            呼び出し元の markFailed / retry_count++ が commit 時に消える）が
+                            免除の陰で復活しても番人が緑のままになる。""")
+                    .isFalse();
+            assertThat(NotificationTransactionBoundaryGuardTest.isDetachedFromCallerTransaction(
+                    "@Transactional(propagation = Propagation.REQUIRES_NEW)"))
+                    .as("REQUIRES_NEW は独立TXを開くだけで、業務コミット前に通知を先に確定させる")
+                    .isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("変異テスト: アノテーションを1つ変えると番人が検出できなくなる／するようになる")
     class 変異 {
 

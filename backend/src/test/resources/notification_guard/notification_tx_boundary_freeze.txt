@@ -55,7 +55,7 @@
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 38
+# CLASSIFIED_FLOOR: 33
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
 # TX_NOTIFY_VIA_DELEGATE / TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY について呼び先の宣言から区分を導出し、
@@ -221,7 +221,7 @@
 #   凍結エントリ 50 + REMOVED 8 + AMBIGUOUS 0 = 58（= 是正前の CENSUS_FLOOR）
 #   凍結エントリ 43 + REMOVED 8 + AMBIGUOUS 0 = 51
 # CLASSIFIED_FLOOR は変更なし（本ロットの7件はいずれも未分類行であり、分類済み2件に触れていない）。
-# CENSUS_FLOOR: 49
+# CENSUS_FLOOR: 44
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -251,8 +251,6 @@ com.mannschaft.app.reservation.service.ReservationReminderDispatchBatchService#s
 com.mannschaft.app.reservation.service.ReservationWaitlistService#notifySlotReopened -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#sendReminderToUnsubmittedMembers -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#triggerManualReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.shiftbudget.service.ShiftBudgetRetryExecutor#retryNotificationSend -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService#sendNotifications -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.survey.service.SurveyRemindService#remind -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.survey.service.SurveyService#extendDeadline -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.ticket.service.TicketExpiryBatchService#expireTickets -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
@@ -290,7 +288,6 @@ com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX
 #       @Transactional(REQUIRED)                                 ... ROLLBACK_COUPLED
 #   ShiftBudgetFailedEventService#retry           -> ShiftBudgetRetryExecutor#execute
 #       @Transactional(REQUIRES_NEW)                             ... ORDERING_ONLY
-com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
 
 # --- 2026-09-03 Issue #2990 L3: ORDERING_ONLY 5件の処理（CENSUS_FLOOR 95 -> 92 / CLASSIFIED_FLOOR 5 -> 2）---
 #
@@ -1033,5 +1030,100 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 # ------------------------------------------------------------------------------
 
 com.mannschaft.app.recruitment.service.RecruitmentListingService#publish -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
-com.mannschaft.app.shiftbudget.service.ShiftBudgetRetryExecutor#retryThresholdAlert -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
-com.mannschaft.app.shiftbudget.service.ShiftBudgetRetryExecutor#retryWorkflowStart -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
+
+# ------------------------------------------------------------------------------
+# --- 2026-09-07 Issue #2990 L13: shiftbudget ドメイン 5件の処理（CENSUS_FLOOR 49 -> 44 / CLASSIFIED_FLOOR 38 -> 33）---
+# ------------------------------------------------------------------------------
+# 割当は shiftbudget の 5 件（いずれも ROLLBACK_COUPLED）。相乗りで消えたエントリは無く、
+# 削除したのはちょうど 5 行である。L12 の分類は「委譲先の入口注釈」から機械的に導いたものなので、
+# 「巻き戻る業務データが実際にあるか」を 1 件ずつ実コードで確かめ直した。結論は
+# 5 件とも ROLLBACK_COUPLED は当たっていた（軽症へ倒せる件は無かった）。
+#
+# ■ 根(A) ThresholdAlertEvaluationService#sendNotifications（TX_NOTIFY_IN_TRY）
+#   巻き戻る業務データ: 直前に確定させた budget_threshold_alerts の INSERT
+#   （fireAlertIfNotExists の alertRepository.saveAndFlush(alert)）、100% 到達時の
+#   workflow_request_id 書戻し（tryStartWorkflow の alert.linkWorkflowRequest → save）、
+#   監査ログ BUDGET_THRESHOLD_ALERT_TRIGGERED。
+#   try/catch で握っていたのに巻き戻る理由: notifyAllLocalized の下流
+#   NotificationService#createNotification は @Transactional 既定（REQUIRED）で
+#   evaluateAndTrigger の REQUIRES_NEW トランザクションに参加する。DB 例外はそのトランザクションを
+#   rollback-only にするので、catch で握っても commit 時に UnexpectedRollbackException になり
+#   上記の書き込みが丸ごと消える。これは推測ではなく NotificationHelper 自身の実装コメントが
+#   明記している性質である（notifyAllPreAuthorizedLocalized の「本クラスの非バルク経路
+#   （notify / notifyAll / notifyAllLocalized）は依然として rollback-only を伝播する。
+#   それらの呼び出し元は業務TX内で通知を発火せず AFTER_COMMIT 境界の後へ移すこと」）。
+#   さらに悪いことに失敗記録側 failedEventService.recordFailure は REQUIRES_NEW なので生き残るため、
+#   「alert 行は存在しないのに、その alert の通知失敗を訴える failed_event だけが残る」食い違いを作る。
+#   是正: 業務TX内は BudgetThresholdAlertTriggeredEvent の publish のみとし、配送は新設の
+#   ShiftBudgetThresholdAlertNotificationListener（@Async("event-pool") +
+#   @TransactionalEventListener(AFTER_COMMIT)）へ移した。イベントには ID・閾値・受信者IDだけを載せ、
+#   描画済み文字列も JPA 管理エンティティも載せていない。
+#   配送そのものは notifyAllLocalized ではなく受信者ごとの NotificationDeliveryRunner#sendOne
+#   （1件ごと REQUIRES_NEW）で行う。notifyAllLocalized は受信者ごとの例外を内部で握って
+#   呼び出し元へ何も返さないため、それを使うと通知が全滅してもリスナー外側の catch が発火せず
+#   NOTIFICATION_SEND の failed event が 1 件も残らない（＝alert は確定済みなのに通知は失われ、
+#   再送経路も無い）。sendOne なら被害半径の分離と、落ちた受信者の記録を両立できる。
+#   記録するのは落ちた受信者だけである（成功済みを混ぜると再送で重複配信になる）。
+#
+# ■ 根(B) ShiftBudgetRetryExecutor#retryNotificationSend（TX_NOTIFY_BARE）
+#   巻き戻る業務データ: execute（@Transactional(REQUIRES_NEW)）が通知呼び出しより前に行う
+#   着手マーク entity.markRetrying() + repository.saveAndFlush(entity)（PENDING→RETRYING /
+#   retry_count++ / last_retried_at）と、catch 側の markFailed + save。
+#   notifyAll の下流 createNotification が同じトランザクションに参加して rollback-only を立てるため、
+#   execute の catch が握って markFailed しても commit 時に落ち、retry_count が永久に積み上がらない。
+#   失敗イベントは PENDING のまま残り、15 分毎のリトライバッチが同じイベントを無限に拾い続ける
+#   （MAX_RETRY=3 に到達できないので EXHAUSTED 化もしない）。
+#   加えて UnexpectedRollbackException は execute の catch の外側（プロキシの commit）で
+#   起きるため、呼び出し元 ShiftBudgetFailedEventService#retry まで伝播する（根(C) の実害）。
+#   是正: 再送本体を ShiftBudgetNotificationResendService へ切り出し、
+#   @Transactional(propagation = NOT_SUPPORTED) で呼び出し元TXを中断させた。
+#   これで通知の DB 例外は execute のトランザクションを汚さず、例外そのものは同期で catch へ返るので
+#   markFailed が確実にコミットされる（リトライ回数が正しく積み上がる）。
+#   AFTER_COMMIT へ移さない理由は L3 の記述どおり: retry は同期 API であり、実行結果
+#   （success / 新ステータス）をそのまま FailedEventResponse で返す契約である。
+#   よって新クラスの resend は番人の免除対象とした。ただし AUDITED_EXCEPTIONS（クラス粒度）
+#   ではなく、新設した AUDITED_EXCEPTION_METHODS（FQCN#メソッド名）へ 1 メソッドだけ登録する。
+#   クラス粒度の免除は (i) そのクラスへ委譲するあらゆる呼び出し元を TX_NOTIFY_VIA_DELEGATE から外し、
+#   (ii) そのクラスに将来足される任意のメソッドを無条件で契約の外に出す。とりわけ
+#   ShiftBudgetRetryExecutor#retryNotificationSend（＝根(B) で直したまさにその箇所）が
+#   呼び出し元として沈黙するため、同じ欠陥が再発しても永久に緑のままになる。
+#   さらに免除は無条件の許可ではなく前提条件つきの許可とし、登録メソッドが呼び出し元TXを
+#   切り離す宣言（NOT_SUPPORTED / NEVER / @Async）を実際に持つことを番人自身が機械検査する
+#   （REQUIRES_NEW は業務コミット前に通知を先に確定させるので不可）。宣言が外れた瞬間に赤くなる。
+#   ついでに 1 件見つかった別の欠陥も直した: notifyAll は受信者ごとの失敗を内部で log.warn して
+#   握りつぶし呼び出し元へ何も返さないため、受信者全員への再送が失敗しても failed_event は
+#   SUCCEEDED になっていた。新クラスは受信者ごとに握って継続しつつ、1 名でも失敗したら
+#   最後にまとめて例外を投げるので、失敗が運用者に見えるようになる。
+#
+# ■ 根(C) 委譲 3 件（ShiftBudgetFailedEventService#retry /
+#         ShiftBudgetRetryExecutor#retryThresholdAlert / #retryWorkflowStart）
+#   いずれもソース無変更で消えた。委譲先が通知を発火しなくなったためである（L6 の⑤と同型）。
+#     retryThresholdAlert / retryWorkflowStart -> ThresholdAlertEvaluationService#evaluateAndTrigger
+#       … 根(A) の是正でこのクラスから通知呼び出しが 1 つも無くなった。
+#     retry -> ShiftBudgetRetryExecutor#execute
+#       … 根(B) の是正で execute の同一クラス閉包から通知呼び出しが無くなった
+#         （再送は別 Bean へ 2 ホップ先へ移った。番人は 1 ホップ＋委譲先クラス内閉包で打ち切る）。
+#   ただし実害があったこと自体は確かである。retry の @Transactional は execute より前に
+#   書き込みを行わない（requireEnabled / requireBudgetAdmin / findById はすべて読み取り）が、
+#   execute の後に監査ログ FAILED_EVENT_RETRIED を書く。根(B) の
+#   UnexpectedRollbackException がそこまで伝播すると、この監査ログが消えたうえで管理 API が 500 になる。
+#   L3 の「retry の業務TXは execute より前に一切書き込みを行わない」という記述は正しいが不十分で、
+#   「後ろの書き込み」を見ていなかった。
+#
+# ■ 検出力の下限（RAW_CANDIDATE_HITS_MIN / STRUCTURAL_NOTIFY_CALLS_MIN / PARSED_METHODS_MIN）は下げない。
+#   通知の実発火点は 1 箇所も消していない。
+#     ThresholdAlertEvaluationService#sendNotifications の notifyAllLocalized(1 箇所)
+#       -> ShiftBudgetThresholdAlertNotificationListener の sendOne(1 箇所)              … 1:1
+#     ShiftBudgetRetryExecutor#retryNotificationSend の notifyAll(1 箇所)
+#       -> ShiftBudgetNotificationResendService の notify(1 箇所)                        … 1:1
+#   どちらも「起動位置を移した」だけである。番人の判定ロジックへの変更は
+#   AUDITED_EXCEPTION_METHODS の新設とその前提条件ゲート（切り離し宣言の機械検査）のみで、
+#   違反を検出する軸そのもの（許可入口のホワイトリスト・語彙・委譲追跡）は一行も変えていない。
+#
+# ■ CENSUS_FLOOR: 49 -> 44 の裏取り（実測）
+#   是正前: 凍結エントリ 41 + REMOVED 8 + AMBIGUOUS 0 = 49
+#   是正後: 凍結エントリ 36 + REMOVED 8 + AMBIGUOUS 0 = 44
+#   消えた 5 件はすべて上記の是正由来であり、番人の検出力低下による消失は 0 件である。
+#
+# ■ CLASSIFIED_FLOOR: 38 -> 33
+#   消した 5 件はすべて ROLLBACK_COUPLED（分類済み）であるため、分類済み下限も同じだけ下がる。
