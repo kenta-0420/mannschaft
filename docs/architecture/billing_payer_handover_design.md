@@ -287,6 +287,8 @@ R3-P1-3裁定（§2.3・§3.1）は「承諾確定と同時に旧サブスクへ
 
 **状態一覧への追加**: `billing_payer_handover_requests.status` の許容値は本改訂で8値→9値になる: `REQUESTED`/`ACCEPTED`/`REQUIRES_PAYMENT_METHOD`/`SWITCHING`/`PARTIALLY_COMPLETED`/`MANUAL_INTERVENTION`（新設）/`COMPLETED`/`FAILED`/`EXPIRED`（§4.2でDDLのCHECK/コメントを更新）。
 
+> **PR-4 追記（V206）**: さらに `FAILING_CLEANUP` を加えて **10値** になった。失敗確定は決まったが Stripe の後始末（新 trial サブスクの即時取消・旧サブスクの `cancel_at_period_end` 差し戻し）が未了であることを表す**非終端**状態である。**非終端3値ではなく4値**（`PARTIALLY_COMPLETED`・`MANUAL_INTERVENTION`・`FAILING_CLEANUP` と進行中の各状態）が `open_old_contract_id` 生成列で値を保持する。出口は「後始末の成功を確認したうえでの `FAILED`」のみ。
+
 **遷移表**:
 
 | 状態 | 意味 | 遷移元（入口） | 遷移先（出口） |

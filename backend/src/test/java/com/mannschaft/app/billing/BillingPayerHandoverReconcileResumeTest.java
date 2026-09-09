@@ -25,6 +25,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -220,7 +221,7 @@ class BillingPayerHandoverReconcileResumeTest {
         // ★旧期末より前なので差し戻しが有効に効く（期末到達後だと復旧できない）。
         order.verify(billingPaymentGateway).revertCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
         order.verify(handoverTxService).finalizeFailure(handoverId, true);
-        
+
     }
 
     @Test
@@ -289,7 +290,7 @@ class BillingPayerHandoverReconcileResumeTest {
 
         verify(handoverTxService).resumeToSwitching(handoverId);
         verify(billingPaymentGateway, never()).revertCancelAtPeriodEndForHandover(anyString(), any());
-        verify(handoverTxService, never()).markFailedPendingCleanup(any(), any());
+        verify(handoverTxService, never()).markFailedPendingCleanup(any(), any(), anyBoolean(), anyBoolean());
     }
 
     @Test
@@ -298,15 +299,17 @@ class BillingPayerHandoverReconcileResumeTest {
         given(handoverTxService.loadResumeContext(
                 EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR))
                 .willReturn(new ResumeContext(handoverId, OLD_SUB, NEW_SUB));
-        given(handoverTxService.markFailedPendingCleanup(any(), any())).willReturn(true);
+        given(handoverTxService.markFailedPendingCleanup(any(), any(), anyBoolean(), anyBoolean())).willReturn(true);
 
         service.resumeManualIntervention(EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR,
                 ResumeTarget.FAILED, true);
 
         verify(billingPaymentGateway).cancelHandoverNewSubscription(NEW_SUB, handoverId);
         verify(billingPaymentGateway).revertCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
+        // ★運用者の判断（差し戻す・再要求しない）がその場で永続化されること（5巡目 P1-2）。
+        //   夜次の再試行はこの値を読むため、ここで刻まれないと既定に上書きされる。
         verify(handoverTxService).markFailedPendingCleanup(
-                handoverId, java.util.List.of(PayerHandoverStatus.MANUAL_INTERVENTION));
+                handoverId, java.util.List.of(PayerHandoverStatus.MANUAL_INTERVENTION), true, false);
     }
 
     @Test
@@ -315,14 +318,15 @@ class BillingPayerHandoverReconcileResumeTest {
         given(handoverTxService.loadResumeContext(
                 EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR))
                 .willReturn(new ResumeContext(handoverId, OLD_SUB, NEW_SUB));
-        given(handoverTxService.markFailedPendingCleanup(any(), any())).willReturn(true);
+        given(handoverTxService.markFailedPendingCleanup(any(), any(), anyBoolean(), anyBoolean())).willReturn(true);
 
         service.resumeManualIntervention(EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR,
                 ResumeTarget.FAILED, false);
 
         verify(billingPaymentGateway, never()).revertCancelAtPeriodEndForHandover(anyString(), any());
+        // ★「差し戻さない」という判断も永続化する（5巡目 P1-2）。
         verify(handoverTxService).markFailedPendingCleanup(
-                handoverId, java.util.List.of(PayerHandoverStatus.MANUAL_INTERVENTION));
+                handoverId, java.util.List.of(PayerHandoverStatus.MANUAL_INTERVENTION), false, false);
     }
 
     @Test
@@ -332,7 +336,7 @@ class BillingPayerHandoverReconcileResumeTest {
                 EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR))
                 .willReturn(new ResumeContext(handoverId, OLD_SUB, NEW_SUB));
         // 別 worker が先に状態を進めた＝CAS は拒否する。
-        given(handoverTxService.markFailedPendingCleanup(any(), any())).willReturn(false);
+        given(handoverTxService.markFailedPendingCleanup(any(), any(), anyBoolean(), anyBoolean())).willReturn(false);
 
         service.resumeManualIntervention(EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR,
                 ResumeTarget.FAILED, true);
@@ -348,7 +352,7 @@ class BillingPayerHandoverReconcileResumeTest {
         given(handoverTxService.loadResumeContext(
                 EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR))
                 .willReturn(new ResumeContext(handoverId, OLD_SUB, NEW_SUB));
-        given(handoverTxService.markFailedPendingCleanup(any(), any())).willReturn(true);
+        given(handoverTxService.markFailedPendingCleanup(any(), any(), anyBoolean(), anyBoolean())).willReturn(true);
         willThrow(stripeTransient())
                 .given(billingPaymentGateway).cancelHandoverNewSubscription(NEW_SUB, handoverId);
 

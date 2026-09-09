@@ -2,7 +2,7 @@ package com.mannschaft.app.billing;
 
 /**
  * 柱③-B 組織契約の請求担当引継（CMP-260901-1538）: {@code billing_payer_handover_requests.status} の
- * 状態機械（VARCHAR(24) + CHECK・9値）。
+ * 状態機械（VARCHAR(24) + CHECK・10値。PR-4 で FAILING_CLEANUP を追加）。
  *
  * <p>設計書: {@code docs/architecture/billing_payer_handover_design.md} §3.1・§3.6・§3.6.2・§4.2。
  * {@code billing_contracts.status}（契約レベル）とは別物であり、本 enum は「引継要求」自体の進行状況を表す。</p>
@@ -21,8 +21,9 @@ package com.mannschaft.app.billing;
  * </ul>
  *
  * <p>終端状態（{@code COMPLETED}/{@code FAILED}/{@code EXPIRED}）のみが
- * {@code open_old_contract_id} 生成列で NULL になる。{@code PARTIALLY_COMPLETED} と
- * {@code MANUAL_INTERVENTION} は非終端として扱い、値を保持し続ける（§3.5・§3.6.2）。</p>
+ * {@code open_old_contract_id} 生成列で NULL になる。{@code PARTIALLY_COMPLETED}・
+ * {@code MANUAL_INTERVENTION}・{@code FAILING_CLEANUP} は非終端として扱い、値を保持し続ける
+ * （§3.5・§3.6.2）。</p>
  */
 public enum PayerHandoverStatus {
     /** 通知済み・未承諾（初期状態）。 */

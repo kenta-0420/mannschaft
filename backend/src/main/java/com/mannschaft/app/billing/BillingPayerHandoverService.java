@@ -642,8 +642,9 @@ public class BillingPayerHandoverService {
             //   是正前は Stripe を先に叩いてから CAS を呼んでいた。CAS 自体の期待元状態検証は
             //   正しくても、外部副作用より後に呼ぶ以上 fencing になっていない——Stripe 照会中に
             //   別 worker が COMPLETED へ進めていても、新サブスクは既に取り消されている。
+            //   後始末の方針（旧解約予約を差し戻す・AC-20 で再通知する）もここで永続化する（5巡目 P1-2）。
             if (!handoverTxService.markFailedPendingCleanup(
-                    handoverRequestId, SWITCH_TARGET_STATUSES)) {
+                    handoverRequestId, SWITCH_TARGET_STATUSES, true, true)) {
                 log.warn("柱③-B: 他の処理が先に状態を進めたため Stripe には触れません handoverRequestId={}",
                         handoverRequestId);
                 return;
@@ -1056,9 +1057,12 @@ public class BillingPayerHandoverService {
         if (target == null) {
             return false;
         }
-        // 後始末が終わって初めて終端化と再要求へ進む（作成要件は Tx 層が再検証する）。
-        cleanupAfterFailure(handoverRequestId, target.oldSubscriptionRef(), target.newSubscriptionRef(),
-                true);
+        // ★永続化された運用者の判断をそのまま尊重する（5巡目 P1-2）。
+        //   ここで既定値を使うと、RESUME で「戻さない・再要求しない」と決めた行を
+        //   夜次が勝手に旧契約へ差し戻し、再要求まで作ってしまう（＝運用判断の上書き）。
+        //   loadFailureCleanupTarget は差し戻さない判断のとき oldSubscriptionRef を null で返す。
+        cleanupAfterFailure(handoverRequestId, target.oldSubscriptionRef(),
+                target.newSubscriptionRef(), target.renotify());
         return true;
     }
 
@@ -1104,8 +1108,11 @@ public class BillingPayerHandoverService {
         // ★【CAS で権利を取ってから Stripe を変更する】（PR-4 Codex検分3巡目 P1-1）。
         //   期待元状態は MANUAL_INTERVENTION のみ（同2巡目 P1-2）——同時 RESUME の一方が
         //   SWITCHING へ戻した直後に、他方の FAILED 確定が成立してしまうのを防ぐ。
+        //   ★運用者の判断（差し戻すか／再要求するか）をこの CAS で永続化する（5巡目 P1-2）。
+        //   夜次の再試行はこの値を読むため、後始末が落ちて再試行になっても判断が上書きされない。
         if (!handoverTxService.markFailedPendingCleanup(
-                handoverRequestId, List.of(PayerHandoverStatus.MANUAL_INTERVENTION))) {
+                handoverRequestId, List.of(PayerHandoverStatus.MANUAL_INTERVENTION),
+                revertOldCancelSchedule, false)) {
             log.warn("柱③-B: 他の処理が先に状態を進めたため RESUME→FAILED を中止します"
                     + " handoverRequestId={}", handoverRequestId);
             return;

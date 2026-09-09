@@ -318,8 +318,12 @@ public class BillingPayerHandoverTxService {
         requireEligibleAcceptor(handover, operatorUserId);
         requireAcceptableStatus(handover, operatorUserId);
 
+        // ★【検証対象そのものを行ロックして読む】（PR-4 Codex検分5巡目 P1-3）
+        //   handover 行だけをロックしても、検証するのは旧契約の期末・状態である。
+        //   非ロックで読むと、旧契約を更新する別 TX と直列化されず、
+        //   「検証してから確定するまでの間に値が変わる」窓が残る。
         BillingContractEntity oldContract = billingContractRepository
-                .findByIdAndDeletedAtIsNull(handover.getOldContractId())
+                .findByIdForUpdate(handover.getOldContractId())
                 .orElseThrow(() -> new BusinessException(EntitlementErrorCode.HANDOVER_NOT_FOUND));
 
         // ★【確定する TX の中で、ロック下に猶予・期末を再検証する】（PR-4 Codex検分4巡目）
@@ -531,8 +535,9 @@ public class BillingPayerHandoverTxService {
      * 旧契約の pointer は無傷のため利用者影響は無い。</p>
      */
     @Transactional
-    public boolean markFailedPendingCleanup(
-            UUID handoverRequestId, List<PayerHandoverStatus> expectedStatuses) {
+    public boolean markFailedPendingCleanup(UUID handoverRequestId,
+            List<PayerHandoverStatus> expectedStatuses,
+            boolean revertOldCancelSchedule, boolean renotify) {
         BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
         // ★【呼び出し元ごとの期待元状態を検証する真の CAS】（PR-4 Codex検分2巡目 P1-2）
         //   是正前は「終端でなければ何でも FAILED にする」であり、これは CAS ではない。
@@ -561,6 +566,12 @@ public class BillingPayerHandoverTxService {
         //   夜次バッチによる回収も、既存の仕組みだけで自動的に成立する。
         //   新契約（PENDING_HANDOVER）の無効化も終端化と同じ TX（finalizeFailure）で行う。
         handover.setStatus(PayerHandoverStatus.FAILING_CLEANUP);
+        // ★後始末の方針を永続化する（PR-4 Codex検分5巡目 P1-2）。
+        //   夜次バッチが再試行するときにこれを読まないと、運用者が RESUME で
+        //   「旧解約予約を戻さない・再要求しない」と決めた行に対して、既定で
+        //   旧契約を継続へ戻し再要求まで作ってしまう（＝運用判断の上書き）。
+        handover.setCleanupRevertOldCancel(revertOldCancelSchedule);
+        handover.setCleanupRenotify(renotify);
         handoverRequestRepository.save(handover);
         return true;
     }
@@ -710,8 +721,12 @@ public class BillingPayerHandoverTxService {
                 .findByIdAndDeletedAtIsNull(handover.getOldContractId())
                 .map(BillingContractEntity::getPspSubscriptionRef)
                 .orElse(null);
-        return new FailureCleanupTarget(handover.getId(), oldSubscriptionRef,
-                handover.getPspNewSubscriptionRef());
+        // null は既定（差し戻す・再通知する）。V207 以前に作られた行との互換。
+        boolean revert = !Boolean.FALSE.equals(handover.getCleanupRevertOldCancel());
+        boolean renotify = !Boolean.FALSE.equals(handover.getCleanupRenotify());
+        return new FailureCleanupTarget(handover.getId(),
+                revert ? oldSubscriptionRef : null,
+                handover.getPspNewSubscriptionRef(), revert, renotify);
     }
 
     /**
@@ -894,6 +909,9 @@ public class BillingPayerHandoverTxService {
         // ★終端化ではなく FAILING_CLEANUP（非終端）を取る（4巡目）。
         //   Stripe の後始末が成功したことを確認してから finalizeFailure で終端化する。
         handover.setStatus(PayerHandoverStatus.FAILING_CLEANUP);
+        // この経路の方針は「旧を継続へ差し戻し、他 ADMIN へ再通知する」（AC-20）。
+        handover.setCleanupRevertOldCancel(true);
+        handover.setCleanupRenotify(true);
         handoverRequestRepository.saveAndFlush(handover);
         log.warn("柱③-B: 追加認証が期限内に完了しなかったため失敗確定の権利を取りました"
                 + "（Stripe の後始末と再要求は後続）handoverRequestId={}", handoverRequestId);
@@ -1235,9 +1253,15 @@ public class BillingPayerHandoverTxService {
             String newSubscriptionRef, Instant acceptedAt, Long newPayerUserId) {
     }
 
-    /** 失敗確定後に Stripe の後始末を再試行するための参照（{@link #loadFailureCleanupTarget}）。 */
+    /**
+     * 失敗確定後に Stripe の後始末を再試行するための参照（{@link #loadFailureCleanupTarget}）。
+     *
+     * @param revertOldCancelSchedule 旧サブスクの期末解約予約を差し戻すか（運用者の判断・PR-4 5巡目 P1-2）
+     * @param renotify                AC-20 の再要求・再通知を行うか
+     */
     public record FailureCleanupTarget(
-            UUID handoverRequestId, String oldSubscriptionRef, String newSubscriptionRef) {
+            UUID handoverRequestId, String oldSubscriptionRef, String newSubscriptionRef,
+            boolean revertOldCancelSchedule, boolean renotify) {
     }
 
     /** {@code RESUME} の前提情報（{@link #loadResumeContext}・AC-37）。 */

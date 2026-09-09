@@ -38,6 +38,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -637,7 +638,7 @@ class BillingPayerHandoverServiceTest {
 
             verify(handoverTxService).publishAdditionalAuthRequired(handoverId);
             // 1段目では FAILED にしない（旧の cancel_at_period_end は設定済みで引継は進行中扱い）。
-            verify(handoverTxService, never()).markFailedPendingCleanup(any(), any());
+            verify(handoverTxService, never()).markFailedPendingCleanup(any(), any(), anyBoolean(), anyBoolean());
             verify(billingPaymentGateway, never()).cancelHandoverNewSubscription(any(), any());
         }
 
@@ -726,7 +727,7 @@ class BillingPayerHandoverServiceTest {
                     .willReturn(new SubscriptionSnapshot(NEW_SUB, "trialing", false,
                             NOW, OLD_PERIOD_END_INSTANT, "seti_123"));
             given(handoverTxService.markFailedPendingCleanup(
-                    handoverId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES)).willReturn(true);
+                    handoverId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES, true, true)).willReturn(true);
 
             service.executeSwitch(handoverId);
 
@@ -737,7 +738,7 @@ class BillingPayerHandoverServiceTest {
             //   新サブスクだけ取消済み」という乖離が残る。
             InOrder order = inOrder(handoverTxService, billingPaymentGateway);
             order.verify(handoverTxService).markFailedPendingCleanup(
-                    handoverId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES);
+                    handoverId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES, true, true);
             // ②新 trial サブスクを無課金取消
             order.verify(billingPaymentGateway).cancelHandoverNewSubscription(NEW_SUB, handoverId);
             // ③旧サブスクを継続へ差し戻し
@@ -754,7 +755,7 @@ class BillingPayerHandoverServiceTest {
                     .willReturn(new SubscriptionSnapshot(NEW_SUB, "trialing", false,
                             NOW, OLD_PERIOD_END_INSTANT, "seti_123"));
             // 別 worker が先に COMPLETED まで進めた＝CAS は拒否する。
-            given(handoverTxService.markFailedPendingCleanup(any(), any())).willReturn(false);
+            given(handoverTxService.markFailedPendingCleanup(any(), any(), anyBoolean(), anyBoolean())).willReturn(false);
 
             service.executeSwitch(handoverId);
 
@@ -822,7 +823,7 @@ class BillingPayerHandoverServiceTest {
             service.executeSwitch(handoverId);
 
             verify(handoverTxService).markPartiallyCompleted(handoverId);
-            verify(handoverTxService, never()).markFailedPendingCleanup(any(), any());
+            verify(handoverTxService, never()).markFailedPendingCleanup(any(), any(), anyBoolean(), anyBoolean());
         }
 
         @Test

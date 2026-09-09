@@ -202,14 +202,16 @@ public interface BillingPayerHandoverRequestRepository
      * <b>旧試行の新サブスクが Stripe に残り、旧サブスクは期末解約予約のまま</b>になる。
      * そのまま放置すると、別 ADMIN の次の承諾で作られる新サブスクとの二重サブスクになり得る。</p>
      *
-     * <p><b>目印は {@code old_cancel_scheduled_at}</b>: 後始末が完了した時点でこの列を NULL へ
-     * クリアする（差し戻しと対の操作・§3.6.1 R5-P2）。したがって
-     * 「{@code FAILED} なのに NULL でない」は<b>後始末が未了であることの証跡</b>そのものである。
-     * 新しい状態も列も増やさずに、回収可能性を確保している。</p>
+     * <p><b>抽出は状態そのものを根拠にする</b>（PR-4 Codex検分5巡目 P1-1）。
+     * かつては {@code old_cancel_scheduled_at IS NOT NULL} を目印にしていたが、
+     * <b>その列が NULL のまま後始末未了になる経路が実在する</b>——たとえば
+     * {@code cancel_at_period_end} の設定自体に失敗して {@code MANUAL_INTERVENTION} へ倒れた行は
+     * この列が NULL であり、{@code RESUME→FAILED} 後の新サブスク取消に失敗しても夜次に拾われない。
+     * 非終端のまま UNIQUE 枠を閉じ続けるため、<b>正当な新規要求が永久に拒否される</b>。
+     * 非終端状態 {@code FAILING_CLEANUP} を導入した以上、拾う条件も状態に一本化する。</p>
      */
     @Query("SELECT h.id FROM BillingPayerHandoverRequestEntity h "
             + "WHERE h.status = :status "
-            + "AND h.oldCancelScheduledAt IS NOT NULL "
             + "ORDER BY h.requestedAt")
     List<UUID> findFailedWithPendingCleanupIds(@Param("status") PayerHandoverStatus status);
 
