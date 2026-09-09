@@ -34,6 +34,14 @@ async function resolveTeamNumericId() {
 const { isAdmin, isAdminOrDeputy, roleName, loadPermissions } = useRoleAccess('team', teamSlug)
 // シフトボードは当該チームの ADMIN / DEPUTY_ADMIN 限定。
 // 判定手段は board.vue（`shifts/[scheduleId]/board.vue` の isScopeAdmin）に合わせる。
+//
+// 【意図的に SYSTEM_ADMIN を含めない等値比較】(CMP-260909-1509)
+// プラットフォーム SYSTEM_ADMIN が同時にチームの ADMIN でも、実効ロール解決
+// （resolveEffectiveRoleName）は最強ロールである 'SYSTEM_ADMIN' を返すため、この等値比較では
+// 「シフトボード」ボタンは表示されない。これはバグではなく、「運営専用アカウントには一般の
+// チーム運営導線を出さない」というマスター確定の設計判断（docs/security/03_role_authority_model.md
+// §3.5）。BE 側の認可はこれと独立しており、SYSTEM_ADMIN は API を叩けば通る（UI 非表示は認可の代替
+// ではない）。SYSTEM_ADMIN を含めるように書き換えないこと。
 const isScopeAdmin = computed(
   () => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN',
 )
