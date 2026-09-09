@@ -85,6 +85,9 @@ class BillingPayerHandoverServiceTest {
     private BillingPayerHandoverService service;
 
     private final UUID oldContractId = UUID.randomUUID();
+    /** 退会経路の入口が「今も退会申請中か」を問う先（柱③-B PR-3・検分2巡目 P1-1）。 */
+    @Mock private com.mannschaft.app.auth.service.WithdrawalStateQueryService withdrawalStateQueryService;
+
     private final UUID newContractId = UUID.randomUUID();
     private final UUID handoverId = UUID.randomUUID();
 
@@ -94,7 +97,8 @@ class BillingPayerHandoverServiceTest {
         service = new BillingPayerHandoverService(
                 handoverRequestRepository, billingContractRepository, billingOperationAuthorizer,
                 billingPaymentGateway, handoverTxService,
-                new BillingPayerHandoverCandidateResolver(roleService), FIXED_CLOCK);
+                new BillingPayerHandoverCandidateResolver(roleService),
+                withdrawalStateQueryService, FIXED_CLOCK);
         ReflectionTestUtils.setField(service, "appBaseUrl", "http://localhost:3000");
     }
 

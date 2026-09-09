@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -42,6 +43,8 @@ public class BillingPayerHandoverTxService {
     private final ActiveContractPointerRepository activeContractPointerRepository;
     private final BillingOperationAuthorizer billingOperationAuthorizer;
     private final BillingPayerHandoverCandidateResolver candidateResolver;
+    /** 退会申請の現在状態（作成側と対称に、取消側も処理時点の真値を見る・検分3巡目 P1-4）。 */
+    private final com.mannschaft.app.auth.service.WithdrawalStateQueryService withdrawalStateQueryService;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
@@ -530,6 +533,48 @@ public class BillingPayerHandoverTxService {
      * <p><b>非終端</b>のため {@code open_old_contract_id} は値を保持し続け、同一契約への新規引継要求は
      * 運用者の {@code RESUME} まで物理的にブロックされる（人手対応中の二重進行を防ぐ意図的な設計）。</p>
      */
+    /**
+     * 退会取消により {@code REQUESTED} を {@code FAILED} へ終端化する
+     * （設計書 §4.2 遷移表「{@code REQUESTED → FAILED}（退会取消時）」・Codex 検分1巡目 P1-3）。
+     *
+     * <p>終端化しないと {@code REQUESTED} 行が残り続け、生成列 {@code open_old_contract_id} と
+     * {@code uk_bphr_open_old_contract} が<b>同一契約への次の引継要求をブロックし続ける</b>
+     * （猶予14日が切れて {@code EXPIRED} になるまで塞がる）。</p>
+     *
+     * <p>{@code REQUIRES_NEW}: 呼び出し元は {@code AFTER_COMMIT} リスナーであり、また1件の失敗で
+     * 他の要求の終端化を巻き添えにしないため、要求ごとに独立したトランザクションで確定させる。</p>
+     *
+     * <p>{@code ACCEPTED} 以降は対象にしない。承諾済みの引継は新 payer 側で既に支払い手段の検証や
+     * 新サブスク作成が進んでおり、退会取消だけを根拠に機械的に巻き戻すと Stripe 側と乖離する
+     * （設計書 §3.6 の状態機械に従い、通常の期限・切替判定に委ねる）。</p>
+     *
+     * @return 実際に {@code FAILED} へ倒したら true（既に状態が変わっていたら false）
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean failRequestedOnWithdrawalCancelled(UUID handoverRequestId, Long oldPayerUserId) {
+        BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
+        if (handover.getStatus() != PayerHandoverStatus.REQUESTED
+                || !oldPayerUserId.equals(handover.getOldPayerUserId())) {
+            return false;
+        }
+
+        // 【要】作成側と同じく、行ロックを保持したまま処理時点の真値を確かめる（Codex 検分3巡目 P1-4）。
+        // これが無いと「取消 → 再退会 → 新しい世代の REQUESTED を作成 → 旧世代の取消イベントが到着」で、
+        // 古いイベントが【新しい退会の引継要求】を FAILED にしてしまう。退会申請中なら何もしない。
+        // 【ロック版必須】非ロック読み取りだと「取消済みを読む → 再退会が commit」と競合し、
+        //   新しい世代の REQUESTED を取りこぼして終端化してしまう（Codex 検分5巡目 P1-1）。
+        if (withdrawalStateQueryService.lockAndFindPendingWithdrawalAttempt(oldPayerUserId)
+                .isPresent()) {
+            log.info("柱③-B: 処理時点で再び退会申請中のため引継要求を終端化しません "
+                    + "handoverRequestId={}, oldPayerUserId={}", handoverRequestId, oldPayerUserId);
+            return false;
+        }
+
+        handover.setStatus(PayerHandoverStatus.FAILED);
+        handoverRequestRepository.save(handover);
+        return true;
+    }
+
     @Transactional
     public void markManualIntervention(UUID handoverRequestId) {
         BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);

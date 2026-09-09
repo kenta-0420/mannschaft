@@ -672,7 +672,14 @@ public class UserService {
         // 柱①ADMINゼロ根治 §12.5/AC11: purge開始マーク済みならcancelを拒否する。
         purgeStartGuard.checkCancelAllowed(userId);
 
-        UserEntity user = findUserOrThrow(userId);
+        // 【重要】ここで findById（= findUserOrThrow）を使ってはならない。
+        // UserEntity には @SQLRestriction("deleted_at IS NULL") が付いており、退会申請中のユーザーは
+        // JPQL/findById では 1 件も返らない。以前はここが findUserOrThrow だったため、
+        // 退会取消は必ず AUTH_015 で終了し、直後の AUTH_032 分岐は到達不能な死んだコードだった
+        // （＝退会取消そのものが一度も成立せず、WithdrawalCancelledEvent も発行されていなかった）。
+        // SQLRestriction を迂回しつつ行ロックも取る既存の窓口を使う（Codex 検分3巡目 P1-1）。
+        UserEntity user = userRepository.findByIdForUpdateIncludingDeleted(userId)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
 
         // deleted_at が NULL の場合、退会リクエストが存在しない
         if (user.getDeletedAt() == null) {

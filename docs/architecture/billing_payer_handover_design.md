@@ -467,6 +467,138 @@ public List<String> cancelAllForPayerOnWithdrawal(Long payerUserId) { ... }
 - 受益者への通知: 「あなたのメンバーシップは payer の退会に伴い期末で終了します」。受益者自身が新payerになる導線は本設計ではスコープ外（通知のみ）
 - 呼び出し元: `WithdrawalStripeHandler` を実装し、`WithdrawalRequestedEvent`（Day 0）購読時点で呼ぶ
 
+### §6.1 退会経路の実行モデル（PR-3・Codex 検分1巡目の是正で追加）
+
+PR-3 の実装に対する独立検分で、上の1行仕様のままでは**成立しない**欠陥が4件見つかった。ここに是正後の実行モデルを正本として記す。
+
+#### (1) 退会者は対話 API の認可を必ず通れない（P0）
+
+`UserService#requestWithdrawal` は**先に `deleted_at` を立てて commit し**、その後 `AFTER_COMMIT` で決済連携を呼ぶ。ところが対話 API 用の `BillingPayerHandoverService#requestHandover` は `billingOperationAuthorizer.requireCanManage` を通り、その認可 SQL は `users.deleted_at IS NULL AND status='ACTIVE'` を必須条件にしている。したがって**退会者は全件で認可に失敗し、TEAM/ORG の引継要求は1件も作られない**。現行 purge は USER スコープ契約しか処理しないため、旧 payer への課金がそのまま継続する。
+
+→ 退会イベント専用の内部入口 `requestHandoverForWithdrawal(oldContractId, withdrawingPayerUserId)` を設ける。認可の根拠を「現在もそのスコープの管理者か」から**「その契約の払い手が、いま退会したその人自身か」**へ置き換える。呼び出し側は契約 ID しか渡せず、**スコープは契約行から読み出す**ため任意ユーザー・任意スコープでの越境は構造的に成立しない。判定と要求作成の間に payer が書き換わらないよう、契約行を `SELECT ... FOR UPDATE` でロックしてから読む。
+
+#### (2) 失敗・プロセス停止の再試行経路（P1-1）
+
+退会イベントは永続化されない Spring のインメモリイベントで、ハンドラは共有 `event-pool` 上の非同期処理である。Stripe 失敗・投入拒否・commit 直後のプロセス停止では処理そのものが失われ、退会者への課金継続をログ監視だけに委ねることになる。
+
+→ **サブスク単位の処理状態を永続化する**（`membership_payer_withdrawal_cancellations`・V204）。**再試行の駆動（夜次バッチ）は PR-4 に委ねる**が、状態の永続化自体は PR-3 に入れる——状態が無ければ PR-4 でも対象を拾いようがないため。
+
+**状態（6値）と非終端の定義**:
+
+| 状態 | 意味 | 終端 |
+|---|---|---|
+| `PENDING` | 解約に着手したが Stripe・DB の双方の確定に至っていない | ✗（再試行対象） |
+| `SUCCEEDED` | Stripe の `cancel_at_period_end=true` と DB 反映の双方が確定 | ○ |
+| `FAILED` | 解約が明示的に失敗（`last_error` に理由） | ✗（再試行対象） |
+| `RESTORING` | 退会取消による解除に着手したが確定に至っていない | ✗（照合対象） |
+| `RESTORED` | 解除が Stripe・DB の双方で確定 | ○ |
+| `SUPERSEDED` | 本人の明示操作により「退会処理由来」という由来が上書きされた | ○（復旧対象外） |
+
+**作業行がそもそも作られない穴（2巡目 P1-2）**: 契約ごとの `prepare` で行を作る形だと、「複数契約の途中で停止し、まだ `prepare` に到達していない契約」に行が残らない。そこで **Stripe に触れる前に対象全件の行を1トランザクションで `PENDING` として commit する**（`reserveAll`）。それでも「退会本体の commit 後・非同期タスクが始まる前の停止」「`event-pool` の投入拒否」では `reserveAll` 自体が呼ばれない。この最後の穴は、作業行ではなく**退会状態そのもの**を起点にする `MembershipSubscriptionService#findWithdrawalCancelBacklog()`（`users.deleted_at IS NOT NULL` × `cancel_at_period_end = false`）が塞ぐ。行の有無に関係なく「やり残した解約」を再構築できる。
+
+**2経路の重複排除**（3巡目 P2 / 4巡目 P2）: PR-4 の再試行バッチは「非終端の作業行」と「backlog」の2つを走査する。`findWithdrawalCancelBacklog()` は非終端の作業行を持つ契約を除外するので、**同一時点のスナップショットとしては**互いに素になる。ただし本メソッドは複数の独立クエリの組み合わせでトランザクションを張っておらず、照会の間に作業行が作られれば重なりうる——**時間軸を含めると「常に互いに素」ではない**。PR-4 の駆動側は、契約ごとの処理が行ロック下で状態を再検証する（本 PR の `prepare`/`prepareRestore` と同じ作法）ことで二重投入を無害化すること。
+
+**非終端のまま拾われ続ける行を作らない**（3巡目 P2）: 復旧中に対象が消えた・payer が変わった・期末が到来して終端化した場合、`prepareRestore` は空を返すだけでなく作業行を `SUPERSEDED` へ**終端化する**。そうしないと照合バッチが永久に同じ行を拾い続ける。
+
+> **リリース依存**: PR-3 単独では失敗した期末解約は自動では再試行されない（対象は DB に残るが、拾う主体が居ない）。自動回復が揃うのは PR-4 の夜次再試行バッチ着地時点である。PR-3 と PR-4 の間の期間は、非終端 3 状態（`PENDING`/`FAILED`/`RESTORING`）と `findWithdrawalCancelBacklog()` の件数を監視する運用で埋める。
+
+#### (3) 1件の失敗が全件を巻き添えにしない（P1-2）
+
+全件を単一の `REQUIRES_NEW` トランザクションで処理してはならない。`save` の SQL 発行は commit まで遅延しうるため、**最後の flush/commit で1件でも DB 更新が失敗すると成功した全契約の DB 変更と通知イベントがまとめてロールバック**する一方、先に成功した Stripe の `cancel_at_period_end=true` は戻らない。
+
+→ **ID だけを抽出 → 1契約ずつ別 Bean の public メソッドで独立トランザクション**（Spring の `@Transactional` は自己呼び出しでは効かないため Bean 分離が必須）。実行単位は3段:
+
+| 段 | 主体 | 内容 |
+|---|---|---|
+| tx① | `MembershipPayerWithdrawalTxService#prepare` | 行ロック → payer/status/`cancel_at_period_end` を**取り直して**再検証 → 処理状態を `PENDING` で永続化して commit |
+| — | `MembershipPayerWithdrawalRunner` | Stripe `cancel_at_period_end=true`（tx 外・Idempotency-Key はサブスク ID 由来で固定） |
+| tx③ | `…TxService#applyScheduled` | 行ロック → 再検証 → `saveAndFlush` で契約単位に確定 → `SUCCEEDED` 記録 → 受益者通知を publish |
+
+各トランザクションが行ロックを取り直すのは、抽出クエリにロックが無いままだと `customer.subscription.deleted` webhook（同じ行のロックを取る）と競合し、古い ACTIVE エンティティを保持したままの UPDATE が webhook の `CANCELLED` を上書きしうるためである。確定時点で既に終端なら「課金が止まる」目的は達しているので DB は触らず `SUCCEEDED` として記録する。
+
+#### (4) 退会取消時の復旧（P1-3）
+
+退会は30日以内に取り消せる（`WithdrawalCancelledEvent`）。取り消したのに期末でメンバーシップが終了し、引継要求が `REQUESTED` のまま残って次の申請を塞ぎ続けるのでは筋が通らない。
+
+- **membership 側**: `membership_subscriptions.cancel_at_period_end` は boolean であり、**本人が退会前に明示解約した契約**と**退会処理が自動予約した契約**を区別できない。単純に payer の全予約を解除すると前者まで復活させてしまう。`membership_payer_withdrawal_cancellations`（退会処理が予約した行だけが存在する）を**由来の正本**として引き、`SUCCEEDED`／`RESTORING` の行だけを Stripe（`revertSubscriptionCancelAtPeriodEnd`）と DB の双方で戻す。
+- **handover 側**: §4.2 の遷移表どおり `REQUESTED → FAILED` へ終端化する。終端化しないと生成列 `open_old_contract_id` と `uk_bphr_open_old_contract` が同一契約への次の引継要求を猶予期間中ブロックし続ける。`ACCEPTED` 以降は対象にしない——新 payer 側で既に支払い手段の検証や新サブスク作成が進んでおり、退会取消だけを根拠に機械的に巻き戻すと Stripe 側と乖離するため、通常の期限・切替判定（§3.6）に委ねる。
+
+#### (5) イベントの到達順に依存しない（2巡目 P1-1）
+
+退会と退会取消は**どちらも**共用 `event-pool` 上の非同期処理であり、到達順は保証されない。退会受付の直後に取り消すと、取消処理が先に走って対象ゼロで終わり、そのあとに届いた古い退会イベントが期末解約と `REQUESTED` 引継要求を作ってしまう。
+
+→ **イベントの中身ではなく、処理時点の DB の真値を見る**。auth ドメインの `WithdrawalStateQueryService#findPendingWithdrawalAttempt(userId)` が唯一の窓口で、「いま退会申請中か」と「どの退会試行か（世代 ＝ `users.deleted_at`）」の両方に1回で答える。
+
+| 処理 | 進める条件 |
+|---|---|
+| 期末解約 tx①（`prepare` / `reserveAll`） | 退会申請中である |
+| 期末解約 tx②（`applyScheduled`） | **tx① で見た世代と同一の退会が今も継続している** |
+| 引継要求の作成（`requestHandoverForWithdrawal`） | 退会申請中である |
+| 引継要求の終端化（`failRequestedOnWithdrawalCancelled`） | 退会申請中<b>ではない</b> |
+| 解約の解除（`prepareRestore`） | 退会申請中<b>ではない</b> |
+
+**tx② でも世代を再検証するのが要点である**（3巡目 P1-2）。行ロックは各短期トランザクションの中でしか保持されず、**Stripe 呼び出しを跨いだ直列化にはならない**。tx① で真値を確かめてもロックはそこで解放され、その間に退会が取り消されうる。再検証が無いと「退会取消済みなのに期末解約が確定し、作業行は終端 `SUCCEEDED`」という、backlog にも再試行にも載らない回復不能な状態が生まれる。
+
+世代が変わっていた場合は DB へ反映せず、作業行を `RESTORING`（＝Stripe 側の予約を取り消す必要がある）にして**その場で解除へ切り替える**。Stripe には既に予約が入っている可能性があるため、放置は許されない。
+
+> **`users` は `@SQLRestriction("deleted_at IS NULL")` を持つ**ため、JPQL・`findById` では退会申請中のユーザーが1件も返らない（＝常に「申請中でない」と誤答する）。この判定は **native クエリでなければ成立しない**（`UserRepository#findDeletedAtIncludingDeleted`）。
+>
+> **同じ罠が `UserService#cancelWithdrawal` 本体にもあった**（3巡目 P1-1）。`findById` で退会者を引こうとして必ず `AUTH_015` で終了し、**退会取消そのものが一度も成立していなかった**（`WithdrawalCancelledEvent` も発行されない／直後の `AUTH_032` 分岐は到達不能な死んだコード）。`findByIdForUpdateIncludingDeleted` へ是正した。**IT がこの欠陥を隠していた**——`UPDATE users SET deleted_at = NULL` の SQL 直叩きで本番経路を迂回していたためである。IT は必ず `cancelWithdrawal()` を通す。
+
+**本人の新しい意思との衝突**: 退会取消の**後**に本人が改めて明示解約した場合、復旧処理は同じ `cancel_at_period_end=true` しか見ないため、その新しい意思まで解除してしまう。人が新しい判断を下した瞬間——`MembershipSubscriptionService#cancel`——に由来の記録を `SUPERSEDED` へ終端化し、以後の復旧対象から外す。**無効化の対象には `PENDING` を含める**（3巡目 P1-3）——古い退会処理が `PENDING` の間に「退会取消＋明示解約」が入る競合があり、`SUCCEEDED`/`RESTORING` だけを対象にすると無効化が no-op になる。
+
+あわせて `applyScheduled` は**反映できなかったとき（`applied=false`）に `SUCCEEDED` を書かない**。「既に `cancel_at_period_end=true`」は本人の明示解約かもしれず、`SUCCEEDED` にすると復旧処理がそれを退会由来と誤認する。この場合は `SUPERSEDED`（＝自分が予約したのではない）とする。
+
+#### (7) Stripe 冪等キーの世代分離（4巡目 P1-1）
+
+Stripe の Idempotency-Key は**同一キーに対して最初の応答をそのまま返す**（24時間）。キーを `subscriptionId` だけから作ると、「世代Aで解約予約 → 取消で解除 → 24時間以内に世代Bで再退会」で世代Bのリクエストが世代Aと同じキーになり、**3回目の更新が実行されない**。DB は `cancel_at_period_end=true`、Stripe 実体は解除済み、という金銭事故に直結する乖離が残る。
+
+→ 冪等キーに**退会試行ごとに必ず異なる値**を含める。ここで**時刻を使ってはならない**（5巡目 P1-3）——本番の `users.deleted_at` は `DATETIME`（小数秒なし）であり、同一秒内の「退会A → 取消 → 再退会B」では世代値が一致してしまう。**作業行の `attempt_count`**（`markAttempt` が退会試行のたびに単調増加させる、時刻に依存しない値）を使う。
+
+    withdrawal-payer-cancel-<subscriptionId>-<attemptCount>
+    withdrawal-payer-restore-<subscriptionId>-<attemptCount>
+
+解約・解除で接頭辞を分けるため両者も衝突しない。
+
+#### (8) 世代の再検証は「書き込む全経路」で行う（4巡目 P1-2）
+
+確定（`applyScheduled`）だけでなく、**解除の確定（`applyRestore`）と失敗の記録（`markFailed` / `markRestoreFailed`）も世代と現在状態を再検証する**。していないと次が起きる。
+
+- 世代Aの解除が Stripe を呼んでいる間に世代Bの再退会が完了 → 遅れて戻った世代Aが**世代Bの解約予約を解除**する
+- 本人の明示解約で `SUPERSEDED` になった行に、古い Stripe 呼び出しの失敗が `FAILED` を書き戻す → 広げた復旧対象集合により**本人の明示解約が解除され得る**
+
+`markFailed` は「自分の世代かつ `PENDING`」、`markRestoreFailed` は「自分の世代かつ `RESTORING`」のときだけ書く。
+
+#### (9) 真値の確認はロック付きで行い、ロック順序を固定する（4巡目 P1-3・P2）
+
+退会状態を根拠に DB を書き換える経路は、`WithdrawalStateQueryService#lockAndFindPendingWithdrawalAttempt`（`select deleted_at ... for update`）でユーザー行をロックしてから判断する。ロックなしの読み取りでは「真値を見た直後・自分が書き込む前」に `cancelWithdrawal` や再退会が commit でき、確認と反映が線形化しない。**引継要求の作成（`requestHandoverForWithdrawal`）と終端化（`failRequestedOnWithdrawalCancelled`）も例外ではない**（5巡目 P1-1。規定を書きながら呼び出し側が非ロック版のまま残っていた）。
+
+**ロック順序の正準は `users` → `membership_subscriptions` → `membership_payer_withdrawal_cancellations`。** `PENDING` を復旧対象へ加えたことで解約側と解除側が同じ行集合を触るようになったため、順序を固定しないとデッドロックしうる。
+
+#### (11) 「既に予約済みだからスキップ」を DB 列だけで判断しない（5巡目 P1-2）
+
+`prepare` が `membership_subscriptions.cancel_at_period_end` だけを見てスキップすると、次の経路で **Stripe=false・DB=true・作業行=`PENDING`** という誰も進めない状態が残る。
+
+1. 世代Aの復旧で Stripe の予約解除が成功する
+2. `applyRestore` の前に世代Bの再退会が commit する
+3. `applyRestore` が再退会を検出して `false` を返し、DB の `true` を残す
+4. 世代Bの `reserveAll` が作業行を `PENDING` にする
+5. `prepare` が DB の `true` だけを見てスキップする → 世代Bの Stripe 解約が永久に発行されない
+
+→ **作業行が非終端（`PENDING`/`FAILED`/`RESTORING`）＝自分たちの処理が途中である間は、DB が `true` でも Stripe へ発行して揃える。** DB 列は Stripe 側の実態と乖離しうる前提で扱う。「自分たち以外が予約した」（作業行が無い、または終端）ときだけスキップする。
+
+あわせて `applyScheduled` は、DB 列を変更できなかった（`applied=false`）場合でも**その作業行が自分たちのもの（世代一致かつ `PENDING`）なら `SUCCEEDED`** とする。`SUPERSEDED` にするのは「自分が予約したのではない」ときだけである（4巡目 P1-3 の意図はそのまま維持される）。
+
+#### (10) 明示解約と由来の無効化は同一トランザクション（4巡目 P1-4）
+
+`supersedeByUserDecision` の伝播は `REQUIRED`（既定）にする。`REQUIRES_NEW` だと、内側が commit した後に外側（利用者の解約 API）がロールバックした場合、**DB 解約は成立していないのに作業行だけ終端化**され、以後の退会取消で本来戻すべき予約を復旧対象と認識できなくなる。
+
+#### (6) 復旧の「Stripe 成功・DB 失敗」（2巡目 P1-3）
+
+Stripe の予約解除に成功した直後・DB 反映前に落ちると、**Stripe は継続・DB は `cancel_at_period_end=true`** という永続的な不整合になる。行が `SUCCEEDED` のままでは非終端集合に入らず、取消イベントも再配送されないため自動回復できない。
+
+→ **`RESTORING` を Stripe 呼び出しの前に commit する**。以後どこで落ちても行は非終端として残り、再試行・照合の対象になる。復旧の失敗は `FAILED` へは倒さない——`FAILED` は「解約が未了」を意味し、再試行バッチの扱いが逆向きになるためである。
+
 ---
 
 ## §7. GDPR×会計保持の境界（P2-15 具体化）
