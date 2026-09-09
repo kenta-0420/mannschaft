@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
@@ -24,7 +25,11 @@ import java.time.LocalDateTime;
  * シフト希望エンティティ。メンバーのシフト希望を管理する。
  */
 @Entity
-@Table(name = "shift_requests")
+@Table(
+        name = "shift_requests",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_sr_schedule_user_slot",
+                columnNames = {"schedule_id", "user_id", "slot_id_uq", "slot_date"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
@@ -41,6 +46,27 @@ public class ShiftRequestEntity {
     private Long userId;
 
     private Long slotId;
+
+    /**
+     * 一意性用の正規化列（生成列。設計 §11.5.1.2）。
+     *
+     * <p>MySQL の UNIQUE は NULL を「互いに異なる値」として扱うため、{@code slot_id} が
+     * {@code NULL}（日単位希望）の行は単純な UNIQUE では重複を防げない。{@code COALESCE(slot_id, 0)}
+     * の生成列を噛ませ、{@code (schedule_id, user_id, slot_id_uq, slot_date)} に UNIQUE を張る。</p>
+     *
+     * <p><b>VIRTUAL である理由（実測）</b>: {@code slot_id} は FK {@code fk_sr_slot} のベースカラムであり、
+     * MySQL 8.0 では STORED 生成カラムを載せられない（{@code ALTER TABLE} が
+     * {@code ERROR 1215: Cannot add foreign key constraint} で失敗することを実機の MySQL 8.0 で確認済み。
+     * 同型の事故が {@code V11.030} → PR #3188 で起きている）。VIRTUAL であれば FK と併存でき、
+     * インデックス（UNIQUE を含む）も張れる。</p>
+     *
+     * <p><b>Flyway DDL と一字一句同じ定義であること</b>。統合テストは {@code ddl-auto: create} ＋
+     * {@code flyway.enabled: false} で走るため、ここが欠けると本番だけ制約が無い（あるいはその逆）状態になる。
+     * 対応する移行は {@code V208.*__add_shift_requests_slot_uniqueness.sql}。</p>
+     */
+    @Column(name = "slot_id_uq", insertable = false, updatable = false,
+            columnDefinition = "BIGINT UNSIGNED AS (COALESCE(slot_id, 0)) VIRTUAL NOT NULL")
+    private Long slotIdUq;
 
     @Column(nullable = false)
     private LocalDate slotDate;

@@ -332,17 +332,34 @@ POST /api/v1/shifts/schedules/{scheduleId}/slots/replicate
 **設計**: `shift_requests` に正規化した生成列を足し、UNIQUE を張る。
 
 ```sql
+-- 実装時の是正: STORED ではなく VIRTUAL（理由は直後の注記）
 ALTER TABLE shift_requests
   ADD COLUMN slot_id_uq BIGINT UNSIGNED
-      AS (COALESCE(slot_id, 0)) STORED NOT NULL,
+      AS (COALESCE(slot_id, 0)) VIRTUAL NOT NULL;
+ALTER TABLE shift_requests
   ADD CONSTRAINT uq_sr_schedule_user_slot
       UNIQUE (schedule_id, user_id, slot_id_uq, slot_date);
 ```
 
+> **【PR A3 実装時の実測による是正】STORED は使えない。VIRTUAL にすること。**
+> `slot_id` は FK `fk_sr_slot` のベースカラムであり、MySQL 8.0 では STORED 生成カラムを載せられない。
+> 実機の MySQL 8.0（`mannschaft-mysql`）で本番同型のスキーマに対し
+> `ALTER TABLE shift_requests ADD COLUMN slot_id_uq ... STORED NOT NULL` を実行すると
+> **`ERROR 1215 (HY000): Cannot add foreign key constraint`** で失敗する（テーブル再構築時に FK を張り直せないため）。
+> 前例として `V11.030`（`shift_budget_allocations`）が同じ壁に当たり、そこでは関数インデックスで回避しているが、
+> **本件は VIRTUAL 生成カラムで解決する**（VIRTUAL は FK と併存でき、UNIQUE を含むインデックスも張れることを同じ実機で確認済み）。
+> 関数インデックスではなく VIRTUAL を採る理由は、**Entity 側（`ShiftRequestEntity#slotIdUq` の `columnDefinition`）に
+> 同じ定義を書けるから**である。統合テストは `ddl-auto: create` ＋ `flyway.enabled: false` で走るため、
+> Entity に表現できない形（関数インデックス）を採ると **テスト環境にだけ制約が無い**状態になり、
+> AC-8-07 / AC-8-08 が永久に緑にならない（あるいは逆に本番だけ壊れる。CMP-260909-2154 / PR #3188 と同型の事故）。
+> 実装: `V208.20260909151717__add_shift_requests_slot_uniqueness.sql`。
+
 - `slot_id` が非 `null` のときは `(schedule_id, user_id, slot_id)` の一意性になる（`slot_date` は §11.5.1.1-2 の検証により枠と一致することが保証されるため、キーに含めても等価）。
 - `slot_id` が `null`（→ `0`）のときは `(schedule_id, user_id, slot_date)` の**日単位の一意性**になり、従来の規則がそのまま保たれる。
 - アプリ層の事前チェックは**残す**（親切なエラーメッセージのため）。**制約違反は握りつぶさず** `REQUEST_ALREADY_EXISTS`（409）へ写像する。
-- **DDL 適用前に既存の重複行を掃除する**マイグレーションを同一バージョンに含める（最新の 1 件を残し、他を論理削除する。件数をログに残す）。
+- **DDL 適用前に既存の重複行を掃除する**マイグレーションを同一バージョンに含める（最新の 1 件を残し、他を削除する。件数をログに残す）。
+  - **実装時の是正**: `shift_requests` は `deleted_at` を持たない（論理削除の器が無い）ため、掃除は**物理削除**とした。
+    掃除件数は `SIGNAL SQLSTATE '01000'`（SQL 警告。移行は継続する）でメッセージに載せ、Flyway の適用ログに残す。
 
 > この節は当初の「DB に UNIQUE は足さない」という記載を**撤回するものである**。
 

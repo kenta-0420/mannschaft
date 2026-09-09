@@ -15,6 +15,7 @@ import com.mannschaft.app.shift.dto.UpdateShiftRequestRequest;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
+import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -48,6 +49,9 @@ class ShiftRequestServiceTest {
 
     @Mock
     private ShiftRequestRepository requestRepository;
+
+    @Mock
+    private ShiftSlotRepository slotRepository;
 
     @Mock
     private ShiftScheduleService scheduleService;
@@ -224,10 +228,10 @@ class ShiftRequestServiceTest {
             ShiftRequestResponse response = createRequestResponse();
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(requestRepository.findByScheduleIdAndUserIdAndSlotDate(
+            given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
                     SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
                     .willReturn(Optional.empty());
-            given(requestRepository.save(any(ShiftRequestEntity.class))).willReturn(savedEntity);
+            given(requestRepository.saveAndFlush(any(ShiftRequestEntity.class))).willReturn(savedEntity);
             given(shiftMapper.toRequestResponse(savedEntity)).willReturn(response);
 
             // When
@@ -235,7 +239,7 @@ class ShiftRequestServiceTest {
 
             // Then
             assertThat(result).isNotNull();
-            verify(requestRepository).save(any(ShiftRequestEntity.class));
+            verify(requestRepository).saveAndFlush(any(ShiftRequestEntity.class));
         }
 
         @Test
@@ -280,7 +284,7 @@ class ShiftRequestServiceTest {
             ShiftRequestEntity existing = createRequestEntity();
 
             given(scheduleService.findScheduleOrThrow(SCHEDULE_ID)).willReturn(schedule);
-            given(requestRepository.findByScheduleIdAndUserIdAndSlotDate(
+            given(requestRepository.findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
                     SCHEDULE_ID, USER_ID, LocalDate.of(2026, 3, 2)))
                     .willReturn(Optional.of(existing));
 
