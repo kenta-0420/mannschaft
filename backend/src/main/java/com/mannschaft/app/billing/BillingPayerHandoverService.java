@@ -648,7 +648,9 @@ public class BillingPayerHandoverService {
                         handoverRequestId);
                 return;
             }
-            cleanupAfterFailure(handoverRequestId, ctx.oldSubscriptionRef(), ctx.newSubscriptionRef());
+            // 追加認証が最後まで解決しなかった＝他 ADMIN による再試行の余地がある（AC-20）。
+            cleanupAfterFailure(handoverRequestId, ctx.oldSubscriptionRef(), ctx.newSubscriptionRef(),
+                    true);
             return;
         }
 
@@ -985,12 +987,9 @@ public class BillingPayerHandoverService {
 
         // 権利を取った後にだけ Stripe を変更する。後始末が落ちても
         // old_cancel_scheduled_at が残るため、夜次バッチが必ず回収する（3巡目 P1-2）。
-        cleanupAfterFailure(handoverRequestId, target.oldSubscriptionRef(), target.newSubscriptionRef());
-
-        // ★再要求の作成と再通知は【後始末が終わってから】（3巡目 P1-2）。
-        //   先に作ると、後始末が落ちた場合に「旧試行のサブスクが Stripe に残ったまま、
-        //   別 ADMIN が新しい承諾を進められる」＝二重サブスクの窓が開く。
-        handoverTxService.renotifyWithFreshRequest(handoverRequestId);
+        // ★終端化と再要求は後始末の成功を確認してから、同一 TX で確定する（3巡目 P1-2・4巡目）。
+        cleanupAfterFailure(handoverRequestId, target.oldSubscriptionRef(), target.newSubscriptionRef(),
+                true);
         return true;
     }
 
@@ -1006,7 +1005,7 @@ public class BillingPayerHandoverService {
      * @param oldSubscriptionRef 差し戻す旧サブスク（差し戻さない判断のときは {@code null}）
      */
     private void cleanupAfterFailure(UUID handoverRequestId, String oldSubscriptionRef,
-            String newSubscriptionRef) {
+            String newSubscriptionRef, boolean renotify) {
         try {
             if (newSubscriptionRef != null) {
                 billingPaymentGateway.cancelHandoverNewSubscription(newSubscriptionRef, handoverRequestId);
@@ -1017,21 +1016,30 @@ public class BillingPayerHandoverService {
             }
         } catch (RuntimeException e) {
             log.error("柱③-B: 失敗確定後の Stripe 後始末に失敗しました。"
-                            + "old_cancel_scheduled_at を残して夜次バッチの回収対象にします"
+                            + "FAILING_CLEANUP のまま残して夜次バッチの回収対象にします"
                             + " handoverRequestId={}, oldSubscriptionRef={}, newSubscriptionRef={}",
                     handoverRequestId, oldSubscriptionRef, newSubscriptionRef, e);
             throw e;
         }
-        handoverTxService.finishFailureCleanup(handoverRequestId);
+        // ★終端化・新契約の無効化・AC-20 の再要求を【1つの TX】で確定する（4巡目）。
+        //   分けると、その間の停止で「元要求は FAILED・再要求は無し」が残り、
+        //   終端は抽出対象外なので夜次バッチからも永久に見えなくなる。
+        handoverTxService.finalizeFailure(handoverRequestId, renotify);
     }
 
     /**
-     * {@code FAILED} で終端したが Stripe の後始末が未了の引継要求 ID を返す
-     * （PR-4 Codex検分3巡目 P1-2・夜次バッチの回収経路）。
+     * Stripe の後始末が未了のまま残っている引継要求 ID を返す
+     * （PR-4 Codex検分3巡目 P1-2 / 4巡目・夜次バッチの回収経路）。
+     *
+     * <p>{@code FAILING_CLEANUP} は<b>非終端</b>なので、生成列 {@code open_old_contract_id} が
+     * 値を保持し続ける。したがってこの行が残っている間は
+     * <b>通常の作成入口も含めて</b>同一旧契約への新規要求が UNIQUE で物理的に拒まれる
+     * （＝旧試行のサブスクが Stripe に残ったまま新しい承諾が進む二重サブスクを構造的に防ぐ）。</p>
      */
     @Transactional(readOnly = true)
     public List<UUID> findFailureCleanupBacklogIds() {
-        return handoverRequestRepository.findFailedWithPendingCleanupIds(PayerHandoverStatus.FAILED);
+        return handoverRequestRepository.findFailedWithPendingCleanupIds(
+                PayerHandoverStatus.FAILING_CLEANUP);
     }
 
     /**
@@ -1048,9 +1056,9 @@ public class BillingPayerHandoverService {
         if (target == null) {
             return false;
         }
-        cleanupAfterFailure(handoverRequestId, target.oldSubscriptionRef(), target.newSubscriptionRef());
-        // 後始末が終わって初めて、承諾可能な新しい要求を作れる（作成要件は Tx 層が再検証する）。
-        handoverTxService.renotifyWithFreshRequest(handoverRequestId);
+        // 後始末が終わって初めて終端化と再要求へ進む（作成要件は Tx 層が再検証する）。
+        cleanupAfterFailure(handoverRequestId, target.oldSubscriptionRef(), target.newSubscriptionRef(),
+                true);
         return true;
     }
 
@@ -1103,8 +1111,9 @@ public class BillingPayerHandoverService {
             return;
         }
         // 新 trial サブスクは無課金のため取り消してよい（放置すると孤児として課金され得る）。
+        // RESUME→FAILED は「引継自体を諦める」という運用者の判断なので、再要求は作らない。
         cleanupAfterFailure(handoverRequestId, revertOldCancelSchedule ? ctx.oldSubscriptionRef() : null,
-                ctx.newSubscriptionRef());
+                ctx.newSubscriptionRef(), false);
         log.warn("柱③-B: 運用者の RESUME により引継を FAILED で確定しました"
                         + " handoverRequestId={}, operatorUserId={}, 旧サブスク差し戻し={}",
                 handoverRequestId, operatorUserId, revertOldCancelSchedule);

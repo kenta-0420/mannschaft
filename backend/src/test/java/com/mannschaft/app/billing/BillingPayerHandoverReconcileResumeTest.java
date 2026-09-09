@@ -208,7 +208,7 @@ class BillingPayerHandoverReconcileResumeTest {
         given(billingPaymentGateway.retrieveSubscription(NEW_SUB))
                 .willReturn(new SubscriptionSnapshot(NEW_SUB, "trialing", false, null, null, "seti_1"));
         given(handoverTxService.failStalledSwitchingAndRenotify(handoverId)).willReturn(true);
-        given(handoverTxService.finishFailureCleanup(handoverId)).willReturn(true);
+        given(handoverTxService.finalizeFailure(handoverId, true)).willReturn(true);
 
         service.reconcileStalledSwitching(handoverId);
 
@@ -219,8 +219,8 @@ class BillingPayerHandoverReconcileResumeTest {
         order.verify(billingPaymentGateway).cancelHandoverNewSubscription(NEW_SUB, handoverId);
         // ★旧期末より前なので差し戻しが有効に効く（期末到達後だと復旧できない）。
         order.verify(billingPaymentGateway).revertCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
-        order.verify(handoverTxService).finishFailureCleanup(handoverId);
-        order.verify(handoverTxService).renotifyWithFreshRequest(handoverId);
+        order.verify(handoverTxService).finalizeFailure(handoverId, true);
+        
     }
 
     @Test
@@ -339,7 +339,7 @@ class BillingPayerHandoverReconcileResumeTest {
 
         verify(billingPaymentGateway, never()).cancelHandoverNewSubscription(anyString(), any());
         verify(billingPaymentGateway, never()).revertCancelAtPeriodEndForHandover(anyString(), any());
-        verify(handoverTxService, never()).finishFailureCleanup(any());
+        verify(handoverTxService, never()).finalizeFailure(any(), org.mockito.ArgumentMatchers.anyBoolean());
     }
 
     @Test
@@ -356,7 +356,7 @@ class BillingPayerHandoverReconcileResumeTest {
                 EntitlementScopeKind.TEAM, TEAM_ID, handoverId, OPERATOR, ResumeTarget.FAILED, true))
                 .isInstanceOf(BusinessException.class);
 
-        verify(handoverTxService, never()).finishFailureCleanup(any());
+        verify(handoverTxService, never()).finalizeFailure(any(), org.mockito.ArgumentMatchers.anyBoolean());
     }
 
     @Test

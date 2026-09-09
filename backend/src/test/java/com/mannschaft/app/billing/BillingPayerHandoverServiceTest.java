@@ -743,7 +743,7 @@ class BillingPayerHandoverServiceTest {
             // ③旧サブスクを継続へ差し戻し
             order.verify(billingPaymentGateway).revertCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
             // ④後始末が全て成功した後にだけ old_cancel_scheduled_at をクリアする（R5-P2・3巡目 P1-2）
-            order.verify(handoverTxService).finishFailureCleanup(handoverId);
+            order.verify(handoverTxService).finalizeFailure(handoverId, true);
         }
 
         @Test
@@ -760,7 +760,7 @@ class BillingPayerHandoverServiceTest {
 
             verify(billingPaymentGateway, never()).cancelHandoverNewSubscription(any(), any());
             verify(billingPaymentGateway, never()).revertCancelAtPeriodEndForHandover(any(), any());
-            verify(handoverTxService, never()).finishFailureCleanup(any());
+            verify(handoverTxService, never()).finalizeFailure(any(), org.mockito.ArgumentMatchers.anyBoolean());
         }
 
         @Test

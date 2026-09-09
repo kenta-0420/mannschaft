@@ -552,17 +552,56 @@ public class BillingPayerHandoverTxService {
                     handoverRequestId, handover.getStatus(), expectedStatuses);
             return false;
         }
-        // ★【old_cancel_scheduled_at はまだクリアしない】（PR-4 Codex検分3巡目 P1-2）
+        // ★【FAILED ではなく FAILING_CLEANUP（非終端）へ倒す】（PR-4 Codex検分4巡目）
         //   このメソッドは「失敗確定の権利を取る」段であり、Stripe の後始末（新サブスクの無課金取消・
         //   旧サブスクの cancel_at_period_end 差し戻し）はこの後に呼び出し側が行う。
-        //   後始末が終わるまでこの列を非 NULL のまま残すことで、
-        //   「FAILED なのに old_cancel_scheduled_at が残っている」＝後始末未了 という証跡になり、
-        //   夜次バッチ（findFailedWithPendingCleanupIds）が必ず回収できる。
-        //   ここでクリアしてしまうと、Stripe 呼び出しが落ちた瞬間に
-        //   【終端済みで誰にも拾われない・Stripe には旧試行のサブスクが残る】状態が確定する。
-        handover.setStatus(PayerHandoverStatus.FAILED);
+        //   後始末は外部呼び出しなので DB トランザクションに巻き込めず、失敗しうる。
+        //   ここで終端（FAILED）にしてしまうと、その瞬間に
+        //     ① 生成列 open_old_contract_id が NULL になり UNIQUE 枠が空くため、
+        //        【通常の作成入口も含めて】同一旧契約への次の要求を作れてしまう
+        //        （＝旧試行のサブスクが Stripe に残ったまま新しい承諾が進み二重サブスクになり得る）
+        //     ② 終端集合に入るため夜次バッチの回収対象から外れる
+        //   という2つの穴が同時に開く。非終端に留めることで、UNIQUE による排他も
+        //   夜次バッチによる回収も、既存の仕組みだけで自動的に成立する。
+        //   新契約（PENDING_HANDOVER）の無効化も終端化と同じ TX（finalizeFailure）で行う。
+        handover.setStatus(PayerHandoverStatus.FAILING_CLEANUP);
         handoverRequestRepository.save(handover);
+        return true;
+    }
 
+    /**
+     * Stripe の後始末が完了したことを確認したうえで、<b>終端化と AC-20 の再要求を同一トランザクションで</b>
+     * 確定する（PR-4 Codex検分4巡目）。
+     *
+     * <p><b>なぜ1つの TX なのか</b>: 終端化と再要求を別 TX に分けると、その間の停止や一時障害で
+     * 「元要求は {@code FAILED}・再要求は無し」という状態が残り、<b>夜次バッチからも永久に見えない</b>
+     * （終端は抽出対象外）。1つの TX にまとめれば、失敗しても {@code FAILING_CLEANUP} のまま残り、
+     * 次回の夜次照合がそのまま拾い直す。</p>
+     *
+     * <p>再要求は<b>共通の作成要件</b>（{@link #validateRenewalEligibility}）を満たす場合にだけ作る。
+     * 満たさない場合は再要求を作らずに終端化だけ行う——元要求は {@code FAILED} になって
+     * 生成列の枠が空くため、§5.4 により purge の期末解約フォールバックへ処理が渡る
+     * （設計書が「誰も承諾しなかった場合」に定める既存の出口そのもの）。</p>
+     *
+     * @param renotify AC-20 の再要求・再通知を行うか（{@code RESUME→FAILED} など運用者の判断で
+     *                 終わらせる経路では {@code false}）
+     * @return 終端化したなら {@code true}（対象外なら {@code false}）
+     */
+    @Transactional
+    public boolean finalizeFailure(UUID handoverRequestId, boolean renotify) {
+        BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
+        if (handover.getStatus() != PayerHandoverStatus.FAILING_CLEANUP) {
+            return false;
+        }
+
+        handover.setStatus(PayerHandoverStatus.FAILED);
+        // 差し戻しと対で old_cancel_scheduled_at を NULL クリアする（§3.6.1 R5-P2）。
+        handover.setOldCancelScheduledAt(null);
+        // ★終端化を先に flush する。生成列 open_old_contract_id は終端状態で NULL になるため、
+        //   これを確定させてからでないと下の再要求の INSERT が uk_bphr_open_old_contract に弾かれる。
+        handoverRequestRepository.saveAndFlush(handover);
+
+        // 先行作成した PENDING_HANDOVER 契約を無効化する（旧契約の pointer は無傷）。
         if (handover.getNewContractId() != null) {
             billingContractRepository.findByIdAndDeletedAtIsNull(handover.getNewContractId())
                     .filter(c -> c.getStatus() == ContractStatus.PENDING_HANDOVER)
@@ -572,28 +611,95 @@ public class BillingPayerHandoverTxService {
                         billingContractRepository.save(c);
                     });
         }
+
+        if (renotify) {
+            createRenewalRequest(handover);
+        }
         return true;
     }
 
     /**
-     * Stripe の後始末が完了したことを記録する（PR-4 Codex検分3巡目 P1-2）。
+     * AC-20 の再要求を作って他の候補 ADMIN へ通知する（{@link #finalizeFailure} と同一 TX）。
      *
-     * <p>{@code old_cancel_scheduled_at} を NULL へクリアする。これは差し戻しと対の操作であり
-     * （§3.6.1 R5-P2）、同時に「後始末未了」の証跡を消す意味を持つ。
-     * <b>Stripe 呼び出しが全て成功した後にだけ</b>呼ぶこと。</p>
-     *
-     * @return クリアしたなら {@code true}（対象外・既にクリア済みなら {@code false}）
+     * <p>作成要件は通常の作成入口と同じものを {@link #validateRenewalEligibility} で検証する。
+     * <b>「旧 payer が退会申請中か」は要件にしない</b>——通常の {@code requestHandover} が
+     * 退会を要件にしていない以上、これを課すと<b>対話 API から始めた正当な引継</b>で
+     * 追加認証が失敗したときに、他 ADMIN が居ても再要求が作られなくなる（4巡目の指摘）。</p>
      */
-    @Transactional
-    public boolean finishFailureCleanup(UUID handoverRequestId) {
-        BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
-        if (handover.getStatus() != PayerHandoverStatus.FAILED
-                || handover.getOldCancelScheduledAt() == null) {
-            return false;
+    private void createRenewalRequest(BillingPayerHandoverRequestEntity handover) {
+        List<Long> others = validateRenewalEligibility(handover);
+        if (others.isEmpty()) {
+            return;
         }
-        handover.setOldCancelScheduledAt(null);
-        handoverRequestRepository.save(handover);
-        return true;
+        Instant now = clock.instant();
+        BillingPayerHandoverRequestEntity renewed = BillingPayerHandoverRequestEntity.builder()
+                .oldContractId(handover.getOldContractId())
+                .scopeKind(handover.getScopeKind())
+                .scopeId(handover.getScopeId())
+                .oldPayerUserId(handover.getOldPayerUserId())
+                .status(PayerHandoverStatus.REQUESTED)
+                .requestedAt(now)
+                .expiresAt(now.plus(BillingPayerHandoverService.ACCEPTANCE_GRACE))
+                .build();
+        UUID renewedId;
+        try {
+            renewedId = handoverRequestRepository.saveAndFlush(renewed).getId();
+        } catch (DataIntegrityViolationException e) {
+            // 既に別経路が同じ旧契約への進行中要求を作っていた（生成列 + UNIQUE が物理拒否）。
+            log.warn("柱③-B: 再試行用の新しい引継要求は既に存在するため作成しません oldContractId={}",
+                    handover.getOldContractId(), e);
+            return;
+        }
+        eventPublisher.publishEvent(new BillingPayerHandoverNotificationEvent(
+                BillingPayerHandoverNotificationKind.HANDOVER_REQUESTED,
+                renewedId, handover.getScopeKind(), handover.getScopeId(),
+                others, handover.getOldPayerUserId()));
+        log.warn("柱③-B: 承諾可能な新しい要求を作って他 ADMIN へ再通知しました"
+                        + " failedHandoverRequestId={}, renewedHandoverRequestId={}, 再通知先={}",
+                handover.getId(), renewedId, others.size());
+    }
+
+    /**
+     * 再要求を作ってよいかを、<b>通常の作成入口と同じ要件</b>で検証する（4巡目の指摘）。
+     *
+     * <p>検証するのは「旧契約が今も引継可能か（PSP 紐付あり・{@code PAST_DUE} でない・
+     * <b>旧期末まで認証期限＋期末手前の余裕が残っているか</b>）」と「引継先候補が居るか」。
+     * 猶予が足りない要求を作っても、承諾された後に次の夜次処理より先に期末へ到達して
+     * 同じ穴を再生産するだけである。</p>
+     *
+     * @return 通知すべき候補 ADMIN（作成してはならない場合は空リスト）
+     */
+    private List<Long> validateRenewalEligibility(BillingPayerHandoverRequestEntity handover) {
+        BillingContractEntity oldContract = billingContractRepository
+                .findByIdAndDeletedAtIsNull(handover.getOldContractId()).orElse(null);
+        if (oldContract == null
+                || oldContract.getPspSubscriptionRef() == null
+                || oldContract.getCurrentPeriodEnd() == null
+                || oldContract.getStatus() == ContractStatus.PAST_DUE) {
+            log.info("柱③-B: 旧契約が引継可能な状態でないため再要求を作成しません handoverRequestId={}",
+                    handover.getId());
+            return List.of();
+        }
+        Instant oldPeriodEnd = toInstant(oldContract.getCurrentPeriodEnd());
+        if (oldPeriodEnd.isBefore(clock.instant()
+                .plus(BillingPayerHandoverService.PENDING_SETUP_INTENT_DEADLINE)
+                .plus(BillingPayerHandoverService.PERIOD_END_SAFETY_MARGIN))) {
+            log.warn("柱③-B: 旧期末までの猶予が不足しているため再要求を作成しません"
+                            + "（purge の期末解約フォールバックへ渡る）handoverRequestId={}, oldPeriodEnd={}",
+                    handover.getId(), oldPeriodEnd);
+            return List.of();
+        }
+        List<Long> others = candidateResolver
+                .candidateAdminUserIds(handover.getScopeKind(), handover.getScopeId(),
+                        handover.getOldPayerUserId())
+                .stream()
+                .filter(id -> !id.equals(handover.getNewPayerUserId()))
+                .toList();
+        if (others.isEmpty()) {
+            log.info("柱③-B: 他の引継先候補が居ないため再要求・再通知は行いません handoverRequestId={}",
+                    handover.getId());
+        }
+        return others;
     }
 
     /** 後始末を再試行するために必要な参照を読み出す（{@code FAILED} かつ後始末未了の行のみ）。 */
@@ -601,9 +707,7 @@ public class BillingPayerHandoverTxService {
     public FailureCleanupTarget loadFailureCleanupTarget(UUID handoverRequestId) {
         BillingPayerHandoverRequestEntity handover =
                 handoverRequestRepository.findById(handoverRequestId).orElse(null);
-        if (handover == null
-                || handover.getStatus() != PayerHandoverStatus.FAILED
-                || handover.getOldCancelScheduledAt() == null) {
+        if (handover == null || handover.getStatus() != PayerHandoverStatus.FAILING_CLEANUP) {
             return null;
         }
         String oldSubscriptionRef = billingContractRepository
@@ -775,7 +879,7 @@ public class BillingPayerHandoverTxService {
      * 追加認証が期限内に完了しなかった引継の<b>失敗確定の権利を取る</b>
      * （設計書 §5.5 ④・AC-20・PR-4 Codex検分3巡目 P1-1/P1-2）。
      *
-     * <p>Stripe の後始末と再通知は本メソッドの<b>後</b>で行う（{@link #renotifyWithFreshRequest}）。
+     * <p>Stripe の後始末と再通知は本メソッドの<b>後</b>で行う（{@link #finalizeFailure}）。
      *
      * <p>再通知は「複数 ADMIN がいる場合のみ再トライ」という設計書の定めに対応する。
      * 終端化により生成列 {@code open_old_contract_id} が NULL になるため、
@@ -787,143 +891,20 @@ public class BillingPayerHandoverTxService {
     @Transactional
     public boolean failStalledSwitchingAndRenotify(UUID handoverRequestId) {
         BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
-        // 期待元状態つき CAS（P1-4）。
+        // 期待元状態つき CAS（2巡目 P1-2）。
         if (handover.getStatus() != PayerHandoverStatus.SWITCHING) {
             return false;
         }
-        handover.setStatus(PayerHandoverStatus.FAILED);
-        handover.setOldCancelScheduledAt(null);
-        handoverRequestRepository.save(handover);
-
-        if (handover.getNewContractId() != null) {
-            billingContractRepository.findByIdAndDeletedAtIsNull(handover.getNewContractId())
-                    .filter(c -> c.getStatus() == ContractStatus.PENDING_HANDOVER)
-                    .ifPresent(c -> {
-                        c.setStatus(ContractStatus.CANCELLED);
-                        c.setCancelledAt(LocalDateTime.ofInstant(clock.instant(), clock.getZone()));
-                        billingContractRepository.save(c);
-                    });
-        }
-
-        // ★【old_cancel_scheduled_at はまだクリアしない・再要求もまだ作らない】（3巡目 P1-2）
-        //   ここは「失敗確定の権利を取る」段にとどめる。Stripe の後始末が終わる前に
-        //   再要求まで commit してしまうと、後始末が落ちた場合に
-        //   ①元要求は終端で夜次再試行の対象外 ②旧試行の新サブスクが Stripe に残留
-        //   ③別 ADMIN が承諾できる新要求は既に存在、という三つ揃いになり、
-        //   次の承諾で作られる新サブスクとの【二重サブスク】になり得る。
+        // ★終端化ではなく FAILING_CLEANUP（非終端）を取る（4巡目）。
+        //   Stripe の後始末が成功したことを確認してから finalizeFailure で終端化する。
+        handover.setStatus(PayerHandoverStatus.FAILING_CLEANUP);
         handoverRequestRepository.saveAndFlush(handover);
-        log.warn("柱③-B: 追加認証が期限内に完了しなかったため引継を FAILED で確定しました"
-                + "（Stripe の後始末と再要求は後続で行う）handoverRequestId={}", handoverRequestId);
+        log.warn("柱③-B: 追加認証が期限内に完了しなかったため失敗確定の権利を取りました"
+                + "（Stripe の後始末と再要求は後続）handoverRequestId={}", handoverRequestId);
         return true;
     }
 
-    /**
-     * 失敗確定の後始末が完了した引継について、<b>承諾可能な新しい要求を作って</b>
-     * 他の候補 ADMIN へ再通知する（設計書 §5.5 ④・AC-20・PR-4 Codex検分3巡目 P1-2/P1-4）。
-     *
-     * <p><b>Stripe の後始末が完了してから呼ぶこと。</b> 先に再要求を作ると、後始末が落ちた場合に
-     * 「旧試行のサブスクが Stripe に残ったまま、別 ADMIN が新しい承諾を進められる」状態になる。</p>
-     *
-     * <h2>共通の作成要件を通す（3巡目 P1-4）</h2>
-     * <p>再要求は旧 payer 本人の操作ではなくバッチが作る。よって通常の作成 API と同じ要件を
-     * ここで明示的に検証する:</p>
-     * <ul>
-     *   <li><b>旧 payer が今も退会申請中である</b>——退会が取り消されていれば引継自体が不要であり、
-     *       作ってしまうと退会していない利用者の契約に対して他 ADMIN が支払担当を奪える</li>
-     *   <li><b>旧契約が今も引継可能である</b>（PSP 紐付あり・{@code PAST_DUE} でない・
-     *       旧期末まで「認証期限 + 期末手前の余裕」が残っている）——残り時間が足りない要求を作ると、
-     *       承諾されても次の夜次処理より先に期末へ到達し、同じ穴を再生産する</li>
-     *   <li><b>引継先候補が居る</b></li>
-     * </ul>
-     * <p>いずれかを満たさない場合は<b>再要求を作らない</b>。元要求は {@code FAILED}（終端）のままなので
-     * 生成列の枠は空き、§5.4 により purge の期末解約フォールバックへ処理が渡る——
-     * これは設計書が「誰も承諾しなかった場合」に定める既存の出口そのものである。</p>
-     *
-     * @return 新しい要求を作って通知したなら {@code true}
-     */
-    @Transactional
-    public boolean renotifyWithFreshRequest(UUID handoverRequestId) {
-        BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
-        if (handover.getStatus() != PayerHandoverStatus.FAILED
-                || handover.getOldCancelScheduledAt() != null) {
-            // 終端していない、または後始末が未了。再要求を作ってよい段ではない。
-            return false;
-        }
 
-        // ① 旧 payer が今も退会申請中か（処理時点の DB 真値・native 経路が正本）。
-        // ★ロック版を使う（§6.1 (9)）。退会状態を根拠に DB を書き換える経路は、
-        //   確認と反映が線形化するようユーザー行をロックしてから判断しなければならない。
-        if (withdrawalStateQueryService
-                .lockAndFindPendingWithdrawalAttempt(handover.getOldPayerUserId()).isEmpty()) {
-            log.info("柱③-B: 旧 payer が退会申請中ではないため再要求を作成しません"
-                    + " handoverRequestId={}, oldPayerUserId={}",
-                    handoverRequestId, handover.getOldPayerUserId());
-            return false;
-        }
-
-        // ② 旧契約が今も引継可能か（残り時間を含む）。
-        BillingContractEntity oldContract = billingContractRepository
-                .findByIdAndDeletedAtIsNull(handover.getOldContractId()).orElse(null);
-        if (oldContract == null
-                || oldContract.getPspSubscriptionRef() == null
-                || oldContract.getCurrentPeriodEnd() == null
-                || oldContract.getStatus() == ContractStatus.PAST_DUE) {
-            log.info("柱③-B: 旧契約が引継可能な状態でないため再要求を作成しません handoverRequestId={}",
-                    handoverRequestId);
-            return false;
-        }
-        Instant now = clock.instant();
-        Instant oldPeriodEnd = toInstant(oldContract.getCurrentPeriodEnd());
-        if (oldPeriodEnd.isBefore(now.plus(BillingPayerHandoverService.PENDING_SETUP_INTENT_DEADLINE)
-                .plus(BillingPayerHandoverService.PERIOD_END_SAFETY_MARGIN))) {
-            log.warn("柱③-B: 旧期末までの猶予が不足しているため再要求を作成しません"
-                            + "（purge の期末解約フォールバックへ渡る）handoverRequestId={}, oldPeriodEnd={}",
-                    handoverRequestId, oldPeriodEnd);
-            return false;
-        }
-
-        // ③ 承諾しなかった他の候補 ADMIN（承諾を試みた本人は除く）。
-        List<Long> others = candidateResolver
-                .candidateAdminUserIds(handover.getScopeKind(), handover.getScopeId(),
-                        handover.getOldPayerUserId())
-                .stream()
-                .filter(id -> !id.equals(handover.getNewPayerUserId()))
-                .toList();
-        if (others.isEmpty()) {
-            log.info("柱③-B: 他の引継先候補が居ないため再要求・再通知は行いません handoverRequestId={}",
-                    handoverRequestId);
-            return false;
-        }
-
-        BillingPayerHandoverRequestEntity renewed = BillingPayerHandoverRequestEntity.builder()
-                .oldContractId(handover.getOldContractId())
-                .scopeKind(handover.getScopeKind())
-                .scopeId(handover.getScopeId())
-                .oldPayerUserId(handover.getOldPayerUserId())
-                .status(PayerHandoverStatus.REQUESTED)
-                .requestedAt(now)
-                .expiresAt(now.plus(BillingPayerHandoverService.ACCEPTANCE_GRACE))
-                .build();
-        UUID renewedId;
-        try {
-            renewedId = handoverRequestRepository.saveAndFlush(renewed).getId();
-        } catch (DataIntegrityViolationException e) {
-            // 既に別経路が同じ旧契約への進行中要求を作っていた（生成列 + UNIQUE が物理拒否）。
-            log.warn("柱③-B: 再試行用の新しい引継要求は既に存在するため作成しません oldContractId={}",
-                    handover.getOldContractId(), e);
-            return false;
-        }
-
-        eventPublisher.publishEvent(new BillingPayerHandoverNotificationEvent(
-                BillingPayerHandoverNotificationKind.HANDOVER_REQUESTED,
-                renewedId, handover.getScopeKind(), handover.getScopeId(),
-                others, handover.getOldPayerUserId()));
-
-        log.warn("柱③-B: 承諾可能な新しい要求を作って他 ADMIN へ再通知しました"
-                        + " failedHandoverRequestId={}, renewedHandoverRequestId={}, 再通知先={}",
-                handoverRequestId, renewedId, others.size());
-        return true;
-    }
 
     /**
      * 猶予期限を過ぎたまま誰にも承諾されていない引継要求を {@code EXPIRED} で終端化する
