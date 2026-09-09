@@ -9,6 +9,7 @@ import type {
   ShiftSlotResponse,
 } from '~/types/shift'
 import { preferenceToI18nKey } from '~/utils/shiftPreference'
+import { isAcceptingShiftRequests } from '~/utils/shiftStatus'
 
 /**
  * F03.5 シフト希望提出フォームページ
@@ -82,8 +83,9 @@ async function selectTeam(id: number) {
   schedulesLoading.value = true
   try {
     const all = await listSchedules(String(id))
-    // COLLECTING 状態のみ表示
-    schedules.value = all.filter((s) => s.status.status === 'COLLECTING')
+    // 希望を受け付けているシフト表のみ表示（COLLECTING かつ requestDeadline 未経過）。
+    // 判定はチームのシフト表一覧と共通の isAcceptingShiftRequests に寄せる（CMP-260908-2118）。
+    schedules.value = all.filter(isAcceptingShiftRequests)
   } catch {
     showError(t('shift.notification.errorLoad'))
     step.value = 'team-select'
