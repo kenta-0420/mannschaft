@@ -67,16 +67,73 @@ public interface BillingPayerHandoverRequestRepository
      * <p>{@code billing_contracts.current_period_end} は {@link LocalDateTime}、handover 側は
      * {@code Instant} であるため、呼び出し側が {@code now} を DB 格納値と同じ壁時計へ変換して渡す。</p>
      *
-     * @param status 通常 {@link PayerHandoverStatus#SWITCHING}
-     * @param now    現在時刻（{@code billing_contracts} の壁時計へ変換済み）
+     * <p><b>PR-4</b>: 抽出対象は {@link PayerHandoverStatus#SWITCHING} だけではない。
+     * {@link PayerHandoverStatus#PARTIALLY_COMPLETED}（＝Stripe 側は確定済みでローカル切替TXのみ未了・
+     * 非終端のリトライ対象・§3.5）も同じバッチが拾い直さなければ、pointer が旧のまま宙ぶらりんで残る。
+     * {@code MANUAL_INTERVENTION} は<b>含めない</b>——運用者の {@code RESUME} 待ちであり、
+     * 機械的に切替を再試行してはならない状態だからである（§3.6.2）。</p>
+     *
+     * @param statuses 通常 {@code SWITCHING} と {@code PARTIALLY_COMPLETED}
+     * @param now      現在時刻（{@code billing_contracts} の壁時計へ変換済み）
      */
     @Query("SELECT h.id FROM BillingPayerHandoverRequestEntity h "
             + "JOIN BillingContractEntity c ON c.id = h.oldContractId "
-            + "WHERE h.status = :status "
+            + "WHERE h.status IN :statuses "
             + "AND c.currentPeriodEnd IS NOT NULL AND c.currentPeriodEnd <= :now "
             + "ORDER BY h.requestedAt")
-    List<UUID> findSwitchDueIds(@Param("status") PayerHandoverStatus status,
+    List<UUID> findSwitchDueIds(@Param("statuses") List<PayerHandoverStatus> statuses,
                                 @Param("now") LocalDateTime now);
+
+    /**
+     * 旧サブスクへの {@code cancel_at_period_end=true} 設定が<b>確認できていない</b>引継要求 ID を返す
+     * （設計書 §3.6.1(a)・AC-34・PR-4 の夜次照合バッチの抽出）。
+     *
+     * <p><b>なぜ要るか</b>: 設定 API の呼び出しと {@code old_cancel_scheduled_at} の永続化は
+     * 別操作であり原子性が無い（Stripe は外部システムで DB tx に巻き込めない）。
+     * 「Stripe では成功したが DB 書き込み前にクラッシュ」「設定 API 自体が失敗」のいずれでも、
+     * この列は NULL のまま残る。放置すると<b>承諾は進んでいるのに旧サブスクが通常課金を続ける</b>。</p>
+     *
+     * <p><b>抽出を {@code SWITCHING}/{@code PARTIALLY_COMPLETED} に限る理由</b>: 旧サブスクへの予約は
+     * 引継確定（{@code checkout.session.completed}）と同時に行う設計であり、{@code ACCEPTED} 段階で
+     * 未設定なのは<b>正常</b>である（まだ確定していない）。ここを含めると、正常な進行中の行に対して
+     * 毎晩 Stripe を叩き、予約すべきでない旧サブスクを予約してしまう。
+     * {@code MANUAL_INTERVENTION} も除く——人手対応中に自動で Stripe 状態を動かさない（§3.6.2）。</p>
+     *
+     * @param statuses 通常 {@code SWITCHING} と {@code PARTIALLY_COMPLETED}
+     */
+    @Query("SELECT h.id FROM BillingPayerHandoverRequestEntity h "
+            + "WHERE h.status IN :statuses "
+            + "AND h.oldCancelScheduledAt IS NULL "
+            + "ORDER BY h.requestedAt")
+    List<UUID> findOldCancelScheduleUnconfirmedIds(
+            @Param("statuses") List<PayerHandoverStatus> statuses);
+
+    /**
+     * 猶予期限（既定14日）を過ぎたまま<b>誰にも承諾されていない</b>引継要求 ID を返す
+     * （設計書 §5.3・§5.5 ⑤・AC-21・PR-4）。
+     *
+     * <p><b>なぜ要るか</b>: 期限切れの判定は従来<b>承諾操作が来たときにしか行われなかった</b>
+     * （{@code validateAcceptable} の中で {@code EXPIRED} へ倒す）。しかし AC-21 が定めるのは
+     * まさに「複数 ADMIN が全員承諾を拒否／無視した」ケースであり、その場合<b>承諾操作は永久に来ない</b>。
+     * すると {@code REQUESTED} 行は非終端のまま残り続け、§5.4 により purge の期末解約フォールバックが
+     * スキップされ続け、生成列 + UNIQUE が同一契約への再要求もブロックし続ける——
+     * <b>旧 payer への課金が止まらないまま固まる</b>。期限到来を能動的に検出する経路が要る。</p>
+     *
+     * <p>{@code psp_new_subscription_ref IS NULL} を条件に含めるのは、参照が確定している行を
+     * ここで終端化すると Stripe 上のサブスクを孤児として残すためである（そちらは
+     * {@link #findExpiredUnresolvedAcceptedIds} 経路が Stripe 照合を伴って決着させる）。</p>
+     *
+     * @param statuses 通常 {@code REQUESTED} と {@code REQUIRES_PAYMENT_METHOD}（§4.2 遷移表の
+     *                 「{@code EXPIRED} への遷移元」2状態）
+     * @param now      現在時刻（{@code expires_at} と同じ {@code Instant}）
+     */
+    @Query("SELECT h.id FROM BillingPayerHandoverRequestEntity h "
+            + "WHERE h.status IN :statuses "
+            + "AND h.pspNewSubscriptionRef IS NULL "
+            + "AND h.expiresAt <= :now "
+            + "ORDER BY h.requestedAt")
+    List<UUID> findOverdueUnacceptedIds(@Param("statuses") List<PayerHandoverStatus> statuses,
+                                        @Param("now") Instant now);
 
     /**
      * 猶予期限を過ぎたまま {@code ACCEPTED} に留まり、新サブスク参照が未確定の引継要求 ID を返す

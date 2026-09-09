@@ -500,7 +500,7 @@ PR-3 の実装に対する独立検分で、上の1行仕様のままでは**成
 
 **非終端のまま拾われ続ける行を作らない**（3巡目 P2）: 復旧中に対象が消えた・payer が変わった・期末が到来して終端化した場合、`prepareRestore` は空を返すだけでなく作業行を `SUPERSEDED` へ**終端化する**。そうしないと照合バッチが永久に同じ行を拾い続ける。
 
-> **リリース依存**: PR-3 単独では失敗した期末解約は自動では再試行されない（対象は DB に残るが、拾う主体が居ない）。自動回復が揃うのは PR-4 の夜次再試行バッチ着地時点である。PR-3 と PR-4 の間の期間は、非終端 3 状態（`PENDING`/`FAILED`/`RESTORING`）と `findWithdrawalCancelBacklog()` の件数を監視する運用で埋める。
+> **リリース依存（PR-4 で解消済み）**: PR-3 単独では失敗した期末解約は自動では再試行されなかった（対象は DB に残るが、拾う主体が居ない）。**PR-4 の `MembershipPayerWithdrawalRetryBatchService`（日次 03:20 JST）が駆動主体として着地し、この依存は解消した。** 同バッチは「非終端の作業行（`PENDING`/`FAILED`）」と「`findWithdrawalCancelBacklog()`」を**払い手単位で union/dedup** してから解約側を、`RESTORING` を解除側として別パスで駆動する。dedup を入れるのは、backlog の照会が複数の独立クエリの組み合わせでトランザクションを張っておらず、**照会の間に作業行が作られれば重なりうる**ためである（「同一時点のスナップショットとしては互いに素」＝「常に互いに素」ではない）。仮に重複しても、払い手ごとの処理が行ロック下で状態を取り直して再検証するため二重発行にはならない（抽出側の dedup と処理側の再検証という二段の防御）。
 
 #### (3) 1件の失敗が全件を巻き添えにしない（P1-2）
 
@@ -673,9 +673,20 @@ Stripe の予約解除に成功した直後・DB 反映前に落ちると、**St
 1. **PR-1（DDL＋読み取り専用の土台）**: `payer_user_id`/`handover_request_id` 列追加・`chk_bc_status` CHECK 6値化・`ContractStatus` enum への `PENDING_HANDOVER` 追加・バックフィル・`billing_payer_handover_requests` テーブル新設・`ActiveContractPointerRepository#hardDeleteBySlotAndContractId` 新設（AC-1, AC-2, AC-15, AC-14の土台）
 2. **PR-2（BillingContractService拡張＋Gateway拡張）**: purge検出クエリ拡張（R2-P1-6の絞り込み条件含む）・引継要求/承諾API・状態機械（`PENDING_HANDOVER`含む）・`trial_end`方式での新サブスク作成・承諾確定時の旧サブスク`cancel_at_period_end`予約/差し戻し（R3-P1-3）・旧期末到達を条件とするローカル切替TX（Stripe API呼び出し無し）・PAST_DUE/過去期末の拒否分岐（R2-P1-4）・`pending_setup_intent`の二段検証（R3-P1-2）・Idempotency-Key/metadata対応とList Subscriptions照会（全ページ走査・R4-P1-1）のためのGateway拡張・DB+List優先のリトライ手順（AC-3〜12, AC-16, AC-22〜33の大半）
 3. **PR-3（membership_subscriptions連携＋WithdrawalStripeHandler実装）**: `cancelAllForPayerOnWithdrawal`新設・`WithdrawalStripeHandler`実装（旧`TeamSubscriptionEntity`参照撤去）（AC-13）
-4. **PR-4（hardDeleteBySlotAndContractId移行＋webhook順序耐性の仕上げ・監視）**: 旧webhookハンドラの呼び出し先切替・`SWITCHING`詰まり監視アラート・5分岐通知の実装・`cancel_at_period_end`夜次照合バッチと切替バッチの実行前チェック実装（R4-P1-2・AC-34/35）・期末境界越え検知と`MANUAL_INTERVENTION`状態および`RESUME`操作（運用者向けAPI/画面）の実装（R5-P1-1/2・AC-35〜37）（AC-14, AC-17〜21, AC-34〜37）
+4. **PR-4（着地済み・hardDeleteBySlotAndContractId移行＋夜次バッチの結線・MANUAL_INTERVENTION/RESUME）**: 旧webhookハンドラの呼び出し先切替・`SWITCHING`詰まり監視アラート・5分岐通知の実装・`cancel_at_period_end`夜次照合バッチと切替バッチの実行前チェック実装（R4-P1-2・AC-34/35）・期末境界越え検知と`MANUAL_INTERVENTION`状態および`RESUME`操作（運用者向けAPI/画面）の実装（R5-P1-1/2・AC-35〜37）（AC-14, AC-17〜21, AC-34〜37）
 
 各PRはBEテスト先行（CLAUDE.md「BE/API はテスト先行」原則）。PR-1はDDLのみのためマイグレーション適用確認ITを先行させる。
+
+#### PR-4 の実装対応（着地時点の正本）
+
+| 設計上の項目 | 実装 |
+|---|---|
+| 切替バッチ（唯一の切替TX実行者・§3.6 (b)） | `BillingPayerHandoverBatchService#runPayerHandoverSwitch`（毎時 hh:10 JST・ShedLock `billing_payer_handover_switch`）。抽出は `SWITCHING` に加え **`PARTIALLY_COMPLETED`** も含む（§3.5・非終端のリトライ対象。含めないと pointer が旧のまま宙ぶらりんで残る）。`MANUAL_INTERVENTION` は含めない（運用者の `RESUME` 待ち） |
+| 夜次照合バッチ（§3.6.1(a)・AC-34） | `BillingPayerHandoverBatchService#runPayerHandoverNightlyReconcile`（日次 02:40 JST）。①期限超過承諾の照合（§5.3）②`old_cancel_scheduled_at` 未確認行を **Stripe 実物と突合**。抽出を `SWITCHING`/`PARTIALLY_COMPLETED` に限るのは、`ACCEPTED` 段階での未設定は**正常**（旧への予約は引継確定と同時に行う設計）であり、含めると正常な進行中の行に対して毎晩 Stripe を叩き予約すべきでない旧サブスクを予約してしまうため |
+| 期末解約の再試行バッチ（§6.1 (2)） | `MembershipPayerWithdrawalRetryBatchService#runWithdrawalCancelRetry`（日次 03:20 JST）。上記「リリース依存」節を参照 |
+| `MANUAL_INTERVENTION` のアラート（§3.6.2） | `BillingPayerHandoverTxService#markManualIntervention` が通知（`MANUAL_INTERVENTION_REQUIRED`・当該スコープの引継先候補 ADMIN 宛・i18n 6言語）を publish し、あわせて ERROR ログで運用へ上申する |
+| `RESUME`（§3.6.2 出口・AC-37） | `POST /api/v1/{teams\|organizations}/{id}/billing/payer-handover-requests/{handoverRequestId}/resume`。`target=SWITCHING\|FAILED` を運用者が明示的に選ぶ。`FAILED` 確定時の旧サブスク差し戻しは `revertOldCancelSchedule` で**運用者が選ぶ**（旧が既に次の期間へ更新済みの場合、差し戻しは旧をさらに継続させるため不適切なことがある）。`MANUAL_INTERVENTION` 以外からは `HANDOVER_NOT_RESUMABLE`（409） |
+| AC-14（`hardDeleteBySlotAndContractId` 移行） | `BillingContractService#expireSubscriptionContract`（旧サブスク由来の `customer.subscription.deleted` webhook 経路）を `contract_id` 一致条件つき削除へ移行。切替TX後に遅着した旧 webhook は 0 件更新で終わる |
 
 ---
 

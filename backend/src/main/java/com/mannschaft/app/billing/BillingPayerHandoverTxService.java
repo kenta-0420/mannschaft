@@ -580,6 +580,138 @@ public class BillingPayerHandoverTxService {
         BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
         handover.setStatus(PayerHandoverStatus.MANUAL_INTERVENTION);
         handoverRequestRepository.save(handover);
+
+        // §3.6.2「アラート先」: ADMIN（当該スコープの管理者）と運用チームの双方へ即時通知する。
+        // 運用チーム向けは既存の運用アラート基盤（ERROR ログ集約）へ、ADMIN 向けは通知基盤へ流す。
+        // 通知は publish のみ（配送は AFTER_COMMIT リスナー）。この状態は非終端であり、
+        // 誰も気づかなければ引継が永久に止まったまま旧契約への課金が続くため、黙って倒してはならない。
+        List<Long> recipients = candidateResolver.candidateAdminUserIds(
+                handover.getScopeKind(), handover.getScopeId(), handover.getOldPayerUserId());
+        if (!recipients.isEmpty()) {
+            eventPublisher.publishEvent(new BillingPayerHandoverNotificationEvent(
+                    BillingPayerHandoverNotificationKind.MANUAL_INTERVENTION_REQUIRED,
+                    handover.getId(), handover.getScopeKind(), handover.getScopeId(),
+                    recipients, handover.getNewPayerUserId()));
+        }
+        log.error("柱③-B: 引継を MANUAL_INTERVENTION へ倒しました（運用者の RESUME 待ち）"
+                        + " handoverRequestId={}, scope={}/{}, oldContractId={}, 通知先ADMIN数={}",
+                handover.getId(), handover.getScopeKind(), handover.getScopeId(),
+                handover.getOldContractId(), recipients.size());
+    }
+
+    // ============================================================
+    // 夜次照合（AC-34）と RESUME（AC-37）— PR-4
+    // ============================================================
+
+    /**
+     * {@code cancel_at_period_end} の設定が確認できていない行の照合対象を読み出す
+     * （設計書 §3.6.1(a)・AC-34）。対象外なら {@code null}。
+     *
+     * <p>旧サブスク参照が引けない行は照合しようがないため対象外とする（別途 ERROR ログで上申済み）。</p>
+     */
+    @Transactional(readOnly = true)
+    public CancelScheduleTarget loadCancelScheduleTarget(UUID handoverRequestId) {
+        BillingPayerHandoverRequestEntity handover =
+                handoverRequestRepository.findById(handoverRequestId).orElse(null);
+        if (handover == null || handover.getOldCancelScheduledAt() != null) {
+            return null;
+        }
+        if (handover.getStatus() != PayerHandoverStatus.SWITCHING
+                && handover.getStatus() != PayerHandoverStatus.PARTIALLY_COMPLETED) {
+            return null;
+        }
+        BillingContractEntity oldContract = billingContractRepository
+                .findByIdAndDeletedAtIsNull(handover.getOldContractId()).orElse(null);
+        if (oldContract == null || oldContract.getPspSubscriptionRef() == null) {
+            return null;
+        }
+        return new CancelScheduleTarget(handover.getId(), oldContract.getPspSubscriptionRef());
+    }
+
+    /**
+     * 猶予期限を過ぎたまま誰にも承諾されていない引継要求を {@code EXPIRED} で終端化する
+     * （設計書 §5.3・§5.5 ⑤・AC-21・PR-4）。
+     *
+     * <p>Stripe には一切触れていない状態（{@code psp_new_subscription_ref IS NULL} かつ
+     * {@code REQUESTED}／{@code REQUIRES_PAYMENT_METHOD}）だけを対象にするため、
+     * 照合なしで安全に終端化できる。終端化により生成列 {@code open_old_contract_id} が NULL になり、
+     * §5.4 で止められていた purge の期末解約フォールバックへ処理が渡る（＝旧 payer の課金を止められる）。</p>
+     *
+     * <p><b>冪等・レース安全</b>: 行ロックを取り直してから状態と期限を<b>再検証</b>する。
+     * 抽出と終端化の間に承諾が成立していれば no-op で終わる（承諾を横から潰さない）。</p>
+     *
+     * @return 実際に終端化したなら {@code true}
+     */
+    @Transactional
+    public boolean expireOverdueUnaccepted(UUID handoverRequestId, Instant now) {
+        BillingPayerHandoverRequestEntity handover =
+                handoverRequestRepository.findByIdForUpdate(handoverRequestId).orElse(null);
+        if (handover == null
+                || handover.getPspNewSubscriptionRef() != null
+                || handover.getExpiresAt().isAfter(now)) {
+            return false;
+        }
+        if (handover.getStatus() != PayerHandoverStatus.REQUESTED
+                && handover.getStatus() != PayerHandoverStatus.REQUIRES_PAYMENT_METHOD) {
+            return false;
+        }
+        handover.setStatus(PayerHandoverStatus.EXPIRED);
+        handoverRequestRepository.save(handover);
+        log.warn("柱③-B: 猶予期限を過ぎても承諾されなかった引継要求を EXPIRED で終端化しました"
+                        + "（purge の期末解約フォールバックへ渡る）handoverRequestId={}, oldContractId={}",
+                handoverRequestId, handover.getOldContractId());
+        return true;
+    }
+
+    /**
+     * {@code RESUME} の前提を<b>行ロック下で</b>検証し、Stripe 操作に必要な参照を返す
+     * （設計書 §3.6.2・AC-37）。
+     *
+     * <p>認可は承諾 API と同じ二層（HTTP 層の {@code @PreAuthorize} ＋ ここでの
+     * {@code requireCanManage}）。スコープ越境は存在自体を明かさず 404 で畳む。</p>
+     *
+     * @throws BusinessException {@code HANDOVER_NOT_FOUND}（不存在・越境）/
+     *                           {@code HANDOVER_NOT_RESUMABLE}（{@code MANUAL_INTERVENTION} 以外）
+     */
+    @Transactional
+    public ResumeContext loadResumeContext(EntitlementScopeKind scopeKind, Long scopeId,
+            UUID handoverRequestId, Long operatorUserId) {
+
+        BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
+        requireSameScope(handover, scopeKind, scopeId);
+        billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
+
+        // ★RESUME は MANUAL_INTERVENTION 専用の出口である（§3.6.2 遷移表）。
+        //   他状態から呼べると、正常に進行中の引継を人手で SWITCHING/FAILED へ飛ばせてしまう。
+        if (handover.getStatus() != PayerHandoverStatus.MANUAL_INTERVENTION) {
+            throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_RESUMABLE);
+        }
+
+        String oldSubscriptionRef = billingContractRepository
+                .findByIdAndDeletedAtIsNull(handover.getOldContractId())
+                .map(BillingContractEntity::getPspSubscriptionRef)
+                .orElse(null);
+        return new ResumeContext(handover.getId(), oldSubscriptionRef,
+                handover.getPspNewSubscriptionRef());
+    }
+
+    /**
+     * {@code RESUME → 切替再試行}: {@code MANUAL_INTERVENTION} から {@code SWITCHING} へ戻す
+     * （設計書 §3.6.2 出口(i)・AC-37）。
+     *
+     * <p>戻したあとの再評価は切替バッチが行う（本メソッドは切替TXを実行しない）。運用者が
+     * Stripe 側の実データを解消済みであれば、次回の切替バッチが実行前チェックを通して切り替える。</p>
+     */
+    @Transactional
+    public void resumeToSwitching(UUID handoverRequestId) {
+        BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
+        if (handover.getStatus() != PayerHandoverStatus.MANUAL_INTERVENTION) {
+            throw new BusinessException(EntitlementErrorCode.HANDOVER_NOT_RESUMABLE);
+        }
+        handover.setStatus(PayerHandoverStatus.SWITCHING);
+        handoverRequestRepository.save(handover);
+        log.info("柱③-B: 運用者の RESUME により引継を SWITCHING へ戻しました handoverRequestId={}",
+                handoverRequestId);
     }
 
     /**
@@ -756,6 +888,15 @@ public class BillingPayerHandoverTxService {
 
     /** 引継確定（{@code checkout.session.completed}）の結果（{@link #markSwitching}）。 */
     public record CheckoutCompletion(
+            UUID handoverRequestId, String oldSubscriptionRef, String newSubscriptionRef) {
+    }
+
+    /** {@code cancel_at_period_end} 照合の対象（{@link #loadCancelScheduleTarget}・AC-34）。 */
+    public record CancelScheduleTarget(UUID handoverRequestId, String oldSubscriptionRef) {
+    }
+
+    /** {@code RESUME} の前提情報（{@link #loadResumeContext}・AC-37）。 */
+    public record ResumeContext(
             UUID handoverRequestId, String oldSubscriptionRef, String newSubscriptionRef) {
     }
 

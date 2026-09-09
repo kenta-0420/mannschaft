@@ -34,6 +34,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -814,19 +815,24 @@ class BillingPayerHandoverServiceTest {
     // ============================================================
 
     @Test
-    @DisplayName("findSwitchDueHandoverIds: SWITCHING かつ旧期末到達済みの ID を返す（期末は契約側の壁時計で比較）")
+    @DisplayName("findSwitchDueHandoverIds: SWITCHING/PARTIALLY_COMPLETED かつ旧期末到達済みの ID を返す（期末は契約側の壁時計で比較）")
     void findSwitchDue_delegatesWithConvertedWallClock() {
         UUID due = UUID.randomUUID();
         given(handoverRequestRepository.findSwitchDueIds(
-                eq(PayerHandoverStatus.SWITCHING), any(LocalDateTime.class)))
+                anyList(), any(LocalDateTime.class)))
                 .willReturn(List.of(due));
 
         List<UUID> result = service.findSwitchDueHandoverIds(NOW);
 
         assertThat(result).containsExactly(due);
         ArgumentCaptor<LocalDateTime> cutoff = ArgumentCaptor.forClass(LocalDateTime.class);
+        ArgumentCaptor<List<PayerHandoverStatus>> statuses = ArgumentCaptor.forClass(List.class);
         verify(handoverRequestRepository)
-                .findSwitchDueIds(eq(PayerHandoverStatus.SWITCHING), cutoff.capture());
+                .findSwitchDueIds(statuses.capture(), cutoff.capture());
+        // ★PR-4: PARTIALLY_COMPLETED（ローカル切替TXのみ未了・非終端）も同じバッチが拾い直さないと
+        //   pointer が旧のまま宙ぶらりんで残る。MANUAL_INTERVENTION は運用者の RESUME 待ちのため含めない。
+        assertThat(statuses.getValue()).containsExactly(
+                PayerHandoverStatus.SWITCHING, PayerHandoverStatus.PARTIALLY_COMPLETED);
         // Instant → billing_contracts の壁時計へ、同じ Clock の zone で変換される。
         assertThat(cutoff.getValue()).isEqualTo(LocalDateTime.ofInstant(NOW, ZoneOffset.UTC));
     }
