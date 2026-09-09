@@ -31,7 +31,12 @@ async function resolveTeamNumericId() {
     notification.error(t('shift.page.teamLoadFailed'))
   }
 }
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
+const { isAdmin, isAdminOrDeputy, roleName, loadPermissions } = useRoleAccess('team', teamSlug)
+// シフトボードは当該チームの ADMIN / DEPUTY_ADMIN 限定。
+// 判定手段は board.vue（`shifts/[scheduleId]/board.vue` の isScopeAdmin）に合わせる。
+const isScopeAdmin = computed(
+  () => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN',
+)
 const { userTimezone } = useDatetime()
 
 const activeTab = ref(0)
@@ -71,6 +76,8 @@ async function createSchedule() {
   }
 }
 
+// 受付終了（status != COLLECTING / requestDeadline 経過）のシフト表では
+// ShiftScheduleList 側が select を emit しないため、ここは従来どおりでよい。
 function onScheduleSelect(id: number) {
   selectedScheduleId.value = id
   showRequestDialog.value = true
@@ -100,9 +107,20 @@ onMounted(() => {
           <ShiftScheduleList
             :team-id="teamSlug"
             :can-manage="isAdminOrDeputy"
+            :can-manage-board="isScopeAdmin"
             @select="onScheduleSelect"
             @create="showCreateDialog = true"
           />
+          <!-- 曜日ごとの既定希望ページへの導線（FE 全体でリンクが無く到達不能だった） -->
+          <div class="mt-4">
+            <Button
+              :label="t('shift.entry.weeklyDefault')"
+              icon="pi pi-calendar-clock"
+              text
+              size="small"
+              @click="navigateTo('/my/shift-availability')"
+            />
+          </div>
         </TabPanel>
         <TabPanel :value="1">
           <!-- 交代申請APIは数値 teamId を要求する。解決前は骨組みを出して誤リクエストを撃たない -->
