@@ -62194,6 +62194,8 @@ export interface components {
         CreateShiftSlotRequest: {
             /** @example 14:30:00 */
             endTime: string;
+            /** @description 日跨ぎ枠かどうか。省略時は false（日跨ぎでない）として扱う。暗黙の end < start による日跨ぎは認めない */
+            endsNextDay?: boolean;
             note?: string;
             /** Format: int64 */
             positionId?: number;
@@ -62228,6 +62230,8 @@ export interface components {
         ShiftSlotTimeDto: {
             /** @example 14:30:00 */
             endTime?: string;
+            /** @description 日跨ぎ枠かどうか。true のとき終了時刻は翌日の時刻を指す */
+            endsNextDay?: boolean;
             /** Format: date */
             slotDate?: string;
             /** @example 14:30:00 */
@@ -68972,6 +68976,8 @@ export interface components {
             assignedUserIds?: number[];
             /** @example 14:30:00 */
             endTime?: string;
+            /** @description 日跨ぎ枠かどうか。部分更新のため null は現値維持を意味する */
+            endsNextDay?: boolean;
             note?: string;
             /** Format: int64 */
             positionId?: number;
