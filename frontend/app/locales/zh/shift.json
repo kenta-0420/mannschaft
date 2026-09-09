@@ -354,6 +354,23 @@
         "schedule": "排班计划",
         "noSlot": "当天没有班次"
       }
+    },
+    "entry": {
+      "sectionTitle": "提交排班意愿 / 排班板",
+      "bulkRequest": "批量提交意愿",
+      "board": "排班板",
+      "weeklyDefault": "设置每周默认",
+      "closed": "意愿提交已截止"
+    },
+    "submitConfirm": {
+      "title": "确认以此内容提交？",
+      "filledLabel": "已填写的日期",
+      "defaultAppliedLabel": "由默认设置自动填入的日期",
+      "untouchedLabel": "未填写的日期",
+      "dayCount": "{count} 天",
+      "untouchedNotice": "未填写的日期将以“希望休息”提交。但在人手不足时仍可能收到排班请求。",
+      "submit": "提交",
+      "back": "返回修改"
     }
   },
   "my_shift_guide": {

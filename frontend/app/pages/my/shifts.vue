@@ -68,7 +68,7 @@ onMounted(() => load())
         <!-- スケジュール ID がある場合は変更依頼リンクを表示 -->
         <NuxtLink
           v-if="s.scheduleId"
-          :to="`/shifts/schedules/${s.scheduleId}`"
+          :to="`/shift/${s.scheduleId}`"
           class="mt-2 inline-flex items-center gap-1 text-xs text-primary-600 hover:underline"
         >
           <i class="pi pi-arrow-right text-xs" />
