@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
+import type { ShiftScheduleResponse } from '~/types/shift'
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
@@ -31,7 +32,12 @@ async function resolveTeamNumericId() {
     notification.error(t('shift.page.teamLoadFailed'))
   }
 }
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
+const { isAdmin, isAdminOrDeputy, roleName, loadPermissions } = useRoleAccess('team', teamSlug)
+// シフトボードは当該チームの ADMIN / DEPUTY_ADMIN 限定。
+// 判定手段は board.vue（`shifts/[scheduleId]/board.vue` の isScopeAdmin）に合わせる。
+const isScopeAdmin = computed(
+  () => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN',
+)
 const { userTimezone } = useDatetime()
 
 const activeTab = ref(0)
@@ -63,6 +69,7 @@ async function createSchedule() {
     })
     notification.success('シフト表を作成しました')
     showCreateDialog.value = false
+    await loadSchedules()
     createForm.value = { title: '', periodStart: null, periodEnd: null }
   } catch {
     notification.error('作成に失敗しました')
@@ -71,7 +78,39 @@ async function createSchedule() {
   }
 }
 
+// --- 希望受付の可否判定（CMP-260908-2118）--------------------------------
+// BE は ShiftRequestService#validateCollectingStatus / #validateRequestDeadline の
+// 2 つのガードを持つ。画面がこれを見ていないため「押しても必ず失敗するボタン」が
+// 出ていた。一覧レスポンス（ShiftScheduleResponse）は status.status と
+// period.requestDeadline を持つので、それだけで受付可否を判定できる。
+const schedules = ref<ShiftScheduleResponse[]>([])
+
+async function loadSchedules() {
+  try {
+    schedules.value = await shiftApi.listSchedules(teamSlug)
+  } catch {
+    notification.error(t('shift.notification.errorLoad'))
+    schedules.value = []
+  }
+}
+
+function isAcceptingRequests(s: ShiftScheduleResponse): boolean {
+  if (s.status.status !== 'COLLECTING') return false
+  const deadline = s.period.requestDeadline
+  if (!deadline) return true
+  return dayjs().isBefore(dayjs(deadline))
+}
+
+const acceptingScheduleIds = computed(() =>
+  schedules.value.filter(isAcceptingRequests).map((s) => s.id),
+)
+
 function onScheduleSelect(id: number) {
+  // 受付終了のシフト表は希望ダイアログも開かせない（開いても BE に必ず弾かれるため）
+  if (schedules.value.length > 0 && !acceptingScheduleIds.value.includes(id)) {
+    notification.warn(t('shift.entry.closed'))
+    return
+  }
   selectedScheduleId.value = id
   showRequestDialog.value = true
 }
@@ -79,6 +118,7 @@ function onScheduleSelect(id: number) {
 onMounted(() => {
   loadPermissions()
   void resolveTeamNumericId()
+  void loadSchedules()
 })
 </script>
 
@@ -103,6 +143,23 @@ onMounted(() => {
             @select="onScheduleSelect"
             @create="showCreateDialog = true"
           />
+          <!-- 一括希望入力・シフトボードへの導線（CMP-260908-2118） -->
+          <ShiftScheduleRequestActions
+            :team-slug="teamSlug"
+            :schedules="schedules"
+            :accepting-schedule-ids="acceptingScheduleIds"
+            :can-manage="isScopeAdmin"
+          />
+          <!-- 曜日ごとの既定希望ページへの導線（FE 全体でリンクが無く到達不能だった） -->
+          <div class="mt-4">
+            <Button
+              :label="t('shift.entry.weeklyDefault')"
+              icon="pi pi-calendar-clock"
+              text
+              size="small"
+              @click="navigateTo('/my/shift-availability')"
+            />
+          </div>
         </TabPanel>
         <TabPanel :value="1">
           <!-- 交代申請APIは数値 teamId を要求する。解決前は骨組みを出して誤リクエストを撃たない -->

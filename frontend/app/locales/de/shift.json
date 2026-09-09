@@ -354,6 +354,23 @@
         "schedule": "Schichtplan",
         "noSlot": "Keine Schichten an diesem Tag"
       }
+    },
+    "entry": {
+      "sectionTitle": "Wünsche einreichen / Schichtboard",
+      "bulkRequest": "Wünsche gesammelt einreichen",
+      "board": "Schichtboard",
+      "weeklyDefault": "Wochentags-Standard festlegen",
+      "closed": "Die Wunschabgabe ist beendet"
+    },
+    "submitConfirm": {
+      "title": "Mit diesem Inhalt senden?",
+      "filledLabel": "Ausgefüllte Tage",
+      "defaultAppliedLabel": "Aus Standardwerten übernommene Tage",
+      "untouchedLabel": "Nicht ausgefüllte Tage",
+      "dayCount": "{count} Tag(e)",
+      "untouchedNotice": "Nicht ausgefüllte Tage werden als „möglichst frei\" eingereicht. Bei Personalmangel kann dennoch eine Schichtanfrage kommen.",
+      "submit": "Senden",
+      "back": "Zurück zum Bearbeiten"
     }
   },
   "my_shift_guide": {

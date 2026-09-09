@@ -354,6 +354,23 @@
         "schedule": "Horario",
         "noSlot": "No hay turnos este día"
       }
+    },
+    "entry": {
+      "sectionTitle": "Enviar preferencias / Tablero de turnos",
+      "bulkRequest": "Enviar preferencias en bloque",
+      "board": "Tablero de turnos",
+      "weeklyDefault": "Configurar valores por día de la semana",
+      "closed": "El plazo de preferencias ha terminado"
+    },
+    "submitConfirm": {
+      "title": "¿Enviar con este contenido?",
+      "filledLabel": "Días completados",
+      "defaultAppliedLabel": "Días rellenados desde tus valores por defecto",
+      "untouchedLabel": "Días sin completar",
+      "dayCount": "{count} día(s)",
+      "untouchedNotice": "Los días sin completar se envían como \"preferiblemente descansar\". Aun así, podrían pedirte trabajar si falta personal.",
+      "submit": "Enviar",
+      "back": "Volver a editar"
     }
   },
   "my_shift_guide": {
