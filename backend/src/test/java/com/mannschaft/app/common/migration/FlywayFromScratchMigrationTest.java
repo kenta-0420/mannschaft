@@ -132,10 +132,14 @@ class FlywayFromScratchMigrationTest {
      *   <li><b>{@code content_reports.content_hidden}・{@code tournament_entry_members.member_number}・
      *       {@code tournament_entry_template_members.created_at/updated_at}（4 件）</b> —
      *       {@code queue_tickets.guest_phone} と同型（Entity にだけ足して migration を忘れた）。</li>
-     *   <li><b>{@code shift_budget_allocations} の {@code *_uq}（3 件）</b> —
-     *       Entity は {@code @GeneratedColumn} で生成カラムを宣言しているが、
-     *       Flyway（V11.030）は生成カラムではなく関数インデックスで同じ一意制約を実装しており、
-     *       列そのものが存在しない。</li>
+     *   <li><b>{@code shift_budget_allocations} の {@code *_uq}（旧 3 件・2026-09-09 に返済）</b> —
+     *       Entity が {@code @GeneratedColumn} で生成カラムを宣言していたが、Flyway（V11.030）は
+     *       MySQL 8.0 の制約（FK ベースカラムに STORED 生成カラム不可、Error 3192）により
+     *       関数インデックスで同じ一意制約を実装しており、列そのものが存在しなかった。
+     *       Entity 側の宣言を撤去して是正済み（実機で {@code Unknown column 'deleted_at_uq'} により
+     *       F08.7 シフト予算 API が全て 500 になっていた）。
+     *       DB 側の一意性が残っていることは
+     *       {@link #shift_budget_allocationsの一意性が関数インデックスで担保されている()} が守る。</li>
      *   <li><b>{@code BaseEntity} の {@code created_at} / {@code updated_at}（17 件）</b> —
      *       {@link com.mannschaft.app.common.BaseEntity} は全継承 Entity に
      *       {@code createdAt} / {@code updatedAt} を持たせ、{@code @PrePersist} /
@@ -152,10 +156,6 @@ class FlywayFromScratchMigrationTest {
         "tournament_entry_members.member_number",
         "tournament_entry_template_members.created_at",
         "tournament_entry_template_members.updated_at",
-        // --- 生成カラム vs 関数インデックスの設計不一致（要設計判断）---
-        "shift_budget_allocations.team_id_uq",
-        "shift_budget_allocations.project_id_uq",
-        "shift_budget_allocations.deleted_at_uq",
         // --- BaseEntity の created_at / updated_at を CREATE TABLE が作っていない ---
         "ad_conversions.updated_at",
         "analytics_alert_history.updated_at",
@@ -326,6 +326,53 @@ class FlywayFromScratchMigrationTest {
         } finally {
             StandardServiceRegistryBuilder.destroy(registry);
         }
+    }
+
+    /**
+     * <b>{@code shift_budget_allocations} の一意性が実 DB 上に残っていることを検証する。</b>
+     *
+     * <p>Entity から {@code @UniqueConstraint}（生成カラム参照）を撤去した是正（2026-09-09）により、
+     * この表の一意性は <b>Flyway の関数インデックス {@code uq_sba_scope_category_period} だけ</b>が
+     * DB 側の担保となった。Entity には表現手段が無いため、誰かが移行から
+     * この索引を落としても Java 側では何も壊れず、
+     * 「同一スコープの割当が二重に作られる」事故が静かに発生しうる。
+     * そこで実スキーマ上に UNIQUE 索引が存在し、NULL-safe 化の COALESCE 式を
+     * 7 要素すべてについて持つことを直接検査する。</p>
+     *
+     * <p>アプリ層の重複防止（{@code ShiftBudgetAllocationService.findLiveByScope} の
+     * {@code SELECT ... FOR UPDATE}）は併存する二重化であり、本索引の代替ではない。</p>
+     */
+    @Test
+    @Order(3)
+    @DisplayName("shift_budget_allocations の一意性が関数インデックスで担保されている")
+    void shift_budget_allocationsの一意性が関数インデックスで担保されている() throws Exception {
+        // given: Flyway 実スキーマ（単独実行にも耐えるよう冪等に再適用）
+        migrateFromScratch();
+
+        String createTable;
+        try (Connection conn = DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+             java.sql.Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery("SHOW CREATE TABLE shift_budget_allocations")) {
+            assertThat(rs.next()).as("shift_budget_allocations が存在すること").isTrue();
+            createTable = rs.getString(2);
+        }
+
+        // 式インデックスは SHOW CREATE TABLE 上で改行・空白が入りうるため、空白を潰して比較する
+        String normalized = createTable.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+
+        assertThat(normalized)
+                .as("UNIQUE 索引 uq_sba_scope_category_period が存在すること（DDL: %s）", createTable)
+                .contains("uniquekey`uq_sba_scope_category_period`");
+        assertThat(normalized)
+                .as("team_id の NULL-safe 化（COALESCE 番兵値）が索引に含まれること（DDL: %s）", createTable)
+                .contains("coalesce(`team_id`,0)");
+        assertThat(normalized)
+                .as("project_id の NULL-safe 化が索引に含まれること（DDL: %s）", createTable)
+                .contains("coalesce(`project_id`,0)");
+        assertThat(normalized)
+                .as("deleted_at の NULL-safe 化が索引に含まれること（DDL: %s）", createTable)
+                .contains("coalesce(`deleted_at`,");
     }
 
     /** 本番の fresh 構築と同条件（out-of-order 無効）で全マイグレーションを適用する。冪等。 */
