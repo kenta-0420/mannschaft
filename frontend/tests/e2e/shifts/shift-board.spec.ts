@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
+import { mockFeatureFlags } from '../helpers/feature-flags'
 import {
   TEAM_ID,
   SCHEDULE_ID,
@@ -39,6 +40,8 @@ test.describe('BOARD-001〜004: F03.5 Phase 2 D&D シフトボード', () => {
     await setupAdminAuth(page)
     // catch-all で全APIに空レスポンスを設定（後で個別上書き）
     await mockCatchAllApis(page)
+    // catch-all より後に登録し、feature-gate が無効フラグで /dashboard に差し戻さないようにする
+    await mockFeatureFlags(page)
     // チームメンバー API をモック（board.vue の loadMembers() が呼ぶ）
     await mockTeamMembersApi(page)
   })
