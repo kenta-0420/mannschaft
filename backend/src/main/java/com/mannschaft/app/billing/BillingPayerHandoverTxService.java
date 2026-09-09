@@ -510,13 +510,21 @@ public class BillingPayerHandoverTxService {
      * 旧契約の pointer は無傷のため利用者影響は無い。</p>
      */
     @Transactional
-    public boolean markFailedAndClearCancelSchedule(UUID handoverRequestId) {
+    public boolean markFailedAndClearCancelSchedule(
+            UUID handoverRequestId, List<PayerHandoverStatus> expectedStatuses) {
         BillingPayerHandoverRequestEntity handover = lockOrThrow(handoverRequestId);
-        // ★期待元状態つき CAS（P1-4）: 既に COMPLETED まで進んだ引継を、遅れて届いた
-        //   失敗補償が FAILED へ引き戻して新契約まで CANCELLED にしてしまうのを防ぐ。
-        if (TERMINAL_STATUSES.contains(handover.getStatus())) {
-            log.warn("柱③-B: 既に終端のため FAILED 確定を行いません handoverRequestId={}, status={}",
-                    handoverRequestId, handover.getStatus());
+        // ★【呼び出し元ごとの期待元状態を検証する真の CAS】（PR-4 Codex検分2巡目 P1-2）
+        //   是正前は「終端でなければ何でも FAILED にする」であり、これは CAS ではない。
+        //   呼び出し元ごとに期待する元状態は異なる:
+        //     - 切替バッチの失敗補償 → SWITCHING / PARTIALLY_COMPLETED
+        //     - RESUME→FAILED 確定   → MANUAL_INTERVENTION
+        //   区別しないと、古いスナップショットを持つ切替 worker の遅れた失敗補償が、
+        //   別 worker が倒した MANUAL_INTERVENTION を FAILED へ上書きでき（運用者の RESUME 待ちが消える）、
+        //   逆に同時 RESUME の一方が SWITCHING へ戻した直後に他方の FAILED が成立してしまう。
+        if (!expectedStatuses.contains(handover.getStatus())) {
+            log.warn("柱③-B: 期待元状態と一致しないため FAILED 確定を行いません"
+                            + " handoverRequestId={}, status={}, expected={}",
+                    handoverRequestId, handover.getStatus(), expectedStatuses);
             return false;
         }
         handover.setStatus(PayerHandoverStatus.FAILED);

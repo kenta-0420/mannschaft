@@ -47,6 +47,15 @@ class BillingPayerHandoverBatchServiceTest {
         return batchService;
     }
 
+    /**
+     * 滞留照合はキーセットで進むため、既定では「1ページ目が空」を返す。
+     * 個々のテストで進み方を検証したい場合だけ上書きする。
+     */
+    private void givenNoStalledSwitching() {
+        given(handoverService.findStalledSwitchingPage(any(), org.mockito.ArgumentMatchers.anyInt()))
+                .willReturn(new BillingPayerHandoverService.StalledSwitchingPage(List.of(), null));
+    }
+
     @Test
     @DisplayName("AC-27: 切替バッチは抽出した全件に対して executeSwitch を呼ぶ（PR-2 の未結線を解消する）")
     void switchBatch_drivesEveryDueHandover() {
@@ -78,6 +87,7 @@ class BillingPayerHandoverBatchServiceTest {
             + "（承諾操作が来ない限り誰も期限切れにしなかった穴を塞ぐ）")
     void nightlyReconcile_expiresOverdueUnaccepted() {
         UUID target = UUID.randomUUID();
+        givenNoStalledSwitching();
         given(handoverService.findOverdueUnacceptedIds(any())).willReturn(List.of(target));
         given(handoverService.findExpiredUnresolvedAcceptanceIds(any())).willReturn(List.of());
         given(handoverService.findOldCancelScheduleUnconfirmedIds()).willReturn(List.of());
@@ -91,6 +101,7 @@ class BillingPayerHandoverBatchServiceTest {
     @DisplayName("AC-34: 夜次照合バッチは old_cancel_scheduled_at 未確認の行を Stripe と突合する")
     void nightlyReconcile_reconcilesUnconfirmedCancelSchedule() {
         UUID target = UUID.randomUUID();
+        givenNoStalledSwitching();
         given(handoverService.findOverdueUnacceptedIds(any())).willReturn(List.of());
         given(handoverService.findExpiredUnresolvedAcceptanceIds(any())).willReturn(List.of());
         given(handoverService.findOldCancelScheduleUnconfirmedIds()).willReturn(List.of(target));
@@ -104,6 +115,7 @@ class BillingPayerHandoverBatchServiceTest {
     @DisplayName("§5.3: 夜次照合バッチは期限超過のまま未解決の承諾も照合する")
     void nightlyReconcile_reconcilesExpiredAcceptance() {
         UUID target = UUID.randomUUID();
+        givenNoStalledSwitching();
         given(handoverService.findOverdueUnacceptedIds(any())).willReturn(List.of());
         given(handoverService.findExpiredUnresolvedAcceptanceIds(any())).willReturn(List.of(target));
         given(handoverService.findOldCancelScheduleUnconfirmedIds()).willReturn(List.of());
@@ -118,6 +130,7 @@ class BillingPayerHandoverBatchServiceTest {
     void nightlyReconcile_expiredFailureDoesNotSkipCancelReconcile() {
         UUID expired = UUID.randomUUID();
         UUID unconfirmed = UUID.randomUUID();
+        givenNoStalledSwitching();
         given(handoverService.findOverdueUnacceptedIds(any())).willReturn(List.of());
         given(handoverService.findExpiredUnresolvedAcceptanceIds(any())).willReturn(List.of(expired));
         given(handoverService.findOldCancelScheduleUnconfirmedIds()).willReturn(List.of(unconfirmed));
@@ -126,6 +139,34 @@ class BillingPayerHandoverBatchServiceTest {
         service().runPayerHandoverNightlyReconcile();
 
         verify(handoverService).reconcileOldCancelSchedule(unconfirmed);
+    }
+
+    @Test
+    @DisplayName("P1-5: 滞留照合はキーセットで【前へ進む】"
+            + "——毎回同じ先頭を舐めると、状態が変わらない正常待機行だけで後続が飢餓する")
+    void stalledSwitching_advancesByKeyset() {
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        Instant firstCursor = Instant.parse("2026-09-01T00:00:00Z");
+        Instant secondCursor = Instant.parse("2026-09-02T00:00:00Z");
+        given(handoverService.findOverdueUnacceptedIds(any())).willReturn(List.of());
+        given(handoverService.findExpiredUnresolvedAcceptanceIds(any())).willReturn(List.of());
+        given(handoverService.findOldCancelScheduleUnconfirmedIds()).willReturn(List.of());
+        // 1ページ目は cursor=EPOCH、2ページ目は【1ページ目の最後の acceptedAt】で呼ばれること。
+        given(handoverService.findStalledSwitchingPage(Instant.EPOCH, 200))
+                .willReturn(new BillingPayerHandoverService.StalledSwitchingPage(
+                        List.of(first), firstCursor));
+        given(handoverService.findStalledSwitchingPage(firstCursor, 200))
+                .willReturn(new BillingPayerHandoverService.StalledSwitchingPage(
+                        List.of(second), secondCursor));
+        given(handoverService.findStalledSwitchingPage(secondCursor, 200))
+                .willReturn(new BillingPayerHandoverService.StalledSwitchingPage(List.of(), null));
+
+        service().runPayerHandoverNightlyReconcile();
+
+        // 先頭を舐め直すのではなく、2ページ目の行まで到達している。
+        verify(handoverService).reconcileStalledSwitching(first);
+        verify(handoverService).reconcileStalledSwitching(second);
     }
 
     @Test

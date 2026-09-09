@@ -354,7 +354,10 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             log.info("F20.1 サブスク即時解約（purge 連動）: id={}, status={}", canceled.getId(), canceled.getStatus());
         } catch (StripeException e) {
             log.error("F20.1 サブスク即時解約失敗: id={}", subscriptionId, e);
-            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+            // ★cause を保持する（柱③-B PR-4 Codex検分2巡目 P1-3）。ここで握り潰すと、呼び出し側は
+            //   「Stripe の 4xx（恒久・人手が要る）」と「5xx/接続断（一時・再試行で回復する）」を
+            //   区別できず、経過時間のような代理指標で推測するしかなくなる。
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
         }
     }
 
@@ -1103,7 +1106,10 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             return new SubscriptionInfo(updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
         } catch (StripeException e) {
             log.error("Stripe Subscription 期末解約予約失敗: id={}", subscriptionId, e);
-            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+            // ★cause を保持する（柱③-B PR-4 Codex検分2巡目 P1-3）。ここで握り潰すと、呼び出し側は
+            //   「Stripe の 4xx（恒久・人手が要る）」と「5xx/接続断（一時・再試行で回復する）」を
+            //   区別できず、経過時間のような代理指標で推測するしかなくなる。
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
         }
     }
 
@@ -1415,7 +1421,10 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             return new SubscriptionInfo(updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
         } catch (StripeException e) {
             log.error("引継: Stripe Subscription 期末解約予約の差し戻し失敗: id={}", subscriptionId, e);
-            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+            // ★cause を保持する（柱③-B PR-4 Codex検分2巡目 P1-3）。ここで握り潰すと、呼び出し側は
+            //   「Stripe の 4xx（恒久・人手が要る）」と「5xx/接続断（一時・再試行で回復する）」を
+            //   区別できず、経過時間のような代理指標で推測するしかなくなる。
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
         }
     }
 

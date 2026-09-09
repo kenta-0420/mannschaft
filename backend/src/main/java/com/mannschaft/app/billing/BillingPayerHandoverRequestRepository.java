@@ -1,6 +1,7 @@
 package com.mannschaft.app.billing;
 
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -144,15 +145,36 @@ public interface BillingPayerHandoverRequestRepository
      * <b>旧サブスクが先に終了してしまい、差し戻しても継続を復旧できない</b>。
      * 抽出には Stripe 照会を伴わない（実物の再検証は呼び出し側が行う）。</p>
      *
-     * @param cutoff {@code accepted_at} がこの時刻以前の行を滞留とみなす
+     * <h2>抽出条件が2本ある理由（PR-4 Codex検分2巡目 P1-6）</h2>
+     * <p>「承諾+24時間」だけだと、<b>旧期末まで24時間未満の契約</b>では監視より先に旧サブスクが
+     * 期末終了してしまう。そこで {@code periodEndCutoff}（旧期末が目前）でも拾い、
+     * 差し戻しが有効なうちに決着させる。</p>
+     *
+     * <h2>キーセット送りで返す理由（同 P1-5）</h2>
+     * <p>この抽出は<b>処理しても状態が変わらない行</b>（認証完了済みで旧期末を待っているだけの
+     * 正常な {@code SWITCHING}）を返しうる。他の照合クエリは処理すると必ず状態が動いて集合から
+     * 抜けるが、この抽出だけは抜けない。固定の「先頭N件」で切ると、その種の古い行がN件あるだけで
+     * <b>後続の認証未解決行が永久に検査されない</b>（＝24時間期限を満たせない）。よって
+     * {@code (id, acceptedAt)} を返し、呼び出し側が {@code afterAcceptedAt} を carry して前へ進む。</p>
+     *
+     * @param cutoff          {@code accepted_at} がこの時刻以前の行を滞留とみなす
+     * @param periodEndCutoff 旧契約の期末がこの時刻以前なら、承諾からの経過に関わらず拾う
+     * @param afterAcceptedAt 直前ページの最後の {@code accepted_at}（初回は {@code Instant.EPOCH}）
      */
-    @Query("SELECT h.id FROM BillingPayerHandoverRequestEntity h "
+    @Query("SELECT h.id, h.acceptedAt FROM BillingPayerHandoverRequestEntity h "
+            + "JOIN BillingContractEntity c ON c.id = h.oldContractId "
             + "WHERE h.status = :status "
             + "AND h.pspNewSubscriptionRef IS NOT NULL "
-            + "AND h.acceptedAt IS NOT NULL AND h.acceptedAt <= :cutoff "
+            + "AND h.acceptedAt IS NOT NULL "
+            + "AND (h.acceptedAt <= :cutoff "
+            + "     OR (c.currentPeriodEnd IS NOT NULL AND c.currentPeriodEnd <= :periodEndCutoff)) "
+            + "AND h.acceptedAt > :afterAcceptedAt "
             + "ORDER BY h.acceptedAt")
-    List<UUID> findStalledSwitchingIds(@Param("status") PayerHandoverStatus status,
-                                       @Param("cutoff") Instant cutoff);
+    List<Object[]> findStalledSwitchingPage(@Param("status") PayerHandoverStatus status,
+                                            @Param("cutoff") Instant cutoff,
+                                            @Param("periodEndCutoff") LocalDateTime periodEndCutoff,
+                                            @Param("afterAcceptedAt") Instant afterAcceptedAt,
+                                            Pageable pageable);
 
     /**
      * 猶予期限を過ぎたまま {@code ACCEPTED} に留まり、新サブスク参照が未確定の引継要求 ID を返す

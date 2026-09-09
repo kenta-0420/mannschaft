@@ -47,6 +47,14 @@ public class BillingPayerHandoverBatchService {
      */
     static final int MAX_TARGETS_PER_RUN = 200;
 
+    /**
+     * キーセット送りで進むときの最大ページ数（暴走防止の安全弁）。
+     *
+     * <p>{@link #MAX_TARGETS_PER_RUN} × 本値までは1回の実行で前へ進む。ここに到達するのは
+     * 滞留が異常に積み上がっているときであり、ログの走査件数がそれを可視化する。</p>
+     */
+    static final int MAX_PAGES_PER_RUN = 25;
+
     private final BillingPayerHandoverService handoverService;
     private final Clock clock;
 
@@ -137,38 +145,6 @@ public class BillingPayerHandoverBatchService {
         reconcileStalledSwitching();
     }
 
-    /**
-     * §5.5 ④・AC-20: {@code SWITCHING} の滞留を Stripe 実物と突合し、追加認証が期限内に
-     * 完了していなければ {@code FAILED} を確定して他 ADMIN へ再通知する（PR-4 Codex検分1巡目 P1-6）。
-     */
-    private void reconcileStalledSwitching() {
-        List<UUID> targets;
-        try {
-            targets = handoverService.findStalledSwitchingIds();
-        } catch (Exception e) {
-            log.error("柱③-B 夜次照合: SWITCHING 滞留の抽出に失敗しました", e);
-            return;
-        }
-        int failedOut = 0;
-        int errors = 0;
-        for (UUID handoverRequestId : limit(targets)) {
-            try {
-                if (handoverService.reconcileStalledSwitching(handoverRequestId)) {
-                    failedOut++;
-                }
-            } catch (Exception e) {
-                errors++;
-                log.error("柱③-B 夜次照合: SWITCHING 滞留の照合に失敗しました handoverRequestId={}",
-                        handoverRequestId, e);
-            }
-        }
-        if (!targets.isEmpty()) {
-            log.warn("柱③-B 夜次照合（SWITCHING 滞留）: 対象={}, 終端化={}, 失敗={}"
-                    + "（滞留が積み上がる場合は追加認証の導線を調査すること）",
-                    targets.size(), failedOut, errors);
-        }
-    }
-
     /** §5.3・AC-21: 猶予期限を過ぎたまま誰にも承諾されなかった要求を EXPIRED で終端化する。 */
     private void expireOverdueUnaccepted() {
         List<UUID> targets;
@@ -194,6 +170,55 @@ public class BillingPayerHandoverBatchService {
         if (!targets.isEmpty()) {
             log.info("柱③-B 夜次照合（期限切れ未承諾）: 対象={}, 終端化={}, 失敗={}",
                     targets.size(), expired, failed);
+        }
+    }
+
+    /**
+     * §5.5 ④・AC-20: {@code SWITCHING} の滞留を Stripe 実物と突合し、追加認証が期限内に
+     * 完了していなければ {@code FAILED} を確定して決着させる（PR-4 Codex検分1巡目 P1-6）。
+     *
+     * <p><b>キーセット送りで最後まで進む</b>（同2巡目 P1-5）。この抽出だけは
+     * 「処理しても状態が変わらない行」（認証完了済みで旧期末を待つ正常な {@code SWITCHING}）を
+     * 返しうるため、固定の先頭N件で切ると<b>その種の古い行がN件あるだけで後続が永久に検査されない</b>。
+     * 他の3つの照合は処理すると必ず状態が動いて集合から抜けるので先頭から詰めれば足りるが、
+     * ここだけは前へ進み続ける必要がある。</p>
+     */
+    private void reconcileStalledSwitching() {
+        Instant cursor = Instant.EPOCH;
+        int scanned = 0;
+        int failedOut = 0;
+        int errors = 0;
+        for (int page = 0; page < MAX_PAGES_PER_RUN; page++) {
+            BillingPayerHandoverService.StalledSwitchingPage batch;
+            try {
+                batch = handoverService.findStalledSwitchingPage(cursor, MAX_TARGETS_PER_RUN);
+            } catch (Exception e) {
+                log.error("柱③-B 夜次照合: SWITCHING 滞留の抽出に失敗しました cursor={}", cursor, e);
+                return;
+            }
+            if (batch.handoverRequestIds().isEmpty()) {
+                break;
+            }
+            for (UUID handoverRequestId : batch.handoverRequestIds()) {
+                scanned++;
+                try {
+                    if (handoverService.reconcileStalledSwitching(handoverRequestId)) {
+                        failedOut++;
+                    }
+                } catch (Exception e) {
+                    errors++;
+                    log.error("柱③-B 夜次照合: SWITCHING 滞留の照合に失敗しました handoverRequestId={}",
+                            handoverRequestId, e);
+                }
+            }
+            if (batch.lastAcceptedAt() == null) {
+                break;
+            }
+            cursor = batch.lastAcceptedAt();
+        }
+        if (scanned > 0) {
+            log.warn("柱③-B 夜次照合（SWITCHING 滞留）: 走査={}, 終端化={}, 失敗={}"
+                    + "（滞留が積み上がる場合は追加認証の導線を調査すること）", scanned, failedOut, errors);
         }
     }
 

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -21,12 +22,14 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.BDDMockito.willThrow;
 
@@ -128,15 +131,29 @@ class BillingPayerHandoverReconcileResumeTest {
         verify(handoverTxService, never()).persistOldCancelScheduledAt(any(), any());
     }
 
+    /** Stripe の 4xx（恒久）を実際の例外型で作る。分類は【型とステータス】で決まる。 */
+    private RuntimeException stripe4xx() {
+        return new BusinessException(com.mannschaft.app.payment.PaymentErrorCode.STRIPE_API_ERROR,
+                new com.stripe.exception.InvalidRequestException(
+                        "No such subscription", "subscription", "req_1", "resource_missing", 404, null));
+    }
+
+    /** Stripe への接続断（一時）を実際の例外型で作る。 */
+    private RuntimeException stripeTransient() {
+        return new BusinessException(com.mannschaft.app.payment.PaymentErrorCode.STRIPE_API_ERROR,
+                new com.stripe.exception.ApiConnectionException("connection reset",
+                        new java.io.IOException("reset")));
+    }
+
     @Test
-    @DisplayName("P1-3: 設定 API が失敗し承諾から猶予（3日）を過ぎていれば MANUAL_INTERVENTION へ倒す"
-            + "（恒久失敗を無限再試行にしない）")
-    void reconcile_permanentFailure_escalatesToManualIntervention() {
+    @DisplayName("P1-3: Stripe が 4xx を返したら【猶予内でも】即 MANUAL_INTERVENTION へ倒す"
+            + "（恒久失敗を3日間も再試行しない）")
+    void reconcile_permanent4xx_escalatesImmediately() {
+        // 承諾からまだ1時間しか経っていない＝時間の上限には全く達していない。
         given(handoverTxService.loadCancelScheduleTarget(handoverId))
-                .willReturn(new CancelScheduleTarget(handoverId, OLD_SUB,
-                        NOW.minus(java.time.Duration.ofDays(4))));
+                .willReturn(new CancelScheduleTarget(handoverId, OLD_SUB, NOW.minusSeconds(3600)));
         given(billingPaymentGateway.retrieveSubscription(OLD_SUB)).willReturn(snapshot(false));
-        willThrow(new IllegalStateException("stripe 4xx"))
+        willThrow(stripe4xx())
                 .given(billingPaymentGateway).scheduleCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
 
         service.reconcileOldCancelSchedule(handoverId);
@@ -147,16 +164,31 @@ class BillingPayerHandoverReconcileResumeTest {
     }
 
     @Test
-    @DisplayName("P1-3: 猶予内の失敗は一時的とみなして例外を上げ、状態を変えない（自動回復の余地を残す）")
-    void reconcile_transientFailure_doesNotEscalate() {
+    @DisplayName("P1-3: 接続断（一時）は分類では倒れず、上限（3日）超過に限って MANUAL_INTERVENTION へ倒す")
+    void reconcile_transientAfterDeadline_escalatesByTimeCapOnly() {
+        given(handoverTxService.loadCancelScheduleTarget(handoverId))
+                .willReturn(new CancelScheduleTarget(handoverId, OLD_SUB,
+                        NOW.minus(java.time.Duration.ofDays(4))));
+        given(billingPaymentGateway.retrieveSubscription(OLD_SUB)).willReturn(snapshot(false));
+        willThrow(stripeTransient())
+                .given(billingPaymentGateway).scheduleCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
+
+        service.reconcileOldCancelSchedule(handoverId);
+
+        verify(handoverTxService).markManualIntervention(handoverId);
+    }
+
+    @Test
+    @DisplayName("P1-3: 接続断（一時）で猶予内なら状態を変えず例外を上げる（自動回復の余地を残す）")
+    void reconcile_transientWithinDeadline_doesNotEscalate() {
         given(handoverTxService.loadCancelScheduleTarget(handoverId))
                 .willReturn(new CancelScheduleTarget(handoverId, OLD_SUB, NOW.minusSeconds(3600)));
         given(billingPaymentGateway.retrieveSubscription(OLD_SUB)).willReturn(snapshot(false));
-        willThrow(new IllegalStateException("timeout"))
+        willThrow(stripeTransient())
                 .given(billingPaymentGateway).scheduleCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
 
         assertThatThrownBy(() -> service.reconcileOldCancelSchedule(handoverId))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(BusinessException.class);
 
         verify(handoverTxService, never()).markManualIntervention(any());
         verify(handoverTxService, never()).persistOldCancelScheduledAt(any(), any());
@@ -179,10 +211,30 @@ class BillingPayerHandoverReconcileResumeTest {
 
         service.reconcileStalledSwitching(handoverId);
 
-        verify(billingPaymentGateway).cancelHandoverNewSubscription(NEW_SUB, handoverId);
+        // ★CAS を先に取り、そのあとで Stripe を変更する（PR-4 Codex検分2巡目 P1-1）。
+        InOrder order = inOrder(handoverTxService, billingPaymentGateway);
+        order.verify(handoverTxService).failStalledSwitchingAndRenotify(handoverId);
+        order.verify(billingPaymentGateway).cancelHandoverNewSubscription(NEW_SUB, handoverId);
         // ★旧期末より前なので差し戻しが有効に効く（期末到達後だと復旧できない）。
-        verify(billingPaymentGateway).revertCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
-        verify(handoverTxService).failStalledSwitchingAndRenotify(handoverId);
+        order.verify(billingPaymentGateway).revertCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
+    }
+
+    @Test
+    @DisplayName("P1-1: CAS に負けた（別 worker が先に状態を進めた）ときは Stripe に一切触れない"
+            + "——触ると DB=COMPLETED なのに Stripe だけ取消済みという乖離が残る")
+    void stalledSwitching_casLost_doesNotTouchStripe() {
+        given(handoverTxService.loadStalledSwitchingTarget(handoverId))
+                .willReturn(new BillingPayerHandoverTxService.StalledSwitchingTarget(
+                        handoverId, OLD_SUB, NEW_SUB, NOW.minus(java.time.Duration.ofDays(2)), 8L));
+        given(billingPaymentGateway.retrieveSubscription(NEW_SUB))
+                .willReturn(new SubscriptionSnapshot(NEW_SUB, "trialing", false, null, null, "seti_1"));
+        // 別 worker が先に COMPLETED まで進めた＝CAS は拒否する。
+        given(handoverTxService.failStalledSwitchingAndRenotify(handoverId)).willReturn(false);
+
+        assertThat(service.reconcileStalledSwitching(handoverId)).isFalse();
+
+        verify(billingPaymentGateway, never()).cancelHandoverNewSubscription(anyString(), any());
+        verify(billingPaymentGateway, never()).revertCancelAtPeriodEndForHandover(anyString(), any());
     }
 
     @Test
@@ -230,7 +282,7 @@ class BillingPayerHandoverReconcileResumeTest {
 
         verify(handoverTxService).resumeToSwitching(handoverId);
         verify(billingPaymentGateway, never()).revertCancelAtPeriodEndForHandover(anyString(), any());
-        verify(handoverTxService, never()).markFailedAndClearCancelSchedule(any());
+        verify(handoverTxService, never()).markFailedAndClearCancelSchedule(any(), any());
     }
 
     @Test
@@ -245,7 +297,8 @@ class BillingPayerHandoverReconcileResumeTest {
 
         verify(billingPaymentGateway).cancelHandoverNewSubscription(NEW_SUB, handoverId);
         verify(billingPaymentGateway).revertCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
-        verify(handoverTxService).markFailedAndClearCancelSchedule(handoverId);
+        verify(handoverTxService).markFailedAndClearCancelSchedule(
+                handoverId, java.util.List.of(PayerHandoverStatus.MANUAL_INTERVENTION));
     }
 
     @Test
@@ -259,7 +312,8 @@ class BillingPayerHandoverReconcileResumeTest {
                 ResumeTarget.FAILED, false);
 
         verify(billingPaymentGateway, never()).revertCancelAtPeriodEndForHandover(anyString(), any());
-        verify(handoverTxService).markFailedAndClearCancelSchedule(handoverId);
+        verify(handoverTxService).markFailedAndClearCancelSchedule(
+                handoverId, java.util.List.of(PayerHandoverStatus.MANUAL_INTERVENTION));
     }
 
     @Test

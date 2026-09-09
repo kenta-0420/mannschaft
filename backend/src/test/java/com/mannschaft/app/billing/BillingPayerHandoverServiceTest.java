@@ -635,7 +635,7 @@ class BillingPayerHandoverServiceTest {
 
             verify(handoverTxService).publishAdditionalAuthRequired(handoverId);
             // 1段目では FAILED にしない（旧の cancel_at_period_end は設定済みで引継は進行中扱い）。
-            verify(handoverTxService, never()).markFailedAndClearCancelSchedule(any());
+            verify(handoverTxService, never()).markFailedAndClearCancelSchedule(any(), any());
             verify(billingPaymentGateway, never()).cancelHandoverNewSubscription(any(), any());
         }
 
@@ -733,7 +733,8 @@ class BillingPayerHandoverServiceTest {
             // ③旧サブスクを継続へ差し戻し
             verify(billingPaymentGateway).revertCancelAtPeriodEndForHandover(OLD_SUB, handoverId);
             // ④FAILED 確定と old_cancel_scheduled_at の NULL クリアは対で行う（R5-P2）
-            verify(handoverTxService).markFailedAndClearCancelSchedule(handoverId);
+            verify(handoverTxService).markFailedAndClearCancelSchedule(
+                    handoverId, BillingPayerHandoverService.SWITCH_TARGET_STATUSES);
         }
 
         @Test
@@ -795,7 +796,7 @@ class BillingPayerHandoverServiceTest {
             service.executeSwitch(handoverId);
 
             verify(handoverTxService).markPartiallyCompleted(handoverId);
-            verify(handoverTxService, never()).markFailedAndClearCancelSchedule(any());
+            verify(handoverTxService, never()).markFailedAndClearCancelSchedule(any(), any());
         }
 
         @Test
