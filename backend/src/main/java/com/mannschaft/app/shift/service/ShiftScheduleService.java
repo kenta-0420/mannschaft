@@ -17,7 +17,11 @@ import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
+import com.mannschaft.app.shift.event.ShiftArchivedEvent;
 import com.mannschaft.app.shift.event.ShiftPublishedEvent;
+import com.mannschaft.app.shift.event.ShiftScheduleCloseReason;
+import com.mannschaft.app.shift.event.ShiftScheduleClosedEvent;
+import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -29,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -62,6 +67,7 @@ import java.util.stream.Collectors;
 public class ShiftScheduleService {
 
     private final ShiftScheduleRepository scheduleRepository;
+    private final ShiftChangeRequestRepository changeRequestRepository;
     private final ShiftSlotRepository slotRepository;
     private final ShiftRequestRepository requestRepository;
     private final ShiftPositionRepository positionRepository;
@@ -199,8 +205,20 @@ public class ShiftScheduleService {
     public void deleteSchedule(Long id, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
         checkScheduleAdminAccess(entity, userId);
+        boolean wasLive = entity.getDeletedAt() == null;
         entity.softDelete();
         scheduleRepository.save(entity);
+
+        // CMP-260909-1445: 論理削除でもシフト予算の PLANNED 消化を取り消す。
+        // 取消理由 enum に SHIFT_DELETED が用意されているとおり、削除で取り消すのが元々の設計意図。
+        // 消化を残すと当該 allocation が SHIFT_BUDGET_012 で恒久的に削除不能になる。
+        // 既に削除済みの行に対する再削除ではイベントを出さない（冪等。実処理側の
+        // cancelAllForShift も PLANNED のみを対象とするため二重減算はしないが、
+        // 意味の無いイベントを流さないことを発行側でも担保する）。
+        if (wasLive) {
+            eventPublisher.publish(new ShiftScheduleClosedEvent(
+                    entity.getId(), entity.getTeamId(), userId, ShiftScheduleCloseReason.DELETED));
+        }
         log.info("シフトスケジュール削除: id={}", id);
     }
 
@@ -217,6 +235,7 @@ public class ShiftScheduleService {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
         checkScheduleAdminAccess(entity, userId);
         ShiftScheduleStatus targetStatus = ShiftScheduleStatus.valueOf(status);
+        ShiftScheduleStatus previousStatus = entity.getStatus();
 
         switch (targetStatus) {
             case COLLECTING -> entity.startCollecting();
@@ -226,7 +245,16 @@ public class ShiftScheduleService {
                 autoAssignService.assertNoUnreviewedRuns(id);
                 entity.publish(userId);
             }
-            case ARCHIVED -> entity.archive();
+            case ARCHIVED -> {
+                entity.archive();
+                // CMP-260909-1445: ARCHIVED 遷移の副作用はバッチ経路（ShiftAutoArchiveBatchService）と
+                // 揃える。OPEN の変更依頼はアーカイブ済みシフトに対して審査しようがないため取り下げる。
+                int withdrawn = changeRequestRepository.withdrawOpenRequestsByScheduleId(
+                        entity.getId(), LocalDateTime.now());
+                if (withdrawn > 0) {
+                    log.info("OPEN 変更依頼を自動 WITHDRAWN: scheduleId={}, 件数={}", entity.getId(), withdrawn);
+                }
+            }
             default -> throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
         }
 
@@ -236,6 +264,26 @@ public class ShiftScheduleService {
         if (targetStatus == ShiftScheduleStatus.PUBLISHED) {
             eventPublisher.publish(new ShiftPublishedEvent(
                     entity.getId(), entity.getTeamId(), userId, entity.getPublishedAt()));
+        }
+
+        // CMP-260909-1445: 手動アーカイブでも ShiftArchivedEvent を発行する。
+        // 是正前は発行元がバッチ 1 箇所しか無く、UI/API 経由でアーカイブすると
+        // 予算消化の取消（ShiftBudgetConsumptionCancelListener）も Todo の自動 CANCELLED 化
+        // （ShiftArchivedToTodoCancelListener）も一切走らなかった。
+        // archivedByUserId は手動経路では操作者を載せる（バッチは null）。
+        if (targetStatus == ShiftScheduleStatus.ARCHIVED) {
+            eventPublisher.publish(new ShiftArchivedEvent(
+                    entity.getId(), entity.getTeamId(), userId));
+        }
+
+        // CMP-260909-1445: PUBLISHED からの後戻り遷移（公開取消）も同型の穴だった。
+        // ShiftScheduleEntity の遷移メソッドはガードを持たず status を無条件に上書きするため
+        // この後戻りは実際に成立する。公開時に積んだ PLANNED 消化を置き去りにしない。
+        if (previousStatus == ShiftScheduleStatus.PUBLISHED
+                && (targetStatus == ShiftScheduleStatus.COLLECTING
+                        || targetStatus == ShiftScheduleStatus.ADJUSTING)) {
+            eventPublisher.publish(new ShiftScheduleClosedEvent(
+                    entity.getId(), entity.getTeamId(), userId, ShiftScheduleCloseReason.UNPUBLISHED));
         }
 
         log.info("シフトスケジュールステータス遷移: id={}, status={}", id, targetStatus);

@@ -13,6 +13,7 @@ import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftRequestEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
+import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -53,6 +54,14 @@ class ShiftScheduleServiceTest {
 
     @Mock
     private ShiftScheduleRepository scheduleRepository;
+
+    /**
+     * CMP-260909-1445 で {@code ShiftScheduleService} に追加された依存。
+     * ARCHIVED 遷移時に OPEN 変更依頼を自動 WITHDRAWN 化する（バッチ経路と副作用を揃える）ため、
+     * mock を張らないと当該遷移テストが NPE で落ちる。
+     */
+    @Mock
+    private ShiftChangeRequestRepository changeRequestRepository;
 
     @Mock
     private ShiftSlotRepository slotRepository;
