@@ -11,8 +11,10 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class BillingAccessGuard {
 
-    private static final String TEAM_PERMISSION = "MANAGE_TEAM_BILLING";
-    private static final String ORGANIZATION_PERMISSION = "MANAGE_ORGANIZATION_BILLING";
+    /** TEAM scope の課金管理を DEPUTY_ADMIN へ明示付与する permission 名。 */
+    public static final String TEAM_PERMISSION = "MANAGE_TEAM_BILLING";
+    /** ORG scope の課金管理を DEPUTY_ADMIN へ明示付与する permission 名。 */
+    public static final String ORGANIZATION_PERMISSION = "MANAGE_ORGANIZATION_BILLING";
 
     private final BillingAccessRepository billingAccessRepository;
 
