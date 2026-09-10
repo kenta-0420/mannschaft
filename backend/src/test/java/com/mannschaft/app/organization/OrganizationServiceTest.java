@@ -2,6 +2,7 @@ package com.mannschaft.app.organization;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.duplicatename.DuplicateNameCandidate;
 import com.mannschaft.app.common.duplicatename.DuplicateNameConfirmationDetails;
@@ -55,6 +56,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link OrganizationService} の単体テスト（ファサード自身が担う組織 CRUD・アーカイブ・検索）。
@@ -163,6 +165,21 @@ class OrganizationServiceTest {
             assertThat(joinReq.getScopeType()).isEqualTo(ScopeType.ORGANIZATION);
             assertThat(joinReq.getRoleKind()).isEqualTo(RoleKind.MEMBER);
             assertThat(joinReq.getSource()).isEqualTo("ORG_CREATE");
+        }
+
+        @Test
+        @DisplayName("不正なorgTypeはCOMMON_001へ変換され、組織を保存しない")
+        void 不正なorgTypeは入力エラー() {
+            CreateOrganizationRequest req = new CreateOrganizationRequest(
+                    "テスト組織", "CLUB", "東京都", "渋谷区", "PUBLIC", null, null);
+
+            assertThatThrownBy(() -> organizationService.createOrganization(USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_001));
+            verifyNoInteractions(duplicateNameGuardService);
+            verify(organizationRepository, org.mockito.Mockito.never()).save(any(OrganizationEntity.class));
+            verify(userRoleRepository, org.mockito.Mockito.never()).save(any(UserRoleEntity.class));
         }
 
         @Test
