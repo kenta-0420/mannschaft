@@ -28,10 +28,12 @@ import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -78,6 +80,24 @@ public class ShiftScheduleService {
     /** 循環依存を避けるため @Lazy で注入する */
     @Lazy
     private final ShiftAutoAssignService autoAssignService;
+
+    /**
+     * 業務ローカル時刻の壁時計（{@code ClockConfig#wallClock}）。
+     *
+     * <p>ARCHIVED 遷移時に OPEN 変更依頼を一括 WITHDRAWN 化する JPQL UPDATE へ渡す時刻に使う。
+     * 対象列 {@code shift_change_requests.updated_at} は JVM 既定ゾーン基準の壁時計として
+     * 書かれた {@code LocalDateTime} 列なので、UTC 固定の既定 {@code Clock}
+     * （{@code ClockConfig#utcClock}、{@code @Primary}）ではオフセット分（JST なら 9 時間）ずれる。
+     * そのため {@code @Qualifier("wallClock")} で明示的に壁時計を選ぶ
+     * （金型: {@code BatchJobLogService} / {@code AdReportService}）。</p>
+     *
+     * <p>引数なしの {@code LocalDateTime.now()} を使わないのは、番人
+     * {@code DateTimeAndZoneGuardTest}（CMP-023）が禁じているため。凍結台帳は<b>返済対象の
+     * 技術負債</b>であって件数を積み増す先ではない。隣の {@code ShiftAutoArchiveBatchService}
+     * が引数なし {@code now()} を使っているのは台帳登録済みの既存負債であり、模範ではない。</p>
+     */
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * チームのシフトスケジュール一覧を取得する。
@@ -250,7 +270,7 @@ public class ShiftScheduleService {
                 // CMP-260909-1445: ARCHIVED 遷移の副作用はバッチ経路（ShiftAutoArchiveBatchService）と
                 // 揃える。OPEN の変更依頼はアーカイブ済みシフトに対して審査しようがないため取り下げる。
                 int withdrawn = changeRequestRepository.withdrawOpenRequestsByScheduleId(
-                        entity.getId(), LocalDateTime.now());
+                        entity.getId(), LocalDateTime.now(wallClock));
                 if (withdrawn > 0) {
                     log.info("OPEN 変更依頼を自動 WITHDRAWN: scheduleId={}, 件数={}", entity.getId(), withdrawn);
                 }

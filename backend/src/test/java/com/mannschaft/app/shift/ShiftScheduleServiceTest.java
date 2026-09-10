@@ -27,8 +27,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -83,6 +86,18 @@ class ShiftScheduleServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    /**
+     * CMP-260909-1445 で {@code ShiftScheduleService} に追加された依存（{@code ClockConfig#wallClock}）。
+     *
+     * <p>ARCHIVED 遷移が {@code LocalDateTime.now(wallClock)} を評価するため、素の {@code @Mock}
+     * だと {@code Clock#instant()} が null を返して NPE になる。固定 {@code Clock} を
+     * {@code @Spy} で与えて実挙動を持たせる（{@code ClockConfig} の javadoc が
+     * 「テストでは必ず固定 Clock を使用すること」と定めている）。</p>
+     */
+    @Spy
+    private Clock wallClock = Clock.fixed(
+            Instant.parse("2026-03-01T00:00:00Z"), java.time.ZoneOffset.UTC);
 
     @InjectMocks
     private ShiftScheduleService shiftScheduleService;
