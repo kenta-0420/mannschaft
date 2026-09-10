@@ -304,21 +304,26 @@ class SpotlightMeasurementIT extends AbstractSpotlightIT {
         em.flush();
         seedServeToken(viewerId, reservation.creativeId());
 
-        SpotlightViewRequest viewRequest = new SpotlightViewRequest(
-                TILE, null, reservation.messagingCampaignId(), reservation.deliveryId());
-        Long impressionId = view(reservation.creativeId(), viewRequest).getBody().getData().impressionId();
+        em.createNativeQuery("SET time_zone = '+09:00'").executeUpdate();
+        try {
+            SpotlightViewRequest viewRequest = new SpotlightViewRequest(
+                    TILE, null, reservation.messagingCampaignId(), reservation.deliveryId());
+            Long impressionId = view(reservation.creativeId(), viewRequest).getBody().getData().impressionId();
 
-        SpotlightVisitRequest visitRequest = new SpotlightVisitRequest(
-                TILE, impressionId, null, reservation.messagingCampaignId(), reservation.deliveryId());
-        ResponseEntity<ApiResponse<SpotlightVisitResponse>> visitResponse =
-                visit(reservation.creativeId(), visitRequest, requestFromIp("203.0.113.42"));
-        assertThat(visitResponse.getStatusCode().value()).isEqualTo(201);
+            SpotlightVisitRequest visitRequest = new SpotlightVisitRequest(
+                    TILE, impressionId, null, reservation.messagingCampaignId(), reservation.deliveryId());
+            ResponseEntity<ApiResponse<SpotlightVisitResponse>> visitResponse =
+                    visit(reservation.creativeId(), visitRequest, requestFromIp("203.0.113.42"));
+            assertThat(visitResponse.getStatusCode().value()).isEqualTo(201);
 
-        em.flush();
-        em.clear();
-        assertThat(deliveryTimestampDifferenceFromUtcNow(reservation.deliveryId(), "served_at"))
-                .as("served_at は UTC_TIMESTAMP() との差が1分以内").isLessThanOrEqualTo(60);
-        assertThat(deliveryTimestampDifferenceFromUtcNow(reservation.deliveryId(), "clicked_at"))
-                .as("clicked_at は UTC_TIMESTAMP() との差が1分以内").isLessThanOrEqualTo(60);
+            em.flush();
+            em.clear();
+            assertThat(deliveryTimestampDifferenceFromUtcNow(reservation.deliveryId(), "served_at"))
+                    .as("served_at は UTC_TIMESTAMP() との差が1分以内").isLessThanOrEqualTo(60);
+            assertThat(deliveryTimestampDifferenceFromUtcNow(reservation.deliveryId(), "clicked_at"))
+                    .as("clicked_at は UTC_TIMESTAMP() との差が1分以内").isLessThanOrEqualTo(60);
+        } finally {
+            em.createNativeQuery("SET time_zone = '+00:00'").executeUpdate();
+        }
     }
 }
