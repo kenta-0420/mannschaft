@@ -110947,7 +110947,7 @@
           {
             "name": "from",
             "in": "query",
-            "description": "開始日時（yyyy-MM-dd'T'HH:mm:ss 形式）",
+            "description": "開始日時（yyyy-MM-dd\u0027T\u0027HH:mm:ss 形式）",
             "required": false,
             "schema": {
               "type": "string",
@@ -110957,7 +110957,7 @@
           {
             "name": "to",
             "in": "query",
-            "description": "終了日時（yyyy-MM-dd'T'HH:mm:ss 形式）",
+            "description": "終了日時（yyyy-MM-dd\u0027T\u0027HH:mm:ss 形式）",
             "required": false,
             "schema": {
               "type": "string",
@@ -145545,7 +145545,7 @@
           "公開投稿コメント API (F19.1 Phase 6-B)"
         ],
         "summary": "公開投稿コメント削除（ログイン必須）",
-        "description": "投稿者本人または ADMIN（hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')）のみ実行可能。 コメントが存在しない場合は 404（PUBLIC_009）。 権限がない場合は 403（PUBLIC_010）。 未ログインの場合は 401。",
+        "description": "投稿者本人または ADMIN（hasRole(\u0027ADMIN\u0027) or hasRole(\u0027SYSTEM_ADMIN\u0027)）のみ実行可能。 コメントが存在しない場合は 404（PUBLIC_009）。 権限がない場合は 403（PUBLIC_010）。 未ログインの場合は 401。",
         "operationId": "deleteComment_7",
         "parameters": [
           {
@@ -151316,8 +151316,8 @@
           },
           "progressRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "projectId": {
             "type": "integer",
@@ -160368,7 +160368,7 @@
           "maxMonthlyHours": {
             "type": "number",
             "maximum": 9999.99,
-            "minimum": 0.0
+            "minimum": 0.00
           },
           "maxNightShiftsPerMonth": {
             "type": "integer",
@@ -160379,7 +160379,7 @@
           "minRestHoursBetweenShifts": {
             "type": "number",
             "maximum": 99.99,
-            "minimum": 0.0
+            "minimum": 0.00
           },
           "note": {
             "type": "string",
@@ -167496,8 +167496,8 @@
           },
           "cpiInflationRate": {
             "type": "number",
-            "maximum": 0.2,
-            "minimum": -0.1
+            "maximum": 0.20,
+            "minimum": -0.10
           },
           "deferralYears": {
             "type": "integer",
@@ -167534,8 +167534,8 @@
           },
           "reserveInflationRate": {
             "type": "number",
-            "maximum": 0.2,
-            "minimum": -0.1
+            "maximum": 0.20,
+            "minimum": -0.10
           },
           "scenarioHorizonYears": {
             "type": "integer",
@@ -171676,8 +171676,8 @@
           },
           "progressRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "projectId": {
             "type": "integer",
@@ -171731,8 +171731,8 @@
           },
           "link_percentage": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "project_id": {
             "type": "integer",
@@ -192674,7 +192674,7 @@
         "properties": {
           "amount": {
             "type": "number",
-            "maximum": 1000000.0,
+            "maximum": 1000000.00,
             "minimum": 0.01
           },
           "note": {
@@ -201747,8 +201747,8 @@
           },
           "progress_rate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "related_todo_id": {
             "type": "integer",
@@ -202967,8 +202967,8 @@
         "properties": {
           "progressRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           }
         },
         "required": [
@@ -208926,8 +208926,8 @@
           },
           "progress_rate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "related_todo_id": {
             "type": "integer",
