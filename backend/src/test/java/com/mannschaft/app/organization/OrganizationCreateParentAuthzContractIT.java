@@ -28,6 +28,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /**
  * 認可根治 Wave6 追加戦 — 組織作成における親組織指定（{@code parentOrganizationId}）の認可契約テスト。
@@ -192,6 +193,22 @@ class OrganizationCreateParentAuthzContractIT extends AbstractMySqlIntegrationTe
             assertThat(selectParentOrganizationId("W6 子組織_正当"))
                     .as("正当な ADMIN の指定した親組織はそのまま格納される")
                     .isEqualTo(parentOrgId);
+        }
+
+        @Test
+        @DisplayName("不正なorgTypeは400 COMMON_001")
+        void 不正なOrgTypeは400() throws Exception {
+            setAuth(parentAdminId);
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("name", "W6 不正orgType");
+            payload.put("orgType", "CLUB");
+            payload.put("visibility", "PRIVATE");
+
+            mockMvc.perform(post(ENDPOINT)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(payload)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_001"));
         }
     }
 
