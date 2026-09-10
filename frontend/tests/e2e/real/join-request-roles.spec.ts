@@ -146,12 +146,26 @@ function readySignal(page: Page, kind: ReadyKind) {
 
 type ReadyKind = 'apply' | 'pending' | 'rejected' | 'error' | 'member' | 'admin'
 
-/** 肯定的な終端表示が出るまで待つ。出なければ失敗させる（握りつぶさない）。 */
+/**
+ * 肯定的な終端表示が出るまで待つ。出なければ失敗させる（握りつぶさない）。
+ *
+ * `apply` は可視性だけでは終端にならない（Codex 検分 第2巡 P2 是正）。
+ * 申請ボタンは `joinRequestStatus` が `UNKNOWN` / `LOADING` の間も
+ * **無効状態で描画される**（OrgPageHeader の `:disabled` 参照）ため、
+ * 可視 + **活性**まで待って初めて「申請状態のロードが完了した」と言える。
+ */
 async function waitUntilScopeLoaded(page: Page, kind: ReadyKind): Promise<void> {
+  const signal = readySignal(page, kind)
   await expect(
-    readySignal(page, kind),
+    signal,
     `権限・組織データのロード完了を示す表示（${kind}）が現れること`,
   ).toBeVisible({ timeout: 30_000 })
+  if (kind === 'apply') {
+    await expect(
+      signal,
+      '申請ボタンが活性になること（UNKNOWN/LOADING 中は無効表示のため終端ではない）',
+    ).toBeEnabled({ timeout: 30_000 })
+  }
 }
 
 /**
@@ -182,8 +196,17 @@ async function loginAndNavigate(
  * SPA 内遷移（画面上の導線を一切使わず Nuxt ルーターへ直接 push する）。
  * フルロードの URL 直打ちとは別経路であり、両者は挙動が異なる（冒頭コメント参照）。
  *
- * 遷移完了は固定時間ではなく URL の確定で待つ（P2 是正）。直リンク防御で
- * `fallbackPath` へ差し戻される場合があるため、どちらかに落ち着くまで待つ。
+ * **「遷移していないのに緑」を構造的に潰す**（Codex 検分 第2巡 P1 是正）。
+ * 従来は次の2つの穴があり、push が一度も起きなくても後続の否定条件・最終 URL が
+ * そのまま成功していた:
+ *   ① `waitForURL` の成功条件に**遷移前の現在地**（`fallbackPath`）を含めていたため、
+ *      1ミリも動かなくても待ちが即座に解けた
+ *   ② `$router` を optional chaining で辿っており、取得できなくても**無言の no-op**
+ *      になっていた
+ *
+ * 対策として、push の前に `afterEach` フックを仕込んで**実際に発生した遷移の履歴**を
+ * 記録し、目的地へ一度でも入ったことを事後に検証する。`$router` が取れない場合や
+ * 履歴に目的地が現れない場合は明示的に失敗させる。
  */
 async function spaNavigate(
   page: Page,
@@ -191,11 +214,50 @@ async function spaNavigate(
   fallbackPath: string,
   ready: ReadyKind,
 ): Promise<void> {
-  await page.evaluate((p) => {
-    type VueApp = { config: { globalProperties?: { $router?: { push: (to: string) => void } } } }
-    const el = document.querySelector('#__nuxt') as (Element & { __vue_app__?: VueApp }) | null
-    el?.__vue_app__?.config?.globalProperties?.$router?.push(p)
-  }, path)
+  type NavWindow = Window & { __jrNavLog?: string[] }
+
+  const getRouter = `(() => {
+    const el = document.querySelector('#__nuxt');
+    const router = el && el.__vue_app__ && el.__vue_app__.config
+      && el.__vue_app__.config.globalProperties
+      && el.__vue_app__.config.globalProperties.$router;
+    if (!router) throw new Error('Nuxt ルーターを取得できなかったため SPA 内遷移を実行できない');
+    return router;
+  })()`
+
+  // ① 遷移履歴の記録を仕掛ける（$router が無ければここで例外＝明示的失敗）
+  const before = await page.evaluate(`(() => {
+    const router = ${getRouter};
+    const w = window;
+    w.__jrNavLog = [];
+    router.afterEach((to) => { w.__jrNavLog.push(to.path); });
+    return router.currentRoute.value.path;
+  })()`) as string
+
+  expect(
+    before,
+    `SPA 内遷移の起点は差し戻し先（${fallbackPath}）であること`,
+  ).toBe(fallbackPath)
+
+  // ② push を実行して完了まで待つ（$router が無ければ例外＝明示的失敗）
+  await page.evaluate(`(() => {
+    const router = ${getRouter};
+    return router.push(${JSON.stringify(path)});
+  })()`)
+
+  // ③ 目的地へ実際に入ったことを遷移履歴で確定させる。
+  //    差し戻しが速くて URL 観測が間に合わなくても、履歴には必ず残る。
+  await expect
+    .poll(
+      async () => await page.evaluate(() => (window as NavWindow).__jrNavLog ?? []),
+      {
+        message: `SPA 内遷移が実際に発生し、一度は ${path} へ入ったこと`,
+        timeout: 20_000,
+      },
+    )
+    .toContain(path)
+
+  // ④ そのうえで最終的な落ち着き先（目的地 or 差し戻し先）を待つ
   await page.waitForURL(
     (url) => url.pathname === path || url.pathname === fallbackPath,
     { timeout: 20_000 },
