@@ -269,7 +269,20 @@ test.describe('F08.4 発行者設定 / F08.12 運営発行の領収書（実機�
       .data
     expect(settings.logoStorageKey, 'logoStorageKey が保存されていない').toBeTruthy()
     expect(settings.logoUrl, 'logoUrl（署名URL）が返っていない').toBeTruthy()
-    expect(src, 'img src が logoUrl ではない').toBe(settings.logoUrl)
+    // 署名URLは生成のたびに X-Amz-Date（秒精度）と署名が変わる。
+    // DOM の src と、この検証のために取り直した logoUrl は別々に生成されたものなので、
+    // 完全一致で比較すると1秒をまたいだだけで落ちる。
+    // 「同じオブジェクトを指す署名URLであること」を、クエリを除いた部分と署名パラメータの有無で確かめる。
+    const srcUrl = new URL(src!)
+    const logoUrlParsed = new URL(settings.logoUrl)
+    expect(
+      `${srcUrl.origin}${srcUrl.pathname}`,
+      'img src が logoUrl と別のオブジェクトを指している',
+    ).toBe(`${logoUrlParsed.origin}${logoUrlParsed.pathname}`)
+    expect(
+      srcUrl.searchParams.get('X-Amz-Signature'),
+      'img src が署名URLになっていない',
+    ).toBeTruthy()
     expect(
       src,
       'logoStorageKey が直接 img src に入っている（署名URLを経由していない）',
