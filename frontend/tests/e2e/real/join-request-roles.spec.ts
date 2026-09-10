@@ -10,6 +10,18 @@
  *   - 対象操作（申請・承認・却下・再申請）は**すべてブラウザ操作**で踏む。
  *     API 利用はログイン補助・前提データ作成（PUBLIC 組織の払い出し）・後始末に限る。
  *   - ロール横断の3視点（正 / 負＝権限なし / 他テナント＝非所属）を実ログインセッションで踏む。
+ *   - 権限のない者が審査画面へ入ろうとする経路は、**SPA 内遷移（$router.push）と
+ *     フルロードの URL 直打ち（page.goto）の両方**を踏む。両者は挙動が異なる（下記）。
+ *
+ * ⚠ 既知の欠陥（CMP-260910-1056・PR #3208 で別戦役として対応中）:
+ *   `pages/organizations/[slug].vue` の管理ルート滞在防止 watch に `immediate: true` が無く、
+ *   **初回描画では発火しない**。そのため:
+ *     - SPA 内遷移（$router.push）→ watch が発火し `/organizations/{slug}` へ差し戻される
+ *     - フルロードの直打ち（page.goto）→ **URL は join-requests のまま維持**され、
+ *       組織ダッシュボードが描画される（＝滞在防止が効いていない）
+ *   本 spec は直打ちケースについて **URL が差し戻されることを assert しない**。
+ *   代わりに「**情報が漏れないこと**」（申請行0件・審査パネル非描画・一覧 API 未発火・
+ *   BE 直叩き 403）だけを固定する。URL 挙動の是正は CMP-260910-1056 の対象。
  *
  * テストユーザー:
  *   審査者(ADMIN) : e2e-user@test.mannschaft.local   （検証用 PUBLIC 組織の作成者＝ADMIN）
@@ -96,9 +108,7 @@ async function loginUI(page: Page, email: string, password: string): Promise<voi
 
 /**
  * ログイン後にクライアントサイドナビゲーションで目的ページへ入る。
- * page.goto はフルリロード（SSR + Pinia リセット）で認証状態を失うため、
- * 既存の実機 spec（f089-billing-crud-roles.spec.ts）と同じ Nuxt ルーター経由とする。
- * URL 直打ち検証もこの経路で行う（画面上の導線を一切使わない直接遷移）。
+ * 既存の実機 spec（f089-billing-crud-roles.spec.ts）と同じ Nuxt ルーター経由。
  */
 async function loginAndNavigate(
   page: Page,
@@ -120,6 +130,62 @@ async function loginAndNavigate(
       // 直リンク防御でリダイレクトされるケースはここで待ちが解けない。後続の assert で判定する。
     })
   await waitForHydration(page)
+}
+
+/**
+ * SPA 内遷移（画面上の導線を一切使わず Nuxt ルーターへ直接 push する）。
+ * フルロードの URL 直打ちとは別経路であり、両者は挙動が異なる（冒頭コメント参照）。
+ */
+async function spaNavigate(page: Page, path: string): Promise<void> {
+  await page.evaluate((p) => {
+    type VueApp = { config: { globalProperties?: { $router?: { push: (to: string) => void } } } }
+    const el = document.querySelector('#__nuxt') as (Element & { __vue_app__?: VueApp }) | null
+    el?.__vue_app__?.config?.globalProperties?.$router?.push(p)
+  }, path)
+  await page.waitForTimeout(3_000)
+}
+
+/**
+ * フルロードの URL 直打ち（ブラウザのアドレスバーに打ち込むのと同じ経路）。
+ * ログインセッションは Cookie で保持されるためリロードしても維持される。
+ */
+async function fullReloadGoto(page: Page, path: string): Promise<void> {
+  await page.goto(path, { waitUntil: 'commit' })
+  await waitForHydration(page)
+  await page.waitForTimeout(3_000)
+}
+
+/**
+ * ADMIN 向け審査一覧 API（`GET /organizations/{id}/join-requests`）の発火を観測する。
+ * 申請者本人向けの `.../join-requests/me` は対象外（誰でも呼んでよい）。
+ */
+function trackReviewerListCalls(page: Page, targetOrgId: number): string[] {
+  const calls: string[] = []
+  page.on('request', (req) => {
+    const url = req.url()
+    if (
+      req.method() === 'GET'
+      && url.includes(`/organizations/${targetOrgId}/join-requests`)
+      && !url.includes('/join-requests/me')
+    ) {
+      calls.push(url)
+    }
+  })
+  return calls
+}
+
+/** 権限のない者に審査画面の情報が一切漏れていないことを固定する共通アサート。 */
+async function expectNoReviewerDataLeak(page: Page, listCalls: string[]): Promise<void> {
+  await expect(
+    page.getByTestId('join-request-row'),
+    '他人の申請行が一切見えない',
+  ).toHaveCount(0)
+  await expect(
+    page.getByText('承認待ちの参加申請'),
+    '審査パネル自体が描画されない',
+  ).toHaveCount(0)
+  expect(listCalls, `審査一覧 API が呼ばれない（実際の呼び出し: ${listCalls.join(', ')}）`)
+    .toHaveLength(0)
 }
 
 // ── 前提データ（PUBLIC 組織を1つ払い出す。API 利用は前提作成のみ） ────────────
@@ -207,43 +273,40 @@ test('JR-01: [applicant] 組織詳細の「参加申請」ボタンをクリッ�
 // ===========================================================================
 // 負の視点（権限なし）: 申請者は審査画面の導線が出ず、URL 直打ちでも入れない
 // ===========================================================================
-test('JR-02: [applicant/権限なし] 「参加申請」管理タブが出ず、URL 直打ちでも一覧に入れない', async ({
+test('JR-02: [applicant/権限なし] 管理タブが出ず、SPA 内遷移でもフルロード直打ちでも審査情報が漏れない', async ({
   page,
 }) => {
-  test.setTimeout(90_000)
+  // ログイン2回相当 + SPA遷移 + フルロード直打ちの2経路を1テストで踏むため長めに取る
+  test.setTimeout(180_000)
 
+  const listCalls = trackReviewerListCalls(page, orgId)
   await loginAndNavigate(page, APPLICANT_EMAIL, APPLICANT_PASSWORD, `/organizations/${orgSlug}`)
   // 申請中であること（＝この組織を確かに見ている）を先に確認
   await expect(page.getByTestId('join-request-pending')).toBeVisible({ timeout: 20_000 })
 
-  // 導線（管理タブ）自体が出ないこと
+  // ① 導線（管理タブ）自体が出ないこと
   await expect(
     page.getByRole('link', { name: '参加申請' }),
     '非管理者には「参加申請」管理タブの導線が出ない',
   ).toHaveCount(0)
 
-  // URL 直打ち（画面の導線を一切使わない直接遷移）でも弾かれること
-  await page.evaluate((path) => {
-    type VueApp = { config: { globalProperties?: { $router?: { push: (p: string) => void } } } }
-    const el = document.querySelector('#__nuxt') as (Element & { __vue_app__?: VueApp }) | null
-    el?.__vue_app__?.config?.globalProperties?.$router?.push(path)
-  }, `/organizations/${orgSlug}/join-requests`)
-  await page.waitForTimeout(3_000)
-
-  await expect(
-    page.getByTestId('join-request-row'),
-    '申請者には他人の申請行が一切見えない',
-  ).toHaveCount(0)
-  await expect(
-    page.getByText('承認待ちの参加申請'),
-    '申請者には審査パネル自体が描画されない',
-  ).toHaveCount(0)
+  // ② SPA 内遷移（画面の導線を一切使わない直接 push）→ 差し戻される
+  await spaNavigate(page, `/organizations/${orgSlug}/join-requests`)
+  await expectNoReviewerDataLeak(page, listCalls)
   expect(
     new URL(page.url()).pathname,
-    'URL 直打ちは組織ダッシュボードへ差し戻される',
+    'SPA 内遷移は組織ダッシュボードへ差し戻される',
   ).toBe(`/organizations/${orgSlug}`)
 
-  // BE 二重防衛: 申請者本人の一覧 API は 403
+  // ③ フルロードの URL 直打ち → 情報が漏れないことのみ固定する。
+  //    URL が差し戻されないのは CMP-260910-1056（管理ルート滞在防止 watch に
+  //    immediate: true が無く初回描画で発火しない）の既知欠陥であり、
+  //    ここで URL を assert すると本 spec が別戦役の修正待ちで赤くなるため assert しない。
+  listCalls.length = 0
+  await fullReloadGoto(page, `/organizations/${orgSlug}/join-requests`)
+  await expectNoReviewerDataLeak(page, listCalls)
+
+  // ④ BE 二重防衛: 申請者本人の一覧 API は 403
   const { accessToken } = await apiLogin(sharedApi, APPLICANT_EMAIL, APPLICANT_PASSWORD)
   const res = await sharedApi.get(`${BE_API}/organizations/${orgId}/join-requests`, {
     headers: authHeaders(accessToken),
@@ -256,11 +319,13 @@ test('JR-02: [applicant/権限なし] 「参加申請」管理タブが出ず、
 // ===========================================================================
 // 他テナント（非所属の第三者）: 一覧にも詳細にも出ない
 // ===========================================================================
-test('JR-03: [outsider/非所属] 管理タブが出ず、URL 直打ちでも審査画面に入れない', async ({
+test('JR-03: [outsider/非所属] 管理タブが出ず、SPA 内遷移でもフルロード直打ちでも審査情報が漏れない', async ({
   page,
 }) => {
-  test.setTimeout(90_000)
+  // ログイン2回相当 + SPA遷移 + フルロード直打ちの2経路を1テストで踏むため長めに取る
+  test.setTimeout(180_000)
 
+  const listCalls = trackReviewerListCalls(page, orgId)
   await loginAndNavigate(page, OUTSIDER_EMAIL, OUTSIDER_PASSWORD, `/organizations/${orgSlug}`)
   // PUBLIC 組織なので詳細自体は見える（＝「見えない」のは審査画面だけ）
   await expect(page.getByTestId('join-request-apply-button')).toBeVisible({ timeout: 20_000 })
@@ -269,16 +334,15 @@ test('JR-03: [outsider/非所属] 管理タブが出ず、URL 直打ちでも審
     '非所属ユーザーに「参加申請」管理タブは出ない',
   ).toHaveCount(0)
 
-  await page.evaluate((path) => {
-    type VueApp = { config: { globalProperties?: { $router?: { push: (p: string) => void } } } }
-    const el = document.querySelector('#__nuxt') as (Element & { __vue_app__?: VueApp }) | null
-    el?.__vue_app__?.config?.globalProperties?.$router?.push(path)
-  }, `/organizations/${orgSlug}/join-requests`)
-  await page.waitForTimeout(3_000)
-
-  await expect(page.getByTestId('join-request-row')).toHaveCount(0)
-  await expect(page.getByText('承認待ちの参加申請')).toHaveCount(0)
+  // ① SPA 内遷移 → 差し戻される
+  await spaNavigate(page, `/organizations/${orgSlug}/join-requests`)
+  await expectNoReviewerDataLeak(page, listCalls)
   expect(new URL(page.url()).pathname).toBe(`/organizations/${orgSlug}`)
+
+  // ② フルロードの URL 直打ち → 情報非漏洩のみ固定（URL 挙動は CMP-260910-1056 の対象）
+  listCalls.length = 0
+  await fullReloadGoto(page, `/organizations/${orgSlug}/join-requests`)
+  await expectNoReviewerDataLeak(page, listCalls)
 
   const { accessToken } = await apiLogin(sharedApi, OUTSIDER_EMAIL, OUTSIDER_PASSWORD)
   const res = await sharedApi.get(`${BE_API}/organizations/${orgId}/join-requests`, {
@@ -411,11 +475,13 @@ test('JR-06: [admin] 画面の「承認」ボタンで承認でき、申請者�
 // ===========================================================================
 // 負の視点（MEMBER）: 承認後も審査画面には入れない
 // ===========================================================================
-test('JR-07: [member/権限なし] メンバー昇格後も管理タブは出ず、URL 直打ちでも入れない', async ({
+test('JR-07: [member/権限なし] メンバー昇格後も管理タブが出ず、両経路とも審査情報が漏れない', async ({
   page,
 }) => {
-  test.setTimeout(90_000)
+  // ログイン2回相当 + SPA遷移 + フルロード直打ちの2経路を1テストで踏むため長めに取る
+  test.setTimeout(180_000)
 
+  const listCalls = trackReviewerListCalls(page, orgId)
   await loginAndNavigate(page, APPLICANT_EMAIL, APPLICANT_PASSWORD, `/organizations/${orgSlug}`)
 
   await expect(
@@ -427,16 +493,15 @@ test('JR-07: [member/権限なし] メンバー昇格後も管理タブは出ず
     'MEMBER には「参加申請」管理タブが出ない',
   ).toHaveCount(0)
 
-  await page.evaluate((path) => {
-    type VueApp = { config: { globalProperties?: { $router?: { push: (p: string) => void } } } }
-    const el = document.querySelector('#__nuxt') as (Element & { __vue_app__?: VueApp }) | null
-    el?.__vue_app__?.config?.globalProperties?.$router?.push(path)
-  }, `/organizations/${orgSlug}/join-requests`)
-  await page.waitForTimeout(3_000)
-
-  await expect(page.getByTestId('join-request-row')).toHaveCount(0)
-  await expect(page.getByText('承認待ちの参加申請')).toHaveCount(0)
+  // ① SPA 内遷移 → 差し戻される
+  await spaNavigate(page, `/organizations/${orgSlug}/join-requests`)
+  await expectNoReviewerDataLeak(page, listCalls)
   expect(new URL(page.url()).pathname).toBe(`/organizations/${orgSlug}`)
+
+  // ② フルロードの URL 直打ち → 情報非漏洩のみ固定（URL 挙動は CMP-260910-1056 の対象）
+  listCalls.length = 0
+  await fullReloadGoto(page, `/organizations/${orgSlug}/join-requests`)
+  await expectNoReviewerDataLeak(page, listCalls)
 
   const { accessToken } = await apiLogin(sharedApi, APPLICANT_EMAIL, APPLICANT_PASSWORD)
   const res = await sharedApi.get(`${BE_API}/organizations/${orgId}/join-requests`, {
