@@ -301,6 +301,11 @@
       "noRequests": "신청이 없습니다",
       "noConstraints": "근무 제약이 설정되지 않았습니다"
     },
+    "teamLoad": {
+      "timeout": "팀 정보를 불러오는 데 시간이 오래 걸립니다. 연결 상태를 확인하고 다시 시도해 주세요.",
+      "error": "팀 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "retry": "다시 시도"
+    },
     "notification": {
       "publishSuccess": "근무를 공개했습니다",
       "submitSuccess": "희망을 제출했습니다",

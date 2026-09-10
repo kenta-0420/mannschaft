@@ -2,7 +2,7 @@
 import type { ShiftPositionResponse } from '~/types/shift'
 
 const props = defineProps<{
-  teamId: string
+  teamId: number
 }>()
 
 const shiftApi = useShiftApi()
@@ -45,9 +45,15 @@ async function save() {
   if (!form.value.name.trim()) return
   try {
     if (editing.value) {
-      await shiftApi.updatePosition(editing.value.id, { name: form.value.name, displayOrder: form.value.displayOrder })
+      await shiftApi.updatePosition(editing.value.id, {
+        name: form.value.name,
+        displayOrder: form.value.displayOrder,
+      })
     } else {
-      await shiftApi.createPosition(props.teamId, { name: form.value.name, displayOrder: form.value.displayOrder })
+      await shiftApi.createPosition(props.teamId, {
+        name: form.value.name,
+        displayOrder: form.value.displayOrder,
+      })
     }
     notification.success('ポジションを保存しました')
     showDialog.value = false
