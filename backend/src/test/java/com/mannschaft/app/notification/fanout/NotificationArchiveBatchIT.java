@@ -46,6 +46,7 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
 
     private static final int READ_RETENTION_DAYS = 90;
     private static final int UNREAD_RETENTION_DAYS = 365;
+    private static final Duration TIME_TOLERANCE = Duration.ofSeconds(60);
 
     @Autowired
     private NotificationCleanupBatchService cleanupBatchService;
@@ -103,6 +104,10 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
     private long archiveCount(Long id) {
         Long c = jdbc.queryForObject("SELECT COUNT(*) FROM notifications_archive WHERE id = ?", Long.class, id);
         return c == null ? 0 : c;
+    }
+
+    private LocalDateTime dbUtcNow() {
+        return jdbc.queryForObject("SELECT UTC_TIMESTAMP()", LocalDateTime.class);
     }
 
     // ============================== AC-1 ==============================
@@ -235,6 +240,41 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
 
         assertThat(archiveCount(older)).as("366日は退避される").isEqualTo(1);
         assertThat(notificationCount(older)).isZero();
+    }
+
+    @Test
+    @DisplayName("CMP-260910-0041: UTC基準の閾値内（既読90日・未読365日）はJST実行時刻に引きずられず残る")
+    void utcThresholdKeepsRowsWithinRetention() {
+        Long readWithinRetention = seedNotification(1061L, true, 1);
+        Long unreadWithinRetention = seedNotification(1062L, false, 1);
+        // DB 格納値を UTC 壁時計で明示する。JST の LocalDateTime.now() を閾値に束縛する旧実装では
+        // いずれも9時間早く移送対象になり、このテストが red になる。
+        jdbc.update("UPDATE notifications SET created_at = UTC_TIMESTAMP() - INTERVAL 90 DAY + INTERVAL 1 HOUR WHERE id = ?",
+                readWithinRetention);
+        jdbc.update("UPDATE notifications SET created_at = UTC_TIMESTAMP() - INTERVAL 365 DAY + INTERVAL 1 HOUR WHERE id = ?",
+                unreadWithinRetention);
+
+        cleanupBatchService.cleanupOldReadNotifications();
+
+        assertThat(notificationCount(readWithinRetention)).as("既読90日より1時間新しい通知は残る").isEqualTo(1);
+        assertThat(archiveCount(readWithinRetention)).isZero();
+        assertThat(notificationCount(unreadWithinRetention)).as("未読365日より1時間新しい通知は残る").isEqualTo(1);
+        assertThat(archiveCount(unreadWithinRetention)).isZero();
+    }
+
+    @Test
+    @DisplayName("CMP-260910-0041: archive の archived_at は UTC_TIMESTAMP() と同じUTC壁時計で記録される")
+    void archivedAtIsStoredAsUtcWallClock() {
+        Long id = seedNotification(1063L, true, READ_RETENTION_DAYS + 1);
+
+        cleanupBatchService.cleanupOldReadNotifications();
+
+        LocalDateTime archivedAt = jdbc.queryForObject(
+                "SELECT archived_at FROM notifications_archive WHERE id = ?", LocalDateTime.class, id);
+        assertThat(archivedAt).isNotNull();
+        assertThat(Duration.between(archivedAt, dbUtcNow()).abs())
+                .as("archived_at=%s は UTC_TIMESTAMP() と同じUTC壁時計である", archivedAt)
+                .isLessThanOrEqualTo(TIME_TOLERANCE);
     }
 
     // ============================== AC-7 ==============================
