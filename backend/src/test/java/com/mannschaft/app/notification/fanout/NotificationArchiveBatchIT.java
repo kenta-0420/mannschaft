@@ -90,8 +90,8 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
         NotificationEntity saved = notificationRepository.saveAndFlush(n);
         Long id = saved.getId();
         // @PrePersist が created_at を now() にするため、年齢を JDBC で確定的に上書きする。
-        jdbc.update("UPDATE notifications SET created_at = ? WHERE id = ?",
-                LocalDateTime.now().minusDays(daysAgo), id);
+        jdbc.update(
+                "UPDATE notifications SET created_at = UTC_TIMESTAMP() - INTERVAL " + daysAgo + " DAY WHERE id = ?", id);
         entityManager.clear();
         return id;
     }
@@ -224,18 +224,22 @@ class NotificationArchiveBatchIT extends AbstractMySqlIntegrationTest {
     // ============================== AC-6 ==============================
 
     @Test
-    @DisplayName("AC-6 未読エイジング閾値ちょうど/±1日の境界判定")
+    @DisplayName("AC-6 未読エイジング閾値1日前/閾値超過1秒/1日超過の境界判定")
     void ac6_unreadAgingBoundary() {
-        Long younger = seedNotification(106L, false, UNREAD_RETENTION_DAYS - 1); // 対象外
-        Long boundary = seedNotification(106L, false, UNREAD_RETENTION_DAYS);    // 閾値ちょうど（走行時に閾値未満へ）→対象
-        Long older = seedNotification(106L, false, UNREAD_RETENTION_DAYS + 1);   // 対象
+        Long younger = seedNotification(106L, false, UNREAD_RETENTION_DAYS - 1); // 閾値1日前: 対象外
+        Long boundary = seedNotification(106L, false, UNREAD_RETENTION_DAYS);
+        // strict < 比較の同一秒を避け、閾値より1秒だけ古い行を明示する。
+        jdbc.update("UPDATE notifications SET created_at = UTC_TIMESTAMP() - INTERVAL 365 DAY "
+                        + "- INTERVAL 1 SECOND WHERE id = ?",
+                boundary);
+        Long older = seedNotification(106L, false, UNREAD_RETENTION_DAYS + 1);   // 閾値を1日超過: 対象
 
         cleanupBatchService.cleanupOldReadNotifications();
 
         assertThat(notificationCount(younger)).as("364日相当は残る").isEqualTo(1);
         assertThat(archiveCount(younger)).isZero();
 
-        assertThat(archiveCount(boundary)).as("365日ちょうどは退避される").isEqualTo(1);
+        assertThat(archiveCount(boundary)).as("365日閾値を1秒超過した通知は退避される").isEqualTo(1);
         assertThat(notificationCount(boundary)).isZero();
 
         assertThat(archiveCount(older)).as("366日は退避される").isEqualTo(1);
