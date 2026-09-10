@@ -347,6 +347,7 @@ class SpotlightContentServingIT extends AbstractSpotlightIT {
                     .isInstanceOf(org.springframework.security.core.AuthenticationException.class);
         }
     }
+
     @Test
     @DisplayName("CMP-260910-0042: affiliate のUTC基準の開始・終了境界を判定する")
     void affiliateActiveWindowUsesUtcWallClock() {

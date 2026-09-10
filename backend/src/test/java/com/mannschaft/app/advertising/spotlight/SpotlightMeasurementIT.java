@@ -297,6 +297,7 @@ class SpotlightMeasurementIT extends AbstractSpotlightIT {
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(AdvertisingErrorCode.AD_026));
     }
+
     @Test
     @DisplayName("CMP-260910-0042: 予約バナーの served_at / clicked_at は UTC_TIMESTAMP 基準で記録される")
     void reservationMeasurementTimestampsUseUtcWallClock() {
