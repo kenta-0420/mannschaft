@@ -18,11 +18,18 @@ vi.mock('../../../app/stores/useOrganizationStore', () => ({ useOrganizationStor
 // 実モジュールからの import 文に展開されるため、`vi.stubGlobal` では差し替えられない
 // （グローバル変数として参照されていない）。差し替えには mockNuxtImport を使うこと。
 //
-// とくに navigateTo を stubGlobal で「差し替えたつもり」になると実 navigateTo が走り、
-// テストファイルの寿命を超えて vue-router のナビゲーションが保留のまま残る。happy-dom 環境が
-// 破棄された後にそれが finalizeNavigation（`history.state` を参照）まで到達すると
-// `ReferenceError: history is not defined` の未処理 rejection になり、全テストが緑でも
-// vitest が exit 1 になる（CI で間欠的に発生していた）。
+// 【事実】この spec は以前 useChatTabsStore / disarmProactiveRefresh を `vi.stubGlobal` で
+// モックしていたが上記の理由で差し替わっておらず、実体が走っていた。
+//
+// 【事実】その状態の CI で、全テストが緑にもかかわらず未処理 rejection により vitest が
+// exit 1 になる事象が間欠的に発生していた。vue-router の pending navigation が
+// テストファイルの寿命を超えて残り、happy-dom 環境の破棄後に finalizeNavigation
+// （`vue-router.mjs:1385` の `const state = !isBrowser ? {} : history.state` という
+// 裸のグローバル `history` 参照）へ到達して `ReferenceError: history is not defined` になる。
+//
+// 【推測・未確定】その pending navigation を誰が開始したのかは特定できていない。
+// 実 pinia ストア生成に伴う Nuxt アプリ／router の初期化が疑わしいが、確認できていない。
+// 実効的だった差分は「実体を走らせなくしたこと」であり、真の誘発点は未特定のままである。
 mockNuxtImport('navigateTo', () => (...args: unknown[]) => navigateToMock(...args))
 mockNuxtImport('useChatTabsStore', () => () => ({ clearAll: chatClear }))
 mockNuxtImport('disarmProactiveRefresh', () => () => disarmMock())
@@ -44,8 +51,6 @@ describe('useAuthStore.logout', () => {
     expect(organizationClear).toHaveBeenCalledOnce()
     expect(chatClear).toHaveBeenCalledOnce()
     expect(disarmMock).toHaveBeenCalledOnce()
-    // 実 navigateTo が走っていない（＝モックが効いている）ことの担保でもある。
-    // ここが落ちるときはナビゲーションが実ルーターへ抜けており、上記の未処理 rejection が再発する。
     expect(navigateToMock).toHaveBeenCalledWith('/login')
   })
 })
