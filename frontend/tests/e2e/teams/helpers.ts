@@ -4,6 +4,7 @@ export const TEAM_ID = 1
 
 export const MOCK_TEAM = {
   id: TEAM_ID,
+  numericId: TEAM_ID,
   name: 'テストチーム',
   nameKana: null,
   nickname1: null,
