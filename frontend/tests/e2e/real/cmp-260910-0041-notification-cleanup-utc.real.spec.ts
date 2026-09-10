@@ -9,8 +9,8 @@ const MEMBER = { email: process.env.TEST_MEMBER_EMAIL ?? '', password: process.e
 const MYSQL_USER = process.env.E2E_MYSQL_USER ?? ''
 const MYSQL_PASSWORD = process.env.E2E_MYSQL_PASSWORD ?? ''
 const RUN_TAG = `CMP0041_${Date.now().toString(36)}`
-const KEEP_TITLE = `${RUN_TAG}_KEEP_89H`
-const ARCHIVE_TITLE = `${RUN_TAG}_ARCHIVE_91H`
+const KEEP_TITLE = `${RUN_TAG}_KEEP_90D_MINUS_1H`
+const ARCHIVE_TITLE = `${RUN_TAG}_ARCHIVE_90D_PLUS_1H`
 
 function sql(statement: string): void {
   if (!MYSQL_USER || !MYSQL_PASSWORD) throw new Error('E2E_MYSQL_USER/E2E_MYSQL_PASSWORD が必要です')
@@ -35,20 +35,36 @@ async function login(page: Page, credentials: typeof ADMIN): Promise<void> {
 
 test.describe('CMP-260910-0041: 通知保持期間UTC基準の実機導線', () => {
   test.setTimeout(120_000)
+  let notificationsSeeded = false
 
-  test.afterEach(() => cleanupNotifications())
+  test.afterEach(async ({}, testInfo) => {
+    if (!notificationsSeeded) return
+
+    try {
+      cleanupNotifications()
+    } catch (error) {
+      // Preserve the test failure when cleanup also fails.
+      if (testInfo.status === testInfo.expectedStatus) throw error
+      console.error('CMP-260910-0041: notification seed cleanup failed', error)
+    } finally {
+      notificationsSeeded = false
+    }
+  })
 
   test('SYSTEM_ADMINは画面から同期実行し、通知一覧でUTC境界を確認できる', async ({ page }) => {
     seedNotifications()
+    notificationsSeeded = true
     await login(page, ADMIN)
     await page.goto('/system-admin/batches')
     await waitForHydration(page)
-    const search = page.getByRole('textbox', { name: /検索|search/i })
+    const search = page.locator('input[placeholder="バッチ名で検索"]')
     await search.fill('notification-cleanup')
     const row = page.locator('[data-test="batch-table"] tr').filter({ hasText: 'notification-cleanup' })
     await expect(row).toBeVisible({ timeout: 30_000 })
-    await row.getByTestId('run-sync-notification-cleanup').click()
-    await expect(page.getByText(/完了|completed/i)).toBeVisible({ timeout: 30_000 })
+    await row.locator('[data-test="run-sync-notification-cleanup"]').click()
+    await expect(page.getByText('バッチ実行が完了しました: notification-cleanup')).toBeVisible({
+      timeout: 30_000,
+    })
 
     await login(page, MEMBER)
     await page.goto('/notifications')
@@ -59,8 +75,18 @@ test.describe('CMP-260910-0041: 通知保持期間UTC基準の実機導線', () 
 
   test('MEMBERにはバッチ導線がなく、URL直打ちは拒否される', async ({ page }) => {
     await login(page, MEMBER)
+    const batchListResponse = page.waitForResponse(
+      response =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname === '/api/v1/system-admin/batch',
+    )
     await page.goto('/system-admin/batches')
-    await page.waitForURL(/\/login|\/403|\/forbidden/, { timeout: 30_000 })
-    await expect(page.getByTestId('run-sync-notification-cleanup')).toHaveCount(0)
+    // An authenticated MEMBER remains at this route after 403; batches.vue shows
+    // the list-load failure toast and no action controls.
+    expect((await batchListResponse).status()).toBe(403)
+    await expect(page).toHaveURL(/\/system-admin\/batches$/)
+    await expect(page.getByText('バッチ一覧の取得に失敗しました')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('登録されているバッチがありません')).toBeVisible()
+    await expect(page.locator('[data-test="run-sync-notification-cleanup"]')).toHaveCount(0)
   })
 })
