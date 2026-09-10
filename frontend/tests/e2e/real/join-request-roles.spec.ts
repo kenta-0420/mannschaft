@@ -207,6 +207,17 @@ async function loginAndNavigate(
  * 対策として、push の前に `afterEach` フックを仕込んで**実際に発生した遷移の履歴**を
  * 記録し、目的地へ一度でも入ったことを事後に検証する。`$router` が取れない場合や
  * 履歴に目的地が現れない場合は明示的に失敗させる。
+ *
+ * **さらに「履歴そのものが偽陽性だった」問題を是正**（Codex 検分 第3巡 P1）。
+ * Vue Router は**中断・キャンセルされた遷移でも `afterEach(to, from, failure)` を呼ぶ**し、
+ * `router.push()` は例外を投げず `NavigationFailure` を resolve する
+ * （https://router.vuejs.org/guide/advanced/navigation-failures.html）。
+ * 第2巡の実装は `failure` を受け取らず常に `to.path` を記録していたため、
+ * guard が目的地への遷移を abort しても履歴に目的地が積まれ、
+ * 「目的地へ入ったこと」の肯定的証明になっていなかった。
+ * そこで次の2点を同時に満たすことを要求する:
+ *   ① `afterEach` は `failure` が無い**成功遷移だけ**を記録する
+ *   ② `router.push()` の戻り値が `NavigationFailure` **でない**こと
  */
 async function spaNavigate(
   page: Page,
@@ -225,44 +236,71 @@ async function spaNavigate(
     return router;
   })()`
 
-  // ① 遷移履歴の記録を仕掛ける（$router が無ければここで例外＝明示的失敗）
+  // ① 遷移履歴の記録を仕掛ける（$router が無ければここで例外＝明示的失敗）。
+  //    失敗遷移を数えないよう、afterEach の第3引数 failure が無い場合だけ記録する。
+  //    解除関数は保持しておき、最後に必ず解除する（第3巡 P2）。
   const before = await page.evaluate(`(() => {
     const router = ${getRouter};
     const w = window;
     w.__jrNavLog = [];
-    router.afterEach((to) => { w.__jrNavLog.push(to.path); });
+    w.__jrNavUnhook = router.afterEach((to, from, failure) => {
+      if (!failure) w.__jrNavLog.push(to.path);
+    });
     return router.currentRoute.value.path;
   })()`) as string
 
-  expect(
-    before,
-    `SPA 内遷移の起点は差し戻し先（${fallbackPath}）であること`,
-  ).toBe(fallbackPath)
+  try {
+    expect(
+      before,
+      `SPA 内遷移の起点は差し戻し先（${fallbackPath}）であること`,
+    ).toBe(fallbackPath)
 
-  // ② push を実行して完了まで待つ（$router が無ければ例外＝明示的失敗）
-  await page.evaluate(`(() => {
-    const router = ${getRouter};
-    return router.push(${JSON.stringify(path)});
-  })()`)
+    // ② push を実行して完了まで待つ。push は例外を投げず NavigationFailure を
+    //    resolve するため、戻り値を検査して「中断されなかったこと」を確定させる。
+    const pushResult = await page.evaluate(`(async () => {
+      const router = ${getRouter};
+      const result = await router.push(${JSON.stringify(path)});
+      if (!result) return { failed: false, type: null, message: '' };
+      return {
+        failed: true,
+        type: typeof result.type === 'number' ? result.type : null,
+        message: String(result.message || ''),
+      };
+    })()`) as { failed: boolean, type: number | null, message: string }
 
-  // ③ 目的地へ実際に入ったことを遷移履歴で確定させる。
-  //    差し戻しが速くて URL 観測が間に合わなくても、履歴には必ず残る。
-  await expect
-    .poll(
-      async () => await page.evaluate(() => (window as NavWindow).__jrNavLog ?? []),
-      {
-        message: `SPA 内遷移が実際に発生し、一度は ${path} へ入ったこと`,
-        timeout: 20_000,
-      },
+    expect(
+      pushResult.failed,
+      `router.push('${path}') が NavigationFailure を返さないこと`
+      + `（type=${pushResult.type} message=${pushResult.message}）`,
+    ).toBe(false)
+
+    // ③ 目的地へ実際に入ったことを「成功した遷移だけの履歴」で確定させる。
+    //    差し戻しが速くて URL 観測が間に合わなくても、履歴には必ず残る。
+    await expect
+      .poll(
+        async () => await page.evaluate(() => (window as NavWindow).__jrNavLog ?? []),
+        {
+          message: `SPA 内遷移が成功し、一度は ${path} へ入ったこと`,
+          timeout: 20_000,
+        },
+      )
+      .toContain(path)
+
+    // ④ そのうえで最終的な落ち着き先（目的地 or 差し戻し先）を待つ
+    await page.waitForURL(
+      (url) => url.pathname === path || url.pathname === fallbackPath,
+      { timeout: 20_000 },
     )
-    .toContain(path)
-
-  // ④ そのうえで最終的な落ち着き先（目的地 or 差し戻し先）を待つ
-  await page.waitForURL(
-    (url) => url.pathname === path || url.pathname === fallbackPath,
-    { timeout: 20_000 },
-  )
-  await waitUntilScopeLoaded(page, ready)
+    await waitUntilScopeLoaded(page, ready)
+  }
+  finally {
+    // afterEach の解除（第3巡 P2）。フックを残したまま次の遷移を観測しない。
+    await page.evaluate(`(() => {
+      const w = window;
+      if (typeof w.__jrNavUnhook === 'function') w.__jrNavUnhook();
+      delete w.__jrNavUnhook;
+    })()`)
+  }
 }
 
 /**
