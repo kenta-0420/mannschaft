@@ -124,11 +124,10 @@ async function loginAndNavigate(
     if (router) return router.push(path)
     window.location.href = path
   }, targetPath)
-  await page
-    .waitForURL((url) => url.pathname.startsWith(targetPath), { timeout: 15_000 })
-    .catch(() => {
-      // 直リンク防御でリダイレクトされるケースはここで待ちが解けない。後続の assert で判定する。
-    })
+  // 直リンク防御で差し戻されると targetPath には到達しないため、URL の一致は待たない
+  // （待つと必ずタイムアウトし、握りつぶさない限り失敗する）。遷移が落ち着くのを待ち、
+  // 実際にどこへ到達したかは各テストの assert で判定する。
+  await page.waitForTimeout(3_000)
   await waitForHydration(page)
 }
 
