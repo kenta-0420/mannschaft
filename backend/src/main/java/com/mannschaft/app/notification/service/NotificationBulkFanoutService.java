@@ -56,8 +56,13 @@ public class NotificationBulkFanoutService {
     private static final String INSERT_COLUMNS =
             "user_id, organization_id, notification_type, priority, title, body, "
             + "source_type, source_id, scope_type, scope_id, action_url, actor_id, is_read, created_at";
-    private static final String ROW_PLACEHOLDERS = "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-    private static final int COLS_PER_ROW = 14;
+    /**
+     * 1 行ぶんの VALUES タプル。<b>{@code created_at} だけはプレースホルダではなく SQL リテラル
+     * {@code UTC_TIMESTAMP()}</b> であり、Java 側から値を束縛しない（末尾の 14 列目に対応する）。
+     * 理由は {@link #bulkInsertReturningIds} の Javadoc を参照。したがって束縛する値は 13 個である。
+     */
+    private static final String ROW_PLACEHOLDERS = "(?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())";
+    private static final int COLS_PER_ROW = 13;
 
     private final JdbcTemplate jdbcTemplate;
     private final NotificationDispatchService dispatchService;
@@ -195,6 +200,31 @@ public class NotificationBulkFanoutService {
      *
      * <p>MySQL Connector/J は多値 INSERT でも {@code getGeneratedKeys()} で全行ぶんの採番 id を挿入順に返す。
      * {@link GeneratedKeyHolder#getKeyList()} でそれを受け取り、各行に対応させる。</p>
+     *
+     * <h2>{@code created_at} を Java から束縛しない理由（CMP-260909-1446）</h2>
+     * <p>本アプリの DB 格納基準は {@code spring.jpa.properties.hibernate.jdbc.time_zone: UTC} により
+     * <b>UTC 壁時計</b>である。JPA 経路は {@code @PrePersist} の {@code LocalDateTime.now()}（JST 壁時計）を
+     * Hibernate が UTC へ変換して格納するが、本メソッドは JPA を迂回するためその変換が掛からない。
+     * 以前はここで {@code LocalDateTime}（JST 壁時計）をそのまま束縛しており、bulk 経路の通知だけが
+     * <b>正より 9 時間先</b>に格納されていた。その結果、{@code created_at DESC} の通知一覧では bulk 経路の
+     * 通知が未来として先頭に居座り、JPA 経路の通知（閾値超過警告など）が下方に埋もれていた。</p>
+     *
+     * <p>是正として {@code created_at} を<b>プレースホルダから外し、SQL リテラル {@code UTC_TIMESTAMP()}</b>
+     * に委ねる。{@code UTC_TIMESTAMP()} は接続セッションのタイムゾーン設定に依らず UTC 壁時計を返すため、
+     * JPA 経路と格納基準が一致する。同一ステートメント内では値が一定なので「1 チャンクの全行が同一時刻」
+     * という従来の性質もそのまま保たれる。素の {@code NOW()} はセッション TZ 依存なので使ってはならない。
+     * 同型の前例は {@code AnnouncementReadStatusRepository#markAllAsReadByFeedIds}（{@code read_at}）。</p>
+     *
+     * <p><b>Java 側で {@code LocalDateTime.now(ZoneOffset.UTC)} を渡す案は採らない。</b> 値としては正しく
+     * なるが、「Java 側で壁時計を作って束縛する」流儀が残るため、誤った実装と機械的に見分けられなくなる
+     * （番人 {@code RawSqlTimeColumnGuardTest} が検出できない）。</p>
+     *
+     * <h2>DB の値と配信ペイロードの値は別物である</h2>
+     * <p>DB へ入るのは上記のとおり UTC 壁時計だが、{@code seeds} の in-memory {@code createdAt} は
+     * サーバ既定ゾーン（JST）の壁時計のままであり、そのまま WebSocket/Push の配信ペイロードに載る。
+     * これは JPA 経路の in-memory 値（{@code @PrePersist} の {@code LocalDateTime.now()}）と同じ意味であり、
+     * <b>UTC へ寄せてはならない</b>（寄せると FE が受け取る時刻だけが 9 時間ずれる）。
+     * 固定テスト: {@code NotificationBulkFanoutDispatchPayloadTest}。</p>
      */
     private List<Long> bulkInsertReturningIds(List<NotificationEntity> entities) {
         StringBuilder sqlBuilder = new StringBuilder(
@@ -220,7 +250,8 @@ public class NotificationBulkFanoutService {
             args[a++] = e.getActionUrl();
             args[a++] = e.getActorId();
             args[a++] = Boolean.FALSE;          // is_read: per-row 既定（AC-4）
-            args[a++] = e.getCreatedAt();        // created_at: @PrePersist を迂回するため明示充填
+            // created_at はここでは束縛しない。SQL リテラル UTC_TIMESTAMP() が値を作る
+            // （ROW_PLACEHOLDERS / 本メソッドの Javadoc「created_at を Java から束縛しない理由」参照）。
         }
         final String sql = sqlBuilder.toString();
 

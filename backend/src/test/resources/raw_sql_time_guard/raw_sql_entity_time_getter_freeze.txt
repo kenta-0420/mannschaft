@@ -1,0 +1,9 @@
+# 番人 RawSqlTimeColumnGuardTest の凍結リスト（種別: 生SQLを発行するクラスがエンティティの時刻ゲッターを読む（バインド値化））。
+# 形式: RAW_SQL_ENTITY_TIME_GETTER|<FQCN>|<件数>（クラス単位の件数。メソッド名・出現順は含めない）
+# これは CMP-260909-1446 で設置した「返済すべき借金の台帳」である。新規追記は禁止。
+# JPA を迂回する生SQLは時刻列を Java から束縛せず SQL の UTC_TIMESTAMP() を使うこと。
+# 実件数合計: 4（RawSqlTimeColumnGuardTest.EXPECTED_FROZEN_* と一致させること）
+
+RAW_SQL_ENTITY_TIME_GETTER|com.mannschaft.app.auth.service.AuditLogArchiveBatchService|2
+RAW_SQL_ENTITY_TIME_GETTER|com.mannschaft.app.auth.service.AuditLogQueryService|1
+RAW_SQL_ENTITY_TIME_GETTER|com.mannschaft.app.recruitment.repository.RecruitmentListingRepository|1
