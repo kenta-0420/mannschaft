@@ -344,13 +344,15 @@ async function createSlot(
   scheduleId: number,
   slotDate: string,
   positionId: number,
+  startTime = '09:00:00',
+  endTime = '12:00:00',
 ): Promise<number> {
   const res = await ctx.post(`${BE_API}/shifts/schedules/${scheduleId}/slots`, {
     headers: authHeaders(token),
     data: {
       slotDate,
-      startTime: '09:00:00',
-      endTime: '12:00:00',
+      startTime,
+      endTime,
       positionId,
       requiredCount: SLOT_REQUIRED_COUNT,
       note: null,
@@ -563,6 +565,11 @@ test.beforeAll(async ({ tokens }) => {
 
     const draftId = await seedOne(titles.draft, [])
     const collectingId = await seedOne(titles.collecting, ['COLLECTING'])
+    // CMP-260909-1143: 同じ日の別枠へも希望を出せる契約を、実UIで踏むための2本目。
+    const collectingSecondSlotId = await createSlot(
+      ctx, tokens.admin, collectingId, slotDate, positionId, '13:00:00', '16:00:00',
+    )
+    await assignOneUser(ctx, tokens.admin, collectingSecondSlotId, tokens.memberUserId)
     const adjustingId = await seedOne(titles.adjusting, ['COLLECTING', 'ADJUSTING'])
     const publishedId = await seedOne(titles.published, ['COLLECTING', 'ADJUSTING', 'PUBLISHED'])
 
@@ -874,10 +881,10 @@ test.describe('B: 一般メンバーには調整段階の割当が伏せられ�
     ).toBeVisible({ timeout: 30_000 })
 
     const chips = slotChips(page, fx.collectingId)
-    await expect(chips, '枠の骨格は見えること（AC-4(3)）').toHaveCount(1, { timeout: 30_000 })
+    await expect(chips, '枠の骨格は見えること（AC-4(3)）').toHaveCount(2, { timeout: 30_000 })
     await expect(chips.first(), '枠の時刻が見えること').toContainText('09:00〜12:00')
     await expect(chips.first(), '枠のポジションが見えること').toContainText(fx.positionName)
-    await expect(maskedMarks(page), '割当が伏せられた印が付くこと').toHaveCount(1)
+    await expect(maskedMarks(page), '割当が伏せられた印が付くこと').toHaveCount(2)
     await expect(chips.first(), '中立表示の文言が出ること').toContainText(LABEL_MASKED)
     await expect(
       chips.first(),
@@ -1055,7 +1062,7 @@ test.describe('C: 一般メンバーの URL 直打ちが弾かれる', () => {
 // 【非回帰】希望提出フローが壊れていないこと（AC-8 / AC-4(3)）
 // ============================================================================
 test.describe('D: 一般メンバーの希望提出フロー（非回帰・本戦役の最重要点）', () => {
-  test('D1: メンバーが COLLECTING のシフト表を選び、枠を見て希望を提出できる（AC-8）', async ({ page }) => {
+  test('D1: メンバーが同一日の2枠それぞれへ希望を提出できる（AC-8 / CMP-260909-1143）', async ({ page, tokens }) => {
     await openAs(page, MEMBER_EMAIL, MEMBER_PASSWORD, '/my/shift-request')
     await selectTeamOnShiftRequest(page)
 
@@ -1074,12 +1081,19 @@ test.describe('D: 一般メンバーの希望提出フロー（非回帰・本�
       '枠の時刻が希望提出画面に出ること',
     ).toBeVisible({ timeout: 30_000 })
     await expect(
+      page.getByText('13:00–16:00'),
+      '同一日の2本目の枠も希望提出画面に出ること',
+    ).toBeVisible({ timeout: 30_000 })
+    await expect(
       page.getByText(fx.positionName, { exact: true }).first(),
       '枠のポジションが希望提出画面に出ること',
     ).toBeVisible()
 
     // 希望を選ぶ → プレビュー → 提出
-    await page.getByRole('radio').first().click()
+    const preferenceRadios = page.getByRole('radio')
+    await expect(preferenceRadios, '2枠分の5段階希望が表示されること').toHaveCount(10)
+    await preferenceRadios.first().click()
+    await preferenceRadios.nth(5).click()
     await page.getByRole('button', { name: LABEL_PREVIEW }).click()
     await expect(page.getByText(LABEL_TOTAL)).toBeVisible({ timeout: 30_000 })
     await page.getByRole('button', { name: LABEL_SUBMIT, exact: true }).click()
@@ -1094,6 +1108,19 @@ test.describe('D: 一般メンバーの希望提出フロー（非回帰・本�
       toast,
       '提出が成功すること（エラーで終わらないこと）',
     ).not.toContainText(LABEL_ERROR_TOAST)
+
+    // 対象操作はUIで完遂済み。APIは永続化結果の検証だけに使用する。
+    const requestsRes = await page.request.get(`${BE_API}/shifts/my/requests`, {
+      headers: authHeaders(tokens.member),
+    })
+    expect(requestsRes.status(), '希望の永続化確認APIが成功すること').toBe(200)
+    const requests = ((await requestsRes.json()).data ?? []) as Array<{
+      scheduleId: number
+      slotId: number | null
+    }>
+    const submittedForSchedule = requests.filter((request) => request.scheduleId === fx.collectingId)
+    expect(submittedForSchedule, '同一日の別枠が2件とも永続化されること').toHaveLength(2)
+    expect(new Set(submittedForSchedule.map((request) => request.slotId)).size).toBe(2)
   })
 })
 
