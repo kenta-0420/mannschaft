@@ -34,6 +34,7 @@ async function login(page: Page, credentials: typeof ADMIN): Promise<void> {
 }
 
 test.describe('CMP-260910-0041: 通知保持期間UTC基準の実機導線', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
   test.setTimeout(120_000)
   let notificationsSeeded = false
 
