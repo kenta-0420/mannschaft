@@ -146,7 +146,7 @@ public class BillingInvoiceProjectionService {
         Instant eventInstant = Instant.ofEpochSecond(eventCreatedEpoch);
         Optional<BillingInvoiceEntity> existing = invoiceRepository.findByPspInvoiceRef(incoming.id());
 
-        InvoiceView resolved = incoming;
+        ResolvedInvoice resolved = ResolvedInvoice.fromWebhook(incoming);
         if (existing.isPresent() && existing.get().getUpdatedAt() != null) {
             Instant appliedAt = existing.get().getUpdatedAt();
             if (appliedAt.isAfter(eventInstant)) {
@@ -168,15 +168,23 @@ public class BillingInvoiceProjectionService {
         }
 
         // 以降は「全明細が揃い、検証を通った invoice」だけを扱う。
-        final InvoiceView invoice = withCompleteLines(resolved);
+        ResolvedInvoice completed = withCompleteLines(resolved);
+        final InvoiceView invoice = completed.invoice();
+
+        // 差し替え後のヘッダも検証する（下の Javadoc「二重に走らせる理由」を参照）。
+        validateHeader(invoice);
         // 明細に依存する検査（税の裏付け・line 税込合計 == total）は、全明細が揃ってから行う。
         validateLines(invoice);
         String incomingStatus = mapStatus(invoice.status());
 
+        // 適用時刻と lifecycle の判定材料は「いま適用する検体の出どころ」で決める（下の Javadoc 参照）。
+        final Instant appliedInstant = completed.fromApi() ? completed.retrievedAt() : eventInstant;
+        final String lifecycleEventType = completed.fromApi() ? null : eventType;
+
         BillingInvoiceEntity entity = existing.orElseGet(() -> BillingInvoiceEntity.builder()
                 .pspInvoiceRef(invoice.id())
                 .version(0L)
-                .createdAt(eventInstant)
+                .createdAt(appliedInstant)
                 .build());
 
         entity.setBillingCustomerId(owner.billingCustomerId());
@@ -201,8 +209,8 @@ public class BillingInvoiceProjectionService {
         entity.setBillingEmailSnapshot(invoice.customerEmail());
         entity.setBillingAddressSnapshot(invoice.customerAddressJson());
 
-        applyLifecycleTimestamps(entity, eventType, invoice.status(), eventInstant);
-        entity.setUpdatedAt(eventInstant);
+        applyLifecycleTimestamps(entity, lifecycleEventType, invoice.status(), appliedInstant);
+        entity.setUpdatedAt(appliedInstant);
 
         BillingInvoiceEntity saved = invoiceRepository.saveAndFlush(entity);
         projectLines(saved, invoice);
@@ -308,7 +316,17 @@ public class BillingInvoiceProjectionService {
         validateLines(invoice);
     }
 
-    /** 明細に依存しないヘッダ検査。repository に触れる前に呼ぶ。 */
+    /**
+     * 明細に依存しないヘッダ検査（通貨・符号・金額恒等式）。
+     *
+     * <p><b>二重に走らせる理由</b>: {@link #project} はこれを 2 回呼ぶ。1 回目は webhook が運んできた
+     * {@code incoming} に対して、repository に一切触れる前に——これは「非 JPY は DB の CHECK 制約では
+     * なく投影前の検証で拒否し、repository に触れない」（AC-34）を満たすためである。
+     * 2 回目は、{@link StripeInvoiceRetriever} で差し替えたあとの<b>実際に保存する検体</b>に対して。
+     * 差し替え後の検体は元 payload とは別物であり、1 回目の検証は何も保証しない。ここを省くと、
+     * 取得結果が非 JPY・負数・ヘッダ金額恒等式違反であっても「元 payload が通ったから」という理由だけで
+     * 永続化まで進み、クラスの fail-closed 契約が破れる。どちらか一方では足りず、両方が要る。</p>
+     */
     private void validateHeader(InvoiceView invoice) {
         if (invoice.currency() == null || !ALLOWED_CURRENCY.equalsIgnoreCase(invoice.currency())) {
             throw reject("非 JPY の invoice は投影しない: invoice=%s, currency=%s"
@@ -409,33 +427,70 @@ public class BillingInvoiceProjectionService {
      * ときだけで、1 請求書あたり多くとも数回、常態では 0 回である。したがって Stripe 呼び出しが
      * webhook 処理の定常コストになることはない。</p>
      */
-    private InvoiceView authoritativeOnTie(InvoiceView incoming) {
+    private ResolvedInvoice authoritativeOnTie(InvoiceView incoming) {
+        Instant retrievedAt = Instant.now();
         return invoiceRetriever.retrieve(incoming.id())
+                .map(fetched -> ResolvedInvoice.fromApi(fetched, retrievedAt))
                 .orElseThrow(() -> new IllegalStateException(
                         "同一秒・同一状態の event が衝突したが Stripe から invoice を取得できず、"
                                 + "どちらが新しいか決められないため投影しません: invoice=" + incoming.id()));
     }
 
     /**
-     * 明細が全件揃った invoice を返す（揃っていなければ Stripe から取り直す）。
+     * 明細が全件揃った検体を返す（揃っていなければ Stripe から取り直す）。
      *
      * <p><b>なぜ必須か</b>: webhook の {@code lines.data} は件数上限で切られることがあり
      * （{@code lines.has_more=true}）、そのとき {@code subtotal/tax/total} は<b>請求書全体の値</b>の
-     * ままである。したがって切られた明細だけでは {@link #validate} の「line の税込合計 == total」を
-     * 決して満たさず、<b>明細が上限を超える請求書は一度も投影できない</b>（fail-closed なのでデータは
-     * 壊れないが、履歴に永久に出ず webhook は失敗し続ける）。全件を取りに行くのが唯一の解である。</p>
+     * ままである。したがって切られた明細だけでは {@link #validateLines} の
+     * 「line の税込合計 == total」を決して満たさず、<b>明細が上限を超える請求書は一度も投影できない</b>
+     * （fail-closed なのでデータは壊れないが、履歴に永久に出ず webhook は失敗し続ける）。
+     * 全件を取りに行くのが唯一の解である。</p>
      *
      * <p>取得できない場合は投げる。部分 payload で代用すると明細が欠けた請求書が確定してしまう。</p>
      */
-    private InvoiceView withCompleteLines(InvoiceView invoice) {
-        if (invoice.linesComplete()) {
-            return invoice;
+    private ResolvedInvoice withCompleteLines(ResolvedInvoice resolved) {
+        if (resolved.invoice().linesComplete()) {
+            return resolved;
         }
-        return invoiceRetriever.retrieve(invoice.id())
+        Instant retrievedAt = Instant.now();
+        return invoiceRetriever.retrieve(resolved.invoice().id())
                 .filter(InvoiceView::linesComplete)
+                .map(fetched -> ResolvedInvoice.fromApi(fetched, retrievedAt))
                 .orElseThrow(() -> new IllegalStateException(
                         "明細が件数上限で切られた payload に対し Stripe から全明細を取得できなかったため"
-                                + "投影しません: invoice=" + invoice.id()));
+                                + "投影しません: invoice=" + resolved.invoice().id()));
+    }
+
+    /**
+     * いま投影しようとしている検体と、その<b>出どころ</b>。
+     *
+     * <p><b>なぜ出どころを持ち回るのか</b>: Stripe から取り直した検体は「<b>取得時点の</b>請求書の姿」で
+     * あって、webhook の {@code event.created} が指す過去の姿ではない。にもかかわらず
+     * {@code updated_at}（単調更新の基準）へ元イベントの時刻を入れると、<b>基準そのものが嘘</b>になる。
+     * 実際、{@code has_more=true} の古い {@code invoice.created} が遅延到着した場合、取得値は既に
+     * PAID なのにそれを古い時刻で保存してしまい、あとから届く finalized が「より新しい」と判定されて
+     * <b>PAID が OPEN へ巻き戻る</b>。同じ理由で lifecycle timestamp を元 {@code eventType}
+     * （{@code invoice.created}）から導くのも誤りで、取得した検体の {@code status} から導く必要がある。</p>
+     *
+     * <p><b>不変条件</b>: 「API のスナップショットを適用した後は、それより古いスナップショットが
+     * 上書きできない」。成り立つ理由は次の 2 点である。
+     * (1) API 由来の適用では {@code updated_at} に<b>取得時刻</b>（{@code retrievedAt}）を入れる。
+     * 取得時刻は、その時点までに Stripe 上で発生したあらゆる {@code event.created} より必ず後である
+     * （イベントは発生してから配送されるため）。
+     * (2) 単調更新の判定は {@code updated_at} と {@code event.created} の比較なので、(1) により
+     * 「取得より前に発生したイベント」は例外なく古いと判定されて退けられる。
+     * したがって、取得した姿より古い姿が後から上書きすることはない。
+     * webhook 由来の適用は従来どおり {@code event.created} を使う（その検体はまさにその時刻の姿である）。</p>
+     */
+    private record ResolvedInvoice(InvoiceView invoice, boolean fromApi, Instant retrievedAt) {
+
+        static ResolvedInvoice fromWebhook(InvoiceView invoice) {
+            return new ResolvedInvoice(invoice, false, null);
+        }
+
+        static ResolvedInvoice fromApi(InvoiceView invoice, Instant retrievedAt) {
+            return new ResolvedInvoice(invoice, true, retrievedAt);
+        }
     }
 
     /**

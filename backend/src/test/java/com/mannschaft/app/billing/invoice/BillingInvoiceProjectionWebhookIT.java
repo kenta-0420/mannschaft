@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -490,5 +491,89 @@ class BillingInvoiceProjectionWebhookIT extends AbstractBillingInvoiceWebhookIT 
                 .as("明細の税込額も巻き戻さない").isEqualTo(22_000L);
         assertThat(line.getQuantity().longValue())
                 .as("数量も巻き戻さない").isEqualTo(20L);
+    }
+
+    @Test
+    @DisplayName("AC9: API 取得値を適用したら、それより古い event で状態が巻き戻らない")
+    void AC9_API取得値の適用後は古いeventで巻き戻らない() throws Exception {
+        long created = System.currentTimeMillis() / 1000L - 7_200L;   // 2 時間前に発生した invoice.created
+        long finalizedAt = created + 600L;                            // その 10 分後に finalized
+
+        // Stripe 上ではすでに PAID まで進んでいる（取得すると PAID が返る）。
+        String paidLine = StripeWebhookPayloadFixture.lineObject(
+                "il_ac9a", "BASIC プラン", 20L, 20_000L, 0L, 2_000L, false, 1000);
+        given(stripeInvoiceRetriever.retrieve("in_ac9a")).willReturn(
+                payloadParser.parseInvoiceObject(StripeWebhookPayloadFixture.invoiceObject(
+                        "in_ac9a", BILLING_CUSTOMER_REF, BILLING_SUBSCRIPTION_REF, "paid", "jpy",
+                        20_000L, 0L, 2_000L, 22_000L, paidLine)));
+
+        // 遅延して届いた、明細が切られた古い invoice.created。全件取得の結果は「現在＝PAID」。
+        String firstPageOnly = StripeWebhookPayloadFixture.lineObject(
+                "il_ac9a", "BASIC プラン", 20L, 20_000L, 0L, 2_000L, false, 1000);
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac9a_created", "invoice.created",
+                StripeWebhookPayloadFixture.invoiceObject("in_ac9a", BILLING_CUSTOMER_REF,
+                        BILLING_SUBSCRIPTION_REF, "draft", "jpy",
+                        20_000L, 0L, 2_000L, 22_000L, firstPageOnly, true), created));
+
+        assertThat(requireInvoice("in_ac9a").getStatus())
+                .as("取得した現在の姿（PAID）が投影される").isEqualTo("PAID");
+        assertThat(requireInvoice("in_ac9a").getUpdatedAt())
+                .as("API 取得値の適用では、元 event の発生時刻ではなく取得時点を基準にする")
+                .isAfter(Instant.ofEpochSecond(finalizedAt));
+
+        // その後に届く（取得より前に発生した）finalized。PAID を OPEN へ戻してはならない。
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac9a_finalized", "invoice.finalized",
+                StripeWebhookPayloadFixture.invoiceObject("in_ac9a", BILLING_CUSTOMER_REF,
+                        BILLING_SUBSCRIPTION_REF, "open", "jpy",
+                        20_000L, 0L, 2_000L, 22_000L, paidLine), finalizedAt));
+
+        assertThat(requireInvoice("in_ac9a").getStatus())
+                .as("API 取得値より古い event で PAID を OPEN へ巻き戻さない").isEqualTo("PAID");
+        assertThat(requireInvoice("in_ac9a").getPaidAt())
+                .as("paid_at は元 eventType（invoice.created）ではなく取得した status から導く").isNotNull();
+    }
+
+    @Test
+    @DisplayName("AC34: Stripe から取得したスナップショットが非 JPY なら投影しない")
+    void AC34_取得値が非JPYなら投影しない() throws Exception {
+        long created = System.currentTimeMillis() / 1000L;
+
+        // 元 payload は JPY で検証を通るが、取得結果が非 JPY。保存する検体はこちらである。
+        String usdLine = StripeWebhookPayloadFixture.lineObject(
+                "il_ac34u", "BASIC プラン", 10L, 10_000L, 0L, 1_000L, false, 1000);
+        given(stripeInvoiceRetriever.retrieve("in_ac34u")).willReturn(
+                payloadParser.parseInvoiceObject(StripeWebhookPayloadFixture.invoiceObject(
+                        "in_ac34u", BILLING_CUSTOMER_REF, BILLING_SUBSCRIPTION_REF, "open", "usd",
+                        10_000L, 0L, 1_000L, 11_000L, usdLine)));
+
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac34u", "invoice.finalized",
+                StripeWebhookPayloadFixture.invoiceObject("in_ac34u", BILLING_CUSTOMER_REF,
+                        BILLING_SUBSCRIPTION_REF, "open", "jpy",
+                        10_000L, 0L, 1_000L, 11_000L, usdLine, true), created));
+
+        assertThat(invoiceOf("in_ac34u"))
+                .as("取得値が非 JPY なら、元 payload が JPY でも投影しない").isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC5: Stripe から取得したスナップショットの金額恒等式が破れていたら投影しない")
+    void AC5_取得値の恒等式違反は投影しない() throws Exception {
+        long created = System.currentTimeMillis() / 1000L;
+
+        String line = StripeWebhookPayloadFixture.lineObject(
+                "il_ac5b", "BASIC プラン", 10L, 10_000L, 0L, 1_000L, false, 1000);
+        // 10,000 - 0 + 1,000 = 11,000 であるべきところに total=99,999 の取得結果。
+        given(stripeInvoiceRetriever.retrieve("in_ac5b")).willReturn(
+                payloadParser.parseInvoiceObject(StripeWebhookPayloadFixture.invoiceObject(
+                        "in_ac5b", BILLING_CUSTOMER_REF, BILLING_SUBSCRIPTION_REF, "open", "jpy",
+                        10_000L, 0L, 1_000L, 99_999L, line)));
+
+        postSigned(StripeWebhookPayloadFixture.event("evt_ac5b", "invoice.finalized",
+                StripeWebhookPayloadFixture.invoiceObject("in_ac5b", BILLING_CUSTOMER_REF,
+                        BILLING_SUBSCRIPTION_REF, "open", "jpy",
+                        10_000L, 0L, 1_000L, 11_000L, line, true), created));
+
+        assertThat(invoiceOf("in_ac5b"))
+                .as("取得値のヘッダ金額恒等式が破れていたら投影しない").isEmpty();
     }
 }
