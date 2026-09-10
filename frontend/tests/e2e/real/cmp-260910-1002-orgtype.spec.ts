@@ -6,6 +6,9 @@ const credentials = {
   password: process.env.TEST_USER_PASSWORD ?? 'TestPass2026!',
 }
 
+// 認証は各テストの loginViaApi で行うため、real config の共有storageStateを要求しない。
+test.use({ storageState: { cookies: [], origins: [] } })
+
 test.describe('CMP-260910-1002 組織作成の不正orgType', () => {
   test('旧下書きのCLUBを実画面から送信すると400 COMMON_001になる', async ({ page }) => {
     await loginViaApi(page, credentials)
