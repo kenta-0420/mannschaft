@@ -41,7 +41,7 @@ import java.util.UUID;
  *       {@code subscription_update} / {@code subscription_cancel} / {@code subscription_pause} が
  *       無効、{@code payment_method_update} / {@code invoice_history} / {@code customer_update} が
  *       有効であることを照合する。不一致・取得不能なら <b>アプリは起動したまま</b> Portal 開始だけを
- *       {@code ENTITLEMENT_027}(503) で拒否する（fail-closed）。{@code System.exit} は使わない
+ *       {@code ENTITLEMENT_037}(503) で拒否する（fail-closed）。{@code System.exit} は使わない
  *       — Portal は課金ハブの一機能に過ぎず、これで全機能を落とすのは過剰である。</li>
  *   <li><b>return_url は固定</b>: {@code {base}/billing/portal/return}。リクエスト由来の
  *       return URL は受け取らない（open redirect を構造的に不可能にする）。</li>

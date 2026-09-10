@@ -54,7 +54,7 @@ public class ReceiptPresetController {
     public ResponseEntity<ApiResponse<List<PresetResponse>>> listPresets(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         List<PresetResponse> presets = presetService.listPresets(type, scopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(presets));
     }
@@ -69,7 +69,7 @@ public class ReceiptPresetController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             @Valid @RequestBody CreatePresetRequest request) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         PresetResponse response = presetService.createPreset(type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -85,7 +85,7 @@ public class ReceiptPresetController {
             @RequestParam Long scopeId,
             @PathVariable Long id,
             @Valid @RequestBody UpdatePresetRequest request) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         PresetResponse response = presetService.updatePreset(
                 type, scopeId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -101,7 +101,7 @@ public class ReceiptPresetController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId,
             @PathVariable Long id) {
-        ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
+        ReceiptScopeType type = ReceiptScopeType.fromTenantScope(scopeType);
         presetService.deletePreset(type, scopeId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }

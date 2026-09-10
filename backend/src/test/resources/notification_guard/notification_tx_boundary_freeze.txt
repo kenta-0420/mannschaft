@@ -30,23 +30,35 @@
 # 影響区分（任務5 / Codex 独立検分を受けた追加。エントリ行の末尾に " | <区分>" で付ける）
 # ------------------------------------------------------------------------------
 # ここに並ぶ違反は「原則5 に違反している」という点では一貫しているが、
-# 性質の異なる2種類が混在しており、是正の手当ては同じとは限らない。
+# 性質の異なるものが混在しており、是正の手当ては同じとは限らない。
 # ロット割り当ての前に機械可読な形で区別できるよう、区分を列として持つ。
 #
-#   ROLLBACK_COUPLED  (i)  通知の失敗が業務トランザクションを巻き戻す。#2990 が問題にしている本体。
-#                          委譲先が無印（＝呼び出し元の TX にそのまま参加）／同一 TX 内の直接発火。
-#   ORDERING_ONLY     (ii) 巻き戻しはしないが「業務コミット後」という因果順序を保証しない。
-#                          委譲先が @Async / REQUIRES_NEW で別スレッド・別TXに逃げている形。
-#                          業務側が後でロールバックしても通知だけ残る「逆向きの不整合」が通る。
+#   ROLLBACK_COUPLED  (i)   通知の失敗が業務トランザクションを巻き戻す。#2990 が問題にしている本体。
+#                           委譲先が無印（＝呼び出し元の TX にそのまま参加）／同一 TX 内の直接発火。
+#   ORDERING_ONLY     (ii)  巻き戻しはしないが「業務コミット後」という因果順序を保証しない。
+#                           委譲先が @Async の形（別スレッドなので例外が呼び出し元へ返らない）。
+#                           **同期の REQUIRES_NEW / NOT_SUPPORTED / NEVER はここに入らない。**
+#                           それらが切り離すのは「内側の作業」であって「例外の伝播」ではなく、
+#                           握っていなければ例外は呼び出し元へ返り外側の業務TXも巻き戻る（L12 で是正）。
+#                           業務側が後でロールバックしても通知だけ残る「逆向きの不整合」が通る。
+#   AMBIGUOUS         (iii) 違反であることは確定しているが、巻き戻るかどうかを字句から決められない
+#                           （Issue #3149）。レシーバの型が宣言から読めない／索引の外／
+#                           呼び先の宣言が見つからない／候補間で結論が割れる。
+#                           ORDERING_ONLY へ倒してはならない——それは「軽症」という主張であり、
+#                           不明をそちらへ倒すと本物の地雷を軽症に見せる。安全側は常に
+#                           「巻き戻るかもしれない」側であり、是正では ROLLBACK_COUPLED と同じ
+#                           優先度で人手で1件ずつ確かめる。理由の記載を機械で強制する:
+#                             # AMBIGUOUS_IMPACT: <完全修飾クラス名>#<メソッド名> -> <種別> : <理由>
+#                           （下の「# AMBIGUOUS:」＝違反かどうか自体が決まらない、とは別物）
 #
-# 区分の無い行は「未分類」。全109件の分類は後続ロットで埋める前提であり、
+# 区分の無い行は「未分類」。残る未分類は PLAIN_EVENT_LISTENER 3 件であり、
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 2
+# CLASSIFIED_FLOOR: 33
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
-# TX_NOTIFY_VIA_DELEGATE については委譲先の入口メソッドの宣言から区分を導出し、
+# TX_NOTIFY_VIA_DELEGATE / TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY について呼び先の宣言から区分を導出し、
 # 台帳の値と一致しなければ番人が落ちる。導出規則:
 #   委譲先入口に @Async が付く、または @Transactional(propagation = REQUIRES_NEW / NOT_SUPPORTED / NEVER)
 #     -> ORDERING_ONLY（呼び出し元のTXに参加しない＝巻き戻らないが因果順序は保証されない）
@@ -187,7 +199,7 @@
 #      ScheduleCommentNotifier#sendMentioned / #sendReplied（DIRECT_RUNNER_CALL）
 #      この3件は L0 で「クラス跨ぎの偽陽性の可能性あり・L1 で実地確認する前提」として凍結され、
 #      以後どのロットでも検証されないまま残っていた。L8 で決着させた結論:
-#      <b>巻き戻りは起きていなかった</b>。通知は TransactionSynchronizationManager.registerSynchronization
+#      **巻き戻りは起きていなかった**。通知は TransactionSynchronizationManager.registerSynchronization
 #      の afterCommit() から呼ばれており、因果としては既にコミット後で、受信者ごとに
 #      ScheduleCommentNotificationRunner#sendOne（REQUIRES_NEW）へ委譲する正規形そのものだった。
 #      つまり #2990 本体（ROLLBACK_COUPLED）には該当しない。
@@ -196,11 +208,11 @@
 #      ScheduleCommentNotifier を「別 Bean 委譲先の境界は判定できない」限界の実例として名指ししている）。
 #      REMOVED（偽陽性）として台帳へ移す道は取らなかった。REMOVED 行は「現在の判定ロジックでも
 #      検出されないこと」を番人が機械検証するため、検出され続けるものは移せないからである。
-#      代わりに<b>同じ境界を Spring の宣言で表し直した</b>: ScheduleCommentPostedEvent を publish し、
+#      代わりに**同じ境界を Spring の宣言で表し直した**: ScheduleCommentPostedEvent を publish し、
 #      ScheduleCommentNotifier を @TransactionalEventListener(AFTER_COMMIT) の入口に変えた。
 #      sendMentioned / sendReplied は許可された入口から到達する private ヘルパになるため
 #      DIRECT_RUNNER_CALL も解消する。
-#      <b>@Async は意図的に付けていない</b>。是正前の afterCommit() はリクエストスレッド上で同期実行
+#      **@Async は意図的に付けていない**。是正前の afterCommit() はリクエストスレッド上で同期実行
 #      されており、巻き戻りが起こり得ない以上、非同期化しても得るものが無い一方で
 #      ScheduleCommentNotificationPartialFailureIT（1受信者の失敗が他へ波及しないことを実DBで
 #      検証する既存の回帰テスト）が競合するだけである。実行タイミングは是正前と同一。
@@ -209,55 +221,49 @@
 #   凍結エントリ 50 + REMOVED 8 + AMBIGUOUS 0 = 58（= 是正前の CENSUS_FLOOR）
 #   凍結エントリ 43 + REMOVED 8 + AMBIGUOUS 0 = 51
 # CLASSIFIED_FLOOR は変更なし（本ロットの7件はいずれも未分類行であり、分類済み2件に触れていない）。
-# CENSUS_FLOOR: 51
+# CENSUS_FLOOR: 44
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
-com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService#executeAt -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService#executeAt -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.admin.batch.BatchEventListener#onCompleted -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTENER
-com.mannschaft.app.billing.beta.BetaGrantService#safeNotify -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_BARE
-com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.errorreport.service.ErrorReportAsyncExecutor#doRecordBackendException -> TX_NOTIFY_BARE
-com.mannschaft.app.errorreport.service.ErrorReportService#createOrAggregate -> TX_NOTIFY_BARE
-com.mannschaft.app.errorreport.service.ErrorReportService#updateStatus -> TX_NOTIFY_BARE
-com.mannschaft.app.errorreport.service.ErrorReportTimelineService#assign -> TX_NOTIFY_BARE
-com.mannschaft.app.jobmatching.service.JobApplicationService#apply -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.jobmatching.service.JobCheckInService#fireNotifications -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.jobmatching.service.JobContractService#acceptApplication -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.jobmatching.service.JobContractService#reportCompletion -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.memberinfo.service.MemberInfoResponseService#sendRemind -> TX_NOTIFY_BARE
-com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfirmService#resendReminder -> TX_NOTIFY_BARE
-com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processAlertIfNeeded -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processReminders -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.recruitment.service.MarketFriendTargetService#distributeFriendListing -> TX_NOTIFY_BARE
-com.mannschaft.app.recruitment.service.RecruitmentListingService#confirmApplication -> TX_NOTIFY_BARE
-com.mannschaft.app.recruitment.service.RecruitmentListingService#sendPublishedNotifications -> TX_NOTIFY_BARE
-com.mannschaft.app.reflection.service.ReflectionSpacedReminderService#processDueReminders -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.repairplan.batch.TeamMemberTermReminderBatch#executeAt -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.reservation.service.EmergencyClosureService#sendClosure -> TX_NOTIFY_BARE
-com.mannschaft.app.reservation.service.ReservationPendingExpireService#notifyApplicant -> TX_NOTIFY_BARE
-com.mannschaft.app.reservation.service.ReservationReminderDispatchBatchService#sendReminder -> TX_NOTIFY_BARE
-com.mannschaft.app.reservation.service.ReservationWaitlistService#notifySlotReopened -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#sendReminderToUnsubmittedMembers -> TX_NOTIFY_BARE
-com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#triggerManualReminder -> TX_NOTIFY_BARE
-com.mannschaft.app.shiftbudget.service.ShiftBudgetRetryExecutor#retryNotificationSend -> TX_NOTIFY_BARE
-com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService#sendNotifications -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.survey.service.SurveyRemindService#remind -> TX_NOTIFY_BARE
-com.mannschaft.app.survey.service.SurveyService#extendDeadline -> TX_NOTIFY_BARE
-com.mannschaft.app.ticket.service.TicketExpiryBatchService#expireTickets -> TX_NOTIFY_BARE
-com.mannschaft.app.ticket.service.TicketExpiryBatchService#sendExpiryNotifications -> TX_NOTIFY_BARE
+com.mannschaft.app.billing.beta.BetaGrantService#safeNotify -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.jobmatching.service.JobApplicationService#apply -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.jobmatching.service.JobCheckInService#fireNotifications -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.jobmatching.service.JobContractService#acceptApplication -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.jobmatching.service.JobContractService#reportCompletion -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.memberinfo.service.MemberInfoResponseService#sendRemind -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfirmService#resendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processAlertIfNeeded -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processReminders -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.recruitment.service.MarketFriendTargetService#distributeFriendListing -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.recruitment.service.RecruitmentListingService#confirmApplication -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.recruitment.service.RecruitmentListingService#sendPublishedNotifications -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.reflection.service.ReflectionSpacedReminderService#processDueReminders -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.repairplan.batch.TeamMemberTermReminderBatch#executeAt -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.reservation.service.EmergencyClosureService#sendClosure -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.reservation.service.ReservationPendingExpireService#notifyApplicant -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.reservation.service.ReservationReminderDispatchBatchService#sendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.reservation.service.ReservationWaitlistService#notifySlotReopened -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#sendReminderToUnsubmittedMembers -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#triggerManualReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.survey.service.SurveyRemindService#remind -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.survey.service.SurveyService#extendDeadline -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.ticket.service.TicketExpiryBatchService#expireTickets -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.ticket.service.TicketExpiryBatchService#sendExpiryNotifications -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> PLAIN_EVENT_LISTENER
-com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> TX_NOTIFY_IN_TRY
-com.mannschaft.app.todo.batch.TodoDueReminderBatch#notifyAssignees -> TX_NOTIFY_IN_TRY
+com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
+com.mannschaft.app.todo.batch.TodoDueReminderBatch#notifyAssignees -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 
 # --- 2026-09-01 main 取り込みで増えた既存負債（本PRの差分が生んだものではない）---
 # baseline 採取後に main へ着地した実装が持ち込んだ3件。番人が正しく検知したため既存負債として凍結し、
 # 是正は L1 のロットへ回す（CENSUS_FLOOR 97 -> 100）。
-com.mannschaft.app.role.service.OwnershipTransferOfferService#createOffer -> TX_NOTIFY_BARE
-com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX_NOTIFY_BARE
+com.mannschaft.app.role.service.OwnershipTransferOfferService#createOffer -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
+com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 
 # --- 2026-09-01 Issue #3039: 番人の死角を塞いだ結果あらたに検出された既存負債（9件）---
 # 別 Bean への1ホップ委譲（TX_NOTIFY_VIA_DELEGATE）を追えるようにしたことで表に出た。
@@ -282,8 +288,6 @@ com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX
 #       @Transactional(REQUIRED)                                 ... ROLLBACK_COUPLED
 #   ShiftBudgetFailedEventService#retry           -> ShiftBudgetRetryExecutor#execute
 #       @Transactional(REQUIRES_NEW)                             ... ORDERING_ONLY
-com.mannschaft.app.errorreport.service.ErrorReportService#recordBackendException -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
-com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY
 
 # --- 2026-09-03 Issue #2990 L3: ORDERING_ONLY 5件の処理（CENSUS_FLOOR 95 -> 92 / CLASSIFIED_FLOOR 5 -> 2）---
 #
@@ -292,6 +296,11 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 # 因果順序が保証されていないことである。したがって L3 の是正目的は
 # 「巻き戻りを止めること」ではなく「通知が業務コミットの後に出ることを保証すること」であり、
 # 5件を機械的に正規形へ移すことではない。1件ずつ実態を調べ、3件を是正し 2件を監査済み例外として残した。
+#
+# 【L12 による訂正】上記のうち「REQUIRES_NEW なら巻き戻らない」は誤りである。
+# REQUIRES_NEW が切り離すのは内側の作業であって例外の伝播ではないため、同期呼び出しで
+# 例外を握っていなければ外側の業務TXも巻き戻る。L12（Issue #3149）で分類規則を是正し、
+# 該当分は ROLLBACK_COUPLED へ振り替えた。上の記述は当時の判断の記録として残す。
 #
 # ■ 是正した3件（エントリを削除。CENSUS_FLOOR -3）
 #
@@ -760,3 +769,361 @@ com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService#retry -> TX
 #
 # ■ CLASSIFIED_FLOOR は 2 のまま据え置く
 #   分類（| <区分>）が付いた 2 件は本ロットの対象外であり、削除も分類変更もしていない。
+
+# ------------------------------------------------------------------------------
+# 2026-09-06 Issue #2990 L11: errorreport ドメイン 5件の是正（CENSUS_FLOOR 51 -> 46 /
+#                             CLASSIFIED_FLOOR 2 -> 1）
+# ------------------------------------------------------------------------------
+#
+# ■ 是正前は何が壊れていたか（実コード読解＋実DB計測に基づく）
+#
+#   本ロットの5件は**1件も巻き戻っていなかった**。呼び先 ErrorReportNotifier の該当6メソッドは
+#   是正前から @Async("event-pool") が付いており、しかも別 Bean への呼び出しなのでプロキシを確実に
+#   通る。通知は業務スレッドとは別スレッド・別TXで走るため、通知の失敗が業務TXを巻き戻す経路は無い。
+#   よって性質は ROLLBACK_COUPLED ではなく ORDERING_ONLY（因果順序のみ）である。
+#   実害は次の2つで、いずれも実コードの読解で確定した:
+#
+#     (a) 因果順序が保証されない。非同期スレッドは commit を待たずに走り出すため、業務TXが後で
+#         ロールバックしても Slack / SYSTEM_ADMIN / 報告者への通知だけが残る。届く通知は
+#         /system-admin/error-reports/<id> への導線を持つが、その行はもう存在しない。
+#     (b) 管理下の JPA エンティティをスレッド跨ぎで渡していた。notifySlack(saved) /
+#         notifyEscalation(updated, ...) に渡していたのは呼び出し元の永続化コンテキストに属する
+#         管理エンティティそのものであり、非同期スレッドはそれを未コミットの状態のまま読んでいた。
+#         （業務TXがロールバックすれば、通知本文が参照した状態はそもそも存在しなかったことになる。）
+#
+#   実DB計測（ErrorReportNotificationTransactionBoundaryIT）:
+#     - 通知 INSERT を CHECK 制約で失敗させても updateStatus の RESOLVED 更新はコミットされたまま。
+#       是正前後で同じ結果であり、巻き戻りは再現しなかった（見立てどおり ORDERING_ONLY）。
+#     - 業務TXをロールバックさせたとき通知が出ないことは、是正後にのみ成立する。
+#       これが本ロットで実際に直った点である。
+#
+# ■ 是正した5件
+#
+#   ① ErrorReportAsyncExecutor#doRecordBackendException（TX_NOTIFY_BARE）
+#      notifyRegression / notifyEscalation / notifySlack / notifySystemAdmins の4呼び出しを
+#      ErrorReportRegressionDetectedEvent / ErrorReportSeverityEscalatedEvent /
+#      ErrorReportRaisedEvent の publish へ置換。
+#   ② ErrorReportService#createOrAggregate（TX_NOTIFY_BARE）
+#      notifyRegression / notifyEscalation / notifySlack / notifySystemAdmins の4呼び出しを
+#      同じ3イベントの publish へ置換（Slack 抑制は ErrorReportRaisedEvent#slackEnabled で表す）。
+#   ③ ErrorReportService#updateStatus（TX_NOTIFY_BARE）
+#      notifyResolution を ErrorReportResolvedEvent の publish へ置換。
+#   ④ ErrorReportTimelineService#assign（TX_NOTIFY_BARE）
+#      notifyAssignment を ErrorReportAssignedEvent の publish へ置換。
+#   ⑤ ErrorReportService#recordBackendException（TX_NOTIFY_VIA_DELEGATE | ORDERING_ONLY）
+#      委譲先 ErrorReportAsyncExecutor#recordBackendException が①の是正で通知を発火しなくなったため、
+#      番人の delegateFiresNotification が false になり検出されなくなった。
+#      本メソッド自体は無変更である（委譲の形はそのまま。エラー記録は業務TXの巻き戻りと独立に
+#      残らねばならないので、@Async + 別TXへ逃がす構造そのものは正しい）。
+#      これに伴い分類済みエントリが1件減るため CLASSIFIED_FLOOR も 2 -> 1 へ下げた
+#      （残る分類済みは ShiftBudgetFailedEventService#retry の1件）。
+#
+#   配送先は新設の ErrorReportNotificationListener
+#   （@Async("event-pool") + @TransactionalEventListener(AFTER_COMMIT)）。
+#   イベントには ID と種別（および業務TX内でしか観測できない昇格前後の severity）だけを載せ、
+#   本文・受信者はコミット済みの error_reports 行を読み直して組み立てる。
+#
+#   ErrorReportNotifier の該当6メソッドからは @Async を外した。非同期化の責務は
+#   AFTER_COMMIT リスナーが持ち、二重のスレッドホップは配送順序を無意味に乱すだけであるため。
+#   本文組み立て（i18n の MessageSource 引き当て・Slack ペイロード整形）は既存の
+#   ErrorReportNotifierTest が固定している資産なので Notifier 側に残した。
+#
+# ■ 受信者ごとの被害半径（正規形の3要素目）
+#
+#   notifySystemAdmins / notifyEscalation / notifyRegression は**管理者ループ全体が1つの try**に
+#   入っており、1人目への createNotification が落ちると残りの管理者全員が通知を受け取れなかった。
+#   受信者リストの解決を外側 try、配送を受信者ごとの try/catch（ERROR ログに受信者IDを含む）へ分けた。
+#   あわせて Slack 送信も独立した try に切り出した（是正前は Slack が落ちると SYSTEM_ADMIN
+#   プッシュまで巻き添えで送られなかった。Slack と アプリ内通知は別の配送先である）。
+#   ErrorReportNotifierTest.PerRecipientIsolation が3経路とも固定している。
+#
+# ■ 既存テストが欠陥を隠していた（#2990 で8件目）
+#
+#   ErrorReportServiceTest は ErrorReportNotifier をモックしていながら**verify を1本も持っていなかった**。
+#   createOrAggregate / updateStatus の通知発火は実装から丸ごと削除しても緑のままだった
+#   （そもそも両メソッドに対する単体テストが1本も無かった）。是正にあわせてイベント publish の
+#   検証を6本追加した。あわせて、依存から外れて久しい ErrorReportAiAnalysisService の
+#   死んだ @Mock も実際の依存 ErrorReportAiAnalysisDispatcher へ差し替えた。
+#
+# ■ CENSUS_FLOOR: 51 -> 46 の裏取り（実測）
+#   是正前: 凍結エントリ 43 + REMOVED 8 + AMBIGUOUS 0 = 51（= 是正前の CENSUS_FLOOR）
+#   是正後: 凍結エントリ 38 + REMOVED 8 + AMBIGUOUS 0 = 46
+#   消えた 5 件はすべて上記の是正由来であり、番人の検出力低下による消失は 0 件である。
+#   番人（NotificationTransactionBoundaryGuardTest）の判定ロジック（語彙 NOTIFY_METHOD_VOCABULARY・
+#   構造条件 notifyCallOffsets・入口判定 isAllowedEntryPoint）は一行も変更していない。
+#   変更したのは検出力の下限3定数と javadoc のみである。
+#
+# ■ 検出力の下限: 3本すべてを下げた（実測列挙つき）
+#   RAW_CANDIDATE_HITS_MIN      166 -> 162
+#   STRUCTURAL_NOTIFY_CALLS_MIN 146 -> 142
+#   NOTIFY_BEARING_FILES_MIN     92 -> 90
+#
+#   触った本番ファイルの語彙内ヒットを是正前後で1件ずつ実測した（合計 18 -> 14 = -4）:
+#     - ErrorReportService                 5 -> 0（notifyRegression/notifyEscalation/notifySlack/
+#                                                  notifySystemAdmins/notifyResolution → publishEvent）
+#     - ErrorReportAsyncExecutor           4 -> 0（notifyRegression/notifyEscalation/notifySlack/
+#                                                  notifySystemAdmins → publishEvent）
+#     - ErrorReportTimelineService         1 -> 0（notifyAssignment → publishEvent）
+#     - ErrorReportNotificationListener  新規 0 -> 6（上記10箇所の移設先。通知種別ごとに1呼び出しへ集約）
+#     - ErrorReportNotifier                8 -> 8（不変。@Async を外しただけ）
+#     - 新規5イベント record               0 -> 0
+#   構造条件（レシーバが識別子・引数1つ以上）は消えた10箇所・増えた6箇所ともすべて満たすため
+#   STRUCTURAL も同じく -4。発火を持つファイル数は -3（上記3サービス）+1（新規リスナー）= -2。
+#   通知そのものは1件も消していない（6種すべて配送リスナーから呼ばれ続ける）。
+
+# ------------------------------------------------------------------------------
+# --- L12: 影響区分の導出を TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY へ広げた（Issue #3149）
+#          CENSUS_FLOOR 46 -> 49 / CLASSIFIED_FLOOR 1 -> 38 ---
+# ------------------------------------------------------------------------------
+#
+# ■ 何が問題だったか
+#
+#   影響区分（ImpactClass）の導出は TX_NOTIFY_VIA_DELEGATE にしか掛かっていなかった。
+#   deriveDelegateImpact は委譲種別からしか呼ばれず、TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY は
+#   derivedImpact なしで Violation を作っていた。つまり番人は「同一TX内の直接発火」に見える
+#   呼び出しについて、呼び先が別 Bean の @Async メソッドかどうかを一切見ていなかった。
+#
+#   L11 の errorreport 5件がまさにこの形だった。ErrorReportNotifier の該当6メソッドは是正前から
+#   @Async("event-pool") を持ち、呼び出し元は別 Bean（ErrorReportService /
+#   ErrorReportAsyncExecutor / ErrorReportTimelineService）なので Spring プロキシを確実に通る。
+#   巻き戻り経路は存在せず実態は ORDERING_ONLY だったのに、台帳上は無分類で
+#   「巻き戻る」側と区別なく並んでいた。是正ロットの優先順位は深刻度に依存するので、
+#   この穴が埋まらない限り「業務データごと巻き戻る本物の地雷」と「順序が乱れるだけのもの」を
+#   取り違えたまま進むことになる。
+#
+# ■ 何を変えたか（本番コードは一行も変えていない。番人＝テストコードのみ）
+#
+#   (1) notifyCalls(String) — 位置だけでなくレシーバ識別子と呼び先メソッド名を返す。
+#       notifyCallOffsets はこれに委譲するだけなので、この差し替えでは検出条件は一字も
+#       変わっていない（型解決の根治による検出増は (5) の話であり、別に開示している）。
+#   (2) deriveDirectNotifyImpact(...) — レシーバ型を L1 で導入した方式（全候補を集めて、
+#       判定が割れたら判定不能）で解決し、delegateEntryImpact と同じ規則
+#       （入口の @Async / REQUIRES_NEW 等）で区分を導く。自クラスが受け手なら
+#       プロキシを経ない自己呼び出しなので ROLLBACK_COUPLED。
+#   (3) combineImpact(...) — 1メソッド内に複数の発火があるときの畳み込み。優先順位は
+#       ROLLBACK_COUPLED > AMBIGUOUS > ORDERING_ONLY。
+#   (4) ImpactClass に AMBIGUOUS を追加。解決できないレシーバを ORDERING_ONLY へ倒さない。
+#       ORDERING_ONLY は「巻き戻らない＝軽症」という主張なので、不明をそちらへ倒すと
+#       本物の地雷を軽症に見せる。安全側は常に「巻き戻るかもしれない」側である。
+#   (5) TYPED_DECLARATION / QUALIFIED_TYPED_DECLARATION の先頭区切りを後読みへ変えた（後述）。
+#
+# ■ 根治した副次バグ: 連続するフィールド宣言が1つおきに不可視だった
+#
+#   TYPED_DECLARATION は先頭区切りを (?:^|[;{}(),]) と「文字を消費する」形で書いていた。
+#   Matcher#find() は非重複なので、前の宣言のマッチが終端の ; を食べてしまい、
+#   直後の宣言が区切りを見つけられない。実測（SurveyRemindService）:
+#
+#     private final SurveyRepository surveyRepository;            // 拾える
+#     private final SurveyResponseRepository responseRepository;  // 拾えない
+#     private final AccessControlService accessControlService;    // 拾える
+#     private final NotificationHelper notificationHelper;        // 拾えない ← 通知コラボレータ
+#
+#   この欠落のせいで、影響区分の導出は「レシーバ型を引けない」＝ AMBIGUOUS へ大量に倒れていた
+#   （後読みへ直す前の実測: AMBIGUOUS 19 件 / ROLLBACK_COUPLED 15 件）。
+#   区切りを消費しない後読み (?:^|(?<=[;{}(),])) にすると連続宣言がすべて拾える。
+#   これは分類の精度の問題ではなく型解決そのもののバグなので、AMBIGUOUS で塗り潰さず根治した。
+#
+# ■ 検出力は下げていない（実測）
+#
+#   RAW_CANDIDATE_HITS_MIN      162（実測 164）… 変更なし
+#   STRUCTURAL_NOTIFY_CALLS_MIN 142（実測 144）… 変更なし
+#   PARSED_METHODS_MIN        16000（実測 17722）… 変更なし
+#   NOTIFY_BEARING_FILES_MIN     90 … 変更なし
+#   下限は1本も下げていない。検出の語彙（NOTIFY_METHOD_VOCABULARY）・構造条件
+#   （notifyCallOffsets）・入口判定（isAllowedEntryPoint）は一字も触っていない。
+#   ただし「検出は完全に不変」ではない。(5) で直した TYPED_DECLARATION は
+#   TX_NOTIFY_VIA_DELEGATE のレシーバ型解決に使われており、検出経路そのものである。
+#   欠陥を直した結果、委譲先の型が引けるようになって 3 件が新たに見えた（後述の 46 -> 49）。
+#   すなわち変化の向きは「検出が増えた」側であり、弱めてはいない。
+#
+# ■ CENSUS_FLOOR: 46 -> 49 の裏取り（実測。減ってはいない・増えた）
+#
+#   変更前: 凍結エントリ 38 + REMOVED 8 + AMBIGUOUS 0 = 46（= 変更前の CENSUS_FLOOR）
+#   変更後: 凍結エントリ 41 + REMOVED 8 + AMBIGUOUS 0 = 49
+#
+#   増えた 3 件は「型解決のバグ（連続宣言が1つおきに不可視）を直した結果あらたに見えるように
+#   なった既存負債」であり、新規に作り込んだ違反ではない。いずれもレシーバのフィールド宣言が
+#   偶数番目にあったために委譲先の型が引けず、TX_NOTIFY_VIA_DELEGATE の判定に入れなかった:
+#
+#     - RecruitmentListingService#publish
+#         委譲先 = MarketFriendTargetService#distributeFriendListing。
+#         @Transactional（伝播は既定の REQUIRED）なので呼び出し元TXにそのまま参加する。
+#         @Async も切り離し伝播も無い ⇒ ROLLBACK_COUPLED。
+#     - ShiftBudgetRetryExecutor#retryThresholdAlert
+#     - ShiftBudgetRetryExecutor#retryWorkflowStart
+#         いずれも委譲先 = ThresholdAlertEvaluationService#evaluateAndTrigger。
+#         このクラスに @Async は1つも無く、@Transactional(propagation = REQUIRES_NEW) である。
+#         REQUIRES_NEW が分離するのは「内側の作業」であって「例外の伝播」ではないので、
+#         呼び出し側が握っていなければ例外はそのまま返り外側も巻き戻る。
+#         この2メソッド自身には try が無い（catch があるのは1つ上の
+#         ShiftBudgetRetryExecutor#execute）ため、メソッド単位で見る番人には
+#         「握っている」根拠が無い ⇒ ROLLBACK_COUPLED。
+#
+#   是正は後続ロットへ回す。
+#
+# ■ 再分類の実測結果（任務5。次ロットの優先順位はこの数字で決める）
+#
+#   凍結エントリ 41 件の内訳:
+#     ROLLBACK_COUPLED  38 件  ← 是正の優先度が高い。通知配送の失敗で業務データが巻き戻る
+#                                 （TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY 34 件
+#                                 ＋ TX_NOTIFY_VIA_DELEGATE 4 件）
+#     ORDERING_ONLY      0 件  ← 下記「同期の別TX伝播は例外を止めない」参照
+#     AMBIGUOUS          0 件  ← 型解決のバグを根治したため、いま判定不能はゼロ
+#     未分類             3 件  ← PLAIN_EVENT_LISTENER 3 件。この種別は「通知発火の呼び先」ではなく
+#                                 「リスナーの入口注釈」が問題なので、影響区分の軸が当たらない。
+#                                 本ロットの射程外（Issue #3149 は BARE / IN_TRY が対象）。
+#
+#   CLASSIFIED_FLOOR は 1 -> 38（= ROLLBACK_COUPLED 38）。
+#
+# ■ 同期の別TX伝播は例外を止めない（Codex 独立検分 指摘A。当初の分類の誤りを正した）
+#
+#   最初の実装は「@Async もしくは REQUIRES_NEW / NOT_SUPPORTED / NEVER なら ORDERING_ONLY」
+#   としていた。これは誤りである。REQUIRES_NEW が分離するのは「内側の作業」であって
+#   「例外の伝播」ではない。同期呼び出しである以上、通知が投げれば例外は呼び出し元へ
+#   そのまま返り、外側の業務トランザクションも巻き戻る。
+#   巻き戻りを本当に断ち切るのは @Async（別スレッドなので例外が呼び出し元へ返らない）だけである。
+#
+#   そこで委譲先入口を EntryKind（ASYNC / SYNC_DETACHED / JOINING）で読み、
+#     ASYNC          -> ORDERING_ONLY
+#     SYNC_DETACHED  -> 呼び出し側が try で握っていなければ ROLLBACK_COUPLED
+#                       握っていても「その catch が全例外を捕捉している」ことは字句からは
+#                       言えないので ORDERING_ONLY とは断定せず AMBIGUOUS
+#     JOINING        -> ROLLBACK_COUPLED
+#   と導出するように直した。
+#
+#   この修正で ORDERING_ONLY としていた 3 件（ShiftBudgetFailedEventService#retry /
+#   ShiftBudgetRetryExecutor#retryThresholdAlert / #retryWorkflowStart）はすべて
+#   ROLLBACK_COUPLED になった。いずれも委譲先が @Async ではなく REQUIRES_NEW であり、
+#   かつ当該メソッド自身には try が無い（catch は1つ上の ShiftBudgetRetryExecutor#execute
+#   および呼び出し側の運用経路にある）。番人はメソッド単位で読むので、上位フレームの catch を
+#   「握っている」根拠にはできない。実運用の深刻度はこれより低い可能性があるが、
+#   安全側は常に「巻き戻るかもしれない」側であり、根拠が無いまま軽症へ倒さない。
+#
+#   自クラス型のレシーバも早期確定をやめた（指摘B）。receiverTypes はスコープを持たない
+#   型名の集合にすぎず、自クラス型を含むだけでは this とは限らない（ローカル変数による
+#   フィールドのシャドーイング・自己プロキシとして同型 Bean を注入する形）。
+#   他候補と同じ土俵で畳み、結論が割れたら AMBIGUOUS にする。
+#
+# ■ AMBIGUOUS の扱い（0 件だが仕組みは常設してある）
+#
+#   分類列が AMBIGUOUS の行には理由を必須にしてある:
+#     # AMBIGUOUS_IMPACT: <完全修飾クラス名>#<メソッド名> -> <種別> : <理由>
+#   これは既存の「# AMBIGUOUS:」（＝違反かどうかを決められない。ScanResult#ambiguities）とは
+#   別物である。あちらは凍結エントリに載らず CENSUS へ別途足されるのに対し、こちらは
+#   「違反であることは確定しているが、巻き戻るかどうかを決められない」であり、
+#   凍結エントリとして載ったうえで分類列が AMBIGUOUS になる（二重計上しない）。
+#   いま本番は 0 件だが、導出の3分岐は検体
+#   fixtures/notification/ImpactClassificationFixture が1つずつ固定している
+#   （① 別 Bean の @Async ⇒ ORDERING_ONLY、② 同一TXの同期呼び出し ⇒ ROLLBACK_COUPLED、
+#   ③ レシーバの型が字句から読めない ⇒ AMBIGUOUS、
+#   ④ 同期の REQUIRES_NEW へ握らずに呼ぶ ⇒ ROLLBACK_COUPLED、
+#   ⑤ 自クラス型のローカル変数がフィールドをシャドーイング ⇒ AMBIGUOUS）。
+#
+#   さらに「理由の記載を強制するゲート」自体も変異テストで裏取りしてある
+#   （分類を AMBIGUOUS に書き換える → 理由が無ければ落ちる／理由を足せば通る／
+#   9文字の理由なら落ちる／分類が AMBIGUOUS でないのに理由行だけあれば落ちる）。
+#   本番に AMBIGUOUS が0件のままだと、ゲートが一度も実行されず
+#   「将来 AMBIGUOUS が出たときに落ちる保証が無い」＝番人の番人が空になるためである。
+#
+# ------------------------------------------------------------------------------
+# --- L12 で追加した凍結エントリ（型解決の根治であらたに見えた既存負債 3 件） ---
+# ------------------------------------------------------------------------------
+
+com.mannschaft.app.recruitment.service.RecruitmentListingService#publish -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
+
+# ------------------------------------------------------------------------------
+# --- 2026-09-07 Issue #2990 L13: shiftbudget ドメイン 5件の処理（CENSUS_FLOOR 49 -> 44 / CLASSIFIED_FLOOR 38 -> 33）---
+# ------------------------------------------------------------------------------
+# 割当は shiftbudget の 5 件（いずれも ROLLBACK_COUPLED）。相乗りで消えたエントリは無く、
+# 削除したのはちょうど 5 行である。L12 の分類は「委譲先の入口注釈」から機械的に導いたものなので、
+# 「巻き戻る業務データが実際にあるか」を 1 件ずつ実コードで確かめ直した。結論は
+# 5 件とも ROLLBACK_COUPLED は当たっていた（軽症へ倒せる件は無かった）。
+#
+# ■ 根(A) ThresholdAlertEvaluationService#sendNotifications（TX_NOTIFY_IN_TRY）
+#   巻き戻る業務データ: 直前に確定させた budget_threshold_alerts の INSERT
+#   （fireAlertIfNotExists の alertRepository.saveAndFlush(alert)）、100% 到達時の
+#   workflow_request_id 書戻し（tryStartWorkflow の alert.linkWorkflowRequest → save）、
+#   監査ログ BUDGET_THRESHOLD_ALERT_TRIGGERED。
+#   try/catch で握っていたのに巻き戻る理由: notifyAllLocalized の下流
+#   NotificationService#createNotification は @Transactional 既定（REQUIRED）で
+#   evaluateAndTrigger の REQUIRES_NEW トランザクションに参加する。DB 例外はそのトランザクションを
+#   rollback-only にするので、catch で握っても commit 時に UnexpectedRollbackException になり
+#   上記の書き込みが丸ごと消える。これは推測ではなく NotificationHelper 自身の実装コメントが
+#   明記している性質である（notifyAllPreAuthorizedLocalized の「本クラスの非バルク経路
+#   （notify / notifyAll / notifyAllLocalized）は依然として rollback-only を伝播する。
+#   それらの呼び出し元は業務TX内で通知を発火せず AFTER_COMMIT 境界の後へ移すこと」）。
+#   さらに悪いことに失敗記録側 failedEventService.recordFailure は REQUIRES_NEW なので生き残るため、
+#   「alert 行は存在しないのに、その alert の通知失敗を訴える failed_event だけが残る」食い違いを作る。
+#   是正: 業務TX内は BudgetThresholdAlertTriggeredEvent の publish のみとし、配送は新設の
+#   ShiftBudgetThresholdAlertNotificationListener（@Async("event-pool") +
+#   @TransactionalEventListener(AFTER_COMMIT)）へ移した。イベントには ID・閾値・受信者IDだけを載せ、
+#   描画済み文字列も JPA 管理エンティティも載せていない。
+#   配送そのものは notifyAllLocalized ではなく受信者ごとの NotificationDeliveryRunner#sendOne
+#   （1件ごと REQUIRES_NEW）で行う。notifyAllLocalized は受信者ごとの例外を内部で握って
+#   呼び出し元へ何も返さないため、それを使うと通知が全滅してもリスナー外側の catch が発火せず
+#   NOTIFICATION_SEND の failed event が 1 件も残らない（＝alert は確定済みなのに通知は失われ、
+#   再送経路も無い）。sendOne なら被害半径の分離と、落ちた受信者の記録を両立できる。
+#   記録するのは落ちた受信者だけである（成功済みを混ぜると再送で重複配信になる）。
+#
+# ■ 根(B) ShiftBudgetRetryExecutor#retryNotificationSend（TX_NOTIFY_BARE）
+#   巻き戻る業務データ: execute（@Transactional(REQUIRES_NEW)）が通知呼び出しより前に行う
+#   着手マーク entity.markRetrying() + repository.saveAndFlush(entity)（PENDING→RETRYING /
+#   retry_count++ / last_retried_at）と、catch 側の markFailed + save。
+#   notifyAll の下流 createNotification が同じトランザクションに参加して rollback-only を立てるため、
+#   execute の catch が握って markFailed しても commit 時に落ち、retry_count が永久に積み上がらない。
+#   失敗イベントは PENDING のまま残り、15 分毎のリトライバッチが同じイベントを無限に拾い続ける
+#   （MAX_RETRY=3 に到達できないので EXHAUSTED 化もしない）。
+#   加えて UnexpectedRollbackException は execute の catch の外側（プロキシの commit）で
+#   起きるため、呼び出し元 ShiftBudgetFailedEventService#retry まで伝播する（根(C) の実害）。
+#   是正: 再送本体を ShiftBudgetNotificationResendService へ切り出し、
+#   @Transactional(propagation = NOT_SUPPORTED) で呼び出し元TXを中断させた。
+#   これで通知の DB 例外は execute のトランザクションを汚さず、例外そのものは同期で catch へ返るので
+#   markFailed が確実にコミットされる（リトライ回数が正しく積み上がる）。
+#   AFTER_COMMIT へ移さない理由は L3 の記述どおり: retry は同期 API であり、実行結果
+#   （success / 新ステータス）をそのまま FailedEventResponse で返す契約である。
+#   よって新クラスの resend は番人の免除対象とした。ただし AUDITED_EXCEPTIONS（クラス粒度）
+#   ではなく、新設した AUDITED_EXCEPTION_METHODS（FQCN#メソッド名）へ 1 メソッドだけ登録する。
+#   クラス粒度の免除は (i) そのクラスへ委譲するあらゆる呼び出し元を TX_NOTIFY_VIA_DELEGATE から外し、
+#   (ii) そのクラスに将来足される任意のメソッドを無条件で契約の外に出す。とりわけ
+#   ShiftBudgetRetryExecutor#retryNotificationSend（＝根(B) で直したまさにその箇所）が
+#   呼び出し元として沈黙するため、同じ欠陥が再発しても永久に緑のままになる。
+#   さらに免除は無条件の許可ではなく前提条件つきの許可とし、登録メソッドが呼び出し元TXを
+#   切り離す宣言（NOT_SUPPORTED / NEVER / @Async）を実際に持つことを番人自身が機械検査する
+#   （REQUIRES_NEW は業務コミット前に通知を先に確定させるので不可）。宣言が外れた瞬間に赤くなる。
+#   ついでに 1 件見つかった別の欠陥も直した: notifyAll は受信者ごとの失敗を内部で log.warn して
+#   握りつぶし呼び出し元へ何も返さないため、受信者全員への再送が失敗しても failed_event は
+#   SUCCEEDED になっていた。新クラスは受信者ごとに握って継続しつつ、1 名でも失敗したら
+#   最後にまとめて例外を投げるので、失敗が運用者に見えるようになる。
+#
+# ■ 根(C) 委譲 3 件（ShiftBudgetFailedEventService#retry /
+#         ShiftBudgetRetryExecutor#retryThresholdAlert / #retryWorkflowStart）
+#   いずれもソース無変更で消えた。委譲先が通知を発火しなくなったためである（L6 の⑤と同型）。
+#     retryThresholdAlert / retryWorkflowStart -> ThresholdAlertEvaluationService#evaluateAndTrigger
+#       … 根(A) の是正でこのクラスから通知呼び出しが 1 つも無くなった。
+#     retry -> ShiftBudgetRetryExecutor#execute
+#       … 根(B) の是正で execute の同一クラス閉包から通知呼び出しが無くなった
+#         （再送は別 Bean へ 2 ホップ先へ移った。番人は 1 ホップ＋委譲先クラス内閉包で打ち切る）。
+#   ただし実害があったこと自体は確かである。retry の @Transactional は execute より前に
+#   書き込みを行わない（requireEnabled / requireBudgetAdmin / findById はすべて読み取り）が、
+#   execute の後に監査ログ FAILED_EVENT_RETRIED を書く。根(B) の
+#   UnexpectedRollbackException がそこまで伝播すると、この監査ログが消えたうえで管理 API が 500 になる。
+#   L3 の「retry の業務TXは execute より前に一切書き込みを行わない」という記述は正しいが不十分で、
+#   「後ろの書き込み」を見ていなかった。
+#
+# ■ 検出力の下限（RAW_CANDIDATE_HITS_MIN / STRUCTURAL_NOTIFY_CALLS_MIN / PARSED_METHODS_MIN）は下げない。
+#   通知の実発火点は 1 箇所も消していない。
+#     ThresholdAlertEvaluationService#sendNotifications の notifyAllLocalized(1 箇所)
+#       -> ShiftBudgetThresholdAlertNotificationListener の sendOne(1 箇所)              … 1:1
+#     ShiftBudgetRetryExecutor#retryNotificationSend の notifyAll(1 箇所)
+#       -> ShiftBudgetNotificationResendService の notify(1 箇所)                        … 1:1
+#   どちらも「起動位置を移した」だけである。番人の判定ロジックへの変更は
+#   AUDITED_EXCEPTION_METHODS の新設とその前提条件ゲート（切り離し宣言の機械検査）のみで、
+#   違反を検出する軸そのもの（許可入口のホワイトリスト・語彙・委譲追跡）は一行も変えていない。
+#
+# ■ CENSUS_FLOOR: 49 -> 44 の裏取り（実測）
+#   是正前: 凍結エントリ 41 + REMOVED 8 + AMBIGUOUS 0 = 49
+#   是正後: 凍結エントリ 36 + REMOVED 8 + AMBIGUOUS 0 = 44
+#   消えた 5 件はすべて上記の是正由来であり、番人の検出力低下による消失は 0 件である。
+#
+# ■ CLASSIFIED_FLOOR: 38 -> 33
+#   消した 5 件はすべて ROLLBACK_COUPLED（分類済み）であるため、分類済み下限も同じだけ下がる。

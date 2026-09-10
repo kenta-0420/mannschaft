@@ -90,6 +90,27 @@ public class BillingContractService {
             List<String> revokedFeatureKeys) {
     }
 
+    /**
+     * 柱③-B: payer 起点で検出した引継対象契約（§1.2 の検出漏れを塞ぐクエリの返り値）。
+     *
+     * <p>D-1（API 境界）によりサービス API はエンティティを露出できないため、
+     * PR-3 の退会ハンドラ（{@code cancelAllForPayerOnWithdrawal}）が期末解約を発行するのに必要な
+     * 項目だけを持つ値オブジェクトとして返す。{@code pspSubscriptionRef} は §5.1 の絞り込みにより
+     * 非 null が保証される。</p>
+     *
+     * <p><b>{@code currentPeriodEnd} を含めない理由</b>: 期末解約は Stripe 側で
+     * {@code cancel_at_period_end=true} を立てる操作であり、期末の日時値そのものを呼び出し側が
+     * 持つ必要がない（Stripe が保持する実物の期末が権威である）。ローカルの
+     * {@code current_period_end} は §5.1 の絞り込み条件としてのみ用いる。</p>
+     */
+    public record HandoverTargetContract(
+            UUID contractId,
+            EntitlementScopeKind scopeKind,
+            Long scopeId,
+            ContractStatus status,
+            String pspSubscriptionRef) {
+    }
+
     // ============================================================
     // 作成（PLAN / ADDON）
     // ============================================================
@@ -526,8 +547,14 @@ public class BillingContractService {
         }
         billingContractRepository.save(contract);
         String slotAddonKey = contract.getContractKind() == ContractKind.ADDON ? contract.getFeatureKey() : "";
-        activeContractPointerRepository.hardDeleteBySlot(
-                contract.getScopeKind(), contract.getScopeId(), contract.getContractKind(), slotAddonKey);
+        // ★柱③-B AC-14（設計書 §3.7・P0-3 根治）: 削除条件に contract_id 一致を課す。
+        //   スロット単位（scope + kind + slot）のままだと、引継の切替TXで【既に新契約へ付け替わった】
+        //   pointer まで同一スロット条件でヒットし、遅れて届いた旧サブスクの webhook が
+        //   新契約の entitlement を巻き添えで剥がす。自分（旧契約）が今も pointer の持ち主である
+        //   場合のみ削除し、付け替わっていれば 0 件更新（副作用なし）で終わる。
+        activeContractPointerRepository.hardDeleteBySlotAndContractId(
+                contract.getScopeKind(), contract.getScopeId(), contract.getContractKind(),
+                slotAddonKey, contract.getId());
         List<String> revokedKeys = revokeEntitlementsOfContract(contract, null, now);
         evictAfterCommit(contract.getScopeKind(), contract.getScopeId(), revokedKeys);
     }
@@ -607,6 +634,52 @@ public class BillingContractService {
             evictAfterCommit(EntitlementScopeKind.USER, userId, revokedKeys);
         }
         return paidSubscriptionRefs;
+    }
+
+    /**
+     * 柱③-B: 退会予定ユーザーが<b>実質決済者（payer）</b>である TEAM/ORG 契約を検出する
+     * （設計書 {@code billing_payer_handover_design.md} §1.2・§5.1・AC-3）。
+     *
+     * <p><b>根本原因（§1.2）</b>: {@link #cancelAllUserContractsForPurge} は
+     * {@code scope_kind=USER} 固定で検索するため、ある個人が TEAM/ORG 契約の実質 payer であっても
+     * この条件には一切引っかからない。結果、<b>退会30日後の物理匿名化を経てもなお、TEAM/ORG 契約は
+     * 退会者個人の Stripe Customer への課金を止めずに継続する</b>。本メソッドはその検出漏れを
+     * {@code payer_user_id} 起点のクエリで塞ぐ。</p>
+     *
+     * <p><b>絞り込み（§5.1・R2-P1-6）</b>: {@code psp_subscription_ref} と {@code current_period_end} が
+     * ともに非 NULL の契約のみを返す。引継フロー（{@code trial_end} 方式）は「Stripe 側に実在する
+     * サブスクの期末」を前提とするため、無償契約や PSP 未作成の {@code PENDING} 契約には適用できない
+     * （それらは Stripe 操作を伴わない「payer 概念のみの更新」という別経路で扱う）。</p>
+     *
+     * <p><b>なぜ本メソッドが解約まで行わないか（PR 分割の境界）</b>: 検出した TEAM/ORG 契約を
+     * その場で解約してはならない。§5.4 の原則により、引継要求が非終端
+     * （{@code REQUESTED}/{@code ACCEPTED}/{@code REQUIRES_PAYMENT_METHOD}/{@code SWITCHING}/
+     * {@code PARTIALLY_COMPLETED}/{@code MANUAL_INTERVENTION}）の間は purge 側の期末解約フォールバックを
+     * <b>発火させてはならない</b>からである（引継が進行中の契約を purge が横から解約すると、
+     * 承諾済みの新 payer ごと契約を失う）。またフォールバックは USER 契約のような即時解約ではなく
+     * <b>期末解約</b>（{@code cancelAtPeriodEnd}）である（§5.3）。この分岐を担う退会ハンドラの実装は
+     * PR-3（{@code WithdrawalStripeHandler} / {@code cancelAllForPayerOnWithdrawal}）のスコープであり、
+     * 本メソッドはその<b>検出面のみ</b>を PR-2 として先行提供する。</p>
+     *
+     * @param payerUserId 退会予定ユーザー（{@code payer_user_id} 一致）
+     * @return 引継の適用対象となる TEAM/ORG 契約（該当なしなら空）。
+     *         D-1（API 境界）によりエンティティではなく {@link HandoverTargetContract} で返す
+     */
+    @Transactional(readOnly = true)
+    public List<HandoverTargetContract> findHandoverTargetContractsForPayer(Long payerUserId) {
+        return billingContractRepository
+                .findByPayerUserIdAndScopeKindInAndStatusInAndPspSubscriptionRefIsNotNullAndCurrentPeriodEndIsNotNullAndDeletedAtIsNull(
+                        payerUserId,
+                        List.of(EntitlementScopeKind.TEAM, EntitlementScopeKind.ORG),
+                        List.of(ContractStatus.PENDING, ContractStatus.ACTIVE, ContractStatus.PAST_DUE))
+                .stream()
+                .map(contract -> new HandoverTargetContract(
+                        contract.getId(),
+                        contract.getScopeKind(),
+                        contract.getScopeId(),
+                        contract.getStatus(),
+                        contract.getPspSubscriptionRef()))
+                .toList();
     }
 
     /**

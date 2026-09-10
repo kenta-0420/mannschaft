@@ -11786,6 +11786,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/billing/payer-handover-requests/{handoverRequestId}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * チーム契約の請求担当引継を手動介入から再開
+         * @description MANUAL_INTERVENTION の引継を SWITCHING へ戻す（切替再試行）か FAILED で確定する。FAILED 確定時に旧サブスクの期末解約予約を差し戻すかは運用者が明示的に選ぶ（旧が既に次の期間へ更新済みの場合、差し戻しは不適切なことがある）。
+         */
+        post: operations["resumeForTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/billing/payer-handover-requests/{handoverRequestId}/acceptance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * チーム契約の請求担当引継を承諾
+         * @description 新 payer となる他 ADMIN が承諾する（2段目）。支払い方法未登録なら REQUIRES_PAYMENT_METHOD で差し戻す。
+         */
+        post: operations["acceptForTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/billing/contracts": {
         parameters: {
             query?: never;
@@ -11800,6 +11840,26 @@ export interface paths {
          * @description TEAM スコープ。ADMIN 又は課金管理権限を明示付与された DEPUTY_ADMIN。Idempotency-Key 必須。
          */
         post: operations["createForTeam_4"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/billing/contracts/{contractId}/payer-handover-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * チーム契約の請求担当引継を申請
+         * @description 旧 payer が申請する（承諾型2段の1段目）。旧契約が PAST_DUE または期末が過去の場合は拒否される。
+         */
+        post: operations["requestForTeam"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14131,23 +14191,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/shifts/swap-requests/{swapId}/select-claimer": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** オープンコール候補者選定 */
-        post: operations["selectClaimer"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/shifts/swap-requests/{swapId}/resolve": {
         parameters: {
             query?: never;
@@ -14159,23 +14202,6 @@ export interface paths {
         put?: never;
         /** 交代リクエスト承認・却下 */
         post: operations["resolveSwapRequest"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/shifts/swap-requests/{swapId}/claim": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** オープンコール手挙げ */
-        post: operations["claimOpenCall"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16409,6 +16435,66 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["exportDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/billing/payer-handover-requests/{handoverRequestId}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 組織契約の請求担当引継を手動介入から再開
+         * @description MANUAL_INTERVENTION の引継を SWITCHING へ戻す（切替再試行）か FAILED で確定する。FAILED 確定時に旧サブスクの期末解約予約を差し戻すかは運用者が明示的に選ぶ（旧が既に次の期間へ更新済みの場合、差し戻しは不適切なことがある）。
+         */
+        post: operations["resumeForOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/billing/payer-handover-requests/{handoverRequestId}/acceptance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 組織契約の請求担当引継を承諾
+         * @description 新 payer となる他 ADMIN が承諾する（2段目）。支払い方法未登録なら REQUIRES_PAYMENT_METHOD で差し戻す。
+         */
+        post: operations["acceptForOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/billing/contracts/{contractId}/payer-handover-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 組織契約の請求担当引継を申請
+         * @description 旧 payer が申請する（承諾型2段の1段目）。旧契約が PAST_DUE または期末が過去の場合は拒否される。
+         */
+        post: operations["requestForOrganization"];
         delete?: never;
         options?: never;
         head?: never;
@@ -60243,6 +60329,46 @@ export interface components {
             targetRole?: string;
             targetTeamIds?: number[];
         };
+        /** @description 手動介入中の請求担当引継を再開（または失敗確定）する要求 */
+        BillingPayerHandoverResumeRequest: {
+            /**
+             * @description FAILED 確定時に旧サブスクの期末解約予約を差し戻すか（旧が既に次の期間へ更新済みの場合は差し戻しが不適切なことがあるため運用者が選ぶ）
+             * @default false
+             */
+            revertOldCancelSchedule: boolean;
+            /**
+             * @description 再開先。SWITCHING=切替を再試行させる / FAILED=引継を諦めて終端化する
+             * @example SWITCHING
+             * @enum {string}
+             */
+            target: "SWITCHING" | "FAILED";
+        };
+        ApiResponseBillingPayerHandoverResumeResponse: {
+            data?: components["schemas"]["BillingPayerHandoverResumeResponse"];
+        };
+        /** @description 手動介入からの再開結果 */
+        BillingPayerHandoverResumeResponse: {
+            /** @description 引継要求 ID */
+            handoverRequestId?: string;
+            /** @description 旧サブスクの期末解約予約を差し戻したか（FAILED 確定時のみ意味を持つ） */
+            oldCancelScheduleReverted?: boolean;
+            /** @description 再開後の状態（SWITCHING または FAILED） */
+            status?: string;
+        };
+        ApiResponseBillingPayerHandoverAcceptResponse: {
+            data?: components["schemas"]["BillingPayerHandoverAcceptResponse"];
+        };
+        /** @description 請求担当引継の承諾結果 */
+        BillingPayerHandoverAcceptResponse: {
+            /** @description 新 payer が決済を完了するための Checkout URL（差し戻し時は null） */
+            checkoutUrl?: string;
+            /** @description 引継要求 ID */
+            handoverRequestId?: string;
+            /** @description 引継先として先行作成された契約 ID（PENDING_HANDOVER 状態。差し戻し時は null） */
+            newContractId?: string;
+            /** @description 承諾後の状態。REQUIRES_PAYMENT_METHOD は支払い方法未登録による差し戻し */
+            status?: string;
+        };
         /** @description F20.1 契約作成リクエスト */
         BillingCreateContractRequest: {
             /**
@@ -60260,6 +60386,35 @@ export interface components {
              * @example FULL
              */
             planKey?: string;
+        };
+        ApiResponseBillingPayerHandoverRequestResponse: {
+            data?: components["schemas"]["BillingPayerHandoverRequestResponse"];
+        };
+        /** @description 請求担当引継要求 */
+        BillingPayerHandoverRequestResponse: {
+            /**
+             * Format: date-time
+             * @description 承諾の猶予期限（既定: 申請から14日）
+             */
+            expiresAt?: string;
+            /** @description 引継要求 ID（UUIDv7） */
+            handoverRequestId?: string;
+            /** @description 引継元の契約 ID */
+            oldContractId?: string;
+            /**
+             * Format: date-time
+             * @description 申請時刻
+             */
+            requestedAt?: string;
+            /**
+             * Format: int64
+             * @description スコープ ID
+             */
+            scopeId?: number;
+            /** @description スコープ種別（TEAM / ORG。USER は引継の概念が無く対象外） */
+            scopeKind?: string;
+            /** @description 要求の状態（10値の状態機械。FAILING_CLEANUP は後始末未了の非終端） */
+            status?: string;
         };
         TransitionAlertResolveRequest: {
             note?: string;
@@ -67009,7 +67164,7 @@ export interface components {
             };
         };
         CreateReceiptRequest: {
-            amount?: number;
+            amount: number;
             description?: string;
             emailDelivery?: components["schemas"]["EmailDeliveryRequest"];
             lineItems?: components["schemas"]["LineItemRequest"][];
@@ -109251,6 +109406,56 @@ export interface operations {
             };
         };
     };
+    resumeForTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                handoverRequestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingPayerHandoverResumeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPayerHandoverResumeResponse"];
+                };
+            };
+        };
+    };
+    acceptForTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                handoverRequestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPayerHandoverAcceptResponse"];
+                };
+            };
+        };
+    };
     createForTeam_4: {
         parameters: {
             query?: never;
@@ -109275,6 +109480,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBillingContractResponse"];
+                };
+            };
+        };
+    };
+    requestForTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPayerHandoverRequestResponse"];
                 };
             };
         };
@@ -113556,32 +113784,6 @@ export interface operations {
             };
         };
     };
-    selectClaimer: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                swapId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": number;
-            };
-        };
-        responses: {
-            /** @description 選定成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseSwapRequestResponse"];
-                };
-            };
-        };
-    };
     resolveSwapRequest: {
         parameters: {
             query?: never;
@@ -113598,28 +113800,6 @@ export interface operations {
         };
         responses: {
             /** @description 処理成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseSwapRequestResponse"];
-                };
-            };
-        };
-    };
-    claimOpenCall: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                swapId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 手挙げ成功 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -117858,6 +118038,79 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseDisclosureExportResponse"];
+                };
+            };
+        };
+    };
+    resumeForOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: number;
+                handoverRequestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingPayerHandoverResumeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPayerHandoverResumeResponse"];
+                };
+            };
+        };
+    };
+    acceptForOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: number;
+                handoverRequestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPayerHandoverAcceptResponse"];
+                };
+            };
+        };
+    };
+    requestForOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: number;
+                contractId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPayerHandoverRequestResponse"];
                 };
             };
         };

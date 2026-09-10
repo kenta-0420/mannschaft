@@ -287,6 +287,8 @@ R3-P1-3裁定（§2.3・§3.1）は「承諾確定と同時に旧サブスクへ
 
 **状態一覧への追加**: `billing_payer_handover_requests.status` の許容値は本改訂で8値→9値になる: `REQUESTED`/`ACCEPTED`/`REQUIRES_PAYMENT_METHOD`/`SWITCHING`/`PARTIALLY_COMPLETED`/`MANUAL_INTERVENTION`（新設）/`COMPLETED`/`FAILED`/`EXPIRED`（§4.2でDDLのCHECK/コメントを更新）。
 
+> **PR-4 追記（V206）**: さらに `FAILING_CLEANUP` を加えて **10値** になった。失敗確定は決まったが Stripe の後始末（新 trial サブスクの即時取消・旧サブスクの `cancel_at_period_end` 差し戻し）が未了であることを表す**非終端**状態である。**非終端3値ではなく4値**（`PARTIALLY_COMPLETED`・`MANUAL_INTERVENTION`・`FAILING_CLEANUP` と進行中の各状態）が `open_old_contract_id` 生成列で値を保持する。出口は「後始末の成功を確認したうえでの `FAILED`」のみ。
+
 **遷移表**:
 
 | 状態 | 意味 | 遷移元（入口） | 遷移先（出口） |
@@ -352,7 +354,7 @@ CREATE TABLE billing_payer_handover_requests (
     scope_id BIGINT NOT NULL,
     old_payer_user_id BIGINT NOT NULL COMMENT '退会予定・引継元の payer',
     new_payer_user_id BIGINT NULL COMMENT '承諾した引継先 ADMIN（ACCEPTED 以降で確定）',
-    status VARCHAR(24) NOT NULL COMMENT 'REQUESTED/ACCEPTED/REQUIRES_PAYMENT_METHOD/SWITCHING/PARTIALLY_COMPLETED/MANUAL_INTERVENTION/COMPLETED/FAILED/EXPIRED（R5-P1-2でMANUAL_INTERVENTION追加・9値）',
+    status VARCHAR(24) NOT NULL COMMENT 'REQUESTED/ACCEPTED/REQUIRES_PAYMENT_METHOD/SWITCHING/PARTIALLY_COMPLETED/MANUAL_INTERVENTION/FAILING_CLEANUP/COMPLETED/FAILED/EXPIRED（R5-P1-2でMANUAL_INTERVENTION追加、PR-4のV206でFAILING_CLEANUP追加・10値）',
     -- 生成列: 終端状態（COMPLETED/FAILED/EXPIRED）以外のときだけ old_contract_id を値として持つ。
     -- PARTIALLY_COMPLETED は R3-P1-3 裁定で「非終端・リトライ対象」、MANUAL_INTERVENTION は R5-P1-2 裁定で
     -- 「非終端・運用者のRESUME待ち」とそれぞれ再定義したため、いずれもCASE式の対象外
@@ -467,6 +469,138 @@ public List<String> cancelAllForPayerOnWithdrawal(Long payerUserId) { ... }
 - 受益者への通知: 「あなたのメンバーシップは payer の退会に伴い期末で終了します」。受益者自身が新payerになる導線は本設計ではスコープ外（通知のみ）
 - 呼び出し元: `WithdrawalStripeHandler` を実装し、`WithdrawalRequestedEvent`（Day 0）購読時点で呼ぶ
 
+### §6.1 退会経路の実行モデル（PR-3・Codex 検分1巡目の是正で追加）
+
+PR-3 の実装に対する独立検分で、上の1行仕様のままでは**成立しない**欠陥が4件見つかった。ここに是正後の実行モデルを正本として記す。
+
+#### (1) 退会者は対話 API の認可を必ず通れない（P0）
+
+`UserService#requestWithdrawal` は**先に `deleted_at` を立てて commit し**、その後 `AFTER_COMMIT` で決済連携を呼ぶ。ところが対話 API 用の `BillingPayerHandoverService#requestHandover` は `billingOperationAuthorizer.requireCanManage` を通り、その認可 SQL は `users.deleted_at IS NULL AND status='ACTIVE'` を必須条件にしている。したがって**退会者は全件で認可に失敗し、TEAM/ORG の引継要求は1件も作られない**。現行 purge は USER スコープ契約しか処理しないため、旧 payer への課金がそのまま継続する。
+
+→ 退会イベント専用の内部入口 `requestHandoverForWithdrawal(oldContractId, withdrawingPayerUserId)` を設ける。認可の根拠を「現在もそのスコープの管理者か」から**「その契約の払い手が、いま退会したその人自身か」**へ置き換える。呼び出し側は契約 ID しか渡せず、**スコープは契約行から読み出す**ため任意ユーザー・任意スコープでの越境は構造的に成立しない。判定と要求作成の間に payer が書き換わらないよう、契約行を `SELECT ... FOR UPDATE` でロックしてから読む。
+
+#### (2) 失敗・プロセス停止の再試行経路（P1-1）
+
+退会イベントは永続化されない Spring のインメモリイベントで、ハンドラは共有 `event-pool` 上の非同期処理である。Stripe 失敗・投入拒否・commit 直後のプロセス停止では処理そのものが失われ、退会者への課金継続をログ監視だけに委ねることになる。
+
+→ **サブスク単位の処理状態を永続化する**（`membership_payer_withdrawal_cancellations`・V204）。**再試行の駆動（夜次バッチ）は PR-4 に委ねる**が、状態の永続化自体は PR-3 に入れる——状態が無ければ PR-4 でも対象を拾いようがないため。
+
+**状態（6値）と非終端の定義**:
+
+| 状態 | 意味 | 終端 |
+|---|---|---|
+| `PENDING` | 解約に着手したが Stripe・DB の双方の確定に至っていない | ✗（再試行対象） |
+| `SUCCEEDED` | Stripe の `cancel_at_period_end=true` と DB 反映の双方が確定 | ○ |
+| `FAILED` | 解約が明示的に失敗（`last_error` に理由） | ✗（再試行対象） |
+| `RESTORING` | 退会取消による解除に着手したが確定に至っていない | ✗（照合対象） |
+| `RESTORED` | 解除が Stripe・DB の双方で確定 | ○ |
+| `SUPERSEDED` | 本人の明示操作により「退会処理由来」という由来が上書きされた | ○（復旧対象外） |
+
+**作業行がそもそも作られない穴（2巡目 P1-2）**: 契約ごとの `prepare` で行を作る形だと、「複数契約の途中で停止し、まだ `prepare` に到達していない契約」に行が残らない。そこで **Stripe に触れる前に対象全件の行を1トランザクションで `PENDING` として commit する**（`reserveAll`）。それでも「退会本体の commit 後・非同期タスクが始まる前の停止」「`event-pool` の投入拒否」では `reserveAll` 自体が呼ばれない。この最後の穴は、作業行ではなく**退会状態そのもの**を起点にする `MembershipSubscriptionService#findWithdrawalCancelBacklog()`（`users.deleted_at IS NOT NULL` × `cancel_at_period_end = false`）が塞ぐ。行の有無に関係なく「やり残した解約」を再構築できる。
+
+**2経路の重複排除**（3巡目 P2 / 4巡目 P2）: PR-4 の再試行バッチは「非終端の作業行」と「backlog」の2つを走査する。`findWithdrawalCancelBacklog()` は非終端の作業行を持つ契約を除外するので、**同一時点のスナップショットとしては**互いに素になる。ただし本メソッドは複数の独立クエリの組み合わせでトランザクションを張っておらず、照会の間に作業行が作られれば重なりうる——**時間軸を含めると「常に互いに素」ではない**。PR-4 の駆動側は、契約ごとの処理が行ロック下で状態を再検証する（本 PR の `prepare`/`prepareRestore` と同じ作法）ことで二重投入を無害化すること。
+
+**非終端のまま拾われ続ける行を作らない**（3巡目 P2）: 復旧中に対象が消えた・payer が変わった・期末が到来して終端化した場合、`prepareRestore` は空を返すだけでなく作業行を `SUPERSEDED` へ**終端化する**。そうしないと照合バッチが永久に同じ行を拾い続ける。
+
+> **リリース依存（PR-4 で解消済み）**: PR-3 単独では失敗した期末解約は自動では再試行されなかった（対象は DB に残るが、拾う主体が居ない）。**PR-4 の `MembershipPayerWithdrawalRetryBatchService`（日次 03:20 JST）が駆動主体として着地し、この依存は解消した。** 同バッチは「非終端の作業行（`PENDING`/`FAILED`）」と「`findWithdrawalCancelBacklog()`」を**払い手単位で union/dedup** してから解約側を、`RESTORING` を解除側として別パスで駆動する。dedup を入れるのは、backlog の照会が複数の独立クエリの組み合わせでトランザクションを張っておらず、**照会の間に作業行が作られれば重なりうる**ためである（「同一時点のスナップショットとしては互いに素」＝「常に互いに素」ではない）。仮に重複しても、払い手ごとの処理が行ロック下で状態を取り直して再検証するため二重発行にはならない（抽出側の dedup と処理側の再検証という二段の防御）。
+
+#### (3) 1件の失敗が全件を巻き添えにしない（P1-2）
+
+全件を単一の `REQUIRES_NEW` トランザクションで処理してはならない。`save` の SQL 発行は commit まで遅延しうるため、**最後の flush/commit で1件でも DB 更新が失敗すると成功した全契約の DB 変更と通知イベントがまとめてロールバック**する一方、先に成功した Stripe の `cancel_at_period_end=true` は戻らない。
+
+→ **ID だけを抽出 → 1契約ずつ別 Bean の public メソッドで独立トランザクション**（Spring の `@Transactional` は自己呼び出しでは効かないため Bean 分離が必須）。実行単位は3段:
+
+| 段 | 主体 | 内容 |
+|---|---|---|
+| tx① | `MembershipPayerWithdrawalTxService#prepare` | 行ロック → payer/status/`cancel_at_period_end` を**取り直して**再検証 → 処理状態を `PENDING` で永続化して commit |
+| — | `MembershipPayerWithdrawalRunner` | Stripe `cancel_at_period_end=true`（tx 外・Idempotency-Key はサブスク ID 由来で固定） |
+| tx③ | `…TxService#applyScheduled` | 行ロック → 再検証 → `saveAndFlush` で契約単位に確定 → `SUCCEEDED` 記録 → 受益者通知を publish |
+
+各トランザクションが行ロックを取り直すのは、抽出クエリにロックが無いままだと `customer.subscription.deleted` webhook（同じ行のロックを取る）と競合し、古い ACTIVE エンティティを保持したままの UPDATE が webhook の `CANCELLED` を上書きしうるためである。確定時点で既に終端なら「課金が止まる」目的は達しているので DB は触らず `SUCCEEDED` として記録する。
+
+#### (4) 退会取消時の復旧（P1-3）
+
+退会は30日以内に取り消せる（`WithdrawalCancelledEvent`）。取り消したのに期末でメンバーシップが終了し、引継要求が `REQUESTED` のまま残って次の申請を塞ぎ続けるのでは筋が通らない。
+
+- **membership 側**: `membership_subscriptions.cancel_at_period_end` は boolean であり、**本人が退会前に明示解約した契約**と**退会処理が自動予約した契約**を区別できない。単純に payer の全予約を解除すると前者まで復活させてしまう。`membership_payer_withdrawal_cancellations`（退会処理が予約した行だけが存在する）を**由来の正本**として引き、`SUCCEEDED`／`RESTORING` の行だけを Stripe（`revertSubscriptionCancelAtPeriodEnd`）と DB の双方で戻す。
+- **handover 側**: §4.2 の遷移表どおり `REQUESTED → FAILED` へ終端化する。終端化しないと生成列 `open_old_contract_id` と `uk_bphr_open_old_contract` が同一契約への次の引継要求を猶予期間中ブロックし続ける。`ACCEPTED` 以降は対象にしない——新 payer 側で既に支払い手段の検証や新サブスク作成が進んでおり、退会取消だけを根拠に機械的に巻き戻すと Stripe 側と乖離するため、通常の期限・切替判定（§3.6）に委ねる。
+
+#### (5) イベントの到達順に依存しない（2巡目 P1-1）
+
+退会と退会取消は**どちらも**共用 `event-pool` 上の非同期処理であり、到達順は保証されない。退会受付の直後に取り消すと、取消処理が先に走って対象ゼロで終わり、そのあとに届いた古い退会イベントが期末解約と `REQUESTED` 引継要求を作ってしまう。
+
+→ **イベントの中身ではなく、処理時点の DB の真値を見る**。auth ドメインの `WithdrawalStateQueryService#findPendingWithdrawalAttempt(userId)` が唯一の窓口で、「いま退会申請中か」と「どの退会試行か（世代 ＝ `users.deleted_at`）」の両方に1回で答える。
+
+| 処理 | 進める条件 |
+|---|---|
+| 期末解約 tx①（`prepare` / `reserveAll`） | 退会申請中である |
+| 期末解約 tx②（`applyScheduled`） | **tx① で見た世代と同一の退会が今も継続している** |
+| 引継要求の作成（`requestHandoverForWithdrawal`） | 退会申請中である |
+| 引継要求の終端化（`failRequestedOnWithdrawalCancelled`） | 退会申請中<b>ではない</b> |
+| 解約の解除（`prepareRestore`） | 退会申請中<b>ではない</b> |
+
+**tx② でも世代を再検証するのが要点である**（3巡目 P1-2）。行ロックは各短期トランザクションの中でしか保持されず、**Stripe 呼び出しを跨いだ直列化にはならない**。tx① で真値を確かめてもロックはそこで解放され、その間に退会が取り消されうる。再検証が無いと「退会取消済みなのに期末解約が確定し、作業行は終端 `SUCCEEDED`」という、backlog にも再試行にも載らない回復不能な状態が生まれる。
+
+世代が変わっていた場合は DB へ反映せず、作業行を `RESTORING`（＝Stripe 側の予約を取り消す必要がある）にして**その場で解除へ切り替える**。Stripe には既に予約が入っている可能性があるため、放置は許されない。
+
+> **`users` は `@SQLRestriction("deleted_at IS NULL")` を持つ**ため、JPQL・`findById` では退会申請中のユーザーが1件も返らない（＝常に「申請中でない」と誤答する）。この判定は **native クエリでなければ成立しない**（`UserRepository#findDeletedAtIncludingDeleted`）。
+>
+> **同じ罠が `UserService#cancelWithdrawal` 本体にもあった**（3巡目 P1-1）。`findById` で退会者を引こうとして必ず `AUTH_015` で終了し、**退会取消そのものが一度も成立していなかった**（`WithdrawalCancelledEvent` も発行されない／直後の `AUTH_032` 分岐は到達不能な死んだコード）。`findByIdForUpdateIncludingDeleted` へ是正した。**IT がこの欠陥を隠していた**——`UPDATE users SET deleted_at = NULL` の SQL 直叩きで本番経路を迂回していたためである。IT は必ず `cancelWithdrawal()` を通す。
+
+**本人の新しい意思との衝突**: 退会取消の**後**に本人が改めて明示解約した場合、復旧処理は同じ `cancel_at_period_end=true` しか見ないため、その新しい意思まで解除してしまう。人が新しい判断を下した瞬間——`MembershipSubscriptionService#cancel`——に由来の記録を `SUPERSEDED` へ終端化し、以後の復旧対象から外す。**無効化の対象には `PENDING` を含める**（3巡目 P1-3）——古い退会処理が `PENDING` の間に「退会取消＋明示解約」が入る競合があり、`SUCCEEDED`/`RESTORING` だけを対象にすると無効化が no-op になる。
+
+あわせて `applyScheduled` は**反映できなかったとき（`applied=false`）に `SUCCEEDED` を書かない**。「既に `cancel_at_period_end=true`」は本人の明示解約かもしれず、`SUCCEEDED` にすると復旧処理がそれを退会由来と誤認する。この場合は `SUPERSEDED`（＝自分が予約したのではない）とする。
+
+#### (7) Stripe 冪等キーの世代分離（4巡目 P1-1）
+
+Stripe の Idempotency-Key は**同一キーに対して最初の応答をそのまま返す**（24時間）。キーを `subscriptionId` だけから作ると、「世代Aで解約予約 → 取消で解除 → 24時間以内に世代Bで再退会」で世代Bのリクエストが世代Aと同じキーになり、**3回目の更新が実行されない**。DB は `cancel_at_period_end=true`、Stripe 実体は解除済み、という金銭事故に直結する乖離が残る。
+
+→ 冪等キーに**退会試行ごとに必ず異なる値**を含める。ここで**時刻を使ってはならない**（5巡目 P1-3）——本番の `users.deleted_at` は `DATETIME`（小数秒なし）であり、同一秒内の「退会A → 取消 → 再退会B」では世代値が一致してしまう。**作業行の `attempt_count`**（`markAttempt` が退会試行のたびに単調増加させる、時刻に依存しない値）を使う。
+
+    withdrawal-payer-cancel-<subscriptionId>-<attemptCount>
+    withdrawal-payer-restore-<subscriptionId>-<attemptCount>
+
+解約・解除で接頭辞を分けるため両者も衝突しない。
+
+#### (8) 世代の再検証は「書き込む全経路」で行う（4巡目 P1-2）
+
+確定（`applyScheduled`）だけでなく、**解除の確定（`applyRestore`）と失敗の記録（`markFailed` / `markRestoreFailed`）も世代と現在状態を再検証する**。していないと次が起きる。
+
+- 世代Aの解除が Stripe を呼んでいる間に世代Bの再退会が完了 → 遅れて戻った世代Aが**世代Bの解約予約を解除**する
+- 本人の明示解約で `SUPERSEDED` になった行に、古い Stripe 呼び出しの失敗が `FAILED` を書き戻す → 広げた復旧対象集合により**本人の明示解約が解除され得る**
+
+`markFailed` は「自分の世代かつ `PENDING`」、`markRestoreFailed` は「自分の世代かつ `RESTORING`」のときだけ書く。
+
+#### (9) 真値の確認はロック付きで行い、ロック順序を固定する（4巡目 P1-3・P2）
+
+退会状態を根拠に DB を書き換える経路は、`WithdrawalStateQueryService#lockAndFindPendingWithdrawalAttempt`（`select deleted_at ... for update`）でユーザー行をロックしてから判断する。ロックなしの読み取りでは「真値を見た直後・自分が書き込む前」に `cancelWithdrawal` や再退会が commit でき、確認と反映が線形化しない。**引継要求の作成（`requestHandoverForWithdrawal`）と終端化（`failRequestedOnWithdrawalCancelled`）も例外ではない**（5巡目 P1-1。規定を書きながら呼び出し側が非ロック版のまま残っていた）。
+
+**ロック順序の正準は `users` → `membership_subscriptions` → `membership_payer_withdrawal_cancellations`。** `PENDING` を復旧対象へ加えたことで解約側と解除側が同じ行集合を触るようになったため、順序を固定しないとデッドロックしうる。
+
+#### (11) 「既に予約済みだからスキップ」を DB 列だけで判断しない（5巡目 P1-2）
+
+`prepare` が `membership_subscriptions.cancel_at_period_end` だけを見てスキップすると、次の経路で **Stripe=false・DB=true・作業行=`PENDING`** という誰も進めない状態が残る。
+
+1. 世代Aの復旧で Stripe の予約解除が成功する
+2. `applyRestore` の前に世代Bの再退会が commit する
+3. `applyRestore` が再退会を検出して `false` を返し、DB の `true` を残す
+4. 世代Bの `reserveAll` が作業行を `PENDING` にする
+5. `prepare` が DB の `true` だけを見てスキップする → 世代Bの Stripe 解約が永久に発行されない
+
+→ **作業行が非終端（`PENDING`/`FAILED`/`RESTORING`）＝自分たちの処理が途中である間は、DB が `true` でも Stripe へ発行して揃える。** DB 列は Stripe 側の実態と乖離しうる前提で扱う。「自分たち以外が予約した」（作業行が無い、または終端）ときだけスキップする。
+
+あわせて `applyScheduled` は、DB 列を変更できなかった（`applied=false`）場合でも**その作業行が自分たちのもの（世代一致かつ `PENDING`）なら `SUCCEEDED`** とする。`SUPERSEDED` にするのは「自分が予約したのではない」ときだけである（4巡目 P1-3 の意図はそのまま維持される）。
+
+#### (10) 明示解約と由来の無効化は同一トランザクション（4巡目 P1-4）
+
+`supersedeByUserDecision` の伝播は `REQUIRED`（既定）にする。`REQUIRES_NEW` だと、内側が commit した後に外側（利用者の解約 API）がロールバックした場合、**DB 解約は成立していないのに作業行だけ終端化**され、以後の退会取消で本来戻すべき予約を復旧対象と認識できなくなる。
+
+#### (6) 復旧の「Stripe 成功・DB 失敗」（2巡目 P1-3）
+
+Stripe の予約解除に成功した直後・DB 反映前に落ちると、**Stripe は継続・DB は `cancel_at_period_end=true`** という永続的な不整合になる。行が `SUCCEEDED` のままでは非終端集合に入らず、取消イベントも再配送されないため自動回復できない。
+
+→ **`RESTORING` を Stripe 呼び出しの前に commit する**。以後どこで落ちても行は非終端として残り、再試行・照合の対象になる。復旧の失敗は `FAILED` へは倒さない——`FAILED` は「解約が未了」を意味し、再試行バッチの扱いが逆向きになるためである。
+
 ---
 
 ## §7. GDPR×会計保持の境界（P2-15 具体化）
@@ -541,13 +675,41 @@ public List<String> cancelAllForPayerOnWithdrawal(Long payerUserId) { ... }
 1. **PR-1（DDL＋読み取り専用の土台）**: `payer_user_id`/`handover_request_id` 列追加・`chk_bc_status` CHECK 6値化・`ContractStatus` enum への `PENDING_HANDOVER` 追加・バックフィル・`billing_payer_handover_requests` テーブル新設・`ActiveContractPointerRepository#hardDeleteBySlotAndContractId` 新設（AC-1, AC-2, AC-15, AC-14の土台）
 2. **PR-2（BillingContractService拡張＋Gateway拡張）**: purge検出クエリ拡張（R2-P1-6の絞り込み条件含む）・引継要求/承諾API・状態機械（`PENDING_HANDOVER`含む）・`trial_end`方式での新サブスク作成・承諾確定時の旧サブスク`cancel_at_period_end`予約/差し戻し（R3-P1-3）・旧期末到達を条件とするローカル切替TX（Stripe API呼び出し無し）・PAST_DUE/過去期末の拒否分岐（R2-P1-4）・`pending_setup_intent`の二段検証（R3-P1-2）・Idempotency-Key/metadata対応とList Subscriptions照会（全ページ走査・R4-P1-1）のためのGateway拡張・DB+List優先のリトライ手順（AC-3〜12, AC-16, AC-22〜33の大半）
 3. **PR-3（membership_subscriptions連携＋WithdrawalStripeHandler実装）**: `cancelAllForPayerOnWithdrawal`新設・`WithdrawalStripeHandler`実装（旧`TeamSubscriptionEntity`参照撤去）（AC-13）
-4. **PR-4（hardDeleteBySlotAndContractId移行＋webhook順序耐性の仕上げ・監視）**: 旧webhookハンドラの呼び出し先切替・`SWITCHING`詰まり監視アラート・5分岐通知の実装・`cancel_at_period_end`夜次照合バッチと切替バッチの実行前チェック実装（R4-P1-2・AC-34/35）・期末境界越え検知と`MANUAL_INTERVENTION`状態および`RESUME`操作（運用者向けAPI/画面）の実装（R5-P1-1/2・AC-35〜37）（AC-14, AC-17〜21, AC-34〜37）
+4. **PR-4（着地済み・hardDeleteBySlotAndContractId移行＋夜次バッチの結線・MANUAL_INTERVENTION/RESUME）**: 旧webhookハンドラの呼び出し先切替・`SWITCHING`詰まり監視アラート・5分岐通知の実装・`cancel_at_period_end`夜次照合バッチと切替バッチの実行前チェック実装（R4-P1-2・AC-34/35）・期末境界越え検知と`MANUAL_INTERVENTION`状態および`RESUME`操作（運用者向けAPI/画面）の実装（R5-P1-1/2・AC-35〜37）（AC-14, AC-17〜21, AC-34〜37）
 
 各PRはBEテスト先行（CLAUDE.md「BE/API はテスト先行」原則）。PR-1はDDLのみのためマイグレーション適用確認ITを先行させる。
+
+#### PR-4 の実装対応（着地時点の正本）
+
+| 設計上の項目 | 実装 |
+|---|---|
+| 切替バッチ（唯一の切替TX実行者・§3.6 (b)） | `BillingPayerHandoverBatchService#runPayerHandoverSwitch`（毎時 hh:10 JST・ShedLock `billing_payer_handover_switch`）。抽出は `SWITCHING` に加え **`PARTIALLY_COMPLETED`** も含む（§3.5・非終端のリトライ対象。含めないと pointer が旧のまま宙ぶらりんで残る）。`MANUAL_INTERVENTION` は含めない（運用者の `RESUME` 待ち） |
+| 夜次照合バッチ（§3.6.1(a)・AC-34） | `BillingPayerHandoverBatchService#runPayerHandoverNightlyReconcile`（日次 02:40 JST）。①期限超過承諾の照合（§5.3）②`old_cancel_scheduled_at` 未確認行を **Stripe 実物と突合**。抽出を `SWITCHING`/`PARTIALLY_COMPLETED` に限るのは、`ACCEPTED` 段階での未設定は**正常**（旧への予約は引継確定と同時に行う設計）であり、含めると正常な進行中の行に対して毎晩 Stripe を叩き予約すべきでない旧サブスクを予約してしまうため |
+| 期末解約の再試行バッチ（§6.1 (2)） | `MembershipPayerWithdrawalRetryBatchService#runWithdrawalCancelRetry`（日次 03:20 JST）。上記「リリース依存」節を参照 |
+| `MANUAL_INTERVENTION` のアラート（§3.6.2） | `BillingPayerHandoverTxService#markManualIntervention` が通知（`MANUAL_INTERVENTION_REQUIRED`・当該スコープの引継先候補 ADMIN 宛・i18n 6言語）を publish し、あわせて ERROR ログで運用へ上申する |
+| `RESUME`（§3.6.2 出口・AC-37） | `POST /api/v1/{teams\|organizations}/{id}/billing/payer-handover-requests/{handoverRequestId}/resume`。`target=SWITCHING\|FAILED` を運用者が明示的に選ぶ。`FAILED` 確定時の旧サブスク差し戻しは `revertOldCancelSchedule` で**運用者が選ぶ**（旧が既に次の期間へ更新済みの場合、差し戻しは旧をさらに継続させるため不適切なことがある）。`MANUAL_INTERVENTION` 以外からは `HANDOVER_NOT_RESUMABLE`（409） |
+| `SWITCHING` 詰まり監視／追加認証の期限（§5.5 ④・AC-20） | `BillingPayerHandoverBatchService` の夜次照合に `reconcileStalledSwitching` を追加。承諾確定（`accepted_at`）から24時間を過ぎた `SWITCHING` を抽出し、**Stripe 実物の `pending_setup_intent` を再検証**して未解決なら `FAILED` を確定し、新 trial サブスクを無課金取消・旧を差し戻したうえで**他の候補 ADMIN へ再通知**する。旧期末到達まで待つと、そのとき旧サブスクは既に終了していて差し戻しても継続を復旧できないため、**期末より前に決着させる**必要がある |
+| 恒久失敗の `MANUAL_INTERVENTION` 化（§3.6.2 入口3） | `reconcileOldCancelSchedule` が設定 API の失敗を捕捉し、承諾確定から `CANCEL_SCHEDULE_ESCALATION`（3日）を過ぎても解消しない場合に `MANUAL_INTERVENTION` へ倒す。試行回数の列を足さずに**経過時間**で測るのは、恒久性の証拠として「何回叩いたか」より「いつまで解消しないか」のほうが確実であるため（単一要求行の経過時間であり、退会世代の推測ではない） |
+| 状態遷移の CAS 化 | `executeSwitchTx` / `markPartiallyCompleted` / `markManualIntervention` / `markFailedAndClearCancelSchedule` / `failStalledSwitchingAndRenotify` の全てが**行ロック取得後に期待元状態を再検証**する。`loadSwitchContext` 〜 Stripe 照会の間は行ロックが無いため、並行実行の失敗補償が**終端状態（`COMPLETED`）を非終端へ引き戻す**経路が実在した。ShedLock は `lockAtMostFor` 超過や webhook 等の他経路との競合に対する fencing にならない |
+| 失敗の恒久/一時分類（§3.6.2 入口3） | Stripe の HTTP ステータスで分類する（`4xx`（`429` 除く）＝恒久で即 `MANUAL_INTERVENTION`、`429`/`5xx`/接続断＝一時で再試行）。**時間（`CANCEL_SCHEDULE_ESCALATION`＝3日）は分類の根拠ではなく、分類が付かない一時失敗が続いた場合の上限**として併用する。分類を可能にするため `StripePaymentProviderImpl` の該当3メソッドが `StripeException` を cause として保持するよう是正した（握り潰すと呼び出し側は代理指標で推測するしかない） |
+| 状態変更の CAS（呼び出し元ごとの期待元状態） | `markFailedAndClearCancelSchedule` は**期待元状態を引数で受ける**。切替バッチの失敗補償は `SWITCHING`/`PARTIALLY_COMPLETED`、`RESUME→FAILED` は `MANUAL_INTERVENTION` のみ。「終端でなければ何でも可」は CAS ではなく、古いスナップショットを持つ worker が運用者の `MANUAL_INTERVENTION` を握り潰せてしまう |
+| Stripe 変更と CAS の順序 | **CAS で権利を取ってから Stripe を変更する**（取れなければ Stripe に触らない）。逆順だと、Stripe 照会中に別 worker が `COMPLETED` へ進めた場合に「DB は `COMPLETED`・Stripe は新サブスク取消済み」という乖離が残り、pointer が指す新契約と Stripe 実物が矛盾する |
+| 滞留抽出のキーセット送り | 滞留抽出は**処理しても状態が変わらない行**（認証完了済みで旧期末待ちの正常な `SWITCHING`）を返しうる唯一の照合であり、固定の先頭 N 件で切ると後続の認証未解決行が永久に検査されない。`accepted_at` を carry して前へ進む。他の3照合は処理すると必ず状態が動いて集合から抜けるため先頭から詰めれば足りる |
+| 旧期末までの猶予の要件化 | 引継要求の作成時に**旧期末まで `PENDING_SETUP_INTENT_DEADLINE + PERIOD_END_SAFETY_MARGIN`（30時間）以上**を要求する。加えて滞留抽出は「承諾+24時間」**または**「旧期末が 6 時間以内に迫っている」で拾う。旧期末を過ぎると `cancel_at_period_end=false` を送っても終了済みサブスクは復旧できず、「期末より前に `FAILED` として差し戻す」という安全条件が原理的に成立しないため |
+| **`FAILING_CLEANUP`（非終端・V206）** | 失敗確定を「決めた瞬間」と「Stripe の後始末が終わった瞬間」に分ける。CAS で `FAILING_CLEANUP` を取り、後始末の成功を確認してから `FAILED` へ終端化する。この状態は終端3値に含まれないため、生成列 `open_old_contract_id` が値を保持し、**`uk_bphr_open_old_contract` が通常の作成入口も含めて同一契約への新規要求を物理的に拒む**（＝旧試行のサブスクが Stripe に残ったまま別 ADMIN の承諾が進む二重サブスクを構造的に防ぐ）。同時に非終端なので夜次バッチが必ず回収できる。目印列の有無で表していた前案は、目印を消した瞬間に「回収不能」と「UNIQUE 枠の解放」が同時に起きる欠陥があった |
+| 終端化と再要求は同一 TX | `finalizeFailure` が「`FAILED` 化・`old_cancel_scheduled_at` クリア・新契約の無効化・AC-20 の再要求と通知」を1つの TX で確定する。分けると、その間の停止で「元要求は `FAILED`・再要求は無し」が残り、**終端は抽出対象外なので夜次バッチからも永久に見えない**。1 TX なら失敗しても `FAILING_CLEANUP` のまま残り次回が拾い直す |
+| 再要求は共通の作成要件で判定 | 再要求の可否は通常の作成入口と同じ要件（旧契約が今も引継可能か・**旧期末までの猶予**・候補 ADMIN の存在）だけで決める。**「旧 payer が退会申請中か」は要件にしない**——通常の `requestHandover` が退会を要件にしていない以上、これを課すと**対話 API から始めた正当な引継**で追加認証が失敗したときに他 ADMIN が居ても再要求が作られなくなる |
+| 失敗確定の3段構え（CAS → Stripe → 完了記録） | `FAILED` へ倒す全経路（切替の `pending_setup_intent` 未解決・`RESUME→FAILED`・滞留照合）が**同一の順序**を通る。①`markFailedPendingCleanup` が期待元状態つき CAS で権利を取る（取れなければ Stripe に触らない）②Stripe の後始末 ③`finishFailureCleanup` が `old_cancel_scheduled_at` を NULL クリア。②が落ちるとこの列が残るため、**「`FAILED` なのに残っている」が後始末未了の証跡**になり、夜次バッチ（`findFailedWithPendingCleanupIds`）が必ず回収する。新しい状態も列も増やさずに回収可能性を確保している |
+| AC-20 の再要求は後始末の後 | 再要求（`renotifyWithFreshRequest`）は**後始末が完了してから**作る。先に作ると、後始末が落ちた場合に「旧試行のサブスクが Stripe に残ったまま、別 ADMIN が新しい承諾を進められる」＝**二重サブスク**の窓が開く。再要求は共通の作成要件（旧 payer が今も退会申請中か・旧契約が今も引継可能か・旧期末までの猶予・候補 ADMIN の存在）を**Tx 層で再検証**し、満たさなければ作らない（元要求は `FAILED` のままなので生成列の枠が空き、purge の期末解約フォールバックへ渡る） |
+| 承諾時の期末猶予の再検証 | 要求は14日間有効なので、作成時の検証だけでは足りない（作成時31時間の契約でも24時間後に承諾すれば残り7時間）。`expires_at` しか見ないと**旧期末を過ぎていても承諾できて**しまい、期末後の差し戻しは終了済みサブスクを復旧できない。承諾は Stripe に新サブスクを作る不可逆な一歩なので、その直前に旧期末の猶予を再検証する |
+| 滞留抽出の複合カーソルと正常行の除外 | `(accepted_at, id)` の複合カーソルで進む（`accepted_at` 単独では同一時刻行がページ境界で全て脱落する）。あわせて **V205 の `setup_intent_verified_at`** を追加し、認証完了を確認した行を抽出から外す。認証完了行は処理しても状態が変わらないため、除外しないと実行件数の上限を埋めて**認証未解決行を永久に飢餓させる**（カーソルは実行のたびに初期化されるため、上限に達する限りその先へ到達しない） |
+| AC-14（`hardDeleteBySlotAndContractId` 移行） | `BillingContractService#expireSubscriptionContract`（旧サブスク由来の `customer.subscription.deleted` webhook 経路）を `contract_id` 一致条件つき削除へ移行。切替TX後に遅着した旧 webhook は 0 件更新で終わる |
 
 ---
 
 ## §9. 未決事項（実装フェーズで確定させる・変更なし）
+
+- **`RESUME` の運用権限（PR-4 Codex 検分1巡目 P1-5・未決）**: §3.6.2 は「Stripe 実データを確認できる運用チームが `RESUME` 権限を持つ」ことを前提にしているが、本リポジトリには**テナント横断の運用権限という型が存在しない**。`BillingAccessGuard` が扱うのは当該スコープの ADMIN と課金権限付き DEPUTY_ADMIN だけであり、`AccessGuard` の `SYSTEM_ADMIN` は「常に通す」短絡であって専用権限ではない。現状の PR-4 は当該スコープの ADMIN のみに `RESUME` を許しているため、**Stripe の void/refund を確認した運用担当者自身は決着させられない**。選択肢は (a) 専用の運用 permission を新設し監査ログと対象スコープ確認を伴わせる、(b) 管理コンソール側の別 API として切り出す、(c) 当面テナント ADMIN のみとし運用手順で補う、の3案。**権限体系の新設は本設計の射程を越えるため、殿の判断を仰ぐ**（この決着までは (c) の状態である）。
 
 - 通知基盤の具体的な実装クラスは実装フェーズで家老が偵察して決定する
 - 猶予期間14日は暫定値。マスターの最終承認時に法務・UX観点で調整余地あり

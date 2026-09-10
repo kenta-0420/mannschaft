@@ -9,6 +9,7 @@
       "settingsButton": "発行者設定",
       "issueButton": "新規発行",
       "empty": "領収書がありません",
+      "amountWithUnit": "{amount}엔",
       "column": {
         "issuedAt": "発行日",
         "receiptNumber": "領収書番号",

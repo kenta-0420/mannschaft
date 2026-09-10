@@ -101,6 +101,27 @@
 
 ---
 
+### 4.1 JPA を迂回する書き込みは、時刻列を Java から束縛しない **【規約】**
+
+DB 格納基準は `spring.jpa.properties.hibernate.jdbc.time_zone: UTC` により **UTC 壁時計**である。JPA 経路は `@PrePersist` の `LocalDateTime.now()`（JST 壁時計）を Hibernate が UTC へ変換して格納するが、**`JdbcTemplate` の生 SQL・`nativeQuery` はこの変換を通らない**。したがって、JPA を迂回する経路で時刻列（`*_at`）を扱うときは次を守ること。
+
+| 書き方 | 可否 | 理由 |
+|---|---|---|
+| SQL に `UTC_TIMESTAMP()` と書く | ✅ **正解** | セッションのタイムゾーン設定に依らず UTC 壁時計を返すため、JPA 経路と格納基準が一致する |
+| SQL に `NOW()` / `CURRENT_TIMESTAMP` / `SYSDATE()` と書く | ❌ 禁止 | DB 接続セッションのタイムゾーン依存。JPA 経路と基準が食い違う |
+| Java の `LocalDateTime` をプレースホルダで束縛する（`created_at = ?` / `created_at < ?`） | ❌ 禁止 | JST 壁時計がそのまま入る／比較されるため、UTC 格納値と 9 時間ずれる |
+| Java 側で `LocalDateTime.now(ZoneOffset.UTC)` を作って束縛する | ❌ 採らない | 値としては正しくなるが、「Java 側で壁時計を作って束縛する」流儀が残り、誤った実装と機械的に見分けられなくなる（番人で検出できない） |
+
+正解の前例: `AnnouncementReadStatusRepository#markAllAsReadByFeedIds`（`read_at` に `UTC_TIMESTAMP()`）、`NotificationBulkFanoutService`（`created_at` に `UTC_TIMESTAMP()`）。
+
+なお、**DB へ入る値（UTC 壁時計）と、in-memory のエンティティが持ち API・WebSocket 配信ペイロードに載る値（サーバ既定ゾーン＝JST の壁時計）は別物**である。後者は JPA 経路の in-memory 値と同じ意味であり、UTC へ寄せてはならない（寄せると FE が受け取る時刻だけが 9 時間ずれる）。
+
+この規約は番人 `RawSqlTimeColumnGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/`）が CI で機械的に強制する。既存の未是正箇所はクラス単位の凍結台帳（`backend/src/test/resources/raw_sql_time_guard/*.txt`）で凍結してあり、**新規追加は禁止・既存は返済対象**である。
+
+（実例: CMP-260909-1446。通知の一括 fan-out が生 JDBC バルク INSERT で `created_at` に JST 壁時計を束縛しており、bulk 経路の通知だけが未来日時として一覧の先頭に居座り、JPA 経路の通知が 110〜138 行下に埋もれていた）
+
+---
+
 ## 5. `TimeZoneConfig` の位置づけと撤去条件
 
 - **なぜ今存在するのか**: 2.2節で述べた通り、`LocalDateTime` を瞬間・壁時計の両方の意味で使っている現状において、`LocalDateTime.now()` の意味を「東京の壁時計としての今」に統一するための力業である。これを外すと、JVM既定ゾーンがOS依存（多くの場合UTC）に戻り、`LocalDateTime.now()` の意味がすべての呼び出し箇所で変わってしまう。

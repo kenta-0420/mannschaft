@@ -562,13 +562,11 @@ public class GlobalExceptionHandler {
             // 存在秘匿で 404 にするため（Severity.WARN 既定の 400 を上書き）
             Map.entry("SHIFT_024", HttpStatus.NOT_FOUND),                   // ASSIGNMENT_RUN_NOT_FOUND（越境404秘匿にも使用）
             Map.entry("SHIFT_030", HttpStatus.NOT_FOUND),                   // CHANGE_REQUEST_NOT_FOUND（越境404秘匿にも使用）
-            // 認可根治 Wave6: 候補者選定の権限拒否は 403（Severity.WARN 既定の 400 を上書き）
-            Map.entry("SHIFT_035", HttpStatus.FORBIDDEN),                   // CLAIMER_SELECT_DENIED
             // 認可監査 Wave6 ロットC: F03.5 シフト管理の残り未登録分。
             //  - SHIFT_003/004/005/020 は not-found → 404
             //  - SHIFT_022（勤務制約の管理権限なし）は明確な認可拒否 → 403
-            //  - SHIFT_011/013/014/015/018/025/026/031/034 は状態競合（期限超過・ステータス不正・
-            //    重複・楽観ロック競合・目視確認未了・既に手挙げ済み等）→ 409
+            //  - SHIFT_011/013/014/015/018/025/026/031 は状態競合（期限超過・ステータス不正・
+            //    重複・楽観ロック競合・目視確認未了等）→ 409
             //    （SHIFT_018 OPTIMISTIC_LOCK_CONFLICT は兄弟 SHIFT_BUDGET_014 と同流儀で揃える）
             //  - SHIFT_036（連打防止スロットリング）はレート制限 → 429
             //  - SHIFT_017（SLOT_ASSIGNMENT_EXCEEDED）は既存番人
@@ -589,7 +587,6 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_025", HttpStatus.CONFLICT),
             Map.entry("SHIFT_026", HttpStatus.CONFLICT),
             Map.entry("SHIFT_031", HttpStatus.CONFLICT),
-            Map.entry("SHIFT_034", HttpStatus.CONFLICT),
             Map.entry("SHIFT_036", HttpStatus.TOO_MANY_REQUESTS),
             // F08.7 シフト予算 (Phase 9-α: 逆算 API)
             Map.entry("SHIFT_BUDGET_001", HttpStatus.SERVICE_UNAVAILABLE),  // FEATURE_DISABLED
@@ -1309,8 +1306,22 @@ public class GlobalExceptionHandler {
             Map.entry("ENTITLEMENT_024", HttpStatus.CONFLICT),           // MIGRATION_REQUIRED
             Map.entry("ENTITLEMENT_025", HttpStatus.BAD_GATEWAY),        // STRIPE_UNAVAILABLE
             Map.entry("ENTITLEMENT_026", HttpStatus.CONFLICT),           // BILLING_FLOW_REQUIRED
-            Map.entry("ENTITLEMENT_027", HttpStatus.SERVICE_UNAVAILABLE), // PORTAL_UNAVAILABLE（Portal configuration 未照合 → 503）
-            Map.entry("ENTITLEMENT_028", HttpStatus.TOO_MANY_REQUESTS),  // PORTAL_RATE_LIMITED（scope ごと 10 回/時 → 429）
+            // 柱③-B PR-2 請求支払者の引継（設計書 billing_payer_handover_design.md）。
+            // 登録漏れは Severity 既定 400/500 へ黙ってフォールバックする前科（#1279）ゆえ明示登録。
+            Map.entry("ENTITLEMENT_027", HttpStatus.BAD_REQUEST),        // HANDOVER_SCOPE_NOT_SUPPORTED（USER スコープ）
+            Map.entry("ENTITLEMENT_028", HttpStatus.CONFLICT),           // HANDOVER_CONTRACT_NOT_ELIGIBLE（PAST_DUE/過去期末・AC-29）
+            Map.entry("ENTITLEMENT_029", HttpStatus.CONFLICT),           // HANDOVER_ALREADY_IN_PROGRESS（生成列+UNIQUE）
+            Map.entry("ENTITLEMENT_030", HttpStatus.NOT_FOUND),          // HANDOVER_NOT_FOUND（IDOR 秘匿・スコープ越境も404で畳む）
+            Map.entry("ENTITLEMENT_031", HttpStatus.CONFLICT),           // HANDOVER_NOT_ACCEPTABLE
+            Map.entry("ENTITLEMENT_032", HttpStatus.CONFLICT),           // HANDOVER_NO_CANDIDATE（§5.5 ①②）
+            Map.entry("ENTITLEMENT_033", HttpStatus.CONFLICT),           // HANDOVER_EXPIRED
+            // 認可境界（Codex検分1巡目 P1-1/P1-2）。対象スコープの管理権限は既に検証済みで契約の存在は
+            // 呼び出し元に見えているため、存在オラクルは生じない。よって 404 で畳まず 403 を返す。
+            Map.entry("ENTITLEMENT_034", HttpStatus.FORBIDDEN),          // HANDOVER_NOT_OLD_PAYER（申請者は旧 payer 本人のみ）
+            Map.entry("ENTITLEMENT_035", HttpStatus.FORBIDDEN),          // HANDOVER_NOT_ELIGIBLE_ACCEPTOR（承諾者は他 ADMIN のみ）
+            Map.entry("ENTITLEMENT_036", HttpStatus.CONFLICT),           // HANDOVER_NOT_RESUMABLE（RESUME は MANUAL_INTERVENTION 専用・§3.6.2）
+            Map.entry("ENTITLEMENT_037", HttpStatus.SERVICE_UNAVAILABLE), // PORTAL_UNAVAILABLE（Portal configuration 未照合 → 503）
+            Map.entry("ENTITLEMENT_038", HttpStatus.TOO_MANY_REQUESTS),  // PORTAL_RATE_LIMITED（scope ごと 10 回/時 → 429）
             // F20.3 ベータ特典（設計書 02 §8）。登録漏れは Severity 既定 400/500 にフォールバックする前科（#1279）ゆえ明示登録。
             Map.entry("BETA_PERK_001", HttpStatus.NOT_FOUND),            // GRANT_NOT_FOUND（IDOR 秘匿含む）
             Map.entry("BETA_PERK_002", HttpStatus.CONFLICT),            // GRANT_ALREADY_EXISTS（uk_bg_scope_phase）

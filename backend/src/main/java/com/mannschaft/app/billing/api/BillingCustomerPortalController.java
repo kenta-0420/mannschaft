@@ -56,7 +56,7 @@ import java.util.UUID;
  * 弾くため <b>Stripe を一度も呼ばない</b>。PR4 の checkout 入口と同一の作法で包む。</p>
  *
  * <p><b>fail-closed（AC-65）</b>: Portal configuration の起動時照合に失敗している間は
- * {@code ENTITLEMENT_027} により <b>503</b> を返す。アプリ全体は起動しており、他の課金機能は使える。</p>
+ * {@code ENTITLEMENT_037} により <b>503</b> を返す。アプリ全体は起動しており、他の課金機能は使える。</p>
  */
 @RestController
 @RequestMapping("/api/v1")

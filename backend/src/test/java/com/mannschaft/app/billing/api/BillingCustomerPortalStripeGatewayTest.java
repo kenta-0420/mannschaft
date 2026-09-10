@@ -141,7 +141,7 @@ class BillingCustomerPortalStripeGatewayTest {
     }
 
     @Test
-    @DisplayName("AC65_照合が成立していない間は Stripe を呼ばず 503（ENTITLEMENT_027）で拒否する")
+    @DisplayName("AC65_照合が成立していない間は Stripe を呼ばず 503（ENTITLEMENT_037）で拒否する")
     void AC65_未照合ならfailClosed503() {
         BillingCustomerPortalStripeGateway gateway =
                 gateway(CONFIGURATION_ID, (id, options) -> validConfiguration());

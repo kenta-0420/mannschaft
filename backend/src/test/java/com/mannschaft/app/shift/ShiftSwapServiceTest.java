@@ -150,6 +150,79 @@ class ShiftSwapServiceTest {
         }
     }
 
+    private static final Long OUTSIDER_ID = 40L;
+    private static final Long SUPPORTER_ID = 50L;
+    private static final Long OTHER_MEMBER_ID = 99L;
+
+    private static final String REASON_OTHERS = "他人同士の依頼（見えてはならない）";
+    private static final String REASON_SPECIFIC_TO_ME = "自分が指名された依頼";
+    private static final String REASON_OPEN_CALL = "指名なしの依頼";
+    private static final String REASON_MINE = "自分が申請した依頼";
+
+    /** 一覧 API の「当該チーム ADMIN」認可をモックする。 */
+    private void givenTeamAdminForList(Long userId) {
+        given(accessControlService.isSystemAdmin(userId)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(userId, TEAM_ID, "TEAM")).willReturn(true);
+    }
+
+    /** 一覧 API の「当該チームの一般メンバー（SUPPORTER でない）」認可をモックする。 */
+    private void givenTeamMemberForList(Long userId) {
+        given(accessControlService.isSystemAdmin(userId)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(userId, TEAM_ID, "TEAM")).willReturn(false);
+        given(accessControlService.isMember(userId, TEAM_ID, "TEAM")).willReturn(true);
+        given(accessControlService.isSupporter(userId, TEAM_ID, "TEAM")).willReturn(false);
+    }
+
+    /** マッパーを「理由文と申請者だけを写す」実装として振る舞わせ、絞り込み結果をレスポンスで観測できるようにする。 */
+    @SuppressWarnings("unchecked")
+    private void givenMapperEchoesReasons() {
+        given(shiftMapper.toSwapResponseList(any())).willAnswer(invocation -> {
+            List<ShiftSwapRequestEntity> entities =
+                    (List<ShiftSwapRequestEntity>) invocation.getArgument(0);
+            return entities.stream()
+                    .map(e -> SwapRequestResponse.builder()
+                            .requesterId(e.getRequesterId())
+                            .reason(e.getReason())
+                            .build())
+                    .toList();
+        });
+    }
+
+    private ShiftSwapRequestEntity swapWith(Long requesterId, String reason,
+                                            String recipientMode, String targetUserIdsJson) {
+        ShiftSwapRequestEntity entity = ShiftSwapRequestEntity.builder()
+                .slotId(SLOT_ID)
+                .requesterId(requesterId)
+                .status(SwapRequestStatus.PENDING)
+                .reason(reason)
+                .isOpenCall("OPEN_CALL".equals(recipientMode))
+                .recipientMode(recipientMode)
+                .targetUserIds(targetUserIdsJson)
+                .build();
+        callOnCreate(entity);
+        return entity;
+    }
+
+    /** 自分が関与しない他人同士の依頼（レスポンスに乗ってはならない）。 */
+    private ShiftSwapRequestEntity swapOfOthers() {
+        return swapWith(REQUESTER_ID, REASON_OTHERS, "SPECIFIC", "[" + OTHER_MEMBER_ID + "]");
+    }
+
+    /** 指定ユーザーが交代候補として指名されている依頼。 */
+    private ShiftSwapRequestEntity swapSpecificTo(Long targetUserId) {
+        return swapWith(REQUESTER_ID, REASON_SPECIFIC_TO_ME, "SPECIFIC", "[" + targetUserId + "]");
+    }
+
+    /** 指名なし（OPEN_CALL）の依頼。同一チームの誰でも承諾できる。 */
+    private ShiftSwapRequestEntity swapOpenCall() {
+        return swapWith(REQUESTER_ID, REASON_OPEN_CALL, "OPEN_CALL", null);
+    }
+
+    /** 指定ユーザー自身が申請した依頼。 */
+    private ShiftSwapRequestEntity swapRequestedBy(Long requesterId) {
+        return swapWith(requesterId, REASON_MINE, "SPECIFIC", null);
+    }
+
     // ========================================
     // listSwapRequests
     // ========================================
@@ -164,7 +237,7 @@ class ShiftSwapServiceTest {
             // Given
             ShiftSwapRequestEntity entity = createPendingSwap();
             SwapRequestResponse response = createSwapResponse();
-            given(accessControlService.isSystemAdmin(ADMIN_ID)).willReturn(false);
+            givenTeamAdminForList(ADMIN_ID);
             given(swapRepository.findByTeamIdAndStatusOrderByCreatedAtAsc(TEAM_ID, SwapRequestStatus.PENDING))
                     .willReturn(List.of(entity));
             given(shiftMapper.toSwapResponseList(List.of(entity)))
@@ -183,7 +256,7 @@ class ShiftSwapServiceTest {
             // Given
             ShiftSwapRequestEntity entity = createPendingSwap();
             SwapRequestResponse response = createSwapResponse();
-            given(accessControlService.isSystemAdmin(ADMIN_ID)).willReturn(false);
+            givenTeamAdminForList(ADMIN_ID);
             given(swapRepository.findByTeamIdOrderByCreatedAtAsc(TEAM_ID))
                     .willReturn(List.of(entity));
             given(shiftMapper.toSwapResponseList(List.of(entity)))
@@ -201,16 +274,82 @@ class ShiftSwapServiceTest {
         }
 
         @Test
-        @DisplayName("交代リクエスト一覧_当該チームのADMINでない_BusinessException")
-        void 交代リクエスト一覧_当該チームのADMINでない_BusinessException() {
+        @DisplayName("交代リクエスト一覧_管理者は他人同士の依頼も含め全件見える（回帰防止）")
+        void 交代リクエスト一覧_管理者は全件見える() {
             // Given
-            given(accessControlService.isSystemAdmin(ACCEPTER_ID)).willReturn(false);
-            org.mockito.BDDMockito.willThrow(
-                            new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(ACCEPTER_ID, TEAM_ID, "TEAM");
+            givenTeamAdminForList(ADMIN_ID);
+            given(swapRepository.findByTeamIdOrderByCreatedAtAsc(TEAM_ID))
+                    .willReturn(List.of(swapOfOthers(), swapSpecificTo(ACCEPTER_ID), swapOpenCall()));
+            givenMapperEchoesReasons();
+
+            // When
+            List<SwapRequestResponse> result = shiftSwapService.listSwapRequests(TEAM_ID, null, ADMIN_ID);
+
+            // Then
+            assertThat(result).extracting(SwapRequestResponse::getReason)
+                    .containsExactly(REASON_OTHERS, REASON_SPECIFIC_TO_ME, REASON_OPEN_CALL);
+        }
+
+        @Test
+        @DisplayName("交代リクエスト一覧_一般メンバーは自分に関係する依頼のみ返る（他人同士の依頼は含まれない）")
+        void 交代リクエスト一覧_一般メンバーは自分に関係する依頼のみ() {
+            // Given: 一般メンバー（ADMIN でない）でも 403 にならず一覧を引ける
+            givenTeamMemberForList(ACCEPTER_ID);
+            given(swapRepository.findByTeamIdOrderByCreatedAtAsc(TEAM_ID))
+                    .willReturn(List.of(swapOfOthers(), swapSpecificTo(ACCEPTER_ID),
+                            swapOpenCall(), swapRequestedBy(ACCEPTER_ID)));
+            givenMapperEchoesReasons();
+
+            // When
+            List<SwapRequestResponse> result = shiftSwapService.listSwapRequests(TEAM_ID, null, ACCEPTER_ID);
+
+            // Then: 指名された依頼・指名なし依頼・自分の依頼のみ。他人同士の依頼（理由文が漏れる）は含まれない
+            assertThat(result).extracting(SwapRequestResponse::getReason)
+                    .containsExactly(REASON_SPECIFIC_TO_ME, REASON_OPEN_CALL, REASON_MINE)
+                    .doesNotContain(REASON_OTHERS);
+        }
+
+        @Test
+        @DisplayName("交代リクエスト一覧_一般メンバー_ステータス指定でも他人同士の依頼は含まれない")
+        void 交代リクエスト一覧_一般メンバー_ステータス指定でも絞り込まれる() {
+            // Given
+            givenTeamMemberForList(ACCEPTER_ID);
+            given(swapRepository.findByTeamIdAndStatusOrderByCreatedAtAsc(TEAM_ID, SwapRequestStatus.PENDING))
+                    .willReturn(List.of(swapOfOthers(), swapOpenCall()));
+            givenMapperEchoesReasons();
+
+            // When
+            List<SwapRequestResponse> result = shiftSwapService.listSwapRequests(TEAM_ID, "PENDING", ACCEPTER_ID);
+
+            // Then
+            assertThat(result).extracting(SwapRequestResponse::getReason)
+                    .containsExactly(REASON_OPEN_CALL);
+        }
+
+        @Test
+        @DisplayName("交代リクエスト一覧_当該チームのメンバーでない_BusinessException")
+        void 交代リクエスト一覧_当該チームのメンバーでない_BusinessException() {
+            // Given: SYSTEM_ADMIN でも ADMIN でもメンバーでもない部外者
+            given(accessControlService.isSystemAdmin(OUTSIDER_ID)).willReturn(false);
+            given(accessControlService.isAdminOrAbove(OUTSIDER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(accessControlService.isMember(OUTSIDER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             // When & Then
-            assertThatThrownBy(() -> shiftSwapService.listSwapRequests(TEAM_ID, null, ACCEPTER_ID))
+            assertThatThrownBy(() -> shiftSwapService.listSwapRequests(TEAM_ID, null, OUTSIDER_ID))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("交代リクエスト一覧_SUPPORTERは閲覧できない_BusinessException")
+        void 交代リクエスト一覧_SUPPORTERは閲覧できない() {
+            // Given
+            given(accessControlService.isSystemAdmin(SUPPORTER_ID)).willReturn(false);
+            given(accessControlService.isAdminOrAbove(SUPPORTER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(accessControlService.isMember(SUPPORTER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isSupporter(SUPPORTER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            // When & Then
+            assertThatThrownBy(() -> shiftSwapService.listSwapRequests(TEAM_ID, null, SUPPORTER_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }

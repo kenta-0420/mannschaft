@@ -1106,6 +1106,20 @@
     "unresponded_list": "未回答者列表"
   },
   "organization": {
+    "basicInfoEdit": {
+      "sectionTitle": "基本信息",
+      "title": "编辑基本信息",
+      "name": "组织名称",
+      "nameKana": "组织名称（假名）",
+      "nickname1": "昵称1",
+      "nickname2": "昵称2",
+      "prefecture": "都道府县",
+      "city": "市区町村",
+      "selectPlaceholder": "请选择",
+      "nameRequired": "请输入组织名称。",
+      "versionMissing": "组织信息尚未加载完成。请重新加载页面后重试。",
+      "saved": "基本信息已更新。"
+    },
     "parent_chain": "上级组织",
     "children": "下级组织",
     "children_tab": "下级组织",
@@ -1496,6 +1510,8 @@
   "common": {
     "cancel": "取消",
     "search": "搜索",
+    "edit": "编辑",
+    "save": "保存",
     "resume": {
       "title": "简历・职务经历书",
       "listTitle": "简历版本列表",
@@ -1617,7 +1633,8 @@
       "load_error_body": "请稍后再试。如果没有权限，可能无法显示。",
       "back_to_dashboard": "返回仪表板",
       "retry": "重试",
-      "slow_loading": "加载时间较长，请稍候"
+      "slow_loading": "加载时间较长，请稍候",
+      "join_request_applied": "参加申請を送信しました"
     },
     "unsavedChanges": {
       "title": "未保存的更改",
@@ -2170,7 +2187,8 @@
       "members": "成员",
       "invites": "邀请",
       "supporters": "支持者管理",
-      "modules": "功能设置"
+      "modules": "功能设置",
+      "joinRequests": "参加申請"
     },
     "action": {
       "leave_confirm_title": "退出团队",
@@ -2187,7 +2205,8 @@
       "invites": "邀请",
       "permission_groups": "权限组",
       "supporters": "支持者管理",
-      "modules": "功能设置"
+      "modules": "功能设置",
+      "joinRequests": "参加申請"
     },
     "action": {
       "leave_confirm_title": "退出组织",
@@ -2342,6 +2361,33 @@
     "remove": {
       "confirmTitle": "移除成员",
       "confirmMessage": "确定将 {name} 从成员中移除吗？"
+    }
+  },
+  "scopeSwitch": {
+    "hint": "切换方式：在页面上方的“团队”“组织”菜单中选择并打开对象。所打开的团体即为当前范围。",
+    "goTeams": "选择团队",
+    "goOrganizations": "选择组织"
+  },
+  "joinRequest": {
+    "apply": "参加申請",
+    "pending": "申請中（承認待ち）",
+    "approved": "承認済み",
+    "rejected": "却下されました",
+    "fetchError": "取得に失敗しました",
+    "retry": "再試行",
+    "admin": {
+      "pendingTitle": "承認待ちの参加申請",
+      "empty": "承認待ちの参加申請はありません",
+      "requesterLabel": "ユーザーID: {userId}",
+      "requestedAt": "申請日",
+      "approve": "承認",
+      "reject": "却下",
+      "fetchError": "一覧の取得に失敗しました",
+      "retry": "再試行",
+      "loadMore": "さらに読み込む",
+      "loadMoreError": "追加読み込みに失敗しました",
+      "approveSuccess": "参加申請を承認しました",
+      "rejectSuccess": "参加申請を却下しました"
     }
   }
 }

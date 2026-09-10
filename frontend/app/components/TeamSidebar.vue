@@ -74,6 +74,10 @@ const categories: SidebarCategory[] = [
     icon: 'pi pi-wallet',
     items: [
       { labelKey: 'teamSidebar.item.budget', icon: 'pi pi-wallet', path: 'budget', moduleSlug: 'budget', requiredRole: 'DEPUTY_ADMIN' },
+      // CMP-260907-0851: 領収書はチームスコープでも発行できる（BE ReceiptScopeType に TEAM がある）ため、
+      // 組織サイドバーと同じ条件（payment モジュール有効・DEPUTY_ADMIN 以上）でチームにも導線を置く。
+      { labelKey: 'teamSidebar.item.receipts', icon: 'pi pi-receipt', path: '', absolutePath: '/admin/receipts', moduleSlug: 'payment', requiredRole: 'DEPUTY_ADMIN' },
+      { labelKey: 'teamSidebar.item.receiptSettings', icon: 'pi pi-id-card', path: '', absolutePath: '/admin/receipt-settings', moduleSlug: 'payment', requiredRole: 'DEPUTY_ADMIN' },
       // F09.17 Phase 11-d-4: チーム広告主機能（チーム ADMIN のみ表示。
       // moduleSlug は組織版と同じ 'ad_display' を流用し、有効化判定を統一する）。
       { labelKey: 'teamSidebar.item.advertiser', icon: 'pi pi-megaphone', path: 'advertiser', moduleSlug: 'ad_display', requiredRole: 'ADMIN' },

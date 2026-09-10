@@ -113,7 +113,7 @@ class BillingCustomerPortalApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("AC71_scope ごと 10 回目までは成功し、11 回目は 429（ENTITLEMENT_028）")
+    @DisplayName("AC71_scope ごと 10 回目までは成功し、11 回目は 429（ENTITLEMENT_038）")
     void AC71_10回目は成功し11回目は429() {
         rateLimiter = new StubRateLimiter(BillingCustomerPortalRateLimiterAdapter.LIMIT_PER_WINDOW);
         service = newService();

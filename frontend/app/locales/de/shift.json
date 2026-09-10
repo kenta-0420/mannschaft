@@ -61,12 +61,6 @@
       "openCallLimit": "Offene Ausschreibungen sind auf 3 pro Monat begrenzt",
       "fetchError": "Fehler beim Abrufen der Änderungsanträge"
     },
-    "openCall": {
-      "badge": "Ersatzmitglied gesucht",
-      "claim": "Ich übernehme diese Schicht",
-      "claimed": "Bereits beansprucht",
-      "full": "Ausschreibung geschlossen"
-    },
     "pdf": {
       "teamLayout": "Team-Schichtplan PDF",
       "personalLayout": "Persönliche Zeitleiste PDF",
@@ -75,8 +69,8 @@
     },
     "myShifts": {
       "title": "Meine Schichten",
-      "empty": "Keine Schichten vorhanden",
-      "fetchError": "Fehler beim Abrufen der Schichtinformationen"
+      "empty": "Keine Schichten gefunden",
+      "fetchError": "Schichtinformationen konnten nicht abgerufen werden"
     },
     "page": {
       "title": "Schicht",
@@ -87,7 +81,8 @@
       "detail": "Detail",
       "edit": "Bearbeiten",
       "requests": "Anfragen",
-      "workConstraints": "Arbeitsbeschränkungen"
+      "workConstraints": "Arbeitsbeschränkungen",
+      "teamLoadFailed": "Teaminformationen konnten nicht geladen werden"
     },
     "status": {
       "all": "Alle",
@@ -271,7 +266,30 @@
         "nightShift": "Nachtschicht-Mitglieder",
         "selectedCount": "{count} ausgewählt"
       },
-      "templateHint": "An alle {period}-Schichtmitglieder im gleichen Plan senden"
+      "templateHint": "An alle {period}-Schichtmitglieder im gleichen Plan senden",
+      "list": {
+        "title": "Schichttausch-Anfragen",
+        "requester": "Antragsteller #{id}",
+        "accepter": "Tauschpartner #{id}",
+        "accepterUndecided": "Tauschpartner offen",
+        "slot": "Schicht #{id}",
+        "reason": "Grund: {reason}",
+        "cancel": "Zurückziehen",
+        "reload": "Neu laden",
+        "empty": "Keine Tauschanfragen",
+        "loadFailed": "Tauschanfragen konnten nicht geladen werden",
+        "loadFailedBody": "Tauschanfragen konnten nicht abgerufen werden",
+        "actionFailed": "Die Aktion ist fehlgeschlagen",
+        "acceptSucceeded": "Tausch angenommen",
+        "approveSucceeded": "Tausch genehmigt",
+        "rejectSucceeded": "Tausch abgelehnt",
+        "cancelSucceeded": "Anfrage zurückgezogen",
+        "statusPending": "Wartet auf Annahme",
+        "statusAccepted": "Wartet auf Genehmigung",
+        "statusApproved": "Genehmigt",
+        "statusRejected": "Abgelehnt",
+        "statusCancelled": "Zurückgezogen"
+      }
     },
     "reminder": {
       "send": "Erinnerung senden",
@@ -282,6 +300,11 @@
       "noShifts": "Keine Schichten vorhanden",
       "noRequests": "Keine Anfragen vorhanden",
       "noConstraints": "Keine Arbeitsbeschränkungen festgelegt"
+    },
+    "teamLoad": {
+      "timeout": "Das Laden der Teaminformationen dauert zu lange. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+      "error": "Die Teaminformationen konnten nicht geladen werden. Bitte versuchen Sie es später erneut.",
+      "retry": "Erneut versuchen"
     },
     "notification": {
       "publishSuccess": "Schicht erfolgreich veröffentlicht",
@@ -323,11 +346,6 @@
       "totalLabel": "Gesamt",
       "confirmSubmit": "Mit diesen Einstellungen einreichen?"
     },
-    "myShifts": {
-      "title": "Meine Schichten",
-      "empty": "Keine Schichten gefunden",
-      "fetchError": "Schichtinformationen konnten nicht abgerufen werden"
-    },
     "myShift": {
       "confirmedTitle": "Bestätigte Schicht",
       "upcomingTitle": "Bevorstehende bestätigte Schichten",
@@ -341,6 +359,23 @@
         "schedule": "Schichtplan",
         "noSlot": "Keine Schichten an diesem Tag"
       }
+    },
+    "entry": {
+      "sectionTitle": "Wünsche einreichen / Schichtboard",
+      "bulkRequest": "Wünsche gesammelt einreichen",
+      "board": "Schichtboard",
+      "weeklyDefault": "Wochentags-Standard festlegen",
+      "closed": "Die Wunschabgabe ist beendet"
+    },
+    "submitConfirm": {
+      "title": "Mit diesem Inhalt senden?",
+      "filledLabel": "Ausgefüllte Tage",
+      "defaultAppliedLabel": "Aus Standardwerten übernommene Tage",
+      "untouchedLabel": "Nicht ausgefüllte Tage",
+      "dayCount": "{count} Tag(e)",
+      "untouchedNotice": "Nicht ausgefüllte Tage werden als „möglichst frei\" eingereicht. Bei Personalmangel kann dennoch eine Schichtanfrage kommen.",
+      "submit": "Senden",
+      "back": "Zurück zum Bearbeiten"
     }
   },
   "my_shift_guide": {

@@ -145,6 +145,15 @@ const { roleName, loadPermissions } = useRoleAccess('team', teamSlug)
 const isSupporter = computed(() => roleName.value === 'SUPPORTER')
 // 認可根治 Wave7: 自動割当（実行・確定・破棄・履歴）は BE 側で当該チームの ADMIN/DEPUTY_ADMIN 限定に
 // なった。一般メンバーには導線を出さない（出すと必ず 403 になる死んだボタンになる）。
+//
+// 【意図的に SYSTEM_ADMIN を含めない等値比較】(CMP-260909-1509)
+// resolveEffectiveRoleName は SYSTEM_ADMIN > ADMIN > DEPUTY_ADMIN > ... の優先度で
+// 最強ロール 1 値を返すため、プラットフォーム SYSTEM_ADMIN が同時にチームの ADMIN でも
+// roleName は 'SYSTEM_ADMIN' になり ADMIN は返らない。これはバグではなく、
+// 「運営専用アカウントである SYSTEM_ADMIN には一般業務導線（このボタン）を出さない」という
+// マスター確定の設計判断（docs/security/03_role_authority_model.md §3.5）。
+// BE（ShiftAutoAssignService）は SYSTEM_ADMIN を別途常に許可しており、この UI 非表示は
+// 認可の代替ではない。`hasRoleOrAbove` 的な包含判定に書き換えて SYSTEM_ADMIN を含めないこと。
 const isScopeAdmin = computed(() => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN')
 
 const shiftApi = useShiftApi()
@@ -207,7 +216,10 @@ const unassignedMembers = computed(() =>
 
 // 初期データ取得
 onMounted(async () => {
-  await Promise.all([loadSchedule(), loadSlots(), loadPositions(), loadMembers(), loadPermissions()])
+  // ⑤ ポジション取得は BE の @RequestParam teamId が必須で、schedule.teamId（数値）が
+  // 判明してから叩く必要があるため、loadSchedule だけ先行させてから残りを並行取得する。
+  await loadSchedule()
+  await Promise.all([loadSlots(), loadPositions(), loadMembers(), loadPermissions()])
   // 認可根治 Wave7: 実行履歴 API は管理者専用になったため、権限解決後に管理者のときだけ取得する。
   // 従来どおり Promise.all に混ぜたままだと、一般メンバーでは 403 で Promise.all ごと失敗し
   // ボード画面全体が描画されなくなる（エラーを握りつぶさず、そもそも呼ばない形で解消する）。
@@ -232,7 +244,11 @@ async function loadSlots(): Promise<void> {
 }
 
 async function loadPositions(): Promise<void> {
-  const res = await shiftApi.getPositions()
+  // BE の ShiftPositionController#listPositions は teamId (Long) が必須。
+  // teamSlug はスラッグであり teamId ではないため、schedule.teamId（数値）を使う
+  // （isSupporter の判定 [schedule.value!.teamId] と同じ既存パターンに倣う）。
+  if (!schedule.value) return
+  const res = await shiftApi.getPositions(String(schedule.value.teamId))
   positions.value = (res as { data: ShiftPositionResponse[] }).data
 }
 

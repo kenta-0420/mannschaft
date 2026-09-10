@@ -61,12 +61,6 @@
       "openCallLimit": "Open calls are limited to 3 per month",
       "fetchError": "Failed to fetch change requests"
     },
-    "openCall": {
-      "badge": "Seeking substitute member",
-      "claim": "I'll cover this shift",
-      "claimed": "Already claimed",
-      "full": "Claim closed"
-    },
     "pdf": {
       "teamLayout": "Team Schedule PDF",
       "personalLayout": "Personal Timeline PDF",
@@ -101,7 +95,8 @@
       "detail": "Detail",
       "edit": "Edit",
       "requests": "Requests",
-      "workConstraints": "Work Constraints"
+      "workConstraints": "Work Constraints",
+      "teamLoadFailed": "Failed to load team information"
     },
     "status": {
       "all": "All",
@@ -285,7 +280,30 @@
         "nightShift": "Night shift members",
         "selectedCount": "{count} selected"
       },
-      "templateHint": "Send to all {period} shift members in the same schedule"
+      "templateHint": "Send to all {period} shift members in the same schedule",
+      "list": {
+        "title": "Shift swap requests",
+        "requester": "Requester #{id}",
+        "accepter": "Partner #{id}",
+        "accepterUndecided": "Partner not decided",
+        "slot": "Slot #{id}",
+        "reason": "Reason: {reason}",
+        "cancel": "Withdraw",
+        "reload": "Reload",
+        "empty": "No swap requests",
+        "loadFailed": "Failed to load swap requests",
+        "loadFailedBody": "Could not load swap requests",
+        "actionFailed": "The operation failed",
+        "acceptSucceeded": "You accepted the swap",
+        "approveSucceeded": "The swap was approved",
+        "rejectSucceeded": "The swap was rejected",
+        "cancelSucceeded": "The request was withdrawn",
+        "statusPending": "Awaiting acceptance",
+        "statusAccepted": "Awaiting approval",
+        "statusApproved": "Approved",
+        "statusRejected": "Rejected",
+        "statusCancelled": "Withdrawn"
+      }
     },
     "reminder": {
       "send": "Send Reminder",
@@ -296,6 +314,11 @@
       "noShifts": "No shifts found",
       "noRequests": "No requests found",
       "noConstraints": "No work constraints set"
+    },
+    "teamLoad": {
+      "timeout": "Loading team information is taking too long. Check your connection and try again.",
+      "error": "Team information could not be loaded. Please try again later.",
+      "retry": "Retry"
     },
     "notification": {
       "publishSuccess": "Shift published successfully",
@@ -336,6 +359,23 @@
       "totalCount": "Total: {count}",
       "totalLabel": "Total",
       "confirmSubmit": "Submit with these settings?"
+    },
+    "entry": {
+      "sectionTitle": "Submit requests / Shift board",
+      "bulkRequest": "Submit requests in bulk",
+      "board": "Shift board",
+      "weeklyDefault": "Set weekly defaults",
+      "closed": "Request submission has closed"
+    },
+    "submitConfirm": {
+      "title": "Submit with this content?",
+      "filledLabel": "Days you filled in",
+      "defaultAppliedLabel": "Days filled from your weekly defaults",
+      "untouchedLabel": "Days left untouched",
+      "dayCount": "{count} day(s)",
+      "untouchedNotice": "Untouched days are submitted as \"prefer to rest\". You may still be asked to work if staffing runs short.",
+      "submit": "Submit",
+      "back": "Back to edit"
     }
   },
   "my_shift_guide": {

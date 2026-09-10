@@ -347,14 +347,14 @@ class DateTimeAndZoneGuardTest {
      * 認可監査戦役の {@code EXPECTED_LINES_*} 方式を踏襲する。
      * 件数が減った場合はここも追随して更新し、返済の進捗を数値で残すこと。
      */
-    private static final int EXPECTED_FROZEN_NO_ARG_NOW = 1672;
+    private static final int EXPECTED_FROZEN_NO_ARG_NOW = 1671;
     // 2026-08-13 返済 -28件（全件）: CMP-023 第1ロット。ZoneId.systemDefault() の28箇所を全て
     // UserZoneLocalDateTimeParser.SERVER_ZONE への明示参照へ置き換えた（挙動不変。同値変換）。
     private static final int EXPECTED_FROZEN_ZONE_SYSTEM_DEFAULT = 0;
     // 2026-08-13 返済 -1件: UserTimezoneFilter の ZoneId.of("Asia/Tokyo") 重複定義を
     // UserZoneLocalDateTimeParser.SERVER_ZONE 参照へ寄せた（issue #2616 / CMP-023 chip-away）。
     private static final int EXPECTED_FROZEN_ZONE_LITERAL = 52;
-    private static final int EXPECTED_FROZEN_LOCAL_DATE_TIME_FIELD = 2658;
+    private static final int EXPECTED_FROZEN_LOCAL_DATE_TIME_FIELD = 2657;
 
     // ────────────────────────────────────────────────────────────
     // 検出本体（package-private: スキャンロジックテストから直接呼び出す）

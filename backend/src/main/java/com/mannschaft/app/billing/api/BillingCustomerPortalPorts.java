@@ -42,7 +42,7 @@ interface BillingCustomerPortalGateway {
      * Portal セッションを発行する（AC-64〜AC-68 / AC-73 / AC-74）。
      *
      * <p>実装は「return state の nonce 登録 → Stripe セッション作成 → URL 返却」の順で進み、
-     * configuration 未照合なら Stripe を呼ばずに {@code ENTITLEMENT_027}(503) で拒否する。</p>
+     * configuration 未照合なら Stripe を呼ばずに {@code ENTITLEMENT_037}(503) で拒否する。</p>
      */
     BillingCustomerPortalResult createSession(BillingCustomerPortalRequest request);
 }

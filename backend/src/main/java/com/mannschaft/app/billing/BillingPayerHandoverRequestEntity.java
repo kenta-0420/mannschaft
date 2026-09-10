@@ -102,6 +102,39 @@ public class BillingPayerHandoverRequestEntity extends UuidV7Entity {
     @Column(name = "old_cancel_scheduled_at")
     private Instant oldCancelScheduledAt;
 
+    /**
+     * PR-4（Codex 検分3巡目 P1-3）: 新サブスクの {@code pending_setup_intent} が
+     * <b>解決済みであることを確認した</b>時刻（V205）。
+     *
+     * <p>{@code SWITCHING} 滞留の夜次照合はこの列が NULL の行だけを対象にする。
+     * 認証が完了して旧期末を待っているだけの<b>正常な行</b>は処理しても状態が変わらないため、
+     * 除外しないと毎晩の抽出に残り続け、1回の実行件数の上限を埋めて
+     * <b>後続の認証未解決行を永久に飢餓させる</b>。{@code pending_setup_intent} は
+     * 一度解決すると再び現れないため、この記録は後から覆らない。</p>
+     */
+    @Column(name = "setup_intent_verified_at")
+    private Instant setupIntentVerifiedAt;
+
+    /**
+     * PR-4（Codex 検分5巡目 P1-2）: 失敗確定の後始末で旧サブスクの
+     * {@code cancel_at_period_end} を差し戻すか（V207）。
+     *
+     * <p>{@code RESUME→FAILED} では運用者が明示的に選ぶ。夜次バッチが後始末を再試行するとき、
+     * この判断を読まずに既定で動くと<b>運用者が「戻さない」と決めた旧契約を継続へ戻して</b>しまう。
+     * {@code null} は既定（差し戻す）。</p>
+     */
+    @Column(name = "cleanup_revert_old_cancel")
+    private Boolean cleanupRevertOldCancel;
+
+    /**
+     * PR-4（同上）: 失敗確定後に AC-20 の再要求・再通知を行うか（V207）。
+     *
+     * <p>{@code RESUME→FAILED} は「引継自体を諦める」という運用者の判断なので {@code false}。
+     * {@code null} は既定（再通知する）。</p>
+     */
+    @Column(name = "cleanup_renotify")
+    private Boolean cleanupRenotify;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

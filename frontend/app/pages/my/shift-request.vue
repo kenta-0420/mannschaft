@@ -9,6 +9,8 @@ import type {
   ShiftSlotResponse,
 } from '~/types/shift'
 import { preferenceToI18nKey } from '~/utils/shiftPreference'
+import { isAcceptingShiftRequests } from '~/utils/shiftStatus'
+import { runWithRequestTimeout } from '~/utils/requestTimeout'
 
 /**
  * F03.5 シフト希望提出フォームページ
@@ -32,6 +34,37 @@ const { listMyRequests, submitRequest, updateRequest } = useShiftRequestApi()
 const { getAvailabilityDefaults } = useShiftAvailabilityDefaultApi()
 const teamStore = useTeamStore()
 
+const TEAM_FETCH_TIMEOUT_MS = 15_000
+type TeamLoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout'
+const teamLoadStatus = ref<TeamLoadStatus>('idle')
+let teamLoadRequestId = 0
+
+async function loadTeams() {
+  const requestId = ++teamLoadRequestId
+  teamLoadStatus.value = 'loading'
+
+  const outcome = await runWithRequestTimeout(
+    (signal) => teamStore.fetchMyTeamsWithResult({ signal }),
+    TEAM_FETCH_TIMEOUT_MS,
+  )
+  if (requestId !== teamLoadRequestId) return
+
+  if (outcome.status === 'timeout') {
+    teamLoadStatus.value = 'timeout'
+    return
+  }
+  if (outcome.status === 'error' || !outcome.value.ok) {
+    teamLoadStatus.value = 'error'
+    return
+  }
+
+  teamLoadStatus.value = 'success'
+  // チームが1つの場合は自動選択
+  if (teamStore.myTeams.length === 1) {
+    await selectTeam(teamStore.myTeams[0]!.id)
+  }
+}
+
 // ステップ: team-select → schedule-select → slot-fill → preview
 type Step = 'team-select' | 'schedule-select' | 'slot-fill' | 'preview'
 const step = ref<Step>('team-select')
@@ -51,8 +84,22 @@ const slotsLoading = ref(false)
 // 既存の自分の希望（更新用）
 const existingRequests = ref<ShiftRequestResponse[]>([])
 
+/**
+ * 未入力スロットの既定値（CMP-260908-2118）。
+ * 「触っていない日は休み希望」。出られる日は利用者が明示的に選ぶ運用。
+ */
+const UNTOUCHED_PREFERENCE: ShiftPreference = 'STRONG_REST'
+
 // スロットIDをキーに希望を管理
 const preferences = ref<Map<number, ShiftPreference>>(new Map())
+
+/**
+ * 利用者がこの画面で操作した（または既に提出済みの）スロット ID。
+ * 値が既定値と一致するかでは「未入力」を判定できないため、別途追跡する。
+ */
+const touchedSlotIds = ref<Set<number>>(new Set())
+/** 曜日ごとの既定プロファイル由来で初期値が入ったスロット ID（第3区分） */
+const defaultAppliedSlotIds = ref<Set<number>>(new Set())
 const notes = ref<Map<number, string>>(new Map())
 const expandedNotes = ref<Set<number>>(new Set())
 
@@ -68,8 +115,9 @@ async function selectTeam(id: number) {
   schedulesLoading.value = true
   try {
     const all = await listSchedules(String(id))
-    // COLLECTING 状態のみ表示
-    schedules.value = all.filter((s) => s.status.status === 'COLLECTING')
+    // 希望を受け付けているシフト表のみ表示（COLLECTING かつ requestDeadline 未経過）。
+    // 判定はチームのシフト表一覧と共通の isAcceptingShiftRequests に寄せる（CMP-260908-2118）。
+    schedules.value = all.filter(isAcceptingShiftRequests)
   } catch {
     showError(t('shift.notification.errorLoad'))
     step.value = 'team-select'
@@ -93,24 +141,39 @@ async function selectSchedule(schedule: ShiftScheduleResponse) {
     slots.value = fetchedSlots
     existingRequests.value = myReqs.filter((r) => r.scheduleId === schedule.id)
 
-    // 初期値: 既存希望 > デフォルトプロファイル > AVAILABLE
+    // 初期値: 既存希望 > デフォルトプロファイル > STRONG_REST（CMP-260908-2118）
+    //
+    // 未入力の既定は「できれば休みたい（STRONG_REST）」。触っていない日に
+    // 意図せずシフトへ入れられる事故を防ぐため、出られる日は利用者が明示的に選ぶ。
+    // ABSOLUTE_REST ではないのは、人手が足りないときに依頼が来る余地を残すため。
     const newPrefs = new Map<number, ShiftPreference>()
     const newNotes = new Map<number, string>()
+    const newTouched = new Set<number>()
+    const newDefaultApplied = new Set<number>()
     for (const slot of fetchedSlots) {
       const existing = existingRequests.value.find((r) => r.slotId === slot.id)
       if (existing) {
         newPrefs.set(slot.id, existing.preference)
         if (existing.note) newNotes.set(slot.id, existing.note)
+        // 既に提出済みの希望は「入力済み」として扱う
+        newTouched.add(slot.id)
         continue
       }
       // デフォルトプロファイルから曜日を取得（0=日曜）
       const slotDate = new Date(slot.time.slotDate)
       const dow = slotDate.getDay()
       const defaultPref = defaultProfiles.find((d) => d.dayOfWeek === dow)
-      newPrefs.set(slot.id, defaultPref?.preference ?? 'AVAILABLE')
+      if (defaultPref) {
+        newPrefs.set(slot.id, defaultPref.preference)
+        newDefaultApplied.add(slot.id)
+      } else {
+        newPrefs.set(slot.id, UNTOUCHED_PREFERENCE)
+      }
     }
     preferences.value = newPrefs
     notes.value = newNotes
+    touchedSlotIds.value = newTouched
+    defaultAppliedSlotIds.value = newDefaultApplied
   } catch {
     showError(t('shift.notification.errorLoad'))
     step.value = 'schedule-select'
@@ -129,16 +192,24 @@ function toggleNote(slotId: number) {
   expandedNotes.value = next
 }
 
+function markTouched(slotIds: number[]) {
+  const next = new Set(touchedSlotIds.value)
+  for (const id of slotIds) next.add(id)
+  touchedSlotIds.value = next
+}
+
 function setPreference(slotId: number, pref: ShiftPreference) {
   const next = new Map(preferences.value)
   next.set(slotId, pref)
   preferences.value = next
+  markTouched([slotId])
 }
 
 function setNote(slotId: number, note: string) {
   const next = new Map(notes.value)
   next.set(slotId, note)
   notes.value = next
+  markTouched([slotId])
 }
 
 function applyBulk(payload: {
@@ -146,21 +217,61 @@ function applyBulk(payload: {
   target: 'all' | 'weekday' | 'weekend'
 }) {
   const next = new Map(preferences.value)
+  const touched: number[] = []
   for (const slot of slots.value) {
     if (payload.target === 'all') {
       next.set(slot.id, payload.preference)
+      touched.push(slot.id)
       continue
     }
     const dow = new Date(slot.time.slotDate).getDay()
     const isWeekend = dow === 0 || dow === 6
     if (payload.target === 'weekday' && !isWeekend) {
       next.set(slot.id, payload.preference)
+      touched.push(slot.id)
     }
     if (payload.target === 'weekend' && isWeekend) {
       next.set(slot.id, payload.preference)
+      touched.push(slot.id)
     }
   }
   preferences.value = next
+  markTouched(touched)
+}
+
+// --- 送信前確認モーダル（CMP-260908-2118）---------------------------------
+const confirmDialogVisible = ref(false)
+
+/** 日付ごとに「入力済み / 既定から自動入力 / 未入力」の 3 区分へ分類する */
+const submitSummary = computed(() => {
+  const filled: string[] = []
+  const defaultApplied: string[] = []
+  const untouched: string[] = []
+  const byDate = new Map<string, ShiftSlotResponse[]>()
+  for (const slot of slots.value) {
+    if (!byDate.has(slot.time.slotDate)) byDate.set(slot.time.slotDate, [])
+    byDate.get(slot.time.slotDate)!.push(slot)
+  }
+  for (const date of [...byDate.keys()].sort()) {
+    const dateSlots = byDate.get(date) ?? []
+    if (dateSlots.some((s) => touchedSlotIds.value.has(s.id))) {
+      filled.push(date)
+    } else if (dateSlots.some((s) => defaultAppliedSlotIds.value.has(s.id))) {
+      defaultApplied.push(date)
+    } else {
+      untouched.push(date)
+    }
+  }
+  return { filled, defaultApplied, untouched }
+})
+
+function openSubmitConfirm() {
+  confirmDialogVisible.value = true
+}
+
+async function confirmAndSubmit() {
+  confirmDialogVisible.value = false
+  await submitAll()
 }
 
 // プレビュー用カウント
@@ -184,7 +295,7 @@ async function submitAll() {
   try {
     const tasks: Promise<ShiftRequestResponse>[] = []
     for (const slot of slots.value) {
-      const pref = preferences.value.get(slot.id) ?? 'AVAILABLE'
+      const pref = preferences.value.get(slot.id) ?? UNTOUCHED_PREFERENCE
       const note = notes.value.get(slot.id)
       const existing = existingRequests.value.find((r) => r.slotId === slot.id)
       if (existing) {
@@ -233,13 +344,7 @@ function formatTime(timeStr: string): string {
   return timeStr.substring(0, 5)
 }
 
-onMounted(async () => {
-  await teamStore.fetchMyTeams()
-  // チームが1つの場合は自動選択
-  if (teamStore.myTeams.length === 1) {
-    await selectTeam(teamStore.myTeams[0]!.id)
-  }
-})
+onMounted(loadTeams)
 </script>
 
 <template>
@@ -248,7 +353,24 @@ onMounted(async () => {
 
     <!-- ステップ 1: チーム選択 -->
     <template v-if="step === 'team-select'">
-      <PageLoading v-if="teamStore.loading" size="40px" />
+      <PageLoading v-if="teamLoadStatus === 'loading'" size="40px" />
+      <div
+        v-else-if="teamLoadStatus === 'error' || teamLoadStatus === 'timeout'"
+        class="flex flex-col items-center gap-3"
+        role="alert"
+      >
+        <Message severity="error" :closable="false">
+          {{
+            teamLoadStatus === 'timeout' ? t('shift.teamLoad.timeout') : t('shift.teamLoad.error')
+          }}
+        </Message>
+        <Button
+          icon="pi pi-refresh"
+          :label="t('shift.teamLoad.retry')"
+          outlined
+          @click="loadTeams"
+        />
+      </div>
       <div v-else class="flex flex-col gap-3">
         <DashboardEmptyState
           v-if="teamStore.myTeams.length === 0"
@@ -392,7 +514,7 @@ onMounted(async () => {
 
                 <!-- 5段階ラジオカード -->
                 <ShiftPreferenceRadioCard
-                  :model-value="preferences.get(slot.id) ?? 'AVAILABLE'"
+                  :model-value="preferences.get(slot.id) ?? UNTOUCHED_PREFERENCE"
                   @update:model-value="setPreference(slot.id, $event)"
                 />
 
@@ -481,13 +603,66 @@ onMounted(async () => {
         <Button
           :label="t('shift.action.submit')"
           :loading="submitting"
-          @click="submitAll"
+          @click="openSubmitConfirm"
         />
       </div>
     </template>
 
     <!-- 一括設定ダイアログ -->
     <ShiftPreferenceBulkSetDialog v-model:visible="bulkDialogVisible" @apply="applyBulk" />
+
+    <!-- 送信前確認モーダル（CMP-260908-2118） -->
+    <Dialog
+      v-model:visible="confirmDialogVisible"
+      :header="t('shift.submitConfirm.title')"
+      :style="{ width: '440px' }"
+      modal
+    >
+      <div class="flex flex-col gap-3 text-sm">
+        <div class="flex items-center justify-between">
+          <span>{{ t('shift.submitConfirm.filledLabel') }}</span>
+          <span class="font-semibold">
+            {{ t('shift.submitConfirm.dayCount', { count: submitSummary.filled.length }) }}
+          </span>
+        </div>
+        <div
+          v-if="submitSummary.defaultApplied.length > 0"
+          class="flex items-center justify-between"
+        >
+          <span>{{ t('shift.submitConfirm.defaultAppliedLabel') }}</span>
+          <span class="font-semibold">
+            {{ t('shift.submitConfirm.dayCount', { count: submitSummary.defaultApplied.length }) }}
+          </span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span>{{ t('shift.submitConfirm.untouchedLabel') }}</span>
+          <span class="font-semibold">
+            {{ t('shift.submitConfirm.dayCount', { count: submitSummary.untouched.length }) }}
+          </span>
+        </div>
+
+        <div
+          v-if="submitSummary.untouched.length > 0"
+          class="rounded-lg bg-surface-100 p-3 text-xs text-surface-600 dark:bg-surface-800 dark:text-surface-300"
+        >
+          <p>{{ t('shift.submitConfirm.untouchedNotice') }}</p>
+          <p class="mt-1">{{ submitSummary.untouched.map(formatDate).join('、') }}</p>
+        </div>
+      </div>
+      <template #footer>
+        <Button
+          :label="t('shift.submitConfirm.back')"
+          text
+          severity="secondary"
+          @click="confirmDialogVisible = false"
+        />
+        <Button
+          :label="t('shift.submitConfirm.submit')"
+          :loading="submitting"
+          @click="confirmAndSubmit"
+        />
+      </template>
+    </Dialog>
   </div>
 </template>
 

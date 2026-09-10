@@ -3,28 +3,28 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.shift.ShiftAssignedUserIds;
+import com.mannschaft.app.shift.ShiftAssignmentStatus;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.dto.BulkCreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.ShiftSlotResponse;
 import com.mannschaft.app.shift.dto.SlotAssignmentPatchRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
+import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
+import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -59,8 +59,9 @@ public class ShiftSlotService {
     private final ShiftSlotRepository slotRepository;
     private final ShiftPositionRepository positionRepository;
     private final ShiftScheduleRepository scheduleRepository;
+    /** 手動割当の操作履歴（誰がいつ割り当て・解除したか）を記録するための履歴表。 */
+    private final ShiftAssignmentRepository assignmentRepository;
     private final AccessControlService accessControlService;
-    private final ObjectMapper objectMapper;
 
     /**
      * スケジュールのシフト枠一覧を取得する。
@@ -158,6 +159,9 @@ public class ShiftSlotService {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
         checkScheduleAdminAccess(entity.getScheduleId(), userId);
 
+        // 履歴記録のため更新前の割当を控える（CMP-260908-2117）。
+        List<Long> before = deserializeUserIds(entity.getAssignedUserIds());
+
         // managed entity を直接ミューテート（toBuilder().build() でなくドメインメソッドで更新）。
         // ShiftSlotEntity は @Builder(toBuilder=true) / @SuperBuilder でない / BaseEntity継承(自前id無)
         // の3条件が揃うため、toBuilder().build()→save では id=null の新インスタンスが生成され
@@ -173,6 +177,7 @@ public class ShiftSlotService {
         );
 
         slotRepository.save(entity);
+        recordAssignmentHistory(entity, before, deserializeUserIds(entity.getAssignedUserIds()), userId);
         log.info("シフト枠更新: id={}", slotId);
         return toSlotResponse(entity);
     }
@@ -196,7 +201,8 @@ public class ShiftSlotService {
         }
 
         // 現在の割当ユーザーリストを取得
-        List<Long> currentUserIds = new ArrayList<>(deserializeUserIds(entity.getAssignedUserIds()));
+        List<Long> before = deserializeUserIds(entity.getAssignedUserIds());
+        List<Long> currentUserIds = new ArrayList<>(before);
 
         // ユーザーを追加（ループ変数は操作者 userId と衝突しないよう addUserId とする）
         if (request.addUserIds() != null) {
@@ -220,6 +226,7 @@ public class ShiftSlotService {
         // managed entity を直接ミューテート（toBuilder().build() 行重複バグ回避）。
         entity.updateAssignedUserIds(serializeUserIds(currentUserIds));
         slotRepository.save(entity);
+        recordAssignmentHistory(entity, before, currentUserIds, userId);
 
         log.info("スロット差分割当更新: slotId={}, added={}, removed={}",
                 slotId,
@@ -377,32 +384,99 @@ public class ShiftSlotService {
     }
 
     /**
+     * 手動割当の操作履歴を {@code shift_assignments} に記録する（CMP-260908-2117）。
+     *
+     * <p><b>役割の分離</b>: 現在の割当状態の正本は {@code shift_slots.assigned_user_ids} であり、
+     * 本表は「誰がいつ割り当て・解除したか」を残す<b>監査・履歴用</b>である。
+     * 読み出し（自分のシフト・今後の予定・充足サマリー）は本表を参照しない。
+     * 設計 {@code docs/features/F03.5_shift/01_db_design.md} が
+     * 「手動割当も自動割当も同じテーブルに記録する」と定めており、実装がそれに追いついていなかった。</p>
+     *
+     * <p><b>解除と再割当の表現</b>: 1 行 = 1 回の割当（{@code created_at} が割当時刻、
+     * {@code REVOKED} への遷移時の {@code updated_at} が解除時刻）とし、次のように扱う。</p>
+     * <ul>
+     *   <li><b>追加</b>: 当該 (slot, user) に非 REVOKED の行が無ければ
+     *       {@code CONFIRMED} 行を 1 件 INSERT する（{@code run_id} は NULL = 手動、
+     *       {@code assigned_by} は操作者）。既にあれば何もしない（冪等）。</li>
+     *   <li><b>解除</b>: 当該 (slot, user) の非 REVOKED 行をすべて {@code REVOKED} に遷移させる。
+     *       自動割当由来の行も対象に含める — 外したという事実は割当の出自によらないうえ、
+     *       残したままだと履歴表が「まだ入っている」と主張して現状と食い違うためである。</li>
+     *   <li><b>外して再度入れる</b>: 上記の結果、REVOKED 行と新しい CONFIRMED 行が並ぶ。
+     *       「追記のみ（解除イベント行を別に足す）」を採らないのは、{@code status} 列が
+     *       PROPOSED→CONFIRMED→REVOKED という<b>状態</b>を表す ENUM であり
+     *       （{@code ShiftAssignmentEntity#revoke()} も状態遷移として実装されている）、
+     *       同じ列にイベント種別を混ぜると自動割当側の解釈と衝突するためである。
+     *       UNIQUE KEY {@code (slot_id, user_id, run_id)} は run_id が NULL のとき
+     *       MySQL では重複を許すため、行の追加は制約違反にならない。</li>
+     * </ul>
+     *
+     * <p><b>既知の限界</b>: 解除した操作者は記録されない（{@code assigned_by} は割り当てた者を保持する）。
+     * 記録するには列追加（Flyway）が要るため、本 CMP の射程外とした。</p>
+     *
+     * @param slot       対象スロット（保存済み）
+     * @param before     更新前の割当ユーザー ID
+     * @param after      更新後の割当ユーザー ID
+     * @param operatorId 操作者ユーザー ID
+     */
+    private void recordAssignmentHistory(
+            ShiftSlotEntity slot, List<Long> before, List<Long> after, Long operatorId) {
+        List<Long> added = after.stream().filter(id -> !before.contains(id)).distinct().toList();
+        List<Long> removed = before.stream().filter(id -> !after.contains(id)).distinct().toList();
+        if (added.isEmpty() && removed.isEmpty()) {
+            return;
+        }
+
+        List<ShiftAssignmentEntity> existing = assignmentRepository.findAllBySlotId(slot.getId());
+
+        List<ShiftAssignmentEntity> toSave = new ArrayList<>();
+        for (Long addedUserId : added) {
+            boolean alreadyActive = existing.stream()
+                    .anyMatch(a -> addedUserId.equals(a.getUserId())
+                            && a.getStatus() != ShiftAssignmentStatus.REVOKED);
+            if (alreadyActive) {
+                continue;
+            }
+            toSave.add(ShiftAssignmentEntity.builder()
+                    .slotId(slot.getId())
+                    .userId(addedUserId)
+                    .runId(null)
+                    .status(ShiftAssignmentStatus.CONFIRMED)
+                    .assignedBy(operatorId)
+                    .note("手動割当")
+                    .build());
+        }
+        for (Long removedUserId : removed) {
+            existing.stream()
+                    .filter(a -> removedUserId.equals(a.getUserId())
+                            && a.getStatus() != ShiftAssignmentStatus.REVOKED)
+                    .forEach(a -> {
+                        a.revoke();
+                        toSave.add(a);
+                    });
+        }
+
+        if (!toSave.isEmpty()) {
+            assignmentRepository.saveAll(toSave);
+        }
+        log.info("手動割当履歴を記録: slotId={}, operator={}, added={}, revoked={}",
+                slot.getId(), operatorId, added.size(), removed.size());
+    }
+
+    /**
      * ユーザーIDリストをJSON文字列にシリアライズする。
+     *
+     * <p>実体は {@link ShiftAssignedUserIds}（割当 JSON の読み書きの唯一の定義）に委譲する。</p>
      */
     private String serializeUserIds(List<Long> userIds) {
-        if (userIds == null || userIds.isEmpty()) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(userIds);
-        } catch (JsonProcessingException e) {
-            log.warn("ユーザーIDリストのシリアライズに失敗: {}", e.getMessage());
-            return null;
-        }
+        return ShiftAssignedUserIds.serialize(userIds);
     }
 
     /**
      * JSON文字列からユーザーIDリストをデシリアライズする。
+     *
+     * <p>実体は {@link ShiftAssignedUserIds} に委譲する。</p>
      */
     private List<Long> deserializeUserIds(String json) {
-        if (json == null || json.isBlank()) {
-            return Collections.emptyList();
-        }
-        try {
-            return objectMapper.readValue(json, new TypeReference<List<Long>>() {});
-        } catch (JsonProcessingException e) {
-            log.warn("ユーザーIDリストのデシリアライズに失敗: {}", e.getMessage());
-            return Collections.emptyList();
-        }
+        return ShiftAssignedUserIds.parse(json);
     }
 }

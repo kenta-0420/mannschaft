@@ -22,7 +22,7 @@ import java.util.Optional;
  * <ul>
  *   <li>AC-61 / AC-62: 他 scope は {@code ENTITLEMENT_005}(403)、未認証は Security 層で 401。</li>
  *   <li>AC-63: Customer が ACTIVE 以外なら Portal を開始せず {@code ENTITLEMENT_024}(409)。</li>
- *   <li>AC-71: scope ごと 10 回/時。超過は {@code ENTITLEMENT_028}(429)。</li>
+ *   <li>AC-71: scope ごと 10 回/時。超過は {@code ENTITLEMENT_038}(429)。</li>
  *   <li>AC-72: 監査 {@code BILLING_PORTAL_OPENED} を記録する。URL は含めない。</li>
  * </ul>
  *

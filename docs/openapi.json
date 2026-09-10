@@ -2155,6 +2155,10 @@
       "description": "F09.8 Phase A2 boardId 単独でのボード詳細取得"
     },
     {
+      "name": "課金 - 請求担当の引継",
+      "description": "柱③-B TEAM/ORG 契約の請求担当（payer）引継の申請・承諾"
+    },
+    {
       "name": "マイ回覧",
       "description": "F05.2 ログインユーザーの回覧文書管理"
     },
@@ -49488,6 +49492,100 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/billing/payer-handover-requests/{handoverRequestId}/resume": {
+      "post": {
+        "tags": [
+          "課金 - 請求担当の引継"
+        ],
+        "summary": "チーム契約の請求担当引継を手動介入から再開",
+        "description": "MANUAL_INTERVENTION の引継を SWITCHING へ戻す（切替再試行）か FAILED で確定する。FAILED 確定時に旧サブスクの期末解約予約を差し戻すかは運用者が明示的に選ぶ（旧が既に次の期間へ更新済みの場合、差し戻しは不適切なことがある）。",
+        "operationId": "resumeForTeam",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "handoverRequestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingPayerHandoverResumeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingPayerHandoverResumeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/billing/payer-handover-requests/{handoverRequestId}/acceptance": {
+      "post": {
+        "tags": [
+          "課金 - 請求担当の引継"
+        ],
+        "summary": "チーム契約の請求担当引継を承諾",
+        "description": "新 payer となる他 ADMIN が承諾する（2段目）。支払い方法未登録なら REQUIRES_PAYMENT_METHOD で差し戻す。",
+        "operationId": "acceptForTeam",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "handoverRequestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingPayerHandoverAcceptResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/billing/contracts": {
       "post": {
         "tags": [
@@ -49532,6 +49630,48 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/billing/contracts/{contractId}/payer-handover-requests": {
+      "post": {
+        "tags": [
+          "課金 - 請求担当の引継"
+        ],
+        "summary": "チーム契約の請求担当引継を申請",
+        "description": "旧 payer が申請する（承諾型2段の1段目）。旧契約が PAST_DUE または期末が過去の場合は拒否される。",
+        "operationId": "requestForTeam",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingPayerHandoverRequestResponse"
                 }
               }
             }
@@ -56092,49 +56232,6 @@
         }
       }
     },
-    "/api/v1/shifts/swap-requests/{swapId}/select-claimer": {
-      "post": {
-        "tags": [
-          "シフト交代リクエスト管理"
-        ],
-        "summary": "オープンコール候補者選定",
-        "operationId": "selectClaimer",
-        "parameters": [
-          {
-            "name": "swapId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "integer",
-                "format": "int64"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "選定成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSwapRequestResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/shifts/swap-requests/{swapId}/resolve": {
       "post": {
         "tags": [
@@ -56166,38 +56263,6 @@
         "responses": {
           "200": {
             "description": "処理成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSwapRequestResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/shifts/swap-requests/{swapId}/claim": {
-      "post": {
-        "tags": [
-          "シフト交代リクエスト管理"
-        ],
-        "summary": "オープンコール手挙げ",
-        "operationId": "claimOpenCall",
-        "parameters": [
-          {
-            "name": "swapId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "手挙げ成功",
             "content": {
               "*/*": {
                 "schema": {
@@ -63030,6 +63095,142 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseDisclosureExportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{organizationId}/billing/payer-handover-requests/{handoverRequestId}/resume": {
+      "post": {
+        "tags": [
+          "課金 - 請求担当の引継"
+        ],
+        "summary": "組織契約の請求担当引継を手動介入から再開",
+        "description": "MANUAL_INTERVENTION の引継を SWITCHING へ戻す（切替再試行）か FAILED で確定する。FAILED 確定時に旧サブスクの期末解約予約を差し戻すかは運用者が明示的に選ぶ（旧が既に次の期間へ更新済みの場合、差し戻しは不適切なことがある）。",
+        "operationId": "resumeForOrganization",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "handoverRequestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingPayerHandoverResumeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingPayerHandoverResumeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{organizationId}/billing/payer-handover-requests/{handoverRequestId}/acceptance": {
+      "post": {
+        "tags": [
+          "課金 - 請求担当の引継"
+        ],
+        "summary": "組織契約の請求担当引継を承諾",
+        "description": "新 payer となる他 ADMIN が承諾する（2段目）。支払い方法未登録なら REQUIRES_PAYMENT_METHOD で差し戻す。",
+        "operationId": "acceptForOrganization",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "handoverRequestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingPayerHandoverAcceptResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{organizationId}/billing/contracts/{contractId}/payer-handover-requests": {
+      "post": {
+        "tags": [
+          "課金 - 請求担当の引継"
+        ],
+        "summary": "組織契約の請求担当引継を申請",
+        "description": "旧 payer が申請する（承諾型2段の1段目）。旧契約が PAST_DUE または期末が過去の場合は拒否される。",
+        "operationId": "requestForOrganization",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingPayerHandoverRequestResponse"
                 }
               }
             }
@@ -182150,6 +182351,85 @@
           }
         }
       },
+      "BillingPayerHandoverResumeRequest": {
+        "type": "object",
+        "description": "手動介入中の請求担当引継を再開（または失敗確定）する要求",
+        "properties": {
+          "revertOldCancelSchedule": {
+            "type": "boolean",
+            "default": "false",
+            "description": "FAILED 確定時に旧サブスクの期末解約予約を差し戻すか（旧が既に次の期間へ更新済みの場合は差し戻しが不適切なことがあるため運用者が選ぶ）"
+          },
+          "target": {
+            "type": "string",
+            "description": "再開先。SWITCHING\u003d切替を再試行させる / FAILED\u003d引継を諦めて終端化する",
+            "enum": [
+              "SWITCHING",
+              "FAILED"
+            ],
+            "example": "SWITCHING"
+          }
+        },
+        "required": [
+          "target"
+        ]
+      },
+      "ApiResponseBillingPayerHandoverResumeResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingPayerHandoverResumeResponse"
+          }
+        }
+      },
+      "BillingPayerHandoverResumeResponse": {
+        "type": "object",
+        "description": "手動介入からの再開結果",
+        "properties": {
+          "handoverRequestId": {
+            "type": "string",
+            "description": "引継要求 ID"
+          },
+          "oldCancelScheduleReverted": {
+            "type": "boolean",
+            "description": "旧サブスクの期末解約予約を差し戻したか（FAILED 確定時のみ意味を持つ）"
+          },
+          "status": {
+            "type": "string",
+            "description": "再開後の状態（SWITCHING または FAILED）"
+          }
+        }
+      },
+      "ApiResponseBillingPayerHandoverAcceptResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingPayerHandoverAcceptResponse"
+          }
+        }
+      },
+      "BillingPayerHandoverAcceptResponse": {
+        "type": "object",
+        "description": "請求担当引継の承諾結果",
+        "properties": {
+          "checkoutUrl": {
+            "type": "string",
+            "description": "新 payer が決済を完了するための Checkout URL（差し戻し時は null）"
+          },
+          "handoverRequestId": {
+            "type": "string",
+            "description": "引継要求 ID"
+          },
+          "newContractId": {
+            "type": "string",
+            "description": "引継先として先行作成された契約 ID（PENDING_HANDOVER 状態。差し戻し時は null）"
+          },
+          "status": {
+            "type": "string",
+            "description": "承諾後の状態。REQUIRES_PAYMENT_METHOD は支払い方法未登録による差し戻し"
+          }
+        }
+      },
       "BillingCreateContractRequest": {
         "type": "object",
         "description": "F20.1 契約作成リクエスト",
@@ -182174,6 +182454,51 @@
         "required": [
           "contractKind"
         ]
+      },
+      "ApiResponseBillingPayerHandoverRequestResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingPayerHandoverRequestResponse"
+          }
+        }
+      },
+      "BillingPayerHandoverRequestResponse": {
+        "type": "object",
+        "description": "請求担当引継要求",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "承諾の猶予期限（既定: 申請から14日）"
+          },
+          "handoverRequestId": {
+            "type": "string",
+            "description": "引継要求 ID（UUIDv7）"
+          },
+          "oldContractId": {
+            "type": "string",
+            "description": "引継元の契約 ID"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "申請時刻"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "スコープ ID"
+          },
+          "scopeKind": {
+            "type": "string",
+            "description": "スコープ種別（TEAM / ORG。USER は引継の概念が無く対象外）"
+          },
+          "status": {
+            "type": "string",
+            "description": "要求の状態（10値の状態機械。FAILING_CLEANUP は後始末未了の非終端）"
+          }
+        }
       },
       "TransitionAlertResolveRequest": {
         "type": "object",
@@ -200905,7 +201230,10 @@
           "taxRate": {
             "type": "number"
           }
-        }
+        },
+        "required": [
+          "amount"
+        ]
       },
       "EmailDeliveryRequest": {
         "type": "object",

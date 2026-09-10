@@ -61,12 +61,6 @@
       "openCallLimit": "오픈 콜은 월 3건까지",
       "fetchError": "변경 요청 조회에 실패했습니다"
     },
-    "openCall": {
-      "badge": "대체 멤버 모집 중",
-      "claim": "제가 들어가겠습니다",
-      "claimed": "신청 완료",
-      "full": "모집 종료"
-    },
     "pdf": {
       "teamLayout": "팀 전체 표 PDF",
       "personalLayout": "개인 타임라인 PDF",
@@ -87,7 +81,8 @@
       "detail": "상세",
       "edit": "편집",
       "requests": "신청 목록",
-      "workConstraints": "근무 제약"
+      "workConstraints": "근무 제약",
+      "teamLoadFailed": "팀 정보를 불러오지 못했습니다"
     },
     "status": {
       "all": "전체",
@@ -271,7 +266,30 @@
         "nightShift": "야간 근무자",
         "selectedCount": "{count}명 선택됨"
       },
-      "templateHint": "같은 스케줄의 {period} 근무 담당자에게 일괄 전송합니다"
+      "templateHint": "같은 스케줄의 {period} 근무 담당자에게 일괄 전송합니다",
+      "list": {
+        "title": "시프트 교대 요청",
+        "requester": "신청자 #{id}",
+        "accepter": "교대 상대 #{id}",
+        "accepterUndecided": "교대 상대 미정",
+        "slot": "슬롯 #{id}",
+        "reason": "사유: {reason}",
+        "cancel": "철회",
+        "reload": "다시 불러오기",
+        "empty": "교대 요청이 없습니다",
+        "loadFailed": "교대 요청을 불러오지 못했습니다",
+        "loadFailedBody": "교대 요청을 가져올 수 없습니다",
+        "actionFailed": "처리에 실패했습니다",
+        "acceptSucceeded": "교대를 수락했습니다",
+        "approveSucceeded": "교대를 승인했습니다",
+        "rejectSucceeded": "교대를 반려했습니다",
+        "cancelSucceeded": "신청을 철회했습니다",
+        "statusPending": "수락 대기",
+        "statusAccepted": "승인 대기",
+        "statusApproved": "승인됨",
+        "statusRejected": "반려됨",
+        "statusCancelled": "철회됨"
+      }
     },
     "reminder": {
       "send": "리마인더 전송",
@@ -282,6 +300,11 @@
       "noShifts": "근무가 없습니다",
       "noRequests": "신청이 없습니다",
       "noConstraints": "근무 제약이 설정되지 않았습니다"
+    },
+    "teamLoad": {
+      "timeout": "팀 정보를 불러오는 데 시간이 오래 걸립니다. 연결 상태를 확인하고 다시 시도해 주세요.",
+      "error": "팀 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "retry": "다시 시도"
     },
     "notification": {
       "publishSuccess": "근무를 공개했습니다",
@@ -336,6 +359,23 @@
         "schedule": "스케줄",
         "noSlot": "이 날의 근무가 없습니다"
       }
+    },
+    "entry": {
+      "sectionTitle": "희망 제출 / 시프트 보드",
+      "bulkRequest": "한꺼번에 희망 제출",
+      "board": "시프트 보드",
+      "weeklyDefault": "요일별 기본값 설정",
+      "closed": "희망 접수가 종료되었습니다"
+    },
+    "submitConfirm": {
+      "title": "이 내용으로 제출할까요?",
+      "filledLabel": "입력한 날",
+      "defaultAppliedLabel": "기본값에서 자동 입력된 날",
+      "untouchedLabel": "입력하지 않은 날",
+      "dayCount": "{count}일",
+      "untouchedNotice": "입력하지 않은 날은 \"가급적 쉬고 싶음\"으로 제출됩니다. 다만 인력이 부족하면 근무 요청이 올 수 있습니다.",
+      "submit": "제출",
+      "back": "돌아가서 수정"
     }
   },
   "my_shift_guide": {

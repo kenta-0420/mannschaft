@@ -61,12 +61,6 @@
       "openCallLimit": "Las convocatorias abiertas están limitadas a 3 por mes",
       "fetchError": "Error al obtener las solicitudes de cambio"
     },
-    "openCall": {
-      "badge": "Buscando miembro sustituto",
-      "claim": "Cubriré este turno",
-      "claimed": "Ya solicitado",
-      "full": "Convocatoria cerrada"
-    },
     "pdf": {
       "teamLayout": "PDF del horario del equipo",
       "personalLayout": "PDF de la línea de tiempo personal",
@@ -74,7 +68,7 @@
       "error": "Error al generar el PDF"
     },
     "myShifts": {
-      "title": "Mis turnos",
+      "title": "Mis Turnos",
       "empty": "No hay turnos",
       "fetchError": "Error al obtener la información de turnos"
     },
@@ -87,7 +81,8 @@
       "detail": "Detalle",
       "edit": "Editar",
       "requests": "Solicitudes",
-      "workConstraints": "Restricciones de Trabajo"
+      "workConstraints": "Restricciones de Trabajo",
+      "teamLoadFailed": "No se pudo obtener la información del equipo"
     },
     "status": {
       "all": "Todos",
@@ -271,7 +266,30 @@
         "nightShift": "Miembros del turno de noche",
         "selectedCount": "{count} seleccionados"
       },
-      "templateHint": "Enviar a todos los miembros del turno {period} en el mismo horario"
+      "templateHint": "Enviar a todos los miembros del turno {period} en el mismo horario",
+      "list": {
+        "title": "Solicitudes de cambio de turno",
+        "requester": "Solicitante n.º {id}",
+        "accepter": "Compañero n.º {id}",
+        "accepterUndecided": "Compañero sin definir",
+        "slot": "Turno n.º {id}",
+        "reason": "Motivo: {reason}",
+        "cancel": "Retirar",
+        "reload": "Recargar",
+        "empty": "No hay solicitudes de cambio",
+        "loadFailed": "No se pudieron cargar las solicitudes de cambio",
+        "loadFailedBody": "No se pudieron obtener las solicitudes de cambio",
+        "actionFailed": "La operación ha fallado",
+        "acceptSucceeded": "Has aceptado el cambio",
+        "approveSucceeded": "Se ha aprobado el cambio",
+        "rejectSucceeded": "Se ha rechazado el cambio",
+        "cancelSucceeded": "Se ha retirado la solicitud",
+        "statusPending": "Pendiente de aceptación",
+        "statusAccepted": "Pendiente de aprobación",
+        "statusApproved": "Aprobado",
+        "statusRejected": "Rechazado",
+        "statusCancelled": "Retirado"
+      }
     },
     "reminder": {
       "send": "Enviar Recordatorio",
@@ -282,6 +300,11 @@
       "noShifts": "No hay turnos",
       "noRequests": "No hay solicitudes",
       "noConstraints": "No hay restricciones de trabajo configuradas"
+    },
+    "teamLoad": {
+      "timeout": "La información del equipo está tardando demasiado en cargarse. Comprueba la conexión y vuelve a intentarlo.",
+      "error": "No se pudo cargar la información del equipo. Inténtalo de nuevo más tarde.",
+      "retry": "Reintentar"
     },
     "notification": {
       "publishSuccess": "Turno publicado exitosamente",
@@ -323,11 +346,6 @@
       "totalLabel": "Total",
       "confirmSubmit": "¿Enviar con esta configuración?"
     },
-    "myShifts": {
-      "title": "Mis Turnos",
-      "empty": "No hay turnos",
-      "fetchError": "Error al obtener la información de turnos"
-    },
     "myShift": {
       "confirmedTitle": "Turno Confirmado",
       "upcomingTitle": "Próximos turnos confirmados",
@@ -341,6 +359,23 @@
         "schedule": "Horario",
         "noSlot": "No hay turnos este día"
       }
+    },
+    "entry": {
+      "sectionTitle": "Enviar preferencias / Tablero de turnos",
+      "bulkRequest": "Enviar preferencias en bloque",
+      "board": "Tablero de turnos",
+      "weeklyDefault": "Configurar valores por día de la semana",
+      "closed": "El plazo de preferencias ha terminado"
+    },
+    "submitConfirm": {
+      "title": "¿Enviar con este contenido?",
+      "filledLabel": "Días completados",
+      "defaultAppliedLabel": "Días rellenados desde tus valores por defecto",
+      "untouchedLabel": "Días sin completar",
+      "dayCount": "{count} día(s)",
+      "untouchedNotice": "Los días sin completar se envían como \"preferiblemente descansar\". Aun así, podrían pedirte trabajar si falta personal.",
+      "submit": "Enviar",
+      "back": "Volver a editar"
     }
   },
   "my_shift_guide": {
