@@ -17,6 +17,7 @@ import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
 import com.mannschaft.app.common.dto.SlugResolveResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.organization.dto.AncestorsResponse;
 import com.mannschaft.app.organization.dto.ChildrenResponse;
@@ -88,6 +89,8 @@ public class OrganizationService {
     @Transactional
     // TODO: OrganizationドメインとAuthドメイン・Roleドメインをまたいでいる。将来はOrganizationCreatedEventで分離予定
     public ApiResponse<OrganizationResponse> createOrganization(Long userId, CreateOrganizationRequest req) {
+        OrganizationEntity.OrgType orgType = parseOrgType(req.getOrgType());
+
         // CMP-260901-1538 柱③-A: 組織名の重複は一律ブロックせず、同名候補があれば
         // 409（候補一覧＋fingerprint）で確認を求める二段方式に切り替える（ORG_002 一律ブロックは撤去）。
         // 検分 P1-2 是正: 「候補再計算 → 作成」の全体をアドバイザリロック保持中に実行する
@@ -109,7 +112,7 @@ public class OrganizationService {
                     OrganizationEntity org = OrganizationEntity.builder()
                             .name(req.getName())
                             .slug(slug)
-                            .orgType(OrganizationEntity.OrgType.valueOf(req.getOrgType()))
+                            .orgType(orgType)
                             .prefecture(req.getPrefecture())
                             .city(req.getCity())
                             .visibility(req.getVisibility() != null
@@ -149,6 +152,17 @@ public class OrganizationService {
                     log.info("組織作成完了: orgId={}, userId={}", org.getId(), userId);
                     return ApiResponse.of(toResponse(org, 1));
                 });
+    }
+
+    /**
+     * 組織種別の入力値を enum に変換する。未知値は入力不備として扱う。
+     */
+    private OrganizationEntity.OrgType parseOrgType(String raw) {
+        try {
+            return OrganizationEntity.OrgType.valueOf(raw);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(CommonErrorCode.COMMON_001, ex);
+        }
     }
 
     /**
