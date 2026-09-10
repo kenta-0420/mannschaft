@@ -18,25 +18,63 @@ const notification = useNotification()
 const { t } = useI18n()
 const teamApi = useTeamApi()
 const resolvedNumericId = ref<number | null>(null)
+const teamLoading = ref(true)
+const teamLoadFailed = ref(false)
 const teamNumericId = computed<number | null>(
   () => team.value?.numericId ?? resolvedNumericId.value,
 )
 
 async function resolveTeamNumericId() {
-  if (teamNumericId.value !== null) return
+  teamLoading.value = true
+  teamLoadFailed.value = false
   try {
+    if (teamNumericId.value !== null) return
     const res = await teamApi.getTeam(teamSlug)
-    resolvedNumericId.value = res.data.numericId ?? null
-  } catch {
+    const numericId = res.data.numericId
+    if (!Number.isInteger(numericId) || Number(numericId) <= 0) {
+      throw new Error('team_numeric_id_missing')
+    }
+    resolvedNumericId.value = Number(numericId)
+  } catch (error) {
+    const status =
+      (
+        error as {
+          statusCode?: number
+          status?: number
+          response?: { status?: number }
+        }
+      ).statusCode ??
+      (error as { status?: number }).status ??
+      (error as { response?: { status?: number } }).response?.status
+
+    if (status === 403 || status === 404) {
+      showError(
+        createError({
+          statusCode: status,
+          statusMessage: t('shift.page.teamLoadFailed'),
+        }),
+      )
+      return
+    }
+
+    teamLoadFailed.value = true
     notification.error(t('shift.page.teamLoadFailed'))
+  } finally {
+    teamLoading.value = false
   }
 }
 const { isAdmin, isAdminOrDeputy, roleName, loadPermissions } = useRoleAccess('team', teamSlug)
 // シフトボードは当該チームの ADMIN / DEPUTY_ADMIN 限定。
 // 判定手段は board.vue（`shifts/[scheduleId]/board.vue` の isScopeAdmin）に合わせる。
-const isScopeAdmin = computed(
-  () => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN',
-)
+//
+// 【意図的に SYSTEM_ADMIN を含めない等値比較】(CMP-260909-1509)
+// プラットフォーム SYSTEM_ADMIN が同時にチームの ADMIN でも、実効ロール解決
+// （resolveEffectiveRoleName）は最強ロールである 'SYSTEM_ADMIN' を返すため、この等値比較では
+// 「シフトボード」ボタンは表示されない。これはバグではなく、「運営専用アカウントには一般の
+// チーム運営導線を出さない」というマスター確定の設計判断（docs/security/03_role_authority_model.md
+// §3.5）。BE 側の認可はこれと独立しており、SYSTEM_ADMIN は API を叩けば通る（UI 非表示は認可の代替
+// ではない）。SYSTEM_ADMIN を含めるように書き換えないこと。
+const isScopeAdmin = computed(() => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN')
 const { userTimezone } = useDatetime()
 
 const activeTab = ref(0)
@@ -56,12 +94,13 @@ async function createSchedule() {
   if (
     !createForm.value.title.trim() ||
     !createForm.value.periodStart ||
-    !createForm.value.periodEnd
+    !createForm.value.periodEnd ||
+    teamNumericId.value === null
   )
     return
   creating.value = true
   try {
-    await shiftApi.createSchedule(teamSlug, {
+    await shiftApi.createSchedule(teamNumericId.value, {
       title: createForm.value.title.trim(),
       startDate: dayjs(createForm.value.periodStart).tz(userTimezone.value).format('YYYY-MM-DD'),
       endDate: dayjs(createForm.value.periodEnd).tz(userTimezone.value).format('YYYY-MM-DD'),
@@ -94,97 +133,123 @@ onMounted(() => {
     <!-- ネストされたページ（ボード・変更依頼）が存在する場合はそちらに委譲 -->
     <NuxtPage v-if="$route.params.scheduleId" />
     <template v-else>
-    <PageHeader title="シフト管理" class="mb-4" />
-
-    <Tabs v-model:value="activeTab">
-      <TabList>
-        <Tab :value="0">シフト表</Tab>
-        <Tab :value="1">シフト交換</Tab>
-        <Tab :value="2">ポジション管理</Tab>
-      </TabList>
-      <TabPanels>
-        <TabPanel :value="0">
-          <ShiftScheduleList
-            :team-id="teamSlug"
-            :can-manage="isAdminOrDeputy"
-            :can-manage-board="isScopeAdmin"
-            @select="onScheduleSelect"
-            @create="showCreateDialog = true"
-          />
-          <!-- 曜日ごとの既定希望ページへの導線（FE 全体でリンクが無く到達不能だった） -->
-          <div class="mt-4">
-            <Button
-              :label="t('shift.entry.weeklyDefault')"
-              icon="pi pi-calendar-clock"
-              text
-              size="small"
-              @click="navigateTo('/my/shift-availability')"
-            />
-          </div>
-        </TabPanel>
-        <TabPanel :value="1">
-          <!-- 交代申請APIは数値 teamId を要求する。解決前は骨組みを出して誤リクエストを撃たない -->
-          <ShiftSwapList
-            v-if="teamNumericId !== null"
-            :team-id="teamNumericId"
-            :can-manage="isAdminOrDeputy"
-          />
-          <div v-else>
-            <Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" />
-          </div>
-        </TabPanel>
-        <TabPanel v-if="isAdmin" :value="2">
-          <ShiftPositionManager :team-id="teamSlug" />
-        </TabPanel>
-      </TabPanels>
-    </Tabs>
-
-    <!-- シフト表作成ダイアログ -->
-    <Dialog
-      v-model:visible="showCreateDialog"
-      header="シフト表を作成"
-      :style="{ width: '420px' }"
-      modal
-    >
-      <div class="flex flex-col gap-4">
-        <div>
-          <label class="mb-1 block text-sm font-medium">タイトル</label>
-          <InputText v-model="createForm.title" class="w-full" placeholder="例: 2026年4月第1週" />
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="mb-1 block text-sm font-medium">開始日</label>
-            <DatePicker
-              v-model="createForm.periodStart"
-              date-format="yy/mm/dd"
-              class="w-full"
-              show-icon
-            />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm font-medium">終了日</label>
-            <DatePicker
-              v-model="createForm.periodEnd"
-              date-format="yy/mm/dd"
-              class="w-full"
-              show-icon
-            />
-          </div>
-        </div>
+      <div v-if="teamLoading" class="flex justify-center py-12">
+        <LoadingBounce />
       </div>
-      <template #footer>
-        <Button label="キャンセル" text @click="showCreateDialog = false" />
-        <Button label="作成" icon="pi pi-check" :loading="creating" @click="createSchedule" />
-      </template>
-    </Dialog>
 
-    <!-- シフト希望提出ダイアログ -->
-    <ShiftRequestForm
-      v-if="selectedScheduleId"
-      v-model:visible="showRequestDialog"
-      :team-id="teamSlug"
-      :schedule-id="selectedScheduleId"
-    />
+      <div v-else-if="teamLoadFailed" class="mx-auto max-w-2xl p-6 text-center">
+        <i class="pi pi-exclamation-triangle text-4xl text-surface-400" aria-hidden="true" />
+        <p class="mt-4 text-lg font-medium text-surface-700 dark:text-surface-200">
+          {{ t('common.scopeShell.load_error_title') }}
+        </p>
+        <p class="mt-1 text-sm text-surface-500">
+          {{ t('common.scopeShell.load_error_body') }}
+        </p>
+        <Button
+          class="mt-4"
+          :label="t('common.scopeShell.retry')"
+          icon="pi pi-refresh"
+          @click="resolveTeamNumericId"
+        />
+      </div>
+
+      <template v-else-if="teamNumericId !== null">
+        <PageHeader title="シフト管理" class="mb-4" />
+
+        <Tabs v-model:value="activeTab">
+          <TabList>
+            <Tab :value="0">シフト表</Tab>
+            <Tab :value="1">シフト交換</Tab>
+            <Tab :value="2">ポジション管理</Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel :value="0">
+              <ShiftScheduleList
+                :team-id="teamNumericId"
+                :team-slug="teamSlug"
+                :can-manage="isAdminOrDeputy"
+                :can-manage-board="isScopeAdmin"
+                @select="onScheduleSelect"
+                @create="showCreateDialog = true"
+              />
+              <!-- 曜日ごとの既定希望ページへの導線（FE 全体でリンクが無く到達不能だった） -->
+              <div class="mt-4">
+                <Button
+                  :label="t('shift.entry.weeklyDefault')"
+                  icon="pi pi-calendar-clock"
+                  text
+                  size="small"
+                  @click="navigateTo('/my/shift-availability')"
+                />
+              </div>
+            </TabPanel>
+            <TabPanel :value="1">
+              <!-- 交代申請APIは数値 teamId を要求する。解決前は骨組みを出して誤リクエストを撃たない -->
+              <ShiftSwapList
+                v-if="teamNumericId !== null"
+                :team-id="teamNumericId"
+                :can-manage="isAdminOrDeputy"
+              />
+              <div v-else>
+                <Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" />
+              </div>
+            </TabPanel>
+            <TabPanel v-if="isAdmin" :value="2">
+              <ShiftPositionManager :team-id="teamNumericId" />
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+
+        <!-- シフト表作成ダイアログ -->
+        <Dialog
+          v-model:visible="showCreateDialog"
+          header="シフト表を作成"
+          :style="{ width: '420px' }"
+          modal
+        >
+          <div class="flex flex-col gap-4">
+            <div>
+              <label class="mb-1 block text-sm font-medium">タイトル</label>
+              <InputText
+                v-model="createForm.title"
+                class="w-full"
+                placeholder="例: 2026年4月第1週"
+              />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="mb-1 block text-sm font-medium">開始日</label>
+                <DatePicker
+                  v-model="createForm.periodStart"
+                  date-format="yy/mm/dd"
+                  class="w-full"
+                  show-icon
+                />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium">終了日</label>
+                <DatePicker
+                  v-model="createForm.periodEnd"
+                  date-format="yy/mm/dd"
+                  class="w-full"
+                  show-icon
+                />
+              </div>
+            </div>
+          </div>
+          <template #footer>
+            <Button label="キャンセル" text @click="showCreateDialog = false" />
+            <Button label="作成" icon="pi pi-check" :loading="creating" @click="createSchedule" />
+          </template>
+        </Dialog>
+
+        <!-- シフト希望提出ダイアログ -->
+        <ShiftRequestForm
+          v-if="selectedScheduleId"
+          v-model:visible="showRequestDialog"
+          :schedule-id="selectedScheduleId"
+        />
+      </template>
     </template>
   </div>
 </template>

@@ -315,6 +315,11 @@
       "noRequests": "No requests found",
       "noConstraints": "No work constraints set"
     },
+    "teamLoad": {
+      "timeout": "Loading team information is taking too long. Check your connection and try again.",
+      "error": "Team information could not be loaded. Please try again later.",
+      "retry": "Retry"
+    },
     "notification": {
       "publishSuccess": "Shift published successfully",
       "submitSuccess": "Request submitted successfully",

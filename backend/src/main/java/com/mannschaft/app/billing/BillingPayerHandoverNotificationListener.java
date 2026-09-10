@@ -112,11 +112,13 @@ public class BillingPayerHandoverNotificationListener {
             case HANDOVER_REQUESTED -> "notification.billing.payer_handover.requested";
             case PAYMENT_METHOD_REQUIRED -> "notification.billing.payer_handover.payment_method_required";
             case ADDITIONAL_AUTH_REQUIRED -> "notification.billing.payer_handover.additional_auth_required";
+            case MANUAL_INTERVENTION_REQUIRED -> "notification.billing.payer_handover.manual_intervention_required";
         };
         String defaultTitle = switch (event.kind()) {
             case HANDOVER_REQUESTED -> "請求担当の引継をお願いします";
             case PAYMENT_METHOD_REQUIRED -> "お支払い方法の登録が必要です";
             case ADDITIONAL_AUTH_REQUIRED -> "カードの追加認証が必要です";
+            case MANUAL_INTERVENTION_REQUIRED -> "請求担当の引継に手動対応が必要です";
         };
         // 設計書 §2.3・AC-9: 「請求日は変わらない（新サブスクは旧期末から開始）」旨を必ず含める。
         String defaultBody = switch (event.kind()) {
@@ -128,6 +130,9 @@ public class BillingPayerHandoverNotificationListener {
                             + "お支払い方法を登録してから、あらためて承諾してください。";
             case ADDITIONAL_AUTH_REQUIRED ->
                     "カード会社による追加認証が完了していません。期限までに認証を完了しないと引継が失敗します。";
+            case MANUAL_INTERVENTION_REQUIRED ->
+                    "請求担当の引継で自動処理できない状態を検出したため、処理を停止しました。"
+                            + "運用担当者による確認が必要です。確認が済むまで、この契約への新しい引継申請は行えません。";
         };
 
         return new NotificationDeliveryRequest(

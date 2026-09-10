@@ -11786,6 +11786,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/billing/payer-handover-requests/{handoverRequestId}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * チーム契約の請求担当引継を手動介入から再開
+         * @description MANUAL_INTERVENTION の引継を SWITCHING へ戻す（切替再試行）か FAILED で確定する。FAILED 確定時に旧サブスクの期末解約予約を差し戻すかは運用者が明示的に選ぶ（旧が既に次の期間へ更新済みの場合、差し戻しは不適切なことがある）。
+         */
+        post: operations["resumeForTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/billing/payer-handover-requests/{handoverRequestId}/acceptance": {
         parameters: {
             query?: never;
@@ -16415,6 +16435,26 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["exportDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationId}/billing/payer-handover-requests/{handoverRequestId}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 組織契約の請求担当引継を手動介入から再開
+         * @description MANUAL_INTERVENTION の引継を SWITCHING へ戻す（切替再試行）か FAILED で確定する。FAILED 確定時に旧サブスクの期末解約予約を差し戻すかは運用者が明示的に選ぶ（旧が既に次の期間へ更新済みの場合、差し戻しは不適切なことがある）。
+         */
+        post: operations["resumeForOrganization"];
         delete?: never;
         options?: never;
         head?: never;
@@ -60209,6 +60249,32 @@ export interface components {
             targetRole?: string;
             targetTeamIds?: number[];
         };
+        /** @description 手動介入中の請求担当引継を再開（または失敗確定）する要求 */
+        BillingPayerHandoverResumeRequest: {
+            /**
+             * @description FAILED 確定時に旧サブスクの期末解約予約を差し戻すか（旧が既に次の期間へ更新済みの場合は差し戻しが不適切なことがあるため運用者が選ぶ）
+             * @default false
+             */
+            revertOldCancelSchedule: boolean;
+            /**
+             * @description 再開先。SWITCHING=切替を再試行させる / FAILED=引継を諦めて終端化する
+             * @example SWITCHING
+             * @enum {string}
+             */
+            target: "SWITCHING" | "FAILED";
+        };
+        ApiResponseBillingPayerHandoverResumeResponse: {
+            data?: components["schemas"]["BillingPayerHandoverResumeResponse"];
+        };
+        /** @description 手動介入からの再開結果 */
+        BillingPayerHandoverResumeResponse: {
+            /** @description 引継要求 ID */
+            handoverRequestId?: string;
+            /** @description 旧サブスクの期末解約予約を差し戻したか（FAILED 確定時のみ意味を持つ） */
+            oldCancelScheduleReverted?: boolean;
+            /** @description 再開後の状態（SWITCHING または FAILED） */
+            status?: string;
+        };
         ApiResponseBillingPayerHandoverAcceptResponse: {
             data?: components["schemas"]["BillingPayerHandoverAcceptResponse"];
         };
@@ -60267,7 +60333,7 @@ export interface components {
             scopeId?: number;
             /** @description スコープ種別（TEAM / ORG。USER は引継の概念が無く対象外） */
             scopeKind?: string;
-            /** @description 要求の状態（9値の状態機械） */
+            /** @description 要求の状態（10値の状態機械。FAILING_CLEANUP は後始末未了の非終端） */
             status?: string;
         };
         TransitionAlertResolveRequest: {
@@ -108958,6 +109024,33 @@ export interface operations {
             };
         };
     };
+    resumeForTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                handoverRequestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingPayerHandoverResumeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPayerHandoverResumeResponse"];
+                };
+            };
+        };
+    };
     acceptForTeam: {
         parameters: {
             query?: never;
@@ -117563,6 +117656,33 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseDisclosureExportResponse"];
+                };
+            };
+        };
+    };
+    resumeForOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationId: number;
+                handoverRequestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingPayerHandoverResumeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBillingPayerHandoverResumeResponse"];
                 };
             };
         };

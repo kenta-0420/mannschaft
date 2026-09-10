@@ -3,8 +3,10 @@ import type { ShiftScheduleResponse } from '~/types/shift'
 import { isAcceptingShiftRequests } from '~/utils/shiftStatus'
 
 const props = defineProps<{
-  /** チームの URL 識別子（slug）。API 呼び出しとシフトボードへの遷移に使う */
-  teamId: string
+  /** バックエンドAPIが要求するチームの数値ID。 */
+  teamId: number
+  /** シフトボードへの遷移に使うURL識別子。 */
+  teamSlug: string
   canManage: boolean
   /**
    * シフトボードへの導線を出してよいか（当該チームの ADMIN / DEPUTY_ADMIN）。
@@ -25,6 +27,8 @@ const confirm = useConfirm()
 
 const schedules = ref<ShiftScheduleResponse[]>([])
 const loading = ref(true)
+const loadFailed = ref(false)
+const { handleApiError } = useErrorHandler()
 
 // CMP-260826-2127 / AC-15: 「どのシフト表を出すか」はサーバーが決める。
 // かつてここで非管理者に PUBLISHED のみを出していたが、BE 側で未公開シフト表を
@@ -46,12 +50,14 @@ const statusConfig = computed<Record<string, { label: string; severity: string }
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     const data = await shiftApi.listSchedules(props.teamId)
     schedules.value = data
-  } catch {
-    // 取得失敗時は空表示にフォールバック
+  } catch (error) {
     schedules.value = []
+    loadFailed.value = true
+    handleApiError(error, 'シフト表取得')
   } finally {
     loading.value = false
   }
@@ -92,7 +98,7 @@ function goToBulkRequest() {
 }
 
 function goToBoard(scheduleId: number) {
-  navigateTo(`/teams/${props.teamId}/shifts/${scheduleId}/board`)
+  navigateTo(`/teams/${props.teamSlug}/shifts/${scheduleId}/board`)
 }
 
 onMounted(load)
@@ -111,6 +117,17 @@ onMounted(load)
       />
     </div>
     <div v-if="loading"><Skeleton v-for="i in 3" :key="i" height="4rem" class="mb-2" /></div>
+    <div v-else-if="loadFailed" class="py-8 text-center">
+      <p class="text-sm text-surface-500">{{ t('common.scopeShell.load_error_body') }}</p>
+      <Button
+        class="mt-3"
+        :label="t('common.scopeShell.retry')"
+        icon="pi pi-refresh"
+        size="small"
+        outlined
+        @click="load"
+      />
+    </div>
     <div v-else-if="visibleSchedules.length > 0" class="space-y-2">
       <div
         v-for="s in visibleSchedules"
@@ -122,7 +139,9 @@ onMounted(load)
         <div class="flex items-center justify-between">
           <div>
             <p class="font-medium">{{ s.content.title }}</p>
-            <p class="text-xs text-surface-500">{{ s.period.startDate }} 〜 {{ s.period.endDate }}</p>
+            <p class="text-xs text-surface-500">
+              {{ s.period.startDate }} 〜 {{ s.period.endDate }}
+            </p>
           </div>
           <div class="flex items-center gap-2">
             <Tag
@@ -183,10 +202,6 @@ onMounted(load)
         </div>
       </div>
     </div>
-    <DashboardEmptyState
-      v-else
-      icon="pi pi-table"
-      :message="t('shift.empty.noSchedules')"
-    />
+    <DashboardEmptyState v-else icon="pi pi-table" :message="t('shift.empty.noSchedules')" />
   </div>
 </template>

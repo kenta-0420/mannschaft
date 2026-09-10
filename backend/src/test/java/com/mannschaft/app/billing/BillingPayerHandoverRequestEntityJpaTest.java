@@ -54,8 +54,8 @@ class BillingPayerHandoverRequestEntityJpaTest {
     }
 
     @Test
-    @DisplayName("9値の状態機械（MANUAL_INTERVENTION/PARTIALLY_COMPLETED含む）を保存・再読込できる")
-    void allNineStatuses_persist() {
+    @DisplayName("10値の状態機械（MANUAL_INTERVENTION/PARTIALLY_COMPLETED/FAILING_CLEANUP含む）を保存・再読込できる")
+    void allStatuses_persist() {
         for (PayerHandoverStatus status : PayerHandoverStatus.values()) {
             BillingPayerHandoverRequestEntity saved = repository.saveAndFlush(
                     BillingPayerHandoverRequestEntity.builder()
