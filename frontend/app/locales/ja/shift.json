@@ -229,6 +229,11 @@
       "noRequests": "希望提出がありません",
       "noConstraints": "勤務制約が設定されていません"
     },
+    "teamLoad": {
+      "timeout": "チーム情報の読み込みに時間がかかっています。通信状況を確認して再試行してください。",
+      "error": "チーム情報を取得できませんでした。時間をおいて再試行してください。",
+      "retry": "再試行"
+    },
     "notification": {
       "publishSuccess": "シフトを公開しました",
       "submitSuccess": "希望を提出しました",
