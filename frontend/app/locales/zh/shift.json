@@ -301,6 +301,11 @@
       "noRequests": "暂无申请",
       "noConstraints": "未设置工作限制"
     },
+    "teamLoad": {
+      "timeout": "加载团队信息耗时过长。请检查网络连接后重试。",
+      "error": "无法加载团队信息。请稍后重试。",
+      "retry": "重试"
+    },
     "notification": {
       "publishSuccess": "班次已发布",
       "submitSuccess": "申请已提交",
