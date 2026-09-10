@@ -1062,7 +1062,7 @@ test.describe('C: 一般メンバーの URL 直打ちが弾かれる', () => {
 // 【非回帰】希望提出フローが壊れていないこと（AC-8 / AC-4(3)）
 // ============================================================================
 test.describe('D: 一般メンバーの希望提出フロー（非回帰・本戦役の最重要点）', () => {
-  test('D1: メンバーが同一日の2枠それぞれへ希望を提出できる（AC-8 / CMP-260909-1143）', async ({ page, tokens }) => {
+  test('D1: メンバーが同一日の2枠それぞれへ希望を提出できる（AC-8 / CMP-260909-1143）', async ({ page }) => {
     await openAs(page, MEMBER_EMAIL, MEMBER_PASSWORD, '/my/shift-request')
     await selectTeamOnShiftRequest(page)
 
@@ -1110,14 +1110,16 @@ test.describe('D: 一般メンバーの希望提出フロー（非回帰・本�
     ).not.toContainText(LABEL_ERROR_TOAST)
 
     // 対象操作はUIで完遂済み。APIは永続化結果の検証だけに使用する。
-    const requestsRes = await page.request.get(`${BE_API}/shifts/my/requests`, {
-      headers: authHeaders(tokens.member),
+    const requests = await withApi(MEMBER_EMAIL, MEMBER_PASSWORD, async (ctx, token) => {
+      const requestsRes = await ctx.get(`${BE_API}/shifts/my/requests`, {
+        headers: authHeaders(token),
+      })
+      expect(requestsRes.status(), '希望の永続化確認APIが成功すること').toBe(200)
+      return ((await requestsRes.json()).data ?? []) as Array<{
+        scheduleId: number
+        slotId: number | null
+      }>
     })
-    expect(requestsRes.status(), '希望の永続化確認APIが成功すること').toBe(200)
-    const requests = ((await requestsRes.json()).data ?? []) as Array<{
-      scheduleId: number
-      slotId: number | null
-    }>
     const submittedForSchedule = requests.filter((request) => request.scheduleId === fx.collectingId)
     expect(submittedForSchedule, '同一日の別枠が2件とも永続化されること').toHaveLength(2)
     expect(new Set(submittedForSchedule.map((request) => request.slotId)).size).toBe(2)
