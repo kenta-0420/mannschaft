@@ -10,6 +10,7 @@ import type {
 } from '~/types/shift'
 import { preferenceToI18nKey } from '~/utils/shiftPreference'
 import { isAcceptingShiftRequests } from '~/utils/shiftStatus'
+import { runWithRequestTimeout } from '~/utils/requestTimeout'
 
 /**
  * F03.5 シフト希望提出フォームページ
@@ -32,6 +33,37 @@ const { listSlots } = useShiftSlotApi()
 const { listMyRequests, submitRequest, updateRequest } = useShiftRequestApi()
 const { getAvailabilityDefaults } = useShiftAvailabilityDefaultApi()
 const teamStore = useTeamStore()
+
+const TEAM_FETCH_TIMEOUT_MS = 15_000
+type TeamLoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout'
+const teamLoadStatus = ref<TeamLoadStatus>('idle')
+let teamLoadRequestId = 0
+
+async function loadTeams() {
+  const requestId = ++teamLoadRequestId
+  teamLoadStatus.value = 'loading'
+
+  const outcome = await runWithRequestTimeout(
+    (signal) => teamStore.fetchMyTeamsWithResult({ signal }),
+    TEAM_FETCH_TIMEOUT_MS,
+  )
+  if (requestId !== teamLoadRequestId) return
+
+  if (outcome.status === 'timeout') {
+    teamLoadStatus.value = 'timeout'
+    return
+  }
+  if (outcome.status === 'error' || !outcome.value.ok) {
+    teamLoadStatus.value = 'error'
+    return
+  }
+
+  teamLoadStatus.value = 'success'
+  // チームが1つの場合は自動選択
+  if (teamStore.myTeams.length === 1) {
+    await selectTeam(teamStore.myTeams[0]!.id)
+  }
+}
 
 // ステップ: team-select → schedule-select → slot-fill → preview
 type Step = 'team-select' | 'schedule-select' | 'slot-fill' | 'preview'
@@ -312,13 +344,7 @@ function formatTime(timeStr: string): string {
   return timeStr.substring(0, 5)
 }
 
-onMounted(async () => {
-  await teamStore.fetchMyTeams()
-  // チームが1つの場合は自動選択
-  if (teamStore.myTeams.length === 1) {
-    await selectTeam(teamStore.myTeams[0]!.id)
-  }
-})
+onMounted(loadTeams)
 </script>
 
 <template>
@@ -327,7 +353,24 @@ onMounted(async () => {
 
     <!-- ステップ 1: チーム選択 -->
     <template v-if="step === 'team-select'">
-      <PageLoading v-if="teamStore.loading" size="40px" />
+      <PageLoading v-if="teamLoadStatus === 'loading'" size="40px" />
+      <div
+        v-else-if="teamLoadStatus === 'error' || teamLoadStatus === 'timeout'"
+        class="flex flex-col items-center gap-3"
+        role="alert"
+      >
+        <Message severity="error" :closable="false">
+          {{
+            teamLoadStatus === 'timeout' ? t('shift.teamLoad.timeout') : t('shift.teamLoad.error')
+          }}
+        </Message>
+        <Button
+          icon="pi pi-refresh"
+          :label="t('shift.teamLoad.retry')"
+          outlined
+          @click="loadTeams"
+        />
+      </div>
       <div v-else class="flex flex-col gap-3">
         <DashboardEmptyState
           v-if="teamStore.myTeams.length === 0"

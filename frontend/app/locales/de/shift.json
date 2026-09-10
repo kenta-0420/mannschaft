@@ -301,6 +301,11 @@
       "noRequests": "Keine Anfragen vorhanden",
       "noConstraints": "Keine Arbeitsbeschränkungen festgelegt"
     },
+    "teamLoad": {
+      "timeout": "Das Laden der Teaminformationen dauert zu lange. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+      "error": "Die Teaminformationen konnten nicht geladen werden. Bitte versuchen Sie es später erneut.",
+      "retry": "Erneut versuchen"
+    },
     "notification": {
       "publishSuccess": "Schicht erfolgreich veröffentlicht",
       "submitSuccess": "Anfrage erfolgreich eingereicht",
