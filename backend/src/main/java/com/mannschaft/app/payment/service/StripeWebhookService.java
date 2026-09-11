@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment.service;
 
+import com.mannschaft.app.billing.BillingContractOperationRecoveryService;
 import com.mannschaft.app.billing.BillingSubscriptionWebhookService;
 import com.mannschaft.app.billing.invoice.BillingInvoiceAdjustmentWebhookService;
 import com.mannschaft.app.billing.invoice.BillingWebhookEventGate;
@@ -59,7 +60,6 @@ public class StripeWebhookService {
      */
     private static final java.util.Set<String> PR5_PENDING_EVENT_TYPES = java.util.Set.of(
             "invoice.payment_action_required",
-            "customer.subscription.updated",
             "customer.subscription.pending_update_applied",
             "customer.subscription.pending_update_expired");
 
@@ -110,6 +110,15 @@ public class StripeWebhookService {
             // F20.1: 自社受取サブスク（billing）は subscriptionId を psp_subscription_ref で逆引きしてヒットすれば
             // billing が処理する。無関係なら false → 従来どおり F08.9 会費側へ（D-2・相互 no-op・AC-38）。
             if (billingSubscriptionWebhookService.handleSubscriptionEventIfBilling(payload, sigHeader)) {
+                return;
+            }
+            // PR6a AC-83: customer.subscription.updated は billing の停止窓の回収の入口として受ける。
+            // billing が所有しないと言った updated は、F08.9 会費側が扱う種別でもないため
+            // 従来（PR5 の保留リスト）と同じく RECEIVED のまま記録して取りこぼさない。
+            // ここで会費側へ渡すと、未対応種別として確定（PROCESSED/IGNORED）され、
+            // プラン変更を実装する PR6b が永久に拾えなくなる。
+            if (BillingContractOperationRecoveryService.isRecoveryEntryEvent(event.type())) {
+                recordPendingEvent(payload, event.type());
                 return;
             }
             membershipSubscriptionWebhookService.handleWebhook(payload, sigHeader);

@@ -579,9 +579,9 @@ public interface StripePaymentProvider {
      * subscription に載っていることがある）。{@code SubscriptionUpdateParams} の
      * {@code putAllMetadata} で<b>差分マージ</b>すること。</p>
      *
-     * <p><b>未実装（第4b隊 試練Dの発注書）</b>: 既定実装は {@link UnsupportedOperationException} を
-     * 投げる。既存呼び出し元の挙動を変えないために default とし、第10隊が
-     * {@code StripePaymentProviderImpl} で override する。</p>
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる（既存呼び出し元の挙動を変えない
+     * ために default としている）。実体は {@code StripePaymentProviderImpl} が override 済みであり、
+     * metadata を書けない実装がこの経路に紛れ込んだら握り潰さず fail-fast させる。</p>
      *
      * @param subscriptionId 対象 Stripe Subscription ID（{@code sub_xxx}）
      * @param idempotencyKey 冪等性キー（{@code billing-operation-{operationId}}）

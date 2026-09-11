@@ -217,8 +217,9 @@ public interface BillingPaymentGateway {
      * 痕跡は {@code metadata.billingOperationId}（{@link BillingContractOperationRecoveryService
      * #STRIPE_METADATA_OPERATION_ID_KEY}）である。</p>
      *
-     * <p><b>未実装（第4b隊 試練Dの発注書）</b>: 既定実装は {@link UnsupportedOperationException} を
-     * 投げる。第10隊が {@link StripeBillingPaymentGateway} で override する。</p>
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる。実体は
+     * {@link StripeBillingPaymentGateway} が override 済みであり、痕跡を読めない実装が
+     * この経路に紛れ込んだら握り潰さず fail-fast させる。</p>
      *
      * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
      * @return metadata に載っていた operationId（無ければ空）

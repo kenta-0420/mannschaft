@@ -1113,6 +1113,37 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         }
     }
 
+    /**
+     * Billing Center PR6a（AC-77）: 期末解約予約と同時に metadata を<b>差分マージ</b>で焼き付ける。
+     *
+     * <p>{@code putAllMetadata} を使うのは、既存 metadata（引継の {@code handoverRequestId} 等）を
+     * 消さないためである。{@code setMetadata} は Stripe 側で metadata 全体を置き換えるため、
+     * 引継の突合キーを巻き添えで消して回復経路を壊す。</p>
+     */
+    @Override
+    public SubscriptionInfo cancelSubscriptionAtPeriodEnd(
+            String subscriptionId, String idempotencyKey, Map<String, String> metadata) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            SubscriptionUpdateParams.Builder params = SubscriptionUpdateParams.builder()
+                    .setCancelAtPeriodEnd(true);
+            if (metadata != null && !metadata.isEmpty()) {
+                params.putAllMetadata(metadata);
+            }
+            Subscription updated = subscription.update(params.build(), options);
+            log.info("Stripe Subscription 期末解約予約（metadata 焼き付け）: id={}, status={}, periodEnd={}, metadataKeys={}",
+                    updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd(),
+                    metadata == null ? 0 : metadata.size());
+            return new SubscriptionInfo(updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+        } catch (StripeException e) {
+            log.error("Stripe Subscription 期末解約予約（metadata 焼き付け）失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
     @Override
     public InvoiceWebhookEventInfo constructInvoiceEvent(String payload, String sigHeader) {
         Event event;

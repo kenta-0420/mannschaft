@@ -178,6 +178,31 @@ public class BillingContractCancelService {
     // tx2 の反映処理
     // ================================================================
 
+    /**
+     * 停止窓(b) の回収から呼ぶ「tx2 相当」の解約反映（AC-79）。
+     *
+     * <p>呼び出し元（{@link BillingContractOperationRecoveryService}）のトランザクションに参加する。
+     * 反映の中身を回収側へ書き写すと二重実装になり、片方だけ直る事故を生むためここを正本とする。</p>
+     *
+     * @param contractId 対象契約
+     * @param endAt      Stripe 実物の期末（権威・AC-34）
+     * @return 反映後の見え方
+     */
+    CancelView applyRecoveredCancel(UUID contractId, LocalDateTime endAt) {
+        return applyCancel(contractId, endAt);
+    }
+
+    /**
+     * 停止窓(b) の回収から呼ぶ「tx2 相当」の撤回反映（AC-79）。
+     *
+     * @param contractId 対象契約
+     * @param endAt      Stripe 実物の期末（権威・AC-34）
+     * @return 反映後の見え方
+     */
+    CancelView applyRecoveredResume(UUID contractId, LocalDateTime endAt) {
+        return applyResume(contractId, endAt);
+    }
+
     /** tx2: {@code cancelled_at} ＋ {@code current_period_end} ＋ entitlements の {@code valid_until}。 */
     private CancelView applyCancel(UUID contractId, LocalDateTime endAt) {
         BillingContractEntity contract = requireContract(contractId);

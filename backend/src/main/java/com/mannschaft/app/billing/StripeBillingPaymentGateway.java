@@ -67,9 +67,14 @@ public class StripeBillingPaymentGateway implements BillingPaymentGateway {
      */
     @Override
     public Instant cancelAtPeriodEnd(String subscriptionRef, UUID operationId) {
+        // AC-77: 停止窓の回収は「Stripe 側に自分の operation の痕跡があるか」だけを手掛かりにするため、
+        // metadata へ operationId を焼き付ける3引数版を使う（2引数版では痕跡が残らず回収が成立しない）。
         StripePaymentProvider.SubscriptionInfo info = stripePaymentProvider.cancelSubscriptionAtPeriodEnd(
                 subscriptionRef,
-                BillingContractOperationSagaService.stripeIdempotencyKeyOf(operationId));
+                BillingContractOperationSagaService.stripeIdempotencyKeyOf(operationId),
+                java.util.Map.of(
+                        BillingContractOperationRecoveryService.STRIPE_METADATA_OPERATION_ID_KEY,
+                        operationId.toString()));
         Long currentPeriodEnd = info.currentPeriodEnd();
         return currentPeriodEnd == null ? null : Instant.ofEpochSecond(currentPeriodEnd);
     }
@@ -182,6 +187,34 @@ public class StripeBillingPaymentGateway implements BillingPaymentGateway {
                 .filter(d -> d.metadata() != null && expected.equals(d.metadata().get("handoverRequestId")))
                 .map(StripePaymentProvider.SubscriptionDetail::subscriptionId)
                 .findFirst();
+    }
+
+    /**
+     * Billing Center PR6a（AC-77/AC-78）: Stripe 実物の metadata から operationId を読み戻す。
+     *
+     * <p>他ドメインの metadata（引継の {@code handoverRequestId} 等）を operationId と誤読しないよう、
+     * 専用キー {@link BillingContractOperationRecoveryService#STRIPE_METADATA_OPERATION_ID_KEY} だけを見る。
+     * UUID として読めない値は「痕跡なし」として扱う（回収が例外で止まらないようにする）。</p>
+     */
+    @Override
+    public java.util.Optional<UUID> findOperationIdOnSubscription(String subscriptionRef) {
+        StripePaymentProvider.SubscriptionDetail detail =
+                stripePaymentProvider.retrieveSubscriptionDetail(subscriptionRef);
+        if (detail == null || detail.metadata() == null) {
+            return java.util.Optional.empty();
+        }
+        String raw = detail.metadata()
+                .get(BillingContractOperationRecoveryService.STRIPE_METADATA_OPERATION_ID_KEY);
+        if (raw == null || raw.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        try {
+            return java.util.Optional.of(UUID.fromString(raw));
+        } catch (IllegalArgumentException e) {
+            log.warn("PR6a: Stripe metadata の billingOperationId を UUID として読めない: subscriptionRef={}",
+                    subscriptionRef);
+            return java.util.Optional.empty();
+        }
     }
 
     @Override
