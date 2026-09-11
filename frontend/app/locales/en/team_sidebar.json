@@ -47,7 +47,8 @@
       "leagueTransfers": "League Transfers",
       "adminConsole": "Admin Console",
       "receipts": "Receipts",
-      "receiptSettings": "Receipt issuer settings"
+      "receiptSettings": "Receipt issuer settings",
+      "hourlyRate": "Hourly rate"
     }
   }
 }

@@ -112,6 +112,9 @@ const categories: SidebarCategory[] = [
       // F10.1.1 P2a: 管理コンソール（L2 ハブ）への入口。DEPUTY_ADMIN 以上に表示。
       { labelKey: 'teamSidebar.item.adminConsole', icon: 'pi pi-shield', path: 'admin', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
       { labelKey: 'teamSidebar.item.settings', icon: 'pi pi-sliders-h', path: 'settings/shift', moduleSlug: null, requiredRole: 'ADMIN' },
+      // CMP-260910-1555: 時給を登録する入口が画面に無く、シフトを公開しても予算の消化額が
+      // 0 円のままになっていたため新設。金銭情報なので ADMIN 限定。
+      { labelKey: 'teamSidebar.item.hourlyRate', icon: 'pi pi-yen', path: 'settings/hourly-rate', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'teamSidebar.item.faqSettings', icon: 'pi pi-question-circle', path: 'settings/faq-settings', moduleSlug: null, requiredRole: 'ADMIN' },
       // F20.1: 課金・プラン管理（閲覧はメンバー可・操作はADMIN限定。ナビはメンバー以上に表示）
       { labelKey: 'teamSidebar.item.billing', icon: 'pi pi-credit-card', path: 'settings/billing', moduleSlug: null, requiredRole: 'MEMBER' },

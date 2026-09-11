@@ -188,4 +188,72 @@ class ShiftHourlyRateServiceTest {
             verify(hourlyRateRepository).deleteById(RATE_ID);
         }
     }
+
+    // ========================================
+    // 認可（CMP-260910-1555: ロール横断の裏取り）
+    // ========================================
+
+    /**
+     * 時給は金銭情報であり、画面側で導線を隠すだけでは URL 直打ち・API 直叩きを防げない。
+     * BE が本当に弾いているか（＝素通りしていないか）をここで固定する。
+     */
+    @Nested
+    @DisplayName("認可")
+    class Authorization {
+
+        private static final Long OTHER_USER_ID = 99L;
+        private static final Long MEMBER_USER_ID = 20L;
+
+        @Test
+        @DisplayName("一般メンバーが他メンバーの時給を参照 → checkAdminOrAbove で弾かれる")
+        void 他人の時給参照_一般メンバーは403() {
+            given(accessControlService.isSystemAdmin(MEMBER_USER_ID)).willReturn(false);
+            org.mockito.BDDMockito.willThrow(
+                            new com.mannschaft.app.common.BusinessException(
+                                    com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(MEMBER_USER_ID, TEAM_ID, "TEAM");
+
+            org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                            shiftHourlyRateService.listHourlyRates(OTHER_USER_ID, TEAM_ID, MEMBER_USER_ID))
+                    .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+
+            // 弾かれた以上、リポジトリまで到達してはならない（存在オラクルも残さない）
+            verify(hourlyRateRepository, org.mockito.Mockito.never())
+                    .findByUserIdAndTeamIdOrderByEffectiveFromDesc(any(), any());
+        }
+
+        @Test
+        @DisplayName("他チームのユーザーを対象にした時給登録 → 対象側の checkMembership で弾かれる")
+        void 他テナントのユーザーへの登録は403() {
+            given(accessControlService.isSystemAdmin(CURRENT_USER_ID)).willReturn(false);
+            org.mockito.BDDMockito.willThrow(
+                            new com.mannschaft.app.common.BusinessException(
+                                    com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkMembership(OTHER_USER_ID, TEAM_ID, "TEAM");
+
+            CreateHourlyRateRequest req = new CreateHourlyRateRequest(
+                    OTHER_USER_ID, new BigDecimal("1200"), LocalDate.of(2026, 4, 1));
+
+            org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                            shiftHourlyRateService.createHourlyRate(TEAM_ID, req, CURRENT_USER_ID))
+                    .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+
+            verify(hourlyRateRepository, org.mockito.Mockito.never()).save(any());
+        }
+
+        @Test
+        @DisplayName("本人の時給参照 → チームメンバーであることだけを要求する")
+        void 本人参照はメンバーシップのみ要求() {
+            given(accessControlService.isSystemAdmin(CURRENT_USER_ID)).willReturn(false);
+            given(hourlyRateRepository.findByUserIdAndTeamIdOrderByEffectiveFromDesc(USER_ID, TEAM_ID))
+                    .willReturn(List.of());
+            given(shiftMapper.toHourlyRateResponseList(List.of())).willReturn(List.of());
+
+            shiftHourlyRateService.listHourlyRates(USER_ID, TEAM_ID, CURRENT_USER_ID);
+
+            verify(accessControlService).checkMembership(CURRENT_USER_ID, TEAM_ID, "TEAM");
+            verify(accessControlService, org.mockito.Mockito.never())
+                    .checkAdminOrAbove(any(), any(), any());
+        }
+    }
 }

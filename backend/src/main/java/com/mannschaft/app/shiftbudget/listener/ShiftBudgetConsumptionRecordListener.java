@@ -17,6 +17,7 @@ import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService;
+import com.mannschaft.app.shiftbudget.service.ShiftBudgetHourlyRateMissingNotifier;
 import com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * F08.7 シフト公開→消化記録 hook（Phase 9-β / 設計書 §11.1）。
@@ -66,6 +69,8 @@ public class ShiftBudgetConsumptionRecordListener {
     private final ThresholdAlertEvaluationService thresholdAlertEvaluationService;
     /** Phase 10-β で追加: 失敗イベントの永続化（リトライバッチ + 管理 API の入口） */
     private final ShiftBudgetFailedEventService failedEventService;
+    /** CMP-260910-1555 で追加: 時給未設定により消化記録をスキップしたことの管理者通知 */
+    private final ShiftBudgetHourlyRateMissingNotifier hourlyRateMissingNotifier;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "殿の裁定: 記録と取消は対であり、片方だけ止まれば予算残高が壊れる。対になっているものを別々に扱ってはならず、いずれも常時実行とする")
@@ -94,6 +99,9 @@ public class ShiftBudgetConsumptionRecordListener {
 
             int recordedCount = 0;
             int skippedCount = 0;
+            // CMP-260910-1555: 時給未設定でスキップしたユーザー（重複なし・昇順）。
+            // 空でなければ hook の最後に予算管理者へ通知する。
+            Set<Long> missingRateUserIds = new TreeSet<>();
 
             List<ShiftSlotEntity> slots =
                     slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(scheduleId);
@@ -121,10 +129,25 @@ public class ShiftBudgetConsumptionRecordListener {
 
                 for (Long userId : assignedUserIds) {
                     try {
-                        BigDecimal hourlyRate = hourlyRateRepository
+                        // CMP-260910-1555: 是正前はここで .orElse(BigDecimal.ZERO) としており、
+                        // 時給未登録のメンバーを「単価 0 円で記録成功」として扱っていた。
+                        // 消化額は 0 のまま増えず、消化率も 0% なので 80/100/120% の閾値警告も
+                        // 永久に発火せず、ログは recorded=N, skipped=0 と成功を報告する——
+                        // すなわち予算管理が丸ごと無効なのに誰にも分からない状態を作っていた。
+                        // 0 円という誤った金額を台帳に残すより記録しないほうが正しいので skip し、
+                        // 対象ユーザーを集めて hook の最後に予算管理者へ通知する（黙らせない）。
+                        Optional<BigDecimal> hourlyRateOpt = hourlyRateRepository
                                 .findEffectiveRate(userId, teamId, slot.getSlotDate())
-                                .map(r -> r.getHourlyRate())
-                                .orElse(BigDecimal.ZERO);
+                                .map(r -> r.getHourlyRate());
+                        if (hourlyRateOpt.isEmpty()) {
+                            log.warn("F08.7 hook: 時給未設定のため消化記録をスキップ: "
+                                            + "teamId={}, userId={}, slotId={}, slotDate={}",
+                                    teamId, userId, slot.getId(), slot.getSlotDate());
+                            missingRateUserIds.add(userId);
+                            skippedCount++;
+                            continue;
+                        }
+                        BigDecimal hourlyRate = hourlyRateOpt.get();
 
                         consumptionService.recordSingleConsumption(
                                 allocation.getId(),
@@ -167,16 +190,34 @@ public class ShiftBudgetConsumptionRecordListener {
                 }
             }
 
-            log.info("F08.7 hook: シフト公開→消化記録完了: scheduleId={}, recorded={}, skipped={}",
-                    scheduleId, recordedCount, skippedCount);
+            log.info("F08.7 hook: シフト公開→消化記録完了: scheduleId={}, recorded={}, skipped={}, "
+                            + "missingHourlyRateUsers={}",
+                    scheduleId, recordedCount, skippedCount, missingRateUserIds.size());
 
             auditLogService.record(
                     "SHIFT_BUDGET_CONSUMPTION_RECORDED",
                     event.getTriggeredByUserId(), null,
                     teamId, organizationId,
                     null, null, null,
-                    String.format("{\"shift_schedule_id\":%d,\"recorded_count\":%d,\"skipped_count\":%d}",
-                            scheduleId, recordedCount, skippedCount));
+                    String.format("{\"shift_schedule_id\":%d,\"recorded_count\":%d,\"skipped_count\":%d,"
+                                    + "\"missing_hourly_rate_count\":%d}",
+                            scheduleId, recordedCount, skippedCount, missingRateUserIds.size()));
+
+            // CMP-260910-1555: 時給未設定は「黙って 0 円」ではなく予算管理者へ届ける。
+            // 通知の失敗が消化記録の成功を無かったことにしてはならないので、ここでも個別に握る
+            // （通知側は失敗した受信者を NOTIFICATION_SEND の failed event に残して再送経路へ載せる）。
+            if (!missingRateUserIds.isEmpty()) {
+                try {
+                    hourlyRateMissingNotifier.notifyHourlyRateMissing(
+                            organizationId, teamId,
+                            rateQueryRepository.findTeamSlugByTeamId(teamId).orElse(null),
+                            scheduleId, List.copyOf(missingRateUserIds));
+                } catch (Exception notifyEx) {
+                    log.error("F08.7 hook: 時給未設定警告の通知に失敗（消化記録自体は完了済）: "
+                                    + "scheduleId={}, teamId={}, missingUsers={}",
+                            scheduleId, teamId, missingRateUserIds.size(), notifyEx);
+                }
+            }
 
         } catch (Exception e) {
             // hook 全体の致命的失敗を握りつぶす（main トランザクション保護）。
