@@ -25,7 +25,7 @@ export async function loginViaApi(
 
   // 先にアプリの origin を確立する。ログイン Cookie 発行後、currentUser を保存する前に
   // 匿名状態でアプリを初期化すると、認証初期化処理が発行直後の Cookie を破棄しうる。
-  await page.goto('/')
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
 
   const loginRes = await page.request.post(`${apiBase}/api/v1/auth/login`, {
     data: { email: credentials.email, password: credentials.password },
@@ -50,8 +50,9 @@ export async function loginViaApi(
     systemRole: string | null
     timezone: string | null
   }
-  const accessTokenCookie = (await page.context().cookies())
-    .find(cookie => cookie.name === 'access_token')
+  const accessTokenCookie = (await page.context().cookies()).find(
+    (cookie) => cookie.name === 'access_token',
+  )
   if (!accessTokenCookie || accessTokenCookie.expires <= 0) {
     throw new Error('API ログイン成功後の access_token Cookie に有効期限がありません')
   }
