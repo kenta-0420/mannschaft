@@ -27,6 +27,11 @@ import java.util.UUID;
  * {@link BillingContractEntity} に残し、本表は「現在アクティブなポインタ」だけを持つ
  * （設計書 01 §3.1.1）。</p>
  *
+ * <p><b>{@code active_billing_contract_operation_pointers}（PR6a・
+ * {@link ActiveBillingContractOperationPointerEntity}）とは別表</b>である。あちらは
+ * 契約<b>操作</b>（cancel/resume/change 等の Saga）の同時実行排他用 lease であり、本表（PLAN/ADDON
+ * スロットの契約自体の一意性担保）とは対象も粒度も無関係。名前が紛らわしいため混同注意。</p>
+ *
  * <p><b>⚠️ 論理削除（deleted_at）規約の意図的な例外</b>: 本 Entity は {@code deleted_at} を持たない。
  * 解約時に {@code uk_acp_slot} スロットを解放して再契約を可能にするには行を物理 DELETE する必要があり、
  * 論理削除で残すと UNIQUE が効き続け再契約が誤って {@code ENTITLEMENT_006}(409) で弾かれるため
