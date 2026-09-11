@@ -43,13 +43,17 @@ export function resolveDateSeparator(dateFormat: string): string | null {
 }
 
 /**
- * 手入力された文字列を `dateFormat` が期待する表記に正規化する。
- * 入力途中の文字列（`2026/09/3` など）は壊さない。
+ * PrimeVue が1つの入力欄に複数の日付を収めるときの「日付どうしの区切り」。
+ * `DatePicker.parseValue()` の実装に合わせてある
+ * （range は `text.split(' - ')`、multiple は `text.split(',')`）。
  */
-export function normalizeManualDateInput(text: string, dateFormat: string): string {
-  if (!text) return text
+const VALUE_SEPARATOR: Record<string, string> = {
+  range: ' - ',
+  multiple: ',',
+}
 
-  const separator = resolveDateSeparator(dateFormat)
+/** 1つの日付として解釈されるべき部分文字列だけを正規化する。 */
+function normalizeSingleDate(text: string, separator: string | null): string {
   let normalized = text.replace(FULLWIDTH_DIGIT, (char) =>
     String.fromCharCode(char.charCodeAt(0) - 0xfee0),
   )
@@ -62,11 +66,43 @@ export function normalizeManualDateInput(text: string, dateFormat: string): stri
   return normalized
 }
 
+/**
+ * 手入力された文字列を `dateFormat` が期待する表記に正規化する。
+ * 入力途中の文字列（`2026/09/3` など）は壊さない。
+ *
+ * `selectionMode` が `range` / `multiple` のときは、**日付どうしの区切りで
+ * 一旦分割してから各日付を個別に正規化し、区切りで繋ぎ直す**。
+ * これをしないと、`dateFormat="yy/mm/dd"` の範囲選択で
+ * `2026/09/01 - 2026/09/30` の ` - ` まで `/` に置換され、
+ * `parseValue()` が終了日を分割できずモデルが更新されなくなる
+ * （区切り文字の正規化が日付の区切りと値の区切りを取り違える）。
+ */
+export function normalizeManualDateInput(
+  text: string,
+  dateFormat: string,
+  selectionMode = 'single',
+): string {
+  if (!text) return text
+
+  const separator = resolveDateSeparator(dateFormat)
+  const valueSeparator = VALUE_SEPARATOR[selectionMode]
+
+  if (valueSeparator === undefined) {
+    return normalizeSingleDate(text, separator)
+  }
+
+  return text
+    .split(valueSeparator)
+    .map((part) => normalizeSingleDate(part, separator))
+    .join(valueSeparator)
+}
+
 /** PrimeVue の DatePicker コンポーネント定義（必要な口だけを型で記述する）。 */
 interface DatePickerInternals {
   input?: HTMLInputElement | null
   typeUpdate: boolean
   datePattern: string
+  selectionMode: string
   updateModelType: string
   $refs: Record<string, { $el?: { style?: CSSStyleDeclaration } } | undefined>
   parseValue(text: string): unknown
@@ -108,7 +144,9 @@ export function applyDatePickerManualInputFix(component: unknown): void {
         clearIconStyle.display = typed.length === 0 ? 'none' : 'block'
       }
 
-      const value = this.parseValue(normalizeManualDateInput(typed, this.datePattern))
+      const value = this.parseValue(
+        normalizeManualDateInput(typed, this.datePattern, this.selectionMode),
+      )
 
       if (this.isValidSelection(value)) {
         this.typeUpdate = true

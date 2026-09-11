@@ -35,12 +35,13 @@ async function typeInto(input: HTMLInputElement, text: string): Promise<void> {
   }
 }
 
-async function mountPicker(dateFormat = 'yy/mm/dd') {
+async function mountPicker(dateFormat = 'yy/mm/dd', selectionMode = 'single') {
   const wrapper = mount(DatePicker, {
     attachTo: document.body,
     props: {
       modelValue: null,
       dateFormat,
+      selectionMode,
       'onUpdate:modelValue': (value: Date | null) => {
         void wrapper.setProps({ modelValue: value })
       },
@@ -110,6 +111,58 @@ describe('DatePicker 手入力（CMP-260910-1557）', () => {
   }, 30000)
 })
 
+// 範囲選択（range）・複数選択（multiple）は、PrimeVue が1つの入力欄の中で
+// 複数の日付を区切って持つ（range は ` - `、multiple は `,`）。
+// 区切り文字の正規化がこの「日付どうしの区切り」まで潰すと、parseValue が
+// 分割できずモデルが更新されなくなる。現時点でコードベースに利用箇所は無いが、
+// 本パッチは DatePicker の全インスタンスに効く全体適用のため、
+// 将来 range の日付欄が1つ足された瞬間に無警告で壊れる。ここが唯一の防波堤。
+describe('DatePicker 手入力 — 範囲選択・複数選択の区切りを潰さない', () => {
+  function formattedList(value: unknown): string[] | null {
+    return Array.isArray(value) ? value.map((v) => formatted(v) ?? 'null') : null
+  }
+
+  it('range: スラッシュ区切りの日付欄で範囲の ` - ` が保たれる', async () => {
+    const { wrapper, input } = await mountPicker('yy/mm/dd', 'range')
+    await typeInto(input, '2026/09/01 - 2026/09/30')
+
+    expect(formattedList(wrapper.props('modelValue'))).toEqual(['2026/09/01', '2026/09/30'])
+    wrapper.unmount()
+  }, 30000)
+
+  it('range: ハイフン区切りで日付を打っても範囲として解釈される', async () => {
+    const { wrapper, input } = await mountPicker('yy/mm/dd', 'range')
+    await typeInto(input, '2026-09-01 - 2026-09-30')
+
+    expect(formattedList(wrapper.props('modelValue'))).toEqual(['2026/09/01', '2026/09/30'])
+    wrapper.unmount()
+  }, 30000)
+
+  it('range: dateFormat が yy-mm-dd でも範囲の ` - ` と日付の `-` を取り違えない', async () => {
+    const { wrapper, input } = await mountPicker('yy-mm-dd', 'range')
+    await typeInto(input, '2026-09-01 - 2026-09-30')
+
+    expect(formattedList(wrapper.props('modelValue'))).toEqual(['2026/09/01', '2026/09/30'])
+    wrapper.unmount()
+  }, 30000)
+
+  it('multiple: カンマ区切りの複数日付が保たれる', async () => {
+    const { wrapper, input } = await mountPicker('yy/mm/dd', 'multiple')
+    await typeInto(input, '2026/09/01, 2026/09/30')
+
+    expect(formattedList(wrapper.props('modelValue'))).toEqual(['2026/09/01', '2026/09/30'])
+    wrapper.unmount()
+  }, 30000)
+
+  it('multiple: dateFormat が yy-mm-dd の欄にスラッシュ区切りで打っても受理する', async () => {
+    const { wrapper, input } = await mountPicker('yy-mm-dd', 'multiple')
+    await typeInto(input, '2026/09/01, 2026/09/30')
+
+    expect(formattedList(wrapper.props('modelValue'))).toEqual(['2026/09/01', '2026/09/30'])
+    wrapper.unmount()
+  }, 30000)
+})
+
 describe('normalizeManualDateInput', () => {
   it('dateFormat の区切り文字に合わせて区切りを正規化する', () => {
     expect(normalizeManualDateInput('2026-09-30', 'yy/mm/dd')).toBe('2026/09/30')
@@ -123,6 +176,21 @@ describe('normalizeManualDateInput', () => {
 
   it('時刻の区切り（コロン）は書き換えない', () => {
     expect(normalizeManualDateInput('2026-09-30 13:45', 'yy/mm/dd')).toBe('2026/09/30 13:45')
+  })
+
+  it('range では範囲の区切り ` - ` を保ったまま各日付を正規化する', () => {
+    expect(normalizeManualDateInput('2026-09-01 - 2026-09-30', 'yy/mm/dd', 'range')).toBe(
+      '2026/09/01 - 2026/09/30',
+    )
+    expect(normalizeManualDateInput('2026/09/01 - 2026/09/30', 'yy-mm-dd', 'range')).toBe(
+      '2026-09-01 - 2026-09-30',
+    )
+  })
+
+  it('multiple では日付どうしのカンマ区切りを保つ', () => {
+    expect(normalizeManualDateInput('2026-09-01, 2026-09-30', 'yy/mm/dd', 'multiple')).toBe(
+      '2026/09/01, 2026/09/30',
+    )
   })
 
   it('入力途中の文字列を壊さない', () => {
