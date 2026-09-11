@@ -22,6 +22,7 @@
   - `POST /api/v1/tournament-fees/{feeId}/checkout` — 参加費の Connect 決済チェックアウト
 - 実処理は `TournamentFeePaymentService.checkoutFee()`（`TournamentFeePaymentService.java:174-203`）が `MemberPaymentService.createConnectCheckout()` に委譲する。受益者・払い手はともに認証ユーザー本人（SELF・選手自払い）。`createConnectCheckout` は Destination PaymentIntent を発行し、主催組織の Stripe Connect 口座へ直接着金する（自社口座非経由）。
 - FE 側も `frontend/app/pages/me/tournament-fees.vue`・`frontend/app/composables/useTournamentFeeApi.ts`（PR #1433）で一覧表示・チェックアウト導線を実装済み。
+- **導線**（CMP-260909-1141 Phase 1）: このページはアプリ内からのリンクが 0 件で、直打ちでしか到達できなかった。マイページハブ `frontend/app/pages/my/index.vue` にカードを追加して到達可能にした。本ページは `constants/featureGates.ts` の `GATE_ROUTE_MAP` に束縛が無く**機能フラグのガード対象外**であるため、カードは常時表示される。
 - よって「新たな Stripe Connect 実装は本設計の対象外」（旧 §1・§4 の記述）は**現在は誤り**。Connect は既に実装されている。
 
 ### 0.2 未完了の残務（Expand→Migrate→Contract の Expand で停止）
