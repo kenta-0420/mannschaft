@@ -183,7 +183,26 @@ public enum EntitlementErrorCode implements ErrorCode {
      * {@code SWITCHING}／{@code FAILED} へ飛ばせてしまう（状態機械の外側からの割り込み）。</p>
      */
     HANDOVER_NOT_RESUMABLE("ENTITLEMENT_036",
-            "この引継要求は手動介入からの再開ができる状態ではありません", Severity.WARN);
+            "この引継要求は手動介入からの再開ができる状態ではありません", Severity.WARN),
+
+    /**
+     * Stripe Customer Portal の configuration が起動時照合を通っていない（503）。
+     *
+     * <p>PR5 Billing Center（05 §348）で追補採番。main の引継機能が 027〜036 を使ったため 037 へ採番し直した。専用 Portal configuration が取得不能、又は
+     * {@code subscription_update} / {@code subscription_cancel} / {@code subscription_pause} が
+     * 無効になっていない場合、Portal を開くと PLAN/ADDON を Portal から変更・解約できてしまう。
+     * これを構造的に不可能にするため、照合が成立していない間は Portal 開始<b>だけ</b>を
+     * fail-closed で拒否する（アプリ自体は起動し、他の課金機能は使える）。</p>
+     */
+    PORTAL_UNAVAILABLE("ENTITLEMENT_037", "支払い管理画面を一時的に利用できません", Severity.ERROR),
+
+    /**
+     * Portal セッション発行が scope ごとの上限（10 回/時）に達した（429）。
+     *
+     * <p>PR5 Billing Center（05 §370 の rate limit 表）で追補採番。</p>
+     */
+    PORTAL_RATE_LIMITED("ENTITLEMENT_038", "支払い管理画面を開く回数が上限に達しました。しばらく待って再度お試しください",
+            Severity.WARN);
 
     private final String code;
     private final String message;
