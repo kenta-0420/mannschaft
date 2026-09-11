@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import { useShiftHourlyRateApi } from '~/composables/shift/useShiftHourlyRateApi'
+import { isValidHourlyRate, useShiftHourlyRateApi } from '~/composables/shift/useShiftHourlyRateApi'
 // composables/team・composables/shift は nuxt.config の imports.dirs に無く auto-import されないため明示 import する
 import { useTeamMembers } from '~/composables/team/useTeamMembers'
 import type { MemberResponse } from '~/types/member'
@@ -26,7 +26,7 @@ const teamSlug = String(route.params.slug)
 const { t } = useI18n()
 const notification = useNotification()
 const teamApi = useTeamApi()
-const { getMembers } = useTeamMembers()
+const { getAllMembers } = useTeamMembers()
 const { getHourlyRate, setHourlyRate } = useShiftHourlyRateApi()
 const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
 
@@ -54,19 +54,41 @@ async function resolveTeamNumericId(): Promise<number> {
   return numericId
 }
 
+/** 同時接続を膨らませないよう、時給取得を CHUNK_SIZE 件ずつに区切って実行する。 */
+const RATE_FETCH_CHUNK_SIZE = 20
+
+async function fetchRatesInChunks(
+  members: MemberResponse[],
+  teamId: string,
+  date: string,
+): Promise<MemberRateRow[]> {
+  const result: MemberRateRow[] = []
+  for (let i = 0; i < members.length; i += RATE_FETCH_CHUNK_SIZE) {
+    const chunk = members.slice(i, i + RATE_FETCH_CHUNK_SIZE)
+    const resolved = await Promise.all(
+      chunk.map(async (member): Promise<MemberRateRow> => {
+        const rates = await getHourlyRate(teamId, member.userId, date)
+        return { member, rate: rates[0] ?? null }
+      }),
+    )
+    result.push(...resolved)
+  }
+  return result
+}
+
 async function loadRows() {
   loading.value = true
   try {
     const teamId = teamNumericId.value ?? (await resolveTeamNumericId())
     teamNumericId.value = teamId
-    const membersRes = await getMembers(teamSlug, { size: 200 })
     const today = dayjs().format('YYYY-MM-DD')
-    rows.value = await Promise.all(
-      membersRes.data.map(async (member): Promise<MemberRateRow> => {
-        const rates = await getHourlyRate(String(teamId), member.userId, today)
-        return { member, rate: rates[0] ?? null }
-      }),
-    )
+    // メンバーは全ページ取得する。先頭ページだけを読むと、ページサイズを超える人数のチームで
+    // 後半のメンバーが画面に現れず時給を登録できない。登録されなかったメンバーはシフト公開の
+    // たびに予算消化がスキップされ続けるため、ここで取りこぼすと本ページの存在意義が消える。
+    const members = await getAllMembers(teamSlug)
+    // 時給は 1 人ずつ引く（一括取得の API が無いため）。全員を同時に投げると大規模チームで
+    // ブラウザの同時接続数を食い潰すので、小さな束に区切って順に処理する。
+    rows.value = await fetchRatesInChunks(members, String(teamId), today)
   }
   catch (error) {
     const status
@@ -112,8 +134,9 @@ async function submit() {
   const row = targetRow.value
   const teamId = teamNumericId.value
   if (!row || teamId === null) return
-  if (formRate.value === null || formRate.value < 0) {
-    notification.error(t('shift.hourlyRate.validation.rateRequired'))
+  // BE は @Positive なので 0 以下は必ず 400 になる。画面側で同じ条件を課して入口で弾く。
+  if (!isValidHourlyRate(formRate.value)) {
+    notification.error(t('shift.hourlyRate.validation.ratePositive'))
     return
   }
   saving.value = true
@@ -224,7 +247,7 @@ onMounted(async () => {
           <InputNumber
             id="hourly-rate-input"
             v-model="formRate"
-            :min="0"
+            :min="1"
             mode="currency"
             currency="JPY"
             locale="ja-JP"

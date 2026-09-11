@@ -33,6 +33,31 @@ export function useTeamMembers() {
     return api<PagedData<MemberResponse>>(`/api/v1/teams/${teamSlug}/members?${query}`)
   }
 
+  /**
+   * チームの全メンバーを取得する（CMP-260910-1555）。
+   *
+   * `getMembers` は先頭 1 ページしか返さないため、`meta.totalPages` を無視すると
+   * ページサイズを超える人数のチームで後半のメンバーが画面に現れない。
+   * 時給設定のように「全員が漏れなく対象に入る」ことが要件の画面ではこれが直接の欠陥になる
+   * （設定されなかったメンバーはシフト公開のたびに予算消化がスキップされ続ける）。
+   *
+   * @param teamSlug チームの slug
+   * @param pageSize 1 ページあたりの取得件数（既定 200）
+   * @returns 全ページを連結したメンバー一覧
+   */
+  async function getAllMembers(teamSlug: string, pageSize = 200): Promise<MemberResponse[]> {
+    const first = await getMembers(teamSlug, { page: 0, size: pageSize })
+    const totalPages = first.meta?.totalPages ?? 1
+    if (totalPages <= 1) return first.data
+
+    const rest = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, i) =>
+        getMembers(teamSlug, { page: i + 1, size: pageSize }),
+      ),
+    )
+    return [...first.data, ...rest.flatMap(res => res.data)]
+  }
+
   async function changeRole(teamSlug: string, userId: number, roleId: number) {
     return api(`/api/v1/teams/${teamSlug}/members/${userId}/role`, {
       method: 'PATCH',
@@ -108,6 +133,7 @@ export function useTeamMembers() {
 
   return {
     getMembers,
+    getAllMembers,
     changeRole,
     removeMember,
     leaveTeam,

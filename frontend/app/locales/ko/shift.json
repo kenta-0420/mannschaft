@@ -392,7 +392,7 @@
       "forbidden": "この画面を表示する権限がありません",
       "noMembers": "メンバーがいません",
       "dialogTitle": "{name} の時給設定",
-      "effectiveFromHint": "指定した日から適用されます。過去の設定は履歴として残ります。",
+      "effectiveFromHint": "指定した日から適用されます。過去の設定は履歴として残ります。同じ日付で登録し直すと、その日の設定を訂正します。",
       "historyTitle": "時給履歴",
       "noHistory": "時給の登録履歴はありません",
       "column": {
@@ -401,7 +401,8 @@
         "effectiveFrom": "適用開始日"
       },
       "validation": {
-        "rateRequired": "時給を入力してください"
+        "rateRequired": "時給を入力してください",
+        "ratePositive": "時給は1円以上で入力してください"
       }
     }
   },

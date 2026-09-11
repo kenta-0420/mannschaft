@@ -392,7 +392,7 @@
       "forbidden": "You do not have permission to view this page",
       "noMembers": "No members",
       "dialogTitle": "Hourly rate for {name}",
-      "effectiveFromHint": "Applied from the specified date. Past settings are kept as history.",
+      "effectiveFromHint": "Applied from the specified date. Past settings are kept as history. Registering again with the same date corrects that day's setting.",
       "historyTitle": "Hourly rate history",
       "noHistory": "No hourly rate has been registered yet",
       "column": {
@@ -401,7 +401,8 @@
         "effectiveFrom": "Effective from"
       },
       "validation": {
-        "rateRequired": "Please enter an hourly rate"
+        "rateRequired": "Please enter an hourly rate",
+        "ratePositive": "Please enter an hourly rate of 1 or more"
       }
     }
   },

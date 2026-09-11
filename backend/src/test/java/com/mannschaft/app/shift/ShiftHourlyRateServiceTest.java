@@ -256,4 +256,62 @@ class ShiftHourlyRateServiceTest {
                     .checkAdminOrAbove(any(), any(), any());
         }
     }
+
+    // ========================================
+    // CMP-260910-1555 検分指摘の是正
+    // ========================================
+
+    /**
+     * 指摘3: 同じ適用開始日での再登録が一意制約
+     * {@code uq_shr_user_team_from (user_id, team_id, effective_from)} に衝突し、
+     * 当日に登録した時給の打ち間違いを訂正できなかった欠陥の回帰テスト。
+     */
+    @Nested
+    @DisplayName("同一適用開始日の訂正")
+    class SameEffectiveFromCorrection {
+
+        @Test
+        @DisplayName("同じ適用開始日の既存行があれば INSERT せず金額を更新する（当日訂正が通る）")
+        void 同日再登録は更新される() {
+            given(accessControlService.isSystemAdmin(CURRENT_USER_ID)).willReturn(false);
+            LocalDate sameDay = LocalDate.of(2026, 4, 1);
+            ShiftHourlyRateEntity existing = createRateEntity();
+            given(hourlyRateRepository.findByUserIdAndTeamIdAndEffectiveFrom(USER_ID, TEAM_ID, sameDay))
+                    .willReturn(Optional.of(existing));
+            given(hourlyRateRepository.save(existing)).willReturn(existing);
+            given(shiftMapper.toHourlyRateResponse(existing)).willReturn(createRateResponse());
+
+            CreateHourlyRateRequest req = new CreateHourlyRateRequest(
+                    USER_ID, new BigDecimal("1500.00"), sameDay);
+            shiftHourlyRateService.createHourlyRate(TEAM_ID, req, CURRENT_USER_ID);
+
+            // 既存行そのものが保存される（＝新規行を作らないので一意制約に衝突しない）
+            verify(hourlyRateRepository).save(existing);
+            assertThat(existing.getHourlyRate()).isEqualByComparingTo("1500.00");
+            // 適用開始日は書き換えない（履歴の並びを壊さない）
+            assertThat(existing.getEffectiveFrom()).isEqualTo(sameDay);
+        }
+
+        @Test
+        @DisplayName("別の適用開始日なら新規行を追加する（過去の履歴は消えない）")
+        void 別日なら追加される() {
+            given(accessControlService.isSystemAdmin(CURRENT_USER_ID)).willReturn(false);
+            LocalDate newDay = LocalDate.of(2026, 5, 1);
+            given(hourlyRateRepository.findByUserIdAndTeamIdAndEffectiveFrom(USER_ID, TEAM_ID, newDay))
+                    .willReturn(Optional.empty());
+            ShiftHourlyRateEntity saved = createRateEntity();
+            given(hourlyRateRepository.save(any())).willReturn(saved);
+            given(shiftMapper.toHourlyRateResponse(saved)).willReturn(createRateResponse());
+
+            CreateHourlyRateRequest req = new CreateHourlyRateRequest(
+                    USER_ID, new BigDecimal("1500.00"), newDay);
+            shiftHourlyRateService.createHourlyRate(TEAM_ID, req, CURRENT_USER_ID);
+
+            org.mockito.ArgumentCaptor<ShiftHourlyRateEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(ShiftHourlyRateEntity.class);
+            verify(hourlyRateRepository).save(captor.capture());
+            assertThat(captor.getValue().getEffectiveFrom()).isEqualTo(newDay);
+            assertThat(captor.getValue().getHourlyRate()).isEqualByComparingTo("1500.00");
+        }
+    }
 }
