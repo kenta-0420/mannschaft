@@ -21,6 +21,17 @@ public interface BillingCustomerJpaRepository extends JpaRepository<BillingCusto
             EntitlementScopeKind scopeKind, Long scopeId, String status);
 
     /**
+     * Billing Center PR6a: scope が所有する Customer を {@code uk_bcu_scope} と同じ条件で引く。
+     *
+     * <p><b>{@code deleted_at} で絞らない</b>のは意図である。{@code uk_bcu_scope (scope_kind, scope_id)}
+     * は {@code deleted_at} を含まないため、論理削除済みの行も UNIQUE を占有している。
+     * 絞ってしまうと「検索では見つからないのに INSERT は UNIQUE で弾かれる」という、
+     * 引き上げ（provision）が永久に成功しない状態になる。</p>
+     */
+    Optional<BillingCustomerEntity> findByScopeKindAndScopeId(
+            EntitlementScopeKind scopeKind, Long scopeId);
+
+    /**
      * F20.1 PR5: webhook の {@code invoice.customer} から scope 所有 Customer を逆引きする（AC-25）。
      *
      * <p>所有判定を {@code psp_subscription_ref} 単独に頼らず、この照合と併用するために使う。</p>

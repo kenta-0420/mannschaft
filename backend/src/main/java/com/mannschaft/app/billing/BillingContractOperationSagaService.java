@@ -49,6 +49,15 @@ public class BillingContractOperationSagaService {
     private final ActiveBillingContractOperationPointerRepository pointerRepository;
     private final EntityManager entityManager;
 
+    /**
+     * {@code billing_contract_operations.billing_customer_id}（NOT NULL ＋ FK）を埋めるための解決口。
+     *
+     * <p>F20.1 決済フロー由来の契約は {@code billing_customer_id} を持たないため、契約の値を
+     * そのまま写すと NOT NULL 違反で予約が必ず落ちる（実在欠陥）。詳細は
+     * {@link BillingCustomerLinkPort} の Javadoc を参照。</p>
+     */
+    private final BillingCustomerLinkPort billingCustomerLinkPort;
+
     /** tx1 / tx2 / 終端化に用いる（呼び出し元の tx があれば参加する）。 */
     private final TransactionTemplate transactionTemplate;
 
@@ -59,10 +68,12 @@ public class BillingContractOperationSagaService {
             BillingContractOperationRepository operationRepository,
             ActiveBillingContractOperationPointerRepository pointerRepository,
             EntityManager entityManager,
+            BillingCustomerLinkPort billingCustomerLinkPort,
             PlatformTransactionManager transactionManager) {
         this.operationRepository = operationRepository;
         this.pointerRepository = pointerRepository;
         this.entityManager = entityManager;
+        this.billingCustomerLinkPort = billingCustomerLinkPort;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.compensationTransactionTemplate = new TransactionTemplate(transactionManager);
         this.compensationTransactionTemplate.setPropagationBehavior(
@@ -143,9 +154,11 @@ public class BillingContractOperationSagaService {
                 throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
             }
 
+            UUID billingCustomerId = resolveBillingCustomerId(contract);
+
             BillingContractOperationEntity operation = BillingContractOperationEntity.builder()
                     .contractId(contract.getId())
-                    .billingCustomerId(contract.getBillingCustomerId())
+                    .billingCustomerId(billingCustomerId)
                     .organizationId(contract.getOrganizationId())
                     .kind(command.kind())
                     .status(BillingOperationStatus.CREATED)
@@ -388,6 +401,38 @@ public class BillingContractOperationSagaService {
                     + "停止窓(c) の回収対象として扱う必要がある", operationId, compensationFailure);
             cause.addSuppressed(compensationFailure);
         }
+    }
+
+    /**
+     * operation に刻む {@code billing_customer_id} を決める。
+     *
+     * <h2>なぜ契約の値をそのまま使えないか（実在欠陥）</h2>
+     * <p>{@code billing_contract_operations.billing_customer_id} は V196 で <b>NOT NULL ＋
+     * {@code billing_customers} への FK</b> である。一方 F20.1 の決済フロー
+     * （{@code BillingContractService#startPaidContract} → {@code activatePaidContract}）は
+     * {@code psp_customer_ref} は焼き付けるが {@code billing_customer_id} を<b>一度も設定しない</b>。
+     * したがって本番には「有償・ACTIVE・PSP 紐付あり・{@code billing_customer_id} が NULL」の契約が
+     * 実在し、その契約への解約・撤回・プラン変更は予約の INSERT で必ず NOT NULL 違反になる。</p>
+     *
+     * <p>そこで欠けている紐付けをここで解決し、<b>契約行へ書き戻す</b>。契約は直前に
+     * {@code FOR UPDATE} で押さえてあるので、同一トランザクション内の書き戻しは競合しない。
+     * 一度書き戻せば以後の操作は素通りする（引き上げは契約あたり一度きり）。</p>
+     *
+     * @param contract ロック済みの契約
+     * @return 非 NULL の {@code billing_customers.id}
+     */
+    private UUID resolveBillingCustomerId(BillingContractEntity contract) {
+        UUID linked = contract.getBillingCustomerId();
+        if (linked != null) {
+            return linked;
+        }
+        UUID resolved = billingCustomerLinkPort.resolveOrProvision(
+                contract.getScopeKind(), contract.getScopeId(),
+                contract.getOrganizationId(), contract.getPspCustomerRef());
+        // 欠けていた紐付けを修復する（症状を隠さず、原因である NULL そのものを解消する）。
+        contract.setBillingCustomerId(resolved);
+        entityManager.flush();
+        return resolved;
     }
 
     /** 契約行を {@code SELECT ... FOR UPDATE} で取得する（AC-1）。 */

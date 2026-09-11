@@ -52,7 +52,7 @@ public class BillingContractCancelApplicationService {
         if (contract.getPspSubscriptionRef() == null || contract.getPriceJpySnapshot() == null) {
             billingContractService.cancelContract(
                     contract.getScopeKind(), contract.getScopeId(), contractId, actorId);
-            return toResponse(billingContractCancelService.viewOf(reload(contractId)));
+            return toResponse(billingContractCancelService.viewOf(contractId));
         }
 
         return toResponse(billingContractCancelService.scheduleCancel(contractId, version, actorId));

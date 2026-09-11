@@ -2,11 +2,15 @@ package com.mannschaft.app.billing.api.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
  * Billing Center PR6a: 解約／解約撤回の応答（正本 05_billing_center.md:334-335・344）。
+ *
+ * <p><b>時刻はオフセット付きで返す</b>。新規の {@code LocalDateTime} フィールドは番人
+ * {@code DateTimeAndZoneGuardTest} が拒否しており（暗黙のゾーン依存を増やさないため）、
+ * API 境界を越える時刻はオフセットを明示した型で運ぶのが正しい。</p>
  *
  * <p>{@code contractStatus} と {@code status} は別物である。期末解約を予約しても契約そのものは
  * 期末まで利用できるので {@code contractStatus} は {@code ACTIVE} のまま（AC-23）であり、
@@ -27,9 +31,9 @@ public record BillingContractCancelResponse(
         UUID contractId,
         String contractStatus,
         String status,
-        LocalDateTime scheduledAt,
-        LocalDateTime endAt,
-        LocalDateTime currentPeriodEnd,
+        OffsetDateTime scheduledAt,
+        OffsetDateTime endAt,
+        OffsetDateTime currentPeriodEnd,
         Long version,
         boolean canCancel,
         boolean canResume) {

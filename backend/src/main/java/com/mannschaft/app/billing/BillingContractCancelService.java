@@ -12,6 +12,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -65,6 +66,11 @@ public class BillingContractCancelService {
     /**
      * 解約／撤回の応答に必要な契約の見え方（API 層 DTO 組み立て用）。
      *
+     * <p><b>なぜ {@link OffsetDateTime} か</b>: 新規の {@code LocalDateTime} フィールドは番人
+     * {@code DateTimeAndZoneGuardTest} が拒否する（暗黙のゾーン依存を増やさないため）。
+     * 境界を跨いで持ち回る時刻はオフセットを明示した型で運ぶのが正しく、
+     * DB の壁時計 {@code LocalDateTime} 列との変換は注入 {@link Clock} のゾーンで一点に閉じる。</p>
+     *
      * @param contractId     契約 ID
      * @param contractStatus 契約そのものの状態（解約予約後も {@code ACTIVE} のまま・AC-23）
      * @param scheduledAt    解約予約を入れた時刻（{@code cancelled_at}。予約なしなら null）
@@ -76,8 +82,8 @@ public class BillingContractCancelService {
     public record CancelView(
             UUID contractId,
             ContractStatus contractStatus,
-            LocalDateTime scheduledAt,
-            LocalDateTime endAt,
+            OffsetDateTime scheduledAt,
+            OffsetDateTime endAt,
             Long version,
             boolean canCancel,
             boolean canResume) {
@@ -167,10 +173,16 @@ public class BillingContractCancelService {
     /**
      * 現在の契約から解約／撤回の可否を導く（Stripe を呼ばない・AC-63）。
      *
-     * @param contract 対象契約
+     * <p><b>Entity ではなく契約 ID を受け取る</b>: サービスの公開シグネチャに {@code @Entity} を
+     * 出さない（D-1 API 境界の番人）。可視性をパッケージ内へ絞る手は使えない —— 呼び出し元の
+     * {@code BillingContractCancelApplicationService} は {@code billing.api} パッケージにあり、
+     * 絞ると到達できなくなるためである。読み直しは無償契約の即時失効直後に1回だけ起きる。</p>
+     *
+     * @param contractId 対象契約
      * @return 見え方
      */
-    public CancelView viewOf(BillingContractEntity contract) {
+    public CancelView viewOf(UUID contractId) {
+        BillingContractEntity contract = requireContract(contractId);
         return toView(contract, contract.getCurrentPeriodEnd());
     }
 
@@ -370,10 +382,19 @@ public class BillingContractCancelService {
         boolean scheduled = operable && contract.getCancelledAt() != null;
         boolean windowOpen = endAt != null && endAt.isAfter(LocalDateTime.now(clock));
         return new CancelView(
-                contract.getId(), contract.getStatus(), scheduled ? contract.getCancelledAt() : null, endAt,
+                contract.getId(), contract.getStatus(),
+                toOffset(scheduled ? contract.getCancelledAt() : null), toOffset(endAt),
                 contract.getVersion(),
                 operable && !scheduled,
                 operable && scheduled && windowOpen);
+    }
+
+    /**
+     * DB の壁時計 {@code LocalDateTime} を、注入 {@link Clock} のゾーンでオフセット付きへ変換する。
+     * 暗黙のゾーン解決（{@code ZoneId.systemDefault()}）を使わない唯一の変換点である。
+     */
+    private OffsetDateTime toOffset(LocalDateTime value) {
+        return value == null ? null : value.atZone(clock.getZone()).toOffsetDateTime();
     }
 
     /** {@code billing_contracts.version} は Hibernate の {@code @Version} ではないため明示的に進める。 */
