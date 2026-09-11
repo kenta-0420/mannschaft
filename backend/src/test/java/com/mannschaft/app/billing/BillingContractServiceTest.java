@@ -52,6 +52,8 @@ class BillingContractServiceTest {
     @Mock private BillingPaymentGateway billingPaymentGateway;
     @Mock private BillingPriceResolver billingPriceResolver;
     @Mock private BillingOperationAuthorizer billingOperationAuthorizer;
+    /** PR6a: 旧経路の pointer ガード（AC-20/21）・D3 の検疫貫通で新たに必要になった協調相手。 */
+    @Mock private BillingContractOperationSagaService billingContractOperationSagaService;
 
     private BillingContractService service;
 
@@ -65,7 +67,8 @@ class BillingContractServiceTest {
                 billingContractRepository, activeContractPointerRepository, entitlementRepository,
                 planRepository, planFeatureRepository, featureCatalogRepository, planPriceBandRepository,
                 scopeMemberCountService, cacheEvictor, FIXED_CLOCK, billingPaymentGateway,
-                billingPriceResolver, issuanceService, billingOperationAuthorizer);
+                billingPriceResolver, issuanceService, billingOperationAuthorizer,
+                billingContractOperationSagaService);
     }
 
     private PlanEntity plan(String key, boolean enabled) {

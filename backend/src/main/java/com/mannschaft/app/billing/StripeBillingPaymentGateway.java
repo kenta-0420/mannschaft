@@ -57,6 +57,23 @@ public class StripeBillingPaymentGateway implements BillingPaymentGateway {
         return currentPeriodEnd == null ? null : Instant.ofEpochSecond(currentPeriodEnd);
     }
 
+    /**
+     * Billing Center PR6a（AC-5/AC-39）: operation Saga 経路の期末解約予約。
+     *
+     * <p>Idempotency-Key は {@code billing-operation-{operationId}} であり、既存の
+     * {@link #cancelAtPeriodEnd(String)} が使う {@code billing-cancel-{subscriptionRef}} とは
+     * 別名前空間である（同一 subscription へ旧経路と Saga 経路が同時に走ってもキー衝突しない）。
+     * 同一 operation の再試行では同じキーになるため Stripe 側で二重に効かない。</p>
+     */
+    @Override
+    public Instant cancelAtPeriodEnd(String subscriptionRef, UUID operationId) {
+        StripePaymentProvider.SubscriptionInfo info = stripePaymentProvider.cancelSubscriptionAtPeriodEnd(
+                subscriptionRef,
+                BillingContractOperationSagaService.stripeIdempotencyKeyOf(operationId));
+        Long currentPeriodEnd = info.currentPeriodEnd();
+        return currentPeriodEnd == null ? null : Instant.ofEpochSecond(currentPeriodEnd);
+    }
+
     @Override
     public void cancelImmediately(String subscriptionRef) {
         stripePaymentProvider.cancelBillingSubscriptionImmediately(

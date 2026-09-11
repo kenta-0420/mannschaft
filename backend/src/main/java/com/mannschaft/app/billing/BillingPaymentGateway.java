@@ -57,9 +57,9 @@ public interface BillingPaymentGateway {
      * {@code billing-cancel-{subscriptionRef}} とは<b>別名前空間</b>である。同一 operation の
      * 再試行では同じキーになるため Stripe 側で二重に効かない。</p>
      *
-     * <p><b>未実装（第2隊 試練Aの発注書）</b>: 既定実装は {@link UnsupportedOperationException} を
-     * 投げる。既存呼び出し元（{@code BillingContractService}）の挙動を変えないために default とし、
-     * 第6隊が {@code StripeBillingPaymentGateway} で override する。</p>
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる（既存呼び出し元
+     * {@code BillingContractService} の挙動を変えないために default とした）。実体は
+     * {@link StripeBillingPaymentGateway#cancelAtPeriodEnd(String, java.util.UUID)} が持つ。</p>
      *
      * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
      * @param operationId     {@code billing_contract_operations.id}（冪等キーの単位）

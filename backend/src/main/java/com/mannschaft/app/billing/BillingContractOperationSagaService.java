@@ -1,16 +1,23 @@
 package com.mannschaft.app.billing;
 
+import com.mannschaft.app.common.BusinessException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
  * Billing Center PR6a: 契約操作 Saga（AC-1〜AC-21）の入口サービス。
  *
- * <p><b>本クラスは第2隊（試練A）が置いた発注書であり、中身は未実装である。</b>
- * 全メソッドが {@link UnsupportedOperationException} を投げる。第5隊（Saga Service）が
- * これを実装で置き換え、{@code BillingContractOperationSagaIT} 他の red を green にする。</p>
+ * <p>期待する振る舞いは {@code BillingContractOperationSagaIT} 他の試練Aが AC 番号つきで固定している。</p>
  *
  * <h2>殿の設計判断 D1 — トランザクション分割</h2>
  * <pre>
@@ -25,11 +32,42 @@ import java.util.function.Supplier;
  * <p>409 は全て {@link EntitlementErrorCode#CHANGE_CONFLICT}（{@code ENTITLEMENT_021}）を用いる
  * （AC-38。{@code GlobalExceptionHandler} で 409 に登録済み。新設しない）。</p>
  */
+@Slf4j
 @Service
 public class BillingContractOperationSagaService {
 
     /** Stripe 冪等キーの接頭辞（AC-5）。 */
     public static final String STRIPE_IDEMPOTENCY_KEY_PREFIX = "billing-operation-";
+
+    /** {@code request_hash}（CHAR(64) NOT NULL）が未指定のときに格納する既定値（SYSTEM 経路）。 */
+    private static final String EMPTY_REQUEST_HASH = "0".repeat(64);
+
+    /** 予約直後の暫定 {@code idempotency_key}（persist 直後に operationId へ差し替える）。 */
+    private static final String PENDING_IDEMPOTENCY_KEY = "0".repeat(36);
+
+    private final BillingContractOperationRepository operationRepository;
+    private final ActiveBillingContractOperationPointerRepository pointerRepository;
+    private final EntityManager entityManager;
+
+    /** tx1 / tx2 / 終端化に用いる（呼び出し元の tx があれば参加する）。 */
+    private final TransactionTemplate transactionTemplate;
+
+    /** tx2 が落ちたときの補償（検疫記録）を<b>別トランザクション</b>で行うための template（AC-19）。 */
+    private final TransactionTemplate compensationTransactionTemplate;
+
+    public BillingContractOperationSagaService(
+            BillingContractOperationRepository operationRepository,
+            ActiveBillingContractOperationPointerRepository pointerRepository,
+            EntityManager entityManager,
+            PlatformTransactionManager transactionManager) {
+        this.operationRepository = operationRepository;
+        this.pointerRepository = pointerRepository;
+        this.entityManager = entityManager;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.compensationTransactionTemplate = new TransactionTemplate(transactionManager);
+        this.compensationTransactionTemplate.setPropagationBehavior(
+                TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
 
     /**
      * 予約（tx1）の入力。
@@ -86,8 +124,57 @@ public class BillingContractOperationSagaService {
      * @throws IllegalArgumentException actor_kind と actorUserId の組合せが CHECK 制約に反するとき（AC-13）
      */
     public OperationReservation reserve(ReserveCommand command) {
-        throw new UnsupportedOperationException(
-                "Billing Center PR6a: 第5隊が実装する（試練Aの発注書）");
+        Objects.requireNonNull(command, "command は必須である");
+        Objects.requireNonNull(command.contractId(), "contractId は必須である");
+        Objects.requireNonNull(command.kind(), "kind は必須である");
+        // chk_bco_actor（actor_kind と created_by の対）を DB へ到達させる前に弾く（AC-13）。
+        requireValidActor(command.actorKind(), command.actorUserId());
+
+        return transactionTemplate.execute(tx -> {
+            BillingContractEntity contract = lockContractForUpdate(command.contractId());
+
+            // 進行中 operation の lease がある（検疫を含む）契約は 409（AC-3 / AC-8 / AC-14）。
+            if (pointerRepository.findById(command.contractId()).isPresent()) {
+                throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
+            }
+            // version CAS（AC-1）。SYSTEM 経路で CAS を行わない場合のみ null を許す。
+            if (command.expectedContractVersion() != null
+                    && !command.expectedContractVersion().equals(contract.getVersion())) {
+                throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
+            }
+
+            BillingContractOperationEntity operation = BillingContractOperationEntity.builder()
+                    .contractId(contract.getId())
+                    .billingCustomerId(contract.getBillingCustomerId())
+                    .organizationId(contract.getOrganizationId())
+                    .kind(command.kind())
+                    .status(BillingOperationStatus.CREATED)
+                    .step(BillingOperationTransitions.stepFor(
+                            command.kind(), BillingOperationStatus.CREATED))
+                    .idempotencyKey(PENDING_IDEMPOTENCY_KEY)
+                    .requestHash(command.requestHash() == null
+                            ? EMPTY_REQUEST_HASH : command.requestHash())
+                    .stripeSubscriptionRef(contract.getPspSubscriptionRef())
+                    .version(0L)
+                    .actorKind(command.actorKind())
+                    .createdBy(command.actorUserId())
+                    .build();
+            entityManager.persist(operation);
+            // AC-32: idempotency_key CHAR(36) に入れるのは operationId であり、HTTP ヘッダ値ではない。
+            operation.setIdempotencyKey(operation.getId().toString());
+            entityManager.flush();
+
+            // AC-2: pointer INSERT は operation INSERT と同一トランザクション。片方だけ残らない。
+            entityManager.persist(ActiveBillingContractOperationPointerEntity.builder()
+                    .contractId(contract.getId())
+                    .operationId(operation.getId())
+                    .build());
+            entityManager.flush();
+
+            return new OperationReservation(
+                    operation.getId(), contract.getId(), operation.getKind(),
+                    operation.getStatus(), operation.getStep(), contract.getVersion());
+        });
     }
 
     /**
@@ -98,8 +185,9 @@ public class BillingContractOperationSagaService {
      * @throws IllegalStateException 許可されない遷移のとき
      */
     public void markCallingStripe(UUID operationId) {
-        throw new UnsupportedOperationException(
-                "Billing Center PR6a: 第5隊が実装する（試練Aの発注書）");
+        transactionTemplate.executeWithoutResult(tx ->
+                transitionInCurrentTransaction(
+                        operationId, BillingOperationStatus.CALLING_STRIPE, null, false));
     }
 
     /**
@@ -116,8 +204,20 @@ public class BillingContractOperationSagaService {
      * @return 反映処理の戻り値
      */
     public <T> T applyAndFinalize(UUID operationId, Supplier<T> reflection) {
-        throw new UnsupportedOperationException(
-                "Billing Center PR6a: 第5隊が実装する（試練Aの発注書）");
+        Objects.requireNonNull(reflection, "reflection は必須である");
+        try {
+            return transactionTemplate.execute(tx -> {
+                T applied = reflection.get();
+                // 反映と同一トランザクションで terminal 化＋pointer 解放（AC-7 / AC-18）。
+                transitionInCurrentTransaction(
+                        operationId, BillingOperationStatus.APPLIED, null, true);
+                return applied;
+            });
+        } catch (RuntimeException e) {
+            // AC-19: tx2 はロールバック済み。別トランザクションで検疫へ倒し、例外は握らず再送する。
+            quarantineAfterFailedApply(operationId, e);
+            throw e;
+        }
     }
 
     /**
@@ -128,8 +228,9 @@ public class BillingContractOperationSagaService {
      * @param errorCode   {@code error_code} 列へ記録するコード
      */
     public void failAndRelease(UUID operationId, String errorCode) {
-        throw new UnsupportedOperationException(
-                "Billing Center PR6a: 第5隊が実装する（試練Aの発注書）");
+        transactionTemplate.executeWithoutResult(tx ->
+                transitionInCurrentTransaction(
+                        operationId, BillingOperationStatus.FAILED, errorCode, true));
     }
 
     /**
@@ -141,8 +242,9 @@ public class BillingContractOperationSagaService {
      * @param errorCode   {@code error_code} 列へ記録するコード（不要なら {@code null}）
      */
     public void cancelAndRelease(UUID operationId, String errorCode) {
-        throw new UnsupportedOperationException(
-                "Billing Center PR6a: 第5隊が実装する（試練Aの発注書）");
+        transactionTemplate.executeWithoutResult(tx ->
+                transitionInCurrentTransaction(
+                        operationId, BillingOperationStatus.CANCELLED, errorCode, true));
     }
 
     /**
@@ -153,8 +255,8 @@ public class BillingContractOperationSagaService {
      * @param errorCode   {@code error_code} 列へ記録するコード
      */
     public void quarantine(UUID operationId, String errorCode) {
-        throw new UnsupportedOperationException(
-                "Billing Center PR6a: 第5隊が実装する（試練Aの発注書）");
+        transactionTemplate.executeWithoutResult(tx -> transitionInCurrentTransaction(
+                operationId, BillingOperationStatus.RECONCILIATION_REQUIRED, errorCode, false));
     }
 
     /**
@@ -168,8 +270,12 @@ public class BillingContractOperationSagaService {
      */
     public void reconcile(
             UUID operationId, BillingOperationStatus terminalStatus, String errorCode) {
-        throw new UnsupportedOperationException(
-                "Billing Center PR6a: 第5隊が実装する（試練Aの発注書）");
+        if (!BillingOperationTransitions.isTerminal(terminalStatus)) {
+            throw new IllegalStateException(
+                    "reconcile の確定先は terminal でなければならない: " + terminalStatus);
+        }
+        transactionTemplate.executeWithoutResult(tx ->
+                transitionInCurrentTransaction(operationId, terminalStatus, errorCode, true));
     }
 
     /**
@@ -181,8 +287,9 @@ public class BillingContractOperationSagaService {
      *         {@link EntitlementErrorCode#CHANGE_CONFLICT}（409）
      */
     public void requireNoActiveOperation(UUID contractId) {
-        throw new UnsupportedOperationException(
-                "Billing Center PR6a: 第5隊が実装する（試練Aの発注書）");
+        if (contractId != null && pointerRepository.existsById(contractId)) {
+            throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
+        }
     }
 
     /**
@@ -197,8 +304,115 @@ public class BillingContractOperationSagaService {
      * @return 終端化した operation 件数（0 または 1）
      */
     public int terminateNonTerminalAndRelease(UUID contractId) {
-        throw new UnsupportedOperationException(
-                "Billing Center PR6a: 第5隊が実装する（試練Aの発注書）");
+        if (contractId == null) {
+            return 0;
+        }
+        Integer terminated = transactionTemplate.execute(tx -> {
+            // 契約行の排他ロックで並行到達（purge と webhook）を直列化する（AC-17b）。
+            // 契約が消えていても pointer の掃除は行うため、見つからない場合はロックせず続行する。
+            entityManager.find(
+                    BillingContractEntity.class, contractId, LockModeType.PESSIMISTIC_WRITE);
+
+            Optional<ActiveBillingContractOperationPointerEntity> pointer =
+                    pointerRepository.findById(contractId);
+            if (pointer.isEmpty()) {
+                // 既に別経路が解放済み。再入・並行実行で二重に効かせない（AC-17b・冪等）。
+                return 0;
+            }
+            UUID operationId = pointer.get().getOperationId();
+            int count = 0;
+            BillingContractOperationEntity operation =
+                    operationRepository.findByIdAndDeletedAtIsNull(operationId).orElse(null);
+            if (operation != null && !BillingOperationTransitions.isTerminal(operation.getStatus())) {
+                // 孤児を残さないため、pointer 削除と同一トランザクションで CANCELLED へ終端化する（D3）。
+                transitionInCurrentTransaction(
+                        operationId, BillingOperationStatus.CANCELLED, SYSTEM_BYPASS_ERROR_CODE, false);
+                count = 1;
+            }
+            pointerRepository.hardDeleteByContractIdAndOperationId(contractId, operationId);
+            entityManager.flush();
+            return count;
+        });
+        return terminated == null ? 0 : terminated;
+    }
+
+    // ================================================================
+    // 内部実装
+    // ================================================================
+
+    /** D3 の検疫貫通で非終端 operation を終端化した理由（{@code error_code} 列へ記録する）。 */
+    static final String SYSTEM_BYPASS_ERROR_CODE = "SYSTEM_BYPASS";
+
+    /**
+     * 現在のトランザクション内で operation の状態を進め、必要なら pointer を解放する。
+     *
+     * @param operationId    対象 operation
+     * @param to             遷移先
+     * @param errorCode      {@code error_code} へ記録する値（{@code null} なら据え置き）
+     * @param releasePointer terminal 確定に伴い pointer を削除するか
+     */
+    private void transitionInCurrentTransaction(
+            UUID operationId, BillingOperationStatus to, String errorCode, boolean releasePointer) {
+
+        BillingContractOperationEntity operation = operationRepository
+                .findByIdAndDeletedAtIsNull(operationId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "operation が見つからない: " + operationId));
+        BillingOperationTransitions.requireAllowed(operation.getStatus(), to);
+
+        operation.setStatus(to);
+        operation.setStep(BillingOperationTransitions.stepFor(operation.getKind(), to));
+        if (errorCode != null) {
+            operation.setErrorCode(errorCode);
+        }
+        operation.setVersion(operation.getVersion() == null ? 1L : operation.getVersion() + 1L);
+        operationRepository.saveAndFlush(operation);
+
+        if (releasePointer) {
+            // AC-7: terminal 確定と同一トランザクションで lease を解放する。
+            pointerRepository.hardDeleteByContractIdAndOperationId(
+                    operation.getContractId(), operationId);
+            entityManager.flush();
+        }
+    }
+
+    /** tx2 失敗後の検疫記録（AC-19）。補償自体の失敗で元の例外を覆い隠さない。 */
+    private void quarantineAfterFailedApply(UUID operationId, RuntimeException cause) {
+        try {
+            compensationTransactionTemplate.executeWithoutResult(tx ->
+                    transitionInCurrentTransaction(
+                            operationId, BillingOperationStatus.RECONCILIATION_REQUIRED,
+                            "TX2_FAILED", false));
+        } catch (RuntimeException compensationFailure) {
+            log.error("PR6a: tx2 失敗後の検疫記録に失敗した（operationId={}）。"
+                    + "停止窓(c) の回収対象として扱う必要がある", operationId, compensationFailure);
+            cause.addSuppressed(compensationFailure);
+        }
+    }
+
+    /** 契約行を {@code SELECT ... FOR UPDATE} で取得する（AC-1）。 */
+    private BillingContractEntity lockContractForUpdate(UUID contractId) {
+        BillingContractEntity contract = entityManager.find(
+                BillingContractEntity.class, contractId, LockModeType.PESSIMISTIC_WRITE);
+        if (contract == null || contract.getDeletedAt() != null) {
+            throw new BusinessException(EntitlementErrorCode.CONTRACT_NOT_FOUND);
+        }
+        return contract;
+    }
+
+    /** {@code chk_bco_actor}（USER は created_by 必須・SYSTEM は NULL 必須）を実装側でも強制する（AC-13）。 */
+    private void requireValidActor(BillingOperationActorKind actorKind, Long actorUserId) {
+        if (actorKind == null) {
+            throw new IllegalArgumentException("actorKind は必須である");
+        }
+        if (actorKind == BillingOperationActorKind.USER && actorUserId == null) {
+            throw new IllegalArgumentException(
+                    "actor_kind=USER の operation は created_by が必須である");
+        }
+        if (actorKind == BillingOperationActorKind.SYSTEM && actorUserId != null) {
+            throw new IllegalArgumentException(
+                    "actor_kind=SYSTEM の operation は created_by が NULL でなければならない");
+        }
     }
 
     /**

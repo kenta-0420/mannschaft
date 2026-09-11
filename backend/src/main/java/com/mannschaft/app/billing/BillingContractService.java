@@ -67,6 +67,15 @@ public class BillingContractService {
     private final BillingOperationAuthorizer billingOperationAuthorizer;
 
     /**
+     * Billing Center PR6a: 契約操作 Saga（{@code billing_contract_operations}）。
+     *
+     * <p>旧経路（{@link #cancelContract} / {@link #changePlan}）は pointer を尊重して 409 を返し
+     * （AC-20/21）、SYSTEM 経路（purge / {@code customer.subscription.deleted}）は検疫を貫通しつつ
+     * 非終端 operation を同一トランザクションで終端化してから pointer を解放する（D3・AC-16/17）。</p>
+     */
+    private final BillingContractOperationSagaService billingContractOperationSagaService;
+
+    /**
      * 契約変更操作の結果（API 層 DTO 組み立て用・付与/取消 feature_key 集合を含む）。
      *
      * <p>F20.1 実決済（D-3/D-4）: {@code checkoutUrl}（決済フローの Checkout URL・無償/解約は null）と
@@ -235,6 +244,9 @@ public class BillingContractService {
         billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
         LocalDateTime now = LocalDateTime.now(clock);
         BillingContractEntity contract = loadContractInScope(scopeKind, scopeId, contractId);
+        // ★PR6a AC-20: 旧経路も operation pointer を尊重する。進行中（検疫を含む）の Saga の
+        //   脇から契約を書き換えられると排他が成立しないため 409（ENTITLEMENT_021）で拒否する。
+        billingContractOperationSagaService.requireNoActiveOperation(contractId);
         if (contract.getStatus() != ContractStatus.ACTIVE) {
             throw new BusinessException(EntitlementErrorCode.CONTRACT_NOT_CANCELLABLE);
         }
@@ -290,6 +302,13 @@ public class BillingContractService {
         billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
         LocalDateTime now = LocalDateTime.now(clock);
         BillingContractEntity oldContract = loadContractInScope(scopeKind, scopeId, contractId);
+        // ★PR6a AC-20: 旧 PUT 経路も operation pointer を尊重する（進行中の Saga と競合させない）。
+        billingContractOperationSagaService.requireNoActiveOperation(contractId);
+        // ★PR6a AC-21: 解約予約中（cancelled_at 非 NULL）の契約は、撤回するまでプラン変更できない。
+        //   既存実装は cancelled_at を見ておらず、期末解約予約を抱えたまま新契約へ付け替わっていた。
+        if (oldContract.getCancelledAt() != null) {
+            throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
+        }
         if (oldContract.getStatus() != ContractStatus.ACTIVE) {
             throw new BusinessException(EntitlementErrorCode.CONTRACT_NOT_CANCELLABLE);
         }
@@ -540,6 +559,10 @@ public class BillingContractService {
                     contract.getId(), pspSubscriptionRef);
             return;
         }
+        // ★PR6a AC-17（D3）: 検疫（RECONCILIATION_REQUIRED）でも customer.subscription.deleted は通す。
+        //   その際、残っている非終端 operation を同一トランザクションで CANCELLED へ終端化してから
+        //   pointer を削除する（貫通して pointer だけ消すと非終端 operation が孤児化する）。
+        billingContractOperationSagaService.terminateNonTerminalAndRelease(contract.getId());
         LocalDateTime now = LocalDateTime.now(clock);
         contract.setStatus(ContractStatus.EXPIRED);
         if (currentPeriodEnd != null) {
@@ -621,6 +644,10 @@ public class BillingContractService {
             if (contract.getPspSubscriptionRef() != null) {
                 paidSubscriptionRefs.add(contract.getPspSubscriptionRef());
             }
+            // ★PR6a AC-16（D3）: 検疫中でも退会 purge は通す（止めると退会者に課金と権利が残り
+            //   GDPR 要件を破るため、検疫より purge を優先する）。孤児を作らないよう、非終端 operation を
+            //   同一トランザクションで CANCELLED へ終端化してから pointer を削除する。
+            billingContractOperationSagaService.terminateNonTerminalAndRelease(contract.getId());
             contract.setStatus(ContractStatus.CANCELLED);
             contract.setCancelledAt(now);
             billingContractRepository.save(contract);
