@@ -93,7 +93,13 @@ public enum ShiftErrorCode implements ErrorCode {
      *（{@code Severity.WARN} の既定が 400 のため {@code GlobalExceptionHandler} への登録は不要）。
      * 越境（他 schedule 配下の枠・存在しない枠）は {@link #ACCESS_DENIED}（403）で畳む。</p>
      */
-    REQUEST_SLOT_DATE_MISMATCH("SHIFT_037", "指定された枠の日付と希望日が一致しません", Severity.WARN);
+    REQUEST_SLOT_DATE_MISMATCH("SHIFT_037", "指定された枠の日付と希望日が一致しません", Severity.WARN),
+
+    /** 枠時刻の前後関係が不正（F03.5 §11.2.5・400） */
+    INVALID_TIME_RANGE("SHIFT_040", "開始時刻と終了時刻の組み合わせが正しくありません。日をまたぐ枠は「翌日終了」を指定し、またがない枠は開始時刻を終了時刻より前にしてください", Severity.WARN),
+
+    /** 枠時刻の刻み・枠長が不正（F03.5 §11.2.5・400） */
+    INVALID_SLOT_GRANULARITY("SHIFT_041", "シフト枠は15分単位で、最小15分以上24時間未満である必要があります", Severity.WARN);
 
     private final String code;
     private final String message;

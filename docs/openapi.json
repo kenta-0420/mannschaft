@@ -187714,6 +187714,9 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "endsNextDay": {
+            "type": "boolean"
+          },
           "note": {
             "type": "string",
             "maxLength": 200,
@@ -187804,6 +187807,9 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          },
+          "endsNextDay": {
+            "type": "boolean"
           },
           "slotDate": {
             "type": "string",
@@ -206632,6 +206638,9 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          },
+          "endsNextDay": {
+            "type": "boolean"
           },
           "note": {
             "type": "string",

@@ -62340,6 +62340,7 @@ export interface components {
         CreateShiftSlotRequest: {
             /** @example 14:30:00 */
             endTime: string;
+            endsNextDay?: boolean;
             note?: string;
             /** Format: int64 */
             positionId?: number;
@@ -62374,6 +62375,7 @@ export interface components {
         ShiftSlotTimeDto: {
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             /** Format: date */
             slotDate?: string;
             /** @example 14:30:00 */
@@ -69144,6 +69146,7 @@ export interface components {
             assignedUserIds?: number[];
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             note?: string;
             /** Format: int64 */
             positionId?: number;
