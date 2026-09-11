@@ -391,7 +391,8 @@ public class BillingContractCancelService {
 
     /**
      * DB の壁時計 {@code LocalDateTime} を、注入 {@link Clock} のゾーンでオフセット付きへ変換する。
-     * 暗黙のゾーン解決（{@code ZoneId.systemDefault()}）を使わない唯一の変換点である。
+     * JVM 既定ゾーンへの暗黙の依存を持たない唯一の変換点である
+     * （番人が禁止形をコメント本文からも検出するため、ここに該当 API 名は書かない）。
      */
     private OffsetDateTime toOffset(LocalDateTime value) {
         return value == null ? null : value.atZone(clock.getZone()).toOffsetDateTime();
