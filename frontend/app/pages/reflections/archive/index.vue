@@ -19,6 +19,7 @@ definePageMeta({ middleware: 'auth' })
 const { t } = useI18n()
 const { formatDate } = useDatetime()
 const notification = useNotification()
+const { showUndoToast } = useUndoToast()
 const reflectionApi = useReflectionApi()
 const router = useRouter()
 const confirm = useConfirm()
@@ -117,24 +118,26 @@ function onPageChange(event: { page: number }) {
 
 // ─── 復元 ────────────────────────────────────────────────────────────────────
 
-function confirmRestore(theme: ReflectionThemeResponse) {
-  confirm.require({
-    message: t('reflection.archive.confirm.restore'),
-    header: t('reflection.archive.action.restore'),
-    icon: 'pi pi-refresh',
-    rejectLabel: t('reflection.common.cancel'),
-    acceptLabel: t('reflection.archive.action.restore'),
-    accept: () => doRestore(theme),
-  })
-}
-
 async function doRestore(theme: ReflectionThemeResponse) {
-  if (!theme.id) return
-  restoringId.value = theme.id
+  const restoredThemeId = theme.id
+  if (!restoredThemeId) return
+  restoringId.value = restoredThemeId
   try {
-    await reflectionApi.restoreTheme(theme.id)
-    notification.success(t('reflection.archive.action.restore') + ' ✓')
+    await reflectionApi.restoreTheme(restoredThemeId)
     await Promise.all([loadFolders(), doSearch(currentPage.value)])
+    showUndoToast({
+      summary: t('reflection.archive.action.restore'),
+      undoLabel: t('button.undo'),
+      onUndo: async () => {
+        try {
+          await reflectionApi.archiveTheme(restoredThemeId)
+          await Promise.all([loadFolders(), doSearch(currentPage.value)])
+        }
+        catch {
+          notification.error(t('reflection.entry.save_failed'))
+        }
+      },
+    })
   }
   catch {
     notification.error(t('reflection.entry.save_failed'))
@@ -355,13 +358,14 @@ const hasFilter = computed(() =>
           <Button
             v-tooltip.top="t('reflection.archive.action.restore')"
             icon="pi pi-refresh"
+            :data-testid="`reflection-archive-restore-${theme.id}`"
             text
             rounded
             severity="info"
             size="small"
             :loading="restoringId === theme.id"
             :aria-label="t('reflection.archive.action.restore')"
-            @click="confirmRestore(theme)"
+            @click="doRestore(theme)"
           />
           <Button
             icon="pi pi-chevron-right"
