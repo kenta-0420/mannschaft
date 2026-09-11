@@ -86,6 +86,15 @@ public enum ShiftErrorCode implements ErrorCode {
     /** 手動リマインドの連打防止スロットリング（Valkey 同時実行ロック取得失敗） */
     MANUAL_REMINDER_THROTTLED("SHIFT_036", "リマインドは連続して送信できません。15 秒ほど待ってから再操作してください", Severity.WARN),
 
+    /**
+     * 希望提出の {@code slotId} と {@code slotDate} が食い違う（設計 §11.5.1.1-2）。
+     *
+     * <p>越境ではなく<b>クライアントの自己矛盾</b>なので 400 とする
+     *（{@code Severity.WARN} の既定が 400 のため {@code GlobalExceptionHandler} への登録は不要）。
+     * 越境（他 schedule 配下の枠・存在しない枠）は {@link #ACCESS_DENIED}（403）で畳む。</p>
+     */
+    REQUEST_SLOT_DATE_MISMATCH("SHIFT_037", "指定された枠の日付と希望日が一致しません", Severity.WARN),
+
     /** 枠時刻の前後関係が不正（F03.5 §11.2.5・400） */
     INVALID_TIME_RANGE("SHIFT_040", "開始時刻と終了時刻の組み合わせが正しくありません。日をまたぐ枠は「翌日終了」を指定し、またがない枠は開始時刻を終了時刻より前にしてください", Severity.WARN),
 

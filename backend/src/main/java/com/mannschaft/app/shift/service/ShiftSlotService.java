@@ -71,9 +71,10 @@ public class ShiftSlotService {
      * @return シフト枠一覧
      */
     public List<ShiftSlotResponse> listSlots(Long scheduleId, Long userId) {
-        // 二層: 認可（誰が）の 403 が先、可視性（何が）の 404 が後。
-        checkScheduleReadAccess(scheduleId, userId);
+        // 未公開は認可結果より先に 404 へ正規化し、実在 ID の 403 と
+        // 非存在 ID の 404 を比較する存在オラクルを防ぐ。
         boolean masked = resolveAssignmentMasked(scheduleId, userId);
+        checkScheduleReadAccess(scheduleId, userId);
         List<ShiftSlotEntity> entities = slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(scheduleId);
         return entities.stream().map(e -> applyMask(toSlotResponse(e), masked)).toList();
     }

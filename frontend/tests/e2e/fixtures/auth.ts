@@ -15,7 +15,7 @@ import { waitForHydration } from '../helpers/wait'
 export async function loginViaApi(
   page: Page,
   credentials: { email: string; password: string },
-  options: { apiBaseUrl?: string } = {},
+  options: { apiBaseUrl?: string; deferNavigation?: boolean } = {},
 ): Promise<void> {
   // FE dev server が /api/v1/** をプロキシしていない場合 (NUXT_API_PROXY=true 未設定)、
   // バックエンドへ完全 URL で直接リクエストする。
@@ -23,9 +23,10 @@ export async function loginViaApi(
   // :8080 に送った Set-Cookie も :3000 起源のブラウザコンテキストで有効になる。
   const apiBase = options.apiBaseUrl ?? process.env.API_BASE_URL ?? ''
 
-  // 先にアプリの origin を確立する。ログイン Cookie 発行後、currentUser を保存する前に
-  // 匿名状態でアプリを初期化すると、認証初期化処理が発行直後の Cookie を破棄しうる。
-  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  if (!options.deferNavigation) {
+    // storageState を生成する既存呼び出しでは、localStorage のオリジンを先に確立する。
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+  }
 
   const loginRes = await page.request.post(`${apiBase}/api/v1/auth/login`, {
     data: { email: credentials.email, password: credentials.password },
@@ -58,25 +59,28 @@ export async function loginViaApi(
   }
   const tokenExpiresAt = accessTokenCookie.expires * 1000
 
-  // アプリのオリジンへ遷移してから localStorage を書き込む（オリジンに紐づくため）。
-  // useAuthStore は currentUser の有無で isAuthenticated を判定する。
-  await page.evaluate(
-    ({ user, expiresAt }) => {
+  const authState = {
+    user: {
+      id: me.id,
+      email: me.email,
+      fullName: `${me.lastName} ${me.firstName}`,
+      profileImageUrl: me.avatarUrl,
+      systemRole: me.systemRole ?? undefined,
+      timezone: me.timezone ?? undefined,
+    },
+    expiresAt: tokenExpiresAt,
+  }
+  const restoreAuth = ({ user, expiresAt }: typeof authState) => {
       localStorage.setItem('currentUser', JSON.stringify(user))
       localStorage.setItem('tokenExpiresAt', String(expiresAt))
-    },
-    {
-      user: {
-        id: me.id,
-        email: me.email,
-        fullName: `${me.lastName} ${me.firstName}`,
-        profileImageUrl: me.avatarUrl,
-        systemRole: me.systemRole ?? undefined,
-        timezone: me.timezone ?? undefined,
-      },
-      expiresAt: tokenExpiresAt,
-    },
-  )
+  }
+
+  if (options.deferNavigation) {
+    // 重い SSR を避ける実機テストでは、初回 document のアプリコードより先に復元する。
+    await page.addInitScript(restoreAuth, authState)
+  } else {
+    await page.evaluate(restoreAuth, authState)
+  }
 }
 
 export type AuthFixtures = {
