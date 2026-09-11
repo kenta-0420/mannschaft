@@ -49,6 +49,28 @@ public interface BillingPaymentGateway {
     Instant cancelAtPeriodEnd(String subscriptionRef);
 
     /**
+     * 継続課金の Stripe Subscription を期末解約予約する（Billing Center PR6a・AC-39/AC-5）。
+     *
+     * <p>PR6a の operation Saga 経路はこちらを用いる。Stripe の Idempotency-Key は
+     * {@code billing-operation-{operationId}}（{@code BillingContractOperationSagaService
+     * #stripeIdempotencyKeyOf}）であり、既存の {@link #cancelAtPeriodEnd(String)} が使う
+     * {@code billing-cancel-{subscriptionRef}} とは<b>別名前空間</b>である。同一 operation の
+     * 再試行では同じキーになるため Stripe 側で二重に効かない。</p>
+     *
+     * <p><b>未実装（第2隊 試練Aの発注書）</b>: 既定実装は {@link UnsupportedOperationException} を
+     * 投げる。既存呼び出し元（{@code BillingContractService}）の挙動を変えないために default とし、
+     * 第6隊が {@code StripeBillingPaymentGateway} で override する。</p>
+     *
+     * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
+     * @param operationId     {@code billing_contract_operations.id}（冪等キーの単位）
+     * @return 現サイクル終了時刻（{@code current_period_end}・null 可）
+     */
+    default Instant cancelAtPeriodEnd(String subscriptionRef, java.util.UUID operationId) {
+        throw new UnsupportedOperationException(
+                "Billing Center PR6a: 第6隊が実装する（試練Aの発注書）");
+    }
+
+    /**
      * 継続課金の Stripe Subscription を<b>即時解約</b>する（退会 purge 連動・AC-45）。
      *
      * <p>期末解約（{@link #cancelAtPeriodEnd}）と異なり、退会確定（purge）ユーザーへの課金継続を
