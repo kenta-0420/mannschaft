@@ -202,7 +202,20 @@ public enum EntitlementErrorCode implements ErrorCode {
      * <p>PR5 Billing Center（05 §370 の rate limit 表）で追補採番。</p>
      */
     PORTAL_RATE_LIMITED("ENTITLEMENT_038", "支払い管理画面を開く回数が上限に達しました。しばらく待って再度お試しください",
-            Severity.WARN);
+            Severity.WARN),
+
+    /**
+     * 解約／解約撤回が scope ごとの上限（10 回/時）に達した（429・PR6a AC-55 / AC-56）。
+     *
+     * <p>PR6a Billing Center で追補採番。採番時点の {@code origin/main} 上の最大は
+     * {@code ENTITLEMENT_038}（PORTAL_RATE_LIMITED）であり、その次の 039 を用いる。</p>
+     *
+     * <p><b>cancel と撤回は同一バケットを共有する</b>（AC-56）。別バケットにすると
+     * 「解約 → 撤回」の往復で実効的に上限が 2 倍になり、Stripe への変更系呼び出しを
+     * 往復で無制限に打てるため。バケットキーは契約の所属 scope（{@code scopeKind:scopeId}）である。</p>
+     */
+    CANCEL_RATE_LIMITED("ENTITLEMENT_039",
+            "解約・解約取り消しの回数が上限に達しました。しばらく待って再度お試しください", Severity.WARN);
 
     private final String code;
     private final String message;

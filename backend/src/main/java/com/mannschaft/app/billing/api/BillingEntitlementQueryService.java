@@ -1,5 +1,6 @@
 package com.mannschaft.app.billing.api;
 
+import com.mannschaft.app.billing.BillingCancelState;
 import com.mannschaft.app.billing.BillingContractEntity;
 import com.mannschaft.app.billing.BillingContractRepository;
 import com.mannschaft.app.billing.ContractKind;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,27 +62,34 @@ public class BillingEntitlementQueryService {
     private final AccessControlService accessControlService;
     private final Clock clock;
 
+    /** 権利サマリの投影に載せる契約状態（AC-65。PAST_DUE は期末まで利用でき解約もできる・D4）。 */
+    private static final List<ContractStatus> DISPLAYED_CONTRACT_STATUSES =
+            List.of(ContractStatus.ACTIVE, ContractStatus.PAST_DUE);
+
     // ============================================================
     // 権利サマリ（§2.2）
     // ============================================================
 
     /** スコープの権利サマリ（現在の契約と有効機能）を組み立てる。 */
     public EntitlementSummaryResponse getSummary(EntitlementScopeKind scopeKind, Long scopeId) {
+        // PAST_DUE も投影に載せる（支払失敗中でも期末まで利用でき、解約もできる・D4 / AC-65）。
+        // 解約確認画面はこの投影だけを読むため、ここに出ない契約は FE から操作できない。
         List<BillingContractEntity> active = billingContractRepository
-                .findByScopeKindAndScopeIdAndStatusAndDeletedAtIsNull(scopeKind, scopeId, ContractStatus.ACTIVE);
+                .findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
+                        scopeKind, scopeId, DISPLAYED_CONTRACT_STATUSES);
 
         ActiveContract activePlan = null;
+        ContractStatus activePlanStatus = null;
         List<ActiveContract> activeAddons = new ArrayList<>();
         for (BillingContractEntity c : active) {
-            ActiveContract dto = ActiveContract.builder()
-                    .contractId(c.getId().toString())
-                    .planKey(c.getPlanKey())
-                    .featureKey(c.getFeatureKey())
-                    .contractedAt(c.getContractedAt())
-                    .priceJpySnapshot(c.getPriceJpySnapshot())
-                    .build();
+            ActiveContract dto = toActiveContract(c);
             if (c.getContractKind() == ContractKind.PLAN) {
-                activePlan = dto;
+                // ACTIVE と PAST_DUE が同時に並ぶ異常時でも見え方を一意にする（ACTIVE を優先）。
+                if (activePlan == null || (activePlanStatus != ContractStatus.ACTIVE
+                        && c.getStatus() == ContractStatus.ACTIVE)) {
+                    activePlan = dto;
+                    activePlanStatus = c.getStatus();
+                }
             } else {
                 activeAddons.add(dto);
             }
@@ -93,6 +102,41 @@ public class BillingEntitlementQueryService {
                 .activeAddons(activeAddons)
                 .entitledFeatures(buildEntitledFeatures(scopeKind, scopeId))
                 .build();
+    }
+
+    /**
+     * 契約 1 件を表示用の投影へ落とす（PR6a AC-60 / AC-63 / AC-65）。
+     *
+     * <p><b>Stripe を一度も呼ばない</b>（AC-63。正本 05:369）。{@code canCancel} / {@code canResume} は
+     * DB の {@code status} / {@code cancelled_at} / {@code current_period_end} と注入 {@link Clock} だけから
+     * {@link BillingCancelState} が導出する。解約 API の応答と同じ関数を使うので、両者が食い違わない。</p>
+     */
+    private ActiveContract toActiveContract(BillingContractEntity c) {
+        var now = LocalDateTime.now(clock);
+        var endAt = c.getCurrentPeriodEnd();
+        boolean scheduled = BillingCancelState.scheduled(c.getStatus(), c.getCancelledAt());
+        return ActiveContract.builder()
+                .contractId(c.getId().toString())
+                .planKey(c.getPlanKey())
+                .featureKey(c.getFeatureKey())
+                .contractedAt(c.getContractedAt())
+                .priceJpySnapshot(c.getPriceJpySnapshot())
+                .status(c.getStatus() == null ? null : c.getStatus().name())
+                .currentPeriodEnd(toOffset(endAt))
+                .canCancel(BillingCancelState.canCancel(c.getStatus(), c.getCancelledAt()))
+                .canResume(BillingCancelState.canResume(c.getStatus(), c.getCancelledAt(), endAt, now))
+                .cancel(scheduled
+                        ? ActiveContract.ScheduledCancel.builder()
+                                .scheduledAt(toOffset(c.getCancelledAt()))
+                                .endAt(toOffset(endAt))
+                                .build()
+                        : null)
+                .build();
+    }
+
+    /** DB の壁時計値を、注入 {@link Clock} のゾーンでオフセット付きへ変換する唯一の変換点。 */
+    private OffsetDateTime toOffset(LocalDateTime value) {
+        return value == null ? null : value.atZone(clock.getZone()).toOffsetDateTime();
     }
 
     /**

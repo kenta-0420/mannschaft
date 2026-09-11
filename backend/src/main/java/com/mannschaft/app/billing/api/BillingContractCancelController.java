@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.billing.EntitlementErrorCode;
+import com.mannschaft.app.billing.api.BillingContractCancelApplicationService.CancelAuthorization;
 import com.mannschaft.app.billing.api.dto.BillingCancelRequest;
 import com.mannschaft.app.billing.api.dto.BillingContractCancelResponse;
 import com.mannschaft.app.common.ApiResponse;
@@ -55,9 +56,12 @@ import java.util.function.Supplier;
  * 「actor / HTTP method / 具体 request path / 本文 JSON」の連結の SHA-256 であり、DELETE も本文
  * {@code {"version":N}} を受けることで POST と同じ算式を共有する。</p>
  *
- * <p><b>認可を冪等台帳より先に行う</b>: 権限の無い要求で台帳に行を作ると、以後その actor / key の
- * 組み合わせが塞がれる（PR5 の実在欠陥）。本 controller は認可を含む本処理を
- * {@code begin} の後に置きつつ、application service の入口で最初に認可を判定する。</p>
+ * <p><b>認可・回数制限を冪等台帳より先に行う</b>（AC-54 / AC-55）: 権限の無い要求で台帳に行を作ると、
+ * 以後その actor / key の組み合わせが塞がれ、他 scope へ 403 ではなく 409 が返る<b>存在オラクル</b>に
+ * なる（PR5 の {@code BillingCustomerPortalController} の実在欠陥）。本 controller は
+ * {@code authorizeAndMeter} を先に呼び、その戻り値（{@code CancelAuthorization}）を
+ * {@code idempotent} の必須引数にすることで、順序を人手の規律ではなく<b>型</b>で担保する。
+ * 403 / 404 の応答では {@code begin} / {@code complete} / {@code fail} のいずれも呼ばれない。</p>
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -72,6 +76,7 @@ public class BillingContractCancelController {
     private static final String DATA_FIELD = "data";
 
     private final BillingContractCancelApplicationService cancelApplicationService;
+    private final BillingContractCancelRateLimiter cancelRateLimiter;
     private final BillingDurableIdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
 
@@ -94,7 +99,8 @@ public class BillingContractCancelController {
             @Valid @RequestBody BillingCancelRequest request,
             @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 36) String idempotencyKey) {
         Long actorId = SecurityUtils.getCurrentUserId();
-        return idempotent(actorId, METHOD_CANCEL, contractId, idempotencyKey, request,
+        CancelAuthorization authorization = authorizeAndMeter(actorId, contractId);
+        return idempotent(authorization, actorId, METHOD_CANCEL, contractId, idempotencyKey, request,
                 () -> cancelApplicationService.cancel(actorId, contractId, request.version()));
     }
 
@@ -117,7 +123,8 @@ public class BillingContractCancelController {
             @Valid @RequestBody BillingCancelRequest request,
             @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 36) String idempotencyKey) {
         Long actorId = SecurityUtils.getCurrentUserId();
-        return idempotent(actorId, METHOD_RESUME, contractId, idempotencyKey, request,
+        CancelAuthorization authorization = authorizeAndMeter(actorId, contractId);
+        return idempotent(authorization, actorId, METHOD_RESUME, contractId, idempotencyKey, request,
                 () -> cancelApplicationService.resume(actorId, contractId, request.version()));
     }
 
@@ -125,10 +132,30 @@ public class BillingContractCancelController {
     // 耐久冪等性（BillingCheckoutController と同一の流儀）
     // ============================================================
 
+    /**
+     * 認可（AC-51〜53）と回数制限（AC-55 / AC-56）を、冪等台帳へ触れる<b>前</b>に済ませる。
+     *
+     * <p>戻り値の {@link CancelAuthorization} は {@link #idempotent} の第1引数として要求される。
+     * したがって「認可を飛ばして冪等処理へ入る」コードはコンパイル時点で書けない。これが
+     * AC-54（PR5 の実在欠陥の回帰防止）を構造で担保する仕掛けである。</p>
+     */
+    private CancelAuthorization authorizeAndMeter(Long actorId, UUID contractId) {
+        CancelAuthorization authorization = cancelApplicationService.authorize(actorId, contractId);
+        if (!cancelRateLimiter.tryConsume(authorization.scopeKind(), authorization.scopeId())) {
+            throw new BusinessException(EntitlementErrorCode.CANCEL_RATE_LIMITED);
+        }
+        return authorization;
+    }
+
     private ResponseEntity<ApiResponse<BillingContractCancelResponse>> idempotent(
+            CancelAuthorization authorization,
             Long actorId, String method, UUID contractId, String idempotencyKey,
             BillingCancelRequest request, Supplier<BillingContractCancelResponse> action) {
 
+        // 認可済みであることの証。null で呼べばここで落ちる（順序を人手の規律に委ねない）。
+        if (authorization == null) {
+            throw new IllegalStateException("authorization must be resolved before touching the idempotency ledger");
+        }
         String path = String.format(CANCEL_PATH_FORMAT, contractId);
         String requestHash = requestHash(actorId, method, path, request);
         String leaseOwner = UUID.randomUUID().toString();

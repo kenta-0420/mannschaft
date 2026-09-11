@@ -375,18 +375,15 @@ public class BillingContractCancelService {
     // ================================================================
 
     private CancelView toView(BillingContractEntity contract, LocalDateTime endAt) {
-        boolean operable = contract.getStatus() == ContractStatus.ACTIVE
-                || contract.getStatus() == ContractStatus.PAST_DUE;
-        // 既に CANCELLED / EXPIRED へ確定した契約の cancelled_at は「解約済みの記録」であって
-        // 「これから期末に解約される予約」ではない。予約として見せるのは操作可能な状態のときだけ。
-        boolean scheduled = operable && contract.getCancelledAt() != null;
-        boolean windowOpen = endAt != null && endAt.isAfter(LocalDateTime.now(clock));
+        // 導出は BillingCancelState に一点集約する（表示投影と同じ判定を二度書かない・AC-60/63）。
+        boolean scheduled = BillingCancelState.scheduled(contract.getStatus(), contract.getCancelledAt());
         return new CancelView(
                 contract.getId(), contract.getStatus(),
                 toOffset(scheduled ? contract.getCancelledAt() : null), toOffset(endAt),
                 contract.getVersion(),
-                operable && !scheduled,
-                operable && scheduled && windowOpen);
+                BillingCancelState.canCancel(contract.getStatus(), contract.getCancelledAt()),
+                BillingCancelState.canResume(contract.getStatus(), contract.getCancelledAt(),
+                        endAt, LocalDateTime.now(clock)));
     }
 
     /**

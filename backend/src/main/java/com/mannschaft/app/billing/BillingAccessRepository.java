@@ -86,6 +86,33 @@ public class BillingAccessRepository {
                AND u.status = 'ACTIVE'
             """;
 
+    /**
+     * 当該 TEAM に何らかのロールを持つ（＝そのスコープの構成員である）か。
+     * ロール名は問わない。403（権限不足）と 404（存在秘匿）を撃ち分けるためだけに使う。
+     */
+    private static final String ANY_ROLE_TEAM_SQL = """
+            SELECT COUNT(*)
+              FROM user_roles ur
+              JOIN users u ON u.id = ur.user_id
+             WHERE ur.user_id = ?
+               AND ur.team_id = ?
+               AND ur.organization_id IS NULL
+               AND u.deleted_at IS NULL
+               AND u.status = 'ACTIVE'
+            """;
+
+    /** {@link #ANY_ROLE_TEAM_SQL} の ORG 版。 */
+    private static final String ANY_ROLE_ORG_SQL = """
+            SELECT COUNT(*)
+              FROM user_roles ur
+              JOIN users u ON u.id = ur.user_id
+             WHERE ur.user_id = ?
+               AND ur.organization_id = ?
+               AND ur.team_id IS NULL
+               AND u.deleted_at IS NULL
+               AND u.status = 'ACTIVE'
+            """;
+
     private static final String LOCK_TEAM_PERMISSION_GROUPS_SQL = """
             SELECT pg.id
               FROM user_permission_groups upg
@@ -134,6 +161,31 @@ public class BillingAccessRepository {
         return switch (scopeKind) {
             case TEAM -> count(DEPUTY_TEAM_PERMISSION_SQL, userId, scopeId, permissionName) > 0;
             case ORG -> count(DEPUTY_ORG_PERMISSION_SQL, userId, scopeId, permissionName) > 0;
+            case USER -> false;
+        };
+    }
+
+    /**
+     * 操作者が当該 scope に何らかのロールを持つ構成員かどうか（ロール名は問わない）。
+     *
+     * <p><b>用途は 403 と 404 の撃ち分けだけ</b>である（PR6a AC-51 / AC-52）。スコープの外の
+     * 利用者には契約 ID の存在を悟らせない（404 で畳む）が、スコープの内側にいて権限だけが
+     * 足りない利用者へ 404 を返すと「無い」と誤解させるため 403 を返す。許可判定そのものは
+     * {@link #existsAdmin} / {@link #existsDeputyPermissionGroup} が行い、本メソッドは
+     * <b>許可を一切与えない</b>。
+     *
+     * @param userId    操作者
+     * @param scopeKind scope 種別（USER は呼び出し元が本人判定するため常に false）
+     * @param scopeId   scope ID
+     * @return 当該 scope の構成員なら true
+     */
+    public boolean existsScopeRole(Long userId, EntitlementScopeKind scopeKind, Long scopeId) {
+        if (userId == null || scopeKind == null || scopeId == null) {
+            return false;
+        }
+        return switch (scopeKind) {
+            case TEAM -> count(ANY_ROLE_TEAM_SQL, userId, scopeId) > 0;
+            case ORG -> count(ANY_ROLE_ORG_SQL, userId, scopeId) > 0;
             case USER -> false;
         };
     }

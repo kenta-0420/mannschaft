@@ -6,6 +6,7 @@ import com.mannschaft.app.billing.BillingContractEntity;
 import com.mannschaft.app.billing.BillingContractRepository;
 import com.mannschaft.app.billing.BillingContractService;
 import com.mannschaft.app.billing.EntitlementErrorCode;
+import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.api.dto.BillingContractCancelResponse;
 import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,34 @@ public class BillingContractCancelApplicationService {
     private final BillingContractCancelService billingContractCancelService;
     private final BillingContractService billingContractService;
     private final BillingAccessGuard billingAccessGuard;
+
+    /**
+     * 認可だけを先に済ませ、契約の所属 scope を返す（AC-54）。
+     *
+     * <p><b>冪等台帳より前に呼ばれることが本メソッドの存在理由</b>である。PR5 の
+     * {@code BillingCustomerPortalController} は認可より先に {@code begin} を呼んでおり、
+     * 権限の無い要求が台帳に行を作れたため、以後その actor / key が 409 を返す
+     * <b>存在オラクル</b>になっていた。controller はこのメソッドの戻り値を
+     * 受け取らないと冪等処理へ進めない形にしてある。</p>
+     *
+     * @param actorId    操作者
+     * @param contractId 対象契約
+     * @return 契約の所属 scope（レート制限のバケットキーにもなる・AC-56）
+     * @throws BusinessException scope 外なら 404、scope 内で権限不足なら 403
+     */
+    public CancelAuthorization authorize(long actorId, UUID contractId) {
+        BillingContractEntity contract = loadManageable(actorId, contractId);
+        return new CancelAuthorization(contract.getScopeKind(), contract.getScopeId());
+    }
+
+    /**
+     * 認可が通ったことの証（controller が冪等台帳へ進むための通行手形）。
+     *
+     * @param scopeKind 契約の scope 種別
+     * @param scopeId   契約の scope ID
+     */
+    public record CancelAuthorization(EntitlementScopeKind scopeKind, Long scopeId) {
+    }
 
     /**
      * 解約（期末解約の予約。無償契約は即時失効）。
@@ -75,14 +104,32 @@ public class BillingContractCancelApplicationService {
     // 内部
     // ============================================================
 
-    /** 契約を読み、操作者が当該スコープの課金を管理できることを確かめる（できなければ 404 秘匿・AC-51）。 */
+    /** 契約を読み、操作者が当該スコープの課金を管理できることを確かめる（AC-51〜53）。 */
     private BillingContractEntity loadManageable(long actorId, UUID contractId) {
         BillingContractEntity contract = reload(contractId);
-        if (!billingAccessGuard.canManageByActorId(
-                actorId, contract.getScopeKind(), contract.getScopeId())) {
-            throw new BusinessException(EntitlementErrorCode.CONTRACT_NOT_FOUND);
-        }
+        requireManageable(actorId, contract);
         return contract;
+    }
+
+    /**
+     * 認可の唯一の判定本体。許可されていなければ 404（scope 外）か 403（scope 内で権限不足）を投げる。
+     *
+     * <ul>
+     *   <li><b>404</b>: 操作者が当該 scope の構成員ですらない。契約 ID の存在を悟らせない
+     *       （PR5 で 409 を返して IDOR になった前科・AC-51）。存在しない契約 ID と同じ応答になる。</li>
+     *   <li><b>403</b>: 構成員ではあるが課金を管理できない（MEMBER ロール・permission group 未付与の
+     *       DEPUTY_ADMIN・AC-52 / AC-53）。存在は既に相手に見えているので秘匿の必要がない。</li>
+     * </ul>
+     */
+    private void requireManageable(long actorId, BillingContractEntity contract) {
+        EntitlementScopeKind scopeKind = contract.getScopeKind();
+        Long scopeId = contract.getScopeId();
+        if (billingAccessGuard.canManageByActorId(actorId, scopeKind, scopeId)) {
+            return;
+        }
+        throw billingAccessGuard.isScopeMember(actorId, scopeKind, scopeId)
+                ? new BusinessException(EntitlementErrorCode.SCOPE_FORBIDDEN)
+                : new BusinessException(EntitlementErrorCode.CONTRACT_NOT_FOUND);
     }
 
     private BillingContractEntity reload(UUID contractId) {
