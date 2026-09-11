@@ -142,10 +142,10 @@ public class ShiftScheduleService {
      */
     public ShiftScheduleResponse getSchedule(Long id, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
-        // 二層: 認可（誰が）の 403 が先、可視性（何が）の 404 が後。順序を逆にすると
-        // 別チーム ADMIN が 403/404 の差で未公開シフト表の存在を観測できる（存在オラクル）。
-        checkTeamReadAccess(entity.getTeamId(), userId);
+        // 未公開は認可結果より先に 404 へ正規化する。認可を先にすると、非メンバーが
+        // 実在 ID の 403 と非存在 ID の 404 を比較でき、未公開シフト表の存在オラクルになる。
         checkScheduleVisible(entity, userId);
+        checkTeamReadAccess(entity.getTeamId(), userId);
         return shiftMapper.toScheduleResponse(entity);
     }
 
