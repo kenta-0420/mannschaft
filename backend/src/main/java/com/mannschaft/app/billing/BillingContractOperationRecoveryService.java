@@ -252,10 +252,15 @@ public class BillingContractOperationRecoveryService {
      *
      * <p>判定は注入された {@link Clock} 基準で行う。</p>
      *
+     * <p><b>public にしない</b>のは、番人 {@code ServiceApiEntityBoundaryArchTest}（D-1 API 境界）が
+     * 「{@code @Service} の public メソッドは引数・戻り値に Entity を公開してはならない」を課しており、
+     * 本メソッドは判定式そのものを測るために Entity を受け取るためである。呼び出し元は同一ドメイン
+     * （billing パッケージ）内に限る。</p>
+     *
      * @param operation 対象 operation
      * @return しきい値を超えて放置されているなら {@code true}
      */
-    public boolean isStale(BillingContractOperationEntity operation) {
+    boolean isStale(BillingContractOperationEntity operation) {
         if (operation == null || operation.getUpdatedAt() == null
                 || !SCAN_STATUSES.contains(operation.getStatus())) {
             // terminal も検疫も走査対象ではない（AC-81）。
