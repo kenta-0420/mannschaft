@@ -182,6 +182,25 @@ public interface BillingPaymentGateway {
     boolean hasUsablePaymentMethod(Long userId);
 
     /**
+     * Stripe Subscription の metadata から operationId を読み出す（Billing Center PR6a・AC-77/AC-78）。
+     *
+     * <p>停止窓の回収（D8）は「Stripe 側に自分の operation の痕跡があるか」で
+     * 停止窓(a)（痕跡なし＝Stripe をまだ呼んでいない）と (b)/(c)（痕跡あり＝呼んだ）を区別する。
+     * 痕跡は {@code metadata.billingOperationId}（{@link BillingContractOperationRecoveryService
+     * #STRIPE_METADATA_OPERATION_ID_KEY}）である。</p>
+     *
+     * <p><b>未実装（第4b隊 試練Dの発注書）</b>: 既定実装は {@link UnsupportedOperationException} を
+     * 投げる。第10隊が {@link StripeBillingPaymentGateway} で override する。</p>
+     *
+     * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
+     * @return metadata に載っていた operationId（無ければ空）
+     */
+    default java.util.Optional<UUID> findOperationIdOnSubscription(String subscriptionRef) {
+        throw new UnsupportedOperationException(
+                "Billing Center PR6a: 第10隊が実装する（試練Dの発注書）");
+    }
+
+    /**
      * Checkout Session 情報（sessionId / url）。
      */
     record CheckoutSessionInfo(String sessionId, String url) {}
