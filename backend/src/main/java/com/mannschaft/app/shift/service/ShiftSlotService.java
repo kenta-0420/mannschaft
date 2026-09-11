@@ -103,6 +103,9 @@ public class ShiftSlotService {
     @Transactional
     public ShiftSlotResponse createSlot(Long scheduleId, CreateShiftSlotRequest req, Long userId) {
         checkScheduleAdminAccess(scheduleId, userId);
+        // 枠時刻の検証（設計 F03.5 §11.2.5・単一の検証点）。
+        ShiftSlotTimeValidator.validateTimeRange(
+                req.getStartTime(), req.getEndTime(), req.endsNextDayOrFalse());
         ShiftSlotEntity entity = ShiftSlotEntity.builder()
                 .scheduleId(scheduleId)
                 .slotDate(req.getSlotDate())
@@ -111,6 +114,7 @@ public class ShiftSlotService {
                 .positionId(req.getPositionId())
                 .requiredCount(req.getRequiredCount() != null ? req.getRequiredCount() : 1)
                 .note(req.getNote())
+                .endsNextDay(req.endsNextDayOrFalse())
                 .build();
 
         entity = slotRepository.save(entity);
@@ -129,6 +133,9 @@ public class ShiftSlotService {
     @Transactional
     public List<ShiftSlotResponse> bulkCreateSlots(Long scheduleId, BulkCreateShiftSlotRequest req, Long userId) {
         checkScheduleAdminAccess(scheduleId, userId);
+        // 一括作成も単体作成と同じ検証点を通す（1 件でも不正ならトランザクションごと拒否）。
+        req.getSlots().forEach(slotReq -> ShiftSlotTimeValidator.validateTimeRange(
+                slotReq.getStartTime(), slotReq.getEndTime(), slotReq.endsNextDayOrFalse()));
         List<ShiftSlotEntity> entities = req.getSlots().stream()
                 .map(slotReq -> (ShiftSlotEntity) ShiftSlotEntity.builder()
                         .scheduleId(scheduleId)
@@ -138,6 +145,7 @@ public class ShiftSlotService {
                         .positionId(slotReq.getPositionId())
                         .requiredCount(slotReq.getRequiredCount() != null ? slotReq.getRequiredCount() : 1)
                         .note(slotReq.getNote())
+                        .endsNextDay(slotReq.endsNextDayOrFalse())
                         .build())
                 .toList();
 
@@ -159,6 +167,16 @@ public class ShiftSlotService {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
         checkScheduleAdminAccess(entity.getScheduleId(), userId);
 
+        // 枠時刻の検証（設計 F03.5 §11.2.5）。部分更新のため、リクエストで指定されなかった側は
+        // 既存値と合成して検証する。時刻・日跨ぎのいずれも指定されていない更新（note のみ等）は
+        // 検証しない — 既存の不正時刻行を理由に拒否しないための後方互換（§11.2.5「書き込み時のみ検証」）。
+        if (req.getStartTime() != null || req.getEndTime() != null || req.getEndsNextDay() != null) {
+            ShiftSlotTimeValidator.validateTimeRange(
+                    req.getStartTime() != null ? req.getStartTime() : entity.getStartTime(),
+                    req.getEndTime() != null ? req.getEndTime() : entity.getEndTime(),
+                    req.getEndsNextDay() != null ? req.getEndsNextDay() : entity.isEndsNextDay());
+        }
+
         // 履歴記録のため更新前の割当を控える（CMP-260908-2117）。
         List<Long> before = deserializeUserIds(entity.getAssignedUserIds());
 
@@ -173,7 +191,8 @@ public class ShiftSlotService {
                 req.getPositionId(),
                 req.getRequiredCount(),
                 req.getAssignedUserIds() != null ? serializeUserIds(req.getAssignedUserIds()) : null,
-                req.getNote()
+                req.getNote(),
+                req.getEndsNextDay()
         );
 
         slotRepository.save(entity);
@@ -375,7 +394,8 @@ public class ShiftSlotService {
                 .id(entity.getId())
                 .scheduleId(entity.getScheduleId())
                 .time(new ShiftSlotResponse.ShiftSlotTimeDto(
-                        entity.getSlotDate(), entity.getStartTime(), entity.getEndTime()))
+                        entity.getSlotDate(), entity.getStartTime(), entity.getEndTime(),
+                        entity.isEndsNextDay()))
                 .position(new ShiftSlotResponse.ShiftSlotPositionDto(
                         entity.getPositionId(), positionName, entity.getRequiredCount()))
                 .assignedUserIds(deserializeUserIds(entity.getAssignedUserIds()))
