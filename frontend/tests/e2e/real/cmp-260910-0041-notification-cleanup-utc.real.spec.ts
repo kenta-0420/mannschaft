@@ -60,7 +60,7 @@ test.describe('CMP-260910-0041: 通知保持期間UTC基準の実機導線', () 
   test.setTimeout(180_000)
   let notificationsSeeded = false
 
-  test.afterEach(async (_fixtures, testInfo) => {
+  test.afterEach(async ({ page: _page }, testInfo) => {
     if (!notificationsSeeded) return
 
     try {
