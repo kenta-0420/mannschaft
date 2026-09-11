@@ -41,11 +41,15 @@ export function useTeamMembers() {
    * 時給設定のように「全員が漏れなく対象に入る」ことが要件の画面ではこれが直接の欠陥になる
    * （設定されなかったメンバーはシフト公開のたびに予算消化がスキップされ続ける）。
    *
+   * なお `pageSize` の既定値 100 は BE の `spring.data.web.pageable.max-page-size`（= 100）に
+   * 合わせてある。これを超える値を送っても BE 側で 100 に丸められるだけで、
+   * 「200 件ずつ取っているつもりが実際は 100 件ずつ」という取り違えを生むため、実値に揃える。
+   *
    * @param teamSlug チームの slug
-   * @param pageSize 1 ページあたりの取得件数（既定 200）
+   * @param pageSize 1 ページあたりの取得件数（既定 100 = BE の上限）
    * @returns 全ページを連結したメンバー一覧
    */
-  async function getAllMembers(teamSlug: string, pageSize = 200): Promise<MemberResponse[]> {
+  async function getAllMembers(teamSlug: string, pageSize = 100): Promise<MemberResponse[]> {
     const first = await getMembers(teamSlug, { page: 0, size: pageSize })
     const totalPages = first.meta?.totalPages ?? 1
     if (totalPages <= 1) return first.data

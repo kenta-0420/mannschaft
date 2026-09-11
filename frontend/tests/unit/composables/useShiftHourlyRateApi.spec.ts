@@ -1,3 +1,8 @@
+// @vitest-environment node
+// このテストは純粋な関数と、モックした useApi しか触らないため Nuxt ランタイムを必要としない。
+// 既定の environment: 'nuxt' は 1 ファイルごとに Nuxt 環境を構築するため、
+// 同時に重いビルドが走っている環境では setup フックが 120 秒でタイムアウトし
+// テスト本体が 1 件も実行されない。不要な環境を要求しないことで確実に実行させる。
 import { describe, it, expect, vi } from 'vitest'
 
 /**

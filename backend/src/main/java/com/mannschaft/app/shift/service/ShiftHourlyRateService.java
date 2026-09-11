@@ -78,6 +78,12 @@ public class ShiftHourlyRateService {
      * <b>冪等</b>であり、同じ日付への再指定は新しい履歴ではなく訂正である。よって既存行があれば
      * 金額を更新する。別の日付での登録は従来どおり追加であり、<b>過去の履歴は消えない</b>。</p>
      *
+     * <p>判定は<b>アプリ層で分岐せず、一意制約に衝突解決させる単一文</b>で行う
+     * （{@code ON DUPLICATE KEY UPDATE}）。「既存を探して無ければ INSERT」だと読みと書きの間に
+     * 窓が開き、同じキーへの初回リクエストが並行したときに両方が「既存なし」を見て
+     * 両方 INSERT へ進み、片方が制約違反で落ちる。二重送信やリトライで普通に起きるため、
+     * アプリ層の分岐では冪等性を保証できない。</p>
+     *
      * @param teamId        チームID
      * @param req           設定リクエスト
      * @param currentUserId 操作ユーザーID（認可判定に使用）
@@ -87,27 +93,21 @@ public class ShiftHourlyRateService {
     public HourlyRateResponse createHourlyRate(Long teamId, CreateHourlyRateRequest req, Long currentUserId) {
         checkHourlyRateAccess(currentUserId, req.getUserId(), teamId);
 
-        Optional<ShiftHourlyRateEntity> existing = hourlyRateRepository
-                .findByUserIdAndTeamIdAndEffectiveFrom(req.getUserId(), teamId, req.getEffectiveFrom());
-        if (existing.isPresent()) {
-            ShiftHourlyRateEntity target = existing.get();
-            target.changeRate(req.getHourlyRate());
-            ShiftHourlyRateEntity saved = hourlyRateRepository.save(target);
-            log.info("時給設定（同一適用開始日のため訂正）: id={}, userId={}, teamId={}, rate={}, effectiveFrom={}",
-                    saved.getId(), req.getUserId(), teamId, req.getHourlyRate(), req.getEffectiveFrom());
-            return shiftMapper.toHourlyRateResponse(saved);
-        }
+        // 一意制約 uq_shr_user_team_from に衝突解決させる単一文（詳細は upsertHourlyRate の Javadoc）。
+        // SELECT してから INSERT/UPDATE を分岐すると読みと書きの間に窓が開き、
+        // 同じキーへの初回リクエストが並行したときに片方が制約違反で落ちる。
+        hourlyRateRepository.upsertHourlyRate(
+                req.getUserId(), teamId, req.getHourlyRate(), req.getEffectiveFrom());
 
-        ShiftHourlyRateEntity entity = ShiftHourlyRateEntity.builder()
-                .userId(req.getUserId())
-                .teamId(teamId)
-                .hourlyRate(req.getHourlyRate())
-                .effectiveFrom(req.getEffectiveFrom())
-                .build();
+        ShiftHourlyRateEntity saved = hourlyRateRepository
+                .findByUserIdAndTeamIdAndEffectiveFrom(req.getUserId(), teamId, req.getEffectiveFrom())
+                .orElseThrow(() -> new IllegalStateException(
+                        "時給の upsert 直後に対象行を読み戻せない: userId=" + req.getUserId()
+                                + ", teamId=" + teamId + ", effectiveFrom=" + req.getEffectiveFrom()));
 
-        entity = hourlyRateRepository.save(entity);
-        log.info("時給設定: id={}, userId={}, teamId={}, rate={}", entity.getId(), req.getUserId(), teamId, req.getHourlyRate());
-        return shiftMapper.toHourlyRateResponse(entity);
+        log.info("時給設定: id={}, userId={}, teamId={}, rate={}, effectiveFrom={}",
+                saved.getId(), req.getUserId(), teamId, req.getHourlyRate(), req.getEffectiveFrom());
+        return shiftMapper.toHourlyRateResponse(saved);
     }
 
     /**

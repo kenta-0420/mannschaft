@@ -344,6 +344,20 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query(value = "SELECT u.id, u.display_name AS displayName, u.avatar_url AS avatarUrl FROM users u WHERE u.id = :id AND u.deleted_at IS NULL", nativeQuery = true)
     Optional<MemberSummary> findMemberSummaryById(@Param("id") Long id);
 
+    /**
+     * メンバー一覧用の最小プロジェクションを ID 一括で取得する（CMP-260910-1555）。
+     *
+     * <p>{@link #findMemberSummaryById} をメンバー数ぶんループすると 1 ページの表示に
+     * 人数ぶんのクエリが出る（N+1）。一覧表示は常に複数ユーザーをまとめて扱うので、
+     * 1 クエリで引けるようにする。</p>
+     *
+     * @param ids 対象ユーザーID（空リストを渡してはならない。呼び出し側で早期 return すること）
+     * @return 該当ユーザーの最小プロジェクション（論理削除済みは含まれない）
+     */
+    @Query(value = "SELECT u.id, u.display_name AS displayName, u.avatar_url AS avatarUrl "
+            + "FROM users u WHERE u.id IN (:ids) AND u.deleted_at IS NULL", nativeQuery = true)
+    List<MemberSummary> findMemberSummariesByIds(@Param("ids") List<Long> ids);
+
     // === 広告ターゲティング セグメント検索クエリ（F09.17 AdSegmentEvaluator Phase B）===
 
     /**

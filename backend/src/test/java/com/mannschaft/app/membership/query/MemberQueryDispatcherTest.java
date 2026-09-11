@@ -185,4 +185,111 @@ class MemberQueryDispatcherTest {
     private static <T> T eq(T value) {
         return org.mockito.ArgumentMatchers.eq(value);
     }
+
+    // ========================================
+    // CMP-260910-1555: ページ内だけ実体化する経路
+    // ========================================
+
+    /**
+     * 是正前は {@code TeamService#getMembers} が {@code queryMembers}（常に全員を実体化し、
+     * ユーザー 1 人ごとに users を引く N+1）を呼んでからメモリ上で切り出していたため、
+     * 1 ページ取るたびに全員ぶんの処理が走り、全ページを取ると総処理量が N^2/ページサイズになった。
+     * {@code queryMembersPage} はページ内のぶんだけ実体化することでこれを O(N) に戻す。
+     */
+    @org.junit.jupiter.api.Nested
+    @DisplayName("queryMembersPage（ページ内のみ実体化）")
+    class QueryMembersPage {
+
+        private void givenTeamWithMembers(int memberCount) {
+            List<MembershipEntity> memberships = new java.util.ArrayList<>();
+            for (int i = 1; i <= memberCount; i++) {
+                memberships.add(MembershipEntity.builder()
+                        .userId((long) i).scopeType(ScopeType.TEAM).scopeId(100L)
+                        .roleKind(RoleKind.MEMBER).joinedAt(LocalDateTime.now()).build());
+            }
+            given(userRoleRepository.findByTeamId(eq(100L), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of()));
+            given(membershipRepository.findByScopeAndActive(eq(ScopeType.TEAM), eq(100L), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(memberships));
+        }
+
+        @Test
+        @DisplayName("users の実体化はページ内の人数ぶんだけ・1 クエリで行う（全員を引かない）")
+        void ページ内だけ実体化する() {
+            givenTeamWithMembers(250);
+            given(userRepository.findMemberSummariesByIds(any())).willReturn(List.of());
+
+            Page<MemberDto> page = dispatcher.queryMembersPage(
+                    100L, ScopeType.TEAM, null, Pageable.ofSize(100).withPage(1));
+
+            assertThat(page.getContent()).hasSize(100);
+            assertThat(page.getTotalElements()).isEqualTo(250);
+
+            // 実体化は 1 クエリ、しかも渡す ID は当該ページの 100 件だけ
+            org.mockito.ArgumentCaptor<List<Long>> captor =
+                    org.mockito.ArgumentCaptor.forClass(List.class);
+            org.mockito.Mockito.verify(userRepository).findMemberSummariesByIds(captor.capture());
+            assertThat(captor.getValue()).hasSize(100);
+            assertThat(captor.getValue().get(0)).isEqualTo(101L);
+            assertThat(captor.getValue().get(99)).isEqualTo(200L);
+
+            // 是正前の N+1 経路（1 人ずつ users を引く）は使わない
+            org.mockito.Mockito.verify(userRepository, org.mockito.Mockito.never())
+                    .findMemberSummaryById(org.mockito.ArgumentMatchers.anyLong());
+        }
+
+        @Test
+        @DisplayName("最終ページは端数だけ返し、総件数は絞り込み後の全件を示す")
+        void 最終ページの端数() {
+            givenTeamWithMembers(250);
+            given(userRepository.findMemberSummariesByIds(any())).willReturn(List.of());
+
+            Page<MemberDto> page = dispatcher.queryMembersPage(
+                    100L, ScopeType.TEAM, null, Pageable.ofSize(100).withPage(2));
+
+            assertThat(page.getContent()).hasSize(50);
+            assertThat(page.getTotalElements()).isEqualTo(250);
+        }
+
+        @Test
+        @DisplayName("範囲外のページは空を返す（例外にしない）")
+        void 範囲外ページは空() {
+            givenTeamWithMembers(10);
+
+            Page<MemberDto> page = dispatcher.queryMembersPage(
+                    100L, ScopeType.TEAM, null, Pageable.ofSize(100).withPage(5));
+
+            assertThat(page.getContent()).isEmpty();
+            assertThat(page.getTotalElements()).isEqualTo(10);
+            // 空ページでは実体化クエリ自体を投げない
+            org.mockito.Mockito.verify(userRepository, org.mockito.Mockito.never())
+                    .findMemberSummariesByIds(any());
+        }
+
+        @Test
+        @DisplayName("集約結果・並び順は queryMembers と一致する（ページングの意味論を変えていない）")
+        void 全件ページは従来と一致する() {
+            RoleEntity admin = role(2L, "ADMIN");
+            given(roleRepository.findById(2L)).willReturn(Optional.of(admin));
+            UserRoleEntity ur = UserRoleEntity.builder()
+                    .userId(99L).teamId(100L).roleId(2L).build();
+            given(userRoleRepository.findByTeamId(eq(100L), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(ur)));
+            MembershipEntity m = MembershipEntity.builder()
+                    .userId(99L).scopeType(ScopeType.TEAM).scopeId(100L)
+                    .roleKind(RoleKind.MEMBER).joinedAt(LocalDateTime.now()).build();
+            given(membershipRepository.findByScopeAndActive(eq(ScopeType.TEAM), eq(100L), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(m)));
+            given(userRepository.findMemberSummariesByIds(any())).willReturn(List.of());
+
+            Page<MemberDto> page = dispatcher.queryMembersPage(
+                    100L, ScopeType.TEAM, null, Pageable.unpaged());
+
+            // 同一 user の ADMIN(user_roles) と MEMBER(memberships) は 1 行に畳まれ ADMIN が勝つ
+            assertThat(page.getContent()).hasSize(1);
+            assertThat(page.getContent().get(0).userId()).isEqualTo(99L);
+            assertThat(page.getContent().get(0).roleName()).isEqualTo("ADMIN");
+            assertThat(page.getTotalElements()).isEqualTo(1);
+        }
+    }
 }

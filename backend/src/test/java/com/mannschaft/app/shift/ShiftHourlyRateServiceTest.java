@@ -154,11 +154,15 @@ class ShiftHourlyRateServiceTest {
         @DisplayName("時給設定_正常_レスポンス返却")
         void 時給設定_正常_レスポンス返却() {
             // Given
+            // CMP-260910-1555: 書き込みは JPA の save ではなく、一意制約に衝突解決させる
+            // 原子的な upsert 1 文に変わった（並行時に片方が制約違反で落ちるのを防ぐため）。
+            LocalDate effectiveFrom = LocalDate.of(2026, 5, 1);
             CreateHourlyRateRequest req = new CreateHourlyRateRequest(
-                    USER_ID, new BigDecimal("1500.00"), LocalDate.of(2026, 5, 1));
+                    USER_ID, new BigDecimal("1500.00"), effectiveFrom);
             ShiftHourlyRateEntity savedEntity = createRateEntity();
             HourlyRateResponse response = createRateResponse();
-            given(hourlyRateRepository.save(any(ShiftHourlyRateEntity.class))).willReturn(savedEntity);
+            given(hourlyRateRepository.findByUserIdAndTeamIdAndEffectiveFrom(
+                    USER_ID, TEAM_ID, effectiveFrom)).willReturn(Optional.of(savedEntity));
             given(shiftMapper.toHourlyRateResponse(savedEntity)).willReturn(response);
 
             // When
@@ -166,7 +170,8 @@ class ShiftHourlyRateServiceTest {
 
             // Then
             assertThat(result).isNotNull();
-            verify(hourlyRateRepository).save(any(ShiftHourlyRateEntity.class));
+            verify(hourlyRateRepository).upsertHourlyRate(
+                    USER_ID, TEAM_ID, new BigDecimal("1500.00"), effectiveFrom);
         }
     }
 
@@ -257,61 +262,91 @@ class ShiftHourlyRateServiceTest {
         }
     }
 
-    // ========================================
-    // CMP-260910-1555 検分指摘の是正
-    // ========================================
-
     /**
-     * 指摘3: 同じ適用開始日での再登録が一意制約
-     * {@code uq_shr_user_team_from (user_id, team_id, effective_from)} に衝突し、
-     * 当日に登録した時給の打ち間違いを訂正できなかった欠陥の回帰テスト。
+     * 指摘3（検分2巡目）: 同一適用開始日の訂正を「探して無ければ INSERT」で実装すると、
+     * 読みと書きの間に窓が開き、同じキーへの初回リクエストが並行したときに
+     * 両方が「既存なし」を見て両方 INSERT へ進み、片方が uq_shr_user_team_from 違反で落ちる。
+     * 一意制約に衝突解決させる単一文（ON DUPLICATE KEY UPDATE）へ移したことを固定する。
      */
     @Nested
-    @DisplayName("同一適用開始日の訂正")
+    @DisplayName("同一適用開始日の訂正（原子的 upsert）")
     class SameEffectiveFromCorrection {
 
-        @Test
-        @DisplayName("同じ適用開始日の既存行があれば INSERT せず金額を更新する（当日訂正が通る）")
-        void 同日再登録は更新される() {
-            given(accessControlService.isSystemAdmin(CURRENT_USER_ID)).willReturn(false);
-            LocalDate sameDay = LocalDate.of(2026, 4, 1);
-            ShiftHourlyRateEntity existing = createRateEntity();
-            given(hourlyRateRepository.findByUserIdAndTeamIdAndEffectiveFrom(USER_ID, TEAM_ID, sameDay))
-                    .willReturn(Optional.of(existing));
-            given(hourlyRateRepository.save(existing)).willReturn(existing);
-            given(shiftMapper.toHourlyRateResponse(existing)).willReturn(createRateResponse());
-
-            CreateHourlyRateRequest req = new CreateHourlyRateRequest(
-                    USER_ID, new BigDecimal("1500.00"), sameDay);
-            shiftHourlyRateService.createHourlyRate(TEAM_ID, req, CURRENT_USER_ID);
-
-            // 既存行そのものが保存される（＝新規行を作らないので一意制約に衝突しない）
-            verify(hourlyRateRepository).save(existing);
-            assertThat(existing.getHourlyRate()).isEqualByComparingTo("1500.00");
-            // 適用開始日は書き換えない（履歴の並びを壊さない）
-            assertThat(existing.getEffectiveFrom()).isEqualTo(sameDay);
+        private void givenUpsertReadBack(LocalDate day, ShiftHourlyRateEntity readBack) {
+            given(hourlyRateRepository.findByUserIdAndTeamIdAndEffectiveFrom(USER_ID, TEAM_ID, day))
+                    .willReturn(Optional.of(readBack));
+            given(shiftMapper.toHourlyRateResponse(readBack)).willReturn(createRateResponse());
         }
 
         @Test
-        @DisplayName("別の適用開始日なら新規行を追加する（過去の履歴は消えない）")
-        void 別日なら追加される() {
+        @DisplayName("書き込みは原子的な upsert 1 文で行い、事前 SELECT による分岐を行わない")
+        void 事前SELECTで分岐しない() {
+            given(accessControlService.isSystemAdmin(CURRENT_USER_ID)).willReturn(false);
+            LocalDate day = LocalDate.of(2026, 4, 1);
+            givenUpsertReadBack(day, createRateEntity());
+
+            CreateHourlyRateRequest req = new CreateHourlyRateRequest(
+                    USER_ID, new BigDecimal("1500.00"), day);
+            shiftHourlyRateService.createHourlyRate(TEAM_ID, req, CURRENT_USER_ID);
+
+            // 一意制約に衝突解決させる単一文で書く
+            verify(hourlyRateRepository).upsertHourlyRate(
+                    USER_ID, TEAM_ID, new BigDecimal("1500.00"), day);
+            // JPA の save 経由（＝読んでから INSERT/UPDATE を選ぶ経路）は使わない。
+            // save が残っていると、並行時に両方が INSERT へ進む窓が残る。
+            verify(hourlyRateRepository, org.mockito.Mockito.never()).save(any());
+        }
+
+        @Test
+        @DisplayName("同じキーへ連続で登録しても例外にならず、常に最後の金額へ収束する（冪等）")
+        void 同一キーの再送は冪等() {
+            given(accessControlService.isSystemAdmin(CURRENT_USER_ID)).willReturn(false);
+            LocalDate day = LocalDate.of(2026, 4, 1);
+            givenUpsertReadBack(day, createRateEntity());
+
+            CreateHourlyRateRequest first = new CreateHourlyRateRequest(
+                    USER_ID, new BigDecimal("1200.00"), day);
+            CreateHourlyRateRequest second = new CreateHourlyRateRequest(
+                    USER_ID, new BigDecimal("1500.00"), day);
+
+            shiftHourlyRateService.createHourlyRate(TEAM_ID, first, CURRENT_USER_ID);
+            shiftHourlyRateService.createHourlyRate(TEAM_ID, second, CURRENT_USER_ID);
+
+            verify(hourlyRateRepository).upsertHourlyRate(USER_ID, TEAM_ID, new BigDecimal("1200.00"), day);
+            verify(hourlyRateRepository).upsertHourlyRate(USER_ID, TEAM_ID, new BigDecimal("1500.00"), day);
+            verify(hourlyRateRepository, org.mockito.Mockito.never()).save(any());
+        }
+
+        @Test
+        @DisplayName("別の適用開始日は別行として書かれる（過去の履歴は消えない）")
+        void 別日は別行として書かれる() {
             given(accessControlService.isSystemAdmin(CURRENT_USER_ID)).willReturn(false);
             LocalDate newDay = LocalDate.of(2026, 5, 1);
-            given(hourlyRateRepository.findByUserIdAndTeamIdAndEffectiveFrom(USER_ID, TEAM_ID, newDay))
-                    .willReturn(Optional.empty());
-            ShiftHourlyRateEntity saved = createRateEntity();
-            given(hourlyRateRepository.save(any())).willReturn(saved);
-            given(shiftMapper.toHourlyRateResponse(saved)).willReturn(createRateResponse());
+            givenUpsertReadBack(newDay, createRateEntity());
 
             CreateHourlyRateRequest req = new CreateHourlyRateRequest(
                     USER_ID, new BigDecimal("1500.00"), newDay);
             shiftHourlyRateService.createHourlyRate(TEAM_ID, req, CURRENT_USER_ID);
 
-            org.mockito.ArgumentCaptor<ShiftHourlyRateEntity> captor =
-                    org.mockito.ArgumentCaptor.forClass(ShiftHourlyRateEntity.class);
-            verify(hourlyRateRepository).save(captor.capture());
-            assertThat(captor.getValue().getEffectiveFrom()).isEqualTo(newDay);
-            assertThat(captor.getValue().getHourlyRate()).isEqualByComparingTo("1500.00");
+            // 適用開始日が違えば一意キーが違うので、既存行には触れず新しい行が入る
+            verify(hourlyRateRepository).upsertHourlyRate(
+                    USER_ID, TEAM_ID, new BigDecimal("1500.00"), newDay);
+        }
+
+        @Test
+        @DisplayName("upsert 直後に読み戻せない異常は握りつぶさず例外にする")
+        void 読み戻せない場合は例外() {
+            given(accessControlService.isSystemAdmin(CURRENT_USER_ID)).willReturn(false);
+            LocalDate day = LocalDate.of(2026, 4, 1);
+            given(hourlyRateRepository.findByUserIdAndTeamIdAndEffectiveFrom(USER_ID, TEAM_ID, day))
+                    .willReturn(Optional.empty());
+
+            CreateHourlyRateRequest req = new CreateHourlyRateRequest(
+                    USER_ID, new BigDecimal("1500.00"), day);
+
+            org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                            shiftHourlyRateService.createHourlyRate(TEAM_ID, req, CURRENT_USER_ID))
+                    .isInstanceOf(IllegalStateException.class);
         }
     }
 }
