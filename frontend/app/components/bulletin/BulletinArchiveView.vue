@@ -33,6 +33,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const { showError, showSuccess } = useNotification()
+const { showUndoToast } = useUndoToast()
 const confirm = useConfirm()
 const { relativeTime } = useRelativeTime()
 const {
@@ -53,6 +54,7 @@ const treeLoading = ref(false)
 const selectedFolderId = ref<string | null>(null)
 const threads = ref<BulletinThreadResponse[]>([])
 const threadsLoading = ref(false)
+const unarchivingId = ref<number | null>(null)
 const totalPages = ref(0)
 const currentPage = ref(0)
 
@@ -219,26 +221,34 @@ async function confirmMove() {
   }
 }
 
-function confirmUnarchive(thread: BulletinThreadResponse) {
-  confirm.require({
-    message: t('bulletin.archive.unarchiveConfirm'),
-    header: t('bulletin.archive.unarchive'),
-    icon: 'pi pi-undo',
-    acceptLabel: t('bulletin.archive.unarchive'),
-    rejectLabel: t('bulletin.archive.cancel'),
-    accept: () => doUnarchive(thread),
-  })
-}
-
 async function doUnarchive(thread: BulletinThreadResponse) {
+  if (unarchivingId.value !== null) return
+  const originalFolderId = thread.archiveFolderId ?? null
+  unarchivingId.value = thread.id
   try {
     await archiveScopedThread(props.scopeType, props.scopeId, thread.id, false)
-    showSuccess(t('bulletin.archive.unarchived'))
     await loadTree()
     await loadThreads(currentPage.value)
+    showUndoToast({
+      summary: t('bulletin.archive.unarchived'),
+      undoLabel: t('button.undo'),
+      onUndo: async () => {
+        try {
+          await archiveScopedThread(props.scopeType, props.scopeId, thread.id, true, originalFolderId)
+          await loadTree()
+          await loadThreads(currentPage.value)
+        }
+        catch {
+          showError(t('bulletin.list.archiveFailed'))
+        }
+      },
+    })
   }
   catch {
     showError(t('bulletin.archive.unarchiveFailed'))
+  }
+  finally {
+    unarchivingId.value = null
   }
 }
 
@@ -355,10 +365,13 @@ defineExpose({ refresh: () => { loadTree(); loadThreads(currentPage.value) } })
             <Button
               icon="pi pi-undo"
               :label="$t('bulletin.archive.unarchive')"
+              :data-testid="`bulletin-unarchive-${thread.id}`"
               text
               size="small"
               severity="secondary"
-              @click="confirmUnarchive(thread)"
+              :loading="unarchivingId === thread.id"
+              :disabled="unarchivingId !== null"
+              @click="doUnarchive(thread)"
             />
           </div>
         </div>

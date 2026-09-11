@@ -2389,5 +2389,52 @@
       "approveSuccess": "参加申請を承認しました",
       "rejectSuccess": "参加申請を却下しました"
     }
+  },
+  "myPage": {
+    "pageTitle": "My Page",
+    "cards": {
+      "onboarding": {
+        "label": "Onboarding",
+        "description": "Required steps for the teams and organizations you joined"
+      },
+      "shift": {
+        "label": "My Shifts",
+        "description": "Check your own shifts"
+      },
+      "reservations": {
+        "label": "My Reservations",
+        "description": "Your reservation list"
+      },
+      "charts": {
+        "label": "My Records",
+        "description": "Check activity records and notes"
+      },
+      "performance": {
+        "label": "My Performance",
+        "description": "Your results and achievements"
+      },
+      "projects": {
+        "label": "My Projects",
+        "description": "Manage personal projects"
+      },
+      "serviceRecords": {
+        "label": "My Service History",
+        "description": "History of services you received"
+      },
+      "noShows": {
+        "label": "Cancellation History",
+        "description": "No-show and penalty history"
+      },
+      "resume": {
+        "label": "Resume & CV",
+        "description": "Create and export your resume and CV"
+      },
+      "receipts": {
+        "description": "View and download receipts for your payments"
+      },
+      "tournamentFees": {
+        "description": "Check and pay tournament entry fees"
+      }
+    }
   }
 }

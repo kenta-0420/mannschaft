@@ -19,4 +19,11 @@ public interface BillingCustomerJpaRepository extends JpaRepository<BillingCusto
     /** quote 生成時に scope の Customer を解決する（Checkout 時は上の三点一致版で再照合する）。 */
     Optional<BillingCustomerEntity> findByScopeKindAndScopeIdAndStatusAndDeletedAtIsNull(
             EntitlementScopeKind scopeKind, Long scopeId, String status);
+
+    /**
+     * F20.1 PR5: webhook の {@code invoice.customer} から scope 所有 Customer を逆引きする（AC-25）。
+     *
+     * <p>所有判定を {@code psp_subscription_ref} 単独に頼らず、この照合と併用するために使う。</p>
+     */
+    Optional<BillingCustomerEntity> findByPspCustomerRefAndDeletedAtIsNull(String pspCustomerRef);
 }
