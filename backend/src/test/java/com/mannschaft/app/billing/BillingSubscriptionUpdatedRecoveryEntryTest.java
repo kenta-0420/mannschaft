@@ -95,6 +95,12 @@ class BillingSubscriptionUpdatedRecoveryEntryTest {
         givenUpdatedEvent();
         given(billingSubscriptionWebhookService.handleSubscriptionEventIfBilling(PAYLOAD, SIG))
                 .willReturn(true);
+        // ★空虚な緑の防止: 封筒が読めなければ現行実装は recordPending へ到達せず、
+        //   「保留していない」という結論が偽の理由で成立してしまう（初回実走でこれを実測した）。
+        //   封筒を読める状態にしておくことで、現行実装では必ず recordPending が呼ばれ、
+        //   本テストは「billing へ渡す前に保留で塞き止めている」ことを理由に赤くなる。
+        given(billingPayloadParser.parseEnvelope(PAYLOAD))
+                .willReturn(Optional.of(new EventEnvelope("evt_updated", EVENT_TYPE, false, 1_800_000_000L)));
 
         dispatcher.handleWebhook(PAYLOAD, SIG);
 
