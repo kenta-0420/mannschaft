@@ -83,6 +83,10 @@ import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://127.0.0.1:8081'
 const BE_API = `${API_BASE_URL}/api/v1`
+const E2E_DB_NAME = process.env.E2E_DB_NAME ?? 'mannschaft'
+if (!/^[a-zA-Z0-9_]+$/.test(E2E_DB_NAME)) {
+  throw new Error(`E2E_DB_NAME is invalid: ${JSON.stringify(E2E_DB_NAME)}`)
+}
 
 /** チーム作成者＝常に ADMIN になる実機E2E固定ユーザー。 */
 const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
@@ -301,7 +305,7 @@ async function purgeLeftovers(ctx: APIRequestContext, token: string, teamId: num
  * どちらも同じローカル MySQL コンテナへ接続する。
  */
 function runSql(sql: string): string {
-  const dockerCommand = `docker exec mannschaft-mysql mysql -uroot -proot mannschaft -N -B -e "${sql}"`
+  const dockerCommand = `docker exec mannschaft-mysql mysql -uroot -proot ${E2E_DB_NAME} -N -B -e "${sql}"`
   return execSync(
     process.platform === 'win32' ? `wsl.exe -e ${dockerCommand}` : dockerCommand,
     { stdio: 'pipe' },
@@ -660,16 +664,19 @@ async function establishSession(page: Page, email: string, password: string): Pr
   const cached = browserSessions.get(email)
   if (cached) {
     await page.context().addCookies(cached.cookies)
-    // localStorage はオリジンに紐づくため、書き込む前にアプリのオリジンへ入る。
-    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 180_000 })
-    await page.evaluate(({ currentUser, tokenExpiresAt }) => {
+    await page.addInitScript(({ currentUser, tokenExpiresAt }) => {
       if (currentUser) localStorage.setItem('currentUser', currentUser)
       if (tokenExpiresAt) localStorage.setItem('tokenExpiresAt', tokenExpiresAt)
     }, cached)
     return
   }
 
-  await loginViaApi(page, { email, password }, { apiBaseUrl: API_BASE_URL })
+  await loginViaApi(
+    page,
+    { email, password },
+    { apiBaseUrl: API_BASE_URL, deferNavigation: true },
+  )
+  await page.goto('/robots.txt', { waitUntil: 'commit', timeout: 30_000 })
   const cookies = await page.context().cookies()
   const stored = await page.evaluate(() => ({
     currentUser: localStorage.getItem('currentUser'),
@@ -798,12 +805,15 @@ async function selectTeamOnShiftIndex(page: Page, teamName: string): Promise<voi
  */
 async function selectTeamOnShiftRequest(page: Page): Promise<void> {
   const teamCard = page.getByText(fx.team.name, { exact: true })
+  const alreadySelectedSchedule = page.getByText(fx.titles.collecting, { exact: true })
   await expect(
-    teamCard.first(),
+    teamCard.or(alreadySelectedSchedule).first(),
     'ステップ1のチーム選択に対象チームのカードが出ること',
   ).toBeVisible({ timeout: 60_000 })
-  await teamCard.first().click()
-  await waitForSpinnerGone(page)
+  if (await teamCard.first().isVisible()) {
+    await teamCard.first().click()
+    await waitForSpinnerGone(page)
+  }
 }
 
 // ============================================================================
@@ -983,8 +993,14 @@ test.describe('C: 一般メンバーの URL 直打ちが弾かれる', () => {
    * IDOR を検出できない。ここでは URL を直接叩いて、タイトル・カレンダー表・枠チップの
    * いずれも描画されないこと（＝ BE が 404 を返していること）を画面で見る。
    */
-  async function expectBlocked(page: Page, scheduleId: number, title: string): Promise<void> {
-    await establishSession(page, MEMBER_EMAIL, MEMBER_PASSWORD)
+  async function expectBlocked(
+    page: Page,
+    scheduleId: number,
+    title: string,
+    email = MEMBER_EMAIL,
+    password = MEMBER_PASSWORD,
+  ): Promise<void> {
+    await establishSession(page, email, password)
 
     // 遷移より前に応答の待ち受けを張る。DOM の不在だけを見ると、403 / 500 / 通信失敗や
     // 「FE が白紙を描いただけ」でも緑になってしまう（実際、契約ずれで画面が何も描画されない
@@ -1055,6 +1071,26 @@ test.describe('C: 一般メンバーの URL 直打ちが弾かれる', () => {
       page.getByText(fx.titles.archived, { exact: true }),
       '未公開アーカイブのタイトルが 1 件も出ないこと',
     ).toHaveCount(0)
+  })
+
+  test('C4: 他テナントの非所属ユーザーが DRAFT の詳細 URL を直接叩いても表示されない', async ({ page }) => {
+    await expectBlocked(
+      page,
+      fx.draftId,
+      fx.titles.draft,
+      OUTSIDER_EMAIL,
+      OUTSIDER_PASSWORD,
+    )
+  })
+
+  test('C5: 存在しないシフト表の詳細 URL でも loading が終了して情報を表示しない', async ({ page }) => {
+    await expectBlocked(
+      page,
+      2_147_483_647,
+      '存在しないシフト表',
+      OUTSIDER_EMAIL,
+      OUTSIDER_PASSWORD,
+    )
   })
 })
 
