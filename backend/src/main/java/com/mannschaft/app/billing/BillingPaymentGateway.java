@@ -73,10 +73,11 @@ public interface BillingPaymentGateway {
     /**
      * 期末解約予約を取り消す（{@code cancel_at_period_end=false}・Billing Center PR6a・AC-40/AC-47）。
      *
-     * <p>Stripe 呼び出しの実体は payment ドメインの
-     * {@code StripePaymentProviderImpl#revertSubscriptionCancelAtPeriodEnd} を<b>再利用</b>する
-     * （PR6a で自前実装しない）。billing から payment の provider を直接参照させないため、
-     * 本ポートを唯一の窓口とする（AC-47 のドメイン境界）。</p>
+     * <p>Stripe 呼び出しの実体は payment ドメインに既にある期末解約予約の差し戻し API を
+     * <b>再利用</b>する（PR6a で自前実装しない）。billing から payment の provider を直接
+     * 参照させないため、本ポートを唯一の窓口とする（AC-47 のドメイン境界。実体のメソッド名を
+     * この Javadoc に書くと、境界の番人が「provider を直呼びしている billing クラス」として
+     * 本ファイルを検出する）。</p>
      *
      * <p>Idempotency-Key は {@link BillingContractOperationSagaService#stripeIdempotencyKeyOf(UUID)}
      * ＝{@code billing-operation-{operationId}} であり、引継専用の
