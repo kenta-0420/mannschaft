@@ -1,5 +1,9 @@
 package com.mannschaft.app.billing;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.billing.invoice.BillingInvoiceProjectionService;
+import com.mannschaft.app.billing.invoice.BillingWebhookEventGate;
+import com.mannschaft.app.billing.invoice.StripeBillingPayloadParser;
 import com.mannschaft.app.payment.WebhookIdempotencyService;
 import com.mannschaft.app.payment.WebhookProcessStatus;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
@@ -53,15 +57,24 @@ class BillingSubscriptionWebhookServiceTest {
     @Mock private WebhookIdempotencyService idempotencyService;
     @Mock private BillingContractService billingContractService;
     @Mock private BillingContractRepository billingContractRepository;
+    /**
+     * F20.1 PR5: invoice 投影。本テストの payload はダミー文字列（"p"）なので
+     * {@code readInvoice} は空を返し、投影は行われない。ここで測るのは所有判定と契約遷移の委譲である。
+     */
+    @Mock private BillingInvoiceProjectionService invoiceProjectionService;
     @Mock private BillingPayerHandoverService payerHandoverService;
 
     private BillingSubscriptionWebhookService service;
 
     @BeforeEach
     void setUp() {
+        // ゲートは本物を使う（冪等ゲートの呼ばれ方まで含めて契約を測るため）。
+        StripeBillingPayloadParser parser = new StripeBillingPayloadParser(new ObjectMapper());
+        BillingWebhookEventGate gate = new BillingWebhookEventGate(idempotencyService, parser);
         service = new BillingSubscriptionWebhookService(
                 stripePaymentProvider, idempotencyService, billingContractService,
-                billingContractRepository, payerHandoverService, FIXED_CLOCK);
+                billingContractRepository, invoiceProjectionService, gate, parser,
+                payerHandoverService, FIXED_CLOCK);
     }
 
     private BillingSubscriptionWebhookEventInfo event(
@@ -243,7 +256,8 @@ class BillingSubscriptionWebhookServiceTest {
                 .willReturn(event("invoice.paid", null, "sub_bill", PERIOD_END_EPOCH));
         given(billingContractRepository.findByPspSubscriptionRefAndDeletedAtIsNull("sub_bill"))
                 .willReturn(Optional.of(billingContract()));
-        given(idempotencyService.tryBegin("evt_1", "invoice.paid", false)).willReturn(true);
+        given(idempotencyService.tryBegin(eq("evt_1"), eq("invoice.paid"), eq(false),
+                any(), any(), any(), any())).willReturn(true);
 
         boolean handled = service.handleSubscriptionEventIfBilling("p", "s");
 
@@ -259,7 +273,8 @@ class BillingSubscriptionWebhookServiceTest {
                 .willReturn(event("invoice.payment_failed", null, "sub_bill", null));
         given(billingContractRepository.findByPspSubscriptionRefAndDeletedAtIsNull("sub_bill"))
                 .willReturn(Optional.of(billingContract()));
-        given(idempotencyService.tryBegin("evt_1", "invoice.payment_failed", false)).willReturn(true);
+        given(idempotencyService.tryBegin(eq("evt_1"), eq("invoice.payment_failed"), eq(false),
+                any(), any(), any(), any())).willReturn(true);
 
         boolean handled = service.handleSubscriptionEventIfBilling("p", "s");
 
@@ -289,7 +304,8 @@ class BillingSubscriptionWebhookServiceTest {
                 .willReturn(event("invoice.created", null, "sub_bill", null));
         given(billingContractRepository.findByPspSubscriptionRefAndDeletedAtIsNull("sub_bill"))
                 .willReturn(Optional.of(billingContract()));
-        given(idempotencyService.tryBegin("evt_1", "invoice.created", false)).willReturn(true);
+        given(idempotencyService.tryBegin(eq("evt_1"), eq("invoice.created"), eq(false),
+                any(), any(), any(), any())).willReturn(true);
 
         boolean handled = service.handleSubscriptionEventIfBilling("p", "s");
 
