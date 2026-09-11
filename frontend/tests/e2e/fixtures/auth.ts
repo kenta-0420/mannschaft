@@ -25,7 +25,7 @@ export async function loginViaApi(
 
   if (!options.deferNavigation) {
     // storageState を生成する既存呼び出しでは、localStorage のオリジンを先に確立する。
-    await page.goto('/')
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
   }
 
   const loginRes = await page.request.post(`${apiBase}/api/v1/auth/login`, {
@@ -51,8 +51,9 @@ export async function loginViaApi(
     systemRole: string | null
     timezone: string | null
   }
-  const accessTokenCookie = (await page.context().cookies())
-    .find(cookie => cookie.name === 'access_token')
+  const accessTokenCookie = (await page.context().cookies()).find(
+    (cookie) => cookie.name === 'access_token',
+  )
   if (!accessTokenCookie || accessTokenCookie.expires <= 0) {
     throw new Error('API ログイン成功後の access_token Cookie に有効期限がありません')
   }
