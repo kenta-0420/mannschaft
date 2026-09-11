@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -197,7 +198,7 @@ class BillingContractCancelApiRedIT extends AbstractBillingCancelResumeApiIT {
     void AC35_Stripe失敗は502で旧状態維持() throws Exception {
         UUID contractId = insertContract(userId, ContractStatus.ACTIVE, PRICE_JPY, SUB_REF, periodEnd, null);
         willThrow(new IllegalStateException("stripe down"))
-                .given(billingPaymentGateway).cancelAtPeriodEnd(anyString());
+                .given(billingPaymentGateway).cancelAtPeriodEnd(anyString(), any());
 
         cancel(userId, contractId, 0L, newKey()).andExpect(status().isBadGateway());
 
@@ -211,7 +212,7 @@ class BillingContractCancelApiRedIT extends AbstractBillingCancelResumeApiIT {
     void AC35_Stripe失敗でoperationはFAILEDでpointer解放() throws Exception {
         UUID contractId = insertContract(userId, ContractStatus.ACTIVE, PRICE_JPY, SUB_REF, periodEnd, null);
         willThrow(new IllegalStateException("stripe down"))
-                .given(billingPaymentGateway).cancelAtPeriodEnd(anyString());
+                .given(billingPaymentGateway).cancelAtPeriodEnd(anyString(), any());
 
         cancel(userId, contractId, 0L, newKey()).andExpect(status().isBadGateway());
 

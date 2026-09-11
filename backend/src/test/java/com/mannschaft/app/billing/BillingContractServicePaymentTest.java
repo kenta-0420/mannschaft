@@ -302,6 +302,15 @@ class BillingContractServicePaymentTest {
         given(billingContractRepository.save(any(BillingContractEntity.class))).willAnswer(inv -> inv.getArgument(0));
         Instant periodEndInstant = PERIOD_END.toInstant(ZoneOffset.UTC);
         given(billingPaymentGateway.cancelAtPeriodEnd("sub_1")).willReturn(periodEndInstant);
+        // PR6a（AC-15 陽性対照）: 旧経路の有償期末解約も operation Saga に載る。期待は緩めず、
+        // 新しい協調相手の振る舞い（予約 → 反映処理をそのまま実行）だけをモックで与える。
+        UUID operationId = UUID.randomUUID();
+        given(billingContractOperationSagaService.reserve(any()))
+                .willReturn(new BillingContractOperationSagaService.OperationReservation(
+                        operationId, id, BillingOperationKind.CANCEL,
+                        BillingOperationStatus.CREATED, BillingOperationStep.RECEIVED, 0L));
+        given(billingContractOperationSagaService.applyAndFinalize(any(), any()))
+                .willAnswer(inv -> ((java.util.function.Supplier<?>) inv.getArgument(1)).get());
 
         EntitlementEntity e1 = ent("ads.hide");
         given(entitlementRepository.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(

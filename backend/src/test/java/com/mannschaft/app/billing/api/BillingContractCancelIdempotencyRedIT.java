@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -137,7 +138,7 @@ class BillingContractCancelIdempotencyRedIT extends AbstractBillingCancelResumeA
     void AC31_失敗後の同一キー再送は409() throws Exception {
         String key = newKey();
         willThrow(new IllegalStateException("stripe down"))
-                .given(billingPaymentGateway).cancelAtPeriodEnd(anyString());
+                .given(billingPaymentGateway).cancelAtPeriodEnd(anyString(), any());
 
         cancel(userId, contractId, 0L, key).andExpect(status().isBadGateway());
 
@@ -150,7 +151,7 @@ class BillingContractCancelIdempotencyRedIT extends AbstractBillingCancelResumeA
     @DisplayName("AC-31b: Stripe失敗後でも新しいIdempotency-Keyでの再解約は成功する（pointerが解放済み）")
     void AC31b_失敗後に新しいキーならやり直せる() throws Exception {
         willThrow(new IllegalStateException("stripe down"))
-                .given(billingPaymentGateway).cancelAtPeriodEnd(anyString());
+                .given(billingPaymentGateway).cancelAtPeriodEnd(anyString(), any());
         cancel(userId, contractId, 0L, newKey()).andExpect(status().isBadGateway());
 
         // Stripe を回復させ、別のキーでやり直す。

@@ -745,6 +745,20 @@ public class BillingContractService {
             EntitlementScopeKind scopeKind, Long scopeId, BillingContractEntity contract,
             Long operatorUserId, LocalDateTime now) {
 
+        // ★PR6a（AC-15 陽性対照・第6隊）: 旧経路の有償期末解約も operation Saga に載せる。
+        //   「Stripe を伴う契約変更は必ず billing_contract_operations に痕跡が残る」という不変条件を
+        //   旧経路だけ免除すると、pointer 排他（AC-3/AC-14）も停止窓の回収（D8）も旧経路からは
+        //   素通りされてしまう。version CAS は旧 API が version を受け取らないため行わない（null）。
+        //   Stripe 呼び出しは既存呼び出し元の挙動を変えない 1 引数版のまま（AC-39）。
+        //   なお本メソッドは cancelContract の @Transactional 内にあるため tx1/tx2 は呼び出し元の
+        //   トランザクションへ参加する（D1 の分割が実際に効くのは PR6a の新エンドポイント経路である）。
+        BillingContractOperationSagaService.OperationReservation reservation =
+                billingContractOperationSagaService.reserve(
+                        new BillingContractOperationSagaService.ReserveCommand(
+                                contract.getId(), BillingOperationKind.CANCEL, null,
+                                BillingOperationActorKind.USER, operatorUserId, null));
+        billingContractOperationSagaService.markCallingStripe(reservation.operationId());
+
         // 【設計注記（検分5番・判断済み）】gateway 呼び出しは cancelContract の @Transactional 内で行う。
         // 「Stripe 呼び出し→tx 更新」への再構成は、無償/有償が共有する cancelContract 経路（IDOR 検証→
         // ガード→分岐）の分解を要し P1 経路の回帰リスクが高いため現状維持とする。整合性は以下で担保される:
@@ -777,11 +791,14 @@ public class BillingContractService {
         }
         evictAfterCommit(scopeKind, scopeId, stillActiveKeys);
 
-        return new ContractResult(contract.getId(), scopeKind, scopeId, contract.getContractKind(),
+        ContractResult result = new ContractResult(contract.getId(), scopeKind, scopeId, contract.getContractKind(),
                 contract.getPlanKey(), contract.getFeatureKey(), ContractStatus.ACTIVE,
                 contract.getMemberCountSnapshot(), contract.getBandNoSnapshot(), contract.getPriceJpySnapshot(),
                 contract.getContractedAt(), periodEndLdt, null,
                 new ArrayList<>(stillActiveKeys), List.of());
+        // APPLIED へ確定させ、同一トランザクションで pointer を解放する（AC-7）。
+        return billingContractOperationSagaService.applyAndFinalize(
+                reservation.operationId(), () -> result);
     }
 
     /** 契約が既に ACTIVE のときの結果組み立て（冪等 no-op 用）。 */

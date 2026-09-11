@@ -71,6 +71,33 @@ public interface BillingPaymentGateway {
     }
 
     /**
+     * 期末解約予約を取り消す（{@code cancel_at_period_end=false}・Billing Center PR6a・AC-40/AC-47）。
+     *
+     * <p>Stripe 呼び出しの実体は payment ドメインの
+     * {@code StripePaymentProviderImpl#revertSubscriptionCancelAtPeriodEnd} を<b>再利用</b>する
+     * （PR6a で自前実装しない）。billing から payment の provider を直接参照させないため、
+     * 本ポートを唯一の窓口とする（AC-47 のドメイン境界）。</p>
+     *
+     * <p>Idempotency-Key は {@link BillingContractOperationSagaService#stripeIdempotencyKeyOf(UUID)}
+     * ＝{@code billing-operation-{operationId}} であり、引継専用の
+     * {@code billing-handover-revert-cancel-*} とは<b>別名前空間</b>である。引継の差し戻し
+     * （{@link #revertCancelAtPeriodEndForHandover(String, UUID)}）と同一 subscription へ同時に
+     * 走ってもキー衝突（パラメータ不一致エラー）を起こさない。</p>
+     *
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる（テスト用のモック実装が
+     * 既存メソッドだけを持つ場合に備えた default）。実体は
+     * {@link StripeBillingPaymentGateway#revertCancelAtPeriodEnd(String, UUID)} が持つ。</p>
+     *
+     * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
+     * @param operationId     {@code billing_contract_operations.id}（冪等キーの単位）
+     * @return 現サイクル終了時刻（{@code current_period_end}・null 可）
+     */
+    default Instant revertCancelAtPeriodEnd(String subscriptionRef, UUID operationId) {
+        throw new UnsupportedOperationException(
+                "Billing Center PR6a: revertCancelAtPeriodEnd の実体は StripeBillingPaymentGateway が持つ");
+    }
+
+    /**
      * 継続課金の Stripe Subscription を<b>即時解約</b>する（退会 purge 連動・AC-45）。
      *
      * <p>期末解約（{@link #cancelAtPeriodEnd}）と異なり、退会確定（purge）ユーザーへの課金継続を
