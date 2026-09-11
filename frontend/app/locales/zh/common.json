@@ -2389,5 +2389,52 @@
       "approveSuccess": "参加申請を承認しました",
       "rejectSuccess": "参加申請を却下しました"
     }
+  },
+  "myPage": {
+    "pageTitle": "我的页面",
+    "cards": {
+      "onboarding": {
+        "label": "入职引导",
+        "description": "已加入的团队和组织的待办手续"
+      },
+      "shift": {
+        "label": "我的排班",
+        "description": "查看自己的排班"
+      },
+      "reservations": {
+        "label": "我的预约",
+        "description": "自己的预约列表"
+      },
+      "charts": {
+        "label": "我的记录",
+        "description": "查看活动记录和备注"
+      },
+      "performance": {
+        "label": "我的成绩",
+        "description": "自己的成绩与业绩"
+      },
+      "projects": {
+        "label": "我的项目",
+        "description": "管理个人项目"
+      },
+      "serviceRecords": {
+        "label": "我的服务记录",
+        "description": "已接受服务的历史"
+      },
+      "noShows": {
+        "label": "取消记录",
+        "description": "爽约与处罚记录"
+      },
+      "resume": {
+        "label": "简历・履历书",
+        "description": "创建和导出简历・履历书"
+      },
+      "receipts": {
+        "description": "查看和下载付款的收据"
+      },
+      "tournamentFees": {
+        "description": "查看并支付赛事参赛费"
+      }
+    }
   }
 }
