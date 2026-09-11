@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -103,6 +104,9 @@ class ShiftBudgetEndToEndIntegrationTest {
     private OrganizationRepository organizationRepository;
     @Mock
     private ShiftBudgetFailedEventService failedEventService;
+    /** 自己プロキシのプロバイダ（CMP-260910-1556）。Mockito 構成では被テスト実体を返す。 */
+    @Mock
+    private ObjectProvider<MonthlyShiftBudgetCloseService> closeServiceSelfProvider;
 
     private ShiftBudgetSummaryService summaryService;
     private MonthlyShiftBudgetCloseService closeService;
@@ -119,7 +123,8 @@ class ShiftBudgetEndToEndIntegrationTest {
         closeService = new MonthlyShiftBudgetCloseService(
                 allocationRepository, consumptionRepository, budgetTransactionRepository,
                 featureService, accessControlService, auditLogService,
-                organizationRepository, failedEventService);
+                organizationRepository, failedEventService, closeServiceSelfProvider);
+        lenient().when(closeServiceSelfProvider.getObject()).thenReturn(closeService);
 
         allocation = ShiftBudgetAllocationEntity.builder()
                 .organizationId(ORG_ID).teamId(TEAM_ID)

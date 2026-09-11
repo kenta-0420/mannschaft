@@ -20,6 +20,7 @@ import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetConsumptionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,6 +71,30 @@ public class MonthlyShiftBudgetCloseService {
     private final ShiftBudgetFailedEventService failedEventService;
 
     /**
+     * 自分自身の Spring プロキシを取得するためのプロバイダ（CMP-260910-1556 の根治）。
+     *
+     * <p>{@link #closeOneAllocation} は {@link Propagation#REQUIRES_NEW} を宣言しているが、
+     * {@code this.closeOneAllocation(...)} という<b>同一 Bean 内の自己呼び出し</b>では
+     * Spring の AOP プロキシを経由しないため、このアノテーションは一切効かない。
+     * 呼び出し元 {@link #close} / {@link #closeFromBatch} は
+     * {@link Propagation#NEVER}（トランザクション不在）であるため、自己呼び出し経路では
+     * {@code closeOneAllocation} が<b>トランザクションなし</b>で走り、
+     * {@code @Modifying} クエリ {@code incrementConfirmedAmount} が
+     * {@code InvalidDataAccessApiUsageException} で必ず落ちていた。しかも直前の
+     * {@code consumptionRepository.save} は（Spring Data 既定の {@code @Transactional} で）
+     * 単独コミット済みのため、消化だけ CONFIRMED・{@code confirmed_amount} は 0 という
+     * 部分適用が巻き戻らずに残った。</p>
+     *
+     * <p>プロキシ経由で呼ぶことで {@code REQUIRES_NEW} を実際に効かせ、
+     * allocation 1 件ぶんの更新をすべて 1 トランザクションに収める。
+     * 別 Bean への切り出しではなく自己プロキシを採る理由は、
+     * {@code budget} ドメインへのクロスドメイン依存（ArchUnit 凍結ストア登録済みの既存負債）を
+     * 新クラス名で再登録することになり、番人を新たに赤くするため。
+     * {@code ObjectProvider} は遅延解決なので循環依存にもならない。</p>
+     */
+    private final ObjectProvider<MonthlyShiftBudgetCloseService> selfProvider;
+
+    /**
      * API #11 経由の手動締め（{@code BUDGET_ADMIN} 権限必須）。
      *
      * <p>指定組織×指定月の生存 allocation を全部締める。</p>
@@ -112,7 +137,7 @@ public class MonthlyShiftBudgetCloseService {
         int alreadyClosedAllocations = 0;
         for (ShiftBudgetAllocationEntity allocation : allocations) {
             try {
-                int n = closeOneAllocation(allocation, monthEnd);
+                int n = self().closeOneAllocation(allocation, monthEnd);
                 if (n >= 0) {
                     closedAllocations++;
                     closedConsumptions += n;
@@ -135,10 +160,25 @@ public class MonthlyShiftBudgetCloseService {
     }
 
     /**
+     * 自分自身の Spring プロキシを返す。
+     *
+     * <p>{@code this} を直接使うと {@code @Transactional} が効かないため、
+     * トランザクション境界を跨ぐ内部呼び出しは必ず本メソッド経由で行うこと。</p>
+     */
+    private MonthlyShiftBudgetCloseService self() {
+        return selfProvider.getObject();
+    }
+
+    /**
      * 単一 allocation を締める。
      *
      * <p>独立トランザクション ({@link Propagation#REQUIRES_NEW}) で動作させ、
      * 1 つの allocation の失敗が他の allocation の締めを巻き戻さないようにする。</p>
+     *
+     * <p><b>必ず {@link #self()} 経由で呼ぶこと。</b>同一 Bean 内の自己呼び出しでは
+     * プロキシを通らず {@code REQUIRES_NEW} が無効化され、消化の CONFIRMED 化だけが
+     * 単独コミットされて {@code confirmed_amount} が 0 のまま残る部分適用が発生する
+     * （CMP-260910-1556）。</p>
      *
      * @return CONFIRMED 化した consumption の件数。既に締め済の場合は例外を投げる。
      */

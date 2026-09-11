@@ -137,7 +137,31 @@ cron バッチは SecurityContext 不在で動くため発生しないが、API 
 
 F08.6 側のスキーマ変更や FK 違反が原因のことが多い。Spring Boot ログで該当例外を特定 → DDL 修正後 §4.1 で再起動。
 
-### 5.5 `shift_budget_consumptions` のロック競合
+### 5.5 `confirmed_amount` が 0 円のまま固着する（CMP-260910-1556・是正済）
+
+**症状**: 月次締めが初回必ず 500 (`COMMON_999`)。2 回目以降は 200 が返るが
+`shift_budget_allocations.confirmed_amount` は永久に 0 のまま、
+`shift_budget_consumptions` だけが `CONFIRMED` になっている。
+
+**原因**: `MonthlyShiftBudgetCloseService#doCloseForOrg` が同一 Bean 内の
+`closeOneAllocation`（`@Transactional(propagation = REQUIRES_NEW)`）を自己呼び出ししており、
+Spring の AOP プロキシを経由しないため `REQUIRES_NEW` が効いていなかった。
+呼び出し元が `Propagation.NEVER` であることと相まって**トランザクション不在**で実行され、
+`@Modifying` クエリ `incrementConfirmedAmount` が
+`InvalidDataAccessApiUsageException: Executing an update/delete query` で必ず落ちた。
+その時点で直前の `consumptionRepository.save` は Spring Data 既定の `@Transactional` で
+単独コミット済みだったため、巻き戻らない部分適用が残った。
+
+**恒久対策**: `ObjectProvider` 経由で自己プロキシを取得して呼ぶよう是正済み
+（回帰検知は `MonthlyShiftBudgetCloseTransactionIT`）。
+
+**既存データの回復**: Flyway `V208.20260911020600__repair_shift_budget_confirmed_amount_drift.sql`
+が `confirmed_amount` を「生存 CONFIRMED 消化の合計」から再計算して収束させる。
+`confirmed_amount` を書き換える経路は `incrementConfirmedAmount` /
+`decrementConfirmedAmount` の 2 本だけであり、その値の意味はこの合計に等しいため、
+再計算はズレの有無によらず冪等である。適用前後のズレ検出は §6.4 の SQL を使う。
+
+### 5.6 `shift_budget_consumptions` のロック競合
 
 並行する CRUD と衝突した可能性。リトライで解消する場合が多いが、頻発する場合は `closeOneAllocation` の `REQUIRES_NEW` トランザクション境界を見直す。
 
@@ -184,6 +208,26 @@ SELECT id, organization_id, event_type, source_id,
  LIMIT 50;
 ```
 
+### 6.4 `confirmed_amount` のズレ検出（CMP-260910-1556）
+
+```sql
+SELECT a.id AS allocation_id,
+       a.organization_id,
+       a.confirmed_amount AS stored,
+       COALESCE(c.confirmed_total, 0) AS expected
+  FROM shift_budget_allocations a
+  LEFT JOIN (SELECT allocation_id, SUM(amount) AS confirmed_total
+               FROM shift_budget_consumptions
+              WHERE status = 'CONFIRMED' AND deleted_at IS NULL
+              GROUP BY allocation_id) c
+         ON c.allocation_id = a.id
+ WHERE a.deleted_at IS NULL
+   AND a.confirmed_amount <> COALESCE(c.confirmed_total, 0);
+```
+
+0 件であれば健全。1 件でも返る場合は §5.5 の是正 migration が未適用か、
+別経路のバグを疑う（migration は適用済みでも将来のバグでズレは再発しうるため、
+本 SQL は定点観測に使える）。
 ---
 
 ## 7. エスカレーション基準

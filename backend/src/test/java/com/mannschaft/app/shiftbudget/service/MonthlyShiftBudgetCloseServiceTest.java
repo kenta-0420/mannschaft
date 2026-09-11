@@ -22,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -35,6 +36,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -75,6 +77,17 @@ class MonthlyShiftBudgetCloseServiceTest {
     private OrganizationRepository organizationRepository;
     @Mock
     private ShiftBudgetFailedEventService failedEventService;
+    /**
+     * 自己プロキシのプロバイダ（CMP-260910-1556）。
+     *
+     * <p>本番では Spring が AOP プロキシを返し、{@code closeOneAllocation} の
+     * {@code REQUIRES_NEW} が実際に効く。ユニットテストではプロキシが存在しないため
+     * 被テストインスタンス自身を返す。<b>この差異ゆえに自己呼び出しの欠陥は
+     * ユニットテストでは検出できない</b>（実 DB での検証は
+     * {@code MonthlyShiftBudgetCloseTransactionIT} が担う）。</p>
+     */
+    @Mock
+    private ObjectProvider<MonthlyShiftBudgetCloseService> selfProvider;
 
     private MonthlyShiftBudgetCloseService service;
 
@@ -83,7 +96,8 @@ class MonthlyShiftBudgetCloseServiceTest {
         service = new MonthlyShiftBudgetCloseService(
                 allocationRepository, consumptionRepository, budgetTransactionRepository,
                 featureService, accessControlService, auditLogService,
-                organizationRepository, failedEventService);
+                organizationRepository, failedEventService, selfProvider);
+        lenient().when(selfProvider.getObject()).thenReturn(service);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
     }
