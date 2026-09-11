@@ -1,5 +1,7 @@
 package com.mannschaft.app.billing.api;
 
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.billing.BillingContractCancelService;
 import com.mannschaft.app.billing.BillingContractCancelService.CancelView;
 import com.mannschaft.app.billing.BillingContractEntity;
@@ -9,6 +11,7 @@ import com.mannschaft.app.billing.EntitlementErrorCode;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.api.dto.BillingContractCancelResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -37,6 +40,7 @@ public class BillingContractCancelApplicationService {
     private final BillingContractCancelService billingContractCancelService;
     private final BillingContractService billingContractService;
     private final BillingAccessGuard billingAccessGuard;
+    private final AuditLogService auditLogService;
 
     /**
      * 認可だけを先に済ませ、契約の所属 scope を返す（AC-54）。
@@ -76,15 +80,28 @@ public class BillingContractCancelApplicationService {
      */
     public BillingContractCancelResponse cancel(long actorId, UUID contractId, Long version) {
         BillingContractEntity contract = loadManageable(actorId, contractId);
+        // AC-66: 「作成」= 解約要求の受理。認可が通った時点で必ず残す（この後どこで落ちても
+        // 「利用者が解約を試みた」事実が消えない）。
+        audit(AuditEventType.BILLING_CANCEL_REQUESTED, actorId, contract, null);
 
-        // AC-25: 無償契約（PSP 紐付なし）は従来どおり即時失効。期末解約の Saga には載せない（D2・AC-15）。
-        if (contract.getPspSubscriptionRef() == null || contract.getPriceJpySnapshot() == null) {
-            billingContractService.cancelContract(
-                    contract.getScopeKind(), contract.getScopeId(), contractId, actorId);
-            return toResponse(billingContractCancelService.viewOf(contractId));
+        try {
+            // AC-25: 無償契約（PSP 紐付なし）は従来どおり即時失効。期末解約の Saga には載せない（D2・AC-15）。
+            BillingContractCancelResponse response;
+            if (contract.getPspSubscriptionRef() == null || contract.getPriceJpySnapshot() == null) {
+                billingContractService.cancelContract(
+                        contract.getScopeKind(), contract.getScopeId(), contractId, actorId);
+                response = toResponse(billingContractCancelService.viewOf(contractId));
+            } else {
+                response = toResponse(
+                        billingContractCancelService.scheduleCancel(contractId, version, actorId));
+            }
+            audit(AuditEventType.BILLING_CANCEL_APPLIED, actorId, contract, null);
+            return response;
+        } catch (RuntimeException e) {
+            // AC-66: 失敗も記録する（成功だけを監査しない）。握り潰さず必ず再送出する。
+            audit(AuditEventType.BILLING_CANCEL_FAILED, actorId, contract, errorCodeOf(e));
+            throw e;
         }
-
-        return toResponse(billingContractCancelService.scheduleCancel(contractId, version, actorId));
     }
 
     /**
@@ -96,8 +113,18 @@ public class BillingContractCancelApplicationService {
      * @return 撤回後の応答
      */
     public BillingContractCancelResponse resume(long actorId, UUID contractId, Long version) {
-        loadManageable(actorId, contractId);
-        return toResponse(billingContractCancelService.resumeCancel(contractId, version, actorId));
+        BillingContractEntity contract = loadManageable(actorId, contractId);
+        audit(AuditEventType.BILLING_CANCEL_RESUME_REQUESTED, actorId, contract, null);
+
+        try {
+            BillingContractCancelResponse response =
+                    toResponse(billingContractCancelService.resumeCancel(contractId, version, actorId));
+            audit(AuditEventType.BILLING_CANCEL_RESUME_APPLIED, actorId, contract, null);
+            return response;
+        } catch (RuntimeException e) {
+            audit(AuditEventType.BILLING_CANCEL_RESUME_FAILED, actorId, contract, errorCodeOf(e));
+            throw e;
+        }
     }
 
     // ============================================================
@@ -135,6 +162,41 @@ public class BillingContractCancelApplicationService {
     private BillingContractEntity reload(UUID contractId) {
         return billingContractRepository.findByIdAndDeletedAtIsNull(contractId)
                 .orElseThrow(() -> new BusinessException(EntitlementErrorCode.CONTRACT_NOT_FOUND));
+    }
+
+    /**
+     * 監査を1件記録する（AC-66 / AC-67）。
+     *
+     * <p>metadata に載せるのは <b>scopeKind / scopeId / contractId（object ref）/ errorCode</b> だけである。
+     * Stripe の raw payload・Portal URL・client secret・カード情報・住所は一切載せない（AC-67・正本 §370）。
+     * 例外のメッセージ本文も載せない —— Stripe の応答文言には ID や URL が混じりうるため、
+     * アプリ側で採番した {@link ErrorCode#getCode()} のみを残す。</p>
+     */
+    private void audit(AuditEventType eventType, long actorId,
+                       BillingContractEntity contract, String errorCode) {
+        EntitlementScopeKind scopeKind = contract.getScopeKind();
+        Long scopeId = contract.getScopeId();
+        StringBuilder metadata = new StringBuilder()
+                .append("{\"scopeKind\":\"").append(scopeKind.name())
+                .append("\",\"scopeId\":").append(scopeId)
+                .append(",\"contractId\":\"").append(contract.getId()).append('"');
+        if (errorCode != null) {
+            metadata.append(",\"errorCode\":\"").append(errorCode).append('"');
+        }
+        metadata.append('}');
+        auditLogService.record(eventType.name(), actorId, null,
+                scopeKind == EntitlementScopeKind.TEAM ? scopeId : null,
+                scopeKind == EntitlementScopeKind.ORG ? scopeId : null,
+                null, null, null, metadata.toString());
+    }
+
+    /** アプリのエラーコードだけを取り出す（例外メッセージ本文は監査へ出さない・AC-67）。 */
+    private String errorCodeOf(RuntimeException e) {
+        if (e instanceof BusinessException be) {
+            ErrorCode code = be.getErrorCode();
+            return code == null ? "UNKNOWN" : code.getCode();
+        }
+        return "UNEXPECTED";
     }
 
     private BillingContractCancelResponse toResponse(CancelView view) {

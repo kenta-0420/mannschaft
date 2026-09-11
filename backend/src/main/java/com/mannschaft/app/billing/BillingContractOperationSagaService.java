@@ -64,12 +64,20 @@ public class BillingContractOperationSagaService {
     /** tx2 が落ちたときの補償（検疫記録）を<b>別トランザクション</b>で行うための template（AC-19）。 */
     private final TransactionTemplate compensationTransactionTemplate;
 
+    /**
+     * 一括 UPDATE は {@code @PreUpdate} を経由しないため {@code updated_at} を明示的に渡す必要がある。
+     * その時刻の出所（テストでも固定できる注入 Clock）。
+     */
+    private final java.time.Clock clock;
+
     public BillingContractOperationSagaService(
             BillingContractOperationRepository operationRepository,
             ActiveBillingContractOperationPointerRepository pointerRepository,
             EntityManager entityManager,
             BillingCustomerLinkPort billingCustomerLinkPort,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            java.time.Clock clock) {
+        this.clock = clock;
         this.operationRepository = operationRepository;
         this.pointerRepository = pointerRepository;
         this.entityManager = entityManager;
@@ -320,34 +328,100 @@ public class BillingContractOperationSagaService {
         if (contractId == null) {
             return 0;
         }
+        return terminateNonTerminalAndReleaseAll(java.util.List.of(contractId));
+    }
+
+    /**
+     * D3 の検疫貫通を<b>複数契約へ一括で</b>適用する（AC-16/AC-17/AC-17b ＋ AC-72b）。
+     *
+     * <p>意味は {@link #terminateNonTerminalAndRelease} と同一であり、違いは
+     * <b>発行する SQL 本数が契約数 M に比例しない</b>ことだけである。退会 purge は契約数ぶん
+     * ループするため、契約ごとに「契約ロック → pointer 取得 → operation 取得 → 終端化 → pointer 削除」を
+     * 出すと 4M 本になる。ここでは次の本数に畳む。</p>
+     *
+     * <ul>
+     *   <li>契約行の FOR UPDATE ロック: 1本（{@code IN} 句）</li>
+     *   <li>pointer の取得: 1本</li>
+     *   <li>operation の取得: 1本（pointer が1件も無ければ 0本）</li>
+     *   <li>終端化の UPDATE: {@code (from status, kind)} の組み合わせ数ぶん。enum の直積が上限であり
+     *       M には比例しない（実運用ではほぼ1本）</li>
+     *   <li>pointer の DELETE: 1本</li>
+     * </ul>
+     *
+     * <p>再入・並行実行での二重適用は、契約行のロック＋「status 一致を条件に持つ UPDATE」＋
+     * 「読んだ pointer の contract_id だけを消す DELETE」で塞ぐ（AC-17b）。</p>
+     *
+     * @param contractIds 対象契約（null 要素・重複は無視する）
+     * @return 終端化した operation 件数
+     */
+    public int terminateNonTerminalAndReleaseAll(java.util.Collection<UUID> contractIds) {
+        if (contractIds == null || contractIds.isEmpty()) {
+            return 0;
+        }
+        java.util.List<UUID> ids = contractIds.stream()
+                .filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return 0;
+        }
         Integer terminated = transactionTemplate.execute(tx -> {
             // 契約行の排他ロックで並行到達（purge と webhook）を直列化する（AC-17b）。
-            // 契約が消えていても pointer の掃除は行うため、見つからない場合はロックせず続行する。
-            entityManager.find(
-                    BillingContractEntity.class, contractId, LockModeType.PESSIMISTIC_WRITE);
+            // 契約が消えていても pointer の掃除は行うため、1件も引けなくても続行する。
+            entityManager.createQuery(
+                            "SELECT c FROM BillingContractEntity c WHERE c.id IN :ids",
+                            BillingContractEntity.class)
+                    .setParameter("ids", ids)
+                    .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                    .getResultList();
 
-            Optional<ActiveBillingContractOperationPointerEntity> pointer =
-                    pointerRepository.findById(contractId);
-            if (pointer.isEmpty()) {
+            java.util.List<ActiveBillingContractOperationPointerEntity> pointers =
+                    pointerRepository.findAllById(ids);
+            if (pointers.isEmpty()) {
                 // 既に別経路が解放済み。再入・並行実行で二重に効かせない（AC-17b・冪等）。
                 return 0;
             }
-            UUID operationId = pointer.get().getOperationId();
+            java.util.List<UUID> operationIds = pointers.stream()
+                    .map(ActiveBillingContractOperationPointerEntity::getOperationId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+
             int count = 0;
-            BillingContractOperationEntity operation =
-                    operationRepository.findByIdAndDeletedAtIsNull(operationId).orElse(null);
-            if (operation != null && !BillingOperationTransitions.isTerminal(operation.getStatus())) {
+            if (!operationIds.isEmpty()) {
                 // 孤児を残さないため、pointer 削除と同一トランザクションで CANCELLED へ終端化する（D3）。
-                transitionInCurrentTransaction(
-                        operationId, BillingOperationStatus.CANCELLED, SYSTEM_BYPASS_ERROR_CODE, false);
-                count = 1;
+                // (現 status, kind) 単位にまとめる —— step は kind ごとに決まるため混ぜられない。
+                java.util.Map<java.util.List<Object>, java.util.List<UUID>> grouped =
+                        new java.util.LinkedHashMap<>();
+                for (BillingContractOperationEntity operation
+                        : operationRepository.findByIdInAndDeletedAtIsNull(operationIds)) {
+                    if (BillingOperationTransitions.isTerminal(operation.getStatus())) {
+                        continue;
+                    }
+                    BillingOperationTransitions.requireAllowed(
+                            operation.getStatus(), BillingOperationStatus.CANCELLED);
+                    grouped.computeIfAbsent(
+                            java.util.List.of(operation.getStatus(), operation.getKind()),
+                            k -> new java.util.ArrayList<>()).add(operation.getId());
+                }
+                for (java.util.Map.Entry<java.util.List<Object>, java.util.List<UUID>> e
+                        : grouped.entrySet()) {
+                    BillingOperationStatus from = (BillingOperationStatus) e.getKey().get(0);
+                    BillingOperationKind kind = (BillingOperationKind) e.getKey().get(1);
+                    count += operationRepository.compareAndSetStatusBulk(
+                            e.getValue(), from, BillingOperationStatus.CANCELLED,
+                            BillingOperationTransitions.stepFor(kind, BillingOperationStatus.CANCELLED),
+                            SYSTEM_BYPASS_ERROR_CODE, java.time.LocalDateTime.now(clock));
+                }
             }
-            pointerRepository.hardDeleteByContractIdAndOperationId(contractId, operationId);
+            pointerRepository.hardDeleteByContractIdIn(
+                    pointers.stream()
+                            .map(ActiveBillingContractOperationPointerEntity::getContractId)
+                            .toList());
             entityManager.flush();
             return count;
         });
         return terminated == null ? 0 : terminated;
     }
+
 
     // ================================================================
     // 内部実装

@@ -638,28 +638,51 @@ public class BillingContractService {
                 .findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
                         EntitlementScopeKind.USER, userId,
                         List.of(ContractStatus.PENDING, ContractStatus.ACTIVE, ContractStatus.PAST_DUE));
+        if (contracts.isEmpty()) {
+            return List.of();
+        }
+
+        // ★PR6a AC-72b: 以下は<b>契約数 M に比例しない</b>本数の SQL で行う。契約ごとのループで
+        //   save / pointer 削除 / entitlement 検索を出していた旧実装は M に比例して増えていた。
         List<String> paidSubscriptionRefs = new ArrayList<>();
-        Set<String> revokedKeys = new LinkedHashSet<>();
+        List<UUID> contractIds = new ArrayList<>();
+        Set<EntitlementSourceKind> sourceKinds = new LinkedHashSet<>();
         for (BillingContractEntity contract : contracts) {
             if (contract.getPspSubscriptionRef() != null) {
                 paidSubscriptionRefs.add(contract.getPspSubscriptionRef());
             }
-            // ★PR6a AC-16（D3）: 検疫中でも退会 purge は通す（止めると退会者に課金と権利が残り
-            //   GDPR 要件を破るため、検疫より purge を優先する）。孤児を作らないよう、非終端 operation を
-            //   同一トランザクションで CANCELLED へ終端化してから pointer を削除する。
-            billingContractOperationSagaService.terminateNonTerminalAndRelease(contract.getId());
-            contract.setStatus(ContractStatus.CANCELLED);
-            contract.setCancelledAt(now);
-            billingContractRepository.save(contract);
-            String slotAddonKey = contract.getContractKind() == ContractKind.ADDON
-                    ? contract.getFeatureKey() : "";
-            activeContractPointerRepository.hardDeleteBySlot(
-                    EntitlementScopeKind.USER, userId, contract.getContractKind(), slotAddonKey);
-            revokedKeys.addAll(revokeEntitlementsOfContract(contract, null, now));
+            contractIds.add(contract.getId());
+            sourceKinds.add(toSourceKind(contract.getContractKind()));
         }
-        if (!contracts.isEmpty()) {
-            evictAfterCommit(EntitlementScopeKind.USER, userId, revokedKeys);
+
+        // ★PR6a AC-16（D3）: 検疫中でも退会 purge は通す（止めると退会者に課金と権利が残り
+        //   GDPR 要件を破るため、検疫より purge を優先する）。孤児を作らないよう、非終端 operation を
+        //   同一トランザクションで CANCELLED へ終端化してから pointer を削除する。
+        billingContractOperationSagaService.terminateNonTerminalAndReleaseAll(contractIds);
+
+        // アクティブ契約スロットの解放。purge は当該 scope の契約を全て解約するため、
+        // スロットを1つずつ消す（＝M 本）代わりに scope 単位で1本にできる（AC-72b）。
+        activeContractPointerRepository.hardDeleteByScope(EntitlementScopeKind.USER, userId);
+
+        // 由来 entitlements の revoke は「1本の検索＋1本の一括 UPDATE」に畳む（AC-72 / AC-72b）。
+        Set<String> revokedKeys = new LinkedHashSet<>();
+        List<EntitlementEntity> rows = entitlementRepository
+                .findBySourceKindInAndSourceRefIdInAndRevokedAtIsNull(sourceKinds, contractIds);
+        if (!rows.isEmpty()) {
+            List<UUID> entitlementIds = new ArrayList<>(rows.size());
+            for (EntitlementEntity e : rows) {
+                revokedKeys.add(e.getFeatureKey());
+                entitlementIds.add(e.getId());
+            }
+            entitlementRepository.bulkRevokeByIds(entitlementIds, now, null);
         }
+
+        // 契約の CANCELLED 化。エンティティを1件ずつ書き換えると flush 時に M 本の UPDATE が出るため、
+        // 一括 UPDATE で1本に畳む。永続化コンテキストはここで切り離す（読み出し済みの契約行は
+        // 以後参照しない。本メソッドはこの直後に return する）。
+        billingContractRepository.bulkCancelForPurge(contractIds, ContractStatus.CANCELLED, now);
+
+        evictAfterCommit(EntitlementScopeKind.USER, userId, revokedKeys);
         return paidSubscriptionRefs;
     }
 

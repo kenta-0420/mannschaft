@@ -34,6 +34,9 @@ public interface BillingContractOperationRepository
     /** 主キーで取得する（deleted_at 除外）。 */
     Optional<BillingContractOperationEntity> findByIdAndDeletedAtIsNull(UUID id);
 
+    /** 複数の主キーで<b>1本のクエリ</b>として取得する（PR6a AC-72b の一括終端化）。 */
+    List<BillingContractOperationEntity> findByIdInAndDeletedAtIsNull(Collection<UUID> ids);
+
     /**
      * 停止窓の回収（D8・AC-78/79/80/81）の走査。
      *
@@ -79,4 +82,36 @@ public interface BillingContractOperationRepository
                             @Param("step") BillingOperationStep step,
                             @Param("errorCode") String errorCode,
                             @Param("updatedAt") LocalDateTime updatedAt);
+
+    /**
+     * 同じ {@code from → to} の遷移を<b>1本の一括 UPDATE で</b>進める（PR6a AC-72b）。
+     *
+     * <p>退会 purge の一括解約が契約数 M に比例した UPDATE を出さないための口。{@code step} は
+     * kind ごとに決まるため、呼び出し元は {@code (from, kind)} でまとめてから呼ぶこと。組み合わせ数は
+     * enum の直積で上限が決まり、M には比例しない。</p>
+     *
+     * <p>{@link #compareAndSetStatus} と異なり永続化コンテキストを<b>クリアしない</b>
+     * （purge 経路は同一トランザクションで契約エンティティを保持したまま処理を続けるため）。
+     * 呼び出し元は更新した operation エンティティを以後参照しないこと。</p>
+     *
+     * @param ids       対象 operation（同一 kind・同一 from であること）
+     * @param from      期待する現在の status
+     * @param to        遷移先 status
+     * @param step      遷移先の step
+     * @param errorCode {@code error_code} 列へ記録する値（{@code null} なら据え置き）
+     * @param updatedAt 更新時刻（注入 Clock 由来）
+     * @return 更新件数
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE BillingContractOperationEntity o "
+            + "SET o.status = :to, o.step = :step, "
+            + "o.errorCode = COALESCE(:errorCode, o.errorCode), "
+            + "o.version = o.version + 1, o.updatedAt = :updatedAt "
+            + "WHERE o.id IN :ids AND o.status = :from AND o.deletedAt IS NULL")
+    int compareAndSetStatusBulk(@Param("ids") Collection<UUID> ids,
+                                @Param("from") BillingOperationStatus from,
+                                @Param("to") BillingOperationStatus to,
+                                @Param("step") BillingOperationStep step,
+                                @Param("errorCode") String errorCode,
+                                @Param("updatedAt") LocalDateTime updatedAt);
 }

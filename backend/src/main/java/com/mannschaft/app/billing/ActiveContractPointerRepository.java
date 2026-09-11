@@ -64,4 +64,25 @@ public interface ActiveContractPointerRepository
             @Param("contractKind") ContractKind contractKind,
             @Param("addonFeatureKey") String addonFeatureKey,
             @Param("contractId") UUID contractId);
+
+    /**
+     * スコープ配下のポインタを<b>1本のクエリで</b>物理 DELETE する（PR6a AC-72b・退会 purge 専用）。
+     *
+     * <p>退会 purge は当該ユーザーの契約を<b>すべて</b>解約するため、スロットを1つずつ
+     * {@link #hardDeleteBySlot} で消すと契約数 M に比例して DELETE が増える。purge の意味は
+     * 「この scope のアクティブ契約スロットを全部空ける」であり、スロット単位の逐次削除と
+     * 結果は同じになる（残ってよいポインタが1つも無い）。</p>
+     *
+     * <p><b>他の解約経路で使ってはならない</b>: 単一契約の解約は自分のスロットだけを消す必要がある。</p>
+     *
+     * @param scopeKind スコープ種別（purge は {@code USER} のみ）
+     * @param scopeId   スコープ ID
+     * @return 削除件数
+     */
+    @Modifying
+    @Query("DELETE FROM ActiveContractPointerEntity p "
+            + "WHERE p.scopeKind = :scopeKind AND p.scopeId = :scopeId")
+    int hardDeleteByScope(
+            @Param("scopeKind") EntitlementScopeKind scopeKind,
+            @Param("scopeId") Long scopeId);
 }

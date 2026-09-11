@@ -67,7 +67,7 @@ import java.util.function.Supplier;
 @RequestMapping("/api/v1")
 @Tag(name = "課金 - 解約", description = "Billing Center PR6a 期末解約の予約と撤回")
 @RequiredArgsConstructor
-public class BillingContractCancelController {
+public class BillingContractCancelResumeController {
 
     /** 解約 / 撤回の唯一のパス（D6）。冪等台帳の {@code request_path} には実 UUID を含む具体 URI を刻む。 */
     private static final String CANCEL_PATH_FORMAT = "/api/v1/me/billing/contracts/%s/cancel";

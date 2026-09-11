@@ -33,4 +33,19 @@ public interface ActiveBillingContractOperationPointerRepository
             + "WHERE p.contractId = :contractId AND p.operationId = :operationId")
     int hardDeleteByContractIdAndOperationId(
             @Param("contractId") UUID contractId, @Param("operationId") UUID operationId);
+
+    /**
+     * 複数契約の lease を<b>1本のクエリで</b>物理 DELETE する（PR6a AC-72b）。
+     *
+     * <p>退会 purge の一括解約が契約ごとに DELETE を出さないための口。呼び出し元は対象契約行を
+     * FOR UPDATE でロックしたうえで、直前に読んだ lease の contract_id だけを渡すこと
+     * （ロックの外で消すと、他経路が取り直した新しい lease を巻き込む）。</p>
+     *
+     * @param contractIds 対象契約 ID
+     * @return 削除件数
+     */
+    @Modifying
+    @Query("DELETE FROM ActiveBillingContractOperationPointerEntity p "
+            + "WHERE p.contractId IN :contractIds")
+    int hardDeleteByContractIdIn(@Param("contractIds") java.util.Collection<UUID> contractIds);
 }

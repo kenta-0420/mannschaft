@@ -122,8 +122,10 @@ class BillingCancelResumeAuditRegressionRedIT extends AbstractMySqlIntegrationTe
     @DisplayName("AC-66: Stripe失敗による解約失敗も監査イベントとして記録される（成功だけを監査しない）")
     void AC66_解約失敗も監査イベントとして記録される() throws Exception {
         UUID contractId = insertContract(ContractStatus.ACTIVE, PRICE_JPY, periodEnd, null);
+        // Saga 経路（PR6a の新エンドポイント）が呼ぶのは operationId 付きの2引数版である。
+        // 1引数版（旧経路）を落としても新経路は素通りするため、ここは2引数版を落とす。
         org.mockito.BDDMockito.willThrow(new IllegalStateException("stripe down"))
-                .given(billingPaymentGateway).cancelAtPeriodEnd(anyString());
+                .given(billingPaymentGateway).cancelAtPeriodEnd(anyString(), any(UUID.class));
 
         mockMvc.perform(post(String.format(CANCEL_PATH, contractId))
                         .with(user(String.valueOf(userId)))

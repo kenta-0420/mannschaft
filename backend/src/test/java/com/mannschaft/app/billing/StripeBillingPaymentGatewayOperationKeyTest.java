@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -42,14 +43,15 @@ class StripeBillingPaymentGatewayOperationKeyTest {
     @Test
     @DisplayName("AC-5: cancelAtPeriodEnd(ref, operationId) は billing-operation-{operationId} を Stripe へ渡す")
     void passesOperationScopedIdempotencyKey() {
-        given(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq("sub_pr6a"), anyString()))
+        given(stripePaymentProvider.cancelSubscriptionAtPeriodEnd(eq("sub_pr6a"), anyString(), anyMap()))
                 .willReturn(new StripePaymentProvider.SubscriptionInfo(
                         "sub_pr6a", "active", 1_800_000_000L));
 
         Instant periodEnd = gateway.cancelAtPeriodEnd("sub_pr6a", OPERATION_ID);
 
         ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
-        verify(stripePaymentProvider).cancelSubscriptionAtPeriodEnd(eq("sub_pr6a"), keyCaptor.capture());
+        verify(stripePaymentProvider)
+                .cancelSubscriptionAtPeriodEnd(eq("sub_pr6a"), keyCaptor.capture(), anyMap());
         assertThat(keyCaptor.getValue())
                 .isEqualTo("billing-operation-0199ab02-3333-7444-8555-666677778888");
         assertThat(periodEnd).isEqualTo(Instant.ofEpochSecond(1_800_000_000L));
