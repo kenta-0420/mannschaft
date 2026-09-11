@@ -46,7 +46,7 @@
   },
   "tests/e2e/real/adhd-ux-flows.spec.ts": {
     "no-restricted-syntax": {
-      "count": 20
+      "count": 18
     }
   },
   "tests/e2e/real/admin/business-alert.spec.ts": {
