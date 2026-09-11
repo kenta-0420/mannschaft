@@ -158,6 +158,7 @@ export function buildSlot(
     requiredCount?: number
     assignedUserIds?: number[]
     assignmentMasked?: boolean
+    endsNextDay?: boolean
   } = {},
 ) {
   return {
@@ -167,6 +168,7 @@ export function buildSlot(
       slotDate: overrides.slotDate ?? '2026-05-10',
       startTime: overrides.startTime ?? '09:00:00',
       endTime: overrides.endTime ?? '17:00:00',
+      endsNextDay: overrides.endsNextDay ?? false,
     },
     position: {
       positionId: overrides.positionId ?? null,

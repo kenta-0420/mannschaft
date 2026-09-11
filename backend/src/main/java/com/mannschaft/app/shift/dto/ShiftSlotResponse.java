@@ -17,7 +17,7 @@ public class ShiftSlotResponse {
     Long id;
     Long scheduleId;
 
-    ShiftSlotTimeDto     time;      // slotDate, startTime, endTime
+    ShiftSlotTimeDto     time;      // slotDate, startTime, endTime, endsNextDay
     ShiftSlotPositionDto position;  // positionId, positionName, requiredCount
     List<Long>           assignedUserIds;
     String               note;
@@ -34,6 +34,19 @@ public class ShiftSlotResponse {
      */
     boolean              assignmentMasked;
 
-    public record ShiftSlotTimeDto(LocalDate slotDate, LocalTime startTime, LocalTime endTime) {}
+    /**
+     * 枠の時間帯。
+     *
+     * <p>{@code endsNextDay} は翌日終了（日跨ぎ）を<b>明示</b>するフラグ（設計 F03.5 §11.2.5 規則5）。
+     * これを返さないと、クライアントは禁じたはずの {@code endTime < startTime} という
+     * 暗黙の推測に戻らざるを得ず、移行済みの既存行とも区別できない。</p>
+     *
+     * @param slotDate    シフト日付（日跨ぎ枠は開始日）
+     * @param startTime   開始時刻
+     * @param endTime     終了時刻
+     * @param endsNextDay 翌日終了なら true
+     */
+    public record ShiftSlotTimeDto(LocalDate slotDate, LocalTime startTime, LocalTime endTime,
+                                   boolean endsNextDay) {}
     public record ShiftSlotPositionDto(Long positionId, String positionName, Integer requiredCount) {}
 }
