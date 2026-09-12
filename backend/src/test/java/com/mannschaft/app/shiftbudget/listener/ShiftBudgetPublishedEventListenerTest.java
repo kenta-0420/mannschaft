@@ -9,6 +9,7 @@ import com.mannschaft.app.shift.repository.ShiftHourlyRateRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFeatureService;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
+import com.mannschaft.app.shiftbudget.event.HourlyRateMissingEvent;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -77,9 +79,9 @@ class ShiftBudgetPublishedEventListenerTest {
     /** Phase 10-β で追加された失敗イベント記録（テスト中は no-op で十分） */
     @Mock
     private com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService failedEventService;
-    /** CMP-260910-1555 で追加された時給未設定警告の通知 */
+    /** CMP-260910-1555: 時給未設定通知をコミット後へ渡すイベント発行口。 */
     @Mock
-    private com.mannschaft.app.shiftbudget.service.ShiftBudgetHourlyRateMissingNotifier hourlyRateMissingNotifier;
+    private ApplicationEventPublisher applicationEventPublisher;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -91,7 +93,7 @@ class ShiftBudgetPublishedEventListenerTest {
                 featureService, allocationRepository, rateQueryRepository,
                 consumptionService, slotRepository, hourlyRateRepository,
                 auditLogService, objectMapper, thresholdAlertEvaluationService, failedEventService,
-                hourlyRateMissingNotifier);
+                applicationEventPublisher);
     }
 
     private ShiftSlotEntity sampleSlotWithUser(Long slotId, Long userId) {
@@ -302,8 +304,8 @@ class ShiftBudgetPublishedEventListenerTest {
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
-        verify(hourlyRateMissingNotifier).notifyHourlyRateMissing(
-                eq(ORG_ID), eq(TEAM_ID), eq("team-alpha"), eq(SCHEDULE_ID), eq(List.of(USER_ID)));
+        verify(applicationEventPublisher).publishEvent(new HourlyRateMissingEvent(
+                ORG_ID, TEAM_ID, "team-alpha", SCHEDULE_ID, List.of(USER_ID)));
     }
 
     @Test
@@ -323,8 +325,7 @@ class ShiftBudgetPublishedEventListenerTest {
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
-        verify(hourlyRateMissingNotifier, never()).notifyHourlyRateMissing(
-                any(), any(), any(), any(), any());
+        verify(applicationEventPublisher, never()).publishEvent(any(HourlyRateMissingEvent.class));
     }
 
     @Test
@@ -333,8 +334,7 @@ class ShiftBudgetPublishedEventListenerTest {
         givenMissingHourlyRate();
         given(rateQueryRepository.findTeamSlugByTeamId(TEAM_ID)).willReturn(Optional.empty());
         org.mockito.BDDMockito.willThrow(new RuntimeException("notification down"))
-                .given(hourlyRateMissingNotifier).notifyHourlyRateMissing(
-                        any(), any(), any(), any(), any());
+                .given(applicationEventPublisher).publishEvent(any(HourlyRateMissingEvent.class));
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 

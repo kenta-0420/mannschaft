@@ -305,9 +305,10 @@ class MemberQueryDispatcherTest {
                     .userId(99L).teamId(100L).roleId(2L).build();
             given(userRoleRepository.findByTeamId(eq(100L), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(ur)));
+            LocalDateTime joinedAt = LocalDateTime.of(2026, 9, 12, 10, 30);
             MembershipEntity m = MembershipEntity.builder()
                     .userId(99L).scopeType(ScopeType.TEAM).scopeId(100L)
-                    .roleKind(RoleKind.MEMBER).joinedAt(LocalDateTime.now()).build();
+                    .roleKind(RoleKind.MEMBER).joinedAt(joinedAt).build();
             given(membershipRepository.findByScopeAndActive(eq(ScopeType.TEAM), eq(100L), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(m)));
             given(userRepository.findMemberSummariesByIds(any())).willReturn(List.of());
@@ -319,6 +320,7 @@ class MemberQueryDispatcherTest {
             assertThat(page.getContent()).hasSize(1);
             assertThat(page.getContent().get(0).userId()).isEqualTo(99L);
             assertThat(page.getContent().get(0).roleName()).isEqualTo("ADMIN");
+            assertThat(page.getContent().get(0).joinedAt()).isEqualTo(joinedAt);
             assertThat(page.getTotalElements()).isEqualTo(1);
         }
     }

@@ -1,11 +1,11 @@
 package com.mannschaft.app.shiftbudget.listener;
 
-import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
-import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.event.ShiftPublishedEvent;
 import com.mannschaft.app.shift.repository.ShiftHourlyRateRepository;
@@ -13,14 +13,15 @@ import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFeatureService;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
+import com.mannschaft.app.shiftbudget.event.HourlyRateMissingEvent;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetRateQueryRepository;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetConsumptionService;
 import com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService;
-import com.mannschaft.app.shiftbudget.service.ShiftBudgetHourlyRateMissingNotifier;
 import com.mannschaft.app.shiftbudget.service.ThresholdAlertEvaluationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -70,7 +71,7 @@ public class ShiftBudgetConsumptionRecordListener {
     /** Phase 10-β で追加: 失敗イベントの永続化（リトライバッチ + 管理 API の入口） */
     private final ShiftBudgetFailedEventService failedEventService;
     /** CMP-260910-1555 で追加: 時給未設定により消化記録をスキップしたことの管理者通知 */
-    private final ShiftBudgetHourlyRateMissingNotifier hourlyRateMissingNotifier;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "殿の裁定: 記録と取消は対であり、片方だけ止まれば予算残高が壊れる。対になっているものを別々に扱ってはならず、いずれも常時実行とする")
@@ -208,12 +209,12 @@ public class ShiftBudgetConsumptionRecordListener {
             // （通知側は失敗した受信者を NOTIFICATION_SEND の failed event に残して再送経路へ載せる）。
             if (!missingRateUserIds.isEmpty()) {
                 try {
-                    hourlyRateMissingNotifier.notifyHourlyRateMissing(
+                    applicationEventPublisher.publishEvent(new HourlyRateMissingEvent(
                             organizationId, teamId,
                             rateQueryRepository.findTeamSlugByTeamId(teamId).orElse(null),
-                            scheduleId, List.copyOf(missingRateUserIds));
+                            scheduleId, List.copyOf(missingRateUserIds)));
                 } catch (Exception notifyEx) {
-                    log.error("F08.7 hook: 時給未設定警告の通知に失敗（消化記録自体は完了済）: "
+                    log.error("F08.7 hook: 時給未設定警告イベントの発行に失敗（消化記録自体は完了済）: "
                                     + "scheduleId={}, teamId={}, missingUsers={}",
                             scheduleId, teamId, missingRateUserIds.size(), notifyEx);
                 }

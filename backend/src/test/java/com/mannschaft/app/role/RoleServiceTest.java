@@ -118,6 +118,16 @@ class RoleServiceTest {
                 });
     }
 
+    @Test
+    @DisplayName("組織と権限名によるユーザーID取得をRepositoryへ委譲する")
+    void 組織と権限名によるユーザーID取得をRepositoryへ委譲する() {
+        given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(
+                SCOPE_ID, "BUDGET_ADMIN")).willReturn(List.of(10L, 20L));
+
+        assertThat(roleService.getUserIdsByOrganizationIdAndPermissionName(
+                SCOPE_ID, "BUDGET_ADMIN")).containsExactly(10L, 20L);
+    }
+
     // ========================================
     // assignRole
     // ========================================

@@ -456,6 +456,22 @@ public class RoleService {
     }
 
     /**
+     * 指定組織で指定権限を持つユーザー ID 一覧を返す。
+     *
+     * <p>他ドメインが {@code role} ドメインの Repository を直接参照せずに
+     * 通知先などを解決するための Service 境界。Entity は公開しない。</p>
+     *
+     * @param organizationId 対象組織 ID
+     * @param permissionName 権限名
+     * @return 当該権限を持つユーザー ID 一覧
+     */
+    public List<Long> getUserIdsByOrganizationIdAndPermissionName(
+            Long organizationId, String permissionName) {
+        return userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(
+                organizationId, permissionName);
+    }
+
+    /**
      * 指定チームの ADMIN/DEPUTY_ADMIN ユーザー ID 一覧を返す（柱③-A・CMP-260901-1538）。
      *
      * <p>{@link #getAdminUserIdsByOrganizationId} と同じ趣旨（D-5 ArchUnit 準拠）。既存の

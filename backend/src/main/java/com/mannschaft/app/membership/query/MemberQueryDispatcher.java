@@ -3,6 +3,7 @@ package com.mannschaft.app.membership.query;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -16,11 +17,12 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -124,19 +126,22 @@ public class MemberQueryDispatcher {
                                             String roleName, Pageable pageable) {
         List<MemberIdentity> identities = queryIdentities(scopeId, scopeType, roleName);
 
-        long totalElements = identities.size();
+        int identityCount = identities.size();
         int fromIndex;
         int toIndex;
         if (pageable.isPaged()) {
-            fromIndex = (int) Math.min(pageable.getOffset(), totalElements);
-            toIndex = (int) Math.min(fromIndex + (long) pageable.getPageSize(), totalElements);
+            fromIndex = (int) Math.min(pageable.getOffset(), identityCount);
+            toIndex = (int) Math.min(fromIndex + (long) pageable.getPageSize(), identityCount);
         } else {
             fromIndex = 0;
-            toIndex = identities.size();
+            toIndex = identityCount;
         }
         List<MemberIdentity> pageSlice = identities.subList(fromIndex, toIndex);
 
-        return new PageImpl<>(hydrate(pageSlice), pageable, totalElements);
+        // identities はページ切り出し前の全集約結果であり、ここでの size は
+        // 「ページ内で残った件数」ではなく、絞り込み後の正しい総件数である。
+        return PageableExecutionUtils.getPage(
+                hydrate(pageSlice), pageable, () -> identities.size());
     }
 
     /**
@@ -165,7 +170,7 @@ public class MemberQueryDispatcher {
                     // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
                     user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null,
                     identity.roleName(),
-                    identity.joinedAt()));
+                    toLegacyLocalDateTime(identity.joinedAt())));
         }
         return result;
     }
@@ -173,7 +178,7 @@ public class MemberQueryDispatcher {
     /**
      * ユーザーの実体化を伴わない軽量な集約結果（userId・ロール・joinedAt のみ）。
      */
-    private record MemberIdentity(Long userId, String roleName, java.time.LocalDateTime joinedAt) {
+    private record MemberIdentity(Long userId, String roleName, Instant joinedAt) {
     }
 
     /**
@@ -202,7 +207,8 @@ public class MemberQueryDispatcher {
                             .toList();
                 }
                 yield entities.stream()
-                        .map(ur -> new MemberIdentity(ur.getUserId(), roleName, ur.getCreatedAt()))
+                        .map(ur -> new MemberIdentity(
+                                ur.getUserId(), roleName, toInstant(ur.getCreatedAt())))
                         .toList();
             }
             case "MEMBER", "SUPPORTER" -> {
@@ -213,7 +219,8 @@ public class MemberQueryDispatcher {
                         .stream()
                         .filter(m -> m.getRoleKind() == roleKind)
                         .filter(m -> m.getUserId() != null)
-                        .map(m -> new MemberIdentity(m.getUserId(), roleKind.name(), m.getJoinedAt()))
+                        .map(m -> new MemberIdentity(
+                                m.getUserId(), roleKind.name(), toInstant(m.getJoinedAt())))
                         .toList();
             }
             default -> throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_INVALID_ROLE_KIND);
@@ -241,13 +248,13 @@ public class MemberQueryDispatcher {
             if (urRoleName == null) {
                 continue;
             }
-            mergeIdentity(aggregated, ur.getUserId(), urRoleName, ur.getCreatedAt());
+            mergeIdentity(aggregated, ur.getUserId(), urRoleName, toInstant(ur.getCreatedAt()));
         }
         for (MembershipEntity m : memberships) {
             if (m.getUserId() == null) {
                 continue; // GDPR マスキング済はスキップ
             }
-            mergeIdentity(aggregated, m.getUserId(), m.getRoleKind().name(), m.getJoinedAt());
+            mergeIdentity(aggregated, m.getUserId(), m.getRoleKind().name(), toInstant(m.getJoinedAt()));
         }
         return new ArrayList<>(aggregated.values());
     }
@@ -281,7 +288,7 @@ public class MemberQueryDispatcher {
 
     /** {@link #mergeAggregated} の軽量版（表示名・アバターを扱わないだけで規則は同一）。 */
     private void mergeIdentity(Map<Long, MemberIdentity> agg, Long userId,
-                               String roleName, java.time.LocalDateTime joinedAt) {
+                               String roleName, Instant joinedAt) {
         MemberIdentity existing = agg.get(userId);
         if (existing == null) {
             agg.put(userId, new MemberIdentity(userId, roleName, joinedAt));
@@ -294,6 +301,27 @@ public class MemberQueryDispatcher {
             agg.put(userId, new MemberIdentity(userId, existing.roleName(),
                     pickEarlier(existing.joinedAt(), joinedAt)));
         }
+    }
+
+    /** 既存EntityのJST壁時計表現を、内部集約では意味の明確な瞬間へ変換する。 */
+    private static Instant toInstant(java.time.LocalDateTime value) {
+        return value == null
+                ? null
+                : value.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant();
+    }
+
+    /** 既存API契約のLocalDateTimeへ、従来と同じサーバー基準ゾーンで戻す。 */
+    private static java.time.LocalDateTime toLegacyLocalDateTime(Instant value) {
+        return value == null
+                ? null
+                : java.time.LocalDateTime.ofInstant(
+                        value, UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
+
+    private static Instant pickEarlier(Instant a, Instant b) {
+        if (a == null) return b;
+        if (b == null) return a;
+        return a.isBefore(b) ? a : b;
     }
 
     /**

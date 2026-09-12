@@ -1,18 +1,24 @@
 package com.mannschaft.app.shiftbudget.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.ShiftBudgetHourlyRateMissingMessages;
+import com.mannschaft.app.shiftbudget.event.HourlyRateMissingEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -65,7 +71,7 @@ public class ShiftBudgetHourlyRateMissingNotifier {
 
     private final NotificationDeliveryRunner notificationDeliveryRunner;
     private final UserLocaleCache userLocaleCache;
-    private final UserRoleRepository userRoleRepository;
+    private final RoleService roleService;
     private final ShiftBudgetFailedEventService failedEventService;
     private final AuditLogService auditLogService;
     private final MessageSource messageSource;
@@ -73,14 +79,22 @@ public class ShiftBudgetHourlyRateMissingNotifier {
     /**
      * 時給未設定により消化記録をスキップしたことを予算管理者へ通知する。
      *
-     * @param organizationId 組織ID
-     * @param teamId         チームID
-     * @param teamSlug       チームの slug（通知のアクション URL 用。{@code null} なら URL 無し）
-     * @param scheduleId     対象のシフトスケジュールID
-     * @param missingUserIds 時給が未設定だったユーザーID（重複なし）
+     * <p>このイベントは公開処理の {@code AFTER_COMMIT} リスナーから発行されるため、
+     * 発行時点では既にトランザクションがない。{@code fallbackExecution = true} により、
+     * コミット後であることを保ったまま非同期配送へ渡す。</p>
+     *
+     * @param event 時給未設定ユーザーと対象スケジュールを含むイベント
      */
-    public void notifyHourlyRateMissing(Long organizationId, Long teamId, String teamSlug,
-                                        Long scheduleId, List<Long> missingUserIds) {
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "時給未設定を放置すると予算消化額が欠落し続けるため、管理者への警告は停止しない")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onHourlyRateMissing(HourlyRateMissingEvent event) {
+        Long organizationId = event.organizationId();
+        Long teamId = event.teamId();
+        String teamSlug = event.teamSlug();
+        Long scheduleId = event.scheduleId();
+        List<Long> missingUserIds = event.missingUserIds();
         if (missingUserIds == null || missingUserIds.isEmpty()) {
             return;
         }
@@ -160,8 +174,8 @@ public class ShiftBudgetHourlyRateMissingNotifier {
      */
     private List<Long> resolveRecipients(Long organizationId) {
         Set<Long> uniq = new HashSet<>();
-        uniq.addAll(userRoleRepository.findAdminUserIdsByOrganizationId(organizationId));
-        uniq.addAll(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(
+        uniq.addAll(roleService.getAdminUserIdsByOrganizationId(organizationId));
+        uniq.addAll(roleService.getUserIdsByOrganizationIdAndPermissionName(
                 organizationId, "BUDGET_ADMIN"));
         List<Long> sorted = new ArrayList<>(uniq);
         sorted.sort(Long::compareTo);

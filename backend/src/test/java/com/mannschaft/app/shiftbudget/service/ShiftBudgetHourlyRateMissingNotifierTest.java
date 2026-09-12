@@ -5,8 +5,9 @@ import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
+import com.mannschaft.app.shiftbudget.event.HourlyRateMissingEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,7 +51,7 @@ class ShiftBudgetHourlyRateMissingNotifierTest {
     @Mock
     private UserLocaleCache userLocaleCache;
     @Mock
-    private UserRoleRepository userRoleRepository;
+    private RoleService roleService;
     @Mock
     private ShiftBudgetFailedEventService failedEventService;
     @Mock
@@ -62,8 +63,8 @@ class ShiftBudgetHourlyRateMissingNotifierTest {
     private ShiftBudgetHourlyRateMissingNotifier notifier;
 
     private void givenRecipients(List<Long> admins, List<Long> budgetAdmins) {
-        given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(admins);
-        given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
+        given(roleService.getAdminUserIdsByOrganizationId(ORG_ID)).willReturn(admins);
+        given(roleService.getUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
                 .willReturn(budgetAdmins);
     }
 
@@ -81,7 +82,7 @@ class ShiftBudgetHourlyRateMissingNotifierTest {
         given(notificationDeliveryRunner.sendOne(any()))
                 .willReturn(NotificationDeliveryResult.DELIVERED);
 
-        notifier.notifyHourlyRateMissing(ORG_ID, TEAM_ID, "team-alpha", SCHEDULE_ID, List.of(100L, 101L));
+        notifier.onHourlyRateMissing(event("team-alpha", List.of(100L, 101L)));
 
         // ADMIN ∪ BUDGET_ADMIN の重複を除いた 3 名へ配送される
         ArgumentCaptor<NotificationDeliveryRequest> captor =
@@ -101,7 +102,7 @@ class ShiftBudgetHourlyRateMissingNotifierTest {
     @Test
     @DisplayName("未設定ユーザーが 0 名なら何もしない（誤報を出さない）")
     void 未設定ゼロなら何もしない() {
-        notifier.notifyHourlyRateMissing(ORG_ID, TEAM_ID, "team-alpha", SCHEDULE_ID, List.of());
+        notifier.onHourlyRateMissing(event("team-alpha", List.of()));
 
         verify(notificationDeliveryRunner, never()).sendOne(any());
         verify(auditLogService, never()).record(anyString(), any(), any(), any(), any(),
@@ -118,7 +119,7 @@ class ShiftBudgetHourlyRateMissingNotifierTest {
                 .willThrow(new RuntimeException("db down"))
                 .willReturn(NotificationDeliveryResult.DELIVERED);
 
-        notifier.notifyHourlyRateMissing(ORG_ID, TEAM_ID, "team-alpha", SCHEDULE_ID, List.of(100L));
+        notifier.onHourlyRateMissing(event("team-alpha", List.of(100L)));
 
         // 1 名目が落ちても 2 名目の配送は試みられる
         verify(notificationDeliveryRunner, times(2)).sendOne(any());
@@ -144,7 +145,7 @@ class ShiftBudgetHourlyRateMissingNotifierTest {
         givenMessages();
         willThrow(new RuntimeException("locale down")).given(userLocaleCache).getLocales(any());
 
-        notifier.notifyHourlyRateMissing(ORG_ID, TEAM_ID, "team-alpha", SCHEDULE_ID, List.of(100L));
+        notifier.onHourlyRateMissing(event("team-alpha", List.of(100L)));
 
         verify(notificationDeliveryRunner, never()).sendOne(any());
         @SuppressWarnings("unchecked")
@@ -160,10 +161,15 @@ class ShiftBudgetHourlyRateMissingNotifierTest {
     void 受信者ゼロでも監査ログ() {
         givenRecipients(List.of(), List.of());
 
-        notifier.notifyHourlyRateMissing(ORG_ID, TEAM_ID, "team-alpha", SCHEDULE_ID, List.of(100L));
+        notifier.onHourlyRateMissing(event("team-alpha", List.of(100L)));
 
         verify(auditLogService).record(eq("SHIFT_BUDGET_HOURLY_RATE_MISSING"),
                 any(), any(), eq(TEAM_ID), eq(ORG_ID), any(), any(), any(), any());
         verify(notificationDeliveryRunner, never()).sendOne(any());
+    }
+
+    private HourlyRateMissingEvent event(String teamSlug, List<Long> missingUserIds) {
+        return new HourlyRateMissingEvent(
+                ORG_ID, TEAM_ID, teamSlug, SCHEDULE_ID, missingUserIds);
     }
 }
