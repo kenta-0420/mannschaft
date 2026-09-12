@@ -180,10 +180,29 @@ public class MonthlyShiftBudgetCloseService {
      * 単独コミットされて {@code confirmed_amount} が 0 のまま残る部分適用が発生する
      * （CMP-260910-1556）。</p>
      *
+     * <p><b>並行実行の直列化（CMP-260910-1556 検分 P1）</b>: 最初に
+     * {@link ShiftBudgetAllocationRepository#findByIdForUpdate} で割当行を排他ロックする。
+     * ロックを取らないと、手動 API の同時送信や「手動 API と cron の重なり」で
+     * 両トランザクションとも仕訳存在チェックを false と判定し、同じ PLANNED 消化を
+     * 読み取って<b>二重計上</b>する（{@code budget_transactions} には
+     * {@code (source_type, source_id, transaction_date)} の一意制約が無いため
+     * 仕訳も 2 件入り、会計金額が倍になる）。存在チェックは必ずロック取得後に行うこと。</p>
+     *
      * @return CONFIRMED 化した consumption の件数。既に締め済の場合は例外を投げる。
+     *         スナップショット取得後に割当が消えた・論理削除された場合は {@code -1}（対象外）。
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public int closeOneAllocation(ShiftBudgetAllocationEntity allocation, LocalDate transactionDate) {
+    public int closeOneAllocation(ShiftBudgetAllocationEntity allocationSnapshot, LocalDate transactionDate) {
+        // 割当行を排他ロックしてから読み直す。以降の判定・更新はこのロックの保護下で行う。
+        // （スナップショットは doCloseForOrg がトランザクション外で取得したものなので使わない）
+        ShiftBudgetAllocationEntity allocation =
+                allocationRepository.findByIdForUpdate(allocationSnapshot.getId()).orElse(null);
+        if (allocation == null || allocation.getDeletedAt() != null) {
+            log.info("F08.7 月次締め: 割当が取得時点から消滅/論理削除されたためスキップ: allocId={}",
+                    allocationSnapshot.getId());
+            return -1;
+        }
+
         // 重複チェック: 既に同 source の仕訳がある → 409
         boolean alreadyClosed = budgetTransactionRepository
                 .existsBySourceTypeAndSourceIdAndTransactionDate(

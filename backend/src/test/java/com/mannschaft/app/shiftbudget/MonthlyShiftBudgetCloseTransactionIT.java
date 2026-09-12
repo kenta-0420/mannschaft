@@ -19,7 +19,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.util.FileCopyUtils;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.TestPropertySource;
@@ -30,13 +32,20 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
 
@@ -92,6 +101,10 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
      */
     private static final AtomicLong SLOT_SEQ = new AtomicLong(1);
 
+    /** 回復 migration の実ファイル（クラスパス上のパス）。 */
+    private static final String REPAIR_MIGRATION =
+            "db/migration/V209.20260911213923__repair_shift_budget_monthly_close_partial_apply.sql";
+
     /** 失敗注入時に投げる例外のメッセージ。 */
     private static final String INJECTED = "CMP-260910-1556: 仕訳 INSERT 失敗を模す";
 
@@ -110,6 +123,7 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
      */
     @MockitoSpyBean
     private BudgetTransactionRepository budgetTransactionRepository;
+
 
     @Autowired
     private TransactionTemplate transactionTemplate;
@@ -245,9 +259,202 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
         assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(TOTAL);
     }
 
+    // AC-3: 壊れたデータの回復（Flyway V209 の実 SQL を流して検証）
+
+    @Test
+    @DisplayName("AC-3 部分適用で壊れた allocation は、回復 migration 適用後に締め直すと月次仕訳まで復旧する")
+    void 壊れたデータは回復migrationで締め直せるようになる() {
+        Long allocationId = seedPartiallyAppliedAllocation();
+
+        // 前提: 壊れた状態そのもの（消化は CONFIRMED・確定額 0・月次仕訳なし）
+        assertThat(consumptionStatuses(allocationId))
+                .containsExactlyInAnyOrder("CONFIRMED", "CONFIRMED");
+        assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(summaryTransactionCount(allocationId)).isZero();
+
+        // 前提の裏づけ: 回復させずに締め直すと、PLANNED が 0 件なので金額 0 の仕訳が
+        // 確定してしまい、実際の確定額は会計へ永久に届かない。
+        // 「confirmed_amount さえ合っていれば帳尻が合う」わけではないことの実証。
+        closeService.close(orgId, TARGET_MONTH);
+        assertThat(summaryTransactionAmount(allocationId))
+                .as("回復させずに締め直すと金額 0 の仕訳が確定してしまう")
+                .isEqualByComparingTo(BigDecimal.ZERO);
+
+        // 壊れた状態へ戻してから、回復 migration の実 SQL を流す
+        jdbcTemplate.update("DELETE FROM budget_transactions WHERE source_type = ? AND source_id = ?",
+                MonthlyShiftBudgetCloseService.SOURCE_TYPE_SHIFT_BUDGET_MONTHLY, allocationId);
+        applyRepairMigration();
+
+        assertThat(consumptionStatuses(allocationId))
+                .as("再実行可能な状態（PLANNED）へ差し戻されること")
+                .containsExactlyInAnyOrder("PLANNED", "PLANNED");
+        assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(BigDecimal.ZERO);
+
+        setAuth(actorId);
+        MonthlyShiftBudgetCloseService.CloseResult result = closeService.close(orgId, TARGET_MONTH);
+
+        assertThat(result.closedConsumptions()).isEqualTo(2);
+        assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(TOTAL);
+        assertThat(summaryTransactionCount(allocationId))
+                .as("会計の本体は月次仕訳。これが作られなければ確定額は会計へ届かない")
+                .isEqualTo(1);
+        assertThat(summaryTransactionAmount(allocationId))
+                .as("金額 0 ではなく実際の確定額で仕訳が立つこと")
+                .isEqualByComparingTo(TOTAL);
+    }
+
+    @Test
+    @DisplayName("AC-3 正常に締め済みの allocation は回復 migration で巻き戻されない")
+    void 正常に締め済みの割当は回復migrationの対象外() {
+        Long allocationId = seedAllocationWithPlannedConsumptions();
+        closeService.close(orgId, TARGET_MONTH);
+        assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(TOTAL);
+
+        applyRepairMigration();
+
+        assertThat(consumptionStatuses(allocationId))
+                .as("月次仕訳がある allocation を差し戻すと、正常な締めを壊してしまう")
+                .containsExactlyInAnyOrder("CONFIRMED", "CONFIRMED");
+        assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(TOTAL);
+        assertThat(summaryTransactionCount(allocationId)).isEqualTo(1);
+    }
+
+    // 並行実行: 同一 allocation の同時締めで二重計上しない
+
+    @Test
+    @DisplayName("並行実行 同一 allocation を 2 スレッドが同時に締めても二重計上されない")
+    void 同時締めで二重計上されない() throws Exception {
+        Long allocationId = seedAllocationWithPlannedConsumptions();
+
+        CountDownLatch firstInsideTx = new CountDownLatch(1);
+        CountDownLatch releaseFirst = new CountDownLatch(1);
+        CountDownLatch secondStarted = new CountDownLatch(1);
+        AtomicInteger existsCalls = new AtomicInteger();
+
+        // 先行スレッドを「割当行の排他ロックを取った直後」で止め、トランザクションを
+        // 開いたまま保持させる。重複チェックはロックの直後に走るので、ここで待たせれば
+        // 先行はロックを握ったまま待機する。
+        //
+        // 待機後に返す値は実体と同じものを自前で用意する（委譲しない）。
+        // Spring Data のインターフェースプロキシに対しては
+        // invocation.callRealMethod() が "Cannot call abstract real method" で使えないため。
+        //  - 先行（1 回目）: この時点で仕訳はまだ無いので false
+        //  - 後続（2 回目）: 実 DB を引いて判定する。ロックが無ければ先行は未コミットなので
+        //    false になり、後続はそのまま二重計上へ進む＝本検体が赤くなる
+        doAnswer(invocation -> {
+            if (existsCalls.getAndIncrement() == 0) {
+                firstInsideTx.countDown();
+                releaseFirst.await(30, TimeUnit.SECONDS);
+                return false;
+            }
+            return summaryTransactionCount(allocationId) > 0;
+        }).when(budgetTransactionRepository)
+                .existsBySourceTypeAndSourceIdAndTransactionDate(any(), any(), any());
+
+        AtomicReference<Throwable> firstError = new AtomicReference<>();
+        AtomicReference<Throwable> secondError = new AtomicReference<>();
+        AtomicReference<MonthlyShiftBudgetCloseService.CloseResult> secondResult = new AtomicReference<>();
+
+        Thread first = new Thread(() -> {
+            setAuth(actorId);
+            try {
+                closeService.close(orgId, TARGET_MONTH);
+            } catch (Throwable t) {
+                firstError.set(t);
+            }
+        }, "cmp1556-close-A");
+
+        Thread second = new Thread(() -> {
+            setAuth(actorId);
+            secondStarted.countDown();
+            try {
+                secondResult.set(closeService.close(orgId, TARGET_MONTH));
+            } catch (Throwable t) {
+                secondError.set(t);
+            }
+        }, "cmp1556-close-B");
+
+        first.start();
+        assertThat(firstInsideTx.await(30, TimeUnit.SECONDS))
+                .as("先行スレッドがトランザクション内に入れないと、そもそも競合を作れない")
+                .isTrue();
+
+        // 後続スレッドは、先行がトランザクションを開いたままの状態で締めに入る。
+        // 先行を解放するのは「後続が close を呼び始めたあと」なので、2 つの締めが
+        // 時間的に重なっていることは構成上保証される（重なっていなければ
+        // 本検体は何も検証していないことになるため、ここは順序が本質）。
+        second.start();
+        assertThat(secondStarted.await(30, TimeUnit.SECONDS)).isTrue();
+        Thread.sleep(1500);
+        releaseFirst.countDown();
+
+        first.join(60_000);
+        second.join(60_000);
+
+        assertThat(firstError.get()).as("先行スレッドは正常に締め切れること").isNull();
+        assertThat(secondError.get()).as("後続スレッドは例外ではなく既締め扱いで終わること").isNull();
+
+        assertThat(summaryTransactionCount(allocationId))
+                .as("ロックが無いと両者が未締めと判定し、月次仕訳が 2 件入って会計金額が倍になる")
+                .isEqualTo(1);
+        assertThat(confirmedAmount(allocationId))
+                .as("二重計上されていれば 2 倍になる。ここが本検体の判定軸")
+                .isEqualByComparingTo(TOTAL);
+        assertThat(summaryTransactionAmount(allocationId)).isEqualByComparingTo(TOTAL);
+        assertThat(consumptionStatuses(allocationId))
+                .containsExactlyInAnyOrder("CONFIRMED", "CONFIRMED");
+        assertThat(secondResult.get().alreadyClosedAllocations())
+                .as("後続は『既に締め済』として skip した、という経路を通ったこと")
+                .isEqualTo(1);
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // ヘルパー
     // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * 旧障害が残した「部分適用」状態をそのまま作る。
+     *
+     * <p>消化は CONFIRMED・{@code confirmed_amount} は 0・月次仕訳は無し。
+     * 旧コードは {@code incrementConfirmedAmount} の手前で落ちていたため、
+     * その先にある仕訳 INSERT は一度も実行されていない。</p>
+     */
+    private Long seedPartiallyAppliedAllocation() {
+        Long allocationId = seedAllocationWithPlannedConsumptions();
+        jdbcTemplate.update(
+                "UPDATE shift_budget_consumptions SET status = 'CONFIRMED', confirmed_at = NOW() "
+                        + "WHERE allocation_id = ? AND deleted_at IS NULL",
+                allocationId);
+        return allocationId;
+    }
+
+    /**
+     * 回復 migration の<b>実ファイル</b>を読み込んで実行する。
+     *
+     * <p>統合テストは {@code spring.flyway.enabled=false} + {@code ddl-auto: create} で
+     * スキーマを Hibernate から生成しているため Flyway は走らない。SQL をテスト側に
+     * 書き写すと本体との乖離に気づけないので、{@code src/main/resources} 配下の
+     * migration をクラスパスから読んで流す（ファイル名を変えたら本テストが落ちる）。</p>
+     */
+    private void applyRepairMigration() {
+        String sql;
+        try {
+            sql = new String(FileCopyUtils.copyToByteArray(
+                    new ClassPathResource(REPAIR_MIGRATION).getInputStream()), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new IllegalStateException("回復 migration を読み込めない: " + REPAIR_MIGRATION, e);
+        }
+        StringBuilder withoutComments = new StringBuilder();
+        for (String line : sql.split("\n")) {
+            if (!line.trim().startsWith("--")) {
+                withoutComments.append(line).append('\n');
+            }
+        }
+        Arrays.stream(withoutComments.toString().split(";"))
+                .map(String::trim)
+                .filter(stmt -> !stmt.isEmpty())
+                .forEach(jdbcTemplate::execute);
+    }
 
     /** 月次集計仕訳の INSERT だけを失敗させる（消化の更新は既に済んでいる段階で落とす）。 */
     private void failOnSummaryTransactionInsert() {
@@ -321,6 +528,14 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
                 Integer.class,
                 MonthlyShiftBudgetCloseService.SOURCE_TYPE_SHIFT_BUDGET_MONTHLY, allocationId);
         return n == null ? 0 : n;
+    }
+
+    private BigDecimal summaryTransactionAmount(Long allocationId) {
+        List<BigDecimal> rows = jdbcTemplate.queryForList(
+                "SELECT amount FROM budget_transactions WHERE source_type = ? AND source_id = ?",
+                BigDecimal.class,
+                MonthlyShiftBudgetCloseService.SOURCE_TYPE_SHIFT_BUDGET_MONTHLY, allocationId);
+        return rows.isEmpty() ? null : rows.get(0);
     }
 
     private static String nonce() {

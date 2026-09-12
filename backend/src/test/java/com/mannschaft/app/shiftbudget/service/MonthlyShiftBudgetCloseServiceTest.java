@@ -30,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -98,6 +99,10 @@ class MonthlyShiftBudgetCloseServiceTest {
                 featureService, accessControlService, auditLogService,
                 organizationRepository, failedEventService, selfProvider);
         lenient().when(selfProvider.getObject()).thenReturn(service);
+        // CMP-260910-1556 検分 P1-2: closeOneAllocation は冒頭で allocation 行を排他ロックする。
+        // mock のままだと empty が返り「割当が消滅した」扱いで全件 skip される（= 全検体が静かに 0 件になる）。
+        lenient().when(allocationRepository.findByIdForUpdate(anyLong()))
+                .thenAnswer(invocation -> Optional.of(sampleAllocation()));
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
     }

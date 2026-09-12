@@ -137,11 +137,12 @@ cron バッチは SecurityContext 不在で動くため発生しないが、API 
 
 F08.6 側のスキーマ変更や FK 違反が原因のことが多い。Spring Boot ログで該当例外を特定 → DDL 修正後 §4.1 で再起動。
 
-### 5.5 `confirmed_amount` が 0 円のまま固着する（CMP-260910-1556・是正済）
+### 5.5 `confirmed_amount` が 0 円のまま固着し、月次仕訳も作られていない（CMP-260910-1556・是正済）
 
 **症状**: 月次締めが初回必ず 500 (`COMMON_999`)。2 回目以降は 200 が返るが
 `shift_budget_allocations.confirmed_amount` は永久に 0 のまま、
 `shift_budget_consumptions` だけが `CONFIRMED` になっている。
+さらに `budget_transactions` に当該 allocation の月次仕訳が**存在しない**。
 
 **原因**: `MonthlyShiftBudgetCloseService#doCloseForOrg` が同一 Bean 内の
 `closeOneAllocation`（`@Transactional(propagation = REQUIRES_NEW)`）を自己呼び出ししており、
@@ -151,15 +152,32 @@ Spring の AOP プロキシを経由しないため `REQUIRES_NEW` が効いて�
 `InvalidDataAccessApiUsageException: Executing an update/delete query` で必ず落ちた。
 その時点で直前の `consumptionRepository.save` は Spring Data 既定の `@Transactional` で
 単独コミット済みだったため、巻き戻らない部分適用が残った。
+**その先にある月次仕訳の INSERT は一度も実行されていない**点が重要である。
 
 **恒久対策**: `ObjectProvider` 経由で自己プロキシを取得して呼ぶよう是正済み
 （回帰検知は `MonthlyShiftBudgetCloseTransactionIT`）。
 
-**既存データの回復**: Flyway `V208.20260911020600__repair_shift_budget_confirmed_amount_drift.sql`
-が `confirmed_amount` を「生存 CONFIRMED 消化の合計」から再計算して収束させる。
-`confirmed_amount` を書き換える経路は `incrementConfirmedAmount` /
-`decrementConfirmedAmount` の 2 本だけであり、その値の意味はこの合計に等しいため、
-再計算はズレの有無によらず冪等である。適用前後のズレ検出は §6.4 の SQL を使う。
+#### 既存データの回復（2 段階。migration だけでは終わらない）
+
+会計の本体は `budget_transactions` の月次仕訳であり、`confirmed_amount` はその写しに過ぎない。
+`confirmed_amount` だけ埋めても仕訳欠損は残り、しかも消化が `CONFIRMED` のままだと
+締めを再実行しても PLANNED が 0 件のため**金額 0 の仕訳が確定して終わる**。
+そこで回復は次の 2 段階で行う。
+
+1. **Flyway `V209.20260911213923__repair_shift_budget_monthly_close_partial_apply.sql`**（デプロイ時に自動適用）
+   - 月次仕訳が存在しない allocation の `CONFIRMED` 消化を `PLANNED` へ差し戻す
+   - `confirmed_amount` を「生存 CONFIRMED 消化の合計」から再計算（冪等）
+   - 月次仕訳が既にある allocation は対象外なので、正常な締めは巻き戻さない
+2. **運用者による月次締めの再実行**（§4.1 の API #11）
+   - 差し戻された allocation について、正しい金額の月次仕訳・監査ログ・`confirmed_amount` が
+     アプリケーションの正規の経路で作り直される
+
+対象組織の洗い出しは §6.4 の SQL を使う。migration 適用後にこの SQL が 0 件でも、
+**仕訳欠損が残っていないことの確認は §6.5 で別に行うこと**。
+
+> SQL で仕訳を直接再構成する案も検討したが、scope 判定・title 生成・`recorded_by` の
+> フォールバック・監査ログといった業務ロジックを SQL に二重実装することになり、
+> 監査証跡も残らないため採らなかった。
 
 ### 5.6 `shift_budget_consumptions` のロック競合
 
@@ -228,6 +246,31 @@ SELECT a.id AS allocation_id,
 0 件であれば健全。1 件でも返る場合は §5.5 の是正 migration が未適用か、
 別経路のバグを疑う（migration は適用済みでも将来のバグでズレは再発しうるため、
 本 SQL は定点観測に使える）。
+### 6.5 月次仕訳の欠損検出（CMP-260910-1556）
+
+```sql
+SELECT a.id AS allocation_id,
+       a.organization_id,
+       a.period_start,
+       a.confirmed_amount,
+       COUNT(c.id) AS confirmed_consumptions
+  FROM shift_budget_allocations a
+  JOIN shift_budget_consumptions c
+    ON c.allocation_id = a.id
+   AND c.status = 'CONFIRMED'
+   AND c.deleted_at IS NULL
+ WHERE a.deleted_at IS NULL
+   AND NOT EXISTS (SELECT 1 FROM budget_transactions t
+                    WHERE t.source_type = 'SHIFT_BUDGET_MONTHLY'
+                      AND t.source_id = a.id
+                      AND t.deleted_at IS NULL)
+ GROUP BY a.id, a.organization_id, a.period_start, a.confirmed_amount;
+```
+
+「消化は確定しているのに会計へ仕訳が立っていない」allocation を返す。
+0 件であれば健全。1 件でも返る場合は §5.5 の 2 段階の回復（migration 適用 + 締めの再実行）が
+未完了である。
+
 ---
 
 ## 7. エスカレーション基準
