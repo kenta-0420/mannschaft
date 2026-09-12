@@ -75,7 +75,7 @@ NO_ARG_NOW|com.mannschaft.app.advertising.service.CampaignPerformanceService|1
 NO_ARG_NOW|com.mannschaft.app.advertising.service.OverdueInvoiceBatchService|1
 NO_ARG_NOW|com.mannschaft.app.advertising.service.RateSimulatorService|1
 NO_ARG_NOW|com.mannschaft.app.advertising.service.ReportDeliveryBatchService|1
-NO_ARG_NOW|com.mannschaft.app.advertising.service.SpotlightServingService|4
+NO_ARG_NOW|com.mannschaft.app.advertising.service.SpotlightServingService|3
 NO_ARG_NOW|com.mannschaft.app.analytics.controller.AnalyticsAlertController|3
 NO_ARG_NOW|com.mannschaft.app.analytics.entity.AnalyticsAlertRuleEntity|1
 NO_ARG_NOW|com.mannschaft.app.analytics.entity.AnalyticsMonthlySnapshotEntity|1
