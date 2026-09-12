@@ -78,6 +78,12 @@ test.describe('CMP-260910-0042: Spotlight UTC配信・計測の実機導線', ()
     if (seeded) cleanupReservation()
   })
 
+  test('未認証ではダッシュボードからログイン画面へ戻され予約広告を閲覧できない', async ({ page }) => {
+    await page.goto('/dashboard')
+    await expect(page).toHaveURL(/\/login(?:\?|$)/)
+    await expect(page.getByText(TITLE, { exact: true })).toHaveCount(0)
+  })
+
   test('予約対象外の認証済みユーザーには対象Spotlightを配信しない', async ({ page }) => {
     await login(page, OTHER_USER)
     const contentResponse = page.waitForResponse(
