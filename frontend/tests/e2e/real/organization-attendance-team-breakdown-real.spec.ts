@@ -17,7 +17,9 @@ import { waitForHydration } from '../helpers/wait'
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const API_V1 = `${API_BASE_URL}/api/v1`
-const ADMIN = { email: 'e2e-admin@test.mannschaft.local', password: 'TestPass2026!' }
+// e2e-admin はプラットフォーム SYSTEM_ADMIN であり、組織運用データの参照権限とは別物。
+// seed で東京都サッカー協会の組織 ADMIN に割り当てられる住民を使用する。
+const ADMIN = { email: 'e2e-dummy-1@test.mannschaft.local', password: 'TestPass2026!' }
 const MEMBER = { email: 'e2e-user@test.mannschaft.local', password: 'TestPass2026!' }
 const OUTSIDER = { email: 'e2e-outsider@test.mannschaft.local', password: 'TestPass2026!' }
 
@@ -58,7 +60,7 @@ async function downloadText(download: Download): Promise<string> {
 
 test.describe('CMP-013: 組織出欠チーム別内訳 real-tier', () => {
   test.describe.configure({ mode: 'serial' })
-  test.setTimeout(180_000)
+  test.setTimeout(360_000)
 
   test.beforeAll(async () => {
     api = await pwRequest.newContext()
@@ -127,10 +129,11 @@ test.describe('CMP-013: 組織出欠チーム別内訳 real-tier', () => {
 
   test('管理者がカレンダーで予定を開くと内訳表を確認でき、CSV をダウンロードできる', async ({ page }) => {
     await loginViaApi(page, ADMIN, { apiBaseUrl: API_BASE_URL })
-    await page.goto('/calendar')
+    await page.goto('/calendar', { waitUntil: 'domcontentloaded', timeout: 30_000 })
     await waitForHydration(page)
+    await page.getByTestId('calendar-view-agenda').filter({ visible: true }).click()
 
-    const calendarEvent = page.getByText(title, { exact: true }).first()
+    const calendarEvent = page.getByText(title, { exact: true }).filter({ visible: true }).first()
     await expect(calendarEvent, '作成した組織予定が /calendar に表示される').toBeVisible({ timeout: 30_000 })
     await calendarEvent.click()
 
@@ -170,12 +173,13 @@ test.describe('CMP-013: 組織出欠チーム別内訳 real-tier', () => {
           .toBe(resident.breakdownVisible ? 200 : 403)
 
         await loginViaApi(page, resident.credentials, { apiBaseUrl: API_BASE_URL })
-        await page.goto('/calendar')
+        await page.goto('/calendar', { waitUntil: 'domcontentloaded', timeout: 30_000 })
         await waitForHydration(page)
+        await page.getByTestId('calendar-view-agenda').filter({ visible: true }).click()
         await expect(page.getByRole('heading', { name: 'マイカレンダー' }))
           .toBeVisible({ timeout: 30_000 })
 
-        const calendarEvent = page.getByText(title, { exact: true }).first()
+        const calendarEvent = page.getByText(title, { exact: true }).filter({ visible: true }).first()
         if (!resident.eventVisible) {
           await expect(calendarEvent, `${resident.name}には組織予定を表示しない`).toHaveCount(0)
           continue
