@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -51,7 +51,7 @@ public interface BillingContractOperationRepository
      * @return stale な operation
      */
     List<BillingContractOperationEntity> findByStatusInAndDeletedAtIsNullAndUpdatedAtLessThan(
-            Collection<BillingOperationStatus> statuses, LocalDateTime staleBefore, Pageable pageable);
+            Collection<BillingOperationStatus> statuses, Instant staleBefore, Pageable pageable);
 
     /**
      * status を<b>条件付き更新</b>で進める（AC-82 の再入・並行防止の要）。
@@ -81,7 +81,7 @@ public interface BillingContractOperationRepository
                             @Param("to") BillingOperationStatus to,
                             @Param("step") BillingOperationStep step,
                             @Param("errorCode") String errorCode,
-                            @Param("updatedAt") LocalDateTime updatedAt);
+                            @Param("updatedAt") Instant updatedAt);
 
     /**
      * 同じ {@code from → to} の遷移を<b>1本の一括 UPDATE で</b>進める（PR6a AC-72b）。
@@ -113,5 +113,5 @@ public interface BillingContractOperationRepository
                                 @Param("to") BillingOperationStatus to,
                                 @Param("step") BillingOperationStep step,
                                 @Param("errorCode") String errorCode,
-                                @Param("updatedAt") LocalDateTime updatedAt);
+                                @Param("updatedAt") Instant updatedAt);
 }

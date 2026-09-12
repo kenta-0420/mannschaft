@@ -45,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link #tearDown()} が行う（試練A の {@code BillingContractOperationSagaIT} と同じ流儀）。</p>
  *
  * <p><b>stale の作り方</b>: {@code updated_at} は Entity の {@code @PreUpdate} が
- * {@code LocalDateTime.now()} で上書きしてしまうため、JPA 経由では過去に置けない。
+ * 現在時刻で上書きしてしまうため、JPA 経由では過去に置けない。
  * そこで native UPDATE で {@code created_at}/{@code updated_at} を直に過去へ倒す（実 DB の行が
  * 本当に古いという状態を作る）。</p>
  *
@@ -363,8 +363,10 @@ class BillingContractOperationRecoveryIT extends AbstractMySqlIntegrationTest {
         });
         // idempotency_key は operationId（AC-32）。@PreUpdate に上書きされない native UPDATE で
         // 揃えつつ、同時に created_at / updated_at を過去へ倒して「本当に古い行」を作る。
-        LocalDateTime staleAt = LocalDateTime.now(clock)
-                .minusMinutes(ageMinutes).truncatedTo(ChronoUnit.SECONDS);
+        // updated_at / created_at は Instant 列（日時方針 §1）。ネイティブ更新でもエンティティと
+        // 同じ格納基準（hibernate.jdbc.time_zone=UTC）に乗るよう Instant で束縛する。
+        Instant staleAt = Instant.now(clock)
+                .minus(java.time.Duration.ofMinutes(ageMinutes)).truncatedTo(ChronoUnit.SECONDS);
         transactionTemplate.executeWithoutResult(tx -> entityManager.createNativeQuery(
                         "UPDATE billing_contract_operations "
                                 + "SET created_at = :ts, updated_at = :ts, idempotency_key = :key "

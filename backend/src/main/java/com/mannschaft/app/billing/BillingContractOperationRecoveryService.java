@@ -70,12 +70,12 @@ import java.util.UUID;
  *       {@code CALLING_STRIPE} かつ {@code deleted_at IS NULL} かつ
  *       {@code updated_at < now() - staleThreshold}。
  *       {@code BillingContractOperationRepository} へ
- *       {@code findByStatusInAndDeletedAtIsNullAndUpdatedAtLessThan(Collection, LocalDateTime, Pageable)}
+ *       {@code findByStatusInAndDeletedAtIsNullAndUpdatedAtLessThan(Collection, Instant, Pageable)}
  *       相当を足すこと（1周の件数に上限を置き、無制限に読み込まない）。</li>
  *   <li>しきい値の既定は {@link #DEFAULT_STALE_THRESHOLD}。設定で上書き可能にしてよいが、
  *       <b>進行中の正常な operation を横取りしてはならない</b>（AC-81）。Stripe 呼び出しの
  *       タイムアウトより十分に長く取ること。</li>
- *   <li>時刻は必ず注入された {@link Clock} から取ること（{@code LocalDateTime.now()} 直呼び禁止。
+ *   <li>時刻は必ず注入された {@link Clock} から取ること（引数なしの now() 直呼びは禁止。
  *       stale 判定が経過時間に依るため、固定 Clock で測れない実装は検証できない）。</li>
  *   <li>再入・並行実行で pointer を二度解放してはならない（AC-82）。
  *       {@code ActiveBillingContractOperationPointerRepository
@@ -178,7 +178,8 @@ public class BillingContractOperationRecoveryService {
      * @return 回収の内訳
      */
     public RecoveryOutcome recoverStaleOperations() {
-        LocalDateTime staleBefore = LocalDateTime.now(clock).minus(staleThreshold());
+        // updated_at は「最後に状態が動いた瞬間」であり Instant（日時方針 §1）。
+        Instant staleBefore = Instant.now(clock).minus(staleThreshold());
         List<BillingContractOperationEntity> stale = operationRepository
                 .findByStatusInAndDeletedAtIsNullAndUpdatedAtLessThan(
                         SCAN_STATUSES, staleBefore,
@@ -267,7 +268,7 @@ public class BillingContractOperationRecoveryService {
             return false;
         }
         // 半開区間: しきい値ちょうどは stale にしない（AC-24 / AC-37b と同じ流儀）。
-        return operation.getUpdatedAt().isBefore(LocalDateTime.now(clock).minus(staleThreshold()));
+        return operation.getUpdatedAt().isBefore(Instant.now(clock).minus(staleThreshold()));
     }
 
     /**
@@ -390,7 +391,7 @@ public class BillingContractOperationRecoveryService {
         int updated = operationRepository.compareAndSetStatus(
                 operation.getId(), from, to,
                 BillingOperationTransitions.stepFor(operation.getKind(), to),
-                errorCode, LocalDateTime.now(clock));
+                errorCode, Instant.now(clock));
         if (updated == 0) {
             // 他の回収（または通常経路）が先に進めた。二重に効かせない（AC-82）。
             return Optional.empty();

@@ -21,6 +21,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -574,13 +575,13 @@ class BillingContractServicePaymentTest {
         given(billingContractRepository.findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
                 eq(EntitlementScopeKind.USER), eq(9L), any()))
                 .willReturn(List.of(paid, freeAddon));
-        given(billingContractRepository.save(any(BillingContractEntity.class))).willAnswer(inv -> inv.getArgument(0));
         EntitlementEntity e1 = ent("ads.hide");
-        given(entitlementRepository.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
-                EntitlementSourceKind.PLAN, paidId)).willReturn(List.of(e1));
-        given(entitlementRepository.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
-                EntitlementSourceKind.ADDON, addonId)).willReturn(List.of());
-        given(entitlementRepository.saveAll(anyList())).willAnswer(inv -> inv.getArgument(0));
+        // PR6a AC-72b: purge の一括経路は契約数 M に比例した SQL を出さないため、
+        // 由来 entitlements は「1本の検索＋1本の一括 UPDATE」で処理する。
+        // スタブを実装の呼び出し形へ合わせるだけであり、下のアサーション
+        // （CANCELLED になること・revokedAt が入ること・スロットが解放されること）は変えていない。
+        given(entitlementRepository.findBySourceKindInAndSourceRefIdInAndRevokedAtIsNull(
+                anyCollection(), anyCollection())).willReturn(List.of(e1));
 
         List<String> refs = service.cancelAllUserContractsForPurge(9L);
 

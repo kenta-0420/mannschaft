@@ -66,7 +66,8 @@ public class BillingContractOperationSagaService {
 
     /**
      * 一括 UPDATE は {@code @PreUpdate} を経由しないため {@code updated_at} を明示的に渡す必要がある。
-     * その時刻の出所（テストでも固定できる注入 Clock）。
+     * その時刻の出所（テストでも固定できる注入 Clock）。{@code updated_at} は「起きた瞬間」であり
+     * {@link java.time.Instant} で扱う（日時方針 §1）。
      */
     private final java.time.Clock clock;
 
@@ -409,7 +410,7 @@ public class BillingContractOperationSagaService {
                     count += operationRepository.compareAndSetStatusBulk(
                             e.getValue(), from, BillingOperationStatus.CANCELLED,
                             BillingOperationTransitions.stepFor(kind, BillingOperationStatus.CANCELLED),
-                            SYSTEM_BYPASS_ERROR_CODE, java.time.LocalDateTime.now(clock));
+                            SYSTEM_BYPASS_ERROR_CODE, java.time.Instant.now(clock));
                 }
             }
             pointerRepository.hardDeleteByContractIdIn(

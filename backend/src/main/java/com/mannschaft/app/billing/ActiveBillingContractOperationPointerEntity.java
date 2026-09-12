@@ -14,7 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -60,15 +60,22 @@ public class ActiveBillingContractOperationPointerEntity {
     @Column(name = "operation_id", nullable = false, columnDefinition = "BINARY(16)")
     private UUID operationId;
 
+    /**
+     * lease を取った瞬間（{@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md} §1・§4）。
+     * 「起きた1点」であり土地の約束ではないため {@link Instant} で持つ。DB 列は {@code DATETIME(6)} で、
+     * 格納基準は全プロファイル共通の {@code hibernate.jdbc.time_zone=UTC}（番人
+     * {@code TimeZoneStorageBasisGuardTest} が固定）。
+     */
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
+    /** lease を最後に更新した瞬間（同上）。 */
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         if (this.createdAt == null) {
             this.createdAt = now;
         }
@@ -79,6 +86,6 @@ public class ActiveBillingContractOperationPointerEntity {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 }

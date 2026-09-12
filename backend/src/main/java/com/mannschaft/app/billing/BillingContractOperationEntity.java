@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -93,9 +93,16 @@ public class BillingContractOperationEntity extends UuidV7Entity {
     @Column(name = "stripe_schedule_ref", length = 255)
     private String stripeScheduleRef;
 
-    /** 操作の効力発生日時（kind により意味が異なる。例: CANCEL/DOWNGRADE_TO_CANCEL の期末解約時刻）。 */
+    /**
+     * 操作の効力発生日時（kind により意味が異なる。例: CANCEL/DOWNGRADE_TO_CANCEL の期末解約時刻）。
+     *
+     * <p>Stripe の {@code current_period_end} 由来の<b>瞬間</b>であり、土地の約束（営業時間・締切）では
+     * ないため {@link Instant} で持つ（{@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md}
+     * §1・§4）。{@code billing_contracts.current_period_end}（ゾーンを持たない日時型のまま・CMP-023 の返済対象）と
+     * 突き合わせる箇所では、注入 {@link java.time.Clock} のゾーンで明示的に変換すること。</p>
+     */
     @Column(name = "effective_at")
-    private LocalDateTime effectiveAt;
+    private Instant effectiveAt;
 
     /** FAILED 確定時のエラーコード（{@code ErrorCode} 相当の文字列）。 */
     @Column(name = "error_code", length = 64)
@@ -113,19 +120,28 @@ public class BillingContractOperationEntity extends UuidV7Entity {
     @Column(name = "created_by")
     private Long createdBy;
 
+    /**
+     * 起票した瞬間（{@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md} §1・§4）。
+     * DB 列は {@code DATETIME(6)} で、格納基準は全プロファイル共通の
+     * {@code hibernate.jdbc.time_zone=UTC}（番人 {@code TimeZoneStorageBasisGuardTest} が固定）。
+     */
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
+    /**
+     * 最後に状態が動いた瞬間（同上）。停止窓の回収（D8）の stale 判定はこの値と
+     * {@code Instant.now(clock)} の差で行うため、瞬間同士の自己完結した比較になる。
+     */
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
-    /** 論理削除（操作履歴は原則物理削除しない）。 */
+    /** 論理削除（操作履歴は原則物理削除しない）。削除した瞬間であり {@link Instant}。 */
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         if (this.createdAt == null) {
             this.createdAt = now;
         }
@@ -145,6 +161,6 @@ public class BillingContractOperationEntity extends UuidV7Entity {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 }

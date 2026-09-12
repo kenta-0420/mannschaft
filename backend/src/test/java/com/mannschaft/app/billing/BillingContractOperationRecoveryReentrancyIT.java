@@ -134,7 +134,7 @@ class BillingContractOperationRecoveryReentrancyIT extends AbstractMySqlIntegrat
     void secondRecoveryIsNoOp() {
         assertThat(recoveryService.recoverOperation(operationId))
                 .as("1回目は実際に回収する（陽性対照）").isTrue();
-        LocalDateTime afterFirst = reloadOperation().getUpdatedAt();
+        Instant afterFirst = reloadOperation().getUpdatedAt();
 
         assertThat(recoveryService.recoverOperation(operationId))
                 .as("2回目は何も回収しない").isFalse();
@@ -223,8 +223,12 @@ class BillingContractOperationRecoveryReentrancyIT extends AbstractMySqlIntegrat
             entityManager.flush();
             return operation.getId();
         });
-        LocalDateTime staleAt = LocalDateTime.now(clock)
-                .minusMinutes(STALE_MINUTES).truncatedTo(ChronoUnit.SECONDS);
+        // updated_at / created_at は Instant 列（日時方針 §1）。ネイティブ更新でもエンティティと
+        // 同じ格納基準（hibernate.jdbc.time_zone=UTC）に乗るよう Instant で束縛する
+        // （ゾーンを持たない日時で束縛すると JVM 既定 TZ の壁時計がそのまま入り、
+        //  エンティティ経由の書き込みと 9 時間ずれて stale 判定が別の理由で当たる）。
+        Instant staleAt = Instant.now(clock)
+                .minus(java.time.Duration.ofMinutes(STALE_MINUTES)).truncatedTo(ChronoUnit.SECONDS);
         transactionTemplate.executeWithoutResult(tx -> entityManager.createNativeQuery(
                         "UPDATE billing_contract_operations "
                                 + "SET created_at = :ts, updated_at = :ts, idempotency_key = :key "

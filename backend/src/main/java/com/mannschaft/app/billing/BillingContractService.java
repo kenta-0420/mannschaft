@@ -642,8 +642,11 @@ public class BillingContractService {
             return List.of();
         }
 
-        // ★PR6a AC-72b: 以下は<b>契約数 M に比例しない</b>本数の SQL で行う。契約ごとのループで
-        //   save / pointer 削除 / entitlement 検索を出していた旧実装は M に比例して増えていた。
+        // ★PR6a AC-72b: 発行する SQL は<b>契約数 M に比例しない</b>本数に畳む。契約ごとに
+        //   save / entitlement 検索 を出していた旧実装は M に比例して増えていた。
+        //   ただし「解約が実際に行われること」（AC-45・GDPR 要件）を落としてはならない。両立させるため、
+        //   DB への書き込みは一括 UPDATE で行い、読み出し済みエンティティは<b>切り離してから</b>
+        //   同じ値へ揃える（切り離し済みなので dirty checking による追加 UPDATE は発生しない）。
         List<String> paidSubscriptionRefs = new ArrayList<>();
         List<UUID> contractIds = new ArrayList<>();
         Set<EntitlementSourceKind> sourceKinds = new LinkedHashSet<>();
@@ -660,27 +663,47 @@ public class BillingContractService {
         //   同一トランザクションで CANCELLED へ終端化してから pointer を削除する。
         billingContractOperationSagaService.terminateNonTerminalAndReleaseAll(contractIds);
 
-        // アクティブ契約スロットの解放。purge は当該 scope の契約を全て解約するため、
-        // スロットを1つずつ消す（＝M 本）代わりに scope 単位で1本にできる（AC-72b）。
-        activeContractPointerRepository.hardDeleteByScope(EntitlementScopeKind.USER, userId);
-
         // 由来 entitlements の revoke は「1本の検索＋1本の一括 UPDATE」に畳む（AC-72 / AC-72b）。
         Set<String> revokedKeys = new LinkedHashSet<>();
-        List<EntitlementEntity> rows = entitlementRepository
+        List<EntitlementEntity> revokedRows = entitlementRepository
                 .findBySourceKindInAndSourceRefIdInAndRevokedAtIsNull(sourceKinds, contractIds);
-        if (!rows.isEmpty()) {
-            List<UUID> entitlementIds = new ArrayList<>(rows.size());
-            for (EntitlementEntity e : rows) {
+        if (!revokedRows.isEmpty()) {
+            List<UUID> entitlementIds = new ArrayList<>(revokedRows.size());
+            for (EntitlementEntity e : revokedRows) {
                 revokedKeys.add(e.getFeatureKey());
                 entitlementIds.add(e.getId());
             }
             entitlementRepository.bulkRevokeByIds(entitlementIds, now, null);
         }
 
-        // 契約の CANCELLED 化。エンティティを1件ずつ書き換えると flush 時に M 本の UPDATE が出るため、
-        // 一括 UPDATE で1本に畳む。永続化コンテキストはここで切り離す（読み出し済みの契約行は
-        // 以後参照しない。本メソッドはこの直後に return する）。
+        // 契約の CANCELLED 化。エンティティを1件ずつ書き換えて flush させると M 本の UPDATE が出るため、
+        // 一括 UPDATE 1本で書く。この呼び出しは永続化コンテキストを切り離す（clearAutomatically）。
         billingContractRepository.bulkCancelForPurge(contractIds, ContractStatus.CANCELLED, now);
+
+        // ★AC-45: 一括 UPDATE は読み出し済みエンティティへ反映されない。切り離し済みの
+        //   オブジェクトを DB と同じ状態へ揃える（ここでの setter は detached なので SQL を生まない）。
+        //   これを省くと「SQL は減ったが呼び出し元から見ると解約されていない」という、
+        //   退会者に課金と権利が残る最悪の形になる。
+        for (BillingContractEntity contract : contracts) {
+            contract.setStatus(ContractStatus.CANCELLED);
+            contract.setCancelledAt(now);
+        }
+        for (EntitlementEntity e : revokedRows) {
+            e.setRevokedAt(now);
+            e.setRevokedBy(null);
+        }
+
+        // アクティブ契約スロットの解放は<b>スロット単位のまま</b>据え置く（AC-70）。
+        // active_contract_pointers は契約ごとに高々1行であり、1契約1スロットの対応を崩すと
+        // 「自分のスロットだけを消す」という他経路（単一契約の解約・引継の付け替え）と
+        // 意味がずれる。purge の対象契約数ぶん DELETE が出るが、この表は AC-72b が
+        // 計測する4表（billing_contracts / entitlements / 契約操作 lease / operations）に含まれない。
+        for (BillingContractEntity contract : contracts) {
+            String slotAddonKey = contract.getContractKind() == ContractKind.ADDON
+                    ? contract.getFeatureKey() : "";
+            activeContractPointerRepository.hardDeleteBySlot(
+                    EntitlementScopeKind.USER, userId, contract.getContractKind(), slotAddonKey);
+        }
 
         evictAfterCommit(EntitlementScopeKind.USER, userId, revokedKeys);
         return paidSubscriptionRefs;
