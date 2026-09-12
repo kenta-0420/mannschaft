@@ -1,21 +1,20 @@
 package com.mannschaft.app.shift.service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
  * 同一人物の勤務が時間的に重なるかを判定するユーティリティ。
  *
- * <p><b>本クラスは試練（テスト先行）が置いた未実装スタブである。</b>
- * 判定本体は出陣（実装）で書く。現状はいずれのメソッドも
- * {@link UnsupportedOperationException} を投げるため、
- * {@code ShiftAssignmentOverlapDetectorTest} は全件 red となる。</p>
- *
- * <p>満たすべき規則（設計 F03.5 §11.3.5）:</p>
+ * <p>判定規則（設計 F03.5 §11.3.5）:</p>
  * <ol>
- *   <li>半開区間 {@code [start, end)} で判定する（隣接は重ならない）</li>
+ *   <li>半開区間 {@code [start, end)} で判定する（隣接は重ならない。15:00 終了と 15:00 開始は衝突ではない）</li>
  *   <li>日跨ぎは {@code endsNextDay} を展開し {@code LocalDateTime} 区間で比較する</li>
  * </ol>
+ *
+ * <p>状態を持たないため {@code static} なユーティリティとする（DI する意味が無く、
+ * 単体テストから直接叩けることを優先した）。</p>
  */
 public final class ShiftAssignmentOverlapDetector {
 
@@ -39,6 +38,25 @@ public final class ShiftAssignmentOverlapDetector {
     public static boolean overlaps(
             LocalDate leftDate, LocalTime leftStart, LocalTime leftEnd, boolean leftEndsNextDay,
             LocalDate rightDate, LocalTime rightStart, LocalTime rightEnd, boolean rightEndsNextDay) {
-        throw new UnsupportedOperationException("未実装（試練のスタブ）: 設計 F03.5 §11.3.5 の重なり判定");
+        LocalDateTime leftFrom = LocalDateTime.of(leftDate, leftStart);
+        LocalDateTime leftTo = endOf(leftDate, leftStart, leftEnd, leftEndsNextDay);
+        LocalDateTime rightFrom = LocalDateTime.of(rightDate, rightStart);
+        LocalDateTime rightTo = endOf(rightDate, rightStart, rightEnd, rightEndsNextDay);
+
+        // 半開区間 [from, to) の交差判定。端点の一致（隣接）は重なりとしない。
+        return leftFrom.isBefore(rightTo) && rightFrom.isBefore(leftTo);
+    }
+
+    /**
+     * 終了時刻を {@code LocalDateTime} へ展開する。
+     *
+     * <p>{@code endsNextDay} が true の枠は翌日終了として +1 日する。
+     * フラグが false でも {@code endTime <= startTime} という移行前の行が残りうるため、
+     * その場合も翌日終了とみなす（そう解釈しないと長さ 0 以下の区間になり、
+     * 実際には重なっている勤務を取りこぼす）。</p>
+     */
+    private static LocalDateTime endOf(LocalDate date, LocalTime start, LocalTime end, boolean endsNextDay) {
+        boolean nextDay = endsNextDay || !end.isAfter(start);
+        return LocalDateTime.of(date, end).plusDays(nextDay ? 1 : 0);
     }
 }
