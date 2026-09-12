@@ -99,6 +99,8 @@ export interface ShiftSlotResponse {
     slotDate: string
     startTime: string
     endTime: string
+    /** 翌日終了（日跨ぎ）か。BE は明示フラグで返す（`endTime < startTime` から推測しないこと） */
+    endsNextDay: boolean
   }
   position: {
     positionId: number | null
@@ -280,6 +282,8 @@ export interface CreateShiftSlotRequest {
   positionId?: number
   requiredCount?: number
   note?: string
+  /** 翌日終了（日跨ぎ）。省略時は false。日跨ぎは必ずこのフラグで明示する */
+  endsNextDay?: boolean
 }
 
 /** シフト枠一括作成リクエスト */
@@ -296,6 +300,8 @@ export interface UpdateShiftSlotRequest {
   requiredCount?: number
   assignedUserIds?: number[]
   note?: string
+  /** 翌日終了（日跨ぎ）。未指定は現値維持（部分更新） */
+  endsNextDay?: boolean
 }
 
 /** シフト希望提出リクエスト */

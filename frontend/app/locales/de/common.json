@@ -2389,5 +2389,52 @@
       "approveSuccess": "参加申請を承認しました",
       "rejectSuccess": "参加申請を却下しました"
     }
+  },
+  "myPage": {
+    "pageTitle": "Meine Seite",
+    "cards": {
+      "onboarding": {
+        "label": "Onboarding",
+        "description": "Offene Schritte für beigetretene Teams und Organisationen"
+      },
+      "shift": {
+        "label": "Meine Schichten",
+        "description": "Eigene Schichten ansehen"
+      },
+      "reservations": {
+        "label": "Meine Reservierungen",
+        "description": "Liste deiner Reservierungen"
+      },
+      "charts": {
+        "label": "Meine Aufzeichnungen",
+        "description": "Aktivitätsprotokolle und Notizen ansehen"
+      },
+      "performance": {
+        "label": "Meine Leistung",
+        "description": "Deine Ergebnisse und Erfolge"
+      },
+      "projects": {
+        "label": "Meine Projekte",
+        "description": "Persönliche Projekte verwalten"
+      },
+      "serviceRecords": {
+        "label": "Mein Serviceverlauf",
+        "description": "Verlauf der erhaltenen Leistungen"
+      },
+      "noShows": {
+        "label": "Stornoverlauf",
+        "description": "Verlauf von Nichterscheinen und Strafen"
+      },
+      "resume": {
+        "label": "Lebenslauf",
+        "description": "Lebenslauf erstellen und exportieren"
+      },
+      "receipts": {
+        "description": "Zahlungsbelege ansehen und herunterladen"
+      },
+      "tournamentFees": {
+        "description": "Turnier-Teilnahmegebühren ansehen und bezahlen"
+      }
+    }
   }
 }

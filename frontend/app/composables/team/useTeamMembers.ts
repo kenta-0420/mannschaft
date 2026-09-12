@@ -13,7 +13,19 @@ interface InviteTokenResponse {
 
 interface PagedData<T> {
   data: T[]
-  meta: { page: number; size: number; totalElements: number; totalPages: number }
+  meta: {
+    page: number
+    size: number
+    /**
+     * 総件数。BE の `PagedResponse.PageMeta` が実際に送るのはこのフィールド
+     * （`{ total, page, size, totalPages }`）。
+     * 併記されている `totalElements` は BE が送っていないため実行時は undefined になる。
+     */
+    total?: number
+    /** 旧互換の名前。BE の PagedResponse は送らない（型の互換性のために残っている）。 */
+    totalElements?: number
+    totalPages: number
+  }
 }
 
 /**

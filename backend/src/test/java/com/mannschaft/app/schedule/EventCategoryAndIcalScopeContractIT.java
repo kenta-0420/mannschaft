@@ -107,11 +107,11 @@ class EventCategoryAndIcalScopeContractIT extends AbstractMySqlIntegrationTest {
         seedRole("SUPPORTER", 40);
         seedRole("GUEST", 50);
 
-        long nano = System.nanoTime();
-        teamAId = insertTeam("W6EC チームA", "w6ec-team-a-" + nano);
-        teamBId = insertTeam("W6EC チームB", "w6ec-team-b-" + nano);
-        orgAId = insertOrganization("W6EC 組織A", "w6ec-org-a-" + nano);
-        orgBId = insertOrganization("W6EC 組織B", "w6ec-org-b-" + nano);
+        String suffix = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
+        teamAId = insertTeam("W6EC チームA", "w6ec-team-a-" + suffix);
+        teamBId = insertTeam("W6EC チームB", "w6ec-team-b-" + suffix);
+        orgAId = insertOrganization("W6EC 組織A", "w6ec-org-a-" + suffix);
+        orgBId = insertOrganization("W6EC 組織B", "w6ec-org-b-" + suffix);
 
         adminTeamAId = insertUser("w6ec-admin-team-a@example.com");
         adminTeamBId = insertUser("w6ec-admin-team-b@example.com");

@@ -11,8 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.LocalDateTime;
-
 /**
  * 通知保持（アーカイブ移送）バッチ。
  *
@@ -29,8 +27,8 @@ import java.time.LocalDateTime;
  *
  * <h2>移送対象（2軸）</h2>
  * <ul>
- *   <li>既読: {@code is_read = TRUE  AND created_at < NOW() - 90日}（{@link #RETENTION_DAYS}）</li>
- *   <li>未読エイジング: {@code is_read = FALSE AND created_at < NOW() - 365日}（{@link #UNREAD_AGING_DAYS}）</li>
+ *   <li>既読: {@code is_read = TRUE  AND created_at < UTC_TIMESTAMP() - 90日}（{@link #RETENTION_DAYS}）</li>
+ *   <li>未読エイジング: {@code is_read = FALSE AND created_at < UTC_TIMESTAMP() - 365日}（{@link #UNREAD_AGING_DAYS}）</li>
  * </ul>
  *
  * <h2>処理フロー（チャンク単位で独立コミット＝at-least-once・欠落なし）</h2>
@@ -55,9 +53,16 @@ public class NotificationCleanupBatchService {
     private static final int UNREAD_AGING_DAYS = 365;
     private static final int BATCH_SIZE = 10_000;
 
-    /** 移送対象 WHERE（既読90日超 OR 未読365日超）。バインドは (readThreshold, unreadThreshold)。 */
+    /**
+     * 移送対象 WHERE（既読90日超 OR 未読365日超）。
+     *
+     * <p>notifications の時刻列は Hibernate の UTC 格納基準に従う。JdbcTemplate は Hibernate を
+     * 迂回するため、Java の JST 壁時計をプレースホルダに束縛せず、DB 側の UTC 壁時計で比較する。</p>
+     */
     private static final String MOVE_PREDICATE =
-            "((is_read = TRUE AND created_at < ?) OR (is_read = FALSE AND created_at < ?))";
+            "((is_read = TRUE AND created_at < UTC_TIMESTAMP() - INTERVAL " + RETENTION_DAYS + " DAY) "
+                    + "OR (is_read = FALSE AND created_at < UTC_TIMESTAMP() - INTERVAL "
+                    + UNREAD_AGING_DAYS + " DAY))";
 
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
@@ -75,10 +80,8 @@ public class NotificationCleanupBatchService {
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "notificationCleanupBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")
     public void cleanupOldReadNotifications() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime readThreshold = now.minusDays(RETENTION_DAYS);
-        LocalDateTime unreadThreshold = now.minusDays(UNREAD_AGING_DAYS);
-        log.info("[NotificationRetentionBatch] 移送開始: 既読基準={}, 未読基準={}", readThreshold, unreadThreshold);
+        log.info("[NotificationRetentionBatch] 移送開始: 既読基準=UTC_TIMESTAMP()-{}日, 未読基準=UTC_TIMESTAMP()-{}日",
+                RETENTION_DAYS, UNREAD_AGING_DAYS);
 
         long totalArchived = 0;
         long totalDeleted = 0;
@@ -89,8 +92,8 @@ public class NotificationCleanupBatchService {
                 // 前回チャンクで INSERT コミット後 DELETE 前にクラッシュした孤児行
                 // （archive に在り・本体にも在る）は再走時に INSERT IGNORE され archived=0 になるが、
                 // 存在確認付き DELETE が本体から消して二重在庫を解消する（クラッシュ再開の欠落なし・重複なし）。
-                int archived = insertIntoArchive(readThreshold, unreadThreshold);
-                int deleted = deleteArchived(readThreshold, unreadThreshold);
+                int archived = insertIntoArchive();
+                int deleted = deleteArchived();
                 totalArchived += archived;
                 totalDeleted += deleted;
 
@@ -114,7 +117,7 @@ public class NotificationCleanupBatchService {
      * 移送対象を archive へ INSERT する（1チャンク・独立コミット）。
      * {@code INSERT IGNORE} により id 重複（再移送）で衝突しない＝冪等。
      */
-    int insertIntoArchive(LocalDateTime readThreshold, LocalDateTime unreadThreshold) {
+    int insertIntoArchive() {
         Integer archived = transactionTemplate.execute(status -> jdbcTemplate.update(
                 "INSERT IGNORE INTO notifications_archive " +
                 "  (id, user_id, organization_id, notification_type, priority, title, body, " +
@@ -122,12 +125,12 @@ public class NotificationCleanupBatchService {
                 "   is_read, read_at, channels_sent, snoozed_until, created_at, archived_at) " +
                 "SELECT id, user_id, organization_id, notification_type, priority, title, body, " +
                 "       source_type, source_id, scope_type, scope_id, action_url, actor_id, " +
-                "       is_read, read_at, channels_sent, snoozed_until, created_at, NOW() " +
+                "       is_read, read_at, channels_sent, snoozed_until, created_at, UTC_TIMESTAMP() " +
                 "FROM notifications " +
                 "WHERE " + MOVE_PREDICATE + " " +
                 "ORDER BY created_at ASC " +
                 "LIMIT ?",
-                readThreshold, unreadThreshold, BATCH_SIZE));
+                BATCH_SIZE));
         return archived == null ? 0 : archived;
     }
 
@@ -139,13 +142,13 @@ public class NotificationCleanupBatchService {
      * <p>LIMIT は直前の新規挿入数ではなく {@link #BATCH_SIZE} を使う。存在確認 DELETE のため
      * 過剰指定でも安全弁が守り、かつ孤児行（archive 済みだが本体に残る行）を取りこぼさない。</p>
      */
-    int deleteArchived(LocalDateTime readThreshold, LocalDateTime unreadThreshold) {
+    int deleteArchived() {
         Integer deleted = transactionTemplate.execute(status -> jdbcTemplate.update(
                 "DELETE FROM notifications " +
                 "WHERE " + MOVE_PREDICATE + " " +
                 "  AND id IN (SELECT id FROM notifications_archive) " +
                 "LIMIT ?",
-                readThreshold, unreadThreshold, BATCH_SIZE));
+                BATCH_SIZE));
         return deleted == null ? 0 : deleted;
     }
 }

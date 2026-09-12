@@ -275,6 +275,7 @@ const onSubmit = handleSubmit(async (values) => {
           v-model="postalCode"
           v-bind="postalCodeProps"
           placeholder="123-4567"
+          maxlength="20"
           :invalid="submitted && !!errors.postalCode"
         />
         <small v-if="submitted && errors.postalCode" class="text-red-500">{{

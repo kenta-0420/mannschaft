@@ -62,10 +62,9 @@ import static org.junit.jupiter.api.Assertions.assertTimeout;
  *
  * <h2>凍結台帳は返済すべき借金である</h2>
  * <p>台帳に載っているのは<b>是正されていない既存箇所</b>であり、別戦役で {@code UTC_TIMESTAMP()} 方式へ
- * 順次是正していく対象である。新規追記は禁止する。とりわけ次の 5 クラスは CMP-260909-1446 の横断調査で
+ * 順次是正していく対象である。新規追記は禁止する。とりわけ次の 4 クラスは CMP-260909-1446 の横断調査で
  * 見つかった同型欠陥であり、別戦役として {@code docs/task-list.md} に起票済みである（本戦役の射程外）:</p>
  * <ul>
- *   <li>{@code com.mannschaft.app.notification.service.NotificationCleanupBatchService}</li>
  *   <li>{@code com.mannschaft.app.chat.service.ChatMessageArchiveBatchService}</li>
  *   <li>{@code com.mannschaft.app.auth.service.AuditLogArchiveBatchService}</li>
  *   <li>{@code com.mannschaft.app.advertising.service.SpotlightServingService}</li>
@@ -295,8 +294,8 @@ class RawSqlTimeColumnGuardTest {
     }
 
     /** 返済台帳のスナップショット（CMP-260909-1446 実装時点）。減ったら追随更新し、増やしてはならない。 */
-    private static final int EXPECTED_FROZEN_SQL_LOCAL_TIME_FUNCTION = 41;
-    private static final int EXPECTED_FROZEN_TIME_COLUMN_JAVA_BOUND = 57;
+    private static final int EXPECTED_FROZEN_SQL_LOCAL_TIME_FUNCTION = 40;
+    private static final int EXPECTED_FROZEN_TIME_COLUMN_JAVA_BOUND = 55;
     private static final int EXPECTED_FROZEN_RAW_SQL_ENTITY_TIME_GETTER = 4;
 
     // ────────────────────────────────────────────────────────────

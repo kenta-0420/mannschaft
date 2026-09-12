@@ -150520,7 +150520,9 @@
             "type": "string"
           },
           "postalCode": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
           },
           "timezone": {
             "type": "string"
@@ -187714,6 +187716,9 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "endsNextDay": {
+            "type": "boolean"
+          },
           "note": {
             "type": "string",
             "maxLength": 200,
@@ -187804,6 +187809,9 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          },
+          "endsNextDay": {
+            "type": "boolean"
           },
           "slotDate": {
             "type": "string",
@@ -200721,7 +200729,9 @@
             "minLength": 8
           },
           "postalCode": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
           },
           "privacyPolicyAccepted": {
             "type": "boolean"
@@ -206632,6 +206642,9 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          },
+          "endsNextDay": {
+            "type": "boolean"
           },
           "note": {
             "type": "string",

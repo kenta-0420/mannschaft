@@ -5,8 +5,11 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.schedule.entity.ScheduleCrossRefEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.entity.ScheduleAttendanceEntity;
+import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleCrossRefRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
@@ -23,6 +26,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,6 +36,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 認可根治戦役 Wave6-B5 — schedule ドメインの出席統計・招待受信系 API 契約テスト（試練 / red 先行）。
@@ -73,6 +79,15 @@ class ScheduleStatsAndInvitationScopeContractIT extends AbstractMySqlIntegration
     private ScheduleRepository scheduleRepository;
 
     @Autowired
+    private ScheduleAttendanceRepository attendanceRepository;
+
+    @Autowired
+    private ScheduleAttendanceService scheduleAttendanceService;
+
+    @Autowired
+    private jakarta.persistence.EntityManagerFactory entityManagerFactory;
+
+    @Autowired
     private ScheduleCrossRefRepository crossRefRepository;
 
     @PersistenceContext
@@ -93,30 +108,36 @@ class ScheduleStatsAndInvitationScopeContractIT extends AbstractMySqlIntegration
 
     private String teamASlug;
     private String teamBSlug;
+    private String orgASlug;
+    private String orgBSlug;
 
     private Long teamInvitationId;  // TEAM A 宛の PENDING 招待（受信側テスト用）
     private Long orgInvitationId;   // ORG A 宛の PENDING 招待（受信側テスト用）
     private Long awaitingTeamInvitationId; // TEAM A 宛の AWAITING_CONFIRMATION 招待（最終確認用）
     private Long outgoingInvitationId;     // TEAM A 発 → TEAM B 宛の PENDING 招待（送信側の取消用）
     private Long teamAScheduleId;          // TEAM A のスケジュール（統計・リマインド・招待送信の起点）
+    private Long orgAScheduleId;
+    private Long personalScheduleId;
 
     @BeforeEach
     void setUp() {
-        long nano = System.nanoTime();
-        teamASlug = "w6b5-team-a-" + nano;
-        teamBSlug = "w6b5-team-b-" + nano;
+        String suffix = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
+        teamASlug = "w6b5-team-a-" + suffix;
+        teamBSlug = "w6b5-team-b-" + suffix;
         teamAId = insertTeam("W6B5 チームA", teamASlug);
         teamBId = insertTeam("W6B5 チームB", teamBSlug);
-        orgAId = insertOrganization("W6B5 組織A", "w6b5-org-a-" + nano);
-        orgBId = insertOrganization("W6B5 組織B", "w6b5-org-b-" + nano);
+        orgASlug = "w6b5-org-a-" + suffix;
+        orgBSlug = "w6b5-org-b-" + suffix;
+        orgAId = insertOrganization("W6B5 組織A", orgASlug);
+        orgBId = insertOrganization("W6B5 組織B", orgBSlug);
 
-        adminTeamAId = insertUser("w6b5-admin-team-a-" + nano + "@example.com");
-        adminTeamBId = insertUser("w6b5-admin-team-b-" + nano + "@example.com");
-        memberTeamAId = insertUser("w6b5-member-team-a-" + nano + "@example.com");
-        adminOrgAId = insertUser("w6b5-admin-org-a-" + nano + "@example.com");
-        adminOrgBId = insertUser("w6b5-admin-org-b-" + nano + "@example.com");
-        memberOrgAId = insertUser("w6b5-member-org-a-" + nano + "@example.com");
-        outsiderId = insertUser("w6b5-outsider-" + nano + "@example.com");
+        adminTeamAId = insertUser("w6b5-admin-team-a-" + suffix + "@example.com");
+        adminTeamBId = insertUser("w6b5-admin-team-b-" + suffix + "@example.com");
+        memberTeamAId = insertUser("w6b5-member-team-a-" + suffix + "@example.com");
+        adminOrgAId = insertUser("w6b5-admin-org-a-" + suffix + "@example.com");
+        adminOrgBId = insertUser("w6b5-admin-org-b-" + suffix + "@example.com");
+        memberOrgAId = insertUser("w6b5-member-org-a-" + suffix + "@example.com");
+        outsiderId = insertUser("w6b5-outsider-" + suffix + "@example.com");
 
         // checkAdminOrAbove（user_roles）と checkMembership（memberships）は別系統のため
         // ADMIN ユーザーにも memberships 行を張る（ScheduleWriteScopeContractIT 踏襲）。
@@ -199,6 +220,32 @@ class ScheduleStatsAndInvitationScopeContractIT extends AbstractMySqlIntegration
                 .status(ScheduleStatus.SCHEDULED)
                 .attendanceRequired(true)
                 .createdBy(adminTeamAId)
+                .build()).getId();
+
+        orgAScheduleId = scheduleRepository.save(ScheduleEntity.builder()
+                .organizationId(orgAId)
+                .title("W6B5 組織A出欠内訳")
+                .startAt(LocalDateTime.of(2026, 4, 6, 10, 0))
+                .endAt(LocalDateTime.of(2026, 4, 6, 12, 0))
+                .eventType(EventType.PRACTICE)
+                .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                .minViewRole(MinViewRole.MEMBER_PLUS)
+                .status(ScheduleStatus.SCHEDULED)
+                .attendanceRequired(true)
+                .teamBreakdownEnabled(true)
+                .createdBy(adminOrgAId)
+                .build()).getId();
+
+        personalScheduleId = scheduleRepository.save(ScheduleEntity.builder()
+                .userId(adminOrgAId)
+                .title("W6B5 個人予定")
+                .startAt(LocalDateTime.of(2026, 4, 7, 10, 0))
+                .endAt(LocalDateTime.of(2026, 4, 7, 12, 0))
+                .eventType(EventType.OTHER)
+                .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                .minViewRole(MinViewRole.MEMBER_PLUS)
+                .status(ScheduleStatus.SCHEDULED)
+                .createdBy(adminOrgAId)
                 .build()).getId();
 
         // 取消（cancel）用: TEAM A 発 → TEAM B 宛。送信側 TEAM A の ADMIN のみ取消可。
@@ -749,6 +796,87 @@ class ScheduleStatsAndInvitationScopeContractIT extends AbstractMySqlIntegration
     // ═════════════════════════════════════════════════════════════════════
 
     /** 統計 API の GET を期間クエリ付きで組み立てる。 */
+    @Nested
+    @DisplayName("組織出欠内訳の URL スコープ境界")
+    class AttendanceTeamBreakdownScope {
+
+        @Test
+        @DisplayName("チーム別内訳のSQL本数は出欠人数に依存せず6本以下")
+        void チーム別内訳のSQL本数は出欠人数に依存しない() throws Exception {
+            addOrganizationAttendanceMember("query-small-" + System.nanoTime() + "@example.com");
+            long smallCount = measureTeamBreakdownQueryCount();
+
+            for (int i = 0; i < 19; i++) {
+                addOrganizationAttendanceMember("query-large-" + i + "-" + System.nanoTime() + "@example.com");
+            }
+            long largeCount = measureTeamBreakdownQueryCount();
+
+            assertThat(smallCount).isLessThanOrEqualTo(6);
+            assertThat(largeCount).isEqualTo(smallCount);
+        }
+
+        @Test
+        @DisplayName("非管理者には schedule の所属にかかわらず JSON と CSV とも 403")
+        void 非管理者には全scheduleが403() throws Exception {
+            setAuth(outsiderId);
+            for (Long scheduleId : List.of(orgAScheduleId, teamAScheduleId, personalScheduleId)) {
+                mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown",
+                                orgASlug, scheduleId))
+                        .andExpect(status().isForbidden());
+                mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown/export",
+                                orgASlug, scheduleId))
+                        .andExpect(status().isForbidden());
+            }
+            mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown",
+                            orgBSlug, orgAScheduleId))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown/export",
+                            orgBSlug, orgAScheduleId))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("URL組織ADMIN認可後、別組織 schedule の不一致は JSON と CSV とも 404")
+        void 別組織URLはJSONとCSVとも404() throws Exception {
+            setAuth(adminOrgBId);
+
+            mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown",
+                            orgBSlug, orgAScheduleId))
+                    .andExpect(status().isNotFound());
+            mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown/export",
+                            orgBSlug, orgAScheduleId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("TEAM と PERSONAL の schedule は組織 API で JSON と CSV とも 404")
+        void 非組織スコープはJSONとCSVとも404() throws Exception {
+            setAuth(adminOrgAId);
+
+            for (Long invalidScheduleId : List.of(teamAScheduleId, personalScheduleId)) {
+                mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown",
+                                orgASlug, invalidScheduleId))
+                        .andExpect(status().isNotFound());
+                mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown/export",
+                                orgASlug, invalidScheduleId))
+                        .andExpect(status().isNotFound());
+            }
+        }
+
+        @Test
+        @DisplayName("対応する組織 schedule の非管理者は通常どおり JSON と CSV とも 403")
+        void 対応組織の非管理者はJSONとCSVとも403() throws Exception {
+            setAuth(memberOrgAId);
+
+            mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown",
+                            orgASlug, orgAScheduleId))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown/export",
+                            orgASlug, orgAScheduleId))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder statsGet(
             String urlTemplate, Long scopeId) {
         return get(urlTemplate, scopeId)
@@ -759,6 +887,33 @@ class ScheduleStatsAndInvitationScopeContractIT extends AbstractMySqlIntegration
     private void setAuth(Long userId) {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
+    }
+
+    private void addOrganizationAttendanceMember(String email) {
+        Long userId = insertUser(email);
+        MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
+        attendanceRepository.save(ScheduleAttendanceEntity.builder()
+                .scheduleId(orgAScheduleId)
+                .userId(userId)
+                .status(AttendanceStatus.ATTENDING)
+                .build());
+        em.flush();
+        em.clear();
+    }
+
+    private long measureTeamBreakdownQueryCount() throws Exception {
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        boolean wasEnabled = statistics.isStatisticsEnabled();
+        statistics.setStatisticsEnabled(true);
+        try {
+            em.flush();
+            em.clear();
+            statistics.clear();
+            scheduleAttendanceService.getAttendanceTeamBreakdown(orgAScheduleId);
+            return statistics.getPrepareStatementCount();
+        } finally {
+            statistics.setStatisticsEnabled(wasEnabled);
+        }
     }
 
     private Long insertUser(String email) {

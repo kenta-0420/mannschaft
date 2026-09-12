@@ -9,16 +9,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.lang.NonNull;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.broker.SimpleBrokerMessageHandler;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
-import org.springframework.messaging.simp.user.SimpSession;
-import org.springframework.messaging.simp.user.SimpSubscription;
 import org.springframework.messaging.simp.user.SimpUserRegistry;
+import org.springframework.messaging.simp.user.UserDestinationResolver;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -71,7 +74,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIf("com.mannschaft.app.websocket.WebSocketPrincipalWiringIntegrationTest#isDockerAvailable")
-@DisplayName("§7.2 AC-5: STOMP Principal 未配線の欠陥実証（red 先行）")
+@DisplayName("§7.2 AC-5: STOMP Principal 配線の統合検証")
 class WebSocketPrincipalWiringIntegrationTest {
 
     @SuppressWarnings("resource")
@@ -114,6 +117,9 @@ class WebSocketPrincipalWiringIntegrationTest {
     @Autowired
     SimpleBrokerMessageHandler simpleBrokerMessageHandler;
 
+    @Autowired
+    UserDestinationResolver userDestinationResolver;
+
     private WebSocketStompClient stompClient;
 
     public static boolean isDockerAvailable() {
@@ -132,7 +138,7 @@ class WebSocketPrincipalWiringIntegrationTest {
     }
 
     @Test
-    @DisplayName("AC-5: CONNECT 後 SimpUserRegistry に登録され、convertAndSendToUser が到達する（現行は Principal 未配線 → red）")
+    @DisplayName("AC-5: CONNECT 後 SimpUserRegistry に登録され、convertAndSendToUser が到達する")
     void userDestinationDelivery_requiresPrincipalWiring() throws Exception {
         long userId = 90001L;
         String jwt = authTokenService.issueAccessToken(userId, List.of("USER"));
@@ -145,7 +151,8 @@ class WebSocketPrincipalWiringIntegrationTest {
         // ── 実 STOMP CONNECT（Authorization ヘッダで JWT を渡す）──
         BlockingQueue<Object> inbox = new LinkedBlockingQueue<>();
         StompSession session = connect(jwt);
-        session.subscribe("/user/queue/notifications", new StompFrameHandler() {
+        StompSession.Subscription subscription = session.subscribe(
+                "/user/queue/notifications", new StompFrameHandler() {
             @Override
             public @NonNull Type getPayloadType(@NonNull StompHeaders headers) {
                 return Object.class;
@@ -170,39 +177,46 @@ class WebSocketPrincipalWiringIntegrationTest {
                 .isNotNull()
                 .satisfies(u -> assertThat(u.getName()).isEqualTo(String.valueOf(userId)));
 
-        // ── session.subscribe は非同期であり、SUBSCRIBE フレームがサーバのブローカーに登録される前に
-        //    convertAndSendToUser が走ると宛先解決 0 件でメッセージが握りつぶされる（CI 高負荷時に顕在化する flaky の実根治）。
-        //    SimpUserRegistry 経由でサーバ側に当該購読が実際に登録されたことを確認してから送信する。
-        //    「/user/queue/notifications」の購読は Spring の実装により destination が /user プレフィックス無しで
-        //    保持される場合があるため、実装差に強い endsWith 判定で照合する。
-        boolean subscribed = awaitUntil(() -> {
-            var simpUser = simpUserRegistry.getUser(String.valueOf(userId));
-            if (simpUser == null) {
-                return false;
-            }
-            for (SimpSession simpSession : simpUser.getSessions()) {
-                for (SimpSubscription subscription : simpSession.getSubscriptions()) {
-                    if (subscription.getDestination() != null
-                            && subscription.getDestination().endsWith("/queue/notifications")) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }, Duration.ofSeconds(10));
+        // ── session.subscribe は非同期であり、SimpUserRegistryの購読表示だけでは
+        //    SimpleBroker内部の登録完了を保証しない。実宛先への購読登録そのものを待ってから送信する。
+        boolean subscribed = awaitUntil(
+                () -> isBrokerSubscriptionRegistered(userId, subscription.getSubscriptionId()),
+                Duration.ofSeconds(10));
         assertThat(subscribed)
-                .as("/user/queue/notifications 購読がサーバ側（SimpUserRegistry）に登録されること"
-                        + "（購読完了前の送信は宛先解決 0 件で握りつぶされるため、送信前に必ず確認する）")
+                .as("/user/queue/notifications の購読がSimpleBroker内部へ登録されること")
                 .isTrue();
 
-        // ── AC-5 (2): convertAndSendToUser が当該ユーザーに到達する（解決先 0 件 → 未達 → red）──
+        // ── AC-5 (2): convertAndSendToUser が当該ユーザーに到達する ──
         messagingTemplate.convertAndSendToUser(
                 String.valueOf(userId), "/queue/notifications", Map.of("type", "TEST", "message", "hello"));
 
         Object received = inbox.poll(10, TimeUnit.SECONDS);
         assertThat(received)
-                .as("ユーザー宛通知が接続中のクライアントに届くこと（現行は Principal 未配線で解決先 0 件 → 未達 red）")
+                .as("ユーザー宛通知が接続中のクライアントに届くこと")
                 .isNotNull();
+    }
+
+    private boolean isBrokerSubscriptionRegistered(long userId, String subscriptionId) {
+        Message<byte[]> userDestination = messageTo("/user/" + userId + "/queue/notifications");
+        var resolved = userDestinationResolver.resolveDestination(userDestination);
+        if (resolved == null) {
+            return false;
+        }
+
+        return resolved.getTargetDestinations().stream().anyMatch(targetDestination -> {
+            var subscriptions = simpleBrokerMessageHandler.getSubscriptionRegistry()
+                    .findSubscriptions(messageTo(targetDestination));
+            return subscriptions.entrySet().stream().anyMatch(entry ->
+                    resolved.getSessionIds().contains(entry.getKey())
+                            && entry.getValue().contains(subscriptionId));
+        });
+    }
+
+    private Message<byte[]> messageTo(String destination) {
+        return MessageBuilder.withPayload(new byte[0])
+                .setHeader(SimpMessageHeaderAccessor.MESSAGE_TYPE_HEADER, SimpMessageType.MESSAGE)
+                .setHeader(SimpMessageHeaderAccessor.DESTINATION_HEADER, destination)
+                .build();
     }
 
     private StompSession connect(String jwt) throws Exception {

@@ -47,7 +47,8 @@
       "leagueTransfers": "Ascensos y descensos",
       "adminConsole": "Consola de administración",
       "receipts": "Recibos",
-      "receiptSettings": "Configuración del emisor de recibos"
+      "receiptSettings": "Configuración del emisor de recibos",
+      "hourlyRate": "時給設定"
     }
   }
 }
