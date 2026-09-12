@@ -5,7 +5,9 @@ import com.mannschaft.app.billing.BillingPaymentGateway;
 import com.mannschaft.app.billing.ContractKind;
 import com.mannschaft.app.billing.ContractStatus;
 import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.cache.CacheManager;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -62,12 +65,34 @@ class BillingCancelResumeDisplayContractRedIT extends AbstractMySqlIntegrationTe
     @Autowired private MockMvc mockMvc;
     @Autowired private TransactionTemplate transactionTemplate;
     @Autowired private Clock clock;
+    @Autowired private FeatureFlagRepository featureFlagRepository;
+    @Autowired private CacheManager cacheManager;
     @PersistenceContext private EntityManager entityManager;
 
     private Long userId;
 
+    /**
+     * ゲートを開けてから本体を測る（フィクスチャ。期待値は一切緩めていない）。
+     *
+     * <p>{@code GET /api/v1/me/entitlements} は
+     * {@code @RequireFeature("FEATURE_BILLING_PAYMENT_ENABLED")} 付きであり、
+     * {@code FeatureGateAspect} は<b>行が無いキーをフェイルクローズで無効</b>と判定して
+     * {@code FEATURE_GATE_001} を投げる（＝HTTP <b>403</b>）。テストプロファイルは
+     * {@code spring.flyway.enabled: false} ＋ {@code ddl-auto: create} でスキーマを Entity から
+     * 作るため、本番で 17 キーを seed する
+     * {@code V187.20260820092252__seed_feature_gate_flags.sql} は<b>一度も走らない</b>。
+     * よって何もしなければ本 IT の全要求が 403 になり、<b>表示契約（AC-57/60/63/65）の本体へ
+     * 到達しない</b>。</p>
+     *
+     * <p>fail-close の既定も番人も緩めていない。{@link FeatureFlagTestSupport#enable} が
+     * 行を upsert し<b>フラグキャッシュを落とす</b>だけである（行を入れてもキャッシュ済みの
+     * false が返り続ける罠が実測されているため、行とキャッシュは必ず対で扱う）。
+     * 同一コンテキストの別テストが行を消すため {@code @BeforeEach} で置き直す。</p>
+     */
     @BeforeEach
     void setUp() {
+        FeatureFlagTestSupport.enable(featureFlagRepository, cacheManager,
+                "FEATURE_BILLING_PAYMENT_ENABLED");
         userId = insertUser();
     }
 
