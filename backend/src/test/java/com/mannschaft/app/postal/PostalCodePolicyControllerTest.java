@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(PostalCodePolicyController.class)
 @Import(PostalCodePolicyRegistry.class)
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @DisplayName("PostalCodePolicyController 結合テスト (F02.10 §391)")
 class PostalCodePolicyControllerTest {
 
@@ -66,7 +66,7 @@ class PostalCodePolicyControllerTest {
     }
 
     @Test
-    @DisplayName("未認証でも到達できる（permitAll・addFilters=false 確認）")
+    @DisplayName("未認証でも実Security filterを通過して到達できる（permitAll）")
     void getPolicies_anonymousCanAccess() throws Exception {
         SecurityContextHolder.clearContext();
 

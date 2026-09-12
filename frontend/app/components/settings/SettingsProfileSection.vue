@@ -143,6 +143,7 @@ const saveDisabled = computed<boolean>(() => postalCodeError.value !== null)
           v-model="profile.postalCode"
           class="w-full"
           :placeholder="$t('settings.profile.postal_placeholder')"
+          maxlength="20"
           :invalid="postalCodeError !== null"
         />
         <!-- クライアントサイド郵便番号エラー（対応国のみ表示） -->
