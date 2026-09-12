@@ -14,6 +14,7 @@ import com.mannschaft.app.matching.MatchingErrorCode;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.social.SocialErrorCode;
+import com.mannschaft.app.common.storage.StorageErrorCode;
 import com.mannschaft.app.succession.SuccessionErrorCode;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.skill.SkillErrorCode;
@@ -1949,6 +1950,22 @@ class GlobalExceptionHandlerTest {
                     SuccessionErrorCode.COVENANT_LIST_FORBIDDEN);
 
             assertThat(status).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+    }
+
+    @Nested
+    @DisplayName("Storage ACL ErrorCode の HTTP 写像")
+    class StorageAclErrorCodeHttpStatus {
+
+        @Test
+        @DisplayName("ACL不在は存在秘匿404、所有境界違反は403、claim競合は409になる")
+        void storageAclErrorCodesResolveToDeclaredHttpStatus() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(StorageErrorCode.ACL_NOT_FOUND))
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(StorageErrorCode.ACL_FORBIDDEN))
+                    .isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(globalExceptionHandler.resolveHttpStatus(StorageErrorCode.ACL_CLAIM_CONFLICT))
+                    .isEqualTo(HttpStatus.CONFLICT);
         }
     }
 }
