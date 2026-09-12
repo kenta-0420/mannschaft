@@ -15,8 +15,6 @@ import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -92,95 +90,29 @@ public class MemberQueryDispatcher {
     }
 
     /**
-     * メンバー一覧を「ページ内のぶんだけ実体化して」取得する（CMP-260910-1555）。
+     * メンバー一覧の「誰がどのロールか」だけを、表示名・アバターを解決せずに取得する（CMP-260910-1555）。
      *
      * <h2>なぜ要るのか</h2>
      * <p>{@link #queryMembers} は常にスコープ全員を返し、しかもユーザー 1 人ごとに
      * {@code findMemberSummaryById} を引く（N+1）。呼び出し側が
      * {@code TeamService#getMembers} のようにメモリ上で切り出してページングを
-     * エミュレートしていると、<b>1 ページ取得するたびに全員ぶんの処理が走る</b>。
+     * エミュレートしていると、<b>1 ページ取得するたびに全員ぶんの重い処理が走る</b>。
      * 一覧を最後までめくると総処理量が人数 N に対して概ね N^2/ページサイズになり、
      * 大規模スコープでは DB 負荷とタイムアウトで一覧そのものが使えなくなる。</p>
      *
-     * <h2>やっていること</h2>
-     * <p>重い処理（ユーザーの表示名・アバターの解決）を<b>ページ内の人数ぶんに限定</b>する。</p>
-     * <ol>
-     *   <li>user_roles / memberships から userId・ロール・joinedAt だけを引いて集約する
-     *       （この 2 クエリはスコープ全体だが、行が軽く件数に対して線形）</li>
-     *   <li>OQ-2 優先度で 1 ユーザー 1 行に畳んでから<b>ページ位置で切り出す</b></li>
-     *   <li>切り出した<b>ページ内のユーザーだけ</b>を 1 クエリ（{@code IN}）で実体化する</li>
-     * </ol>
-     * <p>結果として 1 ページあたりの重い処理はページサイズに比例する量で頭打ちになり、
+     * <h2>使い方</h2>
+     * <p>本メソッドで軽い行（userId・ロール・joinedAt のみ。表示名とアバターは {@code null}）を
+     * 全件そろえ、呼び出し側がページ位置で切り出したうえで {@link #hydrate} に渡す。
+     * 重い処理（表示名・アバターの解決）はページ内の人数ぶんで頭打ちになり、
      * 全ページを通じた総量は N に比例する。並び順・集約結果・総件数は
      * {@link #queryMembers} と同一であり、ページングの意味論は変えていない。</p>
      *
      * @param scopeId   スコープ ID
      * @param scopeType スコープ種別
      * @param roleName  絞り込みロール名（NULL なら全件）
-     * @param pageable  ページ指定（{@code unpaged} なら全件を 1 ページとして返す）
-     * @return 当該ページの MemberDto と、絞り込み後の総件数を持つ {@link Page}
+     * @return 絞り込み後の全メンバー（表示名・アバターは未解決の {@code null}）
      */
-    public Page<MemberDto> queryMembersPage(Long scopeId, ScopeType scopeType,
-                                            String roleName, Pageable pageable) {
-        List<MemberIdentity> identities = queryIdentities(scopeId, scopeType, roleName);
-
-        long totalElements = identities.size();
-        int fromIndex;
-        int toIndex;
-        if (pageable.isPaged()) {
-            fromIndex = (int) Math.min(pageable.getOffset(), totalElements);
-            toIndex = (int) Math.min(fromIndex + (long) pageable.getPageSize(), totalElements);
-        } else {
-            fromIndex = 0;
-            toIndex = identities.size();
-        }
-        List<MemberIdentity> pageSlice = identities.subList(fromIndex, toIndex);
-
-        return new PageImpl<>(hydrate(pageSlice), pageable, totalElements);
-    }
-
-    /**
-     * ページ内のユーザーだけを 1 クエリで実体化して {@link MemberDto} に変換する。
-     *
-     * <p>論理削除等で users 側に行が無いユーザーは、{@code findMemberSummaryById} を
-     * 使っていた頃と同じく displayName / avatarUrl が {@code null} の行として残す
-     * （一覧から消すと総件数と表示件数が食い違うため）。</p>
-     */
-    private List<MemberDto> hydrate(List<MemberIdentity> identities) {
-        if (identities.isEmpty()) {
-            return List.of();
-        }
-        List<Long> userIds = identities.stream().map(MemberIdentity::userId).toList();
-        Map<Long, UserRepository.MemberSummary> summaries = userRepository
-                .findMemberSummariesByIds(userIds).stream()
-                .collect(Collectors.toMap(UserRepository.MemberSummary::getId, summary -> summary,
-                        (left, right) -> left));
-
-        List<MemberDto> result = new ArrayList<>(identities.size());
-        for (MemberIdentity identity : identities) {
-            UserRepository.MemberSummary user = summaries.get(identity.userId());
-            result.add(new MemberDto(
-                    identity.userId(),
-                    user != null ? user.getDisplayName() : null,
-                    // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
-                    user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null,
-                    identity.roleName(),
-                    identity.joinedAt()));
-        }
-        return result;
-    }
-
-    /**
-     * ユーザーの実体化を伴わない軽量な集約結果（userId・ロール・joinedAt のみ）。
-     */
-    private record MemberIdentity(Long userId, String roleName, java.time.LocalDateTime joinedAt) {
-    }
-
-    /**
-     * {@link #queryMembers} と同じ規則で「誰がどのロールか」だけを決める。
-     * 表示名・アバターは解決しない（ページ内のぶんだけ後から実体化するため）。
-     */
-    private List<MemberIdentity> queryIdentities(Long scopeId, ScopeType scopeType, String roleName) {
+    public List<MemberDto> queryMemberIdentities(Long scopeId, ScopeType scopeType, String roleName) {
         if (roleName == null || roleName.isBlank()) {
             return aggregateIdentities(scopeId, scopeType);
         }
@@ -202,7 +134,7 @@ public class MemberQueryDispatcher {
                             .toList();
                 }
                 yield entities.stream()
-                        .map(ur -> new MemberIdentity(ur.getUserId(), roleName, ur.getCreatedAt()))
+                        .map(ur -> identity(ur.getUserId(), roleName, ur.getCreatedAt()))
                         .toList();
             }
             case "MEMBER", "SUPPORTER" -> {
@@ -213,17 +145,56 @@ public class MemberQueryDispatcher {
                         .stream()
                         .filter(m -> m.getRoleKind() == roleKind)
                         .filter(m -> m.getUserId() != null)
-                        .map(m -> new MemberIdentity(m.getUserId(), roleKind.name(), m.getJoinedAt()))
+                        .map(m -> identity(m.getUserId(), roleKind.name(), m.getJoinedAt()))
                         .toList();
             }
             default -> throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_INVALID_ROLE_KIND);
         };
     }
 
+    /** 表示名・アバターを未解決（{@code null}）にした軽量行。 */
+    private MemberDto identity(Long userId, String roleName, java.time.LocalDateTime joinedAt) {
+        return new MemberDto(userId, null, null, roleName, joinedAt);
+    }
+
+    /**
+     * {@link #queryMemberIdentities} が返した行のうち、渡されたぶんだけを 1 クエリで実体化する。
+     *
+     * <p>論理削除等で users 側に行が無いユーザーは、{@code findMemberSummaryById} を
+     * 使っていた頃と同じく displayName / avatarUrl が {@code null} の行として残す
+     * （一覧から消すと総件数と表示件数が食い違うため）。</p>
+     *
+     * @param identities {@link #queryMemberIdentities} の結果（通常は 1 ページぶんに切り出したもの）
+     * @return 表示名・アバターを解決した {@link MemberDto}（並び順は入力どおり）
+     */
+    public List<MemberDto> hydrate(List<MemberDto> identities) {
+        if (identities.isEmpty()) {
+            return List.of();
+        }
+        List<Long> userIds = identities.stream().map(MemberDto::userId).toList();
+        Map<Long, UserRepository.MemberSummary> summaries = userRepository
+                .findMemberSummariesByIds(userIds).stream()
+                .collect(Collectors.toMap(UserRepository.MemberSummary::getId, summary -> summary,
+                        (left, right) -> left));
+
+        List<MemberDto> result = new ArrayList<>(identities.size());
+        for (MemberDto identity : identities) {
+            UserRepository.MemberSummary user = summaries.get(identity.userId());
+            result.add(new MemberDto(
+                    identity.userId(),
+                    user != null ? user.getDisplayName() : null,
+                    // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                    user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null,
+                    identity.roleName(),
+                    identity.joinedAt()));
+        }
+        return result;
+    }
+
     /**
      * 全件（roleName 未指定）の集約 — {@link #queryAll} と同じ優先度規則・同じ並び順。
      */
-    private List<MemberIdentity> aggregateIdentities(Long scopeId, ScopeType scopeType) {
+    private List<MemberDto> aggregateIdentities(Long scopeId, ScopeType scopeType) {
         List<UserRoleEntity> userRoles = scopeType == ScopeType.TEAM
                 ? userRoleRepository.findByTeamId(scopeId, Pageable.unpaged()).getContent()
                 : userRoleRepository.findByOrganizationId(scopeId, Pageable.unpaged()).getContent();
@@ -235,19 +206,20 @@ public class MemberQueryDispatcher {
         // 重複を除いた ID でまとめて引けば 1 クエリで済む。
         Map<Long, String> roleNamesById = roleNamesFor(userRoles);
 
-        Map<Long, MemberIdentity> aggregated = new LinkedHashMap<>();
+        Map<Long, MemberDto> aggregated = new LinkedHashMap<>();
         for (UserRoleEntity ur : userRoles) {
             String urRoleName = roleNamesById.get(ur.getRoleId());
             if (urRoleName == null) {
                 continue;
             }
-            mergeIdentity(aggregated, ur.getUserId(), urRoleName, ur.getCreatedAt());
+            mergeAggregated(aggregated, ur.getUserId(), null, null, urRoleName, ur.getCreatedAt());
         }
         for (MembershipEntity m : memberships) {
             if (m.getUserId() == null) {
                 continue; // GDPR マスキング済はスキップ
             }
-            mergeIdentity(aggregated, m.getUserId(), m.getRoleKind().name(), m.getJoinedAt());
+            mergeAggregated(aggregated, m.getUserId(), null, null,
+                    m.getRoleKind().name(), m.getJoinedAt());
         }
         return new ArrayList<>(aggregated.values());
     }
@@ -277,23 +249,6 @@ public class MemberQueryDispatcher {
             }
         }
         return names;
-    }
-
-    /** {@link #mergeAggregated} の軽量版（表示名・アバターを扱わないだけで規則は同一）。 */
-    private void mergeIdentity(Map<Long, MemberIdentity> agg, Long userId,
-                               String roleName, java.time.LocalDateTime joinedAt) {
-        MemberIdentity existing = agg.get(userId);
-        if (existing == null) {
-            agg.put(userId, new MemberIdentity(userId, roleName, joinedAt));
-            return;
-        }
-        if (priority(roleName) < priority(existing.roleName())) {
-            agg.put(userId, new MemberIdentity(userId, roleName,
-                    pickEarlier(existing.joinedAt(), joinedAt)));
-        } else {
-            agg.put(userId, new MemberIdentity(userId, existing.roleName(),
-                    pickEarlier(existing.joinedAt(), joinedAt)));
-        }
     }
 
     /**

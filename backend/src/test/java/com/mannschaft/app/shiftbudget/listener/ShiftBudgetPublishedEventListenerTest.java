@@ -77,9 +77,9 @@ class ShiftBudgetPublishedEventListenerTest {
     /** Phase 10-β で追加された失敗イベント記録（テスト中は no-op で十分） */
     @Mock
     private com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService failedEventService;
-    /** CMP-260910-1555 で追加された時給未設定警告の通知 */
+    /** CMP-260910-1555 で追加された時給未設定警告のイベント publish（配送はリスナー側の責務） */
     @Mock
-    private com.mannschaft.app.shiftbudget.service.ShiftBudgetHourlyRateMissingNotifier hourlyRateMissingNotifier;
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -91,7 +91,7 @@ class ShiftBudgetPublishedEventListenerTest {
                 featureService, allocationRepository, rateQueryRepository,
                 consumptionService, slotRepository, hourlyRateRepository,
                 auditLogService, objectMapper, thresholdAlertEvaluationService, failedEventService,
-                hourlyRateMissingNotifier);
+                eventPublisher);
     }
 
     private ShiftSlotEntity sampleSlotWithUser(Long slotId, Long userId) {
@@ -295,19 +295,20 @@ class ShiftBudgetPublishedEventListenerTest {
     }
 
     @Test
-    @DisplayName("CMP-260910-1555: 時給未設定 → 予算管理者へ警告通知が出る（黙って成功扱いにしない）")
+    @DisplayName("CMP-260910-1555: 時給未設定 → 警告通知イベントが publish される（黙って成功扱いにしない）")
     void 時給未設定_管理者へ通知() {
         givenMissingHourlyRate();
         given(rateQueryRepository.findTeamSlugByTeamId(TEAM_ID)).willReturn(Optional.of("team-alpha"));
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
-        verify(hourlyRateMissingNotifier).notifyHourlyRateMissing(
-                eq(ORG_ID), eq(TEAM_ID), eq("team-alpha"), eq(SCHEDULE_ID), eq(List.of(USER_ID)));
+        verify(eventPublisher).publishEvent(
+                eq(new com.mannschaft.app.shiftbudget.event.ShiftBudgetHourlyRateMissingEvent(
+                        ORG_ID, TEAM_ID, "team-alpha", SCHEDULE_ID, List.of(USER_ID))));
     }
 
     @Test
-    @DisplayName("CMP-260910-1555: 時給が引けたときは通知を出さない（誤報を出さない）")
+    @DisplayName("CMP-260910-1555: 時給が引けたときはイベントを publish しない（誤報を出さない）")
     void 時給設定済_通知しない() {
         given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID)).willReturn(Optional.of(ORG_ID));
         given(featureService.isEnabled(ORG_ID)).willReturn(true);
@@ -323,18 +324,19 @@ class ShiftBudgetPublishedEventListenerTest {
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
-        verify(hourlyRateMissingNotifier, never()).notifyHourlyRateMissing(
-                any(), any(), any(), any(), any());
+        verify(eventPublisher, never()).publishEvent(
+                org.mockito.ArgumentMatchers.any(
+                        com.mannschaft.app.shiftbudget.event.ShiftBudgetHourlyRateMissingEvent.class));
     }
 
     @Test
-    @DisplayName("CMP-260910-1555: 通知が失敗しても監査ログは残り hook は完走する")
+    @DisplayName("CMP-260910-1555: publish が失敗しても監査ログは残り hook は完走する")
     void 通知失敗でも完走() {
         givenMissingHourlyRate();
         given(rateQueryRepository.findTeamSlugByTeamId(TEAM_ID)).willReturn(Optional.empty());
         org.mockito.BDDMockito.willThrow(new RuntimeException("notification down"))
-                .given(hourlyRateMissingNotifier).notifyHourlyRateMissing(
-                        any(), any(), any(), any(), any());
+                .given(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(
+                        com.mannschaft.app.shiftbudget.event.ShiftBudgetHourlyRateMissingEvent.class));
 
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 

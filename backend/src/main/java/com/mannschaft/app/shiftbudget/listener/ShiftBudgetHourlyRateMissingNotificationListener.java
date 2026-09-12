@@ -1,18 +1,25 @@
-package com.mannschaft.app.shiftbudget.service;
+package com.mannschaft.app.shiftbudget.listener;
 
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.RoleService;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.ShiftBudgetHourlyRateMissingMessages;
+import com.mannschaft.app.shiftbudget.event.ShiftBudgetHourlyRateMissingEvent;
+import com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
-import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,37 +29,42 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * F08.7 「時給未設定で消化記録できなかった」ことを管理者へ知らせる通知サービス（CMP-260910-1555）。
+ * F08.7 「時給未設定で消化記録できなかった」ことを予算管理者へ知らせる配送リスナー（CMP-260910-1555）。
  *
- * <h2>なぜこのクラスが要るのか（是正前の欠陥）</h2>
+ * <h2>なぜこの通知が要るのか（是正前の欠陥）</h2>
  * <p>是正前の {@code ShiftBudgetConsumptionRecordListener} は時給が未登録のとき
  * {@code findEffectiveRate(...).orElse(BigDecimal.ZERO)} で<b>黙って 0 円を採用</b>し、
- * 単価 0 円の消化行を「成功」として記録していた。結果として</p>
- * <ul>
- *   <li>消化額はいつまでも 0 のまま（{@code recorded=N, skipped=0} と成功ログが出る）</li>
- *   <li>消化率が 0% のままなので 80/100/120% の閾値警告も永久に発火しない</li>
- *   <li>画面にもログにも異常が出ないため、利用者は「予算機能が動いている」と誤認する</li>
- * </ul>
- * <p>この「静かな 0 円」は握りつぶしそのものであり、症状を隠して予算管理を丸ごと無効化していた。</p>
+ * 単価 0 円の消化行を「成功」として記録していた。消化額はいつまでも 0 のままで、
+ * 消化率が 0% なので 80/100/120% の閾値警告も永久に発火せず、画面にもログにも異常が出ない——
+ * 予算管理が丸ごと無効なのに誰にも分からない状態だった。0 円を捏造せず記録をスキップし、
+ * <b>この通知で是正を促すことが修正の本体</b>である。</p>
  *
- * <h2>是正方針</h2>
- * <p>時給が引けないときは 0 円を捏造せず<b>消化記録を行わない</b>（誤った金額を残すより、
- * 記録しないほうが台帳としては正しい。時給登録後に再公開すれば正しい金額で記録される）。
- * そのうえで本サービスが予算管理者へ通知を出し、監査ログを残す。
- * 「記録しない」だけでは是正前と同じく静かなままなので、<b>通知が是正の本体</b>である。</p>
+ * <h2>なぜ Service ではなくリスナーなのか（番人 NotificationTransactionBoundaryGuardTest）</h2>
+ * <p>当初は {@code ShiftBudgetHourlyRateMissingNotifier} という Service が
+ * {@link NotificationDeliveryRunner#sendOne} を直接呼んでいたが、これは
+ * CMP-056 / Issue #2990 の契約に反する（{@code DIRECT_RUNNER_CALL}）。配送は
+ * <b>{@code AFTER_COMMIT} を構文として明示した入口</b>からのみ行う、というのが契約であり、
+ * 「呼び出し元がたまたま AFTER_COMMIT リスナーである」ことは静的には保証されない。
+ * よって金型 {@code ShiftBudgetThresholdAlertNotificationListener} と同じく、
+ * 業務側は {@link ShiftBudgetHourlyRateMissingEvent} を publish するに留め、配送は本リスナーが行う。</p>
+ *
+ * <h2>{@code fallbackExecution = true} を付けている理由</h2>
+ * <p>publish 元の消化記録 hook は既に {@code AFTER_COMMIT} + {@code @Async} で動いており、
+ * 自分自身はトランザクションを開いていない。{@code @TransactionalEventListener} は
+ * 既定ではトランザクションが無い publish を<b>黙って捨てる</b>ため、それでは通知が一度も出ない。
+ * {@code fallbackExecution = true} なら「待つべきコミットが無い」場合に即時実行される
+ * （先例: {@code ScheduleKeepAnonymizationEventListener}）。因果は失われない——
+ * 本イベントが publish される時点で、待つべきシフト公開のコミットは既に完了している。</p>
  *
  * <h2>配送の作法</h2>
- * <p>呼び出し元は {@code AFTER_COMMIT} + {@code @Async("event-pool")} のリスナーであり、
- * 業務トランザクションの外にいる。受信者ごとの
- * {@link NotificationDeliveryRunner#sendOne}（1 件ごと {@code REQUIRES_NEW}）で配送し、
- * 失敗した受信者だけを {@code NOTIFICATION_SEND} の failed event として残して
- * リトライバッチ / 管理 API の再送経路へ載せる
- * （{@code ShiftBudgetThresholdAlertNotificationListener} と同一の金型）。</p>
+ * <p>受信者解決は外側で 1 回だけ行い、受信者ごとの {@link NotificationDeliveryRunner#sendOne}
+ * （1 件ごと {@code REQUIRES_NEW}）で配送する。1 名の失敗で残りを諦めず、
+ * 失敗した受信者だけを {@code NOTIFICATION_SEND} の failed event として再送経路へ載せる。</p>
  */
 @Slf4j
-@Service
+@Component
 @RequiredArgsConstructor
-public class ShiftBudgetHourlyRateMissingNotifier {
+public class ShiftBudgetHourlyRateMissingNotificationListener {
 
     private static final String NOTIFICATION_TYPE = "SHIFT_BUDGET_HOURLY_RATE_MISSING";
 
@@ -65,7 +77,7 @@ public class ShiftBudgetHourlyRateMissingNotifier {
 
     private final NotificationDeliveryRunner notificationDeliveryRunner;
     private final UserLocaleCache userLocaleCache;
-    private final UserRoleRepository userRoleRepository;
+    private final RoleService roleService;
     private final ShiftBudgetFailedEventService failedEventService;
     private final AuditLogService auditLogService;
     private final MessageSource messageSource;
@@ -73,22 +85,25 @@ public class ShiftBudgetHourlyRateMissingNotifier {
     /**
      * 時給未設定により消化記録をスキップしたことを予算管理者へ通知する。
      *
-     * @param organizationId 組織ID
-     * @param teamId         チームID
-     * @param teamSlug       チームの slug（通知のアクション URL 用。{@code null} なら URL 無し）
-     * @param scheduleId     対象のシフトスケジュールID
-     * @param missingUserIds 時給が未設定だったユーザーID（重複なし）
+     * @param event 時給未設定イベント（ID と対象ユーザーのみ）
      */
-    public void notifyHourlyRateMissing(Long organizationId, Long teamId, String teamSlug,
-                                        Long scheduleId, List<Long> missingUserIds) {
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "時給未登録は予算の消化記録が丸ごと欠落していることの唯一の知らせであり、"
+                    + "棚卸し台帳に停止用の gate_key を持たない。落とすと是正前と同じ『静かな 0 円』へ戻る")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onHourlyRateMissing(ShiftBudgetHourlyRateMissingEvent event) {
+        List<Long> missingUserIds = event.missingUserIds();
         if (missingUserIds == null || missingUserIds.isEmpty()) {
             return;
         }
+        Long organizationId = event.organizationId();
+        Long scheduleId = event.scheduleId();
 
         auditLogService.record(
                 "SHIFT_BUDGET_HOURLY_RATE_MISSING",
                 null, null,
-                teamId, organizationId,
+                event.teamId(), organizationId,
                 null, null, null,
                 String.format("{\"shift_schedule_id\":%d,\"missing_user_ids\":%s,\"missing_count\":%d}",
                         scheduleId, missingUserIds, missingUserIds.size()));
@@ -97,11 +112,12 @@ public class ShiftBudgetHourlyRateMissingNotifier {
         if (recipientUserIds.isEmpty()) {
             log.warn("F08.7 時給未設定警告: 受信ロール 0 名のため通知配送スキップ: "
                             + "orgId={}, teamId={}, scheduleId={}, missing={}",
-                    organizationId, teamId, scheduleId, missingUserIds.size());
+                    organizationId, event.teamId(), scheduleId, missingUserIds.size());
             return;
         }
 
-        String actionUrl = teamSlug == null ? null : "/teams/" + teamSlug + "/settings/hourly-rate";
+        String actionUrl = event.teamSlug() == null
+                ? null : "/teams/" + event.teamSlug() + "/settings/hourly-rate";
 
         Map<Long, String> locales;
         try {
@@ -149,7 +165,7 @@ public class ShiftBudgetHourlyRateMissingNotifier {
         }
         log.warn("F08.7 時給未設定のため消化記録をスキップし予算管理者へ通知: "
                         + "orgId={}, teamId={}, scheduleId={}, missingUsers={}, recipients={}",
-                organizationId, teamId, scheduleId, missingUserIds.size(), recipientUserIds.size());
+                organizationId, event.teamId(), scheduleId, missingUserIds.size(), recipientUserIds.size());
     }
 
     /**
@@ -157,11 +173,14 @@ public class ShiftBudgetHourlyRateMissingNotifier {
      *
      * <p>閾値超過警告（{@code ThresholdAlertEvaluationService#resolveRecipients}）と同じ集合。
      * 「予算が壊れている」という同種の事象を同じ相手へ届けるため、受信者の定義を揃える。</p>
+     *
+     * <p>{@code role} ドメインの Repository を直接掴まず {@link RoleService} 経由で解決する
+     * （CLAUDE.md ドメイン境界の原則 / 番人 {@code CrossDomainRepositoryDependencyArchTest} D-5）。</p>
      */
     private List<Long> resolveRecipients(Long organizationId) {
         Set<Long> uniq = new HashSet<>();
-        uniq.addAll(userRoleRepository.findAdminUserIdsByOrganizationId(organizationId));
-        uniq.addAll(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(
+        uniq.addAll(roleService.getAdminUserIdsByOrganizationId(organizationId));
+        uniq.addAll(roleService.getUserIdsByOrganizationIdAndPermissionName(
                 organizationId, "BUDGET_ADMIN"));
         List<Long> sorted = new ArrayList<>(uniq);
         sorted.sort(Long::compareTo);
