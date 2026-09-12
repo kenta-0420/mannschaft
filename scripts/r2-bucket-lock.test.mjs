@@ -1,9 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { loadDeclaration, validateTarget, buildRequestRules, inspectResponse, run } from './r2-bucket-lock.mjs'
+import { loadDeclaration, validateDeclaration, validateTarget, buildRequestRules, inspectResponse, run } from './r2-bucket-lock.mjs'
 const allowlist = { accounts: ['sandbox-account'], buckets: ['sandbox-bucket', 'dev-bucket', 'test-bucket'] }
 const declared = { rules: buildRequestRules() }
 const response = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+test('宣言の空prefix・短期保持・disabled・余分項目を拒否する', () => {
+  for (const change of [r => { r.prefix = '' }, r => { r.condition.maxAgeSeconds = 1 }, r => { r.enabled = false }, r => { r.extra = true }]) {
+    const rule = structuredClone(declared.rules[0]); change(rule); assert.throws(() => validateDeclaration({ rules: [rule] }))
+  }
+})
+test('未知modeは通信前に拒否する', async () => { await assert.rejects(() => run({ mode: 'unexpected', fetchImpl: () => { throw new Error('network') } }), /unknown mode/) })
 test('宣言はreceipts/の7年Ageルールだけを持つ', () => assert.deepEqual(loadDeclaration().rules, [{ id: 'receipts-7y', enabled: true, prefix: 'receipts/', condition: { type: 'Age', maxAgeSeconds: 220924800 } }]))
 test('本番識別子と本番実バケットを拒否しsandbox系だけを許可する', () => {
   for (const bucket of ['sandbox-bucket', 'dev-bucket', 'test-bucket']) assert.doesNotThrow(() => validateTarget('sandbox-account', bucket, allowlist))
