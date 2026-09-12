@@ -30,7 +30,7 @@ test.describe('郵便番号ポリシー実機E2E', () => {
     const page: Page = await context.newPage()
     try {
       await loginViaApi(page, USER, { apiBaseUrl: API_BASE })
-      await page.goto('/settings/profile', { waitUntil: 'domcontentloaded' })
+      await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
       await waitForHydration(page)
       const postal = page.locator('label').filter({ hasText: '郵便番号' }).locator('..').locator('input').first()
       await expect(postal).toHaveAttribute('maxlength', '20')
