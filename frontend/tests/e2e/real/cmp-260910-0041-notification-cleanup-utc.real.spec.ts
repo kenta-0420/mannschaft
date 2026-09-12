@@ -5,12 +5,12 @@ import { waitForHydration } from '../helpers/wait'
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const ADMIN = {
-  email: process.env.TEST_ADMIN_EMAIL ?? '',
-  password: process.env.TEST_ADMIN_PASSWORD ?? '',
+  email: process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local',
+  password: process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!',
 }
 const MEMBER = {
-  email: process.env.TEST_MEMBER_EMAIL ?? '',
-  password: process.env.TEST_MEMBER_PASSWORD ?? '',
+  email: process.env.TEST_MEMBER_EMAIL ?? 'e2e-user@test.mannschaft.local',
+  password: process.env.TEST_MEMBER_PASSWORD ?? 'TestPass2026!',
 }
 const MYSQL_USER = process.env.E2E_MYSQL_USER ?? ''
 const MYSQL_PASSWORD = process.env.E2E_MYSQL_PASSWORD ?? ''
