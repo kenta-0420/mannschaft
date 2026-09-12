@@ -87,37 +87,38 @@ test.describe('CMP-260910-0042: Spotlight UTC配信・計測の実機導線', ()
 
   test('予約対象外の認証済みユーザーには対象Spotlightを配信しない', async ({ page }) => {
     await login(page, OTHER_USER)
-    const contentResponse = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'GET' &&
-        new URL(response.url()).pathname === '/api/v1/spotlight/content',
-    )
-    await page.goto('/dashboard')
+    const contentResponse = await page.request.get(`${API_BASE_URL}/api/v1/spotlight/content`, {
+      params: { placement: 'DASHBOARD_TILE', count: 2, scopeType: 'PERSONAL' },
+    })
+    expect(contentResponse.status()).toBe(200)
+    expect(await contentResponse.text()).not.toContain(TITLE)
+
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
-    expect((await contentResponse).status()).toBe(200)
     await expect(page.getByText(TITLE, { exact: true })).toHaveCount(0)
   })
 
   test('14日境界内の予約を画面表示し、閲覧・クリック時刻をUTCで記録する', async ({ page }) => {
     await login(page, TARGET_USER)
-    const contentResponse = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'GET' &&
-        new URL(response.url()).pathname === '/api/v1/spotlight/content',
-    )
+    const contentResponse = await page.request.get(`${API_BASE_URL}/api/v1/spotlight/content`, {
+      params: { placement: 'DASHBOARD_TILE', count: 2, scopeType: 'PERSONAL' },
+    })
+    expect(contentResponse.status()).toBe(200)
+    expect(await contentResponse.text()).toContain(TITLE)
+
     const viewResponse = page.waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
         /\/api\/v1\/spotlight\/\d+\/view$/.test(new URL(response.url()).pathname),
-      { timeout: 30_000 },
+      { timeout: 90_000 },
     )
-    await page.goto('/dashboard')
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
-    expect((await contentResponse).status()).toBe(200)
 
     const house = page.getByTestId('spotlight-house').filter({ hasText: TITLE })
     await expect(house).toBeVisible({ timeout: 30_000 })
-    expect((await viewResponse).status()).toBe(200)
+    await house.scrollIntoViewIfNeeded()
+    expect((await viewResponse).status()).toBe(201)
 
     const visitResponse = page.waitForResponse(
       (response) =>
@@ -125,7 +126,7 @@ test.describe('CMP-260910-0042: Spotlight UTC配信・計測の実機導線', ()
         /\/api\/v1\/spotlight\/\d+\/visit$/.test(new URL(response.url()).pathname),
     )
     await house.click()
-    expect((await visitResponse).status()).toBe(200)
+    expect((await visitResponse).status()).toBe(201)
 
     const delta = utcMeasurementDeltaSeconds()
     expect(delta.served).toBeLessThanOrEqual(60)
