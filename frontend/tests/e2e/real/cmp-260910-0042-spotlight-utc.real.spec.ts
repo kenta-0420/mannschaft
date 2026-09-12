@@ -80,10 +80,10 @@ test.describe('CMP-260910-0042: Spotlight UTC配信・計測の実機導線', ()
 
   test('未認証では予約広告APIを利用できない', async ({ page }) => {
     await page.goto('/login')
-    const status = await page.evaluate(async () => {
-      const response = await fetch('/api/v1/spotlight/content', { credentials: 'include' })
+    const status = await page.evaluate(async (apiBaseUrl) => {
+      const response = await fetch(`${apiBaseUrl}/api/v1/spotlight/content`, { credentials: 'include' })
       return response.status
-    })
+    }, API_BASE_URL)
     expect(status).toBe(401)
     await expect(page.getByText(TITLE, { exact: true })).toHaveCount(0)
   })
