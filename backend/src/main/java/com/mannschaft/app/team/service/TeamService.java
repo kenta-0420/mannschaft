@@ -823,10 +823,17 @@ public class TeamService {
         // つまり 1 ページ取るたびにチーム全員ぶんの処理が走り、一覧を最後までめくると
         // 総処理量が人数 N に対して概ね N^2/ページサイズになる。全ページを取得する
         // 画面（時給設定など）では大規模チームで DB 負荷とタイムアウトを招いていた。
-        // ページ内のぶんだけ実体化する queryMembersPage へ移し、色解決も
-        // ページ内のユーザーに限定する。API のレスポンス形状・並び順・総件数は不変。
-        var memberPage = memberQueryDispatcher.queryMembersPage(teamId, ScopeType.TEAM, null, pageable);
-        var memberDtos = memberPage.getContent();
+        // 軽い行（userId・ロール・joinedAt のみ）を queryMemberIdentities で全件そろえ、
+        // ページ位置で切り出してから hydrate で表示名・アバターを 1 クエリで解決する。
+        // 色解決もページ内のユーザーに限定する。API のレスポンス形状・並び順・総件数は不変。
+        var identities = memberQueryDispatcher.queryMemberIdentities(teamId, ScopeType.TEAM, null);
+        long totalElements = identities.size();
+        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
+        int size = pageable.isPaged() ? pageable.getPageSize() : (int) totalElements;
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, identities.size());
+        var memberDtos = memberQueryDispatcher.hydrate(
+                fromIndex >= identities.size() ? List.of() : identities.subList(fromIndex, toIndex));
         var colorsByUserId = scopeMemberCalendarSettingService.resolveColors(
                 ScopeType.TEAM, teamId, memberDtos.stream().map(dto -> dto.userId()).toList());
 
@@ -840,9 +847,6 @@ public class TeamService {
                         colorsByUserId.get(dto.userId())))
                 .toList();
 
-        long totalElements = memberPage.getTotalElements();
-        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
-        int size = pageable.isPaged() ? pageable.getPageSize() : (int) totalElements;
         int totalPages = size == 0 ? 1 : (int) Math.ceil((double) totalElements / size);
 
         var meta = new PagedResponse.PageMeta(totalElements, page, size, totalPages);

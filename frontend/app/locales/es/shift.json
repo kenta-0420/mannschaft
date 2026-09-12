@@ -1,5 +1,14 @@
 {
   "shift": {
+    "availability": {
+      "allDay": "Todo el día",
+      "startTime": "Hora de inicio",
+      "endTime": "Hora de fin",
+      "timeRangeInvalid": "La hora de inicio debe ser anterior a la de fin",
+      "notConfigured": "Aún no está configurado. Indica tu preferencia y horario para cada día y guarda.",
+      "loadError": "No se pudo cargar tu disponibilidad predeterminada",
+      "retry": "Reintentar"
+    },
     "board": {
       "title": "Tablero de turnos",
       "memberPool": "Miembros sin asignar",

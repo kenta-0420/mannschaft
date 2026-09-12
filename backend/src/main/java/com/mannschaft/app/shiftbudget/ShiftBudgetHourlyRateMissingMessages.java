@@ -4,7 +4,7 @@ package com.mannschaft.app.shiftbudget;
  * F08.7 「時給未設定のため消化記録できなかった」警告通知のメッセージキー（CMP-260910-1555）。
  *
  * <p>{@link ShiftBudgetThresholdAlertMessages} と同じ理由で 1 箇所に集約する。
- * 発火側（{@code ShiftBudgetHourlyRateMissingNotifier}）が
+ * 発火側（{@code ShiftBudgetHourlyRateMissingNotificationListener}）が
  * {@code shift_budget_failed_events.payload} へ保存するキーと、再送側
  * （{@code ShiftBudgetRetryExecutor} → {@code ShiftBudgetNotificationResendService}）が
  * 読み直すキーを同じ定数から採る。</p>

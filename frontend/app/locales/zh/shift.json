@@ -1,5 +1,14 @@
 {
   "shift": {
+    "availability": {
+      "allDay": "全天",
+      "startTime": "开始时间",
+      "endTime": "结束时间",
+      "timeRangeInvalid": "开始时间必须早于结束时间",
+      "notConfigured": "尚未设置。请为每个星期几设置意向和时间段后保存。",
+      "loadError": "无法获取默认可否设置",
+      "retry": "重试"
+    },
     "board": {
       "title": "排班板",
       "memberPool": "未分配成员",
