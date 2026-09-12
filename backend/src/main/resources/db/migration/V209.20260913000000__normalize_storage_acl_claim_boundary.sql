@@ -1,6 +1,5 @@
--- Storage ACL の所有スコープ、親認可参照、添付束縛先を分離する。
--- V192 は既適用のため変更せず、legacy producer の監査列も第1陣では保持する。
-ALTER TABLE storage_acls
+-- Normalize the storage ACL claim boundary while retaining every V192 column.
+-- Legacy producers continue to write scope_id/reference_type/reference_id in phase 1.
 ALTER TABLE storage_acls
     ADD COLUMN scope_key VARCHAR(64) NULL AFTER scope_type,
     ADD COLUMN parent_content_reference_type VARCHAR(64) NULL AFTER content_type,

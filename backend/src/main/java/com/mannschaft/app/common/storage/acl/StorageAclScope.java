@@ -1,17 +1,28 @@
 package com.mannschaft.app.common.storage.acl;
 
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.StorageErrorCode;
+
 import java.util.UUID;
 
-/** ストレージ ACL の所有スコープを課金スコープから独立して表現する値型。 */
+/**
+ * ACL ownership scope, deliberately independent from billing scope.
+ *
+ * <p>Invalid externally supplied values are normalized to ACL_INVALID_REQUEST so they cannot become 500 responses.</p>
+ */
 public record StorageAclScope(StorageAclScopeType type, String scopeKey) {
 
     public StorageAclScope {
-        if (type == null || scopeKey == null || scopeKey.isBlank()) {
-            throw new IllegalArgumentException("Storage ACL scope is required");
-        }
-        switch (type) {
-            case TEAM, ORGANIZATION, PERSONAL, PUBLIC -> scopeKey = String.valueOf(requirePositiveLong(scopeKey));
-            case VILLAGE -> scopeKey = UUID.fromString(scopeKey).toString();
+        try {
+            if (type == null || scopeKey == null || scopeKey.isBlank()) {
+                throw new IllegalArgumentException("Storage ACL scope is required");
+            }
+            switch (type) {
+                case TEAM, ORGANIZATION, PERSONAL, PUBLIC -> scopeKey = String.valueOf(requirePositiveLong(scopeKey));
+                case VILLAGE -> scopeKey = UUID.fromString(scopeKey).toString();
+            }
+        } catch (IllegalArgumentException exception) {
+            throw new BusinessException(StorageErrorCode.ACL_INVALID_REQUEST, exception);
         }
     }
 
@@ -25,7 +36,7 @@ public record StorageAclScope(StorageAclScopeType type, String scopeKey) {
 
     public static StorageAclScope village(UUID villageId) {
         if (villageId == null) {
-            throw new IllegalArgumentException("Village ID is required");
+            throw new BusinessException(StorageErrorCode.ACL_INVALID_REQUEST);
         }
         return new StorageAclScope(StorageAclScopeType.VILLAGE, villageId.toString());
     }
@@ -40,20 +51,16 @@ public record StorageAclScope(StorageAclScopeType type, String scopeKey) {
 
     private static StorageAclScope numeric(StorageAclScopeType type, Long id) {
         if (id == null || id <= 0) {
-            throw new IllegalArgumentException("Storage ACL scope ID must be positive");
+            throw new BusinessException(StorageErrorCode.ACL_INVALID_REQUEST);
         }
         return new StorageAclScope(type, String.valueOf(id));
     }
 
     private static long requirePositiveLong(String key) {
-        try {
-            long parsed = Long.parseLong(key);
-            if (parsed <= 0) {
-                throw new IllegalArgumentException("Storage ACL scope ID must be positive");
-            }
-            return parsed;
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("Storage ACL scope ID must be numeric", exception);
+        long parsed = Long.parseLong(key);
+        if (parsed <= 0) {
+            throw new IllegalArgumentException("Storage ACL scope ID must be positive");
         }
+        return parsed;
     }
 }

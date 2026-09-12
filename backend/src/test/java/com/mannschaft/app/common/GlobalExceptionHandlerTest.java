@@ -1966,6 +1966,8 @@ class GlobalExceptionHandlerTest {
                     .isEqualTo(HttpStatus.FORBIDDEN);
             assertThat(globalExceptionHandler.resolveHttpStatus(StorageErrorCode.ACL_CLAIM_CONFLICT))
                     .isEqualTo(HttpStatus.CONFLICT);
+            assertThat(globalExceptionHandler.resolveHttpStatus(StorageErrorCode.ACL_INVALID_REQUEST))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
         }
     }
 }

@@ -82,7 +82,7 @@ public class StorageAclService {
                 .orElseThrow(() -> new BusinessException(StorageErrorCode.ACL_NOT_FOUND));
         if (!ownerId.equals(acl.getOwnerId()) || scope.type() != acl.getScopeType()
                 || !scope.scopeKey().equals(acl.getScopeKey())) {
-            throw new BusinessException(StorageErrorCode.ACL_FORBIDDEN);
+            throw new BusinessException(StorageErrorCode.ACL_NOT_FOUND);
         }
         if (!acl.getExpiresAt().isAfter(now)) {
             throw new BusinessException(StorageErrorCode.ACL_CLAIM_CONFLICT);

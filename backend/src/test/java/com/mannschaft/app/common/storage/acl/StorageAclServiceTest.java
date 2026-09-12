@@ -90,7 +90,7 @@ class StorageAclServiceTest {
             assertThatThrownBy(() -> service.claimPending("key", 7L, scope, requested))
                     .isInstanceOf(BusinessException.class)
                     .extracting(exception -> ((BusinessException) exception).getErrorCode())
-                    .isEqualTo(StorageErrorCode.ACL_FORBIDDEN);
+                    .isEqualTo(StorageErrorCode.ACL_NOT_FOUND);
         }
     }
 
@@ -176,9 +176,42 @@ class StorageAclServiceTest {
     @Test
     void typedContentReferenceRequiresCompleteTypeAndKey() {
         assertThatThrownBy(() -> new StorageAclContentReference(null, "11"))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(StorageErrorCode.ACL_INVALID_REQUEST);
         assertThatThrownBy(() -> new StorageAclContentReference("WORKFLOW_REQUEST", ""))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(StorageErrorCode.ACL_INVALID_REQUEST);
+    }
+
+    @Test
+    void invalidTypedValueObjectsAreNormalizedToAclInvalidRequest() {
+        String tooLong = "x".repeat(65);
+        assertThatThrownBy(() -> new StorageAclAttachmentBinding(tooLong, "11"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(StorageErrorCode.ACL_INVALID_REQUEST);
+        assertThatThrownBy(() -> new StorageAclAttachmentBinding("ATTACHMENT", "非ASCII"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(StorageErrorCode.ACL_INVALID_REQUEST);
+        assertThatThrownBy(() -> new StorageAclScope(null, "1"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(StorageErrorCode.ACL_INVALID_REQUEST);
+        assertThatThrownBy(() -> new StorageAclScope(StorageAclScopeType.TEAM, " "))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(StorageErrorCode.ACL_INVALID_REQUEST);
+        assertThatThrownBy(() -> new StorageAclScope(StorageAclScopeType.TEAM, tooLong))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(StorageErrorCode.ACL_INVALID_REQUEST);
+        assertThatThrownBy(() -> new StorageAclScope(StorageAclScopeType.VILLAGE, "not-a-uuid"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(StorageErrorCode.ACL_INVALID_REQUEST);
     }
 
     @Test
