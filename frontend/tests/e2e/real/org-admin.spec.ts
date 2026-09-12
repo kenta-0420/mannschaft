@@ -34,8 +34,8 @@ async function loginIfNeeded(page: Page): Promise<void> {
 // 組織IDの取得ヘルパー
 // ---------------------------------------------------------------------------
 async function getOrgId(page: Page): Promise<string> {
-  const configuredOrgId = process.env.E2E_SHARED_ORG_ID
-  if (configuredOrgId?.match(/^\d+$/)) return configuredOrgId
+  const configuredOrgSlug = process.env.E2E_SHARED_ORG_SLUG
+  if (configuredOrgSlug?.match(/^[a-z0-9-]+$/)) return configuredOrgSlug
 
   await page.goto('/organizations')
   await waitForHydration(page)
@@ -45,12 +45,10 @@ async function getOrgId(page: Page): Promise<string> {
   const count = await orgLinks.count()
   for (let i = 0; i < count; i++) {
     const href = await orgLinks.nth(i).getAttribute('href')
-    if (href?.match(/\/organizations\/\d+/)) {
-      const match = href.match(/\/organizations\/(\d+)/)
-      if (match?.[1]) return match[1]
-    }
+    const match = href?.match(/\/organizations\/([a-z0-9-]+)/)
+    if (match?.[1]) return match[1]
   }
-  return '1'
+  throw new Error('所属組織へのリンクが見つかりません')
 }
 
 // ---------------------------------------------------------------------------
@@ -60,9 +58,9 @@ test.describe('ORG-ADMIN-001〜005: MEMBER ロールでの管理機能アクセ�
   let orgId: string
 
   test.beforeAll(async ({ browser }) => {
-    const configuredOrgId = process.env.E2E_SHARED_ORG_ID
-    if (configuredOrgId?.match(/^\d+$/)) {
-      orgId = configuredOrgId
+    const configuredOrgSlug = process.env.E2E_SHARED_ORG_SLUG
+    if (configuredOrgSlug?.match(/^[a-z0-9-]+$/)) {
+      orgId = configuredOrgSlug
       return
     }
     const page = await browser.newPage()
@@ -139,18 +137,12 @@ test.describe('ORG-ADMIN-001〜005: MEMBER ロールでの管理機能アクセ�
     const url = page.url()
     if (url.includes('/members')) {
       const memberTable = page.locator('[role="table"], table').first()
-      if (await memberTable.isVisible().catch(() => false)) {
-        // 一覧を閲覧できる実装でも、権限変更 UI は露出しない。
-        const roleChangeBtn = page.locator(
-          'button[aria-label*="権限"], [class*="role-change"], select[name*="role"]',
-        )
-        await expect(roleChangeBtn).toHaveCount(0)
-        await expect(page.getByRole('columnheader', { name: '操作' })).toHaveCount(0)
-      } else {
-        // URLを維持したまま画面単位で拒否する実装では、明示的な拒否表示を必須にする。
-        await expect(page.getByText('情報を取得できませんでした')).toBeVisible()
-        await expect(page.getByText(/権限がない場合は表示できない/)).toBeVisible()
-      }
+      await expect(memberTable).toBeVisible({ timeout: 15_000 })
+      const roleChangeBtn = page.locator(
+        'button[aria-label*="権限"], [class*="role-change"], select[name*="role"]',
+      )
+      await expect(roleChangeBtn).toHaveCount(0)
+      await expect(page.getByRole('columnheader', { name: '操作' })).toHaveCount(0)
     } else {
       // 画面単位で拒否する実装の場合も、許可済みの遷移先だけを受け入れる。
       expect(url).toMatch(/organizations|my\/dashboard|403|forbidden|login/)
