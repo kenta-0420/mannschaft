@@ -21,6 +21,10 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
@@ -108,6 +112,7 @@ public class BulletinAttachmentService {
     private final TournamentContactAccessService tournamentContactAccessService;
     private final StorageQuotaService storageQuotaService;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
     private final AuditLogService auditLogService;
 
     // ─────────────────────────────────────────────
@@ -148,6 +153,8 @@ public class BulletinAttachmentService {
 
         PresignedUploadResult result =
                 storageService.generateUploadUrl(fileKey, req.contentType(), PRESIGN_TTL);
+        storageAclService.registerPending(fileKey, userId, aclScope(thread, userId), req.contentType(), PRESIGN_TTL,
+                new StorageAclContentReference("BULLETIN_THREAD", thread.getId().toString()));
 
         log.info("掲示板添付 presign 発行: targetType={}, targetId={}, scope={}/{}, fileKey={}",
                 req.targetType(), req.targetId(), thread.getScopeType(), thread.getScopeId(), fileKey);
@@ -189,6 +196,8 @@ public class BulletinAttachmentService {
                 .build();
 
         BulletinAttachmentEntity saved = attachmentRepository.save(attachment);
+        storageAclService.claimPending(req.fileKey(), userId, aclScope(thread, userId),
+                new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", saved.getId().toString()));
 
         // F13 使用量加算
         QuotaScope qs = resolveQuotaScope(thread, userId);
@@ -479,6 +488,17 @@ public class BulletinAttachmentService {
             // StorageScopeType が無いため、操作者の PERSONAL クォータに計上する
             // （ChatAttachmentService の村ロビー添付と同方針）。
             case VILLAGE, TOURNAMENT, TOURNAMENT_DIVISION -> new QuotaScope(StorageScopeType.PERSONAL, userId);
+        };
+    }
+
+    private StorageAclScope aclScope(BulletinThreadEntity thread, Long ownerId) {
+        return switch (thread.getScopeType()) {
+            case TEAM -> StorageAclScope.team(thread.getScopeId());
+            case ORGANIZATION -> StorageAclScope.organization(thread.getScopeId());
+            case PERSONAL -> StorageAclScope.personal(ownerId);
+            case VILLAGE -> StorageAclScope.village(thread.getScopeVillageId());
+            case TOURNAMENT -> StorageAclScope.tournament(thread.getScopeId());
+            case TOURNAMENT_DIVISION -> StorageAclScope.tournamentDivision(thread.getScopeId());
         };
     }
 

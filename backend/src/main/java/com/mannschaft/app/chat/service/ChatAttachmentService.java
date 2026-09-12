@@ -6,7 +6,12 @@ import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.StorageErrorCode;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
@@ -59,6 +64,7 @@ public class ChatAttachmentService {
 
     private final StorageQuotaService storageQuotaService;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
     private final ChatChannelAccessGuard channelAccessGuard;
 
     /**
@@ -114,6 +120,14 @@ public class ChatAttachmentService {
                 scope.scopeType(), scope.scopeId(), size,
                 StorageFeatureType.CHAT,
                 REFERENCE_TYPE, attachment.getId(), actorId);
+    }
+
+    /** 保存済みメッセージ添付に ACL の一意バインドを確定する。 */
+    public void claimMessageAttachment(ChatChannelEntity channel,
+                                       ChatMessageAttachmentEntity attachment,
+                                       Long actorId) {
+        storageAclService.claimPending(attachment.getFileKey(), actorId, resolveAclScope(channel, actorId),
+                new StorageAclAttachmentBinding("CHAT_MESSAGE_ATTACHMENT", attachment.getId().toString()));
     }
 
     /**
@@ -200,6 +214,41 @@ public class ChatAttachmentService {
         };
     }
 
+    /** チャンネル種別をストレージ ACL の所有境界へ変換する。 */
+    public StorageAclScope resolveAclScope(ChatChannelEntity channel, Long userId) {
+        return switch (channel.getChannelType()) {
+            case TEAM_PUBLIC, TEAM_PRIVATE -> StorageAclScope.team(requireScopeId(channel.getTeamId(), channel));
+            case ORG_PUBLIC, ORG_PRIVATE -> StorageAclScope.organization(requireScopeId(channel.getOrganizationId(), channel));
+            case DM, GROUP_DM -> StorageAclScope.personal(requireUserId(userId, channel));
+            case TOURNAMENT_CHAT -> StorageAclScope.tournament(requireScopeId(channel.getSourceId(), channel));
+            case TOURNAMENT_DIVISION_CHAT -> StorageAclScope.tournamentDivision(requireScopeId(channel.getSourceId(), channel));
+            case EVENT_CHAT -> channel.getTeamId() != null
+                    ? StorageAclScope.team(channel.getTeamId())
+                    : StorageAclScope.organization(requireScopeId(channel.getOrganizationId(), channel));
+            case VILLAGE_LOBBY -> throw new BusinessException(StorageErrorCode.ACL_INVALID_REQUEST);
+        };
+    }
+
+    /** 保存済みチャンネルにアイコンの一意バインドを確定する。 */
+    public void claimChannelIcon(ChatChannelEntity channel, Long userId, String fileKey) {
+        storageAclService.claimPending(fileKey, userId, resolveAclScope(channel, userId),
+                new StorageAclAttachmentBinding("CHAT_CHANNEL_ICON", channel.getId().toString()));
+    }
+
+    private Long requireScopeId(Long scopeId, ChatChannelEntity channel) {
+        if (scopeId == null || scopeId <= 0) {
+            throw new BusinessException(StorageErrorCode.ACL_INVALID_REQUEST);
+        }
+        return scopeId;
+    }
+
+    private Long requireUserId(Long userId, ChatChannelEntity channel) {
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(StorageErrorCode.ACL_INVALID_REQUEST);
+        }
+        return userId;
+    }
+
     /** 解決されたストレージスコープ。 */
     public record ScopeResolution(StorageScopeType scopeType, Long scopeId) {}
 
@@ -266,6 +315,9 @@ public class ChatAttachmentService {
         // 5. Pre-signed URL 発行（5 分有効）
         PresignedUploadResult result = storageService.generateUploadUrl(
                 fileKey, normalizedType, CHANNEL_ICON_PRESIGN_TTL);
+        storageAclService.registerPending(result.s3Key(), currentUserId, resolveAclScope(channel, currentUserId),
+                normalizedType, CHANNEL_ICON_PRESIGN_TTL,
+                new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()));
         log.info("チャンネルアイコン presign 発行: channelId={}, userId={}, fileKey={}",
                 channel.getId(), currentUserId, fileKey);
         return result;

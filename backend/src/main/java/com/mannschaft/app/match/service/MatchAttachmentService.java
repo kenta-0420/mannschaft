@@ -4,6 +4,10 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.entity.MatchAttachmentEntity;
 import com.mannschaft.app.match.entity.MatchEntity;
@@ -67,6 +71,7 @@ public class MatchAttachmentService {
     private final MatchService matchService;
     private final MatchAccessService matchAccessService;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
 
     // ─────────────────────────────────────────────
     // 1. presign（アップロード URL 発行・記録権限必須）
@@ -96,6 +101,8 @@ public class MatchAttachmentService {
 
         String fileKey = buildFileKey(match, matchId);
         PresignedUploadResult result = storageService.generateUploadUrl(fileKey, contentType, PRESIGN_TTL);
+        storageAclService.registerPending(fileKey, actorUserId, StorageAclScope.organization(organizationId),
+                contentType, PRESIGN_TTL, new StorageAclContentReference("MATCH", matchId.toString()));
 
         log.info("局面写真 presign 発行: matchId={}, fileKey={}, actor={}", matchId, fileKey, actorUserId);
         return PresignResult.builder()
@@ -136,6 +143,8 @@ public class MatchAttachmentService {
                 .build();
 
         MatchAttachmentEntity saved = attachmentRepository.save(attachment);
+        storageAclService.claimPending(command.getFileKey(), actorUserId, StorageAclScope.organization(organizationId),
+                new StorageAclAttachmentBinding("MATCH_ATTACHMENT", saved.getId().toString()));
         log.info("局面写真 確定: matchId={}, attachmentId={}, actor={}", matchId, saved.getId(), actorUserId);
         return saved;
     }

@@ -1,6 +1,9 @@
 package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
@@ -28,6 +31,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class SharedFileVersionService {
+    private final StorageAclService storageAclService;
 
     private final SharedFileVersionRepository versionRepository;
     private final SharedFileService fileService;
@@ -100,6 +104,10 @@ public class SharedFileVersionService {
                 .build();
 
         SharedFileVersionEntity saved = versionRepository.save(version);
+        StorageAclScope aclScope = SharedFileService.aclScope(
+                folder.getScopeType(), SharedFileService.scopeIdOf(folder), userId);
+        storageAclService.claimPending(request.getFileKey(), userId, aclScope,
+                new StorageAclAttachmentBinding("SHARED_FILE_VERSION", saved.getId().toString()));
 
         fileEntity.updateToNewVersion(
                 request.getFileKey(), request.getFileSize(), request.getContentType(), nextVersion);

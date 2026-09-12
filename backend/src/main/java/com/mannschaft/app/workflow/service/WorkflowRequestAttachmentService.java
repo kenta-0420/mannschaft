@@ -7,6 +7,9 @@ import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
 import com.mannschaft.app.workflow.WorkflowMapper;
 import com.mannschaft.app.workflow.WorkflowScopes;
@@ -119,15 +122,11 @@ public class WorkflowRequestAttachmentService {
                 fileKey, request.contentType(), PRESIGN_TTL);
 
         // URLで返すキーは必ず、所有者・申請のスコープ・期限を伴うACL台帳へ登録する。
-        storageAclService.registerPending(
-                fileKey,
-                currentUserId,
-                WorkflowScopes.canonical(requestEntity.getScopeType()),
-                requestEntity.getScopeId(),
-                request.contentType(),
-                PRESIGN_TTL,
-                "WORKFLOW_REQUEST",
-                requestEntity.getId());
+        StorageAclScope aclScope = "TEAM".equals(WorkflowScopes.canonical(requestEntity.getScopeType()))
+                ? StorageAclScope.team(requestEntity.getScopeId())
+                : StorageAclScope.organization(requestEntity.getScopeId());
+        storageAclService.registerPending(fileKey, currentUserId, aclScope, request.contentType(), PRESIGN_TTL,
+                new StorageAclContentReference("WORKFLOW_REQUEST", requestEntity.getId().toString()));
 
         log.info("ワークフロー添付 presign-upload 発行: requestId={}, userId={}, fileKey={}",
                 requestId, currentUserId, fileKey);
@@ -168,6 +167,11 @@ public class WorkflowRequestAttachmentService {
                 .build();
 
         WorkflowRequestAttachmentEntity saved = attachmentRepository.save(entity);
+        StorageAclScope aclScope = "TEAM".equals(WorkflowScopes.canonical(requestEntity.getScopeType()))
+                ? StorageAclScope.team(requestEntity.getScopeId())
+                : StorageAclScope.organization(requestEntity.getScopeId());
+        storageAclService.claimPending(request.fileKey(), currentUserId, aclScope,
+                new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", saved.getId().toString()));
         log.info("ワークフロー添付登録: requestId={}, attachmentId={}, userId={}",
                 requestId, saved.getId(), currentUserId);
 

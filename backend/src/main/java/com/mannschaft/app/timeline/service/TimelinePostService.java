@@ -7,6 +7,9 @@ import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
@@ -92,6 +95,7 @@ public class TimelinePostService {
     private final TimelineMapper timelineMapper;
     private final DomainEventPublisher domainEventPublisher;
     private final R2StorageService r2StorageService;
+    private final StorageAclService storageAclService;
     /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
     /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。 */
@@ -1380,6 +1384,12 @@ public class TimelinePostService {
                     .build();
             TimelinePostAttachmentEntity saved = attachmentRepository.save(entity);
 
+            if ((attachmentType == AttachmentType.IMAGE || attachmentType == AttachmentType.VIDEO_FILE)
+                    && att.getFileKey() != null && !att.getFileKey().isBlank()) {
+                storageAclService.claimPending(att.getFileKey(), userId, toAclScope(scope, userId),
+                        new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", saved.getId().toString()));
+            }
+
             // F13 Phase 4-γ: ファイル系添付のクォータ使用量加算
             if ((attachmentType == AttachmentType.IMAGE || attachmentType == AttachmentType.VIDEO_FILE)
                     && att.getFileSize() != null && att.getFileSize() > 0) {
@@ -1391,6 +1401,14 @@ public class TimelinePostService {
 
             order++;
         }
+    }
+
+    private StorageAclScope toAclScope(ScopeResolution scope, Long userId) {
+        return switch (scope.scopeType()) {
+            case TEAM -> StorageAclScope.team(scope.scopeId());
+            case ORGANIZATION -> StorageAclScope.organization(scope.scopeId());
+            case PERSONAL -> StorageAclScope.personal(userId);
+        };
     }
 
     /**

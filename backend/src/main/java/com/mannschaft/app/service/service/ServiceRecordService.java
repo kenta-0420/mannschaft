@@ -5,6 +5,10 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.service.BulkCreateMode;
 import com.mannschaft.app.service.ReactionType;
 import com.mannschaft.app.service.ServiceRecordErrorCode;
@@ -87,6 +91,7 @@ public class ServiceRecordService {
     private final ObjectMapper objectMapper;
     private final NameResolverService nameResolverService;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
     private final AccessControlService accessControlService;
 
     /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
@@ -596,6 +601,9 @@ public class ServiceRecordService {
 
         String uploadUrl = storageService.generateUploadUrl(
                 fileKey, "application/octet-stream", Duration.ofSeconds(600)).uploadUrl();
+        storageAclService.registerPending(fileKey, actorUserId, StorageAclScope.team(record.getTeamId()),
+                request.getContentType(), Duration.ofSeconds(600),
+                new StorageAclContentReference("SERVICE_RECORD", recordId.toString()));
 
         return UploadUrlResponse.builder()
                 .uploadUrl(uploadUrl)
@@ -629,6 +637,8 @@ public class ServiceRecordService {
                 .build();
 
         ServiceRecordAttachmentEntity saved = attachmentRepository.save(entity);
+        storageAclService.claimPending(request.getFileKey(), actorUserId, StorageAclScope.team(record.getTeamId()),
+                new StorageAclAttachmentBinding("SERVICE_RECORD_ATTACHMENT", saved.getId().toString()));
         log.info("添付ファイル登録: recordId={}, attachmentId={}", recordId, saved.getId());
         return mapper.toAttachmentResponse(saved);
     }

@@ -132,6 +132,8 @@ public class StorageAclService {
             return switch (StorageAclScopeType.valueOf(scopeType)) {
                 case TEAM -> StorageAclScope.team(scopeId);
                 case ORGANIZATION -> StorageAclScope.organization(scopeId);
+                case TOURNAMENT -> StorageAclScope.tournament(scopeId);
+                case TOURNAMENT_DIVISION -> StorageAclScope.tournamentDivision(scopeId);
                 case PERSONAL -> StorageAclScope.personal(ownerId);
                 case PUBLIC -> StorageAclScope.publicFor(ownerId);
                 case VILLAGE -> throw new BusinessException(StorageErrorCode.ACL_INVALID_REQUEST);

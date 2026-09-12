@@ -2,6 +2,9 @@ package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
@@ -34,6 +37,7 @@ public class TimelineVideoAttachmentService {
     private static final long UPLOAD_TTL_SECONDS = UPLOAD_TTL.toSeconds();
 
     private final R2StorageService r2StorageService;
+    private final StorageAclService storageAclService;
     /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
     /** 認可根治 Wave7: アップロード先スコープへの書き込み権限ゲート。 */
@@ -77,6 +81,9 @@ public class TimelineVideoAttachmentService {
         String r2Key = String.format("timeline/%s/%d/tmp/%s.%s", scopeTypeStr, scopeId, uuid, ext);
 
         PresignedUploadResult result = r2StorageService.generateUploadUrl(r2Key, request.getContentType(), UPLOAD_TTL);
+        StorageAclScope aclScope = toAclScope(scope, userId);
+        storageAclService.registerPending(result.s3Key(), userId, aclScope, request.getContentType(), UPLOAD_TTL,
+                new StorageAclContentReference("TIMELINE_SCOPE", scopeTypeStr + ":" + scope.scopeId()));
         log.info("動画アップロード Presigned URL 発行: userId={}, key={}", userId, r2Key);
         return new VideoUploadUrlResponse(result.uploadUrl(), result.s3Key(), UPLOAD_TTL_SECONDS);
     }
@@ -106,6 +113,14 @@ public class TimelineVideoAttachmentService {
 
     /** 解決されたストレージスコープ。 */
     public record ScopeResolution(StorageScopeType scopeType, Long scopeId) {}
+
+    private StorageAclScope toAclScope(ScopeResolution scope, Long userId) {
+        return switch (scope.scopeType()) {
+            case TEAM -> StorageAclScope.team(scope.scopeId());
+            case ORGANIZATION -> StorageAclScope.organization(scope.scopeId());
+            case PERSONAL -> StorageAclScope.personal(userId);
+        };
+    }
 
     /** MIME タイプから拡張子を返す。 */
     private String resolveExtension(String contentType) {

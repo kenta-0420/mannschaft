@@ -57,6 +57,7 @@ public class ChatChannelService {
     private final UserRoleRepository userRoleRepository;
     private final ChatContactFolderItemRepository chatContactFolderItemRepository;
     private final ChatChannelAccessGuard channelAccessGuard;
+    private final ChatAttachmentService chatAttachmentService;
 
     /**
      * ユーザーが参加しているチャンネル一覧を取得する。
@@ -281,6 +282,7 @@ public class ChatChannelService {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
         checkChannelAdminAccess(channel, userId);
         validateNotArchived(channel);
+        boolean iconChanged = request.getIconKey() != null && !request.getIconKey().equals(channel.getIconKey());
 
         channel.updateInfo(
                 request.getName() != null ? request.getName() : channel.getName(),
@@ -289,6 +291,9 @@ public class ChatChannelService {
         );
 
         ChatChannelEntity saved = channelRepository.save(channel);
+        if (iconChanged) {
+            chatAttachmentService.claimChannelIcon(saved, userId, request.getIconKey());
+        }
         log.info("チャンネル更新完了: channelId={}", channelId);
         return chatMapper.toChannelResponse(saved);
     }

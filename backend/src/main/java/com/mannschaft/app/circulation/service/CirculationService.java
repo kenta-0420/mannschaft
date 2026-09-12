@@ -41,6 +41,10 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import lombok.RequiredArgsConstructor;
@@ -67,6 +71,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CirculationService {
+    private final StorageAclService storageAclService;
 
     /** F13 Phase 5-a: presigned URL の有効期限。 */
     private static final Duration PRESIGN_TTL = Duration.ofMinutes(15);
@@ -556,7 +561,7 @@ public class CirculationService {
      * @param req        presign リクエスト
      * @return presign レスポンス（uploadUrl / fileKey / expiresInSeconds）
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public CirculationAttachmentPresignResponse presignAttachmentUpload(
             Long documentId, CirculationAttachmentPresignRequest req) {
 
@@ -579,6 +584,10 @@ public class CirculationService {
         // 4. presigned URL 発行
         PresignedUploadResult result = r2StorageService.generateUploadUrl(
                 fileKey, req.contentType(), PRESIGN_TTL);
+        Long actorId = SecurityUtils.getCurrentUserId();
+        storageAclService.registerPending(fileKey, actorId, aclScope(scopeType, scopeId, actorId),
+                req.contentType(), PRESIGN_TTL,
+                new StorageAclContentReference("CIRCULATION_DOCUMENT", documentId.toString()));
 
         log.info("回覧板添付 presign-upload 発行: documentId={}, scope={}/{}, fileKey={}",
                 documentId, scopeType, scopeId, fileKey);
@@ -633,6 +642,10 @@ public class CirculationService {
                 .build();
 
         CirculationAttachmentEntity saved = attachmentRepository.save(attachment);
+        Long actorId = SecurityUtils.getCurrentUserId();
+        storageAclService.claimPending(request.getFileKey(), actorId,
+                aclScope(document.getScopeType(), document.getScopeId(), actorId),
+                new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", saved.getId().toString()));
         document.incrementAttachmentCount();
         documentRepository.save(document);
 
@@ -701,6 +714,15 @@ public class CirculationService {
 
         log.info("添付ファイル削除: documentId={}, attachmentId={}, userId={}",
                 documentId, attachmentId, userId);
+    }
+
+    private static StorageAclScope aclScope(String scopeType, Long scopeId, Long ownerId) {
+        return switch (scopeType) {
+            case "TEAM" -> StorageAclScope.team(scopeId);
+            case "ORGANIZATION" -> StorageAclScope.organization(scopeId);
+            case "PERSONAL" -> StorageAclScope.personal(ownerId);
+            default -> throw new IllegalArgumentException("Unsupported circulation ACL scope: " + scopeType);
+        };
     }
 
     /**

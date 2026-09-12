@@ -4,6 +4,10 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.filesharing.FileScopeType;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
@@ -68,6 +72,7 @@ public class SharedFileService {
      * 大会以外（TEAM/ORG/PERSONAL）のスコープでは no-op（既存挙動を変えない）。
      */
     private final FolderScopeAccessGuard folderScopeAccessGuard;
+    private final StorageAclService storageAclService;
 
     /**
      * ファイルアップロード用の Presigned PUT URL を発行する。
@@ -82,7 +87,7 @@ public class SharedFileService {
      * @param req      presign リクエスト
      * @return presign レスポンス（uploadUrl / fileKey / expiresInSeconds）
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public SharedFilePresignResponse presignUpload(Long folderId, Long actorId, SharedFilePresignRequest req) {
         // F08.7.1 / 04 §5: 大会フォルダはアップロード認可（チーム代表＋主催者）を通す。
         folderScopeAccessGuard.checkFolderPostByFolderId(folderId, actorId);
@@ -112,6 +117,9 @@ public class SharedFileService {
         // 5. presigned URL 発行
         PresignedUploadResult result = r2StorageService.generateUploadUrl(
                 fileKey, req.contentType(), PRESIGN_TTL);
+        storageAclService.registerPending(fileKey, actorId, aclScope(fileScopeType, scopeId, actorId),
+                req.contentType(), PRESIGN_TTL,
+                new StorageAclContentReference("SHARED_FOLDER", folderId.toString()));
 
         log.info("ファイル共有 presign-upload 発行: folderId={}, actorId={}, scope={}/{}, fileKey={}",
                 folderId, actorId, scopeTypeStr, scopeId, fileKey);
@@ -301,6 +309,9 @@ public class SharedFileService {
                 .build();
 
         SharedFileEntity saved = fileRepository.save(entity);
+        StorageAclScope aclScope = aclScope(folder.getScopeType(), scopeIdOf(folder), userId);
+        storageAclService.claimPending(request.getFileKey(), userId, aclScope,
+                new StorageAclAttachmentBinding("SHARED_FILE", saved.getId().toString()));
 
         SharedFileVersionEntity version = SharedFileVersionEntity.builder()
                 .fileId(saved.getId())
@@ -318,6 +329,25 @@ public class SharedFileService {
 
         log.info("ファイル作成: fileId={}, folderId={}", saved.getId(), request.getFolderId());
         return fileSharingMapper.toFileResponse(saved);
+    }
+
+    static StorageAclScope aclScope(FileScopeType type, Long scopeId, Long ownerId) {
+        return switch (type) {
+            case TEAM -> StorageAclScope.team(scopeId);
+            case ORGANIZATION -> StorageAclScope.organization(scopeId);
+            case PERSONAL -> StorageAclScope.personal(ownerId);
+            case TOURNAMENT -> StorageAclScope.tournament(scopeId);
+            case TOURNAMENT_DIVISION -> StorageAclScope.tournamentDivision(scopeId);
+        };
+    }
+
+    static Long scopeIdOf(SharedFolderEntity folder) {
+        return switch (folder.getScopeType()) {
+            case TEAM -> folder.getTeamId();
+            case ORGANIZATION -> folder.getOrganizationId();
+            case PERSONAL -> folder.getUserId();
+            case TOURNAMENT, TOURNAMENT_DIVISION -> folder.getScopeRefId();
+        };
     }
 
     /**

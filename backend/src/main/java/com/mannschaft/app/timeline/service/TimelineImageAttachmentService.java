@@ -2,6 +2,9 @@ package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
@@ -37,6 +40,7 @@ public class TimelineImageAttachmentService {
     private final StorageQuotaService storageQuotaService;
     /** 認可根治 Wave7: アップロード先スコープへの書き込み権限ゲート。 */
     private final TimelineAttachmentAccessGuard accessGuard;
+    private final StorageAclService storageAclService;
 
     /**
      * 画像ファイル用 R2 Presigned PUT URL を発行する。
@@ -78,6 +82,12 @@ public class TimelineImageAttachmentService {
         String r2Key = String.format("timeline/%s/%d/images/%s.%s", scopeTypeStr, scopeId, uuid, ext);
 
         PresignedUploadResult result = r2StorageService.generateUploadUrl(r2Key, request.getContentType(), UPLOAD_TTL);
+        StorageAclScope aclScope = scope.scopeType() == StorageScopeType.TEAM
+                ? StorageAclScope.team(scope.scopeId())
+                : scope.scopeType() == StorageScopeType.ORGANIZATION
+                ? StorageAclScope.organization(scope.scopeId()) : StorageAclScope.personal(userId);
+        storageAclService.registerPending(result.s3Key(), userId, aclScope, request.getContentType(), UPLOAD_TTL,
+                new StorageAclContentReference("TIMELINE_SCOPE", scopeTypeStr + ":" + scope.scopeId()));
         log.info("画像アップロード Presigned URL 発行: userId={}, key={}", userId, r2Key);
 
         return ImageUploadUrlResponse.builder()

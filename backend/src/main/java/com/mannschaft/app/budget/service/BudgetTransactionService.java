@@ -31,6 +31,10 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -62,6 +66,7 @@ public class BudgetTransactionService {
     private final AccessControlService accessControlService;
     private final DomainEventPublisher domainEventPublisher;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
 
     private static final Duration UPLOAD_URL_TTL = Duration.ofMinutes(15);
 
@@ -354,6 +359,11 @@ public class BudgetTransactionService {
 
         String s3Key = "budget/attachments/" + transactionId + "/" + System.currentTimeMillis() + "_" + fileName;
         PresignedUploadResult result = storageService.generateUploadUrl(s3Key, contentType, UPLOAD_URL_TTL);
+        StorageAclScope aclScope = "TEAM".equals(entity.getScopeType())
+                ? StorageAclScope.team(entity.getScopeId())
+                : StorageAclScope.organization(entity.getScopeId());
+        storageAclService.registerPending(s3Key, currentUserId, aclScope, contentType, UPLOAD_URL_TTL,
+                new StorageAclContentReference("BUDGET_TRANSACTION", transactionId.toString()));
         return new UploadUrlResponse(result.uploadUrl(), result.s3Key(), result.expiresInSeconds());
     }
 
@@ -408,6 +418,11 @@ public class BudgetTransactionService {
                 .build();
 
         BudgetTransactionAttachmentEntity saved = attachmentRepository.save(entity);
+        StorageAclScope aclScope = "TEAM".equals(transaction.getScopeType())
+                ? StorageAclScope.team(transaction.getScopeId())
+                : StorageAclScope.organization(transaction.getScopeId());
+        storageAclService.claimPending(request.s3Key(), currentUserId, aclScope,
+                new StorageAclAttachmentBinding("BUDGET_TRANSACTION_ATTACHMENT", saved.getId().toString()));
         return budgetMapper.toAttachmentResponse(saved);
     }
 
