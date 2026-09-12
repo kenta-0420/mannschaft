@@ -37,8 +37,8 @@ public class StorageAclService {
                 .scopeKey(scope.scopeKey())
                 .aclMode(StorageAclMode.CONTENT_BOUND)
                 .contentType(contentType)
-                .parentContentReferenceType(parentContentReference == null ? null : parentContentReference.type())
-                .parentContentReferenceKey(parentContentReference == null ? null : parentContentReference.key())
+                .parentContentReferenceType(parentContentReference.type())
+                .parentContentReferenceKey(parentContentReference.key())
                 .status(StorageAclStatus.PENDING)
                 .expiresAt(LocalDateTime.now(clock).plus(ttl))
                 .build());
@@ -84,11 +84,11 @@ public class StorageAclService {
                 || !scope.scopeKey().equals(acl.getScopeKey())) {
             throw new BusinessException(StorageErrorCode.ACL_NOT_FOUND);
         }
-        if (!acl.getExpiresAt().isAfter(now)) {
-            throw new BusinessException(StorageErrorCode.ACL_CLAIM_CONFLICT);
-        }
         if (isSameClaim(acl, binding)) {
             return;
+        }
+        if (!acl.getExpiresAt().isAfter(now)) {
+            throw new BusinessException(StorageErrorCode.ACL_CLAIM_CONFLICT);
         }
         throw new BusinessException(StorageErrorCode.ACL_CLAIM_CONFLICT);
     }

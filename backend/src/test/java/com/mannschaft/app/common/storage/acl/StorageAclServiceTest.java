@@ -76,6 +76,19 @@ class StorageAclServiceTest {
     }
 
     @Test
+    void claim済みの同一添付はpresign期限後の再送でも冪等に成功する() {
+        StorageAclService service = new StorageAclService(repository, CLOCK);
+        StorageAclScope scope = StorageAclScope.team(3L);
+        StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", "11");
+        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(), binding.type(), binding.key(), NOW_LOCAL))
+                .willReturn(0);
+        given(repository.findByFileKey("key")).willReturn(Optional.of(
+                claimed("key", 7L, scope, binding).toBuilder().expiresAt(NOW_LOCAL.minusSeconds(1)).build()));
+
+        service.claimPending("key", 7L, scope, binding);
+    }
+
+    @Test
     void 別owner別scope別束縛先期限切れREVOKEDとEXPIREDは409で拒否する() {
         StorageAclService service = new StorageAclService(repository, CLOCK);
         StorageAclScope scope = StorageAclScope.team(3L);

@@ -22,7 +22,7 @@ public interface StorageAclRepository extends JpaRepository<StorageAclEntity, UU
     @Query(value = """
             UPDATE storage_acls
                SET status = 'CLAIMED', attachment_binding_type = :bindingType,
-                   attachment_binding_key = :bindingKey
+                   attachment_binding_key = :bindingKey, updated_at = :now
              WHERE file_key = :fileKey
                AND owner_id = :ownerId
                AND scope_type = :scopeType
