@@ -50,7 +50,9 @@ function utcMeasurementDeltaSeconds(): { served: number; clicked: number } {
     `SELECT ABS(TIMESTAMPDIFF(SECOND, served_at, UTC_TIMESTAMP())), ABS(TIMESTAMPDIFF(SECOND, clicked_at, UTC_TIMESTAMP())) FROM ad_banner_deliveries WHERE id = UUID_TO_BIN('${DELIVERY_ID}');`,
     true,
   )
-  const [served, clicked] = output.split('\t').map(Number)
+  const parts = output.split('\t')
+  const served = Number(parts[0])
+  const clicked = Number(parts[1])
   if (!Number.isFinite(served) || !Number.isFinite(clicked))
     throw new Error(`UTC計測時刻を取得できませんでした: ${JSON.stringify(output)}`)
   return { served, clicked }
