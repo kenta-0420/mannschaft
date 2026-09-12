@@ -9,8 +9,8 @@ import { preferenceToColor, preferenceToI18nKey } from '~/utils/shiftPreference'
 /**
  * F03.5 デフォルト可否プロファイル設定ページ
  *
- * 曜日ごとにデフォルトの希望強度を設定する。
- * 希望提出フォームの初期値として使用される。
+ * 曜日ごとにデフォルトの希望強度と勤務可能な時間帯を設定する。
+ * 希望提出フォームの初期値・自動割当の候補算出に使用される。
  */
 
 definePageMeta({ middleware: 'auth' })
@@ -21,9 +21,28 @@ const { getAvailabilityDefaults, setAvailabilityDefaults, deleteAvailabilityDefa
   useShiftAvailabilityDefaultApi()
 const teamStore = useTeamStore()
 
-const loading = ref(false)
+/** 「終日」を表す時間帯（従来のハードコード値と同値） */
+const ALL_DAY_START = '00:00'
+const ALL_DAY_END = '23:59'
+
+/** 曜日ごとの入力状態 */
+interface DayAvailability {
+  preference: ShiftPreference
+  /** 終日（時間帯を指定しない）か */
+  allDay: boolean
+  startTime: string
+  endTime: string
+}
+
+/**
+ * 取得状態。`error` から `empty` へフォールバックしてはならない
+ * （設計書 F03.5 06_manual_authoring §11.6）。
+ */
+type LoadState = 'loading' | 'error' | 'empty' | 'loaded'
+
 const saving = ref(false)
 const selectedTeamId = ref<number | null>(null)
+const loadState = ref<LoadState>('loading')
 
 // 曜日 0(日)〜6(土) — toLocaleDateString で動的生成。locale 変更に追従させる。
 const DOW_LABELS = computed(() =>
@@ -34,6 +53,10 @@ const DOW_LABELS = computed(() =>
   }),
 )
 
+function dowLabel(idx: number): string {
+  return DOW_LABELS.value[idx] ?? ''
+}
+
 const preferenceOptions: ShiftPreference[] = [
   'PREFERRED',
   'AVAILABLE',
@@ -42,52 +65,100 @@ const preferenceOptions: ShiftPreference[] = [
   'ABSOLUTE_REST',
 ]
 
-const preferences = ref<Map<number, ShiftPreference>>(new Map())
+const days = ref<DayAvailability[]>([])
+
+/** API が返す `HH:mm:ss` / `HH:mm` を入力欄が扱う `HH:mm` へ正規化する。 */
+function toHourMinute(value: string | null): string {
+  if (!value) return ''
+  return value.slice(0, 5)
+}
+
+function createDefaultDay(): DayAvailability {
+  return {
+    preference: 'AVAILABLE',
+    allDay: true,
+    startTime: ALL_DAY_START,
+    endTime: ALL_DAY_END,
+  }
+}
 
 function initDefaults(current: AvailabilityDefaultResponse[]) {
-  const map = new Map<number, ShiftPreference>()
-  for (let i = 0; i <= 6; i++) {
-    map.set(i, 'AVAILABLE')
-  }
+  const next: DayAvailability[] = Array.from({ length: 7 }, () => createDefaultDay())
   for (const d of current) {
-    map.set(d.dayOfWeek, d.preference)
+    const row = next[d.dayOfWeek]
+    if (!row) continue
+    row.preference = d.preference
+    const start = toHourMinute(d.startTime)
+    const end = toHourMinute(d.endTime)
+    // 時間帯が無い（NULL）／終日相当なら「終日」として復元する
+    if (!start || !end || (start === ALL_DAY_START && end === ALL_DAY_END)) {
+      row.allDay = true
+      row.startTime = ALL_DAY_START
+      row.endTime = ALL_DAY_END
+    } else {
+      row.allDay = false
+      row.startTime = start
+      row.endTime = end
+    }
   }
-  preferences.value = map
+  days.value = next
 }
 
 async function loadForTeam(id: number) {
-  loading.value = true
+  loadState.value = 'loading'
   try {
     const data = await getAvailabilityDefaults(String(id))
     initDefaults(data)
+    loadState.value = data.length === 0 ? 'empty' : 'loaded'
   } catch {
+    // 取得失敗は「未設定」ではない。空状態へフォールバックせずエラー状態を出す。
+    days.value = []
+    loadState.value = 'error'
     showError(t('shift.notification.errorLoad'))
-    initDefaults([])
-  } finally {
-    loading.value = false
   }
 }
 
-function setDowPreference(dow: number, pref: ShiftPreference) {
-  const next = new Map(preferences.value)
-  next.set(dow, pref)
-  preferences.value = next
+async function retryLoad() {
+  if (!selectedTeamId.value) return
+  await loadForTeam(selectedTeamId.value)
 }
+
+function setDowPreference(dow: number, pref: ShiftPreference) {
+  const row = days.value[dow]
+  if (!row) return
+  row.preference = pref
+}
+
+/** 開始 < 終了 を満たさない曜日の index 集合 */
+const invalidDays = computed(() => {
+  const invalid = new Set<number>()
+  days.value.forEach((day, idx) => {
+    if (day.allDay) return
+    if (!day.startTime || !day.endTime || day.startTime >= day.endTime) {
+      invalid.add(idx)
+    }
+  })
+  return invalid
+})
+
+const hasInvalidInput = computed(() => invalidDays.value.size > 0)
 
 async function save() {
   if (!selectedTeamId.value) return
+  if (hasInvalidInput.value) {
+    showError(t('shift.availability.timeRangeInvalid'))
+    return
+  }
   saving.value = true
   try {
-    const availabilities: AvailabilityDefaultRequest[] = []
-    for (const [dow, pref] of preferences.value.entries()) {
-      availabilities.push({
-        dayOfWeek: dow,
-        startTime: '00:00',
-        endTime: '23:59',
-        preference: pref,
-      })
-    }
+    const availabilities: AvailabilityDefaultRequest[] = days.value.map((day, dow) => ({
+      dayOfWeek: dow,
+      startTime: day.allDay ? ALL_DAY_START : day.startTime,
+      endTime: day.allDay ? ALL_DAY_END : day.endTime,
+      preference: day.preference,
+    }))
     await setAvailabilityDefaults(String(selectedTeamId.value), { availabilities })
+    loadState.value = 'loaded'
     showSuccess(t('shift.notification.updateSuccess'))
   } catch {
     showError(t('shift.notification.errorUpdate'))
@@ -101,6 +172,7 @@ async function resetAll() {
   try {
     await deleteAvailabilityDefaults(String(selectedTeamId.value))
     initDefaults([])
+    loadState.value = 'empty'
     showSuccess(t('shift.notification.deleteSuccess'))
   } catch {
     showError(t('shift.notification.errorDelete'))
@@ -178,14 +250,36 @@ onMounted(async () => {
         />
       </div>
 
-      <PageLoading v-if="loading" size="40px" />
+      <PageLoading v-if="loadState === 'loading'" size="40px" />
+
+      <!-- 取得失敗: 空状態とは別コンポーネント・別 data-testid で描き分ける -->
+      <SectionCard v-else-if="loadState === 'error'" data-testid="availability-error-state">
+        <div class="flex flex-col items-center gap-3 py-6 text-center">
+          <i class="pi pi-exclamation-triangle text-2xl text-red-500" />
+          <p class="text-sm text-surface-700">{{ t('shift.availability.loadError') }}</p>
+          <Button
+            :label="t('shift.availability.retry')"
+            icon="pi pi-refresh"
+            severity="secondary"
+            outlined
+            data-testid="availability-error-retry"
+            @click="retryLoad"
+          />
+        </div>
+      </SectionCard>
 
       <template v-else>
+        <!-- 未設定（取得は成功したがデータ無し） -->
+        <div
+          v-if="loadState === 'empty'"
+          data-testid="availability-empty-state"
+          class="mb-4 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-xs text-surface-600"
+        >
+          {{ t('shift.availability.notConfigured') }}
+        </div>
+
         <div class="flex flex-col gap-4">
-          <SectionCard
-            v-for="(label, idx) in DOW_LABELS"
-            :key="idx"
-          >
+          <SectionCard v-for="(day, idx) in days" :key="idx">
             <!-- 曜日ラベル -->
             <div class="mb-3 flex items-center gap-2">
               <span
@@ -196,10 +290,10 @@ onMounted(async () => {
                     : 'bg-surface-100 text-surface-700'
                 "
               >
-                {{ label }}
+                {{ dowLabel(idx) }}
               </span>
               <span class="text-xs text-surface-500">
-                {{ preferences.get(idx) ? t(preferenceToI18nKey(preferences.get(idx)!)) : '—' }}
+                {{ t(preferenceToI18nKey(day.preference)) }}
               </span>
             </div>
 
@@ -209,11 +303,67 @@ onMounted(async () => {
                 v-for="pref in preferenceOptions"
                 :key="pref"
                 type="button"
-                :class="cardClass(pref, preferences.get(idx) === pref)"
+                :class="cardClass(pref, day.preference === pref)"
                 @click="setDowPreference(idx, pref)"
               >
                 {{ t(preferenceToI18nKey(pref)) }}
               </button>
+            </div>
+
+            <!-- 時間帯 -->
+            <div class="mt-3 border-t border-surface-100 pt-3">
+              <div class="flex items-center gap-2">
+                <Checkbox
+                  v-model="day.allDay"
+                  :binary="true"
+                  :input-id="`availability-all-day-${idx}`"
+                  :data-testid="`availability-all-day-${idx}`"
+                />
+                <label :for="`availability-all-day-${idx}`" class="text-xs text-surface-700">
+                  {{ t('shift.availability.allDay') }}
+                </label>
+              </div>
+
+              <div v-if="!day.allDay" class="mt-2 flex flex-wrap items-end gap-3">
+                <div>
+                  <label
+                    :for="`availability-start-${idx}`"
+                    class="mb-1 block text-xs text-surface-500"
+                  >
+                    {{ t('shift.availability.startTime') }}
+                  </label>
+                  <InputText
+                    :id="`availability-start-${idx}`"
+                    v-model="day.startTime"
+                    type="time"
+                    :data-testid="`availability-start-${idx}`"
+                    class="w-32"
+                  />
+                </div>
+                <div>
+                  <label
+                    :for="`availability-end-${idx}`"
+                    class="mb-1 block text-xs text-surface-500"
+                  >
+                    {{ t('shift.availability.endTime') }}
+                  </label>
+                  <InputText
+                    :id="`availability-end-${idx}`"
+                    v-model="day.endTime"
+                    type="time"
+                    :data-testid="`availability-end-${idx}`"
+                    class="w-32"
+                  />
+                </div>
+              </div>
+
+              <p
+                v-if="invalidDays.has(idx)"
+                class="mt-2 text-xs text-red-600"
+                :data-testid="`availability-time-error-${idx}`"
+              >
+                {{ t('shift.availability.timeRangeInvalid') }}
+              </p>
             </div>
           </SectionCard>
         </div>
@@ -246,6 +396,8 @@ onMounted(async () => {
             :label="t('button.save')"
             icon="pi pi-check"
             :loading="saving"
+            :disabled="hasInvalidInput"
+            data-testid="availability-save"
             @click="save"
           />
         </div>

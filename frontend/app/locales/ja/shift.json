@@ -1,5 +1,14 @@
 {
   "shift": {
+    "availability": {
+      "allDay": "終日",
+      "startTime": "開始時刻",
+      "endTime": "終了時刻",
+      "timeRangeInvalid": "開始時刻は終了時刻より前にしてください",
+      "notConfigured": "まだ設定されていません。曜日ごとに希望と時間帯を入力して保存してください",
+      "loadError": "デフォルト可否を取得できませんでした",
+      "retry": "再試行"
+    },
     "page": {
       "title": "シフト",
       "myShift": "マイシフト",
