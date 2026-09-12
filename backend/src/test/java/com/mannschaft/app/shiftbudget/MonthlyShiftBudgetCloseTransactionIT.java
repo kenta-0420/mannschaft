@@ -193,7 +193,7 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
                 .isEqualByComparingTo(TOTAL);
         assertThat(consumptionStatuses(allocationId))
                 .containsExactlyInAnyOrder("CONFIRMED", "CONFIRMED");
-        assertThat(summaryTransactionCount(allocationId))
+        assertThat(liveSummaryTransactionCount(allocationId))
                 .as("月次集計仕訳が 1 件だけ作られること")
                 .isEqualTo(1);
     }
@@ -210,7 +210,10 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
         assertThat(second.closedAllocations()).isZero();
         assertThat(second.alreadyClosedAllocations()).isEqualTo(1);
         assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(TOTAL);
-        assertThat(summaryTransactionCount(allocationId)).isEqualTo(1);
+        assertThat(liveSummaryTransactionCount(allocationId)).isEqualTo(1);
+        assertThat(recoveryQueuePayloads(allocationId))
+                .as("正常な allocation を復旧キューへ積むと、運用者が無駄な締め直しをする")
+                .isEmpty();
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -234,7 +237,7 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
                 .as("消化だけ CONFIRMED で残ると、確定額 0 円のまま永久に締め直せなくなる（本欠陥の実害）")
                 .containsExactlyInAnyOrder("PLANNED", "PLANNED");
         assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(BigDecimal.ZERO);
-        assertThat(summaryTransactionCount(allocationId)).isZero();
+        assertThat(liveSummaryTransactionCount(allocationId)).isZero();
     }
 
     @Test
@@ -262,27 +265,17 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
     // AC-3: 壊れたデータの回復（Flyway V209 の実 SQL を流して検証）
 
     @Test
-    @DisplayName("AC-3 部分適用で壊れた allocation は、回復 migration 適用後に締め直すと月次仕訳まで復旧する")
-    void 壊れたデータは回復migrationで締め直せるようになる() {
+    @DisplayName("AC-3 仕訳が作られないまま止まった allocation は、回復 migration 適用後に締め直すと復旧する")
+    void 仕訳未作成のまま壊れたデータを復旧できる() {
         Long allocationId = seedPartiallyAppliedAllocation();
 
-        // 前提: 壊れた状態そのもの（消化は CONFIRMED・確定額 0・月次仕訳なし）
+        // 前提: 500 を一度食らっただけで再実行していない状態
+        // （消化は CONFIRMED・確定額 0・月次仕訳なし）
         assertThat(consumptionStatuses(allocationId))
                 .containsExactlyInAnyOrder("CONFIRMED", "CONFIRMED");
         assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(BigDecimal.ZERO);
-        assertThat(summaryTransactionCount(allocationId)).isZero();
+        assertThat(liveSummaryTransactionCount(allocationId)).isZero();
 
-        // 前提の裏づけ: 回復させずに締め直すと、PLANNED が 0 件なので金額 0 の仕訳が
-        // 確定してしまい、実際の確定額は会計へ永久に届かない。
-        // 「confirmed_amount さえ合っていれば帳尻が合う」わけではないことの実証。
-        closeService.close(orgId, TARGET_MONTH);
-        assertThat(summaryTransactionAmount(allocationId))
-                .as("回復させずに締め直すと金額 0 の仕訳が確定してしまう")
-                .isEqualByComparingTo(BigDecimal.ZERO);
-
-        // 壊れた状態へ戻してから、回復 migration の実 SQL を流す
-        jdbcTemplate.update("DELETE FROM budget_transactions WHERE source_type = ? AND source_id = ?",
-                MonthlyShiftBudgetCloseService.SOURCE_TYPE_SHIFT_BUDGET_MONTHLY, allocationId);
         applyRepairMigration();
 
         assertThat(consumptionStatuses(allocationId))
@@ -295,12 +288,72 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
 
         assertThat(result.closedConsumptions()).isEqualTo(2);
         assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(TOTAL);
-        assertThat(summaryTransactionCount(allocationId))
+        assertThat(liveSummaryTransactionCount(allocationId))
                 .as("会計の本体は月次仕訳。これが作られなければ確定額は会計へ届かない")
                 .isEqualTo(1);
-        assertThat(summaryTransactionAmount(allocationId))
+        assertThat(liveSummaryTransactionAmount(allocationId))
                 .as("金額 0 ではなく実際の確定額で仕訳が立つこと")
                 .isEqualByComparingTo(TOTAL);
+    }
+
+    @Test
+    @DisplayName("AC-3 500 のあと再実行して 0 円仕訳ができた状態（現場で最も普通の姿）も復旧できる")
+    void ゼロ円仕訳ができた状態から復旧できる() {
+        Long allocationId = seedPartiallyAppliedAllocation();
+
+        // 現場で最も普通に起きる姿をそのまま作る。
+        // 500 を食らった運用者が再実行すると、PLANNED が 0 件なので
+        // 「金額 0 の月次仕訳」が正常に保存されて 200 が返る。
+        // ここは手で細工せず、実サービスの再実行で状態を作ることが本検体の要。
+        MonthlyShiftBudgetCloseService.CloseResult rerun = closeService.close(orgId, TARGET_MONTH);
+
+        assertThat(rerun.closedAllocations())
+                .as("前提: 再実行は 200 で成功し、締め済みとして記録される")
+                .isEqualTo(1);
+        assertThat(liveSummaryTransactionAmount(allocationId))
+                .as("前提: 確定額 9,600 円に対して 0 円の仕訳が立ってしまう（金額の食い違いが固定される）")
+                .isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(consumptionStatuses(allocationId))
+                .containsExactlyInAnyOrder("CONFIRMED", "CONFIRMED");
+
+        applyRepairMigration();
+
+        assertThat(liveSummaryTransactionCount(allocationId))
+                .as("0 円仕訳が残っていると再締めが ALREADY_CLOSED で弾かれ、永久に直らない")
+                .isZero();
+        assertThat(voidedSummaryTransactionCount(allocationId))
+                .as("会計記録は物理削除せず論理削除で残すこと（監査証跡）")
+                .isEqualTo(1);
+        assertThat(consumptionStatuses(allocationId))
+                .containsExactlyInAnyOrder("PLANNED", "PLANNED");
+        assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(BigDecimal.ZERO);
+
+        setAuth(actorId);
+        closeService.close(orgId, TARGET_MONTH);
+
+        assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(TOTAL);
+        assertThat(liveSummaryTransactionCount(allocationId)).isEqualTo(1);
+        assertThat(liveSummaryTransactionAmount(allocationId))
+                .as("実額の仕訳で会計へ届くこと。ここが本欠陥で最後まで直らなかった箇所")
+                .isEqualByComparingTo(TOTAL);
+    }
+
+    @Test
+    @DisplayName("AC-3 復旧対象は失敗キューへ記録され、締め直すべき対象を後から辿れる")
+    void 復旧対象は失敗キューに記録される() {
+        Long allocationId = seedPartiallyAppliedAllocation();
+        closeService.close(orgId, TARGET_MONTH);
+
+        applyRepairMigration();
+
+        // 差し戻し後の姿は「未締め」と見分けがつかないため、記録が無いと
+        // どの組織のどの月を締め直せばよいか分からなくなる。
+        assertThat(recoveryQueuePayloads(allocationId))
+                .as("復旧対象が失敗キューに残らないと、第 2 段階の締め直しに辿り着けない")
+                .hasSize(1);
+        assertThat(recoveryQueuePayloads(allocationId).get(0))
+                .contains("MONTHLY_CLOSE_RECOVERY")
+                .contains("2026-06");
     }
 
     @Test
@@ -316,7 +369,7 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
                 .as("月次仕訳がある allocation を差し戻すと、正常な締めを壊してしまう")
                 .containsExactlyInAnyOrder("CONFIRMED", "CONFIRMED");
         assertThat(confirmedAmount(allocationId)).isEqualByComparingTo(TOTAL);
-        assertThat(summaryTransactionCount(allocationId)).isEqualTo(1);
+        assertThat(liveSummaryTransactionCount(allocationId)).isEqualTo(1);
     }
 
     // 並行実行: 同一 allocation の同時締めで二重計上しない
@@ -347,7 +400,7 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
                 releaseFirst.await(30, TimeUnit.SECONDS);
                 return false;
             }
-            return summaryTransactionCount(allocationId) > 0;
+            return liveSummaryTransactionCount(allocationId) > 0;
         }).when(budgetTransactionRepository)
                 .existsBySourceTypeAndSourceIdAndTransactionDate(any(), any(), any());
 
@@ -394,13 +447,13 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
         assertThat(firstError.get()).as("先行スレッドは正常に締め切れること").isNull();
         assertThat(secondError.get()).as("後続スレッドは例外ではなく既締め扱いで終わること").isNull();
 
-        assertThat(summaryTransactionCount(allocationId))
+        assertThat(liveSummaryTransactionCount(allocationId))
                 .as("ロックが無いと両者が未締めと判定し、月次仕訳が 2 件入って会計金額が倍になる")
                 .isEqualTo(1);
         assertThat(confirmedAmount(allocationId))
                 .as("二重計上されていれば 2 倍になる。ここが本検体の判定軸")
                 .isEqualByComparingTo(TOTAL);
-        assertThat(summaryTransactionAmount(allocationId)).isEqualByComparingTo(TOTAL);
+        assertThat(liveSummaryTransactionAmount(allocationId)).isEqualByComparingTo(TOTAL);
         assertThat(consumptionStatuses(allocationId))
                 .containsExactlyInAnyOrder("CONFIRMED", "CONFIRMED");
         assertThat(secondResult.get().alreadyClosedAllocations())
@@ -522,17 +575,38 @@ class MonthlyShiftBudgetCloseTransactionIT extends AbstractMySqlIntegrationTest 
                 String.class, allocationId);
     }
 
-    private int summaryTransactionCount(Long allocationId) {
+    /** 生存している（論理削除されていない）月次仕訳の件数。締めの重複判定が見るのはこちら。 */
+    private int liveSummaryTransactionCount(Long allocationId) {
         Integer n = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM budget_transactions WHERE source_type = ? AND source_id = ?",
+                "SELECT COUNT(*) FROM budget_transactions "
+                        + "WHERE source_type = ? AND source_id = ? AND deleted_at IS NULL",
                 Integer.class,
                 MonthlyShiftBudgetCloseService.SOURCE_TYPE_SHIFT_BUDGET_MONTHLY, allocationId);
         return n == null ? 0 : n;
     }
 
-    private BigDecimal summaryTransactionAmount(Long allocationId) {
+    /** 論理削除された（無効化された）月次仕訳の件数。監査証跡が残っていることの確認用。 */
+    private int voidedSummaryTransactionCount(Long allocationId) {
+        Integer n = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM budget_transactions "
+                        + "WHERE source_type = ? AND source_id = ? AND deleted_at IS NOT NULL",
+                Integer.class,
+                MonthlyShiftBudgetCloseService.SOURCE_TYPE_SHIFT_BUDGET_MONTHLY, allocationId);
+        return n == null ? 0 : n;
+    }
+
+    /** 復旧キュー（shift_budget_failed_events）に積まれた payload 一覧。 */
+    private List<String> recoveryQueuePayloads(Long allocationId) {
+        return jdbcTemplate.queryForList(
+                "SELECT CAST(payload AS CHAR) FROM shift_budget_failed_events "
+                        + "WHERE source_id = ? AND organization_id = ?",
+                String.class, allocationId, orgId);
+    }
+
+    private BigDecimal liveSummaryTransactionAmount(Long allocationId) {
         List<BigDecimal> rows = jdbcTemplate.queryForList(
-                "SELECT amount FROM budget_transactions WHERE source_type = ? AND source_id = ?",
+                "SELECT amount FROM budget_transactions "
+                        + "WHERE source_type = ? AND source_id = ? AND deleted_at IS NULL",
                 BigDecimal.class,
                 MonthlyShiftBudgetCloseService.SOURCE_TYPE_SHIFT_BUDGET_MONTHLY, allocationId);
         return rows.isEmpty() ? null : rows.get(0);
