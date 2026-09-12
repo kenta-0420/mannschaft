@@ -267,10 +267,40 @@ class MemberQueryDispatcherTest {
         }
 
         @Test
+        @DisplayName("ロール名の解決は roleId の種類数ぶんだけ（user_roles の行数に比例しない）")
+        void ロール解決は行数に比例しない() {
+            // 同じ ADMIN ロールを持つ 200 名。是正前は 1 行ごとに roleRepository.findById を
+            // 呼んでいたため、1 ページ表示するだけで 200 クエリが出ていた（N+1）。
+            List<UserRoleEntity> userRoles = new java.util.ArrayList<>();
+            for (int i = 1; i <= 200; i++) {
+                userRoles.add(UserRoleEntity.builder()
+                        .userId((long) i).teamId(100L).roleId(2L).build());
+            }
+            given(userRoleRepository.findByTeamId(eq(100L), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(userRoles));
+            given(membershipRepository.findByScopeAndActive(eq(ScopeType.TEAM), eq(100L), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of()));
+            given(roleRepository.findAllById(List.of(2L))).willReturn(List.of(role(2L, "ADMIN")));
+            given(userRepository.findMemberSummariesByIds(any())).willReturn(List.of());
+
+            Page<MemberDto> page = dispatcher.queryMembersPage(
+                    100L, ScopeType.TEAM, null, Pageable.ofSize(100).withPage(0));
+
+            assertThat(page.getTotalElements()).isEqualTo(200);
+            assertThat(page.getContent()).hasSize(100);
+            // 重複を除いた roleId は 1 種類なので、まとめ引きは 1 回だけ
+            org.mockito.Mockito.verify(roleRepository, org.mockito.Mockito.times(1))
+                    .findAllById(List.of(2L));
+            // 1 行ごとに引く経路は使わない
+            org.mockito.Mockito.verify(roleRepository, org.mockito.Mockito.never())
+                    .findById(org.mockito.ArgumentMatchers.anyLong());
+        }
+
+        @Test
         @DisplayName("集約結果・並び順は queryMembers と一致する（ページングの意味論を変えていない）")
         void 全件ページは従来と一致する() {
             RoleEntity admin = role(2L, "ADMIN");
-            given(roleRepository.findById(2L)).willReturn(Optional.of(admin));
+            given(roleRepository.findAllById(List.of(2L))).willReturn(List.of(admin));
             UserRoleEntity ur = UserRoleEntity.builder()
                     .userId(99L).teamId(100L).roleId(2L).build();
             given(userRoleRepository.findByTeamId(eq(100L), any(Pageable.class)))

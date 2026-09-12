@@ -403,7 +403,8 @@
       "validation": {
         "rateRequired": "Please enter an hourly rate",
         "ratePositive": "Please enter an hourly rate of 1 or more"
-      }
+      },
+      "missingWarningPage": "{count} member(s) on this page have no hourly rate. Their shifts will not be reflected in the budget consumption when the shift is published."
     }
   },
   "my_shift_guide": {

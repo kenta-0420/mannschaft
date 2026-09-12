@@ -230,9 +230,14 @@ public class MemberQueryDispatcher {
         List<MembershipEntity> memberships = membershipRepository
                 .findByScopeAndActive(scopeType, scopeId, Pageable.unpaged()).getContent();
 
+        // ロール名は roleId ごとに 1 回だけ引く。1 行ごとに roleRepository.findById を呼ぶと
+        // user_roles の件数ぶんクエリが出る（N+1）。ロールの種類数はたかだか数件なので
+        // 重複を除いた ID でまとめて引けば 1 クエリで済む。
+        Map<Long, String> roleNamesById = roleNamesFor(userRoles);
+
         Map<Long, MemberIdentity> aggregated = new LinkedHashMap<>();
         for (UserRoleEntity ur : userRoles) {
-            String urRoleName = roleNameFor(ur.getRoleId());
+            String urRoleName = roleNamesById.get(ur.getRoleId());
             if (urRoleName == null) {
                 continue;
             }
@@ -245,6 +250,33 @@ public class MemberQueryDispatcher {
             mergeIdentity(aggregated, m.getUserId(), m.getRoleKind().name(), m.getJoinedAt());
         }
         return new ArrayList<>(aggregated.values());
+    }
+
+    /**
+     * user_roles 行が参照する roleId を重複なく集め、ロール名を 1 クエリで引く（CMP-260910-1555）。
+     *
+     * <p>{@link #roleNameFor} を 1 行ずつ呼ぶと user_roles の件数ぶんクエリが出る。
+     * 実在するロールはたかだか数種類なので、重複を除いた ID でまとめて引く。</p>
+     *
+     * @param userRoles 対象の user_roles 行
+     * @return roleId → ロール名（存在しない roleId は含まれない）
+     */
+    private Map<Long, String> roleNamesFor(List<UserRoleEntity> userRoles) {
+        List<Long> roleIds = userRoles.stream()
+                .map(UserRoleEntity::getRoleId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (roleIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> names = new LinkedHashMap<>();
+        for (RoleEntity role : roleRepository.findAllById(roleIds)) {
+            if (role.getName() != null) {
+                names.put(role.getId(), role.getName());
+            }
+        }
+        return names;
     }
 
     /** {@link #mergeAggregated} の軽量版（表示名・アバターを扱わないだけで規則は同一）。 */

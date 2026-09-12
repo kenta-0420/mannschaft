@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
+import {
+  MEMBER_PAGE_SIZE,
+  useHourlyRateMemberPage,
+  type MemberRateRow,
+} from '~/composables/shift/useHourlyRateMemberPage'
 import { isValidHourlyRate, useShiftHourlyRateApi } from '~/composables/shift/useShiftHourlyRateApi'
-// composables/team・composables/shift は nuxt.config の imports.dirs に無く auto-import されないため明示 import する
-import { useTeamMembers } from '~/composables/team/useTeamMembers'
-import type { MemberResponse } from '~/types/member'
 import type { ShiftHourlyRateResponse } from '~/types/shift'
 
 /**
@@ -13,20 +15,19 @@ import type { ShiftHourlyRateResponse } from '~/types/shift'
  * 0 円のままで閾値警告も一度も出ない、という欠陥の入口側の根治。
  * 時給は「ユーザー × チーム × 適用開始日」の履歴管理型なので、登録は常に追加であり
  * 過去の設定は消えない（表示は「現在有効な時給」＋ダイアログ内の履歴一覧）。
+ *
+ * 一覧は 1 ページずつ表示する。メンバー一覧 API はページ要求のたびに所属情報を
+ * 全件走査するため、画面側で全ページをまとめて取ると総処理量が人数の二乗になる
+ * （詳細は useHourlyRateMemberPage の Javadoc）。
  */
 definePageMeta({ layout: 'team', middleware: 'auth' })
-
-interface MemberRateRow {
-  member: MemberResponse
-  rate: ShiftHourlyRateResponse | null
-}
 
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 const { t } = useI18n()
 const notification = useNotification()
 const teamApi = useTeamApi()
-const { getAllMembers } = useTeamMembers()
+const { loadPage } = useHourlyRateMemberPage()
 const { getHourlyRate, setHourlyRate } = useShiftHourlyRateApi()
 const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
 
@@ -34,6 +35,9 @@ const loading = ref(true)
 const saving = ref(false)
 const rows = ref<MemberRateRow[]>([])
 const teamNumericId = ref<number | null>(null)
+const totalRecords = ref(0)
+const totalPages = ref(1)
+const firstRow = ref(0)
 
 const showDialog = ref(false)
 const targetRow = ref<MemberRateRow | null>(null)
@@ -43,6 +47,8 @@ const formRate = ref<number | null>(null)
 const formEffectiveFrom = ref<Date>(new Date())
 
 const missingCount = computed(() => rows.value.filter(r => r.rate === null).length)
+/** 全員が 1 ページに収まっているか（＝未設定件数をチーム全体の数として言い切れるか）。 */
+const isSinglePage = computed(() => totalPages.value <= 1)
 
 /** 数値 teamId を解決する。時給 API は slug ではなく数値 ID を要求するため必須。 */
 async function resolveTeamNumericId(): Promise<number> {
@@ -54,41 +60,17 @@ async function resolveTeamNumericId(): Promise<number> {
   return numericId
 }
 
-/** 同時接続を膨らませないよう、時給取得を CHUNK_SIZE 件ずつに区切って実行する。 */
-const RATE_FETCH_CHUNK_SIZE = 20
-
-async function fetchRatesInChunks(
-  members: MemberResponse[],
-  teamId: string,
-  date: string,
-): Promise<MemberRateRow[]> {
-  const result: MemberRateRow[] = []
-  for (let i = 0; i < members.length; i += RATE_FETCH_CHUNK_SIZE) {
-    const chunk = members.slice(i, i + RATE_FETCH_CHUNK_SIZE)
-    const resolved = await Promise.all(
-      chunk.map(async (member): Promise<MemberRateRow> => {
-        const rates = await getHourlyRate(teamId, member.userId, date)
-        return { member, rate: rates[0] ?? null }
-      }),
-    )
-    result.push(...resolved)
-  }
-  return result
-}
-
-async function loadRows() {
+async function loadRows(page = 0) {
   loading.value = true
   try {
     const teamId = teamNumericId.value ?? (await resolveTeamNumericId())
     teamNumericId.value = teamId
     const today = dayjs().format('YYYY-MM-DD')
-    // メンバーは全ページ取得する。先頭ページだけを読むと、ページサイズを超える人数のチームで
-    // 後半のメンバーが画面に現れず時給を登録できない。登録されなかったメンバーはシフト公開の
-    // たびに予算消化がスキップされ続けるため、ここで取りこぼすと本ページの存在意義が消える。
-    const members = await getAllMembers(teamSlug)
-    // 時給は 1 人ずつ引く（一括取得の API が無いため）。全員を同時に投げると大規模チームで
-    // ブラウザの同時接続数を食い潰すので、小さな束に区切って順に処理する。
-    rows.value = await fetchRatesInChunks(members, String(teamId), today)
+    const result = await loadPage(teamSlug, String(teamId), page, today)
+    rows.value = result.rows
+    totalRecords.value = result.totalElements
+    totalPages.value = result.totalPages
+    firstRow.value = page * MEMBER_PAGE_SIZE
   }
   catch (error) {
     const status
@@ -104,6 +86,10 @@ async function loadRows() {
   finally {
     loading.value = false
   }
+}
+
+function onPage(event: { page: number }) {
+  void loadRows(event.page)
 }
 
 function openEdit(row: MemberRateRow) {
@@ -148,7 +134,7 @@ async function submit() {
     })
     notification.success(t('shift.hourlyRate.saved'))
     showDialog.value = false
-    await loadRows()
+    await loadRows(Math.floor(firstRow.value / MEMBER_PAGE_SIZE))
   }
   catch {
     notification.error(t('shift.hourlyRate.saveFailed'))
@@ -170,7 +156,7 @@ onMounted(async () => {
     showError(createError({ statusCode: 403, statusMessage: t('shift.hourlyRate.forbidden') }))
     return
   }
-  await loadRows()
+  await loadRows(0)
 })
 </script>
 
@@ -191,11 +177,26 @@ onMounted(async () => {
         class="mb-4"
         data-testid="hourly-rate-missing-banner"
       >
-        {{ $t('shift.hourlyRate.missingWarning', { count: missingCount }) }}
+        {{
+          isSinglePage
+            ? $t('shift.hourlyRate.missingWarning', { count: missingCount })
+            : $t('shift.hourlyRate.missingWarningPage', { count: missingCount })
+        }}
       </Message>
 
       <div class="overflow-x-auto">
-        <DataTable :value="rows" striped-rows data-key="member.userId" data-testid="hourly-rate-table">
+        <DataTable
+          :value="rows"
+          striped-rows
+          data-key="member.userId"
+          data-testid="hourly-rate-table"
+          :paginator="totalRecords > MEMBER_PAGE_SIZE"
+          :rows="MEMBER_PAGE_SIZE"
+          :total-records="totalRecords"
+          :first="firstRow"
+          lazy
+          @page="onPage"
+        >
           <Column :header="$t('shift.hourlyRate.column.member')">
             <template #body="{ data }: { data: MemberRateRow }">
               <span class="font-medium">{{ data.member.displayName }}</span>
