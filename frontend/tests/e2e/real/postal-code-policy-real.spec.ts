@@ -4,6 +4,11 @@ import { waitForHydration } from '../helpers/wait'
 
 const API_BASE = process.env.API_BASE_URL ?? 'http://127.0.0.1:8080'
 const USER = { email: 'e2e-user@test.mannschaft.local', password: 'TestPass2026!' }
+const RESIDENTS = [
+  { name: '管理者', email: 'e2e-admin@test.mannschaft.local', password: 'TestPass2026!' },
+  { name: '一般ユーザー', ...USER },
+  { name: '組織外ユーザー', email: 'e2e-outsider@test.mannschaft.local', password: 'TestPass2026!' },
+]
 
 test.describe('郵便番号ポリシー実機E2E', () => {
   test.setTimeout(120_000)
@@ -32,7 +37,7 @@ test.describe('郵便番号ポリシー実機E2E', () => {
       await loginViaApi(page, USER, { apiBaseUrl: API_BASE })
       await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
       await waitForHydration(page)
-      const postal = page.locator('label').filter({ hasText: '郵便番号' }).locator('..').locator('input').first()
+      const postal = page.getByTestId('profile-postal-code')
       await expect(postal).toHaveAttribute('maxlength', '20')
       await postal.fill('123456789012345678901')
       await expect(postal).toHaveValue('12345678901234567890')
@@ -48,5 +53,25 @@ test.describe('郵便番号ポリシー実機E2E', () => {
       headers: { 'Content-Type': 'application/json' },
     })
     expect(response.status()).toBe(400)
+  })
+
+  test('3住民の独立セッションで同じ郵便番号上限が適用される', async ({ browser }) => {
+    for (const resident of RESIDENTS) {
+      const context = await browser.newContext()
+      const page = await context.newPage()
+      try {
+        await loginViaApi(page, resident, { apiBaseUrl: API_BASE })
+        await page.goto('/settings/account', { waitUntil: 'domcontentloaded' })
+        await waitForHydration(page)
+
+        const postal = page.getByTestId('profile-postal-code')
+        await expect(postal, `${resident.name}の郵便番号欄`).toHaveAttribute('maxlength', '20')
+        await postal.fill('123456789012345678901')
+        await expect(postal, `${resident.name}も20文字で切り詰められる`)
+          .toHaveValue('12345678901234567890')
+      } finally {
+        await context.close()
+      }
+    }
   })
 })

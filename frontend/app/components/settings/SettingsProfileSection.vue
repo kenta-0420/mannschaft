@@ -141,6 +141,7 @@ const saveDisabled = computed<boolean>(() => postalCodeError.value !== null)
         </label>
         <InputText
           v-model="profile.postalCode"
+          data-testid="profile-postal-code"
           class="w-full"
           :placeholder="$t('settings.profile.postal_placeholder')"
           maxlength="20"
