@@ -93,8 +93,8 @@ test.describe('CMP-260910-0042: Spotlight UTC配信・計測の実機導線', ()
         new URL(response.url()).pathname === '/api/v1/spotlight/content',
     )
     await page.goto('/dashboard')
-    expect((await contentResponse).status()).toBe(200)
     await waitForHydration(page)
+    expect((await contentResponse).status()).toBe(200)
     await expect(page.getByText(TITLE, { exact: true })).toHaveCount(0)
   })
 
@@ -112,8 +112,8 @@ test.describe('CMP-260910-0042: Spotlight UTC配信・計測の実機導線', ()
       { timeout: 30_000 },
     )
     await page.goto('/dashboard')
-    expect((await contentResponse).status()).toBe(200)
     await waitForHydration(page)
+    expect((await contentResponse).status()).toBe(200)
 
     const house = page.getByTestId('spotlight-house').filter({ hasText: TITLE })
     await expect(house).toBeVisible({ timeout: 30_000 })
