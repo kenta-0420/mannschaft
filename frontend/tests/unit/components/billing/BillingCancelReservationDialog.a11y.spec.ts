@@ -137,8 +137,11 @@ describe('BillingCancelReservationDialog — a11y（AC-64）', () => {
     expect(focusable.length).toBeGreaterThan(0)
 
     // 最後のフォーカス可能要素からTabすると先頭へ戻る（トラップ）
+    // NodeList のインデックス参照は noUncheckedIndexedAccess により undefined を含むため、
+    // 期待は変えずに型ガードで絞る（直前の expect で length > 0 は保証済み）。
     const last = focusable[focusable.length - 1]
-    last.focus()
+    expect(last).toBeDefined()
+    last!.focus()
     await dialog.trigger('keydown', { key: 'Tab' })
     expect(document.activeElement === focusable[0] || dialog.element.contains(document.activeElement)).toBe(true)
   })

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
@@ -17,9 +18,16 @@ import { describe, expect, it } from 'vitest'
 
 const LOCALES = ['ja', 'en', 'es', 'de', 'ko', 'zh'] as const
 
+// パス解決は dirname(fileURLToPath(import.meta.url)) + resolve で行う（既存の
+// tests/unit/i18n/settings-locale-parity.spec.ts / receipt-locale-parity.spec.ts と同じ流儀）。
+// new URL(...) の第1引数へテンプレートリテラルで変数を埋めると Vite が静的解析できず、
+// ランタイムの import.meta.url へフォールバックする。environment: 'nuxt' ではこれが
+// ルートより上へ登り切った壊れたパスになり、ロケールの内容とは無関係に全件 red になる。
+// 変えたのは解決技法だけであり、アサーションは一字も変えていない。
+const localesDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../../app/locales')
+
 function loadBilling(locale: string): any {
-  const path = fileURLToPath(new URL(`../../../app/locales/${locale}/billing.json`, import.meta.url))
-  return JSON.parse(readFileSync(path, 'utf-8'))
+  return JSON.parse(readFileSync(resolve(localesDir, locale, 'billing.json'), 'utf-8'))
 }
 
 describe('billing.json — 解約予約(cancel_at_period_end)専用キー（AC-61）', () => {
