@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** Presigned upload の ACL 登録と、添付先への原子的 claim を担う共通サービス。 */
 @Service
@@ -40,7 +40,7 @@ public class StorageAclService {
                 .parentContentReferenceType(parentContentReference.type())
                 .parentContentReferenceKey(parentContentReference.key())
                 .status(StorageAclStatus.PENDING)
-                .expiresAt(LocalDateTime.now(clock).plus(ttl))
+                .expiresAt(Instant.now(clock).plus(ttl))
                 .build());
     }
 
@@ -64,7 +64,7 @@ public class StorageAclService {
                 .legacyReferenceType(referenceType)
                 .legacyReferenceId(referenceId)
                 .status(StorageAclStatus.PENDING)
-                .expiresAt(LocalDateTime.now(clock).plus(ttl))
+                .expiresAt(Instant.now(clock).plus(ttl))
                 .build());
     }
 
@@ -74,8 +74,8 @@ public class StorageAclService {
     @Transactional
     public void claimPending(String fileKey, Long ownerId, StorageAclScope scope, StorageAclAttachmentBinding binding) {
         validateClaimArguments(fileKey, ownerId, scope, binding);
-        LocalDateTime now = LocalDateTime.now(clock);
-        if (repository.claimPending(fileKey, ownerId, scope.type().name(), scope.scopeKey(), binding.type(), binding.key(), now) == 1) {
+        Instant now = Instant.now(clock);
+        if (repository.claimPending(fileKey, ownerId, scope.type().name(), scope.scopeKey(), binding.type(), binding.key()) == 1) {
             return;
         }
         StorageAclEntity acl = repository.findByFileKey(fileKey)

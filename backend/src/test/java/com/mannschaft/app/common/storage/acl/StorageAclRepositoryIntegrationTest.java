@@ -10,7 +10,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -59,12 +60,13 @@ class StorageAclRepositoryIntegrationTest extends AbstractMySqlIntegrationTest {
     @Test
     void 期限ちょうどNはexpiresAtより大きい条件に含まれずclaimできない() {
         String fileKey = "integration/storage-acl-expiry-" + System.nanoTime();
-        StorageAclEntity acl = pending(fileKey).toBuilder().expiresAt(LocalDateTime.now(java.time.Clock.systemUTC())).build();
+        StorageAclEntity acl = pending(fileKey).toBuilder()
+                .expiresAt(Instant.now(Clock.systemUTC()).minusSeconds(1)).build();
         repository.saveAndFlush(acl);
 
         Integer affected = requiresNewTransaction().execute(status -> repository.claimPending(
                 fileKey, 9001L, StorageAclScopeType.TEAM.name(), "9002",
-                "ATTACHMENT", "101", acl.getExpiresAt()));
+                "ATTACHMENT", "101"));
 
         assertThat(affected).isZero();
     }
@@ -110,7 +112,7 @@ class StorageAclRepositoryIntegrationTest extends AbstractMySqlIntegrationTest {
         return StorageAclEntity.builder().fileKey(fileKey).ownerId(9001L).scopeType(StorageAclScopeType.TEAM)
                 .scopeKey("9002").aclMode(StorageAclMode.CONTENT_BOUND).contentType("image/png")
                 .parentContentReferenceType("WORKFLOW_REQUEST").parentContentReferenceKey("42")
-                .status(StorageAclStatus.PENDING).expiresAt(LocalDateTime.now(java.time.Clock.systemUTC()).plusMinutes(15))
+                .status(StorageAclStatus.PENDING).expiresAt(Instant.now(Clock.systemUTC()).plusSeconds(900))
                 .build();
     }
 
