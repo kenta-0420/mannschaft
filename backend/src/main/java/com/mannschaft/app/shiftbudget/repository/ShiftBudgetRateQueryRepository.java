@@ -115,6 +115,22 @@ public interface ShiftBudgetRateQueryRepository
     Optional<Long> findOrganizationIdByTeamId(@Param("teamId") Long teamId);
 
     /**
+     * 指定チームの slug を返す（CMP-260910-1555）。
+     *
+     * <p>時給未設定警告の通知から「チーム設定 &gt; 時給設定」画面へ遷移させるための
+     * アクション URL 組み立てに使う。FE のルートは URL 識別子として slug 一本化されており
+     * 数値 ID では到達できないため、ここで解決する。</p>
+     *
+     * @param teamId チームID
+     * @return slug（チームが存在しない / 論理削除済なら空）
+     */
+    @Query(value =
+            "SELECT t.slug FROM teams t " +
+            "WHERE t.id = :teamId AND t.deleted_at IS NULL",
+            nativeQuery = true)
+    Optional<String> findTeamSlugByTeamId(@Param("teamId") Long teamId);
+
+    /**
      * 指定チームの平均時給（POSITION_AVG フォールバック用）。
      *
      * <p>Phase 9-α 暫定: 真のポジション別集計が未実装のため、
