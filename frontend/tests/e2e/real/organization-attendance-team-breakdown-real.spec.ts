@@ -18,6 +18,8 @@ import { waitForHydration } from '../helpers/wait'
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const API_V1 = `${API_BASE_URL}/api/v1`
 const ADMIN = { email: 'e2e-admin@test.mannschaft.local', password: 'TestPass2026!' }
+const MEMBER = { email: 'e2e-user@test.mannschaft.local', password: 'TestPass2026!' }
+const OUTSIDER = { email: 'e2e-outsider@test.mannschaft.local', password: 'TestPass2026!' }
 
 interface OrganizationSummary {
   id: number
@@ -27,6 +29,8 @@ interface OrganizationSummary {
 
 let api: APIRequestContext
 let adminToken = ''
+let memberToken = ''
+let outsiderToken = ''
 let organization: OrganizationSummary | undefined
 let scheduleId: number | undefined
 const title = `CMP013 組織出欠内訳 ${Date.now()}`
@@ -35,9 +39,9 @@ function headers(): Record<string, string> {
   return { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' }
 }
 
-async function login(): Promise<string> {
-  const response = await api.post(`${API_V1}/auth/login`, { data: ADMIN })
-  expect(response.status(), 'e2e-admin の API ログイン').toBe(200)
+async function login(user: typeof ADMIN): Promise<string> {
+  const response = await api.post(`${API_V1}/auth/login`, { data: user })
+  expect(response.status(), `${user.email} の API ログイン`).toBe(200)
   return ((await response.json()) as { data: { accessToken: string } }).data.accessToken
 }
 
@@ -54,17 +58,27 @@ async function downloadText(download: Download): Promise<string> {
 
 test.describe('CMP-013: 組織出欠チーム別内訳 real-tier', () => {
   test.describe.configure({ mode: 'serial' })
-  test.setTimeout(90_000)
+  test.setTimeout(180_000)
 
   test.beforeAll(async () => {
     api = await pwRequest.newContext()
-    adminToken = await login()
+    adminToken = await login(ADMIN)
+    memberToken = await login(MEMBER)
+    outsiderToken = await login(OUTSIDER)
 
-    const organizationsResponse = await api.get(`${API_V1}/me/organizations`, { headers: headers() })
+    const organizationsResponse = await api.get(`${API_V1}/me/organizations?limit=200`, { headers: headers() })
     expect(organizationsResponse.status(), '管理対象組織の取得').toBe(200)
     const organizations = ((await organizationsResponse.json()) as { data: OrganizationSummary[] }).data
-    organization = organizations.find(item => item.role === 'ADMIN' || item.role === 'SYSTEM_ADMIN')
-    expect(organization, 'e2e-admin が管理する組織が seed に存在する').toBeTruthy()
+    const memberOrganizationsResponse = await api.get(`${API_V1}/me/organizations?limit=200`, {
+      headers: { Authorization: `Bearer ${memberToken}` },
+    })
+    expect(memberOrganizationsResponse.status(), '一般ユーザーの所属組織取得').toBe(200)
+    const memberOrganizations = ((await memberOrganizationsResponse.json()) as { data: OrganizationSummary[] }).data
+    organization = organizations.find(item =>
+      (item.role === 'ADMIN' || item.role === 'SYSTEM_ADMIN')
+      && memberOrganizations.some(memberOrg => memberOrg.id === item.id),
+    )
+    expect(organization, '管理者と一般ユーザーが共通所属する管理対象組織が seed に存在する').toBeTruthy()
 
     const start = new Date(Date.now() + 10 * 60 * 1000)
     const end = new Date(start.getTime() + 60 * 60 * 1000)
@@ -76,6 +90,8 @@ test.describe('CMP-013: 組織出欠チーム別内訳 real-tier', () => {
         endAt: end.toISOString(),
         allDay: false,
         eventType: 'OTHER',
+        visibility: 'ORGANIZATION',
+        minViewRole: 'ANYONE',
         attendanceRequired: true,
         teamBreakdownEnabled: true,
       },
@@ -133,5 +149,49 @@ test.describe('CMP-013: 組織出欠チーム別内訳 real-tier', () => {
     expect(csv, 'CSV にチーム別出欠のヘッダーがある')
       .toContain('チーム名,出席,一部参加,欠席,未回答,合計')
     expect(csv, 'CSV に合計行がある').toContain('\n合計,')
+  })
+
+  test('3住民の独立セッションで内訳の認可境界が保たれる', async ({ browser }) => {
+    const residents = [
+      { name: '管理者', credentials: ADMIN, token: adminToken, eventVisible: true, breakdownVisible: true },
+      { name: '一般メンバー', credentials: MEMBER, token: memberToken, eventVisible: true, breakdownVisible: false },
+      { name: '組織外ユーザー', credentials: OUTSIDER, token: outsiderToken, eventVisible: false, breakdownVisible: false },
+    ]
+
+    for (const resident of residents) {
+      const context = await browser.newContext()
+      const page = await context.newPage()
+      try {
+        const apiResponse = await api.get(
+          `${API_V1}/organizations/${organization!.slug}/schedules/${scheduleId}/attendances/team-breakdown`,
+          { headers: { Authorization: `Bearer ${resident.token}` } },
+        )
+        expect(apiResponse.status(), `${resident.name}の内訳API認可`)
+          .toBe(resident.breakdownVisible ? 200 : 403)
+
+        await loginViaApi(page, resident.credentials, { apiBaseUrl: API_BASE_URL })
+        await page.goto('/calendar')
+        await waitForHydration(page)
+        await expect(page.getByRole('heading', { name: 'マイカレンダー' }))
+          .toBeVisible({ timeout: 30_000 })
+
+        const calendarEvent = page.getByText(title, { exact: true }).first()
+        if (!resident.eventVisible) {
+          await expect(calendarEvent, `${resident.name}には組織予定を表示しない`).toHaveCount(0)
+          continue
+        }
+
+        await expect(calendarEvent, `${resident.name}には組織予定を表示する`).toBeVisible({ timeout: 30_000 })
+        await calendarEvent.click()
+        const panel = page.getByTestId('attendance-team-breakdown-panel')
+        if (resident.breakdownVisible) {
+          await expect(panel, `${resident.name}には内訳を表示する`).toBeVisible({ timeout: 30_000 })
+        } else {
+          await expect(panel, `${resident.name}には内訳を表示しない`).toHaveCount(0)
+        }
+      } finally {
+        await context.close()
+      }
+    }
   })
 })
