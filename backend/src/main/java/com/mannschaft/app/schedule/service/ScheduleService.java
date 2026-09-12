@@ -701,6 +701,18 @@ public class ScheduleService {
     }
 
     /**
+     * URL 組織の管理権限を通過した利用者に対してだけ、組織スコープ整合を確定する。
+     * 呼び出し側は必ず URL 組織の認可を先行させ、非管理者への存在オラクルを防ぐ。
+     */
+    public void checkOrganizationScheduleScope(Long organizationId, Long scheduleId) {
+        ScheduleEntity schedule = findScheduleOrThrow(scheduleId);
+        if (!schedule.isOrganizationScope()
+                || !Objects.equals(schedule.getOrganizationId(), organizationId)) {
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND);
+        }
+    }
+
+    /**
      * {@link #checkScopeAdminAccess(Long, Long)} の entity 版（既に fetch 済みの場合に使う）。
      */
     void checkScopeAdminAccess(ScheduleEntity schedule, Long userId) {
