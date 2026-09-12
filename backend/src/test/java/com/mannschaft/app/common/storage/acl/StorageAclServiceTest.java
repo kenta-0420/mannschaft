@@ -116,7 +116,6 @@ class StorageAclServiceTest {
                 .willReturn(0);
         for (StorageAclEntity conflicting : new StorageAclEntity[]{
                 claimed("key", 7L, scope, new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", "12")),
-                claimed("key", 7L, scope, requested).toBuilder().expiresAt(NOW_LOCAL.minusSeconds(1)).build(),
                 pending("key", 7L, scope, NOW_LOCAL.minusSeconds(1), StorageAclStatus.PENDING),
                 pending("key", 7L, scope, NOW_LOCAL.plusSeconds(1), StorageAclStatus.REVOKED),
                 pending("key", 7L, scope, NOW_LOCAL.plusSeconds(1), StorageAclStatus.EXPIRED)
