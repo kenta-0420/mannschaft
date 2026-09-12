@@ -171,11 +171,20 @@ class StorageAclServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(exception -> ((BusinessException) exception).getErrorCode())
                 .isEqualTo(StorageErrorCode.ACL_INVALID_REQUEST);
-        assertThatThrownBy(() -> service.registerPending("key", 7L, "TEAM", 3L,
-                "image/png", Duration.ofMinutes(1), "WORKFLOW_REQUEST", null))
-                .isInstanceOf(BusinessException.class)
-                .extracting(exception -> ((BusinessException) exception).getErrorCode())
-                .isEqualTo(StorageErrorCode.ACL_INVALID_REQUEST);
+    }
+
+    @Test
+    void typedContentReferenceRequiresCompleteTypeAndKey() {
+        assertThatThrownBy(() -> new StorageAclContentReference(null, "11"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new StorageAclContentReference("WORKFLOW_REQUEST", ""))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void personalScopeMustBeBoundToOwner() {
+        StorageAclService service = new StorageAclService(repository, CLOCK);
+
         assertThatThrownBy(() -> service.claimPending("key", 7L, StorageAclScope.personal(8L),
                 new StorageAclAttachmentBinding("ATTACHMENT", "11")))
                 .isInstanceOf(BusinessException.class)
