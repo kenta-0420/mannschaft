@@ -4,6 +4,9 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignRequest;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignResponse;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentRegisterRequest;
@@ -102,6 +105,9 @@ class WorkflowRequestAttachmentServiceTest {
             assertThat(result.fileKey()).startsWith("workflow-attachments/" + REQUEST_ID + "/");
             assertThat(result.fileKey()).endsWith(".pdf");
             assertThat(result.expiresInSeconds()).isEqualTo(900L);
+            verify(storageAclService).registerPending(eq(result.fileKey()), eq(USER_ID),
+                    eq(StorageAclScope.team(1L)), eq("application/pdf"), any(Duration.class),
+                    eq(new StorageAclContentReference("WORKFLOW_REQUEST", REQUEST_ID.toString())));
         }
 
         @Test
@@ -150,6 +156,7 @@ class WorkflowRequestAttachmentServiceTest {
             WorkflowRequestAttachmentEntity saved = WorkflowRequestAttachmentEntity.builder()
                     .requestId(REQUEST_ID).fileKey(fileKey).originalFilename("領収書.pdf")
                     .fileSize(2048L).uploadedBy(USER_ID).build();
+            ReflectionTestUtils.setField(saved, "id", ATTACHMENT_ID);
             WorkflowAttachmentResponse response = new WorkflowAttachmentResponse(
                     ATTACHMENT_ID, REQUEST_ID, fileKey, "領収書.pdf", 2048L, USER_ID, null);
 
@@ -164,6 +171,8 @@ class WorkflowRequestAttachmentServiceTest {
             // Then
             assertThat(result.getFileKey()).isEqualTo(fileKey);
             assertThat(result.getOriginalFilename()).isEqualTo("領収書.pdf");
+            verify(storageAclService).claimPending(eq(fileKey), eq(USER_ID), eq(StorageAclScope.team(1L)),
+                    eq(new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", ATTACHMENT_ID.toString())));
         }
 
         @Test
