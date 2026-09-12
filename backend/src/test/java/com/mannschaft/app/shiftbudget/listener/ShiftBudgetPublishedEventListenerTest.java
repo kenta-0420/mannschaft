@@ -77,6 +77,9 @@ class ShiftBudgetPublishedEventListenerTest {
     /** Phase 10-β で追加された失敗イベント記録（テスト中は no-op で十分） */
     @Mock
     private com.mannschaft.app.shiftbudget.service.ShiftBudgetFailedEventService failedEventService;
+    /** CMP-260910-1555 で追加された時給未設定警告の通知 */
+    @Mock
+    private com.mannschaft.app.shiftbudget.service.ShiftBudgetHourlyRateMissingNotifier hourlyRateMissingNotifier;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -87,7 +90,8 @@ class ShiftBudgetPublishedEventListenerTest {
         listener = new ShiftBudgetConsumptionRecordListener(
                 featureService, allocationRepository, rateQueryRepository,
                 consumptionService, slotRepository, hourlyRateRepository,
-                auditLogService, objectMapper, thresholdAlertEvaluationService, failedEventService);
+                auditLogService, objectMapper, thresholdAlertEvaluationService, failedEventService,
+                hourlyRateMissingNotifier);
     }
 
     private ShiftSlotEntity sampleSlotWithUser(Long slotId, Long userId) {
@@ -231,8 +235,13 @@ class ShiftBudgetPublishedEventListenerTest {
         }
         given(allocationRepository.findContainingPeriod(eq(ORG_ID), eq(TEAM_ID), any()))
                 .willReturn(Optional.of(alloc));
+        // CMP-260910-1555: 時給未設定は消化記録の手前で skip されるようになったため、
+        // 「記録処理そのものが例外を投げても残りを継続する」ことを試すには時給が引ける必要がある。
         given(hourlyRateRepository.findEffectiveRate(any(), any(), any()))
-                .willReturn(Optional.empty());
+                .willReturn(Optional.of(ShiftHourlyRateEntity.builder()
+                        .userId(USER_ID).teamId(TEAM_ID)
+                        .hourlyRate(new BigDecimal("1000"))
+                        .effectiveFrom(LocalDate.of(2026, 1, 1)).build()));
 
         org.mockito.BDDMockito.willThrow(new IllegalStateException("CONFIRMED record exists"))
                 .given(consumptionService).recordSingleConsumption(
@@ -242,6 +251,97 @@ class ShiftBudgetPublishedEventListenerTest {
         listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
+                any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    /** id を設定済みの allocation を返す（findContainingPeriod のスタブ用）。 */
+    private ShiftBudgetAllocationEntity allocationWithId() {
+        ShiftBudgetAllocationEntity alloc = sampleAllocation();
+        try {
+            java.lang.reflect.Field idField = alloc.getClass().getSuperclass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(alloc, ALLOCATION_ID);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return alloc;
+    }
+
+    /** 時給未設定シナリオの共通スタブ（org 解決 → フラグ ON → slot 1 件 → allocation あり → 時給なし）。 */
+    private void givenMissingHourlyRate() {
+        given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID)).willReturn(Optional.of(ORG_ID));
+        given(featureService.isEnabled(ORG_ID)).willReturn(true);
+        given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+                .willReturn(List.of(sampleSlotWithUser(7L, USER_ID)));
+        given(allocationRepository.findContainingPeriod(eq(ORG_ID), eq(TEAM_ID), any()))
+                .willReturn(Optional.of(allocationWithId()));
+        given(hourlyRateRepository.findEffectiveRate(eq(USER_ID), eq(TEAM_ID), any()))
+                .willReturn(Optional.empty());
+    }
+
+    @Test
+    @DisplayName("CMP-260910-1555: 時給未設定 → 0 円で記録せず、消化記録をスキップする")
+    void 時給未設定_0円で記録しない() {
+        givenMissingHourlyRate();
+        given(rateQueryRepository.findTeamSlugByTeamId(TEAM_ID)).willReturn(Optional.of("team-alpha"));
+
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
+
+        // 是正前は hourlyRate=0 で記録が「成功」していた。0 円の消化行を作ってはならない。
+        verify(consumptionService, never()).recordSingleConsumption(
+                any(), any(), any(), any(), any(), any());
+        // 記録していない以上、閾値判定を呼ぶ意味も無い（0% のまま再評価しても何も起きない）
+        verify(thresholdAlertEvaluationService, never()).evaluateAndTrigger(any());
+    }
+
+    @Test
+    @DisplayName("CMP-260910-1555: 時給未設定 → 予算管理者へ警告通知が出る（黙って成功扱いにしない）")
+    void 時給未設定_管理者へ通知() {
+        givenMissingHourlyRate();
+        given(rateQueryRepository.findTeamSlugByTeamId(TEAM_ID)).willReturn(Optional.of("team-alpha"));
+
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
+
+        verify(hourlyRateMissingNotifier).notifyHourlyRateMissing(
+                eq(ORG_ID), eq(TEAM_ID), eq("team-alpha"), eq(SCHEDULE_ID), eq(List.of(USER_ID)));
+    }
+
+    @Test
+    @DisplayName("CMP-260910-1555: 時給が引けたときは通知を出さない（誤報を出さない）")
+    void 時給設定済_通知しない() {
+        given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID)).willReturn(Optional.of(ORG_ID));
+        given(featureService.isEnabled(ORG_ID)).willReturn(true);
+        given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+                .willReturn(List.of(sampleSlotWithUser(7L, USER_ID)));
+        given(allocationRepository.findContainingPeriod(eq(ORG_ID), eq(TEAM_ID), any()))
+                .willReturn(Optional.of(allocationWithId()));
+        given(hourlyRateRepository.findEffectiveRate(eq(USER_ID), eq(TEAM_ID), any()))
+                .willReturn(Optional.of(ShiftHourlyRateEntity.builder()
+                        .userId(USER_ID).teamId(TEAM_ID)
+                        .hourlyRate(new BigDecimal("1200"))
+                        .effectiveFrom(LocalDate.of(2026, 1, 1)).build()));
+
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
+
+        verify(hourlyRateMissingNotifier, never()).notifyHourlyRateMissing(
+                any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("CMP-260910-1555: 通知が失敗しても監査ログは残り hook は完走する")
+    void 通知失敗でも完走() {
+        givenMissingHourlyRate();
+        given(rateQueryRepository.findTeamSlugByTeamId(TEAM_ID)).willReturn(Optional.empty());
+        org.mockito.BDDMockito.willThrow(new RuntimeException("notification down"))
+                .given(hourlyRateMissingNotifier).notifyHourlyRateMissing(
+                        any(), any(), any(), any(), any());
+
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
+
+        // 通知の失敗を hook 全体の致命的失敗に昇格させない（消化記録の成否とは別問題）
+        verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
+                any(), any(), any(), any(), any(), any(), any(), any());
+        verify(auditLogService, never()).record(eq("SHIFT_BUDGET_CONSUMPTION_FAILED"),
                 any(), any(), any(), any(), any(), any(), any(), any());
     }
 }
