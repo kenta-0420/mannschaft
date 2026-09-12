@@ -230,7 +230,7 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        long nonce = System.nanoTime();
+        String nonce = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
 
         publicTeamName = "公開チーム" + nonce;
         publicTeamId = insertTeam(publicTeamName, "act-pub-team-" + nonce, "PUBLIC", false, false);
@@ -682,7 +682,8 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("(AC-30) 公開40件・非公開20件の交互配置で limit=20 はちょうど20件返る（歯抜け禁止）")
     void ac30_混在でもlimit20はちょうど20件返る() throws Exception {
-        Long teamId = insertTeam("歯抜け検査チーム", "act-gap30-" + System.nanoTime(),
+        Long teamId = insertTeam("歯抜け検査チーム", "act-gap30-"
+                + Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX),
                 "PUBLIC", false, false);
         List<Long> publicIds = seedInterleaved(teamId, "GAP30", 40, 10, 5, 5);
         assertHiddenRowsOnFirstPage(teamId, 20, Set.copyOf(publicIds));
@@ -701,7 +702,8 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("(AC-30b) 公開7件・非公開30件で limit=20 は7件ちょうど（詰めすぎない）")
     void ac30b_公開が足りないときは詰めない() throws Exception {
-        Long teamId = insertTeam("公開僅少チーム", "act-gap30b-" + System.nanoTime(),
+        Long teamId = insertTeam("公開僅少チーム", "act-gap30b-"
+                + Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX),
                 "PUBLIC", false, false);
         List<Long> publicIds = seedInterleaved(teamId, "GAP30B", 7, 15, 10, 5);
         assertHiddenRowsOnFirstPage(teamId, 20, Set.copyOf(publicIds));
@@ -718,7 +720,8 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("(AC-30c) 公開0件・非公開30件でも200と空配列（404/500 にしない）")
     void ac30c_公開0件でも200と空配列() throws Exception {
-        Long teamId = insertTeam("公開ゼロチーム", "act-gap30c-" + System.nanoTime(),
+        Long teamId = insertTeam("公開ゼロチーム", "act-gap30c-"
+                + Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX),
                 "PUBLIC", false, false);
         List<Long> publicIds = seedInterleaved(teamId, "GAP30C", 0, 15, 10, 5);
         assertThat(publicIds).as("フィクスチャ要件: 公開行は 0 件").isEmpty();
@@ -742,7 +745,8 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("(AC-31) 混在フィクスチャで総件数が実公開件数40と厳密一致・ページ内件数20に化けない")
     void ac31_総件数が実公開件数と厳密一致する() {
-        Long teamId = insertTeam("総件数厳密チーム", "act-total31-" + System.nanoTime(),
+        Long teamId = insertTeam("総件数厳密チーム", "act-total31-"
+                + Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX),
                 "PUBLIC", false, false);
         List<Long> publicIds = seedInterleaved(teamId, "TOTAL31", 40, 10, 5, 5);
         assertHiddenRowsOnFirstPage(teamId, 20, Set.copyOf(publicIds));
@@ -771,7 +775,8 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("(AC-31b) page0/1/2 通しで重複なし・取りこぼしなし（id集合が公開40件と完全一致）")
     void ac31b_ページ通しで重複も取りこぼしも無い() {
-        Long teamId = insertTeam("ページ通しチーム", "act-total31b-" + System.nanoTime(),
+        Long teamId = insertTeam("ページ通しチーム", "act-total31b-"
+                + Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX),
                 "PUBLIC", false, false);
         List<Long> publicIds = seedInterleaved(teamId, "TOTAL31B", 40, 10, 5, 5);
         assertHiddenRowsOnFirstPage(teamId, 20, Set.copyOf(publicIds));
@@ -827,9 +832,10 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("(AC-32) SQL述語の集合SとF00のfilterAccessibleの集合Fが厳密一致（等価性番人）")
     void ac32_SQL述語とF00の判定集合が厳密一致する() {
-        Long teamId = insertTeam("等価性番人チーム", "act-equiv32-" + System.nanoTime(),
+        Long teamId = insertTeam("等価性番人チーム", "act-equiv32-"
+                + Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX),
                 "PUBLIC", false, false);
-        long nonce = System.nanoTime();
+        String nonce = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
 
         List<Long> allIds = new ArrayList<>();
         List<Long> expectedVisibleIds = new ArrayList<>();
@@ -894,12 +900,13 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("(AC-33) 認証済み一覧の総件数がページ内件数20に化けない（50以上55以下・他人のDRAFTは非表示）")
     void ac33_認証済み一覧の総件数がページ内件数に化けない() {
-        Long teamId = insertTeam("認証済み総件数チーム", "act-total33-" + System.nanoTime(),
+        Long teamId = insertTeam("認証済み総件数チーム", "act-total33-"
+                + Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX),
                 "PUBLIC", false, false);
         Long viewerUserId = 555_001L;
         insertMembership(viewerUserId, "TEAM", teamId);
 
-        long nonce = System.nanoTime();
+        String nonce = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
         List<Long> othersDraftIds = new ArrayList<>();
         // 公開 50 件 + 他人（created_by = SECRET_CREATED_BY）が作成した DRAFT 5 件を交互に投入
         for (int i = 0; i < 50; i++) {
@@ -949,9 +956,11 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("(AC-34) 混在フィクスチャでも一覧がN+1にならない（件数を変えてもクエリ数一定）")
     void ac34_混在でも一覧がN1にならない() throws Exception {
-        Long smallTeamId = insertTeam("N1小チーム", "act-n1s-team-" + System.nanoTime(),
+        Long smallTeamId = insertTeam("N1小チーム", "act-n1s-team-"
+                + Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX),
                 "PUBLIC", false, false);
-        Long largeTeamId = insertTeam("N1大チーム", "act-n1l-team-" + System.nanoTime(),
+        Long largeTeamId = insertTeam("N1大チーム", "act-n1l-team-"
+                + Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX),
                 "PUBLIC", false, false);
         List<Long> smallPublicIds = seedInterleaved(smallTeamId, "N1SMALL", 3, 1, 1, 1);
         List<Long> largePublicIds = seedInterleaved(largeTeamId, "N1LARGE", 30, 10, 10, 10);
@@ -987,7 +996,8 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("(AC-35) 混在フィクスチャで limit 丸め（100/101/0/-1）が正しく全件が公開")
     void ac35_混在でのlimit境界値() throws Exception {
-        Long teamId = insertTeam("境界値混在チーム", "act-bound35-" + System.nanoTime(),
+        Long teamId = insertTeam("境界値混在チーム", "act-bound35-"
+                + Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX),
                 "PUBLIC", false, false);
         List<Long> publicIds = seedInterleaved(teamId, "BOUND35", 120, 20, 10, 10);
         assertHiddenRowsOnFirstPage(teamId, 20, Set.copyOf(publicIds));
@@ -1013,7 +1023,8 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("(AC-29a) 全件公開のとき一覧の総件数はページ内件数ではなく実総数になる")
     void ac29a_全件公開なら総件数は実総数になる() {
-        Long bulkTeamId = insertTeam("総件数チーム", "act-total-team-" + System.nanoTime(),
+        Long bulkTeamId = insertTeam("総件数チーム", "act-total-team-"
+                + Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX),
                 "PUBLIC", false, false);
         seedBulkActivities("TEAM", bulkTeamId, 55, "TOTAL29");
         em.flush();
@@ -1561,7 +1572,7 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
 
     /** 指定スコープ配下に PUBLIC + PUBLISHED の記録を {@code count} 件まとめて作る。 */
     private void seedBulkActivities(String scopeType, Long scopeId, int count, String tag) {
-        long nonce = System.nanoTime();
+        String nonce = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
         for (int i = 0; i < count; i++) {
             insertActivity(scopeType, scopeId, tag + "-" + nonce + "-" + i,
                     "PUBLIC", "PUBLISHED", false, "10:00:00", "11:00:00", "一括生成");
@@ -1600,7 +1611,7 @@ class ActivityPublicContractIT extends AbstractMySqlIntegrationTest {
         };
         int total = publicCount + membersOnlyCount + draftCount + deletedCount;
         int[] issued = new int[4];
-        long nonce = System.nanoTime();
+        String nonce = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
         List<Long> publicIds = new ArrayList<>();
 
         for (int n = 0; n < total; n++) {

@@ -102,21 +102,21 @@ class ScheduleStatsAndInvitationScopeContractIT extends AbstractMySqlIntegration
 
     @BeforeEach
     void setUp() {
-        long nano = System.nanoTime();
-        teamASlug = "w6b5-team-a-" + nano;
-        teamBSlug = "w6b5-team-b-" + nano;
+        String suffix = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
+        teamASlug = "w6b5-team-a-" + suffix;
+        teamBSlug = "w6b5-team-b-" + suffix;
         teamAId = insertTeam("W6B5 チームA", teamASlug);
         teamBId = insertTeam("W6B5 チームB", teamBSlug);
-        orgAId = insertOrganization("W6B5 組織A", "w6b5-org-a-" + nano);
-        orgBId = insertOrganization("W6B5 組織B", "w6b5-org-b-" + nano);
+        orgAId = insertOrganization("W6B5 組織A", "w6b5-org-a-" + suffix);
+        orgBId = insertOrganization("W6B5 組織B", "w6b5-org-b-" + suffix);
 
-        adminTeamAId = insertUser("w6b5-admin-team-a-" + nano + "@example.com");
-        adminTeamBId = insertUser("w6b5-admin-team-b-" + nano + "@example.com");
-        memberTeamAId = insertUser("w6b5-member-team-a-" + nano + "@example.com");
-        adminOrgAId = insertUser("w6b5-admin-org-a-" + nano + "@example.com");
-        adminOrgBId = insertUser("w6b5-admin-org-b-" + nano + "@example.com");
-        memberOrgAId = insertUser("w6b5-member-org-a-" + nano + "@example.com");
-        outsiderId = insertUser("w6b5-outsider-" + nano + "@example.com");
+        adminTeamAId = insertUser("w6b5-admin-team-a-" + suffix + "@example.com");
+        adminTeamBId = insertUser("w6b5-admin-team-b-" + suffix + "@example.com");
+        memberTeamAId = insertUser("w6b5-member-team-a-" + suffix + "@example.com");
+        adminOrgAId = insertUser("w6b5-admin-org-a-" + suffix + "@example.com");
+        adminOrgBId = insertUser("w6b5-admin-org-b-" + suffix + "@example.com");
+        memberOrgAId = insertUser("w6b5-member-org-a-" + suffix + "@example.com");
+        outsiderId = insertUser("w6b5-outsider-" + suffix + "@example.com");
 
         // checkAdminOrAbove（user_roles）と checkMembership（memberships）は別系統のため
         // ADMIN ユーザーにも memberships 行を張る（ScheduleWriteScopeContractIT 踏襲）。

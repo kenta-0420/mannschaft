@@ -68,6 +68,11 @@ mannschaft:
     hmac-key: dGVzdC1obWFjLWtleS0tLTEyMzQ1Njc4OTBhYmNkZWY=
   storage:
     type: local
+  # PR5 Billing Center: Stripe platform Webhook 署名 — テスト決定性のために固定 secret を使用。
+  # 実 `StripeWebhookController` を実署名で叩く契約テスト（設計書 05 §4）が必要とする。
+  # 空文字のままだと HMAC の鍵が空になり Mac#init が落ち、署名検証以前でテストが不能になる。
+  stripe:
+    webhook-secret: whsec_test_billing_center_pr5_fixed_secret
   # PR4 Billing Center: return state 署名 — テスト決定性のために固定 secret を使用
   billing:
     return-state:

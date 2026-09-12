@@ -421,7 +421,6 @@ NO_ARG_NOW|com.mannschaft.app.notification.fanout.NotificationFanoutJobService|7
 NO_ARG_NOW|com.mannschaft.app.notification.fanout.NotificationFanoutStuckRecoveryBatch|1
 NO_ARG_NOW|com.mannschaft.app.notification.fanout.NotificationFanoutWorker|1
 NO_ARG_NOW|com.mannschaft.app.notification.service.NotificationBulkFanoutService|1
-NO_ARG_NOW|com.mannschaft.app.notification.service.NotificationCleanupBatchService|1
 NO_ARG_NOW|com.mannschaft.app.notification.service.NotificationService|1
 NO_ARG_NOW|com.mannschaft.app.onboarding.entity.OnboardingProgressEntity|4
 NO_ARG_NOW|com.mannschaft.app.onboarding.entity.OnboardingStepCompletionEntity|1
@@ -445,7 +444,6 @@ NO_ARG_NOW|com.mannschaft.app.parking.service.ParkingVisitorReservationService|1
 NO_ARG_NOW|com.mannschaft.app.payment.FeePolicyAssignmentEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.FeePolicyEntity|2
 NO_ARG_NOW|com.mannschaft.app.payment.StripeWebhookEventEntity|1
-NO_ARG_NOW|com.mannschaft.app.payment.WebhookIdempotencyService|2
 NO_ARG_NOW|com.mannschaft.app.payment.admin.FeePolicyAdminService|1
 NO_ARG_NOW|com.mannschaft.app.payment.connect.ConnectAccountEntity|1
 NO_ARG_NOW|com.mannschaft.app.payment.entity.ContentPaymentGateEntity|1

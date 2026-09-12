@@ -38,11 +38,40 @@ let createdThemeId = ''
 // beforeAll で作成した personal_timetable id（後片付け用）
 let createdTimetableId: string | null = null
 
+/** 検証用FEポートから実BEへ、CORSだけを回避してリクエストを中継する。 */
+async function installApiBridge(page: Page, accessToken: string): Promise<void> {
+  const pageOrigin = process.env.BASE_URL ?? 'http://localhost:3000'
+  await page.route(/\/api\/v1\//, async (route) => {
+    const request = route.request()
+    const sourceUrl = new URL(request.url())
+    const response = await page.request.fetch(`${BE}${sourceUrl.pathname}${sourceUrl.search}`, {
+      method: request.method(),
+      headers: {
+        ...request.headers(),
+        origin: 'http://localhost:3000',
+        referer: 'http://localhost:3000/',
+        authorization: `Bearer ${accessToken}`,
+      },
+      data: request.postData() ?? undefined,
+      maxRedirects: 0,
+    })
+    await route.fulfill({
+      status: response.status(),
+      headers: {
+        ...response.headers(),
+        'access-control-allow-origin': pageOrigin,
+        'access-control-allow-credentials': 'true',
+      },
+      body: await response.body(),
+    })
+  })
+}
+
 // ---------------------------------------------------------------------------
 // ログインヘルパー（単一セッション設計・reflection-subject-linking.spec.ts と同パターン）
 // ---------------------------------------------------------------------------
 async function loginAndSetupStorage(page: Page) {
-  let loginData: { userId: number; email: string; fullName: string } | null = null
+  let loginData: { userId: number; email: string; fullName: string; accessToken: string } | null = null
   let loggedIn = false
   for (let i = 0; i < 5; i++) {
     const res = await page.request.post(`${BE_API}/auth/login`, {
@@ -54,6 +83,7 @@ async function loginAndSetupStorage(page: Page) {
         userId: body.data.userId,
         email: body.data.email,
         fullName: body.data.fullName,
+        accessToken: body.data.accessToken,
       }
       loggedIn = true
       break
@@ -61,11 +91,14 @@ async function loginAndSetupStorage(page: Page) {
     await page.waitForTimeout(2_000)
   }
   expect(loggedIn, 'BE API ログインが成功').toBe(true)
+  expect(loginData?.accessToken, '実BEログインでBearerトークンを取得').toBeTruthy()
+  await installApiBridge(page, loginData!.accessToken)
 
   const meRes = await page.request.get(`${BE_API}/users/me`)
   const me = meRes.ok() ? (await meRes.json()).data : null
 
-  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+  // localStorage を同一オリジンへ設定するだけなので、重いダッシュボード初期表示は避ける。
+  await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 90_000 })
   if (me) {
     await page.evaluate(
       (user) => {
@@ -434,6 +467,81 @@ test('REFLECT-AR-004: テーマ一覧でアーカイブ/復元ボタンが動作
   // 後片付け
   await page.request.patch(`${BE_API}/me/reflections/themes/${arThemeId}/restore`).catch(() => {})
   await page.request.delete(`${BE_API}/me/reflections/themes/${arThemeId}`).catch(() => {})
+})
+
+test('REFLECT-AR-005: 詳細の復元は確認なしで実行され、Undoで再アーカイブされる', async ({ page }) => {
+  test.slow()
+  const createRes = await page.request.post(`${BE_API}/me/reflections/themes`, {
+    data: { title: `${THEME_TITLE} DETAIL-UNDO`, sourceType: 'FREE' },
+  })
+  expect(createRes.status()).toBeLessThan(300)
+  const targetThemeId = (await createRes.json()).data.id as string
+
+  await page.goto(`/reflections/themes/${targetThemeId}`)
+  await waitForHydration(page)
+  await page.locator('.p-skeleton').first().waitFor({ state: 'detached', timeout: 20_000 })
+
+  await page.getByTestId('reflection-theme-archive').click()
+  const confirmation = page.locator('.p-confirmdialog:visible')
+  await expect(confirmation, 'アーカイブ操作の確認は維持される').toBeVisible()
+  await confirmation.getByRole('button', { name: 'アーカイブする' }).click()
+  await expect.poll(async () => {
+    const response = await page.request.get(`${BE_API}/me/reflections/themes/${targetThemeId}`)
+    return (await response.json()).data.archivedAt != null
+  }, { message: 'アーカイブ確認後に実データがアーカイブされる' }).toBe(true)
+
+  await page.goto(`/reflections/themes/${targetThemeId}`)
+  await waitForHydration(page)
+  await page.locator('.p-skeleton').first().waitFor({ state: 'detached', timeout: 20_000 })
+
+  await page.getByTestId('reflection-theme-restore').click()
+  await expect(page.locator('.p-confirmdialog:visible')).toHaveCount(0)
+  await expect.poll(async () => {
+    const response = await page.request.get(`${BE_API}/me/reflections/themes/${targetThemeId}`)
+    return (await response.json()).data.archivedAt == null
+  }, { message: '詳細画面の復元で実データが復元される' }).toBe(true)
+
+  const undoButton = page.getByTestId('undo-toast-button')
+  await expect(undoButton).toBeVisible()
+  await undoButton.click()
+  await expect.poll(async () => {
+    const response = await page.request.get(`${BE_API}/me/reflections/themes/${targetThemeId}`)
+    return (await response.json()).data.archivedAt != null
+  }, { message: '詳細画面のUndoで実データが再アーカイブされる' }).toBe(true)
+  await page.request.patch(`${BE_API}/me/reflections/themes/${targetThemeId}/restore`)
+  await page.request.delete(`${BE_API}/me/reflections/themes/${targetThemeId}`)
+})
+
+test('REFLECT-AR-006: 保管庫一覧の復元は確認なしで実行され、Undoで再アーカイブされる', async ({ page }) => {
+  test.slow()
+  const createRes = await page.request.post(`${BE_API}/me/reflections/themes`, {
+    data: { title: `${THEME_TITLE} LIST-UNDO`, sourceType: 'FREE' },
+  })
+  expect(createRes.status()).toBeLessThan(300)
+  const targetThemeId = (await createRes.json()).data.id as string
+  expect((await page.request.patch(`${BE_API}/me/reflections/themes/${targetThemeId}/archive`)).ok()).toBe(true)
+
+  await page.goto('/reflections/archive')
+  await waitForHydration(page)
+  const restoreButton = page.getByTestId(`reflection-archive-restore-${targetThemeId}`)
+  await expect(restoreButton).toBeVisible({ timeout: 20_000 })
+
+  await restoreButton.click()
+  await expect(page.locator('.p-confirmdialog:visible')).toHaveCount(0)
+  await expect.poll(async () => {
+    const response = await page.request.get(`${BE_API}/me/reflections/themes/${targetThemeId}`)
+    return (await response.json()).data.archivedAt == null
+  }, { message: '保管庫一覧の復元で実データが復元される' }).toBe(true)
+
+  const undoButton = page.getByTestId('undo-toast-button')
+  await expect(undoButton).toBeVisible()
+  await undoButton.click()
+  await expect.poll(async () => {
+    const response = await page.request.get(`${BE_API}/me/reflections/themes/${targetThemeId}`)
+    return (await response.json()).data.archivedAt != null
+  }, { message: '保管庫一覧のUndoで実データが再アーカイブされる' }).toBe(true)
+  await page.request.patch(`${BE_API}/me/reflections/themes/${targetThemeId}/restore`)
+  await page.request.delete(`${BE_API}/me/reflections/themes/${targetThemeId}`)
 })
 
 // ---------------------------------------------------------------------------

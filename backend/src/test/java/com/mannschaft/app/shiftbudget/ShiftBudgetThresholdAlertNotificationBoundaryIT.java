@@ -1,5 +1,9 @@
 package com.mannschaft.app.shiftbudget;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.shiftbudget.event.BudgetThresholdAlertTriggeredEvent;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
@@ -13,6 +17,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -64,6 +69,9 @@ class ShiftBudgetThresholdAlertNotificationBoundaryIT extends AbstractMySqlInteg
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @PersistenceContext
     private EntityManager em;
@@ -162,10 +170,9 @@ class ShiftBudgetThresholdAlertNotificationBoundaryIT extends AbstractMySqlInteg
                                 受信者単位の配送失敗が再試行台帳に残らないと、
                                 「alert は確定済みなのに通知は失われ、再送経路も無い」状態になる。""")
                         .isEqualTo(failedEventsBefore + 1));
-        assertThat(latestFailedEventPayload())
+        assertThat(latestFailedEventUserIds())
                 .as("再送対象は失敗した受信者だけ（成功済みを混ぜると再送で重複配信になる）")
-                .contains(String.valueOf(blockedUserId))
-                .doesNotContain(String.valueOf(deliveredUserId));
+                .containsExactly(blockedUserId);
     }
 
     // ---- フィクスチャ / ヘルパ ----
@@ -195,6 +202,15 @@ class ShiftBudgetThresholdAlertNotificationBoundaryIT extends AbstractMySqlInteg
                         + "WHERE event_type = 'NOTIFICATION_SEND' AND source_id = ? "
                         + "ORDER BY id DESC LIMIT 1",
                 String.class, ALLOCATION_ID);
+    }
+
+    private List<Long> latestFailedEventUserIds() {
+        try {
+            JsonNode payload = objectMapper.readTree(latestFailedEventPayload());
+            return objectMapper.convertValue(payload.path("user_ids"), new TypeReference<>() { });
+        } catch (JsonProcessingException e) {
+            throw new UncheckedIOException("failed event payload の JSON 解析に失敗しました", e);
+        }
     }
 
     private static String nonce() {
