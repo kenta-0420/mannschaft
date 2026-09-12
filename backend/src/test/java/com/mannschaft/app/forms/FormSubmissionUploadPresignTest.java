@@ -3,6 +3,7 @@ package com.mannschaft.app.forms;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.forms.dto.FormUploadUrlRequest;
 import com.mannschaft.app.forms.dto.FormUploadUrlResponse;
 import com.mannschaft.app.forms.entity.FormSubmissionEntity;
@@ -26,6 +27,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link FormSubmissionService#presignUploadUrl} の単体テスト（F05.7 Phase 11 第四陣 4-B）。
@@ -39,6 +42,7 @@ class FormSubmissionUploadPresignTest {
     @Mock private FormTemplateService templateService;
     @Mock private FormMapper formMapper;
     @Mock private StorageService storageService;
+    @Mock private StorageAclService storageAclService;
 
     @InjectMocks
     private FormSubmissionService formSubmissionService;
@@ -70,6 +74,8 @@ class FormSubmissionUploadPresignTest {
 
         assertThat(response.getUploadUrl()).isEqualTo("https://signed");
         assertThat(response.getExpiresIn()).isEqualTo(600L);
+        verify(storageService).generateUploadUrl(org.mockito.ArgumentMatchers.startsWith("forms/TEAM/7/submissions/200/"),
+                org.mockito.ArgumentMatchers.eq("application/pdf"), any(Duration.class));
     }
 
     @Test
@@ -119,5 +125,33 @@ class FormSubmissionUploadPresignTest {
         assertThatThrownBy(() -> formSubmissionService.presignUploadUrl(
                 "teams", 7L, 200L, 10L, req("attachment", "application/pdf", 1_000L)))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("異常系: URL の scopeType が提出の正準スコープと異なる場合は存在を秘匿する")
+    void presign_ScopeTypeMismatch_ReturnsNotFound() {
+        given(submissionRepository.findByIdAndSubmittedBy(anyLong(), anyLong()))
+                .willReturn(Optional.of(draftSubmission()));
+
+        assertThatThrownBy(() -> formSubmissionService.presignUploadUrl(
+                "organizations", 7L, 200L, 10L, req("attachment", "application/pdf", 1_000L)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(((BusinessException) exception).getErrorCode())
+                        .isEqualTo(FormErrorCode.SUBMISSION_NOT_FOUND));
+        verifyNoInteractions(storageService, storageAclService);
+    }
+
+    @Test
+    @DisplayName("異常系: URL の scopeId が提出と異なる場合は存在を秘匿する")
+    void presign_ScopeIdMismatch_ReturnsNotFound() {
+        given(submissionRepository.findByIdAndSubmittedBy(anyLong(), anyLong()))
+                .willReturn(Optional.of(draftSubmission()));
+
+        assertThatThrownBy(() -> formSubmissionService.presignUploadUrl(
+                "teams", 8L, 200L, 10L, req("attachment", "application/pdf", 1_000L)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(((BusinessException) exception).getErrorCode())
+                        .isEqualTo(FormErrorCode.SUBMISSION_NOT_FOUND));
+        verifyNoInteractions(storageService, storageAclService);
     }
 }

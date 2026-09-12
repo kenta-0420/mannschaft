@@ -90,6 +90,7 @@ public class MatchAttachmentService {
      * @param fileSize       バイト数
      * @return uploadUrl / fileKey / 有効期限
      */
+    @Transactional
     public PresignResult generateUploadUrl(UUID matchId, Long organizationId, Long actorUserId,
                                            String contentType, Long fileSize) {
         MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId);

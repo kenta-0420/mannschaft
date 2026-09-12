@@ -238,6 +238,38 @@ class StorageAclServiceTest {
     }
 
     @Test
+    void multipartPendingCanBeClaimedOnlyByItsPersonalOwnerScope() {
+        StorageAclService service = new StorageAclService(repository, CLOCK);
+        StorageAclScope personal = StorageAclScope.personal(7L);
+        StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding("TIMELINE_ATTACHMENT", "22");
+        given(repository.claimPending("multipart/key", 7L, personal.type().name(), personal.scopeKey(),
+                binding.type(), binding.key(), NOW_LOCAL)).willReturn(1);
+
+        service.claimPending("multipart/key", 7L, personal, binding);
+    }
+
+    @Test
+    void multipartPendingCannotBeReboundToAnotherScope() {
+        StorageAclService service = new StorageAclService(repository, CLOCK);
+        StorageAclScope personal = StorageAclScope.personal(7L);
+        StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding("TIMELINE_ATTACHMENT", "22");
+        StorageAclEntity multipartPending = pending("multipart/key", 7L, personal, NOW_LOCAL.plusSeconds(1),
+                StorageAclStatus.PENDING).toBuilder()
+                .parentContentReferenceType("MULTIPART_UPLOAD")
+                .parentContentReferenceKey("upload-7")
+                .build();
+        StorageAclScope differentScope = StorageAclScope.team(3L);
+        given(repository.claimPending("multipart/key", 7L, differentScope.type().name(), differentScope.scopeKey(),
+                binding.type(), binding.key(), NOW_LOCAL)).willReturn(0);
+        given(repository.findByFileKey("multipart/key")).willReturn(Optional.of(multipartPending));
+
+        assertThatThrownBy(() -> service.claimPending("multipart/key", 7L, differentScope, binding))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(StorageErrorCode.ACL_NOT_FOUND);
+    }
+
+    @Test
     void legacy登録はV192監査列を保持し新typed親参照を未設定にする() {
         StorageAclService service = new StorageAclService(repository, CLOCK);
         given(repository.findByFileKey("legacy/key")).willReturn(Optional.empty());

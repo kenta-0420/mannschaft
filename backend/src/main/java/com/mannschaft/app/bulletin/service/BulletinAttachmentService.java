@@ -129,6 +129,7 @@ public class BulletinAttachmentService {
      * @param userId 操作ユーザー ID
      * @return uploadUrl / fileKey / 有効期限
      */
+    @Transactional
     public AttachmentPresignResponse generateUploadUrl(AttachmentPresignRequest req, Long userId) {
         BulletinThreadEntity thread = resolveThread(req.targetType(), req.targetId());
 

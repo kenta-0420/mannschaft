@@ -600,7 +600,7 @@ public class ServiceRecordService {
         String fileKey = String.format("service-records/%d/%d/%s", teamId, recordId, UUID.randomUUID());
 
         String uploadUrl = storageService.generateUploadUrl(
-                fileKey, "application/octet-stream", Duration.ofSeconds(600)).uploadUrl();
+                fileKey, request.getContentType(), Duration.ofSeconds(600)).uploadUrl();
         storageAclService.registerPending(fileKey, actorUserId, StorageAclScope.team(record.getTeamId()),
                 request.getContentType(), Duration.ofSeconds(600),
                 new StorageAclContentReference("SERVICE_RECORD", recordId.toString()));

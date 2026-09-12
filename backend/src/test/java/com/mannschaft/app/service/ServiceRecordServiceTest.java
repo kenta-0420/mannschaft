@@ -4,6 +4,8 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.service.dto.BulkCreateServiceRecordRequest;
 import com.mannschaft.app.service.dto.CreateServiceRecordRequest;
 import com.mannschaft.app.service.dto.ServiceRecordResponse;
@@ -26,6 +28,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -49,6 +52,7 @@ class ServiceRecordServiceTest {
     @Mock private ObjectMapper objectMapper;
     @Mock private NameResolverService nameResolverService;
     @Mock private StorageService storageService;
+    @Mock private StorageAclService storageAclService;
     @Mock private AccessControlService accessControlService;
 
     @InjectMocks
@@ -146,6 +150,27 @@ class ServiceRecordServiceTest {
     @Nested
     @DisplayName("generateUploadUrl")
     class GenerateUploadUrl {
+        @Test
+        @DisplayName("正常系: 検証済み MIME を署名URLとACL台帳へ同じ値で渡す")
+        void 検証済みMIMEを署名とACLで統一する() {
+            ServiceRecordEntity entity = createRecordEntity(ServiceRecordStatus.DRAFT);
+            given(recordRepository.findByIdAndTeamId(RECORD_ID, TEAM_ID)).willReturn(Optional.of(entity));
+            given(attachmentRepository.countByServiceRecordId(RECORD_ID)).willReturn(0L);
+            given(storageService.generateUploadUrl(any(), any(), any(Duration.class)))
+                    .willReturn(new PresignedUploadResult("https://signed", "service-key", 600L));
+            UploadUrlRequest request = new UploadUrlRequest();
+            request.setFileName("evidence.pdf");
+            request.setContentType("application/pdf");
+            request.setFileSize(1_000L);
+
+            service.generateUploadUrl(TEAM_ID, RECORD_ID, USER_ID, request);
+
+            verify(storageService).generateUploadUrl(any(), org.mockito.ArgumentMatchers.eq("application/pdf"),
+                    any(Duration.class));
+            verify(storageAclService).registerPending(any(), org.mockito.ArgumentMatchers.eq(USER_ID), any(),
+                    org.mockito.ArgumentMatchers.eq("application/pdf"), any(Duration.class), any());
+        }
+
         @Test
         @DisplayName("異常系: 許可されていないコンテンツタイプでSERVICE_RECORD_017例外")
         void アップロード_不正タイプ_例外() {

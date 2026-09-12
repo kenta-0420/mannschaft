@@ -351,6 +351,7 @@ public class BudgetTransactionService {
      * （incident ドメイン {@code requireMemberOrConceal} と同じ設計）。所属しているが ADMIN
      * でない場合は 403。</p>
      */
+    @Transactional
     public UploadUrlResponse generateUploadUrl(Long transactionId, String fileName, String contentType) {
         BudgetTransactionEntity entity = findById(transactionId);
         Long currentUserId = SecurityUtils.getCurrentUserId();

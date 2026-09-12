@@ -1,7 +1,9 @@
 package com.mannschaft.app.files.service;
 
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.common.storage.R2StorageService.PresignedPartUrl;
 import com.mannschaft.app.files.dto.CompleteMultipartRequest;
 import com.mannschaft.app.files.dto.CompleteMultipartResponse;
@@ -36,6 +38,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 /**
@@ -95,6 +98,9 @@ class MultipartUploadServiceTest {
             assertThat(result.getFileKey()).endsWith(".mp4");
             assertThat(result.getPartCount()).isEqualTo(10);
             assertThat(result.getPartSize()).isEqualTo(20 * 1024 * 1024L);
+            then(storageAclService).should().registerPending(
+                    eq(result.getFileKey()), eq(USER_ID), eq(StorageAclScope.personal(USER_ID)), eq("video/mp4"),
+                    any(), eq(new StorageAclContentReference("MULTIPART_UPLOAD", UPLOAD_ID)));
         }
 
         @Test
@@ -127,7 +133,7 @@ class MultipartUploadServiceTest {
                     .willAnswer(inv -> inv.getArgument(0));
             RuntimeException failure = new RuntimeException("acl unavailable");
             org.mockito.Mockito.doThrow(failure).when(storageAclService).registerPending(
-                    anyString(), any(), anyString(), any(), anyString(), any(), any(), any());
+                    anyString(), any(), any(StorageAclScope.class), anyString(), any(), any(StorageAclContentReference.class));
 
             assertThatThrownBy(() -> service.startUpload(USER_ID, req)).isSameAs(failure);
             then(r2StorageService).should().abortMultipartUpload(anyString(), eq(UPLOAD_ID));
@@ -143,7 +149,8 @@ class MultipartUploadServiceTest {
             given(sessionRepository.save(any(MultipartUploadSessionEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
             org.mockito.Mockito.doThrow(new RuntimeException("acl unavailable")).when(storageAclService)
-                    .registerPending(anyString(), any(), anyString(), any(), anyString(), any(), any(), any());
+                    .registerPending(anyString(), any(), any(StorageAclScope.class), anyString(), any(),
+                            any(StorageAclContentReference.class));
             org.mockito.Mockito.doThrow(new RuntimeException("r2 unavailable")).when(r2StorageService)
                     .abortMultipartUpload(anyString(), eq(UPLOAD_ID));
 
@@ -207,6 +214,20 @@ class MultipartUploadServiceTest {
     @Nested
     @DisplayName("getPartUrls")
     class GetPartUrls {
+
+        @Test
+        @DisplayName("異常系: 別ユーザーは他人の uploadId と正しい fileKey を使っても拒否される")
+        void 別ユーザーのUploadIdは拒否される() {
+            MultipartUploadSessionEntity session = buildInProgressSession();
+            PartUrlRequest req = new PartUrlRequest(session.getR2Key(), List.of(1));
+            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+
+            assertThatThrownBy(() -> service.getPartUrls(UPLOAD_ID, USER_ID + 1, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(FORBIDDEN));
+            then(r2StorageService).should(never()).createPresignedPartUrls(anyString(), anyString(), anyList(), any());
+        }
 
         @Test
         @DisplayName("正常系_パートURL発行成功")
