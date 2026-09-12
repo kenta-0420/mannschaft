@@ -53,8 +53,11 @@ class StorageAclRepositoryIntegrationTest extends AbstractMySqlIntegrationTest {
         StorageAclEntity acl = pending(fileKey).toBuilder().expiresAt(LocalDateTime.now(java.time.Clock.systemUTC())).build();
         repository.saveAndFlush(acl);
 
-        assertThat(repository.claimPending(fileKey, 9001L, StorageAclScopeType.TEAM.name(), "9002",
-                "ATTACHMENT", "101", acl.getExpiresAt())).isZero();
+        Integer affected = requiresNewTransaction().execute(status -> repository.claimPending(
+                fileKey, 9001L, StorageAclScopeType.TEAM.name(), "9002",
+                "ATTACHMENT", "101", acl.getExpiresAt()));
+
+        assertThat(affected).isZero();
     }
 
     @Test
@@ -84,7 +87,10 @@ class StorageAclRepositoryIntegrationTest extends AbstractMySqlIntegrationTest {
                     new StorageAclAttachmentBinding("ATTACHMENT", key));
             return true;
         } catch (BusinessException expected) {
-            return expected.getErrorCode() == StorageErrorCode.ACL_CLAIM_CONFLICT;
+            if (expected.getErrorCode() == StorageErrorCode.ACL_CLAIM_CONFLICT) {
+                return false;
+            }
+            throw new AssertionError(expected);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new AssertionError(exception);
