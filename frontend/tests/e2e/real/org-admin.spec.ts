@@ -130,15 +130,18 @@ test.describe('ORG-ADMIN-001〜005: MEMBER ロールでの管理機能アクセ�
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     const url = page.url()
     if (url.includes('/members')) {
-      // メンバー一覧が表示された場合: 権限変更ドロップダウンまたはボタンが MEMBER には表示されない
+      // メンバー一覧が実際に描画されたうえで、権限変更 UI が無いことを確認する。
+      // URL が truthy であるだけの確認では、画面崩壊や権限漏れを見逃して偽 green になる。
+      await expect(page.locator('[role="table"], table').first()).toBeVisible({ timeout: 15_000 })
       const roleChangeBtn = page.locator(
         'button[aria-label*="権限"], [class*="role-change"], select[name*="role"]',
-      ).first()
-      const hasRoleChange = await roleChangeBtn.isVisible().catch(() => false)
-      // MEMBER には権限変更UIが表示されない想定
-      void hasRoleChange
+      )
+      await expect(roleChangeBtn).toHaveCount(0)
+      await expect(page.getByRole('columnheader', { name: '操作' })).toHaveCount(0)
+    } else {
+      // 画面単位で拒否する実装の場合も、許可済みの遷移先だけを受け入れる。
+      expect(url).toMatch(/organizations|my\/dashboard|403|forbidden|login/)
     }
-    expect(url).toBeTruthy()
   })
 
   test('ORG-ADMIN-005: チームの ADMIN 機能ページは適切にアクセス制御されている', async ({ page }) => {
