@@ -86,7 +86,8 @@ class ScopeFolderAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        String teamSlug = "w4c-folder-team-" + System.nanoTime();
+        String suffix = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
+        String teamSlug = "w4c-folder-team-" + suffix;
         teamId = insertTeam("W4C フォルダ用チーム", teamSlug);
 
         ownerId = insertUser("w4c-folder-owner@example.com");
