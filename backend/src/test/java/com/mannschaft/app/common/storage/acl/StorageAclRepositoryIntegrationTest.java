@@ -31,6 +31,15 @@ class StorageAclRepositoryIntegrationTest extends AbstractMySqlIntegrationTest {
     private PlatformTransactionManager transactionManager;
 
     @Test
+    void pending登録はFlyway必須監査列も埋める() {
+        StorageAclEntity saved = repository.saveAndFlush(pending(
+                "integration/storage-acl-audit-" + System.nanoTime()));
+
+        assertThat(saved.getCreatedAt()).isNotNull();
+        assertThat(saved.getUpdatedAt()).isNotNull();
+    }
+
+    @Test
     void 並行claimは一方だけが成功しもう一方は409になる() throws Exception {
         String fileKey = "integration/storage-acl-claim-" + System.nanoTime();
         repository.saveAndFlush(pending(fileKey));
