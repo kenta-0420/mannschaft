@@ -4,7 +4,7 @@
       "title": "シフト",
       "myShift": "マイシフト",
       "submitRequest": "希望提出",
-      "availability": "デフォルト可否",
+      "availability": "曜日別の既定シフト希望",
       "schedules": "スケジュール一覧",
       "detail": "詳細",
       "edit": "編集",
@@ -342,9 +342,10 @@
       "error": "PDF の生成に失敗しました"
     },
     "myShifts": {
-      "title": "マイシフト",
+      "title": "シフト希望の提出状況",
       "empty": "シフトがありません",
-      "fetchError": "シフト情報の取得に失敗しました"
+      "fetchError": "シフト情報の取得に失敗しました",
+      "description": "提出した希望と審査状況（承認・却下）の確認"
     },
     "myShift": {
       "confirmedTitle": "確定シフト",

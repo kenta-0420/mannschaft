@@ -68,15 +68,16 @@
       "error": "PDF 생성에 실패했습니다"
     },
     "myShifts": {
-      "title": "내 근무",
+      "title": "내 근무 희망 신청",
       "empty": "근무가 없습니다",
-      "fetchError": "근무 정보 조회에 실패했습니다"
+      "fetchError": "근무 정보 조회에 실패했습니다",
+      "description": "제출한 희망과 심사 상태 확인"
     },
     "page": {
       "title": "근무",
       "myShift": "내 근무",
       "submitRequest": "희망 제출",
-      "availability": "기본 가용성",
+      "availability": "요일별 기본 근무 희망",
       "schedules": "스케줄 목록",
       "detail": "상세",
       "edit": "편집",

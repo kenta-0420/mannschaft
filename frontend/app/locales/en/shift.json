@@ -68,9 +68,10 @@
       "error": "Failed to generate PDF"
     },
     "myShifts": {
-      "title": "My Shifts",
+      "title": "My Shift Requests",
       "empty": "No shifts found",
-      "fetchError": "Failed to fetch shift information"
+      "fetchError": "Failed to fetch shift information",
+      "description": "Submitted requests and their approval status"
     },
     "myShift": {
       "confirmedTitle": "Confirmed Shifts",
@@ -90,7 +91,7 @@
       "title": "Shift",
       "myShift": "My Shift",
       "submitRequest": "Submit Request",
-      "availability": "Default Availability",
+      "availability": "Default Weekly Availability",
       "schedules": "Schedule List",
       "detail": "Detail",
       "edit": "Edit",

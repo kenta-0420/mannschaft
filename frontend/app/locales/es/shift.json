@@ -68,15 +68,16 @@
       "error": "Error al generar el PDF"
     },
     "myShifts": {
-      "title": "Mis Turnos",
+      "title": "Mis solicitudes de turno",
       "empty": "No hay turnos",
-      "fetchError": "Error al obtener la información de turnos"
+      "fetchError": "Error al obtener la información de turnos",
+      "description": "Solicitudes enviadas y su estado de aprobación"
     },
     "page": {
       "title": "Turno",
       "myShift": "Mi Turno",
       "submitRequest": "Enviar Solicitud",
-      "availability": "Disponibilidad por Defecto",
+      "availability": "Preferencias semanales por defecto",
       "schedules": "Lista de Horarios",
       "detail": "Detalle",
       "edit": "Editar",

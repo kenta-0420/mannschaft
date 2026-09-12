@@ -2399,7 +2399,7 @@
       },
       "shift": {
         "label": "Mis turnos",
-        "description": "Consulta tus propios turnos"
+        "description": "Calendario de tus asignaciones confirmadas"
       },
       "reservations": {
         "label": "Mis reservas",
