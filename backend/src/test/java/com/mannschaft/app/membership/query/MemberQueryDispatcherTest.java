@@ -194,11 +194,30 @@ class MemberQueryDispatcherTest {
      * 是正前は {@code TeamService#getMembers} が {@code queryMembers}（常に全員を実体化し、
      * ユーザー 1 人ごとに users を引く N+1）を呼んでからメモリ上で切り出していたため、
      * 1 ページ取るたびに全員ぶんの処理が走り、全ページを取ると総処理量が N^2/ページサイズになった。
-     * {@code queryMembersPage} はページ内のぶんだけ実体化することでこれを O(N) に戻す。
+     * {@code queryMemberIdentities}（軽い行を全件）+ {@code hydrate}（ページ内だけ実体化）は
+     * これを O(N) に戻す。
      */
     @org.junit.jupiter.api.Nested
-    @DisplayName("queryMembersPage（ページ内のみ実体化）")
+    @DisplayName("queryMemberIdentities + hydrate（ページ内のみ実体化）")
     class QueryMembersPage {
+
+        /**
+         * {@code TeamService#getMembers} と同じ手順でページを組み立てる。
+         *
+         * <p>総件数は「絞り込み後の全件」であり、ページ内の件数ではない
+         * （番人 {@code PagingTotalCountSizeGuardTest} が禁じているすり替えをしていないこと）。</p>
+         */
+        private Page<MemberDto> pageOf(Pageable pageable) {
+            List<MemberDto> identities = dispatcher.queryMemberIdentities(100L, ScopeType.TEAM, null);
+            long totalElements = identities.size();
+            int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
+            int size = pageable.isPaged() ? pageable.getPageSize() : (int) totalElements;
+            int fromIndex = page * size;
+            int toIndex = Math.min(fromIndex + size, identities.size());
+            List<MemberDto> slice = fromIndex >= identities.size()
+                    ? List.of() : identities.subList(fromIndex, toIndex);
+            return new PageImpl<>(dispatcher.hydrate(slice), pageable, totalElements);
+        }
 
         private void givenTeamWithMembers(int memberCount) {
             List<MembershipEntity> memberships = new java.util.ArrayList<>();
@@ -219,8 +238,7 @@ class MemberQueryDispatcherTest {
             givenTeamWithMembers(250);
             given(userRepository.findMemberSummariesByIds(any())).willReturn(List.of());
 
-            Page<MemberDto> page = dispatcher.queryMembersPage(
-                    100L, ScopeType.TEAM, null, Pageable.ofSize(100).withPage(1));
+            Page<MemberDto> page = pageOf(Pageable.ofSize(100).withPage(1));
 
             assertThat(page.getContent()).hasSize(100);
             assertThat(page.getTotalElements()).isEqualTo(250);
@@ -244,8 +262,7 @@ class MemberQueryDispatcherTest {
             givenTeamWithMembers(250);
             given(userRepository.findMemberSummariesByIds(any())).willReturn(List.of());
 
-            Page<MemberDto> page = dispatcher.queryMembersPage(
-                    100L, ScopeType.TEAM, null, Pageable.ofSize(100).withPage(2));
+            Page<MemberDto> page = pageOf(Pageable.ofSize(100).withPage(2));
 
             assertThat(page.getContent()).hasSize(50);
             assertThat(page.getTotalElements()).isEqualTo(250);
@@ -256,8 +273,7 @@ class MemberQueryDispatcherTest {
         void 範囲外ページは空() {
             givenTeamWithMembers(10);
 
-            Page<MemberDto> page = dispatcher.queryMembersPage(
-                    100L, ScopeType.TEAM, null, Pageable.ofSize(100).withPage(5));
+            Page<MemberDto> page = pageOf(Pageable.ofSize(100).withPage(5));
 
             assertThat(page.getContent()).isEmpty();
             assertThat(page.getTotalElements()).isEqualTo(10);
@@ -283,8 +299,7 @@ class MemberQueryDispatcherTest {
             given(roleRepository.findAllById(List.of(2L))).willReturn(List.of(role(2L, "ADMIN")));
             given(userRepository.findMemberSummariesByIds(any())).willReturn(List.of());
 
-            Page<MemberDto> page = dispatcher.queryMembersPage(
-                    100L, ScopeType.TEAM, null, Pageable.ofSize(100).withPage(0));
+            Page<MemberDto> page = pageOf(Pageable.ofSize(100).withPage(0));
 
             assertThat(page.getTotalElements()).isEqualTo(200);
             assertThat(page.getContent()).hasSize(100);
@@ -312,8 +327,7 @@ class MemberQueryDispatcherTest {
                     .willReturn(new PageImpl<>(List.of(m)));
             given(userRepository.findMemberSummariesByIds(any())).willReturn(List.of());
 
-            Page<MemberDto> page = dispatcher.queryMembersPage(
-                    100L, ScopeType.TEAM, null, Pageable.unpaged());
+            Page<MemberDto> page = pageOf(Pageable.unpaged());
 
             // 同一 user の ADMIN(user_roles) と MEMBER(memberships) は 1 行に畳まれ ADMIN が勝つ
             assertThat(page.getContent()).hasSize(1);
