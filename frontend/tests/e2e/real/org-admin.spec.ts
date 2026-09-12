@@ -60,6 +60,11 @@ test.describe('ORG-ADMIN-001〜005: MEMBER ロールでの管理機能アクセ�
   let orgId: string
 
   test.beforeAll(async ({ browser }) => {
+    const configuredOrgId = process.env.E2E_SHARED_ORG_ID
+    if (configuredOrgId?.match(/^\d+$/)) {
+      orgId = configuredOrgId
+      return
+    }
     const page = await browser.newPage()
     await loginIfNeeded(page)
     orgId = await getOrgId(page)
