@@ -2,6 +2,7 @@
 import dayjs from 'dayjs'
 import {
   MEMBER_PAGE_SIZE,
+  shouldShowPaginator,
   useHourlyRateMemberPage,
   type MemberRateRow,
 } from '~/composables/shift/useHourlyRateMemberPage'
@@ -49,6 +50,8 @@ const formEffectiveFrom = ref<Date>(new Date())
 const missingCount = computed(() => rows.value.filter(r => r.rate === null).length)
 /** 全員が 1 ページに収まっているか（＝未設定件数をチーム全体の数として言い切れるか）。 */
 const isSinglePage = computed(() => totalPages.value <= 1)
+/** 1 ページに収まらないならページャーを出す（出ないと 101 人目以降へ到達できない）。 */
+const showPaginator = computed(() => shouldShowPaginator(totalRecords.value))
 
 /** 数値 teamId を解決する。時給 API は slug ではなく数値 ID を要求するため必須。 */
 async function resolveTeamNumericId(): Promise<number> {
@@ -190,7 +193,7 @@ onMounted(async () => {
           striped-rows
           data-key="member.userId"
           data-testid="hourly-rate-table"
-          :paginator="totalRecords > MEMBER_PAGE_SIZE"
+          :paginator="showPaginator"
           :rows="MEMBER_PAGE_SIZE"
           :total-records="totalRecords"
           :first="firstRow"

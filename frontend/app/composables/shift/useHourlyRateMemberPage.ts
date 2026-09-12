@@ -47,6 +47,19 @@ export const MEMBER_PAGE_SIZE = 100
  * 「時給未設定 N 名」をチーム全体の正確な件数として出せる（{@link HourlyRateMemberPage.totalPages} で判別する）。
  * 1 ページに収まらないチームでは、未設定の件数は表示中のページに限った数として扱う。
  */
+/**
+ * ページャーを表示すべきか（CMP-260910-1555）。
+ *
+ * 1 ページに収まらないなら表示する。ここを誤ると 101 人目以降のメンバーに
+ * 画面から到達できなくなり、そのメンバーの時給を設定できない。
+ * 判定を純粋関数として切り出してあるのは、この 1 行をテストで直接押さえるため。
+ *
+ * @param totalElements チームの総メンバー数
+ */
+export function shouldShowPaginator(totalElements: number): boolean {
+  return totalElements > MEMBER_PAGE_SIZE
+}
+
 export function useHourlyRateMemberPage() {
   const { getMembers } = useTeamMembers()
   const { getHourlyRate } = useShiftHourlyRateApi()
@@ -84,7 +97,11 @@ export function useHourlyRateMemberPage() {
 
     return {
       rows,
-      totalElements: res.meta?.totalElements ?? members.length,
+      // BE の `PagedResponse.PageMeta` が送る総件数フィールドは `total`。
+      // `totalElements` は型にだけ存在して BE は送らないため、そちらを先に読むと
+      // 常に undefined になり、ページャーの表示判定が永久に偽になる（101 人目以降へ到達できない）。
+      // 互換のため total が無いときだけ totalElements を見る。
+      totalElements: res.meta?.total ?? res.meta?.totalElements ?? members.length,
       totalPages: res.meta?.totalPages ?? 1,
     }
   }
