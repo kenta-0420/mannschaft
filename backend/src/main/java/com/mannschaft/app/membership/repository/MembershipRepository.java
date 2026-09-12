@@ -254,6 +254,21 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("scopeType") ScopeType scopeType,
             @Param("scopeId") Long scopeId);
 
+    /** 複数スコープの現役メンバー数を 1 SQL で返す（所属一覧の N+1 回避用）。 */
+    @Query("SELECT m.scopeId AS scopeId, COUNT(DISTINCT m.userId) AS memberCount " +
+            "FROM MembershipEntity m " +
+            "WHERE m.scopeType = :scopeType AND m.scopeId IN :scopeIds AND m.leftAt IS NULL " +
+            "GROUP BY m.scopeId")
+    List<ScopeMemberCountProjection> countActiveDistinctUsersByScopes(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeIds") Collection<Long> scopeIds);
+
+    interface ScopeMemberCountProjection {
+        Long getScopeId();
+
+        long getMemberCount();
+    }
+
     /**
      * F10.1.1 / P3b Wave2: 指定スコープのアクティブ会員の user_id 集合（DISTINCT）を返す。
      *
