@@ -43,6 +43,7 @@ public class RegisterRequest {
     @Size(max = 50)
     private final String nickname;
 
+    @Size(max = 20)
     private final String postalCode;
     private final String locale;
 

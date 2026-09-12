@@ -47,7 +47,8 @@
       "leagueTransfers": "リーグ移籍",
       "adminConsole": "管理コンソール",
       "receipts": "領収書",
-      "receiptSettings": "領収書の発行者設定"
+      "receiptSettings": "領収書の発行者設定",
+      "hourlyRate": "時給設定"
     }
   }
 }
