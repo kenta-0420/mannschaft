@@ -420,6 +420,14 @@ class SecurityConfigAuthorizationTest {
 
     @Test
     @WithAnonymousUser
+    @DisplayName("匿名: GET /api/v1/postal-code/policies は認証で弾かれない")
+    void anonymous_postal_code_policies_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(mockMvc.perform(get("/api/v1/postal-code/policies")),
+                "GET /api/v1/postal-code/policies");
+    }
+
+    @Test
+    @WithAnonymousUser
     @DisplayName("BC-11: 匿名のGET /api/v1/public/billing/plans は認証で弾かれない")
     void anonymous_public_billing_plans_get_not_auth_rejected() throws Exception {
         expectNotAuthRejected(mockMvc.perform(get("/api/v1/public/billing/plans")),
