@@ -1,5 +1,14 @@
 {
   "shift": {
+    "availability": {
+      "allDay": "All day",
+      "startTime": "Start time",
+      "endTime": "End time",
+      "timeRangeInvalid": "Start time must be earlier than end time",
+      "notConfigured": "Not configured yet. Set your preference and hours for each day, then save.",
+      "loadError": "Could not load your default availability",
+      "retry": "Retry"
+    },
     "board": {
       "title": "Shift Board",
       "memberPool": "Unassigned Members",

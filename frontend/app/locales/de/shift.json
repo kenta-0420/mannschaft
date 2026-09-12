@@ -1,5 +1,14 @@
 {
   "shift": {
+    "availability": {
+      "allDay": "Ganztägig",
+      "startTime": "Startzeit",
+      "endTime": "Endzeit",
+      "timeRangeInvalid": "Die Startzeit muss vor der Endzeit liegen",
+      "notConfigured": "Noch nicht konfiguriert. Lege Präferenz und Zeitraum je Wochentag fest und speichere.",
+      "loadError": "Standardverfügbarkeit konnte nicht geladen werden",
+      "retry": "Erneut versuchen"
+    },
     "board": {
       "title": "Schichtplan-Board",
       "memberPool": "Nicht zugewiesene Mitglieder",
