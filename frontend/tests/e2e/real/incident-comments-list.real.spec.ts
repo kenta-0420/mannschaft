@@ -101,7 +101,7 @@ test('CMP-019: public/internal・報告者/担当者・404秘匿・削除済み�
     expect(reporterTeams.length, '報告者が所属するチーム').toBeGreaterThan(0)
     const reporterTeamIds = new Set(reporterTeams.map((team) => team.id))
     const adminTeams = await teams(api, admin.token)
-    const ownTeam = reporterTeams[0]
+    const ownTeam = reporterTeams[0]!
     expect(adminTeams.some((team) => team.id === ownTeam.id), '管理者が報告者チームに所属').toBe(true)
     expect((await teams(api, assignee.token)).some((team) => team.id === ownTeam.id), 'E2E担当者は事前には報告者チームに所属しない').toBe(false)
     mysql(`INSERT INTO memberships (user_id,scope_type,scope_id,role_kind,joined_at,created_at,updated_at)
