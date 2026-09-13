@@ -701,6 +701,11 @@ public class TimelinePostService {
         ScopeResolution scope = resolveScope(
                 post.getScopeType().name(), post.getScopeId(), userId);
         for (TimelinePostAttachmentEntity att : attachments) {
+            if (isStorageBacked(att) && att.getFileKey() != null && !att.getFileKey().isBlank()) {
+                storageAclService.releaseClaimed(att.getFileKey(),
+                        new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", att.getId().toString()));
+            }
+
             if (att.getFileSize() == null || att.getFileSize() <= 0) {
                 continue;
             }

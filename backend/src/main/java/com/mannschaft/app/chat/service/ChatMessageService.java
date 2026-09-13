@@ -323,6 +323,7 @@ public class ChatMessageService {
             for (ChatMessageAttachmentEntity attachment : attachments) {
                 chatAttachmentService.recordAttachmentDeletion(
                         channel, attachment, userId, message.getSenderId());
+                chatAttachmentService.releaseMessageAttachment(attachment);
             }
         }
 

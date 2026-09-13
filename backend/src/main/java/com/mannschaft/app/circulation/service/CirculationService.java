@@ -446,6 +446,10 @@ public class CirculationService {
         // （または SYSTEM_ADMIN）のみ許可する。
         checkScopeAdminAccess(entity, SecurityUtils.getCurrentUserId());
 
+        for (CirculationAttachmentEntity attachment : attachmentRepository.findByDocumentIdOrderByCreatedAtAsc(documentId)) {
+            storageAclService.releaseClaimed(attachment.getFileKey(),
+                    new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", attachment.getId().toString()));
+        }
         entity.softDelete();
         documentRepository.save(entity);
         applicationEventPublisher.publishEvent(new CirculationDocumentDeletedEvent(documentId));
@@ -680,6 +684,8 @@ public class CirculationService {
         attachmentRepository.delete(attachment);
         document.decrementAttachmentCount();
         documentRepository.save(document);
+        storageAclService.releaseClaimed(fileKey,
+                new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", attachment.getId().toString()));
 
         // R2 オブジェクト削除（ベストエフォート）
         if (fileKey != null && r2StorageService != null) {

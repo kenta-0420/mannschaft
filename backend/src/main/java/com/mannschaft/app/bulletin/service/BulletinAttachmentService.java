@@ -305,6 +305,14 @@ public class BulletinAttachmentService {
      * @param attachmentId 添付ファイル ID
      * @param userId       操作ユーザー ID
      */
+    void releaseAttachments(TargetType targetType, Long targetId) {
+        for (BulletinAttachmentEntity attachment : attachmentRepository
+                .findByTargetTypeAndTargetIdOrderByCreatedAtAsc(targetType, targetId)) {
+            storageAclService.releaseClaimed(attachment.getFileKey(),
+                    new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", attachment.getId().toString()));
+        }
+    }
+
     @Transactional
     public void deleteAttachment(Long attachmentId, Long userId) {
         BulletinAttachmentEntity attachment = attachmentRepository.findById(attachmentId)
@@ -321,6 +329,8 @@ public class BulletinAttachmentService {
         attachmentRepository.delete(attachment);
 
         // R2 ベストエフォート削除
+        storageAclService.releaseClaimed(fileKey,
+                new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", attachment.getId().toString()));
         if (fileKey != null) {
             try {
                 storageService.delete(fileKey);

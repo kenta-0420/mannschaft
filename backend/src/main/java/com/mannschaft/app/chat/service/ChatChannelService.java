@@ -14,7 +14,9 @@ import com.mannschaft.app.chat.dto.UpdateChannelRequest;
 import com.mannschaft.app.chat.dto.UpdateInquiryChannelRequest;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
+import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
+import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
@@ -48,6 +50,7 @@ public class ChatChannelService {
     private final ChatChannelRepository channelRepository;
     private final ChatChannelMemberRepository memberRepository;
     private final ChatMessageRepository messageRepository;
+    private final ChatMessageAttachmentRepository attachmentRepository;
     private final ChatMapper chatMapper;
     private final UserRepository userRepository;
     private final ChatChannelEventPublisher eventPublisher;
@@ -284,6 +287,7 @@ public class ChatChannelService {
         validateNotArchived(channel);
         boolean iconChanged = request.getIconKey() != null && !request.getIconKey().equals(channel.getIconKey());
 
+        String previousIconKey = channel.getIconKey();
         channel.updateInfo(
                 request.getName() != null ? request.getName() : channel.getName(),
                 request.getDescription() != null ? request.getDescription() : channel.getDescription(),
@@ -293,6 +297,7 @@ public class ChatChannelService {
         ChatChannelEntity saved = channelRepository.save(channel);
         if (iconChanged) {
             chatAttachmentService.claimChannelIcon(saved, userId, request.getIconKey());
+            chatAttachmentService.releaseChannelIcon(saved, previousIconKey);
         }
         log.info("チャンネル更新完了: channelId={}", channelId);
         return chatMapper.toChannelResponse(saved);
@@ -308,6 +313,14 @@ public class ChatChannelService {
     public void deleteChannel(Long channelId, Long userId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
         checkChannelAdminAccess(channel, userId);
+        if (channel.getIconKey() != null && !channel.getIconKey().isBlank()) {
+            chatAttachmentService.releaseChannelIcon(channel, channel.getIconKey());
+        }
+        for (ChatMessageEntity message : messageRepository.findByChannelIdOrderByCreatedAtAsc(channelId)) {
+            for (ChatMessageAttachmentEntity attachment : attachmentRepository.findByMessageId(message.getId())) {
+                chatAttachmentService.releaseMessageAttachment(attachment);
+            }
+        }
         channel.softDelete();
         channelRepository.save(channel);
         log.info("チャンネル削除完了: channelId={}", channelId);
