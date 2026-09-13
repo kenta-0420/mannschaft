@@ -23,7 +23,16 @@ public enum StorageErrorCode implements ErrorCode {
      * ERROR（既定500）に是正する。</p>
      */
     DELETE_FAILED("STORAGE_003", "ファイルの削除に失敗しました", Severity.ERROR),
-    PRESIGNED_URL_FAILED("STORAGE_004", "署名付きURLの生成に失敗しました", Severity.ERROR);
+    PRESIGNED_URL_FAILED("STORAGE_004", "署名付きURLの生成に失敗しました", Severity.ERROR),
+
+    /** 404: 対象が存在しない、または所有者・所有スコープが一致しない。存在秘匿を優先する。 */
+    ACL_NOT_FOUND("STORAGE_005", "ストレージオブジェクトが見つかりません", Severity.WARN),
+    /** 403: 所有者が特定済みのACLに対し、親コンテンツの認可を満たさない。 */
+    ACL_FORBIDDEN("STORAGE_006", "このストレージオブジェクトを操作する権限がありません", Severity.WARN),
+    /** 409: claim 済み、期限切れ、または状態不正でACLを添付先へ束縛できない。 */
+    ACL_CLAIM_CONFLICT("STORAGE_007", "ストレージオブジェクトを添付先へ束縛できません", Severity.WARN),
+    /** 400: ACLスコープまたは入力値が不正。 */
+    ACL_INVALID_REQUEST("STORAGE_008", "ストレージACLの入力値が不正です", Severity.WARN);
 
     private final String code;
     private final String message;
