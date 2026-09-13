@@ -1158,5 +1158,34 @@ class ScheduleAttendanceServiceTest {
             // includeSupporters=true で母集団解決が呼ばれることを検証
             verify(organizationMembershipService).resolveMemberTeams(ORG_ID, true);
         }
+
+        @Test
+        @DisplayName("チーム別CSVは数式接頭辞とCRLF・引用符・カンマを安全に出力する")
+        void チーム別CSVは数式接頭辞と制御文字を無害化する() {
+            given(scheduleService.getSchedule(ORG_SCHEDULE_ID)).willReturn(orgSchedule(true, false));
+            given(attendanceRepository.countByScheduleIdGroupByStatus(ORG_SCHEDULE_ID))
+                    .willReturn(statusCounts(java.util.Map.of(AttendanceStatus.ATTENDING, 1L)));
+            given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(ORG_SCHEDULE_ID))
+                    .willReturn(List.of(attendance(901L, AttendanceStatus.ATTENDING)));
+            given(organizationMembershipService.resolveMemberTeams(ORG_ID, false)).willReturn(java.util.Map.of(
+                    901L, List.of(
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(11L, "=formula"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(12L, "+formula"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(13L, "-formula"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(14L, "@formula"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(15L, "carriage\rreturn"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(16L, "line\nfeed"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(17L, "both\r\nends"),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(18L, "say \"hello\""),
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(19L, "comma,name"))));
+
+            String csv = attendanceService.exportAttendanceTeamBreakdownCsv(ORG_SCHEDULE_ID);
+
+            assertThat(csv).contains("'=formula,1,0,0,0,1", "'+formula,1,0,0,0,1",
+                    "'-formula,1,0,0,0,1", "'@formula,1,0,0,0,1");
+            assertThat(csv).contains("\"carriage\rreturn\",1,0,0,0,1",
+                    "\"line\nfeed\",1,0,0,0,1", "\"both\r\nends\",1,0,0,0,1",
+                    "\"say \"\"hello\"\"\",1,0,0,0,1", "\"comma,name\",1,0,0,0,1");
+        }
     }
 }

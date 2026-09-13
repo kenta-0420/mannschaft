@@ -67,7 +67,6 @@ import static org.junit.jupiter.api.Assertions.assertTimeout;
  * <ul>
  *   <li>{@code com.mannschaft.app.chat.service.ChatMessageArchiveBatchService}</li>
  *   <li>{@code com.mannschaft.app.auth.service.AuditLogArchiveBatchService}</li>
- *   <li>{@code com.mannschaft.app.advertising.service.SpotlightServingService}</li>
  *   <li>{@code com.mannschaft.app.weather.service.GeonamesImportService}</li>
  * </ul>
  *
@@ -294,8 +293,8 @@ class RawSqlTimeColumnGuardTest {
     }
 
     /** 返済台帳のスナップショット（CMP-260909-1446 実装時点）。減ったら追随更新し、増やしてはならない。 */
-    private static final int EXPECTED_FROZEN_SQL_LOCAL_TIME_FUNCTION = 40;
-    private static final int EXPECTED_FROZEN_TIME_COLUMN_JAVA_BOUND = 55;
+    private static final int EXPECTED_FROZEN_SQL_LOCAL_TIME_FUNCTION = 36;
+    private static final int EXPECTED_FROZEN_TIME_COLUMN_JAVA_BOUND = 54;
     private static final int EXPECTED_FROZEN_RAW_SQL_ENTITY_TIME_GETTER = 4;
 
     // ────────────────────────────────────────────────────────────

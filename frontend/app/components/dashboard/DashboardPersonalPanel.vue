@@ -43,6 +43,9 @@ const loading = ref(true)
 
 onMounted(async () => {
   loading.value = true
+  // 広告掲載面は任意機能の初期取得と独立させる。いずれかのウィジェット API が失敗しても
+  // Spotlight の配信・計測導線まで巻き添えにしない。
+  void loadSpotlight()
   try {
     await Promise.all([
       teamStore.fetchMyTeams(),
@@ -52,8 +55,6 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-  // 広告掲載面は非必須のため loading ゲートとは独立に取得する（失敗してもページを止めない）。
-  void loadSpotlight()
 })
 
 // 個人ダッシュボードウィジェット（DB 永続化・対象3-B）

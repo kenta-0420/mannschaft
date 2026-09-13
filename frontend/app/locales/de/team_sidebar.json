@@ -47,7 +47,8 @@
       "leagueTransfers": "Liga-Transfers",
       "adminConsole": "Administrationskonsole",
       "receipts": "Belege",
-      "receiptSettings": "Aussteller-Einstellungen für Belege"
+      "receiptSettings": "Aussteller-Einstellungen für Belege",
+      "hourlyRate": "時給設定"
     }
   }
 }
