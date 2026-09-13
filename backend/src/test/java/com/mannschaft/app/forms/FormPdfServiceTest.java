@@ -5,6 +5,9 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.StorageErrorCode;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.forms.dto.FormPdfDownloadUrlResponse;
 import com.mannschaft.app.forms.dto.FormPdfGenerateResponse;
 import com.mannschaft.app.forms.entity.FormSubmissionEntity;
@@ -47,6 +50,8 @@ class FormPdfServiceTest {
     @Mock private FormTemplateFieldRepository fieldRepository;
     @Mock private PdfGeneratorService pdfGeneratorService;
     @Mock private StorageService storageService;
+    @Mock private StorageAclService storageAclService;
+    @Mock private StorageAccessService storageAccessService;
     @Mock private AuditLogService auditLogService;
     @Mock private AccessControlService accessControlService;
 
@@ -85,6 +90,9 @@ class FormPdfServiceTest {
         assertThat(response.getPdfFileKey()).startsWith("forms/teams/7/submissions/200/");
         assertThat(submission.getPdfFileKey()).isEqualTo(response.getPdfFileKey());
         verify(storageService).upload(anyString(), any(byte[].class), anyString());
+        verify(storageAclService).registerPending(anyString(), anyLong(), any(),
+                anyString(), any(Duration.class), any());
+        verify(storageAclService).claimPending(anyString(), anyLong(), any(), any(), any());
     }
 
     @Test
@@ -149,7 +157,7 @@ class FormPdfServiceTest {
         FormTemplateEntity template = template(99L);
         given(submissionRepository.findById(anyLong())).willReturn(Optional.of(submission));
         given(templateRepository.findById(anyLong())).willReturn(Optional.of(template));
-        given(storageService.generateDownloadUrl(anyString(), any(Duration.class)))
+        given(storageAccessService.generateDownloadUrl(anyString(), any(), any(), any(), any(Duration.class)))
                 .willReturn("https://example.com/signed");
 
         FormPdfDownloadUrlResponse response =
@@ -157,5 +165,21 @@ class FormPdfServiceTest {
 
         assertThat(response.getDownloadUrl()).isEqualTo("https://example.com/signed");
         assertThat(response.getExpiresIn()).isEqualTo(300L);
+    }
+
+    @Test
+    @DisplayName("ACL の親または binding が一致しない PDF は URL を発行しない")
+    void downloadUrl_AclMismatch_ThrowsNotFound() {
+        FormSubmissionEntity submission = submittedSubmission(10L);
+        submission.setPdfFileKey("forms/teams/7/submissions/200/form_200_1.pdf");
+        FormTemplateEntity template = template(99L);
+        given(submissionRepository.findById(anyLong())).willReturn(Optional.of(submission));
+        given(templateRepository.findById(anyLong())).willReturn(Optional.of(template));
+        given(storageAccessService.generateDownloadUrl(anyString(), any(), any(), any(), any(Duration.class)))
+                .willThrow(new BusinessException(StorageErrorCode.ACL_NOT_FOUND));
+
+        assertThatThrownBy(() -> formPdfService.generateDownloadUrl("teams", 7L, 200L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining(StorageErrorCode.ACL_NOT_FOUND.getMessage());
     }
 }
