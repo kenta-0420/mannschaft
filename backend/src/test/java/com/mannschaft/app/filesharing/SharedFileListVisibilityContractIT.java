@@ -1,9 +1,15 @@
 package com.mannschaft.app.filesharing;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
+import com.mannschaft.app.filesharing.entity.SharedFileVersionEntity;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileRepository;
+import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
 import com.mannschaft.app.filesharing.repository.SharedFolderRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +21,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.Duration;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -57,6 +66,10 @@ class SharedFileListVisibilityContractIT extends AbstractMySqlIntegrationTest {
     private SharedFolderRepository folderRepository;
     @Autowired
     private SharedFileRepository fileRepository;
+    @Autowired
+    private SharedFileVersionRepository versionRepository;
+    @Autowired
+    private StorageAclService storageAclService;
 
     /** クロスドメインのロール解決は user/team ドメイン依存。ロールを模擬するため mock 化する。 */
     @MockitoBean
@@ -72,6 +85,7 @@ class SharedFileListVisibilityContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        versionRepository.deleteAll();
         fileRepository.deleteAll();
         folderRepository.deleteAll();
 
@@ -89,9 +103,20 @@ class SharedFileListVisibilityContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private void saveFile(String name, FileVisibilityRole minRole) {
-        fileRepository.save(SharedFileEntity.builder()
-                .folderId(folderId).name(name).fileKey("team/9500/" + name)
+        String fileKey = "team/9500/" + UUID.randomUUID() + "/" + name;
+        SharedFileEntity file = fileRepository.save(SharedFileEntity.builder()
+                .folderId(folderId).name(name).fileKey(fileKey)
                 .fileSize(1024L).contentType("application/pdf").minVisibleRole(minRole).createdBy(1L).build());
+        SharedFileVersionEntity version = versionRepository.save(SharedFileVersionEntity.builder()
+                .fileId(file.getId()).versionNumber(1).fileKey(fileKey)
+                .fileSize(1024L).contentType("application/pdf").uploadedBy(1L).build());
+        StorageAclScope scope = StorageAclScope.team(TEAM_ID);
+        StorageAclContentReference parent =
+                new StorageAclContentReference("SHARED_FOLDER", folderId.toString());
+        storageAclService.registerPending(
+                fileKey, 1L, scope, "application/pdf", Duration.ofMinutes(15), parent);
+        storageAclService.claimPending(fileKey, 1L, scope, parent,
+                new StorageAclAttachmentBinding("SHARED_FILE_VERSION", version.getId().toString()));
     }
 
     /** hasRoleOrAbove を段階的に許可する（requiredRoleName 単位で満たすか）。 */

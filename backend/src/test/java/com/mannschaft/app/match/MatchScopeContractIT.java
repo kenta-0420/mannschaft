@@ -1,6 +1,10 @@
 package com.mannschaft.app.match;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.match.domain.HomeAway;
 import com.mannschaft.app.match.domain.MatchEventType;
 import com.mannschaft.app.match.domain.MatchKind;
@@ -34,6 +38,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -136,6 +141,9 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private MatchAttachmentRepository matchAttachmentRepository;
+
+    @Autowired
+    private StorageAclService storageAclService;
 
     @PersistenceContext
     private EntityManager em;
@@ -1083,14 +1091,23 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
 
     /** 指定試合に局面写真添付を 1 件作る。 */
     private UUID insertAttachment(UUID matchId, Long createdBy, String fileKey) {
-        return matchAttachmentRepository.save(MatchAttachmentEntity.builder()
+        MatchAttachmentEntity attachment = matchAttachmentRepository.save(MatchAttachmentEntity.builder()
                 .matchId(matchId)
                 .fileKey(fileKey)
                 .originalFilename("position.png")
                 .contentType("image/png")
                 .fileSize(1024L)
                 .createdBy(createdBy)
-                .build()).getId();
+                .build());
+        Long organizationId = matchRepository.findById(matchId).orElseThrow().getOrganizationId();
+        StorageAclScope scope = StorageAclScope.organization(organizationId);
+        StorageAclContentReference parent =
+                new StorageAclContentReference("MATCH", matchId.toString());
+        storageAclService.registerPending(
+                fileKey, createdBy, scope, "image/png", Duration.ofMinutes(15), parent);
+        storageAclService.claimPending(fileKey, createdBy, scope, parent,
+                new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attachment.getId().toString()));
+        return attachment.getId();
     }
 
     private Long insertUser(String email) {
