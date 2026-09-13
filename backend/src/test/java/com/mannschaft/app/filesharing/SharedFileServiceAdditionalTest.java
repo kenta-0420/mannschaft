@@ -3,6 +3,7 @@ package com.mannschaft.app.filesharing;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.filesharing.dto.FileResponse;
 import com.mannschaft.app.filesharing.dto.SharedFilePresignRequest;
 import com.mannschaft.app.filesharing.dto.SharedFilePresignResponse;
@@ -65,6 +66,9 @@ class SharedFileServiceAdditionalTest {
 
     @Mock
     private R2StorageService r2StorageService;
+
+    @Mock
+    private StorageAclService storageAclService;
 
     @Mock
     private FolderScopeAccessGuard folderScopeAccessGuard;

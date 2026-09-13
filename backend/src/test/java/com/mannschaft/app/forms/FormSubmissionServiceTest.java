@@ -2,9 +2,16 @@ package com.mannschaft.app.forms;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.forms.dto.CreateFormSubmissionRequest;
 import com.mannschaft.app.forms.dto.FormSubmissionResponse;
+import com.mannschaft.app.forms.dto.SubmissionValueRequest;
+import com.mannschaft.app.forms.dto.UpdateFormSubmissionRequest;
 import com.mannschaft.app.forms.entity.FormSubmissionEntity;
+import com.mannschaft.app.forms.entity.FormSubmissionValueEntity;
 import com.mannschaft.app.forms.entity.FormTemplateEntity;
 import com.mannschaft.app.forms.repository.FormSubmissionRepository;
 import com.mannschaft.app.forms.repository.FormSubmissionValueRepository;
@@ -23,6 +30,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -48,6 +57,9 @@ class FormSubmissionServiceTest {
 
     @Mock
     private com.mannschaft.app.common.storage.StorageService storageService;
+
+    @Mock
+    private StorageAclService storageAclService;
 
     @Mock
     private AccessControlService accessControlService;
@@ -416,6 +428,38 @@ class FormSubmissionServiceTest {
             verify(submissionRepository, org.mockito.Mockito.never())
                     .countByTemplateIdAndSubmittedBy(org.mockito.ArgumentMatchers.anyLong(),
                             org.mockito.ArgumentMatchers.anyLong());
+        }
+    }
+
+    @Nested
+    @DisplayName("updateSubmission ACL")
+    class UpdateSubmissionAcl {
+
+        @Test
+        @DisplayName("正常系: FILE 値をフォーム提出親参照と一意バインディングで claim する")
+        void FILE値保存時に正準scope_parent_bindingでACLをclaimする() {
+            FormSubmissionEntity submission = FormSubmissionEntity.builder()
+                    .id(SUBMISSION_ID).templateId(TEMPLATE_ID)
+                    .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).submittedBy(USER_ID)
+                    .build();
+            FormSubmissionValueEntity savedValue = FormSubmissionValueEntity.builder()
+                    .id(301L).submissionId(SUBMISSION_ID).fieldKey("evidence")
+                    .fieldType(FormFieldType.FILE).fileKey("forms/TEAM/1/submissions/200/evidence.pdf")
+                    .isAutoFilled(false).build();
+            UpdateFormSubmissionRequest request = new UpdateFormSubmissionRequest(false, List.of(
+                    new SubmissionValueRequest("evidence", "FILE", null, null, null,
+                            savedValue.getFileKey(), false)));
+            given(submissionRepository.findByIdAndSubmittedBy(SUBMISSION_ID, USER_ID))
+                    .willReturn(Optional.of(submission));
+            given(submissionRepository.save(submission)).willReturn(submission);
+            given(valueRepository.saveAll(any())).willReturn(List.of(savedValue));
+
+            formSubmissionService.updateSubmission(SUBMISSION_ID, USER_ID, request);
+
+            verify(storageAclService).claimPending(
+                    eq(savedValue.getFileKey()), eq(USER_ID), eq(StorageAclScope.team(SCOPE_ID)),
+                    eq(new StorageAclContentReference("FORM_SUBMISSION", SUBMISSION_ID.toString())),
+                    eq(new StorageAclAttachmentBinding("FORM_SUBMISSION_VALUE", "301")));
         }
     }
 }

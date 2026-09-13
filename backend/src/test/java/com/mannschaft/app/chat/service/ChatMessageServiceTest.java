@@ -142,6 +142,7 @@ class ChatMessageServiceTest {
 
     private ChatChannelEntity createChannel() {
         return ChatChannelEntity.builder()
+                .id(CHANNEL_ID)
                 .channelType(ChannelType.TEAM_PUBLIC)
                 .teamId(1L)
                 .name("テストチャンネル")
@@ -263,6 +264,7 @@ class ChatMessageServiceTest {
             MessageResponse expected = createMessageResponse();
             com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity attachmentEntity =
                     com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity.builder()
+                            .id(501L)
                             .messageId(MESSAGE_ID)
                             .fileKey("chat/uuid/x.png").fileName("x.png")
                             .fileSize(4096L).contentType("image/png").build();
@@ -277,6 +279,8 @@ class ChatMessageServiceTest {
             chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
 
             // then: 添付保存後に recordAttachmentUpload が呼ばれる
+            verify(chatAttachmentService).claimMessageAttachment(
+                    eq(channel), eq(attachmentEntity), eq(SENDER_ID));
             verify(chatAttachmentService).recordAttachmentUpload(
                     eq(channel), any(com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity.class), eq(SENDER_ID));
         }

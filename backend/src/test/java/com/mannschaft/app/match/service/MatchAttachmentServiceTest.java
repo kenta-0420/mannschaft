@@ -3,6 +3,10 @@ package com.mannschaft.app.match.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.domain.MatchStatus;
 import com.mannschaft.app.match.domain.Sport;
@@ -25,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -51,6 +56,8 @@ class MatchAttachmentServiceTest {
     private MatchAccessService matchAccessService;
     @Mock
     private StorageService storageService;
+    @Mock
+    private StorageAclService storageAclService;
 
     @InjectMocks
     private MatchAttachmentService service;
@@ -95,6 +102,9 @@ class MatchAttachmentServiceTest {
         // fileKey はクライアント入力ではなく server 採番（match/{org}/{matchId}/... 形式）
         assertThat(r.getFileKey()).startsWith("match/" + ORG + "/" + matchId + "/");
         verify(matchAccessService).assertCanRecordTimeline(ACTOR, match);
+        verify(storageAclService).registerPending(eq(r.getFileKey()), eq(ACTOR),
+                eq(StorageAclScope.organization(ORG)), eq("image/jpeg"), any(Duration.class),
+                eq(new StorageAclContentReference("MATCH", matchId.toString())));
     }
 
     @Test
@@ -211,6 +221,10 @@ class MatchAttachmentServiceTest {
         assertThat(saved.getMatchId()).isEqualTo(matchId);
         assertThat(saved.getContentType()).isEqualTo("image/png");
         verify(matchAccessService).assertCanRecordTimeline(ACTOR, match);
+        verify(storageAclService).claimPending(eq(cmd.getFileKey()), eq(ACTOR),
+                eq(StorageAclScope.organization(ORG)),
+                eq(new StorageAclContentReference("MATCH", matchId.toString())),
+                eq(new StorageAclAttachmentBinding("MATCH_ATTACHMENT", saved.getId().toString())));
     }
 
     @Test

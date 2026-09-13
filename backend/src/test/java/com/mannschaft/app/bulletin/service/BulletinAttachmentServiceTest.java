@@ -20,6 +20,10 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
@@ -84,6 +88,8 @@ class BulletinAttachmentServiceTest {
     @Mock
     private StorageService storageService;
     @Mock
+    private StorageAclService storageAclService;
+    @Mock
     private AuditLogService auditLogService;
     @Mock
     private com.mannschaft.app.tournament.service.TournamentContactAccessService tournamentContactAccessService;
@@ -95,22 +101,26 @@ class BulletinAttachmentServiceTest {
 
     private BulletinThreadEntity teamThread() {
         return BulletinThreadEntity.builder()
+                .id(THREAD_ID)
                 .scopeType(ScopeType.TEAM).scopeId(TEAM_ID).authorId(USER_ID).build();
     }
 
     private BulletinThreadEntity orgThread() {
         return BulletinThreadEntity.builder()
+                .id(THREAD_ID)
                 .scopeType(ScopeType.ORGANIZATION).scopeId(ORG_ID).authorId(USER_ID).build();
     }
 
     private BulletinThreadEntity villageThread() {
         return BulletinThreadEntity.builder()
+                .id(THREAD_ID)
                 .scopeType(ScopeType.VILLAGE).scopeId(0L)
                 .scopeVillageId(VILLAGE_ID).authorId(USER_ID).build();
     }
 
     private BulletinThreadEntity personalThread(Long ownerId) {
         return BulletinThreadEntity.builder()
+                .id(THREAD_ID)
                 .scopeType(ScopeType.PERSONAL).scopeId(ownerId).authorId(ownerId).build();
     }
 
@@ -149,6 +159,10 @@ class BulletinAttachmentServiceTest {
             assertThat(res.fileKey()).startsWith("bulletin/TEAM/" + TEAM_ID + "/THREAD/" + THREAD_ID + "/");
             verify(accessGuard).checkMembership(USER_ID, ScopeType.TEAM, TEAM_ID);
             verify(storageQuotaService).checkQuota(StorageScopeType.TEAM, TEAM_ID, 1024L);
+            verify(storageAclService).registerPending(
+                    org.mockito.ArgumentMatchers.startsWith("bulletin/TEAM/"), eq(USER_ID),
+                    eq(StorageAclScope.team(TEAM_ID)), eq("application/pdf"), any(Duration.class),
+                    eq(new StorageAclContentReference("BULLETIN_THREAD", THREAD_ID.toString())));
         }
 
         @Test
@@ -288,6 +302,10 @@ class BulletinAttachmentServiceTest {
             verify(storageQuotaService).recordUpload(
                     eq(StorageScopeType.ORGANIZATION), eq(ORG_ID), eq(1024L),
                     eq(StorageFeatureType.BULLETIN), any(), eq(ATTACHMENT_ID), eq(USER_ID));
+            verify(storageAclService).claimPending(
+                    eq("bulletin/k"), eq(USER_ID), eq(StorageAclScope.organization(ORG_ID)),
+                    eq(new StorageAclContentReference("BULLETIN_THREAD", THREAD_ID.toString())),
+                    eq(new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", ATTACHMENT_ID.toString())));
         }
 
         @Test
@@ -498,6 +516,7 @@ class BulletinAttachmentServiceTest {
 
         private BulletinThreadEntity tournamentThread() {
             return BulletinThreadEntity.builder()
+                    .id(THREAD_ID)
                     .scopeType(ScopeType.TOURNAMENT).scopeId(T_SCOPE_ID).authorId(USER_ID).build();
         }
 

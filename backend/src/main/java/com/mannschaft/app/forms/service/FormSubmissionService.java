@@ -4,6 +4,10 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.forms.FormErrorCode;
 import com.mannschaft.app.forms.FormFieldType;
 import com.mannschaft.app.forms.FormMapper;
@@ -47,6 +51,7 @@ public class FormSubmissionService {
     private final FormTemplateService templateService;
     private final FormMapper formMapper;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
     private final AccessControlService accessControlService;
 
     /** Pre-signed upload URL の有効期間（10 分）。設計書 §4 添付アップロード API 準拠。 */
@@ -199,7 +204,7 @@ public class FormSubmissionService {
 
         List<FormSubmissionValueEntity> values = List.of();
         if (request.getValues() != null && !request.getValues().isEmpty()) {
-            values = saveValues(saved.getId(), request.getValues());
+            values = saveValues(saved, request.getValues(), userId);
         }
 
         if (Boolean.TRUE.equals(request.getSubmitImmediately())) {
@@ -280,7 +285,7 @@ public class FormSubmissionService {
 
         List<FormSubmissionValueEntity> values = List.of();
         if (request.getValues() != null && !request.getValues().isEmpty()) {
-            values = saveValues(saved.getId(), request.getValues());
+            values = saveValues(saved, request.getValues(), userId);
         }
 
         if (submitNow) {
@@ -305,7 +310,6 @@ public class FormSubmissionService {
             Long submissionId, Long userId, UpdateFormSubmissionRequest request) {
         FormSubmissionEntity entity = submissionRepository.findByIdAndSubmittedBy(submissionId, userId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
-
         if (!entity.isEditable()) {
             FormTemplateEntity template = templateService.getTemplateEntity(entity.getTemplateId());
             if (!Boolean.TRUE.equals(template.getAllowEditAfterSubmit())) {
@@ -324,7 +328,7 @@ public class FormSubmissionService {
         List<FormSubmissionValueEntity> values;
         if (request.getValues() != null) {
             valueRepository.deleteBySubmissionId(submissionId);
-            values = saveValues(submissionId, request.getValues());
+            values = saveValues(saved, request.getValues(), userId);
         } else {
             values = valueRepository.findBySubmissionId(submissionId);
         }
@@ -539,11 +543,17 @@ public class FormSubmissionService {
      * @throws BusinessException SUBMISSION_NOT_FOUND / EDIT_AFTER_SUBMIT_NOT_ALLOWED
      *                           / UPLOAD_CONTENT_TYPE_INVALID / UPLOAD_SIZE_EXCEEDED
      */
+    @Transactional
     public FormUploadUrlResponse presignUploadUrl(
             String scopeType, Long scopeId, Long submissionId, Long userId,
             FormUploadUrlRequest request) {
         FormSubmissionEntity entity = submissionRepository.findByIdAndSubmittedBy(submissionId, userId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
+        if (!matchesScope(entity, scopeType, scopeId)) {
+            throw new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND);
+        }
+        String entityScopeType = FormScopes.canonical(entity.getScopeType());
+        Long entityScopeId = entity.getScopeId();
 
         // 編集可能ステータス（DRAFT / RETURNED）でのみ添付追加を許可する
         if (!entity.isEditable()) {
@@ -572,12 +582,14 @@ public class FormSubmissionService {
         String safeName = sanitizeFileName(request.getFileName());
         String fileKey = String.format(
                 "forms/%s/%d/submissions/%d/%s/%s/%s",
-                scopeType, scopeId, submissionId,
+                entityScopeType, entityScopeId, submissionId,
                 isSignature ? "signatures" : "attachments",
                 UUID.randomUUID(), safeName);
 
         PresignedUploadResult result = storageService.generateUploadUrl(
                 fileKey, normalizedType, UPLOAD_URL_TTL);
+        storageAclService.registerPending(result.s3Key(), userId, toAclScope(entityScopeType, entityScopeId), normalizedType,
+                UPLOAD_URL_TTL, new StorageAclContentReference("FORM_SUBMISSION", submissionId.toString()));
         log.info("フォーム upload-url 発行: submissionId={}, userId={}, fileKey={}",
                 submissionId, userId, fileKey);
         return new FormUploadUrlResponse(result.uploadUrl(), result.s3Key(), result.expiresInSeconds());
@@ -601,10 +613,10 @@ public class FormSubmissionService {
      * 提出値を一括保存する。
      */
     private List<FormSubmissionValueEntity> saveValues(
-            Long submissionId, List<SubmissionValueRequest> values) {
+            FormSubmissionEntity submission, List<SubmissionValueRequest> values, Long userId) {
         List<FormSubmissionValueEntity> entities = values.stream()
                 .map(v -> (FormSubmissionValueEntity) FormSubmissionValueEntity.builder()
-                        .submissionId(submissionId)
+                        .submissionId(submission.getId())
                         .fieldKey(v.getFieldKey())
                         .fieldType(FormFieldType.valueOf(v.getFieldType()))
                         .textValue(v.getTextValue())
@@ -614,6 +626,31 @@ public class FormSubmissionService {
                         .isAutoFilled(v.getIsAutoFilled() != null ? v.getIsAutoFilled() : false)
                         .build())
                 .toList();
-        return valueRepository.saveAll(entities);
+        List<FormSubmissionValueEntity> saved = valueRepository.saveAll(entities);
+        StorageAclScope scope = toAclScope(submission.getScopeType(), submission.getScopeId());
+        for (FormSubmissionValueEntity value : saved) {
+            if ((value.getFieldType() == FormFieldType.FILE || value.getFieldType() == FormFieldType.SIGNATURE)
+                    && value.getFileKey() != null && !value.getFileKey().isBlank()) {
+                storageAclService.claimPending(value.getFileKey(), userId, scope,
+                        new StorageAclContentReference("FORM_SUBMISSION", submission.getId().toString()),
+                        new StorageAclAttachmentBinding("FORM_SUBMISSION_VALUE", value.getId().toString()));
+            }
+        }
+        return saved;
+    }
+
+    private StorageAclScope toAclScope(String scopeType, Long scopeId) {
+        return "TEAM".equals(FormScopes.canonical(scopeType))
+                ? StorageAclScope.team(scopeId)
+                : StorageAclScope.organization(scopeId);
+    }
+
+    private boolean matchesScope(FormSubmissionEntity entity, String scopeType, Long scopeId) {
+        try {
+            return entity.getScopeId().equals(scopeId)
+                    && FormScopes.canonical(entity.getScopeType()).equals(FormScopes.canonical(scopeType));
+        } catch (BusinessException exception) {
+            return false;
+        }
     }
 }

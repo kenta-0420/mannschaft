@@ -348,9 +348,11 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("正当ADMINの添付登録は201")
         void 正当ADMINの添付登録は201() throws Exception {
             setAuth(adminAId);
+            String fileKey = presignAttachmentFileKey(transactionA.getId());
             mockMvc.perform(post("/api/v1/budget/transactions/{id}/attachments", transactionA.getId())
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(registerAttachmentBody(transactionA.getId()))))
+                            .content(objectMapper.writeValueAsString(
+                                    registerAttachmentBody(transactionA.getId(), fileKey))))
                     .andExpect(status().isCreated());
         }
 
@@ -618,13 +620,28 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Map<String, Object> registerAttachmentBody(Long transactionId) {
+        return registerAttachmentBody(transactionId, "budget/attachments/mock.pdf");
+    }
+
+    private Map<String, Object> registerAttachmentBody(Long transactionId, String fileKey) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("transactionId", transactionId);
         body.put("fileName", "receipt.pdf");
         body.put("fileType", "application/pdf");
         body.put("fileSize", 1024);
-        body.put("s3Key", "budget/attachments/mock.pdf");
+        body.put("s3Key", fileKey);
         return body;
+    }
+
+    private String presignAttachmentFileKey(Long transactionId) throws Exception {
+        String response = mockMvc.perform(post("/api/v1/budget/transactions/{id}/upload-url", transactionId)
+                        .param("fileName", "receipt.pdf")
+                        .param("contentType", "application/pdf"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response).path("data").path("s3Key").asText();
     }
 
     private Map<String, Object> createCategoryBody(Long fiscalYearId) {

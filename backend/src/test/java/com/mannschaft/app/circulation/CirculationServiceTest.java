@@ -4,15 +4,22 @@ import com.mannschaft.app.circulation.CirculationMode;
 import com.mannschaft.app.circulation.CirculationStatus;
 import com.mannschaft.app.circulation.dto.DocumentResponse;
 import com.mannschaft.app.circulation.dto.DocumentStatsResponse;
+import com.mannschaft.app.circulation.dto.CreateAttachmentRequest;
 import com.mannschaft.app.circulation.dto.UpdateDocumentRequest;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
+import com.mannschaft.app.circulation.entity.CirculationAttachmentEntity;
 import com.mannschaft.app.circulation.event.CirculationDocumentDeletedEvent;
 import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,6 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
 import org.springframework.context.ApplicationEventPublisher;
@@ -30,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -55,6 +64,9 @@ class CirculationServiceTest {
     /** F13 Phase 5-a: presignAttachmentUpload メソッド追加に伴い @Mock 追加（他テストへの影響なし）。 */
     @Mock
     private R2StorageService r2StorageService;
+
+    @Mock
+    private StorageAclService storageAclService;
 
     /** F09.14 Phase 4-C: deleteDocument 時のイベント発行検証用。 */
     @Mock
@@ -365,6 +377,41 @@ class CirculationServiceTest {
                 }
             }
             throw new NoSuchFieldException(name);
+        }
+    }
+
+    @Nested
+    @DisplayName("addAttachment ACL")
+    class AddAttachmentAcl {
+
+        @Test
+        @DisplayName("正常系: 文書スコープと添付バインディングで保留 ACL を claim する")
+        void 添付追加時に正準scope_parent_bindingでACLをclaimする() {
+            CirculationDocumentEntity document = CirculationDocumentEntity.builder()
+                    .id(DOCUMENT_ID)
+                    .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                    .title("文書").body("本文").build();
+            CirculationAttachmentEntity saved = CirculationAttachmentEntity.builder()
+                    .id(501L).documentId(DOCUMENT_ID)
+                    .fileKey("circulation/TEAM/1/100/file.pdf")
+                    .originalFilename("file.pdf").fileSize(1024L).mimeType("application/pdf")
+                    .build();
+            CreateAttachmentRequest request = new CreateAttachmentRequest(
+                    saved.getFileKey(), "file.pdf", 1024L, "application/pdf");
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(document));
+            given(attachmentRepository.save(any(CirculationAttachmentEntity.class))).willReturn(saved);
+
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+
+                circulationService.addAttachment(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID, request);
+            }
+
+            verify(storageAclService).claimPending(
+                    saved.getFileKey(), USER_ID, StorageAclScope.team(SCOPE_ID),
+                    new StorageAclContentReference("CIRCULATION_DOCUMENT", DOCUMENT_ID.toString()),
+                    new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", saved.getId().toString()));
         }
     }
 }

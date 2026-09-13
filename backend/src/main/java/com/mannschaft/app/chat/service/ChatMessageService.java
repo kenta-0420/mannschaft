@@ -711,6 +711,8 @@ public class ChatMessageService {
                     .build();
             ChatMessageAttachmentEntity saved = attachmentRepository.save(attachment);
 
+            chatAttachmentService.claimMessageAttachment(channel, saved, senderId);
+
             // F13 Phase 4-β: 添付 INSERT 直後に統合クォータ使用量を加算
             chatAttachmentService.recordAttachmentUpload(channel, saved, senderId);
 

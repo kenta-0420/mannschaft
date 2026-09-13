@@ -957,9 +957,10 @@ class WorkflowScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("登録: スコープメンバーは201")
         void 登録スコープメンバーは201() throws Exception {
             setAuth(otherMemberTeamAId);
+            String fileKey = presignAttachmentFileKey(inProgressRequestId);
             mockMvc.perform(post("/api/v1/workflow-requests/{id}/attachments", inProgressRequestId)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(registerBody(inProgressRequestId))))
+                            .content(objectMapper.writeValueAsString(registerBody(inProgressRequestId, fileKey))))
                     .andExpect(status().isCreated());
         }
     }
@@ -1016,7 +1017,8 @@ class WorkflowScopeContractIT extends AbstractMySqlIntegrationTest {
 
         private Long registerAttachment(Long uploaderUserId) throws Exception {
             setAuth(uploaderUserId);
-            String body = objectMapper.writeValueAsString(registerBody(inProgressRequestId));
+            String fileKey = presignAttachmentFileKey(inProgressRequestId);
+            String body = objectMapper.writeValueAsString(registerBody(inProgressRequestId, fileKey));
             String response = mockMvc.perform(post("/api/v1/workflow-requests/{id}/attachments",
                             inProgressRequestId)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -1086,11 +1088,27 @@ class WorkflowScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Map<String, Object> registerBody(Long requestId) {
+        return registerBody(
+                requestId, "workflow-attachments/" + requestId + "/" + java.util.UUID.randomUUID() + ".png");
+    }
+
+    private Map<String, Object> registerBody(Long requestId, String fileKey) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("fileKey", "workflow-attachments/" + requestId + "/" + java.util.UUID.randomUUID() + ".png");
+        body.put("fileKey", fileKey);
         body.put("originalFilename", "test.png");
         body.put("fileSize", 1024);
         return body;
+    }
+
+    private String presignAttachmentFileKey(Long requestId) throws Exception {
+        String response = mockMvc.perform(post("/api/v1/workflow-requests/{id}/upload-url", requestId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(presignBody())))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response).path("data").path("fileKey").asText();
     }
 
     private Long insertUser(String email) {
