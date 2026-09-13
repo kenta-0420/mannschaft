@@ -62371,6 +62371,7 @@ export interface components {
             /** Format: int64 */
             scheduleId?: number;
             time?: components["schemas"]["ShiftSlotTimeDto"];
+            warnings?: components["schemas"]["ShiftAssignmentWarningDto"][];
         };
         ShiftSlotTimeDto: {
             /** @example 14:30:00 */
@@ -62380,6 +62381,10 @@ export interface components {
             slotDate?: string;
             /** @example 14:30:00 */
             startTime?: string;
+        };
+        ShiftAssignmentWarningDto: {
+            code?: string;
+            conflictingSlotIds?: number[];
         };
         BulkCreateShiftSlotRequest: {
             slots?: components["schemas"]["CreateShiftSlotRequest"][];

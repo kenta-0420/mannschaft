@@ -588,6 +588,8 @@ public class GlobalExceptionHandler {
             Map.entry("SHIFT_026", HttpStatus.CONFLICT),
             Map.entry("SHIFT_031", HttpStatus.CONFLICT),
             Map.entry("SHIFT_036", HttpStatus.TOO_MANY_REQUESTS),
+            // F03.5 §11.3.5: 完全一致の重複割当（状態競合）→ 409
+            Map.entry("SHIFT_042", HttpStatus.CONFLICT),                    // DUPLICATE_ASSIGNMENT
             // F08.7 シフト予算 (Phase 9-α: 逆算 API)
             Map.entry("SHIFT_BUDGET_001", HttpStatus.SERVICE_UNAVAILABLE),  // FEATURE_DISABLED
             Map.entry("SHIFT_BUDGET_002", HttpStatus.BAD_REQUEST),          // EMPTY_POSITION_LIST

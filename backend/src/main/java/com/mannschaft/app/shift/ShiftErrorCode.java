@@ -99,7 +99,20 @@ public enum ShiftErrorCode implements ErrorCode {
     INVALID_TIME_RANGE("SHIFT_040", "開始時刻と終了時刻の組み合わせが正しくありません。日をまたぐ枠は「翌日終了」を指定し、またがない枠は開始時刻を終了時刻より前にしてください", Severity.WARN),
 
     /** 枠時刻の刻み・枠長が不正（F03.5 §11.2.5・400） */
-    INVALID_SLOT_GRANULARITY("SHIFT_041", "シフト枠は15分単位で、最小15分以上24時間未満である必要があります", Severity.WARN);
+    INVALID_SLOT_GRANULARITY("SHIFT_041", "シフト枠は15分単位で、最小15分以上24時間未満である必要があります", Severity.WARN),
+
+    /**
+     * 完全一致の重複割当（F03.5 §11.3.5・409）。
+     *
+     * <p>同一日・同一開始・同一終了の枠へ同じ人物を二重に入れる操作だけは拒否する。
+     * これ以外の「時間が重なる」割当は現場判断を潰さないため警告に留め保存を許す
+     *（警告は {@code ShiftAssignmentWarningDto#ASSIGNMENT_OVERLAP}）。</p>
+     *
+     * <p>状態競合なので 409。兄弟の {@code SHIFT_012}（INVALID_SCHEDULE_STATUS）と同様、
+     * {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} への明示登録が要る
+     *（{@code Severity.WARN} の既定は 400 のため）。</p>
+     */
+    DUPLICATE_ASSIGNMENT("SHIFT_042", "同じ時間帯の枠に同じメンバーが既に割り当てられています", Severity.WARN);
 
     private final String code;
     private final String message;
