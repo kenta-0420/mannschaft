@@ -207,13 +207,5 @@ class OrganizationHierarchyServiceTest {
                     .isSameAs(failure);
         }
 
-        private TeamOrgMembershipEntity membership(Long teamId, Long orgId) {
-            return TeamOrgMembershipEntity.builder()
-                    .teamId(teamId)
-                    .organizationId(orgId)
-                    .status(TeamOrgMembershipEntity.Status.ACTIVE)
-                    .invitedAt(java.time.LocalDateTime.now())
-                    .build();
-        }
     }
 }
