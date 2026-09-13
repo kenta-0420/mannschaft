@@ -92,8 +92,6 @@ class ScheduleMediaServiceTest {
     @Mock private com.mannschaft.app.common.storage.acl.StorageAclService storageAclService;
     @Mock private com.mannschaft.app.common.storage.acl.StorageAccessService storageAccessService;
     @Mock private com.mannschaft.app.common.visibility.ContentVisibilityChecker visibilityChecker;
-    @Mock private com.mannschaft.app.common.AccessControlService accessControlService;
-
     @org.junit.jupiter.api.AfterEach
     void clearAuthentication() {
         org.springframework.security.core.context.SecurityContextHolder.clearContext();

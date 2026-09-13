@@ -48,7 +48,7 @@ class ScheduleMediaAclReadTest {
     void setUp() {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(1L, null, List.of()));
-        query = new ScheduleMediaQueryService(storage, media, schedules, quota,
+        query = new ScheduleMediaQueryService(storage, media, schedules, membership, quota,
                 new ScheduleMediaAclService(media, schedules, visibility, membership),
                 new StorageAccessService(acls, storage));
         when(schedules.findById(100L)).thenReturn(Optional.of(ScheduleEntity.builder().id(100L).teamId(12L).build()));
