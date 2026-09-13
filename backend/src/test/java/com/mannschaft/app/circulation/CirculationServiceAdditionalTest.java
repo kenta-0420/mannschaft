@@ -449,6 +449,7 @@ class CirculationServiceAdditionalTest {
             given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(document));
             CirculationAttachmentEntity saved = CirculationAttachmentEntity.builder()
+                    .id(ATTACHMENT_ID)
                     .documentId(DOCUMENT_ID).fileKey("uploads/f.pdf").originalFilename("f.pdf")
                     .fileSize(2048L).mimeType("application/pdf").build();
             given(attachmentRepository.save(any())).willReturn(saved);
