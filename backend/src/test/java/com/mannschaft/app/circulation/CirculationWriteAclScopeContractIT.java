@@ -451,9 +451,10 @@ class CirculationWriteAclScopeContractIT extends AbstractMySqlIntegrationTest {
             Long docId = insertDocument(teamAId, memberAId, "DRAFT");
 
             setAuthentication(memberAId);
+            String fileKey = presignAttachmentFileKey(docId);
             mockMvc.perform(post("/api/v1/circulations/{documentId}/attachments", docId)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(createAttachmentBody())))
+                            .content(objectMapper.writeValueAsString(createAttachmentBody(fileKey))))
                     .andExpect(status().isCreated());
         }
 
@@ -463,9 +464,10 @@ class CirculationWriteAclScopeContractIT extends AbstractMySqlIntegrationTest {
             Long docId = insertDocument(teamAId, memberAId, "DRAFT");
 
             setAuthentication(adminAId);
+            String fileKey = presignAttachmentFileKey(docId);
             mockMvc.perform(post("/api/v1/circulations/{documentId}/attachments", docId)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(createAttachmentBody())))
+                            .content(objectMapper.writeValueAsString(createAttachmentBody(fileKey))))
                     .andExpect(status().isCreated());
         }
     }
@@ -564,12 +566,28 @@ class CirculationWriteAclScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Map<String, Object> createAttachmentBody() {
+        return createAttachmentBody("circulation/TEAM/authz/" + System.nanoTime() + ".pdf");
+    }
+
+    private Map<String, Object> createAttachmentBody(String fileKey) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("fileKey", "circulation/TEAM/authz/" + System.nanoTime() + ".pdf");
+        body.put("fileKey", fileKey);
         body.put("originalFilename", "test.pdf");
         body.put("fileSize", 1024);
         body.put("mimeType", "application/pdf");
         return body;
+    }
+
+    private String presignAttachmentFileKey(Long documentId) throws Exception {
+        String response = mockMvc.perform(post(
+                        "/api/v1/circulations/{documentId}/attachments/upload-url", documentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(presignBody())))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response).path("data").path("fileKey").asText();
     }
 
     private Map<String, Object> presignBody() {

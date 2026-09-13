@@ -83,7 +83,8 @@ public class ChatUploadController {
         PresignedUploadResult result = storageService.generateUploadUrl(
                 fileKey, request.getContentType(), Duration.ofSeconds(DEFAULT_EXPIRY_SECONDS));
         storageAclService.registerPending(result.s3Key(), currentUserId,
-                chatAttachmentService.resolveAclScope(channel, currentUserId), request.getContentType(),
+                chatAttachmentService.resolveAclScope(channel.getChannelType(), channel.getId(), channel.getTeamId(),
+                        channel.getOrganizationId(), channel.getSourceId(), currentUserId), request.getContentType(),
                 Duration.ofSeconds(DEFAULT_EXPIRY_SECONDS),
                 new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()));
         UploadUrlResponse response = new UploadUrlResponse(
