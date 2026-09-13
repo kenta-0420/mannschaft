@@ -255,6 +255,7 @@ public class OrgScheduleController {
         Long orgId = orgPublicId.value();
         accessControlService.checkAdminOrAbove(
                 SecurityUtils.getCurrentUserId(), orgId, SCOPE_TYPE_ORGANIZATION);
+        scheduleService.checkOrganizationScheduleScope(orgId, scheduleId);
         AttendanceTeamBreakdownResponse response = attendanceService.getAttendanceTeamBreakdown(scheduleId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -274,6 +275,7 @@ public class OrgScheduleController {
         Long orgId = orgPublicId.value();
         accessControlService.checkAdminOrAbove(
                 SecurityUtils.getCurrentUserId(), orgId, SCOPE_TYPE_ORGANIZATION);
+        scheduleService.checkOrganizationScheduleScope(orgId, scheduleId);
         String csv = attendanceService.exportAttendanceTeamBreakdownCsv(scheduleId);
         byte[] csvBytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         return ResponseEntity.ok()

@@ -816,11 +816,28 @@ public class TeamService {
         findTeamOrThrow(teamId);
 
         // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照に完全切替
-        var memberDtos = memberQueryDispatcher.queryMembers(teamId, ScopeType.TEAM, null);
+        //
+        // CMP-260910-1555: 是正前はここで queryMembers（＝常にチーム全員を実体化し、
+        // ユーザー 1 人ごとに users を引く N+1）を呼び、全員ぶんの色解決と
+        // MemberResponse 構築まで済ませてから subList でページを切り出していた。
+        // つまり 1 ページ取るたびにチーム全員ぶんの処理が走り、一覧を最後までめくると
+        // 総処理量が人数 N に対して概ね N^2/ページサイズになる。全ページを取得する
+        // 画面（時給設定など）では大規模チームで DB 負荷とタイムアウトを招いていた。
+        // 軽い行（userId・ロール・joinedAt のみ）を queryMemberIdentities で全件そろえ、
+        // ページ位置で切り出してから hydrate で表示名・アバターを 1 クエリで解決する。
+        // 色解決もページ内のユーザーに限定する。API のレスポンス形状・並び順・総件数は不変。
+        var identities = memberQueryDispatcher.queryMemberIdentities(teamId, ScopeType.TEAM, null);
+        long totalElements = identities.size();
+        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
+        int size = pageable.isPaged() ? pageable.getPageSize() : (int) totalElements;
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, identities.size());
+        var memberDtos = memberQueryDispatcher.hydrate(
+                fromIndex >= identities.size() ? List.of() : identities.subList(fromIndex, toIndex));
         var colorsByUserId = scopeMemberCalendarSettingService.resolveColors(
                 ScopeType.TEAM, teamId, memberDtos.stream().map(dto -> dto.userId()).toList());
 
-        var data = memberDtos.stream()
+        List<MemberResponse> pagedData = memberDtos.stream()
                 .map(dto -> new MemberResponse(
                         dto.userId(),
                         dto.displayName(),
@@ -830,15 +847,6 @@ public class TeamService {
                         colorsByUserId.get(dto.userId())))
                 .toList();
 
-        // Dispatcher は全件リストを返すため、ページネーションはアプリ側でエミュレート
-        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
-        int size = pageable.isPaged() ? pageable.getPageSize() : data.size();
-        int fromIndex = page * size;
-        int toIndex = Math.min(fromIndex + size, data.size());
-        List<MemberResponse> pagedData = (fromIndex >= data.size())
-                ? List.<MemberResponse>of() : data.subList(fromIndex, toIndex);
-
-        long totalElements = data.size();
         int totalPages = size == 0 ? 1 : (int) Math.ceil((double) totalElements / size);
 
         var meta = new PagedResponse.PageMeta(totalElements, page, size, totalPages);

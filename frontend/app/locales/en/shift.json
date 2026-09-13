@@ -1,5 +1,14 @@
 {
   "shift": {
+    "availability": {
+      "allDay": "All day",
+      "startTime": "Start time",
+      "endTime": "End time",
+      "timeRangeInvalid": "Start time must be earlier than end time",
+      "notConfigured": "Not configured yet. Set your preference and hours for each day, then save.",
+      "loadError": "Could not load your default availability",
+      "retry": "Retry"
+    },
     "board": {
       "title": "Shift Board",
       "memberPool": "Unassigned Members",
@@ -376,6 +385,35 @@
       "untouchedNotice": "Untouched days are submitted as \"prefer to rest\". You may still be asked to work if staffing runs short.",
       "submit": "Submit",
       "back": "Back to edit"
+    },
+    "hourlyRate": {
+      "title": "Hourly rate settings",
+      "description": "Set an hourly rate for each member. Shifts of members without an hourly rate are not reflected in the shift budget consumption.",
+      "missingWarning": "{count} member(s) have no hourly rate. Their shifts will not be reflected in the budget consumption when the shift is published.",
+      "unset": "Not set",
+      "setButton": "Set",
+      "perHour": "{amount} JPY/h",
+      "saved": "Hourly rate saved",
+      "saveFailed": "Failed to save the hourly rate",
+      "loadFailed": "Failed to load hourly rates",
+      "historyLoadFailed": "Failed to load the hourly rate history",
+      "permissionLoadFailed": "Failed to load permissions",
+      "forbidden": "You do not have permission to view this page",
+      "noMembers": "No members",
+      "dialogTitle": "Hourly rate for {name}",
+      "effectiveFromHint": "Applied from the specified date. Past settings are kept as history. Registering again with the same date corrects that day's setting.",
+      "historyTitle": "Hourly rate history",
+      "noHistory": "No hourly rate has been registered yet",
+      "column": {
+        "member": "Member",
+        "rate": "Hourly rate",
+        "effectiveFrom": "Effective from"
+      },
+      "validation": {
+        "rateRequired": "Please enter an hourly rate",
+        "ratePositive": "Please enter an hourly rate of 1 or more"
+      },
+      "missingWarningPage": "{count} member(s) on this page have no hourly rate. Their shifts will not be reflected in the budget consumption when the shift is published."
     }
   },
   "my_shift_guide": {

@@ -150520,7 +150520,9 @@
             "type": "string"
           },
           "postalCode": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
           },
           "timezone": {
             "type": "string"
@@ -200748,7 +200750,9 @@
             "minLength": 8
           },
           "postalCode": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
           },
           "privacyPolicyAccepted": {
             "type": "boolean"

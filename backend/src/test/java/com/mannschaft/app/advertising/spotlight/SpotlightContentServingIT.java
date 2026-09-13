@@ -347,4 +347,52 @@ class SpotlightContentServingIT extends AbstractSpotlightIT {
                     .isInstanceOf(org.springframework.security.core.AuthenticationException.class);
         }
     }
+
+    @Test
+    @DisplayName("CMP-260910-0042: affiliate のUTC基準の開始・終了境界を判定する")
+    void affiliateActiveWindowUsesUtcWallClock() {
+        insertAffiliateConfig("AMAZON", TILE, 0);
+        insertAffiliateConfig("RAKUTEN", TILE, 1);
+        em.createNativeQuery("UPDATE affiliate_configs SET active_from = UTC_TIMESTAMP() + INTERVAL 1 HOUR "
+                        + "WHERE provider = 'AMAZON'")
+                .executeUpdate();
+        em.createNativeQuery("UPDATE affiliate_configs SET active_until = UTC_TIMESTAMP() + INTERVAL 1 HOUR "
+                        + "WHERE provider = 'RAKUTEN'")
+                .executeUpdate();
+        em.flush();
+
+        em.createNativeQuery("SET time_zone = '+09:00'").executeUpdate();
+        try {
+            List<SpotlightItem> items = content(2, "PERSONAL", null);
+
+            assertThat(items).extracting(item -> item.affiliate().provider())
+                    .as("UTCの1時間後に開始するaffiliateは未配信、終了1時間前のaffiliateは配信")
+                    .containsExactly("RAKUTEN");
+        } finally {
+            em.createNativeQuery("SET time_zone = '+00:00'").executeUpdate();
+        }
+    }
+
+    @Test
+    @DisplayName("CMP-260910-0042: 予約の14日鮮度境界はUTC壁時計で判定する")
+    void reservationFreshnessUsesUtcWallClock() {
+        ReservationFixture reservation = insertReservationBanner(advOrgId, advAccountId, viewerId, TILE, creatorId);
+        em.createNativeQuery("UPDATE ad_banner_deliveries "
+                        + "SET created_at = UTC_TIMESTAMP() - INTERVAL 14 DAY + INTERVAL 1 HOUR "
+                        + "WHERE id = UUID_TO_BIN(:deliveryId)")
+                .setParameter("deliveryId", reservation.deliveryId())
+                .executeUpdate();
+        em.flush();
+
+        em.createNativeQuery("SET time_zone = '+09:00'").executeUpdate();
+        try {
+            List<SpotlightItem> items = content(1, "PERSONAL", null);
+
+            assertThat(items).hasSize(1);
+            assertThat(items.get(0).house().deliveryId())
+                    .as("UTC基準で14日より1時間新しい予約は配信対象").isEqualTo(reservation.deliveryId());
+        } finally {
+            em.createNativeQuery("SET time_zone = '+00:00'").executeUpdate();
+        }
+    }
 }
