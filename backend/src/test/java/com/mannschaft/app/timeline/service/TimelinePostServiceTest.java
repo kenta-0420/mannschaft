@@ -2591,6 +2591,10 @@ class TimelinePostServiceTest {
         private static final String SIGNED_URL =
                 "https://r2.example.com/" + IMAGE_KEY
                         + "?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=deadbeef";
+        private static final String VIDEO_KEY = "timeline/PUBLIC/0/tmp/video-123.mp4";
+        private static final String SIGNED_VIDEO_URL =
+                "https://r2.example.com/" + VIDEO_KEY
+                        + "?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=cafebabe";
 
         /** Mapper 変換直後の生 AttachmentResponse（image.url/thumbnailUrl は未解決＝null）を作る。 */
         private AttachmentResponse rawImageResponse(long id, String fileKey) {
@@ -2609,6 +2613,27 @@ class TimelinePostServiceTest {
                     .timelinePostId(postId)
                     .attachmentType(AttachmentType.IMAGE)
                     .fileKey(fileKey)
+                    .build();
+        }
+
+        private TimelinePostAttachmentEntity videoEntity(Long postId, String fileKey) {
+            return TimelinePostAttachmentEntity.builder()
+                    .id(10L)
+                    .timelinePostId(postId)
+                    .attachmentType(AttachmentType.VIDEO_FILE)
+                    .fileKey(fileKey)
+                    .build();
+        }
+
+        private AttachmentResponse rawVideoResponse(long id, String fileKey) {
+            return AttachmentResponse.builder()
+                    .id(id)
+                    .attachmentType("VIDEO_FILE")
+                    .file(new AttachmentResponse.AttachmentFileDto(fileKey, "video.mp4", 4096L, "video/mp4"))
+                    .video(new AttachmentResponse.AttachmentVideoDto(
+                            null, "https://cdn.example.com/thumb.jpg", "動画", "thumb-key",
+                            42, "h264", (short) 1280, (short) 720, "COMPLETED"))
+                    .sortOrder((short) 0)
                     .build();
         }
 
@@ -2721,6 +2746,53 @@ class TimelinePostServiceTest {
         void ACL不一致画像は投稿詳細から除外される() {
             TimelinePostEntity post = createPost();
             TimelinePostAttachmentEntity entity = imageEntity(POST_ID, IMAGE_KEY);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(entity));
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
+                    .willReturn(Map.of());
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            assertThat(result.getAttachments()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("動画添付はACL照合済み署名URLをvideoUrlへ設定しメタデータを保持する")
+        void 動画添付に署名URLを設定する() {
+            TimelinePostEntity post = createPost();
+            TimelinePostAttachmentEntity entity = videoEntity(POST_ID, VIDEO_KEY);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(entity));
+            given(timelineMapper.toAttachmentResponse(entity))
+                    .willReturn(rawVideoResponse(10L, VIDEO_KEY));
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
+                    .willReturn(Map.of(VIDEO_KEY, SIGNED_VIDEO_URL));
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            assertThat(result.getAttachments()).hasSize(1);
+            AttachmentResponse.AttachmentVideoDto video = result.getAttachments().get(0).getVideo();
+            assertThat(video.videoUrl()).isEqualTo(SIGNED_VIDEO_URL).contains("X-Amz-Signature");
+            assertThat(video.videoProcessingStatus()).isEqualTo("COMPLETED");
+            assertThat(video.videoCodec()).isEqualTo("h264");
+            assertThat(video.videoWidth()).isEqualTo((short) 1280);
+        }
+
+        @Test
+        @DisplayName("ACL不一致の動画添付は投稿詳細から除外される")
+        void ACL不一致動画は投稿詳細から除外される() {
+            TimelinePostEntity post = createPost();
+            TimelinePostAttachmentEntity entity = videoEntity(POST_ID, VIDEO_KEY);
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))

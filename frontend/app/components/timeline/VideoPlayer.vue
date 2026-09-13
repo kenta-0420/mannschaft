@@ -2,14 +2,13 @@
 import type { VideoProcessingStatus } from '~/types/timeline'
 
 interface Props {
-  fileKey: string
+  sourceUrl: string
   thumbnailUrl?: string
   processingStatus?: VideoProcessingStatus
   mimeType?: string
 }
 
 const props = defineProps<Props>()
-const { resolveUrl } = useR2Url()
 
 const isProcessing = computed(() =>
   props.processingStatus === 'PENDING' || props.processingStatus === 'PROCESSING',
@@ -19,7 +18,7 @@ const isFailed = computed(() => props.processingStatus === 'FAILED')
 
 const videoSrc = computed(() => {
   if (isProcessing.value || isFailed.value) return ''
-  return resolveUrl(props.fileKey)
+  return props.sourceUrl
 })
 </script>
 

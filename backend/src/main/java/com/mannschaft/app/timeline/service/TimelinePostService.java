@@ -735,13 +735,13 @@ public class TimelinePostService {
         List<TimelinePostAttachmentEntity> attachmentEntities =
                 attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(postId);
         TimelineAclContext detailContext = TimelineAclContext.fromOrNull(post);
-        Map<String, String> imageUrlByKey = resolveImageUrls(attachmentEntities,
+        Map<String, String> storageUrlByKey = resolveStorageUrls(attachmentEntities,
                 detailContext == null ? Map.of() : Map.of(postId, detailContext));
         List<AttachmentResponse> attachments = attachmentEntities.stream()
-                .filter(a -> a.getAttachmentType() != AttachmentType.IMAGE
-                        || imageUrlByKey.containsKey(a.getFileKey()))
+                .filter(a -> !isStorageBacked(a)
+                        || storageUrlByKey.containsKey(a.getFileKey()))
                 .map(timelineMapper::toAttachmentResponse)
-                .map(a -> withResolvedImageUrl(a, imageUrlByKey))
+                .map(a -> withResolvedStorageUrl(a, storageUrlByKey))
                 .toList();
 
         boolean mitayo = reactionRepository.existsByTimelinePostIdAndUserId(postId, userId);
@@ -1047,13 +1047,13 @@ public class TimelinePostService {
                 contexts.put(post.getId(), context);
             }
         }
-        Map<String, String> imageUrlByKey = resolveImageUrls(all, contexts);
+        Map<String, String> storageUrlByKey = resolveStorageUrls(all, contexts);
         Map<Long, List<AttachmentResponse>> byPost = new LinkedHashMap<>();
         for (TimelinePostAttachmentEntity e : all) {
-            if (e.getAttachmentType() == AttachmentType.IMAGE && !imageUrlByKey.containsKey(e.getFileKey())) {
+            if (isStorageBacked(e) && !storageUrlByKey.containsKey(e.getFileKey())) {
                 continue;
             }
-            AttachmentResponse r = withResolvedImageUrl(timelineMapper.toAttachmentResponse(e), imageUrlByKey);
+            AttachmentResponse r = withResolvedStorageUrl(timelineMapper.toAttachmentResponse(e), storageUrlByKey);
             byPost.computeIfAbsent(e.getTimelinePostId(), k -> new ArrayList<>()).add(r);
         }
         return posts.stream()
@@ -1064,16 +1064,16 @@ public class TimelinePostService {
     }
 
     /**
-     * 添付エンティティ群の中から画像（{@link AttachmentType#IMAGE}）の生キーを集めて署名 URL に一括解決する。
+     * 添付エンティティ群から R2 上の画像・動画の生キーを集め、ACL 照合済みの署名 URL に一括解決する。
      * null/空白キーは除外し、StorageAccessService の一括照合で N+1 を防ぐ。
      */
-    private Map<String, String> resolveImageUrls(Collection<TimelinePostAttachmentEntity> attachments,
-                                                  Map<Long, TimelineAclContext> contexts) {
+    private Map<String, String> resolveStorageUrls(Collection<TimelinePostAttachmentEntity> attachments,
+                                                    Map<Long, TimelineAclContext> contexts) {
         if (attachments == null || attachments.isEmpty()) {
             return Map.of();
         }
         List<StorageAclDownloadRequest> requests = attachments.stream()
-                .filter(a -> a.getAttachmentType() == AttachmentType.IMAGE)
+                .filter(TimelinePostService::isStorageBacked)
                 .filter(a -> a.getFileKey() != null && !a.getFileKey().isBlank())
                 .filter(a -> a.getId() != null && contexts != null && contexts.containsKey(a.getTimelinePostId()))
                 .map(a -> {
@@ -1084,6 +1084,11 @@ public class TimelinePostService {
                 })
                 .toList();
         return storageAccessService.generateDownloadUrlsForList(requests, ATTACHMENT_DOWNLOAD_TTL);
+    }
+
+    private static boolean isStorageBacked(TimelinePostAttachmentEntity attachment) {
+        return attachment.getAttachmentType() == AttachmentType.IMAGE
+                || attachment.getAttachmentType() == AttachmentType.VIDEO_FILE;
     }
 
     private record TimelineAclContext(StorageAclScope scope, String parentKey) {
@@ -1112,18 +1117,35 @@ public class TimelinePostService {
     }
 
     /**
-     * 画像添付レスポンスに署名付き表示 URL を割り当てる（画像以外・解決不能キーはそのまま返す）。
+     * 画像・動画添付レスポンスに ACL 照合済みの署名付き表示 URL を割り当てる。
      *
      * <p>画像は別サムネイルを持たないため {@code thumbnailUrl} は {@code url} と同一値にする
-     * （FE は {@code thumbnailUrl || url} を読む）。imageWidth/imageHeight は Mapper 変換値を保持する。</p>
+     * （FE は {@code thumbnailUrl || url} を読む）。画像寸法と動画メタデータは Mapper 変換値を保持する。</p>
      */
-    private AttachmentResponse withResolvedImageUrl(AttachmentResponse att, Map<String, String> imageUrlByKey) {
-        if (att == null || !AttachmentType.IMAGE.name().equals(att.getAttachmentType())) {
+    private AttachmentResponse withResolvedStorageUrl(AttachmentResponse att, Map<String, String> storageUrlByKey) {
+        if (att == null || att.getFile() == null) {
             return att;
         }
-        String key = att.getFile() != null ? att.getFile().fileKey() : null;
-        String url = key != null ? imageUrlByKey.get(key) : null;
+        String url = storageUrlByKey.get(att.getFile().fileKey());
         if (url == null) {
+            return att;
+        }
+        if (AttachmentType.VIDEO_FILE.name().equals(att.getAttachmentType())) {
+            AttachmentResponse.AttachmentVideoDto video = att.getVideo();
+            return att.toBuilder()
+                    .video(new AttachmentResponse.AttachmentVideoDto(
+                            url,
+                            video != null ? video.videoThumbnailUrl() : null,
+                            video != null ? video.videoTitle() : null,
+                            video != null ? video.videoThumbnailKey() : null,
+                            video != null ? video.videoDurationSeconds() : null,
+                            video != null ? video.videoCodec() : null,
+                            video != null ? video.videoWidth() : null,
+                            video != null ? video.videoHeight() : null,
+                            video != null ? video.videoProcessingStatus() : null))
+                    .build();
+        }
+        if (!AttachmentType.IMAGE.name().equals(att.getAttachmentType())) {
             return att;
         }
         Short width = att.getImage() != null ? att.getImage().imageWidth() : null;
