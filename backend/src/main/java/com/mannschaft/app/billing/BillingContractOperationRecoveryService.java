@@ -420,7 +420,11 @@ public class BillingContractOperationRecoveryService {
      */
     private void applyRecoveredReflection(
             BillingContractOperationEntity operation, StripeTrace trace) {
-        LocalDateTime endAt = trace.periodEnd();
+        // Stripe 実物の期末は「瞬間」として運ぶ（StripeTrace#periodEnd は Instant）。
+        // 壁時計への変換はここ1箇所だけで行う —— 反映先の billing_contracts.current_period_end /
+        // entitlements.valid_until がゾーンを持たない日時列（CMP-023 の返済対象）であるため、
+        // 境界で初めて注入 Clock のゾーンを当てる。ローカル変数なので型は外に漏れない。
+        LocalDateTime endAt = toLocalDateTime(trace.periodEnd());
         switch (operation.getKind()) {
             case CANCEL -> cancelService.applyRecoveredCancel(operation.getContractId(), endAt);
             case RESUME -> cancelService.applyRecoveredResume(operation.getContractId(), endAt);
@@ -434,10 +438,13 @@ public class BillingContractOperationRecoveryService {
      *
      * @param traceMatches      metadata の operationId が自分と一致したか（AC-77）
      * @param cancelAtPeriodEnd Stripe 実物の {@code cancel_at_period_end}
-     * @param periodEnd         Stripe 実物の期末（反映に用いる・null 可）
+     * @param periodEnd         Stripe 実物の期末（反映に用いる・null 可）。Stripe が返す
+     *                          <b>瞬間</b>であり、ゾーンを持たない日時へ落とさずそのまま運ぶ
+     *                          （日時方針 §1・§4。壁時計への変換は
+     *                          {@link #applyRecoveredReflection} の1箇所に閉じる）
      */
     private record StripeTrace(
-            boolean traceMatches, boolean cancelAtPeriodEnd, LocalDateTime periodEnd) {}
+            boolean traceMatches, boolean cancelAtPeriodEnd, Instant periodEnd) {}
 
     /**
      * Stripe 実物を<b>読み取り専用</b>で引く（変更系は呼ばない）。
@@ -466,7 +473,7 @@ public class BillingContractOperationRecoveryService {
                 return null;
             }
             return new StripeTrace(traceMatches, snapshot.cancelAtPeriodEnd(),
-                    toLocalDateTime(snapshot.currentPeriodEnd()));
+                    snapshot.currentPeriodEnd());
         } catch (RuntimeException e) {
             log.warn("PR6a 停止窓の回収: Stripe 参照に失敗したため次周へ見送る（operationId={}）",
                     operation.getId(), e);

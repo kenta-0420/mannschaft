@@ -26,8 +26,26 @@ const LOCALES = ['ja', 'en', 'es', 'de', 'ko', 'zh'] as const
 // 変えたのは解決技法だけであり、アサーションは一字も変えていない。
 const localesDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../../app/locales')
 
-function loadBilling(locale: string): any {
-  return JSON.parse(readFileSync(resolve(localesDir, locale, 'billing.json'), 'utf-8'))
+/**
+ * 本テストが参照する manage 配下のメッセージ。読み取るキーだけを string として明示し、
+ * それ以外は unknown のままにする（any を置くと「どのキーがあるか」という本テストの
+ * 関心そのものが型検査から消える）。
+ */
+interface BillingManageMessages {
+  cancelReservationTitle?: string
+  cancelReservationBody?: string
+  resumeCancelCta?: string
+  cancelSuccessFree?: string
+  cancelSuccess?: string
+  [key: string]: unknown
+}
+
+interface BillingLocaleJson {
+  billing?: { manage?: BillingManageMessages }
+}
+
+function loadBilling(locale: string): BillingLocaleJson {
+  return JSON.parse(readFileSync(resolve(localesDir, locale, 'billing.json'), 'utf-8')) as BillingLocaleJson
 }
 
 describe('billing.json — 解約予約(cancel_at_period_end)専用キー（AC-61）', () => {

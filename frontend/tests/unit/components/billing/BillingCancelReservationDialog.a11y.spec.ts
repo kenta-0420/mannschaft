@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
-// eslint-disable-next-line import/no-unresolved
 import BillingCancelReservationDialog from '~/components/billing/BillingCancelReservationDialog.vue'
 
 /**
