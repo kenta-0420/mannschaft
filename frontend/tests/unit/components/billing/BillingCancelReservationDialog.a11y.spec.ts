@@ -151,4 +151,31 @@ describe('BillingCancelReservationDialog — a11y（AC-64）', () => {
     await dialog.trigger('keydown', { key: 'Escape' })
     expect(wrapper.emitted('cancel') ?? wrapper.emitted('update:open')).toBeTruthy()
   })
+
+  it('撤回のみ表示（canResume=true・canCancel=false）でも初期フォーカスがダイアログ内に入る（検分P2）', async () => {
+    // 確定ボタンが存在しない状態（解約予約済み表示）でフォーカスが背景に残ると、
+    // Escape/Tab がダイアログへ届かずキーボード利用者が操作不能になる回帰を防ぐ。
+    const wrapper = await mountDialog({
+      canCancel: false,
+      canResume: true,
+      cancel: { scheduledAt: '2026-09-01T00:00:00Z', endAt: '2026-09-30T15:00:00Z' },
+    })
+    // 初期フォーカスは open watcher 内の nextTick 経由で非同期に当たるため、
+    // マウント直後の同期チェックでは間に合わないことがある。安定させるため tick を挟む。
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    const dialog = wrapper.get('[role="dialog"]')
+
+    // 確定ボタンは存在しない前提を明示（この状態特有のケースであることの陽性対照）
+    expect(wrapper.find('[data-testid="cancel-confirm-button"]').exists()).toBe(false)
+
+    // 撤回ボタンへフォールバックしてフォーカスが入っていること
+    const resumeButton = wrapper.get('[data-testid="resume-cancel-button"]').element
+    expect(document.activeElement).toBe(resumeButton)
+    expect(dialog.element.contains(document.activeElement)).toBe(true)
+
+    // 背景に取り残されていないため Escape がダイアログへ届く
+    await dialog.trigger('keydown', { key: 'Escape' })
+    expect(wrapper.emitted('cancel') ?? wrapper.emitted('update:open')).toBeTruthy()
+  })
 })

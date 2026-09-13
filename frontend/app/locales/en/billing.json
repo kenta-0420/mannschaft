@@ -105,6 +105,7 @@
       "cancelReservationTitle": "Schedule cancellation?",
       "cancelReservationBody": "You can keep using it until {endDate}. You will not be billed from {nextBillingDate} onward.",
       "resumeCancelCta": "Undo scheduled cancellation",
+      "resumeSuccess": "Cancellation withdrawn. You can keep using the service",
       "sourceBadge": { "plan": "Plan", "addon": "Add-on", "betaGrant": "Beta perk", "free": "Free", "nonprofitFree": "Nonprofit free tier" },
       "validUntil": "Valid until {date}",
       "noExpiry": "Free for the duration of the service",

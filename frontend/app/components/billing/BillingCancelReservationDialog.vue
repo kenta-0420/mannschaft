@@ -162,16 +162,43 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-/** 開いた瞬間に確定ボタンへフォーカスする（キーボードのみで到達可能にする）。 */
+/**
+ * 開いた瞬間にフォーカスを当てる（キーボードのみで到達可能にする）。
+ *
+ * <p>確定ボタン（canCancel=true）優先だが、撤回のみが表示されている状態
+ * （canResume=true かつ canCancel=false）では確定ボタンが存在しないため、
+ * その場合は撤回ボタンへ、それも無ければダイアログ内の最初の操作可能要素へ
+ * フォールバックする。フォーカスが背景に残ると Escape / Tab がダイアログへ
+ * 届かず操作不能になるため、必ずダイアログ内の何かへフォーカスを移す。</p>
+ */
+function focusInitialElement() {
+  const el = dialogEl.value
+  if (!el) return
+  const target =
+    el.querySelector<HTMLElement>('[data-testid="cancel-confirm-button"]') ??
+    el.querySelector<HTMLElement>('[data-testid="resume-cancel-button"]') ??
+    el.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    )
+  target?.focus()
+}
+
+// 初回マウント時（open=true で開いた状態で描画される場合）は onMounted で拾う。
+// `watch(..., { immediate: true })` の初回呼び出しは flush オプションに関わらず
+// コンポーネントのマウント前（テンプレート ref 未バインド）に実行されるため使えない
+// （実測: dialogEl.value が null のまま呼ばれる）。
+onMounted(() => {
+  if (props.open) focusInitialElement()
+})
+
+// 再オープン時（一度閉じてから再度 open=true になった場合）は通常の watch で拾う。
+// このケースは既にマウント済みで dialogEl が有効なので immediate は不要。
 watch(
   () => props.open,
-  async (isOpen) => {
-    if (!isOpen) return
-    await nextTick()
-    const confirmButton = dialogEl.value?.querySelector<HTMLElement>('[data-testid="cancel-confirm-button"]')
-    confirmButton?.focus()
+  (isOpen) => {
+    if (isOpen) focusInitialElement()
   },
-  { immediate: true },
+  { flush: 'post' },
 )
 </script>
 
