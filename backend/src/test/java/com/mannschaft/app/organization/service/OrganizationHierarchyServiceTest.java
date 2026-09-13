@@ -18,11 +18,14 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link OrganizationHierarchyService} の祖先展開ヘルパー単体テスト（配下配信の土台）。
@@ -157,15 +160,16 @@ class OrganizationHierarchyServiceTest {
         @Test
         @DisplayName("ACTIVE なチーム所属組織を重複なく返す")
         void returnsActiveAnchorOrgIds() {
-            given(teamOrgMembershipRepository.findByTeamIdAndStatus(
-                    701L, TeamOrgMembershipEntity.Status.ACTIVE))
-                    .willReturn(List.of(membership(701L, 801L)));
-            given(teamOrgMembershipRepository.findByTeamIdAndStatus(
-                    702L, TeamOrgMembershipEntity.Status.ACTIVE))
-                    .willReturn(List.of(membership(702L, 801L)));
+            given(teamOrgMembershipRepository.findOrganizationIdByTeamIdIn(Set.of(701L, 702L)))
+                    .willReturn(Map.of(701L, 801L, 702L, 801L));
 
             assertThat(service.getAnchorOrgIdsByTeamIds(List.of(701L, 702L)))
                     .containsExactly(801L);
+            verify(teamOrgMembershipRepository).findOrganizationIdByTeamIdIn(Set.of(701L, 702L));
+            verify(teamOrgMembershipRepository, atMost(0)).findByTeamIdAndStatus(
+                    701L, TeamOrgMembershipEntity.Status.ACTIVE);
+            verify(teamOrgMembershipRepository, atMost(0)).findByTeamIdAndStatus(
+                    702L, TeamOrgMembershipEntity.Status.ACTIVE);
         }
 
         @Test
@@ -173,6 +177,32 @@ class OrganizationHierarchyServiceTest {
         void emptyInput_returnsEmpty() {
             assertThat(service.getAnchorOrgIdsByTeamIds(List.of())).isEmpty();
             assertThat(service.getAnchorOrgIdsByTeamIds(null)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("null/空・重複IDは正規化し、空入力ではrepositoryを呼ばない")
+        void normalizesNullAndDuplicateTeamIds() {
+            given(teamOrgMembershipRepository.findOrganizationIdByTeamIdIn(Set.of(701L)))
+                    .willReturn(Map.of(701L, 801L));
+
+            assertThat(service.getAnchorOrgIdsByTeamIds(List.of(null, 701L, 701L)))
+                    .containsExactly(801L);
+            verify(teamOrgMembershipRepository).findOrganizationIdByTeamIdIn(Set.of(701L));
+
+            assertThat(service.getAnchorOrgIdsByTeamIds(null)).isEmpty();
+            assertThat(service.getAnchorOrgIdsByTeamIds(List.of())).isEmpty();
+            verifyNoInteractions(organizationRepository);
+        }
+
+        @Test
+        @DisplayName("一括repositoryの例外は握り潰さず伝播する")
+        void propagatesBatchRepositoryFailure() {
+            RuntimeException failure = new RuntimeException("batch query failed");
+            given(teamOrgMembershipRepository.findOrganizationIdByTeamIdIn(Set.of(701L)))
+                    .willThrow(failure);
+
+            assertThatThrownBy(() -> service.getAnchorOrgIdsByTeamIds(List.of(701L)))
+                    .isSameAs(failure);
         }
 
         private TeamOrgMembershipEntity membership(Long teamId, Long orgId) {
