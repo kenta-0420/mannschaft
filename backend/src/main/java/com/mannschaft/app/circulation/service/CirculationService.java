@@ -585,7 +585,7 @@ public class CirculationService {
         PresignedUploadResult result = r2StorageService.generateUploadUrl(
                 fileKey, req.contentType(), PRESIGN_TTL);
         Long actorId = SecurityUtils.getCurrentUserId();
-        storageAclService.registerPending(fileKey, actorId, aclScope(scopeType, scopeId, actorId),
+        storageAclService.registerPending(fileKey, actorId, aclScope(scopeType, scopeId, document.getCreatedBy()),
                 req.contentType(), PRESIGN_TTL,
                 new StorageAclContentReference("CIRCULATION_DOCUMENT", documentId.toString()));
 
@@ -644,7 +644,7 @@ public class CirculationService {
         CirculationAttachmentEntity saved = attachmentRepository.save(attachment);
         Long actorId = SecurityUtils.getCurrentUserId();
         storageAclService.claimPending(request.getFileKey(), actorId,
-                aclScope(document.getScopeType(), document.getScopeId(), actorId),
+                aclScope(document.getScopeType(), document.getScopeId(), document.getCreatedBy()),
                 new StorageAclContentReference("CIRCULATION_DOCUMENT", documentId.toString()),
                 new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", saved.getId().toString()));
         document.incrementAttachmentCount();

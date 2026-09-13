@@ -244,7 +244,7 @@ public class ChatAttachmentService {
 
     /** 保存済みチャンネルにアイコンの一意バインドを確定する。 */
     void claimChannelIcon(ChatChannelEntity channel, Long userId, String fileKey) {
-        storageAclService.claimPending(fileKey, userId, resolveAclScope(channel, userId),
+        storageAclService.claimPending(fileKey, userId, resolveAclScope(channel, channel.getCreatedBy()),
                 new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()),
                 new StorageAclAttachmentBinding("CHAT_CHANNEL_ICON", channel.getId().toString()));
     }
@@ -329,7 +329,8 @@ public class ChatAttachmentService {
         // 5. Pre-signed URL 発行（5 分有効）
         PresignedUploadResult result = storageService.generateUploadUrl(
                 fileKey, normalizedType, CHANNEL_ICON_PRESIGN_TTL);
-        storageAclService.registerPending(result.s3Key(), currentUserId, resolveAclScope(channel, currentUserId),
+        storageAclService.registerPending(result.s3Key(), currentUserId,
+                resolveAclScope(channel, channel.getCreatedBy()),
                 normalizedType, CHANNEL_ICON_PRESIGN_TTL,
                 new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()));
         log.info("チャンネルアイコン presign 発行: channelId={}, userId={}, fileKey={}",
