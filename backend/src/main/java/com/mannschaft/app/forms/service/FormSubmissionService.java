@@ -674,7 +674,9 @@ public class FormSubmissionService {
         for (FormSubmissionValueEntity value : saved) {
             if ((value.getFieldType() == FormFieldType.FILE || value.getFieldType() == FormFieldType.SIGNATURE)
                     && value.getFileKey() != null && !value.getFileKey().isBlank()) {
-                storageAclService.claimPending(value.getFileKey(), userId, scope,
+                // 大会再提出の操作担当が変わっても、保持した添付の owner は元の提出者のまま。
+                Long ownerId = previousFiles.containsKey(value.getFileKey()) ? submission.getSubmittedBy() : userId;
+                storageAclService.claimPending(value.getFileKey(), ownerId, scope,
                         new StorageAclContentReference("FORM_SUBMISSION", submission.getId().toString()),
                         new StorageAclAttachmentBinding("FORM_SUBMISSION_VALUE", value.getId().toString()));
             }

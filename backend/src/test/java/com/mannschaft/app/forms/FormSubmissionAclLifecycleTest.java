@@ -144,6 +144,32 @@ class FormSubmissionAclLifecycleTest {
         verify(submissionRepository, never()).save(any());
     }
 
+    @Test
+    void 大会再提出は操作担当が変わっても添付IDと元提出者の所有権を保持する() {
+        // 通常更新の本人検索は使わず、認可済みの大会提出枠から提出を取得する入口。
+        org.mockito.Mockito.reset(submissionRepository);
+        java.util.UUID requirementId = java.util.UUID.randomUUID();
+        com.mannschaft.app.forms.entity.FormTemplateEntity template =
+                com.mannschaft.app.forms.entity.FormTemplateEntity.builder()
+                        .scopeType("TEAM").scopeId(1L).name("大会書類").createdBy(10L).build();
+        template.publish();
+        given(templateService.getTemplateEntity(100L)).willReturn(template);
+        given(submissionRepository.findByTournamentSubmissionRequirementIdAndScopeTypeAndScopeId(
+                requirementId, "TEAM", 1L)).willReturn(Optional.of(submission));
+        given(submissionRepository.save(submission)).willReturn(submission);
+        given(valueRepository.findBySubmissionId(200L)).willReturn(List.of(value(301L, "kept", FormFieldType.FILE)));
+        given(valueRepository.saveAll(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        service.createSubmissionForRequirement("TEAM", 1L, 20L, requirementId,
+                new com.mannschaft.app.forms.dto.CreateFormSubmissionRequest(
+                        100L, false, List.of(request("original", "kept"))));
+
+        verify(storageAclService).claimPending("kept", 10L, StorageAclScope.team(1L),
+                new StorageAclContentReference("FORM_SUBMISSION", "200"), binding("301"));
+        verify(storageAclService, never()).releaseClaimed(any(), any());
+        verify(valueRepository, never()).deleteBySubmissionId(any());
+    }
+
     private FormSubmissionValueEntity value(Long id, String key, FormFieldType type) {
         return FormSubmissionValueEntity.builder().id(id).submissionId(200L).fieldKey("original")
                 .fieldType(type).fileKey(key).build();
