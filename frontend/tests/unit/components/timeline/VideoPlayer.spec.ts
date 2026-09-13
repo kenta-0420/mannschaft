@@ -13,7 +13,7 @@ describe('Timeline VideoPlayer', () => {
       },
     })
 
-    expect(wrapper.get('video').attributes('src')).toBe(signedUrl)
+    expect(wrapper.get('source').attributes('src')).toBe(signedUrl)
     expect(wrapper.html()).not.toContain('/api/r2/')
   })
 
