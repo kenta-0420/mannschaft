@@ -7,8 +7,10 @@ import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.service.BulkCreateMode;
 import com.mannschaft.app.service.ReactionType;
 import com.mannschaft.app.service.ServiceRecordErrorCode;
@@ -92,6 +94,7 @@ public class ServiceRecordService {
     private final NameResolverService nameResolverService;
     private final StorageService storageService;
     private final StorageAclService storageAclService;
+    private final StorageAccessService storageAccessService;
     private final AccessControlService accessControlService;
 
     /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
@@ -111,6 +114,7 @@ public class ServiceRecordService {
     }
     private static final int MAX_ATTACHMENTS = 5;
     private static final int MAX_BULK_RECORDS = 20;
+    private static final Duration DOWNLOAD_TTL = Duration.ofMinutes(5);
 
     // ==================== サービス記録 CRUD ====================
 
@@ -480,9 +484,7 @@ public class ServiceRecordService {
 
             List<ServiceRecordAttachmentEntity> attachments =
                     attachmentRepository.findByServiceRecordIdOrderBySortOrder(entity.getId());
-            List<AttachmentResponse> attachmentResponses = attachments.stream()
-                    .map(mapper::toAttachmentResponse)
-                    .collect(Collectors.toList());
+            List<AttachmentResponse> attachmentResponses = toAttachmentResponses(entity, attachments);
 
             return ServiceRecordResponse.builder()
                     .id(entity.getId())
@@ -794,9 +796,7 @@ public class ServiceRecordService {
 
         List<ServiceRecordAttachmentEntity> attachments =
                 attachmentRepository.findByServiceRecordIdOrderBySortOrder(entity.getId());
-        List<AttachmentResponse> attachmentResponses = attachments.stream()
-                .map(mapper::toAttachmentResponse)
-                .collect(Collectors.toList());
+        List<AttachmentResponse> attachmentResponses = toAttachmentResponses(entity, attachments);
 
         return ServiceRecordResponse.builder()
                 .id(entity.getId())
@@ -813,6 +813,38 @@ public class ServiceRecordService {
                 .duplicatedFrom(duplicatedFrom)
                 .createdAt(entity.getCreatedAt())
                 .build();
+    }
+
+    private List<AttachmentResponse> toAttachmentResponses(
+            ServiceRecordEntity record, List<ServiceRecordAttachmentEntity> attachments) {
+        if (attachments.isEmpty()) {
+            return List.of();
+        }
+        StorageAclScope scope = StorageAclScope.team(record.getTeamId());
+        StorageAclContentReference parent =
+                new StorageAclContentReference("SERVICE_RECORD", record.getId().toString());
+        Map<String, String> downloadUrls = storageAccessService.generateDownloadUrlsForList(
+                attachments.stream()
+                        .map(attachment -> new StorageAclDownloadRequest(
+                                attachment.getFileKey(),
+                                scope,
+                                parent,
+                                new StorageAclAttachmentBinding(
+                                        "SERVICE_RECORD_ATTACHMENT", attachment.getId().toString())))
+                        .toList(),
+                DOWNLOAD_TTL);
+        return attachments.stream()
+                .filter(attachment -> downloadUrls.containsKey(attachment.getFileKey()))
+                .map(attachment -> AttachmentResponse.builder()
+                        .id(attachment.getId())
+                        .fileName(attachment.getFileName())
+                        .contentType(attachment.getContentType())
+                        .fileSize(attachment.getFileSize())
+                        .sortOrder(attachment.getSortOrder())
+                        .downloadUrl(downloadUrls.get(attachment.getFileKey()))
+                        .createdAt(attachment.getCreatedAt())
+                        .build())
+                .toList();
     }
 
     private BulkCreateResponse bulkCreateAllOrNothing(Long teamId, Long currentUserId,

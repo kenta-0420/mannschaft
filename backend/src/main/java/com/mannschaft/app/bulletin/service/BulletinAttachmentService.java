@@ -23,6 +23,8 @@ import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
@@ -39,6 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -113,6 +116,7 @@ public class BulletinAttachmentService {
     private final StorageQuotaService storageQuotaService;
     private final StorageService storageService;
     private final StorageAclService storageAclService;
+    private final StorageAccessService storageAccessService;
     private final AuditLogService auditLogService;
 
     // ─────────────────────────────────────────────
@@ -227,8 +231,9 @@ public class BulletinAttachmentService {
     public List<AttachmentResponse> listThreadAttachments(Long threadId, Long userId) {
         BulletinThreadEntity thread = findThreadOrThrow(threadId);
         checkViewAuthorization(thread, userId);
-        return bulletinMapper.toAttachmentResponseList(
-                attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.THREAD, threadId));
+        return filterDownloadableAttachments(
+                attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.THREAD, threadId),
+                thread, userId);
     }
 
     /**
@@ -241,8 +246,9 @@ public class BulletinAttachmentService {
     public List<AttachmentResponse> listReplyAttachments(Long replyId, Long userId) {
         BulletinThreadEntity thread = resolveThread(TargetType.REPLY, replyId);
         checkViewAuthorization(thread, userId);
-        return bulletinMapper.toAttachmentResponseList(
-                attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.REPLY, replyId));
+        return filterDownloadableAttachments(
+                attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.REPLY, replyId),
+                thread, userId);
     }
 
     // ─────────────────────────────────────────────
@@ -263,10 +269,29 @@ public class BulletinAttachmentService {
         BulletinThreadEntity thread = resolveThread(attachment.getTargetType(), attachment.getTargetId());
         checkViewAuthorization(thread, userId);
 
-        String downloadUrl = storageService.generateDownloadUrl(attachment.getFileKey(), DOWNLOAD_TTL);
+        String downloadUrl = storageAccessService.generateDownloadUrl(
+                attachment.getFileKey(), aclScope(thread, attachment.getCreatedBy()),
+                new StorageAclContentReference("BULLETIN_THREAD", thread.getId().toString()),
+                new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", attachment.getId().toString()),
+                DOWNLOAD_TTL);
 
         log.info("掲示板添付 download-url 発行: attachmentId={}, userId={}", attachmentId, userId);
         return new AttachmentDownloadUrlResponse(downloadUrl, DOWNLOAD_TTL.toSeconds());
+    }
+
+    private List<AttachmentResponse> filterDownloadableAttachments(
+            List<BulletinAttachmentEntity> attachments, BulletinThreadEntity thread, Long userId) {
+        List<StorageAclDownloadRequest> requests = attachments.stream()
+                .map(attachment -> new StorageAclDownloadRequest(
+                        attachment.getFileKey(), aclScope(thread, attachment.getCreatedBy()),
+                        new StorageAclContentReference("BULLETIN_THREAD", thread.getId().toString()),
+                        new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", attachment.getId().toString())))
+                .toList();
+        Map<String, String> readableKeys = storageAccessService.generateDownloadUrlsForList(requests, DOWNLOAD_TTL);
+        return attachments.stream()
+                .filter(attachment -> readableKeys.containsKey(attachment.getFileKey()))
+                .map(bulletinMapper::toAttachmentResponse)
+                .toList();
     }
 
     // ─────────────────────────────────────────────
