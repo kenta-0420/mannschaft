@@ -89,6 +89,7 @@ public class BlogMediaAclService implements MultipartContentTargetResolver {
         for (String key : keys) {
             BlogMediaUploadEntity entry = byKey.get(key);
             if (entry == null || !scopeOf(post).equals(storedScope(entry))
+                    || "UPLOADING".equals(entry.getProcessingStatus())
                     || (entry.getBlogPostId() != null && !post.getId().equals(entry.getBlogPostId()))
                     || (entry.getBlogPostId() == null && !Objects.equals(actorId, entry.getUploaderId()))) {
                 throw new BusinessException(StorageErrorCode.ACL_NOT_FOUND);

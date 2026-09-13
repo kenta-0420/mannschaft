@@ -797,6 +797,72 @@ class ScheduleMediaServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("confirmImageUpload")
+    class ConfirmImageUpload {
+
+        private ScheduleMediaUploadEntity uploadingImage(Long ownerId) {
+            return ScheduleMediaUploadEntity.builder().id(MEDIA_ID).scheduleId(SCHEDULE_ID)
+                    .uploaderId(ownerId).mediaType("IMAGE")
+                    .r2Key("schedules/TEAM/50/100/image.jpg").fileName("image.jpg")
+                    .fileSize(1024L).contentType("image/jpeg").processingStatus("UPLOADING").build();
+        }
+
+        @Test
+        @DisplayName("HEADで実体とサイズを確認後にACL・使用量を確定する")
+        void 実体確認後に確定する() {
+            ScheduleMediaUploadEntity media = uploadingImage(UPLOADER_ID);
+            given(scheduleMediaUploadRepository.findByIdForUploadCompletion(MEDIA_ID))
+                    .willReturn(Optional.of(media));
+            given(scheduleRepository.findById(SCHEDULE_ID))
+                    .willReturn(Optional.of(ScheduleEntity.builder().id(SCHEDULE_ID).teamId(50L).build()));
+            given(r2StorageService.objectExists(media.getR2Key())).willReturn(true);
+            given(r2StorageService.getObjectSize(media.getR2Key())).willReturn(1024L);
+
+            scheduleMediaService.confirmImageUpload(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID);
+
+            assertThat(media.getProcessingStatus()).isEqualTo("READY");
+            then(storageAclService).should().claimPending(
+                    eq(media.getR2Key()), eq(UPLOADER_ID),
+                    eq(com.mannschaft.app.common.storage.acl.StorageAclScope.team(50L)),
+                    eq(new com.mannschaft.app.common.storage.acl.StorageAclContentReference("SCHEDULE", "100")),
+                    eq(new com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding(
+                            "SCHEDULE_MEDIA_UPLOAD", String.valueOf(MEDIA_ID))));
+            then(storageQuotaService).should().recordUpload(
+                    StorageScopeType.TEAM, 50L, 1024L, StorageFeatureType.SCHEDULE_MEDIA,
+                    "schedule_media_uploads", MEDIA_ID, UPLOADER_ID);
+        }
+
+        @Test
+        @DisplayName("別ユーザーはHEAD前に存在秘匿で拒否する")
+        void 別ユーザーは拒否する() {
+            given(scheduleMediaUploadRepository.findByIdForUploadCompletion(MEDIA_ID))
+                    .willReturn(Optional.of(uploadingImage(OTHER_USER_ID)));
+
+            assertThatThrownBy(() -> scheduleMediaService.confirmImageUpload(
+                    SCHEDULE_ID, MEDIA_ID, UPLOADER_ID)).isInstanceOf(BusinessException.class);
+
+            then(r2StorageService).should(never()).objectExists(anyString());
+            then(storageQuotaService).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("申告サイズとHEADサイズが違えば確定しない")
+        void サイズ不一致は確定しない() {
+            ScheduleMediaUploadEntity media = uploadingImage(UPLOADER_ID);
+            given(scheduleMediaUploadRepository.findByIdForUploadCompletion(MEDIA_ID))
+                    .willReturn(Optional.of(media));
+            given(r2StorageService.objectExists(media.getR2Key())).willReturn(true);
+            given(r2StorageService.getObjectSize(media.getR2Key())).willReturn(1025L);
+
+            assertThatThrownBy(() -> scheduleMediaService.confirmImageUpload(
+                    SCHEDULE_ID, MEDIA_ID, UPLOADER_ID)).isInstanceOf(ResponseStatusException.class);
+
+            then(storageAclService).should(never()).claimPending(anyString(), anyLong(), any(), any(), any());
+            then(storageQuotaService).should(never()).recordUpload(any(), anyLong(), anyLong(), any(), anyString(), anyLong(), anyLong());
+        }
+    }
+
     // ==================== F13 Phase 4-γ: StorageQuota 統合テスト ====================
 
     @Nested
@@ -819,8 +885,8 @@ class ScheduleMediaServiceTest {
         }
 
         @Test
-        @DisplayName("正常系_IMAGE アップロード: checkQuota → recordUpload が呼ばれる（TEAM スコープ）")
-        void 正常系_IMAGE_checkQuota_recordUpload_TEAM() {
+        @DisplayName("正常系_IMAGE presign: checkQuotaのみで完了前は未計上（TEAM スコープ）")
+        void 正常系_IMAGE_checkQuotaのみ_TEAM() {
             // given
             ScheduleEntity schedule = teamSchedule();
             ScheduleMediaUploadUrlRequest req = buildRequest("IMAGE", "image/jpeg", 1024L * 1024, "photo.jpg");
@@ -851,13 +917,11 @@ class ScheduleMediaServiceTest {
             // when
             scheduleMediaService.generateUploadUrl(SCHEDULE_ID, UPLOADER_ID, req);
 
-            // then: TEAM スコープで checkQuota / recordUpload が呼ばれる
+            // then: TEAM スコープで事前確認し、実体確認前は未計上
             then(storageQuotaService).should()
                     .checkQuota(StorageScopeType.TEAM, 50L, 1024L * 1024);
-            then(storageQuotaService).should()
-                    .recordUpload(eq(StorageScopeType.TEAM), eq(50L), eq(1024L * 1024),
-                            eq(StorageFeatureType.SCHEDULE_MEDIA),
-                            eq("schedule_media_uploads"), eq(MEDIA_ID), eq(UPLOADER_ID));
+            then(storageQuotaService).should(never())
+                    .recordUpload(any(), anyLong(), anyLong(), any(), anyString(), anyLong(), anyLong());
         }
 
         @Test

@@ -4,12 +4,16 @@ import com.mannschaft.app.schedule.entity.ScheduleMediaUploadEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+
+import jakarta.persistence.LockModeType;
 
 /**
  * スケジュールメディアアップロードリポジトリ。
@@ -19,6 +23,11 @@ public interface ScheduleMediaUploadRepository extends JpaRepository<ScheduleMed
 
     /** multipart開始・完了時に保存済みメディアを復元する。呼び出し側でもキーを厳密比較する。 */
     java.util.Optional<ScheduleMediaUploadEntity> findByR2Key(String r2Key);
+
+    /** 単発PUTの完了確認を直列化し、使用量の二重計上を防ぐ。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM ScheduleMediaUploadEntity m WHERE m.id = :id")
+    Optional<ScheduleMediaUploadEntity> findByIdForUploadCompletion(@Param("id") Long id);
 
     /**
      * スケジュール別メディア一覧（作成日時降順）。

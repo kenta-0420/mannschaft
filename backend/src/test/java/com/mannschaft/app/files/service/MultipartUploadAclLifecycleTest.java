@@ -61,8 +61,10 @@ class MultipartUploadAclLifecycleTest {
 
     @Test
     void 期限切れ境界ではURL発行と完了を拒否する() {
-        when(sessions.findByUploadId("upload")).thenReturn(Optional.of(session()
-                .toBuilder().expiresAt(LocalDateTime.now(clock)).build()));
+        MultipartUploadSessionEntity expired = session()
+                .toBuilder().expiresAt(LocalDateTime.now(clock)).build();
+        when(sessions.findByUploadId("upload")).thenReturn(Optional.of(expired));
+        when(sessions.findByUploadIdForUpdate("upload")).thenReturn(Optional.of(expired));
         assertThatThrownBy(() -> service.getPartUrls("upload", 1L,
                 new PartUrlRequest("files/v.mp4", List.of(1))))
                 .isInstanceOf(ResponseStatusException.class);
@@ -74,7 +76,7 @@ class MultipartUploadAclLifecycleTest {
 
     @Test
     void 完了時に開始セッションへACLをclaimする() {
-        when(sessions.findByUploadId("upload")).thenReturn(Optional.of(session()));
+        when(sessions.findByUploadIdForUpdate("upload")).thenReturn(Optional.of(session()));
         service.completeUpload("upload", 1L, complete());
         verify(acl).claimPending("files/v.mp4", 1L, StorageAclScope.personal(1L),
                 new StorageAclContentReference("MULTIPART_UPLOAD", "upload"),
@@ -84,7 +86,7 @@ class MultipartUploadAclLifecycleTest {
 
     @Test
     void claim失敗ではR2を完成させない() {
-        when(sessions.findByUploadId("upload")).thenReturn(Optional.of(session()));
+        when(sessions.findByUploadIdForUpdate("upload")).thenReturn(Optional.of(session()));
         doThrow(new IllegalStateException("claim failed")).when(acl)
                 .claimPending(anyString(), any(), any(), any(), any());
         assertThatThrownBy(() -> service.completeUpload("upload", 1L, complete()))
@@ -95,7 +97,7 @@ class MultipartUploadAclLifecycleTest {
 
     @Test
     void R2完了後DB失敗の再試行は完成済みオブジェクトから復旧する() {
-        when(sessions.findByUploadId("upload")).thenReturn(Optional.of(session()));
+        when(sessions.findByUploadIdForUpdate("upload")).thenReturn(Optional.of(session()));
         when(storage.objectExists("files/v.mp4")).thenReturn(true);
         service.completeUpload("upload", 1L, complete());
         verify(storage, never()).completeMultipartUpload(anyString(), anyString(), anyList());

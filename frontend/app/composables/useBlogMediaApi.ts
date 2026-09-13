@@ -73,6 +73,11 @@ export function useBlogMediaApi() {
       )
     }
 
+    // 3. R2の実体・サイズ確認後にACLと使用量を確定する
+    await api(`/api/v1/blog/media/${urlResponse.media_id}/complete`, {
+      method: 'POST',
+    })
+
     return {
       mediaId: urlResponse.media_id,
       fileKey: urlResponse.file_key,

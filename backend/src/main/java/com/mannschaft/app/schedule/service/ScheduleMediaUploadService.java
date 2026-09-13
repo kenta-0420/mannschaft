@@ -230,23 +230,16 @@ public class ScheduleMediaUploadService {
                 .fileName(req.getFileName())
                 .fileSize(req.getFileSize())
                 .contentType(req.getContentType())
-                .processingStatus("READY")
+                .processingStatus("UPLOADING")
                 .build();
         ScheduleMediaUploadEntity saved = scheduleMediaUploadRepository.save(entity);
         var target = ScheduleMediaAclService.targetOf(
                 scheduleRepository.findById(scheduleId).orElseThrow(), saved);
         storageAclService.registerPending(r2Key, uploaderId, target.scope(), req.getContentType(),
                 UPLOAD_URL_TTL, target.parent());
-        storageAclService.claimPending(r2Key, uploaderId, target.scope(), target.parent(), target.binding());
 
         log.info("画像アップロード Presigned URL 発行: uploaderId={}, scheduleId={}, mediaId={}, key={}",
                 uploaderId, scheduleId, saved.getId(), r2Key);
-
-        // F13 Phase 4-γ: 使用量加算（IMAGE は presign 発行＋INSERT 完了を確定とみなす）
-        storageQuotaService.recordUpload(
-                scope.scopeType(), scope.scopeId(), req.getFileSize(),
-                StorageFeatureType.SCHEDULE_MEDIA,
-                REFERENCE_TYPE, saved.getId(), uploaderId);
 
         return ScheduleMediaUploadUrlResponse.builder()
                 .mediaId(saved.getId())
@@ -255,6 +248,50 @@ public class ScheduleMediaUploadService {
                 .uploadUrl(result.uploadUrl())
                 .expiresIn(UPLOAD_URL_TTL_SECONDS)
                 .build();
+    }
+
+    /** 単発PUT画像のR2実在を確認してから、ACLと使用量を一度だけ確定する。 */
+    @Transactional
+    public void confirmImageUpload(Long scheduleId, Long mediaId, Long uploaderId) {
+        ScheduleMediaUploadEntity media = scheduleMediaUploadRepository.findByIdForUploadCompletion(mediaId)
+                .orElseThrow(() -> new com.mannschaft.app.common.BusinessException(
+                        com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND));
+        if (!java.util.Objects.equals(media.getScheduleId(), scheduleId)
+                || !java.util.Objects.equals(media.getUploaderId(), uploaderId)
+                || !"IMAGE".equals(media.getMediaType())) {
+            throw new com.mannschaft.app.common.BusinessException(
+                    com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND);
+        }
+        if ("READY".equals(media.getProcessingStatus())) {
+            return;
+        }
+        if (!"UPLOADING".equals(media.getProcessingStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "画像アップロードは完了確認できない状態です");
+        }
+
+        ScheduleEntity schedule = mediaAclService.requireUploadable(scheduleId, uploaderId);
+        var target = ScheduleMediaAclService.targetOf(schedule, media);
+        if (!r2StorageService.objectExists(media.getR2Key())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "アップロード済み画像が見つかりません");
+        }
+        long actualSize = r2StorageService.getObjectSize(media.getR2Key());
+        if (actualSize != media.getFileSize()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "アップロード済み画像のサイズが申告値と一致しません");
+        }
+        ScheduleMediaService.ScopeResolution scope = ScheduleMediaService.resolveScopeFor(schedule, uploaderId);
+        try {
+            storageQuotaService.checkQuota(scope.scopeType(), scope.scopeId(), actualSize);
+        } catch (StorageQuotaExceededException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "ストレージ容量が不足しているためアップロードを完了できません");
+        }
+        storageAclService.claimPending(media.getR2Key(), uploaderId,
+                target.scope(), target.parent(), target.binding());
+        storageQuotaService.recordUpload(
+                scope.scopeType(), scope.scopeId(), actualSize,
+                StorageFeatureType.SCHEDULE_MEDIA, REFERENCE_TYPE, media.getId(), uploaderId);
+        media.updateProcessingStatus("READY");
+        scheduleMediaUploadRepository.save(media);
     }
 
     /**

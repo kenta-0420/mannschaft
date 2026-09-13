@@ -256,12 +256,33 @@ public class MultipartUploadService {
     public CompleteMultipartResponse completeUpload(
             String uploadId, Long requesterId, CompleteMultipartRequest req) {
 
-        MultipartUploadSessionEntity session = findSessionOrThrow(uploadId);
+        MultipartUploadSessionEntity session = findSessionForUpdateOrThrow(uploadId);
         validateInProgress(session);
         validateSessionOwner(session, requesterId);
         validateFileKeyMatchesSession(session, req.getFileKey());
         validateNotExpired(session);
         MultipartContentTarget target = resolveTarget(session);
+
+        var externalObjectCompleted = new java.util.concurrent.atomic.AtomicBoolean();
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCompletion(int status) {
+                            if (status != STATUS_COMMITTED && externalObjectCompleted.get()) {
+                                try {
+                                    cleanupService.compensateCompletedRollback(
+                                            session.getUploadId(), session.getR2Key(), session.getFeature(),
+                                            session.getScopeType(), session.getScopeId(), session.getUploaderId(),
+                                            session.getContentType());
+                                } catch (RuntimeException cleanupFailure) {
+                                    log.error("Multipart完了rollback後の補償登録に失敗しました: uploadId={}, fileKey={}",
+                                            session.getUploadId(), session.getR2Key(), cleanupFailure);
+                                }
+                            }
+                        }
+                    });
+        }
 
         // scope/親/添付束縛の不一致は不可逆なR2完了より先に拒否する。
         // R2失敗・DBコミット失敗時はこのclaimも同じTxでrollbackされ、完成済み実体は読取不可のままになる。
@@ -279,8 +300,18 @@ public class MultipartUploadService {
         // 前回R2完了後にDB保存/commitが失敗した場合、消費済みuploadIdを再completeせずHEADから復旧する。
         // キーはサーバー採番しセッションに固定済み。存在確認の通信障害は握りつぶさない。
         if (!r2StorageService.objectExists(session.getR2Key())) {
-            r2StorageService.completeMultipartUpload(session.getR2Key(), uploadId, completedParts);
+            try {
+                r2StorageService.completeMultipartUpload(session.getR2Key(), uploadId, completedParts);
+            } catch (RuntimeException completionFailure) {
+                try {
+                    externalObjectCompleted.set(r2StorageService.objectExists(session.getR2Key()));
+                } catch (RuntimeException headFailure) {
+                    completionFailure.addSuppressed(headFailure);
+                }
+                throw completionFailure;
+            }
         }
+        externalObjectCompleted.set(true);
 
         // R2 HeadObject で最終ファイルサイズを取得
         long fileSize = r2StorageService.getObjectSize(session.getR2Key());
@@ -304,7 +335,7 @@ public class MultipartUploadService {
      */
     @Transactional
     public void abortUpload(String uploadId, Long requesterId) {
-        MultipartUploadSessionEntity session = findSessionOrThrow(uploadId);
+        MultipartUploadSessionEntity session = findSessionForUpdateOrThrow(uploadId);
         validateInProgress(session);
         validateSessionOwner(session, requesterId);
 
@@ -358,6 +389,13 @@ public class MultipartUploadService {
      */
     private MultipartUploadSessionEntity findSessionOrThrow(String uploadId) {
         return sessionRepository.findByUploadId(uploadId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Multipart Upload セッションが見つかりません: " + uploadId));
+    }
+
+    private MultipartUploadSessionEntity findSessionForUpdateOrThrow(String uploadId) {
+        return sessionRepository.findByUploadIdForUpdate(uploadId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Multipart Upload セッションが見つかりません: " + uploadId));

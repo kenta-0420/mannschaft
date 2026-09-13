@@ -3,6 +3,7 @@ package com.mannschaft.app.files.service;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.files.entity.MultipartAbortCleanupEntity;
 import com.mannschaft.app.files.repository.MultipartAbortCleanupRepository;
+import com.mannschaft.app.files.repository.MultipartUploadSessionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,12 +28,13 @@ import static org.mockito.Mockito.never;
 @ExtendWith(MockitoExtension.class)
 class MultipartUploadCleanupServiceTest {
     @Mock MultipartAbortCleanupRepository repository;
+    @Mock MultipartUploadSessionRepository sessions;
     @Mock R2StorageService storage;
     private MultipartUploadCleanupService service;
 
     @BeforeEach
     void setUp() {
-        service = new MultipartUploadCleanupService(repository, storage, Clock.systemUTC());
+        service = new MultipartUploadCleanupService(repository, sessions, storage, Clock.systemUTC());
         ReflectionTestUtils.setField(service, "maxAttempts", 2);
         ReflectionTestUtils.setField(service, "retentionDays", 30);
     }
@@ -93,6 +95,34 @@ class MultipartUploadCleanupServiceTest {
                 .abortMultipartUpload(any(), any());
         service.retryPendingAborts(Instant.now());
         verify(repository).save(any(MultipartAbortCleanupEntity.class));
+    }
+
+    @Test
+    void 完了rollback後の削除失敗はDELETE_PENDINGで保持する() {
+        given(repository.save(any(MultipartAbortCleanupEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        org.mockito.Mockito.doThrow(new RuntimeException("delete failed"))
+                .when(storage).delete("k");
+
+        service.compensateCompletedRollback("u", "k", "files", "PERSONAL", 1L, 1L, "video/mp4");
+
+        verify(repository).save(org.mockito.ArgumentMatchers.argThat(
+                item -> "DELETE_PENDING".equals(item.getStatus())));
+        verify(repository, never()).delete(any(MultipartAbortCleanupEntity.class));
+    }
+
+    @Test
+    void DELETE_PENDINGはobject削除成功後に台帳から消す() {
+        MultipartAbortCleanupEntity item = item(0).toBuilder().status("DELETE_PENDING").build();
+        given(repository.findByStatusAndNextAttemptAtBefore(eq("DELETE_PENDING"), any()))
+                .willReturn(List.of(item));
+        given(repository.claimDelete(any(), any(), any())).willReturn(1);
+
+        assertThat(service.retryPendingAborts(Instant.now())).isEqualTo(1);
+
+        verify(storage).delete("k");
+        verify(storage, never()).abortMultipartUpload(any(), any());
+        verify(repository).delete(item);
     }
 
     @Test

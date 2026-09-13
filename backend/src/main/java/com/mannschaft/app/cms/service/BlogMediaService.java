@@ -315,22 +315,15 @@ public class BlogMediaService {
                 .s3Key(r2Key)
                 .fileSize(req.getFileSize())
                 .contentType(req.getContentType())
-                .processingStatus("READY")
+                .processingStatus("UPLOADING")
                 .build();
         BlogMediaUploadEntity saved = blogMediaUploadRepository.save(entity);
         var target = BlogMediaAclService.targetOf(saved);
         storageAclService.registerPending(r2Key, uploaderId, target.scope(), req.getContentType(),
                 IMAGE_UPLOAD_TTL, target.parent());
-        storageAclService.claimPending(r2Key, uploaderId, target.scope(), target.parent(), target.binding());
 
         log.info("画像アップロード Presigned URL 発行: uploaderId={}, mediaId={}, key={}",
                 uploaderId, saved.getId(), r2Key);
-
-        // F13 Phase 4-δ: 使用量加算（IMAGE は presign 発行＋INSERT 完了を確定とみなす）
-        storageQuotaService.recordUpload(
-                scopeType, req.getScopeId(), req.getFileSize(),
-                StorageFeatureType.CMS,
-                REFERENCE_TYPE, saved.getId(), uploaderId);
 
         return BlogMediaUploadUrlResponse.builder()
                 .mediaId(saved.getId())
@@ -339,6 +332,47 @@ public class BlogMediaService {
                 .uploadUrl(result.uploadUrl())
                 .expiresIn(IMAGE_UPLOAD_TTL_SECONDS)
                 .build();
+    }
+
+    /**
+     * 単発PUT画像がR2へ実在することをHEADで確認してから、ACLと使用量を一度だけ確定する。
+     */
+    @Transactional
+    public void confirmImageUpload(Long mediaId, Long uploaderId) {
+        BlogMediaUploadEntity media = blogMediaUploadRepository.findByIdForUploadCompletion(mediaId)
+                .orElseThrow(() -> new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND));
+        if (!java.util.Objects.equals(media.getUploaderId(), uploaderId)
+                || !"IMAGE".equals(media.getMediaType())) {
+            throw new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND);
+        }
+        if ("READY".equals(media.getProcessingStatus())) {
+            return;
+        }
+        if (!"UPLOADING".equals(media.getProcessingStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "画像アップロードは完了確認できない状態です");
+        }
+
+        var target = mediaAclService.resolveMultipartTarget(media.getS3Key(), uploaderId)
+                .orElseThrow(() -> new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND));
+        if (!r2StorageService.objectExists(media.getS3Key())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "アップロード済み画像が見つかりません");
+        }
+        long actualSize = r2StorageService.getObjectSize(media.getS3Key());
+        if (actualSize != media.getFileSize()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "アップロード済み画像のサイズが申告値と一致しません");
+        }
+        try {
+            storageQuotaService.checkQuota(StorageScopeType.valueOf(media.getScopeType()), media.getScopeId(), actualSize);
+        } catch (StorageQuotaExceededException e) {
+            throw new BusinessException(CmsErrorCode.MEDIA_QUOTA_EXCEEDED, e);
+        }
+        storageAclService.claimPending(media.getS3Key(), uploaderId,
+                target.scope(), target.parent(), target.binding());
+        storageQuotaService.recordUpload(
+                StorageScopeType.valueOf(media.getScopeType()), media.getScopeId(), actualSize,
+                StorageFeatureType.CMS, REFERENCE_TYPE, media.getId(), uploaderId);
+        media.updateProcessingStatus("READY");
+        blogMediaUploadRepository.save(media);
     }
 
     /**

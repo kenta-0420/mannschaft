@@ -68,6 +68,19 @@ public class ScheduleMediaController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
+    /** Presigned PUT完了後にR2実体を確認し、画像のACLと使用量を確定する。 */
+    @PostMapping("/{mediaId}/complete")
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "スケジュール画像アップロード完了確認")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "完了確認成功")
+    public ResponseEntity<Void> confirmImageUpload(
+            @PathVariable Long scheduleId,
+            @PathVariable Long mediaId) {
+        scheduleMediaService.confirmImageUpload(scheduleId, mediaId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
+    }
+
     /**
      * スケジュールに添付されたメディア一覧を取得する。
      *

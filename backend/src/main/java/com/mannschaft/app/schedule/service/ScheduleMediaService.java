@@ -61,6 +61,11 @@ public class ScheduleMediaService {
         return uploadService.generateUploadUrl(scheduleId, uploaderId, req);
     }
 
+    /** Presigned PUT完了後の画像実在確認をアップロードサービスへ委譲する。 */
+    public void confirmImageUpload(Long scheduleId, Long mediaId, Long uploaderId) {
+        uploadService.confirmImageUpload(scheduleId, mediaId, uploaderId);
+    }
+
     /**
      * スケジュールのメディア一覧を取得する。
      *

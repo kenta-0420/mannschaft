@@ -366,6 +366,75 @@ class BlogMediaServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("confirmImageUpload")
+    class ConfirmImageUpload {
+
+        private BlogMediaUploadEntity uploadingImage(Long ownerId) {
+            return BlogMediaUploadEntity.builder().id(7L).uploaderId(ownerId)
+                    .scopeType("TEAM").scopeId(10L).mediaType("IMAGE")
+                    .s3Key("blog/TEAM/10/image.jpg").fileSize(1024L)
+                    .contentType("image/jpeg").processingStatus("UPLOADING").build();
+        }
+
+        private com.mannschaft.app.common.storage.acl.MultipartContentTarget target() {
+            return new com.mannschaft.app.common.storage.acl.MultipartContentTarget(
+                    com.mannschaft.app.common.storage.acl.StorageAclScope.team(10L),
+                    new com.mannschaft.app.common.storage.acl.StorageAclContentReference("BLOG_POST", "draft:7"),
+                    new com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding("BLOG_MEDIA_UPLOAD", "7"));
+        }
+
+        @Test
+        @DisplayName("HEADで実体とサイズを確認後にACL・使用量を一度だけ確定する")
+        void 実体確認後に確定する() {
+            BlogMediaUploadEntity media = uploadingImage(UPLOADER_ID);
+            given(blogMediaUploadRepository.findByIdForUploadCompletion(7L))
+                    .willReturn(java.util.Optional.of(media));
+            given(mediaAclService.resolveMultipartTarget(media.getS3Key(), UPLOADER_ID))
+                    .willReturn(java.util.Optional.of(target()));
+            given(r2StorageService.objectExists(media.getS3Key())).willReturn(true);
+            given(r2StorageService.getObjectSize(media.getS3Key())).willReturn(1024L);
+
+            blogMediaService.confirmImageUpload(7L, UPLOADER_ID);
+
+            assertThat(media.getProcessingStatus()).isEqualTo("READY");
+            then(storageAclService).should().claimPending(
+                    eq(media.getS3Key()), eq(UPLOADER_ID), eq(target().scope()), eq(target().parent()), eq(target().binding()));
+            then(storageQuotaService).should().recordUpload(
+                    StorageScopeType.TEAM, 10L, 1024L, StorageFeatureType.CMS,
+                    "blog_media_uploads", 7L, UPLOADER_ID);
+        }
+
+        @Test
+        @DisplayName("R2に実体がなければACL・使用量を確定しない")
+        void 実体なしは確定しない() {
+            BlogMediaUploadEntity media = uploadingImage(UPLOADER_ID);
+            given(blogMediaUploadRepository.findByIdForUploadCompletion(7L))
+                    .willReturn(java.util.Optional.of(media));
+            given(mediaAclService.resolveMultipartTarget(media.getS3Key(), UPLOADER_ID))
+                    .willReturn(java.util.Optional.of(target()));
+
+            assertThatThrownBy(() -> blogMediaService.confirmImageUpload(7L, UPLOADER_ID))
+                    .isInstanceOf(ResponseStatusException.class);
+
+            then(storageAclService).should(never()).claimPending(anyString(), anyLong(), any(), any(), any());
+            then(storageQuotaService).should(never()).recordUpload(any(), anyLong(), anyLong(), any(), anyString(), anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("別ユーザーはHEAD前に存在秘匿で拒否する")
+        void 別ユーザーは拒否する() {
+            given(blogMediaUploadRepository.findByIdForUploadCompletion(7L))
+                    .willReturn(java.util.Optional.of(uploadingImage(99L)));
+
+            assertThatThrownBy(() -> blogMediaService.confirmImageUpload(7L, UPLOADER_ID))
+                    .isInstanceOf(BusinessException.class);
+
+            then(r2StorageService).should(never()).objectExists(anyString());
+            then(storageQuotaService).shouldHaveNoInteractions();
+        }
+    }
+
     // ==================== F13 Phase 4-δ クォータ統合テスト ====================
 
     @Nested
@@ -373,8 +442,8 @@ class BlogMediaServiceTest {
     class StorageQuotaIntegration {
 
         @Test
-        @DisplayName("正常系_IMAGE_presign後にrecordUploadが呼ばれる")
-        void 正常系_IMAGE_recordUpload呼び出し確認() {
+        @DisplayName("正常系_IMAGE_presign時点ではrecordUploadしない")
+        void 正常系_IMAGE_presign時点では未計上() {
             // given
             BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
                     "IMAGE", "image/jpeg", 512L * 1024, "TEAM", 10L, null);
@@ -400,12 +469,11 @@ class BlogMediaServiceTest {
             // when
             blogMediaService.generateUploadUrl(UPLOADER_ID, req);
 
-            // then: checkQuota → recordUpload の順に呼ばれる
+            // then: 事前チェックのみ行い、実体確認前は使用量を計上しない
             then(storageQuotaService).should().checkQuota(
                     eq(StorageScopeType.TEAM), eq(10L), eq(512L * 1024));
-            then(storageQuotaService).should().recordUpload(
-                    eq(StorageScopeType.TEAM), eq(10L), eq(512L * 1024),
-                    eq(StorageFeatureType.CMS), anyString(), any(), eq(UPLOADER_ID));
+            then(storageQuotaService).should(never()).recordUpload(
+                    any(), anyLong(), anyLong(), any(), anyString(), any(), anyLong());
         }
 
         @Test

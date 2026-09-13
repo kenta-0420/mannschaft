@@ -305,7 +305,7 @@ class MultipartUploadServiceTest {
                     List.of(
                             new CompleteMultipartRequest.PartEtag(1, "etag-001"),
                             new CompleteMultipartRequest.PartEtag(2, "etag-002")));
-            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+            given(sessionRepository.findByUploadIdForUpdate(UPLOAD_ID)).willReturn(Optional.of(session));
             given(r2StorageService.getObjectSize("timeline/uuid.mp4")).willReturn(200 * 1024 * 1024L);
             given(sessionRepository.save(any(MultipartUploadSessionEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -328,7 +328,7 @@ class MultipartUploadServiceTest {
             CompleteMultipartRequest req = new CompleteMultipartRequest(
                     "timeline/other-file.mp4",
                     List.of(new CompleteMultipartRequest.PartEtag(1, "etag-001")));
-            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+            given(sessionRepository.findByUploadIdForUpdate(UPLOAD_ID)).willReturn(Optional.of(session));
 
             assertThatThrownBy(() -> service.completeUpload(UPLOAD_ID, USER_ID, req))
                     .isInstanceOf(ResponseStatusException.class)
@@ -346,7 +346,7 @@ class MultipartUploadServiceTest {
             MultipartUploadSessionEntity session = buildSessionWithStatus("COMPLETED");
             CompleteMultipartRequest req = new CompleteMultipartRequest(
                     "files/uuid.mp4", List.of(new CompleteMultipartRequest.PartEtag(1, "etag-001")));
-            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+            given(sessionRepository.findByUploadIdForUpdate(UPLOAD_ID)).willReturn(Optional.of(session));
 
             // when / then
             assertThatThrownBy(() -> service.completeUpload(UPLOAD_ID, USER_ID, req))
@@ -367,7 +367,7 @@ class MultipartUploadServiceTest {
         void 正常系_中断成功() {
             // given
             MultipartUploadSessionEntity session = buildInProgressSession();
-            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+            given(sessionRepository.findByUploadIdForUpdate(UPLOAD_ID)).willReturn(Optional.of(session));
             given(sessionRepository.save(any(MultipartUploadSessionEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 

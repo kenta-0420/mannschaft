@@ -25,6 +25,11 @@ public interface BlogMediaUploadRepository extends JpaRepository<BlogMediaUpload
     /** R2 キーで検索。 */
     Optional<BlogMediaUploadEntity> findByS3Key(String s3Key);
 
+    /** 単発PUTの完了確認を直列化し、使用量の二重計上を防ぐ。 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM BlogMediaUploadEntity m WHERE m.id = :id")
+    Optional<BlogMediaUploadEntity> findByIdForUploadCompletion(@Param("id") Long id);
+
     /**
      * R2 キーの一括検索（本文メディアの台帳照合用）。
      *
