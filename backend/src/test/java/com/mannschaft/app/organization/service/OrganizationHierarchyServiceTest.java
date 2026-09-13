@@ -23,11 +23,11 @@ import java.util.Map;
 import java.util.Set;
 
 import static java.util.Arrays.asList;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -64,10 +64,13 @@ class OrganizationHierarchyServiceTest {
     void setUp() {
         ReflectionTestUtils.setField(service, "maxDepth", 5);
         given(organizationRepository.findParentOrganizationIdProjectionsByIdIn(anyCollection()))
-                .willAnswer(invocation -> ((Collection<Long>) invocation.getArgument(0)).stream()
-                        .filter(parentIds::containsKey)
-                        .map(this::parentProjection)
-                        .toList());
+                .willAnswer(invocation -> {
+                    Collection<Long> organizationIds = invocation.getArgument(0);
+                    return organizationIds.stream()
+                            .filter(parentIds::containsKey)
+                            .map(this::parentProjection)
+                            .toList();
+                });
     }
 
     /** {@code child → parent} の親リンクを仕込む。 */
@@ -184,9 +187,9 @@ class OrganizationHierarchyServiceTest {
             assertThat(service.getAnchorOrgIdsByTeamIds(List.of(701L, 702L)))
                     .containsExactly(801L);
             verify(teamOrgMembershipRepository).findOrganizationIdByTeamIdIn(Set.of(701L, 702L));
-            verify(teamOrgMembershipRepository, atMost(0)).findByTeamIdAndStatus(
+            verify(teamOrgMembershipRepository, never()).findByTeamIdAndStatus(
                     701L, TeamOrgMembershipEntity.Status.ACTIVE);
-            verify(teamOrgMembershipRepository, atMost(0)).findByTeamIdAndStatus(
+            verify(teamOrgMembershipRepository, never()).findByTeamIdAndStatus(
                     702L, TeamOrgMembershipEntity.Status.ACTIVE);
         }
 
@@ -199,7 +202,7 @@ class OrganizationHierarchyServiceTest {
 
         @Test
         @DisplayName("null/空・重複IDは正規化し、空入力ではrepositoryを呼ばない")
-        void normalizesNullAndDuplicateTeamIds() {
+        void nullと重複を除去して空入力では照会しない() {
             given(teamOrgMembershipRepository.findOrganizationIdByTeamIdIn(Set.of(701L)))
                     .willReturn(Map.of(701L, 801L));
 
@@ -214,7 +217,7 @@ class OrganizationHierarchyServiceTest {
 
         @Test
         @DisplayName("一括repositoryの例外は握り潰さず伝播する")
-        void propagatesBatchRepositoryFailure() {
+        void 一括照会の例外を握り潰さず伝播する() {
             RuntimeException failure = new RuntimeException("batch query failed");
             given(teamOrgMembershipRepository.findOrganizationIdByTeamIdIn(Set.of(701L)))
                     .willThrow(failure);
@@ -222,6 +225,5 @@ class OrganizationHierarchyServiceTest {
             assertThatThrownBy(() -> service.getAnchorOrgIdsByTeamIds(List.of(701L)))
                     .isSameAs(failure);
         }
-
     }
 }
