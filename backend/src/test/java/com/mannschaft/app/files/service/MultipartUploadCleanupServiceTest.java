@@ -114,6 +114,8 @@ class MultipartUploadCleanupServiceTest {
     @Test
     void DELETE_PENDINGはobject削除成功後に台帳から消す() {
         MultipartAbortCleanupEntity item = item(0).toBuilder().status("DELETE_PENDING").build();
+        given(repository.findByStatusAndNextAttemptAtBefore(eq("ABORT_PENDING"), any()))
+                .willReturn(List.of());
         given(repository.findByStatusAndNextAttemptAtBefore(eq("DELETE_PENDING"), any()))
                 .willReturn(List.of(item));
         given(repository.claimDelete(any(), any(), any())).willReturn(1);

@@ -34,6 +34,8 @@ interface PersistedState {
 }
 
 const STORAGE_KEY = 'scope-dashboard'
+const inFlightTabsByStore = new WeakMap<object, Map<string, Promise<void>>>()
+const latestTabRequestByStore = new WeakMap<object, Map<ScopeTabType, number>>()
 
 /** デフォルト表示順（空配列 = サーバー順に従う） */
 const defaultTabOrders = (): Record<ScopeTabType, TabOrderEntry[]> => ({
@@ -125,10 +127,24 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
      * @param scopeType - TEAM / ORGANIZATION
      * @param page - 0 始まりのページ番号
      */
-    async loadTabs(scopeType: ScopeTabType, page = 0) {
-      try {
+    async loadTabs(scopeType: ScopeTabType, page = 0, folderId?: number) {
+      const inFlightTabs = inFlightTabsByStore.get(this) ?? new Map<string, Promise<void>>()
+      const latestTabRequest = latestTabRequestByStore.get(this) ?? new Map<ScopeTabType, number>()
+      inFlightTabsByStore.set(this, inFlightTabs)
+      latestTabRequestByStore.set(this, latestTabRequest)
+      const resolvedFolderId = folderId ?? this.activeFolderId ?? undefined
+      const key = `${scopeType}:${page}:${resolvedFolderId ?? ''}`
+      const existing = inFlightTabs.get(key)
+      if (existing) return existing
+
+      const requestId = (latestTabRequest.get(scopeType) ?? 0) + 1
+      latestTabRequest.set(scopeType, requestId)
+      const selectedAtRequestStart = scopeType === 'TEAM' ? this.selectedTeamId : this.selectedOrgId
+      const request = (async () => {
+       try {
         const { getScopeTabs } = useScopeTabApi()
-        const result = await getScopeTabs(scopeType, page, this.activeFolderId ?? undefined)
+        const result = await getScopeTabs(scopeType, page, resolvedFolderId)
+        if (latestTabRequest.get(scopeType) !== requestId) return
         this.tabPages[scopeType] = result
         this.lastError = null
 
@@ -138,7 +154,7 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         // 選択中スコープの BIGINT→slug マイグレーション + フォールバック処理。
         // scopeId（BIGINT 文字列）と slug（スラッグ）の両方でマッチングを行い、
         // UUID が取得できた場合は localStorage も含めてアップグレードする。
-        if (scopeType === 'TEAM') {
+        if (scopeType === 'TEAM' && this.selectedTeamId === selectedAtRequestStart) {
           if (this.selectedTeamId === null) {
             // 未選択 → 先頭を選択
             if (first) {
@@ -163,7 +179,7 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
               this.persistToStorage()
             }
           }
-        } else if (scopeType === 'ORGANIZATION') {
+        } else if (scopeType === 'ORGANIZATION' && this.selectedOrgId === selectedAtRequestStart) {
           if (this.selectedOrgId === null) {
             if (first) {
               this.selectedOrgId = first.slug ?? first.scopeId
@@ -188,12 +204,19 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
 
         this.loaded = true
       } catch (e) {
+        if (latestTabRequest.get(scopeType) !== requestId) return
         // エラーは握りつぶさない。ログを残し、i18n キーをエラー状態に保持して
         // （UI 層が $t で表示）localStorage の最後の状態で継続する。
         console.error('[scopeDashboard] loadTabs failed', e)
         this.lastError = 'scopeDashboard.tagBar.loadError'
         this.loaded = true
       }
+    })()
+      inFlightTabs.set(key, request)
+      void request.finally(() => {
+        if (inFlightTabs.get(key) === request) inFlightTabs.delete(key)
+      })
+      return request
     },
 
     /**

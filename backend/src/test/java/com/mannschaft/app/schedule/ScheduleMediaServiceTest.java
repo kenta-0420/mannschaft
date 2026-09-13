@@ -1,7 +1,7 @@
 package com.mannschaft.app.schedule;
 
 import com.mannschaft.app.common.BusinessException;
-
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
@@ -51,6 +51,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
@@ -77,6 +78,9 @@ class ScheduleMediaServiceTest {
 
     @Mock
     private StorageQuotaService storageQuotaService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     /**
      * リファクタリング第6弾（2026-05-17）以降、{@link ScheduleMediaService} は
@@ -124,8 +128,18 @@ class ScheduleMediaServiceTest {
                 r2StorageService,
                 scheduleMediaUploadRepository,
                 scheduleRepository,
+                accessControlService,
                 storageQuotaService, mediaAclService, storageAccessService);
         scheduleMediaService = new ScheduleMediaService(uploadService, queryService);
+
+        ScheduleEntity defaultSchedule = ScheduleEntity.builder()
+                .id(SCHEDULE_ID)
+                .teamId(10L)
+                .build();
+        lenient().when(scheduleRepository.findById(SCHEDULE_ID))
+                .thenReturn(Optional.of(defaultSchedule));
+        lenient().when(accessControlService.isMember(UPLOADER_ID, 10L, "TEAM"))
+                .thenReturn(true);
     }
 
     /** テスト用固定ユーザー ID */
@@ -190,6 +204,22 @@ class ScheduleMediaServiceTest {
      */
     private ScheduleEntity mockScheduleEntity() {
         return ScheduleEntity.builder().id(SCHEDULE_ID).userId(UPLOADER_ID).build();
+    }
+
+    private ScheduleEntity mockTeamSchedule(Long teamId) {
+        return ScheduleEntity.builder().id(SCHEDULE_ID).teamId(teamId).build();
+    }
+
+    private ScheduleEntity mockOrganizationSchedule(Long organizationId) {
+        return ScheduleEntity.builder().id(SCHEDULE_ID).organizationId(organizationId).build();
+    }
+
+    private ScheduleEntity mockPersonalSchedule(Long ownerId) {
+        return ScheduleEntity.builder().id(SCHEDULE_ID).userId(ownerId).build();
+    }
+
+    private void givenSchedule(ScheduleEntity schedule) {
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
     }
 
     // ==================== generateUploadUrl ====================
@@ -498,12 +528,13 @@ class ScheduleMediaServiceTest {
             ScheduleMediaUploadEntity entity = buildMediaEntity(MEDIA_ID, SCHEDULE_ID, UPLOADER_ID, "IMAGE");
             ScheduleMediaPatchRequest req = buildPatchRequest("新しいキャプション", null, null, null);
             given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockPersonalSchedule(UPLOADER_ID));
             given(scheduleMediaUploadRepository.save(any(ScheduleMediaUploadEntity.class)))
                     .willReturn(entity);
 
             // when
             ScheduleMediaResponse result =
-                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false, req);
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req);
 
             // then
             assertThat(result).isNotNull();
@@ -529,13 +560,15 @@ class ScheduleMediaServiceTest {
                     .build();
             ScheduleMediaPatchRequest req = buildPatchRequest(null, null, true, null);
             given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockTeamSchedule(10L));
+            given(accessControlService.isAdmin(UPLOADER_ID, 10L, "TEAM")).willReturn(true);
             given(scheduleMediaUploadRepository.findByScheduleIdAndIsCoverTrue(SCHEDULE_ID))
                     .willReturn(List.of(existingCover));
             given(scheduleMediaUploadRepository.save(any(ScheduleMediaUploadEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
             // when
-            scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, true, req);
+            scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req);
 
             // then: 既存カバーと新カバーの両方に save が呼ばれる
             then(scheduleMediaUploadRepository).should(org.mockito.Mockito.atLeast(2))
@@ -549,10 +582,11 @@ class ScheduleMediaServiceTest {
             ScheduleMediaUploadEntity entity = buildMediaEntity(MEDIA_ID, SCHEDULE_ID, UPLOADER_ID, "IMAGE");
             ScheduleMediaPatchRequest req = buildPatchRequest(null, null, true, null);
             given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockTeamSchedule(10L));
 
             // when / then
             assertThatThrownBy(() ->
-                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false, req))
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                             .isEqualTo(HttpStatus.FORBIDDEN));
@@ -565,10 +599,11 @@ class ScheduleMediaServiceTest {
             ScheduleMediaUploadEntity entity = buildMediaEntity(MEDIA_ID, SCHEDULE_ID, OTHER_USER_ID, "IMAGE");
             ScheduleMediaPatchRequest req = buildPatchRequest("キャプション変更", null, null, null);
             given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockTeamSchedule(10L));
 
             // when / then
             assertThatThrownBy(() ->
-                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false, req))
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                             .isEqualTo(HttpStatus.FORBIDDEN));
@@ -581,10 +616,11 @@ class ScheduleMediaServiceTest {
             ScheduleMediaUploadEntity entity = buildMediaEntity(MEDIA_ID, SCHEDULE_ID, UPLOADER_ID, "IMAGE");
             ScheduleMediaPatchRequest req = buildPatchRequest(null, null, null, false);
             given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockTeamSchedule(10L));
 
             // when / then
             assertThatThrownBy(() ->
-                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false, req))
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                             .isEqualTo(HttpStatus.FORBIDDEN));
@@ -599,7 +635,7 @@ class ScheduleMediaServiceTest {
 
             // when / then
             assertThatThrownBy(() ->
-                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false, req))
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                             .isEqualTo(HttpStatus.NOT_FOUND));
@@ -615,10 +651,220 @@ class ScheduleMediaServiceTest {
 
             // when / then
             assertThatThrownBy(() ->
-                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false, req))
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                             .isEqualTo(HttpStatus.NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("正常系_TEAMの権限付きDEPUTY_ADMINが他人のメディアを更新")
+        void 正常系_TEAM権限付き副管理者が他人のメディアを更新() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, OTHER_USER_ID, "IMAGE");
+            ScheduleMediaPatchRequest req = buildPatchRequest("管理更新", null, null, null);
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockTeamSchedule(10L));
+            given(accessControlService.getRoleName(UPLOADER_ID, 10L, "TEAM"))
+                    .willReturn("DEPUTY_ADMIN");
+            given(accessControlService.hasPermission(
+                    UPLOADER_ID, 10L, "TEAM", "MANAGE_SCHEDULES")).willReturn(true);
+            given(scheduleMediaUploadRepository.save(entity)).willReturn(entity);
+
+            ScheduleMediaResponse result =
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req);
+
+            assertThat(result).isNotNull();
+            then(scheduleMediaUploadRepository).should().save(entity);
+        }
+
+        @Test
+        @DisplayName("異常系_MANAGE_SCHEDULESを持つMEMBERは管理者扱いしない")
+        void 異常系_権限付き一般会員は他人のメディアを更新不可() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, OTHER_USER_ID, "IMAGE");
+            ScheduleMediaPatchRequest req = buildPatchRequest("越権更新", null, null, null);
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockTeamSchedule(10L));
+            given(accessControlService.getRoleName(UPLOADER_ID, 10L, "TEAM"))
+                    .willReturn("MEMBER");
+
+            assertThatThrownBy(() ->
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.FORBIDDEN));
+            then(accessControlService).should(never()).hasPermission(
+                    UPLOADER_ID, 10L, "TEAM", "MANAGE_SCHEDULES");
+            then(scheduleMediaUploadRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("正常系_ORGANIZATIONのADMINが他人のメディアを更新")
+        void 正常系_ORGANIZATION管理者が他人のメディアを更新() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, OTHER_USER_ID, "IMAGE");
+            ScheduleMediaPatchRequest req = buildPatchRequest("組織管理更新", null, null, null);
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockOrganizationSchedule(20L));
+            given(accessControlService.isAdmin(UPLOADER_ID, 20L, "ORGANIZATION")).willReturn(true);
+            given(scheduleMediaUploadRepository.save(entity)).willReturn(entity);
+
+            scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req);
+
+            then(scheduleMediaUploadRepository).should().save(entity);
+        }
+
+        @Test
+        @DisplayName("異常系_SYSTEM_ADMINはメディア更新権限を持たない")
+        void 異常系_SYSTEM_ADMINは更新不可() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, OTHER_USER_ID, "IMAGE");
+            ScheduleMediaPatchRequest req = buildPatchRequest("強制更新", null, null, null);
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockTeamSchedule(10L));
+            given(accessControlService.getRoleName(UPLOADER_ID, 10L, "TEAM"))
+                    .willReturn("SYSTEM_ADMIN");
+
+            assertThatThrownBy(() ->
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.FORBIDDEN));
+            then(accessControlService).should(never()).isSystemAdmin(any());
+        }
+
+        @Test
+        @DisplayName("異常系_PERSONAL予定に他スコープの管理権限を持ち込まない")
+        void 異常系_PERSONAL予定の他人メディアは更新不可() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, OTHER_USER_ID, "IMAGE");
+            ScheduleMediaPatchRequest req = buildPatchRequest("越権更新", null, null, null);
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockPersonalSchedule(OTHER_USER_ID));
+
+            assertThatThrownBy(() ->
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.FORBIDDEN));
+            then(accessControlService).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("異常系_DEPUTY_ADMINでもMANAGE_SCHEDULESがなければ更新不可")
+        void 異常系_権限なし副管理者は他人のメディアを更新不可() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, OTHER_USER_ID, "IMAGE");
+            ScheduleMediaPatchRequest req = buildPatchRequest("越権更新", null, null, null);
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockTeamSchedule(10L));
+            given(accessControlService.getRoleName(UPLOADER_ID, 10L, "TEAM"))
+                    .willReturn("DEPUTY_ADMIN");
+
+            assertThatThrownBy(() ->
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.FORBIDDEN));
+            then(scheduleMediaUploadRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("異常系_PERSONAL予定ではアップローダーでも予定所有者でなければ更新不可")
+        void 異常系_PERSONAL予定の非所有アップローダーは更新不可() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, UPLOADER_ID, "IMAGE");
+            ScheduleMediaPatchRequest req = buildPatchRequest("越権更新", null, null, null);
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockPersonalSchedule(OTHER_USER_ID));
+
+            assertThatThrownBy(() ->
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.FORBIDDEN));
+            then(scheduleMediaUploadRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("正常系_PERSONAL予定所有者はuploaderIdがnullでも更新可能")
+        void 正常系_PERSONAL予定所有者はアップローダー不在でも更新可能() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, null, "IMAGE");
+            ScheduleMediaPatchRequest req = buildPatchRequest("所有者更新", null, null, null);
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockPersonalSchedule(UPLOADER_ID));
+            given(scheduleMediaUploadRepository.save(entity)).willReturn(entity);
+
+            scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req);
+
+            assertThat(entity.getCaption()).isEqualTo("所有者更新");
+        }
+
+        @Test
+        @DisplayName("異常系_退会済みアップローダーはTEAMメディアを更新不可")
+        void 異常系_退会済みアップローダーは更新不可() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, UPLOADER_ID, "IMAGE");
+            ScheduleMediaPatchRequest req = buildPatchRequest("退会後更新", null, null, null);
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockTeamSchedule(20L));
+
+            assertThatThrownBy(() ->
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.FORBIDDEN));
+            then(scheduleMediaUploadRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("異常系_複合PATCHの権限拒否時は先行フィールドも変更しない")
+        void 異常系_複合PATCH拒否時は全フィールド不変() {
+            ScheduleMediaUploadEntity entity = ScheduleMediaUploadEntity.builder()
+                    .id(MEDIA_ID)
+                    .scheduleId(SCHEDULE_ID)
+                    .uploaderId(UPLOADER_ID)
+                    .mediaType("IMAGE")
+                    .r2Key("schedules/100/uuid.jpg")
+                    .fileName("photo.jpg")
+                    .fileSize(1024L)
+                    .contentType("image/jpeg")
+                    .processingStatus("READY")
+                    .caption("変更前")
+                    .isExpenseReceipt(true)
+                    .build();
+            ScheduleMediaPatchRequest req = buildPatchRequest("変更後", null, null, false);
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() ->
+                    scheduleMediaService.updateMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, req))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.FORBIDDEN));
+            assertThat(entity.getCaption()).isEqualTo("変更前");
+            assertThat(entity.getIsExpenseReceipt()).isTrue();
+            then(scheduleMediaUploadRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("異常系_削除済み親予定のメディア更新は404")
+        void 異常系_削除済み親予定のメディア更新は404() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, UPLOADER_ID, "IMAGE");
+            ScheduleEntity deletedSchedule = mockScheduleEntity();
+            given(deletedSchedule.getDeletedAt()).willReturn(LocalDateTime.now());
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(deletedSchedule);
+
+            assertThatThrownBy(() -> scheduleMediaService.updateMedia(
+                    SCHEDULE_ID, MEDIA_ID, UPLOADER_ID,
+                    buildPatchRequest("更新", null, null, null)))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.NOT_FOUND));
+            then(scheduleMediaUploadRepository).should(never()).save(any());
         }
     }
 
@@ -636,7 +882,7 @@ class ScheduleMediaServiceTest {
             given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
 
             // when
-            scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false);
+            scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID);
 
             // then
             then(r2StorageService).should().delete(entity.getR2Key());
@@ -649,9 +895,11 @@ class ScheduleMediaServiceTest {
             // given: entity の uploaderId は OTHER_USER_ID（UPLOADER_ID でなく）
             ScheduleMediaUploadEntity entity = buildMediaEntity(MEDIA_ID, SCHEDULE_ID, OTHER_USER_ID, "IMAGE");
             given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockTeamSchedule(10L));
+            given(accessControlService.isAdmin(UPLOADER_ID, 10L, "TEAM")).willReturn(true);
 
             // when: isAdminOrDeputy=true で削除
-            scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, true);
+            scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID);
 
             // then
             then(r2StorageService).should().delete(entity.getR2Key());
@@ -664,10 +912,11 @@ class ScheduleMediaServiceTest {
             // given
             ScheduleMediaUploadEntity entity = buildMediaEntity(MEDIA_ID, SCHEDULE_ID, OTHER_USER_ID, "IMAGE");
             given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockTeamSchedule(10L));
 
             // when / then
             assertThatThrownBy(() ->
-                    scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false))
+                    scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                             .isEqualTo(HttpStatus.FORBIDDEN));
@@ -694,7 +943,7 @@ class ScheduleMediaServiceTest {
             given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
 
             // when
-            scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false);
+            scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID);
 
             // then: メインファイルとサムネイルの両方が削除される
             then(r2StorageService).should().delete("schedules/100/uuid.mp4");
@@ -712,7 +961,7 @@ class ScheduleMediaServiceTest {
                     .given(r2StorageService).delete(anyString());
 
             // when: R2 削除が失敗しても例外は飛ばない
-            scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false);
+            scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID);
 
             // then: DB 削除は呼ばれる
             then(scheduleMediaUploadRepository).should().delete(entity);
@@ -726,7 +975,7 @@ class ScheduleMediaServiceTest {
 
             // when / then
             assertThatThrownBy(() ->
-                    scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false))
+                    scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                             .isEqualTo(HttpStatus.NOT_FOUND));
@@ -741,10 +990,63 @@ class ScheduleMediaServiceTest {
 
             // when / then
             assertThatThrownBy(() ->
-                    scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false))
+                    scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                             .isEqualTo(HttpStatus.NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("正常系_SYSTEM_ADMINが他人のメディアを強制削除")
+        void 正常系_SYSTEM_ADMINが他人のメディアを強制削除() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, OTHER_USER_ID, "IMAGE");
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockPersonalSchedule(OTHER_USER_ID));
+            given(accessControlService.isSystemAdmin(UPLOADER_ID)).willReturn(true);
+
+            scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID);
+
+            then(r2StorageService).should().delete(entity.getR2Key());
+            then(scheduleMediaUploadRepository).should().delete(entity);
+            then(storageQuotaService).should().recordDeletion(
+                    StorageScopeType.PERSONAL, OTHER_USER_ID, entity.getFileSize(),
+                    StorageFeatureType.SCHEDULE_MEDIA, "schedule_media_uploads", MEDIA_ID, UPLOADER_ID);
+        }
+
+        @Test
+        @DisplayName("異常系_PERSONAL予定ではアップローダーでも予定所有者でなければ削除不可")
+        void 異常系_PERSONAL予定の非所有アップローダーは削除不可() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, UPLOADER_ID, "IMAGE");
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            givenSchedule(mockPersonalSchedule(OTHER_USER_ID));
+
+            assertThatThrownBy(() ->
+                    scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.FORBIDDEN));
+            then(r2StorageService).shouldHaveNoInteractions();
+            then(scheduleMediaUploadRepository).should(never()).delete(any());
+        }
+
+        @Test
+        @DisplayName("異常系_親予定が存在しない場合は本人削除でも404")
+        void 異常系_親予定不存在は本人削除でも404() {
+            ScheduleMediaUploadEntity entity =
+                    buildMediaEntity(MEDIA_ID, SCHEDULE_ID, UPLOADER_ID, "IMAGE");
+            given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() ->
+                    scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.NOT_FOUND));
+            then(r2StorageService).shouldHaveNoInteractions();
+            then(scheduleMediaUploadRepository).should(never()).delete(any());
+            then(storageQuotaService).shouldHaveNoInteractions();
         }
     }
 
@@ -1002,9 +1304,10 @@ class ScheduleMediaServiceTest {
             ScheduleEntity schedule = teamSchedule();
             given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(accessControlService.isMember(UPLOADER_ID, 50L, "TEAM")).willReturn(true);
 
             // when
-            scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID, false);
+            scheduleMediaService.deleteMedia(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID);
 
             // then: TEAM スコープで recordDeletion が呼ばれる
             then(storageQuotaService).should()

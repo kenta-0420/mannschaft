@@ -93,14 +93,12 @@ public class ScheduleMediaService {
      * @param scheduleId      スケジュール ID
      * @param mediaId         メディア ID
      * @param requestUserId   リクエストを行うユーザー ID
-     * @param isAdminOrDeputy 管理者または副管理者フラグ
      * @param req             更新リクエスト
      * @return 更新後のメディアレスポンス
      */
     public ScheduleMediaResponse updateMedia(
-            Long scheduleId, Long mediaId, Long requestUserId, boolean isAdminOrDeputy,
-            ScheduleMediaPatchRequest req) {
-        return queryService.updateMedia(scheduleId, mediaId, requestUserId, isAdminOrDeputy, req);
+            Long scheduleId, Long mediaId, Long requestUserId, ScheduleMediaPatchRequest req) {
+        return queryService.updateMedia(scheduleId, mediaId, requestUserId, req);
     }
 
     /**
@@ -112,10 +110,9 @@ public class ScheduleMediaService {
      * @param scheduleId      スケジュール ID
      * @param mediaId         メディア ID
      * @param requestUserId   リクエストを行うユーザー ID
-     * @param isAdminOrDeputy 管理者または副管理者フラグ
      */
-    public void deleteMedia(Long scheduleId, Long mediaId, Long requestUserId, boolean isAdminOrDeputy) {
-        queryService.deleteMedia(scheduleId, mediaId, requestUserId, isAdminOrDeputy);
+    public void deleteMedia(Long scheduleId, Long mediaId, Long requestUserId) {
+        queryService.deleteMedia(scheduleId, mediaId, requestUserId);
     }
 
     /**
