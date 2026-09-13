@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** Presigned upload の ACL 登録と、添付先への原子的 claim を担う共通サービス。 */
 @Service
@@ -40,7 +40,7 @@ public class StorageAclService {
                 .parentContentReferenceType(parentContentReference.type())
                 .parentContentReferenceKey(parentContentReference.key())
                 .status(StorageAclStatus.PENDING)
-                .expiresAt(LocalDateTime.now(clock).plus(ttl))
+                .expiresAt(Instant.now(clock).plus(ttl))
                 .build());
     }
 
@@ -64,7 +64,7 @@ public class StorageAclService {
                 .legacyReferenceType(referenceType)
                 .legacyReferenceId(referenceId)
                 .status(StorageAclStatus.PENDING)
-                .expiresAt(LocalDateTime.now(clock).plus(ttl))
+                .expiresAt(Instant.now(clock).plus(ttl))
                 .build());
     }
 
@@ -72,19 +72,24 @@ public class StorageAclService {
      * 添付束縛を DB 条件付き更新で確定する。同一束縛だけは post-condition で冪等成功とする。
      */
     @Transactional
-    public void claimPending(String fileKey, Long ownerId, StorageAclScope scope, StorageAclAttachmentBinding binding) {
-        validateClaimArguments(fileKey, ownerId, scope, binding);
-        LocalDateTime now = LocalDateTime.now(clock);
-        if (repository.claimPending(fileKey, ownerId, scope.type().name(), scope.scopeKey(), binding.type(), binding.key(), now) == 1) {
+    public void claimPending(String fileKey, Long ownerId, StorageAclScope scope,
+                             StorageAclContentReference parentContentReference,
+                             StorageAclAttachmentBinding binding) {
+        validateClaimArguments(fileKey, ownerId, scope, parentContentReference, binding);
+        Instant now = Instant.now(clock);
+        if (repository.claimPending(fileKey, ownerId, scope.type().name(), scope.scopeKey(),
+                parentContentReference.type(), parentContentReference.key(), binding.type(), binding.key()) == 1) {
             return;
         }
         StorageAclEntity acl = repository.findByFileKey(fileKey)
                 .orElseThrow(() -> new BusinessException(StorageErrorCode.ACL_NOT_FOUND));
         if (!ownerId.equals(acl.getOwnerId()) || scope.type() != acl.getScopeType()
-                || !scope.scopeKey().equals(acl.getScopeKey())) {
+                || !scope.scopeKey().equals(acl.getScopeKey())
+                || !parentContentReference.type().equals(acl.getParentContentReferenceType())
+                || !parentContentReference.key().equals(acl.getParentContentReferenceKey())) {
             throw new BusinessException(StorageErrorCode.ACL_NOT_FOUND);
         }
-        if (isSameClaim(acl, binding)) {
+        if (isSameClaim(acl, parentContentReference, binding)) {
             return;
         }
         if (!acl.getExpiresAt().isAfter(now)) {
@@ -93,9 +98,10 @@ public class StorageAclService {
         throw new BusinessException(StorageErrorCode.ACL_CLAIM_CONFLICT);
     }
 
-    private boolean isSameClaim(StorageAclEntity acl, StorageAclAttachmentBinding binding) {
-        return acl.getParentContentReferenceType() != null
-                && acl.getParentContentReferenceKey() != null
+    private boolean isSameClaim(StorageAclEntity acl, StorageAclContentReference parentContentReference,
+                                StorageAclAttachmentBinding binding) {
+        return parentContentReference.type().equals(acl.getParentContentReferenceType())
+                && parentContentReference.key().equals(acl.getParentContentReferenceKey())
                 && acl.getStatus() == StorageAclStatus.CLAIMED
                 && binding.type().equals(acl.getAttachmentBindingType())
                 && binding.key().equals(acl.getAttachmentBindingKey());
@@ -114,8 +120,10 @@ public class StorageAclService {
     }
 
     private void validateClaimArguments(String fileKey, Long ownerId, StorageAclScope scope,
+                                        StorageAclContentReference parentContentReference,
                                         StorageAclAttachmentBinding binding) {
-        if (fileKey == null || fileKey.isBlank() || ownerId == null || ownerId <= 0 || scope == null || binding == null) {
+        if (fileKey == null || fileKey.isBlank() || ownerId == null || ownerId <= 0 || scope == null
+                || parentContentReference == null || binding == null) {
             throw new BusinessException(StorageErrorCode.ACL_INVALID_REQUEST);
         }
         if ((scope.type() == StorageAclScopeType.PERSONAL || scope.type() == StorageAclScopeType.PUBLIC)

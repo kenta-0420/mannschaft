@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,14 +21,16 @@ public interface StorageAclRepository extends JpaRepository<StorageAclEntity, UU
     @Query(value = """
             UPDATE storage_acls
                SET status = 'CLAIMED', attachment_binding_type = :bindingType,
-                   attachment_binding_key = :bindingKey, updated_at = :now
+                   attachment_binding_key = :bindingKey, updated_at = UTC_TIMESTAMP()
              WHERE file_key = :fileKey
                AND owner_id = :ownerId
                AND scope_type = :scopeType
                AND scope_key = :scopeKey
                AND acl_mode = 'CONTENT_BOUND'
+               AND parent_content_reference_type = :parentType
+               AND parent_content_reference_key = :parentKey
                AND status = 'PENDING'
-               AND expires_at > :now
+               AND expires_at > UTC_TIMESTAMP()
                AND parent_content_reference_type IS NOT NULL
                AND parent_content_reference_key IS NOT NULL
                AND attachment_binding_type IS NULL
@@ -39,7 +40,8 @@ public interface StorageAclRepository extends JpaRepository<StorageAclEntity, UU
                      @Param("ownerId") Long ownerId,
                      @Param("scopeType") String scopeType,
                      @Param("scopeKey") String scopeKey,
+                     @Param("parentType") String parentType,
+                     @Param("parentKey") String parentKey,
                      @Param("bindingType") String bindingType,
-                     @Param("bindingKey") String bindingKey,
-                     @Param("now") LocalDateTime now);
+                     @Param("bindingKey") String bindingKey);
 }

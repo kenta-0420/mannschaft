@@ -11,7 +11,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,8 +26,9 @@ import static org.mockito.Mockito.verify;
 class StorageAclServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-09-13T00:00:00Z");
-    private static final LocalDateTime NOW_LOCAL = LocalDateTime.ofInstant(NOW, ZoneOffset.UTC);
     private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
+    private static final StorageAclContentReference PARENT =
+            new StorageAclContentReference("WORKFLOW_REQUEST", "17");
 
     @Mock
     private StorageAclRepository repository;
@@ -50,7 +50,7 @@ class StorageAclServiceTest {
         assertThat(saved.getParentContentReferenceKey()).isEqualTo("11");
         assertThat(saved.getAttachmentBindingType()).isNull();
         assertThat(saved.getAttachmentBindingKey()).isNull();
-        assertThat(saved.getExpiresAt()).isEqualTo(NOW_LOCAL.plus(Duration.ofMinutes(15)));
+        assertThat(saved.getExpiresAt()).isEqualTo(NOW.plus(Duration.ofMinutes(15)));
     }
 
     @Test
@@ -68,11 +68,12 @@ class StorageAclServiceTest {
         StorageAclService service = new StorageAclService(repository, CLOCK);
         StorageAclScope scope = StorageAclScope.team(3L);
         StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", "11");
-        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(), binding.type(), binding.key(), NOW_LOCAL))
+        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(),
+                PARENT.type(), PARENT.key(), binding.type(), binding.key()))
                 .willReturn(0);
         given(repository.findByFileKey("key")).willReturn(Optional.of(claimed("key", 7L, scope, binding)));
 
-        service.claimPending("key", 7L, scope, binding);
+        service.claimPending("key", 7L, scope, PARENT, binding);
     }
 
     @Test
@@ -80,12 +81,13 @@ class StorageAclServiceTest {
         StorageAclService service = new StorageAclService(repository, CLOCK);
         StorageAclScope scope = StorageAclScope.team(3L);
         StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", "11");
-        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(), binding.type(), binding.key(), NOW_LOCAL))
+        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(),
+                PARENT.type(), PARENT.key(), binding.type(), binding.key()))
                 .willReturn(0);
         given(repository.findByFileKey("key")).willReturn(Optional.of(
-                claimed("key", 7L, scope, binding).toBuilder().expiresAt(NOW_LOCAL.minusSeconds(1)).build()));
+                claimed("key", 7L, scope, binding).toBuilder().expiresAt(NOW.minusSeconds(1)).build()));
 
-        service.claimPending("key", 7L, scope, binding);
+        service.claimPending("key", 7L, scope, PARENT, binding);
     }
 
     @Test
@@ -93,14 +95,15 @@ class StorageAclServiceTest {
         StorageAclService service = new StorageAclService(repository, CLOCK);
         StorageAclScope scope = StorageAclScope.team(3L);
         StorageAclAttachmentBinding requested = new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", "11");
-        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(), requested.type(), requested.key(), NOW_LOCAL))
+        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(),
+                PARENT.type(), PARENT.key(), requested.type(), requested.key()))
                 .willReturn(0);
         for (StorageAclEntity conflicting : new StorageAclEntity[]{
                 claimed("key", 8L, scope, requested),
                 claimed("key", 7L, StorageAclScope.team(4L), requested)
         }) {
             given(repository.findByFileKey("key")).willReturn(Optional.of(conflicting));
-            assertThatThrownBy(() -> service.claimPending("key", 7L, scope, requested))
+            assertThatThrownBy(() -> service.claimPending("key", 7L, scope, PARENT, requested))
                     .isInstanceOf(BusinessException.class)
                     .extracting(exception -> ((BusinessException) exception).getErrorCode())
                     .isEqualTo(StorageErrorCode.ACL_NOT_FOUND);
@@ -112,16 +115,17 @@ class StorageAclServiceTest {
         StorageAclService service = new StorageAclService(repository, CLOCK);
         StorageAclScope scope = StorageAclScope.team(3L);
         StorageAclAttachmentBinding requested = new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", "11");
-        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(), requested.type(), requested.key(), NOW_LOCAL))
+        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(),
+                PARENT.type(), PARENT.key(), requested.type(), requested.key()))
                 .willReturn(0);
         for (StorageAclEntity conflicting : new StorageAclEntity[]{
                 claimed("key", 7L, scope, new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", "12")),
-                pending("key", 7L, scope, NOW_LOCAL.minusSeconds(1), StorageAclStatus.PENDING),
-                pending("key", 7L, scope, NOW_LOCAL.plusSeconds(1), StorageAclStatus.REVOKED),
-                pending("key", 7L, scope, NOW_LOCAL.plusSeconds(1), StorageAclStatus.EXPIRED)
+                pending("key", 7L, scope, NOW.minusSeconds(1), StorageAclStatus.PENDING),
+                pending("key", 7L, scope, NOW.plusSeconds(1), StorageAclStatus.REVOKED),
+                pending("key", 7L, scope, NOW.plusSeconds(1), StorageAclStatus.EXPIRED)
         }) {
             given(repository.findByFileKey("key")).willReturn(Optional.of(conflicting));
-            assertThatThrownBy(() -> service.claimPending("key", 7L, scope, requested))
+            assertThatThrownBy(() -> service.claimPending("key", 7L, scope, PARENT, requested))
                     .isInstanceOf(BusinessException.class)
                     .extracting(exception -> ((BusinessException) exception).getErrorCode())
                     .isEqualTo(StorageErrorCode.ACL_CLAIM_CONFLICT);
@@ -129,15 +133,34 @@ class StorageAclServiceTest {
     }
 
     @Test
+    void wrongParentForSameOwnerAndScopeIsHiddenAsNotFound() {
+        StorageAclService service = new StorageAclService(repository, CLOCK);
+        StorageAclScope scope = StorageAclScope.team(3L);
+        StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", "11");
+        StorageAclContentReference wrongParent = new StorageAclContentReference("WORKFLOW_REQUEST", "18");
+        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(),
+                wrongParent.type(), wrongParent.key(), binding.type(), binding.key()))
+                .willReturn(0);
+        given(repository.findByFileKey("key")).willReturn(Optional.of(pending("key", 7L, scope,
+                NOW.plusSeconds(1), StorageAclStatus.PENDING)));
+
+        assertThatThrownBy(() -> service.claimPending("key", 7L, scope, wrongParent, binding))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(StorageErrorCode.ACL_NOT_FOUND);
+    }
+
+    @Test
     void 不在は404で拒否する() {
         StorageAclService service = new StorageAclService(repository, CLOCK);
         StorageAclScope scope = StorageAclScope.team(3L);
         StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", "11");
-        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(), binding.type(), binding.key(), NOW_LOCAL))
+        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(),
+                PARENT.type(), PARENT.key(), binding.type(), binding.key()))
                 .willReturn(0);
         given(repository.findByFileKey("key")).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.claimPending("key", 7L, scope, binding))
+        assertThatThrownBy(() -> service.claimPending("key", 7L, scope, PARENT, binding))
                 .isInstanceOf(BusinessException.class)
                 .extracting(exception -> ((BusinessException) exception).getErrorCode())
                 .isEqualTo(StorageErrorCode.ACL_NOT_FOUND);
@@ -148,12 +171,13 @@ class StorageAclServiceTest {
         StorageAclService service = new StorageAclService(repository, CLOCK);
         StorageAclScope scope = StorageAclScope.team(3L);
         StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", "11");
-        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(), binding.type(), binding.key(), NOW_LOCAL))
+        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(),
+                PARENT.type(), PARENT.key(), binding.type(), binding.key()))
                 .willReturn(0);
-        given(repository.findByFileKey("key")).willReturn(Optional.of(pending("key", 7L, scope, NOW_LOCAL,
+        given(repository.findByFileKey("key")).willReturn(Optional.of(pending("key", 7L, scope, NOW,
                 StorageAclStatus.PENDING)));
 
-        assertThatThrownBy(() -> service.claimPending("key", 7L, scope, binding))
+        assertThatThrownBy(() -> service.claimPending("key", 7L, scope, PARENT, binding))
                 .isInstanceOf(BusinessException.class)
                 .extracting(exception -> ((BusinessException) exception).getErrorCode())
                 .isEqualTo(StorageErrorCode.ACL_CLAIM_CONFLICT);
@@ -164,10 +188,11 @@ class StorageAclServiceTest {
         StorageAclService service = new StorageAclService(repository, CLOCK);
         StorageAclScope scope = StorageAclScope.team(3L);
         StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", "11");
-        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(), binding.type(), binding.key(), NOW_LOCAL))
+        given(repository.claimPending("key", 7L, scope.type().name(), scope.scopeKey(),
+                PARENT.type(), PARENT.key(), binding.type(), binding.key()))
                 .willReturn(1);
 
-        service.claimPending("key", 7L, scope, binding);
+        service.claimPending("key", 7L, scope, PARENT, binding);
     }
 
     @Test
@@ -230,7 +255,7 @@ class StorageAclServiceTest {
     void personalScopeMustBeBoundToOwner() {
         StorageAclService service = new StorageAclService(repository, CLOCK);
 
-        assertThatThrownBy(() -> service.claimPending("key", 7L, StorageAclScope.personal(8L),
+        assertThatThrownBy(() -> service.claimPending("key", 7L, StorageAclScope.personal(8L), PARENT,
                 new StorageAclAttachmentBinding("ATTACHMENT", "11")))
                 .isInstanceOf(BusinessException.class)
                 .extracting(exception -> ((BusinessException) exception).getErrorCode())
@@ -293,31 +318,33 @@ class StorageAclServiceTest {
         StorageAclService service = new StorageAclService(repository, CLOCK);
         StorageAclScope scope = StorageAclScope.personal(7L);
         StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding("ATTACHMENT", "11");
-        StorageAclEntity legacy = pending("legacy/key", 7L, scope, NOW_LOCAL.plusSeconds(1), StorageAclStatus.PENDING)
-                .toBuilder().legacyScopeId(7L).legacyReferenceType("MULTIPART_UPLOAD").build();
+        StorageAclEntity legacy = pending("legacy/key", 7L, scope, NOW.plusSeconds(1), StorageAclStatus.PENDING)
+                .toBuilder().legacyScopeId(7L).legacyReferenceType("MULTIPART_UPLOAD")
+                .parentContentReferenceType(null).parentContentReferenceKey(null).build();
         given(repository.claimPending("legacy/key", 7L, scope.type().name(), scope.scopeKey(),
-                binding.type(), binding.key(), NOW_LOCAL)).willReturn(0);
+                PARENT.type(), PARENT.key(), binding.type(), binding.key())).willReturn(0);
         given(repository.findByFileKey("legacy/key")).willReturn(Optional.of(legacy));
 
-        assertThatThrownBy(() -> service.claimPending("legacy/key", 7L, scope, binding))
+        assertThatThrownBy(() -> service.claimPending("legacy/key", 7L, scope, PARENT, binding))
                 .isInstanceOf(BusinessException.class)
                 .extracting(exception -> ((BusinessException) exception).getErrorCode())
-                .isEqualTo(StorageErrorCode.ACL_CLAIM_CONFLICT);
+                .isEqualTo(StorageErrorCode.ACL_NOT_FOUND);
     }
 
     private StorageAclEntity claimed(String fileKey, Long ownerId, StorageAclScope scope,
                                      StorageAclAttachmentBinding binding) {
         return StorageAclEntity.builder().fileKey(fileKey).ownerId(ownerId).scopeType(scope.type())
                 .scopeKey(scope.scopeKey()).aclMode(StorageAclMode.CONTENT_BOUND).contentType("image/png")
-                .parentContentReferenceType("WORKFLOW_REQUEST").parentContentReferenceKey("17")
+                .parentContentReferenceType(PARENT.type()).parentContentReferenceKey(PARENT.key())
                 .attachmentBindingType(binding.type()).attachmentBindingKey(binding.key())
-                .status(StorageAclStatus.CLAIMED).expiresAt(NOW_LOCAL.plusSeconds(1)).build();
+                .status(StorageAclStatus.CLAIMED).expiresAt(NOW.plusSeconds(1)).build();
     }
 
-    private StorageAclEntity pending(String fileKey, Long ownerId, StorageAclScope scope, LocalDateTime expiresAt,
+    private StorageAclEntity pending(String fileKey, Long ownerId, StorageAclScope scope, Instant expiresAt,
                                      StorageAclStatus status) {
         return StorageAclEntity.builder().fileKey(fileKey).ownerId(ownerId).scopeType(scope.type())
                 .scopeKey(scope.scopeKey()).aclMode(StorageAclMode.CONTENT_BOUND).contentType("image/png")
+                .parentContentReferenceType(PARENT.type()).parentContentReferenceKey(PARENT.key())
                 .status(status).expiresAt(expiresAt).build();
     }
 }
