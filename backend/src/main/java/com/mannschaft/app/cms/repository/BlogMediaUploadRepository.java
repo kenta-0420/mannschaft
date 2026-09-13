@@ -48,7 +48,9 @@ public interface BlogMediaUploadRepository extends JpaRepository<BlogMediaUpload
      * 孤立メディアのクリーンアップ用。
      * blog_post_id IS NULL かつ created_at が cutoff より古いレコードを返す。
      */
-    List<BlogMediaUploadEntity> findByBlogPostIdIsNullAndCreatedAtBefore(LocalDateTime cutoff);
+    @Query("SELECT m FROM BlogMediaUploadEntity m WHERE m.createdAt < :cutoff "
+            + "AND (m.blogPostId IS NULL OR (m.mediaType = 'IMAGE' AND m.processingStatus = 'PENDING'))")
+    List<BlogMediaUploadEntity> findByBlogPostIdIsNullAndCreatedAtBefore(@Param("cutoff") LocalDateTime cutoff);
 
     /**
      * 孤立メディア 1 件を条件付きで物理削除し、実際に削除できた行数を返す（クリーンアップバッチ用）。
@@ -63,7 +65,8 @@ public interface BlogMediaUploadRepository extends JpaRepository<BlogMediaUpload
      * @return 実際に削除できた行数（0 なら他の実行が処理済み）
      */
     @Modifying(flushAutomatically = true)
-    @Query("DELETE FROM BlogMediaUploadEntity m WHERE m.id = :id AND m.blogPostId IS NULL")
+    @Query("DELETE FROM BlogMediaUploadEntity m WHERE m.id = :id "
+            + "AND (m.blogPostId IS NULL OR (m.mediaType = 'IMAGE' AND m.processingStatus = 'PENDING'))")
     int deleteOrphanById(@Param("id") Long id);
 
     /** 記事内のメディア数カウント（種別別）。 */

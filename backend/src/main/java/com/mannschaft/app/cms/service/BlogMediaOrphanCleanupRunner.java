@@ -80,12 +80,15 @@ class BlogMediaOrphanCleanupRunner {
         // try を分ける（1つの try にまとめると、先に落ちた方の例外で後続の削除が実行されず、
         // 実際には未削除のキーが「試行すらされていない」まま握り潰されたのと同じ結果になる）。
         boolean r2DeleteFailed = false;
+        boolean quotaRecorded = !("IMAGE".equals(orphan.getMediaType())
+                && "PENDING".equals(orphan.getProcessingStatus()));
         try {
             r2StorageService.delete(orphan.getS3Key());
         } catch (Exception e) {
             r2DeleteFailed = true;
             log.error("{}: mediaId={}, key={}", R2_DELETE_FAILED_MARKER, orphan.getId(), orphan.getS3Key(), e);
-            registerRetry(orphan, orphan.getS3Key(), orphan.getFileSize(), scopeResolver);
+            registerRetry(orphan, orphan.getS3Key(),
+                    quotaRecorded ? orphan.getFileSize() : 0L, scopeResolver);
         }
 
         if (orphan.getThumbnailR2Key() != null) {
@@ -109,7 +112,7 @@ class BlogMediaOrphanCleanupRunner {
         // 上限判定を誤らせ、ドリフト検出バッチが走るまで是正されない（本クラスの
         // 呼び出し元 Javadoc が警告しているとおり）。実体が残っている以上、
         // 使用量も据え置くのが安全側である。
-        if (!r2DeleteFailed && orphan.getFileSize() != null && orphan.getFileSize() > 0) {
+        if (quotaRecorded && !r2DeleteFailed && orphan.getFileSize() != null && orphan.getFileSize() > 0) {
             scopeResolver.apply(orphan.getS3Key()).ifPresent(scope ->
                     storageQuotaService.recordDeletion(
                             scope.scopeType(), scope.scopeId(),

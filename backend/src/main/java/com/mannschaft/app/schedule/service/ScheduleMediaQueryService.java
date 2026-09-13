@@ -139,8 +139,6 @@ public class ScheduleMediaQueryService {
     public ScheduleMediaResponse updateMedia(
             Long scheduleId, Long mediaId, Long requestUserId, ScheduleMediaPatchRequest req) {
 
-        var schedule = mediaAclService.requireReadable(scheduleId, requestUserId);
-
         ScheduleMediaUploadEntity entity = scheduleMediaUploadRepository.findById(mediaId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "メディアが見つかりません"));
@@ -320,7 +318,12 @@ public class ScheduleMediaQueryService {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(72);
         List<ScheduleMediaUploadEntity> orphans = scheduleMediaUploadRepository.findOrphanMedia(cutoff);
 
+        int deletedCount = 0;
         for (ScheduleMediaUploadEntity orphan : orphans) {
+            if (scheduleMediaUploadRepository.deleteCleanupCandidateById(orphan.getId()) == 0) {
+                continue;
+            }
+            deletedCount++;
             try {
                 r2StorageService.delete(orphan.getR2Key());
                 if (orphan.getThumbnailR2Key() != null) {
@@ -333,8 +336,8 @@ public class ScheduleMediaQueryService {
             }
         }
 
-        scheduleMediaUploadRepository.deleteAll(orphans);
-        log.info("孤立メディアのクリーンアップ完了: 削除件数={}", orphans.size());
+        log.info("孤立メディアのクリーンアップ完了: 対象件数={}, 削除件数={}",
+                orphans.size(), deletedCount);
     }
 
     // ==================== プライベートメソッド ====================

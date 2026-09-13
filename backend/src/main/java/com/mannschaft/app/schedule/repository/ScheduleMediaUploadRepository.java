@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -60,6 +61,13 @@ public interface ScheduleMediaUploadRepository extends JpaRepository<ScheduleMed
      * 孤立メディア取得（日次クリーンアップ用）。
      * schedule_id IS NULL かつ created_at が cutoff より古いレコードを返す。
      */
-    @Query("SELECT e FROM ScheduleMediaUploadEntity e WHERE e.scheduleId IS NULL AND e.createdAt < :cutoff")
+    @Query("SELECT e FROM ScheduleMediaUploadEntity e WHERE e.createdAt < :cutoff "
+            + "AND (e.scheduleId IS NULL OR (e.mediaType = 'IMAGE' AND e.processingStatus = 'PENDING'))")
     List<ScheduleMediaUploadEntity> findOrphanMedia(@Param("cutoff") LocalDateTime cutoff);
+
+    /** 完了通知との競合で READY になった行を削除しない条件付き claim。 */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM ScheduleMediaUploadEntity e WHERE e.id = :id "
+            + "AND (e.scheduleId IS NULL OR (e.mediaType = 'IMAGE' AND e.processingStatus = 'PENDING'))")
+    int deleteCleanupCandidateById(@Param("id") Long id);
 }

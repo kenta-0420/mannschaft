@@ -1085,6 +1085,7 @@ class ScheduleMediaServiceTest {
 
             given(scheduleMediaUploadRepository.findOrphanMedia(any(LocalDateTime.class)))
                     .willReturn(List.of(orphanImage, orphanVideo));
+            given(scheduleMediaUploadRepository.deleteCleanupCandidateById(anyLong())).willReturn(1);
 
             // when
             scheduleMediaService.cleanupOrphanMedia();
@@ -1094,8 +1095,26 @@ class ScheduleMediaServiceTest {
             then(r2StorageService).should().delete("schedules/100/orphan-video.mp4");
             then(r2StorageService).should().delete("schedules/100/orphan-video-thumb.jpg");
             // DB から一括削除
-            then(scheduleMediaUploadRepository).should()
-                    .deleteAll(List.of(orphanImage, orphanVideo));
+            then(scheduleMediaUploadRepository).should(org.mockito.Mockito.times(2))
+                    .deleteCleanupCandidateById(anyLong());
+            then(scheduleMediaUploadRepository).should(never()).deleteAll(any());
+        }
+
+        @Test
+        @DisplayName("完了処理が先にREADY化した候補はR2から削除しない")
+        void completedCandidateIsNotDeleted() {
+            ScheduleMediaUploadEntity candidate = ScheduleMediaUploadEntity.builder()
+                    .id(3L).scheduleId(100L).uploaderId(UPLOADER_ID)
+                    .mediaType("IMAGE").r2Key("schedules/100/completed.jpg")
+                    .fileName("completed.jpg").fileSize(1024L)
+                    .contentType("image/jpeg").processingStatus("PENDING").build();
+            given(scheduleMediaUploadRepository.findOrphanMedia(any(LocalDateTime.class)))
+                    .willReturn(List.of(candidate));
+            given(scheduleMediaUploadRepository.deleteCleanupCandidateById(3L)).willReturn(0);
+
+            scheduleMediaService.cleanupOrphanMedia();
+
+            then(r2StorageService).shouldHaveNoInteractions();
         }
     }
 
@@ -1107,7 +1126,7 @@ class ScheduleMediaServiceTest {
             return ScheduleMediaUploadEntity.builder().id(MEDIA_ID).scheduleId(SCHEDULE_ID)
                     .uploaderId(ownerId).mediaType("IMAGE")
                     .r2Key("schedules/TEAM/50/100/image.jpg").fileName("image.jpg")
-                    .fileSize(1024L).contentType("image/jpeg").processingStatus("UPLOADING").build();
+                    .fileSize(1024L).contentType("image/jpeg").processingStatus("PENDING").build();
         }
 
         @Test

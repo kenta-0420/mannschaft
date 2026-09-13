@@ -230,7 +230,7 @@ public class ScheduleMediaUploadService {
                 .fileName(req.getFileName())
                 .fileSize(req.getFileSize())
                 .contentType(req.getContentType())
-                .processingStatus("UPLOADING")
+                .processingStatus("PENDING")
                 .build();
         ScheduleMediaUploadEntity saved = scheduleMediaUploadRepository.save(entity);
         var target = ScheduleMediaAclService.targetOf(
@@ -265,7 +265,7 @@ public class ScheduleMediaUploadService {
         if ("READY".equals(media.getProcessingStatus())) {
             return;
         }
-        if (!"UPLOADING".equals(media.getProcessingStatus())) {
+        if (!"PENDING".equals(media.getProcessingStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "画像アップロードは完了確認できない状態です");
         }
 

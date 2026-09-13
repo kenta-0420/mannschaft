@@ -374,7 +374,7 @@ class BlogMediaServiceTest {
             return BlogMediaUploadEntity.builder().id(7L).uploaderId(ownerId)
                     .scopeType("TEAM").scopeId(10L).mediaType("IMAGE")
                     .s3Key("blog/TEAM/10/image.jpg").fileSize(1024L)
-                    .contentType("image/jpeg").processingStatus("UPLOADING").build();
+                    .contentType("image/jpeg").processingStatus("PENDING").build();
         }
 
         private com.mannschaft.app.common.storage.acl.MultipartContentTarget target() {
