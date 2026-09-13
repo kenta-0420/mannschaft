@@ -1,3 +1,5 @@
+import { requestWithTimeout } from '~/utils/requestTimeout'
+
 export interface PublicFeatureFlag {
   flagKey: string
   enabled: boolean
@@ -11,7 +13,9 @@ export function useFeatureFlagsApi() {
   const api = useApi()
 
   async function getPublicFlags(): Promise<PublicFeatureFlag[]> {
-    const res = await api<{ data: PublicFeatureFlag[] }>('/api/v1/feature-flags')
+    const res = await requestWithTimeout(signal =>
+      api<{ data: PublicFeatureFlag[] }>('/api/v1/feature-flags', { signal }),
+    )
     return res.data
   }
 
