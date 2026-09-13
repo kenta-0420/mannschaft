@@ -6,7 +6,12 @@ import {
   useHourlyRateMemberPage,
   type MemberRateRow,
 } from '~/composables/shift/useHourlyRateMemberPage'
-import { isValidHourlyRate, useShiftHourlyRateApi } from '~/composables/shift/useShiftHourlyRateApi'
+import {
+  isValidHourlyRate,
+  useShiftHourlyRateApi,
+  validateHourlyRate,
+  type HourlyRateValidationKey,
+} from '~/composables/shift/useShiftHourlyRateApi'
 import type { ShiftHourlyRateResponse } from '~/types/shift'
 
 /**
@@ -46,6 +51,16 @@ const history = ref<ShiftHourlyRateResponse[]>([])
 const historyLoading = ref(false)
 const formRate = ref<number | null>(null)
 const formEffectiveFrom = ref<Date>(new Date())
+/**
+ * 時給欄の検証エラー（表示中のメッセージキー）。null なら問題なし。
+ * 入力欄側でクランプしないため、0 や未入力はここに載って画面に理由が出る。
+ */
+const formRateError = ref<HourlyRateValidationKey | null>(null)
+
+/** 入力し直したら直前のエラー表示は消す（赤いままだと直した実感が無い）。 */
+watch(formRate, () => {
+  formRateError.value = null
+})
 
 const missingCount = computed(() => rows.value.filter(r => r.rate === null).length)
 /** 全員が 1 ページに収まっているか（＝未設定件数をチーム全体の数として言い切れるか）。 */
@@ -99,6 +114,7 @@ function openEdit(row: MemberRateRow) {
   targetRow.value = row
   formRate.value = row.rate ? Number(row.rate.hourlyRate) : null
   formEffectiveFrom.value = new Date()
+  formRateError.value = null
   history.value = []
   showDialog.value = true
   void loadHistory(row)
@@ -124,15 +140,20 @@ async function submit() {
   const teamId = teamNumericId.value
   if (!row || teamId === null) return
   // BE は @Positive なので 0 以下は必ず 400 になる。画面側で同じ条件を課して入口で弾く。
-  if (!isValidHourlyRate(formRate.value)) {
-    notification.error(t('shift.hourlyRate.validation.ratePositive'))
+  // 入力欄は値をクランプしないので、0 を打てば 0 のままここへ来て弾かれ、理由が欄の下に出る。
+  const rate = formRate.value
+  if (!isValidHourlyRate(rate)) {
+    // isValidHourlyRate が false のとき validateHourlyRate は必ずキーを返す（?? は型を絞るための保険）。
+    const validationKey = validateHourlyRate(rate) ?? 'rateRequired'
+    formRateError.value = validationKey
+    notification.error(t(`shift.hourlyRate.validation.${validationKey}`))
     return
   }
   saving.value = true
   try {
     await setHourlyRate(String(teamId), {
       userId: row.member.userId,
-      hourlyRate: formRate.value,
+      hourlyRate: rate,
       effectiveFrom: dayjs(formEffectiveFrom.value).format('YYYY-MM-DD'),
     })
     notification.success(t('shift.hourlyRate.saved'))
@@ -251,13 +272,22 @@ onMounted(async () => {
           <InputNumber
             id="hourly-rate-input"
             v-model="formRate"
-            :min="1"
             mode="currency"
             currency="JPY"
             locale="ja-JP"
             class="w-full"
+            :invalid="formRateError !== null"
+            aria-describedby="hourly-rate-error"
             data-testid="hourly-rate-input"
           />
+          <small
+            v-if="formRateError"
+            id="hourly-rate-error"
+            class="text-red-600 dark:text-red-400"
+            data-testid="hourly-rate-error"
+          >
+            {{ $t(`shift.hourlyRate.validation.${formRateError}`) }}
+          </small>
         </div>
         <div class="flex flex-col gap-2">
           <label for="hourly-rate-effective-from">{{ $t('shift.hourlyRate.column.effectiveFrom') }}</label>

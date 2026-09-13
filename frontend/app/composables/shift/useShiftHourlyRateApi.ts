@@ -18,6 +18,29 @@ export function isValidHourlyRate(rate: number | null): rate is number {
   return rate !== null && Number.isFinite(rate) && rate > 0
 }
 
+/** 時給入力の検証結果。null は「送信してよい」。値は i18n キーの末尾（validation.* 配下）。 */
+export type HourlyRateValidationKey = 'rateRequired' | 'ratePositive'
+
+/**
+ * 時給入力を検証し、問題があれば表示すべきメッセージのキーを返す（CMP-260913-1250）。
+ *
+ * <h2>なぜ入力欄の min に検証を任せないか【重要】</h2>
+ * 以前は `InputNumber :min="1"` でクランプしていたため、利用者が 0 を入力すると
+ * フォーカスアウトの時点で欄の値が黙って ¥1 に化け、{@link isValidHourlyRate} を
+ * 素通りして「時給 1 円」が新規登録されていた。弾かれたつもりの利用者に対して
+ * 誤った値が無警告で保存される挙動であり、検証メッセージ `ratePositive` は
+ * 到達不能なデッドコードだった。クランプを外し、入力値をそのまま保持したうえで
+ * この関数で弾くことで、理由が画面に出る。
+ *
+ * @param rate 入力された時給（未入力は null）
+ * @returns 問題が無ければ null、あれば検証メッセージのキー
+ */
+export function validateHourlyRate(rate: number | null): HourlyRateValidationKey | null {
+  if (rate === null || !Number.isFinite(rate)) return 'rateRequired'
+  if (rate <= 0) return 'ratePositive'
+  return null
+}
+
 export function useShiftHourlyRateApi() {
   const api = useApi()
 
