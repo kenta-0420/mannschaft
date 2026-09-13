@@ -102,6 +102,14 @@ class SpotlightMeasurementIT extends AbstractSpotlightIT {
         return new SpotlightVisitRequest(TILE, impressionId, campaignId, null, null);
     }
 
+    private long deliveryTimestampDifferenceFromUtcNow(String deliveryId, String column) {
+        return ((Number) em.createNativeQuery(
+                        "SELECT ABS(TIMESTAMPDIFF(SECOND, " + column + ", UTC_TIMESTAMP())) "
+                                + "FROM ad_banner_deliveries WHERE id = UUID_TO_BIN(:deliveryId)")
+                .setParameter("deliveryId", deliveryId)
+                .getSingleResult()).longValue();
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // AC-2.7 serve 証跡なし
     // ═════════════════════════════════════════════════════════════════════
@@ -288,5 +296,35 @@ class SpotlightMeasurementIT extends AbstractSpotlightIT {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(AdvertisingErrorCode.AD_026));
+    }
+
+    @Test
+    @DisplayName("CMP-260910-0042: 予約バナーの served_at / clicked_at は UTC_TIMESTAMP 基準で記録される")
+    void reservationMeasurementTimestampsUseUtcWallClock() {
+        ReservationFixture reservation = insertReservationBanner(advOrgId, advAccountId, viewerId, TILE, creatorId);
+        em.flush();
+        seedServeToken(viewerId, reservation.creativeId());
+
+        em.createNativeQuery("SET time_zone = '+09:00'").executeUpdate();
+        try {
+            SpotlightViewRequest viewRequest = new SpotlightViewRequest(
+                    TILE, null, reservation.messagingCampaignId(), reservation.deliveryId());
+            Long impressionId = view(reservation.creativeId(), viewRequest).getBody().getData().impressionId();
+
+            SpotlightVisitRequest visitRequest = new SpotlightVisitRequest(
+                    TILE, impressionId, null, reservation.messagingCampaignId(), reservation.deliveryId());
+            ResponseEntity<ApiResponse<SpotlightVisitResponse>> visitResponse =
+                    visit(reservation.creativeId(), visitRequest, requestFromIp("203.0.113.42"));
+            assertThat(visitResponse.getStatusCode().value()).isEqualTo(201);
+
+            em.flush();
+            em.clear();
+            assertThat(deliveryTimestampDifferenceFromUtcNow(reservation.deliveryId(), "served_at"))
+                    .as("served_at は UTC_TIMESTAMP() との差が1分以内").isLessThanOrEqualTo(60);
+            assertThat(deliveryTimestampDifferenceFromUtcNow(reservation.deliveryId(), "clicked_at"))
+                    .as("clicked_at は UTC_TIMESTAMP() との差が1分以内").isLessThanOrEqualTo(60);
+        } finally {
+            em.createNativeQuery("SET time_zone = '+00:00'").executeUpdate();
+        }
     }
 }
