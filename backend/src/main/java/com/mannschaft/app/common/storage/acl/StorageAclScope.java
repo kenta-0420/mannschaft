@@ -18,7 +18,8 @@ public record StorageAclScope(StorageAclScopeType type, String scopeKey) {
                 throw new IllegalArgumentException("Storage ACL scope is required");
             }
             switch (type) {
-                case TEAM, ORGANIZATION, PERSONAL, PUBLIC -> scopeKey = String.valueOf(requirePositiveLong(scopeKey));
+                case TEAM, ORGANIZATION, TOURNAMENT, TOURNAMENT_DIVISION, PERSONAL, PUBLIC ->
+                        scopeKey = String.valueOf(requirePositiveLong(scopeKey));
                 case VILLAGE -> scopeKey = UUID.fromString(scopeKey).toString();
             }
         } catch (IllegalArgumentException exception) {
@@ -32,6 +33,14 @@ public record StorageAclScope(StorageAclScopeType type, String scopeKey) {
 
     public static StorageAclScope organization(Long organizationId) {
         return numeric(StorageAclScopeType.ORGANIZATION, organizationId);
+    }
+
+    public static StorageAclScope tournament(Long tournamentId) {
+        return numeric(StorageAclScopeType.TOURNAMENT, tournamentId);
+    }
+
+    public static StorageAclScope tournamentDivision(Long tournamentDivisionId) {
+        return numeric(StorageAclScopeType.TOURNAMENT_DIVISION, tournamentDivisionId);
     }
 
     public static StorageAclScope village(UUID villageId) {

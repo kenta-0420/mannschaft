@@ -3,6 +3,10 @@ package com.mannschaft.app.filesharing;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.filesharing.dto.CreateFileRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
 import com.mannschaft.app.filesharing.dto.SharedFileDownloadUrlResponse;
@@ -72,6 +76,9 @@ class SharedFileServiceTest {
     @Mock
     private R2StorageService r2StorageService;
 
+    @Mock
+    private StorageAclService storageAclService;
+
     /** F08.7.1 / 04: 大会フォルダ横断認可ゲート。大会以外（TEAM 等）の本テストでは no-op。 */
     @Mock
     private FolderScopeAccessGuard folderScopeAccessGuard;
@@ -89,6 +96,7 @@ class SharedFileServiceTest {
 
     private SharedFolderEntity buildFolder() {
         return SharedFolderEntity.builder()
+                .id(FOLDER_ID)
                 .scopeType(FileScopeType.TEAM)
                 .teamId(5L)
                 .name("テストフォルダ")
@@ -112,6 +120,7 @@ class SharedFileServiceTest {
 
             SharedFolderEntity folder = buildFolder();
             SharedFileEntity savedFile = SharedFileEntity.builder()
+                    .id(FILE_ID)
                     .folderId(FOLDER_ID).name("test.pdf").fileKey("files/test.pdf")
                     .fileSize(1024L).contentType("application/pdf").createdBy(USER_ID).build();
             FileResponse response = new FileResponse(FILE_ID, FOLDER_ID, "test.pdf", "files/test.pdf",
@@ -131,6 +140,10 @@ class SharedFileServiceTest {
             verify(versionRepository).save(any(SharedFileVersionEntity.class));
             verify(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(1024L));
             verify(quotaService).recordFileUpload(any(SharedFolderEntity.class), nullable(Long.class), eq(1024L), eq(USER_ID));
+            verify(storageAclService).claimPending(
+                    eq("files/test.pdf"), eq(USER_ID), eq(StorageAclScope.team(5L)),
+                    eq(new StorageAclContentReference("SHARED_FOLDER", FOLDER_ID.toString())),
+                    eq(new StorageAclAttachmentBinding("SHARED_FILE", FILE_ID.toString())));
         }
 
         @Test
