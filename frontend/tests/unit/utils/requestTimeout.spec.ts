@@ -1,6 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
-import { runWithRequestTimeout } from '~/utils/requestTimeout'
+import {
+  RequestTimeoutError,
+  requestWithTimeout,
+  runWithRequestTimeout,
+} from '~/utils/requestTimeout'
 
 describe('runWithRequestTimeout', () => {
   it('正常応答を成功として返す', async () => {
@@ -31,6 +35,26 @@ describe('runWithRequestTimeout', () => {
       await vi.advanceTimersByTimeAsync(15_000)
 
       await expect(resultPromise).resolves.toEqual({ status: 'timeout' })
+      expect(requestSignal?.aborted).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('requestWithTimeoutはtimeoutを例外として伝播し通信をabortする', async () => {
+    vi.useFakeTimers()
+    let requestSignal: AbortSignal | undefined
+
+    try {
+      const resultPromise = requestWithTimeout((signal) => {
+        requestSignal = signal
+        return new Promise<never>(() => {})
+      }, 100)
+      const rejection = expect(resultPromise).rejects.toBeInstanceOf(RequestTimeoutError)
+
+      await vi.advanceTimersByTimeAsync(100)
+
+      await rejection
       expect(requestSignal?.aborted).toBe(true)
     } finally {
       vi.useRealTimers()
