@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
@@ -112,7 +113,7 @@ class TimelinePostServiceTest {
     private com.mannschaft.app.organization.service.OrganizationService organizationService;
 
     @Mock
-    private com.mannschaft.app.common.storage.MediaUrlResolver mediaUrlResolver;
+    private StorageAccessService storageAccessService;
 
     @Mock
     private StorageAclService storageAclService;
@@ -2608,6 +2609,7 @@ class TimelinePostServiceTest {
 
         private TimelinePostAttachmentEntity imageEntity(Long postId, String fileKey) {
             return TimelinePostAttachmentEntity.builder()
+                    .id(9L)
                     .timelinePostId(postId)
                     .attachmentType(AttachmentType.IMAGE)
                     .fileKey(fileKey)
@@ -2624,9 +2626,9 @@ class TimelinePostServiceTest {
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(List.of(entity));
-            given(timelineMapper.toAttachmentResponseList(List.of(entity)))
-                    .willReturn(List.of(rawImageResponse(9L, IMAGE_KEY)));
-            given(mediaUrlResolver.resolveAll(anyCollection()))
+            given(timelineMapper.toAttachmentResponse(entity))
+                    .willReturn(rawImageResponse(9L, IMAGE_KEY));
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
                     .willReturn(Map.of(IMAGE_KEY, SIGNED_URL));
             given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
             given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
@@ -2658,7 +2660,7 @@ class TimelinePostServiceTest {
             given(attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection()))
                     .willReturn(List.of(entity));
             given(timelineMapper.toAttachmentResponse(entity)).willReturn(rawImageResponse(9L, IMAGE_KEY));
-            given(mediaUrlResolver.resolveAll(anyCollection()))
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
                     .willReturn(Map.of(IMAGE_KEY, SIGNED_URL));
 
             // when
@@ -2707,7 +2709,8 @@ class TimelinePostServiceTest {
                             imageEntity(3L, "timeline/PUBLIC/0/tmp/c.jpg")));
             given(timelineMapper.toAttachmentResponse(any(TimelinePostAttachmentEntity.class)))
                     .willReturn(rawImageResponse(9L, IMAGE_KEY));
-            given(mediaUrlResolver.resolveAll(anyCollection())).willReturn(Map.of());
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
+                    .willReturn(Map.of());
 
             // when
             timelinePostService.getFeed("PUBLIC", 0L, null, 20, USER_ID);
@@ -2715,7 +2718,28 @@ class TimelinePostServiceTest {
             // then: 添付の一括取得も署名解決も 1 回のみ（ループ内 resolve なし）
             verify(attachmentRepository, org.mockito.Mockito.times(1))
                     .findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection());
-            verify(mediaUrlResolver, org.mockito.Mockito.times(1)).resolveAll(anyCollection());
+            verify(storageAccessService, org.mockito.Mockito.times(1))
+                    .generateDownloadUrlsForList(anyCollection(), any());
+        }
+
+        @Test
+        @DisplayName("ACL不一致の画像添付は投稿詳細から除外される")
+        void ACL不一致画像は投稿詳細から除外される() {
+            TimelinePostEntity post = createPost();
+            TimelinePostAttachmentEntity entity = imageEntity(POST_ID, IMAGE_KEY);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(entity));
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
+                    .willReturn(Map.of());
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            assertThat(result.getAttachments()).isEmpty();
         }
     }
 }

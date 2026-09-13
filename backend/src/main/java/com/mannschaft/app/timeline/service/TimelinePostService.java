@@ -5,8 +5,9 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
@@ -50,6 +51,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -75,6 +77,7 @@ public class TimelinePostService {
 
     private static final int MAX_ATTACHMENTS = 10;
     private static final int DEFAULT_FEED_SIZE = 20;
+    private static final Duration ATTACHMENT_DOWNLOAD_TTL = Duration.ofHours(1);
     /** 投稿詳細に同梱するリプライプレビュー（会話の古い順・先頭から）の最大件数。 */
     private static final int RECENT_REPLIES_LIMIT = 5;
 
@@ -127,7 +130,7 @@ public class TimelinePostService {
      * FE は R2 を署名できないため、DB の生キーをそのまま返すと 404 になる。issue #2424 の根治で
      * timeline も他ドメイン（village/blog 等）に倣って本部品を通す。存在検証は行わず署名 URL 生成のみ。
      */
-    private final MediaUrlResolver mediaUrlResolver;
+    private final StorageAccessService storageAccessService;
     /**
      * 投稿可視性判定の正準実装（認可根治 Wave7）。読取経路（{@link #getPostDetail} /
      * {@link #getReplies}）・書き込み経路（リプライ/リポストの参照先検証）が共有する唯一の述語。
@@ -731,9 +734,13 @@ public class TimelinePostService {
         // 添付エンティティを取得し、画像キーをまとめて 1 回 resolveAll（N+1 回避）してから割り当てる。
         List<TimelinePostAttachmentEntity> attachmentEntities =
                 attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(postId);
-        Map<String, String> imageUrlByKey = resolveImageUrls(attachmentEntities);
-        List<AttachmentResponse> attachments = timelineMapper.toAttachmentResponseList(attachmentEntities)
-                .stream()
+        TimelineAclContext detailContext = TimelineAclContext.fromOrNull(post);
+        Map<String, String> imageUrlByKey = resolveImageUrls(attachmentEntities,
+                detailContext == null ? Map.of() : Map.of(postId, detailContext));
+        List<AttachmentResponse> attachments = attachmentEntities.stream()
+                .filter(a -> a.getAttachmentType() != AttachmentType.IMAGE
+                        || imageUrlByKey.containsKey(a.getFileKey()))
+                .map(timelineMapper::toAttachmentResponse)
                 .map(a -> withResolvedImageUrl(a, imageUrlByKey))
                 .toList();
 
@@ -1011,7 +1018,7 @@ public class TimelinePostService {
      * 投稿一覧に添付配列を付与する（issue #2424・feed で画像を表示するための根治）。
      *
      * <p><b>N+1 回避</b>: 全投稿 ID 分の添付を 1 クエリで一括取得し、画像キーの署名解決も
-     * 全添付をまとめて {@link MediaUrlResolver#resolveAll} で 1 回だけ行う。取得した添付は
+     * 全添付を StorageAccessService で一括照合する。取得した添付は
      * {@code timelinePostId} でグルーピングして各投稿へ割り当てる。添付が無い投稿には空配列を
      * 設定する（{@code null} を避け FE の {@code attachments?.length} 分岐を安定させる）。</p>
      *
@@ -1033,9 +1040,19 @@ public class TimelinePostService {
         List<TimelinePostAttachmentEntity> all =
                 attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(postIds);
         // 画像キーは投稿をまたいで一括で 1 回だけ署名解決する（N+1 回避）。
-        Map<String, String> imageUrlByKey = resolveImageUrls(all);
+        Map<Long, TimelineAclContext> contexts = new LinkedHashMap<>();
+        for (PostResponse post : posts) {
+            TimelineAclContext context = TimelineAclContext.fromOrNull(post);
+            if (post.getId() != null && context != null) {
+                contexts.put(post.getId(), context);
+            }
+        }
+        Map<String, String> imageUrlByKey = resolveImageUrls(all, contexts);
         Map<Long, List<AttachmentResponse>> byPost = new LinkedHashMap<>();
         for (TimelinePostAttachmentEntity e : all) {
+            if (e.getAttachmentType() == AttachmentType.IMAGE && !imageUrlByKey.containsKey(e.getFileKey())) {
+                continue;
+            }
             AttachmentResponse r = withResolvedImageUrl(timelineMapper.toAttachmentResponse(e), imageUrlByKey);
             byPost.computeIfAbsent(e.getTimelinePostId(), k -> new ArrayList<>()).add(r);
         }
@@ -1048,18 +1065,50 @@ public class TimelinePostService {
 
     /**
      * 添付エンティティ群の中から画像（{@link AttachmentType#IMAGE}）の生キーを集めて署名 URL に一括解決する。
-     * null/空白キーは除外する。1 回の {@link MediaUrlResolver#resolveAll} で presign を最小化する（N+1 回避）。
+     * null/空白キーは除外し、StorageAccessService の一括照合で N+1 を防ぐ。
      */
-    private Map<String, String> resolveImageUrls(Collection<TimelinePostAttachmentEntity> attachments) {
+    private Map<String, String> resolveImageUrls(Collection<TimelinePostAttachmentEntity> attachments,
+                                                  Map<Long, TimelineAclContext> contexts) {
         if (attachments == null || attachments.isEmpty()) {
             return Map.of();
         }
-        List<String> imageKeys = attachments.stream()
+        List<StorageAclDownloadRequest> requests = attachments.stream()
                 .filter(a -> a.getAttachmentType() == AttachmentType.IMAGE)
-                .map(TimelinePostAttachmentEntity::getFileKey)
-                .filter(k -> k != null && !k.isBlank())
+                .filter(a -> a.getFileKey() != null && !a.getFileKey().isBlank())
+                .filter(a -> a.getId() != null && contexts != null && contexts.containsKey(a.getTimelinePostId()))
+                .map(a -> {
+                    TimelineAclContext context = contexts.get(a.getTimelinePostId());
+                    return new StorageAclDownloadRequest(a.getFileKey(), context.scope(),
+                            new StorageAclContentReference("TIMELINE_SCOPE", context.parentKey()),
+                            new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", a.getId().toString()));
+                })
                 .toList();
-        return mediaUrlResolver.resolveAll(imageKeys);
+        return storageAccessService.generateDownloadUrlsForList(requests, ATTACHMENT_DOWNLOAD_TTL);
+    }
+
+    private record TimelineAclContext(StorageAclScope scope, String parentKey) {
+        private static TimelineAclContext fromOrNull(PostResponse post) {
+            String type = post.getScope() != null ? post.getScope().scopeType() : null;
+            Long id = post.getScope() != null ? post.getScope().scopeId() : null;
+            Long ownerId = post.getAuthor() != null ? post.getAuthor().userId() : null;
+            return fromOrNull(type, id, ownerId);
+        }
+
+        private static TimelineAclContext fromOrNull(TimelinePostEntity post) {
+            return fromOrNull(post.getScopeType().name(), post.getScopeId(), post.getUserId());
+        }
+
+        private static TimelineAclContext fromOrNull(String type, Long scopeId, Long ownerId) {
+            if (PostScopeType.TEAM.name().equals(type) && scopeId != null && scopeId > 0) {
+                return new TimelineAclContext(StorageAclScope.team(scopeId), "TEAM:" + scopeId);
+            }
+            if (PostScopeType.ORGANIZATION.name().equals(type) && scopeId != null && scopeId > 0) {
+                return new TimelineAclContext(StorageAclScope.organization(scopeId), "ORGANIZATION:" + scopeId);
+            }
+            return ownerId != null && ownerId > 0
+                    ? new TimelineAclContext(StorageAclScope.personal(ownerId), "PERSONAL:" + ownerId)
+                    : null;
+        }
     }
 
     /**
