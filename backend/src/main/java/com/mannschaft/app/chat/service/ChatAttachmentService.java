@@ -123,9 +123,9 @@ public class ChatAttachmentService {
     }
 
     /** 保存済みメッセージ添付に ACL の一意バインドを確定する。 */
-    public void claimMessageAttachment(ChatChannelEntity channel,
-                                       ChatMessageAttachmentEntity attachment,
-                                       Long actorId) {
+    void claimMessageAttachment(ChatChannelEntity channel,
+                                ChatMessageAttachmentEntity attachment,
+                                Long actorId) {
         storageAclService.claimPending(attachment.getFileKey(), actorId, resolveAclScope(channel, actorId),
                 new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()),
                 new StorageAclAttachmentBinding("CHAT_MESSAGE_ATTACHMENT", attachment.getId().toString()));
@@ -216,7 +216,19 @@ public class ChatAttachmentService {
     }
 
     /** チャンネル種別をストレージ ACL の所有境界へ変換する。 */
-    public StorageAclScope resolveAclScope(ChatChannelEntity channel, Long userId) {
+    public StorageAclScope resolveAclScope(ChannelType channelType, Long channelId, Long teamId,
+                                           Long organizationId, Long sourceId, Long userId) {
+        ChatChannelEntity channel = ChatChannelEntity.builder()
+                .id(channelId)
+                .channelType(channelType)
+                .teamId(teamId)
+                .organizationId(organizationId)
+                .sourceId(sourceId)
+                .build();
+        return resolveAclScope(channel, userId);
+    }
+
+    StorageAclScope resolveAclScope(ChatChannelEntity channel, Long userId) {
         return switch (channel.getChannelType()) {
             case TEAM_PUBLIC, TEAM_PRIVATE -> StorageAclScope.team(requireScopeId(channel.getTeamId(), channel));
             case ORG_PUBLIC, ORG_PRIVATE -> StorageAclScope.organization(requireScopeId(channel.getOrganizationId(), channel));
@@ -231,7 +243,7 @@ public class ChatAttachmentService {
     }
 
     /** 保存済みチャンネルにアイコンの一意バインドを確定する。 */
-    public void claimChannelIcon(ChatChannelEntity channel, Long userId, String fileKey) {
+    void claimChannelIcon(ChatChannelEntity channel, Long userId, String fileKey) {
         storageAclService.claimPending(fileKey, userId, resolveAclScope(channel, userId),
                 new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()),
                 new StorageAclAttachmentBinding("CHAT_CHANNEL_ICON", channel.getId().toString()));
