@@ -57,7 +57,7 @@ public interface StorageAclRepository extends JpaRepository<StorageAclEntity, UU
     @Query(value = """
             UPDATE storage_acls
                SET status = 'REVOKED', updated_at = UTC_TIMESTAMP()
-             WHERE BINARY file_key = BINARY :fileKey
+             WHERE file_key = :fileKey AND BINARY file_key = BINARY :fileKey
                AND acl_mode = 'CONTENT_BOUND'
                AND status = 'CLAIMED'
                AND BINARY attachment_binding_type = BINARY :bindingType
@@ -72,7 +72,7 @@ public interface StorageAclRepository extends JpaRepository<StorageAclEntity, UU
      */
     @Query(value = """
             SELECT file_key FROM storage_acls
-             WHERE BINARY file_key = BINARY :fileKey
+             WHERE file_key = :fileKey AND BINARY file_key = BINARY :fileKey
                AND acl_mode = 'CONTENT_BOUND'
                AND status = 'REVOKED'
                AND BINARY attachment_binding_type = BINARY :bindingType
