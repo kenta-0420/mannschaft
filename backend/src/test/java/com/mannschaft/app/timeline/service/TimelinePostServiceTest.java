@@ -5,6 +5,10 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
@@ -109,6 +113,9 @@ class TimelinePostServiceTest {
 
     @Mock
     private com.mannschaft.app.common.storage.MediaUrlResolver mediaUrlResolver;
+
+    @Mock
+    private StorageAclService storageAclService;
 
     @Mock
     private TimelinePostVisibilityAccessGuard postVisibilityGuard;
@@ -2333,7 +2340,10 @@ class TimelinePostServiceTest {
 
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
             given(attachmentRepository.save(any(TimelinePostAttachmentEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
+                    .willAnswer(invocation -> {
+                        TimelinePostAttachmentEntity entity = invocation.getArgument(0);
+                        return entity.toBuilder().id(1L).build();
+                    });
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
 
             // when
@@ -2458,6 +2468,10 @@ class TimelinePostServiceTest {
                     .recordUpload(eq(StorageScopeType.TEAM), eq(TEAM_ID), eq(2048L),
                             eq(StorageFeatureType.TIMELINE),
                             eq("timeline_post_attachments"), eq(ATTACHMENT_ID), eq(USER_ID));
+            then(storageAclService).should().claimPending(
+                    eq("timeline/TEAM/50/tmp/uuid.jpg"), eq(USER_ID), eq(StorageAclScope.team(TEAM_ID)),
+                    eq(new StorageAclContentReference("TIMELINE_SCOPE", "TEAM:" + TEAM_ID)),
+                    eq(new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", ATTACHMENT_ID.toString())));
         }
 
         @Test
