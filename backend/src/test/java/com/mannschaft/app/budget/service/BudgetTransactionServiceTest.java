@@ -98,14 +98,14 @@ class BudgetTransactionServiceTest {
             given(transactionRepository.findById(TRANSACTION_ID)).willReturn(Optional.of(transaction));
             given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(storageService.generateUploadUrl(anyString(), eq("application/pdf"), any(Duration.class)))
-                    .willAnswer(invocation -> new PresignedUploadResult(
-                            "https://storage.example/upload", invocation.getArgument(0), 900L));
+                    .willReturn(new PresignedUploadResult(
+                            "https://storage.example/upload", "budget/canonical-key", 900L));
 
             // when
-            service.generateUploadUrl(TRANSACTION_ID, "receipt.pdf", "application/pdf");
+            var response = service.generateUploadUrl(TRANSACTION_ID, "receipt.pdf", "application/pdf");
 
             // then
-            verify(storageAclService).registerPending(anyString(), eq(USER_ID),
+            verify(storageAclService).registerPending(eq(response.s3Key()), eq(USER_ID),
                     eq(StorageAclScope.team(TEAM_ID)), eq("application/pdf"), any(Duration.class),
                     eq(new StorageAclContentReference("BUDGET_TRANSACTION", TRANSACTION_ID.toString())));
         }

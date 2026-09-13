@@ -363,7 +363,7 @@ public class BudgetTransactionService {
         StorageAclScope aclScope = "TEAM".equals(entity.getScopeType())
                 ? StorageAclScope.team(entity.getScopeId())
                 : StorageAclScope.organization(entity.getScopeId());
-        storageAclService.registerPending(s3Key, currentUserId, aclScope, contentType, UPLOAD_URL_TTL,
+        storageAclService.registerPending(result.s3Key(), currentUserId, aclScope, contentType, UPLOAD_URL_TTL,
                 new StorageAclContentReference("BUDGET_TRANSACTION", transactionId.toString()));
         return new UploadUrlResponse(result.uploadUrl(), result.s3Key(), result.expiresInSeconds());
     }
