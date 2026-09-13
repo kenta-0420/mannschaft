@@ -16,6 +16,7 @@ import com.mannschaft.app.chat.entity.ChatMessageEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
+import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.dto.UpdateInquiryChannelRequest;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
@@ -66,6 +67,11 @@ class ChatChannelServiceTest {
 
     @Mock
     private ChatMessageRepository messageRepository;
+    @Mock
+    private ChatMessageAttachmentRepository attachmentRepository;
+
+    @Mock
+    private ChatAttachmentService chatAttachmentService;
 
     @Mock
     private ChatMapper chatMapper;

@@ -297,7 +297,9 @@ public class ChatChannelService {
         ChatChannelEntity saved = channelRepository.save(channel);
         if (iconChanged) {
             chatAttachmentService.claimChannelIcon(saved, userId, request.getIconKey());
-            chatAttachmentService.releaseChannelIcon(saved, previousIconKey);
+            if (previousIconKey != null && !previousIconKey.isBlank()) {
+                chatAttachmentService.releaseChannelIcon(saved, previousIconKey);
+            }
         }
         log.info("チャンネル更新完了: channelId={}", channelId);
         return chatMapper.toChannelResponse(saved);
