@@ -11,14 +11,23 @@ import { describe, it, expect, vi } from 'vitest'
  * 検証観点:
  *   HR-VAL-001: 0 と負数と null を弾く（BE の @Positive と同じ条件）
  *   HR-VAL-002: 正の値は通す
+ *   HR-VAL-003: 0 は「1円以上で」の理由キーを返す（0 が ¥1 へ化けないこと）
+ *   HR-VAL-004: 未入力は「入力してください」の理由キーを返す
+ *   HR-VAL-005: 正の値は理由キーを返さない（保存できる）
+ *   HR-UI-001: 時給入力欄がクランプ（:min）を持たない（0 が黙って ¥1 に化けない）
+ *   HR-UI-002: 検証メッセージを画面に表示する経路がある（デッドコードでない）
+ *   HR-UI-003: エラー解除を v-model の watch に頼らない（打鍵中に消えないため）
  */
+
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
 vi.mock('~/composables/useApi', () => ({
   useApi: () => vi.fn(),
 }))
 
 // eslint-disable-next-line import/first
-import { isValidHourlyRate } from '~/composables/shift/useShiftHourlyRateApi'
+import { isValidHourlyRate, validateHourlyRate } from '~/composables/shift/useShiftHourlyRateApi'
 
 describe('isValidHourlyRate', () => {
   it('HR-VAL-001: 0・負数・null・NaN は送信させない（BE は @Positive で必ず 400）', () => {
@@ -31,5 +40,59 @@ describe('isValidHourlyRate', () => {
   it('HR-VAL-002: 正の値は送信できる', () => {
     expect(isValidHourlyRate(1)).toBe(true)
     expect(isValidHourlyRate(1200)).toBe(true)
+  })
+})
+
+describe('validateHourlyRate', () => {
+  it('HR-VAL-003: 0 は ratePositive の理由を返す（¥1 に化けず弾かれる）', () => {
+    expect(validateHourlyRate(0)).toBe('ratePositive')
+    expect(validateHourlyRate(-500)).toBe('ratePositive')
+  })
+
+  it('HR-VAL-004: 未入力・NaN は rateRequired の理由を返す', () => {
+    expect(validateHourlyRate(null)).toBe('rateRequired')
+    expect(validateHourlyRate(Number.NaN)).toBe('rateRequired')
+  })
+
+  it('HR-VAL-005: 正の値は理由を返さない（保存できる）', () => {
+    expect(validateHourlyRate(1)).toBeNull()
+    expect(validateHourlyRate(1200)).toBeNull()
+  })
+})
+
+/**
+ * 時給入力まわりのソース不変条件。
+ * 実機で「0 を入れるとフォーカスアウトで ¥1 に化け、そのまま保存されてしまう」欠陥が出た原因は
+ * `InputNumber :min="1"` のクランプだった。クランプが戻ってきたらここで落ちる。
+ */
+describe('時給入力のソース不変条件', () => {
+  const componentSource = readFileSync(
+    fileURLToPath(new URL('../../../app/components/shift/HourlyRateAmountInput.vue', import.meta.url)),
+    'utf-8',
+  )
+  const pageSource = readFileSync(
+    fileURLToPath(new URL('../../../app/pages/teams/[slug]/settings/hourly-rate.vue', import.meta.url)),
+    'utf-8',
+  )
+  const inputBlock = componentSource.slice(
+    componentSource.indexOf('<InputNumber'),
+    componentSource.indexOf('/>', componentSource.indexOf('<InputNumber')),
+  )
+
+  it('HR-UI-001: 時給入力欄は値をクランプしない（:min を持たない）', () => {
+    expect(inputBlock).toContain('data-testid="hourly-rate-input"')
+    expect(inputBlock).not.toMatch(/:?min=/)
+  })
+
+  it('HR-UI-002: 画面は検証結果を入力欄へ渡し、理由を表示する経路を持つ', () => {
+    expect(pageSource).toContain('<HourlyRateAmountInput')
+    expect(pageSource).toContain('shift.hourlyRate.validation.')
+    expect(pageSource).toContain('validateHourlyRate')
+    expect(componentSource).toContain('data-testid="hourly-rate-error"')
+  })
+
+  it('HR-UI-003: エラー解除は clear-error で行う（v-model の watch に頼らない）', () => {
+    expect(pageSource).toContain('@clear-error="formRateError = null"')
+    expect(pageSource).not.toMatch(/watch\(\s*formRate\s*,/)
   })
 })
