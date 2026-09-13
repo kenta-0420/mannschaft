@@ -29,8 +29,11 @@ import java.util.UUID;
  * <b>引き上げだけ</b>で、tx1 は無傷のまま続行できる。</p>
  *
  * <p>もう一つの効能として、勝者の行が<b>その場で commit される</b>。tx1 に参加していると
- * 勝者の行は未コミットのままなので、敗者が読み直しても（READ_COMMITTED では）見えず、
- * 「INSERT は弾かれるのに読んでも無い」という詰みになる。独立 tx はこの詰みも同時に解く。</p>
+ * 勝者の行は未コミットのままなので、敗者が読み直しても見えず「INSERT は弾かれるのに読んでも無い」
+ * という詰みになる。ただし<b>commit されただけでは敗者に見えない</b> —— MySQL InnoDB の既定は
+ * {@code REPEATABLE READ} であり、敗者の tx1 は勝者の commit より前に確立した読み取りビューを
+ * 持ち続けるためである。読み直しは {@link #findInNewTransaction} で<b>新しいトランザクション</b>
+ * から行わなければならない（CI 実測で判明。詳細はそちらの Javadoc）。</p>
  *
  * <p>tx1 がこの後に巻き戻っても引き上げた行は残るが、scope 単位で高々1行の冪等な行であり、
  * 次回の解決でそのまま再利用される（孤児にはならない）。</p>
@@ -60,6 +63,33 @@ class BillingCustomerProvisioner {
      * @param pspCustomerRef 契約に焼き付いている Stripe Customer ID（{@code null} 可）
      * @return 作成した {@code billing_customers.id}
      */
+    /**
+     * scope の {@code billing_customers} を<b>新しいトランザクション</b>で読む。
+     *
+     * <h2>なぜ新しいトランザクションでなければならないか（CI 実測で判明）</h2>
+     * <p>UNIQUE 競合で敗れた側が呼び出し元の tx1 のまま読み直しても、行は<b>見えない</b>。
+     * MySQL InnoDB の既定分離は {@code REPEATABLE READ} であり、tx1 は自分が始まった時点の
+     * 読み取りビューを保持し続けるからである。一方 InnoDB は、並行 INSERT に対する
+     * duplicate key エラーを<b>相手が commit した後</b>に初めて返す（それまでは
+     * ユニークインデックス上で待つ）。つまり「エラーが返った」時点で勝者の行は確実に
+     * commit 済みだが、<b>敗者の古いビューにはまだ存在しない</b>という食い違いが生じる。</p>
+     *
+     * <p>結果、tx1 内で読み直すと必ず {@code null} になり、実装は「UNIQUE 以外の違反」と誤判定して
+     * 例外を再送し、予約が失敗していた（CI: {@code BillingCustomerLinkConcurrencyIT} で
+     * 勝者 {@code reserved=true} / 敗者 {@code reserved=false}）。新しいトランザクションは
+     * 新しい読み取りビューを得るので、勝者の commit 済みの行が必ず見える。</p>
+     *
+     * @param scopeKind USER / TEAM / ORG
+     * @param scopeId   scope の ID
+     * @return 勝者の {@code billing_customers.id}（本当に存在しなければ {@code null}）
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public UUID findInNewTransaction(EntitlementScopeKind scopeKind, Long scopeId) {
+        return billingCustomerJpaRepository.findByScopeKindAndScopeId(scopeKind, scopeId)
+                .map(BillingCustomerEntity::getId)
+                .orElse(null);
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UUID provision(
             EntitlementScopeKind scopeKind, Long scopeId, Long organizationId, String pspCustomerRef) {

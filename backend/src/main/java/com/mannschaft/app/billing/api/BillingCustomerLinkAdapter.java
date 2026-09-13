@@ -50,16 +50,28 @@ class BillingCustomerLinkAdapter implements BillingCustomerLinkPort {
         } catch (DataIntegrityViolationException e) {
             // 並行する同一 scope の予約が先に INSERT して commit した。UNIQUE 違反は
             // 【独立トランザクションの中】で起きたので呼び出し元の tx1 は生きている。
-            // 勝者は既に commit しているため、読み直せば必ず見える。
-            UUID winner = findByScope(scopeKind, scopeId);
+            //
+            // ★読み直しは【新しいトランザクション】で行う。tx1 のまま読むと見えない ——
+            //   InnoDB は duplicate key エラーを相手の commit 後に返すが、tx1 は
+            //   REPEATABLE READ で自分が始まった時点のビューを持ち続けるため、
+            //   勝者の行は commit 済みなのに tx1 からは存在しない（CI 実測で判明）。
+            UUID winner = billingCustomerProvisioner.findInNewTransaction(scopeKind, scopeId);
             if (winner == null) {
-                // UNIQUE 以外の整合性違反だった。事実を隠さずそのまま上げる。
+                // 本当に行が無い＝uk_bcu_scope 以外の整合性違反である。事実を隠さずそのまま上げる。
                 throw e;
             }
             return winner;
         }
     }
 
+    /**
+     * 呼び出し元の tx1 のビューで探す（事前確認用）。
+     *
+     * <p>ここで見つかるのは「tx1 の読み取りビュー確立より前に commit された行」だけである。
+     * 見つからなくても他トランザクションが既に作っている可能性は否定できないため、
+     * INSERT が UNIQUE で弾かれた場合の読み直しは
+     * {@link BillingCustomerProvisioner#findInNewTransaction} を使う。</p>
+     */
     private UUID findByScope(EntitlementScopeKind scopeKind, Long scopeId) {
         return billingCustomerJpaRepository.findByScopeKindAndScopeId(scopeKind, scopeId)
                 .map(BillingCustomerEntity::getId)
