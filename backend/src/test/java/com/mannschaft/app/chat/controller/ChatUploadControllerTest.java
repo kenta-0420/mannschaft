@@ -78,6 +78,7 @@ class ChatUploadControllerTest {
 
     private ChatChannelEntity teamChannel() {
         return ChatChannelEntity.builder()
+                .id(CHANNEL_ID)
                 .channelType(ChannelType.TEAM_PUBLIC)
                 .teamId(50L)
                 .name("チームチャンネル")
