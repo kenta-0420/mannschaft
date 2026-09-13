@@ -2340,7 +2340,10 @@ class TimelinePostServiceTest {
 
             given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
             given(attachmentRepository.save(any(TimelinePostAttachmentEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
+                    .willAnswer(invocation -> {
+                        TimelinePostAttachmentEntity entity = invocation.getArgument(0);
+                        return entity.toBuilder().id(1L).build();
+                    });
             given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
 
             // when
@@ -2467,7 +2470,7 @@ class TimelinePostServiceTest {
                             eq("timeline_post_attachments"), eq(ATTACHMENT_ID), eq(USER_ID));
             then(storageAclService).should().claimPending(
                     eq("timeline/TEAM/50/tmp/uuid.jpg"), eq(USER_ID), eq(StorageAclScope.team(TEAM_ID)),
-                    eq(new StorageAclContentReference("TIMELINE_SCOPE", TEAM_ID.toString())),
+                    eq(new StorageAclContentReference("TIMELINE_SCOPE", "TEAM:" + TEAM_ID)),
                     eq(new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", ATTACHMENT_ID.toString())));
         }
 

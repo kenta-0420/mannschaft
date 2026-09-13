@@ -101,22 +101,26 @@ class BulletinAttachmentServiceTest {
 
     private BulletinThreadEntity teamThread() {
         return BulletinThreadEntity.builder()
+                .id(THREAD_ID)
                 .scopeType(ScopeType.TEAM).scopeId(TEAM_ID).authorId(USER_ID).build();
     }
 
     private BulletinThreadEntity orgThread() {
         return BulletinThreadEntity.builder()
+                .id(THREAD_ID)
                 .scopeType(ScopeType.ORGANIZATION).scopeId(ORG_ID).authorId(USER_ID).build();
     }
 
     private BulletinThreadEntity villageThread() {
         return BulletinThreadEntity.builder()
+                .id(THREAD_ID)
                 .scopeType(ScopeType.VILLAGE).scopeId(0L)
                 .scopeVillageId(VILLAGE_ID).authorId(USER_ID).build();
     }
 
     private BulletinThreadEntity personalThread(Long ownerId) {
         return BulletinThreadEntity.builder()
+                .id(THREAD_ID)
                 .scopeType(ScopeType.PERSONAL).scopeId(ownerId).authorId(ownerId).build();
     }
 
@@ -512,6 +516,7 @@ class BulletinAttachmentServiceTest {
 
         private BulletinThreadEntity tournamentThread() {
             return BulletinThreadEntity.builder()
+                    .id(THREAD_ID)
                     .scopeType(ScopeType.TOURNAMENT).scopeId(T_SCOPE_ID).authorId(USER_ID).build();
         }
 

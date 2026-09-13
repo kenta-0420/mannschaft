@@ -306,6 +306,7 @@ class SharedFileVersionServiceTest {
             SharedFileEntity fileEntity = createFileEntity(1);
             SharedFolderEntity folder = buildFolder();
             SharedFileVersionEntity savedVersion = SharedFileVersionEntity.builder()
+                    .id(VERSION_ID)
                     .fileId(FILE_ID)
                     .versionNumber(2)
                     .fileKey("files/no-comment.pdf")
