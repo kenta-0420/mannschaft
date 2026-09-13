@@ -190,6 +190,19 @@ public String generateDownloadUrl(String objectKey, UserDetails currentUser) {
 
 ---
 
+### 4.2 CMP-057: multipart の保存台帳とclaim（2026-09）
+
+公開multipart開始APIの `target_prefix` は機能ルートとの完全一致に限定する。テナントIDや親ID入りの子パスは受け付けない。ブログ・予定からの開始は、サーバー採番キーと保存済みメディア行を作成した後に内部入口 `startContentUpload` を使う。
+
+- ブログ: `blog_media_uploads.scope_type/scope_id` が所有スコープ。既存記事指定時は保存記事から復元して書込権限を確認し、未保存記事では投稿先の所属または個人所有を確認する。親参照とbindingは保存メディアIDで固定する。記事保存時は行ロック下で同一scope・投稿者・未紐付け（または同じ記事）を検査するため、draftから記事へ移ってもACLの付け替えは不要。
+- 予定: 保存予定のteam/organization/userを正本とし、親参照は予定ID、bindingは予定メディアIDとする。開始・完了で閲覧権限と所属を再確認する。
+- 完了: セッション所有者、fileKey完全一致、24時間の期限、保存scope/親/bindingを検査し、ACL claimとCOMPLETED更新を同じDBトランザクションに含める。claim失敗ではR2を完成させない。R2完了後のDB失敗はPENDINGへ戻り、再試行時は完成済みオブジェクトをHEADで確認して復旧する。開始トランザクションのrollbackはR2 abortで補償し、abort失敗は独立した再試行台帳へ記録する。
+- 読取: ブログは記事IDと保存scopeも照合し、予定は親の閲覧認可後に `StorageAccessService` でCLAIMED・scope・親・bindingを照合する。PENDING、欠落、不一致のメディアは署名しない。署名基盤の障害は伝播する。未登録の予定サムネイルは配信しない。
+
+移行時は保存済みブログ記事からのみscopeを補完する。旧draftのscopeをキーから推測せずNULLに保ち、既存ACLを一括でCLAIMEDにしない。検証済み台帳がない旧メディアは再アップロードが必要。
+
+回帰: `MultipartUploadAclLifecycleTest`、実MySQLの `MultipartUploadTransactionIT`、`BlogMediaAclServiceTest`、`BlogBodyMediaAclReadTest`、`ScheduleMediaAclServiceTest`。
+
 ## 5. objectKey の設計ルール
 
 objectKey の設計はスコープ分離と IDOR 防止に直結する。

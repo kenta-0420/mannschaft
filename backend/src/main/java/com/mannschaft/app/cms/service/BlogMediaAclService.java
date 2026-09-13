@@ -51,6 +51,7 @@ public class BlogMediaAclService implements MultipartContentTargetResolver {
             if (!actual.equals(requested)) {
                 throw new BusinessException(StorageErrorCode.ACL_NOT_FOUND);
             }
+            checkScopeMembership(actual, uploaderId);
             return actual;
         }
         checkScopeMembership(requested, uploaderId);

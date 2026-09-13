@@ -76,6 +76,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class BlogPostService {
     private final BlogMediaAclService mediaAclService;
+    private final BlogMediaCopyService mediaCopyService;
 
     private final BlogPostRepository postRepository;
     private final BlogPostTagRepository postTagRepository;
@@ -448,6 +449,7 @@ public class BlogPostService {
                 .build();
 
         BlogPostEntity saved = postRepository.save(copy);
+        mediaCopyService.copyMedia(original, saved, userId);
 
         // タグのコピー
         List<BlogPostTagEntity> tags = postTagRepository.findByBlogPostId(id);
@@ -510,6 +512,7 @@ public class BlogPostService {
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("自動保存: postId={}", id);
+        mediaAclService.bindBodyMedia(saved, userId);
         return cmsMapper.toBlogPostResponse(saved);
     }
 

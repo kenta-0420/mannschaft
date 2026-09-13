@@ -76,6 +76,8 @@ import static org.mockito.Mockito.verify;
 class BlogPostServiceTest {
     @Mock
     private com.mannschaft.app.cms.service.BlogMediaAclService mediaAclService;
+    @Mock
+    private com.mannschaft.app.cms.service.BlogMediaCopyService mediaCopyService;
 
     @Mock
     private BlogPostRepository postRepository;

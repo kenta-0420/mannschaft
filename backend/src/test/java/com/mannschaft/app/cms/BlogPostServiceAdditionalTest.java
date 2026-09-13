@@ -67,6 +67,8 @@ import static org.mockito.Mockito.lenient;
 class BlogPostServiceAdditionalTest {
     @Mock
     private com.mannschaft.app.cms.service.BlogMediaAclService mediaAclService;
+    @Mock
+    private com.mannschaft.app.cms.service.BlogMediaCopyService mediaCopyService;
 
     @Mock
     private BlogPostRepository postRepository;
