@@ -19,6 +19,7 @@ import com.mannschaft.app.auth.repository.UserRepository.MemberSummary;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -69,6 +70,7 @@ class CirculationServiceAdditionalTest {
     private UserRepository userRepository;
 
     @Mock private StorageAccessService storageAccessService;
+    @Mock private StorageAclService storageAclService;
     @Mock private AccessControlService accessControlService;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
