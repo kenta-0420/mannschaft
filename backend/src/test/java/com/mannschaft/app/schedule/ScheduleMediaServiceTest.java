@@ -852,7 +852,7 @@ class ScheduleMediaServiceTest {
             ScheduleMediaUploadEntity entity =
                     buildMediaEntity(MEDIA_ID, SCHEDULE_ID, UPLOADER_ID, "IMAGE");
             ScheduleEntity deletedSchedule = mockScheduleEntity();
-            given(deletedSchedule.getDeletedAt()).willReturn(LocalDateTime.now());
+            deletedSchedule.softDelete();
             given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
             givenSchedule(deletedSchedule);
 
