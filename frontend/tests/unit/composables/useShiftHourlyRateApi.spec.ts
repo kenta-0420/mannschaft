@@ -16,6 +16,7 @@ import { describe, it, expect, vi } from 'vitest'
  *   HR-VAL-005: 正の値は理由キーを返さない（保存できる）
  *   HR-UI-001: 時給入力欄がクランプ（:min）を持たない（0 が黙って ¥1 に化けない）
  *   HR-UI-002: 検証メッセージを画面に表示する経路がある（デッドコードでない）
+ *   HR-UI-003: エラー解除を v-model の watch に頼らない（打鍵中に消えないため）
  */
 
 import { readFileSync } from 'node:fs'
@@ -60,18 +61,22 @@ describe('validateHourlyRate', () => {
 })
 
 /**
- * 時給設定画面のソース不変条件。
+ * 時給入力まわりのソース不変条件。
  * 実機で「0 を入れるとフォーカスアウトで ¥1 に化け、そのまま保存されてしまう」欠陥が出た原因は
  * `InputNumber :min="1"` のクランプだった。クランプが戻ってきたらここで落ちる。
  */
-describe('hourly-rate.vue のソース不変条件', () => {
-  const source = readFileSync(
+describe('時給入力のソース不変条件', () => {
+  const componentSource = readFileSync(
+    fileURLToPath(new URL('../../../app/components/shift/HourlyRateAmountInput.vue', import.meta.url)),
+    'utf-8',
+  )
+  const pageSource = readFileSync(
     fileURLToPath(new URL('../../../app/pages/teams/[slug]/settings/hourly-rate.vue', import.meta.url)),
     'utf-8',
   )
-  const inputBlock = source.slice(
-    source.indexOf('<InputNumber'),
-    source.indexOf('/>', source.indexOf('<InputNumber')),
+  const inputBlock = componentSource.slice(
+    componentSource.indexOf('<InputNumber'),
+    componentSource.indexOf('/>', componentSource.indexOf('<InputNumber')),
   )
 
   it('HR-UI-001: 時給入力欄は値をクランプしない（:min を持たない）', () => {
@@ -79,9 +84,15 @@ describe('hourly-rate.vue のソース不変条件', () => {
     expect(inputBlock).not.toMatch(/:?min=/)
   })
 
-  it('HR-UI-002: 検証メッセージを欄の下に表示する経路がある', () => {
-    expect(source).toContain('data-testid="hourly-rate-error"')
-    expect(source).toContain('shift.hourlyRate.validation.')
-    expect(source).toContain('validateHourlyRate')
+  it('HR-UI-002: 画面は検証結果を入力欄へ渡し、理由を表示する経路を持つ', () => {
+    expect(pageSource).toContain('<HourlyRateAmountInput')
+    expect(pageSource).toContain('shift.hourlyRate.validation.')
+    expect(pageSource).toContain('validateHourlyRate')
+    expect(componentSource).toContain('data-testid="hourly-rate-error"')
+  })
+
+  it('HR-UI-003: エラー解除は clear-error で行う（v-model の watch に頼らない）', () => {
+    expect(pageSource).toContain('@clear-error="formRateError = null"')
+    expect(pageSource).not.toMatch(/watch\(\s*formRate\s*,/)
   })
 })

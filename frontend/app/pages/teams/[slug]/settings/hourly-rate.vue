@@ -57,10 +57,15 @@ const formEffectiveFrom = ref<Date>(new Date())
  */
 const formRateError = ref<HourlyRateValidationKey | null>(null)
 
-/** 入力し直したら直前のエラー表示は消す（赤いままだと直した実感が無い）。 */
-watch(formRate, () => {
-  formRateError.value = null
-})
+/**
+ * 表示中の検証エラー文言（無ければ null）。
+ * エラーの解除は入力欄コンポーネントの clear-error（打鍵ごとに発火）で行う。
+ * InputNumber は打鍵中に v-model を更新しないため、v-model の watch では
+ * 直している間もエラーが赤いまま残ってしまう。
+ */
+const formRateErrorMessage = computed(() =>
+  formRateError.value === null ? null : t(`shift.hourlyRate.validation.${formRateError.value}`),
+)
 
 const missingCount = computed(() => rows.value.filter(r => r.rate === null).length)
 /** 全員が 1 ページに収まっているか（＝未設定件数をチーム全体の数として言い切れるか）。 */
@@ -269,25 +274,12 @@ onMounted(async () => {
       <form class="flex flex-col gap-4" @submit.prevent="submit">
         <div class="flex flex-col gap-2">
           <label for="hourly-rate-input">{{ $t('shift.hourlyRate.column.rate') }}</label>
-          <InputNumber
-            id="hourly-rate-input"
+          <HourlyRateAmountInput
             v-model="formRate"
-            mode="currency"
-            currency="JPY"
-            locale="ja-JP"
-            class="w-full"
-            :invalid="formRateError !== null"
-            aria-describedby="hourly-rate-error"
-            data-testid="hourly-rate-input"
+            :error-message="formRateErrorMessage"
+            error-id="hourly-rate-error"
+            @clear-error="formRateError = null"
           />
-          <small
-            v-if="formRateError"
-            id="hourly-rate-error"
-            class="text-red-600 dark:text-red-400"
-            data-testid="hourly-rate-error"
-          >
-            {{ $t(`shift.hourlyRate.validation.${formRateError}`) }}
-          </small>
         </div>
         <div class="flex flex-col gap-2">
           <label for="hourly-rate-effective-from">{{ $t('shift.hourlyRate.column.effectiveFrom') }}</label>
