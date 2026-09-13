@@ -8,12 +8,12 @@ describe('Timeline VideoPlayer', () => {
     const wrapper = await mountSuspended(VideoPlayer, {
       props: {
         sourceUrl: signedUrl,
-        processingStatus: 'COMPLETED',
+        processingStatus: 'READY',
         mimeType: 'video/mp4',
       },
     })
 
-    expect(wrapper.get('video').attributes('src')).toBe(signedUrl)
+    expect(wrapper.get('source').attributes('src')).toBe(signedUrl)
     expect(wrapper.html()).not.toContain('/api/r2/')
   })
 

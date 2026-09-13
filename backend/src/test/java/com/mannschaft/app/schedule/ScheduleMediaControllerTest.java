@@ -28,7 +28,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -206,7 +205,7 @@ class ScheduleMediaControllerTest {
             void 正常系_メディア更新_200() throws Exception {
                 // given
                 given(scheduleMediaService.updateMedia(
-                        anyLong(), anyLong(), anyLong(), anyBoolean(), any()))
+                        anyLong(), anyLong(), anyLong(), any()))
                         .willReturn(buildMediaResponse());
 
                 String requestBody = """
@@ -239,7 +238,7 @@ class ScheduleMediaControllerTest {
             void 正常系_メディア削除_204() throws Exception {
                 // given
                 doNothing().when(scheduleMediaService)
-                        .deleteMedia(anyLong(), anyLong(), anyLong(), anyBoolean());
+                        .deleteMedia(anyLong(), anyLong(), anyLong());
 
                 // when / then
                 mockMvc.perform(delete(
