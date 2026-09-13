@@ -484,7 +484,7 @@ public class FormSubmissionService {
         FormSubmissionEntity entity = submissionRepository.findByIdAndSubmittedBy(submissionId, userId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
         // 添付と ACL は同じ transaction で不可視化する。R2 実体の削除はここでは行わない。
-        valueRepository.findBySubmissionId(submissionId).stream()
+        valueRepository.findBySubmissionIdForUpdate(submissionId).stream()
                 .filter(this::hasStoredFile).forEach(this::releaseValue);
         entity.softDelete();
         submissionRepository.save(entity);
@@ -630,7 +630,7 @@ public class FormSubmissionService {
      */
     private List<FormSubmissionValueEntity> replaceValues(
             FormSubmissionEntity submission, List<SubmissionValueRequest> values, Long userId) {
-        List<FormSubmissionValueEntity> previous = valueRepository.findBySubmissionId(submission.getId());
+        List<FormSubmissionValueEntity> previous = valueRepository.findBySubmissionIdForUpdate(submission.getId());
         Map<String, FormSubmissionValueEntity> previousFiles = new HashMap<>();
         previous.stream().filter(this::hasStoredFile)
                 .forEach(value -> previousFiles.put(value.getFileKey(), value));

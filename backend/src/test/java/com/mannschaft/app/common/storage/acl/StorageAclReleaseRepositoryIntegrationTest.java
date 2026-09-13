@@ -25,6 +25,8 @@ class StorageAclReleaseRepositoryIntegrationTest extends AbstractMySqlIntegratio
     @Autowired private StorageAclService service;
     @Autowired private StorageAccessService accessService;
     @Autowired private PlatformTransactionManager transactionManager;
+    @Autowired private com.mannschaft.app.forms.repository.FormSubmissionRepository submissionRepository;
+    @Autowired private com.mannschaft.app.forms.repository.FormSubmissionValueRepository valueRepository;
 
     @Test
     void 同じ親の別添付を残して対象のみ解放し同じtransactionで再送できる() {
@@ -96,6 +98,29 @@ class StorageAclReleaseRepositoryIntegrationTest extends AbstractMySqlIntegratio
         });
 
         assertThat(readStatus(fileKey)).isEqualTo(StorageAclStatus.CLAIMED);
+    }
+
+    @Test
+    void 提出値の編集読取は外側transactionの古いsnapshotに残る削除済み値を返さない() {
+        String snapshotKey = "integration/forms-snapshot-" + System.nanoTime();
+        Long submissionId = tx().execute(status -> {
+            repository.saveAndFlush(claimed(snapshotKey));
+            com.mannschaft.app.forms.entity.FormSubmissionEntity submission = submissionRepository.saveAndFlush(
+                    com.mannschaft.app.forms.entity.FormSubmissionEntity.builder()
+                            .templateId(9003L).scopeType("TEAM").scopeId(9002L).submittedBy(9001L).build());
+            valueRepository.saveAndFlush(com.mannschaft.app.forms.entity.FormSubmissionValueEntity.builder()
+                    .submissionId(submission.getId()).fieldKey("evidence")
+                    .fieldType(com.mannschaft.app.forms.FormFieldType.FILE).fileKey(snapshotKey).build());
+            return submission.getId();
+        });
+
+        tx().executeWithoutResult(status -> {
+            repository.findByFileKey(snapshotKey).orElseThrow(); // 古い consistent snapshot を確立
+            tx().executeWithoutResult(inner -> valueRepository.deleteBySubmissionId(submissionId));
+            submissionRepository.findByIdAndSubmittedBy(submissionId, 9001L).orElseThrow();
+
+            assertThat(valueRepository.findBySubmissionIdForUpdate(submissionId)).isEmpty();
+        });
     }
 
     private void assertRejected(String fileKey, StorageAclAttachmentBinding binding) {

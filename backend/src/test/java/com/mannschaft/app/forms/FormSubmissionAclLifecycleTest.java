@@ -59,7 +59,7 @@ class FormSubmissionAclLifecycleTest {
         FormSubmissionValueEntity kept = value(301L, "kept", FormFieldType.FILE);
         FormSubmissionValueEntity removed = value(302L, "removed", FormFieldType.SIGNATURE);
         given(submissionRepository.save(submission)).willReturn(submission);
-        given(valueRepository.findBySubmissionId(200L)).willReturn(List.of(kept, removed));
+        given(valueRepository.findBySubmissionIdForUpdate(200L)).willReturn(List.of(kept, removed));
         given(valueRepository.saveAll(any())).willAnswer(invocation -> {
             List<FormSubmissionValueEntity> values = invocation.getArgument(0);
             assertThat(values).singleElement().satisfies(value -> {
@@ -86,7 +86,7 @@ class FormSubmissionAclLifecycleTest {
     void 空配列への更新は全添付を個別解放する() {
         FormSubmissionValueEntity removed = value(301L, "removed", FormFieldType.FILE);
         given(submissionRepository.save(submission)).willReturn(submission);
-        given(valueRepository.findBySubmissionId(200L)).willReturn(List.of(removed));
+        given(valueRepository.findBySubmissionIdForUpdate(200L)).willReturn(List.of(removed));
         given(valueRepository.saveAll(any())).willReturn(List.of());
 
         service.updateSubmission(200L, 10L, new UpdateFormSubmissionRequest(false, List.of()));
@@ -110,7 +110,7 @@ class FormSubmissionAclLifecycleTest {
     @Test
     void 同じkeyを二つの値へ複製する更新は保存前に拒否する() {
         given(submissionRepository.save(submission)).willReturn(submission);
-        given(valueRepository.findBySubmissionId(200L)).willReturn(List.of(value(301L, "kept", FormFieldType.FILE)));
+        given(valueRepository.findBySubmissionIdForUpdate(200L)).willReturn(List.of(value(301L, "kept", FormFieldType.FILE)));
 
         assertThatThrownBy(() -> service.updateSubmission(200L, 10L,
                 new UpdateFormSubmissionRequest(false, List.of(request("a", "kept"), request("b", "kept")))))
@@ -123,7 +123,7 @@ class FormSubmissionAclLifecycleTest {
 
     @Test
     void 提出削除は添付ごとに解放してから論理削除する() {
-        given(valueRepository.findBySubmissionId(200L)).willReturn(List.of(value(301L, "removed", FormFieldType.FILE)));
+        given(valueRepository.findBySubmissionIdForUpdate(200L)).willReturn(List.of(value(301L, "removed", FormFieldType.FILE)));
 
         service.deleteSubmission(200L, 10L);
 
@@ -134,7 +134,7 @@ class FormSubmissionAclLifecycleTest {
 
     @Test
     void 解放失敗時は提出の論理削除に進まない() {
-        given(valueRepository.findBySubmissionId(200L)).willReturn(List.of(value(301L, "removed", FormFieldType.FILE)));
+        given(valueRepository.findBySubmissionIdForUpdate(200L)).willReturn(List.of(value(301L, "removed", FormFieldType.FILE)));
         org.mockito.Mockito.doThrow(new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND))
                 .when(storageAclService).releaseClaimed("removed", binding("301"));
 
@@ -157,7 +157,7 @@ class FormSubmissionAclLifecycleTest {
         given(submissionRepository.findByTournamentSubmissionRequirementIdAndScopeTypeAndScopeId(
                 requirementId, "TEAM", 1L)).willReturn(Optional.of(submission));
         given(submissionRepository.save(submission)).willReturn(submission);
-        given(valueRepository.findBySubmissionId(200L)).willReturn(List.of(value(301L, "kept", FormFieldType.FILE)));
+        given(valueRepository.findBySubmissionIdForUpdate(200L)).willReturn(List.of(value(301L, "kept", FormFieldType.FILE)));
         given(valueRepository.saveAll(any())).willAnswer(invocation -> invocation.getArgument(0));
 
         service.createSubmissionForRequirement("TEAM", 1L, 20L, requirementId,
