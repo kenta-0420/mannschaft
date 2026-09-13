@@ -2,6 +2,9 @@ package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
@@ -47,6 +50,9 @@ class TimelineImageAttachmentServiceTest {
     @Mock
     private TimelineAttachmentAccessGuard accessGuard;
 
+    @Mock
+    private StorageAclService storageAclService;
+
     @InjectMocks
     private TimelineImageAttachmentService service;
 
@@ -79,6 +85,10 @@ class TimelineImageAttachmentServiceTest {
             assertThat(result.getExpiresInSeconds()).isEqualTo(900);
             // checkQuota が TEAM スコープで呼ばれる
             then(storageQuotaService).should().checkQuota(StorageScopeType.TEAM, TEAM_ID, 0L);
+            then(storageAclService).should().registerPending(
+                    eq(result.getFileKey()), eq(USER_ID), eq(StorageAclScope.team(TEAM_ID)),
+                    eq("image/jpeg"), any(Duration.class),
+                    eq(new StorageAclContentReference("TIMELINE_SCOPE", "TEAM:" + TEAM_ID)));
         }
 
         @Test

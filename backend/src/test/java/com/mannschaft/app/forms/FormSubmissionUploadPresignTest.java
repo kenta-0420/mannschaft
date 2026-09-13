@@ -3,6 +3,8 @@ package com.mannschaft.app.forms;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.forms.dto.FormUploadUrlRequest;
 import com.mannschaft.app.forms.dto.FormUploadUrlResponse;
@@ -76,6 +78,9 @@ class FormSubmissionUploadPresignTest {
         assertThat(response.getExpiresIn()).isEqualTo(600L);
         verify(storageService).generateUploadUrl(org.mockito.ArgumentMatchers.startsWith("forms/TEAM/7/submissions/200/"),
                 org.mockito.ArgumentMatchers.eq("application/pdf"), any(Duration.class));
+        verify(storageAclService).registerPending(
+                eq("forms/key"), eq(10L), eq(StorageAclScope.team(7L)), eq("application/pdf"),
+                any(Duration.class), eq(new StorageAclContentReference("FORM_SUBMISSION", "200")));
     }
 
     @Test
