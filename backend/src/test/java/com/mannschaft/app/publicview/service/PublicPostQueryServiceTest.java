@@ -173,7 +173,7 @@ class PublicPostQueryServiceTest {
                     .thenReturn(new DisplayIdentity("投稿者", null, false, true));
             // 本文メディア解決は素通し（本テストの主題はペイウォール判定であり、
             // 解決対象のメディアキーを含まない本文では実物も同じく素通しする）。
-            lenient().when(blogBodyMediaResolver.resolveBody(any(), any(), any()))
+            lenient().when(blogBodyMediaResolver.resolveBody(any(), any(), any(), any()))
                     .thenAnswer(inv -> inv.getArgument(0));
         }
 

@@ -74,6 +74,8 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("BlogPostService 単体テスト")
 class BlogPostServiceTest {
+    @Mock
+    private com.mannschaft.app.cms.service.BlogMediaAclService mediaAclService;
 
     @Mock
     private BlogPostRepository postRepository;

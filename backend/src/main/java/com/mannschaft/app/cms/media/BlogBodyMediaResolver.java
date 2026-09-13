@@ -3,6 +3,9 @@ package com.mannschaft.app.cms.media;
 import com.mannschaft.app.cms.entity.BlogMediaUploadEntity;
 import com.mannschaft.app.cms.repository.BlogMediaUploadRepository;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
+import com.mannschaft.app.cms.service.BlogMediaAclService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -75,7 +78,7 @@ public class BlogBodyMediaResolver {
             "!\\[[^\\]]*\\]\\(\\s*(blog/[^)\\s]+)(?:\\s+\"[^\"]*\")?\\s*\\)"
                     + "|src\\s*=\\s*[\"'](blog/[^\"']+)[\"']");
 
-    private final MediaUrlResolver mediaUrlResolver;
+    private final StorageAccessService storageAccessService;
     private final BlogMediaUploadRepository blogMediaUploadRepository;
 
     /**
@@ -117,7 +120,7 @@ public class BlogBodyMediaResolver {
      * @param scopeId   投稿のスコープ ID
      * @return 署名 URL へ置換済みの本文。body が null なら null
      */
-    public String resolveBody(String body, StorageScopeType scopeType, Long scopeId) {
+    public String resolveBody(String body, StorageScopeType scopeType, Long scopeId, Long postId) {
         if (body == null || body.isEmpty()) {
             return body;
         }
@@ -140,9 +143,15 @@ public class BlogBodyMediaResolver {
         }
 
         // 関門2: 台帳（blog_media_uploads）照合。照会失敗は fail-closed（presign しない）。
+        List<BlogMediaUploadEntity> registeredMedia;
         Set<String> registeredKeys;
         try {
-            registeredKeys = blogMediaUploadRepository.findByS3KeyIn(ownScopeKeys).stream()
+            registeredMedia = blogMediaUploadRepository.findByS3KeyIn(ownScopeKeys).stream()
+                    .filter(media -> postId != null && postId.equals(media.getBlogPostId()))
+                    .filter(media -> scopeType.name().equals(media.getScopeType())
+                            && scopeId.equals(media.getScopeId()) && media.getId() != null)
+                    .toList();
+            registeredKeys = registeredMedia.stream()
                     .map(BlogMediaUploadEntity::getS3Key)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -171,15 +180,17 @@ public class BlogBodyMediaResolver {
             return body;
         }
 
-        // 性能: 本文 1 件につき resolveAll をちょうど 1 回だけ呼ぶ（N+1 presign の防止）。
-        Map<String, String> resolvedUrls;
-        try {
-            resolvedUrls = mediaUrlResolver.resolveAll(verifiedKeys);
-        } catch (Exception e) {
-            log.warn("本文メディア: 署名URLの一括解決に失敗したため本文を素通しする: scope={}/{}",
-                    scopeType, scopeId, e);
-            return body;
-        }
+        // 保存記事・scope・保存メディアIDの全てが一致するCLAIMED ACLのみ一括署名する。
+        // 署名基盤自体の障害は未登録と混同せず呼び出し元へ伝播する。
+        List<StorageAclDownloadRequest> requests = registeredMedia.stream()
+                .filter(media -> verifiedKeys.contains(media.getS3Key()))
+                .map(media -> {
+                    var target = BlogMediaAclService.targetOf(media);
+                    return new StorageAclDownloadRequest(media.getS3Key(), target.scope(),
+                            target.parent(), target.binding());
+                }).toList();
+        Map<String, String> resolvedUrls = storageAccessService.generateDownloadUrlsForList(
+                requests, java.time.Duration.ofMinutes(10));
         if (resolvedUrls == null || resolvedUrls.isEmpty()) {
             log.warn("本文メディア: 署名URLが 1 件も解決できなかった: scope={}/{}, 対象={}件",
                     scopeType, scopeId, verifiedKeys.size());

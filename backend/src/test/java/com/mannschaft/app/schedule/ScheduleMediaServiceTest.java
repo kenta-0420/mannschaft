@@ -83,19 +83,46 @@ class ScheduleMediaServiceTest {
      */
     private ScheduleMediaService scheduleMediaService;
 
+    @Mock private com.mannschaft.app.common.storage.acl.StorageAclService storageAclService;
+    @Mock private com.mannschaft.app.common.storage.acl.StorageAccessService storageAccessService;
+    @Mock private com.mannschaft.app.common.visibility.ContentVisibilityChecker visibilityChecker;
+    @Mock private com.mannschaft.app.common.AccessControlService accessControlService;
+
+    @org.junit.jupiter.api.AfterEach
+    void clearAuthentication() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
+
     @BeforeEach
     void setUp() {
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        UPLOADER_ID, null, java.util.List.of()));
+        org.mockito.Mockito.lenient().when(scheduleRepository.findById(SCHEDULE_ID))
+                .thenReturn(Optional.of(mockScheduleEntity()));
+        org.mockito.Mockito.lenient().when(storageAccessService.generateDownloadUrlsForList(any(), any()))
+                .thenAnswer(inv -> {
+                    java.util.Collection<com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest> requests =
+                            inv.getArgument(0);
+                    return requests.stream().collect(java.util.stream.Collectors.toMap(
+                            com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest::fileKey,
+                            request -> "https://r2.example.com/signed/" + request.fileKey(), (first, second) -> first));
+                });
+        org.mockito.Mockito.lenient().when(storageAccessService.generateDownloadUrl(any(), any(), any(), any(), any()))
+                .thenReturn("https://r2.example.com/signed");
+        var mediaAclService = new com.mannschaft.app.schedule.service.ScheduleMediaAclService(
+                scheduleMediaUploadRepository, scheduleRepository, visibilityChecker, accessControlService);
         ScheduleMediaUploadService uploadService = new ScheduleMediaUploadService(
                 r2StorageService,
                 multipartUploadService,
                 scheduleMediaUploadRepository,
                 scheduleRepository,
-                storageQuotaService);
+                storageQuotaService, mediaAclService, storageAclService);
         ScheduleMediaQueryService queryService = new ScheduleMediaQueryService(
                 r2StorageService,
                 scheduleMediaUploadRepository,
                 scheduleRepository,
-                storageQuotaService);
+                storageQuotaService, mediaAclService, storageAccessService);
         scheduleMediaService = new ScheduleMediaService(uploadService, queryService);
     }
 
@@ -160,7 +187,7 @@ class ScheduleMediaServiceTest {
      * given() の外で mock() を呼んで UnfinishedStubbingException を防ぐ。
      */
     private ScheduleEntity mockScheduleEntity() {
-        return mock(ScheduleEntity.class);
+        return ScheduleEntity.builder().id(SCHEDULE_ID).userId(UPLOADER_ID).build();
     }
 
     // ==================== generateUploadUrl ====================
@@ -231,7 +258,7 @@ class ScheduleMediaServiceTest {
                     .willReturn(Optional.of(dummySchedule));
             given(scheduleMediaUploadRepository.countByScheduleIdAndMediaType(SCHEDULE_ID, "VIDEO"))
                     .willReturn(0);
-            given(multipartUploadService.startUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class)))
+            given(multipartUploadService.startContentUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class), anyString()))
                     .willReturn(new StartMultipartUploadResponse(
                             "test-upload-id",
                             "schedules/100/uuid.mp4",
@@ -265,7 +292,7 @@ class ScheduleMediaServiceTest {
             assertThat(result.getUploadUrl()).isNull();
             assertThat(result.getExpiresIn()).isNull();
             then(multipartUploadService).should()
-                    .startUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class));
+                    .startContentUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class), anyString());
         }
 
         @Test
@@ -776,28 +803,17 @@ class ScheduleMediaServiceTest {
 
         /** チームスコープを持つ ScheduleEntity モック */
         private ScheduleEntity teamSchedule() {
-            ScheduleEntity s = mock(ScheduleEntity.class);
-            given(s.getTeamId()).willReturn(50L);
-            // resolveScope は teamId != null の時点でリターンするため、organizationId / userId は呼ばれない
-            return s;
+            return ScheduleEntity.builder().id(SCHEDULE_ID).teamId(50L).build();
         }
 
         /** 組織スコープを持つ ScheduleEntity モック */
         private ScheduleEntity orgSchedule() {
-            ScheduleEntity s = mock(ScheduleEntity.class);
-            given(s.getTeamId()).willReturn(null);
-            given(s.getOrganizationId()).willReturn(60L);
-            // resolveScope は organizationId != null の時点でリターンするため、userId は呼ばれない
-            return s;
+            return ScheduleEntity.builder().id(SCHEDULE_ID).organizationId(60L).build();
         }
 
         /** 個人スコープを持つ ScheduleEntity モック */
         private ScheduleEntity personalSchedule() {
-            ScheduleEntity s = mock(ScheduleEntity.class);
-            given(s.getTeamId()).willReturn(null);
-            given(s.getOrganizationId()).willReturn(null);
-            // resolveScope は uploaderId パラメータを使うため、entity.getUserId() は呼ばれない
-            return s;
+            return ScheduleEntity.builder().id(SCHEDULE_ID).userId(UPLOADER_ID).build();
         }
 
         @Test
@@ -851,7 +867,7 @@ class ScheduleMediaServiceTest {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
             given(scheduleMediaUploadRepository.countByScheduleIdAndMediaType(SCHEDULE_ID, "VIDEO"))
                     .willReturn(0);
-            given(multipartUploadService.startUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class)))
+            given(multipartUploadService.startContentUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class), anyString()))
                     .willReturn(new StartMultipartUploadResponse(
                             "test-upload-id",
                             "schedules/100/uuid.mp4",

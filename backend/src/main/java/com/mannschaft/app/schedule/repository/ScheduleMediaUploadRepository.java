@@ -17,6 +17,9 @@ import java.util.List;
 @Repository
 public interface ScheduleMediaUploadRepository extends JpaRepository<ScheduleMediaUploadEntity, Long> {
 
+    /** multipart開始・完了時に保存済みメディアを復元する。呼び出し側でもキーを厳密比較する。 */
+    java.util.Optional<ScheduleMediaUploadEntity> findByR2Key(String r2Key);
+
     /**
      * スケジュール別メディア一覧（作成日時降順）。
      */

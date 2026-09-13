@@ -97,6 +97,8 @@ public class ScheduleMediaUploadService {
     private final ScheduleRepository scheduleRepository;
     /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
+    private final ScheduleMediaAclService mediaAclService;
+    private final com.mannschaft.app.common.storage.acl.StorageAclService storageAclService;
 
     // ==================== 公開メソッド ====================
 
@@ -118,9 +120,7 @@ public class ScheduleMediaUploadService {
             Long scheduleId, Long uploaderId, ScheduleMediaUploadUrlRequest req) {
 
         // スケジュール存在確認
-        ScheduleEntity schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "スケジュールが見つかりません"));
+        ScheduleEntity schedule = mediaAclService.requireUploadable(scheduleId, uploaderId);
 
         validateRequest(scheduleId, req);
 
@@ -233,6 +233,11 @@ public class ScheduleMediaUploadService {
                 .processingStatus("READY")
                 .build();
         ScheduleMediaUploadEntity saved = scheduleMediaUploadRepository.save(entity);
+        var target = ScheduleMediaAclService.targetOf(
+                scheduleRepository.findById(scheduleId).orElseThrow(), saved);
+        storageAclService.registerPending(r2Key, uploaderId, target.scope(), req.getContentType(),
+                UPLOAD_URL_TTL, target.parent());
+        storageAclService.claimPending(r2Key, uploaderId, target.scope(), target.parent(), target.binding());
 
         log.info("画像アップロード Presigned URL 発行: uploaderId={}, scheduleId={}, mediaId={}, key={}",
                 uploaderId, scheduleId, saved.getId(), r2Key);
@@ -293,7 +298,7 @@ public class ScheduleMediaUploadService {
                 multipartPrefix          // targetPrefix（"schedules/{scheduleId}/"）
         );
 
-        StartMultipartUploadResponse startResponse = multipartUploadService.startUpload(uploaderId, startReq);
+        String r2Key = prefix + fileName;
 
         // 実際のメディア種別を保持する（100MB 超の IMAGE でも mediaType は "IMAGE" のまま）
         String actualMediaType = req.getMediaType();
@@ -304,13 +309,15 @@ public class ScheduleMediaUploadService {
                 .scheduleId(scheduleId)
                 .uploaderId(uploaderId)
                 .mediaType(actualMediaType)
-                .r2Key(startResponse.getFileKey())
+                .r2Key(r2Key)
                 .fileName(req.getFileName())
                 .fileSize(req.getFileSize())
                 .contentType(req.getContentType())
                 .processingStatus(processingStatus)
                 .build();
         ScheduleMediaUploadEntity saved = scheduleMediaUploadRepository.save(entity);
+        StartMultipartUploadResponse startResponse =
+                multipartUploadService.startContentUpload(uploaderId, startReq, r2Key);
 
         log.info("Multipart Upload 開始: uploaderId={}, scheduleId={}, mediaId={}, uploadId={}, key={}",
                 uploaderId, scheduleId, saved.getId(), startResponse.getUploadId(), startResponse.getFileKey());

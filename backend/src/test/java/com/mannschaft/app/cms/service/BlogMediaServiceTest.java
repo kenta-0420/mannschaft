@@ -67,6 +67,19 @@ class BlogMediaServiceTest {
     @Mock
     private BlogMediaOrphanCleanupRunner orphanCleanupRunner;
 
+    @Mock private BlogMediaAclService mediaAclService;
+    @Mock private com.mannschaft.app.common.storage.acl.StorageAclService storageAclService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUpAclScope() {
+        org.mockito.Mockito.lenient().when(mediaAclService.resolveUploadScope(anyLong(), any()))
+                .thenAnswer(inv -> {
+                    BlogMediaUploadUrlRequest request = inv.getArgument(1);
+                    return new com.mannschaft.app.cms.media.BlogMediaScope(
+                            StorageScopeType.valueOf(request.getScopeType()), request.getScopeId());
+                });
+    }
+
     @InjectMocks
     private BlogMediaService blogMediaService;
 
@@ -98,7 +111,8 @@ class BlogMediaServiceTest {
                     .willAnswer(inv -> {
                         BlogMediaUploadEntity entity = inv.getArgument(0);
                         // ID 付きエンティティを再構築して返す
-                        return BlogMediaUploadEntity.builder()
+                        return BlogMediaUploadEntity.builder().id(7L)
+                                .scopeType(entity.getScopeType()).scopeId(entity.getScopeId())
                                 .blogPostId(entity.getBlogPostId())
                                 .uploaderId(entity.getUploaderId())
                                 .mediaType(entity.getMediaType())
@@ -188,13 +202,14 @@ class BlogMediaServiceTest {
 
             given(blogMediaUploadRepository.countByBlogPostIdAndMediaType(BLOG_POST_ID, "VIDEO"))
                     .willReturn(0);
-            given(multipartUploadService.startUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class)))
+            given(multipartUploadService.startContentUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class), anyString()))
                     .willReturn(new StartMultipartUploadResponse(
                             "test-multipart-upload-id", "blog/ORGANIZATION/5/uuid.mp4", 1, 10L * 1024 * 1024));
             given(blogMediaUploadRepository.save(any(BlogMediaUploadEntity.class)))
                     .willAnswer(inv -> {
                         BlogMediaUploadEntity entity = inv.getArgument(0);
-                        return BlogMediaUploadEntity.builder()
+                        return BlogMediaUploadEntity.builder().id(7L)
+                                .scopeType(entity.getScopeType()).scopeId(entity.getScopeId())
                                 .blogPostId(entity.getBlogPostId())
                                 .uploaderId(entity.getUploaderId())
                                 .mediaType(entity.getMediaType())
@@ -215,7 +230,7 @@ class BlogMediaServiceTest {
             assertThat(result.getFileKey()).isEqualTo("blog/ORGANIZATION/5/uuid.mp4");
             assertThat(result.getUploadUrl()).isNull();
             assertThat(result.getExpiresIn()).isNull();
-            then(multipartUploadService).should().startUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class));
+            then(multipartUploadService).should().startContentUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class), anyString());
             then(blogMediaUploadRepository).should().save(any(BlogMediaUploadEntity.class));
         }
 
@@ -231,7 +246,7 @@ class BlogMediaServiceTest {
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                             .isEqualTo(HttpStatus.BAD_REQUEST));
-            then(multipartUploadService).should(never()).startUpload(anyLong(), any());
+            then(multipartUploadService).should(never()).startContentUpload(anyLong(), any(), anyString());
         }
 
         @Test
@@ -247,7 +262,7 @@ class BlogMediaServiceTest {
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
                             .isEqualTo(HttpStatus.BAD_REQUEST));
-            then(multipartUploadService).should(never()).startUpload(anyLong(), any());
+            then(multipartUploadService).should(never()).startContentUpload(anyLong(), any(), anyString());
         }
     }
 
@@ -370,7 +385,8 @@ class BlogMediaServiceTest {
             given(blogMediaUploadRepository.save(any(BlogMediaUploadEntity.class)))
                     .willAnswer(inv -> {
                         BlogMediaUploadEntity entity = inv.getArgument(0);
-                        return BlogMediaUploadEntity.builder()
+                        return BlogMediaUploadEntity.builder().id(7L)
+                                .scopeType(entity.getScopeType()).scopeId(entity.getScopeId())
                                 .blogPostId(entity.getBlogPostId())
                                 .uploaderId(entity.getUploaderId())
                                 .mediaType(entity.getMediaType())
@@ -399,13 +415,14 @@ class BlogMediaServiceTest {
             BlogMediaUploadUrlRequest req = new BlogMediaUploadUrlRequest(
                     "VIDEO", "video/mp4", 100L * 1024 * 1024, "ORGANIZATION", 5L, null);
 
-            given(multipartUploadService.startUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class)))
+            given(multipartUploadService.startContentUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class), anyString()))
                     .willReturn(new StartMultipartUploadResponse(
                             "test-upload-id", "blog/ORGANIZATION/5/uuid.mp4", 1, 10L * 1024 * 1024));
             given(blogMediaUploadRepository.save(any(BlogMediaUploadEntity.class)))
                     .willAnswer(inv -> {
                         BlogMediaUploadEntity entity = inv.getArgument(0);
-                        return BlogMediaUploadEntity.builder()
+                        return BlogMediaUploadEntity.builder().id(7L)
+                                .scopeType(entity.getScopeType()).scopeId(entity.getScopeId())
                                 .blogPostId(entity.getBlogPostId())
                                 .uploaderId(entity.getUploaderId())
                                 .mediaType(entity.getMediaType())

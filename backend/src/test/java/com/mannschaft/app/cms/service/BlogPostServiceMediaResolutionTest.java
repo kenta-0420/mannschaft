@@ -77,6 +77,8 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("BlogPostService — 表示経路は解決し、編集経路は解決しない")
 class BlogPostServiceMediaResolutionTest {
+    @Mock
+    private com.mannschaft.app.cms.service.BlogMediaAclService mediaAclService;
 
     @Mock private BlogPostRepository postRepository;
     @Mock private BlogPostTagRepository postTagRepository;
@@ -149,7 +151,7 @@ class BlogPostServiceMediaResolutionTest {
             // 未認証（viewerUserId=null）・ゲート通過で全文が返る状態にする
             lenient().when(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), any(), any(ContentGateTarget.class)))
                     .thenReturn(new GateCheckResponse(true, false, List.of()));
-            lenient().when(blogBodyMediaResolver.resolveBody(any(), any(), any()))
+            lenient().when(blogBodyMediaResolver.resolveBody(any(), any(), any(), any()))
                     .thenReturn(RESOLVED_BODY);
         }
 
@@ -161,7 +163,7 @@ class BlogPostServiceMediaResolutionTest {
             BlogPostResponse result = service.getBySlug(TEAM_ID, null, null, SLUG);
 
             verify(blogBodyMediaResolver).resolveBody(
-                    eq(RAW_BODY), eq(StorageScopeType.TEAM), eq(TEAM_ID));
+                    eq(RAW_BODY), eq(StorageScopeType.TEAM), eq(TEAM_ID), any());
             assertThat(result.getContent().body())
                     .as("表示経路では署名URLへ解決済みの本文が返ること")
                     .isEqualTo(RESOLVED_BODY);
@@ -176,7 +178,7 @@ class BlogPostServiceMediaResolutionTest {
                     TEAM_ID, null, null, SLUG, "preview-token-xyz");
 
             verify(blogBodyMediaResolver).resolveBody(
-                    eq(RAW_BODY), eq(StorageScopeType.TEAM), eq(TEAM_ID));
+                    eq(RAW_BODY), eq(StorageScopeType.TEAM), eq(TEAM_ID), any());
             assertThat(result.getContent().body())
                     .as("下書きプレビューでも画像が表示できること")
                     .isEqualTo(RESOLVED_BODY);
@@ -197,7 +199,7 @@ class BlogPostServiceMediaResolutionTest {
             assertThat(result.getContent().body())
                     .as("未課金のマスクを解決処理で復活させてはならない")
                     .isNull();
-            verify(blogBodyMediaResolver, never()).resolveBody(any(), any(), any());
+            verify(blogBodyMediaResolver, never()).resolveBody(any(), any(), any(), any());
         }
     }
 
@@ -221,7 +223,7 @@ class BlogPostServiceMediaResolutionTest {
 
             // ここで結線を足すと、編集保存時に期限付き署名URLが本文へ永続保存され、
             // 数十分後に記事の画像が恒久的に壊れる（クラス Javadoc 参照）。
-            verify(blogBodyMediaResolver, never()).resolveBody(any(), any(), any());
+            verify(blogBodyMediaResolver, never()).resolveBody(any(), any(), any(), any());
 
             assertThat(result.getContent().body())
                     .as("編集画面には生の r2Key をそのまま渡すこと（署名URLを焼き込ませない）")

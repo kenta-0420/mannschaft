@@ -62,6 +62,12 @@ class MultipartUploadServiceTest {
     @Mock
     private MultipartUploadCleanupService cleanupService;
 
+    @org.mockito.Spy
+    private java.time.Clock clock = java.time.Clock.systemUTC();
+
+    @Mock
+    private com.mannschaft.app.common.storage.acl.MultipartContentTargetRegistry targetRegistry;
+
     @InjectMocks
     private MultipartUploadService service;
 

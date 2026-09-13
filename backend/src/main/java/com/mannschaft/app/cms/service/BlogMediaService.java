@@ -92,6 +92,8 @@ public class BlogMediaService {
     private final StorageQuotaService storageQuotaService;
     /** Issue #2601: 1 件処理を REQUIRES_NEW 独立トランザクションで実行する Bean。 */
     private final BlogMediaOrphanCleanupRunner orphanCleanupRunner;
+    private final BlogMediaAclService mediaAclService;
+    private final com.mannschaft.app.common.storage.acl.StorageAclService storageAclService;
 
     // ==================== 公開メソッド ====================
 
@@ -109,10 +111,11 @@ public class BlogMediaService {
      */
     @Transactional
     public BlogMediaUploadUrlResponse generateUploadUrl(Long uploaderId, BlogMediaUploadUrlRequest req) {
+        var actualScope = mediaAclService.resolveUploadScope(uploaderId, req);
         validateRequest(req);
 
         // F13 Phase 4-δ: 統合クォータチェック（presign 前）
-        StorageScopeType scopeType = StorageScopeType.valueOf(req.getScopeType().toUpperCase());
+        StorageScopeType scopeType = actualScope.scopeType();
         try {
             storageQuotaService.checkQuota(scopeType, req.getScopeId(), req.getFileSize());
         } catch (StorageQuotaExceededException e) {
@@ -306,6 +309,8 @@ public class BlogMediaService {
         BlogMediaUploadEntity entity = BlogMediaUploadEntity.builder()
                 .blogPostId(req.getBlogPostId())
                 .uploaderId(uploaderId)
+                .scopeType(scopeType.name())
+                .scopeId(req.getScopeId())
                 .mediaType("IMAGE")
                 .s3Key(r2Key)
                 .fileSize(req.getFileSize())
@@ -313,6 +318,10 @@ public class BlogMediaService {
                 .processingStatus("READY")
                 .build();
         BlogMediaUploadEntity saved = blogMediaUploadRepository.save(entity);
+        var target = BlogMediaAclService.targetOf(saved);
+        storageAclService.registerPending(r2Key, uploaderId, target.scope(), req.getContentType(),
+                IMAGE_UPLOAD_TTL, target.parent());
+        storageAclService.claimPending(r2Key, uploaderId, target.scope(), target.parent(), target.binding());
 
         log.info("画像アップロード Presigned URL 発行: uploaderId={}, mediaId={}, key={}",
                 uploaderId, saved.getId(), r2Key);
@@ -365,19 +374,25 @@ public class BlogMediaService {
                 prefix                   // targetPrefix
         );
 
-        StartMultipartUploadResponse startResponse = multipartUploadService.startUpload(uploaderId, startReq);
+        String r2Key = prefix + fileName;
 
         // blog_media_uploads に INSERT（processingStatus=PENDING: Workers による後処理を待つ）
         BlogMediaUploadEntity entity = BlogMediaUploadEntity.builder()
                 .blogPostId(req.getBlogPostId())
                 .uploaderId(uploaderId)
+                .scopeType(scopeType.name())
+                .scopeId(req.getScopeId())
                 .mediaType("VIDEO")
-                .s3Key(startResponse.getFileKey())
+                .s3Key(r2Key)
                 .fileSize(req.getFileSize())
                 .contentType(req.getContentType())
                 .processingStatus("PENDING")
                 .build();
         BlogMediaUploadEntity saved = blogMediaUploadRepository.save(entity);
+
+        // 保存台帳を先に作り、multipart側が親とscopeをサーバー側で復元できる状態にする。
+        StartMultipartUploadResponse startResponse =
+                multipartUploadService.startContentUpload(uploaderId, startReq, r2Key);
 
         log.info("動画 Multipart Upload 開始: uploaderId={}, mediaId={}, uploadId={}, key={}",
                 uploaderId, saved.getId(), startResponse.getUploadId(), startResponse.getFileKey());

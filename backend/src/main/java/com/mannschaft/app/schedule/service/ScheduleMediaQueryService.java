@@ -4,6 +4,10 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.schedule.dto.ScheduleMediaListResponse;
@@ -48,8 +52,7 @@ public class ScheduleMediaQueryService {
 
     // ==================== 定数 ====================
 
-    /** R2 配信 URL プレースホルダーベース */
-    private static final String R2_BASE_URL = "https://storage.example.com/";
+    private static final java.time.Duration DOWNLOAD_TTL = java.time.Duration.ofMinutes(10);
 
     /** F13 Phase 4-γ: storage_usage_logs.reference_type に記録するテーブル名。 */
     private static final String REFERENCE_TYPE = "schedule_media_uploads";
@@ -61,6 +64,8 @@ public class ScheduleMediaQueryService {
     private final ScheduleRepository scheduleRepository;
     /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
+    private final ScheduleMediaAclService mediaAclService;
+    private final StorageAccessService storageAccessService;
 
     // ==================== 公開メソッド ====================
 
@@ -79,9 +84,7 @@ public class ScheduleMediaQueryService {
             int page, int size) {
 
         // スケジュール存在確認
-        scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "スケジュールが見つかりません"));
+        var schedule = mediaAclService.requireReadable(scheduleId, SecurityUtils.getCurrentUserId());
 
         Pageable pageable = PageRequest.of(page - 1, size);
 
@@ -98,8 +101,15 @@ public class ScheduleMediaQueryService {
                     .findByScheduleIdOrderByCreatedAtDesc(scheduleId, pageable);
         }
 
+        List<StorageAclDownloadRequest> requests = resultPage.getContent().stream()
+                .map(media -> {
+                    var target = ScheduleMediaAclService.targetOf(schedule, media);
+                    return new StorageAclDownloadRequest(media.getR2Key(), target.scope(), target.parent(), target.binding());
+                }).toList();
+        var urls = storageAccessService.generateDownloadUrlsForList(requests, DOWNLOAD_TTL);
         List<ScheduleMediaResponse> items = resultPage.getContent().stream()
-                .map(this::toResponse)
+                .filter(media -> urls.containsKey(media.getR2Key()))
+                .map(media -> toResponse(media, urls.get(media.getR2Key())))
                 .collect(Collectors.toList());
 
         return ScheduleMediaListResponse.builder()
@@ -126,6 +136,8 @@ public class ScheduleMediaQueryService {
     public ScheduleMediaResponse updateMedia(
             Long scheduleId, Long mediaId, Long requestUserId, boolean isAdminOrDeputy,
             ScheduleMediaPatchRequest req) {
+
+        var schedule = mediaAclService.requireReadable(scheduleId, requestUserId);
 
         ScheduleMediaUploadEntity entity = scheduleMediaUploadRepository.findById(mediaId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -175,7 +187,10 @@ public class ScheduleMediaQueryService {
         ScheduleMediaUploadEntity saved = scheduleMediaUploadRepository.save(entity);
         log.info("メディアメタデータ更新: scheduleId={}, mediaId={}, userId={}",
                 scheduleId, mediaId, requestUserId);
-        return toResponse(saved);
+        var target = ScheduleMediaAclService.targetOf(schedule, saved);
+        String url = storageAccessService.generateDownloadUrl(saved.getR2Key(), target.scope(),
+                target.parent(), target.binding(), DOWNLOAD_TTL);
+        return toResponse(saved, url);
     }
 
     /**
@@ -310,17 +325,14 @@ public class ScheduleMediaQueryService {
      * @param entity エンティティ
      * @return レスポンス DTO
      */
-    private ScheduleMediaResponse toResponse(ScheduleMediaUploadEntity entity) {
-        String url = R2_BASE_URL + entity.getR2Key();
-        String thumbnailUrl = entity.getThumbnailR2Key() != null
-                ? R2_BASE_URL + entity.getThumbnailR2Key()
-                : null;
+    private ScheduleMediaResponse toResponse(ScheduleMediaUploadEntity entity, String url) {
 
         return ScheduleMediaResponse.builder()
                 .id(entity.getId())
                 .mediaType(entity.getMediaType())
                 .url(url)
-                .thumbnailUrl(thumbnailUrl)
+                // 派生サムネイルは独立したCLAIMED ACLが登録されるまで配信しない。
+                .thumbnailUrl(null)
                 .fileName(entity.getFileName())
                 .fileSize(entity.getFileSize())
                 .caption(entity.getCaption())

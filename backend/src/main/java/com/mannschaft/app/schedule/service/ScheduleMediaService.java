@@ -161,7 +161,7 @@ public class ScheduleMediaService {
             return new ScopeResolution(StorageScopeType.ORGANIZATION, schedule.getOrganizationId());
         }
         // 個人スケジュール
-        return new ScopeResolution(StorageScopeType.PERSONAL, uploaderId);
+        return new ScopeResolution(StorageScopeType.PERSONAL, schedule.getUserId());
     }
 
     /** 解決されたストレージスコープ。 */

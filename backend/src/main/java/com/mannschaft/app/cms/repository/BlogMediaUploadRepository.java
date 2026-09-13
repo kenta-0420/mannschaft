@@ -34,6 +34,11 @@ public interface BlogMediaUploadRepository extends JpaRepository<BlogMediaUpload
      */
     List<BlogMediaUploadEntity> findByS3KeyIn(Collection<String> s3Keys);
 
+    /** draftを別記事へ同時に紐付ける競合を行ロックで直列化する。 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM BlogMediaUploadEntity m WHERE m.s3Key IN :keys")
+    List<BlogMediaUploadEntity> findForPostBinding(@Param("keys") Collection<String> keys);
+
     /**
      * 孤立メディアのクリーンアップ用。
      * blog_post_id IS NULL かつ created_at が cutoff より古いレコードを返す。
