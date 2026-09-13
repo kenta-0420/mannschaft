@@ -187755,6 +187755,21 @@
           }
         }
       },
+      "ShiftAssignmentWarningDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "conflictingSlotIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      },
       "ShiftSlotPositionDto": {
         "type": "object",
         "properties": {
@@ -187800,6 +187815,12 @@
           },
           "time": {
             "$ref": "#/components/schemas/ShiftSlotTimeDto"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShiftAssignmentWarningDto"
+            }
           }
         }
       },
