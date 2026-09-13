@@ -1105,7 +1105,7 @@ class ScheduleMediaServiceTest {
                     .id(3L).scheduleId(100L).uploaderId(UPLOADER_ID)
                     .mediaType("IMAGE").r2Key("schedules/100/completed.jpg")
                     .fileName("completed.jpg").fileSize(1024L)
-                    .contentType("image/jpeg").processingStatus("PENDING").build();
+                    .contentType("image/jpeg").processingStatus("UPLOADING").build();
             given(scheduleMediaUploadRepository.findOrphanMedia(any(LocalDateTime.class)))
                     .willReturn(List.of(candidate));
             given(scheduleMediaUploadRepository.deleteCleanupCandidateById(3L)).willReturn(0);
@@ -1124,7 +1124,7 @@ class ScheduleMediaServiceTest {
             return ScheduleMediaUploadEntity.builder().id(MEDIA_ID).scheduleId(SCHEDULE_ID)
                     .uploaderId(ownerId).mediaType("IMAGE")
                     .r2Key("schedules/TEAM/50/100/image.jpg").fileName("image.jpg")
-                    .fileSize(1024L).contentType("image/jpeg").processingStatus("PENDING").build();
+                    .fileSize(1024L).contentType("image/jpeg").processingStatus("UPLOADING").build();
         }
 
         @Test

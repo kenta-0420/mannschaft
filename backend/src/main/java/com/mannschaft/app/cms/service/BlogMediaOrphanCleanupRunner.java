@@ -81,7 +81,7 @@ class BlogMediaOrphanCleanupRunner {
         // 実際には未削除のキーが「試行すらされていない」まま握り潰されたのと同じ結果になる）。
         boolean r2DeleteFailed = false;
         boolean quotaRecorded = !("IMAGE".equals(orphan.getMediaType())
-                && "PENDING".equals(orphan.getProcessingStatus()));
+                && "UPLOADING".equals(orphan.getProcessingStatus()));
         try {
             r2StorageService.delete(orphan.getS3Key());
         } catch (Exception e) {

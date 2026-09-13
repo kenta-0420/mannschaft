@@ -96,7 +96,7 @@ class BlogMediaOrphanCleanupRunnerRetryRegistrationTest {
                 .s3Key(S3_KEY)
                 .fileSize(fileSize)
                 .contentType("image/jpeg")
-                .processingStatus("PENDING")
+                .processingStatus("UPLOADING")
                 .build();
     }
 

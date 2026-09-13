@@ -62,12 +62,12 @@ public interface ScheduleMediaUploadRepository extends JpaRepository<ScheduleMed
      * schedule_id IS NULL かつ created_at が cutoff より古いレコードを返す。
      */
     @Query("SELECT e FROM ScheduleMediaUploadEntity e WHERE e.createdAt < :cutoff "
-            + "AND (e.scheduleId IS NULL OR (e.mediaType = 'IMAGE' AND e.processingStatus = 'PENDING'))")
+            + "AND (e.scheduleId IS NULL OR (e.mediaType = 'IMAGE' AND e.processingStatus = 'UPLOADING'))")
     List<ScheduleMediaUploadEntity> findOrphanMedia(@Param("cutoff") LocalDateTime cutoff);
 
     /** 完了通知との競合で READY になった行を削除しない条件付き claim。 */
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM ScheduleMediaUploadEntity e WHERE e.id = :id "
-            + "AND (e.scheduleId IS NULL OR (e.mediaType = 'IMAGE' AND e.processingStatus = 'PENDING'))")
+            + "AND (e.scheduleId IS NULL OR (e.mediaType = 'IMAGE' AND e.processingStatus = 'UPLOADING'))")
     int deleteCleanupCandidateById(@Param("id") Long id);
 }

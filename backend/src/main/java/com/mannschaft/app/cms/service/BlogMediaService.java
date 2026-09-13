@@ -315,7 +315,7 @@ public class BlogMediaService {
                 .s3Key(r2Key)
                 .fileSize(req.getFileSize())
                 .contentType(req.getContentType())
-                .processingStatus("PENDING")
+                .processingStatus("UPLOADING")
                 .build();
         BlogMediaUploadEntity saved = blogMediaUploadRepository.save(entity);
         var target = BlogMediaAclService.targetOf(saved);
@@ -348,7 +348,7 @@ public class BlogMediaService {
         if ("READY".equals(media.getProcessingStatus())) {
             return;
         }
-        if (!"PENDING".equals(media.getProcessingStatus())) {
+        if (!"UPLOADING".equals(media.getProcessingStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "画像アップロードは完了確認できない状態です");
         }
 
