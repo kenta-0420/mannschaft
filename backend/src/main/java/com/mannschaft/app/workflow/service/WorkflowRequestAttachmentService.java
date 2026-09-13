@@ -9,7 +9,9 @@ import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
 import com.mannschaft.app.workflow.WorkflowMapper;
 import com.mannschaft.app.workflow.WorkflowScopes;
@@ -28,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -50,6 +53,7 @@ import java.util.UUID;
 public class WorkflowRequestAttachmentService {
 
     private static final Duration PRESIGN_TTL = Duration.ofMinutes(15);
+    private static final Duration DOWNLOAD_TTL = Duration.ofMinutes(5);
 
     /**
      * 許可 MIME タイプ（F05.6 §3 workflow_request_attachments 制約に基づく）。
@@ -70,6 +74,7 @@ public class WorkflowRequestAttachmentService {
     private final R2StorageService r2StorageService;
     private final AccessControlService accessControlService;
     private final StorageAclService storageAclService;
+    private final StorageAccessService storageAccessService;
 
     /**
      * 申請の添付ファイル一覧を取得する（Wave 2 トランシェ2C で Controller の直リポジトリ参照を移管）。
@@ -81,9 +86,30 @@ public class WorkflowRequestAttachmentService {
      * @return 添付ファイルレスポンスリスト
      */
     public List<WorkflowAttachmentResponse> listAttachments(Long requestId, Long currentUserId) {
-        findVisibleRequestOrThrow(requestId, currentUserId);
-        return workflowMapper.toAttachmentResponseList(
-                attachmentRepository.findByRequestIdOrderByCreatedAtAsc(requestId));
+        WorkflowRequestEntity request = findVisibleRequestOrThrow(requestId, currentUserId);
+        List<WorkflowRequestAttachmentEntity> attachments =
+                attachmentRepository.findByRequestIdOrderByCreatedAtAsc(requestId);
+        if (attachments.isEmpty()) {
+            return List.of();
+        }
+        StorageAclScope scope = "TEAM".equals(WorkflowScopes.canonical(request.getScopeType()))
+                ? StorageAclScope.team(request.getScopeId())
+                : StorageAclScope.organization(request.getScopeId());
+        StorageAclContentReference parent =
+                new StorageAclContentReference("WORKFLOW_REQUEST", request.getId().toString());
+        Map<String, String> downloadUrls = storageAccessService.generateDownloadUrlsForList(
+                attachments.stream()
+                        .map(attachment -> new StorageAclDownloadRequest(
+                                attachment.getFileKey(),
+                                scope,
+                                parent,
+                                new StorageAclAttachmentBinding(
+                                        "WORKFLOW_REQUEST_ATTACHMENT", attachment.getId().toString())))
+                        .toList(),
+                DOWNLOAD_TTL);
+        return workflowMapper.toAttachmentResponseList(attachments.stream()
+                .filter(attachment -> downloadUrls.containsKey(attachment.getFileKey()))
+                .toList());
     }
 
     /**

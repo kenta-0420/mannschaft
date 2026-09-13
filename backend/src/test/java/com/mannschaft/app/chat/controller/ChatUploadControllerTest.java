@@ -201,26 +201,26 @@ class ChatUploadControllerTest {
     @Test
     @DisplayName("GET download-url: 署名 URL を発行する前に、対象オブジェクトの閲覧権限を検証する")
     void download_閲覧権限を検証する() throws Exception {
-        given(storageService.generateDownloadUrl(anyString(), any(Duration.class)))
+        given(chatMessageService.generateAttachmentDownloadUrl(eq("objectkey"), eq(USER_ID), any(Duration.class)))
                 .willReturn("https://r2.example/dl");
 
         mockMvc.perform(get("/api/v1/chat/files/{fileKey}/download-url", "objectkey"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.downloadUrl").value("https://r2.example/dl"));
 
-        verify(chatMessageService).checkAttachmentDownloadAccess("objectkey", USER_ID);
+        verify(chatMessageService).generateAttachmentDownloadUrl(eq("objectkey"), eq(USER_ID), any(Duration.class));
     }
 
     @Test
     @DisplayName("GET download-url 異常系: 閲覧権限が無ければ 403 (CHAT_005) で署名 URL を発行しない")
     void download_403_閲覧権限なし() throws Exception {
         willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
-                .given(chatMessageService).checkAttachmentDownloadAccess(anyString(), anyLong());
+                .given(chatMessageService).generateAttachmentDownloadUrl(anyString(), anyLong(), any(Duration.class));
 
         mockMvc.perform(get("/api/v1/chat/files/{fileKey}/download-url", "objectkey"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("CHAT_005"));
 
-        verify(storageService, never()).generateDownloadUrl(anyString(), any(Duration.class));
+        verify(chatMessageService).generateAttachmentDownloadUrl(anyString(), anyLong(), any(Duration.class));
     }
 }

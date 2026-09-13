@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -12,6 +14,11 @@ import java.util.UUID;
 public interface StorageAclRepository extends JpaRepository<StorageAclEntity, UUID> {
 
     Optional<StorageAclEntity> findByFileKey(String fileKey);
+
+    /**
+     * 一覧表示の ACL 照合用。呼び出し側は入力順の復元と認可外項目の除外を担う。
+     */
+    List<StorageAclEntity> findByFileKeyIn(Collection<String> fileKeys);
 
     /**
      * PENDING かつ未期限切れの行だけを一度だけ添付先へ束縛する。
