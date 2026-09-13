@@ -65,9 +65,14 @@ public interface BlogMediaUploadRepository extends JpaRepository<BlogMediaUpload
      * @return 実際に削除できた行数（0 なら他の実行が処理済み）
      */
     @Modifying(flushAutomatically = true)
-    @Query("DELETE FROM BlogMediaUploadEntity m WHERE m.id = :id "
-            + "AND (m.blogPostId IS NULL OR (m.mediaType = 'IMAGE' AND m.processingStatus = 'UPLOADING'))")
+    @Query("DELETE FROM BlogMediaUploadEntity m WHERE m.id = :id AND m.blogPostId IS NULL")
     int deleteOrphanById(@Param("id") Long id);
+
+    /** 完了処理との競合で READY になった未完了画像を削除しない条件付き claim。 */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM BlogMediaUploadEntity m WHERE m.id = :id "
+            + "AND m.mediaType = 'IMAGE' AND m.processingStatus = 'UPLOADING'")
+    int deleteUnconfirmedImageById(@Param("id") Long id);
 
     /** 記事内のメディア数カウント（種別別）。 */
     int countByBlogPostIdAndMediaType(Long blogPostId, String mediaType);
