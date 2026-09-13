@@ -198,6 +198,7 @@ public class BulletinAttachmentService {
 
         BulletinAttachmentEntity saved = attachmentRepository.save(attachment);
         storageAclService.claimPending(req.fileKey(), userId, aclScope(thread, userId),
+                new StorageAclContentReference("BULLETIN_THREAD", thread.getId().toString()),
                 new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", saved.getId().toString()));
 
         // F13 使用量加算

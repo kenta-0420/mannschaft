@@ -632,6 +632,7 @@ public class FormSubmissionService {
             if ((value.getFieldType() == FormFieldType.FILE || value.getFieldType() == FormFieldType.SIGNATURE)
                     && value.getFileKey() != null && !value.getFileKey().isBlank()) {
                 storageAclService.claimPending(value.getFileKey(), userId, scope,
+                        new StorageAclContentReference("FORM_SUBMISSION", submission.getId().toString()),
                         new StorageAclAttachmentBinding("FORM_SUBMISSION_VALUE", value.getId().toString()));
             }
         }

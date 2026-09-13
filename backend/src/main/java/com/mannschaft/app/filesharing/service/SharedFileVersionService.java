@@ -2,6 +2,7 @@ package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.SecurityUtils;
@@ -107,6 +108,7 @@ public class SharedFileVersionService {
         StorageAclScope aclScope = SharedFileService.aclScope(
                 folder.getScopeType(), SharedFileService.scopeIdOf(folder), userId);
         storageAclService.claimPending(request.getFileKey(), userId, aclScope,
+                new StorageAclContentReference("SHARED_FOLDER", folder.getId().toString()),
                 new StorageAclAttachmentBinding("SHARED_FILE_VERSION", saved.getId().toString()));
 
         fileEntity.updateToNewVersion(

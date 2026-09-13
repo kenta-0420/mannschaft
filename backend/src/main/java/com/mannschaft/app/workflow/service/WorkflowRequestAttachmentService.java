@@ -171,6 +171,7 @@ public class WorkflowRequestAttachmentService {
                 ? StorageAclScope.team(requestEntity.getScopeId())
                 : StorageAclScope.organization(requestEntity.getScopeId());
         storageAclService.claimPending(request.fileKey(), currentUserId, aclScope,
+                new StorageAclContentReference("WORKFLOW_REQUEST", requestEntity.getId().toString()),
                 new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", saved.getId().toString()));
         log.info("ワークフロー添付登録: requestId={}, attachmentId={}, userId={}",
                 requestId, saved.getId(), currentUserId);

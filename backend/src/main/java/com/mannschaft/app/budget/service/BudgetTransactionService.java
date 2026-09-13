@@ -423,6 +423,7 @@ public class BudgetTransactionService {
                 ? StorageAclScope.team(transaction.getScopeId())
                 : StorageAclScope.organization(transaction.getScopeId());
         storageAclService.claimPending(request.s3Key(), currentUserId, aclScope,
+                new StorageAclContentReference("BUDGET_TRANSACTION", request.transactionId().toString()),
                 new StorageAclAttachmentBinding("BUDGET_TRANSACTION_ATTACHMENT", saved.getId().toString()));
         return budgetMapper.toAttachmentResponse(saved);
     }

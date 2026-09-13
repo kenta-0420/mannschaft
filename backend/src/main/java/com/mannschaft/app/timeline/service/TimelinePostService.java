@@ -8,6 +8,7 @@ import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
@@ -1387,6 +1388,8 @@ public class TimelinePostService {
             if ((attachmentType == AttachmentType.IMAGE || attachmentType == AttachmentType.VIDEO_FILE)
                     && att.getFileKey() != null && !att.getFileKey().isBlank()) {
                 storageAclService.claimPending(att.getFileKey(), userId, toAclScope(scope, userId),
+                        new StorageAclContentReference("TIMELINE_SCOPE",
+                                scope.scopeType().name() + ":" + scope.scopeId()),
                         new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", saved.getId().toString()));
             }
 

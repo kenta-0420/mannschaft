@@ -127,6 +127,7 @@ public class ChatAttachmentService {
                                        ChatMessageAttachmentEntity attachment,
                                        Long actorId) {
         storageAclService.claimPending(attachment.getFileKey(), actorId, resolveAclScope(channel, actorId),
+                new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()),
                 new StorageAclAttachmentBinding("CHAT_MESSAGE_ATTACHMENT", attachment.getId().toString()));
     }
 
@@ -232,6 +233,7 @@ public class ChatAttachmentService {
     /** 保存済みチャンネルにアイコンの一意バインドを確定する。 */
     public void claimChannelIcon(ChatChannelEntity channel, Long userId, String fileKey) {
         storageAclService.claimPending(fileKey, userId, resolveAclScope(channel, userId),
+                new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()),
                 new StorageAclAttachmentBinding("CHAT_CHANNEL_ICON", channel.getId().toString()));
     }
 

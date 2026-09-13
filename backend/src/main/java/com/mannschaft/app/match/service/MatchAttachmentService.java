@@ -145,6 +145,7 @@ public class MatchAttachmentService {
 
         MatchAttachmentEntity saved = attachmentRepository.save(attachment);
         storageAclService.claimPending(command.getFileKey(), actorUserId, StorageAclScope.organization(organizationId),
+                new StorageAclContentReference("MATCH", matchId.toString()),
                 new StorageAclAttachmentBinding("MATCH_ATTACHMENT", saved.getId().toString()));
         log.info("局面写真 確定: matchId={}, attachmentId={}, actor={}", matchId, saved.getId(), actorUserId);
         return saved;

@@ -311,6 +311,7 @@ public class SharedFileService {
         SharedFileEntity saved = fileRepository.save(entity);
         StorageAclScope aclScope = aclScope(folder.getScopeType(), scopeIdOf(folder), userId);
         storageAclService.claimPending(request.getFileKey(), userId, aclScope,
+                new StorageAclContentReference("SHARED_FOLDER", folder.getId().toString()),
                 new StorageAclAttachmentBinding("SHARED_FILE", saved.getId().toString()));
 
         SharedFileVersionEntity version = SharedFileVersionEntity.builder()

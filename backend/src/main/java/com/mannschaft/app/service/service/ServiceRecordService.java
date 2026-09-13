@@ -638,6 +638,7 @@ public class ServiceRecordService {
 
         ServiceRecordAttachmentEntity saved = attachmentRepository.save(entity);
         storageAclService.claimPending(request.getFileKey(), actorUserId, StorageAclScope.team(record.getTeamId()),
+                new StorageAclContentReference("SERVICE_RECORD", recordId.toString()),
                 new StorageAclAttachmentBinding("SERVICE_RECORD_ATTACHMENT", saved.getId().toString()));
         log.info("添付ファイル登録: recordId={}, attachmentId={}", recordId, saved.getId());
         return mapper.toAttachmentResponse(saved);

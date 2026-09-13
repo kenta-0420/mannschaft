@@ -645,6 +645,7 @@ public class CirculationService {
         Long actorId = SecurityUtils.getCurrentUserId();
         storageAclService.claimPending(request.getFileKey(), actorId,
                 aclScope(document.getScopeType(), document.getScopeId(), actorId),
+                new StorageAclContentReference("CIRCULATION_DOCUMENT", documentId.toString()),
                 new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", saved.getId().toString()));
         document.incrementAttachmentCount();
         documentRepository.save(document);

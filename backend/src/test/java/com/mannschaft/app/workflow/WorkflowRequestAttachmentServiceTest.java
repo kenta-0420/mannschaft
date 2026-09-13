@@ -172,6 +172,7 @@ class WorkflowRequestAttachmentServiceTest {
             assertThat(result.getFileKey()).isEqualTo(fileKey);
             assertThat(result.getOriginalFilename()).isEqualTo("領収書.pdf");
             verify(storageAclService).claimPending(eq(fileKey), eq(USER_ID), eq(StorageAclScope.team(1L)),
+                    eq(new StorageAclContentReference("WORKFLOW_REQUEST", REQUEST_ID.toString())),
                     eq(new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", ATTACHMENT_ID.toString())));
         }
 
