@@ -7,9 +7,10 @@ import { test, expect, type APIRequestContext } from '@playwright/test'
 const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:8081'
 const TEAM_SLUG = 'fc-u-18'
 const PASSWORD = 'TestPass2026!'
-const ADMIN = 'e2e-admin@test.mannschaft.local'
+// SYSTEM_ADMIN を兼ねる e2e-admin ではなく、fc-u-18 の純粋な TEAM ADMIN を使う。
+const ADMIN = 'e2e-dummy-1@test.mannschaft.local'
 const MEMBER = 'e2e-user@test.mannschaft.local'
-const OUTSIDER = 'e2e-dummy-6@test.mannschaft.local'
+const OUTSIDER = 'e2e-outsider@test.mannschaft.local'
 
 type ApiBody<T> = { data: T }
 type Schedule = { id: number }
@@ -60,9 +61,11 @@ test.describe('#3253 Schedule media PATCH authorization (local MinIO)', () => {
     const stamp = Date.now()
     const create = await api(adminCtx, adminToken, 'POST', `/api/v1/teams/${TEAM_SLUG}/schedules`, {
       title: `CMP019-media-authz-${stamp}`,
-      startAt: '2028-12-15T10:00:00',
-      endAt: '2028-12-15T11:00:00',
+      startAt: '2028-12-15T10:00:00+09:00',
+      endAt: '2028-12-15T11:00:00+09:00',
       allDay: false,
+      eventType: 'OTHER',
+      attendanceRequired: false,
     })
     expect(create.ok(), `使い捨てTEAM予定作成: ${create.status()} ${await create.text()}`).toBeTruthy()
     scheduleId = ((await create.json()) as ApiBody<Schedule>).data.id
