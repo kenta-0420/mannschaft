@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
@@ -25,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Duration;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -75,6 +77,9 @@ class SharedFileListVisibilityContractIT extends AbstractMySqlIntegrationTest {
     @MockitoBean
     private AccessControlService accessControlService;
 
+    @MockitoBean
+    private R2StorageService storageService;
+
     private static final Long TEAM_ID = 9500L;
     private static final long MEMBER_ID = 70001L;
     private static final long ADMIN_ID = 70002L;
@@ -85,6 +90,8 @@ class SharedFileListVisibilityContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        given(storageService.generateDownloadUrl(any(), any()))
+                .willAnswer(invocation -> "https://storage.test.invalid/download/" + invocation.getArgument(0));
         versionRepository.deleteAll();
         fileRepository.deleteAll();
         folderRepository.deleteAll();
