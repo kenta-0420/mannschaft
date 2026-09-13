@@ -62354,6 +62354,10 @@ export interface components {
         ApiResponseShiftSlotResponse: {
             data?: components["schemas"]["ShiftSlotResponse"];
         };
+        ShiftAssignmentWarningDto: {
+            code?: string;
+            conflictingSlotIds?: number[];
+        };
         ShiftSlotPositionDto: {
             /** Format: int64 */
             positionId?: number;
@@ -62381,10 +62385,6 @@ export interface components {
             slotDate?: string;
             /** @example 14:30:00 */
             startTime?: string;
-        };
-        ShiftAssignmentWarningDto: {
-            code?: string;
-            conflictingSlotIds?: number[];
         };
         BulkCreateShiftSlotRequest: {
             slots?: components["schemas"]["CreateShiftSlotRequest"][];
