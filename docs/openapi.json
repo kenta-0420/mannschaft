@@ -187753,6 +187753,21 @@
           }
         }
       },
+      "ShiftAssignmentWarningDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "conflictingSlotIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      },
       "ShiftSlotPositionDto": {
         "type": "object",
         "properties": {
@@ -187824,21 +187839,6 @@
           "startTime": {
             "type": "string",
             "example": "14:30:00"
-          }
-        }
-      },
-      "ShiftAssignmentWarningDto": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "conflictingSlotIds": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            }
           }
         }
       },
