@@ -63,8 +63,15 @@ async function returnToPersonalFeed(page: Page, personalFeed: Locator, marker: s
   await expect(personalFeed.getByText(marker, { exact: true })).toBeVisible({ timeout: 30_000 })
 }
 
-async function reloadPersonalFeed(page: Page, personalFeed: Locator): Promise<void> {
+async function reloadPersonalFeed(page: Page, personalFeed: Locator, attempt: string): Promise<void> {
+  const feedResponse = page.waitForResponse(
+    response => response.url().includes('/api/v1/timeline/my')
+      && response.request().method() === 'GET',
+  )
   await page.reload({ waitUntil: 'domcontentloaded' })
+  const response = await feedResponse
+  console.log(`CMP-100 timeline/my reload=${attempt} status=${response.status()}`)
+  expect(response.status(), `timeline/my reload=${attempt}`).toBe(200)
   await waitForHydration(page)
   await expect(personalFeed.getByTestId('timeline-feed'))
     .toHaveAttribute('data-loaded', 'true', { timeout: 60_000 })
@@ -131,7 +138,7 @@ test('CMP-100: 組織DESCENDANTS投稿の個人feed表示・詳細・再読込�
     await openPostDetail(memberPage, memberPermalink, postId, marker)
     await returnToPersonalFeed(memberPage, memberFeed, marker)
     for (let attempt = 0; attempt < 3; attempt++) {
-      await reloadPersonalFeed(memberPage, memberFeed)
+      await reloadPersonalFeed(memberPage, memberFeed, String(attempt + 1))
       await expect(memberFeed.getByText(marker, { exact: true })).toBeVisible({ timeout: 30_000 })
     }
 
@@ -148,7 +155,7 @@ test('CMP-100: 組織DESCENDANTS投稿の個人feed表示・詳細・再読込�
         }
       }
       expect(disappeared).toBe(true)
-      await reloadPersonalFeed(memberPage, memberFeed)
+      await reloadPersonalFeed(memberPage, memberFeed, 'after-membership-removal')
       await expect(memberFeed.getByText(marker, { exact: true })).toHaveCount(0)
       await assertDetailDenied(memberPage, postId, marker)
     }
