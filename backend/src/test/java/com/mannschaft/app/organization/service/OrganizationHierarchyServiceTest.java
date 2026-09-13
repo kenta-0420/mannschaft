@@ -1,5 +1,6 @@
 package com.mannschaft.app.organization.service;
 
+import com.mannschaft.app.organization.repository.OrganizationParentIdProjection;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
@@ -15,9 +16,10 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import static java.util.Arrays.asList;
@@ -25,7 +27,7 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.atMost;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -56,15 +58,28 @@ class OrganizationHierarchyServiceTest {
     @InjectMocks
     private OrganizationHierarchyService service;
 
+    private final Map<Long, Long> parentIds = new HashMap<>();
+
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(service, "maxDepth", 5);
+        given(organizationRepository.findParentOrganizationIdProjectionsByIdIn(anyCollection()))
+                .willAnswer(invocation -> ((Collection<Long>) invocation.getArgument(0)).stream()
+                        .filter(parentIds::containsKey)
+                        .map(this::parentProjection)
+                        .toList());
     }
 
     /** {@code child → parent} の親リンクを仕込む。 */
     private void parentOf(Long childId, Long parentId) {
-        given(organizationRepository.findParentOrganizationIdById(childId))
-                .willReturn(Optional.ofNullable(parentId));
+        parentIds.put(childId, parentId);
+    }
+
+    private OrganizationParentIdProjection parentProjection(Long organizationId) {
+        OrganizationParentIdProjection projection = org.mockito.Mockito.mock(OrganizationParentIdProjection.class);
+        given(projection.getOrganizationId()).willReturn(organizationId);
+        given(projection.getParentOrganizationId()).willReturn(parentIds.get(organizationId));
+        return projection;
     }
 
     @Nested
@@ -144,7 +159,8 @@ class OrganizationHierarchyServiceTest {
 
             service.getAncestorOrgIdsWithDepth(List.of(10L, 20L));
 
-            verify(organizationRepository, atMost(1)).findParentOrganizationIdById(30L);
+            verify(organizationRepository).findParentOrganizationIdProjectionsByIdIn(Set.of(10L, 20L));
+            verify(organizationRepository).findParentOrganizationIdProjectionsByIdIn(Set.of(30L));
         }
 
         @Test
