@@ -205,6 +205,33 @@ class SharedFileServiceTest {
         }
 
         @Test
+        @DisplayName("ファイル削除は全バージョンを失効してから容量を返却する")
+        void 削除時に全バージョンを失効する() {
+            SharedFileEntity entity = SharedFileEntity.builder()
+                    .id(FILE_ID).folderId(FOLDER_ID).name("test.pdf").fileKey("current")
+                    .fileSize(1024L).contentType("application/pdf").build();
+            SharedFileVersionEntity v1 = SharedFileVersionEntity.builder()
+                    .fileId(FILE_ID).versionNumber(1).fileKey("old").fileSize(512L).build();
+            v1.setId(11L);
+            SharedFileVersionEntity v2 = SharedFileVersionEntity.builder()
+                    .fileId(FILE_ID).versionNumber(2).fileKey("current").fileSize(1024L).build();
+            v2.setId(12L);
+            SharedFolderEntity folder = buildFolder();
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(entity));
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
+            given(versionRepository.findByFileIdOrderByVersionNumberDesc(FILE_ID)).willReturn(List.of(v2, v1));
+
+            sharedFileService.deleteFile(FILE_ID, USER_ID);
+
+            InOrder order = inOrder(storageAclService, quotaService);
+            order.verify(storageAclService).releaseClaimed("current",
+                    new StorageAclAttachmentBinding("SHARED_FILE_VERSION", "12"));
+            order.verify(storageAclService).releaseClaimed("old",
+                    new StorageAclAttachmentBinding("SHARED_FILE_VERSION", "11"));
+            order.verify(quotaService).recordFileDeletion(folder, FILE_ID, 1024L, USER_ID);
+        }
+
+        @Test
         @DisplayName("ファイル削除_存在しない_BusinessException")
         void ファイル削除_存在しない_BusinessException() {
             // Given

@@ -392,6 +392,10 @@ public class BudgetTransactionService {
             throw new BusinessException(BudgetErrorCode.BUDGET_021);
         }
 
+        storageAclService.releaseClaimed(attachment.getFileKey(),
+                new StorageAclAttachmentBinding("BUDGET_TRANSACTION_ATTACHMENT", attachment.getId().toString()));
+        storageAclService.releaseClaimed(attachment.getFileKey(),
+                new StorageAclAttachmentBinding("BUDGET_TRANSACTION_ATTACHMENT", attachment.getId().toString()));
         storageService.delete(attachment.getFileKey());
         attachmentRepository.delete(attachment);
         log.info("添付ファイルを削除しました: transactionId={}, attachmentId={}", transactionId, attachmentId);

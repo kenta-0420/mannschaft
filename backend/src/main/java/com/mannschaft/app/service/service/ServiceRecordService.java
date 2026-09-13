@@ -262,6 +262,7 @@ public class ServiceRecordService {
         ServiceRecordEntity entity = findRecordOrThrow(teamId, id);
         // BOLA厳禁: entity 由来 teamId で認可する。
         accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
+        attachmentRepository.findByServiceRecordIdOrderBySortOrder(id).forEach(this::releaseAttachment);
         entity.softDelete();
         recordRepository.save(entity);
         log.info("サービス記録削除: recordId={}", id);
@@ -657,6 +658,7 @@ public class ServiceRecordService {
         ServiceRecordAttachmentEntity attachment = attachmentRepository
                 .findByIdAndServiceRecordId(attachmentId, recordId)
                 .orElseThrow(() -> new BusinessException(ServiceRecordErrorCode.ATTACHMENT_NOT_FOUND));
+        releaseAttachment(attachment);
         attachmentRepository.delete(attachment);
         log.info("添付ファイル削除: recordId={}, attachmentId={}", recordId, attachmentId);
     }
@@ -666,6 +668,11 @@ public class ServiceRecordService {
     private ServiceRecordEntity findRecordOrThrow(Long teamId, Long id) {
         return recordRepository.findByIdAndTeamId(id, teamId)
                 .orElseThrow(() -> new BusinessException(ServiceRecordErrorCode.RECORD_NOT_FOUND));
+    }
+
+    private void releaseAttachment(ServiceRecordAttachmentEntity attachment) {
+        storageAclService.releaseClaimed(attachment.getFileKey(),
+                new StorageAclAttachmentBinding("SERVICE_RECORD_ATTACHMENT", attachment.getId().toString()));
     }
 
     private void saveCustomFieldValues(Long recordId, Long teamId,

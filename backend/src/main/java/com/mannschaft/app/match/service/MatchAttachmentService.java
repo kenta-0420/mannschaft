@@ -224,6 +224,8 @@ public class MatchAttachmentService {
         MatchAttachmentEntity attachment = getAttachmentInMatchOrThrow(matchId, attachmentId);
 
         String fileKey = attachment.getFileKey();
+        storageAclService.releaseClaimed(fileKey,
+                new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attachment.getId().toString()));
         attachmentRepository.delete(attachment);
         if (fileKey != null) {
             try {

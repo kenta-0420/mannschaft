@@ -243,6 +243,8 @@ public class WorkflowRequestAttachmentService {
         }
 
         // 5. DB 物理削除
+        storageAclService.releaseClaimed(entity.getFileKey(),
+                new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", entity.getId().toString()));
         attachmentRepository.delete(entity);
         log.info("ワークフロー添付削除: requestId={}, attachmentId={}, userId={}",
                 requestId, attachmentId, currentUserId);
