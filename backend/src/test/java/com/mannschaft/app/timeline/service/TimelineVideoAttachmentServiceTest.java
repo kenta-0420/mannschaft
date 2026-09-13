@@ -2,6 +2,9 @@ package com.mannschaft.app.timeline.service;
 
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
@@ -47,6 +50,9 @@ class TimelineVideoAttachmentServiceTest {
     @Mock
     private TimelineAttachmentAccessGuard accessGuard;
 
+    @Mock
+    private StorageAclService storageAclService;
+
     @InjectMocks
     private TimelineVideoAttachmentService service;
 
@@ -79,6 +85,10 @@ class TimelineVideoAttachmentServiceTest {
             assertThat(result.getExpiresInSeconds()).isEqualTo(900L);
             // F13 Phase 4-γ: checkQuota が TEAM スコープで呼ばれる
             then(storageQuotaService).should().checkQuota(StorageScopeType.TEAM, TEAM_ID, 0L);
+            then(storageAclService).should().registerPending(
+                    eq(result.getFileKey()), eq(USER_ID), eq(StorageAclScope.team(TEAM_ID)),
+                    eq("video/mp4"), any(Duration.class),
+                    eq(new StorageAclContentReference("TIMELINE_SCOPE", "TEAM:" + TEAM_ID)));
         }
 
         @Test
@@ -120,6 +130,10 @@ class TimelineVideoAttachmentServiceTest {
             assertThat(result.getFileKey()).endsWith(".mov");
             // F13 Phase 4-γ: PUBLIC はフォールバックで PERSONAL スコープ
             then(storageQuotaService).should().checkQuota(StorageScopeType.PERSONAL, USER_ID, 0L);
+            then(storageAclService).should().registerPending(
+                    eq(result.getFileKey()), eq(USER_ID), eq(StorageAclScope.personal(USER_ID)),
+                    eq("video/quicktime"), any(Duration.class),
+                    eq(new StorageAclContentReference("TIMELINE_SCOPE", "PERSONAL:" + USER_ID)));
         }
 
         @Test

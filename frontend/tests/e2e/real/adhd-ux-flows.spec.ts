@@ -29,8 +29,9 @@ import { waitForHydration } from '../helpers/wait'
 // storageState をクリアして自前ログインを使う
 test.use({ storageState: { cookies: [], origins: [] } })
 
-const BASE_URL = 'http://127.0.0.1:3000'
-const API_BASE = 'http://127.0.0.1:8080'
+const BASE_URL = process.env.BASE_URL ?? 'http://127.0.0.1:3000'
+const API_BASE = process.env.API_BASE_URL ?? 'http://127.0.0.1:8080'
+const BACKEND_ALLOWED_ORIGIN = process.env.BACKEND_ALLOWED_ORIGIN ?? 'http://localhost:3000'
 
 const TEST_EMAIL = 'e2e-user@test.mannschaft.local'
 const TEST_PASSWORD = 'TestPass2026!'
@@ -49,9 +50,9 @@ async function setupApiBridge(page: Page): Promise<void> {
     // リクエストヘッダーをコピー（CORS に関係するものは差し替え）
     for (const [k, v] of Object.entries(req.headers())) {
       if (k.toLowerCase() === 'origin') {
-        headers[k] = BASE_URL
+        headers[k] = BACKEND_ALLOWED_ORIGIN
       } else if (k.toLowerCase() === 'referer') {
-        headers[k] = BASE_URL + '/'
+        headers[k] = `${BACKEND_ALLOWED_ORIGIN}/`
       } else {
         headers[k] = v
       }
@@ -77,6 +78,8 @@ async function setupApiBridge(page: Page): Promise<void> {
           resHeaders[k] = v
         }
       })
+      resHeaders['access-control-allow-origin'] = new URL(BASE_URL).origin
+      resHeaders['access-control-allow-credentials'] = 'true'
       await route.fulfill({
         status: fetchRes.status,
         headers: resHeaders,
@@ -129,17 +132,13 @@ async function loginViaApi(page: Page): Promise<void> {
     await page.setExtraHTTPHeaders({ Authorization: `Bearer ${accessToken}` })
   }
 
-  // FE の localhost:3000 に遷移してから localStorage.currentUser を設定する。
-  // Nuxt の authStore は localStorage.currentUser を見て isAuthenticated を判定するため、
-  // API ログインで Cookie だけ設定しても authStore が認証済みと認識しない。
-  // → page.evaluate で localStorage を直接設定して認証状態を確立する。
-  await page.goto(BASE_URL + '/', { waitUntil: 'domcontentloaded' })
-
-  // FE オリジン (127.0.0.1:3000) の localStorage に currentUser を設定
+  // auth store の初期化より先に user を注入し、初回 middleware 判定を認証済みにする。
+  // ページ描画後に localStorage だけを書き換えても、既に null で初期化された store は更新されない。
   if (loginBody?.data?.userId) {
-    await page.evaluate(
+    await page.addInitScript(
       (user) => {
         localStorage.setItem('currentUser', JSON.stringify(user))
+        localStorage.setItem('tokenExpiresAt', String(Date.now() + 60 * 60 * 1000))
       },
       {
         id: loginBody.data.userId,
@@ -149,6 +148,7 @@ async function loginViaApi(page: Page): Promise<void> {
       },
     )
   }
+  await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded' })
 }
 
 // ---------------------------------------------------------------------------
@@ -306,7 +306,7 @@ test.describe('フローA: 下書き自動保存（AC-1〜3, 11〜13）', () => 
 // フローB: Undo復元（AC-14〜16）
 // ---------------------------------------------------------------------------
 test.describe('フローB: Undo復元（AC-14〜16）', () => {
-  test.setTimeout(120_000)
+  test.setTimeout(420_000)
 
   test('B-1: 個人TODOを削除するとUndo Toastが表示され、元に戻すでTODOが復活する', async ({ page }) => {
     await setupApiBridge(page)
@@ -327,12 +327,7 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
     })
     console.log(`[B-1] TODO作成レスポンス: ${createRes.status()}`)
 
-    if (createRes.status() !== 201) {
-      // ログインセッションが API リクエストに引き継がれていない可能性
-      // page.request は page のセッションを使うため、ブラウザのセッションが必要
-      test.skip(true, `TODO作成 API が ${createRes.status()} を返した。BEへの認証が必要`)
-      return
-    }
+    expect(createRes.status(), '個人TODO作成API').toBe(201)
 
     const createdTodo = await createRes.json() as { data: { id: number; content?: { title?: string }; title?: string } }
     const todoId = createdTodo.data.id
@@ -341,56 +336,29 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
     // ---- Step 2: マイTODOページへ遷移して一覧表示を確認 ----
     await goToMyTodos(page)
 
-    // タイトルが一覧に表示されることを確認
-    // 注: 個人TODOは期限なしグループに入る可能性が高い
-    const todoCard = page.getByText(todoTitle).first()
-    const isTodoVisible = await todoCard.isVisible({ timeout: 15_000 }).catch(() => false)
-    if (!isTodoVisible) {
-      console.log('[B-1] TODO一覧に作成したTODOが見えない（期限なしグループの折りたたみ等）')
-      // ページ上の「期限なし」グループを展開してみる
-      const nodueGroup = page.locator('[data-testid="todo-group-nodue"], *:has-text("期限なし")').first()
-      await nodueGroup.click().catch(() => {})
-      await page.waitForTimeout(500)
-    }
-
     // ---- Step 3: 削除ボタンを探してクリック ----
     // TodoListView.vue の行末削除ボタン
     // data-testid="personal-todo-delete-{id}" または行内の delete ボタン
     // TodoListView.vue: data-testid="todo-delete-{id}" で各行の削除ボタンを特定
     // ホバー時のみ表示（opacity-0 group-hover:opacity-100）のため force: true でクリック
     const deleteBtn = page.locator(`[data-testid="todo-delete-${todoId}"]`).first()
-    const hasDeleteBtn = await deleteBtn.isVisible({ timeout: 5_000 }).catch(() => false)
-
-    if (!hasDeleteBtn) {
-      // data-testid="todo-delete-{id}" が見つからない場合、FE が最新化されていない可能性
-      test.skip(true, `削除ボタン (data-testid="todo-delete-${todoId}") が見つからない。FEが:3000で最新コードを配信しているか確認が必要`)
-
-      // クリーンアップ: 作成したTODOをAPIで削除
-      await page.request.delete(`${API_BASE}/api/v1/todos/${todoId}`).catch(() => {})
-      return
-    }
+    await expect(deleteBtn, `個人TODO ${todoId} の削除ボタン`).toBeVisible({ timeout: 60_000 })
 
     // ホバー時のみ表示（opacity-0）のため force クリック
     await deleteBtn.click({ force: true })
 
     // ---- Step 4: Undo Toastが表示されることを確認 ----
     // useUndoToast の Toast は PrimeVue の Toast コンポーネント
-    const undoToast = page.locator('.p-toast, [class*="toast"]').filter({ hasText: /元に戻す|undo/i }).first()
-    const toastVisible = await undoToast.isVisible({ timeout: 10_000 }).catch(() => false)
-    console.log(`[B-1] Undo Toast 表示: ${toastVisible}`)
-    expect(toastVisible).toBe(true)
+    const undoBtn = page.getByTestId('undo-toast-button')
+    await expect(undoBtn).toBeVisible({ timeout: 15_000 })
 
     // ---- Step 5: 「元に戻す」ボタンをクリック ----
-    const undoBtn = page.locator('button:has-text("元に戻す"), button:has-text("Undo"), [data-testid="undo-btn"]').first()
-    await expect(undoBtn).toBeVisible({ timeout: 5_000 })
     await undoBtn.click()
 
     // ---- Step 6: TODOが一覧に復活することを確認 ----
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {})
     const restoredTodo = page.getByText(todoTitle).first()
-    const isRestored = await restoredTodo.isVisible({ timeout: 10_000 }).catch(() => false)
-    console.log(`[B-1] TODO復活: ${isRestored}`)
-    expect(isRestored).toBe(true)
+    await expect(restoredTodo, 'Undo後に個人TODOが一覧へ復活').toBeVisible({ timeout: 15_000 })
 
     // クリーンアップ: APIで削除
     await page.request.delete(`${API_BASE}/api/v1/todos/${todoId}`).catch(() => {})

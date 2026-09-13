@@ -1,5 +1,14 @@
 {
   "shift": {
+    "availability": {
+      "allDay": "全天",
+      "startTime": "开始时间",
+      "endTime": "结束时间",
+      "timeRangeInvalid": "开始时间必须早于结束时间",
+      "notConfigured": "尚未设置。请为每个星期几设置意向和时间段后保存。",
+      "loadError": "无法获取默认可否设置",
+      "retry": "重试"
+    },
     "board": {
       "title": "排班板",
       "memberPool": "未分配成员",
@@ -376,6 +385,35 @@
       "untouchedNotice": "未填写的日期将以“希望休息”提交。但在人手不足时仍可能收到排班请求。",
       "submit": "提交",
       "back": "返回修改"
+    },
+    "hourlyRate": {
+      "title": "時給設定",
+      "description": "メンバーごとの時給を登録します。時給が未設定のメンバーのシフトは、シフト予算の消化額に反映されません。",
+      "missingWarning": "時給が未設定のメンバーが {count} 名います。このままではシフトを公開しても予算の消化額に反映されません。",
+      "unset": "未設定",
+      "setButton": "設定",
+      "perHour": "{amount}円/h",
+      "saved": "時給を保存しました",
+      "saveFailed": "時給の保存に失敗しました",
+      "loadFailed": "時給の取得に失敗しました",
+      "historyLoadFailed": "時給履歴の取得に失敗しました",
+      "permissionLoadFailed": "権限の取得に失敗しました",
+      "forbidden": "この画面を表示する権限がありません",
+      "noMembers": "メンバーがいません",
+      "dialogTitle": "{name} の時給設定",
+      "effectiveFromHint": "指定した日から適用されます。過去の設定は履歴として残ります。同じ日付で登録し直すと、その日の設定を訂正します。",
+      "historyTitle": "時給履歴",
+      "noHistory": "時給の登録履歴はありません",
+      "column": {
+        "member": "メンバー",
+        "rate": "時給",
+        "effectiveFrom": "適用開始日"
+      },
+      "validation": {
+        "rateRequired": "時給を入力してください",
+        "ratePositive": "時給は1円以上で入力してください"
+      },
+      "missingWarningPage": "このページに時給が未設定のメンバーが {count} 名います。このままではシフトを公開しても予算の消化額に反映されません。"
     }
   },
   "my_shift_guide": {

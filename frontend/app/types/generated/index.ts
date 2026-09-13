@@ -62364,6 +62364,7 @@ export interface components {
         CreateShiftSlotRequest: {
             /** @example 14:30:00 */
             endTime: string;
+            endsNextDay?: boolean;
             note?: string;
             /** Format: int64 */
             positionId?: number;
@@ -62376,6 +62377,10 @@ export interface components {
         };
         ApiResponseShiftSlotResponse: {
             data?: components["schemas"]["ShiftSlotResponse"];
+        };
+        ShiftAssignmentWarningDto: {
+            code?: string;
+            conflictingSlotIds?: number[];
         };
         ShiftSlotPositionDto: {
             /** Format: int64 */
@@ -62394,10 +62399,12 @@ export interface components {
             /** Format: int64 */
             scheduleId?: number;
             time?: components["schemas"]["ShiftSlotTimeDto"];
+            warnings?: components["schemas"]["ShiftAssignmentWarningDto"][];
         };
         ShiftSlotTimeDto: {
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             /** Format: date */
             slotDate?: string;
             /** @example 14:30:00 */
@@ -69197,6 +69204,7 @@ export interface components {
             assignedUserIds?: number[];
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             note?: string;
             /** Format: int64 */
             positionId?: number;

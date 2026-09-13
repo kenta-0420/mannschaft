@@ -332,17 +332,58 @@ POST /api/v1/shifts/schedules/{scheduleId}/slots/replicate
 **設計**: `shift_requests` に正規化した生成列を足し、UNIQUE を張る。
 
 ```sql
+-- 実装時の是正: STORED ではなく VIRTUAL、かつ日付も正規化列にする（理由は直後の 2 つの注記）
 ALTER TABLE shift_requests
   ADD COLUMN slot_id_uq BIGINT UNSIGNED
-      AS (COALESCE(slot_id, 0)) STORED NOT NULL,
+      AS (COALESCE(slot_id, 0)) VIRTUAL NOT NULL;
+ALTER TABLE shift_requests
+  ADD COLUMN slot_date_uq DATE
+      AS (CASE WHEN slot_id IS NULL THEN slot_date ELSE DATE '1000-01-01' END) VIRTUAL NOT NULL;
+ALTER TABLE shift_requests
   ADD CONSTRAINT uq_sr_schedule_user_slot
-      UNIQUE (schedule_id, user_id, slot_id_uq, slot_date);
+      UNIQUE (schedule_id, user_id, slot_id_uq, slot_date_uq);
 ```
 
-- `slot_id` が非 `null` のときは `(schedule_id, user_id, slot_id)` の一意性になる（`slot_date` は §11.5.1.1-2 の検証により枠と一致することが保証されるため、キーに含めても等価）。
+> **【PR A3 実装時の実測による是正】STORED は使えない。VIRTUAL にすること。**
+> `slot_id` は FK `fk_sr_slot` のベースカラムであり、MySQL 8.0 では STORED 生成カラムを載せられない。
+> 実機の MySQL 8.0（`mannschaft-mysql`）で本番同型のスキーマに対し
+> `ALTER TABLE shift_requests ADD COLUMN slot_id_uq ... STORED NOT NULL` を実行すると
+> **`ERROR 1215 (HY000): Cannot add foreign key constraint`** で失敗する（テーブル再構築時に FK を張り直せないため）。
+> 前例として `V11.030`（`shift_budget_allocations`）が同じ壁に当たり、そこでは関数インデックスで回避しているが、
+> **本件は VIRTUAL 生成カラムで解決する**（VIRTUAL は FK と併存でき、UNIQUE を含むインデックスも張れることを同じ実機で確認済み）。
+> 関数インデックスではなく VIRTUAL を採る理由は、**Entity 側（`ShiftRequestEntity#slotIdUq` の `columnDefinition`）に
+> 同じ定義を書けるから**である。統合テストは `ddl-auto: create` ＋ `flyway.enabled: false` で走るため、
+> Entity に表現できない形（関数インデックス）を採ると **テスト環境にだけ制約が無い**状態になり、
+> AC-8-07 / AC-8-08 が永久に緑にならない（あるいは逆に本番だけ壊れる。CMP-260909-2154 / PR #3188 と同型の事故）。
+> 実装: `V208.20260909151717__add_shift_requests_slot_uniqueness.sql`。
+
+- `slot_id` が非 `null` のときは `(schedule_id, user_id, slot_id)` の一意性になる。**`slot_date` はキーに含めない。**
+
+> **【PR A3 実装時の是正 その2・Codex 検分 P1】`slot_date` を非 NULL 側のキーに含めてはならない。**
+> 当初は「`slot_date` は §11.5.1.1-2 の検証により枠と一致するのでキーに含めても等価」としていたが、**これは誤りである。**
+> 検証が効くのは**新規に提出される行だけ**であり、次の 2 経路で「同じ枠なのに `slot_date` だけ違う行」が現に作られうる:
+> 1. **掃除の対象である既存行**は、その検証を一度も通っていない。
+> 2. **枠の日付は後から変更できる。** `ShiftSlotService#updateSlot`（`:158-183`）は `ShiftSlotEntity#applyUpdate`（`:83-85`）で
+>    枠の `slotDate` を書き換えるが、`shift_requests` には一切触れない（同クラスに `shift_requests` /
+>    `requestRepository` への参照は **0 件**・実測）。よって希望側の `slot_date` は古い日付のまま取り残される。
+>
+> 残存行が 2 件になると `ShiftRequestRepository#findByScheduleIdAndUserIdAndSlotId`（`Optional` 戻り）が
+> 複数行を掴んで **500** になり、DB 側の一意性もそこだけ守れない。
+>
+> **1 本の UNIQUE で 2 通りの単位を表す方法**: 日付側も正規化した生成列 `slot_date_uq` にする
+>（枠指定のときだけ番兵 `1000-01-01` へ潰す）。これで非 NULL 側は実質 `(schedule_id, user_id, slot_id)`、
+> NULL 側は実質 `(schedule_id, user_id, slot_date)` となり、AC-8-03 の日単位規則も保たれる。
+> 実機 MySQL 8.0 で全分岐（枠指定と日単位の併存／別枠の併存／同一枠・日付違いの拒否／同一日 2 件目の拒否／別日の許可）を実測済み。
+>
+> **枠の日付変更に希望が追随しない件そのもの**は本 PR の射程外（`ShiftSlotService` は戦役 A-1 の担当範囲）。
+> 既存欠陥として `docs/task-list.md` に起票した。
 - `slot_id` が `null`（→ `0`）のときは `(schedule_id, user_id, slot_date)` の**日単位の一意性**になり、従来の規則がそのまま保たれる。
 - アプリ層の事前チェックは**残す**（親切なエラーメッセージのため）。**制約違反は握りつぶさず** `REQUEST_ALREADY_EXISTS`（409）へ写像する。
-- **DDL 適用前に既存の重複行を掃除する**マイグレーションを同一バージョンに含める（最新の 1 件を残し、他を論理削除する。件数をログに残す）。
+- **DDL 適用前に既存の重複行を掃除する**マイグレーションを同一バージョンに含める（最新の 1 件を残し、他を削除する。件数をログに残す）。
+  - **実装時の是正**: `shift_requests` は `deleted_at` を持たない（論理削除の器が無い）ため、掃除は**物理削除**とした。
+    掃除件数は `SIGNAL SQLSTATE '01000'`（SQL 警告。移行は継続する）でメッセージに載せ、Flyway の適用ログに残す。
+  - **掃除の前に `slot_date` を枠の日付へ揃える**。枠と日付が食い違う既存行（上記 P1 の 2 経路で生まれる）は、
+    揃えることで「同一キーの重複」として掃除に回収される。揃えた件数も同じ警告メッセージに載せる。
 
 > この節は当初の「DB に UNIQUE は足さない」という記載を**撤回するものである**。
 

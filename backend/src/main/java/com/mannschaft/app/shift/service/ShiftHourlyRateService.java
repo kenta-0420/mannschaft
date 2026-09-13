@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * シフト時給サービス。メンバーの時給設定・履歴管理を担当する。
@@ -67,6 +68,22 @@ public class ShiftHourlyRateService {
     /**
      * 時給を設定する。
      *
+     * <p><b>同じ適用開始日の再登録は「訂正」として更新する（CMP-260910-1555）</b>:
+     * {@code shift_hourly_rates} には {@code uq_shr_user_team_from (user_id, team_id, effective_from)}
+     * の一意制約がある。是正前は常に INSERT していたため、<b>当日登録した時給の打ち間違いに
+     * 気づいて同じ日付で訂正しようとすると、必ず一意制約違反で失敗</b>していた
+     * （現在の時給の適用開始日が今日であるケースは、登録直後には常に成立する）。</p>
+     *
+     * <p>「この人のこの日からの時給はいくらか」という指定は (user, team, effective_from) に対して
+     * <b>冪等</b>であり、同じ日付への再指定は新しい履歴ではなく訂正である。よって既存行があれば
+     * 金額を更新する。別の日付での登録は従来どおり追加であり、<b>過去の履歴は消えない</b>。</p>
+     *
+     * <p>判定は<b>アプリ層で分岐せず、一意制約に衝突解決させる単一文</b>で行う
+     * （{@code ON DUPLICATE KEY UPDATE}）。「既存を探して無ければ INSERT」だと読みと書きの間に
+     * 窓が開き、同じキーへの初回リクエストが並行したときに両方が「既存なし」を見て
+     * 両方 INSERT へ進み、片方が制約違反で落ちる。二重送信やリトライで普通に起きるため、
+     * アプリ層の分岐では冪等性を保証できない。</p>
+     *
      * @param teamId        チームID
      * @param req           設定リクエスト
      * @param currentUserId 操作ユーザーID（認可判定に使用）
@@ -75,16 +92,22 @@ public class ShiftHourlyRateService {
     @Transactional
     public HourlyRateResponse createHourlyRate(Long teamId, CreateHourlyRateRequest req, Long currentUserId) {
         checkHourlyRateAccess(currentUserId, req.getUserId(), teamId);
-        ShiftHourlyRateEntity entity = ShiftHourlyRateEntity.builder()
-                .userId(req.getUserId())
-                .teamId(teamId)
-                .hourlyRate(req.getHourlyRate())
-                .effectiveFrom(req.getEffectiveFrom())
-                .build();
 
-        entity = hourlyRateRepository.save(entity);
-        log.info("時給設定: id={}, userId={}, teamId={}, rate={}", entity.getId(), req.getUserId(), teamId, req.getHourlyRate());
-        return shiftMapper.toHourlyRateResponse(entity);
+        // 一意制約 uq_shr_user_team_from に衝突解決させる単一文（詳細は upsertHourlyRate の Javadoc）。
+        // SELECT してから INSERT/UPDATE を分岐すると読みと書きの間に窓が開き、
+        // 同じキーへの初回リクエストが並行したときに片方が制約違反で落ちる。
+        hourlyRateRepository.upsertHourlyRate(
+                req.getUserId(), teamId, req.getHourlyRate(), req.getEffectiveFrom());
+
+        ShiftHourlyRateEntity saved = hourlyRateRepository
+                .findByUserIdAndTeamIdAndEffectiveFrom(req.getUserId(), teamId, req.getEffectiveFrom())
+                .orElseThrow(() -> new IllegalStateException(
+                        "時給の upsert 直後に対象行を読み戻せない: userId=" + req.getUserId()
+                                + ", teamId=" + teamId + ", effectiveFrom=" + req.getEffectiveFrom()));
+
+        log.info("時給設定: id={}, userId={}, teamId={}, rate={}, effectiveFrom={}",
+                saved.getId(), req.getUserId(), teamId, req.getHourlyRate(), req.getEffectiveFrom());
+        return shiftMapper.toHourlyRateResponse(saved);
     }
 
     /**

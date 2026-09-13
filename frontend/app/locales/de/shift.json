@@ -1,5 +1,14 @@
 {
   "shift": {
+    "availability": {
+      "allDay": "Ganztägig",
+      "startTime": "Startzeit",
+      "endTime": "Endzeit",
+      "timeRangeInvalid": "Die Startzeit muss vor der Endzeit liegen",
+      "notConfigured": "Noch nicht konfiguriert. Lege Präferenz und Zeitraum je Wochentag fest und speichere.",
+      "loadError": "Standardverfügbarkeit konnte nicht geladen werden",
+      "retry": "Erneut versuchen"
+    },
     "board": {
       "title": "Schichtplan-Board",
       "memberPool": "Nicht zugewiesene Mitglieder",
@@ -376,6 +385,35 @@
       "untouchedNotice": "Nicht ausgefüllte Tage werden als „möglichst frei\" eingereicht. Bei Personalmangel kann dennoch eine Schichtanfrage kommen.",
       "submit": "Senden",
       "back": "Zurück zum Bearbeiten"
+    },
+    "hourlyRate": {
+      "title": "時給設定",
+      "description": "メンバーごとの時給を登録します。時給が未設定のメンバーのシフトは、シフト予算の消化額に反映されません。",
+      "missingWarning": "時給が未設定のメンバーが {count} 名います。このままではシフトを公開しても予算の消化額に反映されません。",
+      "unset": "未設定",
+      "setButton": "設定",
+      "perHour": "{amount}円/h",
+      "saved": "時給を保存しました",
+      "saveFailed": "時給の保存に失敗しました",
+      "loadFailed": "時給の取得に失敗しました",
+      "historyLoadFailed": "時給履歴の取得に失敗しました",
+      "permissionLoadFailed": "権限の取得に失敗しました",
+      "forbidden": "この画面を表示する権限がありません",
+      "noMembers": "メンバーがいません",
+      "dialogTitle": "{name} の時給設定",
+      "effectiveFromHint": "指定した日から適用されます。過去の設定は履歴として残ります。同じ日付で登録し直すと、その日の設定を訂正します。",
+      "historyTitle": "時給履歴",
+      "noHistory": "時給の登録履歴はありません",
+      "column": {
+        "member": "メンバー",
+        "rate": "時給",
+        "effectiveFrom": "適用開始日"
+      },
+      "validation": {
+        "rateRequired": "時給を入力してください",
+        "ratePositive": "時給は1円以上で入力してください"
+      },
+      "missingWarningPage": "このページに時給が未設定のメンバーが {count} 名います。このままではシフトを公開しても予算の消化額に反映されません。"
     }
   },
   "my_shift_guide": {

@@ -643,6 +643,21 @@ public class AccessControlService {
         return (int) membershipRepository.countActiveDistinctUsersByScope(ScopeType.valueOf(scopeType), scopeId);
     }
 
+    /** 複数スコープの ACTIVE distinct メンバー数を一括取得する。 */
+    public Map<Long, Integer> countActiveDistinctMembersByScopes(
+            String scopeType, java.util.Collection<Long> scopeIds) {
+        Map<Long, Integer> result = new LinkedHashMap<>();
+        if (scopeIds == null || scopeIds.isEmpty()) {
+            return result;
+        }
+        for (MembershipRepository.ScopeMemberCountProjection row
+                : membershipRepository.countActiveDistinctUsersByScopes(
+                        ScopeType.valueOf(scopeType), scopeIds)) {
+            result.put(row.getScopeId(), Math.toIntExact(row.getMemberCount()));
+        }
+        return result;
+    }
+
     /**
      * ユーザーが所属する指定スコープ種別の scopeId 群を「{@code user_roles} ∪ {@code memberships}」の
      * 和集合で列挙する（{@link com.mannschaft.app.role.controller.MeController} の所属列挙ロジックを

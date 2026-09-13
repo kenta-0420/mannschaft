@@ -713,13 +713,20 @@ scope は**パス変数でなくスケジュール実体の `team_id` から解�
 }
 ```
 
-**エラーレスポンス**
-| ステータス | 条件 |
-|-----------|------|
-| 400 | バリデーションエラー / 同一枠の重複希望 |
-| 403 | チームメンバーではない / SUPPORTER・GUEST は希望提出不可 |
-| 404 | シフトスケジュール/スロットが存在しない |
-| 409 | `COLLECTING` 以外のステータス / `request_deadline` が過去（希望提出期限切れ） |
+**エラーレスポンス**（実装準拠。`06_manual_authoring.md` §11.5.1.1 / §11.5.1.2）
+| ステータス | エラーコード | 条件 |
+|-----------|------|------|
+| 400 | （bean validation） | バリデーションエラー |
+| 400 | `SHIFT_037` (`REQUEST_SLOT_DATE_MISMATCH`) | `slot_id` の枠が持つ日付と `slot_date` が食い違う（越境ではなくクライアントの自己矛盾） |
+| 403 | `COMMON_002` | チームメンバーではない / SUPPORTER は希望提出不可 |
+| 403 | `SHIFT_019` (`ACCESS_DENIED`) | `slot_id` が**他スケジュール配下**、または**存在しない**。<br>404 と畳まないのは ID の存否を漏らさないため（存在オラクルの封鎖） |
+| 404 | `SHIFT_001` | シフトスケジュールが存在しない |
+| 409 | `SHIFT_015` (`REQUEST_ALREADY_EXISTS`) | **同一枠**（`slot_id` 非 NULL）または**同一日**（`slot_id` = NULL）の希望が既にある。<br>同時提出は DB の UNIQUE `uq_sr_schedule_user_slot` が最後の砦となり、こちらも 409（500 にはしない） |
+| 409 | `SHIFT_012` / `SHIFT_011` | `COLLECTING` 以外のステータス / `request_deadline` が過去（希望提出期限切れ） |
+
+> **一意性の単位（CMP-260909-1143 是正・PR A3）**: `slot_id` 非 NULL は `(schedule_id, user_id, slot_id)`、
+> `slot_id` NULL は `(schedule_id, user_id, slot_date)`。
+> **同一日でも枠が違えば希望は複数件並ぶ**（旧実装は日付だけで判定しており、同一日に 1 件しか出せなかった）。
 
 ---
 

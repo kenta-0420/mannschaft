@@ -8,6 +8,7 @@ import com.mannschaft.app.shift.ShiftAssignmentStatus;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.dto.BulkCreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
+import com.mannschaft.app.shift.dto.ShiftAssignmentWarningDto;
 import com.mannschaft.app.shift.dto.ShiftSlotResponse;
 import com.mannschaft.app.shift.dto.SlotAssignmentPatchRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
@@ -25,7 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * シフト枠サービス。シフト枠のCRUD・一括操作を担当する。
@@ -71,9 +74,10 @@ public class ShiftSlotService {
      * @return シフト枠一覧
      */
     public List<ShiftSlotResponse> listSlots(Long scheduleId, Long userId) {
-        // 二層: 認可（誰が）の 403 が先、可視性（何が）の 404 が後。
-        checkScheduleReadAccess(scheduleId, userId);
+        // 未公開は認可結果より先に 404 へ正規化し、実在 ID の 403 と
+        // 非存在 ID の 404 を比較する存在オラクルを防ぐ。
         boolean masked = resolveAssignmentMasked(scheduleId, userId);
+        checkScheduleReadAccess(scheduleId, userId);
         List<ShiftSlotEntity> entities = slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(scheduleId);
         return entities.stream().map(e -> applyMask(toSlotResponse(e), masked)).toList();
     }
@@ -103,6 +107,9 @@ public class ShiftSlotService {
     @Transactional
     public ShiftSlotResponse createSlot(Long scheduleId, CreateShiftSlotRequest req, Long userId) {
         checkScheduleAdminAccess(scheduleId, userId);
+        // 枠時刻の検証（設計 F03.5 §11.2.5・単一の検証点）。
+        ShiftSlotTimeValidator.validateTimeRange(
+                req.getStartTime(), req.getEndTime(), req.endsNextDayOrFalse());
         ShiftSlotEntity entity = ShiftSlotEntity.builder()
                 .scheduleId(scheduleId)
                 .slotDate(req.getSlotDate())
@@ -111,6 +118,7 @@ public class ShiftSlotService {
                 .positionId(req.getPositionId())
                 .requiredCount(req.getRequiredCount() != null ? req.getRequiredCount() : 1)
                 .note(req.getNote())
+                .endsNextDay(req.endsNextDayOrFalse())
                 .build();
 
         entity = slotRepository.save(entity);
@@ -129,6 +137,9 @@ public class ShiftSlotService {
     @Transactional
     public List<ShiftSlotResponse> bulkCreateSlots(Long scheduleId, BulkCreateShiftSlotRequest req, Long userId) {
         checkScheduleAdminAccess(scheduleId, userId);
+        // 一括作成も単体作成と同じ検証点を通す（1 件でも不正ならトランザクションごと拒否）。
+        req.getSlots().forEach(slotReq -> ShiftSlotTimeValidator.validateTimeRange(
+                slotReq.getStartTime(), slotReq.getEndTime(), slotReq.endsNextDayOrFalse()));
         List<ShiftSlotEntity> entities = req.getSlots().stream()
                 .map(slotReq -> (ShiftSlotEntity) ShiftSlotEntity.builder()
                         .scheduleId(scheduleId)
@@ -138,6 +149,7 @@ public class ShiftSlotService {
                         .positionId(slotReq.getPositionId())
                         .requiredCount(slotReq.getRequiredCount() != null ? slotReq.getRequiredCount() : 1)
                         .note(slotReq.getNote())
+                        .endsNextDay(slotReq.endsNextDayOrFalse())
                         .build())
                 .toList();
 
@@ -159,6 +171,16 @@ public class ShiftSlotService {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
         checkScheduleAdminAccess(entity.getScheduleId(), userId);
 
+        // 枠時刻の検証（設計 F03.5 §11.2.5）。部分更新のため、リクエストで指定されなかった側は
+        // 既存値と合成して検証する。時刻・日跨ぎのいずれも指定されていない更新（note のみ等）は
+        // 検証しない — 既存の不正時刻行を理由に拒否しないための後方互換（§11.2.5「書き込み時のみ検証」）。
+        if (req.getStartTime() != null || req.getEndTime() != null || req.getEndsNextDay() != null) {
+            ShiftSlotTimeValidator.validateTimeRange(
+                    req.getStartTime() != null ? req.getStartTime() : entity.getStartTime(),
+                    req.getEndTime() != null ? req.getEndTime() : entity.getEndTime(),
+                    req.getEndsNextDay() != null ? req.getEndsNextDay() : entity.isEndsNextDay());
+        }
+
         // 履歴記録のため更新前の割当を控える（CMP-260908-2117）。
         List<Long> before = deserializeUserIds(entity.getAssignedUserIds());
 
@@ -173,7 +195,8 @@ public class ShiftSlotService {
                 req.getPositionId(),
                 req.getRequiredCount(),
                 req.getAssignedUserIds() != null ? serializeUserIds(req.getAssignedUserIds()) : null,
-                req.getNote()
+                req.getNote(),
+                req.getEndsNextDay()
         );
 
         slotRepository.save(entity);
@@ -223,6 +246,11 @@ public class ShiftSlotService {
             throw new BusinessException(ShiftErrorCode.SLOT_ASSIGNMENT_EXCEEDED);
         }
 
+        // 重なり判定（設計 F03.5 §11.3.5）。今回“新たに追加された”ユーザーだけを見る
+        // （既に入っていたユーザーを毎回警告すると、無関係な差分操作でも警告が湧く）。
+        List<Long> addedUserIds = currentUserIds.stream().filter(id -> !before.contains(id)).toList();
+        List<ShiftAssignmentWarningDto> warnings = detectOverlapWarnings(entity, addedUserIds);
+
         // managed entity を直接ミューテート（toBuilder().build() 行重複バグ回避）。
         entity.updateAssignedUserIds(serializeUserIds(currentUserIds));
         slotRepository.save(entity);
@@ -232,7 +260,70 @@ public class ShiftSlotService {
                 slotId,
                 request.addUserIds() != null ? request.addUserIds().size() : 0,
                 request.removeUserIds() != null ? request.removeUserIds().size() : 0);
-        return toSlotResponse(entity);
+        return toSlotResponse(entity).toBuilder().warnings(warnings).build();
+    }
+
+    /**
+     * 追加されたユーザーについて、他の枠との勤務時間の重なりを検出する（設計 F03.5 §11.3.5）。
+     *
+     * <p><b>完全一致</b>（同一日・同一開始・同一終了・同一 endsNextDay の別枠に同じ人物）だけは
+     * {@link ShiftErrorCode#DUPLICATE_ASSIGNMENT}（409）で拒否し、それ以外の重なりは警告に留める。
+     * 現場では「12:00-15:00 と 14:00-18:00 を承知で掛け持ちさせる」運用が実在するため、
+     * 機械的に禁止すると回避不能な行き止まりになる。</p>
+     *
+     * <p><b>探索範囲は同一スケジュール内の枠に限る。</b>「人間は一人なのだから他のシフト表の枠とも
+     * 突き合わせるべきだ」という素朴な拡張は、実際に既存の契約テスト
+     * {@code ShiftManualAssignmentSourceContractIT} 7 件を 409 で落とした。理由は 2 つある:</p>
+     * <ol>
+     *   <li><b>作成中のシフト表は既存表の複製から始まる。</b>翌週分を DRAFT で下書きすれば、
+     *       同じ人・同じ時刻の枠が別スケジュールに必ず並ぶ。横断で見ると下書きを作った瞬間に
+     *       現行表の割当が編集不能になる（回避手段が無い行き止まり）。</li>
+     *   <li><b>未公開シフト表の存在オラクルになる。</b>他人に見えないはずの DRAFT の割当が
+     *       409 という観測可能な差として漏れる（CMP-260826-2127 で塞いだ経路と同種）。</li>
+     * </ol>
+     *
+     * @param entity       今まさに割当を書き換えている枠
+     * @param addedUserIds 今回新たに追加されたユーザー ID
+     * @return 警告一覧（重なりが無ければ空リスト。null は返さない）
+     */
+    private List<ShiftAssignmentWarningDto> detectOverlapWarnings(ShiftSlotEntity entity, List<Long> addedUserIds) {
+        if (addedUserIds.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> conflictingSlotIds = new LinkedHashSet<>();
+        for (ShiftSlotEntity other : slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(
+                entity.getScheduleId())) {
+            if (other.getId().equals(entity.getId())) {
+                continue;
+            }
+            List<Long> otherUserIds = deserializeUserIds(other.getAssignedUserIds());
+            if (addedUserIds.stream().noneMatch(otherUserIds::contains)) {
+                continue;
+            }
+            if (!ShiftAssignmentOverlapDetector.overlaps(
+                    entity.getSlotDate(), entity.getStartTime(), entity.getEndTime(), entity.isEndsNextDay(),
+                    other.getSlotDate(), other.getStartTime(), other.getEndTime(), other.isEndsNextDay())) {
+                continue;
+            }
+            if (isIdenticalTimeRange(entity, other)) {
+                throw new BusinessException(ShiftErrorCode.DUPLICATE_ASSIGNMENT);
+            }
+            conflictingSlotIds.add(other.getId());
+        }
+        if (conflictingSlotIds.isEmpty()) {
+            return List.of();
+        }
+        return List.of(new ShiftAssignmentWarningDto(
+                ShiftAssignmentWarningDto.ASSIGNMENT_OVERLAP,
+                conflictingSlotIds.stream().sorted().toList()));
+    }
+
+    /** 2 つの枠が完全一致（同一日・同一開始・同一終了・同一 endsNextDay）か。 */
+    private boolean isIdenticalTimeRange(ShiftSlotEntity left, ShiftSlotEntity right) {
+        return left.getSlotDate().equals(right.getSlotDate())
+                && left.getStartTime().equals(right.getStartTime())
+                && left.getEndTime().equals(right.getEndTime())
+                && left.isEndsNextDay() == right.isEndsNextDay();
     }
 
     /**
@@ -375,7 +466,8 @@ public class ShiftSlotService {
                 .id(entity.getId())
                 .scheduleId(entity.getScheduleId())
                 .time(new ShiftSlotResponse.ShiftSlotTimeDto(
-                        entity.getSlotDate(), entity.getStartTime(), entity.getEndTime()))
+                        entity.getSlotDate(), entity.getStartTime(), entity.getEndTime(),
+                        entity.isEndsNextDay()))
                 .position(new ShiftSlotResponse.ShiftSlotPositionDto(
                         entity.getPositionId(), positionName, entity.getRequiredCount()))
                 .assignedUserIds(deserializeUserIds(entity.getAssignedUserIds()))

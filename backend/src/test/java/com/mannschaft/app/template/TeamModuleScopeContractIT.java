@@ -92,8 +92,9 @@ class TeamModuleScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        Long teamAId = insertTeam("TPLAUTHZ チームA", "tplauthz-team-a-" + System.nanoTime());
-        Long teamBId = insertTeam("TPLAUTHZ チームB", "tplauthz-team-b-" + System.nanoTime());
+        String suffix = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
+        Long teamAId = insertTeam("TPLAUTHZ チームA", "tplauthz-team-a-" + suffix);
+        Long teamBId = insertTeam("TPLAUTHZ チームB", "tplauthz-team-b-" + suffix);
         teamASlug = selectTeamSlug(teamAId);
         teamBSlug = selectTeamSlug(teamBId);
 
@@ -113,7 +114,7 @@ class TeamModuleScopeContractIT extends AbstractMySqlIntegrationTest {
 
         ModuleDefinitionEntity module = moduleDefinitionRepository.save(ModuleDefinitionEntity.builder()
                 .name("TPLAUTHZ 選択式モジュール")
-                .slug("tplauthz-module-" + System.nanoTime())
+                .slug("tplauthz-module-" + suffix)
                 .moduleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
                 .moduleNumber(1)
                 .requiresPaidPlan(false)
@@ -123,7 +124,7 @@ class TeamModuleScopeContractIT extends AbstractMySqlIntegrationTest {
 
         TeamTemplateEntity template = teamTemplateRepository.save(TeamTemplateEntity.builder()
                 .name("TPLAUTHZ テンプレート")
-                .slug("tplauthz-template-" + System.nanoTime())
+                .slug("tplauthz-template-" + suffix)
                 .isActive(true)
                 .build());
         templateId = template.getId();

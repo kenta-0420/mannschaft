@@ -3,7 +3,9 @@ package com.mannschaft.app.files.service;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.R2StorageService.PresignedPartUrl;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.files.dto.CompleteMultipartRequest;
 import com.mannschaft.app.files.dto.CompleteMultipartResponse;
 import com.mannschaft.app.files.dto.PartUrlRequest;
@@ -141,8 +143,8 @@ public class MultipartUploadService {
         try {
             sessionRepository.save(session);
             storageAclService.registerPending(
-                    r2Key, uploaderId, "PERSONAL", uploaderId, req.getContentType(), SESSION_TTL,
-                    "MULTIPART_UPLOAD", null);
+                    r2Key, uploaderId, StorageAclScope.personal(uploaderId), req.getContentType(), SESSION_TTL,
+                    new StorageAclContentReference("MULTIPART_UPLOAD", r2UploadId));
         } catch (RuntimeException registrationFailure) {
             try {
                 r2StorageService.abortMultipartUpload(r2Key, r2UploadId);

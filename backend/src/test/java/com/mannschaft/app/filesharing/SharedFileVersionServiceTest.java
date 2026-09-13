@@ -1,6 +1,9 @@
 package com.mannschaft.app.filesharing;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.filesharing.dto.CreateVersionRequest;
 import com.mannschaft.app.filesharing.dto.FileVersionResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
@@ -12,6 +15,7 @@ import com.mannschaft.app.filesharing.service.SharedFileQuotaService;
 import com.mannschaft.app.filesharing.service.SharedFileService;
 import com.mannschaft.app.filesharing.service.SharedFileVersionService;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -63,6 +67,9 @@ class SharedFileVersionServiceTest {
     @Mock
     private FolderScopeAccessGuard folderScopeAccessGuard;
 
+    @Mock
+    private StorageAclService storageAclService;
+
     @InjectMocks
     private SharedFileVersionService sharedFileVersionService;
 
@@ -77,6 +84,7 @@ class SharedFileVersionServiceTest {
 
     private SharedFileVersionEntity createVersionEntity(Integer versionNumber) {
         return SharedFileVersionEntity.builder()
+                .id(VERSION_ID)
                 .fileId(FILE_ID)
                 .versionNumber(versionNumber)
                 .fileKey(FILE_KEY)
@@ -106,6 +114,7 @@ class SharedFileVersionServiceTest {
 
     private SharedFolderEntity buildFolder() {
         return SharedFolderEntity.builder()
+                .id(FOLDER_ID)
                 .scopeType(FileScopeType.TEAM)
                 .teamId(5L)
                 .name("テストフォルダ")
@@ -254,6 +263,10 @@ class SharedFileVersionServiceTest {
             // F13 Phase 4-ε: クォータチェックと使用量加算の検証
             verify(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(2048L));
             verify(quotaService).recordVersionUpload(any(SharedFolderEntity.class), nullable(Long.class), eq(2048L), eq(USER_ID));
+            verify(storageAclService).claimPending(
+                    eq("files/new-version.pdf"), eq(USER_ID), eq(StorageAclScope.team(5L)),
+                    eq(new StorageAclContentReference("SHARED_FOLDER", FOLDER_ID.toString())),
+                    eq(new StorageAclAttachmentBinding("SHARED_FILE_VERSION", VERSION_ID.toString())));
             // ファイルエンティティのバージョンが更新されることを確認
             assertThat(fileEntity.getCurrentVersion()).isEqualTo(2);
             assertThat(fileEntity.getFileKey()).isEqualTo("files/new-version.pdf");
@@ -293,6 +306,7 @@ class SharedFileVersionServiceTest {
             SharedFileEntity fileEntity = createFileEntity(1);
             SharedFolderEntity folder = buildFolder();
             SharedFileVersionEntity savedVersion = SharedFileVersionEntity.builder()
+                    .id(VERSION_ID)
                     .fileId(FILE_ID)
                     .versionNumber(2)
                     .fileKey("files/no-comment.pdf")

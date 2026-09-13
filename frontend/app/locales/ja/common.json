@@ -2389,5 +2389,52 @@
       "approveSuccess": "参加申請を承認しました",
       "rejectSuccess": "参加申請を却下しました"
     }
+  },
+  "myPage": {
+    "pageTitle": "マイページ",
+    "cards": {
+      "onboarding": {
+        "label": "オンボーディング",
+        "description": "参加したチーム・組織のやるべき手続き"
+      },
+      "shift": {
+        "label": "マイシフト",
+        "description": "自分のシフトの確認"
+      },
+      "reservations": {
+        "label": "マイ予約",
+        "description": "自分の予約一覧"
+      },
+      "charts": {
+        "label": "マイカルテ",
+        "description": "活動記録・メモの確認"
+      },
+      "performance": {
+        "label": "マイパフォーマンス",
+        "description": "自分の成績・実績"
+      },
+      "projects": {
+        "label": "マイプロジェクト",
+        "description": "個人プロジェクトの管理"
+      },
+      "serviceRecords": {
+        "label": "マイサービス履歴",
+        "description": "受けたサービスの履歴"
+      },
+      "noShows": {
+        "label": "キャンセル履歴",
+        "description": "無断キャンセル・ペナルティ履歴"
+      },
+      "resume": {
+        "label": "履歴書・職務経歴書",
+        "description": "履歴書・職務経歴書の作成・出力"
+      },
+      "receipts": {
+        "description": "支払いの領収書の確認・ダウンロード"
+      },
+      "tournamentFees": {
+        "description": "大会参加費の確認・支払い"
+      }
+    }
   }
 }

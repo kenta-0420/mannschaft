@@ -348,10 +348,15 @@ public class ScheduleAttendanceService {
         if (value == null) {
             return "";
         }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
+        String escaped = value;
+        if (!escaped.isEmpty() && "=+-@".indexOf(escaped.charAt(0)) >= 0) {
+            escaped = "'" + escaped;
         }
-        return value;
+        if (escaped.contains(",") || escaped.contains("\"")
+                || escaped.contains("\r") || escaped.contains("\n")) {
+            return "\"" + escaped.replace("\"", "\"\"") + "\"";
+        }
+        return escaped;
     }
 
     /**

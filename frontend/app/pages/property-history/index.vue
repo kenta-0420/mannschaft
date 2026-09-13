@@ -279,14 +279,14 @@ function onSelect(packageId: number) {
           :scope="scope"
           :scope-id="scopeId"
         />
-        <Calendar
+        <DatePicker
           v-model="filterFrom"
           :placeholder="t('property.filter.from')"
           date-format="yy-mm-dd"
           show-icon
           show-button-bar
         />
-        <Calendar
+        <DatePicker
           v-model="filterTo"
           :placeholder="t('property.filter.to')"
           date-format="yy-mm-dd"

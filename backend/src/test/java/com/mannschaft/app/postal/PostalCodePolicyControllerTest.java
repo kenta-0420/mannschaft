@@ -24,8 +24,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@link PostalCodePolicyController} MockMvc 結合テスト（F02.10 §391）。
  *
  * <p>AC-10 / AC-11: GET /api/v1/postal-code/policies が 200 で JP を含む配列を返し、
- * 未認証でも到達できる（permitAll）ことを検証する。実レジストリ（{@link PostalCodePolicyRegistry}）を
- * Import して単一の真実源の内容をそのまま返すことを確認する。</p>
+ * 実レジストリ（{@link PostalCodePolicyRegistry}）を Import して、単一の真実源の内容を
+ * そのまま返すことを確認する。permitAll の動作は {@code SecurityConfigAuthorizationTest} で検証する。</p>
  */
 @WebMvcTest(PostalCodePolicyController.class)
 @Import(PostalCodePolicyRegistry.class)
@@ -65,12 +65,4 @@ class PostalCodePolicyControllerTest {
                 .andExpect(jsonPath("$.data[?(@.countryCode == 'JP')].example").value("123-4567"));
     }
 
-    @Test
-    @DisplayName("未認証でも到達できる（permitAll・addFilters=false 確認）")
-    void getPolicies_anonymousCanAccess() throws Exception {
-        SecurityContextHolder.clearContext();
-
-        mockMvc.perform(get("/api/v1/postal-code/policies"))
-                .andExpect(status().isOk());
-    }
 }

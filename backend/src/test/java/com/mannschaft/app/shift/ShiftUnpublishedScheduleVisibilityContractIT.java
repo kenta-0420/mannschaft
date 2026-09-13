@@ -590,30 +590,30 @@ class ShiftUnpublishedScheduleVisibilityContractIT extends AbstractMySqlIntegrat
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // AC-12: 既存の認可 403 契約は 1 件も変わらない
+    // AC-12: 一覧は403を維持し、未公開の単体参照は404で存在を秘匿する
     // ═════════════════════════════════════════════════════════════════════
 
     @Nested
-    @DisplayName("AC-12: 認可403契約はステータスに依らず不変（二層順序の番人）")
+    @DisplayName("AC-12: 一覧認可403を維持し、未公開の単体参照は404")
     class Ac12AuthorizationUnchanged {
 
-        @ParameterizedTest(name = "SUPPORTER は {0} で403")
+        @ParameterizedTest(name = "SUPPORTER の {0} は一覧403・秘匿対象の単体404")
         @EnumSource(Fixture.class)
-        @DisplayName("SUPPORTER は全ステータスで403（404 に化けない）")
+        @DisplayName("SUPPORTER は一覧403、未公開の単体参照は404")
         void サポーターは常に403(Fixture fixture) throws Exception {
             assertAlwaysForbidden(supporterId, fixture);
         }
 
-        @ParameterizedTest(name = "別チームADMIN は {0} で403")
+        @ParameterizedTest(name = "別チームADMIN の {0} は一覧403・秘匿対象の単体404")
         @EnumSource(Fixture.class)
-        @DisplayName("別 scope の ADMIN は全ステータスで403（403/404 の差で存在を観測させない）")
+        @DisplayName("別 scope の ADMIN は一覧403、未公開の単体参照は404")
         void 別チームADMINは常に403(Fixture fixture) throws Exception {
             assertAlwaysForbidden(otherTeamAdminId, fixture);
         }
 
-        @ParameterizedTest(name = "無所属は {0} で403")
+        @ParameterizedTest(name = "無所属の {0} は一覧403・秘匿対象の単体404")
         @EnumSource(Fixture.class)
-        @DisplayName("無所属ユーザーは全ステータスで403")
+        @DisplayName("無所属ユーザーは一覧403、未公開の単体参照は404")
         void 無所属は常に403(Fixture fixture) throws Exception {
             assertAlwaysForbidden(outsiderId, fixture);
         }
@@ -643,9 +643,13 @@ class ShiftUnpublishedScheduleVisibilityContractIT extends AbstractMySqlIntegrat
                 .andExpect(jsonPath("$.data[0].assignmentMasked").value(false));
     }
 
-    /** 認可で弾かれる側が、可視性 404 に先んじて常に 403 を受け取ることを固定する。 */
+    /**
+     * 一覧の認可は 403 を維持しつつ、単体参照では未公開の存在を 404 で秘匿する。
+     * 公開済みは存在自体が秘匿対象でないため、従来どおり 403 を返す。
+     */
     private void assertAlwaysForbidden(Long userId, Fixture fixture) throws Exception {
         Long scheduleId = scheduleIds.get(fixture);
+        int detailStatus = fixture.visibility == Visibility.HIDDEN ? 404 : 403;
 
         setAuth(userId);
         mockMvc.perform(get(SCHEDULES_PATH).param("teamId", teamId.toString()))
@@ -653,11 +657,11 @@ class ShiftUnpublishedScheduleVisibilityContractIT extends AbstractMySqlIntegrat
 
         setAuth(userId);
         mockMvc.perform(get(SCHEDULES_PATH + "/{id}", scheduleId))
-                .andExpect(status().isForbidden());
+                .andExpect(status().is(detailStatus));
 
         setAuth(userId);
         mockMvc.perform(get(SCHEDULES_PATH + "/{id}/slots", scheduleId))
-                .andExpect(status().isForbidden());
+                .andExpect(status().is(detailStatus));
     }
 
     private static String title(Fixture fixture) {

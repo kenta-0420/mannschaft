@@ -98,10 +98,11 @@ class ScheduleWriteScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        teamASlug = "wb6-team-a-" + System.nanoTime();
-        teamBSlug = "wb6-team-b-" + System.nanoTime();
-        orgASlug = "wb6-org-a-" + System.nanoTime();
-        orgBSlug = "wb6-org-b-" + System.nanoTime();
+        String suffix = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
+        teamASlug = "wb6-team-a-" + suffix;
+        teamBSlug = "wb6-team-b-" + suffix;
+        orgASlug = "wb6-org-a-" + suffix;
+        orgBSlug = "wb6-org-b-" + suffix;
 
         teamAId = insertTeam("WAVE3B6 チームA", teamASlug);
         teamBId = insertTeam("WAVE3B6 チームB", teamBSlug);

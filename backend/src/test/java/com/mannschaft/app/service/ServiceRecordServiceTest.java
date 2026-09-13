@@ -4,10 +4,17 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.service.dto.BulkCreateServiceRecordRequest;
 import com.mannschaft.app.service.dto.CreateServiceRecordRequest;
+import com.mannschaft.app.service.dto.RegisterAttachmentRequest;
 import com.mannschaft.app.service.dto.ServiceRecordResponse;
 import com.mannschaft.app.service.dto.UploadUrlRequest;
+import com.mannschaft.app.service.entity.ServiceRecordAttachmentEntity;
 import com.mannschaft.app.service.entity.ServiceRecordEntity;
 import com.mannschaft.app.service.repository.ServiceRecordAttachmentRepository;
 import com.mannschaft.app.service.repository.ServiceRecordFieldRepository;
@@ -24,14 +31,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -49,6 +59,7 @@ class ServiceRecordServiceTest {
     @Mock private ObjectMapper objectMapper;
     @Mock private NameResolverService nameResolverService;
     @Mock private StorageService storageService;
+    @Mock private StorageAclService storageAclService;
     @Mock private AccessControlService accessControlService;
 
     @InjectMocks
@@ -147,6 +158,28 @@ class ServiceRecordServiceTest {
     @DisplayName("generateUploadUrl")
     class GenerateUploadUrl {
         @Test
+        @DisplayName("正常系: 検証済み MIME を署名URLとACL台帳へ同じ値で渡す")
+        void 検証済みMIMEを署名とACLで統一する() {
+            ServiceRecordEntity entity = createRecordEntity(ServiceRecordStatus.DRAFT);
+            given(recordRepository.findByIdAndTeamId(RECORD_ID, TEAM_ID)).willReturn(Optional.of(entity));
+            given(attachmentRepository.countByServiceRecordId(RECORD_ID)).willReturn(0L);
+            given(storageService.generateUploadUrl(any(), any(), any(Duration.class)))
+                    .willReturn(new PresignedUploadResult("https://signed", "service-key", 600L));
+            UploadUrlRequest request = new UploadUrlRequest();
+            request.setFileName("evidence.pdf");
+            request.setContentType("application/pdf");
+            request.setFileSize(1_000L);
+
+            var result = service.generateUploadUrl(TEAM_ID, RECORD_ID, USER_ID, request);
+
+            verify(storageService).generateUploadUrl(any(), org.mockito.ArgumentMatchers.eq("application/pdf"),
+                    any(Duration.class));
+            verify(storageAclService).registerPending(eq(result.getFileKey()), eq(USER_ID),
+                    eq(StorageAclScope.team(TEAM_ID)), eq("application/pdf"), any(Duration.class),
+                    eq(new StorageAclContentReference("SERVICE_RECORD", RECORD_ID.toString())));
+        }
+
+        @Test
         @DisplayName("異常系: 許可されていないコンテンツタイプでSERVICE_RECORD_017例外")
         void アップロード_不正タイプ_例外() {
             ServiceRecordEntity entity = createRecordEntity(ServiceRecordStatus.DRAFT);
@@ -174,6 +207,43 @@ class ServiceRecordServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("SERVICE_RECORD_016"));
+        }
+    }
+
+    @Nested
+    @DisplayName("registerAttachment")
+    class RegisterAttachment {
+        @Test
+        @DisplayName("正常系: owner・scope・親参照・添付束縛を一致させてACLをclaimする")
+        void ACLのowner_scope_親参照_添付束縛を一致させてclaimする() {
+            // given
+            ServiceRecordEntity record = createRecordEntity(ServiceRecordStatus.DRAFT);
+            ServiceRecordAttachmentEntity saved = ServiceRecordAttachmentEntity.builder()
+                    .serviceRecordId(RECORD_ID)
+                    .fileKey("service-records/1/10/evidence.pdf")
+                    .fileName("evidence.pdf")
+                    .contentType("application/pdf")
+                    .fileSize(1_000L)
+                    .build();
+            Long attachmentId = 20L;
+            ReflectionTestUtils.setField(saved, "id", attachmentId);
+            RegisterAttachmentRequest request = new RegisterAttachmentRequest();
+            request.setFileKey(saved.getFileKey());
+            request.setFileName(saved.getFileName());
+            request.setContentType(saved.getContentType());
+            request.setFileSize(saved.getFileSize());
+            given(recordRepository.findByIdAndTeamId(RECORD_ID, TEAM_ID)).willReturn(Optional.of(record));
+            given(attachmentRepository.countByServiceRecordId(RECORD_ID)).willReturn(0L);
+            given(attachmentRepository.save(any(ServiceRecordAttachmentEntity.class))).willReturn(saved);
+
+            // when
+            service.registerAttachment(TEAM_ID, RECORD_ID, USER_ID, request);
+
+            // then
+            verify(storageAclService).claimPending(eq(saved.getFileKey()), eq(USER_ID),
+                    eq(StorageAclScope.team(TEAM_ID)),
+                    eq(new StorageAclContentReference("SERVICE_RECORD", RECORD_ID.toString())),
+                    eq(new StorageAclAttachmentBinding("SERVICE_RECORD_ATTACHMENT", attachmentId.toString())));
         }
     }
 }

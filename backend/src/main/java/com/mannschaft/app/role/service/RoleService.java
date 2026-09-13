@@ -456,6 +456,21 @@ public class RoleService {
     }
 
     /**
+     * 指定組織で指定 Permission を保有するユーザー ID 一覧を返す（CMP-260910-1555）。
+     *
+     * <p>{@link #getAdminUserIdsByOrganizationId} と同じ趣旨の D-5 準拠 Service 経路。
+     * {@code shiftbudget} ドメインの通知配送リスナーが「予算管理者（BUDGET_ADMIN 保有者）」を
+     * 解決するために使う。プリミティブ（{@code List<Long>}）のみを返し Entity を漏らさない。</p>
+     *
+     * @param organizationId 対象組織 ID
+     * @param permissionName Permission 名（例: {@code BUDGET_ADMIN}）
+     * @return 当該 Permission を保有するユーザー ID 一覧
+     */
+    public List<Long> getUserIdsByOrganizationIdAndPermissionName(Long organizationId, String permissionName) {
+        return userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(organizationId, permissionName);
+    }
+
+    /**
      * 指定チームの ADMIN/DEPUTY_ADMIN ユーザー ID 一覧を返す（柱③-A・CMP-260901-1538）。
      *
      * <p>{@link #getAdminUserIdsByOrganizationId} と同じ趣旨（D-5 ArchUnit 準拠）。既存の

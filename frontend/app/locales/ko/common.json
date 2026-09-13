@@ -2389,5 +2389,52 @@
       "approveSuccess": "参加申請を承認しました",
       "rejectSuccess": "参加申請を却下しました"
     }
+  },
+  "myPage": {
+    "pageTitle": "마이페이지",
+    "cards": {
+      "onboarding": {
+        "label": "온보딩",
+        "description": "참여한 팀·조직의 필요 절차"
+      },
+      "shift": {
+        "label": "내 시프트",
+        "description": "내 시프트 확인"
+      },
+      "reservations": {
+        "label": "내 예약",
+        "description": "내 예약 목록"
+      },
+      "charts": {
+        "label": "내 차트",
+        "description": "활동 기록·메모 확인"
+      },
+      "performance": {
+        "label": "내 퍼포먼스",
+        "description": "내 성적·실적"
+      },
+      "projects": {
+        "label": "내 프로젝트",
+        "description": "개인 프로젝트 관리"
+      },
+      "serviceRecords": {
+        "label": "내 서비스 이력",
+        "description": "받은 서비스 이력"
+      },
+      "noShows": {
+        "label": "취소 이력",
+        "description": "노쇼·페널티 이력"
+      },
+      "resume": {
+        "label": "이력서·경력기술서",
+        "description": "이력서·경력기술서 작성 및 출력"
+      },
+      "receipts": {
+        "description": "결제 영수증 확인 및 다운로드"
+      },
+      "tournamentFees": {
+        "description": "대회 참가비 확인 및 결제"
+      }
+    }
   }
 }
