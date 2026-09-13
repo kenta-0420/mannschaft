@@ -22,6 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class StorageAclRepositoryIntegrationTest extends AbstractMySqlIntegrationTest {
 
+    private static final StorageAclContentReference PARENT =
+            new StorageAclContentReference("WORKFLOW_REQUEST", "17");
+
     @Autowired
     private StorageAclRepository repository;
 
@@ -66,6 +69,7 @@ class StorageAclRepositoryIntegrationTest extends AbstractMySqlIntegrationTest {
 
         Integer affected = requiresNewTransaction().execute(status -> repository.claimPending(
                 fileKey, 9001L, StorageAclScopeType.TEAM.name(), "9002",
+                PARENT.type(), PARENT.key(),
                 "ATTACHMENT", "101"));
 
         assertThat(affected).isZero();
@@ -79,6 +83,7 @@ class StorageAclRepositoryIntegrationTest extends AbstractMySqlIntegrationTest {
 
         tx.executeWithoutResult(status -> {
             service.claimPending(fileKey, 9001L, StorageAclScope.team(9002L),
+                    PARENT,
                     new StorageAclAttachmentBinding("ATTACHMENT", "101"));
             status.setRollbackOnly();
         });
@@ -88,13 +93,31 @@ class StorageAclRepositoryIntegrationTest extends AbstractMySqlIntegrationTest {
         assertThat(actual).isEqualTo(StorageAclStatus.PENDING);
     }
 
+    @Test
+    void wrongParentForSameOwnerAndScopeDoesNotClaimInSql() {
+        String fileKey = "integration/storage-acl-parent-" + System.nanoTime();
+        repository.saveAndFlush(pending(fileKey));
+        StorageAclContentReference wrongParent = new StorageAclContentReference("WORKFLOW_REQUEST", "18");
+
+        Integer affected = requiresNewTransaction().execute(status -> repository.claimPending(
+                fileKey, 9001L, StorageAclScopeType.TEAM.name(), "9002",
+                wrongParent.type(), wrongParent.key(), "ATTACHMENT", "101"));
+
+        StorageAclEntity actual = requiresNewTransaction().execute(status -> repository.findByFileKey(fileKey)
+                .orElseThrow());
+        assertThat(affected).isZero();
+        assertThat(actual.getStatus()).isEqualTo(StorageAclStatus.PENDING);
+        assertThat(actual.getAttachmentBindingType()).isNull();
+        assertThat(actual.getAttachmentBindingKey()).isNull();
+    }
+
     private boolean claimAfterStart(CountDownLatch ready, CountDownLatch start, String fileKey, String key) {
         try {
             ready.countDown();
             if (!start.await(5, TimeUnit.SECONDS)) {
                 throw new AssertionError("競合試験の開始待機がタイムアウトしました");
             }
-            service.claimPending(fileKey, 9001L, StorageAclScope.team(9002L),
+            service.claimPending(fileKey, 9001L, StorageAclScope.team(9002L), PARENT,
                     new StorageAclAttachmentBinding("ATTACHMENT", key));
             return true;
         } catch (BusinessException expected) {
@@ -111,7 +134,7 @@ class StorageAclRepositoryIntegrationTest extends AbstractMySqlIntegrationTest {
     private StorageAclEntity pending(String fileKey) {
         return StorageAclEntity.builder().fileKey(fileKey).ownerId(9001L).scopeType(StorageAclScopeType.TEAM)
                 .scopeKey("9002").aclMode(StorageAclMode.CONTENT_BOUND).contentType("image/png")
-                .parentContentReferenceType("WORKFLOW_REQUEST").parentContentReferenceKey("42")
+                .parentContentReferenceType(PARENT.type()).parentContentReferenceKey(PARENT.key())
                 .status(StorageAclStatus.PENDING).expiresAt(Instant.now(Clock.systemUTC()).plusSeconds(900))
                 .build();
     }

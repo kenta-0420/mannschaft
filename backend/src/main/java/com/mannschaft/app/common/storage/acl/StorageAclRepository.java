@@ -27,6 +27,8 @@ public interface StorageAclRepository extends JpaRepository<StorageAclEntity, UU
                AND scope_type = :scopeType
                AND scope_key = :scopeKey
                AND acl_mode = 'CONTENT_BOUND'
+               AND parent_content_reference_type = :parentType
+               AND parent_content_reference_key = :parentKey
                AND status = 'PENDING'
                AND expires_at > UTC_TIMESTAMP()
                AND parent_content_reference_type IS NOT NULL
@@ -38,6 +40,8 @@ public interface StorageAclRepository extends JpaRepository<StorageAclEntity, UU
                      @Param("ownerId") Long ownerId,
                      @Param("scopeType") String scopeType,
                      @Param("scopeKey") String scopeKey,
+                     @Param("parentType") String parentType,
+                     @Param("parentKey") String parentKey,
                      @Param("bindingType") String bindingType,
                      @Param("bindingKey") String bindingKey);
 }
