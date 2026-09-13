@@ -6,7 +6,9 @@ import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignRequest;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignResponse;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentRegisterRequest;
@@ -27,6 +29,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,6 +66,9 @@ class WorkflowRequestAttachmentServiceTest {
     @Mock
     private StorageAclService storageAclService;
 
+    @Mock
+    private StorageAccessService storageAccessService;
+
     @InjectMocks
     private WorkflowRequestAttachmentService attachmentService;
 
@@ -77,6 +84,45 @@ class WorkflowRequestAttachmentServiceTest {
                 .templateId(1L).scopeType("TEAM").scopeId(1L).title("テスト申請")
                 .requestedBy(USER_ID).build();
         ReflectionTestUtils.setField(requestEntity, "id", REQUEST_ID);
+    }
+
+    @Nested
+    @DisplayName("listAttachments")
+    class ListAttachments {
+
+        @Test
+        @DisplayName("DB entity由来のACL tupleに一致する添付だけ返す")
+        void ACL不一致を一覧から省略する() {
+            WorkflowRequestAttachmentEntity allowed = WorkflowRequestAttachmentEntity.builder()
+                    .requestId(REQUEST_ID).fileKey("workflow/allowed")
+                    .originalFilename("allowed.pdf").fileSize(10L).uploadedBy(USER_ID).build();
+            WorkflowRequestAttachmentEntity denied = WorkflowRequestAttachmentEntity.builder()
+                    .requestId(REQUEST_ID).fileKey("workflow/denied")
+                    .originalFilename("denied.pdf").fileSize(20L).uploadedBy(USER_ID).build();
+            ReflectionTestUtils.setField(allowed, "id", 501L);
+            ReflectionTestUtils.setField(denied, "id", 502L);
+            WorkflowAttachmentResponse response = new WorkflowAttachmentResponse(
+                    501L, REQUEST_ID, allowed.getFileKey(), "allowed.pdf", 10L, USER_ID, null);
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(requestEntity));
+            given(attachmentRepository.findByRequestIdOrderByCreatedAtAsc(REQUEST_ID))
+                    .willReturn(List.of(allowed, denied));
+            given(storageAccessService.generateDownloadUrlsForList(any(), any()))
+                    .willReturn(Map.of(allowed.getFileKey(), "https://dl"));
+            given(workflowMapper.toAttachmentResponseList(List.of(allowed))).willReturn(List.of(response));
+
+            assertThat(attachmentService.listAttachments(REQUEST_ID, USER_ID))
+                    .containsExactly(response);
+            verify(storageAccessService).generateDownloadUrlsForList(eq(List.of(
+                    new StorageAclDownloadRequest(
+                            allowed.getFileKey(), StorageAclScope.team(1L),
+                            new StorageAclContentReference("WORKFLOW_REQUEST", REQUEST_ID.toString()),
+                            new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", "501")),
+                    new StorageAclDownloadRequest(
+                            denied.getFileKey(), StorageAclScope.team(1L),
+                            new StorageAclContentReference("WORKFLOW_REQUEST", REQUEST_ID.toString()),
+                            new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", "502")))),
+                    any(Duration.class));
+        }
     }
 
     @Nested

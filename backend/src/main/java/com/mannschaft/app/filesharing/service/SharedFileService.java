@@ -6,7 +6,9 @@ import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.filesharing.FileScopeType;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
@@ -26,12 +28,16 @@ import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -73,6 +79,7 @@ public class SharedFileService {
      */
     private final FolderScopeAccessGuard folderScopeAccessGuard;
     private final StorageAclService storageAclService;
+    private final StorageAccessService storageAccessService;
 
     /**
      * ファイルアップロード用の Presigned PUT URL を発行する。
@@ -153,8 +160,8 @@ public class SharedFileService {
         //    認可が通らなければここで例外が飛び、URL は一切発行されない（漏洩防止・DL 抑止）。
         folderQueryService.authorizeDownload(fileId, actorId);
 
-        // 3. R2 Presigned GET URL 発行
-        String downloadUrl = r2StorageService.generateDownloadUrl(file.getFileKey(), PRESIGN_DOWNLOAD_TTL);
+        // 3. 認可済みファイルと現行バージョンから復元した ACL タプルを照合して URL を発行する。
+        String downloadUrl = generateDownloadUrl(file);
 
         log.info("ファイル共有 download-url 発行: fileId={}, actorId={}, fileKey={}",
                 fileId, actorId, file.getFileKey());
@@ -189,7 +196,8 @@ public class SharedFileService {
         } else {
             files = fileRepository.findVisibleByFolderIdAndLevels(folderId, allowedLevels);
         }
-        return fileSharingMapper.toFileResponseList(files);
+        SharedFolderEntity folder = folderService.findFolderOrThrow(folderId);
+        return fileSharingMapper.toFileResponseList(filterFilesWithReadableStorageAcl(files, folder));
     }
 
     /**
@@ -217,7 +225,14 @@ public class SharedFileService {
         } else {
             page = fileRepository.findVisibleByFolderIdAndLevels(folderId, allowedLevels, pageable);
         }
-        return page.map(fileSharingMapper::toFileResponse);
+        if (page.isEmpty()) {
+            return page.map(fileSharingMapper::toFileResponse);
+        }
+        SharedFolderEntity folder = folderService.findFolderOrThrow(folderId);
+        List<FileResponse> content = filterFilesWithReadableStorageAcl(page.getContent(), folder).stream()
+                .map(fileSharingMapper::toFileResponse)
+                .toList();
+        return new PageImpl<>(content, pageable, page.getTotalElements());
     }
 
     /**
@@ -252,6 +267,7 @@ public class SharedFileService {
      */
     public FileResponse getFileForSharedLink(Long fileId) {
         SharedFileEntity entity = findFileOrThrow(fileId);
+        resolveDownloadRequest(entity);
         return fileSharingMapper.toFileResponse(entity);
     }
 
@@ -271,7 +287,7 @@ public class SharedFileService {
         SharedFileEntity file = findFileOrThrow(fileId);
         // C: DL 禁止フラグ（フォルダ OR ファイル）。公開リンクでも C は貫通防御（C 優先の AND 評価）。
         folderQueryService.checkDownloadDisabledForSharedLink(fileId);
-        String downloadUrl = r2StorageService.generateDownloadUrl(file.getFileKey(), PRESIGN_DOWNLOAD_TTL);
+        String downloadUrl = generateDownloadUrl(file);
         log.info("ファイル共有 公開リンク download-url 発行: fileId={}, fileKey={}", fileId, file.getFileKey());
         return new SharedFileDownloadUrlResponse(downloadUrl, PRESIGN_DOWNLOAD_TTL.toSeconds());
     }
@@ -309,11 +325,6 @@ public class SharedFileService {
                 .build();
 
         SharedFileEntity saved = fileRepository.save(entity);
-        StorageAclScope aclScope = aclScope(folder.getScopeType(), scopeIdOf(folder), userId);
-        storageAclService.claimPending(request.getFileKey(), userId, aclScope,
-                new StorageAclContentReference("SHARED_FOLDER", folder.getId().toString()),
-                new StorageAclAttachmentBinding("SHARED_FILE", saved.getId().toString()));
-
         SharedFileVersionEntity version = SharedFileVersionEntity.builder()
                 .fileId(saved.getId())
                 .versionNumber(1)
@@ -323,7 +334,11 @@ public class SharedFileService {
                 .uploadedBy(userId)
                 .comment("初回アップロード")
                 .build();
-        versionRepository.save(version);
+        SharedFileVersionEntity savedVersion = versionRepository.save(version);
+        StorageAclScope aclScope = aclScope(folder.getScopeType(), scopeIdOf(folder), userId);
+        storageAclService.claimPending(request.getFileKey(), userId, aclScope,
+                new StorageAclContentReference("SHARED_FOLDER", folder.getId().toString()),
+                new StorageAclAttachmentBinding("SHARED_FILE_VERSION", savedVersion.getId().toString()));
 
         // F13 Phase 4-ε: 使用量加算
         quotaService.recordFileUpload(folder, saved.getId(), fileSize, userId);
@@ -349,6 +364,49 @@ public class SharedFileService {
             case PERSONAL -> folder.getUserId();
             case TOURNAMENT, TOURNAMENT_DIVISION -> folder.getScopeRefId();
         };
+    }
+
+    private String generateDownloadUrl(SharedFileEntity file) {
+        StorageAclDownloadRequest request = resolveDownloadRequest(file);
+        return storageAccessService.generateDownloadUrl(
+                request.fileKey(), request.scope(), request.parentContentReference(),
+                request.attachmentBinding(), PRESIGN_DOWNLOAD_TTL);
+    }
+
+    private List<SharedFileEntity> filterFilesWithReadableStorageAcl(
+            List<SharedFileEntity> files, SharedFolderEntity folder) {
+        if (files.isEmpty()) {
+            return files;
+        }
+        List<StorageAclDownloadRequest> requests = files.stream()
+                .map(file -> resolveDownloadRequest(file, folder))
+                .flatMap(Optional::stream)
+                .toList();
+        Map<String, String> downloadUrls = storageAccessService.generateDownloadUrlsForList(
+                requests, PRESIGN_DOWNLOAD_TTL);
+        return files.stream()
+                .filter(file -> downloadUrls.containsKey(file.getFileKey()))
+                .toList();
+    }
+
+    private StorageAclDownloadRequest resolveDownloadRequest(SharedFileEntity file) {
+        SharedFolderEntity folder = folderService.findFolderOrThrow(file.getFolderId());
+        return resolveDownloadRequest(file, folder)
+                .orElseThrow(() -> new BusinessException(FileSharingErrorCode.FILE_NOT_FOUND));
+    }
+
+    private Optional<StorageAclDownloadRequest> resolveDownloadRequest(
+            SharedFileEntity file, SharedFolderEntity folder) {
+        if (!Objects.equals(file.getFolderId(), folder.getId())) {
+            return Optional.empty();
+        }
+        return versionRepository.findByFileIdAndVersionNumber(file.getId(), file.getCurrentVersion())
+                .filter(version -> Objects.equals(file.getFileKey(), version.getFileKey()))
+                .map(version -> new StorageAclDownloadRequest(
+                        file.getFileKey(),
+                        aclScope(folder.getScopeType(), scopeIdOf(folder), folder.getUserId()),
+                        new StorageAclContentReference("SHARED_FOLDER", folder.getId().toString()),
+                        new StorageAclAttachmentBinding("SHARED_FILE_VERSION", version.getId().toString())));
     }
 
     /**

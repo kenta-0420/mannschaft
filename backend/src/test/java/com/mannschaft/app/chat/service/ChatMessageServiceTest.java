@@ -106,7 +106,7 @@ class ChatMessageServiceTest {
     @Mock
     private ChatChannelAccessGuard channelAccessGuard;
 
-    /** 添付キーからチャンネルを解決する経路（{@code checkAttachmentDownloadAccess}）で使用する。 */
+    /** 添付キーからチャンネルを解決する経路（{@code resolveAttachmentDownloadRequest}）で使用する。 */
     @Mock
     private ChatChannelRepository channelRepository;
 

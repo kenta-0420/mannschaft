@@ -18,6 +18,8 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -91,6 +93,9 @@ class CirculationServicePhase11Test {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock private StorageAccessService storageAccessService;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
+
     @InjectMocks
     private CirculationService circulationService;
 
@@ -103,6 +108,15 @@ class CirculationServicePhase11Test {
     @BeforeEach
     void injectOptionalFields() {
         ReflectionTestUtils.setField(circulationService, "auditLogService", auditLogService);
+        org.mockito.Mockito.lenient().when(accessControlService.isMember(anyLong(), anyLong(), anyString())).thenReturn(true);
+        org.mockito.Mockito.lenient().doNothing().when(accessControlService).checkMembership(
+                anyLong(), anyLong(), anyString());
+        org.mockito.Mockito.lenient().doNothing().when(accessControlService).checkMembershipOrDescendant(
+                anyLong(), anyLong(), anyString(), org.mockito.ArgumentMatchers.anyBoolean());
+        org.mockito.Mockito.lenient().doNothing().when(contentVisibilityChecker).assertCanView(
+                any(), anyLong(), any());
+        org.mockito.Mockito.lenient().when(storageAccessService.generateDownloadUrlsForList(any(), any()))
+                .thenReturn(java.util.Map.of());
     }
 
     private static final Long DOCUMENT_ID = 100L;

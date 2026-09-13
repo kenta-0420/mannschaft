@@ -17,6 +17,9 @@ import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.UserRepository.MemberSummary;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -63,6 +66,10 @@ class CirculationServiceAdditionalTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock private StorageAccessService storageAccessService;
+    @Mock private AccessControlService accessControlService;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
+
     /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
     @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
     @Mock private MessageSource messageSource;
@@ -84,6 +91,17 @@ class CirculationServiceAdditionalTest {
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.any()))
                 .thenAnswer(inv -> inv.getArgument(2));
+        org.mockito.Mockito.lenient().when(accessControlService.isMember(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(true);
+        org.mockito.Mockito.lenient().doNothing().when(accessControlService).checkMembership(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
+        org.mockito.Mockito.lenient().doNothing().when(accessControlService).checkMembershipOrDescendant(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyBoolean());
+        org.mockito.Mockito.lenient().doNothing().when(contentVisibilityChecker).assertCanView(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.lenient().when(storageAccessService.generateDownloadUrlsForList(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(java.util.Map.of());
     }
 
     private static final Long DOCUMENT_ID = 100L;
