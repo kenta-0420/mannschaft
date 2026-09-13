@@ -8,7 +8,7 @@ describe('Timeline VideoPlayer', () => {
     const wrapper = await mountSuspended(VideoPlayer, {
       props: {
         sourceUrl: signedUrl,
-        processingStatus: 'COMPLETED',
+        processingStatus: 'READY',
         mimeType: 'video/mp4',
       },
     })

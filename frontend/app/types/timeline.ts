@@ -76,7 +76,7 @@ export interface TimelineAttachmentFile {
 }
 
 /**
- * 画像添付。url/thumbnailUrl はBEが MediaUrlResolver で解決した署名付き表示URL（issue #2424）。
+ * 画像添付。url/thumbnailUrl はBEが StorageAccessService でACL照合後に解決した署名付き表示URL。
  * DBには生キーしか無いためBEが署名して返す（FEはR2を署名できない）。画像は別サムネイルを
  * 持たないため thumbnailUrl は url と同一値。
  */
