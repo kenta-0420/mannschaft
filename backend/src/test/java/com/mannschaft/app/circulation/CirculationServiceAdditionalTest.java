@@ -31,6 +31,8 @@ import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.Optional;
@@ -83,6 +85,8 @@ class CirculationServiceAdditionalTest {
      */
     @org.junit.jupiter.api.BeforeEach
     void stubI18nMessageSource() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
         org.mockito.Mockito.lenient().when(userLocaleCache.getLocales(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(java.util.Map.of());
         org.mockito.Mockito.lenient().when(messageSource.getMessage(
@@ -102,6 +106,11 @@ class CirculationServiceAdditionalTest {
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any());
         org.mockito.Mockito.lenient().when(storageAccessService.generateDownloadUrlsForList(
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(java.util.Map.of());
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     private static final Long DOCUMENT_ID = 100L;
@@ -407,13 +416,17 @@ class CirculationServiceAdditionalTest {
         @DisplayName("正常系: 添付ファイル一覧が返却される")
         void 添付ファイル一覧_正常() {
             CirculationAttachmentEntity entity = CirculationAttachmentEntity.builder()
+                    .id(ATTACHMENT_ID)
                     .documentId(DOCUMENT_ID).fileKey("k").originalFilename("f.pdf")
                     .fileSize(100L).mimeType("application/pdf").build();
             AttachmentResponse response = new AttachmentResponse(ATTACHMENT_ID, DOCUMENT_ID,
                     "k", "f.pdf", 100L, "application/pdf", null);
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(createDraft()));
             given(attachmentRepository.findByDocumentIdOrderByCreatedAtAsc(DOCUMENT_ID))
                     .willReturn(List.of(entity));
-            given(circulationMapper.toAttachmentResponseList(any())).willReturn(List.of(response));
+            given(storageAccessService.generateDownloadUrlsForList(any(), any()))
+                    .willReturn(java.util.Map.of("k", "https://storage.example/k"));
+            given(circulationMapper.toAttachmentResponse(entity)).willReturn(response);
 
             List<AttachmentResponse> result = service.listAttachments(DOCUMENT_ID);
 

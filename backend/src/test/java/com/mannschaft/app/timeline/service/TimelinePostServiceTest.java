@@ -1731,7 +1731,6 @@ class TimelinePostServiceTest {
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(attachments);
-            given(timelineMapper.toAttachmentResponseList(attachments)).willReturn(attachmentResponses);
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
 
             // when
@@ -1770,7 +1769,6 @@ class TimelinePostServiceTest {
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(List.of());
-            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
 
             // DB は createdAt 昇順・先頭5件（id 11〜15）を返す。id=16 の6件目は LIMIT 5 で含まれない。
@@ -1847,7 +1845,6 @@ class TimelinePostServiceTest {
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID)).willReturn(List.of());
-            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
             given(postRepository.findRepliesByParentId(eq(POST_ID), any())).willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
@@ -1897,7 +1894,6 @@ class TimelinePostServiceTest {
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID)).willReturn(List.of());
-            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
             given(postRepository.findRepliesByParentId(eq(POST_ID), any())).willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
@@ -2707,8 +2703,6 @@ class TimelinePostServiceTest {
                             imageEntity(1L, "timeline/PUBLIC/0/tmp/a.jpg"),
                             imageEntity(2L, "timeline/PUBLIC/0/tmp/b.jpg"),
                             imageEntity(3L, "timeline/PUBLIC/0/tmp/c.jpg")));
-            given(timelineMapper.toAttachmentResponse(any(TimelinePostAttachmentEntity.class)))
-                    .willReturn(rawImageResponse(9L, IMAGE_KEY));
             given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
                     .willReturn(Map.of());
 

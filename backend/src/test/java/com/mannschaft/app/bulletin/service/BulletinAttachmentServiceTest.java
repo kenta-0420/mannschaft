@@ -363,8 +363,6 @@ class BulletinAttachmentServiceTest {
             given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(orgThread()));
             given(attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.REPLY, REPLY_ID))
                     .willReturn(List.of());
-            given(bulletinMapper.toAttachmentResponseList(any())).willReturn(List.of());
-
             service.listReplyAttachments(REPLY_ID, USER_ID);
 
             verify(accessGuard).checkMembership(USER_ID, ScopeType.ORGANIZATION, ORG_ID);
@@ -538,8 +536,6 @@ class BulletinAttachmentServiceTest {
             given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(tournamentThread()));
             given(attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.THREAD, THREAD_ID))
                     .willReturn(List.of());
-            given(bulletinMapper.toAttachmentResponseList(any())).willReturn(List.of());
-
             service.listThreadAttachments(THREAD_ID, USER_ID);
 
             verify(tournamentContactAccessService).checkView(

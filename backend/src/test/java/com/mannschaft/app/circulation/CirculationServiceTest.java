@@ -34,7 +34,10 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -92,6 +95,8 @@ class CirculationServiceTest {
      */
     @org.junit.jupiter.api.BeforeEach
     void stubI18nMessageSource() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
         org.mockito.Mockito.lenient().when(userLocaleCache.getLocales(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(java.util.Map.of());
         org.mockito.Mockito.lenient().when(messageSource.getMessage(
@@ -111,6 +116,11 @@ class CirculationServiceTest {
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any());
         org.mockito.Mockito.lenient().when(storageAccessService.generateDownloadUrlsForList(
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(java.util.Map.of());
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     private static final Long DOCUMENT_ID = 100L;

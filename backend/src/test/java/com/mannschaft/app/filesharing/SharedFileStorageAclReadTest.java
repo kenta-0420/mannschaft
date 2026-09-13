@@ -85,7 +85,10 @@ class SharedFileStorageAclReadTest {
 
         List<FileResponse> result = service.listFiles(FOLDER_ID, USER_ID);
 
-        assertThat(result).containsExactly(response());
+        assertThat(result).singleElement().satisfies(file -> {
+            assertThat(file.getId()).isEqualTo(FILE_ID);
+            assertThat(file.getFileKey()).isEqualTo(FILE_KEY);
+        });
     }
 
     @Test
