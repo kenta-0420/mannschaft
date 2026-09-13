@@ -2,10 +2,9 @@
 # 形式: SQL_LOCAL_TIME_FUNCTION_IN_SQL|<FQCN>|<件数>（クラス単位の件数。メソッド名・出現順は含めない）
 # これは CMP-260909-1446 で設置した「返済すべき借金の台帳」である。新規追記は禁止。
 # JPA を迂回する生SQLは時刻列を Java から束縛せず SQL の UTC_TIMESTAMP() を使うこと。
-# 実件数合計: 40（RawSqlTimeColumnGuardTest.EXPECTED_FROZEN_* と一致させること）
+# 実件数合計: 36（RawSqlTimeColumnGuardTest.EXPECTED_FROZEN_* と一致させること）
 
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.advertising.repository.AdDailyStatsRepository|3
-SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.advertising.service.SpotlightServingService|4
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.auth.repository.UserRepository|1
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.common.duplicatename.DuplicateNameLockEntity|1
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.errorreport.repository.ErrorReportRepository|1
