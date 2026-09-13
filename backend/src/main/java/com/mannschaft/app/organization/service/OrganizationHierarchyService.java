@@ -14,7 +14,6 @@ import com.mannschaft.app.organization.repository.OrganizationParentIdProjection
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
-import com.mannschaft.app.team.repository.TeamOrgIdProjection;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -488,9 +487,8 @@ public class OrganizationHierarchyService {
             return List.of();
         }
         Set<Long> anchors = new HashSet<>();
-        for (TeamOrgIdProjection projection : teamOrgMembershipRepository
-                .findTeamOrgIdProjectionsByTeamIdIn(normalizedTeamIds)) {
-            Long organizationId = projection.getOrganizationId();
+        for (Long organizationId : teamOrgMembershipRepository
+                .findDistinctOrganizationIdsByTeamIdIn(normalizedTeamIds)) {
             if (organizationId != null) {
                 anchors.add(organizationId);
             }
