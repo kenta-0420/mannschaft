@@ -77,6 +77,7 @@ test('CMP-100: 組織DESCENDANTS投稿の個人feed表示・詳細・再読込�
   const outsider: BrowserContext = await browser.newContext()
   let postId: number | undefined
   let scenarioCompleted = false
+  let cleanupFailure: unknown
   const marker = `CMP100-${Date.now()}`
   const baseUrl = required('API_BASE_URL', apiBaseUrl).replace(/\/$/, '')
   const organizationSlug = required('E2E_PARENT_ORG_SLUG', parentOrgSlug)
@@ -190,8 +191,10 @@ test('CMP-100: 組織DESCENDANTS投稿の個人feed表示・詳細・再読込�
       .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
       .map(result => result.reason))
     if (scenarioCompleted && cleanupErrors.length > 0) {
-      throw cleanupErrors[0]
+      cleanupFailure = cleanupErrors[0]
+    } else {
+      cleanupErrors.forEach(error => console.error('CMP-100 cleanup failed', error))
     }
-    cleanupErrors.forEach(error => console.error('CMP-100 cleanup failed', error))
   }
+  if (cleanupFailure) throw cleanupFailure
 })
