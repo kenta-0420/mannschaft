@@ -20,6 +20,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static java.util.Arrays.asList;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
@@ -185,7 +187,7 @@ class OrganizationHierarchyServiceTest {
             given(teamOrgMembershipRepository.findOrganizationIdByTeamIdIn(Set.of(701L)))
                     .willReturn(Map.of(701L, 801L));
 
-            assertThat(service.getAnchorOrgIdsByTeamIds(List.of(null, 701L, 701L)))
+            assertThat(service.getAnchorOrgIdsByTeamIds(asList(null, 701L, 701L)))
                     .containsExactly(801L);
             verify(teamOrgMembershipRepository).findOrganizationIdByTeamIdIn(Set.of(701L));
 
