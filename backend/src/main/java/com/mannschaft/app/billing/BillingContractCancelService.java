@@ -16,6 +16,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.UUID;
 
 /**
@@ -119,12 +120,16 @@ public class BillingContractCancelService {
                 contractId, BillingOperationKind.CANCEL, expectedVersion,
                 BillingOperationActorKind.USER, actorUserId, null));
 
-        LocalDateTime endAt = resolvePeriodEndOrRelease(reservation, contract);
+        // 409 判定に使うのは【変更前】に読んだ期末である（AC-37/37b/37c）。この値で弾く限り、
+        // Stripe の変更系は一度も呼ばれない。
+        LocalDateTime gateEndAt = resolvePeriodEndOrRelease(reservation, contract);
 
-        callStripeOrFail(reservation, () ->
+        Instant appliedPeriodEnd = callStripeOrFail(reservation, () ->
                 billingPaymentGateway.cancelAtPeriodEnd(
                         contract.getPspSubscriptionRef(), reservation.operationId()));
 
+        // 書き込むのは【変更後】に Stripe が返した期末（AC-34 の「Stripe を権威とする」の貫徹）。
+        LocalDateTime endAt = authoritativeEndAt(appliedPeriodEnd, gateEndAt);
         return sagaService.applyAndFinalize(reservation.operationId(),
                 () -> applyCancel(contractId, endAt));
     }
@@ -156,12 +161,14 @@ public class BillingContractCancelService {
                 BillingOperationActorKind.USER, actorUserId, null));
 
         // AC-46: 撤回できるのは期末まで。期末を跨いでいれば（webhook 未達で status が ACTIVE のままでも）409。
-        LocalDateTime endAt = resolvePeriodEndOrRelease(reservation, contract);
+        // ここでも判定に使うのは【変更前】の値であり、弾く場合 Stripe の変更系は呼ばれない。
+        LocalDateTime gateEndAt = resolvePeriodEndOrRelease(reservation, contract);
 
-        callStripeOrFail(reservation, () ->
+        Instant appliedPeriodEnd = callStripeOrFail(reservation, () ->
                 billingPaymentGateway.revertCancelAtPeriodEnd(
                         contract.getPspSubscriptionRef(), reservation.operationId()));
 
+        LocalDateTime endAt = authoritativeEndAt(appliedPeriodEnd, gateEndAt);
         return sagaService.applyAndFinalize(reservation.operationId(),
                 () -> applyResume(contractId, endAt));
     }
@@ -310,16 +317,49 @@ public class BillingContractCancelService {
     // Stripe 変更系の呼び出し（AC-35 / AC-39 / AC-47）
     // ================================================================
 
-    /** Stripe の変更系を呼ぶ。失敗したら operation を FAILED で解放し 502 として上申する（AC-35）。 */
-    private void callStripeOrFail(OperationReservation reservation, Runnable stripeCall) {
+    /**
+     * Stripe の変更系を呼ぶ。失敗したら operation を FAILED で解放し 502 として上申する（AC-35）。
+     *
+     * @return 変更系が返した {@code current_period_end}（返さない実装・未設定なら {@code null}）
+     */
+    private Instant callStripeOrFail(
+            OperationReservation reservation, Supplier<Instant> stripeCall) {
         sagaService.markCallingStripe(reservation.operationId());
         try {
-            stripeCall.run();
+            return stripeCall.get();
         } catch (RuntimeException e) {
             // AC-6 / AC-35: FAILED へ CAS し同一トランザクションで pointer を解放する（利用者はやり直せる）。
             sagaService.failAndRelease(reservation.operationId(), ERROR_STRIPE_CALL_FAILED);
             throw new BusinessException(EntitlementErrorCode.STRIPE_UNAVAILABLE, e);
         }
+    }
+
+    /**
+     * DB と entitlements へ書き込む期末を決める。
+     *
+     * <h2>なぜ変更系の戻り値を優先するか</h2>
+     * <p>期末は事前取得（{@code retrieveSubscription}）と変更系（{@code cancelAtPeriodEnd} /
+     * {@code revertCancelAtPeriodEnd}）の<b>二度</b>観測できる。この二つの間に請求期間の更新が挟まると、
+     * Stripe 側は<b>次期間</b>の末日で解約予約された一方、DB と {@code valid_until} には
+     * <b>前期間</b>の末日が残る。利用者から見れば「○月○日まで使えます」と言われた日付より前に
+     * 使えなくなる（AC-24 が守ろうとしたものが境界で破れる）。</p>
+     *
+     * <p>AC-34 が定めたのは「期末は Stripe が権威」であって「事前取得が権威」ではない。
+     * 変更を適用した後の Stripe の答えが最新の権威なので、それが得られたなら採る。</p>
+     *
+     * <p><b>409 判定には使わない</b>。判定は変更前の値で既に済んでおり、ここで再判定すると
+     * 「Stripe を呼んでから 409 を返す」ことになり、本クラスが構造で担保している順序が壊れる。</p>
+     *
+     * @param appliedPeriodEnd 変更系が返した期末（{@code null} 可）
+     * @param gateEndAt        409 判定に用いた変更前の期末（非 {@code null}）
+     * @return 書き込む期末
+     */
+    private LocalDateTime authoritativeEndAt(Instant appliedPeriodEnd, LocalDateTime gateEndAt) {
+        if (appliedPeriodEnd == null) {
+            // 変更系が期末を返さない実装もある。その場合だけ事前取得の値へ落ちる（AC-37c で非 null 保証済み）。
+            return gateEndAt;
+        }
+        return LocalDateTime.ofInstant(appliedPeriodEnd, clock.getZone());
     }
 
     // ================================================================

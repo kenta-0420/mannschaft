@@ -3,14 +3,11 @@ package com.mannschaft.app.billing.api;
 import com.mannschaft.app.billing.BillingCustomerLinkPort;
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -19,27 +16,22 @@ import java.util.UUID;
  * <p>ポートの Javadoc にある実在欠陥（F20.1 決済フロー由来の契約は {@code billing_customer_id} を
  * 持たない）を、Saga の予約時に一度だけ引き上げることで解消する。</p>
  *
- * <p><b>status と psp_customer_ref の対</b>: V196 の {@code chk_bcu_ref_by_status} は
- * 「{@code ACTIVE} なら ref 非 NULL」「{@code PROVISIONING} なら ref は NULL」を強制する。
- * 契約が ref を持っていれば Stripe Customer は実在するので {@code ACTIVE} で作り、
- * 持っていなければ {@code PROVISIONING} で作る。どちらの分岐も CHECK を満たす。</p>
+ * <p>引き上げ（INSERT）は {@link BillingCustomerProvisioner} の<b>独立トランザクション</b>へ委ねる。
+ * 呼び出し元の tx1 に参加したまま UNIQUE 違反を起こすと tx1 が rollback-only になり、
+ * 例外を捕まえて続行しても commit 時に必ず失敗するためである（詳細は委譲先の Javadoc）。</p>
  */
-@Slf4j
 @Component
 @RequiredArgsConstructor
 class BillingCustomerLinkAdapter implements BillingCustomerLinkPort {
 
-    private static final String STATUS_ACTIVE = "ACTIVE";
-    private static final String STATUS_PROVISIONING = "PROVISIONING";
-
     private final BillingCustomerJpaRepository billingCustomerJpaRepository;
-    private final Clock clock;
+    private final BillingCustomerProvisioner billingCustomerProvisioner;
 
     /**
      * {@inheritDoc}
      *
      * <p>{@code MANDATORY}: 呼び出し元（Saga の tx1）で契約行が {@code FOR UPDATE} 済みであることを
-     * 前提にする。独立 tx にすると、引き上げだけが commit されて予約が巻き戻る組み合わせが生まれる。</p>
+     * 前提にする。読み取りと書き戻しは tx1 に属し、INSERT だけが独立 tx で行われる。</p>
      */
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
@@ -48,40 +40,29 @@ class BillingCustomerLinkAdapter implements BillingCustomerLinkPort {
 
         // uk_bcu_scope は deleted_at を含まない（＝論理削除済みでも UNIQUE を占有する）ため、
         // 存在判定も deleted_at で絞らない。絞ると「見つからないのに INSERT できない」状態になる。
-        UUID existing = billingCustomerJpaRepository.findByScopeKindAndScopeId(scopeKind, scopeId)
-                .map(BillingCustomerEntity::getId)
-                .orElse(null);
+        UUID existing = findByScope(scopeKind, scopeId);
         if (existing != null) {
             return existing;
         }
         try {
-            return provision(scopeKind, scopeId, organizationId, pspCustomerRef);
+            return billingCustomerProvisioner.provision(
+                    scopeKind, scopeId, organizationId, pspCustomerRef);
         } catch (DataIntegrityViolationException e) {
-            // 並行する同一 scope の予約が先に INSERT した。握り潰しではなく
-            // 「先客が居る」という UNIQUE の事実なので、読み直して同じ答えを返す。
-            return billingCustomerJpaRepository.findByScopeKindAndScopeId(scopeKind, scopeId)
-                    .map(BillingCustomerEntity::getId)
-                    .orElseThrow(() -> e);
+            // 並行する同一 scope の予約が先に INSERT して commit した。UNIQUE 違反は
+            // 【独立トランザクションの中】で起きたので呼び出し元の tx1 は生きている。
+            // 勝者は既に commit しているため、読み直せば必ず見える。
+            UUID winner = findByScope(scopeKind, scopeId);
+            if (winner == null) {
+                // UNIQUE 以外の整合性違反だった。事実を隠さずそのまま上げる。
+                throw e;
+            }
+            return winner;
         }
     }
 
-    private UUID provision(
-            EntitlementScopeKind scopeKind, Long scopeId, Long organizationId, String pspCustomerRef) {
-        Instant now = clock.instant();
-        BillingCustomerEntity created = BillingCustomerEntity.builder()
-                .scopeKind(scopeKind)
-                .scopeId(scopeId)
-                .organizationId(organizationId)
-                .pspCustomerRef(pspCustomerRef)
-                .status(pspCustomerRef == null ? STATUS_PROVISIONING : STATUS_ACTIVE)
-                .provisionAttempts(0)
-                .version(0L)
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
-        billingCustomerJpaRepository.saveAndFlush(created);
-        log.info("PR6a: billing_customers を引き上げた（F20.1 決済フロー由来の契約は billing_customer_id を"
-                + "持たないため）: scopeKind={}, scopeId={}", scopeKind, scopeId);
-        return created.getId();
+    private UUID findByScope(EntitlementScopeKind scopeKind, Long scopeId) {
+        return billingCustomerJpaRepository.findByScopeKindAndScopeId(scopeKind, scopeId)
+                .map(BillingCustomerEntity::getId)
+                .orElse(null);
     }
 }
