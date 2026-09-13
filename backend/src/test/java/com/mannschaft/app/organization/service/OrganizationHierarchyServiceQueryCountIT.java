@@ -22,7 +22,7 @@ class OrganizationHierarchyServiceQueryCountIT extends VisibilityCheckerPerforma
     private OrganizationHierarchyService service;
 
     @Test
-    void anchor_and_ancestor_queries_are_bounded_independently_of_start_count() {
+    void 起点数が増えてもアンカーと祖先のクエリ数が増えない() {
         List<Long> startTeamIds = LongStream.rangeClosed(900_001L, 900_016L).boxed().toList();
         List<Long> anchorIds = service.getAnchorOrgIdsByTeamIds(startTeamIds);
         service.getAncestorOrgIdsWithDepth(startTeamIds);
