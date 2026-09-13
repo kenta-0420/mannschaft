@@ -1,4 +1,4 @@
-package com.mannschaft.app.schedule;
+package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;

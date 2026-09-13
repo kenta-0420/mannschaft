@@ -44,7 +44,7 @@ public class BlogMediaCopyService {
 
     /** 呼び出し元は元記事の書込権限を検証し、同一スコープの複製先記事を保存済みであること。 */
     @Transactional
-    public void copyMedia(BlogPostEntity original, BlogPostEntity copy, Long actorId) {
+    void copyMedia(BlogPostEntity original, BlogPostEntity copy, Long actorId) {
         var keys = new LinkedHashSet<>(bodyResolver.extractR2Keys(original.getBody()));
         if (original.getCoverImageUrl() != null && original.getCoverImageUrl().startsWith("blog/")) {
             keys.add(original.getCoverImageUrl());

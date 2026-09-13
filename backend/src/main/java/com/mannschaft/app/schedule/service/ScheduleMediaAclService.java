@@ -32,13 +32,13 @@ public class ScheduleMediaAclService implements MultipartContentTargetResolver {
     private final ContentVisibilityChecker visibilityChecker;
     private final AccessControlService accessControlService;
 
-    public ScheduleEntity requireReadable(Long scheduleId, Long userId) {
+    ScheduleEntity requireReadable(Long scheduleId, Long userId) {
         visibilityChecker.assertCanView(ReferenceType.SCHEDULE, scheduleId, userId);
         return scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new BusinessException(StorageErrorCode.ACL_NOT_FOUND));
     }
 
-    public ScheduleEntity requireUploadable(Long scheduleId, Long userId) {
+    ScheduleEntity requireUploadable(Long scheduleId, Long userId) {
         ScheduleEntity schedule = requireReadable(scheduleId, userId);
         if (schedule.getTeamId() != null) {
             accessControlService.checkMembership(userId, schedule.getTeamId(), "TEAM");
@@ -64,7 +64,7 @@ public class ScheduleMediaAclService implements MultipartContentTargetResolver {
         });
     }
 
-    public static MultipartContentTarget targetOf(ScheduleEntity schedule, ScheduleMediaUploadEntity media) {
+    static MultipartContentTarget targetOf(ScheduleEntity schedule, ScheduleMediaUploadEntity media) {
         if (!Objects.equals(schedule.getId(), media.getScheduleId()) || media.getId() == null) {
             throw new BusinessException(StorageErrorCode.ACL_NOT_FOUND);
         }

@@ -4,7 +4,6 @@ import com.mannschaft.app.cms.entity.BlogMediaUploadEntity;
 import com.mannschaft.app.cms.repository.BlogMediaUploadRepository;
 import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
-import com.mannschaft.app.cms.service.BlogMediaAclService;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -153,7 +152,7 @@ public class BlogBodyMediaResolver {
         List<StorageAclDownloadRequest> requests = registeredMedia.stream()
                 .filter(media -> verifiedKeys.contains(media.getS3Key()))
                 .map(media -> {
-                    var target = BlogMediaAclService.targetOf(media);
+                    var target = BlogMediaAclTarget.from(media);
                     return new StorageAclDownloadRequest(media.getS3Key(), target.scope(),
                             target.parent(), target.binding());
                 }).toList();

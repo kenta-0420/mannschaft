@@ -13,10 +13,6 @@ import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.storage.StorageErrorCode;
 import com.mannschaft.app.common.storage.acl.MultipartContentTarget;
 import com.mannschaft.app.common.storage.acl.MultipartContentTargetResolver;
-import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
-import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
-import com.mannschaft.app.common.storage.acl.StorageAclScope;
-import com.mannschaft.app.common.storage.acl.StorageAclScopeType;
 import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -82,7 +78,7 @@ public class BlogMediaAclService implements MultipartContentTargetResolver {
 
     /** 記事本文のキーを同じスコープの保存台帳へ結び、別記事からの付け替えを拒否する。 */
     @Transactional
-    public void bindBodyMedia(BlogPostEntity post, Long actorId) {
+    void bindBodyMedia(BlogPostEntity post, Long actorId) {
         var keys = bodyMediaResolver.extractR2Keys(post.getBody());
         if (keys.isEmpty()) {
             return;
@@ -102,17 +98,11 @@ public class BlogMediaAclService implements MultipartContentTargetResolver {
         }
     }
 
-    public static MultipartContentTarget targetOf(BlogMediaUploadEntity media) {
-        BlogMediaScope scope = storedScope(media);
-        String id = String.valueOf(media.getId());
-        return new MultipartContentTarget(
-                new StorageAclScope(StorageAclScopeType.valueOf(scope.scopeType().name()),
-                        String.valueOf(scope.scopeId())),
-                new StorageAclContentReference("BLOG_MEDIA_UPLOAD", id),
-                new StorageAclAttachmentBinding("BLOG_MEDIA_UPLOAD", id));
+    static MultipartContentTarget targetOf(BlogMediaUploadEntity media) {
+        return com.mannschaft.app.cms.media.BlogMediaAclTarget.from(media);
     }
 
-    public static BlogMediaScope storedScope(BlogMediaUploadEntity media) {
+    static BlogMediaScope storedScope(BlogMediaUploadEntity media) {
         if (media.getScopeType() == null || media.getScopeId() == null || media.getId() == null) {
             throw new BusinessException(StorageErrorCode.ACL_NOT_FOUND);
         }

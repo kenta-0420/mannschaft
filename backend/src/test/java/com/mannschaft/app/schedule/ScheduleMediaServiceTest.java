@@ -1,5 +1,7 @@
 package com.mannschaft.app.schedule;
 
+import com.mannschaft.app.common.BusinessException;
+
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
@@ -305,9 +307,9 @@ class ScheduleMediaServiceTest {
             // when / then
             assertThatThrownBy(() ->
                     scheduleMediaService.generateUploadUrl(SCHEDULE_ID, UPLOADER_ID, req))
-                    .isInstanceOf(ResponseStatusException.class)
-                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                            .isEqualTo(HttpStatus.NOT_FOUND));
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND));
             then(r2StorageService).should(never()).generateUploadUrl(anyString(), anyString(), any());
             then(scheduleMediaUploadRepository).should(never()).save(any());
         }
@@ -477,9 +479,9 @@ class ScheduleMediaServiceTest {
             // when / then
             assertThatThrownBy(() ->
                     scheduleMediaService.listMedia(SCHEDULE_ID, null, false, 1, 20))
-                    .isInstanceOf(ResponseStatusException.class)
-                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                            .isEqualTo(HttpStatus.NOT_FOUND));
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND));
         }
     }
 
