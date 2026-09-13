@@ -266,29 +266,31 @@ class StorageAclServiceTest {
     void multipartPendingCanBeClaimedOnlyByItsPersonalOwnerScope() {
         StorageAclService service = new StorageAclService(repository, CLOCK);
         StorageAclScope personal = StorageAclScope.personal(7L);
+        StorageAclContentReference parent = new StorageAclContentReference("MULTIPART_UPLOAD", "upload-7");
         StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding("TIMELINE_ATTACHMENT", "22");
         given(repository.claimPending("multipart/key", 7L, personal.type().name(), personal.scopeKey(),
-                binding.type(), binding.key(), NOW_LOCAL)).willReturn(1);
+                parent.type(), parent.key(), binding.type(), binding.key())).willReturn(1);
 
-        service.claimPending("multipart/key", 7L, personal, binding);
+        service.claimPending("multipart/key", 7L, personal, parent, binding);
     }
 
     @Test
     void multipartPendingCannotBeReboundToAnotherScope() {
         StorageAclService service = new StorageAclService(repository, CLOCK);
         StorageAclScope personal = StorageAclScope.personal(7L);
+        StorageAclContentReference parent = new StorageAclContentReference("MULTIPART_UPLOAD", "upload-7");
         StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding("TIMELINE_ATTACHMENT", "22");
-        StorageAclEntity multipartPending = pending("multipart/key", 7L, personal, NOW_LOCAL.plusSeconds(1),
+        StorageAclEntity multipartPending = pending("multipart/key", 7L, personal, NOW.plusSeconds(1),
                 StorageAclStatus.PENDING).toBuilder()
                 .parentContentReferenceType("MULTIPART_UPLOAD")
                 .parentContentReferenceKey("upload-7")
                 .build();
         StorageAclScope differentScope = StorageAclScope.team(3L);
         given(repository.claimPending("multipart/key", 7L, differentScope.type().name(), differentScope.scopeKey(),
-                binding.type(), binding.key(), NOW_LOCAL)).willReturn(0);
+                parent.type(), parent.key(), binding.type(), binding.key())).willReturn(0);
         given(repository.findByFileKey("multipart/key")).willReturn(Optional.of(multipartPending));
 
-        assertThatThrownBy(() -> service.claimPending("multipart/key", 7L, differentScope, binding))
+        assertThatThrownBy(() -> service.claimPending("multipart/key", 7L, differentScope, parent, binding))
                 .isInstanceOf(BusinessException.class)
                 .extracting(exception -> ((BusinessException) exception).getErrorCode())
                 .isEqualTo(StorageErrorCode.ACL_NOT_FOUND);

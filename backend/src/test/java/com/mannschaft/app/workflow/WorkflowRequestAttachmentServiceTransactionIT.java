@@ -87,7 +87,7 @@ class WorkflowRequestAttachmentServiceTransactionIT extends AbstractMySqlIntegra
                         .aclMode(StorageAclMode.CONTENT_BOUND)
                         .contentType("application/pdf")
                         .parentContentReferenceType("WORKFLOW_REQUEST")
-                        .parentContentReferenceKey((workflowRequestId + 1L).toString())
+                        .parentContentReferenceKey(Long.toString(workflowRequestId + 1L))
                         .status(StorageAclStatus.PENDING)
                         .expiresAt(Instant.now(Clock.systemUTC()).plusSeconds(900))
                         .build()));
