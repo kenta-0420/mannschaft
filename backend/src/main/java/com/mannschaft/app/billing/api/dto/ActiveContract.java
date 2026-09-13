@@ -43,6 +43,18 @@ public class ActiveContract {
     @Schema(description = "解約予約を撤回できるか（期末を跨いだら false）")
     private final boolean canResume;
 
+    /**
+     * 楽観ロックの CAS 期待値（{@code billing_contracts.version}）。
+     *
+     * <p>正本 05_billing_center.md:344 の {@code ContractBase} が持つ項目である。解約
+     * （{@code POST …/cancel}）と撤回（{@code DELETE …/cancel}）は本文 {@code {"version": N}} を
+     * <b>必須</b>とし、不一致なら 409 を返す（AC-27 / AC-44）。表示投影がこの値を返さないと
+     * FE は CAS 期待値を得られず、<b>解約も撤回も実行できない</b>（0 を決め打ちで埋めるのは
+     * 他人の更新を踏み潰す対処療法であり採らない）。</p>
+     */
+    @Schema(description = "楽観ロックのCAS期待値。解約・撤回APIの version に渡す", example = "0")
+    private final Long version;
+
     @Schema(description = "解約予約の内容。予約が無ければ null", nullable = true)
     private final ScheduledCancel cancel;
 

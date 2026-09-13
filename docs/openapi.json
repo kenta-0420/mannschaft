@@ -217743,6 +217743,12 @@
             "type": "string",
             "description": "契約状態（ContractStatus の6値: PENDING / ACTIVE / PAST_DUE / CANCELLED / EXPIRED / PENDING_HANDOVER）",
             "example": "ACTIVE"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "楽観ロックのCAS期待値。解約・撤回APIの version に渡す",
+            "example": 0
           }
         }
       },

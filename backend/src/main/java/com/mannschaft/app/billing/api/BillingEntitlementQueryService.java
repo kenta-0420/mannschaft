@@ -122,6 +122,8 @@ public class BillingEntitlementQueryService {
                 .contractedAt(c.getContractedAt())
                 .priceJpySnapshot(c.getPriceJpySnapshot())
                 .status(c.getStatus() == null ? null : c.getStatus().name())
+                // AC-27 / AC-44: FE はこの値を解約・撤回 API の CAS 期待値として送り返す。
+                .version(c.getVersion())
                 .currentPeriodEnd(toOffset(endAt))
                 .canCancel(BillingCancelState.canCancel(c.getStatus(), c.getCancelledAt()))
                 .canResume(BillingCancelState.canResume(c.getStatus(), c.getCancelledAt(), endAt, now))

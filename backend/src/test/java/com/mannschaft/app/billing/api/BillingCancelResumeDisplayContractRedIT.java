@@ -144,6 +144,58 @@ class BillingCancelResumeDisplayContractRedIT extends AbstractMySqlIntegrationTe
                 .as("cancel.endAt が期末で埋まる（非null必須・AC-37c と同じ方針）").isNotBlank();
     }
 
+    // ═════════ AC-60: version（CAS 期待値）が投影に乗る ═════════
+
+    /**
+     * <p><b>なぜ 0 以外の値で測るか</b>: version が 0 の検体で測ると、投影が値を詰めていなくても
+     * （フィールド未設定の既定や FE の決め打ち 0 でも）緑になってしまい、空虚な緑になる。
+     * DB に 7 を置いて応答が 7 を返すことを要求すれば、<b>実際に契約行から運ばれた</b>ことだけが
+     * 通る条件になる。</p>
+     *
+     * <p>この値が無いと FE は解約 API の本文 {@code {"version": N}} を組み立てられず、
+     * 確定も撤回もできない（AC-27 / AC-44 の CAS）。</p>
+     */
+    @Test
+    @DisplayName("AC-60: 応答の activePlan.version にDBのCAS期待値がそのまま入る（0以外で測る）")
+    void AC60_versionが投影に乗る() throws Exception {
+        LocalDateTime periodEnd = LocalDateTime.now(clock).plusDays(15).withNano(0);
+        insertContract(ContractStatus.ACTIVE, PRICE_JPY, periodEnd, null, 7L);
+
+        MvcResult result = mockMvc.perform(get(ENTITLEMENTS_PATH).with(user(String.valueOf(userId))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        com.fasterxml.jackson.databind.JsonNode activePlan =
+                new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readTree(result.getResponse().getContentAsString())
+                        .path("data").path("activePlan");
+        assertThat(activePlan.hasNonNull("version"))
+                .as("version が応答 JSON に存在する（正本 05:344 ContractBase）").isTrue();
+        assertThat(activePlan.path("version").asLong())
+                .as("DB の billing_contracts.version がそのまま運ばれる").isEqualTo(7L);
+    }
+
+    @Test
+    @DisplayName("AC-60: 解約予約中の契約でも version が入る（撤回の CAS に必要）")
+    void AC60_解約予約中もversionが入る() throws Exception {
+        LocalDateTime periodEnd = LocalDateTime.now(clock).plusDays(15).withNano(0);
+        LocalDateTime cancelledAt = LocalDateTime.now(clock).minusHours(1).withNano(0);
+        insertContract(ContractStatus.ACTIVE, PRICE_JPY, periodEnd, cancelledAt, 3L);
+
+        MvcResult result = mockMvc.perform(get(ENTITLEMENTS_PATH).with(user(String.valueOf(userId))))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        com.fasterxml.jackson.databind.JsonNode activePlan =
+                new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readTree(result.getResponse().getContentAsString())
+                        .path("data").path("activePlan");
+        assertThat(activePlan.path("version").asLong())
+                .as("撤回（DELETE …/cancel）も同じ CAS 期待値を要求する").isEqualTo(3L);
+        assertThat(activePlan.path("canResume").asBoolean())
+                .as("version 追加で既存の導出を壊していない").isTrue();
+    }
+
     // ═════════ AC-63: 表示経路でStripeを呼ばない ═════════
 
     @Test
@@ -207,6 +259,12 @@ class BillingCancelResumeDisplayContractRedIT extends AbstractMySqlIntegrationTe
 
     private UUID insertContract(ContractStatus status, Integer priceJpy, LocalDateTime periodEnd,
                                  LocalDateTime cancelledAt) {
+        return insertContract(status, priceJpy, periodEnd, cancelledAt, 0L);
+    }
+
+    /** CAS 期待値（version）を明示して契約を作る。0 以外を置けるようにするのが要点である。 */
+    private UUID insertContract(ContractStatus status, Integer priceJpy, LocalDateTime periodEnd,
+                                 LocalDateTime cancelledAt, long version) {
         return transactionTemplate.execute(tx -> {
             BillingContractEntity c = BillingContractEntity.builder()
                     .scopeKind(EntitlementScopeKind.USER).scopeId(userId)
@@ -219,7 +277,7 @@ class BillingCancelResumeDisplayContractRedIT extends AbstractMySqlIntegrationTe
                     .cancelledAt(cancelledAt)
                     .contractedAt(LocalDateTime.now(clock).minusMonths(1))
                     .createdBy(userId).payerUserId(userId)
-                    .version(0L)
+                    .version(version)
                     .build();
             entityManager.persist(c);
             entityManager.flush();

@@ -73235,6 +73235,12 @@ export interface components {
              * @example ACTIVE
              */
             status?: string;
+            /**
+             * Format: int64
+             * @description 楽観ロックのCAS期待値。解約・撤回APIの version に渡す
+             * @example 0
+             */
+            version?: number;
         };
         /** @description F20.1 利用できる 1 機能 */
         BillingEntitledFeature: {
