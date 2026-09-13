@@ -17,6 +17,7 @@ import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.UserRepository.MemberSummary;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -64,6 +65,9 @@ class CirculationServiceAdditionalTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private StorageAclService storageAclService;
 
     /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
     @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
