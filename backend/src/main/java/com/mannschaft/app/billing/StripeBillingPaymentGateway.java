@@ -89,10 +89,16 @@ public class StripeBillingPaymentGateway implements BillingPaymentGateway {
      */
     @Override
     public Instant revertCancelAtPeriodEnd(String subscriptionRef, UUID operationId) {
+        // AC-77（Codex 検分 P1-1）: 撤回も解約と同じ停止窓を持つ。metadata を更新しないと
+        // Stripe 側に直前の解約 operation の ID が残り続け、撤回成功後〜tx2 前に落ちたときの
+        // 回収で痕跡照合が必ず外れて、正常に撤回済みの契約が永久検疫になる。
         StripePaymentProvider.SubscriptionInfo info =
                 stripePaymentProvider.revertSubscriptionCancelAtPeriodEnd(
                         subscriptionRef,
-                        BillingContractOperationSagaService.stripeIdempotencyKeyOf(operationId));
+                        BillingContractOperationSagaService.stripeIdempotencyKeyOf(operationId),
+                        java.util.Map.of(
+                                BillingContractOperationRecoveryService.STRIPE_METADATA_OPERATION_ID_KEY,
+                                operationId.toString()));
         Long currentPeriodEnd = info == null ? null : info.currentPeriodEnd();
         return currentPeriodEnd == null ? null : Instant.ofEpochSecond(currentPeriodEnd);
     }

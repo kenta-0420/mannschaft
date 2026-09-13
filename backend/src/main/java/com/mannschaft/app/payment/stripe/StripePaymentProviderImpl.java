@@ -1438,6 +1438,36 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         }
     }
 
+    /**
+     * Billing Center PR6a（AC-77 / Codex 検分 P1-1）: 期末解約予約の差し戻しと同時に
+     * metadata を<b>差分マージ</b>で焼き付ける。
+     *
+     * <p>{@code putAllMetadata} を使うのは、引継の {@code handoverRequestId} 等の既存 metadata を
+     * 消さないためである（{@code setMetadata} は Stripe 側で metadata 全体を置き換える）。</p>
+     */
+    @Override
+    public SubscriptionInfo revertSubscriptionCancelAtPeriodEnd(
+            String subscriptionId, String idempotencyKey, Map<String, String> metadata) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            SubscriptionUpdateParams.Builder params = SubscriptionUpdateParams.builder()
+                    .setCancelAtPeriodEnd(false);
+            if (metadata != null && !metadata.isEmpty()) {
+                params.putAllMetadata(metadata);
+            }
+            Subscription updated = subscription.update(params.build(), options);
+            log.info("Stripe Subscription 期末解約予約の差し戻し（metadata 焼き付け）: id={}, status={}, periodEnd={}",
+                    updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+            return new SubscriptionInfo(updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+        } catch (StripeException e) {
+            log.error("Stripe Subscription 期末解約予約の差し戻し（metadata 焼き付け）失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
     @Override
     public SubscriptionInfo revertSubscriptionCancelAtPeriodEnd(String subscriptionId, String idempotencyKey) {
         try {

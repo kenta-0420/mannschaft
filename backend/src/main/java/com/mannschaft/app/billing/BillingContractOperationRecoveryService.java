@@ -129,6 +129,8 @@ public class BillingContractOperationRecoveryService {
     static final String ERROR_STALE_BEFORE_STRIPE = "RECOVERED_STALE_NO_STRIPE_CALL";
     /** 停止窓(c) として検疫へ倒したときの {@code error_code}。 */
     static final String ERROR_STRIPE_MISMATCH = "RECOVERED_STRIPE_MISMATCH";
+    /** 期末を解決できず APPLIED にできなかったときの {@code error_code}（Codex 検分 P2）。 */
+    static final String ERROR_PERIOD_END_UNRESOLVED = "RECOVERED_PERIOD_END_UNRESOLVED";
 
     /**
      * トランザクション境界。
@@ -323,8 +325,19 @@ public class BillingContractOperationRecoveryService {
             case A_CANCELLED -> inTransaction(() -> casAndRelease(
                     operation, BillingOperationStatus.CANCELLED,
                     ERROR_STALE_BEFORE_STRIPE, true, null));
-            case B_APPLIED -> inTransaction(() -> casAndRelease(
-                    operation, BillingOperationStatus.APPLIED, null, true, trace));
+            case B_APPLIED -> {
+                // Codex 検分 P2: 期末を解決できないまま APPLIED にすると、operation は成功なのに
+                // current_period_end と entitlements.valid_until が null になり、通常経路が
+                // 保証している「webhook 未達でも期末に自動失効する保険」が消える。通常経路は
+                // 両方 null なら 409 で DB を一切変更しない（AC-37c）。回収だけが素通りしない。
+                LocalDateTime endAt = resolveRecoveredPeriodEnd(operation, trace);
+                yield endAt == null
+                        ? inTransaction(() -> casAndRelease(
+                                operation, BillingOperationStatus.RECONCILIATION_REQUIRED,
+                                ERROR_PERIOD_END_UNRESOLVED, false, null))
+                        : inTransaction(() -> casAndRelease(
+                                operation, BillingOperationStatus.APPLIED, null, true, endAt));
+            }
             case C_QUARANTINED -> inTransaction(() -> casAndRelease(
                     operation, BillingOperationStatus.RECONCILIATION_REQUIRED,
                     ERROR_STRIPE_MISMATCH, false, null));
@@ -379,12 +392,12 @@ public class BillingContractOperationRecoveryService {
      * @param to             遷移先
      * @param errorCode      {@code error_code} へ記録する値（不要なら {@code null}）
      * @param releasePointer terminal 確定に伴い pointer を解放するか
-     * @param applyTrace     停止窓(b) の反映に用いる Stripe 実物（それ以外は {@code null}）
+     * @param applyEndAt     停止窓(b) の反映に用いる期末（それ以外は {@code null}）
      * @return 勝者なら回収先・敗者なら空
      */
     private Optional<RecoveryWindow> casAndRelease(
             BillingContractOperationEntity operation, BillingOperationStatus to,
-            String errorCode, boolean releasePointer, StripeTrace applyTrace) {
+            String errorCode, boolean releasePointer, LocalDateTime applyEndAt) {
 
         BillingOperationStatus from = operation.getStatus();
         BillingOperationTransitions.requireAllowed(from, to);
@@ -397,8 +410,8 @@ public class BillingContractOperationRecoveryService {
             return Optional.empty();
         }
 
-        if (applyTrace != null) {
-            applyRecoveredReflection(operation, applyTrace);
+        if (applyEndAt != null) {
+            applyRecoveredReflection(operation, applyEndAt);
         }
         if (releasePointer) {
             // AC-7: terminal 確定と同一トランザクションで lease を解放する。
@@ -413,18 +426,39 @@ public class BillingContractOperationRecoveryService {
     }
 
     /**
-     * 停止窓(b) の「tx2 相当」の反映（AC-79）。反映の正本は {@link BillingContractCancelService} にある。
+     * 回収が反映に用いる期末を解決する（AC-34 / Codex 検分 P2）。
+     *
+     * <p>Stripe 実物を権威として採り（AC-34）、Stripe が期末を持たないときだけ DB の
+     * {@code current_period_end} へ fallback する。どちらも無ければ {@code null} を返し、
+     * 呼び出し元が APPLIED ではなく検疫へ倒す。通常経路（AC-37c）と同じ流儀である。</p>
      *
      * @param operation 対象 operation
-     * @param trace     Stripe 実物（期末の権威・AC-34）
+     * @param trace     Stripe 実物から読んだ判定材料
+     * @return 反映に用いる期末（解決できなければ {@code null}）
      */
-    private void applyRecoveredReflection(
+    private LocalDateTime resolveRecoveredPeriodEnd(
             BillingContractOperationEntity operation, StripeTrace trace) {
         // Stripe 実物の期末は「瞬間」として運ぶ（StripeTrace#periodEnd は Instant）。
         // 壁時計への変換はここ1箇所だけで行う —— 反映先の billing_contracts.current_period_end /
         // entitlements.valid_until がゾーンを持たない日時列（CMP-023 の返済対象）であるため、
-        // 境界で初めて注入 Clock のゾーンを当てる。ローカル変数なので型は外に漏れない。
-        LocalDateTime endAt = toLocalDateTime(trace.periodEnd());
+        // 境界で初めて注入 Clock のゾーンを当てる。
+        LocalDateTime stripeEnd = toLocalDateTime(trace.periodEnd());
+        if (stripeEnd != null) {
+            return stripeEnd;
+        }
+        return billingContractRepository.findByIdAndDeletedAtIsNull(operation.getContractId())
+                .map(BillingContractEntity::getCurrentPeriodEnd)
+                .orElse(null);
+    }
+
+    /**
+     * 停止窓(b) の「tx2 相当」の反映（AC-79）。反映の正本は {@link BillingContractCancelService} にある。
+     *
+     * @param operation 対象 operation
+     * @param endAt     反映に用いる期末（非 null。解決できない場合は呼び出し元が検疫へ倒す）
+     */
+    private void applyRecoveredReflection(
+            BillingContractOperationEntity operation, LocalDateTime endAt) {
         switch (operation.getKind()) {
             case CANCEL -> cancelService.applyRecoveredCancel(operation.getContractId(), endAt);
             case RESUME -> cancelService.applyRecoveredResume(operation.getContractId(), endAt);

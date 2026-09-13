@@ -220,6 +220,16 @@ public class BillingContractOperationSagaService {
      * operation を {@link BillingOperationStatus#RECONCILIATION_REQUIRED} へ倒して
      * pointer を保持したまま例外を呼出元へ伝播する（AC-19。黙って成功にしない）。</p>
      *
+     * <p><b>先着競合の収束（Codex 検分 P1-2）</b>: Stripe の同期呼び出し成功後に
+     * {@code customer.subscription.updated} が届くと、停止窓の回収
+     * （{@link BillingContractOperationRecoveryService#recoverBySubscriptionRef}）が本メソッドより
+     * 先に同じ operation を {@code APPLIED} へ確定させることがある。このとき状態機械へ
+     * {@code APPLIED -> APPLIED} を投げると自己遷移として拒否され（AC-10。自己遷移の禁止は
+     * 正しいので緩めない）、<b>解約は成立しているのに利用者には失敗が返る</b>。
+     * そこで「既に同じ結末へ確定している」ときだけ成功へ収束させる。
+     * 別の結末（{@code FAILED}/{@code CANCELLED}）や検疫中は従来どおり例外にする——
+     * 結末が違うものを黙って成功にしてはならない。</p>
+     *
      * @param operationId 対象 operation
      * @param reflection  DB 反映処理（cancelled_at / valid_until の更新等）
      * @param <T>         反映処理の戻り値型
@@ -231,8 +241,7 @@ public class BillingContractOperationSagaService {
             return transactionTemplate.execute(tx -> {
                 T applied = reflection.get();
                 // 反映と同一トランザクションで terminal 化＋pointer 解放（AC-7 / AC-18）。
-                transitionInCurrentTransaction(
-                        operationId, BillingOperationStatus.APPLIED, null, true);
+                finalizeAppliedInCurrentTransaction(operationId);
                 return applied;
             });
         } catch (RuntimeException e) {
@@ -462,6 +471,32 @@ public class BillingContractOperationSagaService {
                     operation.getContractId(), operationId);
             entityManager.flush();
         }
+    }
+
+    /**
+     * tx2 の終端化（AC-7/AC-18）。<b>先着した回収と同じ結末なら成功へ収束させる</b>（P1-2）。
+     *
+     * <p>operation 行を {@code SELECT ... FOR UPDATE} で取ってから判定するのは、
+     * 「読んでから書く」の間に回収の CAS が割り込むと収束の判定自体が競合するためである
+     * （回収側は status CAS の更新件数を勝者の根拠にしており・AC-82、こちらは行ロックで
+     * 突き合わせる）。既に {@code APPLIED} なら pointer の解放だけを冪等に念押しする
+     * （物理 DELETE は 0 件でも害が無い）。</p>
+     *
+     * @param operationId 対象 operation
+     */
+    private void finalizeAppliedInCurrentTransaction(UUID operationId) {
+        BillingContractOperationEntity locked = entityManager.find(
+                BillingContractOperationEntity.class, operationId, LockModeType.PESSIMISTIC_WRITE);
+        if (locked != null && locked.getDeletedAt() == null
+                && locked.getStatus() == BillingOperationStatus.APPLIED) {
+            // 停止窓の回収が先着して同じ結末を確定させている。状態機械の自己遷移禁止は
+            // 保ったまま、利用者へは成功を返す（解約は実際に成立している）。
+            pointerRepository.hardDeleteByContractIdAndOperationId(
+                    locked.getContractId(), operationId);
+            entityManager.flush();
+            return;
+        }
+        transitionInCurrentTransaction(operationId, BillingOperationStatus.APPLIED, null, true);
     }
 
     /** tx2 失敗後の検疫記録（AC-19）。補償自体の失敗で元の例外を覆い隠さない。 */
