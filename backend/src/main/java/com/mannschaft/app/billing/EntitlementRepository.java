@@ -1,10 +1,12 @@
 package com.mannschaft.app.billing;
 
 import com.mannschaft.app.common.repository.AbstractTenantAwareRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -60,4 +62,43 @@ public interface EntitlementRepository extends AbstractTenantAwareRepository<Ent
      */
     List<EntitlementEntity> findBySourceKindAndSourceRefIdAndRevokedAtIsNull(
             EntitlementSourceKind sourceKind, UUID sourceRefId);
+
+    /**
+     * 複数の発行元に紐づく未取消の権利行を<b>1本のクエリで</b>取得する（PR6a AC-72 / AC-72b）。
+     *
+     * <p>退会 purge の一括解約は契約数 M をループするため、契約ごとに
+     * {@link #findBySourceKindAndSourceRefIdAndRevokedAtIsNull} を呼ぶと M に比例して SQL が増える。
+     * 走査対象の契約 ID をまとめて渡し、発行数・契約数に依らず定数本数に保つ。</p>
+     *
+     * @param sourceKinds  発行元種別（PLAN / ADDON）
+     * @param sourceRefIds 発行元 ID（契約 ID）
+     * @return 未取消の権利行
+     */
+    List<EntitlementEntity> findBySourceKindInAndSourceRefIdInAndRevokedAtIsNull(
+            Collection<EntitlementSourceKind> sourceKinds, Collection<UUID> sourceRefIds);
+
+    /**
+     * 指定した権利行を<b>1本の一括 UPDATE で</b> revoke する（PR6a AC-72 / AC-72b）。
+     *
+     * <p>エンティティを1件ずつ書き換えて flush させると、発行数 N に比例した UPDATE が出る。
+     * 一括 UPDATE は {@code @PreUpdate} を経由しないため {@code updated_at} を明示的に渡す。
+     * 呼び出し元は revoke 対象の {@code feature_key} 集合を、UPDATE の<b>前に</b>読んだ行から採ること
+     * （本メソッドは行を返さない）。</p>
+     *
+     * <p>永続化コンテキストは<b>クリアしない</b>（{@code clearAutomatically=false}）。purge 経路は
+     * 同一トランザクションで契約エンティティを保持したまま処理を続けるため、ここで全体を切り離すと
+     * 呼び出し元の手が滑る。読み出し済みの権利行が古いままになる点は、呼び出し元が
+     * {@code feature_key} 以外を参照しないことで担保する。</p>
+     *
+     * @param ids           対象の権利行 ID
+     * @param revokedAt     取消日時
+     * @param revokedBy     取消した操作者（SYSTEM 経路は {@code null}）
+     * @return 更新件数
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE EntitlementEntity e SET e.revokedAt = :revokedAt, e.revokedBy = :revokedBy, "
+            + "e.updatedAt = :revokedAt WHERE e.id IN :ids AND e.revokedAt IS NULL")
+    int bulkRevokeByIds(@Param("ids") Collection<UUID> ids,
+                        @Param("revokedAt") LocalDateTime revokedAt,
+                        @Param("revokedBy") Long revokedBy);
 }

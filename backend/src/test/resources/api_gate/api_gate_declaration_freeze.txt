@@ -86,6 +86,7 @@ HTTP|com.mannschaft.app.auth.controller.ParentalConsentController|9|9
 HTTP|com.mannschaft.app.auth.controller.UserController|10|12
 HTTP|com.mannschaft.app.auth.controller.UserOAuthLinkController|2|2
 HTTP|com.mannschaft.app.billing.api.BillingCheckoutController|2|2
+HTTP|com.mannschaft.app.billing.api.BillingContractCancelResumeController|0|2
 HTTP|com.mannschaft.app.billing.api.BillingContractController|6|9
 HTTP|com.mannschaft.app.billing.api.BillingCustomerPortalController|1|1
 HTTP|com.mannschaft.app.billing.api.BillingEntitlementSummaryController|2|3

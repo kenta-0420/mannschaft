@@ -49,6 +49,56 @@ public interface BillingPaymentGateway {
     Instant cancelAtPeriodEnd(String subscriptionRef);
 
     /**
+     * 継続課金の Stripe Subscription を期末解約予約する（Billing Center PR6a・AC-39/AC-5）。
+     *
+     * <p>PR6a の operation Saga 経路はこちらを用いる。Stripe の Idempotency-Key は
+     * {@code billing-operation-{operationId}}（{@code BillingContractOperationSagaService
+     * #stripeIdempotencyKeyOf}）であり、既存の {@link #cancelAtPeriodEnd(String)} が使う
+     * {@code billing-cancel-{subscriptionRef}} とは<b>別名前空間</b>である。同一 operation の
+     * 再試行では同じキーになるため Stripe 側で二重に効かない。</p>
+     *
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる（既存呼び出し元
+     * {@code BillingContractService} の挙動を変えないために default とした）。実体は
+     * {@link StripeBillingPaymentGateway#cancelAtPeriodEnd(String, java.util.UUID)} が持つ。</p>
+     *
+     * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
+     * @param operationId     {@code billing_contract_operations.id}（冪等キーの単位）
+     * @return 現サイクル終了時刻（{@code current_period_end}・null 可）
+     */
+    default Instant cancelAtPeriodEnd(String subscriptionRef, java.util.UUID operationId) {
+        throw new UnsupportedOperationException(
+                "Billing Center PR6a: 第6隊が実装する（試練Aの発注書）");
+    }
+
+    /**
+     * 期末解約予約を取り消す（{@code cancel_at_period_end=false}・Billing Center PR6a・AC-40/AC-47）。
+     *
+     * <p>Stripe 呼び出しの実体は payment ドメインに既にある期末解約予約の差し戻し API を
+     * <b>再利用</b>する（PR6a で自前実装しない）。billing から payment の provider を直接
+     * 参照させないため、本ポートを唯一の窓口とする（AC-47 のドメイン境界。実体のメソッド名を
+     * この Javadoc に書くと、境界の番人が「provider を直呼びしている billing クラス」として
+     * 本ファイルを検出する）。</p>
+     *
+     * <p>Idempotency-Key は {@link BillingContractOperationSagaService#stripeIdempotencyKeyOf(UUID)}
+     * ＝{@code billing-operation-{operationId}} であり、引継専用の
+     * {@code billing-handover-revert-cancel-*} とは<b>別名前空間</b>である。引継の差し戻し
+     * （{@link #revertCancelAtPeriodEndForHandover(String, UUID)}）と同一 subscription へ同時に
+     * 走ってもキー衝突（パラメータ不一致エラー）を起こさない。</p>
+     *
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる（テスト用のモック実装が
+     * 既存メソッドだけを持つ場合に備えた default）。実体は
+     * {@link StripeBillingPaymentGateway#revertCancelAtPeriodEnd(String, UUID)} が持つ。</p>
+     *
+     * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
+     * @param operationId     {@code billing_contract_operations.id}（冪等キーの単位）
+     * @return 現サイクル終了時刻（{@code current_period_end}・null 可）
+     */
+    default Instant revertCancelAtPeriodEnd(String subscriptionRef, UUID operationId) {
+        throw new UnsupportedOperationException(
+                "Billing Center PR6a: revertCancelAtPeriodEnd の実体は StripeBillingPaymentGateway が持つ");
+    }
+
+    /**
      * 継続課金の Stripe Subscription を<b>即時解約</b>する（退会 purge 連動・AC-45）。
      *
      * <p>期末解約（{@link #cancelAtPeriodEnd}）と異なり、退会確定（purge）ユーザーへの課金継続を
@@ -158,6 +208,26 @@ public interface BillingPaymentGateway {
      * @return 既定 PaymentMethod が登録済みなら true
      */
     boolean hasUsablePaymentMethod(Long userId);
+
+    /**
+     * Stripe Subscription の metadata から operationId を読み出す（Billing Center PR6a・AC-77/AC-78）。
+     *
+     * <p>停止窓の回収（D8）は「Stripe 側に自分の operation の痕跡があるか」で
+     * 停止窓(a)（痕跡なし＝Stripe をまだ呼んでいない）と (b)/(c)（痕跡あり＝呼んだ）を区別する。
+     * 痕跡は {@code metadata.billingOperationId}（{@link BillingContractOperationRecoveryService
+     * #STRIPE_METADATA_OPERATION_ID_KEY}）である。</p>
+     *
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる。実体は
+     * {@link StripeBillingPaymentGateway} が override 済みであり、痕跡を読めない実装が
+     * この経路に紛れ込んだら握り潰さず fail-fast させる。</p>
+     *
+     * @param subscriptionRef Stripe Subscription ID（{@code sub_xxx}）
+     * @return metadata に載っていた operationId（無ければ空）
+     */
+    default java.util.Optional<UUID> findOperationIdOnSubscription(String subscriptionRef) {
+        throw new UnsupportedOperationException(
+                "Billing Center PR6a: 第10隊が実装する（試練Dの発注書）");
+    }
 
     /**
      * Checkout Session 情報（sessionId / url）。

@@ -347,6 +347,10 @@
       "description": "F08.7.1/03 自チームの移籍状況閲覧"
     },
     {
+      "name": "課金 - 解約",
+      "description": "Billing Center PR6a 期末解約の予約と撤回"
+    },
+    {
       "name": "公開設定管理 (F19.1 Phase 7)",
       "description": "チーム / 組織のタイムライン / イベント公開設定の管理"
     },
@@ -76183,6 +76187,110 @@
         }
       }
     },
+    "/api/v1/me/billing/contracts/{contractId}/cancel": {
+      "post": {
+        "tags": [
+          "課金 - 解約"
+        ],
+        "summary": "契約の解約（期末解約の予約）",
+        "description": "有償契約は current_period_end までの利用を残したまま解約を予約する。Idempotency-Key 必須。",
+        "operationId": "cancel_12",
+        "parameters": [
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingCancelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractCancelResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "課金 - 解約"
+        ],
+        "summary": "解約予約の撤回",
+        "description": "期末を跨ぐ前に限り、cancel_at_period_end を解除して契約を継続させる。Idempotency-Key 必須。",
+        "operationId": "resume_5",
+        "parameters": [
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingCancelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractCancelResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/billing/checkout-sessions": {
       "post": {
         "tags": [
@@ -84378,7 +84486,7 @@
         "tags": [
           "ad-messaging-campaign-transition-controller"
         ],
-        "operationId": "resume_5",
+        "operationId": "resume_6",
         "parameters": [
           {
             "name": "id",
@@ -84501,7 +84609,7 @@
         "tags": [
           "ad-messaging-campaign-transition-controller"
         ],
-        "operationId": "cancel_12",
+        "operationId": "cancel_13",
         "parameters": [
           {
             "name": "id",
@@ -94450,7 +94558,7 @@
           "チーム確認通知"
         ],
         "summary": "確認通知キャンセル",
-        "operationId": "cancel_13",
+        "operationId": "cancel_14",
         "parameters": [
           {
             "name": "teamId",
@@ -102610,7 +102718,7 @@
           "協会請求（協会視点）"
         ],
         "summary": "協会請求の取消（CANCELLED）",
-        "operationId": "cancel_14",
+        "operationId": "cancel_15",
         "parameters": [
           {
             "name": "orgId",
@@ -103118,7 +103226,7 @@
           "組織確認通知"
         ],
         "summary": "確認通知キャンセル（組織）",
-        "operationId": "cancel_15",
+        "operationId": "cancel_16",
         "parameters": [
           {
             "name": "orgId",
@@ -145140,7 +145248,7 @@
           "チーム区画申請"
         ],
         "summary": "チーム申請取消",
-        "operationId": "cancel_16",
+        "operationId": "cancel_17",
         "parameters": [
           {
             "name": "teamId",
@@ -146298,7 +146406,7 @@
           "組織区画申請"
         ],
         "summary": "組織申請取消",
-        "operationId": "cancel_17",
+        "operationId": "cancel_18",
         "parameters": [
           {
             "name": "organizationId",
@@ -146815,7 +146923,7 @@
           "継続課金"
         ],
         "summary": "継続課金 期末解約（F08.9 P5）",
-        "operationId": "cancel_18",
+        "operationId": "cancel_19",
         "parameters": [
           {
             "name": "id",
@@ -195971,6 +196079,67 @@
           }
         }
       },
+      "BillingCancelRequest": {
+        "type": "object",
+        "description": "解約・解約撤回リクエスト",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "契約の version（楽観ロックの期待値）",
+            "example": 0
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "ApiResponseBillingContractCancelResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingContractCancelResponse"
+          }
+        }
+      },
+      "BillingContractCancelResponse": {
+        "type": "object",
+        "description": "解約・解約撤回の結果",
+        "properties": {
+          "canCancel": {
+            "type": "boolean"
+          },
+          "canResume": {
+            "type": "boolean"
+          },
+          "contractId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contractStatus": {
+            "type": "string"
+          },
+          "currentPeriodEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "CreateBillingCheckoutSessionRequest": {
         "type": "object",
         "properties": {
@@ -217541,6 +217710,18 @@
         "type": "object",
         "description": "F20.1 権利サマリ内のアクティブ契約",
         "properties": {
+          "canCancel": {
+            "type": "boolean",
+            "description": "この契約を解約できるか（解約予約済みなら false）"
+          },
+          "canResume": {
+            "type": "boolean",
+            "description": "解約予約を撤回できるか（期末を跨いだら false）"
+          },
+          "cancel": {
+            "$ref": "#/components/schemas/BillingScheduledCancel",
+            "description": "解約予約の内容。予約が無ければ null"
+          },
           "contractId": {
             "type": "string",
             "description": "契約 ID（UUID）",
@@ -217550,6 +217731,11 @@
             "type": "string",
             "format": "date-time",
             "description": "契約日時（ISO-8601）"
+          },
+          "currentPeriodEnd": {
+            "type": "string",
+            "format": "date-time",
+            "description": "現在の課金期間の終了時刻。期末を持たない契約は null"
           },
           "featureKey": {
             "type": "string",
@@ -217565,6 +217751,11 @@
             "type": "integer",
             "format": "int32",
             "description": "契約時単価スナップショット（円）。ベータ中は null（無償）"
+          },
+          "status": {
+            "type": "string",
+            "description": "契約状態（ContractStatus の6値: PENDING / ACTIVE / PAST_DUE / CANCELLED / EXPIRED / PENDING_HANDOVER）",
+            "example": "ACTIVE"
           }
         }
       },
@@ -217621,6 +217812,22 @@
             "type": "string",
             "description": "スコープ種別（USER / TEAM / ORG）",
             "example": "TEAM"
+          }
+        }
+      },
+      "BillingScheduledCancel": {
+        "type": "object",
+        "description": "F20.1 解約予約の内容",
+        "properties": {
+          "endAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "利用可能期限（＝currentPeriodEnd）"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "解約予約を入れた時刻（cancelled_at）"
           }
         }
       },

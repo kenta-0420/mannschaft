@@ -56,4 +56,23 @@
             <appender-ref ref="CONSOLE_CI" />
         </root>
     </springProfile>
+
+    <!--
+        openapi-gen プロファイル（./gradlew generateOpenApiDocs のフォーク先）:
+        ci と同じ理由でアペンダーを明示定義する。これが無いと root にアペンダーが1つも付かず、
+        起動が失敗しても<b>一行も出ないまま exit 1</b> になる。springdoc プラグイン側は
+        「http://localhost:8082/v3/api-docs へ 1800 秒つないだが応答しない」としか言えないため、
+        原因（起動失敗か、単に遅いのか）が切り分け不能になる。実際に PR6a でこの穴により
+        openapi.json の再生成が二度空振りした。
+    -->
+    <springProfile name="openapi-gen">
+        <appender name="CONSOLE_OPENAPI_GEN" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_OPENAPI_GEN" />
+        </root>
+    </springProfile>
 </configuration>

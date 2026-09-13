@@ -67,6 +67,15 @@ public class BillingContractService {
     private final BillingOperationAuthorizer billingOperationAuthorizer;
 
     /**
+     * Billing Center PR6a: 契約操作 Saga（{@code billing_contract_operations}）。
+     *
+     * <p>旧経路（{@link #cancelContract} / {@link #changePlan}）は pointer を尊重して 409 を返し
+     * （AC-20/21）、SYSTEM 経路（purge / {@code customer.subscription.deleted}）は検疫を貫通しつつ
+     * 非終端 operation を同一トランザクションで終端化してから pointer を解放する（D3・AC-16/17）。</p>
+     */
+    private final BillingContractOperationSagaService billingContractOperationSagaService;
+
+    /**
      * 契約変更操作の結果（API 層 DTO 組み立て用・付与/取消 feature_key 集合を含む）。
      *
      * <p>F20.1 実決済（D-3/D-4）: {@code checkoutUrl}（決済フローの Checkout URL・無償/解約は null）と
@@ -235,6 +244,9 @@ public class BillingContractService {
         billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
         LocalDateTime now = LocalDateTime.now(clock);
         BillingContractEntity contract = loadContractInScope(scopeKind, scopeId, contractId);
+        // ★PR6a AC-20: 旧経路も operation pointer を尊重する。進行中（検疫を含む）の Saga の
+        //   脇から契約を書き換えられると排他が成立しないため 409（ENTITLEMENT_021）で拒否する。
+        billingContractOperationSagaService.requireNoActiveOperation(contractId);
         if (contract.getStatus() != ContractStatus.ACTIVE) {
             throw new BusinessException(EntitlementErrorCode.CONTRACT_NOT_CANCELLABLE);
         }
@@ -290,6 +302,13 @@ public class BillingContractService {
         billingOperationAuthorizer.requireCanManage(operatorUserId, scopeKind, scopeId);
         LocalDateTime now = LocalDateTime.now(clock);
         BillingContractEntity oldContract = loadContractInScope(scopeKind, scopeId, contractId);
+        // ★PR6a AC-20: 旧 PUT 経路も operation pointer を尊重する（進行中の Saga と競合させない）。
+        billingContractOperationSagaService.requireNoActiveOperation(contractId);
+        // ★PR6a AC-21: 解約予約中（cancelled_at 非 NULL）の契約は、撤回するまでプラン変更できない。
+        //   既存実装は cancelled_at を見ておらず、期末解約予約を抱えたまま新契約へ付け替わっていた。
+        if (oldContract.getCancelledAt() != null) {
+            throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
+        }
         if (oldContract.getStatus() != ContractStatus.ACTIVE) {
             throw new BusinessException(EntitlementErrorCode.CONTRACT_NOT_CANCELLABLE);
         }
@@ -540,6 +559,10 @@ public class BillingContractService {
                     contract.getId(), pspSubscriptionRef);
             return;
         }
+        // ★PR6a AC-17（D3）: 検疫（RECONCILIATION_REQUIRED）でも customer.subscription.deleted は通す。
+        //   その際、残っている非終端 operation を同一トランザクションで CANCELLED へ終端化してから
+        //   pointer を削除する（貫通して pointer だけ消すと非終端 operation が孤児化する）。
+        billingContractOperationSagaService.terminateNonTerminalAndRelease(contract.getId());
         LocalDateTime now = LocalDateTime.now(clock);
         contract.setStatus(ContractStatus.EXPIRED);
         if (currentPeriodEnd != null) {
@@ -615,24 +638,74 @@ public class BillingContractService {
                 .findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
                         EntitlementScopeKind.USER, userId,
                         List.of(ContractStatus.PENDING, ContractStatus.ACTIVE, ContractStatus.PAST_DUE));
+        if (contracts.isEmpty()) {
+            return List.of();
+        }
+
+        // ★PR6a AC-72b: 発行する SQL は<b>契約数 M に比例しない</b>本数に畳む。契約ごとに
+        //   save / entitlement 検索 を出していた旧実装は M に比例して増えていた。
+        //   ただし「解約が実際に行われること」（AC-45・GDPR 要件）を落としてはならない。両立させるため、
+        //   DB への書き込みは一括 UPDATE で行い、読み出し済みエンティティは<b>切り離してから</b>
+        //   同じ値へ揃える（切り離し済みなので dirty checking による追加 UPDATE は発生しない）。
         List<String> paidSubscriptionRefs = new ArrayList<>();
-        Set<String> revokedKeys = new LinkedHashSet<>();
+        List<UUID> contractIds = new ArrayList<>();
+        Set<EntitlementSourceKind> sourceKinds = new LinkedHashSet<>();
         for (BillingContractEntity contract : contracts) {
             if (contract.getPspSubscriptionRef() != null) {
                 paidSubscriptionRefs.add(contract.getPspSubscriptionRef());
             }
+            contractIds.add(contract.getId());
+            sourceKinds.add(toSourceKind(contract.getContractKind()));
+        }
+
+        // ★PR6a AC-16（D3）: 検疫中でも退会 purge は通す（止めると退会者に課金と権利が残り
+        //   GDPR 要件を破るため、検疫より purge を優先する）。孤児を作らないよう、非終端 operation を
+        //   同一トランザクションで CANCELLED へ終端化してから pointer を削除する。
+        billingContractOperationSagaService.terminateNonTerminalAndReleaseAll(contractIds);
+
+        // 由来 entitlements の revoke は「1本の検索＋1本の一括 UPDATE」に畳む（AC-72 / AC-72b）。
+        Set<String> revokedKeys = new LinkedHashSet<>();
+        List<EntitlementEntity> revokedRows = entitlementRepository
+                .findBySourceKindInAndSourceRefIdInAndRevokedAtIsNull(sourceKinds, contractIds);
+        if (!revokedRows.isEmpty()) {
+            List<UUID> entitlementIds = new ArrayList<>(revokedRows.size());
+            for (EntitlementEntity e : revokedRows) {
+                revokedKeys.add(e.getFeatureKey());
+                entitlementIds.add(e.getId());
+            }
+            entitlementRepository.bulkRevokeByIds(entitlementIds, now, null);
+        }
+
+        // 契約の CANCELLED 化。エンティティを1件ずつ書き換えて flush させると M 本の UPDATE が出るため、
+        // 一括 UPDATE 1本で書く。この呼び出しは永続化コンテキストを切り離す（clearAutomatically）。
+        billingContractRepository.bulkCancelForPurge(contractIds, ContractStatus.CANCELLED, now);
+
+        // ★AC-45: 一括 UPDATE は読み出し済みエンティティへ反映されない。切り離し済みの
+        //   オブジェクトを DB と同じ状態へ揃える（ここでの setter は detached なので SQL を生まない）。
+        //   これを省くと「SQL は減ったが呼び出し元から見ると解約されていない」という、
+        //   退会者に課金と権利が残る最悪の形になる。
+        for (BillingContractEntity contract : contracts) {
             contract.setStatus(ContractStatus.CANCELLED);
             contract.setCancelledAt(now);
-            billingContractRepository.save(contract);
+        }
+        for (EntitlementEntity e : revokedRows) {
+            e.setRevokedAt(now);
+            e.setRevokedBy(null);
+        }
+
+        // アクティブ契約スロットの解放は<b>スロット単位のまま</b>据え置く（AC-70）。
+        // active_contract_pointers は契約ごとに高々1行であり、1契約1スロットの対応を崩すと
+        // 「自分のスロットだけを消す」という他経路（単一契約の解約・引継の付け替え）と
+        // 意味がずれる。purge の対象契約数ぶん DELETE が出るが、この表は AC-72b が
+        // 計測する4表（billing_contracts / entitlements / 契約操作 lease / operations）に含まれない。
+        for (BillingContractEntity contract : contracts) {
             String slotAddonKey = contract.getContractKind() == ContractKind.ADDON
                     ? contract.getFeatureKey() : "";
             activeContractPointerRepository.hardDeleteBySlot(
                     EntitlementScopeKind.USER, userId, contract.getContractKind(), slotAddonKey);
-            revokedKeys.addAll(revokeEntitlementsOfContract(contract, null, now));
         }
-        if (!contracts.isEmpty()) {
-            evictAfterCommit(EntitlementScopeKind.USER, userId, revokedKeys);
-        }
+
+        evictAfterCommit(EntitlementScopeKind.USER, userId, revokedKeys);
         return paidSubscriptionRefs;
     }
 
@@ -718,6 +791,20 @@ public class BillingContractService {
             EntitlementScopeKind scopeKind, Long scopeId, BillingContractEntity contract,
             Long operatorUserId, LocalDateTime now) {
 
+        // ★PR6a（AC-15 陽性対照・第6隊）: 旧経路の有償期末解約も operation Saga に載せる。
+        //   「Stripe を伴う契約変更は必ず billing_contract_operations に痕跡が残る」という不変条件を
+        //   旧経路だけ免除すると、pointer 排他（AC-3/AC-14）も停止窓の回収（D8）も旧経路からは
+        //   素通りされてしまう。version CAS は旧 API が version を受け取らないため行わない（null）。
+        //   Stripe 呼び出しは既存呼び出し元の挙動を変えない 1 引数版のまま（AC-39）。
+        //   なお本メソッドは cancelContract の @Transactional 内にあるため tx1/tx2 は呼び出し元の
+        //   トランザクションへ参加する（D1 の分割が実際に効くのは PR6a の新エンドポイント経路である）。
+        BillingContractOperationSagaService.OperationReservation reservation =
+                billingContractOperationSagaService.reserve(
+                        new BillingContractOperationSagaService.ReserveCommand(
+                                contract.getId(), BillingOperationKind.CANCEL, null,
+                                BillingOperationActorKind.USER, operatorUserId, null));
+        billingContractOperationSagaService.markCallingStripe(reservation.operationId());
+
         // 【設計注記（検分5番・判断済み）】gateway 呼び出しは cancelContract の @Transactional 内で行う。
         // 「Stripe 呼び出し→tx 更新」への再構成は、無償/有償が共有する cancelContract 経路（IDOR 検証→
         // ガード→分岐）の分解を要し P1 経路の回帰リスクが高いため現状維持とする。整合性は以下で担保される:
@@ -750,11 +837,14 @@ public class BillingContractService {
         }
         evictAfterCommit(scopeKind, scopeId, stillActiveKeys);
 
-        return new ContractResult(contract.getId(), scopeKind, scopeId, contract.getContractKind(),
+        ContractResult result = new ContractResult(contract.getId(), scopeKind, scopeId, contract.getContractKind(),
                 contract.getPlanKey(), contract.getFeatureKey(), ContractStatus.ACTIVE,
                 contract.getMemberCountSnapshot(), contract.getBandNoSnapshot(), contract.getPriceJpySnapshot(),
                 contract.getContractedAt(), periodEndLdt, null,
                 new ArrayList<>(stillActiveKeys), List.of());
+        // APPLIED へ確定させ、同一トランザクションで pointer を解放する（AC-7）。
+        return billingContractOperationSagaService.applyAndFinalize(
+                reservation.operationId(), () -> result);
     }
 
     /** 契約が既に ACTIVE のときの結果組み立て（冪等 no-op 用）。 */

@@ -564,6 +564,37 @@ public interface StripePaymentProvider {
     SubscriptionInfo cancelSubscriptionAtPeriodEnd(String subscriptionId, String idempotencyKey);
 
     /**
+     * Stripe Subscription を期末解約予約し、<b>同時に metadata を焼き付ける</b>
+     * （Billing Center PR6a・AC-77）。
+     *
+     * <p>PR6a の operation Saga は「tx1 commit → Stripe 呼び出し → tx2 反映」に分割されるため、
+     * Stripe 呼び出しの成否が DB に書かれないままプロセスが落ちる窓が構造的に存在する（D8）。
+     * その窓を回収する唯一の手掛かりが、Stripe 側に残る
+     * {@code metadata.billingOperationId}（{@code BillingContractOperationRecoveryService
+     * #STRIPE_METADATA_OPERATION_ID_KEY}）である。既存の
+     * {@link #cancelSubscriptionAtPeriodEnd(String, String)} は {@code cancel_at_period_end=true}
+     * しか送っておらず metadata を書かないため、回収が原理的に成立しない。</p>
+     *
+     * <p><b>既存の metadata を消してはならない</b>（引継の {@code handoverRequestId} が同じ
+     * subscription に載っていることがある）。{@code SubscriptionUpdateParams} の
+     * {@code putAllMetadata} で<b>差分マージ</b>すること。</p>
+     *
+     * <p>既定実装は {@link UnsupportedOperationException} を投げる（既存呼び出し元の挙動を変えない
+     * ために default としている）。実体は {@code StripePaymentProviderImpl} が override 済みであり、
+     * metadata を書けない実装がこの経路に紛れ込んだら握り潰さず fail-fast させる。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @param idempotencyKey 冪等性キー（{@code billing-operation-{operationId}}）
+     * @param metadata       焼き付ける metadata（既存キーは保持・差分マージ）
+     * @return Subscription 情報（id / status / currentPeriodEnd）
+     */
+    default SubscriptionInfo cancelSubscriptionAtPeriodEnd(
+            String subscriptionId, String idempotencyKey, java.util.Map<String, String> metadata) {
+        throw new UnsupportedOperationException(
+                "Billing Center PR6a: 第10隊が実装する（試練Dの発注書）");
+    }
+
+    /**
      * SetupIntent 情報（設計書 F08.9 02 §4.1）。
      *
      * <p>{@code clientSecret} は払い手本人のみへ返す（他人へ漏らさない・03 §1）。</p>

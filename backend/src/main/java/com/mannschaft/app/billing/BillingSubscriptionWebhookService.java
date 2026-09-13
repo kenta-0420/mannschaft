@@ -44,6 +44,9 @@ public class BillingSubscriptionWebhookService {
     private static final String INVOICE_PAID = "invoice.paid";
     private static final String INVOICE_PAYMENT_FAILED = "invoice.payment_failed";
     private static final String SUBSCRIPTION_DELETED = "customer.subscription.deleted";
+    /** PR6a AC-83: 停止窓の回収の入口（プラン変更の APPLIED 判定は PR6b の担当）。 */
+    private static final String SUBSCRIPTION_UPDATED =
+            BillingContractOperationRecoveryService.RECOVERY_ENTRY_EVENT_TYPE;
 
     private final StripePaymentProvider stripePaymentProvider;
     private final WebhookIdempotencyService idempotencyService;
@@ -56,6 +59,8 @@ public class BillingSubscriptionWebhookService {
     /** F20.1 PR5: 署名検証済み payload から event 封筒を読む（created の単調更新判定に使う）。 */
     private final StripeBillingPayloadParser payloadParser;
     private final BillingPayerHandoverService payerHandoverService;
+    /** PR6a AC-83: {@code customer.subscription.updated} を停止窓の回収の入口として使う。 */
+    private final BillingContractOperationRecoveryService operationRecoveryService;
     private final Clock clock;
 
     /**
@@ -146,6 +151,10 @@ public class BillingSubscriptionWebhookService {
             // billing の subscription ではない → F08.9 会費側へフォールバック（相互 no-op・AC-38）。
             return false;
         }
+        if (SUBSCRIPTION_UPDATED.equals(event.type())) {
+            return handleSubscriptionUpdatedForRecovery(event, subscriptionId);
+        }
+
         return runGated(event, () -> switch (event.type()) {
             case SUBSCRIPTION_DELETED -> {
                 billingContractService.expireSubscriptionContract(subscriptionId, toLdt(event.currentPeriodEndEpochSec()));
@@ -247,6 +256,33 @@ public class BillingSubscriptionWebhookService {
      * event_id 冪等ゲートを通してハンドラを実行する（再送耐性・FAILED 記録・再送出）。所有済みイベントの
      * 二重受信（確定済み）は処理せず {@code true} を返す（membership へフォールバックさせない）。
      */
+    /**
+     * {@code customer.subscription.updated} を<b>停止窓の回収の入口としてのみ</b>扱う（PR6a AC-83）。
+     *
+     * <p>Stripe が「反映した」と言ってきているため stale しきい値は適用せず、その契約に非終端
+     * operation が残っていればその場で回収する。プラン変更（items 差し替え・{@code pending_update}）の
+     * {@code APPLIED} 判定は PR6b の担当であり、本 PR では行わない。</p>
+     *
+     * <p><b>回収するものが無ければ所有を主張しない（{@code false} を返す）</b>。PR6b が扱うべき
+     * プラン変更の updated をここで {@code PROCESSED} に確定させると、冪等ゲートが「確定済み」と
+     * 判定して PR6b が<b>永久に拾えなくなる</b>（PR5 が保留リストで守っていたのと同じ性質）。
+     * {@code false} を返せば dispatcher が従来どおり {@code RECEIVED} のまま受信記録を残す。</p>
+     *
+     * <p>回収を冪等ゲートより前に走らせているのはこのためである。回収自体は status CAS の
+     * 更新件数で勝者を決めるため、再送で二度走っても二重には効かない（AC-82）。</p>
+     *
+     * @param event          署名検証済みイベント
+     * @param subscriptionId billing 所有と確認済みの Stripe Subscription ID
+     * @return 実際に回収したなら {@code true}（billing が所有を主張する）
+     */
+    private boolean handleSubscriptionUpdatedForRecovery(
+            BillingSubscriptionWebhookEventInfo event, String subscriptionId) {
+        if (!operationRecoveryService.recoverBySubscriptionRef(subscriptionId)) {
+            return false;
+        }
+        return runGated(event, () -> WebhookProcessStatus.PROCESSED);
+    }
+
     private boolean runGated(BillingSubscriptionWebhookEventInfo event, java.util.function.Supplier<WebhookProcessStatus> handler) {
         boolean shouldProcess = idempotencyService.tryBegin(event.eventId(), event.type(), event.livemode());
         if (!shouldProcess) {
