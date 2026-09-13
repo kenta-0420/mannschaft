@@ -28,6 +28,8 @@ import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.Optional;
@@ -76,6 +78,8 @@ class CirculationServiceAdditionalTest {
      */
     @org.junit.jupiter.api.BeforeEach
     void stubI18nMessageSource() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
         org.mockito.Mockito.lenient().when(userLocaleCache.getLocales(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(java.util.Map.of());
         org.mockito.Mockito.lenient().when(messageSource.getMessage(
@@ -84,6 +88,11 @@ class CirculationServiceAdditionalTest {
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.any()))
                 .thenAnswer(inv -> inv.getArgument(2));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     private static final Long DOCUMENT_ID = 100L;
@@ -418,6 +427,7 @@ class CirculationServiceAdditionalTest {
             given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(document));
             CirculationAttachmentEntity saved = CirculationAttachmentEntity.builder()
+                    .id(ATTACHMENT_ID)
                     .documentId(DOCUMENT_ID).fileKey("uploads/f.pdf").originalFilename("f.pdf")
                     .fileSize(2048L).mimeType("application/pdf").build();
             given(attachmentRepository.save(any())).willReturn(saved);
