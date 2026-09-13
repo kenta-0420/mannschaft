@@ -486,9 +486,6 @@ public class FormSubmissionService {
         // 添付と ACL は同じ transaction で不可視化する。R2 実体の削除はここでは行わない。
         valueRepository.findBySubmissionIdForUpdate(submissionId).stream()
                 .filter(this::hasStoredFile).forEach(this::releaseValue);
-        valueRepository.findBySubmissionId(submissionId).stream()
-                .filter(this::hasStoredFile)
-                .forEach(this::releaseValue);
         if (entity.getPdfFileKey() != null && !entity.getPdfFileKey().isBlank()) {
             storageAclService.releaseClaimed(entity.getPdfFileKey(),
                     new StorageAclAttachmentBinding("FORM_SUBMISSION_PDF", submissionId.toString()));

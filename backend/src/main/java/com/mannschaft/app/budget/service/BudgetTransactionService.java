@@ -30,6 +30,7 @@ import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
@@ -394,10 +395,8 @@ public class BudgetTransactionService {
 
         storageAclService.releaseClaimed(attachment.getFileKey(),
                 new StorageAclAttachmentBinding("BUDGET_TRANSACTION_ATTACHMENT", attachment.getId().toString()));
-        storageAclService.releaseClaimed(attachment.getFileKey(),
-                new StorageAclAttachmentBinding("BUDGET_TRANSACTION_ATTACHMENT", attachment.getId().toString()));
-        storageService.delete(attachment.getFileKey());
         attachmentRepository.delete(attachment);
+        domainEventPublisher.publish(new S3ObjectDeleteEvent(attachment.getFileKey()));
         log.info("添付ファイルを削除しました: transactionId={}, attachmentId={}", transactionId, attachmentId);
     }
 

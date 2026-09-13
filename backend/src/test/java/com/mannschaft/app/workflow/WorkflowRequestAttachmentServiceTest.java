@@ -1,8 +1,10 @@
 package com.mannschaft.app.workflow;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
@@ -36,6 +38,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -68,6 +71,9 @@ class WorkflowRequestAttachmentServiceTest {
 
     @Mock
     private StorageAccessService storageAccessService;
+
+    @Mock
+    private DomainEventPublisher eventPublisher;
 
     @InjectMocks
     private WorkflowRequestAttachmentService attachmentService;
@@ -244,13 +250,14 @@ class WorkflowRequestAttachmentServiceTest {
     class DeleteAttachment {
 
         @Test
-        @DisplayName("添付削除_正常_R2削除とDB削除が実行される")
-        void 添付削除_正常_R2削除とDB削除が実行される() {
+        @DisplayName("添付削除_正常_ACLとDBを削除し物理削除をcommit後イベントへ委譲する")
+        void 添付削除_正常_物理削除イベントを発行する() {
             // Given
             WorkflowRequestAttachmentEntity entity = WorkflowRequestAttachmentEntity.builder()
                     .requestId(REQUEST_ID)
                     .fileKey("workflow-attachments/" + REQUEST_ID + "/abc.pdf")
                     .originalFilename("a.pdf").fileSize(1L).build();
+            ReflectionTestUtils.setField(entity, "id", ATTACHMENT_ID);
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(requestEntity));
             given(attachmentRepository.findByIdAndRequestId(ATTACHMENT_ID, REQUEST_ID))
                     .willReturn(Optional.of(entity));
@@ -259,8 +266,13 @@ class WorkflowRequestAttachmentServiceTest {
             attachmentService.deleteAttachment(REQUEST_ID, ATTACHMENT_ID, USER_ID);
 
             // Then
-            verify(r2StorageService).delete(entity.getFileKey());
+            verify(storageAclService).releaseClaimed(entity.getFileKey(),
+                    new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", ATTACHMENT_ID.toString()));
             verify(attachmentRepository).delete(entity);
+            verify(eventPublisher).publish(argThat(event ->
+                    event instanceof S3ObjectDeleteEvent deleteEvent
+                            && deleteEvent.s3Keys().equals(List.of(entity.getFileKey()))));
+            verify(r2StorageService, never()).delete(anyString());
         }
 
         @Test

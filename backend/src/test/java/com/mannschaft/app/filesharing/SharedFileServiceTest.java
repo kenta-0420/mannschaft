@@ -31,6 +31,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -212,10 +213,10 @@ class SharedFileServiceTest {
                     .fileSize(1024L).contentType("application/pdf").build();
             SharedFileVersionEntity v1 = SharedFileVersionEntity.builder()
                     .fileId(FILE_ID).versionNumber(1).fileKey("old").fileSize(512L).build();
-            v1.setId(11L);
+            ReflectionTestUtils.setField(v1, "id", 11L);
             SharedFileVersionEntity v2 = SharedFileVersionEntity.builder()
                     .fileId(FILE_ID).versionNumber(2).fileKey("current").fileSize(1024L).build();
-            v2.setId(12L);
+            ReflectionTestUtils.setField(v2, "id", 12L);
             SharedFolderEntity folder = buildFolder();
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(entity));
             given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);

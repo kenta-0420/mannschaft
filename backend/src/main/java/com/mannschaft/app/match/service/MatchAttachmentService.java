@@ -1,8 +1,10 @@
 package com.mannschaft.app.match.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
@@ -76,6 +78,7 @@ public class MatchAttachmentService {
     private final StorageService storageService;
     private final StorageAclService storageAclService;
     private final StorageAccessService storageAccessService;
+    private final DomainEventPublisher eventPublisher;
 
     // ─────────────────────────────────────────────
     // 1. presign（アップロード URL 発行・記録権限必須）
@@ -227,12 +230,8 @@ public class MatchAttachmentService {
         storageAclService.releaseClaimed(fileKey,
                 new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attachment.getId().toString()));
         attachmentRepository.delete(attachment);
-        if (fileKey != null) {
-            try {
-                storageService.delete(fileKey);
-            } catch (Exception e) {
-                log.warn("R2 オブジェクト削除失敗（ベストエフォート）: fileKey={}, error={}", fileKey, e.getMessage());
-            }
+        if (fileKey != null && !fileKey.isBlank()) {
+            eventPublisher.publish(new S3ObjectDeleteEvent(fileKey));
         }
         log.info("局面写真 削除: matchId={}, attachmentId={}, actor={}", matchId, attachmentId, actorUserId);
     }

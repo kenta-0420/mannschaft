@@ -26,6 +26,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -628,10 +629,10 @@ class SharedFolderQueryServiceTest {
             given(fileRepository.findByFolderIdOrderByNameAsc(101L)).willReturn(List.of());
             SharedFileVersionEntity v1 = SharedFileVersionEntity.builder().fileId(201L)
                     .versionNumber(1).fileKey("k201").fileSize(10L).build();
-            v1.setId(301L);
+            ReflectionTestUtils.setField(v1, "id", 301L);
             SharedFileVersionEntity v2 = SharedFileVersionEntity.builder().fileId(202L)
                     .versionNumber(1).fileKey("k202").fileSize(20L).build();
-            v2.setId(302L);
+            ReflectionTestUtils.setField(v2, "id", 302L);
             given(versionRepository.findByFileIdOrderByVersionNumberDesc(201L)).willReturn(List.of(v1));
             given(versionRepository.findByFileIdOrderByVersionNumberDesc(202L)).willReturn(List.of(v2));
 

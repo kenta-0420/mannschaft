@@ -1,7 +1,9 @@
 package com.mannschaft.app.match.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.StorageErrorCode;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
@@ -33,6 +35,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -65,6 +68,8 @@ class MatchAttachmentServiceTest {
     private StorageAclService storageAclService;
     @Mock
     private StorageAccessService storageAccessService;
+    @Mock
+    private DomainEventPublisher eventPublisher;
 
     @InjectMocks
     private MatchAttachmentService service;
@@ -259,6 +264,32 @@ class MatchAttachmentServiceTest {
         assertThatThrownBy(() -> service.deleteAttachment(matchId, attId, ORG, ACTOR))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_031);
+        verify(storageService, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("delete: ACLとDBを削除し、物理削除をcommit後イベントへ委譲する")
+    void deletePublishesPhysicalDeleteEvent() {
+        UUID attId = UUID.randomUUID();
+        String fileKey = "match/" + ORG + "/" + matchId + "/key";
+        MatchAttachmentEntity attachment = MatchAttachmentEntity.builder()
+                .matchId(matchId)
+                .fileKey(fileKey)
+                .contentType("image/png")
+                .fileSize(10L)
+                .createdBy(ACTOR)
+                .build();
+        attachment.setId(attId);
+        when(attachmentRepository.findById(attId)).thenReturn(Optional.of(attachment));
+
+        service.deleteAttachment(matchId, attId, ORG, ACTOR);
+
+        verify(storageAclService).releaseClaimed(fileKey,
+                new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attId.toString()));
+        verify(attachmentRepository).delete(attachment);
+        verify(eventPublisher).publish(argThat(event ->
+                event instanceof S3ObjectDeleteEvent deleteEvent
+                        && deleteEvent.s3Keys().equals(List.of(fileKey))));
         verify(storageService, never()).delete(any());
     }
 
