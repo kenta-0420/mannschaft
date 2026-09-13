@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.StorageErrorCode;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
@@ -33,6 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -261,7 +265,6 @@ public class FormSubmissionService {
         FormSubmissionEntity entity;
         if (existing != null) {
             entity = existing;
-            valueRepository.deleteBySubmissionId(entity.getId());
             if (submitNow) {
                 entity.submit();
             }
@@ -284,7 +287,9 @@ public class FormSubmissionService {
         FormSubmissionEntity saved = submissionRepository.save(entity);
 
         List<FormSubmissionValueEntity> values = List.of();
-        if (request.getValues() != null && !request.getValues().isEmpty()) {
+        if (existing != null) {
+            values = replaceValues(saved, request.getValues() == null ? List.of() : request.getValues(), userId);
+        } else if (request.getValues() != null && !request.getValues().isEmpty()) {
             values = saveValues(saved, request.getValues(), userId);
         }
 
@@ -327,8 +332,7 @@ public class FormSubmissionService {
 
         List<FormSubmissionValueEntity> values;
         if (request.getValues() != null) {
-            valueRepository.deleteBySubmissionId(submissionId);
-            values = saveValues(saved, request.getValues(), userId);
+            values = replaceValues(saved, request.getValues(), userId);
         } else {
             values = valueRepository.findBySubmissionId(submissionId);
         }
@@ -479,6 +483,9 @@ public class FormSubmissionService {
     public void deleteSubmission(Long submissionId, Long userId) {
         FormSubmissionEntity entity = submissionRepository.findByIdAndSubmittedBy(submissionId, userId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
+        // 添付と ACL は同じ transaction で不可視化する。R2 実体の削除はここでは行わない。
+        valueRepository.findBySubmissionId(submissionId).stream()
+                .filter(this::hasStoredFile).forEach(this::releaseValue);
         entity.softDelete();
         submissionRepository.save(entity);
         log.info("提出削除: submissionId={}", submissionId);
@@ -614,17 +621,53 @@ public class FormSubmissionService {
      */
     private List<FormSubmissionValueEntity> saveValues(
             FormSubmissionEntity submission, List<SubmissionValueRequest> values, Long userId) {
+        return saveValues(submission, values, userId, Map.of());
+    }
+
+    /**
+     * 同じ fileKey の値 ID を保持し、除去された添付だけを解放する。
+     * ACL と提出値の整合が必要なため、storage サービスは forms の transaction に参加する。
+     */
+    private List<FormSubmissionValueEntity> replaceValues(
+            FormSubmissionEntity submission, List<SubmissionValueRequest> values, Long userId) {
+        List<FormSubmissionValueEntity> previous = valueRepository.findBySubmissionId(submission.getId());
+        Map<String, FormSubmissionValueEntity> previousFiles = new HashMap<>();
+        previous.stream().filter(this::hasStoredFile)
+                .forEach(value -> previousFiles.put(value.getFileKey(), value));
+        List<FormSubmissionValueEntity> saved = saveValues(submission, values, userId, previousFiles);
+        Set<Long> retainedIds = new HashSet<>();
+        saved.forEach(value -> retainedIds.add(value.getId()));
+        List<FormSubmissionValueEntity> removed = previous.stream()
+                .filter(value -> !retainedIds.contains(value.getId())).toList();
+        removed.stream().filter(this::hasStoredFile).forEach(this::releaseValue);
+        valueRepository.deleteAll(removed);
+        return saved;
+    }
+
+    private List<FormSubmissionValueEntity> saveValues(
+            FormSubmissionEntity submission, List<SubmissionValueRequest> values, Long userId,
+            Map<String, FormSubmissionValueEntity> previousFiles) {
+        Set<String> requestedFiles = new HashSet<>();
         List<FormSubmissionValueEntity> entities = values.stream()
-                .map(v -> (FormSubmissionValueEntity) FormSubmissionValueEntity.builder()
+                .map(v -> {
+                    FormFieldType type = FormFieldType.valueOf(v.getFieldType());
+                    boolean storedFile = isStoredFile(type, v.getFileKey());
+                    if (storedFile && !requestedFiles.add(v.getFileKey())) {
+                        throw new BusinessException(StorageErrorCode.ACL_CLAIM_CONFLICT);
+                    }
+                    FormSubmissionValueEntity previous = storedFile ? previousFiles.get(v.getFileKey()) : null;
+                    return (FormSubmissionValueEntity) (previous == null
+                            ? FormSubmissionValueEntity.builder() : previous.toBuilder())
                         .submissionId(submission.getId())
                         .fieldKey(v.getFieldKey())
-                        .fieldType(FormFieldType.valueOf(v.getFieldType()))
+                        .fieldType(type)
                         .textValue(v.getTextValue())
                         .numberValue(v.getNumberValue())
                         .dateValue(v.getDateValue())
                         .fileKey(v.getFileKey())
                         .isAutoFilled(v.getIsAutoFilled() != null ? v.getIsAutoFilled() : false)
-                        .build())
+                        .build();
+                })
                 .toList();
         List<FormSubmissionValueEntity> saved = valueRepository.saveAll(entities);
         StorageAclScope scope = toAclScope(submission.getScopeType(), submission.getScopeId());
@@ -637,6 +680,20 @@ public class FormSubmissionService {
             }
         }
         return saved;
+    }
+
+    private boolean hasStoredFile(FormSubmissionValueEntity value) {
+        return isStoredFile(value.getFieldType(), value.getFileKey());
+    }
+
+    private boolean isStoredFile(FormFieldType type, String fileKey) {
+        return (type == FormFieldType.FILE || type == FormFieldType.SIGNATURE)
+                && fileKey != null && !fileKey.isBlank();
+    }
+
+    private void releaseValue(FormSubmissionValueEntity value) {
+        storageAclService.releaseClaimed(value.getFileKey(),
+                new StorageAclAttachmentBinding("FORM_SUBMISSION_VALUE", value.getId().toString()));
     }
 
     private StorageAclScope toAclScope(String scopeType, Long scopeId) {
