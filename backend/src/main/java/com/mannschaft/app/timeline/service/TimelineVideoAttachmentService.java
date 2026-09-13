@@ -83,7 +83,8 @@ public class TimelineVideoAttachmentService {
         PresignedUploadResult result = r2StorageService.generateUploadUrl(r2Key, request.getContentType(), UPLOAD_TTL);
         StorageAclScope aclScope = toAclScope(scope, userId);
         storageAclService.registerPending(result.s3Key(), userId, aclScope, request.getContentType(), UPLOAD_TTL,
-                new StorageAclContentReference("TIMELINE_SCOPE", scopeTypeStr + ":" + scope.scopeId()));
+                new StorageAclContentReference("TIMELINE_SCOPE",
+                        scope.scopeType().name() + ":" + scope.scopeId()));
         log.info("動画アップロード Presigned URL 発行: userId={}, key={}", userId, r2Key);
         return new VideoUploadUrlResponse(result.uploadUrl(), result.s3Key(), UPLOAD_TTL_SECONDS);
     }

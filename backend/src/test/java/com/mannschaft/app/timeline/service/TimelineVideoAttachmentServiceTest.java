@@ -130,6 +130,10 @@ class TimelineVideoAttachmentServiceTest {
             assertThat(result.getFileKey()).endsWith(".mov");
             // F13 Phase 4-γ: PUBLIC はフォールバックで PERSONAL スコープ
             then(storageQuotaService).should().checkQuota(StorageScopeType.PERSONAL, USER_ID, 0L);
+            then(storageAclService).should().registerPending(
+                    eq(result.getFileKey()), eq(USER_ID), eq(StorageAclScope.personal(USER_ID)),
+                    eq("video/quicktime"), any(Duration.class),
+                    eq(new StorageAclContentReference("TIMELINE_SCOPE", "PERSONAL:" + USER_ID)));
         }
 
         @Test

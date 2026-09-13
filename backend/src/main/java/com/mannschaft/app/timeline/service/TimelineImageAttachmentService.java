@@ -87,7 +87,8 @@ public class TimelineImageAttachmentService {
                 : scope.scopeType() == StorageScopeType.ORGANIZATION
                 ? StorageAclScope.organization(scope.scopeId()) : StorageAclScope.personal(userId);
         storageAclService.registerPending(result.s3Key(), userId, aclScope, request.getContentType(), UPLOAD_TTL,
-                new StorageAclContentReference("TIMELINE_SCOPE", scopeTypeStr + ":" + scope.scopeId()));
+                new StorageAclContentReference("TIMELINE_SCOPE",
+                        scope.scopeType().name() + ":" + scope.scopeId()));
         log.info("画像アップロード Presigned URL 発行: userId={}, key={}", userId, r2Key);
 
         return ImageUploadUrlResponse.builder()

@@ -130,6 +130,10 @@ class TimelineImageAttachmentServiceTest {
             assertThat(result.getFileKey()).endsWith(".webp");
             // PUBLIC はフォールバックで PERSONAL スコープ
             then(storageQuotaService).should().checkQuota(StorageScopeType.PERSONAL, USER_ID, 0L);
+            then(storageAclService).should().registerPending(
+                    eq(result.getFileKey()), eq(USER_ID), eq(StorageAclScope.personal(USER_ID)),
+                    eq("image/webp"), any(Duration.class),
+                    eq(new StorageAclContentReference("TIMELINE_SCOPE", "PERSONAL:" + USER_ID)));
         }
 
         @Test
