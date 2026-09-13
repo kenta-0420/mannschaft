@@ -189,11 +189,14 @@ class OrganizationHierarchyServiceTest {
         @Test
         @DisplayName("ACTIVE なチーム所属組織を重複なく返す")
         void returnsActiveAnchorOrgIds() {
+            TeamOrgIdProjection firstOrganization = teamOrgProjection(701L, 801L);
+            TeamOrgIdProjection secondOrganization = teamOrgProjection(701L, 802L);
+            TeamOrgIdProjection duplicateOrganization = teamOrgProjection(702L, 801L);
             given(teamOrgMembershipRepository.findTeamOrgIdProjectionsByTeamIdIn(Set.of(701L, 702L)))
                     .willReturn(List.of(
-                            teamOrgProjection(701L, 801L),
-                            teamOrgProjection(701L, 802L),
-                            teamOrgProjection(702L, 801L)));
+                            firstOrganization,
+                            secondOrganization,
+                            duplicateOrganization));
 
             assertThat(service.getAnchorOrgIdsByTeamIds(List.of(701L, 702L)))
                     .containsExactlyInAnyOrder(801L, 802L);
@@ -215,8 +218,9 @@ class OrganizationHierarchyServiceTest {
         @Test
         @DisplayName("null/空・重複IDは正規化し、空入力ではrepositoryを呼ばない")
         void nullと重複を除去して空入力では照会しない() {
+            TeamOrgIdProjection projection = teamOrgProjection(701L, 801L);
             given(teamOrgMembershipRepository.findTeamOrgIdProjectionsByTeamIdIn(Set.of(701L)))
-                    .willReturn(List.of(teamOrgProjection(701L, 801L)));
+                    .willReturn(List.of(projection));
 
             assertThat(service.getAnchorOrgIdsByTeamIds(asList(null, 701L, 701L)))
                     .containsExactly(801L);
