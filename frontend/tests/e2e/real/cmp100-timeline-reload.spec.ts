@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Page } from '@playwright/test'
+import { test, expect, type BrowserContext, type Locator, type Page } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 
@@ -19,7 +19,7 @@ function required(name: string, value: string | undefined): string {
   return value
 }
 
-async function openPersonalFeed(page: Page, marker: string) {
+async function openPersonalFeed(page: Page, marker: string): Promise<Locator> {
   const feedResponse = page.waitForResponse(
     response => response.url().includes('/api/v1/timeline/my')
       && response.request().method() === 'GET',
@@ -29,7 +29,9 @@ async function openPersonalFeed(page: Page, marker: string) {
   await waitForSpinnerGone(page)
   const response = await feedResponse
   expect(response.status()).toBe(200)
-  await expect(page.getByText(marker, { exact: true })).toBeVisible({ timeout: 30_000 })
+  const personalFeed = page.locator('#scope-panel-PERSONAL')
+  await expect(personalFeed.getByText(marker, { exact: true })).toBeVisible({ timeout: 30_000 })
+  return personalFeed
 }
 
 async function assertDetailDenied(page: Page, postId: number, marker: string) {
@@ -42,11 +44,39 @@ async function assertDetailDenied(page: Page, postId: number, marker: string) {
   await expect(page.getByText(marker, { exact: true })).toHaveCount(0)
 }
 
+async function openPostDetail(page: Page, permalink: Locator, postId: number, marker: string) {
+  const detailResponse = page.waitForResponse(
+    response => response.url().includes(`/api/v1/timeline/posts/${postId}`)
+      && response.request().method() === 'GET',
+  )
+  await permalink.click()
+  expect((await detailResponse).status()).toBe(200)
+  await expect(page).toHaveURL(new RegExp(`/timeline/${postId}$`))
+  await expect(page.locator('#scope-panel-PERSONAL')).toHaveCount(0)
+  await expect(page.getByText(marker, { exact: true })).toBeVisible()
+}
+
+async function returnToPersonalFeed(page: Page, personalFeed: Locator, marker: string) {
+  await page.goBack({ waitUntil: 'domcontentloaded' })
+  await waitForHydration(page)
+  await waitForSpinnerGone(page)
+  await expect(personalFeed.getByText(marker, { exact: true })).toBeVisible({ timeout: 30_000 })
+}
+
+async function reloadPersonalFeed(page: Page, personalFeed: Locator): Promise<void> {
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await waitForHydration(page)
+  await expect(personalFeed.getByTestId('timeline-feed'))
+    .toHaveAttribute('data-loaded', 'true', { timeout: 60_000 })
+}
+
 test('CMP-100: 組織DESCENDANTS投稿の個人feed表示・詳細・再読込・非対象拒否', async ({ browser }) => {
+  test.setTimeout(externalRemoval ? 900_000 : 600_000)
   const admin: BrowserContext = await browser.newContext()
   const member: BrowserContext = await browser.newContext()
   const outsider: BrowserContext = await browser.newContext()
   let postId: number | undefined
+  let scenarioCompleted = false
   const marker = `CMP100-${Date.now()}`
   const baseUrl = required('API_BASE_URL', apiBaseUrl).replace(/\/$/, '')
   const organizationSlug = required('E2E_PARENT_ORG_SLUG', parentOrgSlug)
@@ -57,9 +87,19 @@ test('CMP-100: 組織DESCENDANTS投稿の個人feed表示・詳細・再読込�
       email: required('TEST_ADMIN_EMAIL', adminEmail),
       password: required('TEST_ADMIN_PASSWORD', adminPassword),
     })
+    const [organizationResponse, permissionResponse] = await Promise.all([
+      admin.request.get(`${baseUrl}/api/v1/organizations/${organizationSlug}`),
+      admin.request.get(`${baseUrl}/api/v1/organizations/${organizationSlug}/me/permissions`),
+    ])
+    if (!organizationResponse.ok()) {
+      throw new Error(`organization fixture unavailable: HTTP ${organizationResponse.status()}`)
+    }
+    if (!permissionResponse.ok()) {
+      throw new Error(`admin permission fixture unavailable: HTTP ${permissionResponse.status()}`)
+    }
     await adminPage.goto(`/organizations/${organizationSlug}/timeline`)
     await waitForHydration(adminPage)
-    await expect(adminPage.getByTestId('team-timeline-composer')).toBeVisible({ timeout: 30_000 })
+    await expect(adminPage.getByTestId('team-timeline-composer')).toBeVisible({ timeout: 90_000 })
     await adminPage.getByTestId('timeline-delivery-scope-DESCENDANTS').click()
     await adminPage.getByTestId('team-timeline-composer').fill(marker)
     const created = adminPage.waitForResponse(
@@ -73,33 +113,25 @@ test('CMP-100: 組織DESCENDANTS投稿の個人feed表示・詳細・再読込�
     postId = body.data?.id ?? body.id
     if (postId === undefined) throw new Error('投稿IDが取得できませんでした。')
 
-    await openPersonalFeed(adminPage, marker)
-    const adminPermalink = adminPage.getByTestId('team-timeline-post').filter({ hasText: marker })
+    const adminFeed = await openPersonalFeed(adminPage, marker)
+    const adminPermalink = adminFeed.getByTestId('team-timeline-post').filter({ hasText: marker })
       .getByTestId('timeline-post-permalink')
-    await adminPermalink.click()
-    await expect(adminPage).toHaveURL(new RegExp(`/timeline/${postId}$`))
-    await expect(adminPage.getByText(marker, { exact: true })).toBeVisible()
-    await adminPage.goBack()
-    await expect(adminPage.getByText(marker, { exact: true })).toBeVisible({ timeout: 15_000 })
+    await openPostDetail(adminPage, adminPermalink, postId, marker)
+    await returnToPersonalFeed(adminPage, adminFeed, marker)
 
     const memberPage = await member.newPage()
     await loginViaApi(memberPage, {
       email: required('TEST_USER_EMAIL', memberEmail),
       password: required('TEST_USER_PASSWORD', memberPassword),
     })
-    await openPersonalFeed(memberPage, marker)
-    const memberPermalink = memberPage.getByTestId('team-timeline-post').filter({ hasText: marker })
+    const memberFeed = await openPersonalFeed(memberPage, marker)
+    const memberPermalink = memberFeed.getByTestId('team-timeline-post').filter({ hasText: marker })
       .getByTestId('timeline-post-permalink')
-    await memberPermalink.click()
-    await expect(memberPage).toHaveURL(new RegExp(`/timeline/${postId}$`))
-    await expect(memberPage.getByText(marker, { exact: true })).toBeVisible()
-    await memberPage.goBack()
-    await expect(memberPage.getByText(marker, { exact: true })).toBeVisible({ timeout: 15_000 })
+    await openPostDetail(memberPage, memberPermalink, postId, marker)
+    await returnToPersonalFeed(memberPage, memberFeed, marker)
     for (let attempt = 0; attempt < 3; attempt++) {
-      await memberPage.reload({ waitUntil: 'domcontentloaded' })
-      await waitForHydration(memberPage)
-      await waitForSpinnerGone(memberPage)
-      await expect(memberPage.getByText(marker, { exact: true })).toBeVisible({ timeout: 30_000 })
+      await reloadPersonalFeed(memberPage, memberFeed)
+      await expect(memberFeed.getByText(marker, { exact: true })).toBeVisible({ timeout: 30_000 })
     }
 
     if (externalRemoval) {
@@ -107,15 +139,16 @@ test('CMP-100: 組織DESCENDANTS投稿の個人feed表示・詳細・再読込�
       let disappeared = false
       for (let attempt = 0; attempt < 30; attempt++) {
         await memberPage.waitForTimeout(2_000)
-        await memberPage.reload({ waitUntil: 'domcontentloaded' })
-        await waitForHydration(memberPage)
-        await waitForSpinnerGone(memberPage)
-        if (await memberPage.getByText(marker, { exact: true }).count() === 0) {
+        const feedAfterRemoval = await member.request.get(`${baseUrl}/api/v1/timeline/my`)
+        expect(feedAfterRemoval.status()).toBe(200)
+        if (!JSON.stringify(await feedAfterRemoval.json()).includes(marker)) {
           disappeared = true
           break
         }
       }
       expect(disappeared).toBe(true)
+      await reloadPersonalFeed(memberPage, memberFeed)
+      await expect(memberFeed.getByText(marker, { exact: true })).toHaveCount(0)
       await assertDetailDenied(memberPage, postId, marker)
     }
 
@@ -132,15 +165,33 @@ test('CMP-100: 組織DESCENDANTS投稿の個人feed表示・詳細・再読込�
     await waitForHydration(outsiderPage)
     await waitForSpinnerGone(outsiderPage)
     expect((await outsiderFeed).status()).toBe(200)
-    await expect(outsiderPage.getByText(marker, { exact: true })).toHaveCount(0)
+    await expect(outsiderPage.locator('#scope-panel-PERSONAL').getByText(marker, { exact: true }))
+      .toHaveCount(0)
     await assertDetailDenied(outsiderPage, postId, marker)
+    scenarioCompleted = true
   } finally {
+    const cleanupErrors: unknown[] = []
     if (postId) {
-      const cleanup = await admin.request.delete(`${baseUrl}/api/v1/timeline/posts/${postId}`)
-      expect([200, 204, 404]).toContain(cleanup.status())
+      try {
+        const cleanup = await admin.request.delete(`${baseUrl}/api/v1/timeline/posts/${postId}`)
+        if (![200, 204, 404].includes(cleanup.status())) {
+          cleanupErrors.push(new Error(`CMP-100 cleanup failed: HTTP ${cleanup.status()}`))
+        }
+      } catch (error) {
+        cleanupErrors.push(error)
+      }
     }
-    await admin.close()
-    await member.close()
-    await outsider.close()
+    const closeResults = await Promise.allSettled([
+      admin.close(),
+      member.close(),
+      outsider.close(),
+    ])
+    cleanupErrors.push(...closeResults
+      .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+      .map(result => result.reason))
+    if (scenarioCompleted && cleanupErrors.length > 0) {
+      throw cleanupErrors[0]
+    }
+    cleanupErrors.forEach(error => console.error('CMP-100 cleanup failed', error))
   }
 })

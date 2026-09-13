@@ -14,6 +14,7 @@ import com.mannschaft.app.organization.repository.OrganizationParentIdProjection
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
+import com.mannschaft.app.team.repository.TeamOrgIdProjection;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -400,8 +401,8 @@ public class OrganizationHierarchyService {
      *       （近い経路で届くなら届く、が正しい）。</li>
      *   <li>{@code app.org.max-depth} を超える深さは辿らない。</li>
      *   <li>サイクルは訪問済み集合で検出し、その経路を打ち切る（無限ループしない）。</li>
-     *   <li>1 リクエスト内で親リンクをメモ化する（{@code parent_organization_id} には
-     *       キャッシュが無く、素朴に辿ると 1 ホップごとにクエリが飛ぶため）。</li>
+     *   <li>同じ深度にある組織の親リンクを一括取得するため、クエリ数は起点数ではなく
+     *       探索した深度にのみ比例する。</li>
      * </ul>
      *
      * @param startOrgIds 起点組織 ID 群（null/空なら空 Map）
@@ -487,8 +488,9 @@ public class OrganizationHierarchyService {
             return List.of();
         }
         Set<Long> anchors = new HashSet<>();
-        for (Long organizationId : teamOrgMembershipRepository
-                .findOrganizationIdByTeamIdIn(normalizedTeamIds).values()) {
+        for (TeamOrgIdProjection projection : teamOrgMembershipRepository
+                .findTeamOrgIdProjectionsByTeamIdIn(normalizedTeamIds)) {
+            Long organizationId = projection.getOrganizationId();
             if (organizationId != null) {
                 anchors.add(organizationId);
             }
