@@ -1,11 +1,17 @@
 package com.mannschaft.app.filesharing;
 
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
 import com.mannschaft.app.filesharing.entity.SharedFileLinkEntity;
+import com.mannschaft.app.filesharing.entity.SharedFileVersionEntity;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileLinkRepository;
 import com.mannschaft.app.filesharing.repository.SharedFileRepository;
+import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
 import com.mannschaft.app.filesharing.repository.SharedFolderRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -64,7 +71,11 @@ class PublicFileLinkContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private SharedFileRepository fileRepository;
     @Autowired
+    private SharedFileVersionRepository versionRepository;
+    @Autowired
     private SharedFileLinkRepository linkRepository;
+    @Autowired
+    private StorageAclService storageAclService;
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -78,6 +89,7 @@ class PublicFileLinkContractIT extends AbstractMySqlIntegrationTest {
     @BeforeEach
     void setUp() {
         linkRepository.deleteAll();
+        versionRepository.deleteAll();
         fileRepository.deleteAll();
         folderRepository.deleteAll();
 
@@ -88,15 +100,32 @@ class PublicFileLinkContractIT extends AbstractMySqlIntegrationTest {
         SharedFolderEntity folder = folderRepository.save(SharedFolderEntity.builder()
                 .scopeType(FileScopeType.TEAM).teamId(9001L).name("契約テスト用").createdBy(1L).build());
 
+        String keySuffix = UUID.randomUUID().toString();
+        String fileKey = "team/9001/" + keySuffix + "/doc.pdf";
+        String downloadDisabledFileKey = "team/9001/" + keySuffix + "/locked.pdf";
+
         SharedFileEntity file = fileRepository.save(SharedFileEntity.builder()
-                .folderId(folder.getId()).name("doc.pdf").fileKey("team/9001/doc.pdf")
+                .folderId(folder.getId()).name("doc.pdf").fileKey(fileKey)
                 .fileSize(1024L).contentType("application/pdf").createdBy(1L).build());
         fileId = file.getId();
+        registerClaimedVersion(file, folder, fileKey, 1024L);
 
         SharedFileEntity ddFile = fileRepository.save(SharedFileEntity.builder()
-                .folderId(folder.getId()).name("locked.pdf").fileKey("team/9001/locked.pdf")
+                .folderId(folder.getId()).name("locked.pdf").fileKey(downloadDisabledFileKey)
                 .fileSize(2048L).contentType("application/pdf").downloadDisabled(true).createdBy(1L).build());
         downloadDisabledFileId = ddFile.getId();
+        registerClaimedVersion(ddFile, folder, downloadDisabledFileKey, 2048L);
+    }
+
+    private void registerClaimedVersion(SharedFileEntity file, SharedFolderEntity folder, String fileKey, long fileSize) {
+        SharedFileVersionEntity version = versionRepository.save(SharedFileVersionEntity.builder()
+                .fileId(file.getId()).versionNumber(1).fileKey(fileKey).fileSize(fileSize)
+                .contentType("application/pdf").uploadedBy(1L).build());
+        StorageAclScope scope = StorageAclScope.team(9001L);
+        StorageAclContentReference parent = new StorageAclContentReference("SHARED_FOLDER", folder.getId().toString());
+        storageAclService.registerPending(fileKey, 1L, scope, "application/pdf", Duration.ofMinutes(15), parent);
+        storageAclService.claimPending(fileKey, 1L, scope, parent,
+                new StorageAclAttachmentBinding("SHARED_FILE_VERSION", version.getId().toString()));
     }
 
     private String seedLink(Long targetFileId, LocalDateTime expiresAt, boolean active,

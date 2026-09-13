@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
@@ -112,7 +113,7 @@ class TimelinePostServiceTest {
     private com.mannschaft.app.organization.service.OrganizationService organizationService;
 
     @Mock
-    private com.mannschaft.app.common.storage.MediaUrlResolver mediaUrlResolver;
+    private StorageAccessService storageAccessService;
 
     @Mock
     private StorageAclService storageAclService;
@@ -1730,7 +1731,6 @@ class TimelinePostServiceTest {
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(attachments);
-            given(timelineMapper.toAttachmentResponseList(attachments)).willReturn(attachmentResponses);
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
 
             // when
@@ -1769,7 +1769,6 @@ class TimelinePostServiceTest {
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(List.of());
-            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
 
             // DB は createdAt 昇順・先頭5件（id 11〜15）を返す。id=16 の6件目は LIMIT 5 で含まれない。
@@ -1846,7 +1845,6 @@ class TimelinePostServiceTest {
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID)).willReturn(List.of());
-            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
             given(postRepository.findRepliesByParentId(eq(POST_ID), any())).willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
@@ -1896,7 +1894,6 @@ class TimelinePostServiceTest {
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID)).willReturn(List.of());
-            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
             given(postRepository.findRepliesByParentId(eq(POST_ID), any())).willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
@@ -2594,6 +2591,10 @@ class TimelinePostServiceTest {
         private static final String SIGNED_URL =
                 "https://r2.example.com/" + IMAGE_KEY
                         + "?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=deadbeef";
+        private static final String VIDEO_KEY = "timeline/PUBLIC/0/tmp/video-123.mp4";
+        private static final String SIGNED_VIDEO_URL =
+                "https://r2.example.com/" + VIDEO_KEY
+                        + "?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=cafebabe";
 
         /** Mapper 変換直後の生 AttachmentResponse（image.url/thumbnailUrl は未解決＝null）を作る。 */
         private AttachmentResponse rawImageResponse(long id, String fileKey) {
@@ -2608,9 +2609,31 @@ class TimelinePostServiceTest {
 
         private TimelinePostAttachmentEntity imageEntity(Long postId, String fileKey) {
             return TimelinePostAttachmentEntity.builder()
+                    .id(9L)
                     .timelinePostId(postId)
                     .attachmentType(AttachmentType.IMAGE)
                     .fileKey(fileKey)
+                    .build();
+        }
+
+        private TimelinePostAttachmentEntity videoEntity(Long postId, String fileKey) {
+            return TimelinePostAttachmentEntity.builder()
+                    .id(10L)
+                    .timelinePostId(postId)
+                    .attachmentType(AttachmentType.VIDEO_FILE)
+                    .fileKey(fileKey)
+                    .build();
+        }
+
+        private AttachmentResponse rawVideoResponse(long id, String fileKey) {
+            return AttachmentResponse.builder()
+                    .id(id)
+                    .attachmentType("VIDEO_FILE")
+                    .file(new AttachmentResponse.AttachmentFileDto(fileKey, "video.mp4", 4096L, "video/mp4"))
+                    .video(new AttachmentResponse.AttachmentVideoDto(
+                            null, "https://cdn.example.com/thumb.jpg", "動画", "thumb-key",
+                            42, "h264", (short) 1280, (short) 720, "READY"))
+                    .sortOrder((short) 0)
                     .build();
         }
 
@@ -2624,9 +2647,9 @@ class TimelinePostServiceTest {
             given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
                     .willReturn(List.of(entity));
-            given(timelineMapper.toAttachmentResponseList(List.of(entity)))
-                    .willReturn(List.of(rawImageResponse(9L, IMAGE_KEY)));
-            given(mediaUrlResolver.resolveAll(anyCollection()))
+            given(timelineMapper.toAttachmentResponse(entity))
+                    .willReturn(rawImageResponse(9L, IMAGE_KEY));
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
                     .willReturn(Map.of(IMAGE_KEY, SIGNED_URL));
             given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
             given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
@@ -2658,7 +2681,7 @@ class TimelinePostServiceTest {
             given(attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection()))
                     .willReturn(List.of(entity));
             given(timelineMapper.toAttachmentResponse(entity)).willReturn(rawImageResponse(9L, IMAGE_KEY));
-            given(mediaUrlResolver.resolveAll(anyCollection()))
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
                     .willReturn(Map.of(IMAGE_KEY, SIGNED_URL));
 
             // when
@@ -2705,9 +2728,8 @@ class TimelinePostServiceTest {
                             imageEntity(1L, "timeline/PUBLIC/0/tmp/a.jpg"),
                             imageEntity(2L, "timeline/PUBLIC/0/tmp/b.jpg"),
                             imageEntity(3L, "timeline/PUBLIC/0/tmp/c.jpg")));
-            given(timelineMapper.toAttachmentResponse(any(TimelinePostAttachmentEntity.class)))
-                    .willReturn(rawImageResponse(9L, IMAGE_KEY));
-            given(mediaUrlResolver.resolveAll(anyCollection())).willReturn(Map.of());
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
+                    .willReturn(Map.of());
 
             // when
             timelinePostService.getFeed("PUBLIC", 0L, null, 20, USER_ID);
@@ -2715,7 +2737,75 @@ class TimelinePostServiceTest {
             // then: 添付の一括取得も署名解決も 1 回のみ（ループ内 resolve なし）
             verify(attachmentRepository, org.mockito.Mockito.times(1))
                     .findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(anyCollection());
-            verify(mediaUrlResolver, org.mockito.Mockito.times(1)).resolveAll(anyCollection());
+            verify(storageAccessService, org.mockito.Mockito.times(1))
+                    .generateDownloadUrlsForList(anyCollection(), any());
+        }
+
+        @Test
+        @DisplayName("ACL不一致の画像添付は投稿詳細から除外される")
+        void ACL不一致画像は投稿詳細から除外される() {
+            TimelinePostEntity post = createPost();
+            TimelinePostAttachmentEntity entity = imageEntity(POST_ID, IMAGE_KEY);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(entity));
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
+                    .willReturn(Map.of());
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            assertThat(result.getAttachments()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("動画添付はACL照合済み署名URLをvideoUrlへ設定しメタデータを保持する")
+        void 動画添付に署名URLを設定する() {
+            TimelinePostEntity post = createPost();
+            TimelinePostAttachmentEntity entity = videoEntity(POST_ID, VIDEO_KEY);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(entity));
+            given(timelineMapper.toAttachmentResponse(entity))
+                    .willReturn(rawVideoResponse(10L, VIDEO_KEY));
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
+                    .willReturn(Map.of(VIDEO_KEY, SIGNED_VIDEO_URL));
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            assertThat(result.getAttachments()).hasSize(1);
+            AttachmentResponse.AttachmentVideoDto video = result.getAttachments().get(0).getVideo();
+            assertThat(video.videoUrl()).isEqualTo(SIGNED_VIDEO_URL).contains("X-Amz-Signature");
+            assertThat(video.videoProcessingStatus()).isEqualTo("READY");
+            assertThat(video.videoCodec()).isEqualTo("h264");
+            assertThat(video.videoWidth()).isEqualTo((short) 1280);
+        }
+
+        @Test
+        @DisplayName("ACL不一致の動画添付は投稿詳細から除外される")
+        void ACL不一致動画は投稿詳細から除外される() {
+            TimelinePostEntity post = createPost();
+            TimelinePostAttachmentEntity entity = videoEntity(POST_ID, VIDEO_KEY);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postVisibilityGuard.isVisible(post, USER_ID)).willReturn(true);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of(entity));
+            given(storageAccessService.generateDownloadUrlsForList(anyCollection(), any()))
+                    .willReturn(Map.of());
+            given(reactionRepository.existsByTimelinePostIdAndUserId(POST_ID, USER_ID)).willReturn(false);
+            given(reactionRepository.countByTimelinePostId(POST_ID)).willReturn(0L);
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            assertThat(result.getAttachments()).isEmpty();
         }
     }
 }

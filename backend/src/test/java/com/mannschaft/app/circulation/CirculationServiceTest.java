@@ -14,12 +14,15 @@ import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -31,7 +34,10 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,6 +74,10 @@ class CirculationServiceTest {
     @Mock
     private StorageAclService storageAclService;
 
+    @Mock private StorageAccessService storageAccessService;
+    @Mock private AccessControlService accessControlService;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
+
     /** F09.14 Phase 4-C: deleteDocument 時のイベント発行検証用。 */
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
@@ -85,6 +95,8 @@ class CirculationServiceTest {
      */
     @org.junit.jupiter.api.BeforeEach
     void stubI18nMessageSource() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
         org.mockito.Mockito.lenient().when(userLocaleCache.getLocales(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(java.util.Map.of());
         org.mockito.Mockito.lenient().when(messageSource.getMessage(
@@ -93,6 +105,22 @@ class CirculationServiceTest {
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.any()))
                 .thenAnswer(inv -> inv.getArgument(2));
+        org.mockito.Mockito.lenient().when(accessControlService.isMember(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(true);
+        org.mockito.Mockito.lenient().doNothing().when(accessControlService).checkMembership(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
+        org.mockito.Mockito.lenient().doNothing().when(accessControlService).checkMembershipOrDescendant(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyBoolean());
+        org.mockito.Mockito.lenient().doNothing().when(contentVisibilityChecker).assertCanView(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.lenient().when(storageAccessService.generateDownloadUrlsForList(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(java.util.Map.of());
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     private static final Long DOCUMENT_ID = 100L;

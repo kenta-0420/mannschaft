@@ -6,8 +6,10 @@ import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.entity.MatchAttachmentEntity;
 import com.mannschaft.app.match.entity.MatchEntity;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -72,6 +75,7 @@ public class MatchAttachmentService {
     private final MatchAccessService matchAccessService;
     private final StorageService storageService;
     private final StorageAclService storageAclService;
+    private final StorageAccessService storageAccessService;
 
     // ─────────────────────────────────────────────
     // 1. presign（アップロード URL 発行・記録権限必須）
@@ -163,8 +167,15 @@ public class MatchAttachmentService {
      * @return 添付一覧（作成日時昇順）
      */
     public List<MatchAttachmentEntity> listAttachments(UUID matchId, Long organizationId) {
-        matchService.getMatchOrThrow(matchId, organizationId);
-        return attachmentRepository.findByMatchIdOrderByCreatedAtAsc(matchId);
+        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId);
+        List<MatchAttachmentEntity> attachments =
+                attachmentRepository.findByMatchIdOrderByCreatedAtAsc(matchId);
+        Map<String, String> downloadUrls = storageAccessService.generateDownloadUrlsForList(
+                attachments.stream().map(attachment -> downloadRequest(match, attachment)).toList(),
+                DOWNLOAD_TTL);
+        return attachments.stream()
+                .filter(attachment -> downloadUrls.containsKey(attachment.getFileKey()))
+                .toList();
     }
 
     // ─────────────────────────────────────────────
@@ -180,9 +191,14 @@ public class MatchAttachmentService {
      * @return 短命ダウンロード URL（秒）
      */
     public DownloadUrl generateDownloadUrl(UUID matchId, UUID attachmentId, Long organizationId) {
-        matchService.getMatchOrThrow(matchId, organizationId);
+        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId);
         MatchAttachmentEntity attachment = getAttachmentInMatchOrThrow(matchId, attachmentId);
-        String downloadUrl = storageService.generateDownloadUrl(attachment.getFileKey(), DOWNLOAD_TTL);
+        String downloadUrl = storageAccessService.generateDownloadUrl(
+                attachment.getFileKey(),
+                StorageAclScope.organization(match.getOrganizationId()),
+                new StorageAclContentReference("MATCH", match.getId().toString()),
+                new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attachment.getId().toString()),
+                DOWNLOAD_TTL);
         return DownloadUrl.builder()
                 .downloadUrl(downloadUrl)
                 .expiresInSeconds(DOWNLOAD_TTL.toSeconds())
@@ -236,6 +252,15 @@ public class MatchAttachmentService {
             throw new BusinessException(MatchErrorCode.MATCH_031);
         }
         return attachment;
+    }
+
+    private StorageAclDownloadRequest downloadRequest(
+            MatchEntity match, MatchAttachmentEntity attachment) {
+        return new StorageAclDownloadRequest(
+                attachment.getFileKey(),
+                StorageAclScope.organization(match.getOrganizationId()),
+                new StorageAclContentReference("MATCH", match.getId().toString()),
+                new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attachment.getId().toString()));
     }
 
     // ─────────────────────────────────────────────

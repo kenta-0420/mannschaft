@@ -100,7 +100,7 @@ public class ChatUploadController {
      *
      * <p>署名 URL は発行された時点でオブジェクト本体への読み取り能力そのものとなるため、
      * 発行前に <b>そのオブジェクトが属するチャンネルを解決し、本文閲覧と同一の判定</b>
-     * （{@link ChatMessageService#checkAttachmentDownloadAccess}）を適用する。
+     * （{@link ChatMessageService#generateAttachmentDownloadUrl}）を適用する。
      * チャットが管理していないキーは fail-closed で拒否する。</p>
      */
     @GetMapping("/{fileKey}/download-url")
@@ -109,9 +109,8 @@ public class ChatUploadController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "閲覧権限なし")
     public ResponseEntity<ApiResponse<DownloadUrlResponse>> generateDownloadUrl(
             @PathVariable String fileKey) {
-        chatMessageService.checkAttachmentDownloadAccess(fileKey, SecurityUtils.getCurrentUserId());
-        String downloadUrl = storageService.generateDownloadUrl(
-                fileKey, Duration.ofSeconds(DEFAULT_EXPIRY_SECONDS));
+        String downloadUrl = chatMessageService.generateAttachmentDownloadUrl(
+                fileKey, SecurityUtils.getCurrentUserId(), Duration.ofSeconds(DEFAULT_EXPIRY_SECONDS));
         DownloadUrlResponse response = new DownloadUrlResponse(
                 downloadUrl,
                 DEFAULT_EXPIRY_SECONDS
