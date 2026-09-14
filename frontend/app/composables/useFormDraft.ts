@@ -44,6 +44,8 @@ export interface UseFormDraftReturn<T> {
   save: (value: T) => void
   /** 下書きを削除する（送信成功時に呼ぶ想定） */
   clear: () => void
+  /** 保留中の自動保存だけを取り消す。保存済みの下書きは維持する。 */
+  cancelPendingSave: () => void
   /** localStorage から前回の下書きを読み出す。無ければ null */
   restore: () => T | null
   /** 直近で保存が行われたことを示すフラッシュフラグ（{@code flashMs} 後に false へ戻る） */
@@ -107,16 +109,20 @@ export function useFormDraft<T>(
    * 下書きを削除する。送信成功時に呼ぶ。savedFlash も即座に落とす。
    */
   function clear(): void {
-    if (saveTimer) {
-      clearTimeout(saveTimer)
-      saveTimer = null
-    }
+    cancelPendingSave()
     savedFlash.value = false
     if (!isBrowser()) return
     try {
       window.localStorage.removeItem(key)
     } catch {
       // ignore
+    }
+  }
+
+  function cancelPendingSave(): void {
+    if (saveTimer) {
+      clearTimeout(saveTimer)
+      saveTimer = null
     }
   }
 
@@ -147,7 +153,7 @@ export function useFormDraft<T>(
     }
   }
 
-  return { draft, save, clear, restore, savedFlash }
+  return { draft, save, clear, cancelPendingSave, restore, savedFlash }
 }
 
 /**

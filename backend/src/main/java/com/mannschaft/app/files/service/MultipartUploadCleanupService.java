@@ -6,6 +6,7 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.files.entity.MultipartAbortCleanupEntity;
 import com.mannschaft.app.files.repository.MultipartAbortCleanupRepository;
+import com.mannschaft.app.files.repository.MultipartUploadSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,8 +28,10 @@ import java.time.Duration;
 public class MultipartUploadCleanupService {
 
     private static final String ABORT_PENDING = "ABORT_PENDING";
+    private static final String DELETE_PENDING = "DELETE_PENDING";
 
     private final MultipartAbortCleanupRepository repository;
+    private final MultipartUploadSessionRepository sessionRepository;
     private final R2StorageService r2StorageService;
     @org.springframework.beans.factory.annotation.Qualifier("utcClock")
     private final Clock clock;
@@ -56,39 +59,82 @@ public class MultipartUploadCleanupService {
                 .status(ABORT_PENDING).nextAttemptAt(Instant.now(clock)).attemptCount(0).build());
     }
 
+    /**
+     * R2完了後にDB commitが失敗した場合、セッションを再利用不能にし、完成済みobjectを確実に回収する。
+     * 削除失敗時は同じREQUIRES_NEWトランザクションで再試行台帳を残す。
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void compensateCompletedRollback(String uploadId, String r2Key, String feature, String scopeType,
+                                             Long scopeId, Long ownerId, String contentType) {
+        sessionRepository.findByUploadId(uploadId).ifPresent(session ->
+                sessionRepository.save(session.toBuilder().status("FAILED").build()));
+        MultipartAbortCleanupEntity marker = repository.save(MultipartAbortCleanupEntity.builder()
+                .uploadId(uploadId).r2Key(r2Key).ownerId(ownerId).contentType(contentType)
+                .feature(feature).scopeType(scopeType).scopeId(scopeId)
+                .status(DELETE_PENDING).nextAttemptAt(Instant.now(clock)).attemptCount(0).build());
+        try {
+            r2StorageService.delete(r2Key);
+            repository.delete(marker);
+        } catch (RuntimeException deleteFailure) {
+            log.warn("Multipart完了rollback後のobject削除を再試行へ登録しました: uploadId={}, fileKey={}",
+                    uploadId, r2Key, deleteFailure);
+        }
+    }
+
     /** 期限到来した補償対象を一件ずつabortする。失敗行は状態を残して次回へ回す。 */
     public int retryPendingAborts(Instant now) {
         int succeeded = 0;
         repository.releaseExpiredClaims(now);
+        repository.releaseExpiredDeleteClaims(now);
         repository.findByStatusAndDeadLetteredAtBefore("DEAD_LETTER", now.minus(Duration.ofDays(retentionDays)))
                 .forEach(repository::delete);
         for (MultipartAbortCleanupEntity session : repository
                 .findByStatusAndNextAttemptAtBefore(ABORT_PENDING, now)) {
-            try {
-                if (session.getAttemptCount() >= maxAttempts) {
-                    repository.save(session.toBuilder().status("DEAD_LETTER").deadLetteredAt(now).build());
-                    log.error("Multipart補償abortをdead-letterへ隔離しました: uploadId={}", session.getUploadId());
-                    continue;
-                }
-                if (repository.claim(session.getId(), now, now.plus(Duration.ofMinutes(LEASE_MINUTES))) == 0) {
-                    continue;
-                }
-                r2StorageService.abortMultipartUpload(session.getR2Key(), session.getUploadId());
-                repository.delete(session);
+            if (retryOne(session, now, false)) {
                 succeeded++;
-            } catch (RuntimeException e) {
-                if (isNoSuchUpload(e)) {
-                    repository.delete(session);
-                    succeeded++;
-                    continue;
-                }
-                repository.save(session.toBuilder().status(ABORT_PENDING).leaseUntil(null)
-                        .nextAttemptAt(now.plus(Duration.ofMinutes(5))).attemptCount(session.getAttemptCount() + 1).build());
-                log.warn("Multipart補償abortを再試行します: uploadId={}, fileKey={}",
-                        session.getUploadId(), session.getR2Key(), e);
+            }
+        }
+        for (MultipartAbortCleanupEntity session : repository
+                .findByStatusAndNextAttemptAtBefore(DELETE_PENDING, now)) {
+            if (retryOne(session, now, true)) {
+                succeeded++;
             }
         }
         return succeeded;
+    }
+
+    private boolean retryOne(MultipartAbortCleanupEntity session, Instant now, boolean deleteCompletedObject) {
+            try {
+                if (session.getAttemptCount() >= maxAttempts) {
+                    repository.save(session.toBuilder().status("DEAD_LETTER").deadLetteredAt(now).build());
+                    log.error("Multipart補償をdead-letterへ隔離しました: uploadId={}", session.getUploadId());
+                    return false;
+                }
+                int claimed = deleteCompletedObject
+                        ? repository.claimDelete(session.getId(), now, now.plus(Duration.ofMinutes(LEASE_MINUTES)))
+                        : repository.claim(session.getId(), now, now.plus(Duration.ofMinutes(LEASE_MINUTES)));
+                if (claimed == 0) {
+                    return false;
+                }
+                if (deleteCompletedObject) {
+                    r2StorageService.delete(session.getR2Key());
+                } else {
+                    r2StorageService.abortMultipartUpload(session.getR2Key(), session.getUploadId());
+                }
+                repository.delete(session);
+                return true;
+            } catch (RuntimeException e) {
+                if (!deleteCompletedObject && isNoSuchUpload(e)) {
+                    repository.delete(session);
+                    return true;
+                }
+                repository.save(session.toBuilder().status(deleteCompletedObject ? DELETE_PENDING : ABORT_PENDING)
+                        .leaseUntil(null)
+                        .nextAttemptAt(now.plus(Duration.ofMinutes(5))).attemptCount(session.getAttemptCount() + 1).build());
+                log.warn("Multipart補償を再試行します: uploadId={}, fileKey={}",
+                        session.getUploadId(), session.getR2Key(), e);
+                return false;
+            }
     }
 
     private boolean isNoSuchUpload(Throwable error) {
