@@ -36,6 +36,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -320,6 +321,7 @@ class CirculationServiceTest {
         @DisplayName("生成済みエクスポートを削除すると ACL を正しい binding で解放する")
         void 文書削除_生成済みエクスポートのAclを解放する() {
             CirculationDocumentEntity entity = createDraftDocument();
+            ReflectionTestUtils.setField(entity, "id", DOCUMENT_ID);
             entity.markExportCompleted("circulation/exports/100/export.pdf");
             given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(entity));
