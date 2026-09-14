@@ -351,8 +351,11 @@ class CirculationServiceTest {
 
             circulationService.deleteDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
 
-            verify(domainEventPublisher).publish(new com.mannschaft.app.common.storage.S3ObjectDeleteEvent(
-                    List.of("circulation/attachments/100/minutes.pdf", "circulation/exports/100/export.pdf")));
+            ArgumentCaptor<com.mannschaft.app.common.storage.S3ObjectDeleteEvent> deleteEventCaptor =
+                    ArgumentCaptor.forClass(com.mannschaft.app.common.storage.S3ObjectDeleteEvent.class);
+            verify(domainEventPublisher).publish(deleteEventCaptor.capture());
+            assertThat(deleteEventCaptor.getValue().s3Keys()).containsExactly(
+                    "circulation/attachments/100/minutes.pdf", "circulation/exports/100/export.pdf");
         }
 
         @Test
