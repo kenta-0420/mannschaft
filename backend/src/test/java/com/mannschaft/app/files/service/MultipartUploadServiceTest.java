@@ -2,8 +2,10 @@ package com.mannschaft.app.files.service;
 
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.MultipartContentTarget;
 import com.mannschaft.app.common.storage.R2StorageService.PresignedPartUrl;
 import com.mannschaft.app.files.dto.CompleteMultipartRequest;
 import com.mannschaft.app.files.dto.CompleteMultipartResponse;
@@ -61,6 +63,12 @@ class MultipartUploadServiceTest {
 
     @Mock
     private MultipartUploadCleanupService cleanupService;
+
+    @org.mockito.Spy
+    private java.time.Clock clock = java.time.Clock.systemUTC();
+
+    @Mock
+    private com.mannschaft.app.common.storage.acl.MultipartContentTargetRegistry targetRegistry;
 
     @InjectMocks
     private MultipartUploadService service;
@@ -234,8 +242,9 @@ class MultipartUploadServiceTest {
         void 正常系_パートURL発行成功() {
             // given
             MultipartUploadSessionEntity session = buildInProgressSession();
-            PartUrlRequest req = new PartUrlRequest("timeline/uuid.mp4", List.of(1, 2, 3));
+            PartUrlRequest req = new PartUrlRequest(session.getR2Key(), List.of(1, 2, 3));
             given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+            stubResolvedTarget(session);
             given(r2StorageService.createPresignedPartUrls(anyString(), anyString(), anyList(), any()))
                     .willReturn(List.of(
                             new PresignedPartUrl(1, "https://r2.example.com/part1"),
@@ -295,12 +304,13 @@ class MultipartUploadServiceTest {
             // given
             MultipartUploadSessionEntity session = buildInProgressSession();
             CompleteMultipartRequest req = new CompleteMultipartRequest(
-                    "timeline/uuid.mp4",
+                    session.getR2Key(),
                     List.of(
                             new CompleteMultipartRequest.PartEtag(1, "etag-001"),
                             new CompleteMultipartRequest.PartEtag(2, "etag-002")));
-            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
-            given(r2StorageService.getObjectSize("timeline/uuid.mp4")).willReturn(200 * 1024 * 1024L);
+            given(sessionRepository.findByUploadIdForUpdate(UPLOAD_ID)).willReturn(Optional.of(session));
+            stubResolvedTarget(session);
+            given(r2StorageService.getObjectSize(session.getR2Key())).willReturn(200 * 1024 * 1024L);
             given(sessionRepository.save(any(MultipartUploadSessionEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -308,7 +318,7 @@ class MultipartUploadServiceTest {
             CompleteMultipartResponse result = service.completeUpload(UPLOAD_ID, USER_ID, req);
 
             // then
-            assertThat(result.getFileKey()).isEqualTo("timeline/uuid.mp4");
+            assertThat(result.getFileKey()).isEqualTo(session.getR2Key());
             assertThat(result.getFileSize()).isEqualTo(200 * 1024 * 1024L);
             then(r2StorageService).should().completeMultipartUpload(
                     eq(session.getR2Key()), eq(UPLOAD_ID), anyList());
@@ -322,7 +332,7 @@ class MultipartUploadServiceTest {
             CompleteMultipartRequest req = new CompleteMultipartRequest(
                     "timeline/other-file.mp4",
                     List.of(new CompleteMultipartRequest.PartEtag(1, "etag-001")));
-            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+            given(sessionRepository.findByUploadIdForUpdate(UPLOAD_ID)).willReturn(Optional.of(session));
 
             assertThatThrownBy(() -> service.completeUpload(UPLOAD_ID, USER_ID, req))
                     .isInstanceOf(ResponseStatusException.class)
@@ -340,7 +350,7 @@ class MultipartUploadServiceTest {
             MultipartUploadSessionEntity session = buildSessionWithStatus("COMPLETED");
             CompleteMultipartRequest req = new CompleteMultipartRequest(
                     "files/uuid.mp4", List.of(new CompleteMultipartRequest.PartEtag(1, "etag-001")));
-            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+            given(sessionRepository.findByUploadIdForUpdate(UPLOAD_ID)).willReturn(Optional.of(session));
 
             // when / then
             assertThatThrownBy(() -> service.completeUpload(UPLOAD_ID, USER_ID, req))
@@ -361,7 +371,7 @@ class MultipartUploadServiceTest {
         void 正常系_中断成功() {
             // given
             MultipartUploadSessionEntity session = buildInProgressSession();
-            given(sessionRepository.findByUploadId(UPLOAD_ID)).willReturn(Optional.of(session));
+            given(sessionRepository.findByUploadIdForUpdate(UPLOAD_ID)).willReturn(Optional.of(session));
             given(sessionRepository.save(any(MultipartUploadSessionEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -384,8 +394,8 @@ class MultipartUploadServiceTest {
     private MultipartUploadSessionEntity buildSessionWithStatus(String status) {
         return MultipartUploadSessionEntity.builder()
                 .uploadId(UPLOAD_ID)
-                .r2Key("timeline/uuid.mp4")
-                .feature("timeline")
+                .r2Key("blog/PERSONAL/" + USER_ID + "/uuid.mp4")
+                .feature("blog")
                 .scopeType("PERSONAL")
                 .scopeId(USER_ID)
                 .uploaderId(USER_ID)
@@ -393,5 +403,12 @@ class MultipartUploadServiceTest {
                 .status(status)
                 .expiresAt(LocalDateTime.now().plusHours(24))
                 .build();
+    }
+
+    private void stubResolvedTarget(MultipartUploadSessionEntity session) {
+        given(targetRegistry.resolve(session.getR2Key(), USER_ID)).willReturn(new MultipartContentTarget(
+                StorageAclScope.personal(USER_ID),
+                new StorageAclContentReference("BLOG_MEDIA", "101"),
+                new StorageAclAttachmentBinding("BLOG_MEDIA", "201")));
     }
 }

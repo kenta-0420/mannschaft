@@ -75,6 +75,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BlogPostService {
+    private final BlogMediaAclService mediaAclService;
+    private final BlogMediaCopyService mediaCopyService;
 
     private final BlogPostRepository postRepository;
     private final BlogPostTagRepository postTagRepository;
@@ -328,6 +330,8 @@ public class BlogPostService {
 
         BlogPostEntity saved = postRepository.save(entity);
 
+        mediaAclService.bindBodyMedia(saved, userId);
+
         // タグ紐付け
         if (request.getTagIds() != null) {
             for (Long tagId : request.getTagIds()) {
@@ -372,6 +376,7 @@ public class BlogPostService {
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("記事更新: postId={}", id);
+        mediaAclService.bindBodyMedia(saved, userId);
         return cmsMapper.toBlogPostResponse(saved);
     }
 
@@ -444,6 +449,7 @@ public class BlogPostService {
                 .build();
 
         BlogPostEntity saved = postRepository.save(copy);
+        mediaCopyService.copyMedia(original, saved, userId);
 
         // タグのコピー
         List<BlogPostTagEntity> tags = postTagRepository.findByBlogPostId(id);
@@ -506,6 +512,7 @@ public class BlogPostService {
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("自動保存: postId={}", id);
+        mediaAclService.bindBodyMedia(saved, userId);
         return cmsMapper.toBlogPostResponse(saved);
     }
 
@@ -756,7 +763,7 @@ public class BlogPostService {
             return dto;
         }
         String resolvedBody = blogBodyMediaResolver.resolveBody(
-                content.body(), scope.scopeType(), scope.scopeId());
+                content.body(), scope.scopeType(), scope.scopeId(), entity.getId());
         if (resolvedBody == null || resolvedBody.equals(content.body())) {
             return dto;
         }
