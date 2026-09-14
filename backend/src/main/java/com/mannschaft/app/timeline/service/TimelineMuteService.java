@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * タイムラインミュートサービス。ユーザー・チーム等のミュート追加・解除・一覧取得を担当する。
@@ -24,6 +25,9 @@ public class TimelineMuteService {
 
     /** 1 ユーザーあたりのミュート件数上限。 */
     private static final long MAX_MUTES_PER_USER = 200L;
+
+    /** フィードのミュート除外に対応する対象種別。 */
+    private static final Set<String> ALLOWED_MUTED_TYPES = Set.of("TEAM", "ORGANIZATION");
 
     private final UserMuteRepository muteRepository;
     private final TimelineMapper timelineMapper;
@@ -38,6 +42,9 @@ public class TimelineMuteService {
      */
     @Transactional
     public MuteResponse addMute(String mutedType, Long mutedId, Long userId) {
+        if (!ALLOWED_MUTED_TYPES.contains(mutedType)) {
+            throw new BusinessException(TimelineErrorCode.INVALID_MUTE_TYPE);
+        }
         if (muteRepository.existsByUserIdAndMutedTypeAndMutedId(userId, mutedType, mutedId)) {
             throw new BusinessException(TimelineErrorCode.MUTE_ALREADY_EXISTS);
         }
