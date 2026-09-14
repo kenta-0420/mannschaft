@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -134,6 +135,7 @@ class TimelineMuteServiceTest {
     }
 
     @ParameterizedTest(name = "{0} は拒否")
+    @NullAndEmptySource
     @ValueSource(strings = {"USER", "SOCIAL_PROFILE", "team", "UNKNOWN"})
     @DisplayName("AC-2〜AC-5: 許可されない mutedType は TIMELINE_020 で拒否し、repositoryを呼ばない")
     void unsupportedMutedType_isRejectedWithoutRepositoryAccess(String mutedType) {

@@ -42,7 +42,7 @@ public class TimelineMuteService {
      */
     @Transactional
     public MuteResponse addMute(String mutedType, Long mutedId, Long userId) {
-        if (!ALLOWED_MUTED_TYPES.contains(mutedType)) {
+        if (mutedType == null || !ALLOWED_MUTED_TYPES.contains(mutedType)) {
             throw new BusinessException(TimelineErrorCode.INVALID_MUTE_TYPE);
         }
         if (muteRepository.existsByUserIdAndMutedTypeAndMutedId(userId, mutedType, mutedId)) {
