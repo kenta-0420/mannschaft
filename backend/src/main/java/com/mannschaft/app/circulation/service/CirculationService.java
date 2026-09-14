@@ -446,6 +446,11 @@ public class CirculationService {
         // （または SYSTEM_ADMIN）のみ許可する。
         checkScopeAdminAccess(entity, SecurityUtils.getCurrentUserId());
 
+        String exportFileKey = entity.getExportFileKey();
+        if (exportFileKey != null && !exportFileKey.isBlank()) {
+            storageAclService.releaseClaimed(exportFileKey,
+                    new StorageAclAttachmentBinding("CIRCULATION_EXPORT", entity.getId().toString()));
+        }
         entity.softDelete();
         documentRepository.save(entity);
         applicationEventPublisher.publishEvent(new CirculationDocumentDeletedEvent(documentId));
