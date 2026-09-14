@@ -18,6 +18,7 @@ import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.activity.repository.ActivityParticipantRepository;
 import com.mannschaft.app.activity.repository.ActivityResultRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -339,7 +340,7 @@ public class ActivityResultService {
         }
 
         ActivityVisibility visibility = request.getVisibility() != null
-                ? ActivityVisibility.valueOf(request.getVisibility()) : ActivityVisibility.MEMBERS_ONLY;
+                ? EnumInputParser.parse(ActivityVisibility.class, request.getVisibility(), "visibility") : ActivityVisibility.MEMBERS_ONLY;
 
         String fieldValuesJson = serializeFieldValues(request.getFieldValues());
         String attachmentsJson = serializeAttachments(request.getFileIds());
@@ -401,7 +402,7 @@ public class ActivityResultService {
         }
 
         ActivityVisibility visibility = request.getVisibility() != null
-                ? ActivityVisibility.valueOf(request.getVisibility()) : ActivityVisibility.MEMBERS_ONLY;
+                ? EnumInputParser.parse(ActivityVisibility.class, request.getVisibility(), "visibility") : ActivityVisibility.MEMBERS_ONLY;
 
         ActivityResultEntity entity = ActivityResultEntity.builder()
                 .scopeType(scopeType)
@@ -463,7 +464,7 @@ public class ActivityResultService {
         }
 
         ActivityVisibility visibility = request.getVisibility() != null
-                ? ActivityVisibility.valueOf(request.getVisibility()) : entity.getVisibility();
+                ? EnumInputParser.parse(ActivityVisibility.class, request.getVisibility(), "visibility") : entity.getVisibility();
 
         String fieldValuesJson = serializeFieldValues(request.getFieldValues());
         String attachmentsJson = serializeAttachments(request.getFileIds());

@@ -3,6 +3,7 @@ package com.mannschaft.app.equipment.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.equipment.EquipmentErrorCode;
@@ -367,7 +368,7 @@ public class EquipmentItemService {
                 request.getIsConsumable() != null ? request.getIsConsumable() : entity.getIsConsumable()
         );
         if (request.getStatus() != null) {
-            entity.changeStatus(EquipmentStatus.valueOf(request.getStatus()));
+            entity.changeStatus(EnumInputParser.parse(EquipmentStatus.class, request.getStatus(), "status"));
         }
     }
 

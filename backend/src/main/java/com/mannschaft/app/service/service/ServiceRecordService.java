@@ -3,6 +3,7 @@ package com.mannschaft.app.service.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
@@ -177,7 +178,7 @@ public class ServiceRecordService {
         accessControlService.checkAdminOrAbove(currentUserId, teamId, SCOPE_TEAM);
 
         ServiceRecordStatus recordStatus = request.getStatus() != null
-                ? ServiceRecordStatus.valueOf(request.getStatus())
+                ? EnumInputParser.parse(ServiceRecordStatus.class, request.getStatus(), "status")
                 : ServiceRecordStatus.DRAFT;
 
         ServiceRecordEntity entity = ServiceRecordEntity.builder()
@@ -328,7 +329,7 @@ public class ServiceRecordService {
             throw new BusinessException(ServiceRecordErrorCode.BULK_LIMIT_EXCEEDED);
         }
 
-        BulkCreateMode mode = BulkCreateMode.valueOf(request.getMode());
+        BulkCreateMode mode = EnumInputParser.parse(BulkCreateMode.class, request.getMode(), "mode");
 
         if (mode == BulkCreateMode.ALL_OR_NOTHING) {
             return bulkCreateAllOrNothing(teamId, currentUserId, request.getRecords());
@@ -536,7 +537,7 @@ public class ServiceRecordService {
             throw new BusinessException(ServiceRecordErrorCode.NOT_OWN_RECORD);
         }
 
-        ReactionType reactionType = ReactionType.valueOf(request.getReactionType());
+        ReactionType reactionType = EnumInputParser.parse(ReactionType.class, request.getReactionType(), "reactionType");
 
         Optional<ServiceRecordReactionEntity> existing =
                 reactionRepository.findByServiceRecordIdAndUserId(recordId, userId);

@@ -2,6 +2,7 @@ package com.mannschaft.app.service.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.service.FieldType;
 import com.mannschaft.app.service.ServiceRecordErrorCode;
 import com.mannschaft.app.service.ServiceRecordMapper;
@@ -86,7 +87,7 @@ public class ServiceRecordFieldService {
             throw new BusinessException(ServiceRecordErrorCode.FIELD_LIMIT_EXCEEDED);
         }
 
-        FieldType fieldType = FieldType.valueOf(request.getFieldType());
+        FieldType fieldType = EnumInputParser.parse(FieldType.class, request.getFieldType(), "fieldType");
         String options = convertOptionsToJson(request.getOptions());
 
         ServiceRecordFieldEntity entity = ServiceRecordFieldEntity.builder()
@@ -122,7 +123,7 @@ public class ServiceRecordFieldService {
             }
         }
 
-        FieldType fieldType = FieldType.valueOf(request.getFieldType());
+        FieldType fieldType = EnumInputParser.parse(FieldType.class, request.getFieldType(), "fieldType");
         String options = convertOptionsToJson(request.getOptions());
 
         entity.update(
