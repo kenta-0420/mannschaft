@@ -124,6 +124,14 @@ test('CMP-101: ORGタイムライン投稿のミュート・解除と不正種�
       assertTimeline018(await invalid.json() as ApiErrorBody, `mutedType=${mutedType}`)
     }
 
+    for (const mutedType of ['', null]) {
+      const invalid = await memberPage.request.post(`${baseUrl}/api/v1/timeline/mutes`, {
+        data: { mutedType, mutedId: organizationId },
+        headers: { 'Content-Type': 'application/json' },
+      })
+      expect(invalid.status(), `mutedType=${String(mutedType)}`).toBe(400)
+    }
+
     const unauthenticated = await (await anonymous.newPage()).request.post(
       `${baseUrl}/api/v1/timeline/mutes`, {
         data: { mutedType: 'ORGANIZATION', mutedId: organizationId },
