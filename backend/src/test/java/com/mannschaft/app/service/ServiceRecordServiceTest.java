@@ -2,9 +2,11 @@ package com.mannschaft.app.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
+import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
@@ -30,13 +32,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDate;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -65,6 +69,7 @@ class ServiceRecordServiceTest {
     @Mock private StorageAclService storageAclService;
     @Mock private StorageAccessService storageAccessService;
     @Mock private AccessControlService accessControlService;
+    @Mock private DomainEventPublisher eventPublisher;
 
     @InjectMocks
     private ServiceRecordService service;
@@ -314,6 +319,38 @@ class ServiceRecordServiceTest {
                     eq(StorageAclScope.team(TEAM_ID)),
                     eq(new StorageAclContentReference("SERVICE_RECORD", RECORD_ID.toString())),
                     eq(new StorageAclAttachmentBinding("SERVICE_RECORD_ATTACHMENT", attachmentId.toString())));
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteAttachment")
+    class DeleteAttachment {
+        @Test
+        @DisplayName("ACL解放と行削除後に添付の正確なR2キーを削除イベントとして発行する")
+        void ACL解放と行削除後に正確なR2キーの削除イベントを発行する() {
+            ServiceRecordEntity record = createRecordEntity(ServiceRecordStatus.DRAFT);
+            ServiceRecordAttachmentEntity attachment = ServiceRecordAttachmentEntity.builder()
+                    .serviceRecordId(RECORD_ID)
+                    .fileKey("service-records/1/10/evidence.pdf")
+                    .fileName("evidence.pdf")
+                    .contentType("application/pdf")
+                    .fileSize(1_000L)
+                    .build();
+            Long attachmentId = 20L;
+            ReflectionTestUtils.setField(attachment, "id", attachmentId);
+            given(recordRepository.findByIdAndTeamId(RECORD_ID, TEAM_ID)).willReturn(Optional.of(record));
+            given(attachmentRepository.findByIdAndServiceRecordId(attachmentId, RECORD_ID))
+                    .willReturn(Optional.of(attachment));
+
+            service.deleteAttachment(TEAM_ID, RECORD_ID, attachmentId, USER_ID);
+
+            InOrder inOrder = org.mockito.Mockito.inOrder(storageAclService, attachmentRepository, eventPublisher);
+            inOrder.verify(storageAclService).releaseClaimed(attachment.getFileKey(),
+                    new StorageAclAttachmentBinding("SERVICE_RECORD_ATTACHMENT", attachmentId.toString()));
+            inOrder.verify(attachmentRepository).delete(attachment);
+            ArgumentCaptor<S3ObjectDeleteEvent> eventCaptor = ArgumentCaptor.forClass(S3ObjectDeleteEvent.class);
+            inOrder.verify(eventPublisher).publish(eventCaptor.capture());
+            assertThat(eventCaptor.getValue().s3Keys()).containsExactly(attachment.getFileKey());
         }
     }
 }
