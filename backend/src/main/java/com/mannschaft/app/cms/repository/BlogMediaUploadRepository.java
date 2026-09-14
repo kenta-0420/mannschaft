@@ -25,6 +25,11 @@ public interface BlogMediaUploadRepository extends JpaRepository<BlogMediaUpload
     /** R2 キーで検索。 */
     Optional<BlogMediaUploadEntity> findByS3Key(String s3Key);
 
+    /** 単発PUTの完了確認を直列化し、使用量の二重計上を防ぐ。 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM BlogMediaUploadEntity m WHERE m.id = :id")
+    Optional<BlogMediaUploadEntity> findByIdForUploadCompletion(@Param("id") Long id);
+
     /**
      * R2 キーの一括検索（本文メディアの台帳照合用）。
      *
@@ -34,11 +39,18 @@ public interface BlogMediaUploadRepository extends JpaRepository<BlogMediaUpload
      */
     List<BlogMediaUploadEntity> findByS3KeyIn(Collection<String> s3Keys);
 
+    /** draftを別記事へ同時に紐付ける競合を行ロックで直列化する。 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM BlogMediaUploadEntity m WHERE m.s3Key IN :keys")
+    List<BlogMediaUploadEntity> findForPostBinding(@Param("keys") Collection<String> keys);
+
     /**
      * 孤立メディアのクリーンアップ用。
      * blog_post_id IS NULL かつ created_at が cutoff より古いレコードを返す。
      */
-    List<BlogMediaUploadEntity> findByBlogPostIdIsNullAndCreatedAtBefore(LocalDateTime cutoff);
+    @Query("SELECT m FROM BlogMediaUploadEntity m WHERE m.createdAt < :cutoff "
+            + "AND (m.blogPostId IS NULL OR (m.mediaType = 'IMAGE' AND m.processingStatus = 'UPLOADING'))")
+    List<BlogMediaUploadEntity> findByBlogPostIdIsNullAndCreatedAtBefore(@Param("cutoff") LocalDateTime cutoff);
 
     /**
      * 孤立メディア 1 件を条件付きで物理削除し、実際に削除できた行数を返す（クリーンアップバッチ用）。
@@ -55,6 +67,12 @@ public interface BlogMediaUploadRepository extends JpaRepository<BlogMediaUpload
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM BlogMediaUploadEntity m WHERE m.id = :id AND m.blogPostId IS NULL")
     int deleteOrphanById(@Param("id") Long id);
+
+    /** 完了処理との競合で READY になった未完了画像を削除しない条件付き claim。 */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM BlogMediaUploadEntity m WHERE m.id = :id "
+            + "AND m.mediaType = 'IMAGE' AND m.processingStatus = 'UPLOADING'")
+    int deleteUnconfirmedImageById(@Param("id") Long id);
 
     /** 記事内のメディア数カウント（種別別）。 */
     int countByBlogPostIdAndMediaType(Long blogPostId, String mediaType);

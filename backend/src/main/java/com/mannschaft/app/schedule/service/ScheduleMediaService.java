@@ -61,6 +61,11 @@ public class ScheduleMediaService {
         return uploadService.generateUploadUrl(scheduleId, uploaderId, req);
     }
 
+    /** Presigned PUT完了後の画像実在確認をアップロードサービスへ委譲する。 */
+    public void confirmImageUpload(Long scheduleId, Long mediaId, Long uploaderId) {
+        uploadService.confirmImageUpload(scheduleId, mediaId, uploaderId);
+    }
+
     /**
      * スケジュールのメディア一覧を取得する。
      *
@@ -158,7 +163,7 @@ public class ScheduleMediaService {
             return new ScopeResolution(StorageScopeType.ORGANIZATION, schedule.getOrganizationId());
         }
         // 個人スケジュール
-        return new ScopeResolution(StorageScopeType.PERSONAL, uploaderId);
+        return new ScopeResolution(StorageScopeType.PERSONAL, schedule.getUserId());
     }
 
     /** 解決されたストレージスコープ。 */

@@ -144,7 +144,7 @@ HTTP|com.mannschaft.app.circulation.controller.CirculationStampController|5|5
 HTTP|com.mannschaft.app.circulation.controller.MyCirculationController|1|1
 HTTP|com.mannschaft.app.circulation.controller.OrgCirculationDocumentController|8|8
 HTTP|com.mannschaft.app.circulation.controller.TeamCirculationDocumentController|8|8
-HTTP|com.mannschaft.app.cms.controller.BlogMediaController|1|1
+HTTP|com.mannschaft.app.cms.controller.BlogMediaController|2|2
 HTTP|com.mannschaft.app.cms.controller.BlogPostController|15|15
 HTTP|com.mannschaft.app.cms.controller.BlogReactionController|2|2
 HTTP|com.mannschaft.app.cms.controller.BlogSeriesController|4|4
@@ -543,7 +543,7 @@ HTTP|com.mannschaft.app.schedule.controller.ScheduleCommentController|8|8
 HTTP|com.mannschaft.app.schedule.controller.ScheduleCommonController|9|9
 HTTP|com.mannschaft.app.schedule.controller.ScheduleDelegationController|6|6
 HTTP|com.mannschaft.app.schedule.controller.ScheduleInvitationController|7|7
-HTTP|com.mannschaft.app.schedule.controller.ScheduleMediaController|4|4
+HTTP|com.mannschaft.app.schedule.controller.ScheduleMediaController|5|5
 HTTP|com.mannschaft.app.schedule.controller.TeamAnnualScheduleController|4|4
 HTTP|com.mannschaft.app.schedule.controller.TeamEventCategoryController|2|2
 HTTP|com.mannschaft.app.schedule.controller.TeamScheduleController|13|13

@@ -65,6 +65,10 @@ import static org.mockito.Mockito.lenient;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("BlogPostService 追加単体テスト")
 class BlogPostServiceAdditionalTest {
+    @Mock
+    private com.mannschaft.app.cms.service.BlogMediaAclService mediaAclService;
+    @Mock
+    private com.mannschaft.app.cms.service.BlogMediaCopyService mediaCopyService;
 
     @Mock
     private BlogPostRepository postRepository;
