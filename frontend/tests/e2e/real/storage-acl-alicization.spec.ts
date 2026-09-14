@@ -78,7 +78,12 @@ test('CMP057-ALICE: 管理者の実アップロードをメンバーは閲覧で
 
     const adminFolder = admin.page.locator('button').filter({ hasText: folderName })
     await expect(adminFolder).toBeVisible()
+    const adminFolderResponsePromise = admin.page.waitForResponse(response =>
+      response.request().method() === 'GET'
+      && new URL(response.url()).pathname === `/api/v1/files/folders/${folderId}`,
+    )
     await adminFolder.click()
+    expect((await adminFolderResponsePromise).status()).toBe(200)
 
     const registerPromise = admin.page.waitForResponse(response =>
       response.request().method() === 'POST'
