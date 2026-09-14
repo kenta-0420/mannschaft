@@ -63,7 +63,7 @@ public enum TimelineErrorCode implements ErrorCode {
     MAX_MUTES_EXCEEDED("TIMELINE_017", "ミュートは最大200件です", Severity.WARN),
 
     /** ミュート対象種別が許可されていない。 */
-    INVALID_MUTE_TYPE("TIMELINE_018", "ミュート対象種別が不正です", Severity.WARN);
+    INVALID_MUTE_TYPE("TIMELINE_020", "ミュート対象種別が不正です", Severity.WARN);
 
     private final String code;
     private final String message;

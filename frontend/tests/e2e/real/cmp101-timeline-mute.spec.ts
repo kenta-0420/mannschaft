@@ -18,9 +18,9 @@ function required(name: string, value: string | undefined): string {
 
 type ApiErrorBody = { code?: string; errorCode?: string; error?: { code?: string; errorCode?: string } }
 
-function assertTimeline018(body: ApiErrorBody, label: string): void {
+function assertTimeline020(body: ApiErrorBody, label: string): void {
   const code = body.code ?? body.errorCode ?? body.error?.code ?? body.error?.errorCode
-  expect(code ?? JSON.stringify(body), label).toContain('TIMELINE_018')
+  expect(code ?? JSON.stringify(body), label).toContain('TIMELINE_020')
 }
 
 async function openPersonalFeed(page: Page, marker: string): Promise<void> {
@@ -137,7 +137,7 @@ test('CMP-101: ORGタイムライン投稿のミュート・解除と不正種�
         headers: { 'Content-Type': 'application/json' },
       })
       expect(invalid.status(), `mutedType=${mutedType}`).toBe(400)
-      assertTimeline018(await invalid.json() as ApiErrorBody, `mutedType=${mutedType}`)
+      assertTimeline020(await invalid.json() as ApiErrorBody, `mutedType=${mutedType}`)
     }
 
     for (const mutedType of ['', null]) {

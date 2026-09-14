@@ -135,12 +135,12 @@ class TimelineMuteServiceTest {
 
     @ParameterizedTest(name = "{0} は拒否")
     @ValueSource(strings = {"USER", "SOCIAL_PROFILE", "team", "UNKNOWN"})
-    @DisplayName("AC-2〜AC-5: 許可されない mutedType は TIMELINE_018 で拒否し、repositoryを呼ばない")
+    @DisplayName("AC-2〜AC-5: 許可されない mutedType は TIMELINE_020 で拒否し、repositoryを呼ばない")
     void unsupportedMutedType_isRejectedWithoutRepositoryAccess(String mutedType) {
         assertThatThrownBy(() -> timelineMuteService.addMute(mutedType, MUTED_ID, USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                        .isEqualTo("TIMELINE_018"));
+                        .isEqualTo("TIMELINE_020"));
 
         org.mockito.Mockito.verifyNoInteractions(muteRepository, timelineMapper);
     }
