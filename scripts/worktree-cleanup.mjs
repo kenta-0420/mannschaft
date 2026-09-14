@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 足軽 worktree の安全な棚卸し・撤去。
- * 既定は dry-run。--apply でも clean な agent-* + worktree-agent-* だけを撤去する。
+ * 既定は dry-run。--apply は clean な agent-* のworktree登録だけを撤去し、branchは絶対に削除しない。
  */
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -185,7 +185,6 @@ async function apply(root, inspection) {
     const removal = await git(root, ['worktree', 'remove', '--force', entry.path], true);
     if (removal.failed) continue;
     removed.push(entry.path);
-    await git(root, ['branch', '-D', entry.branch], true);
   }
   return removed;
 }

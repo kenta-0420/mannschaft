@@ -48,6 +48,7 @@ test('clean stale agentだけをapplyで撤去し、feature/non-agentは保護�
   const root = await fixture();
   t.after(() => rm(root, { recursive: true, force: true }));
   const agent = await addWorktree(root, 'agent-clean');
+  const agentHead = (await git(agent, ['rev-parse', 'HEAD'])).stdout.trim();
   const feature = await addWorktree(root, 'agent-feature', 'feature/keep');
   const nonAgent = await addWorktree(root, 'manual-keep', 'worktree-agent-manual');
 
@@ -60,6 +61,7 @@ test('clean stale agentだけをapplyで撤去し、feature/non-agentは保護�
   const applied = JSON.parse((await run(root, '--apply')).stdout);
   assert.equal(applied.counts.removed, 1);
   await assert.rejects(() => git(agent, ['status']));
+  assert.equal((await git(root, ['rev-parse', 'refs/heads/worktree-agent-agent-clean'])).stdout.trim(), agentHead);
   await git(feature, ['status']);
   await git(nonAgent, ['status']);
 });

@@ -31,7 +31,7 @@ git worktree list
 # 既定は dry-run（7日超）。対象・保持理由を確認する
 node scripts/worktree-cleanup.mjs --days 7
 
-# clean な agent-* / worktree-agent-* だけを明示適用で撤去する
+# clean な agent-* / worktree-agent-* のworktree登録だけを明示適用で撤去する（branchは削除しない）
 node scripts/worktree-cleanup.mjs --days 7 --apply
 
 # 凱旋後の必須ゲート（1日超staleと総数60超は非0）
