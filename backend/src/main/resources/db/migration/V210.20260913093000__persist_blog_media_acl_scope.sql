@@ -2,7 +2,7 @@
 -- 既存の未紐付け行は申告prefixの信頼性を証明できないためNULLのままfail-closedにする。
 ALTER TABLE blog_media_uploads
     ADD COLUMN scope_type VARCHAR(20) NULL,
-    ADD COLUMN scope_id BIGINT NULL;
+    ADD COLUMN scope_id BIGINT UNSIGNED NULL;
 
 UPDATE blog_media_uploads m
 JOIN blog_posts p ON p.id = m.blog_post_id AND p.deleted_at IS NULL
