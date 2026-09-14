@@ -25,7 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Multipart Upload API コントローラー。
  * 大容量ファイル（100MB 超）の R2 Multipart Upload フローを提供する。
- * 開始・パート URL 発行・完了・中断の4エンドポイントで構成される。
+ * ドメイン別 API で開始した uploadId に対するパート URL 発行・完了・中断を提供する。
+ * 旧汎用開始エンドポイントは互換性を保って 410 Gone を返す。
  */
 @RestController
 @RequestMapping("/api/v1/files/multipart")

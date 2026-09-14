@@ -57592,6 +57592,45 @@
         }
       }
     },
+    "/api/v1/schedules/{scheduleId}/media/{mediaId}/complete": {
+      "post": {
+        "tags": [
+          "スケジュールメディア"
+        ],
+        "summary": "スケジュール画像アップロード完了確認",
+        "operationId": "confirmImageUpload",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "完了確認成功"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/schedules/{scheduleId}/media/upload-url": {
       "post": {
         "tags": [
@@ -78187,7 +78226,7 @@
         "tags": [
           "Multipart Upload"
         ],
-        "summary": "Multipart Upload 開始",
+        "summary": "廃止済み: 汎用 Multipart Upload 開始",
         "operationId": "startUpload",
         "requestBody": {
           "content": {
@@ -78200,15 +78239,8 @@
           "required": true
         },
         "responses": {
-          "201": {
-            "description": "セッション作成成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseStartMultipartUploadResponse"
-                }
-              }
-            }
+          "410": {
+            "description": "ドメイン別開始 API へ移行済み"
           }
         }
       }
@@ -83299,6 +83331,31 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/blog/media/{mediaId}/complete": {
+      "post": {
+        "tags": [
+          "ブログメディア"
+        ],
+        "summary": "画像アップロード完了確認",
+        "operationId": "confirmImageUpload_1",
+        "parameters": [
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "完了確認成功"
           }
         }
       }
@@ -197545,33 +197602,6 @@
             "minimum": 5242880
           },
           "target_prefix": {
-            "type": "string"
-          }
-        }
-      },
-      "ApiResponseStartMultipartUploadResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/StartMultipartUploadResponse"
-          }
-        }
-      },
-      "StartMultipartUploadResponse": {
-        "type": "object",
-        "properties": {
-          "fileKey": {
-            "type": "string"
-          },
-          "partCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "partSize": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "uploadId": {
             "type": "string"
           }
         }
