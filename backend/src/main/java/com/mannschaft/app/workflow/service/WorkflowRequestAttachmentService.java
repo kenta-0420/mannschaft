@@ -3,9 +3,11 @@ package com.mannschaft.app.workflow.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
@@ -75,6 +77,7 @@ public class WorkflowRequestAttachmentService {
     private final AccessControlService accessControlService;
     private final StorageAclService storageAclService;
     private final StorageAccessService storageAccessService;
+    private final DomainEventPublisher eventPublisher;
 
     /**
      * 申請の添付ファイル一覧を取得する（Wave 2 トランシェ2C で Controller の直リポジトリ参照を移管）。
@@ -234,16 +237,11 @@ public class WorkflowRequestAttachmentService {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
 
-        // 4. R2 オブジェクト削除（失敗してもログのみ。DB との整合性は将来のクリーニングバッチで担保）
-        try {
-            r2StorageService.delete(entity.getFileKey());
-        } catch (Exception e) {
-            log.warn("ワークフロー添付 R2 削除失敗（DB 削除は継続）: fileKey={}, error={}",
-                    entity.getFileKey(), e.getMessage());
-        }
-
-        // 5. DB 物理削除
+        // 4. DB 物理削除
+        storageAclService.releaseClaimed(entity.getFileKey(),
+                new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", entity.getId().toString()));
         attachmentRepository.delete(entity);
+        eventPublisher.publish(new S3ObjectDeleteEvent(entity.getFileKey()));
         log.info("ワークフロー添付削除: requestId={}, attachmentId={}, userId={}",
                 requestId, attachmentId, currentUserId);
     }

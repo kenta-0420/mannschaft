@@ -12,6 +12,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
@@ -33,13 +34,17 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 /** {@link BudgetTransactionService} のストレージACL引数を固定する単体テスト。 */
 @ExtendWith(MockitoExtension.class)
@@ -142,6 +147,39 @@ class BudgetTransactionServiceTest {
                     eq(StorageAclScope.team(TEAM_ID)),
                     eq(new StorageAclContentReference("BUDGET_TRANSACTION", TRANSACTION_ID.toString())),
                     eq(new StorageAclAttachmentBinding("BUDGET_TRANSACTION_ATTACHMENT", attachmentId.toString())));
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteAttachment")
+    class DeleteAttachment {
+        @Test
+        @DisplayName("ACLを一度だけ失効し、物理削除をcommit後イベントへ委譲する")
+        void ACLを一度だけ失効し物理削除イベントを発行する() {
+            BudgetTransactionEntity transaction = transaction();
+            BudgetTransactionAttachmentEntity attachment = BudgetTransactionAttachmentEntity.builder()
+                    .transactionId(TRANSACTION_ID)
+                    .originalFilename("receipt.pdf")
+                    .mimeType("application/pdf")
+                    .fileSize(1_024L)
+                    .fileKey("budget/attachments/710/receipt.pdf")
+                    .build();
+            Long attachmentId = 713L;
+            ReflectionTestUtils.setField(attachment, "id", attachmentId);
+            given(transactionRepository.findById(TRANSACTION_ID)).willReturn(Optional.of(transaction));
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(attachmentRepository.findById(attachmentId)).willReturn(Optional.of(attachment));
+
+            service.deleteAttachment(TRANSACTION_ID, attachmentId);
+
+            StorageAclAttachmentBinding binding = new StorageAclAttachmentBinding(
+                    "BUDGET_TRANSACTION_ATTACHMENT", attachmentId.toString());
+            verify(storageAclService, times(1)).releaseClaimed(attachment.getFileKey(), binding);
+            verify(attachmentRepository).delete(attachment);
+            verify(domainEventPublisher).publish(argThat(event ->
+                    event instanceof S3ObjectDeleteEvent deleteEvent
+                            && deleteEvent.s3Keys().equals(List.of(attachment.getFileKey()))));
+            verify(storageService, never()).delete(anyString());
         }
     }
 
