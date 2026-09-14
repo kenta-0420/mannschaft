@@ -167,6 +167,11 @@ public class ScheduleMediaQueryService {
                     HttpStatus.FORBIDDEN, "経費証憑フラグの解除は管理者のみ可能です");
         }
 
+        // ACL不整合ならメタデータを一切変更する前に拒否する。
+        var target = ScheduleMediaAclService.targetOf(schedule, entity);
+        String url = storageAccessService.generateDownloadUrl(entity.getR2Key(), target.scope(),
+                target.parent(), target.binding(), DOWNLOAD_TTL);
+
         // フィールド更新
         if (req.getCaption() != null) {
             entity.updateCaption(req.getCaption());
@@ -188,9 +193,6 @@ public class ScheduleMediaQueryService {
         ScheduleMediaUploadEntity saved = scheduleMediaUploadRepository.save(entity);
         log.info("メディアメタデータ更新: scheduleId={}, mediaId={}, userId={}",
                 scheduleId, mediaId, requestUserId);
-        var target = ScheduleMediaAclService.targetOf(schedule, saved);
-        String url = storageAccessService.generateDownloadUrl(saved.getR2Key(), target.scope(),
-                target.parent(), target.binding(), DOWNLOAD_TTL);
         return toResponse(saved, url);
     }
 
