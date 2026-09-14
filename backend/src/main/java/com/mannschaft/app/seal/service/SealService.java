@@ -1,6 +1,7 @@
 package com.mannschaft.app.seal.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.seal.SealErrorCode;
 import com.mannschaft.app.seal.SealMapper;
@@ -74,7 +75,7 @@ public class SealService {
      */
     @Transactional
     public SealResponse createSeal(Long userId, CreateSealRequest request) {
-        SealVariant variant = SealVariant.valueOf(request.getVariant());
+        SealVariant variant = EnumInputParser.parse(SealVariant.class, request.getVariant(), "variant");
 
         if (sealRepository.existsByUserIdAndVariant(userId, variant)) {
             throw new BusinessException(SealErrorCode.DUPLICATE_VARIANT);
@@ -227,7 +228,7 @@ public class SealService {
      */
     @Transactional
     public ScopeDefaultResponse setScopeDefault(Long userId, SetScopeDefaultRequest request) {
-        SealScopeType scopeType = SealScopeType.valueOf(request.getScopeType());
+        SealScopeType scopeType = EnumInputParser.parse(SealScopeType.class, request.getScopeType(), "scopeType");
 
         // 印鑑の存在確認
         findSealOrThrow(userId, request.getSealId());

@@ -27,6 +27,7 @@ import com.mannschaft.app.budget.repository.BudgetTransactionRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
@@ -84,7 +85,8 @@ public class BudgetTransactionService {
         }
 
         BudgetCategoryEntity category = categoryService.findById(request.categoryId());
-        BudgetTransactionType txType = BudgetTransactionType.valueOf(request.transactionType());
+        BudgetTransactionType txType = EnumInputParser.parse(
+                BudgetTransactionType.class, request.transactionType(), "transactionType");
 
         // 承認閾値チェック（支出のみ）
         BudgetApprovalStatus approvalStatus = determineApprovalStatus(

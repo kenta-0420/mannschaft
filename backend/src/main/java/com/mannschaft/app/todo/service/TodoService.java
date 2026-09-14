@@ -2,6 +2,7 @@ package com.mannschaft.app.todo.service;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.todo.TodoErrorCode;
 import com.mannschaft.app.todo.TodoPriority;
@@ -196,7 +197,7 @@ public class TodoService {
         }
 
         TodoPriority priority = request.getPriority() != null
-                ? TodoPriority.valueOf(request.getPriority())
+                ? EnumInputParser.parse(TodoPriority.class, request.getPriority(), "priority")
                 : TodoPriority.MEDIUM;
 
         TodoEntity todo = TodoEntity.builder()
@@ -288,7 +289,7 @@ public class TodoService {
         }
 
         TodoPriority priority = request.getPriority() != null
-                ? TodoPriority.valueOf(request.getPriority())
+                ? EnumInputParser.parse(TodoPriority.class, request.getPriority(), "priority")
                 : todo.getPriority();
 
         // プロジェクト間移動の場合、milestoneIdをリセット

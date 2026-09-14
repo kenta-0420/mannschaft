@@ -2,6 +2,7 @@ package com.mannschaft.app.safetycheck.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.safetycheck.FollowupStatus;
 import com.mannschaft.app.safetycheck.MessageSource;
 import com.mannschaft.app.safetycheck.SafetyCheckErrorCode;
@@ -70,7 +71,7 @@ public class SafetyResponseService {
 
         SafetyResponseStatus status = parseResponseStatus(req.getStatus());
         MessageSource messageSource = req.getMessageSource() != null
-                ? MessageSource.valueOf(req.getMessageSource()) : null;
+                ? EnumInputParser.parse(MessageSource.class, req.getMessageSource(), "messageSource") : null;
 
         SafetyResponseEntity entity = SafetyResponseEntity.builder()
                 .safetyCheckId(safetyCheckId)

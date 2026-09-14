@@ -2,6 +2,7 @@ package com.mannschaft.app.matching.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.matching.ActivityType;
 import com.mannschaft.app.matching.MatchCategory;
 import com.mannschaft.app.matching.MatchLevel;
@@ -141,17 +142,17 @@ public class MatchRequestService {
         validateRequest(request);
 
         MatchCategory category = request.getCategory() != null
-                ? MatchCategory.valueOf(request.getCategory()) : MatchCategory.ANY;
+                ? EnumInputParser.parse(MatchCategory.class, request.getCategory(), "category") : MatchCategory.ANY;
         MatchLevel level = request.getLevel() != null
-                ? MatchLevel.valueOf(request.getLevel()) : MatchLevel.ANY;
+                ? EnumInputParser.parse(MatchLevel.class, request.getLevel(), "level") : MatchLevel.ANY;
         MatchVisibility visibility = request.getVisibility() != null
-                ? MatchVisibility.valueOf(request.getVisibility()) : MatchVisibility.PLATFORM;
+                ? EnumInputParser.parse(MatchVisibility.class, request.getVisibility(), "visibility") : MatchVisibility.PLATFORM;
 
         MatchRequestEntity entity = MatchRequestEntity.builder()
                 .teamId(teamId)
                 .title(request.getTitle())
                 .description(request.getDescription())
-                .activityType(ActivityType.valueOf(request.getActivityType()))
+                .activityType(EnumInputParser.parse(ActivityType.class, request.getActivityType(), "activityType"))
                 .activityDetail(request.getActivityDetail())
                 .category(category)
                 .visibility(visibility)
@@ -191,15 +192,15 @@ public class MatchRequestService {
         validateRequest(request);
 
         MatchCategory category = request.getCategory() != null
-                ? MatchCategory.valueOf(request.getCategory()) : MatchCategory.ANY;
+                ? EnumInputParser.parse(MatchCategory.class, request.getCategory(), "category") : MatchCategory.ANY;
         MatchLevel level = request.getLevel() != null
-                ? MatchLevel.valueOf(request.getLevel()) : MatchLevel.ANY;
+                ? EnumInputParser.parse(MatchLevel.class, request.getLevel(), "level") : MatchLevel.ANY;
         MatchVisibility visibility = request.getVisibility() != null
-                ? MatchVisibility.valueOf(request.getVisibility()) : MatchVisibility.PLATFORM;
+                ? EnumInputParser.parse(MatchVisibility.class, request.getVisibility(), "visibility") : MatchVisibility.PLATFORM;
 
         entity.update(
                 request.getTitle(), request.getDescription(),
-                ActivityType.valueOf(request.getActivityType()), request.getActivityDetail(),
+                EnumInputParser.parse(ActivityType.class, request.getActivityType(), "activityType"), request.getActivityDetail(),
                 category, visibility,
                 request.getPrefectureCode(), request.getCityCode(), request.getVenueName(),
                 request.getPreferredDateFrom(), request.getPreferredDateTo(),

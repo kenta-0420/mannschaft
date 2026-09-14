@@ -2,6 +2,7 @@ package com.mannschaft.app.moderation.service;
 
 import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.moderation.ModerationErrorCode;
 import com.mannschaft.app.moderation.ReportActionType;
 import com.mannschaft.app.moderation.ReportStatus;
@@ -70,7 +71,7 @@ public class ReportActionService {
         ContentReportEntity report = findReportOrThrow(reportId);
         validateReportActionable(report);
 
-        ReportActionType actionType = ReportActionType.valueOf(req.getActionType());
+        ReportActionType actionType = EnumInputParser.parse(ReportActionType.class, req.getActionType(), "actionType");
         ReportActionEntity action = createAction(reportId, actionType, userId, req.getNote(),
                 req.getFreezeUntil(), req.getGuidelineSection());
 
@@ -162,7 +163,7 @@ public class ReportActionService {
      */
     @Transactional
     public int bulkResolve(BulkResolveRequest req, Long userId) {
-        ReportActionType actionType = ReportActionType.valueOf(req.getActionType());
+        ReportActionType actionType = EnumInputParser.parse(ReportActionType.class, req.getActionType(), "actionType");
         int count = 0;
 
         for (Long reportId : req.getReportIds()) {

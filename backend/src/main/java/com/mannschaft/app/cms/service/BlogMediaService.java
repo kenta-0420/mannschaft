@@ -9,6 +9,7 @@ import com.mannschaft.app.cms.repository.BlogMediaUploadRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
@@ -112,7 +113,8 @@ public class BlogMediaService {
         validateRequest(req);
 
         // F13 Phase 4-δ: 統合クォータチェック（presign 前）
-        StorageScopeType scopeType = StorageScopeType.valueOf(req.getScopeType().toUpperCase());
+        StorageScopeType scopeType = EnumInputParser.parse(
+                StorageScopeType.class, req.getScopeType().toUpperCase(), "scopeType");
         try {
             storageQuotaService.checkQuota(scopeType, req.getScopeId(), req.getFileSize());
         } catch (StorageQuotaExceededException e) {

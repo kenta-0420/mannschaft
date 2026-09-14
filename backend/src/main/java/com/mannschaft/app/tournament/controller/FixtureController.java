@@ -1,6 +1,7 @@
 package com.mannschaft.app.tournament.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.tournament.FixtureStatus;
 import com.mannschaft.app.tournament.dto.BatchScoreRequest;
@@ -148,7 +149,7 @@ public class FixtureController {
     public ResponseEntity<Void> changeMatchStatus(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody StatusChangeRequest request) {
-        matchService.changeMatchStatus(tId, matchId, FixtureStatus.valueOf(request.getStatus()));
+        matchService.changeMatchStatus(tId, matchId, EnumInputParser.parse(FixtureStatus.class, request.getStatus(), "status"));
         return ResponseEntity.noContent().build();
     }
 

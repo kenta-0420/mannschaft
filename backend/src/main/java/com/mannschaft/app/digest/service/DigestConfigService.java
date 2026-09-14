@@ -2,6 +2,7 @@ package com.mannschaft.app.digest.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.digest.DigestErrorCode;
 import com.mannschaft.app.digest.DigestMapper;
 import com.mannschaft.app.digest.DigestProperties;
@@ -64,9 +65,9 @@ public class DigestConfigService {
 
     @Transactional
     public ConfigSaveResult createOrUpdateConfig(DigestConfigRequest request, Long userId) {
-        DigestScopeType scopeType = DigestScopeType.valueOf(request.getScopeType());
-        ScheduleType scheduleType = ScheduleType.valueOf(request.getScheduleType());
-        DigestStyle digestStyle = DigestStyle.valueOf(request.getDigestStyle());
+        DigestScopeType scopeType = EnumInputParser.parse(DigestScopeType.class, request.getScopeType(), "scopeType");
+        ScheduleType scheduleType = EnumInputParser.parse(ScheduleType.class, request.getScheduleType(), "scheduleType");
+        DigestStyle digestStyle = EnumInputParser.parse(DigestStyle.class, request.getDigestStyle(), "digestStyle");
 
         // 認可根治戦役 Wave2-2C: 変更系はリクエスト先スコープの ADMIN/DEPUTY_ADMIN のみ
         accessControlService.checkAdminOrAbove(userId, request.getScopeId(), scopeType.name());

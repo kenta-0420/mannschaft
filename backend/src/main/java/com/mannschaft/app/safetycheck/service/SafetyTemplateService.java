@@ -2,6 +2,7 @@ package com.mannschaft.app.safetycheck.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.safetycheck.SafetyCheckErrorCode;
 import com.mannschaft.app.safetycheck.SafetyCheckMapper;
 import com.mannschaft.app.safetycheck.SafetyCheckScopeType;
@@ -83,7 +84,7 @@ public class SafetyTemplateService {
     @Transactional
     public SafetyTemplateResponse createTemplate(CreateTemplateRequest req, Long userId) {
         SafetyCheckScopeType scopeType = req.getScopeType() != null
-                ? SafetyCheckScopeType.valueOf(req.getScopeType()) : null;
+                ? EnumInputParser.parse(SafetyCheckScopeType.class, req.getScopeType(), "scopeType") : null;
 
         SafetyCheckTemplateEntity entity = SafetyCheckTemplateEntity.builder()
                 .scopeType(scopeType)

@@ -20,6 +20,7 @@ import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.dashboard.FolderItemType;
 import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -215,7 +216,7 @@ public class ChatChannelService {
     // TODO: chatドメインがauthドメイン（UserRepository）・userドメイン（UserBlockRepository）・roleドメイン（UserRoleRepository）・dashboardドメイン（ChatContactFolderItemRepository）をまたいでいる。将来はそれぞれのQueryService/Eventで分離予定。Phase1-E: 2026-05-09
     @Transactional
     public ChannelResponse createChannel(CreateChannelRequest request, Long createdBy) {
-        ChannelType channelType = ChannelType.valueOf(request.getChannelType());
+        ChannelType channelType = EnumInputParser.parse(ChannelType.class, request.getChannelType(), "channelType");
         boolean isPrivate = Boolean.TRUE.equals(request.getIsPrivate());
 
         // チーム/組織チャンネルは当該スコープの内部資産である。作成者がそのスコープに属することを保証する

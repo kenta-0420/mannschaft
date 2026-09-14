@@ -1,6 +1,7 @@
 package com.mannschaft.app.parking.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.parking.ParkingErrorCode;
 import com.mannschaft.app.parking.ParkingMapper;
 import com.mannschaft.app.parking.PaymentMethod;
@@ -89,7 +90,7 @@ public class ParkingSubleaseService {
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .pricePerMonth(request.getPricePerMonth())
-                .paymentMethod(request.getPaymentMethod() != null ? PaymentMethod.valueOf(request.getPaymentMethod()) : PaymentMethod.DIRECT)
+                .paymentMethod(request.getPaymentMethod() != null ? EnumInputParser.parse(PaymentMethod.class, request.getPaymentMethod(), "paymentMethod") : PaymentMethod.DIRECT)
                 .availableFrom(request.getAvailableFrom())
                 .availableTo(request.getAvailableTo())
                 .build();
@@ -118,7 +119,7 @@ public class ParkingSubleaseService {
             throw new BusinessException(ParkingErrorCode.INVALID_SUBLEASE_STATUS);
         }
         entity.update(request.getTitle(), request.getDescription(), request.getPricePerMonth(),
-                request.getPaymentMethod() != null ? PaymentMethod.valueOf(request.getPaymentMethod()) : entity.getPaymentMethod(),
+                request.getPaymentMethod() != null ? EnumInputParser.parse(PaymentMethod.class, request.getPaymentMethod(), "paymentMethod") : entity.getPaymentMethod(),
                 request.getAvailableFrom(), request.getAvailableTo());
         ParkingSubleaseEntity saved = subleaseRepository.save(entity);
         log.info("サブリース更新: id={}", id);
