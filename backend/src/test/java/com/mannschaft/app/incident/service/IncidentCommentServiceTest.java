@@ -16,6 +16,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -169,6 +171,24 @@ class IncidentCommentServiceTest {
 
         assertThat(service.listComments(INCIDENT_ID, assigneeId)).isEmpty();
         verify(assignmentRepository).existsByIncidentIdAndUserIdAndAssigneeType(INCIDENT_ID, assigneeId, "USER");
+    }
+
+    @Test
+    @DisplayName("createdAt はサーバー基準ゾーンを明示した OffsetDateTime で返す")
+    void listComments_convertsCreatedAtToOffsetDateTime() {
+        allowMember(ADMIN_ID);
+        given(accessControlService.isAdminOrAbove(ADMIN_ID, SCOPE_ID, "TEAM")).willReturn(true);
+        IncidentCommentEntity comment = comment(1L, REPORTER_ID, "timestamp", false).toBuilder()
+                .createdAt(LocalDateTime.of(2026, 9, 14, 10, 30))
+                .build();
+        given(commentRepository.findVisibleByIncidentIdOrderByCreatedAtAsc(INCIDENT_ID, true))
+                .willReturn(List.of(comment));
+        given(nameResolverService.resolveUserFullNames(any())).willReturn(Map.of());
+
+        List<IncidentCommentService.IncidentCommentResponse> result = service.listComments(INCIDENT_ID, ADMIN_ID);
+
+        assertThat(result.getFirst().createdAt())
+                .isEqualTo(OffsetDateTime.parse("2026-09-14T10:30:00+09:00"));
     }
 
     private void allowMember(long userId) {

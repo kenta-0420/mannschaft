@@ -3,6 +3,7 @@ package com.mannschaft.app.incident.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.incident.IncidentErrorCode;
 import com.mannschaft.app.incident.entity.IncidentCommentEntity;
 import com.mannschaft.app.incident.entity.IncidentEntity;
@@ -12,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -89,7 +90,7 @@ public class IncidentCommentService {
             IncidentCommentUserResponse user,
             String body,
             boolean isInternal,
-            LocalDateTime createdAt) {
+            OffsetDateTime createdAt) {
 
         static IncidentCommentResponse from(IncidentCommentEntity entity, String userDisplayName) {
             return new IncidentCommentResponse(
@@ -99,7 +100,11 @@ public class IncidentCommentService {
                     new IncidentCommentUserResponse(entity.getUserId(), userDisplayName),
                     entity.getBody(),
                     Boolean.TRUE.equals(entity.getIsInternal()),
-                    entity.getCreatedAt());
+                    entity.getCreatedAt() == null
+                            ? null
+                            : entity.getCreatedAt()
+                                    .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                                    .toOffsetDateTime());
         }
     }
 

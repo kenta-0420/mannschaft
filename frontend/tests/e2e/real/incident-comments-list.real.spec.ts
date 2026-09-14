@@ -142,6 +142,7 @@ test('CMP-019: public/internal・報告者/担当者・404秘匿・削除済み�
     expect(adminComments.map((comment) => Date.parse(comment.createdAt))).toEqual(
       [...adminComments.map((comment) => Date.parse(comment.createdAt))].sort((a, b) => a - b),
     )
+    expect(adminComments.every((comment) => comment.createdAt.endsWith('+09:00'))).toBe(true)
 
     const reporterComments = await listComments(api, reporter.token, incident.id)
     expect(reporterComments.map((comment) => comment.body)).toEqual([publicOld, publicNew])
