@@ -171,7 +171,7 @@ dependencies {
     implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
 
     // === HTML サニタイズ（F02.5 publish-daily extra_comment 用。将来 F04.1 統合検討） ===
-    implementation("org.jsoup:jsoup:1.18.1")
+    implementation("org.jsoup:jsoup:1.22.2")
 
     // === F04.3 PWA Push: VAPID署名 + Web Push HTTP送信 ===
     // web-push-java: VAPID鍵ペア署名・暗号化ペイロード送信の実装ライブラリ
