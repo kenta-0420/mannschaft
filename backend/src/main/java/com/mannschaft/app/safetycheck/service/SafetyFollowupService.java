@@ -2,6 +2,7 @@ package com.mannschaft.app.safetycheck.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.safetycheck.FollowupStatus;
 import com.mannschaft.app.safetycheck.SafetyCheckErrorCode;
 import com.mannschaft.app.safetycheck.SafetyCheckMapper;
@@ -78,7 +79,7 @@ public class SafetyFollowupService {
         }
 
         FollowupStatus status = request.getFollowupStatus() != null
-                ? FollowupStatus.valueOf(request.getFollowupStatus()) : null;
+                ? EnumInputParser.parse(FollowupStatus.class, request.getFollowupStatus(), "followupStatus") : null;
 
         entity.update(status, request.getAssignedTo(), request.getNote());
         entity = followupRepository.save(entity);

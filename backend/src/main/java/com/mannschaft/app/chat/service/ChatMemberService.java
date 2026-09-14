@@ -14,6 +14,7 @@ import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -172,7 +173,7 @@ public class ChatMemberService {
                 channelId, operatorUserId, ChatErrorCode.CHANNEL_ACCESS_DENIED);
 
         ChatChannelMemberEntity member = findMemberOrThrow(channelId, targetUserId);
-        ChannelMemberRole newRole = ChannelMemberRole.valueOf(request.getRole());
+        ChannelMemberRole newRole = EnumInputParser.parse(ChannelMemberRole.class, request.getRole(), "role");
         member.changeRole(newRole);
         ChatChannelMemberEntity saved = memberRepository.save(member);
         log.info("ロール変更完了: channelId={}, userId={}, newRole={}, operatorUserId={}",

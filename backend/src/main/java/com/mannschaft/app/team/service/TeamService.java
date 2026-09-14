@@ -4,6 +4,7 @@ import com.mannschaft.app.common.duplicatename.DuplicateNameCandidate;
 import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
 import com.mannschaft.app.common.duplicatename.DuplicateNameNormalizer;
 import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.event.TeamCreatedEvent;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
@@ -129,7 +130,7 @@ public class TeamService {
                             .prefecture(req.getPrefecture())
                             .city(req.getCity())
                             .visibility(req.getVisibility() != null
-                                    ? TeamEntity.Visibility.valueOf(req.getVisibility())
+                                    ? EnumInputParser.parse(TeamEntity.Visibility.class, req.getVisibility(), "visibility")
                                     : TeamEntity.Visibility.GUESTS_AND_ABOVE)
                             .supporterEnabled(false)
                             .build();
@@ -695,7 +696,7 @@ public class TeamService {
         // toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化し、
         // slug 一意制約違反で 500 になるため使わない。visibility の enum 解決は本層の責務。
         TeamEntity.Visibility visibility = req.getVisibility() != null
-                ? TeamEntity.Visibility.valueOf(req.getVisibility())
+                ? EnumInputParser.parse(TeamEntity.Visibility.class, req.getVisibility(), "visibility")
                 : null;
         team.applyUpdate(
                 req.getName(),

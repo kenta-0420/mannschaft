@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -105,7 +106,7 @@ public class ScheduleAttendanceService {
         validateAttendanceDeadline(schedule);
         validateComment(schedule, req.getComment());
 
-        AttendanceStatus newStatus = AttendanceStatus.valueOf(req.getStatus());
+        AttendanceStatus newStatus = EnumInputParser.parse(AttendanceStatus.class, req.getStatus(), "status");
 
         ScheduleAttendanceEntity attendance = attendanceRepository
                 .findByScheduleIdAndUserId(scheduleId, userId)

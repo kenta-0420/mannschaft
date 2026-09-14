@@ -2,6 +2,7 @@ package com.mannschaft.app.gallery.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -162,7 +163,7 @@ public class PhotoAlbumService {
                 resolveScopeType(request.getTeamId()));
 
         AlbumVisibility visibility = request.getVisibility() != null
-                ? AlbumVisibility.valueOf(request.getVisibility()) : AlbumVisibility.ALL_MEMBERS;
+                ? EnumInputParser.parse(AlbumVisibility.class, request.getVisibility(), "visibility") : AlbumVisibility.ALL_MEMBERS;
         Boolean allowMemberUpload = request.getAllowMemberUpload() != null
                 ? request.getAllowMemberUpload() : false;
         Boolean allowDownload = request.getAllowDownload() != null
@@ -200,7 +201,7 @@ public class PhotoAlbumService {
                 resolveScopeType(entity.getTeamId()));
 
         AlbumVisibility visibility = request.getVisibility() != null
-                ? AlbumVisibility.valueOf(request.getVisibility()) : entity.getVisibility();
+                ? EnumInputParser.parse(AlbumVisibility.class, request.getVisibility(), "visibility") : entity.getVisibility();
         Boolean allowMemberUpload = request.getAllowMemberUpload() != null
                 ? request.getAllowMemberUpload() : entity.getAllowMemberUpload();
         Boolean allowDownload = request.getAllowDownload() != null
