@@ -102,7 +102,8 @@ public class FormPdfService {
     @Transactional
     public FormPdfGenerateResponse generatePdf(
             String scopeType, Long scopeId, Long submissionId, Long currentUserId) {
-        FormSubmissionEntity submission = findSubmissionInScopeOrThrow(scopeType, scopeId, submissionId);
+        // 旧 PDF の ACL 解放と新 PDF の差替えを、同一提出物では直列化する。
+        FormSubmissionEntity submission = findSubmissionInScopeForUpdateOrThrow(scopeType, scopeId, submissionId);
         ensureSubmittedOrLater(submission);
         FormTemplateEntity template = findTemplateOrThrow(submission.getTemplateId());
         ensureViewerCanAccess(submission, template, currentUserId, scopeType, scopeId);
@@ -125,6 +126,10 @@ public class FormPdfService {
                 "FORM_SUBMISSION_PDF", ACL_CLAIM_TTL, parent);
         storageService.upload(pdfKey, pdfBytes, "application/pdf");
         storageAclService.claimPending(pdfKey, currentUserId, scope, parent, binding);
+        String previousPdfKey = submission.getPdfFileKey();
+        if (previousPdfKey != null && !previousPdfKey.isBlank()) {
+            storageAclService.releaseClaimed(previousPdfKey, binding);
+        }
         submission.setPdfFileKey(pdfKey);
         submissionRepository.save(submission);
 
@@ -198,6 +203,16 @@ public class FormPdfService {
      */
     private FormSubmissionEntity findSubmissionInScopeOrThrow(String scopeType, Long scopeId, Long submissionId) {
         FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);
+        if (!entity.getScopeType().equalsIgnoreCase(scopeType) || !entity.getScopeId().equals(scopeId)) {
+            throw new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND);
+        }
+        return entity;
+    }
+
+    private FormSubmissionEntity findSubmissionInScopeForUpdateOrThrow(
+            String scopeType, Long scopeId, Long submissionId) {
+        FormSubmissionEntity entity = submissionRepository.findByIdForUpdate(submissionId)
+                .orElseThrow(() -> new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND));
         if (!entity.getScopeType().equalsIgnoreCase(scopeType) || !entity.getScopeId().equals(scopeId)) {
             throw new BusinessException(FormErrorCode.SUBMISSION_NOT_FOUND);
         }

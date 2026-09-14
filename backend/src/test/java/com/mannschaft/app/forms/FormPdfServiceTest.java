@@ -77,7 +77,7 @@ class FormPdfServiceTest {
     void generatePdf_BySubmitter_Success() {
         FormSubmissionEntity submission = submittedSubmission(10L);
         FormTemplateEntity template = template(99L);
-        given(submissionRepository.findById(anyLong())).willReturn(Optional.of(submission));
+        given(submissionRepository.findByIdForUpdate(anyLong())).willReturn(Optional.of(submission));
         given(templateRepository.findById(anyLong())).willReturn(Optional.of(template));
         // BaseEntity#id は @GeneratedValue で未 save なら null。anyLong() は null にマッチしないため any() を使う
         given(fieldRepository.findByTemplateIdOrderBySortOrderAsc(any())).willReturn(List.of());
@@ -100,7 +100,7 @@ class FormPdfServiceTest {
     void generatePdf_ByCreator_Success() {
         FormSubmissionEntity submission = submittedSubmission(10L);
         FormTemplateEntity template = template(99L);
-        given(submissionRepository.findById(anyLong())).willReturn(Optional.of(submission));
+        given(submissionRepository.findByIdForUpdate(anyLong())).willReturn(Optional.of(submission));
         given(templateRepository.findById(anyLong())).willReturn(Optional.of(template));
         // BaseEntity#id は @GeneratedValue で未 save なら null。anyLong() は null にマッチしないため any() を使う
         given(fieldRepository.findByTemplateIdOrderBySortOrderAsc(any())).willReturn(List.of());
@@ -114,11 +114,32 @@ class FormPdfServiceTest {
     }
 
     @Test
+    @DisplayName("PDF 再生成は旧 ACL を同一 binding で解放する")
+    void generatePdf_ReplacesPreviousPdfAndReleasesItsAcl() {
+        FormSubmissionEntity submission = submittedSubmission(10L);
+        submission.setPdfFileKey("forms/teams/7/submissions/200/form_200_old.pdf");
+        FormTemplateEntity template = template(99L);
+        given(submissionRepository.findByIdForUpdate(200L)).willReturn(Optional.of(submission));
+        given(templateRepository.findById(anyLong())).willReturn(Optional.of(template));
+        given(fieldRepository.findByTemplateIdOrderBySortOrderAsc(any())).willReturn(List.of());
+        given(valueRepository.findBySubmissionId(anyLong())).willReturn(List.of());
+        given(pdfGeneratorService.generateFromTemplate(anyString(), any(Map.class))).willReturn(new byte[]{1});
+        given(submissionRepository.save(any())).willReturn(submission);
+
+        formPdfService.generatePdf("teams", 7L, 200L, 10L);
+
+        verify(storageAclService).releaseClaimed(
+                "forms/teams/7/submissions/200/form_200_old.pdf",
+                new com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding(
+                        "FORM_SUBMISSION_PDF", "200"));
+    }
+
+    @Test
     @DisplayName("DRAFT 状態の提出は PDF 生成不可")
     void generatePdf_DraftStatus_Throws() {
         FormSubmissionEntity draft = FormSubmissionEntity.builder()
                 .templateId(100L).scopeType("teams").scopeId(7L).submittedBy(10L).build();
-        given(submissionRepository.findById(anyLong())).willReturn(Optional.of(draft));
+        given(submissionRepository.findByIdForUpdate(anyLong())).willReturn(Optional.of(draft));
 
         assertThatThrownBy(() -> formPdfService.generatePdf("teams", 7L, 200L, 10L))
                 .isInstanceOf(BusinessException.class)
@@ -130,7 +151,7 @@ class FormPdfServiceTest {
     void generatePdf_UnrelatedUser_Throws() {
         FormSubmissionEntity submission = submittedSubmission(10L);
         FormTemplateEntity template = template(99L);
-        given(submissionRepository.findById(anyLong())).willReturn(Optional.of(submission));
+        given(submissionRepository.findByIdForUpdate(anyLong())).willReturn(Optional.of(submission));
         given(templateRepository.findById(anyLong())).willReturn(Optional.of(template));
 
         assertThatThrownBy(() -> formPdfService.generatePdf("teams", 7L, 200L, 999L))

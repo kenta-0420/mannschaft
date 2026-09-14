@@ -60,6 +60,12 @@ public interface FormSubmissionRepository extends JpaRepository<FormSubmissionEn
     Optional<FormSubmissionEntity> findByIdAndSubmittedBy(Long id, Long submittedBy);
 
     /**
+     * 同一提出物の派生 PDF 再生成を直列化するため、提出行を排他取得する。
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<FormSubmissionEntity> findByIdForUpdate(Long id);
+
+    /**
      * テンプレートとユーザーの提出回数を取得する。
      */
     long countByTemplateIdAndSubmittedBy(Long templateId, Long submittedBy);

@@ -317,6 +317,20 @@ class CirculationServiceTest {
         }
 
         @Test
+        @DisplayName("生成済みエクスポートを削除すると ACL を正しい binding で解放する")
+        void 文書削除_生成済みエクスポートのAclを解放する() {
+            CirculationDocumentEntity entity = createDraftDocument();
+            entity.markExportCompleted("circulation/exports/100/export.pdf");
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            circulationService.deleteDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            verify(storageAclService).releaseClaimed("circulation/exports/100/export.pdf",
+                    new StorageAclAttachmentBinding("CIRCULATION_EXPORT", DOCUMENT_ID.toString()));
+        }
+
+        @Test
         @DisplayName("文書削除_正常_CirculationDocumentDeletedEvent発行")
         void 文書削除_正常_イベント発行() {
             // Given
