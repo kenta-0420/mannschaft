@@ -25,8 +25,6 @@ vi.mock('~/composables/useMultipartUploadApi', () => ({
     getPartUrls: mockGetPartUrls,
     completeUpload: mockCompleteUpload,
     abortUpload: mockAbortUpload,
-    startUpload: vi.fn(),
-    uploadLargeFile: vi.fn(),
   }),
 }))
 

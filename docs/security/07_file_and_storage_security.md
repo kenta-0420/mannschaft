@@ -218,6 +218,12 @@ commit 後の署名 URL 再発行は拒否されるが、発行済み URL の失
 同じ fileKey を複数値へ複製する入力は拒否する。提出の論理削除でも各添付を解放する。
 同一提出の更新・削除は提出行の書き込みロックで直列化する。
 
+### 4.3 CMP-057: 汎用 multipart 開始 API の廃止（2026-09）
+
+`POST /api/v1/files/multipart/start` は廃止済みであり、認証済み要求にも `410 Gone` を返す。保存先、`uploadId`、R2 multipart、ACL claim、使用量台帳はこの入口から作成しない。
+
+ブログ・予定などのドメイン別開始 API は維持する。これらが発行した `uploadId` に対する part URL 発行、complete、abort は引き続き利用できる。
+
 ## 5. objectKey の設計ルール
 
 objectKey の設計はスコープ分離と IDOR 防止に直結する。
