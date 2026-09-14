@@ -279,7 +279,6 @@ NO_ARG_NOW|com.mannschaft.app.family.service.PresenceService|4
 NO_ARG_NOW|com.mannschaft.app.faq.service.FaqAdminService|2
 NO_ARG_NOW|com.mannschaft.app.favorite.entity.UserFavoriteEntity|1
 NO_ARG_NOW|com.mannschaft.app.files.entity.MultipartUploadSessionEntity|2
-NO_ARG_NOW|com.mannschaft.app.files.service.MultipartUploadService|1
 NO_ARG_NOW|com.mannschaft.app.filesharing.entity.FilePermissionEntity|1
 NO_ARG_NOW|com.mannschaft.app.filesharing.entity.SharedFileCommentEntity|1
 NO_ARG_NOW|com.mannschaft.app.filesharing.entity.SharedFileEntity|1

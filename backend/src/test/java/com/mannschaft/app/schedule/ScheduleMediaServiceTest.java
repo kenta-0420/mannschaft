@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule;
 
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -88,20 +89,45 @@ class ScheduleMediaServiceTest {
      */
     private ScheduleMediaService scheduleMediaService;
 
+    @Mock private com.mannschaft.app.common.storage.acl.StorageAclService storageAclService;
+    @Mock private com.mannschaft.app.common.storage.acl.StorageAccessService storageAccessService;
+    @Mock private com.mannschaft.app.common.visibility.ContentVisibilityChecker visibilityChecker;
+    @org.junit.jupiter.api.AfterEach
+    void clearAuthentication() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
+
     @BeforeEach
     void setUp() {
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        UPLOADER_ID, null, java.util.List.of()));
+        org.mockito.Mockito.lenient().when(scheduleRepository.findById(SCHEDULE_ID))
+                .thenReturn(Optional.of(mockScheduleEntity()));
+        org.mockito.Mockito.lenient().when(storageAccessService.generateDownloadUrlsForList(any(), any()))
+                .thenAnswer(inv -> {
+                    java.util.Collection<com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest> requests =
+                            inv.getArgument(0);
+                    return requests.stream().collect(java.util.stream.Collectors.toMap(
+                            com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest::fileKey,
+                            request -> "https://r2.example.com/signed/" + request.fileKey(), (first, second) -> first));
+                });
+        org.mockito.Mockito.lenient().when(storageAccessService.generateDownloadUrl(any(), any(), any(), any(), any()))
+                .thenReturn("https://r2.example.com/signed");
+        var mediaAclService = new com.mannschaft.app.schedule.service.ScheduleMediaAclService(
+                scheduleMediaUploadRepository, scheduleRepository, visibilityChecker, accessControlService);
         ScheduleMediaUploadService uploadService = new ScheduleMediaUploadService(
                 r2StorageService,
                 multipartUploadService,
                 scheduleMediaUploadRepository,
                 scheduleRepository,
-                storageQuotaService);
+                storageQuotaService, mediaAclService, storageAclService);
         ScheduleMediaQueryService queryService = new ScheduleMediaQueryService(
                 r2StorageService,
                 scheduleMediaUploadRepository,
                 scheduleRepository,
                 accessControlService,
-                storageQuotaService);
+                storageQuotaService, mediaAclService, storageAccessService);
         scheduleMediaService = new ScheduleMediaService(uploadService, queryService);
 
         ScheduleEntity defaultSchedule = ScheduleEntity.builder()
@@ -175,7 +201,7 @@ class ScheduleMediaServiceTest {
      * given() の外で mock() を呼んで UnfinishedStubbingException を防ぐ。
      */
     private ScheduleEntity mockScheduleEntity() {
-        return mock(ScheduleEntity.class);
+        return ScheduleEntity.builder().id(SCHEDULE_ID).userId(UPLOADER_ID).build();
     }
 
     private ScheduleEntity mockTeamSchedule(Long teamId) {
@@ -262,7 +288,7 @@ class ScheduleMediaServiceTest {
                     .willReturn(Optional.of(dummySchedule));
             given(scheduleMediaUploadRepository.countByScheduleIdAndMediaType(SCHEDULE_ID, "VIDEO"))
                     .willReturn(0);
-            given(multipartUploadService.startUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class)))
+            given(multipartUploadService.startContentUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class), anyString()))
                     .willReturn(new StartMultipartUploadResponse(
                             "test-upload-id",
                             "schedules/100/uuid.mp4",
@@ -296,7 +322,7 @@ class ScheduleMediaServiceTest {
             assertThat(result.getUploadUrl()).isNull();
             assertThat(result.getExpiresIn()).isNull();
             then(multipartUploadService).should()
-                    .startUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class));
+                    .startContentUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class), anyString());
         }
 
         @Test
@@ -309,9 +335,9 @@ class ScheduleMediaServiceTest {
             // when / then
             assertThatThrownBy(() ->
                     scheduleMediaService.generateUploadUrl(SCHEDULE_ID, UPLOADER_ID, req))
-                    .isInstanceOf(ResponseStatusException.class)
-                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                            .isEqualTo(HttpStatus.NOT_FOUND));
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND));
             then(r2StorageService).should(never()).generateUploadUrl(anyString(), anyString(), any());
             then(scheduleMediaUploadRepository).should(never()).save(any());
         }
@@ -481,9 +507,9 @@ class ScheduleMediaServiceTest {
             // when / then
             assertThatThrownBy(() ->
                     scheduleMediaService.listMedia(SCHEDULE_ID, null, false, 1, 20))
-                    .isInstanceOf(ResponseStatusException.class)
-                    .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                            .isEqualTo(HttpStatus.NOT_FOUND));
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND));
         }
     }
 
@@ -826,7 +852,7 @@ class ScheduleMediaServiceTest {
             ScheduleMediaUploadEntity entity =
                     buildMediaEntity(MEDIA_ID, SCHEDULE_ID, UPLOADER_ID, "IMAGE");
             ScheduleEntity deletedSchedule = mockScheduleEntity();
-            given(deletedSchedule.getDeletedAt()).willReturn(LocalDateTime.now());
+            deletedSchedule.softDelete();
             given(scheduleMediaUploadRepository.findById(MEDIA_ID)).willReturn(Optional.of(entity));
             givenSchedule(deletedSchedule);
 
@@ -1057,6 +1083,7 @@ class ScheduleMediaServiceTest {
 
             given(scheduleMediaUploadRepository.findOrphanMedia(any(LocalDateTime.class)))
                     .willReturn(List.of(orphanImage, orphanVideo));
+            given(scheduleMediaUploadRepository.deleteCleanupCandidateById(anyLong())).willReturn(1);
 
             // when
             scheduleMediaService.cleanupOrphanMedia();
@@ -1066,8 +1093,92 @@ class ScheduleMediaServiceTest {
             then(r2StorageService).should().delete("schedules/100/orphan-video.mp4");
             then(r2StorageService).should().delete("schedules/100/orphan-video-thumb.jpg");
             // DB から一括削除
-            then(scheduleMediaUploadRepository).should()
-                    .deleteAll(List.of(orphanImage, orphanVideo));
+            then(scheduleMediaUploadRepository).should(org.mockito.Mockito.times(2))
+                    .deleteCleanupCandidateById(anyLong());
+            then(scheduleMediaUploadRepository).should(never()).deleteAll(any());
+        }
+
+        @Test
+        @DisplayName("完了処理が先にREADY化した候補はR2から削除しない")
+        void completedCandidateIsNotDeleted() {
+            ScheduleMediaUploadEntity candidate = ScheduleMediaUploadEntity.builder()
+                    .id(3L).scheduleId(100L).uploaderId(UPLOADER_ID)
+                    .mediaType("IMAGE").r2Key("schedules/100/completed.jpg")
+                    .fileName("completed.jpg").fileSize(1024L)
+                    .contentType("image/jpeg").processingStatus("UPLOADING").build();
+            given(scheduleMediaUploadRepository.findOrphanMedia(any(LocalDateTime.class)))
+                    .willReturn(List.of(candidate));
+            given(scheduleMediaUploadRepository.deleteCleanupCandidateById(3L)).willReturn(0);
+
+            scheduleMediaService.cleanupOrphanMedia();
+
+            then(r2StorageService).shouldHaveNoInteractions();
+        }
+    }
+
+    @Nested
+    @DisplayName("confirmImageUpload")
+    class ConfirmImageUpload {
+
+        private ScheduleMediaUploadEntity uploadingImage(Long ownerId) {
+            return ScheduleMediaUploadEntity.builder().id(MEDIA_ID).scheduleId(SCHEDULE_ID)
+                    .uploaderId(ownerId).mediaType("IMAGE")
+                    .r2Key("schedules/TEAM/50/100/image.jpg").fileName("image.jpg")
+                    .fileSize(1024L).contentType("image/jpeg").processingStatus("UPLOADING").build();
+        }
+
+        @Test
+        @DisplayName("HEADで実体とサイズを確認後にACL・使用量を確定する")
+        void 実体確認後に確定する() {
+            ScheduleMediaUploadEntity media = uploadingImage(UPLOADER_ID);
+            given(scheduleMediaUploadRepository.findByIdForUploadCompletion(MEDIA_ID))
+                    .willReturn(Optional.of(media));
+            given(scheduleRepository.findById(SCHEDULE_ID))
+                    .willReturn(Optional.of(ScheduleEntity.builder().id(SCHEDULE_ID).teamId(50L).build()));
+            given(r2StorageService.objectExists(media.getR2Key())).willReturn(true);
+            given(r2StorageService.getObjectSize(media.getR2Key())).willReturn(1024L);
+
+            scheduleMediaService.confirmImageUpload(SCHEDULE_ID, MEDIA_ID, UPLOADER_ID);
+
+            assertThat(media.getProcessingStatus()).isEqualTo("READY");
+            then(storageAclService).should().claimPending(
+                    eq(media.getR2Key()), eq(UPLOADER_ID),
+                    eq(com.mannschaft.app.common.storage.acl.StorageAclScope.team(50L)),
+                    eq(new com.mannschaft.app.common.storage.acl.StorageAclContentReference("SCHEDULE", "100")),
+                    eq(new com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding(
+                            "SCHEDULE_MEDIA_UPLOAD", String.valueOf(MEDIA_ID))));
+            then(storageQuotaService).should().recordUpload(
+                    StorageScopeType.TEAM, 50L, 1024L, StorageFeatureType.SCHEDULE_MEDIA,
+                    "schedule_media_uploads", MEDIA_ID, UPLOADER_ID);
+        }
+
+        @Test
+        @DisplayName("別ユーザーはHEAD前に存在秘匿で拒否する")
+        void 別ユーザーは拒否する() {
+            given(scheduleMediaUploadRepository.findByIdForUploadCompletion(MEDIA_ID))
+                    .willReturn(Optional.of(uploadingImage(OTHER_USER_ID)));
+
+            assertThatThrownBy(() -> scheduleMediaService.confirmImageUpload(
+                    SCHEDULE_ID, MEDIA_ID, UPLOADER_ID)).isInstanceOf(BusinessException.class);
+
+            then(r2StorageService).should(never()).objectExists(anyString());
+            then(storageQuotaService).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("申告サイズとHEADサイズが違えば確定しない")
+        void サイズ不一致は確定しない() {
+            ScheduleMediaUploadEntity media = uploadingImage(UPLOADER_ID);
+            given(scheduleMediaUploadRepository.findByIdForUploadCompletion(MEDIA_ID))
+                    .willReturn(Optional.of(media));
+            given(r2StorageService.objectExists(media.getR2Key())).willReturn(true);
+            given(r2StorageService.getObjectSize(media.getR2Key())).willReturn(1025L);
+
+            assertThatThrownBy(() -> scheduleMediaService.confirmImageUpload(
+                    SCHEDULE_ID, MEDIA_ID, UPLOADER_ID)).isInstanceOf(ResponseStatusException.class);
+
+            then(storageAclService).should(never()).claimPending(anyString(), anyLong(), any(), any(), any());
+            then(storageQuotaService).should(never()).recordUpload(any(), anyLong(), anyLong(), any(), anyString(), anyLong(), anyLong());
         }
     }
 
@@ -1089,12 +1200,12 @@ class ScheduleMediaServiceTest {
 
         /** 個人スコープを持つ ScheduleEntity モック */
         private ScheduleEntity personalSchedule() {
-            return ScheduleEntity.builder().id(SCHEDULE_ID).build();
+            return ScheduleEntity.builder().id(SCHEDULE_ID).userId(UPLOADER_ID).build();
         }
 
         @Test
-        @DisplayName("正常系_IMAGE アップロード: checkQuota → recordUpload が呼ばれる（TEAM スコープ）")
-        void 正常系_IMAGE_checkQuota_recordUpload_TEAM() {
+        @DisplayName("正常系_IMAGE presign: checkQuotaのみで完了前は未計上（TEAM スコープ）")
+        void 正常系_IMAGE_checkQuotaのみ_TEAM() {
             // given
             ScheduleEntity schedule = teamSchedule();
             ScheduleMediaUploadUrlRequest req = buildRequest("IMAGE", "image/jpeg", 1024L * 1024, "photo.jpg");
@@ -1125,13 +1236,11 @@ class ScheduleMediaServiceTest {
             // when
             scheduleMediaService.generateUploadUrl(SCHEDULE_ID, UPLOADER_ID, req);
 
-            // then: TEAM スコープで checkQuota / recordUpload が呼ばれる
+            // then: TEAM スコープで事前確認し、実体確認前は未計上
             then(storageQuotaService).should()
                     .checkQuota(StorageScopeType.TEAM, 50L, 1024L * 1024);
-            then(storageQuotaService).should()
-                    .recordUpload(eq(StorageScopeType.TEAM), eq(50L), eq(1024L * 1024),
-                            eq(StorageFeatureType.SCHEDULE_MEDIA),
-                            eq("schedule_media_uploads"), eq(MEDIA_ID), eq(UPLOADER_ID));
+            then(storageQuotaService).should(never())
+                    .recordUpload(any(), anyLong(), anyLong(), any(), anyString(), anyLong(), anyLong());
         }
 
         @Test
@@ -1143,7 +1252,7 @@ class ScheduleMediaServiceTest {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
             given(scheduleMediaUploadRepository.countByScheduleIdAndMediaType(SCHEDULE_ID, "VIDEO"))
                     .willReturn(0);
-            given(multipartUploadService.startUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class)))
+            given(multipartUploadService.startContentUpload(eq(UPLOADER_ID), any(StartMultipartUploadRequest.class), anyString()))
                     .willReturn(new StartMultipartUploadResponse(
                             "test-upload-id",
                             "schedules/100/uuid.mp4",

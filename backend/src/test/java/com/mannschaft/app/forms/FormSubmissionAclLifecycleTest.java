@@ -133,6 +133,19 @@ class FormSubmissionAclLifecycleTest {
     }
 
     @Test
+    void 提出削除は生成済みPDFのACLも解放する() {
+        submission.setPdfFileKey("forms/submissions/200.pdf");
+        given(valueRepository.findBySubmissionIdForUpdate(200L)).willReturn(List.of());
+
+        service.deleteSubmission(200L, 10L);
+
+        verify(storageAclService).releaseClaimed("forms/submissions/200.pdf",
+                new StorageAclAttachmentBinding("FORM_SUBMISSION_PDF", "200"));
+        assertThat(submission.getDeletedAt()).isNotNull();
+        verifyNoInteractions(storageService);
+    }
+
+    @Test
     void 解放失敗時は提出の論理削除に進まない() {
         given(valueRepository.findBySubmissionIdForUpdate(200L)).willReturn(List.of(value(301L, "removed", FormFieldType.FILE)));
         org.mockito.Mockito.doThrow(new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND))

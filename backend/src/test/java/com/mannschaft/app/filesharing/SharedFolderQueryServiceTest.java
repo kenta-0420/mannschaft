@@ -4,11 +4,15 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.filesharing.dto.CreateFolderRequest;
 import com.mannschaft.app.filesharing.dto.FolderDetailResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
+import com.mannschaft.app.filesharing.entity.SharedFileVersionEntity;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileRepository;
+import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
 import com.mannschaft.app.filesharing.repository.SharedFolderRepository;
 import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFileQuotaService;
@@ -22,6 +26,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -65,6 +70,12 @@ class SharedFolderQueryServiceTest {
 
     @Mock
     private SharedFileRepository fileRepository;
+
+    @Mock
+    private SharedFileVersionRepository versionRepository;
+
+    @Mock
+    private StorageAclService storageAclService;
 
     @Mock
     private FolderScopeAccessGuard folderScopeAccessGuard;
@@ -616,6 +627,14 @@ class SharedFolderQueryServiceTest {
             given(folderRepository.findByParentIdOrderByNameAsc(101L)).willReturn(List.of());
             given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of(f1, f2));
             given(fileRepository.findByFolderIdOrderByNameAsc(101L)).willReturn(List.of());
+            SharedFileVersionEntity v1 = SharedFileVersionEntity.builder().fileId(201L)
+                    .versionNumber(1).fileKey("k201").fileSize(10L).build();
+            ReflectionTestUtils.setField(v1, "id", 301L);
+            SharedFileVersionEntity v2 = SharedFileVersionEntity.builder().fileId(202L)
+                    .versionNumber(1).fileKey("k202").fileSize(20L).build();
+            ReflectionTestUtils.setField(v2, "id", 302L);
+            given(versionRepository.findByFileIdOrderByVersionNumberDesc(201L)).willReturn(List.of(v1));
+            given(versionRepository.findByFileIdOrderByVersionNumberDesc(202L)).willReturn(List.of(v2));
 
             service.deleteFolder(FOLDER_ID, USER_ID);
 
@@ -631,6 +650,10 @@ class SharedFolderQueryServiceTest {
             verify(sharedFileQuotaService).recordFileDeletion(root, 202L, 20L, USER_ID);
             verify(sharedFileQuotaService, times(2))
                     .recordFileDeletion(any(SharedFolderEntity.class), anyLong(), anyLong(), anyLong());
+            verify(storageAclService).releaseClaimed("k201",
+                    new StorageAclAttachmentBinding("SHARED_FILE_VERSION", "301"));
+            verify(storageAclService).releaseClaimed("k202",
+                    new StorageAclAttachmentBinding("SHARED_FILE_VERSION", "302"));
         }
 
 
