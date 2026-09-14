@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -44,6 +44,10 @@ async function run(root, ...args) {
   return execFileAsync(process.execPath, [script, '--repo', root, '--days', '1', '--json', ...args], { cwd: root });
 }
 
+function gitPath(worktree, path) {
+  return isAbsolute(path) ? path : join(worktree, path);
+}
+
 test('clean stale agentだけをapplyで撤去し、feature/non-agentは保護する', async (t) => {
   const root = await fixture();
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -75,7 +79,7 @@ test('dirty、locked、index.lockは理由付きで保持しindex.lockを削除�
   await writeFile(join(dirty, 'uncommitted.txt'), 'keep me\n');
   await git(root, ['worktree', 'lock', '--reason', 'operator lock', locked]);
   const gitdir = (await git(indexLocked, ['rev-parse', '--git-dir'])).stdout.trim();
-  const gitdirPath = /^[A-Za-z]:[\\/]/.test(gitdir) ? gitdir : join(indexLocked, gitdir);
+  const gitdirPath = gitPath(indexLocked, gitdir);
   await writeFile(join(gitdirPath, 'index.lock'), 'do not remove\n');
 
   const result = JSON.parse((await run(root, '--apply')).stdout);
@@ -112,7 +116,8 @@ test('git検査失敗はinspection-failedとして保持する', async (t) => {
   t.after(() => rm(root, { recursive: true, force: true }));
   const agent = await addWorktree(root, 'agent-inspection-failure');
   const gitdir = (await git(agent, ['rev-parse', '--git-dir'])).stdout.trim();
-  await rename(join(gitdir, 'HEAD'), join(gitdir, 'HEAD.broken'));
+  const gitdirPath = gitPath(agent, gitdir);
+  await rename(join(gitdirPath, 'HEAD'), join(gitdirPath, 'HEAD.broken'));
 
   const result = JSON.parse((await run(root, '--apply')).stdout);
   const entry = result.entries.find((candidate) => candidate.path === agent);
