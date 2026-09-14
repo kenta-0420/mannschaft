@@ -1,6 +1,11 @@
 package com.mannschaft.app.circulation;
 
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclEntity;
+import com.mannschaft.app.common.storage.acl.StorageAclMode;
+import com.mannschaft.app.common.storage.acl.StorageAclRepository;
+import com.mannschaft.app.common.storage.acl.StorageAclScopeType;
+import com.mannschaft.app.common.storage.acl.StorageAclStatus;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -21,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -68,6 +74,9 @@ class CirculationExportScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @PersistenceContext
     private EntityManager em;
+
+    @Autowired
+    private StorageAclRepository storageAclRepository;
 
     /**
      * R2/S3 は外部依存のため mock（generateDownloadUrl で使用）。
@@ -118,6 +127,7 @@ class CirculationExportScopeContractIT extends AbstractMySqlIntegrationTest {
 
         documentId = insertCompletedExportDocument(teamAId, creatorId);
         insertRecipient(documentId, recipientId);
+        insertClaimedExportAcl(documentId, teamAId, creatorId);
 
         em.flush();
         em.clear();
@@ -278,6 +288,28 @@ class CirculationExportScopeContractIT extends AbstractMySqlIntegrationTest {
                 .setParameter("docId", documentId)
                 .setParameter("userId", userId)
                 .executeUpdate();
+    }
+
+    /** 生成済みエクスポートに対応する CLAIMED ACL を登録する。 */
+    private void insertClaimedExportAcl(Long documentId, Long scopeId, Long ownerId) {
+        String fileKey = (String) em.createNativeQuery(
+                        "SELECT export_file_key FROM circulation_documents WHERE id = :documentId")
+                .setParameter("documentId", documentId)
+                .getSingleResult();
+        storageAclRepository.save(StorageAclEntity.builder()
+                .fileKey(fileKey)
+                .ownerId(ownerId)
+                .scopeType(StorageAclScopeType.TEAM)
+                .scopeKey(scopeId.toString())
+                .aclMode(StorageAclMode.CONTENT_BOUND)
+                .contentType("application/pdf")
+                .parentContentReferenceType("CIRCULATION_DOCUMENT")
+                .parentContentReferenceKey(documentId.toString())
+                .attachmentBindingType("CIRCULATION_EXPORT")
+                .attachmentBindingKey(documentId.toString())
+                .status(StorageAclStatus.CLAIMED)
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build());
     }
 
     private Long insertUser(String email) {

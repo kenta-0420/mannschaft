@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -9,6 +10,7 @@ import com.mannschaft.app.common.storage.quota.StorageQuotaService;
 import com.mannschaft.app.schedule.dto.ScheduleMediaListResponse;
 import com.mannschaft.app.schedule.dto.ScheduleMediaPatchRequest;
 import com.mannschaft.app.schedule.dto.ScheduleMediaResponse;
+import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.ScheduleMediaUploadEntity;
 import com.mannschaft.app.schedule.repository.ScheduleMediaUploadRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -53,12 +55,14 @@ public class ScheduleMediaQueryService {
 
     /** F13 Phase 4-γ: storage_usage_logs.reference_type に記録するテーブル名。 */
     private static final String REFERENCE_TYPE = "schedule_media_uploads";
+    private static final String MANAGE_SCHEDULES = "MANAGE_SCHEDULES";
 
     // ==================== 依存 ====================
 
     private final R2StorageService r2StorageService;
     private final ScheduleMediaUploadRepository scheduleMediaUploadRepository;
     private final ScheduleRepository scheduleRepository;
+    private final AccessControlService accessControlService;
     /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
 
@@ -118,14 +122,12 @@ public class ScheduleMediaQueryService {
      * @param scheduleId      スケジュール ID
      * @param mediaId         メディア ID
      * @param requestUserId   リクエストを行うユーザー ID
-     * @param isAdminOrDeputy 管理者または副管理者フラグ
      * @param req             更新リクエスト
      * @return 更新後のメディアレスポンス
      */
     @Transactional
     public ScheduleMediaResponse updateMedia(
-            Long scheduleId, Long mediaId, Long requestUserId, boolean isAdminOrDeputy,
-            ScheduleMediaPatchRequest req) {
+            Long scheduleId, Long mediaId, Long requestUserId, ScheduleMediaPatchRequest req) {
 
         ScheduleMediaUploadEntity entity = scheduleMediaUploadRepository.findById(mediaId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -137,16 +139,22 @@ public class ScheduleMediaQueryService {
                     HttpStatus.NOT_FOUND, "指定されたスケジュールにメディアが見つかりません");
         }
 
-        // is_cover 変更権限チェック（MEMBER は変更不可）
-        if (req.getIsCover() != null && !isAdminOrDeputy) {
+        ScheduleEntity schedule = findActiveSchedule(scheduleId);
+        boolean isManager = isScheduleMediaManager(schedule, requestUserId, false);
+        boolean isSelf = isScheduleMediaOwner(schedule, entity, requestUserId);
+
+        // 更新前に全フィールドの権限を検証し、拒否時の部分更新を防ぐ。
+        if (!isSelf && !isManager) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "他のユーザーがアップロードしたメディアは変更できません");
+        }
+        if (req.getIsCover() != null && !isManager) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "カバー写真の設定は管理者のみ変更できます");
         }
-
-        // 他人のメディアを操作する権限チェック
-        if (!requestUserId.equals(entity.getUploaderId()) && !isAdminOrDeputy) {
+        if (Boolean.FALSE.equals(req.getIsExpenseReceipt()) && !isManager) {
             throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN, "他のユーザーがアップロードしたメディアは変更できません");
+                    HttpStatus.FORBIDDEN, "経費証憑フラグの解除は管理者のみ可能です");
         }
 
         // フィールド更新
@@ -164,11 +172,6 @@ public class ScheduleMediaQueryService {
         }
 
         if (req.getIsExpenseReceipt() != null) {
-            if (Boolean.FALSE.equals(req.getIsExpenseReceipt()) && !isAdminOrDeputy) {
-                // MEMBER は is_expense_receipt を false に変更不可
-                throw new ResponseStatusException(
-                        HttpStatus.FORBIDDEN, "経費証憑フラグの解除は管理者のみ可能です");
-            }
             entity.updateIsExpenseReceipt(req.getIsExpenseReceipt());
         }
 
@@ -188,10 +191,9 @@ public class ScheduleMediaQueryService {
      * @param scheduleId      スケジュール ID
      * @param mediaId         メディア ID
      * @param requestUserId   リクエストを行うユーザー ID
-     * @param isAdminOrDeputy 管理者または副管理者フラグ
      */
     @Transactional
-    public void deleteMedia(Long scheduleId, Long mediaId, Long requestUserId, boolean isAdminOrDeputy) {
+    public void deleteMedia(Long scheduleId, Long mediaId, Long requestUserId) {
         ScheduleMediaUploadEntity entity = scheduleMediaUploadRepository.findById(mediaId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "メディアが見つかりません"));
@@ -202,8 +204,10 @@ public class ScheduleMediaQueryService {
                     HttpStatus.NOT_FOUND, "指定されたスケジュールにメディアが見つかりません");
         }
 
-        // 権限チェック（自分のメディアでない かつ 管理者でない → 403）
-        if (!requestUserId.equals(entity.getUploaderId()) && !isAdminOrDeputy) {
+        ScheduleEntity schedule = findActiveSchedule(scheduleId);
+        boolean isManager = isScheduleMediaManager(schedule, requestUserId, true);
+        boolean isSelf = isScheduleMediaOwner(schedule, entity, requestUserId);
+        if (!isSelf && !isManager) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "このメディアを削除する権限がありません");
         }
@@ -234,15 +238,55 @@ public class ScheduleMediaQueryService {
 
         // F13 Phase 4-γ: 使用量減算（スコープはスケジュールで判定）
         if (fileSize > 0) {
-            scheduleRepository.findById(scheduleId).ifPresent(schedule -> {
-                ScheduleMediaService.ScopeResolution scope =
-                        ScheduleMediaService.resolveScopeFor(schedule, requestUserId);
-                storageQuotaService.recordDeletion(
-                        scope.scopeType(), scope.scopeId(), fileSize,
-                        StorageFeatureType.SCHEDULE_MEDIA,
-                        REFERENCE_TYPE, mediaId, requestUserId);
-            });
+            ScheduleMediaService.ScopeResolution scope =
+                    ScheduleMediaService.resolveScopeFor(schedule, schedule.getUserId());
+            storageQuotaService.recordDeletion(
+                    scope.scopeType(), scope.scopeId(), fileSize,
+                    StorageFeatureType.SCHEDULE_MEDIA,
+                    REFERENCE_TYPE, mediaId, requestUserId);
         }
+    }
+
+    private ScheduleEntity findActiveSchedule(Long scheduleId) {
+        ScheduleEntity schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "スケジュールが見つかりません"));
+        if (schedule.getDeletedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "スケジュールが見つかりません");
+        }
+        return schedule;
+    }
+
+    private boolean isScheduleMediaManager(
+            ScheduleEntity schedule, Long userId, boolean allowSystemAdmin) {
+        if (allowSystemAdmin && accessControlService.isSystemAdmin(userId)) {
+            return true;
+        }
+        if (schedule.isPersonal()) {
+            return false;
+        }
+        Long scopeId = schedule.isTeamScope() ? schedule.getTeamId() : schedule.getOrganizationId();
+        String scopeType = schedule.isTeamScope() ? "TEAM" : "ORGANIZATION";
+        if (scopeId == null) {
+            return false;
+        }
+        if (accessControlService.isAdmin(userId, scopeId, scopeType)) {
+            return true;
+        }
+        return "DEPUTY_ADMIN".equals(accessControlService.getRoleName(userId, scopeId, scopeType))
+                && accessControlService.hasPermission(userId, scopeId, scopeType, MANAGE_SCHEDULES);
+    }
+
+    private boolean isScheduleMediaOwner(
+            ScheduleEntity schedule, ScheduleMediaUploadEntity media, Long userId) {
+        if (schedule.isPersonal()) {
+            return userId.equals(schedule.getUserId());
+        }
+        Long scopeId = schedule.isTeamScope() ? schedule.getTeamId() : schedule.getOrganizationId();
+        String scopeType = schedule.isTeamScope() ? "TEAM" : "ORGANIZATION";
+        return scopeId != null
+                && userId.equals(media.getUploaderId())
+                && accessControlService.isMember(userId, scopeId, scopeType);
     }
 
     /**

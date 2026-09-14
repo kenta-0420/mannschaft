@@ -449,12 +449,25 @@ public class CirculationService {
         // （または SYSTEM_ADMIN）のみ許可する。
         checkScopeAdminAccess(entity, SecurityUtils.getCurrentUserId());
 
+        List<String> fileKeysToDelete = new ArrayList<>();
         for (CirculationAttachmentEntity attachment : attachmentRepository.findByDocumentIdOrderByCreatedAtAsc(documentId)) {
             storageAclService.releaseClaimed(attachment.getFileKey(),
                     new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", attachment.getId().toString()));
+            if (attachment.getFileKey() != null && !attachment.getFileKey().isBlank()) {
+                fileKeysToDelete.add(attachment.getFileKey());
+            }
+        }
+        String exportFileKey = entity.getExportFileKey();
+        if (exportFileKey != null && !exportFileKey.isBlank()) {
+            storageAclService.releaseClaimed(exportFileKey,
+                    new StorageAclAttachmentBinding("CIRCULATION_EXPORT", entity.getId().toString()));
+            fileKeysToDelete.add(exportFileKey);
         }
         entity.softDelete();
         documentRepository.save(entity);
+        if (!fileKeysToDelete.isEmpty()) {
+            domainEventPublisher.publish(new S3ObjectDeleteEvent(fileKeysToDelete));
+        }
         applicationEventPublisher.publishEvent(new CirculationDocumentDeletedEvent(documentId));
         log.info("回覧文書削除: documentId={}", documentId);
     }

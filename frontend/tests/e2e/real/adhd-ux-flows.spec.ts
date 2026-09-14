@@ -23,7 +23,7 @@
  * 認証: テスト内でAPIログインしてセッションを確立（single-session設計）
  */
 
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, request as pwRequest, type Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 
 // storageState をクリアして自前ログインを使う
@@ -31,10 +31,11 @@ test.use({ storageState: { cookies: [], origins: [] } })
 
 const BASE_URL = process.env.BASE_URL ?? 'http://127.0.0.1:3000'
 const API_BASE = process.env.API_BASE_URL ?? 'http://127.0.0.1:8080'
-const BACKEND_ALLOWED_ORIGIN = process.env.BACKEND_ALLOWED_ORIGIN ?? 'http://localhost:3000'
 
 const TEST_EMAIL = 'e2e-user@test.mannschaft.local'
 const TEST_PASSWORD = 'TestPass2026!'
+const OUTSIDER_EMAIL = process.env.TEST_OUTSIDER_EMAIL ?? 'e2e-outsider@test.mannschaft.local'
+const OUTSIDER_PASSWORD = process.env.TEST_OUTSIDER_PASSWORD ?? 'TestPass2026!'
 
 // ---------------------------------------------------------------------------
 // API ブリッジ: WSL2 mirrored で FE→BE CORS 問題を回避
@@ -43,19 +44,28 @@ const TEST_PASSWORD = 'TestPass2026!'
 async function setupApiBridge(page: Page): Promise<void> {
   await page.route('**/api/v1/**', async (route) => {
     const req = route.request()
+    if (req.method() === 'OPTIONS') {
+      await route.fulfill({
+        status: 204,
+        headers: {
+          'access-control-allow-origin': new URL(BASE_URL).origin,
+          'access-control-allow-credentials': 'true',
+          'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+          'access-control-allow-headers':
+            req.headers()['access-control-request-headers'] ?? 'authorization,content-type',
+        },
+      })
+      return
+    }
     const url = req.url().replace(/^https?:\/\/[^/]+/, API_BASE)
     const method = req.method()
     const headers: Record<string, string> = {}
 
-    // リクエストヘッダーをコピー（CORS に関係するものは差し替え）
+    // ブラウザ側の Origin / Referer / Host は中継先へ渡さない
     for (const [k, v] of Object.entries(req.headers())) {
-      if (k.toLowerCase() === 'origin') {
-        headers[k] = BACKEND_ALLOWED_ORIGIN
-      } else if (k.toLowerCase() === 'referer') {
-        headers[k] = `${BACKEND_ALLOWED_ORIGIN}/`
-      } else {
-        headers[k] = v
-      }
+      const lower = k.toLowerCase()
+      if (lower === 'origin' || lower === 'referer' || lower === 'host') continue
+      headers[k] = v
     }
 
     try {
@@ -71,12 +81,11 @@ async function setupApiBridge(page: Page): Promise<void> {
       const resBody = await fetchRes.arrayBuffer()
       const resHeaders: Record<string, string> = {}
       fetchRes.headers.forEach((v, k) => {
-        // ブラウザ実 origin を ACAO に設定して CORS を通す
-        if (k.toLowerCase() === 'access-control-allow-origin') {
-          resHeaders[k] = BASE_URL
-        } else {
-          resHeaders[k] = v
-        }
+        const lower = k.toLowerCase()
+        if (lower === 'access-control-allow-origin' || lower === 'access-control-allow-credentials') return
+        // Node fetch が展開済みの本文に圧縮・長さヘッダーを残すとブラウザ側で壊れる
+        if (lower === 'content-encoding' || lower === 'content-length' || lower === 'transfer-encoding') return
+        resHeaders[k] = v
       })
       resHeaders['access-control-allow-origin'] = new URL(BASE_URL).origin
       resHeaders['access-control-allow-credentials'] = 'true'
@@ -155,8 +164,13 @@ async function loginViaApi(page: Page): Promise<void> {
 // ヘルパー: マイTODOページへ遷移
 // ---------------------------------------------------------------------------
 async function goToMyTodos(page: Page): Promise<void> {
+  const listResponsePromise = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/todos/my') && response.request().method() === 'GET',
+  )
   await page.goto(BASE_URL + '/todos', { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
+  const listResponse = await listResponsePromise
+  expect(listResponse.status(), 'マイTODO一覧取得API').toBe(200)
   // PageLoading コンポーネント (PrimeVue ProgressSpinner) が消えるまで待機
   // .pi-spin は LoginPage等の別スピナー。/todos のローディングは p-progressspinner を使う
   await page.locator('.p-progressspinner').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
@@ -306,6 +320,7 @@ test.describe('フローA: 下書き自動保存（AC-1〜3, 11〜13）', () => 
 // フローB: Undo復元（AC-14〜16）
 // ---------------------------------------------------------------------------
 test.describe('フローB: Undo復元（AC-14〜16）', () => {
+  test.describe.configure({ mode: 'serial' })
   test.setTimeout(420_000)
 
   test('B-1: 個人TODOを削除するとUndo Toastが表示され、元に戻すでTODOが復活する', async ({ page }) => {
@@ -335,6 +350,7 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
 
     // ---- Step 2: マイTODOページへ遷移して一覧表示を確認 ----
     await goToMyTodos(page)
+    await expect(page.getByText(todoTitle).first(), '作成した個人TODOが一覧へ表示').toBeVisible({ timeout: 30_000 })
 
     // ---- Step 3: 削除ボタンを探してクリック ----
     // TodoListView.vue の行末削除ボタン
@@ -345,7 +361,14 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
     await expect(deleteBtn, `個人TODO ${todoId} の削除ボタン`).toBeVisible({ timeout: 60_000 })
 
     // ホバー時のみ表示（opacity-0）のため force クリック
-    await deleteBtn.click({ force: true })
+    const [deleteResponse] = await Promise.all([
+      page.waitForResponse((response) =>
+        response.url().includes(`/api/v1/todos/${todoId}`)
+        && response.request().method() === 'DELETE',
+      ),
+      deleteBtn.click({ force: true }),
+    ])
+    expect(deleteResponse.status(), 'UI経由の個人TODO削除API').toBe(204)
 
     // ---- Step 4: Undo Toastが表示されることを確認 ----
     // useUndoToast の Toast は PrimeVue の Toast コンポーネント
@@ -361,6 +384,10 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
     await expect(restoredTodo, 'Undo後に個人TODOが一覧へ復活').toBeVisible({ timeout: 15_000 })
 
     // クリーンアップ: APIで削除
+    const restoredResponse = await page.request.get(`${API_BASE}/api/v1/todos/${todoId}`)
+    expect(restoredResponse.status(), 'Undo後の個人TODO取得API').toBe(200)
+    expect((await restoredResponse.json() as { data: { id: number } }).data.id).toBe(todoId)
+
     await page.request.delete(`${API_BASE}/api/v1/todos/${todoId}`).catch(() => {})
 
     console.log('[B-1] ✅ 合格: Undo Toast表示・元に戻す・TODO復活を確認')
@@ -377,10 +404,7 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
     const createRes = await page.request.post(`${API_BASE}/api/v1/todos`, {
       data: { scopeType: 'PERSONAL', title: todoTitle },
     })
-    if (createRes.status() !== 201) {
-      test.skip(true, `TODO作成 API が ${createRes.status()}`)
-      return
-    }
+    expect(createRes.status(), '個人TODO作成API').toBe(201)
     const createdBody = await createRes.json() as { data: { id: number } }
     const todoId = createdBody.data.id
     console.log(`[B-2] 作成 id=${todoId}`)
@@ -398,12 +422,35 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
     expect([404, 400]).toContain(getAfterDel.status())
     console.log('[B-2] ✅ 削除で論理削除（アクセス不可）確認')
 
-    // ---- Step 4: restore EP を叩いてTODOを復元 ----
+    // ---- Step 4: 未認証・別ユーザーには復元させず、存在も404で秘匿 ----
+    const boundaryApi = await pwRequest.newContext()
+    try {
+      const unauthenticatedRestore = await boundaryApi.post(`${API_BASE}/api/v1/todos/${todoId}/restore`)
+      expect(unauthenticatedRestore.status(), '未認証ユーザーのTODO復元').toBe(401)
+
+      const outsiderLogin = await boundaryApi.post(`${API_BASE}/api/v1/auth/login`, {
+        data: { email: OUTSIDER_EMAIL, password: OUTSIDER_PASSWORD },
+      })
+      expect(outsiderLogin.status(), '別ユーザーのログイン').toBe(200)
+      const outsiderToken = (await outsiderLogin.json() as { data: { accessToken: string } }).data.accessToken
+      const outsiderRestore = await boundaryApi.post(`${API_BASE}/api/v1/todos/${todoId}/restore`, {
+        headers: { Authorization: `Bearer ${outsiderToken}` },
+      })
+      expect(outsiderRestore.status(), '別ユーザーのTODO復元').toBe(404)
+      expect((await outsiderRestore.json() as { error: { code: string } }).error.code).toBe('TODO_010')
+
+      const stillDeleted = await page.request.get(`${API_BASE}/api/v1/todos/${todoId}`)
+      expect(stillDeleted.status(), '拒否後もTODOは削除状態を維持').toBe(404)
+    } finally {
+      await boundaryApi.dispose()
+    }
+
+    // ---- Step 5: restore EP を叩いてTODOを復元 ----
     const restoreRes = await page.request.post(`${API_BASE}/api/v1/todos/${todoId}/restore`)
     console.log(`[B-2] restore レスポンス: ${restoreRes.status()}`)
     expect([200, 201]).toContain(restoreRes.status())
 
-    // ---- Step 5: 復元後に GET → 200 で取得できることを確認 ----
+    // ---- Step 6: 復元後に GET → 200 で取得できることを確認 ----
     const getAfterRestore = await page.request.get(`${API_BASE}/api/v1/todos/${todoId}`)
     console.log(`[B-2] 復元後GET: ${getAfterRestore.status()}`)
     expect(getAfterRestore.status()).toBe(200)

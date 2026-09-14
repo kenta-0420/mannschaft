@@ -36,6 +36,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -317,6 +318,41 @@ class CirculationServiceTest {
             // Then
             assertThat(entity.getDeletedAt()).isNotNull();
             verify(documentRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("生成済みエクスポートを削除すると ACL を正しい binding で解放する")
+        void 文書削除_生成済みエクスポートのAclを解放する() {
+            CirculationDocumentEntity entity = createDraftDocument();
+            ReflectionTestUtils.setField(entity, "id", DOCUMENT_ID);
+            entity.markExportCompleted("circulation/exports/100/export.pdf");
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            circulationService.deleteDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            verify(storageAclService).releaseClaimed("circulation/exports/100/export.pdf",
+                    new StorageAclAttachmentBinding("CIRCULATION_EXPORT", DOCUMENT_ID.toString()));
+        }
+
+        @Test
+        @DisplayName("文書削除は添付と生成済みエクスポートをコミット後削除へ渡す")
+        void 文書削除_添付と生成済みエクスポートの実体削除を予約する() {
+            CirculationDocumentEntity entity = createDraftDocument();
+            ReflectionTestUtils.setField(entity, "id", DOCUMENT_ID);
+            entity.markExportCompleted("circulation/exports/100/export.pdf");
+            CirculationAttachmentEntity attachment = org.mockito.Mockito.mock(CirculationAttachmentEntity.class);
+            given(attachment.getId()).willReturn(501L);
+            given(attachment.getFileKey()).willReturn("circulation/attachments/100/minutes.pdf");
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(attachmentRepository.findByDocumentIdOrderByCreatedAtAsc(DOCUMENT_ID))
+                    .willReturn(List.of(attachment));
+
+            circulationService.deleteDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            verify(domainEventPublisher).publish(new com.mannschaft.app.common.storage.S3ObjectDeleteEvent(
+                    List.of("circulation/attachments/100/minutes.pdf", "circulation/exports/100/export.pdf")));
         }
 
         @Test

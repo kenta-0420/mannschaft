@@ -2638,7 +2638,7 @@ class TimelinePostServiceTest {
                     .file(new AttachmentResponse.AttachmentFileDto(fileKey, "video.mp4", 4096L, "video/mp4"))
                     .video(new AttachmentResponse.AttachmentVideoDto(
                             null, "https://cdn.example.com/thumb.jpg", "動画", "thumb-key",
-                            42, "h264", (short) 1280, (short) 720, "COMPLETED"))
+                            42, "h264", (short) 1280, (short) 720, "READY"))
                     .sortOrder((short) 0)
                     .build();
         }
@@ -2789,7 +2789,7 @@ class TimelinePostServiceTest {
             assertThat(result.getAttachments()).hasSize(1);
             AttachmentResponse.AttachmentVideoDto video = result.getAttachments().get(0).getVideo();
             assertThat(video.videoUrl()).isEqualTo(SIGNED_VIDEO_URL).contains("X-Amz-Signature");
-            assertThat(video.videoProcessingStatus()).isEqualTo("COMPLETED");
+            assertThat(video.videoProcessingStatus()).isEqualTo("READY");
             assertThat(video.videoCodec()).isEqualTo("h264");
             assertThat(video.videoWidth()).isEqualTo((short) 1280);
         }

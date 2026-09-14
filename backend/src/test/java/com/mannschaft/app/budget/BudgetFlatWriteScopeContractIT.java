@@ -13,6 +13,11 @@ import com.mannschaft.app.budget.repository.BudgetTransactionAttachmentRepositor
 import com.mannschaft.app.budget.repository.BudgetTransactionRepository;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclEntity;
+import com.mannschaft.app.common.storage.acl.StorageAclMode;
+import com.mannschaft.app.common.storage.acl.StorageAclRepository;
+import com.mannschaft.app.common.storage.acl.StorageAclScopeType;
+import com.mannschaft.app.common.storage.acl.StorageAclStatus;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -35,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -99,6 +105,9 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private BudgetReportRepository reportRepository;
+
+    @Autowired
+    private StorageAclRepository storageAclRepository;
 
     /**
      * 認可根治戦役 Wave3-B9: budget の StorageService インターフェース注入先である
@@ -188,6 +197,20 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
                 .periodStart(LocalDate.of(2026, 4, 1)).periodEnd(LocalDate.of(2026, 4, 30))
                 .status(BudgetReportStatus.COMPLETED).fileKey("budget/reports/existing.csv")
                 .generatedBy(adminAId).build());
+        storageAclRepository.save(StorageAclEntity.builder()
+                .fileKey(reportA.getFileKey())
+                .ownerId(adminAId)
+                .scopeType(StorageAclScopeType.TEAM)
+                .scopeKey(teamAId.toString())
+                .aclMode(StorageAclMode.CONTENT_BOUND)
+                .contentType("BUDGET_REPORT_CSV")
+                .parentContentReferenceType("BUDGET_REPORT")
+                .parentContentReferenceKey(reportA.getId().toString())
+                .attachmentBindingType("BUDGET_REPORT_FILE")
+                .attachmentBindingKey(reportA.getId().toString())
+                .status(StorageAclStatus.CLAIMED)
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build());
 
         given(storageService.generateUploadUrl(anyString(), anyString(), any(Duration.class)))
                 .willReturn(new PresignedUploadResult("https://mock-upload.example/put", "budget/attachments/mock.pdf", 900));

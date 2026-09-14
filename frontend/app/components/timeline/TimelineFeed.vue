@@ -257,7 +257,11 @@ defineExpose({ refresh })
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
+  <div
+    class="flex flex-col gap-3"
+    data-testid="timeline-feed"
+    :data-loaded="initialLoaded"
+  >
     <!-- 非表示中チップ（個人集約フィードのみ・0件のときは出さない） -->
     <div v-if="showMutedChip" class="flex justify-end">
       <button
