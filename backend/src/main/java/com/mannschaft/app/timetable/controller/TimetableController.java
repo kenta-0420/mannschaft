@@ -1,6 +1,7 @@
 package com.mannschaft.app.timetable.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.timetable.TimetableVisibility;
 import com.mannschaft.app.timetable.dto.CreateTimetableRequest;
 import com.mannschaft.app.timetable.dto.DuplicateTimetableRequest;
@@ -61,7 +62,7 @@ public class TimetableController {
             @PathVariable Long teamId,
             @Valid @RequestBody CreateTimetableRequest request) {
         TimetableVisibility visibility = request.getVisibility() != null
-                ? TimetableVisibility.valueOf(request.getVisibility())
+                ? EnumInputParser.parse(TimetableVisibility.class, request.getVisibility(), "visibility")
                 : TimetableVisibility.MEMBERS_ONLY;
         var data = new TimetableService.CreateTimetableData(
                 request.getTermId(), request.getName(), visibility,
@@ -101,7 +102,7 @@ public class TimetableController {
             @PathVariable Long timetableId,
             @Valid @RequestBody UpdateTimetableRequest request) {
         TimetableVisibility visibility = request.getVisibility() != null
-                ? TimetableVisibility.valueOf(request.getVisibility()) : null;
+                ? EnumInputParser.parse(TimetableVisibility.class, request.getVisibility(), "visibility") : null;
         var data = new TimetableService.UpdateTimetableData(
                 request.getName(), visibility,
                 request.getEffectiveFrom(), request.getEffectiveUntil(),

@@ -2,6 +2,7 @@ package com.mannschaft.app.payment.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.PaymentItemType;
 import com.mannschaft.app.payment.PaymentMapper;
@@ -75,7 +76,7 @@ public class PaymentItemService {
 
     private PaymentItemResponse createPaymentItem(Long teamId, Long organizationId, Long userId,
                                                    CreatePaymentItemRequest request) {
-        PaymentItemType type = PaymentItemType.valueOf(request.getType());
+        PaymentItemType type = EnumInputParser.parse(PaymentItemType.class, request.getType(), "type");
 
         // F08.9 P6: TERM 型は termEndsOn 必須バリデーション
         if (type == PaymentItemType.TERM && request.getTermEndsOn() == null) {

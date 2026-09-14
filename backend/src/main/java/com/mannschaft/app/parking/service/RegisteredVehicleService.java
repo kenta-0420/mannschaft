@@ -2,6 +2,7 @@ package com.mannschaft.app.parking.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.parking.ParkingErrorCode;
 import com.mannschaft.app.parking.VehicleType;
 import com.mannschaft.app.parking.dto.CreateVehicleRequest;
@@ -49,7 +50,7 @@ public class RegisteredVehicleService {
 
         RegisteredVehicleEntity entity = RegisteredVehicleEntity.builder()
                 .userId(userId)
-                .vehicleType(VehicleType.valueOf(request.getVehicleType()))
+                .vehicleType(EnumInputParser.parse(VehicleType.class, request.getVehicleType(), "vehicleType"))
                 .plateNumber(encryptionService.encryptBytes(
                         request.getPlateNumber().getBytes(StandardCharsets.UTF_8)))
                 .plateNumberHash(hash)
@@ -74,7 +75,7 @@ public class RegisteredVehicleService {
             }
         });
 
-        entity.update(VehicleType.valueOf(request.getVehicleType()),
+        entity.update(EnumInputParser.parse(VehicleType.class, request.getVehicleType(), "vehicleType"),
                 encryptionService.encryptBytes(
                         request.getPlateNumber().getBytes(StandardCharsets.UTF_8)),
                 hash, request.getNickname());

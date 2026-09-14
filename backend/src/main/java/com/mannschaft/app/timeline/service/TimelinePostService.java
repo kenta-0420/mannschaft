@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
@@ -544,7 +545,8 @@ public class TimelinePostService {
             effectiveDeliveryScope = req.getDeliveryScopeOrDefault();
         }
 
-        PostedAsType postedAsTypeEnum = PostedAsType.valueOf(req.getPostedAsTypeOrDefault());
+        PostedAsType postedAsTypeEnum = EnumInputParser.parse(
+                PostedAsType.class, req.getPostedAsTypeOrDefault(), "postedAsType");
         Long postedAsId = req.getPostedAsId();
 
         if (scopeTypeEnum == PostScopeType.VILLAGE) {

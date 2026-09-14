@@ -39,6 +39,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -285,7 +286,7 @@ public class CirculationService {
         }
 
         CirculationMode mode = request.getCirculationMode() != null
-                ? CirculationMode.valueOf(request.getCirculationMode())
+                ? EnumInputParser.parse(CirculationMode.class, request.getCirculationMode(), "circulationMode")
                 : CirculationMode.SIMULTANEOUS;
 
         CirculationDocumentEntity.CirculationDocumentEntityBuilder<?, ?> builder =
@@ -297,14 +298,14 @@ public class CirculationService {
                         .body(request.getBody())
                         .circulationMode(mode)
                         .priority(request.getPriority() != null
-                                ? CirculationPriority.valueOf(request.getPriority())
+                                ? EnumInputParser.parse(CirculationPriority.class, request.getPriority(), "priority")
                                 : CirculationPriority.NORMAL)
                         .dueDate(request.getDueDate())
                         .reminderEnabled(request.getReminderEnabled() != null ? request.getReminderEnabled() : false)
                         .reminderIntervalHours(request.getReminderIntervalHours() != null
                                 ? request.getReminderIntervalHours() : (short) 24)
                         .stampDisplayStyle(request.getStampDisplayStyle() != null
-                                ? StampDisplayStyle.valueOf(request.getStampDisplayStyle())
+                                ? EnumInputParser.parse(StampDisplayStyle.class, request.getStampDisplayStyle(), "stampDisplayStyle")
                                 : StampDisplayStyle.STANDARD);
 
         // HYBRID は作成時に「先頭順番人数 N」を確定させる（DTO 相関バリデーション済み）。
@@ -355,13 +356,13 @@ public class CirculationService {
 
         entity.updateSettings(
                 request.getPriority() != null
-                        ? CirculationPriority.valueOf(request.getPriority()) : entity.getPriority(),
+                        ? EnumInputParser.parse(CirculationPriority.class, request.getPriority(), "priority") : entity.getPriority(),
                 request.getDueDate() != null ? request.getDueDate() : entity.getDueDate(),
                 request.getReminderEnabled() != null ? request.getReminderEnabled() : entity.getReminderEnabled(),
                 request.getReminderIntervalHours() != null
                         ? request.getReminderIntervalHours() : entity.getReminderIntervalHours(),
                 request.getStampDisplayStyle() != null
-                        ? StampDisplayStyle.valueOf(request.getStampDisplayStyle()) : entity.getStampDisplayStyle());
+                        ? EnumInputParser.parse(StampDisplayStyle.class, request.getStampDisplayStyle(), "stampDisplayStyle") : entity.getStampDisplayStyle());
 
         CirculationDocumentEntity saved = documentRepository.save(entity);
         log.info("回覧文書更新: documentId={}", documentId);

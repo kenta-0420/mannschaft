@@ -1,6 +1,7 @@
 package com.mannschaft.app.tournament.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.tournament.TournamentStatus;
 import com.mannschaft.app.tournament.dto.CreateTournamentRequest;
@@ -118,7 +119,7 @@ public class TournamentController {
             @PathVariable Long tournamentId,
             @Valid @RequestBody StatusChangeRequest request) {
         return ResponseEntity.ok(ApiResponse.of(
-                tournamentService.changeStatus(tournamentId, TournamentStatus.valueOf(request.getStatus()))));
+                tournamentService.changeStatus(tournamentId, EnumInputParser.parse(TournamentStatus.class, request.getStatus(), "status"))));
     }
 
     @PostMapping("/continue/{previousTournamentId}")

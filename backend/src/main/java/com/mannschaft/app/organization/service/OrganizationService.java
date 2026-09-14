@@ -4,6 +4,7 @@ import com.mannschaft.app.common.duplicatename.DuplicateNameCandidate;
 import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
 import com.mannschaft.app.common.duplicatename.DuplicateNameNormalizer;
 import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.util.SlugGenerator;
 import com.mannschaft.app.common.util.SlugValidator;
@@ -116,7 +117,7 @@ public class OrganizationService {
                             .prefecture(req.getPrefecture())
                             .city(req.getCity())
                             .visibility(req.getVisibility() != null
-                                    ? OrganizationEntity.Visibility.valueOf(req.getVisibility())
+                                    ? EnumInputParser.parse(OrganizationEntity.Visibility.class, req.getVisibility(), "visibility")
                                     : OrganizationEntity.Visibility.PRIVATE)
                             .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.NONE)
                             .parentOrganizationId(req.getParentOrganizationId())
@@ -608,10 +609,10 @@ public class OrganizationService {
         // slug 一意制約違反で 500 になるため使わない。enum 解決は本層の責務。
         // 楽観ロック用バージョンチェックはJPAの@Versionで自動処理。
         OrganizationEntity.Visibility visibility = req.getVisibility() != null
-                ? OrganizationEntity.Visibility.valueOf(req.getVisibility())
+                ? EnumInputParser.parse(OrganizationEntity.Visibility.class, req.getVisibility(), "visibility")
                 : null;
         OrganizationEntity.HierarchyVisibility hierarchyVisibility = req.getHierarchyVisibility() != null
-                ? OrganizationEntity.HierarchyVisibility.valueOf(req.getHierarchyVisibility())
+                ? EnumInputParser.parse(OrganizationEntity.HierarchyVisibility.class, req.getHierarchyVisibility(), "hierarchyVisibility")
                 : null;
         org.applyUpdate(
                 req.getName(),

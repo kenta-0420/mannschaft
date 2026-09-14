@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
@@ -119,7 +120,7 @@ public class ShiftRequestService {
                 .userId(userId)
                 .slotId(req.getSlotId())
                 .slotDate(req.getSlotDate())
-                .preference(ShiftPreference.valueOf(req.getPreference()))
+                .preference(EnumInputParser.parse(ShiftPreference.class, req.getPreference(), "preference"))
                 .note(req.getNote())
                 .build();
 
@@ -163,7 +164,7 @@ public class ShiftRequestService {
         validateCollectingStatus(schedule);
         validateRequestDeadline(schedule);
 
-        entity.updatePreference(ShiftPreference.valueOf(req.getPreference()), req.getNote());
+        entity.updatePreference(EnumInputParser.parse(ShiftPreference.class, req.getPreference(), "preference"), req.getNote());
         entity = requestRepository.save(entity);
 
         log.info("シフト希望更新: id={}", requestId);

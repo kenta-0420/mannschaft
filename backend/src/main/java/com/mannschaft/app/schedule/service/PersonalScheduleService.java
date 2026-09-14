@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.schedule.AttendanceGenerationStatus;
@@ -109,7 +110,7 @@ public class PersonalScheduleService {
                 .startAt(startAtJst)
                 .endAt(endAtJst)
                 .allDay(req.getAllDay())
-                .eventType(EventType.valueOf(req.getEventTypeOrDefault()))
+                .eventType(EnumInputParser.parse(EventType.class, req.getEventTypeOrDefault(), "eventType"))
                 .color(req.getColor())
                 .visibility(ScheduleVisibility.MEMBERS_ONLY)
                 .minViewRole(MinViewRole.ADMIN_ONLY)
@@ -537,7 +538,7 @@ public class PersonalScheduleService {
      * <p>startAt / endAt は OffsetDateTime → JST LocalDateTime に変換してから適用する。</p>
      */
     private void applyUpdateToSchedule(ScheduleEntity schedule, UpdatePersonalScheduleRequest req) {
-        EventType eventType = req.getEventType() != null ? EventType.valueOf(req.getEventType()) : null;
+        EventType eventType = req.getEventType() != null ? EnumInputParser.parse(EventType.class, req.getEventType(), "eventType") : null;
         schedule.applyPersonalScheduleUpdate(
                 req.getTitle(),
                 req.getDescription(),

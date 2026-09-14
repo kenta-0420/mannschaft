@@ -2,6 +2,7 @@ package com.mannschaft.app.schedule.controller;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.schedule.DateShiftMode;
 import com.mannschaft.app.schedule.dto.AnnualEventViewResponse;
 import com.mannschaft.app.schedule.dto.CopyLogResponse;
@@ -119,7 +120,7 @@ public class OrgAnnualScheduleController {
         accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), orgId, "ORGANIZATION");
 
         DateShiftMode mode = request.getDateShiftMode() != null
-                ? DateShiftMode.valueOf(request.getDateShiftMode())
+                ? EnumInputParser.parse(DateShiftMode.class, request.getDateShiftMode(), "dateShiftMode")
                 : DateShiftMode.SAME_WEEKDAY;
 
         List<ScheduleAnnualCopyService.CopyItem> copyItems = request.getItems().stream()

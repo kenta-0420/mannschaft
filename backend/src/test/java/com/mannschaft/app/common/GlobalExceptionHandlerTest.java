@@ -793,6 +793,17 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_999");
         }
+
+        @Test
+        @DisplayName("通常のIllegalArgumentExceptionは500のまま返る")
+        void 通常のIllegalArgumentExceptionは500のまま返る() {
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler
+                    .handleUnexpectedException(new IllegalArgumentException("内部不変条件違反"));
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_999");
+        }
     }
 
     // ========================================

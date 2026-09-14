@@ -13,6 +13,7 @@ import com.mannschaft.app.budget.entity.BudgetReportEntity;
 import com.mannschaft.app.budget.repository.BudgetReportRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAccessService;
@@ -64,7 +65,8 @@ public class BudgetReportService {
                 .fiscalYearId(request.fiscalYearId())
                 .scopeType(fy.getScopeType())
                 .scopeId(fy.getScopeId())
-                .reportType(BudgetReportType.valueOf(request.reportType()))
+                .reportType(EnumInputParser.parse(
+                        BudgetReportType.class, request.reportType(), "reportType"))
                 .periodStart(fy.getStartDate())
                 .periodEnd(fy.getEndDate())
                 .status(BudgetReportStatus.GENERATING)

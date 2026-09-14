@@ -1,5 +1,6 @@
 package com.mannschaft.app.role.service;
 
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.role.security.BillingPermissionGroupGuard;
 import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.PermissionGroupEntity;
@@ -70,7 +71,7 @@ public class PermissionGroupService {
 
         var builder = PermissionGroupEntity.builder()
                 .name(req.getName())
-                .targetRole(PermissionGroupEntity.TargetRole.valueOf(req.getTargetRole()))
+                .targetRole(EnumInputParser.parse(PermissionGroupEntity.TargetRole.class, req.getTargetRole(), "targetRole"))
                 .createdBy(createdBy);
         if ("TEAM".equals(scopeType)) {
             builder.teamId(scopeId);
@@ -120,7 +121,7 @@ public class PermissionGroupService {
         // 既存のグループを更新（toBuilderで新オブジェクト作成）
         PermissionGroupEntity updated = group.toBuilder()
                 .name(req.getName())
-                .targetRole(PermissionGroupEntity.TargetRole.valueOf(req.getTargetRole()))
+                .targetRole(EnumInputParser.parse(PermissionGroupEntity.TargetRole.class, req.getTargetRole(), "targetRole"))
                 .build();
         permissionGroupRepository.save(updated);
 

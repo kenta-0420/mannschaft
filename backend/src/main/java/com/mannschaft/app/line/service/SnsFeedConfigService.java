@@ -3,6 +3,7 @@ package com.mannschaft.app.line.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.line.LineErrorCode;
 import com.mannschaft.app.line.LineMapper;
 import com.mannschaft.app.line.ScopeType;
@@ -57,7 +58,7 @@ public class SnsFeedConfigService {
     public SnsFeedConfigResponse create(ScopeType scopeType, Long scopeId, Long userId,
                                          CreateSnsFeedConfigRequest request) {
         accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
-        SnsProvider provider = SnsProvider.valueOf(request.getProvider());
+        SnsProvider provider = EnumInputParser.parse(SnsProvider.class, request.getProvider(), "provider");
 
         if (snsFeedConfigRepository.existsByScopeTypeAndScopeIdAndProvider(
                 scopeType, scopeId, provider)) {

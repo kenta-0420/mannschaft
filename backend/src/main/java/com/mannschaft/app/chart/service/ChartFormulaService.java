@@ -12,6 +12,7 @@ import com.mannschaft.app.chart.repository.ChartFormulaRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -68,7 +69,7 @@ public class ChartFormulaService {
 
         // パッチテスト結果のバリデーション
         if (request.getPatchTestResult() != null) {
-            PatchTestResult.valueOf(request.getPatchTestResult());
+            EnumInputParser.parse(PatchTestResult.class, request.getPatchTestResult(), "patchTestResult");
         }
 
         ChartFormulaEntity entity = ChartFormulaEntity.builder()
@@ -103,7 +104,7 @@ public class ChartFormulaService {
         accessControlService.checkAdminOrAbove(actorUserId, record.getTeamId(), SCOPE_TEAM);
 
         if (request.getPatchTestResult() != null) {
-            PatchTestResult.valueOf(request.getPatchTestResult());
+            EnumInputParser.parse(PatchTestResult.class, request.getPatchTestResult(), "patchTestResult");
         }
 
         entity.update(
