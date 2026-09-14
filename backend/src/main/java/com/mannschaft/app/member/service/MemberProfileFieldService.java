@@ -2,6 +2,7 @@ package com.mannschaft.app.member.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.member.FieldType;
 import com.mannschaft.app.member.MemberErrorCode;
 import com.mannschaft.app.member.MemberMapper;
@@ -63,7 +64,7 @@ public class MemberProfileFieldService {
             accessControlService.checkAdminOrAbove(actorUserId, request.getOrganizationId(), SCOPE_ORGANIZATION);
         }
         FieldType fieldType = request.getFieldType() != null
-                ? FieldType.valueOf(request.getFieldType()) : FieldType.TEXT;
+                ? EnumInputParser.parse(FieldType.class, request.getFieldType(), "fieldType") : FieldType.TEXT;
         Boolean isRequired = request.getIsRequired() != null ? request.getIsRequired() : false;
         Integer sortOrder = request.getSortOrder() != null ? request.getSortOrder() : 0;
 
@@ -91,7 +92,7 @@ public class MemberProfileFieldService {
         checkFieldAdminOrNotFound(actorUserId, entity);
 
         FieldType fieldType = request.getFieldType() != null
-                ? FieldType.valueOf(request.getFieldType()) : entity.getFieldType();
+                ? EnumInputParser.parse(FieldType.class, request.getFieldType(), "fieldType") : entity.getFieldType();
         Boolean isRequired = request.getIsRequired() != null ? request.getIsRequired() : entity.getIsRequired();
         Integer sortOrder = request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder();
 

@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.shift.ShiftAssignedUserIds;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
@@ -166,7 +167,7 @@ public class ShiftScheduleService {
                 .teamId(teamId)
                 .title(req.getTitle())
                 .periodType(req.getPeriodType() != null
-                        ? ShiftPeriodType.valueOf(req.getPeriodType()) : ShiftPeriodType.WEEKLY)
+                        ? EnumInputParser.parse(ShiftPeriodType.class, req.getPeriodType(), "periodType") : ShiftPeriodType.WEEKLY)
                 .startDate(req.getStartDate())
                 .endDate(req.getEndDate())
                 .requestDeadline(req.getRequestDeadline())
@@ -203,7 +204,7 @@ public class ShiftScheduleService {
         // UPDATE でなく INSERT が走る行重複バグになる。
         entity.applyUpdate(
                 req.getTitle(),
-                req.getPeriodType() != null ? ShiftPeriodType.valueOf(req.getPeriodType()) : null,
+                req.getPeriodType() != null ? EnumInputParser.parse(ShiftPeriodType.class, req.getPeriodType(), "periodType") : null,
                 req.getStartDate(),
                 req.getEndDate(),
                 req.getRequestDeadline(),

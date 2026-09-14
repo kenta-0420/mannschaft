@@ -18,8 +18,10 @@ import com.mannschaft.app.bulletin.repository.BulletinAttachmentRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReplyRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
@@ -118,6 +120,7 @@ public class BulletinAttachmentService {
     private final StorageAclService storageAclService;
     private final StorageAccessService storageAccessService;
     private final AuditLogService auditLogService;
+    private final DomainEventPublisher domainEventPublisher;
 
     // ─────────────────────────────────────────────
     // 1. presign（アップロード URL 発行）
@@ -305,6 +308,22 @@ public class BulletinAttachmentService {
      * @param attachmentId 添付ファイル ID
      * @param userId       操作ユーザー ID
      */
+    void releaseAttachments(TargetType targetType, Long targetId) {
+        List<BulletinAttachmentEntity> attachments = attachmentRepository
+                .findByTargetTypeAndTargetIdOrderByCreatedAtAsc(targetType, targetId);
+        for (BulletinAttachmentEntity attachment : attachments) {
+            storageAclService.releaseClaimed(attachment.getFileKey(),
+                    new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", attachment.getId().toString()));
+        }
+        List<String> fileKeys = attachments.stream()
+                .map(BulletinAttachmentEntity::getFileKey)
+                .filter(fileKey -> fileKey != null && !fileKey.isBlank())
+                .toList();
+        if (!fileKeys.isEmpty()) {
+            domainEventPublisher.publish(new S3ObjectDeleteEvent(fileKeys));
+        }
+    }
+
     @Transactional
     public void deleteAttachment(Long attachmentId, Long userId) {
         BulletinAttachmentEntity attachment = attachmentRepository.findById(attachmentId)
@@ -320,13 +339,11 @@ public class BulletinAttachmentService {
 
         attachmentRepository.delete(attachment);
 
-        // R2 ベストエフォート削除
-        if (fileKey != null) {
-            try {
-                storageService.delete(fileKey);
-            } catch (Exception e) {
-                log.warn("R2 オブジェクト削除失敗（ベストエフォート）: fileKey={}, error={}", fileKey, e.getMessage());
-            }
+        // R2 削除はコミット後イベントで行い、ロールバック時の実体だけの削除を防ぐ。
+        storageAclService.releaseClaimed(fileKey,
+                new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", attachment.getId().toString()));
+        if (fileKey != null && !fileKey.isBlank()) {
+            domainEventPublisher.publish(new S3ObjectDeleteEvent(fileKey));
         }
 
         // F13 使用量減算（作成者の所属スコープで計上：upload 時と対称）

@@ -2,6 +2,7 @@ package com.mannschaft.app.parking.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.parking.AllocationMethod;
 import com.mannschaft.app.parking.ParkingErrorCode;
 import com.mannschaft.app.parking.ParkingMapper;
@@ -120,7 +121,7 @@ public class ParkingSpaceService {
                 .scopeType(scopeType)
                 .scopeId(scopeId)
                 .spaceNumber(request.getSpaceNumber())
-                .spaceType(SpaceType.valueOf(request.getSpaceType()))
+                .spaceType(EnumInputParser.parse(SpaceType.class, request.getSpaceType(), "spaceType"))
                 .spaceTypeLabel(request.getSpaceTypeLabel())
                 .pricePerMonth(request.getPricePerMonth())
                 .floor(request.getFloor())
@@ -144,7 +145,7 @@ public class ParkingSpaceService {
                     .scopeType(scopeType)
                     .scopeId(scopeId)
                     .spaceNumber(req.getSpaceNumber())
-                    .spaceType(SpaceType.valueOf(req.getSpaceType()))
+                    .spaceType(EnumInputParser.parse(SpaceType.class, req.getSpaceType(), "spaceType"))
                     .spaceTypeLabel(req.getSpaceTypeLabel())
                     .pricePerMonth(req.getPricePerMonth())
                     .floor(req.getFloor())
@@ -165,7 +166,7 @@ public class ParkingSpaceService {
         ParkingSpaceEntity entity = findScopeSpaceOrThrow(scopeType, scopeId, id);
         accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
         BigDecimal oldPrice = entity.getPricePerMonth();
-        entity.update(request.getSpaceNumber(), SpaceType.valueOf(request.getSpaceType()),
+        entity.update(request.getSpaceNumber(), EnumInputParser.parse(SpaceType.class, request.getSpaceType(), "spaceType"),
                 request.getSpaceTypeLabel(), request.getPricePerMonth(), request.getFloor(), request.getNotes());
 
         // 料金変更があれば履歴記録
@@ -229,7 +230,7 @@ public class ParkingSpaceService {
         if (entity.getStatus() != SpaceStatus.VACANT) {
             throw new BusinessException(ParkingErrorCode.SPACE_NOT_VACANT);
         }
-        entity.acceptApplications(AllocationMethod.valueOf(request.getAllocationMethod()), request.getApplicationDeadline());
+        entity.acceptApplications(EnumInputParser.parse(AllocationMethod.class, request.getAllocationMethod(), "allocationMethod"), request.getApplicationDeadline());
         ParkingSpaceEntity saved = spaceRepository.save(entity);
         log.info("申請受付開始: id={}, method={}", id, request.getAllocationMethod());
         return parkingMapper.toSpaceResponse(saved);

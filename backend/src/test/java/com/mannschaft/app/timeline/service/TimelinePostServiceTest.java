@@ -2523,6 +2523,12 @@ class TimelinePostServiceTest {
                     .recordDeletion(eq(StorageScopeType.PERSONAL), eq(USER_ID), eq(4096L),
                             eq(StorageFeatureType.TIMELINE),
                             eq("timeline_post_attachments"), eq(ATTACHMENT_ID), eq(USER_ID));
+            then(storageAclService).should().releaseClaimed(eq("timeline/PUBLIC/0/tmp/uuid.jpg"),
+                    eq(new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", ATTACHMENT_ID.toString())));
+            ArgumentCaptor<com.mannschaft.app.common.storage.S3ObjectDeleteEvent> deleteEventCaptor =
+                    ArgumentCaptor.forClass(com.mannschaft.app.common.storage.S3ObjectDeleteEvent.class);
+            then(domainEventPublisher).should().publish(deleteEventCaptor.capture());
+            assertThat(deleteEventCaptor.getValue().s3Keys()).containsExactly("timeline/PUBLIC/0/tmp/uuid.jpg");
         }
 
         @Test

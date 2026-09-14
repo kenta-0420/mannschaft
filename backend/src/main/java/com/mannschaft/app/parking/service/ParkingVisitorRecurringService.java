@@ -1,6 +1,7 @@
 package com.mannschaft.app.parking.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.parking.ParkingErrorCode;
 import com.mannschaft.app.parking.ParkingMapper;
 import com.mannschaft.app.parking.RecurrenceType;
@@ -48,7 +49,7 @@ public class ParkingVisitorRecurringService {
                 .spaceId(request.getSpaceId())
                 .scopeType(scopeType)
                 .scopeId(scopeId)
-                .recurrenceType(RecurrenceType.valueOf(request.getRecurrenceType()))
+                .recurrenceType(EnumInputParser.parse(RecurrenceType.class, request.getRecurrenceType(), "recurrenceType"))
                 .dayOfWeek(request.getDayOfWeek())
                 .dayOfMonth(request.getDayOfMonth())
                 .timeFrom(request.getTimeFrom())
@@ -72,7 +73,7 @@ public class ParkingVisitorRecurringService {
         ParkingVisitorRecurringEntity entity = recurringRepository
                 .findByIdAndUserIdAndScopeTypeAndScopeId(id, userId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(ParkingErrorCode.RECURRING_NOT_FOUND));
-        entity.update(RecurrenceType.valueOf(request.getRecurrenceType()),
+        entity.update(EnumInputParser.parse(RecurrenceType.class, request.getRecurrenceType(), "recurrenceType"),
                 request.getDayOfWeek(), request.getDayOfMonth(),
                 request.getTimeFrom(), request.getTimeTo(),
                 request.getVisitorName(), request.getVisitorPlateNumber(), request.getPurpose());

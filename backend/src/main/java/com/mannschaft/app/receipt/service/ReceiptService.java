@@ -2,6 +2,7 @@ package com.mannschaft.app.receipt.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
@@ -86,7 +87,7 @@ public class ReceiptService {
                 .orElseThrow(() -> new BusinessException(ReceiptErrorCode.ISSUER_SETTINGS_NOT_CONFIGURED));
 
         ReceiptStatus status = request.getStatus() != null
-                ? ReceiptStatus.valueOf(request.getStatus())
+                ? EnumInputParser.parse(ReceiptStatus.class, request.getStatus(), "status")
                 : ReceiptStatus.ISSUED;
 
         // 税額計算

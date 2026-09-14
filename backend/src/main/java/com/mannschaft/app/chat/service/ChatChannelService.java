@@ -14,12 +14,17 @@ import com.mannschaft.app.chat.dto.UpdateChannelRequest;
 import com.mannschaft.app.chat.dto.UpdateInquiryChannelRequest;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
+import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
 import com.mannschaft.app.chat.entity.ChatMessageEntity;
+import com.mannschaft.app.chat.repository.ChatMessageAttachmentRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EnumInputParser;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.dashboard.FolderItemType;
 import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -48,10 +53,12 @@ public class ChatChannelService {
     private final ChatChannelRepository channelRepository;
     private final ChatChannelMemberRepository memberRepository;
     private final ChatMessageRepository messageRepository;
+    private final ChatMessageAttachmentRepository attachmentRepository;
     private final ChatMapper chatMapper;
     private final UserRepository userRepository;
     private final ChatChannelEventPublisher eventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final DomainEventPublisher domainEventPublisher;
     private final AccessControlService accessControlService;
     private final UserBlockRepository userBlockRepository;
     private final UserRoleRepository userRoleRepository;
@@ -215,7 +222,7 @@ public class ChatChannelService {
     // TODO: chatドメインがauthドメイン（UserRepository）・userドメイン（UserBlockRepository）・roleドメイン（UserRoleRepository）・dashboardドメイン（ChatContactFolderItemRepository）をまたいでいる。将来はそれぞれのQueryService/Eventで分離予定。Phase1-E: 2026-05-09
     @Transactional
     public ChannelResponse createChannel(CreateChannelRequest request, Long createdBy) {
-        ChannelType channelType = ChannelType.valueOf(request.getChannelType());
+        ChannelType channelType = EnumInputParser.parse(ChannelType.class, request.getChannelType(), "channelType");
         boolean isPrivate = Boolean.TRUE.equals(request.getIsPrivate());
 
         // チーム/組織チャンネルは当該スコープの内部資産である。作成者がそのスコープに属することを保証する
@@ -284,6 +291,7 @@ public class ChatChannelService {
         validateNotArchived(channel);
         boolean iconChanged = request.getIconKey() != null && !request.getIconKey().equals(channel.getIconKey());
 
+        String previousIconKey = channel.getIconKey();
         channel.updateInfo(
                 request.getName() != null ? request.getName() : channel.getName(),
                 request.getDescription() != null ? request.getDescription() : channel.getDescription(),
@@ -293,6 +301,10 @@ public class ChatChannelService {
         ChatChannelEntity saved = channelRepository.save(channel);
         if (iconChanged) {
             chatAttachmentService.claimChannelIcon(saved, userId, request.getIconKey());
+            if (previousIconKey != null && !previousIconKey.isBlank()) {
+                chatAttachmentService.releaseChannelIcon(saved, previousIconKey);
+                domainEventPublisher.publish(new S3ObjectDeleteEvent(previousIconKey));
+            }
         }
         log.info("チャンネル更新完了: channelId={}", channelId);
         return chatMapper.toChannelResponse(saved);
@@ -308,6 +320,18 @@ public class ChatChannelService {
     public void deleteChannel(Long channelId, Long userId) {
         ChatChannelEntity channel = findChannelOrThrow(channelId);
         checkChannelAdminAccess(channel, userId);
+        if (channel.getIconKey() != null && !channel.getIconKey().isBlank()) {
+            chatAttachmentService.releaseChannelIcon(channel, channel.getIconKey());
+            domainEventPublisher.publish(new S3ObjectDeleteEvent(channel.getIconKey()));
+        }
+        for (ChatMessageEntity message : messageRepository.findByChannelIdOrderByCreatedAtAsc(channelId)) {
+            for (ChatMessageAttachmentEntity attachment : attachmentRepository.findByMessageId(message.getId())) {
+                chatAttachmentService.releaseMessageAttachment(attachment);
+                if (attachment.getFileKey() != null && !attachment.getFileKey().isBlank()) {
+                    domainEventPublisher.publish(new S3ObjectDeleteEvent(attachment.getFileKey()));
+                }
+            }
+        }
         channel.softDelete();
         channelRepository.save(channel);
         log.info("チャンネル削除完了: channelId={}", channelId);

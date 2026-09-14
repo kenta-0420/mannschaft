@@ -2,6 +2,7 @@ package com.mannschaft.app.tournament.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.tournament.ParticipantStatus;
@@ -213,7 +214,7 @@ public class DivisionService {
                     request.getDisplayName() != null ? request.getDisplayName() : participant.getDisplayName());
         }
         if (request.getStatus() != null) {
-            participant.changeStatus(ParticipantStatus.valueOf(request.getStatus()));
+            participant.changeStatus(EnumInputParser.parse(ParticipantStatus.class, request.getStatus(), "status"));
         }
         return mapper.toParticipantResponse(participantRepository.save(participant));
     }

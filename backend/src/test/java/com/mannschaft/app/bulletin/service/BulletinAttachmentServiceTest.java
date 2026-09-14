@@ -18,7 +18,9 @@ import com.mannschaft.app.bulletin.repository.BulletinReplyRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
@@ -95,6 +97,8 @@ class BulletinAttachmentServiceTest {
     private StorageAccessService storageAccessService;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private DomainEventPublisher domainEventPublisher;
     @Mock
     private com.mannschaft.app.tournament.service.TournamentContactAccessService tournamentContactAccessService;
 
@@ -428,7 +432,10 @@ class BulletinAttachmentServiceTest {
             service.deleteAttachment(ATTACHMENT_ID, USER_ID);
 
             verify(attachmentRepository).delete(any());
-            verify(storageService).delete("bulletin/key");
+            org.mockito.ArgumentCaptor<S3ObjectDeleteEvent> deleteEventCaptor =
+                    org.mockito.ArgumentCaptor.forClass(S3ObjectDeleteEvent.class);
+            verify(domainEventPublisher).publish(deleteEventCaptor.capture());
+            assertThat(deleteEventCaptor.getValue().s3Keys()).containsExactly("bulletin/key");
             verify(storageQuotaService).recordDeletion(
                     eq(StorageScopeType.TEAM), eq(TEAM_ID), eq(1024L),
                     eq(StorageFeatureType.BULLETIN), any(), eq(ATTACHMENT_ID), eq(USER_ID));
@@ -502,12 +509,10 @@ class BulletinAttachmentServiceTest {
         }
 
         @Test
-        @DisplayName("R2 削除失敗でもベストエフォートで処理は継続する")
-        void deleteR2FailureBestEffort() {
+        @DisplayName("R2削除は同期呼出しせず削除イベントへ委譲する")
+        void deleteDelegatesR2DeletionToEvent() {
             given(attachmentRepository.findById(ATTACHMENT_ID)).willReturn(Optional.of(attachment(USER_ID)));
             given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(teamThread()));
-            doThrow(new RuntimeException("R2 down")).when(storageService).delete("bulletin/key");
-
             service.deleteAttachment(ATTACHMENT_ID, USER_ID);
 
             verify(attachmentRepository).delete(any());

@@ -11,6 +11,7 @@ import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.digest.DigestErrorCode;
 import com.mannschaft.app.digest.DigestMapper;
@@ -87,9 +88,9 @@ public class DigestGenerationService {
      */
     @Transactional
     public DigestGenerateResponse generate(DigestGenerateRequest request, Long userId) {
-        DigestScopeType scopeType = DigestScopeType.valueOf(request.getScopeType());
+        DigestScopeType scopeType = EnumInputParser.parse(DigestScopeType.class, request.getScopeType(), "scopeType");
         DigestStyle style = request.getDigestStyle() != null
-                ? DigestStyle.valueOf(request.getDigestStyle())
+                ? EnumInputParser.parse(DigestStyle.class, request.getDigestStyle(), "digestStyle")
                 : DigestStyle.SUMMARY;
 
         // 認可根治戦役 Wave2-2C: 生成トリガー（変更系）はリクエスト先スコープの ADMIN/DEPUTY_ADMIN のみ
@@ -318,7 +319,7 @@ public class DigestGenerationService {
         }
 
         DigestStyle newStyle = request.getDigestStyle() != null
-                ? DigestStyle.valueOf(request.getDigestStyle())
+                ? EnumInputParser.parse(DigestStyle.class, request.getDigestStyle(), "digestStyle")
                 : original.getDigestStyle();
 
         // AI スタイルの月次上限チェック

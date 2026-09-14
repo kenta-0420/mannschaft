@@ -511,7 +511,7 @@ class CirculationWriteAclScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("非作成者かつ非管理者の削除は403")
         void 非作成者かつ非管理者の削除は403() throws Exception {
             Long docId = insertDocument(teamAId, memberAId, "DRAFT");
-            Long attachmentId = insertAttachment(docId);
+            Long attachmentId = insertAttachment(docId, memberAId);
 
             setAuthentication(outsiderId);
             mockMvc.perform(delete("/api/v1/circulations/{documentId}/attachments/{attachmentId}",
@@ -524,7 +524,7 @@ class CirculationWriteAclScopeContractIT extends AbstractMySqlIntegrationTest {
         @DisplayName("作成者本人の削除は204")
         void 作成者本人の削除は204() throws Exception {
             Long docId = insertDocument(teamAId, memberAId, "DRAFT");
-            Long attachmentId = insertAttachment(docId);
+            Long attachmentId = insertAttachment(docId, memberAId);
 
             setAuthentication(memberAId);
             mockMvc.perform(delete("/api/v1/circulations/{documentId}/attachments/{attachmentId}",
@@ -653,7 +653,7 @@ class CirculationWriteAclScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     /** circulation_attachments へ添付を 1 行 INSERT する。 */
-    private Long insertAttachment(Long documentId) {
+    private Long insertAttachment(Long documentId, Long ownerId) {
         String fileKey = "circulation/TEAM/seed/" + System.nanoTime();
         em.createNativeQuery(
                         "INSERT INTO circulation_attachments "
@@ -662,10 +662,35 @@ class CirculationWriteAclScopeContractIT extends AbstractMySqlIntegrationTest {
                 .setParameter("docId", documentId)
                 .setParameter("fileKey", fileKey)
                 .executeUpdate();
-        return ((Number) em.createNativeQuery(
+        Long attachmentId = ((Number) em.createNativeQuery(
                         "SELECT id FROM circulation_attachments WHERE file_key = :fileKey")
                         .setParameter("fileKey", fileKey)
                         .getSingleResult()).longValue();
+
+        // 削除時は Storage ACL の claim を解放するため、実運用どおり添付と同じ binding の
+        // CLAIMED 台帳を作る。ACL 未管理の手書き添付では ACL_NOT_FOUND (404) となり、
+        // 本テストの「作成者は削除できる」という認可契約を検証できない。
+        Long scopeId = ((Number) em.createNativeQuery(
+                        "SELECT scope_id FROM circulation_documents WHERE id = :docId")
+                        .setParameter("docId", documentId)
+                        .getSingleResult()).longValue();
+        em.createNativeQuery(
+                        "INSERT INTO storage_acls "
+                                + "(id, file_key, owner_id, scope_type, scope_key, scope_id, acl_mode, content_type, "
+                                + "parent_content_reference_type, parent_content_reference_key, "
+                                + "attachment_binding_type, attachment_binding_key, status, expires_at, created_at, updated_at) "
+                                + "VALUES (UUID_TO_BIN(UUID()), :fileKey, :ownerId, 'TEAM', :scopeKey, :scopeId, "
+                                + "'CONTENT_BOUND', 'application/pdf', 'CIRCULATION_DOCUMENT', :documentId, "
+                                + "'CIRCULATION_ATTACHMENT', :attachmentId, 'CLAIMED', DATE_ADD(NOW(), INTERVAL 1 DAY), "
+                                + "NOW(), NOW())")
+                .setParameter("fileKey", fileKey)
+                .setParameter("ownerId", ownerId)
+                .setParameter("scopeKey", scopeId.toString())
+                .setParameter("scopeId", scopeId)
+                .setParameter("documentId", documentId.toString())
+                .setParameter("attachmentId", attachmentId.toString())
+                .executeUpdate();
+        return attachmentId;
     }
 
     private Long insertUser(String email) {
