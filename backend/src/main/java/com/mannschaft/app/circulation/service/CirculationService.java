@@ -38,10 +38,12 @@ import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAccessService;
@@ -100,6 +102,7 @@ public class CirculationService {
      * クロスドメイン参照のクリーンアップを行う。
      */
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final DomainEventPublisher domainEventPublisher;
 
     /**
      * Phase 11 第三陣 3-A: 受信者表示名解決・手動リマインド・複製で使用。
@@ -447,13 +450,25 @@ public class CirculationService {
         // （または SYSTEM_ADMIN）のみ許可する。
         checkScopeAdminAccess(entity, SecurityUtils.getCurrentUserId());
 
+        List<String> fileKeysToDelete = new ArrayList<>();
+        for (CirculationAttachmentEntity attachment : attachmentRepository.findByDocumentIdOrderByCreatedAtAsc(documentId)) {
+            storageAclService.releaseClaimed(attachment.getFileKey(),
+                    new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", attachment.getId().toString()));
+            if (attachment.getFileKey() != null && !attachment.getFileKey().isBlank()) {
+                fileKeysToDelete.add(attachment.getFileKey());
+            }
+        }
         String exportFileKey = entity.getExportFileKey();
         if (exportFileKey != null && !exportFileKey.isBlank()) {
             storageAclService.releaseClaimed(exportFileKey,
                     new StorageAclAttachmentBinding("CIRCULATION_EXPORT", entity.getId().toString()));
+            fileKeysToDelete.add(exportFileKey);
         }
         entity.softDelete();
         documentRepository.save(entity);
+        if (!fileKeysToDelete.isEmpty()) {
+            domainEventPublisher.publish(new S3ObjectDeleteEvent(fileKeysToDelete));
+        }
         applicationEventPublisher.publishEvent(new CirculationDocumentDeletedEvent(documentId));
         log.info("回覧文書削除: documentId={}", documentId);
     }
@@ -686,14 +701,12 @@ public class CirculationService {
         attachmentRepository.delete(attachment);
         document.decrementAttachmentCount();
         documentRepository.save(document);
+        storageAclService.releaseClaimed(fileKey,
+                new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", attachmentId.toString()));
 
-        // R2 オブジェクト削除（ベストエフォート）
-        if (fileKey != null && r2StorageService != null) {
-            try {
-                r2StorageService.delete(fileKey);
-            } catch (Exception e) {
-                log.warn("R2 オブジェクト削除失敗 (ベストエフォート): fileKey={}, error={}", fileKey, e.getMessage());
-            }
+        // R2 削除はコミット後イベントで行い、ロールバック時の実体だけの削除を防ぐ。
+        if (fileKey != null && !fileKey.isBlank()) {
+            domainEventPublisher.publish(new S3ObjectDeleteEvent(fileKey));
         }
 
         // 監査ログ発火

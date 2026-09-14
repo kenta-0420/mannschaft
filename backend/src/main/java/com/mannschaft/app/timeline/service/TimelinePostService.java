@@ -7,6 +7,7 @@ import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
@@ -702,7 +703,14 @@ public class TimelinePostService {
         // F13 Phase 4-γ: ファイル系添付（IMAGE / VIDEO_FILE）の使用量減算
         ScopeResolution scope = resolveScope(
                 post.getScopeType().name(), post.getScopeId(), userId);
+        List<String> fileKeysToDelete = new ArrayList<>();
         for (TimelinePostAttachmentEntity att : attachments) {
+            if (isStorageBacked(att) && att.getFileKey() != null && !att.getFileKey().isBlank()) {
+                storageAclService.releaseClaimed(att.getFileKey(),
+                        new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", att.getId().toString()));
+                fileKeysToDelete.add(att.getFileKey());
+            }
+
             if (att.getFileSize() == null || att.getFileSize() <= 0) {
                 continue;
             }
@@ -713,6 +721,9 @@ public class TimelinePostService {
                         StorageFeatureType.TIMELINE,
                         REFERENCE_TYPE, att.getId(), userId);
             }
+        }
+        if (!fileKeysToDelete.isEmpty()) {
+            domainEventPublisher.publish(new S3ObjectDeleteEvent(fileKeysToDelete));
         }
     }
 

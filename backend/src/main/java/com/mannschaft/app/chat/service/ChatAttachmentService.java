@@ -131,6 +131,16 @@ public class ChatAttachmentService {
                 new StorageAclAttachmentBinding("CHAT_MESSAGE_ATTACHMENT", attachment.getId().toString()));
     }
 
+    void releaseMessageAttachment(ChatMessageAttachmentEntity attachment) {
+        storageAclService.releaseClaimed(attachment.getFileKey(),
+                new StorageAclAttachmentBinding("CHAT_MESSAGE_ATTACHMENT", attachment.getId().toString()));
+    }
+
+    void releaseChannelIcon(ChatChannelEntity channel, String fileKey) {
+        storageAclService.releaseClaimed(fileKey,
+                new StorageAclAttachmentBinding("CHAT_CHANNEL_ICON", channel.getId().toString()));
+    }
+
     /**
      * メッセージ論理削除に伴う添付ファイルの使用量減算。
      *

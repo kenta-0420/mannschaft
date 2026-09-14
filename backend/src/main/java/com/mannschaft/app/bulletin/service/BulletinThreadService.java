@@ -12,6 +12,7 @@ import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
 import com.mannschaft.app.bulletin.entity.BulletinCategoryEntity;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.bulletin.repository.BulletinCategoryRepository;
+import com.mannschaft.app.bulletin.repository.BulletinReplyRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReactionRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
@@ -58,6 +59,8 @@ public class BulletinThreadService {
     private static final String SOURCE_TYPE_SAFETY_CHECK = "SAFETY_CHECK";
 
     private final BulletinThreadRepository threadRepository;
+    private final BulletinReplyRepository replyRepository;
+    private final BulletinAttachmentService attachmentService;
     private final BulletinCategoryService categoryService;
     private final BulletinMapper bulletinMapper;
     private final BulletinAccessGuard accessGuard;
@@ -426,6 +429,10 @@ public class BulletinThreadService {
             accessGuard.requireManageContent(userId, scopeType, scopeId);
         }
 
+        attachmentService.releaseAttachments(TargetType.THREAD, threadId);
+        for (var reply : replyRepository.findByThreadId(threadId)) {
+            attachmentService.releaseAttachments(TargetType.REPLY, reply.getId());
+        }
         entity.softDelete();
         threadRepository.save(entity);
         log.info("スレッド削除: threadId={}, by={}", threadId, userId);

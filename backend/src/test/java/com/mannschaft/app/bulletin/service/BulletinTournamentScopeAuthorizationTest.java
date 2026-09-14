@@ -89,6 +89,7 @@ class BulletinTournamentScopeAuthorizationTest {
         @Mock private VillageBulletinAccessService villageBulletinAccessService;
         @Mock private PostingIdentityService postingIdentityService;
         @Mock private TournamentContactAccessService tournamentContactAccessService;
+        @Mock private BulletinAttachmentService attachmentService;
         @InjectMocks private BulletinReplyService service;
 
         @Test
