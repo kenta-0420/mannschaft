@@ -137981,7 +137981,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListObject"
+                  "$ref": "#/components/schemas/ApiResponseListIncidentCommentResponse"
                 }
               }
             }
@@ -233984,6 +233984,59 @@
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "ApiResponseListIncidentCommentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncidentCommentResponse"
+            }
+          }
+        }
+      },
+      "IncidentCommentResponse": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "incidentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isInternal": {
+            "type": "boolean"
+          },
+          "user": {
+            "$ref": "#/components/schemas/IncidentCommentUserResponse"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "IncidentCommentUserResponse": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

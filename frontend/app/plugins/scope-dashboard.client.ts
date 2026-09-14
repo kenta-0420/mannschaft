@@ -7,7 +7,7 @@
  * 起動直後に localStorage から即時復元（チラつき防止）し、
  * 認証済みの場合はバックグラウンドでサーバー同期を行う。
  */
-export default defineNuxtPlugin(async () => {
+export default defineNuxtPlugin(() => {
   const store = useScopeDashboardStore()
   const authStore = useAuthStore()
 
@@ -16,6 +16,8 @@ export default defineNuxtPlugin(async () => {
 
   if (authStore.isAuthenticated) {
     // バックグラウンドでサーバー同期（チームタグを優先）
-    await store.loadTabs('TEAM', store.teamTabPage)
+    void store.loadTabs('TEAM', store.teamTabPage).catch((error) => {
+      console.error('[scopeDashboard] 起動時のタグ取得に失敗しました', error)
+    })
   }
 })

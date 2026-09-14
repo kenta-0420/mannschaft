@@ -51,4 +51,35 @@ public interface StorageAclRepository extends JpaRepository<StorageAclEntity, UU
                      @Param("parentKey") String parentKey,
                      @Param("bindingType") String bindingType,
                      @Param("bindingKey") String bindingKey);
+
+    /** 添付そのものに束縛された ACL だけを失効させる。親やスコープ単位では解放しない。 */
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE storage_acls
+               SET status = 'REVOKED', updated_at = UTC_TIMESTAMP()
+             WHERE file_key = :fileKey AND BINARY file_key = BINARY :fileKey
+               AND acl_mode = 'CONTENT_BOUND'
+               AND status = 'CLAIMED'
+               AND BINARY attachment_binding_type = BINARY :bindingType
+               AND BINARY attachment_binding_key = BINARY :bindingKey
+            """, nativeQuery = true)
+    int releaseClaimed(@Param("fileKey") String fileKey,
+                       @Param("bindingType") String bindingType,
+                       @Param("bindingKey") String bindingKey);
+
+    /**
+     * 解放の再送判定は current read で行う。JPA の管理済み entity や RR の過去 snapshot を使わない。
+     */
+    @Query(value = """
+            SELECT file_key FROM storage_acls
+             WHERE file_key = :fileKey AND BINARY file_key = BINARY :fileKey
+               AND acl_mode = 'CONTENT_BOUND'
+               AND status = 'REVOKED'
+               AND BINARY attachment_binding_type = BINARY :bindingType
+               AND BINARY attachment_binding_key = BINARY :bindingKey
+             FOR UPDATE
+            """, nativeQuery = true)
+    Optional<String> findReleasedFileKey(@Param("fileKey") String fileKey,
+                                         @Param("bindingType") String bindingType,
+                                         @Param("bindingKey") String bindingKey);
 }
