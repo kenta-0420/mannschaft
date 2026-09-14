@@ -1,8 +1,12 @@
 package com.mannschaft.app.files.service;
 
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.MultipartContentTarget;
 import com.mannschaft.app.common.storage.acl.MultipartContentTargetRegistry;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclRepository;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.acl.StorageAclStatus;
 import com.mannschaft.app.files.dto.CompleteMultipartRequest;
@@ -40,14 +44,22 @@ class MultipartUploadTransactionIT extends AbstractMySqlIntegrationTest {
     void R2完了後のDBrollbackではPENDINGが残り再試行でCLAIMEDへ復旧する() {
         R2StorageService storage = mock(R2StorageService.class);
         String uploadId = UUID.randomUUID().toString();
+        String fileKey = "blog/PERSONAL/9001/" + UUID.randomUUID() + ".mp4";
         when(storage.createMultipartUpload(anyString(), anyString())).thenReturn(uploadId);
         MultipartUploadCleanupService cleanup = mock(MultipartUploadCleanupService.class);
+        MultipartContentTargetRegistry targets = mock(MultipartContentTargetRegistry.class);
+        MultipartContentTarget target = new MultipartContentTarget(
+                StorageAclScope.personal(9001L),
+                new StorageAclContentReference("BLOG_MEDIA", "9001"),
+                new StorageAclAttachmentBinding("BLOG_MEDIA_UPLOAD", "9001"));
+        when(targets.resolve(fileKey, 9001L)).thenReturn(target);
         var service = new MultipartUploadService(storage, sessions, aclService,
-                cleanup, mock(MultipartContentTargetRegistry.class), Clock.systemUTC());
+                cleanup, targets, Clock.systemUTC());
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        var started = tx.execute(status -> service.startUpload(9001L,
-                new StartMultipartUploadRequest(null, "video.mp4", "video/mp4", 100L, 1, 5242880L, "files/")));
+        var started = tx.execute(status -> service.startContentUpload(9001L,
+                new StartMultipartUploadRequest(null, "video.mp4", "video/mp4", 100L, 1, 5242880L, "blog/"),
+                fileKey));
         var complete = new CompleteMultipartRequest(started.getFileKey(),
                 List.of(new CompleteMultipartRequest.PartEtag(1, "etag")));
         try {
@@ -61,7 +73,7 @@ class MultipartUploadTransactionIT extends AbstractMySqlIntegrationTest {
             assertThat(sessions.findByUploadId(uploadId)).get()
                     .extracting(session -> session.getStatus()).isEqualTo("IN_PROGRESS");
             verify(cleanup).compensateCompletedRollback(
-                    uploadId, started.getFileKey(), "files", "PERSONAL", 9001L, 9001L, "video/mp4");
+                    uploadId, started.getFileKey(), "blog", "PERSONAL", 9001L, 9001L, "video/mp4");
 
             when(storage.objectExists(started.getFileKey())).thenReturn(true);
             tx.executeWithoutResult(status -> service.completeUpload(uploadId, 9001L, complete));
