@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-09-14T22:18:22+00:00",
+  "generatedAt": "2026-09-14T22:24:55+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,13 +8,13 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "2ad4e778c42d06cb3707f027ce66db837625e51b",
-    "taskListCommit": "309e2a5d2e723ea4d6097c17007d88d9d958d93a",
+    "taskListCommit": "222a62fd6ba280f929c25fe8c96832d7f302a861",
     "inventorySha256": "7e58c58b15abadc3d42efb5a70c15f6c166e84ecd6ad3208727b564a19ee4dae",
-    "taskListSha256": "350c51985beab1ecf6ec6d9b28a6db3f6c6f84829c4b34f6ece1fbde44396036",
+    "taskListSha256": "4819c95c786dd43d5c091c5abc9bd2fa45b89a076e48c0bdf8fafcc4d3ef088f",
     "decisionsSha256": "5721052631110d26b34bf2288bc6e8a9de069a030b7f8d63808f8304348f7a4d",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "cc6b82faa80c0abf69f5f0db41d5e4758164b6c3fd4ea32c44fc0085d32942b2"
+    "githubSnapshotSha256": "098ef9345060a1cceca3dd63d39a89302e92f9218728af600c664210fe872cba"
   },
   "sourceCounts": {
     "features": 43,
@@ -15386,8 +15386,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-099",
       "title": "予定対象者・スコープ別メンバー色・自分担当TODOのマイカレンダー統合",
-      "status": "working",
-      "statusLabel": "実装・実機E2E完了（CI待ち）",
+      "status": "done",
+      "statusLabel": "完了（2026-08-19、PR #2840・実機E2E 15件合格）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -15401,16 +15401,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "branch `feature/cmp051-schedule-assignees-v2`。検分是正として通常membership所属のunion、固定色palette、退会時PII消去、退会target省略、対象者候補の全ページ取得、複数日bar表示を追加。2026-08-19 に実ブラウザ・実API・実DBの機能固有E2E 15件を直列実行し全件green。予定詳細遷移のscopeSlug不足と月表示で対象者チップがタイトルを潰す問題を実機で検出・是正し、未認証401、一般メンバーの色更新拒否、非所属ユーザー割当拒否・非漏洩も確認済み。Backend対象unit、Frontend typecheck/ESLint/Vitest、OpenAPI生成もgreen。CI完了後に完了アーカイブへ移す",
+          "label": "branch `feature/cmp051-schedule-assignees-v2`。検分是正として通常membership所属のunion、固定色palette、退会時PII消去、退会target省略、対象者候補の全ページ取得、複数日bar表示を追加。2026-08-19 に実ブラウザ・実API・実DBの機能固有E2E 15件を直列実行し全件green。予定詳細遷移のscopeSlug不足と月表示で対象者チップがタイトルを潰す問題を実機で検出・是正し、未認証401、一般メンバーの色更新拒否、非所属ユーザー割当拒否・非漏洩も確認済み。Backend対象unit、Frontend typecheck/ESLint/Vitest、OpenAPI生成もgreen。PR #2840（merge commit `f8b4d58300`）でmain着地済み",
           "state": "unknown"
         }
       ],
       "prs": [
-        "branch `feature/cmp051-schedule-assignees-v2`。検分是正として通常membership所属のunion、固定色palette、退会時PII消去、退会target省略、対象者候補の全ページ取得、複数日bar表示を追加。2026-08-19 に実ブラウザ・実API・実DBの機能固有E2E 15件を直列実行し全件green。予定詳細遷移のscopeSlug不足と月表示で対象者チップがタイトルを潰す問題を実機で検出・是正し、未認証401、一般メンバーの色更新拒否、非所属ユーザー割当拒否・非漏洩も確認済み。Backend対象unit、Frontend typecheck/ESLint/Vitest、OpenAPI生成もgreen。CI完了後に完了アーカイブへ移す"
+        "branch `feature/cmp051-schedule-assignees-v2`。検分是正として通常membership所属のunion、固定色palette、退会時PII消去、退会target省略、対象者候補の全ページ取得、複数日bar表示を追加。2026-08-19 に実ブラウザ・実API・実DBの機能固有E2E 15件を直列実行し全件green。予定詳細遷移のscopeSlug不足と月表示で対象者チップがタイトルを潰す問題を実機で検出・是正し、未認証401、一般メンバーの色更新拒否、非所属ユーザー割当拒否・非漏洩も確認済み。Backend対象unit、Frontend typecheck/ESLint/Vitest、OpenAPI生成もgreen。PR #2840（merge commit `f8b4d58300`）でmain着地済み"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "—"
+        "#2840"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -15418,10 +15418,27 @@ window.BETA_INVENTORY_DATA = {
         "TODO"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        2840
+      ],
+      "github": [
+        {
+          "number": 2840,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: 予定対象者・メンバー色・担当TODOカレンダー",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2840",
+          "updatedAt": "2026-08-18T18:05:46Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-058",
@@ -16001,8 +16018,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-109",
       "title": "足軽 worktree が60本超まで滞留し新規作業木を展開できない",
-      "status": "unknown",
-      "statusLabel": "実装・実Git E2E完了（PR #3275・CI待ち）",
+      "status": "done",
+      "statusLabel": "完了（2026-09-15、PR #3275・実Git E2E合格）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -16025,7 +16042,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "—"
+        "#3275"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -16033,7 +16050,7 @@ window.BETA_INVENTORY_DATA = {
         "worktree"
       ],
       "tags": [
-        "未整理"
+        "完了"
       ],
       "githubRefs": [
         3275
@@ -24963,7 +24980,7 @@ window.BETA_INVENTORY_DATA = {
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-09-14T22:18:02+00:00",
+    "synchronizedAt": "2026-09-14T22:24:36+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -25213,7 +25230,9 @@ window.BETA_INVENTORY_DATA = {
         3270,
         3271
       ],
-      "CMP-099": [],
+      "CMP-099": [
+        2840
+      ],
       "CMP-058": [
         2846,
         2849,
@@ -27058,6 +27077,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "2840": {
+        "number": 2840,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: 予定対象者・メンバー色・担当TODOカレンダー",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2840",
+        "updatedAt": "2026-08-18T18:05:46Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "2845": {
         "number": 2845,
         "kind": "pull_request",
@@ -28635,8 +28668,8 @@ window.BETA_INVENTORY_DATA = {
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-09-14T22:18:02+00:00",
-      "referenceCount": 230
+      "synchronizedAt": "2026-09-14T22:24:36+00:00",
+      "referenceCount": 231
     }
   }
 };
