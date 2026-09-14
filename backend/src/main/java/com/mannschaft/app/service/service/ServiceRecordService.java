@@ -2,9 +2,11 @@ package com.mannschaft.app.service.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.FileTypeValidator;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
@@ -97,6 +99,7 @@ public class ServiceRecordService {
     private final StorageAclService storageAclService;
     private final StorageAccessService storageAccessService;
     private final AccessControlService accessControlService;
+    private final DomainEventPublisher eventPublisher;
 
     /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
     private static final String SCOPE_TEAM = "TEAM";
@@ -263,6 +266,7 @@ public class ServiceRecordService {
         ServiceRecordEntity entity = findRecordOrThrow(teamId, id);
         // BOLA厳禁: entity 由来 teamId で認可する。
         accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
+        attachmentRepository.findByServiceRecordIdOrderBySortOrder(id).forEach(this::releaseAttachment);
         entity.softDelete();
         recordRepository.save(entity);
         log.info("サービス記録削除: recordId={}", id);
@@ -658,7 +662,9 @@ public class ServiceRecordService {
         ServiceRecordAttachmentEntity attachment = attachmentRepository
                 .findByIdAndServiceRecordId(attachmentId, recordId)
                 .orElseThrow(() -> new BusinessException(ServiceRecordErrorCode.ATTACHMENT_NOT_FOUND));
+        releaseAttachment(attachment);
         attachmentRepository.delete(attachment);
+        eventPublisher.publish(new S3ObjectDeleteEvent(attachment.getFileKey()));
         log.info("添付ファイル削除: recordId={}, attachmentId={}", recordId, attachmentId);
     }
 
@@ -667,6 +673,11 @@ public class ServiceRecordService {
     private ServiceRecordEntity findRecordOrThrow(Long teamId, Long id) {
         return recordRepository.findByIdAndTeamId(id, teamId)
                 .orElseThrow(() -> new BusinessException(ServiceRecordErrorCode.RECORD_NOT_FOUND));
+    }
+
+    private void releaseAttachment(ServiceRecordAttachmentEntity attachment) {
+        storageAclService.releaseClaimed(attachment.getFileKey(),
+                new StorageAclAttachmentBinding("SERVICE_RECORD_ATTACHMENT", attachment.getId().toString()));
     }
 
     private void saveCustomFieldValues(Long recordId, Long teamId,

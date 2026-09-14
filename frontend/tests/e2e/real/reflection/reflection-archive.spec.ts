@@ -48,8 +48,8 @@ async function installApiBridge(page: Page, accessToken: string): Promise<void> 
       method: request.method(),
       headers: {
         ...request.headers(),
-        origin: 'http://localhost:3000',
-        referer: 'http://localhost:3000/',
+        origin: pageOrigin,
+        referer: `${pageOrigin}/`,
         authorization: `Bearer ${accessToken}`,
       },
       data: request.postData() ?? undefined,

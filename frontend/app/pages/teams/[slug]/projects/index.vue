@@ -14,6 +14,7 @@ const projects = ref<ProjectResponse[]>([])
 const loading = ref(true)
 const showDialog = ref(false)
 const showGuide = ref(false)
+const deletingProjectId = ref<number | null>(null)
 
 const form = reactive<CreateProjectRequest>({
   title: '',
@@ -55,12 +56,16 @@ function openProject(project: ProjectResponse) {
 }
 
 async function remove(project: ProjectResponse) {
+  if (deletingProjectId.value !== null) return
   if (!confirm(`「${project.title}」を削除しますか？`)) return
+  deletingProjectId.value = project.id
   try {
     await projectApi.deleteProject(teamSlug, project.id)
     await load()
   } catch {
     showError('削除に失敗しました')
+  } finally {
+    deletingProjectId.value = null
   }
 }
 
@@ -164,6 +169,10 @@ onMounted(async () => {
             rounded
             size="small"
             severity="danger"
+            :aria-label="`${project.title}を削除`"
+            :data-testid="`team-project-delete-${project.id}`"
+            :disabled="deletingProjectId !== null"
+            :loading="deletingProjectId === project.id"
             @click.stop="remove(project)"
           />
         </div>

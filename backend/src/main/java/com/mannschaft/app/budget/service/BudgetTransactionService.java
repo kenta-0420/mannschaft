@@ -31,6 +31,7 @@ import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
@@ -394,8 +395,10 @@ public class BudgetTransactionService {
             throw new BusinessException(BudgetErrorCode.BUDGET_021);
         }
 
-        storageService.delete(attachment.getFileKey());
+        storageAclService.releaseClaimed(attachment.getFileKey(),
+                new StorageAclAttachmentBinding("BUDGET_TRANSACTION_ATTACHMENT", attachment.getId().toString()));
         attachmentRepository.delete(attachment);
+        domainEventPublisher.publish(new S3ObjectDeleteEvent(attachment.getFileKey()));
         log.info("添付ファイルを削除しました: transactionId={}, attachmentId={}", transactionId, attachmentId);
     }
 

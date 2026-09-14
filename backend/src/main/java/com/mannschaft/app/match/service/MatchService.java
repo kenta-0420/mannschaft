@@ -3,6 +3,8 @@ package com.mannschaft.app.match.service;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.match.MatchCompletedEvent;
 import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.catalog.VolleyballSetRules;
@@ -16,6 +18,7 @@ import com.mannschaft.app.match.dto.MatchSummaryResponse;
 import com.mannschaft.app.match.entity.MatchEntity;
 import com.mannschaft.app.match.live.MatchLiveUpdateEvent;
 import com.mannschaft.app.match.repository.MatchRepository;
+import com.mannschaft.app.match.repository.MatchAttachmentRepository;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +60,8 @@ public class MatchService {
     private static final String TEAM = "TEAM";
 
     private final MatchRepository matchRepository;
+    private final MatchAttachmentRepository attachmentRepository;
+    private final StorageAclService storageAclService;
     private final MatchAccessService matchAccessService;
     private final PlayingTimeCalculationService playingTimeCalculationService;
     private final ApplicationEventPublisher eventPublisher;
@@ -644,6 +649,9 @@ public class MatchService {
     public void softDelete(UUID matchId, Long organizationId, Long teamId, Long actorUserId) {
         MatchEntity match = getMatchOrThrow(matchId, organizationId, teamId);
         matchAccessService.assertCanEditMeta(actorUserId, match);
+        attachmentRepository.findByMatchIdOrderByCreatedAtAsc(matchId).forEach(attachment ->
+                storageAclService.releaseClaimed(attachment.getFileKey(),
+                        new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attachment.getId().toString())));
         match.softDelete();
         matchRepository.save(match);
     }

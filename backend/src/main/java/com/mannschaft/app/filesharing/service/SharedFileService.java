@@ -469,6 +469,7 @@ public class SharedFileService {
         // フォルダ情報を取得してスコープを解決する
         SharedFolderEntity folder = folderService.findFolderOrThrow(entity.getFolderId());
 
+        releaseAllVersions(entity);
         entity.softDelete();
         fileRepository.save(entity);
 
@@ -484,6 +485,12 @@ public class SharedFileService {
     public SharedFileEntity findFileOrThrow(Long fileId) {
         return fileRepository.findById(fileId)
                 .orElseThrow(() -> new BusinessException(FileSharingErrorCode.FILE_NOT_FOUND));
+    }
+
+    private void releaseAllVersions(SharedFileEntity file) {
+        versionRepository.findByFileIdOrderByVersionNumberDesc(file.getId()).forEach(version ->
+                storageAclService.releaseClaimed(version.getFileKey(),
+                        new StorageAclAttachmentBinding("SHARED_FILE_VERSION", version.getId().toString())));
     }
 
     /**
