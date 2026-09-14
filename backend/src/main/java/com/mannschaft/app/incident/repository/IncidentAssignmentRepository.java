@@ -20,4 +20,7 @@ public interface IncidentAssignmentRepository extends JpaRepository<IncidentAssi
      * インシデント ID とユーザー ID で担当者を取得する。
      */
     Optional<IncidentAssignmentEntity> findByIncidentIdAndUserId(Long incidentId, Long userId);
+
+    /** USER 担当として割り当てられているかを返す。外部業者レコードは可視性に使わない。 */
+    boolean existsByIncidentIdAndUserIdAndAssigneeType(Long incidentId, Long userId, String assigneeType);
 }

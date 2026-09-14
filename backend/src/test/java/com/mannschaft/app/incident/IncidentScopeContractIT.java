@@ -654,6 +654,83 @@ class IncidentScopeContractIT extends AbstractMySqlIntegrationTest {
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
     }
 
+    @Nested
+    @DisplayName("comments")
+    class Comments {
+
+        @Test
+        @DisplayName("reporter receives only public comments")
+        void reporterGetsOnlyPublicComments() throws Exception {
+            Long incidentId = insertIncident(teamAId, memberAId, "REPORTED");
+            insertIncidentComment(incidentId, memberAId, "public", false);
+            insertIncidentComment(incidentId, adminAId, "internal", true);
+            em.flush();
+
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/incidents/{id}/comments", incidentId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].body").value("public"))
+                    .andExpect(jsonPath("$.data[0].user.id").value(memberAId));
+        }
+
+        @Test
+        @DisplayName("ADMIN sees internal comments but another scope ADMIN is concealed")
+        void adminVisibilityIsScopedAndIncludesInternal() throws Exception {
+            Long incidentId = insertIncident(teamAId, memberAId, "REPORTED");
+            insertIncidentComment(incidentId, adminAId, "internal", true);
+            em.flush();
+
+            setAuthentication(adminAId);
+            mockMvc.perform(get("/api/v1/incidents/{id}/comments", incidentId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[0].isInternal").value(true));
+
+            setAuthentication(adminBId);
+            mockMvc.perform(get("/api/v1/incidents/{id}/comments", incidentId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("INCIDENT_002"));
+        }
+
+        @Test
+        @DisplayName("unrelated member and supporter reporter are concealed")
+        void unrelatedMemberAndSupporterAreConcealed() throws Exception {
+            Long incidentId = insertIncident(teamAId, memberAId, "REPORTED");
+            Long unrelatedId = insertUser("inc-comment-unrelated@example.com");
+            MembershipTestHelper.insertMembership(em, unrelatedId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+            Long supporterId = insertUser("inc-comment-supporter@example.com");
+            MembershipTestHelper.insertMembership(em, supporterId, ScopeType.TEAM, teamAId, RoleKind.SUPPORTER);
+            Long supporterIncidentId = insertIncident(teamAId, supporterId, "REPORTED");
+            em.flush();
+
+            setAuthentication(unrelatedId);
+            mockMvc.perform(get("/api/v1/incidents/{id}/comments", incidentId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("INCIDENT_002"));
+
+            setAuthentication(supporterId);
+            mockMvc.perform(get("/api/v1/incidents/{id}/comments", supporterIncidentId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("INCIDENT_002"));
+        }
+
+        @Test
+        @DisplayName("duplicate USER assignments do not make an assignee lookup fail")
+        void duplicateUserAssignmentsAreVisible() throws Exception {
+            Long assigneeId = insertUser("inc-comment-assignee@example.com");
+            MembershipTestHelper.insertMembership(em, assigneeId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+            Long incidentId = insertIncident(teamAId, memberAId, "REPORTED");
+            insertIncidentAssignment(incidentId, assigneeId);
+            insertIncidentAssignment(incidentId, assigneeId);
+            em.flush();
+
+            setAuthentication(assigneeId);
+            mockMvc.perform(get("/api/v1/incidents/{id}/comments", incidentId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").isArray());
+        }
+    }
+
     private Map<String, Object> reportBody(Long scopeId) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("scopeType", "TEAM");
@@ -782,6 +859,17 @@ class IncidentScopeContractIT extends AbstractMySqlIntegrationTest {
                 .setParameter("reportedBy", reportedBy)
                 .executeUpdate();
         return ((Number) em.createNativeQuery("SELECT MAX(id) FROM incidents").getSingleResult()).longValue();
+    }
+
+    private void insertIncidentComment(Long incidentId, Long userId, String body, boolean internal) {
+        em.createNativeQuery(
+                        "INSERT INTO incident_comments (incident_id, user_id, body, is_internal, version, created_at, updated_at) "
+                                + "VALUES (:incidentId, :userId, :body, :internal, 0, NOW(), NOW())")
+                .setParameter("incidentId", incidentId)
+                .setParameter("userId", userId)
+                .setParameter("body", body)
+                .setParameter("internal", internal)
+                .executeUpdate();
     }
 
     private void insertIncidentAssignment(Long incidentId, Long userId) {
