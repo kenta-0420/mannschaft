@@ -75,6 +75,26 @@ class MultipartUploadAclLifecycleTest {
     }
 
     @Test
+    void 廃止前に作成された汎用セッションもURL発行と完了を拒否する() {
+        MultipartUploadSessionEntity legacyGeneric = session();
+        when(sessions.findByUploadId("upload")).thenReturn(Optional.of(legacyGeneric));
+        when(sessions.findByUploadIdForUpdate("upload")).thenReturn(Optional.of(legacyGeneric));
+
+        assertThatThrownBy(() -> service.getPartUrls("upload", 1L,
+                new PartUrlRequest("files/v.mp4", List.of(1))))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode().value())
+                .isEqualTo(410);
+        assertThatThrownBy(() -> service.completeUpload("upload", 1L, complete()))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode().value())
+                .isEqualTo(410);
+
+        verify(storage, never()).createPresignedPartUrls(anyString(), anyString(), anyList(), any());
+        verify(storage, never()).completeMultipartUpload(anyString(), anyString(), anyList());
+    }
+
+    @Test
     void 完了時に開始セッションへACLをclaimする() {
         when(sessions.findByUploadIdForUpdate("upload")).thenReturn(Optional.of(session()));
         service.completeUpload("upload", 1L, complete());
