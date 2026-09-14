@@ -2,9 +2,11 @@ package com.mannschaft.app.forms.repository;
 
 import com.mannschaft.app.forms.SubmissionStatus;
 import com.mannschaft.app.forms.entity.FormSubmissionEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -30,6 +32,7 @@ public interface FormSubmissionRepository extends JpaRepository<FormSubmissionEn
      * <p>提出 = 自チーム単位（{@code scopeType='TEAM'} / {@code scopeId=teamId}）で 1 件に正規化されるため、
      * 当該チームの既存提出（再提出の差し戻しフロー）を引くために使う。</p>
      */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<FormSubmissionEntity> findByTournamentSubmissionRequirementIdAndScopeTypeAndScopeId(
             UUID tournamentSubmissionRequirementId, String scopeType, Long scopeId);
 
@@ -51,8 +54,9 @@ public interface FormSubmissionRepository extends JpaRepository<FormSubmissionEn
             Long submittedBy, String scopeType, Long scopeId, Pageable pageable);
 
     /**
-     * IDと提出者IDで提出を取得する。
+     * IDと提出者IDで編集対象を取得し、添付更新・削除の並行実行を直列化する。
      */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<FormSubmissionEntity> findByIdAndSubmittedBy(Long id, Long submittedBy);
 
     /**

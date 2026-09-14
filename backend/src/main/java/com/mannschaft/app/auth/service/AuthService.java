@@ -424,12 +424,20 @@ public class AuthService {
         // jti を生成して RefreshToken に紐付ける（session_hash の基点）
         String refreshTokenJti = UUID.randomUUID().toString();
 
+        String deviceFingerprint = req.getDeviceFingerprint() != null
+                ? req.getDeviceFingerprint()
+                : authTokenService.hashToken(userAgent != null ? userAgent : "");
+        String deviceName = UserAgentParser.parse(userAgent).deviceName();
+        String locale = user.getLocale() != null ? user.getLocale() : "ja";
+        newDeviceDetectionService.publishIfNewDeviceBeforeTokenSave(
+                user.getId(), ipAddress, deviceFingerprint, deviceName, locale);
+
         RefreshTokenEntity refreshToken = RefreshTokenEntity.builder()
                 .userId(user.getId())
                 .tokenHash(refreshTokenHash)
                 .jti(refreshTokenJti)
                 .rememberMe(req.isRememberMe())
-                .deviceFingerprint(req.getDeviceFingerprint())
+                .deviceFingerprint(deviceFingerprint)
                 .ipAddress(ipAddress)
                 .userAgent(userAgent)
                 .expiresAt(LocalDateTime.now().plusSeconds(authTokenService.getRefreshTokenExpirationSeconds()))
@@ -440,14 +448,6 @@ public class AuthService {
 
         // セッション上限チェック（F12.4 §5.7）
         authSessionService.enforceMaxActiveSessions(user.getId());
-
-        // 新規デバイスログイン検知（F12.4 §5.5、非同期実行）
-        String deviceFingerprint = req.getDeviceFingerprint() != null
-                ? req.getDeviceFingerprint()
-                : authTokenService.hashToken(userAgent != null ? userAgent : "");
-        String deviceName = UserAgentParser.parse(userAgent).deviceName();
-        String locale = user.getLocale() != null ? user.getLocale() : "ja";
-        newDeviceDetectionService.checkAndNotify(user.getId(), ipAddress, deviceFingerprint, deviceName, locale);
 
         // 最終ログイン日時更新
         user.updateLastLoginAt();

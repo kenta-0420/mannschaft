@@ -202,6 +202,21 @@ public String generateDownloadUrl(String objectKey, UserDetails currentUser) {
 移行時は保存済みブログ記事からのみscopeを補完する。旧draftのscopeをキーから推測せずNULLに保ち、既存ACLを一括でCLAIMEDにしない。検証済み台帳がない旧メディアは再アップロードが必要。
 
 回帰: `MultipartUploadAclLifecycleTest`、実MySQLの `MultipartUploadTransactionIT`、`BlogMediaAclServiceTest`、`BlogBodyMediaAclReadTest`、`ScheduleMediaAclServiceTest`。
+### 4.2 CMP-057: 添付単位の解放とフォーム値の更新
+
+`StorageAclService.releaseClaimed(fileKey, binding)` は、`CONTENT_BOUND`・`CLAIMED` と
+添付の `binding(type, key)` が一致する一行だけを `REVOKED` にする。同じ束縛の
+`REVOKED` は再送成功とし、未知キー・別添付・未 claim は 404 で秘匿する。
+親コンテンツやスコープの一致だけで複数添付を解放してはならない。
+
+解放は添付変更と同一トランザクションで確定する。R2 実体を削除するドメインは
+DB commit 後に削除し、実体削除失敗を理由に ACL の失効を巻き戻さない。
+commit 後の署名 URL 再発行は拒否されるが、発行済み URL の失効時刻はその TTL に従う。
+
+フォーム提出値の更新・大会の再提出は、残る添付の値 ID を保持して同一 binding で再 claim し、
+除去する添付だけを個別に解放する。`values: null` の通常更新は値を保持し、空配列は全値を除去する。
+同じ fileKey を複数値へ複製する入力は拒否する。提出の論理削除でも各添付を解放する。
+同一提出の更新・削除は提出行の書き込みロックで直列化する。
 
 ## 5. objectKey の設計ルール
 

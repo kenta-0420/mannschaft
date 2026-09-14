@@ -98,6 +98,25 @@ public class StorageAclService {
         throw new BusinessException(StorageErrorCode.ACL_CLAIM_CONFLICT);
     }
 
+    /**
+     * 認可済みの添付束縛だけを失効させる。同じ束縛の再送だけは冪等成功とする。
+     *
+     * <p>呼出元の添付削除と同一トランザクションに参加させるため、REQUIRES_NEW にしない。
+     * 実体の削除が必要なドメインは commit 後に行うこと。実体削除に失敗しても REVOKED は
+     * 巻き戻らず、署名 URL を再発行できない。既に発行した URL の失効は有効期限に従う。</p>
+     */
+    @Transactional
+    public void releaseClaimed(String fileKey, StorageAclAttachmentBinding binding) {
+        if (fileKey == null || fileKey.isBlank() || binding == null) {
+            throw new BusinessException(StorageErrorCode.ACL_INVALID_REQUEST);
+        }
+        if (repository.releaseClaimed(fileKey, binding.type(), binding.key()) == 1
+                || repository.findReleasedFileKey(fileKey, binding.type(), binding.key()).isPresent()) {
+            return;
+        }
+        throw new BusinessException(StorageErrorCode.ACL_NOT_FOUND);
+    }
+
     private boolean isSameClaim(StorageAclEntity acl, StorageAclContentReference parentContentReference,
                                 StorageAclAttachmentBinding binding) {
         return parentContentReference.type().equals(acl.getParentContentReferenceType())

@@ -79581,6 +79581,27 @@ export interface components {
             data?: components["schemas"]["IncidentSummaryResponse"][];
             meta?: components["schemas"]["PageMeta"];
         };
+        ApiResponseListIncidentCommentResponse: {
+            data?: components["schemas"]["IncidentCommentResponse"][];
+        };
+        IncidentCommentResponse: {
+            body?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            incidentId?: number;
+            isInternal?: boolean;
+            user?: components["schemas"]["IncidentCommentUserResponse"];
+            /** Format: int64 */
+            userId?: number;
+        };
+        IncidentCommentUserResponse: {
+            displayName?: string;
+            /** Format: int64 */
+            id?: number;
+        };
         ApiResponseListIncidentCategoryResponse: {
             data?: components["schemas"]["IncidentCategoryResponse"][];
         };
@@ -162183,7 +162204,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListObject"];
+                    "*/*": components["schemas"]["ApiResponseListIncidentCommentResponse"];
                 };
             };
         };
