@@ -333,6 +333,12 @@ test.describe('D群 追加E1: series一括承認（scope=SERIES）', () => {
   let firstReservationId = 0
   const day = dateInfo(25)
 
+  // 認可境界専用。実クラウドは使わず、ローカルの実BE/DBだけで検証する。
+  let memberCtx: APIRequestContext | undefined
+  let memberToken = ''
+  let foreignTeamSlug = ''
+  let foreignReservationId = 0
+
   let teamControlSlug = ''
   let lineControl = 0
   let controlSeriesId = ''
@@ -376,6 +382,28 @@ test.describe('D群 追加E1: series一括承認（scope=SERIES）', () => {
     console.log(`[SETUP-E1-SERIES] teamSlug=${teamSeriesSlug} seriesId=${seriesId} PENDING件数=${seriesPending.length}`)
     expect(seriesPending.length, 'MANUAL承認チームでは4回すべてPENDINGで作られること').toBe(4)
 
+    // 同一チームの MEMBER と、別チームにだけ属する予約IDを用意する。
+    // 承認不可の各試行の後に PENDING 不変を検査し、状態を持ち越さない。
+    memberCtx = await playwrightRequest.newContext()
+    memberToken = await login(memberCtx, MEMBER_EMAIL, MEMBER_PASSWORD)
+    const memberRole = await joinAsMember(ctx, tokens.admin, memberCtx, memberToken, teamSeriesSlug)
+    expect(memberRole, '低権限の試験主体は MEMBER であること').toBe('MEMBER')
+
+    foreignTeamSlug = await createThrowawayTeam(ctx, tokens.admin, 'seriesforeign')
+    await enableReservationModule(ctx, tokens.admin, foreignTeamSlug)
+    await setBusinessHours(ctx, tokens.admin, foreignTeamSlug)
+    const foreignLineId = await createLine(ctx, tokens.admin, foreignTeamSlug, '認可境界用')
+    await createManualSlot(ctx, tokens.admin, foreignTeamSlug, {
+      lineId: foreignLineId, slotDate: day.iso, startTime: '13:00:00', endTime: '14:00:00', capacity: 1,
+    })
+    const foreignSlotId = await findSlotId(ctx, foreignTeamSlug, tokens.admin, day.iso, '13:00', foreignLineId)
+    const foreignCreateRes = await ctx.post(`${BE_API}/teams/${foreignTeamSlug}/reservations`, {
+      headers: authHeaders(tokens.admin),
+      data: { reservationSlotId: foreignSlotId, lineId: foreignLineId, userNote: 'E1 別チーム認可境界' },
+    })
+    if (!foreignCreateRes.ok()) throw new Error(`別チーム予約作成失敗: ${foreignCreateRes.status()} ${await foreignCreateRes.text()}`)
+    foreignReservationId = ((await foreignCreateRes.json()).data as { id: number }).id
+
     // --- 対照実験（THIS_ONLY相当・単票承認）チーム ---
     teamControlSlug = await createThrowawayTeam(ctx, tokens.admin, 'seriescontrol')
     await enableReservationModule(ctx, tokens.admin, teamControlSlug)
@@ -410,6 +438,30 @@ test.describe('D群 追加E1: series一括承認（scope=SERIES）', () => {
     await ctx.dispose()
   })
 
+  test.afterAll(async ({ tokens }) => {
+    const cleanupErrors: string[] = []
+    const ctx = await playwrightRequest.newContext()
+    try {
+      // beforeAll の途中失敗でも、作成済み分だけを独立して後始末する。
+      for (const slug of [teamSeriesSlug, teamControlSlug, foreignTeamSlug].filter(Boolean)) {
+        try {
+          const response = await ctx.delete(`${BE_API}/teams/${slug}`, { headers: authHeaders(tokens.admin) })
+          if (!response.ok() && response.status() !== 404) {
+            cleanupErrors.push(`${slug}: DELETE ${response.status()} ${await response.text()}`)
+          }
+        }
+        catch (error) {
+          cleanupErrors.push(`${slug}: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      }
+    }
+    finally {
+      await ctx.dispose()
+      await memberCtx?.dispose()
+    }
+    if (cleanupErrors.length > 0) throw new Error(`E1後始末失敗:\n${cleanupErrors.join('\n')}`)
+  })
+
   test('E1-対照: scope未指定(単票承認)は1件だけCONFIRMEDになり残り3件はPENDINGのまま', async ({ tokens }) => {
     const ctx = await playwrightRequest.newContext()
     const confirmRes = await ctx.post(
@@ -431,7 +483,35 @@ test.describe('D群 追加E1: series一括承認（scope=SERIES）', () => {
   })
 
   test('E1: ReservationList.vueのapprove-seriesボタン(scope=SERIES)でseries内の4回全てがCONFIRMEDになる', async ({ page, tokens }) => {
-    void firstReservationId
+    // UIの成功操作の前に、実APIで認証・認可境界を検証する。拒否後も対象seriesは不変でなければならない。
+    const unauthCtx = await playwrightRequest.newContext()
+    try {
+      const unauthRes = await unauthCtx.post(
+        `${BE_API}/teams/${teamSeriesSlug}/reservations/${firstReservationId}/confirm?scope=SERIES`,
+      )
+      expect(unauthRes.status(), '未認証のseries一括承認は401').toBe(401)
+    }
+    finally {
+      await unauthCtx.dispose()
+    }
+
+    const memberRes = await memberCtx!.post(
+      `${BE_API}/teams/${teamSeriesSlug}/reservations/${firstReservationId}/confirm?scope=SERIES`,
+      { headers: authHeaders(memberToken) },
+    )
+    expect(memberRes.status(), '同一チームMEMBERのseries一括承認は403').toBe(403)
+
+    const crossScopeRes = await page.request.post(
+      `${BE_API}/teams/${teamSeriesSlug}/reservations/${foreignReservationId}/confirm?scope=SERIES`,
+      { headers: authHeaders(tokens.admin) },
+    )
+    expect(crossScopeRes.status(), '別チーム予約IDを対象チームURLへ渡すと404').toBe(404)
+
+    const rejectedRows = await fetchTeamReservations(page.request, tokens.admin, teamSeriesSlug)
+    const rejectedSeriesRows = rejectedRows.filter(r => r.recurringSeriesId === seriesId)
+    expect(rejectedSeriesRows.filter(r => r.status.status === 'PENDING')).toHaveLength(4)
+    expect(rejectedSeriesRows.filter(r => r.status.status === 'CONFIRMED')).toHaveLength(0)
+
     await gotoReservations(page, teamSeriesSlug)
     await page.getByRole('tab', { name: '予約一覧' }).click()
 
