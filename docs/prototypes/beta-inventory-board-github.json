@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-09-14T22:18:02+00:00",
+  "synchronizedAt": "2026-09-14T22:24:36+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -251,7 +251,9 @@
       3270,
       3271
     ],
-    "CMP-099": [],
+    "CMP-099": [
+      2840
+    ],
     "CMP-058": [
       2846,
       2849,
@@ -2089,6 +2091,20 @@
       "title": "機能追加(FE): チーム／組織のオーナー譲渡 UI 導線を新設（CMP-051）",
       "url": "https://github.com/kenta-0420/mannschaft/pull/2839",
       "updatedAt": "2026-08-18T12:07:05Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "2840": {
+      "number": 2840,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "機能追加: 予定対象者・メンバー色・担当TODOカレンダー",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/2840",
+      "updatedAt": "2026-08-18T18:05:46Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
