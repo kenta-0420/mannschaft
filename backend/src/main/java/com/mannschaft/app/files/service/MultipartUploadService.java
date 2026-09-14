@@ -423,7 +423,8 @@ public class MultipartUploadService {
 
     private MultipartContentTarget resolveTarget(MultipartUploadSessionEntity session) {
         if (session.getR2Key().split("/", -1).length == 2) {
-            return genericTarget(session.getUploadId(), session.getUploaderId());
+            throw new ResponseStatusException(HttpStatus.GONE,
+                    "汎用 Multipart Upload セッションは廃止されました");
         }
         MultipartContentTarget target = targetRegistry.resolve(session.getR2Key(), session.getUploaderId());
         if (!target.scope().type().name().equals(session.getScopeType())

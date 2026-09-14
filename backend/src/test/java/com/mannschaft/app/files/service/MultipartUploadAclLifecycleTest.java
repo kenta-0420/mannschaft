@@ -1,6 +1,7 @@
 package com.mannschaft.app.files.service;
 
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.MultipartContentTarget;
 import com.mannschaft.app.common.storage.acl.MultipartContentTargetRegistry;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
@@ -66,9 +67,10 @@ class MultipartUploadAclLifecycleTest {
         when(sessions.findByUploadId("upload")).thenReturn(Optional.of(expired));
         when(sessions.findByUploadIdForUpdate("upload")).thenReturn(Optional.of(expired));
         assertThatThrownBy(() -> service.getPartUrls("upload", 1L,
-                new PartUrlRequest("files/v.mp4", List.of(1))))
+                new PartUrlRequest("blog/TEAM/1/v.mp4", List.of(1))))
                 .isInstanceOf(ResponseStatusException.class);
-        assertThatThrownBy(() -> service.completeUpload("upload", 1L, complete()))
+        assertThatThrownBy(() -> service.completeUpload("upload", 1L,
+                complete("blog/TEAM/1/v.mp4")))
                 .isInstanceOf(ResponseStatusException.class);
         verify(storage, never()).createPresignedPartUrls(anyString(), anyString(), anyList(), any());
         verify(storage, never()).completeMultipartUpload(anyString(), anyString(), anyList());
@@ -76,7 +78,7 @@ class MultipartUploadAclLifecycleTest {
 
     @Test
     void 廃止前に作成された汎用セッションもURL発行と完了を拒否する() {
-        MultipartUploadSessionEntity legacyGeneric = session();
+        MultipartUploadSessionEntity legacyGeneric = genericSession();
         when(sessions.findByUploadId("upload")).thenReturn(Optional.of(legacyGeneric));
         when(sessions.findByUploadIdForUpdate("upload")).thenReturn(Optional.of(legacyGeneric));
 
@@ -85,7 +87,7 @@ class MultipartUploadAclLifecycleTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode().value())
                 .isEqualTo(410);
-        assertThatThrownBy(() -> service.completeUpload("upload", 1L, complete()))
+        assertThatThrownBy(() -> service.completeUpload("upload", 1L, complete("files/v.mp4")))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode().value())
                 .isEqualTo(410);
@@ -97,19 +99,21 @@ class MultipartUploadAclLifecycleTest {
     @Test
     void 完了時に開始セッションへACLをclaimする() {
         when(sessions.findByUploadIdForUpdate("upload")).thenReturn(Optional.of(session()));
-        service.completeUpload("upload", 1L, complete());
-        verify(acl).claimPending("files/v.mp4", 1L, StorageAclScope.personal(1L),
-                new StorageAclContentReference("MULTIPART_UPLOAD", "upload"),
-                new StorageAclAttachmentBinding("MULTIPART_UPLOAD", "upload"));
+        when(targets.resolve("blog/TEAM/1/v.mp4", 1L)).thenReturn(target());
+        service.completeUpload("upload", 1L, complete("blog/TEAM/1/v.mp4"));
+        verify(acl).claimPending("blog/TEAM/1/v.mp4", 1L, StorageAclScope.team(1L),
+                new StorageAclContentReference("BLOG_MEDIA", "10"),
+                new StorageAclAttachmentBinding("BLOG_MEDIA_UPLOAD", "20"));
         verify(storage).completeMultipartUpload(anyString(), anyString(), anyList());
     }
 
     @Test
     void claim失敗ではR2を完成させない() {
         when(sessions.findByUploadIdForUpdate("upload")).thenReturn(Optional.of(session()));
+        when(targets.resolve("blog/TEAM/1/v.mp4", 1L)).thenReturn(target());
         doThrow(new IllegalStateException("claim failed")).when(acl)
                 .claimPending(anyString(), any(), any(), any(), any());
-        assertThatThrownBy(() -> service.completeUpload("upload", 1L, complete()))
+        assertThatThrownBy(() -> service.completeUpload("upload", 1L, complete("blog/TEAM/1/v.mp4")))
                 .isInstanceOf(IllegalStateException.class);
         verify(storage, never()).completeMultipartUpload(anyString(), anyString(), anyList());
         verify(sessions, never()).save(any());
@@ -118,22 +122,35 @@ class MultipartUploadAclLifecycleTest {
     @Test
     void R2完了後DB失敗の再試行は完成済みオブジェクトから復旧する() {
         when(sessions.findByUploadIdForUpdate("upload")).thenReturn(Optional.of(session()));
-        when(storage.objectExists("files/v.mp4")).thenReturn(true);
-        service.completeUpload("upload", 1L, complete());
+        when(targets.resolve("blog/TEAM/1/v.mp4", 1L)).thenReturn(target());
+        when(storage.objectExists("blog/TEAM/1/v.mp4")).thenReturn(true);
+        service.completeUpload("upload", 1L, complete("blog/TEAM/1/v.mp4"));
         verify(storage, never()).completeMultipartUpload(anyString(), anyString(), anyList());
         verify(acl).claimPending(anyString(), any(), any(), any(), any());
         verify(sessions).save(any());
     }
 
     private MultipartUploadSessionEntity session() {
-        return MultipartUploadSessionEntity.builder().uploadId("upload").r2Key("files/v.mp4")
-                .feature("files").scopeType("PERSONAL").scopeId(1L).uploaderId(1L)
+        return MultipartUploadSessionEntity.builder().uploadId("upload").r2Key("blog/TEAM/1/v.mp4")
+                .feature("blog").scopeType("TEAM").scopeId(1L).uploaderId(1L)
                 .contentType("video/mp4").status("IN_PROGRESS")
                 .expiresAt(LocalDateTime.now(clock).plusHours(1)).build();
     }
 
-    private CompleteMultipartRequest complete() {
-        return new CompleteMultipartRequest("files/v.mp4",
+    private MultipartUploadSessionEntity genericSession() {
+        return session().toBuilder().r2Key("files/v.mp4").feature("files")
+                .scopeType("PERSONAL").build();
+    }
+
+    private MultipartContentTarget target() {
+        return new MultipartContentTarget(
+                StorageAclScope.team(1L),
+                new StorageAclContentReference("BLOG_MEDIA", "10"),
+                new StorageAclAttachmentBinding("BLOG_MEDIA_UPLOAD", "20"));
+    }
+
+    private CompleteMultipartRequest complete(String fileKey) {
+        return new CompleteMultipartRequest(fileKey,
                 List.of(new CompleteMultipartRequest.PartEtag(1, "etag")));
     }
 }
