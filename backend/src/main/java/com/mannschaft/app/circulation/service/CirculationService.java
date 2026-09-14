@@ -701,7 +701,7 @@ public class CirculationService {
         document.decrementAttachmentCount();
         documentRepository.save(document);
         storageAclService.releaseClaimed(fileKey,
-                new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", attachment.getId().toString()));
+                new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", attachmentId.toString()));
 
         // R2 削除はコミット後イベントで行い、ロールバック時の実体だけの削除を防ぐ。
         if (fileKey != null && !fileKey.isBlank()) {

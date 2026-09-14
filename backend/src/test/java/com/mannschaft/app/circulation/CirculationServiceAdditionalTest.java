@@ -71,6 +71,7 @@ class CirculationServiceAdditionalTest {
 
     @Mock private StorageAccessService storageAccessService;
     @Mock private StorageAclService storageAclService;
+    @Mock private com.mannschaft.app.common.DomainEventPublisher domainEventPublisher;
     @Mock private AccessControlService accessControlService;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
