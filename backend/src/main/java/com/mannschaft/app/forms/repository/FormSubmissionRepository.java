@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -63,7 +64,8 @@ public interface FormSubmissionRepository extends JpaRepository<FormSubmissionEn
      * 同一提出物の派生 PDF 再生成を直列化するため、提出行を排他取得する。
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<FormSubmissionEntity> findByIdForUpdate(Long id);
+    @Query("SELECT s FROM FormSubmissionEntity s WHERE s.id = :id")
+    Optional<FormSubmissionEntity> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * テンプレートとユーザーの提出回数を取得する。
