@@ -10,6 +10,7 @@ import com.mannschaft.app.organization.dto.AncestorsResponse;
 import com.mannschaft.app.organization.dto.ChildOrganizationResponse;
 import com.mannschaft.app.organization.dto.ChildrenResponse;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.repository.OrganizationParentIdProjection;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
@@ -399,8 +400,8 @@ public class OrganizationHierarchyService {
      *       （近い経路で届くなら届く、が正しい）。</li>
      *   <li>{@code app.org.max-depth} を超える深さは辿らない。</li>
      *   <li>サイクルは訪問済み集合で検出し、その経路を打ち切る（無限ループしない）。</li>
-     *   <li>1 リクエスト内で親リンクをメモ化する（{@code parent_organization_id} には
-     *       キャッシュが無く、素朴に辿ると 1 ホップごとにクエリが飛ぶため）。</li>
+     *   <li>同じ深度にある組織の親リンクを一括取得するため、クエリ数は起点数ではなく
+     *       探索した深度にのみ比例する。</li>
      * </ul>
      *
      * @param startOrgIds 起点組織 ID 群（null/空なら空 Map）
@@ -410,30 +411,51 @@ public class OrganizationHierarchyService {
         if (startOrgIds == null || startOrgIds.isEmpty()) {
             return Map.of();
         }
-        // 1 リクエスト内メモ化。値が null の場合「親なし」を意味するため、
-        // containsKey で「未取得」と「親なし」を区別する。
-        Map<Long, Long> parentCache = new HashMap<>();
-        Map<Long, Integer> result = new HashMap<>();
-
+        Set<Long> normalizedStartOrgIds = new HashSet<>();
         for (Long startOrgId : startOrgIds) {
-            if (startOrgId == null) {
-                continue;
+            if (startOrgId != null) {
+                normalizedStartOrgIds.add(startOrgId);
             }
-            Set<Long> visited = new HashSet<>();
-            visited.add(startOrgId);
-            Long current = resolveParentId(startOrgId, parentCache);
-            int depth = 1;
-            while (current != null && depth <= maxDepth) {
-                if (!visited.add(current)) {
+        }
+        if (normalizedStartOrgIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Integer> result = new HashMap<>();
+        List<AncestorPath> paths = new ArrayList<>();
+        for (Long startOrgId : normalizedStartOrgIds) {
+            paths.add(new AncestorPath(startOrgId, startOrgId, Set.of(startOrgId)));
+        }
+
+        for (int depth = 1; depth <= maxDepth && !paths.isEmpty(); depth++) {
+            Set<Long> currentOrgIds = new HashSet<>();
+            for (AncestorPath path : paths) {
+                currentOrgIds.add(path.currentOrgId());
+            }
+            Map<Long, Long> parentIds = new HashMap<>();
+            for (OrganizationParentIdProjection projection
+                    : organizationRepository.findParentOrganizationIdProjectionsByIdIn(currentOrgIds)) {
+                parentIds.put(projection.getOrganizationId(), projection.getParentOrganizationId());
+            }
+
+            List<AncestorPath> nextPaths = new ArrayList<>();
+            for (AncestorPath path : paths) {
+                Long parentOrgId = parentIds.get(path.currentOrgId());
+                if (parentOrgId == null) {
+                    continue;
+                }
+                if (path.visitedOrgIds().contains(parentOrgId)) {
                     // サイクル検出 → この経路は打ち切る
                     log.warn("組織階層にサイクルを検出（配下配信の祖先展開）: startOrgId={}, cycleAt={}",
-                            startOrgId, current);
-                    break;
+                            path.startOrgId(), parentOrgId);
+                    continue;
                 }
-                result.merge(current, depth, Math::min);
-                current = resolveParentId(current, parentCache);
-                depth++;
+                result.merge(parentOrgId, depth, Math::min);
+                Set<Long> visitedOrgIds = new HashSet<>(path.visitedOrgIds());
+                visitedOrgIds.add(parentOrgId);
+                nextPaths.add(new AncestorPath(path.startOrgId(), parentOrgId, visitedOrgIds));
             }
+            paths = nextPaths;
         }
         return result;
     }
@@ -455,29 +477,27 @@ public class OrganizationHierarchyService {
         if (teamIds == null || teamIds.isEmpty()) {
             return List.of();
         }
-        Set<Long> anchors = new HashSet<>();
+        Set<Long> normalizedTeamIds = new HashSet<>();
         for (Long teamId : teamIds) {
-            if (teamId == null) {
-                continue;
+            if (teamId != null) {
+                normalizedTeamIds.add(teamId);
             }
-            for (TeamOrgMembershipEntity m : teamOrgMembershipRepository
-                    .findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE)) {
-                if (m.getOrganizationId() != null) {
-                    anchors.add(m.getOrganizationId());
-                }
+        }
+        if (normalizedTeamIds.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> anchors = new HashSet<>();
+        for (Long organizationId : teamOrgMembershipRepository
+                .findDistinctOrganizationIdsByTeamIdIn(normalizedTeamIds)) {
+            if (organizationId != null) {
+                anchors.add(organizationId);
             }
         }
         return List.copyOf(anchors);
     }
 
-    /** {@link #getAncestorOrgIdsWithDepth} 用: 親 ID をメモ化しつつ解決する。 */
-    private Long resolveParentId(Long orgId, Map<Long, Long> parentCache) {
-        if (parentCache.containsKey(orgId)) {
-            return parentCache.get(orgId);
-        }
-        Long parentId = organizationRepository.findParentOrganizationIdById(orgId).orElse(null);
-        parentCache.put(orgId, parentId);
-        return parentId;
+    /** 祖先展開中の起点ごとの経路状態。経路ごとの訪問済み集合でサイクルを打ち切る。 */
+    private record AncestorPath(Long startOrgId, Long currentOrgId, Set<Long> visitedOrgIds) {
     }
 
     private AncestorOrganizationResponse fullAncestor(OrganizationEntity org) {
