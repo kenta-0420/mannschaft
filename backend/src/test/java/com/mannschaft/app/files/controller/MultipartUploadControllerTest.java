@@ -1,5 +1,6 @@
 package com.mannschaft.app.files.controller;
 
+import com.mannschaft.app.files.dto.StartMultipartUploadRequest;
 import com.mannschaft.app.files.service.MultipartUploadService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +31,8 @@ class MultipartUploadControllerTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("1", null, List.of()));
 
-        var response = controller.startUpload();
+        var response = controller.startUpload(new StartMultipartUploadRequest(
+                null, "video.mp4", "video/mp4", 10_485_760L, 2, 5_242_880L, "blog/"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.GONE);
         verifyNoInteractions(service);
