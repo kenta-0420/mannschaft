@@ -34,6 +34,8 @@ const API_BASE = process.env.API_BASE_URL ?? 'http://127.0.0.1:8080'
 
 const TEST_EMAIL = 'e2e-user@test.mannschaft.local'
 const TEST_PASSWORD = 'TestPass2026!'
+const SUPPORTER_EMAIL = 'e2e-supporter@test.mannschaft.local'
+const SUPPORTER_PASSWORD = 'TestPass2026!'
 const OUTSIDER_EMAIL = process.env.TEST_OUTSIDER_EMAIL ?? 'e2e-outsider@test.mannschaft.local'
 const OUTSIDER_PASSWORD = process.env.TEST_OUTSIDER_PASSWORD ?? 'TestPass2026!'
 
@@ -604,304 +606,191 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
 // ---------------------------------------------------------------------------
 // フローC: 二段公開（AC-17, 18）
 // ---------------------------------------------------------------------------
-test.describe('フローC: 二段公開（AC-17, 18）', () => {
+
+test.describe('フローC: 二段公開（hard E2E）', () => {
+  test.describe.configure({ mode: 'serial' })
   test.setTimeout(180_000)
 
-  // e2e-userが所属するチームを取得するヘルパー
-  async function getOwnTeamId(page: Page): Promise<{ id: number; slug: string } | null> {
-    const res = await page.request.get(`${API_BASE}/api/v1/me/teams`)
-    if (!res.ok()) return null
-    const body = (await res.json()) as { data: Array<{ id: number; name: string; slug: string }> }
-    const teams = body.data
-    if (!teams || teams.length === 0) return null
-    // fc-u-18 優先
-    const fcU18 = teams.find((t) => t.slug === 'fc-u-18')
-    return fcU18 ?? teams[0] ?? null
+  async function teamOf(page: Page): Promise<{ id: number; slug: string }> {
+    const response = await page.request.get(API_BASE + '/api/v1/me/teams')
+    expect(response.status()).toBe(200)
+    const teams = ((await response.json()) as { data: Array<{ id: number; slug: string }> }).data
+    const team = teams.find((value) => value.slug === 'fc-u-18') ?? teams[0]
+    if (!team) throw new Error('E2E_USER の所属チームが存在しない')
+    return team
   }
 
-  test('C-1: 活動記録をDRAFTで作成し、一覧でDRAFTバッジを確認し、publishでPUBLISHEDになる（API + UI）', async ({
-    page,
-  }) => {
+  async function tokenOf(email: string, password: string): Promise<string> {
+    const api = await pwRequest.newContext()
+    try {
+      const response = await api.post(API_BASE + '/api/v1/auth/login', { data: { email, password } })
+      expect(response.status(), email + ' のログイン').toBe(200)
+      return ((await response.json()) as { data: { accessToken: string } }).data.accessToken
+    } finally {
+      await api.dispose()
+    }
+  }
+
+  async function pickTodayForActivity(page: Page): Promise<void> {
+    await page.getByTestId('activity-date-input').locator('input').click()
+    const panel = page.locator('.p-datepicker-panel')
+    await expect(panel).toBeVisible()
+    const today = String(new Date().getDate())
+    await panel
+      .locator('span:not(.p-disabled)', { hasText: new RegExp(`^${today}$`) })
+      .first()
+      .click()
+    await expect(panel).toBeHidden()
+  }
+
+  async function assertPublishBoundary(
+    page: Page,
+    path: string,
+    readDraft: () => Promise<void>,
+  ): Promise<void> {
+    const api = await pwRequest.newContext()
+    try {
+      expect((await api.post(API_BASE + path)).status(), '未認証 publish').toBe(401)
+      const boundaryUsers: Array<readonly [string, string]> = [
+        [SUPPORTER_EMAIL, SUPPORTER_PASSWORD],
+        [OUTSIDER_EMAIL, OUTSIDER_PASSWORD],
+      ]
+      for (const [email, password] of boundaryUsers) {
+        const token = await tokenOf(email, password)
+        expect(
+          (await api.post(API_BASE + path, { headers: { Authorization: 'Bearer ' + token } })).status(),
+          email + ' による別作者 publish',
+        ).toBe(403)
+        await readDraft()
+      }
+    } finally {
+      await api.dispose()
+    }
+  }
+
+  test('C-1: 活動記録をUIでDRAFT保存し、UI公開後にPUBLISHEDが永続化される', async ({ page }) => {
     await setupApiBridge(page)
     await loginViaApi(page)
+    const team = await teamOf(page)
+    let activityId: number | null = null
+    try {
+      await page.goto(BASE_URL + '/teams/' + team.slug + '/activities', { waitUntil: 'domcontentloaded' })
+      await waitForHydration(page)
+      await page.getByTestId('activity-add-record').click()
+      const dialog = page.getByTestId('activity-create-dialog')
+      await expect(dialog).toBeVisible({ timeout: 15_000 })
+      await expect(dialog.getByTestId('activity-no-templates')).toHaveCount(0)
+      const title = 'E2E Activity UI Draft ' + Date.now()
+      await dialog.getByTestId('activity-title-input').fill(title)
+      await pickTodayForActivity(page)
+      const saveDraftButton = page.getByTestId('activity-save-draft')
+      await expect(saveDraftButton).toBeEnabled()
+      const [draft] = await Promise.all([
+        page.waitForResponse((response) => response.url().includes('/activities/draft') && response.request().method() === 'POST'),
+        saveDraftButton.click(),
+      ])
+      expect(draft.status(), 'UI DRAFT保存').toBe(201)
+      const body = (await draft.json()) as { data: { id: number; status: string } }
+      activityId = body.data.id
+      expect(body.data.status).toBe('DRAFT')
+      await expect(dialog).not.toBeVisible({ timeout: 15_000 })
+      await expect(page.getByText(title)).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByTestId('activity-status-' + activityId)).toHaveText(/下書き|DRAFT/)
 
-    // ---- Step 1: チームを取得 ----
-    const team = await getOwnTeamId(page)
-    if (!team) {
-      test.skip(true, '所属チームが見つからないためスキップ')
-      return
+      await assertPublishBoundary(page, '/api/v1/activities/' + activityId + '/publish', async () => {
+        const response = await page.request.get(API_BASE + '/api/v1/activities/' + activityId)
+        expect(response.status()).toBe(200)
+        expect(((await response.json()) as { data: { status: string } }).data.status).toBe('DRAFT')
+      })
+      const [published] = await Promise.all([
+        page.waitForResponse((response) => response.url().includes('/activities/' + activityId + '/publish') && response.request().method() === 'POST'),
+        page.getByTestId('activity-publish-' + activityId).click(),
+      ])
+      expect(published.status(), '活動記録 UI公開').toBe(200)
+      const readback = await page.request.get(API_BASE + '/api/v1/activities/' + activityId)
+      expect(readback.status()).toBe(200)
+      expect(((await readback.json()) as { data: { status: string } }).data.status).toBe('PUBLISHED')
+    } finally {
+      if (activityId !== null) {
+        const cleanup = await page.request.delete(API_BASE + '/api/v1/activities/' + activityId)
+        expect(cleanup.status(), '活動記録 cleanup').toBe(204)
+      }
     }
-    console.log(`[C-1] 使用チーム: id=${team.id}, slug=${team.slug}`)
-
-    // ---- Step 2: DRAFT として活動記録を作成（API）----
-    const timestamp = Date.now()
-    const activityTitle = `E2E DRAFT 活動 ${timestamp}`
-    const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
-
-    const draftRes = await page.request.post(
-      `${API_BASE}/api/v1/activities/draft?scope_type=TEAM&scope_id=${team.id}`,
-      {
-        data: {
-          title: activityTitle,
-          activityDate: today,
-        },
-      },
-    )
-    console.log(`[C-1] DRAFT作成レスポンス: ${draftRes.status()}`)
-
-    if (!draftRes.ok()) {
-      const errBody = await draftRes.text()
-      console.log(`[C-1] DRAFT作成エラー: ${errBody}`)
-      expect(draftRes.status()).toBe(201)
-      return
-    }
-
-    const draftBody = (await draftRes.json()) as { data: { id: number; status: string } }
-    const activityId = draftBody.data.id
-    const initialStatus = draftBody.data.status
-    console.log(`[C-1] DRAFT作成成功: id=${activityId}, status=${initialStatus}`)
-    expect(initialStatus).toBe('DRAFT')
-
-    // ---- Step 3: 活動記録一覧ページでDRAFTバッジを確認 ----
-    await page.goto(`${BASE_URL}/teams/${team.slug}/activities`, { waitUntil: 'domcontentloaded' })
-    await waitForHydration(page)
-    await page
-      .locator('.pi-spin')
-      .waitFor({ state: 'detached', timeout: 20_000 })
-      .catch(() => {})
-
-    // DRAFTバッジを含む要素を探す（活動記録コンポーネントの実装による）
-    // 活動タイトルが表示されているか確認
-    const activityItem = page.getByText(activityTitle).first()
-    const activityVisible = await activityItem.isVisible({ timeout: 15_000 }).catch(() => false)
-    console.log(`[C-1] 活動一覧に表示: ${activityVisible}`)
-
-    if (activityVisible) {
-      // DRAFTバッジを探す（テキスト「下書き」「DRAFT」またはバッジ要素）
-      const draftBadge = page
-        .locator(
-          'text=下書き, text=DRAFT, [data-testid*="draft"], .badge:has-text("下書き"), [class*="badge"]:has-text("DRAFT")',
-        )
-        .first()
-      const hasDraftBadge = await draftBadge.isVisible({ timeout: 5_000 }).catch(() => false)
-      console.log(`[C-1] DRAFTバッジ表示: ${hasDraftBadge}`)
-    }
-
-    // ---- Step 4: publish EP を叩いてPUBLISHEDに遷移 ----
-    const publishRes = await page.request.post(
-      `${API_BASE}/api/v1/activities/${activityId}/publish`,
-    )
-    console.log(`[C-1] publish レスポンス: ${publishRes.status()}`)
-    expect([200, 201]).toContain(publishRes.status())
-
-    if (publishRes.ok()) {
-      const publishBody = (await publishRes.json()) as { data: { id: number; status: string } }
-      const publishedStatus = publishBody.data.status
-      console.log(`[C-1] publish後のstatus: ${publishedStatus}`)
-      expect(publishedStatus).toBe('PUBLISHED')
-      console.log('[C-1] ✅ DRAFT→PUBLISHED遷移を確認（API）')
-    }
-
-    // ---- Step 5: 実DB確認 - GET /activities/{id} で status が PUBLISHED か ----
-    const getAfterPublish = await page.request.get(`${API_BASE}/api/v1/activities/${activityId}`)
-    console.log(`[C-1] publish後GET: ${getAfterPublish.status()}`)
-    if (getAfterPublish.ok()) {
-      const afterBody = (await getAfterPublish.json()) as { data: { status: string } }
-      console.log(`[C-1] DB確認 status: ${afterBody.data.status}`)
-      expect(afterBody.data.status).toBe('PUBLISHED')
-      console.log('[C-1] ✅ 実APIで status=PUBLISHED を確認（実DB裏取り済み）')
-    }
-
-    // クリーンアップ
-    await page.request.delete(`${API_BASE}/api/v1/activities/${activityId}`).catch(() => {})
   })
 
-  test('C-2: 活動記録ページのUI - DRAFT作成ボタンが存在しクリックできる（UIフロー）', async ({
-    page,
-  }) => {
+  test('C-2: アンケートをUIでDRAFT保存し、設問追加・UI公開後にPUBLISHEDが永続化される', async ({ page }) => {
     await setupApiBridge(page)
     await loginViaApi(page)
+    const team = await teamOf(page)
+    let surveyId: number | null = null
+    try {
+      await page.goto(BASE_URL + '/teams/' + team.slug + '/surveys', { waitUntil: 'domcontentloaded' })
+      await waitForHydration(page)
+      await page.getByTestId('survey-create-button').click()
+      const dialog = page.getByTestId('survey-create-dialog')
+      await expect(dialog).toBeVisible({ timeout: 15_000 })
+      const title = 'E2E Survey UI Draft ' + Date.now()
+      await dialog.getByTestId('survey-create-title').fill(title)
+      const [draft] = await Promise.all([
+        page.waitForResponse((response) => response.url().includes('/surveys') && response.request().method() === 'POST'),
+        page.getByTestId('survey-create-save-draft').click(),
+      ])
+      expect(draft.status(), 'UIアンケートDRAFT保存').toBe(201)
+      surveyId = ((await draft.json()) as { data: { id: number } }).data.id
+      await expect(page.getByTestId('survey-item-' + surveyId)).toContainText(title, {
+        timeout: 15_000,
+      })
+      await expect(page.getByTestId('survey-item-status-' + surveyId)).toHaveText(/下書き|DRAFT/)
 
-    const team = await getOwnTeamId(page)
-    if (!team) {
-      test.skip(true, '所属チームが見つからないためスキップ')
-      return
-    }
+      // ADHD傾向×中断: 下書き保存後にページを離脱・再読込しても続きが見つかる。
+      await page.reload({ waitUntil: 'domcontentloaded' })
+      await waitForHydration(page)
+      await expect(page.getByTestId('survey-item-' + surveyId)).toContainText(title, {
+        timeout: 15_000,
+      })
+      await expect(page.getByTestId('survey-item-status-' + surveyId)).toHaveText(/下書き|DRAFT/)
 
-    await page.goto(`${BASE_URL}/teams/${team.slug}/activities`, { waitUntil: 'domcontentloaded' })
-    await waitForHydration(page)
-    // PageLoading コンポーネント (p-progressspinner) が消えるまで待機
-    await page
-      .locator('.p-progressspinner')
-      .waitFor({ state: 'detached', timeout: 30_000 })
-      .catch(() => {})
-    await page
-      .locator('.pi-spin')
-      .waitFor({ state: 'detached', timeout: 5_000 })
-      .catch(() => {})
-
-    // 活動記録の作成ボタン（ActivityCreateDialog を開くボタン）を探す
-    // activities.vue: data-testid="activity-add-record" で v-if="isMember" 条件付き表示
-    // isMember は useRoleAccess.loadPermissions() が完了してから確定するため、
-    // PageLoading 消滅後もロール取得に数秒かかることがある → 15秒まで待つ
-    const createBtn = page.locator('[data-testid="activity-add-record"]')
-    await createBtn.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {})
-    const hasBtnVisible = await createBtn.isVisible({ timeout: 2_000 }).catch(() => false)
-    console.log(`[C-2] 活動記録作成ボタン表示: ${hasBtnVisible}`)
-
-    if (!hasBtnVisible) {
-      // isMember が false（権限不足）の可能性を診断
-      // 実際のEPは /api/v1/teams/{slug}/me/permissions
-      const roleRes = await page.request.get(`${API_BASE}/api/v1/teams/${team.slug}/me/permissions`)
-      console.log(`[C-2] ロール取得: ${roleRes.status()}`)
-      if (roleRes.ok()) {
-        const roleBody = (await roleRes.json()) as { data?: { roleName?: string } }
-        console.log(`[C-2] ロール: ${JSON.stringify(roleBody.data)}`)
+      await assertPublishBoundary(page, '/api/v1/teams/' + team.slug + '/surveys/' + surveyId + '/publish', async () => {
+        const response = await page.request.get(API_BASE + '/api/v1/teams/' + team.slug + '/surveys/' + surveyId)
+        expect(response.status()).toBe(200)
+        expect(((await response.json()) as { data: { status: string } }).data.status).toBe('DRAFT')
+      })
+      await page.getByTestId('survey-item-edit-draft-' + surveyId).click()
+      await expect(page.getByTestId('survey-question-editor')).toBeVisible({ timeout: 15_000 })
+      await page.getByTestId('question-add').click()
+      await page.getByTestId('question-text-0').fill('E2E publish question')
+      await page.getByTestId('question-option-0-0').fill('選択肢A')
+      await page.getByTestId('question-option-0-1').fill('選択肢B')
+      const [questionAdded, published] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/surveys/' + surveyId + '/questions') &&
+            response.request().method() === 'POST',
+        ),
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/surveys/' + surveyId + '/publish') &&
+            response.request().method() === 'POST',
+        ),
+        page.getByTestId('survey-publish-with-questions-button').click(),
+      ])
+      expect(questionAdded.status(), 'アンケート設問追加').toBe(201)
+      expect(published.status(), 'アンケート UI公開').toBe(200)
+      const readback = await page.request.get(API_BASE + '/api/v1/teams/' + team.slug + '/surveys/' + surveyId)
+      expect(readback.status()).toBe(200)
+      const persisted = (await readback.json()) as {
+        data: { status: string; questions: Array<{ content: { questionText: string } }> }
       }
-      test.skip(
-        true,
-        `活動記録作成ボタン(activity-add-record)が見つからない。isMember=false(権限不足)かFE未最新化の可能性`,
-      )
-      return
-    }
-
-    await createBtn.click()
-
-    // ActivityCreateDialog が開くことを確認
-    const dialog = page.locator('.p-dialog, [role="dialog"]').first()
-    const dialogVisible = await dialog.isVisible({ timeout: 10_000 }).catch(() => false)
-    console.log(`[C-2] ActivityCreateDialog 表示: ${dialogVisible}`)
-
-    if (dialogVisible) {
-      // ダイアログ内のローディングが完了するまで待機
-      // ActivityCreateDialog は open 時に loadTemplates() を呼ぶ（非同期）
-      // PageLoading コンポーネントが消えるまで待ってからフォームを確認する
-      await dialog
-        .locator('.p-progressspinner')
-        .waitFor({ state: 'detached', timeout: 15_000 })
-        .catch(() => {})
-
-      // テンプレートが0件の場合はフォームが表示されない → スキップ
-      const noTemplates = dialog.locator('[data-testid="activity-no-templates"]')
-      const hasNoTemplates = await noTemplates.isVisible({ timeout: 3_000 }).catch(() => false)
-      if (hasNoTemplates) {
-        console.log('[C-2] テンプレートが0件のためフォームが非表示。C-1（APIフロー）で代替確認済み')
-        await page.keyboard.press('Escape')
-        // テンプレートなしでもダイアログが開くことは確認済み → テスト合格とする
-        expect(page.url()).not.toContain('/error')
-        return
-      }
-
-      // ダイアログ内に「下書き保存」ボタンが存在するか確認
-      // ActivityCreateDialog.vue: data-testid="activity-save-draft"
-      const draftBtn = dialog.locator('[data-testid="activity-save-draft"]').first()
-      const hasDraftBtn = await draftBtn.isVisible({ timeout: 5_000 }).catch(() => false)
-      console.log(`[C-2] 下書きボタン表示: ${hasDraftBtn}`)
-
-      // タイトル入力欄を確認
-      // ActivityCreateDialog.vue: data-testid="activity-title-input"
-      const titleInput = dialog.locator('[data-testid="activity-title-input"]').first()
-      const hasTitleInput = await titleInput.isVisible({ timeout: 5_000 }).catch(() => false)
-      console.log(`[C-2] タイトル入力欄表示: ${hasTitleInput}`)
-
-      if (hasTitleInput && hasDraftBtn) {
-        const timestamp = Date.now()
-        const draftTitle = `E2E UI下書き ${timestamp}`
-        await titleInput.fill(draftTitle)
-
-        // 活動日を入力（canSaveDraft はタイトル+活動日の両方が必須）
-        // DatePicker の中の input 要素を直接 fill する
-        const dateInput = dialog
-          .locator('[data-testid="activity-date-input"] input, [data-testid="activity-date-input"]')
-          .first()
-        // PrimeVue DatePicker は yy/mm/dd フォーマット: 2026/07/07
-        const todayYMD = new Date().toISOString().slice(0, 10).replace(/-/g, '/')
-        await dateInput.fill(todayYMD).catch(async () => {
-          // fill が効かない場合は press キー入力で試みる
-          await dateInput.click()
-          await page.keyboard.type(todayYMD)
-        })
-        await page.keyboard.press('Escape') // DatePicker ドロップダウンを閉じる
-        await page.waitForTimeout(300) // canSaveDraft の reactive 更新を待つ
-
-        // 下書きボタンが有効化されることを確認（canSaveDraft=true になるまで待つ）
-        await draftBtn.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {})
-        const isDraftBtnEnabled = await draftBtn.isEnabled({ timeout: 5_000 }).catch(() => false)
-        console.log(`[C-2] 下書きボタン有効: ${isDraftBtnEnabled}`)
-
-        // 下書き保存をクリック
-        const [draftApiRes] = await Promise.all([
-          page
-            .waitForResponse(
-              (res) => res.url().includes('/activities') && res.request().method() === 'POST',
-              { timeout: 15_000 },
-            )
-            .catch(() => null),
-          isDraftBtnEnabled ? draftBtn.click() : draftBtn.click({ force: true }),
-        ])
-
-        if (draftApiRes) {
-          console.log(`[C-2] 下書きAPI レスポンス: ${draftApiRes.status()}`)
-          // DRAFT作成 EP は 201 を返す
-          const draftApiStatus = draftApiRes.status()
-          console.log(`[C-2] 下書き保存成功: ${draftApiStatus}`)
-
-          // ページ遷移前に response body を消費する（遷移後は無効になる）
-          let createdId: number | undefined
-          if (draftApiRes.ok()) {
-            const resBody = (await draftApiRes.json().catch(() => null)) as {
-              data?: { id?: number }
-            } | null
-            createdId = resBody?.data?.id
-          }
-
-          // ダイアログが閉じることを確認（createDraftActivity → visible=false → emit('created') → load()）
-          await expect(dialog)
-            .not.toBeVisible({ timeout: 10_000 })
-            .catch(() => {})
-
-          // ダイアログが閉じた後、一覧ページが再読み込みされて活動が表示されるまで待つ
-          // page.goto は不要（すでに /activities ページにいる）
-          await page
-            .locator('.p-progressspinner')
-            .waitFor({ state: 'detached', timeout: 20_000 })
-            .catch(() => {})
-          await page.waitForTimeout(500) // SPA 再読み込みの遅延を吸収
-
-          const actItem = page.getByText(draftTitle).first()
-          const isVisible = await actItem.isVisible({ timeout: 10_000 }).catch(() => false)
-          console.log(`[C-2] 一覧にDRAFT活動表示: ${isVisible}`)
-
-          if (isVisible) {
-            console.log('[C-2] ✅ UIフローからDRAFT作成→一覧表示を確認')
-          } else {
-            // 表示されない場合も API が 201 を返した（DRAFT作成は成功）のでテスト目的は達成
-            console.log(
-              '[C-2] 注意: 一覧表示は確認できなかったが、API で DRAFT 作成(201)を確認済み',
-            )
-          }
-
-          // クリーンアップ: 作成したDRAFT活動を削除
-          if (createdId) {
-            await page.request.delete(`${API_BASE}/api/v1/activities/${createdId}`).catch(() => {})
-          }
-        }
-      } else {
-        console.log('[C-2] 注意: ダイアログ内に下書きボタンまたはタイトル入力が見つからない')
-      }
-
-      // クリーンアップ: ダイアログを閉じる
-      const closeBtn = dialog
-        .locator('button:has-text("キャンセル"), button:has-text("閉じる")')
-        .first()
-      if (await closeBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-        await closeBtn.click()
-      } else {
-        await page.keyboard.press('Escape')
+      expect(persisted.data.status).toBe('PUBLISHED')
+      expect(persisted.data.questions).toHaveLength(1)
+      expect(persisted.data.questions[0]?.content.questionText).toBe('E2E publish question')
+    } finally {
+      if (surveyId !== null) {
+        const cleanup = await page.request.delete(
+          API_BASE + '/api/v1/teams/' + team.slug + '/surveys/' + surveyId,
+        )
+        expect(cleanup.status(), 'アンケート cleanup').toBe(204)
       }
     }
-
-    // URL がエラーページでないことを確認
-    expect(page.url()).not.toContain('/error')
   })
 })
