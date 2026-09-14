@@ -10,6 +10,7 @@ import {
   test,
   type APIRequestContext,
   type APIResponse,
+  type Dialog,
   type Page,
 } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
@@ -177,19 +178,30 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
+  const cleanupErrors: unknown[] = []
   try {
     if (targetTeam?.slug) {
-      adminLogin = await login(adminApi, ADMIN)
-      const response = await adminApi.delete(`/api/v1/teams/${targetTeam.slug}`, {
-        headers: authorization(adminLogin),
-      })
-      expect(response.status(), `使い捨てチーム ${targetTeam.slug} の後始末`).toBe(204)
+      try {
+        adminLogin = await login(adminApi, ADMIN)
+        const response = await adminApi.delete(`/api/v1/teams/${targetTeam.slug}`, {
+          headers: authorization(adminLogin),
+        })
+        expect(response.status(), `使い捨てチーム ${targetTeam.slug} の後始末`).toBe(204)
+      }
+      catch (error) {
+        cleanupErrors.push(error)
+      }
     }
     if (outsiderTeam?.slug) {
-      const response = await outsiderApi.delete(`/api/v1/teams/${outsiderTeam.slug}`, {
-        headers: authorization(outsiderLogin),
-      })
-      expect(response.status(), `使い捨てチーム ${outsiderTeam.slug} の後始末`).toBe(204)
+      try {
+        const response = await outsiderApi.delete(`/api/v1/teams/${outsiderTeam.slug}`, {
+          headers: authorization(outsiderLogin),
+        })
+        expect(response.status(), `使い捨てチーム ${outsiderTeam.slug} の後始末`).toBe(204)
+      }
+      catch (error) {
+        cleanupErrors.push(error)
+      }
     }
   }
   finally {
@@ -199,6 +211,9 @@ test.afterAll(async () => {
       outsiderApi?.dispose(),
       unauthenticatedApi?.dispose(),
     ])
+  }
+  if (cleanupErrors.length > 0) {
+    throw new AggregateError(cleanupErrors, 'CMP-005 Wave4 のテストデータ後始末に失敗しました')
   }
 })
 
@@ -236,7 +251,12 @@ test('CONFIRM-REAL-001: プロジェクト削除は取消で不変、連打で�
   await page.reload()
   await expect(page.getByText(targetProject.title).first(), '再読込後もプロジェクトを表示').toBeVisible()
 
-  page.once('dialog', dialog => dialog.accept())
+  let acceptedDeleteDialogs = 0
+  const acceptDeleteDialogs = async (dialog: Dialog) => {
+    acceptedDeleteDialogs += 1
+    await dialog.accept()
+  }
+  page.on('dialog', acceptDeleteDialogs)
   const deleteResponse = page.waitForResponse(response =>
     response.request().method() === 'DELETE' && new URL(response.url()).pathname === path,
   )
@@ -245,6 +265,8 @@ test('CONFIRM-REAL-001: プロジェクト削除は取消で不変、連打で�
     buttonElement.click()
     buttonElement.click()
   })
+  page.off('dialog', acceptDeleteDialogs)
+  expect(acceptedDeleteDialogs, '連打してもプロジェクト削除確認は一回').toBe(1)
   expect((await deleteResponse).status(), 'UIからのプロジェクト削除').toBe(204)
   await expect(page.getByTestId(`team-project-delete-${targetProject.id}`)).toHaveCount(0)
   expect(deletes.value(), '連打してもプロジェクトDELETEは一回').toBe(1)
@@ -277,7 +299,12 @@ test('CONFIRM-REAL-002: メンバー除名は取消で不変、連打でもDELET
   await page.reload()
   await expect(page.getByText(memberDisplayName).first(), '再読込後もメンバーを表示').toBeVisible()
 
-  page.once('dialog', dialog => dialog.accept())
+  let acceptedRemoveDialogs = 0
+  const acceptRemoveDialogs = async (dialog: Dialog) => {
+    acceptedRemoveDialogs += 1
+    await dialog.accept()
+  }
+  page.on('dialog', acceptRemoveDialogs)
   const deleteResponse = page.waitForResponse(response =>
     response.request().method() === 'DELETE' && new URL(response.url()).pathname === path,
   )
@@ -286,6 +313,8 @@ test('CONFIRM-REAL-002: メンバー除名は取消で不変、連打でもDELET
     buttonElement.click()
     buttonElement.click()
   })
+  page.off('dialog', acceptRemoveDialogs)
+  expect(acceptedRemoveDialogs, '連打してもメンバー除名確認は一回').toBe(1)
   expect((await deleteResponse).status(), 'UIからのメンバー除名').toBe(204)
   await expect(page.getByTestId(`member-remove-${memberLogin.userId}`)).toHaveCount(0)
   expect(deletes.value(), '連打してもメンバーDELETEは一回').toBe(1)
