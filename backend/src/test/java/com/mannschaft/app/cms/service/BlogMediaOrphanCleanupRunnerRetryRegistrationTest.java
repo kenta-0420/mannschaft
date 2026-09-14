@@ -89,9 +89,45 @@ class BlogMediaOrphanCleanupRunnerRetryRegistrationTest {
                 .build();
     }
 
+    private BlogMediaUploadEntity buildUnconfirmedImage(long fileSize) {
+        return BlogMediaUploadEntity.builder()
+                .uploaderId(1L)
+                .mediaType("IMAGE")
+                .s3Key(S3_KEY)
+                .fileSize(fileSize)
+                .contentType("image/jpeg")
+                .processingStatus("UPLOADING")
+                .build();
+    }
+
     @Nested
     @DisplayName("cleanupOne - R2削除失敗時のリトライ登録")
     class RegisterRetryOnFailure {
+
+        @Test
+        @DisplayName("未完了画像は削除しても未計上の使用量を減算しない")
+        void unconfirmedImageDoesNotDecrementUnrecordedUsage() {
+            BlogMediaUploadEntity orphan = buildUnconfirmedImage(2048L);
+            given(blogMediaUploadRepository.deleteUnconfirmedImageById(any())).willReturn(1);
+
+            runner.cleanupOne(orphan, scopeResolver);
+
+            then(r2StorageService).should().delete(S3_KEY);
+            then(storageQuotaService).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("完了処理が先にREADY化した未完了画像はR2から削除しない")
+        void completedUnconfirmedImageIsNotDeleted() {
+            BlogMediaUploadEntity orphan = buildUnconfirmedImage(2048L);
+            given(blogMediaUploadRepository.deleteUnconfirmedImageById(any())).willReturn(0);
+
+            BlogMediaOrphanCleanupRunner.OrphanCleanupResult result =
+                    runner.cleanupOne(orphan, scopeResolver);
+
+            assertThat(result.claimed()).isFalse();
+            then(r2StorageService).shouldHaveNoInteractions();
+        }
 
         @Test
         @DisplayName("AC1: R2削除に失敗するとリトライ行がPENDINGで登録される")
