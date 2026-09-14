@@ -14,6 +14,8 @@ import com.mannschaft.app.circulation.service.CirculationExportService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -65,6 +67,9 @@ class CirculationExportServiceTest {
     private StorageService storageService;
 
     @Mock
+    private StorageAccessService storageAccessService;
+
+    @Mock
     private CirculationExportAsyncExecutor asyncExecutor;
 
     @Mock
@@ -101,7 +106,7 @@ class CirculationExportServiceTest {
         ReflectionTestUtils.setField(entity, "exportCompletedAt", LocalDateTime.now().minusHours(1));
 
         given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
-        given(storageService.generateDownloadUrl(eq("circulation/exports/100/key.pdf"), any(Duration.class)))
+        given(storageAccessService.generateDownloadUrl(eq("circulation/exports/100/key.pdf"), any(), any(), any(), any(Duration.class)))
                 .willReturn("https://r2.example.com/signed-url");
 
         Object result = exportService.requestExport(DOCUMENT_ID, CREATOR_ID);
@@ -174,7 +179,7 @@ class CirculationExportServiceTest {
         ReflectionTestUtils.setField(entity, "exportCompletedAt", LocalDateTime.now());
 
         given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
-        given(storageService.generateDownloadUrl(anyString(), any(Duration.class)))
+        given(storageAccessService.generateDownloadUrl(anyString(), any(), any(), any(), any(Duration.class)))
                 .willReturn("https://r2.example.com/signed");
 
         ExportStatusResponse resp = exportService.getExportStatus(DOCUMENT_ID, CREATOR_ID);
@@ -255,6 +260,9 @@ class CirculationExportServiceTest {
         private StorageService storageService;
 
         @Mock
+        private StorageAclService storageAclService;
+
+        @Mock
         private UserRepository userRepository;
 
         @Mock
@@ -283,6 +291,9 @@ class CirculationExportServiceTest {
             asyncExecutor.generateAsync(DOCUMENT_ID);
 
             verify(storageService, times(1)).upload(anyString(), any(byte[].class), eq("application/pdf"));
+            verify(storageAclService).registerPending(anyString(), eq(CREATOR_ID), any(),
+                    eq("CIRCULATION_EXPORT_PDF"), any(Duration.class), any());
+            verify(storageAclService).claimPending(anyString(), eq(CREATOR_ID), any(), any(), any());
             assertThat(entity.getExportStatus()).isEqualTo(CirculationExportStatus.COMPLETED);
             assertThat(entity.getExportFileKey()).startsWith("circulation/exports/100/");
             assertThat(entity.getExportCompletedAt()).isNotNull();

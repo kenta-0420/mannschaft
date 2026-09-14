@@ -1,6 +1,11 @@
 package com.mannschaft.app.match;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.match.domain.HomeAway;
 import com.mannschaft.app.match.domain.MatchEventType;
 import com.mannschaft.app.match.domain.MatchKind;
@@ -31,9 +36,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,6 +48,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -137,6 +146,12 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private MatchAttachmentRepository matchAttachmentRepository;
 
+    @Autowired
+    private StorageAclService storageAclService;
+
+    @MockitoBean
+    private R2StorageService storageService;
+
     @PersistenceContext
     private EntityManager em;
 
@@ -184,6 +199,8 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        given(storageService.generateDownloadUrl(any(), any()))
+                .willAnswer(invocation -> "https://storage.test.invalid/download/" + invocation.getArgument(0));
         orgAId = insertOrganization("MATCHAUTHZ 組織A");
         orgBId = insertOrganization("MATCHAUTHZ 組織B");
 
@@ -1083,14 +1100,23 @@ class MatchScopeContractIT extends AbstractMySqlIntegrationTest {
 
     /** 指定試合に局面写真添付を 1 件作る。 */
     private UUID insertAttachment(UUID matchId, Long createdBy, String fileKey) {
-        return matchAttachmentRepository.save(MatchAttachmentEntity.builder()
+        MatchAttachmentEntity attachment = matchAttachmentRepository.save(MatchAttachmentEntity.builder()
                 .matchId(matchId)
                 .fileKey(fileKey)
                 .originalFilename("position.png")
                 .contentType("image/png")
                 .fileSize(1024L)
                 .createdBy(createdBy)
-                .build()).getId();
+                .build());
+        Long organizationId = matchRepository.findById(matchId).orElseThrow().getOrganizationId();
+        StorageAclScope scope = StorageAclScope.organization(organizationId);
+        StorageAclContentReference parent =
+                new StorageAclContentReference("MATCH", matchId.toString());
+        storageAclService.registerPending(
+                fileKey, createdBy, scope, "image/png", Duration.ofMinutes(15), parent);
+        storageAclService.claimPending(fileKey, createdBy, scope, parent,
+                new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attachment.getId().toString()));
+        return attachment.getId();
     }
 
     private Long insertUser(String email) {

@@ -2,15 +2,21 @@ package com.mannschaft.app.filesharing;
 
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.entity.StoragePlanEntity;
 import com.mannschaft.app.common.storage.quota.repository.StoragePlanRepository;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
 import com.mannschaft.app.filesharing.entity.SharedFileLinkEntity;
 import com.mannschaft.app.filesharing.entity.SharedFileStarEntity;
+import com.mannschaft.app.filesharing.entity.SharedFileVersionEntity;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileLinkRepository;
 import com.mannschaft.app.filesharing.repository.SharedFileRepository;
 import com.mannschaft.app.filesharing.repository.SharedFileStarRepository;
+import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
 import com.mannschaft.app.filesharing.repository.SharedFolderRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -38,6 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -110,6 +117,12 @@ class FileSharingAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private SharedFileRepository fileRepository;
+
+    @Autowired
+    private SharedFileVersionRepository versionRepository;
+
+    @Autowired
+    private StorageAclService storageAclService;
 
     @Autowired
     private SharedFileStarRepository starRepository;
@@ -843,10 +856,11 @@ class FileSharingAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long saveFile(Long folderId, String name, Long createdBy, FileVisibilityRole minVisibleRole) {
+        String fileKey = "files/test/" + UUID.randomUUID() + ".txt";
         SharedFileEntity.SharedFileEntityBuilder<?, ?> builder = SharedFileEntity.builder()
                 .folderId(folderId)
                 .name(name)
-                .fileKey("files/test/" + UUID.randomUUID() + ".txt")
+                .fileKey(fileKey)
                 .fileSize(1024L)
                 .contentType("text/plain")
                 .createdBy(createdBy);
@@ -854,7 +868,24 @@ class FileSharingAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         if (minVisibleRole != null) {
             builder.minVisibleRole(minVisibleRole);
         }
-        return fileRepository.save(builder.build()).getId();
+        SharedFileEntity file = fileRepository.save(builder.build());
+        SharedFileVersionEntity version = versionRepository.save(SharedFileVersionEntity.builder()
+                .fileId(file.getId()).versionNumber(1).fileKey(fileKey)
+                .fileSize(1024L).contentType("text/plain").uploadedBy(createdBy).build());
+        SharedFolderEntity folder = folderRepository.findById(folderId).orElseThrow();
+        StorageAclScope scope = switch (folder.getScopeType()) {
+            case PERSONAL -> StorageAclScope.personal(folder.getUserId());
+            case TEAM -> StorageAclScope.team(folder.getTeamId());
+            case ORGANIZATION -> StorageAclScope.organization(folder.getOrganizationId());
+            case TOURNAMENT -> StorageAclScope.tournament(folder.getScopeRefId());
+            case TOURNAMENT_DIVISION -> StorageAclScope.tournamentDivision(folder.getScopeRefId());
+        };
+        StorageAclContentReference parent =
+                new StorageAclContentReference("SHARED_FOLDER", folderId.toString());
+        storageAclService.registerPending(fileKey, createdBy, scope, "text/plain", Duration.ofMinutes(15), parent);
+        storageAclService.claimPending(fileKey, createdBy, scope, parent,
+                new StorageAclAttachmentBinding("SHARED_FILE_VERSION", version.getId().toString()));
+        return file.getId();
     }
 
     private Long saveLink(Long fileId, String token, LocalDateTime expiresAt,

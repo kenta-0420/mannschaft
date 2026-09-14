@@ -214,6 +214,20 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     Optional<Long> findParentOrganizationIdById(@Param("id") Long id);
 
     /**
+     * 組織ID集合に対応する親組織IDを一括取得する。
+     *
+     * <p>組織階層の祖先展開では、同じ深度にある組織を1クエリで解決するために使う。
+     * 呼び出し側は空集合を渡さない。</p>
+     *
+     * @param organizationIds 親組織IDを取得する組織ID集合
+     * @return 実在する組織のIDと親組織IDの射影
+     */
+    @Query("SELECT o.id AS organizationId, o.parentOrganizationId AS parentOrganizationId "
+            + "FROM OrganizationEntity o WHERE o.id IN :organizationIds")
+    List<OrganizationParentIdProjection> findParentOrganizationIdProjectionsByIdIn(
+            @Param("organizationIds") Collection<Long> organizationIds);
+
+    /**
      * F01.2 子組織一覧カーソルページング用: 直近の子組織を「カーソル・可視性・ID 昇順」を
      * すべて SQL 側で解決した上でページ取得する。
      *
