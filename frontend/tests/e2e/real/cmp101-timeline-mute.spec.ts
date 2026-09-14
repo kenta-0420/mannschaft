@@ -98,7 +98,12 @@ test('CMP-101: ORGタイムライン投稿のミュート・解除と不正種�
     await openPersonalFeed(memberPage, marker)
 
     await openMuteMenuFor(memberPage, marker)
+    const mutedResponse = memberPage.waitForResponse(
+      response => response.url().includes('/api/v1/timeline/mutes')
+        && response.request().method() === 'POST',
+    )
     await memberPage.getByRole('menuitem', { name: 'この団体の投稿を非表示にする', exact: true }).click()
+    expect((await mutedResponse).status()).toBe(201)
     muted = true
     await expect(memberPage.getByText(marker, { exact: true })).toHaveCount(0, { timeout: 15_000 })
 
@@ -107,13 +112,24 @@ test('CMP-101: ORGタイムライン投稿のミュート・解除と不正種�
     await expect(chip).toContainText('非表示中')
     await chip.click()
     await expect(memberPage.getByText('非表示にしている相手', { exact: true })).toBeVisible()
+    const unmutedResponse = memberPage.waitForResponse(
+      response => response.url().includes('/api/v1/timeline/mutes')
+        && response.request().method() === 'DELETE',
+    )
     await memberPage.getByTestId('timeline-unmute-button').click()
+    expect((await unmutedResponse).status()).toBe(204)
     muted = false
     await expect(memberPage.getByTestId('timeline-muted-chip')).toHaveCount(0)
+    const reloadedFeedResponse = memberPage.waitForResponse(
+      response => response.url().includes('/api/v1/timeline/my')
+        && response.request().method() === 'GET',
+    )
     await memberPage.reload({ waitUntil: 'domcontentloaded' })
     await waitForHydration(memberPage)
     await waitForSpinnerGone(memberPage)
-    await expect(memberPage.getByText(marker, { exact: true })).toBeVisible({ timeout: 30_000 })
+    expect((await reloadedFeedResponse).status()).toBe(200)
+    await expect(memberPage.locator('#scope-panel-PERSONAL').getByText(marker, { exact: true }))
+      .toBeVisible({ timeout: 30_000 })
 
     for (const mutedType of ['USER', 'SOCIAL_PROFILE', 'team', 'UNKNOWN']) {
       const invalid = await memberPage.request.post(`${baseUrl}/api/v1/timeline/mutes`, {
