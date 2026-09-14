@@ -57,6 +57,7 @@ test('CMP-101: ORGタイムライン投稿のミュート・解除と不正種�
   let organizationId: number | undefined
   let muted = false
   let completed = false
+  let cleanupError: unknown
 
   try {
     const adminPage = await admin.newPage()
@@ -175,7 +176,8 @@ test('CMP-101: ORGタイムライン投稿のミュート・解除と不正種�
       } catch (error) { cleanupErrors.push(error) }
     }
     await Promise.allSettled([admin.close(), member.close(), anonymous.close()])
-    if (completed && cleanupErrors.length > 0) throw cleanupErrors[0]
+    if (completed && cleanupErrors.length > 0) cleanupError = cleanupErrors[0]
     cleanupErrors.forEach(error => console.error('CMP-101 cleanup failed', error))
   }
+  if (cleanupError) throw cleanupError
 })
