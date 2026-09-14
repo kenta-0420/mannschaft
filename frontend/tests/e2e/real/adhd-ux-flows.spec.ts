@@ -82,9 +82,15 @@ async function setupApiBridge(page: Page): Promise<void> {
       const resHeaders: Record<string, string> = {}
       fetchRes.headers.forEach((v, k) => {
         const lower = k.toLowerCase()
-        if (lower === 'access-control-allow-origin' || lower === 'access-control-allow-credentials') return
+        if (lower === 'access-control-allow-origin' || lower === 'access-control-allow-credentials')
+          return
         // Node fetch が展開済みの本文に圧縮・長さヘッダーを残すとブラウザ側で壊れる
-        if (lower === 'content-encoding' || lower === 'content-length' || lower === 'transfer-encoding') return
+        if (
+          lower === 'content-encoding' ||
+          lower === 'content-length' ||
+          lower === 'transfer-encoding'
+        )
+          return
         resHeaders[k] = v
       })
       resHeaders['access-control-allow-origin'] = new URL(BASE_URL).origin
@@ -126,7 +132,7 @@ async function loginViaApi(page: Page): Promise<void> {
   }
 
   // ログインレスポンスからユーザー情報を取得
-  const loginBody = await loginRes.json() as {
+  const loginBody = (await loginRes.json()) as {
     data?: {
       accessToken?: string
       userId?: number
@@ -164,8 +170,9 @@ async function loginViaApi(page: Page): Promise<void> {
 // ヘルパー: マイTODOページへ遷移
 // ---------------------------------------------------------------------------
 async function goToMyTodos(page: Page): Promise<void> {
-  const listResponsePromise = page.waitForResponse((response) =>
-    response.url().includes('/api/v1/todos/my') && response.request().method() === 'GET',
+  const listResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/todos/my') && response.request().method() === 'GET',
   )
   await page.goto(BASE_URL + '/todos', { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
@@ -173,17 +180,111 @@ async function goToMyTodos(page: Page): Promise<void> {
   expect(listResponse.status(), 'マイTODO一覧取得API').toBe(200)
   // PageLoading コンポーネント (PrimeVue ProgressSpinner) が消えるまで待機
   // .pi-spin は LoginPage等の別スピナー。/todos のローディングは p-progressspinner を使う
-  await page.locator('.p-progressspinner').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
-  await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 5_000 }).catch(() => {})
+  await page
+    .locator('.p-progressspinner')
+    .waitFor({ state: 'detached', timeout: 30_000 })
+    .catch(() => {})
+  await page
+    .locator('.pi-spin')
+    .waitFor({ state: 'detached', timeout: 5_000 })
+    .catch(() => {})
 }
 
 // ---------------------------------------------------------------------------
 // フローA: 下書き自動保存
 // ---------------------------------------------------------------------------
 test.describe('フローA: 下書き自動保存（AC-1〜3, 11〜13）', () => {
+  test.describe.configure({ mode: 'serial' })
   test.setTimeout(120_000)
 
-  test('A-1: 個人TODOダイアログでタイトル入力→クローズ→再開でlocalStorageから復元される', async ({ page }) => {
+  test('A-0: 閉じた2秒後と再読込後も個人TODO下書きを正確に復元する', async ({ page }) => {
+    await setupApiBridge(page)
+    await loginViaApi(page)
+    await goToMyTodos(page)
+
+    const draftTitle = `E2E下書き永続化 ${Date.now()}`
+    const draftKey = await page.evaluate(() => {
+      const user = JSON.parse(localStorage.getItem('currentUser') ?? '{}') as { id?: number }
+      if (!user.id) throw new Error('currentUser.id がありません')
+      return `todo-create-draft-${user.id}`
+    })
+    const createBtn = page.getByTestId('personal-todo-create')
+    const dialog = page.locator('.p-dialog, [role="dialog"]').first()
+    const cancelBtn = dialog.locator('button:has-text("キャンセル")')
+
+    await expect(createBtn).toBeVisible()
+    await createBtn.click()
+    await expect(dialog).toBeVisible()
+    await dialog.getByTestId('todo-create-title').fill(draftTitle)
+    await page.waitForTimeout(2_000)
+
+    const storedTitle = await page.evaluate((key) => {
+      const raw = localStorage.getItem(key)
+      return raw ? (JSON.parse(raw) as { title?: string }).title : null
+    }, draftKey)
+    expect(storedTitle).toBe(draftTitle)
+
+    await cancelBtn.click()
+    await expect(dialog).not.toBeVisible()
+    await page.waitForTimeout(2_000)
+    const titleAfterClose = await page.evaluate((key) => {
+      const raw = localStorage.getItem(key)
+      return raw ? (JSON.parse(raw) as { title?: string }).title : null
+    }, draftKey)
+    expect(titleAfterClose).toBe(draftTitle)
+
+    await createBtn.click()
+    await expect(dialog.getByTestId('todo-create-title')).toHaveValue(draftTitle)
+    await cancelBtn.click()
+    await expect(dialog).not.toBeVisible()
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await waitForHydration(page)
+    await page.getByTestId('personal-todo-create').click()
+    await expect(dialog.getByTestId('todo-create-title')).toHaveValue(draftTitle)
+    await cancelBtn.click()
+    await expect(dialog).not.toBeVisible()
+    await page.evaluate((key) => localStorage.removeItem(key), draftKey)
+  })
+
+  test('A-0b: 他ユーザーの下書きと壊れた保存値を表示しない', async ({ page }) => {
+    await setupApiBridge(page)
+    await loginViaApi(page)
+    await goToMyTodos(page)
+
+    const keys = await page.evaluate(() => {
+      const user = JSON.parse(localStorage.getItem('currentUser') ?? '{}') as { id?: number }
+      if (!user.id) throw new Error('currentUser.id がありません')
+      const own = `todo-create-draft-${user.id}`
+      const other = `todo-create-draft-${user.id + 1}`
+      localStorage.removeItem(own)
+      localStorage.setItem(other, JSON.stringify({ title: '他ユーザーだけの下書き' }))
+      return { own, other }
+    })
+    const createBtn = page.getByTestId('personal-todo-create')
+    const dialog = page.locator('.p-dialog, [role="dialog"]').first()
+    const cancelBtn = dialog.locator('button:has-text("キャンセル")')
+
+    await createBtn.click()
+    await expect(dialog.getByTestId('todo-create-title')).toHaveValue('')
+    await cancelBtn.click()
+    await expect(dialog).not.toBeVisible()
+
+    await page.evaluate((key) => localStorage.setItem(key, '{broken-json'), keys.own)
+    await createBtn.click()
+    await expect(dialog.getByTestId('todo-create-title')).toHaveValue('')
+    await expect(page.locator('body')).toBeVisible()
+    await cancelBtn.click()
+    await expect(dialog).not.toBeVisible()
+    await page.evaluate(({ own, other }) => {
+      localStorage.removeItem(own)
+      localStorage.removeItem(other)
+    }, keys)
+  })
+
+  test('A-1: 個人TODOダイアログでタイトル入力→クローズ→再開でlocalStorageから復元される', async ({
+    page,
+  }) => {
     await setupApiBridge(page)
     await loginViaApi(page)
     await goToMyTodos(page)
@@ -193,14 +294,20 @@ test.describe('フローA: 下書き自動保存（AC-1〜3, 11〜13）', () => 
 
     // ---- Step 1: TODO作成ダイアログを開く ----
     // マイTODOページの作成ボタン（personal-todo-create または todo-create など）
-    const createBtn = page.locator(
-      '[data-testid="personal-todo-create"], [data-testid="todo-create"], button:has-text("追加"), button:has-text("作成"), button:has-text("新規")'
-    ).first()
+    const createBtn = page
+      .locator(
+        '[data-testid="personal-todo-create"], [data-testid="todo-create"], button:has-text("追加"), button:has-text("作成"), button:has-text("新規")',
+      )
+      .first()
     const hasBtnVisible = await createBtn.isVisible({ timeout: 10_000 }).catch(() => false)
 
     if (!hasBtnVisible) {
       // FABボタン（浮動+ボタン）を試す
-      const fabBtn = page.locator('.p-button-rounded, [class*="fab"], button[aria-label*="作成"], button[aria-label*="追加"]').first()
+      const fabBtn = page
+        .locator(
+          '.p-button-rounded, [class*="fab"], button[aria-label*="作成"], button[aria-label*="追加"]',
+        )
+        .first()
       const fabVisible = await fabBtn.isVisible({ timeout: 5_000 }).catch(() => false)
       if (!fabVisible) {
         // 画面右下のFABを探す
@@ -227,7 +334,9 @@ test.describe('フローA: 下書き自動保存（AC-1〜3, 11〜13）', () => 
     }
 
     // ---- Step 2: タイトルを入力（送信しない）----
-    const titleInput = dialog.locator('input[type="text"], input[placeholder*="タイトル"], input[placeholder*="title"]').first()
+    const titleInput = dialog
+      .locator('input[type="text"], input[placeholder*="タイトル"], input[placeholder*="title"]')
+      .first()
     await expect(titleInput).toBeVisible({ timeout: 5_000 })
     await titleInput.fill(draftTitle)
 
@@ -255,7 +364,11 @@ test.describe('フローA: 下書き自動保存（AC-1〜3, 11〜13）', () => 
     console.log('draft values:', JSON.stringify(draftValues))
 
     // ---- Step 3: ダイアログをキャンセルして閉じる ----
-    const cancelBtn = dialog.locator('button:has-text("キャンセル"), button:has-text("閉じる"), button:has-text("Cancel")').first()
+    const cancelBtn = dialog
+      .locator(
+        'button:has-text("キャンセル"), button:has-text("閉じる"), button:has-text("Cancel")',
+      )
+      .first()
     const hasCancelBtn = await cancelBtn.isVisible({ timeout: 3_000 }).catch(() => false)
     if (hasCancelBtn) {
       await cancelBtn.click()
@@ -263,12 +376,16 @@ test.describe('フローA: 下書き自動保存（AC-1〜3, 11〜13）', () => 
       // Escape キーで閉じる
       await page.keyboard.press('Escape')
     }
-    await expect(dialog).not.toBeVisible({ timeout: 10_000 }).catch(() => {})
+    await expect(dialog)
+      .not.toBeVisible({ timeout: 10_000 })
+      .catch(() => {})
 
     // ---- Step 4: 再度ダイアログを開く ----
-    const createBtn2 = page.locator(
-      '[data-testid="personal-todo-create"], [data-testid="todo-create"], button:has-text("追加"), button:has-text("作成"), button:has-text("新規")'
-    ).first()
+    const createBtn2 = page
+      .locator(
+        '[data-testid="personal-todo-create"], [data-testid="todo-create"], button:has-text("追加"), button:has-text("作成"), button:has-text("新規")',
+      )
+      .first()
     const hasBtnVisible2 = await createBtn2.isVisible({ timeout: 10_000 }).catch(() => false)
     if (hasBtnVisible2) {
       await createBtn2.click()
@@ -297,13 +414,19 @@ test.describe('フローA: 下書き自動保存（AC-1〜3, 11〜13）', () => 
     if (restoredTitle === draftTitle) {
       console.log('[A-1] ✅ 合格: タイトルが localStorage から正確に復元された')
     } else if (restoredTitle.length > 0) {
-      console.log(`[A-1] ⚠️ 部分合格: 何らかの値が復元されたが内容が異なる (got: "${restoredTitle}")`)
+      console.log(
+        `[A-1] ⚠️ 部分合格: 何らかの値が復元されたが内容が異なる (got: "${restoredTitle}")`,
+      )
     } else {
-      console.log('[A-1] 注意: タイトルが空。autoRestore=false の設計（EntityCreateDialog参照）の可能性')
+      console.log(
+        '[A-1] 注意: タイトルが空。autoRestore=false の設計（EntityCreateDialog参照）の可能性',
+      )
     }
 
     // キャンセルして後片付け
-    const cancelBtn2 = dialog2.locator('button:has-text("キャンセル"), button:has-text("閉じる")').first()
+    const cancelBtn2 = dialog2
+      .locator('button:has-text("キャンセル"), button:has-text("閉じる")')
+      .first()
     if (await cancelBtn2.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await cancelBtn2.click()
     } else {
@@ -323,7 +446,9 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
   test.describe.configure({ mode: 'serial' })
   test.setTimeout(420_000)
 
-  test('B-1: 個人TODOを削除するとUndo Toastが表示され、元に戻すでTODOが復活する', async ({ page }) => {
+  test('B-1: 個人TODOを削除するとUndo Toastが表示され、元に戻すでTODOが復活する', async ({
+    page,
+  }) => {
     await setupApiBridge(page)
     await loginViaApi(page)
 
@@ -344,13 +469,17 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
 
     expect(createRes.status(), '個人TODO作成API').toBe(201)
 
-    const createdTodo = await createRes.json() as { data: { id: number; content?: { title?: string }; title?: string } }
+    const createdTodo = (await createRes.json()) as {
+      data: { id: number; content?: { title?: string }; title?: string }
+    }
     const todoId = createdTodo.data.id
     console.log(`[B-1] 作成したTODO id=${todoId}`)
 
     // ---- Step 2: マイTODOページへ遷移して一覧表示を確認 ----
     await goToMyTodos(page)
-    await expect(page.getByText(todoTitle).first(), '作成した個人TODOが一覧へ表示').toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText(todoTitle).first(), '作成した個人TODOが一覧へ表示').toBeVisible({
+      timeout: 30_000,
+    })
 
     // ---- Step 3: 削除ボタンを探してクリック ----
     // TodoListView.vue の行末削除ボタン
@@ -362,9 +491,10 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
 
     // ホバー時のみ表示（opacity-0）のため force クリック
     const [deleteResponse] = await Promise.all([
-      page.waitForResponse((response) =>
-        response.url().includes(`/api/v1/todos/${todoId}`)
-        && response.request().method() === 'DELETE',
+      page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/v1/todos/${todoId}`) &&
+          response.request().method() === 'DELETE',
       ),
       deleteBtn.click({ force: true }),
     ])
@@ -379,14 +509,17 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
     await undoBtn.click()
 
     // ---- Step 6: TODOが一覧に復活することを確認 ----
-    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {})
+    await page
+      .locator('.pi-spin')
+      .waitFor({ state: 'detached', timeout: 10_000 })
+      .catch(() => {})
     const restoredTodo = page.getByText(todoTitle).first()
     await expect(restoredTodo, 'Undo後に個人TODOが一覧へ復活').toBeVisible({ timeout: 15_000 })
 
     // クリーンアップ: APIで削除
     const restoredResponse = await page.request.get(`${API_BASE}/api/v1/todos/${todoId}`)
     expect(restoredResponse.status(), 'Undo後の個人TODO取得API').toBe(200)
-    expect((await restoredResponse.json() as { data: { id: number } }).data.id).toBe(todoId)
+    expect(((await restoredResponse.json()) as { data: { id: number } }).data.id).toBe(todoId)
 
     await page.request.delete(`${API_BASE}/api/v1/todos/${todoId}`).catch(() => {})
 
@@ -405,7 +538,7 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
       data: { scopeType: 'PERSONAL', title: todoTitle },
     })
     expect(createRes.status(), '個人TODO作成API').toBe(201)
-    const createdBody = await createRes.json() as { data: { id: number } }
+    const createdBody = (await createRes.json()) as { data: { id: number } }
     const todoId = createdBody.data.id
     console.log(`[B-2] 作成 id=${todoId}`)
 
@@ -425,19 +558,24 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
     // ---- Step 4: 未認証・別ユーザーには復元させず、存在も404で秘匿 ----
     const boundaryApi = await pwRequest.newContext()
     try {
-      const unauthenticatedRestore = await boundaryApi.post(`${API_BASE}/api/v1/todos/${todoId}/restore`)
+      const unauthenticatedRestore = await boundaryApi.post(
+        `${API_BASE}/api/v1/todos/${todoId}/restore`,
+      )
       expect(unauthenticatedRestore.status(), '未認証ユーザーのTODO復元').toBe(401)
 
       const outsiderLogin = await boundaryApi.post(`${API_BASE}/api/v1/auth/login`, {
         data: { email: OUTSIDER_EMAIL, password: OUTSIDER_PASSWORD },
       })
       expect(outsiderLogin.status(), '別ユーザーのログイン').toBe(200)
-      const outsiderToken = (await outsiderLogin.json() as { data: { accessToken: string } }).data.accessToken
+      const outsiderToken = ((await outsiderLogin.json()) as { data: { accessToken: string } }).data
+        .accessToken
       const outsiderRestore = await boundaryApi.post(`${API_BASE}/api/v1/todos/${todoId}/restore`, {
         headers: { Authorization: `Bearer ${outsiderToken}` },
       })
       expect(outsiderRestore.status(), '別ユーザーのTODO復元').toBe(404)
-      expect((await outsiderRestore.json() as { error: { code: string } }).error.code).toBe('TODO_010')
+      expect(((await outsiderRestore.json()) as { error: { code: string } }).error.code).toBe(
+        'TODO_010',
+      )
 
       const stillDeleted = await page.request.get(`${API_BASE}/api/v1/todos/${todoId}`)
       expect(stillDeleted.status(), '拒否後もTODOは削除状態を維持').toBe(404)
@@ -454,7 +592,7 @@ test.describe('フローB: Undo復元（AC-14〜16）', () => {
     const getAfterRestore = await page.request.get(`${API_BASE}/api/v1/todos/${todoId}`)
     console.log(`[B-2] 復元後GET: ${getAfterRestore.status()}`)
     expect(getAfterRestore.status()).toBe(200)
-    const restoredBody = await getAfterRestore.json() as { data: { id: number } }
+    const restoredBody = (await getAfterRestore.json()) as { data: { id: number } }
     expect(restoredBody.data.id).toBe(todoId)
     console.log('[B-2] ✅ restore EP で論理削除が取り消され、再取得可能を確認')
 
@@ -473,7 +611,7 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
   async function getOwnTeamId(page: Page): Promise<{ id: number; slug: string } | null> {
     const res = await page.request.get(`${API_BASE}/api/v1/me/teams`)
     if (!res.ok()) return null
-    const body = await res.json() as { data: Array<{ id: number; name: string; slug: string }> }
+    const body = (await res.json()) as { data: Array<{ id: number; name: string; slug: string }> }
     const teams = body.data
     if (!teams || teams.length === 0) return null
     // fc-u-18 優先
@@ -481,7 +619,9 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
     return fcU18 ?? teams[0] ?? null
   }
 
-  test('C-1: 活動記録をDRAFTで作成し、一覧でDRAFTバッジを確認し、publishでPUBLISHEDになる（API + UI）', async ({ page }) => {
+  test('C-1: 活動記録をDRAFTで作成し、一覧でDRAFTバッジを確認し、publishでPUBLISHEDになる（API + UI）', async ({
+    page,
+  }) => {
     await setupApiBridge(page)
     await loginViaApi(page)
 
@@ -516,7 +656,7 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
       return
     }
 
-    const draftBody = await draftRes.json() as { data: { id: number; status: string } }
+    const draftBody = (await draftRes.json()) as { data: { id: number; status: string } }
     const activityId = draftBody.data.id
     const initialStatus = draftBody.data.status
     console.log(`[C-1] DRAFT作成成功: id=${activityId}, status=${initialStatus}`)
@@ -525,7 +665,10 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
     // ---- Step 3: 活動記録一覧ページでDRAFTバッジを確認 ----
     await page.goto(`${BASE_URL}/teams/${team.slug}/activities`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
-    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
+    await page
+      .locator('.pi-spin')
+      .waitFor({ state: 'detached', timeout: 20_000 })
+      .catch(() => {})
 
     // DRAFTバッジを含む要素を探す（活動記録コンポーネントの実装による）
     // 活動タイトルが表示されているか確認
@@ -535,20 +678,24 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
 
     if (activityVisible) {
       // DRAFTバッジを探す（テキスト「下書き」「DRAFT」またはバッジ要素）
-      const draftBadge = page.locator(
-        'text=下書き, text=DRAFT, [data-testid*="draft"], .badge:has-text("下書き"), [class*="badge"]:has-text("DRAFT")'
-      ).first()
+      const draftBadge = page
+        .locator(
+          'text=下書き, text=DRAFT, [data-testid*="draft"], .badge:has-text("下書き"), [class*="badge"]:has-text("DRAFT")',
+        )
+        .first()
       const hasDraftBadge = await draftBadge.isVisible({ timeout: 5_000 }).catch(() => false)
       console.log(`[C-1] DRAFTバッジ表示: ${hasDraftBadge}`)
     }
 
     // ---- Step 4: publish EP を叩いてPUBLISHEDに遷移 ----
-    const publishRes = await page.request.post(`${API_BASE}/api/v1/activities/${activityId}/publish`)
+    const publishRes = await page.request.post(
+      `${API_BASE}/api/v1/activities/${activityId}/publish`,
+    )
     console.log(`[C-1] publish レスポンス: ${publishRes.status()}`)
     expect([200, 201]).toContain(publishRes.status())
 
     if (publishRes.ok()) {
-      const publishBody = await publishRes.json() as { data: { id: number; status: string } }
+      const publishBody = (await publishRes.json()) as { data: { id: number; status: string } }
       const publishedStatus = publishBody.data.status
       console.log(`[C-1] publish後のstatus: ${publishedStatus}`)
       expect(publishedStatus).toBe('PUBLISHED')
@@ -559,7 +706,7 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
     const getAfterPublish = await page.request.get(`${API_BASE}/api/v1/activities/${activityId}`)
     console.log(`[C-1] publish後GET: ${getAfterPublish.status()}`)
     if (getAfterPublish.ok()) {
-      const afterBody = await getAfterPublish.json() as { data: { status: string } }
+      const afterBody = (await getAfterPublish.json()) as { data: { status: string } }
       console.log(`[C-1] DB確認 status: ${afterBody.data.status}`)
       expect(afterBody.data.status).toBe('PUBLISHED')
       console.log('[C-1] ✅ 実APIで status=PUBLISHED を確認（実DB裏取り済み）')
@@ -569,7 +716,9 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
     await page.request.delete(`${API_BASE}/api/v1/activities/${activityId}`).catch(() => {})
   })
 
-  test('C-2: 活動記録ページのUI - DRAFT作成ボタンが存在しクリックできる（UIフロー）', async ({ page }) => {
+  test('C-2: 活動記録ページのUI - DRAFT作成ボタンが存在しクリックできる（UIフロー）', async ({
+    page,
+  }) => {
     await setupApiBridge(page)
     await loginViaApi(page)
 
@@ -582,8 +731,14 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
     await page.goto(`${BASE_URL}/teams/${team.slug}/activities`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     // PageLoading コンポーネント (p-progressspinner) が消えるまで待機
-    await page.locator('.p-progressspinner').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
-    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 5_000 }).catch(() => {})
+    await page
+      .locator('.p-progressspinner')
+      .waitFor({ state: 'detached', timeout: 30_000 })
+      .catch(() => {})
+    await page
+      .locator('.pi-spin')
+      .waitFor({ state: 'detached', timeout: 5_000 })
+      .catch(() => {})
 
     // 活動記録の作成ボタン（ActivityCreateDialog を開くボタン）を探す
     // activities.vue: data-testid="activity-add-record" で v-if="isMember" 条件付き表示
@@ -600,10 +755,13 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
       const roleRes = await page.request.get(`${API_BASE}/api/v1/teams/${team.slug}/me/permissions`)
       console.log(`[C-2] ロール取得: ${roleRes.status()}`)
       if (roleRes.ok()) {
-        const roleBody = await roleRes.json() as { data?: { roleName?: string } }
+        const roleBody = (await roleRes.json()) as { data?: { roleName?: string } }
         console.log(`[C-2] ロール: ${JSON.stringify(roleBody.data)}`)
       }
-      test.skip(true, `活動記録作成ボタン(activity-add-record)が見つからない。isMember=false(権限不足)かFE未最新化の可能性`)
+      test.skip(
+        true,
+        `活動記録作成ボタン(activity-add-record)が見つからない。isMember=false(権限不足)かFE未最新化の可能性`,
+      )
       return
     }
 
@@ -618,7 +776,10 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
       // ダイアログ内のローディングが完了するまで待機
       // ActivityCreateDialog は open 時に loadTemplates() を呼ぶ（非同期）
       // PageLoading コンポーネントが消えるまで待ってからフォームを確認する
-      await dialog.locator('.p-progressspinner').waitFor({ state: 'detached', timeout: 15_000 }).catch(() => {})
+      await dialog
+        .locator('.p-progressspinner')
+        .waitFor({ state: 'detached', timeout: 15_000 })
+        .catch(() => {})
 
       // テンプレートが0件の場合はフォームが表示されない → スキップ
       const noTemplates = dialog.locator('[data-testid="activity-no-templates"]')
@@ -650,7 +811,9 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
 
         // 活動日を入力（canSaveDraft はタイトル+活動日の両方が必須）
         // DatePicker の中の input 要素を直接 fill する
-        const dateInput = dialog.locator('[data-testid="activity-date-input"] input, [data-testid="activity-date-input"]').first()
+        const dateInput = dialog
+          .locator('[data-testid="activity-date-input"] input, [data-testid="activity-date-input"]')
+          .first()
         // PrimeVue DatePicker は yy/mm/dd フォーマット: 2026/07/07
         const todayYMD = new Date().toISOString().slice(0, 10).replace(/-/g, '/')
         await dateInput.fill(todayYMD).catch(async () => {
@@ -668,10 +831,12 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
 
         // 下書き保存をクリック
         const [draftApiRes] = await Promise.all([
-          page.waitForResponse(
-            (res) => res.url().includes('/activities') && res.request().method() === 'POST',
-            { timeout: 15_000 },
-          ).catch(() => null),
+          page
+            .waitForResponse(
+              (res) => res.url().includes('/activities') && res.request().method() === 'POST',
+              { timeout: 15_000 },
+            )
+            .catch(() => null),
           isDraftBtnEnabled ? draftBtn.click() : draftBtn.click({ force: true }),
         ])
 
@@ -684,16 +849,23 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
           // ページ遷移前に response body を消費する（遷移後は無効になる）
           let createdId: number | undefined
           if (draftApiRes.ok()) {
-            const resBody = await draftApiRes.json().catch(() => null) as { data?: { id?: number } } | null
+            const resBody = (await draftApiRes.json().catch(() => null)) as {
+              data?: { id?: number }
+            } | null
             createdId = resBody?.data?.id
           }
 
           // ダイアログが閉じることを確認（createDraftActivity → visible=false → emit('created') → load()）
-          await expect(dialog).not.toBeVisible({ timeout: 10_000 }).catch(() => {})
+          await expect(dialog)
+            .not.toBeVisible({ timeout: 10_000 })
+            .catch(() => {})
 
           // ダイアログが閉じた後、一覧ページが再読み込みされて活動が表示されるまで待つ
           // page.goto は不要（すでに /activities ページにいる）
-          await page.locator('.p-progressspinner').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
+          await page
+            .locator('.p-progressspinner')
+            .waitFor({ state: 'detached', timeout: 20_000 })
+            .catch(() => {})
           await page.waitForTimeout(500) // SPA 再読み込みの遅延を吸収
 
           const actItem = page.getByText(draftTitle).first()
@@ -704,7 +876,9 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
             console.log('[C-2] ✅ UIフローからDRAFT作成→一覧表示を確認')
           } else {
             // 表示されない場合も API が 201 を返した（DRAFT作成は成功）のでテスト目的は達成
-            console.log('[C-2] 注意: 一覧表示は確認できなかったが、API で DRAFT 作成(201)を確認済み')
+            console.log(
+              '[C-2] 注意: 一覧表示は確認できなかったが、API で DRAFT 作成(201)を確認済み',
+            )
           }
 
           // クリーンアップ: 作成したDRAFT活動を削除
@@ -717,7 +891,9 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
       }
 
       // クリーンアップ: ダイアログを閉じる
-      const closeBtn = dialog.locator('button:has-text("キャンセル"), button:has-text("閉じる")').first()
+      const closeBtn = dialog
+        .locator('button:has-text("キャンセル"), button:has-text("閉じる")')
+        .first()
       if (await closeBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
         await closeBtn.click()
       } else {

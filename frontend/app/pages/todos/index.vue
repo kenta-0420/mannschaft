@@ -77,26 +77,39 @@ onMounted(load)
           option-value="value"
           size="small"
         />
-        <div class="flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700">
+        <div
+          class="flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700"
+        >
           <button
             v-for="opt in [
               { value: 'list', icon: 'pi pi-list', tooltip: t('todo.list.viewModeList') },
               { value: 'kanban', icon: 'pi pi-th-large', tooltip: t('todo.list.viewModeKanban') },
-              { value: 'gantt', icon: 'pi pi-chart-bar', tooltip: t('todo.enhancement.gantt.title') },
+              {
+                value: 'gantt',
+                icon: 'pi pi-chart-bar',
+                tooltip: t('todo.enhancement.gantt.title'),
+              },
             ]"
             :key="opt.value"
             v-tooltip.bottom="opt.tooltip"
             type="button"
             class="rounded-md px-3 py-1.5 text-sm transition-colors"
-            :class="viewMode === opt.value
-              ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
-              : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
+            :class="
+              viewMode === opt.value
+                ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
+                : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'
+            "
             @click="viewMode = opt.value as typeof viewMode"
           >
             <i :class="opt.icon" />
           </button>
         </div>
-        <Button label="作成" icon="pi pi-plus" @click="showCreateDialog = true" />
+        <Button
+          label="作成"
+          icon="pi pi-plus"
+          data-testid="personal-todo-create"
+          @click="showCreateDialog = true"
+        />
       </div>
     </div>
 
@@ -115,7 +128,10 @@ onMounted(load)
     </DashboardWidgetCard>
 
     <!-- スコープタブ（一覧・カンバン用） -->
-    <div v-if="viewMode !== 'gantt'" class="mb-5 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 w-fit dark:border-surface-600 dark:bg-surface-700">
+    <div
+      v-if="viewMode !== 'gantt'"
+      class="mb-5 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 w-fit dark:border-surface-600 dark:bg-surface-700"
+    >
       <button
         v-for="tab in [
           { key: 'all', label: 'すべて' },
