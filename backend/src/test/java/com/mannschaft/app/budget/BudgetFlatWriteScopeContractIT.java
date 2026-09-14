@@ -190,6 +190,20 @@ class BudgetFlatWriteScopeContractIT extends AbstractMySqlIntegrationTest {
         attachmentA = attachmentRepository.save(BudgetTransactionAttachmentEntity.builder()
                 .transactionId(transactionA.getId()).fileKey("budget/attachments/existing.pdf")
                 .originalFilename("existing.pdf").fileSize(100L).mimeType("application/pdf").build());
+        storageAclRepository.save(StorageAclEntity.builder()
+                .fileKey(attachmentA.getFileKey())
+                .ownerId(adminAId)
+                .scopeType(StorageAclScopeType.TEAM)
+                .scopeKey(teamAId.toString())
+                .aclMode(StorageAclMode.CONTENT_BOUND)
+                .contentType("application/pdf")
+                .parentContentReferenceType("BUDGET_TRANSACTION")
+                .parentContentReferenceKey(transactionA.getId().toString())
+                .attachmentBindingType("BUDGET_TRANSACTION_ATTACHMENT")
+                .attachmentBindingKey(attachmentA.getId().toString())
+                .status(StorageAclStatus.CLAIMED)
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build());
 
         reportA = reportRepository.save(BudgetReportEntity.builder()
                 .fiscalYearId(fyA.getId()).scopeType("TEAM").scopeId(teamAId)
