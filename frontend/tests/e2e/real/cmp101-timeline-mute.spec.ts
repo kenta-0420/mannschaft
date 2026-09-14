@@ -69,10 +69,10 @@ test('CMP-101: ORGタイムライン投稿のミュート・解除と不正種�
     )
     expect(organizationResponse.status()).toBe(200)
     const organizationBody = await organizationResponse.json() as {
-      data?: { id?: number }
-      id?: number
+      data?: { numericId?: number }
+      numericId?: number
     }
-    organizationId = organizationBody.data?.id ?? organizationBody.id
+    organizationId = organizationBody.data?.numericId ?? organizationBody.numericId
     if (organizationId === undefined) throw new Error('組織IDを取得できませんでした')
 
     await adminPage.goto(`/organizations/${organizationSlug}/timeline`)
