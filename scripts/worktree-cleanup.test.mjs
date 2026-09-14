@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -86,12 +86,47 @@ test('dirty、locked、index.lockは理由付きで保持しindex.lockを削除�
   await access(join(gitdirPath, 'index.lock'));
 });
 
+test('nested junctionはapplyで撤去せず、リンク先を不変に保つ', async (t) => {
+  const root = await fixture();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const agent = await addWorktree(root, 'agent-junctioned');
+  const target = join(root, 'shared-node-modules');
+  await mkdir(join(agent, 'frontend'), { recursive: true });
+  await mkdir(target);
+  await writeFile(join(target, 'sentinel.txt'), 'do not delete\n');
+  await symlink(target, join(agent, 'frontend', 'node_modules'), 'junction').catch(async () => symlink(target, join(agent, 'frontend', 'node_modules'), 'dir'));
+
+  const result = JSON.parse((await run(root, '--apply')).stdout);
+  const entry = result.entries.find((candidate) => candidate.path === agent);
+  assert.equal(entry.reason, 'nested-junction');
+  assert.equal(result.counts.failures.some((failure) => failure.reason === 'nested-junction'), true);
+  const { access } = await import('node:fs/promises');
+  await access(join(agent, 'frontend', 'node_modules'));
+  await access(join(target, 'sentinel.txt'));
+});
+
+test('git検査失敗はinspection-failedとして保持する', async (t) => {
+  const root = await fixture();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const agent = await addWorktree(root, 'agent-inspection-failure');
+  const gitdir = (await git(agent, ['rev-parse', '--git-dir'])).stdout.trim();
+  await rename(join(gitdir, 'HEAD'), join(gitdir, 'HEAD.broken'));
+
+  const result = JSON.parse((await run(root, '--apply')).stdout);
+  const entry = result.entries.find((candidate) => candidate.path === agent);
+  assert.equal(entry.reason, 'inspection-failed');
+  assert.equal(result.counts.removed, 0);
+  assert.equal(result.counts.failures.some((failure) => failure.reason === 'inspection-failed'), true);
+});
+
 test('prunableとjunctionを分類し、checkは上限超過・stale残存を非0にする', async (t) => {
   const root = await fixture();
   t.after(() => rm(root, { recursive: true, force: true }));
   const stale = await addWorktree(root, 'agent-stale');
   const missing = await addWorktree(root, 'agent-missing');
+  const nonAgentMissing = await addWorktree(root, 'manual-missing', 'worktree-agent-manual-missing');
   await rm(missing, { recursive: true, force: true });
+  await rm(nonAgentMissing, { recursive: true, force: true });
   const junction = join(root, '.claude', 'worktrees', 'agent-junction');
   await symlink(root, junction, 'junction').catch(async () => symlink(root, junction, 'dir'));
 
@@ -105,5 +140,8 @@ test('prunableとjunctionを分類し、checkは上限超過・stale残存を非
     assert.equal(result.counts.staleRemaining > 0, true);
     assert.equal(result.counts.totalWorktrees > 1, true);
   }
-  await git(stale, ['status']);
+  await run(root, '--apply');
+  const registered = (await git(root, ['worktree', 'list', '--porcelain'])).stdout;
+  assert.equal(registered.includes(nonAgentMissing.replaceAll('\\', '/')) || registered.includes(nonAgentMissing), true);
+  await assert.rejects(() => git(stale, ['status']));
 });

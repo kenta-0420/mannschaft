@@ -54,19 +54,31 @@ function shortBranch(branch = '') {
 
 async function hasIndexLock(path) {
   const result = await git(path, ['rev-parse', '--git-path', 'index.lock'], true);
-  if (result.failed) return false;
-  return existsSync(result.stdout.trim());
+  if (result.failed) return { ok: false, exists: false };
+  return { ok: true, exists: existsSync(result.stdout.trim()) };
 }
 
 async function commitEpoch(path) {
   const result = await git(path, ['log', '-1', '--format=%ct'], true);
   const epoch = Number(result.stdout.trim());
-  return Number.isFinite(epoch) ? epoch : null;
+  return Number.isFinite(epoch) ? { ok: true, epoch } : { ok: false, epoch: null };
 }
 
 async function isDirty(path) {
   const result = await git(path, ['status', '--porcelain'], true);
-  return !result.failed && result.stdout.trim().length > 0;
+  return result.failed ? { ok: false, dirty: false } : { ok: true, dirty: result.stdout.trim().length > 0 };
+}
+
+async function nestedJunction(path) {
+  const candidate = join(path, 'frontend', 'node_modules');
+  try {
+    const stat = await lstat(candidate);
+    return stat.isSymbolicLink();
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    // 読み取り不能も、リンク先へ到達する削除を避けるため安全側に倒す。
+    return true;
+  }
 }
 
 async function diskEntries(root, registered) {
@@ -111,20 +123,36 @@ async function inspect(root, config) {
       continue;
     }
     const epoch = await commitEpoch(path);
-    const stale = epoch === null || epoch < cutoff;
+    if (!epoch.ok) {
+      entries.push({ ...base, stale: true, reason: 'inspection-failed', detail: 'HEAD取得に失敗したため安全側で保持' });
+      continue;
+    }
+    const stale = epoch.epoch < cutoff;
     base.stale = stale;
     if (!stale) {
       entries.push({ ...base, reason: 'recent', detail: '閾値以内のため保持' });
     } else if (item.locked !== undefined) {
       entries.push({ ...base, reason: 'locked', detail: 'worktree lock のため保持。稼働確認後に手動unlockが必要' });
-    } else if (await hasIndexLock(path)) {
-      entries.push({ ...base, reason: 'index-lock-unverified', detail: 'index.lock を検出。関連gitプロセス未確認のため保持し、lockは削除しない' });
-    } else if (await isDirty(path)) {
-      entries.push({ ...base, reason: 'dirty', detail: '未コミット変更があるため保持' });
-    } else if (!branch.startsWith('worktree-agent-')) {
-      entries.push({ ...base, reason: 'protected-branch', detail: 'feature/feat等の業務ブランチは温存' });
+    } else if (await nestedJunction(path)) {
+      entries.push({ ...base, reason: 'nested-junction', detail: 'frontend/node_modules のjunction/シンボリックリンクを検出。リンクだけを外してから再実行し、リンク先は削除しない' });
     } else {
-      entries.push({ ...base, reason: 'clean-stale-agent', detail: 'apply時に撤去可能' });
+      const indexLock = await hasIndexLock(path);
+      if (!indexLock.ok) {
+        entries.push({ ...base, reason: 'inspection-failed', detail: 'index.lock確認に失敗したため安全側で保持' });
+      } else if (indexLock.exists) {
+      entries.push({ ...base, reason: 'index-lock-unverified', detail: 'index.lock を検出。関連gitプロセス未確認のため保持し、lockは削除しない' });
+      } else {
+        const dirty = await isDirty(path);
+        if (!dirty.ok) {
+          entries.push({ ...base, reason: 'inspection-failed', detail: 'dirty確認に失敗したため安全側で保持' });
+        } else if (dirty.dirty) {
+          entries.push({ ...base, reason: 'dirty', detail: '未コミット変更があるため保持' });
+        } else if (!branch.startsWith('worktree-agent-')) {
+          entries.push({ ...base, reason: 'protected-branch', detail: 'feature/feat等の業務ブランチは温存' });
+        } else {
+          entries.push({ ...base, reason: 'clean-stale-agent', detail: 'apply時に撤去可能' });
+        }
+      }
     }
   }
   entries.push(...await diskEntries(root, registered));
@@ -146,7 +174,7 @@ function summarize(inspection, removed = []) {
       removed: removed.length,
       retained,
       staleRemaining,
-      failures: inspection.entries.filter((entry) => ['dirty', 'locked', 'index-lock-unverified', 'prunable-missing', 'junction-link-only-manual', 'orphan-agent-manual'].includes(entry.reason)).map((entry) => ({ path: entry.path, reason: entry.reason })),
+      failures: inspection.entries.filter((entry) => ['dirty', 'locked', 'nested-junction', 'index-lock-unverified', 'inspection-failed', 'prunable-missing', 'junction-link-only-manual', 'orphan-agent-manual'].includes(entry.reason)).map((entry) => ({ path: entry.path, reason: entry.reason })),
     },
   };
 }
@@ -159,8 +187,6 @@ async function apply(root, inspection) {
     removed.push(entry.path);
     await git(root, ['branch', '-D', entry.branch], true);
   }
-  // missing registration only: gitのメタデータを整理する。実体ディレクトリやindex.lockは触らない。
-  if (inspection.entries.some((entry) => entry.kind === 'prunable')) await git(root, ['worktree', 'prune'], true);
   return removed;
 }
 

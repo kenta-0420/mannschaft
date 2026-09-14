@@ -38,7 +38,7 @@ node scripts/worktree-cleanup.mjs --days 7 --apply
 node scripts/worktree-cleanup.mjs --days 1 --check --limit 60
 ```
 
-> `/陣払い` は上記スクリプトへ委譲する。dirty/locked/index.lock、未登録ディレクトリ、junction は自動で消さず、理由を出して保持する。junction はリンクだけを先に外し、リンク先は削除しない。
+> `/陣払い` は上記スクリプトへ委譲する。dirty/locked/index.lock/Git検査失敗、prunable登録、未登録ディレクトリ、junction は自動で消さず、理由を出して保持する。`frontend/node_modules` を含むjunctionはリンクだけを先に外し、リンク先は削除しない。
 
 ### 注意事項
 
