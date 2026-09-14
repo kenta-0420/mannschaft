@@ -23,7 +23,9 @@ import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
@@ -89,6 +91,7 @@ public class ChatMessageService {
     private final PostingIdentityService postingIdentityService;
     /** F10.7: 問い合わせ通知イベント発行用。 */
     private final ApplicationEventPublisher eventPublisher;
+    private final DomainEventPublisher domainEventPublisher;
     /**
      * 送信者の表示名・アバター解決（クロスドメイン・原則1）。auth ドメインの UserEntity/UserRepository を
      * 直接参照せず、common の {@link NameResolverService}（プリミティブ Map 返却・署名付きアバターURL解決）に委譲する。
@@ -324,6 +327,9 @@ public class ChatMessageService {
                 chatAttachmentService.recordAttachmentDeletion(
                         channel, attachment, userId, message.getSenderId());
                 chatAttachmentService.releaseMessageAttachment(attachment);
+                if (attachment.getFileKey() != null && !attachment.getFileKey().isBlank()) {
+                    domainEventPublisher.publish(new S3ObjectDeleteEvent(attachment.getFileKey()));
+                }
             }
         }
 

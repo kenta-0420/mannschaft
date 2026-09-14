@@ -95,6 +95,9 @@ class ChatChannelServiceTest {
     private org.springframework.context.ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
+    private com.mannschaft.app.common.DomainEventPublisher domainEventPublisher;
+
+    @Mock
     private AccessControlService accessControlService;
 
     /**
@@ -1102,4 +1105,32 @@ class ChatChannelServiceTest {
             verify(channelRepository).save(channel);
         }
     }
+    @Nested
+    @DisplayName("ストレージ削除イベント")
+    class StorageDeletionEvent {
+
+        @Test
+        @DisplayName("アイコン差替え時は旧キーのコミット後R2削除イベントを発行する")
+        void oldChannelIconPublishesDeleteEvent() {
+            // given
+            ChatChannelEntity channel = ChatChannelEntity.builder()
+                    .id(CHANNEL_ID).channelType(ChannelType.TEAM_PUBLIC).teamId(TEAM_ID)
+                    .name("テストチャンネル").createdBy(USER_ID).iconKey("chat/icons/old.png").build();
+            UpdateChannelRequest request = new UpdateChannelRequest(null, null, "chat/icons/new.png");
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
+            given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(channel);
+            given(chatMapper.toChannelResponse(any(ChatChannelEntity.class)))
+                    .willReturn(ChannelResponse.builder().id(CHANNEL_ID).build());
+
+            // when
+            chatChannelService.updateChannel(CHANNEL_ID, request, USER_ID);
+
+            // then
+            ArgumentCaptor<com.mannschaft.app.common.storage.S3ObjectDeleteEvent> deleteEventCaptor =
+                    ArgumentCaptor.forClass(com.mannschaft.app.common.storage.S3ObjectDeleteEvent.class);
+            verify(domainEventPublisher).publish(deleteEventCaptor.capture());
+            assertThat(deleteEventCaptor.getValue().s3Keys()).containsExactly("chat/icons/old.png");
+        }
+    }
+
 }

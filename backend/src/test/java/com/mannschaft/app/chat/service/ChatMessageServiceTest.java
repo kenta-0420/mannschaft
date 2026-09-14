@@ -82,6 +82,9 @@ class ChatMessageServiceTest {
     @Mock
     private ChatMessagePublisher chatMessagePublisher;
 
+    @Mock
+    private com.mannschaft.app.common.DomainEventPublisher domainEventPublisher;
+
     /** F17.1 Phase 3: VILLAGE_LOBBY での postedAs 検証。 */
     @Mock
     private PostingIdentityService postingIdentityService;
@@ -426,6 +429,10 @@ class ChatMessageServiceTest {
             // then: 各添付について recordAttachmentDeletion が呼ばれる
             verify(chatAttachmentService).recordAttachmentDeletion(
                     eq(channel), eq(att), eq(SENDER_ID), eq(SENDER_ID));
+            ArgumentCaptor<com.mannschaft.app.common.storage.S3ObjectDeleteEvent> deleteEventCaptor =
+                    ArgumentCaptor.forClass(com.mannschaft.app.common.storage.S3ObjectDeleteEvent.class);
+            verify(domainEventPublisher).publish(deleteEventCaptor.capture());
+            assertThat(deleteEventCaptor.getValue().s3Keys()).containsExactly("chat/uuid/x.png");
         }
     }
 

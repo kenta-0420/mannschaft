@@ -82,6 +82,9 @@ class CirculationServiceTest {
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
+    @Mock
+    private com.mannschaft.app.common.DomainEventPublisher domainEventPublisher;
+
     /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
     @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
     @Mock private MessageSource messageSource;
@@ -442,4 +445,34 @@ class CirculationServiceTest {
                     new StorageAclAttachmentBinding("CIRCULATION_ATTACHMENT", saved.getId().toString()));
         }
     }
+    @Nested
+    @DisplayName("添付削除のストレージライフサイクル")
+    class AttachmentDeletionStorageLifecycle {
+
+        @Test
+        @DisplayName("DRAFT添付を削除すると正確なキーのコミット後R2削除イベントを発行する")
+        void removeAttachmentPublishesDeleteEvent() {
+            // given
+            CirculationDocumentEntity document = CirculationDocumentEntity.builder()
+                    .id(DOCUMENT_ID).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                    .title("回覧テスト").body("本文").build();
+            CirculationAttachmentEntity attachment = CirculationAttachmentEntity.builder()
+                    .id(501L).documentId(DOCUMENT_ID).fileKey("circulation/TEAM/1/100/file.pdf")
+                    .originalFilename("file.pdf").fileSize(1024L).mimeType("application/pdf").build();
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(document));
+            given(attachmentRepository.findByIdAndDocumentId(501L, DOCUMENT_ID)).willReturn(Optional.of(attachment));
+
+            // when
+            circulationService.removeAttachment(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID, 501L, USER_ID);
+
+            // then
+            ArgumentCaptor<com.mannschaft.app.common.storage.S3ObjectDeleteEvent> deleteEventCaptor =
+                    ArgumentCaptor.forClass(com.mannschaft.app.common.storage.S3ObjectDeleteEvent.class);
+            verify(domainEventPublisher).publish(deleteEventCaptor.capture());
+            assertThat(deleteEventCaptor.getValue().s3Keys()).containsExactly("circulation/TEAM/1/100/file.pdf");
+            verify(r2StorageService, org.mockito.Mockito.never()).delete(org.mockito.ArgumentMatchers.anyString());
+        }
+    }
+
 }
