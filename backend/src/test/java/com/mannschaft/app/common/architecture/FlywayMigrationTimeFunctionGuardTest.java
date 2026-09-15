@@ -53,15 +53,30 @@ import static org.junit.jupiter.api.Assertions.assertTimeout;
  * <p>「セッション TZ が UTC である」という前提そのものは
  * {@code FlywayMigrationSessionTimeZoneUtcIT} が実 MySQL 接続で固定する（本番人の対になる番人）。</p>
  *
- * <h2>列 DEFAULT / ON UPDATE は対象外である</h2>
+ * <h2>列 DEFAULT / ON UPDATE を対象外にしたのは「見落とし」ではない【必読】</h2>
  * <p>{@code DEFAULT CURRENT_TIMESTAMP} / {@code ON UPDATE CURRENT_TIMESTAMP} / {@code DEFAULT NOW()} は
- * DDL のカラム定義であり、調査時点で 598 ファイル・1558 箇所に及ぶ。これらは
- * 「その列を省いた INSERT が来たときだけ」効く保険であり、実運用の INSERT は JPA 経路
- * （{@code @PrePersist}）か明示列指定のどちらかで必ず値を与えるため、発火機会自体が乏しい。
- * また MySQL の式 DEFAULT（{@code DEFAULT (UTC_TIMESTAMP())}）へ一括で倒すのは、
- * <b>適用済み migration の書き換え（＝ Flyway チェックサム不一致）</b>無しには実現できない。
- * したがって本番人は<b>DML の「今」だけ</b>を対象とし、DDL の列既定は
- * {@code FlywayMigrationSessionTimeZoneUtcIT} の担保に委ねる（射程の線引きは意図的である）。</p>
+ * DDL のカラム定義であり、調査時点で <b>598 ファイル・1558 箇所</b>に及ぶ。それだけの量がありながら本番人が
+ * 一切見ていないのは<b>意図的な線引き</b>であって、走査漏れではない。理由の因果は次のとおり。</p>
+ * <ol>
+ *   <li><b>そもそもずれていない</b>。列既定の {@code CURRENT_TIMESTAMP} も上の {@code NOW()} と
+ *       まったく同じ理屈で<b>セッションの {@code time_zone}</b> に従う。本プロジェクトはそれを全環境で
+ *       UTC に固定しており（上表・実測済み）、したがって 1558 箇所も UTC 壁時計を書く。
+ *       <b>実害のある課題ではなく、今後どう書かせるかという規約だけの話である。</b></li>
+ *   <li><b>その前提は放置されていない</b>。「セッション {@code time_zone} が UTC である」ことは
+ *       {@code FlywayMigrationSessionTimeZoneUtcIT} が実 MySQL 接続で実測し、CI の不変条件として守る。
+ *       つまり 1558 箇所の正しさは<b>あちらの番人が担保しており</b>、本番人が重ねて見る必要がない。</li>
+ *   <li><b>塞ごうとすると代償が釣り合わない</b>。MySQL の式 DEFAULT（{@code DEFAULT (UTC_TIMESTAMP())}）へ
+ *       一括で倒すには<b>適用済み migration の書き換え</b>が要り、これは Flyway のチェックサム不一致を招いて
+ *       全環境（dev / CI / 本番相当）の起動を止める。実害ゼロの案件でその代償は払えない。</li>
+ * </ol>
+ * <p>また実運用上、列既定は「その列を省いた INSERT が来たときだけ」効く保険であり、
+ * 実際の INSERT は JPA 経路（{@code @PrePersist}）か明示列指定のどちらかで必ず値を与えるため、
+ * 発火機会自体が乏しい。以上より本番人は<b>DML の「今」だけ</b>を対象とする。
+ * この線引きを動かす（＝列既定も禁じる）なら、対象は<b>新規 migration だけ</b>にすること。
+ * 既存への遡及は上記 3. の理由で採ってはならない。</p>
+ *
+ * <p><b>同じ理由で {@code src/test} 配下の SQL も射程外である</b>。テストのフィクスチャは
+ * Testcontainers 上の使い捨てデータであり、本番データの格納基準を汚さない（別戦役の扱い）。</p>
  *
  * <h2>凍結キーは migration ファイル単位の件数である</h2>
  * <p>{@link RawSqlTimeColumnGuardTest} と同じ思想で、行番号・出現順を凍結キーに含めない。
@@ -78,16 +93,55 @@ class FlywayMigrationTimeFunctionGuardTest {
             "src", "test", "resources", "flyway_migration_time_guard", "session_tz_time_function_freeze.txt");
 
     /**
-     * セッション TZ に従って「今」を返す関数。{@code UTC_TIMESTAMP()} は正解なので含めない。
+     * 一致の直後が識別子構成文字でないことの否定先読み。
      *
-     * <p>量指定子はすべて上限付きにしてバックトラックを有界にする
+     * <p>SQL の識別子に使える文字（英数字・{@code _}・MySQL では {@code $}）が続くなら、それは
+     * 関数呼び出しではなく<b>より長い識別子の一部</b>である。{@code $} を含めるのは MySQL が
+     * 識別子に {@code $} を許すため。</p>
+     */
+    static final String NOT_IDENTIFIER_CHAR = "(?![A-Za-z0-9_$])";
+
+    /**
+     * セッション TZ に従って「今」を返す MySQL 組み込み関数。{@code UTC_TIMESTAMP()} /
+     * {@code UTC_DATE()} / {@code UTC_TIME()} は正解なので含めない。
+     *
+     * <h3>列挙したのは検体ではなく「判定の軸」である</h3>
+     * <p>対象は<b>「セッションの {@code time_zone} に従って現在時刻を返す MySQL 組み込み関数」全部</b>であり、
+     * 日時型（{@code TIMESTAMP}）だけではない。日付型・時刻型の別名も同じセッション TZ に従うため、
+     * {@code WHERE target_date < CURDATE()} のような書き方は日単位でずれうる。
+     * プロジェクト規約（{@code backend/.claudecode.md} の「ネイティブクエリの
+     * {@code NOW()} / {@code CURRENT_TIMESTAMP} / {@code CURDATE()}」）も日付系を名指ししている。
+     * 初版は日時系 4 つしか見ておらず、日付系・時刻系を素通りさせていた（Codex 検分で指摘・是正済み）。</p>
+     * <ul>
+     *   <li>日時: {@code NOW()} / {@code SYSDATE()} / {@code CURRENT_TIMESTAMP} / {@code LOCALTIMESTAMP}</li>
+     *   <li>日付: {@code CURDATE()} / {@code CURRENT_DATE}</li>
+     *   <li>時刻: {@code CURTIME()} / {@code CURRENT_TIME} / {@code LOCALTIME}</li>
+     * </ul>
+     *
+     * <h3>識別子と関数呼び出しの区別</h3>
+     * <p>括弧を伴わない別名（{@code CURRENT_TIMESTAMP} など）は、そのまま書くと
+     * {@code current_timestamp_format} のような<b>通常のカラム名の接頭辞にも一致してしまう</b>
+     * （初版の欠陥。セッション依存関数を 1 つも含まない migration が凍結件数の差分で赤くなる）。
+     * 末尾に {@link #NOT_IDENTIFIER_CHAR} の否定先読みを置き、<b>関数名の直後が識別子構成文字でない</b>
+     * ことを要求してこれを防ぐ。先頭側は {@code \\b} が同じ役割を果たす。</p>
+     *
+     * <p>別名には接頭辞関係（{@code CURRENT_TIME} ⊂ {@code CURRENT_TIMESTAMP}、
+     * {@code LOCALTIME} ⊂ {@code LOCALTIMESTAMP}）があるため、<b>長い方を先に並べる</b>。
+     * 量指定子はすべて上限付きにしてバックトラックを有界にする
      * （{@link RawSqlTimeColumnGuardTest} で実測した破滅的バックトラック対策と同じ理由）。</p>
      */
     static final Pattern SESSION_TZ_NOW = Pattern.compile(
             "(?i)\\b(?:NOW\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\)"
                     + "|SYSDATE\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\)"
+                    + "|CURDATE\\s{0,4}\\(\\s{0,4}\\)"
+                    + "|CURTIME\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\)"
+                    + "|CURRENT_TIMESTAMP(?:\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\))?"
                     + "|LOCALTIMESTAMP(?:\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\))?"
-                    + "|CURRENT_TIMESTAMP(?:\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\))?)");
+                    + "|CURRENT_DATE(?:\\s{0,4}\\(\\s{0,4}\\))?"
+                    + "|CURRENT_TIME(?:\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\))?"
+                    + "|LOCALTIME(?:\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\))?"
+                    + ")" + NOT_IDENTIFIER_CHAR);
+
 
     /** 直前が列既定（{@code DEFAULT} / {@code ON UPDATE}）であることの判定。一致位置の直前だけを見る。 */
     static final Pattern COLUMN_DEFAULT_CONTEXT =
@@ -112,9 +166,14 @@ class FlywayMigrationTimeFunctionGuardTest {
      * （実在: {@code V68.001__create_email_outbox.sql}）。</p>
      */
     static List<Violation> collectViolationsInFile(String raw, String fileName) {
+        // 事前フィルタ。偽陰性を作らないことが唯一の要件なので、検出パターンが一致しうる文字列の
+        // 「必要条件」だけを並べる。current_time は current_timestamp の、localtime は localtimestamp の
+        // 部分文字列なので、短い方を挙げれば長い方も必ず拾える。
         String lower = raw.toLowerCase(Locale.ROOT);
         if (!lower.contains("now") && !lower.contains("sysdate")
-                && !lower.contains("current_timestamp") && !lower.contains("localtimestamp")) {
+                && !lower.contains("curdate") && !lower.contains("curtime")
+                && !lower.contains("current_date") && !lower.contains("current_time")
+                && !lower.contains("localtime")) {
             return List.of();
         }
         String scan = maskCommentsAndLiterals(raw);

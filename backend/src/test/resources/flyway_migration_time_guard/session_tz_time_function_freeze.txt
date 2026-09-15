@@ -1,15 +1,21 @@
-# 凍結台帳: Flyway migration の DML がセッションTZ依存の「今」（NOW()/CURRENT_TIMESTAMP/SYSDATE 等）を使っている箇所
+# 凍結台帳: Flyway migration の DML がセッションTZ依存の「今」を使っている箇所
+#
+# 対象は「セッションの time_zone に従って現在時刻を返す MySQL 組み込み関数」全部である。
+#   日時: NOW() / SYSDATE() / CURRENT_TIMESTAMP / LOCALTIMESTAMP
+#   日付: CURDATE() / CURRENT_DATE
+#   時刻: CURTIME() / CURRENT_TIME / LOCALTIME
+# 正解（TZ に依らない）である UTC_TIMESTAMP() / UTC_DATE() / UTC_TIME() は含まない。
 #
 # 形式: <db/migration からの相対パス>|<件数>
 #
 # 番人: com.mannschaft.app.common.architecture.FlywayMigrationTimeFunctionGuardTest
 #
 # ここに載っているのは「適用済みで書き換えられない（Flyway チェックサム）既存 migration」である。
-# 実測により NOW() はいずれの環境でも UTC_TIMESTAMP() と同値であり（セッション time_zone=UTC）、
+# 実測により、これらはいずれの環境でも UTC_TIMESTAMP() 等と同値であり（セッション time_zone=UTC）、
 # 現時点でデータがずれているわけではない。詳細と根拠は番人クラスの Javadoc を参照。
 #
 # 【禁止】新しい行をここへ追記して番人を黙らせること。新規 migration は UTC_TIMESTAMP() を使うこと。
-# 列 DEFAULT / ON UPDATE の CURRENT_TIMESTAMP は射程外なので、この台帳には載らない。
+# 列 DEFAULT / ON UPDATE の CURRENT_TIMESTAMP 等は射程外なので、この台帳には載らない。
 #
 V1.012__seed_system_user.sql|2
 V10.064__add_manage_ads_permission.sql|2

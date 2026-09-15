@@ -126,6 +126,14 @@ DB 格納基準は `spring.jpa.properties.hibernate.jdbc.time_zone: UTC` によ�
 
 §4.1 は `JdbcTemplate` / `nativeQuery` を対象に書かれているが、**Flyway migration の DML も JPA を迂回する経路である**ことに変わりはない。したがって **新規 migration で「今」を書くときは `UTC_TIMESTAMP()` を使う**。
 
+禁じるのは特定の関数名ではなく、**「セッションの `time_zone` に従って現在時刻を返す MySQL 組み込み関数」全部**である。日時型だけでなく**日付型・時刻型の別名も同じセッション TZ に従う**ので、`WHERE target_date < CURDATE()` のような書き方は日単位でずれうる。
+
+| 区分 | ❌ 禁止（セッション TZ 依存） | ✅ 正解（TZ に依らない） |
+|---|---|---|
+| 日時 | `NOW()` / `SYSDATE()` / `CURRENT_TIMESTAMP` / `LOCALTIMESTAMP` | `UTC_TIMESTAMP()` |
+| 日付 | `CURDATE()` / `CURRENT_DATE` | `UTC_DATE()` |
+| 時刻 | `CURTIME()` / `CURRENT_TIME` / `LOCALTIME` | `UTC_TIME()` |
+
 ```sql
 -- ❌ 禁止（セッション TZ 依存）
 UPDATE teams SET updated_at = NOW() WHERE id = 1;
@@ -164,7 +172,19 @@ JDBC の `serverTimezone=UTC` はドライバ側の `Timestamp` 解釈を決め�
 | `FlywayMigrationTimeFunctionGuardTest`（`common/architecture`） | 新規 migration が `NOW()` 系を増やさないこと。既存はファイル単位の件数で凍結（`backend/src/test/resources/flyway_migration_time_guard/session_tz_time_function_freeze.txt`）。**台帳への追記は禁止** |
 | `FlywayMigrationSessionTimeZoneUtcIT`（`config`） | 実 MySQL 接続のセッション TZ が UTC であり `NOW() == UTC_TIMESTAMP()` であること＝既存 746 箇所が今もずれていないこと |
 
-なお **列定義の `DEFAULT CURRENT_TIMESTAMP` / `ON UPDATE CURRENT_TIMESTAMP` / `DEFAULT NOW()`（598 ファイル・1558 箇所）は射程外**とする。これらは「その列を省いた INSERT が来たときだけ」効く保険であり、式 DEFAULT（`DEFAULT (UTC_TIMESTAMP())`）へ倒すには適用済み migration の書き換えが必須で、チェックサム不一致と引き換えになる。ここは `FlywayMigrationSessionTimeZoneUtcIT` の実測担保に委ねる。
+#### 射程外にした範囲と、その理由（「見落とし」ではない）
+
+**列定義の `DEFAULT CURRENT_TIMESTAMP` / `ON UPDATE CURRENT_TIMESTAMP` / `DEFAULT NOW()`（598 ファイル・1558 箇所）は射程外**とする。これだけの量がありながら番人が見ていない状態は後から「走査漏れ」と誤解されやすいので、判断の因果をここに残す。
+
+1. **そもそもずれていない**。列既定の `CURRENT_TIMESTAMP` も DML の `NOW()` とまったく同じ理屈でセッションの `time_zone` に従い、本プロジェクトはそれを全環境で UTC に固定している（上表・実測済み）。よって 1558 箇所も UTC 壁時計を書く。**実害のある課題ではなく、今後どう書かせるかという規約だけの話である。**
+2. **その前提は放置されていない**。「セッション `time_zone` が UTC」であることは `FlywayMigrationSessionTimeZoneUtcIT` が実 MySQL 接続で実測し CI の不変条件として守る。1558 箇所の正しさは**あちらの番人が担保しており**、`FlywayMigrationTimeFunctionGuardTest` が重ねて見る必要がない。
+3. **塞ごうとすると代償が釣り合わない**。式 DEFAULT（`DEFAULT (UTC_TIMESTAMP())`）へ一括で倒すには**適用済み migration の書き換え**が必須で、Flyway のチェックサム不一致により全環境の起動が止まる。実害ゼロの案件でその代償は払えない。
+
+加えて実運用上、列既定は「その列を省いた INSERT が来たときだけ」効く保険であり、実際の INSERT は JPA 経路（`@PrePersist`）か明示列指定のどちらかで必ず値を与えるため、発火機会自体が乏しい。
+
+この線引きを将来動かす（列既定も禁じる）場合は、**対象を新規 migration だけに限ること**。既存への遡及は上記 3. の理由で採ってはならない。
+
+**`src/test` 配下の SQL も同じ理由で射程外**とする（テストのフィクスチャは Testcontainers 上の使い捨てデータであり、本番データの格納基準を汚さない。別戦役の扱い）。
 
 ---
 

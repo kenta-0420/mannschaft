@@ -78,6 +78,45 @@ class FlywayMigrationTimeFunctionGuardScanningLogicTest {
         void whereClauseNow() {
             assertThat(scan("DELETE FROM t WHERE expires_at < NOW();")).hasSize(1);
         }
+
+        // ────────────────────────────────────────────────────────────
+        // 日付系・時刻系の別名（Codex 検分の指摘 #1・初版の偽陰性）
+        //
+        // これらも等しくセッションの time_zone に従う。日時型だけを見ていると
+        // 「DELETE ... WHERE target_date < CURDATE()」が素通りし、日単位でずれうる。
+        // プロジェクト規約（backend/.claudecode.md）も CURDATE() を名指ししている。
+        // ────────────────────────────────────────────────────────────
+
+        @Test
+        @DisplayName("CURDATE()（規約が名指ししている日付系）")
+        void curdate() {
+            assertThat(scan("DELETE FROM t WHERE target_date < CURDATE();")).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("裸の CURRENT_DATE と CURRENT_DATE()")
+        void currentDate() {
+            assertThat(scan("UPDATE t SET d = CURRENT_DATE WHERE e = CURRENT_DATE();")).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("CURTIME() と裸の CURRENT_TIME")
+        void curtimeAndCurrentTime() {
+            assertThat(scan("UPDATE t SET a = CURTIME(), b = CURRENT_TIME;")).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("裸の LOCALTIME（LOCALTIMESTAMP の接頭辞でもある）")
+        void localtime() {
+            assertThat(scan("UPDATE t SET a_at = LOCALTIME;")).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("接頭辞関係のある別名が互いを食い合わず、それぞれ1件ずつ数えられる")
+        void prefixOverlappingAliasesCountedOnce() {
+            assertThat(scan("SELECT CURRENT_TIMESTAMP, CURRENT_TIME, LOCALTIMESTAMP, LOCALTIME;"))
+                    .hasSize(4);
+        }
     }
 
     @Nested
@@ -133,6 +172,45 @@ class FlywayMigrationTimeFunctionGuardScanningLogicTest {
         @DisplayName("「今」を一切含まない migration")
         void unrelatedMigration() {
             assertThat(scan("ALTER TABLE t ADD COLUMN memo VARCHAR(255) NULL;")).isEmpty();
+        }
+
+        // ────────────────────────────────────────────────────────────
+        // 識別子の接頭辞に一致しないこと（Codex 検分の指摘 #2・初版の偽陽性）
+        //
+        // 括弧なしの別名は、末尾の境界が無いと通常のカラム名の接頭辞にも一致する。
+        // その場合、セッション依存関数を1つも含まない migration が凍結件数の差分で
+        // 赤くなり、無関係な作業を妨げる番人になってしまう。
+        // ────────────────────────────────────────────────────────────
+
+        @Test
+        @DisplayName("CURRENT_TIMESTAMP を接頭辞に持つカラム名は関数ではない")
+        void identifierPrefixedByCurrentTimestamp() {
+            assertThat(scan("ALTER TABLE t ADD COLUMN current_timestamp_format VARCHAR(32) NULL;"))
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("LOCALTIMESTAMP / LOCALTIME を接頭辞に持つカラム名は関数ではない")
+        void identifierPrefixedByLocaltimestamp() {
+            assertThat(scan("UPDATE t SET localtimestamp_backup = 1, localtime_zone = 'x';")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("CURRENT_DATE / CURRENT_TIME を接頭辞に持つカラム名は関数ではない")
+        void identifierPrefixedByCurrentDate() {
+            assertThat(scan("UPDATE t SET current_date_label = 'a', current_time_slot = 'b';")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("CURDATE / CURTIME を接頭辞に持つカラム名は関数ではない")
+        void identifierPrefixedByCurdate() {
+            assertThat(scan("UPDATE t SET curdate_cache = 1, curtime_cache = 2;")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("正解である UTC_DATE() / UTC_TIME() は違反ではない")
+        void utcDateAndUtcTimeAreCorrect() {
+            assertThat(scan("UPDATE t SET d = UTC_DATE(), ti = UTC_TIME();")).isEmpty();
         }
     }
 
