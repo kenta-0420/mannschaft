@@ -215,7 +215,10 @@ class FlywayMigrationTimeFunctionGuardTest {
         // O(ファイル長 × 一致件数) となり、117 件の一致を持つ migration（V2.027）などで
         // 走査全体が桁違いに遅くなる（実測 8.8 秒 → 是正後は後述の scanFinishesQuickly を参照）。
         LineCounter lines = new LineCounter();
-        Matcher m = SESSION_TZ_NOW_NAME.matcher(scan);
+        // 入力を割り込み可能なラッパで包む。これが無いと、検出パターンが破滅的バックトラックへ
+        // 退行したときに走査スレッドが割り込みを無視して CPU を焼き続ける
+        // （InterruptibleCharSequence の Javadoc 参照）。
+        Matcher m = SESSION_TZ_NOW_NAME.matcher(interruptible(scan));
         while (m.find()) {
             if (precededByIdentifierPart(scan, m.start())) {
                 continue; // より長い識別子の一部（audit$current_date / `current_date` / t.current_date）
@@ -484,13 +487,82 @@ class FlywayMigrationTimeFunctionGuardTest {
      * 該当しない。ファイル読み取りはスレッドに紐づかない。</p>
      */
     static <T> T scanWithinTimeout(org.junit.jupiter.api.function.ThrowingSupplier<T> scan) {
+        return scanWithinTimeout(Duration.ofMillis(SCAN_TIMEOUT_MILLIS), scan);
+    }
+
+    /** 上限を指定する版（走査ロジックテストが短い上限で打ち切りを検証するために使う）。 */
+    static <T> T scanWithinTimeout(Duration timeout, org.junit.jupiter.api.function.ThrowingSupplier<T> scan) {
         return org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(
-                Duration.ofMillis(SCAN_TIMEOUT_MILLIS), scan,
+                timeout, scan,
                 () -> """
                     migration の走査が %d ms 以内に終わらなかった（打ち切った）。
                     検出パターンに可変長の量指定子を持ち込むと破滅的バックトラックで停止しうる
                     （本リポジトリには 55 分ハングの実例がある）。可変長は正規表現ではなく線形処理で
-                    扱うこと（SESSION_TZ_NOW_NAME の Javadoc）。""".formatted(SCAN_TIMEOUT_MILLIS));
+                    扱うこと（SESSION_TZ_NOW_NAME の Javadoc）。""".formatted(timeout.toMillis()));
+    }
+
+    /** 走査が割り込まれたことを表す。{@link InterruptibleCharSequence} だけが投げる。 */
+    static final class ScanInterruptedException extends RuntimeException {
+        ScanInterruptedException() {
+            super("走査が割り込まれたため中断した（時間制限による打ち切り）");
+        }
+    }
+
+    /**
+     * 正規表現走査を<b>割り込みに応答させる</b>ための入力ラッパ。
+     *
+     * <h3>なぜ必要か【必読】</h3>
+     * <p>{@code assertTimeoutPreemptively} は<b>実行スレッドへ割り込みを送るだけ</b>で強制終了はしない。
+     * ところが Java の正規表現走査（{@link Matcher#find()} など）は<b>割り込み状態を一切見ない</b>。
+     * したがって検出パターンが破滅的バックトラックへ退行すると、テストは赤くなるものの
+     * <b>走査スレッドは生き残って CPU を焼き続け</b>、テスト JVM を停止不能または高負荷にする。
+     * つまりプリエンプティブにしただけでは<b>保険が効かない</b>（Codex 検分の指摘）。</p>
+     *
+     * <p>{@link Matcher} は入力から {@link CharSequence#charAt(int)} で 1 文字ずつ読み進めるので、
+     * その {@code charAt} で割り込み状態を見て例外を投げれば、走査は割り込みに応答するようになる。
+     * バックトラック中も文字の読み直しが起きるため、停止までの遅れは高々数文字ぶんである。</p>
+     *
+     * <h3>{@code Thread.interrupted()} ではなく {@code isInterrupted()} を使う理由</h3>
+     * <p>{@code Thread.interrupted()} は<b>割り込みフラグを消す</b>。ここで消してしまうと、
+     * 最初の 1 回しか例外を投げられないうえ、{@code assertTimeoutPreemptively} 側の後処理
+     * （{@code shutdownNow} による再割り込み）とも噛み合わなくなる。フラグを消さない
+     * {@code isInterrupted()} を使う。</p>
+     */
+    static final class InterruptibleCharSequence implements CharSequence {
+        private final CharSequence delegate;
+
+        InterruptibleCharSequence(CharSequence delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public char charAt(int index) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new ScanInterruptedException();
+            }
+            return delegate.charAt(index);
+        }
+
+        @Override
+        public int length() {
+            return delegate.length();
+        }
+
+        /** 部分列も割り込み可能なまま返す（{@code Matcher#group()} 等が使う）。 */
+        @Override
+        public CharSequence subSequence(int start, int end) {
+            return new InterruptibleCharSequence(delegate.subSequence(start, end));
+        }
+
+        @Override
+        public String toString() {
+            return delegate.toString();
+        }
+    }
+
+    /** 走査対象文字列を割り込み可能にして返す。 */
+    static CharSequence interruptible(CharSequence text) {
+        return new InterruptibleCharSequence(text);
     }
 
     @Test
@@ -536,6 +608,11 @@ class FlywayMigrationTimeFunctionGuardTest {
     static List<Violation> collectViolations(Path root) {
         List<Violation> violations = new ArrayList<>();
         for (Path file : sqlFiles(root)) {
+            // ファイル単位でも割り込みを見る。1 ファイルあたりが速くても、対象が膨れて全体が
+            // 長引いた場合に打ち切れるようにするため（1 ファイル内の停止は上の入力ラッパが見る）。
+            if (Thread.currentThread().isInterrupted()) {
+                throw new ScanInterruptedException();
+            }
             violations.addAll(collectViolationsInFile(read(file), relativeName(root, file)));
         }
         return violations;
@@ -565,6 +642,11 @@ class FlywayMigrationTimeFunctionGuardTest {
             counts.merge(parts[0], Integer.parseInt(parts[1].strip()), Integer::sum);
         }
         return counts;
+    }
+
+    /** 走査ロジックテストが本番経路（実物の migration 走査）を叩くための入口。 */
+    static Path migrationRootForTest() {
+        return migrationRoot();
     }
 
     private static Path migrationRoot() {

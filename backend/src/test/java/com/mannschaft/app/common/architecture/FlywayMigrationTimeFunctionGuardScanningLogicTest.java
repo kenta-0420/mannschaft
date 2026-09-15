@@ -6,6 +6,9 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -291,36 +294,160 @@ class FlywayMigrationTimeFunctionGuardScanningLogicTest {
     @DisplayName("時間制限がプリエンプティブであること")
     class PreemptiveTimeout {
 
+        /** 本検体で使う上限。実行時間を縮めるため本番の 30 秒ではなく 2 秒にする。 */
+        private static final Duration PROBE_TIMEOUT = Duration.ofSeconds(2);
+
+        /** スレッドの停止を待つ上限。 */
+        private static final Duration STOP_DEADLINE = Duration.ofSeconds(20);
+
         /**
-         * 「終わってから経過時間を測る」実装では、<b>走査が停止したときにだけ番人が働かない</b>。
-         * ここでは意図的に上限を超える走査を注入し、<b>自力で終わるのを待たずに打ち切られる</b>ことを
-         * 実測で固定する（Codex 検分の指摘への回帰テスト）。
+         * 本番経路の検体で使う上限。実物の走査（5〜8 秒）より十分短く、かつ走査スレッドが
+         * 起動して自分自身を記録する余裕はある長さにする（1 ms だと起動前に打ち切られうる）。
+         */
+        private static final Duration PRODUCTION_PROBE_TIMEOUT = Duration.ofMillis(300);
+
+        /**
+         * メモリを消費せずに「長時間終わらない正規表現走査」を作る合成入力。
+         *
+         * <p><b>なぜ「破滅的バックトラックする正規表現」を検体にしないのか</b>: 当初は
+         * {@code (a+)+$} 等の古典的な検体を書いたが、<b>この JDK では一切爆発しなかった</b>
+         * （{@code (a+)+$} / {@code (a|aa)+$} / {@code (x+x+)+y} / {@code ^(\\w+\\s?)+$} を
+         * n=16〜45 で実測。いずれも数十 ms で完了）。Java 9 以降の正規表現最適化による。
+         * 「この正規表現は爆発するはずだ」という前提に乗った検体は、<b>JDK が変わると黙って
+         * 無検査になる</b>——まさに本番人が防ごうとしている失敗の形そのものである。</p>
+         *
+         * <p>そこで前提を「爆発すること」ではなく「<b>長い走査であること</b>」に置き換える。
+         * {@code length()} を {@link Integer#MAX_VALUE} にして全文字を {@code 'a'} で供給すれば、
+         * {@code "b"} を探す走査は 21 億回の {@code charAt} を要し、確実に数十秒級になる。
+         * 実体を持たないのでメモリは使わない。JDK の最適化に依存しない。</p>
+         */
+        private static final class EndlessCharSequence implements CharSequence {
+            @Override
+            public int length() {
+                return Integer.MAX_VALUE;
+            }
+
+            @Override
+            public char charAt(int index) {
+                return 'a';
+            }
+
+            @Override
+            public CharSequence subSequence(int start, int end) {
+                throw new UnsupportedOperationException("本検体では部分列を取らない");
+            }
+
+            @Override
+            public String toString() {
+                return "EndlessCharSequence";
+            }
+        }
+
+        /** {@code 'a'} だけの入力からは決して見つからない＝走査が最後まで走り切るパターン。 */
+        private static final Pattern NEVER_MATCHES = Pattern.compile("b");
+
+        /**
+         * <b>割り込みに応答しない処理でも打ち切れること</b>の回帰テスト。
+         *
+         * <p>前版の検体は {@code Thread.sleep} を注入していたが、{@code sleep} は割り込みに応答するため
+         * <b>本来の発生条件を再現していなかった</b>（Codex 検分の指摘）。Java の正規表現走査は
+         * 割り込み状態を見ないので、{@code assertTimeoutPreemptively} だけでは走査スレッドが
+         * 生き残って CPU を焼き続ける。</p>
+         *
+         * <p>ここでは長時間終わらない正規表現走査を注入し、<b>①上限で打ち切られること</b>と
+         * <b>②走査スレッドが実際に停止すること</b>の両方を確かめる。②を確かめないと
+         * 「テストが赤くなっただけでスレッドは焼き続けている」状態を見逃す。</p>
+         *
+         * <p><b>素の入力なら止まらないことの実測</b>: 同じ走査をラッパ無しで走らせて割り込むと、
+         * 2.5 秒後もスレッドは生きていた。ラッパ付きでは割り込みから <b>3 ms</b> で停止した
+         * （JDK 標準の {@code Pattern} で計測）。ここで素の側を回帰テストに含めないのは、
+         * 止まらないスレッドを CPU を焼いたままテスト JVM に残すことになるためである。</p>
          */
         @Test
-        @DisplayName("上限を超える走査は、自力で終わるのを待たずに打ち切られる")
-        void slowScanIsCutOffWithoutWaitingForCompletion() {
-            // 上限（30秒）より十分長い走査。打ち切られなければテスト自体が 10 分待たされる。
-            long absurdlyLongMillis = Duration.ofMinutes(10).toMillis();
+        @DisplayName("割り込みに応答しない正規表現走査でも、上限で打ち切られ、スレッドが実際に停止する")
+        void nonInterruptibleRegexScanIsCutOffAndThreadActuallyStops() throws InterruptedException {
+            AtomicReference<Thread> scanThread = new AtomicReference<>();
             long startNanos = System.nanoTime();
 
-            assertThatThrownBy(() -> FlywayMigrationTimeFunctionGuardTest.scanWithinTimeout(() -> {
-                Thread.sleep(absurdlyLongMillis);
-                return List.of();
-            })).isInstanceOf(AssertionError.class);
+            assertThatThrownBy(() -> FlywayMigrationTimeFunctionGuardTest.scanWithinTimeout(
+                    PROBE_TIMEOUT, () -> {
+                        scanThread.set(Thread.currentThread());
+                        // 入力を割り込み可能なラッパで包むのが是正の本体。
+                        // 包まずに渡すと、この find() は割り込みを無視して走り続ける（上記の実測）。
+                        Matcher m = NEVER_MATCHES.matcher(
+                                FlywayMigrationTimeFunctionGuardTest.interruptible(new EndlessCharSequence()));
+                        m.find();
+                        return List.of();
+                    })).isInstanceOf(AssertionError.class);
 
             long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000L;
             assertThat(elapsedMillis)
-                    .as("打ち切りが効いていれば上限（%d ms）付近で戻るはず。実測 %d ms。"
-                                    + "走査の完了を待ってから判定する実装だと 10 分待たされる。",
-                            FlywayMigrationTimeFunctionGuardTest.SCAN_TIMEOUT_MILLIS, elapsedMillis)
-                    .isLessThan(FlywayMigrationTimeFunctionGuardTest.SCAN_TIMEOUT_MILLIS + 15_000L);
+                    .as("上限 %d ms で打ち切られるはずが %d ms かかった", PROBE_TIMEOUT.toMillis(), elapsedMillis)
+                    .isLessThan(PROBE_TIMEOUT.toMillis() + STOP_DEADLINE.toMillis());
+
+            assertThreadStops(scanThread.get(), STOP_DEADLINE);
+        }
+
+        /**
+         * <b>本番の走査経路</b>が割り込みに応答することの回帰テスト。
+         *
+         * <p>上の検体は仕組み（ラッパ単体）を確かめるもので、{@code collectViolations} が実際に
+         * その仕組みを通しているかまでは保証しない。ここでは実物の migration 走査を極端に短い上限で
+         * 打ち切り、<b>本番経路のスレッドが即座に止まる</b>ことを見る。割り込み検査を外すと、
+         * 走査が自力で終わるまで（実測 5〜8 秒）スレッドが生き続けるため検出できる。</p>
+         */
+        @Test
+        @DisplayName("本番の走査経路も割り込みに応答する（実物の migration 走査を極短の上限で打ち切る）")
+        void productionScanPathRespondsToInterrupt() throws InterruptedException {
+            AtomicReference<Thread> scanThread = new AtomicReference<>();
+
+            assertThatThrownBy(() -> FlywayMigrationTimeFunctionGuardTest.scanWithinTimeout(
+                    PRODUCTION_PROBE_TIMEOUT, () -> {
+                        scanThread.set(Thread.currentThread());
+                        return FlywayMigrationTimeFunctionGuardTest.collectViolations(
+                                FlywayMigrationTimeFunctionGuardTest.migrationRootForTest());
+                    })).isInstanceOf(AssertionError.class);
+
+            // 実物の走査は 5〜8 秒かかる。割り込み検査を外すと最後まで走り切ってしまうので、
+            // 停止の許容を 3 秒にしておけば「検査が外れた」ことを検出できる。
+            assertThreadStops(scanThread.get(), Duration.ofSeconds(3));
+        }
+
+        private void assertThreadStops(Thread worker, Duration stopDeadline) throws InterruptedException {
+            assertThat(worker).as("走査スレッドを捕捉できていない（検体の前提が壊れている）").isNotNull();
+
+            long deadlineNanos = System.nanoTime() + stopDeadline.toNanos();
+            while (worker.isAlive() && System.nanoTime() < deadlineNanos) {
+                Thread.sleep(50);
+            }
+
+            assertThat(worker.isAlive())
+                    .as("""
+                        走査スレッド（%s）が打ち切り後も生きている。
+                        assertTimeoutPreemptively は割り込みを送るだけで、Java の正規表現走査は
+                        割り込みを見ないため、入力を InterruptibleCharSequence で包まないと
+                        スレッドが CPU を焼き続ける。テストが赤くなるだけでは不十分である。""",
+                            worker.getName())
+                    .isFalse();
         }
 
         @Test
         @DisplayName("上限内に終わる走査は、そのまま結果を返す（打ち切りが誤爆しない）")
         void fastScanReturnsNormally() {
-            assertThat(FlywayMigrationTimeFunctionGuardTest.scanWithinTimeout(() -> scan(
+            assertThat(FlywayMigrationTimeFunctionGuardTest.scanWithinTimeout(PROBE_TIMEOUT, () -> scan(
                     "UPDATE t SET a_at = NOW();"))).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("割り込みされていなければ、ラッパは走査を妨げず、割り込みフラグも消さない")
+        void wrapperDoesNotDisturbNormalScan() {
+            Matcher m = Pattern.compile("a+").matcher(
+                    FlywayMigrationTimeFunctionGuardTest.interruptible("aaa"));
+            assertThat(m.find()).isTrue();
+            assertThat(m.group()).isEqualTo("aaa");
+            assertThat(Thread.currentThread().isInterrupted())
+                    .as("ラッパは割り込みフラグを消してはならない（Thread.interrupted() を使わない理由）")
+                    .isFalse();
         }
     }
 
