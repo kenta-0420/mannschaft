@@ -83,6 +83,7 @@
       "status_created": "已创建",
       "status_cancelled": "已取消",
       "status_failed": "失败",
+      "edit_readonly": "无法在此页面更改预约任务的内容。现有预约任务将予以保留。",
       "cancel": "取消",
       "cancel_success": "已取消预约任务",
       "cancel_failed": "取消预约任务失败"

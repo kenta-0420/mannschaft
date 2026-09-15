@@ -83,6 +83,7 @@
       "status_created": "생성됨",
       "status_cancelled": "취소됨",
       "status_failed": "실패",
+      "edit_readonly": "예약 작업의 내용은 이 화면에서 변경할 수 없습니다. 기존 예약 작업은 그대로 유지됩니다.",
       "cancel": "취소",
       "cancel_success": "예약 작업을 취소했습니다",
       "cancel_failed": "예약 작업 취소에 실패했습니다"

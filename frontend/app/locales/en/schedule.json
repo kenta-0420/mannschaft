@@ -83,6 +83,7 @@
       "status_created": "Created",
       "status_cancelled": "Cancelled",
       "status_failed": "Failed",
+      "edit_readonly": "Scheduled task details cannot be changed here. Existing scheduled tasks will be kept.",
       "cancel": "Cancel",
       "cancel_success": "The scheduled task has been cancelled",
       "cancel_failed": "Failed to cancel the scheduled task"

@@ -285,26 +285,47 @@ watch(
           }
         }
         else {
+          // 共有予定の詳細 API は ScheduleDetailResponse の content/time/detail/settings にネストする。
+          // 従来の平坦な参照では編集フォームが全て空欄になり、既存予定を上書きしてしまう。
+          const content = (data.content as Record<string, unknown> | null) ?? {}
+          const time = (data.time as Record<string, unknown> | null) ?? {}
+          const detail = (data.detail as Record<string, unknown> | null) ?? {}
+          const settings = (data.settings as Record<string, unknown> | null) ?? {}
           const recurrence = (data.recurrence as Record<string, unknown> | null) ?? {}
-          isRecurringSchedule.value = Boolean(recurrence.recurrenceRule || recurrence.parentScheduleId)
-          form.value.title = (data.title as string) ?? ''
-          form.value.description = (data.description as string) ?? ''
-          form.value.location = (data.location as string) ?? ''
-          form.value.allDay = (data.allDay as boolean) ?? false
-          form.value.attendanceRequired = (data.attendanceRequired as boolean) ?? false
-          form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
-          form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
-          form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
+          const recurrenceRule = recurrence.recurrenceRule as Record<string, unknown> | null
+          isRecurringSchedule.value = Boolean(recurrenceRule || recurrence.parentScheduleId)
+          form.value.title = (content.title as string) ?? (data.title as string) ?? ''
+          form.value.description = (detail.description as string) ?? (data.description as string) ?? ''
+          form.value.location = (content.location as string) ?? (data.location as string) ?? ''
+          form.value.allDay = (time.allDay as boolean) ?? (data.allDay as boolean) ?? false
+          form.value.attendanceRequired = (content.attendanceRequired as boolean) ?? (data.attendanceRequired as boolean) ?? false
+          form.value.allowProxyAttendance = (settings.allowProxyAttendance as boolean) ?? (data.allowProxyAttendance as boolean) ?? false
+          form.value.isProxyAutoAccept = (settings.isProxyAutoAccept as boolean) ?? (data.isProxyAutoAccept as boolean) ?? false
+          form.value.teamBreakdownEnabled = (settings.teamBreakdownEnabled as boolean) ?? (data.teamBreakdownEnabled as boolean) ?? false
+          if (recurrenceRule && typeof recurrenceRule === 'object') {
+            form.value.recurrence = true
+            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
+            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
+            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
+            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
+            form.value.recurrenceEndDate = recurrenceRule.endDate ? new Date(recurrenceRule.endDate as string) : null
+            form.value.recurrenceCount = (recurrenceRule.count as number) ?? 10
+          }
+          else {
+            form.value.recurrence = false
+          }
           targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
           targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
             .map(target => target.userId)
-          if (data.startAt) {
-            const start = new Date(data.startAt as string)
+          const startAt = time.startAt ?? data.startAt
+          if (startAt) {
+            const start = new Date(startAt as string)
             form.value.startDate = start
             form.value.startTime = start.toTimeString().slice(0, 5)
           }
-          if (data.endAt) {
-            const end = new Date(data.endAt as string)
+          const endAt = time.endAt ?? data.endAt
+          if (endAt) {
+            const end = new Date(endAt as string)
             form.value.endDate = end
             form.value.endTime = end.toTimeString().slice(0, 5)
           }
@@ -487,7 +508,7 @@ function validateScheduledInputs(): string | null {
     }
   }
   // 共有スコープのみ予約アンケート・予約出欠を検証
-  if (!effectiveScope.value.isPersonal) {
+  if (!effectiveScope.value.isPersonal && !isEdit.value) {
     if (form.value.scheduledSurvey.enabled) {
       if (!form.value.scheduledSurvey.scheduledAt) {
         return t('schedule.scheduled_survey.error_scheduled_at_required')
@@ -543,7 +564,8 @@ async function submit() {
   if (effectiveScope.value.isPersonal) {
     body.color = form.value.color
   } else {
-    body.eventType = 'OTHER'
+    // 編集時に元の eventType を OTHER へ変更しない（UI には eventType 選択欄がない）。
+    if (!isEdit.value) body.eventType = 'OTHER'
     body.attendanceRequired = form.value.attendanceRequired
     body.allow_proxy_attendance = form.value.allowProxyAttendance
     body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
@@ -594,8 +616,9 @@ async function submit() {
     body.reminders = buildSharedReminders()
   }
 
-  // === 機能55: 予約アンケート・予約出欠（team/org のみ。作成時・編集時ともに送信） ===
-  if (!effectiveScope.value.isPersonal) {
+  // 予約タスクは現在、詳細 GET から完全な payload を復元できない。編集時に送ると
+  // PENDING タスクを cancel して空の既定値で作り直してしまうため、作成時だけ送る。
+  if (!effectiveScope.value.isPersonal && !isEdit.value) {
     if (form.value.scheduledSurvey.enabled) {
       const s = form.value.scheduledSurvey
       body.scheduledSurveys = [
@@ -860,9 +883,12 @@ function close() {
 
       <!-- 機能55: 予約アンケート・予約出欠（team/org のみ。編集時も表示） -->
       <ScheduleEventScheduledAttachmentInput
-        v-if="!effectiveScope.isPersonal"
+        v-if="!effectiveScope.isPersonal && !isEdit"
         v-model:form="form"
       />
+      <Message v-else-if="!effectiveScope.isPersonal" severity="info" :closable="false">
+        {{ $t('schedule.scheduled_task.edit_readonly') }}
+      </Message>
 
       <div>
         <label class="mb-1 block text-sm font-medium">{{ $t('schedule.description_label') }}</label>

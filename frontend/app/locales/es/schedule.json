@@ -83,6 +83,7 @@
       "status_created": "Creada",
       "status_cancelled": "Cancelada",
       "status_failed": "Fallida",
+      "edit_readonly": "Los detalles de las tareas programadas no se pueden modificar aquí. Las tareas programadas existentes se conservarán.",
       "cancel": "Cancelar",
       "cancel_success": "La tarea programada se ha cancelado",
       "cancel_failed": "No se pudo cancelar la tarea programada"

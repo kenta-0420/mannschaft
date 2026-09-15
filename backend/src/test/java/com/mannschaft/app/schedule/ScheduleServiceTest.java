@@ -13,6 +13,7 @@ import com.mannschaft.app.dashboard.TargetType;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
+import com.mannschaft.app.schedule.dto.RecurrenceRuleDto;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -135,6 +136,26 @@ class ScheduleServiceTest {
                 .isException(false)
                 .createdBy(USER_ID)
                 .build();
+    }
+
+    @Test
+    @DisplayName("CMP-107 詳細GET: 子予定の親IDと例外状態、親予定のルールをDTOへ反映する")
+    void detailRecurrenceForReflectsPersistedState() {
+        ScheduleEntity child = createTeamScheduleEntity().toBuilder()
+                .id(SCHEDULE_ID).parentScheduleId(99L).isException(true).build();
+        var childDetail = scheduleService.detailRecurrenceFor(child);
+        assertThat(childDetail.recurrenceRule()).isNull();
+        assertThat(childDetail.parentScheduleId()).isEqualTo(99L);
+        assertThat(childDetail.isException()).isTrue();
+
+        ScheduleEntity parent = createTeamScheduleEntity().toBuilder()
+                .id(99L).recurrenceRule("{\"type\":\"WEEKLY\"}").build();
+        RecurrenceRuleDto rule = new RecurrenceRuleDto(
+                "WEEKLY", 1, List.of("MONDAY"), "COUNT", null, 4);
+        given(recurrenceService.deserializeRecurrenceRule(parent.getRecurrenceRule())).willReturn(rule);
+        var parentDetail = scheduleService.detailRecurrenceFor(parent);
+        assertThat(parentDetail.recurrenceRule()).isEqualTo(rule);
+        assertThat(parentDetail.parentScheduleId()).isNull();
     }
 
     private ScheduleEntity createCancelledScheduleEntity() {

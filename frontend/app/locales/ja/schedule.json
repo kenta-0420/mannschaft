@@ -83,6 +83,7 @@
       "status_created": "作成済み",
       "status_cancelled": "取消済み",
       "status_failed": "失敗",
+      "edit_readonly": "予約タスクの内容はこの画面では変更できません。既存の予約内容は保持されます。",
       "cancel": "取消",
       "cancel_success": "予約タスクを取り消しました",
       "cancel_failed": "予約タスクの取消に失敗しました"

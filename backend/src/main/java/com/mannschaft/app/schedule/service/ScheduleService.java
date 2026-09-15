@@ -27,6 +27,7 @@ import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
+import com.mannschaft.app.schedule.dto.ScheduleDetailResponse;
 import com.mannschaft.app.schedule.dto.ScheduleTargetResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
@@ -628,6 +629,13 @@ public class ScheduleService {
                 .createdBy(userId)
                 .build();
         return scheduleRepository.save(duplicate);
+    }
+
+    /** 詳細GET向けに繰り返しルールと親・例外状態を返す。単発予定のルールは null。 */
+    public ScheduleDetailResponse.ScheduleDetailRecurrenceDto detailRecurrenceFor(ScheduleEntity schedule) {
+        return new ScheduleDetailResponse.ScheduleDetailRecurrenceDto(
+                recurrenceService.deserializeRecurrenceRule(schedule.getRecurrenceRule()),
+                schedule.getIsException(), schedule.getParentScheduleId());
     }
 
     /** 対象者名簿は同一スコープのアクティブメンバーにだけ返す。 */

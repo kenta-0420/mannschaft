@@ -26,6 +26,9 @@ export interface NestedScheduleResponse {
     location?: string | null
     attendanceRequired?: boolean | null
   } | null
+  detail?: {
+    description?: string | null
+  } | null
   time?: {
     startAt?: string | null
     endAt?: string | null
@@ -151,7 +154,7 @@ export function toFlatScheduleEvent(raw: NestedScheduleResponse): FlatScheduleEv
     id: raw.id,
     scheduleId: raw.id,
     title: content.title ?? '',
-    description: null,
+    description: raw.detail?.description ?? null,
     location: content.location ?? null,
     startAt: time.startAt ?? '',
     endAt: time.endAt ?? time.startAt ?? '',

@@ -323,7 +323,10 @@ public class ScheduleRecurrenceService {
     /**
      * JSON文字列から繰り返しルールをデシリアライズする。
      */
-    private RecurrenceRuleDto deserializeRecurrenceRule(String json) {
+    public RecurrenceRuleDto deserializeRecurrenceRule(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
         try {
             return objectMapper.readValue(json, RecurrenceRuleDto.class);
         } catch (JsonProcessingException e) {

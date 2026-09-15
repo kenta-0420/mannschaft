@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.dto.RecurrenceRuleDto;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,6 +58,20 @@ class ScheduleRecurrenceServiceTest {
         return captor.getAllValues().stream()
                 .map(e -> e.getStartAt().toLocalDate())
                 .toList();
+    }
+
+    @Test
+    @DisplayName("CMP-107 詳細GET: 保存済み繰り返しルールをDTOへ復元し、単発はnull")
+    void detailRecurrenceRuleDecoding() {
+        RecurrenceRuleDto rule = service.deserializeRecurrenceRule(
+                "{\"type\":\"WEEKLY\",\"interval\":1,\"daysOfWeek\":[\"MONDAY\"],"
+                        + "\"endType\":\"COUNT\",\"count\":4}");
+
+        assertThat(rule.type()).isEqualTo("WEEKLY");
+        assertThat(rule.daysOfWeek()).containsExactly("MONDAY");
+        assertThat(rule.count()).isEqualTo(4);
+        assertThat(service.deserializeRecurrenceRule(null)).isNull();
+        assertThat(service.deserializeRecurrenceRule("")).isNull();
     }
 
     private ScheduleEntity recurringRow(long id, Long parentId, LocalDateTime startAt, boolean exception) {

@@ -83,6 +83,7 @@
       "status_created": "Erstellt",
       "status_cancelled": "Abgebrochen",
       "status_failed": "Fehlgeschlagen",
+      "edit_readonly": "Die Details geplanter Aufgaben können hier nicht geändert werden. Bestehende geplante Aufgaben bleiben erhalten.",
       "cancel": "Abbrechen",
       "cancel_success": "Die geplante Aufgabe wurde abgebrochen",
       "cancel_failed": "Die geplante Aufgabe konnte nicht abgebrochen werden"

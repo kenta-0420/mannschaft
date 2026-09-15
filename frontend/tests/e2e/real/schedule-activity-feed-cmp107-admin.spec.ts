@@ -93,14 +93,15 @@ test('CMP107-ADMIN: モバイル実画面でこの回以降を選択し、5件�
 
   await page.goto('/calendar', { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
+  await expect(page.getByTestId('schedule-list-view'), 'カレンダーの予定一覧が描画された').toBeVisible({ timeout: 120_000 })
   await waitForSpinnerGone(page)
   const row = page.getByTestId('schedule-list-row').filter({ hasText: beforeTitle }).first()
   // 開始日+7日が翌月に入る月末でも、実UIの月送りで対象を開く。
-  if (!await row.isVisible()) {
+  if (new Date(start).getMonth() !== new Date().getMonth()) {
     await page.getByRole('button', { name: '次の月' }).click()
     await waitForSpinnerGone(page)
   }
-  await expect(row, '対象予定が当月または翌月の一覧に現れる').toBeVisible({ timeout: 30_000 })
+  await expect(row, '対象予定が当月または翌月の一覧に現れる').toBeVisible({ timeout: 120_000 })
   await row.getByRole('button', { name: beforeTitle }).click()
 
   const detail = page.getByRole('dialog', { name: beforeTitle })

@@ -229,14 +229,12 @@ describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
     scheduleApiMock.updateSchedule.mockReset()
     scheduleApiMock.getSchedule.mockResolvedValue({
       data: {
-        title: '更新前',
-        description: '',
-        location: '',
-        allDay: false,
-        attendanceRequired: false,
-        recurrence: { recurrenceRule: { type: 'WEEKLY', interval: 1 } },
-        startAt: '2026-09-21T09:00:00+09:00',
-        endAt: '2026-09-21T10:00:00+09:00',
+        content: { title: '更新前', location: '練習場', attendanceRequired: true, eventType: 'PRACTICE' },
+        time: { allDay: false, startAt: '2026-09-21T09:00:00+09:00', endAt: '2026-09-21T10:00:00+09:00' },
+        detail: { description: '元の説明' },
+        settings: { allowProxyAttendance: true, isProxyAutoAccept: false, teamBreakdownEnabled: true },
+        recurrence: { recurrenceRule: { type: 'WEEKLY', interval: 1, endType: 'COUNT', count: 4 } },
+        scheduledTasks: [{ status: 'PENDING', taskType: 'SURVEY', scheduledAt: '2099-09-21T09:00:00+09:00' }],
       },
     })
     scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
@@ -245,7 +243,7 @@ describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
   it('共有予定の編集で「この回以降」を選ぶとTHIS_AND_FOLLOWINGを送る', async () => {
     const wrapper = await mountSuspended(ScheduleEventForm, {
       props: {
-        visible: true,
+        visible: false,
         scopeType: 'team',
         scopeId: 't1',
         scheduleId: 123,
@@ -253,7 +251,12 @@ describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
       },
       global: { stubs: globalStubs },
     })
+    // 実際の編集ダイアログと同じ閉→開の遷移で、詳細取得 watcher を確実に起動する。
+    await wrapper.setProps({ visible: true })
     await flushPromises()
+    expect(scheduleApiMock.getSchedule).toHaveBeenCalledWith('team', 't1', 123)
+    expect((wrapper.get('[data-testid="title-input"]').element as HTMLInputElement).value).toBe('更新前')
+    expect(wrapper.find('[data-testid="schedule-update-scope"]').exists()).toBe(true)
 
     await wrapper.get('[data-testid="schedule-update-scope-THIS_AND_FOLLOWING"]').trigger('click')
     await wrapper.get('[data-testid="title-input"]').setValue('更新後')
@@ -264,9 +267,12 @@ describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
       'team',
       't1',
       123,
-      expect.objectContaining({ title: '更新後' }),
+      expect.objectContaining({ title: '更新後', description: '元の説明', location: '練習場', attendanceRequired: true }),
       'THIS_AND_FOLLOWING',
     )
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('eventType')
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('scheduledSurveys')
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('scheduledAttendance')
   })
 
   it('個人予定の編集には共有予定用の更新範囲を表示しない', async () => {

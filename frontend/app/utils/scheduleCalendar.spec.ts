@@ -27,6 +27,7 @@ const apiResponse = {
     location: '第2グラウンド',
     attendanceRequired: true,
   },
+  detail: { description: '詳細説明' },
   time: {
     startAt: '2026-09-05T10:00:00',
     endAt: '2026-09-05T12:00:00',
@@ -44,6 +45,7 @@ describe('toCalendarPanelEvent（詳細 GET → 詳細パネル）', () => {
     // 既定値（空文字・false）と偶然一致して偽の緑にならないよう、実値そのものを検証する。
     expect(panel.title).toBe('練習試合')
     expect(panel.startAt).toBe('2026-09-05T10:00:00')
+    expect(panel.description).toBe('詳細説明')
     expect(panel.endAt).toBe('2026-09-05T12:00:00')
     expect(panel.location).toBe('第2グラウンド')
     expect(panel.status).toBe('PUBLISHED')

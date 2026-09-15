@@ -6,8 +6,8 @@ import type { Page } from '@playwright/test'
  * ネイティブフォーム送信が発生するため、フォームを操作する前に必ず呼び出す。
  *
  * Vite dev サーバーの "Outdated Optimize Dep" 504 エラーで Vue マウントが止まる場合がある。
- * 15 秒以内に成功しなければページをリロードして再試行する（1 回のリロードで
- * Vite の再最適化が完了し、2 回目の試行で成功する）。
+ * 開発サーバー初回のモジュール最適化は実機で数十秒かかる。90 秒待っても
+ * マウントされなければページをリロードして再試行する（Vite の再最適化を吸収する）。
  */
 export async function waitForHydration(page: Page): Promise<void> {
   const check = (timeout: number) =>
@@ -21,10 +21,10 @@ export async function waitForHydration(page: Page): Promise<void> {
     )
 
   try {
-    await check(15_000)
+    await check(90_000)
   } catch {
     await page.reload({ waitUntil: 'domcontentloaded' })
-    await check(60_000)
+    await check(120_000)
   }
 }
 
