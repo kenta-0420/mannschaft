@@ -57149,6 +57149,12 @@ export interface components {
             status?: string;
             title?: string;
         };
+        ScheduleRecurrenceDto: {
+            isException?: boolean;
+            /** Format: int64 */
+            parentScheduleId?: number;
+            recurrenceRule?: string;
+        };
         ScheduleResponse: {
             academic?: components["schemas"]["ScheduleAcademicDto"];
             audit?: components["schemas"]["ScheduleAuditDto"];
@@ -57156,6 +57162,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             myAttendanceStatus?: string;
+            recurrenceInfo?: components["schemas"]["ScheduleRecurrenceDto"];
             reminders?: components["schemas"]["ReminderResponse"][];
             scheduledTasks?: components["schemas"]["ScheduledTaskResponse"][];
             scope?: components["schemas"]["ScheduleScopeDto"];
