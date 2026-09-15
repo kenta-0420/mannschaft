@@ -35,7 +35,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  *
  * <h2>設計是認の凍結例外（違反隠蔽ではない）</h2>
  * <p>凍結ストアには「移行猶予中の既存 BIGINT Entity」に加え、<b>設計上 UUIDv7 を意図的に
- * 適用しない正当な例外</b>も 1 行だけ登録されている:</p>
+ * 適用しない正当な例外</b>も登録されている:</p>
  * <ul>
  *   <li>{@code village.entity.VillageFestivalLivePostEntity}（F17.2 Wave2 ③・設計書 §5.4/§13.1）
  *       — お祭りの実況投稿の紐付け表。独立発番の代理キーを必要とせず、参照2本の組
@@ -43,6 +43,17 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  *       CLAUDE.md 原則 #6 の明記された例外（「参照2本の組が一意・独立発番不要」）に該当し、
  *       設計是認済み。したがって本エントリは「違反隠蔽」ではなく「設計是認例外の正規登録」であり、
  *       他 Entity へ緩めてはならない（新規 Entity は原則どおり UuidV7Entity を継承すること）。</li>
+ *   <li>{@code billing.ActiveBillingContractOperationPointerEntity}（Billing Center PR6a・V196・
+ *       設計書 05_billing_center.md §5）— 1 契約につき進行中の操作 Saga を高々 1 件に限る lease 表。
+ *       主キーは {@code billing_contracts.id} <b>そのもの</b>（{@code PRIMARY KEY (contract_id)}）で
+ *       あり、DDL に {@code id} 列自体が存在しない。
+ *       <b>例外区分</b>: {@code docs/architecture/domain_db_design_principles.md} 原則 6 の
+ *       「1:1 従属表（主キーが親の UUIDv7 そのもの）」。原則 6 の意図は<b>将来シャーディングした
+ *       ときに各ノードが独立して主キーを発番できること</b>であり、本表の主キーは親が発番した
+ *       UUIDv7 をそのまま用いるため、その意図は<b>既に完全に満たされている</b>（BIGINT
+ *       AUTO_INCREMENT のような中央発番はどこにも現れない）。むしろ代理キーを足すと
+ *       「1 契約 1 lease」を別途 UNIQUE 制約で守る必要が生じ、排他の担保が弱くなる。
+ *       V196 で確定済みの DDL であり、新規 migration での作り直しは行わない。</li>
  * </ul>
  */
 @AnalyzeClasses(

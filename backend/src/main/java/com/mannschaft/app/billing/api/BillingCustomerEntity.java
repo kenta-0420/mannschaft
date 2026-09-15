@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -24,7 +25,15 @@ import java.time.Instant;
  * PII のため本 PR の読み取り経路では参照しない。</p>
  */
 @Entity
-@Table(name = "billing_customers")
+@Table(name = "billing_customers",
+        uniqueConstraints = {
+                // V196 の uk_bcu_scope / uk_bcu_psp と同一。test profile は ddl-auto=create で
+                // Entity から schema を作るため、ここに書かないとテストの schema にだけ UNIQUE が
+                // 無い状態になり、「並行して同一 scope を引き上げても衝突しない」という
+                // 本番には存在しない世界でテストが緑になる（PR6a・P2-2 の検証で判明）。
+                @UniqueConstraint(name = "uk_bcu_scope", columnNames = {"scope_kind", "scope_id"}),
+                @UniqueConstraint(name = "uk_bcu_psp", columnNames = {"psp_customer_ref"})
+        })
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
