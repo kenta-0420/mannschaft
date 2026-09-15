@@ -277,5 +277,5 @@ const _academicKeysExist: KeysExistIn<
 
 // 未使用変数扱いを避けつつ、番人が実際に評価されることを保つ。
 export const SCHEDULE_RESPONSE_SHAPE_VERIFIED
-  = _scheduleResponseKeysExist && _contentKeysExist && _timeKeysExist
+  = _scheduleResponseKeysExist && _detailKeysExist && _contentKeysExist && _timeKeysExist
     && _scopeKeysExist && _auditKeysExist && _academicKeysExist

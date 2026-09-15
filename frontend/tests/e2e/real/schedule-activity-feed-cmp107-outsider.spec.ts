@@ -51,7 +51,7 @@ test.beforeAll(async ({ browser }) => {
   )
   expect(update.status()).toBe(200)
 
-  const context = await browser.newContext()
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
   page = await context.newPage()
   await loginViaApi(page, {
     email: 'e2e-outsider@test.mannschaft.local',
@@ -75,11 +75,13 @@ test('CMP107-OUTSIDER: 他チームの一括更新予定も件数も表示され
   await waitForHydration(page)
   await waitForSpinnerGone(page)
   await expect(page).toHaveURL(/\/dashboard/)
+  await expect(page.getByTestId('scope-next'), 'ダッシュボード本体が描画された').toBeVisible({ timeout: 120_000 })
   await expect(page.getByText(title, { exact: false })).toHaveCount(0)
 
   await page.goto('/calendar', { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
   await expect(page).toHaveURL(/\/calendar/)
+  await expect(page.getByTestId('schedule-list-view'), 'カレンダー本体が描画された').toBeVisible({ timeout: 120_000 })
   await expect(page.getByText(title, { exact: false })).toHaveCount(0)
 })
