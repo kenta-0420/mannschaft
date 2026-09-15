@@ -201,6 +201,21 @@ function teamCalendarEntry() {
   }
 }
 
+/** モバイル詳細テストは表示中の当月に予定を置く。固定月では月替わりに events=[] となる。 */
+function currentMonthTeamCalendarEntry() {
+  const entry = teamCalendarEntry()
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), 10, 10)
+  return {
+    ...entry,
+    time: {
+      ...entry.time,
+      startAt: start.toISOString(),
+      endAt: new Date(start.getTime() + 60 * 60 * 1000).toISOString(),
+    },
+  }
+}
+
 async function mountCalendarPage(extraStubs: Record<string, unknown> = {}) {
   const wrapper = await mountSuspended(CalendarPage, {
     global: {
@@ -298,8 +313,9 @@ describe('pages/calendar.vue: モバイル予定詳細と編集権限', () => {
       removeListener: vi.fn(),
     }))
     scheduleApiMock.listPersonalSchedules.mockReset().mockResolvedValue(emptyPersonal)
-    scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [teamCalendarEntry()] })
-    scheduleApiMock.getSchedule.mockReset().mockResolvedValue({ data: teamCalendarEntry() })
+    const entry = currentMonthTeamCalendarEntry()
+    scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [entry] })
+    scheduleApiMock.getSchedule.mockReset().mockResolvedValue({ data: entry })
     scheduleApiMock.getMyCalendarLayers.mockReset().mockResolvedValue({ data: layersFixture })
     ganttApiMock.getMyCalendarTodos.mockReset().mockResolvedValue(emptyTodos)
     selectedScopeAdmin.value = false
@@ -314,6 +330,8 @@ describe('pages/calendar.vue: モバイル予定詳細と編集権限', () => {
   it('モバイルの予定タップは既存詳細パネルをDialogで開き、権限取得成功でもMEMBERには編集を出さない', async () => {
     const wrapper = await mountCalendarForMobileDetail()
 
+    expect(wrapper.getComponent(MobileListOpenStub).props('events')).toHaveLength(1)
+
     await wrapper.get('[data-testid="mobile-schedule-open"]').trigger('click')
     await flushPromises()
 
@@ -325,6 +343,8 @@ describe('pages/calendar.vue: モバイル予定詳細と編集権限', () => {
   it('当該スコープのADMIN/DEPUTYだけがモバイル詳細で編集可能になる', async () => {
     selectedScopeAdmin.value = true
     const wrapper = await mountCalendarForMobileDetail()
+
+    expect(wrapper.getComponent(MobileListOpenStub).props('events')).toHaveLength(1)
 
     await wrapper.get('[data-testid="mobile-schedule-open"]').trigger('click')
     await flushPromises()

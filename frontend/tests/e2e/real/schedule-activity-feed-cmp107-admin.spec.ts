@@ -10,7 +10,8 @@ const PASSWORD = 'TestPass2026!'
 const ADMIN = { email: 'e2e-admin@test.mannschaft.local', password: PASSWORD }
 
 test.describe.configure({ mode: 'serial' })
-test.setTimeout(360_000)
+// 実機の初回描画では大量の既存予定を読み込むため、操作と更新フィード確認を含めて待つ。
+test.setTimeout(900_000)
 
 let api: APIRequestContext
 let page: Page
@@ -117,7 +118,11 @@ test('CMP107-ADMIN: モバイル実画面でこの回以降を選択し、5件�
   expect(await scope.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
   await scope.click()
   await expect(scope).toHaveAttribute('aria-pressed', 'true')
-  await page.getByTestId('title-input').fill(after)
+  // 本番の基本入力欄には title-input testid が無い（ユニットテストのstub専用）。
+  const editDialog = page.getByRole('dialog', { name: 'イベントを編集' })
+  const titleInput = editDialog.getByRole('textbox').first()
+  await expect(titleInput).toHaveValue(beforeTitle)
+  await titleInput.fill(after)
 
   const updateResponse = page.waitForResponse(response =>
     response.request().method() === 'PATCH'
@@ -131,6 +136,8 @@ test('CMP107-ADMIN: モバイル実画面でこの回以降を選択し、5件�
   expect(updateBody).not.toHaveProperty('eventType')
   expect(updateBody).not.toHaveProperty('scheduledSurveys')
   expect(updateBody).not.toHaveProperty('scheduledAttendance')
+  expect(updateBody).not.toHaveProperty('reminders')
+  expect(updateBody).not.toHaveProperty('recurrenceRule')
   await expect(page.getByText(after, { exact: true }).first(), '更新後タイトルが画面へ反映される')
     .toBeVisible({ timeout: 30_000 })
   expect(await waitForAffectedCount(scheduleId!)).toBe(5)
