@@ -89,6 +89,13 @@ public class MembershipSubscriptionWebhookService {
     /** 継続課金 platform Webhook で本サービスが受けるイベント種別（接頭辞 invoice. ＋ subscription.deleted）。 */
     static final String INVOICE_EVENT_PREFIX = "invoice.";
     static final String SUBSCRIPTION_DELETED_EVENT = "customer.subscription.deleted";
+    /**
+     * PR6a AC-83: billing の停止窓の回収の入口となる種別。
+     *
+     * <p>会費側（F08.9）はこの種別を処理しない。{@link #isSubscriptionEvent} に含めるのは、
+     * dispatcher の subscription 分岐を通さないと billing の受け口へ届かないためである。</p>
+     */
+    static final String SUBSCRIPTION_UPDATED_EVENT = "customer.subscription.updated";
 
     /** 固定手数料上書きの対象とする課金理由（更新サイクルのみ・初回 subscription_create は案b で発生しない＝防御）。 */
     private static final String BILLING_REASON_SUBSCRIPTION_CYCLE = "subscription_cycle";
@@ -110,7 +117,14 @@ public class MembershipSubscriptionWebhookService {
      * 本サービスが対象とするイベントか（{@link StripeWebhookService} の委譲判定で用いる）。
      */
     public static boolean isSubscriptionEvent(String type) {
-        return type != null && (type.startsWith(INVOICE_EVENT_PREFIX) || SUBSCRIPTION_DELETED_EVENT.equals(type));
+        // PR6a AC-83: customer.subscription.updated を「subscription イベント」の委譲分岐に含める。
+        // 会費側（F08.9）はこの種別を処理しないが、この分岐に入らないと billing の受け口
+        // （停止窓の回収の入口）へ届かない。所有判定は billing 側が psp_subscription_ref で行い、
+        // 所有しなければ dispatcher が従来どおり保留記録へ落とす。
+        return type != null
+                && (type.startsWith(INVOICE_EVENT_PREFIX)
+                    || SUBSCRIPTION_DELETED_EVENT.equals(type)
+                    || SUBSCRIPTION_UPDATED_EVENT.equals(type));
     }
 
     /**
