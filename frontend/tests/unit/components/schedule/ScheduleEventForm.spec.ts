@@ -232,9 +232,10 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     })
     scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
     const wrapper = await mountSuspended(ScheduleEventForm, {
-      props: { visible: true, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
+      props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
       global: { stubs: globalStubs },
     })
+    await wrapper.setProps({ visible: true })
     await flushPromises()
     return wrapper
   }
@@ -303,9 +304,10 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     })
     scheduleApiMock.updatePersonalSchedule.mockResolvedValue({ data: {} })
     const wrapper = await mountSuspended(ScheduleEventForm, {
-      props: { visible: true, scopeType: 'team', scopeId: '', scheduleId: 42, isPersonal: true },
+      props: { visible: false, scopeType: 'team', scopeId: '', scheduleId: 42, isPersonal: true },
       global: { stubs: globalStubs },
     })
+    await wrapper.setProps({ visible: true })
     await flushPromises()
     await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
     await wrapper.get('[data-testid="recurrence-update-following"]').trigger('click')
@@ -318,9 +320,10 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     scheduleApiMock.getSchedule.mockResolvedValue({ data: { title: 'One-time meeting' } })
     scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
     const wrapper = await mountSuspended(ScheduleEventForm, {
-      props: { visible: true, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
+      props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
       global: { stubs: globalStubs },
     })
+    await wrapper.setProps({ visible: true })
     await flushPromises()
     await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
     await flushPromises()
@@ -334,9 +337,10 @@ describe('ScheduleEventForm: recurrence update scope', () => {
       data: { title: 'Child occurrence', recurrence: { recurrenceRule: null, parentScheduleId: 7 } },
     })
     const wrapper = await mountSuspended(ScheduleEventForm, {
-      props: { visible: true, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
+      props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
       global: { stubs: globalStubs },
     })
+    await wrapper.setProps({ visible: true })
     await flushPromises()
     await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
 
@@ -353,9 +357,10 @@ describe('ScheduleEventForm: recurrence update scope', () => {
       },
     })
     const wrapper = await mountSuspended(ScheduleEventForm, {
-      props: { visible: true, scopeType: 'team', scopeId: '', scheduleId: 42, isPersonal: true },
+      props: { visible: false, scopeType: 'team', scopeId: '', scheduleId: 42, isPersonal: true },
       global: { stubs: globalStubs },
     })
+    await wrapper.setProps({ visible: true })
     await flushPromises()
     await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
 
