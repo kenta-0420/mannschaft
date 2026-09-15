@@ -88,7 +88,7 @@ test.describe('CMP-008 CSP report UUIDv7 actual browser E2E', () => {
 
     const reportFilter = `document_uri = '${DOCUMENT_URI}' AND blocked_uri LIKE 'https://blocked.cmp008.example%'`
     const first = mysql(
-      `SELECT CONCAT(HEX(id), '\\t', occurrence_count, '\\t', blocked_uri, '\\t', violated_directive) FROM csp_reports WHERE ${reportFilter}`,
+      `SELECT HEX(id), occurrence_count, blocked_uri, violated_directive FROM csp_reports WHERE ${reportFilter}`,
     ).split('\t')
     expect(first[0]).toHaveLength(32)
     expect(first[0]?.[12]).toBe('7')
@@ -100,7 +100,7 @@ test.describe('CMP-008 CSP report UUIDv7 actual browser E2E', () => {
     // 自動送信と同じ報告パターンを補助APIで再送し、集約の境界を確認する。
     expect(await post(JSON.stringify({ 'csp-report': report }))).toBe(204)
     const second = mysql(
-      `SELECT CONCAT(HEX(id), '\\t', occurrence_count) FROM csp_reports WHERE ${reportFilter}`,
+      `SELECT HEX(id), occurrence_count FROM csp_reports WHERE ${reportFilter}`,
     ).split('\t')
     expect(second[0]).toBe(first[0])
     expect(Number(second[1])).toBeGreaterThan(Number(first[1]))
