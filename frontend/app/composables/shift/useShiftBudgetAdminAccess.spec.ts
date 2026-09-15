@@ -4,6 +4,8 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   BUDGET_ADMIN_PERMISSION,
+  canManageBudgetWith,
+  createBudgetPermissionState,
   hasBudgetAdminPermission,
   resolveOrganizationSlug,
 } from './useShiftBudgetAdminAccess'
@@ -110,5 +112,126 @@ describe('予算管理画面が可視判定を結線していること', () => {
   it('失敗イベントの再実行・手動補正済ボタンは canManageBudget で出し分ける', () => {
     const code = codeOf('app/pages/admin/shift-budget/failed-events.vue')
     expect(code).toMatch(/v-if="canManageBudget"/)
+  })
+})
+
+/**
+ * 組織スコープを切り替えたときの権限の追随（Codex 検分 P2）。
+ *
+ * <p>壊れていたこと: 権限の取得結果を「どの組織のものか」と紐付けずに保持していたため、
+ * 組織を切り替えた直後は切替前の組織の権限で判定していた。旧組織では BUDGET_ADMIN、
+ * 新組織では一般 MEMBER という利用者に、新しい取得が終わるまで管理ボタンが見えていた。
+ * さらに切替前後のリクエストが並行したとき、遅れて返った旧組織のレスポンスが後から
+ * 書き込まれ、古い権限が居座り続けた。</p>
+ *
+ * <p>BE の認可は維持されているためデータは漏れないが、この修正の目的そのものが
+ * 「権限の無い利用者に導線を見せないこと」なので、見せる窓が残っていては目的を達しない。</p>
+ */
+describe('組織切替時の権限の追随', () => {
+  /** 解決時期を呼び出し側で決められる fetch（並行・順序逆転を検体にするため）。 */
+  function deferredFetcher() {
+    const pending = new Map<string, (permissions: string[] | null) => void>()
+    const fetchPermissions = (slug: string): Promise<string[] | null> =>
+      new Promise((resolvePromise) => {
+        pending.set(slug, resolvePromise)
+      })
+    const settle = (slug: string, permissions: string[] | null) => {
+      const resolvePromise = pending.get(slug)
+      if (!resolvePromise) throw new Error(`${slug} は要求されていない`)
+      pending.delete(slug)
+      resolvePromise(permissions)
+    }
+    return { fetchPermissions, settle }
+  }
+
+  const adminPermissions = ['BUDGET_VIEW', BUDGET_ADMIN_PERMISSION]
+  const memberPermissions = ['BUDGET_VIEW']
+
+  it('組織を切り替えたら新しい組織の権限で判定する（旧組織の値が残らない）', async () => {
+    const { fetchPermissions, settle } = deferredFetcher()
+    const state = createBudgetPermissionState(fetchPermissions)
+
+    const first = state.load('acme')
+    settle('acme', adminPermissions)
+    await first
+    expect(canManageBudgetWith('acme', state.granted.value)).toBe(true)
+
+    const second = state.load('globex')
+    settle('globex', memberPermissions)
+    await second
+    expect(canManageBudgetWith('globex', state.granted.value)).toBe(false)
+  })
+
+  it('切替直後、新しい組織の権限が届くまでは導線を出さない（出してから消さない）', async () => {
+    const { fetchPermissions, settle } = deferredFetcher()
+    const state = createBudgetPermissionState(fetchPermissions)
+
+    const first = state.load('acme')
+    settle('acme', adminPermissions)
+    await first
+
+    // 取得はまだ終わっていない（await していない）
+    const second = state.load('globex')
+    expect(state.granted.value).toBeNull()
+    expect(canManageBudgetWith('globex', state.granted.value)).toBe(false)
+
+    settle('globex', adminPermissions)
+    await second
+    expect(canManageBudgetWith('globex', state.granted.value)).toBe(true)
+  })
+
+  it('保持した権限は組織に紐付く（別組織の判定には使われない）', async () => {
+    const { fetchPermissions, settle } = deferredFetcher()
+    const state = createBudgetPermissionState(fetchPermissions)
+
+    const first = state.load('acme')
+    settle('acme', adminPermissions)
+    await first
+
+    expect(canManageBudgetWith('acme', state.granted.value)).toBe(true)
+    // 表示中のスコープが別組織に変わっていれば、保持している権限は使えない
+    expect(canManageBudgetWith('globex', state.granted.value)).toBe(false)
+  })
+
+  it('遅れて返った古いレスポンスは新しい結果を上書きしない（先に投げたものが後に返る）', async () => {
+    const { fetchPermissions, settle } = deferredFetcher()
+    const state = createBudgetPermissionState(fetchPermissions)
+
+    // 旧組織（BUDGET_ADMIN 保有）の取得を投げたまま、新組織へ切り替える
+    const stale = state.load('acme')
+    const fresh = state.load('globex')
+
+    // 新組織の結果が先に返る
+    settle('globex', memberPermissions)
+    await fresh
+    expect(canManageBudgetWith('globex', state.granted.value)).toBe(false)
+
+    // 旧組織の結果が後から返っても、新しい結果を上書きしない
+    settle('acme', adminPermissions)
+    await stale
+    expect(state.granted.value).toEqual({ slug: 'globex', permissions: memberPermissions })
+    expect(canManageBudgetWith('globex', state.granted.value)).toBe(false)
+  })
+
+  it('権限の取得に失敗した場合は導線を出さない（失敗を成功に見せかけない）', async () => {
+    const { fetchPermissions, settle } = deferredFetcher()
+    const state = createBudgetPermissionState(fetchPermissions)
+
+    const loading = state.load('acme')
+    settle('acme', null)
+    await loading
+
+    expect(state.granted.value).toBeNull()
+    expect(canManageBudgetWith('acme', state.granted.value)).toBe(false)
+  })
+
+  it('スコープが組織でない（slug が null）なら取得せず false', async () => {
+    const { fetchPermissions } = deferredFetcher()
+    const state = createBudgetPermissionState(fetchPermissions)
+
+    await state.load(null)
+
+    expect(state.granted.value).toBeNull()
+    expect(canManageBudgetWith(null, state.granted.value)).toBe(false)
   })
 })
