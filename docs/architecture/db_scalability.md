@@ -505,6 +505,8 @@ Valkey 断のときに `@CacheEvict` を持つミューテーション（`RoleSe
 | audit_logs パーティション 2030年以降 | 中 | V64.001 で 2029-12 まで定義済み。`AuditLogPartitionMaintenanceBatchService` が自動追加するため人手対応は不要 |
 | chat_messages_archive の R2 アップロード | 低 | 現状はアーカイブテーブルへの退避のみ。将来は R2 への JSONL.gz 保存も検討 |
 
+`csp_reports` の V212 移行を実環境へ適用するときは、書き込みを停止し、移行前の復元可能な DB バックアップを取る。移行後は行数・報告内容・索引・全 ID の UUIDv7 形式を照合してから書き込みを再開する。MySQL 8 の DDL は**各文は原子的でも、複数文をまとめてロールバックできない**。途中失敗時は書き込み停止を維持し、`csp_reports` の `id` / `id_uuid` と索引、Flyway 履歴を確認する。`flyway repair` だけで残存する列や索引は消えないため、自動再実行せず、事前バックアップから復元して原因を解消した後に再適用する。AWS未稼働の現在は本番適用を行わない（[MySQL 8 Atomic DDL](https://dev.mysql.com/doc/refman/8.0/en/atomic-ddl.html)、[Flyway repair](https://documentation.red-gate.com/flyway/reference/commands/repair)）。
+
 ### 監視・アラート推奨項目
 
 | 項目 | 閾値（目安） | 備考 |
