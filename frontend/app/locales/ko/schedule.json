@@ -39,6 +39,7 @@
       "absolute_at_label": "알림 일시",
       "error_absolute_required": "절대 리마인더의 일시를 입력해 주세요",
       "error_past": "과거 일시는 지정할 수 없습니다",
+      "edit_readonly": "이 화면에서는 알림을 변경할 수 없습니다. 기존 알림은 유지됩니다.",
       "preset_minutes_before": "{n}분 전",
       "preset_hours_before": "{n}시간 전",
       "preset_days_before": "{n}일 전",
@@ -129,7 +130,8 @@
       "end_never": "지정 안 함",
       "end_date": "날짜",
       "end_count": "횟수",
-      "end_count_suffix": "회"
+      "end_count_suffix": "회",
+      "edit_readonly": "이 화면에서는 반복 설정을 변경할 수 없습니다. 기존 설정은 유지됩니다."
     },
     "event_add": "일정 추가",
     "calendar_guide": {

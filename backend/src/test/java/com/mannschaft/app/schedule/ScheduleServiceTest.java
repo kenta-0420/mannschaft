@@ -143,7 +143,8 @@ class ScheduleServiceTest {
     void detailRecurrenceForReflectsPersistedState() {
         ScheduleEntity child = createTeamScheduleEntity().toBuilder()
                 .id(SCHEDULE_ID).parentScheduleId(99L).isException(true).build();
-        var childDetail = scheduleService.detailRecurrenceFor(child);
+        var childDetail = scheduleService.detailRecurrenceFor(
+                child.getRecurrenceRule(), child.getIsException(), child.getParentScheduleId());
         assertThat(childDetail.recurrenceRule()).isNull();
         assertThat(childDetail.parentScheduleId()).isEqualTo(99L);
         assertThat(childDetail.isException()).isTrue();
@@ -153,7 +154,8 @@ class ScheduleServiceTest {
         RecurrenceRuleDto rule = new RecurrenceRuleDto(
                 "WEEKLY", 1, List.of("MONDAY"), "COUNT", null, 4);
         given(recurrenceService.deserializeRecurrenceRule(parent.getRecurrenceRule())).willReturn(rule);
-        var parentDetail = scheduleService.detailRecurrenceFor(parent);
+        var parentDetail = scheduleService.detailRecurrenceFor(
+                parent.getRecurrenceRule(), parent.getIsException(), parent.getParentScheduleId());
         assertThat(parentDetail.recurrenceRule()).isEqualTo(rule);
         assertThat(parentDetail.parentScheduleId()).isNull();
     }

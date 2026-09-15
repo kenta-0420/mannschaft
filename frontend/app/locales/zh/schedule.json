@@ -39,6 +39,7 @@
       "absolute_at_label": "通知时间",
       "error_absolute_required": "请输入绝对提醒的日期和时间",
       "error_past": "不能指定过去的日期和时间",
+      "edit_readonly": "无法在此处更改提醒。将保留现有提醒。",
       "preset_minutes_before": "{n}分钟前",
       "preset_hours_before": "{n}小时前",
       "preset_days_before": "{n}天前",
@@ -129,7 +130,8 @@
       "end_never": "永不",
       "end_date": "日期",
       "end_count": "次数",
-      "end_count_suffix": "次"
+      "end_count_suffix": "次",
+      "edit_readonly": "无法在此处更改重复设置。将保留现有设置。"
     },
     "event_add": "添加日程",
     "calendar_guide": {

@@ -39,6 +39,7 @@
       "absolute_at_label": "Notify at",
       "error_absolute_required": "Please enter a date and time for the absolute reminder",
       "error_past": "A past date and time cannot be specified",
+      "edit_readonly": "Reminders cannot be changed here. Existing reminders will be kept.",
       "preset_minutes_before": "{n} min before",
       "preset_hours_before": "{n} hr before",
       "preset_days_before": "{n} day before",
@@ -129,7 +130,8 @@
       "end_never": "Never",
       "end_date": "On date",
       "end_count": "After",
-      "end_count_suffix": "times"
+      "end_count_suffix": "times",
+      "edit_readonly": "Recurrence settings cannot be changed here. Existing settings will be kept."
     },
     "event_add": "Add event",
     "calendar_guide": {

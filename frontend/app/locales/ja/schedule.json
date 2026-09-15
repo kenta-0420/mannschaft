@@ -39,6 +39,7 @@
       "absolute_at_label": "通知日時",
       "error_absolute_required": "絶対リマインダーの日時を入力してください",
       "error_past": "過去の日時は指定できません",
+      "edit_readonly": "リマインダーはこの画面では変更できません。既存のリマインダーは保持されます。",
       "preset_minutes_before": "{n}分前",
       "preset_hours_before": "{n}時間前",
       "preset_days_before": "{n}日前",
@@ -129,7 +130,8 @@
       "end_never": "指定なし",
       "end_date": "日付",
       "end_count": "回数",
-      "end_count_suffix": "回"
+      "end_count_suffix": "回",
+      "edit_readonly": "繰り返し設定はこの画面では変更できません。既存の設定は保持されます。"
     },
     "event_add": "予定を追加",
     "calendar_guide": {

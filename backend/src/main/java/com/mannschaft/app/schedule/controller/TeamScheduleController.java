@@ -139,7 +139,8 @@ public class TeamScheduleController {
                 .roles(new ScheduleDetailResponse.ScheduleDetailRoleDto(
                         entity.getMinViewRole().name(),
                         entity.getMinResponseRole() != null ? entity.getMinResponseRole().name() : null))
-                .recurrence(scheduleService.detailRecurrenceFor(entity))
+                .recurrence(scheduleService.detailRecurrenceFor(
+                        entity.getRecurrenceRule(), entity.getIsException(), entity.getParentScheduleId()))
                 .settings(new ScheduleDetailResponse.ScheduleDetailSettingsDto(
                         entity.getAllowProxyAttendance(), entity.getIsProxyAutoAccept(),
                         entity.getTeamBreakdownEnabled()))

@@ -39,6 +39,7 @@
       "absolute_at_label": "Benachrichtigen am",
       "error_absolute_required": "Bitte geben Sie Datum und Uhrzeit für die absolute Erinnerung ein",
       "error_past": "Ein Datum in der Vergangenheit kann nicht angegeben werden",
+      "edit_readonly": "Erinnerungen können hier nicht geändert werden. Bestehende Erinnerungen bleiben erhalten.",
       "preset_minutes_before": "{n} Min. vorher",
       "preset_hours_before": "{n} Std. vorher",
       "preset_days_before": "{n} Tag vorher",
@@ -129,7 +130,8 @@
       "end_never": "Nie",
       "end_date": "Am Datum",
       "end_count": "Nach",
-      "end_count_suffix": "Mal"
+      "end_count_suffix": "Mal",
+      "edit_readonly": "Wiederholungseinstellungen können hier nicht geändert werden. Bestehende Einstellungen bleiben erhalten."
     },
     "event_add": "Termin hinzufügen",
     "calendar_guide": {

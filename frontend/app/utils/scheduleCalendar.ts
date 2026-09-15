@@ -239,15 +239,21 @@ export function toCalendarPanelEvent(
  * 欠陥1 の根本原因は「画面が読む構造」と「API が返す構造」の食い違いであり、
  * 平坦な `title` / `startAt` を読むコードがコンパイルを通ってしまった点にある。
  * そこで {@link NestedScheduleResponse} が読むフィールド名が、生成型
- * `components['schemas']['ScheduleResponse']` に**実在すること**を型で固定する。
+ * 共通項目が `ScheduleResponse`、詳細画面だけの `detail` が
+ * `ScheduleDetailResponse` に**実在すること**を型で固定する。
  *
  * ここに平坦な `title` 等を足そうとすると（＝欠陥1 の再発）、生成型に無いキーなので
  * 下の代入がコンパイルエラーになる。BE 応答の構造が変わった場合も同様に落ちる。
  */
 type GeneratedScheduleResponse = components['schemas']['ScheduleResponse']
+type GeneratedScheduleDetailResponse = components['schemas']['ScheduleDetailResponse']
 type KeysExistIn<T, U> = keyof T extends keyof U ? true : { 'このキーは API 応答に存在しない': Exclude<keyof T, keyof U> }
 
-const _scheduleResponseKeysExist: KeysExistIn<NestedScheduleResponse, GeneratedScheduleResponse> = true
+const _scheduleResponseKeysExist: KeysExistIn<Omit<NestedScheduleResponse, 'detail'>, GeneratedScheduleResponse> = true
+const _detailKeysExist: KeysExistIn<
+  NonNullable<NestedScheduleResponse['detail']>,
+  NonNullable<GeneratedScheduleDetailResponse['detail']>
+> = true
 const _contentKeysExist: KeysExistIn<
   NonNullable<NestedScheduleResponse['content']>,
   NonNullable<GeneratedScheduleResponse['content']>

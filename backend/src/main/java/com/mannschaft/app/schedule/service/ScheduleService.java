@@ -632,10 +632,11 @@ public class ScheduleService {
     }
 
     /** 詳細GET向けに繰り返しルールと親・例外状態を返す。単発予定のルールは null。 */
-    public ScheduleDetailResponse.ScheduleDetailRecurrenceDto detailRecurrenceFor(ScheduleEntity schedule) {
+    public ScheduleDetailResponse.ScheduleDetailRecurrenceDto detailRecurrenceFor(
+            String recurrenceRule, Boolean isException, Long parentScheduleId) {
         return new ScheduleDetailResponse.ScheduleDetailRecurrenceDto(
-                recurrenceService.deserializeRecurrenceRule(schedule.getRecurrenceRule()),
-                schedule.getIsException(), schedule.getParentScheduleId());
+                recurrenceService.deserializeRecurrenceRule(recurrenceRule),
+                isException, parentScheduleId);
     }
 
     /** 対象者名簿は同一スコープのアクティブメンバーにだけ返す。 */

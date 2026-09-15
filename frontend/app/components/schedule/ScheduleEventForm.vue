@@ -501,10 +501,12 @@ function buildSharedReminders(): Array<Record<string, unknown>> {
 function validateScheduledInputs(): string | null {
   const now = Date.now()
   // 絶対リマインダーは未来日時必須
-  for (const r of form.value.reminders) {
-    if (r.kind === 'ABSOLUTE') {
-      if (!r.absoluteAt) return t('schedule.reminder.error_absolute_required')
-      if (r.absoluteAt.getTime() <= now) return t('schedule.reminder.error_past')
+  if (!isEdit.value || effectiveScope.value.isPersonal) {
+    for (const r of form.value.reminders) {
+      if (r.kind === 'ABSOLUTE') {
+        if (!r.absoluteAt) return t('schedule.reminder.error_absolute_required')
+        if (r.absoluteAt.getTime() <= now) return t('schedule.reminder.error_past')
+      }
     }
   }
   // 共有スコープのみ予約アンケート・予約出欠を検証
@@ -577,7 +579,7 @@ async function submit() {
     }
   }
 
-  if (form.value.recurrence) {
+  if (form.value.recurrence && (!isEdit.value || effectiveScope.value.isPersonal)) {
     body.recurrenceRule = {
       type: form.value.recurrenceType,
       interval: form.value.recurrenceInterval,
@@ -612,8 +614,8 @@ async function submit() {
     body.reminders = relativeMinutes
     if (absolute.length > 0) body.absoluteReminders = absolute
   } else {
-    // 共有予定: リマインダーは編集時も送信する（空配列＝全削除）
-    body.reminders = buildSharedReminders()
+    // 共有予定: 既送信通知の重複を防ぐため、編集では既存リマインダーを保持する。
+    if (!isEdit.value) body.reminders = buildSharedReminders()
   }
 
   // 予約タスクは現在、詳細 GET から完全な payload を復元できない。編集時に送ると
@@ -847,7 +849,18 @@ function close() {
         </div>
       </div>
 
-      <ScheduleEventRecurrenceInput v-model:form="form" />
+      <ScheduleEventRecurrenceInput
+        v-if="!isEdit || effectiveScope.isPersonal"
+        v-model:form="form"
+      />
+      <Message
+        v-else
+        severity="info"
+        :closable="false"
+        data-testid="shared-recurrence-edit-readonly"
+      >
+        {{ $t('schedule.recurrence.edit_readonly') }}
+      </Message>
 
       <fieldset
         v-if="isEdit && !effectiveScope.isPersonal && isRecurringSchedule"
@@ -879,9 +892,20 @@ function close() {
       </fieldset>
 
       <!-- 機能55: リマインダー入力（全スコープ） -->
-      <ScheduleEventReminderInput v-model:form="form" />
+      <ScheduleEventReminderInput
+        v-if="!isEdit || effectiveScope.isPersonal"
+        v-model:form="form"
+      />
+      <Message
+        v-else
+        severity="info"
+        :closable="false"
+        data-testid="shared-reminder-edit-readonly"
+      >
+        {{ $t('schedule.reminder.edit_readonly') }}
+      </Message>
 
-      <!-- 機能55: 予約アンケート・予約出欠（team/org のみ。編集時も表示） -->
+      <!-- 機能55: 予約アンケート・予約出欠（共有予定の作成時のみ編集可能） -->
       <ScheduleEventScheduledAttachmentInput
         v-if="!effectiveScope.isPersonal && !isEdit"
         v-model:form="form"

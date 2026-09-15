@@ -104,6 +104,7 @@ const globalStubs = {
   ScheduleEventReminderInput: true,
   ScheduleEventScheduledAttachmentInput: true,
   ScheduleEventColorPicker: true,
+  Message: true,
   Checkbox: true,
   Textarea: true,
   Button: ButtonStub,
@@ -234,6 +235,12 @@ describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
         detail: { description: '元の説明' },
         settings: { allowProxyAttendance: true, isProxyAutoAccept: false, teamBreakdownEnabled: true },
         recurrence: { recurrenceRule: { type: 'WEEKLY', interval: 1, endType: 'COUNT', count: 4 } },
+        reminders: [{
+          reminderKind: 'RELATIVE',
+          remindBeforeMinutes: 30,
+          isSent: true,
+          sentAt: '2026-09-20T08:30:00+09:00',
+        }],
         scheduledTasks: [{ status: 'PENDING', taskType: 'SURVEY', scheduledAt: '2099-09-21T09:00:00+09:00' }],
       },
     })
@@ -257,6 +264,8 @@ describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
     expect(scheduleApiMock.getSchedule).toHaveBeenCalledWith('team', 't1', 123)
     expect((wrapper.get('[data-testid="title-input"]').element as HTMLInputElement).value).toBe('更新前')
     expect(wrapper.find('[data-testid="schedule-update-scope"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shared-recurrence-edit-readonly"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shared-reminder-edit-readonly"]').exists()).toBe(true)
 
     await wrapper.get('[data-testid="schedule-update-scope-THIS_AND_FOLLOWING"]').trigger('click')
     await wrapper.get('[data-testid="title-input"]').setValue('更新後')
@@ -273,6 +282,8 @@ describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
     expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('eventType')
     expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('scheduledSurveys')
     expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('scheduledAttendance')
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('reminders')
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('recurrenceRule')
   })
 
   it('個人予定の編集には共有予定用の更新範囲を表示しない', async () => {

@@ -77,6 +77,7 @@ test('CMP107-ADMIN: モバイル実画面でこの回以降を選択し、5件�
     headers: headers(adminToken),
     data: {
       title: beforeTitle,
+      description: 'CMP107詳細-保持',
       startAt: new Date(start).toISOString(),
       endAt: new Date(start + 3_600_000).toISOString(),
       allDay: false,
@@ -106,6 +107,7 @@ test('CMP107-ADMIN: モバイル実画面でこの回以降を選択し、5件�
 
   const detail = page.getByRole('dialog', { name: beforeTitle })
   await expect(detail, '予定詳細ダイアログが開く').toBeVisible({ timeout: 30_000 })
+  await expect(detail.getByText('CMP107詳細-保持'), '詳細APIの説明文をモバイルに表示する').toBeVisible()
   const editButton = detail.locator('button:has(.pi-pencil)')
   await expect(editButton, '管理者には編集ボタンが見える').toBeVisible({ timeout: 30_000 })
   await editButton.click()
@@ -122,7 +124,13 @@ test('CMP107-ADMIN: モバイル実画面でこの回以降を選択し、5件�
     && response.url().includes(`/teams/${TEAM_SLUG}/schedules/${scheduleId}?updateScope=THIS_AND_FOLLOWING`),
   )
   await page.getByRole('button', { name: '更新', exact: true }).click()
-  expect((await updateResponse).status(), 'UI更新リクエスト').toBe(200)
+  const response = await updateResponse
+  expect(response.status(), 'UI更新リクエスト').toBe(200)
+  const updateBody = response.request().postDataJSON() as Record<string, unknown>
+  expect(updateBody.description, '編集で既存説明を維持する').toBe('CMP107詳細-保持')
+  expect(updateBody).not.toHaveProperty('eventType')
+  expect(updateBody).not.toHaveProperty('scheduledSurveys')
+  expect(updateBody).not.toHaveProperty('scheduledAttendance')
   await expect(page.getByText(after, { exact: true }).first(), '更新後タイトルが画面へ反映される')
     .toBeVisible({ timeout: 30_000 })
   expect(await waitForAffectedCount(scheduleId!)).toBe(5)
