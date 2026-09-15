@@ -50,7 +50,7 @@ const MOCK_CHART_DRAFT = {
 
 const MOCK_CHARTS_LIST = {
   data: [MOCK_CHART, MOCK_CHART_DRAFT],
-  meta: { totalElements: 2 },
+  meta: { total: 2 },
 }
 
 async function mockChartApis(page: Page): Promise<void> {
@@ -258,7 +258,7 @@ test.describe('CHART-001〜005: F07.4 カルテ', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: [], meta: { totalElements: 0 } }),
+        body: JSON.stringify({ data: [], meta: { total: 0 } }),
       })
     })
 
@@ -268,7 +268,7 @@ test.describe('CHART-001〜005: F07.4 カルテ', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: [MOCK_CHART],
-          meta: { totalElements: 1 },
+          meta: { total: 1 },
         }),
       })
     })

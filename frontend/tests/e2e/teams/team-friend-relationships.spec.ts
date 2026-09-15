@@ -114,7 +114,7 @@ test.describe('FRIEND-001〜006: フレンドチーム一覧', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: MOCK_FRIEND_TEAMS,
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })
@@ -471,7 +471,7 @@ test.describe('FRIEND-013〜017: 管理者フィード', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: MOCK_FRIEND_FEED_POSTS,
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })
@@ -600,7 +600,7 @@ test.describe('FRIEND-018〜020: 相互フォロー・フレンド成立フロ�
         contentType: 'application/json',
         body: JSON.stringify({
           data: MOCK_FRIEND_TEAMS,
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })

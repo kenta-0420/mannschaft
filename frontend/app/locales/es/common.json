@@ -2436,5 +2436,16 @@
         "description": "Consulta y paga las cuotas de inscripción a torneos"
       }
     }
+  },
+  "auditLog": {
+    "title": "Registro de auditoría",
+    "empty": "No hay registros",
+    "loadFailed": "Error al cargar el registro de auditoría",
+    "column": {
+      "datetime": "Fecha y hora",
+      "user": "Usuario",
+      "category": "Categoría",
+      "event": "Evento"
+    }
   }
 }

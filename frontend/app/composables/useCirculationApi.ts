@@ -47,7 +47,7 @@ export function useCirculationApi() {
     })
     return api<{
       data: CirculationResponse[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/circulation?${qs}`)
   }
 
@@ -132,7 +132,7 @@ export function useCirculationApi() {
     if (params?.status) query.set('status', params.status)
     return api<{
       data: CirculationDocumentListItem[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`${base}/circulations?${query}`)
   }
 
@@ -228,7 +228,7 @@ export function useCirculationApi() {
     if (params?.size) query.set('size', String(params.size))
     return api<{
       data: CirculationComment[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/circulations/${documentId}/comments?${query}`)
   }
 

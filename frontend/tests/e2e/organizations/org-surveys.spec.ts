@@ -12,7 +12,7 @@ test.describe('ORG-FEAT-030〜033: 組織アンケート', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: [{ id: 1, title: 'テストアンケート', status: 'OPEN', responseCount: 5, createdAt: '2026-04-01T00:00:00Z' }],
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })

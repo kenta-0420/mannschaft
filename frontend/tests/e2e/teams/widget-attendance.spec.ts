@@ -34,7 +34,7 @@ test.describe('TEAM-075〜076: WidgetAttendanceResults schedules API パラメ�
         contentType: 'application/json',
         body: JSON.stringify({
           data: [],
-          meta: { page: 0, size: 10, totalElements: 0, totalPages: 0 },
+          meta: { page: 0, size: 10, total: 0, totalPages: 0 },
         }),
       })
     })
@@ -82,7 +82,7 @@ test.describe('TEAM-075〜076: WidgetAttendanceResults schedules API パラメ�
           contentType: 'application/json',
           body: JSON.stringify({
             data: [],
-            meta: { page: 0, size: 10, totalElements: 0, totalPages: 0 },
+            meta: { page: 0, size: 10, total: 0, totalPages: 0 },
           }),
         })
       }

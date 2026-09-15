@@ -64,7 +64,7 @@ describe('useRecruitmentApi - Phase 2', () => {
     it('現在の組織と指定したページ条件だけで募集履歴を取得する', async () => {
       mockFetch.mockResolvedValue({
         data: [],
-        meta: { page: 2, size: 20, total: 0, totalElements: 0, totalPages: 0 },
+        meta: { page: 2, size: 20, total: 0, totalPages: 0 },
       })
 
       const api = useRecruitmentApi()
@@ -78,7 +78,7 @@ describe('useRecruitmentApi - Phase 2', () => {
     it('検索条件がなければ余分なクエリを付けない', async () => {
       mockFetch.mockResolvedValue({
         data: [],
-        meta: { page: 0, size: 20, total: 0, totalElements: 0, totalPages: 0 },
+        meta: { page: 0, size: 20, total: 0, totalPages: 0 },
       })
 
       await useRecruitmentApi().listOrganizationListings('42')

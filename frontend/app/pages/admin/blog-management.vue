@@ -27,8 +27,8 @@ async function loadPosts() {
   postsLoading.value = true
   try {
     const res = await getPosts({ scopeType: scopeType.value, scopeId: scopeId.value, page: postsPage.value, size: 20 })
-    posts.value = (res as unknown as { data: Record<string, unknown>[]; meta?: { totalElements?: number } }).data
-    postsTotal.value = (res as unknown as { meta?: { totalElements?: number } }).meta?.totalElements ?? posts.value.length
+    posts.value = (res as unknown as { data: Record<string, unknown>[]; meta?: { total?: number } }).data
+    postsTotal.value = (res as unknown as { meta?: { total?: number } }).meta?.total ?? posts.value.length
   } catch {
     showError('記事一覧の取得に失敗しました')
   } finally {

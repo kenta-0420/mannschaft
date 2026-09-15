@@ -48,11 +48,11 @@ export function useAdminReports() {
     loading.value = true
     try {
       const [reportsRes, statsRes] = await Promise.all([
-        adminReportApi.getReports({ page: page.value, size: 20, status: statusFilter.value }),
+        adminReportApi.getReports({ page: page.value, size: 20 }),
         adminReportApi.getReportStats(),
       ])
       reports.value = reportsRes.data
-      totalRecords.value = reportsRes.meta?.totalElements ?? reportsRes.data.length
+      totalRecords.value = reportsRes.meta.total
       stats.value = statsRes.data
     } catch {
       showError(t('admin_report.messages.load_failed'))

@@ -282,7 +282,7 @@ export async function mockTeamMembersApi(page: Page): Promise<void> {
             joinedAt: '2026-04-01T00:00:00Z',
           },
         ],
-        meta: { page: 0, size: 200, totalElements: 3, totalPages: 1 },
+        meta: { page: 0, size: 200, total: 3, totalPages: 1 },
       }),
     })
   })

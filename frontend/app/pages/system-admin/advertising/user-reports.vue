@@ -53,7 +53,7 @@ async function load() {
     if (filterStatus.value) params.status = filterStatus.value
     const res = await systemAdminAdApi.listUserReports(params)
     reports.value = res.data
-    totalElements.value = res.meta.total ?? res.meta.totalElements ?? 0
+    totalElements.value = res.meta.total ?? 0
   } catch {
     notification.error(t('advertising.pages.system_admin_dashboard.load_failed'))
   } finally {

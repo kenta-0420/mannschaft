@@ -96,7 +96,7 @@ async function loadListings() {
       size: rows.value,
     })
     listings.value = result.data
-    totalRecords.value = result.meta.totalElements
+    totalRecords.value = result.meta.total
   } catch (cause) {
     handleApiError(cause, t('market.personal.loadFailed'))
   } finally {
@@ -125,7 +125,7 @@ async function loadMatches(listingId: number, targetPage = 0) {
   try {
     const result = await api.listMyMarketMatches(listingId, { page: targetPage, size: PAGE_SIZE })
     matches.value = result.data
-    matchesTotalRecords.value = result.meta.totalElements
+    matchesTotalRecords.value = result.meta.total
   } catch (cause) {
     handleApiError(cause, t('market.personal.loadFailed'))
   }

@@ -169,7 +169,7 @@ export function useAdvertiserApi() {
 
   // Invoices
   async function getInvoices(scopeType: ScopeType, scopeId: string, params?: { status?: InvoiceStatus; page?: number; size?: number }) {
-    return api<{ data: InvoiceSummaryResponse[]; meta: { totalElements: number; page: number; size: number; totalPages: number } }>(billingBasePath(scopeType, scopeId, 'invoices'), {
+    return api<{ data: InvoiceSummaryResponse[]; meta: { total: number; page: number; size: number; totalPages: number } }>(billingBasePath(scopeType, scopeId, 'invoices'), {
       params: billingParams(scopeType, scopeId, params),
     })
   }
@@ -272,7 +272,7 @@ export function useAdvertiserApi() {
   }
 
   async function adminGetRateCards(params?: { pricingModel?: PricingModel; prefecture?: string; activeOnly?: boolean; page?: number; size?: number }) {
-    return api<{ data: AdRateCardResponse[]; meta: { totalElements: number; page: number; size: number; totalPages: number } }>('/api/v1/system-admin/ad-rate-cards', {
+    return api<{ data: AdRateCardResponse[]; meta: { total: number; page: number; size: number; totalPages: number } }>('/api/v1/system-admin/ad-rate-cards', {
       params,
     })
   }
@@ -291,7 +291,7 @@ export function useAdvertiserApi() {
   }
 
   async function adminGetAdvertiserAccounts(params?: { status?: AdvertiserAccountStatus; page?: number; size?: number }) {
-    return api<{ data: AdvertiserAccountDetailResponse[]; meta: { totalElements: number; page: number; size: number; totalPages: number } }>('/api/v1/system-admin/advertiser-accounts', {
+    return api<{ data: AdvertiserAccountDetailResponse[]; meta: { total: number; page: number; size: number; totalPages: number } }>('/api/v1/system-admin/advertiser-accounts', {
       params,
     })
   }
@@ -324,7 +324,7 @@ export function useAdvertiserApi() {
   }
 
   async function adminGetCreditLimitRequests(params?: { status?: CreditLimitRequestStatus; page?: number; size?: number }) {
-    return api<{ data: CreditLimitRequestDetailResponse[]; meta: { totalElements: number; page: number; size: number; totalPages: number } }>('/api/v1/system-admin/ad-credit-limit-requests', {
+    return api<{ data: CreditLimitRequestDetailResponse[]; meta: { total: number; page: number; size: number; totalPages: number } }>('/api/v1/system-admin/ad-credit-limit-requests', {
       params,
     })
   }

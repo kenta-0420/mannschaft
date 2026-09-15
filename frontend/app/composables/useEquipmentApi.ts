@@ -19,7 +19,7 @@ export function useEquipmentApi() {
       }
     return api<{
       data: EquipmentResponse[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`${buildBase(scopeType, scopeId)}/equipment?${query}`)
   }
 
