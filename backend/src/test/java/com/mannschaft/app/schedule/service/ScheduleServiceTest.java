@@ -1,4 +1,4 @@
-package com.mannschaft.app.schedule;
+package com.mannschaft.app.schedule.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
@@ -10,6 +10,12 @@ import com.mannschaft.app.dashboard.ActivityEvent;
 import com.mannschaft.app.dashboard.ActivityType;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.TargetType;
+import com.mannschaft.app.schedule.CommentOption;
+import com.mannschaft.app.schedule.EventType;
+import com.mannschaft.app.schedule.MinViewRole;
+import com.mannschaft.app.schedule.ScheduleErrorCode;
+import com.mannschaft.app.schedule.ScheduleStatus;
+import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
@@ -1222,10 +1228,9 @@ class ScheduleServiceTest {
             ScheduleEntity parentAfterUpdate = createTeamScheduleEntity().toBuilder()
                     .id(PARENT_ID).title("更新後(全体)").build();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
-            given(scheduleRepository.findById(PARENT_ID)).willReturn(Optional.of(parentAfterUpdate));
-            given(scheduleRepository.save(any(ScheduleEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
-            given(scheduleRepository.countByParentScheduleId(PARENT_ID)).willReturn(3L);
+            given(recurrenceService.updateRecurringSchedule(any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
+                    org.mockito.ArgumentMatchers.eq("ALL"), any())).willReturn(
+                            new ScheduleRecurrenceService.RecurringScheduleUpdateResult(parentAfterUpdate, 4L));
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新後(全体)", null, null, null, null, null, null, null, null, null,
                     null, null, null, null, null, null, null, null, null);
@@ -1237,7 +1242,38 @@ class ScheduleServiceTest {
             assertThat(countPublishedActivityEvents()).isEqualTo(1);
             ActivityEvent event = captureLastActivityEvent();
             assertThat(event.getTargetId()).isEqualTo(PARENT_ID);
+            assertThat(event.getDetail()).contains("\"affectedCount\":4");
+        }
+
+        @Test
+        @DisplayName("CMP-107: THIS_AND_FOLLOWINGは再帰サービスの実更新件数をフィードへ反映する")
+        void CMP107_THIS_AND_FOLLOWINGの実更新件数を反映する() {
+            // given
+            ScheduleEntity child = createTeamScheduleEntity().toBuilder()
+                    .id(SCHEDULE_ID).parentScheduleId(PARENT_ID).build();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(recurrenceService.updateRecurringSchedule(any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
+                    org.mockito.ArgumentMatchers.eq("THIS_AND_FOLLOWING"), any())).willAnswer(invocation -> {
+                        @SuppressWarnings("unchecked")
+                        java.util.function.BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate =
+                                invocation.getArgument(3);
+                        ScheduleEntity updated = applyUpdate.apply(child, invocation.getArgument(1));
+                        return new ScheduleRecurrenceService.RecurringScheduleUpdateResult(updated, 3L);
+                    });
+            UpdateScheduleRequest req = new UpdateScheduleRequest(
+                    "更新後(この回以降)", null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null);
+
+            // when
+            scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_AND_FOLLOWING", USER_ID);
+
+            // then
+            ActivityEvent event = captureLastActivityEvent();
             assertThat(event.getDetail()).contains("\"affectedCount\":3");
+            verify(scheduleRepository, times(1)).save(org.mockito.ArgumentMatchers.argThat(saved ->
+                    saved.getId().equals(SCHEDULE_ID) && "更新後(この回以降)".equals(saved.getTitle())));
         }
 
         @Test

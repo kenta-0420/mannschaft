@@ -289,15 +289,18 @@ public class ScheduleService {
         Long originalParentScheduleId = schedule.getParentScheduleId();
         ScheduleSnapshot before = ScheduleSnapshot.from(schedule);
 
+        long affectedCount = 1;
         if (schedule.isRecurring() || schedule.getParentScheduleId() != null) {
-            recurrenceService.updateRecurringSchedule(schedule, req, updateScope, this::applyUpdateToSchedule);
+            ScheduleRecurrenceService.RecurringScheduleUpdateResult result = recurrenceService
+                    .updateRecurringSchedule(schedule, req, updateScope, this::applyUpdateToSchedule);
+            schedule = result.selectedSchedule();
+            affectedCount = result.affectedCount();
         } else {
             // F03.18: 戻り値で schedule 参照を差し替える（applyUpdateToSchedule は新インスタンスを
             // 構築するため、差し替えないと呼び出し元からは更新前の値のまま見えてしまう）。
             schedule = applyUpdateToSchedule(schedule, req);
         }
 
-        schedule = scheduleRepository.save(schedule);
         updateTargetsForRecurrenceScope(schedule, req, updateScope);
 
         // 機能55 BE対応: リマインダー更新（null = 変更なし、空リスト = 全削除、非空 = 差し替え）
@@ -333,7 +336,8 @@ public class ScheduleService {
         eventPublisher.publishEvent(new ScheduleUpdatedEvent(schedule.getId(), userId));
 
         // F03.18: 予定変更をアクティビティフィードへ発行する（AC-02・AC-03・AC-05・AC-06・AC-08）
-        publishScheduleUpdateActivity(before, schedule, updateScope, originalId, originalParentScheduleId, userId);
+        publishScheduleUpdateActivity(before, schedule, updateScope, originalId, originalParentScheduleId,
+                affectedCount, userId);
 
         log.info("スケジュール更新: id={}, updateScope={}", id, updateScope);
         return toScheduleResponse(schedule);
@@ -349,15 +353,13 @@ public class ScheduleService {
      */
     private void publishScheduleUpdateActivity(ScheduleSnapshot before, ScheduleEntity schedule,
                                                 String updateScope, Long originalId,
-                                                Long originalParentScheduleId, Long userId) {
+                                                Long originalParentScheduleId, long affectedCount, Long userId) {
         ScheduleEntity target = schedule;
         Long targetId = originalId;
-        long affectedCount = 1;
 
         if (UPDATE_SCOPE_ALL.equals(updateScope)) {
             Long parentId = originalParentScheduleId != null ? originalParentScheduleId : originalId;
             targetId = parentId;
-            affectedCount = scheduleRepository.countByParentScheduleId(parentId);
             target = scheduleRepository.findById(parentId).orElse(schedule);
         }
 

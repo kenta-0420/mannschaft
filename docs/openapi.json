@@ -173745,6 +173745,21 @@
           }
         }
       },
+      "ScheduleRecurrenceDto": {
+        "type": "object",
+        "properties": {
+          "isException": {
+            "type": "boolean"
+          },
+          "parentScheduleId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "recurrenceRule": {
+            "type": "string"
+          }
+        }
+      },
       "ScheduleResponse": {
         "type": "object",
         "properties": {
@@ -173763,6 +173778,9 @@
           },
           "myAttendanceStatus": {
             "type": "string"
+          },
+          "recurrenceInfo": {
+            "$ref": "#/components/schemas/ScheduleRecurrenceDto"
           },
           "reminders": {
             "type": "array",
