@@ -13,8 +13,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -40,6 +43,7 @@ public class ScheduleRecurrenceService {
     private static final String UPDATE_SCOPE_THIS_ONLY = "THIS_ONLY";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
     private static final String UPDATE_SCOPE_ALL = "ALL";
+    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
 
     private final ScheduleRepository scheduleRepository;
     private final ScheduleTargetService scheduleTargetService;
@@ -105,10 +109,15 @@ public class ScheduleRecurrenceService {
                 return new RecurringScheduleUpdateResult(updated, 1);
             }
             case UPDATE_SCOPE_THIS_AND_FOLLOWING -> {
+                ScheduleEntity originalSchedule = schedule.toBuilder().build();
+                Long parentId = schedule.getParentScheduleId() != null
+                        ? schedule.getParentScheduleId() : schedule.getId();
+                List<ScheduleEntity> children = scheduleRepository
+                        .findByParentScheduleIdOrderByStartAtAsc(parentId);
                 ScheduleEntity updated = applyUpdate.apply(schedule, req);
                 // この日以降の子スケジュールも更新（例外を除く）
                 return new RecurringScheduleUpdateResult(updated,
-                        1 + updateFollowingSchedules(schedule, req, applyUpdate));
+                        1 + updateFollowingSchedules(originalSchedule, req, applyUpdate, children));
             }
             case UPDATE_SCOPE_ALL -> {
                 // 親を更新、全子を更新（例外を除く）
@@ -116,8 +125,9 @@ public class ScheduleRecurrenceService {
                         ? schedule.getParentScheduleId() : schedule.getId();
                 ScheduleEntity parent = scheduleRepository.findById(parentId)
                         .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
+                ScheduleEntity originalParent = parent.toBuilder().build();
                 ScheduleEntity updatedParent = applyUpdate.apply(parent, req);
-                return updateAllChildSchedules(parentId, schedule, req, applyUpdate, updatedParent);
+                return updateAllChildSchedules(parentId, schedule, req, applyUpdate, originalParent, updatedParent);
             }
             default -> {
                 return new RecurringScheduleUpdateResult(applyUpdate.apply(schedule, req), 1);
@@ -291,18 +301,14 @@ public class ScheduleRecurrenceService {
      * 指定スケジュール以降の子スケジュールを更新する（例外は除く）。
      */
     private long updateFollowingSchedules(ScheduleEntity schedule, UpdateScheduleRequest req,
-                                         BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate) {
-        Long parentId = schedule.getParentScheduleId() != null
-                ? schedule.getParentScheduleId() : schedule.getId();
-        List<ScheduleEntity> children = scheduleRepository
-                .findByParentScheduleIdOrderByStartAtAsc(parentId);
-
+                                         BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate,
+                                         List<ScheduleEntity> children) {
         List<ScheduleEntity> followingChildren = children.stream()
                 .filter(child -> !child.getIsException())
                 .filter(child -> !child.getStartAt().isBefore(schedule.getStartAt()))
                 .filter(child -> !child.getId().equals(schedule.getId()))
                 .toList();
-        followingChildren.forEach(child -> applyUpdate.apply(child, req));
+        followingChildren.forEach(child -> applyUpdate.apply(child, shiftedRequest(schedule, child, req)));
         return followingChildren.size();
     }
 
@@ -312,6 +318,7 @@ public class ScheduleRecurrenceService {
     private RecurringScheduleUpdateResult updateAllChildSchedules(Long parentId, ScheduleEntity selected,
                                          UpdateScheduleRequest req,
                                          BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate,
+                                         ScheduleEntity originalParent,
                                          ScheduleEntity updatedParent) {
         List<ScheduleEntity> children = scheduleRepository
                 .findByParentScheduleIdOrderByStartAtAsc(parentId);
@@ -321,12 +328,40 @@ public class ScheduleRecurrenceService {
                 .toList();
         ScheduleEntity updatedSelected = selected.getId().equals(parentId) ? updatedParent : selected;
         for (ScheduleEntity child : nonExceptionChildren) {
-            ScheduleEntity updatedChild = applyUpdate.apply(child, req);
+            ScheduleEntity updatedChild = applyUpdate.apply(child, shiftedRequest(originalParent, child, req));
             if (child.getId().equals(selected.getId())) {
                 updatedSelected = updatedChild;
             }
         }
         return new RecurringScheduleUpdateResult(updatedSelected, 1 + nonExceptionChildren.size());
+    }
+
+    /** 絶対日時を全行へ複製せず、起点の変更量を各行の元日時へ足す。 */
+    private UpdateScheduleRequest shiftedRequest(ScheduleEntity anchor, ScheduleEntity child,
+                                                  UpdateScheduleRequest req) {
+        if (req == null) return null;
+        LocalDateTime requestedStart = req.getStartAt() != null
+                ? req.getStartAt().atZoneSameInstant(STORAGE_ZONE).toLocalDateTime()
+                : anchor.getStartAt();
+        LocalDateTime requestedEnd = req.getEndAt() != null
+                ? req.getEndAt().atZoneSameInstant(STORAGE_ZONE).toLocalDateTime()
+                : anchor.getEndAt();
+        Duration startShift = Duration.between(anchor.getStartAt(), requestedStart);
+        Duration endShift = anchor.getEndAt() != null && requestedEnd != null
+                ? Duration.between(anchor.getEndAt(), requestedEnd) : Duration.ZERO;
+        OffsetDateTime childStart = req.getStartAt() != null && !startShift.isZero()
+                ? child.getStartAt().plus(startShift).atZone(STORAGE_ZONE).toOffsetDateTime() : null;
+        OffsetDateTime childEnd = null;
+        if (req.getEndAt() != null) {
+            if (child.getEndAt() != null && anchor.getEndAt() != null && !endShift.isZero()) {
+                childEnd = child.getEndAt().plus(endShift).atZone(STORAGE_ZONE).toOffsetDateTime();
+            } else if (child.getEndAt() == null && requestedEnd != null) {
+                childEnd = child.getStartAt().plus(startShift)
+                        .plus(Duration.between(requestedStart, requestedEnd))
+                        .atZone(STORAGE_ZONE).toOffsetDateTime();
+            }
+        }
+        return req.withTimes(childStart, childEnd);
     }
 
     /**

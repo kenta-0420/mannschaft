@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,8 +15,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -282,6 +287,86 @@ class ScheduleRecurrenceServiceTest {
     private ScheduleEntity child(Long id, LocalDateTime startAt, boolean exception) {
         return ScheduleEntity.builder().id(id).parentScheduleId(1L).title("child")
                 .startAt(startAt).isException(exception).build();
+    }
+
+    private UpdateScheduleRequest requestWithTimes(String title, LocalDateTime startAt, LocalDateTime endAt) {
+        return new UpdateScheduleRequest(title, null, null,
+                startAt.atOffset(ZoneOffset.ofHours(9)),
+                endAt.atOffset(ZoneOffset.ofHours(9)), null,
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null);
+    }
+
+    @Test
+    @DisplayName("THIS_AND_FOLLOWING: タイトルだけの編集で後続行の日時を複製しない")
+    void followingTitleEditKeepsDistinctTimes() {
+        ScheduleEntity selected = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 10, 11, 0)).build();
+        ScheduleEntity following = child(11L, LocalDateTime.of(2026, 9, 17, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 17, 11, 0)).build();
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+                .thenReturn(List.of(selected, following));
+        Map<Long, UpdateScheduleRequest> applied = new HashMap<>();
+        UpdateScheduleRequest request = requestWithTimes("new", selected.getStartAt(), selected.getEndAt());
+
+        service.updateRecurringSchedule(selected, request, "THIS_AND_FOLLOWING",
+                (entity, update) -> { applied.put(entity.getId(), update); return entity; });
+
+        assertThat(applied.get(10L).getStartAt()).isEqualTo(request.getStartAt());
+        assertThat(applied.get(11L).getTitle()).isEqualTo("new");
+        assertThat(applied.get(11L).getStartAt()).isNull();
+        assertThat(applied.get(11L).getEndAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("THIS_AND_FOLLOWING: 後続行の元日時へ同じ時刻差分を適用する")
+    void followingTimeEditShiftsEachOccurrence() {
+        ScheduleEntity selected = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 10, 11, 0)).build();
+        ScheduleEntity following = child(11L, LocalDateTime.of(2026, 9, 17, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 17, 11, 0)).build();
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+                .thenReturn(List.of(selected, following));
+        Map<Long, UpdateScheduleRequest> applied = new HashMap<>();
+        UpdateScheduleRequest request = requestWithTimes("new",
+                LocalDateTime.of(2026, 9, 10, 10, 30), LocalDateTime.of(2026, 9, 10, 11, 30));
+
+        service.updateRecurringSchedule(selected, request, "THIS_AND_FOLLOWING",
+                (entity, update) -> {
+                    applied.put(entity.getId(), update);
+                    if (entity.getId().equals(10L)) {
+                        entity.updateScheduleFields(entity.getTitle(), entity.getDescription(),
+                                entity.getLocation(), LocalDateTime.of(2026, 9, 10, 10, 30),
+                                LocalDateTime.of(2026, 9, 10, 11, 30), entity.getColor());
+                    }
+                    return entity;
+                });
+
+        assertThat(applied.get(11L).getStartAt()).isEqualTo(
+                OffsetDateTime.of(2026, 9, 17, 10, 30, 0, 0, ZoneOffset.ofHours(9)));
+        assertThat(applied.get(11L).getEndAt()).isEqualTo(
+                OffsetDateTime.of(2026, 9, 17, 11, 30, 0, 0, ZoneOffset.ofHours(9)));
+    }
+
+    @Test
+    @DisplayName("ALL: API互換の全範囲更新でも子行へ親の絶対日時を複製しない")
+    void allTitleEditKeepsChildTimes() {
+        ScheduleEntity parent = ScheduleEntity.builder().id(1L).title("parent")
+                .startAt(LocalDateTime.of(2026, 9, 3, 10, 0))
+                .endAt(LocalDateTime.of(2026, 9, 3, 11, 0)).build();
+        ScheduleEntity child = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 10, 11, 0)).build();
+        when(scheduleRepository.findById(1L)).thenReturn(java.util.Optional.of(parent));
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+                .thenReturn(List.of(child));
+        Map<Long, UpdateScheduleRequest> applied = new HashMap<>();
+        UpdateScheduleRequest request = requestWithTimes("new", parent.getStartAt(), parent.getEndAt());
+
+        service.updateRecurringSchedule(parent, request, "ALL",
+                (entity, update) -> { applied.put(entity.getId(), update); return entity; });
+
+        assertThat(applied.get(10L).getStartAt()).isNull();
+        assertThat(applied.get(10L).getEndAt()).isNull();
     }
 
     @Test

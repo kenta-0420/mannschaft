@@ -7,7 +7,7 @@ const API = process.env.API_BASE_URL ?? 'http://localhost:8081'
 const V1 = `${API}/api/v1`
 const TEAM = 'fc-u-18'
 const ADMIN = { email: 'e2e-admin@test.mannschaft.local', password: 'TestPass2026!' }
-type Entry = { id: number; content?: { title?: string }; title?: string; time?: { startAt?: string }; startAt?: string }
+type Entry = { id: number; content?: { title?: string }; title?: string; time?: { startAt?: string; endAt?: string }; startAt?: string; endAt?: string }
 type Feed = { targetId: number; type: string; detail?: { title?: string; affectedCount?: number } | null }
 
 let api: APIRequestContext
@@ -17,6 +17,7 @@ let page: Page
 const h = () => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' })
 const titleOf = (e: Entry) => e.content?.title ?? e.title
 const startOf = (e: Entry) => e.time?.startAt ?? e.startAt ?? ''
+const endOf = (e: Entry) => e.time?.endAt ?? e.endAt ?? ''
 const monthIndex = (date: string | number) => {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', year: 'numeric', month: 'numeric' })
     .formatToParts(new Date(date))
@@ -98,11 +99,12 @@ async function edit(id: number, before: string, after: string, testId: string) {
   await expect(scope.getByTestId('recurrence-update-this')).toBeVisible()
   await expect(scope.getByTestId('recurrence-update-following')).toBeVisible()
   await expect(scope).not.toContainText('ALL')
-  await Promise.all([
+  const [updateResponse] = await Promise.all([
     page.waitForResponse(response => response.request().method() === 'PATCH'
-      && response.url().includes(`/schedules/${id}`) && response.status() === 200),
+      && response.url().includes(`/schedules/${id}`)),
     scope.getByTestId(testId).click(),
   ])
+  expect(updateResponse.status(), await updateResponse.text()).toBe(200)
   await expect(scope).toBeHidden()
 }
 
@@ -147,6 +149,31 @@ test.describe('CMP107 recurring edit scope (real UI)', () => {
     await waitFeed(ids[1]!, after, ids.length - 1)
   })
 
+  test('THIS_AND_FOLLOWING shifts each future occurrence by its own original time', async () => {
+    const title = `CMP107-time-${Date.now()}`
+    await createSeries(title)
+    const ids = await idsFor(title)
+    expect(ids.length).toBeGreaterThan(3)
+    const original = new Map((await teamEntries()).filter(e => ids.includes(e.id)).map(e => [e.id, e]))
+    const selected = original.get(ids[1]!)!
+    const shiftMs = 30 * 60_000
+    const response = await api.patch(`${V1}/teams/${TEAM}/schedules/${ids[1]}?updateScope=THIS_AND_FOLLOWING`, {
+      headers: h(), data: {
+        startAt: new Date(Date.parse(startOf(selected)) + shiftMs).toISOString(),
+        endAt: new Date(Date.parse(endOf(selected)) + shiftMs).toISOString(),
+      },
+    })
+    expect(response.status(), await response.text()).toBe(200)
+    const updated = new Map((await teamEntries()).filter(e => ids.includes(e.id)).map(e => [e.id, e]))
+    for (const [index, id] of ids.entries()) {
+      const before = original.get(id)!
+      const after = updated.get(id)!
+      const expectedShift = index === 0 ? 0 : shiftMs
+      expect(Date.parse(startOf(after)) - Date.parse(startOf(before))).toBe(expectedShift)
+      expect(Date.parse(endOf(after)) - Date.parse(endOf(before))).toBe(expectedShift)
+    }
+  })
+
   test('5-minute aggregation keeps the latest scope count and title', async () => {
     const before = `CMP107-aggregate-${Date.now()}`
     const first = `${before}-first`
@@ -171,5 +198,47 @@ test.describe('CMP107 recurring edit scope (real UI)', () => {
     const rows = (await feedResponse.json() as { data: { items: Feed[] } }).data.items
     expect(rows.filter(row => row.targetId === selected && row.type.startsWith('SCHEDULE_') && row.detail?.title === latest)).toHaveLength(1)
     expect(rows.filter(row => row.targetId === selected && row.type.startsWith('SCHEDULE_') && row.detail?.title === first)).toHaveLength(0)
+  })
+
+  test('ALICE: independent admin, member and outsider contexts preserve edit authorization', async ({ browser }) => {
+    test.setTimeout(240_000)
+    const credentials = [ADMIN, { email: 'e2e-user@test.mannschaft.local', password: ADMIN.password },
+      { email: 'e2e-outsider@test.mannschaft.local', password: ADMIN.password }]
+    const contexts = await Promise.all(credentials.map(() => browser.newContext()))
+    const pages = await Promise.all(contexts.map(context => context.newPage()))
+    try {
+      await Promise.all(pages.map((personaPage, index) => loginViaApi(personaPage, credentials[index]!, { apiBaseUrl: API })))
+      const title = `CMP107-alice-${Date.now()}`
+      await createSeries(title)
+      const ids = await idsFor(title)
+      expect(ids.length).toBeGreaterThan(3)
+      const url = `${V1}/teams/${TEAM}/schedules/${ids[1]}`
+
+      const [adminDetail, memberDetail, outsiderDetail] = await Promise.all(
+        pages.map(personaPage => personaPage.request.get(url)))
+      expect(adminDetail.status()).toBe(200)
+      expect(memberDetail.status()).toBe(200)
+      expect(outsiderDetail.status()).toBeGreaterThanOrEqual(400)
+      expect(outsiderDetail.status()).toBeLessThan(500)
+      const adminData = (await adminDetail.json() as { data: {
+        content: { title: string }; recurrenceInfo: { parentScheduleId: number | null }
+      } }).data
+      expect(adminData.content.title).toBe(title)
+      expect(adminData.recurrenceInfo.parentScheduleId).not.toBeNull()
+
+      const attackTitle = `${title}-unauthorized`
+      const [memberAttack, outsiderAttack] = await Promise.all([
+        pages[1]!.request.patch(`${url}?updateScope=ALL`, { data: { title: attackTitle } }),
+        pages[2]!.request.patch(`${url}?updateScope=THIS_AND_FOLLOWING`, { data: { title: attackTitle } }),
+      ])
+      for (const attack of [memberAttack, outsiderAttack]) {
+        expect(attack.status()).toBeGreaterThanOrEqual(400)
+        expect(attack.status()).toBeLessThan(500)
+      }
+      expect(await idsFor(title)).toHaveLength(ids.length)
+      expect(await idsFor(attackTitle)).toHaveLength(0)
+    } finally {
+      await Promise.all(contexts.map(context => context.close()))
+    }
   })
 })
