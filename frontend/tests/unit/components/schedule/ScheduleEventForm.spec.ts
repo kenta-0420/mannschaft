@@ -251,7 +251,7 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     const wrapper = await mountRecurringEdit()
     await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
 
-    expect(wrapper.get('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="recurrence-update-this"]').text()).toContain('この予定のみ')
     expect(wrapper.get('[data-testid="recurrence-update-following"]').text()).toContain('この予定以降')
     expect(wrapper.text()).not.toContain('ALL')

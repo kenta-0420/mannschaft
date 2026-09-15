@@ -860,7 +860,7 @@ function close() {
         icon="pi pi-check"
         :loading="submitting"
         data-testid="schedule-submit"
-        @click="submit"
+        @click="submit()"
       />
     </template>
   </Dialog>
