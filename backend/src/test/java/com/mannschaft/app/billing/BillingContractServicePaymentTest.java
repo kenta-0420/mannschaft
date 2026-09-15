@@ -310,7 +310,10 @@ class BillingContractServicePaymentTest {
                 .willReturn(new BillingContractOperationSagaService.OperationReservation(
                         operationId, id, BillingOperationKind.CANCEL,
                         BillingOperationStatus.CREATED, BillingOperationStep.RECEIVED, 0L));
-        given(billingContractOperationSagaService.applyAndFinalize(any(), any()))
+        // 再検分 P1 以降、本経路は「収束時に返す読み取り」を伴う3引数版を呼ぶ。スタブは
+        // 呼び出し形に追随させるだけで、振る舞いは従来と同一——自分が先着した場合を模し、
+        // 第2引数の反映処理をそのまま実行してその結果を返す（期待は一切緩めていない）。
+        given(billingContractOperationSagaService.applyAndFinalize(any(), any(), any()))
                 .willAnswer(inv -> ((java.util.function.Supplier<?>) inv.getArgument(1)).get());
 
         EntitlementEntity e1 = ent("ads.hide");
