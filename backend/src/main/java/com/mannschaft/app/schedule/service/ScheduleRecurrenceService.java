@@ -90,7 +90,7 @@ public class ScheduleRecurrenceService {
      * @param updateScope  更新スコープ
      * @param applyUpdate  単一スケジュールへの更新適用ロジック（ファサード側で実装）
      */
-    public void updateRecurringSchedule(ScheduleEntity schedule, UpdateScheduleRequest req,
+    public long updateRecurringSchedule(ScheduleEntity schedule, UpdateScheduleRequest req,
                                         String updateScope,
                                         BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
         switch (updateScope) {
@@ -101,11 +101,12 @@ public class ScheduleRecurrenceService {
                     schedule = schedule.toBuilder().isException(true).build();
                     scheduleRepository.save(schedule);
                 }
+                return 1;
             }
             case UPDATE_SCOPE_THIS_AND_FOLLOWING -> {
                 applyUpdate.accept(schedule, req);
                 // この日以降の子スケジュールも更新（例外を除く）
-                updateFollowingSchedules(schedule, req, applyUpdate);
+                return 1 + updateFollowingSchedules(schedule, req, applyUpdate);
             }
             case UPDATE_SCOPE_ALL -> {
                 // 親を更新、全子を更新（例外を除く）
@@ -115,9 +116,12 @@ public class ScheduleRecurrenceService {
                         .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
                 applyUpdate.accept(parent, req);
                 scheduleRepository.save(parent);
-                updateAllChildSchedules(parentId, req, applyUpdate);
+                return 1 + updateAllChildSchedules(parentId, req, applyUpdate);
             }
-            default -> applyUpdate.accept(schedule, req);
+            default -> {
+                applyUpdate.accept(schedule, req);
+                return 1;
+            }
         }
     }
 
@@ -286,30 +290,35 @@ public class ScheduleRecurrenceService {
     /**
      * 指定スケジュール以降の子スケジュールを更新する（例外は除く）。
      */
-    private void updateFollowingSchedules(ScheduleEntity schedule, UpdateScheduleRequest req,
-                                          BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
+    private long updateFollowingSchedules(ScheduleEntity schedule, UpdateScheduleRequest req,
+                                         BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
         Long parentId = schedule.getParentScheduleId() != null
                 ? schedule.getParentScheduleId() : schedule.getId();
         List<ScheduleEntity> children = scheduleRepository
                 .findByParentScheduleIdOrderByStartAtAsc(parentId);
 
-        children.stream()
+        List<ScheduleEntity> followingChildren = children.stream()
                 .filter(child -> !child.getIsException())
                 .filter(child -> !child.getStartAt().isBefore(schedule.getStartAt()))
-                .forEach(child -> applyUpdate.accept(child, req));
+                .filter(child -> !child.getId().equals(schedule.getId()))
+                .toList();
+        followingChildren.forEach(child -> applyUpdate.accept(child, req));
+        return followingChildren.size();
     }
 
     /**
      * 親スケジュールの全子を更新する（例外は除く）。
      */
-    private void updateAllChildSchedules(Long parentId, UpdateScheduleRequest req,
+    private long updateAllChildSchedules(Long parentId, UpdateScheduleRequest req,
                                          BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
         List<ScheduleEntity> children = scheduleRepository
                 .findByParentScheduleIdOrderByStartAtAsc(parentId);
 
-        children.stream()
+        List<ScheduleEntity> nonExceptionChildren = children.stream()
                 .filter(child -> !child.getIsException())
-                .forEach(child -> applyUpdate.accept(child, req));
+                .toList();
+        nonExceptionChildren.forEach(child -> applyUpdate.accept(child, req));
+        return nonExceptionChildren.size();
     }
 
     /**

@@ -1225,7 +1225,8 @@ class ScheduleServiceTest {
             given(scheduleRepository.findById(PARENT_ID)).willReturn(Optional.of(parentAfterUpdate));
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
-            given(scheduleRepository.countByParentScheduleId(PARENT_ID)).willReturn(3L);
+            given(recurrenceService.updateRecurringSchedule(any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
+                    org.mockito.ArgumentMatchers.eq("ALL"), any())).willReturn(4L);
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新後(全体)", null, null, null, null, null, null, null, null, null,
                     null, null, null, null, null, null, null, null, null);
@@ -1237,6 +1238,35 @@ class ScheduleServiceTest {
             assertThat(countPublishedActivityEvents()).isEqualTo(1);
             ActivityEvent event = captureLastActivityEvent();
             assertThat(event.getTargetId()).isEqualTo(PARENT_ID);
+            assertThat(event.getDetail()).contains("\"affectedCount\":4");
+        }
+
+        @Test
+        @DisplayName("CMP-107: THIS_AND_FOLLOWINGは再帰サービスの実更新件数をフィードへ反映する")
+        void CMP107_THIS_AND_FOLLOWINGの実更新件数を反映する() {
+            // given
+            ScheduleEntity child = createTeamScheduleEntity().toBuilder()
+                    .id(SCHEDULE_ID).parentScheduleId(PARENT_ID).build();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(recurrenceService.updateRecurringSchedule(any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
+                    org.mockito.ArgumentMatchers.eq("THIS_AND_FOLLOWING"), any())).willAnswer(invocation -> {
+                        @SuppressWarnings("unchecked")
+                        java.util.function.BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate =
+                                invocation.getArgument(3);
+                        applyUpdate.accept(child, invocation.getArgument(1));
+                        return 3L;
+                    });
+            UpdateScheduleRequest req = new UpdateScheduleRequest(
+                    "更新後(この回以降)", null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null);
+
+            // when
+            scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_AND_FOLLOWING", USER_ID);
+
+            // then
+            ActivityEvent event = captureLastActivityEvent();
             assertThat(event.getDetail()).contains("\"affectedCount\":3");
         }
 
