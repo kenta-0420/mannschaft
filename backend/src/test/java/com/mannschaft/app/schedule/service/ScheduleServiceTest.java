@@ -1228,8 +1228,6 @@ class ScheduleServiceTest {
             ScheduleEntity parentAfterUpdate = createTeamScheduleEntity().toBuilder()
                     .id(PARENT_ID).title("更新後(全体)").build();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
-            given(scheduleRepository.save(any(ScheduleEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
             given(recurrenceService.updateRecurringSchedule(any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
                     org.mockito.ArgumentMatchers.eq("ALL"), any())).willReturn(
                             new ScheduleRecurrenceService.RecurringScheduleUpdateResult(parentAfterUpdate, 4L));
