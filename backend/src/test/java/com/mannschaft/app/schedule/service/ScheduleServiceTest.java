@@ -10,6 +10,7 @@ import com.mannschaft.app.dashboard.ActivityEvent;
 import com.mannschaft.app.dashboard.ActivityType;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.TargetType;
+import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.EventType;
 import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
