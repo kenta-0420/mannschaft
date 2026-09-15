@@ -71,7 +71,10 @@ const ScopeSelectorStub = defineComponent({
 // タイトル入力欄のみ再現する軽量スタブ（v-model:form）。
 const BasicFieldsStub = defineComponent({
   name: 'ScheduleEventBasicFields',
-  props: { form: { type: Object, required: true } },
+  props: {
+    form: { type: Object, required: true },
+    timeOptions: { type: Array, default: () => [] },
+  },
   emits: ['update:form'],
   setup(props, { emit }) {
     return () =>
@@ -231,7 +234,7 @@ describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
     scheduleApiMock.getSchedule.mockResolvedValue({
       data: {
         content: { title: '更新前', location: '練習場', attendanceRequired: true, eventType: 'PRACTICE' },
-        time: { allDay: false, startAt: '2026-09-21T09:00:00+09:00', endAt: '2026-09-21T10:00:00+09:00' },
+        time: { allDay: false, startAt: '2026-09-21T09:07:00+09:00', endAt: '2026-09-21T10:07:00+09:00' },
         detail: { description: '元の説明' },
         settings: { allowProxyAttendance: true, isProxyAutoAccept: false, teamBreakdownEnabled: true },
         recurrence: { recurrenceRule: { type: 'WEEKLY', interval: 1, endType: 'COUNT', count: 4 } },
@@ -262,6 +265,8 @@ describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
     await wrapper.setProps({ visible: true })
     await flushPromises()
     expect(scheduleApiMock.getSchedule).toHaveBeenCalledWith('team', 't1', 123)
+    const loadedTimeOptions = wrapper.findComponent(BasicFieldsStub).props('timeOptions') as Array<{ value: string }>
+    expect(loadedTimeOptions.map(option => option.value)).toEqual(expect.arrayContaining(['09:07', '10:07']))
     expect((wrapper.get('[data-testid="title-input"]').element as HTMLInputElement).value).toBe('更新前')
     expect(wrapper.find('[data-testid="schedule-update-scope"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="shared-recurrence-edit-readonly"]').exists()).toBe(true)

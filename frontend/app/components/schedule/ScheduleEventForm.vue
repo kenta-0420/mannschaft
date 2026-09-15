@@ -98,7 +98,7 @@ const targetUserIds = ref<number[]>([])
 const targetValidationError = ref<string | null>(null)
 
 // 15分刻みの時刻オプション生成（00:00〜23:45）
-const timeOptions = Array.from({ length: 96 }, (_, i) => {
+const baseTimeOptions = Array.from({ length: 96 }, (_, i) => {
   const h = Math.floor(i / 4)
   const m = (i % 4) * 15
   const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
@@ -106,6 +106,14 @@ const timeOptions = Array.from({ length: 96 }, (_, i) => {
 })
 
 // 入力履歴（localStorage）
+const timeOptions = computed(() => {
+  const existingTimes = [form.value.startTime, form.value.endTime]
+    .filter((value): value is string => /^([01]\d|2[0-3]):[0-5]\d$/.test(value))
+  return [...new Set([...baseTimeOptions.map(option => option.value), ...existingTimes])]
+    .sort()
+    .map(value => ({ label: value, value }))
+})
+
 const HISTORY_KEY = 'schedule-time-history'
 
 function loadTimeHistory(): TimeHistoryEntry[] {
