@@ -284,24 +284,26 @@ watch(
           }
         }
         else {
-          form.value.title = (data.title as string) ?? ''
-          form.value.description = (data.description as string) ?? ''
-          form.value.location = (data.location as string) ?? ''
-          form.value.allDay = (data.allDay as boolean) ?? false
-          form.value.attendanceRequired = (data.attendanceRequired as boolean) ?? false
+          const content = (data.content as Record<string, unknown>) ?? {}
+          const time = (data.time as Record<string, unknown>) ?? {}
+          form.value.title = (content.title as string) ?? ''
+          form.value.description = (content.description as string) ?? ''
+          form.value.location = (content.location as string) ?? ''
+          form.value.allDay = (time.allDay as boolean) ?? false
+          form.value.attendanceRequired = (content.attendanceRequired as boolean) ?? false
           form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
           form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
           form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
           targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
           targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
             .map(target => target.userId)
-          if (data.startAt) {
-            const start = new Date(data.startAt as string)
+          if (time.startAt) {
+            const start = new Date(time.startAt as string)
             form.value.startDate = start
             form.value.startTime = start.toTimeString().slice(0, 5)
           }
-          if (data.endAt) {
-            const end = new Date(data.endAt as string)
+          if (time.endAt) {
+            const end = new Date(time.endAt as string)
             form.value.endDate = end
             form.value.endTime = end.toTimeString().slice(0, 5)
           }
@@ -312,6 +314,28 @@ watch(
           const scheduledTasks = (data.scheduledTasks as Array<Record<string, unknown>> | null) ?? []
           const recurrence = (data.recurrence as Record<string, unknown>) ?? {}
           loadedRecurringEvent.value = recurrence.recurrenceRule != null || recurrence.parentScheduleId != null
+          let recurrenceRule: Record<string, unknown> | null = null
+          if (typeof recurrence.recurrenceRule === 'string') {
+            try {
+              const parsed: unknown = JSON.parse(recurrence.recurrenceRule)
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                recurrenceRule = parsed as Record<string, unknown>
+              }
+            } catch {
+              // 旧データに不正なルールがあっても詳細画面の表示は継続する。
+            }
+          } else if (recurrence.recurrenceRule && typeof recurrence.recurrenceRule === 'object') {
+            recurrenceRule = recurrence.recurrenceRule as Record<string, unknown>
+          }
+          form.value.recurrence = recurrenceRule != null
+          if (recurrenceRule) {
+            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
+            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
+            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
+            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
+            if (recurrenceRule.endDate) form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
+            if (recurrenceRule.count != null) form.value.recurrenceCount = recurrenceRule.count as number
+          }
           for (const task of scheduledTasks) {
             if (task.status !== 'PENDING') continue
             if (task.taskType === 'SURVEY') {
@@ -547,14 +571,16 @@ async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
   if (effectiveScope.value.isPersonal) {
     body.color = form.value.color
   } else {
-    body.eventType = 'OTHER'
+    if (!isEdit.value) body.eventType = 'OTHER'
     body.attendanceRequired = form.value.attendanceRequired
-    body.allow_proxy_attendance = form.value.allowProxyAttendance
-    body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
+    if (!isEdit.value) {
+      body.allow_proxy_attendance = form.value.allowProxyAttendance
+      body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
+    }
     body.targetMode = targetMode.value
     body.targetUserIds = targetMode.value === 'SELECTED_MEMBERS' ? targetUserIds.value : []
     // F03.1 (B) チーム別内訳トグルは組織スコープ + 出欠ありのときのみ送る
-    if (effectiveScope.value.scopeType === 'organization' && form.value.attendanceRequired) {
+    if (!isEdit.value && effectiveScope.value.scopeType === 'organization' && form.value.attendanceRequired) {
       body.teamBreakdownEnabled = form.value.teamBreakdownEnabled
     }
   }

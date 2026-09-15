@@ -16,6 +16,13 @@ let memberToken = ''
 let page: Page
 const h = () => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' })
 const titleOf = (e: Entry) => e.content?.title ?? e.title
+const startOf = (e: Entry) => e.time?.startAt ?? e.startAt ?? ''
+const monthIndex = (date: string | number) => {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', year: 'numeric', month: 'numeric' })
+    .formatToParts(new Date(date))
+  return Number(parts.find(p => p.type === 'year')?.value) * 12
+    + Number(parts.find(p => p.type === 'month')?.value)
+}
 
 async function createSeries(title: string) {
   const start = Date.now() + 7 * 86_400_000
@@ -60,9 +67,25 @@ async function waitFeed(id: number, title: string, count: number) {
 }
 
 async function edit(id: number, before: string, after: string, testId: string) {
-  await page.goto(`/calendar?scheduleId=${id}`)
+  const entries = await teamEntries()
+  const selected = entries.find(e => e.id === id)
+  expect(selected).toBeDefined()
+  const targetMonth = monthIndex(startOf(selected!))
+  const sameMonth = entries.filter(e => titleOf(e) === before && monthIndex(startOf(e)) === targetMonth)
+    .sort((a, b) => Date.parse(startOf(a)) - Date.parse(startOf(b)))
+  const ordinal = sameMonth.findIndex(e => e.id === id)
+  expect(ordinal).toBeGreaterThanOrEqual(0)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`/teams/${TEAM}/schedule`, { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
-  const pencil = page.locator('button').filter({ has: page.locator('.pi-pencil') }).last()
+  const monthDelta = targetMonth - monthIndex(Date.now())
+  expect(monthDelta).toBeGreaterThanOrEqual(0)
+  for (let i = 0; i < monthDelta; i++) {
+    await page.locator('button').filter({ has: page.locator('.pi-chevron-right') }).first().click()
+  }
+  await page.getByTestId('schedule-list-row-wrap').filter({ hasText: before }).nth(ordinal).click()
+  const pencil = page.locator('button').filter({ has: page.locator('.pi-pencil') })
+    .and(page.locator(':visible')).first()
   await expect(pencil).toBeVisible({ timeout: 30_000 })
   await pencil.click()
   const dialog = page.locator('[role="dialog"]').last()

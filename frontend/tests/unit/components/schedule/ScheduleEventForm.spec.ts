@@ -226,8 +226,9 @@ describe('ScheduleEventForm: recurrence update scope', () => {
   async function mountRecurringEdit() {
     scheduleApiMock.getSchedule.mockResolvedValue({
       data: {
-        title: 'Recurring meeting',
-        recurrence: { recurrenceRule: { type: 'WEEKLY', interval: 1, daysOfWeek: ['MONDAY'], endType: 'NEVER' } },
+        content: { title: 'Recurring meeting', eventType: 'PRACTICE' },
+        time: { startAt: '2026-09-22T10:00:00', endAt: '2026-09-22T11:00:00', allDay: false },
+        recurrence: { recurrenceRule: JSON.stringify({ type: 'WEEKLY', interval: 1, daysOfWeek: ['MONDAY'], endType: 'NEVER' }) },
       },
     })
     scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
@@ -270,6 +271,8 @@ describe('ScheduleEventForm: recurrence update scope', () => {
 
     expect(scheduleApiMock.updateSchedule).toHaveBeenCalledTimes(1)
     expect(scheduleApiMock.updateSchedule).toHaveBeenCalledWith('team', 't1', 42, expect.anything(), updateScope)
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toMatchObject({ title: 'Recurring meeting' })
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('eventType')
     expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
   })
 
@@ -317,7 +320,7 @@ describe('ScheduleEventForm: recurrence update scope', () => {
   })
 
   it('updates a non-recurring event directly', async () => {
-    scheduleApiMock.getSchedule.mockResolvedValue({ data: { title: 'One-time meeting' } })
+    scheduleApiMock.getSchedule.mockResolvedValue({ data: { content: { title: 'One-time meeting' }, time: {} } })
     scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
     const wrapper = await mountSuspended(ScheduleEventForm, {
       props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
@@ -334,7 +337,7 @@ describe('ScheduleEventForm: recurrence update scope', () => {
 
   it('treats a shared child occurrence as recurring when only parentScheduleId is present', async () => {
     scheduleApiMock.getSchedule.mockResolvedValue({
-      data: { title: 'Child occurrence', recurrence: { recurrenceRule: null, parentScheduleId: 7 } },
+      data: { content: { title: 'Child occurrence' }, time: {}, recurrence: { recurrenceRule: null, parentScheduleId: 7 } },
     })
     const wrapper = await mountSuspended(ScheduleEventForm, {
       props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },

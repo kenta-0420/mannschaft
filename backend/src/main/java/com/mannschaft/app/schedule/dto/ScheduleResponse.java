@@ -20,6 +20,7 @@ public class ScheduleResponse {
     ScheduleScopeDto   scope;       // scopeName, scopeIconUrl
     ScheduleAcademicDto academic;   // eventCategory, academicYear, sourceScheduleId
     ScheduleAuditDto   audit;       // createdAt, createdByDisplayName
+    ScheduleRecurrenceDto recurrence; // 詳細 GET の繰り返し元・例外情報
     String             myAttendanceStatus;
     String             targetMode;
     Integer            targetCount;
@@ -51,5 +52,8 @@ public class ScheduleResponse {
     }
 
     public record ScheduleAuditDto(LocalDateTime createdAt, String createdByDisplayName) {
+    }
+
+    public record ScheduleRecurrenceDto(String recurrenceRule, Long parentScheduleId, Boolean isException) {
     }
 }
