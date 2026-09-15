@@ -265,7 +265,7 @@ watch(
           // 個人予定: status.recurrenceRule から繰り返し設定をフォームに復元する
           const status = (data.status as Record<string, unknown>) ?? {}
           const recurrenceRule = status.recurrenceRule as Record<string, unknown> | null
-          loadedRecurringEvent.value = recurrenceRule != null
+          loadedRecurringEvent.value = recurrenceRule != null || status.parentScheduleId != null
           if (recurrenceRule && typeof recurrenceRule === 'object') {
             form.value.recurrence = true
             form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
@@ -310,7 +310,7 @@ watch(
           // 共有予定: scheduledTasks の PENDING タスクを scheduledSurvey / scheduledAttendance に変換する
           const scheduledTasks = (data.scheduledTasks as Array<Record<string, unknown>> | null) ?? []
           const recurrence = (data.recurrence as Record<string, unknown>) ?? {}
-          loadedRecurringEvent.value = recurrence.recurrenceRule != null
+          loadedRecurringEvent.value = recurrence.recurrenceRule != null || recurrence.parentScheduleId != null
           for (const task of scheduledTasks) {
             if (task.status !== 'PENDING') continue
             if (task.taskType === 'SURVEY') {

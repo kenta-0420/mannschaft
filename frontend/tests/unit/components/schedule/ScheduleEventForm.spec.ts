@@ -314,4 +314,38 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
     expect(scheduleApiMock.updateSchedule).toHaveBeenCalledTimes(1)
   })
+
+  it('treats a shared child occurrence as recurring when only parentScheduleId is present', async () => {
+    scheduleApiMock.getSchedule.mockResolvedValue({
+      data: { title: 'Child occurrence', recurrence: { recurrenceRule: null, parentScheduleId: 7 } },
+    })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: true, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
+    expect(scheduleApiMock.updateSchedule).not.toHaveBeenCalled()
+  })
+
+  it('treats a personal child occurrence as recurring when only parentScheduleId is present', async () => {
+    scheduleApiMock.getMyScheduleDetail.mockResolvedValue({
+      data: {
+        content: { title: 'Child personal occurrence' },
+        time: {},
+        status: { recurrenceRule: null, parentScheduleId: 7 },
+      },
+    })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: true, scopeType: 'team', scopeId: '', scheduleId: 42, isPersonal: true },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
+    expect(scheduleApiMock.updatePersonalSchedule).not.toHaveBeenCalled()
+  })
 })
