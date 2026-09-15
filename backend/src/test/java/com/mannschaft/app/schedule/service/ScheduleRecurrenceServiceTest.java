@@ -167,7 +167,7 @@ class ScheduleRecurrenceServiceTest {
 
         // when
         long affectedCount = service.updateRecurringSchedule(selected, null, "THIS_AND_FOLLOWING",
-                (schedule, ignored) -> applied.incrementAndGet());
+                (schedule, ignored) -> { applied.incrementAndGet(); return schedule; }).affectedCount();
 
         // then
         assertThat(affectedCount).isEqualTo(2);
@@ -187,7 +187,7 @@ class ScheduleRecurrenceServiceTest {
 
         // when
         long affectedCount = service.updateRecurringSchedule(selectedException, null, "THIS_AND_FOLLOWING",
-                (schedule, ignored) -> applied.incrementAndGet());
+                (schedule, ignored) -> { applied.incrementAndGet(); return schedule; }).affectedCount();
 
         // then
         assertThat(affectedCount).isEqualTo(2);
@@ -209,7 +209,7 @@ class ScheduleRecurrenceServiceTest {
 
         // when
         long affectedCount = service.updateRecurringSchedule(selected, null, "ALL",
-                (schedule, ignored) -> applied.incrementAndGet());
+                (schedule, ignored) -> { applied.incrementAndGet(); return schedule; }).affectedCount();
 
         // then
         assertThat(affectedCount).isEqualTo(3);
@@ -226,7 +226,7 @@ class ScheduleRecurrenceServiceTest {
 
         // when
         long affectedCount = service.updateRecurringSchedule(schedule, null, "THIS_ONLY",
-                (target, ignored) -> applied.incrementAndGet());
+                (target, ignored) -> { applied.incrementAndGet(); return target; }).affectedCount();
 
         // then
         assertThat(affectedCount).isOne();

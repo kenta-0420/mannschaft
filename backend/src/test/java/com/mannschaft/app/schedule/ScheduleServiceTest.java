@@ -1226,7 +1226,8 @@ class ScheduleServiceTest {
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
             given(recurrenceService.updateRecurringSchedule(any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
-                    org.mockito.ArgumentMatchers.eq("ALL"), any())).willReturn(4L);
+                    org.mockito.ArgumentMatchers.eq("ALL"), any())).willReturn(
+                            new ScheduleRecurrenceService.RecurringScheduleUpdateResult(parentAfterUpdate, 4L));
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新後(全体)", null, null, null, null, null, null, null, null, null,
                     null, null, null, null, null, null, null, null, null);
@@ -1253,10 +1254,10 @@ class ScheduleServiceTest {
             given(recurrenceService.updateRecurringSchedule(any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
                     org.mockito.ArgumentMatchers.eq("THIS_AND_FOLLOWING"), any())).willAnswer(invocation -> {
                         @SuppressWarnings("unchecked")
-                        java.util.function.BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate =
+                        java.util.function.BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate =
                                 invocation.getArgument(3);
-                        applyUpdate.accept(child, invocation.getArgument(1));
-                        return 3L;
+                        ScheduleEntity updated = applyUpdate.apply(child, invocation.getArgument(1));
+                        return new ScheduleRecurrenceService.RecurringScheduleUpdateResult(updated, 3L);
                     });
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新後(この回以降)", null, null, null, null, null, null, null, null, null,

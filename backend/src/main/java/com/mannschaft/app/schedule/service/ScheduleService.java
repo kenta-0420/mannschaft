@@ -291,14 +291,16 @@ public class ScheduleService {
 
         long affectedCount = 1;
         if (schedule.isRecurring() || schedule.getParentScheduleId() != null) {
-            affectedCount = recurrenceService.updateRecurringSchedule(schedule, req, updateScope, this::applyUpdateToSchedule);
+            ScheduleRecurrenceService.RecurringScheduleUpdateResult result = recurrenceService
+                    .updateRecurringSchedule(schedule, req, updateScope, this::applyUpdateToSchedule);
+            schedule = result.selectedSchedule();
+            affectedCount = result.affectedCount();
         } else {
             // F03.18: 戻り値で schedule 参照を差し替える（applyUpdateToSchedule は新インスタンスを
             // 構築するため、差し替えないと呼び出し元からは更新前の値のまま見えてしまう）。
             schedule = applyUpdateToSchedule(schedule, req);
         }
 
-        schedule = scheduleRepository.save(schedule);
         updateTargetsForRecurrenceScope(schedule, req, updateScope);
 
         // 機能55 BE対応: リマインダー更新（null = 変更なし、空リスト = 全削除、非空 = 差し替え）

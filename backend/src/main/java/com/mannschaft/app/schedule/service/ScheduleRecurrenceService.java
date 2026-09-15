@@ -17,7 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 /**
  * スケジュールの繰り返し展開・例外処理・繰り返しスコープに応じた更新／削除のディスパッチを担当するサービス。
@@ -26,13 +26,15 @@ import java.util.function.BiConsumer;
  * 繰り返し関連のロジックを切り出して責務を分離した。</p>
  *
  * <p>単一スケジュールへの更新適用 ({@code applyUpdateToSchedule}) はファサード側の責務として
- * {@link BiConsumer} で受け取り、本サービスは「対象スケジュール群を選び出してそれぞれに適用する」役割に集中する。</p>
+ * {@link BiFunction} で受け取り、本サービスは「対象スケジュール群を選び出してそれぞれに適用する」役割に集中する。</p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class ScheduleRecurrenceService {
+
+    public record RecurringScheduleUpdateResult(ScheduleEntity selectedSchedule, long affectedCount) {}
 
     private static final int MAX_RECURRENCE_OCCURRENCES = 365;
     private static final String UPDATE_SCOPE_THIS_ONLY = "THIS_ONLY";
@@ -90,23 +92,23 @@ public class ScheduleRecurrenceService {
      * @param updateScope  更新スコープ
      * @param applyUpdate  単一スケジュールへの更新適用ロジック（ファサード側で実装）
      */
-    public long updateRecurringSchedule(ScheduleEntity schedule, UpdateScheduleRequest req,
+    public RecurringScheduleUpdateResult updateRecurringSchedule(ScheduleEntity schedule, UpdateScheduleRequest req,
                                         String updateScope,
-                                        BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
+                                        BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate) {
         switch (updateScope) {
             case UPDATE_SCOPE_THIS_ONLY -> {
-                applyUpdate.accept(schedule, req);
+                ScheduleEntity target = schedule.getParentScheduleId() != null
+                        ? schedule.toBuilder().isException(true).build()
+                        : schedule;
+                ScheduleEntity updated = applyUpdate.apply(target, req);
                 // 繰り返しの例外としてマーク
-                if (schedule.getParentScheduleId() != null) {
-                    schedule = schedule.toBuilder().isException(true).build();
-                    scheduleRepository.save(schedule);
-                }
-                return 1;
+                return new RecurringScheduleUpdateResult(updated, 1);
             }
             case UPDATE_SCOPE_THIS_AND_FOLLOWING -> {
-                applyUpdate.accept(schedule, req);
+                ScheduleEntity updated = applyUpdate.apply(schedule, req);
                 // この日以降の子スケジュールも更新（例外を除く）
-                return 1 + updateFollowingSchedules(schedule, req, applyUpdate);
+                return new RecurringScheduleUpdateResult(updated,
+                        1 + updateFollowingSchedules(schedule, req, applyUpdate));
             }
             case UPDATE_SCOPE_ALL -> {
                 // 親を更新、全子を更新（例外を除く）
@@ -114,13 +116,11 @@ public class ScheduleRecurrenceService {
                         ? schedule.getParentScheduleId() : schedule.getId();
                 ScheduleEntity parent = scheduleRepository.findById(parentId)
                         .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
-                applyUpdate.accept(parent, req);
-                scheduleRepository.save(parent);
-                return 1 + updateAllChildSchedules(parentId, req, applyUpdate);
+                ScheduleEntity updatedParent = applyUpdate.apply(parent, req);
+                return updateAllChildSchedules(parentId, schedule, req, applyUpdate, updatedParent);
             }
             default -> {
-                applyUpdate.accept(schedule, req);
-                return 1;
+                return new RecurringScheduleUpdateResult(applyUpdate.apply(schedule, req), 1);
             }
         }
     }
@@ -291,7 +291,7 @@ public class ScheduleRecurrenceService {
      * 指定スケジュール以降の子スケジュールを更新する（例外は除く）。
      */
     private long updateFollowingSchedules(ScheduleEntity schedule, UpdateScheduleRequest req,
-                                         BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
+                                         BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate) {
         Long parentId = schedule.getParentScheduleId() != null
                 ? schedule.getParentScheduleId() : schedule.getId();
         List<ScheduleEntity> children = scheduleRepository
@@ -302,23 +302,31 @@ public class ScheduleRecurrenceService {
                 .filter(child -> !child.getStartAt().isBefore(schedule.getStartAt()))
                 .filter(child -> !child.getId().equals(schedule.getId()))
                 .toList();
-        followingChildren.forEach(child -> applyUpdate.accept(child, req));
+        followingChildren.forEach(child -> applyUpdate.apply(child, req));
         return followingChildren.size();
     }
 
     /**
      * 親スケジュールの全子を更新する（例外は除く）。
      */
-    private long updateAllChildSchedules(Long parentId, UpdateScheduleRequest req,
-                                         BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
+    private RecurringScheduleUpdateResult updateAllChildSchedules(Long parentId, ScheduleEntity selected,
+                                         UpdateScheduleRequest req,
+                                         BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate,
+                                         ScheduleEntity updatedParent) {
         List<ScheduleEntity> children = scheduleRepository
                 .findByParentScheduleIdOrderByStartAtAsc(parentId);
 
         List<ScheduleEntity> nonExceptionChildren = children.stream()
                 .filter(child -> !child.getIsException())
                 .toList();
-        nonExceptionChildren.forEach(child -> applyUpdate.accept(child, req));
-        return nonExceptionChildren.size();
+        ScheduleEntity updatedSelected = selected.getId().equals(parentId) ? updatedParent : selected;
+        for (ScheduleEntity child : nonExceptionChildren) {
+            ScheduleEntity updatedChild = applyUpdate.apply(child, req);
+            if (child.getId().equals(selected.getId())) {
+                updatedSelected = updatedChild;
+            }
+        }
+        return new RecurringScheduleUpdateResult(updatedSelected, 1 + nonExceptionChildren.size());
     }
 
     /**
