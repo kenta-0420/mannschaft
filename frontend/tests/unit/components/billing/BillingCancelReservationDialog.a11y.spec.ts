@@ -121,6 +121,38 @@ describe('BillingCancelReservationDialog — 操作中の抑止と再取得（AC
     expect(wrapper.find('[data-testid="cancel-error"]').exists()).toBe(true)
     expect(onRefetch).toHaveBeenCalledTimes(1)
   })
+
+  it('検分P2: onConfirmが解決してもonRefetchが解決するまで確定ボタンはdisabledのまま', async () => {
+    // onConfirm は速く終わるが、権利再取得（onRefetch）が遅いケース。
+    // 再取得の完了を待たずに disabled を解除すると、古い canCancel/version のまま連打でき、
+    // 別の Idempotency-Key で重複要求を送って 409 の誤ったエラー表示を招く（検分 P2）。
+    const onConfirm = vi.fn().mockResolvedValue(undefined)
+    let resolveRefetch: (() => void) | undefined
+    const refetchPending = new Promise<void>((resolve) => { resolveRefetch = resolve })
+    const onRefetch = vi.fn().mockReturnValue(refetchPending)
+
+    const wrapper = await mountDialog({ onConfirm, onRefetch })
+    await wrapper.get('[data-testid="cancel-confirm-button"]').trigger('click')
+
+    // onConfirm 自体は解決済みだが、onRefetch がまだ pending の間は disabled のまま。
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+    expect(onRefetch).toHaveBeenCalledTimes(1)
+    expect((wrapper.get('[data-testid="cancel-confirm-button"]').element as HTMLButtonElement).disabled)
+      .toBe(true)
+
+    // 連打しても onConfirm は再度呼ばれない（disabled が実効していることの直接確認）
+    await wrapper.get('[data-testid="cancel-confirm-button"]').trigger('click')
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+
+    resolveRefetch?.()
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+
+    expect((wrapper.get('[data-testid="cancel-confirm-button"]').element as HTMLButtonElement).disabled)
+      .toBe(false)
+  })
 })
 
 describe('BillingCancelReservationDialog — a11y（AC-64）', () => {

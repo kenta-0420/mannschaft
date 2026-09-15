@@ -15,7 +15,10 @@
  * <p><b>操作中の抑止と再取得（AC-62）</b>: 確定ボタンは operation 進行中 disabled にする。
  * 失敗時はエラー要素を表示した「後」に再取得コールバックを呼ぶ（エラーを握りつぶさない）。
  * 実際の API 呼び出し・契約再取得は親から {@link Props.onConfirm} / {@link Props.onRefetch}
- * として注入される（本コンポーネントは表示専任で Stripe 同期呼出しを行わない＝AC-63）。</p>
+ * として注入される（本コンポーネントは表示専任で Stripe 同期呼出しを行わない＝AC-63）。
+ * {@code onRefetch} は {@code Promise<void>} を返す前提で <b>必ず await</b> し、その完了後に
+ * disabled を解除する（検分 P2 是正: 再取得の完了を待たずに解除すると、古い canCancel/version の
+ * まま連打でき、別の Idempotency-Key で重複要求を送って 409 の誤ったエラー表示を招く）。</p>
  *
  * <p><b>a11y（AC-64）</b>: role="dialog" / aria-modal="true" / aria-labelledby、
  * Escape で取消、Tab による手動フォーカストラップ、開いた瞬間に確定ボタンへフォーカス。</p>
@@ -50,8 +53,12 @@ interface Props {
   onConfirm?: () => Promise<void>
   /** 撤回確定。呼び出し元が実際の DELETE cancel API を叩く。 */
   onResume?: () => Promise<void>
-  /** 確定・撤回の完了/失敗後に契約情報を再取得するコールバック。 */
-  onRefetch?: () => void
+  /**
+   * 確定・撤回の完了/失敗後に契約情報を再取得するコールバック。
+   * 呼び出し元は解決を必ず待つ（{@link Promise} を返すこと。同期完了する場合も
+   * {@code Promise.resolve()} でよい）。
+   */
+  onRefetch?: () => Promise<void>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -106,9 +113,14 @@ async function onConfirmClick() {
   } catch {
     // 症状を隠さない: 明示エラー要素を出してから再取得する（対処療法禁止）。
     confirmError.value = true
+  }
+  try {
+    // 検分 P2 是正: 再取得の完了を待たずに disabled を解除すると、古い canCancel/version の
+    // まま連打でき、別の Idempotency-Key で重複要求を送って 409 の誤ったエラー表示を招く。
+    // 再取得自体が失敗しても disabled は必ず解除する（finally）。
+    await props.onRefetch?.()
   } finally {
     confirmLoading.value = false
-    props.onRefetch?.()
   }
 }
 
@@ -120,9 +132,11 @@ async function onResumeClick() {
     await props.onResume?.()
   } catch {
     resumeError.value = true
+  }
+  try {
+    await props.onRefetch?.()
   } finally {
     resumeLoading.value = false
-    props.onRefetch?.()
   }
 }
 

@@ -14,12 +14,10 @@ import type { BillingActiveContract, BillingEntitledFeature, BillingScopeKind } 
 import BillingCancelReservationDialog from '~/components/billing/BillingCancelReservationDialog.vue'
 
 /**
- * BE の {@code BillingActiveContract} 投影は現状 {@code version} を返さない
- * （F20.1 {@code ActiveContract} DTO に未マッピング。05_billing_center.md:344 の
- * {@code ContractBase.version:int64} と乖離しており、backend 側の是正が必要＝Codex 検分
- * P1 是正の残課題として別途報告する）。本コンポーネントは BE が将来 {@code version} を
- * 返し始めた際に自動で機能するよう楽観的にフィールドを読むが、値が無ければ「操作不能」を
- * 誠実に表示する（存在しない version を 0 決め打ちで送る対処療法はしない＝CAS の意味を失わせる）。
+ * BE の {@code BillingActiveContract} 投影は {@code version}（05_billing_center.md:344 の
+ * {@code ContractBase.version:int64}）を返す（第7隊 8f0a0bb5a1 で解消済み。Codex 検分 P1 是正）。
+ * とはいえ値が欠落するケースへの安全網として、無い場合は 0 決め打ちで送らず「操作不能」を
+ * 誠実に表示する（CAS の意味を失わせる対処療法はしない）。
  */
 type BillingActiveContractWithVersion = BillingActiveContract & { version?: number }
 
@@ -78,7 +76,7 @@ function sourceBadgeLabel(sourceKind: string | undefined): string {
 const reservationTarget = ref<BillingActiveContractWithVersion | null>(null)
 const reservationVisible = ref(false)
 
-/** BE 未実装のため常に undefined になりうる（コンポーネント冒頭のコメント参照）。 */
+/** 通常は BE から返るが、安全網として欠落時は undefined を保つ（コンポーネント冒頭のコメント参照）。 */
 const reservationVersion = computed<number | undefined>(() => {
   const v = reservationTarget.value?.version
   return typeof v === 'number' ? v : undefined

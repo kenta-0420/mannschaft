@@ -124,8 +124,11 @@ describe('BillingManagePanel — 新解約ダイアログへの導線（Codex �
     expect(wrapper.find('[data-testid="resume-cancel-button"]').exists()).toBe(false)
   })
 
-  it('BE投影に version が無い間は 0 決め打ちで送らず、確定操作を誠実に失敗させる（対処療法禁止）', async () => {
-    mockApi.mockResolvedValueOnce(entitlementsResponse(activePlanFixture()))
+  it('安全網: BE投影に version が欠落している間は 0 決め打ちで送らず、確定操作を誠実に失敗させる（対処療法禁止）', async () => {
+    // 通常運用では BE（ActiveContract）が version を返す（第7隊 8f0a0bb5a1）。
+    // ここでは欠落時のフォールバック（誠実な失敗）を固定する安全網テストとして、
+    // わざと version を持たないフィクスチャを使う。
+    mockApi.mockResolvedValueOnce(entitlementsResponse(activePlanFixture({ version: undefined })))
 
     const wrapper = await mountSuspended(BillingManagePanel, {
       props: { scopeKind: 'USER', scopeId: '', canManage: true },
@@ -141,5 +144,61 @@ describe('BillingManagePanel — 新解約ダイアログへの導線（Codex �
     const cancelCall = mockApi.mock.calls.find(([url]) => String(url).includes('/cancel'))
     expect(cancelCall).toBeUndefined()
     expect(wrapper.find('[data-testid="cancel-error"]').exists()).toBe(true)
+  })
+
+  it('検分P2: 権利再取得（onRefetch）が完了するまで確定ボタンはdisabledのまま', async () => {
+    // 1回目: 初期表示の権利取得
+    mockApi.mockResolvedValueOnce(entitlementsResponse(activePlanFixture({ version: 0 })))
+    // 2回目: 解約確定（cancelContractReservation の POST）— すぐ成功する
+    mockApi.mockResolvedValueOnce({
+      data: {
+        contractId: '00000000-0000-7000-8000-000000000001',
+        contractStatus: 'ACTIVE',
+        status: 'SCHEDULED',
+        scheduledAt: '2026-09-15T00:00:00Z',
+        endAt: '2026-09-30T15:00:00Z',
+        currentPeriodEnd: '2026-09-30T15:00:00Z',
+        version: 1,
+        canCancel: false,
+        canResume: true,
+      },
+    })
+    // 3回目: onConfirm 成功後に onRefetch が呼ぶ権利再取得（getEntitlements）— わざと遅延させる
+    let resolveRefetch: (() => void) | undefined
+    const refetchPending = new Promise((resolve) => {
+      resolveRefetch = () => resolve(entitlementsResponse(activePlanFixture({ version: 1, canCancel: false, canResume: true })))
+    })
+    mockApi.mockImplementationOnce(() => refetchPending)
+
+    const wrapper = await mountSuspended(BillingManagePanel, {
+      props: { scopeKind: 'USER', scopeId: '', canManage: true },
+    })
+    await flushPromises()
+    await wrapper.get('[data-testid="billing-cancel-plan"]').trigger('click')
+    await flushPromises()
+
+    await wrapper.get('[data-testid="cancel-confirm-button"]').trigger('click')
+    await flushPromises()
+
+    // cancel API 自体はもう成功している（3回目の呼び出し＝再取得が発生済み）が、
+    // その再取得がまだ pending の間はボタンが disabled のままでなければならない
+    // （検分 P2: 再取得完了を待たずに解除すると、古い canCancel/version のまま連打でき、
+    // 別の Idempotency-Key で重複要求を送って 409 の誤ったエラー表示を招く）。
+    expect(mockApi.mock.calls.length).toBe(3)
+    const confirmButton = wrapper.get('[data-testid="cancel-confirm-button"]').element as HTMLButtonElement
+    expect(confirmButton.disabled).toBe(true)
+
+    // 連打しても cancel API は再度呼ばれない
+    await wrapper.get('[data-testid="cancel-confirm-button"]').trigger('click')
+    await flushPromises()
+    expect(mockApi.mock.calls.length).toBe(3)
+
+    resolveRefetch?.()
+    await flushPromises()
+    await flushPromises()
+
+    // 再取得完了後は disabled が解除され、更新後の投影（撤回ボタン）が反映されている
+    expect(wrapper.find('[data-testid="resume-cancel-button"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="cancel-confirm-button"]').exists()).toBe(false)
   })
 })
