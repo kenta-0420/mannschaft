@@ -1,12 +1,17 @@
 package com.mannschaft.app.match.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
+import com.mannschaft.app.common.storage.StorageErrorCode;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.domain.MatchStatus;
 import com.mannschaft.app.match.domain.Sport;
@@ -22,12 +27,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -58,6 +66,10 @@ class MatchAttachmentServiceTest {
     private StorageService storageService;
     @Mock
     private StorageAclService storageAclService;
+    @Mock
+    private StorageAccessService storageAccessService;
+    @Mock
+    private DomainEventPublisher eventPublisher;
 
     @InjectMocks
     private MatchAttachmentService service;
@@ -163,6 +175,7 @@ class MatchAttachmentServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_031);
         verify(storageService, never()).generateDownloadUrl(any(), any());
+        verify(storageAccessService, never()).generateDownloadUrl(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -178,10 +191,60 @@ class MatchAttachmentServiceTest {
                 .build();
         att.setId(attId);
         when(attachmentRepository.findById(attId)).thenReturn(Optional.of(att));
-        when(storageService.generateDownloadUrl(any(), any())).thenReturn("https://dl");
+        when(storageAccessService.generateDownloadUrl(
+                eq(att.getFileKey()), eq(StorageAclScope.organization(ORG)),
+                eq(new StorageAclContentReference("MATCH", matchId.toString())),
+                eq(new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attId.toString())),
+                any(Duration.class))).thenReturn("https://dl");
 
         MatchAttachmentService.DownloadUrl dl = service.generateDownloadUrl(matchId, attId, ORG);
         assertThat(dl.getDownloadUrl()).isEqualTo("https://dl");
+    }
+
+    @Test
+    @DisplayName("download-url: ACL tuple不一致は404を伝播する")
+    void downloadUrlAclMismatchIsNotFound() {
+        UUID attId = UUID.randomUUID();
+        MatchAttachmentEntity att = MatchAttachmentEntity.builder()
+                .matchId(matchId).fileKey("match/key").contentType("image/png")
+                .fileSize(10L).createdBy(ACTOR).build();
+        att.setId(attId);
+        when(attachmentRepository.findById(attId)).thenReturn(Optional.of(att));
+        when(storageAccessService.generateDownloadUrl(any(), any(), any(), any(), any()))
+                .thenThrow(new BusinessException(StorageErrorCode.ACL_NOT_FOUND));
+
+        assertThatThrownBy(() -> service.generateDownloadUrl(matchId, attId, ORG))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(StorageErrorCode.ACL_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("list: DB entity由来のACL tupleに一致する添付だけ返す")
+    void listOmitsAclMismatch() {
+        MatchAttachmentEntity allowed = MatchAttachmentEntity.builder()
+                .matchId(matchId).fileKey("match/allowed").contentType("image/png")
+                .fileSize(10L).createdBy(ACTOR).build();
+        allowed.setId(UUID.randomUUID());
+        MatchAttachmentEntity denied = MatchAttachmentEntity.builder()
+                .matchId(matchId).fileKey("match/denied").contentType("image/png")
+                .fileSize(10L).createdBy(ACTOR).build();
+        denied.setId(UUID.randomUUID());
+        when(attachmentRepository.findByMatchIdOrderByCreatedAtAsc(matchId))
+                .thenReturn(List.of(allowed, denied));
+        when(storageAccessService.generateDownloadUrlsForList(any(), any()))
+                .thenReturn(Map.of(allowed.getFileKey(), "https://dl"));
+
+        assertThat(service.listAttachments(matchId, ORG)).containsExactly(allowed);
+        verify(storageAccessService).generateDownloadUrlsForList(eq(List.of(
+                new StorageAclDownloadRequest(
+                        allowed.getFileKey(), StorageAclScope.organization(ORG),
+                        new StorageAclContentReference("MATCH", matchId.toString()),
+                        new StorageAclAttachmentBinding("MATCH_ATTACHMENT", allowed.getId().toString())),
+                new StorageAclDownloadRequest(
+                        denied.getFileKey(), StorageAclScope.organization(ORG),
+                        new StorageAclContentReference("MATCH", matchId.toString()),
+                        new StorageAclAttachmentBinding("MATCH_ATTACHMENT", denied.getId().toString())))),
+                any(Duration.class));
     }
 
     @Test
@@ -201,6 +264,32 @@ class MatchAttachmentServiceTest {
         assertThatThrownBy(() -> service.deleteAttachment(matchId, attId, ORG, ACTOR))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_031);
+        verify(storageService, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("delete: ACLとDBを削除し、物理削除をcommit後イベントへ委譲する")
+    void deletePublishesPhysicalDeleteEvent() {
+        UUID attId = UUID.randomUUID();
+        String fileKey = "match/" + ORG + "/" + matchId + "/key";
+        MatchAttachmentEntity attachment = MatchAttachmentEntity.builder()
+                .matchId(matchId)
+                .fileKey(fileKey)
+                .contentType("image/png")
+                .fileSize(10L)
+                .createdBy(ACTOR)
+                .build();
+        attachment.setId(attId);
+        when(attachmentRepository.findById(attId)).thenReturn(Optional.of(attachment));
+
+        service.deleteAttachment(matchId, attId, ORG, ACTOR);
+
+        verify(storageAclService).releaseClaimed(fileKey,
+                new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attId.toString()));
+        verify(attachmentRepository).delete(attachment);
+        verify(eventPublisher).publish(argThat(event ->
+                event instanceof S3ObjectDeleteEvent deleteEvent
+                        && deleteEvent.s3Keys().equals(List.of(fileKey))));
         verify(storageService, never()).delete(any());
     }
 

@@ -3,6 +3,7 @@ package com.mannschaft.app.chat.controller;
 import com.mannschaft.app.bulletin.ScopeType;
 import com.mannschaft.app.chat.service.ChatBoardMigrationService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -49,7 +50,7 @@ public class ChatBoardMigrationController {
         Long bulletinThreadId = migrationService.migrateToBoard(
                 id,
                 request.getBoardScopeId(),
-                ScopeType.valueOf(request.getScopeType()),
+                EnumInputParser.parse(ScopeType.class, request.getScopeType(), "scopeType"),
                 request.getCategoryId(),
                 request.getTitle(),
                 Boolean.TRUE.equals(request.getCopyHistory()),

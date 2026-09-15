@@ -83,7 +83,8 @@ public enum NotificationType {
     /** 柱③-A: 参加申請が承認された旨の申請者向け通知（CMP-260901-1538）。 */
     JOIN_REQUEST_APPROVED(NotificationPriority.NORMAL, "USER"),
     /** 柱③-A: 参加申請が却下された旨の申請者向け通知（CMP-260901-1538）。 */
-    JOIN_REQUEST_REJECTED(NotificationPriority.NORMAL, "USER");
+    JOIN_REQUEST_REJECTED(NotificationPriority.NORMAL, "USER"),
+    NEW_DEVICE_LOGIN(NotificationPriority.HIGH, "USER");
 
     private final NotificationPriority priority;
     private final String sourceType;

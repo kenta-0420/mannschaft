@@ -1,6 +1,7 @@
 package com.mannschaft.app.timetable.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.timetable.TimetableChangeType;
 import com.mannschaft.app.timetable.dto.CreateChangeRequest;
 import com.mannschaft.app.timetable.dto.TimetableChangeResponse;
@@ -61,7 +62,7 @@ public class TimetableChangeController {
             @Valid @RequestBody CreateChangeRequest request) {
         var data = new TimetableChangeService.CreateChangeData(
                 request.getTargetDate(), request.getPeriodNumber(),
-                TimetableChangeType.valueOf(request.getChangeType()),
+                EnumInputParser.parse(TimetableChangeType.class, request.getChangeType(), "changeType"),
                 request.getSubjectName(), request.getTeacherName(),
                 request.getRoomName(), request.getReason(),
                 request.getNotifyMembers(), request.getCreateSchedule(),

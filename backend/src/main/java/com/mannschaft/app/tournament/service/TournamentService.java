@@ -1,6 +1,7 @@
 package com.mannschaft.app.tournament.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.match.domain.Sport;
@@ -306,7 +307,7 @@ public class TournamentService {
      */
     @Transactional
     public TournamentResponse createTournament(Long orgId, Long userId, CreateTournamentRequest request) {
-        TournamentFormat format = TournamentFormat.valueOf(request.getFormat());
+        TournamentFormat format = EnumInputParser.parse(TournamentFormat.class, request.getFormat(), "format");
 
         TournamentEntity.TournamentEntityBuilder builder = TournamentEntity.builder()
                 .organizationId(orgId)
@@ -349,10 +350,10 @@ public class TournamentService {
         if (request.getScoreUnitLabel() != null) builder.scoreUnitLabel(request.getScoreUnitLabel());
         if (request.getBonusPointRules() != null) builder.bonusPointRules(request.getBonusPointRules());
         if (request.getLeagueRoundType() != null)
-            builder.leagueRoundType(LeagueRoundType.valueOf(request.getLeagueRoundType()));
+            builder.leagueRoundType(EnumInputParser.parse(LeagueRoundType.class, request.getLeagueRoundType(), "leagueRoundType"));
         if (request.getKnockoutLegs() != null) builder.knockoutLegs(request.getKnockoutLegs());
         if (request.getVisibility() != null)
-            builder.visibility(TournamentVisibility.valueOf(request.getVisibility()));
+            builder.visibility(EnumInputParser.parse(TournamentVisibility.class, request.getVisibility(), "visibility"));
 
         TournamentEntity tournament = tournamentRepository.save(builder.build());
         Long tournamentId = tournament.getId();
@@ -393,7 +394,7 @@ public class TournamentService {
         tournament.update(
                 request.getName() != null ? request.getName() : tournament.getName(),
                 request.getDescription() != null ? request.getDescription() : tournament.getDescription(),
-                request.getFormat() != null ? TournamentFormat.valueOf(request.getFormat()) : tournament.getFormat(),
+                request.getFormat() != null ? EnumInputParser.parse(TournamentFormat.class, request.getFormat(), "format") : tournament.getFormat(),
                 // F08.10 多競技対応（🟡-1a）: 未指定は既存値維持。指定時は resolveSport で検証。
                 request.getSport() != null ? resolveSport(request.getSport()) : tournament.getSport(),
                 request.getSeason() != null ? request.getSeason() : tournament.getSeason(),
@@ -409,9 +410,9 @@ public class TournamentService {
                 request.getHasPenalties() != null ? request.getHasPenalties() : tournament.getHasPenalties(),
                 request.getScoreUnitLabel() != null ? request.getScoreUnitLabel() : tournament.getScoreUnitLabel(),
                 request.getBonusPointRules() != null ? request.getBonusPointRules() : tournament.getBonusPointRules(),
-                request.getLeagueRoundType() != null ? LeagueRoundType.valueOf(request.getLeagueRoundType()) : tournament.getLeagueRoundType(),
+                request.getLeagueRoundType() != null ? EnumInputParser.parse(LeagueRoundType.class, request.getLeagueRoundType(), "leagueRoundType") : tournament.getLeagueRoundType(),
                 request.getKnockoutLegs() != null ? request.getKnockoutLegs() : tournament.getKnockoutLegs(),
-                request.getVisibility() != null ? TournamentVisibility.valueOf(request.getVisibility()) : tournament.getVisibility());
+                request.getVisibility() != null ? EnumInputParser.parse(TournamentVisibility.class, request.getVisibility(), "visibility") : tournament.getVisibility());
         tournamentRepository.save(tournament);
 
         if (request.getTiebreakers() != null) {
@@ -614,9 +615,9 @@ public class TournamentService {
                 TournamentTiebreakerEntity.builder()
                         .tournamentId(tournamentId)
                         .priority(req.getPriority())
-                        .criteria(TiebreakerCriteria.valueOf(req.getCriteria()))
+                        .criteria(EnumInputParser.parse(TiebreakerCriteria.class, req.getCriteria(), "criteria"))
                         .direction(req.getDirection() != null
-                                ? TiebreakerDirection.valueOf(req.getDirection())
+                                ? EnumInputParser.parse(TiebreakerDirection.class, req.getDirection(), "direction")
                                 : TiebreakerDirection.DESC)
                         .build()));
     }
@@ -630,10 +631,10 @@ public class TournamentService {
                         .statKey(req.getStatKey())
                         .unit(req.getUnit())
                         .dataType(req.getDataType() != null
-                                ? StatDataType.valueOf(req.getDataType())
+                                ? EnumInputParser.parse(StatDataType.class, req.getDataType(), "dataType")
                                 : StatDataType.INTEGER)
                         .aggregationType(req.getAggregationType() != null
-                                ? StatAggregationType.valueOf(req.getAggregationType())
+                                ? EnumInputParser.parse(StatAggregationType.class, req.getAggregationType(), "aggregationType")
                                 : StatAggregationType.SUM)
                         .isRankingTarget(req.getIsRankingTarget() != null ? req.getIsRankingTarget() : true)
                         .rankingLabel(req.getRankingLabel())

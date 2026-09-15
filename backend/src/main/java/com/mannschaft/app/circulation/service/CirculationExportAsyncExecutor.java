@@ -11,6 +11,10 @@ import com.mannschaft.app.circulation.repository.CirculationStampCorrectionLogRe
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +22,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,12 +46,14 @@ public class CirculationExportAsyncExecutor {
 
     /** Thymeleaf テンプレ名。 */
     private static final String EXPORT_TEMPLATE = "pdf/circulation-export";
+    private static final Duration ACL_CLAIM_TTL = Duration.ofMinutes(10);
 
     private final CirculationDocumentRepository documentRepository;
     private final CirculationRecipientRepository recipientRepository;
     private final CirculationStampCorrectionLogRepository correctionLogRepository;
     private final PdfGeneratorService pdfGeneratorService;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
     private final DomainEventPublisher eventPublisher;
 
     /** 受信者表示名解決用（テスト構成では null 注入を許容）。 */
@@ -77,7 +84,15 @@ public class CirculationExportAsyncExecutor {
             byte[] pdfBytes = buildPdfBytes(entity);
             String fileKey = "circulation/exports/" + documentId + "/" + UUID.randomUUID() + ".pdf";
 
+            StorageAclScope scope = scopeOf(entity);
+            StorageAclContentReference parent =
+                    new StorageAclContentReference("CIRCULATION_DOCUMENT", entity.getId().toString());
+            StorageAclAttachmentBinding binding =
+                    new StorageAclAttachmentBinding("CIRCULATION_EXPORT", entity.getId().toString());
+            storageAclService.registerPending(fileKey, entity.getCreatedBy(), scope,
+                    "CIRCULATION_EXPORT_PDF", ACL_CLAIM_TTL, parent);
             storageService.upload(fileKey, pdfBytes, "application/pdf");
+            storageAclService.claimPending(fileKey, entity.getCreatedBy(), scope, parent, binding);
 
             entity.markExportCompleted(fileKey);
             documentRepository.save(entity);
@@ -95,6 +110,15 @@ public class CirculationExportAsyncExecutor {
             entity.markExportFailed(ex.getClass().getSimpleName() + ": " + ex.getMessage());
             documentRepository.save(entity);
         }
+    }
+
+    private StorageAclScope scopeOf(CirculationDocumentEntity entity) {
+        return switch (entity.getScopeType()) {
+            case "TEAM" -> StorageAclScope.team(entity.getScopeId());
+            case "ORGANIZATION" -> StorageAclScope.organization(entity.getScopeId());
+            case "PERSONAL" -> StorageAclScope.personal(entity.getCreatedBy());
+            default -> throw new IllegalArgumentException("Unsupported circulation scope: " + entity.getScopeType());
+        };
     }
 
     /**

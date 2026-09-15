@@ -23,7 +23,13 @@ import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.role.dto.InviteCardData;
 import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -75,6 +81,7 @@ public class ChatMessageService {
     private final ChatMapper chatMapper;
     /** F13 Phase 4-β: 統合ストレージクォータ連携。添付の INSERT 時 / 論理削除時の使用量計上に使用。 */
     private final ChatAttachmentService chatAttachmentService;
+    private final StorageAccessService storageAccessService;
     private final ChatChannelAccessGuard channelAccessGuard;
     private final ChatChannelMemberRepository memberRepository;
     private final ChatChannelRepository channelRepository;
@@ -84,6 +91,7 @@ public class ChatMessageService {
     private final PostingIdentityService postingIdentityService;
     /** F10.7: 問い合わせ通知イベント発行用。 */
     private final ApplicationEventPublisher eventPublisher;
+    private final DomainEventPublisher domainEventPublisher;
     /**
      * 送信者の表示名・アバター解決（クロスドメイン・原則1）。auth ドメインの UserEntity/UserRepository を
      * 直接参照せず、common の {@link NameResolverService}（プリミティブ Map 返却・署名付きアバターURL解決）に委譲する。
@@ -318,6 +326,10 @@ public class ChatMessageService {
             for (ChatMessageAttachmentEntity attachment : attachments) {
                 chatAttachmentService.recordAttachmentDeletion(
                         channel, attachment, userId, message.getSenderId());
+                chatAttachmentService.releaseMessageAttachment(attachment);
+                if (attachment.getFileKey() != null && !attachment.getFileKey().isBlank()) {
+                    domainEventPublisher.publish(new S3ObjectDeleteEvent(attachment.getFileKey()));
+                }
             }
         }
 
@@ -593,21 +605,44 @@ public class ChatMessageService {
      * @param userId  呼出ユーザー ID
      * @throws BusinessException 閲覧権限がない場合（{@link ChatErrorCode#CHANNEL_ACCESS_DENIED}）
      */
-    public void checkAttachmentDownloadAccess(String fileKey, Long userId) {
-        Long channelId = attachmentRepository.findFirstByFileKey(fileKey)
-                .map(ChatMessageAttachmentEntity::getMessageId)
-                .flatMap(messageRepository::findById)
-                .map(ChatMessageEntity::getChannelId)
+    public StorageAclDownloadRequest resolveAttachmentDownloadRequest(String fileKey, Long userId) {
+        var messageAttachment = attachmentRepository.findFirstByFileKey(fileKey);
+        if (messageAttachment.isPresent()) {
+            ChatMessageAttachmentEntity attachment = messageAttachment.get();
+            ChatMessageEntity message = messageRepository.findById(attachment.getMessageId()).orElse(null);
+            if (message == null) {
+                return null;
+            }
+            ChatChannelEntity channel = channelService.findChannelOrThrow(message.getChannelId());
+            checkChannelViewAccess(channel.getId(), userId);
+            return new StorageAclDownloadRequest(fileKey,
+                    chatAttachmentService.resolveAclScope(channel, message.getSenderId()),
+                    new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()),
+                    new StorageAclAttachmentBinding("CHAT_MESSAGE_ATTACHMENT", attachment.getId().toString()));
+        }
+
+        return channelRepository.findFirstByIconKey(fileKey)
+                .map(channel -> {
+                    checkChannelViewAccess(channel.getId(), userId);
+                    return new StorageAclDownloadRequest(fileKey,
+                            chatAttachmentService.resolveAclScope(channel, channel.getCreatedBy()),
+                            new StorageAclContentReference("CHAT_CHANNEL", channel.getId().toString()),
+                            new StorageAclAttachmentBinding("CHAT_CHANNEL_ICON", channel.getId().toString()));
+                })
                 .orElse(null);
-        if (channelId == null) {
-            channelId = channelRepository.findFirstByIconKey(fileKey)
-                    .map(ChatChannelEntity::getId)
-                    .orElse(null);
+    }
+
+    /**
+     * 親チャンネルの閲覧認可を先に済ませ、ACL の scope・親・attachment binding が一致する場合だけ
+     * 署名 URL を発行する。未知キーは ACL 側の 404 に正規化する。
+     */
+    public String generateAttachmentDownloadUrl(String fileKey, Long userId, java.time.Duration ttl) {
+        StorageAclDownloadRequest request = resolveAttachmentDownloadRequest(fileKey, userId);
+        if (request == null) {
+            return storageAccessService.generateDownloadUrl(fileKey, null, null, null, ttl);
         }
-        if (channelId == null) {
-            throw new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED);
-        }
-        checkChannelViewAccess(channelId, userId);
+        return storageAccessService.generateDownloadUrl(fileKey, request.scope(),
+                request.parentContentReference(), request.attachmentBinding(), ttl);
     }
 
     /**

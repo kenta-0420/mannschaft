@@ -14668,6 +14668,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/schedules/{scheduleId}/media/{mediaId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** スケジュール画像アップロード完了確認 */
+        post: operations["confirmImageUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/schedules/{scheduleId}/media/upload-url": {
         parameters: {
             query?: never;
@@ -21207,7 +21224,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Multipart Upload 開始 */
+        /** 廃止済み: 汎用 Multipart Upload 開始 */
         post: operations["startUpload"];
         delete?: never;
         options?: never;
@@ -23006,6 +23023,23 @@ export interface paths {
         put?: never;
         /** 記事複製 */
         post: operations["duplicatePost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/blog/media/{mediaId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 画像アップロード完了確認 */
+        post: operations["confirmImageUpload_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -65925,17 +65959,6 @@ export interface components {
             part_size?: number;
             target_prefix?: string;
         };
-        ApiResponseStartMultipartUploadResponse: {
-            data?: components["schemas"]["StartMultipartUploadResponse"];
-        };
-        StartMultipartUploadResponse: {
-            fileKey?: string;
-            /** Format: int32 */
-            partCount?: number;
-            /** Format: int64 */
-            partSize?: number;
-            uploadId?: string;
-        };
         ApiResponseFileSharingFolderSummary: {
             data?: components["schemas"]["FileSharingFolderSummary"];
         };
@@ -79668,6 +79691,27 @@ export interface components {
         PagedResponseIncidentSummaryResponse: {
             data?: components["schemas"]["IncidentSummaryResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        ApiResponseListIncidentCommentResponse: {
+            data?: components["schemas"]["IncidentCommentResponse"][];
+        };
+        IncidentCommentResponse: {
+            body?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            incidentId?: number;
+            isInternal?: boolean;
+            user?: components["schemas"]["IncidentCommentUserResponse"];
+            /** Format: int64 */
+            userId?: number;
+        };
+        IncidentCommentUserResponse: {
+            displayName?: string;
+            /** Format: int64 */
+            id?: number;
         };
         ApiResponseListIncidentCategoryResponse: {
             data?: components["schemas"]["IncidentCategoryResponse"][];
@@ -114749,6 +114793,27 @@ export interface operations {
             };
         };
     };
+    confirmImageUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+                mediaId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 完了確認成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     generateUploadUrl_5: {
         parameters: {
             query?: never;
@@ -127155,14 +127220,12 @@ export interface operations {
             };
         };
         responses: {
-            /** @description セッション作成成功 */
-            201: {
+            /** @description ドメイン別開始 API へ移行済み */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseStartMultipartUploadResponse"];
-                };
+                content?: never;
             };
         };
     };
@@ -130455,6 +130518,26 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseBlogPostResponse"];
                 };
+            };
+        };
+    };
+    confirmImageUpload_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 完了確認成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -162327,7 +162410,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListObject"];
+                    "*/*": components["schemas"]["ApiResponseListIncidentCommentResponse"];
                 };
             };
         };

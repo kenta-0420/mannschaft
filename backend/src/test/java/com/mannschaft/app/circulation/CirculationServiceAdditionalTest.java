@@ -17,7 +17,10 @@ import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.UserRepository.MemberSummary;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -66,8 +69,11 @@ class CirculationServiceAdditionalTest {
     @Mock
     private UserRepository userRepository;
 
-    @Mock
-    private StorageAclService storageAclService;
+    @Mock private StorageAccessService storageAccessService;
+    @Mock private StorageAclService storageAclService;
+    @Mock private com.mannschaft.app.common.DomainEventPublisher domainEventPublisher;
+    @Mock private AccessControlService accessControlService;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
     @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
@@ -92,6 +98,17 @@ class CirculationServiceAdditionalTest {
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.any()))
                 .thenAnswer(inv -> inv.getArgument(2));
+        org.mockito.Mockito.lenient().when(accessControlService.isMember(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(true);
+        org.mockito.Mockito.lenient().doNothing().when(accessControlService).checkMembership(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
+        org.mockito.Mockito.lenient().doNothing().when(accessControlService).checkMembershipOrDescendant(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyBoolean());
+        org.mockito.Mockito.lenient().doNothing().when(contentVisibilityChecker).assertCanView(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.lenient().when(storageAccessService.generateDownloadUrlsForList(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(java.util.Map.of());
     }
 
     @org.junit.jupiter.api.AfterEach
@@ -402,13 +419,17 @@ class CirculationServiceAdditionalTest {
         @DisplayName("正常系: 添付ファイル一覧が返却される")
         void 添付ファイル一覧_正常() {
             CirculationAttachmentEntity entity = CirculationAttachmentEntity.builder()
+                    .id(ATTACHMENT_ID)
                     .documentId(DOCUMENT_ID).fileKey("k").originalFilename("f.pdf")
                     .fileSize(100L).mimeType("application/pdf").build();
             AttachmentResponse response = new AttachmentResponse(ATTACHMENT_ID, DOCUMENT_ID,
                     "k", "f.pdf", 100L, "application/pdf", null);
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(createDraft()));
             given(attachmentRepository.findByDocumentIdOrderByCreatedAtAsc(DOCUMENT_ID))
                     .willReturn(List.of(entity));
-            given(circulationMapper.toAttachmentResponseList(any())).willReturn(List.of(response));
+            given(storageAccessService.generateDownloadUrlsForList(any(), any()))
+                    .willReturn(java.util.Map.of("k", "https://storage.example/k"));
+            given(circulationMapper.toAttachmentResponse(entity)).willReturn(response);
 
             List<AttachmentResponse> result = service.listAttachments(DOCUMENT_ID);
 

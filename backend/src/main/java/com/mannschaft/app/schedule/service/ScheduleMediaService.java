@@ -61,6 +61,11 @@ public class ScheduleMediaService {
         return uploadService.generateUploadUrl(scheduleId, uploaderId, req);
     }
 
+    /** Presigned PUT完了後の画像実在確認をアップロードサービスへ委譲する。 */
+    public void confirmImageUpload(Long scheduleId, Long mediaId, Long uploaderId) {
+        uploadService.confirmImageUpload(scheduleId, mediaId, uploaderId);
+    }
+
     /**
      * スケジュールのメディア一覧を取得する。
      *
@@ -88,14 +93,12 @@ public class ScheduleMediaService {
      * @param scheduleId      スケジュール ID
      * @param mediaId         メディア ID
      * @param requestUserId   リクエストを行うユーザー ID
-     * @param isAdminOrDeputy 管理者または副管理者フラグ
      * @param req             更新リクエスト
      * @return 更新後のメディアレスポンス
      */
     public ScheduleMediaResponse updateMedia(
-            Long scheduleId, Long mediaId, Long requestUserId, boolean isAdminOrDeputy,
-            ScheduleMediaPatchRequest req) {
-        return queryService.updateMedia(scheduleId, mediaId, requestUserId, isAdminOrDeputy, req);
+            Long scheduleId, Long mediaId, Long requestUserId, ScheduleMediaPatchRequest req) {
+        return queryService.updateMedia(scheduleId, mediaId, requestUserId, req);
     }
 
     /**
@@ -107,10 +110,9 @@ public class ScheduleMediaService {
      * @param scheduleId      スケジュール ID
      * @param mediaId         メディア ID
      * @param requestUserId   リクエストを行うユーザー ID
-     * @param isAdminOrDeputy 管理者または副管理者フラグ
      */
-    public void deleteMedia(Long scheduleId, Long mediaId, Long requestUserId, boolean isAdminOrDeputy) {
-        queryService.deleteMedia(scheduleId, mediaId, requestUserId, isAdminOrDeputy);
+    public void deleteMedia(Long scheduleId, Long mediaId, Long requestUserId) {
+        queryService.deleteMedia(scheduleId, mediaId, requestUserId);
     }
 
     /**
@@ -161,7 +163,7 @@ public class ScheduleMediaService {
             return new ScopeResolution(StorageScopeType.ORGANIZATION, schedule.getOrganizationId());
         }
         // 個人スケジュール
-        return new ScopeResolution(StorageScopeType.PERSONAL, uploaderId);
+        return new ScopeResolution(StorageScopeType.PERSONAL, schedule.getUserId());
     }
 
     /** 解決されたストレージスコープ。 */

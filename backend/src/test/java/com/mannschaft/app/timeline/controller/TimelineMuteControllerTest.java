@@ -63,14 +63,14 @@ class TimelineMuteControllerTest {
     @Test
     @DisplayName("addMute は SecurityUtils.getCurrentUserId() のみをミュート主体として渡す")
     void addMute_boundToCurrentUserOnly() {
-        MuteRequest request = new MuteRequest("USER", MUTED_ID);
+        MuteRequest request = new MuteRequest("TEAM", MUTED_ID);
         MuteResponse response = Mockito.mock(MuteResponse.class);
-        given(muteService.addMute("USER", MUTED_ID, USER_ID)).willReturn(response);
+        given(muteService.addMute("TEAM", MUTED_ID, USER_ID)).willReturn(response);
 
         ResponseEntity<ApiResponse<MuteResponse>> result = controller.addMute(request);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        verify(muteService).addMute("USER", MUTED_ID, USER_ID);
+        verify(muteService).addMute("TEAM", MUTED_ID, USER_ID);
     }
 
     @Test

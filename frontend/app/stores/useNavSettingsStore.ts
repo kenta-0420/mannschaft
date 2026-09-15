@@ -55,8 +55,9 @@ export const useNavSettingsStore = defineStore('navSettings', {
         this.features = res.features
         this.loaded = true
         this.persistToStorage()
-      } catch {
+      } catch (error) {
         // fallback to localStorage
+        console.error('[navSettings] loadFromServer failed', error)
         this.loaded = true
       }
     },

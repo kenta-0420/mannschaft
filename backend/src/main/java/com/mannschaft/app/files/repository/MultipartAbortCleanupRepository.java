@@ -23,6 +23,16 @@ public interface MultipartAbortCleanupRepository extends JpaRepository<Multipart
 
     @Modifying
     @Transactional
+    @Query("update MultipartAbortCleanupEntity c set c.status = 'DELETE_CLAIMED', c.claimedAt = :now, c.leaseUntil = :leaseUntil where c.id = :id and c.status = 'DELETE_PENDING'")
+    int claimDelete(@Param("id") UUID id, @Param("now") Instant now, @Param("leaseUntil") Instant leaseUntil);
+
+    @Modifying
+    @Transactional
     @Query("update MultipartAbortCleanupEntity c set c.status = 'ABORT_PENDING', c.leaseUntil = null where c.status = 'CLAIMED' and c.leaseUntil <= :now")
     int releaseExpiredClaims(@Param("now") Instant now);
+
+    @Modifying
+    @Transactional
+    @Query("update MultipartAbortCleanupEntity c set c.status = 'DELETE_PENDING', c.leaseUntil = null where c.status = 'DELETE_CLAIMED' and c.leaseUntil <= :now")
+    int releaseExpiredDeleteClaims(@Param("now") Instant now);
 }

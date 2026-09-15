@@ -2,6 +2,7 @@ package com.mannschaft.app.cms.service;
 
 import com.mannschaft.app.cms.CmsErrorCode;
 import com.mannschaft.app.cms.CmsMapper;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.publicview.error.PublicViewErrorCode;
 import com.mannschaft.app.cms.PostPriority;
 import com.mannschaft.app.cms.PostStatus;
@@ -75,6 +76,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BlogPostService {
+    private final BlogMediaAclService mediaAclService;
+    private final BlogMediaCopyService mediaCopyService;
 
     private final BlogPostRepository postRepository;
     private final BlogPostTagRepository postTagRepository;
@@ -273,11 +276,11 @@ public class BlogPostService {
     @Transactional
     public BlogPostResponse createPost(Long userId, CreateBlogPostRequest request) {
         PostType postType = request.getPostType() != null
-                ? PostType.valueOf(request.getPostType()) : PostType.BLOG;
+                ? EnumInputParser.parse(PostType.class, request.getPostType(), "postType") : PostType.BLOG;
         Visibility visibility = request.getVisibility() != null
-                ? Visibility.valueOf(request.getVisibility()) : Visibility.MEMBERS_ONLY;
+                ? EnumInputParser.parse(Visibility.class, request.getVisibility(), "visibility") : Visibility.MEMBERS_ONLY;
         PostPriority priority = request.getPriority() != null
-                ? PostPriority.valueOf(request.getPriority()) : PostPriority.NORMAL;
+                ? EnumInputParser.parse(PostPriority.class, request.getPriority(), "priority") : PostPriority.NORMAL;
 
         String slug = request.getSlug() != null ? request.getSlug() : generateSlug(request.getTitle());
         short readingTime = calculateReadingTime(request.getBody());
@@ -328,6 +331,8 @@ public class BlogPostService {
 
         BlogPostEntity saved = postRepository.save(entity);
 
+        mediaAclService.bindBodyMedia(saved, userId);
+
         // タグ紐付け
         if (request.getTagIds() != null) {
             for (Long tagId : request.getTagIds()) {
@@ -348,9 +353,9 @@ public class BlogPostService {
         checkWriteAccess(entity, userId);
 
         Visibility visibility = request.getVisibility() != null
-                ? Visibility.valueOf(request.getVisibility()) : entity.getVisibility();
+                ? EnumInputParser.parse(Visibility.class, request.getVisibility(), "visibility") : entity.getVisibility();
         PostPriority priority = request.getPriority() != null
-                ? PostPriority.valueOf(request.getPriority()) : entity.getPriority();
+                ? EnumInputParser.parse(PostPriority.class, request.getPriority(), "priority") : entity.getPriority();
         String slug = request.getSlug() != null ? request.getSlug() : entity.getSlug();
         short readingTime = calculateReadingTime(request.getBody());
 
@@ -372,6 +377,7 @@ public class BlogPostService {
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("記事更新: postId={}", id);
+        mediaAclService.bindBodyMedia(saved, userId);
         return cmsMapper.toBlogPostResponse(saved);
     }
 
@@ -382,7 +388,7 @@ public class BlogPostService {
     public BlogPostResponse changeStatus(Long id, Long userId, PublishRequest request) {
         BlogPostEntity entity = findPostOrThrow(id);
         checkWriteAccess(entity, userId);
-        PostStatus newStatus = PostStatus.valueOf(request.getStatus());
+        PostStatus newStatus = EnumInputParser.parse(PostStatus.class, request.getStatus(), "status");
 
         if (newStatus == PostStatus.REJECTED && (request.getRejectionReason() == null || request.getRejectionReason().isBlank())) {
             throw new BusinessException(CmsErrorCode.REJECTION_REASON_REQUIRED);
@@ -444,6 +450,7 @@ public class BlogPostService {
                 .build();
 
         BlogPostEntity saved = postRepository.save(copy);
+        mediaCopyService.copyMedia(original, saved, userId);
 
         // タグのコピー
         List<BlogPostTagEntity> tags = postTagRepository.findByBlogPostId(id);
@@ -506,6 +513,7 @@ public class BlogPostService {
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("自動保存: postId={}", id);
+        mediaAclService.bindBodyMedia(saved, userId);
         return cmsMapper.toBlogPostResponse(saved);
     }
 
@@ -756,7 +764,7 @@ public class BlogPostService {
             return dto;
         }
         String resolvedBody = blogBodyMediaResolver.resolveBody(
-                content.body(), scope.scopeType(), scope.scopeId());
+                content.body(), scope.scopeType(), scope.scopeId(), entity.getId());
         if (resolvedBody == null || resolvedBody.equals(content.body())) {
             return dto;
         }

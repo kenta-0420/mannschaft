@@ -12,12 +12,14 @@ import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
 import com.mannschaft.app.bulletin.entity.BulletinCategoryEntity;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.bulletin.repository.BulletinCategoryRepository;
+import com.mannschaft.app.bulletin.repository.BulletinReplyRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReactionRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.tournament.ContactSpaceKind;
 import com.mannschaft.app.tournament.ContactSpaceScopeType;
@@ -57,6 +59,8 @@ public class BulletinThreadService {
     private static final String SOURCE_TYPE_SAFETY_CHECK = "SAFETY_CHECK";
 
     private final BulletinThreadRepository threadRepository;
+    private final BulletinReplyRepository replyRepository;
+    private final BulletinAttachmentService attachmentService;
     private final BulletinCategoryService categoryService;
     private final BulletinMapper bulletinMapper;
     private final BulletinAccessGuard accessGuard;
@@ -284,9 +288,9 @@ public class BulletinThreadService {
                     .title(request.getTitle())
                     .body(request.getBody())
                     .priority(request.getPriority() != null
-                            ? Priority.valueOf(request.getPriority()) : Priority.INFO)
+                            ? EnumInputParser.parse(Priority.class, request.getPriority(), "priority") : Priority.INFO)
                     .readTrackingMode(request.getReadTrackingMode() != null
-                            ? ReadTrackingMode.valueOf(request.getReadTrackingMode()) : ReadTrackingMode.COUNT_ONLY)
+                            ? EnumInputParser.parse(ReadTrackingMode.class, request.getReadTrackingMode(), "readTrackingMode") : ReadTrackingMode.COUNT_ONLY)
                     .sourceType(request.getSourceType())
                     .sourceId(request.getSourceId())
                     .build();
@@ -316,9 +320,9 @@ public class BulletinThreadService {
         accessGuard.requireCanCreateThread(userId, scopeType, scopeId, postMinRole);
 
         Priority priority = request.getPriority() != null
-                ? Priority.valueOf(request.getPriority()) : Priority.INFO;
+                ? EnumInputParser.parse(Priority.class, request.getPriority(), "priority") : Priority.INFO;
         ReadTrackingMode trackingMode = request.getReadTrackingMode() != null
-                ? ReadTrackingMode.valueOf(request.getReadTrackingMode()) : ReadTrackingMode.COUNT_ONLY;
+                ? EnumInputParser.parse(ReadTrackingMode.class, request.getReadTrackingMode(), "readTrackingMode") : ReadTrackingMode.COUNT_ONLY;
 
         // F17.1 Phase 3: scope=VILLAGE 投稿の主体検証
         VillageSubjectType postedAsType = VillageSubjectType.USER;
@@ -390,7 +394,7 @@ public class BulletinThreadService {
         }
 
         Priority priority = request.getPriority() != null
-                ? Priority.valueOf(request.getPriority()) : entity.getPriority();
+                ? EnumInputParser.parse(Priority.class, request.getPriority(), "priority") : entity.getPriority();
 
         entity.update(request.getTitle(), request.getBody(), priority);
         BulletinThreadEntity saved = threadRepository.save(entity);
@@ -425,6 +429,10 @@ public class BulletinThreadService {
             accessGuard.requireManageContent(userId, scopeType, scopeId);
         }
 
+        attachmentService.releaseAttachments(TargetType.THREAD, threadId);
+        for (var reply : replyRepository.findByThreadId(threadId)) {
+            attachmentService.releaseAttachments(TargetType.REPLY, reply.getId());
+        }
         entity.softDelete();
         threadRepository.save(entity);
         log.info("スレッド削除: threadId={}, by={}", threadId, userId);
@@ -568,7 +576,7 @@ public class BulletinThreadService {
                         toContactScope(entity.getScopeType()), entity.getScopeId(), userId);
             }
             Priority p = request.getPriority() != null
-                    ? Priority.valueOf(request.getPriority()) : entity.getPriority();
+                    ? EnumInputParser.parse(Priority.class, request.getPriority(), "priority") : entity.getPriority();
             entity.update(request.getTitle(), request.getBody(), p);
             BulletinThreadEntity saved = threadRepository.save(entity);
             log.info("大会連絡スレッド更新: threadId={}, scopeType={}", threadId, entity.getScopeType());
@@ -587,7 +595,7 @@ public class BulletinThreadService {
             villageBulletinAccessService.checkVillageBulletinModerator(entity.getScopeVillageId(), userId);
         }
         Priority priority = request.getPriority() != null
-                ? Priority.valueOf(request.getPriority()) : entity.getPriority();
+                ? EnumInputParser.parse(Priority.class, request.getPriority(), "priority") : entity.getPriority();
         entity.update(request.getTitle(), request.getBody(), priority);
         BulletinThreadEntity saved = threadRepository.save(entity);
         log.info("村スレッド更新: threadId={}, villageId={}", threadId, entity.getScopeVillageId());

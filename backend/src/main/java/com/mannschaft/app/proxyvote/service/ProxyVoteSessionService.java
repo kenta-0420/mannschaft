@@ -2,6 +2,7 @@ package com.mannschaft.app.proxyvote.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.proxyvote.AttachmentTargetType;
 import com.mannschaft.app.proxyvote.DelegationStatus;
 import com.mannschaft.app.proxyvote.MotionResult;
@@ -110,8 +111,8 @@ public class ProxyVoteSessionService {
      */
     @Transactional
     public SessionResponse createSession(CreateSessionRequest request, Long currentUserId) {
-        ProxyVoteScopeType scopeType = ProxyVoteScopeType.valueOf(request.getScopeType());
-        ResolutionMode resolutionMode = ResolutionMode.valueOf(request.getResolutionMode());
+        ProxyVoteScopeType scopeType = EnumInputParser.parse(ProxyVoteScopeType.class, request.getScopeType(), "scopeType");
+        ResolutionMode resolutionMode = EnumInputParser.parse(ResolutionMode.class, request.getResolutionMode(), "resolutionMode");
 
         validateScopeIds(scopeType, request.getTeamId(), request.getOrganizationId());
 
@@ -124,7 +125,7 @@ public class ProxyVoteSessionService {
         }
 
         QuorumType quorumType = request.getQuorumType() != null
-                ? QuorumType.valueOf(request.getQuorumType()) : QuorumType.MAJORITY;
+                ? EnumInputParser.parse(QuorumType.class, request.getQuorumType(), "quorumType") : QuorumType.MAJORITY;
         validateQuorumThreshold(quorumType, request.getQuorumThreshold());
 
         int eligibleCount = (int) resolveEligibleCount(scopeType, request.getTeamId(), request.getOrganizationId());
@@ -172,9 +173,9 @@ public class ProxyVoteSessionService {
 
         if (session.getStatus() == SessionStatus.DRAFT) {
             ResolutionMode resolutionMode = request.getResolutionMode() != null
-                    ? ResolutionMode.valueOf(request.getResolutionMode()) : session.getResolutionMode();
+                    ? EnumInputParser.parse(ResolutionMode.class, request.getResolutionMode(), "resolutionMode") : session.getResolutionMode();
             QuorumType quorumType = request.getQuorumType() != null
-                    ? QuorumType.valueOf(request.getQuorumType()) : session.getQuorumType();
+                    ? EnumInputParser.parse(QuorumType.class, request.getQuorumType(), "quorumType") : session.getQuorumType();
             validateQuorumThreshold(quorumType, request.getQuorumThreshold());
 
             if (resolutionMode == ResolutionMode.MEETING && request.getMeetingDate() == null && session.getMeetingDate() == null) {
@@ -405,7 +406,7 @@ public class ProxyVoteSessionService {
         }
 
         RequiredApproval approval = request.getRequiredApproval() != null
-                ? RequiredApproval.valueOf(request.getRequiredApproval()) : RequiredApproval.MAJORITY;
+                ? EnumInputParser.parse(RequiredApproval.class, request.getRequiredApproval(), "requiredApproval") : RequiredApproval.MAJORITY;
 
         ProxyVoteMotionEntity motion = ProxyVoteMotionEntity.builder()
                 .sessionId(sessionId)
@@ -431,7 +432,7 @@ public class ProxyVoteSessionService {
 
         if (session.getStatus() == SessionStatus.DRAFT) {
             RequiredApproval approval = request.getRequiredApproval() != null
-                    ? RequiredApproval.valueOf(request.getRequiredApproval()) : motion.getRequiredApproval();
+                    ? EnumInputParser.parse(RequiredApproval.class, request.getRequiredApproval(), "requiredApproval") : motion.getRequiredApproval();
             motion.update(request.getTitle(), request.getDescription(), approval);
         } else if (session.getStatus() == SessionStatus.OPEN) {
             motion.updateWhenOpen(request.getTitle(), request.getDescription());

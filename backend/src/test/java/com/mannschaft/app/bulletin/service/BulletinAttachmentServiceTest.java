@@ -18,10 +18,13 @@ import com.mannschaft.app.bulletin.repository.BulletinReplyRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
@@ -39,6 +42,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -90,12 +94,22 @@ class BulletinAttachmentServiceTest {
     @Mock
     private StorageAclService storageAclService;
     @Mock
+    private StorageAccessService storageAccessService;
+    @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private DomainEventPublisher domainEventPublisher;
     @Mock
     private com.mannschaft.app.tournament.service.TournamentContactAccessService tournamentContactAccessService;
 
     @InjectMocks
     private BulletinAttachmentService service;
+
+    @org.junit.jupiter.api.BeforeEach
+    void allowNoListAttachmentsByDefault() {
+        org.mockito.Mockito.lenient().when(storageAccessService.generateDownloadUrlsForList(any(), any()))
+                .thenReturn(Map.of());
+    }
 
     // ─── ヘルパ ───
 
@@ -332,9 +346,11 @@ class BulletinAttachmentServiceTest {
             given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(teamThread()));
             given(attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.THREAD, THREAD_ID))
                     .willReturn(List.of(attachment(USER_ID)));
-            given(bulletinMapper.toAttachmentResponseList(any())).willReturn(List.of(
+            given(storageAccessService.generateDownloadUrlsForList(any(), any())).willReturn(Map.of(
+                    "bulletin/key", "https://r2/get?sig=x"));
+            given(bulletinMapper.toAttachmentResponse(any())).willReturn(
                     new AttachmentResponse(ATTACHMENT_ID, "THREAD", THREAD_ID, "k", "doc.pdf", 1024L,
-                            "application/pdf", USER_ID, null)));
+                            "application/pdf", USER_ID, null));
 
             List<AttachmentResponse> res = service.listThreadAttachments(THREAD_ID, USER_ID);
 
@@ -351,8 +367,6 @@ class BulletinAttachmentServiceTest {
             given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(orgThread()));
             given(attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.REPLY, REPLY_ID))
                     .willReturn(List.of());
-            given(bulletinMapper.toAttachmentResponseList(any())).willReturn(List.of());
-
             service.listReplyAttachments(REPLY_ID, USER_ID);
 
             verify(accessGuard).checkMembership(USER_ID, ScopeType.ORGANIZATION, ORG_ID);
@@ -369,7 +383,7 @@ class BulletinAttachmentServiceTest {
         void downloadUrlSuccess() {
             given(attachmentRepository.findById(ATTACHMENT_ID)).willReturn(Optional.of(attachment(USER_ID)));
             given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(teamThread()));
-            given(storageService.generateDownloadUrl(eq("bulletin/key"), any(Duration.class)))
+            given(storageAccessService.generateDownloadUrl(eq("bulletin/key"), any(), any(), any(), any(Duration.class)))
                     .willReturn("https://r2/get?sig=x");
 
             AttachmentDownloadUrlResponse res = service.generateDownloadUrl(ATTACHMENT_ID, USER_ID);
@@ -418,7 +432,10 @@ class BulletinAttachmentServiceTest {
             service.deleteAttachment(ATTACHMENT_ID, USER_ID);
 
             verify(attachmentRepository).delete(any());
-            verify(storageService).delete("bulletin/key");
+            org.mockito.ArgumentCaptor<S3ObjectDeleteEvent> deleteEventCaptor =
+                    org.mockito.ArgumentCaptor.forClass(S3ObjectDeleteEvent.class);
+            verify(domainEventPublisher).publish(deleteEventCaptor.capture());
+            assertThat(deleteEventCaptor.getValue().s3Keys()).containsExactly("bulletin/key");
             verify(storageQuotaService).recordDeletion(
                     eq(StorageScopeType.TEAM), eq(TEAM_ID), eq(1024L),
                     eq(StorageFeatureType.BULLETIN), any(), eq(ATTACHMENT_ID), eq(USER_ID));
@@ -492,12 +509,10 @@ class BulletinAttachmentServiceTest {
         }
 
         @Test
-        @DisplayName("R2 削除失敗でもベストエフォートで処理は継続する")
-        void deleteR2FailureBestEffort() {
+        @DisplayName("R2削除は同期呼出しせず削除イベントへ委譲する")
+        void deleteDelegatesR2DeletionToEvent() {
             given(attachmentRepository.findById(ATTACHMENT_ID)).willReturn(Optional.of(attachment(USER_ID)));
             given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(teamThread()));
-            doThrow(new RuntimeException("R2 down")).when(storageService).delete("bulletin/key");
-
             service.deleteAttachment(ATTACHMENT_ID, USER_ID);
 
             verify(attachmentRepository).delete(any());
@@ -526,8 +541,6 @@ class BulletinAttachmentServiceTest {
             given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(tournamentThread()));
             given(attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.THREAD, THREAD_ID))
                     .willReturn(List.of());
-            given(bulletinMapper.toAttachmentResponseList(any())).willReturn(List.of());
-
             service.listThreadAttachments(THREAD_ID, USER_ID);
 
             verify(tournamentContactAccessService).checkView(

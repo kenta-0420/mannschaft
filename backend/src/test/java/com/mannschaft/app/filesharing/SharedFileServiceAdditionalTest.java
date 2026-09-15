@@ -3,12 +3,14 @@ package com.mannschaft.app.filesharing;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.filesharing.dto.FileResponse;
 import com.mannschaft.app.filesharing.dto.SharedFilePresignRequest;
 import com.mannschaft.app.filesharing.dto.SharedFilePresignResponse;
 import com.mannschaft.app.filesharing.dto.UpdateFileRequest;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
+import com.mannschaft.app.filesharing.entity.SharedFileVersionEntity;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileRepository;
 import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
@@ -30,6 +32,7 @@ import org.springframework.data.domain.PageRequest;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,6 +71,9 @@ class SharedFileServiceAdditionalTest {
     private R2StorageService r2StorageService;
 
     @Mock
+    private StorageAccessService storageAccessService;
+
+    @Mock
     private StorageAclService storageAclService;
 
     @Mock
@@ -86,6 +92,7 @@ class SharedFileServiceAdditionalTest {
 
     private SharedFileEntity createFile() {
         return SharedFileEntity.builder()
+                .id(FILE_ID)
                 .folderId(FOLDER_ID)
                 .name("test.pdf")
                 .fileKey("uploads/test.pdf")
@@ -93,6 +100,18 @@ class SharedFileServiceAdditionalTest {
                 .contentType("application/pdf")
                 .createdBy(USER_ID)
                 .build();
+    }
+
+    private void stubReadableStorageAcl() {
+        SharedFolderEntity folder = SharedFolderEntity.builder()
+                .id(FOLDER_ID).scopeType(FileScopeType.TEAM).teamId(5L).build();
+        SharedFileVersionEntity version = SharedFileVersionEntity.builder()
+                .id(300L).fileId(FILE_ID).versionNumber(1).fileKey("uploads/test.pdf")
+                .fileSize(1024L).contentType("application/pdf").uploadedBy(USER_ID).build();
+        given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
+        given(versionRepository.findByFileIdAndVersionNumber(FILE_ID, 1)).willReturn(Optional.of(version));
+        given(storageAccessService.generateDownloadUrlsForList(any(), any()))
+                .willReturn(Map.of("uploads/test.pdf", "https://r2.example/download"));
     }
 
     private FileResponse mockFileResponse() {
@@ -118,6 +137,7 @@ class SharedFileServiceAdditionalTest {
                     .willReturn(List.of(entity));
             given(fileSharingMapper.toFileResponseList(any()))
                     .willReturn(List.of(mockFileResponse()));
+            stubReadableStorageAcl();
 
             List<FileResponse> result = service.listFiles(FOLDER_ID, USER_ID);
 
@@ -143,6 +163,7 @@ class SharedFileServiceAdditionalTest {
             given(fileRepository.findByFolderIdOrderByNameAsc(eq(FOLDER_ID), any()))
                     .willReturn(page);
             given(fileSharingMapper.toFileResponse(entity)).willReturn(mockFileResponse());
+            stubReadableStorageAcl();
 
             Page<FileResponse> result = service.listFilesPaged(FOLDER_ID, USER_ID, PageRequest.of(0, 10));
 

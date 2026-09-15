@@ -441,11 +441,11 @@ function replyIsSystemPost(r: TimelinePostResponse): boolean {
           @click.stop
         >
         <div
-          v-else-if="att.attachmentType === 'VIDEO_FILE' && att.file?.fileKey"
+          v-else-if="att.attachmentType === 'VIDEO_FILE' && att.video?.videoUrl"
           @click.stop
         >
           <VideoPlayer
-            :file-key="att.file.fileKey"
+            :source-url="att.video.videoUrl"
             :thumbnail-url="att.video?.videoThumbnailUrl"
             :processing-status="att.video?.videoProcessingStatus"
             :mime-type="att.file?.mimeType"

@@ -7,6 +7,7 @@ import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
 import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
 import com.mannschaft.app.common.storage.acl.StorageAclScope;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.filesharing.dto.CreateFileRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
 import com.mannschaft.app.filesharing.dto.SharedFileDownloadUrlResponse;
@@ -30,6 +31,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -78,6 +80,9 @@ class SharedFileServiceTest {
 
     @Mock
     private StorageAclService storageAclService;
+
+    @Mock
+    private StorageAccessService storageAccessService;
 
     /** F08.7.1 / 04: 大会フォルダ横断認可ゲート。大会以外（TEAM 等）の本テストでは no-op。 */
     @Mock
@@ -129,7 +134,10 @@ class SharedFileServiceTest {
             given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
             willDoNothing().given(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(1024L));
             given(fileRepository.save(any(SharedFileEntity.class))).willReturn(savedFile);
-            given(versionRepository.save(any(SharedFileVersionEntity.class))).willReturn(null);
+            given(versionRepository.save(any(SharedFileVersionEntity.class))).willReturn(
+                    SharedFileVersionEntity.builder().id(200L).fileId(FILE_ID).versionNumber(1)
+                            .fileKey("files/test.pdf").fileSize(1024L).contentType("application/pdf")
+                            .uploadedBy(USER_ID).build());
             given(fileSharingMapper.toFileResponse(savedFile)).willReturn(response);
 
             // When
@@ -143,7 +151,7 @@ class SharedFileServiceTest {
             verify(storageAclService).claimPending(
                     eq("files/test.pdf"), eq(USER_ID), eq(StorageAclScope.team(5L)),
                     eq(new StorageAclContentReference("SHARED_FOLDER", FOLDER_ID.toString())),
-                    eq(new StorageAclAttachmentBinding("SHARED_FILE", FILE_ID.toString())));
+                    eq(new StorageAclAttachmentBinding("SHARED_FILE_VERSION", "200")));
         }
 
         @Test
@@ -198,6 +206,33 @@ class SharedFileServiceTest {
         }
 
         @Test
+        @DisplayName("ファイル削除は全バージョンを失効してから容量を返却する")
+        void 削除時に全バージョンを失効する() {
+            SharedFileEntity entity = SharedFileEntity.builder()
+                    .id(FILE_ID).folderId(FOLDER_ID).name("test.pdf").fileKey("current")
+                    .fileSize(1024L).contentType("application/pdf").build();
+            SharedFileVersionEntity v1 = SharedFileVersionEntity.builder()
+                    .fileId(FILE_ID).versionNumber(1).fileKey("old").fileSize(512L).build();
+            ReflectionTestUtils.setField(v1, "id", 11L);
+            SharedFileVersionEntity v2 = SharedFileVersionEntity.builder()
+                    .fileId(FILE_ID).versionNumber(2).fileKey("current").fileSize(1024L).build();
+            ReflectionTestUtils.setField(v2, "id", 12L);
+            SharedFolderEntity folder = buildFolder();
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(entity));
+            given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
+            given(versionRepository.findByFileIdOrderByVersionNumberDesc(FILE_ID)).willReturn(List.of(v2, v1));
+
+            sharedFileService.deleteFile(FILE_ID, USER_ID);
+
+            InOrder order = inOrder(storageAclService, quotaService);
+            order.verify(storageAclService).releaseClaimed("current",
+                    new StorageAclAttachmentBinding("SHARED_FILE_VERSION", "12"));
+            order.verify(storageAclService).releaseClaimed("old",
+                    new StorageAclAttachmentBinding("SHARED_FILE_VERSION", "11"));
+            order.verify(quotaService).recordFileDeletion(folder, FILE_ID, 1024L, USER_ID);
+        }
+
+        @Test
         @DisplayName("ファイル削除_存在しない_BusinessException")
         void ファイル削除_存在しない_BusinessException() {
             // Given
@@ -225,8 +260,25 @@ class SharedFileServiceTest {
 
         private SharedFileEntity buildFile() {
             return SharedFileEntity.builder()
+                    .id(FILE_ID)
                     .folderId(FOLDER_OF_FILE).name("doc.pdf").fileKey(FILE_KEY)
                     .fileSize(2048L).contentType("application/pdf").createdBy(USER_ID).build();
+        }
+
+        private void stubStorageAccess() {
+            SharedFolderEntity folder = SharedFolderEntity.builder()
+                    .id(FOLDER_OF_FILE).scopeType(FileScopeType.TEAM).teamId(5L).build();
+            SharedFileVersionEntity currentVersion = SharedFileVersionEntity.builder()
+                    .id(200L).fileId(FILE_ID).versionNumber(1).fileKey(FILE_KEY)
+                    .fileSize(2048L).contentType("application/pdf").uploadedBy(USER_ID).build();
+            given(folderService.findFolderOrThrow(FOLDER_OF_FILE)).willReturn(folder);
+            given(versionRepository.findByFileIdAndVersionNumber(FILE_ID, 1))
+                    .willReturn(Optional.of(currentVersion));
+            given(storageAccessService.generateDownloadUrl(
+                    eq(FILE_KEY), eq(StorageAclScope.team(5L)),
+                    eq(new StorageAclContentReference("SHARED_FOLDER", FOLDER_OF_FILE.toString())),
+                    eq(new StorageAclAttachmentBinding("SHARED_FILE_VERSION", "200")), any()))
+                    .willReturn("https://r2.example.com/" + FILE_KEY + "?X-Amz-Signature=xxx");
         }
 
         @Test
@@ -236,8 +288,7 @@ class SharedFileServiceTest {
             SharedFileEntity file = buildFile();
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
             willDoNothing().given(folderQueryService).authorizeDownload(FILE_ID, USER_ID);
-            given(r2StorageService.generateDownloadUrl(eq(FILE_KEY), any()))
-                    .willReturn("https://r2.example.com/" + FILE_KEY + "?X-Amz-Signature=xxx");
+            stubStorageAccess();
 
             // When
             SharedFileDownloadUrlResponse result = sharedFileService.presignDownload(FILE_ID, USER_ID);
@@ -264,7 +315,7 @@ class SharedFileServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
             // 認可で弾かれた場合は URL を一切発行しない（漏洩防止）
-            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
+            verify(storageAccessService, never()).generateDownloadUrl(any(), any(), any(), any(), any());
         }
 
         @Test
@@ -282,7 +333,7 @@ class SharedFileServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CommonErrorCode.COMMON_002));
-            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
+            verify(storageAccessService, never()).generateDownloadUrl(any(), any(), any(), any(), any());
         }
 
         @Test
@@ -298,7 +349,7 @@ class SharedFileServiceTest {
                             .isEqualTo(FileSharingErrorCode.FILE_NOT_FOUND));
             // 存在しなければ認可も URL 発行も行わない
             verify(folderQueryService, never()).authorizeDownload(anyLong(), anyLong());
-            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
+            verify(storageAccessService, never()).generateDownloadUrl(any(), any(), any(), any(), any());
         }
 
         @Test
@@ -308,13 +359,16 @@ class SharedFileServiceTest {
             SharedFileEntity file = buildFile();
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
             willDoNothing().given(folderQueryService).authorizeDownload(FILE_ID, USER_ID);
-            given(r2StorageService.generateDownloadUrl(eq(FILE_KEY), any())).willReturn("https://r2/x");
+            stubStorageAccess();
 
             // When
             sharedFileService.presignDownload(FILE_ID, USER_ID);
 
-            // Then: file.getFileKey() がそのまま presign に渡る
-            verify(r2StorageService).generateDownloadUrl(eq(FILE_KEY), any());
+            // Then: 現行バージョン由来の tuple で ACL を照合する
+            verify(storageAccessService).generateDownloadUrl(
+                    eq(FILE_KEY), eq(StorageAclScope.team(5L)),
+                    eq(new StorageAclContentReference("SHARED_FOLDER", FOLDER_OF_FILE.toString())),
+                    eq(new StorageAclAttachmentBinding("SHARED_FILE_VERSION", "200")), any());
         }
 
         @Test
@@ -332,7 +386,7 @@ class SharedFileServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.DOWNLOAD_DISABLED));
             // DL 禁止で弾かれたら presigned URL を一切発行しない。
-            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
+            verify(storageAccessService, never()).generateDownloadUrl(any(), any(), any(), any(), any());
         }
     }
 

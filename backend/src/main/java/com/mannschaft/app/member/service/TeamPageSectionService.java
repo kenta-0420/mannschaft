@@ -1,6 +1,7 @@
 package com.mannschaft.app.member.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.member.MemberErrorCode;
 import com.mannschaft.app.member.MemberMapper;
 import com.mannschaft.app.member.SectionType;
@@ -50,7 +51,7 @@ public class TeamPageSectionService {
         TeamPageEntity page = pageService.findPageOrThrow(pageId);
         pageService.checkPageAdminOrNotFound(actorUserId, page);
 
-        SectionType sectionType = SectionType.valueOf(request.getSectionType());
+        SectionType sectionType = EnumInputParser.parse(SectionType.class, request.getSectionType(), "sectionType");
         Integer sortOrder = request.getSortOrder() != null ? request.getSortOrder() : 0;
 
         TeamPageSectionEntity entity = TeamPageSectionEntity.builder()

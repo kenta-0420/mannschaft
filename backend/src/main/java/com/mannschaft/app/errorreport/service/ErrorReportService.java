@@ -1,6 +1,7 @@
 package com.mannschaft.app.errorreport.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.errorreport.ErrorReportErrorCode;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
@@ -319,9 +320,9 @@ public class ErrorReportService {
                 .orElseThrow(() -> new BusinessException(ErrorReportErrorCode.ERROR_REPORT_NOT_FOUND));
 
         ErrorReportStatus newStatus = request.getStatus() != null
-                ? ErrorReportStatus.valueOf(request.getStatus()) : null;
+                ? EnumInputParser.parse(ErrorReportStatus.class, request.getStatus(), "status") : null;
         ErrorReportSeverity newSeverity = request.getSeverity() != null
-                ? ErrorReportSeverity.valueOf(request.getSeverity()) : null;
+                ? EnumInputParser.parse(ErrorReportSeverity.class, request.getSeverity(), "severity") : null;
 
         if (newStatus != null) {
             report.setStatus(newStatus);
@@ -352,7 +353,7 @@ public class ErrorReportService {
      * @return 更新件数
      */
     public int bulkUpdate(ErrorReportBulkUpdateRequest request) {
-        ErrorReportStatus status = ErrorReportStatus.valueOf(request.getStatus());
+        ErrorReportStatus status = EnumInputParser.parse(ErrorReportStatus.class, request.getStatus(), "status");
         if (status != ErrorReportStatus.RESOLVED
                 && status != ErrorReportStatus.IGNORED) {
             throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_INVALID_STATUS_TRANSITION);

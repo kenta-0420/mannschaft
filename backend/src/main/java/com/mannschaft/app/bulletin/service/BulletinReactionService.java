@@ -14,6 +14,7 @@ import com.mannschaft.app.bulletin.repository.BulletinReactionRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReplyRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.tournament.ContactSpaceKind;
 import com.mannschaft.app.tournament.ContactSpaceScopeType;
 import com.mannschaft.app.tournament.service.TournamentContactAccessService;
@@ -57,7 +58,7 @@ public class BulletinReactionService {
      */
     @Transactional
     public ReactionResponse addReaction(Long userId, CreateReactionRequest request) {
-        TargetType targetType = TargetType.valueOf(request.getTargetType());
+        TargetType targetType = EnumInputParser.parse(TargetType.class, request.getTargetType(), "targetType");
 
         // 絵文字ホワイトリスト検証（設計書 §6）
         if (!ALLOWED_EMOJIS.contains(request.getEmoji())) {
