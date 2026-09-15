@@ -4,9 +4,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * {@link FlywayMigrationTimeFunctionGuardTest} の<b>走査ロジック自体</b>を固定する回帰テスト。
@@ -282,6 +284,43 @@ class FlywayMigrationTimeFunctionGuardScanningLogicTest {
         @DisplayName("括弧が必須の名前は、裸で書かれていれば関数ではない（単なる識別子）")
         void bareNameOfParenthesesRequiredFunction() {
             assertThat(scan("UPDATE t SET x = 1 WHERE now > 0 AND curdate < 1;")).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("時間制限がプリエンプティブであること")
+    class PreemptiveTimeout {
+
+        /**
+         * 「終わってから経過時間を測る」実装では、<b>走査が停止したときにだけ番人が働かない</b>。
+         * ここでは意図的に上限を超える走査を注入し、<b>自力で終わるのを待たずに打ち切られる</b>ことを
+         * 実測で固定する（Codex 検分の指摘への回帰テスト）。
+         */
+        @Test
+        @DisplayName("上限を超える走査は、自力で終わるのを待たずに打ち切られる")
+        void slowScanIsCutOffWithoutWaitingForCompletion() {
+            // 上限（30秒）より十分長い走査。打ち切られなければテスト自体が 10 分待たされる。
+            long absurdlyLongMillis = Duration.ofMinutes(10).toMillis();
+            long startNanos = System.nanoTime();
+
+            assertThatThrownBy(() -> FlywayMigrationTimeFunctionGuardTest.scanWithinTimeout(() -> {
+                Thread.sleep(absurdlyLongMillis);
+                return List.of();
+            })).isInstanceOf(AssertionError.class);
+
+            long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000L;
+            assertThat(elapsedMillis)
+                    .as("打ち切りが効いていれば上限（%d ms）付近で戻るはず。実測 %d ms。"
+                                    + "走査の完了を待ってから判定する実装だと 10 分待たされる。",
+                            FlywayMigrationTimeFunctionGuardTest.SCAN_TIMEOUT_MILLIS, elapsedMillis)
+                    .isLessThan(FlywayMigrationTimeFunctionGuardTest.SCAN_TIMEOUT_MILLIS + 15_000L);
+        }
+
+        @Test
+        @DisplayName("上限内に終わる走査は、そのまま結果を返す（打ち切りが誤爆しない）")
+        void fastScanReturnsNormally() {
+            assertThat(FlywayMigrationTimeFunctionGuardTest.scanWithinTimeout(() -> scan(
+                    "UPDATE t SET a_at = NOW();"))).hasSize(1);
         }
     }
 

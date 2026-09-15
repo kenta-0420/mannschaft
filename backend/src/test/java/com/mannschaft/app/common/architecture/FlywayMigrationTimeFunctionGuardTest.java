@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTimeout;
 
 /**
  * 番人（CMP-260912-2258）: <b>Flyway migration の DML が「今」をセッション TZ 依存の関数で書く</b>
@@ -424,7 +423,7 @@ class FlywayMigrationTimeFunctionGuardTest {
     @DisplayName("migration ファイル単位の凍結件数から増えていない（新規 migration の NOW() は禁止）")
     void noNewSessionTzTimeFunctionInMigrations() throws IOException {
         Path root = migrationRoot();
-        List<Violation> all = assertTimeout(Duration.ofSeconds(30), () -> collectViolations(root));
+        List<Violation> all = scanWithinTimeout(() -> collectViolations(root));
 
         assertThat(all)
                 .as("migration から走査対象を1件も検出できなかった（走査パスの前提が壊れた可能性）: %s", root)
@@ -458,25 +457,53 @@ class FlywayMigrationTimeFunctionGuardTest {
      * （是正時点の実測: 1156 ファイルで約 6 秒。行番号計算が O(ファイル長 × 一致件数) だった頃は
      * 約 8.8 秒であり、{@link LineCounter} の導入で短縮した）。</p>
      */
-    private static final long SCAN_TIMEOUT_MILLIS = 30_000L;
+    static final long SCAN_TIMEOUT_MILLIS = 30_000L;
+
+    /**
+     * 走査を<b>プリエンプティブな</b>時間制限つきで実行する。
+     *
+     * <h3>なぜ「終わってから測る」ではいけないのか【必読】</h3>
+     * <p>初版は {@code collectViolations} を普通に呼び、<b>戻ってきてから</b>経過時間を測って
+     * 閾値と比べていた。これは<b>ハングしたときにだけ働かない番人</b>である。破滅的バックトラックで
+     * 走査が停止すると制御が戻らず、経過時間の比較へ到達しないため、30 秒では落ちずに
+     * CI のジョブ上限まで居座る。捕まえたい 55 分ハングの再発は、まさにこの経路で起こる
+     * （Codex 検分の指摘）。JUnit の {@code assertTimeout}（非プリエンプティブ）も同じ性質で、
+     * <b>処理が自力で終わるまで待ってから</b>超過を判定する。</p>
+     *
+     * <p>そこで {@link org.junit.jupiter.api.Assertions#assertTimeoutPreemptively} を使い、
+     * 走査を別スレッドで走らせて上限で<b>打ち切る</b>。これで「時間切れを検出する番人」が
+     * 実際に時間切れで落ちるようになる。</p>
+     *
+     * <h3>別スレッド実行で不安定にならないこと</h3>
+     * <p>{@code collectViolations} が触るのは引数と局所変数だけである。
+     * {@link #SESSION_TZ_NOW_NAME} などの {@link Pattern} は不変かつスレッドセーフ、
+     * {@link LineCounter} はファイルごとに新規生成される局所オブジェクト、
+     * 可変な静的フィールドは持たない。{@code ThreadLocal} も Spring のコンテキストも使わないため、
+     * {@code assertTimeoutPreemptively} の既知の注意点（{@code ThreadLocal} 依存の状態が
+     * 別スレッドへ伝播しない・{@code @Transactional} と併用するとロールバックが効かない）に
+     * 該当しない。ファイル読み取りはスレッドに紐づかない。</p>
+     */
+    static <T> T scanWithinTimeout(org.junit.jupiter.api.function.ThrowingSupplier<T> scan) {
+        return org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(
+                Duration.ofMillis(SCAN_TIMEOUT_MILLIS), scan,
+                () -> """
+                    migration の走査が %d ms 以内に終わらなかった（打ち切った）。
+                    検出パターンに可変長の量指定子を持ち込むと破滅的バックトラックで停止しうる
+                    （本リポジトリには 55 分ハングの実例がある）。可変長は正規表現ではなく線形処理で
+                    扱うこと（SESSION_TZ_NOW_NAME の Javadoc）。""".formatted(SCAN_TIMEOUT_MILLIS));
+    }
 
     @Test
-    @DisplayName("走査が現実的な時間で終わる（番人自身がタイムアウトしないこと）")
+    @DisplayName("走査が現実的な時間で終わる（上限で打ち切られること＝ハングしても落ちること）")
     void scanFinishesQuickly() {
         Path root = migrationRoot();
         int fileCount = sqlFiles(root).size();
         long startNanos = System.nanoTime();
-        List<Violation> all = collectViolations(root);
+        // 経過時間の比較ではなく、この呼び出し自体が上限で打ち切られることが番人の本体である。
+        List<Violation> all = scanWithinTimeout(() -> collectViolations(root));
         long millis = (System.nanoTime() - startNanos) / 1_000_000L;
 
         assertThat(all).as("走査対象が 0 件（走査パスの前提が壊れた可能性）").isNotEmpty();
-        assertThat(millis)
-                .as("""
-                    migration 全件（%d ファイル）の走査に %d ms かかった。
-                    検出パターンに可変長の量指定子を持ち込むと破滅的バックトラックで桁違いに遅くなる
-                    （本リポジトリには 55 分ハングの実例がある）。可変長は正規表現ではなく線形処理で
-                    扱うこと（SESSION_TZ_NOW_NAME の Javadoc）。""", fileCount, millis)
-                .isLessThan(SCAN_TIMEOUT_MILLIS);
         System.out.printf("[migration番人] 走査 %d ファイル／検出 %d 件／所要 %d ms%n",
                 fileCount, all.size(), millis);
     }
