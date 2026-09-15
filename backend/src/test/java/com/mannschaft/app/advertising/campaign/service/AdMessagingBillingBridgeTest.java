@@ -21,6 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -35,6 +36,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -73,6 +75,13 @@ class AdMessagingBillingBridgeTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    /**
+     * 自己プロキシ（CMP-260912-1524）。ユニットテストではプロキシが存在しないため、
+     * {@code getObject()} が実体そのものを返すよう差し込む。
+     */
+    @Mock
+    private ObjectProvider<AdMessagingBillingBridge> selfProvider;
+
     @InjectMocks
     private AdMessagingBillingBridge bridge;
 
@@ -84,6 +93,7 @@ class AdMessagingBillingBridgeTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(bridge, "taxRate", new BigDecimal("10.00"));
+        lenient().when(selfProvider.getObject()).thenReturn(bridge);
         campaignId = UUID.randomUUID();
         targetMonth = YearMonth.of(2026, 4);
         monthKey = "2026-04";

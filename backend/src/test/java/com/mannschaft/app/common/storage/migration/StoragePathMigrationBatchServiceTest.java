@@ -20,12 +20,14 @@ import com.mannschaft.app.schedule.repository.ScheduleMediaUploadRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.timetable.notes.entity.TimetableSlotUserNoteAttachmentEntity;
 import com.mannschaft.app.timetable.notes.repository.TimetableSlotUserNoteAttachmentRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.springframework.beans.factory.ObjectProvider;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -39,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
@@ -63,8 +66,19 @@ class StoragePathMigrationBatchServiceTest {
     @Mock private ScheduleRepository scheduleRepository;
     @Mock private TimetableSlotUserNoteAttachmentRepository timetableNoteAttachmentRepository;
 
+    /**
+     * 自己プロキシ（CMP-260912-1524）。ユニットテストではプロキシが存在しないため、
+     * {@code getObject()} が実体そのものを返すよう差し込む。
+     */
+    @Mock private ObjectProvider<StoragePathMigrationBatchService> selfProvider;
+
     @InjectMocks
     private StoragePathMigrationBatchService service;
+
+    @BeforeEach
+    void setUpSelfProxy() {
+        lenient().when(selfProvider.getObject()).thenReturn(service);
+    }
 
     // ==================== isOldPath 判定テスト ====================
 
