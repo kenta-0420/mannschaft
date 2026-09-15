@@ -11,7 +11,7 @@
  * 出欠回答（respondToSchedule）は useScheduleAttendance.respondAttendance に一本化済み
  * （PATCH /api/v1/schedules/{id}/responses への重複実装だったため削除）。
  */
-import type { ScheduleInvitationResponse } from '~/types/schedule'
+import type { EditScope, ScheduleInvitationResponse } from '~/types/schedule'
 import type { components } from '~/types/generated'
 
 type CalendarLayerResponse = components['schemas']['CalendarLayerResponse']
@@ -78,8 +78,10 @@ export function useScheduleCrud() {
     scopeId: string,
     scheduleId: number,
     body: Record<string, unknown>,
+    updateScope?: EditScope,
   ) {
-    return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/schedules/${scheduleId}`, {
+    const query = updateScope ? `?updateScope=${updateScope}` : ''
+    return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/schedules/${scheduleId}${query}`, {
       method: 'PATCH',
       body,
     })

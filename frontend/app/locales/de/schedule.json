@@ -18,6 +18,13 @@
     "error_title_required": "Der Titel ist erforderlich",
     "success_create": "Veranstaltung erstellt",
     "success_update": "Veranstaltung aktualisiert",
+    "update_scope": {
+      "label": "Aktualisierungsbereich",
+      "help": "Bei Serienterminen können Sie wählen, welche Termine geändert werden.",
+      "this_only": "Nur dieser Termin",
+      "this_and_following": "Dieser und folgende",
+      "all": "Alle Termine"
+    },
     "success_create_personal": "Termin hinzugefügt",
     "success_update_personal": "Termin aktualisiert",
     "error_load_event": "Veranstaltungsinformationen konnten nicht geladen werden",

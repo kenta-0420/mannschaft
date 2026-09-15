@@ -18,6 +18,13 @@
     "error_title_required": "El título es obligatorio",
     "success_create": "Evento creado",
     "success_update": "Evento actualizado",
+    "update_scope": {
+      "label": "Rango de actualización",
+      "help": "En eventos recurrentes, elige qué ocurrencias recibirán los cambios.",
+      "this_only": "Solo esta ocurrencia",
+      "this_and_following": "Esta y las siguientes",
+      "all": "Todas las ocurrencias"
+    },
     "success_create_personal": "Horario agregado",
     "success_update_personal": "Horario actualizado",
     "error_load_event": "No se pudo cargar la información del evento",

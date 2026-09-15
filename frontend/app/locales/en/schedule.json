@@ -18,6 +18,13 @@
     "error_title_required": "Title is required",
     "success_create": "Event created",
     "success_update": "Event updated",
+    "update_scope": {
+      "label": "Update range",
+      "help": "For recurring events, choose which occurrences receive the changes.",
+      "this_only": "This occurrence",
+      "this_and_following": "This and following",
+      "all": "All occurrences"
+    },
     "success_create_personal": "Schedule added",
     "success_update_personal": "Schedule updated",
     "error_load_event": "Failed to load event information",

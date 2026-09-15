@@ -221,3 +221,86 @@ describe('ScheduleEventForm: 作成先の初期選択', () => {
     expect(wrapper.findComponent(ScopeSelectorStub).props('selectedScopeKey')).toBe(personalScope.value)
   })
 })
+
+describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    scheduleApiMock.getSchedule.mockReset()
+    scheduleApiMock.updateSchedule.mockReset()
+    scheduleApiMock.getSchedule.mockResolvedValue({
+      data: {
+        title: '更新前',
+        description: '',
+        location: '',
+        allDay: false,
+        attendanceRequired: false,
+        recurrence: { recurrenceRule: { type: 'WEEKLY', interval: 1 } },
+        startAt: '2026-09-21T09:00:00+09:00',
+        endAt: '2026-09-21T10:00:00+09:00',
+      },
+    })
+    scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
+  })
+
+  it('共有予定の編集で「この回以降」を選ぶとTHIS_AND_FOLLOWINGを送る', async () => {
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: {
+        visible: true,
+        scopeType: 'team',
+        scopeId: 't1',
+        scheduleId: 123,
+        isPersonal: false,
+      },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+
+    await wrapper.get('[data-testid="schedule-update-scope-THIS_AND_FOLLOWING"]').trigger('click')
+    await wrapper.get('[data-testid="title-input"]').setValue('更新後')
+    await wrapper.findAll('button').at(-1)!.trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.updateSchedule).toHaveBeenCalledWith(
+      'team',
+      't1',
+      123,
+      expect.objectContaining({ title: '更新後' }),
+      'THIS_AND_FOLLOWING',
+    )
+  })
+
+  it('個人予定の編集には共有予定用の更新範囲を表示しない', async () => {
+    scheduleApiMock.getMyScheduleDetail.mockResolvedValue({ data: {} })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: {
+        visible: true,
+        scopeType: 'team',
+        scopeId: '',
+        scheduleId: 456,
+        isPersonal: true,
+      },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="schedule-update-scope"]').exists()).toBe(false)
+  })
+
+  it('単発の共有予定には一括更新範囲を表示しない', async () => {
+    scheduleApiMock.getSchedule.mockResolvedValueOnce({
+      data: {
+        title: '単発予定',
+        startAt: '2026-09-21T09:00:00+09:00',
+        endAt: '2026-09-21T10:00:00+09:00',
+        recurrence: null,
+      },
+    })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: true, scopeType: 'team', scopeId: 't1', scheduleId: 789, isPersonal: false },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="schedule-update-scope"]').exists()).toBe(false)
+  })
+})

@@ -1214,9 +1214,9 @@ class ScheduleServiceTest {
         }
 
         @Test
-        @DisplayName("AC-08: updateScope=ALLの一括更新は子N件でもフィード行1行のみ・affectedCount=N・targetIdは起点予定")
+        @DisplayName("AC-08: updateScope=ALLの一括更新は親と非例外子の実更新件数をaffectedCountへ反映する")
         void AC08_一括更新ALL_1行のみでaffectedCountがN() {
-            // given: SCHEDULE_ID は子、PARENT_ID が親（子3件と仮定）
+            // given: SCHEDULE_ID は子、PARENT_ID が親（親+非例外子3件=実更新4件）
             ScheduleEntity child = createTeamScheduleEntity().toBuilder()
                     .id(SCHEDULE_ID).parentScheduleId(PARENT_ID).build();
             ScheduleEntity parentAfterUpdate = createTeamScheduleEntity().toBuilder()
@@ -1225,7 +1225,9 @@ class ScheduleServiceTest {
             given(scheduleRepository.findById(PARENT_ID)).willReturn(Optional.of(parentAfterUpdate));
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
-            given(scheduleRepository.countByParentScheduleId(PARENT_ID)).willReturn(3L);
+            given(recurrenceService.updateRecurringSchedule(
+                    any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
+                    org.mockito.ArgumentMatchers.eq("ALL"), any())).willReturn(4L);
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新後(全体)", null, null, null, null, null, null, null, null, null,
                     null, null, null, null, null, null, null, null, null);
@@ -1237,7 +1239,36 @@ class ScheduleServiceTest {
             assertThat(countPublishedActivityEvents()).isEqualTo(1);
             ActivityEvent event = captureLastActivityEvent();
             assertThat(event.getTargetId()).isEqualTo(PARENT_ID);
-            assertThat(event.getDetail()).contains("\"affectedCount\":3");
+            assertThat(event.getDetail()).contains("\"affectedCount\":4");
+        }
+
+        @Test
+        @DisplayName("CMP-107: THIS_AND_FOLLOWINGの実更新5件をaffectedCountへ反映する")
+        void CMP107_THIS_AND_FOLLOWINGの実更新件数を反映する() {
+            // given: 起点を含む5行が実際に更新された状況を再現する
+            ScheduleEntity child = createTeamScheduleEntity().toBuilder()
+                    .id(SCHEDULE_ID).parentScheduleId(PARENT_ID).build();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            UpdateScheduleRequest req = new UpdateScheduleRequest(
+                    "更新後(この回以降)", null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null);
+            org.mockito.Mockito.doAnswer(invocation -> {
+                // 実DBでは save/merge 後に同じ managed entity から更新後値を読める。
+                ReflectionTestUtils.setField(child, "title", "更新後(この回以降)");
+                return 5L;
+            }).when(recurrenceService).updateRecurringSchedule(
+                    any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
+                    org.mockito.ArgumentMatchers.eq("THIS_AND_FOLLOWING"), any());
+
+            // when
+            scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_AND_FOLLOWING", USER_ID);
+
+            // then
+            ActivityEvent event = captureLastActivityEvent();
+            assertThat(event.getTargetId()).isEqualTo(SCHEDULE_ID);
+            assertThat(event.getDetail()).contains("\"affectedCount\":5");
         }
 
         @Test

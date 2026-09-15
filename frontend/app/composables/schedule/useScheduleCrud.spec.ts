@@ -60,3 +60,34 @@ describe('カレンダーレイヤー設定 API（F03.19 §4.4/§4.5）', () => 
     )
   })
 })
+
+describe('共有予定の更新範囲（CMP-107）', () => {
+  beforeEach(() => {
+    mockApi.mockReset()
+    mockApi.mockResolvedValue({ data: {} })
+  })
+
+  it('THIS_AND_FOLLOWING を updateScope クエリとして PATCH する', async () => {
+    await useScheduleCrud().updateSchedule(
+      'team',
+      'fc-u-18',
+      123,
+      { title: '以降も更新' },
+      'THIS_AND_FOLLOWING',
+    )
+
+    expect(mockApi).toHaveBeenCalledWith(
+      '/api/v1/teams/fc-u-18/schedules/123?updateScope=THIS_AND_FOLLOWING',
+      { method: 'PATCH', body: { title: '以降も更新' } },
+    )
+  })
+
+  it('範囲未指定は後方互換のためクエリを付けない', async () => {
+    await useScheduleCrud().updateSchedule('organization', 'jfa', 456, { title: '単体更新' })
+
+    expect(mockApi).toHaveBeenCalledWith(
+      '/api/v1/organizations/jfa/schedules/456',
+      { method: 'PATCH', body: { title: '単体更新' } },
+    )
+  })
+})

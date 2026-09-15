@@ -231,6 +231,7 @@
       "schedule_updated": "updated a schedule",
       "schedule_cancelled": "cancelled a schedule",
       "schedule_rescheduled": "rescheduled a schedule",
+      "affected_count": "{count} occurrences affected",
       "detail_start_at": "Start time",
       "detail_end_at": "End time",
       "detail_is_all_day": "All-day",

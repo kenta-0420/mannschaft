@@ -1,6 +1,6 @@
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, ref } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import CalendarPage from '~/pages/calendar.vue'
@@ -57,6 +57,14 @@ const orgStoreStub = { myOrganizations: [] as Array<{ id: number, slug: string, 
 mockNuxtImport('useTeamStore', () => () => teamStoreStub)
 mockNuxtImport('useOrganizationStore', () => () => orgStoreStub)
 
+/** 統合カレンダーの選択予定に対する per-scope 編集権限。 */
+const selectedScopeAdmin = ref(false)
+const loadSelectedScopePermissions = vi.fn()
+mockNuxtImport('useRoleAccess', () => () => ({
+  isAdminOrDeputy: selectedScopeAdmin,
+  loadPermissions: loadSelectedScopePermissions,
+}))
+
 /**
  * F03.19 §6.5 週ビューのスタブ。ページ側の関心は「切り替わること」と「同じ予定集合が
  * 再取得なしで渡ること」なので、受け取った props を DOM に出すだけにする。
@@ -91,6 +99,37 @@ const CalendarGridStub = defineComponent({
   emits: ['prevMonth', 'nextMonth', 'dateClick', 'eventClick', 'reflectionClick', 'today'],
   setup() {
     return () => h('div', { 'data-testid': 'calendar-grid-stub' })
+  },
+})
+
+const MobileListOpenStub = defineComponent({
+  name: 'ScheduleMobileListView',
+  props: { events: { type: Array, default: () => [] } },
+  emits: ['open'],
+  setup(props, { emit }) {
+    return () => h('button', {
+      'data-testid': 'mobile-schedule-open',
+      onClick: () => emit('open', (props.events as unknown[])[0]),
+    }, '予定を開く')
+  },
+})
+
+const DialogStub = defineComponent({
+  name: 'Dialog',
+  props: { visible: Boolean },
+  setup(_props, { slots }) {
+    return () => h('div', { 'data-testid': 'mobile-event-detail-dialog' }, slots.default?.())
+  },
+})
+
+const EventDetailPanelPermissionStub = defineComponent({
+  name: 'EventDetailPanel',
+  props: { canEdit: Boolean },
+  setup(props) {
+    return () => h('div', {
+      'data-testid': 'mobile-event-detail-panel',
+      'data-can-edit': String(props.canEdit),
+    }, props.canEdit ? [h('button', { class: 'pi-pencil' }, '編集')] : [])
   },
 })
 
@@ -137,6 +176,14 @@ function presetTeamStore() {
   teamStoreStub.fetchMyTeams.mockReset().mockResolvedValue(undefined)
   orgStoreStub.myOrganizations = []
   orgStoreStub.fetchMyOrganizations.mockReset().mockResolvedValue(undefined)
+}
+
+async function mountCalendarForMobileDetail() {
+  return mountCalendarPage({
+    ScheduleMobileListView: MobileListOpenStub,
+    Dialog: DialogStub,
+    EventDetailPanel: EventDetailPanelPermissionStub,
+  })
 }
 
 function teamCalendarEntry() {
@@ -197,6 +244,8 @@ describe('pages/calendar.vue: AC-11 作成スコープと表示フィルタの�
     scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [teamCalendarEntry()] })
     scheduleApiMock.getMyCalendarLayers.mockReset().mockResolvedValue({ data: layersFixture })
     ganttApiMock.getMyCalendarTodos.mockReset().mockResolvedValue(emptyTodos)
+    selectedScopeAdmin.value = false
+    loadSelectedScopePermissions.mockReset().mockResolvedValue({ ok: true })
     presetTeamStore()
   })
 
@@ -234,6 +283,53 @@ describe('pages/calendar.vue: AC-11 作成スコープと表示フィルタの�
     // 経由の翻訳になった（旧実装は '個人' 直書き）。テスト環境の既定ロケールは en のため 'Personal'。
     const personalChip = chipFor('Personal')!
     expect(personalChip.attributes('aria-pressed')).toBe('true')
+  })
+})
+
+describe('pages/calendar.vue: モバイル予定詳細と編集権限', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    }))
+    scheduleApiMock.listPersonalSchedules.mockReset().mockResolvedValue(emptyPersonal)
+    scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [teamCalendarEntry()] })
+    scheduleApiMock.getSchedule.mockReset().mockResolvedValue({ data: teamCalendarEntry() })
+    scheduleApiMock.getMyCalendarLayers.mockReset().mockResolvedValue({ data: layersFixture })
+    ganttApiMock.getMyCalendarTodos.mockReset().mockResolvedValue(emptyTodos)
+    selectedScopeAdmin.value = false
+    loadSelectedScopePermissions.mockReset().mockResolvedValue({ ok: true })
+    presetTeamStore()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('モバイルの予定タップは既存詳細パネルをDialogで開き、権限取得成功でもMEMBERには編集を出さない', async () => {
+    const wrapper = await mountCalendarForMobileDetail()
+
+    await wrapper.get('[data-testid="mobile-schedule-open"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="mobile-event-detail-dialog"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="mobile-event-detail-panel"]').attributes('data-can-edit')).toBe('false')
+    expect(loadSelectedScopePermissions).toHaveBeenCalled()
+  })
+
+  it('当該スコープのADMIN/DEPUTYだけがモバイル詳細で編集可能になる', async () => {
+    selectedScopeAdmin.value = true
+    const wrapper = await mountCalendarForMobileDetail()
+
+    await wrapper.get('[data-testid="mobile-schedule-open"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="mobile-event-detail-panel"]').attributes('data-can-edit')).toBe('true')
   })
 })
 

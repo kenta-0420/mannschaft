@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import type { RecurrenceEndType, RecurrenceType, ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
-import type { ScheduleTargetMode } from '~/types/schedule'
+import type { EditScope, ScheduleTargetMode } from '~/types/schedule'
 import { PERSONAL_SCOPE_KEY, scheduleScopeKey } from '~/utils/scheduleScopeKey'
 
 interface ScopeOption {
@@ -54,6 +54,9 @@ function currentScopeKey(): string {
 }
 
 const selectedScopeKey = ref<string>(currentScopeKey())
+const updateScope = ref<EditScope>('THIS_ONLY')
+const isRecurringSchedule = ref(false)
+const updateScopeOptions: EditScope[] = ['THIS_ONLY', 'THIS_AND_FOLLOWING', 'ALL']
 
 // ダイアログが開くたびにスコープキーを prop に合わせてリセット
 watch(
@@ -61,6 +64,8 @@ watch(
   (v) => {
     if (v) {
       selectedScopeKey.value = currentScopeKey()
+      updateScope.value = 'THIS_ONLY'
+      isRecurringSchedule.value = false
     }
   },
 )
@@ -280,6 +285,8 @@ watch(
           }
         }
         else {
+          const recurrence = (data.recurrence as Record<string, unknown> | null) ?? {}
+          isRecurringSchedule.value = Boolean(recurrence.recurrenceRule || recurrence.parentScheduleId)
           form.value.title = (data.title as string) ?? ''
           form.value.description = (data.description as string) ?? ''
           form.value.location = (data.location as string) ?? ''
@@ -643,7 +650,13 @@ async function submit() {
       }
     } else {
       if (isEdit.value && props.scheduleId) {
-        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body)
+        await scheduleApi.updateSchedule(
+          savedScope.scopeType,
+          savedScope.scopeId,
+          props.scheduleId,
+          body,
+          updateScope.value,
+        )
       } else {
         await scheduleApi.createSchedule(savedScope.scopeType, savedScope.scopeId, body)
       }
@@ -812,6 +825,35 @@ function close() {
       </div>
 
       <ScheduleEventRecurrenceInput v-model:form="form" />
+
+      <fieldset
+        v-if="isEdit && !effectiveScope.isPersonal && isRecurringSchedule"
+        class="rounded-lg border border-surface-300 p-3 dark:border-surface-600"
+        data-testid="schedule-update-scope"
+      >
+        <legend class="px-1 text-sm font-medium">
+          {{ t('schedule.update_scope.label') }}
+        </legend>
+        <p class="mb-2 text-xs text-surface-500 dark:text-surface-400">
+          {{ t('schedule.update_scope.help') }}
+        </p>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <button
+            v-for="scope in updateScopeOptions"
+            :key="scope"
+            type="button"
+            class="min-h-11 rounded-md border px-3 py-2 text-sm"
+            :class="updateScope === scope
+              ? 'border-primary bg-primary/10 font-medium text-primary'
+              : 'border-surface-300 text-surface-700 dark:border-surface-600 dark:text-surface-200'"
+            :aria-pressed="updateScope === scope"
+            :data-testid="`schedule-update-scope-${scope}`"
+            @click="updateScope = scope"
+          >
+            {{ t(`schedule.update_scope.${scope.toLowerCase()}`) }}
+          </button>
+        </div>
+      </fieldset>
 
       <!-- 機能55: リマインダー入力（全スコープ） -->
       <ScheduleEventReminderInput v-model:form="form" />

@@ -231,6 +231,7 @@
       "schedule_updated": "が予定を更新しました",
       "schedule_cancelled": "が予定をキャンセルしました",
       "schedule_rescheduled": "が予定の日程を変更しました",
+      "affected_count": "影響 {count} 件",
       "detail_start_at": "開始日時",
       "detail_end_at": "終了日時",
       "detail_is_all_day": "終日設定",

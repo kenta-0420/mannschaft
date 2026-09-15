@@ -19,12 +19,15 @@ const props = withDefaults(defineProps<{
   createdAt: string
   /** §3.2 detail.fields 相当。既存7種別（detail = null）は空配列＝3行目は表示されない */
   detailFields?: DetailField[]
+  /** 一括操作で実際に変更された予定行数。1件の場合は通常表示を維持する。 */
+  affectedCount?: number
   /** SCHEDULE 系のみタップで対象予定へ遷移させるための対象種別（§2.3・§8.3） */
   targetType?: string | null
   /** 遷移先の組み立てに使う対象 ID（`/calendar?scheduleId=` 用。既存の通知リンク遷移と同じ経路に倣う） */
   targetId?: number | null
 }>(), {
   detailFields: () => [],
+  affectedCount: 1,
   targetType: null,
   targetId: null,
 })
@@ -110,6 +113,13 @@ const scheduleLink = computed(() => (isNavigable.value ? `/calendar?scheduleId=$
         <template v-else>
           {{ fieldLabel(detailField.field) }}: {{ detailField.before }} → {{ detailField.after }}
         </template>
+      </p>
+      <p
+        v-if="affectedCount > 1"
+        class="text-xs font-medium text-primary"
+        data-testid="activity-affected-count"
+      >
+        {{ t('dashboard.activity_feed.affected_count', { count: affectedCount }) }}
       </p>
       <div class="mt-1 flex items-center gap-2 text-xs text-surface-400">
         <span>{{ scopeName }}</span>

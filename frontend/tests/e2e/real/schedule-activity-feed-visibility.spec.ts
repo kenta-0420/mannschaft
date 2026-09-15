@@ -228,6 +228,7 @@ test('FEED-API-004: 繰り返し予定を THIS_AND_FOLLOWING で更新しても�
     expect.objectContaining({ field: 'title', before, after }),
   ])
   expect(row.detail?.title, 'フィードのタイトルは更新後の値').toBe(after)
+  expect(row.detail?.affectedCount, '起点と展開子4件を一意に数える').toBe(5)
 })
 
 test('FEED-API-005: 5分以内の連続編集はフィード行が増えず1行にまとまる', async () => {

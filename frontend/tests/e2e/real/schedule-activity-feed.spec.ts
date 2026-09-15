@@ -214,3 +214,60 @@ test('FEED-UI-006: SCHEDULE の行をタップすると対象予定へ遷移す�
   await row.click()
   await expect(page).toHaveURL(new RegExp(`/calendar\\?scheduleId=${id}`))
 })
+
+test('CMP107-MEMBER: この回以降の更新件数がフィードに表示される', async () => {
+  const before = `CMP107-メンバー表示前-${stamp}`
+  const after = `CMP107-メンバー表示後-${stamp}`
+  const id = await createSchedule(before, {
+    recurrenceRule: { type: 'WEEKLY', interval: 1, daysOfWeek: ['MONDAY'], endType: 'COUNT', count: 4 },
+  })
+  try {
+    await reloadUntilVisible(before)
+
+    const res = await actorApi.patch(
+      `${API_V1}/teams/${TEAM_SLUG}/schedules/${id}?updateScope=THIS_AND_FOLLOWING`,
+      { headers: h(actorToken), data: { title: after } },
+    )
+    expect(res.status(), 'この回以降の更新が200').toBe(200)
+
+    await reloadUntilVisible(after)
+    await expect(page.getByTestId('activity-affected-count').first()).toContainText('5')
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    const feedLink = page.getByText(after, { exact: true }).first().locator('xpath=ancestor::a[1]')
+    await expect(feedLink, '更新フィードから予定へ移動できる').toHaveAttribute(
+      'href', new RegExp(`/calendar\\?scheduleId=${id}`),
+    )
+    await feedLink.click()
+    await expect(page, '予定画面へ遷移する').toHaveURL(/\/calendar(?:\?|$)/)
+
+    // 通知リンクは当月の予定だけを解決する。月末の翌月予定は実UIの月送りで開く。
+    await page.goto('/calendar')
+    await waitForHydration(page)
+    await waitForSpinnerGone(page)
+    const row = page.getByTestId('schedule-list-row').filter({ hasText: after }).first()
+    if (!await row.isVisible()) {
+      await page.getByRole('button', { name: '次の月' }).click()
+      await waitForSpinnerGone(page)
+    }
+    await expect(row, '更新後の予定が当月または翌月の一覧に現れる').toBeVisible({ timeout: 30_000 })
+    const permissionResponse = page.waitForResponse(response =>
+      response.url().includes(`/teams/${TEAM_SLUG}/me/permissions`) && response.status() === 200,
+    )
+    await row.getByRole('button', { name: after }).click()
+
+    const detail = page.getByRole('dialog', { name: after })
+    await expect(detail, 'MEMBERが予定詳細を閲覧できる').toBeVisible({ timeout: 30_000 })
+    const permission = await permissionResponse
+    expect((await permission.json() as { data: { roleName: string } }).data.roleName,
+      '権限APIがMEMBERを返してから編集ボタン非表示を検証する').toBe('MEMBER')
+    await expect(detail.locator('button:has(.pi-pencil)'), 'MEMBERには詳細の編集ボタンを表示しない')
+      .toHaveCount(0)
+  } finally {
+    const cleanup = await actorApi.delete(
+      `${API_V1}/teams/${TEAM_SLUG}/schedules/${id}?updateScope=ALL`,
+      { headers: h(actorToken) },
+    )
+    expect(cleanup.status(), 'CMP107で作成した繰り返し予定だけを削除する').toBe(204)
+  }
+})

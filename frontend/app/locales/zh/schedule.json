@@ -18,6 +18,13 @@
     "error_title_required": "标题为必填项",
     "success_create": "已创建活动",
     "success_update": "已更新活动",
+    "update_scope": {
+      "label": "更新范围",
+      "help": "对于重复活动，可选择要应用更改的场次。",
+      "this_only": "仅本次",
+      "this_and_following": "本次及以后",
+      "all": "所有场次"
+    },
     "success_create_personal": "已添加日程",
     "success_update_personal": "已更新日程",
     "error_load_event": "获取活动信息失败",

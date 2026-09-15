@@ -18,6 +18,13 @@
     "error_title_required": "タイトルは必須です",
     "success_create": "イベントを作成しました",
     "success_update": "イベントを更新しました",
+    "update_scope": {
+      "label": "更新する範囲",
+      "help": "繰り返し予定では、変更を反映する回を選べます。",
+      "this_only": "この回のみ",
+      "this_and_following": "この回以降",
+      "all": "すべての回"
+    },
     "success_create_personal": "予定を追加しました",
     "success_update_personal": "予定を更新しました",
     "error_load_event": "イベント情報の取得に失敗しました",

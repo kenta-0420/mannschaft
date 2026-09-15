@@ -18,6 +18,13 @@
     "error_title_required": "제목은 필수입니다",
     "success_create": "이벤트를 생성했습니다",
     "success_update": "이벤트를 업데이트했습니다",
+    "update_scope": {
+      "label": "업데이트 범위",
+      "help": "반복 일정에서는 변경 사항을 적용할 회차를 선택할 수 있습니다.",
+      "this_only": "이번 일정만",
+      "this_and_following": "이번 및 이후 일정",
+      "all": "모든 일정"
+    },
     "success_create_personal": "일정을 추가했습니다",
     "success_update_personal": "일정을 업데이트했습니다",
     "error_load_event": "이벤트 정보를 불러오지 못했습니다",

@@ -16,7 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 /**
@@ -90,12 +92,17 @@ public class ScheduleRecurrenceService {
      * @param updateScope  更新スコープ
      * @param applyUpdate  単一スケジュールへの更新適用ロジック（ファサード側で実装）
      */
-    public void updateRecurringSchedule(ScheduleEntity schedule, UpdateScheduleRequest req,
+    public long updateRecurringSchedule(ScheduleEntity schedule, UpdateScheduleRequest req,
                                         String updateScope,
                                         BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
+        Set<Long> affectedScheduleIds = new HashSet<>();
+        BiConsumer<ScheduleEntity, UpdateScheduleRequest> trackedApplyUpdate = (target, request) -> {
+            applyUpdate.accept(target, request);
+            affectedScheduleIds.add(target.getId());
+        };
         switch (updateScope) {
             case UPDATE_SCOPE_THIS_ONLY -> {
-                applyUpdate.accept(schedule, req);
+                trackedApplyUpdate.accept(schedule, req);
                 // 繰り返しの例外としてマーク
                 if (schedule.getParentScheduleId() != null) {
                     schedule = schedule.toBuilder().isException(true).build();
@@ -103,9 +110,9 @@ public class ScheduleRecurrenceService {
                 }
             }
             case UPDATE_SCOPE_THIS_AND_FOLLOWING -> {
-                applyUpdate.accept(schedule, req);
+                trackedApplyUpdate.accept(schedule, req);
                 // この日以降の子スケジュールも更新（例外を除く）
-                updateFollowingSchedules(schedule, req, applyUpdate);
+                updateFollowingSchedules(schedule, req, trackedApplyUpdate);
             }
             case UPDATE_SCOPE_ALL -> {
                 // 親を更新、全子を更新（例外を除く）
@@ -113,12 +120,13 @@ public class ScheduleRecurrenceService {
                         ? schedule.getParentScheduleId() : schedule.getId();
                 ScheduleEntity parent = scheduleRepository.findById(parentId)
                         .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
-                applyUpdate.accept(parent, req);
+                trackedApplyUpdate.accept(parent, req);
                 scheduleRepository.save(parent);
-                updateAllChildSchedules(parentId, req, applyUpdate);
+                updateAllChildSchedules(parentId, req, trackedApplyUpdate);
             }
-            default -> applyUpdate.accept(schedule, req);
+            default -> trackedApplyUpdate.accept(schedule, req);
         }
+        return affectedScheduleIds.size();
     }
 
     /**
