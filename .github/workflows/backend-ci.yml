@@ -273,9 +273,10 @@ jobs:
     needs: detect
     if: needs.detect.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
-    # shard 4 がテスト・成果物アップロード成功後の後処理中に 60m21s で打ち切られたため、
-    # テストを省略せず後処理まで完了できる最小限の余裕を確保する。
-    timeout-minutes: 75
+    # 通常PRは従来の75分を維持する。Flyway再生が必要なPRでは、CMP-008の
+    # shard 1 が2回とも75分上限でテスト失敗なしにキャンセルされたため、
+    # テストを省略せず後処理まで完了できる105分の枠を確保する。
+    timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 75 }}
     defaults:
       run:
         working-directory: ./backend
