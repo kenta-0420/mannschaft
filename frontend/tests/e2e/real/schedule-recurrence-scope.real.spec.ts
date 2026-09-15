@@ -214,8 +214,11 @@ test.describe('CMP107 recurring edit scope (real UI)', () => {
       expect(ids.length).toBeGreaterThan(3)
       const url = `${V1}/teams/${TEAM}/schedules/${ids[1]}`
 
-      const [adminDetail, memberDetail, outsiderDetail] = await Promise.all(
+      const detailResponses = await Promise.all(
         pages.map(personaPage => personaPage.request.get(url)))
+      const adminDetail = detailResponses[0]!
+      const memberDetail = detailResponses[1]!
+      const outsiderDetail = detailResponses[2]!
       expect(adminDetail.status()).toBe(200)
       expect(memberDetail.status()).toBe(200)
       expect(outsiderDetail.status()).toBeGreaterThanOrEqual(400)
