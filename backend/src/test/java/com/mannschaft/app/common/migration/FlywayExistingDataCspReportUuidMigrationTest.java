@@ -11,15 +11,12 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,12 +59,14 @@ class FlywayExistingDataCspReportUuidMigrationTest {
     @Test
     @DisplayName("既存行と索引を保持し、交換した主キーが全てUUIDv7になる")
     void 既存行と索引を保持してUUIDv7へ移行できる() throws Exception {
-        // CSP 表に対する V212 前の DDL は V71.014 のみ。全履歴の再生ではなく、
-        // その実SQLを使った旧表・既存行から対象 migration を実MySQLで検証する。
-        try (Connection connection = connection(); Statement statement = connection.createStatement();
-             InputStream legacyDdl = Objects.requireNonNull(getClass().getResourceAsStream(
-                     "/db/migration/V71.014__create_csp_reports.sql"))) {
-            statement.execute(new String(legacyDdl.readAllBytes(), StandardCharsets.UTF_8));
+        Flyway.configure()
+                .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
+                .locations("classpath:db/migration")
+                .target(MigrationVersion.fromVersion(PRE_V212_TARGET))
+                .load()
+                .migrate();
+
+        try (Connection connection = connection(); Statement statement = connection.createStatement()) {
             statement.executeUpdate("""
                     INSERT INTO csp_reports
                         (id, document_uri, blocked_uri, violated_directive, effective_directive,
@@ -89,8 +88,6 @@ class FlywayExistingDataCspReportUuidMigrationTest {
         Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
-                .baselineVersion(MigrationVersion.fromVersion(PRE_V212_TARGET))
-                .baselineOnMigrate(true)
                 .load()
                 .migrate();
 
