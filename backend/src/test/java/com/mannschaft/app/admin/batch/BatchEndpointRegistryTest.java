@@ -3,16 +3,22 @@ package com.mannschaft.app.admin.batch;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -84,12 +90,28 @@ class BatchEndpointRegistryTest {
         }
     }
 
+    /**
+     * 走査無効化のプロパティキー。
+     *
+     * <p>{@link BatchEndpointRegistry} の {@code @Value} 式と
+     * {@code application-openapi-gen.yml} の両方と突き合わせるため、ここで定数化する。</p>
+     */
+    private static final String SCAN_ENABLED_KEY = "mannschaft.batch.registry.scan-enabled";
+
+    /** {@code openapi-gen} プロファイルの設定ファイル（走査無効化の正本）。 */
+    private static final String OPENAPI_GEN_YAML = "application-openapi-gen.yml";
+
     @Test
-    @DisplayName("scan-enabled=false なら走査せず、遅延 Bean も生成しない")
-    void shouldSkipScanWhenDisabled() {
+    @DisplayName("プロパティで false を与えると走査せず、遅延 Bean も生成しない")
+    void shouldSkipScanWhenDisabledByProperty() {
         LazyProbeBean.instantiated = false;
         try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
-            ctx.register(RegistryScanDisabledConfig.class, SampleBatchBean.class);
+            // コンストラクタに直接 false を渡すのではなく、プロパティのバインドから通して検証する。
+            // こうしないと @Value 式のキー名が誤っていてもテストが通ってしまう。
+            ctx.getEnvironment().getPropertySources().addFirst(
+                    new MapPropertySource("test", Map.of(SCAN_ENABLED_KEY, "false")));
+            ctx.register(PlaceholderConfig.class, LazyProbeConfig.class,
+                    BatchEndpointRegistry.class, SampleBatchBean.class);
             ctx.refresh();
 
             BatchEndpointRegistry registry = ctx.getBean(BatchEndpointRegistry.class);
@@ -101,11 +123,39 @@ class BatchEndpointRegistryTest {
     }
 
     @Test
-    @DisplayName("scan-enabled=true なら走査し、@Lazy Bean も強制生成される")
-    void shouldScanAndForceLazyBeansWhenEnabled() {
+    @DisplayName("実ファイル application-openapi-gen.yml の設定で走査が止まる（キー名の綴り違いを検出する）")
+    void shouldSkipScanWithActualOpenapiGenYaml() throws IOException {
+        LazyProbeBean.instantiated = false;
+        List<PropertySource<?>> yaml = new YamlPropertySourceLoader()
+                .load(OPENAPI_GEN_YAML, new ClassPathResource(OPENAPI_GEN_YAML));
+        assertThat(yaml).as("%s が読み込めること", OPENAPI_GEN_YAML).isNotEmpty();
+
+        try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
+            // 設定ファイルの実体をそのまま環境に載せる。
+            // yml 側のキーを書き間違えたり消したりすると、既定 true にフォールバックして
+            // このテストが落ちる（= 起動 30 分のうち 22 分の削減が静かに失われる経路を検出する）。
+            yaml.forEach(ps -> ctx.getEnvironment().getPropertySources().addFirst(ps));
+            ctx.register(PlaceholderConfig.class, LazyProbeConfig.class,
+                    BatchEndpointRegistry.class, SampleBatchBean.class);
+            ctx.refresh();
+
+            BatchEndpointRegistry registry = ctx.getBean(BatchEndpointRegistry.class);
+            assertThat(registry.listAll())
+                    .as("%s が %s=false を与えていること", OPENAPI_GEN_YAML, SCAN_ENABLED_KEY)
+                    .isEmpty();
+            assertThat(LazyProbeBean.instantiated).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("プロパティで true を与えると走査し、@Lazy Bean も強制生成される")
+    void shouldScanAndForceLazyBeansWhenEnabledByProperty() {
         LazyProbeBean.instantiated = false;
         try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
-            ctx.register(RegistryOnlyConfig.class, SampleBatchBean.class);
+            ctx.getEnvironment().getPropertySources().addFirst(
+                    new MapPropertySource("test", Map.of(SCAN_ENABLED_KEY, "true")));
+            ctx.register(PlaceholderConfig.class, LazyProbeConfig.class,
+                    BatchEndpointRegistry.class, SampleBatchBean.class);
             ctx.refresh();
 
             BatchEndpointRegistry registry = ctx.getBean(BatchEndpointRegistry.class);
@@ -128,7 +178,7 @@ class BatchEndpointRegistryTest {
         }
     }
 
-    /** {@code @Value} の既定値解決を有効にするための設定。 */
+    /** {@code @Value} のプロパティ解決を有効にするための設定。 */
     @Configuration
     static class PlaceholderConfig {
         @Bean
@@ -137,14 +187,9 @@ class BatchEndpointRegistryTest {
         }
     }
 
-    /** 走査を無効化した Registry を登録する設定。 */
+    /** 走査が遅延 Bean を強制生成するかどうかを観測するための設定。 */
     @Configuration
-    static class RegistryScanDisabledConfig {
-        @Bean
-        public BatchEndpointRegistry batchEndpointRegistry(GenericApplicationContext context) {
-            return new BatchEndpointRegistry(context, false);
-        }
-
+    static class LazyProbeConfig {
         @Bean
         @Lazy
         public LazyProbeBean lazyProbeBean() {
@@ -167,12 +212,6 @@ class BatchEndpointRegistryTest {
         @Bean
         public BatchEndpointRegistry batchEndpointRegistry(GenericApplicationContext context) {
             return new BatchEndpointRegistry(context, true);
-        }
-
-        @Bean
-        @Lazy
-        public LazyProbeBean lazyProbeBean() {
-            return new LazyProbeBean();
         }
     }
 
