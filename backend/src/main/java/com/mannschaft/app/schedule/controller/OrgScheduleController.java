@@ -126,7 +126,7 @@ public class OrgScheduleController {
                         entity.getAcademicYear() != null ? entity.getAcademicYear().intValue() : null,
                         entity.getSourceScheduleId()))
                 .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), createdByDisplayName))
-                .recurrence(new ScheduleResponse.ScheduleRecurrenceDto(
+                .recurrenceInfo(new ScheduleResponse.ScheduleRecurrenceDto(
                         entity.getRecurrenceRule(), entity.getParentScheduleId(), entity.getIsException()))
                 .myAttendanceStatus(myAttendanceStatus)
                 .targetMode(targetResponse.targetMode())

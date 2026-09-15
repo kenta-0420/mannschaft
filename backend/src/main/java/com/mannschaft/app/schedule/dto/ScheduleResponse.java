@@ -20,7 +20,7 @@ public class ScheduleResponse {
     ScheduleScopeDto   scope;       // scopeName, scopeIconUrl
     ScheduleAcademicDto academic;   // eventCategory, academicYear, sourceScheduleId
     ScheduleAuditDto   audit;       // createdAt, createdByDisplayName
-    ScheduleRecurrenceDto recurrence; // 詳細 GET の繰り返し元・例外情報
+    ScheduleRecurrenceDto recurrenceInfo; // チーム・組織詳細 GET の編集用繰り返し情報
     String             myAttendanceStatus;
     String             targetMode;
     Integer            targetCount;

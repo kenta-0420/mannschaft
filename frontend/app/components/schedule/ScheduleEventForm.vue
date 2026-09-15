@@ -312,7 +312,7 @@ watch(
           form.value.reminders = reminders.map(reminderResponseToFormEntry)
           // 共有予定: scheduledTasks の PENDING タスクを scheduledSurvey / scheduledAttendance に変換する
           const scheduledTasks = (data.scheduledTasks as Array<Record<string, unknown>> | null) ?? []
-          const recurrence = (data.recurrence as Record<string, unknown>) ?? {}
+          const recurrence = (data.recurrenceInfo as Record<string, unknown>) ?? {}
           loadedRecurringEvent.value = recurrence.recurrenceRule != null || recurrence.parentScheduleId != null
           let recurrenceRule: Record<string, unknown> | null = null
           if (typeof recurrence.recurrenceRule === 'string') {

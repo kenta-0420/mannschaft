@@ -228,7 +228,7 @@ describe('ScheduleEventForm: recurrence update scope', () => {
       data: {
         content: { title: 'Recurring meeting', eventType: 'PRACTICE' },
         time: { startAt: '2026-09-22T10:00:00', endAt: '2026-09-22T11:00:00', allDay: false },
-        recurrence: { recurrenceRule: JSON.stringify({ type: 'WEEKLY', interval: 1, daysOfWeek: ['MONDAY'], endType: 'NEVER' }) },
+        recurrenceInfo: { recurrenceRule: JSON.stringify({ type: 'WEEKLY', interval: 1, daysOfWeek: ['MONDAY'], endType: 'NEVER' }) },
       },
     })
     scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
@@ -337,7 +337,7 @@ describe('ScheduleEventForm: recurrence update scope', () => {
 
   it('treats a shared child occurrence as recurring when only parentScheduleId is present', async () => {
     scheduleApiMock.getSchedule.mockResolvedValue({
-      data: { content: { title: 'Child occurrence' }, time: {}, recurrence: { recurrenceRule: null, parentScheduleId: 7 } },
+      data: { content: { title: 'Child occurrence' }, time: {}, recurrenceInfo: { recurrenceRule: null, parentScheduleId: 7 } },
     })
     const wrapper = await mountSuspended(ScheduleEventForm, {
       props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },

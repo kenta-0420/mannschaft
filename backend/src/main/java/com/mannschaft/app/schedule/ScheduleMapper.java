@@ -38,7 +38,7 @@ public interface ScheduleMapper {
     @Mapping(target = "academic.sourceScheduleId", source = "sourceScheduleId")
     @Mapping(target = "audit.createdAt", source = "createdAt")
     @Mapping(target = "audit.createdByDisplayName", ignore = true)
-    @Mapping(target = "recurrence", ignore = true)
+    @Mapping(target = "recurrenceInfo", ignore = true)
     @Mapping(target = "myAttendanceStatus", ignore = true)
     @Mapping(target = "targetMode", ignore = true)
     @Mapping(target = "targetCount", ignore = true)
