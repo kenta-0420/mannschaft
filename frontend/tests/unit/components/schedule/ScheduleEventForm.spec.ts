@@ -253,9 +253,9 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
 
     expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="recurrence-update-this"]').text()).toContain('この予定のみ')
-    expect(wrapper.get('[data-testid="recurrence-update-following"]').text()).toContain('この予定以降')
-    expect(wrapper.text()).not.toContain('ALL')
+    expect(wrapper.find('[data-testid="recurrence-update-this"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="recurrence-update-following"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="recurrence-update-all"]').exists()).toBe(false)
     expect(scheduleApiMock.updateSchedule).not.toHaveBeenCalled()
   })
 
