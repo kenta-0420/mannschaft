@@ -2,8 +2,8 @@
  * F02.9 お気に入りウィジェット — 実機 E2E テスト（FAV-001〜010）。
  *
  * このテストはAPIモックを使わない実機テストです。
- * バックエンド (http://localhost:8080) とフロントエンド (http://localhost:3000) が
- * 起動済みの状態で実行してください。
+ * バックエンド (API_BASE_URL、既定 http://localhost:8080) とフロントエンド
+ * (BASE_URL、既定 http://localhost:3000) が起動済みの状態で実行してください。
  *
  * 認証: beforeAll で 1 つの BrowserContext を作成し、その中で loginViaApi() による
  * ファイル専用の新規ログインを 1 回だけ行い、FAV-001〜009 全テストで使い回す
@@ -66,6 +66,7 @@ const E2E_USER = {
   email: 'e2e-user@test.mannschaft.local',
   password: 'TestPass2026!',
 }
+const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8080'
 
 interface FavoriteResponse {
   id: string
@@ -81,7 +82,7 @@ interface FavoriteResponse {
 }
 
 async function listFavorites(page: Page, token: string): Promise<FavoriteResponse[]> {
-  const resp = await page.request.get('http://localhost:8080/api/v1/me/favorites', {
+  const resp = await page.request.get(`${API_BASE_URL}/api/v1/me/favorites`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   expect(resp.status()).toBe(200)
@@ -124,7 +125,7 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
       sharedToken = accessTokenCookie!.value
 
       // 解決したトークンが有効であることをここで検証しておく（以降の全テストの前提）。
-      const resp = await setupPage.request.get('http://localhost:8080/api/v1/me/favorites', {
+      const resp = await setupPage.request.get(`${API_BASE_URL}/api/v1/me/favorites`, {
         headers: { Authorization: `Bearer ${sharedToken}` },
       })
       expect(resp.status(), '共有トークンで /api/v1/me/favorites が 200 を返さない').toBe(200)
@@ -192,7 +193,7 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
   // FAV-003: API: GET /api/v1/me/favorites が認証付きで 200 を返す
   // ===========================================================================
   test('FAV-003: API GET /api/v1/me/favorites が 200 を返す', async () => {
-    const resp = await page.request.get('http://localhost:8080/api/v1/me/favorites', {
+    const resp = await page.request.get(`${API_BASE_URL}/api/v1/me/favorites`, {
       headers: { Authorization: `Bearer ${sharedToken}` },
     })
     expect(resp.status()).toBe(200)
@@ -214,12 +215,12 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
     const before = await listFavorites(page, sharedToken)
     const dup = before.find((f) => f.entityType === 'TEAM' && f.entityId === '5')
     if (dup) {
-      await page.request.delete(`http://localhost:8080/api/v1/me/favorites/${dup.id}`, {
+      await page.request.delete(`${API_BASE_URL}/api/v1/me/favorites/${dup.id}`, {
         headers: { Authorization: `Bearer ${sharedToken}` },
       })
     }
 
-    const resp = await page.request.post('http://localhost:8080/api/v1/me/favorites', {
+    const resp = await page.request.post(`${API_BASE_URL}/api/v1/me/favorites`, {
       headers: { Authorization: `Bearer ${sharedToken}`, 'Content-Type': 'application/json' },
       data: { entityType: 'TEAM', entityId: '5' },
     })
@@ -229,7 +230,7 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
     expect(body.data.entityId).toBe('5')
 
     // ロールバック
-    await page.request.delete(`http://localhost:8080/api/v1/me/favorites/${body.data.id}`, {
+    await page.request.delete(`${API_BASE_URL}/api/v1/me/favorites/${body.data.id}`, {
       headers: { Authorization: `Bearer ${sharedToken}` },
     })
   })
@@ -242,13 +243,13 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
     const before = await listFavorites(page, sharedToken)
     const dup = before.find((f) => f.entityType === 'TEAM' && f.entityId === '6')
     if (dup) {
-      await page.request.delete(`http://localhost:8080/api/v1/me/favorites/${dup.id}`, {
+      await page.request.delete(`${API_BASE_URL}/api/v1/me/favorites/${dup.id}`, {
         headers: { Authorization: `Bearer ${sharedToken}` },
       })
     }
 
     // 追加
-    const addResp = await page.request.post('http://localhost:8080/api/v1/me/favorites', {
+    const addResp = await page.request.post(`${API_BASE_URL}/api/v1/me/favorites`, {
       headers: { Authorization: `Bearer ${sharedToken}`, 'Content-Type': 'application/json' },
       data: { entityType: 'TEAM', entityId: '6' },
     })
@@ -263,7 +264,7 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
     expect(found?.entityId).toBe('6')
 
     // ロールバック
-    await page.request.delete(`http://localhost:8080/api/v1/me/favorites/${addedId}`, {
+    await page.request.delete(`${API_BASE_URL}/api/v1/me/favorites/${addedId}`, {
       headers: { Authorization: `Bearer ${sharedToken}` },
     })
   })
@@ -276,12 +277,12 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
     const before = await listFavorites(page, sharedToken)
     const dup = before.find((f) => f.entityType === 'TEAM' && f.entityId === '7')
     if (dup) {
-      await page.request.delete(`http://localhost:8080/api/v1/me/favorites/${dup.id}`, {
+      await page.request.delete(`${API_BASE_URL}/api/v1/me/favorites/${dup.id}`, {
         headers: { Authorization: `Bearer ${sharedToken}` },
       })
     }
 
-    const addResp = await page.request.post('http://localhost:8080/api/v1/me/favorites', {
+    const addResp = await page.request.post(`${API_BASE_URL}/api/v1/me/favorites`, {
       headers: { Authorization: `Bearer ${sharedToken}`, 'Content-Type': 'application/json' },
       data: { entityType: 'TEAM', entityId: '7' },
     })
@@ -290,7 +291,7 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
 
     // 削除
     const delResp = await page.request.delete(
-      `http://localhost:8080/api/v1/me/favorites/${newId}`,
+      `${API_BASE_URL}/api/v1/me/favorites/${newId}`,
       { headers: { Authorization: `Bearer ${sharedToken}` } },
     )
     expect(delResp.status()).toBe(204)
@@ -307,7 +308,7 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
   //   request bean validation で 400 になる可能性もあるが、いずれにせよ 4xx であること。
   // ===========================================================================
   test('FAV-007: 不正な entityType で 4xx が返る', async () => {
-    const resp = await page.request.post('http://localhost:8080/api/v1/me/favorites', {
+    const resp = await page.request.post(`${API_BASE_URL}/api/v1/me/favorites`, {
       headers: { Authorization: `Bearer ${sharedToken}`, 'Content-Type': 'application/json' },
       data: { entityType: 'INVALID', entityId: '1' },
       failOnStatusCode: false,
