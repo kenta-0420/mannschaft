@@ -322,6 +322,12 @@ WHERE ((is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
 
 時系列順でソート可能な UUIDv7 を新規テーブルの標準 ID 型として採用する。
 
+> 2026-09-15 の CMP-008 CI 実測では、既存 `UuidV7Entity` の
+> `@UuidGenerator(style = TIME)` は UUIDv7 ではなく UUIDv1 を生成した。
+> 以下は当初の設計意図を示す記録であり、真正の v7 生成を保証する実装例ではない。
+> CSP 報告の第一波は専用生成器で v7 を検証済み。共通基底と既存利用テーブルの
+> 是正は影響範囲を調査して別途判断する。
+
 ```java
 /**
  * UUIDv7（時系列順・衝突耐性）を ID に使う Entity の基底クラス。

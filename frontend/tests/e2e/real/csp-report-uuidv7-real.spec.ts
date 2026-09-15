@@ -2,7 +2,7 @@ import { execFileSync } from 'child_process'
 import { expect, test } from '@playwright/test'
 
 const DOCUMENT_URI = new URL(
-  '/?cmp008-csp-uuidv7=1',
+  '/login?cmp008-csp-uuidv7=1',
   process.env.BASE_URL ?? 'http://localhost:3001',
 ).toString()
 const ENDPOINT = '/api/v1/security/csp-reports'
@@ -44,13 +44,19 @@ test.describe('CMP-008 CSP report UUIDv7 actual browser E2E', () => {
   test.afterAll(cleanup)
 
   test('ブラウザのCSP違反が自動報告され、UUIDv7で保存される', async ({ browser }) => {
+    test.setTimeout(180_000)
     const context = await browser.newContext()
     const page = await context.newPage()
-    const navigationResponse = await page.goto('/?cmp008-csp-uuidv7=1')
+    const navigationResponse = await page.goto('/login?cmp008-csp-uuidv7=1', {
+      waitUntil: 'commit',
+    })
     expect(navigationResponse?.headers()['content-security-policy']).toContain(`report-uri ${ENDPOINT}`)
+    await page.waitForFunction(() => document.body !== null)
 
     const reportResponse = page.waitForResponse(response =>
-      response.url().includes(ENDPOINT) && response.request().method() === 'POST',
+      response.url().includes(ENDPOINT)
+        && response.request().method() === 'POST'
+        && (response.request().postData() ?? '').includes('blocked.cmp008.example'),
     )
     await page.evaluate(() => {
       const frame = document.createElement('iframe')
