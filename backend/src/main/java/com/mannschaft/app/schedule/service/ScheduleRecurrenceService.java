@@ -92,7 +92,7 @@ public class ScheduleRecurrenceService {
      * @param updateScope  更新スコープ
      * @param applyUpdate  単一スケジュールへの更新適用ロジック（ファサード側で実装）
      */
-    public RecurringScheduleUpdateResult updateRecurringSchedule(ScheduleEntity schedule, UpdateScheduleRequest req,
+    RecurringScheduleUpdateResult updateRecurringSchedule(ScheduleEntity schedule, UpdateScheduleRequest req,
                                         String updateScope,
                                         BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate) {
         switch (updateScope) {

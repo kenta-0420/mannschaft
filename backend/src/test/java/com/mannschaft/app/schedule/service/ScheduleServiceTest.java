@@ -1,4 +1,4 @@
-package com.mannschaft.app.schedule;
+package com.mannschaft.app.schedule.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
@@ -10,6 +10,11 @@ import com.mannschaft.app.dashboard.ActivityEvent;
 import com.mannschaft.app.dashboard.ActivityType;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.TargetType;
+import com.mannschaft.app.schedule.EventType;
+import com.mannschaft.app.schedule.MinViewRole;
+import com.mannschaft.app.schedule.ScheduleErrorCode;
+import com.mannschaft.app.schedule.ScheduleStatus;
+import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
@@ -1222,7 +1227,6 @@ class ScheduleServiceTest {
             ScheduleEntity parentAfterUpdate = createTeamScheduleEntity().toBuilder()
                     .id(PARENT_ID).title("更新後(全体)").build();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
-            given(scheduleRepository.findById(PARENT_ID)).willReturn(Optional.of(parentAfterUpdate));
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
             given(recurrenceService.updateRecurringSchedule(any(ScheduleEntity.class), any(UpdateScheduleRequest.class),
