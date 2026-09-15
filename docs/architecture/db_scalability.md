@@ -494,7 +494,7 @@ Valkey 断のときに `@CacheEvict` を持つミューテーション（`RoleSe
 | `AbstractTenantAwareRepository` の全面適用 | 高 | `ScheduleRepository` のみ適用済み。他リポジトリへの順次適用が必要 |
 | イベント駆動アーキテクチャへの移行 | 中 | `@Transactional` クロスドメイン箇所（TODO コメント済み）をドメインイベントで分離 |
 | シャーディング本実装 | 低 | `organization_id` をシャーディングキーとした水平分割。UUIDv7 導入済みで基盤は整備済み |
-| 既存テーブルの UUIDv7 移行 | 低 | 現在は新規テーブルのみ。既存 BIGINT ID テーブルの移行は別軍議で検討 |
+| 既存テーブルの UUIDv7 移行 | 低 | CMP-008 第一波で非公開・FKなしの `csp_reports` を UUIDv7 化。数値 ID を API へ出す `schedule_media_uploads` は互換性判断後に着手 |
 | リードレプリカの本番適用 | 中 | `replica.enabled=false` のままのため、本番環境の DB 構成確定後に有効化 |
 | audit_logs パーティション 2030年以降 | 中 | V64.001 で 2029-12 まで定義済み。`AuditLogPartitionMaintenanceBatchService` が自動追加するため人手対応は不要 |
 | chat_messages_archive の R2 アップロード | 低 | 現状はアーカイブテーブルへの退避のみ。将来は R2 への JSONL.gz 保存も検討 |
