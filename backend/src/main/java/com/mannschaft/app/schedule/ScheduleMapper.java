@@ -73,6 +73,7 @@ public interface ScheduleMapper {
     @Mapping(target = "detail.commentOption", expression = "java(scheduleEntity.getCommentOption() != null ? scheduleEntity.getCommentOption().name() : null)")
     @Mapping(target = "roles.minViewRole", expression = "java(scheduleEntity.getMinViewRole().name())")
     @Mapping(target = "roles.minResponseRole", expression = "java(scheduleEntity.getMinResponseRole() != null ? scheduleEntity.getMinResponseRole().name() : null)")
+    @Mapping(target = "recurrenceInfo", ignore = true)
     @Mapping(target = "recurrence", ignore = true)
     @Mapping(target = "attendance", ignore = true)
     @Mapping(target = "relations", ignore = true)
