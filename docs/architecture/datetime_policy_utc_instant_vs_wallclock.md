@@ -170,7 +170,17 @@ JDBC の `serverTimezone=UTC` はドライバ側の `Timestamp` 解釈を決め�
 | 番人 | 守るもの |
 |---|---|
 | `FlywayMigrationTimeFunctionGuardTest`（`common/architecture`） | 新規 migration が `NOW()` 系を増やさないこと。既存はファイル単位の件数で凍結（`backend/src/test/resources/flyway_migration_time_guard/session_tz_time_function_freeze.txt`）。**台帳への追記は禁止** |
+| `FlywayMigrationTimeFunctionGuardScanningLogicTest` | 上の番人の**走査ロジック自体**。検出／非検出の両側を検体で固定し、偽陰性化・偽陽性化を防ぐ |
 | `FlywayMigrationSessionTimeZoneUtcIT`（`config`） | 実 MySQL 接続のセッション TZ が UTC であり `NOW() == UTC_TIMESTAMP()` であること＝既存 746 箇所が今もずれていないこと |
+
+#### 番人が使う「判定の軸」（検出器を後から触る人向け）
+
+検出対象を関数名の羅列として持つと、別名が増えるたびに穴が空く。番人は次の2軸で判定している。
+
+1. **関数呼び出しであるとは何か** — 名前の直後に（任意長の空白を挟んで）`(` があり、中身が精度指定の数字だけなら呼び出し。`CURRENT_TIMESTAMP` 系の SQL 標準キーワードは括弧なしでも呼び出し、`NOW` / `SYSDATE` / `CURDATE` / `CURTIME` は括弧が無ければ単なる識別子。
+2. **識別子の一部であるとは何か** — MySQL の引用なし識別子は `0-9 a-z A-Z $ _` と U+0080 以上を許す。前後がこれらなら関数ではない。加えて**バッククォート**（引用識別子 `` `current_date` ``）と**ドット**（修飾名 `t.current_date`）が直前にあれば関数ではない。
+
+**正規表現には量指定子を1つも置いていない。** 可変長（名前と括弧の間の空白、`DEFAULT` までの空白）はすべて Java 側の前方向・後方向それぞれ1度きりの線形走査で扱う。上限付き `\s{0,4}` では `CURDATE     ()` やコメントを潰した跡の長い空白を取りこぼし、かといって `\s*` へ広げると本リポジトリで実績のある破滅的バックトラック（55分ハング）を招くためである。実測: migration 1156 ファイルの走査が 1 秒未満（番人自身が所要時間を検査する `scanFinishesQuickly` を持つ）。
 
 #### 射程外にした範囲と、その理由（「見落とし」ではない）
 

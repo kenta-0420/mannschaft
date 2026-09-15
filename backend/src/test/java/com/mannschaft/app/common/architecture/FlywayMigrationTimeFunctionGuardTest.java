@@ -93,59 +93,92 @@ class FlywayMigrationTimeFunctionGuardTest {
             "src", "test", "resources", "flyway_migration_time_guard", "session_tz_time_function_freeze.txt");
 
     /**
-     * 一致の直後が識別子構成文字でないことの否定先読み。
-     *
-     * <p>SQL の識別子に使える文字（英数字・{@code _}・MySQL では {@code $}）が続くなら、それは
-     * 関数呼び出しではなく<b>より長い識別子の一部</b>である。{@code $} を含めるのは MySQL が
-     * 識別子に {@code $} を許すため。</p>
-     */
-    static final String NOT_IDENTIFIER_CHAR = "(?![A-Za-z0-9_$])";
-
-    /**
-     * セッション TZ に従って「今」を返す MySQL 組み込み関数。{@code UTC_TIMESTAMP()} /
-     * {@code UTC_DATE()} / {@code UTC_TIME()} は正解なので含めない。
+     * セッション TZ に従って「今」を返す MySQL 組み込み関数の<b>名前だけ</b>を拾う。
+     * {@code UTC_TIMESTAMP()} / {@code UTC_DATE()} / {@code UTC_TIME()} は正解なので含めない。
      *
      * <h3>列挙したのは検体ではなく「判定の軸」である</h3>
      * <p>対象は<b>「セッションの {@code time_zone} に従って現在時刻を返す MySQL 組み込み関数」全部</b>であり、
      * 日時型（{@code TIMESTAMP}）だけではない。日付型・時刻型の別名も同じセッション TZ に従うため、
      * {@code WHERE target_date < CURDATE()} のような書き方は日単位でずれうる。
      * プロジェクト規約（{@code backend/.claudecode.md} の「ネイティブクエリの
-     * {@code NOW()} / {@code CURRENT_TIMESTAMP} / {@code CURDATE()}」）も日付系を名指ししている。
-     * 初版は日時系 4 つしか見ておらず、日付系・時刻系を素通りさせていた（Codex 検分で指摘・是正済み）。</p>
+     * {@code NOW()} / {@code CURRENT_TIMESTAMP} / {@code CURDATE()}」）も日付系を名指ししている。</p>
      * <ul>
      *   <li>日時: {@code NOW()} / {@code SYSDATE()} / {@code CURRENT_TIMESTAMP} / {@code LOCALTIMESTAMP}</li>
      *   <li>日付: {@code CURDATE()} / {@code CURRENT_DATE}</li>
      *   <li>時刻: {@code CURTIME()} / {@code CURRENT_TIME} / {@code LOCALTIME}</li>
      * </ul>
+     * <p>接頭辞関係（{@code CURRENT_TIME} ⊂ {@code CURRENT_TIMESTAMP}、
+     * {@code LOCALTIME} ⊂ {@code LOCALTIMESTAMP}）があるため<b>長い名前を先に並べる</b>。</p>
      *
-     * <h3>識別子と関数呼び出しの区別</h3>
-     * <p>括弧を伴わない別名（{@code CURRENT_TIMESTAMP} など）は、そのまま書くと
-     * {@code current_timestamp_format} のような<b>通常のカラム名の接頭辞にも一致してしまう</b>
-     * （初版の欠陥。セッション依存関数を 1 つも含まない migration が凍結件数の差分で赤くなる）。
-     * 末尾に {@link #NOT_IDENTIFIER_CHAR} の否定先読みを置き、<b>関数名の直後が識別子構成文字でない</b>
-     * ことを要求してこれを防ぐ。先頭側は {@code \\b} が同じ役割を果たす。</p>
-     *
-     * <p>別名には接頭辞関係（{@code CURRENT_TIME} ⊂ {@code CURRENT_TIMESTAMP}、
-     * {@code LOCALTIME} ⊂ {@code LOCALTIMESTAMP}）があるため、<b>長い方を先に並べる</b>。
-     * 量指定子はすべて上限付きにしてバックトラックを有界にする
-     * （{@link RawSqlTimeColumnGuardTest} で実測した破滅的バックトラック対策と同じ理由）。</p>
+     * <h3>この正規表現に量指定子が 1 つも無い理由【必読】</h3>
+     * <p>本パターンは<b>純粋なリテラル選択肢だけ</b>で構成してあり、{@code \\s*} も {@code \\s{0,4}} も
+     * 含まない。境界判定・括弧の有無・名前と括弧の間の空白は、すべて Java 側で<b>前方向へ 1 度だけ走る
+     * 線形処理</b>（{@link #isFunctionCallAt}）として書いてある。</p>
+     * <p>初版は {@code \\s{0,4}} で空白を吸っていたが、これは
+     * {@code CURDATE     ()}（空白 5 文字以上）や、コメントを空白へ潰した結果生じる
+     * {@code CURDATE                ()} を<b>取りこぼす</b>（Codex 検分の指摘）。かといって素朴に
+     * {@code \\s*} へ広げるのは危険で、本リポジトリには<b>空白を含む文字クラスの量指定子が破滅的
+     * バックトラックを起こして 55 分ハングした実例</b>がある（{@link RawSqlTimeColumnGuardTest} の
+     * Javadoc と、走査正規表現に関する同種の記録）。
+     * <b>「上限を上げる」でも「{@code *} へ広げる」でもなく、可変長部分を正規表現から追い出す</b>のが
+     * 本質的な解である。こうすると空白は何文字でも受理でき、かつバックトラックは原理的に起こり得ない。</p>
      */
-    static final Pattern SESSION_TZ_NOW = Pattern.compile(
-            "(?i)\\b(?:NOW\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\)"
-                    + "|SYSDATE\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\)"
-                    + "|CURDATE\\s{0,4}\\(\\s{0,4}\\)"
-                    + "|CURTIME\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\)"
-                    + "|CURRENT_TIMESTAMP(?:\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\))?"
-                    + "|LOCALTIMESTAMP(?:\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\))?"
-                    + "|CURRENT_DATE(?:\\s{0,4}\\(\\s{0,4}\\))?"
-                    + "|CURRENT_TIME(?:\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\))?"
-                    + "|LOCALTIME(?:\\s{0,4}\\(\\s{0,4}\\d{0,2}\\s{0,4}\\))?"
-                    + ")" + NOT_IDENTIFIER_CHAR);
+    static final Pattern SESSION_TZ_NOW_NAME = Pattern.compile(
+            "(?i)(?:CURRENT_TIMESTAMP|LOCALTIMESTAMP|CURRENT_DATE|CURRENT_TIME|LOCALTIME"
+                    + "|SYSDATE|CURDATE|CURTIME|NOW)");
+
+    /**
+     * 括弧が<b>必須</b>の関数名（小文字）。これらは裸で書いても関数呼び出しにならないため、
+     * 括弧が無ければ単なる識別子とみなす。
+     *
+     * <p>逆に {@code CURRENT_TIMESTAMP} / {@code CURRENT_DATE} / {@code CURRENT_TIME} /
+     * {@code LOCALTIME} / {@code LOCALTIMESTAMP} は括弧なしでも関数として評価される
+     * （SQL 標準の日時キーワード）。</p>
+     */
+    private static final java.util.Set<String> REQUIRES_PARENTHESES =
+            java.util.Set.of("now", "sysdate", "curdate", "curtime");
 
 
-    /** 直前が列既定（{@code DEFAULT} / {@code ON UPDATE}）であることの判定。一致位置の直前だけを見る。 */
-    static final Pattern COLUMN_DEFAULT_CONTEXT =
-            Pattern.compile("(?i)(?:\\bDEFAULT|\\bON\\s{1,4}UPDATE)\\s{0,4}$");
+    /**
+     * 直前が列既定（{@code DEFAULT} / {@code ON UPDATE}）かを、後ろ向きに 1 度走って判定する。
+     *
+     * <p>ここも空白を任意長で受理する。{@code \\s{0,4}$} のような上限付き正規表現にすると、
+     * {@code DEFAULT      NOW()}（空白 5 文字以上）が射程外判定から漏れて<b>逆向きの誤検出</b>
+     * （列既定なのに違反として数える）になる。判定の軸が同じなので処理も揃えてある。</p>
+     */
+    static boolean isColumnDefaultContext(String text, int nameStart) {
+        int i = skipWhitespaceBackward(text, nameStart);
+        int wordEnd = i;
+        while (i > 0 && isIdentifierPart(text.charAt(i - 1))) {
+            i--;
+        }
+        if (i == wordEnd) {
+            return false;
+        }
+        String word = text.substring(i, wordEnd).toLowerCase(Locale.ROOT);
+        if (word.equals("default")) {
+            return true;
+        }
+        if (!word.equals("update")) {
+            return false;
+        }
+        // "ON UPDATE" の ON まで遡る
+        int j = skipWhitespaceBackward(text, i);
+        int onEnd = j;
+        while (j > 0 && isIdentifierPart(text.charAt(j - 1))) {
+            j--;
+        }
+        return j < onEnd && text.substring(j, onEnd).equalsIgnoreCase("on");
+    }
+
+    /** 空白を後ろ向きに任意長読み飛ばす（線形）。 */
+    private static int skipWhitespaceBackward(String text, int from) {
+        int i = from;
+        while (i > 0 && Character.isWhitespace(text.charAt(i - 1))) {
+            i--;
+        }
+        return i;
+    }
 
     record Violation(String file, int line, String snippet) {
         String describe() {
@@ -178,16 +211,142 @@ class FlywayMigrationTimeFunctionGuardTest {
         }
         String scan = maskCommentsAndLiterals(raw);
         List<Violation> violations = new ArrayList<>();
-        Matcher m = SESSION_TZ_NOW.matcher(scan);
+        // 行番号は「前回の一致位置からの差分」で数える。一致は必ず昇順に出てくるので、
+        // ファイル全体を毎回先頭から数え直す必要がない。数え直すと 1 ファイルあたり
+        // O(ファイル長 × 一致件数) となり、117 件の一致を持つ migration（V2.027）などで
+        // 走査全体が桁違いに遅くなる（実測 8.8 秒 → 是正後は後述の scanFinishesQuickly を参照）。
+        LineCounter lines = new LineCounter();
+        Matcher m = SESSION_TZ_NOW_NAME.matcher(scan);
         while (m.find()) {
-            String preceding = scan.substring(Math.max(0, m.start() - 24), m.start());
-            if (COLUMN_DEFAULT_CONTEXT.matcher(preceding).find()) {
+            if (precededByIdentifierPart(scan, m.start())) {
+                continue; // より長い識別子の一部（audit$current_date / `current_date` / t.current_date）
+            }
+            int callEnd = isFunctionCallAt(scan, m.start(), m.end());
+            if (callEnd < 0) {
+                continue; // 関数呼び出しの形になっていない
+            }
+            if (isColumnDefaultContext(scan, m.start())) {
                 continue; // 列 DEFAULT / ON UPDATE は射程外（クラス Javadoc 参照）
             }
-            violations.add(new Violation(fileName, lineNumber(raw, m.start()),
-                    raw.substring(m.start(), m.end()).strip()));
+            violations.add(new Violation(fileName, lines.lineAt(raw, m.start()),
+                    raw.substring(m.start(), Math.min(raw.length(), callEnd)).strip()));
         }
         return violations;
+    }
+
+    /**
+     * 昇順に問い合わされる前提で行番号を差分計算するカーソル。
+     *
+     * <p>1 ファイルにつき 1 インスタンス。{@link #lineAt} は前回位置から今回位置までの改行だけを数えるので、
+     * ファイル全体の走査は一致件数によらず O(ファイル長) に収まる。</p>
+     */
+    static final class LineCounter {
+        private int lastOffset;
+        private int lastLine = 1;
+
+        int lineAt(String raw, int offset) {
+            if (offset < lastOffset) { // 想定外の逆行。安全側に倒して先頭から数え直す
+                lastOffset = 0;
+                lastLine = 1;
+            }
+            for (int i = lastOffset; i < offset && i < raw.length(); i++) {
+                if (raw.charAt(i) == '\n') {
+                    lastLine++;
+                }
+            }
+            lastOffset = Math.min(offset, raw.length());
+            return lastLine;
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // 判定の軸1: 「識別子の一部である」とは何か
+    // ────────────────────────────────────────────────────────────
+
+    /**
+     * MySQL の引用なし識別子を構成しうる文字か。
+     *
+     * <p>MySQL が許すのは {@code 0-9 a-z A-Z $ _} と U+0080 以上の文字である。
+     * <b>{@code $} を落とすと {@code audit$current_date} のような正当な識別子の途中に一致してしまう</b>
+     * （Codex 検分の指摘。正規表現の {@code \\b} は {@code $} を単語構成文字として扱わないため、
+     * 先頭側の境界を {@code \\b} に委ねてはならない）。</p>
+     */
+    static boolean isIdentifierPart(char c) {
+        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+                || c == '_' || c == '$' || c >= 0x80;
+    }
+
+    /**
+     * 一致位置の直前を見て「これは識別子の続きである」と言えるか。
+     *
+     * <p>識別子構成文字のほか、<b>バッククォート</b>（引用識別子 {@code `current_date`}）と
+     * <b>ドット</b>（修飾名 {@code t.current_date}）も直前に来たら関数呼び出しではない。</p>
+     */
+    static boolean precededByIdentifierPart(String text, int start) {
+        if (start <= 0) {
+            return false;
+        }
+        char prev = text.charAt(start - 1);
+        return isIdentifierPart(prev) || prev == '`' || prev == '.';
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // 判定の軸2: 「関数呼び出しである」とは何か
+    // ────────────────────────────────────────────────────────────
+
+    /**
+     * 名前の直後を線形に読み進め、関数呼び出しになっているなら<b>その終端位置</b>を、
+     * なっていないなら {@code -1} を返す。
+     *
+     * <p>ここが可変長（名前と括弧の間の空白は任意長）を扱う唯一の場所であり、
+     * <b>前方向へ 1 度走るだけで後戻りしない</b>ので、入力長に対して線形かつバックトラック不能である。
+     * 正規表現へ {@code \\s*} を書かずに済ませているのはこのためである（クラス Javadoc 参照）。</p>
+     *
+     * <p>判定は次のとおり:</p>
+     * <ol>
+     *   <li>名前の直後が識別子構成文字またはバッククォートなら、より長い識別子なので呼び出しではない
+     *       （{@code current_timestamp_format} / {@code `current_date`}）</li>
+     *   <li>空白を任意長読み飛ばした先が {@code (} なら、{@code ( 空白 数字列? 空白 )} の形を確かめる。
+     *       確かめられれば呼び出し（{@code NOW(6)} / {@code CURDATE     ()}）</li>
+     *   <li>括弧が無い場合、括弧必須の名前（{@link #REQUIRES_PARENTHESES}）は呼び出しではない。
+     *       それ以外（SQL 標準の日時キーワード）は裸でも呼び出しである（{@code CURRENT_TIMESTAMP}）</li>
+     * </ol>
+     */
+    static int isFunctionCallAt(String text, int nameStart, int nameEnd) {
+        int n = text.length();
+        if (nameEnd < n) {
+            char next = text.charAt(nameEnd);
+            if (isIdentifierPart(next) || next == '`') {
+                return -1;
+            }
+        }
+        boolean parenthesesRequired =
+                REQUIRES_PARENTHESES.contains(text.substring(nameStart, nameEnd).toLowerCase(Locale.ROOT));
+
+        int i = skipWhitespace(text, nameEnd);
+        if (i < n && text.charAt(i) == '(') {
+            int j = skipWhitespace(text, i + 1);
+            while (j < n && text.charAt(j) >= '0' && text.charAt(j) <= '9') {
+                j++; // 精度指定（NOW(6) など）。桁数に上限を設けない
+            }
+            j = skipWhitespace(text, j);
+            if (j < n && text.charAt(j) == ')') {
+                return j + 1;
+            }
+            // 括弧はあるが「空白と数字だけ」ではない＝この名前の呼び出しとしては不正な形。
+            // 括弧必須の名前なら呼び出しではなく、裸で成立する名前なら名前だけで呼び出しとみなす。
+            return parenthesesRequired ? -1 : nameEnd;
+        }
+        return parenthesesRequired ? -1 : nameEnd;
+    }
+
+    /** 空白を任意長読み飛ばす（前方向のみ・線形）。コメントは既に空白へ潰されている。 */
+    private static int skipWhitespace(String text, int from) {
+        int i = from;
+        while (i < text.length() && Character.isWhitespace(text.charAt(i))) {
+            i++;
+        }
+        return i;
     }
 
     /**
@@ -286,6 +445,42 @@ class FlywayMigrationTimeFunctionGuardTest {
                 .isEmpty();
     }
 
+    /**
+     * 走査時間の上限（ミリ秒）。{@link RawSqlTimeColumnGuardTest} が同じ目的で使う 30 秒に揃えてある。
+     *
+     * <p><b>なぜ 1 秒ではなく 30 秒なのか</b>: この上限が捕まえたいのは<b>破滅的バックトラック</b>であり、
+     * それは「数倍遅い」ではなく「分〜時間」のオーダーで現れる（本リポジトリの実例は 55 分）。
+     * 一方で本プロジェクトの開発機・CI は複数のビルドが同時に走るため、秒オーダーの絶対値を閾値にすると
+     * <b>検出力を増やさないまま、機械の混み具合で赤くなる不安定なテスト</b>になる。
+     * 30 秒なら混雑の影響では落ちず、バックトラック級の劣化は確実に捕まえられる。</p>
+     *
+     * <p>実測値は常に標準出力へ出しているので、退行の傾向は数値で追える
+     * （是正時点の実測: 1156 ファイルで約 6 秒。行番号計算が O(ファイル長 × 一致件数) だった頃は
+     * 約 8.8 秒であり、{@link LineCounter} の導入で短縮した）。</p>
+     */
+    private static final long SCAN_TIMEOUT_MILLIS = 30_000L;
+
+    @Test
+    @DisplayName("走査が現実的な時間で終わる（番人自身がタイムアウトしないこと）")
+    void scanFinishesQuickly() {
+        Path root = migrationRoot();
+        int fileCount = sqlFiles(root).size();
+        long startNanos = System.nanoTime();
+        List<Violation> all = collectViolations(root);
+        long millis = (System.nanoTime() - startNanos) / 1_000_000L;
+
+        assertThat(all).as("走査対象が 0 件（走査パスの前提が壊れた可能性）").isNotEmpty();
+        assertThat(millis)
+                .as("""
+                    migration 全件（%d ファイル）の走査に %d ms かかった。
+                    検出パターンに可変長の量指定子を持ち込むと破滅的バックトラックで桁違いに遅くなる
+                    （本リポジトリには 55 分ハングの実例がある）。可変長は正規表現ではなく線形処理で
+                    扱うこと（SESSION_TZ_NOW_NAME の Javadoc）。""", fileCount, millis)
+                .isLessThan(SCAN_TIMEOUT_MILLIS);
+        System.out.printf("[migration番人] 走査 %d ファイル／検出 %d 件／所要 %d ms%n",
+                fileCount, all.size(), millis);
+    }
+
     @Test
     @DisplayName("凍結件数が記録済みスナップショットと一致している（増減とも検知）")
     void freezeCountsMatchRecordedSnapshot() throws IOException {
@@ -368,16 +563,6 @@ class FlywayMigrationTimeFunctionGuardTest {
 
     private static String relativeName(Path root, Path file) {
         return root.relativize(file).toString().replace('\\', '/');
-    }
-
-    private static int lineNumber(String raw, int offset) {
-        int line = 1;
-        for (int i = 0; i < offset && i < raw.length(); i++) {
-            if (raw.charAt(i) == '\n') {
-                line++;
-            }
-        }
-        return line;
     }
 
     private static List<Path> sqlFiles(Path root) {

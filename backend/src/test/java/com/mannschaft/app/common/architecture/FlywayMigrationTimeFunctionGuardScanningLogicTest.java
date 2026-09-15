@@ -117,6 +117,44 @@ class FlywayMigrationTimeFunctionGuardScanningLogicTest {
             assertThat(scan("SELECT CURRENT_TIMESTAMP, CURRENT_TIME, LOCALTIMESTAMP, LOCALTIME;"))
                     .hasSize(4);
         }
+
+        // ────────────────────────────────────────────────────────────
+        // 名前と括弧の間に挟まりうるもの（Codex 検分の指摘 #1・2巡目の偽陰性）
+        //
+        // 初版・2版とも空白を \s{0,4} で吸っており、5文字以上は素通りしていた。
+        // 可変長部分を正規表現から追い出したので、いまは任意長を受理する。
+        // ────────────────────────────────────────────────────────────
+
+        @Test
+        @DisplayName("名前と括弧の間の空白が5文字以上でも検出する")
+        void longWhitespaceBeforeParenthesis() {
+            assertThat(scan("DELETE FROM t WHERE d < CURDATE     ();")).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("名前と括弧の間にコメントが挟まっていても検出する（潰すと長い空白になる）")
+        void commentBetweenNameAndParenthesis() {
+            assertThat(scan("DELETE FROM t WHERE d < CURDATE /* なぜか注釈 */ ();")).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("名前と括弧の間に改行が挟まっていても検出する")
+        void newlineBeforeParenthesis() {
+            assertThat(scan("UPDATE t SET a_at = NOW\n      (\n        6\n      );")).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("列 DEFAULT の判定も空白が5文字以上で壊れない（逆向きの誤検出を作らない）")
+        void columnDefaultWithLongWhitespaceStillExcluded() {
+            assertThat(scan("CREATE TABLE t (a_at DATETIME NOT NULL DEFAULT       NOW());")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("ON UPDATE の判定も空白が5文字以上で壊れない")
+        void onUpdateWithLongWhitespaceStillExcluded() {
+            assertThat(scan("CREATE TABLE t (a_at DATETIME(6) NOT NULL "
+                    + "DEFAULT CURRENT_TIMESTAMP(6) ON     UPDATE      CURRENT_TIMESTAMP(6));")).isEmpty();
+        }
     }
 
     @Nested
@@ -211,6 +249,39 @@ class FlywayMigrationTimeFunctionGuardScanningLogicTest {
         @DisplayName("正解である UTC_DATE() / UTC_TIME() は違反ではない")
         void utcDateAndUtcTimeAreCorrect() {
             assertThat(scan("UPDATE t SET d = UTC_DATE(), ti = UTC_TIME();")).isEmpty();
+        }
+
+        // ────────────────────────────────────────────────────────────
+        // 先頭側の境界（Codex 検分の指摘 #2・2巡目の偽陽性）
+        //
+        // MySQL の引用なし識別子は 0-9 a-z A-Z $ _ と U+0080 以上を許す。
+        // 正規表現の \b は $ を単語構成文字と見なさないため、先頭境界を \b に
+        // 委ねると audit$current_date の途中に一致してしまう。
+        // 引用識別子（バッククォート）と修飾名（ドット）も同様に関数ではない。
+        // ────────────────────────────────────────────────────────────
+
+        @Test
+        @DisplayName("$ を含む識別子の途中に一致しない（\\b では守れない）")
+        void identifierContainingDollarSign() {
+            assertThat(scan("UPDATE t SET audit$current_date = 1, x$now = 2;")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("バッククォートで囲んだ引用識別子は関数ではない")
+        void quotedIdentifier() {
+            assertThat(scan("UPDATE t SET `current_date` = 1, `now` = 2;")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("テーブル修飾されたカラム名は関数ではない")
+        void qualifiedColumnName() {
+            assertThat(scan("UPDATE t SET x = 1 WHERE t.current_date > 0 AND t.now < 1;")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("括弧が必須の名前は、裸で書かれていれば関数ではない（単なる識別子）")
+        void bareNameOfParenthesesRequiredFunction() {
+            assertThat(scan("UPDATE t SET x = 1 WHERE now > 0 AND curdate < 1;")).isEmpty();
         }
     }
 
