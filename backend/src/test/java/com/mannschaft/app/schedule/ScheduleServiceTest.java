@@ -1269,7 +1269,8 @@ class ScheduleServiceTest {
             // then
             ActivityEvent event = captureLastActivityEvent();
             assertThat(event.getDetail()).contains("\"affectedCount\":3");
-            verify(scheduleRepository, times(1)).save(child);
+            verify(scheduleRepository, times(1)).save(org.mockito.ArgumentMatchers.argThat(saved ->
+                    saved.getId().equals(SCHEDULE_ID) && "更新後(この回以降)".equals(saved.getTitle())));
         }
 
         @Test
