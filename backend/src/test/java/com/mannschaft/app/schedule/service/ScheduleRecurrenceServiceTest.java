@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -231,6 +232,48 @@ class ScheduleRecurrenceServiceTest {
         // then
         assertThat(affectedCount).isOne();
         assertThat(applied).hasValue(1);
+    }
+
+    @Test
+    @DisplayName("THIS_ONLYの子は更新後の値と例外フラグを同時に返す")
+    void thisOnly_returnsUpdatedExceptionChild() {
+        ScheduleEntity child = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false);
+
+        RecurringScheduleUpdateResult result = service.updateRecurringSchedule(child, null, "THIS_ONLY",
+                (target, ignored) -> target.toBuilder().title("updated").build());
+
+        assertThat(result.selectedSchedule().getTitle()).isEqualTo("updated");
+        assertThat(result.selectedSchedule().getIsException()).isTrue();
+        assertThat(result.affectedCount()).isOne();
+    }
+
+    @Test
+    @DisplayName("THIS_AND_FOLLOWINGは選択行の更新後Entityを返す")
+    void thisAndFollowing_returnsUpdatedSelectedSchedule() {
+        ScheduleEntity child = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false);
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L)).thenReturn(List.of(child));
+
+        RecurringScheduleUpdateResult result = service.updateRecurringSchedule(child, null, "THIS_AND_FOLLOWING",
+                (target, ignored) -> target.toBuilder().title("updated").build());
+
+        assertThat(result.selectedSchedule().getTitle()).isEqualTo("updated");
+    }
+
+    @Test
+    @DisplayName("ALLは選択例外を更新せず元のEntityを返す")
+    void all_doesNotApplySelectedException() {
+        ScheduleEntity selectedException = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), true);
+        ScheduleEntity parent = ScheduleEntity.builder().id(1L).title("parent")
+                .startAt(LocalDateTime.of(2026, 9, 3, 10, 0)).build();
+        when(scheduleRepository.findById(1L)).thenReturn(java.util.Optional.of(parent));
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L)).thenReturn(List.of(selectedException));
+        List<Long> appliedIds = new ArrayList<>();
+
+        RecurringScheduleUpdateResult result = service.updateRecurringSchedule(selectedException, null, "ALL",
+                (target, ignored) -> { appliedIds.add(target.getId()); return target.toBuilder().title("updated").build(); });
+
+        assertThat(appliedIds).containsExactly(1L);
+        assertThat(result.selectedSchedule()).isSameAs(selectedException);
     }
 
     private ScheduleEntity child(Long id, LocalDateTime startAt, boolean exception) {

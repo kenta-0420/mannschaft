@@ -1269,6 +1269,7 @@ class ScheduleServiceTest {
             // then
             ActivityEvent event = captureLastActivityEvent();
             assertThat(event.getDetail()).contains("\"affectedCount\":3");
+            verify(scheduleRepository, times(1)).save(child);
         }
 
         @Test
