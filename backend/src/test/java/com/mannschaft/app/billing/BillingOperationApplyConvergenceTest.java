@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -50,6 +51,13 @@ import static org.mockito.Mockito.verify;
  * <p>加えて、<b>結末が違うとき</b>（{@code FAILED} 確定済み）は黙って成功にせず例外のままである
  * ことを陰性対照として置く。ここを一緒くたに握り潰すと、失敗した operation が成功として
  * 利用者へ返るという逆向きの事故になる。</p>
+ *
+ * <h2>順序（Codex 再検分 P1）</h2>
+ * <p>結末の確認は {@code reflection} より<b>前</b >でなければならない。後ろに置くと、収束する
+ * 場合でも反映だけは実行されて commit され、その後に成立した新しい利用者操作を古い反映が
+ * 上書きする。ここでは<b>反映がそもそも実行されないこと</b>を実行フラグで直接測る
+ * （「結果的に呼ばれない」ではなく「呼ばれない」を固定する）。上書きが起きないという
+ * <b>成果物</b>そのものは実 DB の {@code BillingContractOperationDelayedApplyIT} が測る。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -61,6 +69,8 @@ class BillingOperationApplyConvergenceTest {
     private static final UUID CONTRACT_ID =
             UUID.fromString("0199abaa-aaaa-aaaa-8aaa-aaaaaaaaaaaa");
     private static final String REFLECTION_RESULT = "applied-view";
+    /** 収束時に返す「いま DB にある姿」。反映の戻り値と別物にして取り違えを検出する。 */
+    private static final String CONVERGED_READ_RESULT = "current-truth-view";
 
     @Mock private BillingContractOperationRepository operationRepository;
     @Mock private ActiveBillingContractOperationPointerRepository pointerRepository;
@@ -86,11 +96,42 @@ class BillingOperationApplyConvergenceTest {
     void convergesWhenRecoveryWonFirst() {
         givenLockedOperation(BillingOperationStatus.APPLIED);
 
-        String result = sagaService.applyAndFinalize(OPERATION_ID, () -> REFLECTION_RESULT);
+        String result = sagaService.applyAndFinalize(
+                OPERATION_ID, () -> REFLECTION_RESULT, () -> CONVERGED_READ_RESULT);
 
         assertThat(result)
-                .as("Stripe も DB も解約済みなのだから、利用者には成功を返さねばならない")
-                .isEqualTo(REFLECTION_RESULT);
+                .as("収束時に返すのは『自分が書いたはずの姿』ではなく、いま DB にある真実である")
+                .isEqualTo(CONVERGED_READ_RESULT);
+    }
+
+    @Test
+    @DisplayName("P1: 収束する場合は反映処理をそもそも実行しない"
+            + "（後から成立した利用者操作を古い反映で上書きしない・順序の要）")
+    void doesNotRunReflectionWhenConverging() {
+        givenLockedOperation(BillingOperationStatus.APPLIED);
+        AtomicBoolean reflectionRan = new AtomicBoolean(false);
+
+        sagaService.applyAndFinalize(OPERATION_ID,
+                () -> {
+                    reflectionRan.set(true);
+                    return REFLECTION_RESULT;
+                },
+                () -> CONVERGED_READ_RESULT);
+
+        assertThat(reflectionRan)
+                .as("結末の確認を反映の後ろに置くと、収束時も反映だけ実行され撤回が消える")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("P1: 収束時の読み取りを与えずに収束状況へ入ったら、黙って成功にせず例外にする"
+            + "（2引数版は収束前の挙動のまま）")
+    void twoArgVariantStillFailsWhenConverged() {
+        givenLockedOperation(BillingOperationStatus.APPLIED);
+
+        assertThatThrownBy(() -> sagaService.applyAndFinalize(OPERATION_ID, () -> REFLECTION_RESULT))
+                .as("何を返すべきか宣言していない呼び出し元が、成功を騙ってはならない")
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -98,7 +139,8 @@ class BillingOperationApplyConvergenceTest {
     void releasesPointerWhenConverging() {
         givenLockedOperation(BillingOperationStatus.APPLIED);
 
-        sagaService.applyAndFinalize(OPERATION_ID, () -> REFLECTION_RESULT);
+        sagaService.applyAndFinalize(
+                OPERATION_ID, () -> REFLECTION_RESULT, () -> CONVERGED_READ_RESULT);
 
         verify(pointerRepository).hardDeleteByContractIdAndOperationId(CONTRACT_ID, OPERATION_ID);
     }
@@ -108,7 +150,8 @@ class BillingOperationApplyConvergenceTest {
     void doesNotAttemptSelfTransitionWhenConverging() {
         givenLockedOperation(BillingOperationStatus.APPLIED);
 
-        sagaService.applyAndFinalize(OPERATION_ID, () -> REFLECTION_RESULT);
+        sagaService.applyAndFinalize(
+                OPERATION_ID, () -> REFLECTION_RESULT, () -> CONVERGED_READ_RESULT);
 
         verify(operationRepository, never()).saveAndFlush(any());
     }
@@ -123,8 +166,16 @@ class BillingOperationApplyConvergenceTest {
                 .willReturn(Optional.of(operation));
         given(operationRepository.saveAndFlush(any())).willAnswer(i -> i.getArgument(0));
 
-        String result = sagaService.applyAndFinalize(OPERATION_ID, () -> REFLECTION_RESULT);
+        AtomicBoolean reflectionRan = new AtomicBoolean(false);
 
+        String result = sagaService.applyAndFinalize(OPERATION_ID,
+                () -> {
+                    reflectionRan.set(true);
+                    return REFLECTION_RESULT;
+                },
+                () -> CONVERGED_READ_RESULT);
+
+        assertThat(reflectionRan).as("自分が先着したのだから反映は実行される").isTrue();
         assertThat(result).isEqualTo(REFLECTION_RESULT);
         assertThat(operation.getStatus()).isEqualTo(BillingOperationStatus.APPLIED);
         verify(operationRepository).saveAndFlush(operation);

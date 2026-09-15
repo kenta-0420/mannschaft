@@ -843,8 +843,10 @@ public class BillingContractService {
                 contract.getContractedAt(), periodEndLdt, null,
                 new ArrayList<>(stillActiveKeys), List.of());
         // APPLIED へ確定させ、同一トランザクションで pointer を解放する（AC-7）。
+        // 第2引数の供給子は DB を書き換えない（組み立て済みの結果を返すだけ）ため、
+        // 収束時もそのまま返してよい（再検分 P1 の「反映の再適用」には当たらない）。
         return billingContractOperationSagaService.applyAndFinalize(
-                reservation.operationId(), () -> result);
+                reservation.operationId(), () -> result, () -> result);
     }
 
     /** 契約が既に ACTIVE のときの結果組み立て（冪等 no-op 用）。 */

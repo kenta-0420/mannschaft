@@ -230,18 +230,76 @@ public class BillingContractOperationSagaService {
      * 別の結末（{@code FAILED}/{@code CANCELLED}）や検疫中は従来どおり例外にする——
      * 結末が違うものを黙って成功にしてはならない。</p>
      *
+     * <p><b>反映より前に結末を確かめる（Codex 再検分 P1）</b>: 判定を {@code reflection} の
+     * 後ろに置くと、収束する場合でも<b>反映だけは実行して commit してしまう</b>。その隙に
+     * 後続の利用者操作（回収済み {@code CANCEL} の後の {@code RESUME} 等）が完了していると、
+     * 遅れて届いた古い反映が<b>後から再適用されて新しい操作を上書きする</b>——
+     * 利用者から見れば「撤回したのに解約されたまま」になる。
+     * 以前は自己遷移エラーがこの再適用を偶然巻き戻していたため表面化しなかったが、
+     * 収束させた時点でその保険は外れる。したがって
+     * <b>operation 行を {@code SELECT ... FOR UPDATE} で掴んで結末を確かめてから</b>
+     * 反映を実行する（正本 D1 の「単一の耐久 lease と tx2 の原子性」）。
+     * ロックは tx2 の間ずっと保持されるため、回収側の CAS は待たされ、
+     * どちらが先着しても二重適用は起きない。</p>
+     *
      * @param operationId 対象 operation
      * @param reflection  DB 反映処理（cancelled_at / valid_until の更新等）
      * @param <T>         反映処理の戻り値型
      * @return 反映処理の戻り値
+     * @throws IllegalStateException 既に別経路が同じ結末へ確定させており、かつ収束時に返す
+     *                               読み取りが与えられていないとき（2引数版）。
+     *                               収束させたい呼び出し元は
+     *                               {@link #applyAndFinalize(UUID, Supplier, Supplier)} を使う
      */
     public <T> T applyAndFinalize(UUID operationId, Supplier<T> reflection) {
+        return applyAndFinalize(operationId, reflection, null);
+    }
+
+    /**
+     * tx2（収束時の読み取り付き）。
+     *
+     * <p>停止窓の回収が先着して既に {@code APPLIED} を確定させていた場合、<b>反映は実行せず</b>
+     * {@code convergedRead} が返す「現在の DB の姿」を呼出元へ返す。反映を再実行しないのが要である
+     * ——再実行すると、その後に成立した新しい利用者操作を古い反映が上書きする。</p>
+     *
+     * <p>{@code convergedRead} には<b>読み取りだけ</b>を渡すこと（{@code cancelled_at} 等を
+     * 書き換えてはならない）。収束時に返すべきは「自分が書いたはずの姿」ではなく
+     * <b>いま DB にある真実</b>である。</p>
+     *
+     * @param operationId   対象 operation
+     * @param reflection    DB 反映処理（自分が先着したときだけ実行される）
+     * @param convergedRead 既に同じ結末へ確定済みのときに返す読み取り（{@code null} なら例外）
+     * @param <T>           戻り値型
+     * @return 反映の戻り値、または収束時は {@code convergedRead} の戻り値
+     */
+    public <T> T applyAndFinalize(
+            UUID operationId, Supplier<T> reflection, Supplier<T> convergedRead) {
         Objects.requireNonNull(reflection, "reflection は必須である");
         try {
             return transactionTemplate.execute(tx -> {
+                // ★順序が要: 反映より前に行を掴んで結末を確かめる（P1 退行の根治）。
+                BillingContractOperationEntity locked = entityManager.find(
+                        BillingContractOperationEntity.class, operationId,
+                        LockModeType.PESSIMISTIC_WRITE);
+                if (locked != null && locked.getDeletedAt() == null
+                        && locked.getStatus() == BillingOperationStatus.APPLIED) {
+                    // 回収が先着して同じ結末を確定済み。反映は実行しない（再適用の禁止）。
+                    // pointer の解放だけ冪等に念押しする（物理 DELETE は 0 件でも害が無い）。
+                    pointerRepository.hardDeleteByContractIdAndOperationId(
+                            locked.getContractId(), operationId);
+                    entityManager.flush();
+                    if (convergedRead == null) {
+                        throw new IllegalStateException(
+                                "既に APPLIED へ確定済みだが、収束時に返す読み取りが無い: "
+                                        + operationId);
+                    }
+                    return convergedRead.get();
+                }
                 T applied = reflection.get();
                 // 反映と同一トランザクションで terminal 化＋pointer 解放（AC-7 / AC-18）。
-                finalizeAppliedInCurrentTransaction(operationId);
+                // 結末が違う（FAILED/CANCELLED/検疫）場合はここで従来どおり例外になる。
+                transitionInCurrentTransaction(
+                        operationId, BillingOperationStatus.APPLIED, null, true);
                 return applied;
             });
         } catch (RuntimeException e) {
@@ -471,32 +529,6 @@ public class BillingContractOperationSagaService {
                     operation.getContractId(), operationId);
             entityManager.flush();
         }
-    }
-
-    /**
-     * tx2 の終端化（AC-7/AC-18）。<b>先着した回収と同じ結末なら成功へ収束させる</b>（P1-2）。
-     *
-     * <p>operation 行を {@code SELECT ... FOR UPDATE} で取ってから判定するのは、
-     * 「読んでから書く」の間に回収の CAS が割り込むと収束の判定自体が競合するためである
-     * （回収側は status CAS の更新件数を勝者の根拠にしており・AC-82、こちらは行ロックで
-     * 突き合わせる）。既に {@code APPLIED} なら pointer の解放だけを冪等に念押しする
-     * （物理 DELETE は 0 件でも害が無い）。</p>
-     *
-     * @param operationId 対象 operation
-     */
-    private void finalizeAppliedInCurrentTransaction(UUID operationId) {
-        BillingContractOperationEntity locked = entityManager.find(
-                BillingContractOperationEntity.class, operationId, LockModeType.PESSIMISTIC_WRITE);
-        if (locked != null && locked.getDeletedAt() == null
-                && locked.getStatus() == BillingOperationStatus.APPLIED) {
-            // 停止窓の回収が先着して同じ結末を確定させている。状態機械の自己遷移禁止は
-            // 保ったまま、利用者へは成功を返す（解約は実際に成立している）。
-            pointerRepository.hardDeleteByContractIdAndOperationId(
-                    locked.getContractId(), operationId);
-            entityManager.flush();
-            return;
-        }
-        transitionInCurrentTransaction(operationId, BillingOperationStatus.APPLIED, null, true);
     }
 
     /** tx2 失敗後の検疫記録（AC-19）。補償自体の失敗で元の例外を覆い隠さない。 */

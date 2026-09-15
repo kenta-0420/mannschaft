@@ -130,8 +130,11 @@ public class BillingContractCancelService {
 
         // 書き込むのは【変更後】に Stripe が返した期末（AC-34 の「Stripe を権威とする」の貫徹）。
         LocalDateTime endAt = authoritativeEndAt(appliedPeriodEnd, gateEndAt);
+        // 収束時（回収が先着して APPLIED 済み）は反映を再実行せず、いま DB にある姿を読んで返す。
+        // 再実行すると、その後に成立した撤回などの新しい操作を古い反映が上書きする（再検分 P1）。
         return sagaService.applyAndFinalize(reservation.operationId(),
-                () -> applyCancel(contractId, endAt));
+                () -> applyCancel(contractId, endAt),
+                () -> viewOf(contractId));
     }
 
     // ================================================================
@@ -169,8 +172,10 @@ public class BillingContractCancelService {
                         contract.getPspSubscriptionRef(), reservation.operationId()));
 
         LocalDateTime endAt = authoritativeEndAt(appliedPeriodEnd, gateEndAt);
+        // 収束時は反映を再実行せず、いま DB にある姿を読んで返す（再検分 P1）。
         return sagaService.applyAndFinalize(reservation.operationId(),
-                () -> applyResume(contractId, endAt));
+                () -> applyResume(contractId, endAt),
+                () -> viewOf(contractId));
     }
 
     // ================================================================
