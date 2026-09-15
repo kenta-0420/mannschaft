@@ -78,8 +78,10 @@ export function useScheduleCrud() {
     scopeId: string,
     scheduleId: number,
     body: Record<string, unknown>,
+    updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING',
   ) {
-    return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/schedules/${scheduleId}`, {
+    const query = updateScope ? `?updateScope=${updateScope}` : ''
+    return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/schedules/${scheduleId}${query}`, {
       method: 'PATCH',
       body,
     })

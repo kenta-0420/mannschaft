@@ -91,6 +91,8 @@ const isEdit = computed(() => !!props.scheduleId)
 const targetMode = ref<ScheduleTargetMode>('ALL_MEMBERS')
 const targetUserIds = ref<number[]>([])
 const targetValidationError = ref<string | null>(null)
+const loadedRecurringEvent = ref(false)
+const recurrenceUpdateScopeDialogVisible = ref(false)
 
 // 15分刻みの時刻オプション生成（00:00〜23:45）
 const timeOptions = Array.from({ length: 96 }, (_, i) => {
@@ -263,6 +265,7 @@ watch(
           // 個人予定: status.recurrenceRule から繰り返し設定をフォームに復元する
           const status = (data.status as Record<string, unknown>) ?? {}
           const recurrenceRule = status.recurrenceRule as Record<string, unknown> | null
+          loadedRecurringEvent.value = recurrenceRule != null
           if (recurrenceRule && typeof recurrenceRule === 'object') {
             form.value.recurrence = true
             form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
@@ -306,6 +309,8 @@ watch(
           form.value.reminders = reminders.map(reminderResponseToFormEntry)
           // 共有予定: scheduledTasks の PENDING タスクを scheduledSurvey / scheduledAttendance に変換する
           const scheduledTasks = (data.scheduledTasks as Array<Record<string, unknown>> | null) ?? []
+          const recurrence = (data.recurrence as Record<string, unknown>) ?? {}
+          loadedRecurringEvent.value = recurrence.recurrenceRule != null
           for (const task of scheduledTasks) {
             if (task.status !== 'PENDING') continue
             if (task.taskType === 'SURVEY') {
@@ -327,6 +332,7 @@ watch(
         notification.error(t('schedule.error_load_event'))
       }
     } else if (visible && !scheduleId) {
+      loadedRecurringEvent.value = false
       resetForm()
       applyInitialDateTime()
     }
@@ -501,7 +507,7 @@ function validateScheduledInputs(): string | null {
   return null
 }
 
-async function submit() {
+async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
   if (!form.value.title.trim()) {
     fieldErrors.value = { title: t('schedule.error_title_required') }
     return
@@ -513,6 +519,10 @@ async function submit() {
   const scheduledError = validateScheduledInputs()
   if (scheduledError) {
     notification.error(scheduledError)
+    return
+  }
+  if (isEdit.value && loadedRecurringEvent.value && !updateScope) {
+    recurrenceUpdateScopeDialogVisible.value = true
     return
   }
   submitting.value = true
@@ -635,15 +645,16 @@ async function submit() {
   }
 
   try {
-    if (savedScope.isPersonal) {
-      if (isEdit.value && props.scheduleId) {
-        await scheduleApi.updatePersonalSchedule(props.scheduleId, body)
+      if (savedScope.isPersonal) {
+        if (isEdit.value && props.scheduleId) {
+          if (updateScope) body.updateScope = updateScope
+          await scheduleApi.updatePersonalSchedule(props.scheduleId, body)
       } else {
         await scheduleApi.createPersonalSchedule(body)
       }
     } else {
-      if (isEdit.value && props.scheduleId) {
-        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body)
+        if (isEdit.value && props.scheduleId) {
+          await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body, updateScope)
       } else {
         await scheduleApi.createSchedule(savedScope.scopeType, savedScope.scopeId, body)
       }
@@ -846,8 +857,36 @@ function close() {
         :label="isEdit ? '更新' : '作成'"
         icon="pi pi-check"
         :loading="submitting"
+        data-testid="schedule-submit"
         @click="submit"
       />
     </template>
+  </Dialog>
+  <Dialog
+    v-if="recurrenceUpdateScopeDialogVisible"
+    v-model:visible="recurrenceUpdateScopeDialogVisible"
+    modal
+    :header="$t('schedule.recurrence.update_scope.title')"
+    data-testid="recurrence-update-scope-dialog"
+  >
+    <p class="mb-4 text-sm text-surface-600">{{ $t('schedule.recurrence.update_scope.description') }}</p>
+    <div class="flex flex-col gap-2">
+      <Button
+        :label="$t('schedule.recurrence.update_scope.this_only')"
+        data-testid="recurrence-update-this"
+        @click="submit('THIS_ONLY')"
+      />
+      <Button
+        :label="$t('schedule.recurrence.update_scope.this_and_following')"
+        data-testid="recurrence-update-following"
+        @click="submit('THIS_AND_FOLLOWING')"
+      />
+      <Button
+        :label="$t('common.cancel')"
+        text
+        data-testid="recurrence-update-cancel"
+        @click="recurrenceUpdateScopeDialogVisible = false"
+      />
+    </div>
   </Dialog>
 </template>

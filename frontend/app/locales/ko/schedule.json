@@ -121,7 +121,8 @@
       "end_never": "지정 안 함",
       "end_date": "날짜",
       "end_count": "횟수",
-      "end_count_suffix": "회"
+      "end_count_suffix": "회",
+      "update_scope": { "title": "반복 일정 수정", "description": "수정할 일정 범위를 선택하세요.", "this_only": "이 일정만", "this_and_following": "이 일정 이후" }
     },
     "event_add": "일정 추가",
     "calendar_guide": {
