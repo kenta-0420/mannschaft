@@ -269,6 +269,7 @@ describe('ScheduleEventForm: recurrence update scope', () => {
 
     expect(scheduleApiMock.updateSchedule).toHaveBeenCalledTimes(1)
     expect(scheduleApiMock.updateSchedule).toHaveBeenCalledWith('team', 't1', 42, expect.anything(), updateScope)
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
   })
 
   it('does not send an update when the scope dialog is cancelled', async () => {
@@ -277,6 +278,19 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     await wrapper.get('[data-testid="recurrence-update-cancel"]').trigger('click')
 
     expect(scheduleApiMock.updateSchedule).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
+  })
+
+  it('does not retain the scope dialog when the form is reopened', async () => {
+    const wrapper = await mountRecurringEdit()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
+
+    await wrapper.setProps({ visible: false })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
   })
 
   it('sends the selected scope in the personal schedule update DTO', async () => {

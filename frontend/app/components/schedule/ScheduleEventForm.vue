@@ -61,6 +61,7 @@ watch(
   (v) => {
     if (v) {
       selectedScopeKey.value = currentScopeKey()
+      recurrenceUpdateScopeDialogVisible.value = false
     }
   },
 )
@@ -645,16 +646,16 @@ async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
   }
 
   try {
-      if (savedScope.isPersonal) {
-        if (isEdit.value && props.scheduleId) {
-          if (updateScope) body.updateScope = updateScope
-          await scheduleApi.updatePersonalSchedule(props.scheduleId, body)
+    if (savedScope.isPersonal) {
+      if (isEdit.value && props.scheduleId) {
+        if (updateScope) body.updateScope = updateScope
+        await scheduleApi.updatePersonalSchedule(props.scheduleId, body)
       } else {
         await scheduleApi.createPersonalSchedule(body)
       }
     } else {
-        if (isEdit.value && props.scheduleId) {
-          await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body, updateScope)
+      if (isEdit.value && props.scheduleId) {
+        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body, updateScope)
       } else {
         await scheduleApi.createSchedule(savedScope.scopeType, savedScope.scopeId, body)
       }
@@ -729,6 +730,7 @@ function resetForm() {
 }
 
 function close() {
+  recurrenceUpdateScopeDialogVisible.value = false
   emit('update:visible', false)
 }
 </script>
