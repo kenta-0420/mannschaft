@@ -118,6 +118,56 @@ interface PersonalScheduleRaw {
 
 const selectedEvent = ref<EventDetail | null>(null)
 
+/**
+ * 統合カレンダーは複数チーム・組織の予定を同じ画面へ並べるため、編集可否を
+ * 「現在選択中の予定のスコープ」で解決する。個人予定は本人の予定詳細 API からのみ
+ * 開かれるため編集可、共有予定は権限取得成功後の ADMIN / DEPUTY_ADMIN のみ編集可とする。
+ */
+const selectedTeamScopeId = computed(() =>
+  !selectedEventIsPersonal.value && selectedEvent.value?.scopeType?.toUpperCase() === 'TEAM'
+    ? (selectedEvent.value.scopeId ?? '')
+    : '',
+)
+const selectedOrganizationScopeId = computed(() =>
+  !selectedEventIsPersonal.value && selectedEvent.value?.scopeType?.toUpperCase() === 'ORGANIZATION'
+    ? (selectedEvent.value.scopeId ?? '')
+    : '',
+)
+const selectedSharedScopeKey = computed(() => {
+  if (selectedTeamScopeId.value) return `TEAM:${selectedTeamScopeId.value}`
+  if (selectedOrganizationScopeId.value) return `ORGANIZATION:${selectedOrganizationScopeId.value}`
+  return null
+})
+const { isAdminOrDeputy: isSelectedTeamAdminOrDeputy, loadPermissions: loadSelectedTeamPermissions } =
+  useRoleAccess('team', selectedTeamScopeId)
+const {
+  isAdminOrDeputy: isSelectedOrganizationAdminOrDeputy,
+  loadPermissions: loadSelectedOrganizationPermissions,
+} = useRoleAccess('organization', selectedOrganizationScopeId)
+const permissionVerifiedScopeKey = ref<string | null>(null)
+
+watch(selectedSharedScopeKey, async (scopeKey) => {
+  permissionVerifiedScopeKey.value = null
+  if (!scopeKey) return
+
+  const result = scopeKey.startsWith('TEAM:')
+    ? await loadSelectedTeamPermissions()
+    : await loadSelectedOrganizationPermissions()
+  // 予定を素早く切り替えた場合、先に終わった古いスコープの結果を採用しない。
+  if (result.ok && selectedSharedScopeKey.value === scopeKey) {
+    permissionVerifiedScopeKey.value = scopeKey
+  }
+})
+
+const canEditSelectedEvent = computed(() => {
+  if (!selectedEvent.value) return false
+  if (selectedEventIsPersonal.value) return true
+  if (permissionVerifiedScopeKey.value !== selectedSharedScopeKey.value) return false
+  if (selectedTeamScopeId.value) return isSelectedTeamAdminOrDeputy.value
+  if (selectedOrganizationScopeId.value) return isSelectedOrganizationAdminOrDeputy.value
+  return false
+})
+
 const ganttTodos = ref<GanttTodo[]>([])
 const ganttFromDate = ref('')
 const ganttToDate = ref('')
@@ -139,6 +189,8 @@ const {
 // W3-b の担当で本ファイルではまだ未着手・範囲外）。initStorage() が localStorage に永続化済みの
 // 選択（ユーザーが明示的に選んだ view）を復元した場合はそれを尊重し、上書きしない。
 const MOBILE_MEDIA_QUERY = '(max-width: 767px)'
+// Dialog は body へ Teleport されるため、親要素の `md:hidden` だけでは desktop 表示を防げない。
+const isMobileViewport = useMediaQuery(MOBILE_MEDIA_QUERY)
 
 /** モバイルのリストビュー用: 表示中の月のイベントを実際の時系列（瞬間）昇順に並べる。
  * ISO 文字列のまま localeCompare すると、時差の異なる予定（例: +09:00 と Z）が
@@ -805,6 +857,51 @@ onMounted(async () => {
             : onEventClick(ev.id, ev.isPersonal)"
           @responded="refresh"
         />
+
+        <!-- モバイルではサイドパネルが非表示になるため、同じ詳細を Dialog で提供する。 -->
+        <Dialog
+          v-if="isMobileViewport && selectedEvent"
+          v-model:visible="showEventPanel"
+          modal
+          :header="selectedEvent.title"
+          class="w-[calc(100vw-1rem)] max-w-lg"
+        >
+          <EventDetailPanel
+            :event="{
+              id: selectedEvent.id,
+              scheduleId: selectedEvent.scheduleId ?? null,
+              title: selectedEvent.title,
+              description: selectedEvent.description,
+              location: selectedEvent.location,
+              startAt: selectedEvent.startAt,
+              endAt: selectedEvent.endAt,
+              allDay: selectedEvent.allDay,
+              status: selectedEvent.status ?? 'PUBLISHED',
+              categoryName: selectedEvent.categoryName ?? null,
+              categoryColor: selectedEvent.categoryColor ?? null,
+              createdBy: selectedEvent.createdBy ?? { displayName: '' },
+              attendanceRequired: selectedEvent.attendanceRequired ?? false,
+              myAttendance: selectedEvent.myAttendance ?? null,
+              attendanceStats: selectedEvent.attendanceStats ?? null,
+              targetMode: selectedEvent.targetMode,
+              targetCount: selectedEvent.targetCount,
+              targets: selectedEvent.targets,
+            }"
+            :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
+            :scope-id="selectedEvent.scopeId ?? ''"
+            :can-edit="canEditSelectedEvent"
+            :skip-delegations="selectedEventIsPersonal"
+            :scope-name="selectedEvent.scopeName ?? null"
+            :scope-icon-url="selectedEvent.scopeIconUrl ?? null"
+            :show-audience="!selectedEventIsPersonal"
+            :highlight-comment-id="linkedCommentId"
+            class="[&_.pi-pencil]:text-base [&_button:has(.pi-pencil)]:min-h-11 [&_button:has(.pi-pencil)]:min-w-11"
+            @edit="onEditEvent"
+            @delete="onDeleteEvent"
+            @responded="refresh"
+            @comment-highlighted="clearLinkedQuery"
+          />
+        </Dialog>
       </div>
 
       <!-- ===== デスクトップ（768px以上）: 従来のカレンダー主体UI（不変） ===== -->
@@ -924,7 +1021,7 @@ onMounted(async () => {
               }"
               :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
               :scope-id="selectedEvent.scopeId ?? ''"
-              :can-edit="true"
+              :can-edit="canEditSelectedEvent"
               :skip-delegations="selectedEventIsPersonal"
               :scope-name="selectedEvent.scopeName ?? null"
               :scope-icon-url="selectedEvent.scopeIconUrl ?? null"

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { ref } from 'vue'
 
 /**
  * useRoleAccess ユニットテスト（team-breakdown follow-up①）
@@ -54,5 +55,45 @@ describe('useRoleAccess', () => {
   it('ROLE-004: DEPUTY_ADMIN は isAdmin=false（旧ガード isAdminPlus は DEPUTY を弾いていた）', async () => {
     const access = await loadWithRole('DEPUTY_ADMIN')
     expect(access.isAdmin.value).toBe(false)
+  })
+
+  it('ROLE-005: 別スコープの古いADMIN応答は現在のMEMBER権限を上書きしない', async () => {
+    const selectedScope = ref('old-team')
+    let resolveOld!: (value: { data: { roleName: string, permissions: string[] } }) => void
+    mockFetch.mockImplementation((path: string) =>
+      path.includes('/old-team/')
+        ? new Promise(resolve => { resolveOld = resolve })
+        : Promise.resolve({ data: { roleName: 'MEMBER', permissions: [] } }),
+    )
+
+    const access = useRoleAccess('team', selectedScope)
+    const oldRequest = access.loadPermissions()
+    selectedScope.value = 'new-team'
+    expect(await access.loadPermissions()).toEqual({ ok: true })
+    expect(access.isAdminOrDeputy.value).toBe(false)
+
+    resolveOld({ data: { roleName: 'ADMIN', permissions: [] } })
+    expect(await oldRequest).toEqual({ ok: false })
+    expect(access.isAdminOrDeputy.value).toBe(false)
+  })
+
+  it('ROLE-006: 別スコープの古い取得失敗は現在のADMIN権限を消さない', async () => {
+    const selectedScope = ref('old-team')
+    let rejectOld!: (reason: Error) => void
+    mockFetch.mockImplementation((path: string) =>
+      path.includes('/old-team/')
+        ? new Promise((_resolve, reject) => { rejectOld = reject })
+        : Promise.resolve({ data: { roleName: 'ADMIN', permissions: [] } }),
+    )
+
+    const access = useRoleAccess('team', selectedScope)
+    const oldRequest = access.loadPermissions()
+    selectedScope.value = 'new-team'
+    expect(await access.loadPermissions()).toEqual({ ok: true })
+    expect(access.isAdminOrDeputy.value).toBe(true)
+
+    rejectOld(new Error('old scope unavailable'))
+    expect(await oldRequest).toEqual({ ok: false })
+    expect(access.isAdminOrDeputy.value).toBe(true)
   })
 })

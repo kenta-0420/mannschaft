@@ -18,6 +18,13 @@
     "error_title_required": "タイトルは必須です",
     "success_create": "イベントを作成しました",
     "success_update": "イベントを更新しました",
+    "update_scope": {
+      "label": "更新する範囲",
+      "help": "繰り返し予定では、変更を反映する回を選べます。",
+      "this_only": "この回のみ",
+      "this_and_following": "この回以降",
+      "all": "すべての回"
+    },
     "success_create_personal": "予定を追加しました",
     "success_update_personal": "予定を更新しました",
     "error_load_event": "イベント情報の取得に失敗しました",
@@ -32,6 +39,7 @@
       "absolute_at_label": "通知日時",
       "error_absolute_required": "絶対リマインダーの日時を入力してください",
       "error_past": "過去の日時は指定できません",
+      "edit_readonly": "リマインダーはこの画面では変更できません。既存のリマインダーは保持されます。",
       "preset_minutes_before": "{n}分前",
       "preset_hours_before": "{n}時間前",
       "preset_days_before": "{n}日前",
@@ -76,6 +84,7 @@
       "status_created": "作成済み",
       "status_cancelled": "取消済み",
       "status_failed": "失敗",
+      "edit_readonly": "予約タスクの内容はこの画面では変更できません。既存の予約内容は保持されます。",
       "cancel": "取消",
       "cancel_success": "予約タスクを取り消しました",
       "cancel_failed": "予約タスクの取消に失敗しました"
@@ -121,7 +130,8 @@
       "end_never": "指定なし",
       "end_date": "日付",
       "end_count": "回数",
-      "end_count_suffix": "回"
+      "end_count_suffix": "回",
+      "edit_readonly": "繰り返し設定はこの画面では変更できません。既存の設定は保持されます。"
     },
     "event_add": "予定を追加",
     "calendar_guide": {

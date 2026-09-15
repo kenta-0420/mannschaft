@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.dto.RecurrenceRuleDto;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,6 +58,82 @@ class ScheduleRecurrenceServiceTest {
         return captor.getAllValues().stream()
                 .map(e -> e.getStartAt().toLocalDate())
                 .toList();
+    }
+
+    @Test
+    @DisplayName("CMP-107 詳細GET: 保存済み繰り返しルールをDTOへ復元し、単発はnull")
+    void detailRecurrenceRuleDecoding() {
+        RecurrenceRuleDto rule = service.deserializeRecurrenceRule(
+                "{\"type\":\"WEEKLY\",\"interval\":1,\"daysOfWeek\":[\"MONDAY\"],"
+                        + "\"endType\":\"COUNT\",\"count\":4}");
+
+        assertThat(rule.type()).isEqualTo("WEEKLY");
+        assertThat(rule.daysOfWeek()).containsExactly("MONDAY");
+        assertThat(rule.count()).isEqualTo(4);
+        assertThat(service.deserializeRecurrenceRule(null)).isNull();
+        assertThat(service.deserializeRecurrenceRule("")).isNull();
+    }
+
+    private ScheduleEntity recurringRow(long id, Long parentId, LocalDateTime startAt, boolean exception) {
+        return ScheduleEntity.builder()
+                .id(id)
+                .parentScheduleId(parentId)
+                .title("繰り返し予定")
+                .startAt(startAt)
+                .isException(exception)
+                .build();
+    }
+
+    @Test
+    @DisplayName("CMP-107: THIS_AND_FOLLOWINGは起点以降の非例外行を一意に数える")
+    void thisAndFollowingReturnsDistinctAppliedRowCount() {
+        ScheduleEntity current = recurringRow(2L, 99L, LocalDateTime.of(2026, 9, 12, 10, 0), false);
+        ScheduleEntity previous = recurringRow(1L, 99L, LocalDateTime.of(2026, 9, 5, 10, 0), false);
+        ScheduleEntity exception = recurringRow(3L, 99L, LocalDateTime.of(2026, 9, 19, 10, 0), true);
+        ScheduleEntity following = recurringRow(4L, 99L, LocalDateTime.of(2026, 9, 26, 10, 0), false);
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(99L))
+                .thenReturn(List.of(previous, current, exception, following));
+        List<Long> appliedIds = new ArrayList<>();
+
+        long affectedCount = service.updateRecurringSchedule(
+                current, null, "THIS_AND_FOLLOWING", (schedule, request) -> appliedIds.add(schedule.getId()));
+
+        assertThat(affectedCount).isEqualTo(2L);
+        assertThat(appliedIds).containsOnly(2L, 4L);
+    }
+
+    @Test
+    @DisplayName("CMP-107: 親からのTHIS_AND_FOLLOWINGは親と非例外子を一意に数える")
+    void thisAndFollowingFromParentIncludesParentAndNonExceptionChildren() {
+        ScheduleEntity parent = recurringRow(99L, null, LocalDateTime.of(2026, 9, 1, 10, 0), false)
+                .toBuilder().recurrenceRule("{}").build();
+        ScheduleEntity child = recurringRow(1L, 99L, LocalDateTime.of(2026, 9, 8, 10, 0), false);
+        ScheduleEntity exception = recurringRow(2L, 99L, LocalDateTime.of(2026, 9, 15, 10, 0), true);
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(99L))
+                .thenReturn(List.of(child, exception));
+
+        long affectedCount = service.updateRecurringSchedule(
+                parent, null, "THIS_AND_FOLLOWING", (schedule, request) -> { });
+
+        assertThat(affectedCount).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("CMP-107: ALLは親と非例外子だけを一意に数える")
+    void allIncludesParentAndExcludesExceptionChildren() {
+        ScheduleEntity current = recurringRow(1L, 99L, LocalDateTime.of(2026, 9, 8, 10, 0), false);
+        ScheduleEntity parent = recurringRow(99L, null, LocalDateTime.of(2026, 9, 1, 10, 0), false);
+        ScheduleEntity normal1 = recurringRow(1L, 99L, LocalDateTime.of(2026, 9, 8, 10, 0), false);
+        ScheduleEntity exception = recurringRow(2L, 99L, LocalDateTime.of(2026, 9, 15, 10, 0), true);
+        ScheduleEntity normal2 = recurringRow(3L, 99L, LocalDateTime.of(2026, 9, 22, 10, 0), false);
+        when(scheduleRepository.findById(99L)).thenReturn(java.util.Optional.of(parent));
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(99L))
+                .thenReturn(List.of(normal1, exception, normal2));
+
+        long affectedCount = service.updateRecurringSchedule(
+                current, null, "ALL", (schedule, request) -> { });
+
+        assertThat(affectedCount).isEqualTo(3L);
     }
 
     @Test

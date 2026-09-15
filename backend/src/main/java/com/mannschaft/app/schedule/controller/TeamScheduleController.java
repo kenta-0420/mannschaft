@@ -9,6 +9,7 @@ import com.mannschaft.app.schedule.dto.CrossInviteRequest;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
 import com.mannschaft.app.schedule.dto.CrossRefResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
+import com.mannschaft.app.schedule.dto.ScheduleDetailResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
 import com.mannschaft.app.schedule.service.ScheduleCrossRefService;
@@ -99,7 +100,7 @@ public class TeamScheduleController {
     @GetMapping("/{scheduleId}")
     @Operation(summary = "チームスケジュール詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<ScheduleResponse>> getSchedule(
+    public ResponseEntity<ApiResponse<ScheduleDetailResponse>> getSchedule(
             @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId) {
         Long teamId = teamPublicId.value();
@@ -112,7 +113,7 @@ public class TeamScheduleController {
                 .orElse(null);
         var targetResponse = scheduleService.targetResponseForViewer(
                 entity, SecurityUtils.getCurrentUserId());
-        ScheduleResponse response = ScheduleResponse.builder()
+        ScheduleDetailResponse response = ScheduleDetailResponse.builder()
                 .id(entity.getId())
                 .content(new ScheduleResponse.ScheduleContentDto(
                         entity.getTitle(),
@@ -132,6 +133,18 @@ public class TeamScheduleController {
                 .targetMode(targetResponse.targetMode())
                 .targetCount(targetResponse.targetCount())
                 .targets(targetResponse.targets())
+                .detail(new ScheduleDetailResponse.ScheduleDetailContentDto(
+                        entity.getDescription(), entity.getVisibility().name(), entity.getColor(),
+                        entity.getCommentOption() != null ? entity.getCommentOption().name() : null))
+                .roles(new ScheduleDetailResponse.ScheduleDetailRoleDto(
+                        entity.getMinViewRole().name(),
+                        entity.getMinResponseRole() != null ? entity.getMinResponseRole().name() : null))
+                .recurrence(scheduleService.detailRecurrenceFor(
+                        entity.getRecurrenceRule(), entity.getIsException(), entity.getParentScheduleId()))
+                .settings(new ScheduleDetailResponse.ScheduleDetailSettingsDto(
+                        entity.getAllowProxyAttendance(), entity.getIsProxyAutoAccept(),
+                        entity.getTeamBreakdownEnabled()))
+                .createdBy(entity.getCreatedBy())
                 .reminders(reminderService.getReminders(scheduleId))
                 .scheduledTasks(scheduledTaskService.findTaskResponsesForSchedule(scheduleId))
                 .build();

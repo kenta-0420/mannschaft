@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import type { RecurrenceEndType, RecurrenceType, ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
-import type { ScheduleTargetMode } from '~/types/schedule'
+import type { EditScope, ScheduleTargetMode } from '~/types/schedule'
 import { PERSONAL_SCOPE_KEY, scheduleScopeKey } from '~/utils/scheduleScopeKey'
 
 interface ScopeOption {
@@ -54,6 +54,9 @@ function currentScopeKey(): string {
 }
 
 const selectedScopeKey = ref<string>(currentScopeKey())
+const updateScope = ref<EditScope>('THIS_ONLY')
+const isRecurringSchedule = ref(false)
+const updateScopeOptions: EditScope[] = ['THIS_ONLY', 'THIS_AND_FOLLOWING', 'ALL']
 
 // ダイアログが開くたびにスコープキーを prop に合わせてリセット
 watch(
@@ -61,6 +64,8 @@ watch(
   (v) => {
     if (v) {
       selectedScopeKey.value = currentScopeKey()
+      updateScope.value = 'THIS_ONLY'
+      isRecurringSchedule.value = false
     }
   },
 )
@@ -93,7 +98,7 @@ const targetUserIds = ref<number[]>([])
 const targetValidationError = ref<string | null>(null)
 
 // 15分刻みの時刻オプション生成（00:00〜23:45）
-const timeOptions = Array.from({ length: 96 }, (_, i) => {
+const baseTimeOptions = Array.from({ length: 96 }, (_, i) => {
   const h = Math.floor(i / 4)
   const m = (i % 4) * 15
   const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
@@ -101,6 +106,14 @@ const timeOptions = Array.from({ length: 96 }, (_, i) => {
 })
 
 // 入力履歴（localStorage）
+const timeOptions = computed(() => {
+  const existingTimes = [form.value.startTime, form.value.endTime]
+    .filter((value): value is string => /^([01]\d|2[0-3]):[0-5]\d$/.test(value))
+  return [...new Set([...baseTimeOptions.map(option => option.value), ...existingTimes])]
+    .sort()
+    .map(value => ({ label: value, value }))
+})
+
 const HISTORY_KEY = 'schedule-time-history'
 
 function loadTimeHistory(): TimeHistoryEntry[] {
@@ -280,24 +293,47 @@ watch(
           }
         }
         else {
-          form.value.title = (data.title as string) ?? ''
-          form.value.description = (data.description as string) ?? ''
-          form.value.location = (data.location as string) ?? ''
-          form.value.allDay = (data.allDay as boolean) ?? false
-          form.value.attendanceRequired = (data.attendanceRequired as boolean) ?? false
-          form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
-          form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
-          form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
+          // 共有予定の詳細 API は ScheduleDetailResponse の content/time/detail/settings にネストする。
+          // 従来の平坦な参照では編集フォームが全て空欄になり、既存予定を上書きしてしまう。
+          const content = (data.content as Record<string, unknown> | null) ?? {}
+          const time = (data.time as Record<string, unknown> | null) ?? {}
+          const detail = (data.detail as Record<string, unknown> | null) ?? {}
+          const settings = (data.settings as Record<string, unknown> | null) ?? {}
+          const recurrence = (data.recurrence as Record<string, unknown> | null) ?? {}
+          const recurrenceRule = recurrence.recurrenceRule as Record<string, unknown> | null
+          isRecurringSchedule.value = Boolean(recurrenceRule || recurrence.parentScheduleId)
+          form.value.title = (content.title as string) ?? (data.title as string) ?? ''
+          form.value.description = (detail.description as string) ?? (data.description as string) ?? ''
+          form.value.location = (content.location as string) ?? (data.location as string) ?? ''
+          form.value.allDay = (time.allDay as boolean) ?? (data.allDay as boolean) ?? false
+          form.value.attendanceRequired = (content.attendanceRequired as boolean) ?? (data.attendanceRequired as boolean) ?? false
+          form.value.allowProxyAttendance = (settings.allowProxyAttendance as boolean) ?? (data.allowProxyAttendance as boolean) ?? false
+          form.value.isProxyAutoAccept = (settings.isProxyAutoAccept as boolean) ?? (data.isProxyAutoAccept as boolean) ?? false
+          form.value.teamBreakdownEnabled = (settings.teamBreakdownEnabled as boolean) ?? (data.teamBreakdownEnabled as boolean) ?? false
+          if (recurrenceRule && typeof recurrenceRule === 'object') {
+            form.value.recurrence = true
+            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
+            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
+            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
+            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
+            form.value.recurrenceEndDate = recurrenceRule.endDate ? new Date(recurrenceRule.endDate as string) : null
+            form.value.recurrenceCount = (recurrenceRule.count as number) ?? 10
+          }
+          else {
+            form.value.recurrence = false
+          }
           targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
           targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
             .map(target => target.userId)
-          if (data.startAt) {
-            const start = new Date(data.startAt as string)
+          const startAt = time.startAt ?? data.startAt
+          if (startAt) {
+            const start = new Date(startAt as string)
             form.value.startDate = start
             form.value.startTime = start.toTimeString().slice(0, 5)
           }
-          if (data.endAt) {
-            const end = new Date(data.endAt as string)
+          const endAt = time.endAt ?? data.endAt
+          if (endAt) {
+            const end = new Date(endAt as string)
             form.value.endDate = end
             form.value.endTime = end.toTimeString().slice(0, 5)
           }
@@ -473,14 +509,16 @@ function buildSharedReminders(): Array<Record<string, unknown>> {
 function validateScheduledInputs(): string | null {
   const now = Date.now()
   // 絶対リマインダーは未来日時必須
-  for (const r of form.value.reminders) {
-    if (r.kind === 'ABSOLUTE') {
-      if (!r.absoluteAt) return t('schedule.reminder.error_absolute_required')
-      if (r.absoluteAt.getTime() <= now) return t('schedule.reminder.error_past')
+  if (!isEdit.value || effectiveScope.value.isPersonal) {
+    for (const r of form.value.reminders) {
+      if (r.kind === 'ABSOLUTE') {
+        if (!r.absoluteAt) return t('schedule.reminder.error_absolute_required')
+        if (r.absoluteAt.getTime() <= now) return t('schedule.reminder.error_past')
+      }
     }
   }
   // 共有スコープのみ予約アンケート・予約出欠を検証
-  if (!effectiveScope.value.isPersonal) {
+  if (!effectiveScope.value.isPersonal && !isEdit.value) {
     if (form.value.scheduledSurvey.enabled) {
       if (!form.value.scheduledSurvey.scheduledAt) {
         return t('schedule.scheduled_survey.error_scheduled_at_required')
@@ -536,7 +574,8 @@ async function submit() {
   if (effectiveScope.value.isPersonal) {
     body.color = form.value.color
   } else {
-    body.eventType = 'OTHER'
+    // 編集時に元の eventType を OTHER へ変更しない（UI には eventType 選択欄がない）。
+    if (!isEdit.value) body.eventType = 'OTHER'
     body.attendanceRequired = form.value.attendanceRequired
     body.allow_proxy_attendance = form.value.allowProxyAttendance
     body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
@@ -548,7 +587,7 @@ async function submit() {
     }
   }
 
-  if (form.value.recurrence) {
+  if (form.value.recurrence && (!isEdit.value || effectiveScope.value.isPersonal)) {
     body.recurrenceRule = {
       type: form.value.recurrenceType,
       interval: form.value.recurrenceInterval,
@@ -583,12 +622,13 @@ async function submit() {
     body.reminders = relativeMinutes
     if (absolute.length > 0) body.absoluteReminders = absolute
   } else {
-    // 共有予定: リマインダーは編集時も送信する（空配列＝全削除）
-    body.reminders = buildSharedReminders()
+    // 共有予定: 既送信通知の重複を防ぐため、編集では既存リマインダーを保持する。
+    if (!isEdit.value) body.reminders = buildSharedReminders()
   }
 
-  // === 機能55: 予約アンケート・予約出欠（team/org のみ。作成時・編集時ともに送信） ===
-  if (!effectiveScope.value.isPersonal) {
+  // 予約タスクは現在、詳細 GET から完全な payload を復元できない。編集時に送ると
+  // PENDING タスクを cancel して空の既定値で作り直してしまうため、作成時だけ送る。
+  if (!effectiveScope.value.isPersonal && !isEdit.value) {
     if (form.value.scheduledSurvey.enabled) {
       const s = form.value.scheduledSurvey
       body.scheduledSurveys = [
@@ -643,7 +683,13 @@ async function submit() {
       }
     } else {
       if (isEdit.value && props.scheduleId) {
-        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body)
+        await scheduleApi.updateSchedule(
+          savedScope.scopeType,
+          savedScope.scopeId,
+          props.scheduleId,
+          body,
+          updateScope.value,
+        )
       } else {
         await scheduleApi.createSchedule(savedScope.scopeType, savedScope.scopeId, body)
       }
@@ -811,16 +857,70 @@ function close() {
         </div>
       </div>
 
-      <ScheduleEventRecurrenceInput v-model:form="form" />
-
-      <!-- 機能55: リマインダー入力（全スコープ） -->
-      <ScheduleEventReminderInput v-model:form="form" />
-
-      <!-- 機能55: 予約アンケート・予約出欠（team/org のみ。編集時も表示） -->
-      <ScheduleEventScheduledAttachmentInput
-        v-if="!effectiveScope.isPersonal"
+      <ScheduleEventRecurrenceInput
+        v-if="!isEdit || effectiveScope.isPersonal"
         v-model:form="form"
       />
+      <Message
+        v-else
+        severity="info"
+        :closable="false"
+        data-testid="shared-recurrence-edit-readonly"
+      >
+        {{ $t('schedule.recurrence.edit_readonly') }}
+      </Message>
+
+      <fieldset
+        v-if="isEdit && !effectiveScope.isPersonal && isRecurringSchedule"
+        class="rounded-lg border border-surface-300 p-3 dark:border-surface-600"
+        data-testid="schedule-update-scope"
+      >
+        <legend class="px-1 text-sm font-medium">
+          {{ t('schedule.update_scope.label') }}
+        </legend>
+        <p class="mb-2 text-xs text-surface-500 dark:text-surface-400">
+          {{ t('schedule.update_scope.help') }}
+        </p>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <button
+            v-for="scope in updateScopeOptions"
+            :key="scope"
+            type="button"
+            class="min-h-11 rounded-md border px-3 py-2 text-sm"
+            :class="updateScope === scope
+              ? 'border-primary bg-primary/10 font-medium text-primary'
+              : 'border-surface-300 text-surface-700 dark:border-surface-600 dark:text-surface-200'"
+            :aria-pressed="updateScope === scope"
+            :data-testid="`schedule-update-scope-${scope}`"
+            @click="updateScope = scope"
+          >
+            {{ t(`schedule.update_scope.${scope.toLowerCase()}`) }}
+          </button>
+        </div>
+      </fieldset>
+
+      <!-- 機能55: リマインダー入力（全スコープ） -->
+      <ScheduleEventReminderInput
+        v-if="!isEdit || effectiveScope.isPersonal"
+        v-model:form="form"
+      />
+      <Message
+        v-else
+        severity="info"
+        :closable="false"
+        data-testid="shared-reminder-edit-readonly"
+      >
+        {{ $t('schedule.reminder.edit_readonly') }}
+      </Message>
+
+      <!-- 機能55: 予約アンケート・予約出欠（共有予定の作成時のみ編集可能） -->
+      <ScheduleEventScheduledAttachmentInput
+        v-if="!effectiveScope.isPersonal && !isEdit"
+        v-model:form="form"
+      />
+      <Message v-else-if="!effectiveScope.isPersonal" severity="info" :closable="false">
+        {{ $t('schedule.scheduled_task.edit_readonly') }}
+      </Message>
 
       <div>
         <label class="mb-1 block text-sm font-medium">{{ $t('schedule.description_label') }}</label>

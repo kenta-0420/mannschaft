@@ -75,6 +75,7 @@ public interface ScheduleMapper {
     @Mapping(target = "recurrence", ignore = true)
     @Mapping(target = "attendance", ignore = true)
     @Mapping(target = "relations", ignore = true)
+    @Mapping(target = "settings", ignore = true)
     @Mapping(target = "reminders", ignore = true)
     @Mapping(target = "scheduledTasks", ignore = true)
     @Mapping(target = "createdBy", source = "createdBy")

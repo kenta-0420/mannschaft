@@ -71,7 +71,10 @@ const ScopeSelectorStub = defineComponent({
 // タイトル入力欄のみ再現する軽量スタブ（v-model:form）。
 const BasicFieldsStub = defineComponent({
   name: 'ScheduleEventBasicFields',
-  props: { form: { type: Object, required: true } },
+  props: {
+    form: { type: Object, required: true },
+    timeOptions: { type: Array, default: () => [] },
+  },
   emits: ['update:form'],
   setup(props, { emit }) {
     return () =>
@@ -104,6 +107,7 @@ const globalStubs = {
   ScheduleEventReminderInput: true,
   ScheduleEventScheduledAttachmentInput: true,
   ScheduleEventColorPicker: true,
+  Message: true,
   Checkbox: true,
   Textarea: true,
   Button: ButtonStub,
@@ -219,5 +223,106 @@ describe('ScheduleEventForm: 作成先の初期選択', () => {
     })
 
     expect(wrapper.findComponent(ScopeSelectorStub).props('selectedScopeKey')).toBe(personalScope.value)
+  })
+})
+
+describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    scheduleApiMock.getSchedule.mockReset()
+    scheduleApiMock.updateSchedule.mockReset()
+    scheduleApiMock.getSchedule.mockResolvedValue({
+      data: {
+        content: { title: '更新前', location: '練習場', attendanceRequired: true, eventType: 'PRACTICE' },
+        time: { allDay: false, startAt: '2026-09-21T09:07:00', endAt: '2026-09-21T10:07:00' },
+        detail: { description: '元の説明' },
+        settings: { allowProxyAttendance: true, isProxyAutoAccept: false, teamBreakdownEnabled: true },
+        recurrence: { recurrenceRule: { type: 'WEEKLY', interval: 1, endType: 'COUNT', count: 4 } },
+        reminders: [{
+          reminderKind: 'RELATIVE',
+          remindBeforeMinutes: 30,
+          isSent: true,
+          sentAt: '2026-09-20T08:30:00+09:00',
+        }],
+        scheduledTasks: [{ status: 'PENDING', taskType: 'SURVEY', scheduledAt: '2099-09-21T09:00:00+09:00' }],
+      },
+    })
+    scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
+  })
+
+  it('共有予定の編集で「この回以降」を選ぶとTHIS_AND_FOLLOWINGを送る', async () => {
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: {
+        visible: false,
+        scopeType: 'team',
+        scopeId: 't1',
+        scheduleId: 123,
+        isPersonal: false,
+      },
+      global: { stubs: globalStubs },
+    })
+    // 実際の編集ダイアログと同じ閉→開の遷移で、詳細取得 watcher を確実に起動する。
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    expect(scheduleApiMock.getSchedule).toHaveBeenCalledWith('team', 't1', 123)
+    const loadedTimeOptions = wrapper.findComponent(BasicFieldsStub).props('timeOptions') as Array<{ value: string }>
+    expect(loadedTimeOptions.map(option => option.value)).toEqual(expect.arrayContaining(['09:07', '10:07']))
+    expect((wrapper.get('[data-testid="title-input"]').element as HTMLInputElement).value).toBe('更新前')
+    expect(wrapper.find('[data-testid="schedule-update-scope"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shared-recurrence-edit-readonly"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="shared-reminder-edit-readonly"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="schedule-update-scope-THIS_AND_FOLLOWING"]').trigger('click')
+    await wrapper.get('[data-testid="title-input"]').setValue('更新後')
+    await wrapper.findAll('button').at(-1)!.trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.updateSchedule).toHaveBeenCalledWith(
+      'team',
+      't1',
+      123,
+      expect.objectContaining({ title: '更新後', description: '元の説明', location: '練習場', attendanceRequired: true }),
+      'THIS_AND_FOLLOWING',
+    )
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('eventType')
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('scheduledSurveys')
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('scheduledAttendance')
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('reminders')
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('recurrenceRule')
+  })
+
+  it('個人予定の編集には共有予定用の更新範囲を表示しない', async () => {
+    scheduleApiMock.getMyScheduleDetail.mockResolvedValue({ data: {} })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: {
+        visible: true,
+        scopeType: 'team',
+        scopeId: '',
+        scheduleId: 456,
+        isPersonal: true,
+      },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="schedule-update-scope"]').exists()).toBe(false)
+  })
+
+  it('単発の共有予定には一括更新範囲を表示しない', async () => {
+    scheduleApiMock.getSchedule.mockResolvedValueOnce({
+      data: {
+        title: '単発予定',
+        startAt: '2026-09-21T09:00:00+09:00',
+        endAt: '2026-09-21T10:00:00+09:00',
+        recurrence: null,
+      },
+    })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: true, scopeType: 'team', scopeId: 't1', scheduleId: 789, isPersonal: false },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="schedule-update-scope"]').exists()).toBe(false)
   })
 })

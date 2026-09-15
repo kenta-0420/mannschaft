@@ -18,6 +18,13 @@
     "error_title_required": "제목은 필수입니다",
     "success_create": "이벤트를 생성했습니다",
     "success_update": "이벤트를 업데이트했습니다",
+    "update_scope": {
+      "label": "업데이트 범위",
+      "help": "반복 일정에서는 변경 사항을 적용할 회차를 선택할 수 있습니다.",
+      "this_only": "이번 일정만",
+      "this_and_following": "이번 및 이후 일정",
+      "all": "모든 일정"
+    },
     "success_create_personal": "일정을 추가했습니다",
     "success_update_personal": "일정을 업데이트했습니다",
     "error_load_event": "이벤트 정보를 불러오지 못했습니다",
@@ -32,6 +39,7 @@
       "absolute_at_label": "알림 일시",
       "error_absolute_required": "절대 리마인더의 일시를 입력해 주세요",
       "error_past": "과거 일시는 지정할 수 없습니다",
+      "edit_readonly": "이 화면에서는 알림을 변경할 수 없습니다. 기존 알림은 유지됩니다.",
       "preset_minutes_before": "{n}분 전",
       "preset_hours_before": "{n}시간 전",
       "preset_days_before": "{n}일 전",
@@ -76,6 +84,7 @@
       "status_created": "생성됨",
       "status_cancelled": "취소됨",
       "status_failed": "실패",
+      "edit_readonly": "예약 작업의 내용은 이 화면에서 변경할 수 없습니다. 기존 예약 작업은 그대로 유지됩니다.",
       "cancel": "취소",
       "cancel_success": "예약 작업을 취소했습니다",
       "cancel_failed": "예약 작업 취소에 실패했습니다"
@@ -121,7 +130,8 @@
       "end_never": "지정 안 함",
       "end_date": "날짜",
       "end_count": "횟수",
-      "end_count_suffix": "회"
+      "end_count_suffix": "회",
+      "edit_readonly": "이 화면에서는 반복 설정을 변경할 수 없습니다. 기존 설정은 유지됩니다."
     },
     "event_add": "일정 추가",
     "calendar_guide": {

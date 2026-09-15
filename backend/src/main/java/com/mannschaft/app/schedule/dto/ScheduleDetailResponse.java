@@ -18,6 +18,7 @@ public class ScheduleDetailResponse extends ScheduleResponse {
     ScheduleDetailRecurrenceDto recurrence;  // recurrenceRule, isException, parentScheduleId
     ScheduleDetailAttendanceDto attendance;  // attendanceDeadline, myAttendance, attendanceSummary
     ScheduleDetailRelationsDto  relations;   // surveys, reminders, crossInvitations
+    ScheduleDetailSettingsDto   settings;    // proxy attendance, organization breakdown
     Long                        createdBy;
 
     public record ScheduleDetailContentDto(String description, String visibility, String color,
@@ -39,5 +40,9 @@ public class ScheduleDetailResponse extends ScheduleResponse {
     public record ScheduleDetailRelationsDto(List<EventSurveyResponse> surveys,
                                              List<ReminderResponse> reminders,
                                              List<CrossRefResponse> crossInvitations) {
+    }
+
+    public record ScheduleDetailSettingsDto(Boolean allowProxyAttendance, Boolean isProxyAutoAccept,
+                                            Boolean teamBreakdownEnabled) {
     }
 }

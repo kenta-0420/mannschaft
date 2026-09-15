@@ -60,7 +60,7 @@ describe('WidgetRecentActivity.vue', () => {
               fields: [
                 { field: 'startAt', before: '2026-08-10T19:00:00', after: '2026-08-17T19:00:00' },
               ],
-              affectedCount: 1,
+              affectedCount: 4,
             },
             createdAt: '2026-08-05T10:30:00',
           },
@@ -77,6 +77,7 @@ describe('WidgetRecentActivity.vue', () => {
     // 差分（fields）が 3 行目に出る
     expect(text).toContain('2026-08-10T19:00:00')
     expect(text).toContain('2026-08-17T19:00:00')
+    expect(wrapper.get('[data-testid="activity-affected-count"]').text()).toContain('4')
   })
 
   it('RA-003: detail が null の既存種別は summary にフォールバックし差分行を出さない', async () => {

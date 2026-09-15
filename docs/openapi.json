@@ -89740,7 +89740,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseScheduleResponse"
+                  "$ref": "#/components/schemas/ApiResponseScheduleDetailResponse"
                 }
               }
             }
@@ -101133,7 +101133,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseScheduleResponse"
+                  "$ref": "#/components/schemas/ApiResponseScheduleDetailResponse"
                 }
               }
             }
@@ -213367,6 +213367,236 @@
           }
         }
       },
+      "ApiResponseScheduleDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ScheduleDetailResponse"
+          }
+        }
+      },
+      "AttendanceSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "absent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "attending": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "partial": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "undecided": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "EventSurveyResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "question": {
+            "type": "string"
+          },
+          "questionType": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ScheduleDetailAttendanceDto": {
+        "type": "object",
+        "properties": {
+          "attendanceDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attendanceSummary": {
+            "$ref": "#/components/schemas/AttendanceSummaryResponse"
+          },
+          "myAttendance": {
+            "$ref": "#/components/schemas/AttendanceResponse"
+          }
+        }
+      },
+      "ScheduleDetailContentDto": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "commentOption": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          }
+        }
+      },
+      "ScheduleDetailRecurrenceDto": {
+        "type": "object",
+        "properties": {
+          "isException": {
+            "type": "boolean"
+          },
+          "parentScheduleId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "recurrenceRule": {
+            "$ref": "#/components/schemas/RecurrenceRuleDto"
+          }
+        }
+      },
+      "ScheduleDetailRelationsDto": {
+        "type": "object",
+        "properties": {
+          "crossInvitations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrossRefResponse"
+            }
+          },
+          "reminders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReminderResponse"
+            }
+          },
+          "surveys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventSurveyResponse"
+            }
+          }
+        }
+      },
+      "ScheduleDetailResponse": {
+        "type": "object",
+        "properties": {
+          "academic": {
+            "$ref": "#/components/schemas/ScheduleAcademicDto"
+          },
+          "attendance": {
+            "$ref": "#/components/schemas/ScheduleDetailAttendanceDto"
+          },
+          "audit": {
+            "$ref": "#/components/schemas/ScheduleAuditDto"
+          },
+          "content": {
+            "$ref": "#/components/schemas/ScheduleContentDto"
+          },
+          "createdBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "detail": {
+            "$ref": "#/components/schemas/ScheduleDetailContentDto"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "myAttendanceStatus": {
+            "type": "string"
+          },
+          "recurrence": {
+            "$ref": "#/components/schemas/ScheduleDetailRecurrenceDto"
+          },
+          "relations": {
+            "$ref": "#/components/schemas/ScheduleDetailRelationsDto"
+          },
+          "reminders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReminderResponse"
+            }
+          },
+          "roles": {
+            "$ref": "#/components/schemas/ScheduleDetailRoleDto"
+          },
+          "scheduledTasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduledTaskResponse"
+            }
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ScheduleScopeDto"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/ScheduleDetailSettingsDto"
+          },
+          "targetCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "targetMode": {
+            "type": "string"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TargetMember"
+            }
+          },
+          "time": {
+            "$ref": "#/components/schemas/ScheduleTimeDto"
+          }
+        }
+      },
+      "ScheduleDetailRoleDto": {
+        "type": "object",
+        "properties": {
+          "minResponseRole": {
+            "type": "string"
+          },
+          "minViewRole": {
+            "type": "string"
+          }
+        }
+      },
+      "ScheduleDetailSettingsDto": {
+        "type": "object",
+        "properties": {
+          "allowProxyAttendance": {
+            "type": "boolean"
+          },
+          "isProxyAutoAccept": {
+            "type": "boolean"
+          },
+          "teamBreakdownEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponseListAttendanceResponse": {
         "type": "object",
         "properties": {
@@ -225513,31 +225743,6 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/AttendanceSummaryResponse"
-          }
-        }
-      },
-      "AttendanceSummaryResponse": {
-        "type": "object",
-        "properties": {
-          "absent": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "attending": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "partial": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "total": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "undecided": {
-            "type": "integer",
-            "format": "int32"
           }
         }
       },

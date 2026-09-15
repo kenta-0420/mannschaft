@@ -18,6 +18,13 @@
     "error_title_required": "标题为必填项",
     "success_create": "已创建活动",
     "success_update": "已更新活动",
+    "update_scope": {
+      "label": "更新范围",
+      "help": "对于重复活动，可选择要应用更改的场次。",
+      "this_only": "仅本次",
+      "this_and_following": "本次及以后",
+      "all": "所有场次"
+    },
     "success_create_personal": "已添加日程",
     "success_update_personal": "已更新日程",
     "error_load_event": "获取活动信息失败",
@@ -32,6 +39,7 @@
       "absolute_at_label": "通知时间",
       "error_absolute_required": "请输入绝对提醒的日期和时间",
       "error_past": "不能指定过去的日期和时间",
+      "edit_readonly": "无法在此处更改提醒。将保留现有提醒。",
       "preset_minutes_before": "{n}分钟前",
       "preset_hours_before": "{n}小时前",
       "preset_days_before": "{n}天前",
@@ -76,6 +84,7 @@
       "status_created": "已创建",
       "status_cancelled": "已取消",
       "status_failed": "失败",
+      "edit_readonly": "无法在此页面更改预约任务的内容。现有预约任务将予以保留。",
       "cancel": "取消",
       "cancel_success": "已取消预约任务",
       "cancel_failed": "取消预约任务失败"
@@ -121,7 +130,8 @@
       "end_never": "永不",
       "end_date": "日期",
       "end_count": "次数",
-      "end_count_suffix": "次"
+      "end_count_suffix": "次",
+      "edit_readonly": "无法在此处更改重复设置。将保留现有设置。"
     },
     "event_add": "添加日程",
     "calendar_guide": {

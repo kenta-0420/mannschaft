@@ -27,21 +27,26 @@ export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<s
    */
   async function loadPermissions(): Promise<{ ok: boolean }> {
     // scopeId 未確定時は取得を行わない。判定材料が無いだけで「失敗」ではないため ok: true。
-    if (!resolvedId.value) return { ok: true }
+    const requestedId = resolvedId.value
+    if (!requestedId) return { ok: true }
     loading.value = true
     try {
       const base = scopeType === 'team' ? 'teams' : 'organizations'
       const response = await api<{ data: EffectivePermissions }>(
-        `/api/v1/${base}/${resolvedId.value}/me/permissions`,
+        `/api/v1/${base}/${requestedId}/me/permissions`,
       )
+      // 別スコープへ移動した後に届いた古い権限を、新しいスコープのものとして採用しない。
+      if (resolvedId.value !== requestedId) return { ok: false }
       permissions.value = response.data.permissions
       roleName.value = response.data.roleName
       return { ok: true }
     }
     catch {
-      // 取得失敗。権限なしに倒さず、roleName=null かつ ok=false を返す（症状を隠さない）。
-      permissions.value = []
-      roleName.value = null
+      // 古いスコープの失敗で現在スコープの権限を消さない。
+      if (resolvedId.value === requestedId) {
+        permissions.value = []
+        roleName.value = null
+      }
       return { ok: false }
     }
     finally {

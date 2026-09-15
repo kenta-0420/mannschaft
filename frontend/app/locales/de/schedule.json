@@ -18,6 +18,13 @@
     "error_title_required": "Der Titel ist erforderlich",
     "success_create": "Veranstaltung erstellt",
     "success_update": "Veranstaltung aktualisiert",
+    "update_scope": {
+      "label": "Aktualisierungsbereich",
+      "help": "Bei Serienterminen können Sie wählen, welche Termine geändert werden.",
+      "this_only": "Nur dieser Termin",
+      "this_and_following": "Dieser und folgende",
+      "all": "Alle Termine"
+    },
     "success_create_personal": "Termin hinzugefügt",
     "success_update_personal": "Termin aktualisiert",
     "error_load_event": "Veranstaltungsinformationen konnten nicht geladen werden",
@@ -32,6 +39,7 @@
       "absolute_at_label": "Benachrichtigen am",
       "error_absolute_required": "Bitte geben Sie Datum und Uhrzeit für die absolute Erinnerung ein",
       "error_past": "Ein Datum in der Vergangenheit kann nicht angegeben werden",
+      "edit_readonly": "Erinnerungen können hier nicht geändert werden. Bestehende Erinnerungen bleiben erhalten.",
       "preset_minutes_before": "{n} Min. vorher",
       "preset_hours_before": "{n} Std. vorher",
       "preset_days_before": "{n} Tag vorher",
@@ -76,6 +84,7 @@
       "status_created": "Erstellt",
       "status_cancelled": "Abgebrochen",
       "status_failed": "Fehlgeschlagen",
+      "edit_readonly": "Die Details geplanter Aufgaben können hier nicht geändert werden. Bestehende geplante Aufgaben bleiben erhalten.",
       "cancel": "Abbrechen",
       "cancel_success": "Die geplante Aufgabe wurde abgebrochen",
       "cancel_failed": "Die geplante Aufgabe konnte nicht abgebrochen werden"
@@ -121,7 +130,8 @@
       "end_never": "Nie",
       "end_date": "Am Datum",
       "end_count": "Nach",
-      "end_count_suffix": "Mal"
+      "end_count_suffix": "Mal",
+      "edit_readonly": "Wiederholungseinstellungen können hier nicht geändert werden. Bestehende Einstellungen bleiben erhalten."
     },
     "event_add": "Termin hinzufügen",
     "calendar_guide": {

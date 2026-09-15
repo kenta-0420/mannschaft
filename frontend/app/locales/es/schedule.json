@@ -18,6 +18,13 @@
     "error_title_required": "El título es obligatorio",
     "success_create": "Evento creado",
     "success_update": "Evento actualizado",
+    "update_scope": {
+      "label": "Rango de actualización",
+      "help": "En eventos recurrentes, elige qué ocurrencias recibirán los cambios.",
+      "this_only": "Solo esta ocurrencia",
+      "this_and_following": "Esta y las siguientes",
+      "all": "Todas las ocurrencias"
+    },
     "success_create_personal": "Horario agregado",
     "success_update_personal": "Horario actualizado",
     "error_load_event": "No se pudo cargar la información del evento",
@@ -32,6 +39,7 @@
       "absolute_at_label": "Notificar el",
       "error_absolute_required": "Introduce la fecha y hora del recordatorio absoluto",
       "error_past": "No se puede indicar una fecha y hora pasada",
+      "edit_readonly": "Los recordatorios no se pueden cambiar aquí. Se conservarán los recordatorios existentes.",
       "preset_minutes_before": "{n} min antes",
       "preset_hours_before": "{n} h antes",
       "preset_days_before": "{n} día antes",
@@ -76,6 +84,7 @@
       "status_created": "Creada",
       "status_cancelled": "Cancelada",
       "status_failed": "Fallida",
+      "edit_readonly": "Los detalles de las tareas programadas no se pueden modificar aquí. Las tareas programadas existentes se conservarán.",
       "cancel": "Cancelar",
       "cancel_success": "La tarea programada se ha cancelado",
       "cancel_failed": "No se pudo cancelar la tarea programada"
@@ -121,7 +130,8 @@
       "end_never": "Nunca",
       "end_date": "En fecha",
       "end_count": "Después de",
-      "end_count_suffix": "veces"
+      "end_count_suffix": "veces",
+      "edit_readonly": "La configuración de repetición no se puede cambiar aquí. Se conservará la configuración existente."
     },
     "event_add": "Agregar evento",
     "calendar_guide": {

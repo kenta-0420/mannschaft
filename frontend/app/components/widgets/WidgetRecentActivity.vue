@@ -14,6 +14,7 @@ interface Activity {
   targetTitle: string
   /** §3.2 detail.fields。既存7種別（detail = null）は空配列 */
   detailFields: ActivityDetailField[]
+  affectedCount: number
   scopeName: string
   createdAt: string
 }
@@ -37,6 +38,7 @@ async function load() {
       // detail を持たない既存7種別のみ summary にフォールバックする。
       targetTitle: a.detail?.title ?? a.summary,
       detailFields: a.detail?.fields ?? [],
+      affectedCount: a.detail?.affectedCount ?? 1,
       scopeName: a.scopeName,
       createdAt: a.createdAt,
     }))
@@ -69,6 +71,7 @@ onMounted(load)
         :actor-avatar-url="activity.actorAvatarUrl"
         :target-title="activity.targetTitle"
         :detail-fields="activity.detailFields"
+        :affected-count="activity.affectedCount"
         :scope-name="activity.scopeName"
         :created-at="activity.createdAt"
         :target-type="activity.targetType"
