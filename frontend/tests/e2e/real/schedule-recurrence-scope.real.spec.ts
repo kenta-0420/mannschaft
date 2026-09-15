@@ -75,7 +75,12 @@ async function edit(id: number, before: string, after: string, testId: string) {
   await expect(scope.getByTestId('recurrence-update-this')).toBeVisible()
   await expect(scope.getByTestId('recurrence-update-following')).toBeVisible()
   await expect(scope).not.toContainText('ALL')
-  await scope.getByTestId(testId).click()
+  await Promise.all([
+    page.waitForResponse(response => response.request().method() === 'PATCH'
+      && response.url().includes(`/schedules/${id}`) && response.status() === 200),
+    scope.getByTestId(testId).click(),
+  ])
+  await expect(scope).toBeHidden()
 }
 
 test.describe('CMP107 recurring edit scope (real UI)', () => {
@@ -117,5 +122,36 @@ test.describe('CMP107 recurring edit scope (real UI)', () => {
     expect(entries.filter(e => titleOf(e) === after)).toHaveLength(ids.length - 1)
     expect(entries.filter(e => titleOf(e) === before)).toHaveLength(1)
     await waitFeed(ids[1]!, after, ids.length - 1)
+  })
+
+  test('5-minute aggregation keeps the latest scope count and title', async () => {
+    const before = `CMP107-aggregate-${Date.now()}`
+    const first = `${before}-first`
+    const latest = `${before}-latest`
+    await createSeries(before)
+    const ids = await idsFor(before)
+    expect(ids.length).toBeGreaterThan(3)
+    const selected = ids[1]!
+
+    await edit(selected, before, first, 'recurrence-update-this')
+    await waitFeed(selected, first, 1)
+    await edit(selected, first, latest, 'recurrence-update-following')
+
+    const entries = await teamEntries()
+    expect(entries.filter(e => titleOf(e) === latest)).toHaveLength(ids.length - 1)
+    expect(entries.filter(e => titleOf(e) === before)).toHaveLength(1)
+    await waitFeed(selected, latest, ids.length - 1)
+
+    const feedResponse = await api.get(`${V1}/dashboard/activity?limit=50`, {
+      headers: { Authorization: `Bearer ${memberToken}`, 'Content-Type': 'application/json' },
+    })
+    const rows = (await feedResponse.json() as { data: { items: Feed[] } }).data.items
+    /*
+      .filter(row => row.targetId === selected && row.type.startsWith('SCHEDULE_'))
+    expect(rows.filter(row => row.detail?.title === latest), '5分集約後の最新行').toHaveLength(1)
+    expect(rows.filter(row => row.detail?.title === first), '古い集約行を残さない').toHaveLength(0)
+    */
+    expect(rows.filter(row => row.targetId === selected && row.type.startsWith('SCHEDULE_') && row.detail?.title === latest)).toHaveLength(1)
+    expect(rows.filter(row => row.targetId === selected && row.type.startsWith('SCHEDULE_') && row.detail?.title === first)).toHaveLength(0)
   })
 })
