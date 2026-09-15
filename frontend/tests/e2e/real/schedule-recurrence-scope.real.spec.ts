@@ -199,6 +199,30 @@ test.describe('CMP107 recurring edit scope (real UI)', () => {
     }
   })
 
+  test('THIS_AND_FOLLOWING moves a series by one weekly interval without a transient duplicate', async () => {
+    const title = `CMP107-week-${Date.now()}`
+    await createSeries(title)
+    const ids = await idsFor(title)
+    expect(ids.length).toBeGreaterThan(3)
+    const original = new Map((await teamEntries()).filter(e => ids.includes(e.id)).map(e => [e.id, e]))
+    const selected = original.get(ids[1]!)!
+    const shiftMs = 7 * 86_400_000
+    const response = await api.patch(`${V1}/teams/${TEAM}/schedules/${ids[1]}?updateScope=THIS_AND_FOLLOWING`, {
+      headers: h(), data: {
+        startAt: new Date(Date.parse(startOf(selected)) + shiftMs).toISOString(),
+        endAt: new Date(Date.parse(endOf(selected)) + shiftMs).toISOString(),
+      },
+    })
+    expect(response.status(), await response.text()).toBe(200)
+    const updated = new Map((await teamEntries()).filter(e => ids.includes(e.id)).map(e => [e.id, e]))
+    for (const [index, id] of ids.entries()) {
+      const before = original.get(id)!
+      const after = updated.get(id)!
+      const expectedShift = index === 0 ? 0 : shiftMs
+      expect(Date.parse(startOf(after)) - Date.parse(startOf(before))).toBe(expectedShift)
+    }
+  })
+
   test('5-minute aggregation keeps the latest scope count and title', async () => {
     const before = `CMP107-aggregate-${Date.now()}`
     const first = `${before}-first`

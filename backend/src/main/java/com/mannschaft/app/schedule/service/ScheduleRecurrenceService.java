@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -115,10 +116,21 @@ public class ScheduleRecurrenceService {
                         ? schedule.getParentScheduleId() : schedule.getId();
                 List<ScheduleEntity> children = scheduleRepository
                         .findByParentScheduleIdOrderByStartAtAsc(parentId);
+                Duration shift = startShift(originalSchedule, req);
+                if (!shift.isNegative() && !shift.isZero()) {
+                    // uq_sch_parent_start は各 SQL 更新時に検証される。後ろへ移す場合は
+                    // 末尾から確定し、次回の元日時を先に空けてから選択回を更新する。
+                    long followingCount = updateFollowingSchedules(
+                            originalSchedule, req, applyUpdate, children, shift);
+                    ScheduleEntity updated = applyUpdate.apply(schedule, req);
+                    scheduleRepository.flush();
+                    return new RecurringScheduleUpdateResult(updated, 1 + followingCount);
+                }
                 ScheduleEntity updated = applyUpdate.apply(schedule, req);
+                if (!shift.isZero()) scheduleRepository.flush();
                 // この日以降の子スケジュールも更新（例外を除く）
                 return new RecurringScheduleUpdateResult(updated,
-                        1 + updateFollowingSchedules(originalSchedule, req, applyUpdate, children));
+                        1 + updateFollowingSchedules(originalSchedule, req, applyUpdate, children, shift));
             }
             case UPDATE_SCOPE_ALL -> {
                 // 親を更新、全子を更新（例外を除く）
@@ -303,13 +315,19 @@ public class ScheduleRecurrenceService {
      */
     private long updateFollowingSchedules(ScheduleEntity schedule, UpdateScheduleRequest req,
                                          BiFunction<ScheduleEntity, UpdateScheduleRequest, ScheduleEntity> applyUpdate,
-                                         List<ScheduleEntity> children) {
+                                         List<ScheduleEntity> children, Duration shift) {
+        Comparator<ScheduleEntity> order = Comparator.comparing(ScheduleEntity::getStartAt);
+        if (!shift.isNegative() && !shift.isZero()) order = order.reversed();
         List<ScheduleEntity> followingChildren = children.stream()
                 .filter(child -> !child.getIsException())
                 .filter(child -> !child.getStartAt().isBefore(schedule.getStartAt()))
                 .filter(child -> !child.getId().equals(schedule.getId()))
+                .sorted(order)
                 .toList();
-        followingChildren.forEach(child -> applyUpdate.apply(child, shiftedRequest(schedule, child, req)));
+        for (ScheduleEntity child : followingChildren) {
+            applyUpdate.apply(child, shiftedRequest(schedule, child, req));
+            if (!shift.isZero()) scheduleRepository.flush();
+        }
         return followingChildren.size();
     }
 
@@ -323,18 +341,30 @@ public class ScheduleRecurrenceService {
                                          ScheduleEntity updatedParent) {
         List<ScheduleEntity> children = scheduleRepository
                 .findByParentScheduleIdOrderByStartAtAsc(parentId);
-
+        Duration shift = startShift(originalParent, req);
+        Comparator<ScheduleEntity> order = Comparator.comparing(ScheduleEntity::getStartAt);
+        // ALL の子行も同じ一意制約を持つため、後ろへの移動は末尾から確定する。
+        if (!shift.isNegative() && !shift.isZero()) order = order.reversed();
         List<ScheduleEntity> nonExceptionChildren = children.stream()
                 .filter(child -> !child.getIsException())
+                .sorted(order)
                 .toList();
         ScheduleEntity updatedSelected = selected.getId().equals(parentId) ? updatedParent : selected;
         for (ScheduleEntity child : nonExceptionChildren) {
             ScheduleEntity updatedChild = applyUpdate.apply(child, shiftedRequest(originalParent, child, req));
+            if (!shift.isZero()) scheduleRepository.flush();
             if (child.getId().equals(selected.getId())) {
                 updatedSelected = updatedChild;
             }
         }
         return new RecurringScheduleUpdateResult(updatedSelected, 1 + nonExceptionChildren.size());
+    }
+
+    /** 起点の開始日時に対する変更量を求める。 */
+    private Duration startShift(ScheduleEntity anchor, UpdateScheduleRequest req) {
+        if (req == null || req.getStartAt() == null) return Duration.ZERO;
+        return Duration.between(anchor.getStartAt(),
+                req.getStartAt().atZoneSameInstant(STORAGE_ZONE).toLocalDateTime());
     }
 
     /** 絶対日時を全行へ複製せず、起点の変更量を各行の元日時へ足す。 */
@@ -347,7 +377,7 @@ public class ScheduleRecurrenceService {
         LocalDateTime requestedEnd = req.getEndAt() != null
                 ? req.getEndAt().atZoneSameInstant(STORAGE_ZONE).toLocalDateTime()
                 : anchor.getEndAt();
-        Duration startShift = Duration.between(anchor.getStartAt(), requestedStart);
+        Duration startShift = startShift(anchor, req);
         Duration endShift = anchor.getEndAt() != null && requestedEnd != null
                 ? Duration.between(anchor.getEndAt(), requestedEnd) : Duration.ZERO;
         OffsetDateTime childStart = req.getStartAt() != null && !startShift.isZero()

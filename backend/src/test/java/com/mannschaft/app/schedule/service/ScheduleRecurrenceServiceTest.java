@@ -349,6 +349,30 @@ class ScheduleRecurrenceServiceTest {
     }
 
     @Test
+    @DisplayName("THIS_AND_FOLLOWING: 週単位で後ろへ移動するときは後続の末尾から確定する")
+    void followingWeeklyMoveFlushesFromLastOccurrence() {
+        ScheduleEntity selected = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 10, 11, 0)).build();
+        ScheduleEntity next = child(11L, LocalDateTime.of(2026, 9, 17, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 17, 11, 0)).build();
+        ScheduleEntity last = child(12L, LocalDateTime.of(2026, 9, 24, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 24, 11, 0)).build();
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+                .thenReturn(List.of(selected, next, last));
+        UpdateScheduleRequest request = requestWithTimes("new",
+                LocalDateTime.of(2026, 9, 17, 10, 0), LocalDateTime.of(2026, 9, 17, 11, 0));
+        List<Long> appliedIds = new ArrayList<>();
+
+        ScheduleRecurrenceService.RecurringScheduleUpdateResult result = service.updateRecurringSchedule(
+                selected, request, "THIS_AND_FOLLOWING",
+                (entity, update) -> { appliedIds.add(entity.getId()); return entity; });
+
+        assertThat(appliedIds).containsExactly(12L, 11L, 10L);
+        assertThat(result.affectedCount()).isEqualTo(3);
+        verify(scheduleRepository, times(3)).flush();
+    }
+
+    @Test
     @DisplayName("ALL: API互換の全範囲更新でも子行へ親の絶対日時を複製しない")
     void allTitleEditKeepsChildTimes() {
         ScheduleEntity parent = ScheduleEntity.builder().id(1L).title("parent")
@@ -367,6 +391,32 @@ class ScheduleRecurrenceServiceTest {
 
         assertThat(applied.get(10L).getStartAt()).isNull();
         assertThat(applied.get(10L).getEndAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("ALL: 互換APIの週単位移動でも子行は末尾から確定する")
+    void allWeeklyMoveFlushesFromLastChild() {
+        ScheduleEntity parent = ScheduleEntity.builder().id(1L).title("parent")
+                .startAt(LocalDateTime.of(2026, 9, 3, 10, 0))
+                .endAt(LocalDateTime.of(2026, 9, 3, 11, 0)).build();
+        ScheduleEntity first = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 10, 11, 0)).build();
+        ScheduleEntity last = child(11L, LocalDateTime.of(2026, 9, 17, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 17, 11, 0)).build();
+        when(scheduleRepository.findById(1L)).thenReturn(java.util.Optional.of(parent));
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+                .thenReturn(List.of(first, last));
+        UpdateScheduleRequest request = requestWithTimes("new",
+                LocalDateTime.of(2026, 9, 10, 10, 0), LocalDateTime.of(2026, 9, 10, 11, 0));
+        List<Long> appliedIds = new ArrayList<>();
+
+        ScheduleRecurrenceService.RecurringScheduleUpdateResult result = service.updateRecurringSchedule(
+                parent, request, "ALL",
+                (entity, update) -> { appliedIds.add(entity.getId()); return entity; });
+
+        assertThat(appliedIds).containsExactly(1L, 11L, 10L);
+        assertThat(result.affectedCount()).isEqualTo(3);
+        verify(scheduleRepository, times(2)).flush();
     }
 
     @Test
