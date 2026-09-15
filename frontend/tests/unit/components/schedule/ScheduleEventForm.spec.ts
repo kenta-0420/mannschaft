@@ -234,7 +234,7 @@ describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
     scheduleApiMock.getSchedule.mockResolvedValue({
       data: {
         content: { title: '更新前', location: '練習場', attendanceRequired: true, eventType: 'PRACTICE' },
-        time: { allDay: false, startAt: '2026-09-21T09:07:00+09:00', endAt: '2026-09-21T10:07:00+09:00' },
+        time: { allDay: false, startAt: '2026-09-21T09:07:00', endAt: '2026-09-21T10:07:00' },
         detail: { description: '元の説明' },
         settings: { allowProxyAttendance: true, isProxyAutoAccept: false, teamBreakdownEnabled: true },
         recurrence: { recurrenceRule: { type: 'WEEKLY', interval: 1, endType: 'COUNT', count: 4 } },

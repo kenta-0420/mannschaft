@@ -72,7 +72,9 @@ test.afterAll(async () => {
 })
 
 test('CMP107-ADMIN: モバイル実画面でこの回以降を選択し、5件更新する', async () => {
-  const start = Date.now() + 7 * 24 * 60 * 60 * 1000
+  const startDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  startDate.setUTCMinutes(7, 0, 0)
+  const start = startDate.getTime()
   beforeTitle = `CMP107-管理者更新前-${Date.now()}`
   const create = await api.post(`${API_V1}/teams/${TEAM_SLUG}/schedules`, {
     headers: headers(adminToken),
@@ -120,6 +122,8 @@ test('CMP107-ADMIN: モバイル実画面でこの回以降を選択し、5件�
   await expect(scope).toHaveAttribute('aria-pressed', 'true')
   // 本番の基本入力欄には title-input testid が無い（ユニットテストのstub専用）。
   const editDialog = page.getByRole('dialog', { name: 'イベントを編集' })
+  await expect(editDialog.locator('.p-select-label').filter({ hasText: /:07$/ }),
+    '15分刻み以外の既存開始・終了時刻を編集画面で保持する').toHaveCount(2)
   const titleInput = editDialog.getByRole('textbox').first()
   await expect(titleInput).toHaveValue(beforeTitle)
   await titleInput.fill(after)

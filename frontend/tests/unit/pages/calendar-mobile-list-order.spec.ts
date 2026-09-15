@@ -149,7 +149,7 @@ describe('pages/calendar.vue: モバイルリストの並べ替え（時差混�
     vi.setSystemTime(new Date('2026-08-15T00:00:00Z'))
     setActivePinia(createPinia())
     localStorage.clear()
-    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
     scheduleApiMock.listPersonalSchedules.mockReset().mockResolvedValue(emptyPersonal)
     scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: mixedOffsetEntries() })
     scheduleApiMock.getMyCalendarLayers.mockReset().mockResolvedValue({ data: layersFixture })
