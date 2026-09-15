@@ -6,6 +6,8 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -82,12 +84,95 @@ class BatchEndpointRegistryTest {
         }
     }
 
+    @Test
+    @DisplayName("scan-enabled=false なら走査せず、遅延 Bean も生成しない")
+    void shouldSkipScanWhenDisabled() {
+        LazyProbeBean.instantiated = false;
+        try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
+            ctx.register(RegistryScanDisabledConfig.class, SampleBatchBean.class);
+            ctx.refresh();
+
+            BatchEndpointRegistry registry = ctx.getBean(BatchEndpointRegistry.class);
+            assertThat(registry.listAll()).isEmpty();
+            assertThat(registry.find("sample-foo")).isEmpty();
+            // 走査が @Lazy Bean を強制生成していないこと（起動時間削減の実体はここ）
+            assertThat(LazyProbeBean.instantiated).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("scan-enabled=true なら走査し、@Lazy Bean も強制生成される")
+    void shouldScanAndForceLazyBeansWhenEnabled() {
+        LazyProbeBean.instantiated = false;
+        try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
+            ctx.register(RegistryOnlyConfig.class, SampleBatchBean.class);
+            ctx.refresh();
+
+            BatchEndpointRegistry registry = ctx.getBean(BatchEndpointRegistry.class);
+            assertThat(registry.listAll()).hasSize(2);
+            // 全 Bean 定義に getBean() を掛けるため、@Lazy Bean も生成されてしまう
+            // （= spring.main.lazy-initialization を打ち消す。無効化の意味がここにある）
+            assertThat(LazyProbeBean.instantiated).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("scan-enabled 未指定なら既定 true として走査する")
+    void shouldDefaultToEnabledWhenPropertyAbsent() {
+        try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
+            ctx.register(PlaceholderConfig.class, BatchEndpointRegistry.class, SampleBatchBean.class);
+            ctx.refresh();
+
+            BatchEndpointRegistry registry = ctx.getBean(BatchEndpointRegistry.class);
+            assertThat(registry.listAll()).hasSize(2);
+        }
+    }
+
+    /** {@code @Value} の既定値解決を有効にするための設定。 */
+    @Configuration
+    static class PlaceholderConfig {
+        @Bean
+        public static PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer() {
+            return new PropertySourcesPlaceholderConfigurer();
+        }
+    }
+
+    /** 走査を無効化した Registry を登録する設定。 */
+    @Configuration
+    static class RegistryScanDisabledConfig {
+        @Bean
+        public BatchEndpointRegistry batchEndpointRegistry(GenericApplicationContext context) {
+            return new BatchEndpointRegistry(context, false);
+        }
+
+        @Bean
+        @Lazy
+        public LazyProbeBean lazyProbeBean() {
+            return new LazyProbeBean();
+        }
+    }
+
+    /** 走査が遅延 Bean を強制生成するかどうかを観測するための Bean。 */
+    static class LazyProbeBean {
+        static boolean instantiated = false;
+
+        LazyProbeBean() {
+            instantiated = true;
+        }
+    }
+
     /** Registry だけを Bean 登録する最小コンテナ設定。 */
     @Configuration
     static class RegistryOnlyConfig {
         @Bean
         public BatchEndpointRegistry batchEndpointRegistry(GenericApplicationContext context) {
-            return new BatchEndpointRegistry(context);
+            return new BatchEndpointRegistry(context, true);
+        }
+
+        @Bean
+        @Lazy
+        public LazyProbeBean lazyProbeBean() {
+            return new LazyProbeBean();
         }
     }
 
