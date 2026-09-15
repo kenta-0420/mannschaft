@@ -2,14 +2,6 @@
   "admin_report": {
     "title": "Meldungsverwaltung",
     "empty": "Keine Meldungen",
-    "status_options": {
-      "all": "Alle",
-      "pending": "Offen",
-      "reviewing": "In Bearbeitung",
-      "escalated": "Eskaliert",
-      "resolved": "Gelöst",
-      "dismissed": "Abgelehnt"
-    },
     "messages": {
       "load_failed": "Meldungen konnten nicht geladen werden",
       "note_added": "Notiz hinzugefügt",
@@ -42,8 +34,7 @@
       "target_type": "Zieltyp",
       "reason": "Grund",
       "reported_at": "Gemeldet am",
-      "actions": "Aktionen",
-      "status_placeholder": "Status"
+      "actions": "Aktionen"
     },
     "actions": {
       "review": "Prüfen",
