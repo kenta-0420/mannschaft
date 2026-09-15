@@ -1,17 +1,18 @@
 package com.mannschaft.app.cspreport.entity;
 
-import com.mannschaft.app.common.entity.UuidV7Entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.UUID;
 
 /**
  * CSP 違反レポートエンティティ。
@@ -23,8 +24,11 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
-@EqualsAndHashCode(callSuper = true)
-public class CspReportEntity extends UuidV7Entity {
+public class CspReportEntity {
+
+    @Id
+    @CspUuidV7Generated
+    private UUID id;
 
     @Column(length = 1000)
     private String documentUri;
@@ -89,5 +93,21 @@ public class CspReportEntity extends UuidV7Entity {
     public void incrementOccurrence() {
         this.occurrenceCount = this.occurrenceCount + 1;
         this.lastSeenAt = LocalDateTime.now();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof CspReportEntity that)) {
+            return false;
+        }
+        return id != null && that.id != null && Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
     }
 }
