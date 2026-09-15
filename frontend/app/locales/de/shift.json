@@ -29,7 +29,9 @@
       "revoke": "Verwerfen",
       "history": "Ausführungshistorie",
       "slotsFilled": "{filled}/{total} Schichten besetzt",
-      "warnings": "{count} Warnungen"
+      "warnings": "{count} Warnungen",
+      "disabledBadge": "Ausgesetzt",
+      "disabledReason": "Die automatische Zuweisung ist derzeit ausgesetzt. Bitte manuell planen."
     },
     "visualReview": {
       "title": "Sichtprüfung",

@@ -303,7 +303,9 @@
       "revoke": "破棄",
       "history": "実行履歴",
       "slotsFilled": "{filled}/{total}スロット充足",
-      "warnings": "{count}件の警告"
+      "warnings": "{count}件の警告",
+      "disabledBadge": "停止中",
+      "disabledReason": "自動割当は現在停止しています。手動で組んでください。"
     },
     "visualReview": {
       "title": "目視確認",

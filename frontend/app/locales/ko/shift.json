@@ -29,7 +29,9 @@
       "revoke": "파기",
       "history": "실행 이력",
       "slotsFilled": "{filled}/{total} 슬롯 충족",
-      "warnings": "{count}건의 경고"
+      "warnings": "{count}건의 경고",
+      "disabledBadge": "중지 중",
+      "disabledReason": "자동 배정은 현재 중지되어 있습니다. 수동으로 편성해 주세요."
     },
     "visualReview": {
       "title": "목시 확인",
