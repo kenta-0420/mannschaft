@@ -122,6 +122,52 @@ DB 格納基準は `spring.jpa.properties.hibernate.jdbc.time_zone: UTC` によ�
 
 ---
 
+### 4.2 Flyway migration の DML も同じ規約に従う **【規約】**（CMP-260912-2258）
+
+§4.1 は `JdbcTemplate` / `nativeQuery` を対象に書かれているが、**Flyway migration の DML も JPA を迂回する経路である**ことに変わりはない。したがって **新規 migration で「今」を書くときは `UTC_TIMESTAMP()` を使う**。
+
+```sql
+-- ❌ 禁止（セッション TZ 依存）
+UPDATE teams SET updated_at = NOW() WHERE id = 1;
+INSERT INTO permissions (name, created_at, updated_at) VALUES ('X', NOW(), NOW());
+
+-- ✅ 正解（設定に依らず UTC 壁時計）
+UPDATE teams SET updated_at = UTC_TIMESTAMP() WHERE id = 1;
+INSERT INTO permissions (name, created_at, updated_at) VALUES ('X', UTC_TIMESTAMP(), UTC_TIMESTAMP());
+```
+
+#### 既存の 746 箇所は「ずれていない」— それでも新規を禁じる理由
+
+調査時点で migration の DML には `NOW()` 系が **65 ファイル・746 箇所**あり、`UTC_TIMESTAMP()` は **0 箇所**だった。既存の番人 `RawSqlTimeColumnGuardTest` / `DateTimeAndZoneGuardTest` はいずれも `src/main/java` の `.java` だけを走査するため、**migration 経由なら同型の欠陥が無検出で入り続ける**状態だった。
+
+ただし調査の結論として、**それら 746 箇所は実際にはずれていない**。MySQL の `NOW()` は**セッションの `time_zone`** に従い、本プロジェクトは全環境でそれを UTC に固定しているためである。
+
+| 環境 | セッション `time_zone` の決まり方 |
+|---|---|
+| local | `docker-compose.yml` の `--default-time-zone=+00:00` |
+| CI | MySQL サービスコンテナは `SYSTEM`、ランナーが UTC |
+| test | Testcontainers の `mysql:8.0` が `SYSTEM`＝UTC |
+| prod | RDS パラメータ `time_zone=UTC`（`infra/terraform/modules/data/main.tf`） |
+
+JDBC の `serverTimezone=UTC` はドライバ側の `Timestamp` 解釈を決めるだけで、セッション TZ を書き換えない（Connector/J の `forceConnectionTimeZoneToSession` は既定 `false`）。実測: dev MySQL（`mannschaft-mysql`）で `SELECT TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), NOW())` = **0**、`@@global.time_zone` / `@@session.time_zone` はいずれも `+00:00`。
+
+それでも新規を禁じるのは、**746 箇所の正しさが「セッション TZ が UTC」という単一の外部設定にぶら下がっている**からである。設定が 1 つ崩れれば 746 箇所が同時に 9 時間ずれる。`UTC_TIMESTAMP()` はその依存ごと消す。
+
+#### 既存 migration は書き換えない
+
+適用済み migration の書き換えは **Flyway のチェックサム不一致**を起こし、全環境の起動を止める。実測でずれが 0 である以上、是正用の新 migration も不要である（直すべきデータが無い）。よって既存は**凍結**する。
+
+#### 番人（2つで対になる）
+
+| 番人 | 守るもの |
+|---|---|
+| `FlywayMigrationTimeFunctionGuardTest`（`common/architecture`） | 新規 migration が `NOW()` 系を増やさないこと。既存はファイル単位の件数で凍結（`backend/src/test/resources/flyway_migration_time_guard/session_tz_time_function_freeze.txt`）。**台帳への追記は禁止** |
+| `FlywayMigrationSessionTimeZoneUtcIT`（`config`） | 実 MySQL 接続のセッション TZ が UTC であり `NOW() == UTC_TIMESTAMP()` であること＝既存 746 箇所が今もずれていないこと |
+
+なお **列定義の `DEFAULT CURRENT_TIMESTAMP` / `ON UPDATE CURRENT_TIMESTAMP` / `DEFAULT NOW()`（598 ファイル・1558 箇所）は射程外**とする。これらは「その列を省いた INSERT が来たときだけ」効く保険であり、式 DEFAULT（`DEFAULT (UTC_TIMESTAMP())`）へ倒すには適用済み migration の書き換えが必須で、チェックサム不一致と引き換えになる。ここは `FlywayMigrationSessionTimeZoneUtcIT` の実測担保に委ねる。
+
+---
+
 ## 5. `TimeZoneConfig` の位置づけと撤去条件
 
 - **なぜ今存在するのか**: 2.2節で述べた通り、`LocalDateTime` を瞬間・壁時計の両方の意味で使っている現状において、`LocalDateTime.now()` の意味を「東京の壁時計としての今」に統一するための力業である。これを外すと、JVM既定ゾーンがOS依存（多くの場合UTC）に戻り、`LocalDateTime.now()` の意味がすべての呼び出し箇所で変わってしまう。

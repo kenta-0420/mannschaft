@@ -1,0 +1,78 @@
+# 凍結台帳: Flyway migration の DML がセッションTZ依存の「今」（NOW()/CURRENT_TIMESTAMP/SYSDATE 等）を使っている箇所
+#
+# 形式: <db/migration からの相対パス>|<件数>
+#
+# 番人: com.mannschaft.app.common.architecture.FlywayMigrationTimeFunctionGuardTest
+#
+# ここに載っているのは「適用済みで書き換えられない（Flyway チェックサム）既存 migration」である。
+# 実測により NOW() はいずれの環境でも UTC_TIMESTAMP() と同値であり（セッション time_zone=UTC）、
+# 現時点でデータがずれているわけではない。詳細と根拠は番人クラスの Javadoc を参照。
+#
+# 【禁止】新しい行をここへ追記して番人を黙らせること。新規 migration は UTC_TIMESTAMP() を使うこと。
+# 列 DEFAULT / ON UPDATE の CURRENT_TIMESTAMP は射程外なので、この台帳には載らない。
+#
+V1.012__seed_system_user.sql|2
+V10.064__add_manage_ads_permission.sql|2
+V11.034__extend_budget_configs_and_grant_budget_admin.sql|19
+V11.057__seed_module_definition_gamification.sql|2
+V11.136__seed_module_definition_knowledge_base.sql|2
+V11.137__seed_kb_system_templates.sql|6
+V11.146__seed_module_definition_incident_management.sql|2
+V11.152__seed_module_definition_webhook_api.sql|2
+V11.158__seed_module_definition_digital_signage.sql|2
+V11.162__seed_module_definition_multilingual_content.sql|2
+V116.001__seed_team_budget_view_permissions.sql|6
+V12.004__seed_deleted_sentinel_user.sql|2
+V12.013__alter_error_reports_add_workflow_columns.sql|1
+V13.043__seed_repair_plan_templates_system.sql|30
+V13.053__add_module_repair_longterm_plan.sql|9
+V144.20260707124158__seed_feature_v9_enabled_flag.sql|2
+V150.20260710030428__bridge_team_subscriptions_to_entitlements.sql|6
+V153.20260715213228__expand_village_recruit_categories.sql|4
+V155.20260717114354__seed_module_definitions_wave1.sql|19
+V156.20260718070942__seed_module_definitions_wave2.sql|29
+V157.20260718083724__amend_module_descriptions_wave3.sql|6
+V158.20260718115027__module_activation_backfill_grandfather.sql|7
+V18.015__seed_proxy_permissions.sql|7
+V183.20260813045816__add_manage_recruitments_permission.sql|3
+V184.20260814202646__add_dead_permission_names_to_catalog.sql|7
+V187.20260820092252__seed_feature_gate_flags.sql|34
+V19.009__seed_system_default_status_labels.sql|6
+V190.20260824183617__seed_f0914_timeline_delivery_permissions_and_flag.sql|7
+V196.20260831142049__expand_billing_center.sql|5
+V2.014__seed_roles.sql|12
+V2.015__seed_permissions.sql|22
+V2.016__seed_role_permissions.sql|4
+V2.024__seed_module_definitions.sql|78
+V2.025__seed_team_templates.sql|22
+V2.026__seed_template_modules.sql|31
+V2.027__seed_module_level_availability.sql|234
+V2.028__seed_module_recommendations.sql|8
+V2.042__seed_dashboard_widget_visibility_permission.sql|4
+V208.20260911005751__enable_payment_module_for_organization_level.sql|3
+V209.20260911213923__repair_shift_budget_monthly_close_partial_apply.sql|3
+V61.005__seed_module_definition_property_history.sql|2
+V61.006__seed_module_level_availability_property_history.sql|6
+V61.007__seed_template_module_property_history.sql|1
+V61.011__seed_module_definition_real_estate_disclosure.sql|2
+V61.012__seed_module_level_availability_real_estate_disclosure.sql|6
+V61.013__seed_template_module_real_estate_disclosure.sql|1
+V61.014__seed_disclosure_template_mlit_standard_2024.sql|2
+V61.015__seed_property_history_permissions.sql|6
+V69.002__seed_village_categories.sql|28
+V70.017__bulletin_authorization_manage_content_and_post_min_role.sql|4
+V71.008__backfill_listing_regions.sql|1
+V78.001__fix_team_org_only_visibility_without_parent_org.sql|1
+V79.001__refactor_team_visibility_enum.sql|1
+V8.016__add_manage_votes_permission.sql|2
+V8.052__add_manage_tournament_permission.sql|2
+V9.071__add_manage_friend_teams_permission.sql|4
+V9.099__create_beta_restriction_config.sql|1
+V9.109__add_manage_residence_status_permission.sql|2
+V9.116__add_manage_succession_unseal_permission.sql|4
+V9.135__seed_village_module_and_widgets.sql|2
+V9.156__create_provider_synonyms_and_stamp_permission.sql|4
+V9.157__seed_point_card_provider_synonyms.sql|2
+V9.158__add_balance_permissions.sql|6
+V9.180__add_manage_reservations_permission.sql|2
+rollback/V60.010_rollback.sql|2
