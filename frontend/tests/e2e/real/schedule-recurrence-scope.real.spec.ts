@@ -146,11 +146,6 @@ test.describe('CMP107 recurring edit scope (real UI)', () => {
       headers: { Authorization: `Bearer ${memberToken}`, 'Content-Type': 'application/json' },
     })
     const rows = (await feedResponse.json() as { data: { items: Feed[] } }).data.items
-    /*
-      .filter(row => row.targetId === selected && row.type.startsWith('SCHEDULE_'))
-    expect(rows.filter(row => row.detail?.title === latest), '5分集約後の最新行').toHaveLength(1)
-    expect(rows.filter(row => row.detail?.title === first), '古い集約行を残さない').toHaveLength(0)
-    */
     expect(rows.filter(row => row.targetId === selected && row.type.startsWith('SCHEDULE_') && row.detail?.title === latest)).toHaveLength(1)
     expect(rows.filter(row => row.targetId === selected && row.type.startsWith('SCHEDULE_') && row.detail?.title === first)).toHaveLength(0)
   })
