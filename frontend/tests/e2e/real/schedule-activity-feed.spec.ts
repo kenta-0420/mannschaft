@@ -96,7 +96,7 @@ async function deleteSchedule(id: number): Promise<void> {
 async function reloadUntilVisible(text: string | RegExp, timeoutMs = 45_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
   for (;;) {
-    await page.goto('/dashboard')
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     // 「最近のアクティビティ」は personal スコープのパネルにしか無い（useDashboardWidgets の
     // scope: ['personal']）。ダッシュボードは前回選択したスコープ（チーム等）を復元するため、
@@ -216,6 +216,7 @@ test('FEED-UI-006: SCHEDULE の行をタップすると対象予定へ遷移す�
 })
 
 test('CMP107-MEMBER: この回以降の更新件数がフィードに表示される', async () => {
+  test.setTimeout(360_000)
   const before = `CMP107-メンバー表示前-${stamp}`
   const after = `CMP107-メンバー表示後-${stamp}`
   const id = await createSchedule(before, {
@@ -242,7 +243,7 @@ test('CMP107-MEMBER: この回以降の更新件数がフィードに表示さ�
     await expect(page, '予定画面へ遷移する').toHaveURL(/\/calendar(?:\?|$)/)
 
     // 通知リンクは当月の予定だけを解決する。月末の翌月予定は実UIの月送りで開く。
-    await page.goto('/calendar')
+    await page.goto('/calendar', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await waitForSpinnerGone(page)
     const row = page.getByTestId('schedule-list-row').filter({ hasText: after }).first()

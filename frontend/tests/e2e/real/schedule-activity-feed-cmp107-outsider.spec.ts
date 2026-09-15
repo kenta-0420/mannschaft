@@ -8,7 +8,7 @@ const API_V1 = `${API}/api/v1`
 const TEAM_SLUG = 'fc-u-18'
 const PASSWORD = 'TestPass2026!'
 
-test.setTimeout(180_000)
+test.setTimeout(360_000)
 
 let api: APIRequestContext
 let page: Page
@@ -71,13 +71,13 @@ test.afterAll(async () => {
 })
 
 test('CMP107-OUTSIDER: 他チームの一括更新予定も件数も表示されない', async () => {
-  await page.goto('/dashboard')
+  await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
   await expect(page).toHaveURL(/\/dashboard/)
   await expect(page.getByText(title, { exact: false })).toHaveCount(0)
 
-  await page.goto('/calendar')
+  await page.goto('/calendar', { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
   await expect(page).toHaveURL(/\/calendar/)

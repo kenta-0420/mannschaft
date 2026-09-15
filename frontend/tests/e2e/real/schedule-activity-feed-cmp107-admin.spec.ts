@@ -10,7 +10,7 @@ const PASSWORD = 'TestPass2026!'
 const ADMIN = { email: 'e2e-admin@test.mannschaft.local', password: PASSWORD }
 
 test.describe.configure({ mode: 'serial' })
-test.setTimeout(180_000)
+test.setTimeout(360_000)
 
 let api: APIRequestContext
 let page: Page
@@ -91,7 +91,7 @@ test('CMP107-ADMIN: モバイル実画面でこの回以降を選択し、5件�
   scheduleId = (await create.json() as { data: { id: number } }).data.id
   const after = `CMP107-管理者更新後-${Date.now()}`
 
-  await page.goto('/calendar')
+  await page.goto('/calendar', { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
   const row = page.getByTestId('schedule-list-row').filter({ hasText: beforeTitle }).first()

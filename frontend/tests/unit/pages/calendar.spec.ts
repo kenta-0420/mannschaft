@@ -317,7 +317,7 @@ describe('pages/calendar.vue: モバイル予定詳細と編集権限', () => {
     await wrapper.get('[data-testid="mobile-schedule-open"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.get('[data-testid="mobile-event-detail-dialog"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="mobile-event-detail-dialog"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="mobile-event-detail-panel"]').attributes('data-can-edit')).toBe('false')
     expect(loadSelectedScopePermissions).toHaveBeenCalled()
   })
