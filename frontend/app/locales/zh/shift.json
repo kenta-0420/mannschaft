@@ -29,7 +29,9 @@
       "revoke": "放弃",
       "history": "执行历史",
       "slotsFilled": "{filled}/{total}个班次已填充",
-      "warnings": "{count}个警告"
+      "warnings": "{count}个警告",
+      "disabledBadge": "已停用",
+      "disabledReason": "自动排班目前已停用。请手动编排班次。"
     },
     "visualReview": {
       "title": "目视确认",
