@@ -122,6 +122,91 @@ DB 格納基準は `spring.jpa.properties.hibernate.jdbc.time_zone: UTC` によ�
 
 ---
 
+### 4.2 Flyway migration の DML も同じ規約に従う **【規約】**（CMP-260912-2258）
+
+§4.1 は `JdbcTemplate` / `nativeQuery` を対象に書かれているが、**Flyway migration の DML も JPA を迂回する経路である**ことに変わりはない。したがって **新規 migration で「今」を書くときは `UTC_TIMESTAMP()` を使う**。
+
+禁じるのは特定の関数名ではなく、**「セッションの `time_zone` に従って現在時刻を返す MySQL 組み込み関数」全部**である。日時型だけでなく**日付型・時刻型の別名も同じセッション TZ に従う**ので、`WHERE target_date < CURDATE()` のような書き方は日単位でずれうる。
+
+| 区分 | ❌ 禁止（セッション TZ 依存） | ✅ 正解（TZ に依らない） |
+|---|---|---|
+| 日時 | `NOW()` / `SYSDATE()` / `CURRENT_TIMESTAMP` / `LOCALTIMESTAMP` | `UTC_TIMESTAMP()` |
+| 日付 | `CURDATE()` / `CURRENT_DATE` | `UTC_DATE()` |
+| 時刻 | `CURTIME()` / `CURRENT_TIME` / `LOCALTIME` | `UTC_TIME()` |
+
+```sql
+-- ❌ 禁止（セッション TZ 依存）
+UPDATE teams SET updated_at = NOW() WHERE id = 1;
+INSERT INTO permissions (name, created_at, updated_at) VALUES ('X', NOW(), NOW());
+
+-- ✅ 正解（設定に依らず UTC 壁時計）
+UPDATE teams SET updated_at = UTC_TIMESTAMP() WHERE id = 1;
+INSERT INTO permissions (name, created_at, updated_at) VALUES ('X', UTC_TIMESTAMP(), UTC_TIMESTAMP());
+```
+
+#### 既存の 746 箇所は「ずれていない」— それでも新規を禁じる理由
+
+調査時点で migration の DML には `NOW()` 系が **65 ファイル・746 箇所**あり、`UTC_TIMESTAMP()` は **0 箇所**だった。既存の番人 `RawSqlTimeColumnGuardTest` / `DateTimeAndZoneGuardTest` はいずれも `src/main/java` の `.java` だけを走査するため、**migration 経由なら同型の欠陥が無検出で入り続ける**状態だった。
+
+ただし調査の結論として、**それら 746 箇所は実際にはずれていない**。MySQL の `NOW()` は**セッションの `time_zone`** に従い、本プロジェクトは全環境でそれを UTC に固定しているためである。
+
+| 環境 | セッション `time_zone` の決まり方 |
+|---|---|
+| local | `docker-compose.yml` の `--default-time-zone=+00:00` |
+| CI | MySQL サービスコンテナは `SYSTEM`、ランナーが UTC |
+| test | Testcontainers の `mysql:8.0` が `SYSTEM`＝UTC |
+| prod | RDS パラメータ `time_zone=UTC`（`infra/terraform/modules/data/main.tf`） |
+
+JDBC の `serverTimezone=UTC` はドライバ側の `Timestamp` 解釈を決めるだけで、セッション TZ を書き換えない（Connector/J の `forceConnectionTimeZoneToSession` は既定 `false`）。実測: dev MySQL（`mannschaft-mysql`）で `SELECT TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), NOW())` = **0**、`@@global.time_zone` / `@@session.time_zone` はいずれも `+00:00`。
+
+それでも新規を禁じるのは、**746 箇所の正しさが「セッション TZ が UTC」という単一の外部設定にぶら下がっている**からである。設定が 1 つ崩れれば 746 箇所が同時に 9 時間ずれる。`UTC_TIMESTAMP()` はその依存ごと消す。
+
+#### 既存 migration は書き換えない
+
+適用済み migration の書き換えは **Flyway のチェックサム不一致**を起こし、全環境の起動を止める。実測でずれが 0 である以上、是正用の新 migration も不要である（直すべきデータが無い）。よって既存は**凍結**する。
+
+#### 番人（2つで対になる）
+
+| 番人 | 守るもの |
+|---|---|
+| `FlywayMigrationTimeFunctionGuardTest`（`common/architecture`） | 新規 migration が `NOW()` 系を増やさないこと。既存はファイル単位の件数で凍結（`backend/src/test/resources/flyway_migration_time_guard/session_tz_time_function_freeze.txt`）。**台帳への追記は禁止** |
+| `FlywayMigrationTimeFunctionGuardScanningLogicTest` | 上の番人の**走査ロジック自体**。検出／非検出の両側を検体で固定し、偽陰性化・偽陽性化を防ぐ |
+| `FlywayMigrationSessionTimeZoneUtcIT`（`config`） | 実 MySQL 接続のセッション TZ が UTC であり `NOW() == UTC_TIMESTAMP()` であること＝既存 746 箇所が今もずれていないこと |
+
+#### 番人が使う「判定の軸」（検出器を後から触る人向け）
+
+検出対象を関数名の羅列として持つと、別名が増えるたびに穴が空く。番人は次の2軸で判定している。
+
+1. **関数呼び出しであるとは何か** — 名前の直後に（任意長の空白を挟んで）`(` があり、中身が精度指定の数字だけなら呼び出し。`CURRENT_TIMESTAMP` 系の SQL 標準キーワードは括弧なしでも呼び出し、`NOW` / `SYSDATE` / `CURDATE` / `CURTIME` は括弧が無ければ単なる識別子。
+2. **識別子の一部であるとは何か** — MySQL の引用なし識別子は `0-9 a-z A-Z $ _` と U+0080 以上を許す。前後がこれらなら関数ではない。加えて**バッククォート**（引用識別子 `` `current_date` ``）と**ドット**（修飾名 `t.current_date`）が直前にあれば関数ではない。
+
+**走査の時間制限はプリエンプティブで、かつ割り込みに応答する。** ここは二段構えで、片方だけでは効かない。
+
+1. 「走査が終わってから経過時間を測って閾値と比べる」形は、**ハングしたときにだけ働かない番人**になる（制御が戻らないので比較に到達せず、CI のジョブ上限まで居座る）。そこで `assertTimeoutPreemptively` で別スレッド実行し上限で**打ち切る**。
+2. ただし `assertTimeoutPreemptively` は**割り込みを送るだけ**で強制終了はせず、**Java の正規表現走査は割り込み状態を一切見ない**。したがって上記だけでは、退行時にテストが赤くなっても**走査スレッドが生き残って CPU を焼き続ける**。そこで入力を `InterruptibleCharSequence`（`charAt` で割り込みを検査して例外を投げる）で包み、走査自体を割り込み可能にしている。フラグを消さないよう `Thread.interrupted()` ではなく `isInterrupted()` を使う。
+
+走査は引数と局所変数しか触らず `ThreadLocal`・Spring コンテキストを使わないので、別スレッド実行で不安定にならない。回帰テストは**実際に破滅的バックトラックを起こす正規表現**（`(a+)+$` に対する `a`×45＋`!`）を注入し、打ち切られることに加えて**走査スレッドが実際に停止すること**まで確認している（`Thread.sleep` は割り込みに応答してしまうので検体にならない）。
+
+> **既知の穴（本戦役の射程外・別戦役で扱う）**: 既存の `RawSqlTimeColumnGuardTest` と `DateTimeAndZoneGuardTest` は非プリエンプティブな `assertTimeout` を使っており、**同じ穴を持つ**。さらに開発機での実測では前者が 25.4 秒（上限 30 秒の 85%）、後者は **59.7 秒で上限超過により失敗**しており、判定本体に到達していない。閾値かアルゴリズムのどちらかに手当てが要る。
+
+**正規表現には量指定子を1つも置いていない。** 可変長（名前と括弧の間の空白、`DEFAULT` までの空白）はすべて Java 側の前方向・後方向それぞれ1度きりの線形走査で扱う。上限付き `\s{0,4}` では `CURDATE     ()` やコメントを潰した跡の長い空白を取りこぼし、かといって `\s*` へ広げると本リポジトリで実績のある破滅的バックトラック（55分ハング）を招くためである。実測: migration 1156 ファイルの走査が 1 秒未満（番人自身が所要時間を検査する `scanFinishesQuickly` を持つ）。
+
+#### 射程外にした範囲と、その理由（「見落とし」ではない）
+
+**列定義の `DEFAULT CURRENT_TIMESTAMP` / `ON UPDATE CURRENT_TIMESTAMP` / `DEFAULT NOW()`（598 ファイル・1558 箇所）は射程外**とする。これだけの量がありながら番人が見ていない状態は後から「走査漏れ」と誤解されやすいので、判断の因果をここに残す。
+
+1. **そもそもずれていない**。列既定の `CURRENT_TIMESTAMP` も DML の `NOW()` とまったく同じ理屈でセッションの `time_zone` に従い、本プロジェクトはそれを全環境で UTC に固定している（上表・実測済み）。よって 1558 箇所も UTC 壁時計を書く。**実害のある課題ではなく、今後どう書かせるかという規約だけの話である。**
+2. **その前提は放置されていない**。「セッション `time_zone` が UTC」であることは `FlywayMigrationSessionTimeZoneUtcIT` が実 MySQL 接続で実測し CI の不変条件として守る。1558 箇所の正しさは**あちらの番人が担保しており**、`FlywayMigrationTimeFunctionGuardTest` が重ねて見る必要がない。
+3. **塞ごうとすると代償が釣り合わない**。式 DEFAULT（`DEFAULT (UTC_TIMESTAMP())`）へ一括で倒すには**適用済み migration の書き換え**が必須で、Flyway のチェックサム不一致により全環境の起動が止まる。実害ゼロの案件でその代償は払えない。
+
+加えて実運用上、列既定は「その列を省いた INSERT が来たときだけ」効く保険であり、実際の INSERT は JPA 経路（`@PrePersist`）か明示列指定のどちらかで必ず値を与えるため、発火機会自体が乏しい。
+
+この線引きを将来動かす（列既定も禁じる）場合は、**対象を新規 migration だけに限ること**。既存への遡及は上記 3. の理由で採ってはならない。
+
+**`src/test` 配下の SQL も同じ理由で射程外**とする（テストのフィクスチャは Testcontainers 上の使い捨てデータであり、本番データの格納基準を汚さない。別戦役の扱い）。
+
+---
+
 ## 5. `TimeZoneConfig` の位置づけと撤去条件
 
 - **なぜ今存在するのか**: 2.2節で述べた通り、`LocalDateTime` を瞬間・壁時計の両方の意味で使っている現状において、`LocalDateTime.now()` の意味を「東京の壁時計としての今」に統一するための力業である。これを外すと、JVM既定ゾーンがOS依存（多くの場合UTC）に戻り、`LocalDateTime.now()` の意味がすべての呼び出し箇所で変わってしまう。
