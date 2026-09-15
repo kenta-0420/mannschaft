@@ -25,8 +25,8 @@ const monthIndex = (date: string | number) => {
     + Number(parts.find(p => p.type === 'month')?.value)
 }
 
-async function createSeries(title: string) {
-  const start = Date.now() + 7 * 86_400_000
+async function createSeries(title: string, startOffsetDays = 7) {
+  const start = Date.now() + startOffsetDays * 86_400_000
   const res = await api.post(`${V1}/teams/${TEAM}/schedules`, { headers: h(), data: {
     title, startAt: new Date(start).toISOString(), endAt: new Date(start + 3_600_000).toISOString(),
     allDay: false, eventType: 'PRACTICE', visibility: 'MEMBERS_ONLY', minViewRole: 'ANYONE', attendanceRequired: false,
@@ -36,7 +36,7 @@ async function createSeries(title: string) {
 }
 
 async function teamEntries(): Promise<Entry[]> {
-  const from = new Date(Date.now() - 86_400_000).toISOString()
+  const from = new Date(Date.now() - 10 * 86_400_000).toISOString()
   const to = new Date(Date.now() + 45 * 86_400_000).toISOString()
   const res = await api.get(`${V1}/teams/${TEAM}/schedules?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { headers: h() })
   expect(res.status()).toBe(200)
@@ -90,6 +90,7 @@ async function edit(id: number, before: string, after: string, testId: string) {
   await expect(pencil).toBeVisible({ timeout: 30_000 })
   await pencil.click()
   const dialog = page.locator('[role="dialog"]').last()
+  await expect(dialog).toBeVisible({ timeout: 30_000 })
   const input = dialog.locator('input').first()
   await expect(input).toHaveValue(before)
   await input.fill(after)
@@ -147,6 +148,30 @@ test.describe('CMP107 recurring edit scope (real UI)', () => {
     expect(entries.filter(e => titleOf(e) === after)).toHaveLength(ids.length - 1)
     expect(entries.filter(e => titleOf(e) === before)).toHaveLength(1)
     await waitFeed(ids[1]!, after, ids.length - 1)
+  })
+
+  test('THIS_AND_FOLLOWING does not rewrite elapsed occurrences', async () => {
+    const before = `CMP107-past-${Date.now()}`
+    const after = `${before}-changed`
+    await createSeries(before, -3)
+    const ids = await idsFor(before)
+    expect(ids.length).toBeGreaterThan(3)
+    const original = new Map((await teamEntries()).filter(e => ids.includes(e.id)).map(e => [e.id, e]))
+    const selectedIndex = ids.findIndex(id => Date.parse(startOf(original.get(id)!)) > Date.now())
+    expect(selectedIndex).toBeGreaterThan(0)
+    const selectedId = ids[selectedIndex]!
+    const response = await api.patch(`${V1}/teams/${TEAM}/schedules/${selectedId}?updateScope=THIS_AND_FOLLOWING`, {
+      headers: h(), data: { title: after },
+    })
+    expect(response.status(), await response.text()).toBe(200)
+    const updated = new Map((await teamEntries()).filter(e => ids.includes(e.id)).map(e => [e.id, e]))
+    for (const [index, id] of ids.entries()) {
+      const entry = updated.get(id)!
+      expect(titleOf(entry)).toBe(index < selectedIndex ? before : after)
+      if (Date.parse(startOf(original.get(id)!)) < Date.now()) {
+        expect(titleOf(entry)).toBe(before)
+      }
+    }
   })
 
   test('THIS_AND_FOLLOWING shifts each future occurrence by its own original time', async () => {
