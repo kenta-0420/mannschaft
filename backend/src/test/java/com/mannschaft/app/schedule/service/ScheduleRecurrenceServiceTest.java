@@ -239,7 +239,8 @@ class ScheduleRecurrenceServiceTest {
     void thisOnly_returnsUpdatedExceptionChild() {
         ScheduleEntity child = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false);
 
-        RecurringScheduleUpdateResult result = service.updateRecurringSchedule(child, null, "THIS_ONLY",
+        ScheduleRecurrenceService.RecurringScheduleUpdateResult result =
+                service.updateRecurringSchedule(child, null, "THIS_ONLY",
                 (target, ignored) -> target.toBuilder().title("updated").build());
 
         assertThat(result.selectedSchedule().getTitle()).isEqualTo("updated");
@@ -253,7 +254,8 @@ class ScheduleRecurrenceServiceTest {
         ScheduleEntity child = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false);
         when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L)).thenReturn(List.of(child));
 
-        RecurringScheduleUpdateResult result = service.updateRecurringSchedule(child, null, "THIS_AND_FOLLOWING",
+        ScheduleRecurrenceService.RecurringScheduleUpdateResult result =
+                service.updateRecurringSchedule(child, null, "THIS_AND_FOLLOWING",
                 (target, ignored) -> target.toBuilder().title("updated").build());
 
         assertThat(result.selectedSchedule().getTitle()).isEqualTo("updated");
@@ -269,7 +271,8 @@ class ScheduleRecurrenceServiceTest {
         when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L)).thenReturn(List.of(selectedException));
         List<Long> appliedIds = new ArrayList<>();
 
-        RecurringScheduleUpdateResult result = service.updateRecurringSchedule(selectedException, null, "ALL",
+        ScheduleRecurrenceService.RecurringScheduleUpdateResult result =
+                service.updateRecurringSchedule(selectedException, null, "ALL",
                 (target, ignored) -> { appliedIds.add(target.getId()); return target.toBuilder().title("updated").build(); });
 
         assertThat(appliedIds).containsExactly(1L);
