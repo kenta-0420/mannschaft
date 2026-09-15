@@ -196,7 +196,7 @@ export function useReservationApi() {
     query.set('size', String(params?.size ?? 20))
     return api<{
       data: unknown[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`${base(teamId)}/reservations?${query}`)
   }
 

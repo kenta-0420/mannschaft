@@ -32,7 +32,7 @@ export function useIncidentApi() {
     }
     return api<{
       data: IncidentSummaryResponse[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`${BASE}?${query}`)
   }
 

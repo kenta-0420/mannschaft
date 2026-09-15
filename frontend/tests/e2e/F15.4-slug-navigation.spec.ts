@@ -161,7 +161,7 @@ async function mockOrgTeamSearchApis(
       contentType: 'application/json',
       body: JSON.stringify({
         data: teamItems,
-        meta: { page: 0, size: 20, totalElements: teamItems.length, totalPages: 1 },
+        meta: { page: 0, size: 20, total: teamItems.length, totalPages: 1 },
       }),
     })
   })

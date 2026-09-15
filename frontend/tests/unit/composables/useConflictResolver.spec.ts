@@ -97,14 +97,14 @@ function buildConflictsUrl(page: number, size: number): string {
 
 function normalizePagedResponse(
   data: RawConflictListItem[],
-  meta: { page: number; size: number; totalElements: number; totalPages: number },
+  meta: { page: number; size: number; total: number; totalPages: number },
 ): PagedResponse<SyncConflictListItem> {
   return {
     data: data.map(normalizeListItem),
     meta: {
       page: meta.page,
       size: meta.size,
-      totalElements: meta.totalElements,
+      total: meta.total,
       totalPages: meta.totalPages,
     },
   }
@@ -277,25 +277,25 @@ describe('useConflictResolver ロジック', () => {
           created_at: '2026-04-10T10:00:00',
         },
       ]
-      const meta = { page: 0, size: 20, totalElements: 1, totalPages: 1 }
+      const meta = { page: 0, size: 20, total: 1, totalPages: 1 }
 
       const result = normalizePagedResponse(rawData, meta)
 
       expect(result.data).toHaveLength(1)
       expect(result.data[0]!.resourceType).toBe('TEST')
-      expect(result.meta.totalElements).toBe(1)
+      expect(result.meta.total).toBe(1)
     })
 
     it('空の一覧を正規化する', () => {
       const result = normalizePagedResponse([], {
         page: 0,
         size: 20,
-        totalElements: 0,
+        total: 0,
         totalPages: 0,
       })
 
       expect(result.data).toHaveLength(0)
-      expect(result.meta.totalElements).toBe(0)
+      expect(result.meta.total).toBe(0)
     })
   })
 
@@ -388,7 +388,7 @@ describe('useConflictResolver ロジック', () => {
           created_at: '2026-04-01T00:00:00',
         },
       ]
-      const result = normalizePagedResponse(rawData, { page: 0, size: 20, totalElements: 2, totalPages: 1 })
+      const result = normalizePagedResponse(rawData, { page: 0, size: 20, total: 2, totalPages: 1 })
       expect(result.data).toHaveLength(2)
       expect(result.data[0]!.resourceType).toBe('EVENT')
       expect(result.data[1]!.resolution).toBe('CLIENT_WIN')

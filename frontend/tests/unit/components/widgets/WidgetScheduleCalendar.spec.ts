@@ -76,7 +76,7 @@ const CalendarGridStub = defineComponent({
   },
 })
 
-const emptyResponse = { data: [], meta: { page: 0, size: 0, totalElements: 0, totalPages: 0 } }
+const emptyResponse = { data: [], meta: { page: 0, size: 0, total: 0, totalPages: 0 } }
 
 beforeEach(() => {
   setActivePinia(createPinia())
@@ -121,7 +121,7 @@ describe('WidgetScheduleCalendar.vue', () => {
           color: null,
         },
       ],
-      meta: { page: 0, size: 50, totalElements: 2, totalPages: 1 },
+      meta: { page: 0, size: 50, total: 2, totalPages: 1 },
     })
     scheduleApiMock.getMySchedules.mockResolvedValueOnce(emptyResponse)
 
@@ -164,7 +164,7 @@ describe('WidgetScheduleCalendar.vue', () => {
   it('次月ボタンクリックで currentMonth が進み再フェッチされる', async () => {
     scheduleApiMock.listSchedules.mockResolvedValue({
       data: [],
-      meta: { page: 0, size: 50, totalElements: 0, totalPages: 0 },
+      meta: { page: 0, size: 50, total: 0, totalPages: 0 },
     })
     scheduleApiMock.getMySchedules.mockResolvedValue(emptyResponse)
 

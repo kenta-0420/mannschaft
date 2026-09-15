@@ -51,7 +51,7 @@ const MOCK_INCIDENT_IN_PROGRESS = {
 
 const MOCK_INCIDENTS_LIST = {
   data: [MOCK_INCIDENT_SUMMARY, MOCK_INCIDENT_RESOLVED, MOCK_INCIDENT_IN_PROGRESS],
-  meta: { page: 0, size: 20, totalElements: 3, totalPages: 1 },
+  meta: { page: 0, size: 20, total: 3, totalPages: 1 },
 }
 
 async function mockIncidentApis(page: Page): Promise<void> {

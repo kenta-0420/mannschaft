@@ -24,7 +24,7 @@ describe('useSystemAdminAdCampaignApi', () => {
     it('SYS-AD-CAMP-001: GET /review-queue を既定 page=0 size=20 で呼ぶ', async () => {
       mockFetch.mockResolvedValueOnce({
         data: [],
-        meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 },
+        meta: { page: 0, size: 20, total: 0, totalPages: 0 },
       })
       const api = useSystemAdminAdCampaignApi()
       await api.listReviewQueue()
@@ -38,7 +38,7 @@ describe('useSystemAdminAdCampaignApi', () => {
     it('SYS-AD-CAMP-002: page/size を上書きできる', async () => {
       mockFetch.mockResolvedValueOnce({
         data: [],
-        meta: { page: 2, size: 50, totalElements: 0, totalPages: 0 },
+        meta: { page: 2, size: 50, total: 0, totalPages: 0 },
       })
       const api = useSystemAdminAdCampaignApi()
       await api.listReviewQueue({ page: 2, size: 50 })
@@ -115,7 +115,7 @@ describe('useSystemAdminAdCampaignApi', () => {
     it('SYS-AD-CAMP-007: GET /ad-user-reports を既定 page=0 size=20 で呼ぶ', async () => {
       mockFetch.mockResolvedValueOnce({
         data: [],
-        meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 },
+        meta: { page: 0, size: 20, total: 0, totalPages: 0 },
       })
       const api = useSystemAdminAdCampaignApi()
       await api.listUserReports()
@@ -131,7 +131,7 @@ describe('useSystemAdminAdCampaignApi', () => {
     it('SYS-AD-CAMP-008: reason/status フィルタをクエリに乗せる', async () => {
       mockFetch.mockResolvedValueOnce({
         data: [],
-        meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 },
+        meta: { page: 0, size: 20, total: 0, totalPages: 0 },
       })
       const api = useSystemAdminAdCampaignApi()
       await api.listUserReports({ reason: 'OFFENSIVE', status: 'NEW' })

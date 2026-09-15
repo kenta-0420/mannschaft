@@ -71,7 +71,7 @@ async function loadReservations() {
         size: 20,
       })
       reservations.value = res.data as ReservationResponse[]
-      totalRecords.value = res.meta.totalElements
+      totalRecords.value = res.meta.total
     }
   }
   catch {

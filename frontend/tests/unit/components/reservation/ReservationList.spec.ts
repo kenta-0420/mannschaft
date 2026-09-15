@@ -8,7 +8,7 @@ import ReservationList from '~/components/reservation/ReservationList.vue'
  * 観点（マージブロッカーの回帰ガード）:
  *   MINE-001: mine モードで BE GET /reservations/my が meta を持たない { data: [...] } を返しても、
  *             空表示に倒れず自分の予約行が描画される。
- *             （旧実装は両モード共通で res.meta.totalElements を参照 → mine で TypeError →
+ *             （旧実装は両モード共通で res.meta.total を参照 → mine で TypeError →
  *              直後の catch が握り潰して空表示になる実害バグ。ここで再現→green 化する）
  *   MINE-002: mine モードでは予約者名列を描画しない（他人の氏名を漏らさない・情報漏洩の回帰防止）。
  *
@@ -138,7 +138,7 @@ const singleConfirmed = {
 
 describe('ReservationList.vue（グループ予約の表示・操作ルーティング）', () => {
   it('GROUP-001: グループ行はメニュー名・枠数を併記し、終了時刻はグループ末尾時刻を表示する', async () => {
-    mockListReservations.mockResolvedValue({ data: [groupedConfirmed], meta: { totalElements: 1 } })
+    mockListReservations.mockResolvedValue({ data: [groupedConfirmed], meta: { total: 1 } })
 
     const wrapper = await mountSuspended(ReservationList, {
       props: { teamId: 'team-slug', canManage: true, mode: 'team' as const },
@@ -151,7 +151,7 @@ describe('ReservationList.vue（グループ予約の表示・操作ルーティ
   })
 
   it('GROUP-002: CONFIRMED グループ行のキャンセルは cancelGroup を呼ぶ（cancelReservation は呼ばない）', async () => {
-    mockListReservations.mockResolvedValue({ data: [groupedConfirmed], meta: { totalElements: 1 } })
+    mockListReservations.mockResolvedValue({ data: [groupedConfirmed], meta: { total: 1 } })
 
     const wrapper = await mountSuspended(ReservationList, {
       props: { teamId: 'team-slug', canManage: true, mode: 'team' as const },
@@ -170,7 +170,7 @@ describe('ReservationList.vue（グループ予約の表示・操作ルーティ
   })
 
   it('GROUP-003: PENDING グループ行の承認/却下は confirmGroup/cancelGroup を呼ぶ', async () => {
-    mockListReservations.mockResolvedValue({ data: [groupedPending], meta: { totalElements: 1 } })
+    mockListReservations.mockResolvedValue({ data: [groupedPending], meta: { total: 1 } })
 
     const wrapper = await mountSuspended(ReservationList, {
       props: { teamId: 'team-slug', canManage: true, mode: 'team' as const },
@@ -195,7 +195,7 @@ describe('ReservationList.vue（グループ予約の表示・操作ルーティ
   })
 
   it('GROUP-004: 単枠（group=null）は従来どおり confirmReservation/cancelReservation を呼ぶ', async () => {
-    mockListReservations.mockResolvedValue({ data: [singleConfirmed], meta: { totalElements: 1 } })
+    mockListReservations.mockResolvedValue({ data: [singleConfirmed], meta: { total: 1 } })
 
     const wrapper = await mountSuspended(ReservationList, {
       props: { teamId: 'team-slug', canManage: true, mode: 'team' as const },
@@ -353,7 +353,7 @@ const seriesPending = {
 
 describe('ReservationList.vue（定期予約 series・W2-5-FE）', () => {
   it('SERIES-BADGE: recurringSeriesId が非nullの行に「定期」バッジを表示する', async () => {
-    mockListReservations.mockResolvedValue({ data: [seriesConfirmed], meta: { totalElements: 1 } })
+    mockListReservations.mockResolvedValue({ data: [seriesConfirmed], meta: { total: 1 } })
 
     const wrapper = await mountSuspended(ReservationList, {
       props: { teamId: 'team-slug', canManage: true, mode: 'team' as const },
@@ -364,7 +364,7 @@ describe('ReservationList.vue（定期予約 series・W2-5-FE）', () => {
   })
 
   it('SERIES-APPROVE: series所属のPENDING行に一括承認ボタンが出て、scope=SERIESで確定する', async () => {
-    mockListReservations.mockResolvedValue({ data: [seriesPending], meta: { totalElements: 1 } })
+    mockListReservations.mockResolvedValue({ data: [seriesPending], meta: { total: 1 } })
     mockConfirmReservation.mockResolvedValue({ data: { recurringConfirm: { confirmedCount: 3, skippedWeeks: [] } } })
 
     const wrapper = await mountSuspended(ReservationList, {

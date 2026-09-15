@@ -15,7 +15,7 @@ test.describe('ORG-FEAT-014〜017: 組織イベント', () => {
             data: [
               { id: 1, title: 'テストイベント', startAt: '2026-05-01T10:00:00Z', endAt: '2026-05-01T18:00:00Z', location: '東京', participantCount: 3 },
             ],
-            meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+            meta: { page: 0, size: 20, total: 1, totalPages: 1 },
           }),
         })
       } else {

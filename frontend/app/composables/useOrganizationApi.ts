@@ -63,7 +63,7 @@ interface TeamSummaryResponse {
 
 interface PagedData<T> {
   data: T[]
-  meta: { page: number; size: number; totalElements: number; totalPages: number }
+  meta: { page: number; size: number; total: number; totalPages: number }
 }
 
 interface SupporterResponse {
@@ -412,7 +412,7 @@ export function useOrganizationApi() {
   async function getContentPaymentGates(orgSlug: string) {
     return api<{
       data: Record<string, unknown>[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/organizations/${orgSlug}/content-payment-gates`)
   }
 

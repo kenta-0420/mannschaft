@@ -144,7 +144,7 @@ beforeEach(() => {
   mockUpdateBeneficiarySetting.mockResolvedValue(undefined)
   mockGetContentPaymentGates.mockResolvedValue({
     data: [],
-    meta: { page: 0, size: 50, totalElements: 0, totalPages: 0 },
+    meta: { page: 0, size: 50, total: 0, totalPages: 0 },
   })
   mockUpdateContentPaymentGates.mockResolvedValue({ data: {} })
 })

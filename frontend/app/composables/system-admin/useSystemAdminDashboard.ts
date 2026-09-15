@@ -100,7 +100,7 @@ export function useSystemAdminDashboard() {
     const qs = query.toString()
     return api<{
       data: ErrorReportResponse[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`${BASE}/error-reports${qs ? `?${qs}` : ''}`)
   }
 

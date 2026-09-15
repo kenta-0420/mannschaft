@@ -41,12 +41,12 @@ async function load() {
       operationalApi.listQueue({ status: 'PENDING_REVIEW', page: 0, size: 1 }),
     ])
     reviewQueue.value = queueRes.data
-    reviewQueueTotal.value = queueRes.meta.totalElements
+    reviewQueueTotal.value = queueRes.meta.total
     autoFlaggedCount.value = queueRes.data.filter(
       (item) => item.moderationStatus === 'AUTO_FLAGGED',
     ).length
     userReports.value = reportsRes.data
-    userReportsTotal.value = reportsRes.meta.totalElements
+    userReportsTotal.value = reportsRes.meta.total
     autoSuspendCandidateCount.value = reportsRes.data.filter(
       (r) => r.autoSuspendCandidate,
     ).length
