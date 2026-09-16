@@ -194,7 +194,9 @@ wsl -e sh -c 'P=8082; command -v ss >/dev/null 2>&1 || { echo "[0] ss を実行�
 ```
 
 **出力は 4 通りある。`ss` が動いたか / 一致行があるか / PID が取れたか を、
-それぞれ別の軸として見ること（どれか 1 つでも欠けたら「確認不能」側へ倒す）。**
+それぞれ別の軸として見ること。**
+**「確認不能」は `[0]`（`ss` の実行そのものが失敗）と `[3]`（一致行はあるのに PID / cwd が取れない）の 2 つだけ。**
+`[1]`（一致行なし）と `[2]`（PID / cwd 取得可）は**確認できた**状態であり、確認不能ではない。
 
 | 出力 | 意味 | 対処 |
 |---|---|---|
@@ -211,7 +213,8 @@ wsl -e sh -c 'P=8082; command -v ss >/dev/null 2>&1 || { echo "[0] ss を実行�
 パスワード入力ありで `pid=` が出るかは未検証）。
 
 
-実測結果（2026-09-16、自分の作業木 = `fix-1526`。同時に存在した全 java プロセスへ適用）:
+実測結果（2026-09-16、自分の作業木 = `fix-1526`。その時点で存在した java プロセスへ適用。
+最下行の PID 94220 のみ、後から出現したものを同じ手順で判定した）:
 
 | 側 | PID | 条件1 `openapi-gen` | 条件2 worktree | 判定 |
 |---|---|---|---|---|
@@ -221,9 +224,16 @@ wsl -e sh -c 'P=8082; command -v ss >/dev/null 2>&1 || { echo "[0] ss を実行�
 | Windows | 20172 | ❌ | ❌ `fix-1446` | **停止禁止**（他セッション） |
 | WSL | 602973 | ❌ | ❌ `cmp107-affected-count` | **停止禁止**（他セッション） |
 | WSL | 607410 | ❌ | ❌ `cmp107-edit-scope-ui` | **停止禁止**（他セッション） |
+| Windows | 94220 | ✅ **`openapi-gen`** | ❌ `fix-1525` | **停止禁止**（他セッションが実行中の生成） |
 
-**自分のものと判定されたのは 1 件だけ**で、他 worktree の 4 件と、自分の作業木だが
+**自分のものと判定されたのは 1 件だけ**で、他 worktree の 5 件と、自分の作業木だが
 openapi-gen ではない 1 件は、いずれも正しく停止対象から外れた。
+
+とりわけ **PID 94220 が決定的**である。これは**他セッション（`fix-1525`）が実行中の
+`generateOpenApiDocs` のフォーク**で、`-Dspring.profiles.active=openapi-gen` も
+`-Dserver.port=8082` も自分のものと**まったく同じ**だった（2026-09-16 に実際に遭遇）。
+条件1 と起動時刻だけで判断する旧来のやり方では**これを孤児と誤認して停止し、
+他セッションの数十分の実行を破壊していた**。条件2（worktree 一致）だけがこれを止める。
 同じ worktree でも条件1 を満たさなければ止めない（＝Gradle デーモンを巻き込まない）点にも注意。
 
 なお 2026-09-16 に `:8082` を掴んでいたのは WSL 側で走る他セッション
@@ -253,15 +263,19 @@ Get-CimInstance Win32_Process -Filter "ProcessId=<PID>" | Select-Object ProcessI
 したがって**探すべき文字列は `-Dspring.profiles.active=openapi-gen`**（`--spring.profiles.active=...` では**見つからない**）。
 
 ```powershell
-# openapi-gen のフォークだけを一覧する
-Get-CimInstance Win32_Process -Filter "Name='java.exe'" |
-  Where-Object { $_.CommandLine -like '*-Dspring.profiles.active=openapi-gen*' } |
-  Select-Object ProcessId,ParentProcessId,CreationDate,CommandLine
+# openapi-gen のフォークだけを一覧する（成否を確かめてから 0 件を読む）
+try {
+  $forks = @(Get-CimInstance Win32_Process -Filter "Name='java.exe'" -ErrorAction Stop |
+    Where-Object { $_.CommandLine -like '*-Dspring.profiles.active=openapi-gen*' })
+  if ($forks.Count -eq 0) { "[1] openapi-gen のフォークは Windows 側に居ない（確認できた）" }
+  else { $forks | Select-Object ProcessId,ParentProcessId,CreationDate,CommandLine }
+} catch { "[0] 確認不能: " + $_.Exception.Message }
 ```
 
-この列挙が**0 件だったことを「孤児は居ない」と読まないこと**。PowerShell 側の失敗でも
-0 件に見える。ポートが使えるかどうかは上の両側確認で決め、ここで何も分からなければ
-「確認不能」として別ポートへ避ける。
+**0 件そのものは正しい答え**（＝Windows 側にフォークは居ない）。危険なのは、
+列挙が**失敗しても 0 件に見える**ことのほうである。上のように成否を確かめていれば、
+0 件は「確認できた不在」、例外は `[0]` 確認不能として区別できる。
+確認不能のときだけ、別ポートへ避ける。
 
 これは**候補を洗い出すための列挙にすぎない**。`CreationDate` は補助的な手がかりであって、
 これだけで停止してはならない（並行セッションの生成も同じプロファイルで起動する）。
@@ -306,7 +320,9 @@ wsl -e sh -c 'P=8082; command -v ss >/dev/null 2>&1 || { echo "[0] ss を実行�
 ```
 
 **出力は 4 通りある。`ss` が動いたか / 一致行があるか / PID が取れたか を、
-それぞれ別の軸として見ること（どれか 1 つでも欠けたら「確認不能」側へ倒す）。**
+それぞれ別の軸として見ること。**
+**「確認不能」は `[0]`（`ss` の実行そのものが失敗）と `[3]`（一致行はあるのに PID / cwd が取れない）の 2 つだけ。**
+`[1]`（一致行なし）と `[2]`（PID / cwd 取得可）は**確認できた**状態であり、確認不能ではない。
 
 | 出力 | 意味 | 対処 |
 |---|---|---|
