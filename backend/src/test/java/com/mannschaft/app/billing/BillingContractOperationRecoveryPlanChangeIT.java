@@ -53,8 +53,6 @@ class BillingContractOperationRecoveryPlanChangeIT extends AbstractMySqlIntegrat
 
     /** しきい値（5分）を確実に超える古さ（6分・AC-89）。 */
     private static final long STALE_MINUTES = 6L;
-    /** しきい値ちょうど（AC-90・半開区間なので stale にしてはならない）。 */
-    private static final long EXACT_THRESHOLD_MINUTES = 5L;
     /** しきい値未満。 */
     private static final long FRESH_MINUTES = 1L;
 
@@ -192,20 +190,25 @@ class BillingContractOperationRecoveryPlanChangeIT extends AbstractMySqlIntegrat
     @DisplayName("AC-90: しきい値ちょうどは stale にしない")
     class ExactThresholdIsNotStale {
 
-        @Test
-        @DisplayName("AC-90: updated_atがちょうど5分前のPLAN_CHANGEは走査対象に含まれない")
-        void exactlyFiveMinutesIsNotScanned() {
-            Fixture fixture = givenStalePlanChange(EXACT_THRESHOLD_MINUTES,
-                    BillingContractChangeStatus.PENDING_PAYMENT, true, false);
-            givenStripeTrace(fixture, true, false);
-
-            RecoveryOutcome outcome = recoveryService.recoverStaleOperations();
-
-            assertThat(outcome.scanned())
-                    .as("半開区間: しきい値ちょうどは stale ではない（PR6a isStale と同じ流儀）").isZero();
-            assertThat(reloadOperation(fixture.operationId).getStatus())
-                    .isEqualTo(BillingOperationStatus.CALLING_STRIPE);
-        }
+        // 第11隊是正（AC-90）: 旧 exactlyFiveMinutesIsNotScanned はここに実装していたが、
+        // フィクスチャの updated_at（実時計 - 5分・秒切り捨て）と本サービスが内部で計算する
+        // Instant.now(clock).minus(5分)（実時計・別の瞬間）という2つの独立した実時計呼び出しを
+        // 突き合わせていたため非決定的だった。フィクスチャ側の切り捨てで最大1秒過去へ倒れ、
+        // かつサービス側の計算は必ずそれより後に走るので、この検体は実際には常に5分を「超過」しており、
+        // 「ちょうど5分」の境界を検体として一度も表現できていなかった（弱体化ではなく、境界を
+        // 表現できない検体を撤去して強化する置き換え）。
+        //
+        // 境界の主張は次の2つの決定的な検体へ分解した:
+        //   1. BillingContractOperationRepositoryStaleScanBoundaryIT
+        //      — updated_at = T の行に対し staleBefore = T で0件・T+1秒で1件であることを、
+        //        実 MySQL でリポジトリの述語を直接呼んで固定する（半開区間そのもの）。
+        //   2. BillingContractOperationRecoveryStaleBeforeThresholdTest
+        //      — Clock.fixed + Mockito で recoverStaleOperations() が計算する staleBefore 引数を
+        //        ArgumentCaptor で捕まえ、NOW.minus(Duration.ofMinutes(5)) と厳密一致することを
+        //        実時計を介さず固定する（しきい値の計算そのもの）。
+        //
+        // 本メソッドは撤去し、走査そのものが動くことの裏取りである陽性対照
+        // sixMinutesIsScannedCounterpart のみを残す。
 
         @Test
         @DisplayName("AC-90: 陽性対照 — 同条件で6分経過なら走査対象に入る（走査そのものが動いていることの裏取り）")
@@ -363,14 +366,16 @@ class BillingContractOperationRecoveryPlanChangeIT extends AbstractMySqlIntegrat
     // ================================================================
 
     @Test
-    @DisplayName("AC-100: BillingOperationTransitions.stepForはPLAN_CHANGEに対し常にSTRIPE_APPLY_PLAN_CHANGEを返す"
-            + "（PR6b-1では正しい。DOWNGRADE分岐はPR6b-2の担当であり本PRでは変えない）")
+    @DisplayName("AC-100: BillingOperationTransitions.stepForはPLAN_CHANGEの進行中(CALLING_STRIPE)に対し"
+            + "常にSTRIPE_APPLY_PLAN_CHANGEを返す（PR6b-1では正しい。DOWNGRADE分岐はPR6b-2の担当であり"
+            + "本PRでは変えない）。"
+            + "terminal（APPLIED->FINALIZED・FAILED/CANCELLED->ABORTED）はPR6a の"
+            + "BillingOperationStateMachineTest#terminalStepsAreCommon（AC-11）が全kind共通で既に固定して"
+            + "いるため、ここでは重複して主張しない（第11隊是正: 元のテストはterminalに"
+            + "STRIPE_APPLY_PLAN_CHANGEを要求しておりAC-11の番人と両立不能だった）。")
     void stepForPlanChangeStaysStripeApplyPlanChange() {
         assertThat(BillingOperationTransitions.stepFor(
-                BillingOperationKind.PLAN_CHANGE, BillingOperationStatus.APPLIED))
-                .isEqualTo(BillingOperationStep.STRIPE_APPLY_PLAN_CHANGE);
-        assertThat(BillingOperationTransitions.stepFor(
-                BillingOperationKind.PLAN_CHANGE, BillingOperationStatus.FAILED))
+                BillingOperationKind.PLAN_CHANGE, BillingOperationStatus.CALLING_STRIPE))
                 .isEqualTo(BillingOperationStep.STRIPE_APPLY_PLAN_CHANGE);
     }
 
