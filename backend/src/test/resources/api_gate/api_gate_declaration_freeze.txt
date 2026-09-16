@@ -572,7 +572,7 @@ HTTP|com.mannschaft.app.service.controller.ServiceRecordController|17|17
 HTTP|com.mannschaft.app.service.controller.ServiceRecordFieldController|7|7
 HTTP|com.mannschaft.app.service.controller.ServiceRecordTemplateController|9|9
 HTTP|com.mannschaft.app.shift.controller.MemberWorkConstraintController|7|7
-HTTP|com.mannschaft.app.shift.controller.ShiftAutoAssignController|6|6
+HTTP|com.mannschaft.app.shift.controller.ShiftAutoAssignController|0|6
 HTTP|com.mannschaft.app.shift.controller.ShiftAvailabilityController|6|6
 HTTP|com.mannschaft.app.shift.controller.ShiftChangeRequestController|5|5
 HTTP|com.mannschaft.app.shift.controller.ShiftMyController|1|1
