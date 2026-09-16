@@ -222,9 +222,20 @@ test('CMP107-MEMBER: この回以降の更新件数がフィードに表示さ�
   const id = await createSchedule(before, {
     recurrenceRule: { type: 'WEEKLY', interval: 1, daysOfWeek: ['MONDAY'], endType: 'COUNT', count: 4 },
   })
+  let cleanupChildId: number | undefined
   try {
-    await reloadUntilVisible(before)
-
+    const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 19)
+    const to = new Date(Date.now() + 42 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19)
+    const list = await actorApi.get(
+      `${API_V1}/teams/${TEAM_SLUG}/schedules?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      { headers: h(actorToken) },
+    )
+    expect(list.status(), '自作予定の子回確認').toBe(200)
+    const siblings = (await list.json() as {
+      data: Array<{ id: number; content: { title: string } }>
+    }).data.filter(row => row.id !== id && row.content.title === before)
+    expect(siblings, '片付け対象の自作子回').toHaveLength(4)
+    cleanupChildId = siblings[0]?.id
     const res = await actorApi.patch(
       `${API_V1}/teams/${TEAM_SLUG}/schedules/${id}?updateScope=THIS_AND_FOLLOWING`,
       { headers: h(actorToken), data: { title: after } },
@@ -266,7 +277,7 @@ test('CMP107-MEMBER: この回以降の更新件数がフィードに表示さ�
       .toHaveCount(0)
   } finally {
     const cleanup = await actorApi.delete(
-      `${API_V1}/teams/${TEAM_SLUG}/schedules/${id}?updateScope=ALL`,
+      `${API_V1}/teams/${TEAM_SLUG}/schedules/${cleanupChildId ?? id}?updateScope=${cleanupChildId ? 'ALL' : 'THIS_ONLY'}`,
       { headers: h(actorToken) },
     )
     expect(cleanup.status(), 'CMP107で作成した繰り返し予定だけを削除する').toBe(204)

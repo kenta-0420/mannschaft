@@ -104,6 +104,14 @@ public class UpdateScheduleRequest {
     @Valid
     private final ScheduledAttendanceRequest scheduledAttendance;
 
+    /** 一括更新で各回固有の日時へ写像した部分更新リクエスト。その他の入力は保持する。 */
+    public UpdateScheduleRequest withDates(OffsetDateTime startAt, OffsetDateTime endAt) {
+        return new UpdateScheduleRequest(title, description, location, startAt, endAt, allDay,
+                eventType, visibility, minViewRole, minResponseRole, targetMode, targetUserIds,
+                attendanceRequired, attendanceDeadline, commentOption, eventCategoryId,
+                academicYear, updateScope, reminders, scheduledSurveys, scheduledAttendance);
+    }
+
     /** 対象者機能追加以前のJava呼び出し元向け。対象者項目は未変更（null）として扱う。 */
     public UpdateScheduleRequest(
             String title, String description, String location,

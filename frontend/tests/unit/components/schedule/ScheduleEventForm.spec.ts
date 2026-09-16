@@ -289,6 +289,8 @@ describe('ScheduleEventForm: 更新範囲（CMP-107）', () => {
     expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('scheduledAttendance')
     expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('reminders')
     expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('recurrenceRule')
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('startAt')
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('endAt')
   })
 
   it('個人予定の編集には共有予定用の更新範囲を表示しない', async () => {

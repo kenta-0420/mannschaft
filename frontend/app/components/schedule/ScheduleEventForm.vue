@@ -96,6 +96,13 @@ const isEdit = computed(() => !!props.scheduleId)
 const targetMode = ref<ScheduleTargetMode>('ALL_MEMBERS')
 const targetUserIds = ref<number[]>([])
 const targetValidationError = ref<string | null>(null)
+const loadedSharedTemporal = ref<{
+  startDateMs: number | null
+  startTime: string
+  endDateMs: number | null
+  endTime: string
+  allDay: boolean
+} | null>(null)
 
 // 15分刻みの時刻オプション生成（00:00〜23:45）
 const baseTimeOptions = Array.from({ length: 96 }, (_, i) => {
@@ -233,6 +240,7 @@ watch(
   () => [props.visible, props.scheduleId],
   async ([visible, scheduleId]) => {
     if (visible && scheduleId) {
+      loadedSharedTemporal.value = null
       try {
         const res = effectiveScope.value.isPersonal
           ? await scheduleApi.getMyScheduleDetail(scheduleId as number)
@@ -338,6 +346,13 @@ watch(
             form.value.endTime = end.toTimeString().slice(0, 5)
           }
           // 共有予定: reminders からリマインダーフォーム状態を復元する
+          loadedSharedTemporal.value = {
+            startDateMs: form.value.startDate?.getTime() ?? null,
+            startTime: form.value.startTime,
+            endDateMs: form.value.endDate?.getTime() ?? null,
+            endTime: form.value.endTime,
+            allDay: form.value.allDay,
+          }
           const reminders = (data.reminders as Array<Record<string, unknown>> | null) ?? []
           form.value.reminders = reminders.map(reminderResponseToFormEntry)
           // 共有予定: scheduledTasks の PENDING タスクを scheduledSurvey / scheduledAttendance に変換する
@@ -556,20 +571,40 @@ async function submit() {
   submitting.value = true
   fieldErrors.value = {}
 
+  const sharedTemporalSnapshot = isEdit.value
+    && !effectiveScope.value.isPersonal
+    ? loadedSharedTemporal.value
+    : null
+  const startAtUnchanged = sharedTemporalSnapshot !== null
+    && sharedTemporalSnapshot.startDateMs === (form.value.startDate?.getTime() ?? null)
+    && sharedTemporalSnapshot.startTime === form.value.startTime
+    && sharedTemporalSnapshot.allDay === form.value.allDay
+  const endAtUnchanged = sharedTemporalSnapshot !== null
+    && sharedTemporalSnapshot.endDateMs === (form.value.endDate?.getTime() ?? null)
+    && sharedTemporalSnapshot.endTime === form.value.endTime
+    && sharedTemporalSnapshot.allDay === form.value.allDay
+
   const body: Record<string, unknown> = {
     title: form.value.title.trim(),
     description: form.value.description.trim() || undefined,
     location: form.value.location.trim() || undefined,
     allDay: form.value.allDay,
-    startAt: buildOffsetDateTimeStr(form.value.startDate, form.value.allDay ? '' : form.value.startTime) ?? undefined,
-    endAt: (() => {
+  }
+  if (!startAtUnchanged) {
+    body.startAt = buildOffsetDateTimeStr(
+      form.value.startDate,
+      form.value.allDay ? '' : form.value.startTime,
+    ) ?? undefined
+  }
+  if (!endAtUnchanged) {
+    body.endAt = (() => {
       if (form.value.allDay && form.value.endDate) {
         const d = new Date(form.value.endDate)
         d.setDate(d.getDate() + 1)
         return buildOffsetDateTimeStr(d, '') ?? undefined
       }
       return buildOffsetDateTimeStr(form.value.endDate, form.value.allDay ? '' : form.value.endTime) ?? undefined
-    })(),
+    })()
   }
   if (effectiveScope.value.isPersonal) {
     body.color = form.value.color
@@ -760,6 +795,7 @@ function resetForm() {
   targetMode.value = 'ALL_MEMBERS'
   targetUserIds.value = []
   targetValidationError.value = null
+  loadedSharedTemporal.value = null
   fieldErrors.value = {}
 }
 

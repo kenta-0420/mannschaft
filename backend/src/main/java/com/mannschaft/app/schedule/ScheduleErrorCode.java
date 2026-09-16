@@ -17,6 +17,9 @@ public enum ScheduleErrorCode implements ErrorCode {
     /** 開始日時と終了日時の整合性エラー */
     INVALID_DATE_RANGE("SCHEDULE_002", "開始日時は終了日時より前である必要があります", Severity.WARN),
 
+    /** 繰り返し予定の一括日時変更で、他の回と開始日時が重なる。 */
+    RECURRENCE_START_CONFLICT("SCHEDULE_023", "変更後の開始日時が同じ繰り返し予定の別の回と重なります", Severity.WARN),
+
     /** 出欠管理対象外のスケジュール */
     ATTENDANCE_NOT_REQUIRED("SCHEDULE_003", "このスケジュールは出欠管理対象外です", Severity.WARN),
 

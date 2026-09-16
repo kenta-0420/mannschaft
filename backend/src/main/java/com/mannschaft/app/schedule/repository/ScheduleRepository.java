@@ -84,6 +84,19 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
     List<ScheduleEntity> findByParentScheduleIdOrderByStartAtAsc(Long parentId);
 
     /**
+     * DB一意制約に残る論理削除済み子も含む開始時刻スロット。
+     * Entity query は @SQLRestriction で削除済み行を隠すため、scalar native projectionを使う。
+     */
+    interface StartSlotProjection {
+        Long getId();
+        LocalDateTime getStartAt();
+    }
+
+    @Query(value = "SELECT id AS id, start_at AS startAt FROM schedules "
+            + "WHERE parent_schedule_id = :parentId", nativeQuery = true)
+    List<StartSlotProjection> findAllStartSlotsByParentIdIncludingDeleted(@Param("parentId") Long parentId);
+
+    /**
      * 親スケジュールに紐付く子スケジュール数を取得する。
      */
     long countByParentScheduleId(Long parentId);

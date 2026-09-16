@@ -10,14 +10,20 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
@@ -40,6 +46,7 @@ public class ScheduleRecurrenceService {
     private static final String UPDATE_SCOPE_THIS_ONLY = "THIS_ONLY";
     private static final String UPDATE_SCOPE_THIS_AND_FOLLOWING = "THIS_AND_FOLLOWING";
     private static final String UPDATE_SCOPE_ALL = "ALL";
+    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
 
     private final ScheduleRepository scheduleRepository;
     private final ScheduleTargetService scheduleTargetService;
@@ -110,19 +117,10 @@ public class ScheduleRecurrenceService {
                 }
             }
             case UPDATE_SCOPE_THIS_AND_FOLLOWING -> {
-                trackedApplyUpdate.accept(schedule, req);
-                // この日以降の子スケジュールも更新（例外を除く）
-                updateFollowingSchedules(schedule, req, trackedApplyUpdate);
+                updateMultipleSchedules(schedule, req, false, trackedApplyUpdate);
             }
             case UPDATE_SCOPE_ALL -> {
-                // 親を更新、全子を更新（例外を除く）
-                Long parentId = schedule.getParentScheduleId() != null
-                        ? schedule.getParentScheduleId() : schedule.getId();
-                ScheduleEntity parent = scheduleRepository.findById(parentId)
-                        .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
-                trackedApplyUpdate.accept(parent, req);
-                scheduleRepository.save(parent);
-                updateAllChildSchedules(parentId, req, trackedApplyUpdate);
+                updateMultipleSchedules(schedule, req, true, trackedApplyUpdate);
             }
             default -> trackedApplyUpdate.accept(schedule, req);
         }
@@ -291,33 +289,110 @@ public class ScheduleRecurrenceService {
         return target.withDayOfMonth(Math.min(base.getDayOfMonth(), lastDay));
     }
 
-    /**
-     * 指定スケジュール以降の子スケジュールを更新する（例外は除く）。
-     */
-    private void updateFollowingSchedules(ScheduleEntity schedule, UpdateScheduleRequest req,
-                                          BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
-        Long parentId = schedule.getParentScheduleId() != null
-                ? schedule.getParentScheduleId() : schedule.getId();
-        List<ScheduleEntity> children = scheduleRepository
-                .findByParentScheduleIdOrderByStartAtAsc(parentId);
+    /** 更新前の日時を固定した計画。JPA merge 後の管理対象の値で対象判定しない。 */
+    private record PlannedUpdate(ScheduleEntity row, LocalDateTime originalStart,
+                                 LocalDateTime newStart, LocalDateTime newEnd,
+                                 UpdateScheduleRequest request) { }
 
-        children.stream()
-                .filter(child -> !child.getIsException())
-                .filter(child -> !child.getStartAt().isBefore(schedule.getStartAt()))
-                .forEach(child -> applyUpdate.accept(child, req));
+    private void updateMultipleSchedules(ScheduleEntity origin, UpdateScheduleRequest req,
+                                         boolean all, BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
+        LocalDateTime originStart = origin.getStartAt();
+        LocalDateTime originEnd = origin.getEndAt();
+        Long parentId = origin.getParentScheduleId() != null
+                ? origin.getParentScheduleId() : origin.getId();
+        ScheduleEntity parent = all
+                ? scheduleRepository.findById(parentId)
+                        .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND))
+                : null;
+        List<ScheduleEntity> children = scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(parentId);
+        Duration startShift = req != null && req.getStartAt() != null
+                ? Duration.between(originStart, toStorageTime(req.getStartAt())) : null;
+        Duration endShift = req != null && req.getEndAt() != null && originEnd != null
+                ? Duration.between(originEnd, toStorageTime(req.getEndAt())) : null;
+        LocalDateTime newOriginStart = startShift != null ? originStart.plus(startShift) : originStart;
+        Duration newDuration = req != null && req.getEndAt() != null
+                ? Duration.between(newOriginStart, toStorageTime(req.getEndAt())) : null;
+
+        Map<Long, ScheduleEntity> targets = new HashMap<>();
+        if (all) {
+            targets.put(parent.getId(), parent);
+        } else {
+            // 例外回自身が起点なら直接更新するが、他の例外回へは波及しない。
+            targets.put(origin.getId(), origin);
+        }
+        for (ScheduleEntity child : children) {
+            if (Boolean.TRUE.equals(child.getIsException())) continue;
+            if (!all && child.getStartAt().isBefore(originStart)) continue;
+            targets.putIfAbsent(child.getId(), child);
+        }
+
+        List<PlannedUpdate> plan = new ArrayList<>();
+        for (ScheduleEntity row : targets.values()) {
+            LocalDateTime originalStart = row.getStartAt();
+            LocalDateTime originalEnd = row.getEndAt();
+            LocalDateTime newStart = startShift != null ? originalStart.plus(startShift) : originalStart;
+            LocalDateTime newEnd = req != null && req.getEndAt() != null
+                    ? originalEnd != null && endShift != null
+                        ? originalEnd.plus(endShift)
+                        : newStart.plus(newDuration)
+                    : originalEnd;
+            if (newEnd != null && !newStart.isBefore(newEnd)) {
+                throw new BusinessException(ScheduleErrorCode.INVALID_DATE_RANGE);
+            }
+            UpdateScheduleRequest rowRequest = req;
+            if (req != null && (req.getStartAt() != null || req.getEndAt() != null)) {
+                rowRequest = req.withDates(
+                        req.getStartAt() != null ? newStart.atZone(STORAGE_ZONE).toOffsetDateTime() : null,
+                        req.getEndAt() != null ? newEnd.atZone(STORAGE_ZONE).toOffsetDateTime() : null);
+            }
+            plan.add(new PlannedUpdate(row, originalStart, newStart, newEnd, rowRequest));
+        }
+
+        // DB の UNIQUE(parent_schedule_id,start_at) は論理削除行・例外回にも適用される。
+        // Entity の子一覧は @SQLRestriction で論理削除済み行を返さないため、
+        // 日時移動時だけ native scalar projection を合流させる。
+        Map<Long, LocalDateTime> plannedStarts = new HashMap<>();
+        for (PlannedUpdate update : plan) {
+            if (update.row().getParentScheduleId() != null) {
+                plannedStarts.put(update.row().getId(), update.newStart());
+            }
+        }
+        Map<Long, LocalDateTime> allStartSlots = new HashMap<>();
+        for (ScheduleEntity child : children) {
+            allStartSlots.put(child.getId(), child.getStartAt());
+        }
+        if (startShift != null && !startShift.isZero()) {
+            for (ScheduleRepository.StartSlotProjection slot :
+                    scheduleRepository.findAllStartSlotsByParentIdIncludingDeleted(parentId)) {
+                if (slot.getId() == null || slot.getStartAt() == null) {
+                    throw new BusinessException(ScheduleErrorCode.RECURRENCE_START_CONFLICT, HttpStatus.CONFLICT);
+                }
+                allStartSlots.put(slot.getId(), slot.getStartAt());
+            }
+        }
+        Set<LocalDateTime> finalStarts = new HashSet<>();
+        for (Map.Entry<Long, LocalDateTime> slot : allStartSlots.entrySet()) {
+            LocalDateTime finalStart = plannedStarts.getOrDefault(slot.getKey(), slot.getValue());
+            if (!finalStarts.add(finalStart)) {
+                throw new BusinessException(ScheduleErrorCode.RECURRENCE_START_CONFLICT, HttpStatus.CONFLICT);
+            }
+        }
+
+        // 正方向なら後ろから、負方向なら前から空きスロットを作る。
+        // 各回 flush しないと Hibernate が ID 順に一括 UPDATE して一時 UNIQUE 違反しうる。
+        Comparator<PlannedUpdate> order = Comparator.comparing(PlannedUpdate::originalStart);
+        if (startShift != null && !startShift.isNegative()) order = order.reversed();
+        plan.sort(order);
+        for (PlannedUpdate update : plan) {
+            applyUpdate.accept(update.row(), update.request());
+            if (startShift != null && !startShift.isZero()) {
+                scheduleRepository.saveAndFlush(update.row());
+            }
+        }
     }
 
-    /**
-     * 親スケジュールの全子を更新する（例外は除く）。
-     */
-    private void updateAllChildSchedules(Long parentId, UpdateScheduleRequest req,
-                                         BiConsumer<ScheduleEntity, UpdateScheduleRequest> applyUpdate) {
-        List<ScheduleEntity> children = scheduleRepository
-                .findByParentScheduleIdOrderByStartAtAsc(parentId);
-
-        children.stream()
-                .filter(child -> !child.getIsException())
-                .forEach(child -> applyUpdate.accept(child, req));
+    private static LocalDateTime toStorageTime(java.time.OffsetDateTime value) {
+        return value.atZoneSameInstant(STORAGE_ZONE).toLocalDateTime();
     }
 
     /**

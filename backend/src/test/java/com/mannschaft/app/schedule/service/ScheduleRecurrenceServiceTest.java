@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.dto.RecurrenceRuleDto;
+import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,10 +18,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -82,6 +87,115 @@ class ScheduleRecurrenceServiceTest {
                 .startAt(startAt)
                 .isException(exception)
                 .build();
+    }
+
+    private UpdateScheduleRequest dates(OffsetDateTime start, OffsetDateTime end) {
+        return new UpdateScheduleRequest(null, null, null, start, end, null,
+                null, null, null, null, null, null, null,
+                null, null, null, null, null, null);
+    }
+
+    private ScheduleRepository.StartSlotProjection slot(long id, LocalDateTime startAt) {
+        return new ScheduleRepository.StartSlotProjection() {
+            @Override public Long getId() { return id; }
+            @Override public LocalDateTime getStartAt() { return startAt; }
+        };
+    }
+
+    @Test
+    @DisplayName("論理削除済み回のDB開始日時への移動は更新適用前に409拒否する")
+    void followingRejectsCollisionWithSoftDeletedSlot() {
+        ScheduleEntity current = recurringRow(2L, 99L, LocalDateTime.of(2026, 9, 12, 10, 0), false);
+        ScheduleEntity later = recurringRow(4L, 99L, LocalDateTime.of(2026, 9, 19, 10, 0), false);
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(99L))
+                .thenReturn(List.of(current, later));
+        when(scheduleRepository.findAllStartSlotsByParentIdIncludingDeleted(99L))
+                .thenReturn(List.of(
+                        slot(2L, LocalDateTime.of(2026, 9, 12, 10, 0)),
+                        slot(4L, LocalDateTime.of(2026, 9, 19, 10, 0)),
+                        slot(3L, LocalDateTime.of(2026, 9, 19, 12, 0))));
+        List<Long> appliedIds = new ArrayList<>();
+
+        assertThatThrownBy(() -> service.updateRecurringSchedule(current,
+                dates(OffsetDateTime.parse("2026-09-12T12:00:00+09:00"), null),
+                "THIS_AND_FOLLOWING", (row, request) -> appliedIds.add(row.getId())))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> {
+                    BusinessException business = (BusinessException) error;
+                    assertThat(business.getErrorCode()).isEqualTo(ScheduleErrorCode.RECURRENCE_START_CONFLICT);
+                    assertThat(business.getHttpStatusOverride()).isEqualTo(org.springframework.http.HttpStatus.CONFLICT);
+                });
+        assertThat(appliedIds).isEmpty();
+    }
+
+    @Test
+    @DisplayName("一括更新の日時変更は各回の開始・終了日時を起点からの差分で移動する")
+    void followingRescheduleShiftsEachOriginalOccurrence() {
+        ScheduleEntity current = recurringRow(2L, 99L, LocalDateTime.of(2026, 9, 12, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 12, 11, 0)).build();
+        ScheduleEntity later = recurringRow(3L, 99L, LocalDateTime.of(2026, 9, 19, 10, 0), false)
+                .toBuilder().endAt(LocalDateTime.of(2026, 9, 19, 11, 0)).build();
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(99L))
+                .thenReturn(List.of(current, later));
+        List<LocalDateTime> appliedStarts = new ArrayList<>();
+        List<LocalDateTime> appliedEnds = new ArrayList<>();
+
+        long count = service.updateRecurringSchedule(current,
+                dates(OffsetDateTime.parse("2026-09-12T12:00:00+09:00"),
+                        OffsetDateTime.parse("2026-09-12T13:00:00+09:00")),
+                "THIS_AND_FOLLOWING", (row, request) -> {
+                    appliedStarts.add(request.getStartAt().toLocalDateTime());
+                    appliedEnds.add(request.getEndAt().toLocalDateTime());
+                });
+
+        assertThat(count).isEqualTo(2);
+        assertThat(appliedStarts).containsExactlyInAnyOrder(
+                LocalDateTime.of(2026, 9, 12, 12, 0),
+                LocalDateTime.of(2026, 9, 19, 12, 0));
+        assertThat(appliedEnds).containsExactlyInAnyOrder(
+                LocalDateTime.of(2026, 9, 12, 13, 0),
+                LocalDateTime.of(2026, 9, 19, 13, 0));
+    }
+
+    @Test
+    @DisplayName("後続更新は更新前の起点を境界にし、例外回との衝突を保存前に拒否する")
+    void followingRejectsCollisionWithExceptionBeforeApplying() {
+        ScheduleEntity current = recurringRow(2L, 99L, LocalDateTime.of(2026, 9, 12, 10, 0), false);
+        ScheduleEntity exception = recurringRow(3L, 99L, LocalDateTime.of(2026, 9, 19, 12, 0), true);
+        ScheduleEntity later = recurringRow(4L, 99L, LocalDateTime.of(2026, 9, 19, 10, 0), false);
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(99L))
+                .thenReturn(List.of(current, exception, later));
+        List<Long> appliedIds = new ArrayList<>();
+
+        assertThatThrownBy(() -> service.updateRecurringSchedule(current,
+                dates(OffsetDateTime.parse("2026-09-12T12:00:00+09:00"), null),
+                "THIS_AND_FOLLOWING", (row, request) -> appliedIds.add(row.getId())))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getErrorCode())
+                        .isEqualTo(ScheduleErrorCode.RECURRENCE_START_CONFLICT));
+        assertThat(appliedIds).isEmpty();
+    }
+
+    @Test
+    @DisplayName("ALLの子起点日時変更は親も子も同じ差分だけ移動する")
+    void allFromChildShiftsParentRelativeToOriginalOrigin() {
+        ScheduleEntity current = recurringRow(1L, 99L, LocalDateTime.of(2026, 9, 8, 10, 0), false);
+        ScheduleEntity parent = recurringRow(99L, null, LocalDateTime.of(2026, 9, 1, 10, 0), false);
+        ScheduleEntity next = recurringRow(2L, 99L, LocalDateTime.of(2026, 9, 15, 10, 0), false);
+        when(scheduleRepository.findById(99L)).thenReturn(java.util.Optional.of(parent));
+        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(99L))
+                .thenReturn(List.of(current, next));
+        List<LocalDateTime> starts = new ArrayList<>();
+
+        long count = service.updateRecurringSchedule(current,
+                dates(OffsetDateTime.parse("2026-09-08T11:00:00+09:00"), null),
+                "ALL", (row, request) -> starts.add(request.getStartAt().toLocalDateTime()));
+
+        assertThat(count).isEqualTo(3);
+        assertThat(starts).containsExactlyInAnyOrder(
+                LocalDateTime.of(2026, 9, 1, 11, 0),
+                LocalDateTime.of(2026, 9, 8, 11, 0),
+                LocalDateTime.of(2026, 9, 15, 11, 0));
     }
 
     @Test
