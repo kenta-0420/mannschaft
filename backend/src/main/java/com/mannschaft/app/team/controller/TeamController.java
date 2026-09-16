@@ -212,6 +212,26 @@ public class TeamController {
         return ResponseEntity.ok(teamService.getMembers(id, pageable));
     }
 
+    @GetMapping("/{slug}/members/all")
+    @Operation(summary = "チームメンバー全件一括取得",
+            description = "全メンバーを 1 レスポンスで返す（CMP-260912-1525）。"
+                    + "ページング経路はページ要求ごとに所属情報を全件走査するため、"
+                    + "全員を必要とする画面が全ページをめくると総処理量が人数の二乗になる。"
+                    + "本 EP は走査を 1 回に固定する。認可・返却項目はページング経路と同一。")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（非メンバー等）でアクセス不可")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "チームが存在しない / 論理削除済み")
+    public ResponseEntity<ApiResponse<List<MemberResponse>>> getAllMembers(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
+        // F00 正準: ページング経路 getMembers と同一の visibility ラダーで保護する。
+        // 一括化しても露出する情報は増えないため、認可条件も同じで揃える。
+        contentVisibilityChecker.assertCanView(
+                ReferenceType.TEAM, id, SecurityUtils.getCurrentUserIdOrNull());
+        return ResponseEntity.ok(ApiResponse.of(teamService.getAllMembers(id)));
+    }
+
     @PatchMapping("/{slug}/members/{userId}/role")
     @Operation(summary = "メンバーロール変更")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変更成功")

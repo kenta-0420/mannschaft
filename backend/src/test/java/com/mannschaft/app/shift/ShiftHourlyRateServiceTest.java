@@ -349,4 +349,77 @@ class ShiftHourlyRateServiceTest {
                     .isInstanceOf(IllegalStateException.class);
         }
     }
+
+    // ========================================
+    // listEffectiveRatesForTeam（CMP-260912-1525: 一括取得）
+    // ========================================
+
+    /**
+     * チーム全員ぶんの「基準日時点で有効な時給」を 1 クエリで返す経路。
+     *
+     * <p>時給は金銭情報であり、F03.5 の方針は「本人 + 当該チームの ADMIN/DEPUTY_ADMIN のみ」。
+     * 一括取得は本人ぶん以外も必ず含むため、<b>ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）以外は
+     * 一律で拒否</b>されなければならない。一般メンバーが呼んで他人の時給が返るのは漏洩である。</p>
+     */
+    @Nested
+    @DisplayName("listEffectiveRatesForTeam")
+    class ListEffectiveRatesForTeam {
+
+        private static final Long ADMIN_USER_ID = 99L;
+        private static final LocalDate BASE_DATE = LocalDate.of(2026, 9, 16);
+
+        @Test
+        @DisplayName("AC-3: 何人いても有効時給の取得は 1 クエリで済む")
+        void 一括取得は1クエリ() {
+            // Given: ADMIN として通す
+            given(accessControlService.isSystemAdmin(ADMIN_USER_ID)).willReturn(false);
+            List<ShiftHourlyRateEntity> entities = List.of(createRateEntity(), createRateEntity());
+            given(hourlyRateRepository.findEffectiveRatesByTeam(TEAM_ID, BASE_DATE)).willReturn(entities);
+            given(shiftMapper.toHourlyRateResponseList(entities))
+                    .willReturn(List.of(createRateResponse(), createRateResponse()));
+
+            // When
+            List<HourlyRateResponse> result =
+                    shiftHourlyRateService.listEffectiveRatesForTeam(TEAM_ID, BASE_DATE, ADMIN_USER_ID);
+
+            // Then
+            assertThat(result).hasSize(2);
+            verify(hourlyRateRepository, org.mockito.Mockito.times(1))
+                    .findEffectiveRatesByTeam(TEAM_ID, BASE_DATE);
+            // 1 人ずつ引く経路は使わない（使うと人数ぶんクエリが出る）
+            verify(hourlyRateRepository, org.mockito.Mockito.never())
+                    .findEffectiveRate(any(), any(), any());
+            verify(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("AC-5: ADMIN/DEPUTY_ADMIN でない一般メンバーは 403 で、時給を 1 件も読まない")
+        void 一般メンバーは拒否され時給を読まない() {
+            // Given
+            given(accessControlService.isSystemAdmin(CURRENT_USER_ID)).willReturn(false);
+            org.mockito.BDDMockito.willThrow(new com.mannschaft.app.common.BusinessException(
+                            com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(CURRENT_USER_ID, TEAM_ID, "TEAM");
+
+            // When / Then
+            org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                            shiftHourlyRateService.listEffectiveRatesForTeam(TEAM_ID, BASE_DATE, CURRENT_USER_ID))
+                    .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+            verify(hourlyRateRepository, org.mockito.Mockito.never())
+                    .findEffectiveRatesByTeam(any(), any());
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN は短絡的に許可される（既存の時給 API と同じ方針）")
+        void システム管理者は許可() {
+            given(accessControlService.isSystemAdmin(ADMIN_USER_ID)).willReturn(true);
+            given(hourlyRateRepository.findEffectiveRatesByTeam(TEAM_ID, BASE_DATE)).willReturn(List.of());
+            given(shiftMapper.toHourlyRateResponseList(List.of())).willReturn(List.of());
+
+            assertThat(shiftHourlyRateService.listEffectiveRatesForTeam(TEAM_ID, BASE_DATE, ADMIN_USER_ID))
+                    .isEmpty();
+            verify(accessControlService, org.mockito.Mockito.never())
+                    .checkAdminOrAbove(any(), any(), any());
+        }
+    }
 }

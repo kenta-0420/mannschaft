@@ -75,4 +75,28 @@ public interface ShiftHourlyRateRepository extends JpaRepository<ShiftHourlyRate
             @Param("userId") Long userId,
             @Param("teamId") Long teamId,
             @Param("date") LocalDate date);
+
+    /**
+     * チーム全員ぶんの「基準日時点で有効な時給」を 1 クエリで取得する（CMP-260912-1525）。
+     *
+     * <p>{@link #findEffectiveRate} をメンバーの人数ぶん呼ぶと、1 画面で N クエリ・
+     * N 往復になる。ユーザーごとに「基準日以下で最も新しい適用開始日」の行だけを
+     * 相関副問い合わせで選び、1 回で返す。</p>
+     *
+     * <p>一意制約 {@code uq_shr_user_team_from (user_id, team_id, effective_from)} が
+     * あるため、ユーザーごとに該当行はちょうど 1 行に定まる。</p>
+     *
+     * @param teamId チームID
+     * @param date   基準日
+     * @return ユーザーごとの有効時給（基準日時点で時給が無いユーザーは含まれない）
+     */
+    @Query("SELECT r FROM ShiftHourlyRateEntity r "
+            + "WHERE r.teamId = :teamId AND r.effectiveFrom <= :date "
+            + "AND r.effectiveFrom = ("
+            + "  SELECT MAX(r2.effectiveFrom) FROM ShiftHourlyRateEntity r2 "
+            + "  WHERE r2.userId = r.userId AND r2.teamId = :teamId AND r2.effectiveFrom <= :date"
+            + ") ORDER BY r.userId")
+    List<ShiftHourlyRateEntity> findEffectiveRatesByTeam(
+            @Param("teamId") Long teamId,
+            @Param("date") LocalDate date);
 }

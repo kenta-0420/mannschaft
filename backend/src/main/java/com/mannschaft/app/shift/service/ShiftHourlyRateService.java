@@ -66,6 +66,36 @@ public class ShiftHourlyRateService {
     }
 
     /**
+     * チーム全員ぶんの「基準日時点で有効な時給」を 1 クエリで取得する（CMP-260912-1525）。
+     *
+     * <h2>なぜ要るのか</h2>
+     * <p>時給設定画面は全メンバーの現在時給を並べる。1 人ずつ
+     * {@link #getEffectiveRate} を引くと、人数ぶんの HTTP 往復とクエリが出る。
+     * 本メソッドは走査を 1 クエリに固定する（総処理量は人数 N に比例）。</p>
+     *
+     * <h2>認可（AC-5）</h2>
+     * <p>返す内容に他メンバーの時給が必ず含まれるため、
+     * {@code F03.5} の「本人 + 当該チームの ADMIN/DEPUTY_ADMIN のみ」のうち
+     * <b>ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）だけ</b>を許可する。
+     * 一般メンバーは自分の時給を {@link #listHourlyRates} / {@link #getEffectiveRate} で
+     * 従来どおり読めるので、本メソッドを一律拒否しても機能は失われない。</p>
+     *
+     * @param teamId        チームID
+     * @param date          基準日
+     * @param currentUserId 操作ユーザーID（認可判定に使用）
+     * @return ユーザーごとの有効時給（基準日時点で時給が無いユーザーは含まれない）
+     */
+    public List<HourlyRateResponse> listEffectiveRatesForTeam(Long teamId, LocalDate date, Long currentUserId) {
+        // 認可番人（ArchUnit）の委譲追跡は 2 ホップまでのため、
+        // AccessControlService の呼び出しを本メソッド内に直接置く（別ヘルパーへ逃がさない）。
+        if (!accessControlService.isSystemAdmin(currentUserId)) {
+            accessControlService.checkAdminOrAbove(currentUserId, teamId, "TEAM");
+        }
+        List<ShiftHourlyRateEntity> entities = hourlyRateRepository.findEffectiveRatesByTeam(teamId, date);
+        return shiftMapper.toHourlyRateResponseList(entities);
+    }
+
+    /**
      * 時給を設定する。
      *
      * <p><b>同じ適用開始日の再登録は「訂正」として更新する（CMP-260910-1555）</b>:

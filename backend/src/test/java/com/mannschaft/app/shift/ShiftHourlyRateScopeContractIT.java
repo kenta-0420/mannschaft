@@ -250,6 +250,78 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // 3. GET /shifts/hourly-rates?teamId=&date=（チーム時給一括取得・CMP-260912-1525）
+    // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * 一括取得は他メンバーの時給を必ず含むため、単数 EP の「本人 + ADMIN/DEPUTY_ADMIN」のうち
+     * <b>ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）だけ</b>を許可する。
+     * 本人であることは根拠にならない（自分の時給しか読めない経路ではないため）。
+     */
+    @Nested
+    @DisplayName("3. GET /shifts/hourly-rates（チーム時給一括取得）")
+    class ListTeamEffectiveHourlyRates {
+
+        private static final String BULK = "/api/v1/shifts/hourly-rates";
+
+        @Test
+        @DisplayName("別scope ADMIN（teamBのADMIN）がteamAの時給を一括取得すると403（BOLA）")
+        void 別scopeADMINは403() throws Exception {
+            setAuth(adminTeamBId);
+            mockMvc.perform(get(BULK)
+                            .param("teamId", teamAId.toString())
+                            .param("date", LocalDate.of(2026, 4, 1).toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("同一チームの非ADMINメンバーは403（自分の時給しか読めない経路ではないため本人性は根拠にならない）")
+        void 同一チーム非ADMINは403() throws Exception {
+            setAuth(memberTeamAId);
+            mockMvc.perform(get(BULK)
+                            .param("teamId", teamAId.toString())
+                            .param("date", LocalDate.of(2026, 4, 1).toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("非メンバー（teamBの一般メンバー）も403")
+        void 非メンバーは403() throws Exception {
+            setAuth(memberTeamBId);
+            mockMvc.perform(get(BULK)
+                            .param("teamId", teamAId.toString())
+                            .param("date", LocalDate.of(2026, 4, 1).toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("正常系: 正当ADMINは200で、基準日時点で有効な時給が返る")
+        void 正当ADMINは200() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(get(BULK)
+                            .param("teamId", teamAId.toString())
+                            .param("date", LocalDate.of(2026, 4, 1).toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.data[?(@.userId == " + memberTeamAId + ")].hourlyRate")
+                            .exists());
+        }
+
+        @Test
+        @DisplayName("基準日が適用開始日より前なら、その時給は返らない（未設定として扱われる）")
+        void 適用開始前の時給は返らない() throws Exception {
+            setAuth(adminTeamAId);
+            mockMvc.perform(get(BULK)
+                            .param("teamId", teamAId.toString())
+                            // 時給の effectiveFrom は 2026-03-01。その前日を基準日にする。
+                            .param("date", LocalDate.of(2026, 2, 28).toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.data.length()").value(0));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
