@@ -100,6 +100,26 @@ logback は root に appender が一つも紐付いていないと**そのプロ
 **`curl` は「何かが応答しているか」しか答えない。どちら側の誰かは教えてくれない。**
 応答があるのに両方の列挙に出ないということは無いので、必ず両方を叩くこと。
 
+#### まず「両側とも空いているか」だけを見る
+
+主を特定する前に、そのポートが使えるかどうかは**両側をまとめて見ないと決まらない**。
+片側の列挙結果だけで「空いている」と判断しないこと。
+
+```bash
+PORT=8082
+WIN=$(netstat -ano | findstr LISTENING | findstr ":$PORT ")
+WSLROW=$(wsl -e sh -c "ss -ltnp 2>/dev/null | grep ':$PORT '" 2>/dev/null)
+[ -n "$WIN" ] && echo "Windows 側: 使用中" && echo "$WIN"
+[ -z "$WIN" ] && echo "Windows 側: 空き"
+[ -n "$WSLROW" ] && echo "WSL 側: 使用中" && echo "$WSLROW"
+[ -z "$WSLROW" ] && echo "WSL 側: 空き"
+if [ -z "$WIN" ] && [ -z "$WSLROW" ]; then echo "==> 両側とも空き。このポートを使ってよい"; else echo "==> 使用中。別ポートへ避けるか、下の AND 判定で主を特定する"; fi
+```
+
+**「使ってよい」と言えるのは両側とも空きのときだけ。** 片側でも使用中なら、
+`-PopenApiPort=<別ポート>` で避けるのが最短で、主の特定は必要なときだけ行えばよい。
+
+
 ### 停止してよいのは「自分の worktree の孤児」だけ — 判定は AND
 
 > **大原則: 迷ったら止めるな。`-PopenApiPort=<別ポート>` で避けろ。**
@@ -147,7 +167,7 @@ unzip -p "<jar>" META-INF/MANIFEST.MF \
 # → このパスが $MINE と同じ worktree を指していなければ、条件2 を満たさない = 止めない
 
 # --- WSL 側の候補を判定する ---
-wsl -e sh -c 'P=8082; ROW=$(ss -ltnp 2>/dev/null | grep ":$P "); if [ -z "$ROW" ]; then echo "[1] listener 無し（このポートは使える）"; exit; fi; echo "$ROW"; PID=$(echo "$ROW" | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "[3] listener は居るが所有者不明（権限不足で pid 非表示）→ 停止せず別ポートへ避ける"; exit; fi; CWD=$(readlink -f /proc/$PID/cwd 2>/dev/null); if [ -z "$CWD" ]; then echo "[3] PID=$PID だが cwd を読めない（他ユーザー）→ 停止せず別ポートへ避ける"; exit; fi; echo "[2] PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $CWD"'
+wsl -e sh -c 'P=8082; ROW=$(ss -ltnp 2>/dev/null | grep ":$P "); if [ -z "$ROW" ]; then echo "[1] WSL 側には居ない（まだ結論ではない。Windows 側も確認すること）"; exit; fi; echo "$ROW"; PID=$(echo "$ROW" | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "[3] listener は居るが所有者不明（権限不足で pid 非表示）→ 停止せず別ポートへ避ける"; exit; fi; CWD=$(readlink -f /proc/$PID/cwd 2>/dev/null); if [ -z "$CWD" ]; then echo "[3] PID=$PID だが cwd を読めない（他ユーザー）→ 停止せず別ポートへ避ける"; exit; fi; echo "[2] PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $CWD"'
 # → cwd が $MINE 配下でなければ条件2 を満たさない = 止めない
 ```
 
@@ -155,7 +175,7 @@ wsl -e sh -c 'P=8082; ROW=$(ss -ltnp 2>/dev/null | grep ":$P "); if [ -z "$ROW" 
 
 | 出力 | 意味 | 対処 |
 |---|---|---|
-| `[1] listener 無し` | `ss` の一致行そのものが無い | そのポートを使ってよい |
+| `[1] WSL 側には居ない` | `ss` の一致行そのものが無い | **まだ結論ではない。Windows 側も確認する**（下記の両側確認へ） |
 | `[2] PID=...` + `cwd:` | 所有者を特定できた | AND 判定（条件2 の worktree 一致）へ進む |
 | `[3] 所有者不明` | **一致行はあるが PID / cwd が取れない**（root や別ユーザーのプロセスだと `ss -p` は `pid=` を省略する） | **停止せず別ポートへ避ける**（確認不能時のルール） |
 
@@ -192,7 +212,7 @@ openapi-gen ではない 1 件は、いずれも正しく停止対象から外�
 ```powershell
 # 誰が :8082 を LISTEN しているか（Windows 側のみ）
 Get-NetTCPConnection -LocalPort 8082 -State Listen | Select-Object LocalAddress,LocalPort,State,OwningProcess
-# そのプロセスの正体（コマンドラインで openapi-gen フォークか判別できる）
+# そのプロセスの正体（分かるのは「openapi-gen フォークかどうか」＝条件1 だけ。worktree は別途確認）
 Get-CimInstance Win32_Process -Filter "ProcessId=<PID>" | Select-Object ProcessId,CreationDate,CommandLine
 ```
 
@@ -252,14 +272,14 @@ unzip -p "<jar>" META-INF/MANIFEST.MF \
 wsl -e sh -c "ss -ltnp 2>/dev/null | grep ':8082 '"
 
 # 掴んでいる主の素性と作業ディレクトリ
-wsl -e sh -c 'P=8082; ROW=$(ss -ltnp 2>/dev/null | grep ":$P "); if [ -z "$ROW" ]; then echo "[1] listener 無し（このポートは使える）"; exit; fi; echo "$ROW"; PID=$(echo "$ROW" | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "[3] listener は居るが所有者不明（権限不足で pid 非表示）→ 停止せず別ポートへ避ける"; exit; fi; CWD=$(readlink -f /proc/$PID/cwd 2>/dev/null); if [ -z "$CWD" ]; then echo "[3] PID=$PID だが cwd を読めない（他ユーザー）→ 停止せず別ポートへ避ける"; exit; fi; echo "[2] PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $CWD"'
+wsl -e sh -c 'P=8082; ROW=$(ss -ltnp 2>/dev/null | grep ":$P "); if [ -z "$ROW" ]; then echo "[1] WSL 側には居ない（まだ結論ではない。Windows 側も確認すること）"; exit; fi; echo "$ROW"; PID=$(echo "$ROW" | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "[3] listener は居るが所有者不明（権限不足で pid 非表示）→ 停止せず別ポートへ避ける"; exit; fi; CWD=$(readlink -f /proc/$PID/cwd 2>/dev/null); if [ -z "$CWD" ]; then echo "[3] PID=$PID だが cwd を読めない（他ユーザー）→ 停止せず別ポートへ避ける"; exit; fi; echo "[2] PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $CWD"'
 ```
 
 **出力は 3 通りある。`ss` の一致行の有無と、PID が取れたかどうかを別の軸として見ること。**
 
 | 出力 | 意味 | 対処 |
 |---|---|---|
-| `[1] listener 無し` | `ss` の一致行そのものが無い | そのポートを使ってよい |
+| `[1] WSL 側には居ない` | `ss` の一致行そのものが無い | **まだ結論ではない。Windows 側も確認する**（下記の両側確認へ） |
 | `[2] PID=...` + `cwd:` | 所有者を特定できた | AND 判定（条件2 の worktree 一致）へ進む |
 | `[3] 所有者不明` | **一致行はあるが PID / cwd が取れない**（root や別ユーザーのプロセスだと `ss -p` は `pid=` を省略する） | **停止せず別ポートへ避ける**（確認不能時のルール） |
 
@@ -332,6 +352,8 @@ cd frontend && npm run generate:types   # docs/openapi.json を入力に型を�
 生成は毎回フルに走る（`outputs.upToDateWhen { false }`）が、API 表面が変わっていなければ
 **出力の中身は変わらない**。差分ゼロは「生成に失敗した」ではなく「ドリフトが無い」という意味なので、
 そのまま何もコミットしなくてよい。
+**ただしそう言えるのは、下の「確認コマンドはパスに注意」の正しいコマンドで確かめたときだけ**である
+（誤ったパスを見た rc=0 は、差分が無いことを何も意味しない）。
 
 #### ⚠️ 確認コマンドはパスに注意（偽の「差分なし」を掴まされる）
 
