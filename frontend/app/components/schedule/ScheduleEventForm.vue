@@ -61,6 +61,7 @@ watch(
   (v) => {
     if (v) {
       selectedScopeKey.value = currentScopeKey()
+      recurrenceUpdateScopeDialogVisible.value = false
     }
   },
 )
@@ -91,6 +92,8 @@ const isEdit = computed(() => !!props.scheduleId)
 const targetMode = ref<ScheduleTargetMode>('ALL_MEMBERS')
 const targetUserIds = ref<number[]>([])
 const targetValidationError = ref<string | null>(null)
+const loadedRecurringEvent = ref(false)
+const recurrenceUpdateScopeDialogVisible = ref(false)
 
 // 15分刻みの時刻オプション生成（00:00〜23:45）
 const timeOptions = Array.from({ length: 96 }, (_, i) => {
@@ -263,6 +266,7 @@ watch(
           // 個人予定: status.recurrenceRule から繰り返し設定をフォームに復元する
           const status = (data.status as Record<string, unknown>) ?? {}
           const recurrenceRule = status.recurrenceRule as Record<string, unknown> | null
+          loadedRecurringEvent.value = recurrenceRule != null || status.parentScheduleId != null
           if (recurrenceRule && typeof recurrenceRule === 'object') {
             form.value.recurrence = true
             form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
@@ -280,24 +284,26 @@ watch(
           }
         }
         else {
-          form.value.title = (data.title as string) ?? ''
-          form.value.description = (data.description as string) ?? ''
-          form.value.location = (data.location as string) ?? ''
-          form.value.allDay = (data.allDay as boolean) ?? false
-          form.value.attendanceRequired = (data.attendanceRequired as boolean) ?? false
+          const content = (data.content as Record<string, unknown>) ?? {}
+          const time = (data.time as Record<string, unknown>) ?? {}
+          form.value.title = (content.title as string) ?? ''
+          form.value.description = (content.description as string) ?? ''
+          form.value.location = (content.location as string) ?? ''
+          form.value.allDay = (time.allDay as boolean) ?? false
+          form.value.attendanceRequired = (content.attendanceRequired as boolean) ?? false
           form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
           form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
           form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
           targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
           targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
             .map(target => target.userId)
-          if (data.startAt) {
-            const start = new Date(data.startAt as string)
+          if (time.startAt) {
+            const start = new Date(time.startAt as string)
             form.value.startDate = start
             form.value.startTime = start.toTimeString().slice(0, 5)
           }
-          if (data.endAt) {
-            const end = new Date(data.endAt as string)
+          if (time.endAt) {
+            const end = new Date(time.endAt as string)
             form.value.endDate = end
             form.value.endTime = end.toTimeString().slice(0, 5)
           }
@@ -306,6 +312,30 @@ watch(
           form.value.reminders = reminders.map(reminderResponseToFormEntry)
           // 共有予定: scheduledTasks の PENDING タスクを scheduledSurvey / scheduledAttendance に変換する
           const scheduledTasks = (data.scheduledTasks as Array<Record<string, unknown>> | null) ?? []
+          const recurrence = (data.recurrenceInfo as Record<string, unknown>) ?? {}
+          loadedRecurringEvent.value = recurrence.recurrenceRule != null || recurrence.parentScheduleId != null
+          let recurrenceRule: Record<string, unknown> | null = null
+          if (typeof recurrence.recurrenceRule === 'string') {
+            try {
+              const parsed: unknown = JSON.parse(recurrence.recurrenceRule)
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                recurrenceRule = parsed as Record<string, unknown>
+              }
+            } catch {
+              // 旧データに不正なルールがあっても詳細画面の表示は継続する。
+            }
+          } else if (recurrence.recurrenceRule && typeof recurrence.recurrenceRule === 'object') {
+            recurrenceRule = recurrence.recurrenceRule as Record<string, unknown>
+          }
+          form.value.recurrence = recurrenceRule != null
+          if (recurrenceRule) {
+            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
+            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
+            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
+            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
+            if (recurrenceRule.endDate) form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
+            if (recurrenceRule.count != null) form.value.recurrenceCount = recurrenceRule.count as number
+          }
           for (const task of scheduledTasks) {
             if (task.status !== 'PENDING') continue
             if (task.taskType === 'SURVEY') {
@@ -327,6 +357,7 @@ watch(
         notification.error(t('schedule.error_load_event'))
       }
     } else if (visible && !scheduleId) {
+      loadedRecurringEvent.value = false
       resetForm()
       applyInitialDateTime()
     }
@@ -501,7 +532,7 @@ function validateScheduledInputs(): string | null {
   return null
 }
 
-async function submit() {
+async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
   if (!form.value.title.trim()) {
     fieldErrors.value = { title: t('schedule.error_title_required') }
     return
@@ -513,6 +544,10 @@ async function submit() {
   const scheduledError = validateScheduledInputs()
   if (scheduledError) {
     notification.error(scheduledError)
+    return
+  }
+  if (isEdit.value && loadedRecurringEvent.value && !updateScope) {
+    recurrenceUpdateScopeDialogVisible.value = true
     return
   }
   submitting.value = true
@@ -536,14 +571,16 @@ async function submit() {
   if (effectiveScope.value.isPersonal) {
     body.color = form.value.color
   } else {
-    body.eventType = 'OTHER'
+    if (!isEdit.value) body.eventType = 'OTHER'
     body.attendanceRequired = form.value.attendanceRequired
-    body.allow_proxy_attendance = form.value.allowProxyAttendance
-    body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
+    if (!isEdit.value) {
+      body.allow_proxy_attendance = form.value.allowProxyAttendance
+      body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
+    }
     body.targetMode = targetMode.value
     body.targetUserIds = targetMode.value === 'SELECTED_MEMBERS' ? targetUserIds.value : []
     // F03.1 (B) チーム別内訳トグルは組織スコープ + 出欠ありのときのみ送る
-    if (effectiveScope.value.scopeType === 'organization' && form.value.attendanceRequired) {
+    if (!isEdit.value && effectiveScope.value.scopeType === 'organization' && form.value.attendanceRequired) {
       body.teamBreakdownEnabled = form.value.teamBreakdownEnabled
     }
   }
@@ -637,13 +674,14 @@ async function submit() {
   try {
     if (savedScope.isPersonal) {
       if (isEdit.value && props.scheduleId) {
+        if (updateScope) body.updateScope = updateScope
         await scheduleApi.updatePersonalSchedule(props.scheduleId, body)
       } else {
         await scheduleApi.createPersonalSchedule(body)
       }
     } else {
       if (isEdit.value && props.scheduleId) {
-        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body)
+        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body, updateScope)
       } else {
         await scheduleApi.createSchedule(savedScope.scopeType, savedScope.scopeId, body)
       }
@@ -718,6 +756,7 @@ function resetForm() {
 }
 
 function close() {
+  recurrenceUpdateScopeDialogVisible.value = false
   emit('update:visible', false)
 }
 </script>
@@ -846,8 +885,36 @@ function close() {
         :label="isEdit ? '更新' : '作成'"
         icon="pi pi-check"
         :loading="submitting"
-        @click="submit"
+        data-testid="schedule-submit"
+        @click="submit()"
       />
     </template>
+  </Dialog>
+  <Dialog
+    v-if="recurrenceUpdateScopeDialogVisible"
+    v-model:visible="recurrenceUpdateScopeDialogVisible"
+    modal
+    :header="$t('schedule.recurrence.update_scope.title')"
+    data-testid="recurrence-update-scope-dialog"
+  >
+    <p class="mb-4 text-sm text-surface-600">{{ $t('schedule.recurrence.update_scope.description') }}</p>
+    <div class="flex flex-col gap-2">
+      <Button
+        :label="$t('schedule.recurrence.update_scope.this_only')"
+        data-testid="recurrence-update-this"
+        @click="submit('THIS_ONLY')"
+      />
+      <Button
+        :label="$t('schedule.recurrence.update_scope.this_and_following')"
+        data-testid="recurrence-update-following"
+        @click="submit('THIS_AND_FOLLOWING')"
+      />
+      <Button
+        :label="$t('common.cancel')"
+        text
+        data-testid="recurrence-update-cancel"
+        @click="recurrenceUpdateScopeDialogVisible = false"
+      />
+    </div>
   </Dialog>
 </template>

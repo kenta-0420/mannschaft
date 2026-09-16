@@ -39,8 +39,8 @@ const DialogStub = defineComponent({
   name: 'Dialog',
   props: { visible: Boolean, header: String },
   emits: ['update:visible', 'hide'],
-  setup(_props, { slots }) {
-    return () => h('div', { 'data-testid': 'dialog-stub' }, [slots.default?.(), slots.footer?.()])
+  setup(_props, { slots, attrs }) {
+    return () => h('div', { ...attrs, 'data-testid': attrs['data-testid'] ?? 'dialog-stub' }, [slots.default?.(), slots.footer?.()])
   },
 })
 
@@ -90,8 +90,8 @@ const ButtonStub = defineComponent({
   name: 'Button',
   props: { label: String, icon: String, loading: Boolean, text: Boolean },
   emits: ['click'],
-  setup(props, { emit }) {
-    return () => h('button', { type: 'button', onClick: (e: Event) => emit('click', e) }, props.label)
+  setup(props, { emit, attrs }) {
+    return () => h('button', { ...attrs, type: 'button', onClick: (e: Event) => emit('click', e) }, props.label)
   },
 })
 
@@ -219,5 +219,155 @@ describe('ScheduleEventForm: 作成先の初期選択', () => {
     })
 
     expect(wrapper.findComponent(ScopeSelectorStub).props('selectedScopeKey')).toBe(personalScope.value)
+  })
+})
+
+describe('ScheduleEventForm: recurrence update scope', () => {
+  async function mountRecurringEdit() {
+    scheduleApiMock.getSchedule.mockResolvedValue({
+      data: {
+        content: { title: 'Recurring meeting', eventType: 'PRACTICE' },
+        time: { startAt: '2026-09-22T10:00:00', endAt: '2026-09-22T11:00:00', allDay: false },
+        recurrenceInfo: { recurrenceRule: JSON.stringify({ type: 'WEEKLY', interval: 1, daysOfWeek: ['MONDAY'], endType: 'NEVER' }) },
+      },
+    })
+    scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    return wrapper
+  }
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    scheduleApiMock.getSchedule.mockReset()
+    scheduleApiMock.getMyScheduleDetail.mockReset()
+    scheduleApiMock.updateSchedule.mockReset()
+    scheduleApiMock.updatePersonalSchedule.mockReset()
+  })
+
+  it('offers only this and this-and-following choices before saving a recurring event', async () => {
+    const wrapper = await mountRecurringEdit()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="recurrence-update-this"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="recurrence-update-following"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="recurrence-update-all"]').exists()).toBe(false)
+    expect(scheduleApiMock.updateSchedule).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['recurrence-update-this', 'THIS_ONLY'],
+    ['recurrence-update-following', 'THIS_AND_FOLLOWING'],
+  ])('sends the selected scope once: %s', async (testId, updateScope) => {
+    const wrapper = await mountRecurringEdit()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await wrapper.get(`[data-testid="${testId}"]`).trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.updateSchedule).toHaveBeenCalledTimes(1)
+    expect(scheduleApiMock.updateSchedule).toHaveBeenCalledWith('team', 't1', 42, expect.anything(), updateScope)
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toMatchObject({ title: 'Recurring meeting' })
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('eventType')
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
+  })
+
+  it('does not send an update when the scope dialog is cancelled', async () => {
+    const wrapper = await mountRecurringEdit()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await wrapper.get('[data-testid="recurrence-update-cancel"]').trigger('click')
+
+    expect(scheduleApiMock.updateSchedule).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
+  })
+
+  it('does not retain the scope dialog when the form is reopened', async () => {
+    const wrapper = await mountRecurringEdit()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
+
+    await wrapper.setProps({ visible: false })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
+  })
+
+  it('sends the selected scope in the personal schedule update DTO', async () => {
+    scheduleApiMock.getMyScheduleDetail.mockResolvedValue({
+      data: {
+        content: { title: 'Recurring personal event' },
+        time: {},
+        status: { recurrenceRule: { type: 'WEEKLY', interval: 1, endType: 'NEVER' } },
+      },
+    })
+    scheduleApiMock.updatePersonalSchedule.mockResolvedValue({ data: {} })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: '', scheduleId: 42, isPersonal: true },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await wrapper.get('[data-testid="recurrence-update-following"]').trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.updatePersonalSchedule).toHaveBeenCalledWith(42, expect.objectContaining({ updateScope: 'THIS_AND_FOLLOWING' }))
+  })
+
+  it('updates a non-recurring event directly', async () => {
+    scheduleApiMock.getSchedule.mockResolvedValue({ data: { content: { title: 'One-time meeting' }, time: {} } })
+    scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
+    expect(scheduleApiMock.updateSchedule).toHaveBeenCalledTimes(1)
+  })
+
+  it('treats a shared child occurrence as recurring when only parentScheduleId is present', async () => {
+    scheduleApiMock.getSchedule.mockResolvedValue({
+      data: { content: { title: 'Child occurrence' }, time: {}, recurrenceInfo: { recurrenceRule: null, parentScheduleId: 7 } },
+    })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
+    expect(scheduleApiMock.updateSchedule).not.toHaveBeenCalled()
+  })
+
+  it('treats a personal child occurrence as recurring when only parentScheduleId is present', async () => {
+    scheduleApiMock.getMyScheduleDetail.mockResolvedValue({
+      data: {
+        content: { title: 'Child personal occurrence' },
+        time: {},
+        status: { recurrenceRule: null, parentScheduleId: 7 },
+      },
+    })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: '', scheduleId: 42, isPersonal: true },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(true)
+    expect(scheduleApiMock.updatePersonalSchedule).not.toHaveBeenCalled()
   })
 })

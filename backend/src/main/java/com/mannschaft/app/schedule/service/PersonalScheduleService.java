@@ -30,15 +30,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -73,6 +77,8 @@ public class PersonalScheduleService {
     private final NameResolverService nameResolverService;
     private final ScheduleRecurrenceService recurrenceService;
     private final ScheduleAccessGuard scheduleAccessGuard;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * レイヤー設定（色）の読み取り窓口（F03.19 §3.4.1 / R1）。個人予定一覧の色解決に使う。
@@ -514,8 +520,23 @@ public class PersonalScheduleService {
                 // save は呼び出し元（updatePersonalSchedule）に委ねる
             }
             case UPDATE_SCOPE_THIS_AND_FOLLOWING -> {
-                applyUpdateToSchedule(schedule, req);
-                updateFollowingSchedules(schedule, req);
+                ScheduleEntity originalSchedule = schedule.toBuilder().build();
+                List<ScheduleEntity> children = scheduleRepository
+                        .findByParentScheduleIdOrderByStartAtAsc(resolveParentScheduleId(schedule));
+                Duration shift = startShift(originalSchedule, req);
+                LocalDateTime editTime = LocalDateTime.now(wallClock);
+
+                if (!shift.isNegative() && !shift.isZero()) {
+                    // 親内の開始日時は一意である。後ろへ動かす場合は末尾から空ける。
+                    updateFollowingSchedules(originalSchedule, req, children, shift, editTime);
+                    applyUpdateToSchedule(schedule, req);
+                } else {
+                    applyUpdateToSchedule(schedule, req);
+                    if (!shift.isZero()) {
+                        scheduleRepository.flush();
+                    }
+                    updateFollowingSchedules(originalSchedule, req, children, shift, editTime);
+                }
             }
             case UPDATE_SCOPE_ALL -> {
                 Long parentId = schedule.getParentScheduleId() != null
@@ -538,13 +559,19 @@ public class PersonalScheduleService {
      * <p>startAt / endAt は OffsetDateTime → JST LocalDateTime に変換してから適用する。</p>
      */
     private void applyUpdateToSchedule(ScheduleEntity schedule, UpdatePersonalScheduleRequest req) {
+        applyUpdateToSchedule(schedule, req, toJst(req.getStartAt()), toJst(req.getEndAt()));
+    }
+
+    /** 子予定へ同じ内容を適用する。日時は起点からの差分を渡す。 */
+    private void applyUpdateToSchedule(ScheduleEntity schedule, UpdatePersonalScheduleRequest req,
+                                       LocalDateTime startAt, LocalDateTime endAt) {
         EventType eventType = req.getEventType() != null ? EnumInputParser.parse(EventType.class, req.getEventType(), "eventType") : null;
         schedule.applyPersonalScheduleUpdate(
                 req.getTitle(),
                 req.getDescription(),
                 req.getLocation(),
-                toJst(req.getStartAt()),
-                toJst(req.getEndAt()),
+                startAt,
+                endAt,
                 req.getAllDay(),
                 eventType,
                 req.getColor()
@@ -561,19 +588,62 @@ public class PersonalScheduleService {
     /**
      * 指定スケジュール以降の子スケジュールを更新する（例外は除く）。
      */
-    private void updateFollowingSchedules(ScheduleEntity schedule, UpdatePersonalScheduleRequest req) {
-        Long parentId = schedule.getParentScheduleId() != null
-                ? schedule.getParentScheduleId() : schedule.getId();
-        List<ScheduleEntity> children = scheduleRepository
-                .findByParentScheduleIdOrderByStartAtAsc(parentId);
-
+    private void updateFollowingSchedules(ScheduleEntity schedule, UpdatePersonalScheduleRequest req,
+                                          List<ScheduleEntity> children, Duration shift,
+                                          LocalDateTime editTime) {
+        Comparator<ScheduleEntity> order = Comparator.comparing(ScheduleEntity::getStartAt);
+        if (!shift.isNegative() && !shift.isZero()) {
+            order = order.reversed();
+        }
         children.stream()
                 .filter(child -> !child.getIsException())
                 .filter(child -> !child.getStartAt().isBefore(schedule.getStartAt()))
+                .filter(child -> !child.getId().equals(schedule.getId()))
+                .filter(child -> child.getEndAt() != null
+                        ? child.getEndAt().isAfter(editTime)
+                        : !child.getStartAt().isBefore(editTime))
+                .sorted(order)
                 .forEach(child -> {
-                    applyUpdateToSchedule(child, req);
+                    applyUpdateToSchedule(child, req,
+                            shiftedStartAt(schedule, child, req), shiftedEndAt(schedule, child, req));
                     scheduleRepository.save(child);
+                    if (!shift.isZero()) {
+                        scheduleRepository.flush();
+                    }
                 });
+    }
+
+    private Long resolveParentScheduleId(ScheduleEntity schedule) {
+        return schedule.getParentScheduleId() != null ? schedule.getParentScheduleId() : schedule.getId();
+    }
+
+    private Duration startShift(ScheduleEntity anchor, UpdatePersonalScheduleRequest req) {
+        return req.getStartAt() == null ? Duration.ZERO
+                : Duration.between(anchor.getStartAt(), toJst(req.getStartAt()));
+    }
+
+    private LocalDateTime shiftedStartAt(ScheduleEntity anchor, ScheduleEntity child,
+                                         UpdatePersonalScheduleRequest req) {
+        Duration shift = startShift(anchor, req);
+        return req.getStartAt() != null && !shift.isZero() ? child.getStartAt().plus(shift) : null;
+    }
+
+    private LocalDateTime shiftedEndAt(ScheduleEntity anchor, ScheduleEntity child,
+                                       UpdatePersonalScheduleRequest req) {
+        if (req.getEndAt() == null) {
+            return null;
+        }
+        LocalDateTime requestedEnd = toJst(req.getEndAt());
+        if (child.getEndAt() != null && anchor.getEndAt() != null) {
+            Duration shift = Duration.between(anchor.getEndAt(), requestedEnd);
+            return shift.isZero() ? null : child.getEndAt().plus(shift);
+        }
+        if (child.getEndAt() == null) {
+            LocalDateTime requestedStart = req.getStartAt() != null ? toJst(req.getStartAt()) : anchor.getStartAt();
+            return child.getStartAt().plus(startShift(anchor, req))
+                    .plus(Duration.between(requestedStart, requestedEnd));
+        }
+        return null;
     }
 
     /**

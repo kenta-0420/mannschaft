@@ -121,7 +121,8 @@
       "end_never": "Nie",
       "end_date": "Am Datum",
       "end_count": "Nach",
-      "end_count_suffix": "Mal"
+      "end_count_suffix": "Mal",
+      "update_scope": { "title": "Serientermin aktualisieren", "description": "Wählen Sie die zu aktualisierenden Termine.", "this_only": "Nur diesen Termin", "this_and_following": "Diesen und folgende Termine" }
     },
     "event_add": "Termin hinzufügen",
     "calendar_guide": {
