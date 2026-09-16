@@ -116,6 +116,22 @@ export interface SurveyDetailResponse {
      * optionality は生成型（`app/types/generated/index.ts`）に合わせて任意にしてある。
      */
     viewerCanViewResults?: boolean
+    /**
+     * この閲覧者がアンケートの管理操作（締切・設問追加・督促送信・回答者一覧など）を行えるか（CMP-041）。
+     *
+     * Backend の管理系 API が 403 を投げるのと同じ判定点（作成者 or ADMIN／MANAGE_SURVEYS 保有
+     * DEPUTY_ADMIN）から得ている。FE はロール名で操作ボタンを出し分けてはならない。
+     *
+     * optionality は生成型（`app/types/generated/index.ts`）に合わせて任意にしてある。
+     */
+    viewerCanManage?: boolean
+    /**
+     * この閲覧者がチーム別内訳（組織の管理ビュー）を取得できるか（CMP-041）。
+     *
+     * チーム別内訳 API は作成者高速パスを持たない（ADMIN／MANAGE_SURVEYS 保有 DEPUTY_ADMIN のみ）ため、
+     * `viewerCanManage` とは別項目である。
+     */
+    viewerCanViewTeamBreakdown?: boolean
   }
 }
 
@@ -301,6 +317,15 @@ export interface SurveyDetailWire {
      * 画面側はこの値が欠けた応答を fail-closed（不可視）として扱う。
      */
     viewerCanViewResults: boolean
+    /**
+     * この閲覧者が管理操作を行えるか（CMP-041）。
+     *
+     * `viewerCanViewResults` と同じ理由で **wire 形では必須**にしている。
+     * BE が必ず設定する契約であり、モックが落とすと本番で起こりえない状態を模すことになる。
+     */
+    viewerCanManage: boolean
+    /** この閲覧者がチーム別内訳を取得できるか（CMP-041。wire 形では必須）。 */
+    viewerCanViewTeamBreakdown: boolean
   }
 }
 
