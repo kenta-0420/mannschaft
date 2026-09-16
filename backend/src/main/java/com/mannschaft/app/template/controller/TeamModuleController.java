@@ -5,7 +5,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.team.service.TeamService;
+import com.mannschaft.app.config.TeamScopeId;
 import com.mannschaft.app.template.dto.TeamModuleCatalogResponse;
 import com.mannschaft.app.template.dto.TeamModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
@@ -36,7 +36,6 @@ import java.util.List;
 public class TeamModuleController {
 
     private final ModuleService moduleService;
-    private final TeamService teamService;
     private final AccessControlService accessControlService;
 
 
@@ -50,8 +49,8 @@ public class TeamModuleController {
     @Operation(summary = "チームモジュール一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TeamModuleResponse>>> getTeamModules(
-            @PathVariable String slug) {
-        Long teamId = teamService.resolveTeamId(slug);
+            @PathVariable("slug") TeamScopeId scopeId) {
+        Long teamId = scopeId.value();
         // MEMBER 以上であることを確認（SUPPORTER/GUEST/未加入は 403）
         accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
         return ResponseEntity.ok(ApiResponse.of(moduleService.getTeamModules(teamId)));
@@ -68,8 +67,8 @@ public class TeamModuleController {
     @Operation(summary = "チーム機能カタログ＋有効状態取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<TeamModuleCatalogResponse>> getTeamModuleCatalog(
-            @PathVariable String slug) {
-        Long teamId = teamService.resolveTeamId(slug);
+            @PathVariable("slug") TeamScopeId scopeId) {
+        Long teamId = scopeId.value();
         // MEMBER 以上であることを確認（SUPPORTER/GUEST/未加入は 403）
         accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
         return ResponseEntity.ok(ApiResponse.of(moduleService.getTeamModuleCatalog(teamId)));
@@ -85,10 +84,10 @@ public class TeamModuleController {
     @Operation(summary = "モジュール有効/無効切替")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "切替成功")
     public ResponseEntity<Void> toggleTeamModule(
-            @PathVariable String slug,
+            @PathVariable("slug") TeamScopeId scopeId,
             @PathVariable Long moduleId,
             @Valid @RequestBody ToggleModuleRequest request) {
-        Long teamId = teamService.resolveTeamId(slug);
+        Long teamId = scopeId.value();
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // ADMINのみ許可（手本: OrganizationModuleController#toggleOrganizationModule）
         if (!accessControlService.isAdmin(currentUserId, teamId, "TEAM")) {
@@ -108,9 +107,9 @@ public class TeamModuleController {
     @Operation(summary = "テンプレート適用")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "適用成功")
     public ResponseEntity<Void> applyTemplate(
-            @PathVariable String slug,
+            @PathVariable("slug") TeamScopeId scopeId,
             @RequestParam Long templateId) {
-        Long teamId = teamService.resolveTeamId(slug);
+        Long teamId = scopeId.value();
         Long currentUserId = SecurityUtils.getCurrentUserId();
         // ADMINのみ許可（テンプレート一括適用はチーム全体のモジュール設定を書き換えるため）
         if (!accessControlService.isAdmin(currentUserId, teamId, "TEAM")) {
