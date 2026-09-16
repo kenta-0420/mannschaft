@@ -79,7 +79,9 @@ public class BillingPlanChangeConfirmationService {
      * subscription 逆引きが使えない（未実装・スタブなし）場合のみ、直接引きへフォールバックする
      * （AC-37〜39: 既に bind 済みの通常経路）。</p>
      *
-     * <p>返す change の状態は問わない（terminal でも返す）。実際に確定してよいかは
+     * <p><b>subscription 経由の逆引きは未確定（非 terminal）の change に限る</b>（修繕・P1-1）。
+     * 直接引き（{@code stripe_invoice_ref}）は invoice ref がその change に bind 済みであること
+     * 自体が根拠なので terminal でも返す（確定済み再送の冪等判定に使う）。実際に確定してよいかは
      * {@link #confirmPaid}/{@link #confirmFailed} 側の {@link #IN_FLIGHT} 判定に委ねる
      * （すでに確定済みの再送を冪等に無視するため）。</p>
      *
@@ -109,7 +111,16 @@ public class BillingPlanChangeConfirmationService {
     private Optional<BillingContractChangeEntity> resolveViaSubscription(String subscriptionRef) {
         try {
             return billingPaymentGateway.findOperationIdOnSubscription(subscriptionRef)
-                    .flatMap(changeRepository::findByOperationIdAndDeletedAtIsNull);
+                    .flatMap(changeRepository::findByOperationIdAndDeletedAtIsNull)
+                    // 【必須】未確定（非 terminal）の change に限る。upgrade が決着したあとも Stripe の
+                    // Subscription には metadata.billingOperationId が残り続けるため、絞らないと
+                    // 以後の「通常更新 invoice」がすべてこの終端 change へ解決され、
+                    // invoice.paid の期間延長と payment_failed の PAST_DUE 遷移が恒久的に
+                    // スキップされる（契約状態が Stripe の実態から永久に乖離する）。
+                    // 正本 05_billing_center.md:80 も upgrade invoice の識別は stripe_invoice_ref を
+                    // 正とし、subscription 経由はあくまで bind 前の補助経路である。
+                    // 兄弟メソッド resolveByOperationId と同じ IN_FLIGHT の流儀に揃える。
+                    .filter(change -> IN_FLIGHT.contains(change.getStatus()));
         } catch (RuntimeException e) {
             log.warn("PR6b-1: Stripe subscription 参照に失敗したため invoice ref 直接引きへ見送る: "
                     + "subscriptionRef={}", subscriptionRef, e);
@@ -223,6 +234,52 @@ public class BillingPlanChangeConfirmationService {
                         "change が見つからない: " + change.getOperationId()));
         locked.setStripeInvoiceRef(invoiceRef);
         changeRepository.saveAndFlush(locked);
+    }
+
+    /**
+     * pending_update（3DS）経路の {@code invoice.paid} を処理する（修繕・P1-2）。
+     *
+     * <h2>なぜ paid 側でも items を照合するのか</h2>
+     * <p>{@code customer.subscription.pending_update_applied} が {@code invoice.paid} より
+     * <b>先に</b>届くと、applied の時点では「invoice.paid 済み」を確認できず確定できない
+     * （{@link #confirmAppliedIfMatchingItems} が {@code false} を返す）。Stripe は applied を
+     * 再発行しないため、paid 側が items を再照合して確定しなければ change は
+     * {@code REQUIRES_ACTION} のまま固まり、pointer が後続のあらゆる操作を恒久的に遮断する。</p>
+     *
+     * <p>したがって paid 到着時に <b>Stripe の現在 items</b> を取得し、change 行へ保存した
+     * target（{@code pending_update_target_snapshot}）と一致していれば、その場で確定する
+     * （E2' と同じ照合軸・確定ロジックは {@link #confirmPaid} を再利用）。まだ切り替わって
+     * いなければ invoice ref の bind だけ行い、applied の到着を待つ（従来どおり）。</p>
+     *
+     * <p><b>確定の主体は webhook だけ</b>という大原則は崩していない（ここは webhook 経路である）。
+     * 単調性は {@link #confirmPaid} の {@link #IN_FLIGHT} 判定が、冪等性は「確定済みなら no-op」が担う。
+     * Stripe 参照に失敗した場合は<b>握り潰さず</b>例外を外へ出し、webhook ゲートの再送へ委ねる
+     * （AC-85: 所有確定後の一時失敗は 5xx）。</p>
+     *
+     * @param change          解決済みの upgrade change（{@code pending_update_expires_at} が非 NULL）
+     * @param invoiceRef      bind すべき invoice ref
+     * @param subscriptionRef 現在 items を取りに行く Stripe Subscription ID
+     */
+    void confirmPaidForPendingUpdate(
+            BillingContractChangeEntity change, String invoiceRef, String subscriptionRef) {
+        if (!IN_FLIGHT.contains(change.getStatus())) {
+            return; // 既に確定済み（冪等）。
+        }
+        acknowledgePendingPayment(change, invoiceRef);
+        String targetPriceRef = payloadParser.targetPriceRefFromSnapshot(
+                change.getPendingUpdateTargetSnapshot());
+        if (targetPriceRef == null || subscriptionRef == null || subscriptionRef.isBlank()) {
+            // 照合材料が無い。確定はせず pending_update_applied を待つ（回収の失効判定が受け皿）。
+            return;
+        }
+        BillingPaymentGateway.SubscriptionSnapshot snapshot =
+                billingPaymentGateway.retrieveSubscription(subscriptionRef);
+        if (snapshot == null || !snapshot.hasItems() || !snapshot.containsPriceRef(targetPriceRef)) {
+            log.info("PR6b-1: invoice.paid 時点で items が target へ未切替のため確定しない: changeId={}",
+                    change.getId());
+            return;
+        }
+        confirmPaid(change, invoiceRef);
     }
 
     /**

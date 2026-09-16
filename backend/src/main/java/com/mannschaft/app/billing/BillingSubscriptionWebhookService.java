@@ -235,7 +235,18 @@ public class BillingSubscriptionWebhookService {
                 .map(com.mannschaft.app.billing.invoice.StripeBillingObjectView.SubscriptionView::currentItemPriceRef)
                 .orElse(null);
         return runGated(event, () -> {
-            planChangeConfirmationService.confirmAppliedIfMatchingItems(change.get(), currentItemPriceRef);
+            boolean confirmed = planChangeConfirmationService
+                    .confirmAppliedIfMatchingItems(change.get(), currentItemPriceRef);
+            if (!confirmed) {
+                // 【修繕・P1-2】この event は消費してよい。確定できなかったのは
+                // invoice.paid がまだ届いていない（applied が先着した）ためであり、
+                // 後続の invoice.paid が現在 items を再照合して確定する
+                // （BillingPlanChangeConfirmationService#confirmPaidForPendingUpdate）。
+                // Stripe は applied を再発行しないため、この受け皿が無いと change は
+                // 永久に REQUIRES_ACTION のまま固まる。
+                log.info("PR6b-1: pending_update_applied 時点では確定条件が未成立。後続の invoice.paid に委ねる: "
+                        + "eventId={}", event.eventId());
+            }
             return WebhookProcessStatus.PROCESSED;
         });
     }
@@ -311,8 +322,13 @@ public class BillingSubscriptionWebhookService {
                     // APPLIED にしない。適用確定は customer.subscription.pending_update_applied の
                     // 現在 items 照合に委ねる（confirmAppliedIfMatchingItems）。同期成功（pending_update
                     // を経由しない upgrade）は従来どおり invoice.paid の一点で確定する（E6'・AC-37）。
+                    // 【修繕・P1-2】applied が paid より先に着いた場合、applied 側では
+                    // 「invoice.paid 済み」を確認できず確定できない。Stripe は applied を
+                    // 再発行しないため、paid 側で現在 items を再照合して確定しなければ
+                    // change は REQUIRES_ACTION のまま固まり pointer が操作を遮断し続ける。
                     if (planChange.get().getPendingUpdateExpiresAt() != null) {
-                        planChangeConfirmationService.acknowledgePendingPayment(planChange.get(), invoiceRef);
+                        planChangeConfirmationService.confirmPaidForPendingUpdate(
+                                planChange.get(), invoiceRef, subscriptionId);
                     } else {
                         planChangeConfirmationService.confirmPaid(planChange.get(), invoiceRef);
                     }
