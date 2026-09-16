@@ -120521,6 +120521,58 @@
         }
       }
     },
+    "/api/v1/teams/{slug}/members/all": {
+      "get": {
+        "tags": [
+          "チーム管理"
+        ],
+        "summary": "チームメンバー全件一括取得",
+        "description": "全メンバーを 1 レスポンスで返す（CMP-260912-1525）。ページング経路はページ要求ごとに所属情報を全件走査するため、全員を必要とする画面が全ページをめくると総処理量が人数の二乗になる。本 EP は走査を 1 回に固定する。認可・返却項目はページング経路と同一。",
+        "operationId": "getAllTeamMembers",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListScopeMemberResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "可視性レベル未満（非メンバー等）でアクセス不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListScopeMemberResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "チームが存在しない / 論理削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListScopeMemberResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{slug}/me/permissions": {
       "get": {
         "tags": [
@@ -124801,6 +124853,58 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListMyConfirmedSlotResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shifts/hourly-rates": {
+      "get": {
+        "tags": [
+          "シフト勤務可能時間・時給管理"
+        ],
+        "summary": "チーム時給一括取得（ADMIN/DEPUTY_ADMIN のみ）",
+        "description": "基準日時点で有効な時給を、チーム全員ぶん 1 レスポンスで返す。時給が未設定のメンバーは含まれない。",
+        "operationId": "listTeamEffectiveHourlyRates",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListHourlyRateResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY_ADMIN でない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListHourlyRateResponse"
                 }
               }
             }
@@ -220417,6 +220521,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MemberPlanItem"
+            }
+          }
+        }
+      },
+      "ApiResponseListScopeMemberResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScopeMemberResponse"
             }
           }
         }

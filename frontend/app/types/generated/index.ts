@@ -35600,6 +35600,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{slug}/members/all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * チームメンバー全件一括取得
+         * @description 全メンバーを 1 レスポンスで返す（CMP-260912-1525）。ページング経路はページ要求ごとに所属情報を全件走査するため、全員を必要とする画面が全ページをめくると総処理量が人数の二乗になる。本 EP は走査を 1 回に固定する。認可・返却項目はページング経路と同一。
+         */
+        get: operations["getAllTeamMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{slug}/me/permissions": {
         parameters: {
             query?: never;
@@ -37440,6 +37460,26 @@ export interface paths {
          * @description ログインユーザーの確定済みシフト枠を一覧で取得する
          */
         get: operations["getMyConfirmedSlots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shifts/hourly-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * チーム時給一括取得（ADMIN/DEPUTY_ADMIN のみ）
+         * @description 基準日時点で有効な時給を、チーム全員ぶん 1 レスポンスで返す。時給が未設定のメンバーは含まれない。
+         */
+        get: operations["listTeamEffectiveHourlyRates"];
         put?: never;
         post?: never;
         delete?: never;
@@ -74292,6 +74332,9 @@ export interface components {
         };
         MemberPlanItems: {
             items?: components["schemas"]["MemberPlanItem"][];
+        };
+        ApiResponseListScopeMemberResponse: {
+            data?: components["schemas"]["ScopeMemberResponse"][];
         };
         ApiResponseEffectivePermissionsResponse: {
             data?: components["schemas"]["EffectivePermissionsResponse"];
@@ -152377,6 +152420,46 @@ export interface operations {
             };
         };
     };
+    getAllTeamMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListScopeMemberResponse"];
+                };
+            };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListScopeMemberResponse"];
+                };
+            };
+            /** @description チームが存在しない / 論理削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListScopeMemberResponse"];
+                };
+            };
+        };
+    };
     getMyPermissions: {
         parameters: {
             query?: never;
@@ -154817,6 +154900,38 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListMyConfirmedSlotResponse"];
+                };
+            };
+        };
+    };
+    listTeamEffectiveHourlyRates: {
+        parameters: {
+            query: {
+                teamId: number;
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListHourlyRateResponse"];
+                };
+            };
+            /** @description 当該チームの ADMIN/DEPUTY_ADMIN でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListHourlyRateResponse"];
                 };
             };
         };
