@@ -47,6 +47,9 @@ public class BillingSubscriptionWebhookService {
     /** PR6a AC-83: 停止窓の回収の入口（プラン変更の APPLIED 判定は PR6b の担当）。 */
     private static final String SUBSCRIPTION_UPDATED =
             BillingContractOperationRecoveryService.RECOVERY_ENTRY_EVENT_TYPE;
+    /** PR6b-1 AC-40: 3DS の追加認証が失効した合図。upgrade の失敗確定の入口。 */
+    public static final String SUBSCRIPTION_PENDING_UPDATE_EXPIRED =
+            "customer.subscription.pending_update_expired";
 
     private final StripePaymentProvider stripePaymentProvider;
     private final WebhookIdempotencyService idempotencyService;
@@ -61,6 +64,8 @@ public class BillingSubscriptionWebhookService {
     private final BillingPayerHandoverService payerHandoverService;
     /** PR6a AC-83: {@code customer.subscription.updated} を停止窓の回収の入口として使う。 */
     private final BillingContractOperationRecoveryService operationRecoveryService;
+    /** PR6b-1 第7隊: upgrade 確定の原子性（AC-37〜45）。 */
+    private final BillingPlanChangeConfirmationService planChangeConfirmationService;
     private final Clock clock;
 
     /**
@@ -154,6 +159,9 @@ public class BillingSubscriptionWebhookService {
         if (SUBSCRIPTION_UPDATED.equals(event.type())) {
             return handleSubscriptionUpdatedForRecovery(event, subscriptionId);
         }
+        if (SUBSCRIPTION_PENDING_UPDATE_EXPIRED.equals(event.type())) {
+            return handlePendingUpdateExpired(event);
+        }
 
         return runGated(event, () -> switch (event.type()) {
             case SUBSCRIPTION_DELETED -> {
@@ -178,6 +186,27 @@ public class BillingSubscriptionWebhookService {
      * <p><b>一体性（AC-18/20）</b>: invoice 投影と契約遷移は同一トランザクション・同一イベントで成否する。
      * 片方だけコミットされることはない。</p>
      */
+    /**
+     * {@code customer.subscription.pending_update_expired} を処理する（AC-40）。
+     *
+     * <p>invoice を経由しない失敗確定の入口。event の {@code metadata.billingOperationId}
+     * （{@link BillingSubscriptionWebhookEventInfo#billingOperationId()}）から直接 change を
+     * 解決する。upgrade の change でなければ所有を主張しない（{@code false}）。</p>
+     */
+    private boolean handlePendingUpdateExpired(BillingSubscriptionWebhookEventInfo event) {
+        UUID operationId = event.billingOperationId() == null || event.billingOperationId().isBlank()
+                ? null : UUID.fromString(event.billingOperationId());
+        Optional<BillingContractChangeEntity> change =
+                planChangeConfirmationService.resolveByOperationId(operationId);
+        if (change.isEmpty()) {
+            return false;
+        }
+        return runGated(event, () -> {
+            planChangeConfirmationService.confirmFailed(change.get(), "PENDING_UPDATE_EXPIRED");
+            return WebhookProcessStatus.PROCESSED;
+        });
+    }
+
     private boolean handleInvoiceEventIfBilling(String payload, BillingSubscriptionWebhookEventInfo event) {
         Optional<InvoiceView> invoiceView = invoiceProjectionService.readInvoice(payload);
         Optional<BillingInvoiceOwner> owner = invoiceView.flatMap(invoiceProjectionService::resolveOwner);
@@ -205,7 +234,7 @@ public class BillingSubscriptionWebhookService {
                 BillingContractEntity contract = bySubscription.get();
                 return webhookEventGate.runWithStatus(envelope, payload, invoiceRef,
                         contract.getId(), contract.getBillingCustomerId(),
-                        () -> applyContractTransition(event));
+                        () -> applyContractTransition(event, invoiceRef));
             }
             // subscription は billing のものだが customer が scope 所有 Customer と一致しない。
             // 所有と断定できないので投影せず、確定もさせない（再送で customer 行が整えば成功しうる）。
@@ -223,13 +252,47 @@ public class BillingSubscriptionWebhookService {
                 () -> {
                     invoiceProjectionService.project(
                             invoiceView.get(), resolved, event.type(), envelope.createdEpochSec());
-                    return applyContractTransition(event);
+                    return applyContractTransition(event, invoiceRef);
                 });
     }
 
-    /** invoice イベントに対応する契約側の遷移を適用する（投影と同一トランザクション）。 */
-    private WebhookProcessStatus applyContractTransition(BillingSubscriptionWebhookEventInfo event) {
+    /**
+     * invoice イベントに対応する契約側の遷移を適用する（投影と同一トランザクション）。
+     *
+     * <p><b>E8（PR6b-1・AC-44/45）</b>: この invoice が upgrade の差額請求（{@code billing_contract_changes}
+     * に対応行がある）なら、契約本体の {@code markContractPastDue}/{@code extendContractPeriod} へは
+     * <b>流用しない</b>。旧プランの通常請求は滞っていないのに契約が {@code PAST_DUE} に落ちる、
+     * 差額の支払いで契約期間が延長される、という実在の誤遷移を遮断する。確定は
+     * {@link BillingPlanChangeConfirmationService} が change 側だけで完結させる。</p>
+     */
+    private WebhookProcessStatus applyContractTransition(
+            BillingSubscriptionWebhookEventInfo event, String invoiceRef) {
         String subscriptionId = event.subscriptionId();
+
+        Optional<BillingContractChangeEntity> planChange =
+                planChangeConfirmationService.resolveByInvoice(invoiceRef, subscriptionId);
+        if (planChange.isPresent()) {
+            return switch (event.type()) {
+                case INVOICE_PAID -> {
+                    planChangeConfirmationService.confirmPaid(planChange.get(), invoiceRef);
+                    yield WebhookProcessStatus.PROCESSED;
+                }
+                case INVOICE_PAYMENT_FAILED -> {
+                    planChangeConfirmationService.confirmFailed(planChange.get(), "INVOICE_PAYMENT_FAILED");
+                    yield WebhookProcessStatus.PROCESSED;
+                }
+                case INVOICE_VOIDED -> {
+                    planChangeConfirmationService.confirmFailed(planChange.get(), "INVOICE_VOIDED");
+                    yield WebhookProcessStatus.PROCESSED;
+                }
+                case INVOICE_FINALIZED -> WebhookProcessStatus.PROCESSED;
+                default -> {
+                    log.info("F20.1 決済: 契約遷移を伴わない billing upgrade invoice イベント: type={}", event.type());
+                    yield WebhookProcessStatus.IGNORED;
+                }
+            };
+        }
+
         return switch (event.type()) {
             case INVOICE_PAID -> {
                 if (subscriptionId != null) {

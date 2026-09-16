@@ -113,6 +113,16 @@ public class BillingPlanChangeService {
                     BillingPlanChangeGateway.PAYMENT_BEHAVIOR_PENDING_IF_INCOMPLETE,
                     Map.of(BillingPlanChangeGateway.METADATA_OPERATION_ID_KEY, prepared.operationId().toString())));
         } catch (RuntimeException e) {
+            // AC-46: Stripe 呼び出し失敗は change も FAILED にする（operation/pointer とは別 tx でよい。
+            // 同一 tx を要求するのは webhook 確定側の AC-37〜41 のみ）。
+            newTransactionTemplate.executeWithoutResult(tx -> {
+                BillingContractChangeEntity failed = changeRepository
+                        .findByIdAndDeletedAtIsNull(prepared.changeId())
+                        .orElseThrow(() -> new IllegalStateException(
+                                "change が見つからない: " + prepared.changeId()));
+                failed.setStatus(BillingContractChangeStatus.FAILED);
+                changeRepository.save(failed);
+            });
             sagaService.failAndRelease(prepared.operationId(), "STRIPE_CALL_FAILED");
             throw new BusinessException(EntitlementErrorCode.STRIPE_UNAVAILABLE, e);
         }
@@ -228,17 +238,24 @@ public class BillingPlanChangeService {
             UUID changeId, BillingPlanChangeGateway.PlanChangeApplyResult result) {
         BillingContractChangeEntity change = changeRepository.findByIdAndDeletedAtIsNull(changeId)
                 .orElseThrow(() -> new IllegalStateException("change が見つからない: " + changeId));
-        change.setStripeInvoiceRef(result.invoiceRef());
-        if (result.pendingUpdatePresent()) {
-            change.setStatus(BillingContractChangeStatus.REQUIRES_ACTION);
-            change.setPendingUpdateExpiresAt(result.pendingUpdateExpiresAt());
-            change.setPendingUpdateTargetSnapshot(result.pendingUpdateTargetSnapshot());
-            change.setExpiresAt(result.pendingUpdateExpiresAt());
-        } else {
-            // E6': 同期成功でも invoice.paid を待つ（第9隊の webhook が APPLIED へ確定させる）。
-            change.setStatus(BillingContractChangeStatus.PENDING_PAYMENT);
+
+        // AC-35: Stripe への同期呼び出しの最中に invoice.paid webhook が先着し、既に APPLIED/FAILED へ
+        // 確定していることがある。API は現状を読むだけで、webhook の確定を PENDING_PAYMENT へ
+        // 巻き戻してはならない（確定の主体は webhook 側・E6'）。
+        if (change.getStatus() == BillingContractChangeStatus.PENDING_PAYMENT
+                || change.getStatus() == BillingContractChangeStatus.REQUIRES_ACTION) {
+            change.setStripeInvoiceRef(result.invoiceRef());
+            if (result.pendingUpdatePresent()) {
+                change.setStatus(BillingContractChangeStatus.REQUIRES_ACTION);
+                change.setPendingUpdateExpiresAt(result.pendingUpdateExpiresAt());
+                change.setPendingUpdateTargetSnapshot(result.pendingUpdateTargetSnapshot());
+                change.setExpiresAt(result.pendingUpdateExpiresAt());
+            } else {
+                // E6': 同期成功でも invoice.paid を待つ（第9隊の webhook が APPLIED へ確定させる）。
+                change.setStatus(BillingContractChangeStatus.PENDING_PAYMENT);
+            }
+            changeRepository.save(change);
         }
-        changeRepository.save(change);
         return new BillingContractChangeResponse(change.getId(), change.getStatus(), change.getEffectiveAt());
     }
 

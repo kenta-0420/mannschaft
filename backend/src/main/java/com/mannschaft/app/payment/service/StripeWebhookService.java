@@ -60,8 +60,7 @@ public class StripeWebhookService {
      */
     private static final java.util.Set<String> PR5_PENDING_EVENT_TYPES = java.util.Set.of(
             "invoice.payment_action_required",
-            "customer.subscription.pending_update_applied",
-            "customer.subscription.pending_update_expired");
+            "customer.subscription.pending_update_applied");
 
     /** 同じく PR5 で扱わない種別（接頭辞一致）。 */
     private static final String PENDING_SCHEDULE_PREFIX = "subscription_schedule.";
@@ -117,7 +116,9 @@ public class StripeWebhookService {
             // 従来（PR5 の保留リスト）と同じく RECEIVED のまま記録して取りこぼさない。
             // ここで会費側へ渡すと、未対応種別として確定（PROCESSED/IGNORED）され、
             // プラン変更を実装する PR6b が永久に拾えなくなる。
-            if (BillingContractOperationRecoveryService.isRecoveryEntryEvent(event.type())) {
+            // PR6b-1 AC-40: pending_update_expired も同型（billing が所有しなければ従来どおり保留）。
+            if (BillingContractOperationRecoveryService.isRecoveryEntryEvent(event.type())
+                    || BillingSubscriptionWebhookService.SUBSCRIPTION_PENDING_UPDATE_EXPIRED.equals(event.type())) {
                 recordPendingEvent(payload, event.type());
                 return;
             }

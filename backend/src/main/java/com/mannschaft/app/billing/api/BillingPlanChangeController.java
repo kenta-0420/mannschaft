@@ -1,11 +1,15 @@
 package com.mannschaft.app.billing.api;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.billing.EntitlementErrorCode;
 import com.mannschaft.app.billing.api.dto.BillingChangePreviewRequest;
 import com.mannschaft.app.billing.api.dto.BillingChangePreviewResponse;
 import com.mannschaft.app.billing.api.dto.BillingContractChangeResponse;
 import com.mannschaft.app.billing.api.dto.BillingPlanChangeRequest;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.featuregate.AlwaysReachable;
 import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
@@ -26,7 +30,12 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * Billing Center PR6b-1: PLAN 変更（upgrade）の HTTP 入口（正本 05_billing_center.md:380-381）。
@@ -51,8 +60,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BillingPlanChangeController {
 
+    private static final String CHANGES_PATH_FORMAT = "/api/v1/me/billing/contracts/%s/changes";
+    private static final String METHOD_CHANGE = "POST";
+    private static final String DATA_FIELD = "data";
+
     private final BillingPlanChangePreviewService previewService;
     private final BillingPlanChangeService changeService;
+    /** AC-47: 同一 Idempotency-Key の再送は同一レスポンスを返し Stripe 呼び出しは1回にする。 */
+    private final BillingDurableIdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -101,9 +116,69 @@ public class BillingPlanChangeController {
             @Valid @RequestBody BillingPlanChangeRequest request,
             @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 36) String idempotencyKey) {
         long actorId = SecurityUtils.getCurrentUserId();
+        String path = String.format(CHANGES_PATH_FORMAT, contractId);
+        String requestHash = requestHash(actorId, METHOD_CHANGE, path, request);
+        String leaseOwner = UUID.randomUUID().toString();
+        BillingIdempotencyDecision decision =
+                idempotencyService.begin(actorId, METHOD_CHANGE, path, idempotencyKey, requestHash, leaseOwner);
+
+        if (decision.kind() == BillingIdempotencyDecisionKind.PROCESSING) {
+            throw new BillingIdempotencyProcessingException(decision.retryAfterSeconds());
+        }
+        if (decision.kind() == BillingIdempotencyDecisionKind.REPLAY) {
+            return replay(decision);
+        }
+
         String requestBody = objectMapper.writeValueAsString(request);
-        BillingContractChangeResponse response =
-                changeService.change(actorId, contractId, request, idempotencyKey, requestBody);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(response));
+        BillingContractChangeResponse body;
+        try {
+            body = changeService.change(actorId, contractId, request, idempotencyKey, requestBody);
+        } catch (RuntimeException e) {
+            // 失敗は FAILED で確定させる（本文は保存しないので、同じキーの再送は 021/409）。
+            idempotencyService.fail(decision.id(), leaseOwner);
+            throw e;
+        }
+        ApiResponse<BillingContractChangeResponse> envelope = ApiResponse.of(body);
+        idempotencyService.complete(decision.id(), leaseOwner, HttpStatus.ACCEPTED.value(), writeJson(envelope));
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(envelope);
+    }
+
+    /** 保存済み応答をそのまま返す（本処理は再実行せず Stripe も呼ばない・AC-47）。 */
+    private ResponseEntity<ApiResponse<BillingContractChangeResponse>> replay(
+            BillingIdempotencyDecision decision) {
+        if (decision.responseJson() == null || decision.responseStatus() == null) {
+            // FAILED 確定済み（本文を保存していない）。失敗を再現せず新しいキーでの再送を促す。
+            throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
+        }
+        try {
+            JsonNode data = objectMapper.readTree(decision.responseJson()).get(DATA_FIELD);
+            if (data == null) {
+                throw new BusinessException(EntitlementErrorCode.CHANGE_CONFLICT);
+            }
+            return ResponseEntity.status(decision.responseStatus())
+                    .body(ApiResponse.of(
+                            objectMapper.treeToValue(data, BillingContractChangeResponse.class)));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("failed to replay stored idempotent response", e);
+        }
+    }
+
+    /** {@code BillingContractCancelResumeController#requestHash} と同一の算式（区切りは改行）。 */
+    private String requestHash(Long actorId, String method, String path, Object request) {
+        String canonical = String.join("\n", String.valueOf(actorId), method, path, writeJson(request));
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(canonical.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
+        }
+    }
+
+    private String writeJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("failed to serialize billing plan change payload", e);
+        }
     }
 }

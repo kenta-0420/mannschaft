@@ -787,11 +787,14 @@ public interface StripePaymentProvider {
      * @param subscriptionId           Stripe Subscription ID（{@code sub_xxx}・逆引きキー）
      * @param customerId               Stripe Customer ID（{@code cus_xxx}・焼付用・{@code checkout.session.completed} のみ）
      * @param currentPeriodEndEpochSec 現サイクル終了の unix 秒（valid_until 延長/失効時刻・null 可）
+     * @param billingOperationId       {@code data.object.metadata.billingOperationId}（PR6b-1 AC-40。
+     *                                 {@code customer.subscription.*} のみ・invoice を経由せず change を
+     *                                 解決するための痕跡。無ければ {@code null}）
      */
     record BillingSubscriptionWebhookEventInfo(
             String eventId, String type, boolean livemode,
             String sessionId, String billingContractId, String subscriptionId, String customerId,
-            Long currentPeriodEndEpochSec) {}
+            Long currentPeriodEndEpochSec, String billingOperationId) {}
 
     // ========================================
     // 柱③-B PR-2 請求支払者の引継（設計書 billing_payer_handover_design.md §2.3・§3.2・§3.4）

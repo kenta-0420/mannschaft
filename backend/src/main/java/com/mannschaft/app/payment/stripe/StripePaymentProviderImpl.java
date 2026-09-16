@@ -381,6 +381,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         String subscriptionId = null;
         String customerId = null;
         Long currentPeriodEndEpochSec = null;
+        String billingOperationId = null;
 
         if (stripeObject instanceof Session session) {
             sessionId = session.getId();
@@ -404,12 +405,18 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         } else if (stripeObject instanceof Subscription subscription) {
             subscriptionId = subscription.getId();
             currentPeriodEndEpochSec = subscription.getCurrentPeriodEnd();
+            // PR6b-1 AC-40: pending_update_expired 等は invoice を経由せずに change を解決する必要が
+            // あるため、subscription 側の metadata.billingOperationId をここで直接読む。
+            if (subscription.getMetadata() != null) {
+                billingOperationId = subscription.getMetadata().get("billingOperationId");
+            }
         }
 
         log.info("F20.1 サブスク Webhook 受信: id={}, type={}, sessionId={}, billingContractId={}, subscriptionId={}",
                 event.getId(), eventType, sessionId, billingContractId, subscriptionId);
         return new BillingSubscriptionWebhookEventInfo(event.getId(), eventType, livemode,
-                sessionId, billingContractId, subscriptionId, customerId, currentPeriodEndEpochSec);
+                sessionId, billingContractId, subscriptionId, customerId, currentPeriodEndEpochSec,
+                billingOperationId);
     }
 
     @Override

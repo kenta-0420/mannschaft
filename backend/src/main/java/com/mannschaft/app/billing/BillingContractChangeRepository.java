@@ -30,4 +30,14 @@ public interface BillingContractChangeRepository
 
     /** 主キーで取得する（deleted_at 除外）。 */
     Optional<BillingContractChangeEntity> findByIdAndDeletedAtIsNull(UUID id);
+
+    /**
+     * {@code stripe_invoice_ref}（{@code uk_bcc_invoice}）で取得する（PR6b-1 B群 AC-37〜43）。
+     *
+     * <p>invoice webhook が「この invoice は upgrade の差額請求である」と判定するための入口。
+     * まだ bind されていない（{@code stripe_invoice_ref IS NULL}）場合は
+     * {@link com.mannschaft.app.billing.BillingContractOperationSagaService} 側の
+     * {@code operation_id} 逆引き（AC-42）で解決する。</p>
+     */
+    Optional<BillingContractChangeEntity> findByStripeInvoiceRefAndDeletedAtIsNull(String stripeInvoiceRef);
 }
