@@ -32,26 +32,66 @@ cd backend
 走っている生成は `:8082` を見ても見つからないためである。
 
 ```bash
-MINE_NAME=$(basename "$(git rev-parse --show-toplevel)") || { echo "[!] git 失敗 → 確認不能。起動しない"; exit 2; }
+MINE=$(git rev-parse --show-toplevel) || { echo "[!] git に失敗 → 確認不能。起動しない"; exit 2; }
+MINE_NAME=$(basename "$MINE")
+WIN_TMP=$(mktemp); WSL_TMP=$(mktemp)
 
-# Windows 側: openapi-gen のフォークを列挙し、pathing jar のマニフェストから worktree を得る
+# --- Windows 側 ---
+# パイプで繋ぐと末尾の終了状態しか残らないので、まず結果をファイルに落として rc を個別に受け取る
 powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='java.exe'\" -ErrorAction Stop |
-  Where-Object { \$_.CommandLine -like '*-Dspring.profiles.active=openapi-gen*' } |
-  ForEach-Object { \$_.ProcessId.ToString() + '|' + \$_.CommandLine }" | tr -d '\r' |
+  Where-Object { \$_.CommandLine -like '*generateOpenApiDocs*' -or \$_.CommandLine -like '*-Dspring.profiles.active=openapi-gen*' } |
+  ForEach-Object { \$_.ProcessId.ToString() + '|' + \$_.CommandLine }" > "$WIN_TMP" 2>/dev/null
+WIN_RC=$?
+[ "$WIN_RC" -ne 0 ] && { echo "[!] Windows 側の列挙に失敗 (rc=$WIN_RC) → 確認不能。起動しない"; exit 2; }
+
+# --- WSL 側 ---
+# pgrep は「該当なし」で rc=1 を返すので、それを失敗と混同しない（rc>1 だけが失敗）
+wsl -e sh -c 'command -v pgrep >/dev/null 2>&1 || exit 127
+  out=$(pgrep -f "[-]Dspring.profiles.active=openapi-gen"); rc=$?
+  [ "$rc" -gt 1 ] && exit "$rc"
+  for p in $out; do echo "$p $(readlink -f /proc/$p/cwd 2>/dev/null)"; done
+  exit 0' > "$WSL_TMP" 2>/dev/null
+WSL_RC=$?
+[ "$WSL_RC" -ne 0 ] && { echo "[!] WSL 側の列挙に失敗 (rc=$WSL_RC) → 確認不能。起動しない"; exit 2; }
+
+HIT=0
 while IFS='|' read -r PID CMD; do
   [ -z "$PID" ] && continue
-  JAR=$(printf '%s' "$CMD" | tr ' ' '\n' | grep -o '[A-Za-z]:.*gradle-javaexec-classpath[0-9]*\.jar' | head -1 | tr '\' '/')
-  WT=""
-  [ -n "$JAR" ] && [ -f "$JAR" ] && WT=$(unzip -p "$JAR" META-INF/MANIFEST.MF 2>/dev/null | sed -e ':a' -e 'N' -e '$!ba' -e 's/\r//g' -e 's/\n //g' | tr ' ' '\n' | grep -o 'worktrees/[A-Za-z0-9_-]*' | head -1 | cut -d/ -f2)
-  PORT=$(printf '%s' "$CMD" | tr ' ' '\n' | grep -o '[-]Dserver.port=[0-9]*' | cut -d= -f2)
-  if [ -z "$WT" ]; then echo "  PID=$PID port=${PORT:-?} worktree=不明 → 確認不能"
-  elif [ "$WT" = "$MINE_NAME" ]; then echo "  PID=$PID port=${PORT:-?} → ★自分の worktree の生成が実行中"
-  else echo "  PID=$PID port=${PORT:-?} worktree=$WT → 他 worktree"; fi
-done
+  WT=$(printf '%s' "$CMD" | grep -o 'worktrees[/\][A-Za-z0-9_-]*' | head -1 | sed 's|worktrees[/\]||')
+  if [ -z "$WT" ]; then
+    JAR=$(printf '%s' "$CMD" | tr ' ' '\n' | grep -o '[A-Za-z]:.*gradle-javaexec-classpath[0-9]*\.jar' | head -1 | tr '\' '/')
+    [ -n "$JAR" ] && [ -f "$JAR" ] && WT=$(unzip -p "$JAR" META-INF/MANIFEST.MF 2>/dev/null | sed -e ':a' -e 'N' -e '$!ba' -e 's/\r//g' -e 's/\n //g' | tr ' ' '\n' | grep -o 'worktrees/[A-Za-z0-9_-]*' | head -1 | cut -d/ -f2)
+  fi
+  case "$CMD" in *generateOpenApiDocs*) KIND="Gradle 実行" ;; *) KIND="フォーク" ;; esac
+  if [ -z "$WT" ]; then echo "  PID=$PID ($KIND) worktree=不明 → 確認不能"; HIT=1
+  elif [ "$WT" = "$MINE_NAME" ]; then echo "  PID=$PID ($KIND) → ★自分の worktree で生成が進行中"; HIT=1
+  else echo "  PID=$PID ($KIND) worktree=$WT → 他 worktree"; fi
+done < "$WIN_TMP"
 
-# WSL 側: pgrep のパターンを [-] で始めて「自分自身の sh」に一致させない
-wsl -e sh -c 'for p in $(pgrep -f "[-]Dspring.profiles.active=openapi-gen" 2>/dev/null); do echo "  WSL PID=$p cwd=$(readlink -f /proc/$p/cwd 2>/dev/null)"; done'
+while read -r PID CW; do
+  [ -z "$PID" ] && continue
+  case "$CW" in *"$MINE_NAME"*) echo "  WSL PID=$PID → ★自分の worktree で生成が進行中"; HIT=1 ;;
+    "") echo "  WSL PID=$PID cwd 取得不可 → 確認不能"; HIT=1 ;;
+    *) echo "  WSL PID=$PID worktree=$CW → 他 worktree" ;; esac
+done < "$WSL_TMP"
+
+rm -f "$WIN_TMP" "$WSL_TMP"
+[ "$HIT" -eq 0 ] && echo "  該当なし → 出力先は競合しない。手順2 へ" || echo "  ★または確認不能あり → 起動しない（待つ）"
 ```
+
+> **なぜ「Gradle 実行そのもの」も探すのか（2026-09-16 実測）。**
+> `-Dspring.profiles.active=openapi-gen` を持つ**フォークは生成の最終段階でしか現れない**。
+> `compileJava` の最中に探すとフォークは **0 件**で、「競合なし」と誤判定する
+> （コールドコンパイルは約 48 分かかることがあり、その間ずっと空を返す）。
+> そこで**タスク名 `generateOpenApiDocs` を持つ Gradle の起動プロセス**も併せて探す。
+> こちらは `-jar .../worktrees/<名前>/backend/gradle/wrapper/gradle-wrapper.jar` を
+> コマンドラインに含むので、**worktree がそのまま読み取れる**うえ、
+> **タスク開始から完了まで生き続ける**。
+>
+> 実測: `compileJava` 段階で、フォーク検索は 0 件、Gradle 実行の検索は
+> `PID=87608 ... gradle-wrapper.jar generateOpenApiDocs -PopenApiPort=8097` を捉えた。
+>
+> （`./gradlew` 以外の起動方法を使う場合はこの目印が変わる点に注意）
 
 > **なぜポートではなくプロセスを見るのか（2026-09-16 実測）。**
 > `-PopenApiPort=8098` で生成を走らせた状態で、両方を試した:
@@ -310,6 +350,9 @@ wsl -e sh -c 'P=8082; command -v ss >/dev/null 2>&1 || { echo "[0] ss を実行�
 # → cwd が $MINE 配下でなければ条件2 を満たさない = 止めない
 ```
 
+**この `wsl` 呼び出し自体が rc≠0 で終わったときも `[0]`（確認不能）と同じ扱いにすること。**
+以下の分岐は `ss` の失敗までは自分で見るが、`wsl` が起動しない場合は何も出力されない。
+
 **出力は 4 通りある。`ss` が動いたか / 一致行があるか / PID が取れたか を、
 それぞれ別の軸として見ること。**
 **「確認不能」は `[0]`（`ss` の実行そのものが失敗）と `[3]`（一致行はあるのに PID / cwd が取れない）の 2 つだけ。**
@@ -439,6 +482,9 @@ wsl -e sh -c "ss -ltnp 2>/dev/null | grep ':8082 '"
 # 掴んでいる主の素性と作業ディレクトリ
 wsl -e sh -c 'P=8082; command -v ss >/dev/null 2>&1 || { echo "[0] ss を実行できない → 確認不能。停止も別ポート起動もせず待つ"; exit 9; }; ALL=$(ss -ltnp) || { echo "[0] ss が失敗した → 確認不能。停止も別ポート起動もせず待つ"; exit 9; }; ROW=$(printf "%s\n" "$ALL" | grep ":$P "); if [ -z "$ROW" ]; then echo "[1] WSL 側には居ない（まだ結論ではない。Windows 側も確認すること）"; exit; fi; echo "$ROW"; PID=$(printf "%s\n" "$ROW" | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "[3] listener は居るが所有者不明（権限不足で pid 非表示）→ 停止も別ポート起動もせず待つ"; exit; fi; CWD=$(readlink -f /proc/$PID/cwd 2>/dev/null); if [ -z "$CWD" ]; then echo "[3] PID=$PID だが cwd を読めない（他ユーザー）→ 停止も別ポート起動もせず待つ"; exit; fi; echo "[2] PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $CWD"'
 ```
+
+**この `wsl` 呼び出し自体が rc≠0 で終わったときも `[0]`（確認不能）と同じ扱いにすること。**
+以下の分岐は `ss` の失敗までは自分で見るが、`wsl` が起動しない場合は何も出力されない。
 
 **出力は 4 通りある。`ss` が動いたか / 一致行があるか / PID が取れたか を、
 それぞれ別の軸として見ること。**
