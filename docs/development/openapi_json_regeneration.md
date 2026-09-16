@@ -77,34 +77,60 @@ logback は root に appender が一つも紐付いていないと**そのプロ
 を置いてあるので、**どのプロファイルで起動してもコンソールにログが出る**。
 新しいプロファイルを足すときも、このフォールバックがある限り無音にはならない。
 
-### 2. `:8082` を誰かが掴んでいないか — **Windows の netstat を信じないこと**
+### 2. `:8082` を誰かが掴んでいないか — **Windows と WSL の両方を見ること**
 
-この確認は**必ず WSL 側から行う**。理由は WSL2 の mirrored networking で、
-**WSL 側の listener が Windows の `localhost` にも現れる**ためである。結果として:
+**片側だけの確認では必ず取りこぼす。** ポートの主は Windows 側にも WSL 側にも現れうるが、
+**どちらの列挙コマンドも自分の側しか見えない**からである。
+
+| 主の居場所 | 典型例 | Windows の `Get-NetTCPConnection` / `netstat` | WSL の `ss -ltnp` |
+|---|---|---|---|
+| **Windows 側** | Gradle が Windows で起動したフォークの孤児（＝この手順の主対象） | **見える** | 見えない |
+| **WSL 側** | 他セッションが WSL で走らせている E2E バックエンド等 | **見えない** | **見える** |
+
+さらに WSL2 の mirrored networking のせいで、**WSL 側の listener は Windows の `localhost` から
+普通に応答する**。この組み合わせが観測を二重に裏切る:
 
 - Windows の `netstat` には **LISTENING 行が出ない**（TIME_WAIT や ESTABLISHED だけが並ぶ）
 - なのに Windows から `curl http://localhost:8082/...` は **200 を返す**
 
-つまり **Windows 側のどちらの観測を信じても真相に届かない**。2026-09-16 に実際にこれを踏んだ
-（`netstat` は LISTENING 無し、`curl` は `{"status":"UP"}`、実体は WSL で走る
-**他セッションの E2E バックエンド**だった）。
+2026-09-16 に実際にこれを踏んだ（`netstat` も `Get-NetTCPConnection -State Listen` も該当なし、
+`curl` は `{"status":"UP"}`、実体は WSL で走る**他セッションの E2E バックエンド**だった。CMP-260912-1526）。
+
+**`curl` は「何かが応答しているか」しか答えない。どちら側の誰かは教えてくれない。**
+応答があるのに両方の列挙に出ないということは無いので、必ず両方を叩くこと。
+
+#### まず Windows 側
+
+```powershell
+# 誰が :8082 を LISTEN しているか（Windows 側のみ）
+Get-NetTCPConnection -LocalPort 8082 -State Listen | Select-Object LocalAddress,LocalPort,State,OwningProcess
+# そのプロセスの正体（コマンドラインで openapi-gen フォークか判別できる）
+Get-CimInstance Win32_Process -Filter "ProcessId=<PID>" | Select-Object ProcessId,CreationDate,CommandLine
+```
+
+コマンドラインが
+`... com.mannschaft.app.MannschaftApplication --spring.profiles.active=openapi-gen --server.port=8082`
+で、起動時刻が過去の失敗実行のものなら**自分が出した孤児**。停止してから再実行してよい。
+
+#### 次に WSL 側
 
 ```bash
-# 1) 本当に誰が LISTEN しているか（これが正）
+# 誰が :8082 を LISTEN しているか（WSL 側のみ）
 wsl -e sh -c "ss -ltnp 2>/dev/null | grep ':8082 '"
 
-# 2) 掴んでいる主の素性と作業ディレクトリ
+# 掴んでいる主の素性と作業ディレクトリ
 wsl -e sh -c 'PID=$(ss -ltnp 2>/dev/null | grep ":8082 " | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); echo "PID=$PID"; ps -o pid,args -p $PID; readlink -f /proc/$PID/cwd'
 ```
 
-**`cwd` の見方が判断の分かれ目:**
+**`cwd` / コマンドラインの見方が判断の分かれ目:**
 
-| `cwd` が指す先 | 正体 | 対処 |
+| 主の正体 | 見分け方 | 対処 |
 |---|---|---|
-| **他の worktree**（`.claude/worktrees/<別の名前>/...`） | 他セッションの生きたプロセス | **kill 厳禁。`-PopenApiPort=8099` で避ける** |
-| 自分の worktree で、引数が `--spring.profiles.active=openapi-gen --server.port=8082` | 過去の失敗実行の孤児 | 停止してよい |
+| **他セッションの生きたプロセス** | `cwd` が**他の worktree**（`.claude/worktrees/<別の名前>/...`）を指す | **kill 厳禁。`-PopenApiPort=8099` で避ける** |
+| **自分が出した孤児** | 自分の worktree で、引数が `--spring.profiles.active=openapi-gen --server.port=8082` | 停止してよい |
+| 開発サーバー | `:8080`（そもそも別ポート） | **触らない** |
 
-孤児が残る経路も実在する。前回の実行が異常終了するとフォークだけが生き残り、
+孤児が残る経路は実在する。前回の実行が異常終了するとフォークだけが生き残り、
 TCP は待ち受けるが応答しないため、プラグインの GET がそれに繋がって
 `waitTimeInSeconds`（1800 秒）を丸ごと食い潰す（2026-09-13 の孤児が 2 日間 `:8082` を
 掴み続けていた。CMP-260912-1526）。
@@ -160,8 +186,40 @@ cd frontend && npm run generate:types   # docs/openapi.json を入力に型を�
 ### 差分が出ないこともある（それが正常）
 
 生成は毎回フルに走る（`outputs.upToDateWhen { false }`）が、API 表面が変わっていなければ
-**出力は 1 バイトも変わらない**。`git diff --quiet -- docs/openapi.json` が rc=0 を返したら
-「生成に失敗した」ではなく「ドリフトが無い」という意味なので、そのまま何もコミットしなくてよい。
+**出力の中身は変わらない**。差分ゼロは「生成に失敗した」ではなく「ドリフトが無い」という意味なので、
+そのまま何もコミットしなくてよい。
 
-**2026-09-16 時点で `docs/openapi.json` は main とバイト単位で一致している**
-（5,974,912 bytes / 238,984 行。CMP-260912-1526 で実測）。すなわち既知のドリフトは無い。
+#### ⚠️ 確認コマンドはパスに注意（偽の「差分なし」を掴まされる）
+
+**`git diff --quiet` は、指定したパスが存在しなくても rc=0 を返す。**
+この手順は冒頭で `cd backend` しているため、そのまま
+
+```bash
+git diff --quiet -- docs/openapi.json    # ✗ backend/docs/openapi.json を見てしまう
+```
+
+と打つと**実在しないパスを見て必ず rc=0**、つまり本当は差分があっても
+「ドリフト無し」と誤判定してコミットを省いてしまう。次のどちらかを使うこと。
+
+```bash
+# backend/ に居るまま確認する場合
+git diff --quiet -- ../docs/openapi.json; echo "rc=$?"
+
+# あるいはリポジトリルートを明示する
+git -C .. diff --quiet -- docs/openapi.json; echo "rc=$?"
+```
+
+`rc=0` なら差分なし、`rc=1` なら差分あり（コミットが必要）。
+**この 3 つは 2026-09-16 に実測で検証済み**: `docs/openapi.json` を意図的に 1 バイト変更した状態で、
+`-- docs/openapi.json`（誤）は **rc=0** を返し、`-- ../docs/openapi.json` と `git -C ..`（正）は
+いずれも **rc=1** を返した。
+
+#### バイト数での比較はしないこと
+
+`wc -c` やハッシュでの一致判定は**当てにならない**。`docs/openapi.json` は LF で生成されるが、
+`core.autocrlf` の効いた環境では作業ツリー上 CRLF になるため、同じ内容でもバイト数が変わる
+（実測: 生成直後 5,974,912 bytes → `git checkout` 後 6,213,896 bytes、いずれも `git diff` は差分なし）。
+**判定は必ず `git diff` に任せること。**
+
+**2026-09-16 時点で `docs/openapi.json` に既知のドリフトは無い**
+（上記の正しいコマンドで rc=0 を確認。CMP-260912-1526）。
