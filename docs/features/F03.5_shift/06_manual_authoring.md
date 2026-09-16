@@ -66,7 +66,9 @@
 
 5. `GATE_ROUTE_MAP` には**足さない**。足すと `/teams/*/shifts` 全体が巻き添えで遮断されるため、コンポーネント層で出し分ける。
 
-6. **テストは消さない。** 既存の自動割当テストはフラグ ON で実行する（将来の再開に備えた資産）。
+   > **実装で判明した追補（戦役B-1）**: 台帳の `gate_key` を発行した隔離対象行は `GATE_ROUTE_MAP` への束縛が必須（番人 `FeatureGateRouteMapGuardTest` の (ii)）だが、BE の `@RequireFeature` に使うキーは台帳と seed の積集合に実在していなければならない（番人 `FeatureGateAnnotationKeyGuardTest`）ため、**`gate_key: null` に逃がすこともできない**。「専用 URL は1本も無いが BE 入口だけ塞ぐ」という本件は既存の番人が想定していなかった組み合わせだった。そこで `route_coverage_exclusions` と同じ流儀の**理由必須・陳腐化検出つき**の明示宣言 `route_binding_exclusions` を台帳に新設し、本キーを理由付きで宣言した（台帳の規約 7-b）。検出の緩和ではなく、理由の空欄 (iv)・束縛済みなのに残る陳腐化 (v)・台帳に対応が無い綴り間違い (vi) はいずれも red になる。さらに **(vii) が「除外キーが本番コードの `@RequireFeature` に実在すること」を照合する**ため、FE も BE も塞がない機能をこの除外で通すことはできない（Codex 検分 P2 の指摘により追加。抽出は `FeatureGateAnnotationKeyGuardTest#annotatedFeatureKeys` を流用し二重化していない）。
+
+6. **テストは消さない。** 既存の自動割当テストはフラグ ON で実行する（将来の再開に備えた資産）。実装では `ShiftAutoAssignScopeContractIT`（29 件）の `@BeforeEach` で `FeatureFlagTestSupport.enable(..., "FEATURE_SHIFT_AUTO_ASSIGN_ENABLED")` を呼び、`@AfterEach` でフラグキャッシュを落とす（キャッシュはシングルトン Bean が持つため `@Transactional` のロールバック対象外）。ゲートを開けないと per-scope 認可の撃ち分けが `FEATURE_GATE_001` の一律 403 に埋もれ、認可契約を一切測れなくなる。
 
 7. `docs/inventory/feature-inventory.yaml` に停止理由を記載する:「時刻を見ない割当が二重割当を生むため。方針転換 2026-09-09」。
 
