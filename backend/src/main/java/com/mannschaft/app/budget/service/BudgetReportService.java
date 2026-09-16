@@ -13,8 +13,14 @@ import com.mannschaft.app.budget.entity.BudgetReportEntity;
 import com.mannschaft.app.budget.repository.BudgetReportRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -40,8 +46,11 @@ public class BudgetReportService {
     private final BudgetMapper budgetMapper;
     private final AccessControlService accessControlService;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
+    private final StorageAccessService storageAccessService;
 
     private static final Duration DOWNLOAD_URL_TTL = Duration.ofMinutes(30);
+    private static final Duration ACL_CLAIM_TTL = Duration.ofMinutes(10);
 
     /**
      * 報告書生成をリクエストし、非同期で生成する。
@@ -56,7 +65,8 @@ public class BudgetReportService {
                 .fiscalYearId(request.fiscalYearId())
                 .scopeType(fy.getScopeType())
                 .scopeId(fy.getScopeId())
-                .reportType(BudgetReportType.valueOf(request.reportType()))
+                .reportType(EnumInputParser.parse(
+                        BudgetReportType.class, request.reportType(), "reportType"))
                 .periodStart(fy.getStartDate())
                 .periodEnd(fy.getEndDate())
                 .status(BudgetReportStatus.GENERATING)
@@ -93,7 +103,15 @@ public class BudgetReportService {
             // S3にアップロード
             String s3Key = "budget/reports/" + report.getFiscalYearId() + "/"
                     + report.getId() + "_" + System.currentTimeMillis() + ".csv";
+            StorageAclScope scope = scopeOf(report);
+            StorageAclContentReference parent =
+                    new StorageAclContentReference("BUDGET_REPORT", report.getId().toString());
+            StorageAclAttachmentBinding binding =
+                    new StorageAclAttachmentBinding("BUDGET_REPORT_FILE", report.getId().toString());
+            storageAclService.registerPending(s3Key, report.getGeneratedBy(), scope,
+                    "BUDGET_REPORT_CSV", ACL_CLAIM_TTL, parent);
             storageService.upload(s3Key, reportContent, "text/csv");
+            storageAclService.claimPending(s3Key, report.getGeneratedBy(), scope, parent, binding);
 
             report.markCompleted(s3Key, (long) reportContent.length);
             reportRepository.save(report);
@@ -140,7 +158,11 @@ public class BudgetReportService {
             throw new BusinessException(BudgetErrorCode.BUDGET_011);
         }
 
-        String url = storageService.generateDownloadUrl(report.getFileKey(), DOWNLOAD_URL_TTL);
+        String url = storageAccessService.generateDownloadUrl(
+                report.getFileKey(), scopeOf(report),
+                new StorageAclContentReference("BUDGET_REPORT", report.getId().toString()),
+                new StorageAclAttachmentBinding("BUDGET_REPORT_FILE", report.getId().toString()),
+                DOWNLOAD_URL_TTL);
         return new DownloadUrlResponse(reportId, url, DOWNLOAD_URL_TTL.getSeconds());
     }
 
@@ -180,5 +202,13 @@ public class BudgetReportService {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;
+    }
+
+    private StorageAclScope scopeOf(BudgetReportEntity report) {
+        return switch (report.getScopeType()) {
+            case "TEAM" -> StorageAclScope.team(report.getScopeId());
+            case "ORGANIZATION" -> StorageAclScope.organization(report.getScopeId());
+            default -> throw new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_INVALID_REQUEST);
+        };
     }
 }

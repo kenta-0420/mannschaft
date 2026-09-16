@@ -17,6 +17,7 @@ import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
 import com.mannschaft.app.activity.repository.ActivityTemplateRepository;
 import com.mannschaft.app.activity.repository.SystemActivityTemplatePresetRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -92,7 +93,7 @@ public class ActivityTemplateService {
         }
 
         ActivityVisibility visibility = request.getDefaultVisibility() != null
-                ? ActivityVisibility.valueOf(request.getDefaultVisibility()) : ActivityVisibility.MEMBERS_ONLY;
+                ? EnumInputParser.parse(ActivityVisibility.class, request.getDefaultVisibility(), "defaultVisibility") : ActivityVisibility.MEMBERS_ONLY;
 
         ActivityTemplateEntity entity = ActivityTemplateEntity.builder()
                 .scopeType(scopeType)
@@ -142,7 +143,7 @@ public class ActivityTemplateService {
         // 認可: 管理者（ADMIN/DEPUTY_ADMIN）のみ更新可。非管理者は403
         checkScopeAdmin(userId, entity.getScopeType(), entity.getScopeId());
         ActivityVisibility visibility = request.getDefaultVisibility() != null
-                ? ActivityVisibility.valueOf(request.getDefaultVisibility()) : entity.getDefaultVisibility();
+                ? EnumInputParser.parse(ActivityVisibility.class, request.getDefaultVisibility(), "defaultVisibility") : entity.getDefaultVisibility();
 
         entity.update(request.getName(), request.getDescription(), request.getIcon(),
                 request.getColor(),
@@ -235,7 +236,7 @@ public class ActivityTemplateService {
         ActivityTemplateEntity source = findTemplateOrThrow(id);
         // 認可: コピー元スコープの管理者（ADMIN/DEPUTY_ADMIN）のみ複製可。非管理者は403
         checkScopeAdmin(userId, source.getScopeType(), source.getScopeId());
-        ActivityScopeType targetScopeType = ActivityScopeType.valueOf(request.getTargetScopeType());
+        ActivityScopeType targetScopeType = EnumInputParser.parse(ActivityScopeType.class, request.getTargetScopeType(), "targetScopeType");
         Long targetScopeId = request.getTargetScopeId();
         // 認可: コピー先スコープの管理者のみ書き込み可。非管理者は403
         // （コピー元だけでなく書き込み先も検証し、任意スコープへの書き込みを封じる）
@@ -293,7 +294,7 @@ public class ActivityTemplateService {
         SystemActivityTemplatePresetEntity preset = presetRepository.findById(request.getPresetId())
                 .orElseThrow(() -> new BusinessException(ActivityErrorCode.PRESET_NOT_FOUND));
 
-        ActivityScopeType scopeType = ActivityScopeType.valueOf(request.getScopeType());
+        ActivityScopeType scopeType = EnumInputParser.parse(ActivityScopeType.class, request.getScopeType(), "scopeType");
         Long scopeId = request.getScopeId();
 
         // 認可: インポート先スコープの管理者（ADMIN/DEPUTY_ADMIN）のみ実行可。非管理者は403

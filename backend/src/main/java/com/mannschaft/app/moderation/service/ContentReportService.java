@@ -3,6 +3,7 @@ package com.mannschaft.app.moderation.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.moderation.ModerationErrorCode;
 import com.mannschaft.app.moderation.ModerationMapper;
 import com.mannschaft.app.moderation.ReportReason;
@@ -44,7 +45,7 @@ public class ContentReportService {
      */
     @Transactional
     public ReportResponse createReport(CreateReportRequest req, Long userId) {
-        ReportTargetType targetType = ReportTargetType.valueOf(req.getTargetType());
+        ReportTargetType targetType = EnumInputParser.parse(ReportTargetType.class, req.getTargetType(), "targetType");
 
         String scopeType = req.getScopeType() != null ? req.getScopeType() : "TEAM";
         Long scopeId = req.getScopeId() != null ? req.getScopeId() : 0L;
@@ -73,7 +74,7 @@ public class ContentReportService {
                 .reportedBy(userId)
                 .scopeType(scopeType)
                 .scopeId(scopeId)
-                .reason(ReportReason.valueOf(req.getReason()))
+                .reason(EnumInputParser.parse(ReportReason.class, req.getReason(), "reason"))
                 .description(req.getDescription())
                 .targetUserId(targetUserId)
                 .contentSnapshot(contentSnapshot)

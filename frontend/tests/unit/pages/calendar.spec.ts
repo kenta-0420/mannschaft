@@ -701,3 +701,73 @@ describe('pages/calendar.vue: 週ビューのグリッド選択と作成ダイ�
       .toBe('#2563eb')
   }, 60000)
 })
+
+describe('pages/calendar.vue: モバイル予定詳細', () => {
+  const MobileListOpenStub = defineComponent({
+    name: 'ScheduleMobileListView',
+    emits: ['open'],
+    setup(_props, { emit }) {
+      return () => h('button', {
+        'data-testid': 'open-mobile-event',
+        onClick: () => emit('open', { id: 5, isPersonal: false }),
+      }, '予定を開く')
+    },
+  })
+
+  const DialogSlotStub = defineComponent({
+    name: 'Dialog',
+    props: { visible: Boolean, header: String },
+    setup(props, { slots }) {
+      return () => props.visible
+        ? h('section', { 'data-testid': 'mobile-detail-dialog' }, slots.default?.())
+        : null
+    },
+  })
+
+  const EventDetailStub = defineComponent({
+    name: 'EventDetailPanel',
+    props: { event: { type: Object, required: true } },
+    setup(props) {
+      return () => h('div', { 'data-testid': 'mobile-detail-title' }, String(props.event.title))
+    },
+  })
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+    scheduleApiMock.listPersonalSchedules.mockReset().mockResolvedValue(emptyPersonal)
+    scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [teamCalendarEntry()] })
+    scheduleApiMock.getMyCalendarLayers.mockReset().mockResolvedValue({ data: layersFixture })
+    scheduleApiMock.getSchedule.mockReset().mockResolvedValue({
+      data: {
+        id: 5,
+        content: { title: 'モバイル予定', description: null, location: null },
+        time: { startAt: '2026-07-10T10:00:00+09:00', endAt: '2026-07-10T11:00:00+09:00', allDay: false },
+        status: { status: 'PUBLISHED' },
+        audit: { createdByDisplayName: '管理者' },
+      },
+    })
+    ganttApiMock.getMyCalendarTodos.mockReset().mockResolvedValue(emptyTodos)
+    presetTeamStore()
+  })
+
+  it('一覧の予定を押すとモバイル詳細Dialogを表示する', async () => {
+    const wrapper = await mountCalendarPage({
+      ScheduleMobileListView: MobileListOpenStub,
+      Dialog: DialogSlotStub,
+      EventDetailPanel: EventDetailStub,
+    })
+
+    await wrapper.get('[data-testid="open-mobile-event"]').trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.getSchedule).toHaveBeenCalledWith('team', 't1', 5)
+    expect(wrapper.find('[data-testid="mobile-detail-dialog"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="mobile-detail-title"]').text()).toBe('モバイル予定')
+  }, 60000)
+})

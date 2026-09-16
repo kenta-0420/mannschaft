@@ -5,6 +5,7 @@ import com.mannschaft.app.activity.entity.ActivityTemplateFieldEntity;
 import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.performance.AggregationType;
 import com.mannschaft.app.performance.MetricDataType;
 import com.mannschaft.app.performance.PerformanceErrorCode;
@@ -90,8 +91,8 @@ public class PerformanceMetricService {
                 .teamId(teamId)
                 .name(request.getName())
                 .unit(request.getUnit())
-                .dataType(request.getDataType() != null ? MetricDataType.valueOf(request.getDataType()) : MetricDataType.DECIMAL)
-                .aggregationType(request.getAggregationType() != null ? AggregationType.valueOf(request.getAggregationType()) : AggregationType.SUM)
+                .dataType(request.getDataType() != null ? EnumInputParser.parse(MetricDataType.class, request.getDataType(), "dataType") : MetricDataType.DECIMAL)
+                .aggregationType(request.getAggregationType() != null ? EnumInputParser.parse(AggregationType.class, request.getAggregationType(), "aggregationType") : AggregationType.SUM)
                 .description(request.getDescription())
                 .groupName(request.getGroupName())
                 .targetValue(request.getTargetValue())
@@ -127,8 +128,8 @@ public class PerformanceMetricService {
         entity.update(
                 request.getName(),
                 request.getUnit(),
-                request.getDataType() != null ? MetricDataType.valueOf(request.getDataType()) : entity.getDataType(),
-                request.getAggregationType() != null ? AggregationType.valueOf(request.getAggregationType()) : entity.getAggregationType(),
+                request.getDataType() != null ? EnumInputParser.parse(MetricDataType.class, request.getDataType(), "dataType") : entity.getDataType(),
+                request.getAggregationType() != null ? EnumInputParser.parse(AggregationType.class, request.getAggregationType(), "aggregationType") : entity.getAggregationType(),
                 request.getDescription(),
                 request.getGroupName(),
                 request.getTargetValue(),

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -288,16 +289,22 @@ public class ScheduleService {
         Long originalParentScheduleId = schedule.getParentScheduleId();
         ScheduleSnapshot before = ScheduleSnapshot.from(schedule);
 
+        long affectedCount = 1;
+        List<Long> updatedScheduleIds = new ArrayList<>(1);
+        updatedScheduleIds.add(schedule.getId());
         if (schedule.isRecurring() || schedule.getParentScheduleId() != null) {
-            recurrenceService.updateRecurringSchedule(schedule, req, updateScope, this::applyUpdateToSchedule);
+            ScheduleRecurrenceService.RecurringScheduleUpdateResult result = recurrenceService
+                    .updateRecurringSchedule(schedule, req, updateScope, this::applyUpdateToSchedule);
+            schedule = result.selectedSchedule();
+            affectedCount = result.affectedCount();
+            updatedScheduleIds = result.updatedScheduleIds();
         } else {
             // F03.18: 戻り値で schedule 参照を差し替える（applyUpdateToSchedule は新インスタンスを
             // 構築するため、差し替えないと呼び出し元からは更新前の値のまま見えてしまう）。
             schedule = applyUpdateToSchedule(schedule, req);
         }
 
-        schedule = scheduleRepository.save(schedule);
-        updateTargetsForRecurrenceScope(schedule, req, updateScope);
+        schedule = updateTargetsForRecurrenceScope(schedule, req, updatedScheduleIds);
 
         // 機能55 BE対応: リマインダー更新（null = 変更なし、空リスト = 全削除、非空 = 差し替え）
         if (req.getReminders() != null) {
@@ -332,7 +339,8 @@ public class ScheduleService {
         eventPublisher.publishEvent(new ScheduleUpdatedEvent(schedule.getId(), userId));
 
         // F03.18: 予定変更をアクティビティフィードへ発行する（AC-02・AC-03・AC-05・AC-06・AC-08）
-        publishScheduleUpdateActivity(before, schedule, updateScope, originalId, originalParentScheduleId, userId);
+        publishScheduleUpdateActivity(before, schedule, updateScope, originalId, originalParentScheduleId,
+                affectedCount, userId);
 
         log.info("スケジュール更新: id={}, updateScope={}", id, updateScope);
         return toScheduleResponse(schedule);
@@ -348,15 +356,13 @@ public class ScheduleService {
      */
     private void publishScheduleUpdateActivity(ScheduleSnapshot before, ScheduleEntity schedule,
                                                 String updateScope, Long originalId,
-                                                Long originalParentScheduleId, Long userId) {
+                                                Long originalParentScheduleId, long affectedCount, Long userId) {
         ScheduleEntity target = schedule;
         Long targetId = originalId;
-        long affectedCount = 1;
 
         if (UPDATE_SCOPE_ALL.equals(updateScope)) {
             Long parentId = originalParentScheduleId != null ? originalParentScheduleId : originalId;
             targetId = parentId;
-            affectedCount = scheduleRepository.countByParentScheduleId(parentId);
             target = scheduleRepository.findById(parentId).orElse(schedule);
         }
 
@@ -634,26 +640,24 @@ public class ScheduleService {
                 scheduleTargetService.isActiveScopeMember(schedule, viewerUserId)).get(schedule.getId());
     }
 
-    private void updateTargetsForRecurrenceScope(ScheduleEntity schedule, UpdateScheduleRequest req,
-                                                  String updateScope) {
-        if (req.getTargetMode() == null && req.getTargetUserIds() == null) return;
-        List<ScheduleEntity> affected = new ArrayList<>();
-        if (UPDATE_SCOPE_ALL.equals(updateScope)
-                && (schedule.isRecurring() || schedule.getParentScheduleId() != null)) {
-            Long parentId = schedule.getParentScheduleId() == null ? schedule.getId() : schedule.getParentScheduleId();
-            affected.add(findScheduleOrThrow(parentId));
-            affected.addAll(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(parentId));
-        } else if (UPDATE_SCOPE_THIS_AND_FOLLOWING.equals(updateScope)
-                && schedule.getParentScheduleId() != null) {
-            affected.add(schedule);
-            affected.addAll(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(schedule.getParentScheduleId())
-                    .stream().filter(child -> child.getStartAt().isAfter(schedule.getStartAt())).toList());
-        } else {
-            affected.add(schedule);
+    private ScheduleEntity updateTargetsForRecurrenceScope(ScheduleEntity schedule, UpdateScheduleRequest req,
+                                                           List<Long> updatedScheduleIds) {
+        if (req.getTargetMode() == null && req.getTargetUserIds() == null) return schedule;
+        // 更新範囲を再計算すると、過去の終了済み回・例外回へ対象者だけが波及する。
+        // 予定本体の実更新IDを唯一の正として使う。
+        List<ScheduleEntity> affected = updatedScheduleIds.size() == 1
+                && updatedScheduleIds.get(0).equals(schedule.getId())
+                ? List.of(scheduleRepository.save(schedule)) : scheduleRepository.findAllById(updatedScheduleIds);
+        ScheduleEntity selectedAfterTargetUpdate = schedule;
+        for (ScheduleEntity affectedSchedule : affected) {
+            scheduleTargetService.replaceForUpdate(
+                    affectedSchedule, resolveScopeType(affectedSchedule), resolveScopeId(affectedSchedule),
+                    req.getTargetMode(), req.getTargetUserIds());
+            if (affectedSchedule.getId().equals(schedule.getId())) {
+                selectedAfterTargetUpdate = affectedSchedule;
+            }
         }
-        affected.forEach(affectedSchedule -> scheduleTargetService.replaceForUpdate(
-                affectedSchedule, resolveScopeType(affectedSchedule), resolveScopeId(affectedSchedule),
-                req.getTargetMode(), req.getTargetUserIds()));
+        return selectedAfterTargetUpdate;
     }
 
     /**
@@ -698,6 +702,18 @@ public class ScheduleService {
     public void checkScopeAdminAccess(Long id, Long userId) {
         ScheduleEntity schedule = findScheduleOrThrow(id);
         checkScopeAdminAccess(schedule, userId);
+    }
+
+    /**
+     * URL 組織の管理権限を通過した利用者に対してだけ、組織スコープ整合を確定する。
+     * 呼び出し側は必ず URL 組織の認可を先行させ、非管理者への存在オラクルを防ぐ。
+     */
+    public void checkOrganizationScheduleScope(Long organizationId, Long scheduleId) {
+        ScheduleEntity schedule = findScheduleOrThrow(scheduleId);
+        if (!schedule.isOrganizationScope()
+                || !Objects.equals(schedule.getOrganizationId(), organizationId)) {
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND);
+        }
     }
 
     /**
@@ -804,7 +820,7 @@ public class ScheduleService {
             // 未指定: 配信軸に整合する既定を導出する（応援者に配るなら SUPPORTER_PLUS）。
             return supportersIncluded ? MinViewRole.SUPPORTER_PLUS : MinViewRole.MEMBER_PLUS;
         }
-        MinViewRole requested = MinViewRole.valueOf(requestedMinViewRole);
+        MinViewRole requested = EnumInputParser.parse(MinViewRole.class, requestedMinViewRole, "minViewRole");
         assertSupporterAxesConsistent(requested, includeSupporters);
         return requested;
     }
@@ -851,12 +867,14 @@ public class ScheduleService {
                 .startAt(startAtJst)
                 .endAt(endAtJst)
                 .allDay(req.getAllDay())
-                .eventType(EventType.valueOf(req.getEventType()))
+                .eventType(EnumInputParser.parse(EventType.class, req.getEventType(), "eventType"))
                 .visibility(req.getVisibility() != null
-                        ? ScheduleVisibility.valueOf(req.getVisibility()) : ScheduleVisibility.MEMBERS_ONLY)
+                        ? EnumInputParser.parse(ScheduleVisibility.class, req.getVisibility(), "visibility")
+                        : ScheduleVisibility.MEMBERS_ONLY)
                 .minViewRole(resolveMinViewRole(req.getMinViewRole(), req.getIncludeSupporters()))
                 .minResponseRole(req.getMinResponseRole() != null
-                        ? MinResponseRole.valueOf(req.getMinResponseRole()) : MinResponseRole.MEMBER_PLUS)
+                        ? EnumInputParser.parse(MinResponseRole.class, req.getMinResponseRole(), "minResponseRole")
+                        : MinResponseRole.MEMBER_PLUS)
                 .status(ScheduleStatus.SCHEDULED)
                 .attendanceStatus(AttendanceGenerationStatus.READY)
                 .attendanceRequired(req.getAttendanceRequired())
@@ -866,7 +884,8 @@ public class ScheduleService {
                         ? req.getTeamBreakdownEnabled() : false)
                 .attendanceDeadline(deadlineJst)
                 .commentOption(req.getCommentOption() != null
-                        ? CommentOption.valueOf(req.getCommentOption()) : CommentOption.OPTIONAL)
+                        ? EnumInputParser.parse(CommentOption.class, req.getCommentOption(), "commentOption")
+                        : CommentOption.OPTIONAL)
                 .eventCategoryId(req.getEventCategoryId())
                 .academicYear(req.getAcademicYear() != null ? req.getAcademicYear().shortValue() : null)
                 .recurrenceRule(recurrenceRuleJson)
@@ -904,19 +923,28 @@ public class ScheduleService {
         if (req.getStartAt() != null) builder.startAt(toJst(req.getStartAt()));
         if (req.getEndAt() != null) builder.endAt(toJst(req.getEndAt()));
         if (req.getAllDay() != null) builder.allDay(req.getAllDay());
-        if (req.getEventType() != null) builder.eventType(EventType.valueOf(req.getEventType()));
-        if (req.getVisibility() != null) builder.visibility(ScheduleVisibility.valueOf(req.getVisibility()));
+        if (req.getEventType() != null) {
+            builder.eventType(EnumInputParser.parse(EventType.class, req.getEventType(), "eventType"));
+        }
+        if (req.getVisibility() != null) {
+            builder.visibility(EnumInputParser.parse(ScheduleVisibility.class, req.getVisibility(), "visibility"));
+        }
         if (req.getMinViewRole() != null) {
-            MinViewRole requested = MinViewRole.valueOf(req.getMinViewRole());
+            MinViewRole requested = EnumInputParser.parse(MinViewRole.class, req.getMinViewRole(), "minViewRole");
             // 二軸の不変条件（CMP-017b T-2）: UpdateScheduleRequest は includeSupporters を持たないため、
             // 更新経路で不変条件を破りうるのは «既存 include_supporters=TRUE の行の閾値を引き上げる» 側のみ。
             assertSupporterAxesConsistent(requested, schedule.getIncludeSupporters());
             builder.minViewRole(requested);
         }
-        if (req.getMinResponseRole() != null) builder.minResponseRole(MinResponseRole.valueOf(req.getMinResponseRole()));
+        if (req.getMinResponseRole() != null) {
+            builder.minResponseRole(EnumInputParser.parse(
+                    MinResponseRole.class, req.getMinResponseRole(), "minResponseRole"));
+        }
         if (req.getAttendanceRequired() != null) builder.attendanceRequired(req.getAttendanceRequired());
         if (req.getAttendanceDeadline() != null) builder.attendanceDeadline(toJst(req.getAttendanceDeadline()));
-        if (req.getCommentOption() != null) builder.commentOption(CommentOption.valueOf(req.getCommentOption()));
+        if (req.getCommentOption() != null) {
+            builder.commentOption(EnumInputParser.parse(CommentOption.class, req.getCommentOption(), "commentOption"));
+        }
 
         // F03.10 行事カテゴリ・年度の更新
         // eventCategoryId が指定されている（値あり）場合のみ更新する。null は「未指定」として扱い更新しない。

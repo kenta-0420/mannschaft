@@ -57,9 +57,7 @@ describe('useFormDraft', () => {
 
     form.value.title = '週次ふりかえり'
     vi.advanceTimersByTime(1000)
-    expect(localStorage.getItem(key)).toBe(
-      JSON.stringify({ title: '週次ふりかえり', body: '' }),
-    )
+    expect(localStorage.getItem(key)).toBe(JSON.stringify({ title: '週次ふりかえり', body: '' }))
   })
 
   it('AC-2: clear() で下書きが削除される', () => {
@@ -72,6 +70,22 @@ describe('useFormDraft', () => {
 
     clear()
     expect(localStorage.getItem(key)).toBeNull()
+  })
+
+  it('保留中の自動保存だけを取り消し、保存済みの下書きを維持する', () => {
+    const key = 'todo-create-draft-42'
+    const form = ref({ title: '', priority: 'MEDIUM' })
+    const { cancelPendingSave } = useFormDraft(key, { source: form, debounceMs: 1000 })
+
+    form.value.title = '閉じても残す下書き'
+    vi.advanceTimersByTime(1000)
+    expect(JSON.parse(localStorage.getItem(key) ?? '{}').title).toBe('閉じても残す下書き')
+
+    form.value = { title: '', priority: 'MEDIUM' }
+    cancelPendingSave()
+    vi.advanceTimersByTime(1000)
+
+    expect(JSON.parse(localStorage.getItem(key) ?? '{}').title).toBe('閉じても残す下書き')
   })
 
   it('AC-2: 未送信（clear を呼ばない）なら下書きは保持される', () => {

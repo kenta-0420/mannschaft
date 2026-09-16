@@ -20,6 +20,7 @@ import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -95,6 +96,26 @@ public class AdMessagingBillingBridge {
     private final AdInvoiceItemRepository invoiceItemRepository;
     private final ApplicationEventPublisher eventPublisher;
 
+    /**
+     * 自分自身の Spring プロキシを取り出すための遅延解決プロバイダ（CMP-260912-1524）。
+     *
+     * <p>{@code runMonthlyBilling} から {@code billOneCampaign} を素の
+     * {@code this} 呼び出しにすると AOP プロキシを経由せず、
+     * {@code @Transactional(propagation = REQUIRES_NEW)} が<b>まったく効かない</b>。
+     * 呼び出し元がトランザクションを張っていないため、キャンペーン 1 件ぶんの処理は
+     * Spring Data 既定の {@code @Transactional} が張る<b>save ごとの細切れトランザクション</b>で
+     * 走り、途中で落ちるとそこまでの請求明細だけがコミットされたまま残った。
+     * 加えて {@code recalcInvoiceTotals} は請求書エンティティの dirty checking に依存するため、
+     * トランザクション（＝永続化コンテキスト）が無いと<b>合計金額の更新がどこにも書かれない</b>。</p>
+     *
+     * <p>別 Bean への切り出しではなく自己プロキシを採るのは、
+     * {@code advertising} ドメイン内の Repository 群をそのまま持ち越せて
+     * ArchUnit 凍結ストアへ新しいクラス名を登録せずに済むため
+     * （前例: CMP-260910-1556 / PR #3234）。{@code ObjectProvider} は遅延解決なので
+     * 自己参照による循環依存にもならない。</p>
+     */
+    private final ObjectProvider<AdMessagingBillingBridge> selfProvider;
+
     @Value("${mannschaft.advertising.tax-rate:10.00}")
     private BigDecimal taxRate;
 
@@ -168,7 +189,7 @@ public class AdMessagingBillingBridge {
         int errors = 0;
         for (AdMessagingCampaign campaign : deduped.values()) {
             try {
-                billOneCampaign(campaign, targetMonth, monthKey);
+                self().billOneCampaign(campaign, targetMonth, monthKey);
                 success++;
             } catch (Exception e) {
                 errors++;
@@ -181,10 +202,24 @@ public class AdMessagingBillingBridge {
     }
 
     /**
+     * 自分自身の Spring プロキシを返す。
+     *
+     * <p>トランザクション境界を跨ぐ内部呼び出しは必ず本メソッド経由で行うこと。</p>
+     */
+    private AdMessagingBillingBridge self() {
+        return selfProvider.getObject();
+    }
+
+    /**
      * 1 キャンペーン分の集計と invoice_item 積み上げを行う。
      *
      * <p>キャンペーン単位で別トランザクション ({@link Propagation#REQUIRES_NEW}) とすることで、
-     * 1 件の失敗が全体集計を中断させないようにする。</p>
+     * 1 件の失敗が全体集計を中断させないようにする。逆に 1 キャンペーンの中では
+     * 「請求明細の追加 → 請求書合計の再計算 → 消費予算の加算」が全部入るか 1 つも入らないかの
+     * どちらかでなければならない（明細だけ入って合計が古いままの請求書は請求できない）。</p>
+     *
+     * <p><b>必ず {@link #self()} 経由で呼ぶこと。</b>同一 Bean 内の自己呼び出しでは
+     * プロキシを通らず {@code REQUIRES_NEW} が無効化され、部分適用が残る（CMP-260912-1524）。</p>
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void billOneCampaign(AdMessagingCampaign campaign, YearMonth targetMonth, String monthKey) {

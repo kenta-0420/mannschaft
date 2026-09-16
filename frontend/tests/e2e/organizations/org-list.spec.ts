@@ -54,7 +54,7 @@ async function mockOrgDetailApis(page: import('@playwright/test').Page) {
       contentType: 'application/json',
       body: JSON.stringify({
         data: [],
-        meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 },
+        meta: { page: 0, size: 20, total: 0, totalPages: 0 },
       }),
     })
   })
@@ -68,7 +68,7 @@ test.describe('ORG-001〜002: 組織一覧', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: MOCK_ORG_LIST,
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })
@@ -88,7 +88,7 @@ test.describe('ORG-001〜002: 組織一覧', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: [],
-          meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 },
+          meta: { page: 0, size: 20, total: 0, totalPages: 0 },
         }),
       })
     })

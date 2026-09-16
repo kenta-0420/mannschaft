@@ -68,19 +68,19 @@ class ScheduleAnnualScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        long nano = System.nanoTime();
-        teamAId = insertTeam("W7Annual チームA", "w7annual-team-a-" + nano);
-        teamBId = insertTeam("W7Annual チームB", "w7annual-team-b-" + nano);
-        orgAId = insertOrganization("W7Annual 組織A", "w7annual-org-a-" + nano);
-        orgBId = insertOrganization("W7Annual 組織B", "w7annual-org-b-" + nano);
+        String suffix = Long.toUnsignedString(System.nanoTime(), Character.MAX_RADIX);
+        teamAId = insertTeam("W7Annual チームA", "w7annual-team-a-" + suffix);
+        teamBId = insertTeam("W7Annual チームB", "w7annual-team-b-" + suffix);
+        orgAId = insertOrganization("W7Annual 組織A", "w7annual-org-a-" + suffix);
+        orgBId = insertOrganization("W7Annual 組織B", "w7annual-org-b-" + suffix);
 
-        adminTeamAId = insertUser("w7annual-admin-team-a-" + nano + "@example.com");
-        adminTeamBId = insertUser("w7annual-admin-team-b-" + nano + "@example.com");
-        memberTeamAId = insertUser("w7annual-member-team-a-" + nano + "@example.com");
-        adminOrgAId = insertUser("w7annual-admin-org-a-" + nano + "@example.com");
-        adminOrgBId = insertUser("w7annual-admin-org-b-" + nano + "@example.com");
-        memberOrgAId = insertUser("w7annual-member-org-a-" + nano + "@example.com");
-        outsiderId = insertUser("w7annual-outsider-" + nano + "@example.com");
+        adminTeamAId = insertUser("w7annual-admin-team-a-" + suffix + "@example.com");
+        adminTeamBId = insertUser("w7annual-admin-team-b-" + suffix + "@example.com");
+        memberTeamAId = insertUser("w7annual-member-team-a-" + suffix + "@example.com");
+        adminOrgAId = insertUser("w7annual-admin-org-a-" + suffix + "@example.com");
+        adminOrgBId = insertUser("w7annual-admin-org-b-" + suffix + "@example.com");
+        memberOrgAId = insertUser("w7annual-member-org-a-" + suffix + "@example.com");
+        outsiderId = insertUser("w7annual-outsider-" + suffix + "@example.com");
 
         // checkAdminOrAbove（user_roles）と checkMembership（memberships）は別系統のため
         // ADMIN ユーザーにも memberships 行を張る（ScheduleStatsAndInvitationScopeContractIT 踏襲）。

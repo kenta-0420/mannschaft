@@ -3,6 +3,7 @@ package com.mannschaft.app.bulletin.service;
 import com.mannschaft.app.bulletin.BulletinErrorCode;
 import com.mannschaft.app.bulletin.BulletinMapper;
 import com.mannschaft.app.bulletin.ScopeType;
+import com.mannschaft.app.bulletin.TargetType;
 import com.mannschaft.app.bulletin.dto.CreateReplyRequest;
 import com.mannschaft.app.bulletin.dto.ReplyResponse;
 import com.mannschaft.app.bulletin.dto.UpdateReplyRequest;
@@ -54,7 +55,9 @@ public class BulletinReplyService {
     /** F17.1 村掲示板グローバル方式: scope=VILLAGE 返信投稿の主体検証（村メンバー判定を内包）。 */
     private final PostingIdentityService postingIdentityService;
     /** F08.7.1 連絡機能: 大会/ディビジョンスコープの閲覧・投稿認可を委譲する（クロスドメイン・原則1）。 */
+
     private final TournamentContactAccessService tournamentContactAccessService;
+    private final BulletinAttachmentService attachmentService;
 
     /**
      * スレッドの返信一覧をページング取得する（トップレベルのみ）。所属メンバーのみ。
@@ -183,6 +186,7 @@ public class BulletinReplyService {
 
         entity.softDelete();
         replyRepository.save(entity);
+        attachmentService.releaseAttachments(TargetType.REPLY, entity.getId());
 
         // 親返信のカウントをデクリメント
         if (entity.getParentId() != null) {
@@ -409,6 +413,7 @@ public class BulletinReplyService {
             }
             reply.softDelete();
             replyRepository.save(reply);
+            attachmentService.releaseAttachments(TargetType.REPLY, reply.getId());
             if (reply.getParentId() != null) {
                 replyRepository.findById(reply.getParentId()).ifPresent(parent -> {
                     parent.decrementReplyCount();
@@ -434,6 +439,7 @@ public class BulletinReplyService {
         }
         reply.softDelete();
         replyRepository.save(reply);
+        attachmentService.releaseAttachments(TargetType.REPLY, reply.getId());
 
         if (reply.getParentId() != null) {
             replyRepository.findById(reply.getParentId()).ifPresent(parent -> {

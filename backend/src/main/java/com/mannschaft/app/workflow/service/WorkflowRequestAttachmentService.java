@@ -3,10 +3,17 @@ package com.mannschaft.app.workflow.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
 import com.mannschaft.app.workflow.WorkflowMapper;
 import com.mannschaft.app.workflow.WorkflowScopes;
@@ -25,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -47,6 +55,7 @@ import java.util.UUID;
 public class WorkflowRequestAttachmentService {
 
     private static final Duration PRESIGN_TTL = Duration.ofMinutes(15);
+    private static final Duration DOWNLOAD_TTL = Duration.ofMinutes(5);
 
     /**
      * 許可 MIME タイプ（F05.6 §3 workflow_request_attachments 制約に基づく）。
@@ -67,6 +76,8 @@ public class WorkflowRequestAttachmentService {
     private final R2StorageService r2StorageService;
     private final AccessControlService accessControlService;
     private final StorageAclService storageAclService;
+    private final StorageAccessService storageAccessService;
+    private final DomainEventPublisher eventPublisher;
 
     /**
      * 申請の添付ファイル一覧を取得する（Wave 2 トランシェ2C で Controller の直リポジトリ参照を移管）。
@@ -78,9 +89,30 @@ public class WorkflowRequestAttachmentService {
      * @return 添付ファイルレスポンスリスト
      */
     public List<WorkflowAttachmentResponse> listAttachments(Long requestId, Long currentUserId) {
-        findVisibleRequestOrThrow(requestId, currentUserId);
-        return workflowMapper.toAttachmentResponseList(
-                attachmentRepository.findByRequestIdOrderByCreatedAtAsc(requestId));
+        WorkflowRequestEntity request = findVisibleRequestOrThrow(requestId, currentUserId);
+        List<WorkflowRequestAttachmentEntity> attachments =
+                attachmentRepository.findByRequestIdOrderByCreatedAtAsc(requestId);
+        if (attachments.isEmpty()) {
+            return List.of();
+        }
+        StorageAclScope scope = "TEAM".equals(WorkflowScopes.canonical(request.getScopeType()))
+                ? StorageAclScope.team(request.getScopeId())
+                : StorageAclScope.organization(request.getScopeId());
+        StorageAclContentReference parent =
+                new StorageAclContentReference("WORKFLOW_REQUEST", request.getId().toString());
+        Map<String, String> downloadUrls = storageAccessService.generateDownloadUrlsForList(
+                attachments.stream()
+                        .map(attachment -> new StorageAclDownloadRequest(
+                                attachment.getFileKey(),
+                                scope,
+                                parent,
+                                new StorageAclAttachmentBinding(
+                                        "WORKFLOW_REQUEST_ATTACHMENT", attachment.getId().toString())))
+                        .toList(),
+                DOWNLOAD_TTL);
+        return workflowMapper.toAttachmentResponseList(attachments.stream()
+                .filter(attachment -> downloadUrls.containsKey(attachment.getFileKey()))
+                .toList());
     }
 
     /**
@@ -119,15 +151,11 @@ public class WorkflowRequestAttachmentService {
                 fileKey, request.contentType(), PRESIGN_TTL);
 
         // URLで返すキーは必ず、所有者・申請のスコープ・期限を伴うACL台帳へ登録する。
-        storageAclService.registerPending(
-                fileKey,
-                currentUserId,
-                WorkflowScopes.canonical(requestEntity.getScopeType()),
-                requestEntity.getScopeId(),
-                request.contentType(),
-                PRESIGN_TTL,
-                "WORKFLOW_REQUEST",
-                requestEntity.getId());
+        StorageAclScope aclScope = "TEAM".equals(WorkflowScopes.canonical(requestEntity.getScopeType()))
+                ? StorageAclScope.team(requestEntity.getScopeId())
+                : StorageAclScope.organization(requestEntity.getScopeId());
+        storageAclService.registerPending(fileKey, currentUserId, aclScope, request.contentType(), PRESIGN_TTL,
+                new StorageAclContentReference("WORKFLOW_REQUEST", requestEntity.getId().toString()));
 
         log.info("ワークフロー添付 presign-upload 発行: requestId={}, userId={}, fileKey={}",
                 requestId, currentUserId, fileKey);
@@ -168,6 +196,12 @@ public class WorkflowRequestAttachmentService {
                 .build();
 
         WorkflowRequestAttachmentEntity saved = attachmentRepository.save(entity);
+        StorageAclScope aclScope = "TEAM".equals(WorkflowScopes.canonical(requestEntity.getScopeType()))
+                ? StorageAclScope.team(requestEntity.getScopeId())
+                : StorageAclScope.organization(requestEntity.getScopeId());
+        storageAclService.claimPending(request.fileKey(), currentUserId, aclScope,
+                new StorageAclContentReference("WORKFLOW_REQUEST", requestEntity.getId().toString()),
+                new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", saved.getId().toString()));
         log.info("ワークフロー添付登録: requestId={}, attachmentId={}, userId={}",
                 requestId, saved.getId(), currentUserId);
 
@@ -203,16 +237,11 @@ public class WorkflowRequestAttachmentService {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
 
-        // 4. R2 オブジェクト削除（失敗してもログのみ。DB との整合性は将来のクリーニングバッチで担保）
-        try {
-            r2StorageService.delete(entity.getFileKey());
-        } catch (Exception e) {
-            log.warn("ワークフロー添付 R2 削除失敗（DB 削除は継続）: fileKey={}, error={}",
-                    entity.getFileKey(), e.getMessage());
-        }
-
-        // 5. DB 物理削除
+        // 4. DB 物理削除
+        storageAclService.releaseClaimed(entity.getFileKey(),
+                new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", entity.getId().toString()));
         attachmentRepository.delete(entity);
+        eventPublisher.publish(new S3ObjectDeleteEvent(entity.getFileKey()));
         log.info("ワークフロー添付削除: requestId={}, attachmentId={}, userId={}",
                 requestId, attachmentId, currentUserId);
     }

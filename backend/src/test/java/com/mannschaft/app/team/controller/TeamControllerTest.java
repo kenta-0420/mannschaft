@@ -151,6 +151,39 @@ class TeamControllerTest {
         verify(teamService, Mockito.never()).getMembers(TEAM_ID, pageable);
     }
 
+    // ========================================
+    // getAllMembers: 一括取得（CMP-260912-1525）— 認可はページング経路と同一
+    // ========================================
+
+    @Test
+    @DisplayName("getAllMembers: 可視性チェック通過時は 200 OK で全員が 1 レスポンスで返る")
+    void getAllMembers_200_whenVisibilityAllows() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        given(teamService.getAllMembers(TEAM_ID)).willReturn(
+                List.of(new MemberResponse(USER_ID, "テスト", null, "ADMIN", LocalDateTime.now()),
+                        new MemberResponse(2L, "テスト2", null, "MEMBER", LocalDateTime.now())));
+
+        var response = controller.getAllTeamMembers(TEAM_SLUG);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getData()).hasSize(2);
+        verify(contentVisibilityChecker).assertCanView(ReferenceType.TEAM, TEAM_ID, USER_ID);
+    }
+
+    @Test
+    @DisplayName("getAllMembers: 非メンバーは一括取得でもメンバー一覧を取得できない（列挙の遮断）")
+    void getAllMembers_denied_whenNonMember() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        willThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
+                .given(contentVisibilityChecker)
+                .assertCanView(ReferenceType.TEAM, TEAM_ID, USER_ID);
+
+        assertThatThrownBy(() -> controller.getAllTeamMembers(TEAM_SLUG))
+                .isInstanceOf(BusinessException.class);
+        verify(teamService, Mockito.never()).getAllMembers(TEAM_ID);
+    }
+
     @Test
     @DisplayName("getTeam: 不在チームは NOT_FOUND がそのまま伝播（IDOR/エニュメレーション対策）")
     void getTeam_notFound_propagates() {

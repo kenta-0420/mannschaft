@@ -88,6 +88,32 @@ export async function setupMemberAuth(page: Page): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
+ * 公開フィーチャーフラグ API のモック。
+ *
+ * <p>`/teams/{slug}/shifts` は GATE_ROUTE_MAP で `FEATURE_SHIFT_ENABLED` に束縛されているため
+ * 常に true で返す。自動割当フラグ `FEATURE_SHIFT_AUTO_ASSIGN_ENABLED` は本番既定 OFF
+ * （2026-09-09 の方針転換）だが、既存の自動割当 E2E は「消さずフラグ ON で実行する」
+ * 方針（設計書 §11.1.2-6）のため引数で ON にできるようにしている。</p>
+ */
+export async function mockShiftFeatureFlags(
+  page: Page,
+  autoAssignEnabled: boolean,
+): Promise<void> {
+  await page.route('**/api/v1/feature-flags', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          { flagKey: 'FEATURE_SHIFT_ENABLED', enabled: true },
+          { flagKey: 'FEATURE_SHIFT_AUTO_ASSIGN_ENABLED', enabled: autoAssignEnabled },
+        ],
+      }),
+    })
+  })
+}
+
+/**
  * すべての `/api/v1/**` を空 data で fulfill する catch-all。
  * 各 spec では本関数を最初に呼び、後から個別エンドポイントを上書きモックする
  * （Playwright の page.route は後勝ち）。
@@ -282,7 +308,7 @@ export async function mockTeamMembersApi(page: Page): Promise<void> {
             joinedAt: '2026-04-01T00:00:00Z',
           },
         ],
-        meta: { page: 0, size: 200, totalElements: 3, totalPages: 1 },
+        meta: { page: 0, size: 200, total: 3, totalPages: 1 },
       }),
     })
   })

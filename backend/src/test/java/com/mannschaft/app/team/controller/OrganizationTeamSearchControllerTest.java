@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.config.OrgScopeIdConverter;
 import com.mannschaft.app.organization.exception.OrganizationNotFoundException;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +32,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -51,6 +55,7 @@ import com.mannschaft.app.common.security.AccessGuard;
  */
 @WebMvcTest(OrganizationTeamSearchController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(OrgScopeIdConverter.class)
 @DisplayName("OrganizationTeamSearchController 結合テスト")
 class OrganizationTeamSearchControllerTest {
 
@@ -150,6 +155,19 @@ class OrganizationTeamSearchControllerTest {
                 .andExpect(jsonPath("$.data[0].supporterEnabled").doesNotExist())
                 .andExpect(jsonPath("$.data[0].memberCount").doesNotExist())
                 .andExpect(jsonPath("$.meta.total").value(1));
+    }
+
+    @Test
+    @DisplayName("CMP-112: 数値組織IDはslug解決を呼ばず検索する")
+    void search_numericOrgId_usesCanonicalScopeId() throws Exception {
+        given(teamSearchService.search(eq(42L), any(TeamSearchCriteria.class), any(), any(Pageable.class)))
+                .willReturn(Page.empty());
+
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", "42"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isEmpty());
+
+        verify(organizationService, never()).resolveOrgId("42");
     }
 
     @Test

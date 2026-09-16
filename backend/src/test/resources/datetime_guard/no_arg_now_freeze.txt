@@ -75,7 +75,7 @@ NO_ARG_NOW|com.mannschaft.app.advertising.service.CampaignPerformanceService|1
 NO_ARG_NOW|com.mannschaft.app.advertising.service.OverdueInvoiceBatchService|1
 NO_ARG_NOW|com.mannschaft.app.advertising.service.RateSimulatorService|1
 NO_ARG_NOW|com.mannschaft.app.advertising.service.ReportDeliveryBatchService|1
-NO_ARG_NOW|com.mannschaft.app.advertising.service.SpotlightServingService|4
+NO_ARG_NOW|com.mannschaft.app.advertising.service.SpotlightServingService|3
 NO_ARG_NOW|com.mannschaft.app.analytics.controller.AnalyticsAlertController|3
 NO_ARG_NOW|com.mannschaft.app.analytics.entity.AnalyticsAlertRuleEntity|1
 NO_ARG_NOW|com.mannschaft.app.analytics.entity.AnalyticsMonthlySnapshotEntity|1
@@ -279,7 +279,6 @@ NO_ARG_NOW|com.mannschaft.app.family.service.PresenceService|4
 NO_ARG_NOW|com.mannschaft.app.faq.service.FaqAdminService|2
 NO_ARG_NOW|com.mannschaft.app.favorite.entity.UserFavoriteEntity|1
 NO_ARG_NOW|com.mannschaft.app.files.entity.MultipartUploadSessionEntity|2
-NO_ARG_NOW|com.mannschaft.app.files.service.MultipartUploadService|1
 NO_ARG_NOW|com.mannschaft.app.filesharing.entity.FilePermissionEntity|1
 NO_ARG_NOW|com.mannschaft.app.filesharing.entity.SharedFileCommentEntity|1
 NO_ARG_NOW|com.mannschaft.app.filesharing.entity.SharedFileEntity|1
@@ -421,7 +420,6 @@ NO_ARG_NOW|com.mannschaft.app.notification.fanout.NotificationFanoutJobService|7
 NO_ARG_NOW|com.mannschaft.app.notification.fanout.NotificationFanoutStuckRecoveryBatch|1
 NO_ARG_NOW|com.mannschaft.app.notification.fanout.NotificationFanoutWorker|1
 NO_ARG_NOW|com.mannschaft.app.notification.service.NotificationBulkFanoutService|1
-NO_ARG_NOW|com.mannschaft.app.notification.service.NotificationCleanupBatchService|1
 NO_ARG_NOW|com.mannschaft.app.notification.service.NotificationService|1
 NO_ARG_NOW|com.mannschaft.app.onboarding.entity.OnboardingProgressEntity|4
 NO_ARG_NOW|com.mannschaft.app.onboarding.entity.OnboardingStepCompletionEntity|1

@@ -15,7 +15,6 @@ import type { SpotlightItem } from '~/composables/useSpotlightApi'
 const authStore = useAuthStore()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
-const dashboardStore = useDashboardStore()
 const greeting = useGreeting()
 const timedMessage = useTimedMessage()
 
@@ -39,22 +38,8 @@ function onOrgCreated() {
   orgStore.fetchMyOrganizations()
 }
 
-const loading = ref(true)
-
-onMounted(async () => {
-  loading.value = true
-  try {
-    await Promise.all([
-      teamStore.fetchMyTeams(),
-      orgStore.fetchMyOrganizations(),
-      dashboardStore.fetchPersonalDashboard(),
-    ])
-  } finally {
-    loading.value = false
-  }
-  // 広告掲載面は非必須のため loading ゲートとは独立に取得する（失敗してもページを止めない）。
-  void loadSpotlight()
-})
+// 広告掲載面は任意機能の初期取得と独立させ、背景で取得する。
+onMounted(() => { void loadSpotlight() })
 
 // 個人ダッシュボードウィジェット（DB 永続化・対象3-B）
 const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder } = useDashboardWidgets(
@@ -207,8 +192,6 @@ function onDragEnd() {
 
 <template>
   <div>
-    <PageLoading v-if="loading" />
-    <div v-else>
       <!-- 挨拶ヘッダー -->
       <div class="mb-6 flex items-start justify-between gap-4">
         <div>
@@ -525,6 +508,5 @@ function onDragEnd() {
         @toggle="toggleWidget"
         @reorder="reorder"
       />
-    </div>
   </div>
 </template>

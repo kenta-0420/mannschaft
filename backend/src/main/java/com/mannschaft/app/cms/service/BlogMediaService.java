@@ -92,6 +92,8 @@ public class BlogMediaService {
     private final StorageQuotaService storageQuotaService;
     /** Issue #2601: 1 件処理を REQUIRES_NEW 独立トランザクションで実行する Bean。 */
     private final BlogMediaOrphanCleanupRunner orphanCleanupRunner;
+    private final BlogMediaAclService mediaAclService;
+    private final com.mannschaft.app.common.storage.acl.StorageAclService storageAclService;
 
     // ==================== 公開メソッド ====================
 
@@ -109,10 +111,11 @@ public class BlogMediaService {
      */
     @Transactional
     public BlogMediaUploadUrlResponse generateUploadUrl(Long uploaderId, BlogMediaUploadUrlRequest req) {
+        var actualScope = mediaAclService.resolveUploadScope(uploaderId, req);
         validateRequest(req);
 
         // F13 Phase 4-δ: 統合クォータチェック（presign 前）
-        StorageScopeType scopeType = StorageScopeType.valueOf(req.getScopeType().toUpperCase());
+        StorageScopeType scopeType = actualScope.scopeType();
         try {
             storageQuotaService.checkQuota(scopeType, req.getScopeId(), req.getFileSize());
         } catch (StorageQuotaExceededException e) {
@@ -306,22 +309,21 @@ public class BlogMediaService {
         BlogMediaUploadEntity entity = BlogMediaUploadEntity.builder()
                 .blogPostId(req.getBlogPostId())
                 .uploaderId(uploaderId)
+                .scopeType(scopeType.name())
+                .scopeId(req.getScopeId())
                 .mediaType("IMAGE")
                 .s3Key(r2Key)
                 .fileSize(req.getFileSize())
                 .contentType(req.getContentType())
-                .processingStatus("READY")
+                .processingStatus("UPLOADING")
                 .build();
         BlogMediaUploadEntity saved = blogMediaUploadRepository.save(entity);
+        var target = BlogMediaAclService.targetOf(saved);
+        storageAclService.registerPending(r2Key, uploaderId, target.scope(), req.getContentType(),
+                IMAGE_UPLOAD_TTL, target.parent());
 
         log.info("画像アップロード Presigned URL 発行: uploaderId={}, mediaId={}, key={}",
                 uploaderId, saved.getId(), r2Key);
-
-        // F13 Phase 4-δ: 使用量加算（IMAGE は presign 発行＋INSERT 完了を確定とみなす）
-        storageQuotaService.recordUpload(
-                scopeType, req.getScopeId(), req.getFileSize(),
-                StorageFeatureType.CMS,
-                REFERENCE_TYPE, saved.getId(), uploaderId);
 
         return BlogMediaUploadUrlResponse.builder()
                 .mediaId(saved.getId())
@@ -330,6 +332,47 @@ public class BlogMediaService {
                 .uploadUrl(result.uploadUrl())
                 .expiresIn(IMAGE_UPLOAD_TTL_SECONDS)
                 .build();
+    }
+
+    /**
+     * 単発PUT画像がR2へ実在することをHEADで確認してから、ACLと使用量を一度だけ確定する。
+     */
+    @Transactional
+    public void confirmImageUpload(Long mediaId, Long uploaderId) {
+        BlogMediaUploadEntity media = blogMediaUploadRepository.findByIdForUploadCompletion(mediaId)
+                .orElseThrow(() -> new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND));
+        if (!java.util.Objects.equals(media.getUploaderId(), uploaderId)
+                || !"IMAGE".equals(media.getMediaType())) {
+            throw new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND);
+        }
+        if ("READY".equals(media.getProcessingStatus())) {
+            return;
+        }
+        if (!"UPLOADING".equals(media.getProcessingStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "画像アップロードは完了確認できない状態です");
+        }
+
+        var target = mediaAclService.resolveMultipartTarget(media.getS3Key(), uploaderId)
+                .orElseThrow(() -> new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND));
+        if (!r2StorageService.objectExists(media.getS3Key())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "アップロード済み画像が見つかりません");
+        }
+        long actualSize = r2StorageService.getObjectSize(media.getS3Key());
+        if (actualSize != media.getFileSize()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "アップロード済み画像のサイズが申告値と一致しません");
+        }
+        try {
+            storageQuotaService.checkQuota(StorageScopeType.valueOf(media.getScopeType()), media.getScopeId(), actualSize);
+        } catch (StorageQuotaExceededException e) {
+            throw new BusinessException(CmsErrorCode.MEDIA_QUOTA_EXCEEDED, e);
+        }
+        storageAclService.claimPending(media.getS3Key(), uploaderId,
+                target.scope(), target.parent(), target.binding());
+        storageQuotaService.recordUpload(
+                StorageScopeType.valueOf(media.getScopeType()), media.getScopeId(), actualSize,
+                StorageFeatureType.CMS, REFERENCE_TYPE, media.getId(), uploaderId);
+        media.updateProcessingStatus("READY");
+        blogMediaUploadRepository.save(media);
     }
 
     /**
@@ -365,19 +408,25 @@ public class BlogMediaService {
                 prefix                   // targetPrefix
         );
 
-        StartMultipartUploadResponse startResponse = multipartUploadService.startUpload(uploaderId, startReq);
+        String r2Key = prefix + fileName;
 
         // blog_media_uploads に INSERT（processingStatus=PENDING: Workers による後処理を待つ）
         BlogMediaUploadEntity entity = BlogMediaUploadEntity.builder()
                 .blogPostId(req.getBlogPostId())
                 .uploaderId(uploaderId)
+                .scopeType(scopeType.name())
+                .scopeId(req.getScopeId())
                 .mediaType("VIDEO")
-                .s3Key(startResponse.getFileKey())
+                .s3Key(r2Key)
                 .fileSize(req.getFileSize())
                 .contentType(req.getContentType())
                 .processingStatus("PENDING")
                 .build();
         BlogMediaUploadEntity saved = blogMediaUploadRepository.save(entity);
+
+        // 保存台帳を先に作り、multipart側が親とscopeをサーバー側で復元できる状態にする。
+        StartMultipartUploadResponse startResponse =
+                multipartUploadService.startContentUpload(uploaderId, startReq, r2Key);
 
         log.info("動画 Multipart Upload 開始: uploaderId={}, mediaId={}, uploadId={}, key={}",
                 uploaderId, saved.getId(), startResponse.getUploadId(), startResponse.getFileKey());

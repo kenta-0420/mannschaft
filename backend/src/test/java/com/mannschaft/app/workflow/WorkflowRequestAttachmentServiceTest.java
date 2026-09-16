@@ -1,9 +1,16 @@
 package com.mannschaft.app.workflow;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignRequest;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignResponse;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentRegisterRequest;
@@ -24,11 +31,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -59,6 +69,12 @@ class WorkflowRequestAttachmentServiceTest {
     @Mock
     private StorageAclService storageAclService;
 
+    @Mock
+    private StorageAccessService storageAccessService;
+
+    @Mock
+    private DomainEventPublisher eventPublisher;
+
     @InjectMocks
     private WorkflowRequestAttachmentService attachmentService;
 
@@ -74,6 +90,45 @@ class WorkflowRequestAttachmentServiceTest {
                 .templateId(1L).scopeType("TEAM").scopeId(1L).title("テスト申請")
                 .requestedBy(USER_ID).build();
         ReflectionTestUtils.setField(requestEntity, "id", REQUEST_ID);
+    }
+
+    @Nested
+    @DisplayName("listAttachments")
+    class ListAttachments {
+
+        @Test
+        @DisplayName("DB entity由来のACL tupleに一致する添付だけ返す")
+        void ACL不一致を一覧から省略する() {
+            WorkflowRequestAttachmentEntity allowed = WorkflowRequestAttachmentEntity.builder()
+                    .requestId(REQUEST_ID).fileKey("workflow/allowed")
+                    .originalFilename("allowed.pdf").fileSize(10L).uploadedBy(USER_ID).build();
+            WorkflowRequestAttachmentEntity denied = WorkflowRequestAttachmentEntity.builder()
+                    .requestId(REQUEST_ID).fileKey("workflow/denied")
+                    .originalFilename("denied.pdf").fileSize(20L).uploadedBy(USER_ID).build();
+            ReflectionTestUtils.setField(allowed, "id", 501L);
+            ReflectionTestUtils.setField(denied, "id", 502L);
+            WorkflowAttachmentResponse response = new WorkflowAttachmentResponse(
+                    501L, REQUEST_ID, allowed.getFileKey(), "allowed.pdf", 10L, USER_ID, null);
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(requestEntity));
+            given(attachmentRepository.findByRequestIdOrderByCreatedAtAsc(REQUEST_ID))
+                    .willReturn(List.of(allowed, denied));
+            given(storageAccessService.generateDownloadUrlsForList(any(), any()))
+                    .willReturn(Map.of(allowed.getFileKey(), "https://dl"));
+            given(workflowMapper.toAttachmentResponseList(List.of(allowed))).willReturn(List.of(response));
+
+            assertThat(attachmentService.listAttachments(REQUEST_ID, USER_ID))
+                    .containsExactly(response);
+            verify(storageAccessService).generateDownloadUrlsForList(eq(List.of(
+                    new StorageAclDownloadRequest(
+                            allowed.getFileKey(), StorageAclScope.team(1L),
+                            new StorageAclContentReference("WORKFLOW_REQUEST", REQUEST_ID.toString()),
+                            new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", "501")),
+                    new StorageAclDownloadRequest(
+                            denied.getFileKey(), StorageAclScope.team(1L),
+                            new StorageAclContentReference("WORKFLOW_REQUEST", REQUEST_ID.toString()),
+                            new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", "502")))),
+                    any(Duration.class));
+        }
     }
 
     @Nested
@@ -102,6 +157,9 @@ class WorkflowRequestAttachmentServiceTest {
             assertThat(result.fileKey()).startsWith("workflow-attachments/" + REQUEST_ID + "/");
             assertThat(result.fileKey()).endsWith(".pdf");
             assertThat(result.expiresInSeconds()).isEqualTo(900L);
+            verify(storageAclService).registerPending(eq(result.fileKey()), eq(USER_ID),
+                    eq(StorageAclScope.team(1L)), eq("application/pdf"), any(Duration.class),
+                    eq(new StorageAclContentReference("WORKFLOW_REQUEST", REQUEST_ID.toString())));
         }
 
         @Test
@@ -150,6 +208,7 @@ class WorkflowRequestAttachmentServiceTest {
             WorkflowRequestAttachmentEntity saved = WorkflowRequestAttachmentEntity.builder()
                     .requestId(REQUEST_ID).fileKey(fileKey).originalFilename("領収書.pdf")
                     .fileSize(2048L).uploadedBy(USER_ID).build();
+            ReflectionTestUtils.setField(saved, "id", ATTACHMENT_ID);
             WorkflowAttachmentResponse response = new WorkflowAttachmentResponse(
                     ATTACHMENT_ID, REQUEST_ID, fileKey, "領収書.pdf", 2048L, USER_ID, null);
 
@@ -164,6 +223,9 @@ class WorkflowRequestAttachmentServiceTest {
             // Then
             assertThat(result.getFileKey()).isEqualTo(fileKey);
             assertThat(result.getOriginalFilename()).isEqualTo("領収書.pdf");
+            verify(storageAclService).claimPending(eq(fileKey), eq(USER_ID), eq(StorageAclScope.team(1L)),
+                    eq(new StorageAclContentReference("WORKFLOW_REQUEST", REQUEST_ID.toString())),
+                    eq(new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", ATTACHMENT_ID.toString())));
         }
 
         @Test
@@ -188,13 +250,14 @@ class WorkflowRequestAttachmentServiceTest {
     class DeleteAttachment {
 
         @Test
-        @DisplayName("添付削除_正常_R2削除とDB削除が実行される")
-        void 添付削除_正常_R2削除とDB削除が実行される() {
+        @DisplayName("添付削除_正常_ACLとDBを削除し物理削除をcommit後イベントへ委譲する")
+        void 添付削除_正常_物理削除イベントを発行する() {
             // Given
             WorkflowRequestAttachmentEntity entity = WorkflowRequestAttachmentEntity.builder()
                     .requestId(REQUEST_ID)
                     .fileKey("workflow-attachments/" + REQUEST_ID + "/abc.pdf")
                     .originalFilename("a.pdf").fileSize(1L).build();
+            ReflectionTestUtils.setField(entity, "id", ATTACHMENT_ID);
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(requestEntity));
             given(attachmentRepository.findByIdAndRequestId(ATTACHMENT_ID, REQUEST_ID))
                     .willReturn(Optional.of(entity));
@@ -203,8 +266,13 @@ class WorkflowRequestAttachmentServiceTest {
             attachmentService.deleteAttachment(REQUEST_ID, ATTACHMENT_ID, USER_ID);
 
             // Then
-            verify(r2StorageService).delete(entity.getFileKey());
+            verify(storageAclService).releaseClaimed(entity.getFileKey(),
+                    new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", ATTACHMENT_ID.toString()));
             verify(attachmentRepository).delete(entity);
+            verify(eventPublisher).publish(argThat(event ->
+                    event instanceof S3ObjectDeleteEvent deleteEvent
+                            && deleteEvent.s3Keys().equals(List.of(entity.getFileKey()))));
+            verify(r2StorageService, never()).delete(anyString());
         }
 
         @Test

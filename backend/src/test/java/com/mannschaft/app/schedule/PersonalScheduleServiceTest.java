@@ -24,8 +24,11 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -68,6 +71,9 @@ class PersonalScheduleServiceTest {
 
     @Mock
     private ScheduleRecurrenceService recurrenceService;
+
+    @Mock
+    private Clock wallClock;
 
     // F03.19 W1-c: 個人予定一覧の色解決でレイヤー設定を読む（既定 mock は空 Map を返す＝設定なし）。
     @Mock
@@ -668,6 +674,56 @@ class PersonalScheduleServiceTest {
     }
 
     // ========================================
+    // CMP-107: 過去の繰り返し回を起点にした「この日以降」は、選択回と未終了の後続だけを更新する。
+    @Test
+    @DisplayName("この日以降_過去の選択回と未終了の後続だけを日時差分で更新する")
+    void この日以降_過去の選択回と未終了の後続だけを日時差分で更新する() {
+        Long parentId = 99L;
+        ScheduleEntity selected = createPersonalScheduleEntity().toBuilder()
+                .id(10L).parentScheduleId(parentId)
+                .startAt(LocalDateTime.of(2026, 9, 10, 10, 0))
+                .endAt(LocalDateTime.of(2026, 9, 10, 12, 0)).build();
+        ScheduleEntity completed = createPersonalScheduleEntity().toBuilder()
+                .id(11L).parentScheduleId(parentId).title("完了済み")
+                .startAt(LocalDateTime.of(2026, 9, 17, 10, 0))
+                .endAt(LocalDateTime.of(2026, 9, 17, 12, 0)).build();
+        ScheduleEntity future = createPersonalScheduleEntity().toBuilder()
+                .id(12L).parentScheduleId(parentId).title("未変更")
+                .startAt(LocalDateTime.of(2026, 9, 24, 10, 0))
+                .endAt(LocalDateTime.of(2026, 9, 24, 12, 0)).build();
+        ScheduleEntity exception = createPersonalScheduleEntity().toBuilder()
+                .id(13L).parentScheduleId(parentId).title("例外")
+                .startAt(LocalDateTime.of(2026, 10, 1, 10, 0))
+                .endAt(LocalDateTime.of(2026, 10, 1, 12, 0)).isException(true).build();
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(selected));
+        given(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(parentId))
+                .willReturn(List.of(selected, completed, future, exception));
+        given(scheduleRepository.save(any(ScheduleEntity.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        given(reminderRepository.findByScheduleIdOrderByRemindBeforeMinutesAsc(any()))
+                .willReturn(List.of());
+        given(wallClock.getZone()).willReturn(ZoneId.of("Asia/Tokyo"));
+        given(wallClock.instant()).willReturn(Instant.parse("2026-09-20T00:00:00Z"));
+
+        UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
+                "変更後", null, null,
+                OffsetDateTime.of(2026, 9, 10, 11, 0, 0, 0, ZoneOffset.ofHours(9)),
+                OffsetDateTime.of(2026, 9, 10, 13, 0, 0, 0, ZoneOffset.ofHours(9)),
+                null, null, null, null, null, "THIS_AND_FOLLOWING", null);
+
+        personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
+
+        assertThat(selected.getTitle()).isEqualTo("変更後");
+        assertThat(selected.getStartAt()).isEqualTo(LocalDateTime.of(2026, 9, 10, 11, 0));
+        assertThat(future.getTitle()).isEqualTo("変更後");
+        assertThat(future.getStartAt()).isEqualTo(LocalDateTime.of(2026, 9, 24, 11, 0));
+        assertThat(completed.getTitle()).isEqualTo("完了済み");
+        assertThat(completed.getStartAt()).isEqualTo(LocalDateTime.of(2026, 9, 17, 10, 0));
+        assertThat(exception.getTitle()).isEqualTo("例外");
+        verify(scheduleRepository, never()).save(completed);
+        verify(scheduleRepository, never()).save(exception);
+    }
+
     // deletePersonalSchedule
     // ========================================
 

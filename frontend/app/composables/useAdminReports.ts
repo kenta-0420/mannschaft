@@ -25,7 +25,6 @@ export function useAdminReports() {
   const loading = ref(true)
   const totalRecords = ref(0)
   const page = ref(0)
-  const statusFilter = ref<string | undefined>(undefined)
   const selectedReport = ref<ReportResponse | null>(null)
   const showDetailDialog = ref(false)
   const notes = ref<InternalNoteResponse[]>([])
@@ -35,24 +34,21 @@ export function useAdminReports() {
   const showEscalateDialog = ref(false)
   const escalateForm = ref<EscalateForm>({ reason: '', guidelineSection: '' })
 
-  const statusOptions = computed(() => [
-    { label: t('admin_report.status_options.all'), value: undefined },
-    { label: t('admin_report.status_options.pending'), value: 'PENDING' },
-    { label: t('admin_report.status_options.reviewing'), value: 'REVIEWING' },
-    { label: t('admin_report.status_options.escalated'), value: 'ESCALATED' },
-    { label: t('admin_report.status_options.resolved'), value: 'RESOLVED' },
-    { label: t('admin_report.status_options.dismissed'), value: 'DISMISSED' },
-  ])
-
+  // ステータス絞り込みは提供しない。
+  // 一覧の実体である BE の `SystemAdminReportController#getAllReports`
+  // （`/api/v1/system-admin/reports`）が受け取るのは `page` / `size` のみで、
+  // status 条件を解釈しないため、UI だけ置いても「操作できるが何も変わらない」
+  // 部品になってしまう（CMP-260912-1823 の検分 P2）。
+  // 復活させるには BE 側に status パラメータを足す必要がある。
   async function load() {
     loading.value = true
     try {
       const [reportsRes, statsRes] = await Promise.all([
-        adminReportApi.getReports({ page: page.value, size: 20, status: statusFilter.value }),
+        adminReportApi.getReports({ page: page.value, size: 20 }),
         adminReportApi.getReportStats(),
       ])
       reports.value = reportsRes.data
-      totalRecords.value = reportsRes.meta?.totalElements ?? reportsRes.data.length
+      totalRecords.value = reportsRes.meta.total
       stats.value = statsRes.data
     } catch {
       showError(t('admin_report.messages.load_failed'))
@@ -188,10 +184,6 @@ export function useAdminReports() {
     load()
   }
 
-  watch(statusFilter, () => {
-    page.value = 0
-    load()
-  })
   onMounted(load)
 
   return {
@@ -200,7 +192,6 @@ export function useAdminReports() {
     loading,
     totalRecords,
     page,
-    statusFilter,
     selectedReport,
     showDetailDialog,
     notes,
@@ -209,7 +200,6 @@ export function useAdminReports() {
     resolveForm,
     showEscalateDialog,
     escalateForm,
-    statusOptions,
     openDetail,
     addNote,
     review,

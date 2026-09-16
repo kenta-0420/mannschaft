@@ -1,5 +1,6 @@
 package com.mannschaft.app.matching.service;
 
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.matching.ActivityType;
 import com.mannschaft.app.matching.MatchCategory;
 import com.mannschaft.app.matching.dto.NotificationPreferenceResponse;
@@ -39,9 +40,9 @@ public class MatchNotificationService {
     @Transactional
     public NotificationPreferenceResponse updatePreference(Long teamId, UpdateNotificationPreferenceRequest request) {
         ActivityType activityType = request.getActivityType() != null
-                ? ActivityType.valueOf(request.getActivityType()) : null;
+                ? EnumInputParser.parse(ActivityType.class, request.getActivityType(), "activityType") : null;
         MatchCategory category = request.getCategory() != null
-                ? MatchCategory.valueOf(request.getCategory()) : null;
+                ? EnumInputParser.parse(MatchCategory.class, request.getCategory(), "category") : null;
         Boolean isEnabled = request.getIsEnabled() != null ? request.getIsEnabled() : true;
 
         MatchNotificationPreferenceEntity entity = preferenceRepository.findByTeamId(teamId)

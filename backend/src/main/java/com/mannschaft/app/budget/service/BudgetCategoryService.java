@@ -13,6 +13,7 @@ import com.mannschaft.app.budget.repository.BudgetCategoryRepository;
 import com.mannschaft.app.budget.repository.BudgetFiscalYearRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,7 +67,8 @@ public class BudgetCategoryService {
         BudgetCategoryEntity entity = BudgetCategoryEntity.builder()
                 .fiscalYearId(request.fiscalYearId())
                 .name(request.name())
-                .categoryType(BudgetCategoryType.valueOf(request.categoryType()))
+                .categoryType(EnumInputParser.parse(
+                        BudgetCategoryType.class, request.categoryType(), "categoryType"))
                 .parentId(request.parentId())
                 .sortOrder(request.sortOrder() != null ? request.sortOrder() : 0)
                 .description(request.description())

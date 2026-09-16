@@ -1,8 +1,12 @@
+import { requestWithTimeout } from '~/utils/requestTimeout'
+
 export function useNavSettingsApi() {
   const api = useApi()
 
   async function getNavSettings() {
-    const res = await api<{ data: import('~/types/nav').NavSettingsResponse }>('/api/v1/settings/nav')
+    const res = await requestWithTimeout(signal =>
+      api<{ data: import('~/types/nav').NavSettingsResponse }>('/api/v1/settings/nav', { signal }),
+    )
     return res.data
   }
 

@@ -32,7 +32,7 @@ const item = (id: number, type: 'ITEM' | 'DONATION'): PaymentItemResponse => ({
 describe('ContentGateManager.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    getGates.mockResolvedValue({ data: [{ id: 1, content: { contentType: 'POST', contentId: 42, isTitleHidden: true }, paymentItem: { id: 7, name: '会費', type: 'ITEM', amount: 100, currency: 'JPY' }, audit: { createdBy: 1, createdAt: '' } }], meta: { page: 0, size: 50, totalElements: 1, totalPages: 1 } })
+    getGates.mockResolvedValue({ data: [{ id: 1, content: { contentType: 'POST', contentId: 42, isTitleHidden: true }, paymentItem: { id: 7, name: '会費', type: 'ITEM', amount: 100, currency: 'JPY' }, audit: { createdBy: 1, createdAt: '' } }], meta: { page: 0, size: 50, total: 1, totalPages: 1 } })
     getItems.mockResolvedValue({ data: [item(7, 'ITEM'), item(8, 'DONATION')] })
     updateGates.mockResolvedValue({ data: {} })
   })
@@ -49,7 +49,7 @@ describe('ContentGateManager.vue', () => {
   })
 
   it('ORGANIZATIONで複数項目とタイトル非表示を保存できる', async () => {
-    getGates.mockResolvedValue({ data: [], meta: { page: 0, size: 50, totalElements: 0, totalPages: 0 } })
+    getGates.mockResolvedValue({ data: [], meta: { page: 0, size: 50, total: 0, totalPages: 0 } })
     getItems.mockResolvedValue({ data: [item(7, 'ITEM')] })
     const wrapper = await mountSuspended(ContentGateManager, { props: { scopeType: 'organization', scopeId: '20' } })
     await wrapper.find('[data-testid="content-gate-id"]').setValue(99)
@@ -62,7 +62,7 @@ describe('ContentGateManager.vue', () => {
   })
 
   it('空選択を保存してゲート解除でき、失敗時はエラー通知する', async () => {
-    getGates.mockResolvedValue({ data: [], meta: { page: 0, size: 50, totalElements: 0, totalPages: 0 } })
+    getGates.mockResolvedValue({ data: [], meta: { page: 0, size: 50, total: 0, totalPages: 0 } })
     const wrapper = await mountSuspended(ContentGateManager, { props: { scopeType: 'team', scopeId: '10' } })
     await wrapper.find('[data-testid="content-gate-id"]').setValue(10)
     updateGates.mockRejectedValueOnce(new Error('failed'))
@@ -82,7 +82,7 @@ describe('ContentGateManager.vue', () => {
   })
 
   it('保存中の連打でも更新APIを一度だけ呼ぶ', async () => {
-    getGates.mockResolvedValue({ data: [], meta: { page: 0, size: 50, totalElements: 0, totalPages: 0 } })
+    getGates.mockResolvedValue({ data: [], meta: { page: 0, size: 50, total: 0, totalPages: 0 } })
     let resolveUpdate: ((value: { data: object }) => void) | undefined
     updateGates.mockReturnValueOnce(new Promise((resolve) => { resolveUpdate = resolve }))
     const wrapper = await mountSuspended(ContentGateManager, { props: { scopeType: 'team', scopeId: '10' } })

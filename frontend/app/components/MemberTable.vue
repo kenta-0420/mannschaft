@@ -24,7 +24,7 @@ interface Member {
 
 interface PagedMembers {
   data: Member[]
-  meta: { page: number; size: number; totalElements: number; totalPages: number }
+  meta: { page: number; size: number; total: number; totalPages: number }
 }
 
 const api = useApi()
@@ -34,6 +34,7 @@ const { t } = useI18n()
 const members = ref<Member[]>([])
 const totalRecords = ref(0)
 const loading = ref(false)
+const removingMemberId = ref<number | null>(null)
 const page = ref(0)
 const rows = ref(20)
 const returnStayApi = useReturnStayPlanTeamApi()
@@ -86,7 +87,7 @@ async function loadMembers() {
     )
     if (sequence !== memberRequestSequence) return
     members.value = response.data
-    totalRecords.value = response.meta.totalElements
+    totalRecords.value = response.meta.total
     await loadReturnStayPlans()
   }
   catch {
@@ -115,7 +116,9 @@ async function onChangeRole(userId: number, roleId: number) {
 }
 
 async function onRemoveMember(userId: number, displayName: string) {
+  if (removingMemberId.value !== null) return
   if (!confirm(`${displayName} をメンバーから除外しますか？`)) return
+  removingMemberId.value = userId
   try {
     const base = props.scopeType === 'team' ? 'teams' : 'organizations'
     await api(`/api/v1/${base}/${props.scopeId}/members/${userId}`, { method: 'DELETE' })
@@ -125,6 +128,9 @@ async function onRemoveMember(userId: number, displayName: string) {
   }
   catch {
     notification.error('メンバー除外に失敗しました')
+  }
+  finally {
+    removingMemberId.value = null
   }
 }
 
@@ -266,6 +272,10 @@ defineExpose({ refresh: loadMembers, changeRole: onChangeRole })
             text
             rounded
             size="small"
+            :aria-label="`${data.displayName}をメンバーから除外`"
+            :data-testid="`member-remove-${data.userId}`"
+            :disabled="removingMemberId !== null"
+            :loading="removingMemberId === data.userId"
             @click="onRemoveMember(data.userId, data.displayName)"
           />
         </div>

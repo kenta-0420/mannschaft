@@ -4,9 +4,16 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
@@ -46,6 +53,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -71,6 +79,7 @@ public class TimelinePostService {
 
     private static final int MAX_ATTACHMENTS = 10;
     private static final int DEFAULT_FEED_SIZE = 20;
+    private static final Duration ATTACHMENT_DOWNLOAD_TTL = Duration.ofHours(1);
     /** 投稿詳細に同梱するリプライプレビュー（会話の古い順・先頭から）の最大件数。 */
     private static final int RECENT_REPLIES_LIMIT = 5;
 
@@ -92,6 +101,7 @@ public class TimelinePostService {
     private final TimelineMapper timelineMapper;
     private final DomainEventPublisher domainEventPublisher;
     private final R2StorageService r2StorageService;
+    private final StorageAclService storageAclService;
     /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
     /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。 */
@@ -122,7 +132,7 @@ public class TimelinePostService {
      * FE は R2 を署名できないため、DB の生キーをそのまま返すと 404 になる。issue #2424 の根治で
      * timeline も他ドメイン（village/blog 等）に倣って本部品を通す。存在検証は行わず署名 URL 生成のみ。
      */
-    private final MediaUrlResolver mediaUrlResolver;
+    private final StorageAccessService storageAccessService;
     /**
      * 投稿可視性判定の正準実装（認可根治 Wave7）。読取経路（{@link #getPostDetail} /
      * {@link #getReplies}）・書き込み経路（リプライ/リポストの参照先検証）が共有する唯一の述語。
@@ -535,7 +545,8 @@ public class TimelinePostService {
             effectiveDeliveryScope = req.getDeliveryScopeOrDefault();
         }
 
-        PostedAsType postedAsTypeEnum = PostedAsType.valueOf(req.getPostedAsTypeOrDefault());
+        PostedAsType postedAsTypeEnum = EnumInputParser.parse(
+                PostedAsType.class, req.getPostedAsTypeOrDefault(), "postedAsType");
         Long postedAsId = req.getPostedAsId();
 
         if (scopeTypeEnum == PostScopeType.VILLAGE) {
@@ -692,7 +703,14 @@ public class TimelinePostService {
         // F13 Phase 4-γ: ファイル系添付（IMAGE / VIDEO_FILE）の使用量減算
         ScopeResolution scope = resolveScope(
                 post.getScopeType().name(), post.getScopeId(), userId);
+        List<String> fileKeysToDelete = new ArrayList<>();
         for (TimelinePostAttachmentEntity att : attachments) {
+            if (isStorageBacked(att) && att.getFileKey() != null && !att.getFileKey().isBlank()) {
+                storageAclService.releaseClaimed(att.getFileKey(),
+                        new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", att.getId().toString()));
+                fileKeysToDelete.add(att.getFileKey());
+            }
+
             if (att.getFileSize() == null || att.getFileSize() <= 0) {
                 continue;
             }
@@ -703,6 +721,9 @@ public class TimelinePostService {
                         StorageFeatureType.TIMELINE,
                         REFERENCE_TYPE, att.getId(), userId);
             }
+        }
+        if (!fileKeysToDelete.isEmpty()) {
+            domainEventPublisher.publish(new S3ObjectDeleteEvent(fileKeysToDelete));
         }
     }
 
@@ -726,10 +747,14 @@ public class TimelinePostService {
         // 添付エンティティを取得し、画像キーをまとめて 1 回 resolveAll（N+1 回避）してから割り当てる。
         List<TimelinePostAttachmentEntity> attachmentEntities =
                 attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(postId);
-        Map<String, String> imageUrlByKey = resolveImageUrls(attachmentEntities);
-        List<AttachmentResponse> attachments = timelineMapper.toAttachmentResponseList(attachmentEntities)
-                .stream()
-                .map(a -> withResolvedImageUrl(a, imageUrlByKey))
+        TimelineAclContext detailContext = TimelineAclContext.fromOrNull(post);
+        Map<String, String> storageUrlByKey = resolveStorageUrls(attachmentEntities,
+                detailContext == null ? Map.of() : Map.of(postId, detailContext));
+        List<AttachmentResponse> attachments = attachmentEntities.stream()
+                .filter(a -> !isStorageBacked(a)
+                        || storageUrlByKey.containsKey(a.getFileKey()))
+                .map(timelineMapper::toAttachmentResponse)
+                .map(a -> withResolvedStorageUrl(a, storageUrlByKey))
                 .toList();
 
         boolean mitayo = reactionRepository.existsByTimelinePostIdAndUserId(postId, userId);
@@ -1006,7 +1031,7 @@ public class TimelinePostService {
      * 投稿一覧に添付配列を付与する（issue #2424・feed で画像を表示するための根治）。
      *
      * <p><b>N+1 回避</b>: 全投稿 ID 分の添付を 1 クエリで一括取得し、画像キーの署名解決も
-     * 全添付をまとめて {@link MediaUrlResolver#resolveAll} で 1 回だけ行う。取得した添付は
+     * 全添付を StorageAccessService で一括照合する。取得した添付は
      * {@code timelinePostId} でグルーピングして各投稿へ割り当てる。添付が無い投稿には空配列を
      * 設定する（{@code null} を避け FE の {@code attachments?.length} 分岐を安定させる）。</p>
      *
@@ -1028,10 +1053,20 @@ public class TimelinePostService {
         List<TimelinePostAttachmentEntity> all =
                 attachmentRepository.findByTimelinePostIdInOrderByTimelinePostIdAscSortOrderAsc(postIds);
         // 画像キーは投稿をまたいで一括で 1 回だけ署名解決する（N+1 回避）。
-        Map<String, String> imageUrlByKey = resolveImageUrls(all);
+        Map<Long, TimelineAclContext> contexts = new LinkedHashMap<>();
+        for (PostResponse post : posts) {
+            TimelineAclContext context = TimelineAclContext.fromOrNull(post);
+            if (post.getId() != null && context != null) {
+                contexts.put(post.getId(), context);
+            }
+        }
+        Map<String, String> storageUrlByKey = resolveStorageUrls(all, contexts);
         Map<Long, List<AttachmentResponse>> byPost = new LinkedHashMap<>();
         for (TimelinePostAttachmentEntity e : all) {
-            AttachmentResponse r = withResolvedImageUrl(timelineMapper.toAttachmentResponse(e), imageUrlByKey);
+            if (isStorageBacked(e) && !storageUrlByKey.containsKey(e.getFileKey())) {
+                continue;
+            }
+            AttachmentResponse r = withResolvedStorageUrl(timelineMapper.toAttachmentResponse(e), storageUrlByKey);
             byPost.computeIfAbsent(e.getTimelinePostId(), k -> new ArrayList<>()).add(r);
         }
         return posts.stream()
@@ -1042,34 +1077,88 @@ public class TimelinePostService {
     }
 
     /**
-     * 添付エンティティ群の中から画像（{@link AttachmentType#IMAGE}）の生キーを集めて署名 URL に一括解決する。
-     * null/空白キーは除外する。1 回の {@link MediaUrlResolver#resolveAll} で presign を最小化する（N+1 回避）。
+     * 添付エンティティ群から R2 上の画像・動画の生キーを集め、ACL 照合済みの署名 URL に一括解決する。
+     * null/空白キーは除外し、StorageAccessService の一括照合で N+1 を防ぐ。
      */
-    private Map<String, String> resolveImageUrls(Collection<TimelinePostAttachmentEntity> attachments) {
+    private Map<String, String> resolveStorageUrls(Collection<TimelinePostAttachmentEntity> attachments,
+                                                    Map<Long, TimelineAclContext> contexts) {
         if (attachments == null || attachments.isEmpty()) {
             return Map.of();
         }
-        List<String> imageKeys = attachments.stream()
-                .filter(a -> a.getAttachmentType() == AttachmentType.IMAGE)
-                .map(TimelinePostAttachmentEntity::getFileKey)
-                .filter(k -> k != null && !k.isBlank())
+        List<StorageAclDownloadRequest> requests = attachments.stream()
+                .filter(TimelinePostService::isStorageBacked)
+                .filter(a -> a.getFileKey() != null && !a.getFileKey().isBlank())
+                .filter(a -> a.getId() != null && contexts != null && contexts.containsKey(a.getTimelinePostId()))
+                .map(a -> {
+                    TimelineAclContext context = contexts.get(a.getTimelinePostId());
+                    return new StorageAclDownloadRequest(a.getFileKey(), context.scope(),
+                            new StorageAclContentReference("TIMELINE_SCOPE", context.parentKey()),
+                            new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", a.getId().toString()));
+                })
                 .toList();
-        return mediaUrlResolver.resolveAll(imageKeys);
+        return storageAccessService.generateDownloadUrlsForList(requests, ATTACHMENT_DOWNLOAD_TTL);
+    }
+
+    private static boolean isStorageBacked(TimelinePostAttachmentEntity attachment) {
+        return attachment.getAttachmentType() == AttachmentType.IMAGE
+                || attachment.getAttachmentType() == AttachmentType.VIDEO_FILE;
+    }
+
+    private record TimelineAclContext(StorageAclScope scope, String parentKey) {
+        private static TimelineAclContext fromOrNull(PostResponse post) {
+            String type = post.getScope() != null ? post.getScope().scopeType() : null;
+            Long id = post.getScope() != null ? post.getScope().scopeId() : null;
+            Long ownerId = post.getAuthor() != null ? post.getAuthor().userId() : null;
+            return fromOrNull(type, id, ownerId);
+        }
+
+        private static TimelineAclContext fromOrNull(TimelinePostEntity post) {
+            return fromOrNull(post.getScopeType().name(), post.getScopeId(), post.getUserId());
+        }
+
+        private static TimelineAclContext fromOrNull(String type, Long scopeId, Long ownerId) {
+            if (PostScopeType.TEAM.name().equals(type) && scopeId != null && scopeId > 0) {
+                return new TimelineAclContext(StorageAclScope.team(scopeId), "TEAM:" + scopeId);
+            }
+            if (PostScopeType.ORGANIZATION.name().equals(type) && scopeId != null && scopeId > 0) {
+                return new TimelineAclContext(StorageAclScope.organization(scopeId), "ORGANIZATION:" + scopeId);
+            }
+            return ownerId != null && ownerId > 0
+                    ? new TimelineAclContext(StorageAclScope.personal(ownerId), "PERSONAL:" + ownerId)
+                    : null;
+        }
     }
 
     /**
-     * 画像添付レスポンスに署名付き表示 URL を割り当てる（画像以外・解決不能キーはそのまま返す）。
+     * 画像・動画添付レスポンスに ACL 照合済みの署名付き表示 URL を割り当てる。
      *
      * <p>画像は別サムネイルを持たないため {@code thumbnailUrl} は {@code url} と同一値にする
-     * （FE は {@code thumbnailUrl || url} を読む）。imageWidth/imageHeight は Mapper 変換値を保持する。</p>
+     * （FE は {@code thumbnailUrl || url} を読む）。画像寸法と動画メタデータは Mapper 変換値を保持する。</p>
      */
-    private AttachmentResponse withResolvedImageUrl(AttachmentResponse att, Map<String, String> imageUrlByKey) {
-        if (att == null || !AttachmentType.IMAGE.name().equals(att.getAttachmentType())) {
+    private AttachmentResponse withResolvedStorageUrl(AttachmentResponse att, Map<String, String> storageUrlByKey) {
+        if (att == null || att.getFile() == null) {
             return att;
         }
-        String key = att.getFile() != null ? att.getFile().fileKey() : null;
-        String url = key != null ? imageUrlByKey.get(key) : null;
+        String url = storageUrlByKey.get(att.getFile().fileKey());
         if (url == null) {
+            return att;
+        }
+        if (AttachmentType.VIDEO_FILE.name().equals(att.getAttachmentType())) {
+            AttachmentResponse.AttachmentVideoDto video = att.getVideo();
+            return att.toBuilder()
+                    .video(new AttachmentResponse.AttachmentVideoDto(
+                            url,
+                            video != null ? video.videoThumbnailUrl() : null,
+                            video != null ? video.videoTitle() : null,
+                            video != null ? video.videoThumbnailKey() : null,
+                            video != null ? video.videoDurationSeconds() : null,
+                            video != null ? video.videoCodec() : null,
+                            video != null ? video.videoWidth() : null,
+                            video != null ? video.videoHeight() : null,
+                            video != null ? video.videoProcessingStatus() : null))
+                    .build();
+        }
+        if (!AttachmentType.IMAGE.name().equals(att.getAttachmentType())) {
             return att;
         }
         Short width = att.getImage() != null ? att.getImage().imageWidth() : null;
@@ -1380,6 +1469,14 @@ public class TimelinePostService {
                     .build();
             TimelinePostAttachmentEntity saved = attachmentRepository.save(entity);
 
+            if ((attachmentType == AttachmentType.IMAGE || attachmentType == AttachmentType.VIDEO_FILE)
+                    && att.getFileKey() != null && !att.getFileKey().isBlank()) {
+                storageAclService.claimPending(att.getFileKey(), userId, toAclScope(scope, userId),
+                        new StorageAclContentReference("TIMELINE_SCOPE",
+                                scope.scopeType().name() + ":" + scope.scopeId()),
+                        new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", saved.getId().toString()));
+            }
+
             // F13 Phase 4-γ: ファイル系添付のクォータ使用量加算
             if ((attachmentType == AttachmentType.IMAGE || attachmentType == AttachmentType.VIDEO_FILE)
                     && att.getFileSize() != null && att.getFileSize() > 0) {
@@ -1391,6 +1488,14 @@ public class TimelinePostService {
 
             order++;
         }
+    }
+
+    private StorageAclScope toAclScope(ScopeResolution scope, Long userId) {
+        return switch (scope.scopeType()) {
+            case TEAM -> StorageAclScope.team(scope.scopeId());
+            case ORGANIZATION -> StorageAclScope.organization(scope.scopeId());
+            case PERSONAL -> StorageAclScope.personal(userId);
+        };
     }
 
     /**

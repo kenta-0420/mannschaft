@@ -1,6 +1,7 @@
 package com.mannschaft.app.parking.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.parking.ParkingErrorCode;
 import com.mannschaft.app.parking.ParkingMapper;
 import com.mannschaft.app.parking.SpaceType;
@@ -45,7 +46,7 @@ public class ParkingWatchlistService {
                 .userId(userId)
                 .scopeType(scopeType)
                 .scopeId(scopeId)
-                .spaceType(request.getSpaceType() != null ? SpaceType.valueOf(request.getSpaceType()) : null)
+                .spaceType(request.getSpaceType() != null ? EnumInputParser.parse(SpaceType.class, request.getSpaceType(), "spaceType") : null)
                 .floor(request.getFloor())
                 .maxPrice(request.getMaxPrice())
                 .build();

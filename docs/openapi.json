@@ -347,6 +347,10 @@
       "description": "F08.7.1/03 自チームの移籍状況閲覧"
     },
     {
+      "name": "課金 - 解約",
+      "description": "Billing Center PR6a 期末解約の予約と撤回"
+    },
+    {
       "name": "公開設定管理 (F19.1 Phase 7)",
       "description": "チーム / 組織のタイムライン / イベント公開設定の管理"
     },
@@ -13460,7 +13464,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -17195,7 +17200,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -17233,7 +17239,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -17281,7 +17288,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -17314,7 +17322,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -17371,7 +17380,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -57592,6 +57602,45 @@
         }
       }
     },
+    "/api/v1/schedules/{scheduleId}/media/{mediaId}/complete": {
+      "post": {
+        "tags": [
+          "スケジュールメディア"
+        ],
+        "summary": "スケジュール画像アップロード完了確認",
+        "operationId": "confirmImageUpload",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "完了確認成功"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/schedules/{scheduleId}/media/upload-url": {
       "post": {
         "tags": [
@@ -60558,7 +60607,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -60616,7 +60666,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           }
         ],
@@ -60657,7 +60708,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -60695,7 +60747,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -76183,6 +76236,110 @@
         }
       }
     },
+    "/api/v1/me/billing/contracts/{contractId}/cancel": {
+      "post": {
+        "tags": [
+          "課金 - 解約"
+        ],
+        "summary": "契約の解約（期末解約の予約）",
+        "description": "有償契約は current_period_end までの利用を残したまま解約を予約する。Idempotency-Key 必須。",
+        "operationId": "cancel_12",
+        "parameters": [
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingCancelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractCancelResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "課金 - 解約"
+        ],
+        "summary": "解約予約の撤回",
+        "description": "期末を跨ぐ前に限り、cancel_at_period_end を解除して契約を継続させる。Idempotency-Key 必須。",
+        "operationId": "resume_5",
+        "parameters": [
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 36,
+              "minLength": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingCancelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractCancelResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/billing/checkout-sessions": {
       "post": {
         "tags": [
@@ -78187,7 +78344,7 @@
         "tags": [
           "Multipart Upload"
         ],
-        "summary": "Multipart Upload 開始",
+        "summary": "廃止済み: 汎用 Multipart Upload 開始",
         "operationId": "startUpload",
         "requestBody": {
           "content": {
@@ -78200,15 +78357,8 @@
           "required": true
         },
         "responses": {
-          "201": {
-            "description": "セッション作成成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseStartMultipartUploadResponse"
-                }
-              }
-            }
+          "410": {
+            "description": "ドメイン別開始 API へ移行済み"
           }
         }
       }
@@ -83303,6 +83453,31 @@
         }
       }
     },
+    "/api/v1/blog/media/{mediaId}/complete": {
+      "post": {
+        "tags": [
+          "ブログメディア"
+        ],
+        "summary": "画像アップロード完了確認",
+        "operationId": "confirmImageUpload_1",
+        "parameters": [
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "完了確認成功"
+          }
+        }
+      }
+    },
     "/api/v1/blog/media/upload-url": {
       "post": {
         "tags": [
@@ -84378,7 +84553,7 @@
         "tags": [
           "ad-messaging-campaign-transition-controller"
         ],
-        "operationId": "resume_5",
+        "operationId": "resume_6",
         "parameters": [
           {
             "name": "id",
@@ -84501,7 +84676,7 @@
         "tags": [
           "ad-messaging-campaign-transition-controller"
         ],
-        "operationId": "cancel_12",
+        "operationId": "cancel_13",
         "parameters": [
           {
             "name": "id",
@@ -94450,7 +94625,7 @@
           "チーム確認通知"
         ],
         "summary": "確認通知キャンセル",
-        "operationId": "cancel_13",
+        "operationId": "cancel_14",
         "parameters": [
           {
             "name": "teamId",
@@ -95161,7 +95336,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           }
         ],
@@ -95200,7 +95376,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           }
         ],
@@ -95510,7 +95687,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -99481,7 +99659,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -99521,7 +99700,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -99570,7 +99750,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -99842,7 +100023,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -102610,7 +102792,7 @@
           "協会請求（協会視点）"
         ],
         "summary": "協会請求の取消（CANCELLED）",
-        "operationId": "cancel_14",
+        "operationId": "cancel_15",
         "parameters": [
           {
             "name": "orgId",
@@ -103118,7 +103300,7 @@
           "組織確認通知"
         ],
         "summary": "確認通知キャンセル（組織）",
-        "operationId": "cancel_15",
+        "operationId": "cancel_16",
         "parameters": [
           {
             "name": "orgId",
@@ -120165,7 +120347,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           }
         ],
@@ -120196,7 +120379,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           }
         ],
@@ -120356,6 +120540,58 @@
         }
       }
     },
+    "/api/v1/teams/{slug}/members/all": {
+      "get": {
+        "tags": [
+          "チーム管理"
+        ],
+        "summary": "チームメンバー全件一括取得",
+        "description": "全メンバーを 1 レスポンスで返す（CMP-260912-1525）。ページング経路はページ要求ごとに所属情報を全件走査するため、全員を必要とする画面が全ページをめくると総処理量が人数の二乗になる。本 EP は走査を 1 回に固定する。認可・返却項目はページング経路と同一。",
+        "operationId": "getAllTeamMembers",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListScopeMemberResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "可視性レベル未満（非メンバー等）でアクセス不可",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListScopeMemberResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "チームが存在しない / 論理削除済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListScopeMemberResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{slug}/me/permissions": {
       "get": {
         "tags": [
@@ -120493,7 +120729,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -124643,6 +124880,58 @@
         }
       }
     },
+    "/api/v1/shifts/hourly-rates": {
+      "get": {
+        "tags": [
+          "シフト勤務可能時間・時給管理"
+        ],
+        "summary": "チーム時給一括取得（ADMIN/DEPUTY_ADMIN のみ）",
+        "description": "基準日時点で有効な時給を、チーム全員ぶん 1 レスポンスで返す。時給が未設定のメンバーは含まれない。",
+        "operationId": "listTeamEffectiveHourlyRates",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListHourlyRateResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "当該チームの ADMIN/DEPUTY_ADMIN でない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListHourlyRateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/shifts/change-requests/{id}": {
       "get": {
         "tags": [
@@ -128725,7 +129014,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -128765,7 +129055,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           }
         ],
@@ -128796,7 +129087,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           }
         ],
@@ -129151,7 +129443,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -129971,7 +130264,8 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -137981,7 +138275,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListObject"
+                  "$ref": "#/components/schemas/ApiResponseListIncidentCommentResponse"
                 }
               }
             }
@@ -145140,7 +145434,7 @@
           "チーム区画申請"
         ],
         "summary": "チーム申請取消",
-        "operationId": "cancel_16",
+        "operationId": "cancel_17",
         "parameters": [
           {
             "name": "teamId",
@@ -146298,7 +146592,7 @@
           "組織区画申請"
         ],
         "summary": "組織申請取消",
-        "operationId": "cancel_17",
+        "operationId": "cancel_18",
         "parameters": [
           {
             "name": "organizationId",
@@ -146815,7 +147109,7 @@
           "継続課金"
         ],
         "summary": "継続課金 期末解約（F08.9 P5）",
-        "operationId": "cancel_18",
+        "operationId": "cancel_19",
         "parameters": [
           {
             "name": "id",
@@ -150520,7 +150814,9 @@
             "type": "string"
           },
           "postalCode": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
           },
           "timezone": {
             "type": "string"
@@ -173578,6 +173874,21 @@
           }
         }
       },
+      "ScheduleRecurrenceDto": {
+        "type": "object",
+        "properties": {
+          "isException": {
+            "type": "boolean"
+          },
+          "parentScheduleId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "recurrenceRule": {
+            "type": "string"
+          }
+        }
+      },
       "ScheduleResponse": {
         "type": "object",
         "properties": {
@@ -173596,6 +173907,9 @@
           },
           "myAttendanceStatus": {
             "type": "string"
+          },
+          "recurrenceInfo": {
+            "$ref": "#/components/schemas/ScheduleRecurrenceDto"
           },
           "reminders": {
             "type": "array",
@@ -187753,6 +188067,21 @@
           }
         }
       },
+      "ShiftAssignmentWarningDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "conflictingSlotIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      },
       "ShiftSlotPositionDto": {
         "type": "object",
         "properties": {
@@ -187798,6 +188127,12 @@
           },
           "time": {
             "$ref": "#/components/schemas/ShiftSlotTimeDto"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShiftAssignmentWarningDto"
+            }
           }
         }
       },
@@ -195969,6 +196304,67 @@
           }
         }
       },
+      "BillingCancelRequest": {
+        "type": "object",
+        "description": "解約・解約撤回リクエスト",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "契約の version（楽観ロックの期待値）",
+            "example": 0
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "ApiResponseBillingContractCancelResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingContractCancelResponse"
+          }
+        }
+      },
+      "BillingContractCancelResponse": {
+        "type": "object",
+        "description": "解約・解約撤回の結果",
+        "properties": {
+          "canCancel": {
+            "type": "boolean"
+          },
+          "canResume": {
+            "type": "boolean"
+          },
+          "contractId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contractStatus": {
+            "type": "string"
+          },
+          "currentPeriodEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "CreateBillingCheckoutSessionRequest": {
         "type": "object",
         "properties": {
@@ -197522,33 +197918,6 @@
             "minimum": 5242880
           },
           "target_prefix": {
-            "type": "string"
-          }
-        }
-      },
-      "ApiResponseStartMultipartUploadResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/StartMultipartUploadResponse"
-          }
-        }
-      },
-      "StartMultipartUploadResponse": {
-        "type": "object",
-        "properties": {
-          "fileKey": {
-            "type": "string"
-          },
-          "partCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "partSize": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "uploadId": {
             "type": "string"
           }
         }
@@ -200727,7 +201096,9 @@
             "minLength": 8
           },
           "postalCode": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
           },
           "privacyPolicyAccepted": {
             "type": "boolean"
@@ -217537,6 +217908,18 @@
         "type": "object",
         "description": "F20.1 権利サマリ内のアクティブ契約",
         "properties": {
+          "canCancel": {
+            "type": "boolean",
+            "description": "この契約を解約できるか（解約予約済みなら false）"
+          },
+          "canResume": {
+            "type": "boolean",
+            "description": "解約予約を撤回できるか（期末を跨いだら false）"
+          },
+          "cancel": {
+            "$ref": "#/components/schemas/BillingScheduledCancel",
+            "description": "解約予約の内容。予約が無ければ null"
+          },
           "contractId": {
             "type": "string",
             "description": "契約 ID（UUID）",
@@ -217546,6 +217929,11 @@
             "type": "string",
             "format": "date-time",
             "description": "契約日時（ISO-8601）"
+          },
+          "currentPeriodEnd": {
+            "type": "string",
+            "format": "date-time",
+            "description": "現在の課金期間の終了時刻。期末を持たない契約は null"
           },
           "featureKey": {
             "type": "string",
@@ -217561,6 +217949,17 @@
             "type": "integer",
             "format": "int32",
             "description": "契約時単価スナップショット（円）。ベータ中は null（無償）"
+          },
+          "status": {
+            "type": "string",
+            "description": "契約状態（ContractStatus の6値: PENDING / ACTIVE / PAST_DUE / CANCELLED / EXPIRED / PENDING_HANDOVER）",
+            "example": "ACTIVE"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "楽観ロックのCAS期待値。解約・撤回APIの version に渡す",
+            "example": 0
           }
         }
       },
@@ -217617,6 +218016,22 @@
             "type": "string",
             "description": "スコープ種別（USER / TEAM / ORG）",
             "example": "TEAM"
+          }
+        }
+      },
+      "BillingScheduledCancel": {
+        "type": "object",
+        "description": "F20.1 解約予約の内容",
+        "properties": {
+          "endAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "利用可能期限（＝currentPeriodEnd）"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "解約予約を入れた時刻（cancelled_at）"
           }
         }
       },
@@ -220131,6 +220546,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MemberPlanItem"
+            }
+          }
+        }
+      },
+      "ApiResponseListScopeMemberResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScopeMemberResponse"
             }
           }
         }
@@ -233959,6 +234385,59 @@
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "ApiResponseListIncidentCommentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncidentCommentResponse"
+            }
+          }
+        }
+      },
+      "IncidentCommentResponse": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "incidentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isInternal": {
+            "type": "boolean"
+          },
+          "user": {
+            "$ref": "#/components/schemas/IncidentCommentUserResponse"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "IncidentCommentUserResponse": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

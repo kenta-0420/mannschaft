@@ -16,6 +16,8 @@ public interface BulletinReplyRepository extends JpaRepository<BulletinReplyEnti
     /**
      * スレッドの返信をページング取得する（作成日時昇順）。
      */
+    List<BulletinReplyEntity> findByThreadId(Long threadId);
+
     Page<BulletinReplyEntity> findByThreadIdAndParentIdIsNullOrderByCreatedAtAsc(
             Long threadId, Pageable pageable);
 

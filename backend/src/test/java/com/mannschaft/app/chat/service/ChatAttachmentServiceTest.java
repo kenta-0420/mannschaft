@@ -7,6 +7,10 @@ import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
 import com.mannschaft.app.common.storage.quota.StorageQuotaService;
@@ -56,6 +60,7 @@ class ChatAttachmentServiceTest {
 
     @Mock private StorageQuotaService storageQuotaService;
     @Mock private StorageService storageService;
+    @Mock private StorageAclService storageAclService;
     /** 認可判定は {@link ChatChannelAccessGuard} に集約されている。可否そのものは ChatChannelAccessGuardTest が検証する。 */
     @Mock private ChatChannelAccessGuard channelAccessGuard;
     @InjectMocks private ChatAttachmentService service;
@@ -118,6 +123,20 @@ class ChatAttachmentServiceTest {
             throw new RuntimeException(e);
         }
         return entity;
+    }
+
+    @Test
+    @DisplayName("正常系: メッセージ添付をチャンネル親参照と一意バインディングで claim する")
+    void claimMessageAttachment_正準scope_parent_bindingでACLをclaimする() {
+        ChatChannelEntity channel = teamChannel(ChannelType.TEAM_PUBLIC);
+        ChatMessageAttachmentEntity saved = attachment(1024L);
+
+        service.claimMessageAttachment(channel, saved, SENDER_ID);
+
+        verify(storageAclService).claimPending(
+                eq(saved.getFileKey()), eq(SENDER_ID), eq(StorageAclScope.team(TEAM_ID)),
+                eq(new StorageAclContentReference("CHAT_CHANNEL", CHANNEL_ID.toString())),
+                eq(new StorageAclAttachmentBinding("CHAT_MESSAGE_ATTACHMENT", ATTACHMENT_ID.toString())));
     }
 
     @Nested
@@ -355,6 +374,10 @@ class ChatAttachmentServiceTest {
 
             assertThat(result.s3Key()).startsWith("chat/TEAM/50/icons/");
             assertThat(result.expiresInSeconds()).isEqualTo(300L);
+            verify(storageAclService).registerPending(
+                    eq("chat/TEAM/50/icons/uuid/icon.jpg"), eq(SENDER_ID), eq(StorageAclScope.team(TEAM_ID)),
+                    eq("image/jpeg"), eq(Duration.ofMinutes(5)),
+                    eq(new StorageAclContentReference("CHAT_CHANNEL", CHANNEL_ID.toString())));
         }
 
         @Test

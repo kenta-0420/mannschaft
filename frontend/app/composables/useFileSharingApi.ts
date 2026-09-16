@@ -45,7 +45,7 @@ export function useFileSharingApi() {
     const qs = buildQuery(params)
     return api<{
       data: SharedFile[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/files?${qs}`)
   }
 

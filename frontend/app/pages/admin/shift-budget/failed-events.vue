@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useShiftBudgetAdminAccess } from '~/composables/shift/useShiftBudgetAdminAccess'
 import type { FailedEventResponse, FailedEventStatus } from '~/types/shiftBudget'
 
 /**
@@ -25,6 +26,13 @@ const organizationId = computed(() => {
   if (scopeStore.current.type !== 'organization') return null
   return scopeStore.current.id
 })
+
+/**
+ * 予算の管理操作（BUDGET_ADMIN）を出してよいかの判定。
+ * BE は権限が無ければ 403 を返す（その防御は外していない）。ここでは弾かれる操作を
+ * そもそも画面に出さないために使う。CMP-260913-1251。
+ */
+const { canManageBudget, ensureLoaded: ensureBudgetAdminAccess } = useShiftBudgetAdminAccess()
 
 const events = ref<FailedEventResponse[]>([])
 const loading = ref(false)
@@ -128,12 +136,18 @@ async function confirmResolve() {
   }
 }
 
-watch(organizationId, () => load())
+watch(organizationId, () => {
+  load()
+  ensureBudgetAdminAccess()
+})
 watch(statusFilter, () => {
   page.value = 0
   load()
 })
-onMounted(load)
+onMounted(() => {
+  load()
+  ensureBudgetAdminAccess()
+})
 </script>
 
 <template>
@@ -193,7 +207,7 @@ onMounted(load)
           <span class="text-sm">{{ formatDateTime(data.created_at) }}</span>
         </template>
       </Column>
-      <Column :header="t('shiftBudget.failedEvent.actions')" style="width: 200px">
+      <Column v-if="canManageBudget" :header="t('shiftBudget.failedEvent.actions')" style="width: 200px">
         <template #body="{ data }: { data: FailedEventResponse }">
           <div class="flex gap-1">
             <Button

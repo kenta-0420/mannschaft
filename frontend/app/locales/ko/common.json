@@ -2436,5 +2436,16 @@
         "description": "대회 참가비 확인 및 결제"
       }
     }
+  },
+  "auditLog": {
+    "title": "감사 로그",
+    "empty": "로그가 없습니다",
+    "loadFailed": "감사 로그를 불러오지 못했습니다",
+    "column": {
+      "datetime": "날짜/시간",
+      "user": "사용자",
+      "category": "카테고리",
+      "event": "이벤트"
+    }
   }
 }

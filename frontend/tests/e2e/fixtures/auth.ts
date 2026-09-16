@@ -25,7 +25,8 @@ export async function loginViaApi(
 
   if (!options.deferNavigation) {
     // storageState を生成する既存呼び出しでは、localStorage のオリジンを先に確立する。
-    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    // SSR が重い画面を開く必要はなく、同一オリジンの静的ファイルで localStorage を確立する。
+    await page.goto('/robots.txt', { waitUntil: 'domcontentloaded' })
   }
 
   const loginRes = await page.request.post(`${apiBase}/api/v1/auth/login`, {

@@ -2436,5 +2436,16 @@
         "description": "Turnier-Teilnahmegebühren ansehen und bezahlen"
       }
     }
+  },
+  "auditLog": {
+    "title": "Audit-Log",
+    "empty": "Keine Protokolle vorhanden",
+    "loadFailed": "Das Audit-Log konnte nicht geladen werden",
+    "column": {
+      "datetime": "Datum und Uhrzeit",
+      "user": "Benutzer",
+      "category": "Kategorie",
+      "event": "Ereignis"
+    }
   }
 }

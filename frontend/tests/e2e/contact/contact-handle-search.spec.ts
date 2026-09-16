@@ -15,7 +15,7 @@ const MOCK_HANDLE_RESULT = {
 
 const MOCK_CHANNELS = {
   data: [],
-  meta: { page: 0, size: 50, totalElements: 0, totalPages: 0 },
+  meta: { page: 0, size: 50, total: 0, totalPages: 0 },
 }
 
 const MOCK_CONTACTS = {

@@ -35,8 +35,7 @@ public class AttachmentResponse {
      * 画像添付の表示情報。
      *
      * <p>{@code url}/{@code thumbnailUrl} は R2 生キー（{@code file.fileKey}）を
-     * {@code MediaUrlResolver} で署名付き表示 URL に解決した絶対 URL（動画の
-     * {@code videoUrl}/{@code videoThumbnailUrl} と同じ方式に倣う）。DB には生キーしか
+     * {@code StorageAccessService} で ACL 照合後に署名付き表示 URL へ解決した絶対 URL。DB には生キーしか
      * 保存されないため、これを付けないと FE は表示できない（issue #2424）。画像は
      * 別サムネイルを持たないため {@code thumbnailUrl} は {@code url} と同一値を返す。
      * 解決層（Service）で埋めるため、Mapper 変換直後は両方 {@code null}。</p>

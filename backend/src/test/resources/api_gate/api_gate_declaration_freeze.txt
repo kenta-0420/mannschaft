@@ -86,6 +86,7 @@ HTTP|com.mannschaft.app.auth.controller.ParentalConsentController|9|9
 HTTP|com.mannschaft.app.auth.controller.UserController|10|12
 HTTP|com.mannschaft.app.auth.controller.UserOAuthLinkController|2|2
 HTTP|com.mannschaft.app.billing.api.BillingCheckoutController|2|2
+HTTP|com.mannschaft.app.billing.api.BillingContractCancelResumeController|0|2
 HTTP|com.mannschaft.app.billing.api.BillingContractController|6|9
 HTTP|com.mannschaft.app.billing.api.BillingCustomerPortalController|1|1
 HTTP|com.mannschaft.app.billing.api.BillingEntitlementSummaryController|2|3
@@ -144,7 +145,7 @@ HTTP|com.mannschaft.app.circulation.controller.CirculationStampController|5|5
 HTTP|com.mannschaft.app.circulation.controller.MyCirculationController|1|1
 HTTP|com.mannschaft.app.circulation.controller.OrgCirculationDocumentController|8|8
 HTTP|com.mannschaft.app.circulation.controller.TeamCirculationDocumentController|8|8
-HTTP|com.mannschaft.app.cms.controller.BlogMediaController|1|1
+HTTP|com.mannschaft.app.cms.controller.BlogMediaController|2|2
 HTTP|com.mannschaft.app.cms.controller.BlogPostController|15|15
 HTTP|com.mannschaft.app.cms.controller.BlogReactionController|2|2
 HTTP|com.mannschaft.app.cms.controller.BlogSeriesController|4|4
@@ -543,7 +544,7 @@ HTTP|com.mannschaft.app.schedule.controller.ScheduleCommentController|8|8
 HTTP|com.mannschaft.app.schedule.controller.ScheduleCommonController|9|9
 HTTP|com.mannschaft.app.schedule.controller.ScheduleDelegationController|6|6
 HTTP|com.mannschaft.app.schedule.controller.ScheduleInvitationController|7|7
-HTTP|com.mannschaft.app.schedule.controller.ScheduleMediaController|4|4
+HTTP|com.mannschaft.app.schedule.controller.ScheduleMediaController|5|5
 HTTP|com.mannschaft.app.schedule.controller.TeamAnnualScheduleController|4|4
 HTTP|com.mannschaft.app.schedule.controller.TeamEventCategoryController|2|2
 HTTP|com.mannschaft.app.schedule.controller.TeamScheduleController|13|13
@@ -571,8 +572,8 @@ HTTP|com.mannschaft.app.service.controller.ServiceRecordController|17|17
 HTTP|com.mannschaft.app.service.controller.ServiceRecordFieldController|7|7
 HTTP|com.mannschaft.app.service.controller.ServiceRecordTemplateController|9|9
 HTTP|com.mannschaft.app.shift.controller.MemberWorkConstraintController|7|7
-HTTP|com.mannschaft.app.shift.controller.ShiftAutoAssignController|6|6
-HTTP|com.mannschaft.app.shift.controller.ShiftAvailabilityController|5|5
+HTTP|com.mannschaft.app.shift.controller.ShiftAutoAssignController|0|6
+HTTP|com.mannschaft.app.shift.controller.ShiftAvailabilityController|6|6
 HTTP|com.mannschaft.app.shift.controller.ShiftChangeRequestController|5|5
 HTTP|com.mannschaft.app.shift.controller.ShiftMyController|1|1
 HTTP|com.mannschaft.app.shift.controller.ShiftPdfController|1|1
@@ -621,7 +622,7 @@ HTTP|com.mannschaft.app.survey.controller.SurveyThreadController|1|1
 HTTP|com.mannschaft.app.sync.controller.OfflineSyncController|5|5
 HTTP|com.mannschaft.app.team.controller.OrganizationTeamSearchController|1|1
 HTTP|com.mannschaft.app.team.controller.PublicTeamController|1|1
-HTTP|com.mannschaft.app.team.controller.TeamController|38|38
+HTTP|com.mannschaft.app.team.controller.TeamController|39|39
 HTTP|com.mannschaft.app.team.controller.TeamExtendedProfileController|12|12
 HTTP|com.mannschaft.app.team.controller.TeamShiftSettingsController|2|2
 HTTP|com.mannschaft.app.template.controller.ModuleController|2|2

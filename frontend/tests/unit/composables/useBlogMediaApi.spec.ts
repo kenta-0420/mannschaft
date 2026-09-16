@@ -25,8 +25,6 @@ vi.mock('~/composables/useMultipartUploadApi', () => ({
     getPartUrls: mockGetPartUrls,
     completeUpload: mockCompleteUpload,
     abortUpload: mockAbortUpload,
-    startUpload: vi.fn(),
-    uploadLargeFile: vi.fn(),
   }),
 }))
 
@@ -150,7 +148,9 @@ describe('useBlogMediaApi', () => {
   describe('uploadImage', () => {
     it('Presigned URLにPUTアップロードされること', async () => {
       // generateUploadUrl のモック
-      mockApiFetch.mockResolvedValueOnce(makeGenerateUrlResponseImage())
+      mockApiFetch
+        .mockResolvedValueOnce(makeGenerateUrlResponseImage())
+        .mockResolvedValueOnce(undefined)
 
       // R2 への直接 PUT のモック
       mockGlobalFetch.mockResolvedValueOnce({
@@ -170,7 +170,7 @@ describe('useBlogMediaApi', () => {
       })
 
       // generateUploadUrl が呼ばれること
-      expect(mockApiFetch).toHaveBeenCalledTimes(1)
+      expect(mockApiFetch).toHaveBeenCalledTimes(2)
       const [url, options] = mockApiFetch.mock.calls[0] as [string, Record<string, unknown>]
       expect(url).toBe('/api/v1/blog/media/upload-url')
       const body = options.body as Record<string, unknown>
@@ -181,6 +181,13 @@ describe('useBlogMediaApi', () => {
       const [fetchUrl, fetchOptions] = mockGlobalFetch.mock.calls[0] as [string, RequestInit]
       expect(fetchUrl).toBe('https://r2.example.com/presigned-put-url?sig=abc')
       expect(fetchOptions.method).toBe('PUT')
+
+      const [completeUrl, completeOptions] = mockApiFetch.mock.calls[1] as [
+        string,
+        Record<string, unknown>,
+      ]
+      expect(completeUrl).toBe('/api/v1/blog/media/100/complete')
+      expect(completeOptions.method).toBe('POST')
 
       // 戻り値の確認
       expect(result.mediaId).toBe(100)

@@ -273,7 +273,7 @@ public class PublicPostQueryService {
             log.warn("本文メディア: 記事のスコープを判定できないため解決を見送る: postId={}", post.getId());
             return bodyHtml;
         }
-        return blogBodyMediaResolver.resolveBody(bodyHtml, scope.scopeType(), scope.scopeId());
+        return blogBodyMediaResolver.resolveBody(bodyHtml, scope.scopeType(), scope.scopeId(), post.getId());
     }
 
     /**

@@ -575,4 +575,119 @@ class TeamServiceTest {
             verify(mediaUrlResolver, org.mockito.Mockito.never()).resolve(MAP_EMBED);
         }
     }
+
+    /**
+     * CMP-260912-1525: チームメンバーの一括取得。
+     *
+     * <p>ページング経路（{@code getMembers}）は 1 ページ要求ごとに
+     * {@code queryMemberIdentities} を呼ぶ＝所属情報を全件走査する。したがって
+     * 全員を見たい画面が全ページをめくると総走査量が「人数 × ページ数」になる。
+     * 一括経路はページ数に関係なく走査を 1 回に固定する。ここではその
+     * <b>呼び出し回数そのもの</b>を機械的に押さえる（「1 回あたりが軽い」では不可）。</p>
+     */
+    @Nested
+    @DisplayName("getAllMembers（全メンバー一括取得）")
+    class GetAllMembers {
+
+        private static final int MEMBER_COUNT = 250;
+        private static final int PAGE_SIZE = 100;
+
+        /** 走査結果に相当する軽量行（表示名・アバターは未解決）。 */
+        private java.util.List<com.mannschaft.app.membership.dto.MemberDto> identities() {
+            java.util.List<com.mannschaft.app.membership.dto.MemberDto> list = new java.util.ArrayList<>();
+            for (int i = 0; i < MEMBER_COUNT; i++) {
+                list.add(new com.mannschaft.app.membership.dto.MemberDto(
+                        (long) i, null, null, "MEMBER", java.time.LocalDateTime.of(2026, 1, 1, 0, 0)));
+            }
+            return list;
+        }
+
+        /** 実体化は「表示名を埋めて返す」ものとして振る舞わせる（件数・並び順は入力どおり）。 */
+        private void stubDispatcher() {
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(TeamEntity.builder()
+                    .name("大規模チーム").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .build()));
+            given(memberQueryDispatcher.queryMemberIdentities(TEAM_ID, ScopeType.TEAM, null))
+                    .willReturn(identities());
+            given(memberQueryDispatcher.hydrate(any())).willAnswer(inv -> {
+                java.util.List<com.mannschaft.app.membership.dto.MemberDto> in = inv.getArgument(0);
+                return in.stream()
+                        .map(d -> new com.mannschaft.app.membership.dto.MemberDto(
+                                d.userId(), "user" + d.userId(), null, d.roleName(), d.joinedAt()))
+                        .toList();
+            });
+            given(scopeMemberCalendarSettingService.resolveColors(eq(ScopeType.TEAM), eq(TEAM_ID), any()))
+                    .willReturn(java.util.Map.of());
+        }
+
+        @Test
+        @DisplayName("AC-2/AC-3: 全員を 1 回で返し、所属情報の走査はちょうど 1 回に留まる")
+        void 一括取得_走査は1回() {
+            // Given
+            stubDispatcher();
+
+            // When
+            var all = service.getAllMembers(TEAM_ID);
+
+            // Then: 全員が 1 回の呼び出しで揃う
+            assertThat(all).hasSize(MEMBER_COUNT);
+            // 所属情報の全件走査（＝重い処理）はちょうど 1 回。ページ数に比例して増えない。
+            verify(memberQueryDispatcher, org.mockito.Mockito.times(1))
+                    .queryMemberIdentities(TEAM_ID, ScopeType.TEAM, null);
+            // 実体化も 1 回で、渡されるのは全員ぶん（ページごとの小分けではない）
+            org.mockito.ArgumentCaptor<java.util.List<com.mannschaft.app.membership.dto.MemberDto>> captor =
+                    org.mockito.ArgumentCaptor.forClass(java.util.List.class);
+            verify(memberQueryDispatcher, org.mockito.Mockito.times(1)).hydrate(captor.capture());
+            assertThat(captor.getValue()).hasSize(MEMBER_COUNT);
+            verify(scopeMemberCalendarSettingService, org.mockito.Mockito.times(1))
+                    .resolveColors(eq(ScopeType.TEAM), eq(TEAM_ID), any());
+        }
+
+        @Test
+        @DisplayName("AC-3: 同じ人数をページング経路で全ページめくると走査がページ数ぶん走る（一括はその 1/N）")
+        void ページング経路は走査がページ数に比例する() {
+            // Given
+            stubDispatcher();
+            int totalPages = (MEMBER_COUNT + PAGE_SIZE - 1) / PAGE_SIZE;
+
+            // When: 全ページをめくる
+            for (int page = 0; page < totalPages; page++) {
+                service.getMembers(TEAM_ID, org.springframework.data.domain.PageRequest.of(page, PAGE_SIZE));
+            }
+
+            // Then: 走査はページ数ぶん走っている（これが二乗の正体）
+            verify(memberQueryDispatcher, org.mockito.Mockito.times(totalPages))
+                    .queryMemberIdentities(TEAM_ID, ScopeType.TEAM, null);
+            assertThat(totalPages).isGreaterThan(1);
+        }
+
+        @Test
+        @DisplayName("AC-4: 一括取得の内容・並び順・件数が全ページを連結したものと一致する")
+        void 一括とページング連結が一致する() {
+            // Given
+            stubDispatcher();
+            int totalPages = (MEMBER_COUNT + PAGE_SIZE - 1) / PAGE_SIZE;
+
+            // When
+            var all = service.getAllMembers(TEAM_ID);
+            java.util.List<com.mannschaft.app.role.dto.MemberResponse> concatenated = new java.util.ArrayList<>();
+            long totalElements = 0;
+            for (int page = 0; page < totalPages; page++) {
+                var paged = service.getMembers(TEAM_ID, org.springframework.data.domain.PageRequest.of(page, PAGE_SIZE));
+                concatenated.addAll(paged.getData());
+                totalElements = paged.getMeta().getTotal();
+            }
+
+            // Then
+            assertThat(totalElements).isEqualTo(MEMBER_COUNT);
+            assertThat(all).hasSameSizeAs(concatenated);
+            assertThat(all.stream().map(com.mannschaft.app.role.dto.MemberResponse::getUserId).toList())
+                    .isEqualTo(concatenated.stream()
+                            .map(com.mannschaft.app.role.dto.MemberResponse::getUserId).toList());
+            assertThat(all.stream().map(com.mannschaft.app.role.dto.MemberResponse::getRoleName).toList())
+                    .isEqualTo(concatenated.stream()
+                            .map(com.mannschaft.app.role.dto.MemberResponse::getRoleName).toList());
+        }
+    }
 }

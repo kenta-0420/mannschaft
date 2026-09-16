@@ -47,7 +47,7 @@ function onPage(event: { page: number; rows: number }) {
     striped-rows
     paginator
     :rows="meta?.size ?? 20"
-    :total-records="meta?.totalElements ?? 0"
+    :total-records="meta?.total ?? 0"
     lazy
     :first="(meta?.page ?? 0) * (meta?.size ?? 20)"
     :rows-per-page-options="[20, 50, 100]"

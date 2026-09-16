@@ -217,7 +217,7 @@ test.describe('ADV: 広告表示・キャンペーン管理', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: MOCK_ADVERTISER_ACCOUNTS,
-          meta: { totalElements: 2, page: 0, size: 20, totalPages: 1 },
+          meta: { total: 2, page: 0, size: 20, totalPages: 1 },
         }),
       })
     })

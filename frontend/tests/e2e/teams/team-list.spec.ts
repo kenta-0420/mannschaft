@@ -23,7 +23,7 @@ test.describe('TEAM-001〜003: チーム一覧', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: TEAM_LIST,
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })
@@ -41,7 +41,7 @@ test.describe('TEAM-001〜003: チーム一覧', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: TEAM_LIST,
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })
@@ -59,7 +59,7 @@ test.describe('TEAM-001〜003: チーム一覧', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: [],
-          meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 },
+          meta: { page: 0, size: 20, total: 0, totalPages: 0 },
         }),
       })
     })

@@ -111,7 +111,7 @@ class PublicPostQueryServiceMediaResolutionTest {
         lenient().when(mediaUrlResolver.resolve(any())).thenReturn(null);
         lenient().when(identityVisibilityResolver.resolveIdentityForViewer(any(), any(), any(), any()))
                 .thenReturn(new DisplayIdentity("投稿者", null, false, true));
-        lenient().when(blogBodyMediaResolver.resolveBody(any(), any(), any()))
+        lenient().when(blogBodyMediaResolver.resolveBody(any(), any(), any(), any()))
                 .thenReturn(RESOLVED_BODY);
     }
 
@@ -140,7 +140,7 @@ class PublicPostQueryServiceMediaResolutionTest {
         service.findPublicPostDetailByTeam(TEAM_ID, POST_ID, ViewerContext.anonymous());
 
         verify(blogBodyMediaResolver).resolveBody(
-                eq(RAW_BODY), eq(StorageScopeType.TEAM), eq(TEAM_ID));
+                eq(RAW_BODY), eq(StorageScopeType.TEAM), eq(TEAM_ID), any());
     }
 
     @Test
@@ -195,7 +195,7 @@ class PublicPostQueryServiceMediaResolutionTest {
         lenient().when(mediaUrlResolver.resolve(any())).thenReturn(null);
         lenient().when(identityVisibilityResolver.resolveIdentityForViewer(any(), any(), any(), any()))
                 .thenReturn(new DisplayIdentity("投稿者", null, false, true));
-        lenient().when(blogBodyMediaResolver.resolveBody(any(), any(), any()))
+        lenient().when(blogBodyMediaResolver.resolveBody(any(), any(), any(), any()))
                 .thenReturn(RESOLVED_BODY);
         given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), isNull(), any(ContentGateTarget.class)))
                 .willReturn(new GateCheckResponse(true, false, List.of()));
@@ -203,6 +203,6 @@ class PublicPostQueryServiceMediaResolutionTest {
         service.findPublicPostDetailByOrganization(ORG_ID, POST_ID, ViewerContext.anonymous());
 
         verify(blogBodyMediaResolver).resolveBody(
-                eq(RAW_BODY), eq(StorageScopeType.ORGANIZATION), eq(ORG_ID));
+                eq(RAW_BODY), eq(StorageScopeType.ORGANIZATION), eq(ORG_ID), any());
     }
 }

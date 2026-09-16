@@ -1,6 +1,7 @@
 package com.mannschaft.app.queue.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.queue.QueueErrorCode;
 import com.mannschaft.app.queue.QueueMapper;
 import com.mannschaft.app.queue.QueueMode;
@@ -67,7 +68,7 @@ public class QueueCategoryService {
     public CategoryResponse createCategory(CreateCategoryRequest request,
                                            QueueScopeType scopeType, Long scopeId) {
         QueueMode queueMode = request.getQueueMode() != null
-                ? QueueMode.valueOf(request.getQueueMode()) : QueueMode.INDIVIDUAL;
+                ? EnumInputParser.parse(QueueMode.class, request.getQueueMode(), "queueMode") : QueueMode.INDIVIDUAL;
 
         QueueCategoryEntity entity = QueueCategoryEntity.builder()
                 .scopeType(scopeType)
@@ -99,7 +100,7 @@ public class QueueCategoryService {
         QueueCategoryEntity entity = findCategoryOrThrow(id, scopeType, scopeId);
 
         QueueMode queueMode = request.getQueueMode() != null
-                ? QueueMode.valueOf(request.getQueueMode()) : entity.getQueueMode();
+                ? EnumInputParser.parse(QueueMode.class, request.getQueueMode(), "queueMode") : entity.getQueueMode();
 
         entity.update(
                 request.getName(),

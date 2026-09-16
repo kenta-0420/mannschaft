@@ -3,6 +3,8 @@ package com.mannschaft.app.filesharing.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.filesharing.FileScopeType;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileVisibilityRole;
@@ -11,6 +13,7 @@ import com.mannschaft.app.filesharing.dto.FolderDetailResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileRepository;
+import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
 import com.mannschaft.app.filesharing.repository.SharedFolderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +61,8 @@ public class SharedFolderQueryService {
     private final SharedFolderAccessGuard folderAccessGuard;
     private final NameResolverService nameResolverService;
     private final SharedFileQuotaService sharedFileQuotaService;
+    private final SharedFileVersionRepository versionRepository;
+    private final StorageAclService storageAclService;
 
     /** パンくず構築時の祖先探索の深さ上限（循環・異常データ防御）。 */
     private static final int MAX_BREADCRUMB_DEPTH = 50;
@@ -265,6 +270,7 @@ public class SharedFolderQueryService {
         for (SharedFolderEntity folder : subtree) {
             // 各フォルダ配下のファイルを soft-delete し、フォルダ自身のスコープで容量を戻す。
             for (SharedFileEntity file : fileRepository.findByFolderIdOrderByNameAsc(folder.getId())) {
+                releaseAllVersions(file);
                 file.softDelete();
                 fileRepository.save(file);
                 sharedFileQuotaService.recordFileDeletion(folder, file.getId(), file.getFileSize(), userId);
@@ -303,6 +309,12 @@ public class SharedFolderQueryService {
             queue.addAll(folderRepository.findByParentIdOrderByNameAsc(current.getId()));
         }
         return result;
+    }
+
+    private void releaseAllVersions(SharedFileEntity file) {
+        versionRepository.findByFileIdOrderByVersionNumberDesc(file.getId()).forEach(version ->
+                storageAclService.releaseClaimed(version.getFileKey(),
+                        new StorageAclAttachmentBinding("SHARED_FILE_VERSION", version.getId().toString())));
     }
 
     // ========================================

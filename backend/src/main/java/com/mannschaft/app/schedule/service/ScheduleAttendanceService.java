@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -105,7 +106,7 @@ public class ScheduleAttendanceService {
         validateAttendanceDeadline(schedule);
         validateComment(schedule, req.getComment());
 
-        AttendanceStatus newStatus = AttendanceStatus.valueOf(req.getStatus());
+        AttendanceStatus newStatus = EnumInputParser.parse(AttendanceStatus.class, req.getStatus(), "status");
 
         ScheduleAttendanceEntity attendance = attendanceRepository
                 .findByScheduleIdAndUserId(scheduleId, userId)
@@ -348,10 +349,15 @@ public class ScheduleAttendanceService {
         if (value == null) {
             return "";
         }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
+        String escaped = value;
+        if (!escaped.isEmpty() && "=+-@".indexOf(escaped.charAt(0)) >= 0) {
+            escaped = "'" + escaped;
         }
-        return value;
+        if (escaped.contains(",") || escaped.contains("\"")
+                || escaped.contains("\r") || escaped.contains("\n")) {
+            return "\"" + escaped.replace("\"", "\"\"") + "\"";
+        }
+        return escaped;
     }
 
     /**

@@ -540,7 +540,38 @@ public enum AuditEventType {
      * metadata に scopeKind・scopeId・billingCustomerId を含める。
      * <b>Portal URL は含めない</b>（正本 §370: URL・payload は監査から除外）。
      */
-    BILLING_PORTAL_OPENED(AuditEventCategory.BILLING);
+    BILLING_PORTAL_OPENED(AuditEventCategory.BILLING),
+
+    /**
+     * 期末解約の予約を受け付けた（PR6a AC-66・05 §369）。operation の<b>作成</b>に対応する。
+     * userId=操作者 / teamId または organizationId=対象スコープ /
+     * metadata に scopeKind・scopeId・contractId（object ref）を含める。
+     * <b>Stripe の raw payload・URL・client secret は含めない</b>（AC-67・正本 §370）。
+     */
+    BILLING_CANCEL_REQUESTED(AuditEventCategory.BILLING),
+
+    /**
+     * 期末解約が Stripe 反映まで<b>確定</b>した（PR6a AC-66）。
+     * metadata は {@link #BILLING_CANCEL_REQUESTED} と同じ項目に endAt（期末日時）を加える。
+     */
+    BILLING_CANCEL_APPLIED(AuditEventCategory.BILLING),
+
+    /**
+     * 期末解約が<b>失敗</b>した（PR6a AC-66。Stripe 障害・競合・前提不成立を含む）。
+     * 成功だけを監査すると「利用者が解約を試みたが通らなかった」事実が残らないため、
+     * 失敗も同じ接頭辞で記録する。metadata に errorCode（アプリのエラーコード）を含める。
+     * <b>例外メッセージ本文は含めない</b>（Stripe の応答文言に ID・URL が混じりうるため・AC-67）。
+     */
+    BILLING_CANCEL_FAILED(AuditEventCategory.BILLING),
+
+    /** 解約撤回を受け付けた（PR6a AC-66）。metadata は解約と同じ。 */
+    BILLING_CANCEL_RESUME_REQUESTED(AuditEventCategory.BILLING),
+
+    /** 解約撤回が確定した（PR6a AC-66）。 */
+    BILLING_CANCEL_RESUME_APPLIED(AuditEventCategory.BILLING),
+
+    /** 解約撤回が失敗した（PR6a AC-66）。metadata に errorCode を含める。 */
+    BILLING_CANCEL_RESUME_FAILED(AuditEventCategory.BILLING);
 
     private final AuditEventCategory category;
 }

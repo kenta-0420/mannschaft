@@ -4,6 +4,7 @@ import com.mannschaft.app.common.duplicatename.DuplicateNameCandidate;
 import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
 import com.mannschaft.app.common.duplicatename.DuplicateNameNormalizer;
 import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.event.TeamCreatedEvent;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
@@ -129,7 +130,7 @@ public class TeamService {
                             .prefecture(req.getPrefecture())
                             .city(req.getCity())
                             .visibility(req.getVisibility() != null
-                                    ? TeamEntity.Visibility.valueOf(req.getVisibility())
+                                    ? EnumInputParser.parse(TeamEntity.Visibility.class, req.getVisibility(), "visibility")
                                     : TeamEntity.Visibility.GUESTS_AND_ABOVE)
                             .supporterEnabled(false)
                             .build();
@@ -695,7 +696,7 @@ public class TeamService {
         // toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化し、
         // slug 一意制約違反で 500 になるため使わない。visibility の enum 解決は本層の責務。
         TeamEntity.Visibility visibility = req.getVisibility() != null
-                ? TeamEntity.Visibility.valueOf(req.getVisibility())
+                ? EnumInputParser.parse(TeamEntity.Visibility.class, req.getVisibility(), "visibility")
                 : null;
         team.applyUpdate(
                 req.getName(),
@@ -816,11 +817,28 @@ public class TeamService {
         findTeamOrThrow(teamId);
 
         // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照に完全切替
-        var memberDtos = memberQueryDispatcher.queryMembers(teamId, ScopeType.TEAM, null);
+        //
+        // CMP-260910-1555: 是正前はここで queryMembers（＝常にチーム全員を実体化し、
+        // ユーザー 1 人ごとに users を引く N+1）を呼び、全員ぶんの色解決と
+        // MemberResponse 構築まで済ませてから subList でページを切り出していた。
+        // つまり 1 ページ取るたびにチーム全員ぶんの処理が走り、一覧を最後までめくると
+        // 総処理量が人数 N に対して概ね N^2/ページサイズになる。全ページを取得する
+        // 画面（時給設定など）では大規模チームで DB 負荷とタイムアウトを招いていた。
+        // 軽い行（userId・ロール・joinedAt のみ）を queryMemberIdentities で全件そろえ、
+        // ページ位置で切り出してから hydrate で表示名・アバターを 1 クエリで解決する。
+        // 色解決もページ内のユーザーに限定する。API のレスポンス形状・並び順・総件数は不変。
+        var identities = memberQueryDispatcher.queryMemberIdentities(teamId, ScopeType.TEAM, null);
+        long totalElements = identities.size();
+        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
+        int size = pageable.isPaged() ? pageable.getPageSize() : (int) totalElements;
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, identities.size());
+        var memberDtos = memberQueryDispatcher.hydrate(
+                fromIndex >= identities.size() ? List.of() : identities.subList(fromIndex, toIndex));
         var colorsByUserId = scopeMemberCalendarSettingService.resolveColors(
                 ScopeType.TEAM, teamId, memberDtos.stream().map(dto -> dto.userId()).toList());
 
-        var data = memberDtos.stream()
+        List<MemberResponse> pagedData = memberDtos.stream()
                 .map(dto -> new MemberResponse(
                         dto.userId(),
                         dto.displayName(),
@@ -830,19 +848,57 @@ public class TeamService {
                         colorsByUserId.get(dto.userId())))
                 .toList();
 
-        // Dispatcher は全件リストを返すため、ページネーションはアプリ側でエミュレート
-        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
-        int size = pageable.isPaged() ? pageable.getPageSize() : data.size();
-        int fromIndex = page * size;
-        int toIndex = Math.min(fromIndex + size, data.size());
-        List<MemberResponse> pagedData = (fromIndex >= data.size())
-                ? List.<MemberResponse>of() : data.subList(fromIndex, toIndex);
-
-        long totalElements = data.size();
         int totalPages = size == 0 ? 1 : (int) Math.ceil((double) totalElements / size);
 
         var meta = new PagedResponse.PageMeta(totalElements, page, size, totalPages);
         return PagedResponse.of(pagedData, meta);
+    }
+
+    /**
+     * チームの全メンバーを 1 回の呼び出しで取得する（CMP-260912-1525）。
+     *
+     * <h2>なぜページング経路と別に要るのか</h2>
+     * <p>{@link #getMembers} は 1 ページ要求ごとに
+     * {@link MemberQueryDispatcher#queryMemberIdentities} を呼ぶ。これは
+     * {@code user_roles} と {@code memberships} を<b>スコープ全件走査</b>して
+     * 重複排除と OQ-2 優先度解決を行う処理であり、1 ページぶんに絞り込めない
+     * （どの行が何位になるかは全件見ないと決まらないため）。したがって
+     * 「全員を見たい画面」が全ページをめくると、総走査量はメンバー数 N に対して
+     * {@code N × ceil(N / ページサイズ)} になる。ページサイズを大きくしても
+     * 並列を直列に変えても、この総量そのものは減らない。</p>
+     *
+     * <p>本メソッドは走査を<b>ちょうど 1 回</b>に固定する。実体化（表示名・アバター）と
+     * カレンダー色の解決も全員ぶんをまとめて 1 クエリずつで行うため、
+     * 総処理量は N に比例する。</p>
+     *
+     * <h2>結果の同一性</h2>
+     * <p>集約規則（OQ-2 優先度）・並び順・総件数は {@link #getMembers} と同一である。
+     * 同じ {@code queryMemberIdentities} → {@code hydrate} の順路を、切り出しを挟まずに
+     * 通しているだけであり、意味論は変えていない。</p>
+     *
+     * <p>認可はページング経路と同じく呼び出し元（コントローラ）の可視性チェックに委ねる。
+     * 返す情報は {@link #getMembers} と同一で、一括化によって新たに露出する項目は無い。</p>
+     *
+     * @param teamId チームID
+     * @return チームの全メンバー（並び順は {@link #getMembers} と同一）
+     */
+    public List<MemberResponse> getAllMembers(Long teamId) {
+        findTeamOrThrow(teamId);
+
+        var identities = memberQueryDispatcher.queryMemberIdentities(teamId, ScopeType.TEAM, null);
+        var memberDtos = memberQueryDispatcher.hydrate(identities);
+        var colorsByUserId = scopeMemberCalendarSettingService.resolveColors(
+                ScopeType.TEAM, teamId, memberDtos.stream().map(dto -> dto.userId()).toList());
+
+        return memberDtos.stream()
+                .map(dto -> new MemberResponse(
+                        dto.userId(),
+                        dto.displayName(),
+                        dto.avatarUrl(),
+                        dto.roleName(),
+                        dto.joinedAt(),
+                        colorsByUserId.get(dto.userId())))
+                .toList();
     }
 
     /**

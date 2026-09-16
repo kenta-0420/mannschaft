@@ -41,6 +41,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       {@code gate_key != null} なのにコード側に route 束縛が無いものを検出する
  *       — route 層の隔離漏れ（未公開機能に URL 直打ちで到達できる穴）。</li>
  *   <li>(iii) コード側の gate_key 重複を検出する。</li>
+ *   <li>(iv)〜(vii) {@code route_binding_exclusions}（下記）の理由欠落・陳腐化・綴り間違い、および
+ *       <b>BE ゲート（{@code @RequireFeature}）を持たない除外</b>を検出する。</li>
  * </ul>
  *
  * <h2>本テストは ArchUnit ではない</h2>
@@ -52,6 +54,21 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>違反が出た場合は台帳側か FE の束縛表側を直すこと。隔離対象で route 束縛を持てない
  * （専用の top-level route が無い等）機能は、YAML の {@code gate_key} を {@code null} の
  * ままにしておく（route 層の対象外であることを台帳上で明示する）。</p>
+ *
+ * <h2>BE 専用ゲートの明示除外（{@code route_binding_exclusions}）</h2>
+ * <p><b>gate_key を null にできない例外が1種類だけある。</b> BE の {@code @RequireFeature} に
+ * 使うキーは台帳と seed の積集合に実在しなければならない（{@link FeatureGateAnnotationKeyGuardTest}）。
+ * つまり「専用 URL は1本も無いが BE 入口だけ塞ぐ」機能は、gate_key を発行せざるを得ず、
+ * かつ束縛すべき route を持たない。実例: {@code FEATURE_SHIFT_AUTO_ASSIGN_ENABLED}
+ * （自動割当の UI は {@code /teams/&#42;/shifts/&#42;/board} のタブ・ボタンであり、束縛すると
+ * 親機能 shift の画面全体を巻き添えで遮断してしまう）。</p>
+ * <p>この場合に限り台帳トップレベルの {@code route_binding_exclusions} に
+ * <b>理由付きで</b>宣言する。適用条件（BE 入口を実際に塞いでいること）は (vii) が
+ * {@code @RequireFeature} との照合で機械的に検証するため、「理由さえ書けば何でも除外できる」
+ * 抜け道にはならない（Codex 検分 P2）。これは検出の緩和ではなく、
+ * {@code route_coverage_exclusions}（{@link FeatureGatePageCoverageGuardTest}）と同じ
+ * <b>理由必須・陳腐化検出つきの明示宣言</b>である: 理由が空なら (iv)、束縛済みなのに残っていれば
+ * (v)、台帳に対応が無ければ (vi) で red になる。</p>
  */
 @DisplayName("番人: 棚卸し台帳の gate_key と FE route 束縛表(GATE_ROUTE_MAP)の一致")
 class FeatureGateRouteMapGuardTest {
@@ -153,7 +170,13 @@ class FeatureGateRouteMapGuardTest {
                 .as("GATE_ROUTE_MAP から gate_key を1件も抽出できなかった（正規表現と書式の乖離を疑う）")
                 .isNotEmpty();
 
-        List<String> violations = detectViolations(yamlGateKeys, isolatedGateKeys, codeGateKeys);
+        Map<String, String> bindingExclusions = parseRouteBindingExclusions(root);
+
+        // (vii) の照合元。抽出は FeatureGateAnnotationKeyGuardTest と同一手段を流用する（二重化しない）。
+        Set<String> beGatedKeys = FeatureGateAnnotationKeyGuardTest.annotatedFeatureKeys();
+
+        List<String> violations = detectViolations(
+                yamlGateKeys, isolatedGateKeys, codeGateKeys, bindingExclusions, beGatedKeys);
 
         if (violations.isEmpty()) {
             return;
@@ -181,6 +204,40 @@ class FeatureGateRouteMapGuardTest {
             Set<String> yamlGateKeys,
             Map<String, String> isolatedGateKeys,
             List<String> codeGateKeys) {
+        return detectViolations(yamlGateKeys, isolatedGateKeys, codeGateKeys, Map.of());
+    }
+
+    /**
+     * 違反検出の中核（純関数・route 束縛の明示除外つき）。
+     *
+     * @param bindingExclusions 台帳 {@code route_binding_exclusions} の宣言（gate_key -> reason）。
+     *                          <b>専用の URL を1本も持たない BE 専用ゲート</b>だけが対象で、
+     *                          理由必須・陳腐化検出つき（下記 (iv)〜(vi)）。
+     */
+    static List<String> detectViolations(
+            Set<String> yamlGateKeys,
+            Map<String, String> isolatedGateKeys,
+            List<String> codeGateKeys,
+            Map<String, String> bindingExclusions) {
+        // (vii) を問わない呼び出し（(iv)〜(vi) の自己検証用）。全除外キーに BE ゲートがある前提を置く。
+        return detectViolations(yamlGateKeys, isolatedGateKeys, codeGateKeys,
+                bindingExclusions, bindingExclusions.keySet());
+    }
+
+    /**
+     * 違反検出の中核（純関数・route 束縛の明示除外と BE ゲート照合つき）。
+     *
+     * @param beGatedKeys 本番コードの {@code @RequireFeature} に実在するフラグキー
+     *                    （{@link FeatureGateAnnotationKeyGuardTest#annotatedFeatureKeys()}）。
+     *                    除外宣言が台帳規約 7-b の適用条件
+     *                    「<b>BE 側だけをゲートで塞ぐ機能</b>」に収まっているかを (vii) で照合する。
+     */
+    static List<String> detectViolations(
+            Set<String> yamlGateKeys,
+            Map<String, String> isolatedGateKeys,
+            List<String> codeGateKeys,
+            Map<String, String> bindingExclusions,
+            Set<String> beGatedKeys) {
 
         List<String> violations = new ArrayList<>();
 
@@ -205,12 +262,59 @@ class FeatureGateRouteMapGuardTest {
 
         // (ii) 台帳で隔離対象かつ gate_key ありなのにコード側に束縛が無い
         for (Map.Entry<String, String> e : isolatedGateKeys.entrySet()) {
-            if (!codeOccurrences.containsKey(e.getKey())) {
-                violations.add("(ii) 隔離対象（release.beta が β限定/内部限定/停止）の gate_key に"
-                        + " route 束縛が無い: " + e.getKey()
-                        + "（feature_key=" + e.getValue() + "）"
-                        + " — frontend/app/constants/featureGates.ts の GATE_ROUTE_MAP に"
-                        + " URL パスプレフィクスを追加するか、route 層の対象外なら台帳の gate_key を null に戻すこと");
+            if (codeOccurrences.containsKey(e.getKey()) || bindingExclusions.containsKey(e.getKey())) {
+                continue;
+            }
+            violations.add("(ii) 隔離対象（release.beta が β限定/内部限定/停止）の gate_key に"
+                    + " route 束縛が無い: " + e.getKey()
+                    + "（feature_key=" + e.getValue() + "）"
+                    + " — frontend/app/constants/featureGates.ts の GATE_ROUTE_MAP に"
+                    + " URL パスプレフィクスを追加するか、専用 URL を1本も持たない BE 専用ゲートなら"
+                    + " 台帳の route_binding_exclusions に理由付きで宣言すること");
+        }
+
+        // (iv) 除外宣言の理由が空（無審査で膨らむ baseline にしない）
+        for (Map.Entry<String, String> e : bindingExclusions.entrySet()) {
+            String reason = e.getValue();
+            if (reason == null || reason.isBlank()) {
+                violations.add("(iv) route_binding_exclusions の宣言に reason が無い: " + e.getKey()
+                        + " — 束縛しない理由をその場に読める形で書くこと");
+            }
+        }
+
+        // (v) 除外宣言したのに実際は束縛済み（陳腐化。除外を消すべき状態）
+        for (String key : bindingExclusions.keySet()) {
+            if (codeOccurrences.containsKey(key)) {
+                violations.add("(v) route_binding_exclusions に宣言があるのに GATE_ROUTE_MAP にも束縛がある: "
+                        + key + " — 束縛できたなら除外宣言を削除すること（陳腐化した除外は穴の温床になる）");
+            }
+        }
+
+        // (vi) 除外宣言の対象が隔離対象の gate_key として台帳に実在しない（陳腐化・綴り間違い）
+        for (String key : bindingExclusions.keySet()) {
+            if (!isolatedGateKeys.containsKey(key)) {
+                violations.add("(vi) route_binding_exclusions の gate_key が"
+                        + "「隔離対象かつ gate_key 発行済み」の台帳行に対応しない: " + key
+                        + " — 綴り間違いか、機能が隔離対象でなくなった（除外宣言を削除すること）");
+            }
+        }
+
+        // (vii) 除外宣言の対象に BE 側のゲート（@RequireFeature）が無い
+        //
+        // 規約 7-b の適用条件は「BE 側だけをゲートで塞ぐ（＝専用 URL は無いが @RequireFeature はある）」
+        // 機能に限る、というものである。(iv)〜(vi) は理由・陳腐化・綴りしか見ておらず、
+        // この条件そのものを検証していなかった（Codex 検分 P2）。照合が無いと
+        // 「理由さえ書けば何でも除外できる」状態になり、FE も BE も未隔離のまま
+        // 番人が green になる恒久的な抜け道が残る。
+        for (String key : bindingExclusions.keySet()) {
+            if (!beGatedKeys.contains(key)) {
+                violations.add("(vii) route_binding_exclusions の gate_key に対応する BE ゲートが無い: "
+                        + key
+                        + " — route_binding_exclusions は「専用 URL を持たないが"
+                        + " @RequireFeature で BE 入口を塞いでいる」機能に限る（台帳の規約 7-b）。"
+                        + " 実装クラスに @RequireFeature(\"" + key + "\") を付けるか、"
+                        + " route 層で塞ぐべき機能なら GATE_ROUTE_MAP に束縛すること。"
+                        + " FE も BE も塞がない機能を除外宣言で通してはならない");
             }
         }
 
@@ -269,6 +373,131 @@ class FeatureGateRouteMapGuardTest {
         assertThat(violations.get(0)).startsWith("(iii)").contains("SHIFT");
     }
 
+
+    @Test
+    @DisplayName("自己検証: 理由付きの route_binding_exclusions は (ii) を免除する（BE 専用ゲート）")
+    void 除外宣言は束縛漏れを免除する() {
+        List<String> violations = detectViolations(
+                Set.of("SHIFT", "AUTO_ASSIGN"),
+                Map.of("SHIFT", "shift", "AUTO_ASSIGN", "shift-auto-assign"),
+                List.of("SHIFT"),
+                Map.of("AUTO_ASSIGN", "専用 URL を持たない BE 専用ゲートのため"));
+
+        assertThat(violations).isEmpty();
+    }
+
+    @Test
+    @DisplayName("自己検証(iv): 理由が空の除外宣言を検出すること")
+    void 検出ケース_iv_理由なしの除外宣言() {
+        List<String> violations = detectViolations(
+                Set.of("SHIFT", "AUTO_ASSIGN"),
+                Map.of("SHIFT", "shift", "AUTO_ASSIGN", "shift-auto-assign"),
+                List.of("SHIFT"),
+                Map.of("AUTO_ASSIGN", "   "));
+
+        assertThat(violations).hasSize(1);
+        assertThat(violations.get(0)).startsWith("(iv)").contains("AUTO_ASSIGN");
+    }
+
+    @Test
+    @DisplayName("自己検証(v): 束縛済みなのに残っている除外宣言（陳腐化）を検出すること")
+    void 検出ケース_v_陳腐化した除外宣言() {
+        List<String> violations = detectViolations(
+                Set.of("SHIFT"),
+                Map.of("SHIFT", "shift"),
+                List.of("SHIFT"),
+                Map.of("SHIFT", "もう束縛済みなので不要"));
+
+        assertThat(violations).hasSize(1);
+        assertThat(violations.get(0)).startsWith("(v)").contains("SHIFT");
+    }
+
+    @Test
+    @DisplayName("自己検証(vi): 台帳に対応の無い除外宣言（綴り間違い・隔離対象外）を検出すること")
+    void 検出ケース_vi_台帳に無い除外宣言() {
+        List<String> violations = detectViolations(
+                Set.of("SHIFT"),
+                Map.of("SHIFT", "shift"),
+                List.of("SHIFT"),
+                Map.of("SHFIT", "綴り間違い"));
+
+        assertThat(violations).hasSize(1);
+        assertThat(violations.get(0)).startsWith("(vi)").contains("SHFIT");
+    }
+
+    @Test
+    @DisplayName("自己検証(vii): BE ゲート（@RequireFeature）を持たない除外宣言を検出すること")
+    void 検出ケース_vii_BEゲートなしの除外宣言() {
+        // 理由も書いてあり台帳にも実在する（(iv)〜(vi) はすべて素通りする）除外宣言でも、
+        // BE 側に @RequireFeature が無ければ FE・BE とも未隔離であり、通してはならない。
+        List<String> violations = detectViolations(
+                Set.of("SHIFT", "AUTO_ASSIGN"),
+                Map.of("SHIFT", "shift", "AUTO_ASSIGN", "shift-auto-assign"),
+                List.of("SHIFT"),
+                Map.of("AUTO_ASSIGN", "専用 URL が無いので束縛しない（と称しているだけ）"),
+                Set.of("SHIFT")); // AUTO_ASSIGN は @RequireFeature に実在しない
+
+        assertThat(violations).hasSize(1);
+        assertThat(violations.get(0)).startsWith("(vii)").contains("AUTO_ASSIGN");
+    }
+
+    @Test
+    @DisplayName("自己検証(vii): BE ゲートを持つ除外宣言は (ii) を免除され違反にならない（偽陽性が無い）")
+    void 正例_BEゲートありの除外宣言は通る() {
+        List<String> violations = detectViolations(
+                Set.of("SHIFT", "AUTO_ASSIGN"),
+                Map.of("SHIFT", "shift", "AUTO_ASSIGN", "shift-auto-assign"),
+                List.of("SHIFT"),
+                Map.of("AUTO_ASSIGN", "専用 URL を持たない BE 専用ゲートのため"),
+                Set.of("SHIFT", "AUTO_ASSIGN"));
+
+        assertThat(violations).isEmpty();
+    }
+
+    @Test
+    @DisplayName("裏取り: 実台帳の除外宣言が BE ゲートに実在するキーだけであること")
+    void 実台帳の除外宣言はBEゲートを持つ() throws IOException {
+        Path yamlPath = resolveFromRepoRoot(FEATURE_INVENTORY_RELATIVE);
+        Map<String, Object> root;
+        try (InputStream in = Files.newInputStream(yamlPath)) {
+            root = new Yaml().load(in);
+        }
+        Map<String, String> exclusions = parseRouteBindingExclusions(root);
+        Set<String> beGatedKeys = FeatureGateAnnotationKeyGuardTest.annotatedFeatureKeys();
+
+        assertThat(beGatedKeys)
+                .as("本番コードの @RequireFeature を1件も収集できていない（照合経路の破損）")
+                .isNotEmpty();
+        assertThat(beGatedKeys)
+                .as("route_binding_exclusions の宣言はすべて BE の @RequireFeature に実在すること")
+                .containsAll(exclusions.keySet());
+    }
+
+    /**
+     * 台帳トップレベルの {@code route_binding_exclusions}（gate_key -> reason）を読む。
+     *
+     * <p>要素が不正な形でも例外にせず空文字の reason として返し、(iv) で違反として現れるようにする
+     * （パース経路で黙って落とすと除外が無審査で通ってしまうため）。</p>
+     */
+    static Map<String, String> parseRouteBindingExclusions(Map<String, Object> root) {
+        Map<String, String> result = new LinkedHashMap<>();
+        Object obj = root == null ? null : root.get("route_binding_exclusions");
+        if (!(obj instanceof List<?> list)) {
+            return result;
+        }
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> map)) {
+                continue;
+            }
+            Object gateKey = map.get("gate_key");
+            if (gateKey == null) {
+                continue;
+            }
+            Object reason = map.get("reason");
+            result.put(String.valueOf(gateKey), reason == null ? "" : String.valueOf(reason));
+        }
+        return result;
+    }
 
     /** {@code GATE_ROUTE_MAP} の全プレフィクス（配列要素）を宣言順に抽出する。 */
     static List<String> extractPrefixes(String ts) {

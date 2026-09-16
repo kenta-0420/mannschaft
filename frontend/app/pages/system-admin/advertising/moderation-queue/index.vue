@@ -55,7 +55,7 @@ async function load() {
       size: pageSize.value,
     })
     items.value = res.data
-    totalElements.value = res.meta.totalElements
+    totalElements.value = res.meta.total
   } catch {
     notification.error(t('advertising.pages.system_admin_dashboard.load_failed'))
   } finally {
