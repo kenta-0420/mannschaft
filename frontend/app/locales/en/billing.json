@@ -114,6 +114,12 @@
       "loadError": "Failed to load billing information",
       "viewPlansCta": "See all plans",
       "planChange": {
+        "targetPlanLabel": "New plan",
+        "targetPlanPlaceholder": "Select a plan",
+        "catalogLoadFailed": "Could not load the plan list. Please reopen this dialog in a moment.",
+        "previewFailed": "Could not get the estimated amount. Please try again in a moment.",
+        "versionUnavailable": "The contract details are unavailable, so the plan change cannot be started.",
+        "appliedSuccess": "Your plan has been changed.",
         "title": "Change plan",
         "amountDueNow": "Amount due now",
         "effectiveAt": "Effective from",

@@ -114,6 +114,12 @@
       "loadError": "課金情報の取得に失敗しました",
       "viewPlansCta": "プラン一覧を見る",
       "planChange": {
+        "targetPlanLabel": "변경할 플랜",
+        "targetPlanPlaceholder": "플랜을 선택하세요",
+        "catalogLoadFailed": "플랜 목록을 가져오지 못했습니다. 잠시 후 다시 열어 주세요.",
+        "previewFailed": "결제 예상 금액을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "versionUnavailable": "계약 정보를 가져올 수 없어 플랜 변경을 실행할 수 없습니다.",
+        "appliedSuccess": "플랜을 변경했습니다.",
         "title": "プランを変更する",
         "amountDueNow": "今回のお支払い額",
         "effectiveAt": "適用日時",

@@ -114,6 +114,12 @@
       "loadError": "課金情報の取得に失敗しました",
       "viewPlansCta": "プラン一覧を見る",
       "planChange": {
+        "targetPlanLabel": "Neuer Tarif",
+        "targetPlanPlaceholder": "Tarif auswählen",
+        "catalogLoadFailed": "Die Tarifliste konnte nicht geladen werden. Bitte öffnen Sie sie später erneut.",
+        "previewFailed": "Der voraussichtliche Betrag konnte nicht ermittelt werden. Bitte versuchen Sie es später erneut.",
+        "versionUnavailable": "Die Vertragsdaten sind nicht verfügbar, daher kann der Tarifwechsel nicht gestartet werden.",
+        "appliedSuccess": "Ihr Tarif wurde geändert.",
         "title": "プランを変更する",
         "amountDueNow": "今回のお支払い額",
         "effectiveAt": "適用日時",

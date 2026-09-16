@@ -44,6 +44,13 @@ interface PlanChangePreview {
   expiresAt: string
 }
 
+/** 変更先として選べるプランの最小投影（カタログ `BillingPlanItem` の一部）。 */
+interface PlanChoice {
+  planKey: string
+  /** 表示名の i18n キー（無ければ planKey をそのまま出す）。 */
+  displayNameKey?: string
+}
+
 /** `BillingActiveContract.pendingChange`（AC-133）と同じ形。 */
 interface PendingChange {
   status: string
@@ -60,6 +67,13 @@ interface Props {
   currentPlanKey: string
   /** 変更先のプランキー。 */
   targetPlanKey: string
+  /**
+   * 変更先として選べるプラン一覧（カタログ由来。空なら選択 UI を出さない）。
+   * 親が遅延取得して渡す（本ダイアログは API を叩かない）。
+   */
+  plans?: PlanChoice[]
+  /** 見積りの取得に失敗した等、確定前に利用者へ伝えるべき理由。無ければ null。 */
+  previewError?: string | null
   /** 進行中の変更（AC-133 投影）。無ければ null。 */
   pendingChange: PendingChange | null
   /** 直近の変更失敗理由。無ければ null（AC-129）。 */
@@ -77,6 +91,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  plans: () => [],
+  previewError: null,
   refetching: false,
   justReturnedFrom3ds: false,
   onConfirm: undefined,
@@ -86,6 +102,8 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   cancel: []
   'update:open': [value: boolean]
+  /** 変更先プランが選ばれた（親が見積りを取り直す）。 */
+  'update:targetPlanKey': [value: string]
 }>()
 
 const { t } = useI18n()
@@ -98,8 +116,17 @@ const isPendingPayment = computed(() =>
   props.pendingChange?.status === 'PENDING_PAYMENT' || props.pendingChange?.status === 'REQUIRES_ACTION',
 )
 
-/** 確定ボタンの disabled 判定（AC-130）: 進行中、または失敗直後の再取得完了待ち。 */
-const confirmDisabled = computed(() => props.submitting || props.refetching)
+/**
+ * 確定ボタンの disabled 判定（AC-130）: 進行中、または失敗直後の再取得完了待ち。
+ * 併せて、見積りが無い状態（変更先未選択・見積り取得失敗）では確定させない——
+ * `POST …/changes` は `previewId` 必須であり、見積り無しで押せるボタンは必ず失敗する。
+ */
+const confirmDisabled = computed(() => props.submitting || props.refetching || props.preview === null)
+
+function onTargetPlanChange(event: Event) {
+  const value = (event.target as HTMLSelectElement | null)?.value ?? ''
+  emit('update:targetPlanKey', value)
+}
 
 function close() {
   emit('cancel')
@@ -158,6 +185,36 @@ onMounted(() => {
         <template v-if="pendingChange?.effectiveAt">
           {{ t('billing.manage.planChange.expiresAtNotice', { date: formatDateTime(pendingChange.effectiveAt) }) }}
         </template>
+      </p>
+
+      <!-- 変更先プランの選択。支払い待ちの間は新しい変更を始めさせない（AC-117/118 と整合） -->
+      <div v-if="!isPendingPayment && plans.length > 0" class="billing-plan-change-dialog__field">
+        <label class="billing-plan-change-dialog__label" for="billing-plan-change-target">
+          {{ t('billing.manage.planChange.targetPlanLabel') }}
+        </label>
+        <select
+          id="billing-plan-change-target"
+          class="billing-plan-change-dialog__select"
+          data-testid="plan-change-target-select"
+          :value="targetPlanKey"
+          :disabled="submitting"
+          @change="onTargetPlanChange"
+        >
+          <option value="">{{ t('billing.manage.planChange.targetPlanPlaceholder') }}</option>
+          <option v-for="p in plans" :key="p.planKey" :value="p.planKey">
+            {{ p.displayNameKey ? t(p.displayNameKey) : p.planKey }}
+          </option>
+        </select>
+      </div>
+
+      <!-- 見積りが取れない理由を隠さずに伝える（確定ボタンは disabled のままにする） -->
+      <p
+        v-if="previewError"
+        data-testid="plan-change-preview-error"
+        role="alert"
+        class="billing-plan-change-dialog__error"
+      >
+        {{ previewError }}
       </p>
 
       <!-- AC-126/127: 確定前に amountDueNow / effectiveAt / 税の内訳を必ず見せる（preview 由来） -->
@@ -269,6 +326,23 @@ onMounted(() => {
   gap: 0.5rem;
   margin: 0;
   font-size: 0.9375rem;
+}
+.billing-plan-change-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.billing-plan-change-dialog__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.billing-plan-change-dialog__select {
+  border: 1px solid var(--p-content-border-color, #d4d4d8);
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.875rem;
+  background: var(--p-content-background, #fff);
+  color: inherit;
 }
 .billing-plan-change-dialog__amounts {
   display: flex;

@@ -114,6 +114,12 @@
       "loadError": "課金情報の取得に失敗しました",
       "viewPlansCta": "プラン一覧を見る",
       "planChange": {
+        "targetPlanLabel": "变更后的方案",
+        "targetPlanPlaceholder": "请选择方案",
+        "catalogLoadFailed": "无法获取方案列表，请稍后重新打开。",
+        "previewFailed": "无法获取应付金额的估算，请稍后重试。",
+        "versionUnavailable": "无法获取合约信息，因此无法执行方案变更。",
+        "appliedSuccess": "方案已变更。",
         "title": "プランを変更する",
         "amountDueNow": "今回のお支払い額",
         "effectiveAt": "適用日時",

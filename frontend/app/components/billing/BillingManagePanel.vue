@@ -14,6 +14,8 @@ import type {
   BillingActiveContract,
   BillingActiveContractWithPendingChange,
   BillingEntitledFeature,
+  BillingPendingChange,
+  BillingPendingChangeStatus,
   BillingScopeKind,
 } from '~/composables/useBillingApi'
 import BillingCancelReservationDialog from '~/components/billing/BillingCancelReservationDialog.vue'
@@ -25,7 +27,7 @@ import BillingPlanChangeDialog from '~/components/billing/BillingPlanChangeDialo
  * とはいえ値が欠落するケースへの安全網として、無い場合は 0 決め打ちで送らず「操作不能」を
  * 誠実に表示する（CAS の意味を失わせる対処療法はしない）。
  */
-type BillingActiveContractWithVersion = BillingActiveContract & { version?: number }
+type BillingActiveContractWithVersion = BillingActiveContractWithPendingChange & { version?: number }
 
 const props = defineProps<{
   scopeKind: BillingScopeKind
@@ -144,20 +146,264 @@ async function confirmResumeReservation() {
 }
 
 // === プラン変更（Billing Center PR6b-1: 上位プラン変更・3DS。AC-125〜135） ===
-// 是正前提（PR6a と同型の欠陥の再発防止・AC-125）: 本パネルの「プラン変更」ボタンから
-// 実際に BillingPlanChangeDialog を開けることを結線として固定する。
-// 事前見積り（AC-1〜24）・実行（AC-25〜47）・3DS（AC-48〜73）は他隊（第6〜10隊）が実装した
-// BE API と連携する後続作業とし、本パネルは「入口から到達できる」ことを最優先で満たす。
-const planChangeTarget = ref<BillingActiveContractWithPendingChange | null>(null)
+//
+// **PR6a と同型の欠陥の再発防止（最重要）**: 当初の実装はダイアログへ `:preview="null"`
+// `:target-plan-key="''"` `:submitting="false"` を固定値で渡し、確定ハンドラを一つも繋いでいなかった。
+// 「ダイアログが開く」テストは緑のまま、押しても何も起きない no-op だった（Codex 検分 P1）。
+// 現在は次の実 API へ結線してある（番人: `BillingManagePanel.planChangeWiring.spec.ts`）:
+//   1. カタログ取得   GET  /api/v1/billing/plans
+//   2. 事前見積り     POST /api/v1/me/billing/contracts/{id}/change-previews  （AC-1〜9）
+//   3. upgrade の実行 POST /api/v1/me/billing/contracts/{id}/changes           （AC-29〜31）
+//   4. 3DS の追加認証 GET  .../changes/{changeId}/payment-action               （AC-48〜54）
+//      → `useStripeSetup.confirmPaymentAction`（`handleNextAction`。AC-73）
+//   5. 確定待ちの追跡 `usePlanChangePolling`（間隔・回数上限あり。AC-135）
+// BE のエンドポイントはスコープに関わらず `/me/billing/contracts/{contractId}` 配下へ集約されている
+// ため、USER/TEAM/ORG の3スコープとも同じ経路で動く（認可は BE がスコープを解決して判定する）。
+const { confirmPaymentAction } = useStripeSetup()
+const planChangePolling = usePlanChangePolling()
+
+/** ダイアログへ渡す見積りの投影（BE の Money を税込主表示の形へ写すだけ。金額計算はしない）。 */
+interface PlanChangePreviewView {
+  previewId: string
+  kind: string
+  amountDueNow: number
+  taxSnapshot: { amountInclTax: number; amountExclTax: number; taxAmount: number; taxRate: number }
+  effectiveAt: string
+  expiresAt: string
+}
+
+const planChangeTarget = ref<BillingActiveContractWithVersion | null>(null)
 const planChangeDialogOpen = ref(false)
+const planChangePlans = ref<{ planKey: string; displayNameKey?: string }[]>([])
+const planChangeTargetPlanKey = ref('')
+const planChangePreview = ref<PlanChangePreviewView | null>(null)
+const planChangePreviewError = ref<string | null>(null)
+const planChangeError = ref<string | null>(null)
+const planChangeSubmitting = ref(false)
+const planChangeRefetching = ref(false)
+const planChangeId = ref<string | null>(null)
+/** 実行直後の `status`（次の再取得までは BE 投影の pendingChange より新しい）。 */
+const planChangeLatest = ref<BillingPendingChange | null>(null)
+
+/** ダイアログへ渡す進行中変更。実行直後は自分の応答を優先し、以降は BE 投影に従う。 */
+const planChangePending = computed<BillingPendingChange | null>(() =>
+  planChangeLatest.value ?? planChangeTarget.value?.pendingChange ?? null,
+)
+
+/** 契約カードに出す「支払い待ち」表示の判定（AC-104: 押す前から見える）。 */
+const activePlanPendingChange = computed<BillingPendingChange | null>(() => {
+  const pc = (activePlan.value as BillingActiveContractWithPendingChange | null)?.pendingChange ?? null
+  if (!pc) return null
+  return pc.status === 'PENDING_PAYMENT' || pc.status === 'REQUIRES_ACTION' ? pc : null
+})
+
+/** 契約の CAS 期待値。欠落時は決め打ちせず undefined を保つ（解約と同じ流儀）。 */
+const planChangeVersion = computed<number | undefined>(() => {
+  const v = planChangeTarget.value?.version
+  return typeof v === 'number' ? v : undefined
+})
 
 function openPlanChange(contract: BillingActiveContract) {
   planChangeTarget.value = contract
+  planChangeTargetPlanKey.value = ''
+  planChangePreview.value = null
+  planChangePreviewError.value = null
+  planChangeError.value = null
+  planChangeId.value = null
+  planChangeLatest.value = null
   planChangeDialogOpen.value = true
+  void loadPlanChangeCandidates()
 }
 
 function closePlanChangeDialog() {
   planChangeDialogOpen.value = false
+}
+
+/** 変更先候補（現在のプラン以外）をカタログから取る。ダイアログを開いた時だけ叩く。 */
+async function loadPlanChangeCandidates() {
+  try {
+    const res = await billingApi.getPlanCatalog()
+    const current = planChangeTarget.value?.planKey
+    planChangePlans.value = (res.data.plans ?? [])
+      .filter(p => typeof p.planKey === 'string' && p.planKey !== current)
+      .map(p => ({ planKey: p.planKey as string, displayNameKey: p.displayNameKey }))
+  }
+  catch (err) {
+    planChangePreviewError.value = t('billing.manage.planChange.catalogLoadFailed')
+    handleApiError(err, 'billing.manage.planChange.catalog')
+  }
+}
+
+/** 変更先が選ばれたら事前見積りを取り直す（AC-126: 確定前に必ず金額を見せるため）。 */
+async function onPlanChangeTargetSelected(planKey: string) {
+  planChangeTargetPlanKey.value = planKey
+  planChangePreview.value = null
+  planChangePreviewError.value = null
+  planChangeError.value = null
+  if (!planKey) return
+
+  const contractId = planChangeTarget.value?.contractId
+  if (!contractId) return
+  if (planChangeVersion.value === undefined) {
+    planChangePreviewError.value = t('billing.manage.planChange.versionUnavailable')
+    return
+  }
+
+  try {
+    const res = await billingApi.createPlanChangePreview(contractId, {
+      toProductKind: 'PLAN',
+      toProductKey: planKey,
+      version: planChangeVersion.value,
+    })
+    const money = res.data.amountDueNow
+    planChangePreview.value = {
+      previewId: res.data.previewId,
+      kind: res.data.kind,
+      // 税込を主表示にする（AC-127）。税率は BE のベーシスポイントを率へ直すだけで金額計算はしない。
+      amountDueNow: money.amountIncludingTax,
+      taxSnapshot: {
+        amountInclTax: money.amountIncludingTax,
+        amountExclTax: money.amountExcludingTax,
+        taxAmount: money.taxAmount,
+        taxRate: (money.taxRateBasisPoints ?? 0) / 10000,
+      },
+      effectiveAt: res.data.effectiveAt,
+      expiresAt: res.data.expiresAt,
+    }
+  }
+  catch (err) {
+    planChangePreviewError.value = t('billing.manage.planChange.previewFailed')
+    handleApiError(err, 'billing.manage.planChange.preview')
+  }
+}
+
+/** 確定（AC-25〜31）。ここが no-op だった欠陥の本体。 */
+async function confirmPlanChange() {
+  const contractId = planChangeTarget.value?.contractId
+  const preview = planChangePreview.value
+  if (!contractId || !preview) return
+  if (planChangeVersion.value === undefined) {
+    planChangePreviewError.value = t('billing.manage.planChange.versionUnavailable')
+    return
+  }
+
+  planChangeSubmitting.value = true
+  planChangeError.value = null
+  try {
+    const res = await billingApi.executePlanChange(contractId, {
+      previewId: preview.previewId,
+      version: planChangeVersion.value,
+    })
+    planChangeId.value = res.data.changeId
+    planChangeLatest.value = {
+      status: res.data.status,
+      effectiveAt: res.data.effectiveAt,
+      paymentActionRequired: res.data.status === 'REQUIRES_ACTION',
+    }
+    await afterPlanChangeAccepted(res.data.status)
+  }
+  catch (err) {
+    // 症状を隠さない: 失敗は明示し（AC-129）、再取得の完了まで確定ボタンを解除しない（AC-130）。
+    planChangeError.value = 'PLAN_CHANGE_FAILED'
+    handleApiError(err, 'billing.manage.planChange.execute')
+    await refreshPlanChangeTarget()
+  }
+  finally {
+    planChangeSubmitting.value = false
+  }
+}
+
+/** 実行応答の status に応じて、3DS・確定待ちの追跡・失敗表示へ振り分ける。 */
+async function afterPlanChangeAccepted(status: BillingPendingChangeStatus) {
+  if (status === 'REQUIRES_ACTION') {
+    await runPaymentAction()
+    return
+  }
+  if (status === 'FAILED' || status === 'CANCELLED') {
+    planChangeError.value = 'PLAN_CHANGE_FAILED'
+    await refreshPlanChangeTarget()
+    return
+  }
+  if (status === 'APPLIED') {
+    notification.success(t('billing.manage.planChange.appliedSuccess'))
+    await refreshPlanChangeTarget()
+    return
+  }
+  // PENDING_PAYMENT: 権利発行は webhook（invoice.paid）が確定させるので、状態が動くまで追う。
+  await pollPlanChangeStatus()
+}
+
+/**
+ * 3DS の追加認証（AC-48〜54/AC-73）。
+ *
+ * clientSecret はこのローカル変数の中だけで生き、`handleNextAction` へ渡した後は捨てる。
+ * ログ・URL・browser storage・DOM へ一切書かない（AC-55〜59）。
+ */
+async function runPaymentAction() {
+  const contractId = planChangeTarget.value?.contractId
+  const changeId = planChangeId.value
+  if (!contractId || !changeId) return
+
+  try {
+    const res = await billingApi.getPlanChangePaymentAction(contractId, changeId)
+    const result = await confirmPaymentAction({
+      clientSecret: res.data.paymentAction.clientSecret,
+      // リダイレクト型 3DS の戻り先（BE の `GET /billing/payment-action/return`・E3'）。
+      returnUrl: `${window.location.origin}/billing/payment-action/return`,
+    })
+    if (result.status === 'error') {
+      planChangeError.value = 'PLAN_CHANGE_FAILED'
+      notification.error(result.message)
+      await refreshPlanChangeTarget()
+      return
+    }
+    // リダイレクトを伴わない 3DS（AC-72）はここへ戻ってくる。確定は webhook が行うため状態を追う。
+    await pollPlanChangeStatus()
+  }
+  catch (err) {
+    planChangeError.value = 'PLAN_CHANGE_FAILED'
+    handleApiError(err, 'billing.manage.planChange.paymentAction')
+    await refreshPlanChangeTarget()
+  }
+}
+
+/**
+ * 確定（webhook 由来）を待つ（AC-135）。
+ *
+ * 間隔・回数上限は `usePlanChangePolling` が持つ。契約サマリの再取得だけを行い、
+ * Stripe を叩く `payment-action` はここでは呼ばない（AC-147）。
+ */
+async function pollPlanChangeStatus() {
+  await planChangePolling.start(async () => {
+    await refreshPlanChangeTarget()
+    const status = planChangeTarget.value?.pendingChange?.status
+    if (!status || status === 'APPLIED' || status === 'FAILED' || status === 'CANCELLED') {
+      if (status === 'FAILED' || status === 'CANCELLED') planChangeError.value = 'PLAN_CHANGE_FAILED'
+      return { done: true }
+    }
+    return { done: false }
+  })
+}
+
+/** 契約情報を取り直し、ダイアログの投影（pendingChange・version）も最新化する（AC-130）。 */
+async function refreshPlanChangeTarget() {
+  planChangeRefetching.value = true
+  try {
+    await load()
+    const id = planChangeTarget.value?.contractId
+    if (!id) return
+    const updated: BillingActiveContractWithVersion | null =
+      (activePlan.value?.contractId === id ? activePlan.value : null)
+      ?? activeAddons.value.find(a => a.contractId === id)
+      ?? null
+    planChangeTarget.value = updated
+    // 再取得できた時点で BE 投影が真であり、自前の暫定 status は捨てる。
+    planChangeLatest.value = null
+    if (!updated) planChangeDialogOpen.value = false
+  }
+  finally {
+    planChangeRefetching.value = false
+  }
 }
 
 onMounted(load)
@@ -181,6 +427,18 @@ defineExpose({ load })
             </div>
             <p class="mt-1 text-xs text-surface-500">
               {{ t('billing.manage.contractedAt', { date: formatDate(activePlan.contractedAt) }) }}
+            </p>
+            <!-- AC-104/105: 支払い待ちであることは操作を試みる前から見える -->
+            <p
+              v-if="activePlanPendingChange"
+              data-testid="billing-plan-change-pending-notice"
+              role="status"
+              class="mt-1 text-xs text-orange-600"
+            >
+              {{ t('billing.manage.planChange.pendingPaymentNotice') }}
+              <template v-if="activePlanPendingChange.effectiveAt">
+                {{ t('billing.manage.planChange.expiresAtNotice', { date: formatDate(activePlanPendingChange.effectiveAt) }) }}
+              </template>
             </p>
           </div>
           <div v-if="canManage" class="flex items-center gap-2">
@@ -283,12 +541,18 @@ defineExpose({ load })
     <BillingPlanChangeDialog
       v-if="planChangeTarget"
       :open="planChangeDialogOpen"
-      :preview="null"
+      :preview="planChangePreview"
       :current-plan-key="planChangeTarget.planKey ?? ''"
-      :target-plan-key="''"
-      :pending-change="planChangeTarget.pendingChange ?? null"
-      :change-error="null"
-      :submitting="false"
+      :target-plan-key="planChangeTargetPlanKey"
+      :plans="planChangePlans"
+      :pending-change="planChangePending"
+      :preview-error="planChangePreviewError"
+      :change-error="planChangeError"
+      :submitting="planChangeSubmitting"
+      :refetching="planChangeRefetching"
+      :on-confirm="confirmPlanChange"
+      :on-resume-payment-action="runPaymentAction"
+      @update:target-plan-key="onPlanChangeTargetSelected"
       @cancel="closePlanChangeDialog"
       @update:open="closePlanChangeDialog"
     />

@@ -114,6 +114,12 @@
       "loadError": "課金情報の取得に失敗しました",
       "viewPlansCta": "プラン一覧を見る",
       "planChange": {
+        "targetPlanLabel": "Nuevo plan",
+        "targetPlanPlaceholder": "Seleccione un plan",
+        "catalogLoadFailed": "No se pudo cargar la lista de planes. Vuelva a abrirla en unos momentos.",
+        "previewFailed": "No se pudo obtener el importe estimado. Inténtelo de nuevo en unos momentos.",
+        "versionUnavailable": "No se pueden obtener los datos del contrato, por lo que no es posible cambiar de plan.",
+        "appliedSuccess": "Se ha cambiado su plan.",
         "title": "プランを変更する",
         "amountDueNow": "今回のお支払い額",
         "effectiveAt": "適用日時",

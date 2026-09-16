@@ -65,6 +65,72 @@ export type BillingEntitlementSummaryResponseWithPendingChange =
     activeAddons?: BillingActiveContractWithPendingChange[]
   }
 
+// ============================================================
+// プラン変更（upgrade）— Billing Center PR6b-1 A群/B群/C群
+// ============================================================
+//
+// 下記の型は BE の record（`BillingChangePreviewRequest` / `BillingChangePreviewResponse` /
+// `BillingPlanChangeRequest` / `BillingContractChangeResponse` / `BillingPaymentActionResponse`）を
+// 実読して写したものである。`docs/openapi.json` の再生成が BE 側の宿題として未了のため
+// 生成型（`components['schemas']`）にこれらのスキーマがまだ存在しない。**再生成後は本節の手動型を
+// 撤去して生成型へ移行すること**（上記 `BillingActiveContractWithPendingChange` と同じ暫定措置）。
+
+/** 見積り金額（BE `BillingChangePreviewResponse.Money`）。税はすべて BE 由来でこちらで計算しない。 */
+export interface BillingChangePreviewMoney {
+  currency: string
+  amountIncludingTax: number
+  amountExcludingTax: number
+  taxAmount: number
+  taxName: string
+  /** 税率（ベーシスポイント。10% なら 1000）。税率不明の契約では null。 */
+  taxRateBasisPoints: number | null
+}
+
+/** `POST …/change-previews` のリクエスト（AC-17: 価格・band の版は server が tx 内で確定するため送らない）。 */
+export interface BillingChangePreviewRequestBody {
+  toProductKind: 'PLAN' | 'ADDON'
+  toProductKey: string
+  /** 契約の CAS 期待値（不一致は 409）。 */
+  version: number
+}
+
+/** `POST …/change-previews` のレスポンス（AC-1）。 */
+export interface BillingChangePreviewResponse {
+  previewId: string
+  kind: string
+  amountDueNow: BillingChangePreviewMoney
+  effectiveAt: string
+  expiresAt: string
+}
+
+/** `POST …/changes` のリクエスト（AC-25: previewId 必須）。 */
+export interface BillingPlanChangeExecuteRequest {
+  previewId: string
+  version: number
+}
+
+/** `POST …/changes` のレスポンス（AC-25: clientSecret は返らない）。 */
+export interface BillingContractChangeResponse {
+  changeId: string
+  status: BillingPendingChangeStatus
+  effectiveAt: string
+}
+
+/**
+ * `GET …/changes/{changeId}/payment-action` のレスポンス（AC-48/54）。
+ *
+ * <p>`clientSecret` は Stripe から都度取得される値であり、DB にも FE の永続領域にも
+ * 残してはならない（AC-55〜59）。受け取った値は `stripe.handleNextAction` へ渡す一時変数として
+ * だけ扱い、ログ・URL・browser storage・DOM 属性のいずれにも書かないこと。</p>
+ */
+export interface BillingPaymentActionResponse {
+  paymentAction: {
+    type: string
+    clientSecret: string
+    expiresAt: string
+  }
+}
+
 /** 契約作成に必須の Idempotency-Key ヘッダを生成する（連打・再送の二重発行防止・設計書 02 §0 M-1）。 */
 function idempotencyHeaders(): Record<string, string> {
   return { 'Idempotency-Key': crypto.randomUUID() }
@@ -211,6 +277,56 @@ export function useBillingApi() {
   }
 
   // ============================================================
+  // 上位プラン変更（upgrade）と 3DS（Billing Center PR6b-1）
+  // ============================================================
+  //
+  // 解約（PR6a）と同じく、BE のエンドポイントはスコープに関わらず `/me/billing/contracts/{contractId}`
+  // 配下の唯一のパスへ集約されている（`BillingPlanChangeController` / `BillingPlanChangePaymentActionController`
+  // の `@RequestMapping("/api/v1/me/billing/contracts")` を実読して確認）。TEAM/ORG の契約も
+  // contractId で操作し、スコープの解決と認可は BE 側が行う。したがって FE 側にスコープ分岐は無い。
+
+  /**
+   * プラン変更の事前見積り（AC-1〜24）。金額は Stripe の見積り API 由来で FE は計算しない。
+   *
+   * @param contractId 対象契約
+   * @param body       変更先プランと契約の CAS 期待値
+   */
+  async function createPlanChangePreview(contractId: string, body: BillingChangePreviewRequestBody) {
+    return api<{ data: BillingChangePreviewResponse }>(`/api/v1/me/billing/contracts/${contractId}/change-previews`, {
+      method: 'POST',
+      body,
+      headers: idempotencyHeaders(),
+    })
+  }
+
+  /**
+   * 見積りを一回だけ消費して upgrade を実行する（AC-25〜31）。
+   *
+   * <p>202 で `changeId` / `status` / `effectiveAt` が返る。`status` が `REQUIRES_ACTION` の場合は
+   * {@link getPlanChangePaymentAction} で 3DS の clientSecret を取得して確認へ進む。</p>
+   */
+  async function executePlanChange(contractId: string, body: BillingPlanChangeExecuteRequest) {
+    return api<{ data: BillingContractChangeResponse }>(`/api/v1/me/billing/contracts/${contractId}/changes`, {
+      method: 'POST',
+      body,
+      headers: idempotencyHeaders(),
+    })
+  }
+
+  /**
+   * 3DS の追加認証情報を都度取得する（AC-48〜54）。
+   *
+   * <p>Stripe を都度叩く API であるため、呼び出し側は `usePlanChangePolling` の間隔・回数上限の
+   * 枠内でのみ使うこと（AC-135）。返る clientSecret は保存せず、その場で
+   * `useStripeSetup.confirmPaymentAction` へ渡して捨てる。</p>
+   */
+  async function getPlanChangePaymentAction(contractId: string, changeId: string) {
+    return api<{ data: BillingPaymentActionResponse }>(
+      `/api/v1/me/billing/contracts/${contractId}/changes/${changeId}/payment-action`,
+    )
+  }
+
+  // ============================================================
   // シスアド運用 API（マスタ CRUD・手動付与・契約横断検索）
   // ============================================================
 
@@ -295,6 +411,9 @@ export function useBillingApi() {
     changeTeamPlan,
     changeOrgPlan,
     changePlan,
+    createPlanChangePreview,
+    executePlanChange,
+    getPlanChangePaymentAction,
     listPlansAdmin,
     getPlanAdmin,
     createPlanAdmin,
