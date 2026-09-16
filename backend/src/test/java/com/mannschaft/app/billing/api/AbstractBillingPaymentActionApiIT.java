@@ -69,7 +69,7 @@ abstract class AbstractBillingPaymentActionApiIT extends AbstractBillingPlanChan
     /** 3DS の戻り口（AC-66〜69 の回帰）。 */
     protected static final String RETURN_PATH = "/billing/payment-action/return";
 
-    protected static final String CLIENT_SECRET = "pi_3DSsecret_test_secret_abc123XYZ";
+    protected static final String CLIENT_SECRET = "pi_dummy_secret_aaaaaaaaaaaaaaaa";
     /** 差額請求の Invoice（change 行に記録済みの検体）。 */
     protected static final String INVOICE_REF_PREFIX = "in_pr6b1_payment_action";
 

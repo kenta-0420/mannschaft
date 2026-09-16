@@ -38,7 +38,7 @@ vi.mock('@stripe/stripe-js', () => ({
   loadStripe: () => Promise.resolve(stripeInstance),
 }))
 
-const CLIENT_SECRET = 'pi_3DSsecret_test_secret_abc123XYZ'
+const CLIENT_SECRET = 'pi_dummy_secret_aaaaaaaaaaaaaaaa'
 
 beforeEach(() => {
   handleNextAction.mockReset()
