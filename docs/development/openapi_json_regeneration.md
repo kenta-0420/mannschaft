@@ -147,9 +147,25 @@ unzip -p "<jar>" META-INF/MANIFEST.MF \
 # → このパスが $MINE と同じ worktree を指していなければ、条件2 を満たさない = 止めない
 
 # --- WSL 側の候補を判定する ---
-wsl -e sh -c 'PID=$(ss -ltnp 2>/dev/null | grep ":8082 " | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "WSL 側に :8082 の listener は無し"; else echo "PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $(readlink -f /proc/$PID/cwd)"; fi'
+wsl -e sh -c 'P=8082; ROW=$(ss -ltnp 2>/dev/null | grep ":$P "); if [ -z "$ROW" ]; then echo "[1] listener 無し（このポートは使える）"; exit; fi; echo "$ROW"; PID=$(echo "$ROW" | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "[3] listener は居るが所有者不明（権限不足で pid 非表示）→ 停止せず別ポートへ避ける"; exit; fi; CWD=$(readlink -f /proc/$PID/cwd 2>/dev/null); if [ -z "$CWD" ]; then echo "[3] PID=$PID だが cwd を読めない（他ユーザー）→ 停止せず別ポートへ避ける"; exit; fi; echo "[2] PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $CWD"'
 # → cwd が $MINE 配下でなければ条件2 を満たさない = 止めない
 ```
+
+**出力は 3 通りある。`ss` の一致行の有無と、PID が取れたかどうかを別の軸として見ること。**
+
+| 出力 | 意味 | 対処 |
+|---|---|---|
+| `[1] listener 無し` | `ss` の一致行そのものが無い | そのポートを使ってよい |
+| `[2] PID=...` + `cwd:` | 所有者を特定できた | AND 判定（条件2 の worktree 一致）へ進む |
+| `[3] 所有者不明` | **一致行はあるが PID / cwd が取れない**（root や別ユーザーのプロセスだと `ss -p` は `pid=` を省略する） | **停止せず別ポートへ避ける**（確認不能時のルール） |
+
+**`[3]` を「listener は無し」と畳んではならない。** 畳むと使用中のポートを再利用してしまい、
+まさにこの手順書が解こうとしている長時間タイムアウトに戻る。
+所有者を突き止める必要は基本的に無い（**避ければ済む**）。どうしても必要なら昇格した権限で
+`ss -ltnp` を実行することになるが、この環境では `wsl -e sudo -n ss -ltnp` は
+`sudo: a password is required` を返すため、**非対話では確認できない**（2026-09-16 実測。
+パスワード入力ありで `pid=` が出るかは未検証）。
+
 
 実測結果（2026-09-16、自分の作業木 = `fix-1526`。同時に存在した全 java プロセスへ適用）:
 
@@ -236,8 +252,24 @@ unzip -p "<jar>" META-INF/MANIFEST.MF \
 wsl -e sh -c "ss -ltnp 2>/dev/null | grep ':8082 '"
 
 # 掴んでいる主の素性と作業ディレクトリ
-wsl -e sh -c 'PID=$(ss -ltnp 2>/dev/null | grep ":8082 " | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "WSL 側に :8082 の listener は無し"; else echo "PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $(readlink -f /proc/$PID/cwd)"; fi'
+wsl -e sh -c 'P=8082; ROW=$(ss -ltnp 2>/dev/null | grep ":$P "); if [ -z "$ROW" ]; then echo "[1] listener 無し（このポートは使える）"; exit; fi; echo "$ROW"; PID=$(echo "$ROW" | sed -n "s/.*pid=\([0-9]*\).*/\1/p" | head -1); if [ -z "$PID" ]; then echo "[3] listener は居るが所有者不明（権限不足で pid 非表示）→ 停止せず別ポートへ避ける"; exit; fi; CWD=$(readlink -f /proc/$PID/cwd 2>/dev/null); if [ -z "$CWD" ]; then echo "[3] PID=$PID だが cwd を読めない（他ユーザー）→ 停止せず別ポートへ避ける"; exit; fi; echo "[2] PID=$PID"; ps -o pid,args= -p "$PID"; echo "cwd: $CWD"'
 ```
+
+**出力は 3 通りある。`ss` の一致行の有無と、PID が取れたかどうかを別の軸として見ること。**
+
+| 出力 | 意味 | 対処 |
+|---|---|---|
+| `[1] listener 無し` | `ss` の一致行そのものが無い | そのポートを使ってよい |
+| `[2] PID=...` + `cwd:` | 所有者を特定できた | AND 判定（条件2 の worktree 一致）へ進む |
+| `[3] 所有者不明` | **一致行はあるが PID / cwd が取れない**（root や別ユーザーのプロセスだと `ss -p` は `pid=` を省略する） | **停止せず別ポートへ避ける**（確認不能時のルール） |
+
+**`[3]` を「listener は無し」と畳んではならない。** 畳むと使用中のポートを再利用してしまい、
+まさにこの手順書が解こうとしている長時間タイムアウトに戻る。
+所有者を突き止める必要は基本的に無い（**避ければ済む**）。どうしても必要なら昇格した権限で
+`ss -ltnp` を実行することになるが、この環境では `wsl -e sudo -n ss -ltnp` は
+`sudo: a password is required` を返すため、**非対話では確認できない**（2026-09-16 実測。
+パスワード入力ありで `pid=` が出るかは未検証）。
+
 
 **`readlink` が返す cwd が自分の作業木と一致しない限り、WSL 側のプロセスも停止してはならない。**
 Windows 側と同じ AND 判定（下記）を適用すること。片側だけ厳しくしても意味がない。
