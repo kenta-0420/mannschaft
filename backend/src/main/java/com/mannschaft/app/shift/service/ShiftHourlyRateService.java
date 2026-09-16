@@ -91,7 +91,17 @@ public class ShiftHourlyRateService {
         if (!accessControlService.isSystemAdmin(currentUserId)) {
             accessControlService.checkAdminOrAbove(currentUserId, teamId, "TEAM");
         }
-        List<ShiftHourlyRateEntity> entities = hourlyRateRepository.findEffectiveRatesByTeam(teamId, date);
+        // 対象の絞り込み（Codex 検分 P1）: ロールの検査だけでは「誰の時給を返すか」が決まらない。
+        // teamId だけで引くと、時給を設定されたあとに脱退した元メンバーの金銭情報まで返る
+        // （単数取得は checkHourlyRateAccess が対象ユーザーの現在の所属を見ていた）。
+        // 在籍中メンバーの ID を 1 クエリで取り、それに限定して引く（総処理量は N のまま）。
+        List<Long> activeMemberIds = accessControlService.listActiveMemberIds(teamId, "TEAM");
+        if (activeMemberIds.isEmpty()) {
+            // 空リストを IN 句へ渡すと JPQL が不正になる。在籍者が居なければ返す時給も無い。
+            return List.of();
+        }
+        List<ShiftHourlyRateEntity> entities =
+                hourlyRateRepository.findEffectiveRatesByTeam(teamId, date, activeMemberIds);
         return shiftMapper.toHourlyRateResponseList(entities);
     }
 

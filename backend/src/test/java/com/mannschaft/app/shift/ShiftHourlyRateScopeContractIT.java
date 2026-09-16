@@ -307,6 +307,48 @@ class ShiftHourlyRateScopeContractIT extends AbstractMySqlIntegrationTest {
                             .exists());
         }
 
+        /**
+         * Codex 検分 P1 の検体。
+         *
+         * <p>単数取得は対象ユーザーの<b>現在の所属</b>まで確認していた
+         * （{@code checkHourlyRateAccess} → {@code checkMembership}）。一括取得を teamId だけで
+         * 引くと、時給を設定されたあとに脱退した元メンバーの金銭情報まで返る。
+         * ここではその行を実際に作って、レスポンスに<b>含まれない</b>ことを固定する。</p>
+         */
+        @Test
+        @DisplayName("AC-5: 脱退した元メンバーの時給は返らない（在籍者のみが対象）")
+        void 脱退した元メンバーの時給は返らない() throws Exception {
+            // Given: teamA に在籍していた頃に時給を設定され、その後に脱退したユーザー
+            Long leftUserId = insertUser("wave6-rate-left-team-a@example.com");
+            MembershipTestHelper.insertMembership(em, leftUserId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+            hourlyRateRepository.save(ShiftHourlyRateEntity.builder()
+                    .userId(leftUserId)
+                    .teamId(teamAId)
+                    .hourlyRate(new BigDecimal("9999.00"))
+                    .effectiveFrom(LocalDate.of(2026, 3, 1))
+                    .build());
+            // 脱退させる（memberships.left_at をセット＝AccessControlService#isMember が false になる状態）
+            em.flush();
+            em.createNativeQuery("UPDATE memberships SET left_at = created_at "
+                            + "WHERE user_id = :userId AND scope_type = 'TEAM' AND scope_id = :scopeId")
+                    .setParameter("userId", leftUserId)
+                    .setParameter("scopeId", teamAId)
+                    .executeUpdate();
+            em.flush();
+            em.clear();
+
+            // When / Then: 在籍中の memberTeamA は返り、脱退した leftUser は返らない
+            setAuth(adminTeamAId);
+            mockMvc.perform(get(BULK)
+                            .param("teamId", teamAId.toString())
+                            .param("date", LocalDate.of(2026, 4, 1).toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.data[?(@.userId == " + memberTeamAId + ")]").exists())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.data[?(@.userId == " + leftUserId + ")]").isEmpty());
+        }
+
         @Test
         @DisplayName("基準日が適用開始日より前なら、その時給は返らない（未設定として扱われる）")
         void 適用開始前の時給は返らない() throws Exception {

@@ -1437,9 +1437,27 @@ status を既定の `PENDING` のままにしており、`OPEN_CALL` へ遷移�
 }
 ```
 
-**認可**: 返す内容に他メンバーの時給（金銭情報）が必ず含まれるため、単数 EP の
-「本人 + 当該チームの ADMIN/DEPUTY_ADMIN」のうち **ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）だけ**を許可する。
-一般メンバーは自分の時給を単数 EP で従来どおり読めるため、本 EP を一律拒否しても機能は失われない。
+**認可は 2 軸ある。どちらか一方では足りない。**
+
+1. **誰が呼べるか（ロールの検査）**: 返す内容に他メンバーの時給（金銭情報）が必ず含まれるため、
+   単数 EP の「本人 + 当該チームの ADMIN/DEPUTY_ADMIN」のうち
+   **ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）だけ**を許可する。
+   一般メンバーは自分の時給を単数 EP で従来どおり読めるため、本 EP を一律拒否しても機能は失われない。
+2. **誰の時給を返すか（対象の絞り込み）**: **在籍中のメンバーに限る**
+   （`AccessControlService#listActiveMemberIds` が `memberships.left_at IS NULL` で 1 クエリ取得し、
+   その ID 集合でクエリを絞る）。
+
+> ⚠️ 2 を落とすと認可の回帰になる。単数 EP は `checkHourlyRateAccess` が
+> **対象ユーザーの現在の所属**まで確認していた（`checkMembership(targetUserId, ...)`）。
+> 一括取得を `teamId` だけで引くと、**時給を設定されたあとに脱退した元メンバーの金銭情報まで返る**。
+> 「1 件ずつなら効いていた対象側のチェックが、まとめて取ると効かなくなる」典型であり、
+> 性能改善のための一括化では必ず起きうる（CMP-260912-1525 の Codex 検分 P1 で検出）。
+
+**インデックス**: `idx_shr_team_user_from (team_id, user_id, effective_from)`（`V213` で追加）。
+既存の一意インデックス `uq_shr_user_team_from` は左端が `user_id` のため `team_id = ?` を絞れず、
+履歴が複数チームに蓄積すると `shift_hourly_rates` 全体の走査になる
+（＝一括化による性能改善が全テナントの履歴件数に比例して劣化する）。
+外側の検索条件と相関副問い合わせの `MAX(effective_from)` の両方をこの 1 本で支える。
 
 **エラーレスポンス**
 | ステータス | 条件 |
