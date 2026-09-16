@@ -336,33 +336,28 @@ class SurveyManageSurveysAuthzIT extends AbstractMySqlIntegrationTest {
     }
 
     // =====================================================================
-    // AC-18: remind の副作用ゼロ
+    // AC-18: remind の永続状態副作用ゼロ
     // =====================================================================
 
     /**
      * AC-18: 権限なし DEPUTY_ADMIN の {@code remind} は 403 を返すだけでなく、
-     * 通知を 1 件も生成してはならない。
+     * アンケートの督促状態を更新してはならない。
      *
-     * <p>403 だけを見て緑にすると、「認可の後ろで既に通知を送っていた」型の欠陥
-     * （例外前に副作用が確定している）を見逃す。件数の差分で副作用ゼロを直接測る。</p>
+     * <p>このクラスは {@code @Transactional} のため、AFTER_COMMIT で配送される通知件数は
+     * 検証しない。認可より後ろにある永続状態の更新が起きていないことを直接測る。</p>
      */
     @Test
-    @DisplayName("AC-18: 権限なし DEPUTY_ADMIN の remind は通知を 1 件も生成しない")
-    void ac18_remind拒否時に通知が生成されない() {
+    @DisplayName("AC-18: 権限なし DEPUTY_ADMIN の remind は督促状態を更新しない")
+    void ac18_remind拒否時に督促状態が更新されない() {
         Long surveyId = insertSurvey(teamId, creatorUserId, "PUBLISHED", "ADMINS_ONLY",
                 LocalDateTime.now().plusDays(1), null, false);
         em.flush();
         em.clear();
 
-        long before = countNotifications();
-
         assertThatThrownBy(() -> surveyRemindService.remind(surveyId, deputyWithoutPermissionId))
                 .isInstanceOf(BusinessException.class);
         em.flush();
 
-        assertThat(countNotifications())
-                .as("拒否された督促で通知が 1 件でも生成されてはならない（副作用ゼロ）")
-                .isEqualTo(before);
         assertThat(remindCounterOf(surveyId))
                 .as("拒否された督促で manual_remind_count が進んではならない")
                 .isZero();
@@ -589,11 +584,6 @@ class SurveyManageSurveysAuthzIT extends AbstractMySqlIntegrationTest {
 
     private int nextSeq() {
         return SEQ.incrementAndGet();
-    }
-
-    private long countNotifications() {
-        return ((Number) em.createNativeQuery("SELECT COUNT(*) FROM notifications").getSingleResult())
-                .longValue();
     }
 
     private int remindCounterOf(Long surveyId) {
