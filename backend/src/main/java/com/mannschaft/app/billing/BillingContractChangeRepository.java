@@ -32,6 +32,15 @@ public interface BillingContractChangeRepository
     Optional<BillingContractChangeEntity> findByIdAndDeletedAtIsNull(UUID id);
 
     /**
+     * 複数契約ぶんの進行中変更を<b>一括</b>取得する（PR6b-1 AC-133/AC-134）。
+     *
+     * <p>権利サマリ投影が契約1件ごとに問い合わせると N+1 になる（契約 N 件で SQL N+1 本）ため、
+     * 呼び出し元は表示対象の契約 ID をまとめて渡し、本メソッドで1本のクエリに畳む。</p>
+     */
+    List<BillingContractChangeEntity> findByContractIdInAndStatusInAndDeletedAtIsNull(
+            List<UUID> contractIds, List<BillingContractChangeStatus> statuses);
+
+    /**
      * {@code stripe_invoice_ref}（{@code uk_bcc_invoice}）で取得する（PR6b-1 B群 AC-37〜43）。
      *
      * <p>invoice webhook が「この invoice は upgrade の差額請求である」と判定するための入口。

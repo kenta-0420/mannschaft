@@ -1,5 +1,7 @@
 package com.mannschaft.app.billing;
 
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.billing.api.BillingInvoiceJpaRepository;
 import com.mannschaft.app.billing.invoice.StripeBillingPayloadParser;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,15 @@ import java.util.UUID;
  * 見つかった change へ invoice ref を<b>一度だけ</b> bind する（bind は
  * {@link #confirmPaid} の反映処理内で {@code saveAndFlush} し、{@code uk_bcc_invoice} の
  * 一意制約違反を早期に検出することで AC-41 の巻き戻りを成立させる）。</p>
+ *
+ * <h2>公開範囲（第13隊・AC-142 是正）</h2>
+ * <p>本サービスの唯一の呼び出し元は同一パッケージの {@link BillingSubscriptionWebhookService}
+ * である。{@code BillingContractChangeEntity} を引数・戻り値に持つメソッドを {@code public} の
+ * ままにすると、番人 {@code ServiceApiEntityBoundaryArchTest}（D-1 API boundary）が
+ * 「他ドメインから呼ばれうる Service API が Entity を公開している」として検出する
+ * （凍結ストアは chip-away 運用で {@code freeze.refreeze=false}。新規違反を凍結へ
+ * 追記することは禁止されている）。実際に他ドメインから呼ばれることはないため、
+ * package-private（同パッケージ限定）へ絞ることで根治する。</p>
  */
 @Slf4j
 @Service
@@ -52,6 +63,8 @@ public class BillingPlanChangeConfirmationService {
     private final BillingInvoiceJpaRepository invoiceRepository;
     /** PR6b-1 第9隊 AC-79: pending_update_target_snapshot から price ref を取り出す。 */
     private final StripeBillingPayloadParser payloadParser;
+    /** PR6b-1 第13隊 AC-137/AC-138: change の確定・失敗を監査する。 */
+    private final AuditLogService auditLogService;
 
     /**
      * invoice に対応する upgrade の change を解決する（AC-42）。
@@ -74,7 +87,7 @@ public class BillingPlanChangeConfirmationService {
      * @param subscriptionRef Stripe Subscription ID（逆引きキー。{@code null} なら bind 経路を試みない）
      * @return upgrade の差額請求だと判定できた change
      */
-    public Optional<BillingContractChangeEntity> resolveByInvoice(String invoiceRef, String subscriptionRef) {
+    Optional<BillingContractChangeEntity> resolveByInvoice(String invoiceRef, String subscriptionRef) {
         if (invoiceRef == null || invoiceRef.isBlank()) {
             return Optional.empty();
         }
@@ -108,7 +121,7 @@ public class BillingPlanChangeConfirmationService {
      * {@code customer.subscription.pending_update_expired} 用に、metadata の operationId から
      * 直接 change を解決する（AC-40。invoice を経由しないため {@link #resolveByInvoice} は使えない）。
      */
-    public Optional<BillingContractChangeEntity> resolveByOperationId(UUID operationId) {
+    Optional<BillingContractChangeEntity> resolveByOperationId(UUID operationId) {
         if (operationId == null) {
             return Optional.empty();
         }
@@ -125,7 +138,7 @@ public class BillingPlanChangeConfirmationService {
      * @param change     {@link #resolveByInvoice} が返した change
      * @param invoiceRef bind すべき invoice ref（すでに bind 済みなら変化しない）
      */
-    public void confirmPaid(BillingContractChangeEntity change, String invoiceRef) {
+    void confirmPaid(BillingContractChangeEntity change, String invoiceRef) {
         if (!IN_FLIGHT.contains(change.getStatus())) {
             log.info("PR6b-1: 既に確定済みの change への paid 再送を無視する: changeId={}, status={}",
                     change.getId(), change.getStatus());
@@ -152,6 +165,9 @@ public class BillingPlanChangeConfirmationService {
             contractRepository.save(contract);
             return null;
         });
+        // AC-137: 確定（invoice.paid）が commit された後に監査する（IN_FLIGHT だったときだけ
+        // ここへ到達するため、二度目以降の冪等 no-op 再送は監査しない）。
+        audit(AuditEventType.BILLING_PLAN_CHANGE_APPLIED, change, null);
     }
 
     /**
@@ -162,7 +178,7 @@ public class BillingPlanChangeConfirmationService {
      * 等の terminal）なら no-op。遅延到着した古い event が確定済みの状態を巻き戻さない。
      * すでに {@code REQUIRES_ACTION} なら再送として冪等 no-op（AC-86）。</p>
      */
-    public void confirmRequiresAction(BillingContractChangeEntity change) {
+    void confirmRequiresAction(BillingContractChangeEntity change) {
         if (!IN_FLIGHT.contains(change.getStatus())) {
             log.info("PR6b-1: 既に確定済みの change への action_required 再送を無視する: changeId={}, status={}",
                     change.getId(), change.getStatus());
@@ -194,7 +210,7 @@ public class BillingPlanChangeConfirmationService {
      * 保証されない）。確定は {@code pending_update_applied} が現在の items を保存済み target と
      * 照合できてから行う（E2'・{@link #confirmAppliedIfMatchingItems}）。</p>
      */
-    public void acknowledgePendingPayment(BillingContractChangeEntity change, String invoiceRef) {
+    void acknowledgePendingPayment(BillingContractChangeEntity change, String invoiceRef) {
         if (!IN_FLIGHT.contains(change.getStatus())) {
             return;
         }
@@ -230,7 +246,7 @@ public class BillingPlanChangeConfirmationService {
      *         整っていない（呼び出し元は {@code PROCESSED} として扱ってよい・再送で拾い直す必要は無い）
      *         なら {@code false}
      */
-    public boolean confirmAppliedIfMatchingItems(BillingContractChangeEntity change, String currentItemPriceRef) {
+    boolean confirmAppliedIfMatchingItems(BillingContractChangeEntity change, String currentItemPriceRef) {
         if (!IN_FLIGHT.contains(change.getStatus())) {
             return true; // 既に確定済み（AC-86 の冪等）。
         }
@@ -261,7 +277,7 @@ public class BillingPlanChangeConfirmationService {
      * @param change    {@link #resolveByInvoice}/{@link #resolveByOperationId} が返した change
      * @param errorCode operation に刻む error_code
      */
-    public void confirmFailed(BillingContractChangeEntity change, String errorCode) {
+    void confirmFailed(BillingContractChangeEntity change, String errorCode) {
         if (!IN_FLIGHT.contains(change.getStatus())) {
             log.info("PR6b-1: 既に確定済みの change への失敗再送を無視する: changeId={}, status={}",
                     change.getId(), change.getStatus());
@@ -275,5 +291,38 @@ public class BillingPlanChangeConfirmationService {
         changeRepository.save(locked);
         // 旧権利は一切触らない（契約行は据え置き）。operation の FAILED 化＋pointer 解放だけを行う。
         sagaService.failAndRelease(change.getOperationId(), errorCode);
+        // AC-138: 確定失敗（decline/voided/expired）も監査する（成功だけを監査しない・PR6a AC-66 と同方針）。
+        audit(AuditEventType.BILLING_PLAN_CHANGE_FAILED, locked, errorCode);
+    }
+
+    /**
+     * 監査を1件記録する（AC-137/AC-138）。
+     *
+     * <p>metadata に載せるのは <b>scopeKind / scopeId / contractId / changeId / fromPlanKey /
+     * toPlanKey / errorCode</b> だけである。Stripe の raw payload・clientSecret・カード情報・住所は
+     * 一切載せない（AC-139・{@code BillingContractCancelApplicationService#audit} と同型）。
+     * webhook 起点で操作者ログインが無いため、userId には change を起票した actor
+     * （{@link BillingContractChangeEntity#getCreatedBy()}）を用いる。</p>
+     */
+    private void audit(AuditEventType eventType, BillingContractChangeEntity change, String errorCode) {
+        BillingContractEntity contract = contractRepository
+                .findByIdAndDeletedAtIsNull(change.getContractId()).orElse(null);
+        EntitlementScopeKind scopeKind = contract == null ? null : contract.getScopeKind();
+        Long scopeId = contract == null ? null : contract.getScopeId();
+        StringBuilder metadata = new StringBuilder()
+                .append("{\"scopeKind\":\"").append(scopeKind == null ? "UNKNOWN" : scopeKind.name())
+                .append("\",\"scopeId\":").append(scopeId)
+                .append(",\"contractId\":\"").append(change.getContractId()).append('"')
+                .append(",\"changeId\":\"").append(change.getId()).append('"')
+                .append(",\"fromPlanKey\":\"").append(change.getFromPlanKey()).append('"')
+                .append(",\"toPlanKey\":\"").append(change.getToPlanKey()).append('"');
+        if (errorCode != null) {
+            metadata.append(",\"errorCode\":\"").append(errorCode).append('"');
+        }
+        metadata.append('}');
+        auditLogService.record(eventType.name(), change.getCreatedBy(), null,
+                scopeKind == EntitlementScopeKind.TEAM ? scopeId : null,
+                scopeKind == EntitlementScopeKind.ORG ? scopeId : null,
+                null, null, null, metadata.toString());
     }
 }

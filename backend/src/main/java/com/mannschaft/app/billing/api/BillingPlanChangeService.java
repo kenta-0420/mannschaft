@@ -2,6 +2,8 @@ package com.mannschaft.app.billing.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.billing.BillingChangePreviewEntity;
 import com.mannschaft.app.billing.BillingChangePreviewRepository;
 import com.mannschaft.app.billing.BillingContractChangeEntity;
@@ -20,6 +22,7 @@ import com.mannschaft.app.billing.BillingPriceBandVersionEntity;
 import com.mannschaft.app.billing.BillingPriceBandVersionRepository;
 import com.mannschaft.app.billing.BillingPriceVersionStatus;
 import com.mannschaft.app.billing.EntitlementErrorCode;
+import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.billing.ScopeMemberCountService;
 import com.mannschaft.app.billing.api.BillingConflictException.BillingConflictDetails;
 import com.mannschaft.app.billing.api.BillingConflictException.Reason;
@@ -64,6 +67,8 @@ public class BillingPlanChangeService {
     private final BillingPlanChangeGateway planChangeGateway;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    /** AC-136/AC-138: change の作成・同期失敗を監査する（PR6a {@code BILLING_CANCEL_*} と同型）。 */
+    private final AuditLogService auditLogService;
 
     /** {@code prepare}/{@code finalizeChange} を自己呼び出しせず独立トランザクションで走らせるための template。 */
     private final TransactionTemplate newTransactionTemplate;
@@ -79,6 +84,7 @@ public class BillingPlanChangeService {
             BillingPlanChangeGateway planChangeGateway,
             ObjectMapper objectMapper,
             Clock clock,
+            AuditLogService auditLogService,
             PlatformTransactionManager transactionManager) {
         this.changePreviewRepository = changePreviewRepository;
         this.changeRepository = changeRepository;
@@ -90,6 +96,7 @@ public class BillingPlanChangeService {
         this.planChangeGateway = planChangeGateway;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.auditLogService = auditLogService;
         this.newTransactionTemplate = new TransactionTemplate(transactionManager);
         this.newTransactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -100,6 +107,10 @@ public class BillingPlanChangeService {
 
         Prepared prepared = newTransactionTemplate.execute(
                 tx -> prepare(actorId, contractId, request, requestBody));
+
+        // AC-136: change の作成（= upgrade 実行要求の受理）を監査する。予約 tx の commit 後
+        // （PR6a の cancel と同じく、確定した DB の姿を追認する形で記録する）。
+        audit(AuditEventType.BILLING_PLAN_CHANGE_REQUESTED, actorId, prepared.contract(), prepared.change(), null);
 
         sagaService.markCallingStripe(prepared.operationId());
 
@@ -115,6 +126,7 @@ public class BillingPlanChangeService {
         } catch (RuntimeException e) {
             // AC-46: Stripe 呼び出し失敗は change も FAILED にする（operation/pointer とは別 tx でよい。
             // 同一 tx を要求するのは webhook 確定側の AC-37〜41 のみ）。
+            BillingContractChangeEntity[] failedHolder = new BillingContractChangeEntity[1];
             newTransactionTemplate.executeWithoutResult(tx -> {
                 BillingContractChangeEntity failed = changeRepository
                         .findByIdAndDeletedAtIsNull(prepared.changeId())
@@ -122,8 +134,12 @@ public class BillingPlanChangeService {
                                 "change が見つからない: " + prepared.changeId()));
                 failed.setStatus(BillingContractChangeStatus.FAILED);
                 changeRepository.save(failed);
+                failedHolder[0] = failed;
             });
             sagaService.failAndRelease(prepared.operationId(), "STRIPE_CALL_FAILED");
+            // AC-138: Stripe 呼び出し自体の失敗も記録する（成功だけを監査しない・PR6a AC-66 と同方針）。
+            audit(AuditEventType.BILLING_PLAN_CHANGE_FAILED, actorId, prepared.contract(), failedHolder[0],
+                    "STRIPE_CALL_FAILED");
             throw new BusinessException(EntitlementErrorCode.STRIPE_UNAVAILABLE, e);
         }
 
@@ -136,6 +152,7 @@ public class BillingPlanChangeService {
     // ============================================================
 
     private record Prepared(UUID operationId, UUID changeId, BillingContractEntity contract,
+                            BillingContractChangeEntity change,
                             BillingPriceBandVersionEntity toBand, int memberCount) {
     }
 
@@ -227,7 +244,7 @@ public class BillingPlanChangeService {
                 .build();
         changeRepository.save(change);
 
-        return new Prepared(reservation.operationId(), change.getId(), contract, toBand, memberCount);
+        return new Prepared(reservation.operationId(), change.getId(), contract, change, toBand, memberCount);
     }
 
     // ============================================================
@@ -296,6 +313,34 @@ public class BillingPlanChangeService {
         throw billingAccessGuard.isScopeMember(actorId, contract.getScopeKind(), contract.getScopeId())
                 ? new BusinessException(EntitlementErrorCode.SCOPE_FORBIDDEN)
                 : new BusinessException(EntitlementErrorCode.CONTRACT_NOT_FOUND);
+    }
+
+    /**
+     * 監査を1件記録する（AC-136/AC-138）。
+     *
+     * <p>metadata に載せるのは <b>scopeKind / scopeId / contractId / changeId / fromPlanKey /
+     * toPlanKey / errorCode</b> だけである。Stripe の raw payload・clientSecret・カード情報・住所は
+     * 一切載せない（AC-139・{@code BillingContractCancelApplicationService#audit} と同型）。</p>
+     */
+    private void audit(AuditEventType eventType, long actorId, BillingContractEntity contract,
+                       BillingContractChangeEntity change, String errorCode) {
+        EntitlementScopeKind scopeKind = contract.getScopeKind();
+        Long scopeId = contract.getScopeId();
+        StringBuilder metadata = new StringBuilder()
+                .append("{\"scopeKind\":\"").append(scopeKind.name())
+                .append("\",\"scopeId\":").append(scopeId)
+                .append(",\"contractId\":\"").append(contract.getId()).append('"')
+                .append(",\"changeId\":\"").append(change.getId()).append('"')
+                .append(",\"fromPlanKey\":\"").append(change.getFromPlanKey()).append('"')
+                .append(",\"toPlanKey\":\"").append(change.getToPlanKey()).append('"');
+        if (errorCode != null) {
+            metadata.append(",\"errorCode\":\"").append(errorCode).append('"');
+        }
+        metadata.append('}');
+        auditLogService.record(eventType.name(), actorId, null,
+                scopeKind == EntitlementScopeKind.TEAM ? scopeId : null,
+                scopeKind == EntitlementScopeKind.ORG ? scopeId : null,
+                null, null, null, metadata.toString());
     }
 
     private String sha256(String value) {

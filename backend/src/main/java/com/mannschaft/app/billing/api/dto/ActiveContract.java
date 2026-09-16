@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
@@ -59,6 +60,14 @@ public class ActiveContract {
     private final ScheduledCancel cancel;
 
     /**
+     * 進行中のプラン変更（upgrade）の内容（PR6b-1 AC-133）。{@code PENDING_PAYMENT} /
+     * {@code REQUIRES_ACTION} の変更が無ければ親の {@code pendingChange} 自体が null になる
+     * （AC-107: 支払い待ちでない契約ではこの投影自体を出さない）。
+     */
+    @Schema(description = "進行中のプラン変更（upgrade）の内容。進行中の変更が無ければ null", nullable = true)
+    private final PendingChange pendingChange;
+
+    /**
      * 解約予約の内容（PR6a AC-60）。予約が入っていないときは親の {@code cancel} 自体が null になる。
      *
      * <p>時刻はオフセット付きで返す（新規の壁時計型フィールドは番人
@@ -74,5 +83,27 @@ public class ActiveContract {
 
         @Schema(description = "利用可能期限（＝currentPeriodEnd）")
         private final OffsetDateTime endAt;
+    }
+
+    /**
+     * 進行中のプラン変更の内容（PR6b-1 AC-133）。{@code billing_contract_changes} の
+     * {@code effectiveAt} は Stripe 由来の瞬間であり {@link Instant} で返す
+     * （sibling の {@code BillingChangePreviewResponse}/{@code BillingContractChangeResponse}
+     * と同じ流儀。{@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md} §1/§4）。
+     */
+    @Getter
+    @Builder
+    @Schema(name = "BillingPendingChange", description = "F20.1 進行中のプラン変更（upgrade）の内容")
+    public static class PendingChange {
+
+        @Schema(description = "変更の状態（PENDING_PAYMENT または REQUIRES_ACTION）",
+                example = "REQUIRES_ACTION")
+        private final String status;
+
+        @Schema(description = "変更の効力発生予定の瞬間（ISO-8601 Instant）")
+        private final Instant effectiveAt;
+
+        @Schema(description = "3DS等の追加認証待ちか（true なら GET …/payment-action を叩ける）")
+        private final boolean paymentActionRequired;
     }
 }

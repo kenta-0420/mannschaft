@@ -418,7 +418,7 @@ Stripe Test ClockではCustomer作成時に`test_clock`を設定し、アプリ�
 
 Stripe invoice/line を正本として金額を取得し、`subtotal - discount + tax = total`、各 line の税込/税抜/端数合計が invoice と一致しないと投影を確定しない。JPY は小数なし、Stripe の line amount を再丸めしない。invoice/line は割引、税名、税率、`is_included_in_price`、発行者/請求先 snapshot を不変保存し、bearer URL snapshot 列は持たない。請求書投影は7年保持し、Webhook raw payloadは永続化しない。
 
-`BILLING_CHECKOUT_CREATED`、`BILLING_CHANGE_*`、`BILLING_CANCEL_*`、`BILLING_PORTAL_OPENED`、`BILLING_INVOICE_VIEWED`、`BILLING_MIGRATION_*`、`BILLING_OPERATOR_VIEWED`、webhook成功/失敗を actor/scope/object ref/金額で監査する（カード番号、住所全文、URL、payloadは除外）。一覧 P95 は500ms、cursor既定20最大100、表示では Stripe 同期呼出しをせず投影を読む。rate limit は scope ごとに checkout/change/cancel/Portal 各10回/時、CSP/ログ/例外はPIIを出さない。
+`BILLING_CHECKOUT_CREATED`、`BILLING_PLAN_CHANGE_*`（PR6b-1 実装名。upgrade の作成/確定/失敗を`BILLING_PLAN_CHANGE_REQUESTED`/`_APPLIED`/`_FAILED`で記録する。作成はAPI応答直後、確定/失敗は`invoice.paid`等のwebhook確定と同じ結末で記録し、成功だけを監査しない）、`BILLING_CANCEL_*`、`BILLING_PORTAL_OPENED`、`BILLING_INVOICE_VIEWED`、`BILLING_MIGRATION_*`、`BILLING_OPERATOR_VIEWED`、webhook成功/失敗を actor/scope/object ref/金額で監査する（カード番号、住所全文、URL、clientSecret、Stripe raw payloadは除外）。一覧 P95 は500ms、cursor既定20最大100、表示では Stripe 同期呼出しをせず投影を読む。rate limit は scope ごとに checkout/change/cancel/Portal 各10回/時、CSP/ログ/例外はPIIを出さない。
 
 ## 9. テストと受入条件
 

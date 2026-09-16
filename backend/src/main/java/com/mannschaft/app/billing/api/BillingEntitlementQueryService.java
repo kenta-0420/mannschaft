@@ -1,6 +1,9 @@
 package com.mannschaft.app.billing.api;
 
 import com.mannschaft.app.billing.BillingCancelState;
+import com.mannschaft.app.billing.BillingContractChangeEntity;
+import com.mannschaft.app.billing.BillingContractChangeRepository;
+import com.mannschaft.app.billing.BillingContractChangeStatus;
 import com.mannschaft.app.billing.BillingContractEntity;
 import com.mannschaft.app.billing.BillingContractRepository;
 import com.mannschaft.app.billing.ContractKind;
@@ -35,6 +38,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * F20.1: 権利サマリ・単一判定 API の読み取りサービス（設計書 02 §2.2 / §2.3 / 03 §2.2）。
@@ -56,6 +60,7 @@ public class BillingEntitlementQueryService {
     private final EntitlementQueryService entitlementQueryService;
     private final EntitlementRepository entitlementRepository;
     private final BillingContractRepository billingContractRepository;
+    private final BillingContractChangeRepository billingContractChangeRepository;
     private final FeatureCatalogRepository featureCatalogRepository;
     private final PlanFeatureRepository planFeatureRepository;
     private final PlanRepository planRepository;
@@ -65,6 +70,14 @@ public class BillingEntitlementQueryService {
     /** 権利サマリの投影に載せる契約状態（AC-65。PAST_DUE は期末まで利用でき解約もできる・D4）。 */
     private static final List<ContractStatus> DISPLAYED_CONTRACT_STATUSES =
             List.of(ContractStatus.ACTIVE, ContractStatus.PAST_DUE);
+
+    /**
+     * pendingChange として投影に載せる変更状態（PR6b-1 AC-107・AC-133）。
+     * {@code PENDING_PAYMENT}/{@code REQUIRES_ACTION} 以外（{@code APPLIED}/{@code FAILED} 等の
+     * terminal）は既に決着しているため投影しない（AC-107: 支払い待ちでない契約では出さない）。
+     */
+    private static final List<BillingContractChangeStatus> IN_FLIGHT_CHANGE_STATUSES = List.of(
+            BillingContractChangeStatus.PENDING_PAYMENT, BillingContractChangeStatus.REQUIRES_ACTION);
 
     // ============================================================
     // 権利サマリ（§2.2）
@@ -78,11 +91,14 @@ public class BillingEntitlementQueryService {
                 .findByScopeKindAndScopeIdAndStatusInAndDeletedAtIsNull(
                         scopeKind, scopeId, DISPLAYED_CONTRACT_STATUSES);
 
+        // AC-134: 契約 N 件でも SQL は1本（契約ごとに問い合わせない）。
+        Map<UUID, BillingContractChangeEntity> pendingChangeByContractId = loadPendingChanges(active);
+
         ActiveContract activePlan = null;
         ContractStatus activePlanStatus = null;
         List<ActiveContract> activeAddons = new ArrayList<>();
         for (BillingContractEntity c : active) {
-            ActiveContract dto = toActiveContract(c);
+            ActiveContract dto = toActiveContract(c, pendingChangeByContractId.get(c.getId()));
             if (c.getContractKind() == ContractKind.PLAN) {
                 // ACTIVE と PAST_DUE が同時に並ぶ異常時でも見え方を一意にする（ACTIVE を優先）。
                 if (activePlan == null || (activePlanStatus != ContractStatus.ACTIVE
@@ -111,7 +127,7 @@ public class BillingEntitlementQueryService {
      * DB の {@code status} / {@code cancelled_at} / {@code current_period_end} と注入 {@link Clock} だけから
      * {@link BillingCancelState} が導出する。解約 API の応答と同じ関数を使うので、両者が食い違わない。</p>
      */
-    private ActiveContract toActiveContract(BillingContractEntity c) {
+    private ActiveContract toActiveContract(BillingContractEntity c, BillingContractChangeEntity pendingChange) {
         var now = LocalDateTime.now(clock);
         var endAt = c.getCurrentPeriodEnd();
         boolean scheduled = BillingCancelState.scheduled(c.getStatus(), c.getCancelledAt());
@@ -133,7 +149,32 @@ public class BillingEntitlementQueryService {
                                 .endAt(toOffset(endAt))
                                 .build()
                         : null)
+                // PR6b-1 AC-107/AC-133: 進行中の変更が無ければ null（常時表示にしない）。
+                .pendingChange(pendingChange == null ? null : ActiveContract.PendingChange.builder()
+                        .status(pendingChange.getStatus().name())
+                        .effectiveAt(pendingChange.getEffectiveAt())
+                        .paymentActionRequired(
+                                pendingChange.getStatus() == BillingContractChangeStatus.REQUIRES_ACTION)
+                        .build())
                 .build();
+    }
+
+    /**
+     * 表示対象契約ぶんの進行中変更を一括取得する（PR6b-1 AC-134: N+1 回避）。
+     * 契約 0 件なら空 Map をそのまま返し（0 クエリ）、SQL を発行しない。
+     */
+    private Map<UUID, BillingContractChangeEntity> loadPendingChanges(List<BillingContractEntity> contracts) {
+        if (contracts.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> contractIds = contracts.stream().map(BillingContractEntity::getId).toList();
+        Map<UUID, BillingContractChangeEntity> byContractId = new LinkedHashMap<>();
+        for (BillingContractChangeEntity change : billingContractChangeRepository
+                .findByContractIdInAndStatusInAndDeletedAtIsNull(contractIds, IN_FLIGHT_CHANGE_STATUSES)) {
+            // 契約1件につき進行中の変更は高々1件（PR6a 資産の pointer が同時 mutation を排他する）。
+            byContractId.putIfAbsent(change.getContractId(), change);
+        }
+        return byContractId;
     }
 
     /** DB の壁時計値を、注入 {@link Clock} のゾーンでオフセット付きへ変換する唯一の変換点。 */
