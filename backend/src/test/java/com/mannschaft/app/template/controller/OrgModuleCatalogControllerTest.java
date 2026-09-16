@@ -4,7 +4,8 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
-import com.mannschaft.app.organization.OrgErrorCode;
+import com.mannschaft.app.config.OrgScopeId;
+import com.mannschaft.app.config.OrgScopeIdConverter;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.template.dto.OrgModuleCatalogResponse;
 import com.mannschaft.app.template.service.ModuleService;
@@ -18,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -40,7 +42,6 @@ class OrgModuleCatalogControllerTest {
 
     private static final Long USER_ID = 1L;
     private static final Long ORG_ID = 10L;
-    private static final String ORG_SLUG = "org-000001";
 
     @Mock private ModuleService moduleService;
     @Mock private AccessControlService accessControlService;
@@ -63,17 +64,15 @@ class OrgModuleCatalogControllerTest {
     @Test
     @DisplayName("MEMBER がカタログを取得 – slug 解決＋認可後 200")
     void getOrganizationModuleCatalog_member_200() {
-        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         willDoNothing().given(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
         OrgModuleCatalogResponse body = OrgModuleCatalogResponse.builder()
                 .planLimit(10).enabledCount(0L).hasPaidPlan(false).modules(List.of()).build();
         given(moduleService.getOrganizationModuleCatalog(ORG_ID)).willReturn(body);
 
         ResponseEntity<ApiResponse<OrgModuleCatalogResponse>> resp =
-                controller.getOrganizationModuleCatalog(ORG_SLUG);
+                controller.getOrganizationModuleCatalog(new OrgScopeId(ORG_ID));
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(organizationService).resolveOrgId(ORG_SLUG);
         verify(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
         verify(moduleService).getOrganizationModuleCatalog(ORG_ID);
     }
@@ -81,11 +80,10 @@ class OrgModuleCatalogControllerTest {
     @Test
     @DisplayName("AC-9: 非メンバーは checkMembership が COMMON_002 を投げる")
     void getOrganizationModuleCatalog_nonMember_403() {
-        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
                 .given(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
 
-        assertThatThrownBy(() -> controller.getOrganizationModuleCatalog(ORG_SLUG))
+        assertThatThrownBy(() -> controller.getOrganizationModuleCatalog(new OrgScopeId(ORG_ID)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(CommonErrorCode.COMMON_002));
@@ -95,11 +93,11 @@ class OrgModuleCatalogControllerTest {
     @DisplayName("AC-8: 存在しない slug は resolveOrgId が ORG_001 例外")
     void getOrganizationModuleCatalog_notFoundSlug_throws() {
         given(organizationService.resolveOrgId("unknown-slug"))
-                .willThrow(new BusinessException(OrgErrorCode.ORG_001));
+                .willThrow(new BusinessException(com.mannschaft.app.organization.OrgErrorCode.ORG_001));
 
-        assertThatThrownBy(() -> controller.getOrganizationModuleCatalog("unknown-slug"))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                        .isEqualTo(OrgErrorCode.ORG_001));
+        assertThatThrownBy(() -> new OrgScopeIdConverter(organizationService).convert("unknown-slug"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
     }
 }

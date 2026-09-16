@@ -22,7 +22,9 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -69,7 +71,8 @@ class PersonalScheduleColorTest {
     void setUp() {
         service = new PersonalScheduleService(
                 scheduleRepository, reminderRepository, eventPublisher, new ObjectMapper(),
-                nameResolverService, recurrenceService, scheduleAccessGuard, calendarLayerService);
+                nameResolverService, recurrenceService, scheduleAccessGuard,
+                Clock.system(ZoneId.of("Asia/Tokyo")), calendarLayerService);
         when(calendarLayerService.findUserLayerColors(anyLong())).thenReturn(Map.of());
         when(nameResolverService.resolveUserDisplayName(anyLong())).thenReturn("私");
     }

@@ -42,7 +42,7 @@
 | DELETE | `/api/v1/shifts/availability` | 必要 | デフォルト可否プロファイルを削除（既定値に戻す） |
 | GET | `/api/v1/shifts/hourly-rate` | 必要 | 自分の時給設定取得 |
 | POST | `/api/v1/shifts/hourly-rate` | 必要 | 自分の時給設定登録・更新（旧 PUT → POST に変更、Service 側 upsert 動作） |
-| GET | `/api/v1/shifts/hourly-rates` | 必要 | チームメンバーの時給一覧取得（管理者用） **【v2 計画、現状未実装】** |
+| GET | `/api/v1/shifts/hourly-rates` | 必要 | チームメンバーの有効時給を一括取得（ADMIN/DEPUTY_ADMIN 用・CMP-260912-1525 で実装） |
 | PUT | `/api/v1/shifts/hourly-rates/{userId}` | 必要 | メンバーの時給設定（管理者用） **【v2 計画、現状未実装】** |
 | POST | `/api/v1/shifts/schedules/{id}/auto-assign` | 必要 | **【v2】自動割当を実行（PROPOSED 状態で shift_assignments にドラフト書き込み）** |
 | POST | `/api/v1/shifts/schedules/{id}/auto-assign/confirm` | 必要 | **【v2】自動割当の提案を確定（PROPOSED → CONFIRMED、shift_slots.assigned_user_ids を更新）** |
@@ -1407,43 +1407,62 @@ status を既定の `PENDING` のままにしており、`OPEN_CALL` へ遷移�
 
 ---
 
-#### `GET /api/v1/shifts/hourly-rates` 【v2 計画・現状未実装】
+#### `GET /api/v1/shifts/hourly-rates`（CMP-260912-1525 で実装）
 
-> ※ 管理者向け時給一覧 API。現状実装は単数 `/shifts/hourly-rate` のみ。v2 で `ShiftHourlyRateAdminController` 追加予定（triage_log `shifts.md` §5-2 参照）。
+チームメンバーの「基準日時点で有効な時給」を**一括で**取得する。時給設定画面が
+全メンバーの現在時給を並べるための経路。
 
-チームメンバーの時給一覧を取得する。管理者がチーム全体の人件費を把握するための画面用。
+**なぜ単数 `/hourly-rate` の反復ではだめか**: 1 人ずつ引くとメンバー数ぶんの HTTP 往復と
+クエリが出る。本 EP は相関副問い合わせで「ユーザーごとに基準日以下で最新の適用開始日の行」を
+選ぶ 1 クエリにまとめており、処理量はメンバー数 N に比例する（`ShiftHourlyRateRepository#findEffectiveRatesByTeam`）。
 
 **クエリパラメータ**
 | パラメータ | 型 | 必須 | 説明 |
 |-----------|---|------|------|
-| `team_id` | Long | 必須 | チーム ID |
+| `teamId` | Long | 必須 | チーム ID |
+| `date` | LocalDate (ISO) | 必須 | 基準日。この日時点で有効な時給を返す |
 
-**レスポンス（200 OK）**
+**レスポンス（200 OK）** — 単数 EP と同じ `HourlyRateResponse` の配列。
+**基準日時点で時給が未設定のユーザーは含まれない**（画面側は返ってきた `userId` で突き合わせ、
+含まれないメンバーを「未設定」として表示する）。
+
 ```json
 {
   "data": [
-    {
-      "user": { "id": 10, "display_name": "田中太郎" },
-      "current_rate": 1200.00,
-      "effective_from": "2026-01-01"
-    },
-    {
-      "user": { "id": 11, "display_name": "佐藤花子" },
-      "current_rate": 1100.00,
-      "effective_from": "2025-10-01"
-    },
-    {
-      "user": { "id": 12, "display_name": "鈴木一郎" },
-      "current_rate": null
-    }
+    { "id": 100, "userId": 10, "teamId": 3, "hourlyRate": 1200.00,
+      "effectiveFrom": "2026-01-01", "createdAt": "2026-01-01T00:00:00" },
+    { "id": 101, "userId": 11, "teamId": 3, "hourlyRate": 1100.00,
+      "effectiveFrom": "2025-10-01", "createdAt": "2025-10-01T00:00:00" }
   ]
 }
 ```
 
+**認可は 2 軸ある。どちらか一方では足りない。**
+
+1. **誰が呼べるか（ロールの検査）**: 返す内容に他メンバーの時給（金銭情報）が必ず含まれるため、
+   単数 EP の「本人 + 当該チームの ADMIN/DEPUTY_ADMIN」のうち
+   **ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）だけ**を許可する。
+   一般メンバーは自分の時給を単数 EP で従来どおり読めるため、本 EP を一律拒否しても機能は失われない。
+2. **誰の時給を返すか（対象の絞り込み）**: **在籍中のメンバーに限る**
+   （`AccessControlService#listActiveMemberIds` が `memberships.left_at IS NULL` で 1 クエリ取得し、
+   その ID 集合でクエリを絞る）。
+
+> ⚠️ 2 を落とすと認可の回帰になる。単数 EP は `checkHourlyRateAccess` が
+> **対象ユーザーの現在の所属**まで確認していた（`checkMembership(targetUserId, ...)`）。
+> 一括取得を `teamId` だけで引くと、**時給を設定されたあとに脱退した元メンバーの金銭情報まで返る**。
+> 「1 件ずつなら効いていた対象側のチェックが、まとめて取ると効かなくなる」典型であり、
+> 性能改善のための一括化では必ず起きうる（CMP-260912-1525 の Codex 検分 P1 で検出）。
+
+**インデックス**: `idx_shr_team_user_from (team_id, user_id, effective_from)`（`V213` で追加）。
+既存の一意インデックス `uq_shr_user_team_from` は左端が `user_id` のため `team_id = ?` を絞れず、
+履歴が複数チームに蓄積すると `shift_hourly_rates` 全体の走査になる
+（＝一括化による性能改善が全テナントの履歴件数に比例して劣化する）。
+外側の検索条件と相関副問い合わせの `MAX(effective_from)` の両方をこの 1 本で支える。
+
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
-| 403 | ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）ではない |
+| 403 | 当該チームの ADMIN / DEPUTY_ADMIN ではない |
 
 ---
 

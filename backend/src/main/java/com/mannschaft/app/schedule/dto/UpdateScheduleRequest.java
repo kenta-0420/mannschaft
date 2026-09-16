@@ -119,4 +119,12 @@ public class UpdateScheduleRequest {
                 commentOption, eventCategoryId, academicYear, updateScope, reminders,
                 scheduledSurveys, scheduledAttendance);
     }
+
+    /** 同じフィールド更新を別の繰り返し行へ適用するとき、絶対日時だけ差し替える。 */
+    public UpdateScheduleRequest withTimes(OffsetDateTime startAt, OffsetDateTime endAt) {
+        return new UpdateScheduleRequest(title, description, location, startAt, endAt, allDay,
+                eventType, visibility, minViewRole, minResponseRole, targetMode, targetUserIds,
+                attendanceRequired, attendanceDeadline, commentOption, eventCategoryId,
+                academicYear, updateScope, reminders, scheduledSurveys, scheduledAttendance);
+    }
 }

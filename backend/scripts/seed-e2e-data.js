@@ -2,6 +2,9 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+// 隔離 worktree の実機 E2E は E2E_DB_NAME/USER/PASSWORD で専用 DB を指定する。
+// 未指定なら従来どおり本陣ローカル DB を使用する。
+
 /** チーム/組織名から URL スラッグを生成する（BE SlugGenerator と同ロジック）。
  * 日本語名など ASCII 英数字が 3 文字未満の場合は MD5 ハッシュのプレフィックスを使い
  * 一意性を担保する（seed の重複実行でも同じ名前から同じスラッグを生成）。 */
@@ -47,7 +50,9 @@ function encryptForTest(plain) {
 (async () => {
   const conn = await mysql.createConnection({
     host: '127.0.0.1', port: 3306,
-    user: 'mannschaft', password: 'mannschaft', database: 'mannschaft',
+    user: process.env.E2E_DB_USER ?? 'mannschaft',
+    password: process.env.E2E_DB_PASSWORD ?? 'mannschaft',
+    database: process.env.E2E_DB_NAME ?? 'mannschaft',
     charset: 'utf8mb4', // 二重エンコード再発防止のため接続文字コードを明示
   });
 
